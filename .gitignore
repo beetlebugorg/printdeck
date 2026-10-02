@@ -1,0 +1,13 @@
+# Intermediate files of the case build. build/make.sh makes them again.
+case/build/mesh/
+case/build/img/
+case/build/build.html
+case/build/filament.json
+
+# Original STEP downloads. These files are large. See case/vendor/README.md.
+case/vendor/src/
+
+# Python
+__pycache__/
+*.pyc
+inky/venv/
