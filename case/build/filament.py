@@ -14,20 +14,20 @@ CASE = Path(__file__).resolve().parent.parent
 
 # Print settings for the estimate.
 DENSITY = 1.24  # g/cm3, PLA
-FILAMENT_D = 1.75  # mm
+FILAMENT_D = 2.85  # mm
 SHELL = 1.2  # mm, walls and top and bottom layers
 INFILL = 0.15
 # Extra material for supports, as a fraction of the part.
 SUPPORT = {"body": 0.08}
 
-# (file name, quantity, label)
+# (file name, quantity, label, Cura profile)
 PARTS = [
-    ("body", 1, "Body"),
-    ("base", 1, "Base plate"),
-    ("frame", 1, "Display frame"),
-    ("inky_frame", 1, "Inky frame"),
-    ("cap", 8, "Cap"),
-    ("pad", 1, "Inky pad (TPU)"),
+    ("body", 1, "Body", "Speakerdeck - Body 0.3"),
+    ("base", 1, "Base plate", "Speakerdeck - Base 0.3"),
+    ("frame", 1, "Display frame", "Speakerdeck - Display Frame 0.2"),
+    ("inky_frame", 1, "Inky frame", "Speakerdeck - Inky Frame 0.1 slow"),
+    ("cap", 1, "Caps, 8 on one plate", "Speakerdeck - Caps 0.2"),
+    ("pad", 1, "Inky pad", "Speakerdeck - Pad 0.2"),
 ]
 
 
@@ -74,7 +74,7 @@ def measure(path):
 def main():
     per_gram_m = 1 / (DENSITY * math.pi * (FILAMENT_D / 2) ** 2)  # metres of filament for 1 g
     rows = []
-    for name, quantity, label in PARTS:
+    for name, quantity, label, profile in PARTS:
         volume, area, size = measure(CASE / "stl" / f"{name}.stl")
         shell = min(volume, area * SHELL)
         printed = (shell + (volume - shell) * INFILL) * (1 + SUPPORT.get(name, 0))
@@ -84,6 +84,7 @@ def main():
             "label": label,
             "file": f"stl/{name}.stl",
             "quantity": quantity,
+            "profile": profile,
             "size": [round(s, 1) for s in size],
             "grams": round(grams, 1),
             "metres": round(grams * per_gram_m, 1),

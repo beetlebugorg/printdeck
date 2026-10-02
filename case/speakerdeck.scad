@@ -105,6 +105,9 @@ inky_lip = 0.6;
 // Thickness of the pad when it is compressed, and thickness of the wall behind it.
 inky_pad = 1.5;
 inky_floor = 2.4;
+// The printed pad is thicker than its space by this value. Use 0 for a rigid PLA pad,
+// and 0.5 for TPU, rubber, or foam, so that the pad pushes the Inky wHAT against the frame.
+pad_squeeze = 0;
 // Height of the board centre above the centre of the lower front.
 inky_dz = -1.5;
 // Opening in the wall for the header and the ribbon cable: [width, height].
@@ -422,10 +425,9 @@ module inky_frame() {
   }
 }
 
-// Pad behind the Inky wHAT. Print it in TPU, or use it as a pattern to cut rubber or foam.
-// It is 0.5 mm thicker than the space, so that it pushes the Inky wHAT against the frame.
+// Pad behind the Inky wHAT. See "pad_squeeze" for the material.
 module pad() {
-  linear_extrude(inky_pad + 0.5) difference() {
+  linear_extrude(inky_pad + pad_squeeze) difference() {
     inky_rect(inky_board, -0.3);
     inky_rect(inky_header, 1, inky_header_off);
   }
@@ -631,7 +633,8 @@ if (part == "body") translate([0, D, H]) rotate([180, 0, 0]) p_body();
 else if (part == "base") p_base();
 else if (part == "frame") translate([0, slope_l, 0]) rotate([180, 0, 0]) p_frame();
 else if (part == "inky_frame") translate([0, lip_h, 0]) rotate([180, 0, 0]) p_inky_frame();
-else if (part == "cap") cap();
+// Eight caps on one plate.
+else if (part == "cap") for (i = [0:3], j = [0:1]) translate([i * 18, j * 18, 0]) cap();
 else if (part == "pad") translate([-inky_c[0], -inky_c[1], 0]) pad();
 else if (part == "raw_body") body();
 else if (part == "raw_base") base();

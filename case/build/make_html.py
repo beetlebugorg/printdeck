@@ -39,10 +39,10 @@ CSS = """
   .cols td { padding: 0.8mm 2mm; }
   .cols td.q { font-size: 11.5pt; }
   .cols h2 { font-size: 15pt; margin-bottom: 2mm; }
-  .stl td, .stl th { font-size: 10pt; padding: 1mm 2mm; }
+  .stl td, .stl th { font-size: 9pt; padding: 0.6mm 2mm; }
   .stl th { text-align: left; border-bottom: 0.6mm solid #111; }
   .stl td.n, .stl th.n { text-align: right; }
-  .stl img { height: 11mm; width: 14mm; object-fit: contain; display: block; }
+  .stl img { height: 8mm; width: 12mm; object-fit: contain; display: block; }
   .stl tr.total td { font-weight: 800; border-top: 0.6mm solid #111; border-bottom: none; }
   code { font-size: 0.92em; }
   .files { font-size: 11pt; margin: 0 0 2mm; color: #333; }
@@ -212,7 +212,7 @@ def cover():
 def parts_page():
     s = FILAMENT["settings"]
     stl_rows = "".join(
-        f'<tr><td><img src="img/part_{p["name"]}.png"></td><td>{p["label"]}</td><td><code>{p["file"]}</code></td>'
+        f'<tr><td><img src="img/part_{p["name"]}.png"></td><td>{p["label"]}</td><td><code>{p["file"]}</code><br>{p["profile"]}</td>'
         f'<td class="n">{p["quantity"]}</td><td class="n">{p["size"][0]:.0f} × {p["size"][1]:.0f} × {p["size"][2]:.0f}</td>'
         f'<td class="n">{p["grams"]:.0f} g</td><td class="n">{p["metres"]:.1f} m</td></tr>'
         for p in FILAMENT["parts"]
@@ -220,16 +220,17 @@ def parts_page():
     return f"""<section class="page">
   <h2>Printed parts</h2>
   <table class="stl">
-    <tr><th></th><th>Part</th><th>File</th><th class="n">Quantity</th><th class="n">Size on the bed (mm)</th><th class="n">Filament</th><th class="n">Length</th></tr>
+    <tr><th></th><th>Part</th><th>File and Cura profile</th><th class="n">Quantity</th><th class="n">Size on the bed (mm)</th><th class="n">Filament</th><th class="n">Length</th></tr>
     {stl_rows}
     <tr class="total"><td></td><td>Total</td><td></td><td></td><td></td><td class="n">{FILAMENT["total_grams"]} g</td><td class="n">{FILAMENT["total_metres"]:.0f} m</td></tr>
   </table>
   <p style="font-size:10pt">The filament values are estimates for {s["material"]}, {s["filament_d"]} mm filament, {s["shell"]} mm walls, and {s["infill"] * 100:.0f} % infill. The values for a part with a quantity include all pieces. A slicer gives the correct values for your settings.</p>
-  <ul style="font-size:11pt">
+  <ul style="font-size:9.5pt; line-height:1.35">
     <li>The STL files are in the <code>case/stl/</code> directory. Each file has the correct position for the print bed.</li>
     <li>Print the body upside down, with the top on the bed. Use supports for the display opening and the Inky cavity.</li>
     <li>Print the two frames in a dark color.</li>
-    <li>Print the pad in TPU, or use the file as a pattern and cut the pad from 2 mm rubber or foam.</li>
+    <li>The Cura profiles are for the LulzBot TAZ Workhorse with the 0.5 mm tool head and 2.85 mm PLA. Run <code>case/cura/make_profiles.py --install</code> to install them.</li>
+    <li>The pad is rigid in PLA. For a soft pad, set <code>pad_squeeze = 0.5</code> and print it in TPU, or cut it from 2 mm foam.</li>
   </ul>
   <div class="cols" style="margin-top:4mm">
     <div><h2>Hardware</h2><table>{rows(HARDWARE)}</table></div>
