@@ -12,15 +12,15 @@ python3 -m venv "$REPO/inky/venv"
 
 sudo usermod -a -G spi,i2c,gpio "$USER"
 
-sudo tee /etc/systemd/system/speakdeck-nowplaying.service >/dev/null <<EOF
+sudo tee /etc/systemd/system/speakerdeck-nowplaying.service >/dev/null <<EOF
 [Unit]
-Description=Speakdeck now playing display
+Description=Speakerdeck now playing display
 Before=raspotify.service
 
 [Service]
 User=$USER
 SupplementaryGroups=spi i2c gpio
-EnvironmentFile=-/etc/default/speakdeck
+EnvironmentFile=-/etc/default/speakerdeck
 ExecStart=$REPO/inky/venv/bin/python $REPO/inky/nowplaying.py
 Restart=always
 
@@ -29,5 +29,5 @@ WantedBy=multi-user.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now speakdeck-nowplaying
+sudo systemctl enable --now speakerdeck-nowplaying
 echo "Done. Run 'inky/venv/bin/python inky/nowplaying.py --test' to draw a test image."
