@@ -3,7 +3,7 @@
 # It sends the track data to the "now playing" service.
 [ "$PLAYER_EVENT" = "track_changed" ] || exit 0
 
-[ -r /etc/default/speakdeck ] && . /etc/default/speakdeck
+[ -r /etc/default/speakerdeck ] && . /etc/default/speakerdeck
 
 # COVERS and ARTISTS contain one entry per line. The first cover is the largest.
 COVER=$(printf '%s\n' "$COVERS" | head -n 1)

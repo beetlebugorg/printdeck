@@ -23,11 +23,9 @@ SUPPORT = {"body": 0.08}
 # (file name, quantity, label)
 PARTS = [
     ("body", 1, "Body"),
-    ("frame", 1, "Front frame"),
-    ("top_frame", 1, "Top frame"),
-    ("rear", 1, "Rear panel"),
-    ("sled", 1, "Sled"),
-    ("tray", 1, "Drive tray"),
+    ("base", 1, "Base plate"),
+    ("frame", 1, "Display frame"),
+    ("inky_frame", 1, "Inky frame"),
     ("cap", 8, "Cap"),
     ("pad", 1, "Inky pad (TPU)"),
 ]
