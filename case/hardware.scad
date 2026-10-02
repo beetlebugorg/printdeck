@@ -192,7 +192,7 @@ module pi5() {
 
 // Models from the manufacturers, in the same frame as pi5() and amp_hat().
 // If a mesh file is not in the vendor directory, set the flag to false to use the simple model.
-use_pi_mesh = false;
+use_pi_mesh = true;
 use_amp_mesh = true;
 
 module pi5_model() {

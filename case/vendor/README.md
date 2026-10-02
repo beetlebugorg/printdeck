@@ -5,6 +5,7 @@ These meshes are models of purchased parts. The case images use them. Do not pri
 | File | Part | Source |
 |---|---|---|
 | `hifiberry_amp2.stl` | HiFiBerry Amp2 | https://www.hifiberry.com/docs/hardware/3d-models-of-hifiberry-boards/ |
+| `raspberry_pi_5.stl` | Raspberry Pi 5 | Not in the repository (30 MB). Download `rpi5-step.zip` to `src/rpi5/`, then run `freecadcmd convert_pi5.py`. Without it, set `use_pi_mesh = false` in `hardware.scad`. |
 
 The original downloads go in `src/`. That directory is not in the repository.
 

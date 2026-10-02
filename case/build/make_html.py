@@ -237,7 +237,7 @@ def parts_page():
     <div><h2>Electronics</h2><table>{rows(ELECTRONICS)}</table></div>
   </div>
   <p style="margin-top:4mm"><b>Tools:</b> soldering iron with an insert tip, hex keys for M3, small flat screwdriver, calipers.</p>
-  <div class="warn"><b>Measure first.</b> Compare your Inky wHAT (thickness and header position) and the height of your Pi stack with the values in <code>speakerdeck.scad</code>. Correct the values, then run <code>build/make.sh</code>.</div>
+  <div class="warn"><b>Measure first.</b> Compare your Inky wHAT (thickness and header position) and the height of your Pi stack with the values in <code>common.scad</code>. Correct the values, then run <code>build/make.sh</code>.</div>
   <div class="foot">2</div>
 </section>
 """
