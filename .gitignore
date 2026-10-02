@@ -6,8 +6,13 @@ case/build/filament.json
 
 # Original STEP downloads. These files are large. See case/vendor/README.md.
 case/vendor/src/
+# The Pi 5 mesh is 30 MB. vendor/convert_pi5.py makes it from the STEP file.
+case/vendor/raspberry_pi_5.stl
 
 # Python
 __pycache__/
 *.pyc
 inky/venv/
+
+# Photos of the parts, for measurements. Local only.
+samples/
