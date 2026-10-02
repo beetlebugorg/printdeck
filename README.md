@@ -40,14 +40,17 @@ The case is a cabinet with the size of one SC-N10 speaker: 153 x 233 x 196 mm.
 
 The STL files are in `case/stl/`. Each file has the correct position for the print bed.
 
-| File | Part | Quantity |
+| File | Part | Cura profile |
 |---|---|---|
-| `case/stl/body.stl` | Body, with the rear wall | 1 |
-| `case/stl/base.stl` | Base plate for the drive and the Pi stack | 1 |
-| `case/stl/frame.stl` | Display frame | 1 |
-| `case/stl/inky_frame.stl` | Inky frame | 1 |
-| `case/stl/cap.stl` | Cap for a frame boss | 8 |
-| `case/stl/pad.stl` | Pad behind the Inky wHAT. Print in TPU, or cut from 2 mm rubber. | 1 |
+| `case/stl/body.stl` | Body, with the rear wall | Speakerdeck - Body 0.3 |
+| `case/stl/base.stl` | Base plate for the drive and the Pi stack | Speakerdeck - Base 0.3 |
+| `case/stl/frame.stl` | Display frame | Speakerdeck - Display Frame 0.2 |
+| `case/stl/inky_frame.stl` | Inky frame | Speakerdeck - Inky Frame 0.1 slow |
+| `case/stl/cap.stl` | 8 caps on one plate | Speakerdeck - Caps 0.2 |
+| `case/stl/pad.stl` | Pad behind the Inky wHAT | Speakerdeck - Pad 0.2 |
+
+The profiles are for the LulzBot TAZ Workhorse with the 0.5 mm tool head and 2.85 mm PLA.
+Close Cura, then run `case/cura/make_profiles.py --install`.
 
 `case/speakerdeck-build.pdf` contains the build instructions and the filament estimate.
 
