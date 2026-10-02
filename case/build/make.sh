@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Render the printable parts in stl/, the step images, and the build PDF.
-# Run this script again after you change a value in speakerdeck.scad.
+# Run this script again after you change a value in common.scad.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -19,9 +19,9 @@ for p in body base frame inky_frame; do
 done
 
 for p in body base frame inky_frame cap pad; do
-  openscad -D mesh=true -D "part=\"$p\"" --export-format binstl -o "stl/$p.stl" speakerdeck.scad
-  openscad -D mesh=true -D "part=\"$p\"" -o "build/img/part_$p.png" --imgsize=1400,1200 --colorscheme=Tomorrow \
-    --projection=o --autocenter --viewall --camera=0,0,0,55,0,25,500 speakerdeck.scad
+  openscad --export-format binstl -o "stl/$p.stl" "$p.scad"
+  openscad -o "build/img/part_$p.png" --imgsize=1400,1200 --colorscheme=Tomorrow \
+    --projection=o --autocenter --viewall --camera=0,0,0,55,0,25,500 "$p.scad"
   finish "build/img/part_$p.png"
 done
 

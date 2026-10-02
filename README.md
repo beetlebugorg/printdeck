@@ -56,8 +56,10 @@ Close Cura, then run `case/cura/make_profiles.py --install`.
 
 ### Source
 
-- `case/speakerdeck.scad` is the model. All part dimensions are parameters.
-- `case/parts.scad` contains the models of the purchased parts, for the images only.
+- `case/common.scad` contains all parameters.
+- `case/body.scad`, `base.scad`, `frame.scad`, `inky_frame.scad`, `cap.scad`, and `pad.scad` are the printed parts, one file for each part.
+- `case/speakerdeck.scad` is the assembly and the exploded view.
+- `case/hardware.scad` contains the models of the purchased parts, for the images only.
 - `case/vendor/` contains models from the manufacturers.
 - `case/build/make.sh` makes the STL files, the images, and the PDF again.
 
