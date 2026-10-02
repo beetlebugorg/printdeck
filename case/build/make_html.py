@@ -52,7 +52,8 @@ CSS = """
 
 HARDWARE = [
     (16, "M3 heat-set insert, 4 mm long"),
-    (16, "M3 × 6 bolt"),
+    (12, "M3 × 6 bolt"),
+    (4, "M3 × 6 countersunk bolt"),
     (4, "M3 × 8 countersunk bolt"),
     (4, "M3 × 16 bolt and M3 nut"),
     (4, "Speaker binding post (2 red, 2 black)"),
@@ -124,77 +125,67 @@ B6 = "M3 × 6"
 
 # (title, STL files for the step, parts for the step, image file or HTML, instructions, note, warning)
 STEPS = [
-    ("Inserts in the body", ['body'], [(8, INS)], "step1.png", [
-        "Push 4 inserts into the 4 bosses around the display opening. Work through the rear opening.",
-        "Push 4 inserts into the ends of the corner posts.",
+    ("Inserts in the body", ["body"], [(8, INS)], "step1.png", [
+        "Put the body upside down. The picture shows the view from below.",
+        "Push 4 inserts into the 4 bosses around the display opening.",
+        "Push 4 inserts into the 4 corner posts.",
         "Let the body become cool.",
     ], "", None),
-    ("Inserts in the frames", ['frame', 'top_frame'], [(8, INS)], "step2.png", [
-        "Push 4 inserts into the 4 bosses on the rear face of the front frame.",
-        "Push 4 inserts into the 4 bosses on the lower face of the top frame.",
+    ("Inserts in the frames", ["frame", "inky_frame"], [(8, INS)], "step2.png", [
+        "Push 4 inserts into the 4 bosses on the rear face of the display frame.",
+        "Push 4 inserts into the 4 bosses on the rear face of the Inky frame.",
     ], "", None),
-    ("Front frame on the body", ['body', 'frame', 'cap'], [(4, "Cap"), (4, B6)], "step3.png", [
-        "Put the front frame into the indent in the front of the body. The pattern is at the top.",
+    ("Parts on the rear wall", ["body"], [(4, "M3 × 16 + nut"), (4, "Binding post"), (1, "DC jack")], "step3.png", [
+        "Attach the fan to the inner side, behind the round hole pattern. "
+        "The label of the fan points to the wall, so the air goes out of the case.",
+        "Install the 4 binding posts. Put red on the inner holes and black on the outer holes.",
+        "Install the DC jack in the round hole near the center.",
+    ], "", None),
+    ("Display frame on the body", ["body", "frame", "cap"], [(4, "Cap"), (4, B6)], "step4.png", [
+        "Put the display frame into the indent in the angled front.",
         "The 4 bosses of the frame go through the 4 holes of the body.",
         "Put a cap on each boss from the inner side.",
         "Install a bolt through each cap.",
     ], "", None),
-    ("Display into the body", ['body'], [(4, B6)], "step4.png", [
-        "Put the body on a soft surface. The front points down.",
+    ("Display into the body", ["body"], [(4, B6)], "step5.png", [
         "Connect the right-angle HDMI plug and the right-angle USB plug to the display.",
-        "Put the display through the rear opening. The glass points to the front, and the sockets point to the bottom.",
-        "Put the LCD module into the opening in the front. The board sits on the 4 bosses.",
+        "Put the display into the body from below. The glass points to the front, and the sockets point down.",
+        "Put the LCD module into the opening. The board sits on the 4 bosses.",
         "Install 4 bolts through the 4 holes of the display board.",
     ], "The display glass is now 1 mm behind the front of the frame.",
      ("Caution.", "Tighten the bolts lightly. Too much force can bend the board.")),
-    ("Inky wHAT in the top", ['top_frame', 'pad', 'cap'], [(1, "Pad"), (4, "Cap"), (4, B6)], "step5.png", [
-        "Put the pad into the cavity in the top of the body.",
+    ("Inky wHAT in the lower front", ["inky_frame", "pad", "cap"], [(1, "Pad"), (4, "Cap"), (4, B6)], "step6.png", [
+        "Put the pad into the cavity in the lower front.",
         "Connect the ribbon cable to the header of the Inky wHAT.",
         "Put the ribbon cable through the opening in the cavity.",
-        "Put the Inky wHAT on the pad. The header goes into the opening.",
-        "Put the top frame into the indent. The frame pushes the Inky wHAT down on the pad.",
+        "Put the Inky wHAT on the pad. The wide border is at the bottom.",
+        "Put the Inky frame into the indent. The frame pushes the Inky wHAT on the pad.",
         "Put a cap on each boss from the inner side, and install a bolt through each cap.",
-    ], "The e-paper is now 0.6 mm below the top of the frame.",
-     ("Caution.", "Do not push on the e-paper. The glass is thin.")),
-    ("Drive on the tray", ['tray'], [(4, B6)], "step6.png", [
-        "Put the drive on the 4 pads of the tray. The label points down, and the adapter board points to the cable opening at the rear.",
-        "Install 4 bolts from below, through the tray, into the 4 holes in the bottom of the drive.",
+    ], "", ("Caution.", "Do not push on the e-paper. The glass is thin.")),
+    ("Drive on the base plate", ["base"], [(4, "M3 × 6 countersunk")], "step7.png", [
+        "Put the drive on the 4 pads of the base plate. The label points down, and the adapter board points to the rear.",
+        "Install 4 countersunk bolts from below, through the base plate, into the 4 holes in the bottom of the drive.",
     ], "", ("Caution.", "Use M3 × 6 bolts or shorter. A longer bolt can damage the drive.")),
-    ("Drive tray into the body", ['tray'], [], "step7.png", [
-        "Put the 2 display cables below the tray position.",
-        "Put the tray into the lower grooves.",
-        "Push the tray in fully.",
-    ], "", None),
-    ("Pi stack on the sled", ['sled'], [], "step8.png", [
-        "Put the Pi stack on the 4 pins of the sled.",
-        "Make sure that the USB ports point to the cable opening at the rear.",
+    ("Pi stack on the base plate", ["base"], [], "step8.png", [
+        "Put the Pi stack on the 4 pins of the base plate.",
+        "The USB ports point to the rear. The HDMI ports point to the drive.",
     ], "The pins and the weight of the stack hold it in position. Keep the case upright.", None),
-    ("Sled into the body", ['sled'], [], "step9.png", [
-        "Put the sled into the upper grooves. Push it in halfway.",
-        "Connect the ribbon cable of the Inky wHAT to the header on top of the stack.",
-        "Push the sled in fully.",
-    ], "", ("Caution.", "Make sure that pin 1 of the ribbon cable is on pin 1 of the header.")),
-    ("Rear panel", ['rear'], [(4, "M3 × 16 + nut"), (4, "Binding post"), (1, "DC jack")], "step10.png", [
-        "Attach the fan to the inner side, behind the round hole pattern. "
-        "The label of the fan points to the panel, so the air goes out of the case.",
-        "Install the 4 binding posts. Put red on the inner holes and black on the outer holes.",
-        "Install the DC jack in the round hole near the center.",
-    ], "", None),
     ("Cables", [], [], WIRING, [
+        "Put the body on its side, adjacent to the base plate.",
         "Connect the HDMI cable of the display to a micro HDMI port of the Pi.",
         "Connect the USB cable of the display to a USB port of the Pi.",
         "Connect the drive to a blue USB port of the Pi.",
-        "Connect the binding posts to the speaker terminals of the Amp. Keep the polarity correct.",
-        "Connect the DC jack to the power input of the Amp.",
+        "Connect the ribbon cable of the Inky wHAT to the header of the stack.",
+        "Connect the binding posts to the speaker terminals of the Amp2. Keep the polarity correct.",
+        "Connect the DC jack to the power input of the Amp2.",
         "Connect the fan to the fan connector of the Pi.",
-        "Put the USB cable of the printer through the slot in the rear panel.",
-    ], "", ("Warning.", "The Amp supplies power to the Pi. Do not connect a USB-C power supply at the same time.")),
-    ("Close the case", ['rear'], [(4, "M3 × 8 countersunk")], "step12.png", [
-        "Put the rear panel into the rear of the body.",
-        "Make sure that no cable is between the panel and the trays.",
-        "Install the 4 bolts into the corner posts.",
+    ], "", ("Warning.", "The Amp2 supplies power to the Pi. Do not connect a USB-C power supply at the same time.")),
+    ("Close the case", ["body", "base"], [(4, "M3 × 8 countersunk")], "step10.png", [
+        "Put the USB cable of the printer in the notch at the bottom of the rear wall.",
+        "Put the body on the base plate. Make sure that no cable is between the two parts.",
+        "Install 4 countersunk bolts from below, into the 4 corner posts.",
     ], "", None),
-    ("Complete", [], [(4, "Rubber foot")], "step13.png", [
+    ("Complete", [], [(4, "Rubber foot")], "step11.png", [
         "Attach the 4 rubber feet to the bottom.",
         "Put the unit between the speakers.",
         "Connect the speaker cables to the binding posts.",
@@ -209,7 +200,7 @@ def rows(items):
 
 def cover():
     return f"""<section class="page">
-  <h1>SPEAKDECK</h1>
+  <h1>SPEAKERDECK</h1>
   <div class="sub">Build instructions</div>
   <div class="fig" style="margin-top:30mm"><img src="img/step{len(STEPS)}.png"></div>
   <p style="margin-top:14mm">A Spotify player and OctoPrint host with the size of one Denon SC-N10 speaker.</p>
@@ -236,7 +227,7 @@ def parts_page():
   <p style="font-size:10pt">The filament values are estimates for {s["material"]}, {s["filament_d"]} mm filament, {s["shell"]} mm walls, and {s["infill"] * 100:.0f} % infill. The values for a part with a quantity include all pieces. A slicer gives the correct values for your settings.</p>
   <ul style="font-size:11pt">
     <li>The STL files are in the <code>case/stl/</code> directory. Each file has the correct position for the print bed.</li>
-    <li>Print the body with the front face on the bed. Use supports for the frame indent and the top opening.</li>
+    <li>Print the body upside down, with the top on the bed. Use supports for the display opening and the Inky cavity.</li>
     <li>Print the two frames in a dark color.</li>
     <li>Print the pad in TPU, or use the file as a pattern and cut the pad from 2 mm rubber or foam.</li>
   </ul>
@@ -245,7 +236,7 @@ def parts_page():
     <div><h2>Electronics</h2><table>{rows(ELECTRONICS)}</table></div>
   </div>
   <p style="margin-top:4mm"><b>Tools:</b> soldering iron with an insert tip, hex keys for M3, small flat screwdriver, calipers.</p>
-  <div class="warn"><b>Measure first.</b> Compare your Inky wHAT (thickness) and the height of your Pi stack with the values in <code>speakdeck.scad</code>. Correct the values, then run <code>build/make.sh</code>.</div>
+  <div class="warn"><b>Measure first.</b> Compare your Inky wHAT (thickness and header position) and the height of your Pi stack with the values in <code>speakerdeck.scad</code>. Correct the values, then run <code>build/make.sh</code>.</div>
   <div class="foot">2</div>
 </section>
 """
@@ -274,7 +265,7 @@ def main():
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Speakdeck build instructions</title>
+<title>Speakerdeck build instructions</title>
 <style>{CSS}</style>
 </head>
 <body>

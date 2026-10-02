@@ -115,7 +115,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     if "--test" in sys.argv:
-        show({"name": "Speakdeck", "artists": "Display test", "album": "Inky wHAT"})
+        show({"name": "Speakerdeck", "artists": "Display test", "album": "Inky wHAT"})
         return
     threading.Thread(target=worker, daemon=True).start()
     HTTPServer(("127.0.0.1", PORT), Handler).serve_forever()

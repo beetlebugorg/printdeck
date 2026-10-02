@@ -1,4 +1,4 @@
-# Speakdeck
+# Speakerdeck
 
 A small Spotify player and OctoPrint host on a Raspberry Pi 5.
 
@@ -24,7 +24,7 @@ A small Spotify player and OctoPrint host on a Raspberry Pi 5.
 ## Installation
 
 1. Copy this directory to the Pi.
-2. Set `HIFIBERRY_OVERLAY` in `speakdeck.env`.
+2. Set `HIFIBERRY_OVERLAY` in `speakerdeck.env`.
 3. Run `setup/10-boot-config.sh`. Reboot the Pi.
 4. Run `aplay -l`. Make sure that the list shows the HiFiBerry card.
 5. Run `setup/40-inky.sh`.
@@ -42,20 +42,18 @@ The STL files are in `case/stl/`. Each file has the correct position for the pri
 
 | File | Part | Quantity |
 |---|---|---|
-| `case/stl/body.stl` | Body | 1 |
-| `case/stl/frame.stl` | Front frame | 1 |
-| `case/stl/top_frame.stl` | Top frame | 1 |
-| `case/stl/rear.stl` | Rear panel | 1 |
-| `case/stl/sled.stl` | Sled for the Pi stack | 1 |
-| `case/stl/tray.stl` | Drive tray | 1 |
+| `case/stl/body.stl` | Body, with the rear wall | 1 |
+| `case/stl/base.stl` | Base plate for the drive and the Pi stack | 1 |
+| `case/stl/frame.stl` | Display frame | 1 |
+| `case/stl/inky_frame.stl` | Inky frame | 1 |
 | `case/stl/cap.stl` | Cap for a frame boss | 8 |
-| `case/stl/pad.stl` | Pad below the Inky wHAT. Print in TPU, or cut from 2 mm rubber. | 1 |
+| `case/stl/pad.stl` | Pad behind the Inky wHAT. Print in TPU, or cut from 2 mm rubber. | 1 |
 
-`case/speakdeck-build.pdf` contains the build instructions and the filament estimate.
+`case/speakerdeck-build.pdf` contains the build instructions and the filament estimate.
 
 ### Source
 
-- `case/speakdeck.scad` is the model. All part dimensions are parameters.
+- `case/speakerdeck.scad` is the model. All part dimensions are parameters.
 - `case/parts.scad` contains the models of the purchased parts, for the images only.
 - `case/vendor/` contains models from the manufacturers.
 - `case/build/make.sh` makes the STL files, the images, and the PDF again.
