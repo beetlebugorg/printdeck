@@ -23,5 +23,5 @@ fi
 sudo systemctl disable --now raspotify 2>/dev/null || true
 
 sudo systemctl enable --now docker
-docker compose up -d --build
+docker compose up -d --build --remove-orphans
 echo "Done. To link Spotify: docker compose run --rm deck auth"
