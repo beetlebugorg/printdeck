@@ -28,6 +28,7 @@ type Event struct {
 
 type Options struct {
 	InvertX, InvertY, Swap bool
+	Rotate                 int // rotation of the UI on the panel: 0, 90 or 270
 }
 
 const (
@@ -170,6 +171,13 @@ func adj(x, y float64, o Options) Event {
 	}
 	if o.InvertY {
 		y = 1 - y
+	}
+	// The raw position is in panel (landscape) orientation. Turn it to the UI orientation.
+	switch o.Rotate {
+	case 90:
+		x, y = y, 1-x
+	case 270:
+		x, y = 1-y, x
 	}
 	return Event{X: max(0, min(1, x)), Y: max(0, min(1, y))}
 }

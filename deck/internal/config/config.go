@@ -20,6 +20,7 @@ type Config struct {
 
 	OctoPrintURL string
 	OctoPrintKey string
+	ModelDir     string // folder with STL files for the preview
 
 	AlsaCard    string
 	MaxVolume   int
@@ -40,6 +41,7 @@ func Load() Config {
 		NowPlayingPort:  num("NOWPLAYING_PORT", 8765),
 		OctoPrintURL:    str("OCTOPRINT_URL", "http://127.0.0.1:5000"),
 		OctoPrintKey:    str("OCTOPRINT_API_KEY", ""),
+		ModelDir:        str("MODEL_DIR", "/var/lib/speakerdeck/models"),
 		AlsaCard:        str("ALSA_CARD", "sndrpihifiberry"),
 		MaxVolume:       num("MAX_VOLUME", 100),
 		PreheatTool:     num("PREHEAT_TOOL", 200),
