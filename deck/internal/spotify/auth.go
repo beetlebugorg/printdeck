@@ -17,7 +17,10 @@ import (
 // the user copies the address of the failed redirect back to "speakerdeck auth".
 const RedirectURI = "http://127.0.0.1:8888/callback"
 
-const scopes = "user-read-playback-state user-modify-playback-state user-read-currently-playing"
+// The login needs to be done again when this list grows.
+const scopes = "user-read-playback-state user-modify-playback-state user-read-currently-playing " +
+	"user-library-read user-library-modify " +
+	"playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public"
 
 type token struct {
 	Access  string    `json:"access_token"`

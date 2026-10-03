@@ -34,6 +34,8 @@ type State struct {
 	Shuffle    bool
 	Repeat     string // off, context, track
 	Title      string
+	URI        string // spotify:track:... ; empty for nothing
+	Liked      bool   // the track is in Liked Songs
 	Artist     string
 	Album      string
 	ArtURL     string
@@ -64,6 +66,11 @@ type Client struct {
 	coverURL string
 	blocked  time.Time // rate limit
 
+	liked     bool // the current track is in Liked Songs
+	likedURI  string
+	me        string
+	playlists []Playlist
+
 	poke    chan struct{}
 	notify  func()
 	OnTrack func(State) // called when the track changes
@@ -80,6 +87,7 @@ func (c *Client) State() State {
 	defer c.mu.Unlock()
 	s := c.st
 	s.Authorized = c.tok.Refresh != ""
+	s.Liked = c.liked && c.likedURI == s.URI
 	return s
 }
 
@@ -177,6 +185,7 @@ type playerJSON struct {
 	} `json:"device"`
 	Item *struct {
 		Name       string                  `json:"name"`
+		URI        string                  `json:"uri"`
 		DurationMS int                     `json:"duration_ms"`
 		Artists    []struct{ Name string } `json:"artists"`
 		Album      struct {
@@ -219,6 +228,7 @@ func (c *Client) refresh() bool {
 			progress: time.Duration(p.ProgressMS) * time.Millisecond, sampled: time.Now(),
 		}
 		if it := p.Item; it != nil {
+			st.URI = it.URI
 			st.Title, st.Duration = it.Name, time.Duration(it.DurationMS)*time.Millisecond
 			names := []string{}
 			for _, a := range it.Artists {
@@ -248,6 +258,9 @@ func (c *Client) refresh() bool {
 
 	if artURL != have {
 		c.loadCover(artURL)
+	}
+	if st.URI != prev.URI && strings.HasPrefix(st.URI, "spotify:track:") {
+		go c.checkLiked(st.URI)
 	}
 	if st.Title != prev.Title && st.Title != "" && c.OnTrack != nil {
 		c.OnTrack(st)

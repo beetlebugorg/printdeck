@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"speakerdeck/internal/gfx"
+	"speakerdeck/internal/spotify"
 )
 
 func clock(d time.Duration) string {
@@ -31,6 +32,10 @@ func (a *App) slider(c *gfx.Canvas, hitRect image.Rectangle, f float64, col colo
 func (a *App) drawMusic(c *gfx.Canvas) {
 	st := a.Music.State()
 	mid := W / 2
+	if a.picker != nil {
+		a.drawPicker(c)
+		return
+	}
 
 	if !st.Authorized {
 		c.Text(image.Rect(30, 250, W-30, 320), "Spotify is not linked", gfx.Face(true, 30), text, gfx.Center)
@@ -39,7 +44,7 @@ func (a *App) drawMusic(c *gfx.Canvas) {
 	}
 
 	// Cover art
-	art := image.Rect(64, 68, 64+352, 68+352)
+	art := image.Rect(80, 64, 80+320, 64+320)
 	if img := a.Music.Cover(); img != nil && st.Active {
 		c.Cover(art, img)
 	} else {
@@ -53,8 +58,33 @@ func (a *App) drawMusic(c *gfx.Canvas) {
 		}
 	}
 
-	c.Text(image.Rect(30, 430, W-30, 470), st.Title, gfx.Face(true, 28), text, gfx.Center)
-	c.Text(image.Rect(30, 470, W-30, 500), st.Artist, gfx.Face(false, 20), dim, gfx.Center)
+	c.Text(image.Rect(30, 392, W-30, 430), st.Title, gfx.Face(true, 28), text, gfx.Center)
+	c.Text(image.Rect(30, 430, W-30, 458), st.Artist, gfx.Face(false, 20), dim, gfx.Center)
+
+	// Like and add to a playlist.
+	if st.Active && st.URI != "" {
+		heart := image.Rect(mid-96, 462, mid-96+72, 462+48)
+		hc := dim
+		if st.Liked {
+			hc = green
+		}
+		drawHeart(c, heart.Min.X+heart.Dx()/2, heart.Min.Y+heart.Dy()/2+2, 21, hc, st.Liked, bg)
+		a.addHit(hit{r: heart, tap: func() {
+			go func() {
+				if err := a.Music.ToggleLike(); err != nil {
+					a.Toast(errText(err))
+				} else if st.Liked {
+					a.Toast("Removed from Liked Songs")
+				} else {
+					a.Toast("Added to Liked Songs")
+				}
+				a.Redraw()
+			}()
+		}})
+		plus := image.Rect(mid+24, 462, mid+24+72, 462+48)
+		drawPlus(c, plus.Min.X+plus.Dx()/2, plus.Min.Y+plus.Dy()/2, 16, dim)
+		a.addHit(hit{r: plus, tap: a.openPicker})
+	}
 
 	// Progress
 	now := a.Now()
@@ -174,3 +204,7 @@ func drawSkip(c *gfx.Canvas, r image.Rectangle, dir int, col color.RGBA) {
 	bx := cx + 14*d
 	c.RoundRect(image.Rect(bx-3, cy-14, bx+3, cy+14), 1, col)
 }
+
+func itoa(n int) string { return fmt.Sprint(n) }
+
+func errText(err error) string { return spotify.Friendly(err) }
