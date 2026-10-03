@@ -95,7 +95,10 @@ func (c *Client) ServeLink(ctx context.Context, notify func()) error {
 // loadOrMakeCert keeps one certificate for the speaker, so the phone does not ask again.
 func loadOrMakeCert(certFile, keyFile string) (tls.Certificate, error) {
 	if c, err := tls.LoadX509KeyPair(certFile, keyFile); err == nil {
-		return c, nil
+		// Make a new one a month before it ends.
+		if leaf, err := x509.ParseCertificate(c.Certificate[0]); err == nil && time.Until(leaf.NotAfter) > 30*24*time.Hour {
+			return c, nil
+		}
 	}
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -106,10 +109,13 @@ func loadOrMakeCert(certFile, keyFile string) (tls.Certificate, error) {
 		SerialNumber: big.NewInt(time.Now().UnixNano()),
 		Subject:      pkix.Name{CommonName: host},
 		NotBefore:    time.Now().Add(-time.Hour),
-		NotAfter:     time.Now().AddDate(10, 0, 0),
-		KeyUsage:     x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		DNSNames:     []string{host, host + ".local", "localhost"},
+		// Phones refuse certificates that are valid for more than about 13 months.
+		NotAfter:              time.Now().AddDate(0, 0, 397),
+		BasicConstraintsValid: true,
+		IsCA:                  true, // self-signed: the phone can also be told to trust it
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		DNSNames:              []string{host, host + ".local", "localhost"},
 	}
 	if addrs, err := net.InterfaceAddrs(); err == nil {
 		for _, a := range addrs {
