@@ -34,7 +34,7 @@ import (
 
 func main() {
 	cfg := config.Load()
-	sp := spotify.New(spotify.Config{ClientID: cfg.SpotifyClientID, DeviceName: cfg.DeviceName, StateDir: cfg.StateDir})
+	sp := spotify.New(spotify.Config{ClientID: cfg.SpotifyClientID, DeviceName: cfg.DeviceName, StateDir: cfg.StateDir, LinkBase: cfg.LinkBase})
 
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
@@ -78,6 +78,11 @@ func run(cfg config.Config, sp *spotify.Client) {
 	}
 
 	go sp.Run(ctx, app.Redraw)
+	go func() {
+		if err := sp.ServeLink(ctx, func() { sp.Poke(); app.Redraw() }); err != nil && ctx.Err() == nil {
+			log.Printf("login with a phone is off: %v", err)
+		}
+	}()
 	go op.Run(ctx, app.Redraw)
 	go am.Run(ctx, app.Redraw)
 
@@ -102,13 +107,13 @@ func auth(cfg config.Config, sp *spotify.Client) {
 		log.Fatal("Set SPOTIFY_CLIENT_ID first. Create an app at https://developer.spotify.com/dashboard\n" +
 			"and add this redirect URI to it: " + spotify.RedirectURI)
 	}
-	link, verifier := sp.AuthURL()
+	link, verifier := sp.AuthURL(spotify.RedirectURI, "")
 	fmt.Println("1. Open this address in a browser and allow access:\n\n" + link + "\n")
 	fmt.Println("2. The browser then shows an error page for " + spotify.RedirectURI + ".")
 	fmt.Println("   Copy the complete address from the address bar and paste it here:")
 	fmt.Print("> ")
 	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
-	if err := sp.Exchange(strings.TrimSpace(line), verifier); err != nil {
+	if err := sp.Exchange(strings.TrimSpace(line), verifier, spotify.RedirectURI); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("Spotify is linked. Restart the service: sudo systemctl restart speakerdeck")
@@ -154,6 +159,8 @@ func demo(args []string) {
 	m.State_ = spotify.State{Authorized: true}
 	a.SetTab(ui.TabMusic)
 	snap("music-idle")
+	m.State_ = spotify.State{}
+	snap("link")
 }
 
 // preview writes the model view of the running print, to check the G-code and STL handling.

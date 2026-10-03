@@ -15,6 +15,7 @@ type Config struct {
 
 	SpotifyClientID string
 	DeviceName      string
+	LinkBase        string // address of this speaker for the login with a phone
 	StateDir        string
 	NowPlayingPort  int // port of the Inky wHAT service, 0 to disable
 
@@ -37,6 +38,7 @@ func Load() Config {
 		TouchSwapXY:     num("TOUCH_SWAP_XY", 0) == 1,
 		SpotifyClientID: str("SPOTIFY_CLIENT_ID", ""),
 		DeviceName:      str("SPOTIFY_DEVICE_NAME", "Speakerdeck"),
+		LinkBase:        linkBase(),
 		StateDir:        str("STATE_DIRECTORY", "/var/lib/speakerdeck"),
 		NowPlayingPort:  num("NOWPLAYING_PORT", 8765),
 		OctoPrintURL:    str("OCTOPRINT_URL", "http://127.0.0.1:5000"),
@@ -61,4 +63,17 @@ func num(k string, def int) int {
 		return v
 	}
 	return def
+}
+
+// linkBase is the address that the phone uses to reach the speaker for the Spotify login.
+// SPOTIFY_LINK_BASE changes it, for example to https://192.168.1.20:8888 when the phone cannot find .local names.
+func linkBase() string {
+	if v := os.Getenv("SPOTIFY_LINK_BASE"); v != "" {
+		return v
+	}
+	host, err := os.Hostname()
+	if err != nil || host == "" {
+		return ""
+	}
+	return "https://" + host + ".local:8888"
 }
