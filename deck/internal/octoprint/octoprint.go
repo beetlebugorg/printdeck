@@ -36,6 +36,10 @@ type State struct {
 	HasTimeLeft      bool
 	Activity         string // what the printer does now: "Wiping nozzle", "Heating bed", "Printing"
 	Layer, Layers    int
+	Fan              float64 // percent
+	HasFan           bool
+	Z                float64 // height of the head, mm
+	HasZ             bool
 	Tool, ToolTarget float64
 	Bed, BedTarget   float64
 }
