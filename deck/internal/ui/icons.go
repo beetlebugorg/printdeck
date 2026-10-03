@@ -65,3 +65,26 @@ func drawHeight(c *gfx.Canvas, cx, cy, r int, col color.RGBA) {
 	c.Polygon([]image.Point{{cx, cy - f(10)}, {cx - f(4), cy - f(4)}, {cx + f(4), cy - f(4)}}, col)
 	c.Polygon([]image.Point{{cx, cy + f(10)}, {cx - f(4), cy + f(4)}, {cx + f(4), cy + f(4)}}, col)
 }
+
+// drawHeart draws a heart. An empty heart has a hole in the colour of the surface behind it.
+func drawHeart(c *gfx.Canvas, cx, cy, r int, col color.RGBA, filled bool, behind color.RGBA) {
+	one := func(cx, cy, r int, col color.RGBA) {
+		d := r * 11 / 10
+		for _, dx := range []int{-r / 2, r / 2} {
+			x, y := cx+dx, cy-r/4
+			c.RoundRect(image.Rect(x-d/2, y-d/2, x+d/2, y+d/2), d/2, col)
+		}
+		c.Polygon([]image.Point{{cx - r*98/100 + 1, cy - r/12}, {cx + r*98/100 - 1, cy - r/12}, {cx, cy + r*95/100}}, col)
+	}
+	one(cx, cy, r, col)
+	if !filled {
+		one(cx, cy-r/12, r*58/100, behind)
+	}
+}
+
+// drawPlus draws a plus sign.
+func drawPlus(c *gfx.Canvas, cx, cy, r int, col color.RGBA) {
+	t := max(r/5, 2)
+	c.RoundRect(image.Rect(cx-r, cy-t, cx+r, cy+t), t, col)
+	c.RoundRect(image.Rect(cx-t, cy-r, cx+t, cy+r), t, col)
+}

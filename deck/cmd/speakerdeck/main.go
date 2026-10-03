@@ -121,7 +121,7 @@ func demo(args []string) {
 	}
 	os.MkdirAll(dir, 0o755)
 	m := &ui.DemoMusic{State_: spotify.State{Authorized: true, Active: true, Mine: true, Playing: true, Shuffle: true, Repeat: "context",
-		Title: "Everything In Its Right Place", Artist: "Radiohead", Duration: 251 * time.Second}}
+		Title: "Everything In Its Right Place", Artist: "Radiohead", URI: "spotify:track:demo", Liked: true, Duration: 251 * time.Second}}
 	p := &ui.DemoPrinter{State_: octoprint.State{Reachable: true, Text: "Printing", Connected: true, Printing: true,
 		File: "speakerdeck_body.gcode", Activity: "Printing", Layer: 12, Layers: 27, Fan: 100, HasFan: true, Z: 3.6, HasZ: true, Completion: 42.4, TimeLeft: 83 * time.Minute, HasTimeLeft: true,
 		Tool: 209.6, ToolTarget: 210, Bed: 60, BedTarget: 60}}
@@ -140,6 +140,9 @@ func demo(args []string) {
 		f.Close()
 	}
 	snap("music")
+	a.OpenPicker()
+	snap("picker")
+	a.SetTab(ui.TabMusic)
 	a.SetTab(ui.TabPrint)
 	snap("print-busy")
 	p.State_.Activity, p.State_.Layer, p.State_.Completion, p.State_.Tool, p.State_.HasTimeLeft = "Heating nozzle  172/220°", 0, 0, 172, false
