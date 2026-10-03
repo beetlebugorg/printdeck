@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"image/draw"
 	"strings"
 	"time"
@@ -99,35 +100,67 @@ func (a *App) drawJob(c *gfx.Canvas, st octoprint.State) {
 		c.Text(image.Rect(W/2, 438, W-40, 466), duration(st.TimeLeft)+" left", gfx.Face(false, 20), dim, gfx.Right)
 	}
 
-	a.temps(c, 476, 72, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
+	a.temps(c, 474, 70, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
+	a.stats(c, 552, 58, st)
 
 	label, fn := "Pause", pr.Pause
 	if st.Paused {
 		label, fn = "Resume", pr.Resume
 	}
 	half := (W - 80 - 16) / 2
-	a.button(c, image.Rect(40, 562, 40+half, 562+80), label, orange, onAcc, fn)
-	a.button(c, image.Rect(40+half+16, 562, W-40, 562+80), "Cancel", raised, red, func() {
+	a.button(c, image.Rect(40, 626, 40+half, 626+80), label, orange, onAcc, fn)
+	a.button(c, image.Rect(40+half+16, 626, W-40, 626+80), "Cancel", raised, red, func() {
 		a.confirm = &confirmBox{question: "Cancel this print?", yes: "Cancel print", danger: true, onYes: pr.Cancel}
 	})
 }
 
 func (a *App) temps(c *gfx.Canvas, y, h int, tool, toolT, bed, bedT float64, ok bool) {
-	card := func(r image.Rectangle, name string, v, target float64) {
+	card := func(r image.Rectangle, icon func(cx, cy, r int, col color.RGBA), name string, v, target float64) {
 		c.RoundRect(r, 18, surface)
-		c.Text(image.Rect(r.Min.X+18, r.Min.Y+6, r.Max.X-18, r.Min.Y+34), name, gfx.Face(false, 18), dim, gfx.Left)
+		ic := dim
+		if ok && target > 0 {
+			ic = orange // heater on
+		}
+		icon(r.Min.X+34, r.Min.Y+h/2, 15, ic)
+		c.Text(image.Rect(r.Min.X+62, r.Min.Y+6, r.Max.X-14, r.Min.Y+32), name, gfx.Face(false, 17), dim, gfx.Left)
 		val := "—"
 		if ok {
 			val = fmt.Sprintf("%.0f°", v)
 		}
-		c.Text(image.Rect(r.Min.X+18, r.Min.Y+32, r.Max.X-18, r.Max.Y-4), val, gfx.Face(true, 40), text, gfx.Left)
+		c.Text(image.Rect(r.Min.X+62, r.Min.Y+30, r.Max.X-14, r.Max.Y-4), val, gfx.Face(true, 34), text, gfx.Left)
 		if ok && target > 0 {
-			c.Text(image.Rect(r.Min.X+18, r.Min.Y+32, r.Max.X-18, r.Max.Y-4), fmt.Sprintf("→ %.0f°", target), gfx.Face(false, 20), orange, gfx.Right)
+			c.Text(image.Rect(r.Min.X+62, r.Min.Y+30, r.Max.X-14, r.Max.Y-4), fmt.Sprintf("→%.0f°", target), gfx.Face(false, 17), orange, gfx.Right)
 		}
 	}
 	half := (W - 80 - 16) / 2
-	card(image.Rect(40, y, 40+half, y+h), "Nozzle", tool, toolT)
-	card(image.Rect(40+half+16, y, W-40, y+h), "Bed", bed, bedT)
+	card(image.Rect(40, y, 40+half, y+h), func(cx, cy, r int, col color.RGBA) { drawNozzle(c, cx, cy, r, col) }, "Nozzle", tool, toolT)
+	card(image.Rect(40+half+16, y, W-40, y+h), func(cx, cy, r int, col color.RGBA) { drawBed(c, cx, cy, r, col) }, "Bed", bed, bedT)
+}
+
+// stats draws the fan and the head height. The values come from the G-code at the print position.
+func (a *App) stats(c *gfx.Canvas, y, h int, st octoprint.State) {
+	half := (W - 80 - 16) / 2
+	card := func(r image.Rectangle, name, val string, icon func(cx, cy, r int)) {
+		c.RoundRect(r, 18, surface)
+		icon(r.Min.X+34, r.Min.Y+h/2, 15)
+		c.Text(image.Rect(r.Min.X+62, r.Min.Y+4, r.Max.X-14, r.Min.Y+26), name, gfx.Face(false, 17), dim, gfx.Left)
+		c.Text(image.Rect(r.Min.X+62, r.Min.Y+22, r.Max.X-14, r.Max.Y-2), val, gfx.Face(true, 28), text, gfx.Left)
+	}
+	fan, z := "—", "—"
+	fcol := dim
+	turn := 0.0
+	if st.HasFan {
+		fan = fmt.Sprintf("%.0f%%", st.Fan)
+		if st.Fan > 0 {
+			fcol = green
+			turn = float64(a.Now().Unix()%12) * 10 // the blades move a little each second
+		}
+	}
+	if st.HasZ {
+		z = fmt.Sprintf("%.2f mm", st.Z)
+	}
+	card(image.Rect(40, y, 40+half, y+h), "Fan", fan, func(cx, cy, r int) { drawFan(c, cx, cy, r, turn, fcol) })
+	card(image.Rect(40+half+16, y, W-40, y+h), "Height", z, func(cx, cy, r int) { drawHeight(c, cx, cy, r, dim) })
 }
 
 func (a *App) drawFiles(c *gfx.Canvas) {
