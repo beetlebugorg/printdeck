@@ -1,0 +1,58 @@
+## Speakerdeck: the full screen UI and the Spotify Connect player.
+##
+##   docker compose up -d --build      set up and update
+##   docker compose run --rm deck auth link the Spotify account
+##
+## Both services use host networking: the Spotify app finds "Speakerdeck" with mDNS, which does not
+## cross a Docker bridge, and the UI talks to OctoPrint on the LAN.
+## Settings are in .env (copy .env.example).
+
+name: speakerdeck
+
+services:
+  deck:
+    build: ./deck
+    restart: unless-stopped
+    network_mode: host
+    # The UI draws on the framebuffer of the 7" display and takes tty1 from the text console.
+    cap_add:
+      - SYS_TTY_CONFIG
+    devices:
+      - /dev/fb0:/dev/fb0
+      - /dev/tty1:/dev/tty1
+      - /dev/snd:/dev/snd # the volume of the Amp2
+    # The touch controller shows up as /dev/input/eventN, also when it is plugged in later.
+    device_cgroup_rules:
+      - "c 13:* rmw"
+    volumes:
+      - /dev/input:/dev/input
+      - /etc/localtime:/etc/localtime:ro
+      - deck-state:/var/lib/speakerdeck # the Spotify login
+    environment:
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
+      SPOTIFY_DEVICE_NAME: ${SPOTIFY_DEVICE_NAME:-Speakerdeck}
+      OCTOPRINT_URL: ${OCTOPRINT_URL:-http://127.0.0.1:5000}
+      OCTOPRINT_API_KEY: ${OCTOPRINT_API_KEY:-}
+      DISPLAY_ROTATE: ${DISPLAY_ROTATE:-90}
+      TOUCH_INVERT_X: ${TOUCH_INVERT_X:-0}
+      TOUCH_INVERT_Y: ${TOUCH_INVERT_Y:-0}
+      TOUCH_SWAP_XY: ${TOUCH_SWAP_XY:-0}
+      MAX_VOLUME: ${MAX_VOLUME:-100}
+      PREHEAT_TOOL: ${PREHEAT_TOOL:-200}
+      PREHEAT_BED: ${PREHEAT_BED:-60}
+      NOWPLAYING_PORT: "0" # the Inky wHAT is not part of this stack
+
+  spotify:
+    build: ./docker/spotify
+    restart: unless-stopped
+    network_mode: host
+    devices:
+      - /dev/snd:/dev/snd
+    group_add:
+      - audio
+    volumes:
+      - spotify-config:/config
+
+volumes:
+  deck-state:
+  spotify-config:

@@ -17,15 +17,15 @@ A small Spotify player and OctoPrint host on a Raspberry Pi 5.
 
 ## Software
 
-- `raspotify` makes the Pi a Spotify Connect device. This needs Spotify Premium.
+- go-librespot (in Docker) makes the Pi a Spotify Connect device. This needs Spotify Premium.
 - OctoPrint runs as a `systemd` service on port 5000.
 - `inky/nowplaying.py` shows the album art, the title, and the artist on the Inky wHAT.
 - `deck/` is the `speakerdeck` binary (Go). It starts on boot and draws a full screen application on the 7" display, without a desktop or a browser:
-  - The Music tab follows and controls Spotify with the Spotify Web API (cover, seek, previous, play, next, shuffle, repeat). raspotify is the Connect device.
+  - The Music tab follows and controls Spotify with the Spotify Web API (cover, seek, previous, play, next, shuffle, repeat). go-librespot is the Connect device.
   - The Print tab shows a 3D view of the model that prints (the printed height in colour), the progress, the time left, and the temperatures. It can pause, resume, cancel, preheat, and start a file. The view is a shaded STL if OctoPrint or `MODEL_DIR` (default `/var/lib/speakerdeck/models`) has an STL with a matching name. Otherwise it is the toolpath from the G-code.
-  - The volume slider sets the `Digital` control of the Amp2. raspotify uses the same control, so the Spotify app moves the same slider.
+  - The heart adds the track to Liked Songs or removes it. The plus button adds it to one of your playlists.
+  - The volume slider sets the `Digital` control of the Amp2.
   - The status bar shows the other tab: "Printing 42%" on the Music tab, and the current track on the Print tab.
-  - The binary sends each new track to the Inky wHAT service.
 
 ## Installation
 
@@ -33,19 +33,19 @@ A small Spotify player and OctoPrint host on a Raspberry Pi 5.
 2. Set `HIFIBERRY_OVERLAY` in `speakerdeck.env`.
 3. Run `setup/10-boot-config.sh`. Reboot the Pi.
 4. Run `aplay -l`. Make sure that the list shows the HiFiBerry card.
-5. Run `setup/40-inky.sh`.
-6. Run `inky/venv/bin/python inky/nowplaying.py --test`. Make sure that the Inky wHAT shows the test image.
-7. Run `setup/20-spotify.sh`.
-8. Run `setup/30-octoprint.sh`.
-9. Create an app in the Spotify developer dashboard. Add `http://127.0.0.1:8888/callback` as the redirect URI.
-10. Create an OctoPrint API key (OctoPrint settings, Application Keys or API).
-11. Run `setup/50-deck.sh`. Put `SPOTIFY_CLIENT_ID` and `OCTOPRINT_API_KEY` in `/etc/default/speakerdeck`.
-12. Run `sudo env $(grep -v '^#' /etc/default/speakerdeck | xargs) speakerdeck auth`. Open the address in a browser. Paste the address of the error page that follows.
-13. Run `sudo systemctl restart speakerdeck`.
+5. Run `setup/30-octoprint.sh`, and make an API key in OctoPrint.
+6. Create an app in the Spotify developer dashboard. Add `http://127.0.0.1:8888/callback` as the redirect URI.
+7. Run `setup/50-deck.sh`. It makes `.env` from `.env.example`. Fill it in (the Spotify client ID, the OctoPrint address and key, `DISPLAY_ROTATE`). Run `setup/50-deck.sh` again. It disables the desktop and starts the Docker stack.
+8. Run `docker compose run --rm deck auth`. Open the address in a browser. Paste the address of the error page that follows. Run `docker compose restart deck`.
+9. In the Spotify app, choose "Speakerdeck" one time. After that it is in the list of devices, and the touch screen can start the music.
 
-Other settings in `/etc/default/speakerdeck`: `DISPLAY_ROTATE` (90 or 270), `TOUCH_INVERT_X`, `TOUCH_INVERT_Y`, `TOUCH_SWAP_XY` (0 or 1), `MAX_VOLUME`, `PREHEAT_TOOL`, `PREHEAT_BED`.
+To update: `git pull`, then `docker compose up -d --build`.
+
+Settings are in `.env`: `DISPLAY_ROTATE` (90 or 270), `TOUCH_INVERT_X`, `TOUCH_INVERT_Y`, `TOUCH_SWAP_XY` (0 or 1), `MAX_VOLUME`, `PREHEAT_TOOL`, `PREHEAT_BED`.
 
 To look at the screens without the hardware, run `go run ./cmd/speakerdeck demo /tmp/shots` in `deck/`. It writes PNG files.
+
+The Inky wHAT is not part of the Docker stack yet. `setup/40-inky.sh` still installs its Python service.
 
 ## Case
 
@@ -86,4 +86,4 @@ If you change a parameter, run `case/build/make.sh` and commit the new STL files
 - Test the Spotify and OctoPrint screens with the real services. They are built from the API documentation only.
 - Print progress on the Inky wHAT.
 - Webcam picture of the print on the Print tab.
-- Remove the duplicate track update: both `librespot-event.sh` and the `speakerdeck` binary send the track to the Inky wHAT service.
+- Put the Inky wHAT service in the Docker stack. `inky/librespot-event.sh` and the raspotify setup are no longer used.
