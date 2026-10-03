@@ -67,8 +67,8 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 // drawJob is the screen of a running or paused print: the model, the progress, the temperatures, and the buttons.
 func (a *App) drawJob(c *gfx.Canvas, st octoprint.State) {
 	pr := a.Printer
-	col := orange
-	if !st.Paused {
+	col := orange // heating, wiping, paused
+	if st.Activity == "Printing" {
 		col = green
 	}
 	c.Text(image.Rect(24, 64, W-24, 100), st.File, gfx.Face(true, 22), text, gfx.Center)
@@ -86,22 +86,28 @@ func (a *App) drawJob(c *gfx.Canvas, st octoprint.State) {
 	fill := bar
 	fill.Max.X = bar.Min.X + int(st.Completion/100*float64(bar.Dx()))
 	c.RoundRect(fill, 7, col)
-	c.Text(image.Rect(40, 402, 260, 446), st.Text+"  "+pct(st.Completion), gfx.Face(true, 28), col, gfx.Left)
-	left := ""
-	if st.HasTimeLeft {
-		left = duration(st.TimeLeft) + " left"
-	}
-	c.Text(image.Rect(240, 402, W-40, 446), left, gfx.Face(false, 22), dim, gfx.Right)
 
-	a.temps(c, 458, 76, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
+	// What the printer does now, like the message on its own display.
+	c.Text(image.Rect(40, 400, W-130, 438), st.Activity, gfx.Face(true, 26), col, gfx.Left)
+	c.Text(image.Rect(W-130, 400, W-40, 438), pct(st.Completion), gfx.Face(true, 26), text, gfx.Right)
+	var info []string
+	if st.Layers > 0 && st.Layer > 0 {
+		info = append(info, fmt.Sprintf("Layer %d of %d", st.Layer, st.Layers))
+	}
+	c.Text(image.Rect(40, 438, W/2, 466), strings.Join(info, "  "), gfx.Face(false, 20), dim, gfx.Left)
+	if st.HasTimeLeft {
+		c.Text(image.Rect(W/2, 438, W-40, 466), duration(st.TimeLeft)+" left", gfx.Face(false, 20), dim, gfx.Right)
+	}
+
+	a.temps(c, 476, 72, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
 
 	label, fn := "Pause", pr.Pause
 	if st.Paused {
 		label, fn = "Resume", pr.Resume
 	}
 	half := (W - 80 - 16) / 2
-	a.button(c, image.Rect(40, 550, 40+half, 550+80), label, orange, onAcc, fn)
-	a.button(c, image.Rect(40+half+16, 550, W-40, 550+80), "Cancel", raised, red, func() {
+	a.button(c, image.Rect(40, 562, 40+half, 562+80), label, orange, onAcc, fn)
+	a.button(c, image.Rect(40+half+16, 562, W-40, 562+80), "Cancel", raised, red, func() {
 		a.confirm = &confirmBox{question: "Cancel this print?", yes: "Cancel print", danger: true, onYes: pr.Cancel}
 	})
 }

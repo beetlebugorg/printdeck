@@ -21,6 +21,15 @@ type Seg struct {
 type Model struct {
 	Segs []Seg
 	MaxZ float32
+
+	// Klipper start and end macros: PRINT_START BED=60 EXTRUDER=220 WIPE=160 ... and PRINT_END.
+	// StartEnd is the offset after the PRINT_START line, EndStart the offset of the PRINT_END line.
+	// Both are 0 if the file has no such macro.
+	StartEnd, EndStart         int64
+	BedTemp, ExtTemp, WipeTemp float64
+
+	LayerPos   []int64 // offset of each ";LAYER:n" marker
+	LayerCount int
 }
 
 // Parse reads G-code. Moves that do not extrude are skipped.
@@ -33,12 +42,30 @@ func Parse(r io.Reader) (*Model, error) {
 	for {
 		line, err := br.ReadString('\n')
 		pos += int64(len(line))
+		if strings.HasPrefix(line, ";LAYER:") {
+			m.LayerPos = append(m.LayerPos, pos-int64(len(line)))
+		} else if strings.HasPrefix(line, ";LAYER_COUNT:") {
+			m.LayerCount, _ = strconv.Atoi(strings.TrimSpace(line[len(";LAYER_COUNT:"):]))
+		}
 		if i := strings.IndexByte(line, ';'); i >= 0 {
 			line = line[:i]
 		}
 		f := strings.Fields(line)
 		if len(f) > 0 {
 			switch strings.ToUpper(f[0]) {
+			case "PRINT_START":
+				m.StartEnd = pos
+				for _, w := range f[1:] {
+					if v, ok := strings.CutPrefix(strings.ToUpper(w), "BED="); ok {
+						m.BedTemp, _ = strconv.ParseFloat(v, 64)
+					} else if v, ok := strings.CutPrefix(strings.ToUpper(w), "EXTRUDER="); ok {
+						m.ExtTemp, _ = strconv.ParseFloat(v, 64)
+					} else if v, ok := strings.CutPrefix(strings.ToUpper(w), "WIPE="); ok {
+						m.WipeTemp, _ = strconv.ParseFloat(v, 64)
+					}
+				}
+			case "PRINT_END":
+				m.EndStart = pos - int64(len(line))
 			case "G90":
 				relXYZ, relE = false, false
 			case "G91":
@@ -213,4 +240,18 @@ func (m *Model) ZAt(pos int64) float32 {
 		return 0
 	}
 	return m.Segs[lo-1].Z1
+}
+
+// LayerAt returns the layer (counting from 1) that file offset pos is in, or 0 before the first layer.
+func (m *Model) LayerAt(pos int64) int {
+	lo, hi := 0, len(m.LayerPos)
+	for lo < hi {
+		mid := (lo + hi) / 2
+		if m.LayerPos[mid] <= pos {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+	return lo
 }
