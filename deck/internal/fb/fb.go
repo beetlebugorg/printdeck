@@ -59,6 +59,9 @@ func Open(dev string, rot int) (*FB, error) {
 	// Stop the text console from drawing over the application.
 	if t, err := os.OpenFile("/dev/tty1", os.O_RDWR, 0); err == nil {
 		d.tty = t
+		// Show tty1 (VT_ACTIVATE, VT_WAITACTIVE), so a desktop on another console does not cover the application.
+		syscall.Syscall(syscall.SYS_IOCTL, t.Fd(), 0x5606, 1)
+		syscall.Syscall(syscall.SYS_IOCTL, t.Fd(), 0x5607, 1)
 		syscall.Syscall(syscall.SYS_IOCTL, t.Fd(), 0x4B3A, 1) // KDSETMODE, KD_GRAPHICS
 	}
 	return d, nil

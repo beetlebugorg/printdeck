@@ -1,0 +1,29 @@
+device_name: Speakerdeck
+device_type: speaker
+
+audio_backend: alsa
+# Card name, not index: ALSA indices can shift across reboots depending on
+# what else enumerates, but "sndrpihifiberry" is stable. Confirmed working
+# on the real Amp2 on this Pi (card: snd_rpi_hifiberry_dacplus).
+audio_device: "hw:sndrpihifiberry"
+
+server:
+  enabled: true
+  # 0.0.0.0, not the "localhost" default: with host networking, other
+  # containers reach this over 127.0.0.1, which only works if the server
+  # actually binds all interfaces inside its own netns.
+  address: "0.0.0.0"
+  port: 3678
+
+credentials:
+  type: zeroconf
+  zeroconf:
+    persist_credentials: true
+
+metadata:
+  enabled: true
+
+## Deliberately low: this is the volume a session starts at before anyone
+## has touched the touch UI's slider. Raise it once the cabinet/speakers
+## are actually in place and you know what loud means on this amp.
+initial_volume: 10
