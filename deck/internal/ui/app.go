@@ -43,6 +43,10 @@ type Music interface {
 	Seek(time.Duration)
 	SetShuffle(bool)
 	CycleRepeat()
+	ToggleLike() error
+	LoadPlaylists() error
+	Playlists() []spotify.Playlist
+	AddToPlaylist(id string) error
 }
 
 // Printer is what the Print tab needs from OctoPrint.
@@ -97,6 +101,11 @@ type App struct {
 	downAt   image.Point
 	dragFrac float64 // while dragging a slider, its value; -1 otherwise
 	wake     chan struct{}
+	posted   chan func() // changes from other goroutines, run by the UI loop
+
+	picker  *picker // list of playlists on the Music tab
+	toast   string
+	toastAt time.Time
 }
 
 type confirmBox struct {
@@ -106,7 +115,7 @@ type confirmBox struct {
 }
 
 func New() *App {
-	return &App{Now: time.Now, dragFrac: -1, wake: make(chan struct{}, 1)}
+	return &App{Now: time.Now, dragFrac: -1, wake: make(chan struct{}, 1), posted: make(chan func(), 16)}
 }
 
 // Redraw asks for a new frame. It is safe to call from any goroutine.
@@ -130,6 +139,8 @@ func (a *App) Run(ctx context.Context, events <-chan touch.Event, present func(*
 			return
 		case ev := <-events:
 			a.handle(ev)
+		case f := <-a.posted:
+			f()
 		case <-a.wake:
 		case <-tick.C:
 		}
@@ -216,6 +227,7 @@ func (a *App) Draw(c *gfx.Canvas) {
 	}
 	a.drawStatus(c)
 	a.drawTabs(c)
+	a.drawToast(c)
 	if a.confirm != nil {
 		a.drawConfirm(c)
 	}
@@ -256,7 +268,7 @@ func (a *App) drawStatus(c *gfx.Canvas) {
 }
 
 func (a *App) setTab(t Tab) {
-	a.tab, a.files, a.confirm = t, false, nil
+	a.tab, a.files, a.confirm, a.picker = t, false, nil, nil
 	a.Redraw()
 }
 
@@ -311,4 +323,27 @@ func (a *App) button(c *gfx.Canvas, r image.Rectangle, label string, fill, fg co
 func lighten(c color.RGBA) color.RGBA {
 	f := func(v uint8) uint8 { return v + (255-v)/4 }
 	return color.RGBA{f(c.R), f(c.G), f(c.B), 255}
+}
+
+// Toast shows a short message above the tab bar for a few seconds.
+func (a *App) Toast(msg string) {
+	a.post(func() { a.toast, a.toastAt = msg, a.Now() })
+}
+
+// post runs f in the UI loop, which owns the screen state.
+func (a *App) post(f func()) {
+	select {
+	case a.posted <- f:
+	default:
+	}
+	a.Redraw()
+}
+
+func (a *App) drawToast(c *gfx.Canvas) {
+	if a.toast == "" || a.Now().Sub(a.toastAt) > 3*time.Second {
+		return
+	}
+	r := image.Rect(30, contentY1-64, W-30, contentY1-12)
+	c.RoundRect(r, 26, raised)
+	c.Text(image.Rect(r.Min.X+16, r.Min.Y, r.Max.X-16, r.Max.Y), a.toast, gfx.Face(true, 20), text, gfx.Center)
 }
