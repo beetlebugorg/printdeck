@@ -28,6 +28,9 @@ type State struct {
 	Printing         bool   // printing, pausing, or paused: a job is active
 	Paused           bool
 	File             string
+	FilePath         string // path in OctoPrint (local storage)
+	FileSize         int64
+	FilePos          int64   // bytes of the file that the printer has read
 	Completion       float64 // 0..100
 	TimeLeft         time.Duration
 	HasTimeLeft      bool
@@ -46,6 +49,9 @@ type Client struct {
 	st    State
 	files []File
 	poke  chan struct{}
+
+	ModelDir string // folder with STL files, besides the ones in OctoPrint
+	pv       preview
 }
 
 func New(url, key string) *Client {
@@ -120,10 +126,14 @@ func (c *Client) refresh() {
 		var j struct {
 			State string `json:"state"`
 			Job   struct {
-				File struct{ Name, Display string }
+				File struct {
+					Name, Display, Path string
+					Size                int64
+				}
 			} `json:"job"`
 			Progress struct {
 				Completion    *float64 `json:"completion"`
+				FilePos       int64    `json:"filepos"`
 				PrintTimeLeft *float64 `json:"printTimeLeft"`
 			} `json:"progress"`
 		}
@@ -133,6 +143,7 @@ func (c *Client) refresh() {
 		if st.File == "" {
 			st.File = j.Job.File.Name
 		}
+		st.FilePath, st.FileSize, st.FilePos = j.Job.File.Path, j.Job.File.Size, j.Progress.FilePos
 		if j.Progress.Completion != nil {
 			st.Completion = *j.Progress.Completion
 		}
@@ -156,6 +167,7 @@ func (c *Client) refresh() {
 	c.mu.Lock()
 	c.st = st
 	c.mu.Unlock()
+	c.updatePreview(st)
 }
 
 // LoadFiles reads the list of files, newest first.

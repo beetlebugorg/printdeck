@@ -49,6 +49,7 @@ type Music interface {
 type Printer interface {
 	State() octoprint.State
 	Files() []octoprint.File
+	Preview() image.Image // picture of the model that prints, or nil
 	LoadFiles()
 	Pause()
 	Resume()
