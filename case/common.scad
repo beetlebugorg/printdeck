@@ -119,8 +119,11 @@ ssd_pad = 1;
 ssd_y0 = 22;
 
 /* [Rear wall] */
+// DC jack: panel mount, 5.5 x 2.1 mm, M8 thread (type DC-022B).
 barrel_d = 8;
-post_d = 7;
+// Binding posts: Dayton Audio BPP pair (BPP-G, BPP-NI, or BPP-SN).
+// They need an 11.5 mm hole and accept a wall up to 25 mm thick.
+post_d = 11.5;
 post_pitch = 19;
 fan_size = 30;
 fan_t = 10;
