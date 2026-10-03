@@ -4,6 +4,7 @@
 //	speakerdeck           run the application (started by systemd)
 //	speakerdeck auth      link the Spotify account
 //	speakerdeck demo DIR  write PNG pictures of the screens to DIR
+//	speakerdeck preview FILE.png  write the model view of the print that runs now
 package main
 
 import (
@@ -40,6 +41,9 @@ func main() {
 		case "auth":
 			auth(cfg, sp)
 			return
+		case "preview":
+			preview(cfg, os.Args[2:])
+			return
 		case "demo":
 			demo(os.Args[2:])
 			return
@@ -61,6 +65,7 @@ func run(cfg config.Config, sp *spotify.Client) {
 	defer screen.Close()
 
 	op := octoprint.New(cfg.OctoPrintURL, cfg.OctoPrintKey)
+	op.ModelDir = cfg.ModelDir
 	am := amp.New(cfg.AlsaCard, cfg.MaxVolume)
 
 	app := ui.New()
@@ -77,7 +82,7 @@ func run(cfg config.Config, sp *spotify.Client) {
 	go am.Run(ctx, app.Redraw)
 
 	events := make(chan touch.Event, 64)
-	go touch.Run(ctx, touch.Options{InvertX: cfg.TouchInvertX, InvertY: cfg.TouchInvertY, Swap: cfg.TouchSwapXY}, events)
+	go touch.Run(ctx, touch.Options{InvertX: cfg.TouchInvertX, InvertY: cfg.TouchInvertY, Swap: cfg.TouchSwapXY, Rotate: cfg.Rotate}, events)
 
 	app.Run(ctx, events, screen.Present)
 }
@@ -120,6 +125,10 @@ func demo(args []string) {
 	p := &ui.DemoPrinter{State_: octoprint.State{Reachable: true, Text: "Printing", Connected: true, Printing: true,
 		File: "speakerdeck_body.gcode", Completion: 42.4, TimeLeft: 83 * time.Minute, HasTimeLeft: true,
 		Tool: 209.6, ToolTarget: 210, Bed: 60, BedTarget: 60}}
+	if f, err := os.Open(os.Getenv("DEMO_PREVIEW")); err == nil {
+		p.Img, _ = png.Decode(f)
+		f.Close()
+	}
 	a := ui.New()
 	a.Music, a.Printer, a.Vol = m, p, ui.DemoVolume(35)
 	a.PreheatTool, a.PreheatBed = 200, 60
@@ -138,4 +147,27 @@ func demo(args []string) {
 	m.State_ = spotify.State{Authorized: true}
 	a.SetTab(ui.TabMusic)
 	snap("music-idle")
+}
+
+// preview writes the model view of the running print, to check the G-code and STL handling.
+func preview(cfg config.Config, args []string) {
+	if len(args) < 1 {
+		log.Fatal("usage: speakerdeck preview FILE.png")
+	}
+	op := octoprint.New(cfg.OctoPrintURL, cfg.OctoPrintKey)
+	op.ModelDir = cfg.ModelDir
+	ctx, stop := context.WithCancel(context.Background())
+	defer stop()
+	go op.Run(ctx, func() {})
+	for i := 0; i < 120; i++ {
+		time.Sleep(500 * time.Millisecond)
+		if img := op.Preview(); img != nil {
+			f, _ := os.Create(args[0])
+			png.Encode(f, img)
+			f.Close()
+			fmt.Println("wrote", args[0])
+			return
+		}
+	}
+	log.Fatalf("no preview. OctoPrint state: %+v", op.State())
 }

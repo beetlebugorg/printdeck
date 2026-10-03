@@ -3,10 +3,12 @@ package ui
 import (
 	"fmt"
 	"image"
+	"image/draw"
 	"strings"
 	"time"
 
 	"speakerdeck/internal/gfx"
+	"speakerdeck/internal/octoprint"
 )
 
 func duration(d time.Duration) string {
@@ -32,77 +34,94 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		return
 	}
 
+	if st.Busy() {
+		a.drawJob(c, st)
+		return
+	}
+
 	// State pill
 	col := dim
-	switch {
-	case st.Paused:
-		col = orange
-	case st.Printing:
-		col = green
-	case strings.Contains(strings.ToLower(st.Text), "error"):
+	if strings.Contains(strings.ToLower(st.Text), "error") {
 		col = red
 	}
 	pill := image.Rect(W/2-100, 76, W/2+100, 120)
 	c.RoundRect(pill, 22, surface)
 	c.Text(pill, st.Text, gfx.Face(true, 22), col, gfx.Center)
 
-	if st.Busy() {
-		c.Text(image.Rect(30, 140, W-30, 180), st.File, gfx.Face(true, 24), text, gfx.Center)
-		c.Text(image.Rect(30, 190, W-30, 290), pct(st.Completion), gfx.Face(true, 96), orange, gfx.Center)
-		bar := image.Rect(40, 306, W-40, 324)
-		c.RoundRect(bar, 9, raised)
-		fill := bar
-		fill.Max.X = bar.Min.X + int(st.Completion/100*float64(bar.Dx()))
-		c.RoundRect(fill, 9, orange)
-		left := "Time left unknown"
-		if st.HasTimeLeft {
-			left = duration(st.TimeLeft) + " left"
-		}
-		c.Text(image.Rect(30, 336, W-30, 372), left, gfx.Face(false, 22), dim, gfx.Center)
-	}
+	a.temps(c, 160, 100, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
 
-	a.temps(c, 400, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
-
-	y := 520
-	switch {
-	case st.Busy():
-		label, fn := "Pause", pr.Pause
-		if st.Paused {
-			label, fn = "Resume", pr.Resume
-		}
-		a.button(c, image.Rect(40, y, W-40, y+84), label, orange, onAcc, fn)
-		a.button(c, image.Rect(40, y+104, W-40, y+176), "Cancel print", raised, red, func() {
-			a.confirm = &confirmBox{question: "Cancel this print?", yes: "Cancel print", danger: true, onYes: pr.Cancel}
-		})
-	case !st.Connected:
+	y := 300
+	if !st.Connected {
 		a.button(c, image.Rect(40, y, W-40, y+84), "Connect printer", orange, onAcc, pr.Connect)
-	default:
-		a.button(c, image.Rect(40, y, W-40, y+84), "Print a file", orange, onAcc, func() {
-			go func() { pr.LoadFiles(); a.Redraw() }()
-			a.files = true
-		})
-		half := (W - 80 - 16) / 2
-		a.button(c, image.Rect(40, y+104, 40+half, y+176), fmt.Sprintf("Preheat %d/%d", a.PreheatTool, a.PreheatBed), raised, text, func() { pr.Heat(a.PreheatTool, a.PreheatBed) })
-		a.button(c, image.Rect(40+half+16, y+104, W-40, y+176), "Cool down", raised, text, func() { pr.Heat(0, 0) })
+		return
 	}
+	a.button(c, image.Rect(40, y, W-40, y+84), "Print a file", orange, onAcc, func() {
+		go func() { pr.LoadFiles(); a.Redraw() }()
+		a.files = true
+	})
+	half := (W - 80 - 16) / 2
+	a.button(c, image.Rect(40, y+104, 40+half, y+176), fmt.Sprintf("Preheat %d/%d", a.PreheatTool, a.PreheatBed), raised, text, func() { pr.Heat(a.PreheatTool, a.PreheatBed) })
+	a.button(c, image.Rect(40+half+16, y+104, W-40, y+176), "Cool down", raised, text, func() { pr.Heat(0, 0) })
 }
 
-func (a *App) temps(c *gfx.Canvas, y int, tool, toolT, bed, bedT float64, ok bool) {
+// drawJob is the screen of a running or paused print: the model, the progress, the temperatures, and the buttons.
+func (a *App) drawJob(c *gfx.Canvas, st octoprint.State) {
+	pr := a.Printer
+	col := orange
+	if !st.Paused {
+		col = green
+	}
+	c.Text(image.Rect(24, 64, W-24, 100), st.File, gfx.Face(true, 22), text, gfx.Center)
+
+	box := image.Rect(40, 104, W-40, 104+260)
+	c.RoundRect(box, 16, surface)
+	if img := pr.Preview(); img != nil {
+		draw.Draw(c.RGBA, image.Rectangle{box.Min, box.Min.Add(img.Bounds().Size())}.Intersect(box), img, img.Bounds().Min, draw.Over)
+	} else {
+		c.Text(box, "Preparing the model view…", gfx.Face(false, 20), dim, gfx.Center)
+	}
+
+	bar := image.Rect(40, 380, W-40, 394)
+	c.RoundRect(bar, 7, raised)
+	fill := bar
+	fill.Max.X = bar.Min.X + int(st.Completion/100*float64(bar.Dx()))
+	c.RoundRect(fill, 7, col)
+	c.Text(image.Rect(40, 402, 260, 446), st.Text+"  "+pct(st.Completion), gfx.Face(true, 28), col, gfx.Left)
+	left := ""
+	if st.HasTimeLeft {
+		left = duration(st.TimeLeft) + " left"
+	}
+	c.Text(image.Rect(240, 402, W-40, 446), left, gfx.Face(false, 22), dim, gfx.Right)
+
+	a.temps(c, 458, 76, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
+
+	label, fn := "Pause", pr.Pause
+	if st.Paused {
+		label, fn = "Resume", pr.Resume
+	}
+	half := (W - 80 - 16) / 2
+	a.button(c, image.Rect(40, 550, 40+half, 550+80), label, orange, onAcc, fn)
+	a.button(c, image.Rect(40+half+16, 550, W-40, 550+80), "Cancel", raised, red, func() {
+		a.confirm = &confirmBox{question: "Cancel this print?", yes: "Cancel print", danger: true, onYes: pr.Cancel}
+	})
+}
+
+func (a *App) temps(c *gfx.Canvas, y, h int, tool, toolT, bed, bedT float64, ok bool) {
 	card := func(r image.Rectangle, name string, v, target float64) {
 		c.RoundRect(r, 18, surface)
-		c.Text(image.Rect(r.Min.X+18, r.Min.Y+10, r.Max.X-18, r.Min.Y+40), name, gfx.Face(false, 18), dim, gfx.Left)
+		c.Text(image.Rect(r.Min.X+18, r.Min.Y+6, r.Max.X-18, r.Min.Y+34), name, gfx.Face(false, 18), dim, gfx.Left)
 		val := "—"
 		if ok {
 			val = fmt.Sprintf("%.0f°", v)
 		}
-		c.Text(image.Rect(r.Min.X+18, r.Min.Y+40, r.Max.X-18, r.Min.Y+96), val, gfx.Face(true, 40), text, gfx.Left)
+		c.Text(image.Rect(r.Min.X+18, r.Min.Y+32, r.Max.X-18, r.Max.Y-4), val, gfx.Face(true, 40), text, gfx.Left)
 		if ok && target > 0 {
-			c.Text(image.Rect(r.Min.X+18, r.Min.Y+40, r.Max.X-18, r.Min.Y+96), fmt.Sprintf("→ %.0f°", target), gfx.Face(false, 20), orange, gfx.Right)
+			c.Text(image.Rect(r.Min.X+18, r.Min.Y+32, r.Max.X-18, r.Max.Y-4), fmt.Sprintf("→ %.0f°", target), gfx.Face(false, 20), orange, gfx.Right)
 		}
 	}
 	half := (W - 80 - 16) / 2
-	card(image.Rect(40, y, 40+half, y+100), "Nozzle", tool, toolT)
-	card(image.Rect(40+half+16, y, W-40, y+100), "Bed", bed, bedT)
+	card(image.Rect(40, y, 40+half, y+h), "Nozzle", tool, toolT)
+	card(image.Rect(40+half+16, y, W-40, y+h), "Bed", bed, bedT)
 }
 
 func (a *App) drawFiles(c *gfx.Canvas) {

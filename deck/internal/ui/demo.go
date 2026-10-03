@@ -30,19 +30,23 @@ func (d *DemoMusic) Seek(time.Duration) {}
 func (d *DemoMusic) SetShuffle(bool)    {}
 func (d *DemoMusic) CycleRepeat()       {}
 
-type DemoPrinter struct{ State_ octoprint.State }
+type DemoPrinter struct {
+	State_ octoprint.State
+	Img    image.Image
+}
 
 func (d *DemoPrinter) State() octoprint.State { return d.State_ }
 func (d *DemoPrinter) Files() []octoprint.File {
 	return []octoprint.File{{Path: "benchy.gcode", Name: "benchy.gcode"}, {Path: "case_body.gcode", Name: "case_body.gcode"}}
 }
-func (d *DemoPrinter) LoadFiles()       {}
-func (d *DemoPrinter) Pause()           {}
-func (d *DemoPrinter) Resume()          {}
-func (d *DemoPrinter) Cancel()          {}
-func (d *DemoPrinter) Connect()         {}
-func (d *DemoPrinter) Heat(int, int)    {}
-func (d *DemoPrinter) PrintFile(string) {}
+func (d *DemoPrinter) Preview() image.Image { return d.Img }
+func (d *DemoPrinter) LoadFiles()           {}
+func (d *DemoPrinter) Pause()               {}
+func (d *DemoPrinter) Resume()              {}
+func (d *DemoPrinter) Cancel()              {}
+func (d *DemoPrinter) Connect()             {}
+func (d *DemoPrinter) Heat(int, int)        {}
+func (d *DemoPrinter) PrintFile(string)     {}
 
 type DemoVolume int
 

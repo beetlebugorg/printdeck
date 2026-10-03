@@ -1,0 +1,216 @@
+// Package gcode reads the extrusion moves of a G-code file and draws them as a 3D picture.
+package gcode
+
+import (
+	"bufio"
+	"image"
+	"image/color"
+	"io"
+	"math"
+	"strconv"
+	"strings"
+)
+
+// Seg is one extruding move. Pos is the byte offset of the end of its line in the file,
+// which is the number OctoPrint reports as the progress of the print.
+type Seg struct {
+	X0, Y0, Z0, X1, Y1, Z1 float32
+	Pos                    int64
+}
+
+type Model struct {
+	Segs []Seg
+	MaxZ float32
+}
+
+// Parse reads G-code. Moves that do not extrude are skipped.
+func Parse(r io.Reader) (*Model, error) {
+	br := bufio.NewReaderSize(r, 1<<16)
+	m := &Model{}
+	var x, y, z, e float64
+	relXYZ, relE := false, false
+	var pos int64
+	for {
+		line, err := br.ReadString('\n')
+		pos += int64(len(line))
+		if i := strings.IndexByte(line, ';'); i >= 0 {
+			line = line[:i]
+		}
+		f := strings.Fields(line)
+		if len(f) > 0 {
+			switch strings.ToUpper(f[0]) {
+			case "G90":
+				relXYZ, relE = false, false
+			case "G91":
+				relXYZ, relE = true, true
+			case "M82":
+				relE = false
+			case "M83":
+				relE = true
+			case "G92":
+				for _, w := range f[1:] {
+					if v, ok := word(w, 'E'); ok {
+						e = v
+					}
+				}
+			case "G0", "G1", "G00", "G01":
+				nx, ny, nz, ne := x, y, z, e
+				hasE := false
+				for _, w := range f[1:] {
+					if v, ok := word(w, 'X'); ok {
+						nx = pick(relXYZ, x, v)
+					} else if v, ok := word(w, 'Y'); ok {
+						ny = pick(relXYZ, y, v)
+					} else if v, ok := word(w, 'Z'); ok {
+						nz = pick(relXYZ, z, v)
+					} else if v, ok := word(w, 'E'); ok {
+						hasE = true
+						ne = pick(relE, e, v)
+					}
+				}
+				if hasE && ne > e && (nx != x || ny != y) {
+					m.Segs = append(m.Segs, Seg{float32(x), float32(y), float32(z), float32(nx), float32(ny), float32(nz), pos})
+					m.MaxZ = max(m.MaxZ, float32(nz))
+				}
+				x, y, z, e = nx, ny, nz, ne
+			}
+		}
+		if err != nil {
+			break
+		}
+	}
+	return m, nil
+}
+
+func pick(rel bool, cur, v float64) float64 {
+	if rel {
+		return cur + v
+	}
+	return v
+}
+
+func word(w string, letter byte) (float64, bool) {
+	if len(w) < 2 || (w[0]|0x20) != (letter|0x20) {
+		return 0, false
+	}
+	v, err := strconv.ParseFloat(w[1:], 64)
+	return v, err == nil
+}
+
+// View angles: the model is turned 35 degrees around the vertical axis and seen from 40 degrees above.
+var (
+	sinA, cosA = math.Sincos(35 * math.Pi / 180)
+	sinE, cosE = math.Sincos(40 * math.Pi / 180)
+)
+
+func project(x, y, z float32) (u, v float64) {
+	fx, fy, fz := float64(x), float64(y), float64(z)
+	return fx*cosA - fy*sinA, -((fx*sinA+fy*cosA)*sinE + fz*cosE)
+}
+
+// Render draws the model into a w x h picture. The part up to file offset pos is in colour,
+// the rest is a faint outline. The result has a transparent background.
+func (m *Model) Render(w, h int, pos int64, warm, cool, ghost color.RGBA) *image.RGBA {
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	if len(m.Segs) == 0 {
+		return img
+	}
+	minU, minV, maxU, maxV := math.Inf(1), math.Inf(1), math.Inf(-1), math.Inf(-1)
+	for i := range m.Segs {
+		s := &m.Segs[i]
+		for _, p := range [2][3]float32{{s.X0, s.Y0, s.Z0}, {s.X1, s.Y1, s.Z1}} {
+			u, v := project(p[0], p[1], p[2])
+			minU, maxU = math.Min(minU, u), math.Max(maxU, u)
+			minV, maxV = math.Min(minV, v), math.Max(maxV, v)
+		}
+	}
+	const pad = 8.0
+	scale := math.Min((float64(w)-2*pad)/(maxU-minU), (float64(h)-2*pad)/(maxV-minV))
+	ox := (float64(w) - (maxU-minU)*scale) / 2
+	oy := (float64(h) - (maxV-minV)*scale) / 2
+	pt := func(x, y, z float32) (int, int) {
+		u, v := project(x, y, z)
+		return int(ox + (u-minU)*scale), int(oy + (v-minV)*scale)
+	}
+	for pass := 0; pass < 2; pass++ {
+		for i := range m.Segs {
+			s := &m.Segs[i]
+			done := s.Pos <= pos
+			if (pass == 0) == done {
+				continue
+			}
+			col := ghost
+			if done {
+				t := float64(s.Z1 / max(m.MaxZ, 0.001))
+				col = mix(warm, cool, t)
+			}
+			x0, y0 := pt(s.X0, s.Y0, s.Z0)
+			x1, y1 := pt(s.X1, s.Y1, s.Z1)
+			line(img, x0, y0, x1, y1, col)
+		}
+	}
+	return img
+}
+
+func mix(a, b color.RGBA, t float64) color.RGBA {
+	l := func(x, y uint8) uint8 { return uint8(float64(x)*(1-t) + float64(y)*t) }
+	return color.RGBA{l(a.R, b.R), l(a.G, b.G), l(a.B, b.B), 255}
+}
+
+// line draws a 2 pixel wide Bresenham line.
+func line(img *image.RGBA, x0, y0, x1, y1 int, c color.RGBA) {
+	dx, dy := abs(x1-x0), -abs(y1-y0)
+	sx, sy := 1, 1
+	if x0 > x1 {
+		sx = -1
+	}
+	if y0 > y1 {
+		sy = -1
+	}
+	err := dx + dy
+	b := img.Bounds()
+	for {
+		for _, d := range [2]image.Point{{0, 0}, {1, 0}} {
+			p := image.Pt(x0+d.X, y0+d.Y)
+			if p.In(b) {
+				img.SetRGBA(p.X, p.Y, c)
+			}
+		}
+		if x0 == x1 && y0 == y1 {
+			return
+		}
+		e2 := 2 * err
+		if e2 >= dy {
+			err += dy
+			x0 += sx
+		}
+		if e2 <= dx {
+			err += dx
+			y0 += sy
+		}
+	}
+}
+
+func abs(a int) int {
+	if a < 0 {
+		return -a
+	}
+	return a
+}
+
+// ZAt returns the height of the print head at file offset pos.
+func (m *Model) ZAt(pos int64) float32 {
+	lo, hi := 0, len(m.Segs)
+	for lo < hi {
+		mid := (lo + hi) / 2
+		if m.Segs[mid].Pos <= pos {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+	if lo == 0 {
+		return 0
+	}
+	return m.Segs[lo-1].Z1
+}

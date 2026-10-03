@@ -22,7 +22,7 @@ A small Spotify player and OctoPrint host on a Raspberry Pi 5.
 - `inky/nowplaying.py` shows the album art, the title, and the artist on the Inky wHAT.
 - `deck/` is the `speakerdeck` binary (Go). It starts on boot and draws a full screen application on the 7" display, without a desktop or a browser:
   - The Music tab follows and controls Spotify with the Spotify Web API (cover, seek, previous, play, next, shuffle, repeat). raspotify is the Connect device.
-  - The Print tab shows the state of OctoPrint (progress, time left, temperatures), and can pause, resume, cancel, preheat, and start a file.
+  - The Print tab shows a 3D view of the model that prints (the printed height in colour), the progress, the time left, and the temperatures. It can pause, resume, cancel, preheat, and start a file. The view is a shaded STL if OctoPrint or `MODEL_DIR` (default `/var/lib/speakerdeck/models`) has an STL with a matching name. Otherwise it is the toolpath from the G-code.
   - The volume slider sets the `Digital` control of the Amp2. raspotify uses the same control, so the Spotify app moves the same slider.
   - The status bar shows the other tab: "Printing 42%" on the Music tab, and the current track on the Print tab.
   - The binary sends each new track to the Inky wHAT service.
