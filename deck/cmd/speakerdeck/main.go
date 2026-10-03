@@ -1,0 +1,141 @@
+// Command speakerdeck is the Speakerdeck appliance: it runs the full screen Spotify and OctoPrint
+// application on the 7" touch display and drives the Amp2 volume.
+//
+//	speakerdeck           run the application (started by systemd)
+//	speakerdeck auth      link the Spotify account
+//	speakerdeck demo DIR  write PNG pictures of the screens to DIR
+package main
+
+import (
+	"bufio"
+	"context"
+	"fmt"
+	"image/png"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"time"
+
+	"speakerdeck/internal/amp"
+	"speakerdeck/internal/config"
+	"speakerdeck/internal/fb"
+	"speakerdeck/internal/gfx"
+	"speakerdeck/internal/octoprint"
+	"speakerdeck/internal/spotify"
+	"speakerdeck/internal/touch"
+	"speakerdeck/internal/ui"
+)
+
+func main() {
+	cfg := config.Load()
+	sp := spotify.New(spotify.Config{ClientID: cfg.SpotifyClientID, DeviceName: cfg.DeviceName, StateDir: cfg.StateDir})
+
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "auth":
+			auth(cfg, sp)
+			return
+		case "demo":
+			demo(os.Args[2:])
+			return
+		default:
+			log.Fatalf("unknown command %q", os.Args[1])
+		}
+	}
+	run(cfg, sp)
+}
+
+func run(cfg config.Config, sp *spotify.Client) {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	screen, err := fb.Open(cfg.Framebuffer, cfg.Rotate)
+	if err != nil {
+		log.Fatalf("framebuffer: %v", err)
+	}
+	defer screen.Close()
+
+	op := octoprint.New(cfg.OctoPrintURL, cfg.OctoPrintKey)
+	am := amp.New(cfg.AlsaCard, cfg.MaxVolume)
+
+	app := ui.New()
+	app.Music, app.Printer, app.Vol = sp, op, am
+	app.PreheatTool, app.PreheatBed = cfg.PreheatTool, cfg.PreheatBed
+
+	// The Inky wHAT shows the same track as the touch screen.
+	if cfg.NowPlayingPort > 0 {
+		sp.OnTrack = func(s spotify.State) { go forwardTrack(cfg.NowPlayingPort, s) }
+	}
+
+	go sp.Run(ctx, app.Redraw)
+	go op.Run(ctx, app.Redraw)
+	go am.Run(ctx, app.Redraw)
+
+	events := make(chan touch.Event, 64)
+	go touch.Run(ctx, touch.Options{InvertX: cfg.TouchInvertX, InvertY: cfg.TouchInvertY, Swap: cfg.TouchSwapXY}, events)
+
+	app.Run(ctx, events, screen.Present)
+}
+
+func forwardTrack(port int, s spotify.State) {
+	c := http.Client{Timeout: 2 * time.Second}
+	resp, err := c.PostForm(fmt.Sprintf("http://127.0.0.1:%d/track", port), url.Values{
+		"name": {s.Title}, "artists": {s.Artist}, "album": {s.Album}, "cover": {s.ArtURL},
+	})
+	if err == nil {
+		resp.Body.Close()
+	}
+}
+
+func auth(cfg config.Config, sp *spotify.Client) {
+	if cfg.SpotifyClientID == "" {
+		log.Fatal("Set SPOTIFY_CLIENT_ID first. Create an app at https://developer.spotify.com/dashboard\n" +
+			"and add this redirect URI to it: " + spotify.RedirectURI)
+	}
+	link, verifier := sp.AuthURL()
+	fmt.Println("1. Open this address in a browser and allow access:\n\n" + link + "\n")
+	fmt.Println("2. The browser then shows an error page for " + spotify.RedirectURI + ".")
+	fmt.Println("   Copy the complete address from the address bar and paste it here:")
+	fmt.Print("> ")
+	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+	if err := sp.Exchange(strings.TrimSpace(line), verifier); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Spotify is linked. Restart the service: sudo systemctl restart speakerdeck")
+}
+
+func demo(args []string) {
+	dir := "."
+	if len(args) > 0 {
+		dir = args[0]
+	}
+	os.MkdirAll(dir, 0o755)
+	m := &ui.DemoMusic{State_: spotify.State{Authorized: true, Active: true, Mine: true, Playing: true, Shuffle: true, Repeat: "context",
+		Title: "Everything In Its Right Place", Artist: "Radiohead", Duration: 251 * time.Second}}
+	p := &ui.DemoPrinter{State_: octoprint.State{Reachable: true, Text: "Printing", Connected: true, Printing: true,
+		File: "speakerdeck_body.gcode", Completion: 42.4, TimeLeft: 83 * time.Minute, HasTimeLeft: true,
+		Tool: 209.6, ToolTarget: 210, Bed: 60, BedTarget: 60}}
+	a := ui.New()
+	a.Music, a.Printer, a.Vol = m, p, ui.DemoVolume(35)
+	a.PreheatTool, a.PreheatBed = 200, 60
+	snap := func(name string) {
+		c := gfx.New(ui.W, ui.H)
+		a.Draw(c)
+		f, _ := os.Create(filepath.Join(dir, name+".png"))
+		png.Encode(f, c.RGBA)
+		f.Close()
+	}
+	snap("music")
+	a.SetTab(ui.TabPrint)
+	snap("print-busy")
+	p.State_ = octoprint.State{Reachable: true, Text: "Operational", Connected: true, Tool: 24, Bed: 23}
+	snap("print-idle")
+	m.State_ = spotify.State{Authorized: true}
+	a.SetTab(ui.TabMusic)
+	snap("music-idle")
+}

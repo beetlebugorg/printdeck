@@ -1,0 +1,176 @@
+package ui
+
+import (
+	"fmt"
+	"image"
+	"image/color"
+	"time"
+
+	"speakerdeck/internal/gfx"
+)
+
+func clock(d time.Duration) string {
+	s := int(d.Seconds())
+	return fmt.Sprintf("%d:%02d", s/60, s%60)
+}
+
+func pct(v float64) string { return fmt.Sprintf("%.0f%%", v) }
+
+// slider draws a bar and registers it. Dragging calls drag, release calls end.
+func (a *App) slider(c *gfx.Canvas, hitRect image.Rectangle, f float64, col color.RGBA, drag, end func(float64)) {
+	track := image.Rect(hitRect.Min.X, hitRect.Min.Y+hitRect.Dy()/2-5, hitRect.Max.X, hitRect.Min.Y+hitRect.Dy()/2+5)
+	c.RoundRect(track, 5, raised)
+	fill := track
+	fill.Max.X = track.Min.X + int(f*float64(track.Dx()))
+	c.RoundRect(fill, 5, col)
+	cx, cy := fill.Max.X, track.Min.Y+5
+	c.RoundRect(image.Rect(cx-11, cy-11, cx+11, cy+11), 11, text)
+	a.addHit(hit{r: hitRect, drag: drag, end: end})
+}
+
+func (a *App) drawMusic(c *gfx.Canvas) {
+	st := a.Music.State()
+	mid := W / 2
+
+	if !st.Authorized {
+		c.Text(image.Rect(30, 250, W-30, 320), "Spotify is not linked", gfx.Face(true, 30), text, gfx.Center)
+		c.Text(image.Rect(30, 330, W-30, 420), "Run  speakerdeck auth  on the Pi", gfx.Face(false, 22), dim, gfx.Center)
+		return
+	}
+
+	// Cover art
+	art := image.Rect(64, 68, 64+352, 68+352)
+	if img := a.Music.Cover(); img != nil && st.Active {
+		c.Cover(art, img)
+	} else {
+		c.RoundRect(art, 12, surface)
+		msg := "Nothing is playing"
+		if !st.Active {
+			msg = "Press play, or choose\n“Speakerdeck” in Spotify"
+		}
+		for i, line := range splitLines(msg) {
+			c.Text(image.Rect(art.Min.X, art.Min.Y+130+i*36, art.Max.X, art.Min.Y+166+i*36), line, gfx.Face(false, 22), dim, gfx.Center)
+		}
+	}
+
+	c.Text(image.Rect(30, 430, W-30, 470), st.Title, gfx.Face(true, 28), text, gfx.Center)
+	c.Text(image.Rect(30, 470, W-30, 500), st.Artist, gfx.Face(false, 20), dim, gfx.Center)
+
+	// Progress
+	now := a.Now()
+	prog := st.Progress(now)
+	f := 0.0
+	if st.Duration > 0 {
+		f = float64(prog) / float64(st.Duration)
+	}
+	if a.dragFrac >= 0 && a.dragging != nil && a.dragging.r.Min.Y < 560 {
+		f = a.dragFrac
+		prog = time.Duration(f * float64(st.Duration))
+	}
+	dur := st.Duration
+	a.slider(c, image.Rect(40, 512, W-40, 552), f, green,
+		func(float64) {},
+		func(v float64) {
+			if st.Duration > 0 {
+				a.Music.Seek(time.Duration(v * float64(st.Duration)))
+			}
+		})
+	c.Text(image.Rect(40, 552, 160, 578), clock(prog), gfx.Face(false, 18), dim, gfx.Left)
+	c.Text(image.Rect(W-160, 552, W-40, 578), "-"+clock(dur-prog), gfx.Face(false, 18), dim, gfx.Right)
+
+	// Transport
+	const cy = 626
+	icon := func(cx int, w int) image.Rectangle { return image.Rect(cx-w/2, cy-w/2, cx+w/2, cy+w/2) }
+	press := func(r image.Rectangle) color.RGBA {
+		if a.isPressed(r) {
+			return text
+		}
+		return color.RGBA{0xc8, 0xcd, 0xd6, 255}
+	}
+
+	shuf := icon(mid-190, 64)
+	col := dim
+	if st.Shuffle {
+		col = green
+	}
+	c.Text(shuf, "Shuf", gfx.Face(true, 20), col, gfx.Center)
+	a.addHit(hit{r: shuf, tap: func() { a.Music.SetShuffle(!st.Shuffle) }})
+
+	prev := icon(mid-100, 72)
+	drawSkip(c, prev, -1, press(prev))
+	a.addHit(hit{r: prev, tap: a.Music.Previous})
+
+	pp := icon(mid, 84)
+	fill := green
+	if a.isPressed(pp) {
+		fill = lighten(fill)
+	}
+	c.RoundRect(pp, 42, fill)
+	if st.Playing {
+		drawPause(c, pp, onAcc)
+	} else {
+		drawPlay(c, pp, onAcc)
+	}
+	a.addHit(hit{r: pp, tap: a.Music.Toggle})
+
+	next := icon(mid+100, 72)
+	drawSkip(c, next, 1, press(next))
+	a.addHit(hit{r: next, tap: a.Music.Next})
+
+	rep := icon(mid+190, 64)
+	col, label := dim, "Rep"
+	switch st.Repeat {
+	case "context":
+		col = green
+	case "track":
+		col, label = green, "Rep 1"
+	}
+	c.Text(rep, label, gfx.Face(true, 20), col, gfx.Center)
+	a.addHit(hit{r: rep, tap: a.Music.CycleRepeat})
+
+	// Volume
+	v := a.Vol.Volume()
+	if a.dragFrac >= 0 && a.dragging != nil && a.dragging.r.Min.Y > 660 {
+		v = int(a.dragFrac*float64(a.Vol.Max()) + 0.5)
+	}
+	vf := float64(max(v, 0)) / float64(max(a.Vol.Max(), 1))
+	c.Text(image.Rect(24, 672, 100, 724), "Vol", gfx.Face(true, 20), dim, gfx.Left)
+	a.slider(c, image.Rect(80, 672, W-90, 724), vf, text,
+		func(f float64) { a.Vol.Set(int(f*float64(a.Vol.Max()) + 0.5)) },
+		func(f float64) { a.Vol.Set(int(f*float64(a.Vol.Max()) + 0.5)) })
+	c.Text(image.Rect(W-84, 672, W-20, 724), fmt.Sprintf("%d", max(v, 0)), gfx.Face(true, 20), text, gfx.Right)
+}
+
+func splitLines(s string) []string {
+	var out []string
+	cur := ""
+	for _, r := range s {
+		if r == '\n' {
+			out = append(out, cur)
+			cur = ""
+		} else {
+			cur += string(r)
+		}
+	}
+	return append(out, cur)
+}
+
+func drawPlay(c *gfx.Canvas, r image.Rectangle, col color.RGBA) {
+	cx, cy, s := r.Min.X+r.Dx()/2, r.Min.Y+r.Dy()/2, r.Dx()/5
+	c.Polygon([]image.Point{{cx - s + 3, cy - s - 4}, {cx - s + 3, cy + s + 4}, {cx + s + 5, cy}}, col)
+}
+
+func drawPause(c *gfx.Canvas, r image.Rectangle, col color.RGBA) {
+	cx, cy, s := r.Min.X+r.Dx()/2, r.Min.Y+r.Dy()/2, r.Dx()/5
+	c.RoundRect(image.Rect(cx-s, cy-s-4, cx-s/3, cy+s+4), 2, col)
+	c.RoundRect(image.Rect(cx+s/3, cy-s-4, cx+s, cy+s+4), 2, col)
+}
+
+// drawSkip draws a triangle with a bar. dir is 1 for next and -1 for previous.
+func drawSkip(c *gfx.Canvas, r image.Rectangle, dir int, col color.RGBA) {
+	cx, cy := r.Min.X+r.Dx()/2, r.Min.Y+r.Dy()/2
+	d := dir
+	c.Polygon([]image.Point{{cx - 12*d, cy - 14}, {cx - 12*d, cy + 14}, {cx + 10*d, cy}}, col)
+	bx := cx + 14*d
+	c.RoundRect(image.Rect(bx-3, cy-14, bx+3, cy+14), 1, col)
+}

@@ -21,6 +21,10 @@ set_conf() {
 set_conf LIBRESPOT_NAME "$SPOTIFY_DEVICE_NAME"
 set_conf LIBRESPOT_BITRATE "320"
 set_conf LIBRESPOT_DEVICE "$ALSA_DEVICE"
+# Spotify volume is the Digital control of the Amp2, so the app and the touch screen use the same volume.
+set_conf LIBRESPOT_MIXER "alsa"
+set_conf LIBRESPOT_ALSA_MIXER_DEVICE "hw:CARD=sndrpihifiberry"
+set_conf LIBRESPOT_ALSA_MIXER_CONTROL "Digital"
 set_conf LIBRESPOT_ONEVENT "/usr/local/bin/speakerdeck-librespot-event"
 
 echo "NOWPLAYING_PORT=$NOWPLAYING_PORT" | sudo tee /etc/default/speakerdeck >/dev/null
