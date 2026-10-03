@@ -28,7 +28,9 @@ type Model struct {
 	StartEnd, EndStart         int64
 	BedTemp, ExtTemp, WipeTemp float64
 
-	LayerPos   []int64 // offset of each ";LAYER:n" marker
+	LayerPos   []int64   // offset of each ";LAYER:n" marker
+	FanPos     []int64   // offset after each fan command
+	FanVal     []float32 // fan speed 0..1 after the command
 	LayerCount int
 }
 
@@ -64,6 +66,25 @@ func Parse(r io.Reader) (*Model, error) {
 						m.WipeTemp, _ = strconv.ParseFloat(v, 64)
 					}
 				}
+			case "M106", "M107", "SET_FAN_SPEED":
+				v := float32(0)
+				switch strings.ToUpper(f[0]) {
+				case "M106":
+					v = 1
+					for _, w := range f[1:] {
+						if x, ok := word(w, 'S'); ok {
+							v = float32(min(max(x/255, 0), 1))
+						}
+					}
+				case "SET_FAN_SPEED":
+					for _, w := range f[1:] {
+						if x, ok := strings.CutPrefix(strings.ToUpper(w), "SPEED="); ok {
+							y, _ := strconv.ParseFloat(x, 32)
+							v = float32(min(max(y, 0), 1))
+						}
+					}
+				}
+				m.FanPos, m.FanVal = append(m.FanPos, pos), append(m.FanVal, v)
 			case "PRINT_END":
 				m.EndStart = pos - int64(len(line))
 			case "G90":
@@ -254,4 +275,21 @@ func (m *Model) LayerAt(pos int64) int {
 		}
 	}
 	return lo
+}
+
+// FanAt returns the fan speed (0..1) that the G-code has set at file offset pos.
+func (m *Model) FanAt(pos int64) float32 {
+	lo, hi := 0, len(m.FanPos)
+	for lo < hi {
+		mid := (lo + hi) / 2
+		if m.FanPos[mid] <= pos {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+	if lo == 0 {
+		return 0
+	}
+	return m.FanVal[lo-1]
 }
