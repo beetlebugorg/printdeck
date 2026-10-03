@@ -56,8 +56,8 @@ HARDWARE = [
     (4, "M3 × 6 countersunk bolt"),
     (4, "M3 × 8 countersunk bolt"),
     (4, "M3 × 16 bolt and M3 nut"),
-    (4, "Speaker binding post (2 red, 2 black)"),
-    (1, "DC panel jack, 5.5 × 2.1 mm"),
+    (2, "Binding post pair, red and black: Dayton Audio BPP (BPP-G, BPP-NI, or BPP-SN). 11.5 mm hole."),
+    (1, "DC panel jack, 5.5 × 2.1 mm, M8 thread (type DC-022B). 8 mm hole."),
     (4, "Rubber foot, self-adhesive"),
 ]
 
@@ -135,10 +135,10 @@ STEPS = [
         "Push 4 inserts into the 4 bosses on the rear face of the display frame.",
         "Push 4 inserts into the 4 bosses on the rear face of the Inky frame.",
     ], "", None),
-    ("Parts on the rear wall", ["body"], [(4, "M3 × 16 + nut"), (4, "Binding post"), (1, "DC jack")], "step3.png", [
+    ("Parts on the rear wall", ["body"], [(4, "M3 × 16 + nut"), (2, "Binding post pair"), (1, "DC jack")], "step3.png", [
         "Attach the fan to the inner side, behind the round hole pattern. "
         "The label of the fan points to the wall, so the air goes out of the case.",
-        "Install the 4 binding posts. Put red on the inner holes and black on the outer holes.",
+        "Install the 2 binding post pairs. Put red on the inner holes and black on the outer holes. Tighten the nuts on the inner side.",
         "Install the DC jack in the round hole near the center.",
     ], "", None),
     ("Display frame on the body", ["body", "frame", "cap"], [(4, "Cap"), (4, B6)], "step4.png", [
