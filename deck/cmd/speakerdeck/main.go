@@ -123,7 +123,7 @@ func demo(args []string) {
 	m := &ui.DemoMusic{State_: spotify.State{Authorized: true, Active: true, Mine: true, Playing: true, Shuffle: true, Repeat: "context",
 		Title: "Everything In Its Right Place", Artist: "Radiohead", Duration: 251 * time.Second}}
 	p := &ui.DemoPrinter{State_: octoprint.State{Reachable: true, Text: "Printing", Connected: true, Printing: true,
-		File: "speakerdeck_body.gcode", Completion: 42.4, TimeLeft: 83 * time.Minute, HasTimeLeft: true,
+		File: "speakerdeck_body.gcode", Activity: "Printing", Layer: 12, Layers: 27, Completion: 42.4, TimeLeft: 83 * time.Minute, HasTimeLeft: true,
 		Tool: 209.6, ToolTarget: 210, Bed: 60, BedTarget: 60}}
 	if f, err := os.Open(os.Getenv("DEMO_PREVIEW")); err == nil {
 		p.Img, _ = png.Decode(f)
@@ -142,6 +142,10 @@ func demo(args []string) {
 	snap("music")
 	a.SetTab(ui.TabPrint)
 	snap("print-busy")
+	p.State_.Activity, p.State_.Layer, p.State_.Completion, p.State_.Tool, p.State_.HasTimeLeft = "Heating nozzle  172/220°", 0, 0, 172, false
+	snap("print-heating")
+	p.State_.Activity, p.State_.Tool, p.State_.ToolTarget = "Wiping nozzle", 160, 160
+	snap("print-wipe")
 	p.State_ = octoprint.State{Reachable: true, Text: "Operational", Connected: true, Tool: 24, Bed: 23}
 	snap("print-idle")
 	m.State_ = spotify.State{Authorized: true}

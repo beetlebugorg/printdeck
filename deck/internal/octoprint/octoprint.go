@@ -34,6 +34,8 @@ type State struct {
 	Completion       float64 // 0..100
 	TimeLeft         time.Duration
 	HasTimeLeft      bool
+	Activity         string // what the printer does now: "Wiping nozzle", "Heating bed", "Printing"
+	Layer, Layers    int
 	Tool, ToolTarget float64
 	Bed, BedTarget   float64
 }
@@ -165,6 +167,7 @@ func (c *Client) refresh() {
 		}
 	}
 	c.mu.Lock()
+	c.activity(&st)
 	c.st = st
 	c.mu.Unlock()
 	c.updatePreview(st)
