@@ -47,6 +47,7 @@ type Music interface {
 	LoadPlaylists() error
 	Playlists() []spotify.Playlist
 	AddToPlaylist(id string) error
+	LinkURL() string // address for the QR code of the login, or ""
 }
 
 // Printer is what the Print tab needs from OctoPrint.

@@ -55,7 +55,7 @@ func (d DemoVolume) Max() int    { return 100 }
 func (d DemoVolume) Set(int)     {}
 
 // SetTab selects a tab; for the demo and for tests.
-func (a *App) SetTab(t Tab) { a.tab = t }
+func (a *App) SetTab(t Tab) { a.tab, a.picker = t, nil }
 
 // OpenPicker opens the playlist picker; for the demo.
 func (a *App) OpenPicker() { a.picker = &picker{} }
@@ -66,3 +66,5 @@ func (d *DemoMusic) Playlists() []spotify.Playlist {
 	return []spotify.Playlist{{ID: "1", Name: "Workshop", Tracks: 212}, {ID: "2", Name: "Road trip", Tracks: 48}, {ID: "3", Name: "Quiet", Tracks: 17}}
 }
 func (d *DemoMusic) AddToPlaylist(string) error { return nil }
+
+func (d *DemoMusic) LinkURL() string { return "https://pidev.local:8888/link" }
