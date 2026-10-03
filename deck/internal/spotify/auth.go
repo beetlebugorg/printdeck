@@ -41,11 +41,15 @@ func (c *Client) loadToken() {
 func (c *Client) saveToken() {
 	os.MkdirAll(c.cfg.StateDir, 0o700)
 	b, _ := json.Marshal(c.tok)
-	os.WriteFile(c.tokenPath(), b, 0o600)
+	// Write a new file and rename it, so a crash cannot leave a half written login.
+	tmp := c.tokenPath() + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o600); err == nil {
+		os.Rename(tmp, c.tokenPath())
+	}
 }
 
 // AuthURL starts the PKCE flow. Keep the verifier for Exchange.
-func (c *Client) AuthURL() (authURL, verifier string) {
+func (c *Client) AuthURL(redirect, state string) (authURL, verifier string) {
 	raw := make([]byte, 48)
 	rand.Read(raw)
 	verifier = base64.RawURLEncoding.EncodeToString(raw)
@@ -53,16 +57,19 @@ func (c *Client) AuthURL() (authURL, verifier string) {
 	q := url.Values{
 		"client_id":             {c.cfg.ClientID},
 		"response_type":         {"code"},
-		"redirect_uri":          {RedirectURI},
+		"redirect_uri":          {redirect},
 		"scope":                 {scopes},
 		"code_challenge_method": {"S256"},
 		"code_challenge":        {base64.RawURLEncoding.EncodeToString(sum[:])},
+	}
+	if state != "" {
+		q.Set("state", state)
 	}
 	return "https://accounts.spotify.com/authorize?" + q.Encode(), verifier
 }
 
 // Exchange takes the pasted redirect address (or only the code) and stores the tokens.
-func (c *Client) Exchange(pasted, verifier string) error {
+func (c *Client) Exchange(pasted, verifier, redirect string) error {
 	code := strings.TrimSpace(pasted)
 	if u, err := url.Parse(code); err == nil && u.Query().Get("code") != "" {
 		code = u.Query().Get("code")
@@ -72,7 +79,7 @@ func (c *Client) Exchange(pasted, verifier string) error {
 	return c.tokenRequest(url.Values{
 		"grant_type":    {"authorization_code"},
 		"code":          {code},
-		"redirect_uri":  {RedirectURI},
+		"redirect_uri":  {redirect},
 		"code_verifier": {verifier},
 	})
 }

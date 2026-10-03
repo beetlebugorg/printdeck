@@ -23,6 +23,9 @@ type Config struct {
 	ClientID   string
 	DeviceName string
 	StateDir   string
+	// LinkBase is the address of this speaker for the QR code login, like https://pidev.local:8888.
+	// It is empty if the login is not offered on the screen.
+	LinkBase string
 }
 
 // State is a snapshot of the player.

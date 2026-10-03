@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"time"
 
+	"rsc.io/qr"
 	"speakerdeck/internal/gfx"
 	"speakerdeck/internal/spotify"
 )
@@ -38,8 +39,7 @@ func (a *App) drawMusic(c *gfx.Canvas) {
 	}
 
 	if !st.Authorized {
-		c.Text(image.Rect(30, 250, W-30, 320), "Spotify is not linked", gfx.Face(true, 30), text, gfx.Center)
-		c.Text(image.Rect(30, 330, W-30, 420), "Run  speakerdeck auth  on the Pi", gfx.Face(false, 22), dim, gfx.Center)
+		a.drawLink(c)
 		return
 	}
 
@@ -208,3 +208,34 @@ func drawSkip(c *gfx.Canvas, r image.Rectangle, dir int, col color.RGBA) {
 func itoa(n int) string { return fmt.Sprint(n) }
 
 func errText(err error) string { return spotify.Friendly(err) }
+
+// drawLink shows a QR code to link the Spotify account with a phone.
+func (a *App) drawLink(c *gfx.Canvas) {
+	c.Text(image.Rect(30, 76, W-30, 124), "Link Spotify", gfx.Face(true, 32), text, gfx.Center)
+	url := a.Music.LinkURL()
+	if url == "" {
+		c.Text(image.Rect(30, 250, W-30, 420), "Run  speakerdeck auth  on the Pi", gfx.Face(false, 22), dim, gfx.Center)
+		return
+	}
+	code, err := qr.Encode(url, qr.M)
+	if err != nil {
+		return
+	}
+	const quiet = 3 // modules of white around the code
+	px := 300 / (code.Size + 2*quiet)
+	size := px * (code.Size + 2*quiet)
+	box := image.Rect((W-size)/2, 150, (W-size)/2+size, 150+size)
+	c.RoundRect(box.Inset(-10), 14, color.RGBA{255, 255, 255, 255})
+	for y := 0; y < code.Size; y++ {
+		for x := 0; x < code.Size; x++ {
+			if code.Black(x, y) {
+				r := image.Rect(box.Min.X+(x+quiet)*px, box.Min.Y+(y+quiet)*px, box.Min.X+(x+quiet+1)*px, box.Min.Y+(y+quiet+1)*px)
+				c.Fill(r, color.RGBA{0, 0, 0, 255})
+			}
+		}
+	}
+	c.Text(image.Rect(30, 480, W-30, 516), "Scan with your phone camera", gfx.Face(true, 22), text, gfx.Center)
+	c.Text(image.Rect(30, 520, W-30, 552), "The phone warns about the certificate once.", gfx.Face(false, 18), dim, gfx.Center)
+	c.Text(image.Rect(30, 548, W-30, 580), "Choose to continue, then agree on Spotify.", gfx.Face(false, 18), dim, gfx.Center)
+	c.Text(image.Rect(30, 600, W-30, 630), url, gfx.Face(false, 16), dim, gfx.Center)
+}
