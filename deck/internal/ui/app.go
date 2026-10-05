@@ -47,6 +47,7 @@ type Music interface {
 	LoadPlaylists() error
 	Playlists() []spotify.Playlist
 	AddToPlaylist(id string) error
+	PlayPlaylist(id string) error
 	LinkURL() string // address for the QR code of the login, or ""
 }
 
@@ -83,6 +84,8 @@ type hit struct {
 	tap  func()
 	drag func(frac float64) // slider: called while dragging with 0..1
 	end  func(frac float64) // slider: called on release
+	// swipe is called after a horizontal swipe: 1 for a swipe to the left (next), -1 to the right (previous).
+	swipe func(dir int)
 }
 
 type App struct {
@@ -98,6 +101,8 @@ type App struct {
 	confirm  *confirmBox // modal question
 	hits     []hit
 	pressed  *hit
+	swiping  *hit // the swipe area that the finger is on
+	swipeDX  int  // how far the finger moved, to draw the cover with it
 	dragging *hit
 	downAt   image.Point
 	dragFrac float64 // while dragging a slider, its value; -1 otherwise
@@ -166,7 +171,9 @@ func (a *App) handle(ev touch.Event) {
 			h := &a.hits[i]
 			if p.In(h.r) {
 				hc := *h // the hit list is rebuilt on each frame, so keep a copy
-				if h.drag != nil {
+				if h.swipe != nil {
+					a.swiping, a.swipeDX = &hc, 0
+				} else if h.drag != nil {
 					a.dragging = &hc
 					a.dragFrac = frac(h.r, p)
 					h.drag(a.dragFrac)
@@ -177,7 +184,9 @@ func (a *App) handle(ev touch.Event) {
 			}
 		}
 	case touch.Move:
-		if a.dragging != nil {
+		if a.swiping != nil {
+			a.swipeDX = max(-80, min(80, p.X-a.downAt.X))
+		} else if a.dragging != nil {
 			a.dragFrac = frac(a.dragging.r, p)
 			if h := a.find(a.dragging.r); h != nil {
 				h.drag(a.dragFrac)
@@ -186,7 +195,18 @@ func (a *App) handle(ev touch.Event) {
 			a.pressed = nil
 		}
 	case touch.Up:
-		if a.dragging != nil {
+		if a.swiping != nil {
+			dx, dy := p.X-a.downAt.X, p.Y-a.downAt.Y
+			h := a.find(a.swiping.r)
+			a.swiping, a.swipeDX = nil, 0
+			if h != nil && h.swipe != nil && abs(dx) >= 70 && abs(dx) > 2*abs(dy) {
+				if dx < 0 {
+					h.swipe(1)
+				} else {
+					h.swipe(-1)
+				}
+			}
+		} else if a.dragging != nil {
 			if h := a.find(a.dragging.r); h != nil {
 				h.end(frac(h.r, p))
 			}
@@ -347,4 +367,11 @@ func (a *App) drawToast(c *gfx.Canvas) {
 	r := image.Rect(30, contentY1-64, W-30, contentY1-12)
 	c.RoundRect(r, 26, raised)
 	c.Text(image.Rect(r.Min.X+16, r.Min.Y, r.Max.X-16, r.Max.Y), a.toast, gfx.Face(true, 20), text, gfx.Center)
+}
+
+func abs(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
 }

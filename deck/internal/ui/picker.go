@@ -3,20 +3,30 @@ package ui
 import (
 	"image"
 
+	"speakerdeck/internal/spotify"
+
 	"speakerdeck/internal/gfx"
 )
 
 const pickerRows = 6
 
-// picker is the list of playlists to add the current track to.
+type pickMode int
+
+const (
+	pickAdd  pickMode = iota // add the current track to a playlist
+	pickPlay                 // start a playlist
+)
+
+// picker is the list of playlists to add the current track to, or to play.
 type picker struct {
+	mode    pickMode
 	loading bool
 	err     string
 	page    int
 }
 
-func (a *App) openPicker() {
-	a.picker = &picker{loading: true}
+func (a *App) openPicker(mode pickMode) {
+	a.picker = &picker{mode: mode, loading: true}
 	go func() {
 		err := a.Music.LoadPlaylists()
 		a.picker2(func(p *picker) {
@@ -40,11 +50,20 @@ func (a *App) picker2(f func(*picker)) {
 func (a *App) drawPicker(c *gfx.Canvas) {
 	pk := a.picker
 	st := a.Music.State()
-	c.Text(image.Rect(24, 64, W-150, 108), "Add to playlist", gfx.Face(true, 28), text, gfx.Left)
+	title, sub := "Add to playlist", st.Title+" · "+st.Artist
+	if pk.mode == pickPlay {
+		title, sub = "Play a playlist", "Tap a playlist to play it here"
+	}
+	c.Text(image.Rect(24, 64, W-150, 108), title, gfx.Face(true, 28), text, gfx.Left)
 	a.button(c, image.Rect(W-130, 66, W-24, 110), "Close", raised, text, func() { a.picker = nil })
-	c.Text(image.Rect(24, 108, W-24, 136), st.Title+" · "+st.Artist, gfx.Face(false, 18), dim, gfx.Left)
+	c.Text(image.Rect(24, 108, W-24, 136), sub, gfx.Face(false, 18), dim, gfx.Left)
 
-	lists := a.Music.Playlists()
+	var lists []spotify.Playlist
+	for _, pl := range a.Music.Playlists() {
+		if pk.mode == pickPlay || pl.Editable {
+			lists = append(lists, pl)
+		}
+	}
 	switch {
 	case pk.loading:
 		c.Text(image.Rect(30, 300, W-30, 350), "Loading…", gfx.Face(false, 22), dim, gfx.Center)
@@ -72,11 +91,22 @@ func (a *App) drawPicker(c *gfx.Canvas) {
 		c.RoundRect(r, 16, fill)
 		c.Text(image.Rect(r.Min.X+18, r.Min.Y+6, r.Max.X-90, r.Min.Y+40), pl.Name, gfx.Face(true, 22), text, gfx.Left)
 		c.Text(image.Rect(r.Min.X+18, r.Min.Y+38, r.Max.X-90, r.Max.Y-6), itoa(pl.Tracks)+" tracks", gfx.Face(false, 16), dim, gfx.Left)
-		drawPlus(c, r.Max.X-44, r.Min.Y+36, 12, green)
+		if pk.mode == pickPlay {
+			drawPlay(c, image.Rect(r.Max.X-76, r.Min.Y+4, r.Max.X-12, r.Min.Y+68), green)
+		} else {
+			drawPlus(c, r.Max.X-44, r.Min.Y+36, 12, green)
+		}
+		mode := pk.mode
 		a.addHit(hit{r: r, tap: func() {
 			a.picker = nil
 			go func() {
-				if err := a.Music.AddToPlaylist(pl.ID); err != nil {
+				if mode == pickPlay {
+					if err := a.Music.PlayPlaylist(pl.ID); err != nil {
+						a.Toast(errText(err))
+					} else {
+						a.Toast("Playing " + pl.Name)
+					}
+				} else if err := a.Music.AddToPlaylist(pl.ID); err != nil {
 					a.Toast(errText(err))
 				} else {
 					a.Toast("Added to " + pl.Name)

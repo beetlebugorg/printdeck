@@ -58,13 +58,19 @@ func (d DemoVolume) Set(int)     {}
 func (a *App) SetTab(t Tab) { a.tab, a.picker = t, nil }
 
 // OpenPicker opens the playlist picker; for the demo.
-func (a *App) OpenPicker() { a.picker = &picker{} }
+func (a *App) OpenPicker(play bool) {
+	a.picker = &picker{}
+	if play {
+		a.picker.mode = pickPlay
+	}
+}
 
 func (d *DemoMusic) ToggleLike() error    { return nil }
 func (d *DemoMusic) LoadPlaylists() error { return nil }
 func (d *DemoMusic) Playlists() []spotify.Playlist {
-	return []spotify.Playlist{{ID: "1", Name: "Workshop", Tracks: 212}, {ID: "2", Name: "Road trip", Tracks: 48}, {ID: "3", Name: "Quiet", Tracks: 17}}
+	return []spotify.Playlist{{ID: "1", Name: "Workshop", Tracks: 212, Editable: true}, {ID: "2", Name: "Road trip", Tracks: 48, Editable: true}, {ID: "3", Name: "Lofi Beats", Tracks: 62}}
 }
 func (d *DemoMusic) AddToPlaylist(string) error { return nil }
+func (d *DemoMusic) PlayPlaylist(string) error  { return nil }
 
 func (d *DemoMusic) LinkURL() string { return "https://pidev.local:8888/link" }
