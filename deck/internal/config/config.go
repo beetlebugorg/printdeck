@@ -23,10 +23,11 @@ type Config struct {
 	OctoPrintKey string
 	ModelDir     string // folder with STL files for the preview
 
-	AlsaCard    string
-	MaxVolume   int
-	PreheatTool int
-	PreheatBed  int
+	AlsaCard        string
+	MaxVolume       int
+	FloorDB, CeilDB float64 // the decibels at 0% and 100% of the volume
+	PreheatTool     int
+	PreheatBed      int
 }
 
 func Load() Config {
@@ -46,6 +47,8 @@ func Load() Config {
 		ModelDir:        str("MODEL_DIR", "/var/lib/speakerdeck/models"),
 		AlsaCard:        str("ALSA_CARD", "sndrpihifiberry"),
 		MaxVolume:       num("MAX_VOLUME", 100),
+		FloorDB:         float64(num("VOLUME_FLOOR_DB", -40)),
+		CeilDB:          float64(num("VOLUME_CEIL_DB", -10)),
 		PreheatTool:     num("PREHEAT_TOOL", 200),
 		PreheatBed:      num("PREHEAT_BED", 60),
 	}

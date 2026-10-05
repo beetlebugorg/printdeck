@@ -24,7 +24,7 @@ A small Spotify player and OctoPrint host on a Raspberry Pi 5.
   - The Music tab follows and controls Spotify with the Spotify Web API (cover, seek, previous, play, next, shuffle, repeat). go-librespot is the Connect device.
   - The Print tab shows a 3D view of the model that prints (the printed height in colour), the progress, the time left, and the temperatures. It can pause, resume, cancel, preheat, and start a file. The view is a shaded STL if OctoPrint or `MODEL_DIR` (default `/var/lib/speakerdeck/models`) has an STL with a matching name. Otherwise it is the toolpath from the G-code.
   - The heart adds the track to Liked Songs or removes it. The plus button adds it to one of your playlists.
-  - The volume slider sets the `Digital` control of the Amp2.
+  - The volume slider and the volume of the Spotify app are the same volume. They set the `Digital` control of the Amp2. The percent covers a window of decibels that fits the speakers (`VOLUME_FLOOR_DB` to `VOLUME_CEIL_DB`, -40 to -10 dB at first).
   - The status bar shows the other tab: "Printing 42%" on the Music tab, and the current track on the Print tab.
 
 ## Installation
@@ -41,7 +41,7 @@ A small Spotify player and OctoPrint host on a Raspberry Pi 5.
 
 To update: `git pull`, then `docker compose up -d --build`.
 
-Settings are in `.env`: `DISPLAY_ROTATE` (90 or 270), `TOUCH_INVERT_X`, `TOUCH_INVERT_Y`, `TOUCH_SWAP_XY` (0 or 1), `MAX_VOLUME`, `PREHEAT_TOOL`, `PREHEAT_BED`.
+Settings are in `.env`: `DISPLAY_ROTATE` (90 or 270), `TOUCH_INVERT_X`, `TOUCH_INVERT_Y`, `TOUCH_SWAP_XY` (0 or 1), `VOLUME_FLOOR_DB`, `VOLUME_CEIL_DB`, `MAX_VOLUME`, `PREHEAT_TOOL`, `PREHEAT_BED`.
 
 To look at the screens without the hardware, run `go run ./cmd/speakerdeck demo /tmp/shots` in `deck/`. It writes PNG files.
 
