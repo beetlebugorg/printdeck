@@ -68,7 +68,7 @@ func (a *App) OpenPicker(play bool) {
 func (d *DemoMusic) ToggleLike() error    { return nil }
 func (d *DemoMusic) LoadPlaylists() error { return nil }
 func (d *DemoMusic) Playlists() []spotify.Playlist {
-	return []spotify.Playlist{{ID: "1", Name: "Workshop", Tracks: 212, Editable: true}, {ID: "2", Name: "Road trip", Tracks: 48, Editable: true}, {ID: "3", Name: "Lofi Beats", Tracks: 62}}
+	return []spotify.Playlist{{URI: "spotify:user:x:collection", Name: "Liked Songs", Tracks: 1103}, {URI: "spotify:playlist:dw", Name: "Discover Weekly", Recent: true}, {ID: "1", Name: "Workshop", Tracks: 212, Editable: true}, {ID: "2", Name: "Road trip", Tracks: 48, Editable: true}, {ID: "3", Name: "Lofi Beats", Tracks: 62}}
 }
 func (d *DemoMusic) AddToPlaylist(string) error { return nil }
 func (d *DemoMusic) PlayPlaylist(string) error  { return nil }

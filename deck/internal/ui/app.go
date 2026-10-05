@@ -47,7 +47,7 @@ type Music interface {
 	LoadPlaylists() error
 	Playlists() []spotify.Playlist
 	AddToPlaylist(id string) error
-	PlayPlaylist(id string) error
+	PlayPlaylist(uri string) error
 	LinkURL() string // address for the QR code of the login, or ""
 }
 
