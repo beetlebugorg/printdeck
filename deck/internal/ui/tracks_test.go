@@ -13,11 +13,10 @@ import (
 type trackMusic struct {
 	*DemoMusic
 	played string
-	follow int
 }
 
-func (m *trackMusic) PlayTrack(ctx, track string, follow []string) error {
-	m.played, m.follow = track, len(follow)
+func (m *trackMusic) PlayTrack(ctx, track string) error {
+	m.played = track
 	return nil
 }
 
@@ -36,14 +35,14 @@ func ev(a *App, k touch.Kind, x, y int) {
 func TestTrackListTap(t *testing.T) {
 	a, m, cv := newTrackApp()
 	a.Draw(cv)
-	// A tap on the third row (top 150, rows of 64) plays song 3 and queues the rest that is loaded.
+	// A tap on the third row (top 150, rows of 64) plays song 3.
 	ev(a, touch.Down, 200, listTop+2*trackRowH+20)
 	ev(a, touch.Up, 200, listTop+2*trackRowH+20)
 	for i := 0; i < 100 && m.played == ""; i++ { // the song starts in its own goroutine
 		time.Sleep(10 * time.Millisecond)
 	}
-	if m.played != "spotify:track:2" || m.follow != spotify.TracksPage-3 {
-		t.Errorf("played %q with %d following", m.played, m.follow)
+	if m.played != "spotify:track:2" {
+		t.Errorf("played %q", m.played)
 	}
 	if a.tracks != nil {
 		t.Error("the list should close after a song is chosen")

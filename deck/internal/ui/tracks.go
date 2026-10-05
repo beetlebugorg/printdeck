@@ -66,14 +66,10 @@ func (a *App) playTrackAt(tl *trackList, idx int) {
 		return
 	}
 	t := tl.items[idx]
-	var follow []string
-	for i := idx + 1; i < len(tl.items) && len(follow) < 99 && tl.items[i].URI != ""; i++ {
-		follow = append(follow, tl.items[i].URI)
-	}
 	ctx := tl.pl.URI
 	a.tracks, a.picker = nil, nil
 	go func() {
-		if err := a.Music.PlayTrack(ctx, t.URI, follow); err != nil {
+		if err := a.Music.PlayTrack(ctx, t.URI); err != nil {
 			a.Toast(errText(err))
 		} else {
 			a.Toast("Playing " + t.Name)

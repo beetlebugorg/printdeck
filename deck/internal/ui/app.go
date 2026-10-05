@@ -49,7 +49,7 @@ type Music interface {
 	AddToPlaylist(id string) error
 	PlayPlaylist(uri string) error
 	LoadTracks(uri string, offset int) ([]spotify.Track, int, error)
-	PlayTrack(context, track string, follow []string) error
+	PlayTrack(context, track string) error
 	LinkURL() string // address for the QR code of the login, or ""
 }
 

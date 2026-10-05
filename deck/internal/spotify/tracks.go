@@ -90,13 +90,9 @@ func (c *Client) LoadTracks(uri string, offset int) ([]Track, int, error) {
 	return out, r.Total, nil
 }
 
-// PlayTrack plays a song of a list on this speaker. For playlists and albums the music goes on with
-// the next songs of the context. Liked Songs have no such context here, so the songs after it in
-// the list (follow) are queued.
-func (c *Client) PlayTrack(context, track string, follow []string) error {
-	body := map[string]any{"context_uri": context, "offset": map[string]string{"uri": track}}
-	if strings.HasSuffix(context, ":collection") {
-		body = map[string]any{"uris": append([]string{track}, follow...)}
-	}
-	return c.playOnSpeaker(body)
+// PlayTrack plays a song of a list on this speaker, and the music goes on with the next songs of the
+// playlist, album, or Liked Songs. (A plain list of songs does not work: go-librespot cannot play
+// a request that has no context.)
+func (c *Client) PlayTrack(context, track string) error {
+	return c.playOnSpeaker(map[string]any{"context_uri": context, "offset": map[string]string{"uri": track}})
 }
