@@ -23,7 +23,7 @@ credentials:
 metadata:
   enabled: true
 
-## Deliberately low: this is the volume a session starts at before anyone
-## has touched the touch UI's slider. Raise it once the cabinet/speakers
-## are actually in place and you know what loud means on this amp.
-initial_volume: 10
+## The volume is set by the touch screen, on the amp (the ALSA "Digital" control), where 10% is
+## really 10% of the amplitude. go-librespot must not scale the samples as well, or the sound is
+## much quieter than the screen says. The volume slider in the Spotify app then changes nothing.
+external_volume: true
