@@ -34,6 +34,7 @@ func (d *DemoMusic) CycleRepeat()       {}
 type DemoPrinter struct {
 	State_ octoprint.State
 	Img    image.Image
+	View   int // layer of the scrubber, -1 for live
 }
 
 func (d *DemoPrinter) State() octoprint.State { return d.State_ }
@@ -93,3 +94,6 @@ func (a *App) OpenTracks(scroll int) {
 	copy(a.tracks.items, tracks)
 	a.tracks.scroll = scroll
 }
+
+func (d *DemoPrinter) SetViewLayer(l int) { d.View = l }
+func (d *DemoPrinter) ViewLayer() int     { return d.View }
