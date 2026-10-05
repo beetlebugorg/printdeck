@@ -83,7 +83,7 @@ func (d *DemoMusic) LoadTracks(uri string, offset int) ([]spotify.Track, int, er
 	}
 	return out, 1103, nil
 }
-func (d *DemoMusic) PlayTrack(string, string, []string) error { return nil }
+func (d *DemoMusic) PlayTrack(string, string) error { return nil }
 
 // OpenTracks opens the song list of a playlist, with the rows loaded; for the demo.
 func (a *App) OpenTracks(scroll int) {
