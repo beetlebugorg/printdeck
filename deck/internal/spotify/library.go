@@ -8,11 +8,12 @@ import (
 	"strings"
 )
 
-// Playlist is a playlist that the user can add tracks to.
+// Playlist is a playlist of the user: one that they made or that they follow.
 type Playlist struct {
-	ID     string
-	Name   string
-	Tracks int
+	ID       string
+	Name     string
+	Tracks   int
+	Editable bool // the user owns it or it is collaborative: tracks can be added
 }
 
 // Friendly turns an API error into a short message for the screen.
@@ -67,7 +68,7 @@ func (c *Client) ToggleLike() error {
 	return err
 }
 
-// LoadPlaylists reads the playlists that the user owns or shares. It does not include the ones that are only followed.
+// LoadPlaylists reads the playlists of the user, including the ones that they only follow.
 func (c *Client) LoadPlaylists() error {
 	c.mu.Lock()
 	me := c.me
@@ -101,14 +102,14 @@ func (c *Client) LoadPlaylists() error {
 		}
 		json.Unmarshal(b, &r)
 		for _, p := range r.Items {
-			if p.ID == "" || (p.Owner.ID != me && !p.Collaborative) {
+			if p.ID == "" {
 				continue
 			}
 			n := p.Items.Total
 			if n == 0 {
 				n = p.Tracks.Total
 			}
-			out = append(out, Playlist{p.ID, p.Name, n})
+			out = append(out, Playlist{p.ID, p.Name, n, p.Owner.ID == me || p.Collaborative})
 		}
 		if r.Next == nil {
 			break
@@ -133,5 +134,27 @@ func (c *Client) AddToPlaylist(id string) error {
 		return errors.New("Nothing to add")
 	}
 	_, err := c.do("POST", "/playlists/"+id+"/items", nil, map[string]any{"uris": []string{uri}})
+	return err
+}
+
+// PlayPlaylist starts a playlist on this speaker, also if the music plays elsewhere now.
+func (c *Client) PlayPlaylist(id string) error {
+	b, err := c.do("GET", "/me/player/devices", nil, nil)
+	if err != nil {
+		return err
+	}
+	var d struct{ Devices []struct{ ID, Name string } }
+	json.Unmarshal(b, &d)
+	dev := ""
+	for _, x := range d.Devices {
+		if x.Name == c.cfg.DeviceName {
+			dev = x.ID
+		}
+	}
+	if dev == "" {
+		return errors.New("The speaker is not in Spotify yet")
+	}
+	_, err = c.do("PUT", "/me/player/play", url.Values{"device_id": {dev}}, map[string]any{"context_uri": "spotify:playlist:" + id})
+	c.Poke()
 	return err
 }
