@@ -33,6 +33,10 @@ func (a *App) slider(c *gfx.Canvas, hitRect image.Rectangle, f float64, col colo
 func (a *App) drawMusic(c *gfx.Canvas) {
 	st := a.Music.State()
 	mid := W / 2
+	if a.tracks != nil {
+		a.drawTracks(c)
+		return
+	}
 	if a.picker != nil {
 		a.drawPicker(c)
 		return
