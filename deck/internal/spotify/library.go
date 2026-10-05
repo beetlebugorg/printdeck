@@ -10,10 +10,12 @@ import (
 
 // Playlist is a playlist of the user: one that they made or that they follow.
 type Playlist struct {
-	ID       string
+	ID       string // of a playlist, to add tracks to it
+	URI      string // what to play
 	Name     string
-	Tracks   int
+	Tracks   int  // 0 if not known
 	Editable bool // the user owns it or it is collaborative: tracks can be added
+	Recent   bool // not in the library: it played here before, like Discover Weekly
 }
 
 // Friendly turns an API error into a short message for the screen.
@@ -68,7 +70,7 @@ func (c *Client) ToggleLike() error {
 	return err
 }
 
-// LoadPlaylists reads the playlists of the user, including the ones that they only follow.
+// LoadPlaylists reads Liked Songs and the playlists of the user, including the ones that they only follow.
 func (c *Client) LoadPlaylists() error {
 	c.mu.Lock()
 	me := c.me
@@ -86,6 +88,12 @@ func (c *Client) LoadPlaylists() error {
 		c.mu.Unlock()
 	}
 	var out []Playlist
+	collection := "spotify:user:" + me + ":collection"
+	if b, err := c.do("GET", "/me/tracks", url.Values{"limit": {"1"}}, nil); err == nil {
+		var r struct{ Total int }
+		json.Unmarshal(b, &r)
+		out = append(out, Playlist{URI: collection, Name: "Liked Songs", Tracks: r.Total})
+	}
 	for offset := 0; offset < 200; offset += 50 {
 		b, err := c.do("GET", "/me/playlists", url.Values{"limit": {"50"}, "offset": {fmt.Sprint(offset)}}, nil)
 		if err != nil {
@@ -109,7 +117,7 @@ func (c *Client) LoadPlaylists() error {
 			if n == 0 {
 				n = p.Tracks.Total
 			}
-			out = append(out, Playlist{p.ID, p.Name, n, p.Owner.ID == me || p.Collaborative})
+			out = append(out, Playlist{ID: p.ID, URI: "spotify:playlist:" + p.ID, Name: p.Name, Tracks: n, Editable: p.Owner.ID == me || p.Collaborative})
 		}
 		if r.Next == nil {
 			break
@@ -121,10 +129,29 @@ func (c *Client) LoadPlaylists() error {
 	return nil
 }
 
+// Playlists returns Liked Songs first, then what played here before and is not in the library, then the playlists.
 func (c *Client) Playlists() []Playlist {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.playlists
+	known := map[string]bool{}
+	for _, p := range c.playlists {
+		known[p.URI] = true
+	}
+	var out []Playlist
+	if len(c.playlists) > 0 && strings.HasSuffix(c.playlists[0].URI, ":collection") {
+		out = append(out, c.playlists[0])
+	}
+	for _, r := range c.recent {
+		if !known[r.URI] {
+			out = append(out, r)
+		}
+	}
+	for _, p := range c.playlists {
+		if !strings.HasSuffix(p.URI, ":collection") {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // AddToPlaylist adds the current track to a playlist.
@@ -137,8 +164,9 @@ func (c *Client) AddToPlaylist(id string) error {
 	return err
 }
 
-// PlayPlaylist starts a playlist on this speaker, also if the music plays elsewhere now.
-func (c *Client) PlayPlaylist(id string) error {
+// PlayPlaylist starts a playlist, Liked Songs, or an album on this speaker, also if the music plays elsewhere now.
+// uri is what Playlist.URI says.
+func (c *Client) PlayPlaylist(uri string) error {
 	b, err := c.do("GET", "/me/player/devices", nil, nil)
 	if err != nil {
 		return err
@@ -154,7 +182,7 @@ func (c *Client) PlayPlaylist(id string) error {
 	if dev == "" {
 		return errors.New("The speaker is not in Spotify yet")
 	}
-	_, err = c.do("PUT", "/me/player/play", url.Values{"device_id": {dev}}, map[string]any{"context_uri": "spotify:playlist:" + id})
+	_, err = c.do("PUT", "/me/player/play", url.Values{"device_id": {dev}}, map[string]any{"context_uri": uri})
 	c.Poke()
 	return err
 }
