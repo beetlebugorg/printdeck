@@ -100,6 +100,16 @@ func sleep(ctx context.Context, d time.Duration) {
 	}
 }
 
+// debounce is how long the finger must be off the panel before the touch is over. The resistive panel
+// loses contact for a few milliseconds, many times, during a swipe. Without this, each of them is a tap.
+// (Measured: gaps of 4 to 25 ms inside a touch, and at least 485 ms between separate taps.)
+const debounce = 80 * time.Millisecond
+
+type rawEvent struct {
+	typ, code uint16
+	val       int32
+}
+
 func read(ctx context.Context, dev string, o Options, out chan<- Event) {
 	f, err := os.Open(dev)
 	if err != nil {
@@ -110,42 +120,73 @@ func read(ctx context.Context, dev string, o Options, out chan<- Event) {
 
 	minX, maxX := absRange(f.Fd(), absX)
 	minY, maxY := absRange(f.Fd(), absY)
+
+	raw := make(chan rawEvent, 64)
+	go func() {
+		defer close(raw)
+		buf := make([]byte, 24) // struct input_event on 64-bit
+		for {
+			if _, err := readFull(f, buf); err != nil {
+				return
+			}
+			raw <- rawEvent{binary.LittleEndian.Uint16(buf[16:]), binary.LittleEndian.Uint16(buf[18:]), int32(binary.LittleEndian.Uint32(buf[20:]))}
+		}
+	}()
+
+	process(ctx, raw, o, [4]int32{minX, maxX, minY, maxY}, out)
+}
+
+// process turns the raw events of the panel into Down, Move, and Up events. rng is the range of the axes:
+// minX, maxX, minY, maxY.
+func process(ctx context.Context, raw <-chan rawEvent, o Options, rng [4]int32, out chan<- Event) {
+	minX, maxX, minY, maxY := rng[0], rng[1], rng[2], rng[3]
 	var x, y float64
 	touching, moved, pendingDown := false, false, false
-	buf := make([]byte, 24) // struct input_event on 64-bit
+	var release *time.Timer // running while the finger is off the panel, but the touch is not over yet
+	var releaseC <-chan time.Time
 	for {
-		if _, err := readFull(f, buf); err != nil {
-			return
-		}
-		typ := binary.LittleEndian.Uint16(buf[16:])
-		code := binary.LittleEndian.Uint16(buf[18:])
-		val := int32(binary.LittleEndian.Uint32(buf[20:]))
-		switch {
-		case typ == evAbs && code == absX:
-			x, moved = float64(val-minX)/float64(max(1, maxX-minX)), true
-		case typ == evAbs && code == absY:
-			y, moved = float64(val-minY)/float64(max(1, maxY-minY)), true
-		case typ == evKey && code == btnTouch:
-			if val == 1 && !touching {
-				// The position arrives before the SYN event, so Down is sent there.
-				touching, moved, pendingDown = true, true, true
-			} else if val == 0 && touching {
-				touching = false
-				p := adj(x, y, o)
-				out <- Event{Up, p.X, p.Y}
+		select {
+		case e, ok := <-raw:
+			if !ok {
+				return
 			}
-		case typ == evSyn && code == 0 && moved && touching:
-			p := adj(x, y, o)
-			if pendingDown {
-				pendingDown = false
-				out <- Event{Down, p.X, p.Y}
-			} else {
-				select {
-				case out <- Event{Move, p.X, p.Y}:
-				default: // drop move events when the UI is busy
+			switch {
+			case e.typ == evAbs && e.code == absX:
+				x, moved = float64(e.val-minX)/float64(max(1, maxX-minX)), true
+			case e.typ == evAbs && e.code == absY:
+				y, moved = float64(e.val-minY)/float64(max(1, maxY-minY)), true
+			case e.typ == evKey && e.code == btnTouch:
+				if e.val == 1 {
+					if releaseC != nil { // the finger came back: it is the same touch
+						release.Stop()
+						release, releaseC = nil, nil
+					} else if !touching {
+						// The position arrives before the SYN event, so Down is sent there.
+						touching, moved, pendingDown = true, true, true
+					}
+				} else if touching && releaseC == nil {
+					release = time.NewTimer(debounce)
+					releaseC = release.C
 				}
+			case e.typ == evSyn && e.code == 0 && moved && touching:
+				p := adj(x, y, o)
+				if pendingDown {
+					pendingDown = false
+					out <- Event{Down, p.X, p.Y}
+				} else {
+					select {
+					case out <- Event{Move, p.X, p.Y}:
+					default: // drop move events when the UI is busy
+					}
+				}
+				moved = false
 			}
-			moved = false
+		case <-releaseC:
+			touching, release, releaseC = false, nil, nil
+			p := adj(x, y, o)
+			out <- Event{Up, p.X, p.Y}
+		case <-ctx.Done():
+			return
 		}
 	}
 }
