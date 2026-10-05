@@ -57,7 +57,9 @@ type Music interface {
 type Printer interface {
 	State() octoprint.State
 	Files() []octoprint.File
-	Preview() image.Image // picture of the model that prints, or nil
+	Preview() image.Image   // picture of the model that prints, or nil
+	SetViewLayer(layer int) // shows the model up to a layer; a negative layer follows the print
+	ViewLayer() int         // the layer of the scrubber, or -1 when it follows the print
 	LoadFiles()
 	Pause()
 	Resume()

@@ -156,9 +156,10 @@ func project(x, y, z float32) (u, v float64) {
 	return fx*cosA - fy*sinA, -((fx*sinA+fy*cosA)*sinE + fz*cosE)
 }
 
-// Render draws the model into a w x h picture. The part up to file offset pos is in colour,
-// the rest is a faint outline. The result has a transparent background.
-func (m *Model) Render(w, h int, pos int64, warm, cool, ghost color.RGBA) *image.RGBA {
+// Render draws the model into a w x h picture. The part up to file offset pos is in colour, with the
+// layer that starts at curStart (the one being printed) in the colour hot and a mark at the end, and the rest
+// is a faint outline. The result has a transparent background.
+func (m *Model) Render(w, h int, pos, curStart int64, warm, cool, hot, ghost color.RGBA) *image.RGBA {
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 	if len(m.Segs) == 0 {
 		return img
@@ -180,6 +181,7 @@ func (m *Model) Render(w, h int, pos int64, warm, cool, ghost color.RGBA) *image
 		u, v := project(x, y, z)
 		return int(ox + (u-minU)*scale), int(oy + (v-minV)*scale)
 	}
+	last := -1 // the last move that is done: where the nozzle is
 	for pass := 0; pass < 2; pass++ {
 		for i := range m.Segs {
 			s := &m.Segs[i]
@@ -191,13 +193,61 @@ func (m *Model) Render(w, h int, pos int64, warm, cool, ghost color.RGBA) *image
 			if done {
 				t := float64(s.Z1 / max(m.MaxZ, 0.001))
 				col = mix(warm, cool, t)
+				if s.Pos > curStart {
+					col = hot
+				}
+				last = i
 			}
 			x0, y0 := pt(s.X0, s.Y0, s.Z0)
 			x1, y1 := pt(s.X1, s.Y1, s.Z1)
 			line(img, x0, y0, x1, y1, col)
 		}
 	}
+	if last >= 0 {
+		sg := &m.Segs[last]
+		x, y := pt(sg.X1, sg.Y1, sg.Z1)
+		dot(img, x, y, 5, color.RGBA{255, 255, 255, 255})
+	}
 	return img
+}
+
+// dot draws a filled circle with a dark edge.
+func dot(img *image.RGBA, cx, cy, r int, c color.RGBA) {
+	for y := -r - 1; y <= r+1; y++ {
+		for x := -r - 1; x <= r+1; x++ {
+			d := x*x + y*y
+			p := image.Pt(cx+x, cy+y)
+			if !p.In(img.Bounds()) {
+				continue
+			}
+			switch {
+			case d <= r*r:
+				img.SetRGBA(p.X, p.Y, c)
+			case d <= (r+1)*(r+1):
+				img.SetRGBA(p.X, p.Y, color.RGBA{20, 20, 20, 255})
+			}
+		}
+	}
+}
+
+// LayerEnd returns the file offset up to which layer n (counting from 1) is printed. 0 gives -1: nothing yet.
+func (m *Model) LayerEnd(n int) int64 {
+	switch {
+	case n <= 0:
+		return -1
+	case n >= len(m.LayerPos):
+		return 1<<62 - 1
+	}
+	// A move is recorded at the end of its line. The last move of a layer ends where the next marker starts.
+	return m.LayerPos[n]
+}
+
+// LayerStart returns the file offset where layer n (counting from 1) starts.
+func (m *Model) LayerStart(n int) int64 {
+	if n <= 0 || n > len(m.LayerPos) {
+		return 0
+	}
+	return m.LayerPos[n-1]
 }
 
 func mix(a, b color.RGBA, t float64) color.RGBA {

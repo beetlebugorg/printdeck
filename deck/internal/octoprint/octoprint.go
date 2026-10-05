@@ -105,7 +105,7 @@ func (c *Client) Run(ctx context.Context, notify func()) {
 		case <-ctx.Done():
 			return
 		case <-c.poke:
-		case <-time.After(2 * time.Second):
+		case <-time.After(c.interval()):
 		}
 	}
 }
@@ -227,4 +227,12 @@ func (c *Client) Heat(tool, bed int) {
 
 func (c *Client) PrintFile(path string) {
 	c.post("/api/files/local/"+path, map[string]any{"command": "select", "print": true})
+}
+
+// interval is the time between two reads of OctoPrint: shorter while a print runs, for the live picture.
+func (c *Client) interval() time.Duration {
+	if c.State().Busy() {
+		return time.Second
+	}
+	return 2 * time.Second
 }

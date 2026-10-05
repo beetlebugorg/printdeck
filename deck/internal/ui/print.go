@@ -79,8 +79,9 @@ func (a *App) drawJob(c *gfx.Canvas, st octoprint.State) {
 	if img := pr.Preview(); img != nil {
 		draw.Draw(c.RGBA, image.Rectangle{box.Min, box.Min.Add(img.Bounds().Size())}.Intersect(box), img, img.Bounds().Min, draw.Over)
 	} else {
-		c.Text(box, "Preparing the model view…", gfx.Face(false, 20), dim, gfx.Center)
+		c.Text(image.Rect(box.Min.X, box.Min.Y, box.Max.X, box.Min.Y+220), "Preparing the model view…", gfx.Face(false, 20), dim, gfx.Center)
 	}
+	a.drawScrubber(c, box, st)
 
 	bar := image.Rect(40, 380, W-40, 394)
 	c.RoundRect(bar, 7, raised)
@@ -189,4 +190,37 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 			}}
 		}})
 	}
+}
+
+// drawScrubber is the strip under the model view: a slider through the layers, the layer, and a button to
+// go back to the layer that prints now.
+func (a *App) drawScrubber(c *gfx.Canvas, box image.Rectangle, st octoprint.State) {
+	if st.Layers == 0 {
+		return
+	}
+	pr := a.Printer
+	view := pr.ViewLayer()
+	layerOf := func(f float64) int { return int(f*float64(st.Layers) + 0.5) }
+
+	slider := image.Rect(box.Min.X+18, box.Max.Y-36, box.Max.X-18, box.Max.Y-4)
+	f := float64(st.Layer) / float64(st.Layers)
+	shown := st.Layer
+	switch {
+	case a.dragging != nil && a.dragging.r == slider:
+		f = a.dragFrac
+		shown = layerOf(f)
+	case view >= 0:
+		f, shown = float64(view)/float64(st.Layers), view
+	}
+	col, label := dim, fmt.Sprintf("Layer %d of %d", shown, st.Layers)
+	if view >= 0 || (a.dragging != nil && a.dragging.r == slider) {
+		col = orange
+	}
+	c.Text(image.Rect(box.Min.X+16, box.Min.Y+8, box.Min.X+200, box.Min.Y+34), label, gfx.Face(true, 18), col, gfx.Left)
+	if view >= 0 {
+		live := image.Rect(box.Max.X-100, box.Min.Y+8, box.Max.X-14, box.Min.Y+40)
+		a.button(c, live, "Live", orange, onAcc, func() { pr.SetViewLayer(-1) })
+	}
+	set := func(f float64) { pr.SetViewLayer(layerOf(f)) }
+	a.slider(c, slider, f, orange, set, set)
 }

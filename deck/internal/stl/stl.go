@@ -91,8 +91,9 @@ func project(p [3]float32) (u, v, d float64) {
 }
 
 // Render draws the mesh with flat shading. The part below the height zFrac (0..1 of the model height)
-// is drawn in the printed colour, the rest in the ghost colour.
-func (m *Mesh) Render(w, h int, zFrac float64, printed, ghost color.RGBA) *image.RGBA {
+// is drawn in the printed colour, the rest in the ghost colour. The part from zLow to zFrac, the layer that
+// is printed now, is drawn in the colour hot.
+func (m *Mesh) Render(w, h int, zLow, zFrac float64, printed, hot, ghost color.RGBA) *image.RGBA {
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 	minU, minV, maxU, maxV := math.Inf(1), math.Inf(1), math.Inf(-1), math.Inf(-1)
 	for _, t := range m.Tris {
@@ -111,6 +112,7 @@ func (m *Mesh) Render(w, h int, zFrac float64, printed, ghost color.RGBA) *image
 		zbuf[i] = math.Inf(-1)
 	}
 	zcut := float64(m.MinZ) + zFrac*float64(m.MaxZ-m.MinZ)
+	zlow := float64(m.MinZ) + zLow*float64(m.MaxZ-m.MinZ)
 	for _, t := range m.Tris {
 		var sx, sy, sd [3]float64
 		for i, p := range t.V {
@@ -127,6 +129,9 @@ func (m *Mesh) Render(w, h int, zFrac float64, printed, ghost color.RGBA) *image
 		base := ghost
 		if cz <= zcut {
 			base = printed
+			if cz > zlow {
+				base = hot
+			}
 		}
 		col := color.RGBA{uint8(float64(base.R) * shade), uint8(float64(base.G) * shade), uint8(float64(base.B) * shade), 255}
 		raster(img, zbuf, sx, sy, sd, col)

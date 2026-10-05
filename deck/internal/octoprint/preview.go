@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	PreviewW, PreviewH = 400, 260
+	PreviewW, PreviewH = 400, 220
 	maxDownload        = 80 << 20 // larger files are not drawn
 )
 
@@ -35,13 +35,68 @@ type preview struct {
 	rendering bool
 	img       image.Image
 	imgPos    int64
+
+	// The scrubber of the screen. view is the layer to show (counting from 1), or -1 for the print as it is now.
+	view     int
+	viewImg  image.Image
+	viewBusy bool
 }
 
-// Preview returns the picture of the print, or nil.
+// Preview returns the picture of the print, or nil. It is the layer of the scrubber when there is one,
+// and the print as it is now otherwise.
 func (c *Client) Preview() image.Image {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.pv.view >= 0 && c.pv.viewImg != nil {
+		return c.pv.viewImg
+	}
 	return c.pv.img
+}
+
+// ViewLayer returns the layer of the scrubber, or -1 when the preview follows the print.
+func (c *Client) ViewLayer() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.pv.view
+}
+
+// SetViewLayer shows the model up to a layer (0 is nothing). A negative layer follows the print again.
+// The picture is drawn in the background, and only for the newest layer when the scrubber moves fast.
+func (c *Client) SetViewLayer(layer int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.pv.view = max(layer, -1)
+	if c.pv.view < 0 {
+		c.pv.viewImg = nil
+		return
+	}
+	if c.pv.gc != nil && !c.pv.viewBusy {
+		c.pv.viewBusy = true
+		go c.renderView()
+	}
+}
+
+func (c *Client) renderView() {
+	for {
+		c.mu.Lock()
+		layer, gc, mesh := c.pv.view, c.pv.gc, c.pv.mesh
+		if layer < 0 || gc == nil {
+			c.pv.viewBusy = false
+			c.mu.Unlock()
+			return
+		}
+		c.mu.Unlock()
+
+		img := drawAt(gc, mesh, gc.LayerEnd(layer), gc.LayerStart(layer))
+
+		c.mu.Lock()
+		if c.pv.view == layer { // still the one that is wanted
+			c.pv.viewImg, c.pv.viewBusy = img, false
+			c.mu.Unlock()
+			return
+		}
+		c.mu.Unlock() // the scrubber moved on: draw the new layer
+	}
 }
 
 func (c *Client) updatePreview(st State) {
@@ -49,7 +104,7 @@ func (c *Client) updatePreview(st State) {
 	defer c.mu.Unlock()
 	pv := &c.pv
 	if !st.Busy() || st.FilePath == "" {
-		pv.img, pv.imgPos = nil, 0
+		pv.img, pv.imgPos, pv.view, pv.viewImg = nil, 0, -1, nil
 		return
 	}
 	if pv.path != st.FilePath {
@@ -59,8 +114,8 @@ func (c *Client) updatePreview(st State) {
 		}
 		return
 	}
-	step := max(st.FileSize/200, 1) // draw again every 0.5 percent
-	if pv.gc != nil && !pv.rendering && (pv.img == nil || st.FilePos-pv.imgPos >= step) {
+	// Draw again when the print has moved. A render takes about 30 ms.
+	if pv.gc != nil && !pv.rendering && (pv.img == nil || st.FilePos != pv.imgPos) {
 		pv.rendering = true
 		go c.render(pv.gc, pv.mesh, st.FilePos)
 	}
@@ -80,7 +135,7 @@ func (c *Client) loadModel(path string) {
 	defer c.mu.Unlock()
 	c.pv.loading = false
 	// On failure the path is still stored, so the same file is not tried again every 2 seconds.
-	c.pv.path, c.pv.gc, c.pv.mesh, c.pv.img = path, gc, mesh, nil
+	c.pv.path, c.pv.gc, c.pv.mesh, c.pv.img, c.pv.view = path, gc, mesh, nil, -1
 }
 
 func escape(path string) string {
@@ -155,20 +210,31 @@ func (c *Client) findSTL(gcodePath string) *stl.Mesh {
 
 var (
 	printedColor = color.RGBA{0xff, 0x9f, 0x43, 255}
+	hotColor     = color.RGBA{0xff, 0xf0, 0xb0, 255} // the layer that prints now
 	ghostColor   = color.RGBA{0x55, 0x5e, 0x6d, 255}
 	pathWarm     = color.RGBA{0xff, 0xb3, 0x6b, 255} // toolpath, low layers
 	pathCool     = color.RGBA{0xff, 0x7a, 0x2e, 255} // toolpath, high layers
 	pathGhost    = color.RGBA{0x2c, 0x33, 0x3f, 255}
 )
 
-func (c *Client) render(gc *gcode.Model, mesh *stl.Mesh, pos int64) {
-	var img *image.RGBA
+// drawAt draws the print as it is at file offset pos, with the layer that starts at curStart as the one in progress.
+func drawAt(gc *gcode.Model, mesh *stl.Mesh, pos, curStart int64) *image.RGBA {
 	if mesh != nil {
-		frac := float64(gc.ZAt(pos)) / float64(max(gc.MaxZ, 0.001))
-		img = mesh.Render(PreviewW, PreviewH, frac, printedColor, ghostColor)
-	} else {
-		img = gc.Render(PreviewW, PreviewH, pos, pathWarm, pathCool, pathGhost)
+		top := float64(gc.ZAt(pos)) / float64(max(gc.MaxZ, 0.001))
+		low := 0.0
+		if curStart > 0 {
+			low = float64(gc.ZAt(curStart-1)) / float64(max(gc.MaxZ, 0.001))
+		}
+		if pos < 0 {
+			top = -1
+		}
+		return mesh.Render(PreviewW, PreviewH, low, top, printedColor, hotColor, ghostColor)
 	}
+	return gc.Render(PreviewW, PreviewH, pos, curStart, pathWarm, pathCool, hotColor, pathGhost)
+}
+
+func (c *Client) render(gc *gcode.Model, mesh *stl.Mesh, pos int64) {
+	img := drawAt(gc, mesh, pos, gc.LayerStart(gc.LayerAt(pos)))
 	c.mu.Lock()
 	c.pv.img, c.pv.imgPos, c.pv.rendering = img, pos, false
 	c.mu.Unlock()
