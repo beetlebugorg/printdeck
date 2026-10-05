@@ -24,6 +24,7 @@ import (
 
 	"speakerdeck/internal/amp"
 	"speakerdeck/internal/config"
+	"speakerdeck/internal/connect"
 	"speakerdeck/internal/fb"
 	"speakerdeck/internal/gfx"
 	"speakerdeck/internal/octoprint"
@@ -66,7 +67,9 @@ func run(cfg config.Config, sp *spotify.Client) {
 
 	op := octoprint.New(cfg.OctoPrintURL, cfg.OctoPrintKey)
 	op.ModelDir = cfg.ModelDir
-	am := amp.New(cfg.AlsaCard, cfg.MaxVolume)
+	am := amp.New(cfg.AlsaCard, cfg.MaxVolume, cfg.FloorDB, cfg.CeilDB)
+	conn := connect.New("127.0.0.1:3678")
+	am.OnSet = conn.SetVolume
 
 	app := ui.New()
 	app.Music, app.Printer, app.Vol = sp, op, am
@@ -85,6 +88,12 @@ func run(cfg config.Config, sp *spotify.Client) {
 	}()
 	go op.Run(ctx, app.Redraw)
 	go am.Run(ctx, app.Redraw)
+	// The volume slider of the Spotify app moves the amp, and the amp tells Spotify its volume.
+	go conn.Run(ctx, func(p int) { am.SetRemote(p) }, func() {
+		if v := am.Volume(); v >= 0 {
+			conn.SetVolume(v)
+		}
+	})
 
 	events := make(chan touch.Event, 64)
 	go touch.Run(ctx, touch.Options{InvertX: cfg.TouchInvertX, InvertY: cfg.TouchInvertY, Swap: cfg.TouchSwapXY, Rotate: cfg.Rotate}, events)

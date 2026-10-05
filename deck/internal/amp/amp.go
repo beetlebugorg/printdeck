@@ -1,8 +1,9 @@
 // Package amp controls the volume of the HiFiBerry Amp2 through the ALSA "Digital" control.
 //
-// The percent of the screen is the amplitude of the sound: 100% is 0 dB (full), 50% is -6 dB,
-// 10% is -20 dB, 1% is -40 dB, and 0% is mute. This is not the "mapped" scale of amixer -M,
-// which is a curve over the whole 103 dB range of the control, where 10% is close to silence.
+// The percent on the screen, and in the Spotify app, covers a window of decibels that is useful for
+// the speakers: 0% is mute, 1% is just above the floor, 100% is the ceiling. Inside the window the
+// percent is linear in decibels, which is close to how loudness is heard. The Digital control itself
+// reaches from -103.5 dB to 0 dB, and most of that is either silent or too loud for small speakers.
 // go-librespot must not change the volume as well (external_volume in its config).
 package amp
 
@@ -23,36 +24,46 @@ const (
 	stepDB  = 0.5
 )
 
-// stepFor returns the control step for a percent.
-func stepFor(p int) int {
-	if p <= 0 {
-		return 0
-	}
-	db := 20 * math.Log10(float64(p)/100)
-	return max(1, min(maxStep, int(math.Round(float64(maxStep)+db/stepDB))))
-}
-
-// percentFor returns the percent for a control step.
-func percentFor(step int) int {
-	if step <= 0 {
-		return 0
-	}
-	return int(math.Round(100 * math.Pow(10, float64(step-maxStep)*stepDB/20)))
+// request is a volume to write.
+type request struct {
+	percent int
+	local   bool // from the screen: Spotify is told
 }
 
 type Amp struct {
-	card string
-	max  int
+	card        string
+	max         int
+	floor, ceil float64 // decibels at 0% (just above) and at 100%
+	// OnSet is called with the percent after the amp has been set from the screen.
+	OnSet func(percent int)
 
 	mu     sync.Mutex
 	volume int
-	want   chan int
+	want   chan request
 }
 
 var raw = regexp.MustCompile(`Playback (\d+) \[`)
 
-func New(card string, max int) *Amp {
-	return &Amp{card: card, max: max, want: make(chan int, 1), volume: -1}
+func New(card string, max int, floorDB, ceilDB float64) *Amp {
+	return &Amp{card: card, max: max, floor: floorDB, ceil: ceilDB, want: make(chan request, 1), volume: -1}
+}
+
+// stepFor returns the control step for a percent.
+func (a *Amp) stepFor(p int) int {
+	if p <= 0 {
+		return 0
+	}
+	db := a.floor + float64(min(p, 100))/100*(a.ceil-a.floor)
+	return max(1, min(maxStep, int(math.Round(maxStep+db/stepDB))))
+}
+
+// percentFor returns the percent for a control step.
+func (a *Amp) percentFor(step int) int {
+	if step <= 0 {
+		return 0
+	}
+	db := float64(step-maxStep) * stepDB
+	return max(0, min(100, int(math.Round((db-a.floor)/(a.ceil-a.floor)*100))))
 }
 
 // Volume returns the last known volume in percent, or -1.
@@ -74,11 +85,17 @@ func (a *Amp) read() (int, error) {
 		return 0, fmt.Errorf("no volume in amixer output")
 	}
 	step, err := strconv.Atoi(string(m[1]))
-	return percentFor(step), err
+	return a.percentFor(step), err
 }
 
-// Set changes the volume. Rapid calls are collapsed: only the newest value is written.
-func (a *Amp) Set(p int) {
+// Set changes the volume from the screen. OnSet tells Spotify.
+func (a *Amp) Set(p int) { a.set(p, true) }
+
+// SetRemote changes the volume after the Spotify app changed it. OnSet is not called.
+func (a *Amp) SetRemote(p int) { a.set(p, false) }
+
+// set writes the volume. Rapid calls are collapsed: only the newest value is written.
+func (a *Amp) set(p int, local bool) {
 	p = max(0, min(a.max, p))
 	a.mu.Lock()
 	a.volume = p
@@ -87,7 +104,7 @@ func (a *Amp) Set(p int) {
 	case <-a.want:
 	default:
 	}
-	a.want <- p
+	a.want <- request{p, local}
 }
 
 // Run writes the requested volumes and follows changes made by other programs.
@@ -99,8 +116,11 @@ func (a *Amp) Run(ctx context.Context, notify func()) {
 		select {
 		case <-ctx.Done():
 			return
-		case p := <-a.want:
-			exec.Command("amixer", "-c", a.card, "sset", "Digital", strconv.Itoa(stepFor(p))).Run()
+		case r := <-a.want:
+			exec.Command("amixer", "-c", a.card, "sset", "Digital", strconv.Itoa(a.stepFor(r.percent))).Run()
+			if r.local && a.OnSet != nil {
+				a.OnSet(r.percent)
+			}
 		case <-tick.C:
 			if len(a.want) > 0 {
 				continue
