@@ -52,7 +52,9 @@ services:
     group_add:
       - audio
     volumes:
-      - spotify-config:/config
+      - spotify-config:/config # the Spotify login of the speaker
+      # The settings come from this repo, not from the volume, so an update changes them.
+      - ./docker/spotify/config.yml:/config/config.yml:ro
 
 volumes:
   spotify-config:
