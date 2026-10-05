@@ -154,7 +154,9 @@ func demo(args []string) {
 		f.Close()
 	}
 	snap("music")
-	a.OpenPicker()
+	a.OpenPicker(false)
+	snap("picker-add")
+	a.OpenPicker(true)
 	snap("picker")
 	a.SetTab(ui.TabMusic)
 	a.SetTab(ui.TabPrint)

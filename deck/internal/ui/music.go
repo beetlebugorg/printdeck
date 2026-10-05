@@ -43,8 +43,17 @@ func (a *App) drawMusic(c *gfx.Canvas) {
 		return
 	}
 
-	// Cover art
-	art := image.Rect(80, 64, 80+320, 64+320)
+	// A swipe over the cover and the title: left for the next track, right for the previous one.
+	a.addHit(hit{r: image.Rect(0, contentY0, W, 460), swipe: func(dir int) {
+		if dir > 0 {
+			a.Music.Next()
+		} else {
+			a.Music.Previous()
+		}
+	}})
+
+	// Cover art. It follows the finger during a swipe.
+	art := image.Rect(80, 64, 80+320, 64+320).Add(image.Pt(a.swipeDX, 0))
 	if img := a.Music.Cover(); img != nil && st.Active {
 		c.Cover(art, img)
 	} else {
@@ -52,6 +61,9 @@ func (a *App) drawMusic(c *gfx.Canvas) {
 		msg := "Nothing is playing"
 		if !st.Active {
 			msg = "Press play, or choose\n“Speakerdeck” in Spotify"
+		}
+		if !st.Active {
+			msg = "Press play, or choose\n“Speakerdeck” in Spotify,\nor pick a playlist below"
 		}
 		for i, line := range splitLines(msg) {
 			c.Text(image.Rect(art.Min.X, art.Min.Y+130+i*36, art.Max.X, art.Min.Y+166+i*36), line, gfx.Face(false, 22), dim, gfx.Center)
@@ -61,9 +73,14 @@ func (a *App) drawMusic(c *gfx.Canvas) {
 	c.Text(image.Rect(30, 392, W-30, 430), st.Title, gfx.Face(true, 28), text, gfx.Center)
 	c.Text(image.Rect(30, 430, W-30, 458), st.Artist, gfx.Face(false, 20), dim, gfx.Center)
 
+	// Choose a playlist to play.
+	list := image.Rect(mid-132, 462, mid-132+72, 462+48)
+	drawList(c, list.Min.X+list.Dx()/2, list.Min.Y+list.Dy()/2, 16, dim)
+	a.addHit(hit{r: list, tap: func() { a.openPicker(pickPlay) }})
+
 	// Like and add to a playlist.
 	if st.Active && st.URI != "" {
-		heart := image.Rect(mid-96, 462, mid-96+72, 462+48)
+		heart := image.Rect(mid-36, 462, mid-36+72, 462+48)
 		hc := dim
 		if st.Liked {
 			hc = green
@@ -81,9 +98,9 @@ func (a *App) drawMusic(c *gfx.Canvas) {
 				a.Redraw()
 			}()
 		}})
-		plus := image.Rect(mid+24, 462, mid+24+72, 462+48)
+		plus := image.Rect(mid+60, 462, mid+60+72, 462+48)
 		drawPlus(c, plus.Min.X+plus.Dx()/2, plus.Min.Y+plus.Dy()/2, 16, dim)
-		a.addHit(hit{r: plus, tap: a.openPicker})
+		a.addHit(hit{r: plus, tap: func() { a.openPicker(pickAdd) }})
 	}
 
 	// Progress

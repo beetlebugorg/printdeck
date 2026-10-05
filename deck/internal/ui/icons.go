@@ -88,3 +88,12 @@ func drawPlus(c *gfx.Canvas, cx, cy, r int, col color.RGBA) {
 	c.RoundRect(image.Rect(cx-r, cy-t, cx+r, cy+t), t, col)
 	c.RoundRect(image.Rect(cx-t, cy-r, cx+t, cy+r), t, col)
 }
+
+// drawList draws three lines with a dot at the start of each, for a list of playlists.
+func drawList(c *gfx.Canvas, cx, cy, r int, col color.RGBA) {
+	t := max(r/6, 2)
+	for _, dy := range []int{-r * 2 / 3, 0, r * 2 / 3} {
+		c.RoundRect(image.Rect(cx-r, cy+dy-t, cx-r+2*t, cy+dy+t), t, col)
+		c.RoundRect(image.Rect(cx-r+4*t, cy+dy-t, cx+r, cy+dy+t), t, col)
+	}
+}
