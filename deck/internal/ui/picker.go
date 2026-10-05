@@ -104,16 +104,20 @@ func (a *App) drawPicker(c *gfx.Canvas) {
 			drawPlus(c, r.Max.X-44, r.Min.Y+36, 12, green)
 		}
 		mode := pk.mode
+		if mode == pickPlay && spotify.CanBrowse(pl.URI) {
+			// A tap on the row lists the songs. The triangle plays all of it.
+			a.addHit(hit{r: r, tap: func() { a.openTracks(pl) }})
+			a.addHit(hit{r: image.Rect(r.Max.X-92, r.Min.Y, r.Max.X, r.Max.Y), tap: func() { a.playNow(pl) }})
+			continue
+		}
 		a.addHit(hit{r: r, tap: func() {
 			a.picker = nil
+			if mode == pickPlay {
+				a.playNow(pl)
+				return
+			}
 			go func() {
-				if mode == pickPlay {
-					if err := a.Music.PlayPlaylist(pl.URI); err != nil {
-						a.Toast(errText(err))
-					} else {
-						a.Toast("Playing " + pl.Name)
-					}
-				} else if err := a.Music.AddToPlaylist(pl.ID); err != nil {
+				if err := a.Music.AddToPlaylist(pl.ID); err != nil {
 					a.Toast(errText(err))
 				} else {
 					a.Toast("Added to " + pl.Name)
@@ -126,4 +130,16 @@ func (a *App) drawPicker(c *gfx.Canvas) {
 		a.button(c, image.Rect(24, 636, 24+half, 700), "Previous", raised, text, func() { pk.page-- })
 		a.button(c, image.Rect(24+half+16, 636, W-24, 700), "Next", raised, text, func() { pk.page++ })
 	}
+}
+
+// playNow starts a playlist, and closes the lists.
+func (a *App) playNow(pl spotify.Playlist) {
+	a.picker, a.tracks = nil, nil
+	go func() {
+		if err := a.Music.PlayPlaylist(pl.URI); err != nil {
+			a.Toast(errText(err))
+		} else {
+			a.Toast("Playing " + pl.Name)
+		}
+	}()
 }
