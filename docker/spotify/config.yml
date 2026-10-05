@@ -23,7 +23,7 @@ credentials:
 metadata:
   enabled: true
 
-## The volume is set by the touch screen, on the amp (the ALSA "Digital" control), where 10% is
-## really 10% of the amplitude. go-librespot must not scale the samples as well, or the sound is
-## much quieter than the screen says. The volume slider in the Spotify app then changes nothing.
+## go-librespot must not scale the samples: the speaker volume is set on the amp (the ALSA "Digital"
+## control). The speakerdeck app listens to the volume events of go-librespot, so the volume slider of
+## the Spotify app moves the amp, and the slider on the touch screen moves the volume in the Spotify app.
 external_volume: true

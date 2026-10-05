@@ -39,6 +39,8 @@ services:
       TOUCH_INVERT_Y: ${TOUCH_INVERT_Y:-0}
       TOUCH_SWAP_XY: ${TOUCH_SWAP_XY:-0}
       MAX_VOLUME: ${MAX_VOLUME:-100}
+      VOLUME_FLOOR_DB: ${VOLUME_FLOOR_DB:--40}
+      VOLUME_CEIL_DB: ${VOLUME_CEIL_DB:--10}
       PREHEAT_TOOL: ${PREHEAT_TOOL:-200}
       PREHEAT_BED: ${PREHEAT_BED:-60}
       NOWPLAYING_PORT: "0" # the Inky wHAT is not part of this stack
