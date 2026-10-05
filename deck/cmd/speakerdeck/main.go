@@ -35,7 +35,7 @@ import (
 
 func main() {
 	cfg := config.Load()
-	sp := spotify.New(spotify.Config{ClientID: cfg.SpotifyClientID, DeviceName: cfg.DeviceName, StateDir: cfg.StateDir, LinkBase: cfg.LinkBase})
+	sp := spotify.New(spotify.Config{ClientID: cfg.SpotifyClientID, DeviceName: cfg.DeviceName, StateDir: cfg.StateDir, LinkBase: cfg.LinkBase, LibrespotAddr: "127.0.0.1:3678"})
 
 	if len(os.Args) > 1 {
 		switch os.Args[1] {

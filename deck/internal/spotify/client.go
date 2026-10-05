@@ -26,6 +26,8 @@ type Config struct {
 	// LinkBase is the address of this speaker for the QR code login, like https://pidev.local:8888.
 	// It is empty if the login is not offered on the screen.
 	LinkBase string
+	// LibrespotAddr is the API of go-librespot, like 127.0.0.1:3678. It names what plays.
+	LibrespotAddr string
 }
 
 // State is a snapshot of the player.
@@ -38,6 +40,7 @@ type State struct {
 	Repeat     string // off, context, track
 	Title      string
 	URI        string // spotify:track:... ; empty for nothing
+	Context    string // what plays: spotify:playlist:..., spotify:album:..., or ""
 	Liked      bool   // the track is in Liked Songs
 	Artist     string
 	Album      string
@@ -73,6 +76,7 @@ type Client struct {
 	likedURI  string
 	me        string
 	playlists []Playlist
+	recent    []Playlist // contexts that played on this speaker, newest first
 
 	poke    chan struct{}
 	notify  func()
@@ -82,6 +86,7 @@ type Client struct {
 func New(cfg Config) *Client {
 	c := &Client{cfg: cfg, http: &http.Client{Timeout: 10 * time.Second}, poke: make(chan struct{}, 1)}
 	c.loadToken()
+	c.loadRecent()
 	return c
 }
 
@@ -186,6 +191,10 @@ type playerJSON struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"device"`
+	Context *struct {
+		URI  string `json:"uri"`
+		Type string `json:"type"`
+	} `json:"context"`
 	Item *struct {
 		Name       string                  `json:"name"`
 		URI        string                  `json:"uri"`
@@ -230,6 +239,9 @@ func (c *Client) refresh() bool {
 			Shuffle: p.ShuffleState, Repeat: p.RepeatState,
 			progress: time.Duration(p.ProgressMS) * time.Millisecond, sampled: time.Now(),
 		}
+		if p.Context != nil {
+			st.Context = p.Context.URI
+		}
 		if it := p.Item; it != nil {
 			st.URI = it.URI
 			st.Title, st.Duration = it.Name, time.Duration(it.DurationMS)*time.Millisecond
@@ -261,6 +273,9 @@ func (c *Client) refresh() bool {
 
 	if artURL != have {
 		c.loadCover(artURL)
+	}
+	if st.Context != "" && st.Context != prev.Context && st.Mine {
+		go c.noteContext(st.Context)
 	}
 	if st.URI != prev.URI && strings.HasPrefix(st.URI, "spotify:track:") {
 		go c.checkLiked(st.URI)
