@@ -48,6 +48,8 @@ type Music interface {
 	Playlists() []spotify.Playlist
 	AddToPlaylist(id string) error
 	PlayPlaylist(uri string) error
+	LoadTracks(uri string, offset int) ([]spotify.Track, int, error)
+	PlayTrack(context, track string, follow []string) error
 	LinkURL() string // address for the QR code of the login, or ""
 }
 
@@ -86,6 +88,12 @@ type hit struct {
 	end  func(frac float64) // slider: called on release
 	// swipe is called after a horizontal swipe: 1 for a swipe to the left (next), -1 to the right (previous).
 	swipe func(dir int)
+	// vertical makes a slider (drag) follow the finger up and down.
+	vertical bool
+	// scroll is called while the finger drags on a list, with the movement in pixels (positive is
+	// down). A touch that does not move calls tapAt with the position instead.
+	scroll func(dy int)
+	tapAt  func(p image.Point)
 }
 
 type App struct {
@@ -96,20 +104,24 @@ type App struct {
 
 	Now func() time.Time // replaced in tests
 
-	tab      Tab
-	files    bool        // file list open on the Print tab
-	confirm  *confirmBox // modal question
-	hits     []hit
-	pressed  *hit
-	swiping  *hit // the swipe area that the finger is on
-	swipeDX  int  // how far the finger moved, to draw the cover with it
-	dragging *hit
-	downAt   image.Point
-	dragFrac float64 // while dragging a slider, its value; -1 otherwise
-	wake     chan struct{}
-	posted   chan func() // changes from other goroutines, run by the UI loop
+	tab         Tab
+	files       bool        // file list open on the Print tab
+	confirm     *confirmBox // modal question
+	hits        []hit
+	pressed     *hit
+	scrolling   *hit // the list that the finger is on
+	lastY       int
+	scrollMoved bool
+	swiping     *hit // the swipe area that the finger is on
+	swipeDX     int  // how far the finger moved, to draw the cover with it
+	dragging    *hit
+	downAt      image.Point
+	dragFrac    float64 // while dragging a slider, its value; -1 otherwise
+	wake        chan struct{}
+	posted      chan func() // changes from other goroutines, run by the UI loop
 
-	picker  *picker // list of playlists on the Music tab
+	picker  *picker    // list of playlists on the Music tab
+	tracks  *trackList // the songs of one playlist
 	toast   string
 	toastAt time.Time
 }
@@ -163,7 +175,7 @@ func (a *App) Run(ctx context.Context, events <-chan touch.Event, present func(*
 }
 
 func (a *App) handle(ev touch.Event) {
-	p := image.Pt(int(ev.X*W), int(ev.Y*H))
+	p := image.Pt(int(ev.X*W+0.5), int(ev.Y*H+0.5))
 	switch ev.Kind {
 	case touch.Down:
 		a.downAt = p
@@ -173,9 +185,11 @@ func (a *App) handle(ev touch.Event) {
 				hc := *h // the hit list is rebuilt on each frame, so keep a copy
 				if h.swipe != nil {
 					a.swiping, a.swipeDX = &hc, 0
+				} else if h.scroll != nil {
+					a.scrolling, a.lastY, a.scrollMoved = &hc, p.Y, false
 				} else if h.drag != nil {
 					a.dragging = &hc
-					a.dragFrac = frac(h.r, p)
+					a.dragFrac = fracOf(&hc, p)
 					h.drag(a.dragFrac)
 				} else {
 					a.pressed = &hc
@@ -184,10 +198,20 @@ func (a *App) handle(ev touch.Event) {
 			}
 		}
 	case touch.Move:
-		if a.swiping != nil {
+		if a.scrolling != nil {
+			if abs(p.Y-a.downAt.Y) > 12 {
+				a.scrollMoved = true
+			}
+			if a.scrollMoved {
+				if h := a.find(a.scrolling.r); h != nil {
+					h.scroll(a.lastY - p.Y)
+				}
+			}
+			a.lastY = p.Y
+		} else if a.swiping != nil {
 			a.swipeDX = max(-80, min(80, p.X-a.downAt.X))
 		} else if a.dragging != nil {
-			a.dragFrac = frac(a.dragging.r, p)
+			a.dragFrac = fracOf(a.dragging, p)
 			if h := a.find(a.dragging.r); h != nil {
 				h.drag(a.dragFrac)
 			}
@@ -195,7 +219,14 @@ func (a *App) handle(ev touch.Event) {
 			a.pressed = nil
 		}
 	case touch.Up:
-		if a.swiping != nil {
+		if a.scrolling != nil {
+			h := a.find(a.scrolling.r)
+			moved := a.scrollMoved
+			a.scrolling = nil
+			if h != nil && !moved && h.tapAt != nil {
+				h.tapAt(p)
+			}
+		} else if a.swiping != nil {
 			dx, dy := p.X-a.downAt.X, p.Y-a.downAt.Y
 			h := a.find(a.swiping.r)
 			a.swiping, a.swipeDX = nil, 0
@@ -208,7 +239,7 @@ func (a *App) handle(ev touch.Event) {
 			}
 		} else if a.dragging != nil {
 			if h := a.find(a.dragging.r); h != nil {
-				h.end(frac(h.r, p))
+				h.end(fracOf(h, p))
 			}
 			a.dragging, a.dragFrac = nil, -1
 		} else if a.pressed != nil && p.In(a.pressed.r.Inset(-24)) {
@@ -233,8 +264,12 @@ func (a *App) find(r image.Rectangle) *hit {
 	return nil
 }
 
-func frac(r image.Rectangle, p image.Point) float64 {
-	return max(0, min(1, float64(p.X-r.Min.X)/float64(r.Dx())))
+// fracOf is where a finger is on a slider, from 0 to 1.
+func fracOf(h *hit, p image.Point) float64 {
+	if h.vertical {
+		return max(0, min(1, float64(p.Y-h.r.Min.Y)/float64(h.r.Dy())))
+	}
+	return max(0, min(1, float64(p.X-h.r.Min.X)/float64(h.r.Dx())))
 }
 
 // Draw renders one frame and rebuilds the hit list.
@@ -289,7 +324,7 @@ func (a *App) drawStatus(c *gfx.Canvas) {
 }
 
 func (a *App) setTab(t Tab) {
-	a.tab, a.files, a.confirm, a.picker = t, false, nil, nil
+	a.tab, a.files, a.confirm, a.picker, a.tracks = t, false, nil, nil, nil
 	a.Redraw()
 }
 

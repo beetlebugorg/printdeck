@@ -156,6 +156,8 @@ func demo(args []string) {
 	snap("music")
 	a.OpenPicker(false)
 	snap("picker-add")
+	a.OpenTracks(200)
+	snap("tracks")
 	a.OpenPicker(true)
 	snap("picker")
 	a.SetTab(ui.TabMusic)

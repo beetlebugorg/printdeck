@@ -167,6 +167,11 @@ func (c *Client) AddToPlaylist(id string) error {
 // PlayPlaylist starts a playlist, Liked Songs, or an album on this speaker, also if the music plays elsewhere now.
 // uri is what Playlist.URI says.
 func (c *Client) PlayPlaylist(uri string) error {
+	return c.playOnSpeaker(map[string]any{"context_uri": uri})
+}
+
+// playOnSpeaker sends a play request for this speaker, also if the music plays elsewhere now.
+func (c *Client) playOnSpeaker(body map[string]any) error {
 	b, err := c.do("GET", "/me/player/devices", nil, nil)
 	if err != nil {
 		return err
@@ -182,7 +187,7 @@ func (c *Client) PlayPlaylist(uri string) error {
 	if dev == "" {
 		return errors.New("The speaker is not in Spotify yet")
 	}
-	_, err = c.do("PUT", "/me/player/play", url.Values{"device_id": {dev}}, map[string]any{"context_uri": uri})
+	_, err = c.do("PUT", "/me/player/play", url.Values{"device_id": {dev}}, body)
 	c.Poke()
 	return err
 }

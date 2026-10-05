@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"time"
@@ -59,7 +60,7 @@ func (a *App) SetTab(t Tab) { a.tab, a.picker = t, nil }
 
 // OpenPicker opens the playlist picker; for the demo.
 func (a *App) OpenPicker(play bool) {
-	a.picker = &picker{}
+	a.picker, a.tracks = &picker{}, nil
 	if play {
 		a.picker.mode = pickPlay
 	}
@@ -74,3 +75,21 @@ func (d *DemoMusic) AddToPlaylist(string) error { return nil }
 func (d *DemoMusic) PlayPlaylist(string) error  { return nil }
 
 func (d *DemoMusic) LinkURL() string { return "https://pidev.local:8888/link" }
+
+func (d *DemoMusic) LoadTracks(uri string, offset int) ([]spotify.Track, int, error) {
+	var out []spotify.Track
+	for i := offset; i < min(offset+spotify.TracksPage, 1103); i++ {
+		out = append(out, spotify.Track{URI: fmt.Sprintf("spotify:track:%d", i), Name: fmt.Sprintf("Song number %d", i+1), Artist: "Some Artist"})
+	}
+	return out, 1103, nil
+}
+func (d *DemoMusic) PlayTrack(string, string, []string) error { return nil }
+
+// OpenTracks opens the song list of a playlist, with the rows loaded; for the demo.
+func (a *App) OpenTracks(scroll int) {
+	a.openTracks(spotify.Playlist{URI: "spotify:user:x:collection", Name: "Liked Songs"})
+	tracks, total, _ := a.Music.LoadTracks("", 0)
+	a.tracks.items, a.tracks.total, a.tracks.pages[0] = make([]spotify.Track, total), total, 2
+	copy(a.tracks.items, tracks)
+	a.tracks.scroll = scroll
+}
