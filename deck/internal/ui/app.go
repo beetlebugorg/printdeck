@@ -102,6 +102,7 @@ type App struct {
 	Music                   Music
 	Printer                 Printer
 	Vol                     Volume
+	Equalizer               Equalizer
 	PreheatTool, PreheatBed int
 
 	Now func() time.Time // replaced in tests
@@ -124,6 +125,7 @@ type App struct {
 
 	picker  *picker    // list of playlists on the Music tab
 	tracks  *trackList // the songs of one playlist
+	eqOpen  bool       // the equalizer is open on the Music tab
 	toast   string
 	toastAt time.Time
 }
@@ -326,7 +328,7 @@ func (a *App) drawStatus(c *gfx.Canvas) {
 }
 
 func (a *App) setTab(t Tab) {
-	a.tab, a.files, a.confirm, a.picker, a.tracks = t, false, nil, nil, nil
+	a.tab, a.files, a.confirm, a.picker, a.tracks, a.eqOpen = t, false, nil, nil, nil, false
 	a.Redraw()
 }
 

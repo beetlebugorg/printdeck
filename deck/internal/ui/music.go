@@ -33,6 +33,10 @@ func (a *App) slider(c *gfx.Canvas, hitRect image.Rectangle, f float64, col colo
 func (a *App) drawMusic(c *gfx.Canvas) {
 	st := a.Music.State()
 	mid := W / 2
+	if a.eqOpen && a.Equalizer != nil {
+		a.drawEQ(c)
+		return
+	}
 	if a.tracks != nil {
 		a.drawTracks(c)
 		return
@@ -78,13 +82,24 @@ func (a *App) drawMusic(c *gfx.Canvas) {
 	c.Text(image.Rect(30, 430, W-30, 458), st.Artist, gfx.Face(false, 20), dim, gfx.Center)
 
 	// Choose a playlist to play.
-	list := image.Rect(mid-132, 462, mid-132+72, 462+48)
+	list := image.Rect(mid-180, 462, mid-180+72, 462+48)
 	drawList(c, list.Min.X+list.Dx()/2, list.Min.Y+list.Dy()/2, 16, dim)
 	a.addHit(hit{r: list, tap: func() { a.openPicker(pickPlay) }})
 
+	// The equalizer.
+	if a.Equalizer != nil {
+		eqb := image.Rect(mid+108, 462, mid+108+72, 462+48)
+		ec := dim
+		if a.Equalizer.Preset() != "Flat" {
+			ec = green // the sound is changed
+		}
+		drawSliders(c, eqb.Min.X+eqb.Dx()/2, eqb.Min.Y+eqb.Dy()/2, 16, ec)
+		a.addHit(hit{r: eqb, tap: func() { a.eqOpen = true }})
+	}
+
 	// Like and add to a playlist.
 	if st.Active && st.URI != "" {
-		heart := image.Rect(mid-36, 462, mid-36+72, 462+48)
+		heart := image.Rect(mid-84, 462, mid-84+72, 462+48)
 		hc := dim
 		if st.Liked {
 			hc = green
@@ -102,7 +117,7 @@ func (a *App) drawMusic(c *gfx.Canvas) {
 				a.Redraw()
 			}()
 		}})
-		plus := image.Rect(mid+60, 462, mid+60+72, 462+48)
+		plus := image.Rect(mid+12, 462, mid+12+72, 462+48)
 		drawPlus(c, plus.Min.X+plus.Dx()/2, plus.Min.Y+plus.Dy()/2, 16, dim)
 		a.addHit(hit{r: plus, tap: func() { a.openPicker(pickAdd) }})
 	}

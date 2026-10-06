@@ -97,3 +97,13 @@ func drawList(c *gfx.Canvas, cx, cy, r int, col color.RGBA) {
 		c.RoundRect(image.Rect(cx-r+4*t, cy+dy-t, cx+r, cy+dy+t), t, col)
 	}
 }
+
+// drawSliders draws three vertical sliders, for the equalizer.
+func drawSliders(c *gfx.Canvas, cx, cy, r int, col color.RGBA) {
+	t := max(r/7, 2)
+	for i, k := range []int{-r / 3, r / 3, 0} {
+		x := cx + (i-1)*r*2/3
+		c.RoundRect(image.Rect(x-t, cy-r, x+t, cy+r), t, col)
+		c.RoundRect(image.Rect(x-3*t, cy+k-2*t, x+3*t, cy+k+2*t), 2*t, col)
+	}
+}

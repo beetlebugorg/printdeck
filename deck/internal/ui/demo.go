@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"speakerdeck/internal/eq"
 	"time"
 
 	"speakerdeck/internal/octoprint"
@@ -57,7 +58,7 @@ func (d DemoVolume) Max() int    { return 100 }
 func (d DemoVolume) Set(int)     {}
 
 // SetTab selects a tab; for the demo and for tests.
-func (a *App) SetTab(t Tab) { a.tab, a.picker = t, nil }
+func (a *App) SetTab(t Tab) { a.tab, a.picker, a.eqOpen = t, nil, false }
 
 // OpenPicker opens the playlist picker; for the demo.
 func (a *App) OpenPicker(play bool) {
@@ -97,3 +98,15 @@ func (a *App) OpenTracks(scroll int) {
 
 func (d *DemoPrinter) SetViewLayer(l int) { d.View = l }
 func (d *DemoPrinter) ViewLayer() int     { return d.View }
+
+// DemoEQ is an equalizer without CamillaDSP.
+type DemoEQ struct{ G eq.Gains }
+
+func (d *DemoEQ) Gains() eq.Gains           { return d.G }
+func (d *DemoEQ) SetGain(b int, db float64) { d.G[b] = db }
+func (d *DemoEQ) SetPreset(string)          {}
+func (d *DemoEQ) Preset() string            { return "" }
+func (d *DemoEQ) Connected() bool           { return true }
+
+// OpenEQ opens the equalizer; for the demo.
+func (a *App) OpenEQ() { a.eqOpen, a.picker, a.tracks = true, nil, nil }
