@@ -25,6 +25,7 @@ import (
 	"speakerdeck/internal/amp"
 	"speakerdeck/internal/config"
 	"speakerdeck/internal/connect"
+	"speakerdeck/internal/eq"
 	"speakerdeck/internal/fb"
 	"speakerdeck/internal/gfx"
 	"speakerdeck/internal/octoprint"
@@ -73,6 +74,8 @@ func run(cfg config.Config, sp *spotify.Client) {
 
 	app := ui.New()
 	app.Music, app.Printer, app.Vol = sp, op, am
+	eqc := eq.New("127.0.0.1:1234", cfg.StateDir)
+	app.Equalizer = eqc
 	app.PreheatTool, app.PreheatBed = cfg.PreheatTool, cfg.PreheatBed
 
 	// The Inky wHAT shows the same track as the touch screen.
@@ -88,6 +91,7 @@ func run(cfg config.Config, sp *spotify.Client) {
 	}()
 	go op.Run(ctx, app.Redraw)
 	go am.Run(ctx, app.Redraw)
+	go eqc.Run(ctx, app.Redraw)
 	// The volume slider of the Spotify app moves the amp, and the amp tells Spotify its volume.
 	go conn.Run(ctx, func(p int) { am.SetRemote(p) }, func() {
 		if v := am.Volume(); v >= 0 {
@@ -145,6 +149,7 @@ func demo(args []string) {
 	}
 	a := ui.New()
 	a.Music, a.Printer, a.Vol = m, p, ui.DemoVolume(35)
+	a.Equalizer = &ui.DemoEQ{G: eq.Gains{4, 1.5, 0, -2, 3}}
 	a.PreheatTool, a.PreheatBed = 200, 60
 	snap := func(name string) {
 		c := gfx.New(ui.W, ui.H)
@@ -154,6 +159,9 @@ func demo(args []string) {
 		f.Close()
 	}
 	snap("music")
+	a.OpenEQ()
+	snap("eq")
+	a.SetTab(ui.TabMusic)
 	a.OpenPicker(false)
 	snap("picker-add")
 	a.OpenTracks(200)

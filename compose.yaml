@@ -45,6 +45,19 @@ services:
       PREHEAT_BED: ${PREHEAT_BED:-60}
       NOWPLAYING_PORT: "0" # the Inky wHAT is not part of this stack
 
+  # The equalizer: reads Spotify from the ALSA loopback, plays to the Amp2. Needs the snd-aloop module
+  # on the host (setup/50-deck.sh loads it).
+  camilladsp:
+    build: ./docker/camilladsp
+    restart: unless-stopped
+    network_mode: host
+    devices:
+      - /dev/snd:/dev/snd
+    group_add:
+      - audio
+    volumes:
+      - ./docker/camilladsp/config.yml:/config/config.yml:ro
+
   spotify:
     build: ./docker/spotify
     restart: unless-stopped
