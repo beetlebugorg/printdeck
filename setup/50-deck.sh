@@ -22,6 +22,10 @@ fi
 # A separate Spotify Connect program would use the same name and the same sound card.
 sudo systemctl disable --now raspotify 2>/dev/null || true
 
+# The ALSA loopback carries Spotify to the equalizer (CamillaDSP).
+echo snd-aloop | sudo tee /etc/modules-load.d/snd-aloop.conf >/dev/null
+sudo modprobe snd-aloop
+
 sudo systemctl enable --now docker
 docker compose up -d --build --remove-orphans
 echo "Done. To link Spotify: docker compose run --rm deck auth"

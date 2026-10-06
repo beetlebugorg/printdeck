@@ -5,7 +5,9 @@ audio_backend: alsa
 # Card name, not index: ALSA indices can shift across reboots depending on
 # what else enumerates, but "sndrpihifiberry" is stable. Confirmed working
 # on the real Amp2 on this Pi (card: snd_rpi_hifiberry_dacplus).
-audio_device: "hw:sndrpihifiberry"
+# Spotify plays into the ALSA loopback. CamillaDSP takes it from there, applies the equalizer,
+# and plays it to the Amp2 (hw:sndrpihifiberry).
+audio_device: "hw:Loopback,0"
 
 server:
   enabled: true
