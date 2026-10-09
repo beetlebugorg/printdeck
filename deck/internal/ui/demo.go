@@ -110,3 +110,34 @@ func (d *DemoEQ) Connected() bool           { return true }
 
 // OpenEQ opens the equalizer; for the demo.
 func (a *App) OpenEQ() { a.eqOpen, a.picker, a.tracks = true, nil, nil }
+
+func (d *DemoPrinter) Gcode(...string) error            { return nil }
+func (d *DemoPrinter) Home(...string) error             { return nil }
+func (d *DemoPrinter) Jog(x, y, z float64, s int) error { return nil }
+func (d *DemoPrinter) SetToolTemp(int) error            { return nil }
+func (d *DemoPrinter) SetBedTemp(int) error             { return nil }
+func (d *DemoPrinter) Extrude(float64, int) error       { return nil }
+func (d *DemoPrinter) Fan(int) error                    { return nil }
+func (d *DemoPrinter) MotorsOff() error                 { return nil }
+func (d *DemoPrinter) SpeedFactor(int) error            { return nil }
+func (d *DemoPrinter) FlowFactor(int) error             { return nil }
+func (d *DemoPrinter) BabyStep(float64) error           { return nil }
+func (d *DemoPrinter) EmergencyStop() error             { return nil }
+func (d *DemoPrinter) FirmwareRestart() error           { return nil }
+
+// OpenPrintScreen opens a screen of the Print tab by name; for the demo.
+func (a *App) OpenPrintScreen(name string) {
+	a.tab, a.control, a.tune, a.swap, a.keypad = TabPrint, false, false, nil, nil
+	switch name {
+	case "control":
+		a.control = true
+	case "tune":
+		a.tune = true
+	case "swap":
+		a.swap = &swapState{}
+	case "swap-heat":
+		a.swap = &swapState{step: swapHeat, temp: 240}
+	case "keypad":
+		a.editTemp("Nozzle temperature", 210, 300, toolPresets, func(int) error { return nil })
+	}
+}
