@@ -23,11 +23,13 @@ type Config struct {
 	OctoPrintKey string
 	ModelDir     string // folder with STL files for the preview
 
-	AlsaCard        string
-	MaxVolume       int
-	FloorDB, CeilDB float64 // the decibels at 0% and 100% of the volume
-	PreheatTool     int
-	PreheatBed      int
+	AlsaCard         string
+	MaxVolume        int
+	FloorDB, CeilDB  float64 // the decibels at 0% and 100% of the volume
+	PreheatTool      int
+	UnloadMM, LoadMM float64 // filament lengths of the swap
+	JogInvertY       bool
+	PreheatBed       int
 }
 
 func Load() Config {
