@@ -50,6 +50,9 @@ func Load() Config {
 		FloorDB:         float64(num("VOLUME_FLOOR_DB", -40)),
 		CeilDB:          float64(num("VOLUME_CEIL_DB", -10)),
 		PreheatTool:     num("PREHEAT_TOOL", 200),
+		UnloadMM:        float64(num("FILAMENT_UNLOAD_MM", 80)),
+		LoadMM:          float64(num("FILAMENT_LOAD_MM", 70)),
+		JogInvertY:      num("JOG_INVERT_Y", 0) == 1,
 		PreheatBed:      num("PREHEAT_BED", 60),
 	}
 }

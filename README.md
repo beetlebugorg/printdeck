@@ -27,6 +27,9 @@ A small Spotify player and OctoPrint host on a Raspberry Pi 5.
   - The equalizer button opens five bands (80 Hz to 10 kHz, ±12 dB) and presets. The setting is saved in `/var/lib/speakerdeck/eq.json`. A boost lowers the overall gain by the same amount, so it cannot clip.
   - The heart adds the track to Liked Songs or removes it. The plus button adds it to one of your playlists.
   - The volume slider and the volume of the Spotify app are the same volume. They set the `Digital` control of the Amp2. The percent covers a window of decibels that fits the speakers (`VOLUME_FLOOR_DB` to `VOLUME_CEIL_DB`, -40 to -10 dB at first).
+  - Control (when no print runs): home X, Y, Z; a joystick moves the head (faster further out, stops when you lift the finger); Z in steps of 0.1, 1, 10 mm; extrude and retract; fan; motors off; emergency stop. A filament swap leads through heat, unload, load, and purge.
+  - Tune (while a print runs): speed and flow in percent, Z offset in baby steps, fan.
+  - Tap a temperature to set it with a keypad.
   - The status bar shows the other tab: "Printing 42%" on the Music tab, and the current track on the Print tab.
 
 ## Installation
@@ -43,7 +46,7 @@ A small Spotify player and OctoPrint host on a Raspberry Pi 5.
 
 To update: `git pull`, then `docker compose up -d --build`.
 
-Settings are in `.env`: `DISPLAY_ROTATE` (90 or 270), `TOUCH_INVERT_X`, `TOUCH_INVERT_Y`, `TOUCH_SWAP_XY` (0 or 1), `VOLUME_FLOOR_DB`, `VOLUME_CEIL_DB`, `MAX_VOLUME`, `PREHEAT_TOOL`, `PREHEAT_BED`.
+Settings are in `.env`: `DISPLAY_ROTATE` (90 or 270), `TOUCH_INVERT_X`, `TOUCH_INVERT_Y`, `TOUCH_SWAP_XY` (0 or 1), `VOLUME_FLOOR_DB`, `VOLUME_CEIL_DB`, `MAX_VOLUME`, `PREHEAT_TOOL`, `PREHEAT_BED`, `FILAMENT_UNLOAD_MM`, `FILAMENT_LOAD_MM`, `JOG_INVERT_Y`.
 
 To look at the screens without the hardware, run `go run ./cmd/speakerdeck demo /tmp/shots` in `deck/`. It writes PNG files.
 

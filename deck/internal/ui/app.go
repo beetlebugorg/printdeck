@@ -67,6 +67,21 @@ type Printer interface {
 	Connect()
 	Heat(tool, bed int)
 	PrintFile(path string)
+
+	// Control, like the menus of the printer's own display. These wait for OctoPrint and return its refusal.
+	Gcode(lines ...string) error
+	Home(axes ...string) error
+	Jog(x, y, z float64, speed int) error
+	SetToolTemp(t int) error
+	SetBedTemp(t int) error
+	Extrude(mm float64, speed int) error
+	Fan(percent int) error
+	MotorsOff() error
+	SpeedFactor(p int) error
+	FlowFactor(p int) error
+	BabyStep(mm float64) error
+	EmergencyStop() error
+	FirmwareRestart() error
 }
 
 // Volume is the amplifier.
@@ -96,7 +111,15 @@ type hit struct {
 	// down). A touch that does not move calls tapAt with the position instead.
 	scroll func(dy int)
 	tapAt  func(p image.Point)
+	// pad follows the finger from Down to Up, for the joystick: phase is padDown, padMove, or padUp.
+	pad func(p image.Point, phase int)
 }
+
+const (
+	padDown = iota
+	padMove
+	padUp
+)
 
 type App struct {
 	Music                   Music
@@ -113,6 +136,7 @@ type App struct {
 	hits        []hit
 	pressed     *hit
 	scrolling   *hit // the list that the finger is on
+	padding     *hit // the joystick that the finger is on
 	lastY       int
 	scrollMoved bool
 	swiping     *hit // the swipe area that the finger is on
@@ -126,8 +150,25 @@ type App struct {
 	picker  *picker    // list of playlists on the Music tab
 	tracks  *trackList // the songs of one playlist
 	eqOpen  bool       // the equalizer is open on the Music tab
-	toast   string
-	toastAt time.Time
+	control bool       // the control screen is open on the Print tab
+	tune    bool       // the tune sheet of a running print is open
+	swap    *swapState // the filament swap is open
+	keypad  *keypad    // number entry, over everything
+
+	// Settings of the control screens.
+	UnloadMM, LoadMM float64 // filament lengths of the swap
+	JogInvertY       bool    // up on the joystick moves Y back instead of forward
+
+	joy    *joystick
+	zStep  float64 // mm per tap of the Z buttons
+	fanSet int     // the last fan setting from the screen, -1 if none
+
+	// The tune sheet, counted from the start of the print in tuneFile.
+	tuneFile            string
+	tuneSpeed, tuneFlow int
+	tuneZ               float64
+	toast               string
+	toastAt             time.Time
 }
 
 type confirmBox struct {
@@ -137,7 +178,8 @@ type confirmBox struct {
 }
 
 func New() *App {
-	return &App{Now: time.Now, dragFrac: -1, wake: make(chan struct{}, 1), posted: make(chan func(), 16)}
+	return &App{Now: time.Now, dragFrac: -1, wake: make(chan struct{}, 1), posted: make(chan func(), 16),
+		joy: &joystick{}, zStep: 1, fanSet: -1, UnloadMM: 80, LoadMM: 70, tuneSpeed: 100, tuneFlow: 100}
 }
 
 // Redraw asks for a new frame. It is safe to call from any goroutine.
@@ -187,7 +229,10 @@ func (a *App) handle(ev touch.Event) {
 			h := &a.hits[i]
 			if p.In(h.r) {
 				hc := *h // the hit list is rebuilt on each frame, so keep a copy
-				if h.swipe != nil {
+				if h.pad != nil {
+					a.padding = &hc
+					h.pad(p, padDown)
+				} else if h.swipe != nil {
 					a.swiping, a.swipeDX = &hc, 0
 				} else if h.scroll != nil {
 					a.scrolling, a.lastY, a.scrollMoved = &hc, p.Y, false
@@ -202,7 +247,11 @@ func (a *App) handle(ev touch.Event) {
 			}
 		}
 	case touch.Move:
-		if a.scrolling != nil {
+		if a.padding != nil {
+			if h := a.find(a.padding.r); h != nil {
+				h.pad(p, padMove)
+			}
+		} else if a.scrolling != nil {
 			if abs(p.Y-a.downAt.Y) > 12 {
 				a.scrollMoved = true
 			}
@@ -223,7 +272,11 @@ func (a *App) handle(ev touch.Event) {
 			a.pressed = nil
 		}
 	case touch.Up:
-		if a.scrolling != nil {
+		if a.padding != nil {
+			// The finger may lift after the screen changed: the joystick must stop all the same.
+			a.padding.pad(p, padUp)
+			a.padding = nil
+		} else if a.scrolling != nil {
 			h := a.find(a.scrolling.r)
 			moved := a.scrollMoved
 			a.scrolling = nil
@@ -288,6 +341,9 @@ func (a *App) Draw(c *gfx.Canvas) {
 	a.drawStatus(c)
 	a.drawTabs(c)
 	a.drawToast(c)
+	if a.keypad != nil {
+		a.drawKeypad(c)
+	}
 	if a.confirm != nil {
 		a.drawConfirm(c)
 	}
@@ -329,6 +385,7 @@ func (a *App) drawStatus(c *gfx.Canvas) {
 
 func (a *App) setTab(t Tab) {
 	a.tab, a.files, a.confirm, a.picker, a.tracks, a.eqOpen = t, false, nil, nil, nil, false
+	a.control, a.tune, a.swap, a.keypad = false, false, nil, nil
 	a.Redraw()
 }
 

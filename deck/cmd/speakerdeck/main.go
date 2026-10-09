@@ -77,6 +77,7 @@ func run(cfg config.Config, sp *spotify.Client) {
 	eqc := eq.New("127.0.0.1:1234", cfg.StateDir)
 	app.Equalizer = eqc
 	app.PreheatTool, app.PreheatBed = cfg.PreheatTool, cfg.PreheatBed
+	app.UnloadMM, app.LoadMM, app.JogInvertY = cfg.UnloadMM, cfg.LoadMM, cfg.JogInvertY
 
 	// The Inky wHAT shows the same track as the touch screen.
 	if cfg.NowPlayingPort > 0 {
@@ -178,8 +179,16 @@ func demo(args []string) {
 	snap("print-heating")
 	p.State_.Activity, p.State_.Tool, p.State_.ToolTarget = "Wiping nozzle", 160, 160
 	snap("print-wipe")
+	a.OpenPrintScreen("tune")
+	snap("print-tune")
 	p.State_ = octoprint.State{Reachable: true, Text: "Operational", Connected: true, Tool: 24, Bed: 23}
+	a.OpenPrintScreen("")
 	snap("print-idle")
+	for _, n := range []string{"control", "swap", "swap-heat", "keypad"} {
+		a.OpenPrintScreen(n)
+		snap("print-" + n)
+	}
+	a.OpenPrintScreen("")
 	m.State_ = spotify.State{Authorized: true}
 	a.SetTab(ui.TabMusic)
 	snap("music-idle")
