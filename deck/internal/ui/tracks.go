@@ -101,7 +101,7 @@ func (a *App) drawTracks(c *gfx.Canvas) {
 				c.RoundRect(image.Rect(r.Min.X, r.Min.Y+10, r.Min.X+5, r.Max.Y-10), 2, green)
 			}
 			c.Text(image.Rect(r.Min.X+16, r.Min.Y+5, r.Max.X-12, r.Min.Y+34), t.Name, gfx.Face(true, 20), col, gfx.Left)
-			c.Text(image.Rect(r.Min.X+16, r.Min.Y+32, r.Max.X-12, r.Max.Y-4), t.Artist, gfx.Face(false, 16), dim, gfx.Left)
+			c.Text(image.Rect(r.Min.X+16, r.Min.Y+32, r.Max.X-12, r.Max.Y-4), t.Artist, gfx.Face(true, 16), dim, gfx.Left)
 		}
 	}
 	c.Fill(image.Rect(0, contentY0, W, listTop), bg)
@@ -134,7 +134,7 @@ func (a *App) drawTracks(c *gfx.Canvas) {
 	if tl.total > 0 {
 		sub = itoa(tl.total) + " songs"
 	}
-	c.Text(image.Rect(132, 88, W-142, 112), sub, gfx.Face(false, 16), dim, gfx.Center)
+	c.Text(image.Rect(132, 88, W-142, 112), sub, gfx.Face(true, 16), dim, gfx.Center)
 
 	if tl.err != "" || tl.total == 0 {
 		return

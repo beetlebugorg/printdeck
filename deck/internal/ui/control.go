@@ -247,7 +247,7 @@ func (a *App) drawControl(c *gfx.Canvas) {
 	}
 	btn(image.Rect(24+tw+8, y, 24+2*tw+8, y+76), "Motors off", raised, text, pr.MotorsOff)
 	if st.Connected {
-		a.button(c, image.Rect(W-24-tw, y, W-24, y+76), "Stop", red, onAcc, func() {
+		a.button(c, image.Rect(W-24-tw, y, W-24, y+76), "Stop", redCap, onRed, func() {
 			a.confirm = &confirmBox{question: "Stop the printer now?", yes: "Stop", danger: true, onYes: func() { a.do(pr.EmergencyStop) }}
 		})
 	}
