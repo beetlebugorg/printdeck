@@ -3,8 +3,10 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"image"
 	"image/color"
+	"strings"
 	"time"
 
 	"speakerdeck/internal/gfx"
@@ -19,18 +21,6 @@ const (
 	tabH      = 72
 	contentY0 = statusH
 	contentY1 = H - tabH
-)
-
-var (
-	bg      = color.RGBA{0x0b, 0x0d, 0x10, 255}
-	surface = color.RGBA{0x1a, 0x1f, 0x27, 255}
-	raised  = color.RGBA{0x2a, 0x31, 0x3c, 255}
-	text    = color.RGBA{0xf2, 0xf4, 0xf7, 255}
-	dim     = color.RGBA{0x8b, 0x93, 0xa1, 255}
-	green   = color.RGBA{0x1e, 0xd7, 0x60, 255}
-	orange  = color.RGBA{0xff, 0x9f, 0x43, 255}
-	red     = color.RGBA{0xff, 0x5c, 0x5c, 255}
-	onAcc   = color.RGBA{0x06, 0x10, 0x08, 255}
 )
 
 // Music is what the Music tab needs from Spotify.
@@ -358,28 +348,30 @@ func (a *App) isPressed(r image.Rectangle) bool {
 	return a.pressed != nil && a.pressed.r == r
 }
 
+// drawStatus is the display strip at the top: the time, and what the other tab is doing.
 func (a *App) drawStatus(c *gfx.Canvas) {
 	c.Fill(image.Rect(0, 0, W, statusH), bg)
-	c.Text(image.Rect(20, 0, 140, statusH), a.Now().Format("15:04"), gfx.Face(true, 26), text, gfx.Left)
+	win := image.Rect(10, 8, W-10, statusH-6)
+	window(c, win)
+	c.Text(image.Rect(win.Min.X+12, win.Min.Y, win.Min.X+120, win.Max.Y), a.Now().Format("15:04"), gfx.Face(true, 24), lcdInk, gfx.Left)
 
 	// A short summary of the other tab. Tapping it opens that tab.
 	var s string
-	var col color.RGBA
 	var to Tab
 	if a.tab == TabMusic {
 		if p := a.Printer.State(); p.Busy() {
-			s, col, to = "Printing "+pct(p.Completion), orange, TabPrint
+			s, to = "PRINT "+pct(p.Completion), TabPrint
 			if p.Paused {
-				s = "Paused " + pct(p.Completion)
+				s = "PAUSED " + pct(p.Completion)
 			}
 		}
 	} else if m := a.Music.State(); m.Playing && m.Title != "" {
-		s, col, to = m.Title, green, TabMusic
+		s, to = "♪ "+m.Title, TabMusic
 	}
 	if s != "" {
-		r := image.Rect(150, 8, W-12, statusH-8)
+		r := image.Rect(130, win.Min.Y, win.Max.X-12, win.Max.Y)
 		a.addHit(hit{r: r, tap: func() { a.setTab(to) }})
-		c.Text(image.Rect(r.Min.X, r.Min.Y, r.Max.X, r.Max.Y), s, gfx.Face(false, 20), col, gfx.Right)
+		c.Text(r, s, gfx.Face(false, 18), lcdInk, gfx.Right)
 	}
 }
 
@@ -389,21 +381,23 @@ func (a *App) setTab(t Tab) {
 	a.Redraw()
 }
 
+// drawTabs is the mode switch at the bottom: two keys, the LED of the active one is lit.
 func (a *App) drawTabs(c *gfx.Canvas) {
-	c.Fill(image.Rect(0, contentY1, W, H), surface)
-	for i, t := range []struct {
-		name string
-		col  color.RGBA
-	}{{"Music", green}, {"Print", orange}} {
-		r := image.Rect(i*W/2, contentY1, (i+1)*W/2, H)
+	c.Fill(image.Rect(0, contentY1, W, H), bg)
+	c.Fill(image.Rect(0, contentY1, W, contentY1+1), edge)
+	for i, name := range []string{"Music", "Print"} {
+		r := image.Rect(16+i*(W/2-8), contentY1+12, (i+1)*(W/2-8), H-10)
 		tab := Tab(i)
-		a.addHit(hit{r: r, tap: func() { a.setTab(tab) }})
-		col := dim
-		if a.tab == tab {
-			col = t.col
-			c.Fill(image.Rect(r.Min.X+60, r.Min.Y, r.Max.X-60, r.Min.Y+4), col)
+		active := a.tab == tab
+		cap, ink := raised, text
+		if active {
+			cap, ink = text, raised
 		}
-		c.Text(r, t.name, gfx.Face(true, 24), col, gfx.Center)
+		key(c, r, "", cap, ink, a.isPressed(r))
+		face := image.Rect(r.Min.X, r.Min.Y, r.Max.X, r.Max.Y-5)
+		led(c, face.Min.X+22, face.Min.Y+face.Dy()/2, active)
+		c.Text(image.Rect(face.Min.X+36, face.Min.Y, face.Max.X-12, face.Max.Y), fmt.Sprintf("%02d %s", i+1, strings.ToUpper(name)), gfx.Face(true, 18), ink, gfx.Center)
+		a.addHit(hit{r: r, tap: func() { a.setTab(tab) }})
 	}
 }
 
@@ -416,7 +410,7 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 		}
 	}
 	box := image.Rect(30, 260, W-30, 540)
-	c.RoundRect(box, 24, surface)
+	panel(c, box, "CONFIRM")
 	c.Text(image.Rect(box.Min.X+20, box.Min.Y+30, box.Max.X-20, box.Min.Y+150), a.confirm.question, gfx.Face(true, 28), text, gfx.Center)
 	cf := a.confirm
 	a.button(c, image.Rect(box.Min.X+20, box.Max.Y-100, box.Min.X+(box.Dx()/2)-8, box.Max.Y-20), "Back", raised, text, func() { a.confirm = nil; a.Redraw() })
@@ -427,13 +421,9 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 	a.button(c, image.Rect(box.Min.X+(box.Dx()/2)+8, box.Max.Y-100, box.Max.X-20, box.Max.Y-20), cf.yes, yes, onAcc, func() { a.confirm = nil; cf.onYes(); a.Redraw() })
 }
 
-// button draws a rounded button and registers it.
+// button draws a key and registers it. fill is the colour of the cap.
 func (a *App) button(c *gfx.Canvas, r image.Rectangle, label string, fill, fg color.RGBA, tap func()) {
-	if a.isPressed(r) {
-		fill = lighten(fill)
-	}
-	c.RoundRect(r, 18, fill)
-	c.Text(r, label, gfx.Face(true, 26), fg, gfx.Center)
+	key(c, r, label, fill, fg, a.isPressed(r))
 	a.addHit(hit{r: r, tap: tap})
 }
 
@@ -461,8 +451,8 @@ func (a *App) drawToast(c *gfx.Canvas) {
 		return
 	}
 	r := image.Rect(30, contentY1-64, W-30, contentY1-12)
-	c.RoundRect(r, 26, raised)
-	c.Text(image.Rect(r.Min.X+16, r.Min.Y, r.Max.X-16, r.Max.Y), a.toast, gfx.Face(true, 20), text, gfx.Center)
+	window(c, r)
+	c.Text(image.Rect(r.Min.X+16, r.Min.Y, r.Max.X-16, r.Max.Y), strings.ToUpper(a.toast), gfx.Face(true, 16), lcdInk, gfx.Center)
 }
 
 func abs(v int) int {

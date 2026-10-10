@@ -90,7 +90,7 @@ func (a *App) drawTracks(c *gfx.Canvas) {
 		for i := first; i < len(tl.items) && listTop+i*trackRowH-tl.scroll < listBottom; i++ {
 			y := listTop + i*trackRowH - tl.scroll
 			r := image.Rect(20, y, W-scrubW-8, y+trackRowH-6)
-			c.RoundRect(r, 12, surface)
+			plate(c, r)
 			t := tl.items[i]
 			if t.URI == "" {
 				continue
@@ -149,7 +149,7 @@ func (a *App) drawTracks(c *gfx.Canvas) {
 	// The strip on the right jumps through the whole list.
 	strip := image.Rect(W-scrubW-4, listTop, W-4, listBottom)
 	track := image.Rect(strip.Max.X-26, strip.Min.Y, strip.Max.X-14, strip.Max.Y)
-	c.RoundRect(track, 6, surface)
+	c.RoundRect(track, 6, lcd)
 	frac := 0.0
 	if m := tl.maxScroll(); m > 0 {
 		frac = float64(tl.scroll) / float64(m)
@@ -161,7 +161,8 @@ func (a *App) drawTracks(c *gfx.Canvas) {
 	if a.dragging != nil && a.dragging.r == strip {
 		col = green
 	}
-	c.RoundRect(thumb, 12, col)
+	_ = col
+	faderCap(c, thumb.Min.X+thumb.Dx()/2, thumb.Min.Y+thumb.Dy()/2, true)
 	// The handle is centred on the finger: its centre can go from half a handle below the top to half above the bottom.
 	jump := func(f float64) {
 		g := (f*float64(viewH) - float64(thumbH)/2) / float64(viewH-thumbH)

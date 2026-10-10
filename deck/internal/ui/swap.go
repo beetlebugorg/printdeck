@@ -26,7 +26,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 	sw := a.swap
 	pr := a.Printer
 	st := pr.State()
-	c.Text(image.Rect(24, 64, W-150, 108), "Filament swap", gfx.Face(true, 28), text, gfx.Left)
+	heading(c, "Filament swap")
 	a.button(c, image.Rect(W-130, 66, W-24, 110), "Close", raised, text, func() { a.swap = nil })
 
 	step := func(n int, title string) {
@@ -66,12 +66,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 	case swapHeat:
 		step(2, "Heating the nozzle")
 		c.Text(image.Rect(24, 220, W-24, 300), fmt.Sprintf("%.0f° / %d°", st.Tool, sw.temp), gfx.Face(true, 56), text, gfx.Center)
-		bar := image.Rect(40, 320, W-40, 340)
-		c.RoundRect(bar, 10, raised)
-		f := max(0, min(1, st.Tool/float64(max(sw.temp, 1))))
-		fill := bar
-		fill.Max.X = bar.Min.X + int(f*float64(bar.Dx()))
-		c.RoundRect(fill, 10, orange)
+		segments(c, image.Rect(40, 320, W-40, 340), max(0, min(1, st.Tool/float64(max(sw.temp, 1)))))
 		para(370, "The next step starts when the nozzle", "is hot.")
 		if st.Tool >= float64(sw.temp)-3 {
 			sw.step = swapUnload
