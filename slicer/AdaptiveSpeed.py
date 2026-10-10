@@ -89,7 +89,7 @@ def kind_of(t):
 
 class Move:
     __slots__ = ("chunk", "line", "x0", "y0", "z0", "x1", "y1", "z1", "de", "feed", "kind", "accel", "extrude", "speed", "length", "has_f",
-                 "over", "bridge")
+                 "over", "bridge", "reason")
 
     def __init__(self, chunk, line, x0, y0, z0, x1, y1, z1, de, feed, kind, accel, has_f):
         self.chunk, self.line = chunk, line
@@ -100,6 +100,7 @@ class Move:
         self.speed = feed  # mm/s; the new speed of an extrusion move
         self.over = 0.0  # 0..1: how much the move sticks out past the layer below
         self.bridge = False  # nothing below for most of the move
+        self.reason = ""  # what decided the new speed, for the report in the header
 
 
 WORD = re.compile(r"([A-Za-z])\s*([-+]?[0-9]*\.?[0-9]+)")
@@ -314,35 +315,37 @@ def small_features(chains):
     return out
 
 
-def seg_dist(px, py, m):
-    dx, dy = m.x1 - m.x0, m.y1 - m.y0
-    L2 = dx * dx + dy * dy
-    t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - m.x0) * dx + (py - m.y0) * dy) / L2))
-    return math.hypot(px - (m.x0 + t * dx), py - (m.y0 + t * dy))
-
-
-def overhangs(ext, below, area, cell=2.0):
-    """Sets m.over and m.bridge from the distance of points along each move to the lines of the layer below.
+def overhangs(ext, below, area, cell=1.0):
+    """Sets m.over and m.bridge: which parts of each move have a line of the layer below under them.
     Infill is left out: it always crosses the gaps of the sparse infill below."""
+    # The lines below in a grid of cells, each as (x0, y0, dx, dy, length²), for the test "a line within r".
     grid = {}
     for b in below:
         if not b.extrude:
             continue
-        for gx in range(int(min(b.x0, b.x1) // cell), int(max(b.x0, b.x1) // cell) + 1):
-            for gy in range(int(min(b.y0, b.y1) // cell), int(max(b.y0, b.y1) // cell) + 1):
-                grid.setdefault((gx, gy), []).append(b)
+        dx, dy = b.x1 - b.x0, b.y1 - b.y0
+        seg = (b.x0, b.y0, dx, dy, dx * dx + dy * dy)
+        # The cells that the line passes through: points every half cell along it.
+        steps = int(b.length / (0.5 * cell)) + 1
+        cells = {(int((b.x0 + dx * k / steps) // cell), int((b.y0 + dy * k / steps) // cell)) for k in range(steps + 1)}
+        for c in cells:
+            grid.setdefault(c, []).append(seg)
     if not grid:
         return
     h = max(1e-3, ext[0].z1 - max(b.z1 for b in below if b.extrude))
 
-    def dist(px, py):
-        cx, cy = int(px // cell), int(py // cell)
-        best = float("inf")
-        for gx in (cx - 1, cx, cx + 1):
-            for gy in (cy - 1, cy, cy + 1):
-                for b in grid.get((gx, gy), ()):
-                    best = min(best, seg_dist(px, py, b))
-        return best
+    def near(px, py, r):
+        """True if a line below passes within r of the point. Stops at the first one it finds."""
+        r2 = r * r
+        for gx in range(int((px - r) // cell), int((px + r) // cell) + 1):
+            for gy in range(int((py - r) // cell), int((py + r) // cell) + 1):
+                for x0, y0, dx, dy, l2 in grid.get((gx, gy), ()):
+                    t = 0.0 if l2 == 0 else ((px - x0) * dx + (py - y0) * dy) / l2
+                    t = 0.0 if t < 0 else 1.0 if t > 1 else t
+                    ex, ey = px - x0 - t * dx, py - y0 - t * dy
+                    if ex * ex + ey * ey <= r2:
+                        return True
+        return False
 
     for m in ext:
         if m.kind == INFILL:
@@ -353,15 +356,18 @@ def overhangs(ext, below, area, cell=2.0):
         # Across the width of the line, five points: each is supported if a line below covers it (a line
         # below covers half a width each side of its middle). The part that is not supported is the overhang.
         nx, ny = -(m.y1 - m.y0) / m.length, (m.x1 - m.x0) / m.length
-        offsets = (-0.5 * w, -0.25 * w, 0.0, 0.25 * w, 0.5 * w)
-        n = max(1, int(m.length))  # every mm along the move
+        cover = 0.5 * w + 0.05
+        n = min(16, max(1, int(m.length)))  # every mm along the move, at most 16 points
         out_parts, far = [], 0
         for k in range(n):
             t = (k + 0.5) / n
             px, py = m.x0 + t * (m.x1 - m.x0), m.y0 + t * (m.y1 - m.y0)
-            free = sum(1 for o in offsets if dist(px + o * nx, py + o * ny) > 0.5 * w + 0.05)
-            out_parts.append(free / len(offsets))
-            if dist(px, py) > 1.5 * w:
+            # The middle and the two edges first; the points between them only if one of those is free.
+            free = sum(1 for o in (-0.5 * w, 0.0, 0.5 * w) if not near(px + o * nx, py + o * ny, cover))
+            if free:
+                free += sum(1 for o in (-0.25 * w, 0.25 * w) if not near(px + o * nx, py + o * ny, cover))
+            out_parts.append(free / 5)
+            if free and not near(px, py, 1.5 * w):
                 far += 1
         # Up to a fifth out is normal; more than two thirds out is a full overhang.
         m.over = sum(max(0.0, min(1.0, (f - 0.2) / 0.47)) for f in out_parts) / n
@@ -438,6 +444,7 @@ class AdaptiveSpeed(Script):
         out = self._write(data, moves, layers, p)
         after = sum(move_time(ms, [m.speed if m.extrude else m.feed for m in ms], p["corner_velocity"]) for _, _, ms in layers)
         report = ["%d layers slowed for the minimum layer time" % slowed] if slowed else []
+        report += breakdown([m for _, _, ms in tuned for m in ms if m.extrude])
         return self._header(out, before, after, report, p)
 
     def _adapt(self, ms, below, p, boost, cap, area):
@@ -457,22 +464,37 @@ class AdaptiveSpeed(Script):
             # Straight runs: the boost of the kind, more for longer runs (never over air). Short paths: slower.
             air = m.bridge or m.over > 0.05
             f = 1.0 if air else 1 + (boost[m.kind] - 1) * min(1.0, runs[m] / long_)
+            slow = {}  # each factor that slows the move, as the speed it alone would allow
             if paths[m] < p["short_path"]:
-                f *= p["short_factor"] + (1 - p["short_factor"]) * paths[m] / p["short_path"]
+                g = p["short_factor"] + (1 - p["short_factor"]) * paths[m] / p["short_path"]
+                f *= g
+                slow["short paths"] = m.feed * g
             if m in small and p["small_feature"] > 0:
-                f *= p["small_feature_factor"] + (1 - p["small_feature_factor"]) * min(1.0, small[m] / p["small_feature"])
+                g = p["small_feature_factor"] + (1 - p["small_feature_factor"]) * min(1.0, small[m] / p["small_feature"])
+                f *= g
+                slow["small features"] = m.feed * g
             if m.bridge:
                 f *= p["bridge_factor"]
-            else:
-                f *= 1 - (1 - p["overhang_factor"]) * m.over
+                slow["bridges"] = m.feed * p["bridge_factor"]
+            elif m.over > 0:
+                g = 1 - (1 - p["overhang_factor"]) * m.over
+                f *= g
+                slow["overhangs"] = m.feed * g
             v = m.feed * f
             if radius[m] < float("inf"):  # in a curve: v = sqrt(a * R)
                 v = min(v, math.sqrt(p["curve_accel"] * radius[m]))
+                slow["curves"] = math.sqrt(p["curve_accel"] * radius[m])
             if m.bridge or m.over > 0:
                 v = min(v, m.feed)  # never faster than sliced over air
+            if cap[m] < v:
+                slow["flow limit"] = cap[m]
             v = min(v, cap[m])
             v_of[m] = v
             must[m] = m.bridge or m.over > 0.05 or v < m.feed * f - 1e-6
+            if v > m.feed + 1e-6:
+                m.reason = "boost"
+            elif v < m.feed - 1e-6:
+                m.reason = min(slow, key=slow.get) if slow else "other"
 
         if p["steady_outer"]:
             # One speed for each outer loop: the speed that the slowest fifth of its length allows, leaving out
@@ -485,7 +507,12 @@ class AdaptiveSpeed(Script):
                 for m in chain:
                     if m.kind == OUTER:
                         # Ordinary moves all take the speed of the loop; the ones that must be slower stay slower.
-                        v_of[m] = min(v_of[m], steady) if must[m] else min(steady, cap[m])
+                        new = min(v_of[m], steady) if must[m] else min(steady, cap[m])
+                        if not must[m] and new < m.feed - 1e-6 and new < v_of[m] - 1e-6:
+                            m.reason = "steady outer wall"
+                        elif new > m.feed + 1e-6:
+                            m.reason = "boost"
+                        v_of[m] = new
 
         for m in ext:
             m.speed = max(v_of[m], min(p["min_speed"], cap[m]))
@@ -508,6 +535,8 @@ class AdaptiveSpeed(Script):
             if time_at(1.0) >= p["min_layer_time"]:
                 continue
             slowed += 1
+            for m in ext:
+                m.reason = "minimum layer time"
             lo, hi = 0.0, 1.0  # bisection on the speed factor of the layer
             for _ in range(30):
                 mid = (lo + hi) / 2
@@ -562,6 +591,22 @@ class AdaptiveSpeed(Script):
         lines[at:at] = info
         out[0] = "\n".join(lines)
         return out
+
+
+def breakdown(ext):
+    """Lines for the header: for each reason, how much of the extruded length it decided, and how many
+    seconds it saved (negative) or added, without acceleration."""
+    total = sum(m.length for m in ext) or 1.0
+    by = {}
+    for m in ext:
+        if not m.reason:
+            continue
+        length, dt = by.get(m.reason, (0.0, 0.0))
+        by[m.reason] = (length + m.length, dt + m.length / m.speed - m.length / m.feed)
+    lines = []
+    for reason, (length, dt) in sorted(by.items(), key=lambda kv: kv[1][1]):
+        lines.append("%-20s %5.1f%% of the length, %+.0f s" % (reason, 100 * length / total, dt))
+    return lines
 
 
 def cura_setting(data, key, default):
