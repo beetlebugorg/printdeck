@@ -364,7 +364,7 @@ func (a *App) drawStatus(c *gfx.Canvas) {
 	window(c, win)
 	c.Text(image.Rect(win.Min.X+12, win.Min.Y, win.Min.X+90, win.Max.Y), a.Now().Format("15:04"), gfx.Face(true, 24), lcdInk, gfx.Left)
 	// The clock is also the key for the theme: day, night, auto.
-	c.Text(image.Rect(win.Min.X+92, win.Min.Y, win.Min.X+150, win.Max.Y), strings.ToUpper(a.Theme), gfx.Face(true, 12), lcdDim, gfx.Left)
+	c.Text(image.Rect(win.Min.X+92, win.Min.Y, win.Min.X+150, win.Max.Y), strings.ToUpper(a.Theme), gfx.Face(true, 13), lcdDim, gfx.Left)
 	a.addHit(hit{r: image.Rect(0, 0, 160, statusH), tap: a.cycleTheme})
 
 	// A short summary of the other tab. Tapping it opens that tab.
@@ -426,11 +426,11 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 	c.Text(image.Rect(box.Min.X+20, box.Min.Y+30, box.Max.X-20, box.Min.Y+150), a.confirm.question, gfx.Face(true, 28), text, gfx.Center)
 	cf := a.confirm
 	a.button(c, image.Rect(box.Min.X+20, box.Max.Y-100, box.Min.X+(box.Dx()/2)-8, box.Max.Y-20), "Back", raised, text, func() { a.confirm = nil; a.Redraw() })
-	yes := green
+	yes, ink := green, onAcc
 	if cf.danger {
-		yes = red
+		yes, ink = redCap, onRed
 	}
-	a.button(c, image.Rect(box.Min.X+(box.Dx()/2)+8, box.Max.Y-100, box.Max.X-20, box.Max.Y-20), cf.yes, yes, onAcc, func() { a.confirm = nil; cf.onYes(); a.Redraw() })
+	a.button(c, image.Rect(box.Min.X+(box.Dx()/2)+8, box.Max.Y-100, box.Max.X-20, box.Max.Y-20), cf.yes, yes, ink, func() { a.confirm = nil; cf.onYes(); a.Redraw() })
 }
 
 // button draws a key and registers it. fill is the colour of the cap.

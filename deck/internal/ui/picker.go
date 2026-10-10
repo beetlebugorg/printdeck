@@ -96,7 +96,7 @@ func (a *App) drawPicker(c *gfx.Canvas) {
 		case pl.Tracks == 0:
 			sub = ""
 		}
-		c.Text(image.Rect(r.Min.X+18, r.Min.Y+38, r.Max.X-90, r.Max.Y-6), sub, gfx.Face(false, 16), dim, gfx.Left)
+		c.Text(image.Rect(r.Min.X+18, r.Min.Y+38, r.Max.X-90, r.Max.Y-6), sub, gfx.Face(true, 16), dim, gfx.Left)
 		if pk.mode == pickPlay {
 			drawPlay(c, image.Rect(r.Max.X-76, r.Min.Y+4, r.Max.X-12, r.Min.Y+68), green)
 		} else {

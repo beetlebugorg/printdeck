@@ -81,7 +81,7 @@ func (a *App) drawEQ(c *gfx.Canvas) {
 		}
 		c.Text(image.Rect(x0, eqTop-48, x0+col, eqTop-20), val, gfx.Face(true, 18), text, gfx.Center)
 		c.Text(image.Rect(x0, eqBottom+20, x0+col, eqBottom+46), b.Label, gfx.Face(true, 18), text, gfx.Center)
-		c.Text(image.Rect(x0, eqBottom+44, x0+col, eqBottom+66), []string{"Bass", "Hz", "Hz", "Hz", "Treble"}[i], gfx.Face(false, 15), dim, gfx.Center)
+		c.Text(image.Rect(x0, eqBottom+44, x0+col, eqBottom+66), []string{"Bass", "Hz", "Hz", "Hz", "Treble"}[i], gfx.Face(true, 15), dim, gfx.Center)
 
 		band := i
 		// The slider covers a bit more than the track, so the ends are easy to reach.

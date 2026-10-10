@@ -72,7 +72,7 @@ func (a *App) drawMusic(c *gfx.Canvas) {
 	}
 
 	c.Text(image.Rect(24, 388, W-24, 414), st.Title, gfx.Face(true, 22), text, gfx.Center)
-	c.Text(image.Rect(24, 414, W-24, 434), st.Artist, gfx.Face(false, 16), dim, gfx.Center)
+	c.Text(image.Rect(24, 414, W-24, 434), st.Artist, gfx.Face(true, 16), dim, gfx.Center)
 
 	// Four small keys: playlists, like, add to a playlist, equalizer.
 	kw, gap := 80, 12
