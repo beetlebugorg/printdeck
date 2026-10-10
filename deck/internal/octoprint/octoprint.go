@@ -12,8 +12,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"speakerdeck/internal/gcode"
 )
 
 type File struct {
@@ -43,9 +41,8 @@ type State struct {
 	Z             float64 // height of the head, mm
 	HasZ          bool
 
-	// Speeds of the file (outer wall, infill, ...), and the move at the print position: its kind and its
-	// commanded speed in mm/s. The printer buffers a few moves, so this can be a moment ahead of the nozzle.
-	Speeds           []gcode.Speed
+	// The move at the print position: its kind and its commanded speed in mm/s. The printer buffers a few
+	// moves, so this can be a moment ahead of the nozzle.
 	NowKind          string
 	NowSpeed         float64
 	HasNow           bool

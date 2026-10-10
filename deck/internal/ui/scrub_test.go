@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"speakerdeck/internal/gcode"
 	"speakerdeck/internal/gfx"
 	"speakerdeck/internal/octoprint"
 	"speakerdeck/internal/spotify"
@@ -52,19 +51,18 @@ func TestLayerScrubber(t *testing.T) {
 	}
 }
 
-func TestSpeedsPagePriority(t *testing.T) {
+func TestLCDLines(t *testing.T) {
 	a := New()
-	a.lcdPage = 1
-	st := octoprint.State{Speeds: []gcode.Speed{{Name: "Outer wall", MMs: 60}, {Name: "Inner wall", MMs: 67}, {Name: "Infill", MMs: 100},
-		{Name: "Top/bottom", MMs: 41}, {Name: "Skirt", MMs: 15}, {Name: gcode.FirstLayer, MMs: 15}, {Name: gcode.Travel, MMs: 250}}}
+	st := octoprint.State{Activity: "Printing", Completion: 41.4, HasTimeLeft: true, TimeLeft: 30 * time.Minute,
+		HasNow: true, NowKind: "Outer wall", NowSpeed: 60}
 	lines := a.lcdLines(st)
-	all := strings.Join(lines, "|")
-	if !strings.Contains(all, "TRAVEL250") || !strings.Contains(all, "FIRST  15") || strings.Contains(all, "SKIRT") {
-		t.Errorf("speeds page %q", lines)
+	want := []string{"PRINTING     41% 0:30", "OUTER WALL    60MM/S"}
+	if len(lines) != 2 || lines[1] != want[1] || !strings.HasPrefix(lines[0], "PRINTING") || !strings.HasSuffix(lines[0], "41% 0:30") {
+		t.Errorf("lines %q, want like %q", lines, want)
 	}
 	for _, l := range lines {
-		if len([]rune(l)) > 20 {
-			t.Errorf("line longer than 20: %q", l)
+		if len([]rune(l)) != 20 {
+			t.Errorf("line %q is %d characters, want 20", l, len([]rune(l)))
 		}
 	}
 }
