@@ -3,6 +3,7 @@ package ui
 import (
 	"image"
 	"strconv"
+	"strings"
 
 	"speakerdeck/internal/gfx"
 )
@@ -46,15 +47,16 @@ func (a *App) drawKeypad(c *gfx.Canvas) {
 		c.Pix[i], c.Pix[i+1], c.Pix[i+2] = c.Pix[i]/3, c.Pix[i+1]/3, c.Pix[i+2]/3
 	}
 	box := image.Rect(24, 70, W-24, 716)
-	c.RoundRect(box, 24, surface)
-	c.Text(image.Rect(box.Min.X+24, box.Min.Y+14, box.Max.X-24, box.Min.Y+50), kp.title, gfx.Face(true, 24), text, gfx.Left)
+	panel(c, box, "")
+	c.Fill(image.Rect(box.Min.X+24, box.Min.Y+24, box.Min.X+32, box.Min.Y+40), orange)
+	c.Text(image.Rect(box.Min.X+42, box.Min.Y+14, box.Max.X-24, box.Min.Y+50), strings.ToUpper(kp.title), gfx.Face(true, 20), text, gfx.Left)
 
 	// The number. Too high a number is shown in red, and Set does not take it.
 	v, _ := strconv.Atoi(kp.digits)
 	tooHigh := v > kp.max
 	disp := image.Rect(box.Min.X+24, box.Min.Y+58, box.Max.X-24, box.Min.Y+130)
-	c.RoundRect(disp, 16, bg)
-	col := text
+	window(c, disp)
+	col := lcdInk
 	if tooHigh {
 		col = red
 	}

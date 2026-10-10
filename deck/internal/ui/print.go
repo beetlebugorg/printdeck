@@ -57,8 +57,11 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		col = red
 	}
 	pill := image.Rect(W/2-100, 76, W/2+100, 120)
-	c.RoundRect(pill, 22, surface)
-	c.Text(pill, st.Text, gfx.Face(true, 22), col, gfx.Center)
+	window(c, pill)
+	if col == dim {
+		col = lcdInk
+	}
+	c.Text(pill, strings.ToUpper(st.Text), gfx.Face(true, 20), col, gfx.Center)
 
 	a.temps(c, 160, 100, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
 
@@ -93,22 +96,19 @@ func (a *App) drawJob(c *gfx.Canvas, st octoprint.State) {
 	c.Text(image.Rect(24, 64, W-24, 100), st.File, gfx.Face(true, 22), text, gfx.Center)
 
 	box := image.Rect(40, 104, W-40, 104+260)
-	c.RoundRect(box, 16, surface)
+	window(c, box)
 	if img := pr.Preview(); img != nil {
 		draw.Draw(c.RGBA, image.Rectangle{box.Min, box.Min.Add(img.Bounds().Size())}.Intersect(box), img, img.Bounds().Min, draw.Over)
 	} else {
-		c.Text(image.Rect(box.Min.X, box.Min.Y, box.Max.X, box.Min.Y+220), "Preparing the model view…", gfx.Face(false, 20), dim, gfx.Center)
+		c.Text(image.Rect(box.Min.X, box.Min.Y, box.Max.X, box.Min.Y+220), "LOADING MODEL…", gfx.Face(true, 18), lcdDim, gfx.Center)
 	}
 	a.drawScrubber(c, box, st)
 
 	bar := image.Rect(40, 380, W-40, 394)
-	c.RoundRect(bar, 7, raised)
-	fill := bar
-	fill.Max.X = bar.Min.X + int(st.Completion/100*float64(bar.Dx()))
-	c.RoundRect(fill, 7, col)
+	segments(c, bar, st.Completion/100)
 
 	// What the printer does now, like the message on its own display.
-	c.Text(image.Rect(40, 400, W-130, 438), st.Activity, gfx.Face(true, 26), col, gfx.Left)
+	c.Text(image.Rect(40, 400, W-130, 438), strings.ToUpper(st.Activity), gfx.Face(true, 22), col, gfx.Left)
 	c.Text(image.Rect(W-130, 400, W-40, 438), pct(st.Completion), gfx.Face(true, 26), text, gfx.Right)
 	var info []string
 	if st.Layers > 0 && st.Layer > 0 {
@@ -136,20 +136,20 @@ func (a *App) drawJob(c *gfx.Canvas, st octoprint.State) {
 
 func (a *App) temps(c *gfx.Canvas, y, h int, tool, toolT, bed, bedT float64, ok bool) {
 	card := func(r image.Rectangle, icon func(cx, cy, r int, col color.RGBA), name string, v, target float64) {
-		c.RoundRect(r, 18, surface)
+		plate(c, r)
 		ic := dim
 		if ok && target > 0 {
 			ic = orange // heater on
 		}
 		icon(r.Min.X+34, r.Min.Y+h/2, 15, ic)
-		c.Text(image.Rect(r.Min.X+62, r.Min.Y+6, r.Max.X-14, r.Min.Y+32), name, gfx.Face(false, 17), dim, gfx.Left)
+		label(c, image.Rect(r.Min.X+62, r.Min.Y+8, r.Max.X-14, r.Min.Y+28), name, gfx.Left)
 		val := "—"
 		if ok {
 			val = fmt.Sprintf("%.0f°", v)
 		}
-		c.Text(image.Rect(r.Min.X+62, r.Min.Y+30, r.Max.X-14, r.Max.Y-4), val, gfx.Face(true, 34), text, gfx.Left)
+		c.Text(image.Rect(r.Min.X+62, r.Min.Y+26, r.Max.X-10, r.Max.Y-4), val, gfx.Face(true, 30), text, gfx.Left)
 		if ok && target > 0 {
-			c.Text(image.Rect(r.Min.X+62, r.Min.Y+30, r.Max.X-14, r.Max.Y-4), fmt.Sprintf("→%.0f°", target), gfx.Face(false, 17), orange, gfx.Right)
+			c.Text(image.Rect(r.Min.X+62, r.Min.Y+6, r.Max.X-10, r.Min.Y+28), fmt.Sprintf("SET %.0f°", target), gfx.Face(true, 13), orange, gfx.Right)
 		}
 	}
 	half := (W - 80 - 16) / 2
@@ -167,10 +167,10 @@ func (a *App) temps(c *gfx.Canvas, y, h int, tool, toolT, bed, bedT float64, ok 
 func (a *App) stats(c *gfx.Canvas, y, h int, st octoprint.State) {
 	half := (W - 80 - 16) / 2
 	card := func(r image.Rectangle, name, val string, icon func(cx, cy, r int)) {
-		c.RoundRect(r, 18, surface)
+		plate(c, r)
 		icon(r.Min.X+34, r.Min.Y+h/2, 15)
-		c.Text(image.Rect(r.Min.X+62, r.Min.Y+4, r.Max.X-14, r.Min.Y+26), name, gfx.Face(false, 17), dim, gfx.Left)
-		c.Text(image.Rect(r.Min.X+62, r.Min.Y+22, r.Max.X-14, r.Max.Y-2), val, gfx.Face(true, 28), text, gfx.Left)
+		label(c, image.Rect(r.Min.X+62, r.Min.Y+6, r.Max.X-14, r.Min.Y+24), name, gfx.Left)
+		c.Text(image.Rect(r.Min.X+62, r.Min.Y+20, r.Max.X-10, r.Max.Y-2), val, gfx.Face(true, 24), text, gfx.Left)
 	}
 	fan, z := "—", "—"
 	fcol := dim
@@ -190,7 +190,7 @@ func (a *App) stats(c *gfx.Canvas, y, h int, st octoprint.State) {
 }
 
 func (a *App) drawFiles(c *gfx.Canvas) {
-	c.Text(image.Rect(24, 68, W-150, 120), "Choose a file", gfx.Face(true, 28), text, gfx.Left)
+	heading(c, "Choose a file")
 	a.button(c, image.Rect(W-130, 70, W-24, 118), "Back", raised, text, func() { a.files = false })
 	files := a.Printer.Files()
 	if len(files) == 0 {
@@ -202,11 +202,10 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 		}
 		f := f
 		r := image.Rect(24, 136+i*72, W-24, 136+i*72+64)
-		fill := surface
+		plate(c, r)
 		if a.isPressed(r) {
-			fill = raised
+			c.RoundRect(r.Inset(1), 4, raised)
 		}
-		c.RoundRect(r, 14, fill)
 		c.Text(image.Rect(r.Min.X+16, r.Min.Y, r.Max.X-16, r.Max.Y), f.Name, gfx.Face(false, 22), text, gfx.Left)
 		a.addHit(hit{r: r, tap: func() {
 			a.confirm = &confirmBox{question: "Print " + gfx.Fit(gfx.Face(true, 28), f.Name, 300) + "?", yes: "Print", onYes: func() {
@@ -241,7 +240,10 @@ func (a *App) drawScrubber(c *gfx.Canvas, box image.Rectangle, st octoprint.Stat
 	if view >= 0 || (a.dragging != nil && a.dragging.r == slider) {
 		col = orange
 	}
-	c.Text(image.Rect(box.Min.X+16, box.Min.Y+8, box.Min.X+200, box.Min.Y+34), label, gfx.Face(true, 18), col, gfx.Left)
+	if col == dim {
+		col = lcdDim
+	}
+	c.Text(image.Rect(box.Min.X+16, box.Min.Y+8, box.Min.X+240, box.Min.Y+34), strings.ToUpper(label), gfx.Face(true, 15), col, gfx.Left)
 	if view >= 0 {
 		live := image.Rect(box.Max.X-100, box.Min.Y+8, box.Max.X-14, box.Min.Y+40)
 		a.button(c, live, "Live", orange, onAcc, func() { pr.SetViewLayer(-1) })

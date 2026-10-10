@@ -24,7 +24,7 @@ const (
 
 func (a *App) drawEQ(c *gfx.Canvas) {
 	e := a.Equalizer
-	c.Text(image.Rect(24, 64, W-150, 108), "Equalizer", gfx.Face(true, 28), text, gfx.Left)
+	heading(c, "Equalizer")
 	a.button(c, image.Rect(W-130, 66, W-24, 110), "Close", raised, text, func() { a.eqOpen = false })
 	if !e.Connected() {
 		c.Text(image.Rect(24, 108, W-24, 136), "The equalizer is not running (camilladsp).", gfx.Face(false, 18), red, gfx.Left)
@@ -43,11 +43,7 @@ func (a *App) drawEQ(c *gfx.Canvas) {
 		if p.Name == cur {
 			fill, fg = green, onAcc
 		}
-		if a.isPressed(r) {
-			fill = lighten(fill)
-		}
-		c.RoundRect(r, 23, fill)
-		c.Text(r, p.Name, gfx.Face(true, 18), fg, gfx.Center)
+		key(c, r, p.Name, fill, fg, a.isPressed(r))
 		name := p.Name
 		a.addHit(hit{r: r, tap: func() { e.SetPreset(name) }})
 	}
@@ -67,13 +63,17 @@ func (a *App) drawEQ(c *gfx.Canvas) {
 		if a.dragging != nil && a.dragging.r == hitR {
 			db = eq.MaxGain - a.dragFrac*2*eq.MaxGain
 		}
-		c.RoundRect(image.Rect(cx-5, eqTop, cx+5, eqBottom), 5, surface)
-		y := yFor(db)
-		fill := image.Rect(cx-5, min(y, zero), cx+5, max(y, zero))
-		if db != 0 {
-			c.RoundRect(fill, 4, green)
+		c.RoundRect(image.Rect(cx-5, eqTop, cx+5, eqBottom), 5, lcd)
+		for t := -12; t <= 12; t += 6 { // scale marks
+			ty := yFor(float64(t))
+			c.Fill(image.Rect(cx-16, ty, cx-9, ty+1), edge)
+			c.Fill(image.Rect(cx+9, ty, cx+16, ty+1), edge)
 		}
-		c.RoundRect(image.Rect(cx-14, y-14, cx+14, y+14), 14, text)
+		y := yFor(db)
+		if db != 0 {
+			c.RoundRect(image.Rect(cx-2, min(y, zero), cx+2, max(y, zero)), 2, orange)
+		}
+		faderCap(c, cx, y, true)
 
 		val := fmt.Sprintf("%+.1f", db)
 		if db == 0 {

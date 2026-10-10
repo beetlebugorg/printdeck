@@ -54,7 +54,7 @@ func (a *App) drawPicker(c *gfx.Canvas) {
 	if pk.mode == pickPlay {
 		title, sub = "Play a playlist", "Tap a playlist to play it here"
 	}
-	c.Text(image.Rect(24, 64, W-150, 108), title, gfx.Face(true, 28), text, gfx.Left)
+	heading(c, title)
 	a.button(c, image.Rect(W-130, 66, W-24, 110), "Close", raised, text, func() { a.picker = nil })
 	c.Text(image.Rect(24, 108, W-24, 136), sub, gfx.Face(false, 18), dim, gfx.Left)
 
@@ -84,11 +84,10 @@ func (a *App) drawPicker(c *gfx.Canvas) {
 		}
 		pl := lists[n]
 		r := image.Rect(24, 148+i*80, W-24, 148+i*80+72)
-		fill := surface
+		plate(c, r)
 		if a.isPressed(r) {
-			fill = raised
+			c.RoundRect(r.Inset(1), 4, raised)
 		}
-		c.RoundRect(r, 16, fill)
 		c.Text(image.Rect(r.Min.X+18, r.Min.Y+6, r.Max.X-90, r.Min.Y+40), pl.Name, gfx.Face(true, 22), text, gfx.Left)
 		sub := itoa(pl.Tracks) + " tracks"
 		switch {
