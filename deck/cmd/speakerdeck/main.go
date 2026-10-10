@@ -259,6 +259,8 @@ func shot(cfg config.Config, sp *spotify.Client, args []string) {
 	app := ui.New()
 	app.Music, app.Printer, app.Vol, app.Equalizer = sp, op, am, eqc
 	app.NightFrom, app.NightTo = cfg.NightFrom, cfg.NightTo
+	app.PreheatTool, app.PreheatBed = cfg.PreheatTool, cfg.PreheatBed
+	app.UnloadMM, app.LoadMM, app.JogInvertY = cfg.UnloadMM, cfg.LoadMM, cfg.JogInvertY
 	if b, err := os.ReadFile(filepath.Join(cfg.StateDir, "theme")); err == nil {
 		app.Theme = strings.TrimSpace(string(b))
 	}
