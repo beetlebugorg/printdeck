@@ -2,6 +2,7 @@
 package gfx
 
 import (
+	_ "embed"
 	"image"
 	"image/color"
 	"image/draw"
@@ -10,8 +11,8 @@ import (
 
 	xdraw "golang.org/x/image/draw"
 	"golang.org/x/image/font"
-	"golang.org/x/image/font/gofont/gobold"
-	"golang.org/x/image/font/gofont/goregular"
+	"golang.org/x/image/font/gofont/gomono"
+	"golang.org/x/image/font/gofont/gomonobold"
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/math/fixed"
 )
@@ -131,36 +132,76 @@ func (c *Canvas) Cover(r image.Rectangle, src image.Image) {
 	xdraw.CatmullRom.Scale(c.RGBA, r, src, crop, xdraw.Src, nil)
 }
 
+// IBM Plex Mono (SIL Open Font License, fonts/OFL.txt). Go Mono fills in the few symbols that Plex lacks (♪ ▲ ▼).
 var (
-	fontMu sync.Mutex
-	fonts  = map[[2]int]font.Face{}
-	regF   *opentype.Font
-	boldF  *opentype.Font
+	//go:embed fonts/IBMPlexMono-Regular.ttf
+	plexRegular []byte
+	//go:embed fonts/IBMPlexMono-SemiBold.ttf
+	plexBold []byte
 )
 
-// Face returns a cached Go font face with the given pixel height.
+var (
+	fontMu       sync.Mutex
+	fonts        = map[[2]int]font.Face{}
+	regF, boldF  *opentype.Font
+	fallR, fallB *opentype.Font
+)
+
+// Face returns a cached monospace face with the given pixel height.
 func Face(bold bool, px int) font.Face {
 	fontMu.Lock()
 	defer fontMu.Unlock()
 	if regF == nil {
-		regF, _ = opentype.Parse(goregular.TTF)
-		boldF, _ = opentype.Parse(gobold.TTF)
+		regF, _ = opentype.Parse(plexRegular)
+		boldF, _ = opentype.Parse(plexBold)
+		fallR, _ = opentype.Parse(gomono.TTF)
+		fallB, _ = opentype.Parse(gomonobold.TTF)
 	}
 	key := [2]int{px, 0}
-	f := regF
+	f, fb := regF, fallR
 	if bold {
-		key[1], f = 1, boldF
+		key[1], f, fb = 1, boldF, fallB
 	}
 	if face, ok := fonts[key]; ok {
 		return face
 	}
-	face, err := opentype.NewFace(f, &opentype.FaceOptions{Size: float64(px), DPI: 72, Hinting: font.HintingFull})
+	opts := &opentype.FaceOptions{Size: float64(px), DPI: 72, Hinting: font.HintingFull}
+	primary, err := opentype.NewFace(f, opts)
 	if err != nil {
 		panic(err)
 	}
+	fallback, _ := opentype.NewFace(fb, opts)
+	face := fallbackFace{primary, fallback}
 	fonts[key] = face
 	return face
 }
+
+// fallbackFace draws each character with the primary face, or with the fallback face if the primary
+// does not have it.
+type fallbackFace struct{ primary, fallback font.Face }
+
+func (f fallbackFace) pick(r rune) font.Face {
+	if _, ok := f.primary.GlyphAdvance(r); ok {
+		return f.primary
+	}
+	return f.fallback
+}
+
+func (f fallbackFace) Close() error { return nil }
+func (f fallbackFace) Glyph(dot fixed.Point26_6, r rune) (image.Rectangle, image.Image, image.Point, fixed.Int26_6, bool) {
+	return f.pick(r).Glyph(dot, r)
+}
+func (f fallbackFace) GlyphBounds(r rune) (fixed.Rectangle26_6, fixed.Int26_6, bool) {
+	return f.pick(r).GlyphBounds(r)
+}
+func (f fallbackFace) GlyphAdvance(r rune) (fixed.Int26_6, bool) { return f.pick(r).GlyphAdvance(r) }
+func (f fallbackFace) Kern(r0, r1 rune) fixed.Int26_6 {
+	if f.pick(r0) == f.primary && f.pick(r1) == f.primary {
+		return f.primary.Kern(r0, r1)
+	}
+	return 0
+}
+func (f fallbackFace) Metrics() font.Metrics { return f.primary.Metrics() }
 
 func Width(face font.Face, s string) int { return font.MeasureString(face, s).Ceil() }
 

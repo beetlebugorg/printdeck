@@ -111,23 +111,22 @@ func (a *App) do(f func() error) {
 func (a *App) drawControl(c *gfx.Canvas) {
 	pr := a.Printer
 	st := pr.State()
-	c.Text(image.Rect(24, 64, W-150, 108), "Control", gfx.Face(true, 28), text, gfx.Left)
+	heading(c, "Control")
 	a.button(c, image.Rect(W-130, 66, W-24, 110), "Back", raised, text, func() { a.control = false })
 
 	moving := st.Connected && !st.Busy()
-	hint := "Home after the printer starts, before you move it."
+	hint := "Home first after power-on."
 	switch {
 	case !st.Connected:
 		hint = "The printer is not connected."
 	case st.Busy():
 		hint = "Moving is off while a print runs."
 	}
-	c.Text(image.Rect(24, 108, W-24, 134), hint, gfx.Face(false, 17), dim, gfx.Left)
+	label(c, image.Rect(24, 112, W-24, 132), hint, gfx.Left)
 
 	btn := func(r image.Rectangle, label string, fill, fg color.RGBA, f func() error) {
 		if !moving {
-			c.RoundRect(r, 18, surface)
-			c.Text(r, label, gfx.Face(true, 22), dim, gfx.Center)
+			key(c, r, label, surface, dim, false)
 			return
 		}
 		a.button(c, r, label, fill, fg, func() { a.do(f) })
@@ -142,36 +141,49 @@ func (a *App) drawControl(c *gfx.Canvas) {
 		btn(image.Rect(x0, 142, x0+w/2+w/3, 198), axis, raised, text, func() error { return pr.Home(map[string]string{"X": "x", "Y": "y", "Z": "z"}[axis]) })
 	}
 
-	// Joystick for X and Y
+	// Joystick for X and Y: an XY pad in a display window.
 	vx, vy, _ := a.joy.get()
-	ring := surface
-	c.RoundRect(image.Rect(joyCX-joyR, joyCY-joyR, joyCX+joyR, joyCY+joyR), joyR, ring)
+	pad := image.Rect(joyCX-joyR, joyCY-joyR, joyCX+joyR, joyCY+joyR)
+	window(c, pad)
+	grid := color.RGBA{0x34, 0x30, 0x2c, 255}
+	for i := 1; i < 8; i++ {
+		g := pad.Min.X + i*pad.Dx()/8
+		c.Fill(image.Rect(g, pad.Min.Y+6, g+1, pad.Max.Y-6), grid)
+		g = pad.Min.Y + i*pad.Dy()/8
+		c.Fill(image.Rect(pad.Min.X+6, g, pad.Max.X-6, g+1), grid)
+	}
 	r := float64(joyR)
 	dead := int(r * joyDead)
-	c.RoundRect(image.Rect(joyCX-dead, joyCY-dead, joyCX+dead, joyCY+dead), dead, bg)
-	c.Fill(image.Rect(joyCX-joyR+16, joyCY, joyCX+joyR-16, joyCY+1), raised)
-	c.Fill(image.Rect(joyCX, joyCY-joyR+16, joyCX+1, joyCY+joyR-16), raised)
+	c.RoundRect(image.Rect(joyCX-dead, joyCY-dead, joyCX+dead, joyCY+dead), dead, color.RGBA{0x2a, 0x26, 0x22, 255})
 	for _, l := range []struct {
 		s      string
 		dx, dy int
-	}{{"Y+", 0, -joyR + 18}, {"Y−", 0, joyR - 18}, {"X−", -joyR + 22, 0}, {"X+", joyR - 22, 0}} {
-		c.Text(image.Rect(joyCX+l.dx-20, joyCY+l.dy-12, joyCX+l.dx+20, joyCY+l.dy+12), l.s, gfx.Face(true, 16), dim, gfx.Center)
+	}{{"Y+", 0, -joyR + 16}, {"Y-", 0, joyR - 16}, {"X-", -joyR + 20, 0}, {"X+", joyR - 20, 0}} {
+		c.Text(image.Rect(joyCX+l.dx-20, joyCY+l.dy-10, joyCX+l.dx+20, joyCY+l.dy+10), l.s, gfx.Face(true, 14), lcdDim, gfx.Center)
 	}
-	kx, ky := joyCX+int(vx*joyR*0.85), joyCY-int(vy*joyR*0.85)
-	knob := text
+	kx, ky := joyCX+int(vx*r*0.85), joyCY-int(vy*r*0.85)
+	cross := lcdInk
 	if !moving {
-		knob = raised
-	} else if vx != 0 || vy != 0 {
-		knob = green
+		cross = lcdDim
 	}
-	c.RoundRect(image.Rect(kx-30, ky-30, kx+30, ky+30), 30, knob)
+	if vx != 0 || vy != 0 { // a line from the middle to the finger
+		for t := 0.0; t < 1; t += 0.02 {
+			x, y := joyCX+int(float64(kx-joyCX)*t), joyCY+int(float64(ky-joyCY)*t)
+			c.Fill(image.Rect(x, y, x+2, y+2), lcdDim)
+		}
+	}
+	c.Fill(image.Rect(kx-18, ky-1, kx+18, ky+1), cross)
+	c.Fill(image.Rect(kx-1, ky-18, kx+1, ky+18), cross)
+	c.RoundRect(image.Rect(kx-9, ky-9, kx+9, ky+9), 9, cross)
+	c.RoundRect(image.Rect(kx-5, ky-5, kx+5, ky+5), 5, lcd)
 	if moving {
 		speed := joySpeed(math.Hypot(vx, vy))
 		if speed > 0 {
-			c.Text(image.Rect(joyCX-joyR, joyCY+joyR+2, joyCX+joyR, joyCY+joyR+24), fmt.Sprintf("%.0f mm/s", speed), gfx.Face(false, 16), green, gfx.Center)
+			c.Text(image.Rect(pad.Min.X, pad.Max.Y-24, pad.Max.X-8, pad.Max.Y-4), fmt.Sprintf("%.0f MM/S", speed), gfx.Face(true, 14), lcdInk, gfx.Right)
 		}
-		a.addHit(hit{r: image.Rect(joyCX-joyR, joyCY-joyR, joyCX+joyR, joyCY+joyR), pad: a.joyPad})
+		a.addHit(hit{r: pad, pad: a.joyPad})
 	}
+	label(c, image.Rect(pad.Min.X, pad.Max.Y+6, pad.Max.X, pad.Max.Y+22), "XY  hold to move", gfx.Center)
 
 	// Z
 	zx0, zx1 := 300, W-24
@@ -184,20 +196,18 @@ func (a *App) drawControl(c *gfx.Canvas) {
 			fill, fg = orange, onAcc
 		}
 		step := s
-		c.RoundRect(r, 22, fill)
-		c.Text(r, fmt.Sprint(s), gfx.Face(true, 18), fg, gfx.Center)
+		key(c, r, fmt.Sprint(s), fill, fg, a.isPressed(r))
 		a.addHit(hit{r: r, tap: func() { a.zStep = step }})
 	}
 	btn(image.Rect(zx0, 350, zx1, 426), "Z ▼", raised, text, func() error { return pr.Jog(0, 0, -a.zStep, 600) })
-	c.Text(image.Rect(zx0, 430, zx1, 456), "mm per tap", gfx.Face(false, 15), dim, gfx.Center)
+	label(c, image.Rect(zx0, 432, zx1, 452), "Z  mm per tap", gfx.Center)
 
 	// Extruder: needs a hot nozzle
 	half := (W - 48 - 8) / 2
 	cold := st.Tool < minExtrudeTemp
 	ext := func(r image.Rectangle, label string, mm float64) {
 		if moving && cold {
-			c.RoundRect(r, 18, surface)
-			c.Text(r, label, gfx.Face(true, 20), dim, gfx.Center)
+			key(c, r, label, surface, dim, false)
 			a.addHit(hit{r: r, tap: func() { a.Toast(fmt.Sprintf("Heat the nozzle to %d° first", minExtrudeTemp)) }})
 			return
 		}
@@ -207,7 +217,7 @@ func (a *App) drawControl(c *gfx.Canvas) {
 	ext(image.Rect(24+half+8, 490, W-24, 548), "Retract 10 mm", -10)
 
 	// Fan: the printer does not report it, so the last choice is shown.
-	c.Text(image.Rect(24, 558, 90, 614), "Fan", gfx.Face(true, 20), text, gfx.Left)
+	label(c, image.Rect(24, 558, 90, 614), "Fan", gfx.Left)
 	for i, p := range []int{0, 50, 100} {
 		fw := (W - 24 - 90 - 16) / 3
 		r := image.Rect(90+i*(fw+8), 560, 90+i*(fw+8)+fw, 612)
@@ -221,8 +231,7 @@ func (a *App) drawControl(c *gfx.Canvas) {
 		}
 		pct := p
 		if !st.Connected {
-			c.RoundRect(r, 18, surface)
-			c.Text(r, label, gfx.Face(true, 20), dim, gfx.Center)
+			key(c, r, label, surface, dim, false)
 			continue
 		}
 		a.button(c, r, label, fill, fg, func() { a.fanSet = pct; a.do(func() error { return pr.Fan(pct) }) })
