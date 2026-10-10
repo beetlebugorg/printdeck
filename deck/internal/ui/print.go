@@ -161,10 +161,15 @@ func (a *App) lcdLines(st octoprint.State) []string {
 	if a.lcdPage == 1 { // the speeds of the file, in mm/s
 		short := map[string]string{"Outer wall": "OUTER", "Inner wall": "INNER", "Infill": "INFILL", "Top/bottom": "TOP/BT",
 			"Support": "SUPPRT", "Skirt": "SKIRT", gcodeFirst: "FIRST", gcodeTravel: "TRAVEL"}
+		// Six places: the main ones first; support or skirt only fill a place that would stay empty.
 		var cells []string
-		for _, s := range st.Speeds {
-			if len(cells) < 6 {
-				cells = append(cells, fmt.Sprintf("%-6s%3.0f", short[s.Name], s.MMs))
+		for _, pass := range [][]string{{"Outer wall", "Inner wall", "Infill", "Top/bottom", gcodeFirst, gcodeTravel}, {"Support", "Skirt"}} {
+			for _, name := range pass {
+				for _, s := range st.Speeds {
+					if s.Name == name && len(cells) < 6 {
+						cells = append(cells, fmt.Sprintf("%-6s%3.0f", short[s.Name], s.MMs))
+					}
+				}
 			}
 		}
 		for len(cells) < 6 {
