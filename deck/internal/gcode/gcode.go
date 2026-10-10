@@ -16,11 +16,16 @@ import (
 type Seg struct {
 	X0, Y0, Z0, X1, Y1, Z1 float32
 	Pos                    int64
+	Kind                   Kind    // what the slicer says it is: outer wall, infill, ...
+	Feed                   float32 // commanded speed, mm/s
 }
 
 type Model struct {
 	Segs []Seg
 	MaxZ float32
+
+	// Speeds is the speed of each kind of move, and of the first layer and travel moves.
+	Speeds []Speed
 
 	// Klipper start and end macros: PRINT_START BED=60 EXTRUDER=220 WIPE=160 ... and PRINT_END.
 	// StartEnd is the offset after the PRINT_START line, EndStart the offset of the PRINT_END line.
@@ -40,14 +45,20 @@ func Parse(r io.Reader) (*Model, error) {
 	m := &Model{}
 	var x, y, z, e float64
 	relXYZ, relE := false, false
+	feed := 0.0 // mm/min, modal
+	kind := KindOther
+	st := newSpeedStats()
 	var pos int64
 	for {
 		line, err := br.ReadString('\n')
 		pos += int64(len(line))
-		if strings.HasPrefix(line, ";LAYER:") {
+		if t, ok := strings.CutPrefix(line, ";TYPE:"); ok {
+			kind = kindOf(strings.TrimSpace(t))
+		} else if strings.HasPrefix(line, ";LAYER:") || strings.HasPrefix(line, ";LAYER_CHANGE") {
+			// Cura writes ";LAYER:n", PrusaSlicer and OrcaSlicer ";LAYER_CHANGE".
 			m.LayerPos = append(m.LayerPos, pos-int64(len(line)))
-		} else if strings.HasPrefix(line, ";LAYER_COUNT:") {
-			m.LayerCount, _ = strconv.Atoi(strings.TrimSpace(line[len(";LAYER_COUNT:"):]))
+		} else if n, ok := layerCount(line); ok {
+			m.LayerCount = n
 		}
 		if i := strings.IndexByte(line, ';'); i >= 0 {
 			line = line[:i]
@@ -55,7 +66,7 @@ func Parse(r io.Reader) (*Model, error) {
 		f := strings.Fields(line)
 		if len(f) > 0 {
 			switch strings.ToUpper(f[0]) {
-			case "PRINT_START":
+			case "PRINT_START", "START_PRINT":
 				m.StartEnd = pos
 				for _, w := range f[1:] {
 					if v, ok := strings.CutPrefix(strings.ToUpper(w), "BED="); ok {
@@ -114,11 +125,17 @@ func Parse(r io.Reader) (*Model, error) {
 					} else if v, ok := word(w, 'E'); ok {
 						hasE = true
 						ne = pick(relE, e, v)
+					} else if v, ok := word(w, 'F'); ok {
+						feed = v
 					}
 				}
-				if hasE && ne > e && (nx != x || ny != y) {
-					m.Segs = append(m.Segs, Seg{float32(x), float32(y), float32(z), float32(nx), float32(ny), float32(nz), pos})
+				length := math.Hypot(nx-x, ny-y)
+				if hasE && ne > e && length > 0 {
+					m.Segs = append(m.Segs, Seg{float32(x), float32(y), float32(z), float32(nx), float32(ny), float32(nz), pos, kind, float32(feed / 60)})
 					m.MaxZ = max(m.MaxZ, float32(nz))
+					st.add(kind, len(m.LayerPos) <= 1, feed/60, length)
+				} else if length > 0 && !hasE {
+					st.addTravel(feed/60, length)
 				}
 				x, y, z, e = nx, ny, nz, ne
 			}
@@ -127,6 +144,7 @@ func Parse(r io.Reader) (*Model, error) {
 			break
 		}
 	}
+	m.Speeds = st.result()
 	return m, nil
 }
 
@@ -342,4 +360,32 @@ func (m *Model) FanAt(pos int64) float32 {
 		return 0
 	}
 	return m.FanVal[lo-1]
+}
+
+// At returns the move at file offset pos: the last one that is done.
+func (m *Model) At(pos int64) (Seg, bool) {
+	lo, hi := 0, len(m.Segs)
+	for lo < hi {
+		mid := (lo + hi) / 2
+		if m.Segs[mid].Pos <= pos {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+	if lo == 0 {
+		return Seg{}, false
+	}
+	return m.Segs[lo-1], true
+}
+
+// layerCount reads the number of layers: ";LAYER_COUNT:n" (Cura), "; total layer number: n" (OrcaSlicer).
+func layerCount(line string) (int, bool) {
+	for _, p := range []string{";LAYER_COUNT:", "; total layer number:", "; total layers count ="} {
+		if v, ok := strings.CutPrefix(line, p); ok {
+			n, err := strconv.Atoi(strings.TrimSpace(v))
+			return n, err == nil
+		}
+	}
+	return 0, false
 }

@@ -5,6 +5,7 @@
 //	speakerdeck auth      link the Spotify account
 //	speakerdeck demo DIR  write PNG pictures of the screens to DIR
 //	speakerdeck preview FILE.png  write the model view of the print that runs now
+//	speakerdeck shot music|print FILE.png  write a picture of a tab, with live data
 package main
 
 import (
@@ -27,6 +28,7 @@ import (
 	"speakerdeck/internal/connect"
 	"speakerdeck/internal/eq"
 	"speakerdeck/internal/fb"
+	"speakerdeck/internal/gcode"
 	"speakerdeck/internal/gfx"
 	"speakerdeck/internal/octoprint"
 	"speakerdeck/internal/spotify"
@@ -42,6 +44,9 @@ func main() {
 		switch os.Args[1] {
 		case "auth":
 			auth(cfg, sp)
+			return
+		case "shot":
+			shot(cfg, sp, os.Args[2:])
 			return
 		case "preview":
 			preview(cfg, os.Args[2:])
@@ -149,7 +154,8 @@ func demo(args []string) {
 	m := &ui.DemoMusic{State_: spotify.State{Authorized: true, Active: true, Mine: true, Playing: true, Shuffle: true, Repeat: "context",
 		Title: "Everything In Its Right Place", Artist: "Radiohead", URI: "spotify:track:demo", Liked: true, Duration: 251 * time.Second}}
 	p := &ui.DemoPrinter{View: -1, State_: octoprint.State{Reachable: true, Text: "Printing", Connected: true, Printing: true,
-		File: "speakerdeck_body.gcode", Activity: "Printing", Layer: 12, Layers: 27, Fan: 100, HasFan: true, Z: 3.6, HasZ: true, Completion: 42.4, TimeLeft: 83 * time.Minute, HasTimeLeft: true,
+		File: "speakerdeck_body.gcode", Activity: "Printing", Layer: 12, Layers: 27, Fan: 100, HasFan: true, Z: 3.6, HasZ: true, HasNow: true, NowKind: "Outer wall", NowSpeed: 30,
+		Speeds: []gcode.Speed{{Name: "Outer wall", MMs: 30}, {Name: "Inner wall", MMs: 45}, {Name: "Infill", MMs: 55}, {Name: "Top/bottom", MMs: 40}, {Name: gcode.FirstLayer, MMs: 18}, {Name: gcode.Travel, MMs: 150}}, Completion: 42.4, TimeLeft: 83 * time.Minute, HasTimeLeft: true,
 		Tool: 209.6, ToolTarget: 210, Bed: 60, BedTarget: 60}}
 	if f, err := os.Open(os.Getenv("DEMO_PREVIEW")); err == nil {
 		p.Img, _ = png.Decode(f)
@@ -186,6 +192,9 @@ func demo(args []string) {
 	a.SetTab(ui.TabMusic)
 	a.SetTab(ui.TabPrint)
 	snap("print-busy")
+	a.SetLCDPage(1)
+	snap("print-busy-speeds")
+	a.SetLCDPage(0)
 	a.Theme = "night"
 	snap("night-print-busy")
 	a.OpenPrintScreen("control")
@@ -239,4 +248,39 @@ func preview(cfg config.Config, args []string) {
 		}
 	}
 	log.Fatalf("no preview. OctoPrint state: %+v", op.State())
+}
+
+// shot runs the application for a few seconds with live data, without the display, and writes a tab as PNG.
+func shot(cfg config.Config, sp *spotify.Client, args []string) {
+	if len(args) < 2 {
+		log.Fatal("usage: speakerdeck shot music|print FILE.png")
+	}
+	ctx, stop := context.WithCancel(context.Background())
+	defer stop()
+	op := octoprint.New(cfg.OctoPrintURL, cfg.OctoPrintKey)
+	op.ModelDir = cfg.ModelDir
+	am := amp.New(cfg.AlsaCard, cfg.MaxVolume, cfg.FloorDB, cfg.CeilDB)
+	eqc := eq.New("127.0.0.1:1234", cfg.StateDir)
+	app := ui.New()
+	app.Music, app.Printer, app.Vol, app.Equalizer = sp, op, am, eqc
+	app.NightFrom, app.NightTo = cfg.NightFrom, cfg.NightTo
+	if b, err := os.ReadFile(filepath.Join(cfg.StateDir, "theme")); err == nil {
+		app.Theme = strings.TrimSpace(string(b))
+	}
+	go sp.Run(ctx, func() {})
+	go op.Run(ctx, func() {})
+	go am.Run(ctx, func() {})
+	go eqc.Run(ctx, func() {})
+	time.Sleep(8 * time.Second) // the first reads, and the G-code for the model view
+	if args[0] == "print" {
+		app.SetTab(ui.TabPrint)
+	}
+	c := gfx.New(ui.W, ui.H)
+	app.Draw(c)
+	f, err := os.Create(args[1])
+	if err != nil {
+		log.Fatal(err)
+	}
+	png.Encode(f, c.RGBA)
+	f.Close()
 }

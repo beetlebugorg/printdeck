@@ -21,7 +21,7 @@ func TestLayerScrubber(t *testing.T) {
 	a.Draw(cv)
 
 	// The middle of the slider is the middle layer. 27 layers: 0.5 * 27 = 13.5, which rounds to 14.
-	y := 104 + 260 - 20
+	y := jobBox.Max.Y - 20
 	ev(a, touch.Down, 240, y)
 	ev(a, touch.Up, 240, y)
 	if pr.View != 14 {
@@ -29,21 +29,21 @@ func TestLayerScrubber(t *testing.T) {
 	}
 	// The left end is layer 0 (nothing printed), the right end is the last layer.
 	a.Draw(cv)
-	ev(a, touch.Down, 59, y)
-	ev(a, touch.Up, 59, y)
+	ev(a, touch.Down, jobBox.Min.X+19, y)
+	ev(a, touch.Up, jobBox.Min.X+19, y)
 	if pr.View != 0 {
 		t.Errorf("left end gave layer %d, want 0", pr.View)
 	}
 	a.Draw(cv)
-	ev(a, touch.Down, 421, y)
-	ev(a, touch.Up, 421, y)
+	ev(a, touch.Down, jobBox.Max.X-19, y)
+	ev(a, touch.Up, jobBox.Max.X-19, y)
 	if pr.View != 27 {
 		t.Errorf("right end gave layer %d, want 27", pr.View)
 	}
 	// While the scrubber shows a layer, the Live button goes back to the print.
 	a.Draw(cv)
-	ev(a, touch.Down, 400, 104+20)
-	ev(a, touch.Up, 400, 104+20)
+	ev(a, touch.Down, jobBox.Max.X-50, jobBox.Min.Y+20)
+	ev(a, touch.Up, jobBox.Max.X-50, jobBox.Min.Y+20)
 	time.Sleep(10 * time.Millisecond)
 	if pr.View != -1 {
 		t.Errorf("Live gave layer %d, want -1", pr.View)

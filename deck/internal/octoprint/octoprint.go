@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"speakerdeck/internal/gcode"
 )
 
 type File struct {
@@ -21,25 +23,32 @@ type File struct {
 }
 
 type State struct {
-	Reachable        bool
-	Err              string
-	Text             string // "Printing", "Operational", "Offline", ...
-	Connected        bool   // the printer answers
-	Printing         bool   // printing, pausing, or paused: a job is active
-	Paused           bool
-	File             string
-	FilePath         string // path in OctoPrint (local storage)
-	FileSize         int64
-	FilePos          int64   // bytes of the file that the printer has read
-	Completion       float64 // 0..100
-	TimeLeft         time.Duration
-	HasTimeLeft      bool
-	Activity         string // what the printer does now: "Wiping nozzle", "Heating bed", "Printing"
-	Layer, Layers    int
-	Fan              float64 // percent
-	HasFan           bool
-	Z                float64 // height of the head, mm
-	HasZ             bool
+	Reachable     bool
+	Err           string
+	Text          string // "Printing", "Operational", "Offline", ...
+	Connected     bool   // the printer answers
+	Printing      bool   // printing, pausing, or paused: a job is active
+	Paused        bool
+	File          string
+	FilePath      string // path in OctoPrint (local storage)
+	FileSize      int64
+	FilePos       int64   // bytes of the file that the printer has read
+	Completion    float64 // 0..100
+	TimeLeft      time.Duration
+	HasTimeLeft   bool
+	Activity      string // what the printer does now: "Wiping nozzle", "Heating bed", "Printing"
+	Layer, Layers int
+	Fan           float64 // percent
+	HasFan        bool
+	Z             float64 // height of the head, mm
+	HasZ          bool
+
+	// Speeds of the file (outer wall, infill, ...), and the move at the print position: its kind and its
+	// commanded speed in mm/s. The printer buffers a few moves, so this can be a moment ahead of the nozzle.
+	Speeds           []gcode.Speed
+	NowKind          string
+	NowSpeed         float64
+	HasNow           bool
 	Tool, ToolTarget float64
 	Bed, BedTarget   float64
 }

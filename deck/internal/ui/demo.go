@@ -141,3 +141,6 @@ func (a *App) OpenPrintScreen(name string) {
 		a.editTemp("Nozzle temperature", 210, 300, toolPresets, func(int) error { return nil })
 	}
 }
+
+// SetLCDPage shows a page of the character display; for the demo.
+func (a *App) SetLCDPage(n int) { a.lcdPage = n }
