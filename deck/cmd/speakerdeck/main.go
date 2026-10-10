@@ -78,6 +78,13 @@ func run(cfg config.Config, sp *spotify.Client) {
 	app.Equalizer = eqc
 	app.PreheatTool, app.PreheatBed = cfg.PreheatTool, cfg.PreheatBed
 	app.UnloadMM, app.LoadMM, app.JogInvertY = cfg.UnloadMM, cfg.LoadMM, cfg.JogInvertY
+	// The theme (day, night, auto) is kept in the state folder.
+	themeFile := filepath.Join(cfg.StateDir, "theme")
+	app.NightFrom, app.NightTo = cfg.NightFrom, cfg.NightTo
+	if b, err := os.ReadFile(themeFile); err == nil {
+		app.Theme = strings.TrimSpace(string(b))
+	}
+	app.OnTheme = func(t string) { os.WriteFile(themeFile, []byte(t+"\n"), 0o644) }
 
 	// The Inky wHAT shows the same track as the touch screen.
 	if cfg.NowPlayingPort > 0 {
@@ -149,6 +156,7 @@ func demo(args []string) {
 		f.Close()
 	}
 	a := ui.New()
+	a.Theme = "day"
 	a.Music, a.Printer, a.Vol = m, p, ui.DemoVolume(35)
 	a.Equalizer = &ui.DemoEQ{G: eq.Gains{4, 1.5, 0, -2, 3}}
 	a.PreheatTool, a.PreheatBed = 200, 60
@@ -160,6 +168,12 @@ func demo(args []string) {
 		f.Close()
 	}
 	snap("music")
+	a.Theme = "night"
+	snap("night-music")
+	a.OpenEQ()
+	snap("night-eq")
+	a.Theme = "day"
+	a.SetTab(ui.TabMusic)
 	a.OpenEQ()
 	snap("eq")
 	a.SetTab(ui.TabMusic)
@@ -172,6 +186,14 @@ func demo(args []string) {
 	a.SetTab(ui.TabMusic)
 	a.SetTab(ui.TabPrint)
 	snap("print-busy")
+	a.Theme = "night"
+	snap("night-print-busy")
+	a.OpenPrintScreen("control")
+	snap("night-control")
+	a.OpenPrintScreen("keypad")
+	snap("night-keypad")
+	a.Theme = "day"
+	a.OpenPrintScreen("")
 	p.View = 9
 	snap("print-scrub")
 	p.View = -1

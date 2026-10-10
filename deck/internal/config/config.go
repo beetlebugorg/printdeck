@@ -23,13 +23,14 @@ type Config struct {
 	OctoPrintKey string
 	ModelDir     string // folder with STL files for the preview
 
-	AlsaCard         string
-	MaxVolume        int
-	FloorDB, CeilDB  float64 // the decibels at 0% and 100% of the volume
-	PreheatTool      int
-	UnloadMM, LoadMM float64 // filament lengths of the swap
-	JogInvertY       bool
-	PreheatBed       int
+	AlsaCard           string
+	MaxVolume          int
+	FloorDB, CeilDB    float64 // the decibels at 0% and 100% of the volume
+	PreheatTool        int
+	UnloadMM, LoadMM   float64 // filament lengths of the swap
+	JogInvertY         bool
+	NightFrom, NightTo int // hours of the night theme in auto mode
+	PreheatBed         int
 }
 
 func Load() Config {
@@ -55,6 +56,8 @@ func Load() Config {
 		UnloadMM:        float64(num("FILAMENT_UNLOAD_MM", 80)),
 		LoadMM:          float64(num("FILAMENT_LOAD_MM", 70)),
 		JogInvertY:      num("JOG_INVERT_Y", 0) == 1,
+		NightFrom:       num("NIGHT_FROM", 20),
+		NightTo:         num("NIGHT_TO", 7),
 		PreheatBed:      num("PREHEAT_BED", 60),
 	}
 }

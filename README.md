@@ -30,6 +30,7 @@ A small Spotify player and OctoPrint host on a Raspberry Pi 5.
   - Control (when no print runs): home X, Y, Z; a joystick moves the head (faster further out, stops when you lift the finger); Z in steps of 0.1, 1, 10 mm; extrude and retract; fan; motors off; emergency stop. A filament swap leads through heat, unload, load, and purge.
   - Tune (while a print runs): speed and flow in percent, Z offset in baby steps, fan.
   - Tap a temperature to set it with a keypad.
+  - Tap the clock to choose the day theme, the night theme, or auto (night from `NIGHT_FROM` to `NIGHT_TO`, 20 to 7). The choice is saved in `/var/lib/speakerdeck/theme`.
   - The status bar shows the other tab: "Printing 42%" on the Music tab, and the current track on the Print tab.
 
 ## Installation
@@ -46,7 +47,7 @@ A small Spotify player and OctoPrint host on a Raspberry Pi 5.
 
 To update: `git pull`, then `docker compose up -d --build`.
 
-Settings are in `.env`: `DISPLAY_ROTATE` (90 or 270), `TOUCH_INVERT_X`, `TOUCH_INVERT_Y`, `TOUCH_SWAP_XY` (0 or 1), `VOLUME_FLOOR_DB`, `VOLUME_CEIL_DB`, `MAX_VOLUME`, `PREHEAT_TOOL`, `PREHEAT_BED`, `FILAMENT_UNLOAD_MM`, `FILAMENT_LOAD_MM`, `JOG_INVERT_Y`.
+Settings are in `.env`: `DISPLAY_ROTATE` (90 or 270), `TOUCH_INVERT_X`, `TOUCH_INVERT_Y`, `TOUCH_SWAP_XY` (0 or 1), `VOLUME_FLOOR_DB`, `VOLUME_CEIL_DB`, `MAX_VOLUME`, `PREHEAT_TOOL`, `PREHEAT_BED`, `FILAMENT_UNLOAD_MM`, `FILAMENT_LOAD_MM`, `JOG_INVERT_Y`, `NIGHT_FROM`, `NIGHT_TO`.
 
 To look at the screens without the hardware, run `go run ./cmd/speakerdeck demo /tmp/shots` in `deck/`. It writes PNG files.
 

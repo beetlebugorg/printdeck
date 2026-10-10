@@ -12,23 +12,56 @@ import (
 // pressed, dark LCD windows with amber digits, faders, and LEDs. Monospace type, and safety orange as the one
 // accent. Red is only for what stops or deletes.
 
+// The colours of the current palette. setNight switches between the day and the night palette.
 var (
-	bg      = color.RGBA{0xd3, 0xd0, 0xc8, 255} // chassis
-	surface = color.RGBA{0xe6, 0xe3, 0xdc, 255} // module plate
-	raised  = color.RGBA{0xf3, 0xf1, 0xec, 255} // light key cap
-	edge    = color.RGBA{0xa9, 0xa5, 0x9c, 255} // seams and plate edges
-	shine   = color.RGBA{0xfb, 0xfa, 0xf7, 255} // top highlight of plates and caps
-	text    = color.RGBA{0x17, 0x17, 0x17, 255} // ink
-	dim     = color.RGBA{0x6e, 0x6a, 0x63, 255} // secondary ink
-	orange  = color.RGBA{0xff, 0x5a, 0x1f, 255} // safety orange
-	green   = orange                            // the one accent: active, playing, selected
-	red     = color.RGBA{0xd1, 0x2b, 0x1d, 255}
-	onAcc   = color.RGBA{0x12, 0x12, 0x12, 255} // ink on an orange cap
-	lcd     = color.RGBA{0x1b, 0x1c, 0x1a, 255} // display window
-	lcdInk  = color.RGBA{0xff, 0x7a, 0x30, 255} // amber digits
-	lcdDim  = color.RGBA{0x7a, 0x4d, 0x30, 255}
-	ledOff  = color.RGBA{0x8f, 0x8a, 0x80, 255}
+	bg, surface, raised, edge, shine color.RGBA // chassis, module plate, key cap, seams, top highlight
+	text, dim                        color.RGBA // ink, secondary ink
+	orange, green, red, onAcc        color.RGBA // safety orange (the one accent), red for stop, ink on orange
+	lcd, lcdInk, lcdDim              color.RGBA // display window and its amber digits
+	ledOff, ledGlow                  color.RGBA
+	keyOn, keyOnInk                  color.RGBA // the cap of a key that is on, like the active mode key
 )
+
+type palette struct {
+	bg, surface, raised, edge, shine, text, dim, orange, red, onAcc, lcd, lcdInk, lcdDim, ledOff, ledGlow, keyOn, keyOnInk color.RGBA
+}
+
+func rgb(v uint32) color.RGBA { return color.RGBA{uint8(v >> 16), uint8(v >> 8), uint8(v), 255} }
+
+var (
+	// Day: a light grey chassis, like a Braun or Teenage Engineering device.
+	dayPalette = palette{
+		bg: rgb(0xd3d0c8), surface: rgb(0xe6e3dc), raised: rgb(0xf3f1ec), edge: rgb(0xa9a59c), shine: rgb(0xfbfaf7),
+		text: rgb(0x171717), dim: rgb(0x6e6a63), orange: rgb(0xff5a1f), red: rgb(0xd12b1d), onAcc: rgb(0x121212),
+		lcd: rgb(0x1b1c1a), lcdInk: rgb(0xff7a30), lcdDim: rgb(0x7a4d30), ledOff: rgb(0x8f8a80), ledGlow: rgb(0xffc8a8),
+		keyOn: rgb(0x171717), keyOnInk: rgb(0xf3f1ec),
+	}
+	// Night: an anthracite chassis. Less light from the panel, the same orange, softer ink.
+	nightPalette = palette{
+		bg: rgb(0x121211), surface: rgb(0x1c1c1a), raised: rgb(0x292825), edge: rgb(0x060606), shine: rgb(0x34332f),
+		text: rgb(0xcfcac0), dim: rgb(0x77726a), orange: rgb(0xe8541c), red: rgb(0xb83020), onAcc: rgb(0x0e0e0d),
+		lcd: rgb(0x080808), lcdInk: rgb(0xe8692a), lcdDim: rgb(0x5e3820), ledOff: rgb(0x3a3834), ledGlow: rgb(0x4a2412),
+		keyOn: rgb(0x080808), keyOnInk: rgb(0xe8692a),
+	}
+	night bool // the night palette is in use
+)
+
+func init() { setNight(false) }
+
+// setNight switches the palette. The next frame is drawn in it.
+func setNight(on bool) {
+	p := dayPalette
+	if on {
+		p = nightPalette
+	}
+	night = on
+	bg, surface, raised, edge, shine = p.bg, p.surface, p.raised, p.edge, p.shine
+	text, dim = p.text, p.dim
+	orange, green, red, onAcc = p.orange, p.orange, p.red, p.onAcc
+	lcd, lcdInk, lcdDim = p.lcd, p.lcdInk, p.lcdDim
+	ledOff, ledGlow = p.ledOff, p.ledGlow
+	keyOn, keyOnInk = p.keyOn, p.keyOnInk
+}
 
 func darken(c color.RGBA, f float64) color.RGBA {
 	m := func(v uint8) uint8 { return uint8(float64(v) * (1 - f)) }
@@ -70,7 +103,7 @@ func window(c *gfx.Canvas, r image.Rectangle) {
 // led is an indicator light.
 func led(c *gfx.Canvas, x, y int, on bool) {
 	if on {
-		c.RoundRect(image.Rect(x-7, y-7, x+7, y+7), 7, color.RGBA{0xff, 0xc8, 0xa8, 255}) // glow
+		c.RoundRect(image.Rect(x-7, y-7, x+7, y+7), 7, ledGlow)
 		c.RoundRect(image.Rect(x-4, y-4, x+4, y+4), 4, orange)
 		return
 	}

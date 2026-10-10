@@ -46,6 +46,8 @@ services:
       FILAMENT_UNLOAD_MM: ${FILAMENT_UNLOAD_MM:-80}
       FILAMENT_LOAD_MM: ${FILAMENT_LOAD_MM:-70}
       JOG_INVERT_Y: ${JOG_INVERT_Y:-0}
+      NIGHT_FROM: ${NIGHT_FROM:-20}
+      NIGHT_TO: ${NIGHT_TO:-7}
       NOWPLAYING_PORT: "0" # the Inky wHAT is not part of this stack
 
   # The equalizer: reads Spotify from the ALSA loopback, plays to the Amp2. Needs the snd-aloop module
