@@ -18,14 +18,14 @@ var (
 	text, dim                        color.RGBA // ink, secondary ink
 	orange, green, red, onAcc        color.RGBA // safety orange (the one accent), red text, ink on orange
 	redCap, onRed                    color.RGBA // the cap of a key that stops, and its lettering
-	lcd, lcdInk, lcdDim              color.RGBA // display window and its amber digits
+	lcd, lcdInk, lcdDim, lcdCell     color.RGBA // display window, its amber digits, and an unlit character cell
 	ledOff, ledGlow                  color.RGBA
 	keyOn, keyOnInk                  color.RGBA // the cap of a key that is on, like the active mode key
 )
 
 type palette struct {
 	bg, surface, raised, edge, shine, text, dim, orange, red, onAcc, lcd, lcdInk, lcdDim, ledOff, ledGlow, keyOn, keyOnInk color.RGBA
-	redCap, onRed                                                                                                          color.RGBA
+	redCap, onRed, lcdCell                                                                                                 color.RGBA
 }
 
 func rgb(v uint32) color.RGBA { return color.RGBA{uint8(v >> 16), uint8(v >> 8), uint8(v), 255} }
@@ -36,7 +36,7 @@ var (
 		bg: rgb(0xd3d0c8), surface: rgb(0xe6e3dc), raised: rgb(0xf3f1ec), edge: rgb(0xa9a59c), shine: rgb(0xfbfaf7),
 		text: rgb(0x171717), dim: rgb(0x4a4742), orange: rgb(0xff5a1f), red: rgb(0xd12b1d), onAcc: rgb(0x121212),
 		lcd: rgb(0x1b1c1a), lcdInk: rgb(0xff7a30), lcdDim: rgb(0xc27a48), ledOff: rgb(0x8f8a80), ledGlow: rgb(0xffc8a8),
-		keyOn: rgb(0x171717), keyOnInk: rgb(0xf3f1ec), redCap: rgb(0xc0291b), onRed: rgb(0xfbfaf7),
+		keyOn: rgb(0x171717), keyOnInk: rgb(0xf3f1ec), redCap: rgb(0xc0291b), onRed: rgb(0xfbfaf7), lcdCell: rgb(0x2a211a),
 	}
 	// Night: an anthracite chassis. The panel has a narrow viewing angle, so the text keeps at least 7:1 contrast
 	// (contrast_test.go); mid-grey on dark grey washes out when the panel is seen from the side.
@@ -44,7 +44,7 @@ var (
 		bg: rgb(0x121211), surface: rgb(0x1c1c1a), raised: rgb(0x292825), edge: rgb(0x060606), shine: rgb(0x34332f),
 		text: rgb(0xeee9df), dim: rgb(0xc2bcb0), orange: rgb(0xff7a3a), red: rgb(0xff7a6a), onAcc: rgb(0x0e0e0d),
 		lcd: rgb(0x080808), lcdInk: rgb(0xff8c4a), lcdDim: rgb(0xd98a55), ledOff: rgb(0x3a3834), ledGlow: rgb(0x4a2412),
-		keyOn: rgb(0x080808), keyOnInk: rgb(0xff8c4a), redCap: rgb(0x9c2216), onRed: rgb(0xf3efe8),
+		keyOn: rgb(0x080808), keyOnInk: rgb(0xff8c4a), redCap: rgb(0x9c2216), onRed: rgb(0xf3efe8), lcdCell: rgb(0x1a120c),
 	}
 	night bool // the night palette is in use
 )
@@ -61,7 +61,7 @@ func setNight(on bool) {
 	bg, surface, raised, edge, shine = p.bg, p.surface, p.raised, p.edge, p.shine
 	text, dim = p.text, p.dim
 	orange, green, red, onAcc = p.orange, p.orange, p.red, p.onAcc
-	lcd, lcdInk, lcdDim = p.lcd, p.lcdInk, p.lcdDim
+	lcd, lcdInk, lcdDim, lcdCell = p.lcd, p.lcdInk, p.lcdDim, p.lcdCell
 	ledOff, ledGlow = p.ledOff, p.ledGlow
 	keyOn, keyOnInk = p.keyOn, p.keyOnInk
 	redCap, onRed = p.redCap, p.onRed
@@ -137,6 +137,11 @@ func key(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pr
 
 // fader draws a horizontal slider: a slot, the part up to the value in orange, and a grip cap.
 func fader(c *gfx.Canvas, r image.Rectangle, f float64, accent color.RGBA) {
+	faderWith(c, r, f, accent, text)
+}
+
+// faderWith is a fader with a cap of the colour cap. Inside a dark window the cap is light in both themes.
+func faderWith(c *gfx.Canvas, r image.Rectangle, f float64, accent, cap color.RGBA) {
 	cy := r.Min.Y + r.Dy()/2
 	slot := image.Rect(r.Min.X, cy-4, r.Max.X, cy+4)
 	c.RoundRect(slot, 4, lcd)
@@ -144,17 +149,19 @@ func fader(c *gfx.Canvas, r image.Rectangle, f float64, accent color.RGBA) {
 	if x > slot.Min.X+4 {
 		c.RoundRect(image.Rect(slot.Min.X+2, cy-2, x, cy+2), 2, accent)
 	}
-	faderCap(c, x, cy, false)
+	faderCapWith(c, x, cy, false, cap)
 }
 
 // faderCap is the grip of a fader: a block with ridges and an orange index line.
-func faderCap(c *gfx.Canvas, x, y int, vertical bool) {
+func faderCap(c *gfx.Canvas, x, y int, vertical bool) { faderCapWith(c, x, y, vertical, text) }
+
+func faderCapWith(c *gfx.Canvas, x, y int, vertical bool, cap color.RGBA) {
 	w, h := 14, 22 // half sizes
 	if vertical {
 		w, h = 22, 14
 	}
 	c.RoundRect(image.Rect(x-w, y-h+3, x+w, y+h+3), 4, edge) // shadow
-	c.RoundRect(image.Rect(x-w, y-h, x+w, y+h), 4, text)
+	c.RoundRect(image.Rect(x-w, y-h, x+w, y+h), 4, cap)
 	for i := -2; i <= 2; i++ {
 		if i == 0 {
 			continue
@@ -214,4 +221,27 @@ func playhead(c *gfx.Canvas, r image.Rectangle, f float64) {
 func heading(c *gfx.Canvas, title string) {
 	c.Fill(image.Rect(24, 76, 34, 96), orange)
 	c.Text(image.Rect(44, 64, W-150, 108), strings.ToUpper(title), gfx.Face(true, 24), text, gfx.Left)
+}
+
+// charLCD is a character display, like the 20 x 4 dot-matrix display of a printer: a grid of dark cells,
+// with one character drawn in each. Lines longer than cols are cut.
+func charLCD(c *gfx.Canvas, r image.Rectangle, lines []string, cols int) {
+	window(c, r)
+	rows := len(lines)
+	cw := (r.Dx() - 16) / cols
+	ch := (r.Dy() - 12) / rows
+	x0 := r.Min.X + (r.Dx()-cw*cols)/2
+	y0 := r.Min.Y + (r.Dy()-ch*rows)/2
+	size := min(int(float64(ch)*0.78), int(float64(cw-2)/0.6))
+	face := gfx.Face(true, size)
+	for row, line := range lines {
+		rs := []rune(line)
+		for col := 0; col < cols; col++ {
+			cell := image.Rect(x0+col*cw+1, y0+row*ch+1, x0+(col+1)*cw-1, y0+(row+1)*ch-1)
+			c.Fill(cell, lcdCell)
+			if col < len(rs) && rs[col] != ' ' {
+				c.Text(cell, string(rs[col]), face, lcdInk, gfx.Center)
+			}
+		}
+	}
 }

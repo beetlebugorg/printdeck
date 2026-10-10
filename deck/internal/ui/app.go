@@ -155,9 +155,10 @@ type App struct {
 	OnTheme            func(string)
 	JogInvertY         bool // up on the joystick moves Y back instead of forward
 
-	joy    *joystick
-	zStep  float64 // mm per tap of the Z buttons
-	fanSet int     // the last fan setting from the screen, -1 if none
+	joy     *joystick
+	zStep   float64 // mm per tap of the Z buttons
+	lcdPage int     // the page of the character display on the job screen: 0 status, 1 speeds
+	fanSet  int     // the last fan setting from the screen, -1 if none
 
 	// The tune sheet, counted from the start of the print in tuneFile.
 	tuneFile            string
