@@ -1,9 +1,11 @@
 package ui
 
 import (
+	"strings"
 	"testing"
 	"time"
 
+	"speakerdeck/internal/gcode"
 	"speakerdeck/internal/gfx"
 	"speakerdeck/internal/octoprint"
 	"speakerdeck/internal/spotify"
@@ -47,5 +49,22 @@ func TestLayerScrubber(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	if pr.View != -1 {
 		t.Errorf("Live gave layer %d, want -1", pr.View)
+	}
+}
+
+func TestSpeedsPagePriority(t *testing.T) {
+	a := New()
+	a.lcdPage = 1
+	st := octoprint.State{Speeds: []gcode.Speed{{Name: "Outer wall", MMs: 60}, {Name: "Inner wall", MMs: 67}, {Name: "Infill", MMs: 100},
+		{Name: "Top/bottom", MMs: 41}, {Name: "Skirt", MMs: 15}, {Name: gcode.FirstLayer, MMs: 15}, {Name: gcode.Travel, MMs: 250}}}
+	lines := a.lcdLines(st)
+	all := strings.Join(lines, "|")
+	if !strings.Contains(all, "TRAVEL250") || !strings.Contains(all, "FIRST  15") || strings.Contains(all, "SKIRT") {
+		t.Errorf("speeds page %q", lines)
+	}
+	for _, l := range lines {
+		if len([]rune(l)) > 20 {
+			t.Errorf("line longer than 20: %q", l)
+		}
 	}
 }
