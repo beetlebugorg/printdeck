@@ -23,7 +23,7 @@ A small Spotify player and OctoPrint host on a Raspberry Pi 5.
 - `inky/nowplaying.py` shows the album art, the title, and the artist on the Inky wHAT.
 - `deck/` is the `speakerdeck` binary (Go). It starts on boot and draws a full screen application on the 7" display, without a desktop or a browser:
   - The Music tab follows and controls Spotify with the Spotify Web API (cover, seek, previous, play, next, shuffle, repeat). go-librespot is the Connect device.
-  - The Print tab has a character display (20 x 4, like the display of the printer): what it does, the heaters, the kind of move and its speed now, the layer, Z, and the time left. A tap shows the speeds of the file: outer and inner wall, infill, top/bottom, first layer, travel. They come from the G-code (Cura, PrusaSlicer, OrcaSlicer).
+  - The Print tab has a character display (20 x 2, like the display of the printer): what it does, the progress and the time left, and the kind of move now with its speed (from the `;TYPE:` marks of Cura, PrusaSlicer, and OrcaSlicer).
   - The Print tab shows a 3D view of the model that prints (the printed height in colour), the progress, the time left, and the temperatures. It can pause, resume, cancel, preheat, and start a file. The view is a shaded STL if OctoPrint or `MODEL_DIR` (default `/var/lib/speakerdeck/models`) has an STL with a matching name. Otherwise it is the toolpath from the G-code.
   - The equalizer button opens five bands (80 Hz to 10 kHz, ±12 dB) and presets. The setting is saved in `/var/lib/speakerdeck/eq.json`. A boost lowers the overall gain by the same amount, so it cannot clip.
   - The heart adds the track to Liked Songs or removes it. The plus button adds it to one of your playlists.

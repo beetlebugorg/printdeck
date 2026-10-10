@@ -5,7 +5,6 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
-	"speakerdeck/internal/gcode"
 	"strings"
 	"time"
 
@@ -90,8 +89,8 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 // drawJob is the screen of a running or paused print: the model, the progress, the temperatures, and the buttons.
 // The places on the job screen.
 var (
-	jobLCD = image.Rect(16, 62, W-16, 196)
-	jobBox = image.Rect(40, 206, W-40, 206+308) // the model view, with the scrubber at the bottom
+	jobLCD = image.Rect(16, 62, W-16, 154)
+	jobBox = image.Rect(40, 164, W-40, 164+350) // the model view, with the scrubber at the bottom
 )
 
 // drawJob is the screen of a running or paused print: a character display with the status, the model,
@@ -99,12 +98,8 @@ var (
 func (a *App) drawJob(c *gfx.Canvas, st octoprint.State) {
 	pr := a.Printer
 
-	// The character display. A tap shows the other page: status, or the speeds of the file.
+	// The character display: what it does, and the move now with its speed.
 	charLCD(c, jobLCD, a.lcdLines(st), 20)
-	a.addHit(hit{r: jobLCD, tap: func() { a.lcdPage = 1 - a.lcdPage }})
-	for i := 0; i < 2; i++ { // page LEDs below the display
-		led(c, W/2-8+i*16, jobLCD.Max.Y+2, a.lcdPage == i)
-	}
 
 	box := jobBox
 	window(c, box)
@@ -139,72 +134,26 @@ func (a *App) speedFactor(st octoprint.State) int {
 	return 100
 }
 
-// lcdLines are the four lines of 20 characters of the character display.
+// lcdLines are the two lines of 20 characters of the character display.
 func (a *App) lcdLines(st octoprint.State) []string {
-	fit := func(s string) string {
-		rs := []rune(s)
-		if len(rs) > 20 {
-			rs = rs[:20]
-		}
-		return string(rs)
-	}
-	lr := func(l, r string) string { // l at the left, r at the right
+	lr := func(l, r string) string { // l at the left, r at the right, 20 characters
 		n := 20 - len([]rune(r))
-		lrs := []rune(l)
-		if len(lrs) > n-1 {
-			lrs = lrs[:max(0, n-1)]
+		ls := []rune(l)
+		if len(ls) > n-1 {
+			ls = ls[:max(0, n-1)]
 		}
-		return fit(string(lrs) + strings.Repeat(" ", max(0, n-len(lrs))) + r)
+		return string(ls) + strings.Repeat(" ", n-len(ls)) + r
 	}
-	factor := a.speedFactor(st)
-
-	if a.lcdPage == 1 { // the speeds of the file, in mm/s
-		short := map[string]string{"Outer wall": "OUTER", "Inner wall": "INNER", "Infill": "INFILL", "Top/bottom": "TOP/BT",
-			"Support": "SUPPRT", "Skirt": "SKIRT", gcodeFirst: "FIRST", gcodeTravel: "TRAVEL"}
-		// Six places: the main ones first; support or skirt only fill a place that would stay empty.
-		var cells []string
-		for _, pass := range [][]string{{"Outer wall", "Inner wall", "Infill", "Top/bottom", gcodeFirst, gcodeTravel}, {"Support", "Skirt"}} {
-			for _, name := range pass {
-				for _, s := range st.Speeds {
-					if s.Name == name && len(cells) < 6 {
-						cells = append(cells, fmt.Sprintf("%-6s%3.0f", short[s.Name], s.MMs))
-					}
-				}
-			}
-		}
-		for len(cells) < 6 {
-			cells = append(cells, "")
-		}
-		rows := []string{}
-		for i := 0; i < 6; i += 2 {
-			rows = append(rows, fit(fmt.Sprintf("%-9s %s", cells[i], cells[i+1])))
-		}
-		if len(st.Speeds) == 0 {
-			rows[0] = "NO SPEEDS IN FILE"
-		}
-		return append(rows, lr("MM/S", fmt.Sprintf("SPEED %d%%", factor)))
-	}
-
-	// Status: what it does, the heaters, the move now, and where it is.
-	l1 := lr(strings.ToUpper(st.Activity), fmt.Sprintf("%.0f%%", st.Completion))
-	l2 := fit(fmt.Sprintf("E%3.0f/%-3.0f  B%3.0f/%-3.0f", st.Tool, st.ToolTarget, st.Bed, st.BedTarget))
-	l3 := "--"
-	if st.HasNow {
-		l3 = lr(strings.ToUpper(st.NowKind), fmt.Sprintf("%.0fMM/S", st.NowSpeed*float64(factor)/100))
-	}
-	left := ""
+	right := fmt.Sprintf("%.0f%%", st.Completion)
 	if st.HasTimeLeft {
 		m := int(st.TimeLeft.Minutes())
-		left = fmt.Sprintf("%d:%02d", m/60, m%60)
+		right += fmt.Sprintf(" %d:%02d", m/60, m%60)
 	}
-	pos := ""
-	if st.Layers > 0 {
-		pos = fmt.Sprintf("L%d/%d", st.Layer, st.Layers)
+	now := "--"
+	if st.HasNow {
+		now = lr(strings.ToUpper(st.NowKind), fmt.Sprintf("%.0fMM/S", st.NowSpeed*float64(a.speedFactor(st))/100))
 	}
-	if st.HasZ {
-		pos += fmt.Sprintf(" Z%.2f", st.Z)
-	}
-	return []string{l1, l2, l3, lr(pos, left)}
+	return []string{lr(strings.ToUpper(st.Activity), right), now}
 }
 
 func (a *App) temps(c *gfx.Canvas, y, h int, tool, toolT, bed, bedT float64, ok bool) {
@@ -299,8 +248,3 @@ func (a *App) drawScrubber(c *gfx.Canvas, box image.Rectangle, st octoprint.Stat
 	faderWith(c, slider, f, orange, dayPalette.raised) // a light cap on the dark window
 	a.addHit(hit{r: slider, drag: set, end: set})
 }
-
-const (
-	gcodeFirst  = gcode.FirstLayer
-	gcodeTravel = gcode.Travel
-)

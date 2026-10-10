@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	PreviewW, PreviewH = 400, 268
+	PreviewW, PreviewH = 400, 310
 	maxDownload        = 80 << 20 // larger files are not drawn
 )
 
