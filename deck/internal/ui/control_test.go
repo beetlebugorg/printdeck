@@ -34,6 +34,8 @@ func (r *recPrinter) SetBedTemp(t int) error  { return r.rec(fmt.Sprint("bed ", 
 func (r *recPrinter) Jog(x, y, z float64, s int) error {
 	return r.rec(fmt.Sprintf("jog %.2f %.2f %.2f %d", x, y, z, s))
 }
+func (r *recPrinter) FirmwareRestart() error { return r.Gcode("FIRMWARE_RESTART") }
+
 func (r *recPrinter) Calls() []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -162,5 +164,18 @@ func TestFilamentSwapSteps(t *testing.T) {
 	}
 	if a.swap.step != swapCheck {
 		t.Errorf("step %d, want check", a.swap.step)
+	}
+}
+
+// The reset is on the idle screen even when OctoPrint says "Operational" (Klipper may be shut down behind it).
+func TestResetPrinterAlwaysThere(t *testing.T) {
+	a, pr, cv := newPrintApp(idle)
+	tapAt(a, cv, W/2, 300+288+30) // Reset printer
+	if a.confirm == nil {
+		t.Fatal("no confirmation")
+	}
+	tapAt(a, cv, 340, 500) // the Reset key of the dialog
+	if c := pr.wait(1); len(c) != 1 || c[0] != "gcode FIRMWARE_RESTART" {
+		t.Errorf("calls %v", c)
 	}
 }

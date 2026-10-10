@@ -69,7 +69,12 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	if !st.Connected {
 		a.button(c, image.Rect(40, y, W-40, y+84), "Connect printer", orange, onAcc, pr.Connect)
 		// After an emergency stop or an error, Klipper must restart before it does anything.
-		a.button(c, image.Rect(40, y+104, W-40, y+176), "Restart firmware", raised, text, func() { a.do(pr.FirmwareRestart) })
+		a.button(c, image.Rect(40, y+104, W-40, y+176), "Reset printer", redCap, onRed, func() {
+			a.confirm = &confirmBox{question: "Restart the printer firmware?", yes: "Reset", danger: true, onYes: func() {
+				a.Toast("Restarting the printer…")
+				a.do(pr.FirmwareRestart)
+			}}
+		})
 		return
 	}
 	a.button(c, image.Rect(40, y, W-40, y+84), "Print a file", orange, onAcc, func() {
@@ -80,9 +85,14 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	a.button(c, image.Rect(40, y+104, 40+half, y+176), fmt.Sprintf("Preheat %d/%d", a.PreheatTool, a.PreheatBed), raised, text, func() { pr.Heat(a.PreheatTool, a.PreheatBed) })
 	a.button(c, image.Rect(40+half+16, y+104, W-40, y+176), "Cool down", raised, text, func() { pr.Heat(0, 0) })
 	a.button(c, image.Rect(40, y+196, 40+half, y+268), "Control", raised, text, func() { a.control = true })
-	if strings.Contains(strings.ToLower(st.Text), "error") { // after an emergency stop, Klipper waits for a restart
-		a.button(c, image.Rect(40, y+288, W-40, y+356), "Restart firmware", redCap, onRed, func() { a.do(pr.FirmwareRestart) })
-	}
+	// After Klipper stops itself (a heater fault, an emergency stop), OctoPrint can still say "Operational",
+	// so the reset is always here. It restarts Klipper (FIRMWARE_RESTART); the heaters stay off.
+	a.button(c, image.Rect(40, y+288, W-40, y+356), "Reset printer", redCap, onRed, func() {
+		a.confirm = &confirmBox{question: "Restart the printer firmware?", yes: "Reset", danger: true, onYes: func() {
+			a.Toast("Restarting the printer…")
+			a.do(pr.FirmwareRestart)
+		}}
+	})
 	a.button(c, image.Rect(40+half+16, y+196, W-40, y+268), "Filament", raised, text, func() { a.swap = &swapState{} })
 }
 
