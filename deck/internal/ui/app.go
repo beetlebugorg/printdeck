@@ -147,7 +147,13 @@ type App struct {
 
 	// Settings of the control screens.
 	UnloadMM, LoadMM float64 // filament lengths of the swap
-	JogInvertY       bool    // up on the joystick moves Y back instead of forward
+
+	// Theme is "day", "night", or "auto": night from NightFrom to NightTo o'clock. Tapping the clock changes it,
+	// and OnTheme is told, to save it.
+	Theme              string
+	NightFrom, NightTo int
+	OnTheme            func(string)
+	JogInvertY         bool // up on the joystick moves Y back instead of forward
 
 	joy    *joystick
 	zStep  float64 // mm per tap of the Z buttons
@@ -169,7 +175,7 @@ type confirmBox struct {
 
 func New() *App {
 	return &App{Now: time.Now, dragFrac: -1, wake: make(chan struct{}, 1), posted: make(chan func(), 16),
-		joy: &joystick{}, zStep: 1, fanSet: -1, UnloadMM: 80, LoadMM: 70, tuneSpeed: 100, tuneFlow: 100}
+		joy: &joystick{}, zStep: 1, fanSet: -1, UnloadMM: 80, LoadMM: 70, tuneSpeed: 100, tuneFlow: 100, Theme: "auto", NightFrom: 20, NightTo: 7}
 }
 
 // Redraw asks for a new frame. It is safe to call from any goroutine.
@@ -321,6 +327,9 @@ func fracOf(h *hit, p image.Point) float64 {
 
 // Draw renders one frame and rebuilds the hit list.
 func (a *App) Draw(c *gfx.Canvas) {
+	if n := a.isNight(); n != night {
+		setNight(n)
+	}
 	a.hits = a.hits[:0]
 	c.Fill(c.Bounds(), bg)
 	if a.tab == TabMusic {
@@ -353,7 +362,10 @@ func (a *App) drawStatus(c *gfx.Canvas) {
 	c.Fill(image.Rect(0, 0, W, statusH), bg)
 	win := image.Rect(10, 8, W-10, statusH-6)
 	window(c, win)
-	c.Text(image.Rect(win.Min.X+12, win.Min.Y, win.Min.X+120, win.Max.Y), a.Now().Format("15:04"), gfx.Face(true, 24), lcdInk, gfx.Left)
+	c.Text(image.Rect(win.Min.X+12, win.Min.Y, win.Min.X+90, win.Max.Y), a.Now().Format("15:04"), gfx.Face(true, 24), lcdInk, gfx.Left)
+	// The clock is also the key for the theme: day, night, auto.
+	c.Text(image.Rect(win.Min.X+92, win.Min.Y, win.Min.X+150, win.Max.Y), strings.ToUpper(a.Theme), gfx.Face(true, 12), lcdDim, gfx.Left)
+	a.addHit(hit{r: image.Rect(0, 0, 160, statusH), tap: a.cycleTheme})
 
 	// A short summary of the other tab. Tapping it opens that tab.
 	var s string
@@ -369,7 +381,7 @@ func (a *App) drawStatus(c *gfx.Canvas) {
 		s, to = "♪ "+m.Title, TabMusic
 	}
 	if s != "" {
-		r := image.Rect(130, win.Min.Y, win.Max.X-12, win.Max.Y)
+		r := image.Rect(160, win.Min.Y, win.Max.X-12, win.Max.Y)
 		a.addHit(hit{r: r, tap: func() { a.setTab(to) }})
 		c.Text(r, s, gfx.Face(false, 18), lcdInk, gfx.Right)
 	}
@@ -391,7 +403,7 @@ func (a *App) drawTabs(c *gfx.Canvas) {
 		active := a.tab == tab
 		cap, ink := raised, text
 		if active {
-			cap, ink = text, raised
+			cap, ink = keyOn, keyOnInk
 		}
 		key(c, r, "", cap, ink, a.isPressed(r))
 		face := image.Rect(r.Min.X, r.Min.Y, r.Max.X, r.Max.Y-5)
@@ -460,4 +472,32 @@ func abs(v int) int {
 		return -v
 	}
 	return v
+}
+
+// isNight says if the night palette is wanted now.
+func (a *App) isNight() bool {
+	switch a.Theme {
+	case "night":
+		return true
+	case "day":
+		return false
+	}
+	h := a.Now().Hour()
+	if a.NightFrom > a.NightTo { // over midnight, like 20 to 7
+		return h >= a.NightFrom || h < a.NightTo
+	}
+	return h >= a.NightFrom && h < a.NightTo
+}
+
+// cycleTheme goes day, night, auto, day.
+func (a *App) cycleTheme() {
+	a.Theme = map[string]string{"day": "night", "night": "auto", "auto": "day"}[a.Theme]
+	if a.Theme == "" {
+		a.Theme = "auto"
+	}
+	msg := map[string]string{"day": "Day mode", "night": "Night mode", "auto": fmt.Sprintf("Auto: night from %d:00 to %d:00", a.NightFrom, a.NightTo)}[a.Theme]
+	a.Toast(msg)
+	if a.OnTheme != nil {
+		a.OnTheme(a.Theme)
+	}
 }
