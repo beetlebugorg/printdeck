@@ -56,10 +56,13 @@ SETTINGS = {
     "boost_other": ("Boost other", "Speed factor for long moves of other kinds (support, skirt, ...).", "float", 1.5, "×", {"minimum_value": "1", "enabled": "adaptive"}),
     "long_run": ("Long straight run", "Straight runs (corner to corner) at least this long get the full boost.", "float", 30.0, "mm", {"minimum_value": "1", "enabled": "adaptive"}),
     "corner_angle": ("Corner angle", "A turn sharper than this ends a straight run. Smaller turns are part of a curve.", "float", 30.0, "°", {"minimum_value": "1", "maximum_value": "179", "enabled": "adaptive"}),
+    "curve_window": ("Curve length", "The curve radius is measured over this much path (the path length divided by how far it turns), so the small wiggles of short segments do not count.", "float", 2.0, "mm", {"minimum_value": "0.2", "enabled": "adaptive"}),
     "curve_accel": ("Curve acceleration", "Limits the speed in curves to the square root of this times the curve radius. Lower is slower in curves.", "float", 1000.0, "mm/s²", {"minimum_value": "10", "enabled": "adaptive"}),
     "short_path": ("Short path", "Paths shorter than this (small islands, gap fill) go slower.", "float", 3.0, "mm", {"minimum_value": "0", "enabled": "adaptive"}),
     "short_factor": ("Speed of the shortest paths", "Speed factor for a path of almost no length.", "float", 0.5, "×", {"minimum_value": "0.1", "maximum_value": "1", "enabled": "adaptive"}),
-    "overhang_factor": ("Speed of overhangs", "Speed factor for a wall that sticks out a full line width past the layer below. A 45° overhang sticks out about one layer height.", "float", 0.5, "×", {"minimum_value": "0.1", "maximum_value": "1", "enabled": "adaptive"}),
+    "overhang_start": ("Overhang angle", "Walls that lean out less than this (from vertical) are not slowed: they support themselves.", "float", 45.0, "°", {"minimum_value": "0", "maximum_value": "89", "enabled": "adaptive"}),
+    "overhang_full": ("Steep overhang angle", "Walls that lean out this much or more get the full overhang speed.", "float", 75.0, "°", {"minimum_value": "1", "maximum_value": "90", "enabled": "adaptive"}),
+    "overhang_factor": ("Speed of overhangs", "Speed factor for walls at the steep overhang angle; between the two angles it goes down step by step.", "float", 0.5, "×", {"minimum_value": "0.1", "maximum_value": "1", "enabled": "adaptive"}),
     "bridge_factor": ("Speed of bridges", "Speed factor for moves with nothing below for most of their length.", "float", 0.5, "×", {"minimum_value": "0.1", "maximum_value": "1", "enabled": "adaptive"}),
     "steady_outer": ("Steady outer wall", "Each loop of the outer wall keeps one speed, so the surface has no bands from speed changes.", "bool", True, "", {"enabled": "adaptive"}),
     "small_feature": ("Small feature", "Wall loops shorter than this (pins, small holes) go slower, the smaller the slower.", "float", 20.0, "mm", {"minimum_value": "0", "enabled": "adaptive"}),
@@ -235,7 +238,7 @@ def move_time(moves, speeds, corner_velocity):
     return t
 
 
-def path_geometry(ms, corner_angle):
+def path_geometry(ms, corner_angle, window=2.0):
     """For each extrusion move: the length of its straight run (corner to corner), the length of its whole path
     (until the next travel or retraction), and the radius of the curve it is in (infinite if straight)."""
     runs, paths, radius = {}, {}, {}
@@ -254,13 +257,16 @@ def path_geometry(ms, corner_angle):
         chains.append(chain)
         total = sum(m.length for m in chain)
         turns = [turn(a, b) for a, b in zip(chain, chain[1:])]
-        # Joint radius: a curve drawn with chords of length c that turn by t has the radius c / (2 sin(t / 2)).
-        r_joint = []
+        # Each joint: where it is along the path, and how far the path turns there (with its direction; corners
+        # are not part of a curve, the firmware slows for those).
+        at, pos = [], 0.0
+        for a, b in zip(chain, chain[1:]):
+            pos += a.length
+            at.append(pos)
+        signed = []
         for (a, b), t in zip(zip(chain, chain[1:]), turns):
-            if t < 1e-3 or t > corner:
-                r_joint.append(float("inf"))  # straight on, or a corner (not a curve)
-            else:
-                r_joint.append(((a.length + b.length) / 2) / (2 * math.sin(t / 2)))
+            cross = (a.x1 - a.x0) * (b.y1 - b.y0) - (a.y1 - a.y0) * (b.x1 - b.x0)
+            signed.append(0.0 if t > corner else math.copysign(t, cross))
         run, start = 0.0, 0
         for i, m in enumerate(chain):
             run += m.length
@@ -269,14 +275,31 @@ def path_geometry(ms, corner_angle):
                 for k in range(start, i + 1):
                     runs[chain[k]] = run
                 run, start = 0.0, i + 1
+        # The radius at a move: over the window around its middle, the path length divided by the net turn.
+        # A real curve turns the same way all along; the wiggles of short segments cancel out.
+        start = 0.0
+        lo = 0
         for i, m in enumerate(chain):
             paths[m] = total
-            rs = []
-            if i > 0:
-                rs.append(r_joint[i - 1])
-            if i < len(chain) - 1:
-                rs.append(r_joint[i])
-            radius[m] = min(rs) if rs else float("inf")
+            mid = start + m.length / 2
+            start += m.length
+            a, b = mid - window / 2, mid + window / 2
+            while lo < len(at) and at[lo] < a:
+                lo += 1
+            net, k = 0.0, lo
+            while k < len(at) and at[k] <= b:
+                net += signed[k]
+                k += 1
+            joints = k - lo
+            if joints == 0 or abs(net) < 1e-3:
+                radius[m] = float("inf")
+                continue
+            # The arc of these joints: one segment for each joint, of their average length.
+            if joints > 1:
+                seg = (at[k - 1] - at[lo]) / (joints - 1)
+            else:
+                seg = (chain[lo].length + chain[lo + 1].length) / 2
+            radius[m] = joints * seg / abs(net)
 
     for m in ms:
         if m.extrude and abs(m.z1 - m.z0) < 1e-9:
@@ -315,7 +338,7 @@ def small_features(chains):
     return out
 
 
-def overhangs(ext, below, area, cell=1.0):
+def overhangs(ext, below, area, start_deg=45.0, full_deg=75.0, cell=1.0):
     """Sets m.over and m.bridge: which parts of each move have a line of the layer below under them.
     Infill is left out: it always crosses the gaps of the sparse infill below."""
     # The lines below in a grid of cells, each as (x0, y0, dx, dy, length²), for the test "a line within r".
@@ -347,14 +370,27 @@ def overhangs(ext, below, area, cell=1.0):
                         return True
         return False
 
+    def distance(px, py, r):
+        """The distance to the nearest line below, or r if none is that near."""
+        best = r * r
+        for gx in range(int((px - r) // cell), int((px + r) // cell) + 1):
+            for gy in range(int((py - r) // cell), int((py + r) // cell) + 1):
+                for x0, y0, dx, dy, l2 in grid.get((gx, gy), ()):
+                    t = 0.0 if l2 == 0 else ((px - x0) * dx + (py - y0) * dy) / l2
+                    t = 0.0 if t < 0 else 1.0 if t > 1 else t
+                    ex, ey = px - x0 - t * dx, py - y0 - t * dy
+                    best = min(best, ex * ex + ey * ey)
+        return math.sqrt(best)
+
     for m in ext:
         if m.kind == INFILL:
             continue
         w = m.de * area / (m.length * h)  # the width of the line, from its plastic and the layer height
         if not 0.05 < w < 5:
             continue
-        # Across the width of the line, five points: each is supported if a line below covers it (a line
-        # below covers half a width each side of its middle). The part that is not supported is the overhang.
+        # How far the line sticks out past the edge of the line below it: at each of its two edges, the distance
+        # to the nearest line below, less the half width that line covers. Most points are covered at both
+        # edges, and that test stops at the first line it finds.
         nx, ny = -(m.y1 - m.y0) / m.length, (m.x1 - m.x0) / m.length
         cover = 0.5 * w + 0.05
         n = min(16, max(1, int(m.length)))  # every mm along the move, at most 16 points
@@ -362,15 +398,21 @@ def overhangs(ext, below, area, cell=1.0):
         for k in range(n):
             t = (k + 0.5) / n
             px, py = m.x0 + t * (m.x1 - m.x0), m.y0 + t * (m.y1 - m.y0)
-            # The middle and the two edges first; the points between them only if one of those is free.
-            free = sum(1 for o in (-0.5 * w, 0.0, 0.5 * w) if not near(px + o * nx, py + o * ny, cover))
-            if free:
-                free += sum(1 for o in (-0.25 * w, 0.25 * w) if not near(px + o * nx, py + o * ny, cover))
-            out_parts.append(free / 5)
-            if free and not near(px, py, 1.5 * w):
+            step = 0.0
+            for o in (-0.5 * w, 0.5 * w):
+                ex, ey = px + o * nx, py + o * ny
+                if not near(ex, ey, cover):
+                    step = max(step, min(w, distance(ex, ey, 1.5 * w) - 0.5 * w))
+            out_parts.append(step)
+            if step > 0 and not near(px, py, 1.5 * w):
                 far += 1
-        # Up to a fifth out is normal; more than two thirds out is a full overhang.
-        m.over = sum(max(0.0, min(1.0, (f - 0.2) / 0.47)) for f in out_parts) / n
+        # How far the line steps out past the layer below (the free part of its width), as an angle from
+        # vertical: steps under the start angle support themselves, at the full angle it is a full overhang.
+        def score(step):
+            angle = math.degrees(math.atan2(step, h))
+            return max(0.0, min(1.0, (angle - start_deg) / max(1e-6, full_deg - start_deg)))
+
+        m.over = sum(score(f) for f in out_parts) / n
         m.bridge = m.length >= 3 and far >= n / 2
 
 
@@ -452,10 +494,10 @@ class AdaptiveSpeed(Script):
         ext = [m for m in ms if m.extrude]
         if not ext:
             return
-        runs, paths, radius, chains = path_geometry(ms, p["corner_angle"])
+        runs, paths, radius, chains = path_geometry(ms, p["corner_angle"], p["curve_window"])
         small = small_features(chains)
         if below:
-            overhangs(ext, below, area)
+            overhangs(ext, below, area, p["overhang_start"], p["overhang_full"])
 
         long_ = p["long_run"]
         v_of = {}

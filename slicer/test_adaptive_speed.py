@@ -160,15 +160,27 @@ class TestModel(unittest.TestCase):
         base_layers(w)
         w.layer(2)
         w.type("WALL-OUTER")
-        w.loop(square(100, 100, 40.4), 40)  # 0.4 mm out past the layer below: most of a line width
+        w.loop(square(100, 100, 40.6), 40)  # 0.6 mm out at 0.3 mm layers: past a line width, a steep overhang
         w.layer(3)
         w.type("WALL-OUTER")
-        w.loop(square(100, 100, 40.4), 40)  # straight up again: supported
+        w.loop(square(100, 100, 40.6), 40)  # straight up again: supported
         out = speeds_of(self.run_script(w, overhang_factor=0.5))
         over = [s[5] for s in out if s[0] == 2]
         up = [s[5] for s in out if s[0] == 3]
         self.assertLess(max(over), 40 * 0.8)
         self.assertAlmostEqual(min(up), 40, delta=0.5)
+
+    def test_self_supporting_slope_is_not_slowed(self):
+        # 35° from vertical at 0.3 mm layers: each layer steps out 0.21 mm. That supports itself.
+        w = Writer()
+        base_layers(w)
+        step = 0.3 * math.tan(math.radians(35))
+        for n in range(2, 5):
+            w.layer(n)
+            w.type("WALL-OUTER")
+            w.loop(square(100, 100, 40 + (n - 1) * step), 40)
+        out = speeds_of(self.run_script(w, small_feature=0))
+        self.assertTrue(all(abs(s[5] - 40) < 0.5 for s in out if s[0] >= 2), [s[5] for s in out if s[0] >= 2])
 
     def test_bridge_is_slower(self):
         w = Writer()
