@@ -51,7 +51,6 @@ func (c *Client) activity(st *State) {
 		return
 	}
 	st.Layers = gc.LayerCount
-	st.Speeds = gc.Speeds
 	if gc.StartEnd == 0 || st.FilePos > gc.StartEnd {
 		st.Fan, st.HasFan = float64(gc.FanAt(st.FilePos))*100, true
 		st.Z, st.HasZ = float64(gc.ZAt(st.FilePos)), true
