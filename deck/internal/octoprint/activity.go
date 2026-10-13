@@ -36,7 +36,7 @@ func (c *Client) activity(st *State) {
 	toolCold := st.ToolTarget > 0 && st.Tool < st.ToolTarget-near
 	bedCold := st.BedTarget > 0 && st.Bed < st.BedTarget-near
 	gc := c.pv.gc
-	if c.pv.path != st.FilePath {
+	if c.pv.file != fileKey(*st) {
 		gc = nil
 	}
 

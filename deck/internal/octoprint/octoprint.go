@@ -30,6 +30,7 @@ type State struct {
 	File          string
 	FilePath      string // path in OctoPrint (local storage)
 	FileSize      int64
+	FileDate      int64   // upload time (Unix): a file uploaded again under the same name has a new one
 	FilePos       int64   // bytes of the file that the printer has read
 	Completion    float64 // 0..100
 	TimeLeft      time.Duration
@@ -140,7 +141,7 @@ func (c *Client) refresh() {
 			Job   struct {
 				File struct {
 					Name, Display, Path string
-					Size                int64
+					Size, Date          int64
 				}
 			} `json:"job"`
 			Progress struct {
@@ -155,7 +156,7 @@ func (c *Client) refresh() {
 		if st.File == "" {
 			st.File = j.Job.File.Name
 		}
-		st.FilePath, st.FileSize, st.FilePos = j.Job.File.Path, j.Job.File.Size, j.Progress.FilePos
+		st.FilePath, st.FileSize, st.FileDate, st.FilePos = j.Job.File.Path, j.Job.File.Size, j.Job.File.Date, j.Progress.FilePos
 		if j.Progress.Completion != nil {
 			st.Completion = *j.Progress.Completion
 		}
