@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -28,7 +29,7 @@ const (
 // If there is an STL with a matching name, in OctoPrint or in ModelDir, the picture is that model,
 // shaded, with the printed height in colour. Otherwise it is the toolpath from the G-code.
 type preview struct {
-	path      string
+	file      string // fileKey of the loaded G-code
 	gc        *gcode.Model
 	mesh      *stl.Mesh
 	loading   bool
@@ -107,10 +108,11 @@ func (c *Client) updatePreview(st State) {
 		pv.img, pv.imgPos, pv.view, pv.viewImg = nil, 0, -1, nil
 		return
 	}
-	if pv.path != st.FilePath {
+	if pv.file != fileKey(st) {
+		pv.img, pv.imgPos, pv.view, pv.viewImg = nil, 0, -1, nil // not the picture of another file while this one loads
 		if !pv.loading && st.FileSize <= maxDownload {
 			pv.loading = true
-			go c.loadModel(st.FilePath)
+			go c.loadModel(st.FilePath, fileKey(st))
 		}
 		return
 	}
@@ -121,7 +123,13 @@ func (c *Client) updatePreview(st State) {
 	}
 }
 
-func (c *Client) loadModel(path string) {
+// fileKey names the file of a job by its path, size and upload time, so a file that is sliced again
+// and uploaded under the same name is read again.
+func fileKey(st State) string {
+	return fmt.Sprintf("%s|%d|%d", st.FilePath, st.FileSize, st.FileDate)
+}
+
+func (c *Client) loadModel(path, key string) {
 	var gc *gcode.Model
 	if body, err := c.get("/downloads/files/local/" + escape(path)); err == nil {
 		gc, _ = gcode.Parse(body)
@@ -134,8 +142,8 @@ func (c *Client) loadModel(path string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.pv.loading = false
-	// On failure the path is still stored, so the same file is not tried again every 2 seconds.
-	c.pv.path, c.pv.gc, c.pv.mesh, c.pv.img, c.pv.view = path, gc, mesh, nil, -1
+	// On failure the key is still stored, so the same file is not tried again every 2 seconds.
+	c.pv.file, c.pv.gc, c.pv.mesh, c.pv.img, c.pv.view = key, gc, mesh, nil, -1
 }
 
 func escape(path string) string {
@@ -166,41 +174,56 @@ func stem(name string) string {
 	return strings.NewReplacer(" ", "", "_", "", "-", "").Replace(strings.ToLower(name))
 }
 
-func matches(gcodeName, stlName string) bool {
+// match tells how well an STL name fits a G-code name: 0 is no match, and higher is closer.
+// The names match when one contains the other. The closest is the one with the least left over,
+// so "inky_frame.gcode" takes "Inky Frame.stl" and not "frame.stl".
+func match(gcodeName, stlName string) int {
 	g, s := stem(gcodeName), stem(stlName)
-	return len(s) >= 4 && len(g) >= 4 && (g == s || strings.Contains(g, s) || strings.Contains(s, g))
+	if len(s) < 4 || len(g) < 4 || !(strings.Contains(g, s) || strings.Contains(s, g)) {
+		return 0
+	}
+	return 1000 - (max(len(g), len(s)) - min(len(g), len(s)))
 }
 
-// findSTL looks for the model of a G-code file in OctoPrint and in ModelDir.
+// findSTL looks for the model of a G-code file in ModelDir and in OctoPrint, and reads the closest match.
+// ModelDir wins when both have an equally good match.
 func (c *Client) findSTL(gcodePath string) *stl.Mesh {
+	type candidate struct {
+		open  func() (io.ReadCloser, error)
+		score int
+	}
+	var cands []candidate
 	if c.ModelDir != "" {
 		files, _ := filepath.Glob(filepath.Join(c.ModelDir, "*"))
 		for _, f := range files {
-			if strings.EqualFold(filepath.Ext(f), ".stl") && matches(gcodePath, f) {
-				if r, err := os.Open(f); err == nil {
-					m, _ := stl.Parse(r)
-					r.Close()
-					if m != nil {
-						return m
-					}
+			if strings.EqualFold(filepath.Ext(f), ".stl") {
+				if n := match(gcodePath, f); n > 0 {
+					cands = append(cands, candidate{func() (io.ReadCloser, error) { return os.Open(f) }, n})
 				}
 			}
 		}
 	}
-	body, err := c.get("/api/files/local?recursive=true")
-	if err != nil {
-		return nil
+	if body, err := c.get("/api/files/local?recursive=true"); err == nil {
+		var list struct {
+			Files []struct{ Name, Path, Type string }
+		}
+		json.NewDecoder(body).Decode(&list)
+		body.Close()
+		for _, f := range list.Files {
+			if f.Type == "model" {
+				if n := match(gcodePath, f.Name); n > 0 {
+					cands = append(cands, candidate{func() (io.ReadCloser, error) { return c.get("/downloads/files/local/" + escape(f.Path)) }, n})
+				}
+			}
+		}
 	}
-	var list struct {
-		Files []struct{ Name, Path, Type string }
-	}
-	json.NewDecoder(body).Decode(&list)
-	body.Close()
-	for _, f := range list.Files {
-		if f.Type == "model" && matches(gcodePath, f.Name) {
-			if r, err := c.get("/downloads/files/local/" + escape(f.Path)); err == nil {
-				m, _ := stl.Parse(r)
-				r.Close()
+	// The best first; a file that does not read gives way to the next.
+	sort.SliceStable(cands, func(i, j int) bool { return cands[i].score > cands[j].score })
+	for _, cd := range cands {
+		if r, err := cd.open(); err == nil {
+			m, _ := stl.Parse(r)
+			r.Close()
+			if m != nil {
 				return m
 			}
 		}
