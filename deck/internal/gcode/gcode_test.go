@@ -40,3 +40,21 @@ func TestLayers(t *testing.T) {
 		t.Errorf("ZAt(end of layer 2) = %v, want 0.6", got)
 	}
 }
+
+func TestObjects(t *testing.T) {
+	for name, tc := range map[string]struct {
+		gcode string
+		want  int
+	}{
+		"none":     {sample, 0},
+		"cura one": {";MESH:cup.stl\nG1 X1 E1\n;MESH:NONMESH\nG0 X2\n;MESH:cup.stl\n", 1},
+		"cura two": {";MESH:cup.stl\nG1 X1 E1\n;MESH:NONMESH\n;MESH:legs.stl\nG1 X2 E2\n;MESH:cup.stl\n", 2},
+		"orca two": {"EXCLUDE_OBJECT_DEFINE NAME=a_id_0 CENTER=1,1\nEXCLUDE_OBJECT_DEFINE NAME=b_id_1 CENTER=2,2\n" +
+			"; printing object a id:0 copy 0\nG1 X1 E1\n; printing object b id:1 copy 0\n", 2},
+	} {
+		m, _ := Parse(strings.NewReader(tc.gcode))
+		if m.Objects != tc.want {
+			t.Errorf("%s: %d objects, want %d", name, m.Objects, tc.want)
+		}
+	}
+}
