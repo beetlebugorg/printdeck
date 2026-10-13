@@ -37,6 +37,9 @@ type Model struct {
 	FanPos     []int64   // offset after each fan command
 	FanVal     []float32 // fan speed 0..1 after the command
 	LayerCount int
+
+	// Objects is the number of objects on the bed, from the object marks of the slicer; 0 if it has none.
+	Objects int
 }
 
 // Parse reads G-code. Moves that do not extrude are skipped.
@@ -48,6 +51,7 @@ func Parse(r io.Reader) (*Model, error) {
 	feed := 0.0 // mm/min, modal
 	kind := KindOther
 	st := newSpeedStats()
+	objects := map[string]map[string]bool{} // names by kind of mark: each slicer names an object its own way per mark
 	var pos int64
 	for {
 		line, err := br.ReadString('\n')
@@ -59,6 +63,11 @@ func Parse(r io.Reader) (*Model, error) {
 			m.LayerPos = append(m.LayerPos, pos-int64(len(line)))
 		} else if n, ok := layerCount(line); ok {
 			m.LayerCount = n
+		} else if mark, name, ok := objectName(line); ok {
+			if objects[mark] == nil {
+				objects[mark] = map[string]bool{}
+			}
+			objects[mark][name] = true
 		}
 		if i := strings.IndexByte(line, ';'); i >= 0 {
 			line = line[:i]
@@ -145,6 +154,9 @@ func Parse(r io.Reader) (*Model, error) {
 		}
 	}
 	m.Speeds = st.result()
+	for _, names := range objects {
+		m.Objects = max(m.Objects, len(names))
+	}
 	return m, nil
 }
 
@@ -388,4 +400,25 @@ func layerCount(line string) (int, bool) {
 		}
 	}
 	return 0, false
+}
+
+// objectName reads the name of an object: ";MESH:name" (Cura), "EXCLUDE_OBJECT_DEFINE NAME=name"
+// (Klipper, OrcaSlicer and PrusaSlicer), "; printing object name" (OrcaSlicer and PrusaSlicer).
+// Cura's ";MESH:NONMESH" is the travel between objects, not an object.
+func objectName(line string) (mark, name string, ok bool) {
+	line = strings.TrimSpace(line)
+	if v, ok := strings.CutPrefix(line, ";MESH:"); ok {
+		return "mesh", v, v != "NONMESH" && v != ""
+	}
+	if v, ok := strings.CutPrefix(line, "EXCLUDE_OBJECT_DEFINE "); ok {
+		for _, w := range strings.Fields(v) {
+			if n, ok := strings.CutPrefix(w, "NAME="); ok {
+				return "define", n, n != ""
+			}
+		}
+	}
+	if v, ok := strings.CutPrefix(line, "; printing object "); ok {
+		return "printing", v, v != ""
+	}
+	return "", "", false
 }

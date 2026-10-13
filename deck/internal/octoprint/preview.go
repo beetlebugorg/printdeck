@@ -26,8 +26,9 @@ const (
 // preview keeps the picture of the model that is printing.
 //
 // The G-code of the print is downloaded and read once. It tells how far the print has come.
-// If there is an STL with a matching name, in OctoPrint or in ModelDir, the picture is that model,
-// shaded, with the printed height in colour. Otherwise it is the toolpath from the G-code.
+// If there is one object on the bed and an STL with a matching name, in OctoPrint or in ModelDir,
+// the picture is that model, shaded, with the printed height in colour. Otherwise it is the toolpath
+// from the G-code.
 type preview struct {
 	file      string // fileKey of the loaded G-code
 	gc        *gcode.Model
@@ -135,8 +136,9 @@ func (c *Client) loadModel(path, key string) {
 		gc, _ = gcode.Parse(body)
 		body.Close()
 	}
+	// An STL is one object. With more on the bed, only the toolpath shows them all.
 	var mesh *stl.Mesh
-	if gc != nil {
+	if gc != nil && gc.Objects <= 1 {
 		mesh = c.findSTL(path)
 	}
 	c.mu.Lock()
