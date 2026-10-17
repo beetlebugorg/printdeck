@@ -161,7 +161,9 @@ def chin():
     s = outer(-40, S.CHIN_B, False)
     s = s - world_below(S.FOOT_H)
     cav = box(-A_IN, A_IN, -50, S.CHIN_B + 1, -S.D - 1, -S.WALL) - world_below(S.FOOT_H + S.WALL)
-    s = s - cav - groove()
+    # The grooves for the back plate. The plate stops above the floor, so the grooves stop at
+    # the floor too: a groove through the floor leaves a long bridge at the rear edge.
+    s = s - cav - (groove() - world_below(S.FOOT_H + S.WALL))
     # Vent slots through the front. The display cables run inside, to the rear.
     for bv in S.VENTS_B:
         s = s - round_slot(-52, 52, bv - 1.2, bv + 1.2, -S.WALL - 1, 1)
@@ -216,7 +218,7 @@ def back():
     # Bosses for the Pi: M3 heat-set inserts. The male ends of the Pi standoffs go in.
     pi_c = c0 - S.PI_BOSS_H
     for a, b in S.PI_HOLES:
-        s = s + cyl_c(a, b, 3.5, c0 + 0.01, pi_c)
+        s = s + cyl_c(a, b, S.PI_BOSS_R, c0 + 0.01, pi_c)
         s = s - cyl_c(a, b, S.INSERT_D / 2, pi_c - 0.01, pi_c + 5.5)
     # Fan: four corner guides, and a boss under each corner hole. An M3 screw goes through the
     # fan corner into a blind pilot hole in the boss. The gap under the fan lets the air in.
@@ -249,11 +251,12 @@ def foot_world():
             hx = S.FOOT_HOOK_X
             f = f - (Pos(sg * (hx - 1.5 + 2.0), y, 1.5) * Box(4.0, 10.4, S.FOOT_H, align=(Align.CENTER, Align.CENTER, Align.MIN)))
             arm = Pos(sg * (hx + 0.6), y, 1.5) * Box(1.2, 8, z_floor + 5.5 - 1.5, align=(Align.CENTER, Align.CENTER, Align.MIN))
-            # Barb: lead-in ramp at the top, a gable under it that sits on the chin floor.
+            # Barb: lead-in ramp at the top, a gable under it that sits on the chin floor. The
+            # catch face under the barb is 41 degrees from the bed, so it prints without supports.
             u0 = hx + 1.2
             zt = z_floor + 5.5
             zf = z_floor + 0.1
-            ramp = prism_b([(zf, sg * u0), (zf + 0.56, sg * (u0 + 0.8)), (zt - 1.0, sg * (u0 + 0.8)), (zt, sg * u0)],
+            ramp = prism_b([(zf, sg * u0), (zf + 0.7, sg * (u0 + 0.8)), (zt - 1.0, sg * (u0 + 0.8)), (zt, sg * u0)],
                            y - 4, y + 4)
             gab = prism_a([(y - 4, zt), (y + 4, zt), (y + 4, zf + 4.0), (y, zf), (y - 4, zf + 4.0)],
                           sg * (u0 - 0.2), sg * (u0 + 1.0))
