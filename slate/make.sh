@@ -7,15 +7,23 @@ cd "$(dirname "$0")"
 mkdir -p build
 uv run --no-project --with build123d python model.py | tee build/model.log
 grep -q "RESULT: OK" build/model.log || { echo "fit check failed"; exit 1; }
-# Mesh check: every STL must be one closed part.
+# Mesh check: every STL must be one closed part. Overhang check: no flat ceiling above the
+# bed (a bridge), and no face flatter than 40 degrees above the bed. The Cura support check
+# does not find a narrow bridge, so this check looks at the faces of the mesh.
 uv run --no-project --with numpy --with scipy --with trimesh --with networkx python - <<'PY'
-import sys, trimesh
+import sys, math, trimesh
 bad = False
 for n in ("slab", "chin", "back", "foot"):
     m = trimesh.load(f"stl/{n}.stl")
     ok = m.is_watertight and m.is_winding_consistent and m.body_count == 1
-    print(f"  stl/{n}.stl: {'closed, one part' if ok else 'NOT CLEAN'}")
-    bad |= not ok
+    nz, zc, area = m.face_normals[:, 2], m.triangles_center[:, 2], m.area_faces
+    above = zc > m.bounds[0][2] + 0.05
+    flat = area[above & (nz < -0.999)].sum()
+    steep = area[above & (nz < -math.cos(math.radians(40))) & (nz >= -0.999)].sum()
+    over = flat > 1.0 or steep > 1.0
+    print(f"  stl/{n}.stl: {'closed, one part' if ok else 'NOT CLEAN'}; "
+          f"flat ceilings {flat:.1f} mm2, faces under 40 deg {steep:.1f} mm2{'  OVERHANG' if over else ''}")
+    bad |= not ok or over
 sys.exit(1 if bad else 0)
 PY
 # Cura profiles, the filament of each part, and the support check (must be 0 g).

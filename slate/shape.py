@@ -64,6 +64,7 @@ SSD_USB_A = -22.7                # centre of the micro-B socket (case/hardware.s
 # power and speaker edge points left. The USB plugs and their cable bends stay below the top.
 PI_A, PI_B = -2.0, 128.0         # centre of the Pi board
 PI_BOSS_H = 19.0
+PI_BOSS_R = 4.0                  # 8 mm bosses: 2 mm of wall around the heat-set insert
 PI_HOLES = [(PI_A + y, PI_B + x) for x, y in ((-39, -24.5), (19, -24.5), (-39, 24.5), (19, 24.5))]
 
 # 30 mm fan under the Pi, on four 5 mm bosses with M3 screws, blowing onto the Pi. A heatsink cools the SoC.
