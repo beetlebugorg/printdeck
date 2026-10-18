@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Speakerdeck Slate: write the build instructions PDF (speakerdeck-slate-build.pdf).
-Run after model.py, cura/make_profiles.py, and render.py. Needs ImageMagick and Chromium."""
+Run after model.py, cura/make_profiles.py, and lineart/render.mjs. Needs Chromium.
+The images are the line-art renders of lineart/render.mjs, light theme, with a transparent background."""
 
 import json
 import subprocess
@@ -9,7 +10,6 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 BUILD = HERE / "build"
 IMG = BUILD / "img"
-WEB = BUILD / "web"
 OUT = HERE / "speakerdeck-slate-build.pdf"
 
 SUMMARY = json.loads((BUILD / "parts.json").read_text())
@@ -89,7 +89,7 @@ STEPS = [
         "Put the heatsink on the SoC of the Pi.",
         "Put the Pi stack on the four bosses: the USB ports up, the USB-C and HDMI ports toward the left of the case. Turn the male ends of the standoffs through the Pi into the inserts.",
         "Lead the fan cable around the right edge of the Pi, above the end of the GPIO header. Connect it to the fan connector of the Pi.",
-    ], "Left and right are as seen from the front of the case. The picture shows the rear, so the left of the case is at the right of the picture."),
+    ], "Left and right are as seen from the front of the case."),
     ("step3", "Back plate into the slab", ["slab (step 1)", "back plate (step 3)"], [
         "Keep the slab face down. Lead the two display cables through the two notches in the bottom edge of the back plate: the USB cable at the left, the ribbon at the right.",
         "Put the edges of the back plate into the grooves of the slab, at the open bottom. Slide the plate up until it stops at the top wall.",
@@ -114,23 +114,27 @@ STEPS = [
 CSS = """
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: "Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif; color: #111; }
+  :root { --ink: #16181a; --ink-2: #4a4f55; --accent: #0a7f63; --bg: #fbfbf9; --grid: #ececE6; --line: #e2e2dc;
+          --mono: "JetBrains Mono", "JetBrainsMono Nerd Font", ui-monospace, monospace; }
+  body { margin: 0; font-family: "Inter", "Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif; color: var(--ink); }
   .page { width: 210mm; height: 297mm; padding: 16mm 16mm 14mm; page-break-after: always; position: relative; overflow: hidden; }
   .page:last-child { page-break-after: auto; }
   h1 { font-size: 50pt; letter-spacing: 2pt; margin: 0; font-weight: 800; }
   h2 { font-size: 20pt; margin: 0 0 5mm; font-weight: 700; }
-  .sub { font-size: 24pt; font-weight: 700; margin-top: 2mm; color: #1F2B4D; }
-  .num { font-size: 84pt; font-weight: 800; line-height: 1; color: #1F2B4D; }
-  .head { display: flex; align-items: flex-end; gap: 8mm; border-bottom: 1.2mm solid #1F2B4D; padding-bottom: 4mm; }
+  .sub { font-size: 24pt; font-weight: 700; margin-top: 2mm; color: var(--accent); }
+  .num { font: 800 72pt/1 var(--mono); color: var(--accent); }
+  .head { display: flex; align-items: flex-end; gap: 8mm; border-bottom: 0.6mm solid var(--ink); padding-bottom: 4mm; }
   .head .title { font-size: 22pt; font-weight: 700; padding-bottom: 3mm; }
-  .fig { width: 100%; margin: 4mm 0; text-align: center; }
-  .fig img { max-width: 100%; max-height: 118mm; }
+  .fig { width: 100%; margin: 4mm 0; padding: 4mm; text-align: center; border: 0.3mm solid var(--line); border-radius: 3mm;
+         background-color: var(--bg); background-size: 6mm 6mm;
+         background-image: linear-gradient(var(--grid) 0.15mm, transparent 0.15mm), linear-gradient(90deg, var(--grid) 0.15mm, transparent 0.15mm); }
+  .fig img { max-width: 100%; max-height: 130mm; vertical-align: middle; }
   .need { display: flex; flex-wrap: wrap; gap: 3mm; margin: 4mm 0; }
-  .chip { border: 0.6mm solid #111; border-radius: 3mm; padding: 2mm 4mm; font-size: 11pt; font-weight: 700; }
+  .chip { border: 0.4mm solid var(--ink); border-radius: 999px; padding: 1.5mm 4mm; font: 600 10pt var(--mono); }
   ol, ul { font-size: 12pt; line-height: 1.5; padding-left: 6mm; margin: 2mm 0; }
   p { font-size: 12pt; line-height: 1.5; margin: 2mm 0; }
-  .note { border: 0.8mm solid #E8742A; border-radius: 3mm; padding: 3mm 5mm; margin-top: 4mm; font-size: 11.5pt; }
-  .note b { color: #E8742A; }
+  .note { border: 0.4mm solid var(--accent); border-radius: 3mm; padding: 3mm 5mm; margin-top: 4mm; font-size: 11.5pt; background: #e3f3ee; }
+  .note b { color: var(--accent); }
   table { border-collapse: collapse; width: 100%; font-size: 10.5pt; }
   td, th { border-bottom: 0.2mm solid #999; padding: 1.4mm 2mm; vertical-align: middle; text-align: left; }
   th { border-bottom: 0.6mm solid #111; }
@@ -139,7 +143,7 @@ CSS = """
   tr.total td { font-weight: 800; border-top: 0.6mm solid #111; border-bottom: none; }
   .thumb { width: 22mm; height: 16mm; object-fit: contain; display: block; }
   .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
-  .card { border: 0.4mm solid #111; border-radius: 3mm; padding: 2.5mm; font-size: 8.8pt; line-height: 1.3; }
+  .card { border: 0.3mm solid var(--line); background: var(--bg); border-radius: 3mm; padding: 2.5mm; font-size: 8.8pt; line-height: 1.3; }
   .card img { width: 100%; height: 28mm; object-fit: contain; }
   .card b { display: block; font-size: 11pt; margin: 1mm 0; }
   .sw { display: inline-block; width: 3.5mm; height: 3.5mm; border-radius: 1mm; vertical-align: -0.5mm; margin-right: 1.5mm; }
@@ -151,11 +155,8 @@ CSS = """
 SWATCH = {"Gray": "#80868E", "Orange": "#E8742A", "Navy": "#1F2B4D"}
 
 
-def jpg(name, width=1600):
-    WEB.mkdir(parents=True, exist_ok=True)
-    src, dst = IMG / f"{name}.png", WEB / f"{name}.jpg"
-    subprocess.run(["magick", str(src), "-resize", f"{width}x{width}>", "-quality", "88", str(dst)], check=True)
-    return dst.as_uri()
+def img(name):
+    return (IMG / f"{name}-light.png").as_uri()
 
 
 def foot(n):
@@ -170,7 +171,7 @@ def cover():
   touch display in portrait, and the drive. The slab leans back 15° on a gray foot. The Pi is open on the orange back plate at the
   rear, as a backpack: every port has free space, so you plug the power, the printer, and the speakers straight
   into it. The front and the sides stay clean. All the cables show only on the rear. The case parts snap together.</p>
-  <div class="fig"><img src="{jpg('hero')}" style="max-height:125mm;max-width:49%"><img src="{jpg('rear')}" style="max-height:125mm;max-width:49%"></div>
+  <div class="fig"><img src="{img('hero')}" style="max-height:120mm;max-width:49%"><img src="{img('rear')}" style="max-height:120mm;max-width:49%"></div>
   <div class="need"><div class="chip"><span class="sw" style="background:#1F2B4D"></span>Navy (blue) PLA</div>
     <div class="chip"><span class="sw" style="background:#E8742A"></span>Orange PLA</div>
     <div class="chip"><span class="sw" style="background:#80868E"></span>Gray PLA</div>
@@ -190,7 +191,7 @@ def parts_page():
         tm += m
         colours[colour] = colours.get(colour, 0) + g
         sx, sy, sz = p["size"]
-        rows.append(f'<tr><td><img class="thumb" src="{jpg("part_" + name, 500)}"></td><td><code>stl/{name}.stl</code></td>'
+        rows.append(f'<tr><td><img class="thumb" src="{img("part_" + name)}"></td><td><code>stl/{name}.stl</code></td>'
                     f'<td><span class="sw" style="background:{SWATCH[colour]}"></span>{colour}</td>'
                     f'<td class="n">{sx:.0f} × {sy:.0f} × {sz:.0f}</td><td class="n">{g:.0f} g</td><td class="n">{m:.1f} m</td><td class="n">${cost(g):.2f}</td></tr>')
     rows.append(f'<tr class="total"><td></td><td>Total</td><td></td><td></td><td class="n">{tg:.0f} g</td><td class="n">{tm:.0f} m</td>'
@@ -215,7 +216,7 @@ def parts_page():
 
 
 def print_page():
-    cards = "".join(f'<div class="card"><img src="{jpg("part_" + n, 700)}"><b>{n.replace("_", " ")}</b>'
+    cards = "".join(f'<div class="card"><img src="{img("part_" + n)}"><b>{n.replace("_", " ")}</b>'
                     f'<span class="sw" style="background:{SWATCH[c]}"></span>{c} · support check {SUPPORTS[n]:.0f} g<br>{t}</div>'
                     for n, c, t in PRINTS)
     st = "".join(f"<tr><td>{k}</td><td>{v}</td></tr>" for k, v in SETTINGS)
@@ -232,14 +233,14 @@ def print_page():
 
 
 def step_page(i, step, n):
-    img, title, need, items, note = step
+    shot, title, need, items, note = step
     chips = "".join(f'<div class="chip">{x}</div>' for x in need)
     lis = "".join(f"<li>{t}</li>" for t in items)
     nt = f'<div class="note"><b>Note.</b> {note}</div>' if note else ""
     return f"""<section class="page">
   <div class="head"><div class="num">{i}</div><div class="title">{title}</div></div>
   <div class="need">{chips}</div>
-  <div class="fig"><img src="{jpg(img)}"></div>
+  <div class="fig"><img src="{img(shot)}"></div>
   <ol>{lis}</ol>{nt}
   {foot(n)}
 </section>"""
@@ -248,12 +249,12 @@ def step_page(i, step, n):
 def end_page(n):
     return f"""<section class="page">
   <h2>Connect</h2>
-  <div class="cols"><div class="fig"><img src="{jpg('rear_left')}" style="max-height:95mm"></div>
-    <div class="fig"><img src="{jpg('exploded')}" style="max-height:95mm"></div></div>
+  <div class="cols"><div class="fig"><img src="{img('connect')}" style="max-height:95mm"></div>
+    <div class="fig"><img src="{img('exploded')}" style="max-height:95mm"></div></div>
   <ol><li>Connect the USB-C power supply to the Pi. The port is on the left edge of the Pi. Turn the cable to the rear.</li>
     <li>Connect the 3D printer to the black USB 2 port next to the board, from above.</li>
     <li>Put the right-angle plug of the Amp2 power supply into the jack on the left edge of the Amp2. Turn the cable to the rear.</li>
-    <li>Connect the speaker wires to the screw terminals on the right edge of the Amp2.</li></ol>
+    <li>Connect the speaker wires to the screw terminals on the left edge of the Amp2.</li></ol>
   <h2 style="margin-top:6mm">To open the case</h2>
   <ol><li>Disconnect the cables on the rear. Pull the foot off. Its hooks let go when you pull hard.</li>
     <li>Push a pin or a paper clip into the small hole in each side wall, just above the chin. Each pin pushes

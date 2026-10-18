@@ -7,8 +7,8 @@
 
 import math
 
-from build123d import (Align, Box, Cylinder, Location, Plane, Polygon, Pos, Rectangle, Rot, Sphere, Torus,
-                       chamfer, extrude, fillet, scale, Axis, Cone, RegularPolygon)
+from build123d import (Align, Box, Circle, Cylinder, Line, Location, Plane, Polygon, Pos, Rectangle, Rot, TangentArc,
+                       Torus, Vector, Wire, chamfer, extrude, fillet, scale, sweep, Axis, Cone, RegularPolygon)
 
 import shape as S
 
@@ -381,18 +381,34 @@ def fan():
 # ---------------------------------------------------------------- cables
 
 
+def rounded_path(points, k=0.45, cut=15.0):
+    """The polyline with a tangent arc at each bend. The arc starts and ends at a distance d from
+    the corner: 45 % of the shorter segment, max. 15 mm. The arc stays inside the corner."""
+    pts = [Vector(*p) for p in points]
+    edges, start = [], pts[0]
+    for a, b, c in zip(pts, pts[1:], pts[2:]):
+        u, w = b - a, c - b
+        if u.get_angle(w) < 0.5:          # degrees: no bend
+            continue
+        d = min(k * u.length, k * w.length, cut)
+        p_in, p_out = b - u.normalized() * d, b + w.normalized() * d
+        if (p_in - start).length > 1e-3:
+            edges.append(Line(start, p_in))
+        edges.append(TangentArc(p_in, p_out, tangent=u))
+        start = p_out
+    edges.append(Line(start, pts[-1]))
+    return Wire(edges)
+
+
 def tube(points, r):
-    """A cable: cylinders along a polyline, with a sphere at each bend."""
-    parts = []
-    for p, q in zip(points, points[1:]):
-        d = [q[i] - p[i] for i in range(3)]
-        n = math.sqrt(sum(x * x for x in d))
-        parts.append(Location(Plane(origin=p, z_dir=d)) * Cylinder(r, n, align=(Align.CENTER, Align.CENTER, Align.MIN)))
-    parts += [Pos(*p) * Sphere(r * 1.01) for p in points[1:-1]]   # 1 % larger: equal radii break the union
-    t = parts[0].fuse(*parts[1:]).clean()
-    # A failed boolean can drop pieces of a tube. Stop the build, so the fit check is not blind.
-    expect = math.pi * r * r * cable_length(points)
-    assert len(t.solids()) == 1 and abs(t.volume - expect) < 0.2 * expect, f"tube union failed: {points[0]}"
+    """A cable: a circle of radius r swept along the polyline, with a smooth bend at each corner."""
+    path = rounded_path(points)
+    start = Vector(*points[1]) - Vector(*points[0])
+    t = sweep(Plane(origin=points[0], z_dir=start) * Circle(r), path=path)
+    # A failed sweep can make a bad solid. Stop the build, so the fit check is not blind.
+    expect = math.pi * r * r * path.length
+    assert t.is_valid and len(t.solids()) == 1 and abs(t.volume - expect) < 0.02 * expect, \
+        f"tube sweep failed: {points[0]}"
     return t
 
 
