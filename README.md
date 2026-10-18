@@ -9,7 +9,7 @@ A Raspberry Pi 5 desk slab next to the 3D printer. It runs OctoPrint, shows the 
 screen, and plays Spotify through passive speakers. The project started as Speakerdeck, so the
 software still uses that name.
 
-Website: https://beetlebugorg.github.io/speakerdeck/
+Website: https://beetlebug.org/printdeck/
 
 ## Hardware
 

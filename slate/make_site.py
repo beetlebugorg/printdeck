@@ -109,7 +109,7 @@ def page():
     el = "".join(f'<tr><td class="q">{q}×</td><td>{t}</td></tr>' for q, t in P.ELECTRONICS)
     st = "".join(f"<tr><td><b>{k}</b></td><td>{v}</td></tr>" for k, v in P.SETTINGS)
     files = "".join(f'<a class="btn" href="files/{n}.stl">{n}.stl</a>' for n, _, _ in P.PRINTS)
-    repo = "https://github.com/beetlebugorg/speakerdeck"
+    repo = "https://github.com/beetlebugorg/printdeck"
     return f"""<!doctype html>
 <html lang="en">
 <head>
