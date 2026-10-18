@@ -14,8 +14,6 @@ import (
 	"fmt"
 	"image/png"
 	"log"
-	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -90,11 +88,6 @@ func run(cfg config.Config, sp *spotify.Client) {
 	}
 	app.OnTheme = func(t string) { os.WriteFile(themeFile, []byte(t+"\n"), 0o644) }
 
-	// The Inky wHAT shows the same track as the touch screen.
-	if cfg.NowPlayingPort > 0 {
-		sp.OnTrack = func(s spotify.State) { go forwardTrack(cfg.NowPlayingPort, s) }
-	}
-
 	go sp.Run(ctx, app.Redraw)
 	go func() {
 		if err := sp.ServeLink(ctx, func() { sp.Poke(); app.Redraw() }); err != nil && ctx.Err() == nil {
@@ -115,16 +108,6 @@ func run(cfg config.Config, sp *spotify.Client) {
 	go touch.Run(ctx, touch.Options{InvertX: cfg.TouchInvertX, InvertY: cfg.TouchInvertY, Swap: cfg.TouchSwapXY, Rotate: cfg.Rotate}, events)
 
 	app.Run(ctx, events, screen.Present)
-}
-
-func forwardTrack(port int, s spotify.State) {
-	c := http.Client{Timeout: 2 * time.Second}
-	resp, err := c.PostForm(fmt.Sprintf("http://127.0.0.1:%d/track", port), url.Values{
-		"name": {s.Title}, "artists": {s.Artist}, "album": {s.Album}, "cover": {s.ArtURL},
-	})
-	if err == nil {
-		resp.Body.Close()
-	}
 }
 
 func auth(cfg config.Config, sp *spotify.Client) {

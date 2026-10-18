@@ -37,7 +37,6 @@ SETTINGS = [
                  "closed, then pick “Speakerdeck - Slate …”."),
     ("Material", "PLA, 2.85 mm, 0.5 mm nozzle"),
     ("Slab, chin", "0.3 mm layers, 1.5 mm walls, 1.2 mm top and bottom, 20 % grid infill, skirt"),
-    ("Chassis", "0.3 mm layers, 30 % grid infill, skirt"),
     ("Back plate", "0.3 mm layers, 40 % grid infill, skirt"),
     ("Foot", "0.3 mm layers, 20 % grid infill, skirt"),
     ("Supports", "Off for all parts. Every hook, pocket, and slot has 45° faces. A slice of each part with supports "

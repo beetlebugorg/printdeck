@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Enable SPI, I2C, and the HiFiBerry overlay in config.txt.
+# Enable I2C and the HiFiBerry overlay in config.txt.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source ./speakerdeck.env
@@ -17,9 +17,7 @@ add_line() {
 
 sudo cp "$CONFIG" "$CONFIG.speakerdeck.bak"
 
-add_line "dtparam=spi=on"
 add_line "dtparam=i2c_arm=on"
-# Do not add dtoverlay=spi0-0cs. The e-paper service uses the hardware chip select of spidev0.0.
 add_line "dtoverlay=$HIFIBERRY_OVERLAY"
 if [ "$USB_MAX_CURRENT" = "1" ]; then
   add_line "usb_max_current_enable=1"

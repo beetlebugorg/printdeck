@@ -17,7 +17,6 @@ type Config struct {
 	DeviceName      string
 	LinkBase        string // address of this speaker for the login with a phone
 	StateDir        string
-	NowPlayingPort  int // port of the Inky wHAT service, 0 to disable
 
 	OctoPrintURL string
 	OctoPrintKey string
@@ -44,7 +43,6 @@ func Load() Config {
 		DeviceName:      str("SPOTIFY_DEVICE_NAME", "Speakerdeck"),
 		LinkBase:        linkBase(),
 		StateDir:        str("STATE_DIRECTORY", "/var/lib/speakerdeck"),
-		NowPlayingPort:  num("NOWPLAYING_PORT", 8765),
 		OctoPrintURL:    str("OCTOPRINT_URL", "http://127.0.0.1:5000"),
 		OctoPrintKey:    str("OCTOPRINT_API_KEY", ""),
 		ModelDir:        str("MODEL_DIR", "/var/lib/speakerdeck/models"),
