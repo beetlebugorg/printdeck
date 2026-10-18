@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Slate line art</title>
+<style>
+  html, body { margin: 0; background: transparent; }
+  #view { position: relative; overflow: hidden; }
+  #view canvas { display: block; }
+  #labels { position: absolute; inset: 0; }
+  .tag {
+    position: absolute; left: 0; top: 0; white-space: nowrap;
+    border-radius: 999px; border: 2px solid var(--accent); color: var(--accent); background: var(--bg);
+    font-family: "JetBrains Mono", "JetBrainsMono Nerd Font", ui-monospace, monospace; font-weight: 600;
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "/lineart/node_modules/three/build/three.module.js",
+  "three/addons/": "/lineart/node_modules/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="view"><div id="labels"></div></div>
+<script type="module" src="/lineart/page.js"></script>
+</body>
+</html>
