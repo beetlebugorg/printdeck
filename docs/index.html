@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Printdeck</title>
+<meta name="description" content="A Raspberry Pi 5 desk slab that runs OctoPrint and plays Spotify. Four printed parts, no supports.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #fbfbf9; --raised: #ffffff; --ink: #16181a; --ink-2: #4a4f55; --ink-3: #80868d;
+  --line: #e2e2dc; --accent: #0a7f63; --accent-soft: #e3f3ee; --grid: rgba(22, 24, 26, 0.045);
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1112; --raised: #161a1c; --ink: #eceeed; --ink-2: #b2b8b6; --ink-3: #7c8482;
+    --line: #262b2d; --accent: #3fd1a6; --accent-soft: #10302a; --grid: rgba(236, 238, 237, 0.05);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 var(--sans); }
+a { color: var(--accent); }
+main { max-width: 1080px; margin: 0 auto; padding: 0 16px 80px; }
+header { max-width: 1080px; margin: 0 auto; padding: 48px 16px 8px; }
+.eyebrow { font: 600 0.75rem var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin: 0 0 8px; }
+h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.05; letter-spacing: -0.03em; margin: 0; }
+h2 { font-size: 1.7rem; letter-spacing: -0.02em; margin: 64px 0 8px; }
+h3 { margin: 0 0 6px; font-size: 1.1rem; }
+.lede { font-size: 1.15rem; color: var(--ink-2); max-width: 46rem; }
+.grid-bg { background-color: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px; }
+picture img { display: block; width: 100%; height: auto; }
+.hero { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
+.hero picture { padding: 24px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 24px 0 0; padding: 16px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.stats b { display: block; font-size: 1.3rem; letter-spacing: -0.02em; }
+.stats span { color: var(--ink-3); font: 500 0.75rem var(--mono); text-transform: uppercase; letter-spacing: 0.06em; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.chip { font: 600 0.75rem var(--mono); color: var(--ink-2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; background: var(--raised); }
+.btn { display: inline-block; font: 600 0.8rem var(--mono); color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 6px 14px; text-decoration: none; background: var(--raised); margin: 0 8px 8px 0; }
+.btn:hover { background: var(--accent-soft); }
+.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.card { background: var(--raised); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 0.9rem; }
+.card picture { padding: 12px; border: 0; border-radius: 0; border-bottom: 1px solid var(--line); }
+.card picture img { height: 120px; object-fit: contain; }
+.card div { padding: 12px; color: var(--ink-2); }
+.card b { color: var(--ink); }
+.step { display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; align-items: start; padding: 32px 0; border-top: 1px solid var(--line); }
+.step picture { padding: 16px; }
+.step .num { font: 800 3rem/1 var(--mono); color: var(--accent); }
+.step ol { padding-left: 20px; color: var(--ink-2); }
+.step li { margin-bottom: 6px; }
+.note { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 10px; padding: 10px 14px; font-size: 0.9rem; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+td { border-bottom: 1px solid var(--line); padding: 6px 8px 6px 0; vertical-align: top; }
+td.q { font: 700 0.85rem var(--mono); white-space: nowrap; width: 3.5rem; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+code { font: 0.85em var(--mono); }
+footer { max-width: 1080px; margin: 0 auto; padding: 24px 16px 48px; color: var(--ink-3); font: 0.8rem var(--mono); border-top: 1px solid var(--line); }
+@media (max-width: 760px) {
+  .hero, .step, .two { grid-template-columns: 1fr; }
+  .stats, .cards { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+  <p class="eyebrow">Cyberdeck · Raspberry Pi 5</p>
+  <h1>Printdeck</h1>
+  <p class="lede">A desk slab next to the 3D printer. It runs OctoPrint, shows the print on a 7" touch screen,
+    and plays Spotify through passive speakers. The Pi 5 and the HiFiBerry Amp2 sit on the rear, so every port is open.</p>
+  <a class="btn" href="files/speakerdeck-slate-build.pdf">Build instructions (PDF)</a>
+  <a class="btn" href="https://github.com/beetlebugorg/speakerdeck">Source on GitHub</a>
+</header>
+<main>
+  <div class="hero"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/hero-dark.png"><img src="img/hero-light.png" alt="The Printdeck from the front"></picture><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/rear-dark.png"><img src="img/rear-light.png" alt="The Printdeck from the rear, with the Pi and the cables"></picture></div>
+  <div class="stats">
+    <div><b>132 × 221 × 35 mm</b><span>Size</span></div>
+    <div><b>4 parts · 274 g</b><span>Printed</span></div>
+    <div><b>$6.30</b><span>Filament at $22.99/kg</span></div>
+    <div><b>No supports</b><span>All parts</span></div>
+  </div>
+
+  <h2>Print</h2>
+  <p>The STL files are in their print orientation. Load them, do not turn them.</p>
+  <div class="cards"><div class="card"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/part_slab-dark.png"><img src="img/part_slab-light.png" alt="slab"></picture><div><b>Slab</b> · Navy PLA · 81 g<br>Front face down. The screen opening is in the first layers: use a smooth sheet for a clean face.</div></div><div class="card"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/part_chin-dark.png"><img src="img/part_chin-light.png" alt="chin"></picture><div><b>Chin</b> · Orange PLA · 44 g<br>Front face down. The tongues stand up at the two sides.</div></div><div class="card"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/part_back-dark.png"><img src="img/part_back-light.png" alt="back"></picture><div><b>Back</b> · Orange PLA · 89 g<br>Front face (the drive side) down. The bosses and the fan posts point up.</div></div><div class="card"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/part_foot-dark.png"><img src="img/part_foot-light.png" alt="foot"></picture><div><b>Foot</b> · Gray PLA · 60 g<br>Flat, the four hooks up.</div></div></div>
+  <p style="margin-top:16px"><a class="btn" href="files/slab.stl">slab.stl</a><a class="btn" href="files/chin.stl">chin.stl</a><a class="btn" href="files/back.stl">back.stl</a><a class="btn" href="files/foot.stl">foot.stl</a></p>
+  <table><tr><td><b>Profiles</b></td><td>One Cura profile for each part: run <code>python3 cura/make_profiles.py --install</code> with Cura closed, then pick “Speakerdeck - Slate …”.</td></tr><tr><td><b>Material</b></td><td>PLA, 2.85 mm, 0.5 mm nozzle</td></tr><tr><td><b>Slab, chin</b></td><td>0.3 mm layers, 1.5 mm walls, 1.2 mm top and bottom, 20 % grid infill, skirt</td></tr><tr><td><b>Back plate</b></td><td>0.3 mm layers, 40 % grid infill, skirt</td></tr><tr><td><b>Foot</b></td><td>0.3 mm layers, 20 % grid infill, skirt</td></tr><tr><td><b>Supports</b></td><td>Off for all parts. Every hook, pocket, and slot has 45° faces. A slice of each part with supports on (60°, everywhere) adds 0 g of support.</td></tr></table>
+
+  <h2>Parts</h2>
+  <div class="two"><div><h3>Hardware</h3><table><tr><td class="q">4×</td><td>M3 heat-set insert, for a 4.0 mm hole, 4 mm long (display)</td></tr><tr><td class="q">4×</td><td>M3 heat-set insert, for a 4.0 mm hole, max. 5.5 mm long (Pi)</td></tr><tr><td class="q">4×</td><td>M3 × 6 screw (display)</td></tr><tr><td class="q">4×</td><td>M3 × 5 screw (drive)</td></tr><tr><td class="q">4×</td><td>M3 × 16 screw, pan head (fan). It cuts its thread in the printed boss.</td></tr><tr><td class="q">3×</td><td>Twist tie, 15 cm, max. 3 mm wide (orange looks best)</td></tr></table></div><div><h3>Electronics</h3><table><tr><td class="q">1×</td><td>Raspberry Pi 5 + HiFiBerry Amp2, as one stack on four M3 × 16 male-female standoffs</td></tr><tr><td class="q">1×</td><td>Heatsink for the Pi 5 SoC, max. 16 × 16 × 8 mm, with thermal tape</td></tr><tr><td class="q">1×</td><td>Adafruit 7 inch HDMI display with touch</td></tr><tr><td class="q">1×</td><td>2.5 inch SATA drive with a USB adapter board</td></tr><tr><td class="q">1×</td><td>30 mm fan, 10 mm thick, with a Pi 5 fan plug</td></tr><tr><td class="q">1×</td><td>HDMI ribbon cable kit: HDMI A plug, micro HDMI plug, flat ribbon 40 to 50 cm (the route is 24 cm). A round HDMI cable cannot bend in the 10 mm under the display.</td></tr><tr><td class="q">1×</td><td>USB-A to micro USB cable, thin (max. 3.5 mm), 50 to 60 cm (the route is 36 cm). Straight plugs, max. 30 mm long.</td></tr><tr><td class="q">1×</td><td>USB 3 cable for the drive: micro-B SuperSpeed to USB-A, 15 to 20 cm (the route is 11 cm). Straight micro-B plug, max. 22 mm long from the socket. Cable max. 4.5 mm diameter.</td></tr><tr><td class="q">1×</td><td>Raspberry Pi 27 W USB-C power supply</td></tr><tr><td class="q">1×</td><td>12 to 20 V power supply for the Amp2, with a right-angle 5.5 × 2.1 mm plug</td></tr></table></div></div>
+
+  <h2>Build</h2>
+  <p>Left and right are as seen from the front of the case.</p>
+  <section class="step"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/step1-dark.png"><img src="img/step1-light.png" alt="Step 1: Display"></picture><div><div class="num">1</div><h3>Display</h3><div class="chips"><span class="chip">slab</span><span class="chip">display</span><span class="chip">4 × insert (4 mm)</span><span class="chip">4 × M3 × 6</span></div><ol><li>Press four 4 mm M3 heat-set inserts into the four bosses in the slab. Use a soldering iron at 220 °C. Stop when the insert is flush: the face is only 3.85 mm away.</li><li>Put the slab face down on a soft cloth.</li><li>Connect the HDMI ribbon cable and the USB cable to the display.</li><li>Put the display into the slab: glass to the front, sockets at the bottom. The cables come out of the open bottom of the slab.</li><li>Attach the display with four M3 × 6 screws.</li></ol></div></section><section class="step"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/step2-dark.png"><img src="img/step2-light.png" alt="Step 2: Drive"></picture><div><div class="num">2</div><h3>Drive</h3><div class="chips"><span class="chip">back plate</span><span class="chip">drive</span><span class="chip">4 × M3 × 5</span></div><ol><li>Put the drive on the flat front of the back plate: adapter up, the M3 holes against the plate. Attach it with four M3 × 5 screws from the rear.</li><li>Connect the drive cable to the micro-B socket of the drive adapter. Bend the cable to the rear through the notch in the top edge of the plate.</li></ol></div></section><section class="step"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/step2_pi-dark.png"><img src="img/step2_pi-light.png" alt="Step 3: Fan and Pi"></picture><div><div class="num">3</div><h3>Fan and Pi</h3><div class="chips"><span class="chip">back plate (step 2)</span><span class="chip">fan</span><span class="chip">Pi 5 + Amp2</span><span class="chip">heatsink</span><span class="chip">4 × insert</span><span class="chip">4 × M3 × 16</span></div><ol><li>Press four M3 heat-set inserts into the four tall bosses on the rear of the back plate.</li><li>Put the fan in between the four corner guides on the rear, with the cable toward the right of the case. The label side goes away from the plate: the fan blows onto the Pi.</li><li>Attach the fan with four M3 × 16 screws through its corner holes into the four bosses. Turn each screw until the fan touches the boss. Do not tighten more: the thread is in plastic.</li><li>Put the heatsink on the SoC of the Pi.</li><li>Put the Pi stack on the four bosses: the USB ports up, the USB-C and HDMI ports toward the left of the case. Turn the male ends of the standoffs through the Pi into the inserts.</li><li>Lead the fan cable around the right edge of the Pi, above the end of the GPIO header. Connect it to the fan connector of the Pi.</li></ol><p class="note"><b>Note.</b> Left and right are as seen from the front of the case.</p></div></section><section class="step"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/step3-dark.png"><img src="img/step3-light.png" alt="Step 4: Back plate into the slab"></picture><div><div class="num">4</div><h3>Back plate into the slab</h3><div class="chips"><span class="chip">slab (step 1)</span><span class="chip">back plate (step 3)</span></div><ol><li>Keep the slab face down. Lead the two display cables through the two notches in the bottom edge of the back plate: the USB cable at the left, the ribbon at the right.</li><li>Put the edges of the back plate into the grooves of the slab, at the open bottom. Slide the plate up until it stops at the top wall.</li></ol><p class="note"><b>Note.</b> The drive is behind the display plugs. If the plate does not slide, look at the plugs first.</p></div></section><section class="step"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/step4-dark.png"><img src="img/step4-light.png" alt="Step 5: Chin"></picture><div><div class="num">5</div><h3>Chin</h3><div class="chips"><span class="chip">chin</span></div><ol><li>Put the extra length of the display cables into the chin.</li><li>Push the chin up onto the slab: its grooves take the bottom of the back plate. Push until the two tongues click.</li></ol><p class="note"><b>Note.</b> The chin holds the back plate. The case is now closed.</p></div></section><section class="step"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/step5-dark.png"><img src="img/step5-light.png" alt="Step 6: Foot"></picture><div><div class="num">6</div><h3>Foot</h3><div class="chips"><span class="chip">foot</span></div><ol><li>Put the case on the foot. The foot is 6 mm in from the front and the sides, and it reaches far to the rear.</li><li>Push down until the four hooks click into the floor of the chin.</li></ol></div></section><section class="step"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/step6-dark.png"><img src="img/step6-light.png" alt="Step 7: Cables on the rear"></picture><div><div class="num">7</div><h3>Cables on the rear</h3><div class="chips"><span class="chip">3 × twist tie</span></div><ol><li>Lead the drive cable over the top of the Pi. Connect it to the blue USB 3 port next to the board, from above.</li><li>Lead the HDMI ribbon to the left, then up the left side of the back plate. Tie it at the pair of holes at the left. Connect it to the micro HDMI port next to the USB-C port.</li><li>Lead the USB cable to the right, then up the right side of the back plate. Tie it at the two pairs of holes at the right. Bend it over the top and connect it to the black USB 2 port away from the board, from above.</li><li>Connect the printer to the black USB 2 port next to the board. The USB ports point up, so you connect them from the top of the case.</li><li>For each tie: put it in through one hole and out through the other, around the cable. Twist it closed on the rear.</li></ol><p class="note"><b>Note.</b> No cable shows on the front or the sides. On the rear the cables are part of the look: keep them tight, with no loops.</p></div></section>
+
+  <h2>Connect</h2>
+  <div class="step"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/connect-dark.png"><img src="img/connect-light.png" alt="The plugs for the printer, the power, and the speakers"></picture><div><ol>
+    <li>Connect the USB-C power supply to the Pi. The port is on the left edge of the Pi.</li>
+    <li>Connect the 3D printer to the black USB 2 port next to the board, from above.</li>
+    <li>Put the right-angle plug of the Amp2 power supply into the jack on the left edge of the Amp2.</li>
+    <li>Connect the speaker wires to the screw terminals on the left edge of the Amp2.</li></ol></div></div>
+
+  <h2>Software</h2>
+  <p>The <code>speakerdeck</code> app (Go) draws the full screen UI on the 7" display: a Music tab for Spotify Connect,
+    and a Print tab with a 3D view of the print, the temperatures, and the printer controls. go-librespot and CamillaDSP
+    run in Docker, and OctoPrint runs as a service. The installation steps are in the
+    <a href="https://github.com/beetlebugorg/speakerdeck#installation">README</a>.</p>
+</main>
+<footer>Printdeck · the CAD, the images, and this page come from <a href="https://github.com/beetlebugorg/speakerdeck/tree/main/slate">slate/</a></footer>
+</body>
+</html>

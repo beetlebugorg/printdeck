@@ -1,0 +1,47 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "slate/stl/**"
+      - "slate/speakerdeck-slate-build.pdf"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # slate/make_site.py writes docs/. The downloads come from slate/.
+      - name: Stage the site
+        run: |
+          mkdir -p _site/files
+          cp -r docs/. _site/
+          cp slate/stl/*.stl slate/speakerdeck-slate-build.pdf _site/files/
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
