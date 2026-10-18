@@ -1,5 +1,10 @@
 # Speakerdeck Slate
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.png">
+  <img src="docs/hero-light.png" alt="The assembled Speakerdeck Slate on its foot" width="320">
+</picture>
+
 A compact slab for the Speakerdeck hardware: Raspberry Pi 5 with the HiFiBerry Amp2, the
 Adafruit 7 inch touch display in portrait, the 2.5 inch SSD with its USB adapter, and the 30 mm
 fan. The slab is 132 mm wide, 221 mm high, and 35 mm deep. It leans back 15 degrees on a gray
@@ -49,12 +54,16 @@ Cura closed.
   `stl/*.stl`, and the meshes for the renders.
 - `cura/make_profiles.py` writes a Cura profile for each part, slices each part with CuraEngine
   for the filament values in the PDF, and slices each part again with supports on.
-- `render.py` renders the images in FreeCAD. `make_pdf.py` writes the PDF.
+- `lineart/render.mjs` renders the line-art images in three.js in headless Chromium, in the style of the
+  beetlebug.org viewer: an orthographic view, a flat fill, and dark edge lines. Each assembly step is an
+  exploded view. The parts of the step are in the accent colour, with a dashed guide line to their
+  position. It writes a light and a dark image of each view to `build/img/` (transparent PNG).
+  `make_pdf.py` writes the PDF with the light images.
+- `docs/` contains the finished-build image of this README.
 - `make.sh` runs all steps (about 2 minutes). It stops if the fit check, the mesh check, or
   the support check fails.
-- `assets/screen.png` is the screen image of the renders.
 
 ## Needs
 
-`uv` (build123d, trimesh), FreeCAD 1.x (`freecad`), `xvfb-run`, ImageMagick 7, Chromium, and
+`uv` (build123d, trimesh), Node.js (three.js and puppeteer-core, from `lineart/package.json`), ImageMagick 7, Chromium, and
 CuraEngine from the Cura AppImage in `/opt/ultimaker-cura`.

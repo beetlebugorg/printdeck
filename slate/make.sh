@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the Speakerdeck Slate: the parts in build123d (fit check, STEP, STL), the mesh check,
-# the Cura profiles with the filament and the support check, the renders, and the build PDF.
+# the Cura profiles with the filament and the support check, the line-art renders, and the build PDF.
 # Takes about 1 minute (more if CuraEngine stalls and the slice runs again).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -35,11 +35,12 @@ bad = {k: v for k, v in s.items() if v > 0}
 print("  support check:", "0 g for all parts" if not bad else f"SUPPORT NEEDED {bad}")
 sys.exit(1 if bad or len(s) != 4 else 0)
 PY
-mkdir -p build/fc_home
-export FREECAD_USER_HOME="$PWD/build/fc_home"
-xvfb-run -a -s "-screen 0 1920x1080x24" freecad render.py > /dev/null 2>&1
-cat build/render.log
-for f in build/img/raw/*.png; do
-  magick "$f" -trim +repage -background white -alpha remove -alpha off -bordercolor white -border 40 "build/img/$(basename "$f")"
+# Line-art renders in three.js (headless Chromium), in the style of the beetlebug.org viewer.
+[ -d lineart/node_modules ] || (cd lineart && npm ci --no-fund --no-audit)
+mkdir -p build/img
+node lineart/render.mjs > build/render.log
+grep -c "^wrote" build/render.log | xargs printf "  %s line-art images\n"
+for f in build/img/raw/*-light.png build/img/raw/*-dark.png; do
+  magick "$f" -trim +repage -bordercolor none -border 24 "build/img/$(basename "$f")"
 done
 python3 make_pdf.py

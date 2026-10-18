@@ -1,2 +1,3 @@
 # Intermediate files. make.sh makes them again.
 build/
+lineart/node_modules/
