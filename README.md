@@ -1,6 +1,15 @@
-# Speakerdeck
+# Printdeck
 
-A small Spotify player and OctoPrint host on a Raspberry Pi 5.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="slate/docs/hero-dark.png">
+  <img src="slate/docs/hero-light.png" alt="The Printdeck Slate on its foot" width="320">
+</picture>
+
+A Raspberry Pi 5 desk slab next to the 3D printer. It runs OctoPrint, shows the print on a 7" touch
+screen, and plays Spotify through passive speakers. The project started as Speakerdeck, so the
+software still uses that name.
+
+Website: https://beetlebugorg.github.io/speakerdeck/
 
 ## Hardware
 
@@ -8,7 +17,6 @@ A small Spotify player and OctoPrint host on a Raspberry Pi 5.
 |---|---|
 | Raspberry Pi 5 | Power from the Amp HAT. Do not connect USB-C at the same time. |
 | HiFiBerry Amp HAT | 40-pin header, through the stacking adapter. Its 12 to 24 V supply also powers the Pi. |
-| Inky wHAT, black and white | 40-pin ribbon cable to the header of the stack. Flush in the top of the case. |
 | Denon SC-N10 speakers | Binding posts on the rear panel |
 | 30 mm fan | Fan connector of the Pi |
 | Adafruit 7" HDMI backpack display | Micro HDMI port. Portrait position in the front. |
@@ -20,7 +28,6 @@ A small Spotify player and OctoPrint host on a Raspberry Pi 5.
 - go-librespot (in Docker) makes the Pi a Spotify Connect device. This needs Spotify Premium.
 - CamillaDSP (in Docker) is the equalizer. go-librespot plays into the ALSA loopback (`snd-aloop`), and CamillaDSP plays from there to the Amp2.
 - OctoPrint runs as a `systemd` service on port 5000.
-- `inky/nowplaying.py` shows the album art, the title, and the artist on the Inky wHAT.
 - `deck/` is the `speakerdeck` binary (Go). It starts on boot and draws a full screen application on the 7" display, without a desktop or a browser:
   - The Music tab follows and controls Spotify with the Spotify Web API (cover, seek, previous, play, next, shuffle, repeat). go-librespot is the Connect device.
   - The Print tab has a character display (20 x 2, like the display of the printer): what it does, the progress and the time left, and the kind of move now with its speed (from the `;TYPE:` marks of Cura, PrusaSlicer, and OrcaSlicer).
@@ -41,6 +48,7 @@ A small Spotify player and OctoPrint host on a Raspberry Pi 5.
 3. Run `setup/10-boot-config.sh`. Reboot the Pi.
 4. Run `aplay -l`. Make sure that the list shows the HiFiBerry card.
 5. Run `setup/30-octoprint.sh`, and make an API key in OctoPrint.
+   For a printer with Klipper firmware, also run `setup/35-klipper.sh`. Read the note at the top of the script first.
 6. Create an app in the Spotify developer dashboard. Add `http://127.0.0.1:8888/callback` as the redirect URI.
 7. Run `setup/50-deck.sh`. It makes `.env` from `.env.example`. Fill it in (the Spotify client ID, the OctoPrint address and key, `DISPLAY_ROTATE`). Run `setup/50-deck.sh` again. It disables the desktop and starts the Docker stack.
 8. Run `docker compose run --rm deck auth`. Open the address in a browser. Paste the address of the error page that follows. Run `docker compose restart deck`.
@@ -50,47 +58,18 @@ To update: `git pull`, then `docker compose up -d --build`.
 
 Settings are in `.env`: `DISPLAY_ROTATE` (90 or 270), `TOUCH_INVERT_X`, `TOUCH_INVERT_Y`, `TOUCH_SWAP_XY` (0 or 1), `VOLUME_FLOOR_DB`, `VOLUME_CEIL_DB`, `MAX_VOLUME`, `PREHEAT_TOOL`, `PREHEAT_BED`, `FILAMENT_UNLOAD_MM`, `FILAMENT_LOAD_MM`, `JOG_INVERT_Y`, `NIGHT_FROM`, `NIGHT_TO`.
 
-To look at the screens without the hardware, run `go run ./cmd/speakerdeck demo /tmp/shots` in `deck/`. It writes PNG files.
+`slicer/` has a Cura post-processing script that sets the speed of each move. See `slicer/README.md`.
 
-The Inky wHAT is not part of the Docker stack yet. `setup/40-inky.sh` still installs its Python service.
+To look at the screens without the hardware, run `go run ./cmd/speakerdeck demo /tmp/shots` in `deck/`. It writes PNG files.
 
 ## Case
 
-The case is a cabinet with the size of one SC-N10 speaker: 153 x 233 x 196 mm.
-
-### Files to print
-
-The STL files are in `case/stl/`. Each file has the correct position for the print bed.
-
-| File | Part | Cura profile |
-|---|---|---|
-| `case/stl/body.stl` | Body, with the rear wall | Speakerdeck - Body 0.3 |
-| `case/stl/base.stl` | Base plate for the drive and the Pi stack | Speakerdeck - Base 0.3 |
-| `case/stl/frame.stl` | Display frame | Speakerdeck - Display Frame 0.2 |
-| `case/stl/inky_frame.stl` | Inky frame | Speakerdeck - Inky Frame 0.1 slow |
-| `case/stl/cap.stl` | 8 caps on one plate | Speakerdeck - Caps 0.2 |
-| `case/stl/pad.stl` | Pad behind the Inky wHAT | Speakerdeck - Pad 0.2 |
-
-The profiles are for the LulzBot TAZ Workhorse with the 0.5 mm tool head and 2.85 mm PLA.
-Close Cura, then run `case/cura/make_profiles.py --install`.
-
-`case/speakerdeck-build.pdf` contains the build instructions and the filament estimate.
-
-### Source
-
-- `case/common.scad` contains all parameters.
-- `case/body.scad`, `base.scad`, `frame.scad`, `inky_frame.scad`, `cap.scad`, and `pad.scad` are the printed parts, one file for each part.
-- `case/speakerdeck.scad` is the assembly and the exploded view.
-- `case/hardware.scad` contains the models of the purchased parts, for the images only.
-- `case/vendor/` contains models from the manufacturers.
-- `case/build/make.sh` makes the STL files, the images, and the PDF again.
-
-If you change a parameter, run `case/build/make.sh` and commit the new STL files and the new PDF.
+The case is the Slate in `slate/`: a 35 mm slab that leans back 15 degrees on a foot, with the Pi
+on the rear. `slate/README.md` lists the parts and the files.
+`slate/speakerdeck-slate-build.pdf` has the parts list, the print settings, and the assembly steps.
 
 ## Work that remains
 
 - Test with the AR1100 touch controller. Set `TOUCH_*` if the axes are wrong. Run the calibration if the corners are not exact.
 - Test the Spotify and OctoPrint screens with the real services. They are built from the API documentation only.
-- Print progress on the Inky wHAT.
 - Webcam picture of the print on the Print tab.
-- Put the Inky wHAT service in the Docker stack. `inky/librespot-event.sh` and the raspotify setup are no longer used.

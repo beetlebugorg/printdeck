@@ -48,7 +48,6 @@ services:
       JOG_INVERT_Y: ${JOG_INVERT_Y:-0}
       NIGHT_FROM: ${NIGHT_FROM:-20}
       NIGHT_TO: ${NIGHT_TO:-7}
-      NOWPLAYING_PORT: "0" # the Inky wHAT is not part of this stack
 
   # The equalizer: reads Spotify from the ALSA loopback, plays to the Amp2. Needs the snd-aloop module
   # on the host (setup/50-deck.sh loads it).

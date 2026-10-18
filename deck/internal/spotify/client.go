@@ -78,9 +78,8 @@ type Client struct {
 	playlists []Playlist
 	recent    []Playlist // contexts that played on this speaker, newest first
 
-	poke    chan struct{}
-	notify  func()
-	OnTrack func(State) // called when the track changes
+	poke   chan struct{}
+	notify func()
 }
 
 func New(cfg Config) *Client {
@@ -279,9 +278,6 @@ func (c *Client) refresh() bool {
 	}
 	if st.URI != prev.URI && strings.HasPrefix(st.URI, "spotify:track:") {
 		go c.checkLiked(st.URI)
-	}
-	if st.Title != prev.Title && st.Title != "" && c.OnTrack != nil {
-		c.OnTrack(st)
 	}
 	if c.notify != nil {
 		c.notify()
