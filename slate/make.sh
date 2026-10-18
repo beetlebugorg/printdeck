@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build the Speakerdeck Slate: the parts in build123d (fit check, STEP, STL), the mesh check,
-# the Cura profiles with the filament and the support check, the line-art renders, and the build PDF.
+# the Cura profiles with the filament and the support check, the line-art renders, the build PDF,
+# and the website in ../docs.
 # Takes about 1 minute (more if CuraEngine stalls and the slice runs again).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -44,3 +45,4 @@ for f in build/img/raw/*-light.png build/img/raw/*-dark.png; do
   magick "$f" -trim +repage -bordercolor none -border 24 "build/img/$(basename "$f")"
 done
 python3 make_pdf.py
+python3 make_site.py

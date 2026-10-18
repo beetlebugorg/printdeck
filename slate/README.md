@@ -59,6 +59,8 @@ Cura closed.
   exploded view. The parts of the step are in the accent colour, with a dashed guide line to their
   position. It writes a light and a dark image of each view to `build/img/` (transparent PNG).
   `make_pdf.py` writes the PDF with the light images.
+- `make_site.py` writes the project website (`../docs/index.html` and `../docs/img/`) from the
+  same text as the PDF. The Pages workflow publishes it with the STL files and the PDF.
 - `docs/` contains the finished-build image of this README.
 - `make.sh` runs all steps (about 2 minutes). It stops if the fit check, the mesh check, or
   the support check fails.
