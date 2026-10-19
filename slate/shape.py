@@ -1,7 +1,7 @@
 # Speakerdeck Slate: all dimensions. Units are millimetres.
 #
 # The case is a thin tall slab that leans back 15 degrees on a gray foot. The 7 inch screen is
-# in portrait. The Pi 5 and the Amp2 sit on the outside of the back plate, as a backpack, so
+# in portrait. The Pi 5 and the Amp2 are on the outside of the back plate, as a backpack, so
 # every port has free space for a straight plug and the bend of its cable. The parts:
 #   slab        navy    the face and the walls, open at the bottom and at the rear
 #   chin        orange  the bottom of the face: vent slots, two snap tongues
@@ -48,7 +48,7 @@ BOSS_R = 3.8                     # bosses for M3 heat-set inserts
 INSERT_D = 4.0
 INSERT_DEPTH = 4.5               # 4 mm inserts: the hole stays 3.85 mm behind the face
 
-# Back plate: the rear wall. Its edges sit in grooves in the slab and the chin.
+# Back plate: the rear wall. Its edges go in grooves in the slab and the chin.
 PLATE_C = (-31.5, -29.0)         # c range of the plate
 GROOVE = 1.2                     # depth of the grooves; the plate edge goes in GROOVE - CLR
 GROOVE_C = (PLATE_C[0] - CLR, PLATE_C[1] + CLR)
@@ -57,7 +57,7 @@ GROOVE_C = (PLATE_C[0] - CLR, PLATE_C[1] + CLR)
 # The drive top (c = -22.2) stays behind the display plugs (c = -21.35).
 SSD_O = (0.0, 94.0, PLATE_C[1])
 SSD_HOLES = [(x * 30.86, SSD_O[1] + y) for x in (-1, 1) for y in (36.2, -40.4)]
-SSD_USB_A = -22.7                # centre of the micro-B socket (case/hardware.scad, not measured)
+SSD_USB_A = -22.7                # centre of the micro-B socket, from the old case model (unmeasured)
 
 # Pi 5 with the Amp2: on four bosses on the rear of the plate, parts to the rear. The USB and
 # Ethernet edge points up, so the USB plugs are easy to connect. The USB-C, micro HDMI, Amp2
@@ -78,6 +78,13 @@ FAN_PILOT_R = 1.25               # M3 x 16 screw: 10 mm fan, 5 mm boss, 1 mm int
 TONGUE_B = (38.0, 56.0)
 RIDGE_B = 51.0
 
+# Chin screws: one M3 × 10 button head screw through each side wall of the slab, into a 4 mm
+# heat-set insert in a boss on the inner face of the chin tongue. The hole is at the middle of
+# the depth, so one drill guide fits both sides (drill_guide.py).
+SIDE_SCREW = (48.0, -17.5)       # b and c of the screw axis
+SIDE_BOSS = (54.0, 4.5)          # inner a of the boss, and the half size of its 45 degree diamond
+SIDE_INSERT_DEPTH = 5.5          # the insert hole, in from the outer face of the tongue
+
 # Cable route.
 VENTS_B = (24.0, 30.0, 36.0)
 CABLE_NOTCHES = ((-25.0, -5.0), (-1.0, 21.0))   # a ranges of the notches for the touch USB
@@ -89,8 +96,13 @@ TIE_HOLE_R = 1.6                                # for a 3 mm twist tie
 # Foot. It reaches far to the rear: the backpack moves the centre of mass back.
 FOOT_IN = 6.0                    # the foot is this much in from the front and the sides
 FOOT_REAR = 60.0                 # and this much out at the rear
-FOOT_HOOKS_Y = (12.0, 22.0)
-FOOT_HOOK_X = 55.0               # inner face of the hook arm
+# Four M3 × 8 screws go up through the foot into 4 mm heat-set inserts in the chin floor.
+# Each insert is in a block that fills the front corner of the chin. The screw heads are in
+# pockets in the bottom of the foot.
+FOOT_SCREWS = [(x * 55.0, y) for x in (-1, 1) for y in (12.0, 24.0)]
+FOOT_INSERT_DEPTH = 5.0          # the hole, up from the bottom of the chin
+FOOT_BLOCK = (50.0, 28.5, FOOT_H + 7.5)   # inner x, rear y, and top z of each corner block
+FOOT_POCKET = (3.1, 3.5)         # radius and depth of the screw head pocket
 
 
 def up():
