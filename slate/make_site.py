@@ -126,7 +126,7 @@ def page():
   <p class="eyebrow">Cyberdeck · Raspberry Pi 5</p>
   <h1>Printdeck</h1>
   <p class="lede">A desk slab next to the 3D printer. It runs OctoPrint, shows the print on a 7" touch screen,
-    and plays Spotify through passive speakers. The Pi 5 and the HiFiBerry Amp2 sit on the rear, so every port is open.</p>
+    and plays Spotify through passive speakers. The Pi 5 and the HiFiBerry Amp2 are on the rear, so every port is open.</p>
   <a class="btn" href="files/speakerdeck-slate-build.pdf">Build instructions (PDF)</a>
   <a class="btn" href="{repo}">Source on GitHub</a>
 </header>

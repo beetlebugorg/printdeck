@@ -33,14 +33,14 @@ const FINISH = {
   black_glass: "dark", black_plastic: "dark", label_black: "dark", alu_dark: "dark", post_black: "dark",
 };
 const LABEL = {
-  slab: "Slab", chin: "Chin", back: "Back plate", foot: "Foot", display: "7\" display", ssd: "Drive",
+  slab: "Slab", chin: "Chin", back: "Back plate", foot: "Foot", foot_screws: "4 × M3 × 8", side_screw_r: "M3 × 10", side_screw_l: "M3 × 10", display: "7\" display", ssd: "Drive",
   ssd_cable: "Drive cable", pi: "Pi 5 + Amp2", pi_plugs: "Plugs", printer: "Printer", power: "Power", speakers: "Speakers", fan: "30 mm fan", fan_cable: "Fan cable",
   cables: "Display cables",
 };
 
 const PRINTED = ["slab", "chin", "back", "foot"];
 const CONNECT = ["printer", "power", "speakers"];
-const ALL = [...PRINTED, "display", "ssd", "ssd_cable", "pi", "pi_plugs", "fan", "fan_cable", "cables", ...CONNECT];
+const ALL = [...PRINTED, "foot_screws", "side_screw_r", "side_screw_l", "display", "ssd", "ssd_cable", "pi", "pi_plugs", "fan", "fan_cable", "cables", ...CONNECT];
 const NO_CABLES = ALL.filter((g) => !["cables", "pi_plugs", ...CONNECT].includes(g));
 const BACK = ["back", "ssd", "ssd_cable", "pi", "fan", "fan_cable"];
 const FRONT = [-1.4, -1.6, 0.9];      // front left, the same as the site hero
@@ -56,7 +56,8 @@ const SHOTS = {
   rear: { show: ALL, focus: [], explode: {}, camera: REAR },
   exploded: {
     show: NO_CABLES, focus: [], camera: [-1.2, 0.95, 0.55],
-    explode: { display: outBack(45), ...each(BACK, outBack(110)), chin: alongSlab(-70), foot: [0, 0, -150] },
+    explode: { display: outBack(45), ...each(BACK, outBack(110)), chin: alongSlab(-70), foot: [0, 0, -150], foot_screws: [0, 0, -190],
+      side_screw_r: [30, 0, 0], side_screw_l: [-30, 0, 0] },
   },
   step1: { show: ["slab", "display"], focus: ["display"], explode: { display: outBack(80) }, camera: REAR },
   step2: {
@@ -70,8 +71,14 @@ const SHOTS = {
   },
   step3: { show: ["slab", "display", ...BACK], focus: BACK, explode: each(BACK, alongSlab(-150)), camera: REAR,
     labels: each(BACK, "Back plate + Pi") },
-  step4: { show: NO_CABLES.filter((g) => g !== "foot"), focus: ["chin"], explode: { chin: alongSlab(-70) }, camera: REAR },
-  step5: { show: NO_CABLES, focus: ["foot"], explode: { foot: [0, 0, -50] }, camera: REAR },
+  step4: {
+    show: NO_CABLES.filter((g) => !["foot", "foot_screws"].includes(g)), focus: ["chin", "side_screw_r", "side_screw_l"],
+    explode: { chin: alongSlab(-70), side_screw_r: [40, 0, 0], side_screw_l: [-40, 0, 0] }, camera: REAR,
+    labels: { side_screw_l: "" },   // one label for the two screws, at the near one
+  },
+  // The screws go in from below, so this view is from below.
+  step5: { show: NO_CABLES, focus: ["foot", "foot_screws"], explode: { foot: [0, 0, -35], foot_screws: [0, 0, -120] },
+    camera: [1.4, -1.5, -0.7] },
   step6: {
     show: ALL.filter((g) => !CONNECT.includes(g)), focus: ["cables", "ssd_cable", "pi_plugs"], explode: {}, camera: REAR,
     labels: { pi_plugs: LABEL.cables },

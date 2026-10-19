@@ -1,9 +1,10 @@
 # Speakerdeck Slate: the printed parts, the hardware, the plug spaces, and the cables, in
 # build123d. All shapes are in slab coordinates (see shape.py); LOC moves them to the world.
 #
-# Joints. The chin snaps onto the slab with two tongues. The back plate slides up into grooves
-# in the slab and the chin; the chin holds it. The foot snaps onto the chin. Every groove,
-# pocket, and hole has 45 degree faces where it would overhang, so no part needs supports.
+# Joints. The chin snaps onto the slab with two tongues, and a screw through each side wall of
+# the slab holds it. The back plate slides up into grooves in the slab and the chin; the chin
+# holds it. Four screws hold the foot to the chin. Every groove, pocket, and hole has 45 degree
+# faces in place of overhangs, so no part needs supports.
 
 import math
 
@@ -54,6 +55,19 @@ def prism_c(pts_ab, c0, c1):
 def cyl_c(a, b, r, c0, c1):
     c0, c1 = sorted((c0, c1))
     return Pos(a, b, c0) * Cylinder(r, c1 - c0, align=(Align.CENTER, Align.CENTER, Align.MIN))
+
+
+def cyl_a(b, c, r, a0, a1):
+    a0, a1 = sorted((a0, a1))
+    return Pos(a0, b, c) * Rot(0, 90, 0) * Cylinder(r, a1 - a0, align=(Align.CENTER, Align.CENTER, Align.MIN))
+
+
+def teardrop_a(b, c, r, a0, a1):
+    """A hole along a with a 45 degree point toward -c. The slab and the chin print face down,
+    so -c is up in print, and the top of the hole does not overhang."""
+    q = r / math.sqrt(2)
+    tip = prism_a([(b, c), (b - q, c - q), (b, c - r * math.sqrt(2)), (b + q, c - q)], a0, a1)
+    return cyl_a(b, c, r, a0, a1) + tip
 
 
 def round_top(shape, top_b, r):
@@ -144,7 +158,7 @@ def slab():
     a, b, c = S.DISP_C
     s = s - box(-S.LCD_WH[0] / 2, S.LCD_WH[0] / 2, b - S.LCD_WH[1] / 2, b + S.LCD_WH[1] / 2, -S.WALL - 0.01, c)
     s = s - box(-S.OPENING_WH[0] / 2, S.OPENING_WH[0] / 2, b - S.OPENING_WH[1] / 2, b + S.OPENING_WH[1] / 2, -S.WALL, 1)
-    # Bosses for the display: M3 heat-set inserts, the board ears sit on them.
+    # Bosses for the display: M3 heat-set inserts, the board ears rest on them.
     board_front = c - 7.35
     for x, y in S.EARS:
         s = s + cyl_c(x, b + y, S.BOSS_R, board_front, -S.WALL + 0.01)
@@ -154,6 +168,8 @@ def slab():
     for sg in (1, -1):
         s = s - box(sg * (A_THICK - 0.1), sg * (A_THICK + 0.9), S.RIDGE_B - 0.2, S.RIDGE_B + 2.3, -3.0, S.STEP_C - 0.1)
         s = s - diamond_a(S.RIDGE_B + 1.05, -13.0, 1.0, sg * (A_THICK + 0.5), sg * (A_OUT + 1))
+        # The hole for the chin screw.
+        s = s - teardrop_a(*S.SIDE_SCREW, 1.7, sg * (A_THICK - 1), sg * (A_OUT + 1))
     return s
 
 
@@ -182,19 +198,34 @@ def chin():
         top = S.TONGUE_B[1]
         keep = prism_a([(S.TONGUE_B[0] - 1, -2.0), (S.CHIN_B, -2.0), (S.CHIN_B, -2.6), (top + 1, -2.6 - (top + 1 - S.CHIN_B)),
                         (top + 1, S.STEP_C), (S.TONGUE_B[0] - 1, S.STEP_C)], -A_OUT - 1, A_OUT + 1)
-        return ((t + ridge) & keep) + root
+        # A boss on the inner face, with the insert for the chin screw. Its diamond shape has
+        # 45 degree faces, so it prints without supports.
+        b, c = S.SIDE_SCREW
+        a_in, h = S.SIDE_BOSS
+        boss = prism_a([(b - h, c), (b, c - h), (b + h, c), (b, c + h)], sg * a_in, sg * (tin + 0.5))
+        hole = teardrop_a(b, c, S.INSERT_D / 2, sg * (tout - S.SIDE_INSERT_DEPTH), sg * (tout + 2))
+        return ((t + ridge) & keep) + root + boss - hole
 
     for t in both_sides(tongue):
         s = s + t
-    # Slots in the floor for the hooks of the foot.
-    for y in S.FOOT_HOOKS_Y:
-        for sg in (1, -1):
-            x0, x1 = S.FOOT_HOOK_X - 0.3, S.FOOT_HOOK_X + 1.45
-            xm = (x0 + x1) / 2
-            pts = [(x0, y - 4.3), (xm, y - 4.3 - 0.9), (x1, y - 4.3), (x1, y + 4.3), (xm, y + 4.3 + 0.9), (x0, y + 4.3)]
-            sl = prism_c([(sg * x, yy) for x, yy in pts], S.FOOT_H - 1, S.FOOT_H + S.WALL + 1)
-            s = s - LOC.inverse() * sl
+    # A block in each front corner, with the inserts for the foot screws.
+    inner = outer(-40, S.CHIN_B, False)
+    x0, y1, z1 = S.FOOT_BLOCK
+    for sg in (1, -1):
+        blk = Pos(sg * (x0 + A_IN) / 2, (y1 - 20) / 2, S.FOOT_H) * Box(A_IN + 0.5 - x0, y1 + 20, z1 - S.FOOT_H,
+                                                                       align=(Align.CENTER, Align.CENTER, Align.MIN))
+        s = s + (LOC.inverse() * blk & inner)
+    for x, y in S.FOOT_SCREWS:
+        s = s - LOC.inverse() * teardrop_z(x, y, S.INSERT_D / 2, S.FOOT_H - 1, S.FOOT_H + S.FOOT_INSERT_DEPTH)
     return s
+
+
+def teardrop_z(x, y, r, z0, z1):
+    """A hole along world Z with a 45 degree point toward +Y. The chin prints with this hole on
+    its side, and +Y is up in print, so the top of the hole does not overhang."""
+    q = r / math.sqrt(2)
+    tip = prism_c([(x, y), (x - q, y + q), (x, y + r * math.sqrt(2)), (x + q, y + q)], z0, z1)
+    return cyl_c(x, y, r, z0, z1) + tip
 
 
 # ---------------------------------------------------------------- back plate and foot
@@ -245,28 +276,37 @@ def foot_world():
     f = Pos(-x, S.FOOT_IN, 0) * Box(2 * x, y1 - S.FOOT_IN, S.FOOT_H, align=MIN)
     f = fillet(f.edges().filter_by(Axis.Z), 8)
     f = chamfer(f.edges().filter_by(lambda e: abs(e.center().Z - S.FOOT_H) < 0.01), 1.0)
-    z_floor = S.FOOT_H + S.WALL          # top of the chin floor
-    for y in S.FOOT_HOOKS_Y:
-        for sg in (1, -1):
-            hx = S.FOOT_HOOK_X
-            f = f - (Pos(sg * (hx - 1.5 + 2.0), y, 1.5) * Box(4.0, 10.4, S.FOOT_H, align=(Align.CENTER, Align.CENTER, Align.MIN)))
-            arm = Pos(sg * (hx + 0.6), y, 1.5) * Box(1.2, 8, z_floor + 5.5 - 1.5, align=(Align.CENTER, Align.CENTER, Align.MIN))
-            # Barb: lead-in ramp at the top, a gable under it that sits on the chin floor. The
-            # catch face under the barb is 41 degrees from the bed, so it prints without supports.
-            u0 = hx + 1.2
-            zt = z_floor + 5.5
-            zf = z_floor + 0.1
-            ramp = prism_b([(zf, sg * u0), (zf + 0.7, sg * (u0 + 0.8)), (zt - 1.0, sg * (u0 + 0.8)), (zt, sg * u0)],
-                           y - 4, y + 4)
-            gab = prism_a([(y - 4, zt), (y + 4, zt), (y + 4, zf + 4.0), (y, zf), (y - 4, zf + 4.0)],
-                          sg * (u0 - 0.2), sg * (u0 + 1.0))
-            f = f + arm + (ramp & gab)
+    # A hole for each screw, and a pocket for its head in the bottom. The pocket has a 45 degree
+    # top, so it prints without a bridge. The screw head bears on the cone.
+    r, depth = S.FOOT_POCKET
+    for x, y in S.FOOT_SCREWS:
+        f = f - cyl_c(x, y, 1.7, -1, S.FOOT_H + 1) - cyl_c(x, y, r, -1, depth)
+        f = f - Pos(x, y, depth) * Cone(r, 1.7, r - 1.7, align=(Align.CENTER, Align.CENTER, Align.MIN))
     return f
 
 
 # ---------------------------------------------------------------- hardware
 # Each builder returns (parts, zones). Parts: list of (name, shape, material).
 # Zones: list of (name, shape). A zone keeps space free for a plug or a cable.
+
+
+def side_screws():
+    """The two M3 × 10 button head screws of the chin, in slab coordinates."""
+    b, c = S.SIDE_SCREW
+    p = []
+    for i, sg in enumerate((1, -1)):
+        head = cyl_a(b, c, 2.85, sg * A_OUT, sg * (A_OUT + 1.65))
+        shank = cyl_a(b, c, 1.5, sg * A_OUT, sg * (A_OUT - 10.0))
+        p.append((f"side_screw{i}", head + shank, "steel"))
+    return p, []
+
+
+def foot_screws():
+    """The four M3 × 8 socket head screws of the foot, in world coordinates."""
+    r, depth = S.FOOT_POCKET
+    head = depth + (r - 2.75)            # the head touches the cone at its radius, 2.75 mm
+    return [(f"foot_screw{i}", cyl_c(x, y, 2.75, head - 3.0, head) + cyl_c(x, y, 1.5, head, head + 8.0), "steel")
+            for i, (x, y) in enumerate(S.FOOT_SCREWS)]
 
 
 def frame_loc(origin, x, z):
