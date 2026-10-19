@@ -157,7 +157,8 @@ def slab():
     # The LCD lies in a pocket in the skin; the glass is 1 mm behind the face.
     a, b, c = S.DISP_C
     s = s - box(-S.LCD_WH[0] / 2, S.LCD_WH[0] / 2, b - S.LCD_WH[1] / 2, b + S.LCD_WH[1] / 2, -S.WALL - 0.01, c)
-    s = s - box(-S.OPENING_WH[0] / 2, S.OPENING_WH[0] / 2, b - S.OPENING_WH[1] / 2, b + S.OPENING_WH[1] / 2, -S.WALL, 1)
+    va, vb = a + S.VIEW_OFF[0], b + S.VIEW_OFF[1]
+    s = s - box(va - S.OPENING_WH[0] / 2, va + S.OPENING_WH[0] / 2, vb - S.OPENING_WH[1] / 2, vb + S.OPENING_WH[1] / 2, -S.WALL, 1)
     # Bosses for the display: M3 heat-set inserts, the board ears rest on them.
     board_front = c - 7.35
     for x, y in S.EARS:
@@ -535,6 +536,7 @@ def cables():
 def screen_corners():
     """Corners of the visible screen, in the world: bottom-left, bottom-right, top-right, top-left."""
     a, b, c = S.DISP_C
+    a, b = a + S.VIEW_OFF[0], b + S.VIEW_OFF[1]
     w, h = S.SCREEN_WH
     pts = [(a - w / 2, b - h / 2), (a + w / 2, b - h / 2), (a + w / 2, b + h / 2), (a - w / 2, b + h / 2)]
     out = []

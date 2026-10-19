@@ -45,6 +45,10 @@ angle 60 degrees, supports everywhere) adds 0 g of support. `make.sh` checks thi
 A slab printed before the chin screws has no screw holes. Print `stl/drill_guide.stl` and
 drill the two holes with it (see `drill_guide.py`). A new slab has the holes.
 
+To check the screen opening before a full slab, print `stl/fit_display.stl` with the slab
+profile. It is the front skin around the screen, and prints face down. Put the display glass
+down into its pocket and look at the dark LCD border on each side of the opening.
+
 Use the Cura profiles in `cura/profiles/`: run `python3 cura/make_profiles.py --install` with
 Cura closed.
 
@@ -65,6 +69,8 @@ Cura closed.
   `make_pdf.py` writes the PDF with the light images.
 - `make_site.py` writes the project website (`../docs/index.html` and `../docs/img/`) from the
   same text as the PDF. The Pages workflow publishes it with the STL files and the PDF.
+- `fit_display.py` writes `stl/fit_display.stl`, a fit test for the screen opening. `make.sh`
+  runs it.
 - `drill_guide.py` writes `stl/drill_guide.stl`, a guide to drill the chin screw holes in an
   older slab. `make.sh` runs it.
 - `docs/` contains the finished-build image of this README.

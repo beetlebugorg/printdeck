@@ -42,6 +42,10 @@ STEP_T = 2.0
 DISP_C = (0.0, 131.6, -1.0)      # centre of the glass front; 1 mm behind the face
 SCREEN_WH = (89.0, 157.0)        # visible area
 OPENING_WH = (90.0, 158.0)
+# The visible area is not at the centre of the LCD. On a printed slab with a centred opening,
+# 2.79 mm of the dark LCD border showed at the left and 1.60 mm at the bottom. The opening
+# leaves 0.5 mm on each side, so the visible area is 2.29 mm right and 1.10 mm up.
+VIEW_OFF = (2.29, 1.10)          # a and b of the visible area from the centre of the LCD
 LCD_WH = (100.6, 166.6)          # pocket for the LCD, from the skin to the glass
 EARS = [(x * 54.05, y * 78.55) for x in (-1, 1) for y in (-1, 1)]
 BOSS_R = 3.8                     # bosses for M3 heat-set inserts
