@@ -9,7 +9,7 @@ import (
 // homing and jogging use the OctoPrint API, the rest are G-code commands. Each call waits for OctoPrint,
 // so the screen can show an error (for example 409: the printer is busy or not connected).
 
-// send posts a command and returns an error if OctoPrint refuses it.
+// send posts a command and returns an error if OctoPrint returns an error status.
 func (c *Client) send(path string, body any) error {
 	b, code, err := c.req("POST", path, body)
 	defer c.Poke()

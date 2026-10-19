@@ -138,7 +138,7 @@ class TestModel(unittest.TestCase):
         base_layers(w)
         w.layer(2)
         w.type("WALL-INNER")
-        w.loop(circle(100, 100, 3, 36), 80)  # radius 3, many short chords: a curve, not corners
+        w.loop(circle(100, 100, 3, 36), 80)  # radius 3, many short chords that make a curve with no corners
         out = [s for s in speeds_of(self.run_script(w, curve_accel=1000, small_feature=0)) if s[0] == 2]
         for s in out:
             self.assertLessEqual(s[5], math.sqrt(1000 * 3) * 1.05)
@@ -149,7 +149,7 @@ class TestModel(unittest.TestCase):
         base_layers(w)
         w.layer(2)
         w.type("WALL-OUTER")
-        # A loop with long and short sides: without steady speed, the long sides would be faster.
+        # A loop with long and short sides: without steady speed, the long sides are faster.
         pts = [(60, 60), (140, 60), (140, 62), (138, 62), (138, 64), (140, 64), (140, 140), (60, 140)]
         w.loop(pts, 40)
         out = [s for s in speeds_of(self.run_script(w, boost_outer=1.5, small_feature=0)) if s[0] == 2]

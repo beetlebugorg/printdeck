@@ -24,7 +24,7 @@ type State struct {
 	Reachable     bool
 	Err           string
 	Text          string // "Printing", "Operational", "Offline", ...
-	Connected     bool   // the printer answers
+	Connected     bool   // the printer responds
 	Printing      bool   // printing, pausing, or paused: a job is active
 	Paused        bool
 	File          string
