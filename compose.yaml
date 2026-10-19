@@ -14,7 +14,7 @@ services:
     build: ./deck
     restart: unless-stopped
     network_mode: host
-    # The UI draws on the framebuffer of the 7" display and takes tty1 from the text console.
+    # The UI draws on the framebuffer of the 7" display. It uses tty1 in place of the text console.
     cap_add:
       - SYS_TTY_CONFIG
     devices:
@@ -27,7 +27,7 @@ services:
     volumes:
       - /dev/input:/dev/input
       - /etc/localtime:/etc/localtime:ro
-      # The Spotify login. A host folder, not a Docker volume, so `docker compose down -v` cannot delete it.
+      # The Spotify login. It is in a host folder so that `docker compose down -v` cannot delete it.
       - /var/lib/speakerdeck:/var/lib/speakerdeck
     environment:
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
@@ -72,7 +72,7 @@ services:
       - audio
     volumes:
       - spotify-config:/config # the Spotify login of the speaker
-      # The settings come from this repo, not from the volume, so an update changes them.
+      # The settings come from this repo so that an update changes them.
       - ./docker/spotify/config.yml:/config/config.yml:ro
 
 volumes:

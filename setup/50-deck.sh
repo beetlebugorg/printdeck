@@ -19,10 +19,10 @@ if systemctl is-enabled lightdm >/dev/null 2>&1; then
   sudo systemctl set-default multi-user.target
   sudo systemctl disable --now lightdm
 fi
-# A separate Spotify Connect program would use the same name and the same sound card.
+# A separate Spotify Connect program uses the same name and the same sound card.
 sudo systemctl disable --now raspotify 2>/dev/null || true
 
-# The ALSA loopback carries Spotify to the equalizer (CamillaDSP).
+# The ALSA loopback sends Spotify to the equalizer (CamillaDSP).
 echo snd-aloop | sudo tee /etc/modules-load.d/snd-aloop.conf >/dev/null
 sudo modprobe snd-aloop
 

@@ -2,16 +2,16 @@ device_name: Speakerdeck
 device_type: speaker
 
 audio_backend: alsa
-# Card name, not index: ALSA indices can shift across reboots depending on
+# Use the card name. ALSA indices can shift across reboots depending on
 # what else enumerates, but "sndrpihifiberry" is stable. Confirmed working
 # on the real Amp2 on this Pi (card: snd_rpi_hifiberry_dacplus).
-# Spotify plays into the ALSA loopback. CamillaDSP takes it from there, applies the equalizer,
+# Spotify plays into the ALSA loopback. CamillaDSP reads it from there, applies the equalizer,
 # and plays it to the Amp2 (hw:sndrpihifiberry).
 audio_device: "hw:Loopback,0"
 
 server:
   enabled: true
-  # 0.0.0.0, not the "localhost" default: with host networking, other
+  # 0.0.0.0 replaces the "localhost" default. With host networking, other
   # containers reach this over 127.0.0.1, which only works if the server
   # actually binds all interfaces inside its own netns.
   address: "0.0.0.0"

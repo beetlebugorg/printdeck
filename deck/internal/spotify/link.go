@@ -24,7 +24,7 @@ import (
 )
 
 // Login with a phone. The screen shows a QR code for LinkBase/link. That page sends the phone to Spotify,
-// and Spotify sends it back to LinkBase/callback, which this server answers. Spotify allows only https
+// and Spotify sends it back to LinkBase/callback, which this server handles. Spotify allows only https
 // for such an address, so the server has a self-signed certificate. The phone asks once to accept it.
 
 // LinkURL is the address for the QR code, or "" if the login with a phone is off.
@@ -37,7 +37,7 @@ func (c *Client) LinkURL() string {
 
 type session struct{ state, verifier string }
 
-// ServeLink answers the login requests until ctx ends.
+// ServeLink serves the login requests until ctx ends.
 func (c *Client) ServeLink(ctx context.Context, notify func()) error {
 	base, err := url.Parse(c.cfg.LinkBase)
 	if err != nil || c.cfg.ClientID == "" {

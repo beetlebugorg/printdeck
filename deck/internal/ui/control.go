@@ -19,7 +19,7 @@ const (
 	joyTick            = 150 * time.Millisecond
 	joyMinSpeed        = 2.0  // mm/s just outside the middle
 	joyMaxSpeed        = 50.0 // mm/s at the edge
-	minExtrudeTemp     = 170  // Klipper refuses to extrude below this
+	minExtrudeTemp     = 170  // Klipper blocks extrusion below this temperature
 )
 
 // joystick moves the head while a finger is on the pad. A goroutine sends one short move per tick; the next

@@ -316,7 +316,7 @@ func (c *Client) command(method, path string, q url.Values, body any) {
 	}()
 }
 
-// update changes the local state at once, so the screen answers without waiting for Spotify.
+// update changes the local state at once, so the screen updates before Spotify responds.
 func (c *Client) update(f func(*State)) {
 	c.mu.Lock()
 	f(&c.st)

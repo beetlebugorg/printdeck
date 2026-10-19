@@ -117,7 +117,7 @@ func (c *Client) updatePreview(st State) {
 		}
 		return
 	}
-	// Draw again when the print has moved. A render takes about 30 ms.
+	// Draw again when the print has moved. A render is about 30 ms.
 	if pv.gc != nil && !pv.rendering && (pv.img == nil || st.FilePos != pv.imgPos) {
 		pv.rendering = true
 		go c.render(pv.gc, pv.mesh, st.FilePos)
@@ -176,9 +176,9 @@ func stem(name string) string {
 	return strings.NewReplacer(" ", "", "_", "", "-", "").Replace(strings.ToLower(name))
 }
 
-// match tells how well an STL name fits a G-code name: 0 is no match, and higher is closer.
+// match returns how well an STL name fits a G-code name: 0 is no match, and higher is closer.
 // The names match when one contains the other. The closest is the one with the least left over,
-// so "inky_frame.gcode" takes "Inky Frame.stl" and not "frame.stl".
+// so "inky_frame.gcode" matches "Inky Frame.stl" before "frame.stl".
 func match(gcodeName, stlName string) int {
 	g, s := stem(gcodeName), stem(stlName)
 	if len(s) < 4 || len(g) < 4 || !(strings.Contains(g, s) || strings.Contains(s, g)) {

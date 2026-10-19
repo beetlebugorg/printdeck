@@ -73,7 +73,7 @@ func (e *EQ) Gains() Gains {
 	return e.gains
 }
 
-// Connected reports that CamillaDSP answers: the equalizer works.
+// Connected reports that CamillaDSP responds: the equalizer works.
 func (e *EQ) Connected() bool {
 	e.mu.Lock()
 	defer e.mu.Unlock()
