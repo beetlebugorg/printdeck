@@ -97,7 +97,7 @@ type Printer struct {
 	stateMessage   string
 	inShutdown     bool
 	runResult      string
-	eventHandlers  map[string][]func(args ...any)
+	eventHandlers  map[string][]func(args ...any) any
 	objects        []object
 	objectIndex    map[string]int
 	configFileName string
@@ -106,7 +106,7 @@ type Printer struct {
 // New makes a printer, and registers its connect callback.
 func New(r *reactor.Reactor, startArgs StartArgs) *Printer {
 	p := &Printer{startArgs: startArgs, reactor: r, stateMessage: MessageStartup,
-		eventHandlers: map[string][]func(args ...any){}, objectIndex: map[string]int{}}
+		eventHandlers: map[string][]func(args ...any) any{}, objectIndex: map[string]int{}}
 	r.RegisterCallback(func(float64) any { p.connect(); return nil }, reactor.Now)
 	// Init printer components that must be setup prior to config
 	for _, f := range EarlyObjects {
@@ -423,14 +423,25 @@ func (p *Printer) InvokeAsyncShutdown(msg string, details map[string]any) {
 // RegisterEventHandler adds a handler of an event. The handlers run in the order that they are
 // registered.
 func (p *Printer) RegisterEventHandler(event string, callback func(args ...any)) {
+	p.RegisterEventResultHandler(event, func(args ...any) any { callback(args...); return nil })
+}
+
+// RegisterEventResultHandler adds a handler of an event that gives a result to SendEventResults.
+func (p *Printer) RegisterEventResultHandler(event string, callback func(args ...any) any) {
 	p.eventHandlers[event] = append(p.eventHandlers[event], callback)
 }
 
 // SendEvent runs the handlers of an event.
-func (p *Printer) SendEvent(event string, args ...any) {
+func (p *Printer) SendEvent(event string, args ...any) { p.SendEventResults(event, args...) }
+
+// SendEventResults runs the handlers of an event, and returns their results. A handler of
+// RegisterEventHandler gives nil.
+func (p *Printer) SendEventResults(event string, args ...any) []any {
+	var out []any
 	for _, cb := range p.eventHandlers[event] {
-		cb(args...)
+		out = append(out, cb(args...))
 	}
+	return out
 }
 
 // RequestExit stops the reactor. The first result is the run result.

@@ -1,10 +1,17 @@
-// Package display is the basic LCD display support of Klipper (klippy/extras/display).
+// Package display is the basic LCD display support: the display templates, groups and glyphs,
+// the screen updates, and the menu. Only the ST7920 chips are ported. The other lcd_type choices
+// are a config error.
+//
+// Ported to Go from klippy/extras/display/__init__.py and display.py of Klipper
+// (https://github.com/Klipper3d/klipper),
+// commit 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f.
 //
 //	Copyright (C) 2018-2022  Kevin O'Connor <kevin@koconnor.net>
 //	Copyright (C) 2018  Aleph Objects, Inc <marcio@alephobjects.com>
 //	Copyright (C) 2018  Eric Callahan <arksine.code@gmail.com>
+//	Go port: Copyright (C) 2026  the Printdeck authors
 //
-// Only the ST7920 chips are ported. The other lcd_type choices are a config error.
+// This file may be distributed under the terms of the GNU GPLv3 license.
 package display
 
 import (
