@@ -13,15 +13,21 @@ import (
 )
 
 // The Go solver and step compression give the same messages as Klipper's itersolve.c,
-// kin_cartesian.c and stepcompress.c for the scenario of testdata/steps.txt (from
+// kin_cartesian.c, kin_extruder.c and stepcompress.c for the scenarios of testdata (from
 // tools/klipper-reference/dumpsteps.sh), byte for byte.
 func TestStepsMatchKlipper(t *testing.T) {
-	in, err := os.Open("testdata/steps.txt")
+	for _, name := range []string{"steps", "steps-extruder"} {
+		t.Run(name, func(t *testing.T) { runSteps(t, name) })
+	}
+}
+
+func runSteps(t *testing.T, name string) {
+	in, err := os.Open("testdata/" + name + ".txt")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer in.Close()
-	want, err := os.ReadFile("testdata/steps.out")
+	want, err := os.ReadFile("testdata/" + name + ".out")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +53,11 @@ func TestStepsMatchKlipper(t *testing.T) {
 		switch f[0] {
 		case "setup":
 			freq = a[2]
-			sk = NewCartesianStepper('x' + byte(a[3]))
+			if a[3] == 3 {
+				sk = NewExtruderStepper()
+			} else {
+				sk = NewCartesianStepper('x' + byte(a[3]))
+			}
 			sk.SetTrapQ(tq, a[0])
 			sc.Fill(3, uint32(a[1]), 7, 9)
 			sc.SetTime(0., freq)
@@ -64,6 +74,8 @@ func TestStepsMatchKlipper(t *testing.T) {
 			}
 			q = q[:0]
 			fmt.Fprintf(&out, "pos %s %d ret=%d\n", hexFloat(sk.CommandedPos), sc.FindPastPosition(math.MaxUint64), ret)
+		case "pa":
+			ExtruderSetPressureAdvance(sk, a[0], a[1], a[2])
 		case "finalize":
 			tq.FinalizeMoves(a[0], 0.)
 		}
