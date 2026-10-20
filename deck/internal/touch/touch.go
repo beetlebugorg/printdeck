@@ -30,6 +30,9 @@ type Event struct {
 type Options struct {
 	InvertX, InvertY, Swap bool
 	Rotate                 int // rotation of the UI on the panel: 0, 90 or 270
+	// OffsetX and OffsetY move each touch in the UI, as a fraction of its width and height. They
+	// correct a panel that reads the touches beside the finger.
+	OffsetX, OffsetY float64
 	// Log writes each sample of a touch to the log: the raw panel values and the position in the
 	// UI (0..1). It is for the measurement of the calibration.
 	Log bool
@@ -236,5 +239,7 @@ func adj(x, y float64, o Options) Event {
 	case 270:
 		x, y = 1-y, x
 	}
+	x += o.OffsetX
+	y += o.OffsetY
 	return Event{X: max(0, min(1, x)), Y: max(0, min(1, y))}
 }

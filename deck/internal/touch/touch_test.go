@@ -2,6 +2,7 @@ package touch
 
 import (
 	"context"
+	"math"
 	"testing"
 	"time"
 )
@@ -58,5 +59,19 @@ func TestBounceIsOneTouch(t *testing.T) {
 	}
 	if len(kinds) != 2 || kinds[0] != Down || kinds[1] != Up {
 		t.Fatalf("second touch gave %v, want Down, Up", kinds)
+	}
+}
+
+// The offset moves the touch in the UI, after the rotation, and the result stays on the screen.
+func TestOffset(t *testing.T) {
+	o := Options{Rotate: 270, OffsetX: 14. / 480, OffsetY: 11. / 800}
+	// Raw (0.5, 0.25) is UI (0.75, 0.5) at rotation 270.
+	e := adj(0.5, 0.25, o)
+	if math.Abs(e.X-(0.75+14./480)) > 1e-12 || math.Abs(e.Y-(0.5+11./800)) > 1e-12 {
+		t.Errorf("got %.6f,%.6f", e.X, e.Y)
+	}
+	// Raw x 1 is the bottom of the UI: the offset does not move it past the edge.
+	if e := adj(1, 0.5, o); e.Y != 1 {
+		t.Errorf("not clamped: %.6f", e.Y)
 	}
 }
