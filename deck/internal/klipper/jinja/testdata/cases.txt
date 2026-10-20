@@ -1,0 +1,121 @@
+Cases for the template engine: each one starts with "== CONTEXT".
+== {}
+plain text
+== {"x": 1}
+G1 X{x}
+== {"x": 1.0}
+G1 X{x}
+== {"x": 0.1, "y": 0.2}
+{x + y} {x * 3} {1/3} {2/2} {7//2} {-7//2} {7 % 3} {-7 % 3} {7.5 % 2} {2**10} {2**-1} {-2**2}
+== {}
+{1e-5} {1e16} {123456789.0} {0.0001} {1.5e300} {3.0 * 1.1} {100000000000000000.0}
+== {"params": {"BED": "80", "EXTRUDER": "235"}}
+{% set bed = params.BED|default(80)|float %}{% set ext = params.EXTRUDER|default(235)|float %}{% set wipe = params.WIPE|default(170)|float %}M104 S{wipe}
+M140 S{bed}
+TEMPERATURE_WAIT SENSOR=extruder MINIMUM={wipe - 2}
+M104 S{ext}
+== {"params": {}}
+{% set s = params.S|default(params.R|default(0))|float %}M99109 S{s}
+== {"params": {"R": "215"}}
+{% set s = params.S|default(params.R|default(0))|float %}M99109 S{s}
+== {"params": {"LAYER": "0.4", "SPEED": "40"}}
+{% set layer = params.LAYER|default(0.4)|float %}{% set speed = params.SPEED|default(15)|float %}{% set prime_lines = 2 %}{% set prime_x0, prime_x1, prime_y0, prime_w = 20.0, 260.0, 2.0, 0.6 %}{% set prime_e = prime_w * layer / 6.379 %}{% set prime_speed = [speed, 15.0 / (prime_w * layer)]|min %}
+G0 Z{layer} F1500
+{% for i in range(prime_lines) %}
+  {% set x = prime_x1 if i % 2 == 0 else prime_x0 %}
+  G1 X{x} E{(prime_x1 - prime_x0) * prime_e} F{prime_speed * 60}
+  G1 Y{prime_y0 + (i + 1) * prime_w} E{prime_w * prime_e} F{prime_speed * 60}
+{% endfor %}
+{% set x_end = prime_x1 if prime_lines % 2 == 1 else prime_x0 %}
+G1 X{x_end - 20 if x_end > prime_x0 else x_end + 20} Z{layer + 0.3} F3000
+== {}
+{% for i in range(12) %}
+  G1 X-17 Y25 F3000
+{% endfor %}
+== {"v": 0.456}
+{'%3d' % (v*100)}% {'%d' % (v*255)} {'%05.3f' % v} {'%.3f' % v} {'%05.1f' % v} {'%+06.1f' % v} {'%+06.1f' % -v} {'%.0f' % 212.5} {'%.0f' % 213.5} {'%03.2f' % v}
+== {"t": 213.46, "tg": 215.0}
+{ "%3.0f" % (t,) }/{ "%0.0f" % (tg,) }~{ "%6s" % ("1:02",) }~{ "%-6s|" % ("ab",) }{ "%02d:%02d" % (3725 // (60 * 60), (3725 // 60) % 60) }
+== {"speed": 0.5, "p": 1.0, "z": 0.0}
+[{ "{:>4.0%}".format(speed) }] [{ "{:^10.0%}".format(p) }] [{ "{:^6.0%}".format(z) }] [{ "Fan {:^4.0%}".format(speed) }] [{ "{:>4.0%}".format(1.234) }]
+== {}
+{ "{} {} {}".format(1, 2.5, "a") } { "{0}{1}{0}".format("x", "y") } { "{:.2f}".format(3.14159) } { "{:5d}|".format(42) } { "{:<5}|".format("ab") } { "{:*^9}".format("mid") } { "{:+.1e}".format(12345.678) } { "{:g}".format(0.0001) } { "{:g}".format(1234567.0) } { "{:,}".format(1234567) } { "{!r}".format("q") }
+== {}
+{'%s %r' % ("a", "a")} {'%5.1f|%-5d|' % (3.14159, 42)} {'%x %X %o' % (255, 255, 8)} {'%e' % 12345.6789} {'%g %g %g' % (0.0001, 0.00001, 123456789.0)} {'%%'} {'%c' % 65}
+== {"a": [1, 2, 3], "d": {"k": "v", "n": 2}}
+{a} {a|length} {a|first} {a|last} {a|sum} {a|max} {a|min} {a|join(",")} {a|reverse|list} {d} {d|length} {d.k} {d["n"]} {d.missing} [{d.missing}] {"k" in d} {2 in a} {5 not in a}
+== {}
+{ [3, 1, 2]|sort } { ["b", "A", "c"]|sort } { [1, 2, 2, 3, 1]|unique|list } { (1, 2) } { (1,) } { () } { [] } { {} } { {"a": [1, (2, 3)], "b": None} }
+== {}
+{ 1 == 1.0 } { 1 < 2 < 3 } { 3 > 2 > 2 } { "a" < "b" } { [1, 2] < [1, 3] } { True + 1 } { not 0 } { 0 or "x" } { 1 and 0 } { None } { none }
+== {}
+{ "abc"|upper } { "ABC"|lower } { "  pad  "|trim }| { "hello world"|title } { "hello"|capitalize } { "a-b-c"|replace("-", "+") } { "x"|center(5) }| { 3.7|int } { "3.7"|int } { "abc"|int } { "abc"|int(5) } { "12"|float } { "x"|float } { -3|abs } { -2.5|abs }
+== {}
+{ 2.5|round } { 3.5|round } { 2.675|round(2) } { 7|round } { 1.23456|round(3) } { 2.1|round(0, "ceil") } { 2.9|round(0, "floor") } { 123.456|round(-1) }
+== {}
+{ "  a b  ".strip() }|{ "x,y,z".split(",") }|{ "a b  c".split() }|{ "abc".startswith("a") }|{ "abc".endswith(("x", "c")) }|{ "Hello".replace("l", "L") }|{ "abc".find("c") }|{ ",".join(["a", "b"]) }|{ "12".isdigit() }|{ "5".zfill(3) }|{ "ab".ljust(4) }|{ "ab".rjust(4) }|{ "ab".center(5, "*") }
+== {"d": {"x": 1, "y": 2}}
+{% for k, v in d.items() %}{k}={v};{% endfor %} {d.keys()|list} {d.values()|list} {d.get("x")} {d.get("z", 9)} {d.get("z")}
+== {}
+{% for i in range(3) %}{loop.index}/{loop.index0}/{loop.revindex}/{loop.first}/{loop.last}/{loop.length} {% endfor %}
+== {}
+{% for i in [] %}x{% else %}empty{% endfor %} {% for i in range(5) if i is odd %}{i}{% endfor %} {% for c in "abc" %}{c}.{% endfor %}
+== {}
+{% set count = 0 %}{% for i in range(3) %}{% set count = count + 1 %}{count}{% endfor %} {count}
+== {}
+{% set ns = namespace(count=0) %}{% for i in range(3) %}{% set ns.count = ns.count + i %}{% endfor %}{ns.count}
+== {}
+{% if 1 %}a{% elif 2 %}b{% else %}c{% endif %} {% if 0 %}a{% elif 0 %}b{% else %}c{% endif %} {% if 0 %}a{% elif 1 %}b{% endif %}
+== {}
+a   {%- if true %} b {% endif -%}   c
+  {- 5 -}  
+== {}
+line1
+{% if true %}
+line2
+{% endif %}
+line3
+== {}
+{% set x %}inner {1 + 1}{% endset %}[{x}]
+== {"v": null, "u": 0}
+{ v is none } { u is defined } { w is defined } { w is undefined } { 3 is odd } { 4 is even } { 4 is divisibleby 2 } { "a" is string } { 1 is number } { 1.5 is float } { 1 is integer } { [1] is iterable } { {} is mapping } { 3 is eq 3 } { 3 is gt 2 }
+== {}
+{ "a" ~ 1 ~ 2.0 ~ None ~ w } { "x" * 3 } { [1] * 2 } { [1] + [2] } { "a" + "b" } { range(2, 10, 3)|list } { range(3)|list|length }
+== {}
+{ "abcdef"[1:3] } { "abcdef"[::-1] } { [1, 2, 3, 4][-2:] } { "abc"[0] } { [1, 2, 3][-1] } { "abc"[5] } [{ [1][3] }]
+== {"printer": {"toolhead": {"position": [1.0, 2.0, 3.0, 4.0], "homed_axes": "xyz"}, "gcode_macro M": {"var": 5}}}
+{ printer.toolhead.position[2] } { printer.toolhead.homed_axes } { 'x' in printer.toolhead.homed_axes } { printer['gcode_macro M'].var } { printer["toolhead"]["position"]|list }
+== {}
+{ 1 if 0 } [{ 1 if 0 }]
+== {}
+{ x.y }
+== {}
+{ 1 + "a" }
+== {}
+{ 1 / 0 }
+== {}
+{ 5 // 0 }
+== {}
+{ "%d" % "a" }
+== {}
+{ "%d %d" % (1,) }
+== {}
+{ undefined_name + 1 }
+== {}
+{ None + 1 }
+== {}
+{% if %}x{% endif %}
+== {}
+{% for x in y %}
+== {}
+{ 1 + }
+== {}
+{ x|nosuchfilter }
+== {}
+{% unknown %}
+== {}
+{ [1, 2, 3]|join }{ [1, 2]|sum(start=10) } { ["a", "B"]|max } { [3, "a"]|length }
+== {}
+{ 1_000 + 1 } { 0.5e1 } { 3 * 0.1 } { 1 / 7 } { 10 / 4 } { 2 ** 0.5 } { -0.0 } { 0.1 + 0.7 }
+== {"n": 1234567890123}
+{n} {n * 1000} {n / 7} {'%.2f' % n}
