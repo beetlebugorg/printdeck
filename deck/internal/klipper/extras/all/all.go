@@ -12,6 +12,7 @@ import (
 	_ "printdeck/internal/klipper/extras/display"
 	_ "printdeck/internal/klipper/extras/display_status"
 	_ "printdeck/internal/klipper/extras/error_mcu"
+	_ "printdeck/internal/klipper/extras/exclude_object"
 	_ "printdeck/internal/klipper/extras/fan"
 	_ "printdeck/internal/klipper/extras/force_move"
 	_ "printdeck/internal/klipper/extras/garbage_collection"

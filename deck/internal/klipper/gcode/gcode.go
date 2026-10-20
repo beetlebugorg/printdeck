@@ -55,8 +55,22 @@ type Command struct {
 	command     string
 	commandline string
 	params      map[string]string
+	keys        []string
 	needAck     bool
 }
+
+// addParam sets a parameter. A new name goes at the end of the order, as in a Python dict.
+func addParam(params map[string]string, keys []string, k, v string) []string {
+	if _, ok := params[k]; !ok {
+		keys = append(keys, k)
+	}
+	params[k] = v
+	return keys
+}
+
+// ParamNames are the names of the parameters, in the order of the Python dict of
+// get_command_parameters().
+func (c *Command) ParamNames() []string { return append([]string(nil), c.keys...) }
 
 func (c *Command) Command() string     { return c.command }
 func (c *Command) Commandline() string { return c.commandline }
@@ -466,10 +480,11 @@ func (g *Dispatch) processCommands(commands []string, needAck bool) {
 		}
 		// Build gcode "params" dictionary
 		params := map[string]string{}
+		var keys []string
 		for i := 1; i+1 < len(parts); i += 2 {
-			params[parts[i]] = strings.TrimSpace(parts[i+1])
+			keys = addParam(params, keys, parts[i], strings.TrimSpace(parts[i+1]))
 		}
-		gcmd := &Command{gcode: g, command: cmd, commandline: origline, params: params, needAck: needAck}
+		gcmd := &Command{gcode: g, command: cmd, commandline: origline, params: params, keys: keys, needAck: needAck}
 		// Invoke handler for command
 		handler, ok := g.gcodeHandlers[cmd]
 		if !ok {
@@ -530,7 +545,12 @@ func (g *Dispatch) Mutex() *reactor.Mutex { return g.mutex }
 
 // CreateCommand makes a command with no ack, for a module that runs a handler directly.
 func (g *Dispatch) CreateCommand(command, commandline string, params map[string]string) *Command {
-	return &Command{gcode: g, command: command, commandline: commandline, params: params}
+	keys := make([]string, 0, len(params))
+	for k := range params {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return &Command{gcode: g, command: command, commandline: commandline, params: params, keys: keys}
 }
 
 // Response handling
@@ -578,15 +598,16 @@ func (g *Dispatch) extendedParams(gcmd *Command) *Command {
 		panic(Errorf("Malformed command '%s'", gcmd.Commandline()))
 	}
 	eparams := map[string]string{}
+	var keys []string
 	for _, a := range args {
 		k, v, ok := strings.Cut(a, "=")
 		if !ok {
 			panic(Errorf("Malformed command '%s'", gcmd.Commandline()))
 		}
-		eparams[strings.ToUpper(k)] = v
+		keys = addParam(eparams, keys, strings.ToUpper(k), v)
 	}
 	// Update gcmd with new parameters
-	gcmd.params = eparams
+	gcmd.params, gcmd.keys = eparams, keys
 	return gcmd
 }
 
