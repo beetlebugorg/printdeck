@@ -14,6 +14,9 @@ type Config struct {
 	TouchInvertX, TouchInvertY, TouchSwapXY bool
 	// TouchLog logs each touch sample, for the measurement of the calibration.
 	TouchLog bool
+	// TouchOffsetX and TouchOffsetY move each touch of the panel, in pixels of the UI. Positive
+	// is to the right and down.
+	TouchOffsetX, TouchOffsetY int
 
 	SpotifyClientID string
 	DeviceName      string
@@ -45,6 +48,8 @@ func Load() Config {
 		TouchInvertY:    num("TOUCH_INVERT_Y", 0) == 1,
 		TouchSwapXY:     num("TOUCH_SWAP_XY", 0) == 1,
 		TouchLog:        num("TOUCH_LOG", 0) == 1,
+		TouchOffsetX:    num("TOUCH_OFFSET_X", 0),
+		TouchOffsetY:    num("TOUCH_OFFSET_Y", 0),
 		SpotifyClientID: str("SPOTIFY_CLIENT_ID", ""),
 		DeviceName:      str("SPOTIFY_DEVICE_NAME", "Printdeck"),
 		LinkBase:        linkBase(),

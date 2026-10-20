@@ -34,7 +34,14 @@ const (
 	kbX0, kbX1 = 24, W - 24
 	kbKeyH     = 56
 	kbGap      = 4
-	kbY0       = H - 24 - 5*kbKeyH - 4*8
+	kbRowGap   = 8
+	kbY0       = H - 24 - 5*kbKeyH - 4*kbRowGap
+)
+
+// The touch areas of the keys reach half way into the gaps between the keys and between the rows.
+var (
+	kbPad       = image.Pt(kbGap/2, kbRowGap/2)
+	kbBottomPad = image.Pt(4, kbRowGap/2) // #+= and space have 8 pixels between them
 )
 
 // rows returns the character rows of the current layer.
@@ -111,15 +118,18 @@ func (a *App) drawKeyboard(c *gfx.Canvas, k *keyboard) {
 	rows := k.rows()
 	kw := (kbX1 - kbX0 - 9*kbGap) / 10
 	for i, row := range rows {
-		ry := kbY0 + i*(kbKeyH+8)
+		ry := kbY0 + i*(kbKeyH+kbRowGap)
 		chars := []rune(row)
 		width := len(chars)*kw + (len(chars)-1)*kbGap
 		x := kbX0 + (kbX1-kbX0-width)/2
 		if i == 3 {
-			// Shift and Delete at the two ends of the last row of characters.
+			// Shift and Delete at the two ends of the last row of characters. Their touch areas
+			// reach to the touch areas of the letters.
 			sw := 62
-			a.textKey(c, image.Rect(kbX0, ry, kbX0+sw, ry+kbKeyH), "shift", k.shift, func() { k.shift = !k.shift })
-			a.textKey(c, image.Rect(kbX1-sw, ry, kbX1, ry+kbKeyH), "del", false, func() {
+			shiftPad := image.Pt(x-kbGap/2-(kbX0+sw), kbRowGap/2)
+			delPad := image.Pt(kbX1-sw-(x+width+kbGap/2), kbRowGap/2)
+			a.textKey(c, image.Rect(kbX0, ry, kbX0+sw, ry+kbKeyH), shiftPad, "shift", k.shift, func() { k.shift = !k.shift })
+			a.textKey(c, image.Rect(kbX1-sw, ry, kbX1, ry+kbKeyH), delPad, "del", false, func() {
 				if r := []rune(k.value); len(r) > 0 {
 					k.value = string(r[:len(r)-1])
 				}
@@ -127,26 +137,29 @@ func (a *App) drawKeyboard(c *gfx.Canvas, k *keyboard) {
 		}
 		for _, ch := range chars {
 			s := string(ch)
-			a.textKey(c, image.Rect(x, ry, x+kw, ry+kbKeyH), s, false, func() { k.typed(s) })
+			a.textKey(c, image.Rect(x, ry, x+kw, ry+kbKeyH), kbPad, s, false, func() { k.typed(s) })
 			x += kw + kbGap
 		}
 	}
-	ry := kbY0 + 4*(kbKeyH+8)
+	ry := kbY0 + 4*(kbKeyH+kbRowGap)
 	layer := "#+="
 	if k.sym {
 		layer = "abc"
 	}
-	a.textKey(c, image.Rect(kbX0, ry, kbX0+100, ry+kbKeyH), layer, k.sym, func() { k.sym, k.shift = !k.sym, false })
-	a.textKey(c, image.Rect(kbX0+108, ry, kbX1, ry+kbKeyH), "space", false, func() { k.typed(" ") })
+	a.textKey(c, image.Rect(kbX0, ry, kbX0+100, ry+kbKeyH), kbBottomPad, layer, k.sym, func() { k.sym, k.shift = !k.sym, false })
+	a.textKey(c, image.Rect(kbX0+108, ry, kbX1, ry+kbKeyH), kbBottomPad, "space", false, func() { k.typed(" ") })
 }
 
-// textKey is a key with a label in its own case. key() writes all labels in capitals.
-func (a *App) textKey(c *gfx.Canvas, r image.Rectangle, label string, on bool, tap func()) {
+// textKey is a key with a label in its own case. key() writes all labels in capitals. The touch
+// area of the key is r with pad added on each side: half the gap to the next key, so that a tap in
+// a gap goes to the nearest key.
+func (a *App) textKey(c *gfx.Canvas, r image.Rectangle, pad image.Point, label string, on bool, tap func()) {
 	fill, ink := raised, text
 	if on {
 		fill, ink = keyOn, keyOnInk
 	}
-	pressed := a.isPressed(r)
+	hr := image.Rectangle{r.Min.Sub(pad), r.Max.Add(pad)}
+	pressed := a.isPressed(hr)
 	key(c, r, "", fill, ink, pressed)
 	face := image.Rect(r.Min.X, r.Min.Y, r.Max.X, r.Max.Y-5)
 	if pressed {
@@ -157,5 +170,5 @@ func (a *App) textKey(c *gfx.Canvas, r image.Rectangle, label string, on bool, t
 		size = 16 // a word, like shift
 	}
 	c.Text(face, label, gfx.Face(false, size), ink, gfx.Center)
-	a.addHit(hit{r: r, tap: tap})
+	a.addHit(hit{r: hr, tap: tap})
 }
