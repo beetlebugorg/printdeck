@@ -40,7 +40,9 @@ run() {
 }
 
 mkdir -p "$CACHE/home" "$CACHE/dl"
-if [ ! -f "$CACHE/output/.config" ]; then
+# Apply the defconfig again after a change to it. "make clean" keeps the .config, so a package that
+# the defconfig drops stays in the image until the .config changes too.
+if [ ! -f "$CACHE/output/.config" ] || [ "$OS/configs/printdeck_defconfig" -nt "$CACHE/output/.config" ]; then
   run printdeck_defconfig
 fi
 
