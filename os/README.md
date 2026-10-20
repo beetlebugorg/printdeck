@@ -25,7 +25,7 @@ The first build takes about one hour. The next builds take a few minutes. The ou
 | File | What it is |
 |---|---|
 | `os/out/printdeck.img` | The full disk image |
-| `os/out/printdeck-update.tar.xz` | The update bundle for a Printdeck that runs this system (`printdeck-update.tar` is the same with no xz) |
+| `os/out/printdeck-update.tar.xz` | The update bundle for a Printdeck that runs this system |
 
 Git ignores `os/out/`. The Buildroot tree, the downloads and the build files are in
 `~/.cache/printdeck-os`. Set `PRINTDECK_OS_CACHE` to use a different folder. Only one build can
@@ -168,8 +168,7 @@ ssh printdeck@printdeck.local 'cat > /tmp/printdeck-update.tar.xz' < os/out/prin
 ssh -t printdeck@printdeck.local sudo printdeck-update /tmp/printdeck-update.tar.xz
 ```
 
-The image has no SFTP server, so the first command copies the file through `ssh`. A system from
-before the bundle with xz needs `printdeck-update.tar`, the bundle with no xz.
+The image has no SFTP server, so the first command copies the file through `ssh`.
 
 The Pi restarts into the new slot one time. If Klipper and the touch screen start,
 the new slot becomes the default. If they do not start, or the system stops, the Pi starts the

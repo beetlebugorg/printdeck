@@ -52,6 +52,5 @@ if [ $# -gt 0 ]; then
 fi
 
 run
-cp "$CACHE/output/images/printdeck.img" "$CACHE/output/images/printdeck-update.tar" \
-  "$CACHE/output/images/printdeck-update.tar.xz" "$OS/out/"
+cp "$CACHE/output/images/printdeck.img" "$CACHE/output/images/printdeck-update.tar.xz" "$OS/out/"
 echo "Done: $OS/out/printdeck.img"

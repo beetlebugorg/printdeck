@@ -1,7 +1,7 @@
 #!/bin/sh
 # Writes an update bundle to the other slot and restarts into it one time.
 #
-#   printdeck-update printdeck-update.tar.xz    (or the bundle with no xz, printdeck-update.tar)
+#   printdeck-update printdeck-update.tar.xz
 #
 # After the restart, printdeck-commit makes the new slot the default if the services start.
 # If the new system does not start, the next restart returns to the current slot.
@@ -19,10 +19,7 @@ esac
 
 WORK=$(mktemp -d /data/update.XXXXXX)
 trap 'rm -rf "$WORK"' EXIT
-case "$BUNDLE" in
-  *.xz) xz -dc "$BUNDLE" | tar -xf - -C "$WORK" ;;
-  *) tar -xf "$BUNDLE" -C "$WORK" ;;
-esac
+xz -dc "$BUNDLE" | tar -xf - -C "$WORK"
 (cd "$WORK" && sha256sum -c -s SHA256SUMS) || { echo "The bundle is damaged." >&2; exit 1; }
 
 echo "Writing slot $NEW."
