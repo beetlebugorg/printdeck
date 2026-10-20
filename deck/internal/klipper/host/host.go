@@ -440,3 +440,11 @@ func (p *Printer) RequestExit(result string) {
 	}
 	p.reactor.End()
 }
+
+// SoftwareVersion is the "software_version" start argument, or "None".
+func (p *Printer) SoftwareVersion() string {
+	if v, ok := p.startArgs.Get("software_version"); ok {
+		return v
+	}
+	return "None"
+}
