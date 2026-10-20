@@ -5,6 +5,7 @@ package all
 import (
 	_ "printdeck/internal/klipper/extras/ad5206"
 	_ "printdeck/internal/klipper/extras/adc_temperature"
+	_ "printdeck/internal/klipper/extras/bed_tilt"
 	_ "printdeck/internal/klipper/extras/controller_fan"
 	_ "printdeck/internal/klipper/extras/error_mcu"
 	_ "printdeck/internal/klipper/extras/fan"
