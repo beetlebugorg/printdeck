@@ -1,6 +1,6 @@
 #!/bin/sh
 # Makes the reference data of the Go equalizer (deck/internal/eq): the real CamillaDSP filters a test
-# signal with the filters of docker/camilladsp/config.yml, at the gains of each case.
+# signal with the filters of the equalizer, at the gains of each case.
 #
 #   tools/camilladsp-reference/make-reference.sh
 set -eu

@@ -23,8 +23,7 @@ type Config struct {
 	LinkBase        string // address of this speaker for the login with a phone
 	StateDir        string
 
-	OctoPrintURL string
-	OctoPrintKey string
+	OctoPrintKey string // the key of the OctoPrint-compatible API for slicers
 	ModelDir     string // folder with STL files for the preview
 
 	AlsaCard string
@@ -42,7 +41,7 @@ type Config struct {
 	NightFrom, NightTo int // hours of the night theme in auto mode
 	PreheatBed         int
 	RemoteAddr         string // address of the remote screen, for example ":80"; empty turns it off
-	KlippySocket       string // the API socket of Klipper; when set, the deck uses Klipper directly, not OctoPrint
+	KlippySocket       string // the API socket of the Klipper host
 	GcodeDir           string // the folder of Klipper's [virtual_sdcard]
 }
 
@@ -61,9 +60,8 @@ func Load() Config {
 		LinkBase:        linkBase(),
 		StateDir:        str("STATE_DIRECTORY", "/var/lib/printdeck"),
 		RemoteAddr:      str("REMOTE_ADDR", ""),
-		KlippySocket:    str("KLIPPY_SOCKET", ""),
+		KlippySocket:    str("KLIPPY_SOCKET", "/run/klipper/klippy.sock"),
 		GcodeDir:        str("GCODE_DIR", "/var/lib/klipper/gcodes"),
-		OctoPrintURL:    str("OCTOPRINT_URL", "http://127.0.0.1:5000"),
 		OctoPrintKey:    str("OCTOPRINT_API_KEY", ""),
 		ModelDir:        str("MODEL_DIR", "/var/lib/printdeck/models"),
 		AlsaCard:        str("ALSA_CARD", "sndrpihifiberry"),

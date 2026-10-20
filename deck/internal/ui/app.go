@@ -44,7 +44,7 @@ type Music interface {
 	LinkURL() string // address for the QR code of the login, or ""
 }
 
-// Printer is what the Print tab needs from OctoPrint.
+// Printer is what the Print tab needs from the printer.
 type Printer interface {
 	State() printer.State
 	Files() []printer.File
@@ -59,7 +59,7 @@ type Printer interface {
 	Heat(tool, bed int)
 	PrintFile(path string)
 
-	// Control, like the menus of the printer's own display. These wait for OctoPrint and return its refusal.
+	// Control, like the menus of the printer's own display. These wait for Klipper and return its refusal.
 	Gcode(lines ...string) error
 	Home(axes ...string) error
 	Jog(x, y, z float64, speed int) error

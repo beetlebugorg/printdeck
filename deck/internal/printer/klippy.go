@@ -21,9 +21,8 @@ type Store interface {
 	Stat(path string) (fs.FileInfo, error)
 }
 
-// Klippy is the backend for the Python Klipper host. It follows klippy over its API socket, and
-// prints the files of the store with Klipper's virtual SD card. It goes away when Printdeck has its
-// own Go port of the Klipper host.
+// Klippy is the printer backend: it follows the Klipper host over its API socket, and prints the
+// files of the store with Klipper's virtual SD card.
 type Klippy struct {
 	socket string
 	store  Store

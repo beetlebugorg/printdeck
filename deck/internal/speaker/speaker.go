@@ -3,7 +3,7 @@
 // It replaces the go-librespot and CamillaDSP programs.
 //
 // The setup follows cmd/daemon/main.go of go-librespot (GPL-3.0, Copyright (c) devgianlu): the
-// daemon config is the config.yml that Printdeck used (docker/spotify/config.yml), on the
+// daemon config has the settings that Printdeck gave the go-librespot program before, on the
 // defaults of cmd/daemon/cli_config.go. The API of the daemon serves the deck's spotify package
 // on 127.0.0.1.
 package speaker

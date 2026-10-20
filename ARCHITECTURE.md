@@ -3,41 +3,30 @@
 ## The goal
 
 Printdeck is a very small operating system with one purpose: run one 3D printer, its touch screen,
-and its speakers. The aim is one Go program on top of the Linux kernel, with as few dependencies as
-possible.
+and its speakers. The goals are a small image, a fast start, and a low use of memory and CPU.
 
-At the end, the root file system is like a `FROM scratch` container image:
+The Printdeck program is one static Go binary with no runtime dependencies: no shared libraries,
+and no other programs for its work. cgo is allowed only when it links statically. Today the binary
+builds with `CGO_ENABLED=0`.
 
-```
-/sbin/init                          the Printdeck binary (static, PID 1)
-/etc/ssl/certs/ca-certificates.crt  for TLS to Spotify and GitHub
-/lib/firmware/...                   the Wi-Fi and Bluetooth firmware of the Pi 5
-/dev /proc /sys /data               mount points
-```
-
-The kernel has the drivers that the Printdeck uses built in, and no others. The time zone data is
-in the binary (Go's `time/tzdata`). There is no package manager, no shell, no Python and no C
-library userland.
+The system parts stay as they are: the kernel and its firmware, systemd, `wpa_supplicant`,
+Dropbear, `sudo` and the CA certificates. Buildroot makes the image.
 
 ## Where we are
 
-The system gets to the goal in steps. Each step keeps the printer working.
-
 | Step | What changes | State |
 |---|---|---|
-| 1 | A Buildroot image: read-only A/B system, Klipper, OctoPrint, go-librespot, CamillaDSP, and the deck | Works on the Pi 5 |
-| 2 | The deck serves the remote screen, and talks to Klipper directly. A small OctoPrint-compatible API in the deck replaces OctoPrint. | Done, OctoPrint is out of the image. To test on the Pi. |
-| 3 | The deck is PID 1: mounts, A/B updates, network, time, mDNS. systemd and the shell scripts go. | Planned |
-| 4 | go-librespot is linked into the deck, and a Go equalizer writes to ALSA. CamillaDSP goes. | Planned |
-| 5 | A Go port of the Klipper host (klippy). Python goes. | Started |
-| 6 | The image is the kernel, the firmware, the CA certificates and one binary. | Planned |
+| 1 | A Buildroot image: read-only A/B system, Klipper, OctoPrint, go-librespot, CamillaDSP, and the deck | Done |
+| 2 | The deck serves the remote screen and the API for slicers, and talks to Klipper directly. OctoPrint goes. | Done |
+| 3 | A Go port of the Klipper host (`printdeck klippy`). Python goes. | Done. It printed on the TAZ Workhorse. |
+| 4 | go-librespot in the deck, with pure Go decoders, a pure Go ALSA output, and a Go port of the equalizer. go-librespot, CamillaDSP, alsa-lib, amixer and the ALSA loopback go. | Done. It played on the Amp2. |
+| 5 | The deck runs as the unprivileged user `deck`. | Done in the image. To test on the Pi. |
 
-Some parts stay outside Go for a time:
+The deck still runs two programs of the system:
 
-- Klipper's C helper (`chelper`, step compression) links with cgo first. A Go port follows when it
-  gives the same output.
-- go-librespot decodes Vorbis and FLAC with C libraries (cgo).
-- `wpa_supplicant` stays for WPA3. Pure Go supports WPA2 only today.
+- `sudo printdeck-wifi` and `sudo printdeck-user`, which change the Wi-Fi and the login as root,
+  from the setup screen.
+- `dmesg`, for the diagnostics of the boot splash.
 
 ## The Klipper port
 
@@ -46,8 +35,21 @@ A Go Klipper host can drive a heater or a motor in the wrong way. So the port fo
 - It starts from the Klipper commit that the printer's firmware has, and keeps the same protocol.
 - The heater safety code (the PID loop, `verify_heater`, and the limits that the host gives the
   firmware) comes first.
-- Each motion feature must give the same MCU command stream as Klipper's batch mode
-  (`klippy.py -o`), byte for byte, on a set of real G-code files, before it drives the printer.
+- The Go host must give the same board commands as Klipper's batch mode (`klippy.py -o`) for the
+  printer of `printer/`, before it drives the printer. Klipper's own runs differ in the order of
+  the commands of different objects, so the test compares the commands of each object, in order.
+  `tools/klipper-reference` makes the reference data, and `deck/internal/klipper/PORTING.md` has
+  the rules of the port.
+
+The other ports follow the same method. A reference tool runs the original code on test data, and
+the test of the Go code compares its output:
+
+| Go code | Original | Reference tool |
+|---|---|---|
+| `deck/third_party/go-librespot/vorbis` | libvorbis, through go-librespot | `tools/librespot-reference` |
+| `deck/third_party/go-librespot/mp3` | libmpg123, through go-librespot | `tools/librespot-reference` |
+| `internal/eq` | CamillaDSP 4.1.3 | `tools/camilladsp-reference` |
+| `internal/alsa` | the kernel header `sound/asound.h` | `tools/alsa-abi` |
 
 ## The deck program
 
@@ -55,17 +57,19 @@ A Go Klipper host can drive a heater or a motor in the wrong way. So the port fo
 
 | Package | What it does |
 |---|---|
-| `cmd/printdeck` | The program: the deck, and the `demo`, `remote-demo`, `splash` and `password` commands |
+| `cmd/printdeck` | The program: the deck, the Klipper host (`klippy`), and the `demo`, `remote-demo`, `splash` and `password` commands |
+| `internal/klipper` | The Go port of the Klipper host |
 | `internal/ui` | The screens: Music, Print, Control, Tune, Setup and Help |
 | `internal/gfx`, `internal/fb`, `internal/touch` | Drawing, the framebuffer, and the touch screen |
 | `internal/printer` | The printer state, the picture of the print, and the backends. The Klipper backend uses `internal/klippy`. |
 | `internal/klippy` | The client for the API socket of the Klipper host |
 | `internal/gcodestore` | The G-code files, in the folder of Klipper's virtual SD card |
 | `internal/octoapi` | The OctoPrint-compatible API for slicers, with App Keys on the touch screen |
-| `internal/octoprint` | The backend for OctoPrint, for the Raspberry Pi OS setup with Docker. It goes with that setup. |
 | `internal/remote` | The remote screen in the browser |
 | `internal/gcode`, `internal/stl` | G-code and STL reading for the picture of the print |
-| `internal/spotify`, `internal/connect` | Spotify Web API and go-librespot |
+| `internal/speaker` | The Spotify Connect speaker: go-librespot (`third_party/go-librespot`) with the ALSA output and the equalizer |
+| `internal/spotify`, `internal/connect` | The Spotify Web API, and the API of the speaker |
+| `internal/alsa` | Playback and mixer controls through the ALSA kernel interface |
 | `internal/amp`, `internal/eq` | The amplifier volume and the equalizer |
 | `internal/wifi` | Wi-Fi through wpa_supplicant |
 
@@ -81,9 +85,13 @@ Every effort is made to respect the licenses:
 - Printdeck is licensed under the GNU Affero GPL, version 3 (`LICENSE`). Printdeck is a network
   device, so the AGPL also gives the source to people who use it over the network. The remote
   screen links to the source.
-- Klipper and go-librespot are GPL-3.0. Section 13 of the GPL-3.0 and of the AGPL-3.0 lets their
-  code and Printdeck's code be one program. Their files keep the GPL-3.0. OctoPrint is AGPL-3.0, the
-  same as Printdeck.
+- Klipper, go-librespot and CamillaDSP are GPL-3.0. Section 13 of the GPL-3.0 and of the AGPL-3.0
+  lets their code and Printdeck's code be one program. Their files keep the GPL-3.0. OctoPrint is
+  AGPL-3.0, the same as Printdeck.
+- The pure Go decoders use `github.com/jfreymuth/vorbis` (MIT) and `github.com/hajimehoshi/go-mp3`
+  (Apache-2.0). The Ogg framing and the MP3 gapless handling follow libogg (BSD-3-Clause) and
+  libmpg123 (LGPL-2.1), and name them. `deck/third_party/go-librespot/PRINTDECK.md` lists the
+  changes to go-librespot.
 - Code that is ported from another project keeps its copyright and license notices, and names the
   project and its authors at the top of the file. For example, `internal/klippy` names Klipper's
   `webhooks.py` and its author.

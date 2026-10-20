@@ -9,7 +9,8 @@
 //
 // A subscription answers with the full status, and then sends only the fields that changed.
 //
-// This package goes away when Printdeck has its own Go port of the Klipper host.
+// The Klipper host of Printdeck is the Go port in internal/klipper ("printdeck klippy"), in its own
+// process. The deck talks to it through this socket.
 package klippy
 
 import (

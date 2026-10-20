@@ -1,5 +1,6 @@
-// Command printdeck is the Printdeck appliance: it runs the full screen Spotify and OctoPrint
-// application on the 7" touch display and drives the Amp2 volume.
+// Command printdeck is the Printdeck appliance: the full screen application on the 7" touch
+// display, the remote screen, the API for slicers, the Spotify Connect speaker with the equalizer,
+// and (as "printdeck klippy", in its own process) the Klipper host.
 //
 //	printdeck           run the application (started by systemd)
 //	printdeck auth      link the Spotify account
@@ -207,7 +208,7 @@ func preview(cfg config.Config, args []string) {
 			return
 		}
 	}
-	log.Fatalf("no preview. OctoPrint state: %+v", pr.State())
+	log.Fatalf("no preview. Printer state: %+v", pr.State())
 }
 
 // shot runs the application for a few seconds with live data, without the display, and writes a tab as PNG.

@@ -5,7 +5,6 @@ import (
 
 	"printdeck/internal/config"
 	"printdeck/internal/gcodestore"
-	"printdeck/internal/octoprint"
 	"printdeck/internal/printer"
 	"printdeck/internal/ui"
 )
@@ -16,14 +15,9 @@ type printerBackend interface {
 	Run(ctx context.Context, notify func())
 }
 
-// newPrinter returns the Klipper backend when KLIPPY_SOCKET is set, and the OctoPrint client otherwise.
+// newPrinter returns the Klipper backend: the deck follows the Klipper host on its API socket.
 func newPrinter(cfg config.Config) printerBackend {
-	if cfg.KlippySocket != "" {
-		k := printer.NewKlippy(cfg.KlippySocket, &gcodestore.Store{Dir: cfg.GcodeDir})
-		k.ModelDir = cfg.ModelDir
-		return k
-	}
-	op := octoprint.New(cfg.OctoPrintURL, cfg.OctoPrintKey)
-	op.ModelDir = cfg.ModelDir
-	return op
+	k := printer.NewKlippy(cfg.KlippySocket, &gcodestore.Store{Dir: cfg.GcodeDir})
+	k.ModelDir = cfg.ModelDir
+	return k
 }
