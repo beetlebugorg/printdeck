@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"speakerdeck/internal/gfx"
+	"printdeck/internal/gfx"
 )
 
 // keypad enters a number, over everything else. It is used for the temperatures.

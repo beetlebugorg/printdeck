@@ -5,7 +5,7 @@ import (
 	"image/color"
 	"strings"
 
-	"speakerdeck/internal/gfx"
+	"printdeck/internal/gfx"
 )
 
 // The look of a piece of equipment: a light grey chassis with module plates, physical keys that travel when

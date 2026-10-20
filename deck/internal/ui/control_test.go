@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"speakerdeck/internal/gfx"
-	"speakerdeck/internal/octoprint"
-	"speakerdeck/internal/spotify"
-	"speakerdeck/internal/touch"
+	"printdeck/internal/gfx"
+	"printdeck/internal/printer"
+	"printdeck/internal/spotify"
+	"printdeck/internal/touch"
 )
 
 // recPrinter records the commands that the screens send.
@@ -50,7 +50,7 @@ func (r *recPrinter) wait(n int) []string {
 	return r.Calls()
 }
 
-func newPrintApp(st octoprint.State) (*App, *recPrinter, *gfx.Canvas) {
+func newPrintApp(st printer.State) (*App, *recPrinter, *gfx.Canvas) {
 	pr := &recPrinter{DemoPrinter: &DemoPrinter{View: -1, State_: st}}
 	a := New()
 	a.Music, a.Printer, a.Vol = &DemoMusic{State_: spotify.State{Authorized: true}}, pr, DemoVolume(10)
@@ -64,7 +64,7 @@ func tapAt(a *App, cv *gfx.Canvas, x, y int) {
 	ev(a, touch.Up, x, y)
 }
 
-var idle = octoprint.State{Reachable: true, Text: "Operational", Connected: true, Tool: 25, Bed: 25}
+var idle = printer.State{Reachable: true, Text: "Operational", Connected: true, Tool: 25, Bed: 25}
 
 func TestJoySpeed(t *testing.T) {
 	if joySpeed(0.1) != 0 || joySpeed(joyDead) != joyMinSpeed || math.Abs(joySpeed(1)-joyMaxSpeed) > 1e-9 || joySpeed(0.6) >= joySpeed(0.9) {

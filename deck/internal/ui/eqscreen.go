@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"image"
 
-	"speakerdeck/internal/eq"
-	"speakerdeck/internal/gfx"
+	"printdeck/internal/eq"
+	"printdeck/internal/gfx"
 )
 
 // Equalizer is the tone control of the speaker.

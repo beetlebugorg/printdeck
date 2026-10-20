@@ -1,5 +1,5 @@
 // Package config reads the settings from the environment.
-// The systemd unit loads them from /etc/default/speakerdeck.
+// The systemd unit loads them from /etc/default/printdeck.
 package config
 
 import (
@@ -30,6 +30,9 @@ type Config struct {
 	JogInvertY         bool
 	NightFrom, NightTo int // hours of the night theme in auto mode
 	PreheatBed         int
+	RemoteAddr         string // address of the remote screen, for example ":80"; empty turns it off
+	KlippySocket       string // the API socket of Klipper; when set, the deck uses Klipper directly, not OctoPrint
+	GcodeDir           string // the folder of Klipper's [virtual_sdcard]
 }
 
 func Load() Config {
@@ -40,12 +43,15 @@ func Load() Config {
 		TouchInvertY:    num("TOUCH_INVERT_Y", 0) == 1,
 		TouchSwapXY:     num("TOUCH_SWAP_XY", 0) == 1,
 		SpotifyClientID: str("SPOTIFY_CLIENT_ID", ""),
-		DeviceName:      str("SPOTIFY_DEVICE_NAME", "Speakerdeck"),
+		DeviceName:      str("SPOTIFY_DEVICE_NAME", "Printdeck"),
 		LinkBase:        linkBase(),
-		StateDir:        str("STATE_DIRECTORY", "/var/lib/speakerdeck"),
+		StateDir:        str("STATE_DIRECTORY", "/var/lib/printdeck"),
+		RemoteAddr:      str("REMOTE_ADDR", ""),
+		KlippySocket:    str("KLIPPY_SOCKET", ""),
+		GcodeDir:        str("GCODE_DIR", "/var/lib/klipper/gcodes"),
 		OctoPrintURL:    str("OCTOPRINT_URL", "http://127.0.0.1:5000"),
 		OctoPrintKey:    str("OCTOPRINT_API_KEY", ""),
-		ModelDir:        str("MODEL_DIR", "/var/lib/speakerdeck/models"),
+		ModelDir:        str("MODEL_DIR", "/var/lib/printdeck/models"),
 		AlsaCard:        str("ALSA_CARD", "sndrpihifiberry"),
 		MaxVolume:       num("MAX_VOLUME", 100),
 		FloorDB:         float64(num("VOLUME_FLOOR_DB", -40)),

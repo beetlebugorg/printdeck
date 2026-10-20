@@ -82,7 +82,7 @@ func (c *Client) ServeLink(ctx context.Context, notify func()) error {
 				notify()
 			}
 		}
-		fmt.Fprintf(w, `<!doctype html><meta name=viewport content="width=device-width"><body style="font:22px sans-serif;padding:2em"><h2>Speakerdeck</h2><p>%s</p>`, html.EscapeString(msg))
+		fmt.Fprintf(w, `<!doctype html><meta name=viewport content="width=device-width"><body style="font:22px sans-serif;padding:2em"><h2>Printdeck</h2><p>%s</p>`, html.EscapeString(msg))
 	})
 	srv := &http.Server{
 		Addr: ":" + base.Port(), Handler: mux,

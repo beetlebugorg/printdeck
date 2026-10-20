@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"speakerdeck/internal/gfx"
-	"speakerdeck/internal/octoprint"
-	"speakerdeck/internal/spotify"
-	"speakerdeck/internal/touch"
+	"printdeck/internal/gfx"
+	"printdeck/internal/printer"
+	"printdeck/internal/spotify"
+	"printdeck/internal/touch"
 )
 
 type trackMusic struct {
@@ -23,7 +23,7 @@ func (m *trackMusic) PlayTrack(ctx, track string) error {
 func newTrackApp() (*App, *trackMusic, *gfx.Canvas) {
 	m := &trackMusic{DemoMusic: &DemoMusic{State_: spotify.State{Authorized: true, Active: true, Title: "t", URI: "spotify:track:0", Duration: time.Minute}}}
 	a := New()
-	a.Music, a.Printer, a.Vol = m, &DemoPrinter{State_: octoprint.State{}}, DemoVolume(10)
+	a.Music, a.Printer, a.Vol = m, &DemoPrinter{State_: printer.State{}}, DemoVolume(10)
 	a.OpenTracks(0)
 	return a, m, gfx.New(W, H)
 }

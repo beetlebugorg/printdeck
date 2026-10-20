@@ -3,8 +3,8 @@ package ui
 import (
 	"image"
 
-	"speakerdeck/internal/gfx"
-	"speakerdeck/internal/spotify"
+	"printdeck/internal/gfx"
+	"printdeck/internal/spotify"
 )
 
 const (

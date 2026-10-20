@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"speakerdeck/internal/gfx"
-	"speakerdeck/internal/spotify"
-	"speakerdeck/internal/touch"
+	"printdeck/internal/gfx"
+	"printdeck/internal/spotify"
+	"printdeck/internal/touch"
 )
 
 func TestNightHours(t *testing.T) {

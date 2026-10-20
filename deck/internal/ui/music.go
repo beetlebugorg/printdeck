@@ -6,9 +6,9 @@ import (
 	"image/color"
 	"time"
 
+	"printdeck/internal/gfx"
+	"printdeck/internal/spotify"
 	"rsc.io/qr"
-	"speakerdeck/internal/gfx"
-	"speakerdeck/internal/spotify"
 )
 
 func clock(d time.Duration) string {
@@ -64,7 +64,7 @@ func (a *App) drawMusic(c *gfx.Canvas) {
 	} else {
 		msg := "NO SIGNAL"
 		if !st.Active {
-			msg = "NO SIGNAL\n\nPRESS PLAY, CHOOSE\nSPEAKERDECK IN SPOTIFY,\nOR PICK A PLAYLIST"
+			msg = "NO SIGNAL\n\nPRESS PLAY, CHOOSE\nPRINTDECK IN SPOTIFY,\nOR PICK A PLAYLIST"
 		}
 		for i, line := range splitLines(msg) {
 			c.Text(image.Rect(art.Min.X, art.Min.Y+90+i*26, art.Max.X, art.Min.Y+116+i*26), line, gfx.Face(true, 16), lcdInk, gfx.Center)
@@ -254,7 +254,11 @@ func (a *App) drawLink(c *gfx.Canvas) {
 	heading(c, "Link Spotify")
 	url := a.Music.LinkURL()
 	if url == "" {
-		c.Text(image.Rect(30, 250, W-30, 420), "Run  speakerdeck auth  on the Pi", gfx.Face(false, 22), dim, gfx.Center)
+		// The QR code needs the client ID of a Spotify app.
+		face := gfx.Face(false, 18)
+		for i, l := range []string{"Spotify needs the client ID", "of your Spotify app.", "", "Put it in printdeck.txt", "as spotify_client_id,", "then restart the Printdeck."} {
+			c.Text(image.Rect(30, 230+i*30, W-30, 260+i*30), l, face, dim, gfx.Center)
+		}
 		return
 	}
 	code, err := qr.Encode(url, qr.M)

@@ -25,7 +25,7 @@ func Friendly(err error) string {
 	case err == nil:
 		return ""
 	case errors.As(err, &he) && he.Status == 403:
-		return "No permission. Run  speakerdeck auth  again."
+		return "No permission. Run  printdeck auth  again."
 	case errors.As(err, &he) && he.Status == 429:
 		return "Spotify is busy. Try again."
 	}

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"image"
 
-	"speakerdeck/internal/gfx"
+	"printdeck/internal/gfx"
 )
 
 // The tune sheet changes a running print: speed, flow, the height of the nozzle (baby steps), the fan,
