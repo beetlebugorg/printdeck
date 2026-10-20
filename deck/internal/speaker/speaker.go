@@ -30,6 +30,7 @@ type Config struct {
 	APIAddr    string // the address of the API (go-librespot's server.address)
 	APIPort    int
 	EQ         *eq.EQ
+	Volume     int  // the volume at the start in percent, or -1 for the default
 	Debug      bool // log go-librespot's debug messages
 }
 
@@ -61,6 +62,12 @@ func Run(ctx context.Context, cfg Config) error {
 		ZeroconfEnabled:  false,
 		ZeroconfBackend:  "builtin",
 		ImageSize:        "default",
+	}
+	// The deck keeps the volume between starts, and Spotify starts with the same volume. The
+	// LastVolume of state.json is not used.
+	if cfg.Volume >= 0 {
+		dc.InitialVolume = uint32(cfg.Volume)
+		dc.IgnoreLastVolume = true
 	}
 	dc.Cache.Dir = filepath.Join(cfg.ConfigDir, "cache")
 	dc.Metadata.Enabled = true

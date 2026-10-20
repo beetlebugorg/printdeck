@@ -12,6 +12,9 @@ import (
 	"context"
 	"log"
 	"math"
+	"os"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,6 +39,9 @@ type Amp struct {
 	floor, ceil float64 // decibels at 0% (just above) and at 100%
 	// OnSet is called with the percent after the amp has been set from the screen.
 	OnSet func(percent int)
+	// File keeps the volume between starts, because the amp starts at its default level. It can be
+	// empty.
+	File string
 
 	mu     sync.Mutex
 	volume int
@@ -97,6 +103,40 @@ func (a *Amp) write(step int) error {
 	return c.Set(step)
 }
 
+// Restore sets the amp to the volume in File, and returns the volume. Without a saved volume, it
+// returns the volume of the amp, or -1.
+func (a *Amp) Restore() int {
+	b, err := os.ReadFile(a.File)
+	if p, perr := strconv.Atoi(strings.TrimSpace(string(b))); a.File != "" && err == nil && perr == nil {
+		p = max(0, min(a.max, p))
+		if err := a.write(a.stepFor(p)); err != nil {
+			log.Printf("amp: %v", err)
+		}
+		a.mu.Lock()
+		a.volume = p
+		a.mu.Unlock()
+		return p
+	}
+	if v, err := a.read(); err == nil {
+		a.mu.Lock()
+		a.volume = v
+		a.mu.Unlock()
+		return v
+	}
+	return -1
+}
+
+// save writes the volume to File.
+func (a *Amp) save(p int) {
+	if a.File == "" {
+		return
+	}
+	tmp := a.File + ".tmp"
+	if err := os.WriteFile(tmp, []byte(strconv.Itoa(p)+"\n"), 0o644); err == nil {
+		os.Rename(tmp, a.File)
+	}
+}
+
 // Set changes the volume from the screen. OnSet tells Spotify.
 func (a *Amp) Set(p int) { a.set(p, true) }
 
@@ -129,6 +169,7 @@ func (a *Amp) Run(ctx context.Context, notify func()) {
 			if err := a.write(a.stepFor(r.percent)); err != nil {
 				log.Printf("amp: %v", err)
 			}
+			a.save(r.percent)
 			if r.local && a.OnSet != nil {
 				a.OnSet(r.percent)
 			}
@@ -142,6 +183,7 @@ func (a *Amp) Run(ctx context.Context, notify func()) {
 				a.volume = v
 				a.mu.Unlock()
 				if changed {
+					a.save(v)
 					notify()
 				}
 			}
