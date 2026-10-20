@@ -1,11 +1,11 @@
-# Speakerdeck Slate
+# Printdeck Slate
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.png">
-  <img src="docs/hero-light.png" alt="The assembled Speakerdeck Slate on its foot" width="320">
+  <img src="docs/hero-light.png" alt="The assembled Printdeck Slate on its foot" width="320">
 </picture>
 
-A compact slab for the Speakerdeck hardware: Raspberry Pi 5 with the HiFiBerry Amp2, the
+A compact slab for the Printdeck hardware: Raspberry Pi 5 with the HiFiBerry Amp2, the
 Adafruit 7 inch touch display in portrait, the 2.5 inch SSD with its USB adapter, and the 30 mm
 fan. The slab is 132 mm wide, 221 mm high, and 35 mm deep. It leans back 15 degrees on a gray
 foot.
@@ -27,7 +27,7 @@ foot.
   tongues and holds the back plate. Screws hold only the display, the drive, and the Pi, into
   heat-set inserts. No part needs supports.
 
-`speakerdeck-slate-build.pdf` has the parts list, the print settings, and the assembly steps.
+`printdeck-slate-build.pdf` has the parts list, the print settings, and the assembly steps.
 
 ## Parts
 

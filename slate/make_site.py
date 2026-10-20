@@ -127,7 +127,7 @@ def page():
   <h1>Printdeck</h1>
   <p class="lede">A desk slab next to the 3D printer. It runs OctoPrint, shows the print on a 7" touch screen,
     and plays Spotify through passive speakers. The Pi 5 and the HiFiBerry Amp2 sit on the rear, so every port is open.</p>
-  <a class="btn" href="files/speakerdeck-slate-build.pdf">Build instructions (PDF)</a>
+  <a class="btn" href="files/printdeck-slate-build.pdf">Build instructions (PDF)</a>
   <a class="btn" href="{repo}">Source on GitHub</a>
 </header>
 <main>
@@ -160,7 +160,7 @@ def page():
     <li>Connect the speaker wires to the screw terminals on the left edge of the Amp2.</li></ol></div></div>
 
   <h2>Software</h2>
-  <p>The <code>speakerdeck</code> app (Go) draws the full screen UI on the 7" display: a Music tab for Spotify Connect,
+  <p>The <code>printdeck</code> app (Go) draws the full screen UI on the 7" display: a Music tab for Spotify Connect,
     and a Print tab with a 3D view of the print, the temperatures, and the printer controls. go-librespot and CamillaDSP
     run in Docker, and OctoPrint runs as a service. The installation steps are in the
     <a href="{repo}#installation">README</a>.</p>

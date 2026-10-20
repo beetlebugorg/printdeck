@@ -2,10 +2,10 @@
 ##
 ## go-librespot plays into the ALSA loopback (hw:Loopback,0). CamillaDSP reads the other end
 ## (hw:Loopback,1), applies the equalizer, and plays to the HiFiBerry Amp2.
-## The speakerdeck app changes the gains of the filters live, through the websocket on port 1234.
+## The printdeck app changes the gains of the filters live, through the websocket on port 1234.
 ## These are the starting values: a flat equalizer.
 
-title: Speakerdeck equalizer
+title: Printdeck equalizer
 
 devices:
   samplerate: 44100

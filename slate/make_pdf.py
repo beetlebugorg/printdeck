@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Speakerdeck Slate: write the build instructions PDF (speakerdeck-slate-build.pdf).
+"""Printdeck Slate: write the build instructions PDF (printdeck-slate-build.pdf).
 Run after model.py, cura/make_profiles.py, and lineart/render.mjs. Needs Chromium.
 The images are the line-art renders of lineart/render.mjs, light theme, with a transparent background."""
 
@@ -10,7 +10,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 BUILD = HERE / "build"
 IMG = BUILD / "img"
-OUT = HERE / "speakerdeck-slate-build.pdf"
+OUT = HERE / "printdeck-slate-build.pdf"
 
 SUMMARY = json.loads((BUILD / "parts.json").read_text())
 FILAMENT = json.loads((BUILD / "filament.json").read_text())
@@ -34,7 +34,7 @@ PRINTS = [
 
 SETTINGS = [
     ("Profiles", "One Cura profile for each part: run <code>python3 cura/make_profiles.py --install</code> with Cura "
-                 "closed, then pick “Speakerdeck - Slate …”."),
+                 "closed, then pick “Printdeck - Slate …”."),
     ("Material", "PLA, 2.85 mm, 0.5 mm nozzle"),
     ("Slab, chin", "0.3 mm layers, 1.5 mm walls, 1.2 mm top and bottom, 20 % grid infill, skirt"),
     ("Back plate", "0.3 mm layers, 40 % grid infill, skirt"),
@@ -159,14 +159,14 @@ def img(name):
 
 
 def foot(n):
-    return f'<div class="foot"><span>Speakerdeck Slate · build instructions</span><span>{n}</span></div>'
+    return f'<div class="foot"><span>Printdeck Slate · build instructions</span><span>{n}</span></div>'
 
 
 def cover():
     total = sum(FILAMENT[n]["grams"] for n, _, _ in PRINTS)
     return f"""<section class="page">
-  <h1>SPEAKERDECK</h1><div class="sub">Slate</div>
-  <p style="margin-top:4mm;max-width:160mm">A compact slab for the Speakerdeck: Raspberry Pi 5, HiFiBerry Amp2, the 7 inch
+  <h1>PRINTDECK</h1><div class="sub">Slate</div>
+  <p style="margin-top:4mm;max-width:160mm">A compact slab for the Printdeck: Raspberry Pi 5, HiFiBerry Amp2, the 7 inch
   touch display in portrait, and the drive. The slab leans back 15° on a gray foot. The Pi is open on the orange back plate at the
   rear, as a backpack: every port has free space, so you plug the power, the printer, and the speakers straight
   into it. The front and the sides stay clean. All the cables show only on the rear. The case parts snap together.</p>
@@ -268,7 +268,7 @@ def main():
     for i, s in enumerate(STEPS):
         pages.append(step_page(i + 1, s, len(pages) + 1))
     pages.append(end_page(len(pages) + 1))
-    html = (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Speakerdeck Slate build</title>'
+    html = (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Printdeck Slate build</title>'
             f'<style>{CSS}</style></head><body>{"".join(pages)}</body></html>')
     src = BUILD / "build.html"
     src.write_text(html)

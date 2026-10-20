@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Speakerdeck Slate: build the parts, check the fit, and write the files.
+"""Printdeck Slate: build the parts, check the fit, and write the files.
 Run with: uv run --no-project --with build123d python model.py
 
 Fit check (a true boolean test of every pair whose boxes overlap):
@@ -187,7 +187,7 @@ def export(printed, hw):
         c.label = name
         c.color = Color(*hex_rgb(COLOURS.get(mat, "#888888")))
         children.append(c)
-    export_step(Compound(children=children, label="speakerdeck-slate"), os.path.join(HERE, "cad", "slate-assembly.step"))
+    export_step(Compound(children=children, label="printdeck-slate"), os.path.join(HERE, "cad", "slate-assembly.step"))
     # Cable length, plug end to plug end: the centre line, plus the plugs (30 mm for each
     # straight display plug and the USB-A plug, MICRO_B_LEN for the micro-B plug). The fan
     # cable is the centre line only.
