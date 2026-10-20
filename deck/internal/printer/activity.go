@@ -1,16 +1,16 @@
-package octoprint
+package printer
 
 import (
 	"fmt"
 	"strings"
 )
 
-// activity names what the printer does, like the message on the printer's own display.
+// Activity names what the printer does, like the message on the printer's own display.
 //
-// OctoPrint does not pass on the message of the printer. So this is inferred: from the job state,
+// The backend does not always pass on the message of the printer. So this is inferred: from the job state,
 // the temperatures, and the position in the G-code. The G-code gives the temperatures of the start macro
-// and the layer. c.mu must be locked.
-func (c *Client) activity(st *State) {
+// and the layer.
+func (v *View) Activity(st *State) {
 	st.Activity = st.Text
 	if !st.Busy() {
 		return
@@ -35,10 +35,12 @@ func (c *Client) activity(st *State) {
 	const near = 3.0 // degrees: closer than this to the target counts as reached
 	toolCold := st.ToolTarget > 0 && st.Tool < st.ToolTarget-near
 	bedCold := st.BedTarget > 0 && st.Bed < st.BedTarget-near
-	gc := c.pv.gc
-	if c.pv.file != fileKey(*st) {
+	v.mu.Lock()
+	gc := v.gc
+	if v.file != fileKey(*st) {
 		gc = nil
 	}
+	v.mu.Unlock()
 
 	if gc == nil {
 		// The G-code is not loaded yet. The temperatures show the heating.

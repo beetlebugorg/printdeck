@@ -3,10 +3,10 @@ package ui
 import (
 	"testing"
 
-	"speakerdeck/internal/eq"
-	"speakerdeck/internal/gfx"
-	"speakerdeck/internal/spotify"
-	"speakerdeck/internal/touch"
+	"printdeck/internal/eq"
+	"printdeck/internal/gfx"
+	"printdeck/internal/spotify"
+	"printdeck/internal/touch"
 )
 
 func TestEQSliders(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"image/color"
 	"math"
 
-	"speakerdeck/internal/gfx"
+	"printdeck/internal/gfx"
 )
 
 // Icons are drawn with shapes, so they scale and take any colour. cx, cy is the centre, r half the size.

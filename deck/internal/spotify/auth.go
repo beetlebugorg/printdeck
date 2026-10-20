@@ -14,7 +14,7 @@ import (
 )
 
 // Spotify accepts http only for the loopback IP address. Nothing listens there:
-// the user copies the address of the failed redirect back to "speakerdeck auth".
+// the user copies the address of the failed redirect back to "printdeck auth".
 const RedirectURI = "http://127.0.0.1:8888/callback"
 
 // The login needs to be done again when this list grows.

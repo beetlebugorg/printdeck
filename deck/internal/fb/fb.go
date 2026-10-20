@@ -8,7 +8,7 @@ import (
 	"strings"
 	"syscall"
 
-	"speakerdeck/internal/gfx"
+	"printdeck/internal/gfx"
 )
 
 type FB struct {
@@ -75,13 +75,21 @@ func (d *FB) Close() {
 	syscall.Munmap(d.mem)
 }
 
-// Present converts the canvas to the panel format.
+// Present converts the canvas to the panel format. When the framebuffer has a different size than the
+// canvas, for example after the display selected a smaller mode, it scales the canvas to fit.
 func (d *FB) Present(c *gfx.Canvas) {
 	lw, lh := d.LogicalW, d.LogicalH
+	cw, ch := c.Bounds().Dx(), c.Bounds().Dy()
 	bytes := d.bpp / 8
+	sx := make([]int, lw) // the canvas column for each framebuffer column
+	for x := range sx {
+		sx[x] = x * cw / lw
+	}
 	for y := 0; y < lh; y++ {
-		src := c.Pix[y*c.Stride : y*c.Stride+lw*4]
+		sy := y * ch / lh
+		row := c.Pix[sy*c.Stride : sy*c.Stride+cw*4]
 		for x := 0; x < lw; x++ {
+			src := row[sx[x]*4:]
 			var X, Y int
 			switch d.rot {
 			case 90:
@@ -92,7 +100,7 @@ func (d *FB) Present(c *gfx.Canvas) {
 				X, Y = x, y
 			}
 			o := Y*d.stride + X*bytes
-			r, g, b := src[x*4], src[x*4+1], src[x*4+2]
+			r, g, b := src[0], src[1], src[2]
 			if d.bpp == 16 {
 				v := uint16(r>>3)<<11 | uint16(g>>2)<<5 | uint16(b>>3)
 				d.mem[o], d.mem[o+1] = byte(v), byte(v>>8)

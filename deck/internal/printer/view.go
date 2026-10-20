@@ -1,35 +1,43 @@
-package octoprint
+package printer
 
 import (
-	"encoding/json"
 	"fmt"
 	"image"
 	"image/color"
 	"io"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
+	"sync"
 
-	"speakerdeck/internal/gcode"
-	"speakerdeck/internal/stl"
+	"printdeck/internal/gcode"
+	"printdeck/internal/stl"
 )
 
 const (
 	PreviewW, PreviewH = 400, 310
-	maxDownload        = 80 << 20 // larger files are not drawn
+	maxModelSize       = 80 << 20 // larger G-code files are not drawn
 )
 
-// preview keeps the picture of the model that is printing.
+// Source gives the View the files of the printer.
+type Source interface {
+	// Open opens a file of the file store: the G-code of a job, or an STL model.
+	Open(path string) (io.ReadCloser, error)
+	// Models lists the STL models in the file store.
+	Models() []File
+}
+
+// View keeps the picture of the model that is printing.
 //
-// The G-code of the print is downloaded and read once. It tells how far the print has come.
-// If there is one object on the bed and an STL with a matching name, in OctoPrint or in ModelDir,
-// the picture is that model, shaded, with the printed height in colour. Otherwise it is the toolpath
-// from the G-code.
-type preview struct {
+// The G-code of the print is read once. It tells how far the print has come. If there is one object
+// on the bed and an STL with a matching name, in the file store or in ModelDir, the picture is that
+// model, shaded, with the printed height in colour. Otherwise it is the toolpath from the G-code.
+type View struct {
+	src      Source
+	ModelDir string // a folder with more STL files, besides the ones in the file store
+
+	mu        sync.Mutex
 	file      string // fileKey of the loaded G-code
 	gc        *gcode.Model
 	mesh      *stl.Mesh
@@ -44,83 +52,85 @@ type preview struct {
 	viewBusy bool
 }
 
+func NewView(src Source) *View { return &View{src: src, view: -1} }
+
 // Preview returns the picture of the print, or nil. It is the layer of the scrubber when there is one,
 // and the print as it is now otherwise.
-func (c *Client) Preview() image.Image {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.pv.view >= 0 && c.pv.viewImg != nil {
-		return c.pv.viewImg
+func (v *View) Preview() image.Image {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if v.view >= 0 && v.viewImg != nil {
+		return v.viewImg
 	}
-	return c.pv.img
+	return v.img
 }
 
 // ViewLayer returns the layer of the scrubber, or -1 when the preview follows the print.
-func (c *Client) ViewLayer() int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.pv.view
+func (v *View) ViewLayer() int {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	return v.view
 }
 
 // SetViewLayer shows the model up to a layer (0 is nothing). A negative layer follows the print again.
 // The picture is drawn in the background, and only for the newest layer when the scrubber moves fast.
-func (c *Client) SetViewLayer(layer int) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.pv.view = max(layer, -1)
-	if c.pv.view < 0 {
-		c.pv.viewImg = nil
+func (v *View) SetViewLayer(layer int) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.view = max(layer, -1)
+	if v.view < 0 {
+		v.viewImg = nil
 		return
 	}
-	if c.pv.gc != nil && !c.pv.viewBusy {
-		c.pv.viewBusy = true
-		go c.renderView()
+	if v.gc != nil && !v.viewBusy {
+		v.viewBusy = true
+		go v.renderView()
 	}
 }
 
-func (c *Client) renderView() {
+func (v *View) renderView() {
 	for {
-		c.mu.Lock()
-		layer, gc, mesh := c.pv.view, c.pv.gc, c.pv.mesh
+		v.mu.Lock()
+		layer, gc, mesh := v.view, v.gc, v.mesh
 		if layer < 0 || gc == nil {
-			c.pv.viewBusy = false
-			c.mu.Unlock()
+			v.viewBusy = false
+			v.mu.Unlock()
 			return
 		}
-		c.mu.Unlock()
+		v.mu.Unlock()
 
 		img := drawAt(gc, mesh, gc.LayerEnd(layer), gc.LayerStart(layer))
 
-		c.mu.Lock()
-		if c.pv.view == layer { // still the one that is wanted
-			c.pv.viewImg, c.pv.viewBusy = img, false
-			c.mu.Unlock()
+		v.mu.Lock()
+		if v.view == layer { // still the one that is wanted
+			v.viewImg, v.viewBusy = img, false
+			v.mu.Unlock()
 			return
 		}
-		c.mu.Unlock() // the scrubber moved on: draw the new layer
+		v.mu.Unlock() // the scrubber moved on: draw the new layer
 	}
 }
 
-func (c *Client) updatePreview(st State) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	pv := &c.pv
+// Update follows the job: it reads the G-code of a new job, and draws the print again when it moved.
+func (v *View) Update(st State) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
 	if !st.Busy() || st.FilePath == "" {
-		pv.img, pv.imgPos, pv.view, pv.viewImg = nil, 0, -1, nil
+		v.img, v.imgPos, v.view, v.viewImg = nil, 0, -1, nil
 		return
 	}
-	if pv.file != fileKey(st) {
-		pv.img, pv.imgPos, pv.view, pv.viewImg = nil, 0, -1, nil // not the picture of another file while this one loads
-		if !pv.loading && st.FileSize <= maxDownload {
-			pv.loading = true
-			go c.loadModel(st.FilePath, fileKey(st))
+	if v.file != fileKey(st) {
+		v.img, v.imgPos, v.view, v.viewImg = nil, 0, -1, nil // not the picture of another file while this one loads
+		if !v.loading && st.FileSize <= maxModelSize {
+			v.loading = true
+			go v.loadModel(st.FilePath, fileKey(st))
 		}
 		return
 	}
 	// Draw again when the print has moved. A render takes about 30 ms.
-	if pv.gc != nil && !pv.rendering && (pv.img == nil || st.FilePos != pv.imgPos) {
-		pv.rendering = true
-		go c.render(pv.gc, pv.mesh, st.FilePos)
+	if v.gc != nil && !v.rendering && (v.img == nil || st.FilePos != v.imgPos) {
+		v.rendering = true
+		go v.render(v.gc, v.mesh, st.FilePos)
 	}
 }
 
@@ -130,44 +140,22 @@ func fileKey(st State) string {
 	return fmt.Sprintf("%s|%d|%d", st.FilePath, st.FileSize, st.FileDate)
 }
 
-func (c *Client) loadModel(path, key string) {
+func (v *View) loadModel(path, key string) {
 	var gc *gcode.Model
-	if body, err := c.get("/downloads/files/local/" + escape(path)); err == nil {
+	if body, err := v.src.Open(path); err == nil {
 		gc, _ = gcode.Parse(body)
 		body.Close()
 	}
 	// An STL is one object. With more on the bed, only the toolpath shows them all.
 	var mesh *stl.Mesh
 	if gc != nil && gc.Objects <= 1 {
-		mesh = c.findSTL(path)
+		mesh = v.findSTL(path)
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.pv.loading = false
-	// On failure the key is still stored, so the same file is not tried again every 2 seconds.
-	c.pv.file, c.pv.gc, c.pv.mesh, c.pv.img, c.pv.view = key, gc, mesh, nil, -1
-}
-
-func escape(path string) string {
-	parts := strings.Split(path, "/")
-	for i, p := range parts {
-		parts[i] = url.PathEscape(p)
-	}
-	return strings.Join(parts, "/")
-}
-
-func (c *Client) get(path string) (io.ReadCloser, error) {
-	req, _ := http.NewRequest("GET", c.url+path, nil)
-	req.Header.Set("X-Api-Key", c.key)
-	resp, err := (&http.Client{Timeout: 2 * time.Minute}).Do(req)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != 200 {
-		resp.Body.Close()
-		return nil, fmt.Errorf("%s: %s", path, resp.Status)
-	}
-	return resp.Body, nil
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.loading = false
+	// On failure the key is still stored, so the same file is not tried again on each update.
+	v.file, v.gc, v.mesh, v.img, v.view = key, gc, mesh, nil, -1
 }
 
 // stem makes names comparable: "LTAZ_lower_panel.gcode" and "Lower Panel.STL" give a match.
@@ -187,16 +175,16 @@ func match(gcodeName, stlName string) int {
 	return 1000 - (max(len(g), len(s)) - min(len(g), len(s)))
 }
 
-// findSTL looks for the model of a G-code file in ModelDir and in OctoPrint, and reads the closest match.
-// ModelDir wins when both have an equally good match.
-func (c *Client) findSTL(gcodePath string) *stl.Mesh {
+// findSTL looks for the model of a G-code file in ModelDir and in the file store, and reads the closest
+// match. ModelDir wins when both have an equally good match.
+func (v *View) findSTL(gcodePath string) *stl.Mesh {
 	type candidate struct {
 		open  func() (io.ReadCloser, error)
 		score int
 	}
 	var cands []candidate
-	if c.ModelDir != "" {
-		files, _ := filepath.Glob(filepath.Join(c.ModelDir, "*"))
+	if v.ModelDir != "" {
+		files, _ := filepath.Glob(filepath.Join(v.ModelDir, "*"))
 		for _, f := range files {
 			if strings.EqualFold(filepath.Ext(f), ".stl") {
 				if n := match(gcodePath, f); n > 0 {
@@ -205,18 +193,9 @@ func (c *Client) findSTL(gcodePath string) *stl.Mesh {
 			}
 		}
 	}
-	if body, err := c.get("/api/files/local?recursive=true"); err == nil {
-		var list struct {
-			Files []struct{ Name, Path, Type string }
-		}
-		json.NewDecoder(body).Decode(&list)
-		body.Close()
-		for _, f := range list.Files {
-			if f.Type == "model" {
-				if n := match(gcodePath, f.Name); n > 0 {
-					cands = append(cands, candidate{func() (io.ReadCloser, error) { return c.get("/downloads/files/local/" + escape(f.Path)) }, n})
-				}
-			}
+	for _, f := range v.src.Models() {
+		if n := match(gcodePath, f.Name); n > 0 {
+			cands = append(cands, candidate{func() (io.ReadCloser, error) { return v.src.Open(f.Path) }, n})
 		}
 	}
 	// The best first; a file that does not read gives way to the next.
@@ -258,9 +237,9 @@ func drawAt(gc *gcode.Model, mesh *stl.Mesh, pos, curStart int64) *image.RGBA {
 	return gc.Render(PreviewW, PreviewH, pos, curStart, pathWarm, pathCool, hotColor, pathGhost)
 }
 
-func (c *Client) render(gc *gcode.Model, mesh *stl.Mesh, pos int64) {
+func (v *View) render(gc *gcode.Model, mesh *stl.Mesh, pos int64) {
 	img := drawAt(gc, mesh, pos, gc.LayerStart(gc.LayerAt(pos)))
-	c.mu.Lock()
-	c.pv.img, c.pv.imgPos, c.pv.rendering = img, pos, false
-	c.mu.Unlock()
+	v.mu.Lock()
+	v.img, v.imgPos, v.rendering = img, pos, false
+	v.mu.Unlock()
 }

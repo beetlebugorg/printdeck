@@ -3,9 +3,9 @@ package ui
 import (
 	"image"
 
-	"speakerdeck/internal/spotify"
+	"printdeck/internal/spotify"
 
-	"speakerdeck/internal/gfx"
+	"printdeck/internal/gfx"
 )
 
 const pickerRows = 6

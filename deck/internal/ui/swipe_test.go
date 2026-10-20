@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"speakerdeck/internal/gfx"
-	"speakerdeck/internal/octoprint"
-	"speakerdeck/internal/spotify"
-	"speakerdeck/internal/touch"
+	"printdeck/internal/gfx"
+	"printdeck/internal/printer"
+	"printdeck/internal/spotify"
+	"printdeck/internal/touch"
 )
 
 type countingMusic struct {
@@ -30,7 +30,7 @@ func swipe(a *App, x0, y0, x1, y1 int) {
 func TestSwipe(t *testing.T) {
 	m := &countingMusic{DemoMusic: &DemoMusic{State_: spotify.State{Authorized: true, Active: true, Playing: true, Title: "t", URI: "spotify:track:x", Duration: time.Minute}}}
 	a := New()
-	a.Music, a.Printer, a.Vol = m, &DemoPrinter{State_: octoprint.State{}}, DemoVolume(10)
+	a.Music, a.Printer, a.Vol = m, &DemoPrinter{State_: printer.State{}}, DemoVolume(10)
 	cv := gfx.New(W, H)
 
 	for _, c := range []struct {

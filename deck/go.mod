@@ -1,4 +1,4 @@
-module speakerdeck
+module printdeck
 
 go 1.24
 

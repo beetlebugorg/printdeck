@@ -3,6 +3,8 @@ package octoprint
 import (
 	"fmt"
 	"strings"
+
+	"printdeck/internal/printer"
 )
 
 // Control of the printer, like the menus of its own display. The printer runs Klipper, behind OctoPrint:
@@ -53,27 +55,24 @@ func (c *Client) SetBedTemp(t int) error {
 // Extrude pushes filament (or pulls it back when mm is negative) at speed mm/min. The extruder is put back
 // into absolute mode afterwards, as the slicer expects.
 func (c *Client) Extrude(mm float64, speed int) error {
-	return c.Gcode("M83", fmt.Sprintf("G1 E%.2f F%d", mm, speed), "M82")
+	return c.Gcode(printer.ExtrudeGcode(mm, speed)...)
 }
 
 // Fan sets the part cooling fan, in percent.
 func (c *Client) Fan(percent int) error {
-	if percent <= 0 {
-		return c.Gcode("M107")
-	}
-	return c.Gcode(fmt.Sprintf("M106 S%d", min(255, percent*255/100)))
+	return c.Gcode(printer.FanGcode(percent))
 }
 
 // MotorsOff lets the axes move freely by hand. They must be homed again afterwards.
 func (c *Client) MotorsOff() error { return c.Gcode("M84") }
 
 // SpeedFactor and FlowFactor change a running print, in percent (100 is as sliced).
-func (c *Client) SpeedFactor(p int) error { return c.Gcode(fmt.Sprintf("M220 S%d", p)) }
-func (c *Client) FlowFactor(p int) error  { return c.Gcode(fmt.Sprintf("M221 S%d", p)) }
+func (c *Client) SpeedFactor(p int) error { return c.Gcode(printer.SpeedGcode(p)) }
+func (c *Client) FlowFactor(p int) error  { return c.Gcode(printer.FlowGcode(p)) }
 
 // BabyStep moves the nozzle up (positive) or down during a print, in mm. Klipper keeps it as a G-code offset.
 func (c *Client) BabyStep(mm float64) error {
-	return c.Gcode(fmt.Sprintf("SET_GCODE_OFFSET Z_ADJUST=%.3f MOVE=1", mm))
+	return c.Gcode(printer.BabyStepGcode(mm))
 }
 
 // EmergencyStop stops the printer at once. Klipper must be restarted afterwards (FIRMWARE_RESTART).

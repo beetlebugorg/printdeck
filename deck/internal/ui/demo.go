@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"speakerdeck/internal/eq"
+	"printdeck/internal/eq"
 	"time"
 
-	"speakerdeck/internal/octoprint"
-	"speakerdeck/internal/spotify"
+	"printdeck/internal/printer"
+	"printdeck/internal/spotify"
+	"printdeck/internal/wifi"
 )
 
 // Demo sources give the UI fixed data, to look at it without a Spotify account or a printer.
@@ -33,14 +34,14 @@ func (d *DemoMusic) SetShuffle(bool)    {}
 func (d *DemoMusic) CycleRepeat()       {}
 
 type DemoPrinter struct {
-	State_ octoprint.State
+	State_ printer.State
 	Img    image.Image
 	View   int // layer of the scrubber, -1 for live
 }
 
-func (d *DemoPrinter) State() octoprint.State { return d.State_ }
-func (d *DemoPrinter) Files() []octoprint.File {
-	return []octoprint.File{{Path: "benchy.gcode", Name: "benchy.gcode"}, {Path: "case_body.gcode", Name: "case_body.gcode"}}
+func (d *DemoPrinter) State() printer.State { return d.State_ }
+func (d *DemoPrinter) Files() []printer.File {
+	return []printer.File{{Path: "benchy.gcode", Name: "benchy.gcode"}, {Path: "case_body.gcode", Name: "case_body.gcode"}}
 }
 func (d *DemoPrinter) Preview() image.Image { return d.Img }
 func (d *DemoPrinter) LoadFiles()           {}
@@ -139,5 +140,34 @@ func (a *App) OpenPrintScreen(name string) {
 		a.swap = &swapState{step: swapHeat, temp: 240}
 	case "keypad":
 		a.editTemp("Nozzle temperature", 210, 300, toolPresets, func(int) error { return nil })
+	}
+}
+
+// DemoSetup is a SetupHost with fixed networks, for the pictures of the setup screen.
+type DemoSetup struct {
+	Nets    []wifi.Network
+	Status_ wifi.Status
+}
+
+func (d *DemoSetup) Scan() error                       { return nil }
+func (d *DemoSetup) Networks() ([]wifi.Network, error) { return d.Nets, nil }
+func (d *DemoSetup) Status() (wifi.Status, error)      { return d.Status_, nil }
+func (d *DemoSetup) SetWifi(string, string) error      { return nil }
+func (d *DemoSetup) Login() (string, string)           { return "printdeck", "stamp-ocean-cider-brick" }
+func (d *DemoSetup) Done()                             {}
+
+// OpenSetupScreen shows one step of the setup screen with the networks of a DemoSetup, for the demo
+// pictures: "wifi", "password", "user", or "done".
+func (a *App) OpenSetupScreen(name string) {
+	d := a.Setup.(*DemoSetup)
+	a.setup = &setupFlow{host: "printdeck", nets: d.Nets, status: d.Status_}
+	switch name {
+	case "password":
+		a.setupPassword(d.Nets[0].SSID)
+		a.setup.kb.value = "hunter22"
+	case "done":
+		a.setup.step = setupDone
+	case "help":
+		a.setup.step, a.setup.help = setupDone, true
 	}
 }

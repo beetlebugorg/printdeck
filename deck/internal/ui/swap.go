@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"image"
 
-	"speakerdeck/internal/gfx"
+	"printdeck/internal/gfx"
 )
 
 // The filament swap, step by step: choose the material, heat, unload, insert, load and purge.

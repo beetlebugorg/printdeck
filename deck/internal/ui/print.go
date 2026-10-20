@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"speakerdeck/internal/gfx"
-	"speakerdeck/internal/octoprint"
+	"printdeck/internal/gfx"
+	"printdeck/internal/printer"
 )
 
 func duration(d time.Duration) string {
@@ -105,7 +105,7 @@ var (
 
 // drawJob is the screen of a running or paused print: a character display with the status, the model,
 // the progress, the temperatures, and the keys.
-func (a *App) drawJob(c *gfx.Canvas, st octoprint.State) {
+func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 
 	// The character display: what it does, and the move now with its speed.
@@ -137,7 +137,7 @@ func (a *App) drawJob(c *gfx.Canvas, st octoprint.State) {
 }
 
 // speedFactor is the speed in percent that the tune sheet set for this print.
-func (a *App) speedFactor(st octoprint.State) int {
+func (a *App) speedFactor(st printer.State) int {
 	if a.tuneFile == st.FilePath && a.tuneSpeed > 0 {
 		return a.tuneSpeed
 	}
@@ -145,7 +145,7 @@ func (a *App) speedFactor(st octoprint.State) int {
 }
 
 // lcdLines are the two lines of 20 characters of the character display.
-func (a *App) lcdLines(st octoprint.State) []string {
+func (a *App) lcdLines(st printer.State) []string {
 	lr := func(l, r string) string { // l at the left, r at the right, 20 characters
 		n := 20 - len([]rune(r))
 		ls := []rune(l)
@@ -224,7 +224,7 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 
 // drawScrubber is the strip under the model view: a slider through the layers, the layer, and a button to
 // go back to the layer that prints now.
-func (a *App) drawScrubber(c *gfx.Canvas, box image.Rectangle, st octoprint.State) {
+func (a *App) drawScrubber(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 	if st.Layers == 0 {
 		return
 	}

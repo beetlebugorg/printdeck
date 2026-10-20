@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"log"
 	"strings"
 	"time"
 
-	"speakerdeck/internal/gfx"
-	"speakerdeck/internal/octoprint"
-	"speakerdeck/internal/spotify"
-	"speakerdeck/internal/touch"
+	"printdeck/internal/gfx"
+	"printdeck/internal/printer"
+	"printdeck/internal/spotify"
+	"printdeck/internal/touch"
 )
 
 const (
@@ -45,8 +46,8 @@ type Music interface {
 
 // Printer is what the Print tab needs from OctoPrint.
 type Printer interface {
-	State() octoprint.State
-	Files() []octoprint.File
+	State() printer.State
+	Files() []printer.File
 	Preview() image.Image   // picture of the model that prints, or nil
 	SetViewLayer(layer int) // shows the model up to a layer; a negative layer follows the print
 	ViewLayer() int         // the layer of the scrubber, or -1 when it follows the print
@@ -116,6 +117,7 @@ type App struct {
 	Printer                 Printer
 	Vol                     Volume
 	Equalizer               Equalizer
+	Setup                   SetupHost // nil when the system has no setup screen, as in Docker
 	PreheatTool, PreheatBed int
 
 	Now func() time.Time // replaced in tests
@@ -144,6 +146,7 @@ type App struct {
 	tune    bool       // the tune sheet of a running print is open
 	swap    *swapState // the filament swap is open
 	keypad  *keypad    // number entry, over everything
+	setup   *setupFlow // the setup screen, over everything
 
 	// Settings of the control screens.
 	UnloadMM, LoadMM float64 // filament lengths of the swap
@@ -169,8 +172,19 @@ type App struct {
 
 type confirmBox struct {
 	question, yes string
+	no            string // the label of the other button; "" is "Back"
 	danger        bool
 	onYes         func()
+	onNo          func() // or nil
+}
+
+// Ask shows a question with two answers over the screen, for example when an app asks for access
+// to the printer. answer gets true for yes. It is safe to call from any goroutine.
+func (a *App) Ask(question, yes, no string, answer func(bool)) {
+	a.post(func() {
+		a.confirm = &confirmBox{question: question, yes: yes, no: no,
+			onYes: func() { answer(true) }, onNo: func() { answer(false) }}
+	})
 }
 
 func New() *App {
@@ -192,8 +206,14 @@ func (a *App) Run(ctx context.Context, events <-chan touch.Event, present func(*
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
 	for {
+		t0 := time.Now()
 		a.Draw(cv)
+		t1 := time.Now()
 		present(cv)
+		// A slow frame shows as a pause on the screen. Log it, to find where the time goes.
+		if d := time.Since(t0); d > 100*time.Millisecond {
+			log.Printf("slow frame: draw %v, present %v", t1.Sub(t0).Round(time.Millisecond), time.Since(t1).Round(time.Millisecond))
+		}
 		select {
 		case <-ctx.Done():
 			return
@@ -332,6 +352,10 @@ func (a *App) Draw(c *gfx.Canvas) {
 	}
 	a.hits = a.hits[:0]
 	c.Fill(c.Bounds(), bg)
+	if a.setup != nil {
+		a.drawSetup(c)
+		return
+	}
 	if a.tab == TabMusic {
 		a.drawMusic(c)
 	} else {
@@ -423,9 +447,19 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 	}
 	box := image.Rect(30, 260, W-30, 540)
 	panel(c, box, "CONFIRM")
-	c.Text(image.Rect(box.Min.X+20, box.Min.Y+30, box.Max.X-20, box.Min.Y+150), a.confirm.question, gfx.Face(true, 28), text, gfx.Center)
 	cf := a.confirm
-	a.button(c, image.Rect(box.Min.X+20, box.Max.Y-100, box.Min.X+(box.Dx()/2)-8, box.Max.Y-20), "Back", raised, text, func() { a.confirm = nil; a.Redraw() })
+	c.Text(image.Rect(box.Min.X+20, box.Min.Y+30, box.Max.X-20, box.Min.Y+150), cf.question, gfx.Face(true, 28), text, gfx.Center)
+	no := cf.no
+	if no == "" {
+		no = "Back"
+	}
+	a.button(c, image.Rect(box.Min.X+20, box.Max.Y-100, box.Min.X+(box.Dx()/2)-8, box.Max.Y-20), no, raised, text, func() {
+		a.confirm = nil
+		if cf.onNo != nil {
+			cf.onNo()
+		}
+		a.Redraw()
+	})
 	yes, ink := green, onAcc
 	if cf.danger {
 		yes, ink = redCap, onRed

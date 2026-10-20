@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"speakerdeck/internal/gfx"
+	"printdeck/internal/gfx"
 )
 
 // The control screen: home, move the head with a joystick, Z, extruder, fan, motors, filament, stop.
@@ -113,6 +113,9 @@ func (a *App) drawControl(c *gfx.Canvas) {
 	st := pr.State()
 	heading(c, "Control")
 	a.button(c, image.Rect(W-130, 66, W-24, 110), "Back", raised, text, func() { a.control = false })
+	if a.Setup != nil {
+		a.button(c, image.Rect(W-250, 66, W-138, 110), "Help", raised, text, a.OpenHelp)
+	}
 
 	moving := st.Connected && !st.Busy()
 	hint := "Home first after power-on."

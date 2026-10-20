@@ -5,14 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"speakerdeck/internal/gfx"
-	"speakerdeck/internal/octoprint"
-	"speakerdeck/internal/spotify"
-	"speakerdeck/internal/touch"
+	"printdeck/internal/gfx"
+	"printdeck/internal/printer"
+	"printdeck/internal/spotify"
+	"printdeck/internal/touch"
 )
 
 func TestLayerScrubber(t *testing.T) {
-	pr := &DemoPrinter{View: -1, State_: octoprint.State{Reachable: true, Text: "Printing", Connected: true, Printing: true,
+	pr := &DemoPrinter{View: -1, State_: printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true,
 		Activity: "Printing", Layer: 12, Layers: 27, Completion: 40, Tool: 210, ToolTarget: 210, HasTimeLeft: true, TimeLeft: time.Hour}}
 	a := New()
 	a.Music = &DemoMusic{State_: spotify.State{Authorized: true}}
@@ -53,7 +53,7 @@ func TestLayerScrubber(t *testing.T) {
 
 func TestLCDLines(t *testing.T) {
 	a := New()
-	st := octoprint.State{Activity: "Printing", Completion: 41.4, HasTimeLeft: true, TimeLeft: 30 * time.Minute,
+	st := printer.State{Activity: "Printing", Completion: 41.4, HasTimeLeft: true, TimeLeft: 30 * time.Minute,
 		HasNow: true, NowKind: "Outer wall", NowSpeed: 60}
 	lines := a.lcdLines(st)
 	want := []string{"PRINTING     41% 0:30", "OUTER WALL    60MM/S"}
