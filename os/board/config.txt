@@ -9,6 +9,9 @@ disable_splash=1
 dtoverlay=vc4-kms-v3d
 max_framebuffers=2
 disable_fw_kms_setup=1
+# The firmware does not drive HDMI. Its framebuffer is 640x480 and the display is 800x480, so the
+# display changes mode when vc4 starts. Without the firmware output, vc4 sets the only mode.
+hdmi_ignore_hotplug=1
 
 # The HiFiBerry Amp2, and no onboard audio.
 dtparam=i2c_arm=on
