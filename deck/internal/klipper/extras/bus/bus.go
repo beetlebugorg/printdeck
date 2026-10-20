@@ -202,3 +202,52 @@ func MCUSPIFromConfig(config *configfile.Wrapper, mode int, pinOption string, de
 	// Create MCU_SPI object
 	return NewMCUSPI(m, bus, pin, mode, speed, swPins, csActiveHigh)
 }
+
+// MCUBusDigitalOut is a digital output pin that changes on a command queue (MCU_bus_digital_out).
+type MCUBusDigitalOut struct {
+	mcu          *mcu.MCU
+	oid          int
+	cmdQueue     *serialqueue.CommandQueue
+	updatePinCmd *mcu.CommandWrapper
+}
+
+// NewMCUBusDigitalOut makes the pin. A nil cmdQueue is a new queue.
+func NewMCUBusDigitalOut(m *mcu.MCU, pinDesc string, cmdQueue *serialqueue.CommandQueue, value int) *MCUBusDigitalOut {
+	d := &MCUBusDigitalOut{mcu: m, oid: m.CreateOID()}
+	ppins := m.Printer().LookupObject("pins").(*pins.Pins)
+	params := ppins.LookupPin(pinDesc, false, false, "")
+	if params.Chip != pins.Chip(m) {
+		pinError("Pin %s must be on mcu %s", pinDesc, m.Name())
+	}
+	m.AddConfigCmd(fmt.Sprintf("config_digital_out oid=%d pin=%s value=%d default_value=%d max_duration=%d",
+		d.oid, params.Pin, value, value, 0), false, false)
+	m.RegisterConfigCallback(d.buildConfig)
+	if cmdQueue == nil {
+		cmdQueue = m.AllocCommandQueue()
+	}
+	d.cmdQueue = cmdQueue
+	return d
+}
+
+func (d *MCUBusDigitalOut) OID() int                                { return d.oid }
+func (d *MCUBusDigitalOut) MCU() *mcu.MCU                           { return d.mcu }
+func (d *MCUBusDigitalOut) CommandQueue() *serialqueue.CommandQueue { return d.cmdQueue }
+
+func (d *MCUBusDigitalOut) buildConfig() {
+	d.updatePinCmd = d.mcu.LookupCommand("update_digital_out oid=%c value=%c", d.cmdQueue)
+}
+
+// UpdateDigitalOut sets the pin. Before the config, it is a config command, with the "%c" format
+// of Klipper's code.
+func (d *MCUBusDigitalOut) UpdateDigitalOut(value bool, minclock, reqclock int64) {
+	v := 0
+	if value {
+		v = 1
+	}
+	if d.updatePinCmd == nil {
+		// Send setup message via mcu initialization
+		d.mcu.AddConfigCmd(fmt.Sprintf("update_digital_out oid=%c value=%c", rune(d.oid), rune(v)), false, false)
+		return
+	}
+	d.updatePinCmd.Send([]any{d.oid, v}, minclock, reqclock)
+}
