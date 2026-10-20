@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -28,6 +29,8 @@ type Board struct {
 
 	mu       sync.Mutex
 	handlers map[string]func(params map[string]msgproto.Value) []string
+	// configCRC is the CRC of finalize_config, or "" before it.
+	configCRC string
 	received []string
 	nextSeq  byte
 }
@@ -56,7 +59,10 @@ func New(dictionary []byte) (*Board, error) {
 		return []string{fmt.Sprintf("uptime high=%d clock=%d", c>>32, uint32(c))}
 	})
 	b.Handle("get_config", func(map[string]msgproto.Value) []string {
-		return []string{"config is_config=0 crc=0 is_shutdown=0 move_count=0"}
+		if b.configCRC == "" {
+			return []string{"config is_config=0 crc=0 is_shutdown=0 move_count=0"}
+		}
+		return []string{"config is_config=1 crc=" + b.configCRC + " is_shutdown=0 move_count=500"}
 	})
 	return b, nil
 }
@@ -130,6 +136,10 @@ func (b *Board) handleBlock(block []byte) ([]byte, error) {
 	var out []byte
 	for _, text := range msgs[1:] {
 		b.received = append(b.received, text)
+		// After finalize_config, the board reports its config, as the firmware does.
+		if crc, ok := strings.CutPrefix(text, "finalize_config crc="); ok {
+			b.configCRC = crc
+		}
 		var resps [][]byte
 		if name := firstWord(text); name == "identify" {
 			resp, err := b.identifyResponse(block)

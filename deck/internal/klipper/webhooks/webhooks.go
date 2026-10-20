@@ -2,9 +2,8 @@
 // G-code endpoints, and the status queries and subscriptions of the printer objects.
 //
 // Ported to Go from klippy/webhooks.py of Klipper (https://github.com/Klipper3d/klipper), commit
-// 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f. The Unix socket server of webhooks.py
-// (ServerSocket, ClientConnection) is not ported: the deck calls the endpoints in the same
-// process, with Call and a ClientConn of its own.
+// 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f. The Unix socket server (ServerSocket,
+// ClientConnection) is in server.go.
 //
 //	Copyright (C) 2020 Eric Callahan <arksine.code@gmail.com>
 //	Go port: Copyright (C) 2026  the Printdeck authors
@@ -170,6 +169,7 @@ type WebHooks struct {
 	endpointOrder []string
 	remoteMethods map[string]map[ClientConn]map[string]any
 	muxEndpoints  map[string]*mux
+	sconn         *ServerSocket
 }
 
 func newWebHooks(printer *host.Printer) *WebHooks {
@@ -182,8 +182,15 @@ func newWebHooks(printer *host.Printer) *WebHooks {
 		printer.InvokeShutdown("Shutdown due to webhooks request", nil)
 	})
 	w.RegisterEndpoint("register_remote_method", w.handleRPCRegistration)
+	w.sconn = newServerSocket(w, printer)
 	return w
 }
+
+// Connection is the API server.
+func (w *WebHooks) Connection() *ServerSocket { return w.sconn }
+
+// Stats closes the clients that do not read their responses.
+func (w *WebHooks) Stats(eventtime float64) (bool, string) { return w.sconn.Stats(eventtime) }
 
 func init() {
 	host.EarlyObjects = append(host.EarlyObjects, func(p *host.Printer) {
