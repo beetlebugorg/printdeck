@@ -10,6 +10,7 @@
 //	printdeck shot music|print FILE.png  write a picture of a tab, with live data
 //	printdeck splash    show the start screen at boot (started by printdeck-init)
 //	printdeck password  print a new random password of four words
+//	printdeck board     find the printer board, and print its MCU and firmware version
 //	printdeck klipper-probe DEVICE [BAUD]  connect to a Klipper board and print what it reports
 //	printdeck klippy [options] CONFIG  run the Klipper host (the Go port of klippy.py)
 package main
@@ -70,6 +71,9 @@ func main() {
 			return
 		case "klipper-probe":
 			klipperProbe(os.Args[2:])
+			return
+		case "board":
+			boardList()
 			return
 		case "password":
 			if err := password(); err != nil {
