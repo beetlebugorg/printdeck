@@ -25,6 +25,9 @@ type Error struct{ Msg string }
 
 func (e *Error) Error() string { return e.Msg }
 
+// ErrorKind tells the printer core that this is a config error.
+func (e *Error) ErrorKind() string { return "config" }
+
 func raise(format string, args ...any) { panic(&Error{fmt.Sprintf(format, args...)}) }
 
 // Command translation

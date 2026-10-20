@@ -24,12 +24,17 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"printdeck/internal/klipper/pyfmt"
 )
 
 // Error is a config error, for example a missing option or a value out of range.
 type Error struct{ Msg string }
 
 func (e *Error) Error() string { return e.Msg }
+
+// ErrorKind tells the printer core that this is a config error.
+func (e *Error) ErrorKind() string { return "config" }
 
 func errorf(format string, args ...any) *Error { return &Error{fmt.Sprintf(format, args...)} }
 
@@ -120,58 +125,41 @@ func (c *Wrapper) get(parse func(string) (any, error), option string, o getOpts)
 	}
 	var num float64
 	isNum := false
+	limit := pyfmt.Float
 	switch x := v.(type) {
 	case int:
 		num, isNum = float64(x), true
+		limit = func(f float64) string { return strconv.FormatInt(int64(f), 10) }
 	case float64:
 		num, isNum = x, true
 	}
 	if isNum {
 		if o.min != nil && num < *o.min {
-			Raise("Option '%s' in section '%s' must have minimum of %s", option, c.section, pyNum(*o.min))
+			Raise("Option '%s' in section '%s' must have minimum of %s", option, c.section, limit(*o.min))
 		}
 		if o.max != nil && num > *o.max {
-			Raise("Option '%s' in section '%s' must have maximum of %s", option, c.section, pyNum(*o.max))
+			Raise("Option '%s' in section '%s' must have maximum of %s", option, c.section, limit(*o.max))
 		}
 		if o.above != nil && num <= *o.above {
-			Raise("Option '%s' in section '%s' must be above %s", option, c.section, pyNum(*o.above))
+			Raise("Option '%s' in section '%s' must be above %s", option, c.section, limit(*o.above))
 		}
 		if o.below != nil && num >= *o.below {
-			Raise("Option '%s' in section '%s' must be below %s", option, c.section, pyNum(*o.below))
+			Raise("Option '%s' in section '%s' must be below %s", option, c.section, limit(*o.below))
 		}
 	}
 	return v
-}
-
-// pyNum writes a limit as Python's str() of a float or an int.
-func pyNum(f float64) string {
-	if f == float64(int64(f)) {
-		return strconv.FormatInt(int64(f), 10)
-	}
-	return strconv.FormatFloat(f, 'g', -1, 64)
 }
 
 func parseStr(s string) (any, error) { return s, nil }
 
 // parseInt reads an integer as Python's int().
 func parseInt(s string) (any, error) {
-	s = strings.ReplaceAll(strings.TrimSpace(s), "_", "")
-	n, err := strconv.ParseInt(s, 10, 64)
+	n, err := pyfmt.ParseInt(s)
 	return int(n), err
 }
 
 // parseFloat reads a number as Python's float().
-func parseFloat(s string) (any, error) {
-	s = strings.ReplaceAll(strings.TrimSpace(s), "_", "")
-	switch strings.ToLower(strings.TrimLeft(s, "+-")) {
-	case "inf", "infinity", "nan":
-	default:
-		if strings.ContainsAny(s, "xXpP") {
-			return nil, fmt.Errorf("not a float: %q", s)
-		}
-	}
-	return strconv.ParseFloat(s, 64)
-}
+func parseFloat(s string) (any, error) { return pyfmt.ParseFloat(s) }
 
 var booleanStates = map[string]bool{"1": true, "yes": true, "true": true, "on": true,
 	"0": false, "no": false, "false": false, "off": false}
@@ -763,3 +751,10 @@ func (pc *PrinterConfig) Status() map[string]any {
 
 // Autosave is the config of the SAVE_CONFIG block.
 func (pc *PrinterConfig) Autosave() *FileConfig { return pc.autosave }
+
+// ReadOpts returns the values of getter options, for the getters of other packages (the G-code
+// parameters).
+func ReadOpts(opts []Opt) (def any, hasDef bool, min, max, above, below *float64) {
+	o := options(opts)
+	return o.def, o.hasDef, o.min, o.max, o.above, o.below
+}
