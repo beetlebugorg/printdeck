@@ -609,6 +609,10 @@ type PrinterConfig struct {
 	deprecated      map[string]bool
 	warnings        []map[string]any
 	autosave        *FileConfig
+	// The SAVE_CONFIG changes that are not saved yet: the options by section, nil for a removed
+	// section.
+	statusSavePending map[string]map[string]string
+	saveConfigPending bool
 }
 
 func NewPrinterConfig(printer any) *PrinterConfig {
@@ -750,9 +754,18 @@ func (pc *PrinterConfig) Deprecate(section, option string, value *string, msg st
 func (pc *PrinterConfig) Warnings() []map[string]any { return pc.warnings }
 
 // Status returns the status of the config, for the API (get_status).
-func (pc *PrinterConfig) Status() map[string]any {
+func (pc *PrinterConfig) Status(eventtime float64) map[string]any {
+	pending := map[string]any{}
+	for s, opts := range pc.statusSavePending {
+		if opts == nil {
+			pending[s] = nil
+		} else {
+			pending[s] = opts
+		}
+	}
 	return map[string]any{"config": pc.statusRawConfig, "warnings": pc.warnings,
-		"settings": pc.statusSettings, "save_config_pending": false}
+		"settings": pc.statusSettings, "save_config_pending": pc.saveConfigPending,
+		"save_config_pending_items": pending}
 }
 
 // Autosave is the config of the SAVE_CONFIG block.
