@@ -105,11 +105,37 @@ func encodeVLQ(out []byte, v int64) []byte {
 }
 
 func (t ptInt) encode(out []byte, v Value) ([]byte, error) {
-	n, ok := v.(int64)
+	n, ok := toInt64(v)
 	if !ok {
 		return out, errorf("integer parameter has a value of type %T", v)
 	}
 	return encodeVLQ(out, n), nil
+}
+
+// toInt64 converts the integer types (and a bool, as in Python) to int64.
+func toInt64(v Value) (int64, bool) {
+	switch x := v.(type) {
+	case int64:
+		return x, true
+	case int:
+		return int64(x), true
+	case int32:
+		return int64(x), true
+	case uint32:
+		return int64(x), true
+	case uint64:
+		return int64(x), true
+	case uint8:
+		return int64(x), true
+	case uint16:
+		return int64(x), true
+	case bool:
+		if x {
+			return 1, true
+		}
+		return 0, true
+	}
+	return 0, false
 }
 
 func parseVLQ(s []byte, pos int, signed bool) (int64, int, error) {
@@ -899,3 +925,55 @@ func (p *Parser) ConstantInt(name string) (int64, error) {
 	}
 	return n, nil
 }
+
+// CreateDummyResponse makes a response with the given parameters and zero in the others, for
+// the queries of the batch mode (create_dummy_response).
+func (p *Parser) CreateDummyResponse(name string, params map[string]Value) (map[string]Value, error) {
+	mp := p.messagesByNam[name]
+	if mp == nil {
+		return nil, p.errorf("Unknown response: %s", name)
+	}
+	args := map[string]Value{}
+	for k, v := range params {
+		args[k] = v
+	}
+	for _, prm := range mp.params {
+		if _, ok := args[prm.name]; !ok {
+			var tval Value = int64(0)
+			if prm.pt.isDynamicString() {
+				tval = []byte{}
+			}
+			args[prm.name] = tval
+		}
+	}
+	msg, err := mp.EncodeByName(args)
+	if err != nil {
+		if _, ok := err.(*Error); ok {
+			return nil, err
+		}
+		return nil, p.errorf("Unable to encode: %s", name)
+	}
+	res, _, err := mp.parse(msg, 0)
+	if err != nil {
+		return nil, err
+	}
+	res["#name"] = name
+	return res, nil
+}
+
+// Enumerations returns the enumerations of the dictionary: the value of each name, by
+// enumeration name.
+func (p *Parser) Enumerations() map[string]map[string]int64 {
+	out := make(map[string]map[string]int64, len(p.enumerations))
+	for name, e := range p.enumerations {
+		m := make(map[string]int64, len(e.enums))
+		for k, v := range e.enums {
+			m[k] = v
+		}
+		out[name] = m
+	}
+	return out
+}
+
+// Kconfig returns the build config of the firmware.
+func (p *Parser) Kconfig() any { return p.kconfig }
