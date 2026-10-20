@@ -1,0 +1,41 @@
+#!/bin/sh
+# Sets the Wi-Fi network.
+#
+#   printdeck-wifi SSID PASSWORD [COUNTRY]
+#
+# An empty PASSWORD is for an open network. COUNTRY is the two-letter country code (default US).
+set -eu
+
+[ $# -ge 1 ] && [ -n "$1" ] || { echo "Usage: printdeck-wifi SSID PASSWORD [COUNTRY]" >&2; exit 2; }
+SSID=$1
+PASS=${2:-}
+COUNTRY=${3:-US}
+CONF=/etc/wpa_supplicant/wpa_supplicant-wlan0.conf
+
+# The SSID in hex, so that any character in it is safe.
+HEX=$(printf '%s' "$SSID" | od -An -tx1 | tr -d ' \n')
+
+if [ -n "$PASS" ]; then
+  # wpa_passphrase turns the password into the 256-bit key, so the file does not hold the password.
+  PSK=$(wpa_passphrase "$SSID" "$PASS" | sed -n 's/^[[:space:]]*psk=//p') \
+    || { echo "The password must have 8 to 63 characters." >&2; exit 1; }
+  SECURITY="psk=$PSK"
+else
+  SECURITY="key_mgmt=NONE"
+fi
+
+umask 077
+cat > "$CONF.new" <<EOF
+ctrl_interface=DIR=/run/wpa_supplicant
+update_config=1
+country=$COUNTRY
+
+network={
+	ssid=$HEX
+	$SECURITY
+}
+EOF
+mv "$CONF.new" "$CONF"
+
+# --no-block: printdeck-settings calls this script before wpa_supplicant starts.
+systemctl --no-block restart wpa_supplicant@wlan0.service

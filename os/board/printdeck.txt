@@ -1,0 +1,21 @@
+# Printdeck settings
+#
+# Edit this file on any computer before the first boot, or set the Wi-Fi on the touch screen.
+# The Pi reads this file at each boot. Then it clears wifi_password.
+
+# The Wi-Fi network. wifi_country is the two-letter country code.
+wifi_ssid=
+wifi_password=
+wifi_country=US
+
+# The login is the user "printdeck" with a random password. The touch screen shows the password
+# (Print > Control > Help). A public SSH key here lets you log in with the key, on one line.
+ssh_key=
+
+# The client ID of your Spotify app, from the Spotify developer dashboard. Add the redirect URI
+# https://printdeck.local:8888/callback to the app. Then the touch screen shows a QR code to link
+# Spotify with your phone.
+spotify_client_id=
+
+hostname=printdeck
+timezone=America/New_York

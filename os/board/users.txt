@@ -1,0 +1,3 @@
+printer -1 printer -1 * - - dialout,tty Klipper and OctoPrint
+spotify -1 spotify -1 * - - audio go-librespot
+camilla -1 camilla -1 * - - audio CamillaDSP

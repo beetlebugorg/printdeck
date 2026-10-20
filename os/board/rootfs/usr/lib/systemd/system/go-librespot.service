@@ -1,0 +1,19 @@
+[Unit]
+Description=Spotify Connect player (go-librespot)
+After=network-online.target sound.target camilladsp.service
+Wants=network-online.target
+
+[Service]
+User=spotify
+Group=spotify
+SupplementaryGroups=audio
+StateDirectory=go-librespot
+# go-librespot stops when $HOME is not set.
+Environment=HOME=/var/lib/go-librespot
+ExecStartPre=/bin/ln -sf /usr/share/printdeck/go-librespot.yml /var/lib/go-librespot/config.yml
+ExecStart=/usr/bin/go-librespot --config_dir /var/lib/go-librespot
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

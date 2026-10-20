@@ -1,0 +1,4 @@
+source "$BR2_EXTERNAL_PRINTDECK_PATH/package/printdeck-deck/Config.in"
+source "$BR2_EXTERNAL_PRINTDECK_PATH/package/go-librespot/Config.in"
+source "$BR2_EXTERNAL_PRINTDECK_PATH/package/camilladsp/Config.in"
+source "$BR2_EXTERNAL_PRINTDECK_PATH/package/klipper/Config.in"

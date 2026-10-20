@@ -1,0 +1,44 @@
+#!/bin/sh
+# Makes the user for SSH and sudo, or changes the password and the SSH key of that user.
+#
+#   printdeck-user NAME PASSWORD [SSH_KEY]
+#
+# An empty PASSWORD keeps the current password. The user is in the wheel group, so sudo works.
+set -eu
+
+[ $# -ge 1 ] || { echo "Usage: printdeck-user NAME PASSWORD [SSH_KEY]" >&2; exit 2; }
+NAME=$1
+PASS=${2:-}
+KEY=${3:-}
+
+case "$NAME" in
+  "" | *[!a-z0-9_-]* | [0-9-]*)
+    echo "The user name must start with a letter and have only a-z, 0-9, _ and -." >&2
+    exit 1 ;;
+  root | printer | spotify | camilla)
+    echo "The user name $NAME is for the system." >&2
+    exit 1 ;;
+esac
+
+if ! id "$NAME" > /dev/null 2>&1; then
+  adduser -D -s /bin/sh "$NAME"
+  addgroup "$NAME" wheel
+fi
+
+if [ -n "$PASS" ]; then
+  HASH=$(printf '%s' "$PASS" | mkpasswd -m sha512 -P 0)
+  awk -F: -v OFS=: -v n="$NAME" -v h="$HASH" '$1 == n { $2 = h } { print }' /etc/shadow \
+    > /etc/shadow.new
+  chmod 0600 /etc/shadow.new
+  mv /etc/shadow.new /etc/shadow
+fi
+
+if [ -n "$KEY" ]; then
+  HOME_DIR=$(awk -F: -v n="$NAME" '$1 == n { print $6 }' /etc/passwd)
+  mkdir -p "$HOME_DIR/.ssh"
+  grep -qxF "$KEY" "$HOME_DIR/.ssh/authorized_keys" 2> /dev/null \
+    || echo "$KEY" >> "$HOME_DIR/.ssh/authorized_keys"
+  chmod 0700 "$HOME_DIR/.ssh"
+  chmod 0600 "$HOME_DIR/.ssh/authorized_keys"
+  chown -R "$NAME:$NAME" "$HOME_DIR/.ssh"
+fi

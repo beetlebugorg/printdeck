@@ -1,0 +1,76 @@
+#!/bin/sh
+# The first program at boot (init= on the kernel command line). The root file system is read-only.
+# This script mounts the data partition, puts writable layers from it over /etc, /var, /home and
+# /root, and then starts systemd.
+PATH=/usr/bin
+
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev 2>/dev/null
+
+# Messages go to the kernel log, so they are in the journal but not on the start screen.
+say() {
+  echo "printdeck-init: $1" > /dev/kmsg
+}
+
+# Print the device name of the partition with this GPT partition name.
+partition() {
+  for u in /sys/class/block/*/uevent; do
+    if grep -qx "PARTNAME=$1" "$u"; then
+      sed -n 's/^DEVNAME=//p' "$u"
+      return 0
+    fi
+  done
+  return 1
+}
+
+rescue() {
+  say "$1. Starting a shell."
+  echo "printdeck-init: $1. Starting a shell." > /dev/console
+  # Keep the message and the kernel log on the config partition, where a computer can read them.
+  if CONFIG=$(partition printdeck-config) && mount -t vfat "/dev/$CONFIG" /boot/config; then
+    { echo "printdeck-init: $1"; dmesg; } > /boot/config/printdeck-boot.log
+    umount /boot/config
+  fi
+  exec /bin/sh < /dev/console > /dev/console 2>&1
+}
+
+say "starting"
+DATA=$(partition printdeck-data) || rescue "No printdeck-data partition"
+DISK=$(basename "$(dirname "$(readlink -f "/sys/class/block/$DATA")")")
+NUM=$(cat "/sys/class/block/$DATA/partition")
+
+# At the first boot, grow the data partition to the end of the disk. The sizes are in
+# 512-byte sectors. Grow only when more than 64 MiB is free after the partition.
+# The partition is empty at the first boot, so make a new file system on it. resize2fs writes all
+# the inode tables of the large disk at once, which takes minutes over USB. mke2fs with lazy
+# inode tables takes seconds, and the kernel fills them in later.
+START=$(cat "/sys/class/block/$DATA/start")
+SIZE=$(cat "/sys/class/block/$DATA/size")
+END=$(cat "/sys/class/block/$DISK/size")
+if [ $((END - START - SIZE)) -gt 131072 ]; then
+  say "making the data partition fill the disk"
+  sfdisk --quiet --relocate gpt-bak-std "/dev/$DISK"
+  echo ", +" | sfdisk --quiet --no-reread --no-tell-kernel -N "$NUM" "/dev/$DISK"
+  partx -u -n "$NUM" "/dev/$DISK"
+  mke2fs -q -F -t ext4 -L data -E lazy_itable_init=1,lazy_journal_init=1 "/dev/$DATA"
+fi
+
+e2fsck -p "/dev/$DATA" > /dev/null
+[ $? -lt 4 ] || rescue "The data partition has errors that e2fsck cannot repair"
+mount -t ext4 -o noatime "/dev/$DATA" /data || rescue "Cannot mount the data partition"
+
+for d in etc var home root; do
+  mkdir -p "/data/$d" "/data/.work/$d"
+  mount -t overlay overlay -o "lowerdir=/$d,upperdir=/data/$d,workdir=/data/.work/$d" "/$d" \
+    || rescue "Cannot put the writable layer over /$d"
+done
+
+# With "quiet" on the kernel command line, show the start screen until the deck starts. A finger on the
+# screen at boot shows the boot messages instead.
+if grep -qw quiet /proc/cmdline; then
+  # shellcheck source=/dev/null
+  (set -a; . /etc/printdeck/deck.env; exec printdeck splash) < /dev/null > /dev/null 2>&1 &
+fi
+
+exec /usr/lib/systemd/systemd

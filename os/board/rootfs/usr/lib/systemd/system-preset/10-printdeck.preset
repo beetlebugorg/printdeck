@@ -1,0 +1,19 @@
+# The services of Printdeck. Buildroot runs "systemctl preset-all" when it makes the root file
+# system, and the first line that matches a unit is the one that applies.
+enable wpa_supplicant@.service wlan0
+enable dropbear.service
+enable klipper.service
+enable printdeck-deck.service
+enable go-librespot.service
+enable camilladsp.service
+enable printdeck-settings.service
+enable printdeck-credentials.service
+enable printdeck-modules.service
+enable printdeck-commit.service
+
+# wpa_supplicant@wlan0 controls the Wi-Fi. The D-Bus service is not necessary.
+disable wpa_supplicant.service
+# The touch screen uses tty1.
+disable getty@.service
+# The services do not wait for the network.
+disable systemd-networkd-wait-online.service

@@ -1,0 +1,8 @@
+config BR2_PACKAGE_PRINTDECK_DECK
+	bool "printdeck-deck"
+	depends on BR2_PACKAGE_HOST_GO_TARGET_ARCH_SUPPORTS
+	select BR2_PACKAGE_HOST_GO
+	select BR2_PACKAGE_ALSA_UTILS
+	select BR2_PACKAGE_ALSA_UTILS_AMIXER
+	help
+	  The full screen UI of Printdeck, from deck/ in this repo.

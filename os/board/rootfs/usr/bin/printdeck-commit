@@ -1,0 +1,32 @@
+#!/bin/sh
+# Runs at each boot. After a tryboot into a new slot (see printdeck-update), it waits for the
+# services. If they start, it makes the new slot the default. If they do not start, it restarts,
+# and the Pi starts the old slot again.
+set -eu
+
+TRYBOOT=$(od -An -tx1 /proc/device-tree/chosen/bootloader/tryboot 2> /dev/null | tr -d ' \n')
+[ "$TRYBOOT" = "00000001" ] || exit 0
+
+SLOT=$(sed -n 's/.*printdeck\.slot=\([ab]\).*/\1/p' /proc/cmdline)
+case "$SLOT" in
+  a) DEFAULT=2 OTHER=3 ;;
+  b) DEFAULT=3 OTHER=2 ;;
+  *) exit 1 ;;
+esac
+
+for _ in $(seq 60); do
+  if systemctl is-active --quiet klipper.service printdeck-deck.service; then
+    mount /boot/config
+    printf '[all]\ntryboot_a_b=1\nboot_partition=%s\n[tryboot]\nboot_partition=%s\n' \
+      "$DEFAULT" "$OTHER" > /boot/config/autoboot.txt.new
+    mv /boot/config/autoboot.txt.new /boot/config/autoboot.txt
+    sync
+    umount /boot/config
+    echo "Slot $SLOT is now the default."
+    exit 0
+  fi
+  sleep 2
+done
+
+echo "The services did not start in slot $SLOT. Restarting into the old slot." >&2
+systemctl reboot
