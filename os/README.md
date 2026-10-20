@@ -219,6 +219,11 @@ The image keeps only what Printdeck uses:
   (`board/linux-modules.txt`). The SSD, the touch screen and the file systems are built into the
   kernel. The display driver (`vc4`) is built in too, so that the start screen has the full
   display from the first frame.
+- The kernel shows the start screen when the display starts (`fullscreen_logo`), from
+  `board/firmware/printdeck-logo.tga`. The deck makes this file from its start screen: after a
+  change to the start screen, run `go test ./internal/ui -run SplashLogo -update-logo` in `deck`,
+  then `os/build.sh linux-rebuild`. `board/linux-patches` has a fix for the logo code of the
+  kernel.
 - The kernel modules are not compressed, because Buildroot's `depmod` cannot read compressed
   modules, and EROFS compresses the root file system already.
 

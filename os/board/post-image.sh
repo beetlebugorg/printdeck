@@ -21,13 +21,15 @@ done
 
 # The 7" display is 800x480. Set the mode, because the EDID of the display can select a smaller one.
 # "quiet" starts the start screen (see printdeck-init), and it and the other options keep the boot
-# messages, the cursor and the Raspberry Pi logo off the display. A finger on the screen at boot
-# shows the messages. fbcon=rotate:3 turns that text upright on the portrait display.
+# messages and the cursor off the display. A finger on the screen at boot shows the messages.
+# fbcon=rotate:3 turns that text upright on the portrait display. fullscreen_logo shows the start
+# screen in the kernel, from the start of vc4 (board/firmware/printdeck-logo.tga).
 for slot in a b; do
   echo "root=PARTLABEL=printdeck-root-$slot rootfstype=erofs ro rootwait" \
     "init=/usr/bin/printdeck-init printdeck.slot=$slot" \
     "video=HDMI-A-1:800x480@60 video=HDMI-A-2:800x480@60 fbcon=rotate:3" \
-    "console=ttyAMA10,115200 console=tty1 quiet loglevel=3 vt.global_cursor_default=0 logo.nologo" \
+    "console=ttyAMA10,115200 console=tty1 quiet loglevel=3 vt.global_cursor_default=0" \
+    "fullscreen_logo=1 fullscreen_logo_name=printdeck-logo.tga" \
     > "$BINARIES_DIR/cmdline-$slot.txt"
 done
 cp "$BOARD/autoboot.txt" "$BOARD/printdeck.txt" "$BINARIES_DIR/"

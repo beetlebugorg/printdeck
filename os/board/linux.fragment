@@ -9,6 +9,11 @@ CONFIG_USB_UAS=y
 CONFIG_BLK_DEV_SD=y
 # The deck draws on /dev/fb0.
 CONFIG_DRM_FBDEV_EMULATION=y
+# The start screen, which the console shows when vc4 starts (fullscreen_logo in cmdline.txt). The
+# kernel holds the file, because the root file system is not mounted yet. external.mk copies it
+# from board/firmware into the kernel folder.
+CONFIG_EXTRA_FIRMWARE="printdeck-logo.tga"
+CONFIG_EXTRA_FIRMWARE_DIR="printdeck-firmware"
 # depmod reads only uncompressed modules here, so do not compress them. The EROFS root file system
 # is compressed already.
 # CONFIG_MODULE_COMPRESS is not set

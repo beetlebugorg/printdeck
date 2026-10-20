@@ -82,7 +82,9 @@ func openSplash(cfg config.Config) (*fb.FB, string) {
 		}
 		if screen, err := fb.Open(cfg.Framebuffer, cfg.Rotate); err == nil {
 			c := gfx.New(ui.W, ui.H)
-			ui.DrawSplash(c, osVersion(), splashNight(cfg))
+			// The night palette, as the kernel logo (ui.SplashLogo), so that only the hint and
+			// the version appear.
+			ui.DrawSplash(c, osVersion(), true)
 			screen.Present(c)
 			return screen, name
 		}
@@ -111,19 +113,6 @@ func diagnostics(screen *fb.FB) {
 	}
 	// SIGRTMIN+20 turns on the status lines of systemd. SIGRTMIN is 34 in glibc, which systemd uses.
 	syscall.Kill(1, syscall.Signal(34+20))
-}
-
-// splashNight is true when the deck would start in the night palette.
-func splashNight(cfg config.Config) bool {
-	b, _ := os.ReadFile(filepath.Join(cfg.StateDir, "theme"))
-	switch strings.TrimSpace(string(b)) {
-	case "day":
-		return false
-	case "night":
-		return true
-	}
-	h := time.Now().Hour()
-	return h >= cfg.NightFrom || h < cfg.NightTo
 }
 
 // osVersion is PRINTDECK_VERSION from os-release, or empty.

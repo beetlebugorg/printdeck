@@ -1,0 +1,45 @@
+From: Jeremy Collins <jeremy.collins@beetlebug.org>
+Subject: [PATCH] fbdev: fb_logo: free the full-screen logo after the draw
+
+fb_set_logo_from_file frees the pixels of the logo before it returns,
+and fb_show_logo_line then draws the freed memory. Keep the pixels until
+fb_show_logo_line has drawn them, and free them then. If the file does
+not load, draw no logo.
+
+---
+--- a/drivers/video/fbdev/core/fb_logo.c
++++ b/drivers/video/fbdev/core/fb_logo.c
+@@ -473,7 +473,12 @@
+ 	if (image->width < info->var.xres)
+ 		image->dx = (info->var.xres - image->width) / 2;
+ 
++	/* fb_show_logo_line draws image->data, and frees it after the draw. */
++	release_firmware(fw);
++	return;
++
+ cleanup:
++	image->data = NULL;
+ 	kfree(read_logo);
+ 	release_firmware(fw);
+ }
+@@ -493,8 +498,11 @@
+ 		return 0;
+ 
+ 	if (fullscreen_logo_enabled) {
++		image.data = NULL;
+ 		fb_set_logo_from_file(info, fullscreen_logo_path,
+ 			&image, palette);
++		if (image.data == NULL)
++			return 0;
+ 	} else {
+ 		image.depth = 8;
+ 		image.data = logo->data;
+@@ -577,6 +585,8 @@
+ 
+ 	fb_do_show_logo(info, &image, rotate, n);
+ 
++	if (fullscreen_logo_enabled)
++		kfree(image.data);
+ 	kfree(palette);
+ 	if (saved_pseudo_palette != NULL)
+ 		info->pseudo_palette = saved_pseudo_palette;
