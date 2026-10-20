@@ -6,8 +6,12 @@ User=printer
 Group=printer
 SupplementaryGroups=dialout tty
 StateDirectory=klipper klipper/config klipper/logs klipper/gcodes
+# The deck (in the group printer) saves the uploads in gcodes and uses the API socket.
+StateDirectoryMode=0775
 RuntimeDirectory=klipper
+RuntimeDirectoryMode=0750
 RuntimeDirectoryPreserve=yes
+UMask=0002
 ExecStartPre=/bin/sh -c '[ -f /var/lib/klipper/config/printer.cfg ] || printf "# Put the printer configuration above this line.\\n[include /usr/share/printdeck/klipper/printdeck.cfg]\\n" > /var/lib/klipper/config/printer.cfg'
 ExecStart=/usr/bin/printdeck klippy /var/lib/klipper/config/printer.cfg -l /var/lib/klipper/logs/klippy.log -a /run/klipper/klippy.sock
 Restart=always

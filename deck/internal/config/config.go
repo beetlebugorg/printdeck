@@ -27,7 +27,12 @@ type Config struct {
 	OctoPrintKey string
 	ModelDir     string // folder with STL files for the preview
 
-	AlsaCard           string
+	AlsaCard string
+	// Speaker runs the Spotify Connect speaker (go-librespot) in this program, on SpeakerDevice,
+	// with its state in SpotifyDir.
+	Speaker            bool
+	SpeakerDevice      string
+	SpotifyDir         string
 	MaxVolume          int
 	FloorDB, CeilDB    float64 // the decibels at 0% and 100% of the volume
 	PreheatTool        int
@@ -41,7 +46,7 @@ type Config struct {
 }
 
 func Load() Config {
-	return Config{
+	c := Config{
 		Framebuffer:     str("FRAMEBUFFER", "/dev/fb0"),
 		Rotate:          num("DISPLAY_ROTATE", 90),
 		TouchInvertX:    num("TOUCH_INVERT_X", 0) == 1,
@@ -61,6 +66,7 @@ func Load() Config {
 		OctoPrintKey:    str("OCTOPRINT_API_KEY", ""),
 		ModelDir:        str("MODEL_DIR", "/var/lib/printdeck/models"),
 		AlsaCard:        str("ALSA_CARD", "sndrpihifiberry"),
+		Speaker:         str("SPOTIFY_SPEAKER", "1") == "1",
 		MaxVolume:       num("MAX_VOLUME", 100),
 		FloorDB:         float64(num("VOLUME_FLOOR_DB", -40)),
 		CeilDB:          float64(num("VOLUME_CEIL_DB", -10)),
@@ -72,6 +78,9 @@ func Load() Config {
 		NightTo:         num("NIGHT_TO", 7),
 		PreheatBed:      num("PREHEAT_BED", 60),
 	}
+	c.SpeakerDevice = str("SPEAKER_DEVICE", "hw:"+c.AlsaCard)
+	c.SpotifyDir = str("SPOTIFY_DIR", c.StateDir+"/spotify")
+	return c
 }
 
 func str(k, def string) string {

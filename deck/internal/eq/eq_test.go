@@ -1,32 +1,67 @@
 package eq
 
 import (
-	"context"
-	"encoding/json"
+	"bufio"
+	"bytes"
+	"encoding/binary"
+	"math"
 	"os"
+	"strconv"
+	"strings"
 	"testing"
-	"time"
-
-	"golang.org/x/net/websocket"
 )
 
-func TestPatchPreamp(t *testing.T) {
-	p := Patch(Gains{6, -3, 0, 2, 0})
-	f := p["filters"].(map[string]any)
-	gain := func(name string) float64 {
-		return f[name].(map[string]any)["parameters"].(map[string]any)["gain"].(float64)
+func readF32(t *testing.T, path string) []float32 {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if gain("preamp") != -6 || gain("eq_bass") != 6 || gain("eq_lowmid") != -3 {
-		t.Errorf("patch %v", p)
+	out := make([]float32, len(raw)/4)
+	binary.Read(bytes.NewReader(raw), binary.LittleEndian, out)
+	return out
+}
+
+// The output is the output of the real CamillaDSP for the same filters and gains
+// (testdata from tools/camilladsp-reference/make-reference.sh).
+func TestProcessMatchesCamillaDSP(t *testing.T) {
+	input := readF32(t, "testdata/input.f32")
+	f, err := os.Open("testdata/cases.txt")
+	if err != nil {
+		t.Fatal(err)
 	}
-	// Only cuts: no preamp change.
-	if g := Patch(Gains{-4, 0, 0, 0, -2})["filters"].(map[string]any)["preamp"].(map[string]any)["parameters"].(map[string]any)["gain"]; g != -0.0 {
-		t.Errorf("preamp for cuts = %v", g)
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		fields := strings.Fields(sc.Text())
+		var g Gains
+		for i := range g {
+			g[i], _ = strconv.ParseFloat(fields[1+i], 64)
+		}
+		want := readF32(t, "testdata/"+fields[0]+".f32")
+		e := New(t.TempDir())
+		e.changed(g)
+		got := append([]float32(nil), input...)
+		// CamillaDSP processes chunks of 1024 frames
+		for i := 0; i < len(got); i += 2048 {
+			e.Process(got[i:min(i+2048, len(got))])
+		}
+		maxDiff, exact := 0.0, 0
+		for i := range want {
+			d := math.Abs(float64(got[i] - want[i]))
+			maxDiff = math.Max(maxDiff, d)
+			if got[i] == want[i] {
+				exact++
+			}
+		}
+		if maxDiff > 1e-6 {
+			t.Errorf("%s: max difference %g", fields[0], maxDiff)
+		}
+		t.Logf("%s %v: %d of %d samples exact, max difference %.2g", fields[0], g, exact, len(want), maxDiff)
 	}
 }
 
 func TestSetGainSteps(t *testing.T) {
-	e := New("x", t.TempDir())
+	e := New(t.TempDir())
 	e.SetGain(0, 3.3)
 	e.SetGain(1, 40)
 	if g := e.Gains(); g[0] != 3.5 || g[1] != MaxGain {
@@ -36,44 +71,17 @@ func TestSetGainSteps(t *testing.T) {
 	if e.Preset() != "Bass" {
 		t.Errorf("preset %q", e.Preset())
 	}
+	if Preamp(Gains{6, -3, 0, 2, 0}) != -6 || Preamp(Gains{-4, 0, 0, 0, -2}) != 0 {
+		t.Error("preamp")
+	}
 }
 
-// TestLive sends a setting to a running CamillaDSP and reads it back. CAMILLA=127.0.0.1:1234 runs it.
-func TestLive(t *testing.T) {
-	addr := os.Getenv("CAMILLA")
-	if addr == "" {
-		t.Skip()
+func BenchmarkProcess(b *testing.B) {
+	e := New(b.TempDir())
+	e.changed(Gains{5, 1, 0, 1, 4})
+	buf := make([]float32, 2*4096)
+	b.SetBytes(int64(len(buf) * 4))
+	for i := 0; i < b.N; i++ {
+		e.Process(buf)
 	}
-	dir := t.TempDir()
-	e := New(addr, dir)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go e.Run(ctx, func() {})
-	e.SetGain(0, 4)
-	time.Sleep(500 * time.Millisecond)
-
-	ws, err := websocket.Dial("ws://"+addr, "", "http://127.0.0.1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	websocket.JSON.Send(ws, "GetConfigJson")
-	var r struct{ GetConfigJson struct{ Value string } }
-	websocket.JSON.Receive(ws, &r)
-	ws.Close()
-	var cfg struct {
-		Filters map[string]struct{ Parameters struct{ Gain float64 } }
-	}
-	json.Unmarshal([]byte(r.GetConfigJson.Value), &cfg)
-	if cfg.Filters["eq_bass"].Parameters.Gain != 4 || cfg.Filters["preamp"].Parameters.Gain != -4 {
-		t.Errorf("CamillaDSP has bass %v, preamp %v", cfg.Filters["eq_bass"].Parameters.Gain, cfg.Filters["preamp"].Parameters.Gain)
-	}
-	if !e.Connected() {
-		t.Error("not connected")
-	}
-	if _, err := os.Stat(dir + "/eq.json"); err != nil {
-		t.Error("setting not saved")
-	}
-	// Back to flat.
-	e.SetPreset("Flat")
-	time.Sleep(500 * time.Millisecond)
 }

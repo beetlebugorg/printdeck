@@ -15,7 +15,7 @@ case "$NAME" in
   "" | *[!a-z0-9_-]* | [0-9-]*)
     echo "The user name must start with a letter and have only a-z, 0-9, _ and -." >&2
     exit 1 ;;
-  root | printer | spotify | camilla)
+  root | printer | deck)
     echo "The user name $NAME is for the system." >&2
     exit 1 ;;
 esac

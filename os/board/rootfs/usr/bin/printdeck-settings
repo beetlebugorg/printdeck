@@ -2,6 +2,13 @@
 # Applies the settings in printdeck.txt on the config partition, then clears the Wi-Fi password in it.
 set -eu
 
+# The deck reads the Wi-Fi state over the control socket of wpa_supplicant, as the user deck. A
+# config from an older image has no group for the socket.
+WPA=/etc/wpa_supplicant/wpa_supplicant-wlan0.conf
+if [ -f "$WPA" ] && ! grep -q '^ctrl_interface=.*GROUP=' "$WPA"; then
+  sed -i 's|^ctrl_interface=DIR=/run/wpa_supplicant$|ctrl_interface=DIR=/run/wpa_supplicant GROUP=deck|' "$WPA"
+fi
+
 mount /boot/config
 trap 'umount /boot/config' EXIT
 

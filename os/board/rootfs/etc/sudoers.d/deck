@@ -1,0 +1,2 @@
+# The touch screen sets the Wi-Fi network and the login. It runs as the user deck.
+deck ALL=(root) NOPASSWD: /usr/bin/printdeck-wifi, /usr/bin/printdeck-user

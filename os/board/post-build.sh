@@ -6,8 +6,6 @@ REPO="$BR2_EXTERNAL_PRINTDECK_PATH/.."
 SHARE="$TARGET_DIR/usr/share/printdeck"
 
 # The audio settings come from the same files as the Docker setup.
-install -D -m 0644 "$REPO/docker/camilladsp/config.yml" "$SHARE/camilladsp.yml"
-install -D -m 0644 "$REPO/docker/spotify/config.yml" "$SHARE/go-librespot.yml"
 
 # The mount point of the data partition. printdeck-init mounts it before systemd starts.
 mkdir -p "$TARGET_DIR/data" "$TARGET_DIR/boot/config"
@@ -29,7 +27,7 @@ echo "PRINTDECK_VERSION=${PRINTDECK_VERSION:-unknown}" >> "$TARGET_DIR/usr/lib/o
 # sudo reads /etc/sudoers.d only when /etc/sudoers includes it.
 grep -q '^[@#]includedir /etc/sudoers.d' "$TARGET_DIR/etc/sudoers" \
   || echo '@includedir /etc/sudoers.d' >> "$TARGET_DIR/etc/sudoers"
-chmod 0440 "$TARGET_DIR/etc/sudoers.d/wheel"
+chmod 0440 "$TARGET_DIR/etc/sudoers.d/wheel" "$TARGET_DIR/etc/sudoers.d/deck"
 
 # Remove what Printdeck does not use. Buildroot installs these programs with their libraries.
 rm -f "$TARGET_DIR"/usr/bin/flac "$TARGET_DIR"/usr/bin/metaflac "$TARGET_DIR"/usr/bin/mpg123 \

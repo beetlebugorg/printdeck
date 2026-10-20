@@ -1,4 +1,5 @@
-// Package amp controls the volume of the HiFiBerry Amp2 through the ALSA "Digital" control.
+// Package amp controls the volume of the HiFiBerry Amp2 through the ALSA control "Digital Playback
+// Volume" (the simple control "Digital" of amixer).
 //
 // The percent on the screen, and in the Spotify app, covers a window of decibels that is useful for
 // the speakers: 0% is mute, 1% is just above the floor, 100% is the ceiling. Inside the window the
@@ -9,13 +10,12 @@ package amp
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"math"
-	"os/exec"
-	"regexp"
-	"strconv"
 	"sync"
 	"time"
+
+	"printdeck/internal/alsa"
 )
 
 // The Digital control has steps of 0.5 dB from -103.5 dB (mute) at step 0 to 0 dB at step 207.
@@ -42,7 +42,8 @@ type Amp struct {
 	want   chan request
 }
 
-var raw = regexp.MustCompile(`Playback (\d+) \[`)
+// control is the name of the volume control of the amp.
+const control = "Digital Playback Volume"
 
 func New(card string, max int, floorDB, ceilDB float64) *Amp {
 	return &Amp{card: card, max: max, floor: floorDB, ceil: ceilDB, want: make(chan request, 1), volume: -1}
@@ -76,16 +77,24 @@ func (a *Amp) Volume() int {
 func (a *Amp) Max() int { return a.max }
 
 func (a *Amp) read() (int, error) {
-	out, err := exec.Command("amixer", "-c", a.card, "sget", "Digital").Output()
+	c, err := alsa.OpenControl(a.card, control)
 	if err != nil {
 		return 0, err
 	}
-	m := raw.FindSubmatch(out)
-	if m == nil {
-		return 0, fmt.Errorf("no volume in amixer output")
+	step, err := c.Get()
+	if err != nil {
+		return 0, err
 	}
-	step, err := strconv.Atoi(string(m[1]))
-	return a.percentFor(step), err
+	return a.percentFor(step), nil
+}
+
+// write sets the control step on all channels.
+func (a *Amp) write(step int) error {
+	c, err := alsa.OpenControl(a.card, control)
+	if err != nil {
+		return err
+	}
+	return c.Set(step)
 }
 
 // Set changes the volume from the screen. OnSet tells Spotify.
@@ -117,7 +126,9 @@ func (a *Amp) Run(ctx context.Context, notify func()) {
 		case <-ctx.Done():
 			return
 		case r := <-a.want:
-			exec.Command("amixer", "-c", a.card, "sset", "Digital", strconv.Itoa(a.stepFor(r.percent))).Run()
+			if err := a.write(a.stepFor(r.percent)); err != nil {
+				log.Printf("amp: %v", err)
+			}
 			if r.local && a.OnSet != nil {
 				a.OnSet(r.percent)
 			}

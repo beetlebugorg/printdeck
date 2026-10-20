@@ -9,8 +9,6 @@ CONFIG_USB_UAS=y
 CONFIG_BLK_DEV_SD=y
 # The deck draws on /dev/fb0.
 CONFIG_DRM_FBDEV_EMULATION=y
-# The ALSA loopback from go-librespot to CamillaDSP.
-CONFIG_SND_ALOOP=m
 # depmod reads only uncompressed modules here, so do not compress them. The EROFS root file system
 # is compressed already.
 # CONFIG_MODULE_COMPRESS is not set

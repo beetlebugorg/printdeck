@@ -57,7 +57,9 @@ func Open(dev string, rot int) (*FB, error) {
 		d.LogicalW, d.LogicalH = h, w
 	}
 	// Stop the text console from drawing over the application.
-	if t, err := os.OpenFile("/dev/tty1", os.O_RDWR, 0); err == nil {
+	// The deck opens the tty write-only: group tty may write it (mode 0620). The ioctls need
+	// CAP_SYS_TTY_CONFIG, which the service gives.
+	if t, err := os.OpenFile("/dev/tty1", os.O_WRONLY, 0); err == nil {
 		d.tty = t
 		// Show tty1 (VT_ACTIVATE, VT_WAITACTIVE), so a desktop on another console does not cover the application.
 		syscall.Syscall(syscall.SYS_IOCTL, t.Fd(), 0x5606, 1)
