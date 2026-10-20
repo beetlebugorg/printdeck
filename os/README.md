@@ -25,7 +25,7 @@ The first build takes about one hour. The next builds take a few minutes. The ou
 | File | What it is |
 |---|---|
 | `os/out/printdeck.img` | The full disk image |
-| `os/out/printdeck-update.tar` | The update bundle for a Printdeck that runs this system |
+| `os/out/printdeck-update.tar.xz` | The update bundle for a Printdeck that runs this system (`printdeck-update.tar` is the same with no xz) |
 
 Git ignores `os/out/`. The Buildroot tree, the downloads and the build files are in
 `~/.cache/printdeck-os`. Set `PRINTDECK_OS_CACHE` to use a different folder. Only one build can
@@ -164,9 +164,12 @@ The disk has two system slots, A and B. The running system stays as it is while 
 the other slot:
 
 ```sh
-scp os/out/printdeck-update.tar printdeck@printdeck.local:/data/
-ssh printdeck@printdeck.local sudo printdeck-update /data/printdeck-update.tar
+ssh printdeck@printdeck.local 'cat > /tmp/printdeck-update.tar.xz' < os/out/printdeck-update.tar.xz
+ssh -t printdeck@printdeck.local sudo printdeck-update /tmp/printdeck-update.tar.xz
 ```
+
+The image has no SFTP server, so the first command copies the file through `ssh`. A system from
+before the bundle with xz needs `printdeck-update.tar`, the bundle with no xz.
 
 The Pi restarts into the new slot one time. If Klipper and the touch screen start,
 the new slot becomes the default. If they do not start, or the system stops, the Pi starts the
@@ -211,8 +214,9 @@ The image keeps only what Printdeck uses:
 - No OctoPrint: the Printdeck program has the OctoPrint-compatible API that slicers use.
 - No hardware database, console keymaps or `timedated`, and no command-line tools that come with
   libraries (for example `sqlite3`, `flac`, `systemd-nspawn`).
-- The kernel has only the modules that the Printdeck uses: the display, the Wi-Fi and Bluetooth,
-  the Amp2, the USB serial ports of the printer boards, the fan, and the buses they use
+- Only the Wi-Fi firmware of the Pi 5, and no Bluetooth.
+- No libraries that no program links or loads, such as `libstdc++` (`board/post-build.sh`).
+- The kernel has only the modules that the Printdeck uses: the display, the Wi-Fi, the Amp2, the USB serial ports of the printer boards, the fan, and the buses they use
   (`board/linux-modules.txt`). The SSD, the touch screen and the file systems are built into the
   kernel.
 - The kernel modules are not compressed, because Buildroot's `depmod` cannot read compressed

@@ -46,6 +46,9 @@ genimage \
   --config "$BINARIES_DIR/genimage.cfg"
 
 # The update bundle for printdeck-update: both boot images, the root file system, and checksums.
+# printdeck-update.tar.xz is the bundle compressed with xz: the boot images are mostly empty
+# space. printdeck-update.tar is for the systems whose printdeck-update reads no xz.
 (cd "$BINARIES_DIR" \
   && sha256sum boot-a.vfat boot-b.vfat rootfs.erofs > SHA256SUMS \
-  && tar -cf printdeck-update.tar SHA256SUMS boot-a.vfat boot-b.vfat rootfs.erofs)
+  && tar -cf printdeck-update.tar SHA256SUMS boot-a.vfat boot-b.vfat rootfs.erofs \
+  && xz -T0 -9 -k -f printdeck-update.tar)

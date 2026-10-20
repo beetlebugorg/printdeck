@@ -29,6 +29,17 @@ grep -q '^[@#]includedir /etc/sudoers.d' "$TARGET_DIR/etc/sudoers" \
   || echo '@includedir /etc/sudoers.d' >> "$TARGET_DIR/etc/sudoers"
 chmod 0440 "$TARGET_DIR/etc/sudoers.d/wheel" "$TARGET_DIR/etc/sudoers.d/deck"
 
+# The Wi-Fi firmware of the other Raspberry Pi models. The Pi 5 has the BCM4345/6 chip, which loads
+# brcm/brcmfmac43455-sdio (links to cypress/cyfmac43455-sdio).
+find "$TARGET_DIR/usr/lib/firmware/brcm" "$TARGET_DIR/usr/lib/firmware/cypress" ! -type d ! -name '*43455*' -delete
+
+# Libraries that no program of the image links or loads: the C++, OpenMP, vector math and atomics
+# libraries of the toolchain, the old libnsl of glibc, and the parts of libnl that wpa_supplicant
+# does not use.
+rm -f "$TARGET_DIR"/usr/lib/libstdc++.so* "$TARGET_DIR"/usr/lib/libgomp.so* "$TARGET_DIR"/usr/lib/libmvec.so* \
+  "$TARGET_DIR"/usr/lib/libatomic.so* "$TARGET_DIR"/usr/lib/libnsl.so* "$TARGET_DIR"/usr/lib/libnl-nf-3.so* \
+  "$TARGET_DIR"/usr/lib/libnl-xfrm-3.so* "$TARGET_DIR"/usr/lib/libnl-idiag-3.so*
+
 # Remove what Printdeck does not use. Buildroot installs these programs with their libraries.
 rm -f "$TARGET_DIR"/usr/bin/flac "$TARGET_DIR"/usr/bin/metaflac "$TARGET_DIR"/usr/bin/mpg123 \
   "$TARGET_DIR"/usr/bin/out123 "$TARGET_DIR"/usr/bin/sqlite3 "$TARGET_DIR"/usr/bin/sudo_logsrvd \
