@@ -4,7 +4,8 @@
 # For the Klipper commit of os/package/klipper and the printer in printer/, it builds the firmware's
 # data dictionary, and runs klippy in batch mode on each G-code file in the test data folder. klippy
 # then writes the exact bytes that it would send to the printer's board (.serial), and its own text
-# form of them (.txt). The Go port must give the same bytes.
+# form of them (.txt). The Go port must give the same commands, in the same order for each object
+# (see internal/klipper/reftest).
 #
 #   tools/klipper-reference/make-reference.sh
 set -eu
@@ -34,6 +35,13 @@ docker run --rm --user "$(id -u):$(id -g)" \
       python3 klippy/klippy.py /printer/printer.cfg -i "$g" -o "$name.serial" -d out/klipper.dict \
         > "$name.log" 2>&1 || { cat "$name.log"; exit 1; }
       python3 klippy/parsedump.py out/klipper.dict "$name.serial" > "$name.txt"
-      rm "$name.log"
+      # Two more runs: their commands can be in another order between objects. The tests of
+      # internal/klipper/reftest check that they are equal by object.
+      for run in 2 3; do
+        python3 klippy/klippy.py /printer/printer.cfg -i "$g" -o "$name.tmp" -d out/klipper.dict \
+          > "$name.log" 2>&1 || { cat "$name.log"; exit 1; }
+        python3 klippy/parsedump.py out/klipper.dict "$name.tmp" > "$name.run$run.txt"
+      done
+      rm "$name.log" "$name.tmp"
     done'
 echo "Done: $OUT"
