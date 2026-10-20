@@ -764,3 +764,20 @@ func ReadOpts(opts []Opt) (def any, hasDef bool, min, max, above, below *float64
 	o := options(opts)
 	return o.def, o.hasDef, o.min, o.max, o.above, o.below
 }
+
+// DeprecateMCUCode notes a board firmware that has no support for a feature. An empty msg gives
+// the message of Klipper, with the firmware version of the board.
+func (pc *PrinterConfig) DeprecateMCUCode(mcuName, feature, mcuVersion, msg string) {
+	if msg == "" {
+		vhost, _ := pc.printer.(interface{ SoftwareVersion() string })
+		host := "None"
+		if vhost != nil {
+			host = vhost.SoftwareVersion()
+		}
+		msg = fmt.Sprintf("MCU '%s' has deprecated code (it is missing feature '%s')."+
+			" Recompiling and flashing is recommended (MCU version '%s', host version '%s').",
+			mcuName, feature, mcuVersion, host)
+	}
+	pc.addDeprecated(map[string]any{"type": "deprecated_mcu_code", "message": msg, "mcu": mcuName,
+		"feature": feature})
+}
