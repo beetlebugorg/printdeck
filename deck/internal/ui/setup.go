@@ -17,8 +17,8 @@ type SetupHost interface {
 	Networks() ([]wifi.Network, error)
 	Status() (wifi.Status, error)
 	SetWifi(ssid, password string) error
-	// Login is the user and password for SSH, sudo and OctoPrint, which the system made at the first
-	// start. They are empty when the system has none.
+	// Login is the user and password for SSH, sudo and the remote screen, which the system made at
+	// the first start. They are empty when the system has none.
 	Login() (user, password string)
 	Done() // the setup is finished, so the deck does not open it again at the next start
 }
@@ -300,9 +300,9 @@ func (a *App) drawSetupDone(c *gfx.Canvas, box image.Rectangle) {
 	} else {
 		lines = append(lines, "Wi-Fi", "Not connected. Ethernet works with no setup.")
 	}
-	lines = append(lines, "OctoPrint", fmt.Sprintf("http://%s.local:5000", s.host))
+	lines = append(lines, "Remote screen and slicers", fmt.Sprintf("http://%s.local", s.host))
 	if user, pass := a.Setup.Login(); user != "" {
-		lines = append(lines, "User (SSH, sudo, OctoPrint)", user, "Password", pass,
+		lines = append(lines, "User (SSH, sudo, remote screen)", user, "Password", pass,
 			"SSH", fmt.Sprintf("ssh %s@%s.local", user, s.host))
 	}
 	const rowH = 30

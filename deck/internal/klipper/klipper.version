@@ -1,0 +1,4 @@
+# The Klipper version of the Go port of the host, and of the firmware on the printer's board. The
+# board must run this firmware version. tools/klipper-reference reads this file.
+KLIPPER_VERSION = 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f
+KLIPPER_GIT_VERSION = v0.13.0-777-g7bc4d0946

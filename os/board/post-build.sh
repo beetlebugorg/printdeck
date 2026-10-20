@@ -37,5 +37,3 @@ rm -f "$TARGET_DIR"/usr/bin/flac "$TARGET_DIR"/usr/bin/metaflac "$TARGET_DIR"/us
   "$TARGET_DIR"/usr/bin/sudo_sendlog "$TARGET_DIR"/usr/bin/sudoreplay "$TARGET_DIR"/usr/bin/cvtsudoers \
   "$TARGET_DIR"/usr/bin/systemd-nspawn "$TARGET_DIR"/usr/bin/systemd-dissect "$TARGET_DIR"/usr/bin/bootctl \
   "$TARGET_DIR"/usr/bin/varlinkctl
-rm -rf "$TARGET_DIR"/usr/lib/python3.13/ensurepip "$TARGET_DIR"/usr/lib/python3.13/turtledemo \
-  "$TARGET_DIR"/usr/lib/python3.13/venv
