@@ -17,6 +17,7 @@ package reactor
 import (
 	"errors"
 	"math"
+	"os"
 	"sync"
 	"time"
 )
@@ -70,6 +71,8 @@ type Reactor struct {
 	latencyWarning  float64
 	latencyCallback func(eventtime, prevEventtime float64)
 	recentEventtime float64
+
+	fds []*FileHandler // replaced, never changed in place, so a loop over it is safe
 }
 
 var start = time.Now()
@@ -396,6 +399,48 @@ func (r *Reactor) SetLatencyNotifier(latency float64, callback func(eventtime, p
 	r.latencyCallback = callback
 }
 
+// File descriptors
+
+// FileHandler is a file that the loop reads (ReactorFileHandler).
+type FileHandler struct {
+	File         *os.File
+	readCallback func(eventtime float64)
+}
+
+// RegisterFd calls readCallback in the loop while the file is readable. Only files that are
+// always readable are supported: regular files, as the G-code file of the batch mode. poll()
+// reports these files as readable at all times.
+func (r *Reactor) RegisterFd(f *os.File, readCallback func(eventtime float64)) *FileHandler {
+	h := &FileHandler{File: f, readCallback: readCallback}
+	r.fds = append(append([]*FileHandler(nil), r.fds...), h)
+	return h
+}
+
+// UnregisterFd stops the calls of a file handler.
+func (r *Reactor) UnregisterFd(h *FileHandler) {
+	var fds []*FileHandler
+	for _, x := range r.fds {
+		if x != h {
+			fds = append(fds, x)
+		}
+	}
+	r.fds = fds
+}
+
+// dispatchFdEvents calls the read callbacks of the files. It returns true when one of them
+// paused.
+func (r *Reactor) dispatchFdEvents(eventtime float64, hdls []*FileHandler) bool {
+	gDispatch := r.dispatch
+	for _, h := range hdls {
+		h.readCallback(eventtime)
+		if gDispatch != r.dispatch {
+			r.endGreenlet(gDispatch)
+			return true
+		}
+	}
+	return false
+}
+
 // The main loop
 
 // dispatchAsync runs the asynchronous callbacks. It returns true when one of them paused, and puts
@@ -425,8 +470,14 @@ func (r *Reactor) dispatchLoop() {
 		if !busy {
 			timeout = r.calcSleepTime(eventtime)
 		}
+		// Check for file activity: a registered file is always readable
+		hdls := r.fds
+		wait := timeout
+		if len(hdls) > 0 {
+			wait = 0
+		}
 		// Check for asynchronous callbacks
-		fs := r.takeAsync(timeout)
+		fs := r.takeAsync(wait)
 		eventtime = r.Monotonic()
 		if timeout != 0 {
 			r.startBusyTime = eventtime
@@ -441,10 +492,17 @@ func (r *Reactor) dispatchLoop() {
 			r.latencyCallback(eventtime, prev)
 			r.preventPause--
 		}
-		// Dispatch asynchronous callbacks
+		// Dispatch asynchronous callbacks (Klipper's pipe, the first file of the loop), then the
+		// file events
 		if len(fs) > 0 {
 			busy = true
 			if r.dispatchAsync(fs) {
+				continue
+			}
+		}
+		if len(hdls) > 0 {
+			busy = true
+			if r.dispatchFdEvents(eventtime, hdls) {
 				continue
 			}
 		}
