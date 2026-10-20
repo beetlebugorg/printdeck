@@ -90,7 +90,7 @@ func newCalibrate(config *configfile.Wrapper, bt *BedTilt) {
 }
 
 func (c *calibrate) probeFinalize(positions []*manual_probe.ProbeResult) string {
-	log.Printf("Calculating bed_tilt with: %v", positions)
+	log.Printf("Calculating bed_tilt with: %s", manual_probe.ReprList(positions))
 	// Find best fit for: a + b*bed_x + c*bed_y = bed_z
 	var eqs, ans [][]float64
 	for _, p := range positions {

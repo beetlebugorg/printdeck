@@ -20,6 +20,7 @@ import (
 	"printdeck/internal/klipper/configfile"
 	"printdeck/internal/klipper/gcode"
 	"printdeck/internal/klipper/host"
+	"printdeck/internal/klipper/pyfmt"
 	"printdeck/internal/klipper/reactor"
 	"printdeck/internal/klipper/stepper"
 	"printdeck/internal/klipper/toolhead"
@@ -31,6 +32,22 @@ import (
 type ProbeResult struct {
 	BedX_, BedY_, BedZ_ float64
 	TestX, TestY, TestZ float64
+}
+
+// String is Python's repr() of the namedtuple, for the log.
+func (r *ProbeResult) String() string {
+	f := pyfmt.Float
+	return fmt.Sprintf("probe_result(bed_x=%s, bed_y=%s, bed_z=%s, test_x=%s, test_y=%s, test_z=%s)",
+		f(r.BedX_), f(r.BedY_), f(r.BedZ_), f(r.TestX), f(r.TestY), f(r.TestZ))
+}
+
+// ReprList is Python's repr() of a list of probe results, for the log.
+func ReprList(positions []*ProbeResult) string {
+	parts := make([]string, len(positions))
+	for i, p := range positions {
+		parts[i] = p.String()
+	}
+	return "[" + strings.Join(parts, ", ") + "]"
 }
 
 func (r *ProbeResult) BedX() float64 { return r.BedX_ }

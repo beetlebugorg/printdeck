@@ -630,9 +630,7 @@ func (g *Dispatch) cmdDefault(gcmd *Command) {
 		panic(Errorf("%s", msg))
 	}
 	if cmd == "" {
-		if cmdline := gcmd.Commandline(); cmdline != "" {
-			log.Print(cmdline)
-		}
+		// Klipper logs the comment lines at the debug level. The Go host has no debug log.
 		return
 	}
 	if strings.Contains(cmd, " ") {
