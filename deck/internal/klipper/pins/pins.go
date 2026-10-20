@@ -128,6 +128,8 @@ type Params struct {
 	Invert    int
 	Pullup    int
 	ShareType string
+	// Class is the object of a shared pin, set by its first user (pin_params['class']).
+	Class any
 }
 
 // Pins are the chips and the pins in use (PrinterPins).

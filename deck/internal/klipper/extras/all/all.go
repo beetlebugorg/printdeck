@@ -5,7 +5,11 @@ package all
 import (
 	_ "printdeck/internal/klipper/extras/error_mcu"
 	_ "printdeck/internal/klipper/extras/heaters"
+	_ "printdeck/internal/klipper/extras/motion_queuing"
+	_ "printdeck/internal/klipper/extras/query_endstops"
+	_ "printdeck/internal/klipper/extras/stepper_enable"
 	_ "printdeck/internal/klipper/gcode"
 	_ "printdeck/internal/klipper/mcu"
 	_ "printdeck/internal/klipper/pins"
+	_ "printdeck/internal/klipper/webhooks"
 )
