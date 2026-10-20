@@ -4,6 +4,7 @@ package touch
 import (
 	"context"
 	"encoding/binary"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,6 +30,9 @@ type Event struct {
 type Options struct {
 	InvertX, InvertY, Swap bool
 	Rotate                 int // rotation of the UI on the panel: 0, 90 or 270
+	// Log writes each sample of a touch to the log: the raw panel values and the position in the
+	// UI (0..1). It is for the measurement of the calibration.
+	Log bool
 }
 
 const (
@@ -120,6 +124,9 @@ func read(ctx context.Context, dev string, o Options, out chan<- Event) {
 
 	minX, maxX := absRange(f.Fd(), absX)
 	minY, maxY := absRange(f.Fd(), absY)
+	if o.Log {
+		log.Printf("touch %s: x range %d..%d, y range %d..%d", dev, minX, maxX, minY, maxY)
+	}
 
 	raw := make(chan rawEvent, 64)
 	go func() {
@@ -141,7 +148,13 @@ func read(ctx context.Context, dev string, o Options, out chan<- Event) {
 func process(ctx context.Context, raw <-chan rawEvent, o Options, rng [4]int32, out chan<- Event) {
 	minX, maxX, minY, maxY := rng[0], rng[1], rng[2], rng[3]
 	var x, y float64
+	var rawX, rawY int32
 	touching, moved, pendingDown := false, false, false
+	logSample := func(kind string, p Event) {
+		if o.Log {
+			log.Printf("touch %s raw=%d,%d ui=%.4f,%.4f", kind, rawX, rawY, p.X, p.Y)
+		}
+	}
 	var release *time.Timer // running while the finger is off the panel, but the touch is not over yet
 	var releaseC <-chan time.Time
 	for {
@@ -152,9 +165,9 @@ func process(ctx context.Context, raw <-chan rawEvent, o Options, rng [4]int32, 
 			}
 			switch {
 			case e.typ == evAbs && e.code == absX:
-				x, moved = float64(e.val-minX)/float64(max(1, maxX-minX)), true
+				x, moved, rawX = float64(e.val-minX)/float64(max(1, maxX-minX)), true, e.val
 			case e.typ == evAbs && e.code == absY:
-				y, moved = float64(e.val-minY)/float64(max(1, maxY-minY)), true
+				y, moved, rawY = float64(e.val-minY)/float64(max(1, maxY-minY)), true, e.val
 			case e.typ == evKey && e.code == btnTouch:
 				if e.val == 1 {
 					if releaseC != nil { // the finger came back: it is the same touch
@@ -172,8 +185,10 @@ func process(ctx context.Context, raw <-chan rawEvent, o Options, rng [4]int32, 
 				p := adj(x, y, o)
 				if pendingDown {
 					pendingDown = false
+					logSample("down", p)
 					out <- Event{Down, p.X, p.Y}
 				} else {
+					logSample("move", p)
 					select {
 					case out <- Event{Move, p.X, p.Y}:
 					default: // drop move events when the UI is busy
@@ -184,6 +199,7 @@ func process(ctx context.Context, raw <-chan rawEvent, o Options, rng [4]int32, 
 		case <-releaseC:
 			touching, release, releaseC = false, nil, nil
 			p := adj(x, y, o)
+			logSample("up", p)
 			out <- Event{Up, p.X, p.Y}
 		case <-ctx.Done():
 			return
