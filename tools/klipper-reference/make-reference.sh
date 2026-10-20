@@ -22,6 +22,15 @@ if [ ! -d "$CACHE/klipper-$COMMIT" ]; then
 fi
 docker build -q -t printdeck-klipper-ref "$(dirname "$0")" > /dev/null
 
+# What Klipper's config reader reads from the printer config and from the edge cases of the
+# configfile tests.
+CFGTEST=$REPO/deck/internal/klipper/configfile/testdata
+cp "$REPO/printer/printer.cfg" "$CFGTEST/printer.cfg"
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$CACHE/klipper-$COMMIT:/klipper:ro" -v "$CFGTEST:/cfg" -v "$REPO/tools/klipper-reference:/tools:ro" \
+  printdeck-klipper-ref python3 /tools/dumpcfg.py \
+  /cfg/printer.cfg /cfg/printer.cfg.json /cfg/edge.cfg /cfg/edge.cfg.json
+
 docker run --rm --user "$(id -u):$(id -g)" \
   -v "$CACHE/klipper-$COMMIT:/klipper" -v "$REPO/printer:/printer:ro" -v "$OUT:/out" \
   -e VERSION="$VERSION" -w /klipper printdeck-klipper-ref sh -eu -c '
@@ -36,12 +45,15 @@ docker run --rm --user "$(id -u):$(id -g)" \
         > "$name.log" 2>&1 || { cat "$name.log"; exit 1; }
       python3 klippy/parsedump.py out/klipper.dict "$name.serial" > "$name.txt"
       # Two more runs: their commands can be in another order between objects. The tests of
-      # internal/klipper/reftest check that they are equal by object.
+      # internal/klipper/reftest check that they are equal by object. A run file that is there
+      # stays, because a run with another order is not on each try: delete the run files when
+      # the Klipper commit changes.
       for run in 2 3; do
+        [ -e "$name.run$run.txt" ] && continue
         python3 klippy/klippy.py /printer/printer.cfg -i "$g" -o "$name.tmp" -d out/klipper.dict \
           > "$name.log" 2>&1 || { cat "$name.log"; exit 1; }
         python3 klippy/parsedump.py out/klipper.dict "$name.tmp" > "$name.run$run.txt"
       done
-      rm "$name.log" "$name.tmp"
+      rm -f "$name.log" "$name.tmp"
     done'
 echo "Done: $OUT"
