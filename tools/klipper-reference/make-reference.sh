@@ -1,7 +1,7 @@
 #!/bin/sh
 # Makes the reference data for the Go port of Klipper's host, with the real Klipper host (klippy).
 #
-# For the Klipper commit of os/package/klipper and the printer in printer/, it builds the firmware's
+# For the Klipper commit of deck/internal/klipper/klipper.version and the printer in printer/, it builds the firmware's
 # data dictionary, and runs klippy in batch mode on each G-code file in the test data folder. klippy
 # then writes the exact bytes that it would send to the printer's board (.serial), and its own text
 # form of them (.txt). The Go port must give the same commands, in the same order for each object
@@ -12,8 +12,8 @@ set -eu
 
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
 OUT=$REPO/deck/internal/klipper/testdata
-COMMIT=$(sed -n 's/^KLIPPER_VERSION = //p' "$REPO/os/package/klipper/klipper.mk")
-VERSION=$(sed -n 's/^KLIPPER_GIT_VERSION = //p' "$REPO/os/package/klipper/klipper.mk")
+COMMIT=$(sed -n 's/^KLIPPER_VERSION = //p' "$REPO/deck/internal/klipper/klipper.version")
+VERSION=$(sed -n 's/^KLIPPER_GIT_VERSION = //p' "$REPO/deck/internal/klipper/klipper.version")
 CACHE=${PRINTDECK_OS_CACHE:-$HOME/.cache/printdeck-os}/klipper-reference
 
 mkdir -p "$CACHE"

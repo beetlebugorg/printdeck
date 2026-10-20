@@ -42,9 +42,9 @@ const usage = `usage: printdeck klippy [options] <config file>
 
 type options struct {
 	debuginput, apiserver, logfile, debugoutput string
-	verbose                                      bool
-	dictionary                                   map[string]string
-	args                                         []string
+	verbose                                     bool
+	dictionary                                  map[string]string
+	args                                        []string
 }
 
 func parseArgs(args []string) (options, error) {

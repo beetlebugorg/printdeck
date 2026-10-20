@@ -2,7 +2,7 @@
 
 The packages in this folder are a port of klippy, the host program of
 [Klipper](https://github.com/Klipper3d/klipper), to Go. The source is Klipper
-commit 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f (`os/package/klipper`). The
+commit 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f (`klipper.version`). The
 port follows the Python code closely, so a change in Klipper is easy to find
 and copy.
 

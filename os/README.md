@@ -2,8 +2,8 @@
 
 A small Linux system for the Printdeck Raspberry Pi 5. It holds only what Printdeck needs:
 
-- Klipper, at the version of the printer's firmware
-- The Printdeck program (`deck/`): the touch screen, the remote screen in the browser, and an
+- The Printdeck program (`deck/`): the Klipper host (a Go port of klippy, at the version of the
+  printer's firmware), the touch screen, the remote screen in the browser, and an
   OctoPrint-compatible API for slicers
 - go-librespot (Spotify Connect) and CamillaDSP (the equalizer)
 - Wi-Fi, mDNS (`printdeck.local`), NTP, and SSH (Dropbear)
@@ -138,8 +138,9 @@ That file sets `[virtual_sdcard]` to the upload folder, and adds `[pause_resume]
 then the upload folder wins over a `[virtual_sdcard]` path of another setup. If your
 configuration has a `CANCEL_PRINT` macro, the Cancel button runs it.
 
-The printer's board keeps its firmware. The Klipper version in `package/klipper` must match the
-firmware on the board.
+The printer's board keeps its firmware. The Klipper version in
+`deck/internal/klipper/klipper.version` must match the firmware on the board. The `klipper`
+service runs the host: `printdeck klippy`, with the options of `klippy.py`.
 
 ## Spotify
 
@@ -201,10 +202,7 @@ without it the kernel stops at boot.
 
 The image keeps only what Printdeck uses:
 
-- Python is only for Klipper's host (klippy), until the Go port replaces it. Python has only the
-  `zlib` module of its optional modules. The libraries of klippy have `.pyc` files and no sources,
-  tests or type stubs (`board/python-sourceless.sh`). klippy keeps its sources, because it finds
-  its modules by the `.py` file names.
+- No Python: the Printdeck program has the Klipper host.
 - No OctoPrint: the Printdeck program has the OctoPrint-compatible API that slicers use.
 - No hardware database, console keymaps or `timedated`, and no command-line tools that come with
   libraries (for example `sqlite3`, `flac`, `systemd-nspawn`).
@@ -223,4 +221,4 @@ The image keeps only what Printdeck uses:
 | `board/rootfs/usr/bin/` | `printdeck-init`, `-settings`, `-credentials`, `-wifi`, `-user`, `-update` and `-commit` |
 | `board/rootfs/usr/lib/systemd/system-preset/` | The services that start |
 | `board/rootfs/usr/share/printdeck/` | The first settings of go-librespot, CamillaDSP and Klipper |
-| `package/` | Buildroot packages for the Printdeck program, go-librespot, CamillaDSP and Klipper |
+| `package/` | Buildroot packages for the Printdeck program, go-librespot and CamillaDSP |
