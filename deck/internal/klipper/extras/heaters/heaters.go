@@ -130,7 +130,7 @@ func newHeater(config *configfile.Wrapper, sensor Sensor) *Heater {
 	h.mcuPWM.SetupCycleTime(pwmCycleTime, false)
 	h.mcuPWM.SetupMaxDuration(MaxHeatTime)
 	// Load additional modules
-	printer.TryLoadObject(config, "verify_heater "+h.shortName)
+	printer.LoadObject(config, "verify_heater "+h.shortName)
 	printer.TryLoadObject(config, "pid_calibrate")
 	g := gcode.Of(printer)
 	g.RegisterMuxCommand("SET_HEATER_TEMPERATURE", "HEATER", &h.shortName, h.cmdSetHeaterTemperature,
