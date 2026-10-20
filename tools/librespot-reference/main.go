@@ -15,6 +15,7 @@ import (
 	"time"
 
 	librespot "github.com/devgianlu/go-librespot"
+	"github.com/devgianlu/go-librespot/mp3"
 	"github.com/devgianlu/go-librespot/vorbis"
 )
 
@@ -46,6 +47,33 @@ func main() {
 		info["sample_rate"], info["channels"] = d.SampleRate, d.Channels
 		buf := make([]float32, 1000)
 		for {
+			n, err := d.Read(buf)
+			samples = append(samples, buf[:n]...)
+			if err != nil {
+				if !errors.Is(err, io.EOF) {
+					info["read_error"] = err.Error()
+				}
+				break
+			}
+		}
+		info["position_ms"] = d.PositionMs()
+		decodeNs = time.Since(start).Nanoseconds()
+	case "mp3", "mp3seek":
+		start := time.Now()
+		d, err := mp3.New(&librespot.NullLogger{}, r, 1.0)
+		if err != nil {
+			info["error"] = err.Error()
+			break
+		}
+		info["sample_rate"], info["channels"] = d.SampleRate, d.Channels
+		if kind == "mp3seek" {
+			if err := d.SetPositionMs(1000); err != nil {
+				info["seek_error"] = err.Error()
+			}
+			info["seek_position_ms"] = d.PositionMs()
+		}
+		buf := make([]float32, 1000)
+		for kind != "mp3seek" || len(samples) < 8000 {
 			n, err := d.Read(buf)
 			samples = append(samples, buf[:n]...)
 			if err != nil {
