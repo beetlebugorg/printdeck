@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start the Speakerdeck stack (full screen UI and Spotify Connect player) in Docker, on every boot.
+# Start the Printdeck stack (full screen UI and Spotify Connect player) in Docker, on every boot.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

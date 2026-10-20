@@ -1,4 +1,4 @@
-# Speakerdeck Slate: all dimensions. Units are millimetres.
+# Printdeck Slate: all dimensions. Units are millimetres.
 #
 # The case is a thin tall slab that leans back 15 degrees on a gray foot. The 7 inch screen is
 # in portrait. The Pi 5 and the Amp2 sit on the outside of the back plate, as a backpack, so

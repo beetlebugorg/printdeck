@@ -6,7 +6,7 @@ on:
     paths:
       - "docs/**"
       - "slate/stl/**"
-      - "slate/speakerdeck-slate-build.pdf"
+      - "slate/printdeck-slate-build.pdf"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -30,7 +30,7 @@ jobs:
         run: |
           mkdir -p _site/files
           cp -r docs/. _site/
-          cp slate/stl/*.stl slate/speakerdeck-slate-build.pdf _site/files/
+          cp slate/stl/*.stl slate/printdeck-slate-build.pdf _site/files/
 
       - uses: actions/upload-pages-artifact@v4
         with:

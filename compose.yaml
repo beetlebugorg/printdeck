@@ -1,13 +1,13 @@
-## Speakerdeck: the full screen UI and the Spotify Connect player.
+## Printdeck: the full screen UI and the Spotify Connect player.
 ##
 ##   docker compose up -d --build      set up and update
 ##   docker compose run --rm deck auth link the Spotify account
 ##
-## Both services use host networking: the Spotify app finds "Speakerdeck" with mDNS, which does not
+## Both services use host networking: the Spotify app finds "Printdeck" with mDNS, which does not
 ## cross a Docker bridge, and the UI talks to OctoPrint on the LAN.
 ## Settings are in .env (copy .env.example).
 
-name: speakerdeck
+name: printdeck
 
 services:
   deck:
@@ -28,10 +28,10 @@ services:
       - /dev/input:/dev/input
       - /etc/localtime:/etc/localtime:ro
       # The Spotify login. A host folder, not a Docker volume, so `docker compose down -v` cannot delete it.
-      - /var/lib/speakerdeck:/var/lib/speakerdeck
+      - /var/lib/printdeck:/var/lib/printdeck
     environment:
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
-      SPOTIFY_DEVICE_NAME: ${SPOTIFY_DEVICE_NAME:-Speakerdeck}
+      SPOTIFY_DEVICE_NAME: ${SPOTIFY_DEVICE_NAME:-Printdeck}
       OCTOPRINT_URL: ${OCTOPRINT_URL:-http://127.0.0.1:5000}
       OCTOPRINT_API_KEY: ${OCTOPRINT_API_KEY:-}
       DISPLAY_ROTATE: ${DISPLAY_ROTATE:-90}

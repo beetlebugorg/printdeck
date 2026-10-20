@@ -1,4 +1,4 @@
-# Speakerdeck Slate: the printed parts, the hardware, the plug spaces, and the cables, in
+# Printdeck Slate: the printed parts, the hardware, the plug spaces, and the cables, in
 # build123d. All shapes are in slab coordinates (see shape.py); LOC moves them to the world.
 #
 # Joints. The chin snaps onto the slab with two tongues. The back plate slides up into grooves

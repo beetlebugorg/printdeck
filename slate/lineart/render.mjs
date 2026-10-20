@@ -1,4 +1,4 @@
-// Speakerdeck Slate: the line-art images for the build instructions and the site, in the style
+// Printdeck Slate: the line-art images for the build instructions and the site, in the style
 // of the beetlebug.org explode viewer. Uses three.js in headless Chromium.
 // Run from slate/ after model.py: node lineart/render.mjs [shot ...]
 // Output: build/img/raw/<shot>-light.png and <shot>-dark.png, with a transparent background.

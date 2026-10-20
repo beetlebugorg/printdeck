@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write one Cura profile for each part of the Speakerdeck Slate, slice each part with
+"""Write one Cura profile for each part of the Printdeck Slate, slice each part with
 CuraEngine for the real filament use, and check that no part needs supports.
 
 Printer: LulzBot TAZ Workhorse, SE tool head, 0.5 mm nozzle, 2.85 mm PLA. The profiles use the
@@ -9,7 +9,7 @@ shared case settings (case/cura/make_profiles.py), with these changes:
   - No part uses supports. The support check slices each part again with supports on
     (support angle 60 degrees, supports everywhere). It must give 0 g of support.
 
-The profile names start with "SpeakerdeckSlate_", so that the other installers do not remove
+The profile names start with "PrintdeckSlate_", so that the other installers do not remove
 them.
 
 Usage:
@@ -135,7 +135,7 @@ def main():
         path.unlink()
     for profile in PROFILES:
         values = {**case.COMMON, **profile["values"]}
-        pid = profile["id"].replace("Speakerdeck_", "SpeakerdeckSlate_")
+        pid = profile["id"].replace("Printdeck_", "PrintdeckSlate_")
         g = {k: v for k, v in values.items() if k in scopes and not scopes[k]}
         x = {k: v for k, v in values.items() if k in scopes and scopes[k]}
         case.write(OUT / f"{pid}.inst.cfg", profile["name"], profile["quality_type"], g)
@@ -162,7 +162,7 @@ def main():
 def install():
     if subprocess.run(["pgrep", "-x", "UltiMaker-Cura"], capture_output=True).returncode == 0:
         sys.exit("Cura is running. Close Cura, then install again.")
-    for path in case.CURA.glob("SpeakerdeckSlate_*.inst.cfg"):
+    for path in case.CURA.glob("PrintdeckSlate_*.inst.cfg"):
         path.unlink()
     for path in sorted(OUT.glob("*.inst.cfg")):
         shutil.copy(path, case.CURA / path.name)

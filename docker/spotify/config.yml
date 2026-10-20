@@ -1,4 +1,4 @@
-device_name: Speakerdeck
+device_name: Printdeck
 device_type: speaker
 
 audio_backend: alsa
@@ -26,6 +26,6 @@ metadata:
   enabled: true
 
 ## go-librespot must not scale the samples: the speaker volume is set on the amp (the ALSA "Digital"
-## control). The speakerdeck app listens to the volume events of go-librespot, so the volume slider of
+## control). The printdeck app listens to the volume events of go-librespot, so the volume slider of
 ## the Spotify app moves the amp, and the slider on the touch screen moves the volume in the Spotify app.
 external_volume: true
