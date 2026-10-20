@@ -99,6 +99,8 @@ func run(cfg config.Config, sp *spotify.Client) {
 	am := amp.New(cfg.AlsaCard, cfg.MaxVolume, cfg.FloorDB, cfg.CeilDB)
 	conn := connect.New("127.0.0.1:3678")
 	am.OnSet = conn.SetVolume
+	am.File = filepath.Join(cfg.StateDir, "volume")
+	volume := am.Restore()
 
 	app := ui.New()
 	app.Music, app.Printer, app.Vol = sp, pr, am
@@ -139,7 +141,7 @@ func run(cfg config.Config, sp *spotify.Client) {
 		go func() {
 			for ctx.Err() == nil {
 				err := speaker.Run(ctx, speaker.Config{DeviceName: cfg.DeviceName, Device: cfg.SpeakerDevice,
-					ConfigDir: cfg.SpotifyDir, APIAddr: "127.0.0.1", APIPort: 3678, EQ: eqc,
+					ConfigDir: cfg.SpotifyDir, APIAddr: "127.0.0.1", APIPort: 3678, EQ: eqc, Volume: volume,
 					Debug: cfg.SpotifyDebug})
 				if err != nil {
 					log.Printf("spotify speaker: %v", err)
