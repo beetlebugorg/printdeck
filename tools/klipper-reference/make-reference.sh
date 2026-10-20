@@ -37,6 +37,12 @@ docker run --rm --user "$(id -u):$(id -g)" \
   -v "$CACHE/klipper-$COMMIT:/klipper:ro" -v "$GTEST:/g" -v "$REPO/tools/klipper-reference:/tools:ro" \
   printdeck-klipper-ref python3 /tools/dumpgcode.py /g/lines.txt /g/lines.json
 
+# The temperature conversions of the thermistors and the default sensor tables.
+TTEST=$REPO/deck/internal/klipper/extras/thermistor/testdata
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$CACHE/klipper-$COMMIT:/klipper:ro" -v "$TTEST:/out" -v "$REPO/tools/klipper-reference:/tools:ro" \
+  printdeck-klipper-ref python3 /tools/dumptemps.py /out/temps.json
+
 docker run --rm --user "$(id -u):$(id -g)" \
   -v "$CACHE/klipper-$COMMIT:/klipper" -v "$REPO/printer:/printer:ro" -v "$OUT:/out" \
   -e VERSION="$VERSION" -w /klipper printdeck-klipper-ref sh -eu -c '
