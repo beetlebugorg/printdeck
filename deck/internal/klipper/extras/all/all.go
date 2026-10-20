@@ -3,6 +3,7 @@
 package all
 
 import (
+	_ "printdeck/internal/klipper/extras/error_mcu"
 	_ "printdeck/internal/klipper/extras/heaters"
 	_ "printdeck/internal/klipper/gcode"
 	_ "printdeck/internal/klipper/mcu"
