@@ -49,6 +49,9 @@ type Error struct{ msg string }
 
 func (e *Error) Error() string { return e.msg }
 
+// ErrorKind tells the printer core that this is a protocol error.
+func (e *Error) ErrorKind() string { return "protocol" }
+
 func errorf(format string, args ...any) error { return &Error{fmt.Sprintf(format, args...)} }
 
 // CRC16CCITT is the checksum of a message block.
@@ -210,6 +213,9 @@ func (e *enumeration) parse(s []byte, pos int) (Value, int, error) {
 // EnumerationError is the error for a name that the enumeration does not have, for example a pin
 // that the board does not have.
 type EnumerationError struct{ Enum, Value string }
+
+// ErrorKind tells the printer core that this is a protocol error.
+func (e *EnumerationError) ErrorKind() string { return "protocol" }
 
 func (e *EnumerationError) Error() string {
 	return fmt.Sprintf("Unknown value '%s' in enumeration '%s'", e.Value, e.Enum)

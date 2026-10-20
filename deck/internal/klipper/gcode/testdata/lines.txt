@@ -1,0 +1,21 @@
+G1 X10 Y-2.5 F3000
+g1 x1.5 e-0.2 ; comment
+N12 G28 X0*44
+N5 M117 Hello world*99
+M117 Hello 3D world
+M104 S210 T0
+SET_FAN_SPEED FAN=my_fan SPEED=0.5
+SET_GCODE_VARIABLE MACRO=foo VARIABLE=bar VALUE='"a b"'
+SET_GCODE_VARIABLE MACRO=foo VARIABLE=bar VALUE="{'x': 1}"
+RESPOND MSG="hello # not a comment" PREFIX=echo
+RESPOND MSG=hello # a comment
+RESPOND MSG="unclosed
+SET_X A=1 B
+SET_X a=b\ c d=e\\f
+M118 echo; this
+  T0  
+EXCLUDE_OBJECT NAME=part_1.stl_id_0_copy_0
+G1X10Y20
+*
+N
+M23 /dir/file name.gcode

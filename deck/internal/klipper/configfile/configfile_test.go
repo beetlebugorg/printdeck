@@ -171,7 +171,7 @@ func TestGetters(t *testing.T) {
 	for f, want := range map[string]string{
 		"must be specified": "Option 'nothere' in section 's' must be specified",
 		"unable to parse":   "Unable to parse option 'bad' in section 's'",
-		"minimum":           "Option 'f' in section 's' must have minimum of 3",
+		"minimum":           "Option 'f' in section 's' must have minimum of 3.0",
 		"above":             "Option 'f' in section 's' must be above 2.5",
 		"count":             "Option 'l' in section 's' must have 2 elements",
 		"choice":            "Choice 'tmc' for option 'c' in section 's' is not a valid choice",

@@ -1,0 +1,284 @@
+[
+ {
+  "cmd": "G1",
+  "params": {
+   "G": "1",
+   "X": "10",
+   "Y": "-2.5",
+   "F": "3000"
+  },
+  "raw": "X10 Y-2.5 F3000",
+  "error": "Malformed command 'G1 X10 Y-2.5 F3000'",
+  "line": "G1 X10 Y-2.5 F3000"
+ },
+ {
+  "cmd": "G1",
+  "params": {
+   "G": "1",
+   "X": "1.5",
+   "E": "-0.2"
+  },
+  "raw": "x1.5 e-0.2 ; comment",
+  "error": "Malformed command 'g1 x1.5 e-0.2 ; comment'",
+  "line": "g1 x1.5 e-0.2 ; comment"
+ },
+ {
+  "cmd": "G28",
+  "params": {
+   "N": "12",
+   "G": "28",
+   "X": "0",
+   "*": "44"
+  },
+  "raw": "X0",
+  "error": "Malformed command 'N12 G28 X0*44'",
+  "line": "N12 G28 X0*44"
+ },
+ {
+  "cmd": "M117",
+  "params": {
+   "N": "5",
+   "M": "117",
+   "HELLO": "",
+   "WORLD": "",
+   "*": "99"
+  },
+  "raw": "Hello world",
+  "error": "Malformed command 'N5 M117 Hello world*99'",
+  "line": "N5 M117 Hello world*99"
+ },
+ {
+  "cmd": "M117",
+  "params": {
+   "M": "117",
+   "HELLO": "3",
+   "D": "",
+   "WORLD": ""
+  },
+  "raw": "Hello 3D world",
+  "error": "Malformed command 'M117 Hello 3D world'",
+  "line": "M117 Hello 3D world"
+ },
+ {
+  "cmd": "M104",
+  "params": {
+   "M": "104",
+   "S": "210",
+   "T": "0"
+  },
+  "raw": "S210 T0",
+  "error": "Malformed command 'M104 S210 T0'",
+  "line": "M104 S210 T0"
+ },
+ {
+  "cmd": "SET_FAN_SPEED",
+  "params": {
+   "SET_FAN_SPEED": "",
+   "FAN": "=",
+   "MY_FAN": "",
+   "SPEED": "=0.5"
+  },
+  "raw": "FAN=my_fan SPEED=0.5",
+  "extended": {
+   "FAN": "my_fan",
+   "SPEED": "0.5"
+  },
+  "line": "SET_FAN_SPEED FAN=my_fan SPEED=0.5"
+ },
+ {
+  "cmd": "SET_GCODE_VARIABLE",
+  "params": {
+   "SET_GCODE_VARIABLE": "",
+   "MACRO": "=",
+   "FOO": "",
+   "VARIABLE": "=",
+   "BAR": "",
+   "VALUE": "='\"",
+   "A": "",
+   "B": "\"'"
+  },
+  "raw": "MACRO=foo VARIABLE=bar VALUE='\"a b\"'",
+  "extended": {
+   "MACRO": "foo",
+   "VARIABLE": "bar",
+   "VALUE": "\"a b\""
+  },
+  "line": "SET_GCODE_VARIABLE MACRO=foo VARIABLE=bar VALUE='\"a b\"'"
+ },
+ {
+  "cmd": "SET_GCODE_VARIABLE",
+  "params": {
+   "SET_GCODE_VARIABLE": "",
+   "MACRO": "=",
+   "FOO": "",
+   "VARIABLE": "=",
+   "BAR": "",
+   "VALUE": "=\"{'",
+   "X": "': 1}\""
+  },
+  "raw": "MACRO=foo VARIABLE=bar VALUE=\"{'x': 1}\"",
+  "extended": {
+   "MACRO": "foo",
+   "VARIABLE": "bar",
+   "VALUE": "{'x': 1}"
+  },
+  "line": "SET_GCODE_VARIABLE MACRO=foo VARIABLE=bar VALUE=\"{'x': 1}\""
+ },
+ {
+  "cmd": "RESPOND",
+  "params": {
+   "RESPOND": "",
+   "MSG": "=\"",
+   "HELLO": "#",
+   "NOT": "",
+   "A": "",
+   "COMMENT": "\"",
+   "PREFIX": "=",
+   "ECHO": ""
+  },
+  "raw": "MSG=\"hello # not a comment\" PREFIX=echo",
+  "extended": {
+   "MSG": "hello # not a comment",
+   "PREFIX": "echo"
+  },
+  "line": "RESPOND MSG=\"hello # not a comment\" PREFIX=echo"
+ },
+ {
+  "cmd": "RESPOND",
+  "params": {
+   "RESPOND": "",
+   "MSG": "=",
+   "HELLO": "#",
+   "A": "",
+   "COMMENT": ""
+  },
+  "raw": "MSG=hello # a comment",
+  "extended": {
+   "MSG": "hello"
+  },
+  "line": "RESPOND MSG=hello # a comment"
+ },
+ {
+  "cmd": "RESPOND",
+  "params": {
+   "RESPOND": "",
+   "MSG": "=\"",
+   "UNCLOSED": ""
+  },
+  "raw": "MSG=\"unclosed",
+  "error": "Malformed command 'RESPOND MSG=\"unclosed'",
+  "line": "RESPOND MSG=\"unclosed"
+ },
+ {
+  "cmd": "SET_X",
+  "params": {
+   "SET_X": "",
+   "A": "=1",
+   "B": ""
+  },
+  "raw": "A=1 B",
+  "error": "Malformed command 'SET_X A=1 B'",
+  "line": "SET_X A=1 B"
+ },
+ {
+  "cmd": "SET_X",
+  "params": {
+   "SET_X": "",
+   "A": "=",
+   "B": "\\",
+   "C": "",
+   "D": "=",
+   "E": "\\\\",
+   "F": ""
+  },
+  "raw": "a=b\\ c d=e\\\\f",
+  "extended": {
+   "A": "b c",
+   "D": "e\\f"
+  },
+  "line": "SET_X a=b\\ c d=e\\\\f"
+ },
+ {
+  "cmd": "M118",
+  "params": {
+   "M": "118",
+   "ECHO": ""
+  },
+  "raw": "echo; this",
+  "error": "Malformed command 'M118 echo; this'",
+  "line": "M118 echo; this"
+ },
+ {
+  "cmd": "T0",
+  "params": {
+   "T": "0"
+  },
+  "raw": "",
+  "extended": {},
+  "line": "  T0  "
+ },
+ {
+  "cmd": "EXCLUDE_OBJECT",
+  "params": {
+   "EXCLUDE_OBJECT": "",
+   "NAME": "=",
+   "PART_": "1.",
+   "STL_ID_": "0",
+   "_COPY_": "0"
+  },
+  "raw": "NAME=part_1.stl_id_0_copy_0",
+  "extended": {
+   "NAME": "part_1.stl_id_0_copy_0"
+  },
+  "line": "EXCLUDE_OBJECT NAME=part_1.stl_id_0_copy_0"
+ },
+ {
+  "cmd": "G1",
+  "params": {
+   "G": "1",
+   "X": "10",
+   "Y": "20"
+  },
+  "raw": "X10Y20",
+  "error": "Malformed command 'G1X10Y20'",
+  "line": "G1X10Y20"
+ },
+ {
+  "cmd": "*",
+  "params": {
+   "*": ""
+  },
+  "raw": "",
+  "extended": {},
+  "line": "*"
+ },
+ {
+  "cmd": "",
+  "params": {
+   "N": ""
+  },
+  "raw": "N",
+  "error": "Malformed command 'N'",
+  "line": "N"
+ },
+ {
+  "cmd": "M23 /",
+  "params": {
+   "M": "23 /",
+   "DIR": "/",
+   "FILE": "",
+   "NAME": ".",
+   "GCODE": ""
+  },
+  "raw": "dir/file name.gcode",
+  "error": "Malformed command 'M23 /dir/file name.gcode'",
+  "line": "M23 /dir/file name.gcode"
+ },
+ {
+  "cmd": "",
+  "params": {},
+  "raw": "",
+  "extended": {},
+  "line": ""
+ }
+]

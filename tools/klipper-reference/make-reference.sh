@@ -31,6 +31,12 @@ docker run --rm --user "$(id -u):$(id -g)" \
   printdeck-klipper-ref python3 /tools/dumpcfg.py \
   /cfg/printer.cfg /cfg/printer.cfg.json /cfg/edge.cfg /cfg/edge.cfg.json
 
+# How Klipper's G-code dispatcher reads the lines of the gcode tests.
+GTEST=$REPO/deck/internal/klipper/gcode/testdata
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$CACHE/klipper-$COMMIT:/klipper:ro" -v "$GTEST:/g" -v "$REPO/tools/klipper-reference:/tools:ro" \
+  printdeck-klipper-ref python3 /tools/dumpgcode.py /g/lines.txt /g/lines.json
+
 docker run --rm --user "$(id -u):$(id -g)" \
   -v "$CACHE/klipper-$COMMIT:/klipper" -v "$REPO/printer:/printer:ro" -v "$OUT:/out" \
   -e VERSION="$VERSION" -w /klipper printdeck-klipper-ref sh -eu -c '
