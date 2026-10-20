@@ -25,3 +25,16 @@ func TestLiteralEval(t *testing.T) {
 		}
 	}
 }
+
+func TestJSONMatchesPython(t *testing.T) {
+	for _, c := range jsonCases {
+		v, err := JSONLoads(c[0])
+		if err != nil {
+			t.Errorf("JSONLoads(%s): %v", c[0], err)
+			continue
+		}
+		if got := JSONDumps(v); got != c[1] {
+			t.Errorf("JSONDumps(JSONLoads(%s)) = %s, want %s", c[0], got, c[1])
+		}
+	}
+}
