@@ -40,9 +40,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	pr := a.Printer
 
 	if !st.Reachable {
-		c.Text(image.Rect(30, 240, W-30, 300), "No OctoPrint", gfx.Face(true, 32), text, gfx.Center)
+		c.Text(image.Rect(30, 240, W-30, 300), "No Klipper", gfx.Face(true, 32), text, gfx.Center)
 		c.Text(image.Rect(30, 310, W-30, 350), st.Err, gfx.Face(false, 20), dim, gfx.Center)
-		c.Text(image.Rect(30, 350, W-30, 390), "Check OCTOPRINT_API_KEY", gfx.Face(false, 20), dim, gfx.Center)
+		c.Text(image.Rect(30, 350, W-30, 390), "Check the klipper service", gfx.Face(false, 20), dim, gfx.Center)
 		return
 	}
 

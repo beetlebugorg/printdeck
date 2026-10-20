@@ -9,8 +9,8 @@ A small Linux system for the Printdeck Raspberry Pi 5. It holds only what Printd
 - Wi-Fi, mDNS (`printdeck.local`), NTP, and SSH (Dropbear)
 
 It has no package manager, no Docker, and no compiler. Buildroot makes the system from source.
-This image is a step to the goal of the project: one Go program on the Linux kernel. See
-`ARCHITECTURE.md` in the top folder.
+The Printdeck program is one static Go binary, on the standard parts of a small Linux system
+(systemd, wpa_supplicant, Dropbear). See `ARCHITECTURE.md` in the top folder.
 
 ## Build
 
@@ -205,7 +205,7 @@ The image keeps only what Printdeck uses:
 - No Python: the Printdeck program has the Klipper host.
 - No go-librespot or CamillaDSP programs, no ALSA library and no ALSA loopback: the Printdeck
   program plays Spotify on the amp itself, and filters the sound with its own equalizer.
-- The Printdeck program runs as the user `deck`, not as root. It has the groups of its devices
+- The Printdeck program runs as the unprivileged user `deck`. It has the groups of its devices
   (`video`, `input`, `audio`, `tty`) and of Klipper (`printer`), and two capabilities: port 80
   and the graphics mode of the console. `sudo` lets it run `printdeck-wifi` and `printdeck-user`.
 - No OctoPrint: the Printdeck program has the OctoPrint-compatible API that slicers use.

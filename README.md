@@ -13,9 +13,9 @@ Website: https://beetlebug.org/printdeck/
 
 ## Goal
 
-Printdeck is becoming a very small operating system with one purpose: one Go program on the Linux
-kernel, with as few dependencies as possible. We build it from open source projects, such as
-Klipper, OctoPrint and go-librespot. We respect their licenses, give credit, and keep our license
+Printdeck is a very small operating system with one purpose. The Printdeck program is one static
+Go binary with no runtime dependencies, on a minimal Linux system. We build it from open source
+projects, such as Klipper, go-librespot and CamillaDSP. We respect their licenses, give credit, and keep our license
 compatible. We are not here to take code. We reform it into something new and give it back, in the
 spirit of open source, with the help of AI. `ARCHITECTURE.md` has the plan and the rules.
 
@@ -36,22 +36,26 @@ spirit of open source, with the help of AI. `ARCHITECTURE.md` has the plan and t
 The Printdeck runs Printdeck OS: a small, read-only Linux system that Buildroot makes from source.
 `os/README.md` tells how to build it, write it to a disk, set it up, and update it. It has:
 
-- Klipper, which drives the printer.
-- `deck/`, the Printdeck program (Go). It starts at boot and does these things:
+- `deck/`, the Printdeck program (Go). It is one static binary with no cgo. It runs as the user
+  `deck`, and does these things:
+  - `printdeck klippy` is the Klipper host, a Go port of Klipper's `klippy.py`. The `klipper`
+    service runs it in its own process. It drives the printer. `deck/internal/klipper/PORTING.md`
+    tells how the port follows Klipper.
   - It draws the full screen application on the 7" display, without a desktop or a browser.
   - It serves the remote screen at `http://printdeck.local`: the touch screen in a browser, with
     the password of the `printdeck` user.
   - It serves the part of the OctoPrint API that slicers use. Cura, OrcaSlicer and PrusaSlicer
     see a printer named "Printdeck", upload files to it, and start prints. Cura gets its key with
     a tap on the touch screen.
-  - It follows Klipper directly, through Klipper's API socket.
-- go-librespot makes the Pi a Spotify Connect speaker. This needs Spotify Premium.
-- CamillaDSP is the equalizer. go-librespot plays into the ALSA loopback (`snd-aloop`), and
-  CamillaDSP plays from there to the Amp2.
+  - It follows the Klipper host through its API socket.
+  - It is the Spotify Connect speaker: go-librespot, with pure Go decoders, plays on the Amp2
+    through the ALSA kernel interface. This needs Spotify Premium.
+  - It filters the sound with its equalizer, a port of the filters that Printdeck used in
+    CamillaDSP.
 
 The screens of the touch screen:
 
-- The Music tab follows and controls Spotify with the Spotify Web API (cover, seek, previous, play, next, shuffle, repeat). go-librespot is the Connect device.
+- The Music tab follows and controls Spotify with the Spotify Web API (cover, seek, previous, play, next, shuffle, repeat). The Printdeck program is the Connect device.
 - The Print tab has a character display (20 x 2, like the display of the printer): what it does, the progress and the time left, and the kind of move now with its speed (from the `;TYPE:` marks of Cura, PrusaSlicer, and OrcaSlicer).
 - The Print tab shows a 3D view of the model that prints (the printed height in colour), the progress, the time left, and the temperatures. It can pause, resume, cancel, preheat, and start a file. The view is a shaded STL if the upload folder or `MODEL_DIR` (default `/var/lib/printdeck/models`) has an STL with a matching name. Otherwise it is the toolpath from the G-code.
 - The equalizer button opens five bands (80 Hz to 10 kHz, ±12 dB) and presets. The setting is saved in `/var/lib/printdeck/eq.json`. A boost lowers the overall gain by the same amount, so it cannot clip.
@@ -70,26 +74,6 @@ To look at the screens without the hardware, run `go run ./cmd/printdeck demo /t
 `deck/`. It writes PNG files. To use the screens in a browser, run
 `go run ./cmd/printdeck remote-demo` and open `http://localhost:8080` (password `demo`).
 
-## Installation on Raspberry Pi OS
-
-The first version of Printdeck runs on Raspberry Pi OS with Docker. Printdeck OS replaces it, but
-the scripts are still here:
-
-1. Copy this directory to the Pi.
-2. Set `HIFIBERRY_OVERLAY` in `printdeck.env`.
-3. Run `setup/10-boot-config.sh`. Reboot the Pi.
-4. Run `aplay -l`. Make sure that the list shows the HiFiBerry card.
-5. Run `setup/30-octoprint.sh`, and make an API key in OctoPrint.
-   For a printer with Klipper firmware, also run `setup/35-klipper.sh`. Read the note at the top of the script first.
-6. Create an app in the Spotify developer dashboard. Add `http://127.0.0.1:8888/callback` as the redirect URI.
-7. Run `setup/50-deck.sh`. It makes `.env` from `.env.example`. Fill it in (the Spotify client ID, the OctoPrint address and key, `DISPLAY_ROTATE`). Run `setup/50-deck.sh` again. It disables the desktop and starts the Docker stack.
-8. Run `docker compose run --rm deck auth`. Open the address in a browser. Paste the address of the error page that follows. Run `docker compose restart deck`.
-9. In the Spotify app, choose "Printdeck" one time. After that it is in the list of devices, and the touch screen can start the music.
-
-To update: `git pull`, then `docker compose up -d --build`.
-
-Settings are in `.env`: `DISPLAY_ROTATE` (90 or 270), `TOUCH_INVERT_X`, `TOUCH_INVERT_Y`, `TOUCH_SWAP_XY` (0 or 1), `VOLUME_FLOOR_DB`, `VOLUME_CEIL_DB`, `MAX_VOLUME`, `PREHEAT_TOOL`, `PREHEAT_BED`, `FILAMENT_UNLOAD_MM`, `FILAMENT_LOAD_MM`, `JOG_INVERT_Y`, `NIGHT_FROM`, `NIGHT_TO`.
-
 ## Case
 
 The case is the Slate in `slate/`: a 35 mm slab that leans back 15 degrees on a foot, with the Pi
@@ -100,7 +84,8 @@ on the rear. `slate/README.md` lists the parts and the files.
 
 `ARCHITECTURE.md` has the plan to one Go program. The next steps:
 
-- The Go port of Klipper's host, which removes Python from the image.
+- Lower the CPU use of the screen loop. With the music paused, the deck used about 18% of one core
+  on the Pi 5.
 - Test the slicer uploads (Cura, OrcaSlicer) to the Printdeck API.
 - A time estimate from Klipper's look-ahead planner, in place of PrintTimeGenius.
 - Keep only the kernel modules that the Printdeck uses.
@@ -110,5 +95,6 @@ on the rear. `slate/README.md` lists the parts and the files.
 
 Printdeck is free software under the GNU Affero General Public License, version 3. See `LICENSE`,
 and the "Open source and licenses" section of `ARCHITECTURE.md`.
-The OS image also contains Klipper (GPL-3.0), go-librespot (GPL-3.0),
-CamillaDSP (GPL-3.0) and the other packages of the image, each under its own license.
+The Printdeck program contains a port of Klipper's host (GPL-3.0), go-librespot (GPL-3.0) in
+`deck/third_party/go-librespot`, and an equalizer ported from CamillaDSP (GPL-3.0). The OS image
+contains the other packages of the image, each under its own license.

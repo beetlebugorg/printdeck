@@ -1,8 +1,8 @@
 // Package eq is the equalizer of the speaker: five filters and a preamp, on the samples that go to
 // the amp. It keeps the setting and saves it.
 //
-// The filters are those of the CamillaDSP config that Printdeck used before (docker/camilladsp):
-// a low shelf at 80 Hz, peaks at 250 Hz, 1 kHz and 3.5 kHz, and a high shelf at 10 kHz. The
+// The filters are those that Printdeck used in CamillaDSP before: a low shelf at 80 Hz, peaks at
+// 250 Hz, 1 kHz and 3.5 kHz, and a high shelf at 10 kHz. The
 // coefficients and the processing are a port of CamillaDSP 4.1.3 (src/filters/biquad.rs and
 // basicfilters.rs, GPL-3.0, Copyright (c) Henrik Enquist): the RBJ formulas with CamillaDSP's shelf
 // slope, transposed direct form II in float64. The test compares the output with the output of the
