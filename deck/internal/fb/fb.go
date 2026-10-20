@@ -18,6 +18,7 @@ type FB struct {
 	rot                int // 90 or 270: rotation from the logical portrait canvas to the panel
 	tty                *os.File
 	LogicalW, LogicalH int
+	prev               []byte // the pixels of the last frame
 }
 
 // Open maps the framebuffer. rot is 90 or 270 for a portrait mounted landscape panel, 0 for none.
@@ -83,6 +84,12 @@ func (d *FB) Present(c *gfx.Canvas) {
 	lw, lh := d.LogicalW, d.LogicalH
 	cw, ch := c.Bounds().Dx(), c.Bounds().Dy()
 	bytes := d.bpp / 8
+	// Only the rows that changed since the last frame go to the framebuffer: its memory is slow to
+	// write, and most frames change only a few rows.
+	first := len(d.prev) != len(c.Pix)
+	if first {
+		d.prev = make([]byte, len(c.Pix))
+	}
 	sx := make([]int, lw) // the canvas column for each framebuffer column
 	for x := range sx {
 		sx[x] = x * cw / lw
@@ -90,6 +97,10 @@ func (d *FB) Present(c *gfx.Canvas) {
 	for y := 0; y < lh; y++ {
 		sy := y * ch / lh
 		row := c.Pix[sy*c.Stride : sy*c.Stride+cw*4]
+		prev := d.prev[sy*c.Stride : sy*c.Stride+cw*4]
+		if !first && string(row) == string(prev) {
+			continue
+		}
 		for x := 0; x < lw; x++ {
 			src := row[sx[x]*4:]
 			var X, Y int
@@ -111,6 +122,7 @@ func (d *FB) Present(c *gfx.Canvas) {
 			}
 		}
 	}
+	copy(d.prev, c.Pix)
 }
 
 // PanelSize is the native size, used to map touch coordinates.
