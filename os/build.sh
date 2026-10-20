@@ -4,7 +4,7 @@
 #   os/build.sh                  build the image
 #   os/build.sh menuconfig       any other Buildroot target, for example linux-menuconfig or clean
 #
-# The image is os/out/printdeck.img. The Buildroot tree, the downloads and the build output are in
+# The image is os/out/printdeck.img.xz. The Buildroot tree, the downloads and the build output are in
 # ~/.cache/printdeck-os (set PRINTDECK_OS_CACHE to change it). A full build takes about one hour.
 set -euo pipefail
 
@@ -52,5 +52,5 @@ if [ $# -gt 0 ]; then
 fi
 
 run
-cp "$CACHE/output/images/printdeck.img" "$CACHE/output/images/printdeck-update.tar.xz" "$OS/out/"
-echo "Done: $OS/out/printdeck.img"
+cp "$CACHE/output/images/printdeck.img.xz" "$CACHE/output/images/printdeck-update.tar.xz" "$OS/out/"
+echo "Done: $OS/out/printdeck.img.xz"

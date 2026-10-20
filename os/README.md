@@ -24,7 +24,7 @@ The first build takes about one hour. The next builds take a few minutes. The ou
 
 | File | What it is |
 |---|---|
-| `os/out/printdeck.img` | The full disk image |
+| `os/out/printdeck.img.xz` | The full disk image, compressed with xz |
 | `os/out/printdeck-update.tar.xz` | The update bundle for a Printdeck that runs this system |
 
 Git ignores `os/out/`. The Buildroot tree, the downloads and the build files are in
@@ -46,10 +46,10 @@ from the start (`os/build.sh clean`, then `os/build.sh`).
 ## Install
 
 The image works on an SD card and on a USB SSD. Write it with Raspberry Pi Imager
-("Use custom"), or with `dd`:
+("Use custom"), or with `xz` and `dd`:
 
 ```sh
-sudo dd if=os/out/printdeck.img of=/dev/sdX bs=4M conv=fsync status=progress
+xz -dc os/out/printdeck.img.xz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
 ```
 
 A Pi 5 starts from USB when no SD card is in it. To set this, run `sudo raspi-config` on

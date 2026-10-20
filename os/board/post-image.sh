@@ -53,3 +53,6 @@ genimage \
   && sha256sum boot-a.vfat boot-b.vfat rootfs.erofs > SHA256SUMS \
   && tar -cf printdeck-update.tar SHA256SUMS boot-a.vfat boot-b.vfat rootfs.erofs \
   && xz -T0 -9 -f printdeck-update.tar)
+
+# The disk image is mostly empty space, so it goes out compressed with xz.
+xz -T0 -9 -f "$BINARIES_DIR/printdeck.img"
