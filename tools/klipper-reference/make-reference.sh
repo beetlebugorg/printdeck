@@ -37,6 +37,13 @@ docker run --rm --user "$(id -u):$(id -g)" \
   -v "$CACHE/klipper-$COMMIT:/klipper:ro" -v "$GTEST:/g" -v "$REPO/tools/klipper-reference:/tools:ro" \
   printdeck-klipper-ref python3 /tools/dumpgcode.py /g/lines.txt /g/lines.json
 
+# The G1 moves of the arc commands.
+ATEST=$REPO/deck/internal/klipper/extras/gcode_arcs/testdata
+mkdir -p "$ATEST"
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$CACHE/klipper-$COMMIT:/klipper:ro" -v "$ATEST:/out" -v "$REPO/tools/klipper-reference:/tools:ro" \
+  printdeck-klipper-ref python3 /tools/dumparcs.py /out/arcs.json
+
 # The temperature conversions of the thermistors and the default sensor tables.
 TTEST=$REPO/deck/internal/klipper/extras/thermistor/testdata
 docker run --rm --user "$(id -u):$(id -g)" \

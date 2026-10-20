@@ -22,3 +22,20 @@ func TestSolvePlane(t *testing.T) {
 		t.Error("singular system solved")
 	}
 }
+
+func TestHypotMatchesPython(t *testing.T) {
+	bad := 0
+	for _, c := range hypotCases {
+		if got := Hypot(c[0], c[1]); got != c[2] {
+			bad++
+			t.Errorf("Hypot(%v, %v) = %v, Python gives %v", c[0], c[1], got, c[2])
+		}
+	}
+	goBad := 0
+	for _, c := range hypotCases {
+		if math.Hypot(c[0], c[1]) != c[2] {
+			goBad++
+		}
+	}
+	t.Logf("%d cases, %d differ from Python; math.Hypot differs in %d", len(hypotCases), bad, goBad)
+}

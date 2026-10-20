@@ -47,6 +47,11 @@ batch mode for the tests.
   `sync.Mutex` where Klipper uses a `threading.Lock`.
 - Numbers in text that Klipper writes with `%s` or `str()` use
   `pyfmt.Float`. `%.3f` and the other fixed formats are the same in Go.
+- Python's `math` functions call the C library. Go's `math.Sin`, `math.Cos`,
+  `math.Atan2`, `math.Exp` and `math.Log` can differ from it in the last bit,
+  so the tests of these modules have a small tolerance. Use
+  `mathutil.Hypot` for `math.hypot`: `math.Hypot` differs from Python in about
+  one third of the values.
 
 ## Tests
 

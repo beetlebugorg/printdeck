@@ -72,7 +72,7 @@ func load(config *configfile.Wrapper) any {
 		fn   gcode.Handler
 		desc string
 	}{
-		{"G1", m.cmdG1, ""}, {"G20", m.cmdG20, ""}, {"G21", func(*gcode.Command) {}, ""},
+		{"G1", m.CmdG1, ""}, {"G20", m.cmdG20, ""}, {"G21", func(*gcode.Command) {}, ""},
 		{"M82", func(*gcode.Command) { m.allowAbsoluteExtrude = true }, ""},
 		{"M83", func(*gcode.Command) { m.allowAbsoluteExtrude = false }, ""},
 		{"G90", func(*gcode.Command) { m.absoluteCoord = true }, ""},
@@ -84,7 +84,7 @@ func load(config *configfile.Wrapper) any {
 	} {
 		g.RegisterCommand(c.name, c.fn, false, c.desc)
 	}
-	g.RegisterCommand("G0", m.cmdG1, false, "")
+	g.RegisterCommand("G0", m.CmdG1, false, "")
 	g.RegisterCommand("M114", m.cmdM114, true, "")
 	g.RegisterCommand("GET_POSITION", m.cmdGetPosition, true,
 		"Return information on the current location of the toolhead")
@@ -223,7 +223,8 @@ func (m *GCodeMove) updateExtraAxes() {
 
 // G-Code movement commands
 
-func (m *GCodeMove) cmdG1(gcmd *gcode.Command) {
+// CmdG1 is the G1 command (and G0).
+func (m *GCodeMove) CmdG1(gcmd *gcode.Command) {
 	// Move
 	params := gcmd.Params()
 	unable := func() { panic(gcmd.Error("Unable to parse move '%s'", gcmd.Commandline())) }
