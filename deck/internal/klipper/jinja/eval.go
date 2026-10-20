@@ -2,6 +2,7 @@ package jinja
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"runtime/debug"
 	"sort"
@@ -31,8 +32,11 @@ func (t *Template) Render(ctx map[string]any) (out string, err error) {
 			switch x := r.(type) {
 			case *Error:
 				err = x
+			case pyTyped:
+				err = &Error{x.PyType(), x.Error()}
 			case error:
-				err = &Error{"Exception", x.Error() + "\n" + string(debug.Stack())}
+				log.Printf("template: %v\n%s", x, debug.Stack())
+				err = &Error{"Exception", x.Error()}
 			default:
 				panic(r)
 			}
@@ -41,6 +45,12 @@ func (t *Template) Render(ctx map[string]any) (out string, err error) {
 	var b strings.Builder
 	e.renderBody(&b, t.body)
 	return b.String(), nil
+}
+
+// pyTyped is an error with the name of its Python type, for the error messages of the templates.
+type pyTyped interface {
+	error
+	PyType() string
 }
 
 type evaluator struct {
