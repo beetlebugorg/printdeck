@@ -246,3 +246,10 @@ func LookupMultiRail(config *configfile.Wrapper, needPositionMinmax bool, defaul
 	}
 	return r
 }
+
+// HomingState is the homing of a G28 command, as the kinematics use it. A NaN position in
+// HomeRails is an axis that does not move (None in Klipper).
+type HomingState interface {
+	Axes() []int
+	HomeRails(rails []*Rail, forcepos, homepos []float64)
+}
