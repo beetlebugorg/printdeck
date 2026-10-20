@@ -8,10 +8,11 @@ SHARE="$TARGET_DIR/usr/share/printdeck"
 # A kernel build after a config change keeps the modules of the old config in the target folder.
 # Remove the modules that the kernel build did not make (modules.order), and make the module
 # index again.
-for dir in "$TARGET_DIR"/usr/lib/modules/*/; do
+for dir in "$TARGET_DIR"/usr/lib/modules/*; do
   [ -f "$dir/modules.order" ] || continue
   find "$dir/kernel" -name '*.ko*' | while read -r ko; do
-    grep -qxF "${ko#"$dir"}" "$dir/modules.order" || { echo "Removing the old module ${ko#"$dir"}"; rm -f "$ko"; }
+    rel=${ko#"$dir/"}
+    grep -qxF "$rel" "$dir/modules.order" || { echo "Removing the old module $rel"; rm -f "$ko"; }
   done
   "$HOST_DIR/sbin/depmod" -a -b "$TARGET_DIR" "$(basename "$dir")"
 done
