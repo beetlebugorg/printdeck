@@ -18,7 +18,16 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+
+	"printdeck/internal/klipper/configfile"
+	"printdeck/internal/klipper/host"
 )
+
+func init() {
+	host.ConfigObjects = append(host.ConfigObjects, func(config *configfile.Wrapper) {
+		host.Of(config).AddObject("pins", New())
+	})
+}
 
 // Error is a pin error, for example a pin that two config sections use.
 type Error struct{ Msg string }

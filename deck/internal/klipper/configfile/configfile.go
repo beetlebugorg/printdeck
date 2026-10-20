@@ -640,6 +640,12 @@ func (pc *PrinterConfig) ReadConfig(filename string) (*Wrapper, error) {
 	if err != nil {
 		return nil, err
 	}
+	return pc.ReadConfigData(data, filename)
+}
+
+// ReadConfigData reads config data that is in the program, for example the default temperature
+// sensors.
+func (pc *PrinterConfig) ReadConfigData(data, filename string) (*Wrapper, error) {
 	fc, err := BuildFileconfig(data, filename)
 	if err != nil {
 		return nil, err
