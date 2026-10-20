@@ -1,0 +1,257 @@
+[
+ {
+  "template": "plain text",
+  "context": "{}",
+  "output": "plain text"
+ },
+ {
+  "template": "G1 X{x}",
+  "context": "{\"x\": 1}",
+  "output": "G1 X1"
+ },
+ {
+  "template": "G1 X{x}",
+  "context": "{\"x\": 1.0}",
+  "output": "G1 X1.0"
+ },
+ {
+  "template": "{x + y} {x * 3} {1/3} {2/2} {7//2} {-7//2} {7 % 3} {-7 % 3} {7.5 % 2} {2**10} {2**-1} {-2**2}",
+  "context": "{\"x\": 0.1, \"y\": 0.2}",
+  "output": "0.30000000000000004 0.30000000000000004 0.3333333333333333 1.0 33 11 1.5 1024 0.54"
+ },
+ {
+  "template": "{1e-5} {1e16} {123456789.0} {0.0001} {1.5e300} {3.0 * 1.1} {100000000000000000.0}",
+  "context": "{}",
+  "output": "1e-05 1e+16 123456789.0 0.0001 1.5e+300 3.3000000000000003 1e+17"
+ },
+ {
+  "template": "{% set bed = params.BED|default(80)|float %}{% set ext = params.EXTRUDER|default(235)|float %}{% set wipe = params.WIPE|default(170)|float %}M104 S{wipe}\nM140 S{bed}\nTEMPERATURE_WAIT SENSOR=extruder MINIMUM={wipe - 2}\nM104 S{ext}",
+  "context": "{\"params\": {\"BED\": \"80\", \"EXTRUDER\": \"235\"}}",
+  "output": "M104 S170.0\nM140 S80.0\nTEMPERATURE_WAIT SENSOR=extruder MINIMUM=168.0\nM104 S235.0"
+ },
+ {
+  "template": "{% set s = params.S|default(params.R|default(0))|float %}M99109 S{s}",
+  "context": "{\"params\": {}}",
+  "output": "M99109 S0.0"
+ },
+ {
+  "template": "{% set s = params.S|default(params.R|default(0))|float %}M99109 S{s}",
+  "context": "{\"params\": {\"R\": \"215\"}}",
+  "output": "M99109 S215.0"
+ },
+ {
+  "template": "{% set layer = params.LAYER|default(0.4)|float %}{% set speed = params.SPEED|default(15)|float %}{% set prime_lines = 2 %}{% set prime_x0, prime_x1, prime_y0, prime_w = 20.0, 260.0, 2.0, 0.6 %}{% set prime_e = prime_w * layer / 6.379 %}{% set prime_speed = [speed, 15.0 / (prime_w * layer)]|min %}\nG0 Z{layer} F1500\n{% for i in range(prime_lines) %}\n  {% set x = prime_x1 if i % 2 == 0 else prime_x0 %}\n  G1 X{x} E{(prime_x1 - prime_x0) * prime_e} F{prime_speed * 60}\n  G1 Y{prime_y0 + (i + 1) * prime_w} E{prime_w * prime_e} F{prime_speed * 60}\n{% endfor %}\n{% set x_end = prime_x1 if prime_lines % 2 == 1 else prime_x0 %}\nG1 X{x_end - 20 if x_end > prime_x0 else x_end + 20} Z{layer + 0.3} F3000",
+  "context": "{\"params\": {\"LAYER\": \"0.4\", \"SPEED\": \"40\"}}",
+  "output": "\nG0 Z0.4 F1500\n\n  \n  G1 X260.0 E9.029628468411977 F2400.0\n  G1 Y2.6 E0.02257407117102994 F2400.0\n\n  \n  G1 X20.0 E9.029628468411977 F2400.0\n  G1 Y3.2 E0.02257407117102994 F2400.0\n\n\nG1 X40.0 Z0.7 F3000"
+ },
+ {
+  "template": "{% for i in range(12) %}\n  G1 X-17 Y25 F3000\n{% endfor %}",
+  "context": "{}",
+  "output": "\n  G1 X-17 Y25 F3000\n\n  G1 X-17 Y25 F3000\n\n  G1 X-17 Y25 F3000\n\n  G1 X-17 Y25 F3000\n\n  G1 X-17 Y25 F3000\n\n  G1 X-17 Y25 F3000\n\n  G1 X-17 Y25 F3000\n\n  G1 X-17 Y25 F3000\n\n  G1 X-17 Y25 F3000\n\n  G1 X-17 Y25 F3000\n\n  G1 X-17 Y25 F3000\n\n  G1 X-17 Y25 F3000\n"
+ },
+ {
+  "template": "{'%3d' % (v*100)}% {'%d' % (v*255)} {'%05.3f' % v} {'%.3f' % v} {'%05.1f' % v} {'%+06.1f' % v} {'%+06.1f' % -v} {'%.0f' % 212.5} {'%.0f' % 213.5} {'%03.2f' % v}",
+  "context": "{\"v\": 0.456}",
+  "output": " 45% 116 0.456 0.456 000.5 +000.5 -000.5 212 214 0.46"
+ },
+ {
+  "template": "{ \"%3.0f\" % (t,) }/{ \"%0.0f\" % (tg,) }~{ \"%6s\" % (\"1:02\",) }~{ \"%-6s|\" % (\"ab\",) }{ \"%02d:%02d\" % (3725 // (60 * 60), (3725 // 60) % 60) }",
+  "context": "{\"t\": 213.46, \"tg\": 215.0}",
+  "output": "213/215~  1:02~ab    |01:02"
+ },
+ {
+  "template": "[{ \"{:>4.0%}\".format(speed) }] [{ \"{:^10.0%}\".format(p) }] [{ \"{:^6.0%}\".format(z) }] [{ \"Fan {:^4.0%}\".format(speed) }] [{ \"{:>4.0%}\".format(1.234) }]",
+  "context": "{\"speed\": 0.5, \"p\": 1.0, \"z\": 0.0}",
+  "output": "[ 50%] [   100%   ] [  0%  ] [Fan 50% ] [123%]"
+ },
+ {
+  "template": "{ \"{} {} {}\".format(1, 2.5, \"a\") } { \"{0}{1}{0}\".format(\"x\", \"y\") } { \"{:.2f}\".format(3.14159) } { \"{:5d}|\".format(42) } { \"{:<5}|\".format(\"ab\") } { \"{:*^9}\".format(\"mid\") } { \"{:+.1e}\".format(12345.678) } { \"{:g}\".format(0.0001) } { \"{:g}\".format(1234567.0) } { \"{:,}\".format(1234567) } { \"{!r}\".format(\"q\") }",
+  "context": "{}",
+  "output": "1 2.5 a xyx 3.14    42| ab   | ***mid*** +1.2e+04 0.0001 1.23457e+06 1,234,567 'q'"
+ },
+ {
+  "template": "{'%s %r' % (\"a\", \"a\")} {'%5.1f|%-5d|' % (3.14159, 42)} {'%x %X %o' % (255, 255, 8)} {'%e' % 12345.6789} {'%g %g %g' % (0.0001, 0.00001, 123456789.0)} {'%%'} {'%c' % 65}",
+  "context": "{}",
+  "output": "a 'a'   3.1|42   | ff FF 10 1.234568e+04 0.0001 1e-05 1.23457e+08 %% A"
+ },
+ {
+  "template": "{a} {a|length} {a|first} {a|last} {a|sum} {a|max} {a|min} {a|join(\",\")} {a|reverse|list} {d} {d|length} {d.k} {d[\"n\"]} {d.missing} [{d.missing}] {\"k\" in d} {2 in a} {5 not in a}",
+  "context": "{\"a\": [1, 2, 3], \"d\": {\"k\": \"v\", \"n\": 2}}",
+  "output": "[1, 2, 3] 3 1 3 6 3 1 1,2,3 [3, 2, 1] {'k': 'v', 'n': 2} 2 v 2  [] True True True"
+ },
+ {
+  "template": "{ [3, 1, 2]|sort } { [\"b\", \"A\", \"c\"]|sort } { [1, 2, 2, 3, 1]|unique|list } { (1, 2) } { (1,) } { () } { [] } { {} } { {\"a\": [1, (2, 3)], \"b\": None} }",
+  "context": "{}",
+  "output": "[1, 2, 3] ['A', 'b', 'c'] [1, 2, 3] (1, 2) (1,) () [] {} {'a': [1, (2, 3)], 'b': None}"
+ },
+ {
+  "template": "{ 1 == 1.0 } { 1 < 2 < 3 } { 3 > 2 > 2 } { \"a\" < \"b\" } { [1, 2] < [1, 3] } { True + 1 } { not 0 } { 0 or \"x\" } { 1 and 0 } { None } { none }",
+  "context": "{}",
+  "output": "True True False True True 2 True x 0 None None"
+ },
+ {
+  "template": "{ \"abc\"|upper } { \"ABC\"|lower } { \"  pad  \"|trim }| { \"hello world\"|title } { \"hello\"|capitalize } { \"a-b-c\"|replace(\"-\", \"+\") } { \"x\"|center(5) }| { 3.7|int } { \"3.7\"|int } { \"abc\"|int } { \"abc\"|int(5) } { \"12\"|float } { \"x\"|float } { -3|abs } { -2.5|abs }",
+  "context": "{}",
+  "output": "ABC abc pad| Hello World Hello a+b+c   x  | 3 3 0 5 12.0 0.0 3 2.5"
+ },
+ {
+  "template": "{ 2.5|round } { 3.5|round } { 2.675|round(2) } { 7|round } { 1.23456|round(3) } { 2.1|round(0, \"ceil\") } { 2.9|round(0, \"floor\") } { 123.456|round(-1) }",
+  "context": "{}",
+  "output": "2.0 4.0 2.67 7 1.235 3.0 2.0 120.0"
+ },
+ {
+  "template": "{ \"  a b  \".strip() }|{ \"x,y,z\".split(\",\") }|{ \"a b  c\".split() }|{ \"abc\".startswith(\"a\") }|{ \"abc\".endswith((\"x\", \"c\")) }|{ \"Hello\".replace(\"l\", \"L\") }|{ \"abc\".find(\"c\") }|{ \",\".join([\"a\", \"b\"]) }|{ \"12\".isdigit() }|{ \"5\".zfill(3) }|{ \"ab\".ljust(4) }|{ \"ab\".rjust(4) }|{ \"ab\".center(5, \"*\") }",
+  "context": "{}",
+  "output": "a b|['x', 'y', 'z']|['a', 'b', 'c']|True|True|HeLLo|2|a,b|True|005|ab  |  ab|**ab*"
+ },
+ {
+  "template": "{% for k, v in d.items() %}{k}={v};{% endfor %} {d.keys()|list} {d.values()|list} {d.get(\"x\")} {d.get(\"z\", 9)} {d.get(\"z\")}",
+  "context": "{\"d\": {\"x\": 1, \"y\": 2}}",
+  "output": "x=1;y=2; ['x', 'y'] [1, 2] 1 9 None"
+ },
+ {
+  "template": "{% for i in range(3) %}{loop.index}/{loop.index0}/{loop.revindex}/{loop.first}/{loop.last}/{loop.length} {% endfor %}",
+  "context": "{}",
+  "output": "1/0/3/True/False/3 2/1/2/False/False/3 3/2/1/False/True/3 "
+ },
+ {
+  "template": "{% for i in [] %}x{% else %}empty{% endfor %} {% for i in range(5) if i is odd %}{i}{% endfor %} {% for c in \"abc\" %}{c}.{% endfor %}",
+  "context": "{}",
+  "output": "empty 13 a.b.c."
+ },
+ {
+  "template": "{% set count = 0 %}{% for i in range(3) %}{% set count = count + 1 %}{count}{% endfor %} {count}",
+  "context": "{}",
+  "output": "111 0"
+ },
+ {
+  "template": "{% set ns = namespace(count=0) %}{% for i in range(3) %}{% set ns.count = ns.count + i %}{% endfor %}{ns.count}",
+  "context": "{}",
+  "output": "3"
+ },
+ {
+  "template": "{% if 1 %}a{% elif 2 %}b{% else %}c{% endif %} {% if 0 %}a{% elif 0 %}b{% else %}c{% endif %} {% if 0 %}a{% elif 1 %}b{% endif %}",
+  "context": "{}",
+  "output": "a c b"
+ },
+ {
+  "template": "a   {%- if true %} b {% endif -%}   c\n  {- 5 -}  ",
+  "context": "{}",
+  "output": "a b c5"
+ },
+ {
+  "template": "line1\n{% if true %}\nline2\n{% endif %}\nline3",
+  "context": "{}",
+  "output": "line1\n\nline2\n\nline3"
+ },
+ {
+  "template": "{% set x %}inner {1 + 1}{% endset %}[{x}]",
+  "context": "{}",
+  "output": "[inner 2]"
+ },
+ {
+  "template": "{ v is none } { u is defined } { w is defined } { w is undefined } { 3 is odd } { 4 is even } { 4 is divisibleby 2 } { \"a\" is string } { 1 is number } { 1.5 is float } { 1 is integer } { [1] is iterable } { {} is mapping } { 3 is eq 3 } { 3 is gt 2 }",
+  "context": "{\"v\": null, \"u\": 0}",
+  "output": "True True False True True True True True True True True True True True True"
+ },
+ {
+  "template": "{ \"a\" ~ 1 ~ 2.0 ~ None ~ w } { \"x\" * 3 } { [1] * 2 } { [1] + [2] } { \"a\" + \"b\" } { range(2, 10, 3)|list } { range(3)|list|length }",
+  "context": "{}",
+  "output": "a12.0None xxx [1, 1] [1, 2] ab [2, 5, 8] 3"
+ },
+ {
+  "template": "{ \"abcdef\"[1:3] } { \"abcdef\"[::-1] } { [1, 2, 3, 4][-2:] } { \"abc\"[0] } { [1, 2, 3][-1] } { \"abc\"[5] } [{ [1][3] }]",
+  "context": "{}",
+  "output": "bc fedcba [3, 4] a 3  []"
+ },
+ {
+  "template": "{ printer.toolhead.position[2] } { printer.toolhead.homed_axes } { 'x' in printer.toolhead.homed_axes } { printer['gcode_macro M'].var } { printer[\"toolhead\"][\"position\"]|list }",
+  "context": "{\"printer\": {\"toolhead\": {\"position\": [1.0, 2.0, 3.0, 4.0], \"homed_axes\": \"xyz\"}, \"gcode_macro M\": {\"var\": 5}}}",
+  "output": "3.0 xyz True 5 [1.0, 2.0, 3.0, 4.0]"
+ },
+ {
+  "template": "{ 1 if 0 } [{ 1 if 0 }]",
+  "context": "{}",
+  "output": " []"
+ },
+ {
+  "template": "{ x.y }",
+  "context": "{}",
+  "error": "UndefinedError: 'x' is undefined"
+ },
+ {
+  "template": "{ 1 + \"a\" }",
+  "context": "{}",
+  "error": "TypeError: unsupported operand type(s) for +: 'int' and 'str'"
+ },
+ {
+  "template": "{ 1 / 0 }",
+  "context": "{}",
+  "error": "ZeroDivisionError: division by zero"
+ },
+ {
+  "template": "{ 5 // 0 }",
+  "context": "{}",
+  "error": "ZeroDivisionError: integer division or modulo by zero"
+ },
+ {
+  "template": "{ \"%d\" % \"a\" }",
+  "context": "{}",
+  "error": "TypeError: %d format: a real number is required, not str"
+ },
+ {
+  "template": "{ \"%d %d\" % (1,) }",
+  "context": "{}",
+  "error": "TypeError: not enough arguments for format string"
+ },
+ {
+  "template": "{ undefined_name + 1 }",
+  "context": "{}",
+  "error": "UndefinedError: 'undefined_name' is undefined"
+ },
+ {
+  "template": "{ None + 1 }",
+  "context": "{}",
+  "error": "TypeError: unsupported operand type(s) for +: 'NoneType' and 'int'"
+ },
+ {
+  "template": "{% if %}x{% endif %}",
+  "context": "{}",
+  "syntax_error": "Expected an expression, got 'end of statement block'"
+ },
+ {
+  "template": "{% for x in y %}",
+  "context": "{}",
+  "syntax_error": "Unexpected end of template. Jinja was looking for the following tags: 'endfor' or 'else'. The innermost block that needs to be closed is 'for'."
+ },
+ {
+  "template": "{ 1 + }",
+  "context": "{}",
+  "syntax_error": "unexpected 'end of print statement'"
+ },
+ {
+  "template": "{ x|nosuchfilter }",
+  "context": "{}",
+  "syntax_error": "No filter named 'nosuchfilter'."
+ },
+ {
+  "template": "{% unknown %}",
+  "context": "{}",
+  "syntax_error": "Encountered unknown tag 'unknown'."
+ },
+ {
+  "template": "{ [1, 2, 3]|join }{ [1, 2]|sum(start=10) } { [\"a\", \"B\"]|max } { [3, \"a\"]|length }",
+  "context": "{}",
+  "output": "12313 B 2"
+ },
+ {
+  "template": "{ 1_000 + 1 } { 0.5e1 } { 3 * 0.1 } { 1 / 7 } { 10 / 4 } { 2 ** 0.5 } { -0.0 } { 0.1 + 0.7 }",
+  "context": "{}",
+  "output": "1001 5.0 0.30000000000000004 0.14285714285714285 2.5 1.4142135623730951 -0.0 0.7999999999999999"
+ },
+ {
+  "template": "{n} {n * 1000} {n / 7} {'%.2f' % n}\n",
+  "context": "{\"n\": 1234567890123}",
+  "output": "1234567890123 1234567890123000 176366841446.14285 1234567890123.00"
+ }
+]

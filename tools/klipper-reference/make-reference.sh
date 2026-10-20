@@ -43,6 +43,12 @@ docker run --rm --user "$(id -u):$(id -g)" \
   -v "$CACHE/klipper-$COMMIT:/klipper:ro" -v "$TTEST:/out" -v "$REPO/tools/klipper-reference:/tools:ro" \
   printdeck-klipper-ref python3 /tools/dumptemps.py /out/temps.json
 
+# The output of Jinja2, with the settings of Klipper, for the cases of the template engine.
+JTEST=$REPO/deck/internal/klipper/jinja/testdata
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$JTEST:/out" -v "$REPO/tools/klipper-reference:/tools:ro" \
+  printdeck-klipper-ref python3 /tools/dumpjinja.py /out/cases.txt /out/cases.json
+
 docker run --rm --user "$(id -u):$(id -g)" \
   -v "$CACHE/klipper-$COMMIT:/klipper" -v "$REPO/printer:/printer:ro" -v "$OUT:/out" \
   -e VERSION="$VERSION" -w /klipper printdeck-klipper-ref sh -eu -c '
