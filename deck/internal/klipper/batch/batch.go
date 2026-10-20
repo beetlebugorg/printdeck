@@ -19,14 +19,14 @@ import (
 // It writes the commands to output, and returns the run result and the state message of the
 // printer.
 func Run(configFile, dictionary, gcodeFile, output string) (string, string) {
+	debuginput, err := os.Open(gcodeFile)
+	if err != nil {
+		return "error_exit", err.Error()
+	}
+	defer debuginput.Close()
 	r := reactor.New()
 	p := host.New(r, host.StartArgs{"config_file": configFile, "start_reason": "startup",
-		"debuginput": gcodeFile, "debugoutput": output, "dictionary": dictionary})
-	// The G-code input of the batch mode is not ported yet: the run ends when the printer is
-	// ready.
-	p.RegisterEventHandler("klippy:ready", func(...any) {
-		r.RegisterCallback(func(float64) any { p.RequestExit("exit"); return nil }, reactor.Now)
-	})
+		"debuginput": gcodeFile, "gcode_fd": debuginput, "debugoutput": output, "dictionary": dictionary})
 	result := p.Run()
 	msg, _ := p.StateMessage()
 	return result, msg

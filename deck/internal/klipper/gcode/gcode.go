@@ -1,8 +1,9 @@
 // Package gcode reads G-code lines, finds the handler of each command, and sends the responses.
 //
 // Ported to Go from klippy/gcode.py of Klipper (https://github.com/Klipper3d/klipper), commit
-// 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f. The GCodeIO class, which reads G-code from a
-// pseudo-terminal, is not ported: the deck sends G-code to the dispatcher directly.
+// 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f. GCodeIO (gcodeio.go) reads only the G-code file of
+// the batch mode. Klipper also reads a pseudo-terminal, but the deck sends G-code to the
+// dispatcher directly.
 //
 // A handler gives an error with a panic of *CommandError, as gcode.py raises CommandError.
 //
