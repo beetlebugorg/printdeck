@@ -22,6 +22,7 @@ import (
 	_ "printdeck/internal/klipper/extras/motion_report"
 	_ "printdeck/internal/klipper/extras/query_adc"
 	_ "printdeck/internal/klipper/extras/query_endstops"
+	_ "printdeck/internal/klipper/extras/static_digital_output"
 	_ "printdeck/internal/klipper/extras/statistics"
 	_ "printdeck/internal/klipper/extras/stepper_enable"
 	_ "printdeck/internal/klipper/extras/thermistor"
