@@ -211,9 +211,28 @@ The image keeps only what Printdeck uses:
 - No OctoPrint: the Printdeck program has the OctoPrint-compatible API that slicers use.
 - No hardware database, console keymaps or `timedated`, and no command-line tools that come with
   libraries (for example `sqlite3`, `flac`, `systemd-nspawn`).
+- The kernel has only the modules that the Printdeck uses: the display, the Wi-Fi and Bluetooth,
+  the Amp2, the USB serial ports of the printer boards, the fan, and the buses they use
+  (`board/linux-modules.txt`). The SSD, the touch screen and the file systems are built into the
+  kernel.
 - The kernel modules are not compressed, because Buildroot's `depmod` cannot read compressed
-  modules, and EROFS compresses the root file system already. A list of the modules that the
-  Printdeck uses is next.
+  modules, and EROFS compresses the root file system already.
+
+### The kernel config
+
+`board/linux.config` is the `bcm2712` defconfig of the Raspberry Pi kernel, reduced with
+`make localmodconfig` to the modules of `board/linux-modules.txt`. To add a module, add its name
+to `board/linux-modules.txt`, then make the config again in the kernel folder of the build:
+
+```sh
+cd ~/.cache/printdeck-os/output/build/linux-custom
+make ARCH=arm64 bcm2712_defconfig
+make ARCH=arm64 LSMOD=/path/to/os/board/linux-modules.txt localmodconfig
+make ARCH=arm64 savedefconfig   # then copy defconfig to board/linux.config
+```
+
+The build container has the tools: run the commands in it, with the cross compiler of
+`output/per-package/linux/host/bin` in `PATH` and `CROSS_COMPILE=aarch64-linux-`.
 
 ### Files
 
@@ -221,7 +240,7 @@ The image keeps only what Printdeck uses:
 |---|---|
 | `build.sh`, `docker/` | The build script and its container |
 | `configs/printdeck_defconfig` | The Buildroot configuration |
-| `board/` | Boot files, partition layout, kernel and Busybox options, and the post-build scripts |
+| `board/` | Boot files, partition layout, the kernel config and its module list, Busybox options, and the post-build scripts |
 | `board/rootfs/` | The files of the root file system: services, settings, and the scripts below |
 | `board/rootfs/usr/bin/` | `printdeck-init`, `-settings`, `-credentials`, `-wifi`, `-user`, `-update` and `-commit` |
 | `board/rootfs/usr/lib/systemd/system-preset/` | The services that start |
