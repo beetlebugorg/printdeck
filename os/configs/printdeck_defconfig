@@ -8,6 +8,11 @@ BR2_TOOLCHAIN_EXTERNAL_BOOTLIN=y
 BR2_TOOLCHAIN_EXTERNAL_BOOTLIN_AARCH64_GLIBC_STABLE=y
 BR2_GLOBAL_PATCH_DIR="board/raspberrypi/patches"
 
+# Build: packages build in parallel (build.sh runs make -j), and ccache keeps the compiled objects
+# for the next clean build.
+BR2_PER_PACKAGE_DIRECTORIES=y
+BR2_CCACHE=y
+
 # System
 BR2_TARGET_GENERIC_HOSTNAME="printdeck"
 BR2_TARGET_GENERIC_ISSUE="Printdeck"

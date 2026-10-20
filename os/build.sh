@@ -36,7 +36,7 @@ run() {
     -v "$REPO:/src:ro" \
     -w "/cache/buildroot-$BUILDROOT_VERSION" \
     printdeck-os-builder \
-    make O=/cache/output BR2_EXTERNAL=/src/os "$@"
+    make -j"$(nproc)" O=/cache/output BR2_EXTERNAL=/src/os "$@"
 }
 
 mkdir -p "$CACHE/home" "$CACHE/dl"
