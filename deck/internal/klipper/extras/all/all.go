@@ -11,7 +11,10 @@ import (
 	_ "printdeck/internal/klipper/extras/query_endstops"
 	_ "printdeck/internal/klipper/extras/stepper_enable"
 	_ "printdeck/internal/klipper/gcode"
+	_ "printdeck/internal/klipper/kinematics/cartesian"
+	_ "printdeck/internal/klipper/kinematics/extruder"
 	_ "printdeck/internal/klipper/mcu"
 	_ "printdeck/internal/klipper/pins"
+	_ "printdeck/internal/klipper/toolhead"
 	_ "printdeck/internal/klipper/webhooks"
 )
