@@ -33,6 +33,7 @@ type Config struct {
 	Speaker            bool
 	SpeakerDevice      string
 	SpotifyDir         string
+	SpotifyDebug       bool // log the debug messages of go-librespot
 	MaxVolume          int
 	FloorDB, CeilDB    float64 // the decibels at 0% and 100% of the volume
 	PreheatTool        int
@@ -67,6 +68,7 @@ func Load() Config {
 		ModelDir:        str("MODEL_DIR", "/var/lib/printdeck/models"),
 		AlsaCard:        str("ALSA_CARD", "sndrpihifiberry"),
 		Speaker:         str("SPOTIFY_SPEAKER", "1") == "1",
+		SpotifyDebug:    str("SPOTIFY_DEBUG", "0") == "1",
 		MaxVolume:       num("MAX_VOLUME", 100),
 		FloorDB:         float64(num("VOLUME_FLOOR_DB", -40)),
 		CeilDB:          float64(num("VOLUME_CEIL_DB", -10)),

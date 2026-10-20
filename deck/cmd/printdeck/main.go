@@ -138,7 +138,8 @@ func run(cfg config.Config, sp *spotify.Client) {
 		go func() {
 			for ctx.Err() == nil {
 				err := speaker.Run(ctx, speaker.Config{DeviceName: cfg.DeviceName, Device: cfg.SpeakerDevice,
-					ConfigDir: cfg.SpotifyDir, APIAddr: "127.0.0.1", APIPort: 3678, EQ: eqc})
+					ConfigDir: cfg.SpotifyDir, APIAddr: "127.0.0.1", APIPort: 3678, EQ: eqc,
+					Debug: cfg.SpotifyDebug})
 				if err != nil {
 					log.Printf("spotify speaker: %v", err)
 				}
