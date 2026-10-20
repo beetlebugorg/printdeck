@@ -171,6 +171,7 @@ def slab():
         s = s - diamond_a(S.RIDGE_B + 1.05, -13.0, 1.0, sg * (A_THICK + 0.5), sg * (A_OUT + 1))
         # The hole for the chin screw.
         s = s - teardrop_a(*S.SIDE_SCREW, 1.7, sg * (A_THICK - 1), sg * (A_OUT + 1))
+        s = s - teardrop_a(*S.SIDE_SCREW, S.SIDE_HEAD[0], sg * (A_OUT - S.SIDE_HEAD[1]), sg * (A_OUT + 1))
     return s
 
 
@@ -292,12 +293,14 @@ def foot_world():
 
 
 def side_screws():
-    """The two M3 × 10 button head screws of the chin, in slab coordinates."""
+    """The two M3 × 6 socket head screws of the chin, in slab coordinates. Each head is in its
+    counterbore, 0.1 mm behind the outer face of the wall."""
     b, c = S.SIDE_SCREW
     p = []
     for i, sg in enumerate((1, -1)):
-        head = cyl_a(b, c, 2.85, sg * A_OUT, sg * (A_OUT + 1.65))
-        shank = cyl_a(b, c, 1.5, sg * A_OUT, sg * (A_OUT - 10.0))
+        seat = A_OUT - S.SIDE_HEAD[1]
+        head = cyl_a(b, c, 2.75, sg * seat, sg * (seat + 3.0))
+        shank = cyl_a(b, c, 1.5, sg * seat, sg * (seat - S.SIDE_SCREW_L))
         p.append((f"side_screw{i}", head + shank, "steel"))
     return p, []
 

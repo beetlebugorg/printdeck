@@ -48,7 +48,7 @@ HARDWARE = [
     (4, "M3 heat-set insert, for a 4.0 mm hole, max. 5.5 mm long (Pi)"),
     (4, "M3 × 6 screw (display)"),
     (4, "M3 × 5 screw (drive)"),
-    (2, "M3 × 10 button head screw (chin)"),
+    (2, "M3 × 6 socket head screw (chin)"),
     (4, "M3 × 8 socket head screw (foot)"),
     (4, "M3 × 16 screw, pan head (fan). It cuts its thread in the printed boss."),
     (3, "Twist tie, 15 cm, max. 3 mm wide (orange looks best)"),
@@ -95,12 +95,12 @@ STEPS = [
         "Keep the slab face down. Lead the two display cables through the two notches in the bottom edge of the back plate: the USB cable at the left, the ribbon at the right.",
         "Put the edges of the back plate into the grooves of the slab, at the open bottom. Slide the plate up until it stops at the top wall.",
     ], "The drive is behind the display plugs. If the plate does not slide, look at the plugs first."),
-    ("step4", "Chin", ["chin", "6 × insert (4 mm)", "2 × M3 × 10"], [
+    ("step4", "Chin", ["chin", "6 × insert (4 mm)", "2 × M3 × 6"], [
         "Press four 4 mm M3 heat-set inserts into the four holes in the bottom of the chin, at the front corners. Stop when the insert is flush.",
         "Press one 4 mm M3 heat-set insert into the hole in the outer face of each tongue. Stop when the insert is flush.",
         "Put the extra length of the display cables into the chin.",
         "Push the chin up onto the slab: its grooves take the bottom of the back plate. Push until the two tongues click.",
-        "Put an M3 × 10 button head screw through the hole in each side wall of the slab, into the insert in the tongue.",
+        "Put an M3 × 6 socket head screw through the hole in each side wall of the slab, into the insert in the tongue. The head goes into the recess and is flush with the wall.",
     ], "The chin holds the back plate. The case is now closed."),
     ("step5", "Foot", ["foot", "4 × M3 × 8"], [
         "Put the case on the foot. The foot is 6 mm in from the front and the sides, and it reaches far to the rear.",
