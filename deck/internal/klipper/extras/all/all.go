@@ -20,6 +20,7 @@ import (
 	_ "printdeck/internal/klipper/extras/manual_probe"
 	_ "printdeck/internal/klipper/extras/motion_queuing"
 	_ "printdeck/internal/klipper/extras/motion_report"
+	_ "printdeck/internal/klipper/extras/probe"
 	_ "printdeck/internal/klipper/extras/query_adc"
 	_ "printdeck/internal/klipper/extras/query_endstops"
 	_ "printdeck/internal/klipper/extras/static_digital_output"
