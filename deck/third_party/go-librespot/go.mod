@@ -11,6 +11,7 @@ require (
 	github.com/godbus/dbus/v5 v5.2.0
 	github.com/gofrs/flock v0.13.0
 	github.com/grandcat/zeroconf v1.0.0
+	github.com/hajimehoshi/go-mp3 v0.3.4
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/jfreymuth/pulse v0.1.2-0.20241102120944-4ffb35054b53
 	github.com/knadh/koanf/parsers/yaml v1.1.0
@@ -23,7 +24,6 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
-	github.com/xlab/vorbis-go v0.0.0-20210911202351-b5b85f1ec645
 	go.uber.org/goleak v1.3.0
 	golang.org/x/crypto v0.46.0
 	golang.org/x/exp v0.0.0-20251209150349-8475f28825e9

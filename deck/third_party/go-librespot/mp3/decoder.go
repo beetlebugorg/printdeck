@@ -1,45 +1,26 @@
 package mp3
 
+// Printdeck: this decoder is pure Go. The upstream version uses libmpg123 through cgo. The frames
+// decode with github.com/hajimehoshi/go-mp3 (Apache-2.0), which gives 16-bit samples. The gapless
+// handling follows libmpg123 (src/libmpg123/frame.c and parse.c, LGPL-2.1, the mpg123 project):
+// with the LAME tag, the encoder delay plus the decoder delay of 529 samples are cut at the start,
+// and the padding at the end. The output is stereo, as upstream asks libmpg123 for
+// (MPG123_STEREO).
+
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
-	"runtime/cgo"
-	"sync"
-	"unsafe"
 
 	librespot "github.com/devgianlu/go-librespot"
+	"github.com/hajimehoshi/go-mp3"
 )
 
-// #cgo pkg-config: libmpg123
-// #include <mpg123.h>
-// #include <stdint.h>
-// #include <stdio.h>
-// #include <stdlib.h>
-//
-// extern ssize_t mpg123CallbackRead(void *handle, void *buf, size_t count);
-// extern off_t mpg123CallbackSeek(void *handle, off_t offset, int whence);
-//
-// // cgo cannot pass Go functions as C function pointers directly, so wrap the
-// // exported ones here.
-// static int replaceReader(mpg123_handle *mh) {
-//     return mpg123_replace_reader_handle(mh, mpg123CallbackRead, mpg123CallbackSeek, NULL);
-// }
-//
-// // The reader handle outlives this call, so it cannot be Go memory. Park the
-// // cgo.Handle in a C allocation instead.
-// static uintptr_t* allocHandle(uintptr_t h) {
-//     uintptr_t *p = (uintptr_t*)malloc(sizeof(uintptr_t));
-//     if (p != NULL) *p = h;
-//     return p;
-// }
-import "C"
+// gaplessDelay is the delay of the MP3 synthesis filter bank (GAPLESS_DELAY of libmpg123).
+const gaplessDelay = 529
 
-// mpg123_init is only required once per process. It is a no-op on recent
-// versions but is still documented as mandatory before the first mpg123_new.
-var initOnce sync.Once
-
-// Decoder implements an MP3 decoder on top of libmpg123.
+// Decoder implements an MP3 decoder.
 type Decoder struct {
 	log librespot.Logger
 
@@ -51,176 +32,287 @@ type Decoder struct {
 
 	input librespot.SizedReadAtSeeker
 
-	mh        *C.mpg123_handle
-	handle    cgo.Handle
-	handlePtr *C.uintptr_t
+	dec *mp3.Decoder
+	buf []byte
+
+	// The gapless window, in frames of the decoded stream of go-mp3 (which includes the Xing
+	// frame): the first frame to return, and the end (-1 for no end).
+	begin, end int64
+	// pos is the frame of the decoded stream at the next read.
+	pos int64
+	// eof is a seek past the end of a stream of unknown length.
+	eof bool
+
+	// spf is the samples per frame. frameStarts are the byte offsets of the frames that a seek
+	// indexed, from the first frame.
+	spf         int64
+	frameStarts []int64
+	scanned     int64 // the byte offset after the last indexed frame
 }
 
+// readerOnly hides the Seek method of the input, so that go-mp3 does not scan the whole stream
+// (and download it) when it opens.
+type readerOnly struct{ io.Reader }
+
 func New(log librespot.Logger, r librespot.SizedReadAtSeeker, gain float32) (_ *Decoder, err error) {
-	initOnce.Do(func() { C.mpg123_init() })
+	d := &Decoder{log: log, input: r, gain: gain, end: -1}
 
-	d := &Decoder{log: log, input: r, gain: gain}
-
-	var errC C.int
-	d.mh = C.mpg123_new(nil, &errC)
-	if d.mh == nil {
-		return nil, fmt.Errorf("could not create mpg123 decoder: %s", C.GoString(C.mpg123_plain_strerror(errC)))
+	start, err := r.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return nil, fmt.Errorf("could not open mp3 stream: %w", err)
 	}
-
-	// Release everything if we bail out part way through setup.
-	defer func() {
-		if err != nil {
-			d.free()
+	head := make([]byte, 16*1024)
+	n, _ := io.ReadFull(r, head)
+	if _, err := r.Seek(start, io.SeekStart); err != nil {
+		return nil, fmt.Errorf("could not open mp3 stream: %w", err)
+	}
+	if g, ok := parseGapless(head[:n]); ok {
+		d.begin = g.xingFrames + g.delay + gaplessDelay
+		if g.frames > 0 {
+			d.end = g.xingFrames + g.frames - g.padding + gaplessDelay
 		}
-	}()
-
-	// Quieten libmpg123: it otherwise writes decoding complaints to stderr.
-	if res := C.mpg123_param(d.mh, C.MPG123_ADD_FLAGS, C.MPG123_QUIET, 0); res != C.MPG123_OK {
-		return nil, fmt.Errorf("could not set mpg123 quiet flag: %s", d.strerror())
 	}
 
-	if res := C.replaceReader(d.mh); res != C.MPG123_OK {
-		return nil, fmt.Errorf("could not replace mpg123 reader: %s", d.strerror())
+	d.dec, err = mp3.NewDecoder(readerOnly{r})
+	if err != nil {
+		return nil, fmt.Errorf("could not open mp3 stream: %w", err)
 	}
-
-	// The format table is consulted when the first frame is decoded, so it has to
-	// be narrowed before opening the stream: setting it afterwards has no effect
-	// until the next natural format change, which for a single clip never comes.
-	C.mpg123_format_none(d.mh)
-	if res := C.mpg123_format2(d.mh, 0, C.MPG123_STEREO, C.MPG123_ENC_FLOAT_32); res != C.MPG123_OK {
-		return nil, fmt.Errorf("could not set mpg123 format: %s", d.strerror())
+	d.SampleRate = int32(d.dec.SampleRate())
+	d.Channels = 2
+	d.spf = 1152
+	if d.SampleRate < 32000 {
+		d.spf = 576
 	}
-
-	d.handle = cgo.NewHandle(d)
-	d.handlePtr = C.allocHandle(C.uintptr_t(d.handle))
-	if d.handlePtr == nil {
-		return nil, fmt.Errorf("could not allocate mpg123 reader handle")
-	}
-
-	if res := C.mpg123_open_handle(d.mh, unsafe.Pointer(d.handlePtr)); res != C.MPG123_OK {
-		return nil, fmt.Errorf("could not open mpg123 stream: %s", d.strerror())
-	}
-
-	// Read the negotiated format back rather than assuming the request was
-	// honoured: some encodings can be missing from a given library build.
-	var rate C.long
-	var channels, encoding C.int
-	if res := C.mpg123_getformat(d.mh, &rate, &channels, &encoding); res != C.MPG123_OK {
-		return nil, fmt.Errorf("could not get mpg123 format: %s", d.strerror())
-	}
-
-	if encoding != C.MPG123_ENC_FLOAT_32 {
-		return nil, fmt.Errorf("unexpected mpg123 encoding: %d", encoding)
-	}
-
-	d.SampleRate = int32(rate)
-	d.Channels = int32(channels)
 
 	log.Debugf("mp3 stream info: sample rate = %d, channels = %d", d.SampleRate, d.Channels)
 	return d, nil
 }
 
-func (d *Decoder) strerror() string {
-	return C.GoString(C.mpg123_strerror(d.mh))
+type gapless struct {
+	xingFrames     int64 // the samples of the Xing frame, which go-mp3 decodes as silence
+	frames         int64 // the samples of the audio frames, or 0 when unknown
+	delay, padding int64
 }
 
-func (d *Decoder) free() {
-	if d.mh != nil {
-		C.mpg123_close(d.mh)
-		C.mpg123_delete(d.mh)
-		d.mh = nil
+// parseGapless reads the Xing/Info tag and its LAME tag from the first frame.
+func parseGapless(b []byte) (gapless, bool) {
+	// skip an ID3v2 tag
+	if len(b) >= 10 && string(b[:3]) == "ID3" {
+		size := int(b[6]&0x7f)<<21 | int(b[7]&0x7f)<<14 | int(b[8]&0x7f)<<7 | int(b[9]&0x7f)
+		if b[5]&0x10 != 0 {
+			size += 10 // footer
+		}
+		if 10+size > len(b) {
+			return gapless{}, false
+		}
+		b = b[10+size:]
 	}
-	if d.handlePtr != nil {
-		C.free(unsafe.Pointer(d.handlePtr))
-		d.handlePtr = nil
+	// find the first frame
+	for len(b) >= 4 && !(b[0] == 0xff && b[1]&0xe0 == 0xe0) {
+		b = b[1:]
 	}
-	if d.handle != 0 {
-		d.handle.Delete()
-		d.handle = 0
+	if len(b) < 4 {
+		return gapless{}, false
 	}
+	version := (b[1] >> 3) & 3 // 3: MPEG-1, 2: MPEG-2, 0: MPEG-2.5
+	layer := (b[1] >> 1) & 3   // 1: layer III
+	crc := b[1]&1 == 0
+	mono := b[3]>>6 == 3
+	if layer != 1 || version == 1 {
+		return gapless{}, false
+	}
+	spf := int64(1152)
+	sideInfo := 32
+	if mono {
+		sideInfo = 17
+	}
+	if version != 3 {
+		spf = 576
+		sideInfo = 17
+		if mono {
+			sideInfo = 9
+		}
+	}
+	off := 4 + sideInfo
+	if crc {
+		off += 2
+	}
+	if len(b) < off+8 || (string(b[off:off+4]) != "Xing" && string(b[off:off+4]) != "Info") {
+		return gapless{}, false
+	}
+	flags := binary.BigEndian.Uint32(b[off+4:])
+	p := off + 8
+	g := gapless{xingFrames: spf}
+	if flags&1 != 0 {
+		if len(b) < p+4 {
+			return gapless{}, false
+		}
+		g.frames = int64(binary.BigEndian.Uint32(b[p:])) * spf
+		p += 4
+	}
+	if flags&2 != 0 {
+		p += 4
+	}
+	if flags&4 != 0 {
+		p += 100
+	}
+	if flags&8 != 0 {
+		p += 4
+	}
+	// The LAME tag: 9 bytes of encoder name, then the delay and the padding in 3 bytes at 21.
+	if len(b) < p+24 {
+		return gapless{}, false
+	}
+	dp := b[p+21:]
+	g.delay = int64(dp[0])<<4 | int64(dp[1])>>4
+	g.padding = int64(dp[1]&0x0f)<<8 | int64(dp[2])
+	return g, true
 }
 
-func decoderFromHandle(handle unsafe.Pointer) *Decoder {
-	return cgo.Handle(*(*C.uintptr_t)(handle)).Value().(*Decoder)
-}
-
-//export mpg123CallbackRead
-func mpg123CallbackRead(handle unsafe.Pointer, buf unsafe.Pointer, count C.size_t) C.ssize_t {
-	d := decoderFromHandle(handle)
-
-	b := unsafe.Slice((*byte)(buf), int(count))
-	n, err := d.input.Read(b)
-	if err != nil && !errors.Is(err, io.EOF) {
-		d.log.WithError(err).Errorf("failed to read from input")
-		return -1
-	}
-
-	// A zero length read is how libmpg123 is told the stream ended.
-	return C.ssize_t(n)
-}
-
-//export mpg123CallbackSeek
-func mpg123CallbackSeek(handle unsafe.Pointer, offset C.off_t, whence C.int) C.off_t {
-	d := decoderFromHandle(handle)
-
-	pos, err := d.input.Seek(int64(offset), int(whence))
-	if err != nil {
-		d.log.WithError(err).Errorf("failed to seek in input")
-		return -1
-	}
-
-	return C.off_t(pos)
+// fill reads decoded frames (4 bytes each: 16-bit stereo) from go-mp3.
+func (d *Decoder) fill() error {
+	tmp := make([]byte, 4608)
+	n, err := d.dec.Read(tmp)
+	d.buf = append(d.buf, tmp[:n]...)
+	return err
 }
 
 func (d *Decoder) Read(p []float32) (n int, err error) {
 	if len(p) == 0 {
 		return 0, nil
 	}
-
-	var done C.size_t
-	res := C.mpg123_read(d.mh, unsafe.Pointer(&p[0]), C.size_t(len(p))*C.sizeof_float, &done)
-	n = int(done) / C.sizeof_float
-
-	// Applied here rather than via mpg123_volume so that gain behaves exactly as
-	// it does in the Vorbis and FLAC decoders.
-	for i := 0; i < n; i++ {
-		p[i] *= d.gain
-	}
-
-	switch res {
-	case C.MPG123_OK:
-		return n, nil
-	case C.MPG123_DONE:
-		if n == 0 {
-			return 0, io.EOF
+	for n+1 < len(p) && !d.eof {
+		if d.end >= 0 && d.pos >= d.end {
+			break
 		}
-		return n, nil
-	default:
-		return n, fmt.Errorf("error while decoding mp3 frame: %s", d.strerror())
+		if len(d.buf) < 4 {
+			if err := d.fill(); err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				return n, fmt.Errorf("error while decoding mp3 frame: %w", err)
+			}
+			continue
+		}
+		frame := d.buf[:4]
+		d.buf = d.buf[4:]
+		d.pos++
+		if d.pos <= d.begin {
+			continue
+		}
+		p[n] = float32(int16(binary.LittleEndian.Uint16(frame))) / 32768 * d.gain
+		p[n+1] = float32(int16(binary.LittleEndian.Uint16(frame[2:]))) / 32768 * d.gain
+		n += 2
 	}
+	if n == 0 {
+		return 0, io.EOF
+	}
+	return n, nil
 }
+
+// The frame header tables of MPEG audio layer III.
+var (
+	bitratesMPEG1 = [15]int64{0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320}
+	bitratesMPEG2 = [15]int64{0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160}
+	sampleRates   = map[byte][3]int64{3: {44100, 48000, 32000}, 2: {22050, 24000, 16000}, 0: {11025, 12000, 8000}}
+)
+
+// frameSize returns the size of a layer III frame from its header, or 0 for no valid header.
+func frameSize(h []byte) int64 {
+	if h[0] != 0xff || h[1]&0xe0 != 0xe0 {
+		return 0
+	}
+	version, layer := (h[1]>>3)&3, (h[1]>>1)&3
+	bi, si, pad := h[2]>>4, (h[2]>>2)&3, int64((h[2]>>1)&1)
+	if version == 1 || layer != 1 || bi == 0 || bi == 15 || si == 3 {
+		return 0
+	}
+	rate := sampleRates[version][si]
+	if version == 3 {
+		return 144000*bitratesMPEG1[bi]/rate + pad
+	}
+	return 72000*bitratesMPEG2[bi]/rate + pad
+}
+
+// frameStart returns the byte offset of a frame, or false after the last frame. It indexes the
+// frame headers from the start of the stream as far as needed, as libmpg123 does for an exact
+// seek.
+func (d *Decoder) frameStart(frame int64) (int64, bool) {
+	if d.frameStarts == nil {
+		head := make([]byte, 10)
+		if _, err := d.input.ReadAt(head, 0); err == nil && string(head[:3]) == "ID3" {
+			size := int64(head[6]&0x7f)<<21 | int64(head[7]&0x7f)<<14 | int64(head[8]&0x7f)<<7 | int64(head[9]&0x7f)
+			d.scanned = 10 + size
+			if head[5]&0x10 != 0 {
+				d.scanned += 10
+			}
+		}
+		d.frameStarts = []int64{}
+	}
+	h := make([]byte, 4)
+	for int64(len(d.frameStarts)) <= frame {
+		if _, err := d.input.ReadAt(h, d.scanned); err != nil {
+			return 0, false
+		}
+		size := frameSize(h)
+		if size == 0 {
+			// not a frame here: look for the next sync
+			d.scanned++
+			continue
+		}
+		d.frameStarts = append(d.frameStarts, d.scanned)
+		d.scanned += size
+	}
+	return d.frameStarts[frame], true
+}
+
+// seekPreroll is the number of frames that decode before the target frame, so that the bit
+// reservoir and the filter states are those of a decode from the start.
+const seekPreroll = 3
 
 func (d *Decoder) SetPositionMs(pos int64) error {
 	// mpg123 seeks and tells in samples, not bytes.
 	off := pos * int64(d.SampleRate) / 1000
-	if res := C.mpg123_seek(d.mh, C.off_t(off), C.SEEK_SET); res < 0 {
-		return fmt.Errorf("could not seek to position %dms: %s", pos, d.strerror())
+	target := d.begin + off
+	if d.end >= 0 && target > d.end {
+		target = d.end
 	}
-
+	frame := target / d.spf
+	first := max(0, frame-seekPreroll)
+	d.buf, d.pos, d.eof = nil, target, false
+	if _, ok := d.frameStart(frame); !ok {
+		// past the end of the stream
+		d.eof = true
+		return nil
+	}
+	from, _ := d.frameStart(first)
+	if first == 0 {
+		from = 0 // go-mp3 skips the ID3 tag itself
+	}
+	dec, err := mp3.NewDecoder(readerOnly{io.NewSectionReader(d.input, from, d.input.Size()-from)})
+	if err != nil {
+		return fmt.Errorf("could not seek to position %dms: %w", pos, err)
+	}
+	d.dec = dec
+	// decode the preroll frames and the start of the target frame, and drop their samples
+	skip := (target - first*d.spf) * 4
+	for int64(len(d.buf)) < skip {
+		if err := d.fill(); err != nil {
+			if errors.Is(err, io.EOF) {
+				d.eof = true
+				return nil
+			}
+			return fmt.Errorf("could not seek to position %dms: %w", pos, err)
+		}
+	}
+	d.buf = d.buf[skip:]
 	return nil
 }
 
 func (d *Decoder) PositionMs() int64 {
-	off := C.mpg123_tell(d.mh)
-	if off < 0 {
-		d.log.Errorf("could not get decode position: %s", d.strerror())
-		return 0
-	}
-
-	return int64(off) * 1000 / int64(d.SampleRate)
+	return max(0, d.pos-d.begin) * 1000 / int64(d.SampleRate)
 }
 
 func (d *Decoder) Close() error {
-	d.free()
 	return nil
 }

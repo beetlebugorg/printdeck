@@ -1,4 +1,6 @@
-//go:build !android && !darwin && !js && !windows && !nintendosdk
+//go:build cgo && !android && !darwin && !js && !windows && !nintendosdk
+
+// Printdeck: this driver needs cgo. A build with no cgo has the stub of driver-alsa-stub.go.
 
 package output
 

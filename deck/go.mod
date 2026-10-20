@@ -3,6 +3,7 @@ module printdeck
 go 1.25
 
 require (
+	github.com/hajimehoshi/go-mp3 v0.3.4
 	golang.org/x/image v0.30.0
 	golang.org/x/net v0.48.0
 	rsc.io/qr v0.2.0

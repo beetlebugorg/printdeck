@@ -124,7 +124,19 @@ type NewOutputOptions struct {
 	OutputPipeWaitForReader bool
 }
 
+// backends are the output backends of the program (Printdeck).
+var backends = map[string]func(*NewOutputOptions) (Output, error){}
+
+// RegisterBackend adds an output backend, or replaces a backend of this package. Printdeck uses
+// it for its pure Go ALSA backend with the equalizer.
+func RegisterBackend(name string, newOutput func(*NewOutputOptions) (Output, error)) {
+	backends[name] = newOutput
+}
+
 func NewOutput(options *NewOutputOptions) (Output, error) {
+	if newOutput, ok := backends[options.Backend]; ok {
+		return newOutput(options)
+	}
 	switch options.Backend {
 	case "alsa":
 		out, err := newAlsaOutput(options)
