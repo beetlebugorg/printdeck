@@ -270,6 +270,21 @@ func (s *SerialReader) ConnectUART(serialPort string, baud int, rts bool) error 
 	}
 }
 
+// TryUART opens a serial port and reads the data dictionary, one time. It runs in reactor code,
+// and fails when the board does not answer within 5 seconds. Klipper has no such method: the deck
+// uses it to find a board with Klipper firmware.
+func (s *SerialReader) TryUART(serialPort string, baud int, rts bool) error {
+	p, err := serialport.Open(serialPort, baud, rts)
+	if err != nil {
+		return s.errorf("Unable to open serial port: %v", err)
+	}
+	Stk500v2Leave(p, s.reactor, baud)
+	if !s.startSession(p) {
+		return s.errorf("No answer from the board")
+	}
+	return nil
+}
+
 // ConnectFile writes the commands to a file with no answers (klippy's batch mode), with the data
 // dictionary of the board.
 func (s *SerialReader) ConnectFile(debugoutput Port, dictionary []byte) error {
