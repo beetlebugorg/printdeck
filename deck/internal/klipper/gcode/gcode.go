@@ -275,6 +275,7 @@ func New(printer *host.Printer) *Dispatch {
 	g.RegisterCommand("ECHO", func(gcmd *Command) { gcmd.RespondInfo(gcmd.Commandline(), false) }, true, "")
 	g.RegisterCommand("STATUS", g.cmdStatus, true, "Report the printer status")
 	g.RegisterCommand("HELP", g.cmdHelp, true, "Report the list of available extended G-Code commands")
+	g.RegisterCommand("SAVE_CONFIG", g.cmdSaveConfig, false, "Overwrite config file and restart")
 	return g
 }
 
@@ -735,4 +736,24 @@ func (g *Dispatch) cmdHelp(gcmd *Command) {
 		}
 	}
 	gcmd.RespondInfo(strings.Join(cmdhelp, "\n"), false)
+}
+
+// cmdSaveConfig writes the SAVE_CONFIG changes to the config file and restarts (the
+// cmd_SAVE_CONFIG of configfile.py).
+func (g *Dispatch) cmdSaveConfig(gcmd *Command) {
+	pconfig := g.printer.LookupObject("configfile").(*configfile.PrinterConfig)
+	cfgname, _ := g.printer.StartArgs().Get("config_file")
+	restart, err := pconfig.SaveConfig(cfgname)
+	if err != nil {
+		panic(gcmd.Error("%s", err.Error()))
+	}
+	if restart {
+		g.RequestRestart("restart")
+	}
+}
+
+// Registered reports that a command is registered.
+func (g *Dispatch) Registered(cmd string) bool {
+	_, ok := g.readyGcodeHandlers[cmd]
+	return ok
 }
