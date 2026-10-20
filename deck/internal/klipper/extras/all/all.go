@@ -6,6 +6,7 @@ import (
 	_ "printdeck/internal/klipper/extras/adc_temperature"
 	_ "printdeck/internal/klipper/extras/error_mcu"
 	_ "printdeck/internal/klipper/extras/force_move"
+	_ "printdeck/internal/klipper/extras/gcode_macro"
 	_ "printdeck/internal/klipper/extras/gcode_move"
 	_ "printdeck/internal/klipper/extras/heaters"
 	_ "printdeck/internal/klipper/extras/homing"
