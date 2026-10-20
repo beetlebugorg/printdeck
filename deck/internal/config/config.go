@@ -12,6 +12,8 @@ type Config struct {
 	Rotate      int // 90 or 270: rotation of the portrait UI onto the landscape panel
 
 	TouchInvertX, TouchInvertY, TouchSwapXY bool
+	// TouchLog logs each touch sample, for the measurement of the calibration.
+	TouchLog bool
 
 	SpotifyClientID string
 	DeviceName      string
@@ -42,6 +44,7 @@ func Load() Config {
 		TouchInvertX:    num("TOUCH_INVERT_X", 0) == 1,
 		TouchInvertY:    num("TOUCH_INVERT_Y", 0) == 1,
 		TouchSwapXY:     num("TOUCH_SWAP_XY", 0) == 1,
+		TouchLog:        num("TOUCH_LOG", 0) == 1,
 		SpotifyClientID: str("SPOTIFY_CLIENT_ID", ""),
 		DeviceName:      str("SPOTIFY_DEVICE_NAME", "Printdeck"),
 		LinkBase:        linkBase(),

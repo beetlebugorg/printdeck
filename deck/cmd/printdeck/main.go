@@ -131,7 +131,7 @@ func run(cfg config.Config, sp *spotify.Client) {
 		}
 	})
 
-	go touch.Run(ctx, touch.Options{InvertX: cfg.TouchInvertX, InvertY: cfg.TouchInvertY, Swap: cfg.TouchSwapXY, Rotate: cfg.Rotate}, events)
+	go touch.Run(ctx, touch.Options{InvertX: cfg.TouchInvertX, InvertY: cfg.TouchInvertY, Swap: cfg.TouchSwapXY, Rotate: cfg.Rotate, Log: cfg.TouchLog}, events)
 
 	present := screen.Present
 	if rs := startWeb(cfg, host, events, pr, app); rs != nil {
