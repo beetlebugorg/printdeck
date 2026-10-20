@@ -217,7 +217,8 @@ The image keeps only what Printdeck uses:
 - No libraries that no program links or loads, such as `libstdc++` (`board/post-build.sh`).
 - The kernel has only the modules that the Printdeck uses: the display, the Wi-Fi, the Amp2, the USB serial ports of the printer boards, the fan, and the buses they use
   (`board/linux-modules.txt`). The SSD, the touch screen and the file systems are built into the
-  kernel.
+  kernel. The display driver (`vc4`) is built in too, so that the start screen has the full
+  display from the first frame.
 - The kernel modules are not compressed, because Buildroot's `depmod` cannot read compressed
   modules, and EROFS compresses the root file system already.
 
@@ -233,6 +234,10 @@ make ARCH=arm64 bcm2712_defconfig
 make ARCH=arm64 LSMOD=/path/to/os/board/linux-modules.txt localmodconfig
 make ARCH=arm64 savedefconfig   # then copy defconfig to board/linux.config
 ```
+
+Then set these options to `y` in `board/linux.config`, because `localmodconfig` makes them
+modules: `CONFIG_DRM`, `CONFIG_DRM_VC4`, `CONFIG_SND`, `CONFIG_SND_SOC` and
+`CONFIG_I2C_BRCMSTB`.
 
 The build container has the tools: run the commands in it, with the cross compiler of
 `output/per-package/linux/host/bin` in `PATH` and `CROSS_COMPILE=aarch64-linux-`.

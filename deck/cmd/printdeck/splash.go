@@ -39,8 +39,8 @@ func splash(cfg config.Config) {
 	defer stop()
 	events := make(chan touch.Event, 16)
 	go touch.Run(ctx, touch.Options{}, events)
-	// The HDMI driver (vc4) loads a few seconds after the start and replaces the framebuffer of the
-	// firmware. Then draw the start screen again on the new one.
+	// If the HDMI driver (vc4) replaces the framebuffer later, draw the start screen again on the
+	// new one.
 	check := time.NewTicker(200 * time.Millisecond)
 	defer check.Stop()
 	var hold <-chan time.Time
@@ -69,11 +69,17 @@ func splash(cfg config.Config) {
 }
 
 // openSplash draws the start screen on the framebuffer, and returns the screen and the name of its
-// driver. It waits up to 5 seconds for the framebuffer. The screen stays open: tty1 stays in
-// graphics mode, so the console does not draw over the start screen before the deck starts.
+// driver. It waits up to 5 seconds for the framebuffer of the HDMI driver. The framebuffer of the
+// firmware ("simple") is 640x480 and the display is 800x480, so the start screen does not use it.
+// The screen stays open: tty1 stays in graphics mode, so the console does not draw over the start
+// screen before the deck starts.
 func openSplash(cfg config.Config) (*fb.FB, string) {
 	for i := 0; i < 50; i++ {
 		name := fbName(cfg)
+		if name == "simple" {
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
 		if screen, err := fb.Open(cfg.Framebuffer, cfg.Rotate); err == nil {
 			c := gfx.New(ui.W, ui.H)
 			ui.DrawSplash(c, osVersion(), splashNight(cfg))
