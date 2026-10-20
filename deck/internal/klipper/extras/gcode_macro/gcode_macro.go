@@ -68,6 +68,11 @@ func (w *GetStatusWrapper) Item(key any) (any, bool) {
 	return res, true
 }
 
+// newGetStatusWrapperAt returns a wrapper that gets the status at eventtime.
+func newGetStatusWrapperAt(printer *host.Printer, eventtime float64) *GetStatusWrapper {
+	return &GetStatusWrapper{printer: printer, eventtime: eventtime, hasTime: true, cache: map[string]any{}}
+}
+
 // Iter lists the names of the objects with a status.
 func (w *GetStatusWrapper) Iter() []any {
 	var out []any
@@ -230,6 +235,13 @@ func (tw *TemplateWrapper) Render(context map[string]any) string {
 	return out
 }
 
+// CreateTemplateContext returns the context of CreateTemplateContextAt of the template.
+func (tw *TemplateWrapper) CreateTemplateContext(eventtime float64) map[string]any {
+	ctx := tw.createContext()
+	ctx["printer"] = newGetStatusWrapperAt(tw.printer, eventtime)
+	return ctx
+}
+
 // RunGcodeFromCommand renders the template and runs it from a command handler.
 func (tw *TemplateWrapper) RunGcodeFromCommand(context map[string]any) {
 	tw.gcode.RunScriptFromCommand(tw.Render(context))
@@ -307,6 +319,14 @@ func (p *PrinterGCodeMacro) CreateTemplateContext() map[string]any {
 			return ""
 		}),
 	}
+}
+
+// CreateTemplateContextAt returns the context of CreateTemplateContext, with the printer status at
+// eventtime.
+func (p *PrinterGCodeMacro) CreateTemplateContextAt(eventtime float64) map[string]any {
+	ctx := p.CreateTemplateContext()
+	ctx["printer"] = newGetStatusWrapperAt(p.printer, eventtime)
+	return ctx
 }
 
 func init() { host.RegisterModule("gcode_macro", load, loadPrefix) }

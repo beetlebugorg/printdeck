@@ -4,16 +4,23 @@ import (
 	"fmt"
 )
 
+// LiteralError is an error of LiteralEval. Type is the Python exception: "SyntaxError" or
+// "ValueError". The message is Msg only, as Python's str() of the exception.
+type LiteralError struct{ Type, Msg string }
+
+func (e *LiteralError) Error() string { return e.Msg }
+
 // LiteralEval reads a Python literal, as Python's ast.literal_eval: a number, a string, True,
-// False, None, or a list, tuple, or dict of literals. The macro variables of Klipper use it.
+// False, None, or a list, tuple, or dict of literals. The macro variables of Klipper use it. An
+// error is a *LiteralError.
 func LiteralEval(src string) (v any, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch x := r.(type) {
 			case *SyntaxError:
-				err = fmt.Errorf("invalid syntax (<unknown>, line %d)", x.Line)
+				err = &LiteralError{"SyntaxError", fmt.Sprintf("invalid syntax (<unknown>, line %d)", x.Line)}
 			case *Error:
-				err = fmt.Errorf("%s", x.Msg)
+				err = &LiteralError{x.Type, x.Msg}
 			default:
 				panic(r)
 			}
@@ -24,17 +31,17 @@ func LiteralEval(src string) (v any, err error) {
 	// Python spells the constants True, False and None.
 	for _, t := range toks {
 		if t.typ == tName && t.val != "True" && t.val != "False" && t.val != "None" {
-			return nil, fmt.Errorf("malformed node or string: %s", t.val)
+			return nil, &LiteralError{"ValueError", "malformed node or string: " + t.val}
 		}
 	}
 	p := &parser{toks: toks}
 	if p.cur().typ != tVarBegin {
-		return nil, fmt.Errorf("invalid syntax")
+		return nil, &LiteralError{"SyntaxError", "invalid syntax"}
 	}
 	p.next()
 	n := p.parseTuple(false)
 	if p.cur().typ != tVarEnd || p.peek().typ != tEOF {
-		return nil, fmt.Errorf("invalid syntax")
+		return nil, &LiteralError{"SyntaxError", "invalid syntax"}
 	}
 	return literalValue(n), nil
 }
