@@ -17,9 +17,10 @@ EnvironmentFile=-/var/lib/printdeck/spotify.env
 User=deck
 Group=deck
 SupplementaryGroups=video input audio tty printer
-# Port 80 for the remote screen and the slicers, and the graphics mode of tty1.
+# Port 80 for the remote screen and the slicers, and the graphics mode of tty1. The bounding set
+# stays full: sudo runs printdeck-wifi and printdeck-user as root, and needs CAP_SETUID and
+# CAP_SETGID for that.
 AmbientCapabilities=CAP_NET_BIND_SERVICE CAP_SYS_TTY_CONFIG
-CapabilityBoundingSet=CAP_NET_BIND_SERVICE CAP_SYS_TTY_CONFIG
 # The folder also has the password of the printdeck user: only the deck can read it.
 StateDirectory=printdeck
 StateDirectoryMode=0700
