@@ -20,6 +20,7 @@ import (
 	_ "printdeck/internal/klipper/extras/statistics"
 	_ "printdeck/internal/klipper/extras/stepper_enable"
 	_ "printdeck/internal/klipper/extras/thermistor"
+	_ "printdeck/internal/klipper/extras/tuning_tower"
 	_ "printdeck/internal/klipper/gcode"
 	_ "printdeck/internal/klipper/kinematics/cartesian"
 	_ "printdeck/internal/klipper/kinematics/extruder"
