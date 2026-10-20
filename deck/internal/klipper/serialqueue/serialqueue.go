@@ -123,11 +123,12 @@ type SerialQueue struct {
 	// Now returns the host time in seconds. Tests replace it.
 	Now func() float64
 
-	input   chan []byte
-	kick    chan struct{}
-	exit    chan struct{}
-	exited  chan struct{}
-	exiting sync.Once
+	input    chan []byte
+	kick     chan struct{}
+	readDone chan struct{} // closed when the reading goroutine ends
+	exit     chan struct{}
+	exited   chan struct{}
+	exiting  sync.Once
 
 	// The receiver: messages for Pull.
 	recvMu       sync.Mutex
@@ -180,12 +181,14 @@ func monotonic() float64 { return time.Since(start).Seconds() }
 func New(port io.ReadWriter, kind Kind, name string) *SerialQueue {
 	sq := &SerialQueue{port: port, kind: kind, name: name, Now: monotonic,
 		input: make(chan []byte, 16), kick: make(chan struct{}, 1), exit: make(chan struct{}),
-		exited: make(chan struct{}), timerCmd: prNever, timerRetrans: prNever,
+		readDone: make(chan struct{}),
+		exited:   make(chan struct{}), timerCmd: prNever, timerRetrans: prNever,
 		needKickClock: MaxClock, minReleaseClock: MaxClock, sendSeq: 1}
 	sq.recvCond = sync.NewCond(&sq.recvMu)
 	if kind == DebugFile {
 		sq.receiveSeq = receiveSeqDebugFile
 		sq.rto = prNever
+		close(sq.readDone)
 	} else {
 		sq.receiveSeq = 1
 		sq.rto = minRTO
@@ -658,6 +661,7 @@ func (sq *SerialQueue) commandEvent(eventtime float64) float64 {
 
 // read reads the port and passes the bytes to the loop, until the port fails.
 func (sq *SerialQueue) read() {
+	defer close(sq.readDone)
 	buf := make([]byte, 4096)
 	for {
 		n, err := sq.port.Read(buf)
@@ -742,6 +746,10 @@ func (sq *SerialQueue) Exit() {
 
 // Done is closed when the loop has stopped.
 func (sq *SerialQueue) Done() <-chan struct{} { return sq.exited }
+
+// ReaderDone is closed when the reading goroutine has ended. After Exit, it ends when the port
+// closes or fails.
+func (sq *SerialQueue) ReaderDone() <-chan struct{} { return sq.readDone }
 
 // AllocCommandQueue makes a command queue.
 func (sq *SerialQueue) AllocCommandQueue() *CommandQueue { return &CommandQueue{} }
