@@ -21,13 +21,6 @@ import (
 	"printdeck/internal/klipper/toolhead"
 )
 
-// HomingState is the homing of a G28 command, as the kinematics use it. A NaN position in
-// HomeRails is an axis that does not move (None in Klipper).
-type HomingState interface {
-	Axes() []int
-	HomeRails(rails []*stepper.Rail, forcepos, homepos []float64)
-}
-
 // CartKinematics is the cartesian kinematics.
 type CartKinematics struct {
 	rails                   []*stepper.Rail
@@ -127,7 +120,7 @@ func (k *CartKinematics) ClearHomingState(clearAxes string) {
 	}
 }
 
-func (k *CartKinematics) homeAxis(hs HomingState, axis int, rail *stepper.Rail) {
+func (k *CartKinematics) homeAxis(hs stepper.HomingState, axis int, rail *stepper.Rail) {
 	// Determine movement
 	positionMin, positionMax := rail.Range()
 	hi := rail.HomingInfo()
@@ -144,7 +137,7 @@ func (k *CartKinematics) homeAxis(hs HomingState, axis int, rail *stepper.Rail) 
 }
 
 // Home homes each axis of the homing state, in order.
-func (k *CartKinematics) Home(hs HomingState) {
+func (k *CartKinematics) Home(hs stepper.HomingState) {
 	// Each axis is homed independently and in order
 	for _, axis := range hs.Axes() {
 		k.homeAxis(hs, axis, k.rails[axis])

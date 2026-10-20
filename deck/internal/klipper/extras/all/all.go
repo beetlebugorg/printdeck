@@ -8,6 +8,7 @@ import (
 	_ "printdeck/internal/klipper/extras/force_move"
 	_ "printdeck/internal/klipper/extras/gcode_move"
 	_ "printdeck/internal/klipper/extras/heaters"
+	_ "printdeck/internal/klipper/extras/homing"
 	_ "printdeck/internal/klipper/extras/motion_queuing"
 	_ "printdeck/internal/klipper/extras/motion_report"
 	_ "printdeck/internal/klipper/extras/query_adc"
