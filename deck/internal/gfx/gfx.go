@@ -116,8 +116,30 @@ func inside(pts []image.Point, x, y float64) bool {
 	return in
 }
 
-// Cover scales src to fill r, cropping the middle.
+// coverCache is the last scaled cover. The cover changes with the track, and the screen draws it
+// several times a second.
+var coverCache struct {
+	sync.Mutex
+	src    image.Image
+	w, h   int
+	scaled *image.RGBA
+}
+
+// Cover scales src to fill r, cropping the middle. The scaled image of the last src and size is
+// kept, so the next frames only copy it.
 func (c *Canvas) Cover(r image.Rectangle, src image.Image) {
+	coverCache.Lock()
+	defer coverCache.Unlock()
+	if coverCache.src != src || coverCache.w != r.Dx() || coverCache.h != r.Dy() {
+		scaled := image.NewRGBA(image.Rect(0, 0, r.Dx(), r.Dy()))
+		scaleCover(scaled, scaled.Rect, src)
+		coverCache.src, coverCache.w, coverCache.h, coverCache.scaled = src, r.Dx(), r.Dy(), scaled
+	}
+	draw.Draw(c.RGBA, r, coverCache.scaled, image.Point{}, draw.Src)
+}
+
+// scaleCover scales src to fill r of dst, cropping the middle.
+func scaleCover(dst *image.RGBA, r image.Rectangle, src image.Image) {
 	sb := src.Bounds()
 	sw, sh := float64(sb.Dx()), float64(sb.Dy())
 	dw, dh := float64(r.Dx()), float64(r.Dy())
@@ -129,7 +151,7 @@ func (c *Canvas) Cover(r image.Rectangle, src image.Image) {
 		h := int(sw * dh / dw)
 		crop = image.Rect(sb.Min.X, sb.Min.Y+(sb.Dy()-h)/2, sb.Max.X, sb.Min.Y+(sb.Dy()-h)/2+h)
 	}
-	xdraw.CatmullRom.Scale(c.RGBA, r, src, crop, xdraw.Src, nil)
+	xdraw.CatmullRom.Scale(dst, r, src, crop, xdraw.Src, nil)
 }
 
 // IBM Plex Mono (SIL Open Font License, fonts/OFL.txt). Go Mono fills in the few symbols that Plex lacks (♪ ▲ ▼).

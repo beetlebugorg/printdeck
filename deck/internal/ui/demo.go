@@ -17,7 +17,9 @@ import (
 type DemoMusic struct{ State_ spotify.State }
 
 func (d *DemoMusic) State() spotify.State { return d.State_ }
-func (d *DemoMusic) Cover() image.Image {
+
+// demoCover is the cover of DemoMusic. The real client also keeps one image for each track.
+var demoCover = func() image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, 400, 400))
 	for y := 0; y < 400; y++ {
 		for x := 0; x < 400; x++ {
@@ -25,7 +27,9 @@ func (d *DemoMusic) Cover() image.Image {
 		}
 	}
 	return img
-}
+}()
+
+func (d *DemoMusic) Cover() image.Image { return demoCover }
 func (d *DemoMusic) Toggle()            {}
 func (d *DemoMusic) Next()              {}
 func (d *DemoMusic) Previous()          {}
