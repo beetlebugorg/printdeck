@@ -33,6 +33,8 @@ type StepperKinematics struct {
 	GenStepsPreActive, GenStepsPostActive float64
 	CalcPosition                          CalcPositionFunc
 	Post                                  func(sk *StepperKinematics)
+	// extruder is the pressure advance state of an extruder stepper (struct extruder_stepper).
+	extruder *extruderStepper
 }
 
 type timepos struct{ time, position float64 }

@@ -3,7 +3,9 @@
 // tests of the Go port of the motion code run the same scenario. dumpsteps.sh builds and runs it.
 //
 // Input lines (numbers in any strtod form):
-//   setup STEP_DIST MAX_ERROR MCU_FREQ AXIS
+//   setup STEP_DIST MAX_ERROR MCU_FREQ AXIS   (AXIS 0-2 is x-z of kin_cartesian.c, 3 is the
+//                                             extruder of kin_extruder.c)
+//   pa PRINT_TIME PRESSURE_ADVANCE SMOOTH_TIME
 //   move PRINT_TIME ACCEL_T CRUISE_T DECEL_T SX SY SZ RX RY RZ START_V CRUISE_V ACCEL
 //   gen FLUSH_TIME           (update the trapq sentinels, generate steps to FLUSH_TIME, then
 //                            flush to its clock, as steppersync.c does)
@@ -23,6 +25,9 @@
 #include "trapq.h"
 
 struct stepper_kinematics *cartesian_stepper_alloc(char axis);
+struct stepper_kinematics *extruder_stepper_alloc(void);
+void extruder_set_pressure_advance(struct stepper_kinematics *sk, double print_time
+                                   , double pressure_advance, double smooth_time);
 
 static void
 drain(struct list_head *q)
@@ -60,7 +65,10 @@ main(void)
             a[n++] = strtod(t, NULL);
         if (!strcmp(word, "setup")) {
             freq = a[2];
-            sk = cartesian_stepper_alloc('x' + (int)a[3]);
+            if ((int)a[3] == 3)
+                sk = extruder_stepper_alloc();
+            else
+                sk = cartesian_stepper_alloc('x' + (int)a[3]);
             itersolve_set_trapq(sk, tq, a[0]);
             stepcompress_fill(sc, 3, (uint32_t)a[1], 7, 9);
             stepcompress_set_time(sc, 0., freq);
@@ -75,6 +83,8 @@ main(void)
             drain(&q);
             printf("pos %a %lld ret=%d\n", sk->commanded_pos
                    , (long long)stepcompress_find_past_position(sc, UINT64_MAX), ret);
+        } else if (!strcmp(word, "pa")) {
+            extruder_set_pressure_advance(sk, a[0], a[1], a[2]);
         } else if (!strcmp(word, "invert")) {
             stepcompress_set_invert_sdir(sc, (uint32_t)a[0]);
         } else if (!strcmp(word, "finalize")) {

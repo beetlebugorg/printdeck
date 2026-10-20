@@ -13,6 +13,9 @@ docker run --rm --user "$(id -u):$(id -g)" \
   printdeck-klipper-ref sh -eu -c '
     C=/klipper/klippy/chelper
     gcc -O2 -mfpmath=sse -msse2 -I$C -o /tmp/stepharness /tools/stepharness.c $C/trapq.c \
-      $C/itersolve.c $C/kin_cartesian.c $C/stepcompress.c $C/msgblock.c $C/pyhelper.c -lm
+      $C/itersolve.c $C/kin_cartesian.c $C/kin_extruder.c $C/stepcompress.c $C/msgblock.c \
+      $C/pyhelper.c -lm
     python3 /tools/dumpsteps.py > /out/steps.txt
-    /tmp/stepharness < /out/steps.txt > /out/steps.out'
+    /tmp/stepharness < /out/steps.txt > /out/steps.out
+    python3 /tools/dumpsteps.py extruder > /out/steps-extruder.txt
+    /tmp/stepharness < /out/steps-extruder.txt > /out/steps-extruder.out'
