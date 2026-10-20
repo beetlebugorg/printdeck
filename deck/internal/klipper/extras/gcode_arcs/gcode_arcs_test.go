@@ -51,7 +51,7 @@ func TestArcsMatchKlipper(t *testing.T) {
 	exact, total := 0, 0
 	for _, c := range cases {
 		fm := &fakeMove{status: map[string]any{"absolute_coordinates": true,
-			"gcode_position": gcode.Coord{c.Pos[0], c.Pos[1], c.Pos[2], c.Pos[3]},
+			"gcode_position":   gcode.Coord{c.Pos[0], c.Pos[1], c.Pos[2], c.Pos[3]},
 			"absolute_extrude": c.AbsoluteExtrude}}
 		a := &ArcSupport{mmPerArcSegment: 0.5, gcodeMove: fm, gcode: g}
 		run := func(line string) {

@@ -977,3 +977,36 @@ func (p *Parser) Enumerations() map[string]map[string]int64 {
 
 // Kconfig returns the build config of the firmware.
 func (p *Parser) Kconfig() any { return p.kconfig }
+
+// EncodeInts encodes integers as a message with no header (message_alloc_and_encode of
+// msgblock.c). Each value is an unsigned 32-bit integer, sent as its signed value.
+func EncodeInts(values ...uint32) []byte {
+	var out []byte
+	for _, v := range values {
+		out = encodeVLQ(out, int64(int32(v)))
+	}
+	return out
+}
+
+// DecodeInts reads count integers after the header of a message block (msgblock_decode of
+// msgblock.c). Each value is an unsigned 32-bit integer.
+func DecodeInts(msg []byte, count int) ([]uint32, error) {
+	if len(msg) < MessageHeaderSize+MessageTrailerSize {
+		return nil, errorf("message too short")
+	}
+	end := len(msg) - MessageTrailerSize
+	body := msg[:end]
+	pos := MessageHeaderSize
+	out := make([]uint32, count)
+	for i := range out {
+		if pos >= end {
+			return nil, errorf("message too short")
+		}
+		v, next, err := parseVLQ(body, pos, false)
+		if err != nil {
+			return nil, err
+		}
+		out[i], pos = uint32(v), next
+	}
+	return out, nil
+}
