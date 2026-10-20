@@ -4,8 +4,10 @@ package all
 
 import (
 	_ "printdeck/internal/klipper/extras/error_mcu"
+	_ "printdeck/internal/klipper/extras/force_move"
 	_ "printdeck/internal/klipper/extras/heaters"
 	_ "printdeck/internal/klipper/extras/motion_queuing"
+	_ "printdeck/internal/klipper/extras/motion_report"
 	_ "printdeck/internal/klipper/extras/query_endstops"
 	_ "printdeck/internal/klipper/extras/stepper_enable"
 	_ "printdeck/internal/klipper/gcode"
