@@ -9,6 +9,7 @@
 //	printdeck shot music|print FILE.png  write a picture of a tab, with live data
 //	printdeck splash    show the start screen at boot (started by printdeck-init)
 //	printdeck password  print a new random password of four words
+//	printdeck klipper-probe DEVICE [BAUD]  connect to a Klipper board and print what it reports
 package main
 
 import (
@@ -58,6 +59,9 @@ func main() {
 			return
 		case "splash":
 			splash(cfg)
+			return
+		case "klipper-probe":
+			klipperProbe(os.Args[2:])
 			return
 		case "password":
 			if err := password(); err != nil {
