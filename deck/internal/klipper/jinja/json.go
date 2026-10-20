@@ -202,4 +202,3 @@ func jsonValue(dec *json.Decoder, t json.Token) any {
 	}
 	panic(fmt.Errorf("unexpected JSON token %v", t))
 }
-

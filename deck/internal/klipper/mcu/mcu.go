@@ -4,9 +4,8 @@
 //
 // Ported to Go from klippy/mcu.py of Klipper (https://github.com/Klipper3d/klipper), commit
 // 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f. The trigger dispatch of the homing moves
-// (klippy/chelper/trdispatch.c) is not ported yet: MCU_trsync and TriggerDispatch make their
-// config commands, but a homing move does not stop the steppers. The CAN bus link and the
-// rpi_usb restart are not ported.
+// (klippy/chelper/trdispatch.c) is in trdispatch.go. The CAN bus link and the rpi_usb restart
+// are not ported.
 //
 //	Copyright (C) 2016-2026  Kevin O'Connor <kevin@koconnor.net>
 //	Go port: Copyright (C) 2026  the Printdeck authors

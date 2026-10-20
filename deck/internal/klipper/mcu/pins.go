@@ -35,6 +35,8 @@ const (
 // board when an endstop triggers.
 type Trsync struct {
 	mcu               *MCU
+	trdispatch        *trdispatch
+	trdispatchMCU     *trdispatchMCU
 	reactor           *reactor.Reactor
 	steppers          []Stepper
 	oid               int
@@ -50,8 +52,8 @@ type Trsync struct {
 	hasHomeEndClock   bool
 }
 
-func newTrsync(m *MCU) *Trsync {
-	t := &Trsync{mcu: m, reactor: m.printer.Reactor()}
+func newTrsync(m *MCU, td *trdispatch) *Trsync {
+	t := &Trsync{mcu: m, trdispatch: td, reactor: m.printer.Reactor()}
 	t.oid = m.CreateOID()
 	t.cmdQueue = m.AllocCommandQueue()
 	m.RegisterConfigCallback(t.buildConfig)
@@ -88,8 +90,12 @@ func (t *Trsync) buildConfig() {
 	t.trsyncQueryCmd = m.LookupQueryCommand("trsync_trigger oid=%c reason=%c",
 		"trsync_state oid=%c can_trigger=%c trigger_reason=%c clock=%u", int64(t.oid), t.cmdQueue, false)
 	t.stepperStopCmd = m.LookupCommand("stepper_stop_on_trigger oid=%c trsync_oid=%c", t.cmdQueue)
-	// The trdispatch_mcu object of trdispatch.c is not ported yet.
-	m.LookupCommand("trsync_state oid=%c can_trigger=%c trigger_reason=%c clock=%u", nil)
+	// Create trdispatch_mcu object
+	setTimeoutTag := m.LookupCommand("trsync_set_timeout oid=%c clock=%u", nil).CommandTag()
+	triggerTag := m.LookupCommand("trsync_trigger oid=%c reason=%c", nil).CommandTag()
+	stateTag := m.LookupCommand("trsync_state oid=%c can_trigger=%c trigger_reason=%c clock=%u", nil).CommandTag()
+	t.trdispatchMCU = t.trdispatch.newTrdispatchMCU(m.serial.SerialQueue(), t.cmdQueue, uint32(t.oid),
+		setTimeoutTag, triggerTag, stateTag)
 }
 
 func (t *Trsync) shutdown() {
@@ -125,6 +131,8 @@ func (t *Trsync) Start(printTime, reportOffset float64, triggerCompletion *react
 	expireClock := clock + expireTicks
 	reportTicks := t.mcu.SecondsToClock(expireTimeout * .3)
 	reportClock := clock + int64(float64(reportTicks)*reportOffset+.5)
+	minExtendTicks := int64(float64(reportTicks)*.8 + .5)
+	t.trdispatchMCU.setup(uint64(clock), uint64(expireClock), uint64(expireTicks), uint64(minExtendTicks))
 	t.responseTrsync = t.mcu.RegisterSerialResponse(t.handleTrsyncState,
 		"trsync_state oid=%c can_trigger=%c trigger_reason=%c clock=%u", int64(t.oid))
 	t.trsyncStartCmd.Send([]any{t.oid, reportClock, reportTicks, ReasonCommsTimeout}, 0, clock)
@@ -164,11 +172,13 @@ const (
 type TriggerDispatch struct {
 	mcu               *MCU
 	triggerCompletion *reactor.Completion
+	trdispatch        *trdispatch
 	trsyncs           []*Trsync
 }
 
 func NewTriggerDispatch(m *MCU) *TriggerDispatch {
-	return &TriggerDispatch{mcu: m, trsyncs: []*Trsync{newTrsync(m)}}
+	td := newTrdispatch()
+	return &TriggerDispatch{mcu: m, trdispatch: td, trsyncs: []*Trsync{newTrsync(m, td)}}
 }
 
 func (d *TriggerDispatch) OID() int { return d.trsyncs[0].OID() }
@@ -186,7 +196,7 @@ func (d *TriggerDispatch) AddStepper(s Stepper) {
 		}
 	}
 	if trsync == nil {
-		trsync = newTrsync(s.MCU())
+		trsync = newTrsync(s.MCU(), d.trdispatch)
 		d.trsyncs = append(d.trsyncs, trsync)
 	}
 	trsync.AddStepper(s)
@@ -227,6 +237,7 @@ func (d *TriggerDispatch) Start(printTime float64) *reactor.Completion {
 		reportOffset := float64(i) / float64(len(d.trsyncs))
 		t.Start(printTime, reportOffset, d.triggerCompletion, expireTimeout)
 	}
+	d.trdispatch.start(ReasonHostRequest)
 	return d.triggerCompletion
 }
 
@@ -242,6 +253,7 @@ func (d *TriggerDispatch) WaitEnd(endTime float64) {
 // Stop stops the trigger synchronization, and returns the first error reason, or the reason of
 // the first board.
 func (d *TriggerDispatch) Stop() int {
+	d.trdispatch.stop()
 	res := make([]int, len(d.trsyncs))
 	for i, t := range d.trsyncs {
 		res[i] = t.Stop()
