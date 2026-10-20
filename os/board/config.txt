@@ -1,0 +1,21 @@
+# Printdeck boot settings. Boot A and boot B have the same copy.
+kernel=Image
+arm_64bit=1
+disable_overscan=1
+# No rainbow square at power on. The start screen of Printdeck shows instead.
+disable_splash=1
+
+# The 7" display on HDMI. The deck draws on the framebuffer.
+dtoverlay=vc4-kms-v3d
+max_framebuffers=2
+disable_fw_kms_setup=1
+
+# The HiFiBerry Amp2, and no onboard audio.
+dtparam=i2c_arm=on
+dtparam=audio=off
+dtoverlay=hifiberry-dacplus-std
+
+# The Amp2 powers the Pi through the header, so the Pi does not see a 5 A supply.
+# Without this setting, all USB ports together get only 600 mA. That is not sufficient
+# for the SSD and the display.
+usb_max_current_enable=1

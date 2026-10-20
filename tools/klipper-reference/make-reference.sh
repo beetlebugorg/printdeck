@@ -1,0 +1,39 @@
+#!/bin/sh
+# Makes the reference data for the Go port of Klipper's host, with the real Klipper host (klippy).
+#
+# For the Klipper commit of os/package/klipper and the printer in printer/, it builds the firmware's
+# data dictionary, and runs klippy in batch mode on each G-code file in the test data folder. klippy
+# then writes the exact bytes that it would send to the printer's board (.serial), and its own text
+# form of them (.txt). The Go port must give the same bytes.
+#
+#   tools/klipper-reference/make-reference.sh
+set -eu
+
+REPO=$(cd "$(dirname "$0")/../.." && pwd)
+OUT=$REPO/deck/internal/klipper/testdata
+COMMIT=$(sed -n 's/^KLIPPER_VERSION = //p' "$REPO/os/package/klipper/klipper.mk")
+VERSION=$(sed -n 's/^KLIPPER_GIT_VERSION = //p' "$REPO/os/package/klipper/klipper.mk")
+CACHE=${PRINTDECK_OS_CACHE:-$HOME/.cache/printdeck-os}/klipper-reference
+
+mkdir -p "$CACHE"
+if [ ! -d "$CACHE/klipper-$COMMIT" ]; then
+  curl -fsSL "https://github.com/Klipper3d/klipper/archive/$COMMIT.tar.gz" | tar -xz -C "$CACHE"
+fi
+docker build -q -t printdeck-klipper-ref "$(dirname "$0")" > /dev/null
+
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$CACHE/klipper-$COMMIT:/klipper" -v "$REPO/printer:/printer:ro" -v "$OUT:/out" \
+  -e VERSION="$VERSION" -w /klipper printdeck-klipper-ref sh -eu -c '
+    echo "$VERSION" > klippy/.version
+    cp /printer/firmware.config .config
+    make olddefconfig > /dev/null
+    make > /dev/null 2>&1
+    cp out/klipper.dict /out/klipper.dict
+    for g in /out/*.gcode; do
+      name=${g%.gcode}
+      python3 klippy/klippy.py /printer/printer.cfg -i "$g" -o "$name.serial" -d out/klipper.dict \
+        > "$name.log" 2>&1 || { cat "$name.log"; exit 1; }
+      python3 klippy/parsedump.py out/klipper.dict "$name.serial" > "$name.txt"
+      rm "$name.log"
+    done'
+echo "Done: $OUT"

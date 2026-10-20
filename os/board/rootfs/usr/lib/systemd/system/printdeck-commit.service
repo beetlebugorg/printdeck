@@ -1,0 +1,10 @@
+[Unit]
+Description=Make the new slot the default after an update
+After=klipper.service printdeck-deck.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/printdeck-commit
+
+[Install]
+WantedBy=multi-user.target

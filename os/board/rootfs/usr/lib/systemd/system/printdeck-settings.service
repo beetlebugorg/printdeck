@@ -1,0 +1,11 @@
+[Unit]
+Description=Apply the settings in printdeck.txt
+After=local-fs.target
+Before=wpa_supplicant@wlan0.service dropbear.service printdeck-deck.service klipper.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/printdeck-settings
+
+[Install]
+WantedBy=multi-user.target

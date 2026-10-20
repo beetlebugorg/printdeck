@@ -1,0 +1,2 @@
+# printdeck-user adds the user to the wheel group with "addgroup USER wheel".
+CONFIG_FEATURE_ADDUSER_TO_GROUP=y

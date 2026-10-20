@@ -4,7 +4,10 @@ __pycache__/
 
 # Photos of the parts, for measurements. Local only.
 samples/
-deck/speakerdeck
+deck/printdeck
 
 # Settings and secrets for docker compose
 .env
+
+# The OS image build output
+os/out/

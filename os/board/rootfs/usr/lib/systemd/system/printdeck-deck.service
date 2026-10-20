@@ -1,0 +1,23 @@
+[Unit]
+Description=Printdeck touch screen
+# The deck does not wait for OctoPrint or the network. It connects to them when they are ready.
+After=systemd-user-sessions.service
+Conflicts=getty@tty1.service
+# "printdeck splash" makes this file when a finger is on the screen at boot. Then the boot
+# messages stay on the screen.
+ConditionPathExists=!/dev/.printdeck-diagnostics
+
+[Service]
+EnvironmentFile=/etc/printdeck/deck.env
+# The API key from printdeck-credentials, and the Spotify client ID from printdeck.txt.
+EnvironmentFile=-/var/lib/printdeck/api.env
+EnvironmentFile=-/var/lib/printdeck/spotify.env
+# The folder also has the password of the printdeck user: only root can read it.
+StateDirectory=printdeck
+StateDirectoryMode=0700
+ExecStart=/usr/bin/printdeck
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

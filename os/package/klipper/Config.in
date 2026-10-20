@@ -1,0 +1,7 @@
+config BR2_PACKAGE_KLIPPER
+	bool "klipper"
+	depends on BR2_PACKAGE_PYTHON3
+	help
+	  The Klipper host (klippy). The version must match the firmware on the printer's board.
+
+	  https://www.klipper3d.org

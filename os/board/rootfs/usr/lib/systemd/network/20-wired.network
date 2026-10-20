@@ -1,0 +1,6 @@
+[Match]
+Name=eth* end*
+
+[Network]
+DHCP=yes
+MulticastDNS=yes

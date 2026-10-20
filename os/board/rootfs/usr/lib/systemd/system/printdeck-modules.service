@@ -1,0 +1,11 @@
+[Unit]
+Description=Save the list of loaded kernel modules, to make the module list of the image
+# For the development of the image only: os/board/modules.txt comes from this list.
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/bin/sh -c 'sleep 90; mkdir -p /var/lib/printdeck; cat /proc/modules > /var/lib/printdeck/modules.txt'
+
+[Install]
+WantedBy=multi-user.target
