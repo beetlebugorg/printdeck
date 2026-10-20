@@ -6,6 +6,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"sync"
 
 	"printdeck/internal/klipper/clocksync"
 	"printdeck/internal/klipper/reactor"
@@ -55,16 +56,25 @@ func probe(r *reactor.Reactor, device string, baud int) error {
 	}
 	defer s.Disconnect()
 
+	// The board can go on with the reports of an earlier session (for example its thermistors).
+	// Count them, by name.
+	var mu sync.Mutex
+	unhandled := map[string]int{}
+	s.SetDefaultHandler(func(params serialhdl.Params) {
+		mu.Lock()
+		unhandled[fmt.Sprint(params["#name"])]++
+		mu.Unlock()
+	})
+
 	p := s.MsgParser()
 	version, buildVersions := p.Version()
-	commands := 0
+	kinds := map[string]int{}
 	for _, m := range p.Messages() {
-		if m.Kind == "command" {
-			commands++
-		}
+		kinds[string(m.Kind)]++
 	}
+	// The same line as klippy: its count is all the messages of the dictionary.
 	fmt.Printf("Loaded MCU 'mcu' %d commands (%s / %s)\n", len(p.Messages()), version, buildVersions)
-	fmt.Printf("commands=%d\n", commands)
+	fmt.Printf("messages: commands=%d responses=%d output=%d\n", kinds["command"], kinds["response"], kinds["output"])
 	consts := p.Constants()
 	names := make([]string, 0, len(consts))
 	for k := range consts {
@@ -92,5 +102,10 @@ func probe(r *reactor.Reactor, device string, baud int) error {
 	fmt.Printf("clock: freq=%.0f (nominal %.0f, %+.1f ppm) active=%v\n",
 		e.Freq, cs.MCUFreq(), (e.Freq-cs.MCUFreq())/cs.MCUFreq()*1e6, cs.IsActive())
 	fmt.Println(s.Stats(r.Monotonic()))
+	mu.Lock()
+	for name, n := range unhandled {
+		fmt.Printf("unhandled reports: %s=%d\n", name, n)
+	}
+	mu.Unlock()
 	return nil
 }

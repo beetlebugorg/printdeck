@@ -81,8 +81,9 @@ type SerialReader struct {
 	defaultCmdQueue *serialqueue.CommandQueue
 	bgDone          chan struct{}
 
-	mu       sync.Mutex // protects handlers
-	handlers map[handlerKey]Handler
+	mu             sync.Mutex // protects handlers and defaultHandler
+	handlers       map[handlerKey]Handler
+	defaultHandler Handler // for the responses with no handler; nil logs them
 
 	notifyMu             sync.Mutex
 	lastNotifyID         uint64
@@ -153,6 +154,9 @@ func (s *SerialReader) bgThread(sq *serialqueue.SerialQueue, done chan struct{})
 		}
 		s.mu.Lock()
 		hdl := s.handlers[key]
+		if hdl == nil {
+			hdl = s.defaultHandler
+		}
 		if hdl == nil {
 			hdl = s.handleDefault
 		}
@@ -336,6 +340,14 @@ func (s *SerialReader) RegisterResponse(callback Handler, name string, oid int64
 	}
 }
 
+// SetDefaultHandler sets the handler of the responses that have no handler. nil logs them, as
+// klippy does.
+func (s *SerialReader) SetDefaultHandler(h Handler) {
+	s.mu.Lock()
+	s.defaultHandler = h
+	s.mu.Unlock()
+}
+
 // NoOID is the oid of RegisterResponse for a response with no oid.
 const NoOID = noOID
 
@@ -410,9 +422,16 @@ func (s *SerialReader) DumpDebug() string {
 
 // Default message handlers
 
+// handleUnknownInit handles a message before the dictionary is loaded, for example a sensor
+// report of an earlier session. klippy logs these at debug level.
 func (s *SerialReader) handleUnknownInit(params Params) {
-	log.Printf("%sUnknown message %d (len %d) while identifying", s.warnPrefix, params.Int("#msgid"), len(params.Bytes("#msg")))
+	if Debug {
+		log.Printf("%sUnknown message %d (len %d) while identifying", s.warnPrefix, params.Int("#msgid"), len(params.Bytes("#msg")))
+	}
 }
+
+// Debug turns on the debug messages of the link.
+var Debug = false
 
 func (s *SerialReader) handleUnknown(params Params) {
 	log.Printf("%sUnknown message type %d: %s", s.warnPrefix, params.Int("#msgid"), msgproto.PyBytesRepr(params.Bytes("#msg")))
