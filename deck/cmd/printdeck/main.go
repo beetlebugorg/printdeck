@@ -10,6 +10,7 @@
 //	printdeck splash    show the start screen at boot (started by printdeck-init)
 //	printdeck password  print a new random password of four words
 //	printdeck klipper-probe DEVICE [BAUD]  connect to a Klipper board and print what it reports
+//	printdeck klippy [options] CONFIG  run the Klipper host (the Go port of klippy.py)
 package main
 
 import (
@@ -31,12 +32,17 @@ import (
 	"printdeck/internal/eq"
 	"printdeck/internal/fb"
 	"printdeck/internal/gfx"
+	"printdeck/internal/klipper/cli"
 	"printdeck/internal/spotify"
 	"printdeck/internal/touch"
 	"printdeck/internal/ui"
 )
 
 func main() {
+	// The Klipper host runs in its own process, as klippy does, before the deck settings load.
+	if len(os.Args) > 1 && os.Args[1] == "klippy" {
+		os.Exit(cli.Main(os.Args[2:]))
+	}
 	cfg := config.Load()
 	sp := spotify.New(spotify.Config{ClientID: cfg.SpotifyClientID, DeviceName: cfg.DeviceName, StateDir: cfg.StateDir, LinkBase: cfg.LinkBase, LibrespotAddr: "127.0.0.1:3678"})
 

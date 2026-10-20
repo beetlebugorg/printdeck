@@ -31,8 +31,8 @@ type Board struct {
 	handlers map[string]func(params map[string]msgproto.Value) []string
 	// configCRC is the CRC of finalize_config, or "" before it.
 	configCRC string
-	received []string
-	nextSeq  byte
+	received  []string
+	nextSeq   byte
 }
 
 // New makes a board with a data dictionary (the JSON of klipper.dict).
