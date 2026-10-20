@@ -1,9 +1,16 @@
-package display
-
-// Basic LCD menu support (menu.py).
+// Basic LCD menu support.
+//
+// Ported to Go from klippy/extras/display/menu.py of Klipper
+// (https://github.com/Klipper3d/klipper),
+// commit 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f.
 //
 //	Copyright (C) 2020  Janar Sööt <janar.soot@gmail.com>
+//	Go port: Copyright (C) 2026  the Printdeck authors
 //
+// This file may be distributed under the terms of the GNU GPLv3 license.
+
+package display
+
 // Python's classes are Go types that embed the type of the base class. Each element keeps a
 // pointer to itself as the element interface, so a method of the base type calls the method
 // of the subclass.

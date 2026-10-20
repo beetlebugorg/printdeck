@@ -5,6 +5,7 @@ package all
 import (
 	_ "printdeck/internal/klipper/extras/ad5206"
 	_ "printdeck/internal/klipper/extras/adc_temperature"
+	_ "printdeck/internal/klipper/extras/aio_executor"
 	_ "printdeck/internal/klipper/extras/bed_tilt"
 	_ "printdeck/internal/klipper/extras/buttons"
 	_ "printdeck/internal/klipper/extras/controller_fan"
@@ -24,6 +25,7 @@ import (
 	_ "printdeck/internal/klipper/extras/manual_probe"
 	_ "printdeck/internal/klipper/extras/motion_queuing"
 	_ "printdeck/internal/klipper/extras/motion_report"
+	_ "printdeck/internal/klipper/extras/print_stats"
 	_ "printdeck/internal/klipper/extras/probe"
 	_ "printdeck/internal/klipper/extras/query_adc"
 	_ "printdeck/internal/klipper/extras/query_endstops"
@@ -33,6 +35,7 @@ import (
 	_ "printdeck/internal/klipper/extras/thermistor"
 	_ "printdeck/internal/klipper/extras/tuning_tower"
 	_ "printdeck/internal/klipper/extras/verify_heater"
+	_ "printdeck/internal/klipper/extras/virtual_sdcard"
 	_ "printdeck/internal/klipper/gcode"
 	_ "printdeck/internal/klipper/kinematics/cartesian"
 	_ "printdeck/internal/klipper/kinematics/extruder"
