@@ -28,4 +28,6 @@ dd if="$WORK/rootfs.erofs" of="/dev/disk/by-partlabel/printdeck-root-$NEW" bs=4M
 sync
 
 echo "Restarting into slot $NEW."
-systemctl reboot "0 tryboot"
+# The reboot argument "0 tryboot" makes the firmware start the tryboot partition one time. systemd 257
+# accepts it only with --reboot-argument.
+systemctl reboot --reboot-argument="0 tryboot"
