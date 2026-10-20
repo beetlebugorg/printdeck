@@ -45,8 +45,13 @@ func (h *setupHost) Login() (string, string) {
 	return "printdeck", strings.TrimSpace(string(b))
 }
 
-// runScript starts a command and returns its error message as the error.
+// runScript starts a command and returns its error message as the error. The deck does not run
+// as root: sudo runs the scripts (the image allows exactly these for the deck user).
 func runScript(name string, args ...string) error {
+	if os.Geteuid() != 0 {
+		args = append([]string{"-n", name}, args...)
+		name = "sudo"
+	}
 	out, err := exec.Command(name, args...).CombinedOutput()
 	if err != nil {
 		if msg := strings.TrimSpace(string(out)); msg != "" {

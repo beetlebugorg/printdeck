@@ -26,7 +26,7 @@ fi
 
 umask 077
 cat > "$CONF.new" <<EOF
-ctrl_interface=DIR=/run/wpa_supplicant
+ctrl_interface=DIR=/run/wpa_supplicant GROUP=deck
 update_config=1
 country=$COUNTRY
 

@@ -33,6 +33,7 @@ import (
 	"printdeck/internal/fb"
 	"printdeck/internal/gfx"
 	"printdeck/internal/klipper/cli"
+	"printdeck/internal/speaker"
 	"printdeck/internal/spotify"
 	"printdeck/internal/touch"
 	"printdeck/internal/ui"
@@ -100,7 +101,7 @@ func run(cfg config.Config, sp *spotify.Client) {
 
 	app := ui.New()
 	app.Music, app.Printer, app.Vol = sp, pr, am
-	eqc := eq.New("127.0.0.1:1234", cfg.StateDir)
+	eqc := eq.New(cfg.StateDir)
 	app.Equalizer = eqc
 	app.PreheatTool, app.PreheatBed = cfg.PreheatTool, cfg.PreheatBed
 	app.UnloadMM, app.LoadMM, app.JogInvertY = cfg.UnloadMM, cfg.LoadMM, cfg.JogInvertY
@@ -130,6 +131,24 @@ func run(cfg config.Config, sp *spotify.Client) {
 	go pr.Run(ctx, app.Redraw)
 	go am.Run(ctx, app.Redraw)
 	go eqc.Run(ctx, app.Redraw)
+	if cfg.Speaker {
+		// The Spotify Connect speaker, with the equalizer on its samples. Its API on 127.0.0.1:3678
+		// serves the spotify and connect packages.
+		// It starts again after an error, for example when the network is not up yet.
+		go func() {
+			for ctx.Err() == nil {
+				err := speaker.Run(ctx, speaker.Config{DeviceName: cfg.DeviceName, Device: cfg.SpeakerDevice,
+					ConfigDir: cfg.SpotifyDir, APIAddr: "127.0.0.1", APIPort: 3678, EQ: eqc})
+				if err != nil {
+					log.Printf("spotify speaker: %v", err)
+				}
+				select {
+				case <-ctx.Done():
+				case <-time.After(5 * time.Second):
+				}
+			}
+		}()
+	}
 	// The volume slider of the Spotify app moves the amp, and the amp tells Spotify its volume.
 	go conn.Run(ctx, func(p int) { am.SetRemote(p) }, func() {
 		if v := am.Volume(); v >= 0 {
@@ -199,7 +218,7 @@ func shot(cfg config.Config, sp *spotify.Client, args []string) {
 	defer stop()
 	pr := newPrinter(cfg)
 	am := amp.New(cfg.AlsaCard, cfg.MaxVolume, cfg.FloorDB, cfg.CeilDB)
-	eqc := eq.New("127.0.0.1:1234", cfg.StateDir)
+	eqc := eq.New(cfg.StateDir)
 	app := ui.New()
 	app.Music, app.Printer, app.Vol, app.Equalizer = sp, pr, am, eqc
 	app.NightFrom, app.NightTo = cfg.NightFrom, cfg.NightTo

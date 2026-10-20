@@ -4,8 +4,6 @@ enable wpa_supplicant@.service wlan0
 enable dropbear.service
 enable klipper.service
 enable printdeck-deck.service
-enable go-librespot.service
-enable camilladsp.service
 enable printdeck-settings.service
 enable printdeck-credentials.service
 enable printdeck-modules.service
