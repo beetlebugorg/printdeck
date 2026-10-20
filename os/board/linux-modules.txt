@@ -2,11 +2,9 @@
 # these modules and drops the others (see os/README.md).
 aes_ce_blk 0 0 - Live 0x0
 backlight 0 0 - Live 0x0
-bluetooth 0 0 - Live 0x0
 brcmfmac 0 0 - Live 0x0
 brcmfmac_cyw 0 0 - Live 0x0
 brcmutil 0 0 - Live 0x0
-btbcm 0 0 - Live 0x0
 cdc_acm 0 0 - Live 0x0
 cec 0 0 - Live 0x0
 cfg80211 0 0 - Live 0x0
@@ -23,14 +21,11 @@ drm_exec 0 0 - Live 0x0
 drm_kms_helper 0 0 - Live 0x0
 drm_panel_orientation_quirks 0 0 - Live 0x0
 drm_shmem_helper 0 0 - Live 0x0
-ecc 0 0 - Live 0x0
-ecdh_generic 0 0 - Live 0x0
 ftdi_sio 0 0 - Live 0x0
 gf128mul 0 0 - Live 0x0
 ghash_ce 0 0 - Live 0x0
 gpio_keys 0 0 - Live 0x0
 gpu_sched 0 0 - Live 0x0
-hci_uart 0 0 - Live 0x0
 i2c_brcmstb 0 0 - Live 0x0
 i2c_designware_core 0 0 - Live 0x0
 i2c_designware_platform 0 0 - Live 0x0
