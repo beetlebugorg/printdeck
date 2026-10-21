@@ -1,0 +1,75 @@
+package printer
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestExamples(t *testing.T) {
+	ex := Examples()
+	if len(ex) < 100 {
+		t.Fatalf("%d examples", len(ex))
+	}
+	var taz Example
+	withMCU := 0
+	for _, e := range ex {
+		if e.File == "printer-lulzbot-taz6-2017.cfg" {
+			taz = e
+		}
+		if strings.ContainsAny(e.File, "\n ") || !strings.HasSuffix(e.File, ".cfg") {
+			t.Errorf("file name %q", e.File)
+		}
+		if e.MCU != "" {
+			withMCU++
+		}
+	}
+	if taz.Name() != "LulzBot TAZ6" || taz.Year != "2017" || taz.MCU != "atmega2560" || !taz.Fits("atmega2560") {
+		t.Errorf("TAZ 6: %+v", taz)
+	}
+	if withMCU < len(ex)*2/3 {
+		t.Errorf("only %d of %d examples have a chip", withMCU, len(ex))
+	}
+}
+
+func TestExampleConfig(t *testing.T) {
+	text, err := ExampleConfig("printer-lulzbot-taz6-2017.cfg", "/dev/serial/by-id/usb-UltiMachine_RAMBo-if00")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(text, "\nserial: "); n != 1 {
+		t.Errorf("%d serial lines", n)
+	}
+	if !strings.Contains(text, "[mcu]\nserial: /dev/serial/by-id/usb-UltiMachine_RAMBo-if00\n") {
+		t.Errorf("no serial in [mcu]:\n%s", text[strings.Index(text, "[mcu]"):][:120])
+	}
+	if !strings.HasSuffix(text, "[include /usr/share/printdeck/klipper/printdeck.cfg]\n") {
+		t.Error("no include of printdeck.cfg at the end")
+	}
+	if NeedsSetup(writeTemp(t, text)) {
+		t.Error("the config still needs the setup")
+	}
+}
+
+func writeTemp(t *testing.T, text string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "printer.cfg")
+	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestUseExample(t *testing.T) {
+	path := writeTemp(t, "old\n")
+	if err := UseExample(path, "printer-lulzbot-taz6-2017.cfg", "/dev/ttyACM0"); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(path + ".bak"); string(b) != "old\n" {
+		t.Errorf("backup %q", b)
+	}
+	if NeedsSetup(path) {
+		t.Error("the new config still needs the setup")
+	}
+}

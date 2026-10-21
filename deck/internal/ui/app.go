@@ -110,6 +110,9 @@ type Printer interface {
 	Boards() (boards []board.Info, probing bool)
 	ProbeBoards()
 	RestartKlipper() error
+	// UseConfig writes one of Klipper's example configs (printer.Examples) as printer.cfg, for the
+	// board on the port serial, and restarts Klipper.
+	UseConfig(file, serial string) error
 }
 
 // Volume is the amplifier.
@@ -167,6 +170,9 @@ type App struct {
 	consoleScroll int          // how far the Console page shows above its newest line
 	consoleKB     *keyboard    // the keyboard of the Console page, while it is open
 	consoleLast   string       // the last typed command, for the next one
+	configScroll  int          // the scroll position of the printer list of the setup
+	configAll     bool         // the printer list shows all printers, not only those for the board
+	configBoard   board.Info   // the board that the printer list is for
 	historyScroll int          // the scroll position of the history
 	doneSeen      string       // the done screen of this print was closed (its history key)
 	setupProbed   bool         // the printer setup started a probe of the USB ports

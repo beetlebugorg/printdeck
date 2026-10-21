@@ -143,6 +143,7 @@ func (d *DemoPrinter) DeleteFile(string) error          { return nil }
 func (d *DemoPrinter) History() []printer.Record        { return d.History_ }
 func (d *DemoPrinter) ProbeBoards()                     {}
 func (d *DemoPrinter) RestartKlipper() error            { return nil }
+func (d *DemoPrinter) UseConfig(string, string) error   { return nil }
 func (d *DemoPrinter) Console() []printer.ConsoleLine   { return d.Console_ }
 func (d *DemoPrinter) SendConsole(line string) {
 	d.Console_ = append(d.Console_, printer.ConsoleLine{Kind: "in", Text: line})
@@ -174,6 +175,9 @@ func (a *App) OpenPrintScreen(name string) {
 		a.pages = []page{pageMachine, pageHistory}
 	case "stats":
 		a.pages = []page{pageMachine, pageStats}
+	case "configs":
+		a.configBoard = board.Info{Device: "/dev/serial/by-id/usb-UltiMachine_RAMBo_64033353730351918201-if00", Name: "UltiMachine RAMBo", Klipper: true, MCU: "atmega2560"}
+		a.pages = []page{pageConfigs}
 	case "console":
 		a.pages = []page{pageMachine, pageConsole}
 	case "setup", "error":

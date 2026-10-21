@@ -464,8 +464,16 @@ func manualSections() []section {
 					Setup: func(s *manualState) { s.a.OpenPrintScreen("setup") },
 					Callouts: []callout{
 						{240, 215, "Board", "The board that the deck found on USB, its MCU, and its Klipper firmware."},
-						{240, 335, "Search again", "Looks for the board again, for example after you connect the printer."},
-						{240, 400, "Next step", "Copy printer.cfg to the PRINTDECK partition, and start the deck again."},
+						{126, 335, "Choose printer", "Opens the list of Klipper's example configs. See below."},
+						{354, 335, "Search again", "Looks for the board again, for example after you connect the printer."},
+						{240, 400, "Your own config", "You can also copy your own printer.cfg to the PRINTDECK partition, and start the deck again."},
+					}},
+				{Name: "configs", Caption: "Choose your printer",
+					Setup: func(s *manualState) { s.a.OpenPrintScreen("configs") },
+					Callouts: []callout{
+						{240, 140, "Chip", "The list shows the printers with the same chip as your board."},
+						{240, 200, "Printer", "The brand, the model, the year and the chip. Tap your printer. The deck writes its config as printer.cfg, with the port of your board, and restarts Klipper. The old printer.cfg stays as printer.cfg.bak."},
+						{240, 680, "Show all printers", "Shows the printers for all chips."},
 					}},
 				{Name: "error", Caption: "A Klipper error",
 					Setup: func(s *manualState) { s.a.OpenPrintScreen("error") },

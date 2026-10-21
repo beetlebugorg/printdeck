@@ -463,6 +463,15 @@ func (k *Klippy) PrintFile(path string) {
 
 func (k *Klippy) Gcode(lines ...string) error { return k.script(lines...) }
 
+// UseConfig writes one of Klipper's example configs as printer.cfg, with serial as the port of the
+// board, and restarts Klipper.
+func (k *Klippy) UseConfig(file, serial string) error {
+	if err := UseExample(k.ConfigPath, file, serial); err != nil {
+		return err
+	}
+	return k.RestartKlipper()
+}
+
 // SendConsole runs a command of the console in the background. Klipper writes the reply, and a
 // refusal as "!! message", to the console.
 func (k *Klippy) SendConsole(line string) {
