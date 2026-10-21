@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"path/filepath"
 
 	"printdeck/internal/config"
 	"printdeck/internal/gcodestore"
@@ -21,6 +22,7 @@ func newPrinter(cfg config.Config) printerBackend {
 	k := printer.NewKlippy(cfg.KlippySocket, &gcodestore.Store{Dir: cfg.GcodeDir})
 	k.ModelDir = cfg.ModelDir
 	k.ConfigPath = cfg.KlipperConfig
+	k.Hist = &printer.History{Path: filepath.Join(cfg.StateDir, "history.json")}
 	k.RestartService = func() error { return system.AskHelper(system.HelperRequest{Action: "restart-klipper"}) }
 	return k
 }
