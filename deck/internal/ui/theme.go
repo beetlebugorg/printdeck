@@ -231,26 +231,14 @@ func heading(c *gfx.Canvas, title string) {
 	c.Text(image.Rect(44, 64, W-150, 108), strings.ToUpper(title), gfx.Face(true, 24), text, gfx.Left)
 }
 
-// charLCD is a character display, like the 20 x 4 dot-matrix display of a printer: a grid of dark cells,
-// with one character drawn in each. Lines longer than cols are cut.
+// charLCD is a character display of the printer: lines of text as the dots of a dot-matrix display,
+// in the 6x10 font, at the largest whole scale that fits r. Lines longer than cols are cut.
 func charLCD(c *gfx.Canvas, r image.Rectangle, lines []string, cols int) {
 	c.RoundRect(r.Inset(-2), 6, edge)
 	c.RoundRect(r, 4, glcd)
-	rows := len(lines)
-	cw := (r.Dx() - 16) / cols
-	ch := (r.Dy() - 12) / rows
-	x0 := r.Min.X + (r.Dx()-cw*cols)/2
-	y0 := r.Min.Y + (r.Dy()-ch*rows)/2
-	size := min(int(float64(ch)*0.78), int(float64(cw-2)/0.6))
-	face := gfx.Face(true, size)
-	for row, line := range lines {
-		rs := []rune(line)
-		for col := 0; col < cols; col++ {
-			cell := image.Rect(x0+col*cw+1, y0+row*ch+1, x0+(col+1)*cw-1, y0+(row+1)*ch-1)
-			c.Fill(cell, glcdCell)
-			if col < len(rs) && rs[col] != ' ' {
-				c.Text(cell, string(rs[col]), face, glcdInk, gfx.Center)
-			}
-		}
-	}
+	scale := max(1, min((r.Dx()-16)/(cols*6), (r.Dy()-12)/(len(lines)*10)))
+	img := textImage(lines, cols, scale)
+	b := img.Bounds()
+	x, y := r.Min.X+(r.Dx()-b.Dx())/2, r.Min.Y+(r.Dy()-b.Dy())/2
+	c.PixelImage(image.Rect(x, y, x+b.Dx(), y+b.Dy()), img)
 }
