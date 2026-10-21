@@ -17,6 +17,10 @@ const (
 // wrongDelay is the wait after a wrong password. It makes guessing slow.
 var wrongDelay = time.Second
 
+// Auth lets a request through only with a valid session of the login, for the other pages of the
+// web server.
+func (s *Server) Auth(h http.HandlerFunc) http.HandlerFunc { return s.auth(h) }
+
 // auth lets a request through only with a valid session. Without one, the screen page goes to the
 // login page, and the other requests fail.
 func (s *Server) auth(h http.HandlerFunc) http.HandlerFunc {

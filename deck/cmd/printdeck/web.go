@@ -48,6 +48,8 @@ func startWeb(cfg config.Config, host *setupHost, events chan<- touch.Event, pr 
 			}
 		}
 		mux.Handle("/", rs.Handler())
+		klippyLog := filepath.Join(filepath.Dir(filepath.Dir(cfg.KlipperConfig)), "logs", "klippy.log")
+		registerSystemPage(mux, rs, pr, klippyLog)
 	}
 	srv := &http.Server{Addr: cfg.RemoteAddr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	go func() {
