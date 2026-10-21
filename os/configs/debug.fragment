@@ -3,6 +3,10 @@
 # file to printdeck_defconfig for "os/build.sh debug".
 # The files of the debug image: the list of loaded kernel modules, for board/linux-modules.txt.
 BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_PRINTDECK_PATH)/board/rootfs $(BR2_EXTERNAL_PRINTDECK_PATH)/board/rootfs-debug"
+# A shell and the BusyBox tools. printdeck-user adds the user to the wheel group with addgroup.
+BR2_PACKAGE_BUSYBOX=y
+BR2_SYSTEM_BIN_SH_BUSYBOX=y
+BR2_PACKAGE_BUSYBOX_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_PRINTDECK_PATH)/board/busybox.fragment"
 # SSH and sudo for the user printdeck, which printdeck-user makes at the first start.
 BR2_PACKAGE_DROPBEAR=y
 BR2_PACKAGE_SUDO=y

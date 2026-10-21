@@ -61,3 +61,8 @@ rm -f "$TARGET_DIR"/usr/bin/flac "$TARGET_DIR"/usr/bin/metaflac "$TARGET_DIR"/us
   "$TARGET_DIR"/usr/bin/sudo_sendlog "$TARGET_DIR"/usr/bin/sudoreplay "$TARGET_DIR"/usr/bin/cvtsudoers \
   "$TARGET_DIR"/usr/bin/systemd-nspawn "$TARGET_DIR"/usr/bin/systemd-dissect "$TARGET_DIR"/usr/bin/bootctl \
   "$TARGET_DIR"/usr/bin/varlinkctl
+
+# The release image keeps only the files that the Printdeck uses.
+if [ "${PRINTDECK_VARIANT:-release}" = release ]; then
+  "$BR2_EXTERNAL_PRINTDECK_PATH/board/release-prune.sh"
+fi
