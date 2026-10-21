@@ -76,9 +76,11 @@ if [ $# -gt 0 ]; then
   exit
 fi
 
-# Buildroot copies a local source one time, and does not see later changes. Copy deck/ again and
-# build the Printdeck program, then make the image. The Go build cache keeps this fast.
-run printdeck-deck-rebuild
+# Buildroot copies a local source one time, and does not see later changes. Remove the copy of
+# deck/ (it also keeps the files that deck/ no longer has), copy it again and build the Printdeck
+# program, then make the image. The Go build cache keeps this fast.
+run printdeck-deck-dirclean
+run printdeck-deck
 run
 cp "$CACHE/$OUTPUT/images/printdeck.img.xz" "$OS/out/$NAME.img.xz"
 cp "$CACHE/$OUTPUT/images/printdeck-update.tar.xz" "$OS/out/$NAME-update.tar.xz"
