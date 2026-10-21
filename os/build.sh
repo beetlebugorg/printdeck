@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Build the Printdeck OS image in a Docker container.
 #
-#   os/build.sh                  build the image
+#   os/build.sh                  build the release image
+#   os/build.sh debug            build the debug image: the release image with SSH and tools
 #   os/build.sh menuconfig       any other Buildroot target, for example linux-menuconfig or clean
+#   os/build.sh debug clean      a Buildroot target of the debug build
 #
-# The image is os/out/printdeck.img.xz. The Buildroot tree, the downloads and the build output are in
-# ~/.cache/printdeck-os (set PRINTDECK_OS_CACHE to change it). A full build takes about one hour.
+# The images are os/out/printdeck.img.xz and os/out/printdeck-debug.img.xz, each with its update
+# bundle. The Buildroot tree, the downloads and the build output are in ~/.cache/printdeck-os (set
+# PRINTDECK_OS_CACHE to change it). A full build takes about one hour.
 set -euo pipefail
 
 BUILDROOT_VERSION=2025.11.3
@@ -13,6 +16,17 @@ BUILDROOT_VERSION=2025.11.3
 OS="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(dirname "$OS")"
 CACHE="${PRINTDECK_OS_CACHE:-$HOME/.cache/printdeck-os}"
+
+# The variant: release, or debug. Each has its own output folder.
+VARIANT=release
+OUTPUT=output
+NAME=printdeck
+if [ "${1:-}" = debug ]; then
+  shift
+  VARIANT=debug
+  OUTPUT=output-debug
+  NAME=printdeck-debug
+fi
 
 mkdir -p "$CACHE" "$OS/out"
 
@@ -32,17 +46,28 @@ run() {
     -e HOME=/cache/home \
     -e BR2_DL_DIR=/cache/dl \
     -e PRINTDECK_VERSION="$(git -C "$REPO" describe --always --dirty 2>/dev/null || echo unknown)" \
+    -e PRINTDECK_VARIANT="$VARIANT" \
     -v "$CACHE:/cache" \
     -v "$REPO:/src:ro" \
     -w "/cache/buildroot-$BUILDROOT_VERSION" \
     printdeck-os-builder \
-    make -j"$(nproc)" O=/cache/output BR2_EXTERNAL=/src/os "$@"
+    make -j"$(nproc)" O="/cache/$OUTPUT" BR2_EXTERNAL=/src/os "$@"
 }
 
 mkdir -p "$CACHE/home" "$CACHE/dl"
 # Apply the defconfig again after a change to it. "make clean" keeps the .config, so a package that
 # the defconfig drops stays in the image until the .config changes too.
-if [ ! -f "$CACHE/output/.config" ] || [ "$OS/configs/printdeck_defconfig" -nt "$CACHE/output/.config" ]; then
+# The debug build uses the release defconfig plus configs/debug.fragment.
+if [ "$VARIANT" = debug ]; then
+  DEFCONFIG="$CACHE/printdeck_debug_defconfig"
+  if [ ! -f "$DEFCONFIG" ] || [ "$OS/configs/printdeck_defconfig" -nt "$DEFCONFIG" ] \
+    || [ "$OS/configs/debug.fragment" -nt "$DEFCONFIG" ]; then
+    cat "$OS/configs/printdeck_defconfig" "$OS/configs/debug.fragment" > "$DEFCONFIG"
+  fi
+  if [ ! -f "$CACHE/$OUTPUT/.config" ] || [ "$DEFCONFIG" -nt "$CACHE/$OUTPUT/.config" ]; then
+    run BR2_DEFCONFIG=/cache/printdeck_debug_defconfig defconfig
+  fi
+elif [ ! -f "$CACHE/$OUTPUT/.config" ] || [ "$OS/configs/printdeck_defconfig" -nt "$CACHE/$OUTPUT/.config" ]; then
   run printdeck_defconfig
 fi
 
@@ -55,5 +80,6 @@ fi
 # build the Printdeck program, then make the image. The Go build cache keeps this fast.
 run printdeck-deck-rebuild
 run
-cp "$CACHE/output/images/printdeck.img.xz" "$CACHE/output/images/printdeck-update.tar.xz" "$OS/out/"
-echo "Done: $OS/out/printdeck.img.xz"
+cp "$CACHE/$OUTPUT/images/printdeck.img.xz" "$OS/out/$NAME.img.xz"
+cp "$CACHE/$OUTPUT/images/printdeck-update.tar.xz" "$OS/out/$NAME-update.tar.xz"
+echo "Done: $OS/out/$NAME.img.xz"
