@@ -153,6 +153,19 @@ func demoShots(dir string, wide bool) {
 		a.OpenSetupScreen(n)
 		snap("setup-" + n)
 	}
+	// The pages of the Machine page, the printer configs, and last the screens that take over: the
+	// firmware flash and an action.
+	a.OpenSetupScreen("")
+	p.State_ = printer.State{Reachable: true, Text: "Operational", Connected: true, Tool: 24, Bed: 23, Homed: "xyz"}
+	a.Updater = &ui.DemoUpdater{S: ui.UpdateStatus{Current: "v0.3.0", Latest: "v0.4.0", Newer: true, Checked: true,
+		Notes: "The printer display shows the menus of the deck, with the knob. New status screen with icons. Signed updates."}}
+	p.Console_ = []printer.ConsoleLine{{Kind: "in", Text: "G28"}, {Kind: "in", Text: "M105"},
+		{Kind: "out", Text: "ok T:24.1 /0.0 B:23.4 /0.0"}, {Kind: "in", Text: "G1 X400"},
+		{Kind: "error", Text: "Move out of range: 400.000 150.000 10.000 [0.000]"}}
+	for _, n := range []string{"update", "console", "configs", "action", "flash"} {
+		a.OpenPrintScreen(n)
+		snap("print-" + n)
+	}
 }
 
 // remoteDemo serves the UI of a demo deck in the browser on ADDR (default :8080), to try it with no

@@ -145,8 +145,12 @@ func (d *DemoSetup) Login() (string, string)           { return "printdeck", "st
 func (d *DemoSetup) Done()                             {}
 
 // OpenSetupScreen shows one step of the setup screen with the networks of a DemoSetup, for the demo
-// pictures: "wifi", "password", "user", or "done".
+// pictures: "wifi", "password", "user", or "done". "" closes it.
 func (a *App) OpenSetupScreen(name string) {
+	if name == "" {
+		a.setup = nil
+		return
+	}
 	d := a.Setup.(*DemoSetup)
 	a.setup = &setupFlow{host: "printdeck", nets: d.Nets, status: d.Status_}
 	switch name {

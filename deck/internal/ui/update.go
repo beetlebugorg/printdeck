@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image"
+	"printdeck/kit"
 	"strings"
 
 	"printdeck/internal/gfx"
@@ -49,11 +50,22 @@ func updateLine(u UpdateStatus) (string, bool) {
 // drawUpdate is the Software update page.
 func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 	up := a.Updater
-	heading(c, "Software update")
-	a.backButton(c)
+	f := a.page(c, "Software update")
 	u := up.Status()
-	info := image.Rect(24, 76, W-24, 204)
+	// Tall: the versions, the notes, the progress, Install, and the keys. Wide: the versions and the
+	// keys in the left column; the notes, the progress and Install at the right.
+	var info, notes, bar, install, keys image.Rectangle
+	if f.wide {
+		l := kit.Rows(f.aside(), 12, kit.Fr(1), kit.Px(60))
+		info, keys = l[0], l[1]
+		r := kit.Rows(f.body(), 16, kit.Fr(1), kit.Px(30), kit.Px(80))
+		notes, bar, install = r[0], r[1], r[2]
+	} else {
+		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 0), 16, kit.Px(128), kit.Px(208), kit.Px(30), kit.Px(80), kit.Px(76))
+		info, notes, bar, install, keys = r[0], r[1], r[2], r[3], r[4]
+	}
 	window(c, info)
+	lineH := min(36, (info.Dy()-20)/3)
 	latest := "—"
 	if u.Latest != "" {
 		latest = u.Latest
@@ -63,13 +75,12 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 		channel = "BETA"
 	}
 	for i, l := range [][2]string{{"THIS DECK", u.Current}, {"LATEST", latest}, {"CHANNEL", channel}} {
-		y := info.Min.Y + 14 + i*36
+		y := info.Min.Y + 10 + i*lineH + (lineH-30)/2
 		c.Text(image.Rect(info.Min.X+16, y, info.Max.X, y+30), l[0], gfx.Face(true, 14), lcdDim, gfx.Left)
 		c.Text(image.Rect(info.Min.X+140, y, info.Max.X-16, y+30), gfx.Fit(gfx.Face(true, 19), l[1], info.Dx()-160),
 			gfx.Face(true, 19), lcdInk, gfx.Right)
 	}
 
-	y := 220
 	face := gfx.Face(false, 17)
 	msg := ""
 	switch {
@@ -91,24 +102,22 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 	if u.Err != "" {
 		col = red
 	}
-	for i, l := range wrapText(face, msg, W-48) {
-		if i >= 8 {
+	s := kit.NewStack(notes, 0)
+	for _, l := range wrapText(face, msg, notes.Dx()) {
+		if s.Y()+26 > notes.Max.Y {
 			break
 		}
-		c.Text(image.Rect(24, y, W-24, y+26), l, face, col, gfx.Left)
-		y += 26
+		c.Text(s.Next(26), l, face, col, gfx.Left)
 	}
 	if u.Busy == "Downloading" && u.Total > 0 {
-		bar := image.Rect(24, 444, W-24, 474)
 		window(c, bar)
 		w := int(int64(bar.Dx()-8) * u.Done / u.Total)
 		c.RoundRect(image.Rect(bar.Min.X+4, bar.Min.Y+4, bar.Min.X+4+w, bar.Max.Y-4), 3, lcdInk)
 	}
 
-	half := (W - 48 - 12) / 2
 	if u.Busy == "" {
 		if u.Newer {
-			a.button(c, image.Rect(24, 494, W-24, 574), "Install "+u.Latest, orange, onAcc, func() {
+			a.button(c, install, "Install "+u.Latest, orange, onAcc, func() {
 				if st.Busy() {
 					a.Toast("Install the update after the print")
 					return
@@ -117,11 +126,12 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 					onYes: up.Install}
 			})
 		}
-		a.button(c, image.Rect(24, 590, 24+half, 666), "Check now", raised, text, up.Check)
+		k := kit.Cols(keys, 12, kit.Fr(1), kit.Fr(1))
+		a.button(c, k[0], "Check now", raised, text, up.Check)
 		beta := "Beta updates: off"
 		if u.Beta {
 			beta = "Beta updates: on"
 		}
-		a.button(c, image.Rect(W-24-half, 590, W-24, 666), beta, raised, text, func() { up.SetChannel(!u.Beta) })
+		a.button(c, k[1], beta, raised, text, func() { up.SetChannel(!u.Beta) })
 	}
 }
