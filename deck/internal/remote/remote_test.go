@@ -31,10 +31,10 @@ func newTest(t *testing.T) (*Server, *httptest.Server, *http.Client, *fakeUI) {
 	ui := &fakeUI{touches: make(chan touch.Event, 4), ended: make(chan struct{}, 4)}
 	s := New()
 	s.Password = func() string { return "stamp-ocean-cider-brick" }
-	s.NewSession = func(ctx context.Context, height int, frame func([]byte)) (int, func(touch.Event)) {
+	s.NewSession = func(ctx context.Context, size image.Point, frame func([]byte)) (image.Point, func(touch.Event)) {
 		frame([]byte(`[["f",0,0,480,800,1184273]]`))
 		go func() { <-ctx.Done(); ui.ended <- struct{}{} }()
-		return max(800, height), func(e touch.Event) { ui.touches <- e }
+		return image.Pt(480, max(800, size.Y)), func(e touch.Event) { ui.touches <- e }
 	}
 	ts := httptest.NewServer(s.Handler())
 	t.Cleanup(ts.Close)
@@ -113,9 +113,9 @@ func TestSession(t *testing.T) {
 	if l := next(); l != "event: session" {
 		t.Fatalf("first line %q", l)
 	}
-	id, height, _ := strings.Cut(strings.TrimPrefix(next(), "data: "), " ")
-	if height != "1040" {
-		t.Errorf("height %q, want 1040", height)
+	id, size, _ := strings.Cut(strings.TrimPrefix(next(), "data: "), " ")
+	if size != "480 1040" {
+		t.Errorf("size %q, want 480 1040", size)
 	}
 	if l := next(); l != `data: [["f",0,0,480,800,1184273]]` {
 		t.Errorf("frame %q", l)

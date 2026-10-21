@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"image"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -61,11 +62,11 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 }
 
 // uiSession returns the function that starts a session of the UI for one browser: an App on the
-// same printer, with the screen height of the browser, that records its frames. A frame that is the same as the last one is
-// not sent.
-func uiSession(app *ui.App) func(ctx context.Context, height int, frame func([]byte)) (int, func(touch.Event)) {
-	return func(ctx context.Context, height int, frame func([]byte)) (int, func(touch.Event)) {
-		s := app.Session(height)
+// same printer, with the screen shape of the browser, that records its frames. A frame that is the
+// same as the last one is not sent.
+func uiSession(app *ui.App) func(ctx context.Context, size image.Point, frame func([]byte)) (image.Point, func(touch.Event)) {
+	return func(ctx context.Context, size image.Point, frame func([]byte)) (image.Point, func(touch.Event)) {
+		s := app.Session(size.X, size.Y)
 		s.Record = true
 		events := make(chan touch.Event, 64)
 		var last []byte
@@ -75,7 +76,8 @@ func uiSession(app *ui.App) func(ctx context.Context, height int, frame func([]b
 				frame(b)
 			}
 		})
-		return s.Height, func(e touch.Event) {
+		scr := s.Screen()
+		return image.Pt(scr.W, scr.H), func(e touch.Event) {
 			select {
 			case events <- e:
 			default: // the session is busy; drop the touch, as the touch screen does

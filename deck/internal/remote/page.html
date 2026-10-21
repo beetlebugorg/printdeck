@@ -33,10 +33,10 @@
 "use strict";
 // The deck draws its UI for this browser and sends the drawing commands of each frame (see
 // gfx.Recording). This page draws them at the pixel density of the screen, and sends the touches.
-// The UI is 480 wide. Its height follows the shape of the window, from 800 (the touch screen) to
-// 1200, so the tab bar of a tall phone is at the bottom of the screen.
-const W = 480, MIN_H = 800, MAX_H = 1200;
-let H = MIN_H;
+// A tall window gets the tall UI: 480 wide, and a height that follows the shape of the window,
+// from 800 (the touch screen) to 1200. A window that is wider than high gets the wide UI, 800 x 480.
+const TALL_W = 480, MIN_H = 800, MAX_H = 1200, WIDE = [800, 480];
+let W = TALL_W, H = MIN_H;
 const canvas = document.getElementById("ui");
 const ctx = canvas.getContext("2d");
 const status = document.getElementById("status");
@@ -50,10 +50,12 @@ function area() {
   return [innerWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight),
     innerHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)];
 }
-// The height that fills the window at the full width.
-function wantedHeight() {
+// The size of the UI for the shape of the window: wide, or tall with the height that fills the
+// window at the full width.
+function wantedSize() {
   const [aw, ah] = area();
-  return Math.max(MIN_H, Math.min(MAX_H, Math.round(W * ah / aw)));
+  if (aw > ah * 1.2) return WIDE;
+  return [TALL_W, Math.max(MIN_H, Math.min(MAX_H, Math.round(TALL_W * ah / aw)))];
 }
 
 // Fit the UI in the window, at the pixel density of the screen.
@@ -68,13 +70,14 @@ function layout() {
   drawn = null;
   requestAnimationFrame(paint);
 }
-// A new shape of the window (for example a turn of the phone) asks for a new height: a new session.
+// A new shape of the window (for example a turn of the phone) asks for a new size: a new session.
 let resizeTimer = 0, source = null;
 addEventListener("resize", () => {
   layout();
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
-    if (source && Math.abs(wantedHeight() - H) > 8) { source.close(); listen(); }
+    const [w, h] = wantedSize();
+    if (source && (w !== W || Math.abs(h - H) > 8)) { source.close(); listen(); }
   }, 300);
 });
 
@@ -182,12 +185,13 @@ function paint() {
 
 // The frames.
 function listen() {
-  const events = new EventSource("/ui/events?h=" + wantedHeight());
+  const [w, h] = wantedSize();
+  const events = new EventSource("/ui/events?w=" + w + "&h=" + h);
   source = events;
   events.addEventListener("session", (e) => {
-    const [id, h] = e.data.split(" ");
+    const [id, sw, sh] = e.data.split(" ").map((v, i) => (i ? Number(v) : v));
     session = id;
-    if (Number(h) && Number(h) !== H) { H = Number(h); layout(); }
+    if (sw && sh && (sw !== W || sh !== H)) { W = sw; H = sh; layout(); }
     showStatus("");
   });
   events.onmessage = (e) => { frame = JSON.parse(e.data); requestAnimationFrame(paint); };
