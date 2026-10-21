@@ -1,8 +1,9 @@
 #!/bin/sh
-# Builds the manual two times: for a display that is mounted tall (this folder), and for a
-# display that is mounted wide (wide/). The deck draws the pictures and writes index.html (the
-# web manual) and booklet.html (the instruction booklet). Then Chromium prints each booklet two
-# times:
+# Builds the manual three times: for a display that is mounted tall (this folder), for a display
+# that is mounted wide (wide/), and the upgrade booklet for the LulzBot TAZ Workhorse (lulzbot/),
+# which has the guides of the mount from lulzbot/guide/ before the wide manual. The deck draws the
+# pictures and writes index.html (the web manual) and booklet.html (the instruction booklet). Then
+# Chromium prints each booklet two times:
 #
 #   printdeck-manual.pdf        the half-letter pages (5.5 x 8.5 in) in order. A print shop
 #                               makes a saddle-stitched booklet from this file.
@@ -28,3 +29,4 @@ build() {
 }
 build "$DIR" ""
 build "$DIR/wide" wide
+build "$DIR/lulzbot" lulzbot

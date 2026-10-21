@@ -25,8 +25,10 @@ import (
 // and the text for each part. The deck draws the pictures itself, so the manual follows the UI.
 // Each callout points at the part of the screen with its name (keysRect).
 //
-//	printdeck manual DIR [wide]     write DIR/index.html, DIR/booklet.html and the pictures in
-//	                                DIR/img; wide draws the screens of a display mounted wide
+//	printdeck manual DIR [wide|lulzbot]   write DIR/index.html, DIR/booklet.html and the pictures in
+//	                                      DIR/img. wide draws the screens of a display that is mounted
+//	                                      wide. lulzbot is the wide manual with the upgrade guides for
+//	                                      the TAZ Workhorse (upgrade.go).
 
 //go:embed manual.html
 var manualHTML string
@@ -664,10 +666,14 @@ func manualSections() []section {
 
 func manual(args []string) {
 	if len(args) < 1 {
-		log.Fatal("usage: printdeck manual DIR [wide]")
+		log.Fatal("usage: printdeck manual DIR [wide|lulzbot]")
 	}
 	dir := args[0]
-	wide := len(args) > 1 && args[1] == "wide"
+	mode := ""
+	if len(args) > 1 {
+		mode = args[1]
+	}
+	wide := mode == "wide" || mode == "lulzbot"
 	os.MkdirAll(filepath.Join(dir, "img"), 0o755)
 	// The pictures show the firmware keys of the OS image.
 	fwDir, _ := os.MkdirTemp("", "printdeck-firmware")
@@ -740,7 +746,13 @@ func manual(args []string) {
 		"date":       func() string { return time.Now().Format("January 2006") },
 		"newChapter": func(i int) bool { return i == 0 || secs[i].Chapter != secs[i-1].Chapter },
 	}).Parse(manualHTML))
-	writeBooklet(dir, secs, w, h)
+	ed := plainEdition
+	if mode == "lulzbot" {
+		*p = *demoPrinterCopy(p)
+		p.State_ = stIdle
+		ed = lulzEdition(dir, a, w, h)
+	}
+	writeBooklet(dir, secs, w, h, ed)
 	f, err := os.Create(filepath.Join(dir, "index.html"))
 	if err != nil {
 		log.Fatal(err)

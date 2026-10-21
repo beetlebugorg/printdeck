@@ -1,0 +1,422 @@
+{
+ "totals": {
+  "grams": 310,
+  "metres": 39,
+  "time": "18 h 28 min",
+  "cost": "$7.13",
+  "parts": 7,
+  "pricePerKg": "$22.99"
+ },
+ "prints": [
+  {
+   "file": "stl/head.stl",
+   "name": "head",
+   "colour": "Navy",
+   "swatch": "#1F2B4D",
+   "count": 1,
+   "grams": 92,
+   "metres": 11.6,
+   "time": "5 h 24 min",
+   "cost": "$2.12",
+   "size": "252 × 126 × 50",
+   "notes": "Face down. The screen opening is in the first layers: use a smooth sheet for a clean face.",
+   "image": "lulzbot-part_head"
+  },
+  {
+   "file": "stl/pod.stl",
+   "name": "pod",
+   "colour": "Navy",
+   "swatch": "#1F2B4D",
+   "count": 1,
+   "grams": 75,
+   "metres": 9.5,
+   "time": "4 h 17 min",
+   "cost": "$1.72",
+   "size": "173 × 135 × 22",
+   "notes": "Outer face down. The grille pocket and the vents are in the first layers.",
+   "image": "lulzbot-part_pod"
+  },
+  {
+   "file": "stl/back.stl",
+   "name": "back",
+   "colour": "Orange",
+   "swatch": "#E8742A",
+   "count": 1,
+   "grams": 66,
+   "metres": 8.4,
+   "time": "4 h 30 min",
+   "cost": "$1.52",
+   "size": "252 × 131 × 9",
+   "notes": "Rear face down. A flat plate with the clip slots and the windows.",
+   "image": "lulzbot-part_back"
+  },
+  {
+   "file": "stl/plate.stl",
+   "name": "plate",
+   "colour": "Orange",
+   "swatch": "#E8742A",
+   "count": 1,
+   "grams": 53,
+   "metres": 6.7,
+   "time": "2 h 52 min",
+   "cost": "$1.22",
+   "size": "173 × 135 × 23",
+   "notes": "The face that goes on the cover down. The bosses and the hooks point up.",
+   "image": "lulzbot-part_plate"
+  },
+  {
+   "file": "stl/clip.stl",
+   "name": "clip",
+   "colour": "Orange",
+   "swatch": "#E8742A",
+   "count": 2,
+   "grams": 12,
+   "metres": 1.4,
+   "time": "0 h 38 min",
+   "cost": "$0.28",
+   "size": "10 × 16 × 24",
+   "notes": "On its end: the section is on the bed, so the legs bend along the layers. Print 2.",
+   "image": "lulzbot-part_clip"
+  },
+  {
+   "file": "stl/grille.stl",
+   "name": "grille",
+   "colour": "White",
+   "swatch": "#F2F2EE",
+   "count": 1,
+   "grams": 12,
+   "metres": 1.5,
+   "time": "0 h 47 min",
+   "cost": "$0.28",
+   "size": "58 × 84 × 3",
+   "notes": "Back down. The front face is the top layer. The snap tabs bend along the layers.",
+   "image": "lulzbot-part_grille"
+  }
+ ],
+ "test": {
+  "file": "stl/fit_display.stl",
+  "name": "fit display",
+  "colour": "Navy",
+  "swatch": "#1F2B4D",
+  "count": 1,
+  "grams": 21,
+  "metres": 2.7,
+  "time": "1 h 19 min",
+  "cost": "$0.48",
+  "size": "0 × 0 × 0",
+  "notes": "Optional fit test of the screen opening. Face down.",
+  "image": "lulzbot-part_fit_display"
+ },
+ "settings": [
+  [
+   "Profiles",
+   "One Cura profile for each part: run python3 cura/make_profiles.py --install with Cura closed, then pick “Printdeck - LulzBot …”."
+  ],
+  [
+   "Printer",
+   "LulzBot TAZ Workhorse, SE tool head, 0.5 mm nozzle"
+  ],
+  [
+   "Material",
+   "PLA, 2.85 mm"
+  ],
+  [
+   "Head, pod, back panel, grille, clip",
+   "0.3 mm layers, 1.5 mm walls, 1.2 mm top and bottom, 15 % grid infill, skirt"
+  ],
+  [
+   "Plate",
+   "0.3 mm layers, 1.5 mm walls, 15 % grid infill, skirt"
+  ],
+  [
+   "Supports",
+   "Off for all parts. Every hole, pocket, and hook has 45° faces. A slice of each part with supports on (60°, everywhere) adds 0 g of support."
+  ]
+ ],
+ "hardware": [
+  {
+   "count": 6,
+   "item": "M3 × 10 socket cap head",
+   "where": "2 × plate on the cover (upper pair of PP-FP0164); 4 × back panel into the head"
+  },
+  {
+   "count": 2,
+   "item": "M3 × 12 socket cap head",
+   "where": "2 × plate flange into the back panel"
+  },
+  {
+   "count": 12,
+   "item": "M3 × 6 socket cap head",
+   "where": "4 × display board; 4 × Pi; 4 × drive on the back panel"
+  },
+  {
+   "count": 2,
+   "item": "M3 × 8 socket cap head",
+   "where": "2 × pod onto the plate"
+  },
+  {
+   "count": 2,
+   "item": "M3 washer",
+   "where": "2 × under the cover screws"
+  },
+  {
+   "count": 10,
+   "item": "M3 × 5 heat-set insert",
+   "where": "4 × head, display bosses (3 to 5 mm fits); 4 × plate, Pi bosses (3 to 5 mm fits); 2 × plate, pod screw blocks (3 to 5 mm fits)"
+  },
+  {
+   "count": 6,
+   "item": "M3 × 7 heat-set insert",
+   "where": "4 × head, back screws (3 to 7 mm fits); 2 × back panel, flange screws (3 to 7 mm fits)"
+  }
+ ],
+ "electronics": [
+  [
+   1,
+   "Raspberry Pi 5 (from the Slate build)"
+  ],
+  [
+   1,
+   "Raspberry Pi Active Cooler, max. 10.5 mm high (buy, if you do not have one)"
+  ],
+  [
+   1,
+   "Adafruit 7 inch HDMI display with touch, product 2407 (from the Slate build)"
+  ],
+  [
+   1,
+   "2.5 inch SATA drive with its USB adapter board, the boot drive (from the Slate build)"
+  ],
+  [
+   1,
+   "HDMI cable: micro HDMI to HDMI, straight plugs, a flat ribbon of 30 cm or more (the route is 24 cm). The ribbon kit of the Slate fits."
+  ],
+  [
+   1,
+   "Micro USB to USB-A cable, straight plugs, max. 3.5 mm thick, 15 cm or more (the route is 12 cm)."
+  ],
+  [
+   1,
+   "USB 3 cable for the drive: micro-B SuperSpeed to USB-A, 15 to 20 cm (the route is 13 cm)."
+  ],
+  [
+   1,
+   "USB-A to USB-B cable for the printer: 31 cm in the pod, plus the run behind the printer to the USB socket of the printer board."
+  ],
+  [
+   1,
+   "USB-C power cable: 9 cm in the pod, plus the run behind the printer to the Raspberry Pi 27 W USB-C power supply."
+  ]
+ ],
+ "tools": [
+  "Drill with a 3.2 mm bit (for the four holes of the Pi)",
+  "Soldering iron with a heat-set insert tip, at 220 °C",
+  "2.5 mm hex key (M3 socket cap screws)"
+ ],
+ "checks": [
+  "Check the rear screw of the upper pair on the cover: 237.3 mm above the bottom edge of the cover, and about 3.6 mm from the rear edge of the cover. The design uses the value of the LulzBot drawing.",
+  "Measure the TAZ Workhorse logo on the front of the chassis. The top of the head is 260 mm above the bottom of the chassis; the LulzBot drawing gives the logo at 264 mm, and the drawing is not to scale.",
+  "Look at the front slot of the front left rail. The clips need a free slot from 150 to 230 mm above the bottom of the chassis: remove the dust cover there, if the rail has one.",
+  "Move the bed to the front and the X axis to the bottom. Check that the head is clear of the bed, the print, and the tool head: it is 72 to 324 mm to the right of the left face of the chassis, and 125 to 260 mm above the bottom of the chassis.",
+  "Check behind the printer: the printer USB cable and the power cable leave the pod at the rear face of the chassis, 128 to 149 mm above its bottom."
+ ],
+ "steps": [
+  {
+   "image": "step_drill",
+   "title": "Drill the Pi",
+   "need": [
+    "Pi 5",
+    "3.2 mm drill"
+   ],
+   "items": [
+    "The mounting holes of the Pi 5 are 2.7 mm, for M2.5. Drill the four holes to 3.2 mm for M3.",
+    "Drill slowly, from the top of the board, with the board flat on a piece of wood.",
+    "Keep the drill straight. Stay inside the plated ring of each hole: do not touch the tracks or the parts around it.",
+    "Remove all the dust from the board with a brush or with air before you continue."
+   ],
+   "note": "Skip this step if your Pi already has 3.2 mm holes."
+  },
+  {
+   "image": "step_display",
+   "title": "Display into the head",
+   "need": [
+    "head",
+    "display",
+    "foam tape",
+    "4 × M3 × 5 insert",
+    "4 × M3 × 7 insert",
+    "4 × M3 × 6"
+   ],
+   "items": [
+    "Press the four M3 × 5 inserts into the four bosses of the head, and the four M3 × 7 inserts into the two columns and the two blocks at the back. Use a soldering iron at 220 °C. Stop when the insert is flush.",
+    "Put the head face down on a soft cloth.",
+    "Put the display glass down into the pocket: the sockets of the board at the left (seen from the front), the FPC edge of the panel at the top.",
+    "Put the foam tape on the back of the panel. Put the board on the four bosses, and attach it with four M3 × 6 screws.",
+    "Connect the HDMI cable and the micro USB cable to the board. Both plugs point to the left."
+   ],
+   "note": "The screen opening is at the centre of the face: the border is the same at the left and the right."
+  },
+  {
+   "image": "step_drive",
+   "title": "Drive on the back panel",
+   "need": [
+    "back panel",
+    "drive",
+    "2 × M3 × 7 insert",
+    "4 × M3 × 6"
+   ],
+   "items": [
+    "Press the two M3 × 7 inserts into the two bosses on the front face of the back panel, from the rear.",
+    "Put the drive on the front face of the back panel: the adapter toward the left (the pod side), the M3 holes against the panel.",
+    "Attach it with four M3 × 6 screws from the rear face of the panel.",
+    "Connect the micro-B plug of the drive cable to the adapter."
+   ],
+   "note": ""
+  },
+  {
+   "image": "step_back",
+   "title": "Back panel onto the head",
+   "need": [
+    "head (step 2)",
+    "back panel (step 3)",
+    "4 × M3 × 10"
+   ],
+   "items": [
+    "Put the display cables through the upper window at the left of the back panel, and the drive cable through the lower window.",
+    "Put the back panel on the head. Attach it with four M3 × 10 screws from the rear face, into the inserts."
+   ],
+   "note": "The heads of the screws stay on the rear face. They are behind the head, and they do not show."
+  },
+  {
+   "image": "step_plate",
+   "title": "Plate on the cover",
+   "need": [
+    "plate",
+    "6 × M3 × 5 insert",
+    "2 × M3 × 10",
+    "2 × M3 washer"
+   ],
+   "items": [
+    "Press four M3 × 5 inserts into the four Pi bosses, and two into the two blocks at the bottom of the plate (from below).",
+    "The cover is PP-FP0164, with 10 screws. Remove its upper pair of screws from the left side of the chassis: the front one and the rear one, 237.3 mm above the bottom edge of the cover.",
+    "Put the plate on the cover, with the slots of the two pads over the two holes. Attach it with two M3 × 10 screws, each with a washer."
+   ],
+   "note": "The slots in the pads let the plate fit 5 mm up or down and 0.5 mm to the front or the rear. The pad is 4 mm thick, so the M3 × 10 goes into the nut of the chassis the same depth as the old screw."
+  },
+  {
+   "image": "step_pi",
+   "title": "Pi on the plate",
+   "need": [
+    "Pi 5 (step 1)",
+    "Active Cooler",
+    "4 × M3 × 6"
+   ],
+   "items": [
+    "Put the Active Cooler on the Pi, and connect its cable to the fan connector.",
+    "Put the Pi on the four bosses: the USB ports toward the front of the printer, the USB-C and HDMI ports down.",
+    "Attach it with four M3 × 6 screws."
+   ],
+   "note": ""
+  },
+  {
+   "image": "step_clips",
+   "title": "Clips in the rail",
+   "need": [
+    "2 × rail clip"
+   ],
+   "items": [
+    "Hold the back panel on the front face of the front left rail, with its bottom edge 125 mm above the bottom of the chassis. Mark the top of the two long slots in the panel on the rail.",
+    "Push each clip into the front slot of the rail, with its top at a mark, until it clicks. The dovetail key points to the front."
+   ],
+   "note": "The clips need no nut: their two legs snap behind the lips of the slot. A clip slides in the slot, so you can move it up or down by hand."
+  },
+  {
+   "image": "step_hang",
+   "title": "Hang the head",
+   "need": [
+    "head (step 4)",
+    "2 × M3 × 12"
+   ],
+   "items": [
+    "Hold the head 30 mm above its place, with the two windows of the back panel over the two clip keys. Push the back panel against the clips.",
+    "Let the head drop 30 mm. The keys go into the dovetail slots.",
+    "Lead the display cables and the drive cable out of the windows into the pod.",
+    "From inside the pod, put the two M3 × 12 screws through the flange of the plate into the back panel."
+   ],
+   "note": "The two screws through the flange hold up the head. The clips hold its right end against the rail."
+  },
+  {
+   "image": "step_cables",
+   "title": "Cables",
+   "need": [],
+   "items": [
+    "Connect the HDMI cable to the HDMI 0 port (next to the USB-C port).",
+    "Connect the touch cable to the upper USB 3 port (blue), and the drive cable to the lower USB 3 port.",
+    "Connect the printer cable to the lower USB 2 port. Lead it up the front of the pod, over the Pi, down at the rear end of the Pi, and out of the upper notch in the rear wall.",
+    "Connect the power cable to the USB-C port. Lead it down and to the rear, out of the lower notch.",
+    "Behind the printer, connect the printer cable to the USB socket of the printer board, and the power cable to the power supply."
+   ],
+   "note": "No cable goes through a hole in the printer, and no cable shows on the front or the side."
+  },
+  {
+   "image": "step_pod",
+   "title": "Grille and pod",
+   "need": [
+    "grille",
+    "pod",
+    "2 × M3 × 8"
+   ],
+   "items": [
+    "Push the grille into the pocket of the pod from the outside, with the fingernail notch at the bottom. Push both sides until the two tabs click. The grille is flush with the pod.",
+    "Hold the pod about 6 mm low and 6 mm out from its place, and 4 mm to the rear. Move it 4 mm to the front, then push it up and in at 45° onto the two hooks of the plate. The rear wall goes over the two cables.",
+    "Put the two M3 × 8 screws up through the bottom of the pod into the plate. They pull the pod up, and the 45° hooks pull it onto the plate."
+   ],
+   "note": "To remove the grille, put a fingernail or a small screwdriver into the notch at its bottom edge, and lift."
+  }
+ ],
+ "cables": [
+  [
+   "HDMI",
+   "24 cm",
+   "HDMI 0 port to the display, plug to plug"
+  ],
+  [
+   "Touch USB",
+   "12 cm",
+   "upper USB 3 port to the display, plug to plug"
+  ],
+  [
+   "Drive",
+   "13 cm",
+   "lower USB 3 port to the drive, plug to plug"
+  ],
+  [
+   "Printer USB",
+   "31 cm",
+   "lower USB 2 port to the rear face of the chassis"
+  ],
+  [
+   "Power",
+   "9 cm",
+   "USB-C port to the rear face of the chassis"
+  ]
+ ],
+ "screen": [
+  [
+   575,
+   935
+  ],
+  [
+   780,
+   873
+  ],
+  [
+   804,
+   1017
+  ],
+  [
+   599,
+   1078
+  ]
+ ]
+}

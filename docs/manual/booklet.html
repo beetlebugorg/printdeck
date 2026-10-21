@@ -72,10 +72,12 @@
   .cover .for { margin-top: .1in; font: italic 600 9pt "IBM Plex Sans", "Noto Sans", Arial, sans-serif; opacity: .85; }
   .cover .status { width: 3.4in; image-rendering: pixelated; margin-top: .9in; border-radius: 4px; }
 
-  .contents ol { list-style: none; margin: 0; padding: 0; font-size: 9.4pt; }
+  .contents ol { list-style: none; margin: 0; padding: 0; font-size: 8.8pt; columns: 2; column-gap: .3in; }
+  .contents li.ch { break-after: avoid; }
   .contents li { display: flex; gap: .06in; break-inside: avoid; margin-bottom: .02in; }
   .contents li .dots { flex: 1; border-bottom: 1px dotted var(--dim); transform: translateY(-.05in); }
   .contents li.ch { font: 700 7.4pt "IBM Plex Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--blue); margin-top: .14in; }
+  .contents li.ch:first-child { margin-top: 0; }
 
   .lcdgrid { display: grid; grid-template-columns: 1fr 1fr; gap: .2in .22in; margin-top: .1in; }
   .lcdgrid img { width: 100%; image-rendering: pixelated; border: 3px solid #b6b2a8; border-radius: 4px; display: block; }
@@ -84,6 +86,63 @@
   td { border-top: 1px solid #c9c5bb; padding: .06in .06in; vertical-align: top; }
   td:first-child { font: 600 8pt "IBM Plex Mono", monospace; width: 44%; }
   .notes .line { border-bottom: 1px solid #c9c5bb; height: .34in; }
+   
+  h4 { margin: .14in 0 .06in; font: 700 8pt "IBM Plex Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--blue); }
+  .pics { display: flex; justify-content: center; gap: .2in; margin: .06in 0 .12in; }
+  .pics img { max-width: 100%; object-fit: contain; }
+  .chips { display: flex; flex-wrap: wrap; gap: .06in; margin: .04in 0 .1in; }
+  .chips span { border: 1.2px solid var(--ink); border-radius: 99px; padding: .015in .1in; font: 600 7.4pt "IBM Plex Mono", monospace; }
+  ul.list { margin: .02in 0 .08in; padding-left: .2in; }
+  ul.list li { margin-bottom: .04in; }
+  table.grid th, table.parts-plan th { text-align: left; font: 700 7pt "IBM Plex Mono", monospace; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--dim); padding: .03in .06in; border-bottom: 1.5px solid var(--ink); }
+  table.grid td:first-child { width: auto; white-space: nowrap; }
+  table.parts-plan td { vertical-align: middle; }
+  table.parts-plan td:first-child { width: .55in; padding: .02in; }
+  table.parts-plan img { width: .5in; height: .38in; object-fit: contain; display: block; }
+  table.parts-plan .file { font: 6.8pt "IBM Plex Mono", monospace; color: var(--dim); }
+  table.parts-plan td.n, table.parts-plan th.n { text-align: right; white-space: nowrap; }
+  .sw { display: inline-block; width: .11in; height: .11in; border-radius: 2px; border: 1px solid #888; vertical-align: -1px; margin-right: .04in; }
+  .step { margin-top: .12in; break-inside: avoid; }
+  h2 + .para + .step, h2 + p + .step { margin-top: .08in; }
+  .step-head { display: flex; align-items: center; gap: .1in; border-bottom: 2px solid var(--ink); padding-bottom: .04in; margin-bottom: .06in; }
+  .step-n { font: 800 20pt/1 "IBM Plex Mono", monospace; color: var(--orange); }
+  .step-body { display: grid; grid-template-columns: 1.55in 1fr; gap: .16in; align-items: start; }
+  .step-body img { width: 100%; max-height: 2.1in; object-fit: contain; }
+  .step-body ol.steps { margin-top: 0; }
+  .step-t { font: italic 700 13pt "IBM Plex Sans", "Noto Sans", Arial, sans-serif; color: var(--blue); }
+
+   
+  .sheet.ad { padding: .25in; }
+  .adv { height: 100%; border: 3px solid #111; padding: .22in .26in .16in; display: flex; flex-direction: column; background: #fffdf6;
+    font-family: "URW Bookman", "Bookman Old Style", "Bookman", serif; color: #111; }
+  .ad-kicker { font: 700 7.6pt "URW Gothic", "Century Gothic", sans-serif; letter-spacing: .2em; text-transform: uppercase;
+    color: #c8102e; border-bottom: 1.5px solid #111; padding-bottom: .05in; }
+  .ad-head { font: italic 700 25pt/1.02 "URW Bookman", "Bookman Old Style", serif; margin: .1in 0 .06in; letter-spacing: -.02em; }
+  .ad-head span { display: block; }
+  .ad-hero { position: relative; height: 2.15in; display: flex; justify-content: center; }
+  .ad-hero img { height: 100%; }
+  .ad-burst { position: absolute; right: .05in; top: 0; width: 1.15in; height: 1.15in; display: flex; align-items: center; justify-content: center;
+    background: #ffd400; transform: rotate(-12deg); text-align: center;
+    clip-path: polygon(50% 0, 61% 14%, 79% 9%, 79% 27%, 96% 32%, 86% 47%, 99% 61%, 82% 69%, 85% 87%, 67% 85%, 57% 100%, 45% 87%, 28% 96%, 24% 78%, 6% 75%, 13% 58%, 0 44%, 15% 34%, 11% 16%, 30% 16%, 38% 2%); }
+  .ad-burst span { font: 700 10.5pt/1.05 "URW Gothic", "Century Gothic", sans-serif; text-transform: uppercase; width: .8in; color: #c8102e; }
+  .ad-body { display: grid; grid-template-columns: 1fr 1.45in; gap: .16in; margin-top: .08in; }
+  .ad-copy { columns: 2; column-gap: .14in; font-size: 7.4pt; line-height: 1.32; text-align: left; hyphens: auto; }
+  .ad-copy p { margin: 0 0 .05in; text-align: left; }
+  .ad-copy p:first-child::first-letter { float: left; font: 700 24pt/.8 "URW Bookman", serif; margin: .02in .04in 0 0; color: #c8102e; }
+  .ad-checks { list-style: none; margin: 0; padding: .08in .1in; border: 2px solid #111; background: #111; color: #fffdf6;
+    font: 700 7.4pt/1.3 "URW Gothic", "Century Gothic", sans-serif; align-self: start; }
+  .ad-checks li { margin-bottom: .07in; padding-left: .16in; position: relative; }
+  .ad-checks li::before { content: "✔"; position: absolute; left: 0; color: #ffd400; }
+  .ad-coupon { position: relative; margin-top: .14in; border: 1.6px dashed #111; padding: .09in .12in; font: 7.6pt "URW Gothic", "Century Gothic", sans-serif; }
+  .ad-coupon b { font: italic 700 10pt "URW Bookman", serif; }
+  .ad-scissors { position: absolute; top: -.11in; left: .15in; background: #fffdf6; padding: 0 .04in; font-size: 11pt; }
+  .ad-boxes { display: flex; gap: .2in; margin: .05in 0; }
+  .ad-lines { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: .06in; align-items: end; margin: .08in 0 .04in; }
+  .ad-lines i { border-bottom: 1px solid #111; height: .14in; }
+  .ad-mail { font-size: 6.6pt; color: #444; }
+  .ad-fine { font: 5.6pt/1.3 "URW Gothic", "Century Gothic", sans-serif; color: #555; margin-top: .07in; }
+
   .back { display: flex; flex-direction: column; justify-content: flex-end; font-size: 8.4pt; color: var(--dim); }
 </style>
 <script>

@@ -447,8 +447,78 @@ def end_page(n):
 </section>"""
 
 
+GUIDE = HERE / "guide"
+
+# The corners of the screen in renders/printer-front-left.png, in pixels: top left, top right,
+# bottom right, bottom left. The upgrade booklet draws the screen of the deck into them.
+# write_guide checks that the render still has the dark screen there.
+SCREEN = [[575, 935], [780, 873], [804, 1017], [599, 1078]]
+SCREEN_RGB = (43, 43, 43)
+
+
+def plain(t):
+    """A text with no HTML tags, for guide.json."""
+    import re
+    return re.sub(r"<[^>]+>", "", t)
+
+
+def write_guide():
+    """Write guide/guide.json and the line-art images that it names, for the upgrade booklet of the
+    deck (printdeck manual DIR lulzbot). The guide/ folder is in git, so the booklet builds with no
+    run of make.sh."""
+    import shutil
+    (GUIDE / "img").mkdir(parents=True, exist_ok=True)
+    names = ["hero", "side", "exploded", "connect"] + ["part_" + s for _, s, *_ in PRINTS + [TEST]] + [s[0] for s in STEPS]
+    for n in dict.fromkeys(names):
+        shutil.copyfile(IMG / f"{n}-light.png", GUIDE / "img" / f"lulzbot-{n}.png")
+    from PIL import Image
+    render = Image.open(HERE / "renders" / "printer-front-left.png").convert("RGB")
+    cx, cy = (sum(p[0] for p in SCREEN) // 4, sum(p[1] for p in SCREEN) // 4)
+    if max(abs(a - b) for a, b in zip(render.getpixel((cx, cy)), SCREEN_RGB)) > 6:
+        raise SystemExit("the screen of renders/printer-front-left.png moved: measure SCREEN again")
+    shutil.copyfile(HERE / "renders" / "printer-front-left.png", GUIDE / "img" / "lulzbot-printer.png")
+    g, m, t = totals()
+
+    def part(name, stl, colour, count, notes):
+        f = FILAMENT[stl]
+        return {"file": f"stl/{stl}.stl", "name": stl.replace("_", " "), "colour": colour, "swatch": SWATCH[colour],
+                "count": count, "grams": f["grams"] * count, "metres": round(f["metres"] * count, 1),
+                "time": hours(f["minutes"] * count), "cost": f"${cost(f['grams'] * count):.2f}",
+                "size": " × ".join(f"{v:.0f}" for v in SUMMARY["parts"].get(name, {"size": [0, 0, 0]})["size"]),
+                "notes": notes, "image": f"lulzbot-part_{stl}"}
+    hw = []
+    for key in sorted(ITEMS, key=lambda k: (not k.startswith("m3x"), ITEMS[k]["item"])):
+        e = ITEMS[key]
+        hw.append({"count": e["count"], "item": e["item"],
+                   "where": "; ".join(f"{n} × {w}" for w, n in e["places"].items())})
+    guide = {
+        "totals": {"grams": g, "metres": round(m), "time": hours(t), "cost": f"${cost(g):.2f}",
+                   "parts": sum(c for *_, c, _ in PRINTS), "pricePerKg": f"${PRICE_PER_KG:.2f}"},
+        "prints": [part(*p) for p in PRINTS],
+        "test": part(*TEST),
+        "settings": [[k, plain(v)] for k, v in SETTINGS],
+        "hardware": hw,
+        "electronics": [[n, plain(t)] for n, t in ELECTRONICS],
+        "tools": TOOLS,
+        "checks": CHECKS,
+        "steps": [{"image": shot, "title": title,
+                   "need": need + [chip(k, c) for k, c in hwk.items()], "items": items, "note": note or ""}
+                  for shot, title, need, hwk, items, note in STEPS],
+        "cables": [[k, cm(v), r] for k, v, r in [
+            ("HDMI", CABLES["hdmi"], "HDMI 0 port to the display, plug to plug"),
+            ("Touch USB", CABLES["touch"], "upper USB 3 port to the display, plug to plug"),
+            ("Drive", CABLES["drive"], "lower USB 3 port to the drive, plug to plug"),
+            ("Printer USB", CABLES["printer"], "lower USB 2 port to the rear face of the chassis"),
+            ("Power", CABLES["power"], "USB-C port to the rear face of the chassis")]],
+        "screen": SCREEN,
+    }
+    (GUIDE / "guide.json").write_text(json.dumps(guide, indent=1, ensure_ascii=False) + "\n")
+    print("wrote", GUIDE / "guide.json")
+
+
 def main():
     check_chips()
+    write_guide()
     pages = [cover(), plan_page(), print_page(), parts_page(), mount_page()]
     for i, s in enumerate(STEPS):
         pages.append(step_page(i + 1, s, len(pages) + 1))
