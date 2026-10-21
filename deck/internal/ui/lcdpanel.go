@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"sync"
@@ -85,4 +86,32 @@ func (a *App) redrawSoon(d time.Duration) {
 		a.redrawPending.Store(false)
 		a.Redraw()
 	})
+}
+
+// textImages keeps the last pictures of the character displays, as lcdImages.
+var textImages struct {
+	sync.Mutex
+	byKey map[string]*image.RGBA
+	order []string
+}
+
+// textImage is the picture of lines of text on a character display, in the colors of the theme.
+func textImage(lines []string, cols, scale int) *image.RGBA {
+	k := fmt.Sprint(lines, cols, scale, glcd, glcdCell, glcdInk)
+	textImages.Lock()
+	defer textImages.Unlock()
+	if img, ok := textImages.byKey[k]; ok {
+		return img
+	}
+	if textImages.byKey == nil {
+		textImages.byKey = map[string]*image.RGBA{}
+	}
+	img := lcdscreen.DotLines(lines, cols, "6x10", scale, glcd, glcdCell, glcdInk)
+	textImages.byKey[k] = img
+	textImages.order = append(textImages.order, k)
+	if len(textImages.order) > 24 {
+		delete(textImages.byKey, textImages.order[0])
+		textImages.order = textImages.order[1:]
+	}
+	return img
 }
