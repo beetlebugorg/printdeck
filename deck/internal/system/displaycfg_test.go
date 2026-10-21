@@ -4,18 +4,28 @@ import (
 	"strings"
 	"testing"
 
+	"printdeck/internal/klipper/configfile"
 	"printdeck/internal/klipper/jinja"
 )
 
 // TestDisplayAnimation renders the animation of the display layout with the template engine of
 // the Klipper host: each animation fills the bottom row of 16 characters.
 func TestDisplayAnimation(t *testing.T) {
-	i := strings.Index(displayCfg, "[display_data __printdeck animation]")
-	src := displayCfg[strings.Index(displayCfg[i:], "text:\n")+i+len("text:\n"):]
-	var lines []string
-	for _, l := range strings.Split(src, "\n") {
-		lines = append(lines, strings.TrimPrefix(l, "  "))
+	// Read the file as Klipper does: it cuts each line at its first "#", then parses it.
+	var cut []string
+	for _, l := range strings.Split(displayCfg, "\n") {
+		l, _, _ = strings.Cut(l, "#")
+		cut = append(cut, l)
 	}
+	fc := configfile.NewFileConfig()
+	if err := fc.Read(strings.Join(cut, "\n"), "printdeck-display.cfg"); err != nil {
+		t.Fatal(err)
+	}
+	src, ok := fc.Get("display_data __printdeck animation", "text")
+	if !ok {
+		t.Fatal("no animation")
+	}
+	lines := []string{src}
 	tpl, err := jinja.Parse(strings.Join(lines, "\n"))
 	if err != nil {
 		t.Fatal(err)
