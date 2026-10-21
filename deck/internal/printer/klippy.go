@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"printdeck/internal/board"
+	"printdeck/internal/klipper/cli"
 	"printdeck/internal/klippy"
 )
 
@@ -28,12 +30,24 @@ type Klippy struct {
 	store  Store
 	*View
 
+	// ConfigPath is printer.cfg. With no [mcu] section in it, the state asks for the setup.
+	ConfigPath string
+	// RestartService restarts the Klipper service, which reads printer.cfg again. The API of
+	// Klipper has no restart while the config has an error.
+	RestartService func() error
+
 	mu     sync.Mutex
 	conn   *klippy.Conn
 	status klippy.Status
 	err    string // why Klipper is not ready
-	st     State
-	files  []File
+	// errDetail is the full message of Klipper's error state, with all its lines
+	errDetail string
+	st        State
+	files     []File
+	notify    func()
+
+	boards  []board.Info // what the last probe found
+	probing bool
 }
 
 // klippyObjects are the printer objects that the deck follows. nil means all fields.
@@ -45,7 +59,11 @@ var klippyObjects = map[string][]string{
 	"heater_bed":     {"temperature", "target"},
 	"fan":            {"speed"},
 	"toolhead":       {"position", "homed_axes"},
+	"mcu":            {"mcu_version"},
 }
+
+// HostVersion is the Klipper version of the host. The firmware of the board must be this version.
+const HostVersion = cli.KlipperVersion
 
 // controlTimeout is how long a control waits for Klipper. Homing and heating can take minutes.
 const controlTimeout = 5 * time.Minute
@@ -81,6 +99,9 @@ func (k *Klippy) LoadFiles() {
 // Run follows klippy until ctx ends. It connects again after klippy restarts. notify is called after
 // each change of the state.
 func (k *Klippy) Run(ctx context.Context, notify func()) {
+	k.mu.Lock()
+	k.notify = notify
+	k.mu.Unlock()
 	for ctx.Err() == nil {
 		k.follow(ctx, notify)
 		select {
@@ -109,6 +130,9 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 			break
 		}
 		// "startup", "shutdown" or "error": the message says why, for example a missing MCU.
+		k.mu.Lock()
+		k.errDetail = strings.TrimSpace(msg)
+		k.mu.Unlock()
 		k.setDown(firstLine(msg), notify)
 		select {
 		case <-ctx.Done():
@@ -164,6 +188,9 @@ func info(ctx context.Context, conn *klippy.Conn) (state, msg string, err error)
 
 func (k *Klippy) setDown(why string, notify func()) {
 	k.mu.Lock()
+	if why != firstLine(k.errDetail) {
+		k.errDetail = ""
+	}
 	k.err, k.status = why, nil
 	k.mu.Unlock()
 	k.refresh(notify)
@@ -173,7 +200,13 @@ func (k *Klippy) setDown(why string, notify func()) {
 func (k *Klippy) refresh(notify func()) {
 	k.mu.Lock()
 	st := klippyState(k.status, k.err)
+	if !st.Reachable {
+		st.ErrDetail = k.errDetail
+	}
 	k.mu.Unlock()
+	if !st.Reachable && k.ConfigPath != "" {
+		st.NeedsSetup = NeedsSetup(k.ConfigPath)
+	}
 	if st.FilePath != "" {
 		if fi, err := k.store.Stat(st.FilePath); err == nil {
 			st.FileDate = fi.ModTime().Unix()
@@ -194,6 +227,8 @@ func klippyState(s klippy.Status, down string) State {
 		return State{Err: down, Text: "Offline"}
 	}
 	st := State{Reachable: true, Connected: true}
+	st.Firmware = str(s["mcu"]["mcu_version"])
+	st.FirmwareOld = st.Firmware != "" && !board.SameVersion(st.Firmware, HostVersion)
 	ps := s["print_stats"]
 	switch str(ps["state"]) {
 	case "printing":

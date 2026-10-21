@@ -43,6 +43,7 @@ type Config struct {
 	RemoteAddr         string // address of the remote screen, for example ":80"; empty turns it off
 	KlippySocket       string // the API socket of the Klipper host
 	GcodeDir           string // the folder of Klipper's [virtual_sdcard]
+	KlipperConfig      string // printer.cfg of the Klipper host
 }
 
 func Load() Config {
@@ -62,6 +63,7 @@ func Load() Config {
 		RemoteAddr:      str("REMOTE_ADDR", ""),
 		KlippySocket:    str("KLIPPY_SOCKET", "/run/klipper/klippy.sock"),
 		GcodeDir:        str("GCODE_DIR", "/var/lib/klipper/gcodes"),
+		KlipperConfig:   str("KLIPPER_CONFIG", "/var/lib/klipper/config/printer.cfg"),
 		OctoPrintKey:    str("OCTOPRINT_API_KEY", ""),
 		ModelDir:        str("MODEL_DIR", "/var/lib/printdeck/models"),
 		AlsaCard:        str("ALSA_CARD", "sndrpihifiberry"),

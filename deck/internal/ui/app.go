@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"printdeck/internal/board"
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
 	"printdeck/internal/spotify"
@@ -73,6 +74,11 @@ type Printer interface {
 	BabyStep(mm float64) error
 	EmergencyStop() error
 	FirmwareRestart() error
+
+	// The setup of a new printer: the boards on the USB ports, and a restart of the Klipper service.
+	Boards() (boards []board.Info, probing bool)
+	ProbeBoards()
+	RestartKlipper() error
 }
 
 // Volume is the amplifier.
@@ -124,6 +130,7 @@ type App struct {
 
 	tab         Tab
 	files       bool        // file list open on the Print tab
+	setupProbed bool        // the printer setup started a probe of the USB ports
 	confirm     *confirmBox // modal question
 	hits        []hit
 	pressed     *hit

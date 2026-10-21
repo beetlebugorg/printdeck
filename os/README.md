@@ -208,8 +208,9 @@ The image keeps only what Printdeck uses:
 - No go-librespot or CamillaDSP programs, no ALSA library and no ALSA loopback: the Printdeck
   program plays Spotify on the amp itself, and filters the sound with its own equalizer.
 - The Printdeck program runs as the unprivileged user `deck`. It has the groups of its devices
-  (`video`, `input`, `audio`, `tty`) and of Klipper (`printer`), and two capabilities: port 80
-  and the graphics mode of the console. `sudo` lets it run `printdeck-wifi` and `printdeck-user`.
+  (`video`, `input`, `audio`, `tty`, `dialout`) and of Klipper (`printer`), and two capabilities:
+  port 80 and the graphics mode of the console. `sudo` lets it run `printdeck-wifi` and
+  `printdeck-user`, and restart Klipper.
 - No OctoPrint: the Printdeck program has the OctoPrint-compatible API that slicers use.
 - No hardware database, console keymaps or `timedated`, and no command-line tools that come with
   libraries (for example `sqlite3`, `flac`, `systemd-nspawn`).

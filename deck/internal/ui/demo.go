@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"printdeck/internal/eq"
 	"time"
 
+	"printdeck/internal/board"
+	"printdeck/internal/eq"
 	"printdeck/internal/printer"
 	"printdeck/internal/spotify"
 	"printdeck/internal/wifi"
@@ -38,9 +39,10 @@ func (d *DemoMusic) SetShuffle(bool)    {}
 func (d *DemoMusic) CycleRepeat()       {}
 
 type DemoPrinter struct {
-	State_ printer.State
-	Img    image.Image
-	View   int // layer of the scrubber, -1 for live
+	State_  printer.State
+	Img     image.Image
+	View    int          // layer of the scrubber, -1 for live
+	Boards_ []board.Info // the boards of the printer setup
 }
 
 func (d *DemoPrinter) State() printer.State { return d.State_ }
@@ -129,6 +131,9 @@ func (d *DemoPrinter) FlowFactor(int) error             { return nil }
 func (d *DemoPrinter) BabyStep(float64) error           { return nil }
 func (d *DemoPrinter) EmergencyStop() error             { return nil }
 func (d *DemoPrinter) FirmwareRestart() error           { return nil }
+func (d *DemoPrinter) Boards() ([]board.Info, bool)     { return d.Boards_, false }
+func (d *DemoPrinter) ProbeBoards()                     {}
+func (d *DemoPrinter) RestartKlipper() error            { return nil }
 
 // OpenPrintScreen opens a screen of the Print tab by name; for the demo.
 func (a *App) OpenPrintScreen(name string) {
