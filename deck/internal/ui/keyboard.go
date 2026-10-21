@@ -84,8 +84,25 @@ func (a *App) drawKeyboard(c *gfx.Canvas, k *keyboard) {
 	c.Fill(image.Rect(box.Min.X+24, box.Min.Y+24, box.Min.X+32, box.Min.Y+40), orange)
 	c.Text(image.Rect(box.Min.X+42, box.Min.Y+14, box.Max.X-24, box.Min.Y+50), strings.ToUpper(gfx.Fit(gfx.Face(true, 18), k.title, box.Dx()-70)), gfx.Face(true, 18), text, gfx.Left)
 
+	// The text, and the keys Back, Show and the key that takes the text: under the text on a tall
+	// screen, at its right on a wide screen.
+	n := 2
+	if k.secret {
+		n = 3
+	}
+	sizes := make([]kit.Size, n)
+	for i := range sizes {
+		sizes[i] = kit.Fr(1)
+	}
+	var disp image.Rectangle
+	var keys []image.Rectangle
+	if W > H {
+		r := kit.Cols(image.Rect(kbX0, 62, kbX1, 130), 8, kit.Fr(1), kit.Px(n*118))
+		disp, keys = r[0], kit.Cols(r[1], 8, sizes...)
+	} else {
+		disp, keys = image.Rect(kbX0, 70, kbX1, 134), kit.Cols(image.Rect(kbX0, 152, kbX1, 216), 8, sizes...)
+	}
 	// The text, with its end in view.
-	disp := image.Rect(kbX0, 70, kbX1, 134)
 	window(c, disp)
 	shown := k.value
 	if k.secret && !k.show {
@@ -99,25 +116,15 @@ func (a *App) drawKeyboard(c *gfx.Canvas, k *keyboard) {
 	}
 	c.Text(image.Rect(disp.Min.X+16, disp.Min.Y, disp.Max.X-16, disp.Max.Y), shown, face, lcdInk, gfx.Left)
 
-	// Back, Show, and the key that takes the text
-	y := 152
-	n := 2
-	if k.secret {
-		n = 3
-	}
-	bw := (kbX1 - kbX0 - (n-1)*8) / n
-	x := kbX0
-	a.button(c, image.Rect(x, y, x+bw, y+64), k.cancel, raised, text, func() { k.back() })
-	x += bw + 8
+	a.button(c, keys[0], k.cancel, raised, text, func() { k.back() })
 	if k.secret {
 		fill, ink := raised, text
 		if k.show {
 			fill, ink = keyOn, keyOnInk
 		}
-		a.button(c, image.Rect(x, y, x+bw, y+64), "Show", fill, ink, func() { k.show = !k.show })
-		x += bw + 8
+		a.button(c, keys[1], "Show", fill, ink, func() { k.show = !k.show })
 	}
-	a.button(c, image.Rect(x, y, kbX1, y+64), k.ok, green, onAcc, func() { k.done(k.value) })
+	a.button(c, keys[n-1], k.ok, green, onAcc, func() { k.done(k.value) })
 
 	// The keys
 	rows := k.rows()
