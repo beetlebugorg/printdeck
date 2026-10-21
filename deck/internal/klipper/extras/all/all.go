@@ -28,6 +28,7 @@ import (
 	_ "printdeck/internal/klipper/extras/motion_queuing"
 	_ "printdeck/internal/klipper/extras/motion_report"
 	_ "printdeck/internal/klipper/extras/pause_resume"
+	_ "printdeck/internal/klipper/extras/pid_calibrate"
 	_ "printdeck/internal/klipper/extras/print_stats"
 	_ "printdeck/internal/klipper/extras/probe"
 	_ "printdeck/internal/klipper/extras/query_adc"

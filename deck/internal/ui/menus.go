@@ -69,6 +69,14 @@ func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 		rows = append(rows, row{"Probe Z offset", "Find the nozzle height with a sheet of paper", false,
 			run("Start the paper test?", "Start", append(home(), "PROBE_CALIBRATE")...)})
 	}
+	if mach.Has("extruder") {
+		lines := []string{"PID_CALIBRATE HEATER=extruder TARGET=210"}
+		if mach.Has("heater_bed") {
+			lines = append(lines, "PID_CALIBRATE HEATER=heater_bed TARGET=60")
+		}
+		rows = append(rows, row{"PID tune", "Tune the heaters: about 10 minutes", false,
+			run("Heat and tune the heaters now?", "Tune", lines...)})
+	}
 	rows = append(rows, row{"Nozzle change", "Heat to 250°, and raise the head", false, func() {
 		if !idle {
 			a.Toast("Wait until the print ends")

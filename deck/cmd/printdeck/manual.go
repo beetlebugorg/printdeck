@@ -338,8 +338,9 @@ func manualSections() []section {
 					Callouts: []callout{
 						{240, 167, "Bed tilt", "Probes the bed, and corrects its tilt (BED_TILT_CALIBRATE). A printer with a bed mesh shows Bed mesh."},
 						{240, 265, "Probe Z offset", "The paper test for the height of the nozzle (PROBE_CALIBRATE)."},
-						{240, 363, "Nozzle change", "Heats the nozzle to 250° and raises the head, to change the nozzle."},
-						{240, 461, "Save config", "Writes the results of the calibrations into printer.cfg. Klipper restarts. Orange text shows unsaved results."},
+						{240, 363, "PID tune", "Heats the nozzle to 210° and the bed to 60°, and finds the PID settings of each heater (PID_CALIBRATE). Save config then writes them."},
+						{240, 461, "Nozzle change", "Heats the nozzle to 250° and raises the head, to change the nozzle."},
+						{240, 559, "Save config", "Writes the results of the calibrations into printer.cfg. Klipper restarts. Orange text shows unsaved results."},
 					}},
 				{Name: "paper", Caption: "The paper test",
 					Setup: func(s *manualState) {
