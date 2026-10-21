@@ -33,7 +33,7 @@ func SplashLogo(rotate int) []byte {
 	c := gfx.New(BaseW, BaseH)
 	drawMu.Lock()
 	setSize(kit.Screen{W: BaseW, H: BaseH})
-	DrawSplash(c, false)
+	drawEmptyDisplay(c)
 	drawMu.Unlock()
 
 	// The framebuffer position of a canvas pixel (fb.Present).

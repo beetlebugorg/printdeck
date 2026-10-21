@@ -1,6 +1,8 @@
 package ui
 
-// The small font of the version in the start animation: 3 x 5 dots, with one empty column
+import "strings"
+
+// The small font of the version on the start screen: 3 x 5 dots, with one empty column
 // between the characters. It has the digits, the capital letters and . - + _. Other characters
 // are empty.
 
@@ -50,6 +52,15 @@ var tinyFont = map[byte][tinyRows]string{
 	'-': {"...", "...", "###", "...", "..."},
 	'+': {"...", ".#.", "###", ".#.", "..."},
 	'_': {"...", "...", "...", "...", "###"},
+}
+
+// tinyText is the text in capitals, less its last characters while it is wider than cols.
+func tinyText(s string, cols int) string {
+	s = strings.ToUpper(s)
+	for len(s) > 0 && len(s)*tinyAdvance-1 > cols {
+		s = s[:len(s)-1]
+	}
+	return s
 }
 
 // tinyDot reports the dot at column x and row y of a text in the small font.
