@@ -286,3 +286,22 @@ func Clock(t time.Time, h24 bool) string {
 	}
 	return t.Format("3:04PM")
 }
+
+// IconDots returns the dots of an icon of the status screen, 16 x 16 and the top row first:
+// "hotend" or "bed". lit draws the heater on.
+func IconDots(name string, lit bool) [16][16]bool {
+	var c canvas
+	switch name {
+	case "hotend":
+		hotendIcon(&c, 0, 0, lit, false, 0)
+	case "bed":
+		bedIcon(&c, 0, 0, lit, false, 0)
+	}
+	var out [16][16]bool
+	for y := range 16 {
+		for x := range 16 {
+			out[y][x] = c.get(x, y)
+		}
+	}
+	return out
+}
