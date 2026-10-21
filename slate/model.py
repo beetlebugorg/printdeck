@@ -46,15 +46,14 @@ PRINTED = {
 
 # Groups for the renders and the exploded views.
 GROUPS = {"ssd_cable": "ssd_cable", "fan_cable": "fan_cable", "plug_fan": "pi_plugs", "stub_": "cables",
-          "display_": "display", "ssd_": "ssd", "pi_": "pi", "amp_": "pi", "plug_pi": "pi_plugs",
-          "plug_touch": "pi_plugs", "plug_ssd": "pi_plugs", "plug_printer": "pi_plugs", "plug_amp": "pi_plugs",
+          "display_": "display", "ssd_": "ssd", "pi_": "pi", "plug_pi": "pi_plugs",
+          "plug_touch": "pi_plugs", "plug_ssd": "pi_plugs", "plug_printer": "pi_plugs",
           "fan_": "fan", "foot_screw": "foot_screws", "side_screw0": "side_screw_r", "side_screw1": "side_screw_l", "cable_": "cables", "tie": "cables"}
 
 # Hardware pairs that touch on purpose: (prefix, prefix). A pair matches if one name starts
 # with the first prefix and the other with the second.
 MATES = [
-    ("pi_standoff", "pi_board"), ("pi_standoff", "amp_board"), ("pi_screw", "amp_board"), ("pi_standoff", "pi_screw"),
-    ("pi_header", "amp_header"), ("pi_soc", "pi_heatsink"),
+    ("pi_screw", "pi_board"), ("pi_soc", "pi_heatsink"),
     ("display_screw", "display_board"), ("display_lcd", "display_glass"), ("display_board", "display_lcd"),
     ("display_sockets", "display_board"), ("display_plug", "display_sockets"),
     ("ssd_label", "ssd_drive"), ("ssd_adapter", "ssd_drive"), ("ssd_usb", "ssd_adapter"),
@@ -64,9 +63,6 @@ MATES = [
     ("cable_hdmi", "display_plug_hdmi"), ("cable_hdmi", "plug_pi_hdmi"),
     ("cable_usb", "display_plug_usb"), ("cable_usb", "plug_touch_usb"),
     ("ssd_cable", "plug_ssd_usb"), ("stub_power", "plug_pi_power"), ("stub_printer", "plug_printer_usb"),
-    ("stub_amp_power", "plug_amp_power"), ("stub_speaker", "amp_terminals"),
-    ("plug_amp_power", "amp_jack"), ("amp_terminals", "amp_board"), ("amp_jack", "amp_board"),
-    ("amp_cap", "amp_board"), ("amp_coil", "amp_board"), ("amp_header", "amp_board"),
 ]
 
 

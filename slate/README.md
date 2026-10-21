@@ -5,16 +5,16 @@
   <img src="docs/hero-light.png" alt="The assembled Printdeck Slate on its foot" width="320">
 </picture>
 
-A compact slab for the Printdeck hardware: Raspberry Pi 5 with the HiFiBerry Amp2, the
+A compact slab for the Printdeck hardware: Raspberry Pi 5, the
 Adafruit 7 inch touch display in portrait, the 2.5 inch SSD with its USB adapter, and the 30 mm
 fan. The slab is 132 mm wide, 221 mm high, and 35 mm deep. It leans back 15 degrees on a gray
 foot.
 
-- The slab holds only the display and the drive. The Pi and the Amp2 are on the outside of the
+- The slab holds only the display and the drive. The Pi is on the outside of the
   orange back plate, as a backpack. Every port has free space for a straight plug and the bend
   of its cable, and every plug ends inside the outline of the slab.
-- The USB ports point up, so you connect them from the top of the case. The USB-C, micro
-  HDMI, Amp2 power, and speaker terminals point to the left. The speaker wires go straight into the Amp2 terminals.
+- The USB ports point up, so you connect them from the top of the case. The USB-C and micro
+  HDMI ports point to the left.
 - No cable shows on the front or the sides. The display cables run inside the chin, out through
   two notches in the bottom edge of the back plate, and up the rear: the HDMI ribbon at the
   left, the touch USB at the right. The HDMI cable is a flat
