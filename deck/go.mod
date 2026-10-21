@@ -24,6 +24,7 @@ require (
 	github.com/miekg/dns v1.1.69 // indirect
 	github.com/oapi-codegen/runtime v1.7.0 // indirect
 	github.com/rs/cors v1.11.1 // indirect
+	github.com/ulikunitz/xz v0.5.17 // indirect
 	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/exp v0.0.0-20251209150349-8475f28825e9 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect

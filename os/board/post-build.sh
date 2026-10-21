@@ -36,10 +36,13 @@ echo "PRINTDECK_VERSION=${PRINTDECK_VERSION:-unknown}" >> "$TARGET_DIR/usr/lib/o
 # release, or debug (the release image with SSH and tools). build.sh sets it.
 echo "PRINTDECK_VARIANT=${PRINTDECK_VARIANT:-release}" >> "$TARGET_DIR/usr/lib/os-release"
 
-# sudo reads /etc/sudoers.d only when /etc/sudoers includes it.
-grep -q '^[@#]includedir /etc/sudoers.d' "$TARGET_DIR/etc/sudoers" \
-  || echo '@includedir /etc/sudoers.d' >> "$TARGET_DIR/etc/sudoers"
-chmod 0440 "$TARGET_DIR/etc/sudoers.d/wheel" "$TARGET_DIR/etc/sudoers.d/deck"
+# The debug image has sudo for its login user. sudo reads /etc/sudoers.d only when /etc/sudoers
+# includes it.
+if [ -f "$TARGET_DIR/etc/sudoers" ]; then
+  grep -q '^[@#]includedir /etc/sudoers.d' "$TARGET_DIR/etc/sudoers" \
+    || echo '@includedir /etc/sudoers.d' >> "$TARGET_DIR/etc/sudoers"
+  chmod 0440 "$TARGET_DIR/etc/sudoers.d/wheel"
+fi
 
 # The Wi-Fi firmware of the other Raspberry Pi models. The Pi 5 has the BCM4345/6 chip, which loads
 # brcm/brcmfmac43455-sdio (links to cypress/cyfmac43455-sdio).

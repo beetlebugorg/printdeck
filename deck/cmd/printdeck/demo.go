@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"printdeck/internal/eq"
 	"printdeck/internal/board"
+	"printdeck/internal/eq"
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
 	"printdeck/internal/remote"

@@ -1,0 +1,8 @@
+[Unit]
+Description=Printdeck system helper: the actions of the deck that need root
+Requires=printdeck-helper.socket
+
+[Service]
+# The helper sets the Wi-Fi network, restarts Klipper and installs an update. It stops after 30
+# seconds with no request, and the socket starts it again.
+ExecStart=/usr/bin/printdeck helper

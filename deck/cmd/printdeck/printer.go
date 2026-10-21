@@ -6,6 +6,7 @@ import (
 	"printdeck/internal/config"
 	"printdeck/internal/gcodestore"
 	"printdeck/internal/printer"
+	"printdeck/internal/system"
 	"printdeck/internal/ui"
 )
 
@@ -20,6 +21,6 @@ func newPrinter(cfg config.Config) printerBackend {
 	k := printer.NewKlippy(cfg.KlippySocket, &gcodestore.Store{Dir: cfg.GcodeDir})
 	k.ModelDir = cfg.ModelDir
 	k.ConfigPath = cfg.KlipperConfig
-	k.RestartService = func() error { return runScript("/usr/bin/systemctl", "restart", "klipper") }
+	k.RestartService = func() error { return system.AskHelper(system.HelperRequest{Action: "restart-klipper"}) }
 	return k
 }

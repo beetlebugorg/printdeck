@@ -1,24 +1,23 @@
 package main
 
 import (
-	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"printdeck/internal/system"
 	"printdeck/internal/wifi"
 )
 
-// setupHost is the system side of the setup screen on the Printdeck OS image. The image has the
-// scripts printdeck-wifi and printdeck-user. Other systems, like Docker, have no setup screen.
+// setupHost is the system side of the setup screen on the Printdeck OS image. The system helper sets
+// the Wi-Fi network. Other systems have no setup screen.
 type setupHost struct {
 	wifi *wifi.Client
 	done string // this file says that the setup is finished
 }
 
 func newSetupHost(stateDir string) *setupHost {
-	if _, err := exec.LookPath("printdeck-user"); err != nil {
+	if osVersion() == "" {
 		return nil
 	}
 	return &setupHost{wifi: wifi.New(), done: filepath.Join(stateDir, "setup-done")}
@@ -33,31 +32,21 @@ func (h *setupHost) Needed() bool {
 func (h *setupHost) Scan() error                       { return h.wifi.Scan() }
 func (h *setupHost) Networks() ([]wifi.Network, error) { return h.wifi.Networks() }
 func (h *setupHost) Status() (wifi.Status, error)      { return h.wifi.Status() }
-func (h *setupHost) SetWifi(ssid, pass string) error   { return runScript("printdeck-wifi", ssid, pass) }
-func (h *setupHost) Done()                             { os.WriteFile(h.done, []byte("done\n"), 0o644) }
+func (h *setupHost) SetWifi(ssid, pass string) error {
+	return system.AskHelper(system.HelperRequest{Action: "wifi", SSID: ssid, Password: pass})
+}
+func (h *setupHost) Done() { os.WriteFile(h.done, []byte("done\n"), 0o644) }
 
-// Login is the user that printdeck-credentials made, and its password.
+// Login is the password that printdeck-credentials made, and the user with this password in the
+// debug image.
 func (h *setupHost) Login() (string, string) {
 	b, err := os.ReadFile("/var/lib/printdeck/password")
 	if err != nil {
 		return "", ""
 	}
-	return "printdeck", strings.TrimSpace(string(b))
-}
-
-// runScript starts a command and returns its error message as the error. The deck does not run
-// as root: sudo runs the scripts (the image allows exactly these for the deck user).
-func runScript(name string, args ...string) error {
-	if os.Geteuid() != 0 {
-		args = append([]string{"-n", name}, args...)
-		name = "sudo"
+	user := ""
+	if _, err := os.Stat("/usr/bin/printdeck-user"); err == nil {
+		user = "printdeck"
 	}
-	out, err := exec.Command(name, args...).CombinedOutput()
-	if err != nil {
-		if msg := strings.TrimSpace(string(out)); msg != "" {
-			return errors.New(msg)
-		}
-		return err
-	}
-	return nil
+	return user, strings.TrimSpace(string(b))
 }

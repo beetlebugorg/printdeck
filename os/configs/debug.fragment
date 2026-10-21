@@ -1,6 +1,11 @@
 
 # The debug image: the release image plus tools to look at a running system. build.sh adds this
 # file to printdeck_defconfig for "os/build.sh debug".
+# The files of the debug image: the list of loaded kernel modules, for board/linux-modules.txt.
+BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_PRINTDECK_PATH)/board/rootfs $(BR2_EXTERNAL_PRINTDECK_PATH)/board/rootfs-debug"
+# SSH and sudo for the user printdeck, which printdeck-user makes at the first start.
+BR2_PACKAGE_DROPBEAR=y
+BR2_PACKAGE_SUDO=y
 BR2_PACKAGE_STRACE=y
 BR2_PACKAGE_TCPDUMP=y
 BR2_PACKAGE_IW=y

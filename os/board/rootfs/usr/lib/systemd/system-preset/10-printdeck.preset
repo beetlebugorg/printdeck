@@ -1,13 +1,12 @@
 # The services of Printdeck. Buildroot runs "systemctl preset-all" when it makes the root file
 # system, and the first line that matches a unit is the one that applies.
 enable wpa_supplicant@.service wlan0
-enable dropbear.service
 enable klipper.service
 enable printdeck-deck.service
 enable printdeck-settings.service
 enable printdeck-credentials.service
-enable printdeck-modules.service
 enable printdeck-commit.service
+enable printdeck-helper.socket
 
 # wpa_supplicant@wlan0 controls the Wi-Fi. The D-Bus service is not necessary.
 disable wpa_supplicant.service
