@@ -20,10 +20,19 @@ spirit of open source, with the help of AI. `ARCHITECTURE.md` has the plan and t
 
 ## Manual
 
-The manual shows each screen of the deck with numbered callouts, and explains each part:
-[docs/manual/index.html](docs/manual/index.html), or the PDF
-[docs/manual/printdeck-manual.pdf](docs/manual/printdeck-manual.pdf). The deck draws the pictures
-itself: after a change to the UI, run `docs/manual/build.sh`.
+The manual shows each screen of the deck with numbered callouts, and explains each part. It
+has two versions, one for each mount of the display:
+
+- Tall: [docs/manual/index.html](docs/manual/index.html), or the booklet
+  [docs/manual/printdeck-manual.pdf](docs/manual/printdeck-manual.pdf).
+- Wide: [docs/manual/wide/index.html](docs/manual/wide/index.html), or the booklet
+  [docs/manual/wide/printdeck-manual.pdf](docs/manual/wide/printdeck-manual.pdf).
+
+The booklet has half-letter pages. A print shop makes a saddle-stitched booklet from
+printdeck-manual.pdf. To print it yourself, print printdeck-manual-print.pdf on both sides of
+letter paper (flip on the short edge), fold the stack, and staple it in the fold.
+
+The deck draws the pictures itself: after a change to the UI, run `docs/manual/build.sh`.
 
 ## Hardware
 

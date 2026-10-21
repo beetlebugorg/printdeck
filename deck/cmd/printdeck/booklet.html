@@ -4,58 +4,51 @@
 <meta charset="utf-8">
 <title>Printdeck instruction booklet</title>
 <style>
-  /* The trim of a page is 5.5 x 4.25 in. With ?print, each sheet has a bleed of 1/8 in and a slug
-     of 3/8 in with the crop marks (6.25 x 5 in). */
-  :root { --trim-w: 5.5in; --trim-h: 4.25in; --slug: 0in; --blue: #1d47b5; --ink: #1a1a1a; --dim: #55524c;
+  /* The pages are half letter, 5.5 x 8.5 in. No colour is nearer than 1/4 in to an edge, so a
+     printer with no bleed prints the whole page. With ?sheets, two pages go side by side on each
+     side of a letter sheet, in the order of a folded booklet with staples in the fold. */
+  :root { --page-w: 5.5in; --page-h: 8.5in; --blue: #1d47b5; --ink: #1a1a1a; --dim: #55524c;
     --orange: #e85a1c; --lcd: #1f4bd1; --paper: #ffffff; }
-  html.print { --slug: .375in; }
-  @page { size: 5.5in 4.25in; margin: 0; }
+  @page { size: 5.5in 8.5in; margin: 0; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: #8a8781; }
-  body { font: 8.4pt/1.42 "IBM Plex Sans", "Noto Sans", Arial, sans-serif; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .sheet { position: relative; width: calc(var(--trim-w) + 2 * var(--slug)); height: calc(var(--trim-h) + 2 * var(--slug));
-    margin: 0 auto 24px; background: var(--paper); overflow: hidden; break-after: page; }
-  html.print .sheet { background: #fff; }
-  .trim { position: absolute; left: var(--slug); top: var(--slug); width: var(--trim-w); height: var(--trim-h);
-    padding: .28in .32in .42in; }
-  .marks { display: none; }
-  html.print .marks { display: block; position: absolute; inset: 0; pointer-events: none; }
-  .marks line { stroke: #000; stroke-width: .5; }
+  body { font: 9.4pt/1.45 "IBM Plex Sans", "Noto Sans", Arial, sans-serif; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .sheet { position: relative; width: var(--page-w); height: var(--page-h); margin: 0 auto 24px; background: var(--paper);
+    overflow: hidden; break-after: page; padding: .5in .5in .6in; }
   @media print { html, body { background: none; } .sheet { margin: 0; } }
   @media screen { body { padding: 24px 0; } }
+  /* ?sheets: a letter sheet in landscape with two pages. */
+  .spread { display: flex; width: 11in; height: 8.5in; margin: 0 auto 24px; break-after: page; background: var(--paper); }
+  .spread .sheet { margin: 0; break-after: auto; }
+  @media print { .spread { margin: 0; } }
 
-  /* The folio: the page number, next to the spine. */
-  .folio { position: absolute; bottom: .17in; font: 600 8pt "IBM Plex Mono", monospace; }
-  .odd .folio { left: .32in; }
-  .even .folio { right: .32in; }
-  .chapter-tab { position: absolute; top: .12in; font: 600 6.2pt "IBM Plex Mono", monospace; letter-spacing: .14em;
+  /* The folio: the page number, at the outer edge. */
+  .folio { position: absolute; bottom: .3in; font: 600 9pt "IBM Plex Mono", monospace; }
+  .odd .folio { right: .5in; }
+  .even .folio { left: .5in; }
+  .chapter-tab { position: absolute; top: .28in; font: 600 7pt "IBM Plex Mono", monospace; letter-spacing: .14em;
     text-transform: uppercase; color: var(--dim); }
-  .odd .chapter-tab { right: .32in; }
-  .even .chapter-tab { left: .32in; }
+  .odd .chapter-tab { right: .5in; }
+  .even .chapter-tab { left: .5in; }
 
-  h2 { margin: .02in 0 .08in; font: italic 700 15pt/1.1 "IBM Plex Sans", "Noto Sans", Arial, sans-serif; color: var(--blue); letter-spacing: -.01em; }
-  h3 { margin: 0 0 .06in; font: italic 700 11pt/1.15 "IBM Plex Sans", "Noto Sans", Arial, sans-serif; color: var(--blue); }
-  p { margin: 0 0 .07in; text-align: justify; hyphens: auto; }
-  ol.steps { list-style: none; margin: .04in 0 0; padding: 0; }
-  ol.steps li { display: grid; grid-template-columns: .26in 1fr; margin-bottom: .05in; }
-  ol.steps .n { width: .19in; height: .19in; background: var(--orange); color: #fff; font: 700 8pt/.19in "IBM Plex Mono", monospace;
+  h2 { margin: .04in 0 .12in; font: italic 700 19pt/1.1 "IBM Plex Sans", "Noto Sans", Arial, sans-serif; color: var(--blue); letter-spacing: -.01em; }
+  h3 { margin: 0 0 .12in; font: italic 700 13pt/1.15 "IBM Plex Sans", "Noto Sans", Arial, sans-serif; color: var(--blue); }
+  p { margin: 0 0 .1in; text-align: justify; hyphens: auto; }
+  ol.steps { list-style: none; margin: .1in 0 0; padding: 0; }
+  ol.steps li { display: grid; grid-template-columns: .32in 1fr; margin-bottom: .08in; }
+  ol.steps .n { width: .22in; height: .22in; background: var(--orange); color: #fff; font: 700 9pt/.22in "IBM Plex Mono", monospace;
     text-align: center; border-radius: 2px; margin-top: .01in; }
-  /* The intro at the left and the steps at the right, or the intro in one column. */
-  .text .body { display: grid; grid-template-columns: 1fr 1fr; column-gap: .24in; }
-  .text .body.single { grid-template-columns: 1fr; max-width: 4.2in; }
 
-  /* A picture: the callouts at the left, the screen with its numbers at the right. */
-  .figure .trim { display: grid; grid-template-columns: 1fr 2.4in; column-gap: .16in; }
-  .figure .callouts { overflow: hidden; }
-  .figure ol.parts { list-style: none; margin: 0; padding: 0; font-size: 7.3pt; line-height: 1.33; }
-  .figure ol.parts li { display: grid; grid-template-columns: .2in 1fr; margin-bottom: .045in; }
-  .figure ol.parts .badge { width: .15in; height: .15in; border-radius: 50%; background: var(--ink); color: #fff;
-    font: 700 6.5pt/.15in "IBM Plex Mono", monospace; text-align: center; margin-top: .01in; }
-  .figure ol.parts b { font-weight: 700; }
-  .figure .note { font-size: 7.3pt; border-left: 2.5px solid var(--orange); padding-left: .06in; text-align: left; }
-  .frame { position: relative; height: 3.45in; align-self: start; }
+  ol.steps + ol.steps { margin-top: 0; }
+  table + table { margin-top: 0; }
+  /* A picture: the screen with its numbers, and the callouts under it in two columns. */
+  .figure { margin-top: .16in; }
+  h2 + .figure { margin-top: 0; }
+  .figure .frame { position: relative; margin: 0 auto .18in; }
+  .figure .frame.tall { height: 4.3in; aspect-ratio: {{VW}} / {{H}}; }
+  .figure .frame.wide { width: 100%; aspect-ratio: {{VW}} / {{H}}; }
   .frame svg.marks2 { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-  .shot-box { position: absolute; top: 0; bottom: 0; left: calc(100% * 72 / 624); right: calc(100% * 72 / 624);
+  .shot-box { position: absolute; top: 0; bottom: 0; left: calc(100% * {{G}} / {{VW}}); right: calc(100% * {{G}} / {{VW}});
     border: 2.5px solid var(--ink); border-radius: 6px; overflow: hidden; background: #000; }
   .shot-box img { display: block; width: 100%; height: 100%; }
   .leader { fill: none; stroke: var(--ink); stroke-width: 2.5; }
@@ -63,96 +56,105 @@
   .bdg { fill: var(--ink); stroke: #fff; stroke-width: 2.5; }
   .bdg-n { fill: #fff; font: 700 17px "IBM Plex Mono", monospace; text-anchor: middle; dominant-baseline: central; }
   .dimmed { opacity: .25; }
+  .figure ol.parts { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: .25in; font-size: 8.2pt; line-height: 1.38; }
+  .figure ol.parts li { display: grid; grid-template-columns: .24in 1fr; margin-bottom: .07in; break-inside: avoid; }
+  .figure ol.parts .badge { width: .17in; height: .17in; border-radius: 50%; background: var(--ink); color: #fff;
+    font: 700 7pt/.17in "IBM Plex Mono", monospace; text-align: center; margin-top: .01in; }
+  .figure ol.parts b { font-weight: 700; }
+  .note { font-size: 8.4pt; border-left: 2.5px solid var(--orange); padding-left: .08in; text-align: left; margin-top: .08in; }
 
-  /* The cover: a blue display, edge to edge. */
-  .cover .bleed { position: absolute; left: calc(var(--slug) - .125in); top: calc(var(--slug) - .125in);
-    width: calc(var(--trim-w) + .25in); height: calc(var(--trim-h) + .25in); background: var(--lcd); }
-  html:not(.print) .cover .bleed { left: 0; top: 0; width: 100%; height: 100%; }
-  .cover .trim { color: #f2f6ff; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: .3in; }
-  .cover .code { position: absolute; top: .2in; right: .3in; font: 600 7pt "IBM Plex Mono", monospace; letter-spacing: .08em; }
-  .cover .title { width: 4.6in; image-rendering: pixelated; margin-top: -.3in; }
-  .cover .rule { width: 4.3in; border-top: 1.5px solid #f2f6ff; margin: .02in 0 .1in; }
-  .cover .sub { font: 700 11pt "IBM Plex Sans", "Noto Sans", Arial, sans-serif; letter-spacing: .32em; }
-  .cover .for { margin-top: .08in; font: italic 600 8pt "IBM Plex Sans", "Noto Sans", Arial, sans-serif; opacity: .85; }
+  /* The cover: a blue display in a white border. */
+  .cover { padding: .25in; }
+  .cover .panel { position: relative; height: 100%; background: var(--lcd); border-radius: .14in; color: #f2f6ff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; padding: .4in; }
+  .cover .code { position: absolute; top: .22in; right: .3in; font: 600 7.5pt "IBM Plex Mono", monospace; letter-spacing: .08em; }
+  .cover .title { width: 4.2in; image-rendering: pixelated; }
+  .cover .rule { width: 4in; border-top: 1.5px solid #f2f6ff; margin: .06in 0 .14in; }
+  .cover .sub { font: 700 12pt "IBM Plex Sans", "Noto Sans", Arial, sans-serif; letter-spacing: .32em; }
+  .cover .for { margin-top: .1in; font: italic 600 9pt "IBM Plex Sans", "Noto Sans", Arial, sans-serif; opacity: .85; }
+  .cover .status { width: 3.4in; image-rendering: pixelated; margin-top: .9in; border-radius: 4px; }
 
-  .contents ol { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: .3in; font-size: 8pt; }
-  .contents li { display: flex; gap: .05in; break-inside: avoid; }
-  .contents li .dots { flex: 1; border-bottom: 1px dotted var(--dim); transform: translateY(-.04in); }
-  .contents li.ch { font: 700 6.6pt "IBM Plex Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--blue); margin-top: .07in; }
+  .contents ol { list-style: none; margin: 0; padding: 0; font-size: 9.4pt; }
+  .contents li { display: flex; gap: .06in; break-inside: avoid; margin-bottom: .02in; }
+  .contents li .dots { flex: 1; border-bottom: 1px dotted var(--dim); transform: translateY(-.05in); }
+  .contents li.ch { font: 700 7.4pt "IBM Plex Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--blue); margin-top: .14in; }
 
-  .lcdgrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .12in .14in; margin-top: .06in; }
+  .lcdgrid { display: grid; grid-template-columns: 1fr 1fr; gap: .2in .22in; margin-top: .1in; }
   .lcdgrid img { width: 100%; image-rendering: pixelated; border: 3px solid #b6b2a8; border-radius: 4px; display: block; }
-  .lcdgrid div { font: 600 6.2pt "IBM Plex Mono", monospace; text-transform: uppercase; color: var(--dim); margin-top: .03in; }
-  table { border-collapse: collapse; width: 100%; font-size: 7.6pt; }
-  td { border-top: 1px solid #c9c5bb; padding: .04in .05in; vertical-align: top; }
-  td:first-child { font: 600 7pt "IBM Plex Mono", monospace; width: 46%; }
-  .notes .line { border-bottom: 1px solid #c9c5bb; height: .27in; }
-  .back .trim { display: flex; flex-direction: column; justify-content: flex-end; font-size: 7.4pt; color: var(--dim); }
+  .lcdgrid div { font: 600 7pt "IBM Plex Mono", monospace; text-transform: uppercase; color: var(--dim); margin-top: .04in; }
+  table { border-collapse: collapse; width: 100%; font-size: 8.6pt; }
+  td { border-top: 1px solid #c9c5bb; padding: .06in .06in; vertical-align: top; }
+  td:first-child { font: 600 8pt "IBM Plex Mono", monospace; width: 44%; }
+  .notes .line { border-bottom: 1px solid #c9c5bb; height: .34in; }
+  .back { display: flex; flex-direction: column; justify-content: flex-end; font-size: 8.4pt; color: var(--dim); }
 </style>
 <script>
-  // ?print: the sheets with the bleed and the crop marks.
-  if (location.search.includes("print")) {
-    document.documentElement.classList.add("print");
+  // ?sheets: two pages on each side of a letter sheet, in the order of a booklet that is folded and
+  // stapled in the middle. With n pages, sheet s has n - 2s and 1 + 2s on its front, and 2 + 2s and
+  // n - 1 - 2s on its back. Print on both sides, flipped on the short edge.
+  if (location.search.includes("sheets")) {
     const s = document.createElement("style");
-    s.textContent = "@page { size: 6.25in 5in; margin: 0; }";
+    s.textContent = "@page { size: 11in 8.5in; margin: 0; }";
     document.head.append(s);
+    addEventListener("DOMContentLoaded", () => {
+      const pages = [...document.querySelectorAll("body > .sheet")];
+      const n = pages.length;
+      for (let i = 0; i < n / 4; i++) {
+        for (const [l, r] of [[n - 2 * i, 1 + 2 * i], [2 + 2 * i, n - 1 - 2 * i]]) {
+          const d = document.createElement("div");
+          d.className = "spread";
+          d.append(pages[l - 1].cloneNode(true), pages[r - 1].cloneNode(true));
+          document.body.append(d);
+        }
+      }
+      pages.forEach((p) => p.remove());
+    });
   }
 </script>
 </head>
 <body>
 {{range $p := .Pages}}
 <section class="sheet {{$p.Kind}} {{if even $p.N}}even{{else}}odd{{end}}">
-  {{if eq $p.Kind "cover"}}<div class="bleed"></div>{{end}}
-  <svg class="marks" viewBox="0 0 450 360" preserveAspectRatio="none">
-    <!-- The crop marks at the corners of the trim (27, 27) to (423, 333), in points. -->
-    <line x1="0" y1="27" x2="18" y2="27"/><line x1="27" y1="0" x2="27" y2="18"/>
-    <line x1="432" y1="27" x2="450" y2="27"/><line x1="423" y1="0" x2="423" y2="18"/>
-    <line x1="0" y1="333" x2="18" y2="333"/><line x1="27" y1="342" x2="27" y2="360"/>
-    <line x1="432" y1="333" x2="450" y2="333"/><line x1="423" y1="342" x2="423" y2="360"/>
-  </svg>
-  <div class="trim">
   {{if eq $p.Kind "cover"}}
+  <div class="panel">
     <div class="code">PD-KLP-USA-1</div>
     <img class="title" src="img/cover-title.png" alt="Printdeck">
     <div class="rule"></div>
     <div class="sub">INSTRUCTION BOOKLET</div>
     <div class="for">For the Printdeck touch screen and Klipper printers</div>
+    <img class="status" src="img/cover-status.png" alt="">
+  </div>
   {{else if eq $p.Kind "contents"}}
     <h2>Contents</h2>
     <ol>{{$ch := ""}}{{range $p.Contents}}{{if ne .Chapter $ch}}<li class="ch">{{.Chapter}}</li>{{$ch = .Chapter}}{{end}}<li><span>{{.Title}}</span><span class="dots"></span><span>{{.Page}}</span></li>{{end}}</ol>
-  {{else if eq $p.Kind "text"}}
-    {{if $p.Title}}<h2>{{$p.Title}}</h2>{{end}}
-    <div class="body{{if not $p.Steps}} single{{end}}">
-      {{if or $p.Paras $p.Notes}}<div>{{range $p.Paras}}<p>{{.}}</p>{{end}}{{range $p.Notes}}<p>{{.}}</p>{{end}}</div>{{end}}
-      {{if $p.Steps}}<ol class="steps">{{range $i, $s := $p.Steps}}<li><span class="n">{{add $p.StepFrom $i}}</span><span>{{$s}}</span></li>{{end}}</ol>{{end}}
+  {{else if eq $p.Kind "guide"}}
+    {{range $b := $p.Blocks}}
+    {{if eq $b.Kind "title"}}<h2>{{$b.Text}}</h2>
+    {{else if eq $b.Kind "para"}}<p>{{$b.Text}}</p>
+    {{else if eq $b.Kind "steps"}}<ol class="steps">{{range $i, $s := $b.Steps}}<li><span class="n">{{add $b.StepFrom $i}}</span><span>{{$s}}</span></li>{{end}}</ol>
+    {{else if eq $b.Kind "figure"}}
+    <div class="figure">
+      <h3>{{$b.Text}}</h3>
+      <div class="frame {{if $.Wide}}wide{{else}}tall{{end}}">
+        <div class="shot-box"><img src="img/{{$b.Fig.Name}}.png" alt="{{$b.Fig.Caption}}"></div>
+        <svg class="marks2" viewBox="-{{G}} 0 {{VW}} {{H}}" aria-hidden="true">
+          {{range $b.Fig.Badges}}<g{{if not (shown $b .N)}} class="dimmed"{{end}}>
+          <line x1="{{.LineStartX}}" y1="{{.BY}}" x2="{{.X}}" y2="{{.Y}}" class="leader"/>
+          <circle cx="{{.X}}" cy="{{.Y}}" r="6" class="dot"/>
+          <circle cx="{{.BX}}" cy="{{.BY}}" r="16" class="bdg"/>
+          <text x="{{.BX}}" y="{{.BY}}" class="bdg-n">{{.N}}</text></g>{{end}}
+        </svg>
+      </div>
+      <ol class="parts">{{range $i, $c := $b.Callouts}}<li><span class="badge">{{add $b.From $i}}</span><span><b>{{$c.Title}}.</b> {{$c.Text}}</span></li>{{end}}</ol>
+      {{range $b.Notes}}<p class="note">{{.}}</p>{{end}}
     </div>
-  {{else if eq $p.Kind "figure"}}
-    <div class="callouts">
-      <h3>{{$p.Title}}</h3>
-      <ol class="parts">{{range $i, $c := $p.Callouts}}<li><span class="badge">{{add $p.From $i}}</span><span><b>{{$c.Title}}.</b> {{$c.Text}}</span></li>{{end}}</ol>
-      {{range $p.Notes}}<p class="note">{{.}}</p>{{end}}
-    </div>
-    <div class="frame">
-      <div class="shot-box"><img src="img/{{$p.Fig.Name}}.png" alt="{{$p.Fig.Caption}}"></div>
-      <svg class="marks2" viewBox="-{{G}} 0 {{VW}} {{H}}" aria-hidden="true">
-        {{range $p.Fig.Badges}}<g{{if not (shown $p .N)}} class="dimmed"{{end}}>
-        <line x1="{{.LineStartX}}" y1="{{.BY}}" x2="{{.X}}" y2="{{.Y}}" class="leader"/>
-        <circle cx="{{.X}}" cy="{{.Y}}" r="6" class="dot"/>
-        <circle cx="{{.BX}}" cy="{{.BY}}" r="16" class="bdg"/>
-        <text x="{{.BX}}" y="{{.BY}}" class="bdg-n">{{.N}}</text></g>{{end}}
-      </svg>
-    </div>
-  {{else if eq $p.Kind "lcd"}}
-    <h2>{{$p.Title}}</h2>
-    <div class="lcdgrid">{{range $p.Rows}}<div><img src="img/{{index . 0}}.png" alt="{{index . 1}}"><div>{{index . 1}}</div></div>{{end}}</div>
-  {{else if eq $p.Kind "table"}}
-    <h2>{{$p.Title}}</h2>
-    <table>{{range $p.Rows}}<tr><td>{{index . 0}}</td><td>{{index . 1}}</td></tr>{{end}}</table>
+    {{else if eq $b.Kind "lcd"}}<div class="lcdgrid">{{range $b.Rows}}<div><img src="img/{{index . 0}}.png" alt="{{index . 1}}"><div>{{index . 1}}</div></div>{{end}}</div>
+    {{else if eq $b.Kind "table"}}<table>{{range $b.Rows}}<tr><td>{{index . 0}}</td><td>{{index . 1}}</td></tr>{{end}}</table>
+    {{end}}
+    {{end}}
   {{else if eq $p.Kind "notes"}}
     <h2>Notes</h2>
-    {{range $i, $x := (index $.Pages 0).Paras}}{{end}}
-    <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
-    <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
+    {{range $p.Lines}}<div class="line"></div>{{end}}
   {{else if eq $p.Kind "back"}}
     <p>Printdeck is free software: AGPL-3.0, with the Go port of Klipper under GPL-3.0. The deck draws every picture of this booklet.</p>
     <p>{{if $.Version}}Version {{$.Version}}. {{end}}https://github.com/beetlebugorg/printdeck</p>
@@ -161,7 +163,6 @@
     {{if $p.Chapter}}<div class="chapter-tab">{{$p.Chapter}}</div>{{end}}
     <div class="folio">{{$p.N}}</div>
   {{end}}
-  </div>
 </section>
 {{end}}
 </body>
