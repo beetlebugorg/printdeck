@@ -130,6 +130,13 @@ func (f *fakeKlippy) conn(nc net.Conn) {
 		}
 		ans, _ := json.Marshal(map[string]any{"id": req.ID, "result": result})
 		nc.Write(append(ans, 0x03))
+		if req.Method == "objects/subscribe" {
+			// Klipper can send an update at once, before the deck asks for anything else.
+			key := req.Params["response_template"].(map[string]any)["key"]
+			u, _ := json.Marshal(map[string]any{"key": key, "params": map[string]any{"eventtime": 1.1,
+				"status": map[string]any{"extruder": map[string]any{"temperature": 30.0}}}})
+			nc.Write(append(u, 0x03))
+		}
 	}
 }
 
@@ -167,7 +174,8 @@ func TestKlippyBackend(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatalf("the backend did not connect: %+v", k.State())
 	}
-	if st := k.State(); st.Text != "Operational" || st.Tool != 24 {
+	// The update after the subscription is in the state.
+	if st := k.State(); st.Text != "Operational" || st.Tool != 30 {
 		t.Errorf("state %+v", st)
 	}
 	if files := k.Files(); len(files) != 1 {

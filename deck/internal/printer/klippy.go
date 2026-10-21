@@ -163,8 +163,20 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 		}
 	}
 
+	// Updates can come before the first status is in k.status: they wait in early, and go into
+	// the first status.
+	live, early := false, klippy.Status{}
 	status, err := conn.Subscribe(ctx, klippyObjects, func(_ float64, u klippy.Status) {
 		k.mu.Lock()
+		if !live {
+			early.Merge(u)
+			k.mu.Unlock()
+			return
+		}
+		if k.status == nil { // setDown ended this connection
+			k.mu.Unlock()
+			return
+		}
 		k.status.Merge(u)
 		k.mu.Unlock()
 		k.refresh(notify)
@@ -173,6 +185,13 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 		k.setDown(err.Error(), notify)
 		return
 	}
+	if status == nil {
+		status = klippy.Status{}
+	}
+	k.mu.Lock()
+	status.Merge(early)
+	k.status, live = status, true
+	k.mu.Unlock()
 	if err := conn.SubscribeOutput(ctx, func(line string) {
 		k.console.add("out", line)
 		notify()
@@ -182,7 +201,7 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 	}
 	version, objects := klipperObjects(ctx, conn)
 	k.mu.Lock()
-	k.conn, k.status, k.err = conn, status, ""
+	k.conn, k.err = conn, ""
 	k.version, k.objects = version, objects
 	k.mu.Unlock()
 	k.LoadFiles()
