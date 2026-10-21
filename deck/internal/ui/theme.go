@@ -21,11 +21,15 @@ var (
 	lcd, lcdInk, lcdDim, lcdCell     color.RGBA // display window, its amber digits, and an unlit character cell
 	ledOff, ledGlow                  color.RGBA
 	keyOn, keyOnInk                  color.RGBA // the cap of a key that is on, like the active mode key
+	// The character display, in the colors of the graphic LCD of a LulzBot: a blue backlight with
+	// white pixels.
+	glcd, glcdCell, glcdInk color.RGBA
 )
 
 type palette struct {
 	bg, surface, raised, edge, shine, text, dim, orange, red, onAcc, lcd, lcdInk, lcdDim, ledOff, ledGlow, keyOn, keyOnInk color.RGBA
 	redCap, onRed, lcdCell                                                                                                 color.RGBA
+	glcd, glcdCell, glcdInk                                                                                                color.RGBA
 }
 
 func rgb(v uint32) color.RGBA { return color.RGBA{uint8(v >> 16), uint8(v >> 8), uint8(v), 255} }
@@ -37,6 +41,7 @@ var (
 		text: rgb(0x171717), dim: rgb(0x4a4742), orange: rgb(0xff5a1f), red: rgb(0xd12b1d), onAcc: rgb(0x121212),
 		lcd: rgb(0x1b1c1a), lcdInk: rgb(0xff7a30), lcdDim: rgb(0xc27a48), ledOff: rgb(0x8f8a80), ledGlow: rgb(0xffc8a8),
 		keyOn: rgb(0x171717), keyOnInk: rgb(0xf3f1ec), redCap: rgb(0xc0291b), onRed: rgb(0xfbfaf7), lcdCell: rgb(0x2a211a),
+		glcd: rgb(0x1f4bd1), glcdCell: rgb(0x2a58e0), glcdInk: rgb(0xf2f6ff),
 	}
 	// Night: an anthracite chassis. The panel has a narrow viewing angle, so the text keeps at least 7:1 contrast
 	// (contrast_test.go); mid-grey on dark grey washes out when the panel is seen from the side.
@@ -45,6 +50,7 @@ var (
 		text: rgb(0xeee9df), dim: rgb(0xc2bcb0), orange: rgb(0xff7a3a), red: rgb(0xff7a6a), onAcc: rgb(0x0e0e0d),
 		lcd: rgb(0x080808), lcdInk: rgb(0xff8c4a), lcdDim: rgb(0xd98a55), ledOff: rgb(0x3a3834), ledGlow: rgb(0x4a2412),
 		keyOn: rgb(0x080808), keyOnInk: rgb(0xff8c4a), redCap: rgb(0x9c2216), onRed: rgb(0xf3efe8), lcdCell: rgb(0x1a120c),
+		glcd: rgb(0x0f2766), glcdCell: rgb(0x143079), glcdInk: rgb(0xd6e2ff),
 	}
 	night bool // the night palette is in use
 )
@@ -65,6 +71,7 @@ func setNight(on bool) {
 	ledOff, ledGlow = p.ledOff, p.ledGlow
 	keyOn, keyOnInk = p.keyOn, p.keyOnInk
 	redCap, onRed = p.redCap, p.onRed
+	glcd, glcdCell, glcdInk = p.glcd, p.glcdCell, p.glcdInk
 }
 
 func darken(c color.RGBA, f float64) color.RGBA {
@@ -226,7 +233,8 @@ func heading(c *gfx.Canvas, title string) {
 // charLCD is a character display, like the 20 x 4 dot-matrix display of a printer: a grid of dark cells,
 // with one character drawn in each. Lines longer than cols are cut.
 func charLCD(c *gfx.Canvas, r image.Rectangle, lines []string, cols int) {
-	window(c, r)
+	c.RoundRect(r.Inset(-2), 6, edge)
+	c.RoundRect(r, 4, glcd)
 	rows := len(lines)
 	cw := (r.Dx() - 16) / cols
 	ch := (r.Dy() - 12) / rows
@@ -238,9 +246,9 @@ func charLCD(c *gfx.Canvas, r image.Rectangle, lines []string, cols int) {
 		rs := []rune(line)
 		for col := 0; col < cols; col++ {
 			cell := image.Rect(x0+col*cw+1, y0+row*ch+1, x0+(col+1)*cw-1, y0+(row+1)*ch-1)
-			c.Fill(cell, lcdCell)
+			c.Fill(cell, glcdCell)
 			if col < len(rs) && rs[col] != ' ' {
-				c.Text(cell, string(rs[col]), face, lcdInk, gfx.Center)
+				c.Text(cell, string(rs[col]), face, glcdInk, gfx.Center)
 			}
 		}
 	}

@@ -5,6 +5,8 @@ import (
 	"image"
 	"strings"
 
+	"image/color"
+
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
 )
@@ -186,7 +188,8 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		t, s string
 		tap  func()
 	}{
-		{"Print history", fmt.Sprintf("%d prints, with the result", prints), func() { a.open(pageHistory) }},
+		{"Statistics", fmt.Sprintf("%d prints · %d h · %.0f m filament", prints, hours, filament/1000), func() { a.open(pageStats) }},
+		{"Print history", "Each print, with the result", func() { a.open(pageHistory) }},
 		{"Macros", macros, func() { a.open(pageMacros) }},
 	}
 	if a.Setup != nil {
@@ -295,4 +298,68 @@ func (a *App) drawHistory(c *gfx.Canvas) {
 				a.confirmPrint(recs[i].Path)
 			}
 		}})
+}
+
+// drawStats is the Statistics page: the totals of the print history.
+func (a *App) drawStats(c *gfx.Canvas) {
+	heading(c, "Statistics")
+	a.backButton(c)
+	s := printer.ComputeStats(a.Printer.History(), a.Now())
+	if s.Prints == 0 {
+		c.Text(image.Rect(30, 300, W-30, 340), "No finished prints yet", gfx.Face(false, 20), dim, gfx.Center)
+		return
+	}
+	// Four big numbers in display windows.
+	success := 100 * s.Completed / s.Prints
+	tiles := [][2]string{
+		{"PRINTS", fmt.Sprint(s.Prints)},
+		{"SUCCESS", fmt.Sprintf("%d%%", success)},
+		{"PRINT TIME", fmt.Sprintf("%.0f h", s.Time.Hours())},
+		{"FILAMENT", fmt.Sprintf("%.0f m", s.Filament/1000)},
+	}
+	half := (W - 48 - 12) / 2
+	for i, t := range tiles {
+		r := image.Rect(24+(i%2)*(half+12), 122+(i/2)*104, 24+(i%2)*(half+12)+half, 122+(i/2)*104+92)
+		window(c, r)
+		c.Text(image.Rect(r.Min.X+14, r.Min.Y+8, r.Max.X-14, r.Min.Y+30), t[0], gfx.Face(true, 14), lcdDim, gfx.Left)
+		c.Text(image.Rect(r.Min.X+14, r.Min.Y+30, r.Max.X-14, r.Max.Y-6), t[1], gfx.Face(true, 40), lcdInk, gfx.Left)
+	}
+
+	// The results as a bar: completed, cancelled, failed.
+	bar := image.Rect(24, 336, W-24, 360)
+	window(c, bar)
+	in := bar.Inset(4)
+	x := in.Min.X
+	for _, part := range []struct {
+		n   int
+		col color.RGBA
+	}{{s.Completed, lcdInk}, {s.Cancelled, lcdDim}, {s.Failed, red}} {
+		w := in.Dx() * part.n / s.Prints
+		c.Fill(image.Rect(x, in.Min.Y, x+w, in.Max.Y), part.col)
+		x += w
+	}
+	label(c, image.Rect(24, 364, W-24, 388), fmt.Sprintf("%d done · %d cancelled · %d failed", s.Completed, s.Cancelled, s.Failed), gfx.Center)
+
+	box := image.Rect(24, 398, W-24, 398+6*36+16)
+	plate(c, box)
+	top := "—"
+	if s.TopFile != "" {
+		top = fmt.Sprintf("%s (%d×)", s.TopFile, s.TopCount)
+	}
+	rows := [][2]string{
+		{"Filament", fmt.Sprintf("%.1f m · %.0f g", s.Filament/1000, printer.FilamentGrams(s.Filament))},
+		{"Average print", hm(int(s.Average.Minutes()))},
+		{"Longest print", hm(int(s.Longest.Minutes()))},
+		{"Last 7 days", fmt.Sprintf("%d prints", s.Last7)},
+		{"Last 30 days", fmt.Sprintf("%d prints", s.Last30)},
+		{"Most printed", top},
+	}
+	for i, kv := range rows {
+		y := box.Min.Y + 8 + i*36
+		label(c, image.Rect(box.Min.X+18, y, box.Max.X, y+36), kv[0], gfx.Left)
+		c.Text(image.Rect(box.Min.X+170, y, box.Max.X-18, y+36), gfx.Fit(gfx.Face(true, 17), kv[1], box.Dx()-190), gfx.Face(true, 17), text, gfx.Right)
+	}
+	if !s.Since.IsZero() {
+		label(c, image.Rect(24, box.Max.Y+8, W-24, box.Max.Y+30), "Since "+s.Since.Format("Jan 2, 2006")+" · grams for 1.75 mm PLA", gfx.Center)
+	}
 }

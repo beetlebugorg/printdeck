@@ -161,6 +161,8 @@ func (a *App) OpenPrintScreen(name string) {
 		a.pages = []page{pageMachine, pageMacros}
 	case "history":
 		a.pages = []page{pageMachine, pageHistory}
+	case "stats":
+		a.pages = []page{pageMachine, pageStats}
 	case "file":
 		a.file = a.Printer.Files()[0]
 		a.pages = []page{pageFiles, pageFile}

@@ -47,3 +47,29 @@ func TestRoundRectIsOneCommand(t *testing.T) {
 		t.Error("the pixels were not drawn")
 	}
 }
+
+// A replay of a recording draws the same pixels as the drawing itself.
+func TestReplay(t *testing.T) {
+	draw := func(c *Canvas) {
+		c.Fill(image.Rect(0, 0, 100, 60), color.RGBA{0x12, 0x12, 0x11, 255})
+		c.RoundRect(image.Rect(5, 5, 60, 30), 6, color.RGBA{0xff, 0x5a, 0x1f, 255})
+		c.Text(image.Rect(0, 30, 100, 60), "OK", Face(true, 20), color.RGBA{255, 255, 255, 255}, Left)
+	}
+	direct := New(100, 60)
+	draw(direct)
+	rc, rec := NewRecording(100, 60)
+	draw(rc)
+	replayed := New(100, 60)
+	if err := Replay(replayed, rec.JSON(), func(int) image.Image { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	diff := 0
+	for i := range direct.Pix {
+		if direct.Pix[i] != replayed.Pix[i] {
+			diff++
+		}
+	}
+	if diff != 0 {
+		t.Errorf("%d bytes differ", diff)
+	}
+}
