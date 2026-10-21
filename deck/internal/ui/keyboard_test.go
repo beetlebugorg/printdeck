@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image"
+	"printdeck/kit"
 	"sort"
 	"testing"
 
@@ -9,15 +10,15 @@ import (
 	"printdeck/internal/touch"
 )
 
-func drawTestKeyboard(t *testing.T) (*App, *keyboard, []hit) {
+func drawTestKeyboard(t *testing.T) (*App, *keyboard, []kit.Hit) {
 	a := New()
 	cv := gfx.New(W, BaseH)
 	k := &keyboard{title: "Test", max: 64, ok: "OK", cancel: "Back", done: func(string) {}, back: func() {}}
-	a.hits = nil
+	a.in.Reset()
 	a.drawKeyboard(cv, k)
-	var keys []hit
-	for _, h := range a.hits {
-		if h.r.Min.Y >= kbY0-kbRowGap {
+	var keys []kit.Hit
+	for _, h := range a.in.Hits() {
+		if h.R.Min.Y >= kbY0-kbRowGap {
 			keys = append(keys, h)
 		}
 	}
@@ -33,18 +34,18 @@ func TestKeyAreasMeet(t *testing.T) {
 	_, _, keys := drawTestKeyboard(t)
 	for i := range keys {
 		for j := i + 1; j < len(keys); j++ {
-			if keys[i].r.Overlaps(keys[j].r) {
-				t.Errorf("keys %v and %v overlap", keys[i].r, keys[j].r)
+			if keys[i].R.Overlaps(keys[j].R) {
+				t.Errorf("keys %v and %v overlap", keys[i].R, keys[j].R)
 			}
 		}
 	}
 	rows := map[int][]image.Rectangle{}
 	var tops []int
 	for _, h := range keys {
-		if _, ok := rows[h.r.Min.Y]; !ok {
-			tops = append(tops, h.r.Min.Y)
+		if _, ok := rows[h.R.Min.Y]; !ok {
+			tops = append(tops, h.R.Min.Y)
 		}
-		rows[h.r.Min.Y] = append(rows[h.r.Min.Y], h.r)
+		rows[h.R.Min.Y] = append(rows[h.R.Min.Y], h.R)
 	}
 	sort.Ints(tops)
 	for i, top := range tops {

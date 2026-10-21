@@ -3,6 +3,7 @@ package ui
 import (
 	"image"
 	"image/color"
+	"printdeck/kit"
 	"sort"
 	"strings"
 
@@ -159,9 +160,9 @@ func (a *App) drawConfigs(c *gfx.Canvas) {
 			})
 		}}
 	}
-	a.addHit(hit{r: image.Rect(0, top, W, bottom),
-		scroll: func(dy int) { a.configScroll = max(0, min(a.configScroll+dy, maxScroll)) },
-		tapAt:  func(p image.Point) { choose((p.Y - top + a.configScroll) / rowH) }})
+	a.addHit(kit.Hit{R: image.Rect(0, top, W, bottom),
+		Scroll: func(dy int) { a.configScroll = max(0, min(a.configScroll+dy, maxScroll)) },
+		TapAt:  func(p image.Point) { choose((p.Y - top + a.configScroll) / rowH) }})
 	a.listFocus(len(list), top, bottom, rowH, &a.configScroll, func(i int) string { return list[i].Name() }, choose)
 }
 

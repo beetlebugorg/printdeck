@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"log"
+	"printdeck/kit"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -97,29 +98,6 @@ type Printer interface {
 	FlashBoard(device string, progress board.FlashProgress) error
 }
 
-type hit struct {
-	r    image.Rectangle
-	tap  func()
-	drag func(frac float64) // slider: called while dragging with 0..1
-	end  func(frac float64) // slider: called on release
-	// swipe is called after a horizontal swipe: 1 for a swipe to the left (next), -1 to the right (previous).
-	swipe func(dir int)
-	// vertical makes a slider (drag) follow the finger up and down.
-	vertical bool
-	// scroll is called while the finger drags on a list, with the movement in pixels (positive is
-	// down). A touch that does not move calls tapAt with the position instead.
-	scroll func(dy int)
-	tapAt  func(p image.Point)
-	// pad follows the finger from Down to Up, for the joystick: phase is padDown, padMove, or padUp.
-	pad func(p image.Point, phase int)
-}
-
-const (
-	padDown = iota
-	padMove
-	padUp
-)
-
 type App struct {
 	Printer                 Printer
 	Setup                   SetupHost // nil when the system has no setup screen, as in Docker
@@ -144,17 +122,7 @@ type App struct {
 	doneSeen      string       // the done screen of this print was closed (its history key)
 	setupProbed   bool         // the printer setup started a probe of the USB ports
 	confirm       *confirmBox  // modal question
-	hits          []hit
-	pressed       *hit
-	scrolling     *hit // the list that the finger is on
-	padding       *hit // the joystick that the finger is on
-	lastY         int
-	scrollMoved   bool
-	swiping       *hit // the swipe area that the finger is on
-	swipeDX       int  // how far the finger moved, to draw the cover with it
-	dragging      *hit
-	downAt        image.Point
-	dragFrac      float64 // while dragging a slider, its value; -1 otherwise
+	in            kit.Input    // the touch areas of the frame, and the finger on them
 	wake          chan struct{}
 	posted        chan func() // changes from other goroutines, run by the UI loop
 
@@ -256,7 +224,7 @@ func (a *App) Session(height int) *App {
 var drawMu sync.Mutex
 
 func New() *App {
-	return &App{Now: time.Now, created: time.Now(), LCDFont: "5x8", dragFrac: -1, wake: make(chan struct{}, 1), posted: make(chan func(), 16),
+	return &App{Now: time.Now, created: time.Now(), LCDFont: "5x8", wake: make(chan struct{}, 1), posted: make(chan func(), 16),
 		joy: &joystick{}, zStep: 1, fanSet: -1, UnloadMM: 80, LoadMM: 70, tuneSpeed: 100, tuneFlow: 100, Theme: "auto", NightFrom: 20, NightTo: 7}
 }
 
@@ -313,111 +281,9 @@ func (a *App) handle(ev touch.Event) {
 	defer drawMu.Unlock()
 	setHeight(a.Height)
 	p := image.Pt(int(ev.X*W+0.5), int(ev.Y*float64(H)+0.5))
-	switch ev.Kind {
-	case touch.Down:
-		a.downAt = p
-		for i := len(a.hits) - 1; i >= 0; i-- {
-			h := &a.hits[i]
-			if p.In(h.r) {
-				hc := *h // the hit list is rebuilt on each frame, so keep a copy
-				if h.pad != nil {
-					a.padding = &hc
-					h.pad(p, padDown)
-				} else if h.swipe != nil {
-					a.swiping, a.swipeDX = &hc, 0
-				} else if h.scroll != nil {
-					a.scrolling, a.lastY, a.scrollMoved = &hc, p.Y, false
-				} else if h.drag != nil {
-					a.dragging = &hc
-					a.dragFrac = fracOf(&hc, p)
-					h.drag(a.dragFrac)
-				} else {
-					a.pressed = &hc
-				}
-				break
-			}
-		}
-	case touch.Move:
-		if a.padding != nil {
-			if h := a.find(a.padding.r); h != nil {
-				h.pad(p, padMove)
-			}
-		} else if a.scrolling != nil {
-			if abs(p.Y-a.downAt.Y) > 12 {
-				a.scrollMoved = true
-			}
-			if a.scrollMoved {
-				if h := a.find(a.scrolling.r); h != nil {
-					h.scroll(a.lastY - p.Y)
-				}
-			}
-			a.lastY = p.Y
-		} else if a.swiping != nil {
-			a.swipeDX = max(-80, min(80, p.X-a.downAt.X))
-		} else if a.dragging != nil {
-			a.dragFrac = fracOf(a.dragging, p)
-			if h := a.find(a.dragging.r); h != nil {
-				h.drag(a.dragFrac)
-			}
-		} else if a.pressed != nil && !p.In(a.pressed.r.Inset(-24)) {
-			a.pressed = nil
-		}
-	case touch.Up:
-		if a.padding != nil {
-			// The finger may lift after the screen changed: the joystick must stop all the same.
-			a.padding.pad(p, padUp)
-			a.padding = nil
-		} else if a.scrolling != nil {
-			h := a.find(a.scrolling.r)
-			moved := a.scrollMoved
-			a.scrolling = nil
-			if h != nil && !moved && h.tapAt != nil {
-				h.tapAt(p)
-			}
-		} else if a.swiping != nil {
-			dx, dy := p.X-a.downAt.X, p.Y-a.downAt.Y
-			h := a.find(a.swiping.r)
-			a.swiping, a.swipeDX = nil, 0
-			if h != nil && h.swipe != nil && abs(dx) >= 70 && abs(dx) > 2*abs(dy) {
-				if dx < 0 {
-					h.swipe(1)
-				} else {
-					h.swipe(-1)
-				}
-			}
-		} else if a.dragging != nil {
-			if h := a.find(a.dragging.r); h != nil {
-				h.end(fracOf(h, p))
-			}
-			a.dragging, a.dragFrac = nil, -1
-		} else if a.pressed != nil && p.In(a.pressed.r.Inset(-24)) {
-			h := a.find(a.pressed.r)
-			a.pressed = nil
-			if h != nil && h.tap != nil {
-				h.tap()
-			}
-		}
-		a.pressed = nil
-	}
+	kind := map[touch.Kind]kit.Kind{touch.Down: kit.Down, touch.Move: kit.Move, touch.Up: kit.Up}[ev.Kind]
+	a.in.Handle(kit.Event{Kind: kind, P: p})
 	a.Redraw()
-}
-
-// find returns the current hit with the rectangle r.
-func (a *App) find(r image.Rectangle) *hit {
-	for i := len(a.hits) - 1; i >= 0; i-- {
-		if a.hits[i].r == r {
-			return &a.hits[i]
-		}
-	}
-	return nil
-}
-
-// fracOf is where a finger is on a slider, from 0 to 1.
-func fracOf(h *hit, p image.Point) float64 {
-	if h.vertical {
-		return max(0, min(1, float64(p.Y-h.r.Min.Y)/float64(h.r.Dy())))
-	}
-	return max(0, min(1, float64(p.X-h.r.Min.X)/float64(h.r.Dx())))
 }
 
 // Draw renders one frame and rebuilds the hit list.
@@ -435,7 +301,7 @@ func (a *App) Draw(c *gfx.Canvas) {
 	if n := a.isNight(); n != night {
 		setNight(n)
 	}
-	a.hits = a.hits[:0]
+	a.in.Reset()
 	c.Fill(c.Bounds(), bg)
 	if a.setup != nil {
 		a.drawSetup(c)
@@ -455,17 +321,14 @@ func (a *App) Draw(c *gfx.Canvas) {
 	}
 }
 
-func (a *App) addHit(h hit) *hit {
-	a.hits = append(a.hits, h)
-	return &a.hits[len(a.hits)-1]
-}
+func (a *App) addHit(h kit.Hit) { a.in.Add(h) }
 
 func (a *App) isPressed(r image.Rectangle) bool {
-	return a.pressed != nil && a.pressed.r == r
+	return a.in.Pressed(r)
 }
 
 func (a *App) drawConfirm(c *gfx.Canvas) {
-	a.hits = a.hits[:0] // the dialog blocks everything below it
+	a.in.Reset() // the dialog blocks everything below it
 	c.Dim(3)
 	box := image.Rect(30, 260, W-30, 540)
 	panel(c, box, "CONFIRM")
@@ -492,7 +355,7 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 // button draws a key and registers it. fill is the colour of the cap.
 func (a *App) button(c *gfx.Canvas, r image.Rectangle, label string, fill, fg color.RGBA, tap func()) {
 	key(c, r, label, fill, fg, a.isPressed(r))
-	a.addHit(hit{r: r, tap: tap})
+	a.addHit(kit.Hit{R: r, Tap: tap})
 	a.addFocus(label, r, tap)
 }
 

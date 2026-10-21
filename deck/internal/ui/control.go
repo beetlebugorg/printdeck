@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"printdeck/kit"
 	"strings"
 	"sync"
 	"time"
@@ -49,7 +50,7 @@ func joySpeed(mag float64) float64 {
 }
 
 // joyPad follows the finger on the pad.
-func (a *App) joyPad(p image.Point, phase int) {
+func (a *App) joyPad(p image.Point, phase kit.Phase) {
 	j := a.joy
 	vx := float64(p.X-joyCX) / joyR
 	vy := float64(joyCY-p.Y) / joyR
@@ -58,7 +59,7 @@ func (a *App) joyPad(p image.Point, phase int) {
 	}
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	if phase == padUp {
+	if phase == kit.PadUp {
 		j.vx, j.vy, j.held = 0, 0, false
 		return
 	}
@@ -189,7 +190,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		if speed > 0 {
 			c.Text(image.Rect(pad.Min.X, pad.Max.Y-24, pad.Max.X-8, pad.Max.Y-4), fmt.Sprintf("%.0f MM/S", speed), gfx.Face(true, 14), lcdInk, gfx.Right)
 		}
-		a.addHit(hit{r: pad, pad: a.joyPad})
+		a.addHit(kit.Hit{R: pad, Pad: a.joyPad})
 	}
 	label(c, image.Rect(pad.Min.X, pad.Max.Y+6, pad.Max.X, pad.Max.Y+26), "XY  hold to move", gfx.Center)
 
@@ -205,7 +206,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		}
 		step := s
 		key(c, r, fmt.Sprint(s), fill, fg, a.isPressed(r))
-		a.addHit(hit{r: r, tap: func() { a.zStep = step }})
+		a.addHit(kit.Hit{R: r, Tap: func() { a.zStep = step }})
 	}
 	btn(image.Rect(zx0, pad.Min.Y+158, zx1, pad.Min.Y+240), "Z ▼", raised, text, func() error { return pr.Jog(0, 0, -a.zStep, 600) })
 	label(c, image.Rect(zx0, pad.Min.Y+248, zx1, pad.Min.Y+270), "Z mm per tap", gfx.Center)

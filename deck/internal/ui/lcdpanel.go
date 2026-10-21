@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"printdeck/kit"
 	"sync"
 	"time"
 
@@ -73,8 +74,8 @@ func (a *App) drawLCDPanel(c *gfx.Canvas, st printer.State, s *lcdscreen.Status)
 	col := func(x0, x1 int) image.Rectangle {
 		return image.Rect(r.Min.X+x0*lcdScale, r.Min.Y, r.Min.X+x1*lcdScale, r.Min.Y+42*lcdScale)
 	}
-	a.addHit(hit{r: col(0, 43), tap: func() { a.editTemp("Nozzle temperature", int(st.ToolTarget), 300, toolPresets, pr.SetToolTemp) }})
-	a.addHit(hit{r: col(43, 86), tap: func() { a.editTemp("Bed temperature", int(st.BedTarget), 120, bedPresets, pr.SetBedTemp) }})
+	a.addHit(kit.Hit{R: col(0, 43), Tap: func() { a.editTemp("Nozzle temperature", int(st.ToolTarget), 300, toolPresets, pr.SetToolTemp) }})
+	a.addHit(kit.Hit{R: col(43, 86), Tap: func() { a.editTemp("Bed temperature", int(st.BedTarget), 120, bedPresets, pr.SetBedTemp) }})
 }
 
 // statusPanel draws the status screen of the printer display at the top of a Print screen: the

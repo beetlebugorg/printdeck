@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	lcdscreen "printdeck/internal/lcd"
+	"printdeck/kit"
 	"strings"
 	"time"
 
@@ -206,8 +207,8 @@ func (a *App) temps(c *gfx.Canvas, y, h int, tool, toolT, bed, bedT float64, ok 
 	card(bedR, func(cx, cy, r int, col color.RGBA) { drawBed(c, cx, cy, r, col) }, "Bed", bed, bedT)
 	if ok { // a tap opens the keypad for the target
 		pr := a.Printer
-		a.addHit(hit{r: nozzle, tap: func() { a.editTemp("Nozzle temperature", int(toolT), 300, toolPresets, pr.SetToolTemp) }})
-		a.addHit(hit{r: bedR, tap: func() { a.editTemp("Bed temperature", int(bedT), 120, bedPresets, pr.SetBedTemp) }})
+		a.addHit(kit.Hit{R: nozzle, Tap: func() { a.editTemp("Nozzle temperature", int(toolT), 300, toolPresets, pr.SetToolTemp) }})
+		a.addHit(kit.Hit{R: bedR, Tap: func() { a.editTemp("Bed temperature", int(bedT), 120, bedPresets, pr.SetBedTemp) }})
 	}
 }
 
@@ -224,15 +225,16 @@ func (a *App) drawScrubber(c *gfx.Canvas, box image.Rectangle, st printer.State)
 	slider := image.Rect(box.Min.X+18, box.Max.Y-36, box.Max.X-18, box.Max.Y-4)
 	f := float64(st.Layer) / float64(st.Layers)
 	shown := st.Layer
+	drag, dragging := a.in.Dragging(slider)
 	switch {
-	case a.dragging != nil && a.dragging.r == slider:
-		f = a.dragFrac
+	case dragging:
+		f = drag
 		shown = layerOf(f)
 	case view >= 0:
 		f, shown = float64(view)/float64(st.Layers), view
 	}
 	col, label := dim, fmt.Sprintf("Layer %d of %d", shown, st.Layers)
-	if view >= 0 || (a.dragging != nil && a.dragging.r == slider) {
+	if view >= 0 || dragging {
 		col = orange
 	}
 	if col == dim {
@@ -245,5 +247,5 @@ func (a *App) drawScrubber(c *gfx.Canvas, box image.Rectangle, st printer.State)
 	}
 	set := func(f float64) { pr.SetViewLayer(layerOf(f)) }
 	faderWith(c, slider, f, orange, dayPalette.raised) // a light cap on the dark window
-	a.addHit(hit{r: slider, drag: set, end: set})
+	a.addHit(kit.Hit{R: slider, Drag: set, End: set})
 }

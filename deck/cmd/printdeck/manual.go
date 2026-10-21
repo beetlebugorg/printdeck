@@ -622,7 +622,7 @@ func manual(args []string) {
 	os.WriteFile(filepath.Join(fwDir, "version"), []byte(printer.HostVersion+"\n"), 0o644)
 	board.FirmwareDir = fwDir
 	a, p := demoApp()
-	a.Now = func() time.Time { return time.Date(2026, 10, 20, 14, 24, 0, 0, time.Local) }
+	a.Now = demoNow
 	a.Setup = &ui.DemoSetup{
 		Nets: []wifi.Network{{SSID: "Extremely", Signal: -48, Secure: true}, {SSID: "Workshop", Signal: -63, Secure: true},
 			{SSID: "Guest", Signal: -71}, {SSID: "NETGEAR-5G", Signal: -82, Secure: true}},
