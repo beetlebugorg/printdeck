@@ -402,6 +402,10 @@ type PrinterLCD struct {
 	screenUpdateTimer    *reactor.Timer
 	redrawRequestPending bool
 	redrawTime           float64
+
+	// The hooks of Printdeck (printdeck.go). nil: the display works as in Klipper.
+	screenHook func(eventtime float64) bool
+	keyHook    func(key string, eventtime float64) bool
 }
 
 func newPrinterLCD(config *configfile.Wrapper) *PrinterLCD {
@@ -479,6 +483,10 @@ func (d *PrinterLCD) screenUpdateEvent(eventtime float64) float64 {
 		d.redrawTime = eventtime + redrawMinTime
 	}
 	d.lcdChip.Clear()
+	if d.screenHook != nil && d.screenHook(eventtime) {
+		d.lcdChip.Flush()
+		return eventtime + redrawTime
+	}
 	// update menu component
 	if d.menu != nil {
 		if d.menu.ScreenUpdateEvent(eventtime) {
