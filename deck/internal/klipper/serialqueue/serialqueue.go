@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	monotonic_ "printdeck/internal/klipper/monotonic"
 	"sync"
 	"time"
 
@@ -173,9 +174,8 @@ type SerialQueue struct {
 	bytesWrite, bytesRead, bytesRetransmit, bytesInvalid uint32
 }
 
-var start = time.Now()
-
-func monotonic() float64 { return time.Since(start).Seconds() }
+// monotonic is get_monotonic of chelper: CLOCK_MONOTONIC_RAW.
+func monotonic() float64 { return monotonic_.Now() }
 
 // New starts the link on port (serialqueue_alloc). A DebugFile port is written only.
 func New(port io.ReadWriter, kind Kind, name string) *SerialQueue {

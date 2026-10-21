@@ -18,6 +18,7 @@ import (
 	"errors"
 	"math"
 	"os"
+	monotonic_ "printdeck/internal/klipper/monotonic"
 	"sync"
 	"time"
 )
@@ -75,9 +76,8 @@ type Reactor struct {
 	fds []*FileHandler // replaced, never changed in place, so a loop over it is safe
 }
 
-var start = time.Now()
-
-func monotonic() float64 { return time.Since(start).Seconds() }
+// monotonic is get_monotonic of chelper: CLOCK_MONOTONIC_RAW.
+func monotonic() float64 { return monotonic_.Now() }
 
 func New() *Reactor {
 	return &Reactor{Monotonic: monotonic, nextTimer: Never, asyncCh: make(chan struct{}, 1),
