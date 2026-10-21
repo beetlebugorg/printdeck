@@ -20,24 +20,46 @@ func duration(d time.Duration) string {
 }
 
 func (a *App) drawPrint(c *gfx.Canvas) {
-	switch {
-	case a.swap != nil:
+	if a.swap != nil {
 		a.drawSwap(c)
-		return
-	case a.control:
-		a.drawControl(c)
-		return
-	case a.tune:
-		a.drawTune(c)
-		return
-	}
-	if a.files {
-		a.drawFiles(c)
 		return
 	}
 	st := a.Printer.State()
-	pr := a.Printer
-
+	// A manual Z probe (the paper test) runs: its screen comes first.
+	if st.Reachable && st.ManualProbe {
+		a.drawManualProbe(c, st)
+		return
+	}
+	switch a.topPage() {
+	case pageFiles:
+		a.drawFiles(c)
+		return
+	case pageFile:
+		a.drawFile(c, st)
+		return
+	case pageMove:
+		a.drawMove(c)
+		return
+	case pageFilament:
+		a.drawFilament(c, st)
+		return
+	case pageMaintenance:
+		a.drawMaintenance(c, st)
+		return
+	case pageMachine:
+		a.drawMachine(c, st)
+		return
+	case pageMacros:
+		a.drawMacros(c, st)
+		return
+	case pageHistory:
+		a.drawHistory(c)
+		return
+	}
+	if a.tune {
+		a.drawTune(c)
+		return
+	}
 	if !st.Reachable {
 		if st.NeedsSetup {
 			a.drawPrinterSetup(c, st)
@@ -46,58 +68,24 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		}
 		return
 	}
-
 	if st.Busy() {
-		a.drawJob(c, st)
+		switch {
+		case st.Paused:
+			a.drawPaused(c, st)
+		case st.Preparing:
+			a.drawPreparing(c, st)
+		case st.Layer == 1 && st.Layers > 1:
+			a.drawFirstLayer(c, st)
+		default:
+			a.drawJob(c, st)
+		}
 		return
 	}
-
-	// State pill
-	col := dim
-	if strings.Contains(strings.ToLower(st.Text), "error") {
-		col = red
-	}
-	pill := image.Rect(W/2-100, 76, W/2+100, 120)
-	window(c, pill)
-	if col == dim {
-		col = lcdInk
-	}
-	c.Text(pill, strings.ToUpper(st.Text), gfx.Face(true, 20), col, gfx.Center)
-	if st.FirmwareOld {
-		c.Text(image.Rect(24, 124, W-24, 152), "The board firmware is old", gfx.Face(true, 17), orange, gfx.Center)
-	}
-
-	a.temps(c, 160, 100, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
-
-	y := 300
-	if !st.Connected {
-		a.button(c, image.Rect(40, y, W-40, y+84), "Connect printer", orange, onAcc, pr.Connect)
-		// After an emergency stop or an error, Klipper must restart before it does anything.
-		a.button(c, image.Rect(40, y+104, W-40, y+176), "Reset printer", redCap, onRed, func() {
-			a.confirm = &confirmBox{question: "Restart the printer firmware?", yes: "Reset", danger: true, onYes: func() {
-				a.Toast("Restarting the printer…")
-				a.do(pr.FirmwareRestart)
-			}}
-		})
+	if st.Finished != "" && finishedKey(st) != a.doneSeen {
+		a.drawDone(c, st)
 		return
 	}
-	a.button(c, image.Rect(40, y, W-40, y+84), "Print a file", orange, onAcc, func() {
-		go func() { pr.LoadFiles(); a.Redraw() }()
-		a.files = true
-	})
-	half := (W - 80 - 16) / 2
-	a.button(c, image.Rect(40, y+104, 40+half, y+176), fmt.Sprintf("Preheat %d/%d", a.PreheatTool, a.PreheatBed), raised, text, func() { pr.Heat(a.PreheatTool, a.PreheatBed) })
-	a.button(c, image.Rect(40+half+16, y+104, W-40, y+176), "Cool down", raised, text, func() { pr.Heat(0, 0) })
-	a.button(c, image.Rect(40, y+196, 40+half, y+268), "Control", raised, text, func() { a.control = true })
-	// After Klipper stops itself (a heater fault, an emergency stop), OctoPrint can still say "Operational",
-	// so the reset is always here. It restarts Klipper (FIRMWARE_RESTART); the heaters stay off.
-	a.button(c, image.Rect(40, y+288, W-40, y+356), "Reset printer", redCap, onRed, func() {
-		a.confirm = &confirmBox{question: "Restart the printer firmware?", yes: "Reset", danger: true, onYes: func() {
-			a.Toast("Restarting the printer…")
-			a.do(pr.FirmwareRestart)
-		}}
-	})
-	a.button(c, image.Rect(40+half+16, y+196, W-40, y+268), "Filament", raised, text, func() { a.swap = &swapState{} })
+	a.drawHome(c, st)
 }
 
 // drawJob is the screen of a running or paused print: the model, the progress, the temperatures, and the buttons.
@@ -126,7 +114,12 @@ func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 	a.drawScrubber(c, box, st)
 
 	segments(c, image.Rect(40, box.Max.Y+8, W-40, box.Max.Y+22), st.Completion/100)
-	a.temps(c, box.Max.Y+30, 70, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
+	info := hm(int(st.Elapsed.Minutes())) + " elapsed"
+	if st.FilamentUsed > 0 {
+		info += fmt.Sprintf(" · %.1f m filament", st.FilamentUsed/1000)
+	}
+	label(c, image.Rect(40, box.Max.Y+24, W-40, box.Max.Y+44), info, gfx.Center)
+	a.temps(c, box.Max.Y+46, 58, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
 
 	label, fn := "Pause", pr.Pause
 	if st.Paused {
@@ -163,9 +156,14 @@ func (a *App) lcdLines(st printer.State) []string {
 		m := int(st.TimeLeft.Minutes())
 		right += fmt.Sprintf(" %d:%02d", m/60, m%60)
 	}
+	// The second line: the move now and its speed, and every 4 seconds the time of the finish on
+	// the clock, as the display of a printer alternates its lines.
 	now := "--"
 	if st.HasNow {
 		now = lr(strings.ToUpper(st.NowKind), fmt.Sprintf("%.0fMM/S", st.NowSpeed*float64(a.speedFactor(st))/100))
+	}
+	if st.HasTimeLeft && (!st.HasNow || a.Now().Unix()/4%2 == 1) {
+		now = lr("DONE AT", a.Now().Add(st.TimeLeft).Format("15:04"))
 	}
 	return []string{lr(strings.ToUpper(st.Activity), right), now}
 }
@@ -196,33 +194,6 @@ func (a *App) temps(c *gfx.Canvas, y, h int, tool, toolT, bed, bedT float64, ok 
 		pr := a.Printer
 		a.addHit(hit{r: nozzle, tap: func() { a.editTemp("Nozzle temperature", int(toolT), 300, toolPresets, pr.SetToolTemp) }})
 		a.addHit(hit{r: bedR, tap: func() { a.editTemp("Bed temperature", int(bedT), 120, bedPresets, pr.SetBedTemp) }})
-	}
-}
-
-func (a *App) drawFiles(c *gfx.Canvas) {
-	heading(c, "Choose a file")
-	a.button(c, image.Rect(W-130, 70, W-24, 118), "Back", raised, text, func() { a.files = false })
-	files := a.Printer.Files()
-	if len(files) == 0 {
-		c.Text(image.Rect(30, 300, W-30, 350), "No files", gfx.Face(false, 22), dim, gfx.Center)
-	}
-	for i, f := range files {
-		if i >= 8 {
-			break
-		}
-		f := f
-		r := image.Rect(24, 136+i*72, W-24, 136+i*72+64)
-		plate(c, r)
-		if a.isPressed(r) {
-			c.RoundRect(r.Inset(1), 4, raised)
-		}
-		c.Text(image.Rect(r.Min.X+16, r.Min.Y, r.Max.X-16, r.Max.Y), f.Name, gfx.Face(false, 22), text, gfx.Left)
-		a.addHit(hit{r: r, tap: func() {
-			a.confirm = &confirmBox{question: "Print " + gfx.Fit(gfx.Face(true, 28), f.Name, 300) + "?", yes: "Print", onYes: func() {
-				a.Printer.PrintFile(f.Path)
-				a.files = false
-			}}
-		}})
 	}
 }
 

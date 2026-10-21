@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"printdeck/internal/board"
+	"printdeck/internal/gcodemeta"
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
 	"printdeck/internal/spotify"
@@ -95,6 +96,13 @@ type Printer interface {
 	EmergencyStop() error
 	FirmwareRestart() error
 
+	// What the printer has (version, modules, macros), and the finished prints, newest first.
+	Machine() printer.Machine
+	History() []printer.Record
+	// What the slicer wrote about a file, and the removal of a file.
+	FileMeta(path string) gcodemeta.Meta
+	DeleteFile(path string) error
+
 	// The setup of a new printer: the boards on the USB ports, and a restart of the Klipper service.
 	Boards() (boards []board.Info, probing bool)
 	ProbeBoards()
@@ -148,32 +156,36 @@ type App struct {
 
 	Now func() time.Time // replaced in tests
 
-	tab         Tab
-	files       bool        // file list open on the Print tab
-	setupProbed bool        // the printer setup started a probe of the USB ports
-	confirm     *confirmBox // modal question
-	hits        []hit
-	pressed     *hit
-	scrolling   *hit // the list that the finger is on
-	padding     *hit // the joystick that the finger is on
-	lastY       int
-	scrollMoved bool
-	swiping     *hit // the swipe area that the finger is on
-	swipeDX     int  // how far the finger moved, to draw the cover with it
-	dragging    *hit
-	downAt      image.Point
-	dragFrac    float64 // while dragging a slider, its value; -1 otherwise
-	wake        chan struct{}
-	posted      chan func() // changes from other goroutines, run by the UI loop
+	tab           Tab
+	pages         []page       // the pages of the Print tab over its state screen, the top last
+	file          printer.File // the file of the file page
+	fileList      fileList     // the scroll position of the Files page
+	macroScroll   int          // the scroll position of the Macros page
+	historyScroll int          // the scroll position of the history
+	doneSeen      string       // the done screen of this print was closed (its history key)
+	setupProbed   bool         // the printer setup started a probe of the USB ports
+	confirm       *confirmBox  // modal question
+	hits          []hit
+	pressed       *hit
+	scrolling     *hit // the list that the finger is on
+	padding       *hit // the joystick that the finger is on
+	lastY         int
+	scrollMoved   bool
+	swiping       *hit // the swipe area that the finger is on
+	swipeDX       int  // how far the finger moved, to draw the cover with it
+	dragging      *hit
+	downAt        image.Point
+	dragFrac      float64 // while dragging a slider, its value; -1 otherwise
+	wake          chan struct{}
+	posted        chan func() // changes from other goroutines, run by the UI loop
 
-	picker  *picker    // list of playlists on the Music tab
-	tracks  *trackList // the songs of one playlist
-	eqOpen  bool       // the equalizer is open on the Music tab
-	control bool       // the control screen is open on the Print tab
-	tune    bool       // the tune sheet of a running print is open
-	swap    *swapState // the filament swap is open
-	keypad  *keypad    // number entry, over everything
-	setup   *setupFlow // the setup screen, over everything
+	picker *picker    // list of playlists on the Music tab
+	tracks *trackList // the songs of one playlist
+	eqOpen bool       // the equalizer is open on the Music tab
+	tune   bool       // the tune sheet of a running print is open
+	swap   *swapState // the filament swap is open
+	keypad *keypad    // number entry, over everything
+	setup  *setupFlow // the setup screen, over everything
 
 	// Settings of the control screens.
 	UnloadMM, LoadMM float64 // filament lengths of the swap
@@ -187,6 +199,7 @@ type App struct {
 
 	joy    *joystick
 	zStep  float64 // mm per tap of the Z buttons
+	zBaby  float64 // mm per tap of the Z offset on the first layer screen
 	fanSet int     // the last fan setting from the screen, -1 if none
 
 	// The tune sheet, counted from the start of the print in tuneFile.
@@ -195,6 +208,11 @@ type App struct {
 	tuneZ               float64
 	toast               string
 	toastAt             time.Time
+
+	// Material is the loaded filament, for example "PLA", or "". OnMaterial is told when it changes,
+	// to save it.
+	Material   string
+	OnMaterial func(string)
 
 	// Record makes Run draw each frame on a recording canvas (gfx.NewRecording), for a browser.
 	Record bool
@@ -227,6 +245,7 @@ func (a *App) Session(height int) *App {
 	s.Music, s.Printer, s.Vol, s.Equalizer, s.Setup = a.Music, a.Printer, a.Vol, a.Equalizer, a.Setup
 	s.PreheatTool, s.PreheatBed, s.UnloadMM, s.LoadMM, s.JogInvertY = a.PreheatTool, a.PreheatBed, a.UnloadMM, a.LoadMM, a.JogInvertY
 	s.Theme, s.NightFrom, s.NightTo, s.OnTheme = a.Theme, a.NightFrom, a.NightTo, a.OnTheme
+	s.Material, s.OnMaterial = a.Material, a.OnMaterial
 	s.tab = a.tab
 	return s
 }
@@ -442,7 +461,15 @@ func (a *App) isPressed(r image.Rectangle) bool {
 func (a *App) drawStatus(c *gfx.Canvas) {
 	c.Fill(image.Rect(0, 0, W, statusH), bg)
 	win := image.Rect(10, 8, W-10, statusH-6)
+	// The Stop key while the printer prints, moves or heats, on every screen.
+	estop := a.estopVisible()
+	if estop {
+		win.Max.X = W - 108
+	}
 	window(c, win)
+	if estop {
+		defer a.drawEstop(c)
+	}
 	c.Text(image.Rect(win.Min.X+12, win.Min.Y, win.Min.X+90, win.Max.Y), a.Now().Format("15:04"), gfx.Face(true, 24), lcdInk, gfx.Left)
 	// The clock is also the key for the theme: day, night, auto.
 	c.Text(image.Rect(win.Min.X+92, win.Min.Y, win.Min.X+150, win.Max.Y), strings.ToUpper(a.Theme), gfx.Face(true, 13), lcdDim, gfx.Left)
@@ -469,8 +496,8 @@ func (a *App) drawStatus(c *gfx.Canvas) {
 }
 
 func (a *App) setTab(t Tab) {
-	a.tab, a.files, a.confirm, a.picker, a.tracks, a.eqOpen = t, false, nil, nil, nil, false
-	a.control, a.tune, a.swap, a.keypad = false, false, nil, nil
+	a.tab, a.pages, a.confirm, a.picker, a.tracks, a.eqOpen = t, nil, nil, nil, nil, false
+	a.tune, a.swap, a.keypad = false, nil, nil
 	a.Redraw()
 }
 

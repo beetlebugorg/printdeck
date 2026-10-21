@@ -145,6 +145,8 @@ func (emptyStore) Open(string) (io.ReadCloser, error) { return nil, fs.ErrNotExi
 func (emptyStore) Models() []File                     { return nil }
 func (emptyStore) Files() []File                      { return []File{{Path: "cap.gcode", Name: "cap.gcode"}} }
 func (emptyStore) Stat(string) (fs.FileInfo, error)   { return nil, fs.ErrNotExist }
+func (emptyStore) FullPath(string) (string, error)    { return "", fs.ErrNotExist }
+func (emptyStore) Delete(string) error                { return fs.ErrNotExist }
 
 func TestKlippyBackend(t *testing.T) {
 	f := &fakeKlippy{}

@@ -74,7 +74,7 @@ func TestJoySpeed(t *testing.T) {
 
 func TestJoystickMovesWhileHeld(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
-	a.control = true
+	a.pages = []page{pageMove}
 	a.Draw(cv)
 	// Hold the pad at the right edge: X+ at full speed, then let go.
 	ev(a, touch.Down, joyCX+joyR-2, joyCY)
@@ -108,12 +108,12 @@ func TestNoMovesWhilePrinting(t *testing.T) {
 	st := idle
 	st.Printing, st.Text = true, "Printing"
 	a, pr, cv := newPrintApp(st)
-	a.control = true
+	a.pages = []page{pageMove}
 	a.Draw(cv)
 	ev(a, touch.Down, joyCX+joyR-2, joyCY)
 	time.Sleep(2 * joyTick)
 	ev(a, touch.Up, joyCX+joyR-2, joyCY)
-	tapAt(a, cv, 60, 170) // Home all
+	tapAt(a, cv, 60, 215) // Home all
 	time.Sleep(50 * time.Millisecond)
 	if c := pr.Calls(); len(c) != 0 {
 		t.Errorf("commands while printing: %v", c)
@@ -146,7 +146,7 @@ func TestKeypadSetsTemperature(t *testing.T) {
 func TestFilamentSwapSteps(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.swap = &swapState{}
-	tapAt(a, cv, W/2, 280+92+40) // PETG 240
+	tapAt(a, cv, W*3/4, 310) // PETG 240, the second key of the first row
 	if c := pr.wait(1); c[0] != "tool 240" || a.swap.step != swapHeat {
 		t.Fatalf("after PETG: %v, step %d", c, a.swap.step)
 	}
@@ -167,10 +167,12 @@ func TestFilamentSwapSteps(t *testing.T) {
 	}
 }
 
-// The reset is on the idle screen even when OctoPrint says "Operational" (Klipper may be shut down behind it).
-func TestResetPrinterAlwaysThere(t *testing.T) {
+// The firmware restart is on the Machine page, after a question.
+func TestFirmwareRestartOnMachinePage(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
-	tapAt(a, cv, W/2, 300+288+30) // Reset printer
+	a.pages = []page{pageMachine}
+	a.Draw(cv)
+	tapAt(a, cv, W-100, 680) // Firmware restart
 	if a.confirm == nil {
 		t.Fatal("no confirmation")
 	}

@@ -8,6 +8,7 @@ import (
 
 	"printdeck/internal/board"
 	"printdeck/internal/eq"
+	"printdeck/internal/gcodemeta"
 	"printdeck/internal/printer"
 	"printdeck/internal/spotify"
 	"printdeck/internal/wifi"
@@ -39,10 +40,13 @@ func (d *DemoMusic) SetShuffle(bool)    {}
 func (d *DemoMusic) CycleRepeat()       {}
 
 type DemoPrinter struct {
-	State_  printer.State
-	Img     image.Image
-	View    int          // layer of the scrubber, -1 for live
-	Boards_ []board.Info // the boards of the printer setup
+	State_   printer.State
+	Img      image.Image
+	View     int          // layer of the scrubber, -1 for live
+	Boards_  []board.Info // the boards of the printer setup
+	Machine_ printer.Machine
+	History_ []printer.Record
+	Meta_    gcodemeta.Meta // the slicer data of every file
 }
 
 func (d *DemoPrinter) State() printer.State { return d.State_ }
@@ -132,15 +136,34 @@ func (d *DemoPrinter) BabyStep(float64) error           { return nil }
 func (d *DemoPrinter) EmergencyStop() error             { return nil }
 func (d *DemoPrinter) FirmwareRestart() error           { return nil }
 func (d *DemoPrinter) Boards() ([]board.Info, bool)     { return d.Boards_, false }
+func (d *DemoPrinter) Machine() printer.Machine         { return d.Machine_ }
+func (d *DemoPrinter) FileMeta(string) gcodemeta.Meta   { return d.Meta_ }
+func (d *DemoPrinter) DeleteFile(string) error          { return nil }
+func (d *DemoPrinter) History() []printer.Record        { return d.History_ }
 func (d *DemoPrinter) ProbeBoards()                     {}
 func (d *DemoPrinter) RestartKlipper() error            { return nil }
 
 // OpenPrintScreen opens a screen of the Print tab by name; for the demo.
 func (a *App) OpenPrintScreen(name string) {
-	a.tab, a.control, a.tune, a.swap, a.keypad = TabPrint, false, false, nil, nil
+	a.tab, a.pages, a.tune, a.swap, a.keypad = TabPrint, nil, false, nil, nil
 	switch name {
-	case "control":
-		a.control = true
+	case "control", "move":
+		a.pages = []page{pageMove}
+	case "files":
+		a.pages = []page{pageFiles}
+	case "filament":
+		a.pages = []page{pageFilament}
+	case "maintenance":
+		a.pages = []page{pageMaintenance}
+	case "machine":
+		a.pages = []page{pageMachine}
+	case "macros":
+		a.pages = []page{pageMachine, pageMacros}
+	case "history":
+		a.pages = []page{pageMachine, pageHistory}
+	case "file":
+		a.file = a.Printer.Files()[0]
+		a.pages = []page{pageFiles, pageFile}
 	case "tune":
 		a.tune = true
 	case "swap":

@@ -13,6 +13,7 @@ import (
 
 	"printdeck/internal/board"
 	"printdeck/internal/eq"
+	"printdeck/internal/gcodemeta"
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
 	"printdeck/internal/remote"
@@ -37,6 +38,19 @@ func demoApp() (*ui.App, *ui.DemoMusic, *ui.DemoPrinter) {
 	a.Music, a.Printer, a.Vol = m, p, ui.DemoVolume(35)
 	a.Equalizer = &ui.DemoEQ{G: eq.Gains{4, 1.5, 0, -2, 3}}
 	a.PreheatTool, a.PreheatBed = 200, 60
+	a.Material = "PLA"
+	// What the test printer has, a short history, and the slicer data of the files.
+	p.Machine_ = printer.Machine{KlipperVersion: "v0.13.0-777-g7bc4d0946-printdeck-go",
+		Modules: []string{"probe", "bed_tilt", "extruder", "heater_bed"},
+		Macros:  []string{"NOZZLE_WIPE", "PRINT_START", "PRINT_END", "G29", "G12"}}
+	end := time.Date(2026, 10, 20, 11, 42, 0, 0, time.Local)
+	p.History_ = []printer.Record{
+		{File: "benchy.gcode", Path: "benchy.gcode", Result: "complete", Duration: 102 * time.Minute, Filament: 4100, End: end},
+		{File: "cable_clip_x8.gcode", Path: "cable_clip_x8.gcode", Result: "cancelled", Duration: 12 * time.Minute, Filament: 600, End: end.AddDate(0, 0, -1)},
+		{File: "amp_bracket.gcode", Path: "amp_bracket.gcode", Result: "complete", Duration: 65 * time.Minute, Filament: 6300, End: end.AddDate(0, 0, -3)},
+	}
+	p.Meta_ = gcodemeta.Meta{Slicer: "Cura 5.13.0", PrintTime: 102 * time.Minute, FilamentMM: 4100, LayerHeight: 0.2,
+		NozzleTemp: 210, BedTemp: 60}
 	return a, m, p
 }
 
@@ -91,13 +105,33 @@ func demo(args []string) {
 	snap("print-wipe")
 	a.OpenPrintScreen("tune")
 	snap("print-tune")
-	p.State_ = printer.State{Reachable: true, Text: "Operational", Connected: true, Tool: 24, Bed: 23}
+	// The states of a print: preparing, the first layer, paused, done.
+	p.State_ = printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true, File: "benchy.gcode",
+		Activity: "Heating bed  52/60°", Preparing: true, HasWipe: true, Tool: 24, Bed: 52, BedTarget: 60}
+	a.OpenPrintScreen("")
+	snap("print-preparing")
+	p.State_ = printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true, File: "benchy.gcode",
+		Activity: "Printing", Layer: 1, Layers: 27, Completion: 2, HasTimeLeft: true, TimeLeft: 100 * time.Minute,
+		ZOffset: 0.04, Tool: 210, ToolTarget: 210, Bed: 60, BedTarget: 60}
+	snap("print-first-layer")
+	p.State_.Layer, p.State_.Paused, p.State_.Completion, p.State_.Message = 12, true, 42, "Paused by user"
+	snap("print-paused")
+	p.State_ = printer.State{Reachable: true, Text: "Operational", Connected: true, Tool: 80, Bed: 48,
+		Finished: "complete", FinishedFile: "benchy.gcode", FinishedPath: "benchy.gcode", FinishedTime: 102 * time.Minute,
+		FinishedFilament: 4100}
+	snap("print-done")
+	p.State_ = printer.State{Reachable: true, Text: "Operational", Connected: true, ManualProbe: true, ManualZ: 0.425}
+	snap("print-manual-probe")
+	p.State_ = printer.State{Reachable: true, Text: "Operational", Connected: true, Tool: 24, Bed: 23, Homed: "xyz",
+		X: 110, Y: 110, Z: 5, Axis: [2][3]float64{{0, 0, 0}, {280, 280, 270}}}
 	a.OpenPrintScreen("")
 	snap("print-idle")
-	for _, n := range []string{"control", "swap", "swap-heat", "keypad"} {
+	for _, n := range []string{"move", "files", "filament", "maintenance", "machine", "macros", "history", "swap", "swap-heat", "keypad"} {
 		a.OpenPrintScreen(n)
 		snap("print-" + n)
 	}
+	a.OpenPrintScreen("file")
+	snap("print-file")
 	p.State_.FirmwareOld = true
 	a.OpenPrintScreen("")
 	snap("print-firmware-old")
