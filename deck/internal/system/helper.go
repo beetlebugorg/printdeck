@@ -58,8 +58,9 @@ var helperActions = func(r HelperRequest) (after func(), err error) {
 			return nil, err
 		}
 		log.Printf("helper: slot %s is written, restarting", slot)
-		// Restart after the answer is sent.
+		// Restart after the answer is sent, and after the deck sent its page to the browser.
 		return func() {
+			time.Sleep(3 * time.Second)
 			if err := RebootTryboot(); err != nil {
 				log.Printf("helper: %v", err)
 			}

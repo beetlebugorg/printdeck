@@ -41,6 +41,7 @@
       <tr><td>Image</td><td>{{.Variant}}</td></tr>
       <tr><td>Slot</td><td>{{.Slot}}</td></tr>
       <tr><td>Running for</td><td>{{.Uptime}}</td></tr>
+      <tr><td>Memory in use</td><td>{{.Memory}}</td></tr>
       {{range .Services}}<tr><td>{{.Name}}</td><td class="{{if ne .State "active"}}bad{{end}}">{{.State}}</td></tr>{{end}}
     </table>
   </section>

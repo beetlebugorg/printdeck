@@ -66,10 +66,13 @@ rm -rf "$T"/usr/lib/systemd/user "$T"/usr/lib/systemd/user-generators \
   "$T"/etc/profile.d "$T"/usr/share/bash-completion "$T"/usr/share/zsh "$T"/usr/share/factory
 
 # A unit whose program is gone goes too, with its links in the .wants and .requires folders.
-# Otherwise a target can pull it in, and it fails at each start.
+# Otherwise a target can pull it in, and it fails at each start. Only ExecStart and ExecStartPre
+# count: a unit runs with no program for ExecReload (dbus.service has dbus-send there). A program
+# with no path is in /usr/bin.
 for u in "$T"/usr/lib/systemd/system/*.service "$T"/etc/systemd/system/*.service; do
   [ -f "$u" ] || continue
-  for p in $(sed -n 's/^Exec[A-Za-z]*=[-@:+!]*\(\/[^ ]*\).*/\1/p' "$u"); do
+  for p in $(sed -n 's/^ExecStart\(Pre\)\{0,1\}=[-@:+!|]*\([^ ]*\).*/\2/p' "$u"); do
+    case "$p" in /*) ;; *) p=/usr/bin/$p ;; esac
     if [ ! -e "$T$p" ]; then
       name=${u##*/}
       find "$T"/usr/lib/systemd/system "$T"/etc/systemd/system -lname "*$name" -delete 2> /dev/null || true

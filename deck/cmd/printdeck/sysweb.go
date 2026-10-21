@@ -35,11 +35,11 @@ var systemServices = []string{"klipper.service", "printdeck-deck.service", "wpa_
 const maxBundle = 200 << 20
 
 type systemView struct {
-	Version, Variant, Slot, Uptime string
-	Services                       []struct{ Name, State string }
-	Journal, Klippy                string
-	Message                        string
-	Failed                         bool
+	Version, Variant, Slot, Uptime, Memory string
+	Services                               []struct{ Name, State string }
+	Journal, Klippy                        string
+	Message                                string
+	Failed                                 bool
 }
 
 func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend, klippyLog string) {
@@ -64,6 +64,7 @@ func renderSystem(w http.ResponseWriter, klippyLog, msg string, failed bool) {
 			}
 		}
 	}
+	v.Memory = memoryUse()
 	for _, s := range systemServices {
 		out, _ := exec.Command("systemctl", "is-active", s).Output()
 		v.Services = append(v.Services, struct{ Name, State string }{strings.TrimSuffix(s, ".service"), strings.TrimSpace(string(out))})
@@ -119,6 +120,24 @@ func installUpload(w http.ResponseWriter, r *http.Request, pr printerBackend) (s
 		return "The update failed: " + err.Error(), true
 	}
 	return "The update is written. The Printdeck restarts into it now. Load this page again in a minute.", false
+}
+
+// memoryUse is the memory in use and the total memory, from /proc/meminfo.
+func memoryUse() string {
+	b, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return ""
+	}
+	kb := map[string]int{}
+	for _, l := range strings.Split(string(b), "\n") {
+		f := strings.Fields(l)
+		if len(f) >= 2 {
+			n, _ := strconv.Atoi(f[1])
+			kb[strings.TrimSuffix(f[0], ":")] = n
+		}
+	}
+	total, avail := kb["MemTotal"], kb["MemAvailable"]
+	return fmt.Sprintf("%d MB of %d MB", (total-avail)/1024, total/1024)
 }
 
 // tail returns the end of a file, at most n bytes, from the start of a line.
