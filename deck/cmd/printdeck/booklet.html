@@ -40,8 +40,9 @@
   ol.steps li { display: grid; grid-template-columns: .26in 1fr; margin-bottom: .05in; }
   ol.steps .n { width: .19in; height: .19in; background: var(--orange); color: #fff; font: 700 8pt/.19in "IBM Plex Mono", monospace;
     text-align: center; border-radius: 2px; margin-top: .01in; }
-  .text .body { columns: 2; column-gap: .24in; }
-  .text .body ol.steps { break-inside: avoid; }
+  /* The intro at the left and the steps at the right, or the intro in one column. */
+  .text .body { display: grid; grid-template-columns: 1fr 1fr; column-gap: .24in; }
+  .text .body.single { grid-template-columns: 1fr; max-width: 4.2in; }
 
   /* A picture: the callouts at the left, the screen with its numbers at the right. */
   .figure .trim { display: grid; grid-template-columns: 1fr 2.4in; column-gap: .16in; }
@@ -121,10 +122,9 @@
     <ol>{{$ch := ""}}{{range $p.Contents}}{{if ne .Chapter $ch}}<li class="ch">{{.Chapter}}</li>{{$ch = .Chapter}}{{end}}<li><span>{{.Title}}</span><span class="dots"></span><span>{{.Page}}</span></li>{{end}}</ol>
   {{else if eq $p.Kind "text"}}
     {{if $p.Title}}<h2>{{$p.Title}}</h2>{{end}}
-    <div class="body">
-      {{range $p.Paras}}<p>{{.}}</p>{{end}}
+    <div class="body{{if not $p.Steps}} single{{end}}">
+      {{if or $p.Paras $p.Notes}}<div>{{range $p.Paras}}<p>{{.}}</p>{{end}}{{range $p.Notes}}<p>{{.}}</p>{{end}}</div>{{end}}
       {{if $p.Steps}}<ol class="steps">{{range $i, $s := $p.Steps}}<li><span class="n">{{add $p.StepFrom $i}}</span><span>{{$s}}</span></li>{{end}}</ol>{{end}}
-      {{range $p.Notes}}<p>{{.}}</p>{{end}}
     </div>
   {{else if eq $p.Kind "figure"}}
     <div class="callouts">
