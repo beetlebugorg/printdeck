@@ -70,6 +70,7 @@ func (a *App) drawKeypad(c *gfx.Canvas) {
 	tooHigh := v > kp.max
 	disp := s.Next(72)
 	window(c, disp)
+	a.region("Value", disp)
 	col := lcdInk
 	if tooHigh {
 		col = red
@@ -86,13 +87,16 @@ func (a *App) drawKeypad(c *gfx.Canvas) {
 	for i := range sizes {
 		sizes[i] = kit.Fr(1)
 	}
-	for i, r := range kit.Cols(s.Next(44), 8, sizes...) {
+	presets := s.Next(44)
+	a.region("Presets", presets)
+	for i, r := range kit.Cols(presets, 8, sizes...) {
 		val := kp.presets[i].v
 		a.button(c, r, kp.presets[i].label, raised, text, func() { kp.digits = strconv.Itoa(val) })
 	}
 
 	// Digits: 3 x 4
 	keys := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "Del"}
+	a.region("Keys", digits)
 	for i, r := range kit.Grid(digits, 3, 4, 8) {
 		key := keys[i]
 		a.button(c, r, key, raised, text, func() {

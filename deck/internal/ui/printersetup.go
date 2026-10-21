@@ -51,8 +51,12 @@ func (a *App) drawPrinterSetup(c *gfx.Canvas, st printer.State) {
 		right.Skip(20)
 	}
 	if !probing {
-		for _, b := range boards {
-			a.drawBoard(c, right.Next(132), b)
+		for i, b := range boards {
+			r := right.Next(132)
+			a.drawBoard(c, r, b)
+			if i == 0 {
+				a.region("Board", r)
+			}
 			right.Skip(16)
 		}
 	}
@@ -98,7 +102,10 @@ func (a *App) drawPrinterSetup(c *gfx.Canvas, st printer.State) {
 			keys.Skip(20)
 		}
 	}
-	para(right, "Or copy your own printer.cfg to the PRINTDECK partition of the disk, and restart the Pi.", 18, dim)
+	own, ownText := right.Y(), "Or copy your own printer.cfg to the PRINTDECK partition of the disk, and restart the Pi."
+	ownW := right.Rest().Dx()
+	para(right, ownText, 18, dim)
+	a.textRegion("Your own config", image.Rect(right.Rest().Min.X, own, right.Rest().Max.X, right.Y()), gfx.Face(false, 18), wrapText(gfx.Face(false, 18), ownText, ownW)...)
 }
 
 // drawConfigs is the list of Klipper's example configs for complete printers. It shows the configs
@@ -141,6 +148,7 @@ func (a *App) drawConfigs(c *gfx.Canvas) {
 			msg, label = "All printers. Your board: "+b.MCU, "Only for this board"
 		}
 		face := gfx.Face(false, 16)
+		a.textRegion("Chip", what, face, wrapText(face, msg, what.Dx())...)
 		for i, l := range wrapText(face, msg, what.Dx()) {
 			c.Text(image.Rect(what.Min.X, what.Min.Y+i*24, what.Max.X, what.Min.Y+i*24+28), l, face, dim, gfx.Left)
 		}
@@ -161,6 +169,9 @@ func (a *App) drawConfigs(c *gfx.Canvas) {
 			col = orange
 		}
 		a.menuRow(c, r, e.Name(), sub, col, nil)
+		if i == 0 {
+			a.region("Printer", r)
+		}
 	}
 	choose := func(i int) {
 		e := list[i]
@@ -228,6 +239,7 @@ func (a *App) drawKlipperError(c *gfx.Canvas, st printer.State) {
 		}
 		c.Text(s.Next(26), l, face, text, gfx.Left)
 	}
+	a.textRegion("Message", image.Rect(info.Min.X, info.Min.Y, info.Max.X, s.Y()), face, wrapText(face, msg, info.Dx())...)
 	restart, cap, ink := keys, orange, onAcc
 	if strings.Contains(strings.ToLower(msg), "shutdown") || strings.Contains(msg, "older version of the") && board.CanFlash("") {
 		k := kit.Cols(keys, 12, kit.Fr(1), kit.Fr(1))

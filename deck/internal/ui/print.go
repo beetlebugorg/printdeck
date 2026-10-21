@@ -174,6 +174,7 @@ func (a *App) askCancel() {
 // picture that is larger than the window becomes smaller to fit.
 func (a *App) modelView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 	window(c, box)
+	a.region("Model", box)
 	if img := a.Printer.Preview(); img != nil {
 		b, in := img.Bounds(), box.Inset(2)
 		if b.Dx() > in.Dx() || b.Dy() > in.Dy() {
@@ -231,6 +232,7 @@ func (a *App) lcdLines(st printer.State) []string {
 // temps draws the nozzle and the bed side by side in r: the temperature, and the target while the
 // heater is on. A tap opens the keypad for the target.
 func (a *App) temps(c *gfx.Canvas, area image.Rectangle, tool, toolT, bed, bedT float64, ok bool) {
+	a.region("Temperatures", area)
 	h := area.Dy()
 	card := func(r image.Rectangle, icon func(cx, cy, r int, col color.RGBA), name string, v, target float64) {
 		plate(c, r)
@@ -271,6 +273,7 @@ func (a *App) drawScrubber(c *gfx.Canvas, box image.Rectangle, st printer.State)
 	layerOf := func(f float64) int { return int(f*float64(st.Layers) + 0.5) }
 
 	slider := image.Rect(box.Min.X+18, box.Max.Y-36, box.Max.X-18, box.Max.Y-4)
+	a.region("Layer slider", slider)
 	f := float64(st.Layer) / float64(st.Layers)
 	shown := st.Layer
 	drag, dragging := a.in.Dragging(slider)

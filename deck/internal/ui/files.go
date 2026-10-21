@@ -5,6 +5,7 @@ import (
 	"image"
 	"printdeck/kit"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -42,7 +43,9 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 		r := kit.Rows(body, 8, kit.Px(24), kit.Fr(1))
 		count, area = r[0], r[1]
 	}
-	label(c, kit.Rows(count, 0, kit.Px(24))[0], fmt.Sprintf("Newest first · %d files", len(files)), gfx.Left)
+	countR, countText := kit.Rows(count, 0, kit.Px(24))[0], fmt.Sprintf("Newest first · %d files", len(files))
+	label(c, countR, countText, gfx.Left)
+	a.textRegion("Count", countR, gfx.Face(true, 14), strings.ToUpper(countText))
 	if len(files) == 0 {
 		noItems(c, area, "No files yet", "Send a file from the slicer,", "or upload it in the browser.")
 		return
@@ -56,10 +59,20 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 		f := files[i]
 		plate(c, r)
 		m := a.Printer.FileMeta(f.Path)
-		a.thumb(c, image.Rect(r.Min.X+10, r.Min.Y+9, r.Min.X+10+thumbSmall, r.Min.Y+9+thumbSmall), f.Path, m)
+		pic := image.Rect(r.Min.X+10, r.Min.Y+9, r.Min.X+10+thumbSmall, r.Min.Y+9+thumbSmall)
+		a.thumb(c, pic, f.Path, m)
+		if i == 0 { // the names of the first row
+			a.region("Picture", pic)
+		}
 		c.Text(image.Rect(r.Min.X+92, r.Min.Y+8, r.Max.X-12, r.Min.Y+38), gfx.Fit(gfx.Face(true, 19), f.Name, r.Dx()-104), gfx.Face(true, 19), text, gfx.Left)
 		c.Text(image.Rect(r.Min.X+92, r.Min.Y+36, r.Max.X-12, r.Min.Y+60), metaLine(m), gfx.Face(false, 16), dim, gfx.Left)
+		if i == 0 {
+			a.textRegion("File", image.Rect(r.Min.X+92, r.Min.Y+8, r.Max.X-12, r.Min.Y+60), gfx.Face(true, 19), gfx.Fit(gfx.Face(true, 19), f.Name, r.Dx()-104))
+		}
 		c.Text(image.Rect(r.Min.X+92, r.Min.Y+58, r.Max.X-12, r.Max.Y-6), fileDate(f.Date, a.Now(), a.Clock24), gfx.Face(false, 14), dim, gfx.Left)
+		if i == 0 {
+			a.textRegion("Date", image.Rect(r.Min.X+92, r.Min.Y+58, r.Max.X-12, r.Max.Y-6), gfx.Face(false, 14), fileDate(f.Date, a.Now(), a.Clock24))
+		}
 	}, open)
 }
 
@@ -214,7 +227,9 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 		pic, box, keys = kit.Center(r[0], side, side), r[1], r[2]
 	}
 	a.thumb(c, pic, f.Path, m)
+	a.region("Picture", pic)
 	plate(c, box)
+	a.region("Slicer data", box)
 	for i, kv := range rows {
 		y := box.Min.Y + 10 + i*30
 		label(c, image.Rect(box.Min.X+18, y, box.Max.X, y+30), kv[0], gfx.Left)

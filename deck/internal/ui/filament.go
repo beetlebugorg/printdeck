@@ -28,6 +28,8 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 		win, hint, mats, temps, change, load, ext, heat = r[0], r[1], kit.Inset(r[2], 0, -4, 0, 4), kit.Inset(r[3], 16, 6, 16, -6), r[4], r[5], r[6], r[7]
 	}
 	window(c, win)
+	a.region("Loaded", win)
+	a.region("Material", mats)
 	loaded := "NO MATERIAL SET"
 	if m.Name != "" {
 		loaded = fmt.Sprintf("%s LOADED · %d° / %d°", m.Name, m.Tool, m.Bed)
@@ -61,6 +63,7 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 	extrude := func(r image.Rectangle, name string, mm float64) {
 		if cold {
 			key(c, r, name, surface, dim, false)
+			a.region(name, r)
 			a.addHit(kit.Hit{R: r, Tap: func() { a.Toast(fmt.Sprintf("Heat the nozzle to %d° first", minExtrudeTemp)) }})
 			return
 		}

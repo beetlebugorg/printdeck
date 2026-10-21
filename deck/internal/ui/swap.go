@@ -79,8 +79,11 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		if sw.mode == swapLoadOnly && n > 2 {
 			n--
 		}
-		c.Text(txt.Next(28), fmt.Sprintf("Step %d of %d", n, total), gfx.Face(false, 17), dim, gfx.Left)
-		c.Text(txt.Next(44), title, gfx.Face(true, 26), orange, gfx.Left)
+		r := txt.Next(28)
+		c.Text(r, fmt.Sprintf("Step %d of %d", n, total), gfx.Face(false, 17), dim, gfx.Left)
+		t := txt.Next(44)
+		c.Text(t, title, gfx.Face(true, 26), orange, gfx.Left)
+		a.textRegion("Step", image.Rect(r.Min.X, r.Min.Y, r.Max.X, t.Max.Y), gfx.Face(true, 26), title)
 		txt.Skip(16)
 		a.lcdNote(printer.LCDRow{Left: fmt.Sprintf("%d/%d %s", n, total, title)})
 	}
@@ -105,6 +108,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 			para("The nozzle heats to the temperature of the new filament.")
 		}
 		k := keys(size{172, 2}, size{80, 1})
+		a.region("Materials", k[0])
 		for i, r := range kit.Grid(k[0], 2, 2, 12) {
 			m := materials[i]
 			t, name := m.Tool, m.Name

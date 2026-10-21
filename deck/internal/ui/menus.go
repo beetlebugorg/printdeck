@@ -161,6 +161,8 @@ func (a *App) drawManualProbe(c *gfx.Canvas, st printer.State) {
 		box, steps, hint, end = r[0], r[1], r[2], r[3]
 	}
 	charLCD(c, lcdR, lcd2("Paper test", "", "Nozzle at Z", fmt.Sprintf("%.3f", st.ManualZ)), 20)
+	a.region("Height", lcdR)
+	a.region("Steps", steps)
 	plate(c, box)
 	face := gfx.Face(false, 18)
 	ls := kit.NewStack(kit.Inset(box, 18, 14, 18, 0), 0)
@@ -201,6 +203,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		info, rowsArea, restart = r[0], r[1], r[2]
 	}
 	window(c, info)
+	a.region("Information", info)
 	lineH := min(28, (info.Dy()-12)/4)
 	fw := "—"
 	switch {
@@ -370,10 +373,12 @@ func (a *App) drawStats(c *gfx.Canvas) {
 	var rest image.Rectangle
 	if f.wide {
 		statTiles(c, f.aside(), 2, tiles)
+		a.region("Totals", f.aside())
 		rest = body
 	} else {
 		r := kit.Rows(kit.Inset(body, 0, 10, 0, 0), 18, kit.Px(196), kit.Fr(1))
 		statTiles(c, r[0], 2, tiles)
+		a.region("Totals", r[0])
 		rest = r[1]
 	}
 
@@ -381,6 +386,7 @@ func (a *App) drawStats(c *gfx.Canvas) {
 	r := kit.Rows(kit.Inset(rest, 0, 0, 0, 8), 4, kit.Px(24), kit.Px(24), kit.Fr(1), kit.Px(22))
 	bar := r[0]
 	window(c, bar)
+	a.region("Results", bar)
 	in := bar.Inset(4)
 	x := in.Min.X
 	for _, part := range []struct {
@@ -395,6 +401,7 @@ func (a *App) drawStats(c *gfx.Canvas) {
 
 	box := kit.Inset(r[2], 0, 6, 0, 0)
 	plate(c, box)
+	a.region("Details", box)
 	top := "—"
 	if s.TopFile != "" {
 		top = fmt.Sprintf("%s (%d×)", s.TopFile, s.TopCount)
