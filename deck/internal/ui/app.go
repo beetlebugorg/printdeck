@@ -243,6 +243,8 @@ type App struct {
 	lcdTitle      string
 	lcdPage       string
 	lcdSel        int
+	lcdSaved      map[string]int // the cursor of each menu, for the way back
+	lcdDepth      int            // the depth of the menu: the open pages and dialogs
 	knobAt        time.Time
 	lcd           printer.LCDScreen
 	lcdNotes      []printer.LCDRow // rows under the heading of the page (lcdNote)

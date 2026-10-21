@@ -61,11 +61,14 @@ func TestKnobMenu(t *testing.T) {
 	if lines[0] != "Maintenance" || lines[1] != "  Back" || !strings.HasPrefix(lines[2], "> ") || a.LCD().Menu.Items[0].Icon != "back" {
 		t.Errorf("Maintenance: %q", lines)
 	}
-	// A turn up goes to Back, and a click goes back.
+	// A turn up goes to Back, and a click goes back, to the key that opened the page.
 	knob(a, "up")
 	knob(a, "click")
 	if a.topPage() != 0 {
 		t.Errorf("page %v after Back", a.topPage())
+	}
+	if l := a.focus[a.lcdSel].label; l != "Maintenance" {
+		t.Errorf("the cursor is at %q after Back, want Maintenance", l)
 	}
 	// The touch screen shows the focus with a ring after a turn.
 	if a.knobAt.IsZero() {

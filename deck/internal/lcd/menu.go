@@ -50,7 +50,7 @@ func (m *Menu) drawCarousel(c *canvas, sel, frame int) {
 	const bx, by = canvasW/2 - 16, 12
 	roundFrame(c, bx, by, bx+32, by+30)
 	c.bigIcon(it.Icon, bx+4, by+3)
-		// The neighbours have the same icons, with no frame.
+	// The neighbours have the same icons, with no frame.
 	if sel > 0 {
 		c.bigIcon(m.Items[sel-1].Icon, 12, by+3)
 		arrow(c, 4, by+15, -1)
