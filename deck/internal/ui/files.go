@@ -63,15 +63,16 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 			c.Text(image.Rect(r.Min.X+92, r.Min.Y+58, r.Max.X-12, r.Max.Y-6), fileDate(f.Date, a.Now()), gfx.Face(false, 14), dim, gfx.Left)
 		}
 	})
+	open := func(i int) {
+		if i >= 0 && i < len(files) {
+			a.file = files[i]
+			a.open(pageFile)
+		}
+	}
 	a.addHit(hit{r: image.Rect(0, filesTop, W, bottom),
 		scroll: func(dy int) { a.fileList.scroll = max(0, min(a.fileList.scroll+dy, maxScroll)) },
-		tapAt: func(p image.Point) {
-			i := (p.Y - filesTop + a.fileList.scroll) / fileRowH
-			if i >= 0 && i < len(files) {
-				a.file = files[i]
-				a.open(pageFile)
-			}
-		}})
+		tapAt:  func(p image.Point) { open((p.Y - filesTop + a.fileList.scroll) / fileRowH) }})
+	a.listFocus(len(files), filesTop, bottom, fileRowH, &a.fileList.scroll, func(i int) string { return files[i].Name }, open)
 }
 
 // metaLine is the short line of a file: time, filament, layer height.

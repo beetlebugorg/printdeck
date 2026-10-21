@@ -61,6 +61,8 @@ type Klippy struct {
 
 	console
 
+	onKey func(key string) // SetOnKey
+
 	// The maintenance action that runs now, and the last one that ended (RunAction).
 	action      string
 	actionStart time.Time
@@ -237,6 +239,16 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 		k.setDown(err.Error(), notify)
 		return
 	}
+	// A printer with no display, or a host with no printdeck_display, refuses: then the deck has
+	// no knob.
+	conn.SubscribeInput(ctx, func(key string) {
+		k.mu.Lock()
+		onKey := k.onKey
+		k.mu.Unlock()
+		if onKey != nil {
+			onKey(key)
+		}
+	})
 	version, objects := klipperObjects(ctx, conn)
 	k.mu.Lock()
 	k.conn, k.err = conn, ""
@@ -294,9 +306,6 @@ func (k *Klippy) Machine() Machine {
 	}
 	for _, o := range k.objects {
 		if name, ok := strings.CutPrefix(o, "gcode_macro "); ok {
-			if strings.EqualFold(name, "_PRINTDECK") {
-				m.Mirror = true
-			}
 			if !strings.HasPrefix(name, "_") {
 				m.Macros = append(m.Macros, name)
 			}
@@ -550,6 +559,20 @@ func (k *Klippy) FlashBoard(device string, progress board.FlashProgress) error {
 		err = rerr
 	}
 	return err
+}
+
+// SetOnKey sets the function that gets each key of the knob of the printer display
+// (printdeck_display).
+func (k *Klippy) SetOnKey(f func(key string)) {
+	k.mu.Lock()
+	k.onKey = f
+	k.mu.Unlock()
+}
+
+// ShowLCD shows a screen on the display of the printer, for 15 seconds. The deck sends it again
+// before then. nil gives the display back to Klipper.
+func (k *Klippy) ShowLCD(s *LCDScreen) error {
+	return k.call("printdeck/screen", map[string]any{"screen": s})
 }
 
 // SendConsole runs a command of the console in the background. Klipper writes the reply, and a

@@ -16,11 +16,14 @@
 //	printdeck helper    the system helper: the actions of the deck that need root (started by systemd)
 //	printdeck klipper-probe DEVICE [BAUD]  connect to a Klipper board and print what it reports
 //	printdeck klippy [options] CONFIG  run the Klipper host (the Go port of klippy.py)
+//	printdeck bench SOCKET OUT.png  run the deck UI with no screen on a Klipper host (a test bench)
 package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"image/png"
 	"log"
@@ -38,6 +41,7 @@ import (
 	"printdeck/internal/fb"
 	"printdeck/internal/gfx"
 	"printdeck/internal/klipper/cli"
+	"printdeck/internal/printer"
 	"printdeck/internal/speaker"
 	"printdeck/internal/spotify"
 	"printdeck/internal/system"
@@ -81,6 +85,9 @@ func main() {
 			return
 		case "board":
 			boardList()
+			return
+		case "bench":
+			bench(os.Args[2:])
 			return
 		case "flash":
 			boardFlash(os.Args[2:])
@@ -165,7 +172,7 @@ func run(cfg config.Config, sp *spotify.Client) {
 		}
 	}()
 	go pr.Run(ctx, app.Redraw)
-	go mirrorLoop(ctx, pr, app)
+	go lcdLoop(ctx, pr, app)
 	go am.Run(ctx, app.Redraw)
 	go eqc.Run(ctx, app.Redraw)
 	if cfg.Speaker {
@@ -277,29 +284,35 @@ func shot(cfg config.Config, sp *spotify.Client, args []string) {
 	f.Close()
 }
 
-// mirrorLoop shows the screen of the deck on the display of the printer, when the printer has the
-// macro of printdeck.cfg: two lines and an animation. It sends them only when they change, at most
-// every 2 seconds. The touch screen draws at least once a second, so the lines follow its screen.
-func mirrorLoop(ctx context.Context, pr printerBackend, app *ui.App) {
-	tick := time.NewTicker(2 * time.Second)
+// lcdLoop shows the screen of the deck on the display of the printer: at each change, and every
+// 5 seconds, because a screen of printdeck_display lasts 15 seconds.
+func lcdLoop(ctx context.Context, pr printerBackend, app *ui.App) {
+	k, ok := pr.(*printer.Klippy)
+	if !ok {
+		return
+	}
+	k.SetOnKey(app.LCDKey)
+	tick := time.NewTicker(250 * time.Millisecond)
 	defer tick.Stop()
-	var last ui.Mirror
+	var last []byte
+	var sent time.Time
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-tick.C:
 		}
-		if !pr.State().Reachable || !pr.Machine().Mirror {
-			last = ui.Mirror{}
+		if !pr.State().Reachable {
+			last = nil
 			continue
 		}
-		m := app.MirrorState()
-		if m == last || m.Line1 == "" {
+		s := app.LCD()
+		b, _ := json.Marshal(s)
+		if bytes.Equal(b, last) && time.Since(sent) < 5*time.Second {
 			continue
 		}
-		if err := pr.Gcode(m.Command()...); err == nil {
-			last = m
+		if err := k.ShowLCD(&s); err == nil {
+			last, sent = b, time.Now()
 		}
 	}
 }

@@ -109,9 +109,6 @@ type Machine struct {
 	KlipperVersion string
 	Modules        []string // the objects of Klipper with no name, for example "probe" or "bed_tilt"
 	Macros         []string // the macros that a person can run (no name with "_" first)
-	// Mirror is true when the printer has the macro _PRINTDECK of printdeck.cfg: the deck can
-	// show its lines on the display of the printer.
-	Mirror bool
 }
 
 // Has reports that the printer has a module.

@@ -67,6 +67,7 @@ type Conn struct {
 	pending map[int]chan message
 	subs    map[string]func(eventtime float64, update Status)
 	outputs map[string]func(line string)
+	inputs  map[string]func(key string)
 	err     error // why the connection ended
 }
 
@@ -79,6 +80,7 @@ type message struct {
 		EventTime float64 `json:"eventtime"`
 		Status    Status  `json:"status"`
 		Response  *string `json:"response"` // a line of G-code output (gcode/subscribe_output)
+		Key       *string `json:"key"`      // a key of the knob (printdeck/subscribe_input)
 	} `json:"params"`
 }
 
@@ -90,7 +92,8 @@ func Dial(ctx context.Context, path string) (*Conn, error) {
 		return nil, err
 	}
 	c := &Conn{nc: nc, done: make(chan struct{}), pending: map[int]chan message{},
-		subs: map[string]func(float64, Status){}, outputs: map[string]func(string){}}
+		subs: map[string]func(float64, Status){}, outputs: map[string]func(string){},
+		inputs: map[string]func(string){}}
 	go c.read()
 	return c, nil
 }
@@ -193,6 +196,23 @@ func (c *Conn) SubscribeOutput(ctx context.Context, output func(line string)) er
 	return err
 }
 
+// SubscribeInput calls input with each key of the knob and the buttons of the printer display
+// ("up", "down", "fast_up", "fast_down", "click", "long_click", "back"), until the connection ends.
+// The host needs the module printdeck_display. input runs on the reading goroutine.
+func (c *Conn) SubscribeInput(ctx context.Context, input func(key string)) error {
+	c.mu.Lock()
+	key := "printdeck-input-" + strconv.Itoa(len(c.inputs)+1)
+	c.inputs[key] = input
+	c.mu.Unlock()
+	_, err := c.Call(ctx, "printdeck/subscribe_input", map[string]any{"response_template": map[string]any{"key": key}})
+	if err != nil {
+		c.mu.Lock()
+		delete(c.inputs, key)
+		c.mu.Unlock()
+	}
+	return err
+}
+
 // Query reads the fields of the objects once. A nil field list means all fields.
 func (c *Conn) Query(ctx context.Context, objects map[string][]string) (Status, error) {
 	res, err := c.Call(ctx, "objects/query", map[string]any{"objects": objects})
@@ -249,8 +269,12 @@ func (c *Conn) read() {
 			c.mu.Unlock()
 			continue
 		}
-		update, output := c.subs[m.Key], c.outputs[m.Key]
+		update, output, input := c.subs[m.Key], c.outputs[m.Key], c.inputs[m.Key]
 		c.mu.Unlock()
+		if input != nil && m.Params != nil && m.Params.Key != nil {
+			input(*m.Params.Key)
+			continue
+		}
 		if output != nil && m.Params != nil && m.Params.Response != nil {
 			output(*m.Params.Response)
 			continue

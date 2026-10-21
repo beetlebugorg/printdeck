@@ -143,25 +143,26 @@ func (a *App) drawConfigs(c *gfx.Canvas) {
 			a.menuRow(c, image.Rect(24, y, W-24, y+rowH-8), e.Name(), sub, col, nil)
 		}
 	})
+	choose := func(i int) {
+		if i < 0 || i >= len(list) {
+			return
+		}
+		e := list[i]
+		a.confirm = &confirmBox{question: "Use the config of the " + gfx.Fit(gfx.Face(true, 28), e.Name(), 300) + "?", yes: "Use", onYes: func() {
+			a.Toast("Writing printer.cfg…")
+			a.do(func() error {
+				if err := pr.UseConfig(e.File, b.Device); err != nil {
+					return err
+				}
+				a.post(func() { a.pages = nil })
+				return nil
+			})
+		}}
+	}
 	a.addHit(hit{r: image.Rect(0, top, W, bottom),
 		scroll: func(dy int) { a.configScroll = max(0, min(a.configScroll+dy, maxScroll)) },
-		tapAt: func(p image.Point) {
-			i := (p.Y - top + a.configScroll) / rowH
-			if i < 0 || i >= len(list) {
-				return
-			}
-			e := list[i]
-			a.confirm = &confirmBox{question: "Use the config of the " + gfx.Fit(gfx.Face(true, 28), e.Name(), 300) + "?", yes: "Use", onYes: func() {
-				a.Toast("Writing printer.cfg…")
-				a.do(func() error {
-					if err := pr.UseConfig(e.File, b.Device); err != nil {
-						return err
-					}
-					a.post(func() { a.pages = nil })
-					return nil
-				})
-			}}
-		}})
+		tapAt:  func(p image.Point) { choose((p.Y - top + a.configScroll) / rowH) }})
+	a.listFocus(len(list), top, bottom, rowH, &a.configScroll, func(i int) string { return list[i].Name() }, choose)
 }
 
 // drawBoard draws one probe result in a window, and returns the bottom of the window.

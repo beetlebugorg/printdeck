@@ -14,17 +14,9 @@ import (
 // it runs, the Print tab shows it over everything, on every screen, and the other keys are off.
 // The display of the printer shows it too.
 
-// runAction runs a maintenance action. The display of the printer shows the action before it
-// starts: Klipper runs one command at a time, so the deck cannot change the display while the
-// action runs.
+// runAction runs a maintenance action.
 func (a *App) runAction(name string, lines ...string) {
-	pr := a.Printer
-	var script []string
-	if pr.Machine().Mirror {
-		script = Mirror{pad(name, ""), pad("Please wait", ""), "work"}.Command()
-	}
-	script = append(script, lines...)
-	go pr.RunAction(name, script...)
+	go a.Printer.RunAction(name, lines...)
 }
 
 // drawAction is the screen of the action that runs now.

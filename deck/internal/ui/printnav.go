@@ -185,6 +185,7 @@ func (a *App) menuRow(c *gfx.Canvas, r image.Rectangle, title, sub string, subCo
 	cx, cy := r.Max.X-28, r.Min.Y+r.Dy()/2
 	c.Polygon([]image.Point{{cx - 5, cy - 10}, {cx + 5, cy}, {cx - 5, cy + 10}, {cx - 9, cy + 6}, {cx - 3, cy}, {cx - 9, cy - 6}}, dim)
 	a.addHit(hit{r: r, tap: tap})
+	a.addFocus(title, r, tap)
 }
 
 // estop is the Stop key in the status bar while the printer prints, moves or heats.

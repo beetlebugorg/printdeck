@@ -159,3 +159,22 @@ func TestSubscribeOutput(t *testing.T) {
 		t.Fatal("no output")
 	}
 }
+
+func TestSubscribeInput(t *testing.T) {
+	f := newFake(t, func(req map[string]any) (any, string) { return map[string]any{}, "" })
+	c := dial(t, f)
+	nc := <-f.conns
+	keys := make(chan string, 1)
+	if err := c.SubscribeInput(context.Background(), func(k string) { keys <- k }); err != nil {
+		t.Fatal(err)
+	}
+	write(nc, map[string]any{"key": "printdeck-input-1", "params": map[string]any{"key": "click"}})
+	select {
+	case k := <-keys:
+		if k != "click" {
+			t.Errorf("key %q", k)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("no key")
+	}
+}
