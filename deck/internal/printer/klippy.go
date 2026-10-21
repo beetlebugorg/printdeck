@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -253,6 +254,32 @@ func klipperObjects(ctx context.Context, conn *klippy.Conn) (version string, obj
 		}
 		json.Unmarshal(res, &l)
 		objects = l.Objects
+	}
+	// objects/list has only the objects with a status. A module such as bed_tilt has none, so the
+	// sections of the config are added too.
+	if res, err := conn.Call(cctx, "objects/query", map[string]any{"objects": map[string]any{"configfile": []string{"config"}}}); err == nil {
+		var q struct {
+			Status struct {
+				Configfile struct {
+					Config map[string]any `json:"config"`
+				} `json:"configfile"`
+			} `json:"status"`
+		}
+		json.Unmarshal(res, &q)
+		have := map[string]bool{}
+		for _, o := range objects {
+			have[o] = true
+		}
+		names := make([]string, 0, len(q.Status.Configfile.Config))
+		for name := range q.Status.Configfile.Config {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			if !have[name] {
+				objects = append(objects, name)
+			}
+		}
 	}
 	return version, objects
 }
