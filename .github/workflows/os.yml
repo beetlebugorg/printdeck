@@ -1,0 +1,90 @@
+name: OS image
+
+# Builds the Printdeck OS image with os/build.sh, and signs its update bundle with the secret
+# PRINTDECK_SIGNING_KEY (deck/internal/system/sign.go has the public key).
+#
+#   push to main      a test build; the images are an artifact of the run
+#   tag vX.Y.Z        a stable release with the images
+#   tag vX.Y.Z-beta.N a beta: a pre-release, for the Printdecks on the beta channel
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths:
+      - "deck/**"
+      - "os/**"
+      - ".github/workflows/os.yml"
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: "release, or debug (with SSH and tools)"
+        default: release
+
+permissions:
+  contents: write
+
+concurrency:
+  group: os-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    env:
+      VARIANT: ${{ inputs.variant == 'debug' && 'debug' || '' }}
+      NAME: ${{ inputs.variant == 'debug' && 'printdeck-debug' || 'printdeck' }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # the version of the image is git describe, with the tags
+
+      # The build needs about 11 GB.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Cache the downloads of Buildroot
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/printdeck-os/dl
+          key: buildroot-dl-${{ hashFiles('os/configs/*', 'os/package/**', 'os/build.sh') }}
+          restore-keys: buildroot-dl-
+
+      - name: Build
+        env:
+          PRINTDECK_SIGNING_KEY: ${{ secrets.PRINTDECK_SIGNING_KEY }}
+        run: os/build.sh $VARIANT
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: deck/go.mod
+          cache-dependency-path: deck/go.sum
+
+      # A release must have a valid signature: the same check as on a Printdeck.
+      - name: Check the signature
+        if: env.VARIANT == ''
+        run: cd deck && go run ./cmd/printdeck verify ../os/out/printdeck-update.tar.xz
+
+      - name: Upload the images
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}-${{ github.sha }}
+          path: |
+            os/out/${{ env.NAME }}.img.xz
+            os/out/${{ env.NAME }}-update.tar.xz
+          retention-days: 14
+          compression-level: 0
+
+      - name: Release
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && env.VARIANT == '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$GITHUB_REF_NAME"
+          pre=""
+          case "$tag" in *-*) pre="--prerelease" ;; esac
+          gh release create "$tag" os/out/printdeck.img.xz os/out/printdeck-update.tar.xz \
+            --title "Printdeck $tag" --generate-notes --verify-tag $pre
