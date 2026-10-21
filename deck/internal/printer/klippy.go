@@ -226,6 +226,9 @@ func (k *Klippy) Machine() Machine {
 	}
 	for _, o := range k.objects {
 		if name, ok := strings.CutPrefix(o, "gcode_macro "); ok {
+			if strings.EqualFold(name, "_PRINTDECK") {
+				m.Mirror = true
+			}
 			if !strings.HasPrefix(name, "_") {
 				m.Macros = append(m.Macros, name)
 			}

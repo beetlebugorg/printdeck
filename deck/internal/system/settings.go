@@ -38,7 +38,11 @@ func Settings(log io.Writer) error {
 		return err
 	}
 	defer umount()
-	return applySettings(log)
+	err = applySettings(log)
+	if derr := writeDisplayCfg(); derr != nil {
+		fmt.Fprintf(log, "display layout: %v\n", derr)
+	}
+	return err
 }
 
 func applySettings(log io.Writer) error {
@@ -158,6 +162,73 @@ var deckSettings = []string{"DISPLAY_ROTATE", "TOUCH_INVERT_X", "TOUCH_INVERT_Y"
 	"TOUCH_OFFSET_X", "TOUCH_OFFSET_Y", "TOUCH_LOG", "SPOTIFY_DEVICE_NAME", "VOLUME_FLOOR_DB",
 	"VOLUME_CEIL_DB", "MAX_VOLUME", "PREHEAT_TOOL", "PREHEAT_BED", "FILAMENT_UNLOAD_MM",
 	"FILAMENT_LOAD_MM", "JOG_INVERT_Y", "NIGHT_FROM", "NIGHT_TO"}
+
+// displayCfg is the layout of the 16x4 display of the printer, with the two lines of the deck
+// (the macro _PRINTDECK of printdeck.cfg), the temperatures, the print time and the progress.
+const displayCfg = `# Written by Printdeck at each start, because printer.cfg has a [display] section. The display
+# of the printer shows the lines of the deck. Delete the [display] section to stop it.
+[display]
+display_group: __printdeck
+
+[display_data __printdeck line1]
+position: 0, 0
+text: { printer["gcode_macro _PRINTDECK"].line1 }
+
+[display_data __printdeck line2]
+position: 1, 0
+text: { printer["gcode_macro _PRINTDECK"].line2 }
+
+[display_data __printdeck extruder]
+position: 2, 0
+text: { render("_heater_temperature", param_heater_name="extruder") }
+
+[display_data __printdeck printing_time]
+position: 2, 10
+text: { "%6s" % (render("_printing_time").strip(),) }
+
+[display_data __printdeck heater_bed]
+position: 3, 0
+text: { render("_heater_temperature", param_heater_name="heater_bed") }
+
+[display_data __printdeck progress_bar]
+position: 3, 10
+text: { draw_progress_bar(3, 10, 6, printer.display_status.progress) }
+
+# An animation of the deck over the bottom row: filament in, filament out, or heating. It moves
+# with the clock of the printer, 4 steps a second.
+[display_data __printdeck animation]
+position: 3, 0
+text:
+  {% set a = printer["gcode_macro _PRINTDECK"].anim %}
+  {% if a %}
+  {% set t = (printer.toolhead.estimated_print_time * 4)|int %}
+  {% for i in range(16) %}
+  {% if a == "in" %}{ ">" if (i - t) % 4 == 0 else " " }
+  {% elif a == "out" %}{ "<" if (i + t) % 4 == 0 else " " }
+  {% elif a == "heat" %}{ "=" if i <= t % 17 else " " }
+  {% else %}{ " " }
+  {% endif %}
+  {% endfor %}
+  {% endif %}
+`
+
+// writeDisplayCfg writes the layout of the display of the printer when printer.cfg has a
+// [display] section, and removes it when it has none.
+func writeDisplayCfg() error {
+	path := filepath.Join(klipperConfigDir, "printdeck-display.cfg")
+	cfg, err := os.ReadFile(filepath.Join(klipperConfigDir, "printer.cfg"))
+	if err != nil || !hasLinePrefix(bytes.ReplaceAll(cfg, []byte(" "), nil), "[display]") {
+		if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		return nil
+	}
+	if err := writeFile(path, []byte(displayCfg), 0o664); err != nil {
+		return err
+	}
+	chownPrinter(path)
+	return nil
+}
 
 // placeholder is the printer.cfg of a new system: Klipper starts, and the deck shows the printer
 // setup (no [mcu] section).

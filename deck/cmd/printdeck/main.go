@@ -158,6 +158,7 @@ func run(cfg config.Config, sp *spotify.Client) {
 		}
 	}()
 	go pr.Run(ctx, app.Redraw)
+	go mirrorLoop(ctx, pr, app)
 	go am.Run(ctx, app.Redraw)
 	go eqc.Run(ctx, app.Redraw)
 	if cfg.Speaker {
@@ -267,4 +268,31 @@ func shot(cfg config.Config, sp *spotify.Client, args []string) {
 	}
 	png.Encode(f, c.RGBA)
 	f.Close()
+}
+
+// mirrorLoop shows the screen of the deck on the display of the printer, when the printer has the
+// macro of printdeck.cfg: two lines and an animation. It sends them only when they change, at most
+// every 2 seconds. The touch screen draws at least once a second, so the lines follow its screen.
+func mirrorLoop(ctx context.Context, pr printerBackend, app *ui.App) {
+	tick := time.NewTicker(2 * time.Second)
+	defer tick.Stop()
+	var last ui.Mirror
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+		}
+		if !pr.State().Reachable || !pr.Machine().Mirror {
+			last = ui.Mirror{}
+			continue
+		}
+		m := app.MirrorState()
+		if m == last || m.Line1 == "" {
+			continue
+		}
+		if err := pr.Gcode(m.Command()...); err == nil {
+			last = m
+		}
+	}
 }
