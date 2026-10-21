@@ -1,7 +1,7 @@
 # Printdeck Slate: all dimensions. Units are millimetres.
 #
 # The case is a thin tall slab that leans back 15 degrees on a gray foot. The 7 inch screen is
-# in portrait. The Pi 5 and the Amp2 are on the outside of the back plate, as a backpack, so
+# in portrait. The Pi 5 is on the outside of the back plate, as a backpack, so
 # every port has free space for a straight plug and the bend of its cable. The parts:
 #   slab        navy    the face and the walls, open at the bottom and at the rear
 #   chin        orange  the bottom of the face: vent slots, two snap tongues
@@ -63,9 +63,8 @@ SSD_O = (0.0, 94.0, PLATE_C[1])
 SSD_HOLES = [(x * 30.86, SSD_O[1] + y) for x in (-1, 1) for y in (36.2, -40.4)]
 SSD_USB_A = -22.7                # centre of the micro-B socket, from the old case model (unmeasured)
 
-# Pi 5 with the Amp2: on four bosses on the rear of the plate, parts to the rear. The USB and
-# Ethernet edge points up, so the USB plugs are easy to connect. The USB-C, micro HDMI, Amp2
-# power and speaker edge points left. The USB plugs and their cable bends stay below the top.
+# Pi 5: on four bosses on the rear of the plate, parts to the rear. The USB and Ethernet edge
+# points up, so the USB plugs are easy to connect. The USB-C and micro HDMI edge points left. The USB plugs and their cable bends stay below the top.
 PI_A, PI_B = -2.0, 128.0         # centre of the Pi board
 PI_BOSS_H = 19.0
 PI_BOSS_R = 4.0                  # 8 mm bosses: 2 mm of wall around the heat-set insert

@@ -51,11 +51,12 @@ HARDWARE = [
     (2, "M3 × 10 button head screw (chin)"),
     (4, "M3 × 8 socket head screw (foot)"),
     (4, "M3 × 16 screw, pan head (fan). It cuts its thread in the printed boss."),
+    (4, "M3 × 6 screw, pan head (Pi)"),
     (3, "Twist tie, 15 cm, max. 3 mm wide (orange looks best)"),
 ]
 
 ELECTRONICS = [
-    (1, "Raspberry Pi 5 + HiFiBerry Amp2, as one stack on four M3 × 16 male-female standoffs"),
+    (1, "Raspberry Pi 5"),
     (1, "Heatsink for the Pi 5 SoC, max. 16 × 16 × 8 mm, with thermal tape"),
     (1, "Adafruit 7 inch HDMI display with touch"),
     (1, "2.5 inch SATA drive with a USB adapter board"),
@@ -67,7 +68,6 @@ ELECTRONICS = [
     (1, f"USB 3 cable for the drive: micro-B SuperSpeed to USB-A, 15 to 20 cm (the route is {SSD_MM / 10:.0f} cm). "
         "Straight micro-B plug, max. 22 mm long from the socket. Cable max. 4.5 mm diameter."),
     (1, "Raspberry Pi 27 W USB-C power supply"),
-    (1, "12 to 20 V power supply for the Amp2, with a right-angle 5.5 × 2.1 mm plug"),
 ]
 
 STEPS = [
@@ -83,12 +83,12 @@ STEPS = [
         "Put the drive on the flat front of the back plate: adapter up, the M3 holes against the plate. Attach it with four M3 × 5 screws from the rear.",
         "Connect the drive cable to the micro-B socket of the drive adapter. Bend the cable to the rear through the notch in the top edge of the plate.",
     ], None),
-    ("step2_pi", "Fan and Pi", ["back plate (step 2)", "fan", "Pi 5 + Amp2", "heatsink", "4 × insert", "4 × M3 × 16"], [
+    ("step2_pi", "Fan and Pi", ["back plate (step 2)", "fan", "Pi 5", "heatsink", "4 × insert", "4 × M3 × 16", "4 × M3 × 6"], [
         "Press four M3 heat-set inserts into the four tall bosses on the rear of the back plate.",
         "Put the fan in between the four corner guides on the rear, with the cable toward the right of the case. The label side goes away from the plate: the fan blows onto the Pi.",
         "Attach the fan with four M3 × 16 screws through its corner holes into the four bosses. Turn each screw until the fan touches the boss. Do not tighten more: the thread is in plastic.",
         "Put the heatsink on the SoC of the Pi.",
-        "Put the Pi stack on the four bosses: the USB ports up, the USB-C and HDMI ports toward the left of the case. Turn the male ends of the standoffs through the Pi into the inserts.",
+        "Put the Pi on the four bosses: the USB ports up, the USB-C and HDMI ports toward the left of the case. Attach it with four M3 × 6 screws through the Pi into the inserts.",
         "Lead the fan cable around the right edge of the Pi, above the end of the GPIO header. Connect it to the fan connector of the Pi.",
     ], "Left and right are as seen from the front of the case."),
     ("step3", "Back plate into the slab", ["slab (step 1)", "back plate (step 3)"], [
@@ -172,9 +172,9 @@ def cover():
     total = sum(FILAMENT[n]["grams"] for n, _, _ in PRINTS)
     return f"""<section class="page">
   <h1>PRINTDECK</h1><div class="sub">Slate</div>
-  <p style="margin-top:4mm;max-width:160mm">A compact slab for the Printdeck: Raspberry Pi 5, HiFiBerry Amp2, the 7 inch
+  <p style="margin-top:4mm;max-width:160mm">A compact slab for the Printdeck: Raspberry Pi 5, the 7 inch
   touch display in portrait, and the drive. The slab leans back 15° on a gray foot. The Pi is open on the orange back plate at the
-  rear, as a backpack: every port has free space, so you plug the power, the printer, and the speakers straight
+  rear, as a backpack: every port has free space, so you plug the power and the printer straight
   into it. The front and the sides stay clean. All the cables show only on the rear. The case parts snap together, and screws make the chin and the foot rigid.</p>
   <div class="fig"><img src="{img('hero')}" style="max-height:120mm;max-width:49%"><img src="{img('rear')}" style="max-height:120mm;max-width:49%"></div>
   <div class="need"><div class="chip"><span class="sw" style="background:#1F2B4D"></span>Navy (blue) PLA</div>
@@ -213,7 +213,7 @@ def parts_page():
   <div class="cols" style="margin-top:6mm">
     <div><h2>Hardware</h2><table>{hw}</table>
       <p style="font-size:10pt">The slab, the chin, and the back plate hold with snap tongues and grooves. Screws
-      hold the chin, the foot, the display, and the drive; the Pi stack goes on its own standoffs.</p></div>
+      hold the chin, the foot, the display, and the drive, and the Pi.</p></div>
     <div><h2>Electronics</h2><table style="font-size:9.5pt">{el}</table></div>
   </div>
   {foot(2)}
@@ -257,9 +257,7 @@ def end_page(n):
   <div class="cols"><div class="fig"><img src="{img('connect')}" style="max-height:95mm"></div>
     <div class="fig"><img src="{img('exploded')}" style="max-height:95mm"></div></div>
   <ol><li>Connect the USB-C power supply to the Pi. The port is on the left edge of the Pi. Turn the cable to the rear.</li>
-    <li>Connect the 3D printer to the black USB 2 port next to the board, from above.</li>
-    <li>Put the right-angle plug of the Amp2 power supply into the jack on the left edge of the Amp2. Turn the cable to the rear.</li>
-    <li>Connect the speaker wires to the screw terminals on the left edge of the Amp2.</li></ol>
+    <li>Connect the 3D printer to the black USB 2 port next to the board, from above.</li></ol>
   <h2 style="margin-top:6mm">To open the case</h2>
   <ol><li>Disconnect the cables on the rear. Remove the four screws under the foot, and lift the case off the foot.</li>
     <li>Remove the screw from each side wall of the slab.</li>

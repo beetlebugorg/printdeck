@@ -15,9 +15,9 @@ const MANIFEST = JSON.parse(fs.readFileSync(path.join(HERE, "build", "manifest.j
 // The plugs that you connect last, with their cable stubs, get groups of their own.
 const LAST = {
   hw_plug_printer_usb: "printer", hw_stub_printer: "printer",
-  hw_plug_pi_power: "power", hw_stub_power: "power", hw_plug_amp_power: "power", hw_stub_amp_power: "power",
+  hw_plug_pi_power: "power", hw_stub_power: "power",
 };
-for (const p of MANIFEST.parts) p.group = LAST[p.name] ?? (p.name.startsWith("hw_stub_speaker") ? "speakers" : p.group);
+for (const p of MANIFEST.parts) p.group = LAST[p.name] ?? p.group;
 
 // The slab leans back 15 degrees. N points out of the face, U up the face. Z is up, the front is -Y.
 const T = (15 * Math.PI) / 180;
@@ -34,12 +34,12 @@ const FINISH = {
 };
 const LABEL = {
   slab: "Slab", chin: "Chin", back: "Back plate", foot: "Foot", foot_screws: "4 × M3 × 8", side_screw_r: "M3 × 10", side_screw_l: "M3 × 10", display: "7\" display", ssd: "Drive",
-  ssd_cable: "Drive cable", pi: "Pi 5 + Amp2", pi_plugs: "Plugs", printer: "Printer", power: "Power", speakers: "Speakers", fan: "30 mm fan", fan_cable: "Fan cable",
+  ssd_cable: "Drive cable", pi: "Pi 5", pi_plugs: "Plugs", printer: "Printer", power: "Power", fan: "30 mm fan", fan_cable: "Fan cable",
   cables: "Display cables",
 };
 
 const PRINTED = ["slab", "chin", "back", "foot"];
-const CONNECT = ["printer", "power", "speakers"];
+const CONNECT = ["printer", "power"];
 const ALL = [...PRINTED, "foot_screws", "side_screw_r", "side_screw_l", "display", "ssd", "ssd_cable", "pi", "pi_plugs", "fan", "fan_cable", "cables", ...CONNECT];
 const NO_CABLES = ALL.filter((g) => !["cables", "pi_plugs", ...CONNECT].includes(g));
 const BACK = ["back", "ssd", "ssd_cable", "pi", "fan", "fan_cable"];
@@ -85,7 +85,7 @@ const SHOTS = {
   },
   connect: {
     show: ALL, focus: CONNECT, camera: [-1.6, 1.3, 0.8],
-    explode: { printer: alongSlab(45), power: [-45, 0, 0], speakers: [-45, 0, 0] },
+    explode: { printer: alongSlab(45), power: [-45, 0, 0] },
   },
 };
 

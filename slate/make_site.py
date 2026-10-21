@@ -116,7 +116,7 @@ def page():
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Printdeck</title>
-<meta name="description" content="A Raspberry Pi 5 desk slab that runs OctoPrint and plays Spotify. Four printed parts, no supports.">
+<meta name="description" content="A Raspberry Pi 5 desk slab that runs Klipper for the 3D printer. Four printed parts, no supports.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600;800&display=swap" rel="stylesheet">
 <style>{CSS}</style>
@@ -125,8 +125,8 @@ def page():
 <header>
   <p class="eyebrow">Cyberdeck · Raspberry Pi 5</p>
   <h1>Printdeck</h1>
-  <p class="lede">A desk slab next to the 3D printer. It runs OctoPrint, shows the print on a 7" touch screen,
-    and plays Spotify through passive speakers. The Pi 5 and the HiFiBerry Amp2 are on the rear, so every port is open.</p>
+  <p class="lede">A desk slab next to the 3D printer. It runs Klipper, and shows and controls the print on a 7" touch
+    screen. The Pi 5 is on the rear, so every port is open.</p>
   <a class="btn" href="files/printdeck-slate-build.pdf">Build instructions (PDF)</a>
   <a class="btn" href="{repo}">Source on GitHub</a>
 </header>
@@ -153,17 +153,14 @@ def page():
   {"".join(steps)}
 
   <h2>Connect</h2>
-  <div class="step">{pic("connect", "The plugs for the printer, the power, and the speakers")}<div><ol>
+  <div class="step">{pic("connect", "The plugs for the printer and the power")}<div><ol>
     <li>Connect the USB-C power supply to the Pi. The port is on the left edge of the Pi.</li>
-    <li>Connect the 3D printer to the black USB 2 port next to the board, from above.</li>
-    <li>Put the right-angle plug of the Amp2 power supply into the jack on the left edge of the Amp2.</li>
-    <li>Connect the speaker wires to the screw terminals on the left edge of the Amp2.</li></ol></div></div>
+    <li>Connect the 3D printer to the black USB 2 port next to the board, from above.</li></ol></div></div>
 
   <h2>Software</h2>
-  <p>The <code>printdeck</code> app (Go) draws the full screen UI on the 7" display: a Music tab for Spotify Connect,
-    and a Print tab with a 3D view of the print, the temperatures, and the printer controls. go-librespot and CamillaDSP
-    run in Docker, and OctoPrint runs as a service. The installation steps are in the
-    <a href="{repo}#installation">README</a>.</p>
+  <p>The Printdeck runs Printdeck OS: one Go program that is the Klipper host, the touch screen, the display of
+    the printer, and the web pages. The touch screen shows a 3D view of the print, the temperatures, and the printer
+    controls. The steps to build and install the OS are in the <a href="{repo}/tree/main/os">os/README.md</a>.</p>
 </main>
 <footer>Printdeck · the CAD, the images, and this page come from <a href="{repo}/tree/main/slate">slate/</a></footer>
 </body>

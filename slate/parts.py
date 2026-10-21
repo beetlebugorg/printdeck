@@ -9,7 +9,7 @@
 import math
 
 from build123d import (Align, Box, Circle, Cylinder, Line, Location, Plane, Polygon, Pos, Rectangle, Rot, TangentArc,
-                       Torus, Vector, Wire, chamfer, extrude, fillet, scale, sweep, Axis, Cone, RegularPolygon)
+                       Torus, Vector, Wire, chamfer, extrude, fillet, scale, sweep, Axis, Cone)
 
 import shape as S
 
@@ -314,10 +314,6 @@ def frame_loc(origin, x, z):
     return Location(Plane(origin=origin, x_dir=x, z_dir=z))
 
 
-def hexagon(af, h):
-    return extrude(RegularPolygon(af / math.sqrt(3), 6), amount=h)
-
-
 def display():
     m = frame_loc(S.DISP_C, (1, 0, 0), (0, 0, 1))
     p = [
@@ -352,19 +348,16 @@ def ssd():
 
 
 def pi_stack():
-    """Pi 5 and Amp2, from the vendor models (case/vendor). Local x: toward the USB and Ethernet
+    """Pi 5, from the vendor model (case/vendor). Local x: toward the USB and Ethernet
     ports (up, +b). Local y: toward the GPIO header (right, +a). Local z: away from the plate
     (to the rear). The bosses of the back plate take the place of the bottom spacers."""
     m = frame_loc((S.PI_A, S.PI_B, S.PLATE_C[0]), (0, 1, 0), (0, 0, -1))
     s = S.PI_BOSS_H
     b = s + 1.5                     # top of the Pi board
-    a = b + 16                      # bottom of the Amp2 board
     holes = [(-39, -24.5), (19, -24.5), (-39, 24.5), (19, 24.5)]
-    up = (Align.CENTER, Align.CENTER, Align.MIN)
     p = []
     for i, (x, y) in enumerate(holes):
-        p.append((f"pi_standoff{i}", Pos(x, y, b) * hexagon(5, 16), "brass"))
-        p.append((f"pi_screw{i}", cyl_c(x, y, 2.75, a + 1.5, a + 3.5), "steel"))
+        p.append((f"pi_screw{i}", cyl_c(x, y, 2.75, b, b + 2), "steel"))
     p += [
         ("pi_board", box(-42.5, 42.5, -28, 28, s, b), "pcb_green"),
         ("pi_ethernet", box(23.5, 44.5, -25.8, -9.8, b, b + 13.5), "steel"),
@@ -378,30 +371,20 @@ def pi_stack():
         ("pi_heatsink", box(-20, -4, -5.5, 10.5, b + 2.2, b + 10.2), "alu_dark"),
         ("pi_rp1", box(4.5, 16.5, -4, 8, b, b + 1.2), "black_plastic"),
         ("pi_fan_socket", box(22.8, 25.7, 21, 27, b, b + 3.6), "nickel"),
-        ("amp_board", box(-42.5, 22.5, -28, 28, a, a + 1.5), "pcb_blue"),
-        ("amp_terminals", box(-15.2, 15.1, -27.7, -17.3, a + 1.5, a + 15.4), "terminal_green"),
-        ("amp_jack", box(-25, -15.7, -30, -15.8, a + 1.5, a + 12.4), "black_plastic"),
-        ("amp_coil1", box(-15.5, -5.5, -12.6, -3.6, a + 1.5, a + 10.4), "alu_dark"),
-        ("amp_coil2", box(1, 11, -12.6, -3.6, a + 1.5, a + 10.4), "alu_dark"),
-        ("amp_header", box(-35.4, 15.4, 21.9, 27, a - 7.5, a), "black_plastic"),
     ]
-    for i, (x, y) in enumerate(((-20.9, -0.3), (-20.9, 12.6), (16.9, 6.3), (16.9, 15.2))):
-        p.append((f"amp_cap{i}", Pos(x, y, a + 1.5) * Cylinder(4.2, 12.4, align=up), "black_plastic"))
     p += [
         # Plugs: USB-C power and the display HDMI (left edge), the drive (USB 3), the touch
-        # and the printer (USB 2) at the top edge, the fan, and the right-angle Amp2 power plug.
+        # and the printer (USB 2) at the top edge, and the fan.
         ("plug_pi_power", box(-37.3, -25.3, -57.3, -29.3, b - 1.65, b + 4.85), "black_plastic"),
         ("plug_pi_hdmi", box(-22.7, -10.7, -49.3, -29.3, b - 1.5, b + 4.5), "black_plastic"),
         ("plug_ssd_usb", box(44.6, 74.6, -6.4, 8.6, b + 0.8, b + 7.8), "black_plastic"),
         ("plug_touch_usb", box(44.6, 74.6, 11.5, 26.5, b + 8, b + 15), "black_plastic"),
         ("plug_printer_usb", box(44.6, 74.6, 11.5, 26.5, b + 0.8, b + 7.8), "black_plastic"),
         ("plug_fan", box(23.0, 25.5, 21.5, 26.5, b + 3.6, b + 7), "nickel"),
-        ("plug_amp_power", box(-25.4, -15.3, -42, -30.1, a + 2, a + 12), "black_plastic"),
     ]
     z = [
         ("pi_port_plugs", box(44.6, 80, -28, 28, b, b + 16.5)),
         ("pi_side_plugs", box(-38, 2, -60, -29.3, b - 2, b + 6)),
-        ("amp_side_plugs", box(-26, 16, -45, -28.1, a + 1.5, a + 16)),
     ]
     return [(n, m * sh, mat) for n, sh, mat in p], [(n, m * sh) for n, sh in z]
 
@@ -491,19 +474,13 @@ def cable_paths():
 
 
 def stub_paths():
-    """Short pieces of the cables that you bring: power, printer, Amp2 power, speakers."""
-    a = PB + 16                      # bottom of the Amp2 board
-    p = {
+    """Short pieces of the cables that you bring: power and printer."""
+    return {
         "stub_power": [pi_point(-31.3, -57.3, PB + 1.6), pi_point(-31.3, -60, PB + 3), pi_point(-31.3, -62, PB + 25),
                        pi_point(-31.3, -62, PB + 60)],
         "stub_printer": [pi_point(74.6, 19, PB + 4.3), pi_point(78, 19, PB + 4.3), pi_point(83, 12, PB + 8),
                          pi_point(84, 8, PB + 23), pi_point(67, 8, PB + 43), pi_point(-8, 8, PB + 48)],
-        "stub_amp_power": [pi_point(-20.35, -36, a + 12), pi_point(-20.35, -36, a + 40)],
     }
-    for i, x in enumerate((-2.6, 2.4, 7.4, 12.4)):
-        p[f"stub_speaker{i}"] = [pi_point(x, -27.7, a + 8), pi_point(x, -34, a + 9), pi_point(x, -38, a + 16),
-                                 pi_point(x, -40, a + 40)]
-    return p
 
 
 def cable_length(points):
@@ -518,8 +495,7 @@ def cables():
            ("ssd_cable", tube(paths["ssd"], 2.25), "black_plastic"),
            ("fan_cable", tube(paths["fan"], 0.8), "black_plastic")]
     for name, pts in stub_paths().items():
-        r = 1.0 if "speaker" in name else 2.0
-        out.append((name, tube(pts, r), "black_plastic"))
+        out.append((name, tube(pts, 2.0), "black_plastic"))
     # The micro-B plug: metal, overmould, and strain relief.
     a, b, c = S.SSD_USB_A, SSD_PLUG_B, SSD_PLUG_C
     out += [("ssd_cable_metal", box(a - 6.1, a + 6.1, b, b + 1.7, c - 0.9, c + 0.9), "steel"),
