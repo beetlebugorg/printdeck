@@ -131,6 +131,12 @@ func run(cfg config.Config, sp *spotify.Client) {
 		app.Theme = strings.TrimSpace(string(b))
 	}
 	app.OnTheme = func(t string) { os.WriteFile(themeFile, []byte(t+"\n"), 0o644) }
+	// The loaded material is kept in the state folder too.
+	materialFile := filepath.Join(cfg.StateDir, "material")
+	if b, err := os.ReadFile(materialFile); err == nil {
+		app.Material = strings.TrimSpace(string(b))
+	}
+	app.OnMaterial = func(m string) { os.WriteFile(materialFile, []byte(m+"\n"), 0o644) }
 	events := make(chan touch.Event, 64)
 	// On the Printdeck OS image, the first start opens the setup screen.
 	host := newSetupHost(cfg.StateDir)
