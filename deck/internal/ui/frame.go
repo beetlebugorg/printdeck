@@ -79,6 +79,23 @@ func (a *App) pageFrame() frame {
 	return frame{head: head, main: main}
 }
 
+// body is the content area of a page: in the main pane, inside the margins.
+func (f frame) body() image.Rectangle {
+	if f.wide {
+		return kit.Inset(f.main, wideIn, lcdTop, wideOut, lcdTop)
+	}
+	return kit.Inset(f.main, margin, 0, margin, 8)
+}
+
+// aside is the free space of the left column of a wide page, inside the margins. It is empty on a
+// tall screen.
+func (f frame) aside() image.Rectangle {
+	if !f.wide {
+		return image.Rectangle{}
+	}
+	return kit.Inset(f.side, wideOut, 0, wideIn, lcdTop)
+}
+
 // backRect is the place of the Back key in the head of a page: at the right.
 func backRect(head image.Rectangle) image.Rectangle {
 	return image.Rect(head.Max.X-130, head.Min.Y+20, head.Max.X-margin, head.Min.Y+66)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	lcdscreen "printdeck/internal/lcd"
+	"printdeck/kit"
 	"strings"
 	"sync"
 	"time"
@@ -34,23 +35,24 @@ var lcdMu sync.Mutex
 // drawing is the App that draws now (under drawMu), for heading.
 var drawing *App
 
-// listFocus adds the rows of a list that scrolls to the menu of the display: n rows of height
-// rowH from y top to bottom, at the scroll position *scroll. A row that the knob focuses scrolls
-// into view.
-func (a *App) listFocus(n, top, bottom, rowH int, scroll *int, label func(i int) string, tap func(i int)) {
+// list draws a list that scrolls: each row that shows, with draw. A tap on a row calls tap. The
+// rows are also the menu of the display: a row that the knob focuses scrolls into view.
+func (a *App) list(c *gfx.Canvas, l kit.List, label func(i int) string, draw func(c *gfx.Canvas, i int, r image.Rectangle), tap func(i int)) {
+	l.Clamp()
+	c.Clipped(l.Area, func(c *gfx.Canvas) {
+		for i := range l.N {
+			if l.Shows(i) {
+				draw(c, i, l.Row(i))
+			}
+		}
+	})
+	a.addHit(l.Hit(tap))
 	if !a.collect {
 		return
 	}
-	for i := range n {
-		y := top + i*rowH - *scroll
-		a.focus = append(a.focus, focusItem{label: lcdText(label(i)), r: image.Rect(24, y, W-24, y+rowH-10),
-			tap: func() { tap(i) }, reveal: func() {
-				if y := top + i*rowH; y-*scroll < top {
-					*scroll = y - top
-				} else if y+rowH-*scroll > bottom {
-					*scroll = y + rowH - bottom
-				}
-			}})
+	for i := range l.N {
+		a.focus = append(a.focus, focusItem{label: lcdText(label(i)), r: l.Row(i),
+			tap: func() { tap(i) }, reveal: func() { l.Reveal(i) }})
 	}
 }
 

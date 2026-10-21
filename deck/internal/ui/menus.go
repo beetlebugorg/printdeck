@@ -17,11 +17,29 @@ import (
 
 const menuTop, menuRowH = 78, 98
 
+// menuItem is a row of a menu page.
+type menuItem struct {
+	title, sub string
+	col        color.RGBA // the color of sub
+	tap        func()     // nil: a row with no action
+}
+
+// menuRows draws the rows of a menu page, from the top of area. On a tall screen each row is rowH
+// high. On a wide screen the rows share the height of the area, and are at most rowH high.
+func (a *App) menuRows(c *gfx.Canvas, area image.Rectangle, wide bool, rowH, gap int, items []menuItem) {
+	if wide {
+		rowH = min(rowH, (area.Dy()+gap)/max(1, len(items))-gap)
+	}
+	s := kit.NewStack(area, gap)
+	for _, it := range items {
+		a.menuRow(c, s.Next(rowH), it.title, it.sub, it.col, it.tap)
+	}
+}
+
 // drawMaintenance lists the calibrations that the printer has (the modules of Klipper).
 func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
-	heading(c, "Maintenance")
-	a.backButton(c)
+	f := a.page(c, "Maintenance")
 	mach := pr.Machine()
 	idle := st.Connected && !st.Busy()
 
@@ -109,13 +127,15 @@ func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 	} else {
 		rows = append(rows, row{"Save config", "No unsaved changes", false, nil})
 	}
-	for i, r := range rows {
+	var items []menuItem
+	for _, r := range rows {
 		col := dim
 		if r.warn {
 			col = orange
 		}
-		a.menuRow(c, image.Rect(24, menuTop+i*menuRowH, W-24, menuTop+i*menuRowH+86), r.title, r.sub, col, r.tap)
+		items = append(items, menuItem{r.title, r.sub, col, r.tap})
 	}
+	a.menuRows(c, a.listArea(f), f.wide, 86, 12, items)
 }
 
 // drawManualProbe is the paper test of a manual Z probe: move the nozzle until a sheet of paper
@@ -154,11 +174,20 @@ func (a *App) drawManualProbe(c *gfx.Canvas, st printer.State) {
 // drawMachine is the Machine page: the versions and the totals, and the advanced pages.
 func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
-	heading(c, "Machine")
-	a.backButton(c)
+	f := a.page(c, "Machine")
 	mach := pr.Machine()
-	info := image.Rect(24, 76, W-24, 204)
+	// Tall: the information, the rows, and the restart keys at the bottom. Wide: the information
+	// and the restart keys in the left column, and the rows at the right.
+	var info, rowsArea, restart image.Rectangle
+	if f.wide {
+		r := kit.Rows(f.aside(), 10, kit.Fr(1), kit.Px(56))
+		info, restart, rowsArea = r[0], r[1], f.body()
+	} else {
+		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 14), 6, kit.Px(128), kit.Fr(1), kit.Px(66))
+		info, rowsArea, restart = r[0], r[1], r[2]
+	}
 	window(c, info)
+	lineH := min(28, (info.Dy()-12)/4)
 	fw := "—"
 	switch {
 	case st.Firmware != "" && st.FirmwareOld:
@@ -186,9 +215,9 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		{"PRINTS", fmt.Sprintf("%d · %d H · %.0f M", prints, hours, filament/1000)},
 	}
 	for i, l := range lines {
-		y := info.Min.Y + 10 + i*28
-		c.Text(image.Rect(info.Min.X+16, y, info.Max.X, y+28), l[0], gfx.Face(true, 14), lcdDim, gfx.Left)
-		c.Text(image.Rect(info.Min.X+130, y, info.Max.X-16, y+28), gfx.Fit(gfx.Face(true, 17), l[1], info.Dx()-150), gfx.Face(true, 17), lcdInk, gfx.Right)
+		y := info.Min.Y + 10 + i*lineH
+		c.Text(image.Rect(info.Min.X+16, y, info.Max.X, y+lineH), l[0], gfx.Face(true, 14), lcdDim, gfx.Left)
+		c.Text(image.Rect(info.Min.X+130, y, info.Max.X-16, y+lineH), gfx.Fit(gfx.Face(true, 17), l[1], info.Dx()-150), gfx.Face(true, 17), lcdInk, gfx.Right)
 	}
 
 	macros := "No macros"
@@ -198,47 +227,34 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 			macros += fmt.Sprintf(", %d more", n-2)
 		}
 	}
-	rows := []struct {
-		t, s string
-		tap  func()
-	}{
-		{"Statistics", fmt.Sprintf("%d prints · %d h · %.0f m filament", prints, hours, filament/1000), func() { a.open(pageStats) }},
-		{"Print history", "Each print, with the result", func() { a.open(pageHistory) }},
-		{"Macros", macros, func() { a.open(pageMacros) }},
-		{"Console", "Type G-code, and read the replies", func() { a.open(pageConsole) }},
-		{"Theme", themeLine(a.Theme, a.NightFrom, a.NightTo), a.cycleTheme},
-		{"Clock", clockLine(a.Clock24), a.toggleClock},
+	items := []menuItem{
+		{"Statistics", fmt.Sprintf("%d prints · %d h · %.0f m filament", prints, hours, filament/1000), dim, func() { a.open(pageStats) }},
+		{"Print history", "Each print, with the result", dim, func() { a.open(pageHistory) }},
+		{"Macros", macros, dim, func() { a.open(pageMacros) }},
+		{"Console", "Type G-code, and read the replies", dim, func() { a.open(pageConsole) }},
+		{"Theme", themeLine(a.Theme, a.NightFrom, a.NightTo), dim, a.cycleTheme},
+		{"Clock", clockLine(a.Clock24), dim, a.toggleClock},
 	}
-	upWarn := false
 	if a.Updater != nil {
 		line, warn := updateLine(a.Updater.Status())
-		upWarn = warn
-		rows = append([]struct {
-			t, s string
-			tap  func()
-		}{{"Software update", line, func() { a.open(pageUpdate) }}}, rows...)
-	}
-	if a.Setup != nil {
-		rows = append(rows, struct {
-			t, s string
-			tap  func()
-		}{"Wi-Fi and help", "The network, the password, the addresses", a.OpenHelp})
-	}
-	for i, r := range rows {
 		col := dim
-		if i == 0 && upWarn {
+		if warn {
 			col = orange
 		}
-		a.menuRow(c, image.Rect(24, 210+i*65, W-24, 210+i*65+60), r.t, r.s, col, r.tap)
+		items = append([]menuItem{{"Software update", line, col, func() { a.open(pageUpdate) }}}, items...)
 	}
-	half := (W - 48 - 12) / 2
-	a.button(c, image.Rect(24, 712, 24+half, 778), "Restart Klipper", raised, text, func() {
+	if a.Setup != nil {
+		items = append(items, menuItem{"Wi-Fi and help", "The network, the password, the addresses", dim, a.OpenHelp})
+	}
+	a.menuRows(c, rowsArea, f.wide, 60, 5, items)
+	k := kit.Cols(restart, 12, kit.Fr(1), kit.Fr(1))
+	a.button(c, k[0], "Restart Klipper", raised, text, func() {
 		a.confirm = &confirmBox{question: "Restart Klipper?", yes: "Restart", onYes: func() {
 			a.Toast("Restarting Klipper…")
 			a.do(pr.RestartKlipper)
 		}}
 	})
-	a.button(c, image.Rect(W-24-half, 712, W-24, 778), "Firmware restart", raised, red, func() {
+	a.button(c, k[1], "Firmware restart", raised, red, func() {
 		a.confirm = &confirmBox{question: "Restart the printer firmware?", yes: "Restart", danger: true, onYes: func() {
 			a.Toast("Restarting the firmware…")
 			a.do(pr.FirmwareRestart)
@@ -248,33 +264,14 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 
 // drawMacros lists the macros of the printer. A tap runs one, after a question.
 func (a *App) drawMacros(c *gfx.Canvas, st printer.State) {
-	pr := a.Printer
-	heading(c, "Macros")
-	a.backButton(c)
-	macros := pr.Machine().Macros
+	f := a.page(c, "Macros")
+	macros := a.Printer.Machine().Macros
+	area := a.listArea(f)
 	if len(macros) == 0 {
-		c.Text(image.Rect(30, 254, W-30, 294), "The printer has no macros", gfx.Face(false, 20), dim, gfx.Center)
+		noItems(c, area, "", "The printer has no macros")
 		return
 	}
-	const rowH = 70
-	bottom := contentY1 - 8
-	maxScroll := max(0, len(macros)*rowH-(bottom-menuTop))
-	a.macroScroll = max(0, min(a.macroScroll, maxScroll))
-	c.Clipped(image.Rect(0, menuTop, W, bottom), func(c *gfx.Canvas) {
-		for i, m := range macros {
-			y := menuTop + i*rowH - a.macroScroll
-			if y+rowH < menuTop || y > bottom {
-				continue
-			}
-			r := image.Rect(24, y, W-24, y+rowH-10)
-			plate(c, r)
-			c.Text(image.Rect(r.Min.X+18, r.Min.Y, r.Max.X-18, r.Max.Y), m, gfx.Face(true, 19), text, gfx.Left)
-		}
-	})
 	run := func(i int) {
-		if i < 0 || i >= len(macros) {
-			return
-		}
 		if st.Busy() {
 			a.Toast("Wait until the print ends")
 			return
@@ -284,64 +281,71 @@ func (a *App) drawMacros(c *gfx.Canvas, st printer.State) {
 			a.runAction(m, m)
 		}}
 	}
-	a.addHit(kit.Hit{R: image.Rect(0, menuTop, W, bottom),
-		Scroll: func(dy int) { a.macroScroll = max(0, min(a.macroScroll+dy, maxScroll)) },
-		TapAt:  func(p image.Point) { run((p.Y - menuTop + a.macroScroll) / rowH) }})
-	a.listFocus(len(macros), menuTop, bottom, rowH, &a.macroScroll, func(i int) string { return macros[i] }, run)
+	l := kit.List{Area: area, N: len(macros), RowH: 70, Gap: 10, Scroll: &a.macroScroll}
+	a.list(c, l, func(i int) string { return macros[i] }, func(c *gfx.Canvas, i int, r image.Rectangle) {
+		plate(c, r)
+		c.Text(kit.Inset(r, 18, 0, 18, 0), macros[i], gfx.Face(true, 19), text, gfx.Left)
+	}, run)
+}
+
+// listArea is the area of a list on a page: under the head on a tall screen, the main pane on a
+// wide screen.
+func (a *App) listArea(f frame) image.Rectangle {
+	if f.wide {
+		return f.body()
+	}
+	return kit.Inset(f.body(), 0, menuTop-headH, 0, 0)
 }
 
 // drawHistory lists the finished prints, newest first. A tap prints a file again.
 func (a *App) drawHistory(c *gfx.Canvas) {
 	pr := a.Printer
-	heading(c, "Print history")
-	a.backButton(c)
+	f := a.page(c, "Print history")
 	recs := pr.History()
+	area := a.listArea(f)
 	if len(recs) == 0 {
-		c.Text(image.Rect(30, 254, W-30, 294), "No finished prints yet", gfx.Face(false, 20), dim, gfx.Center)
+		noItems(c, area, "", "No finished prints yet")
 		return
 	}
-	const rowH = 90
-	bottom := contentY1 - 8
-	maxScroll := max(0, len(recs)*rowH-(bottom-menuTop))
-	a.historyScroll = max(0, min(a.historyScroll, maxScroll))
-	c.Clipped(image.Rect(0, menuTop, W, bottom), func(c *gfx.Canvas) {
-		for i, r := range recs {
-			y := menuTop + i*rowH - a.historyScroll
-			if y+rowH < menuTop || y > bottom {
-				continue
-			}
-			box := image.Rect(24, y, W-24, y+rowH-10)
-			plate(c, box)
-			col := dim
-			if r.Result != "complete" {
-				col = red
-			}
-			c.Text(image.Rect(box.Min.X+18, box.Min.Y+8, box.Max.X-18, box.Min.Y+38), gfx.Fit(gfx.Face(true, 19), r.File, box.Dx()-36), gfx.Face(true, 19), text, gfx.Left)
-			c.Text(image.Rect(box.Min.X+18, box.Min.Y+38, box.Max.X-18, box.Max.Y-8), r.Summary(), gfx.Face(false, 16), col, gfx.Left)
-			c.Text(image.Rect(box.Min.X+18, box.Min.Y+38, box.Max.X-18, box.Max.Y-8), fileDate(r.End, a.Now(), a.Clock24), gfx.Face(false, 14), dim, gfx.Right)
-		}
-	})
 	reprint := func(i int) {
-		if i >= 0 && i < len(recs) && !pr.State().Busy() {
+		if !pr.State().Busy() {
 			a.confirmPrint(recs[i].Path)
 		}
 	}
-	a.addHit(kit.Hit{R: image.Rect(0, menuTop, W, bottom),
-		Scroll: func(dy int) { a.historyScroll = max(0, min(a.historyScroll+dy, maxScroll)) },
-		TapAt:  func(p image.Point) { reprint((p.Y - menuTop + a.historyScroll) / rowH) }})
-	a.listFocus(len(recs), menuTop, bottom, rowH, &a.historyScroll, func(i int) string { return recs[i].File }, reprint)
+	if f.wide {
+		st := printer.ComputeStats(recs, a.Now())
+		tiles := [][2]string{{"PRINTS", fmt.Sprint(st.Prints)}, {"SUCCESS", fmt.Sprintf("%d%%", 100*st.Completed/max(1, st.Prints))}}
+		statTiles(c, kit.Rows(f.aside(), 0, kit.Px(92))[0], 2, tiles)
+	}
+	l := kit.List{Area: area, N: len(recs), RowH: 90, Gap: 10, Scroll: &a.historyScroll}
+	a.list(c, l, func(i int) string { return recs[i].File }, func(c *gfx.Canvas, i int, box image.Rectangle) {
+		r := recs[i]
+		plate(c, box)
+		col := dim
+		if r.Result != "complete" {
+			col = red
+		}
+		c.Text(image.Rect(box.Min.X+18, box.Min.Y+8, box.Max.X-18, box.Min.Y+38), gfx.Fit(gfx.Face(true, 19), r.File, box.Dx()-36), gfx.Face(true, 19), text, gfx.Left)
+		// The date at the right, and the summary in the space that it leaves.
+		date := fileDate(r.End, a.Now(), a.Clock24)
+		line := image.Rect(box.Min.X+18, box.Min.Y+38, box.Max.X-18, box.Max.Y-8)
+		c.Text(line, date, gfx.Face(false, 14), dim, gfx.Right)
+		sum := line
+		sum.Max.X -= gfx.Width(gfx.Face(false, 14), date) + 12
+		c.Text(sum, gfx.Fit(gfx.Face(false, 16), r.Summary(), sum.Dx()), gfx.Face(false, 16), col, gfx.Left)
+	}, reprint)
 }
 
-// drawStats is the Statistics page: the totals of the print history.
+// drawStats is the Statistics page: the totals of the print history. A wide screen has the four
+// totals in the left column, and the results and the details at the right.
 func (a *App) drawStats(c *gfx.Canvas) {
-	heading(c, "Statistics")
-	a.backButton(c)
+	f := a.page(c, "Statistics")
 	s := printer.ComputeStats(a.Printer.History(), a.Now())
+	body := f.body()
 	if s.Prints == 0 {
-		c.Text(image.Rect(30, 254, W-30, 294), "No finished prints yet", gfx.Face(false, 20), dim, gfx.Center)
+		noItems(c, body, "", "No finished prints yet")
 		return
 	}
-	// Four big numbers in display windows.
 	success := 100 * s.Completed / s.Prints
 	tiles := [][2]string{
 		{"PRINTS", fmt.Sprint(s.Prints)},
@@ -349,16 +353,19 @@ func (a *App) drawStats(c *gfx.Canvas) {
 		{"PRINT TIME", fmt.Sprintf("%.0f h", s.Time.Hours())},
 		{"FILAMENT", fmt.Sprintf("%.0f m", s.Filament/1000)},
 	}
-	half := (W - 48 - 12) / 2
-	for i, t := range tiles {
-		r := image.Rect(24+(i%2)*(half+12), 76+(i/2)*104, 24+(i%2)*(half+12)+half, 76+(i/2)*104+92)
-		window(c, r)
-		c.Text(image.Rect(r.Min.X+14, r.Min.Y+8, r.Max.X-14, r.Min.Y+30), t[0], gfx.Face(true, 14), lcdDim, gfx.Left)
-		c.Text(image.Rect(r.Min.X+14, r.Min.Y+30, r.Max.X-14, r.Max.Y-6), t[1], gfx.Face(true, 40), lcdInk, gfx.Left)
+	var rest image.Rectangle
+	if f.wide {
+		statTiles(c, f.aside(), 2, tiles)
+		rest = body
+	} else {
+		r := kit.Rows(kit.Inset(body, 0, 10, 0, 0), 18, kit.Px(196), kit.Fr(1))
+		statTiles(c, r[0], 2, tiles)
+		rest = r[1]
 	}
 
-	// The results as a bar: completed, cancelled, failed.
-	bar := image.Rect(24, 290, W-24, 314)
+	// The results as a bar: completed, cancelled, failed. Then the details.
+	r := kit.Rows(rest, 4, kit.Px(24), kit.Px(24), kit.Px(6*36+16+6), kit.Px(22))
+	bar := r[0]
 	window(c, bar)
 	in := bar.Inset(4)
 	x := in.Min.X
@@ -370,9 +377,9 @@ func (a *App) drawStats(c *gfx.Canvas) {
 		c.Fill(image.Rect(x, in.Min.Y, x+w, in.Max.Y), part.col)
 		x += w
 	}
-	label(c, image.Rect(24, 318, W-24, 342), fmt.Sprintf("%d done · %d cancelled · %d failed", s.Completed, s.Cancelled, s.Failed), gfx.Center)
+	label(c, r[1], fmt.Sprintf("%d done · %d cancelled · %d failed", s.Completed, s.Cancelled, s.Failed), gfx.Center)
 
-	box := image.Rect(24, 352, W-24, 352+6*36+16)
+	box := kit.Inset(r[2], 0, 6, 0, 0)
 	plate(c, box)
 	top := "—"
 	if s.TopFile != "" {
@@ -386,12 +393,22 @@ func (a *App) drawStats(c *gfx.Canvas) {
 		{"Last 30 days", fmt.Sprintf("%d prints", s.Last30)},
 		{"Most printed", top},
 	}
-	for i, kv := range rows {
-		y := box.Min.Y + 8 + i*36
-		label(c, image.Rect(box.Min.X+18, y, box.Max.X, y+36), kv[0], gfx.Left)
-		c.Text(image.Rect(box.Min.X+170, y, box.Max.X-18, y+36), gfx.Fit(gfx.Face(true, 17), kv[1], box.Dx()-190), gfx.Face(true, 17), text, gfx.Right)
+	for i, kv := range kit.Rows(kit.Inset(box, 18, 8, 18, 8), 0, kit.Px(36), kit.Px(36), kit.Px(36), kit.Px(36), kit.Px(36), kit.Px(36)) {
+		label(c, kv, rows[i][0], gfx.Left)
+		v := kit.Inset(kv, 152, 0, 0, 0)
+		c.Text(v, gfx.Fit(gfx.Face(true, 17), rows[i][1], v.Dx()), gfx.Face(true, 17), text, gfx.Right)
 	}
 	if !s.Since.IsZero() {
-		label(c, image.Rect(24, box.Max.Y+8, W-24, box.Max.Y+30), "Since "+s.Since.Format("Jan 2, 2006")+" · grams for 1.75 mm PLA", gfx.Center)
+		label(c, kit.Inset(r[3], 0, 4, 0, 0), "Since "+s.Since.Format("Jan 2, 2006")+" · grams for 1.75 mm PLA", gfx.Center)
+	}
+}
+
+// statTiles draws big numbers in display windows, cols in a row: a name and a value in each.
+func statTiles(c *gfx.Canvas, area image.Rectangle, cols int, tiles [][2]string) {
+	rows := (len(tiles) + cols - 1) / cols
+	for i, r := range kit.Grid(area, cols, rows, 12)[:len(tiles)] {
+		window(c, r)
+		c.Text(image.Rect(r.Min.X+14, r.Min.Y+8, r.Max.X-14, r.Min.Y+30), tiles[i][0], gfx.Face(true, 14), lcdDim, gfx.Left)
+		c.Text(image.Rect(r.Min.X+14, r.Min.Y+30, r.Max.X-14, r.Max.Y-6), tiles[i][1], gfx.Face(true, 40), lcdInk, gfx.Left)
 	}
 }

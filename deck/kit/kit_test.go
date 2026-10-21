@@ -128,3 +128,22 @@ func TestPadGetsUpAfterReset(t *testing.T) {
 		t.Errorf("phases %v", phases)
 	}
 }
+
+func TestList(t *testing.T) {
+	scroll := 0
+	l := List{Area: image.Rect(0, 100, 200, 400), N: 10, RowH: 100, Gap: 10, Scroll: &scroll}
+	if l.MaxScroll() != 700 || l.Row(1) != image.Rect(0, 200, 200, 290) || l.Shows(3) {
+		t.Errorf("max %d, row 1 %v, shows 3 %v", l.MaxScroll(), l.Row(1), l.Shows(3))
+	}
+	l.Reveal(5)
+	if scroll != 300 || l.At(image.Pt(10, 350)) != 5 || l.At(image.Pt(10, 50)) != -1 {
+		t.Errorf("scroll %d, at %d", scroll, l.At(image.Pt(10, 350)))
+	}
+	var tapped int
+	h := l.Hit(func(i int) { tapped = i })
+	h.Scroll(1000)
+	h.TapAt(image.Pt(10, 120))
+	if scroll != 700 || tapped != 7 {
+		t.Errorf("scroll %d, tapped %d", scroll, tapped)
+	}
+}

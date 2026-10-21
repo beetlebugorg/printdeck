@@ -139,7 +139,12 @@ func key(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pr
 	if face.Dy() < 44 {
 		size = 16
 	}
-	c.Text(face, strings.ToUpper(label), gfx.Face(true, size), ink, gfx.Center)
+	// A label that is too long gets a smaller font, down to 14 pixels.
+	label = strings.ToUpper(label)
+	for size > 14 && gfx.Width(gfx.Face(true, size), label) > face.Dx()-16 {
+		size--
+	}
+	c.Text(face, label, gfx.Face(true, size), ink, gfx.Center)
 }
 
 // fader draws a horizontal slider: a slot, the part up to the value in orange, and a grip cap.

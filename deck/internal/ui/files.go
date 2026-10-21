@@ -20,14 +20,11 @@ import (
 
 const (
 	fileRowH   = 96
-	filesTop   = 98
 	thumbSmall = 68
 )
 
 // fileList keeps the scroll position of the Files page.
 type fileList struct{ scroll int }
-
-func (a *App) filesBottom() int { return contentY1 - 8 }
 
 func (a *App) sortedFiles() []printer.File {
 	files := a.Printer.Files()
@@ -36,44 +33,43 @@ func (a *App) sortedFiles() []printer.File {
 }
 
 func (a *App) drawFiles(c *gfx.Canvas) {
-	heading(c, "Files")
-	a.backButton(c)
+	f := a.page(c, "Files")
 	files := a.sortedFiles()
-	label(c, image.Rect(24, 66, W-24, 90), fmt.Sprintf("Newest first · %d files", len(files)), gfx.Left)
+	// The count above the list; in the left column of a wide screen.
+	body := f.body()
+	count, area := f.aside(), body
+	if !f.wide {
+		r := kit.Rows(body, 8, kit.Px(24), kit.Fr(1))
+		count, area = r[0], r[1]
+	}
+	label(c, kit.Rows(count, 0, kit.Px(24))[0], fmt.Sprintf("Newest first · %d files", len(files)), gfx.Left)
 	if len(files) == 0 {
-		c.Text(image.Rect(30, 254, W-30, 294), "No files yet", gfx.Face(true, 22), dim, gfx.Center)
-		c.Text(image.Rect(30, 294, W-30, 334), "Send a file from the slicer,", gfx.Face(false, 18), dim, gfx.Center)
-		c.Text(image.Rect(30, 324, W-30, 364), "or upload it in the browser.", gfx.Face(false, 18), dim, gfx.Center)
+		noItems(c, area, "No files yet", "Send a file from the slicer,", "or upload it in the browser.")
 		return
 	}
-	bottom := a.filesBottom()
-	maxScroll := max(0, len(files)*fileRowH-(bottom-filesTop))
-	a.fileList.scroll = max(0, min(a.fileList.scroll, maxScroll))
-	c.Clipped(image.Rect(0, filesTop, W, bottom), func(c *gfx.Canvas) {
-		for i, f := range files {
-			y := filesTop + i*fileRowH - a.fileList.scroll
-			if y+fileRowH < filesTop || y > bottom {
-				continue
-			}
-			r := image.Rect(24, y, W-24, y+fileRowH-10)
-			plate(c, r)
-			m := a.Printer.FileMeta(f.Path)
-			a.thumb(c, image.Rect(r.Min.X+10, r.Min.Y+9, r.Min.X+10+thumbSmall, r.Min.Y+9+thumbSmall), f.Path, m)
-			c.Text(image.Rect(r.Min.X+92, r.Min.Y+8, r.Max.X-12, r.Min.Y+38), gfx.Fit(gfx.Face(true, 19), f.Name, r.Dx()-104), gfx.Face(true, 19), text, gfx.Left)
-			c.Text(image.Rect(r.Min.X+92, r.Min.Y+36, r.Max.X-12, r.Min.Y+60), metaLine(m), gfx.Face(false, 16), dim, gfx.Left)
-			c.Text(image.Rect(r.Min.X+92, r.Min.Y+58, r.Max.X-12, r.Max.Y-6), fileDate(f.Date, a.Now(), a.Clock24), gfx.Face(false, 14), dim, gfx.Left)
-		}
-	})
 	open := func(i int) {
-		if i >= 0 && i < len(files) {
-			a.file = files[i]
-			a.open(pageFile)
-		}
+		a.file = files[i]
+		a.open(pageFile)
 	}
-	a.addHit(kit.Hit{R: image.Rect(0, filesTop, W, bottom),
-		Scroll: func(dy int) { a.fileList.scroll = max(0, min(a.fileList.scroll+dy, maxScroll)) },
-		TapAt:  func(p image.Point) { open((p.Y - filesTop + a.fileList.scroll) / fileRowH) }})
-	a.listFocus(len(files), filesTop, bottom, fileRowH, &a.fileList.scroll, func(i int) string { return files[i].Name }, open)
+	l := kit.List{Area: area, N: len(files), RowH: fileRowH, Gap: 10, Scroll: &a.fileList.scroll}
+	a.list(c, l, func(i int) string { return files[i].Name }, func(c *gfx.Canvas, i int, r image.Rectangle) {
+		f := files[i]
+		plate(c, r)
+		m := a.Printer.FileMeta(f.Path)
+		a.thumb(c, image.Rect(r.Min.X+10, r.Min.Y+9, r.Min.X+10+thumbSmall, r.Min.Y+9+thumbSmall), f.Path, m)
+		c.Text(image.Rect(r.Min.X+92, r.Min.Y+8, r.Max.X-12, r.Min.Y+38), gfx.Fit(gfx.Face(true, 19), f.Name, r.Dx()-104), gfx.Face(true, 19), text, gfx.Left)
+		c.Text(image.Rect(r.Min.X+92, r.Min.Y+36, r.Max.X-12, r.Min.Y+60), metaLine(m), gfx.Face(false, 16), dim, gfx.Left)
+		c.Text(image.Rect(r.Min.X+92, r.Min.Y+58, r.Max.X-12, r.Max.Y-6), fileDate(f.Date, a.Now(), a.Clock24), gfx.Face(false, 14), dim, gfx.Left)
+	}, open)
+}
+
+// noItems is the text of an empty list: a title and lines under it, in the upper part of the area.
+func noItems(c *gfx.Canvas, area image.Rectangle, title string, lines ...string) {
+	s := kit.NewStack(kit.Inset(area, 6, min(156, area.Dy()/3), 6, 0), -10)
+	c.Text(s.Next(40), title, gfx.Face(true, 22), dim, gfx.Center)
+	for _, l := range lines {
+		c.Text(s.Next(40), l, gfx.Face(false, 18), dim, gfx.Center)
+	}
 }
 
 // metaLine is the short line of a file: time, filament, layer height.
