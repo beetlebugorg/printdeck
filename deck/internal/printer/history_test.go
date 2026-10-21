@@ -19,7 +19,8 @@ func TestHistory(t *testing.T) {
 	if len(r) != 1 || r[0].File != "x.gcode" || r[0].Result != "complete" || !r[0].End.Equal(now) {
 		t.Fatalf("records %+v", r)
 	}
-	if s := r[0].Summary(); s != "Done · 1:02 · 4.1 m" {
+	grams := func(mm float64) float64 { return FilamentGrams(mm, 2.85, "PLA") }
+	if s := r[0].Summary(grams); s != "Done · 1:02 · 32 g" {
 		t.Errorf("summary %q", s)
 	}
 	// A new history from the file has the print, and does not add it again.
@@ -35,8 +36,5 @@ func TestHistory(t *testing.T) {
 	if st.Prints != 2 || st.Completed != 1 || st.Cancelled != 1 || st.Time != 67*time.Minute ||
 		st.Filament != 8200 || st.Longest != 62*time.Minute || st.Last7 != 2 || st.TopFile != "x.gcode" || st.TopCount != 2 {
 		t.Errorf("stats %+v", st)
-	}
-	if g := FilamentGrams(1000); g < 2.9 || g > 3.1 {
-		t.Errorf("1 m of filament is %.2f g, want about 3", g)
 	}
 }

@@ -115,6 +115,8 @@ type Machine struct {
 	KlipperVersion string
 	Modules        []string // the objects of Klipper with no name, for example "probe" or "bed_tilt"
 	Macros         []string // the macros that a person can run (no name with "_" first)
+	// FilamentDiameter is filament_diameter of the extruder in printer.cfg, in mm; 0 is not known.
+	FilamentDiameter float64
 }
 
 // Has reports that the printer has a module.

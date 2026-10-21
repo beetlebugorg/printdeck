@@ -229,7 +229,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		{"KLIPPER", strings.TrimSuffix(mach.KlipperVersion, "-printdeck-go")},
 		{"FIRMWARE", fw},
 		{"NETWORK", ip},
-		{"PRINTS", fmt.Sprintf("%d · %d H · %.0f M", prints, hours, filament/1000)},
+		{"PRINTS", fmt.Sprintf("%d · %d H · %s", prints, hours, strings.ToUpper(a.weight(filament)))},
 	}
 	for i, l := range lines {
 		y := info.Min.Y + 10 + i*lineH
@@ -245,7 +245,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		}
 	}
 	items := []menuItem{
-		{"Statistics", fmt.Sprintf("%d prints · %d h · %.0f m filament", prints, hours, filament/1000), dim, func() { a.open(pageStats) }},
+		{"Statistics", fmt.Sprintf("%d prints · %d h · %s of filament", prints, hours, a.weight(filament)), dim, func() { a.open(pageStats) }},
 		{"Print history", "Each print, with the result", dim, func() { a.open(pageHistory) }},
 		{"Macros", macros, dim, func() { a.open(pageMacros) }},
 		{"Console", "Type G-code, and read the replies", dim, func() { a.open(pageConsole) }},
@@ -349,7 +349,7 @@ func (a *App) drawHistory(c *gfx.Canvas) {
 		c.Text(line, date, gfx.Face(false, 14), dim, gfx.Right)
 		sum := line
 		sum.Max.X -= gfx.Width(gfx.Face(false, 14), date) + 12
-		c.Text(sum, gfx.Fit(gfx.Face(false, 16), r.Summary(), sum.Dx()), gfx.Face(false, 16), col, gfx.Left)
+		c.Text(sum, gfx.Fit(gfx.Face(false, 16), r.Summary(func(mm float64) float64 { return a.grams(mm, "") }), sum.Dx()), gfx.Face(false, 16), col, gfx.Left)
 	}, reprint)
 }
 
@@ -368,7 +368,7 @@ func (a *App) drawStats(c *gfx.Canvas) {
 		{"PRINTS", fmt.Sprint(s.Prints)},
 		{"SUCCESS", fmt.Sprintf("%d%%", success)},
 		{"PRINT TIME", fmt.Sprintf("%.0f h", s.Time.Hours())},
-		{"FILAMENT", fmt.Sprintf("%.0f m", s.Filament/1000)},
+		{"FILAMENT", strings.ToUpper(a.weight(s.Filament))},
 	}
 	var rest image.Rectangle
 	if f.wide {
@@ -407,7 +407,7 @@ func (a *App) drawStats(c *gfx.Canvas) {
 		top = fmt.Sprintf("%s (%d×)", s.TopFile, s.TopCount)
 	}
 	rows := [][2]string{
-		{"Filament", fmt.Sprintf("%.1f m · %.0f g", s.Filament/1000, printer.FilamentGrams(s.Filament))},
+		{"Filament", fmt.Sprintf("%s · %.0f m", a.weight(s.Filament), s.Filament/1000)},
 		{"Average print", hm(int(s.Average.Minutes()))},
 		{"Longest print", hm(int(s.Longest.Minutes()))},
 		{"Last 7 days", fmt.Sprintf("%d prints", s.Last7)},
