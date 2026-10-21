@@ -360,12 +360,32 @@ func manualSections() []section {
 				{Name: "machine", Caption: "The Machine page", Setup: page("machine"),
 					Callouts: []callout{
 						{240, 186, "Information", "The version of Klipper, the state of the firmware of the board, the network address, and the totals."},
-						{240, 304, "Statistics", "The totals of all prints."},
-						{240, 398, "Print history", "Each print, with its result. Tap a print to print it again."},
-						{240, 492, "Macros", "The macros of the printer. Tap one to run it."},
-						{240, 586, "Wi-Fi and help", "The network, the password and the addresses."},
+						{240, 297, "Statistics", "The totals of all prints."},
+						{240, 373, "Print history", "Each print, with its result. Tap a print to print it again."},
+						{240, 449, "Macros", "The macros of the printer. Tap one to run it."},
+						{240, 525, "Console", "The G-code terminal of Klipper. See below."},
+						{240, 601, "Wi-Fi and help", "The network, the password and the addresses."},
 						{126, 677, "Restart Klipper", "Restarts the Klipper host, which reads printer.cfg again."},
 						{354, 677, "Firmware restart", "Restarts the firmware of the board, for example after a stop."},
+					}},
+				{Name: "console", Caption: "The console",
+					Setup: func(s *manualState) {
+						s.p.State_ = stIdle
+						s.p.Console_ = []printer.ConsoleLine{
+							{Kind: "in", Text: "G28"},
+							{Kind: "in", Text: "M105"},
+							{Kind: "out", Text: "ok T:24.1 /0.0 B:23.4 /0.0"},
+							{Kind: "in", Text: "G1 X400"},
+							{Kind: "error", Text: "Move out of range: 400.000 150.000 10.000 [0.000]"},
+							{Kind: "in", Text: "STATUS"},
+							{Kind: "out", Text: "Klipper state: Ready"},
+						}
+						s.a.OpenPrintScreen("console")
+					},
+					Callouts: []callout{
+						{240, 300, "Replies", "Your commands (amber, after >), the replies of Klipper, and errors (red). Drag down to read older lines."},
+						{240, 611, "Type a command", "Opens the keyboard. It shows your last command, so you can change it and send it again."},
+						{240, 685, "Quick keys", "Home (G28), Status (STATUS) and Help (HELP, the list of the commands)."},
 					}},
 				{Name: "stats", Caption: "Statistics", Setup: page("stats"),
 					Callouts: []callout{

@@ -199,6 +199,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		{"Statistics", fmt.Sprintf("%d prints · %d h · %.0f m filament", prints, hours, filament/1000), func() { a.open(pageStats) }},
 		{"Print history", "Each print, with the result", func() { a.open(pageHistory) }},
 		{"Macros", macros, func() { a.open(pageMacros) }},
+		{"Console", "Type G-code, and read the replies", func() { a.open(pageConsole) }},
 	}
 	if a.Setup != nil {
 		rows = append(rows, struct {
@@ -207,7 +208,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		}{"Wi-Fi and help", "The network, the password, the addresses", a.OpenHelp})
 	}
 	for i, r := range rows {
-		a.menuRow(c, image.Rect(24, 262+i*94, W-24, 262+i*94+84), r.t, r.s, dim, r.tap)
+		a.menuRow(c, image.Rect(24, 262+i*76, W-24, 262+i*76+70), r.t, r.s, dim, r.tap)
 	}
 	half := (W - 48 - 12) / 2
 	a.button(c, image.Rect(24, 642, 24+half, 712), "Restart Klipper", raised, text, func() {

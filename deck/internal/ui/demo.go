@@ -46,6 +46,7 @@ type DemoPrinter struct {
 	Boards_  []board.Info // the boards of the printer setup
 	Machine_ printer.Machine
 	History_ []printer.Record
+	Console_ []printer.ConsoleLine
 	Meta_    gcodemeta.Meta // the slicer data of every file
 }
 
@@ -142,10 +143,14 @@ func (d *DemoPrinter) DeleteFile(string) error          { return nil }
 func (d *DemoPrinter) History() []printer.Record        { return d.History_ }
 func (d *DemoPrinter) ProbeBoards()                     {}
 func (d *DemoPrinter) RestartKlipper() error            { return nil }
+func (d *DemoPrinter) Console() []printer.ConsoleLine   { return d.Console_ }
+func (d *DemoPrinter) SendConsole(line string) {
+	d.Console_ = append(d.Console_, printer.ConsoleLine{Kind: "in", Text: line})
+}
 
 // ResetScreens closes every screen, dialog and page; for the pictures of the manual.
 func (a *App) ResetScreens() {
-	a.setup, a.pages, a.swap, a.tune, a.keypad, a.confirm = nil, nil, nil, false, nil, nil
+	a.setup, a.pages, a.swap, a.tune, a.keypad, a.confirm, a.consoleKB = nil, nil, nil, false, nil, nil, nil
 	a.picker, a.tracks, a.eqOpen, a.doneSeen = nil, nil, false, ""
 }
 
@@ -169,6 +174,8 @@ func (a *App) OpenPrintScreen(name string) {
 		a.pages = []page{pageMachine, pageHistory}
 	case "stats":
 		a.pages = []page{pageMachine, pageStats}
+	case "console":
+		a.pages = []page{pageMachine, pageConsole}
 	case "setup", "error":
 		if d, ok := a.Printer.(*DemoPrinter); ok {
 			if name == "setup" {

@@ -102,6 +102,9 @@ type Printer interface {
 	// What the slicer wrote about a file, and the removal of a file.
 	FileMeta(path string) gcodemeta.Meta
 	DeleteFile(path string) error
+	// The G-code terminal of Klipper: its last lines, and a command typed on the Console page.
+	Console() []printer.ConsoleLine
+	SendConsole(line string)
 
 	// The setup of a new printer: the boards on the USB ports, and a restart of the Klipper service.
 	Boards() (boards []board.Info, probing bool)
@@ -161,6 +164,9 @@ type App struct {
 	file          printer.File // the file of the file page
 	fileList      fileList     // the scroll position of the Files page
 	macroScroll   int          // the scroll position of the Macros page
+	consoleScroll int          // how far the Console page shows above its newest line
+	consoleKB     *keyboard    // the keyboard of the Console page, while it is open
+	consoleLast   string       // the last typed command, for the next one
 	historyScroll int          // the scroll position of the history
 	doneSeen      string       // the done screen of this print was closed (its history key)
 	setupProbed   bool         // the printer setup started a probe of the USB ports

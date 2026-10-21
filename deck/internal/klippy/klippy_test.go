@@ -140,3 +140,22 @@ func TestClosedConnection(t *testing.T) {
 		t.Errorf("call on a closed connection: %v", err)
 	}
 }
+
+func TestSubscribeOutput(t *testing.T) {
+	f := newFake(t, func(req map[string]any) (any, string) { return map[string]any{}, "" })
+	c := dial(t, f)
+	nc := <-f.conns
+	lines := make(chan string, 1)
+	if err := c.SubscribeOutput(context.Background(), func(l string) { lines <- l }); err != nil {
+		t.Fatal(err)
+	}
+	write(nc, map[string]any{"key": "printdeck-output-1", "params": map[string]any{"response": "ok B:60.0 /60.0"}})
+	select {
+	case l := <-lines:
+		if l != "ok B:60.0 /60.0" {
+			t.Errorf("line %q", l)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("no output")
+	}
+}

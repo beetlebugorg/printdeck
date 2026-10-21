@@ -66,6 +66,7 @@ type Conn struct {
 	nextID  int
 	pending map[int]chan message
 	subs    map[string]func(eventtime float64, update Status)
+	outputs map[string]func(line string)
 	err     error // why the connection ended
 }
 
@@ -77,6 +78,7 @@ type message struct {
 	Params *struct {
 		EventTime float64 `json:"eventtime"`
 		Status    Status  `json:"status"`
+		Response  *string `json:"response"` // a line of G-code output (gcode/subscribe_output)
 	} `json:"params"`
 }
 
@@ -88,7 +90,7 @@ func Dial(ctx context.Context, path string) (*Conn, error) {
 		return nil, err
 	}
 	c := &Conn{nc: nc, done: make(chan struct{}), pending: map[int]chan message{},
-		subs: map[string]func(float64, Status){}}
+		subs: map[string]func(float64, Status){}, outputs: map[string]func(string){}}
 	go c.read()
 	return c, nil
 }
@@ -175,6 +177,22 @@ func (c *Conn) Subscribe(ctx context.Context, objects map[string][]string, updat
 	return first.Status, nil
 }
 
+// SubscribeOutput calls output with each line that Klipper writes to the G-code terminal, until the
+// connection ends. output runs on the reading goroutine: keep it short.
+func (c *Conn) SubscribeOutput(ctx context.Context, output func(line string)) error {
+	c.mu.Lock()
+	key := "printdeck-output-" + strconv.Itoa(len(c.outputs)+1)
+	c.outputs[key] = output
+	c.mu.Unlock()
+	_, err := c.Call(ctx, "gcode/subscribe_output", map[string]any{"response_template": map[string]any{"key": key}})
+	if err != nil {
+		c.mu.Lock()
+		delete(c.outputs, key)
+		c.mu.Unlock()
+	}
+	return err
+}
+
 // Query reads the fields of the objects once. A nil field list means all fields.
 func (c *Conn) Query(ctx context.Context, objects map[string][]string) (Status, error) {
 	res, err := c.Call(ctx, "objects/query", map[string]any{"objects": objects})
@@ -231,8 +249,12 @@ func (c *Conn) read() {
 			c.mu.Unlock()
 			continue
 		}
-		update := c.subs[m.Key]
+		update, output := c.subs[m.Key], c.outputs[m.Key]
 		c.mu.Unlock()
+		if output != nil && m.Params != nil && m.Params.Response != nil {
+			output(*m.Params.Response)
+			continue
+		}
 		if update != nil && m.Params != nil {
 			update(m.Params.EventTime, m.Params.Status)
 		}
