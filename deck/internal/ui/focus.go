@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image"
+	lcdscreen "printdeck/internal/lcd"
 	"strings"
 	"sync"
 	"time"
@@ -183,7 +184,7 @@ func (a *App) lcdScreen(st printer.State) printer.LCDScreen {
 	if s := a.lcdAction(st); s != nil {
 		return *s
 	}
-	l1, l2 := StatusLines(st, a.Material, a.Now())
+	l1, l2 := StatusLines(st, a.Material, a.Now(), a.Clock24)
 	font := a.LCDFont
 	nrows, ok := lcdFonts[font]
 	if !ok {
@@ -244,7 +245,7 @@ func lcdIcon(label string) string {
 func (a *App) lcdStatusScreen(st printer.State, l1, l2 string) *printer.LCDStatus {
 	// One space between the words: the status lines have the padding of 16 characters.
 	trim := func(s string) string { return strings.Join(strings.Fields(s), " ") }
-	s := &printer.LCDStatus{State: trim(l1), Message: trim(l2), Clock: a.Now().Format("15:04"),
+	s := &printer.LCDStatus{State: trim(l1), Message: trim(l2), Clock: lcdscreen.Clock(a.Now(), a.Clock24),
 		Tool: st.Tool, ToolT: st.ToolTarget, Bed: st.Bed, BedT: st.BedTarget, Fan: st.Fan / 100}
 	if st.Busy() {
 		s.Printing, s.Progress = true, st.Completion/100

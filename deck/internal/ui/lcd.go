@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	lcdscreen "printdeck/internal/lcd"
 	"strings"
 	"time"
 
@@ -18,7 +19,7 @@ const lcdCols = 16
 
 // StatusLines returns the two status lines of the display of the printer. material is the loaded
 // material, or "".
-func StatusLines(st printer.State, material string, now time.Time) (string, string) {
+func StatusLines(st printer.State, material string, now time.Time, clock24 bool) (string, string) {
 	lr := pad
 	pct := fmt.Sprintf("%.0f%%", st.Completion)
 	left := func() string {
@@ -26,7 +27,7 @@ func StatusLines(st printer.State, material string, now time.Time) (string, stri
 			return st.Activity
 		}
 		m := int(st.TimeLeft.Minutes())
-		return lr("End "+now.Add(st.TimeLeft).Format("15:04"), fmt.Sprintf("%d:%02d", m/60, m%60))
+		return lr("End "+lcdscreen.Clock(now.Add(st.TimeLeft), clock24), fmt.Sprintf("%d:%02d", m/60, m%60))
 	}
 	switch {
 	case !st.Reachable:

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	lcdscreen "printdeck/internal/lcd"
 	"strings"
 	"time"
 
@@ -176,7 +177,7 @@ func (a *App) lcdLines(st printer.State) []string {
 		now = lr(strings.ToUpper(st.NowKind), fmt.Sprintf("%.0fMM/S", st.NowSpeed*float64(a.speedFactor(st))/100))
 	}
 	if st.HasTimeLeft && (!st.HasNow || a.Now().Unix()/4%2 == 1) {
-		now = lr("DONE AT", a.Now().Add(st.TimeLeft).Format("15:04"))
+		now = lr("DONE AT", lcdscreen.Clock(a.Now().Add(st.TimeLeft), a.Clock24))
 	}
 	return []string{lr(strings.ToUpper(st.Activity), right), now}
 }

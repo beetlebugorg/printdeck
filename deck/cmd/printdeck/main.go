@@ -140,6 +140,18 @@ func run(cfg config.Config) {
 		app.Theme = strings.TrimSpace(string(b))
 	}
 	app.OnTheme = func(t string) { os.WriteFile(themeFile, []byte(t+"\n"), 0o644) }
+	// The clock (12 or 24 hours) too.
+	clockFile := filepath.Join(cfg.StateDir, "clock")
+	if b, err := os.ReadFile(clockFile); err == nil {
+		app.Clock24 = strings.TrimSpace(string(b)) == "24"
+	}
+	app.OnClock = func(h24 bool) {
+		v := "12"
+		if h24 {
+			v = "24"
+		}
+		os.WriteFile(clockFile, []byte(v+"\n"), 0o644)
+	}
 	// The loaded material is kept in the state folder too.
 	materialFile := filepath.Join(cfg.StateDir, "material")
 	if b, err := os.ReadFile(materialFile); err == nil {
@@ -244,6 +256,7 @@ func lcdLoop(ctx context.Context, pr printerBackend, app *ui.App) {
 			continue
 		}
 		s := app.LCD()
+		s.Clock24 = app.Clock24
 		b, _ := json.Marshal(s)
 		if bytes.Equal(b, last) && time.Since(sent) < 5*time.Second {
 			continue

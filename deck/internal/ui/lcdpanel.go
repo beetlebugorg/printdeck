@@ -80,7 +80,7 @@ func (a *App) drawLCDPanel(c *gfx.Canvas, st printer.State, s *lcdscreen.Status)
 // statusPanel draws the status screen of the printer display at the top of a Print screen: the
 // same picture as the display of the printer.
 func (a *App) statusPanel(c *gfx.Canvas, st printer.State) {
-	l1, l2 := StatusLines(st, a.Material, a.Now())
+	l1, l2 := StatusLines(st, a.Material, a.Now(), a.Clock24)
 	s := a.lcdStatusScreen(st, l1, l2)
 	s.Hint = "" // the touch screen has no knob
 	if st.FirmwareOld && !st.Busy() {

@@ -171,6 +171,10 @@ type App struct {
 	Theme              string
 	NightFrom, NightTo int
 	OnTheme            func(string)
+	// Clock24 shows the time on a 24-hour clock, and false on a 12-hour clock. The Clock row of the
+	// Machine page changes it, and OnClock is told, to save it.
+	Clock24 bool
+	OnClock func(bool)
 	JogInvertY         bool // up on the joystick moves Y back instead of forward
 
 	joy    *joystick
@@ -242,6 +246,7 @@ func (a *App) Session(height int) *App {
 	s.Printer, s.Setup = a.Printer, a.Setup
 	s.PreheatTool, s.PreheatBed, s.UnloadMM, s.LoadMM, s.JogInvertY = a.PreheatTool, a.PreheatBed, a.UnloadMM, a.LoadMM, a.JogInvertY
 	s.Theme, s.NightFrom, s.NightTo, s.OnTheme = a.Theme, a.NightFrom, a.NightTo, a.OnTheme
+	s.Clock24, s.OnClock = a.Clock24, a.OnClock
 	s.Material, s.OnMaterial = a.Material, a.OnMaterial
 	s.Updater = a.Updater
 	return s
@@ -550,6 +555,31 @@ func themeLine(theme string, from, to int) string {
 		return "Night mode"
 	}
 	return fmt.Sprintf("Auto: night from %d:00 to %d:00", from, to)
+}
+
+// clockText is a time on the touch screen: "2:24 PM" on a 12-hour clock, or "14:24".
+func clockText(t time.Time, clock24 bool) string {
+	if clock24 {
+		return t.Format("15:04")
+	}
+	return t.Format("3:04 PM")
+}
+
+// clockLine tells the clock of the screens.
+func clockLine(clock24 bool) string {
+	if clock24 {
+		return "24 hours: 14:24"
+	}
+	return "12 hours: 2:24 PM"
+}
+
+// toggleClock changes between the 12-hour and the 24-hour clock.
+func (a *App) toggleClock() {
+	a.Clock24 = !a.Clock24
+	a.Toast(clockLine(a.Clock24))
+	if a.OnClock != nil {
+		a.OnClock(a.Clock24)
+	}
 }
 
 // cycleTheme goes day, night, auto, day.

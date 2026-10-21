@@ -369,9 +369,10 @@ func manualParts() []section {
 						{240, 435, "Macros", "The macros of the printer. Tap one to run it."},
 						{240, 500, "Console", "The G-code terminal of Klipper. See below."},
 						{240, 565, "Theme", "The colors of the screen: day, night, or auto (night from 20:00 to 7:00). Tap it to change them."},
-						{240, 630, "Wi-Fi and help", "The network, the password and the addresses."},
-						{126, 713, "Restart Klipper", "Restarts the Klipper host, which reads printer.cfg again."},
-						{354, 713, "Firmware restart", "Restarts the firmware of the board, for example after a stop."},
+						{240, 630, "Clock", "The clock of the screens and the display of the printer: 12 hours (2:24 PM) or 24 hours (14:24). Tap it to change it."},
+						{240, 695, "Wi-Fi and help", "The network, the password and the addresses."},
+						{126, 745, "Restart Klipper", "Restarts the Klipper host, which reads printer.cfg again."},
+						{354, 745, "Firmware restart", "Restarts the firmware of the board, for example after a stop."},
 					}},
 				{Name: "console", Caption: "The console",
 					Setup: func(s *manualState) {
@@ -653,9 +654,9 @@ func manual(args []string) {
 	}
 	// The pictures of the printer display.
 	for name, scr := range map[string]*lcd.Screen{
-		"lcd-status": {Status: &lcd.Status{State: "READY PLA", Clock: "14:24", Message: "XYZ HOMED", Tool: 24, Bed: 23,
+		"lcd-status": {Status: &lcd.Status{State: "READY PLA", Clock: "2:24PM", Message: "XYZ HOMED", Tool: 24, Bed: 23,
 			Position: "X110 Y110 Z5.00", Hint: "Click for menu"}},
-		"lcd-printing": {Status: &lcd.Status{State: "PRINTING", Clock: "14:24", Tool: 209, ToolT: 210, Bed: 60, BedT: 60,
+		"lcd-printing": {Status: &lcd.Status{State: "PRINTING", Clock: "2:24PM", Tool: 209, ToolT: 210, Bed: 60, BedT: 60,
 			Fan: 1, Printing: true, Progress: 0.42, Elapsed: "0:58", Left: "1:23"}},
 		"lcd-home": {Menu: &lcd.Menu{Title: "Printdeck", Carousel: true, Selected: 1, Items: []lcd.MenuItem{
 			{Label: "Status", Icon: "status"}, {Label: "Print a file", Icon: "print"}, {Label: "Preheat PLA", Icon: "preheat"}}}},

@@ -206,6 +206,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		{"Macros", macros, func() { a.open(pageMacros) }},
 		{"Console", "Type G-code, and read the replies", func() { a.open(pageConsole) }},
 		{"Theme", themeLine(a.Theme, a.NightFrom, a.NightTo), a.cycleTheme},
+		{"Clock", clockLine(a.Clock24), a.toggleClock},
 	}
 	upWarn := false
 	if a.Updater != nil {
@@ -230,13 +231,13 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		a.menuRow(c, image.Rect(24, 210+i*65, W-24, 210+i*65+60), r.t, r.s, col, r.tap)
 	}
 	half := (W - 48 - 12) / 2
-	a.button(c, image.Rect(24, 680, 24+half, 746), "Restart Klipper", raised, text, func() {
+	a.button(c, image.Rect(24, 712, 24+half, 778), "Restart Klipper", raised, text, func() {
 		a.confirm = &confirmBox{question: "Restart Klipper?", yes: "Restart", onYes: func() {
 			a.Toast("Restarting Klipper…")
 			a.do(pr.RestartKlipper)
 		}}
 	})
-	a.button(c, image.Rect(W-24-half, 680, W-24, 746), "Firmware restart", raised, red, func() {
+	a.button(c, image.Rect(W-24-half, 712, W-24, 778), "Firmware restart", raised, red, func() {
 		a.confirm = &confirmBox{question: "Restart the printer firmware?", yes: "Restart", danger: true, onYes: func() {
 			a.Toast("Restarting the firmware…")
 			a.do(pr.FirmwareRestart)
@@ -316,7 +317,7 @@ func (a *App) drawHistory(c *gfx.Canvas) {
 			}
 			c.Text(image.Rect(box.Min.X+18, box.Min.Y+8, box.Max.X-18, box.Min.Y+38), gfx.Fit(gfx.Face(true, 19), r.File, box.Dx()-36), gfx.Face(true, 19), text, gfx.Left)
 			c.Text(image.Rect(box.Min.X+18, box.Min.Y+38, box.Max.X-18, box.Max.Y-8), r.Summary(), gfx.Face(false, 16), col, gfx.Left)
-			c.Text(image.Rect(box.Min.X+18, box.Min.Y+38, box.Max.X-18, box.Max.Y-8), fileDate(r.End, a.Now()), gfx.Face(false, 14), dim, gfx.Right)
+			c.Text(image.Rect(box.Min.X+18, box.Min.Y+38, box.Max.X-18, box.Max.Y-8), fileDate(r.End, a.Now(), a.Clock24), gfx.Face(false, 14), dim, gfx.Right)
 		}
 	})
 	reprint := func(i int) {
