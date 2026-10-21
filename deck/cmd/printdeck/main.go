@@ -178,16 +178,10 @@ func run(cfg config.Config, sp *spotify.Client) {
 
 	go touch.Run(ctx, touch.Options{InvertX: cfg.TouchInvertX, InvertY: cfg.TouchInvertY, Swap: cfg.TouchSwapXY,
 		Rotate: cfg.Rotate, Log: cfg.TouchLog,
-		OffsetX: float64(cfg.TouchOffsetX) / ui.W, OffsetY: float64(cfg.TouchOffsetY) / ui.H}, events)
+		OffsetX: float64(cfg.TouchOffsetX) / ui.W, OffsetY: float64(cfg.TouchOffsetY) / ui.BaseH}, events)
 
-	present := screen.Present
-	if rs := startWeb(cfg, host, events, pr, app); rs != nil {
-		present = func(c *gfx.Canvas) {
-			screen.Present(c)
-			rs.Publish(c)
-		}
-	}
-	app.Run(ctx, events, present)
+	startWeb(cfg, host, pr, app)
+	app.Run(ctx, events, screen.Present)
 }
 
 func auth(cfg config.Config, sp *spotify.Client) {
@@ -255,7 +249,7 @@ func shot(cfg config.Config, sp *spotify.Client, args []string) {
 	if args[0] == "print" {
 		app.SetTab(ui.TabPrint)
 	}
-	c := gfx.New(ui.W, ui.H)
+	c := gfx.New(ui.W, ui.BaseH)
 	app.Draw(c)
 	f, err := os.Create(args[1])
 	if err != nil {

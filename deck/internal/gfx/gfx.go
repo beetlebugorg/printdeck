@@ -25,15 +25,22 @@ const (
 	Right
 )
 
-// Canvas is the logical drawing surface.
+// Canvas is the logical drawing surface. It draws pixels, or records the drawing commands for a
+// browser (NewRecording), or both.
 type Canvas struct {
 	*image.RGBA
+	rec *Recording
 }
 
-func New(w, h int) *Canvas { return &Canvas{image.NewRGBA(image.Rect(0, 0, w, h))} }
+func New(w, h int) *Canvas { return &Canvas{RGBA: image.NewRGBA(image.Rect(0, 0, w, h))} }
 
 func (c *Canvas) Fill(r image.Rectangle, col color.Color) {
-	draw.Draw(c.RGBA, r.Intersect(c.Bounds()), image.NewUniform(col), image.Point{}, draw.Src)
+	if c.rec != nil {
+		c.rec.add(append([]any{"f"}, append(rect(r), rgb(col))...)...)
+	}
+	if c.raster() {
+		draw.Draw(c.RGBA, r.Intersect(c.Bounds()), image.NewUniform(col), image.Point{}, draw.Src)
+	}
 }
 
 // RoundRect fills a rectangle with anti-aliased corners. A radius of half the height makes a pill.
@@ -47,6 +54,15 @@ func (c *Canvas) RoundRect(r image.Rectangle, rad int, col color.RGBA) {
 	if rad <= 0 {
 		c.Fill(r, col)
 		return
+	}
+	if c.rec != nil {
+		c.rec.add(append([]any{"r"}, append(rect(r), rad, rgb(col))...)...)
+		if !c.raster() {
+			return
+		}
+		rec := c.rec
+		c.rec = nil // the fills below are part of this command
+		defer func() { c.rec = rec }()
 	}
 	c.Fill(image.Rect(r.Min.X+rad, r.Min.Y, r.Max.X-rad, r.Max.Y), col)
 	c.Fill(image.Rect(r.Min.X, r.Min.Y+rad, r.Min.X+rad, r.Max.Y-rad), col)
@@ -82,6 +98,16 @@ func (c *Canvas) blend(x, y int, col color.RGBA, a float64) {
 
 // Triangle fills a triangle without anti-aliasing at the interior and with a soft edge.
 func (c *Canvas) Polygon(pts []image.Point, col color.RGBA) {
+	if c.rec != nil {
+		xy := make([]int, 0, 2*len(pts))
+		for _, p := range pts {
+			xy = append(xy, p.X, p.Y)
+		}
+		c.rec.add("p", xy, rgb(col))
+	}
+	if !c.raster() {
+		return
+	}
 	minX, minY, maxX, maxY := pts[0].X, pts[0].Y, pts[0].X, pts[0].Y
 	for _, p := range pts {
 		minX, maxX = min(minX, p.X), max(maxX, p.X)
@@ -128,6 +154,12 @@ var coverCache struct {
 // Cover scales src to fill r, cropping the middle. The scaled image of the last src and size is
 // kept, so the next frames only copy it.
 func (c *Canvas) Cover(r image.Rectangle, src image.Image) {
+	if c.rec != nil {
+		c.rec.add(append([]any{"c"}, append(rect(r), imageID(src))...)...)
+	}
+	if !c.raster() {
+		return
+	}
 	coverCache.Lock()
 	defer coverCache.Unlock()
 	if coverCache.src != src || coverCache.w != r.Dx() || coverCache.h != r.Dy() {
@@ -136,6 +168,16 @@ func (c *Canvas) Cover(r image.Rectangle, src image.Image) {
 		coverCache.src, coverCache.w, coverCache.h, coverCache.scaled = src, r.Dx(), r.Dy(), scaled
 	}
 	draw.Draw(c.RGBA, r, coverCache.scaled, image.Point{}, draw.Src)
+}
+
+// Image draws img at its size at r.Min, only in r.
+func (c *Canvas) Image(r image.Rectangle, img image.Image) {
+	if c.rec != nil {
+		c.rec.add(append([]any{"i"}, append(rect(r), imageID(img))...)...)
+	}
+	if c.raster() {
+		draw.Draw(c.RGBA, image.Rectangle{r.Min, r.Min.Add(img.Bounds().Size())}.Intersect(r), img, img.Bounds().Min, draw.Over)
+	}
 }
 
 // scaleCover scales src to fill r of dst, cropping the middle.
@@ -195,6 +237,7 @@ func Face(bold bool, px int) font.Face {
 	fallback, _ := opentype.NewFace(fb, opts)
 	face := fallbackFace{primary, fallback}
 	fonts[key] = face
+	faceInfo[face] = key
 	return face
 }
 
@@ -250,6 +293,17 @@ func (c *Canvas) Text(r image.Rectangle, s string, face font.Face, col color.Col
 		x = r.Min.X + (r.Dx()-Width(face, s))/2
 	case Right:
 		x = r.Max.X - Width(face, s)
+	}
+	if c.rec != nil {
+		fontMu.Lock()
+		info, ok := faceInfo[face]
+		fontMu.Unlock()
+		if ok {
+			c.rec.add("t", x, base, s, info[1], info[0], rgb(col))
+		}
+	}
+	if !c.raster() {
+		return
 	}
 	d := font.Drawer{Dst: c.RGBA, Src: image.NewUniform(col), Face: face, Dot: fixed.P(x, base)}
 	d.DrawString(s)

@@ -107,16 +107,16 @@ in `/var/lib/printdeck/password`.
 ## The web pages
 
 Open `http://printdeck.local` in a browser and log in with the password. The web server uses
-plain HTTP, so use it only on your own network. It has three pages:
+plain HTTP, so use it only on your own network. It has two pages:
 
-- `/`: the page for phones. It shows the print (the state, the progress, the time left, the
-  layer, the temperatures and the model) and the music, live. It pauses, resumes and cancels a
-  print, preheats and cools down, uploads a G-code file, starts a file, and controls the music.
-- `/screen`: the remote screen. It shows the touch screen live, and clicks and taps on it work
-  as touches. It has a link to the source code of the running version, because Printdeck is
-  under the AGPL-3.0.
+- `/`: the Printdeck UI, with all the screens of the touch screen. Each browser has its own
+  session of the UI: the deck draws it for that browser and sends the drawing commands, and the
+  browser draws them at the pixel density of its screen. The height of the UI follows the shape
+  of the window, so the tab bar of a phone is at the bottom. On a phone, "Add to Home Screen"
+  makes it an app with no browser bars.
 - `/system`: the version, the slot, the memory, the services, the system log and the Klipper
-  log, the API key for slicers, and the update (see "Update").
+  log, the API key for slicers, the update (see "Update"), and the link to the source code of
+  the running version, because Printdeck is under the AGPL-3.0.
 
 ## Slicers
 

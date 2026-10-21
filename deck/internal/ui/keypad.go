@@ -43,9 +43,7 @@ var (
 func (a *App) drawKeypad(c *gfx.Canvas) {
 	kp := a.keypad
 	a.hits = a.hits[:0] // the keypad blocks everything below it
-	for i := 0; i < len(c.Pix); i += 4 {
-		c.Pix[i], c.Pix[i+1], c.Pix[i+2] = c.Pix[i]/3, c.Pix[i+1]/3, c.Pix[i+2]/3
-	}
+	c.Dim(3)
 	box := image.Rect(24, 70, W-24, 716)
 	panel(c, box, "")
 	c.Fill(image.Rect(box.Min.X+24, box.Min.Y+24, box.Min.X+32, box.Min.Y+40), orange)

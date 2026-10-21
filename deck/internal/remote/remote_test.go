@@ -1,12 +1,16 @@
 package remote
 
 import (
+	"bufio"
+	"context"
+	"image"
 	"image/png"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -15,17 +19,27 @@ import (
 	"printdeck/internal/touch"
 )
 
-func newTest(t *testing.T) (*Server, *httptest.Server, *http.Client, chan touch.Event) {
+// fakeUI is a UI session that sends a frame at the start, and records the touches.
+type fakeUI struct {
+	touches chan touch.Event
+	ended   chan struct{}
+}
+
+func newTest(t *testing.T) (*Server, *httptest.Server, *http.Client, *fakeUI) {
 	t.Helper()
 	wrongDelay = 0
-	touches := make(chan touch.Event, 4)
+	ui := &fakeUI{touches: make(chan touch.Event, 4), ended: make(chan struct{}, 4)}
 	s := New()
 	s.Password = func() string { return "stamp-ocean-cider-brick" }
-	s.Touch = func(e touch.Event) { touches <- e }
+	s.NewSession = func(ctx context.Context, height int, frame func([]byte)) (int, func(touch.Event)) {
+		frame([]byte(`[["f",0,0,480,800,1184273]]`))
+		go func() { <-ctx.Done(); ui.ended <- struct{}{} }()
+		return max(800, height), func(e touch.Event) { ui.touches <- e }
+	}
 	ts := httptest.NewServer(s.Handler())
 	t.Cleanup(ts.Close)
 	jar, _ := cookiejar.New(nil)
-	return s, ts, &http.Client{Jar: jar}, touches
+	return s, ts, &http.Client{Jar: jar}, ui
 }
 
 func login(t *testing.T, c *http.Client, base, password string) *http.Response {
@@ -38,31 +52,30 @@ func login(t *testing.T, c *http.Client, base, password string) *http.Response {
 	return r
 }
 
-func TestLoginProtectsTheScreen(t *testing.T) {
+func TestLoginProtectsTheUI(t *testing.T) {
 	_, ts, c, _ := newTest(t)
-	for _, path := range []string{"/frame.png", "/events"} {
+	for _, path := range []string{"/ui/events", "/ui/img/1"} {
 		r, _ := c.Get(ts.URL + path)
 		r.Body.Close()
 		if r.StatusCode != http.StatusUnauthorized {
 			t.Errorf("%s with no login: %d, want 401", path, r.StatusCode)
 		}
 	}
-	r, _ := c.Get(ts.URL + "/screen")
+	r, _ := c.Post(ts.URL+"/ui/touch?s=x", "application/json", strings.NewReader(`{"kind":"down","x":0.5,"y":0.5}`))
+	r.Body.Close()
+	if r.StatusCode != http.StatusUnauthorized {
+		t.Errorf("a touch with no login: %d, want 401", r.StatusCode)
+	}
+	r, _ = c.Get(ts.URL + "/")
 	r.Body.Close()
 	if r.Request.URL.Path != "/login" {
-		t.Errorf("/screen with no login went to %s, want /login", r.Request.URL.Path)
+		t.Errorf("/ with no login went to %s, want /login", r.Request.URL.Path)
 	}
 	if r := login(t, c, ts.URL, "wrong"); r.Request.URL.Path != "/login" {
 		t.Errorf("a wrong password went to %s, want /login", r.Request.URL.Path)
 	}
-	// The login goes to the page of the deck (/), which the web server of the deck serves.
-	if r := login(t, c, ts.URL, "stamp-ocean-cider-brick"); r.Request.URL.Path != "/" {
-		t.Errorf("the right password went to %s, want /", r.Request.URL.Path)
-	}
-	r, _ = c.Get(ts.URL + "/screen")
-	r.Body.Close()
-	if r.StatusCode != http.StatusOK {
-		t.Errorf("/screen after the login: %d, want 200", r.StatusCode)
+	if r := login(t, c, ts.URL, "stamp-ocean-cider-brick"); r.Request.URL.Path != "/" || r.StatusCode != http.StatusOK {
+		t.Errorf("the right password went to %s (%d), want / (200)", r.Request.URL.Path, r.StatusCode)
 	}
 }
 
@@ -70,88 +83,108 @@ func TestNoPasswordNoLogin(t *testing.T) {
 	s, ts, c, _ := newTest(t)
 	s.Password = func() string { return "" }
 	login(t, c, ts.URL, "")
-	r, _ := c.Get(ts.URL + "/frame.png")
+	r, _ := c.Get(ts.URL + "/ui/events")
 	r.Body.Close()
 	if r.StatusCode != http.StatusUnauthorized {
 		t.Errorf("an empty password logged in: %d", r.StatusCode)
 	}
 }
 
-func TestFramesChangeOnlyWithThePicture(t *testing.T) {
-	s, ts, c, _ := newTest(t)
+// A browser gets its session number and the frames of its session, and its touches reach the
+// session. The session ends with the stream.
+func TestSession(t *testing.T) {
+	_, ts, c, ui := newTest(t)
 	login(t, c, ts.URL, "stamp-ocean-cider-brick")
-	cv := gfx.New(4, 8)
-	s.Publish(cv)
-	s.Publish(cv) // the same picture
-	if s.seq != 1 {
-		t.Fatalf("seq is %d after the same picture twice, want 1", s.seq)
+	ctx, cancel := context.WithCancel(context.Background())
+	req, _ := http.NewRequestWithContext(ctx, "GET", ts.URL+"/ui/events?h=1040", nil)
+	r, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
 	}
-	cv.Pix[0], cv.Pix[3] = 255, 255 // an opaque red pixel, like the pixels of the deck
-	s.Publish(cv)
-	if s.seq != 2 {
-		t.Fatalf("seq is %d after a change, want 2", s.seq)
+	lines := bufio.NewScanner(r.Body)
+	next := func() string {
+		for lines.Scan() {
+			if l := lines.Text(); l != "" {
+				return l
+			}
+		}
+		return ""
 	}
-	r, err := c.Get(ts.URL + "/frame.png")
+	if l := next(); l != "event: session" {
+		t.Fatalf("first line %q", l)
+	}
+	id, height, _ := strings.Cut(strings.TrimPrefix(next(), "data: "), " ")
+	if height != "1040" {
+		t.Errorf("height %q, want 1040", height)
+	}
+	if l := next(); l != `data: [["f",0,0,480,800,1184273]]` {
+		t.Errorf("frame %q", l)
+	}
+
+	tr, _ := c.Post(ts.URL+"/ui/touch?s="+id, "application/json", strings.NewReader(`{"kind":"down","x":0.25,"y":0.5}`))
+	tr.Body.Close()
+	if tr.StatusCode != http.StatusNoContent {
+		t.Fatalf("touch: %d", tr.StatusCode)
+	}
+	select {
+	case e := <-ui.touches:
+		if e.Kind != touch.Down || e.X != 0.25 || e.Y != 0.5 {
+			t.Errorf("touch %+v", e)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("the touch did not reach the session")
+	}
+	for _, bad := range []string{`{"kind":"down","x":2,"y":0.5}`, `{"kind":"tap","x":0,"y":0}`} {
+		br, _ := c.Post(ts.URL+"/ui/touch?s="+id, "application/json", strings.NewReader(bad))
+		br.Body.Close()
+		if br.StatusCode != http.StatusBadRequest {
+			t.Errorf("%s: %d, want 400", bad, br.StatusCode)
+		}
+	}
+	cancel()
+	r.Body.Close()
+	select {
+	case <-ui.ended:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the session did not end with the stream")
+	}
+	time.Sleep(50 * time.Millisecond) // the server removes the session after the stream ends
+	tr, _ = c.Post(ts.URL+"/ui/touch?s="+id, "application/json", strings.NewReader(`{"kind":"up","x":0,"y":0}`))
+	tr.Body.Close()
+	if tr.StatusCode != http.StatusGone {
+		t.Errorf("a touch for an ended session: %d, want 410", tr.StatusCode)
+	}
+}
+
+// The images of the frames load by their number.
+func TestImages(t *testing.T) {
+	_, ts, c, _ := newTest(t)
+	login(t, c, ts.URL, "stamp-ocean-cider-brick")
+	img := image.NewRGBA(image.Rect(0, 0, 3, 2))
+	cv, rec := gfx.NewRecording(480, 800)
+	cv.Cover(image.Rect(0, 0, 30, 20), img)
+	op := rec.Ops[0].([]any)
+	r, err := c.Get(ts.URL + "/ui/img/" + strconv.Itoa(op[5].(int)))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer r.Body.Close()
-	img, err := png.Decode(r.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if red, _, _, _ := img.At(0, 0).RGBA(); red>>8 != 255 {
-		t.Errorf("the frame is not the last picture")
+	got, err := png.Decode(r.Body)
+	if err != nil || got.Bounds().Dx() != 3 || got.Bounds().Dy() != 2 {
+		t.Errorf("image %v, %v", got, err)
 	}
 }
 
-func TestEventsTellNewFrames(t *testing.T) {
-	s, ts, c, _ := newTest(t)
-	login(t, c, ts.URL, "stamp-ocean-cider-brick")
-	s.Publish(gfx.New(4, 8))
-	r, err := c.Get(ts.URL + "/events")
+func TestFontsNeedNoLogin(t *testing.T) {
+	_, ts, c, _ := newTest(t)
+	r, err := c.Get(ts.URL + "/ui/font/bold.ttf")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer r.Body.Close()
-	buf := make([]byte, 64)
-	n, _ := r.Body.Read(buf)
-	if got := string(buf[:n]); got != "data: 1\n\n" {
-		t.Errorf("first event %q, want frame 1", got)
-	}
-	go func() {
-		time.Sleep(20 * time.Millisecond)
-		cv := gfx.New(4, 8)
-		cv.Pix[0] = 1
-		s.Publish(cv)
-	}()
-	n, _ = r.Body.Read(buf)
-	if got := string(buf[:n]); got != "data: 2\n\n" {
-		t.Errorf("second event %q, want frame 2", got)
-	}
-}
-
-func TestTouchesReachTheDeck(t *testing.T) {
-	_, ts, c, touches := newTest(t)
-	login(t, c, ts.URL, "stamp-ocean-cider-brick")
-	post := func(body string) int {
-		r, err := c.Post(ts.URL+"/touch", "application/json", strings.NewReader(body))
-		if err != nil {
-			t.Fatal(err)
-		}
-		r.Body.Close()
-		return r.StatusCode
-	}
-	if code := post(`{"kind":"down","x":0.25,"y":0.75}`); code != http.StatusNoContent {
-		t.Fatalf("touch: %d", code)
-	}
-	if e := <-touches; e.Kind != touch.Down || e.X != 0.25 || e.Y != 0.75 {
-		t.Errorf("got %+v", e)
-	}
-	for _, bad := range []string{`{"kind":"tap","x":0,"y":0}`, `{"kind":"down","x":2,"y":0}`, `nonsense`} {
-		if code := post(bad); code != http.StatusBadRequest {
-			t.Errorf("%s: %d, want 400", bad, code)
-		}
+	b, _ := io.ReadAll(r.Body)
+	r.Body.Close()
+	if r.StatusCode != http.StatusOK || len(b) != len(gfx.FontBold()) {
+		t.Errorf("font: %d, %d bytes", r.StatusCode, len(b))
 	}
 }
 

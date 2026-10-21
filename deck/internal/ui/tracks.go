@@ -8,11 +8,13 @@ import (
 )
 
 const (
-	trackRowH  = 64
-	listTop    = 150
-	listBottom = contentY1 - 8
-	scrubW     = 52 // width of the strip on the right that jumps through the list
+	trackRowH = 64
+	listTop   = 150
+	scrubW    = 52 // width of the strip on the right that jumps through the list
 )
+
+// listBottom is the bottom of the track list, above the tab bar (setHeight).
+var listBottom = BaseH - tabH - 8
 
 // trackList shows the songs of one playlist, album, or Liked Songs. The list is long, so Spotify is asked
 // for one page at a time, when the rows come into view.

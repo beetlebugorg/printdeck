@@ -35,8 +35,10 @@ const (
 	kbKeyH     = 56
 	kbGap      = 4
 	kbRowGap   = 8
-	kbY0       = H - 24 - 5*kbKeyH - 4*kbRowGap
 )
+
+// kbY0 is the top of the keyboard, at the bottom of the screen (setHeight).
+var kbY0 = BaseH - 24 - 5*kbKeyH - 4*kbRowGap
 
 // The touch areas of the keys reach half way into the gaps between the keys and between the rows.
 var (

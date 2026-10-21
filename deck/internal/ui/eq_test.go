@@ -14,7 +14,7 @@ func TestEQSliders(t *testing.T) {
 	a := New()
 	a.Music, a.Printer, a.Vol, a.Equalizer = &DemoMusic{State_: spotify.State{Authorized: true}}, &DemoPrinter{View: -1}, DemoVolume(10), e
 	a.OpenEQ()
-	cv := gfx.New(W, H)
+	cv := gfx.New(W, BaseH)
 	col := (W - 48) / len(eq.Bands)
 	tap := func(band, y int) {
 		a.Draw(cv)

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -10,12 +12,12 @@ import (
 
 	"printdeck/internal/config"
 	"printdeck/internal/gcodestore"
+	"printdeck/internal/gfx"
 	"printdeck/internal/octoapi"
 	"printdeck/internal/printer"
 	"printdeck/internal/remote"
 	"printdeck/internal/touch"
 	"printdeck/internal/ui"
-	"printdeck/internal/webui"
 )
 
 // startWeb starts the web server of the Printdeck on addr, and returns the remote screen (or nil).
@@ -24,7 +26,7 @@ import (
 //   - the remote screen at /, with the password of the Printdeck user (when the system has one)
 //   - the OctoPrint-compatible API for slicers at /api, /plugin/appkeys and /downloads (with the
 //     Klipper backend)
-func startWeb(cfg config.Config, host *setupHost, events chan<- touch.Event, pr printerBackend, app *ui.App) *remote.Server {
+func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App) *remote.Server {
 	if cfg.RemoteAddr == "" {
 		return nil
 	}
@@ -42,21 +44,11 @@ func startWeb(cfg config.Config, host *setupHost, events chan<- touch.Event, pr 
 			_, pass := host.Login()
 			return pass
 		}
-		rs.Touch = func(e touch.Event) {
-			select {
-			case events <- e:
-			default: // the deck is busy; drop the touch, as the touch screen does
-			}
-		}
+		rs.NewSession = uiSession(app)
+		rs.Icon = ui.Icon()
 		mux.Handle("/", rs.Handler())
 		klippyLog := filepath.Join(filepath.Dir(filepath.Dir(cfg.KlipperConfig)), "logs", "klippy.log")
 		registerSystemPage(mux, rs, pr, klippyLog, cfg.OctoPrintKey)
-		page := &webui.Server{Printer: pr, Volume: app.Vol, Store: &gcodestore.Store{Dir: cfg.GcodeDir},
-			PreheatTool: cfg.PreheatTool, PreheatBed: cfg.PreheatBed, Auth: rs.Auth}
-		if app.Music != nil {
-			page.Music = app.Music
-		}
-		page.Register(mux)
 	}
 	srv := &http.Server{Addr: cfg.RemoteAddr, Handler: remote.SecurityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
@@ -66,6 +58,30 @@ func startWeb(cfg config.Config, host *setupHost, events chan<- touch.Event, pr 
 		}
 	}()
 	return rs
+}
+
+// uiSession returns the function that starts a session of the UI for one browser: an App on the
+// same printer and music, with the screen height of the browser, that records its frames. A frame that is the same as the last one is
+// not sent.
+func uiSession(app *ui.App) func(ctx context.Context, height int, frame func([]byte)) (int, func(touch.Event)) {
+	return func(ctx context.Context, height int, frame func([]byte)) (int, func(touch.Event)) {
+		s := app.Session(height)
+		s.Record = true
+		events := make(chan touch.Event, 64)
+		var last []byte
+		go s.Run(ctx, events, func(c *gfx.Canvas) {
+			if b := c.Recording().JSON(); !bytes.Equal(b, last) {
+				last = b
+				frame(b)
+			}
+		})
+		return s.Height, func(e touch.Event) {
+			select {
+			case events <- e:
+			default: // the session is busy; drop the touch, as the touch screen does
+			}
+		}
+	}
 }
 
 // sourceURL is the address of the source code of a version from "git describe", for example

@@ -59,8 +59,7 @@ func (a *App) drawMusic(c *gfx.Canvas) {
 	art := bezel.Inset(8)
 	if img := a.Music.Cover(); img != nil && st.Active {
 		// Drawn into the window only, so a swiped cover slides behind the bezel.
-		inner := &gfx.Canvas{RGBA: c.RGBA.SubImage(art).(*image.RGBA)}
-		inner.Cover(art.Add(image.Pt(a.swipeDX, 0)), img)
+		c.Clipped(art, func(inner *gfx.Canvas) { inner.Cover(art.Add(image.Pt(a.swipeDX, 0)), img) })
 	} else {
 		msg := "NO SIGNAL"
 		if !st.Active {

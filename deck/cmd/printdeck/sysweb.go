@@ -37,6 +37,7 @@ const maxBundle = 200 << 20
 type systemView struct {
 	Version, Variant, Slot, Uptime, Memory string
 	APIKey                                 string // the key of the OctoPrint-compatible API, for slicers
+	Source                                 string // the source code of this version
 	Services                               []struct{ Name, State string }
 	Journal, Klippy                        string
 	Message                                string
@@ -54,7 +55,8 @@ func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend
 }
 
 func renderSystem(w http.ResponseWriter, klippyLog, apiKey, msg string, failed bool) {
-	v := systemView{Version: osVersion(), Variant: osRelease("PRINTDECK_VARIANT"), APIKey: apiKey, Message: msg, Failed: failed}
+	v := systemView{Version: osVersion(), Variant: osRelease("PRINTDECK_VARIANT"), APIKey: apiKey, Message: msg, Failed: failed,
+		Source: sourceURL(osVersion())}
 	if s, err := system.Slot(); err == nil {
 		v.Slot = strings.ToUpper(s)
 	}

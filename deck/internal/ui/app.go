@@ -8,6 +8,7 @@ import (
 	"image/color"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"printdeck/internal/board"
@@ -18,12 +19,31 @@ import (
 )
 
 const (
-	W, H      = 480, 800
+	W         = 480
+	BaseH     = 800 // the height of the touch screen
+	MaxH      = 1200
 	statusH   = 56
 	tabH      = 72
 	contentY0 = statusH
+)
+
+// H is the height of the screen of the App that draws or handles a touch now: BaseH for the touch
+// screen, more for a tall phone (App.Height). The tab bar and the keyboard are at the bottom, and
+// the rest of the layout is at the top. drawMu protects these values.
+var (
+	H         = BaseH
 	contentY1 = H - tabH
 )
+
+// setHeight sets H and the positions that depend on it. The caller holds drawMu.
+func setHeight(h int) {
+	if h < BaseH {
+		h = BaseH
+	}
+	H, contentY1 = h, h-tabH
+	kbY0 = h - 24 - 5*kbKeyH - 4*kbRowGap
+	listBottom = contentY1 - 8
+}
 
 // Music is what the Music tab needs from Spotify.
 type Music interface {
@@ -175,6 +195,11 @@ type App struct {
 	tuneZ               float64
 	toast               string
 	toastAt             time.Time
+
+	// Record makes Run draw each frame on a recording canvas (gfx.NewRecording), for a browser.
+	Record bool
+	// Height is the height of the screen, from BaseH to MaxH. 0 is BaseH.
+	Height int
 }
 
 type confirmBox struct {
@@ -194,6 +219,21 @@ func (a *App) Ask(question, yes, no string, answer func(bool)) {
 	})
 }
 
+// Session returns a new App on the same printer, music and settings, with its own screens: the UI
+// for one browser. Its theme changes are saved as those of a.
+func (a *App) Session(height int) *App {
+	s := New()
+	s.Height = max(BaseH, min(MaxH, height))
+	s.Music, s.Printer, s.Vol, s.Equalizer, s.Setup = a.Music, a.Printer, a.Vol, a.Equalizer, a.Setup
+	s.PreheatTool, s.PreheatBed, s.UnloadMM, s.LoadMM, s.JogInvertY = a.PreheatTool, a.PreheatBed, a.UnloadMM, a.LoadMM, a.JogInvertY
+	s.Theme, s.NightFrom, s.NightTo, s.OnTheme = a.Theme, a.NightFrom, a.NightTo, a.OnTheme
+	s.tab = a.tab
+	return s
+}
+
+// drawMu lets one App draw at a time: the palette of the theme is shared by all.
+var drawMu sync.Mutex
+
 func New() *App {
 	return &App{Now: time.Now, dragFrac: -1, wake: make(chan struct{}, 1), posted: make(chan func(), 16),
 		joy: &joystick{}, zStep: 1, fanSet: -1, UnloadMM: 80, LoadMM: 70, tuneSpeed: 100, tuneFlow: 100, Theme: "auto", NightFrom: 20, NightTo: 7}
@@ -209,11 +249,14 @@ func (a *App) Redraw() {
 
 // Run handles input and draws frames until ctx ends.
 func (a *App) Run(ctx context.Context, events <-chan touch.Event, present func(*gfx.Canvas)) {
-	cv := gfx.New(W, H)
+	cv := gfx.New(W, max(BaseH, a.Height))
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
 	for {
 		t0 := time.Now()
+		if a.Record {
+			cv, _ = gfx.NewRecording(W, max(BaseH, a.Height))
+		}
 		a.Draw(cv)
 		t1 := time.Now()
 		present(cv)
@@ -244,7 +287,11 @@ func (a *App) Run(ctx context.Context, events <-chan touch.Event, present func(*
 }
 
 func (a *App) handle(ev touch.Event) {
-	p := image.Pt(int(ev.X*W+0.5), int(ev.Y*H+0.5))
+	// The handlers use the positions of the layout, which depend on the height of this App.
+	drawMu.Lock()
+	defer drawMu.Unlock()
+	setHeight(a.Height)
+	p := image.Pt(int(ev.X*W+0.5), int(ev.Y*float64(H)+0.5))
 	switch ev.Kind {
 	case touch.Down:
 		a.downAt = p
@@ -354,6 +401,9 @@ func fracOf(h *hit, p image.Point) float64 {
 
 // Draw renders one frame and rebuilds the hit list.
 func (a *App) Draw(c *gfx.Canvas) {
+	drawMu.Lock()
+	defer drawMu.Unlock()
+	setHeight(a.Height)
 	if n := a.isNight(); n != night {
 		setNight(n)
 	}
@@ -446,12 +496,7 @@ func (a *App) drawTabs(c *gfx.Canvas) {
 
 func (a *App) drawConfirm(c *gfx.Canvas) {
 	a.hits = a.hits[:0] // the dialog blocks everything below it
-	for y := 0; y < H; y++ {
-		for x := 0; x < W; x++ {
-			o := c.PixOffset(x, y)
-			c.Pix[o], c.Pix[o+1], c.Pix[o+2] = c.Pix[o]/3, c.Pix[o+1]/3, c.Pix[o+2]/3
-		}
-	}
+	c.Dim(3)
 	box := image.Rect(30, 260, W-30, 540)
 	panel(c, box, "CONFIRM")
 	cf := a.confirm

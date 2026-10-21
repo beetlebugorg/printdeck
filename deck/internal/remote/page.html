@@ -2,101 +2,241 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Printdeck">
+<meta name="theme-color" content="#121211" id="theme">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="icon" href="/icon.png">
 <title>Printdeck</title>
 <style>
-  :root { color-scheme: light dark; --bg: #d3d0c8; --ink: #171717; --dim: #4a4742; --edge: #a9a59c; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #121211; --ink: #eee9df; --dim: #c2bcb0; --edge: #060606; } }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
-    font: 13px ui-monospace, "IBM Plex Mono", Menlo, monospace; }
-  body { display: flex; flex-direction: column; align-items: center; }
-  header { width: 100%; max-width: 480px; display: flex; justify-content: space-between; align-items: center;
-    padding: 8px 16px; color: var(--dim); }
-  header form { margin: 0 0 0 12px; display: inline; }
-  header a { color: var(--dim); }
-  header button { font: inherit; color: var(--dim); background: none; border: 1px solid var(--edge);
-    border-radius: 4px; padding: 4px 10px; cursor: pointer; }
-  #status { min-width: 8em; }
-  main { flex: 1; width: 100%; display: flex; justify-content: center; align-items: flex-start;
-    padding: 0 16px 16px; min-height: 0; }
-  /* The deck screen is 480 x 800. Fit it in the window and keep its shape. */
-  #screen { display: block; height: 100%; max-height: 800px; max-width: 100%; aspect-ratio: 480 / 800;
-    object-fit: contain; border-radius: 6px; box-shadow: 0 0 0 1px var(--edge); touch-action: none;
-    user-select: none; -webkit-user-select: none; cursor: pointer; background: #000; }
+  html, body { margin: 0; height: 100%; background: #121211; overflow: hidden; overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none; touch-action: none; }
+  body { display: flex; align-items: center; justify-content: center;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    box-sizing: border-box; }
+  canvas { display: block; touch-action: none; }
+  #status { position: fixed; left: 50%; top: calc(12px + env(safe-area-inset-top)); transform: translateX(-50%);
+    font: 13px ui-monospace, Menlo, monospace; color: #ff8c4a; background: #080808; padding: 6px 12px;
+    border-radius: 4px; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  #status.show { opacity: .9; }
 </style>
 </head>
 <body>
-<header>
-  <span>PRINTDECK · <span id="status">connecting…</span></span>
-  <span><a href="{{SOURCE}}">Source</a>
-  <form method="post" action="/logout"><button type="submit">Log out</button></form></span>
-</header>
-<main><img id="screen" alt="The Printdeck screen" draggable="false"></main>
+<canvas id="ui" aria-label="Printdeck"></canvas>
+<div id="status">Connecting…</div>
 <script>
 "use strict";
-const screen = document.getElementById("screen");
+// The deck draws its UI for this browser and sends the drawing commands of each frame (see
+// gfx.Recording). This page draws them at the pixel density of the screen, and sends the touches.
+// The UI is 480 wide. Its height follows the shape of the window, from 800 (the touch screen) to
+// 1200, so the tab bar of a tall phone is at the bottom of the screen.
+const W = 480, MIN_H = 800, MAX_H = 1200;
+let H = MIN_H;
+const canvas = document.getElementById("ui");
+const ctx = canvas.getContext("2d");
 const status = document.getElementById("status");
+let scale = 1, frame = null, drawn = null, session = "";
 
-// Frames: the server sends the number of each new frame. Load only the newest one, one at a time.
-let loading = false, wanted = 0, shown = 0;
-async function load() {
-  if (loading || wanted === shown) return;
-  loading = true;
-  const seq = wanted;
-  try {
-    const r = await fetch("/frame.png", { cache: "no-store" });
-    if (r.status === 401) { location.href = "/login"; return; }
-    if (r.ok) {
-      const old = screen.src;
-      screen.src = URL.createObjectURL(await r.blob());
-      if (old) URL.revokeObjectURL(old);
-      shown = seq;
+function showStatus(text) { status.textContent = text; status.classList.toggle("show", !!text); }
+
+// The area of the window for the UI, inside the safe area of the screen.
+function area() {
+  const cs = getComputedStyle(document.body);
+  return [innerWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight),
+    innerHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)];
+}
+// The height that fills the window at the full width.
+function wantedHeight() {
+  const [aw, ah] = area();
+  return Math.max(MIN_H, Math.min(MAX_H, Math.round(W * ah / aw)));
+}
+
+// Fit the UI in the window, at the pixel density of the screen.
+function layout() {
+  const [aw, ah] = area();
+  scale = Math.min(aw / W, ah / H);
+  const dpr = devicePixelRatio || 1;
+  canvas.style.width = W * scale + "px";
+  canvas.style.height = H * scale + "px";
+  canvas.width = Math.round(W * scale * dpr);
+  canvas.height = Math.round(H * scale * dpr);
+  drawn = null;
+  requestAnimationFrame(paint);
+}
+// A new shape of the window (for example a turn of the phone) asks for a new height: a new session.
+let resizeTimer = 0, source = null;
+addEventListener("resize", () => {
+  layout();
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (source && Math.abs(wantedHeight() - H) > 8) { source.close(); listen(); }
+  }, 300);
+});
+
+// The images of the frames, by number. A frame draws again when an image arrives.
+const images = new Map();
+function image(id) {
+  let img = images.get(id);
+  if (!img) {
+    img = new Image();
+    img.onload = () => { drawn = null; requestAnimationFrame(paint); };
+    img.src = "/ui/img/" + id;
+    images.set(id, img);
+    if (images.size > 64) images.delete(images.keys().next().value);
+  }
+  return img.complete && img.naturalWidth ? img : null;
+}
+
+const hex = (n) => "#" + n.toString(16).padStart(6, "0");
+
+function paint() {
+  if (!frame || frame === drawn) return;
+  drawn = frame;
+  const k = scale * (devicePixelRatio || 1);
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  ctx.textBaseline = "alphabetic";
+  for (const op of frame) {
+    switch (op[0]) {
+      case "f":
+        ctx.fillStyle = hex(op[5]);
+        ctx.fillRect(op[1], op[2], op[3] - op[1], op[4] - op[2]);
+        break;
+      case "r":
+        ctx.fillStyle = hex(op[6]);
+        ctx.beginPath();
+        ctx.roundRect(op[1], op[2], op[3] - op[1], op[4] - op[2], op[5]);
+        ctx.fill();
+        break;
+      case "p": {
+        const p = op[1];
+        ctx.fillStyle = hex(op[2]);
+        ctx.beginPath();
+        ctx.moveTo(p[0], p[1]);
+        for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      }
+      case "t":
+        ctx.fillStyle = hex(op[6]);
+        ctx.font = (op[4] ? "600 " : "400 ") + op[5] + "px PD, ui-monospace, monospace";
+        ctx.fillText(op[3], op[1], op[2]);
+        break;
+      case "c": {
+        const img = image(op[5]);
+        if (!img) break;
+        // Fill the rectangle with the middle of the image.
+        const w = op[3] - op[1], h = op[4] - op[2];
+        const iw = img.naturalWidth, ih = img.naturalHeight;
+        let sx = 0, sy = 0, sw = iw, sh = ih;
+        if (iw / ih > w / h) { sw = ih * w / h; sx = (iw - sw) / 2; } else { sh = iw * h / w; sy = (ih - sh) / 2; }
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, sx, sy, sw, sh, op[1], op[2], w, h);
+        break;
+      }
+      case "i": {
+        const img = image(op[5]);
+        if (!img) break;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(op[1], op[2], op[3] - op[1], op[4] - op[2]);
+        ctx.clip();
+        ctx.drawImage(img, op[1], op[2]);
+        ctx.restore();
+        break;
+      }
+      case "d":
+        ctx.fillStyle = "rgba(0,0,0," + (1 - 1 / op[1]) + ")";
+        ctx.fillRect(0, 0, W, H);
+        break;
+      case "clip":
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(op[1], op[2], op[3] - op[1], op[4] - op[2]);
+        ctx.clip();
+        break;
+      case "unclip":
+        ctx.restore();
+        break;
     }
-  } finally {
-    loading = false;
-    load();
+  }
+  // The page around the UI has the color of the UI, so it looks like one screen.
+  const first = frame[0];
+  if (first && first[0] === "f") {
+    const c = hex(first[5]);
+    if (document.body.style.background !== c) {
+      document.body.style.background = c;
+      document.documentElement.style.background = c;
+      document.getElementById("theme").content = c;
+    }
   }
 }
+
+// The frames.
 function listen() {
-  const events = new EventSource("/events");
-  events.onopen = () => { status.textContent = "live"; };
-  events.onmessage = (e) => { wanted = Number(e.data); load(); };
+  const events = new EventSource("/ui/events?h=" + wantedHeight());
+  source = events;
+  events.addEventListener("session", (e) => {
+    const [id, h] = e.data.split(" ");
+    session = id;
+    if (Number(h) && Number(h) !== H) { H = Number(h); layout(); }
+    showStatus("");
+  });
+  events.onmessage = (e) => { frame = JSON.parse(e.data); requestAnimationFrame(paint); };
   events.onerror = () => {
-    status.textContent = "reconnecting…";
-    // A closed stream can mean that the session ended. The frame request finds that out.
-    fetch("/frame.png", { method: "HEAD" }).then((r) => { if (r.status === 401) location.href = "/login"; });
+    events.close();
+    session = "";
+    showStatus("Reconnecting…");
+    fetch("/ui/font/regular.ttf", { method: "HEAD" }).finally(() => {
+      fetch("/", { method: "HEAD", cache: "no-store", redirect: "manual" }).then((r) => {
+        if (r.type === "opaqueredirect" || r.status === 401) location.href = "/login";
+        else setTimeout(listen, 1500);
+      }).catch(() => setTimeout(listen, 3000));
+    });
   };
 }
-listen();
 
-// Touches: send down, move and up as a position from 0 to 1 on the screen.
+// The touches go to the deck one at a time, in order. A move waits only for the newest position.
+let sending = false, queue = [], pendingMove = null;
 function send(kind, e) {
-  const r = screen.getBoundingClientRect();
-  const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-  const y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
-  fetch("/touch", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ kind, x, y }), keepalive: true });
+  const r = canvas.getBoundingClientRect();
+  const t = { kind, x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)),
+    y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) };
+  if (kind === "move") pendingMove = t; else { if (pendingMove) { queue.push(pendingMove); pendingMove = null; } queue.push(t); }
+  pump();
 }
-let down = false, lastMove = 0;
-screen.addEventListener("pointerdown", (e) => {
-  down = true;
-  screen.setPointerCapture(e.pointerId);
-  send("down", e);
-});
-screen.addEventListener("pointermove", (e) => {
-  const now = performance.now();
-  if (!down || now - lastMove < 33) return; // at most 30 moves a second
-  lastMove = now;
-  send("move", e);
-});
-function up(e) {
-  if (!down) return;
-  down = false;
-  send("up", e);
+async function pump() {
+  if (sending || !session) return;
+  const t = queue.shift() || pendingMove;
+  if (!t) return;
+  if (t === pendingMove) pendingMove = null;
+  sending = true;
+  try {
+    const r = await fetch("/ui/touch?s=" + session, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(t), keepalive: true });
+    if (r.status === 401) location.href = "/login";
+  } catch (err) {
+  } finally { sending = false; pump(); }
 }
-screen.addEventListener("pointerup", up);
-screen.addEventListener("pointercancel", up);
+let down = false;
+canvas.addEventListener("pointerdown", (e) => { down = true; canvas.setPointerCapture(e.pointerId); send("down", e); e.preventDefault(); });
+canvas.addEventListener("pointermove", (e) => { if (down) send("move", e); });
+const up = (e) => { if (down) { down = false; send("up", e); } };
+canvas.addEventListener("pointerup", up);
+canvas.addEventListener("pointercancel", up);
+addEventListener("contextmenu", (e) => e.preventDefault());
+document.addEventListener("gesturestart", (e) => e.preventDefault());
+
+// Load the fonts of the deck before the first frame, so the letters are the same.
+Promise.all([
+  new FontFace("PD", "url(/ui/font/regular.ttf)", { weight: "400" }).load(),
+  new FontFace("PD", "url(/ui/font/bold.ttf)", { weight: "600" }).load(),
+]).then((faces) => faces.forEach((f) => document.fonts.add(f))).catch(() => {}).finally(() => { layout(); listen(); });
 </script>
 </body>
 </html>
