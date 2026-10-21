@@ -50,6 +50,8 @@ type View struct {
 	view     int
 	viewImg  image.Image
 	viewBusy bool
+
+	est estimate // the time left of the print
 }
 
 func NewView(src Source) *View { return &View{src: src, view: -1} }

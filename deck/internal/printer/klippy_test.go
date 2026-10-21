@@ -32,7 +32,7 @@ func TestKlippyState(t *testing.T) {
 	want := State{Reachable: true, Connected: true, Text: "Printing", Printing: true, File: "cap.gcode",
 		FilePath: "parts/cap.gcode", FileSize: 1000, FilePos: 250, Completion: 25, TimeLeft: 30 * time.Minute,
 		HasTimeLeft: true, Tool: 209.6, ToolTarget: 210, Bed: 60, BedTarget: 60, Fan: 50, HasFan: true, Z: 3.6, HasZ: true,
-		X: 10, Y: 20, Homed: "xyz", Elapsed: 11 * time.Minute, FilamentUsed: 812.5, Message: "Layer 3",
+		X: 10, Y: 20, Homed: "xyz", Elapsed: 11 * time.Minute, PrintDuration: 10 * time.Minute, FilamentUsed: 812.5, Message: "Layer 3",
 		ZOffset: -0.05, SpeedPct: 110, FlowPct: 95, SaveConfigPending: true}
 	if st != want {
 		t.Errorf("printing:\n got %+v\nwant %+v", st, want)

@@ -54,8 +54,10 @@ type State struct {
 	// Axis is the travel of X, Y and Z: Axis[0] the minimum, Axis[1] the maximum.
 	Axis [2][3]float64
 	// The time since the start of the print, and the filament used in mm.
-	Elapsed      time.Duration
-	FilamentUsed float64
+	Elapsed time.Duration
+	// PrintDuration is the time of the print without the pauses (print_duration of Klipper).
+	PrintDuration time.Duration
+	FilamentUsed  float64
 	// Message is the message of M117.
 	Message string
 	// The Z offset of the head (SET_GCODE_OFFSET), and the speed and flow factors in percent.

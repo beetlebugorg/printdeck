@@ -58,3 +58,38 @@ func TestObjects(t *testing.T) {
 		}
 	}
 }
+
+// Cura: the total in the header, and the time at the end of each layer.
+func TestTimelineCura(t *testing.T) {
+	src := ";TIME:600\n;LAYER:0\nG1 X10 Y0 E1 F600\n;TIME_ELAPSED:100\n;LAYER:1\nG1 X20 Y0 E2\n;TIME_ELAPSED:600\n"
+	m, _ := Parse(strings.NewReader(src))
+	if !m.TimeSlicer || m.TimeTotal != 600 {
+		t.Fatalf("slicer %v, total %v", m.TimeSlicer, m.TimeTotal)
+	}
+	first := int64(strings.Index(src, ";TIME_ELAPSED:100") + len(";TIME_ELAPSED:100\n"))
+	if el, total, ok := m.TimeAt(first); !ok || el != 100 || total != 600 {
+		t.Errorf("at the first mark: %v %v %v", el, total, ok)
+	}
+	if el, _, _ := m.TimeAt(int64(len(src))); el != 600 {
+		t.Errorf("at the end: %v", el)
+	}
+}
+
+// PrusaSlicer and OrcaSlicer: M73 with the minutes left.
+func TestTimelineM73(t *testing.T) {
+	src := "M73 P0 R10\nG1 X10 Y0 E1 F600\nM73 P50 R5\nG1 X20 Y0 E2\nM73 P100 R0\n"
+	m, _ := Parse(strings.NewReader(src))
+	mid := int64(strings.Index(src, "M73 P50") + len("M73 P50 R5\n"))
+	if el, total, ok := m.TimeAt(mid); !ok || el != 300 || total != 600 || !m.TimeSlicer {
+		t.Errorf("at the middle: %v of %v, ok %v", el, total, ok)
+	}
+}
+
+// A file with no marks gets the time of its moves: 10 mm at 10 mm/s and 20 mm at 10 mm/s.
+func TestTimelineMoves(t *testing.T) {
+	src := ";LAYER:0\nG1 X10 Y0 E1 F600\n;LAYER:1\nG1 X10 Y20 E2\n"
+	m, _ := Parse(strings.NewReader(src))
+	if m.TimeSlicer || m.TimeTotal != 3 {
+		t.Errorf("slicer %v, total %v", m.TimeSlicer, m.TimeTotal)
+	}
+}
