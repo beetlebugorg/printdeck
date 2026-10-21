@@ -282,6 +282,15 @@ func Fit(face font.Face, s string, width int) string {
 	return string(rs) + "…"
 }
 
+// textAt draws s with its baseline at y, from x, for the replay of a recording.
+func (c *Canvas) textAt(x, y int, s string, face font.Face, col color.Color) {
+	if !c.raster() {
+		return
+	}
+	d := font.Drawer{Dst: c.RGBA, Src: image.NewUniform(col), Face: face, Dot: fixed.P(x, y)}
+	d.DrawString(s)
+}
+
 // Text draws s vertically centred in r.
 func (c *Canvas) Text(r image.Rectangle, s string, face font.Face, col color.Color, a Align) {
 	s = Fit(face, s, r.Dx())

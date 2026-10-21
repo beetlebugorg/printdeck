@@ -26,6 +26,7 @@ const (
 	pageMacros
 	pageHistory
 	pageConsole
+	pageStats
 )
 
 // open shows a page over the current one.

@@ -31,7 +31,12 @@ func TestHistory(t *testing.T) {
 	if r := h2.Records(); len(r) != 2 || r[0].Result != "cancelled" {
 		t.Errorf("records %+v", r)
 	}
-	if tot := h2.Totals(); tot.Prints != 2 || tot.Time != 67*time.Minute || tot.Filament != 8200 {
-		t.Errorf("totals %+v", tot)
+	st := ComputeStats(h2.Records(), now.Add(3*time.Hour))
+	if st.Prints != 2 || st.Completed != 1 || st.Cancelled != 1 || st.Time != 67*time.Minute ||
+		st.Filament != 8200 || st.Longest != 62*time.Minute || st.Last7 != 2 || st.TopFile != "x.gcode" || st.TopCount != 2 {
+		t.Errorf("stats %+v", st)
+	}
+	if g := FilamentGrams(1000); g < 2.9 || g > 3.1 {
+		t.Errorf("1 m of filament is %.2f g, want about 3", g)
 	}
 }

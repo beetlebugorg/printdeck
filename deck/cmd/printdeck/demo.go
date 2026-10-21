@@ -126,7 +126,7 @@ func demo(args []string) {
 		X: 110, Y: 110, Z: 5, Axis: [2][3]float64{{0, 0, 0}, {280, 280, 270}}}
 	a.OpenPrintScreen("")
 	snap("print-idle")
-	for _, n := range []string{"move", "files", "filament", "maintenance", "machine", "macros", "history", "swap", "swap-heat", "keypad"} {
+	for _, n := range []string{"move", "files", "filament", "maintenance", "machine", "macros", "history", "stats", "swap", "swap-heat", "keypad"} {
 		a.OpenPrintScreen(n)
 		snap("print-" + n)
 	}

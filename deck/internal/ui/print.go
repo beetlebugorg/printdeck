@@ -55,6 +55,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	case pageHistory:
 		a.drawHistory(c)
 		return
+	case pageStats:
+		a.drawStats(c)
+		return
 	}
 	if a.tune {
 		a.drawTune(c)

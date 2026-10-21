@@ -102,20 +102,53 @@ func (h *History) add(st State, now time.Time) {
 	}
 }
 
-// Totals are the sums of the history.
-type Totals struct {
-	Prints   int
-	Time     time.Duration
-	Filament float64 // mm
+// Stats are the statistics of the history.
+type Stats struct {
+	Prints, Completed, Cancelled, Failed int
+	Time, Average, Longest               time.Duration
+	Filament                             float64 // mm
+	Last7, Last30                        int     // the prints of the last 7 and 30 days
+	TopFile                              string  // the file that was printed most often
+	TopCount                             int
+	Since                                time.Time // the end of the oldest print of the history
 }
 
-// Totals adds up the finished prints.
-func (h *History) Totals() Totals {
-	var t Totals
-	for _, r := range h.Records() {
-		t.Prints++
-		t.Time += r.Duration
-		t.Filament += r.Filament
+// FilamentGrams is the weight of a length of 1.75 mm filament of PLA (1.24 g/cm³), in grams.
+func FilamentGrams(mm float64) float64 { return mm * 3.14159265 * 0.875 * 0.875 * 1.24e-3 }
+
+// ComputeStats adds up the history at the time now.
+func ComputeStats(recs []Record, now time.Time) Stats {
+	var s Stats
+	count := map[string]int{}
+	for _, r := range recs {
+		s.Prints++
+		switch r.Result {
+		case "complete":
+			s.Completed++
+		case "cancelled":
+			s.Cancelled++
+		default:
+			s.Failed++
+		}
+		s.Time += r.Duration
+		s.Filament += r.Filament
+		s.Longest = max(s.Longest, r.Duration)
+		if age := now.Sub(r.End); age < 7*24*time.Hour {
+			s.Last7++
+			s.Last30++
+		} else if age < 30*24*time.Hour {
+			s.Last30++
+		}
+		count[r.File]++
+		if c := count[r.File]; c > s.TopCount || (c == s.TopCount && r.File < s.TopFile) {
+			s.TopFile, s.TopCount = r.File, c
+		}
+		if s.Since.IsZero() || r.End.Before(s.Since) {
+			s.Since = r.End
+		}
 	}
-	return t
+	if s.Prints > 0 {
+		s.Average = s.Time / time.Duration(s.Prints)
+	}
+	return s
 }
