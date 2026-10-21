@@ -61,7 +61,7 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 }
 
 // uiSession returns the function that starts a session of the UI for one browser: an App on the
-// same printer and music, with the screen height of the browser, that records its frames. A frame that is the same as the last one is
+// same printer, with the screen height of the browser, that records its frames. A frame that is the same as the last one is
 // not sent.
 func uiSession(app *ui.App) func(ctx context.Context, height int, frame func([]byte)) (int, func(touch.Event)) {
 	return func(ctx context.Context, height int, frame func([]byte)) (int, func(touch.Event)) {

@@ -10,7 +10,6 @@ import (
 
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
-	"printdeck/internal/spotify"
 	"printdeck/internal/touch"
 )
 
@@ -53,8 +52,7 @@ func (r *recPrinter) wait(n int) []string {
 func newPrintApp(st printer.State) (*App, *recPrinter, *gfx.Canvas) {
 	pr := &recPrinter{DemoPrinter: &DemoPrinter{View: -1, State_: st}}
 	a := New()
-	a.Music, a.Printer, a.Vol = &DemoMusic{State_: spotify.State{Authorized: true}}, pr, DemoVolume(10)
-	a.SetTab(TabPrint)
+	a.Printer = pr
 	return a, pr, gfx.New(W, BaseH)
 }
 
@@ -180,4 +178,9 @@ func TestFirmwareRestartOnMachinePage(t *testing.T) {
 	if c := pr.wait(1); len(c) != 1 || c[0] != "gcode FIRMWARE_RESTART" {
 		t.Errorf("calls %v", c)
 	}
+}
+
+// ev sends a touch event at x, y in the units of the UI.
+func ev(a *App, k touch.Kind, x, y int) {
+	a.handle(touch.Event{Kind: k, X: float64(x) / W, Y: float64(y) / BaseH})
 }

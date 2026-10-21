@@ -7,18 +7,9 @@ import (
 	"printdeck/internal/ui"
 )
 
-// BenchmarkDrawMusic and BenchmarkDrawPrint measure one frame of each tab.
-func BenchmarkDrawMusic(b *testing.B) {
-	a, _, _ := demoApp()
-	c := gfx.New(ui.W, ui.BaseH)
-	for i := 0; i < b.N; i++ {
-		a.Draw(c)
-	}
-}
-
-func BenchmarkDrawPrint(b *testing.B) {
-	a, _, _ := demoApp()
-	a.SetTab(ui.TabPrint)
+// BenchmarkDraw measures one frame of the home screen.
+func BenchmarkDraw(b *testing.B) {
+	a, _ := demoApp()
 	c := gfx.New(ui.W, ui.BaseH)
 	for i := 0; i < b.N; i++ {
 		a.Draw(c)

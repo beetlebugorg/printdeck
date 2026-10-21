@@ -98,8 +98,6 @@ func (a *App) LCDKey(key string) {
 		case "click":
 			if a.lcdSel >= 0 && a.lcdSel < len(a.focus) {
 				a.focus[a.lcdSel].tap()
-			} else if a.tab != TabPrint {
-				a.tab = TabPrint
 			}
 		case "back", "long_click":
 			if a.confirm != nil {

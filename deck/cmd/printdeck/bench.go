@@ -33,11 +33,10 @@ func bench(args []string) {
 	defer os.RemoveAll(dir)
 	k := printer.NewKlippy(args[0], &gcodestore.Store{Dir: dir})
 	app := ui.New()
-	app.Printer, app.Music, app.Vol = k, &ui.DemoMusic{}, ui.DemoVolume(0) // no music on a bench
+	app.Printer = k
 	if os.Getenv("DEMO_HEAT") != "" {
 		app.Printer = &heatDemo{Klippy: k, start: time.Now()}
 	}
-	app.SetTab(ui.TabPrint)
 	if f, ok := os.LookupEnv("LCD_FONT"); ok {
 		app.LCDFont = f
 	}
