@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"printdeck/internal/board"
@@ -30,6 +31,20 @@ var manualHTML string
 
 // callout is a number on a picture: the position in the units of the UI (480 wide), the name of
 // the part, and what it does.
+// keysRect is the place of the keys that a callout names: one key ("Print a file"), or a row of
+// keys ("Park, Center, Motors off"). ok is false when a name is no key.
+func keysRect(a *ui.App, title string) (image.Rectangle, bool) {
+	var all image.Rectangle
+	for _, name := range strings.Split(title, ", ") {
+		r, ok := a.KeyRect(name)
+		if !ok {
+			return image.Rectangle{}, false
+		}
+		all = all.Union(r)
+	}
+	return all, true
+}
+
 type callout struct {
 	X, Y        int
 	Title, Text string
@@ -176,7 +191,7 @@ func manualParts() []section {
 						{140, 376, "Preheat", "Heats the nozzle and the bed for the loaded filament."},
 						{340, 376, "Cool down", "Turns off both heaters."},
 						{240, 469, "Last print", "The last print and its result. Reprint starts it again, after a question."},
-						{240, 629, "Pages", "Filament, Move, Maintenance and Machine. Each page has its own section."},
+						{240, 654, "Pages", "Filament, Move, Maintenance and Machine. Each page has its own section."},
 					}},
 				{Name: "keypad", Caption: "The keypad of a temperature",
 					Setup: func(s *manualState) { s.p.State_ = stIdle; s.a.OpenPrintScreen("keypad") },
@@ -203,8 +218,8 @@ func manualParts() []section {
 					Notes: []string{"Drag the list up and down. Tap a file to open it."}},
 				{Name: "file", Caption: "A file", Setup: page("file"),
 					Callouts: []callout{
-						{240, 208, "Picture", "The thumbnail of the file."},
-						{240, 449, "Slicer data", "The print time, the filament, the layer height, the temperatures, the slicer and the date."},
+						{240, 277, "Picture", "The thumbnail of the file."},
+						{240, 588, "Slicer data", "The print time, the filament, the layer height, the temperatures, the slicer and the date."},
 						{160, 628, "Print", "Starts the print, after a question."},
 						{386, 628, "Delete", "Removes the file, after a question. The file that prints now cannot be removed."},
 					}},
@@ -252,11 +267,11 @@ func manualParts() []section {
 				{Name: "tune", Caption: "Tune",
 					Setup: func(s *manualState) { s.p.State_ = stPrinting; s.a.OpenPrintScreen("tune") },
 					Callouts: []callout{
-						{380, 136, "Speed", "The speed of the print, in percent of the speed of the slicer."},
-						{380, 219, "Flow", "The amount of plastic, in percent."},
-						{380, 301, "Z offset", "The height of the nozzle during the print."},
-						{380, 406, "Fan", "The part cooling fan."},
-						{240, 527, "Temperatures", "Tap a card to change its temperature."},
+						{380, 155, "Speed", "The speed of the print, in percent of the speed of the slicer."},
+						{380, 277, "Flow", "The amount of plastic, in percent."},
+						{380, 399, "Z offset", "The height of the nozzle during the print."},
+						{380, 612, "Fan", "The part cooling fan."},
+						{240, 734, "Temperatures", "Tap a card to change its temperature."},
 					}},
 				{Name: "paused", Caption: "Paused",
 					Setup: func(s *manualState) {
@@ -305,7 +320,7 @@ func manualParts() []section {
 					Setup: func(s *manualState) { s.p.State_ = stIdle; s.a.OpenPrintScreen("swap") },
 					Callouts: []callout{
 						{120, 80, "Step", "The step of the change."},
-						{240, 264, "Materials", "The new filament. The nozzle heats to its temperature, and the deck sets it as the loaded filament."},
+						{240, 564, "Materials", "The new filament. The nozzle heats to its temperature, and the deck sets it as the loaded filament."},
 						{240, 464, "Other temperature", "A temperature that you type."},
 						{422, 42, "Close", "Stops the change."},
 					}},
@@ -316,7 +331,7 @@ func manualParts() []section {
 					Callouts: []callout{
 						{240, 103, "Position", "X, Y and Z of the head. A lit LED shows a homed axis."},
 						{240, 171, "Home", "Homes all axes, or one axis. Home after each start of the printer."},
-						{152, 346, "Joystick", "Hold a finger on the pad to move the head in X and Y. The farther from the middle, the faster it moves."},
+						{240, 394, "Joystick", "Hold a finger on the pad to move the head in X and Y. The farther from the middle, the faster it moves."},
 						{374, 354, "Z", "Moves Z up or down by the step: 0.1, 1 or 10 mm."},
 						{240, 547, "Park, Center, Motors off", "Park moves the head to the back left. Center moves it to the middle of the bed. Motors off lets you move the head by hand."},
 					}},
@@ -331,7 +346,7 @@ func manualParts() []section {
 						{240, 317, "PID tune", "Heats the nozzle to 210° and the bed to 60°, and finds the PID settings of each heater (PID_CALIBRATE). Save config then writes them."},
 						{240, 415, "Nozzle change", "Heats the nozzle to 250° and raises the head, to change the nozzle."},
 						{240, 513, "Firmware", "Writes the Klipper firmware of this Printdeck to the board of the printer. Orange text shows old firmware. See below."},
-						{240, 611, "Save config", "Writes the results of the calibrations into printer.cfg. Klipper restarts. Orange text shows unsaved results."},
+						{240, 737, "Save config", "Writes the results of the calibrations into printer.cfg. Klipper restarts. Orange text shows unsaved results."},
 					}},
 				{Name: "flash", Caption: "The firmware flash", Setup: page("flash"),
 					Notes: []string{"The deck stops Klipper, resets the board into its bootloader, writes the firmware, and reads it back to check it. Then Klipper starts again. The setup screen and the Klipper error screen also show this key when the board has no Klipper firmware or old firmware. Printdeck can flash boards with an atmega2560 and an STK500v2 bootloader now, for example the RAMBo and RAMPS boards."},
@@ -352,7 +367,7 @@ func manualParts() []section {
 					},
 					Callouts: []callout{
 						{240, 62, "Height", "The height of the nozzle now."},
-						{240, 384, "Steps", "Moves the nozzle down (−) or up (+), in mm."},
+						{240, 469, "Steps", "Moves the nozzle down (−) or up (+), in mm."},
 						{126, 559, "Accept", "Takes the height. Save config then writes it."},
 						{354, 559, "Abort", "Stops the test with no change."},
 					},
@@ -396,7 +411,7 @@ func manualParts() []section {
 				{Name: "update", Caption: "Software update", Setup: page("update"),
 					Callouts: []callout{
 						{240, 140, "Versions", "The version of this deck, the newest version, and the channel."},
-						{240, 284, "Notes", "What the new version changes."},
+						{240, 260, "Notes", "What the new version changes."},
 						{240, 534, "Install", "Downloads the new version, checks it, and installs it, after a question. The deck restarts."},
 						{126, 637, "Check now", "Checks for a new version now."},
 						{354, 637, "Beta updates", "On: the deck also gets the betas, the versions with new features for tests. Off: only the stable versions."},
@@ -405,7 +420,7 @@ func manualParts() []section {
 					Callouts: []callout{
 						{240, 180, "Totals", "The number of prints, the success rate, the print time and the filament."},
 						{240, 302, "Results", "Done (amber), cancelled and failed (red)."},
-						{240, 464, "Details", "The filament in grams (for 1.75 mm PLA), the average and the longest print, the prints of the last 7 and 30 days, and the file that you print most."},
+						{240, 552, "Details", "The filament in grams (for 1.75 mm PLA), the average and the longest print, the prints of the last 7 and 30 days, and the file that you print most."},
 					}},
 			}},
 		{ID: "web", Title: "The deck in the browser",
@@ -636,12 +651,18 @@ func manual(args []string) {
 	for si := range secs {
 		for fi := range secs[si].Figures {
 			f := &secs[si].Figures[fi]
-			f.Badges = layoutBadges(f.Callouts)
 			*p = *demoPrinterCopy(p)
 			a.ResetScreens()
 			f.Setup(st)
 			c, rec := gfx.NewRecording(ui.BaseW, ui.BaseH)
 			a.Draw(c)
+			// A callout of a key points at the key, wherever the layout puts it.
+			for i, co := range f.Callouts {
+				if r, ok := keysRect(a, co.Title); ok {
+					f.Callouts[i].X, f.Callouts[i].Y = r.Min.X+r.Dx()/2, r.Min.Y+r.Dy()/2
+				}
+			}
+			f.Badges = layoutBadges(f.Callouts)
 			out := gfx.New(ui.BaseW*k, ui.BaseH*k)
 			if err := gfx.ReplayScaled(out, rec.JSON(), gfx.ImageByID, k); err != nil {
 				log.Fatal(err)
