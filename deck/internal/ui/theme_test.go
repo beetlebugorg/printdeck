@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"printdeck/internal/gfx"
-	"printdeck/internal/touch"
 )
 
 func TestNightHours(t *testing.T) {
@@ -38,8 +37,7 @@ func TestThemeRowCyclesTheme(t *testing.T) {
 	a.pages = []page{pageMachine}
 	for i := 0; i < 3; i++ {
 		a.Draw(cv)
-		ev(a, touch.Down, W/2, 210+4*65+30) // the fifth row
-		ev(a, touch.Up, W/2, 210+4*65+30)
+		tapLabel(t, a, cv, "Theme")
 	}
 	if len(saved) != 3 || saved[0] != "night" || saved[1] != "auto" || saved[2] != "day" {
 		t.Errorf("themes %v", saved)
@@ -66,8 +64,7 @@ func TestClockRowTogglesClock(t *testing.T) {
 	a.pages = []page{pageMachine}
 	for i := 0; i < 2; i++ {
 		a.Draw(cv)
-		ev(a, touch.Down, W/2, 210+5*65+30) // the sixth row
-		ev(a, touch.Up, W/2, 210+5*65+30)
+		tapLabel(t, a, cv, "Clock")
 	}
 	if len(saved) != 2 || !saved[0] || saved[1] {
 		t.Errorf("clocks %v", saved)

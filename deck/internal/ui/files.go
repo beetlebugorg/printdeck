@@ -209,8 +209,9 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 		pic, box = kit.Center(r[0], side, side), r[1]
 		keys = kit.Rows(pg.aside(), 0, kit.Fr(1), kit.Px(84))[1]
 	} else {
-		r := kit.Rows(kit.Inset(pg.body(), 0, 12, 0, 0), 12, kit.Px(260), kit.Px(tableH), kit.Fr(1), kit.Px(84), kit.Px(114))
-		pic, box, keys = kit.Center(r[0], 260, 260), r[1], r[3]
+		r := kit.Rows(kit.Inset(pg.body(), 0, 12, 0, 8), 12, kit.Fr(1), kit.Px(tableH), kit.Px(84))
+		side := min(r[0].Dx(), r[0].Dy())
+		pic, box, keys = kit.Center(r[0], side, side), r[1], r[2]
 	}
 	a.thumb(c, pic, f.Path, m)
 	plate(c, box)

@@ -61,7 +61,7 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 		r := kit.Rows(f.body(), 16, kit.Fr(1), kit.Px(30), kit.Px(80))
 		notes, bar, install = r[0], r[1], r[2]
 	} else {
-		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 0), 16, kit.Px(128), kit.Px(208), kit.Px(30), kit.Px(80), kit.Px(76))
+		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 8), 16, kit.Px(128), kit.Fr(1), kit.Px(30), kit.Px(80), kit.Px(76))
 		info, notes, bar, install, keys = r[0], r[1], r[2], r[3], r[4]
 	}
 	window(c, info)

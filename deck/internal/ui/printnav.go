@@ -129,11 +129,11 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	a.button(c, heat[0], pre, raised, text, func() { pr.Heat(m.Tool, m.Bed) })
 	a.button(c, heat[1], "Cool down", raised, text, func() { pr.Heat(0, 0) })
 
-	gridH := 2*98 + 12
-	if f.wide {
-		gridH = rest.Dy() - 90 - 12
+	// The last print, and the pages in the space under it, down to the bottom.
+	if !f.wide {
+		rest = kit.Inset(rest, 0, 0, 0, 16)
 	}
-	r := kit.Rows(rest, 12, kit.Px(90), kit.Px(gridH))
+	r := kit.Rows(rest, 12, kit.Px(90), kit.Fr(1))
 	a.drawLastPrint(c, st, r[0])
 	pages := []struct {
 		name string

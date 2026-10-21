@@ -24,7 +24,7 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 		r := kit.Rows(f.body(), 12, kit.Fr(1.4), kit.Fr(1), kit.Fr(1), kit.Fr(1))
 		change, load, ext, heat = r[0], r[1], r[2], r[3]
 	} else {
-		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 0), 8, kit.Px(54), kit.Px(22), kit.Px(52), kit.Px(80), kit.Px(80), kit.Px(70), kit.Px(60), kit.Px(60))
+		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 8), 8, kit.Px(54), kit.Px(22), kit.Px(52), kit.Px(80), kit.Fr(1.4), kit.Fr(1), kit.Fr(1), kit.Fr(1))
 		win, hint, mats, temps, change, load, ext, heat = r[0], r[1], kit.Inset(r[2], 0, -4, 0, 4), kit.Inset(r[3], 16, 6, 16, -6), r[4], r[5], r[6], r[7]
 	}
 	window(c, win)

@@ -24,12 +24,15 @@ type menuItem struct {
 	tap        func()     // nil: a row with no action
 }
 
-// menuRows draws the rows of a menu page, from the top of area. On a tall screen each row is rowH
-// high. On a wide screen the rows share the height of the area, and are at most rowH high.
+// menuRows draws the rows of a menu page, from the top of area. The rows share the height of the
+// area. On a wide screen a row is at most rowH high, on a tall screen at most 1.6 times rowH, so
+// that the rows fill the screen.
 func (a *App) menuRows(c *gfx.Canvas, area image.Rectangle, wide bool, rowH, gap int, items []menuItem) {
-	if wide {
-		rowH = min(rowH, (area.Dy()+gap)/max(1, len(items))-gap)
+	limit := rowH
+	if !wide {
+		limit = rowH * 16 / 10
 	}
+	rowH = min(limit, (area.Dy()+gap)/max(1, len(items))-gap)
 	s := kit.NewStack(area, gap)
 	for _, it := range items {
 		a.menuRow(c, s.Next(rowH), it.title, it.sub, it.col, it.tap)
@@ -154,8 +157,8 @@ func (a *App) drawManualProbe(c *gfx.Canvas, st printer.State) {
 		steps, hint, end = r[0], r[1], r[2]
 	} else {
 		lcdR = printLCD
-		r := kit.Rows(kit.Inset(scr.Bounds(), margin, 124, margin, 0), 16, kit.Px(160), kit.Px(158), kit.Px(24), kit.Px(90))
-		box, steps, hint, end = r[0], r[1], r[2], kit.Inset(r[3], 0, 4, 0, -4)
+		r := kit.Rows(kit.Inset(scr.Bounds(), margin, 124, margin, 16), 16, kit.Px(160), kit.Fr(1), kit.Px(24), kit.Px(90))
+		box, steps, hint, end = r[0], r[1], r[2], r[3]
 	}
 	charLCD(c, lcdR, lcd2("Paper test", "", "Nozzle at Z", fmt.Sprintf("%.3f", st.ManualZ)), 20)
 	plate(c, box)
@@ -375,7 +378,7 @@ func (a *App) drawStats(c *gfx.Canvas) {
 	}
 
 	// The results as a bar: completed, cancelled, failed. Then the details.
-	r := kit.Rows(rest, 4, kit.Px(24), kit.Px(24), kit.Px(6*36+16+6), kit.Px(22))
+	r := kit.Rows(kit.Inset(rest, 0, 0, 0, 8), 4, kit.Px(24), kit.Px(24), kit.Fr(1), kit.Px(22))
 	bar := r[0]
 	window(c, bar)
 	in := bar.Inset(4)
@@ -404,7 +407,7 @@ func (a *App) drawStats(c *gfx.Canvas) {
 		{"Last 30 days", fmt.Sprintf("%d prints", s.Last30)},
 		{"Most printed", top},
 	}
-	for i, kv := range kit.Rows(kit.Inset(box, 18, 8, 18, 8), 0, kit.Px(36), kit.Px(36), kit.Px(36), kit.Px(36), kit.Px(36), kit.Px(36)) {
+	for i, kv := range kit.Rows(kit.Inset(box, 18, 8, 18, 8), 0, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
 		label(c, kv, rows[i][0], gfx.Left)
 		v := kit.Inset(kv, 152, 0, 0, 0)
 		c.Text(v, gfx.Fit(gfx.Face(true, 17), rows[i][1], v.Dx()), gfx.Face(true, 17), text, gfx.Right)
