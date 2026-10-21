@@ -3,21 +3,22 @@ package ui
 import (
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"printdeck/internal/printer"
 )
 
-// The display of the printer shows two lines of the deck (the macro _PRINTDECK of printdeck.cfg,
-// and the layout that printdeck-settings writes): the state, and the finish or the activity.
+// The display of the printer shows the screen of the deck: the module printdeck_display of the
+// Klipper host draws it. It shows the heading of the page and the keys of the page as a menu. The
+// knob moves through the keys, and a click taps the key. During an action, a filament change or
+// a heat-up, it shows a full screen animation.
 
-// mirrorCols is the width of the 16x4 display of the printer.
-const mirrorCols = 16
+// lcdCols is the width of the display of the printer, in characters.
+const lcdCols = 16
 
-// MirrorLines returns the two lines of the deck for the display of the printer. material is the
-// loaded material, or "".
-func MirrorLines(st printer.State, material string, now time.Time) (string, string) {
+// StatusLines returns the two status lines of the display of the printer. material is the loaded
+// material, or "".
+func StatusLines(st printer.State, material string, now time.Time) (string, string) {
 	lr := pad
 	pct := fmt.Sprintf("%.0f%%", st.Completion)
 	left := func() string {
@@ -64,16 +65,17 @@ func MirrorLines(st printer.State, material string, now time.Time) (string, stri
 	return lr("Ready", r), lr(homed, "")
 }
 
-// mirrorText makes a text safe for the display and for the G-code of SET_GCODE_VARIABLE: upper
-// case ASCII, with no quotes and no comment characters.
-func mirrorText(s string) string {
+// lcdText makes a text safe for the font of the display: ASCII, with the degree sign.
+func lcdText(s string) string {
 	var b strings.Builder
-	for _, r := range strings.ToUpper(s) {
+	for _, r := range s {
 		switch {
-		case r == '"' || r == '\'' || r == '\\' || r == ';' || r == '#' || r == '*':
 		case r == '°':
-		case r == '·':
+			b.WriteRune(r)
+		case r == '·' || r == '−' || r == '–':
 			b.WriteByte('-')
+		case r == '…':
+			b.WriteString("...")
 		case r >= 32 && r < 127:
 			b.WriteRune(r)
 		}
@@ -81,95 +83,38 @@ func mirrorText(s string) string {
 	return b.String()
 }
 
-// Mirror is what the display of the printer shows of the deck: two lines, and an animation of the
-// bottom row ("in", "out", "heat", "work" or "").
-type Mirror struct{ Line1, Line2, Anim string }
-
-// Command is the G-code that sets the lines and the animation.
-func (m Mirror) Command() []string {
-	return []string{
-		fmt.Sprintf(`SET_GCODE_VARIABLE MACRO=_PRINTDECK VARIABLE=line1 VALUE='"%s"'`, m.Line1),
-		fmt.Sprintf(`SET_GCODE_VARIABLE MACRO=_PRINTDECK VARIABLE=line2 VALUE='"%s"'`, m.Line2),
-		fmt.Sprintf(`SET_GCODE_VARIABLE MACRO=_PRINTDECK VARIABLE=anim VALUE='"%s"'`, m.Anim),
-	}
-}
-
-// mirrorMu protects App.mirror, which MirrorState reads from another goroutine.
-var mirrorMu sync.Mutex
-
-// MirrorState returns what the display of the printer shows: the screen of the deck at its last
-// frame. It is safe to call from any goroutine.
-func (a *App) MirrorState() Mirror {
-	mirrorMu.Lock()
-	defer mirrorMu.Unlock()
-	return a.mirror
-}
-
-// pad makes a line of the display: 16 characters, l at the left and r at the right.
+// pad makes a line of the display: 16 characters, l at the left and r at the right, in capitals.
 func pad(l, r string) string {
-	l, r = mirrorText(l), mirrorText(r)
+	// The width counts bytes, so the status lines leave out the degree sign.
+	l = strings.ReplaceAll(lcdText(strings.ToUpper(l)), "°", "")
+	r = strings.ReplaceAll(lcdText(strings.ToUpper(r)), "°", "")
 	if r == "" {
-		if len(l) > mirrorCols {
-			l = l[:mirrorCols]
+		if len(l) > lcdCols {
+			l = l[:lcdCols]
 		}
-		return l + strings.Repeat(" ", mirrorCols-len(l))
+		return l + strings.Repeat(" ", lcdCols-len(l))
 	}
-	n := mirrorCols - len(r)
+	n := lcdCols - len(r)
 	if len(l) > n-1 {
 		l = l[:max(0, n-1)]
 	}
 	return l + strings.Repeat(" ", max(0, n-len(l))) + r
 }
 
-// screenMirror is what the display of the printer shows of the screen of the deck: the step of a
-// filament change, the paper test, the page that is open, or the state of the printer.
-func (a *App) screenMirror(st printer.State) Mirror {
+// lcdStatus is what the display shows when the screen has no keys for the knob: the step of a
+// filament change, an action, or the state of the printer. anim is a full screen animation of the
+// display, or "".
+func (a *App) lcdStatus(st printer.State) (l1, l2, anim string) {
+	if a.flash != nil && !a.flash.finished {
+		return "Firmware", fmt.Sprintf("%s %d%%", a.flash.step, 100*a.flash.done/max(a.flash.total, 1)), "work"
+	}
 	if st.Action != "" && !st.ManualProbe {
-		// The same lines as runAction sends before the action.
-		return Mirror{pad(st.Action, ""), pad("Please wait", ""), "work"}
+		s := int(a.Now().Sub(st.ActionStart).Seconds())
+		return st.Action, fmt.Sprintf("Running %d:%02d", s/60, s%60), "work"
 	}
-	if sw := a.swap; sw != nil {
-		title := []string{"Filament swap", "Load filament", "Unload"}[sw.mode]
-		switch sw.step {
-		case swapChoose:
-			return Mirror{pad(title, ""), pad("Choose on deck", ""), ""}
-		case swapHeat:
-			return Mirror{pad(title, ""), pad("Heat", fmt.Sprintf("%.0f/%d", st.Tool, sw.temp)), "heat"}
-		case swapUnload:
-			return Mirror{pad(title, ""), pad("Unload", ""), "out"}
-		case swapInsert:
-			return Mirror{pad(title, ""), pad("Insert, load", ""), "in"}
-		default:
-			if sw.mode == swapUnloadOnly {
-				return Mirror{pad(title, ""), pad("Take it out", ""), ""}
-			}
-			return Mirror{pad(title, ""), pad("Check nozzle", ""), ""}
-		}
-	}
-	if st.Reachable && !st.Busy() && !st.ManualProbe {
-		switch a.topPage() {
-		case pageMove:
-			return Mirror{pad("Move", st.Homed), pad(fmt.Sprintf("X%.0f Y%.0f Z%.1f", st.X, st.Y, st.Z), ""), ""}
-		case pageFilament:
-			m := a.Material
-			if m == "" {
-				m = "none"
-			}
-			return Mirror{pad("Filament", ""), pad("Loaded", m), ""}
-		case pageFiles:
-			return Mirror{pad("Choose a file", ""), pad("on the deck", ""), ""}
-		case pageFile:
-			return Mirror{pad("Print this?", ""), pad(a.file.Name, ""), ""}
-		case pageMaintenance:
-			return Mirror{pad("Maintenance", ""), pad("", ""), ""}
-		case pageMachine, pageStats, pageHistory, pageMacros, pageConsole:
-			return Mirror{pad("Machine", ""), pad("", ""), ""}
-		}
-	}
-	l1, l2 := MirrorLines(st, a.Material, a.Now())
-	anim := ""
+	l1, l2 = StatusLines(st, a.Material, a.Now())
 	if st.Busy() && st.Preparing && strings.HasPrefix(st.Activity, "Heating") {
 		anim = "heat"
 	}
-	return Mirror{l1, l2, anim}
+	return l1, l2, anim
 }

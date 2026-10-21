@@ -5,6 +5,7 @@ import (
 	"image"
 
 	"printdeck/internal/gfx"
+	"printdeck/internal/printer"
 )
 
 // The filament swap, step by step: choose the material, heat, unload, insert, load and purge.
@@ -48,6 +49,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		}
 		c.Text(image.Rect(24, 112, W-24, 140), fmt.Sprintf("Step %d of %d", n, total), gfx.Face(false, 17), dim, gfx.Left)
 		c.Text(image.Rect(24, 140, W-24, 184), title, gfx.Face(true, 26), orange, gfx.Left)
+		a.lcdNote(printer.LCDRow{Left: fmt.Sprintf("%d/%d %s", n, total, title)})
 	}
 	para := func(y int, lines ...string) {
 		for i, l := range lines {
@@ -89,6 +91,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		step(2, "Heating the nozzle")
 		c.Text(image.Rect(24, 220, W-24, 300), fmt.Sprintf("%.0f° / %d°", st.Tool, sw.temp), gfx.Face(true, 56), text, gfx.Center)
 		segments(c, image.Rect(40, 320, W-40, 340), max(0, min(1, st.Tool/float64(max(sw.temp, 1)))))
+		a.lcdNote(printer.LCDRow{Left: fmt.Sprintf("%.0f/%d°", st.Tool, sw.temp), HasBar: true, Bar: st.Tool / float64(max(sw.temp, 1))})
 		para(370, "The next step starts when the nozzle", "is hot.")
 		if st.Tool >= float64(sw.temp)-3 {
 			sw.step = swapUnload

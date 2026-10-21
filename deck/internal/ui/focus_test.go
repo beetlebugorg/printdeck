@@ -1,0 +1,87 @@
+package ui
+
+import (
+	"strings"
+	"testing"
+
+	"printdeck/internal/gfx"
+)
+
+// knob sends a key of the knob, runs it as the UI loop does, and draws the next frame.
+func knob(a *App, key string) {
+	a.LCDKey(key)
+	(<-a.posted)()
+	a.Draw(gfx.New(W, BaseH))
+}
+
+func lcdLines(a *App) []string {
+	var out []string
+	for _, r := range a.LCD().Rows {
+		l := r.Left
+		if r.Selected {
+			l = "> " + l
+		}
+		out = append(out, l)
+	}
+	return out
+}
+
+// TestKnobMenu walks the menu of the printer display with the knob: from the idle screen to
+// Maintenance, and back.
+func TestKnobMenu(t *testing.T) {
+	a, _, cv := newPrintApp(idle)
+	a.Draw(cv)
+	if s := a.LCD().Status; s == nil || !strings.HasPrefix(s.State, "READY") || s.Hint != "Click for menu" {
+		t.Fatalf("status screen: %+v", s)
+	}
+	// The first click opens the menu, and taps nothing.
+	knob(a, "click")
+	lines := lcdLines(a)
+	if lines[0] != "PRINTDECK" || lines[1] != "< Status" || lines[2] != "> Print a file" || a.topPage() != 0 {
+		t.Fatalf("menu: %q, page %v", lines, a.topPage())
+	}
+	// Turn the knob down to Maintenance, and click.
+	for i := 0; i < 20 && a.focus[a.lcdSel].label != "Maintenance"; i++ {
+		knob(a, "down")
+	}
+	if a.focus[a.lcdSel].label != "Maintenance" {
+		t.Fatalf("no Maintenance key in %q", lcdLines(a))
+	}
+	knob(a, "click")
+	if a.topPage() != pageMaintenance {
+		t.Fatalf("page %v after the click", a.topPage())
+	}
+	lines = lcdLines(a)
+	if lines[0] != "MAINTENANCE" || lines[1] != "< Back" || !strings.HasPrefix(lines[2], "> ") {
+		t.Errorf("Maintenance: %q", lines)
+	}
+	// A turn up goes to Back, and a click goes back.
+	knob(a, "up")
+	knob(a, "click")
+	if a.topPage() != 0 {
+		t.Errorf("page %v after Back", a.topPage())
+	}
+	// The touch screen shows the focus with a ring after a turn.
+	if a.knobAt.IsZero() {
+		t.Error("no time of the last turn")
+	}
+	// Status at the top of the home menu goes back to the status screen.
+	for i := 0; i < 10; i++ {
+		knob(a, "up")
+	}
+	knob(a, "click")
+	if a.LCD().Status == nil {
+		t.Errorf("after Status: %q", lcdLines(a))
+	}
+}
+
+// TestKnobAction shows an action as a full screen animation on the display.
+func TestKnobAction(t *testing.T) {
+	st := idle
+	st.Action = "Bed tilt"
+	a, _, cv := newPrintApp(st)
+	a.Draw(cv)
+	if s := a.LCD(); s.Anim != "work" || s.Title != "Bed tilt" || !strings.HasPrefix(s.Caption, "Running") {
+		t.Errorf("screen %+v", s)
+	}
+}

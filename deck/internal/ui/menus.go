@@ -255,22 +255,23 @@ func (a *App) drawMacros(c *gfx.Canvas, st printer.State) {
 			c.Text(image.Rect(r.Min.X+18, r.Min.Y, r.Max.X-18, r.Max.Y), m, gfx.Face(true, 19), text, gfx.Left)
 		}
 	})
+	run := func(i int) {
+		if i < 0 || i >= len(macros) {
+			return
+		}
+		if st.Busy() {
+			a.Toast("Wait until the print ends")
+			return
+		}
+		m := macros[i]
+		a.confirm = &confirmBox{question: "Run " + gfx.Fit(gfx.Face(true, 28), m, 300) + "?", yes: "Run", onYes: func() {
+			a.runAction(m, m)
+		}}
+	}
 	a.addHit(hit{r: image.Rect(0, menuTop, W, bottom),
 		scroll: func(dy int) { a.macroScroll = max(0, min(a.macroScroll+dy, maxScroll)) },
-		tapAt: func(p image.Point) {
-			i := (p.Y - menuTop + a.macroScroll) / rowH
-			if i < 0 || i >= len(macros) {
-				return
-			}
-			if st.Busy() {
-				a.Toast("Wait until the print ends")
-				return
-			}
-			m := macros[i]
-			a.confirm = &confirmBox{question: "Run " + gfx.Fit(gfx.Face(true, 28), m, 300) + "?", yes: "Run", onYes: func() {
-				a.runAction(m, m)
-			}}
-		}})
+		tapAt:  func(p image.Point) { run((p.Y - menuTop + a.macroScroll) / rowH) }})
+	a.listFocus(len(macros), menuTop, bottom, rowH, &a.macroScroll, func(i int) string { return macros[i] }, run)
 }
 
 // drawHistory lists the finished prints, newest first. A tap prints a file again.
@@ -304,14 +305,15 @@ func (a *App) drawHistory(c *gfx.Canvas) {
 			c.Text(image.Rect(box.Min.X+18, box.Min.Y+38, box.Max.X-18, box.Max.Y-8), fileDate(r.End, a.Now()), gfx.Face(false, 14), dim, gfx.Right)
 		}
 	})
+	reprint := func(i int) {
+		if i >= 0 && i < len(recs) && !pr.State().Busy() {
+			a.confirmPrint(recs[i].Path)
+		}
+	}
 	a.addHit(hit{r: image.Rect(0, menuTop, W, bottom),
 		scroll: func(dy int) { a.historyScroll = max(0, min(a.historyScroll+dy, maxScroll)) },
-		tapAt: func(p image.Point) {
-			i := (p.Y - menuTop + a.historyScroll) / rowH
-			if i >= 0 && i < len(recs) && !pr.State().Busy() {
-				a.confirmPrint(recs[i].Path)
-			}
-		}})
+		tapAt:  func(p image.Point) { reprint((p.Y - menuTop + a.historyScroll) / rowH) }})
+	a.listFocus(len(recs), menuTop, bottom, rowH, &a.historyScroll, func(i int) string { return recs[i].File }, reprint)
 }
 
 // drawStats is the Statistics page: the totals of the print history.

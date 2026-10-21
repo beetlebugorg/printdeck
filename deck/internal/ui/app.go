@@ -235,8 +235,19 @@ type App struct {
 	Material   string
 	OnMaterial func(string)
 
-	// mirror is what the display of the printer shows of this screen (MirrorState).
-	mirror Mirror
+	// The menu of the printer display (focus.go): the keys of the frame, the heading of the page,
+	// the focus of the knob, and the screen of the display.
+	focus    []focusItem
+	collect  bool // the frame adds its keys to focus
+	lcdTitle string
+	lcdPage  string
+	lcdSel   int
+	knobAt   time.Time
+	lcd      printer.LCDScreen
+	lcdNotes []printer.LCDRow // rows under the heading of the page (lcdNote)
+	// LCDFont is the font of the printer display: "5x8" (the default), "6x10", or "" for the
+	// large font of Klipper.
+	LCDFont string
 
 	// Record makes Run draw each frame on a recording canvas (gfx.NewRecording), for a browser.
 	Record bool
@@ -278,7 +289,7 @@ func (a *App) Session(height int) *App {
 var drawMu sync.Mutex
 
 func New() *App {
-	return &App{Now: time.Now, created: time.Now(), dragFrac: -1, wake: make(chan struct{}, 1), posted: make(chan func(), 16),
+	return &App{Now: time.Now, created: time.Now(), LCDFont: "5x8", dragFrac: -1, wake: make(chan struct{}, 1), posted: make(chan func(), 16),
 		joy: &joystick{}, zStep: 1, fanSet: -1, UnloadMM: 80, LoadMM: 70, tuneSpeed: 100, tuneFlow: 100, Theme: "auto", NightFrom: 20, NightTo: 7}
 }
 
@@ -447,12 +458,12 @@ func (a *App) Draw(c *gfx.Canvas) {
 	drawMu.Lock()
 	defer drawMu.Unlock()
 	setHeight(a.Height)
-	// The touch screen is the screen that the display of the printer follows.
+	// The touch screen is the screen that the display of the printer follows: its keys are the
+	// menu of the display.
+	drawing, a.focus, a.lcdTitle, a.lcdNotes = a, a.focus[:0], "", a.lcdNotes[:0]
+	defer func() { drawing, a.collect = nil, false }()
 	if !a.Record && a.Printer != nil {
-		m := a.screenMirror(a.Printer.State())
-		mirrorMu.Lock()
-		a.mirror = m
-		mirrorMu.Unlock()
+		defer a.endFocus(c, a.Printer.State())
 	}
 	if n := a.isNight(); n != night {
 		setNight(n)
@@ -466,15 +477,19 @@ func (a *App) Draw(c *gfx.Canvas) {
 	if a.tab == TabMusic {
 		a.drawMusic(c)
 	} else {
+		a.collect = !a.Record
 		a.drawPrint(c)
+		a.collect = false
 	}
 	a.drawStatus(c)
 	a.drawTabs(c)
 	a.drawToast(c)
 	if a.keypad != nil {
+		a.collect, a.focus = !a.Record, a.focus[:0]
 		a.drawKeypad(c)
 	}
 	if a.confirm != nil {
+		a.collect, a.focus = !a.Record, a.focus[:0]
 		a.drawConfirm(c)
 	}
 }
@@ -581,6 +596,7 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 func (a *App) button(c *gfx.Canvas, r image.Rectangle, label string, fill, fg color.RGBA, tap func()) {
 	key(c, r, label, fill, fg, a.isPressed(r))
 	a.addHit(hit{r: r, tap: tap})
+	a.addFocus(label, r, tap)
 }
 
 func lighten(c color.RGBA) color.RGBA {

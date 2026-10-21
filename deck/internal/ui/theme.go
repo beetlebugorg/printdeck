@@ -226,6 +226,7 @@ func playhead(c *gfx.Canvas, r image.Rectangle, f float64) {
 
 // heading is the title of a screen: an orange mark and uppercase type.
 func heading(c *gfx.Canvas, title string) {
+	setHeading(title)
 	c.Fill(image.Rect(24, 76, 34, 96), orange)
 	c.Text(image.Rect(44, 64, W-150, 108), strings.ToUpper(title), gfx.Face(true, 24), text, gfx.Left)
 }
