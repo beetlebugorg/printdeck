@@ -31,8 +31,10 @@ ln -sf /run/systemd/resolve/stub-resolv.conf "$TARGET_DIR/etc/resolv.conf"
 
 # The version of this build, for printdeck-update and the deck.
 # build.sh sets PRINTDECK_VERSION from git on the host.
-sed -i '/^PRINTDECK_VERSION=/d' "$TARGET_DIR/usr/lib/os-release"
+sed -i '/^PRINTDECK_VERSION=/d;/^PRINTDECK_VARIANT=/d' "$TARGET_DIR/usr/lib/os-release"
 echo "PRINTDECK_VERSION=${PRINTDECK_VERSION:-unknown}" >> "$TARGET_DIR/usr/lib/os-release"
+# release, or debug (the release image with SSH and tools). build.sh sets it.
+echo "PRINTDECK_VARIANT=${PRINTDECK_VARIANT:-release}" >> "$TARGET_DIR/usr/lib/os-release"
 
 # sudo reads /etc/sudoers.d only when /etc/sudoers includes it.
 grep -q '^[@#]includedir /etc/sudoers.d' "$TARGET_DIR/etc/sudoers" \

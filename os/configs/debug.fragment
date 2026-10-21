@@ -1,0 +1,11 @@
+
+# The debug image: the release image plus tools to look at a running system. build.sh adds this
+# file to printdeck_defconfig for "os/build.sh debug".
+BR2_PACKAGE_STRACE=y
+BR2_PACKAGE_TCPDUMP=y
+BR2_PACKAGE_IW=y
+BR2_PACKAGE_I2C_TOOLS=y
+BR2_PACKAGE_EVTEST=y
+BR2_PACKAGE_LESS=y
+BR2_PACKAGE_HTOP=y
+BR2_PACKAGE_SYSTEMD_ANALYZE=y
