@@ -98,53 +98,68 @@ func lcd2(l1, r1, l2, r2 string) []string {
 }
 
 // printLCD is the character display of the other screens.
-var printLCD = image.Rect(16, 16, W-16, 108)
+var printLCD = image.Rect(16, 16, BaseW-16, 108)
 
 // drawHome is the idle screen: the status screen of the printer display, Print, preheat, the last
-// print, and the menus.
+// print, and the menus. A wide screen has Print and preheat under the display, and the rest at the
+// right.
 func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	m := a.loaded()
-	// The status screen of the printer display: the same picture on both screens.
-	a.statusPanel(c, st)
+	f := a.stateFrame()
+	a.statusPanelAt(c, st, f.lcd)
+	var keys, rest image.Rectangle
+	if f.wide {
+		keys, rest = kit.Inset(f.side, wideOut, 0, wideIn, lcdTop), kit.Inset(f.main, wideIn, lcdTop, wideOut, lcdTop)
+	} else {
+		s := kit.NewStack(kit.Inset(f.main, 40, 2, 40, 0), 12)
+		keys, rest = s.Next(96+12+68), s.Rest()
+	}
 
-	a.button(c, image.Rect(40, 234, W-40, 330), "Print a file", orange, onAcc, func() {
+	k := kit.Rows(keys, 12, kit.Px(96), kit.Px(68))
+	a.button(c, k[0], "Print a file", orange, onAcc, func() {
 		go func() { pr.LoadFiles(); a.Redraw() }()
 		a.open(pageFiles)
 	})
-	half := (W - 80 - 12) / 2
+	heat := kit.Cols(k[1], 12, kit.Fr(1), kit.Fr(1))
 	pre := fmt.Sprintf("Preheat %d/%d", m.Tool, m.Bed)
 	if m.Name != "" {
 		pre = "Preheat " + m.Name
 	}
-	a.button(c, image.Rect(40, 342, 40+half, 410), pre, raised, text, func() { pr.Heat(m.Tool, m.Bed) })
-	a.button(c, image.Rect(W-40-half, 342, W-40, 410), "Cool down", raised, text, func() { pr.Heat(0, 0) })
+	a.button(c, heat[0], pre, raised, text, func() { pr.Heat(m.Tool, m.Bed) })
+	a.button(c, heat[1], "Cool down", raised, text, func() { pr.Heat(0, 0) })
 
-	// The last print, with Reprint.
-	last := image.Rect(40, 424, W-40, 514)
-	if l, ok := a.lastPrint(st); ok {
-		plate(c, last)
-		label(c, image.Rect(last.Min.X+16, last.Min.Y+8, last.Max.X, last.Min.Y+28), "Last print", gfx.Left)
-		c.Text(image.Rect(last.Min.X+16, last.Min.Y+28, last.Max.X-150, last.Min.Y+58), gfx.Fit(gfx.Face(true, 20), l.File, last.Dx()-170), gfx.Face(true, 20), text, gfx.Left)
-		c.Text(image.Rect(last.Min.X+16, last.Min.Y+56, last.Max.X-150, last.Max.Y-8), l.Summary(), gfx.Face(false, 16), dim, gfx.Left)
-		path := l.Path
-		a.button(c, image.Rect(last.Max.X-140, last.Min.Y+20, last.Max.X-14, last.Max.Y-16), "Reprint", raised, text, func() {
-			a.confirmPrint(path)
-		})
-	} else {
-		plate(c, last)
-		c.Text(last, "No print yet", gfx.Face(false, 18), dim, gfx.Center)
+	gridH := 2*98 + 12
+	if f.wide {
+		gridH = rest.Dy() - 90 - 12
 	}
-
-	for i, t := range []struct {
+	r := kit.Rows(rest, 12, kit.Px(90), kit.Px(gridH))
+	a.drawLastPrint(c, st, r[0])
+	pages := []struct {
 		name string
 		p    page
-	}{{"Filament", pageFilament}, {"Move", pageMove}, {"Maintenance", pageMaintenance}, {"Machine", pageMachine}} {
-		x0 := 40 + (i%2)*(half+12)
-		y0 := 528 + (i/2)*110
-		p := t.p
-		a.button(c, image.Rect(x0, y0, x0+half, y0+98), t.name, raised, text, func() { a.open(p) })
+	}{{"Filament", pageFilament}, {"Move", pageMove}, {"Maintenance", pageMaintenance}, {"Machine", pageMachine}}
+	for i, cell := range kit.Grid(r[1], 2, 2, 12) {
+		p := pages[i].p
+		a.button(c, cell, pages[i].name, raised, text, func() { a.open(p) })
 	}
+}
+
+// drawLastPrint draws the last print in r, with Reprint.
+func (a *App) drawLastPrint(c *gfx.Canvas, st printer.State, last image.Rectangle) {
+	plate(c, last)
+	l, ok := a.lastPrint(st)
+	if !ok {
+		c.Text(last, "No print yet", gfx.Face(false, 18), dim, gfx.Center)
+		return
+	}
+	label(c, image.Rect(last.Min.X+16, last.Min.Y+8, last.Max.X, last.Min.Y+28), "Last print", gfx.Left)
+	c.Text(image.Rect(last.Min.X+16, last.Min.Y+28, last.Max.X-150, last.Min.Y+58), gfx.Fit(gfx.Face(true, 20), l.File, last.Dx()-170), gfx.Face(true, 20), text, gfx.Left)
+	c.Text(image.Rect(last.Min.X+16, last.Min.Y+56, last.Max.X-150, last.Max.Y-8), l.Summary(), gfx.Face(false, 16), dim, gfx.Left)
+	path := l.Path
+	a.button(c, image.Rect(last.Max.X-140, last.Min.Y+20, last.Max.X-14, last.Max.Y-16), "Reprint", raised, text, func() {
+		a.confirmPrint(path)
+	})
 }
 
 // confirmPrint asks before it starts a file.

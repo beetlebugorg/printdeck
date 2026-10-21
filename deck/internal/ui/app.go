@@ -21,26 +21,38 @@ import (
 )
 
 const (
-	W     = 480
+	BaseW = 480 // the width of the tall touch screen
 	BaseH = 800 // the height of the touch screen
 	MaxH  = 1200
+	wideW = 800 // the size of a wide screen: the touch screen turned to landscape
+	wideH = 480
 )
 
-// H is the height of the screen of the App that draws or handles a touch now: BaseH for the touch
-// screen, more for a tall phone (App.Height). The keyboard is at the bottom, and the rest of the
-// layout is at the top. drawMu protects these values.
+// W and H are the size of the screen of the App that draws or handles a touch now: BaseW x BaseH
+// for the tall touch screen, more height for a tall phone (App.Height), and wideW x wideH for a
+// wide screen (App.Wide). The keyboard is at the bottom, and the rest of the layout is at the
+// top. drawMu protects these values.
 var (
+	W         = BaseW
 	H         = BaseH
 	contentY1 = H
 )
 
-// setHeight sets H and the positions that depend on it. The caller holds drawMu.
-func setHeight(h int) {
-	if h < BaseH {
-		h = BaseH
+// setSize sets W, H and the positions that depend on them. The caller holds drawMu.
+func setSize(s kit.Screen) {
+	W, H, contentY1 = s.W, s.H, s.H
+	kbX1 = W - 24
+	kbY0 = H - 24 - 5*kbKeyH - 4*kbRowGap
+	printLCD = image.Rect(16, 16, W-16, 108)
+	logoRect = image.Rect(16, 236, W-16, H-236)
+}
+
+// Screen is the size of the screen of the App.
+func (a *App) Screen() kit.Screen {
+	if a.Wide {
+		return kit.Screen{W: wideW, H: wideH}
 	}
-	H, contentY1 = h, h
-	kbY0 = h - 24 - 5*kbKeyH - 4*kbRowGap
+	return kit.Screen{W: BaseW, H: max(BaseH, min(MaxH, a.Height))}
 }
 
 // Printer is what the screens need from the printer.
@@ -185,8 +197,10 @@ type App struct {
 
 	// Record makes Run draw each frame on a recording canvas (gfx.NewRecording), for a browser.
 	Record bool
-	// Height is the height of the screen, from BaseH to MaxH. 0 is BaseH.
+	// Height is the height of the tall screen, from BaseH to MaxH. 0 is BaseH.
 	Height int
+	// Wide draws the screen in landscape, wideW x wideH, for a display that is mounted wide.
+	Wide bool
 }
 
 type confirmBox struct {
@@ -238,13 +252,13 @@ func (a *App) Redraw() {
 
 // Run handles input and draws frames until ctx ends.
 func (a *App) Run(ctx context.Context, events <-chan touch.Event, present func(*gfx.Canvas)) {
-	cv := gfx.New(W, max(BaseH, a.Height))
+	cv := gfx.New(a.Screen().W, a.Screen().H)
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
 	for {
 		t0 := time.Now()
 		if a.Record {
-			cv, _ = gfx.NewRecording(W, max(BaseH, a.Height))
+			cv, _ = gfx.NewRecording(a.Screen().W, a.Screen().H)
 		}
 		a.Draw(cv)
 		t1 := time.Now()
@@ -279,8 +293,8 @@ func (a *App) handle(ev touch.Event) {
 	// The handlers use the positions of the layout, which depend on the height of this App.
 	drawMu.Lock()
 	defer drawMu.Unlock()
-	setHeight(a.Height)
-	p := image.Pt(int(ev.X*W+0.5), int(ev.Y*float64(H)+0.5))
+	setSize(a.Screen())
+	p := image.Pt(int(ev.X*float64(W)+0.5), int(ev.Y*float64(H)+0.5))
 	kind := map[touch.Kind]kit.Kind{touch.Down: kit.Down, touch.Move: kit.Move, touch.Up: kit.Up}[ev.Kind]
 	a.in.Handle(kit.Event{Kind: kind, P: p})
 	a.Redraw()
@@ -290,7 +304,7 @@ func (a *App) handle(ev touch.Event) {
 func (a *App) Draw(c *gfx.Canvas) {
 	drawMu.Lock()
 	defer drawMu.Unlock()
-	setHeight(a.Height)
+	setSize(a.Screen())
 	// The touch screen is the screen that the display of the printer follows: its keys are the
 	// menu of the display.
 	drawing, a.focus, a.lcdTitle, a.lcdNotes = a, a.focus[:0], "", a.lcdNotes[:0]

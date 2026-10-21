@@ -51,13 +51,9 @@ func lcdImage(bits [64][16]byte, gap, off, on color.RGBA) *image.RGBA {
 	return img
 }
 
-// lcdPanelRect is the place of the display on the idle screen.
-var lcdPanelRect = image.Rect((W-128*lcdScale)/2, 20, (W+128*lcdScale)/2, 20+64*lcdScale)
-
 // drawLCDPanel draws the status screen in a display window. A tap on the nozzle or the bed sets
 // its temperature.
-func (a *App) drawLCDPanel(c *gfx.Canvas, st printer.State, s *lcdscreen.Status) {
-	r := lcdPanelRect
+func (a *App) drawLCDPanel(c *gfx.Canvas, st printer.State, s *lcdscreen.Status, r image.Rectangle) {
 	c.RoundRect(r.Inset(-8), 8, edge)
 	c.RoundRect(r.Inset(-6), 6, glcd)
 	scr := &lcdscreen.Screen{Status: s}
@@ -78,16 +74,19 @@ func (a *App) drawLCDPanel(c *gfx.Canvas, st printer.State, s *lcdscreen.Status)
 	a.addHit(kit.Hit{R: col(43, 86), Tap: func() { a.editTemp("Bed temperature", int(st.BedTarget), 120, bedPresets, pr.SetBedTemp) }})
 }
 
-// statusPanel draws the status screen of the printer display at the top of a Print screen: the
-// same picture as the display of the printer.
-func (a *App) statusPanel(c *gfx.Canvas, st printer.State) {
+// statusPanel draws the status screen of the printer display at its place on a state screen.
+func (a *App) statusPanel(c *gfx.Canvas, st printer.State) { a.statusPanelAt(c, st, a.stateFrame().lcd) }
+
+// statusPanelAt draws the status screen of the printer display in r: the same picture as the
+// display of the printer.
+func (a *App) statusPanelAt(c *gfx.Canvas, st printer.State, r image.Rectangle) {
 	l1, l2 := StatusLines(st, a.Material, a.Now(), a.Clock24)
 	s := a.lcdStatusScreen(st, l1, l2)
 	s.Hint = "" // the touch screen has no knob
 	if st.FirmwareOld && !st.Busy() {
 		s.Message = "Firmware is old"
 	}
-	a.drawLCDPanel(c, st, s)
+	a.drawLCDPanel(c, st, s, r)
 }
 
 // The places of the Print screens under the status display.

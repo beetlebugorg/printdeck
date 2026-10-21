@@ -59,12 +59,31 @@ func demo(args []string) {
 		dir = args[0]
 	}
 	os.MkdirAll(dir, 0o755)
+	demoShots(dir, false)
+	demoShots(dir, true)
+	for _, theme := range []string{"day", "night"} {
+		c := gfx.New(ui.BaseW, ui.BaseH)
+		ui.DrawSplash(c, "v2.1.0", theme == "night")
+		f, _ := os.Create(filepath.Join(dir, "splash-"+theme+".png"))
+		png.Encode(f, c.RGBA)
+		f.Close()
+	}
+}
+
+// demoShots writes the pictures of the screens, tall or wide. The names of the wide pictures end
+// in "-wide".
+func demoShots(dir string, wide bool) {
 	a, p := demoApp()
 	a.Now = demoNow
+	a.Wide = wide
+	suffix := ""
+	if wide {
+		suffix = "-wide"
+	}
 	snap := func(name string) {
-		c := gfx.New(ui.W, ui.BaseH)
+		c := gfx.New(a.Screen().W, a.Screen().H)
 		a.Draw(c)
-		f, _ := os.Create(filepath.Join(dir, name+".png"))
+		f, _ := os.Create(filepath.Join(dir, name+suffix+".png"))
 		png.Encode(f, c.RGBA)
 		f.Close()
 	}
@@ -133,13 +152,6 @@ func demo(args []string) {
 	for _, n := range []string{"wifi", "password", "done", "help"} {
 		a.OpenSetupScreen(n)
 		snap("setup-" + n)
-	}
-	for _, theme := range []string{"day", "night"} {
-		c := gfx.New(ui.W, ui.BaseH)
-		ui.DrawSplash(c, "v2.1.0", theme == "night")
-		f, _ := os.Create(filepath.Join(dir, "splash-"+theme+".png"))
-		png.Encode(f, c.RGBA)
-		f.Close()
 	}
 }
 

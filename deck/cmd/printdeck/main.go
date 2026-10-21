@@ -131,6 +131,8 @@ func run(cfg config.Config) {
 	pr := newPrinter(cfg)
 	app := ui.New()
 	app.Printer = pr
+	// The UI is wide when the turned panel is wider than high (DISPLAY_ROTATE 0 or 180).
+	app.Wide = screen.LogicalW > screen.LogicalH
 	app.PreheatTool, app.PreheatBed = cfg.PreheatTool, cfg.PreheatBed
 	app.UnloadMM, app.LoadMM, app.JogInvertY = cfg.UnloadMM, cfg.LoadMM, cfg.JogInvertY
 	// The theme (day, night, auto) is kept in the state folder.
@@ -177,7 +179,8 @@ func run(cfg config.Config) {
 
 	go touch.Run(ctx, touch.Options{InvertX: cfg.TouchInvertX, InvertY: cfg.TouchInvertY, Swap: cfg.TouchSwapXY,
 		Rotate: cfg.Rotate, Log: cfg.TouchLog,
-		OffsetX: float64(cfg.TouchOffsetX) / ui.W, OffsetY: float64(cfg.TouchOffsetY) / ui.BaseH}, events)
+		OffsetX: float64(cfg.TouchOffsetX) / float64(app.Screen().W),
+		OffsetY: float64(cfg.TouchOffsetY) / float64(app.Screen().H)}, events)
 
 	startWeb(cfg, host, pr, app)
 	app.Run(ctx, events, screen.Present)
@@ -223,7 +226,7 @@ func shot(cfg config.Config, args []string) {
 	}
 	go pr.Run(ctx, func() {})
 	time.Sleep(8 * time.Second) // the first reads, and the G-code for the model view
-	c := gfx.New(ui.W, ui.BaseH)
+	c := gfx.New(app.Screen().W, app.Screen().H)
 	app.Draw(c)
 	f, err := os.Create(args[0])
 	if err != nil {

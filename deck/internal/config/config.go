@@ -9,7 +9,9 @@ import (
 
 type Config struct {
 	Framebuffer string
-	Rotate      int // 90 or 270: rotation of the portrait UI onto the landscape panel
+	// Rotate turns the UI onto the landscape panel: 90 or 270 for a display that is mounted tall,
+	// 0 or 180 for a display that is mounted wide.
+	Rotate int
 
 	TouchInvertX, TouchInvertY, TouchSwapXY bool
 	// TouchLog logs each touch sample, for the measurement of the calibration.

@@ -1,4 +1,4 @@
-// Package fb draws a canvas to the Linux framebuffer, rotated for the portrait display.
+// Package fb draws a canvas to the Linux framebuffer, turned to the position of the display.
 package fb
 
 import (
@@ -15,13 +15,14 @@ type FB struct {
 	mem                []byte
 	w, h, stride       int
 	bpp                int
-	rot                int // 90 or 270: rotation from the logical portrait canvas to the panel
+	rot                int // 0, 90, 180 or 270: the rotation from the logical canvas to the panel
 	tty                *os.File
 	LogicalW, LogicalH int
 	prev               []byte // the pixels of the last frame
 }
 
-// Open maps the framebuffer. rot is 90 or 270 for a portrait mounted landscape panel, 0 for none.
+// Open maps the framebuffer. rot is 90 or 270 for a landscape panel that is mounted tall, 0 for
+// none, and 180 for a panel that is mounted upside down.
 func Open(dev string, rot int) (*FB, error) {
 	name := strings.TrimPrefix(dev, "/dev/")
 	sys := "/sys/class/graphics/" + name + "/"
@@ -52,7 +53,7 @@ func Open(dev string, rot int) (*FB, error) {
 		return nil, err
 	}
 	d := &FB{mem: mem, w: w, h: h, stride: stride, bpp: bpp, rot: rot}
-	if rot == 0 {
+	if rot == 0 || rot == 180 {
 		d.LogicalW, d.LogicalH = w, h
 	} else {
 		d.LogicalW, d.LogicalH = h, w
@@ -109,6 +110,8 @@ func (d *FB) Present(c *gfx.Canvas) {
 				X, Y = lh-1-y, x
 			case 270:
 				X, Y = y, lw-1-x
+			case 180:
+				X, Y = lw-1-x, lh-1-y
 			default:
 				X, Y = x, y
 			}

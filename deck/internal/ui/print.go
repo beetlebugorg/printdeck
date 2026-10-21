@@ -109,36 +109,61 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	a.drawHome(c, st)
 }
 
-// jobBox is the model view of the job screen, with the layer slider at its bottom edge, down to
-// the bottom of the screen.
-func jobBox() image.Rectangle { return image.Rect(24, belowPanel+keyRowH+12, W-24, contentY1-8) }
+// stateAreas are the areas of a state screen under its display. A tall screen has one body under
+// the display, so keys and view are both the body. A wide screen has its keys in the left column,
+// under the display, and the view in the right column.
+func (a *App) stateAreas() (f frame, keys, view image.Rectangle) {
+	f = a.stateFrame()
+	if f.wide {
+		return f, kit.Inset(f.side, wideOut, 0, wideIn, lcdTop), kit.Inset(f.main, wideIn, lcdTop, wideOut, lcdTop)
+	}
+	body := kit.Inset(f.main, margin, 0, margin, 8)
+	return f, body, body
+}
+
+// jobAreas are the keys and the model view of the job screen. The view has the layer slider at its
+// bottom edge.
+func (a *App) jobAreas() (keys, box image.Rectangle) {
+	f, keys, view := a.stateAreas()
+	if f.wide {
+		return kit.Rows(keys, 0, kit.Px(keyRowH))[0], view
+	}
+	r := kit.Rows(view, 12, kit.Px(keyRowH), kit.Fr(1))
+	return r[0], r[1]
+}
 
 // drawJob is the screen of a running print: the status display, the keys, and the model view.
 func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	a.statusPanel(c, st)
-
-	third := (W - 48 - 16) / 3
-	y := belowPanel
-	a.button(c, image.Rect(24, y, 24+third, y+keyRowH), "Pause", orange, onAcc, pr.Pause)
-	a.button(c, image.Rect(24+third+8, y, 24+2*third+8, y+keyRowH), "Tune", raised, text, func() { a.tune = true })
-	a.button(c, image.Rect(W-24-third, y, W-24, y+keyRowH), "Cancel", raised, red, func() {
-		a.confirm = &confirmBox{question: "Cancel this print?", yes: "Cancel print", danger: true, onYes: pr.Cancel}
-	})
-
-	box := jobBox()
+	keys, box := a.jobAreas()
+	k := kit.Cols(keys, 8, kit.Fr(1), kit.Fr(1), kit.Fr(1))
+	a.button(c, k[0], "Pause", orange, onAcc, pr.Pause)
+	a.button(c, k[1], "Tune", raised, text, func() { a.tune = true })
+	a.button(c, k[2], "Cancel", raised, red, a.askCancel)
 	a.modelView(c, box, st)
 	a.drawScrubber(c, box, st)
 }
 
-// modelView draws the model in a window, with the move now and its speed at the top right.
+// askCancel asks before it cancels the print.
+func (a *App) askCancel() {
+	a.confirm = &confirmBox{question: "Cancel this print?", yes: "Cancel print", danger: true, onYes: a.Printer.Cancel}
+}
+
+// modelView draws the model in a window, with the move now and its speed at the top right. A
+// picture that is larger than the window becomes smaller to fit.
 func (a *App) modelView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 	window(c, box)
 	if img := a.Printer.Preview(); img != nil {
-		b := img.Bounds()
-		c.Clipped(box.Inset(2), func(in *gfx.Canvas) {
-			in.Image(image.Rect(box.Min.X+(box.Dx()-b.Dx())/2, box.Min.Y+(box.Dy()-b.Dy())/2, box.Max.X, box.Max.Y), img)
-		})
+		b, in := img.Bounds(), box.Inset(2)
+		if b.Dx() > in.Dx() || b.Dy() > in.Dy() {
+			s := min(float64(in.Dx())/float64(b.Dx()), float64(in.Dy())/float64(b.Dy()))
+			c.Cover(kit.Center(in, int(float64(b.Dx())*s), int(float64(b.Dy())*s)), img)
+		} else {
+			c.Clipped(in, func(in *gfx.Canvas) {
+				in.Image(image.Rect(box.Min.X+(box.Dx()-b.Dx())/2, box.Min.Y+(box.Dy()-b.Dy())/2, box.Max.X, box.Max.Y), img)
+			})
+		}
 	} else {
 		c.Text(box, "LOADING MODEL…", gfx.Face(true, 18), lcdDim, gfx.Center)
 	}

@@ -29,7 +29,7 @@ type Event struct {
 
 type Options struct {
 	InvertX, InvertY, Swap bool
-	Rotate                 int // rotation of the UI on the panel: 0, 90 or 270
+	Rotate                 int // rotation of the UI on the panel: 0, 90, 180 or 270
 	// OffsetX and OffsetY move each touch in the UI, as a fraction of its width and height. They
 	// correct a panel that reads the touches beside the finger.
 	OffsetX, OffsetY float64
@@ -238,6 +238,8 @@ func adj(x, y float64, o Options) Event {
 		x, y = y, 1-x
 	case 270:
 		x, y = 1-y, x
+	case 180:
+		x, y = 1-x, 1-y
 	}
 	x += o.OffsetX
 	y += o.OffsetY

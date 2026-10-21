@@ -95,7 +95,7 @@ func snapshot(args []string) {
 	id := <-session
 	time.Sleep(500 * time.Millisecond)
 	touch := func(kind string, p image.Point) {
-		body := fmt.Sprintf(`{"kind":%q,"x":%f,"y":%f}`, kind, float64(p.X)/ui.W, float64(p.Y)/float64(height))
+		body := fmt.Sprintf(`{"kind":%q,"x":%f,"y":%f}`, kind, float64(p.X)/ui.BaseW, float64(p.Y)/float64(height))
 		if r, err := client.Post(base+"/ui/touch?s="+id, "application/json", strings.NewReader(body)); err == nil {
 			r.Body.Close()
 		}
@@ -114,7 +114,7 @@ func snapshot(args []string) {
 		log.Fatal("no frame")
 	}
 	images := map[int]image.Image{}
-	c := gfx.New(ui.W, height)
+	c := gfx.New(ui.BaseW, height)
 	err = gfx.Replay(c, f, func(n int) image.Image {
 		if img, ok := images[n]; ok {
 			return img
