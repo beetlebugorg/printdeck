@@ -74,6 +74,12 @@ func (p *PrintdeckDisplay) handleConnect() {
 	})
 }
 
+// Status is the status of the module: the command stack of the G-code (gcode.CommandStack), for
+// the steps of a start macro on the deck.
+func (p *PrintdeckDisplay) Status(eventtime float64) map[string]any {
+	return map[string]any{"commands": gcode.Of(p.printer).CommandStack()}
+}
+
 // handleScreen takes a screen of the deck: {"screen": {...}}, or {"screen": null} to give the
 // display back to Klipper.
 func (p *PrintdeckDisplay) handleScreen(req *webhooks.WebRequest) {

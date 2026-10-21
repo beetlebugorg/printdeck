@@ -63,6 +63,10 @@ type Klippy struct {
 
 	onKey func(key string) // SetOnKey
 
+	// The text of each macro, for the steps of the start macro.
+	macros map[string]string
+	prep   prepTracker
+
 	// The maintenance action that runs now, and the last one that ended (RunAction).
 	action      string
 	actionStart time.Time
@@ -87,6 +91,8 @@ var klippyObjects = map[string][]string{
 	"fan":            {"speed"},
 	"toolhead":       {"position", "homed_axes", "axis_minimum", "axis_maximum"},
 	"mcu":            {"mcu_version"},
+	// The command stack of the Printdeck module of the Klipper host, for the steps of PRINT_START.
+	"printdeck_display": {"commands"},
 }
 
 // HostVersion is the Klipper version of the host. The firmware of the board must be this version.
@@ -249,8 +255,9 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 			onKey(key)
 		}
 	})
-	version, objects := klipperObjects(ctx, conn)
+	version, objects, macros := klipperObjects(ctx, conn)
 	k.mu.Lock()
+	k.macros = macros
 	k.conn, k.err = conn, ""
 	k.version, k.objects = version, objects
 	k.mu.Unlock()
@@ -318,7 +325,8 @@ func (k *Klippy) Machine() Machine {
 
 // klipperObjects asks Klipper for its version and the names of its objects, for example "probe",
 // "bed_tilt" or "gcode_macro PRINT_START".
-func klipperObjects(ctx context.Context, conn *klippy.Conn) (version string, objects []string) {
+func klipperObjects(ctx context.Context, conn *klippy.Conn) (version string, objects []string, macros map[string]string) {
+	macros = map[string]string{}
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if res, err := conn.Call(cctx, "info", map[string]any{}); err == nil {
@@ -351,8 +359,15 @@ func klipperObjects(ctx context.Context, conn *klippy.Conn) (version string, obj
 			have[o] = true
 		}
 		names := make([]string, 0, len(q.Status.Configfile.Config))
-		for name := range q.Status.Configfile.Config {
+		for name, sec := range q.Status.Configfile.Config {
 			names = append(names, name)
+			if m, ok := strings.CutPrefix(strings.ToLower(name), "gcode_macro "); ok {
+				if opts, ok := sec.(map[string]any); ok {
+					if g, ok := opts["gcode"].(string); ok {
+						macros[m] = g
+					}
+				}
+			}
 		}
 		sort.Strings(names)
 		for _, name := range names {
@@ -361,7 +376,7 @@ func klipperObjects(ctx context.Context, conn *klippy.Conn) (version string, obj
 			}
 		}
 	}
-	return version, objects
+	return version, objects, macros
 }
 
 func info(ctx context.Context, conn *klippy.Conn) (state, msg string, err error) {
@@ -408,6 +423,23 @@ func (k *Klippy) refresh(notify func()) {
 		}
 	}
 	k.View.Activity(&st)
+	k.mu.Lock()
+	var stack []string
+	if cmds, ok := k.status["printdeck_display"]["commands"].([]any); ok {
+		for _, c := range cmds {
+			if s, ok := c.(string); ok {
+				stack = append(stack, s)
+			}
+		}
+	}
+	if st.Busy() {
+		steps := k.prep.steps(stack, k.macros)
+		st.PrepN = copy(st.Prep[:], steps)
+		if st.PrepN > 0 {
+			st.Preparing = true
+		}
+	}
+	k.mu.Unlock()
 	if k.Hist != nil && st.Reachable {
 		k.Hist.add(st, time.Now())
 	}
