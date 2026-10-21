@@ -74,10 +74,11 @@ func TestJoystickMovesWhileHeld(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.pages = []page{pageMove}
 	a.Draw(cv)
+	jx, jy := a.joyArea.Min.X+joyR, a.joyArea.Min.Y+joyR
 	// Hold the pad at the right edge: X+ at full speed, then let go.
-	ev(a, touch.Down, joyCX+joyR-2, joyCY)
+	ev(a, touch.Down, jx+joyR-2, jy)
 	time.Sleep(3*joyTick + joyTick/2)
-	ev(a, touch.Up, joyCX+joyR-2, joyCY)
+	ev(a, touch.Up, jx+joyR-2, jy)
 	n := len(pr.Calls())
 	time.Sleep(2 * joyTick)
 	calls := pr.Calls()
@@ -92,9 +93,9 @@ func TestJoystickMovesWhileHeld(t *testing.T) {
 	}
 	// Up on the pad is Y+.
 	a.Draw(cv)
-	ev(a, touch.Down, joyCX, joyCY-joyR+2)
+	ev(a, touch.Down, jx, jy-joyR+2)
 	time.Sleep(joyTick + joyTick/2)
-	ev(a, touch.Up, joyCX, joyCY-joyR+2)
+	ev(a, touch.Up, jx, jy-joyR+2)
 	calls = pr.wait(len(calls) + 1)
 	fmt.Sscanf(calls[len(calls)-1], "jog %f %f", &x, &y)
 	if y <= 0 || math.Abs(x) > 0.2 {
@@ -108,9 +109,10 @@ func TestNoMovesWhilePrinting(t *testing.T) {
 	a, pr, cv := newPrintApp(st)
 	a.pages = []page{pageMove}
 	a.Draw(cv)
-	ev(a, touch.Down, joyCX+joyR-2, joyCY)
+	jx, jy := a.joyArea.Min.X+joyR, a.joyArea.Min.Y+joyR
+	ev(a, touch.Down, jx+joyR-2, jy)
 	time.Sleep(2 * joyTick)
-	ev(a, touch.Up, joyCX+joyR-2, joyCY)
+	ev(a, touch.Up, jx+joyR-2, jy)
 	tapAt(a, cv, 60, 169) // Home all
 	time.Sleep(50 * time.Millisecond)
 	if c := pr.Calls(); len(c) != 0 {

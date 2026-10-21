@@ -17,12 +17,12 @@ import (
 // The Move page: home, move the head with a joystick, Z, park and center, motors.
 
 const (
-	joyCX, joyCY, joyR = 152, 346, 128 // the joystick pad of the Move page
-	joyDead            = 0.15          // the middle part that does not move
-	joyTick            = 150 * time.Millisecond
-	joyMinSpeed        = 2.0  // mm/s just outside the middle
-	joyMaxSpeed        = 50.0 // mm/s at the edge
-	minExtrudeTemp     = 170  // Klipper blocks extrusion below this temperature
+	joyR           = 128  // the radius of the joystick pad of the Move page
+	joyDead        = 0.15 // the middle part that does not move
+	joyTick        = 150 * time.Millisecond
+	joyMinSpeed    = 2.0  // mm/s just outside the middle
+	joyMaxSpeed    = 50.0 // mm/s at the edge
+	minExtrudeTemp = 170  // Klipper blocks extrusion below this temperature
 )
 
 // joystick moves the head while a finger is on the pad. A goroutine sends one short move per tick; the next
@@ -52,8 +52,10 @@ func joySpeed(mag float64) float64 {
 // joyPad follows the finger on the pad.
 func (a *App) joyPad(p image.Point, phase kit.Phase) {
 	j := a.joy
-	vx := float64(p.X-joyCX) / joyR
-	vy := float64(joyCY-p.Y) / joyR
+	pad := a.joyArea // the pad of the last frame
+	cx, cy, r := pad.Min.X+pad.Dx()/2, pad.Min.Y+pad.Dy()/2, float64(pad.Dx()/2)
+	vx := float64(p.X-cx) / r
+	vy := float64(cy-p.Y) / r
 	if m := math.Hypot(vx, vy); m > 1 {
 		vx, vy = vx/m, vy/m
 	}
@@ -112,26 +114,41 @@ func (a *App) do(f func() error) {
 }
 
 // drawMove is the Move page: the position and the homed axes, homing, the joystick for X and Y,
-// Z, park and center, and the motors.
+// Z, park and center, and the motors. A wide screen has the position and the keys in the left
+// column, and the joystick and Z at the right.
 func (a *App) drawMove(c *gfx.Canvas) {
 	pr := a.Printer
 	st := pr.State()
-	heading(c, "Move")
-	a.backButton(c)
-
+	f := a.page(c, "Move")
 	moving := st.Connected && (!st.Busy() || st.Paused)
 
+	// Tall: the position, Home, the joystick with the Z column, the park keys, and a hint. Wide: the
+	// position, Home and a Z row in the left column; a large joystick and the park keys at the right.
+	var pos, home, zArea, pad, parks, hint image.Rectangle
+	if f.wide {
+		k := kit.Rows(f.aside(), 10, kit.Px(44), kit.Px(52), kit.Px(52))
+		pos, home, zArea = k[0], k[1], k[2]
+		r := kit.Rows(f.body(), 8, kit.Fr(1), kit.Px(20), kit.Px(58))
+		side := min(r[0].Dx(), r[0].Dy())
+		pad, hint, parks = kit.Center(r[0], side, side), r[1], r[2]
+	} else {
+		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 0), 12, kit.Px(54), kit.Px(58), kit.Px(2*joyR+26), kit.Px(70), kit.Px(24))
+		pos, home, parks, hint = r[0], r[1], r[3], r[4]
+		col := kit.Cols(r[2], 12, kit.Px(2*joyR), kit.Fr(1))
+		pad, zArea = kit.Rows(col[0], 0, kit.Px(2*joyR))[0], kit.Rows(col[1], 0, kit.Px(2*joyR))[0]
+	}
+
 	// The position, with an LED for each homed axis.
-	pos := image.Rect(24, 76, W-24, 130)
 	window(c, pos)
+	axes := kit.Cols(kit.Inset(pos, 14, 0, 0, 0), 0, kit.Fr(1), kit.Fr(1), kit.Fr(1))
 	for i, ax := range []struct {
 		n string
 		v float64
 		f string
 	}{{"X", st.X, "%.1f"}, {"Y", st.Y, "%.1f"}, {"Z", st.Z, "%.2f"}} {
-		x := pos.Min.X + 14 + i*146
-		led(c, x+8, pos.Min.Y+27, strings.Contains(st.Homed, strings.ToLower(ax.n)))
-		c.Text(image.Rect(x+22, pos.Min.Y, x+146, pos.Max.Y), ax.n+" "+fmt.Sprintf(ax.f, ax.v), gfx.Face(true, 22), lcdInk, gfx.Left)
+		r := axes[i]
+		led(c, r.Min.X+8, r.Min.Y+r.Dy()/2, strings.Contains(st.Homed, strings.ToLower(ax.n)))
+		c.Text(kit.Inset(r, 22, 0, 0, 0), ax.n+" "+fmt.Sprintf(ax.f, ax.v), gfx.Face(true, 22), lcdInk, gfx.Left)
 	}
 
 	btn := func(r image.Rectangle, label string, fill, fg color.RGBA, f func() error) {
@@ -143,77 +160,42 @@ func (a *App) drawMove(c *gfx.Canvas) {
 	}
 
 	// Home
-	q := (W - 48 - 24) / 4
-	btn(image.Rect(24, 142, 24+q, 200), "Home all", orange, onAcc, func() error { return pr.Home() })
+	h := kit.Cols(home, 8, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1))
+	btn(h[0], "Home all", orange, onAcc, func() error { return pr.Home() })
 	for i, ax := range []string{"X", "Y", "Z"} {
 		axis := strings.ToLower(ax)
-		btn(image.Rect(24+(i+1)*(q+8), 142, 24+(i+1)*(q+8)+q, 200), ax, raised, text, func() error { return pr.Home(axis) })
+		btn(h[i+1], ax, raised, text, func() error { return pr.Home(axis) })
 	}
 
-	// The joystick for X and Y: an XY pad in a display window.
-	vx, vy, _ := a.joy.get()
-	pad := image.Rect(joyCX-joyR, joyCY-joyR, joyCX+joyR, joyCY+joyR)
-	window(c, pad)
-	grid := color.RGBA{0x34, 0x30, 0x2c, 255}
-	for i := 1; i < 8; i++ {
-		g := pad.Min.X + i*pad.Dx()/8
-		c.Fill(image.Rect(g, pad.Min.Y+6, g+1, pad.Max.Y-6), grid)
-		g = pad.Min.Y + i*pad.Dy()/8
-		c.Fill(image.Rect(pad.Min.X+6, g, pad.Max.X-6, g+1), grid)
+	// The joystick for X and Y.
+	a.drawJoystick(c, pad, moving)
+	if !f.wide {
+		label(c, image.Rect(pad.Min.X, pad.Max.Y+6, pad.Max.X, pad.Max.Y+26), "XY  hold to move", gfx.Center)
 	}
-	r := float64(joyR)
-	dead := int(r * joyDead)
-	c.RoundRect(image.Rect(joyCX-dead, joyCY-dead, joyCX+dead, joyCY+dead), dead, color.RGBA{0x2a, 0x26, 0x22, 255})
-	for _, l := range []struct {
-		s      string
-		dx, dy int
-	}{{"Y+", 0, -joyR + 16}, {"Y-", 0, joyR - 16}, {"X-", -joyR + 20, 0}, {"X+", joyR - 20, 0}} {
-		c.Text(image.Rect(joyCX+l.dx-20, joyCY+l.dy-10, joyCX+l.dx+20, joyCY+l.dy+10), l.s, gfx.Face(true, 14), lcdDim, gfx.Center)
-	}
-	kx, ky := joyCX+int(vx*r*0.85), joyCY-int(vy*r*0.85)
-	cross := lcdInk
-	if !moving {
-		cross = lcdDim
-	}
-	if vx != 0 || vy != 0 { // a line from the middle to the finger
-		for t := 0.0; t < 1; t += 0.02 {
-			x, y := joyCX+int(float64(kx-joyCX)*t), joyCY+int(float64(ky-joyCY)*t)
-			c.Fill(image.Rect(x, y, x+2, y+2), lcdDim)
-		}
-	}
-	c.Fill(image.Rect(kx-18, ky-1, kx+18, ky+1), cross)
-	c.Fill(image.Rect(kx-1, ky-18, kx+1, ky+18), cross)
-	c.RoundRect(image.Rect(kx-9, ky-9, kx+9, ky+9), 9, cross)
-	c.RoundRect(image.Rect(kx-5, ky-5, kx+5, ky+5), 5, lcd)
-	if moving {
-		speed := joySpeed(math.Hypot(vx, vy))
-		if speed > 0 {
-			c.Text(image.Rect(pad.Min.X, pad.Max.Y-24, pad.Max.X-8, pad.Max.Y-4), fmt.Sprintf("%.0f MM/S", speed), gfx.Face(true, 14), lcdInk, gfx.Right)
-		}
-		a.addHit(kit.Hit{R: pad, Pad: a.joyPad})
-	}
-	label(c, image.Rect(pad.Min.X, pad.Max.Y+6, pad.Max.X, pad.Max.Y+26), "XY  hold to move", gfx.Center)
 
-	// Z
-	zx0, zx1 := pad.Max.X+12, W-24
-	btn(image.Rect(zx0, pad.Min.Y, zx1, pad.Min.Y+82), "Z ▲", raised, text, func() error { return pr.Jog(0, 0, a.zStep, 600) })
-	for i, s := range []float64{0.1, 1, 10} {
-		pw := (zx1 - zx0 - 12) / 3
-		r := image.Rect(zx0+i*(pw+6), pad.Min.Y+94, zx0+i*(pw+6)+pw, pad.Min.Y+146)
+	// Z: a column beside the joystick, or a row in the left column. The steps are in the middle.
+	var up, steps, down image.Rectangle
+	if f.wide {
+		z := kit.Cols(zArea, 6, kit.Fr(1.3), kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1.3))
+		down, up, steps = z[0], z[4], image.Rect(z[1].Min.X, zArea.Min.Y, z[3].Max.X, zArea.Max.Y)
+	} else {
+		z := kit.Rows(zArea, 12, kit.Fr(1.6), kit.Fr(1), kit.Fr(1.6))
+		up, steps, down = z[0], z[1], z[2]
+		label(c, image.Rect(zArea.Min.X, pad.Max.Y+6, zArea.Max.X, pad.Max.Y+26), "Z mm per tap", gfx.Center)
+	}
+	btn(up, "Z ▲", raised, text, func() error { return pr.Jog(0, 0, a.zStep, 600) })
+	for i, r := range kit.Cols(steps, 6, kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
+		s := []float64{0.1, 1, 10}[i]
 		fill, fg := raised, text
 		if a.zStep == s {
 			fill, fg = orange, onAcc
 		}
-		step := s
 		key(c, r, fmt.Sprint(s), fill, fg, a.isPressed(r))
-		a.addHit(kit.Hit{R: r, Tap: func() { a.zStep = step }})
+		a.addHit(kit.Hit{R: r, Tap: func() { a.zStep = s }})
 	}
-	btn(image.Rect(zx0, pad.Min.Y+158, zx1, pad.Min.Y+240), "Z ▼", raised, text, func() error { return pr.Jog(0, 0, -a.zStep, 600) })
-	label(c, image.Rect(zx0, pad.Min.Y+248, zx1, pad.Min.Y+270), "Z mm per tap", gfx.Center)
+	btn(down, "Z ▼", raised, text, func() error { return pr.Jog(0, 0, -a.zStep, 600) })
 
 	// Park and center need the homed axes. Motors off lets the head move by hand.
-	third := (W - 48 - 16) / 3
-	y := pad.Max.Y + 38
 	homed := strings.Contains(st.Homed, "x") && strings.Contains(st.Homed, "y")
 	park := func(r image.Rectangle, name string, g func() []string) {
 		if !homed {
@@ -222,17 +204,65 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		}
 		btn(r, name, raised, text, func() error { return pr.Gcode(g()...) })
 	}
-	park(image.Rect(24, y, 24+third, y+70), "Park", func() []string { return ParkGcode(st) })
-	park(image.Rect(24+third+8, y, 24+2*third+8, y+70), "Center", func() []string { return CenterGcode(st) })
-	btn(image.Rect(W-24-third, y, W-24, y+70), "Motors off", raised, text, pr.MotorsOff)
-	hint := "Motors off lets you move the head by hand."
+	p := kit.Cols(parks, 8, kit.Fr(1), kit.Fr(1), kit.Fr(1))
+	park(p[0], "Park", func() []string { return ParkGcode(st) })
+	park(p[1], "Center", func() []string { return CenterGcode(st) })
+	btn(p[2], "Motors off", raised, text, pr.MotorsOff)
+	msg := "Motors off lets you move the head by hand."
 	switch {
 	case !st.Connected:
-		hint = "The printer is not connected."
+		msg = "The printer is not connected."
 	case st.Busy() && !st.Paused:
-		hint = "Moving is off while a print runs."
+		msg = "Moving is off while a print runs."
 	}
-	label(c, image.Rect(24, y+80, W-24, y+104), hint, gfx.Center)
+	label(c, hint, msg, gfx.Center)
+}
+
+// drawJoystick draws the XY pad in a display window, with the cross at the finger, and takes the
+// touches of the pad while the head can move.
+func (a *App) drawJoystick(c *gfx.Canvas, pad image.Rectangle, moving bool) {
+	a.joyArea = pad
+	vx, vy, _ := a.joy.get()
+	window(c, pad)
+	grid := color.RGBA{0x34, 0x30, 0x2c, 255}
+	for i := 1; i < 8; i++ {
+		g := pad.Min.X + i*pad.Dx()/8
+		c.Fill(image.Rect(g, pad.Min.Y+6, g+1, pad.Max.Y-6), grid)
+		g = pad.Min.Y + i*pad.Dy()/8
+		c.Fill(image.Rect(pad.Min.X+6, g, pad.Max.X-6, g+1), grid)
+	}
+	cx, cy := pad.Min.X+pad.Dx()/2, pad.Min.Y+pad.Dy()/2
+	r := float64(pad.Dx() / 2)
+	R := pad.Dx() / 2
+	dead := int(r * joyDead)
+	c.RoundRect(image.Rect(cx-dead, cy-dead, cx+dead, cy+dead), dead, color.RGBA{0x2a, 0x26, 0x22, 255})
+	for _, l := range []struct {
+		s      string
+		dx, dy int
+	}{{"Y+", 0, -R + 16}, {"Y-", 0, R - 16}, {"X-", -R + 20, 0}, {"X+", R - 20, 0}} {
+		c.Text(image.Rect(cx+l.dx-20, cy+l.dy-10, cx+l.dx+20, cy+l.dy+10), l.s, gfx.Face(true, 14), lcdDim, gfx.Center)
+	}
+	kx, ky := cx+int(vx*r*0.85), cy-int(vy*r*0.85)
+	cross := lcdInk
+	if !moving {
+		cross = lcdDim
+	}
+	if vx != 0 || vy != 0 { // a line from the middle to the finger
+		for t := 0.0; t < 1; t += 0.02 {
+			x, y := cx+int(float64(kx-cx)*t), cy+int(float64(ky-cy)*t)
+			c.Fill(image.Rect(x, y, x+2, y+2), lcdDim)
+		}
+	}
+	c.Fill(image.Rect(kx-18, ky-1, kx+18, ky+1), cross)
+	c.Fill(image.Rect(kx-1, ky-18, kx+1, ky+18), cross)
+	c.RoundRect(image.Rect(kx-9, ky-9, kx+9, ky+9), 9, cross)
+	c.RoundRect(image.Rect(kx-5, ky-5, kx+5, ky+5), 5, lcd)
+	if moving {
+		if speed := joySpeed(math.Hypot(vx, vy)); speed > 0 {
+			c.Text(image.Rect(pad.Min.X, pad.Max.Y-24, pad.Max.X-8, pad.Max.Y-4), fmt.Sprintf("%.0f MM/S", speed), gfx.Face(true, 14), lcdInk, gfx.Right)
+		}
+		a.addHit(kit.Hit{R: pad, Pad: a.joyPad})
+	}
 }
 
 // ParkGcode moves the head to the back left, 10 mm up, out of the way of the part.

@@ -82,8 +82,7 @@ func (a *App) drawPrinterSetup(c *gfx.Canvas, st printer.State) {
 // for the chip of the board first. A tap writes the config as printer.cfg, after a question.
 func (a *App) drawConfigs(c *gfx.Canvas) {
 	pr := a.Printer
-	heading(c, "Your printer")
-	a.backButton(c)
+	f := a.page(c, "Your printer")
 	b := a.configBoard
 	// The printers of the brand of the board come first.
 	brand := printer.SuggestedBrand(b.Name)
@@ -101,53 +100,46 @@ func (a *App) drawConfigs(c *gfx.Canvas) {
 	sort.SliceStable(list, func(i, j int) bool { return list[i].Year > list[j].Year })
 	suggested := len(list)
 	list = append(list, rest...)
-	top := menuTop
+	// The board and the key for all printers: over and under the list on a tall screen, in the
+	// left column of a wide screen.
+	area := a.listArea(f)
+	var what, all image.Rectangle
 	if b.MCU != "" {
-		what := "Printers for your " + b.MCU + " board"
-		if a.configAll {
-			what = "All printers. Your board: " + b.MCU
+		if f.wide {
+			r := kit.Rows(f.aside(), 12, kit.Px(56), kit.Px(64))
+			what, all = r[0], r[1]
+		} else {
+			r := kit.Rows(kit.Inset(area, 0, -4, 0, 0), 2, kit.Px(28), kit.Fr(1), kit.Px(72))
+			what, area, all = r[0], kit.Inset(r[1], 0, 0, 0, 8), kit.Inset(r[2], 0, 8, 0, 0)
 		}
-		c.Text(image.Rect(24, top-4, W-24, top+24), gfx.Fit(gfx.Face(false, 16), what, W-48), gfx.Face(false, 16), dim, gfx.Left)
-		top += 30
-	}
-	const rowH = 76
-	bottom := contentY1 - 8
-	if b.MCU != "" {
-		bottom -= 80
+		msg := "Printers for your " + b.MCU + " board"
 		label := "Show all printers"
 		if a.configAll {
-			label = "Only for this board"
+			msg, label = "All printers. Your board: "+b.MCU, "Only for this board"
 		}
-		a.button(c, image.Rect(24, bottom+8, W-24, bottom+72), label, raised, text, func() {
-			a.configAll, a.configScroll = !a.configAll, 0
-		})
+		face := gfx.Face(false, 16)
+		for i, l := range wrapText(face, msg, what.Dx()) {
+			c.Text(image.Rect(what.Min.X, what.Min.Y+i*24, what.Max.X, what.Min.Y+i*24+28), l, face, dim, gfx.Left)
+		}
+		a.button(c, all, label, raised, text, func() { a.configAll, a.configScroll = !a.configAll, 0 })
 	}
-	maxScroll := max(0, len(list)*rowH-(bottom-top))
-	a.configScroll = max(0, min(a.configScroll, maxScroll))
-	c.Clipped(image.Rect(0, top, W, bottom), func(c *gfx.Canvas) {
-		for i, e := range list {
-			y := top + i*rowH - a.configScroll
-			if y+rowH < top || y > bottom {
-				continue
-			}
-			sub := e.Year
-			if e.MCU != "" {
-				sub += " · " + e.MCU
-			}
-			if i < suggested {
-				sub = "Suggested · " + sub
-			}
-			col := dim
-			if e.Fits(b.MCU) {
-				col = orange
-			}
-			a.menuRow(c, image.Rect(24, y, W-24, y+rowH-8), e.Name(), sub, col, nil)
+	l := kit.List{Area: area, N: len(list), RowH: 76, Gap: 8, Scroll: &a.configScroll}
+	draw := func(c *gfx.Canvas, i int, r image.Rectangle) {
+		e := list[i]
+		sub := e.Year
+		if e.MCU != "" {
+			sub += " · " + e.MCU
 		}
-	})
+		if i < suggested {
+			sub = "Suggested · " + sub
+		}
+		col := dim
+		if e.Fits(b.MCU) {
+			col = orange
+		}
+		a.menuRow(c, r, e.Name(), sub, col, nil)
+	}
 	choose := func(i int) {
-		if i < 0 || i >= len(list) {
-			return
-		}
 		e := list[i]
 		a.confirm = &confirmBox{question: "Use the config of the " + gfx.Fit(gfx.Face(true, 28), e.Name(), 300) + "?", yes: "Use", onYes: func() {
 			a.Toast("Writing printer.cfg…")
@@ -160,10 +152,7 @@ func (a *App) drawConfigs(c *gfx.Canvas) {
 			})
 		}}
 	}
-	a.addHit(kit.Hit{R: image.Rect(0, top, W, bottom),
-		Scroll: func(dy int) { a.configScroll = max(0, min(a.configScroll+dy, maxScroll)) },
-		TapAt:  func(p image.Point) { choose((p.Y - top + a.configScroll) / rowH) }})
-	a.listFocus(len(list), top, bottom, rowH, &a.configScroll, func(i int) string { return list[i].Name() }, choose)
+	a.list(c, l, func(i int) string { return list[i].Name() }, draw, choose)
 }
 
 // drawBoard draws one probe result in a window, and returns the bottom of the window.
