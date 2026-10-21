@@ -82,7 +82,7 @@ func mirrorText(s string) string {
 }
 
 // Mirror is what the display of the printer shows of the deck: two lines, and an animation of the
-// bottom row ("in", "out", "heat" or "").
+// bottom row ("in", "out", "heat", "work" or "").
 type Mirror struct{ Line1, Line2, Anim string }
 
 // Command is the G-code that sets the lines and the animation.
@@ -124,6 +124,10 @@ func pad(l, r string) string {
 // screenMirror is what the display of the printer shows of the screen of the deck: the step of a
 // filament change, the paper test, the page that is open, or the state of the printer.
 func (a *App) screenMirror(st printer.State) Mirror {
+	if st.Action != "" && !st.ManualProbe {
+		// The same lines as runAction sends before the action.
+		return Mirror{pad(st.Action, ""), pad("Please wait", ""), "work"}
+	}
 	if sw := a.swap; sw != nil {
 		title := []string{"Filament swap", "Load filament", "Unload"}[sw.mode]
 		switch sw.step {

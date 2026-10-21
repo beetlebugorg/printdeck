@@ -85,6 +85,20 @@ type State struct {
 	// the Klipper commit of the host.
 	Firmware    string
 	FirmwareOld bool
+
+	// Action is the maintenance action that the deck runs now (RunAction), for example "Bed
+	// tilt", or "". LastAction is the last action that ended.
+	Action      string
+	ActionStart time.Time
+	LastAction  ActionResult
+}
+
+// ActionResult is the end of a maintenance action: its name, its error ("" when it worked), and
+// the time of its end.
+type ActionResult struct {
+	Name string
+	Err  string
+	End  time.Time
 }
 
 // Busy reports that a job is running or paused.

@@ -194,8 +194,8 @@ text: { render("_heater_temperature", param_heater_name="heater_bed") }
 position: 3, 10
 text: { draw_progress_bar(3, 10, 6, printer.display_status.progress) }
 
-# An animation of the deck over the bottom row: filament in, filament out, or heating. It moves
-# with the clock of the printer, 4 steps a second.
+# An animation of the deck over the bottom row: filament in, filament out, heating, or a
+# maintenance action. It moves with the clock of the printer, 4 steps a second.
 [display_data __printdeck animation]
 position: 3, 0
 text:
@@ -206,6 +206,7 @@ text:
   {% if a == "in" %}{ ">" if (i - t) % 4 == 0 else " " }
   {% elif a == "out" %}{ "<" if (i + t) % 4 == 0 else " " }
   {% elif a == "heat" %}{ "=" if i <= t % 17 else " " }
+  {% elif a == "work" %}{% set p = t % 26 %}{ "#" if i - (p if p < 13 else 26 - p) in [0, 1, 2] else " " }
   {% else %}{ " " }
   {% endif %}
   {% endfor %}

@@ -144,6 +144,7 @@ func (d *DemoPrinter) History() []printer.Record                    { return d.H
 func (d *DemoPrinter) ProbeBoards()                                 {}
 func (d *DemoPrinter) RestartKlipper() error                        { return nil }
 func (d *DemoPrinter) FlashBoard(string, board.FlashProgress) error { return nil }
+func (d *DemoPrinter) RunAction(string, ...string) error            { return nil }
 func (d *DemoPrinter) UseConfig(string, string) error               { return nil }
 func (d *DemoPrinter) Console() []printer.ConsoleLine               { return d.Console_ }
 func (d *DemoPrinter) SendConsole(line string) {
@@ -179,6 +180,10 @@ func (a *App) OpenPrintScreen(name string) {
 	case "configs":
 		a.configBoard = board.Info{Device: "/dev/serial/by-id/usb-UltiMachine_RAMBo_64033353730351918201-if00", Name: "UltiMachine RAMBo", Klipper: true, MCU: "atmega2560"}
 		a.pages = []page{pageConfigs}
+	case "action":
+		if d, ok := a.Printer.(*DemoPrinter); ok {
+			d.State_.Action, d.State_.ActionStart = "Bed tilt", a.Now().Add(-42*time.Second)
+		}
 	case "flash":
 		a.flash = &flashState{step: "Writing", done: 41, total: 100}
 	case "console":
