@@ -41,6 +41,8 @@ type Klippy struct {
 	// RestartService restarts the Klipper service, which reads printer.cfg again. The API of
 	// Klipper has no restart while the config has an error.
 	RestartService func() error
+	// StopService stops the Klipper service, so that the flash of the firmware can use the port.
+	StopService func() error
 
 	mu     sync.Mutex
 	conn   *klippy.Conn
@@ -470,6 +472,27 @@ func (k *Klippy) UseConfig(file, serial string) error {
 		return err
 	}
 	return k.RestartKlipper()
+}
+
+// FlashBoard writes the Klipper firmware of the image to the board on device, or to the board of
+// [mcu] in printer.cfg when device is "". It stops Klipper for the flash, and starts it again.
+func (k *Klippy) FlashBoard(device string, progress board.FlashProgress) error {
+	if device == "" {
+		device = MCUSerial(k.ConfigPath)
+	}
+	if device == "" {
+		return errors.New("printer.cfg has no serial port in [mcu]")
+	}
+	if k.StopService != nil {
+		if err := k.StopService(); err != nil {
+			return err
+		}
+	}
+	err := board.Flash(device, progress)
+	if rerr := k.RestartKlipper(); err == nil {
+		err = rerr
+	}
+	return err
 }
 
 // SendConsole runs a command of the console in the background. Klipper writes the reply, and a

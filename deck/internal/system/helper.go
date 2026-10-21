@@ -34,7 +34,7 @@ const helperIdle = 30 * time.Second
 
 // HelperRequest is one request to the helper.
 type HelperRequest struct {
-	Action   string `json:"action"` // "wifi", "restart-klipper" or "update"
+	Action   string `json:"action"` // "wifi", "restart-klipper", "stop-klipper" or "update"
 	SSID     string `json:"ssid,omitempty"`
 	Password string `json:"password,omitempty"`
 	Country  string `json:"country,omitempty"`
@@ -51,6 +51,8 @@ var helperActions = func(r HelperRequest) (after func(), err error) {
 		return nil, SetWifi(r.SSID, r.Password, r.Country)
 	case "restart-klipper":
 		return nil, run("systemctl", "restart", "klipper.service")
+	case "stop-klipper":
+		return nil, run("systemctl", "stop", "klipper.service")
 	case "update":
 		slot, err := Update(UpdateBundle, io.Discard)
 		os.Remove(UpdateBundle)

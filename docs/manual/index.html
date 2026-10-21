@@ -802,12 +802,41 @@
         <circle cx="520" cy="559" r="15" class="badge"/>
         <text x="520" y="559" class="badge-n">5</text>
         
+        <line x1="505" y1="657" x2="240" y2="657" class="leader"/>
+        <circle cx="240" cy="657" r="5" class="dot"/>
+        <circle cx="520" cy="657" r="15" class="badge"/>
+        <text x="520" y="657" class="badge-n">6</text>
+        
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Bed tilt</b>Probes the bed, and corrects its tilt (BED_TILT_CALIBRATE). A printer with a bed mesh shows Bed mesh.</span></li><li><span class="badge">2</span><span><b>Probe Z offset</b>The paper test for the height of the nozzle (PROBE_CALIBRATE).</span></li><li><span class="badge">3</span><span><b>PID tune</b>Heats the nozzle to 210° and the bed to 60°, and finds the PID settings of each heater (PID_CALIBRATE). Save config then writes them.</span></li><li><span class="badge">4</span><span><b>Nozzle change</b>Heats the nozzle to 250° and raises the head, to change the nozzle.</span></li><li><span class="badge">5</span><span><b>Save config</b>Writes the results of the calibrations into printer.cfg. Klipper restarts. Orange text shows unsaved results.</span></li>
+      <li><span class="badge">1</span><span><b>Bed tilt</b>Probes the bed, and corrects its tilt (BED_TILT_CALIBRATE). A printer with a bed mesh shows Bed mesh.</span></li><li><span class="badge">2</span><span><b>Probe Z offset</b>The paper test for the height of the nozzle (PROBE_CALIBRATE).</span></li><li><span class="badge">3</span><span><b>PID tune</b>Heats the nozzle to 210° and the bed to 60°, and finds the PID settings of each heater (PID_CALIBRATE). Save config then writes them.</span></li><li><span class="badge">4</span><span><b>Nozzle change</b>Heats the nozzle to 250° and raises the head, to change the nozzle.</span></li><li><span class="badge">5</span><span><b>Firmware</b>Writes the Klipper firmware of this Printdeck to the board of the printer. Orange text shows old firmware. See below.</span></li><li><span class="badge">6</span><span><b>Save config</b>Writes the results of the calibrations into printer.cfg. Klipper restarts. Orange text shows unsaved results.</span></li>
     </ol>
     
+  </figure>
+  
+  <figure>
+    <h3>The firmware flash</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/flash.png" alt="The firmware flash" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="148" x2="240" y2="148" class="leader"/>
+        <circle cx="240" cy="148" r="5" class="dot"/>
+        <circle cx="520" cy="148" r="15" class="badge"/>
+        <text x="520" y="148" class="badge-n">1</text>
+        
+        <line x1="505" y1="206" x2="240" y2="206" class="leader"/>
+        <circle cx="240" cy="206" r="5" class="dot"/>
+        <circle cx="520" cy="206" r="15" class="badge"/>
+        <text x="520" y="206" class="badge-n">2</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Step</b>Starting the bootloader, Writing, then Checking.</span></li><li><span class="badge">2</span><span><b>Progress</b>The part of the firmware that is done.</span></li>
+    </ol>
+    <p class="note">The deck stops Klipper, resets the board into its bootloader, writes the firmware, and reads it back to check it. Then Klipper starts again. The setup screen and the Klipper error screen also show this key when the board has no Klipper firmware or old firmware. Printdeck can flash boards with an atmega2560 and an STK500v2 bootloader now, for example the RAMBo and RAMPS boards.</p>
   </figure>
   
   <figure>

@@ -24,6 +24,10 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		a.drawSwap(c)
 		return
 	}
+	if a.flash != nil {
+		a.drawFlash(c)
+		return
+	}
 	st := a.Printer.State()
 	// A manual Z probe (the paper test) runs: its screen comes first.
 	if st.Reachable && st.ManualProbe {

@@ -113,6 +113,9 @@ type Printer interface {
 	// UseConfig writes one of Klipper's example configs (printer.Examples) as printer.cfg, for the
 	// board on the port serial, and restarts Klipper.
 	UseConfig(file, serial string) error
+	// FlashBoard writes the Klipper firmware of the image to the board on device, or to the board
+	// of printer.cfg when device is "".
+	FlashBoard(device string, progress board.FlashProgress) error
 }
 
 // Volume is the amplifier.
@@ -173,6 +176,7 @@ type App struct {
 	configScroll  int          // the scroll position of the printer list of the setup
 	configAll     bool         // the printer list shows all printers, not only those for the board
 	configBoard   board.Info   // the board that the printer list is for
+	flash         *flashState  // the flash of the firmware, while it runs and until OK
 	historyScroll int          // the scroll position of the history
 	doneSeen      string       // the done screen of this print was closed (its history key)
 	setupProbed   bool         // the printer setup started a probe of the USB ports

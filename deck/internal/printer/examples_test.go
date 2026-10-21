@@ -73,3 +73,10 @@ func TestUseExample(t *testing.T) {
 		t.Error("the new config still needs the setup")
 	}
 }
+
+func TestMCUSerial(t *testing.T) {
+	path := writeTemp(t, "[printer]\nkinematics: cartesian\n[mcu]\nbaud: 250000\nserial: /dev/ttyACM0  # the RAMBo\n[mcu aux]\nserial: /dev/ttyUSB1\n")
+	if s := MCUSerial(path); s != "/dev/ttyACM0" {
+		t.Errorf("serial %q", s)
+	}
+}
