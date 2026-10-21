@@ -165,10 +165,9 @@ func drawModelShape(c *gfx.Canvas, r image.Rectangle) {
 // drawFile is the page of one file: the thumbnail, what the slicer wrote, Print and Delete.
 func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 	f := a.file
-	heading(c, gfx.Fit(gfx.Face(true, 24), f.Name, W-200))
-	a.backButton(c)
+	pf := a.pageFrame()
+	pg := a.page(c, gfx.Fit(gfx.Face(true, 24), f.Name, pf.head.Dx()-200))
 	m := a.Printer.FileMeta(f.Path)
-	a.thumb(c, image.Rect(110, 78, W-110, 338), f.Path, m)
 
 	var rows [][2]string
 	if m.PrintTime > 0 {
@@ -200,7 +199,20 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 		rows = append(rows, [2]string{"Slicer", m.Slicer})
 	}
 	rows = append(rows, [2]string{"Uploaded", fileDate(f.Date, a.Now(), a.Clock24)})
-	box := image.Rect(24, 350, W-24, 350+len(rows)*30+20)
+	// Tall: the picture, the slicer data, and the keys. Wide: the picture and the slicer data at the
+	// right, the keys in the left column.
+	tableH := len(rows)*30 + 20
+	var pic, box, keys image.Rectangle
+	if pg.wide {
+		r := kit.Rows(pg.body(), 12, kit.Fr(1), kit.Px(tableH))
+		side := min(r[0].Dx(), r[0].Dy())
+		pic, box = kit.Center(r[0], side, side), r[1]
+		keys = kit.Rows(pg.aside(), 0, kit.Fr(1), kit.Px(84))[1]
+	} else {
+		r := kit.Rows(kit.Inset(pg.body(), 0, 12, 0, 0), 12, kit.Px(260), kit.Px(tableH), kit.Fr(1), kit.Px(84), kit.Px(114))
+		pic, box, keys = kit.Center(r[0], 260, 260), r[1], r[3]
+	}
+	a.thumb(c, pic, f.Path, m)
 	plate(c, box)
 	for i, kv := range rows {
 		y := box.Min.Y + 10 + i*30
@@ -210,12 +222,13 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 
 	pr := a.Printer
 	path := f.Path
+	k := kit.Cols(keys, 12, kit.Fr(1), kit.Px(144))
 	if st.Busy() {
-		key(c, image.Rect(24, 586, W-180, 670), "A print runs", surface, dim, false)
+		key(c, k[0], "A print runs", surface, dim, false)
 	} else {
-		a.button(c, image.Rect(24, 586, W-180, 670), "Print", orange, onAcc, func() { a.confirmPrint(path) })
+		a.button(c, k[0], "Print", orange, onAcc, func() { a.confirmPrint(path) })
 	}
-	a.button(c, image.Rect(W-168, 586, W-24, 670), "Delete", raised, red, func() {
+	a.button(c, k[1], "Delete", raised, red, func() {
 		a.confirm = &confirmBox{question: "Delete " + gfx.Fit(gfx.Face(true, 28), f.Name, 300) + "?", yes: "Delete", danger: true, onYes: func() {
 			a.do(func() error {
 				if err := pr.DeleteFile(path); err != nil {

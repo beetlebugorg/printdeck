@@ -208,7 +208,10 @@ func (a *App) lcdLines(st printer.State) []string {
 	return []string{lr(strings.ToUpper(st.Activity), right), now}
 }
 
-func (a *App) temps(c *gfx.Canvas, y, h int, tool, toolT, bed, bedT float64, ok bool) {
+// temps draws the nozzle and the bed side by side in r: the temperature, and the target while the
+// heater is on. A tap opens the keypad for the target.
+func (a *App) temps(c *gfx.Canvas, area image.Rectangle, tool, toolT, bed, bedT float64, ok bool) {
+	h := area.Dy()
 	card := func(r image.Rectangle, icon func(cx, cy, r int, col color.RGBA), name string, v, target float64) {
 		plate(c, r)
 		ic := dim
@@ -226,8 +229,8 @@ func (a *App) temps(c *gfx.Canvas, y, h int, tool, toolT, bed, bedT float64, ok 
 			c.Text(image.Rect(r.Min.X+62, r.Min.Y+6, r.Max.X-10, r.Min.Y+28), fmt.Sprintf("SET %.0f°", target), gfx.Face(true, 13), orange, gfx.Right)
 		}
 	}
-	half := (W - 80 - 16) / 2
-	nozzle, bedR := image.Rect(40, y, 40+half, y+h), image.Rect(40+half+16, y, W-40, y+h)
+	cards := kit.Cols(area, 16, kit.Fr(1), kit.Fr(1))
+	nozzle, bedR := cards[0], cards[1]
 	card(nozzle, func(cx, cy, r int, col color.RGBA) { drawNozzle(c, cx, cy, r, col) }, "Nozzle", tool, toolT)
 	card(bedR, func(cx, cy, r int, col color.RGBA) { drawBed(c, cx, cy, r, col) }, "Bed", bed, bedT)
 	if ok { // a tap opens the keypad for the target
