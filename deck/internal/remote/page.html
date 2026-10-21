@@ -54,7 +54,7 @@ function area() {
 // window at the full width.
 function wantedSize() {
   const [aw, ah] = area();
-  if (aw > ah * 1.2) return WIDE;
+  if (aw > ah) return WIDE;
   return [TALL_W, Math.max(MIN_H, Math.min(MAX_H, Math.round(TALL_W * ah / aw)))];
 }
 
