@@ -11,12 +11,13 @@
 #     and the printer USB and the power cables go through it to the back of the printer.
 # The parts:
 #   plate     orange  flat on the cover, under the pod. Screws hold it on the cover; the Pi is on it.
-#   back      orange  the back of the head. It hangs on two M5 screws in the front left rail
-#                     (keyholes), and two screws from the pod hold its left end.
+#   back      orange  the back of the head. Its dovetail slots hang on the keys of two clips in
+#                     the front left rail, and two screws from the pod hold its left end.
 #   head      navy    the face and the walls around the display. Four screws from the back of
 #                     the back panel hold it.
 #   pod       navy    the cover over the Pi. It slides up and in onto two hooks on the plate.
-#   grille    white   the vent panel over the Pi, in a window of the pod.
+#   grille    white   the vent panel over the Pi. It snaps into a pocket of the pod.
+#   clip      orange  two clips on the front left rail, each held by a twist nut in the slot.
 # The orange edges of the plate and the back panel show as thin lines between the navy parts
 # and the black printer.
 #
@@ -42,10 +43,10 @@ WALL = 1.5                       # 3 lines of the 0.5 mm nozzle (Workhorse SE to
 SKIN = 1.5                       # the face of the head and the outer face of the pod
 LIP = 1.0                        # the glass is 1 mm behind the face (a 1 mm lip, 0.6 mm pocket)
 R_EDGE = 6.0                     # radius of the outer corners
-R_IN = 2.5                       # radius of the inner corners
+R_IN = R_EDGE - WALL             # radius of the inner corners: the corner wall is as thick as the walls
 EDGE = 1.0                       # chamfer of the outer edges of a face
 
-# The front of the printer: the frame upright is 20 x 20 T-slot (HD-EX0062), M5 slot nuts.
+# The front of the printer: the frame upright is 20 x 20 T-slot (HD-EX0062).
 RAIL_FRONT_X = X_FRONT + 1.0     # the front face of the rail is 1 mm in front of the chassis
 RAIL_SLOT_Z = 399.6 - WH.COVER_FACE_X    # the centre of the front slot of the rail
 
@@ -85,14 +86,17 @@ INSERT_D = 4.0                   # the pocket of every M3 heat-set insert (the s
 # blind end for the plastic that the insert pushes ahead. A shorter insert is fine.
 INSERT_BLIND = 0.6
 INSERTS = {                       # place: (count, shortest, longest insert in mm)
-    "display": (4, 3.0, 5.0),
     "head_back": (4, 3.0, 7.0),
     "back_flange": (2, 3.0, 7.0),
-    "pi": (4, 3.0, 5.0),
     "pod_block": (2, 3.0, 5.0),
+    "clip_nut": (2, 3.0, 4.0),
 }
-INSERT_USE = {"display": 5, "head_back": 7, "back_flange": 7, "pi": 5, "pod_block": 5}   # the length in the model
-INSERT_DEPTH = INSERTS["display"][2] + INSERT_BLIND
+INSERT_USE = {"head_back": 7, "back_flange": 7, "pod_block": 5, "clip_nut": 4}   # the length in the model
+# The display board and the Pi have little load: their M3 x 6 screws cut their own thread in a
+# 2.5 mm hole in the boss, with no insert. Do not tighten them more than snug.
+TAP_D = 2.5
+DISPLAY_TAP_DEPTH = 5.6          # the screw goes 4.4 mm into the display boss
+PI_TAP_DEPTH = 4.6               # the screw goes 4.4 mm into the Pi boss; 1.4 mm of floor stays
 # Socket cap head screws (ISO 4762), the only screws in this design.
 CAP = {3: (5.5, 3.0), 5: (8.5, 5.0)}   # size: (head diameter, head height)
 CBORE = {3: (6.0, 3.2)}               # counterbore: diameter, depth
@@ -113,7 +117,7 @@ HEAD_Q = (-_Q_HALF, _Q_HALF)
 HEAD_LEFT_OUT = 20.0             # the left face of the head is this far past the outer face of the pod
 BACK_X = (RAIL_FRONT_X + 2.5, RAIL_FRONT_X + 5.5)   # the back panel: on the flanges of the rail clips
 HEAD_TOP_DEPTH = 16.0            # from the back panel to the top edge of the face
-POD_Z = 25.0                     # the outer face of the pod and the left face of the head
+POD_Z = 26.0                     # the outer face of the pod and the left face of the head
 HEAD_TOP = (BACK_X[1] + HEAD_TOP_DEPTH, H)    # (x, y) of the top edge of the face
 HEAD_ZC = POD_Z + HEAD_LEFT_OUT + HEAD_P[0]   # z of p = 0 (p points to -z)
 
@@ -146,7 +150,7 @@ def disp_ab(a, b, c=0.0):
     return disp_hv(b, -a, c)
 
 
-# Head to back panel: four M3 x 10 countersunk screws from the back of the back panel (you fit
+# Head to back panel: four M3 x 10 socket cap screws from the back of the back panel (you fit
 # them on the bench, before the head goes on the printer). Two go into columns in the right
 # band, above and below the plugs; two go into blocks on the left wall. Head points (p, q).
 HEAD_COLS = [(_P_HALF - WALL - CLR - 4.0, 48.0), (_P_HALF - WALL - CLR - 4.0, -48.0)]
@@ -167,15 +171,23 @@ FLANGE_Z = (12.5, 23.2)          # the flange block (its underside slopes 45 deg
 # Rail clip: from the slot of the rail (front slot of the front left upright, in the LulzBot
 # model): the opening is 6.15 mm wide at the face and 5.1 mm at its narrowest (the lips are
 # round), the lip is 1.7 mm thick, and behind the lip the slot is 12.4 mm wide (16.6 mm deeper
-# in) and 6.55 mm deep. A nut cannot go through a 5.1 mm opening, so the clip snaps in. Clip coordinates: the slot centre and the
-# rail face. The clip prints on its end, so its section is on the bed and it needs no supports.
+# in) and 6.55 mm deep; measured in the model, the cavity behind the lips is a 45 degree V:
+# 12.9 mm wide at 0.5 mm, 4.9 mm wide at 4.5 mm. A metal nut cannot go through a 5.1 mm
+# opening. A printed twist nut (11.6 x 4.8 mm at the lips, with 45 degree sides like the V, and
+# an M3 heat-set insert) goes in lengthwise, and turns a quarter turn behind the lips, until it
+# is across the slot. Two opposite corners are round, so it turns easily; the model checks that
+# it turns free of the rail. An M3 x 8 screw from a counterbore in the key of the clip pulls the
+# nut against the lips. Clip coordinates: the slot centre and the rail face. The clip prints on
+# its end, so its section is on the bed and it needs no supports; the nut prints flat.
 CLIP_T = 2.5                     # the flange of the clip on the rail face
 CLIP_L = 24.0                    # the length along the slot
 CLIP_FLANGE_W = 16.0
 CLIP_KEY = (8.0, 11.0)           # width of the dovetail key at the rear and at the front of the back panel
-CLIP_LEG = (0.9, 2.3)            # inner and outer z of each leg (gap 1.8 mm, the legs bend in)
-CLIP_BARB = 3.3                  # the barbs reach this far from the slot centre (the lip is at 2.55)
-CLIP_LEG_DEPTH = 5.0             # the legs go this far into the slot
+RAIL_LIP = 1.7                   # the lip of the slot
+NUT = (11.6, 4.8, 4.0)           # the twist nut: across the slot (at the lips), along the slot, thick
+NUT_GAP = 0.1                    # from the back of the lips to the nut (the screw pulls it up)
+NUT_ROUND = 2.0                  # the radius of its two round corners
+CLIP_SCREW = 8.0                 # M3 x 8 from the counterbore into the nut
 CLIPS_Y = (158.0, 214.0)         # y of the clip centres (the back panel sets their height)
 CLIP_SLACK = 3.0                 # the dovetail slot is longer by this on each end
 CLIP_DROP = CLIP_L + 2 * CLIP_SLACK   # the head drops this far from the windows into the dovetail slots
@@ -214,7 +226,7 @@ PI_HOLE_D = 3.2                  # drill the four 2.7 mm holes of the Pi to 3.2 
 # drawing, at the same height, mirrored: 3.6 mm from the rear edge of the cover (163.9 mm from the
 # front face); it is to be confirmed. Type new values here and run make.sh. Each cover screw
 # under the plate changes to a longer M3 socket cap screw with a washer: the plate pad is 4 mm
-# thick, so the screw goes into the PEM nut of the chassis the same depth as before. The holes in
+# thick, so an M3 x 10 goes 3.5 mm into the PEM nut of the chassis (the old screw: 4.0 mm). The holes in
 # the plate are slots, MOUNT_SLOT mm long up and down and MOUNT_SLOT_W mm wide (+-0.5 mm front to
 # back for the measurement), so a few mm of difference fits.
 COVER_SCREWS_MM = [(239.8, 6.1), (239.8, 163.9)]
@@ -255,9 +267,11 @@ PLATE_WINDOWS = [(-72.0, -52.0, 120.0, 152.0), (-72.0, -42.0, 172.0, 238.0), (-2
                  (30.0, 72.0, 160.0, 220.0), (-38.0, 28.0, 126.0, 148.0)]
 
 # The 2.5 inch drive (the boot drive) with its USB adapter, in the head: flat on the inner face of
-# the back panel, behind the display, adapter toward the pod. Four countersunk M3 x 6 screws from
-# the rear of the back panel hold it. Its micro-B plug points to the pod; the cable goes through
+# the back panel, behind the display, adapter toward the pod. Four M3 x 6 socket cap screws from
+# the rear of the back panel hold it. The drive is on four pads 0.5 mm high, so the screws go
+# 2.5 mm into the drive (a 2.5 inch drive allows 3.0 mm, some only 2.5 mm). Its micro-B plug points to the pod; the cable goes through
 # the lower window of the back panel to the lower USB 3 port. From the Slate model.
+DRIVE_PAD = 0.5                  # the pads under the drive, at its four holes
 DRIVE_Y = 150.5                  # centre of the drive (across its width)
 DRIVE_Z_ADAPTER = -13.0          # the end of the adapter board
 DRIVE_LEN, DRIVE_ADAPTER = 50.2, 86.3   # half length of the drive; the adapter end, from the centre
@@ -273,7 +287,7 @@ BACK_WINDOWS = [(118.0, 236.0, -194.0, -146.0), (190.0, 236.0, -100.0, -30.0), (
 GRILLE_WIN = (-32.0, 25.0, 156.0, 240.0)   # x0, x1, y0, y1 (left of the USB port bodies)
 # The grille snaps into a pocket in the pod. The pocket is the window in the skin and a rim on
 # the inner face of the skin; its floor is a 45 degree ledge (no flat ceiling in the print).
-# Each long side of the grille has a flexible tab (a 26 mm cantilever in the plane of the
+# Each long side of the grille has a flexible tab (a 14 mm cantilever in the plane of the
 # grille, printed flat, so it bends along the layers) with a ridge that clicks into a groove in
 # the pocket wall. A notch at the bottom edge of the pocket is for a fingernail or a small
 # screwdriver to lift the grille out.
@@ -283,6 +297,6 @@ GRILLE_CLR = 0.2                 # clearance around the grille in the pocket
 GRILLE_T = 3.0                   # the grille thickness = the pocket depth (flush with the skin)
 GRILLE_RIM = (3.5, 2.5)          # the rim on the inner face of the skin: width, height
 GRILLE_LEDGE = 1.2               # the 45 degree ledge under the grille
-GRILLE_TAB = (26.0, 1.8, 1.4)    # tab length, tab width, the slot between the tab and the grille
+GRILLE_TAB = (14.0, 2.0, 1.4)    # tab length, tab width, the slot between the tab and the grille
 GRILLE_RIDGE = 0.6               # the ridge on the tab (the snap); the groove is 0.2 mm deeper
 GRILLE_NOTCH = (10.0, 1.6)       # the fingernail notch: width, depth

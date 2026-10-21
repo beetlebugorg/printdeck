@@ -66,20 +66,21 @@ COMMON = {
     "skin_monotonic": True,
 }
 
-# The parts print with 0.3 mm layers ("verydraft" in Cura).
-# At 0.3 mm x 0.5 mm, 55 mm/s is 8.25 mm3/s. That is below the flow limit.
+# The parts print with 0.3 mm layers ("verydraft" in Cura). The profiles keep the flow at 12 mm3/s
+# or less: at 0.3 mm x 0.5 mm, the infill at 75 mm/s is 11.25 mm3/s. The outer walls are slower,
+# for the look of the faces.
 LAYER = {
     "layer_height": 0.3,
     "top_bottom_thickness": 1.2,
-    "speed_print": 50,
-    "speed_infill": 55,
-    "speed_wall": 40,
-    "speed_wall_0": 30,
-    "speed_wall_x": 45,
-    "speed_topbottom": 40,
-    "speed_layer_0": 18,
-    "speed_travel": 150,
-    "speed_travel_layer_0": 100,
+    "speed_print": 60,
+    "speed_infill": 75,
+    "speed_wall": 50,
+    "speed_wall_0": 35,
+    "speed_wall_x": 60,
+    "speed_topbottom": 50,
+    "speed_layer_0": 22,
+    "speed_travel": 200,
+    "speed_travel_layer_0": 120,
     "speed_slowdown_layers": 2,
     "material_print_temperature": 220,
     "material_print_temperature_layer_0": 215,
@@ -91,8 +92,8 @@ LAYER = {
 FACE_DOWN = {
     "layer_height_0": 0.3,
     "infill_sparse_density": 100,
-    "speed_wall_0": 25,
-    "speed_topbottom": 30,
+    "speed_wall_0": 30,
+    "speed_topbottom": 35,
     "cool_min_layer_time": 10,
     "adhesion_type": "skirt",
     "skirt_line_count": 3,
@@ -144,16 +145,27 @@ def write(path, name, quality_type, values, position=None):
 
 
 FRONT = {**FACE_DOWN, "infill_sparse_density": 15, "infill_pattern": "grid"}
+# The back panel and the plate are flat, almost solid plates with no face that shows: they print
+# with 0.4 mm layers, at 12 mm3/s (60 mm/s at 0.4 mm x 0.5 mm).
+COARSE = {"layer_height": 0.4, "speed_print": 55, "speed_infill": 60, "speed_wall_x": 55}
 FLAT = {"layer_height_0": 0.3, "infill_sparse_density": 15, "infill_pattern": "grid", "cool_min_layer_time": 10,
         "adhesion_type": "skirt", "skirt_line_count": 3, "xy_offset_layer_0": -0.15}
 
 PROFILES = [
-    profile("Head", "LulzBot Head", "head.stl", {**FRONT, "cool_min_layer_time": 10}),
+    # CuraEngine crashes (SIGSEGV) when it slices the head with supports everywhere. Its support
+    # check uses supports from the build plate; the overhang check of make.sh on the STL covers
+    # the overhangs on the part itself (0 mm2 for the head).
+    {**profile("Head", "LulzBot Head", "head.stl", {**FRONT, "cool_min_layer_time": 10}),
+     "support_check": {"support_type": "buildplate"}},
     profile("Pod", "LulzBot Pod", "pod.stl", {**FRONT, "cool_min_layer_time": 10}),
-    profile("Back", "LulzBot Back", "back.stl", {**FRONT, "cool_min_layer_time": 12}),
-    profile("Plate", "LulzBot Plate", "plate.stl", {**FLAT}),
+    profile("Back", "LulzBot Back", "back.stl", {**FRONT, **COARSE, "cool_min_layer_time": 12}),
+    profile("Plate", "LulzBot Plate", "plate.stl", {**FLAT, **COARSE}),
     profile("Grille", "LulzBot Grille", "grille.stl", {**FRONT, "cool_min_layer_time": 12}),
-    profile("Clip", "LulzBot Rail clip", "clip.stl", {**FLAT, "infill_sparse_density": 100, "cool_min_layer_time": 12}),
+    # The clip stands 24 mm high on a small section: a brim holds it on the bed.
+    profile("Clip", "LulzBot Rail clip", "clip.stl", {**FLAT, "infill_sparse_density": 100, "cool_min_layer_time": 12,
+                                                      "adhesion_type": "brim", "brim_line_count": 8}),
+    profile("ClipNut", "LulzBot Twist nut", "clip_nut.stl", {**FLAT, "infill_sparse_density": 100,
+                                                            "cool_min_layer_time": 12}),
     profile("FitDisplay", "LulzBot Fit test", "fit_display.stl", {**FRONT, "cool_min_layer_time": 12}),
 ]
 
@@ -198,13 +210,17 @@ def slice_part(profile, extra=None, tag=""):
     cmd += args + ["-e0"] + args + ["-l", str(MOUNT / "stl" / profile["stl"]), "-o", str(gcode)]
     # CuraEngine can deadlock in its G-code writer with more than one thread (-m1 above).
     # If it still stalls, stop it after 4 minutes and try again.
+    rc = None
     for _ in range(3):
         try:
-            subprocess.run(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=int(os.environ.get("SLICE_TIMEOUT", 240)))
+            rc = subprocess.run(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                timeout=int(os.environ.get("SLICE_TIMEOUT", 240))).returncode
             break
         except subprocess.TimeoutExpired:
             gcode.unlink(missing_ok=True)
-    if not gcode.exists():
+    # A crash of CuraEngine can leave a short G-code file with no layers: that is no slice.
+    if rc != 0 or not gcode.exists() or ";LAYER:" not in gcode.read_text():
+        print(f"  CuraEngine failed on {gcode.name} (exit code {rc})")
         return None
     grams = collections.Counter()
     kind, e, last, seconds = "none", 0.0, 0.0, 0
@@ -231,7 +247,7 @@ def slice_part(profile, extra=None, tag=""):
 
 def run(profile):
     normal = slice_part(profile)
-    support = slice_part(profile, SUPPORT_CHECK, "_support_check")
+    support = slice_part(profile, {**SUPPORT_CHECK, **profile.get("support_check", {})}, "_support_check")
     return profile, normal, support
 
 
@@ -249,12 +265,13 @@ def main():
         write(OUT / f"{pid}.inst.cfg", profile["name"], profile["quality_type"], g)
         write(OUT / f"{pid}_e0.inst.cfg", profile["name"], profile["quality_type"], x, 0)
     if "--no-slice" not in sys.argv:
-        filament, supports = {}, {}
+        filament, supports, failed = {}, {}, False
         # One slice at a time: parallel CuraEngine runs stalled.
         for profile, normal, support in map(run, PROFILES):
             stem = Path(profile["stl"]).stem
             if normal is None or support is None:
                 print(f"{profile['name']:24s} slice failed")
+                failed = True
                 continue
             normal, seconds = normal
             support = support[0]
@@ -267,6 +284,8 @@ def main():
                   f"   support check: {sup:.2f} g")
         (BUILD / "filament.json").write_text(json.dumps(filament, indent=1))
         (BUILD / "supports.json").write_text(json.dumps(supports, indent=1))
+        if failed:
+            sys.exit(1)
     if "--install" in sys.argv:
         install()
 

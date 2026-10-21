@@ -15,7 +15,7 @@ uv run --no-project --with build123d python fit_display.py
 uv run --no-project --with numpy --with scipy --with trimesh --with networkx python - <<'PY'
 import sys, math, trimesh
 bad = False
-for n in ("head", "back", "pod", "plate", "grille", "clip", "fit_display"):
+for n in ("head", "back", "pod", "plate", "grille", "clip", "clip_nut", "fit_display"):
     m = trimesh.load(f"stl/{n}.stl")
     ok = m.is_watertight and m.is_winding_consistent and m.body_count == 1
     nz, zc, area = m.face_normals[:, 2], m.triangles_center[:, 2], m.area_faces
@@ -38,7 +38,7 @@ import json, sys
 s = json.load(open("build/supports.json"))
 bad = {k: v for k, v in s.items() if v > 0}
 print("  support check:", "0 g for all parts" if not bad else f"SUPPORT NEEDED {bad}")
-sys.exit(1 if bad or len(s) != 7 else 0)
+sys.exit(1 if bad or len(s) != 8 else 0)
 PY
 # Line-art images in three.js (headless Chromium), in the style of the Slate guide.
 [ -d lineart/node_modules ] || (cd lineart && npm ci --no-fund --no-audit)

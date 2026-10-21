@@ -53,7 +53,8 @@ PRINTS = [
     ("pod", "pod", "Navy", 1, "Outer face down. The grille pocket and the vents are in the first layers."),
     ("back", "back", "Orange", 1, "Rear face down. A flat plate with the clip slots and the windows."),
     ("plate", "plate", "Orange", 1, "The face that goes on the cover down. The bosses and the hooks point up."),
-    ("clip_a", "clip", "Orange", 2, "On its end: the section is on the bed, so the legs bend along the layers. Print 2."),
+    ("clip_a", "clip", "Orange", 2, "On its end, with a brim: the section of the clip is on the bed. Print 2."),
+    ("clip_nut_a", "clip_nut", "Orange", 2, "The wide face down. Print 2."),
     ("grille", "grille", "White", 1, "Back down. The front face is the top layer. The snap tabs bend along the layers."),
 ]
 TEST = ("fit_display", "fit_display", "Navy", 1, "Optional fit test of the screen opening. Face down.")
@@ -63,8 +64,11 @@ SETTINGS = [
                  "closed, then pick “Printdeck - LulzBot …”."),
     ("Printer", "LulzBot TAZ Workhorse, SE tool head, 0.5 mm nozzle"),
     ("Material", "PLA, 2.85 mm"),
-    ("Head, pod, back panel, grille, clip", "0.3 mm layers, 1.5 mm walls, 1.2 mm top and bottom, 15 % grid infill, skirt"),
-    ("Plate", "0.3 mm layers, 1.5 mm walls, 15 % grid infill, skirt"),
+    ("Head, pod, grille", "0.3 mm layers, 1.5 mm walls, 1.2 mm top and bottom, 15 % grid infill, skirt"),
+    ("Back panel, plate", "0.4 mm layers (a 0.3 mm first layer), 1.5 mm walls, 15 % grid infill, skirt"),
+    ("Clip, twist nut", "0.3 mm layers, 100 % infill. The clip has a brim."),
+    ("Speeds", "Infill 75 mm/s (60 mm/s with 0.4 mm layers), inner walls 60 mm/s, outer walls 35 mm/s (30 mm/s on a face "
+               "that shows), travel 200 mm/s. The flow stays at 12 mm³/s or less."),
     ("Supports", "Off for all parts. Every hole, pocket, and hook has 45° faces. A slice of each part with supports "
                  "on (60°, everywhere) adds 0 g of support."),
 ]
@@ -121,20 +125,20 @@ STEPS = [
         "Remove all the dust from the board with a brush or with air before you continue.",
     ], "Skip this step if your Pi already has 3.2 mm holes."),
     ("step_display", "Display into the head", ["head", "display", "foam tape"],
-     {"ins_m3x5": 4, "ins_m3x7": 4, "m3x6": 4}, [
-        "Press the four M3 × 5 inserts into the four bosses of the head, and the four M3 × 7 inserts into the two "
-        "columns and the two blocks at the back. Use a soldering iron at 220 °C. Stop when the insert is flush.",
+     {"ins_m3x7": 4, "m3x6": 4}, [
+        "Press the four M3 × 7 inserts into the two columns and the two blocks at the back of the head. Use a "
+        "soldering iron at 220 °C. Stop when the insert is flush.",
         "Put the head face down on a soft cloth.",
         "Put the display glass down into the pocket: the sockets of the board at the left (seen from the front), the "
         "FPC edge of the panel at the top.",
         "Put the foam tape on the back of the panel. Put the board on the four bosses, and attach it with four M3 × 6 "
-        "screws.",
+        "screws. They cut their own thread in the bosses: turn them until they are snug, and no more.",
         "Connect the HDMI cable and the micro USB cable to the board. Both plugs point to the left.",
     ], "The screen opening is at the centre of the face: the border is the same at the left and the right."),
     ("step_drive", "Drive on the back panel", ["back panel", "drive"], {"ins_m3x7": 2, "m3x6": 4}, [
         "Press the two M3 × 7 inserts into the two bosses on the front face of the back panel, from the rear.",
-        "Put the drive on the front face of the back panel: the adapter toward the left (the pod side), the M3 holes "
-        "against the panel.",
+        "Put the drive on the four pads on the front face of the back panel: the adapter toward the left (the pod "
+        "side), the M3 holes on the pads.",
         "Attach it with four M3 × 6 screws from the rear face of the panel.",
         "Connect the micro-B plug of the drive cable to the adapter.",
     ], None),
@@ -143,27 +147,31 @@ STEPS = [
         "the lower window.",
         "Put the back panel on the head. Attach it with four M3 × 10 screws from the rear face, into the inserts.",
     ], "The heads of the screws stay on the rear face. They are behind the head, and they do not show."),
-    ("step_plate", "Plate on the cover", ["plate"], {"ins_m3x5": 6, "m3x10": 2, "m3_washer": 2}, [
-        "Press four M3 × 5 inserts into the four Pi bosses, and two into the two blocks at the bottom of the plate "
-        "(from below).",
+    ("step_plate", "Plate on the cover", ["plate"], {"ins_m3x5": 2, "m3x10": 2, "m3_washer": 2}, [
+        "Press the two M3 × 5 inserts into the two blocks at the bottom of the plate (from below).",
         "The cover is PP-FP0164, with 10 screws. Remove its upper pair of screws from the left side of the chassis: "
         "the front one and the rear one, 237.3 mm above the bottom edge of the cover.",
         "Put the plate on the cover, with the slots of the two pads over the two holes. Attach it with two M3 × 10 "
         "screws, each with a washer.",
     ], "The slots in the pads let the plate fit 5 mm up or down and 0.5 mm to the front or the rear. The pad is 4 mm "
-       "thick, so the M3 × 10 goes into the nut of the chassis the same depth as the old screw."),
+       "thick, so the M3 × 10 goes 3.5 mm into the nut of the chassis (the old screw went 4.0 mm)."),
     ("step_pi", "Pi on the plate", ["Pi 5 (step 1)", "Active Cooler"], {"m3x6": 4}, [
         "Put the Active Cooler on the Pi, and connect its cable to the fan connector.",
         "Put the Pi on the four bosses: the USB ports toward the front of the printer, the USB-C and HDMI ports down.",
-        "Attach it with four M3 × 6 screws.",
+        "Attach it with four M3 × 6 screws. They cut their own thread in the bosses: turn them until they are "
+        "snug, and no more.",
     ], None),
-    ("step_clips", "Clips in the rail", ["2 × rail clip"], {}, [
+    ("step_clips", "Clips in the rail", ["2 × rail clip", "2 × twist nut"], {"ins_m3x4": 2, "m3x8": 2}, [
+        "Press an M3 × 4 insert into the hole of each twist nut, from the narrow face. Stop when it is flush.",
+        "Put an M3 × 8 screw into the counterbore in the key of each clip, and turn it two turns into a nut. The "
+        "wide face of the nut points to the clip.",
         "Hold the back panel on the front face of the front left rail, with its bottom edge 125 mm above the bottom "
         "of the chassis. Mark the top of the two long slots in the panel on the rail.",
-        "Push each clip into the front slot of the rail, with its top at a mark, until it clicks. The dovetail key "
-        "points to the front.",
-    ], "The clips need no nut: their two legs snap behind the lips of the slot. A clip slides in the slot, so you can "
-       "move it up or down by hand."),
+        "Turn a clip a quarter turn, so that the nut is along the slot. Push the nut into the front slot of the rail "
+        "at a mark. Turn the clip back until the key is along the rail: the nut turns with it, behind the lips.",
+        "Tighten the screw until the clip is tight on the rail. Do the same with the second clip.",
+    ], "The nut is wider than the opening of the slot when it is across the slot. If the nut does not turn with the "
+       "clip, hold the clip and turn the screw back a little, then try again."),
     ("step_hang", "Hang the head", ["head (step 4)"], {"m3x12": 2}, [
         "Hold the head 30 mm above its place, with the two windows of the back panel over the two clip keys. Push the "
         "back panel against the clips.",
@@ -276,9 +284,9 @@ def cover():
   <p style="margin-top:4mm;max-width:165mm">A mount for the Printdeck at the front left of the TAZ Workhorse:
   the 7 inch touch display in a wide head below the TAZ Workhorse logo, and the Raspberry Pi 5 in a pod on the
   left side of the electronics chassis. The head leans back 15°, the same as the Slate, and faces the front of the
-  printer. The drive is in the head, behind the display. There is no hole to drill and no nut in the rail: two
-  printed clips snap into the front rail, the upper pair of screws of the cover (PP-FP0164) holds the plate, and the
-  cables leave at the rear of the chassis.</p>
+  printer. The drive is in the head, behind the display. There is no hole to drill and no metal nut in the rail:
+  two printed clips hold on the front rail with printed twist nuts, the upper pair of screws of the cover
+  (PP-FP0164) holds the plate, and the cables leave at the rear of the chassis.</p>
   <div class="fig"><img src="{img('hero')}" style="max-height:120mm;max-width:49%"><img src="{img('side')}" style="max-height:120mm;max-width:49%"></div>
   <div class="need"><div class="chip"><span class="sw" style="background:#1F2B4D"></span>Navy PLA</div>
     <div class="chip"><span class="sw" style="background:#E8742A"></span>Orange PLA</div>
@@ -334,8 +342,13 @@ def plan_page():
   <div class="note"><b>Total.</b> {g} g of PLA ({m:.0f} m), {hours(t)} of printing, ${cost(g):.2f} at
   ${PRICE_PER_KG:.2f}/kg. With the fit test: {g + f["grams"]} g and {hours(t + f["minutes"])}. The largest part
   (the head) needs a bed of {hb[0]:.0f} × {hb[1]:.0f} mm; the Workhorse bed is 280 × 280 mm.</div>
-  <div class="note"><b>Order.</b> Print the fit test first, if you want to check the screen opening. Then the head
-  and the back panel: steps 2 to 4 need them. Then the plate, the clips, the pod, and the grille.</div>
+  <div class="note"><b>Order.</b> Print the fit test first ({hours(f["minutes"])}): the display pocket has 0.3 mm
+  of clearance at each side, so check it before the head. Then the head and the back panel: steps 2 to 4 need them.
+  Then the plate, the clips and the nuts, the pod, and the grille.</div>
+  <div class="note"><b>By colour.</b> You can also print one job for each colour: the head and the pod together
+  (navy, with the head profile), the back panel, the plate, the clips and the nuts together (orange, with the plate
+  profile; set the clips and the nuts to 100 % infill in Cura), and the grille (white). The time is the same, with
+  fewer changes of the spool; a failure costs more than one part.</div>
   {foot(2)}
 </section>"""
 
@@ -371,7 +384,8 @@ def parts_page():
     <div><h2>Hardware</h2><table style="font-size:9.5pt">{''.join(rows)}</table>
       <p style="font-size:9pt">From the model: each screw, washer, and insert is in the model at its place. All
       screws are socket cap head screws. A shorter or a longer insert is fine, up to the length in brackets.
-      There is no M5 part, no nut, and no countersunk screw. The position of the rear cover screw is to be confirmed (page 5).</p></div>
+      All the screws are M3 socket cap screws. The screws of the display and the Pi cut their own thread in the
+      bosses. The position of the rear cover screw is to be confirmed (page 5).</p></div>
     <div><h2>Electronics and cables</h2><table style="font-size:8.8pt">{el}</table>
       <h2 style="margin-top:4mm">Tools</h2><ul style="font-size:10pt">{tl}</ul>
       <p style="font-size:9pt">2 mm foam tape, one strip (between the panel and the display board).</p></div>
@@ -392,9 +406,10 @@ def mount_page():
     screws into nuts in the chassis. The two screws of its upper pair, under the plate, change to M3 × 10 socket cap
     screws with a washer. They are at: {pos}. The pads have slots 10 mm long and 4.4 mm wide, so the plate fits 5 mm
     up or down.</li>
-    <li><b>Front rail.</b> Two printed clips snap into the front slot of the front left rail. Their dovetail keys hold
-    the right end of the head against the rail. The slot opening is 5.1 mm at the round lips (from the LulzBot
-    model), so no nut goes in.</li>
+    <li><b>Front rail.</b> Two printed clips hold on the front slot of the front left rail. A printed twist nut goes
+    into the slot along it, and turns a quarter turn behind the lips; an M3 × 8 screw pulls it up. The slot opening
+    is 5.1 mm at the round lips (from the LulzBot model), so no metal nut goes in. The dovetail keys of the clips
+    hold the right end of the head against the rail.</li>
     <li><b>Flange.</b> Two M3 × 12 socket cap screws go from inside the pod through the flange of the plate into the
     back panel. They hold up the head.</li>
     <li><b>Hooks.</b> The pod slides up onto two 45° hooks of the plate, and two M3 × 8 screws hold it from below.</li></ul>
