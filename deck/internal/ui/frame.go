@@ -84,6 +84,23 @@ func (a *App) takeover(c *gfx.Canvas, title string) (content, key image.Rectangl
 	return r[0], r[1]
 }
 
+// plain draws the title of a screen with no display (the printer setup, an error of Klipper). It
+// returns two areas. On a wide screen, text is the left column under the title, and info is the
+// right column. On a tall screen both are the one column under the title.
+func (a *App) plain(c *gfx.Canvas, title string) (wide bool, text, info image.Rectangle) {
+	scr := kit.Screen{W: W, H: contentY1}
+	if scr.Wide() {
+		side, main := scr.Split(sideW)
+		r := kit.Rows(side, 0, kit.Px(headH), kit.Fr(1))
+		headingAt(c, r[0], title)
+		return true, kit.Inset(r[1], wideOut, 8, wideIn, lcdTop), kit.Inset(main, wideIn, lcdTop, wideOut, lcdTop)
+	}
+	r := kit.Rows(scr.Bounds(), 8, kit.Px(headH), kit.Fr(1))
+	headingAt(c, r[0], title)
+	body := kit.Inset(r[1], margin, 0, margin, 8)
+	return false, body, body
+}
+
 // pageFrame is the frame of a page, with no drawing.
 func (a *App) pageFrame() frame {
 	scr := kit.Screen{W: W, H: contentY1}
