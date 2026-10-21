@@ -4,8 +4,7 @@ A small Linux system for the Printdeck Raspberry Pi 5. It holds only what Printd
 
 - The Printdeck program (`deck/`), one static program with no other files: the Klipper host (a Go
   port of klippy, at the version of the printer's firmware), the touch screen, a web page for
-  phones, the remote screen in the browser, an OctoPrint-compatible API for slicers, the Spotify
-  Connect speaker (go-librespot) with the equalizer, and the system programs of the image
+  phones, the remote screen in the browser, an OctoPrint-compatible API for slicers, and the system programs of the image
 - Wi-Fi, mDNS (`printdeck.local`) and NTP
 
 It has no package manager, no Docker, no compiler, no shell and no SSH. Buildroot makes the system
@@ -90,9 +89,8 @@ partition. Fill in `printdeck.txt`:
 | `wifi_ssid`, `wifi_password`, `wifi_country` | The Wi-Fi network. The Pi clears the password in the file after it reads it. |
 | `ssh_key` | A public SSH key for the user `printdeck` (debug image only) |
 | `printer.cfg` (a file, next to `printdeck.txt`) | The Klipper configuration (see "Klipper") |
-| `spotify_client_id` | The client ID of your Spotify app (see "Spotify") |
 | `hostname`, `timezone` | The name on the network (`printdeck.local`) and the time zone |
-| `display_rotate`, `touch_invert_x`, `max_volume`, ... | The settings of the touch screen (see "Settings") |
+| `display_rotate`, `touch_invert_x`, `preheat_tool`, ... | The settings of the touch screen (see "Settings") |
 
 ## The login
 
@@ -154,20 +152,10 @@ The printer's board keeps its firmware. The Klipper version in
 `deck/internal/klipper/klipper.version` must match the firmware on the board. The `klipper`
 service runs the host: `printdeck klippy`, with the options of `klippy.py`.
 
-## Spotify
-
-The Spotify app finds the Printdeck as a Spotify Connect speaker named "Printdeck". The Music tab
-of the touch screen also needs the client ID of your own Spotify app:
-
-1. Make an app in the Spotify developer dashboard.
-2. Add the redirect URI `https://printdeck.local:8888/callback` to the app.
-3. Put the client ID in `printdeck.txt` (`spotify_client_id`), and start the Pi again.
-4. The Music tab shows a QR code. Scan it with your phone and log in to Spotify.
-
 ## Settings
 
 The settings of the Printdeck program are in `/etc/printdeck/deck.env`, for example the screen
-rotation, the touch axes and the volume range. To change one, put it in `printdeck.txt` in lower
+rotation, the touch axes and the preheat temperatures. To change one, put it in `printdeck.txt` in lower
 case, for example `display_rotate=90`, and start the Pi again. `printdeck-settings` writes these
 settings to `/var/lib/printdeck/settings.env`, which the deck reads after `deck.env`. The
 release image needs no SSH for any setting.
@@ -228,10 +216,9 @@ without it the kernel stops at boot.
 The image keeps only what Printdeck uses:
 
 - No Python: the Printdeck program has the Klipper host.
-- No go-librespot or CamillaDSP programs, no ALSA library and no ALSA loopback: the Printdeck
-  program plays Spotify on the amp itself, and filters the sound with its own equalizer.
+- No sound: no ALSA library and no sound drivers in the kernel.
 - The Printdeck program runs as the unprivileged user `deck`. It has the groups of its devices
-  (`video`, `input`, `audio`, `tty`, `dialout`, `systemd-journal`) and of Klipper (`printer`), and
+  (`video`, `input`, `tty`, `dialout`, `systemd-journal`) and of Klipper (`printer`), and
   two capabilities: port 80 and the graphics mode of the console. The system helper does the
   actions that need root.
 - No shell, no BusyBox, no SSH and no sudo. `board/release-prune.sh` keeps a list of programs and
@@ -241,7 +228,7 @@ The image keeps only what Printdeck uses:
   libraries (for example `sqlite3`, `flac`, `systemd-nspawn`).
 - Only the Wi-Fi firmware of the Pi 5, and no Bluetooth.
 - No libraries that no program links or loads, such as `libstdc++` (`board/post-build.sh`).
-- The kernel has only the modules that the Printdeck uses: the display, the Wi-Fi, the Amp2, the USB serial ports of the printer boards, the fan, and the buses they use
+- The kernel has only the modules that the Printdeck uses: the display, the Wi-Fi, the USB serial ports of the printer boards, the fan, and the buses they use
   (`board/linux-modules.txt`). The SSD, the touch screen and the file systems are built into the
   kernel. The display driver (`vc4`) is built in too, so that the start screen has the full
   display from the first frame.

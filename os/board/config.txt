@@ -13,12 +13,10 @@ disable_fw_kms_setup=1
 # display changes mode when vc4 starts. Without the firmware output, vc4 sets the only mode.
 hdmi_ignore_hotplug=1
 
-# The HiFiBerry Amp2, and no onboard audio.
-dtparam=i2c_arm=on
+# No onboard audio.
 dtparam=audio=off
-dtoverlay=hifiberry-dacplus-std
 
-# The Amp2 powers the Pi through the header, so the Pi does not see a 5 A supply.
+# A supply other than the official 5 A supply gives too little current to the USB ports.
 # Without this setting, all USB ports together get only 600 mA. That is not sufficient
 # for the SSD and the display.
 usb_max_current_enable=1

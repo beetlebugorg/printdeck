@@ -9,10 +9,8 @@ cdc_acm 0 0 - Live 0x0
 cec 0 0 - Live 0x0
 cfg80211 0 0 - Live 0x0
 ch341 0 0 - Live 0x0
-clk_hifiberry_dacpro 0 0 - Live 0x0
 cp210x 0 0 - Live 0x0
 crc_ccitt 0 0 - Live 0x0
-designware_i2s 0 0 - Live 0x0
 drm 0 0 - Live 0x0
 drm_client_lib 0 0 - Live 0x0
 drm_display_helper 0 0 - Live 0x0
@@ -41,16 +39,6 @@ rp1_fw 0 0 - Live 0x0
 rp1_mailbox 0 0 - Live 0x0
 rp1_pio 0 0 - Live 0x0
 sch_fq_codel 0 0 - Live 0x0
-snd 0 0 - Live 0x0
-snd_compress 0 0 - Live 0x0
-snd_pcm 0 0 - Live 0x0
-snd_pcm_dmaengine 0 0 - Live 0x0
-snd_soc_core 0 0 - Live 0x0
-snd_soc_hdmi_codec 0 0 - Live 0x0
-snd_soc_hifiberry_dacplus 0 0 - Live 0x0
-snd_soc_pcm512x 0 0 - Live 0x0
-snd_soc_pcm512x_i2c 0 0 - Live 0x0
-snd_timer 0 0 - Live 0x0
 spi_bcm2835 0 0 - Live 0x0
 spidev 0 0 - Live 0x0
 usbserial 0 0 - Live 0x0

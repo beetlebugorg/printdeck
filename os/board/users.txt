@@ -1,2 +1,2 @@
 printer -1 printer -1 * - - dialout,tty Klipper host
-deck -1 deck -1 * - - video,input,audio,tty,printer,dialout,systemd-journal Printdeck program
+deck -1 deck -1 * - - video,input,tty,printer,dialout,systemd-journal Printdeck program

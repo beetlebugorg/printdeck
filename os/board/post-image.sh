@@ -15,7 +15,7 @@ cp "$BOARD/config.txt" "$BOOT/config.txt"
 # applies bcm2712d0.dtbo itself on a board with the D0 chip. Without it, the kernel stops at boot
 # with an SError in the pin setup.
 OVERLAYS="$BUILD_DIR/linux-custom/arch/arm64/boot/dts/overlays"
-for o in overlay_map.dtb bcm2712d0.dtbo vc4-kms-v3d-pi5.dtbo hifiberry-dacplus-std.dtbo; do
+for o in overlay_map.dtb bcm2712d0.dtbo vc4-kms-v3d-pi5.dtbo; do
   cp "$OVERLAYS/$o" "$BOOT/overlays/"
 done
 
