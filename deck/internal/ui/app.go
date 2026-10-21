@@ -171,11 +171,11 @@ type App struct {
 	Theme              string
 	NightFrom, NightTo int
 	OnTheme            func(string)
-	// Clock24 shows the time on a 24-hour clock, and false on a 12-hour clock. The Clock row of the
+	// Clock24 is true for a 24-hour clock, and false for a 12-hour clock. The Clock row of the
 	// Machine page changes it, and OnClock is told, to save it.
-	Clock24 bool
-	OnClock func(bool)
-	JogInvertY         bool // up on the joystick moves Y back instead of forward
+	Clock24    bool
+	OnClock    func(bool)
+	JogInvertY bool // up on the joystick moves Y back instead of forward
 
 	joy    *joystick
 	zStep  float64 // mm per tap of the Z buttons
