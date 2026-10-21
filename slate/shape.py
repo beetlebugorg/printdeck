@@ -81,12 +81,16 @@ FAN_PILOT_R = 1.25               # M3 x 16 screw: 10 mm fan, 5 mm boss, 1 mm int
 TONGUE_B = (38.0, 56.0)
 RIDGE_B = 51.0
 
-# Chin screws: one M3 × 10 button head screw through each side wall of the slab, into a 4 mm
+# Chin screws: one M3 × 6 socket head screw through each side wall of the slab, into a 4 mm
 # heat-set insert in a boss on the inner face of the chin tongue. The hole is at the middle of
 # the depth, so one drill guide fits both sides (drill_guide.py).
 SIDE_SCREW = (48.0, -17.5)       # b and c of the screw axis
 SIDE_BOSS = (54.0, 4.5)          # inner a of the boss, and the half size of its 45 degree diamond
 SIDE_INSERT_DEPTH = 5.5          # the insert hole, in from the outer face of the tongue
+# The screw head is flush: it goes into a counterbore in the 5 mm side wall. An M3 socket
+# head is 5.5 mm wide and 3.0 mm high. The screw goes 3.8 mm into the 4 mm insert.
+SIDE_HEAD = (3.1, 3.1)           # radius and depth of the counterbore
+SIDE_SCREW_L = 6.0               # screw length under the head
 
 # Cable route.
 VENTS_B = (24.0, 30.0, 36.0)

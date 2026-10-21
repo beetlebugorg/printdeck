@@ -33,7 +33,7 @@ const FINISH = {
   black_glass: "dark", black_plastic: "dark", label_black: "dark", alu_dark: "dark", post_black: "dark",
 };
 const LABEL = {
-  slab: "Slab", chin: "Chin", back: "Back plate", foot: "Foot", foot_screws: "4 × M3 × 8", side_screw_r: "M3 × 10", side_screw_l: "M3 × 10", display: "7\" display", ssd: "Drive",
+  slab: "Slab", chin: "Chin", back: "Back plate", foot: "Foot", foot_screws: "4 × M3 × 8", side_screw_r: "M3 × 6", side_screw_l: "M3 × 6", display: "7\" display", ssd: "Drive",
   ssd_cable: "Drive cable", pi: "Pi 5", pi_plugs: "Plugs", printer: "Printer", power: "Power", fan: "30 mm fan", fan_cable: "Fan cable",
   cables: "Display cables",
 };

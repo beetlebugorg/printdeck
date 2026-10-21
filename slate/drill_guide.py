@@ -7,7 +7,9 @@ the plate is on the screw axis (SIDE_SCREW in shape.py). The guide is symmetric 
 so turn it over for the other side.
 
 Use: take the chin off. Push the guide onto the bottom of a side wall until the bottom lip
-touches the edge. Drill a 3.2 mm hole through the side wall, then do the other side.
+touches the edge. Drill a 3.2 mm hole through the side wall, then do the other side. Then
+remove the guide and drill each hole out to 6 mm, 3.1 mm deep, for the screw head
+(SIDE_HEAD in shape.py). Put tape on the drill at 3.1 mm to stop at that depth.
 Run: uv run --no-project --with build123d python drill_guide.py
 """
 

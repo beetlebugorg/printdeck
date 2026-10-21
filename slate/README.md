@@ -43,7 +43,8 @@ The STL files are in their print orientation. A slice of each part with supports
 angle 60 degrees, supports everywhere) adds 0 g of support. `make.sh` checks this.
 
 A slab printed before the chin screws has no screw holes. Print `stl/drill_guide.stl` and
-drill the two holes with it (see `drill_guide.py`). A new slab has the holes.
+drill the two holes with it. Then drill each hole out to 6 mm, 3.1 mm deep, for the screw
+head (see `drill_guide.py`). A new slab has the holes and the counterbores.
 
 To check the screen opening before a full slab, print `stl/fit_display.stl` with the slab
 profile. It is the front skin around the screen, and prints face down. Put the display glass
