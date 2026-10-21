@@ -30,7 +30,7 @@ func TestTimeLeftFollowsTheSlicerAndThePrinter(t *testing.T) {
 
 	// The start macro heats for 10 minutes: the time left is the time of the slicer.
 	st.Preparing, st.FilePos, st.PrintDuration = true, gc.StartEnd, 10*time.Minute
-	v.TimeLeft(&st, now)
+	v.TimeLeft(&st, now, 0)
 	if !st.HasTimeLeft || st.TimeLeft != time.Hour {
 		t.Fatalf("while heating: %v", st.TimeLeft)
 	}
@@ -42,7 +42,7 @@ func TestTimeLeftFollowsTheSlicerAndThePrinter(t *testing.T) {
 		slicer := float64(i+1) * 60
 		real := 1.5 * slicer
 		st.FilePos, st.PrintDuration = end, 10*time.Minute+time.Duration(real*float64(time.Second))
-		v.TimeLeft(&st, now.Add(time.Duration(real*float64(time.Second))))
+		v.TimeLeft(&st, now.Add(time.Duration(real*float64(time.Second))), 0)
 		left = append(left, st.TimeLeft)
 	}
 	// From a quarter of the print, the estimate is within 10% of the true time left: 1.5 times the

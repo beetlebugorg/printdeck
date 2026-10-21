@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"cmp"
 	"fmt"
 	"image"
 	"printdeck/kit"
@@ -414,13 +415,44 @@ func (a *App) drawStats(c *gfx.Canvas) {
 		{"Last 30 days", fmt.Sprintf("%d prints", s.Last30)},
 		{"Most printed", top},
 	}
-	for i, kv := range kit.Rows(kit.Inset(box, 18, 8, 18, 8), 0, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
+	// The timings of this printer, which the time left of a print uses.
+	rt := a.Printer.Rates()
+	heat := func(kind string) string {
+		if rt.Samples[kind] == 0 {
+			return "Not known yet"
+		}
+		return fmt.Sprintf("%.1f s/°", rt.Heat[kind])
+	}
+	mmss := func(sec float64) string { return fmt.Sprintf("%d:%02d", int(sec)/60, int(sec)%60) }
+	probe, cool, plan := "Not known yet", "Not known yet", "Not known yet"
+	if rt.Samples["probe"] > 0 {
+		probe = mmss(rt.Step["probe"])
+	}
+	if rt.CoolBed > 0 {
+		cool = mmss(rt.CoolBed)
+	}
+	if rt.PlanSamples > 0 {
+		plan = fmt.Sprintf("%+.0f %% (%d prints)", 100*rt.PlanError, rt.PlanSamples)
+	}
+	rows = append(rows, [][2]string{
+		{"Bed heats", heat("heat-bed")},
+		{"Nozzle heats", heat("heat-nozzle")},
+		{"Probe", probe},
+		{fmt.Sprintf("Bed cools to %.0f°", printer.ReleaseBed), cool},
+		{"Moves vs plan", plan},
+	}...)
+	sizes := make([]kit.Size, len(rows))
+	for i := range sizes {
+		sizes[i] = kit.Fr(1)
+	}
+	for i, kv := range kit.Rows(kit.Inset(box, 18, 8, 18, 8), 0, sizes...) {
 		label(c, kv, rows[i][0], gfx.Left)
 		v := kit.Inset(kv, 152, 0, 0, 0)
 		c.Text(v, gfx.Fit(gfx.Face(true, 17), rows[i][1], v.Dx()), gfx.Face(true, 17), text, gfx.Right)
 	}
 	if !s.Since.IsZero() {
-		label(c, kit.Inset(r[3], 0, 4, 0, 0), "Since "+s.Since.Format("Jan 2, 2006")+" · grams for 1.75 mm PLA", gfx.Center)
+		label(c, kit.Inset(r[3], 0, 4, 0, 0), fmt.Sprintf("Since %s · grams for %.2f mm %s", s.Since.Format("Jan 2, 2006"),
+			a.Printer.Machine().Diameter(), cmp.Or(a.Material, "PLA")), gfx.Center)
 	}
 }
 

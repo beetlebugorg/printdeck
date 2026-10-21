@@ -25,8 +25,9 @@ type estimate struct {
 }
 
 // TimeLeft sets the time left of a running print from the timeline of its G-code. It keeps the
-// estimate of the backend when the G-code is not loaded or has no timeline.
-func (v *View) TimeLeft(st *State, now time.Time) {
+// estimate of the backend when the G-code is not loaded or has no timeline. prep is the time
+// that the steps of the start macro still need (Rates.prepLeft).
+func (v *View) TimeLeft(st *State, now time.Time, prep time.Duration) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	key := fileKey(*st)
@@ -52,11 +53,12 @@ func (v *View) TimeLeft(st *State, now time.Time) {
 		*e = estimate{file: key}
 	}
 	d := st.PrintDuration.Seconds()
-	// The clock of the slicer starts with the moves, after the start macro and the heating. Until
-	// then the time left is the time of the slicer.
+	// The clock of the moves starts after the start macro and the heating. Until then the time
+	// left is the time of the start macro, from the timings of this printer, and the time of the
+	// moves.
 	if !e.started {
 		if st.Preparing || st.FilePos <= gc.StartEnd {
-			st.TimeLeft, st.HasTimeLeft = time.Duration(total*float64(time.Second)), true
+			st.TimeLeft, st.HasTimeLeft = time.Duration(total*float64(time.Second))+prep, true
 			return
 		}
 		// The printer is assumed to have run at the speed of the slicer until now: this also
@@ -79,4 +81,14 @@ func (v *View) TimeLeft(st *State, now time.Time) {
 	}
 	e.last = now
 	st.TimeLeft, st.HasTimeLeft = max(0, e.end.Sub(now)), true
+}
+
+// PlanTotal returns the seconds of the moves in the plan of the file with the key.
+func (v *View) PlanTotal(key string) (float64, bool) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if v.file != key || v.plan == nil || v.plan.total <= 0 {
+		return 0, false
+	}
+	return v.plan.total, true
 }

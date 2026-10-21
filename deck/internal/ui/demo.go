@@ -55,6 +55,7 @@ func (d *DemoPrinter) EmergencyStop() error                         { return nil
 func (d *DemoPrinter) FirmwareRestart() error                       { return nil }
 func (d *DemoPrinter) Boards() ([]board.Info, bool)                 { return d.Boards_, false }
 func (d *DemoPrinter) Machine() printer.Machine                     { return d.Machine_ }
+func (d *DemoPrinter) Rates() printer.Rates                         { return printer.ComputeRates(d.History_) }
 func (d *DemoPrinter) FileMeta(string) gcodemeta.Meta               { return d.Meta_ }
 func (d *DemoPrinter) DeleteFile(string) error                      { return nil }
 func (d *DemoPrinter) History() []printer.Record                    { return d.History_ }

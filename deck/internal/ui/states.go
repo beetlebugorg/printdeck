@@ -235,9 +235,6 @@ func (a *App) drawPaused(c *gfx.Canvas, st printer.State) {
 	a.button(c, grid[3], "Cancel", raised, red, a.askCancel)
 }
 
-// releaseBed is the bed temperature below which a part comes off a PEI sheet easily.
-const releaseBed = 35.0
-
 // drawDone is the end of a print: the result, the bed until the part comes off easily, Reprint
 // and Done.
 func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
@@ -276,15 +273,15 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 	} else {
 		drawBed(c, info.Min.X+40, info.Min.Y+40, 16, orange)
 		c.Text(image.Rect(info.Min.X+70, info.Min.Y+10, info.Max.X-18, info.Min.Y+44), fmt.Sprintf("Bed %.0f°", st.Bed), gfx.Face(true, 22), text, gfx.Left)
-		msg := fmt.Sprintf("Easy to remove below %.0f°.", releaseBed)
-		if st.Bed <= releaseBed {
+		msg := fmt.Sprintf("Easy to remove below %.0f°.", printer.ReleaseBed)
+		if st.Bed <= printer.ReleaseBed {
 			msg = "Cool enough to remove the part."
 		}
 		c.Text(image.Rect(info.Min.X+70, info.Min.Y+40, info.Max.X-18, info.Min.Y+66), msg, gfx.Face(false, 16), dim, gfx.Left)
 		// The bar fills while the bed cools from the print temperature to the release temperature.
 		f := 1.0
-		if st.Bed > releaseBed {
-			f = max(0, min(1, 1-(st.Bed-releaseBed)/40))
+		if st.Bed > printer.ReleaseBed {
+			f = max(0, min(1, 1-(st.Bed-printer.ReleaseBed)/40))
 		}
 		segments(c, image.Rect(info.Min.X+18, info.Min.Y+74, info.Max.X-18, info.Min.Y+88), f)
 	}
