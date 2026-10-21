@@ -100,7 +100,7 @@ var printLCD = image.Rect(16, 62, W-16, 154)
 func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	m := a.loaded()
-	right1 := "NO MATERIAL SET"
+	right1 := "NO FILAMENT"
 	if m.Name != "" {
 		right1 = m.Name + " LOADED"
 	}
