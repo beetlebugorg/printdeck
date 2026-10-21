@@ -206,7 +206,7 @@ text:
   {% if a == "in" %}{ ">" if (i - t) % 4 == 0 else " " }
   {% elif a == "out" %}{ "<" if (i + t) % 4 == 0 else " " }
   {% elif a == "heat" %}{ "=" if i <= t % 17 else " " }
-  {% elif a == "work" %}{% set p = t % 26 %}{ "#" if i - (p if p < 13 else 26 - p) in [0, 1, 2] else " " }
+  {% elif a == "work" %}{% set p = t % 26 %}{ "*" if i - (p if p < 13 else 26 - p) in [0, 1, 2] else " " }
   {% else %}{ " " }
   {% endif %}
   {% endfor %}
