@@ -142,24 +142,35 @@ func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 // drags a little, then accept. It shows by itself while Klipper runs a manual probe.
 func (a *App) drawManualProbe(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
-	charLCD(c, printLCD, lcd2("Paper test", "", "Nozzle at Z", fmt.Sprintf("%.3f", st.ManualZ)), 20)
-	box := image.Rect(24, 124, W-24, 284)
+	// Tall: the display, the text, the steps, and Accept and Abort under each other. Wide: the
+	// display and the text in the left column, the keys at the right.
+	scr := kit.Screen{W: W, H: contentY1}
+	var lcdR, box, steps, hint, end image.Rectangle
+	if scr.Wide() {
+		side, main := scr.Split(sideW)
+		l := kit.Rows(kit.Inset(side, wideOut, 16, wideIn, lcdTop), 16, kit.Px(92), kit.Fr(1))
+		lcdR, box = l[0], l[1]
+		r := kit.Rows(kit.Inset(main, wideIn, lcdTop, wideOut, lcdTop), 10, kit.Fr(1), kit.Px(24), kit.Px(90))
+		steps, hint, end = r[0], r[1], r[2]
+	} else {
+		lcdR = printLCD
+		r := kit.Rows(kit.Inset(scr.Bounds(), margin, 124, margin, 0), 16, kit.Px(160), kit.Px(158), kit.Px(24), kit.Px(90))
+		box, steps, hint, end = r[0], r[1], r[2], kit.Inset(r[3], 0, 4, 0, -4)
+	}
+	charLCD(c, lcdR, lcd2("Paper test", "", "Nozzle at Z", fmt.Sprintf("%.3f", st.ManualZ)), 20)
 	plate(c, box)
-	lines := []string{"Put a sheet of paper under the", "nozzle. Lower the nozzle until the", "paper drags a little when you move", "it, then tap Accept."}
-	for i, l := range lines {
-		c.Text(image.Rect(box.Min.X+18, box.Min.Y+14+i*34, box.Max.X-18, box.Min.Y+48+i*34), l, gfx.Face(false, 18), text, gfx.Left)
+	face := gfx.Face(false, 18)
+	ls := kit.NewStack(kit.Inset(box, 18, 14, 18, 0), 0)
+	for _, l := range wrapText(face, "Put a sheet of paper under the nozzle. Lower the nozzle until the paper drags a little when you move it, then tap Accept.", box.Dx()-36) {
+		c.Text(ls.Next(34), l, face, text, gfx.Left)
 	}
-	steps := []float64{-1, -0.1, -0.025, 0.025, 0.1, 1}
-	third := (W - 48 - 16) / 3
-	for i, s := range steps {
-		r := image.Rect(24+(i%3)*(third+8), 300+(i/3)*84, 24+(i%3)*(third+8)+third, 300+(i/3)*84+74)
-		v := s
-		name := fmt.Sprintf("%+g", s)
-		a.button(c, r, name, raised, text, func() { a.do(func() error { return pr.Gcode(fmt.Sprintf("TESTZ Z=%g", v)) }) })
+	for i, r := range kit.Grid(steps, 3, 2, 10) {
+		v := []float64{-1, -0.1, -0.025, 0.025, 0.1, 1}[i]
+		a.button(c, r, fmt.Sprintf("%+g", v), raised, text, func() { a.do(func() error { return pr.Gcode(fmt.Sprintf("TESTZ Z=%g", v)) }) })
 	}
-	label(c, image.Rect(24, 470, W-24, 494), "− lowers the nozzle, + raises it (mm)", gfx.Center)
-	half := (W - 48 - 12) / 2
-	a.button(c, image.Rect(24, 514, 24+half, 604), "Accept", orange, onAcc, func() {
+	label(c, hint, "− lowers the nozzle, + raises it (mm)", gfx.Center)
+	k := kit.Cols(end, 12, kit.Fr(1), kit.Fr(1))
+	a.button(c, k[0], "Accept", orange, onAcc, func() {
 		a.do(func() error {
 			if err := pr.Gcode("ACCEPT"); err != nil {
 				return err
@@ -168,7 +179,7 @@ func (a *App) drawManualProbe(c *gfx.Canvas, st printer.State) {
 			return nil
 		})
 	})
-	a.button(c, image.Rect(W-24-half, 514, W-24, 604), "Abort", raised, red, func() { a.do(func() error { return pr.Gcode("ABORT") }) })
+	a.button(c, k[1], "Abort", raised, red, func() { a.do(func() error { return pr.Gcode("ABORT") }) })
 }
 
 // drawMachine is the Machine page: the versions and the totals, and the advanced pages.
