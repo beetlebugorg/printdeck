@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Printdeck system</title>
+<style>
+  :root { color-scheme: light dark; --bg: #d3d0c8; --plate: #e6e3dc; --edge: #a9a59c; --ink: #171717;
+    --dim: #4a4742; --lcd: #1b1c1a; --amber: #ff7a30; --orange: #ff5a1f; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121211; --plate: #1c1c1a; --edge: #060606; --ink: #eee9df; --dim: #c2bcb0;
+      --lcd: #080808; --amber: #ff8c4a; --orange: #ff7a3a; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--ink);
+    font: 15px ui-monospace, "IBM Plex Mono", Menlo, monospace; }
+  main { max-width: 960px; margin: 0 auto; display: grid; gap: 16px; }
+  section { background: var(--plate); border: 1px solid var(--edge); border-radius: 6px; padding: 16px; min-width: 0; }
+  h1 { margin: 0; font-size: 13px; letter-spacing: .08em; color: var(--dim); }
+  h2 { margin: 0 0 12px; font-size: 13px; letter-spacing: .08em; color: var(--dim); }
+  table { border-collapse: collapse; width: 100%; }
+  td { padding: 4px 8px 4px 0; vertical-align: top; overflow-wrap: anywhere; }
+  td:first-child { color: var(--dim); white-space: nowrap; }
+  .bad { color: var(--orange); font-weight: 600; }
+  pre { margin: 0; background: var(--lcd); color: var(--amber); padding: 12px; border-radius: 4px;
+    max-height: 420px; overflow: auto; font-size: 12px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+  input[type=file] { width: 100%; font: inherit; }
+  button { margin-top: 12px; font: inherit; font-weight: 600; padding: 10px 16px; border: 0;
+    border-radius: 4px; background: var(--orange); color: #121212; cursor: pointer; }
+  .hint { font-size: 13px; color: var(--dim); margin-top: 8px; line-height: 1.4; }
+  a { color: var(--dim); }
+</style>
+</head>
+<body>
+<main>
+  <h1>00 PRINTDECK SYSTEM &nbsp;·&nbsp; <a href="/">Remote screen</a></h1>
+  {{if .Message}}<section><h2>UPDATE</h2><div class="{{if .Failed}}bad{{end}}">{{.Message}}</div></section>{{end}}
+  <section>
+    <h2>SYSTEM</h2>
+    <table>
+      <tr><td>Version</td><td>{{.Version}}</td></tr>
+      <tr><td>Image</td><td>{{.Variant}}</td></tr>
+      <tr><td>Slot</td><td>{{.Slot}}</td></tr>
+      <tr><td>Running for</td><td>{{.Uptime}}</td></tr>
+      {{range .Services}}<tr><td>{{.Name}}</td><td class="{{if ne .State "active"}}bad{{end}}">{{.State}}</td></tr>{{end}}
+    </table>
+  </section>
+  <section>
+    <h2>UPDATE</h2>
+    <form method="post" action="/system/update" enctype="multipart/form-data">
+      <input type="file" name="bundle" accept=".xz" required>
+      <button type="submit">Install</button>
+    </form>
+    <div class="hint">Choose printdeck-update.tar.xz or printdeck-debug-update.tar.xz. The Printdeck writes
+      the other slot and restarts into it. If the new system does not start, it goes back to this one.
+      Do not install during a print.</div>
+  </section>
+  <section><h2>SYSTEM LOG</h2><pre>{{.Journal}}</pre></section>
+  <section><h2>KLIPPER LOG</h2><pre>{{.Klippy}}</pre></section>
+</main>
+</body>
+</html>
