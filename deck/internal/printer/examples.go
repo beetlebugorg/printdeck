@@ -72,6 +72,9 @@ var brands = map[string]string{
 	"tevo": "Tevo", "qidi": "QIDI", "voron": "Voron", "kingroon": "Kingroon", "ultimaker": "Ultimaker",
 }
 
+// modelWords are the words of the model names with capitals that a file name does not have.
+var modelWords = map[string]string{"taz": "TAZ", "i3": "i3", "qqs": "QQS", "bx": "BX", "se": "SE", "ht": "HT", "sp": "SP"}
+
 var (
 	yearRe = regexp.MustCompile(`^(19|20)\d\d$`)
 	mcuRe  = regexp.MustCompile(`(atmega\d+p?|at90usb\d+|stm32[a-z]\d+[a-z0-9]*|gd32f\d+|lpc17\d\d|sam[34][a-z0-9]+|samd\d+|rp2040|hc32f\d+|n32g\d+)`)
@@ -91,7 +94,9 @@ func parseExample(file, text string) Example {
 			e.Brand = strings.ToUpper(words[0][:1]) + words[0][1:]
 		}
 		for i, w := range words[1:] {
-			if strings.ContainsAny(w, "0123456789") {
+			if m, ok := modelWords[strings.ToLower(w)]; ok {
+				w = m
+			} else if strings.ContainsAny(w, "0123456789") {
 				w = strings.ToUpper(w)
 			} else {
 				w = strings.ToUpper(w[:1]) + w[1:]

@@ -25,6 +25,15 @@ func TestExamples(t *testing.T) {
 			withMCU++
 		}
 	}
+	var wh Example
+	for _, e := range ex {
+		if e.File == "printer-lulzbot-taz-workhorse-2019.cfg" {
+			wh = e
+		}
+	}
+	if wh.Name() != "LulzBot TAZ Workhorse" || wh.MCU != "atmega2560" {
+		t.Errorf("Workhorse: %+v", wh)
+	}
 	if taz.Name() != "LulzBot TAZ6" || taz.Year != "2017" || taz.MCU != "atmega2560" || !taz.Fits("atmega2560") {
 		t.Errorf("TAZ 6: %+v", taz)
 	}
