@@ -30,6 +30,15 @@ fi
 
 mkdir -p "$CACHE" "$OS/out"
 
+# The key that signs the update bundle: PRINTDECK_SIGNING_KEY (the secret of the CI), or the key
+# file on this computer. With no key, the bundle has no signature, and only a debug image
+# installs it.
+KEYFILE="${PRINTDECK_SIGNING_KEY_FILE:-$HOME/.config/printdeck/update-signing-key.pem}"
+if [ -z "${PRINTDECK_SIGNING_KEY:-}" ] && [ -r "$KEYFILE" ]; then
+  PRINTDECK_SIGNING_KEY="$(cat "$KEYFILE")"
+fi
+export PRINTDECK_SIGNING_KEY="${PRINTDECK_SIGNING_KEY:-}"
+
 # Two builds in the same cache delete each other's files. Allow only one.
 exec 9> "$CACHE/build.lock"
 flock -n 9 || { echo "Another build uses $CACHE. Wait for it to finish." >&2; exit 1; }
@@ -47,6 +56,7 @@ run() {
     -e BR2_DL_DIR=/cache/dl \
     -e PRINTDECK_VERSION="$(git -C "$REPO" describe --always --dirty 2>/dev/null || echo unknown)" \
     -e PRINTDECK_VARIANT="$VARIANT" \
+    -e PRINTDECK_SIGNING_KEY \
     -v "$CACHE:/cache" \
     -v "$REPO:/src:ro" \
     -w "/cache/buildroot-$BUILDROOT_VERSION" \

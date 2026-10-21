@@ -16,6 +16,7 @@
 //	printdeck helper    the system helper: the actions of the deck that need root (started by systemd)
 //	printdeck klipper-probe DEVICE [BAUD]  connect to a Klipper board and print what it reports
 //	printdeck klippy [options] CONFIG  run the Klipper host (the Go port of klippy.py)
+//	printdeck verify FILE  check the signature and the checksums of an update file
 //	printdeck bench SOCKET OUT.png  run the deck UI with no screen on a Klipper host (a test bench)
 package main
 
@@ -85,6 +86,15 @@ func main() {
 			return
 		case "board":
 			boardList()
+			return
+		case "verify":
+			if len(os.Args) != 3 {
+				log.Fatal("usage: printdeck verify printdeck-update.tar.xz")
+			}
+			if err := system.VerifyBundle(os.Args[2]); err != nil {
+				log.Fatal(err)
+			}
+			fmt.Println("valid: a Printdeck release with a valid signature")
 			return
 		case "bench":
 			bench(os.Args[2:])
@@ -156,9 +166,13 @@ func run(cfg config.Config, sp *spotify.Client) {
 	}
 	app.OnMaterial = func(m string) { os.WriteFile(materialFile, []byte(m+"\n"), 0o644) }
 	events := make(chan touch.Event, 64)
-	// On the Printdeck OS image, the first start opens the setup screen.
+	// On the Printdeck OS image, the first start opens the setup screen, and the deck checks
+	// for updates.
 	host := newSetupHost(cfg.StateDir)
 	if host != nil {
+		up := newUpdater(cfg.StateDir, func() bool { return pr.State().Busy() }, app.Redraw)
+		app.Updater = up
+		go up.run(ctx)
 		app.Setup = host
 		if host.Needed() {
 			app.OpenSetup()

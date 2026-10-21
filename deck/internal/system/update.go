@@ -16,7 +16,7 @@ import (
 )
 
 // bundleFiles are the files of an update bundle (os/board/post-image.sh).
-var bundleFiles = map[string]bool{"SHA256SUMS": true, "boot-a.vfat": true, "boot-b.vfat": true, "rootfs.erofs": true}
+var bundleFiles = map[string]bool{"SHA256SUMS": true, "SHA256SUMS.sig": true, "boot-a.vfat": true, "boot-b.vfat": true, "rootfs.erofs": true}
 
 // Paths of the update. Tests change them.
 var (
@@ -43,6 +43,9 @@ func Update(bundle string, log io.Writer) (slot string, err error) {
 	if err := extractBundle(bundle, work); err != nil {
 		return "", err
 	}
+	if err := checkSignature(work); err != nil {
+		return "", err
+	}
 	if err := checkSums(work); err != nil {
 		return "", err
 	}
@@ -55,6 +58,28 @@ func Update(bundle string, log io.Writer) (slot string, err error) {
 		return "", err
 	}
 	return slot, nil
+}
+
+// VerifyBundle checks an update bundle as Update does, and writes nothing: the signature of a
+// Printdeck release, and the checksums of its files. A bundle with no signature fails, also on
+// a debug image.
+func VerifyBundle(bundle string) error {
+	work, err := os.MkdirTemp("", "printdeck-verify.")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(work)
+	if err := extractBundle(bundle, work); err != nil {
+		return err
+	}
+	unsigned := allowUnsigned
+	allowUnsigned = func() bool { return false }
+	err = checkSignature(work)
+	allowUnsigned = unsigned
+	if err != nil {
+		return err
+	}
+	return checkSums(work)
 }
 
 // RebootTryboot restarts into the other slot one time. The reboot argument "0 tryboot" makes the
@@ -111,7 +136,7 @@ func checkSums(dir string) error {
 	listed := map[string]bool{}
 	for _, l := range strings.Split(strings.TrimSpace(string(b)), "\n") {
 		sum, name, ok := strings.Cut(l, "  ")
-		if !ok || !bundleFiles[name] || name == "SHA256SUMS" {
+		if !ok || !bundleFiles[name] || name == "SHA256SUMS" || name == "SHA256SUMS.sig" {
 			return fmt.Errorf("The bundle is damaged: bad line in SHA256SUMS: %q", l)
 		}
 		got, err := fileSum(filepath.Join(dir, name))
@@ -121,7 +146,7 @@ func checkSums(dir string) error {
 		listed[name] = true
 	}
 	for name := range bundleFiles {
-		if name != "SHA256SUMS" && !listed[name] {
+		if name != "SHA256SUMS" && name != "SHA256SUMS.sig" && !listed[name] {
 			return fmt.Errorf("The bundle is damaged: SHA256SUMS has no %s", name)
 		}
 	}

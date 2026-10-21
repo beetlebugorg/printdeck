@@ -5,6 +5,6 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       bc bison build-essential bzip2 ca-certificates cpio file flex git gzip libncurses-dev \
       patch perl python3 rsync unzip wget xz-utils \
-      gcc-avr avr-libc binutils-avr \
+      gcc-avr avr-libc binutils-avr openssl \
  && rm -rf /var/lib/apt/lists/*
 ENV LANG=C.UTF-8

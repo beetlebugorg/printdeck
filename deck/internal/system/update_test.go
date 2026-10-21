@@ -19,6 +19,8 @@ func fakeSystem(t *testing.T, cmdline string) string {
 	os.WriteFile(procCmdline, []byte(cmdline), 0o644)
 	updateWorkDir = dir
 	partLabelDir = filepath.Join(dir, "by-partlabel")
+	// The bundle of the last build has no signature: sign_test.go tests the signatures.
+	allowUnsigned = func() bool { return true }
 	os.MkdirAll(partLabelDir, 0o755)
 	for _, p := range []string{"printdeck-boot-a", "printdeck-boot-b", "printdeck-root-a", "printdeck-root-b"} {
 		os.WriteFile(filepath.Join(partLabelDir, p), nil, 0o644)
