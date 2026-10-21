@@ -14,11 +14,15 @@ package printdeck_display
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
+	"strings"
 	"sync"
+	"time"
 
 	"printdeck/internal/klipper/configfile"
 	"printdeck/internal/klipper/extras/display"
+	"printdeck/internal/klipper/gcode"
 	"printdeck/internal/klipper/host"
 	"printdeck/internal/klipper/reactor"
 	"printdeck/internal/klipper/webhooks"
@@ -65,6 +69,9 @@ func (p *PrintdeckDisplay) handleConnect() {
 	p.lcd = lcd
 	lcd.SetHooks(p.drawScreen, p.handleKey)
 	p.animTimer = p.reactor.RegisterTimer(p.animEvent, reactor.Never)
+	p.printer.RegisterEventHandler("klippy:ready", func(...any) {
+		p.reactor.UpdateTimer(p.animTimer, p.reactor.Monotonic()+frameTime)
+	})
 }
 
 // handleScreen takes a screen of the deck: {"screen": {...}}, or {"screen": null} to give the
@@ -111,11 +118,16 @@ func (p *PrintdeckDisplay) current(eventtime float64) *lcd.Screen {
 	return p.screen
 }
 
-// drawScreen is the screen hook of the display.
+// drawScreen is the screen hook of the display. With no screen of the deck, it draws the status
+// screen from the state of Klipper, so that the display has the look of the deck from the start.
+// The menu of Klipper then works with the knob.
 func (p *PrintdeckDisplay) drawScreen(eventtime float64) bool {
 	s := p.current(eventtime)
 	if s == nil {
-		return false
+		if p.lcd.MenuRunning() {
+			return false
+		}
+		s = &lcd.Screen{Status: p.ownStatus(eventtime)}
 	}
 	c := s.Bits(int(eventtime / frameTime))
 	lcd := p.lcd.LCD()
@@ -131,10 +143,65 @@ func (p *PrintdeckDisplay) drawScreen(eventtime float64) bool {
 	return true
 }
 
+// ownStatus is the status screen from the state of Klipper.
+func (p *PrintdeckDisplay) ownStatus(eventtime float64) *lcd.Status {
+	status := func(name string) map[string]any {
+		if o, ok := p.printer.TryLookupObject(name).(webhooks.Statuser); ok {
+			return o.Status(eventtime)
+		}
+		return nil
+	}
+	num := func(m map[string]any, k string) float64 {
+		switch v := m[k].(type) {
+		case float64:
+			return v
+		case int:
+			return float64(v)
+		}
+		return 0
+	}
+	ex, bed, fan := status("extruder"), status("heater_bed"), status("fan")
+	s := &lcd.Status{State: "Ready", Clock: time.Now().Format("15:04"),
+		Tool: num(ex, "temperature"), ToolT: num(ex, "target"),
+		Bed: num(bed, "temperature"), BedT: num(bed, "target"), Fan: num(fan, "speed")}
+	if ps := status("print_stats"); ps != nil {
+		switch st, _ := ps["state"].(string); st {
+		case "printing", "paused":
+			s.State, s.Printing = strings.ToUpper(st[:1])+st[1:], true
+			if ds := status("display_status"); ds != nil {
+				s.Progress = num(ds, "progress")
+			}
+			e := int(num(ps, "print_duration") / 60)
+			s.Elapsed = fmt.Sprintf("%d:%02d", e/60, e%60)
+		}
+	}
+	if th := status("toolhead"); th != nil {
+		homed, _ := th["homed_axes"].(string)
+		if pos, ok := th["position"].(gcode.Coord); ok && homed != "" {
+			s.Position = fmt.Sprintf("X%.0f Y%.0f Z%.2f", pos[0], pos[1], pos[2])
+		} else if homed == "" {
+			s.Message = "Not homed"
+		}
+	}
+	if p.printer.IsShutdown() {
+		s.State = "Shutdown"
+	}
+	return s
+}
+
 // animEvent draws the next frame of an animation.
 func (p *PrintdeckDisplay) animEvent(eventtime float64) float64 {
 	s := p.current(eventtime)
-	if s == nil || !s.Moves() {
+	if s == nil {
+		if p.lcd.MenuRunning() {
+			return eventtime + 1 // the menu of Klipper: look again later
+		}
+		s = &lcd.Screen{Status: p.ownStatus(eventtime)}
+		if !s.Moves() {
+			return eventtime + 1
+		}
+	}
+	if !s.Moves() {
 		return reactor.Never
 	}
 	p.lcd.RequestRedraw()
