@@ -177,37 +177,61 @@ func (a *App) lcdScreen(st printer.State) printer.LCDScreen {
 	if !ok {
 		font, nrows = "5x8", 8
 	}
-	head := func(s string) printer.LCDRow { return printer.LCDRow{Left: strings.TrimSpace(s), Bold: true} }
 	if !a.lcdMenu() || len(a.focus) == 0 {
 		return printer.LCDScreen{Status: a.lcdStatusScreen(st, l1, l2)}
 	}
-	var rows []printer.LCDRow
+	_ = nrows
+	m := &printer.LCDMenu{Selected: a.lcdSel}
 	switch {
 	case a.confirm != nil:
-		rows = append(rows, head(lcdText(a.confirm.question)))
+		m.Title = lcdText(a.confirm.question)
 	case a.lcdTitle != "":
-		rows = append(rows, head(strings.ToUpper(lcdText(a.lcdTitle))))
-		rows = append(rows, a.lcdNotes...)
-	default:
-		rows = append(rows, head("PRINTDECK"))
-	}
-	n := nrows - len(rows)
-	top := max(0, min(a.lcdSel-n+1, len(a.focus)-n))
-	for i := top; i < min(top+n, len(a.focus)); i++ {
-		f := a.focus[i]
-		if f.out {
-			rows = append(rows, printer.LCDRow{Left: "< " + f.label, Item: true, Selected: i == a.lcdSel, Bold: true})
-			continue
+		m.Title = lcdText(a.lcdTitle)
+		for _, r := range a.lcdNotes {
+			m.Notes = append(m.Notes, r.Left)
 		}
-		rows = append(rows, printer.LCDRow{Left: f.label, Item: true, Selected: i == a.lcdSel})
+	default:
+		m.Title, m.Carousel = "Printdeck", true
 	}
-	return printer.LCDScreen{Rows: rows, Font: font}
+	for _, f := range a.focus {
+		m.Items = append(m.Items, printer.LCDMenuItem{Label: f.label, Icon: lcdIcon(f.label)})
+	}
+	return printer.LCDScreen{Menu: m, Font: font}
+}
+
+// lcdIcons are the icons of the keys on the display, by a word of the label.
+var lcdIcons = []struct{ word, icon string }{
+	{"back", "back"}, {"close", "back"}, {"status", "status"}, {"print a file", "print"}, {"reprint", "print"},
+	{"print", "print"}, {"preheat", "preheat"}, {"heat", "preheat"}, {"cool", "cool"}, {"filament", "filament"},
+	{"unload", "unload"}, {"load", "load"}, {"purge", "load"}, {"move", "move"}, {"park", "move"},
+	{"center", "move"}, {"home", "home"}, {"motors", "move"}, {"maintenance", "maint"}, {"nozzle", "maint"},
+	{"machine", "machine"}, {"console", "console"}, {"macro", "macro"}, {"history", "history"},
+	{"statistics", "stats"}, {"wi-fi", "wifi"}, {"bed", "bed"}, {"probe", "probe"}, {"pid", "pid"},
+	{"firmware", "chip"}, {"save", "save"}, {"stop", "stop"}, {"pause", "pause"}, {"resume", "play"},
+	{"cancel", "no"}, {"restart", "machine"}, {"tune", "tune"}, {"run", "play"}, {"use", "yes"},
+	{"yes", "yes"}, {"ok", "yes"}, {"done", "yes"}, {"no", "no"},
+}
+
+// lcdIcon returns the icon of a key: by the first word that its label has, else a file for a
+// name with a dot, else a dot.
+func lcdIcon(label string) string {
+	l := strings.ToLower(label)
+	for _, ic := range lcdIcons {
+		if strings.HasPrefix(l, ic.word) || strings.Contains(l, " "+ic.word) {
+			return ic.icon
+		}
+	}
+	if strings.Contains(l, ".") {
+		return "file"
+	}
+	return "item"
 }
 
 // lcdStatusScreen is the status screen of the display: the state, the heaters and the fan, and
 // the progress or the position. The display draws it with icons.
 func (a *App) lcdStatusScreen(st printer.State, l1, l2 string) *printer.LCDStatus {
-	trim := strings.TrimSpace
+	// One space between the words: the status lines have the padding of 16 characters.
+	trim := func(s string) string { return strings.Join(strings.Fields(s), " ") }
 	s := &printer.LCDStatus{State: trim(l1), Message: trim(l2), Clock: a.Now().Format("15:04"),
 		Tool: st.Tool, ToolT: st.ToolTarget, Bed: st.Bed, BedT: st.BedTarget, Fan: st.Fan / 100}
 	if st.Busy() {

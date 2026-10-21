@@ -9,6 +9,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"printdeck/internal/board"
@@ -237,14 +238,16 @@ type App struct {
 
 	// The menu of the printer display (focus.go): the keys of the frame, the heading of the page,
 	// the focus of the knob, and the screen of the display.
-	focus    []focusItem
-	collect  bool // the frame adds its keys to focus
-	lcdTitle string
-	lcdPage  string
-	lcdSel   int
-	knobAt   time.Time
-	lcd      printer.LCDScreen
-	lcdNotes []printer.LCDRow // rows under the heading of the page (lcdNote)
+	focus         []focusItem
+	collect       bool // the frame adds its keys to focus
+	lcdTitle      string
+	lcdPage       string
+	lcdSel        int
+	knobAt        time.Time
+	lcd           printer.LCDScreen
+	lcdNotes      []printer.LCDRow // rows under the heading of the page (lcdNote)
+	redrawPending atomic.Bool      // redrawSoon asked for a frame
+
 	// LCDFont is the font of the printer display: "5x8" (the default), "6x10", or "" for the
 	// large font of Klipper.
 	LCDFont string

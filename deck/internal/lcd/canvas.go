@@ -1,4 +1,4 @@
-package printdeck_display
+package lcd
 
 import (
 	"math"

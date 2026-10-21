@@ -88,6 +88,6 @@ const benchAddr = ":8091"
 
 // benchPage shows the frames of the deck, 5 times a second.
 const benchPage = `<!doctype html><title>Printdeck bench</title>
-<body style="margin:0;background:#222;display:grid;place-items:center;height:100vh">
-<img id=f src="/frame.png" style="height:96vh;image-rendering:pixelated">
+<body style="margin:0;background:#222;display:grid;place-items:center;min-height:100vh">
+<img id=f src="/frame.png" style="image-rendering:pixelated">
 <script>setInterval(()=>{const i=new Image();i.onload=()=>f.src=i.src;i.src="/frame.png?"+Date.now()},200)</script>`

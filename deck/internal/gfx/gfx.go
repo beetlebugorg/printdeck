@@ -172,8 +172,22 @@ func (c *Canvas) Cover(r image.Rectangle, src image.Image) {
 
 // Image draws img at its size at r.Min, only in r.
 func (c *Canvas) Image(r image.Rectangle, img image.Image) {
+	c.image(r, img, false)
+}
+
+// PixelImage draws an image of pixels at its size, as Image. A browser or a larger replay that
+// scales it keeps its pixels sharp: the printer display, a QR code.
+func (c *Canvas) PixelImage(r image.Rectangle, img image.Image) {
+	c.image(r, img, true)
+}
+
+func (c *Canvas) image(r image.Rectangle, img image.Image, pixels bool) {
 	if c.rec != nil {
-		c.rec.add(append([]any{"i"}, append(rect(r), imageID(img))...)...)
+		op := append([]any{"i"}, append(rect(r), imageID(img))...)
+		if pixels {
+			op = append(op, 1)
+		}
+		c.rec.add(op...)
 	}
 	if c.raster() {
 		draw.Draw(c.RGBA, image.Rectangle{r.Min, r.Min.Add(img.Bounds().Size())}.Intersect(r), img, img.Bounds().Min, draw.Over)

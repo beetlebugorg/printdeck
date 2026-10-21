@@ -95,34 +95,24 @@ func lcd2(l1, r1, l2, r2 string) []string {
 	return []string{lr(l1, r1), lr(l2, r2)}
 }
 
+// printLCD is the character display of the other screens of the Print tab.
 var printLCD = image.Rect(16, 62, W-16, 154)
 
-// drawHome is the idle screen: ready, the temperatures, Print, preheat, the last print, and the menus.
+// drawHome is the idle screen: the status screen of the printer display, Print, preheat, the last
+// print, and the menus.
 func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	m := a.loaded()
-	right1 := "NO FILAMENT"
-	if m.Name != "" {
-		right1 = m.Name + " LOADED"
-	}
-	l2, r2 := "", ""
-	switch {
-	case st.Message != "":
-		l2 = st.Message
-	case st.Homed == "xyz":
-		l2 = "XYZ homed"
-	case st.Homed != "":
-		l2 = strings.ToUpper(st.Homed) + " homed"
-	default:
-		l2 = "Not homed"
-	}
+	// The status screen of the printer display: the same picture on both screens.
+	l1, l2 := StatusLines(st, a.Material, a.Now())
+	s := a.lcdStatusScreen(st, l1, l2)
+	s.Hint = "" // the touch screen has no knob
 	if st.FirmwareOld {
-		l2, r2 = "Firmware is old", ""
+		s.Message = "Firmware is old"
 	}
-	charLCD(c, printLCD, lcd2("Ready", right1, l2, r2), 20)
-	a.temps(c, 166, 84, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
+	a.drawLCDPanel(c, st, s)
 
-	a.button(c, image.Rect(40, 264, W-40, 344), "Print a file", orange, onAcc, func() {
+	a.button(c, image.Rect(40, 280, W-40, 360), "Print a file", orange, onAcc, func() {
 		go func() { pr.LoadFiles(); a.Redraw() }()
 		a.open(pageFiles)
 	})
@@ -131,11 +121,11 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	if m.Name != "" {
 		pre = "Preheat " + m.Name
 	}
-	a.button(c, image.Rect(40, 356, 40+half, 416), pre, raised, text, func() { pr.Heat(m.Tool, m.Bed) })
-	a.button(c, image.Rect(W-40-half, 356, W-40, 416), "Cool down", raised, text, func() { pr.Heat(0, 0) })
+	a.button(c, image.Rect(40, 372, 40+half, 432), pre, raised, text, func() { pr.Heat(m.Tool, m.Bed) })
+	a.button(c, image.Rect(W-40-half, 372, W-40, 432), "Cool down", raised, text, func() { pr.Heat(0, 0) })
 
 	// The last print, with Reprint.
-	last := image.Rect(40, 430, W-40, 520)
+	last := image.Rect(40, 446, W-40, 536)
 	if l, ok := a.lastPrint(st); ok {
 		plate(c, last)
 		label(c, image.Rect(last.Min.X+16, last.Min.Y+8, last.Max.X, last.Min.Y+28), "Last print", gfx.Left)
@@ -155,7 +145,7 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 		p    page
 	}{{"Filament", pageFilament}, {"Move", pageMove}, {"Maintenance", pageMaintenance}, {"Machine", pageMachine}} {
 		x0 := 40 + (i%2)*(half+12)
-		y0 := 534 + (i/2)*86
+		y0 := 550 + (i/2)*86
 		p := t.p
 		a.button(c, image.Rect(x0, y0, x0+half, y0+76), t.name, raised, text, func() { a.open(p) })
 	}

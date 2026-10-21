@@ -63,6 +63,8 @@
   .glcd-row { display: flex; flex-wrap: wrap; gap: 20px; margin: 14px 0; }
   .glcd { background: var(--glcd); border: 6px solid #a9a59c; border-radius: 8px; padding: 10px 12px; display: inline-block;
     font: 700 18px/1.25 "IBM Plex Mono", monospace; color: var(--glcdInk); white-space: pre; box-shadow: inset 0 0 0 2px #173aa6; }
+  .lcd-shot { display: block; width: 288px; max-width: 100%; height: auto; image-rendering: pixelated;
+    border: 6px solid #a9a59c; border-radius: 8px; }
   .glcd-cap { margin-top: 6px; font: 600 13px "IBM Plex Mono", monospace; text-transform: uppercase; color: var(--dim); }
   footer { margin-top: 48px; color: var(--dim); font-size: 14px; text-align: center; }
   @media (max-width: 720px) {
@@ -116,7 +118,7 @@
   </figure>
   {{end}}
   {{if eq $s.ID "lcd"}}
-  <div class="glcd-row">{{range $s.Table}}<div><div class="glcd">{{index . 0}}</div><div class="glcd-cap">{{index . 1}}</div></div>{{end}}</div>
+  <div class="glcd-row">{{range $s.Table}}<div><img class="lcd-shot" src="img/{{index . 0}}.png" alt="{{index . 1}}"><div class="glcd-cap">{{index . 1}}</div></div>{{end}}</div>
   {{else if $s.Table}}
   <table>{{range $s.Table}}<tr><td>{{index . 0}}</td><td>{{index . 1}}</td></tr>{{end}}</table>
   {{end}}
