@@ -378,13 +378,14 @@ func manualParts() []section {
 				{Name: "machine", Caption: "The Machine page", Setup: page("machine"),
 					Callouts: []callout{
 						{240, 186, "Information", "The version of Klipper, the state of the firmware of the board, the network address, and the totals."},
-						{240, 297, "Statistics", "The totals of all prints."},
-						{240, 373, "Print history", "Each print, with its result. Tap a print to print it again."},
-						{240, 449, "Macros", "The macros of the printer. Tap one to run it."},
-						{240, 525, "Console", "The G-code terminal of Klipper. See below."},
-						{240, 601, "Wi-Fi and help", "The network, the password and the addresses."},
-						{126, 677, "Restart Klipper", "Restarts the Klipper host, which reads printer.cfg again."},
-						{354, 677, "Firmware restart", "Restarts the firmware of the board, for example after a stop."},
+						{240, 286, "Software update", "The version of the deck, and a new version when there is one. See Update the Printdeck."},
+						{240, 351, "Statistics", "The totals of all prints."},
+						{240, 416, "Print history", "Each print, with its result. Tap a print to print it again."},
+						{240, 481, "Macros", "The macros of the printer. Tap one to run it."},
+						{240, 546, "Console", "The G-code terminal of Klipper. See below."},
+						{240, 611, "Wi-Fi and help", "The network, the password and the addresses."},
+						{126, 683, "Restart Klipper", "Restarts the Klipper host, which reads printer.cfg again."},
+						{354, 683, "Firmware restart", "Restarts the firmware of the board, for example after a stop."},
 					}},
 				{Name: "console", Caption: "The console",
 					Setup: func(s *manualState) {
@@ -404,6 +405,14 @@ func manualParts() []section {
 						{240, 300, "Replies", "Your commands (amber, after >), the replies of Klipper, and errors (red). Drag down to read older lines."},
 						{240, 611, "Type a command", "Opens the keyboard. It shows your last command, so you can change it and send it again."},
 						{240, 685, "Quick keys", "Home (G28), Status (STATUS) and Help (HELP, the list of the commands)."},
+					}},
+				{Name: "update", Caption: "Software update", Setup: page("update"),
+					Callouts: []callout{
+						{240, 186, "Versions", "The version of this deck, the newest version, and the channel."},
+						{240, 330, "Notes", "What the new version changes."},
+						{240, 580, "Install", "Downloads the new version, checks it, and installs it, after a question. The deck restarts."},
+						{126, 683, "Check now", "Checks for a new version now."},
+						{354, 683, "Beta updates", "On: the deck also gets the betas, the versions with new features for tests. Off: only the stable versions."},
 					}},
 				{Name: "stats", Caption: "Statistics", Setup: page("stats"),
 					Callouts: []callout{
@@ -589,12 +598,16 @@ func manualSections() []section {
 			Intro:   []string{"Machine has the information of the printer, the history of the prints, the macros and the console."},
 			Figures: fig("machine", "stats", "console")},
 		{Chapter: care, ID: "update", Title: "Update the Printdeck",
-			Steps: []string{
-				"Download the update file of the new version.",
-				"Open http://printdeck.local/system in a browser, and log in.",
-				"Choose the update file, then tap Install. The deck restarts into the new version.",
+			Intro: []string{
+				"The deck checks for a new version once a day. Machine then shows Software update in orange.",
+				"Each version has a signature. The deck installs only a version with a valid signature of Printdeck. It writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one.",
 			},
-			Intro: []string{"The deck writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one."}},
+			Steps: []string{
+				"Open Machine, then Software update.",
+				"Read the notes of the new version, then tap Install. The deck does not install during a print.",
+				"Wait while the deck downloads and writes the update. It restarts into the new version.",
+			},
+			Figures: fig("update")},
 
 		{Chapter: "When something goes wrong", ID: "problems", Title: "When something goes wrong",
 			Intro: []string{"When Klipper stops with an error, the Print tab shows all the lines of its message."},
@@ -630,6 +643,8 @@ func manual(args []string) {
 	}
 	// The manual is about the printer: the status bar shows no song.
 	m.State_ = spotify.State{}
+	a.Updater = &ui.DemoUpdater{S: ui.UpdateStatus{Current: "v0.3.0", Latest: "v0.4.0", Newer: true, Checked: true,
+		Notes: "The printer display shows the menus of the deck, with the knob. New status screen with icons. Signed updates."}}
 	st := &manualState{a, m, p}
 	secs := manualSections()
 	const k = 2 // the pictures are drawn at twice the size

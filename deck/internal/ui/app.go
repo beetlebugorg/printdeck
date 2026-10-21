@@ -238,17 +238,20 @@ type App struct {
 
 	// The menu of the printer display (focus.go): the keys of the frame, the heading of the page,
 	// the focus of the knob, and the screen of the display.
-	focus         []focusItem
-	collect       bool // the frame adds its keys to focus
-	lcdTitle      string
-	lcdPage       string
-	lcdSel        int
-	lcdSaved      map[string]int // the cursor of each menu, for the way back
-	lcdDepth      int            // the depth of the menu: the open pages and dialogs
-	knobAt        time.Time
-	lcd           printer.LCDScreen
-	lcdNotes      []printer.LCDRow // rows under the heading of the page (lcdNote)
-	redrawPending atomic.Bool      // redrawSoon asked for a frame
+	focus    []focusItem
+	collect  bool // the frame adds its keys to focus
+	lcdTitle string
+	lcdPage  string
+	lcdSel   int
+	lcdSaved map[string]int // the cursor of each menu, for the way back
+	lcdDepth int            // the depth of the menu: the open pages and dialogs
+	knobAt   time.Time
+	lcd      printer.LCDScreen
+	lcdNotes []printer.LCDRow // rows under the heading of the page (lcdNote)
+	// Updater checks for new releases and installs them, or nil.
+	Updater Updater
+
+	redrawPending atomic.Bool // redrawSoon asked for a frame
 
 	// LCDFont is the font of the printer display: "5x8" (the default), "6x10", or "" for the
 	// large font of Klipper.
@@ -286,6 +289,7 @@ func (a *App) Session(height int) *App {
 	s.PreheatTool, s.PreheatBed, s.UnloadMM, s.LoadMM, s.JogInvertY = a.PreheatTool, a.PreheatBed, a.UnloadMM, a.LoadMM, a.JogInvertY
 	s.Theme, s.NightFrom, s.NightTo, s.OnTheme = a.Theme, a.NightFrom, a.NightTo, a.OnTheme
 	s.Material, s.OnMaterial = a.Material, a.OnMaterial
+	s.Updater = a.Updater
 	s.tab = a.tab
 	return s
 }
