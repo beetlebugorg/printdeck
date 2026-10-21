@@ -64,6 +64,9 @@ func main() {
 		case "demo":
 			demo(os.Args[2:])
 			return
+		case "intro":
+			introGIF(os.Args[2:])
+			return
 		case "remote-demo":
 			remoteDemo(os.Args[2:])
 			return
@@ -183,6 +186,10 @@ func run(cfg config.Config) {
 		OffsetY: float64(cfg.TouchOffsetY) / float64(app.Screen().H)}, events)
 
 	startWeb(cfg, host, pr, app)
+	// After a boot, the start animation, then a soft change to the first screen.
+	if uptime() < 90*time.Second {
+		playIntro(screen, app, events)
+	}
 	app.Run(ctx, events, screen.Present)
 }
 

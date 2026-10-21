@@ -2,6 +2,10 @@ package main
 
 import (
 	"context"
+	"image"
+	"image/color/palette"
+	"image/draw"
+	"image/gif"
 	"image/png"
 	"log"
 	"net/http"
@@ -61,13 +65,11 @@ func demo(args []string) {
 	os.MkdirAll(dir, 0o755)
 	demoShots(dir, false)
 	demoShots(dir, true)
-	for _, theme := range []string{"day", "night"} {
-		c := gfx.New(ui.BaseW, ui.BaseH)
-		ui.DrawSplash(c, "v2.1.0", theme == "night")
-		f, _ := os.Create(filepath.Join(dir, "splash-"+theme+".png"))
-		png.Encode(f, c.RGBA)
-		f.Close()
-	}
+	c := gfx.New(ui.BaseW, ui.BaseH)
+	ui.DrawSplash(c, true)
+	f, _ := os.Create(filepath.Join(dir, "splash.png"))
+	png.Encode(f, c.RGBA)
+	f.Close()
 }
 
 // demoShots writes the pictures of the screens, tall or wide. The names of the wide pictures end
@@ -190,4 +192,33 @@ func remoteDemo(args []string) {
 		log.Fatal(srv.ListenAndServe())
 	}()
 	<-ctx.Done()
+}
+
+// introGIF writes the start animation as an animated GIF: printdeck intro OUT.gif [wide].
+func introGIF(args []string) {
+	if len(args) < 1 {
+		log.Fatal("usage: printdeck intro OUT.gif [wide]")
+	}
+	w, h := ui.BaseW, ui.BaseH
+	if len(args) > 1 && args[1] == "wide" {
+		w, h = 800, 480
+	}
+	const fps = 25
+	anim := &gif.GIF{}
+	for t := time.Duration(0); t <= ui.IntroLength+500*time.Millisecond; t += time.Second / fps {
+		c := gfx.New(w, h)
+		ui.DrawIntro(c, t, "v0.4.0")
+		img := image.NewPaletted(c.Bounds(), palette.Plan9)
+		draw.Draw(img, img.Rect, c.RGBA, image.Point{}, draw.Src)
+		anim.Image, anim.Delay = append(anim.Image, img), append(anim.Delay, 100/fps)
+	}
+	anim.Delay[len(anim.Delay)-1] = 200 // hold the end
+	f, err := os.Create(args[0])
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	if err := gif.EncodeAll(f, anim); err != nil {
+		log.Fatal(err)
+	}
 }
