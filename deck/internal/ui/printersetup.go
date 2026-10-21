@@ -195,7 +195,15 @@ func (a *App) drawKlipperError(c *gfx.Canvas, st printer.State) {
 		y += 26
 	}
 	restart, cap, ink := image.Rect(24, 600, W-24, 680), orange, onAcc
-	if strings.Contains(msg, "older version of the") && board.CanFlash("") {
+	if strings.Contains(strings.ToLower(msg), "shutdown") {
+		// The board stopped itself. Only a reset of the board clears this state.
+		half := (W - 48 - 12) / 2
+		restart.Max.X, cap, ink = 24+half, raised, text
+		a.button(c, image.Rect(W-24-half, 600, W-24, 680), "Firmware restart", orange, onAcc, func() {
+			a.Toast("Restarting the firmware…")
+			a.do(pr.FirmwareRestart)
+		})
+	} else if strings.Contains(msg, "older version of the") && board.CanFlash("") {
 		half := (W - 48 - 12) / 2
 		restart.Max.X, cap, ink = 24+half, raised, text
 		a.button(c, image.Rect(W-24-half, 600, W-24, 680), "Write firmware", orange, onAcc, func() { a.askFlash("") })
