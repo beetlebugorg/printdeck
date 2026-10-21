@@ -157,7 +157,7 @@ func (a *App) drawLastPrint(c *gfx.Canvas, st printer.State, last image.Rectangl
 	}
 	label(c, image.Rect(last.Min.X+16, last.Min.Y+8, last.Max.X, last.Min.Y+28), "Last print", gfx.Left)
 	c.Text(image.Rect(last.Min.X+16, last.Min.Y+28, last.Max.X-150, last.Min.Y+58), gfx.Fit(gfx.Face(true, 20), l.File, last.Dx()-170), gfx.Face(true, 20), text, gfx.Left)
-	c.Text(image.Rect(last.Min.X+16, last.Min.Y+56, last.Max.X-150, last.Max.Y-8), l.Summary(), gfx.Face(false, 16), dim, gfx.Left)
+	c.Text(image.Rect(last.Min.X+16, last.Min.Y+56, last.Max.X-150, last.Max.Y-8), l.Summary(func(mm float64) float64 { return a.grams(mm, "") }), gfx.Face(false, 16), dim, gfx.Left)
 	path := l.Path
 	a.button(c, image.Rect(last.Max.X-140, last.Min.Y+20, last.Max.X-14, last.Max.Y-16), "Reprint", raised, text, func() {
 		a.confirmPrint(path)

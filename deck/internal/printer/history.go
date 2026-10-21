@@ -19,13 +19,14 @@ type Record struct {
 	End      time.Time     `json:"end"`
 }
 
-// summary is a short line for the screen, for example "Done · 1:42 · 4.1 m".
-func (r Record) Summary() string {
+// Summary is a short line for the screen, for example "Done · 1:42 · 12 g". grams gives the
+// weight of a length of filament in mm.
+func (r Record) Summary(grams func(mm float64) float64) string {
 	res := map[string]string{"complete": "Done", "cancelled": "Cancelled", "error": "Failed"}[r.Result]
 	m := int(r.Duration.Minutes())
 	s := fmt.Sprintf("%s · %d:%02d", res, m/60, m%60)
 	if r.Filament > 0 {
-		s += fmt.Sprintf(" · %.1f m", r.Filament/1000)
+		s += " · " + Weight(grams(r.Filament))
 	}
 	return s
 }
@@ -112,9 +113,6 @@ type Stats struct {
 	TopCount                             int
 	Since                                time.Time // the end of the oldest print of the history
 }
-
-// FilamentGrams is the weight of a length of 1.75 mm filament of PLA (1.24 g/cm³), in grams.
-func FilamentGrams(mm float64) float64 { return mm * 3.14159265 * 0.875 * 0.875 * 1.24e-3 }
 
 // ComputeStats adds up the history at the time now.
 func ComputeStats(recs []Record, now time.Time) Stats {

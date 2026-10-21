@@ -259,7 +259,7 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 	title := map[string]string{"complete": "Print done", "cancelled": "Cancelled", "error": "Print failed"}[st.Finished]
 	line := title + " · " + st.FinishedFile + " · " + hm(int(st.FinishedTime.Minutes()))
 	if st.FinishedFilament > 0 {
-		line += fmt.Sprintf(" · %.1f m", st.FinishedFilament/1000)
+		line += " · " + a.weight(st.FinishedFilament)
 	}
 	c.Text(result, gfx.Fit(gfx.Face(true, 18), line, result.Dx()), gfx.Face(true, 18), text, gfx.Center)
 	a.region("Result", result)

@@ -40,7 +40,7 @@ func demoApp() (*ui.App, *ui.DemoPrinter) {
 	// What the test printer has, a short history, and the slicer data of the files.
 	p.Machine_ = printer.Machine{KlipperVersion: "v0.13.0-777-g7bc4d0946-printdeck-go",
 		Modules: []string{"probe", "bed_tilt", "extruder", "heater_bed"},
-		Macros:  []string{"NOZZLE_WIPE", "PRINT_START", "PRINT_END", "G29", "G12"}}
+		Macros:  []string{"NOZZLE_WIPE", "PRINT_START", "PRINT_END", "G29", "G12"}, FilamentDiameter: 2.85}
 	end := time.Date(2026, 10, 20, 11, 42, 0, 0, time.Local)
 	p.History_ = []printer.Record{
 		{File: "benchy.gcode", Path: "benchy.gcode", Result: "complete", Duration: 102 * time.Minute, Filament: 4100, End: end},

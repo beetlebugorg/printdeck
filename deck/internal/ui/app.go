@@ -381,6 +381,22 @@ func (a *App) button(c *gfx.Canvas, r image.Rectangle, label string, fill, fg co
 	a.region(label, r)
 }
 
+// grams is the weight of mm millimetres of filament, with the filament diameter of the printer.
+// material is the material of the filament; "" is the loaded material.
+func (a *App) grams(mm float64, material string) float64 {
+	if material == "" {
+		material = a.Material
+	}
+	d := 1.75
+	if a.Printer != nil {
+		d = a.Printer.Machine().Diameter()
+	}
+	return printer.FilamentGrams(mm, d, material)
+}
+
+// weight is the weight of mm millimetres of the loaded filament, for the screen: "12 g".
+func (a *App) weight(mm float64) string { return printer.Weight(a.grams(mm, "")) }
+
 // region names a part of the frame: a key, or a part that is no key, such as a display or a list.
 // The manual places its callouts with the names (KeyRect).
 func (a *App) region(name string, r image.Rectangle) {

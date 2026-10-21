@@ -65,7 +65,7 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 			a.region("Picture", pic)
 		}
 		c.Text(image.Rect(r.Min.X+92, r.Min.Y+8, r.Max.X-12, r.Min.Y+38), gfx.Fit(gfx.Face(true, 19), f.Name, r.Dx()-104), gfx.Face(true, 19), text, gfx.Left)
-		c.Text(image.Rect(r.Min.X+92, r.Min.Y+36, r.Max.X-12, r.Min.Y+60), metaLine(m), gfx.Face(false, 16), dim, gfx.Left)
+		c.Text(image.Rect(r.Min.X+92, r.Min.Y+36, r.Max.X-12, r.Min.Y+60), a.metaLine(m), gfx.Face(false, 16), dim, gfx.Left)
 		if i == 0 {
 			a.textRegion("File", image.Rect(r.Min.X+92, r.Min.Y+8, r.Max.X-12, r.Min.Y+60), gfx.Face(true, 19), gfx.Fit(gfx.Face(true, 19), f.Name, r.Dx()-104))
 		}
@@ -74,6 +74,18 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 			a.textRegion("Date", image.Rect(r.Min.X+92, r.Min.Y+58, r.Max.X-12, r.Max.Y-6), gfx.Face(false, 14), fileDate(f.Date, a.Now(), a.Clock24))
 		}
 	}, open)
+}
+
+// fileGrams is the filament of a file in grams: the weight from the slicer, or else the weight
+// of its length, with the material of the file. 0 is not known.
+func (a *App) fileGrams(m gcodemeta.Meta) float64 {
+	if m.FilamentG > 0 {
+		return m.FilamentG
+	}
+	if m.FilamentMM > 0 {
+		return a.grams(m.FilamentMM, m.Material)
+	}
+	return 0
 }
 
 // noItems is the text of an empty list: a title and lines under it, in the upper part of the area.
@@ -86,7 +98,7 @@ func noItems(c *gfx.Canvas, area image.Rectangle, title string, lines ...string)
 }
 
 // metaLine is the short line of a file: time, filament, layer height.
-func metaLine(m gcodemeta.Meta) string {
+func (a *App) metaLine(m gcodemeta.Meta) string {
 	s := ""
 	add := func(p string) {
 		if s != "" {
@@ -97,11 +109,8 @@ func metaLine(m gcodemeta.Meta) string {
 	if m.PrintTime > 0 {
 		add(hm(int(m.PrintTime.Minutes())))
 	}
-	switch {
-	case m.FilamentG > 0:
-		add(fmt.Sprintf("%.1f g", m.FilamentG))
-	case m.FilamentMM > 0:
-		add(fmt.Sprintf("%.1f m", m.FilamentMM/1000))
+	if g := a.fileGrams(m); g > 0 {
+		add(printer.Weight(g))
 	}
 	if m.LayerHeight > 0 {
 		add(fmt.Sprintf("%.2f mm", m.LayerHeight))
@@ -186,16 +195,10 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 	if m.PrintTime > 0 {
 		rows = append(rows, [2]string{"Print time", duration(m.PrintTime)})
 	}
-	if m.FilamentMM > 0 || m.FilamentG > 0 {
-		v := ""
-		if m.FilamentG > 0 {
-			v = fmt.Sprintf("%.1f g", m.FilamentG)
-		}
+	if g := a.fileGrams(m); g > 0 {
+		v := printer.Weight(g)
 		if m.FilamentMM > 0 {
-			if v != "" {
-				v += " · "
-			}
-			v += fmt.Sprintf("%.1f m", m.FilamentMM/1000)
+			v += fmt.Sprintf(" · %.1f m", m.FilamentMM/1000)
 		}
 		if m.Material != "" {
 			v += " " + m.Material
