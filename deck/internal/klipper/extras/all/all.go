@@ -30,6 +30,7 @@ import (
 	_ "printdeck/internal/klipper/extras/pause_resume"
 	_ "printdeck/internal/klipper/extras/pid_calibrate"
 	_ "printdeck/internal/klipper/extras/print_stats"
+	_ "printdeck/internal/klipper/extras/printdeck_display"
 	_ "printdeck/internal/klipper/extras/probe"
 	_ "printdeck/internal/klipper/extras/query_adc"
 	_ "printdeck/internal/klipper/extras/query_endstops"

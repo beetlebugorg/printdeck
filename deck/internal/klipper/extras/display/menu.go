@@ -1382,6 +1382,9 @@ func (m *MenuManager) clickCallback(eventtime float64, event string) {
 }
 
 func (m *MenuManager) keyEvent(key string, eventtime float64) {
+	if h := m.display.keyHook; h != nil && h(key, eventtime) {
+		return
+	}
 	switch key {
 	case "click", "long_click":
 		m.clickCallback(eventtime, key)
