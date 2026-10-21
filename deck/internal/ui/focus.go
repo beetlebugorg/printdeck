@@ -244,7 +244,7 @@ func (a *App) lcdStatusScreen(st printer.State, l1, l2 string) *printer.LCDStatu
 		}
 		return s
 	}
-	if st.Reachable && st.HasZ {
+	if st.Reachable && st.HasZ && st.Homed != "" {
 		s.Position = fmt.Sprintf("X%.0f Y%.0f Z%.2f", st.X, st.Y, st.Z)
 	}
 	s.Hint = "Click for menu"
