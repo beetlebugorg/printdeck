@@ -131,11 +131,25 @@ func (a *App) endFocus(c *gfx.Canvas, st printer.State) {
 		}
 	}
 	if page != a.lcdPage {
-		// A new menu: the cursor at the first key under the way out.
+		// Another menu. Back to a menu: the cursor at the key that opened the page. Forward to a
+		// menu: the cursor at the first key under the way out.
+		depth := len(a.pages)
+		if a.confirm != nil || a.keypad != nil {
+			depth++
+		}
+		if a.lcdSaved == nil {
+			a.lcdSaved = map[string]int{}
+		}
+		a.lcdSaved[a.lcdPage] = a.lcdSel
+		saved, ok := a.lcdSaved[page]
 		a.lcdPage, a.lcdSel = page, 0
-		if len(a.focus) > 1 && a.focus[0].out {
+		switch {
+		case ok && depth < a.lcdDepth:
+			a.lcdSel = saved
+		case len(a.focus) > 1 && a.focus[0].out:
 			a.lcdSel = 1
 		}
+		a.lcdDepth = depth
 	}
 	a.lcdSel = max(0, min(a.lcdSel, len(a.focus)-1))
 	if len(a.focus) > 0 && !a.knobAt.IsZero() && a.Now().Sub(a.knobAt) < knobRing && a.focus[a.lcdSel].reveal == nil &&
