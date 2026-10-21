@@ -205,7 +205,7 @@ func introGIF(args []string) {
 	}
 	const fps = 25
 	anim := &gif.GIF{}
-	for t := time.Duration(0); t <= ui.IntroLength+500*time.Millisecond; t += time.Second / fps {
+	for t := time.Duration(0); t <= ui.IntroLength(image.Rect(0, 0, w, h))+500*time.Millisecond; t += time.Second / fps {
 		c := gfx.New(w, h)
 		ui.DrawIntro(c, t, "v0.4.0")
 		img := image.NewPaletted(c.Bounds(), palette.Plan9)

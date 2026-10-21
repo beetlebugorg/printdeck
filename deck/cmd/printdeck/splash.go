@@ -140,12 +140,12 @@ func playIntro(screen *fb.FB, app *ui.App, events chan touch.Event) {
 	tick := time.NewTicker(time.Second / 30)
 	defer tick.Stop()
 	start := time.Now()
-	for t := time.Duration(0); t < ui.IntroLength; t = time.Since(start) {
+	for t := time.Duration(0); t < ui.IntroLength(c.Bounds()); t = time.Since(start) {
 		ui.DrawIntro(c, t, osVersion())
 		screen.Present(c)
 		<-tick.C
 	}
-	ui.DrawIntro(c, ui.IntroLength, osVersion())
+	ui.DrawIntro(c, ui.IntroLength(c.Bounds()), osVersion())
 	from := gfx.New(w, h)
 	copy(from.Pix, c.Pix)
 	to := gfx.New(app.Screen().W, app.Screen().H)
