@@ -55,7 +55,7 @@ func newPrintApp(st printer.State) (*App, *recPrinter, *gfx.Canvas) {
 	a := New()
 	a.Music, a.Printer, a.Vol = &DemoMusic{State_: spotify.State{Authorized: true}}, pr, DemoVolume(10)
 	a.SetTab(TabPrint)
-	return a, pr, gfx.New(W, H)
+	return a, pr, gfx.New(W, BaseH)
 }
 
 func tapAt(a *App, cv *gfx.Canvas, x, y int) {

@@ -18,7 +18,7 @@ func TestLayerScrubber(t *testing.T) {
 	a.Music = &DemoMusic{State_: spotify.State{Authorized: true}}
 	a.Printer, a.Vol = pr, DemoVolume(10)
 	a.SetTab(TabPrint)
-	cv := gfx.New(W, H)
+	cv := gfx.New(W, BaseH)
 	a.Draw(cv)
 
 	// The middle of the slider is the middle layer. 27 layers: 0.5 * 27 = 13.5, which rounds to 14.

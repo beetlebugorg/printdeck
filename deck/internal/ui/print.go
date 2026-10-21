@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/draw"
 	"strings"
 	"time"
 
@@ -119,7 +118,7 @@ func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 	box := jobBox
 	window(c, box)
 	if img := pr.Preview(); img != nil {
-		draw.Draw(c.RGBA, image.Rectangle{box.Min, box.Min.Add(img.Bounds().Size())}.Intersect(box), img, img.Bounds().Min, draw.Over)
+		c.Image(box, img)
 	} else {
 		c.Text(image.Rect(box.Min.X, box.Min.Y, box.Max.X, box.Min.Y+260), "LOADING MODEL…", gfx.Face(true, 18), lcdDim, gfx.Center)
 	}

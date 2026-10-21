@@ -10,7 +10,7 @@ import (
 // BenchmarkDrawMusic and BenchmarkDrawPrint measure one frame of each tab.
 func BenchmarkDrawMusic(b *testing.B) {
 	a, _, _ := demoApp()
-	c := gfx.New(ui.W, ui.H)
+	c := gfx.New(ui.W, ui.BaseH)
 	for i := 0; i < b.N; i++ {
 		a.Draw(c)
 	}
@@ -19,7 +19,7 @@ func BenchmarkDrawMusic(b *testing.B) {
 func BenchmarkDrawPrint(b *testing.B) {
 	a, _, _ := demoApp()
 	a.SetTab(ui.TabPrint)
-	c := gfx.New(ui.W, ui.H)
+	c := gfx.New(ui.W, ui.BaseH)
 	for i := 0; i < b.N; i++ {
 		a.Draw(c)
 	}

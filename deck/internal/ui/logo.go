@@ -1,10 +1,14 @@
 package ui
 
 import (
+	"bytes"
 	"encoding/binary"
 	"image"
 	"image/color"
+	"image/png"
 	"sort"
+
+	xdraw "golang.org/x/image/draw"
 
 	"printdeck/internal/gfx"
 )
@@ -24,8 +28,11 @@ const logoColors = 224
 // in the order of the framebuffer, as fb.Present writes them. The start screen of "printdeck
 // splash" then draws the same pixels, and adds the hint and the version.
 func SplashLogo(rotate int) []byte {
-	c := gfx.New(W, H)
+	c := gfx.New(W, BaseH)
+	drawMu.Lock()
+	setHeight(BaseH)
 	DrawSplash(c, "", true)
+	drawMu.Unlock()
 
 	// The framebuffer position of a canvas pixel (fb.Present).
 	at := func(x, y int) (int, int) {
@@ -112,4 +119,29 @@ func encodeTGA(img *image.RGBA) []byte {
 		}
 	}
 	return out
+}
+
+// Icon returns the icon of the web page for the home screen of a phone: the plate of the start
+// screen on the night background, 512 x 512 pixels, as a PNG.
+func Icon() []byte {
+	c := gfx.New(W, H)
+	drawMu.Lock() // DrawSplash sets the palette and uses H, which the App draws with
+	setHeight(BaseH)
+	DrawSplash(c, "", true)
+	drawMu.Unlock()
+	const size = 512
+	out := image.NewRGBA(image.Rect(0, 0, size, size))
+	bgc := c.RGBAAt(0, 0)
+	for i := 0; i < len(out.Pix); i += 4 {
+		out.Pix[i], out.Pix[i+1], out.Pix[i+2], out.Pix[i+3] = bgc.R, bgc.G, bgc.B, 255
+	}
+	// The plate (box of DrawSplash), scaled to fit with a margin.
+	plate := image.Rect(32, 252, W-32, 548)
+	w := size - 48
+	h := plate.Dy() * w / plate.Dx()
+	dst := image.Rect((size-w)/2, (size-h)/2, (size+w)/2, (size+h)/2)
+	xdraw.CatmullRom.Scale(out, dst, c.RGBA, plate, xdraw.Src, nil)
+	var b bytes.Buffer
+	png.Encode(&b, out)
+	return b.Bytes()
 }

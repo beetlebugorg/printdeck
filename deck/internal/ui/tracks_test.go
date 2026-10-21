@@ -25,11 +25,11 @@ func newTrackApp() (*App, *trackMusic, *gfx.Canvas) {
 	a := New()
 	a.Music, a.Printer, a.Vol = m, &DemoPrinter{State_: printer.State{}}, DemoVolume(10)
 	a.OpenTracks(0)
-	return a, m, gfx.New(W, H)
+	return a, m, gfx.New(W, BaseH)
 }
 
 func ev(a *App, k touch.Kind, x, y int) {
-	a.handle(touch.Event{Kind: k, X: float64(x) / W, Y: float64(y) / H})
+	a.handle(touch.Event{Kind: k, X: float64(x) / W, Y: float64(y) / BaseH})
 }
 
 func TestTrackListTap(t *testing.T) {

@@ -34,7 +34,7 @@ func TestClockCyclesTheme(t *testing.T) {
 	var saved []string
 	a.OnTheme = func(s string) { saved = append(saved, s) }
 	a.Music, a.Printer, a.Vol = &DemoMusic{State_: spotify.State{Authorized: true}}, &DemoPrinter{View: -1}, DemoVolume(10)
-	cv := gfx.New(W, H)
+	cv := gfx.New(W, BaseH)
 	for i := 0; i < 3; i++ {
 		a.Draw(cv)
 		ev(a, touch.Down, 40, 28)

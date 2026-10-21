@@ -11,7 +11,7 @@ import (
 
 func drawTestKeyboard(t *testing.T) (*App, *keyboard, []hit) {
 	a := New()
-	cv := gfx.New(W, H)
+	cv := gfx.New(W, BaseH)
 	k := &keyboard{title: "Test", max: 64, ok: "OK", cancel: "Back", done: func(string) {}, back: func() {}}
 	a.hits = nil
 	a.drawKeyboard(cv, k)
@@ -68,8 +68,8 @@ func TestKeyAreasMeet(t *testing.T) {
 func TestTapInGap(t *testing.T) {
 	a, k, _ := drawTestKeyboard(t)
 	tap := func(x, y int) {
-		a.handle(touch.Event{Kind: touch.Down, X: float64(x) / W, Y: float64(y) / H})
-		a.handle(touch.Event{Kind: touch.Up, X: float64(x) / W, Y: float64(y) / H})
+		a.handle(touch.Event{Kind: touch.Down, X: float64(x) / W, Y: float64(y) / BaseH})
+		a.handle(touch.Event{Kind: touch.Up, X: float64(x) / W, Y: float64(y) / BaseH})
 	}
 	kw := (kbX1 - kbX0 - 9*kbGap) / 10
 	qRight := kbX0 + (kbX1-kbX0-(10*kw+9*kbGap))/2 + kw // the right edge of q

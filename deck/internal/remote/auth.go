@@ -25,11 +25,15 @@ func (s *Server) Auth(h http.HandlerFunc) http.HandlerFunc { return s.auth(h) }
 // login page, and the other requests fail.
 func (s *Server) auth(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if s.NoLogin {
+			h(w, r)
+			return
+		}
 		if c, err := r.Cookie(cookieName); err == nil && s.validSession(c.Value) {
 			h(w, r)
 			return
 		}
-		if r.Method == http.MethodGet && (r.URL.Path == "/" || r.URL.Path == "/screen" || r.URL.Path == "/system") {
+		if r.Method == http.MethodGet && (r.URL.Path == "/" || r.URL.Path == "/system") {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}

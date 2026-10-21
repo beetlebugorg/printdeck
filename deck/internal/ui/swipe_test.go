@@ -20,7 +20,7 @@ func (m *countingMusic) Previous() { m.prev++ }
 
 func swipe(a *App, x0, y0, x1, y1 int) {
 	ev := func(k touch.Kind, x, y int) touch.Event {
-		return touch.Event{Kind: k, X: float64(x) / W, Y: float64(y) / H}
+		return touch.Event{Kind: k, X: float64(x) / W, Y: float64(y) / BaseH}
 	}
 	a.handle(ev(touch.Down, x0, y0))
 	a.handle(ev(touch.Move, (x0+x1)/2, (y0+y1)/2))
@@ -31,7 +31,7 @@ func TestSwipe(t *testing.T) {
 	m := &countingMusic{DemoMusic: &DemoMusic{State_: spotify.State{Authorized: true, Active: true, Playing: true, Title: "t", URI: "spotify:track:x", Duration: time.Minute}}}
 	a := New()
 	a.Music, a.Printer, a.Vol = m, &DemoPrinter{State_: printer.State{}}, DemoVolume(10)
-	cv := gfx.New(W, H)
+	cv := gfx.New(W, BaseH)
 
 	for _, c := range []struct {
 		name           string
