@@ -19,6 +19,13 @@ projects, such as Klipper, go-librespot and CamillaDSP. We respect their license
 compatible. We are not here to take code. We reform it into something new and give it back, in the
 spirit of open source, with the help of AI. `ARCHITECTURE.md` has the plan and the rules.
 
+## Manual
+
+The manual shows each screen of the deck with numbered callouts, and explains each part:
+[docs/manual/index.html](docs/manual/index.html), or the PDF
+[docs/manual/printdeck-manual.pdf](docs/manual/printdeck-manual.pdf). The deck draws the pictures
+itself: after a change to the UI, run `docs/manual/build.sh`.
+
 ## Hardware
 
 | Part | Connection |

@@ -136,6 +136,13 @@ func FontBold() []byte    { return plexBold }
 // Replay draws the commands of a recording (the JSON of Recording.JSON) on a canvas. img returns
 // an image by its number, or nil.
 func Replay(c *Canvas, ops []byte, img func(id int) image.Image) error {
+	return ReplayScaled(c, ops, img, 1)
+}
+
+// ReplayScaled is Replay at k times the size: the shapes and the text are drawn at the larger size,
+// for sharp pictures, for example in a printed manual. The canvas is k times the size of the
+// recording.
+func ReplayScaled(c *Canvas, ops []byte, img func(id int) image.Image, k int) error {
 	var list [][]any
 	if err := json.Unmarshal(ops, &list); err != nil {
 		return err
@@ -149,7 +156,7 @@ func Replay(c *Canvas, ops []byte, img func(id int) image.Image) error {
 		return 0
 	}
 	col := func(v int) color.RGBA { return color.RGBA{uint8(v >> 16), uint8(v >> 8), uint8(v), 255} }
-	r := func(op []any) image.Rectangle { return image.Rect(n(op, 1), n(op, 2), n(op, 3), n(op, 4)) }
+	r := func(op []any) image.Rectangle { return image.Rect(n(op, 1)*k, n(op, 2)*k, n(op, 3)*k, n(op, 4)*k) }
 	var clips []*Canvas
 	cur := c
 	for _, op := range list {
@@ -161,27 +168,33 @@ func Replay(c *Canvas, ops []byte, img func(id int) image.Image) error {
 		case "f":
 			cur.Fill(r(op), col(n(op, 5)))
 		case "r":
-			cur.RoundRect(r(op), n(op, 5), col(n(op, 6)))
+			cur.RoundRect(r(op), n(op, 5)*k, col(n(op, 6)))
 		case "p":
 			xy, _ := op[1].([]any)
 			var pts []image.Point
 			for i := 0; i+1 < len(xy); i += 2 {
 				x, _ := xy[i].(float64)
 				y, _ := xy[i+1].(float64)
-				pts = append(pts, image.Pt(int(x), int(y)))
+				pts = append(pts, image.Pt(int(x)*k, int(y)*k))
 			}
 			if len(pts) > 0 {
 				cur.Polygon(pts, col(n(op, 2)))
 			}
 		case "t":
 			s, _ := op[3].(string)
-			cur.textAt(n(op, 1), n(op, 2), s, Face(n(op, 4) == 1, n(op, 5)), col(n(op, 6)))
+			cur.textAt(n(op, 1)*k, n(op, 2)*k, s, Face(n(op, 4) == 1, n(op, 5)*k), col(n(op, 6)))
 		case "c", "i":
 			if im := img(n(op, 5)); im != nil {
 				if name == "c" {
 					cur.Cover(r(op), im)
-				} else {
+				} else if k == 1 {
 					cur.Image(r(op), im)
+				} else {
+					// An image at its size: scale it with the rest.
+					b := im.Bounds()
+					cur.Clipped(r(op), func(in *Canvas) {
+						in.Cover(image.Rect(r(op).Min.X, r(op).Min.Y, r(op).Min.X+b.Dx()*k, r(op).Min.Y+b.Dy()*k), im)
+					})
 				}
 			}
 		case "d":
