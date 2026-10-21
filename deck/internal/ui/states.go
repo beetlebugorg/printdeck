@@ -7,6 +7,7 @@ import (
 
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
+	"printdeck/kit"
 )
 
 // The screens of the states of a print: preparing, the first layer, paused and done. The print
@@ -36,8 +37,13 @@ func hm(m int) string { return fmt.Sprintf("%d:%02d", m/60, m%60) }
 // The steps come from the commands that the printer runs (State.Prep). With no command stack, the
 // deck guesses them from the temperatures.
 func (a *App) drawPreparing(c *gfx.Canvas, st printer.State) {
-	pr := a.Printer
 	a.statusPanel(c, st)
+	f, keys, view := a.stateAreas()
+	area, cancel := view, kit.Rows(keys, 0, kit.Px(keyRowH))[0]
+	if !f.wide {
+		r := kit.Rows(view, 16, kit.Fr(1), kit.Px(keyRowH))
+		area, cancel = r[0], r[1]
+	}
 	type step struct {
 		name      string
 		done, now bool
@@ -69,8 +75,8 @@ func (a *App) drawPreparing(c *gfx.Canvas, st printer.State) {
 		steps = names
 	}
 
-	rowH := min(48, (contentY1-8-keyRowH-16-belowPanel-36)/max(1, len(steps)))
-	box := image.Rect(24, belowPanel, W-24, belowPanel+len(steps)*rowH+30)
+	rowH := min(48, (area.Dy()-36)/max(1, len(steps)))
+	box := kit.Rows(area, 0, kit.Px(len(steps)*rowH+30))[0]
 	panel(c, box, "PRINT START  ·  "+strings.ToUpper(gfx.Fit(gfx.Face(true, 13), st.File, 300)))
 	for i, s := range steps {
 		y := box.Min.Y + 22 + i*rowH
@@ -82,7 +88,6 @@ func (a *App) drawPreparing(c *gfx.Canvas, st printer.State) {
 		if !s.done && !s.now {
 			col = dim
 		}
-		c.Text(image.Rect(box.Min.X+60, y, box.Max.X-160, y+rowH-8), s.name, gfx.Face(true, 19), col, gfx.Left)
 		info, f := "", 0.0
 		switch {
 		case s.done:
@@ -94,14 +99,18 @@ func (a *App) drawPreparing(c *gfx.Canvas, st printer.State) {
 		case s.now && s.kind == "cool":
 			info = fmt.Sprintf("%.0f°", st.Tool)
 		}
+		// The name gets the space that the information does not use.
+		nameR := image.Rect(box.Min.X+60, y, box.Max.X-22, y+rowH-8)
+		if info != "" {
+			nameR.Max.X = box.Max.X - 160
+		}
+		c.Text(nameR, s.name, gfx.Face(true, 19), col, gfx.Left)
 		c.Text(image.Rect(box.Max.X-190, y, box.Max.X-22, y+rowH-8), info, gfx.Face(false, 16), orange, gfx.Right)
 		if f > 0 {
 			segments(c, image.Rect(box.Min.X+60, y+rowH-12, box.Max.X-22, y+rowH-4), min(1, f))
 		}
 	}
-	a.button(c, image.Rect(24, contentY1-8-keyRowH, W-24, contentY1-8), "Cancel print", raised, red, func() {
-		a.confirm = &confirmBox{question: "Cancel this print?", yes: "Cancel print", danger: true, onYes: pr.Cancel}
-	})
+	a.button(c, cancel, "Cancel print", raised, red, a.askCancel)
 }
 
 // zSteps are the steps of the Z offset on the first layer screen, in mm.
@@ -116,36 +125,39 @@ func (a *App) drawFirstLayer(c *gfx.Canvas, st printer.State) {
 		a.zBaby = 0.025
 	}
 	step := a.zBaby
-	// −, the Z offset, + and Save in one row.
-	y := belowPanel
-	a.button(c, image.Rect(24, y, 104, y+keyRowH), "−", raised, text, func() { a.do(func() error { return pr.BabyStep(-step) }) })
-	win := image.Rect(116, y, W-206, y+keyRowH)
+	// −, the Z offset, + and Save in one row; the steps of a tap; Pause and Cancel; the model view
+	// with the first layer.
+	f, keys, view := a.stateAreas()
+	r := kit.Rows(keys, 8, kit.Px(keyRowH), kit.Px(44), kit.Px(60), kit.Fr(1))
+	box := r[3]
+	if f.wide {
+		box = view
+	}
+	kw := 80 // the keys of the Z row; narrower in the left column of a wide screen
+	if f.wide {
+		kw = 64
+	}
+	z := kit.Cols(r[0], 12, kit.Px(kw), kit.Fr(1), kit.Px(kw), kit.Px(kw))
+	a.button(c, z[0], "−", raised, text, func() { a.do(func() error { return pr.BabyStep(-step) }) })
+	win := z[1]
 	window(c, win)
 	label(c, image.Rect(win.Min.X+10, win.Min.Y+4, win.Max.X, win.Min.Y+22), "Z OFFSET", gfx.Left)
 	c.Text(image.Rect(win.Min.X, win.Min.Y+14, win.Max.X, win.Max.Y), fmt.Sprintf("%+.3f", st.ZOffset), gfx.Face(true, 34), lcdInk, gfx.Center)
-	a.button(c, image.Rect(W-194, y, W-114, y+keyRowH), "+", raised, text, func() { a.do(func() error { return pr.BabyStep(step) }) })
-	a.button(c, image.Rect(W-104, y, W-24, y+keyRowH), "Save", raised, text, func() { a.saveZOffset(st) })
-	// The step of a tap, and the hint.
-	y += keyRowH + 8
+	a.button(c, z[2], "+", raised, text, func() { a.do(func() error { return pr.BabyStep(step) }) })
+	a.button(c, z[3], "Save", raised, text, func() { a.saveZOffset(st) })
+	steps := kit.Cols(r[1], 8, kit.Px(76), kit.Px(76), kit.Px(76), kit.Fr(1))
 	for i, s := range zSteps {
-		r := image.Rect(24+i*84, y, 24+i*84+76, y+44)
 		fill, fg := raised, text
 		if a.zBaby == s {
 			fill, fg = orange, onAcc
 		}
 		v := s
-		a.button(c, r, fmt.Sprint(s), fill, fg, func() { a.zBaby = v })
+		a.button(c, steps[i], fmt.Sprint(s), fill, fg, func() { a.zBaby = v })
 	}
-	c.Text(image.Rect(24+3*84, y, W-24, y+44), "− is closer", gfx.Face(false, 15), dim, gfx.Right)
-	// Pause and Cancel.
-	y += 44 + 8
-	half := (W - 48 - 12) / 2
-	a.button(c, image.Rect(24, y, 24+half, y+60), "Pause", raised, text, pr.Pause)
-	a.button(c, image.Rect(W-24-half, y, W-24, y+60), "Cancel", raised, red, func() {
-		a.confirm = &confirmBox{question: "Cancel this print?", yes: "Cancel print", danger: true, onYes: pr.Cancel}
-	})
-	// The model view, with the first layer.
-	box := image.Rect(24, y+60+12, W-24, contentY1-8)
+	c.Text(steps[3], "− is closer", gfx.Face(false, 15), dim, gfx.Right)
+	pc := kit.Cols(r[2], 12, kit.Fr(1), kit.Fr(1))
+	a.button(c, pc[0], "Pause", raised, text, pr.Pause)
+	a.button(c, pc[1], "Cancel", raised, red, a.askCancel)
 	a.modelView(c, box, st)
 	c.Text(image.Rect(box.Min.X+14, box.Min.Y+8, box.Max.X-14, box.Min.Y+30), fmt.Sprintf("LAYER 1 OF %d", st.Layers), gfx.Face(true, 13), lcdDim, gfx.Left)
 }
@@ -173,8 +185,21 @@ func (a *App) saveZOffset(st printer.State) {
 func (a *App) drawPaused(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	a.statusPanel(c, st)
-	y := belowPanel
-	info := image.Rect(24, y, W-24, y+76)
+	// Tall: the pause, Resume, and two rows of keys. Wide: Resume and the keys at the left, the
+	// pause and the model view at the right.
+	f, keys, view := a.stateAreas()
+	var info, resume image.Rectangle
+	var grid []image.Rectangle
+	if f.wide {
+		v := kit.Rows(view, 12, kit.Px(76), kit.Fr(1))
+		info = v[0]
+		a.modelView(c, v[1], st)
+		k := kit.Rows(keys, 12, kit.Px(88), kit.Fr(1))
+		resume, grid = k[0], kit.Grid(k[1], 2, 2, 12)
+	} else {
+		r := kit.Rows(view, 12, kit.Px(76), kit.Px(88), kit.Px(2*keyRowH+12))
+		info, resume, grid = r[0], r[1], kit.Grid(r[2], 2, 2, 12)
+	}
 	plate(c, info)
 	where := "Paused"
 	if st.Layers > 0 {
@@ -189,17 +214,11 @@ func (a *App) drawPaused(c *gfx.Canvas, st printer.State) {
 		sub = fmt.Sprintf("The nozzle stays at %.0f°.", st.ToolTarget)
 	}
 	c.Text(image.Rect(info.Min.X+18, info.Min.Y+38, info.Max.X-18, info.Max.Y-6), gfx.Fit(gfx.Face(false, 16), sub, info.Dx()-36), gfx.Face(false, 16), dim, gfx.Left)
-	y += 76 + 12
-	a.button(c, image.Rect(24, y, W-24, y+88), "Resume", orange, onAcc, pr.Resume)
-	y += 88 + 12
-	half := (W - 48 - 12) / 2
-	a.button(c, image.Rect(24, y, 24+half, y+keyRowH), "Change filament", raised, text, func() { a.swap = &swapState{} })
-	a.button(c, image.Rect(W-24-half, y, W-24, y+keyRowH), "Move head", raised, text, func() { a.open(pageMove) })
-	y += keyRowH + 12
-	a.button(c, image.Rect(24, y, 24+half, y+keyRowH), "Tune", raised, text, func() { a.tune = true })
-	a.button(c, image.Rect(W-24-half, y, W-24, y+keyRowH), "Cancel", raised, red, func() {
-		a.confirm = &confirmBox{question: "Cancel this print?", yes: "Cancel print", danger: true, onYes: pr.Cancel}
-	})
+	a.button(c, resume, "Resume", orange, onAcc, pr.Resume)
+	a.button(c, grid[0], "Change filament", raised, text, func() { a.swap = &swapState{} })
+	a.button(c, grid[1], "Move head", raised, text, func() { a.open(pageMove) })
+	a.button(c, grid[2], "Tune", raised, text, func() { a.tune = true })
+	a.button(c, grid[3], "Cancel", raised, red, a.askCancel)
 }
 
 // releaseBed is the bed temperature below which a part comes off a PEI sheet easily.
@@ -209,16 +228,27 @@ const releaseBed = 35.0
 // and Done.
 func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 	a.statusPanel(c, st)
-	box := image.Rect(24, belowPanel, W-24, 424)
+	// Tall: the model, the result, the bed, and the keys. Wide: the bed and the keys at the left,
+	// the model and the result at the right.
+	f, keys, view := a.stateAreas()
+	var box, result, info, end image.Rectangle
+	if f.wide {
+		v := kit.Rows(view, 8, kit.Fr(1), kit.Px(32))
+		box, result = v[0], v[1]
+		k := kit.Rows(keys, 12, kit.Px(102), kit.Px(keyRowH))
+		info, end = k[0], k[1]
+	} else {
+		r := kit.Rows(view, 8, kit.Px(190), kit.Px(32), kit.Px(102), kit.Fr(1), kit.Px(keyRowH))
+		box, result, info, end = r[0], r[1], r[2], r[4]
+	}
 	a.modelView(c, box, st)
 	title := map[string]string{"complete": "Print done", "cancelled": "Cancelled", "error": "Print failed"}[st.Finished]
 	line := title + " · " + st.FinishedFile + " · " + hm(int(st.FinishedTime.Minutes()))
 	if st.FinishedFilament > 0 {
 		line += fmt.Sprintf(" · %.1f m", st.FinishedFilament/1000)
 	}
-	c.Text(image.Rect(24, 430, W-24, 462), gfx.Fit(gfx.Face(true, 18), line, W-48), gfx.Face(true, 18), text, gfx.Center)
+	c.Text(result, gfx.Fit(gfx.Face(true, 18), line, result.Dx()), gfx.Face(true, 18), text, gfx.Center)
 
-	info := image.Rect(24, 470, W-24, 572)
 	plate(c, info)
 	if st.Finished == "error" && st.FinishedError != "" {
 		c.Text(image.Rect(info.Min.X+18, info.Min.Y+8, info.Max.X-18, info.Min.Y+40), "What happened", gfx.Face(true, 19), text, gfx.Left)
@@ -242,9 +272,9 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 		}
 		segments(c, image.Rect(info.Min.X+18, info.Min.Y+74, info.Max.X-18, info.Min.Y+88), f)
 	}
-	half := (W - 48 - 12) / 2
 	key := finishedKey(st)
 	path := st.FinishedPath
-	a.button(c, image.Rect(24, contentY1-8-keyRowH, 24+half, contentY1-8), "Reprint", raised, text, func() { a.confirmPrint(path) })
-	a.button(c, image.Rect(W-24-half, contentY1-8-keyRowH, W-24, contentY1-8), "Done", orange, onAcc, func() { a.doneSeen = key })
+	k := kit.Cols(end, 12, kit.Fr(1), kit.Fr(1))
+	a.button(c, k[0], "Reprint", raised, text, func() { a.confirmPrint(path) })
+	a.button(c, k[1], "Done", orange, onAcc, func() { a.doneSeen = key })
 }

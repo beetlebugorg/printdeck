@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"printdeck/kit"
 	"sort"
 
 	xdraw "golang.org/x/image/draw"
@@ -18,7 +19,7 @@ const LogoRotate = 270
 
 // logoRect is the part of the start screen in the kernel logo: the plate, with a border of the
 // background. The kernel fills the rest of the screen with the color of the first pixel.
-var logoRect = image.Rect(16, 236, W-16, H-236)
+var logoRect = image.Rect(16, 236, BaseW-16, BaseH-236)
 
 // logoColors is the most colors that the kernel takes from the file.
 const logoColors = 224
@@ -28,9 +29,9 @@ const logoColors = 224
 // in the order of the framebuffer, as fb.Present writes them. The start screen of "printdeck
 // splash" then draws the same pixels, and adds the hint and the version.
 func SplashLogo(rotate int) []byte {
-	c := gfx.New(W, BaseH)
+	c := gfx.New(BaseW, BaseH)
 	drawMu.Lock()
-	setHeight(BaseH)
+	setSize(kit.Screen{W: BaseW, H: BaseH})
 	DrawSplash(c, "", true)
 	drawMu.Unlock()
 
@@ -124,9 +125,9 @@ func encodeTGA(img *image.RGBA) []byte {
 // Icon returns the icon of the web page for the home screen of a phone: the plate of the start
 // screen on the night background, 512 x 512 pixels, as a PNG.
 func Icon() []byte {
-	c := gfx.New(W, H)
+	c := gfx.New(BaseW, BaseH)
 	drawMu.Lock() // DrawSplash sets the palette and uses H, which the App draws with
-	setHeight(BaseH)
+	setSize(kit.Screen{W: BaseW, H: BaseH})
 	DrawSplash(c, "", true)
 	drawMu.Unlock()
 	const size = 512

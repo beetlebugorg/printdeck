@@ -81,7 +81,7 @@ func openSplash(cfg config.Config) (*fb.FB, string) {
 			continue
 		}
 		if screen, err := fb.Open(cfg.Framebuffer, cfg.Rotate); err == nil {
-			c := gfx.New(ui.W, ui.BaseH)
+			c := gfx.New(ui.BaseW, ui.BaseH)
 			// The night palette, as the kernel logo (ui.SplashLogo), so that only the hint and
 			// the version appear.
 			ui.DrawSplash(c, osVersion(), true)

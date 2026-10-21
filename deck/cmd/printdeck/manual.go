@@ -88,7 +88,7 @@ func layoutBadges(cs []callout) []badge {
 		for k, i := range idx {
 			b := badge{N: i + 1, X: cs[i].X, Y: cs[i].Y, BY: ys[k], Right: isRight}
 			if isRight {
-				b.BX, b.LineStartX = ui.W+gutter/2+4, ui.W+gutter/2+4-15
+				b.BX, b.LineStartX = ui.BaseW+gutter/2+4, ui.BaseW+gutter/2+4-15
 			} else {
 				b.BX, b.LineStartX = -gutter/2-4, -gutter/2-4+15
 			}
@@ -640,9 +640,9 @@ func manual(args []string) {
 			*p = *demoPrinterCopy(p)
 			a.ResetScreens()
 			f.Setup(st)
-			c, rec := gfx.NewRecording(ui.W, ui.BaseH)
+			c, rec := gfx.NewRecording(ui.BaseW, ui.BaseH)
 			a.Draw(c)
-			out := gfx.New(ui.W*k, ui.BaseH*k)
+			out := gfx.New(ui.BaseW*k, ui.BaseH*k)
 			if err := gfx.ReplayScaled(out, rec.JSON(), gfx.ImageByID, k); err != nil {
 				log.Fatal(err)
 			}
@@ -670,9 +670,9 @@ func manual(args []string) {
 	tpl := template.Must(template.New("manual").Funcs(template.FuncMap{
 		"pct":        func(v, of int) string { return fmt.Sprintf("%.2f%%", 100*float64(v)/float64(of)) },
 		"inc":        func(i int) int { return i + 1 },
-		"W":          func() int { return ui.W },
+		"W":          func() int { return ui.BaseW },
 		"G":          func() int { return gutter },
-		"VW":         func() int { return ui.W + 2*gutter },
+		"VW":         func() int { return ui.BaseW + 2*gutter },
 		"H":          func() int { return ui.BaseH },
 		"date":       func() string { return time.Now().Format("January 2006") },
 		"newChapter": func(i int) bool { return i == 0 || secs[i].Chapter != secs[i-1].Chapter },
@@ -711,7 +711,7 @@ func clearSpot(img *image.RGBA, k, x, y int, right bool) int {
 	if !right {
 		step = -2
 	}
-	for cx := x; cx >= r && cx <= ui.W-r; cx += step {
+	for cx := x; cx >= r && cx <= ui.BaseW-r; cx += step {
 		if clear(cx) {
 			return cx
 		}

@@ -31,14 +31,16 @@ var (
 	kbSymbols2 = `\|~^` + "`" // the last row of the symbol layer with Shift on
 )
 
+// kbX0 and kbX1 are the left and the right of the keyboard (setSize).
+var kbX0, kbX1 = 24, BaseW - 24
+
 const (
-	kbX0, kbX1 = 24, W - 24
-	kbKeyH     = 56
-	kbGap      = 4
-	kbRowGap   = 8
+	kbKeyH   = 56
+	kbGap    = 4
+	kbRowGap = 8
 )
 
-// kbY0 is the top of the keyboard, at the bottom of the screen (setHeight).
+// kbY0 is the top of the keyboard, at the bottom of the screen (setSize).
 var kbY0 = BaseH - 24 - 5*kbKeyH - 4*kbRowGap
 
 // The touch areas of the keys reach half way into the gaps between the keys and between the rows.

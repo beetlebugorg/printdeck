@@ -182,5 +182,5 @@ func TestFirmwareRestartOnMachinePage(t *testing.T) {
 
 // ev sends a touch event at x, y in the units of the UI.
 func ev(a *App, k touch.Kind, x, y int) {
-	a.handle(touch.Event{Kind: k, X: float64(x) / W, Y: float64(y) / BaseH})
+	a.handle(touch.Event{Kind: k, X: float64(x) / float64(a.Screen().W), Y: float64(y) / float64(a.Screen().H)})
 }

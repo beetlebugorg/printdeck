@@ -133,9 +133,9 @@ func writeBooklet(dir string, secs []section) {
 		"inc":  func(i int) int { return i + 1 },
 		"add":  func(a, b int) int { return a + b },
 		"even": func(n int) bool { return n%2 == 0 },
-		"W":    func() int { return ui.W },
+		"W":    func() int { return ui.BaseW },
 		"G":    func() int { return gutter },
-		"VW":   func() int { return ui.W + 2*gutter },
+		"VW":   func() int { return ui.BaseW + 2*gutter },
 		"H":    func() int { return ui.BaseH },
 		"shown": func(p bookPage, n int) bool { // a badge of a callout on this page
 			return n >= p.From && n < p.From+len(p.Callouts)
