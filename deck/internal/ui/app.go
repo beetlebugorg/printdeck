@@ -345,7 +345,7 @@ func (a *App) isPressed(r image.Rectangle) bool {
 func (a *App) drawConfirm(c *gfx.Canvas) {
 	a.in.Reset() // the dialog blocks everything below it
 	c.Dim(3)
-	box := image.Rect(30, 260, W-30, 540)
+	box := kit.Center(image.Rect(0, 0, W, contentY1), min(W-60, 560), 280) // in the middle of the screen
 	panel(c, box, "CONFIRM")
 	cf := a.confirm
 	c.Text(image.Rect(box.Min.X+20, box.Min.Y+30, box.Max.X-20, box.Min.Y+150), cf.question, gfx.Face(true, 28), text, gfx.Center)

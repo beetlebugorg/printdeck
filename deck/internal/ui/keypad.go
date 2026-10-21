@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image"
+	"printdeck/kit"
 	"strconv"
 	"strings"
 
@@ -44,15 +45,30 @@ func (a *App) drawKeypad(c *gfx.Canvas) {
 	kp := a.keypad
 	a.in.Reset() // the keypad blocks everything below it
 	c.Dim(3)
-	box := image.Rect(24, 24, W-24, 670)
+	// Tall: the title, the number, the presets, the digits, and Cancel and Set under each other.
+	// Wide: the digits fill the right half of the box.
+	scr := kit.Screen{W: W, H: contentY1}
+	var box, left, digits image.Rectangle
+	if scr.Wide() {
+		box = kit.Inset(scr.Bounds(), 16, 16, 16, 16)
+		cols := kit.Cols(kit.Inset(box, 24, 14, 24, 20), 24, kit.Fr(1), kit.Fr(1))
+		left, digits = cols[0], cols[1]
+	} else {
+		box = image.Rect(margin, margin, W-margin, 670)
+		left = kit.Inset(box, 24, 14, 24, 20)
+		digits = image.Rect(left.Min.X, box.Min.Y+204, left.Max.X, box.Min.Y+204+4*72+3*8)
+	}
 	panel(c, box, "")
-	c.Fill(image.Rect(box.Min.X+24, box.Min.Y+24, box.Min.X+32, box.Min.Y+40), orange)
-	c.Text(image.Rect(box.Min.X+42, box.Min.Y+14, box.Max.X-24, box.Min.Y+50), strings.ToUpper(kp.title), gfx.Face(true, 20), text, gfx.Left)
+	s := kit.NewStack(left, 0)
+	title := s.Next(36)
+	c.Fill(image.Rect(title.Min.X, title.Min.Y+10, title.Min.X+8, title.Min.Y+26), orange)
+	c.Text(kit.Inset(title, 18, 0, 0, 0), strings.ToUpper(kp.title), gfx.Face(true, 20), text, gfx.Left)
+	s.Skip(8)
 
 	// The number. Too high a number is shown in red, and Set does not take it.
 	v, _ := strconv.Atoi(kp.digits)
 	tooHigh := v > kp.max
-	disp := image.Rect(box.Min.X+24, box.Min.Y+58, box.Max.X-24, box.Min.Y+130)
+	disp := s.Next(72)
 	window(c, disp)
 	col := lcdInk
 	if tooHigh {
@@ -63,24 +79,23 @@ func (a *App) drawKeypad(c *gfx.Canvas) {
 		shown = "0"
 	}
 	c.Text(disp, shown+kp.unit, gfx.Face(true, 48), col, gfx.Center)
+	s.Skip(14)
 
 	// Presets
-	n := len(kp.presets)
-	pw := (box.Dx() - 48 - 8*(n-1)) / n
-	for i, p := range kp.presets {
-		r := image.Rect(box.Min.X+24+i*(pw+8), box.Min.Y+144, box.Min.X+24+i*(pw+8)+pw, box.Min.Y+188)
-		val := p.v
-		a.button(c, r, p.label, raised, text, func() { kp.digits = strconv.Itoa(val) })
+	sizes := make([]kit.Size, len(kp.presets))
+	for i := range sizes {
+		sizes[i] = kit.Fr(1)
+	}
+	for i, r := range kit.Cols(s.Next(44), 8, sizes...) {
+		val := kp.presets[i].v
+		a.button(c, r, kp.presets[i].label, raised, text, func() { kp.digits = strconv.Itoa(val) })
 	}
 
 	// Digits: 3 x 4
 	keys := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "Del"}
-	kw, kh := (box.Dx()-48-16)/3, 72
-	for i, k := range keys {
-		x := box.Min.X + 24 + (i%3)*(kw+8)
-		y := box.Min.Y + 204 + (i/3)*(kh+8)
-		key := k
-		a.button(c, image.Rect(x, y, x+kw, y+kh), k, raised, text, func() {
+	for i, r := range kit.Grid(digits, 3, 4, 8) {
+		key := keys[i]
+		a.button(c, r, key, raised, text, func() {
 			switch key {
 			case "C":
 				kp.digits = ""
@@ -96,15 +111,14 @@ func (a *App) drawKeypad(c *gfx.Canvas) {
 		})
 	}
 
-	// Cancel and Set
-	y := box.Max.Y - 84
-	half := (box.Dx() - 48 - 16) / 2
-	a.button(c, image.Rect(box.Min.X+24, y, box.Min.X+24+half, y+64), "Cancel", raised, text, func() { a.keypad = nil })
+	// Cancel and Set, at the bottom.
+	end := kit.Cols(kit.Rows(left, 0, kit.Fr(1), kit.Px(64))[1], 16, kit.Fr(1), kit.Fr(1))
+	a.button(c, end[0], "Cancel", raised, text, func() { a.keypad = nil })
 	setFill := green
 	if tooHigh {
 		setFill = raised
 	}
-	a.button(c, image.Rect(box.Max.X-24-half, y, box.Max.X-24, y+64), "Set", setFill, onAcc, func() {
+	a.button(c, end[1], "Set", setFill, onAcc, func() {
 		if tooHigh {
 			return
 		}
