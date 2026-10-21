@@ -70,6 +70,20 @@ func (a *App) pageBack(c *gfx.Canvas, title, label string, back func()) frame {
 	return f
 }
 
+// takeover draws the head of a screen that takes over the deck (an action, the firmware flash):
+// its title, and on a wide screen the display. It has no Back. It returns the area of the content
+// and the place of the key at the bottom.
+func (a *App) takeover(c *gfx.Canvas, title string) (content, key image.Rectangle) {
+	f := a.pageFrame()
+	headingAt(c, f.head, title)
+	if f.wide {
+		a.statusPanelAt(c, a.Printer.State(), f.lcd)
+		return f.body(), kit.Rows(f.aside(), 0, kit.Fr(1), kit.Px(80))[1]
+	}
+	r := kit.Rows(kit.Inset(f.main, margin, 12, margin, 16), 16, kit.Fr(1), kit.Px(80))
+	return r[0], r[1]
+}
+
 // pageFrame is the frame of a page, with no drawing.
 func (a *App) pageFrame() frame {
 	scr := kit.Screen{W: W, H: contentY1}

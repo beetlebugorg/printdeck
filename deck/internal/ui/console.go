@@ -22,11 +22,18 @@ func (a *App) drawConsole(c *gfx.Canvas) {
 		return
 	}
 	pr := a.Printer
-	heading(c, "Console")
-	a.backButton(c)
-
-	keysY := contentY1 - 8 - 70
-	win := image.Rect(24, menuTop, W-24, keysY-84)
+	f := a.page(c, "Console")
+	// Tall: the log, Type a command, and the quick keys. Wide: the log at the right, the keys in the
+	// left column.
+	var win, typeKey, quick image.Rectangle
+	if f.wide {
+		win = f.body()
+		k := kit.Rows(f.aside(), 12, kit.Px(66), kit.Px(66))
+		typeKey, quick = k[0], k[1]
+	} else {
+		r := kit.Rows(kit.Inset(f.body(), 0, menuTop-headH, 0, 0), 6, kit.Fr(1), kit.Px(66), kit.Px(70))
+		win, typeKey, quick = kit.Inset(r[0], 0, 0, 0, 6), r[1], r[2]
+	}
 	window(c, win)
 	face := gfx.Face(false, 16)
 	const lineH = 22
@@ -65,7 +72,7 @@ func (a *App) drawConsole(c *gfx.Canvas) {
 	}
 	a.addHit(kit.Hit{R: win, Scroll: func(dy int) { a.consoleScroll = max(0, min(a.consoleScroll-dy, maxScroll)) }})
 
-	a.button(c, image.Rect(24, keysY-72, W-24, keysY-6), "Type a command", raised, text, func() {
+	a.button(c, typeKey, "Type a command", raised, text, func() {
 		a.consoleKB = &keyboard{title: "G-code command", max: 200, ok: "Send", cancel: "Back",
 			back: func() { a.consoleKB = nil },
 			done: func(v string) {
@@ -79,11 +86,10 @@ func (a *App) drawConsole(c *gfx.Canvas) {
 			a.consoleKB.value = a.consoleLast
 		}
 	})
-	w := (W - 48 - 2*12) / 3
-	for i, q := range consoleQuick {
-		x := 24 + i*(w+12)
+	for i, r := range kit.Cols(quick, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
+		q := consoleQuick[i]
 		cmd := q[1]
-		a.button(c, image.Rect(x, keysY, x+w, keysY+70), q[0], raised, text, func() {
+		a.button(c, r, q[0], raised, text, func() {
 			a.consoleScroll = 0
 			pr.SendConsole(cmd)
 		})
