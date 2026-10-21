@@ -1,4 +1,4 @@
-package printdeck_display
+package lcd
 
 // The small fonts of the display, from the X11 misc-fixed fonts
 // (https://gitlab.freedesktop.org/xorg/font/misc-misc): "Public domain font. Share and enjoy."

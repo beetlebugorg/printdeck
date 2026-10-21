@@ -1,4 +1,4 @@
-package printdeck_display
+package lcd
 
 import (
 	"fmt"
@@ -26,8 +26,8 @@ type Status struct {
 	Hint     string  `json:"hint,omitempty"`     // for example "Click for menu", when no print runs
 }
 
-// moves reports that the status has a part that moves, so that the module draws its frames.
-func (s *Status) moves() bool {
+// Moves reports that the status has a part that moves, so that the module draws its frames.
+func (s *Status) Moves() bool {
 	return heating(s.Tool, s.ToolT) || heating(s.Bed, s.BedT) || s.Fan > 0 || s.Printing || s.Hint != ""
 }
 
@@ -97,13 +97,19 @@ func (s *Status) draw(c *canvas, frame int) {
 		}
 		return
 	}
+	// The position, or the message when the position is not known. Then the state and the clock,
+	// and every 3 seconds the message or the hint in place of the state.
+	state := s.State
 	if s.Position != "" {
 		centered(canvasW/2, line1, fit(s.Position, 25))
-	}
-	// The state and the clock, and every 3 seconds the message or the hint.
-	state := s.State
-	if alt := s.alternate(frame); alt != "" {
-		state = alt
+		if alt := s.alternate(frame); alt != "" {
+			state = alt
+		}
+	} else {
+		centered(canvasW/2, line1, fit(s.Message, 25))
+		if s.Hint != "" && frame/12%2 == 1 {
+			state = s.Hint
+		}
 	}
 	c.smallText(small, 0, line2, fit(strings.TrimSpace(state), 19), false)
 	if s.Clock != "" {

@@ -189,6 +189,9 @@ func ReplayScaled(c *Canvas, ops []byte, img func(id int) image.Image, k int) er
 					cur.Cover(r(op), im)
 				} else if k == 1 {
 					cur.Image(r(op), im)
+				} else if len(op) > 6 && n(op, 6) == 1 {
+					// A picture of pixels: scale it with the rest, and keep its pixels sharp.
+					cur.Clipped(r(op), func(in *Canvas) { in.Image(r(op), scaleNearest(im, k)) })
 				} else {
 					// An image at its size: scale it with the rest.
 					b := im.Bounds()
@@ -209,4 +212,16 @@ func ReplayScaled(c *Canvas, ops []byte, img func(id int) image.Image, k int) er
 		}
 	}
 	return nil
+}
+
+// scaleNearest makes an image k times larger, each pixel a square of k x k pixels.
+func scaleNearest(im image.Image, k int) *image.RGBA {
+	b := im.Bounds()
+	out := image.NewRGBA(image.Rect(0, 0, b.Dx()*k, b.Dy()*k))
+	for y := 0; y < b.Dy()*k; y++ {
+		for x := 0; x < b.Dx()*k; x++ {
+			out.Set(x, y, im.At(b.Min.X+x/k, b.Min.Y+y/k))
+		}
+	}
+	return out
 }

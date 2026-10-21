@@ -22,6 +22,7 @@ import (
 	"printdeck/internal/klipper/host"
 	"printdeck/internal/klipper/reactor"
 	"printdeck/internal/klipper/webhooks"
+	"printdeck/internal/lcd"
 )
 
 // screenTTL is how long a screen stays without a new one. The deck sends its screen again
@@ -38,7 +39,7 @@ type PrintdeckDisplay struct {
 	lcd     *display.PrinterLCD
 
 	mu        sync.Mutex
-	screen    *Screen
+	screen    *lcd.Screen
 	screenEnd float64 // the time when the screen ends: screenTTL after the last one
 	clients   map[webhooks.ClientConn]map[string]any
 	animTimer *reactor.Timer
@@ -69,10 +70,10 @@ func (p *PrintdeckDisplay) handleConnect() {
 // handleScreen takes a screen of the deck: {"screen": {...}}, or {"screen": null} to give the
 // display back to Klipper.
 func (p *PrintdeckDisplay) handleScreen(req *webhooks.WebRequest) {
-	var s *Screen
+	var s *lcd.Screen
 	if raw := req.Get("screen", nil); raw != nil {
 		b, _ := json.Marshal(raw)
-		s = &Screen{}
+		s = &lcd.Screen{}
 		if err := json.Unmarshal(b, s); err != nil {
 			log.Printf("printdeck_display: bad screen: %v", err)
 			return
@@ -84,7 +85,7 @@ func (p *PrintdeckDisplay) handleScreen(req *webhooks.WebRequest) {
 	p.mu.Unlock()
 	if p.lcd != nil {
 		p.lcd.RequestRedraw()
-		if s != nil && s.moves() {
+		if s != nil && s.Moves() {
 			p.reactor.UpdateTimer(p.animTimer, now+frameTime)
 		}
 	}
@@ -101,7 +102,7 @@ func (p *PrintdeckDisplay) handleSubscribeInput(req *webhooks.WebRequest) {
 }
 
 // current returns the screen of the deck, or nil when it has none or it is too old.
-func (p *PrintdeckDisplay) current(eventtime float64) *Screen {
+func (p *PrintdeckDisplay) current(eventtime float64) *lcd.Screen {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.screen == nil || eventtime > p.screenEnd {
@@ -116,8 +117,7 @@ func (p *PrintdeckDisplay) drawScreen(eventtime float64) bool {
 	if s == nil {
 		return false
 	}
-	var c canvas
-	s.draw(&c, int(eventtime/frameTime))
+	c := s.Bits(int(eventtime / frameTime))
 	lcd := p.lcd.LCD()
 	data := make([]byte, 16)
 	for row := 0; row < 4; row++ {
@@ -134,7 +134,7 @@ func (p *PrintdeckDisplay) drawScreen(eventtime float64) bool {
 // animEvent draws the next frame of an animation.
 func (p *PrintdeckDisplay) animEvent(eventtime float64) float64 {
 	s := p.current(eventtime)
-	if s == nil || !s.moves() {
+	if s == nil || !s.Moves() {
 		return reactor.Never
 	}
 	p.lcd.RequestRedraw()

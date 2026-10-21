@@ -63,6 +63,8 @@
   .glcd-row { display: flex; flex-wrap: wrap; gap: 20px; margin: 14px 0; }
   .glcd { background: var(--glcd); border: 6px solid #a9a59c; border-radius: 8px; padding: 10px 12px; display: inline-block;
     font: 700 18px/1.25 "IBM Plex Mono", monospace; color: var(--glcdInk); white-space: pre; box-shadow: inset 0 0 0 2px #173aa6; }
+  .lcd-shot { display: block; width: 288px; max-width: 100%; height: auto; image-rendering: pixelated;
+    border: 6px solid #a9a59c; border-radius: 8px; }
   .glcd-cap { margin-top: 6px; font: 600 13px "IBM Plex Mono", monospace; text-transform: uppercase; color: var(--dim); }
   footer { margin-top: 48px; color: var(--dim); font-size: 14px; text-align: center; }
   @media (max-width: 720px) {
@@ -210,45 +212,55 @@
       <div class="shot"><img src="img/home.png" alt="The idle screen" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="108" x2="240" y2="108" class="leader"/>
-        <circle cx="240" cy="108" r="5" class="dot"/>
-        <circle cx="520" cy="108" r="15" class="badge"/>
-        <text x="520" y="108" class="badge-n">1</text>
+        <line x1="-25" y1="120" x2="74" y2="120" class="leader"/>
+        <circle cx="74" cy="120" r="5" class="dot"/>
+        <circle cx="-40" cy="120" r="15" class="badge"/>
+        <text x="-40" y="120" class="badge-n">1</text>
         
-        <line x1="505" y1="208" x2="240" y2="208" class="leader"/>
-        <circle cx="240" cy="208" r="5" class="dot"/>
-        <circle cx="520" cy="208" r="15" class="badge"/>
-        <text x="520" y="208" class="badge-n">2</text>
+        <line x1="-25" y1="154" x2="200" y2="120" class="leader"/>
+        <circle cx="200" cy="120" r="5" class="dot"/>
+        <circle cx="-40" cy="154" r="15" class="badge"/>
+        <text x="-40" y="154" class="badge-n">2</text>
         
-        <line x1="505" y1="304" x2="318" y2="304" class="leader"/>
-        <circle cx="318" cy="304" r="5" class="dot"/>
-        <circle cx="520" cy="304" r="15" class="badge"/>
-        <text x="520" y="304" class="badge-n">3</text>
+        <line x1="505" y1="120" x2="400" y2="120" class="leader"/>
+        <circle cx="400" cy="120" r="5" class="dot"/>
+        <circle cx="520" cy="120" r="15" class="badge"/>
+        <text x="520" y="120" class="badge-n">3</text>
         
-        <line x1="-25" y1="386" x2="64" y2="386" class="leader"/>
-        <circle cx="64" cy="386" r="5" class="dot"/>
-        <circle cx="-40" cy="386" r="15" class="badge"/>
-        <text x="-40" y="386" class="badge-n">4</text>
+        <line x1="505" y1="214" x2="312" y2="214" class="leader"/>
+        <circle cx="312" cy="214" r="5" class="dot"/>
+        <circle cx="520" cy="214" r="15" class="badge"/>
+        <text x="520" y="214" class="badge-n">4</text>
         
-        <line x1="505" y1="386" x2="404" y2="386" class="leader"/>
-        <circle cx="404" cy="386" r="5" class="dot"/>
-        <circle cx="520" cy="386" r="15" class="badge"/>
-        <text x="520" y="386" class="badge-n">5</text>
+        <line x1="505" y1="320" x2="318" y2="320" class="leader"/>
+        <circle cx="318" cy="320" r="5" class="dot"/>
+        <circle cx="520" cy="320" r="15" class="badge"/>
+        <text x="520" y="320" class="badge-n">5</text>
         
-        <line x1="505" y1="475" x2="240" y2="475" class="leader"/>
-        <circle cx="240" cy="475" r="5" class="dot"/>
-        <circle cx="520" cy="475" r="15" class="badge"/>
-        <text x="520" y="475" class="badge-n">6</text>
+        <line x1="-25" y1="402" x2="64" y2="402" class="leader"/>
+        <circle cx="64" cy="402" r="5" class="dot"/>
+        <circle cx="-40" cy="402" r="15" class="badge"/>
+        <text x="-40" y="402" class="badge-n">6</text>
         
-        <line x1="505" y1="615" x2="240" y2="615" class="leader"/>
-        <circle cx="240" cy="615" r="5" class="dot"/>
-        <circle cx="520" cy="615" r="15" class="badge"/>
-        <text x="520" y="615" class="badge-n">7</text>
+        <line x1="505" y1="402" x2="404" y2="402" class="leader"/>
+        <circle cx="404" cy="402" r="5" class="dot"/>
+        <circle cx="520" cy="402" r="15" class="badge"/>
+        <text x="520" y="402" class="badge-n">7</text>
+        
+        <line x1="505" y1="491" x2="240" y2="491" class="leader"/>
+        <circle cx="240" cy="491" r="5" class="dot"/>
+        <circle cx="520" cy="491" r="15" class="badge"/>
+        <text x="520" y="491" class="badge-n">8</text>
+        
+        <line x1="505" y1="631" x2="240" y2="631" class="leader"/>
+        <circle cx="240" cy="631" r="5" class="dot"/>
+        <circle cx="520" cy="631" r="15" class="badge"/>
+        <text x="520" y="631" class="badge-n">9</text>
         
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Display</b>The state of the printer, the loaded filament, and the homed axes or the message of the printer (M117). It has the colors of the display of a LulzBot.</span></li><li><span class="badge">2</span><span><b>Temperatures</b>The nozzle and the bed now. A heater that is on shows its target and an orange icon. Tap a card to set its temperature.</span></li><li><span class="badge">3</span><span><b>Print a file</b>Opens the files. See Files.</span></li><li><span class="badge">4</span><span><b>Preheat</b>Heats the nozzle and the bed for the loaded filament.</span></li><li><span class="badge">5</span><span><b>Cool down</b>Turns off both heaters.</span></li><li><span class="badge">6</span><span><b>Last print</b>The last print and its result. Reprint starts it again, after a question.</span></li><li><span class="badge">7</span><span><b>Pages</b>Filament, Move, Maintenance and Machine. Each page has its own section.</span></li>
+      <li><span class="badge">1</span><span><b>Nozzle</b>The nozzle now, and its target under it while the heater is on. The icon is filled while the heater is on, and waves rise while it heats. Tap it to set the temperature.</span></li><li><span class="badge">2</span><span><b>Bed</b>The same for the bed.</span></li><li><span class="badge">3</span><span><b>Fan</b>The part cooling fan. Its blades turn at its speed.</span></li><li><span class="badge">4</span><span><b>Status</b>The position of the head, the state of the printer with the loaded filament, and the clock. This is the status screen of the display of the printer: the same picture on both screens.</span></li><li><span class="badge">5</span><span><b>Print a file</b>Opens the files. See Files.</span></li><li><span class="badge">6</span><span><b>Preheat</b>Heats the nozzle and the bed for the loaded filament.</span></li><li><span class="badge">7</span><span><b>Cool down</b>Turns off both heaters.</span></li><li><span class="badge">8</span><span><b>Last print</b>The last print and its result. Reprint starts it again, after a question.</span></li><li><span class="badge">9</span><span><b>Pages</b>Filament, Move, Maintenance and Machine. Each page has its own section.</span></li>
     </ol>
     
   </figure>
@@ -1021,19 +1033,10 @@
 
 <section id="lcd">
   <h2 class="title"><span class="num">11</span>The display of the printer</h2>
-  <p>When the printer has a display, it shows what the deck shows: the step of a filament change, the paper test, the page that is open, or the state of the print. The rows below show the temperatures, the print time and the progress. During a filament change or while the printer heats, the bottom row shows an animation.</p>
+  <p>When the printer has a display, the deck draws it. The display shows the status screen, the same picture as the idle screen of the deck.</p><p>Turn or click the knob to open the menu. The menu has the same pages and keys as the touch screen: the knob moves the cursor, and a click taps the key. The touch screen shows the cursor with an orange ring. The top item goes back: Status on the home menu, Back on a page. A long click also goes back. With no turn for 20 seconds, the display shows the status screen again.</p><p>While an action runs, the display shows an animation.</p>
   
   
-  <div class="glcd-row"><div><div class="glcd">PRINTING     42%
-END 15:47   1:23
-~210°   01:15
-~60°  ▓▓▓▓░░</div><div class="glcd-cap">During a print</div></div><div><div class="glcd">FILAMENT SWAP   
-INSERT, LOAD    
-~240°        
-&gt;   &gt;   &gt;   &gt;   </div><div class="glcd-cap">Filament goes in</div></div><div><div class="glcd">READY        PLA
-XYZ HOMED       
-~24°         
-~23°</div><div class="glcd-cap">Idle</div></div></div>
+  <div class="glcd-row"><div><img class="lcd-shot" src="img/lcd-status.png" alt="The status screen"><div class="glcd-cap">The status screen</div></div><div><img class="lcd-shot" src="img/lcd-printing.png" alt="During a print"><div class="glcd-cap">During a print</div></div><div><img class="lcd-shot" src="img/lcd-home.png" alt="The home menu: turn the knob to choose"><div class="glcd-cap">The home menu: turn the knob to choose</div></div><div><img class="lcd-shot" src="img/lcd-list.png" alt="A page: Maintenance"><div class="glcd-cap">A page: Maintenance</div></div><div><img class="lcd-shot" src="img/lcd-action.png" alt="An action runs"><div class="glcd-cap">An action runs</div></div></div>
   
   
 </section>

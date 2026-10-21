@@ -14,6 +14,7 @@ import (
 
 	"printdeck/internal/board"
 	"printdeck/internal/gfx"
+	"printdeck/internal/lcd"
 	"printdeck/internal/printer"
 	"printdeck/internal/spotify"
 	"printdeck/internal/ui"
@@ -178,13 +179,15 @@ func manualSections() []section {
 			Figures: []figure{
 				{Name: "home", Caption: "The idle screen", Setup: idle,
 					Callouts: []callout{
-						{240, 108, "Display", "The state of the printer, the loaded filament, and the homed axes or the message of the printer (M117). It has the colors of the display of a LulzBot."},
-						{240, 208, "Temperatures", "The nozzle and the bed now. A heater that is on shows its target and an orange icon. Tap a card to set its temperature."},
-						{240, 304, "Print a file", "Opens the files. See Files."},
-						{140, 386, "Preheat", "Heats the nozzle and the bed for the loaded filament."},
-						{340, 386, "Cool down", "Turns off both heaters."},
-						{240, 475, "Last print", "The last print and its result. Reprint starts it again, after a question."},
-						{240, 615, "Pages", "Filament, Move, Maintenance and Machine. Each page has its own section."},
+						{74, 120, "Nozzle", "The nozzle now, and its target under it while the heater is on. The icon is filled while the heater is on, and waves rise while it heats. Tap it to set the temperature."},
+						{200, 120, "Bed", "The same for the bed."},
+						{340, 120, "Fan", "The part cooling fan. Its blades turn at its speed."},
+						{240, 214, "Status", "The position of the head, the state of the printer with the loaded filament, and the clock. This is the status screen of the display of the printer: the same picture on both screens."},
+						{240, 320, "Print a file", "Opens the files. See Files."},
+						{140, 402, "Preheat", "Heats the nozzle and the bed for the loaded filament."},
+						{340, 402, "Cool down", "Turns off both heaters."},
+						{240, 491, "Last print", "The last print and its result. Reprint starts it again, after a question."},
+						{240, 631, "Pages", "Filament, Move, Maintenance and Machine. Each page has its own section."},
 					}},
 				{Name: "keypad", Caption: "The keypad of a temperature",
 					Setup: func(s *manualState) { s.p.State_ = stIdle; s.a.OpenPrintScreen("keypad") },
@@ -412,11 +415,17 @@ func manualSections() []section {
 				"The page http://printdeck.local/system shows the version, the services, the logs and the API key for slicers. It also installs an update: choose the update file, then Install. The deck writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one.",
 			}},
 		{ID: "lcd", Title: "The display of the printer",
-			Intro: []string{"When the printer has a display, it shows what the deck shows: the step of a filament change, the paper test, the page that is open, or the state of the print. The rows below show the temperatures, the print time and the progress. During a filament change or while the printer heats, the bottom row shows an animation."},
+			Intro: []string{
+				"When the printer has a display, the deck draws it. The display shows the status screen, the same picture as the idle screen of the deck.",
+				"Turn or click the knob to open the menu. The menu has the same pages and keys as the touch screen: the knob moves the cursor, and a click taps the key. The touch screen shows the cursor with an orange ring. The top item goes back: Status on the home menu, Back on a page. A long click also goes back. With no turn for 20 seconds, the display shows the status screen again.",
+				"While an action runs, the display shows an animation.",
+			},
 			Table: [][2]string{
-				{"PRINTING     42%\nEND 15:47   1:23\n~210°   01:15\n~60°  ▓▓▓▓░░", "During a print"},
-				{"FILAMENT SWAP   \nINSERT, LOAD    \n~240°        \n>   >   >   >   ", "Filament goes in"},
-				{"READY        PLA\nXYZ HOMED       \n~24°         \n~23°", "Idle"},
+				{"lcd-status", "The status screen"},
+				{"lcd-printing", "During a print"},
+				{"lcd-home", "The home menu: turn the knob to choose"},
+				{"lcd-list", "A page: Maintenance"},
+				{"lcd-action", "An action runs"},
 			}},
 		{ID: "slicers", Title: "Slicers",
 			Intro: []string{
@@ -505,6 +514,21 @@ func manual(args []string) {
 			}
 			writePNG(filepath.Join(dir, "img", f.Name+".png"), out.RGBA)
 		}
+	}
+	// The pictures of the printer display.
+	for name, scr := range map[string]*lcd.Screen{
+		"lcd-status": {Status: &lcd.Status{State: "READY PLA", Clock: "14:24", Message: "XYZ HOMED", Tool: 24, Bed: 23,
+			Position: "X110 Y110 Z5.00", Hint: "Click for menu"}},
+		"lcd-printing": {Status: &lcd.Status{State: "PRINTING", Clock: "14:24", Tool: 209, ToolT: 210, Bed: 60, BedT: 60,
+			Fan: 1, Printing: true, Progress: 0.42, Elapsed: "0:58", Left: "1:23"}},
+		"lcd-home": {Menu: &lcd.Menu{Title: "Printdeck", Carousel: true, Selected: 1, Items: []lcd.MenuItem{
+			{Label: "Status", Icon: "status"}, {Label: "Print a file", Icon: "print"}, {Label: "Preheat PLA", Icon: "preheat"}}}},
+		"lcd-list": {Menu: &lcd.Menu{Title: "Maintenance", Selected: 2, Items: []lcd.MenuItem{{Label: "Back", Icon: "back"},
+			{Label: "Bed tilt", Icon: "bed"}, {Label: "Probe Z offset", Icon: "probe"}, {Label: "PID tune", Icon: "pid"},
+			{Label: "Nozzle change", Icon: "maint"}, {Label: "Firmware", Icon: "chip"}, {Label: "Save config", Icon: "save"}}}},
+		"lcd-action": {Anim: "work", Title: "Bed tilt", Caption: "Running 0:42"},
+	} {
+		writePNG(filepath.Join(dir, "img", name+".png"), scr.Image(3, 3))
 	}
 	tpl := template.Must(template.New("manual").Funcs(template.FuncMap{
 		"pct":  func(v, of int) string { return fmt.Sprintf("%.2f%%", 100*float64(v)/float64(of)) },

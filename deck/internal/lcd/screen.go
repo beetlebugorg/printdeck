@@ -1,4 +1,11 @@
-package printdeck_display
+// Package lcd draws the screens of the 128 x 64 display of a printer: rows of text, menus with
+// icons, the status screen and animations. The module printdeck_display of the Klipper host shows
+// them on the display, and the deck shows the status screen on the touch screen too.
+//
+//	Copyright (C) 2026  the Printdeck authors
+//
+// This file may be distributed under the terms of the GNU GPLv3 license.
+package lcd
 
 import "strings"
 
@@ -17,10 +24,12 @@ type Screen struct {
 	Font string `json:"font,omitempty"`
 	// Status is the status screen. With a status, the rows are not used.
 	Status *Status `json:"status,omitempty"`
+	// Menu is a menu with icons. With a menu, the rows are not used.
+	Menu *Menu `json:"menu,omitempty"`
 }
 
-// moves reports that the screen has frames: an animation, or a status with a part that moves.
-func (s *Screen) moves() bool { return s.Anim != "" || s.Status != nil && s.Status.moves() }
+// Moves reports that the screen has frames: an animation, or a status with a part that moves.
+func (s *Screen) Moves() bool { return s.Anim != "" || s.Status != nil && s.Status.Moves() }
 
 // Row is a row of text: text at the left and at the right, or a progress bar (Bar from 0 to 1,
 // with HasBar). An Item is a key of a menu: it has room for the cursor, which shows at the
@@ -38,10 +47,22 @@ type Row struct {
 // cols is the number of characters in a row.
 const cols = 16
 
+// Bits returns a frame of the screen (4 frames a second): 64 rows of 16 bytes, the left pixel in
+// the top bit, as the graphics of an ST7920.
+func (s *Screen) Bits(frame int) [64][16]byte {
+	var c canvas
+	s.draw(&c, frame)
+	return c
+}
+
 // draw draws the screen at the time frame (4 frames a second).
 func (s *Screen) draw(c *canvas, frame int) {
 	if s.Status != nil {
 		s.Status.draw(c, frame)
+		return
+	}
+	if s.Menu != nil {
+		s.Menu.draw(c, frame)
 		return
 	}
 	if s.Anim != "" {

@@ -146,6 +146,9 @@ function paint() {
         ctx.beginPath();
         ctx.rect(op[1], op[2], op[3] - op[1], op[4] - op[2]);
         ctx.clip();
+        // A picture of pixels (the printer display) keeps its pixels sharp when the screen
+        // scales it.
+        ctx.imageSmoothingEnabled = op[6] !== 1;
         ctx.drawImage(img, op[1], op[2]);
         ctx.restore();
         break;

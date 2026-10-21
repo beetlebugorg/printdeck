@@ -14,12 +14,17 @@ func knob(a *App, key string) {
 	a.Draw(gfx.New(W, BaseH))
 }
 
+// lcdLines is the menu of the display: the title, then the keys, with "> " at the selected key.
 func lcdLines(a *App) []string {
-	var out []string
-	for _, r := range a.LCD().Rows {
-		l := r.Left
-		if r.Selected {
-			l = "> " + l
+	m := a.LCD().Menu
+	if m == nil {
+		return nil
+	}
+	out := []string{m.Title}
+	for i, it := range m.Items {
+		l := "  " + it.Label
+		if i == m.Selected {
+			l = "> " + it.Label
 		}
 		out = append(out, l)
 	}
@@ -37,7 +42,7 @@ func TestKnobMenu(t *testing.T) {
 	// The first click opens the menu, and taps nothing.
 	knob(a, "click")
 	lines := lcdLines(a)
-	if lines[0] != "PRINTDECK" || lines[1] != "< Status" || lines[2] != "> Print a file" || a.topPage() != 0 {
+	if lines[0] != "Printdeck" || !a.LCD().Menu.Carousel || lines[1] != "  Status" || lines[2] != "> Print a file" || a.topPage() != 0 {
 		t.Fatalf("menu: %q, page %v", lines, a.topPage())
 	}
 	// Turn the knob down to Maintenance, and click.
@@ -52,7 +57,7 @@ func TestKnobMenu(t *testing.T) {
 		t.Fatalf("page %v after the click", a.topPage())
 	}
 	lines = lcdLines(a)
-	if lines[0] != "MAINTENANCE" || lines[1] != "< Back" || !strings.HasPrefix(lines[2], "> ") {
+	if lines[0] != "Maintenance" || lines[1] != "  Back" || !strings.HasPrefix(lines[2], "> ") || a.LCD().Menu.Items[0].Icon != "back" {
 		t.Errorf("Maintenance: %q", lines)
 	}
 	// A turn up goes to Back, and a click goes back.
