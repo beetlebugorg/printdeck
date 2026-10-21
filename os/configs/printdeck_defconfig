@@ -21,6 +21,12 @@ BR2_INIT_SYSTEMD=y
 # BR2_PACKAGE_SYSTEMD_HWDB is not set
 # BR2_PACKAGE_SYSTEMD_VCONSOLE is not set
 # BR2_PACKAGE_SYSTEMD_TIMEDATED is not set
+# Not used either: hostnamed (the hostname is in /etc/hostname) and pstore (no crash store).
+# BR2_PACKAGE_SYSTEMD_HOSTNAMED is not set
+# BR2_PACKAGE_SYSTEMD_PSTORE is not set
+# No shell: the system programs are in the Printdeck program. The debug image has BusyBox.
+# BR2_PACKAGE_BUSYBOX is not set
+BR2_SYSTEM_BIN_SH_NONE=y
 BR2_ROOTFS_MERGED_USR=y
 # BR2_TARGET_ENABLE_ROOT_LOGIN is not set
 # BR2_TARGET_GENERIC_GETTY is not set
@@ -31,7 +37,6 @@ BR2_ROOTFS_USERS_TABLES="$(BR2_EXTERNAL_PRINTDECK_PATH)/board/users.txt"
 BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_PRINTDECK_PATH)/board/rootfs"
 BR2_ROOTFS_POST_BUILD_SCRIPT="$(BR2_EXTERNAL_PRINTDECK_PATH)/board/post-build.sh"
 BR2_ROOTFS_POST_IMAGE_SCRIPT="$(BR2_EXTERNAL_PRINTDECK_PATH)/board/post-image.sh"
-BR2_PACKAGE_BUSYBOX_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_PRINTDECK_PATH)/board/busybox.fragment"
 
 # Kernel: the Raspberry Pi kernel of the Buildroot raspberrypi5_defconfig
 BR2_LINUX_KERNEL=y
@@ -60,7 +65,6 @@ BR2_PACKAGE_UTIL_LINUX=y
 BR2_PACKAGE_UTIL_LINUX_BINARIES=y
 BR2_PACKAGE_UTIL_LINUX_PARTX=y
 BR2_PACKAGE_E2FSPROGS=y
-BR2_PACKAGE_E2FSPROGS_RESIZE2FS=y
 BR2_PACKAGE_CA_CERTIFICATES=y
 
 # Network
