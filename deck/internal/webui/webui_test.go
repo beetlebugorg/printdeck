@@ -23,15 +23,17 @@ type fakePrinter struct {
 	calls []string
 }
 
-func (f *fakePrinter) State() printer.State  { return f.st }
-func (f *fakePrinter) Files() []printer.File { return []printer.File{{Path: "a.gcode", Name: "a.gcode", Date: time.Unix(100, 0)}} }
-func (f *fakePrinter) LoadFiles()            {}
-func (f *fakePrinter) Preview() image.Image  { return nil }
-func (f *fakePrinter) Pause()                { f.calls = append(f.calls, "pause") }
-func (f *fakePrinter) Resume()               { f.calls = append(f.calls, "resume") }
-func (f *fakePrinter) Cancel()               { f.calls = append(f.calls, "cancel") }
-func (f *fakePrinter) Heat(t, b int)         { f.calls = append(f.calls, "heat "+itoa(t)+" "+itoa(b)) }
-func (f *fakePrinter) PrintFile(p string)    { f.calls = append(f.calls, "print "+p) }
+func (f *fakePrinter) State() printer.State { return f.st }
+func (f *fakePrinter) Files() []printer.File {
+	return []printer.File{{Path: "a.gcode", Name: "a.gcode", Date: time.Unix(100, 0)}}
+}
+func (f *fakePrinter) LoadFiles()           {}
+func (f *fakePrinter) Preview() image.Image { return nil }
+func (f *fakePrinter) Pause()               { f.calls = append(f.calls, "pause") }
+func (f *fakePrinter) Resume()              { f.calls = append(f.calls, "resume") }
+func (f *fakePrinter) Cancel()              { f.calls = append(f.calls, "cancel") }
+func (f *fakePrinter) Heat(t, b int)        { f.calls = append(f.calls, "heat "+itoa(t)+" "+itoa(b)) }
+func (f *fakePrinter) PrintFile(p string)   { f.calls = append(f.calls, "print "+p) }
 
 func itoa(n int) string { b, _ := json.Marshal(n); return string(b) }
 
