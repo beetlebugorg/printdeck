@@ -75,7 +75,9 @@ func (a *App) drawLCDPanel(c *gfx.Canvas, st printer.State, s *lcdscreen.Status,
 }
 
 // statusPanel draws the status screen of the printer display at its place on a state screen.
-func (a *App) statusPanel(c *gfx.Canvas, st printer.State) { a.statusPanelAt(c, st, a.stateFrame().lcd) }
+func (a *App) statusPanel(c *gfx.Canvas, st printer.State) {
+	a.statusPanelAt(c, st, a.stateFrame().lcd)
+}
 
 // statusPanelAt draws the status screen of the printer display in r: the same picture as the
 // display of the printer.
