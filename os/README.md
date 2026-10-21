@@ -3,14 +3,17 @@
 A small Linux system for the Printdeck Raspberry Pi 5. It holds only what Printdeck needs:
 
 - The Printdeck program (`deck/`), one static program with no other files: the Klipper host (a Go
-  port of klippy, at the version of the printer's firmware), the touch screen, the remote screen
-  in the browser, an OctoPrint-compatible API for slicers, and the Spotify Connect speaker
-  (go-librespot) with the equalizer
-- Wi-Fi, mDNS (`printdeck.local`), NTP, and SSH (Dropbear)
+  port of klippy, at the version of the printer's firmware), the touch screen, a web page for
+  phones, the remote screen in the browser, an OctoPrint-compatible API for slicers, the Spotify
+  Connect speaker (go-librespot) with the equalizer, and the system programs of the image
+- Wi-Fi, mDNS (`printdeck.local`) and NTP
 
-It has no package manager, no Docker, and no compiler. Buildroot makes the system from source.
-The Printdeck program is one static Go binary, on the standard parts of a small Linux system
-(systemd, wpa_supplicant, Dropbear). See `ARCHITECTURE.md` in the top folder.
+It has no package manager, no Docker, no compiler, no shell and no SSH. Buildroot makes the system
+from source. The Printdeck program is one static Go binary, on the standard parts of a small
+Linux system (systemd, wpa_supplicant). See `ARCHITECTURE.md` in the top folder.
+
+The debug image is the same system with SSH, sudo, a shell and tools such as strace and tcpdump.
+Use it to develop and to find problems.
 
 ## Build
 
@@ -20,12 +23,17 @@ You need Docker and about 20 GB of free disk. Then run:
 os/build.sh
 ```
 
-The first build takes about one hour. The next builds take a few minutes. The output is:
+The first build takes about one hour. The next builds take a few minutes. For the debug image, run
+`os/build.sh debug`. The output is:
 
 | File | What it is |
 |---|---|
 | `os/out/printdeck.img.xz` | The full disk image, compressed with xz |
 | `os/out/printdeck-update.tar.xz` | The update bundle for a Printdeck that runs this system |
+| `os/out/printdeck-debug.img.xz`, `os/out/printdeck-debug-update.tar.xz` | The same for the debug image |
+
+The release image and the debug image have their own build folders. An update bundle of either
+image installs on a Printdeck that runs either image.
 
 Git ignores `os/out/`. The Buildroot tree, the downloads and the build files are in
 `~/.cache/printdeck-os`. Set `PRINTDECK_OS_CACHE` to use a different folder. Only one build can
@@ -36,8 +44,10 @@ Other Buildroot targets go through the same script, for example:
 ```sh
 os/build.sh menuconfig          # change the system configuration
 os/build.sh savedefconfig       # write it back to os/configs/printdeck_defconfig
-os/build.sh printdeck-deck-rebuild all   # build the Printdeck program again after a change in deck/
 os/build.sh clean               # delete the build files, for a build from the start
+os/build.sh debug clean         # the same for the debug image
+
+Each build builds the Printdeck program again from `deck/`.
 ```
 
 Buildroot does not delete the files of a package that you turn off. After such a change, build
@@ -66,8 +76,8 @@ the touch screen opens the setup screen:
 
 1. The Wi-Fi networks show. Tap one and type its password, or tap Hidden for a network that is
    not in the list. The list scans again by itself.
-2. The summary shows the addresses of the Printdeck, the user name, the password and the SSH
-   command.
+2. The summary shows the address of the Printdeck and the password of its web pages. The debug
+   image also shows the user name and the SSH command.
 
 To see the summary again, open Print > Control > Help. The Help screen also has a button for the
 Wi-Fi.
@@ -78,32 +88,35 @@ partition. Fill in `printdeck.txt`:
 | Setting | What it does |
 |---|---|
 | `wifi_ssid`, `wifi_password`, `wifi_country` | The Wi-Fi network. The Pi clears the password in the file after it reads it. |
-| `ssh_key` | A public SSH key for the user `printdeck` |
+| `ssh_key` | A public SSH key for the user `printdeck` (debug image only) |
 | `printer.cfg` (a file, next to `printdeck.txt`) | The Klipper configuration (see "Klipper") |
 | `spotify_client_id` | The client ID of your Spotify app (see "Spotify") |
 | `hostname`, `timezone` | The name on the network (`printdeck.local`) and the time zone |
+| `display_rotate`, `touch_invert_x`, `max_volume`, ... | The settings of the touch screen (see "Settings") |
 
 ## The login
 
-At the first start, `printdeck-credentials` makes the user `printdeck` with a random password of
-four words, for example `stamp-ocean-cider-brick`. The words come from the EFF short word list,
-so the password is easy to type and has about 41 bits of randomness. The same user and password
-log in to:
+At the first start, `printdeck-credentials` makes a random password of four words, for example
+`stamp-ocean-cider-brick`. The words come from the EFF short word list, so the password is easy
+to type and has about 41 bits of randomness. The password logs in to the web pages. In the debug
+image, it is also the password of the user `printdeck` for SSH and `sudo`.
 
-- SSH, and `sudo`
-- the remote screen
+The touch screen shows the password on the Help screen (Print > Control > Help). The password is
+in `/var/lib/printdeck/password`.
 
-The touch screen shows the password on the Help screen. The password is in
-`/var/lib/printdeck/password`, and only root can read it. To change the SSH password, run
-`passwd` over SSH.
+## The web pages
 
-## The remote screen
+Open `http://printdeck.local` in a browser and log in with the password. The web server uses
+plain HTTP, so use it only on your own network. It has three pages:
 
-Open `http://printdeck.local` in a browser and log in with the password of the `printdeck` user.
-The page shows the touch screen live, and clicks and taps on it work as touches. The page has a
-link to the source code of the running version, because Printdeck is under the AGPL-3.0.
-
-The remote screen uses plain HTTP, so use it only on your own network.
+- `/`: the page for phones. It shows the print (the state, the progress, the time left, the
+  layer, the temperatures and the model) and the music, live. It pauses, resumes and cancels a
+  print, preheats and cools down, uploads a G-code file, starts a file, and controls the music.
+- `/screen`: the remote screen. It shows the touch screen live, and clicks and taps on it work
+  as touches. It has a link to the source code of the running version, because Printdeck is
+  under the AGPL-3.0.
+- `/system`: the version, the slot, the memory, the services, the system log and the Klipper
+  log, the API key for slicers, and the update (see "Update").
 
 ## Slicers
 
@@ -115,8 +128,7 @@ Klipper's virtual SD card (`/var/lib/klipper/gcodes`). Klipper then prints the f
   printers. Select it and tap "Request". The touch screen asks "Allow Cura to use the
   Printdeck?". Tap Allow.
 - **OrcaSlicer, PrusaSlicer**: add a physical printer of the type OctoPrint, with the address
-  `http://printdeck.local`. For the API key, run `sudo cat /var/lib/printdeck/api.env` over
-  SSH.
+  `http://printdeck.local`. The API key is on the system page (`/system`).
 
 The touch screen shows the uploads in the file list of the Print tab.
 
@@ -155,20 +167,24 @@ of the touch screen also needs the client ID of your own Spotify app:
 ## Settings
 
 The settings of the Printdeck program are in `/etc/printdeck/deck.env`, for example the screen
-rotation, the touch axes and the volume range. Edit them over SSH, then run
-`sudo systemctl restart printdeck-deck`.
+rotation, the touch axes and the volume range. To change one, put it in `printdeck.txt` in lower
+case, for example `display_rotate=90`, and start the Pi again. `printdeck-settings` writes these
+settings to `/var/lib/printdeck/settings.env`, which the deck reads after `deck.env`. The
+release image needs no SSH for any setting.
 
 ## Update
 
 The disk has two system slots, A and B. The running system stays as it is while an update writes
-the other slot:
+the other slot. Open `http://printdeck.local/system`, choose `printdeck-update.tar.xz` (or
+`printdeck-debug-update.tar.xz`), and click Install. The page refuses an update during a print.
+With `curl`:
 
 ```sh
-ssh printdeck@printdeck.local 'cat > /tmp/printdeck-update.tar.xz' < os/out/printdeck-update.tar.xz
-ssh -t printdeck@printdeck.local sudo printdeck-update /tmp/printdeck-update.tar.xz
+curl -c cookies -d password=PASSWORD http://printdeck.local/login
+curl -b cookies -F bundle=@os/out/printdeck-update.tar.xz http://printdeck.local/system/update
 ```
 
-The image has no SFTP server, so the first command copies the file through `ssh`.
+The debug image can also install a bundle over SSH: `sudo printdeck-update FILE`.
 
 The Pi restarts into the new slot one time. If Klipper and the touch screen start,
 the new slot becomes the default. If they do not start, or the system stops, the Pi starts the
@@ -187,11 +203,18 @@ The root file system is read-only. At the start, `printdeck-init` mounts the dat
 puts a writable layer from it over `/etc`, `/var`, `/home` and `/root`. It starts the start screen
 (`printdeck splash`), and then systemd. To reset the system, delete the files in the data
 partition. If `printdeck-init` cannot continue, it writes the kernel log to `printdeck-boot.log`
-on the `PRINTDECK` partition and starts a shell on the console.
+on the `PRINTDECK` partition. After an update, it then restarts into the old slot. Otherwise the
+debug image starts a shell on the console, and the release image waits.
 
 The Pi firmware selects the slot with `autoboot.txt` and its `tryboot` mode. `printdeck-update`
 writes the other slot and restarts with `tryboot`. `printdeck-commit` changes `autoboot.txt`
-after a good start.
+after a good start. `panic=10` on the kernel command line restarts the Pi after a kernel panic,
+so a new slot that stops at the start goes back to the old slot too.
+
+The system programs (`printdeck-init`, `-update`, `-commit`, `-credentials`, `-settings` and
+`-wifi`) are links to the Printdeck program, which runs the program of the name. The deck runs as
+the user `deck`. For the actions that need root (the Wi-Fi, a restart of Klipper, an update), it
+asks the system helper (`printdeck helper`) on a socket that only the group `deck` can open.
 
 The journal is on the data partition (`/var/log/journal`), so the logs of the last starts stay. To
 read them on another computer, copy the folder and run `journalctl --directory`.
@@ -208,9 +231,11 @@ The image keeps only what Printdeck uses:
 - No go-librespot or CamillaDSP programs, no ALSA library and no ALSA loopback: the Printdeck
   program plays Spotify on the amp itself, and filters the sound with its own equalizer.
 - The Printdeck program runs as the unprivileged user `deck`. It has the groups of its devices
-  (`video`, `input`, `audio`, `tty`, `dialout`) and of Klipper (`printer`), and two capabilities:
-  port 80 and the graphics mode of the console. `sudo` lets it run `printdeck-wifi` and
-  `printdeck-user`, and restart Klipper.
+  (`video`, `input`, `audio`, `tty`, `dialout`, `systemd-journal`) and of Klipper (`printer`), and
+  two capabilities: port 80 and the graphics mode of the console. The system helper does the
+  actions that need root.
+- No shell, no BusyBox, no SSH and no sudo. `board/release-prune.sh` keeps a list of programs and
+  the libraries that they link or load, and removes the other programs, libraries and units.
 - No OctoPrint: the Printdeck program has the OctoPrint-compatible API that slicers use.
 - No hardware database, console keymaps or `timedated`, and no command-line tools that come with
   libraries (for example `sqlite3`, `flac`, `systemd-nspawn`).

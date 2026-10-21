@@ -190,6 +190,7 @@ func startSplash() {
 	}
 	cmd := exec.Command(self, "splash")
 	cmd.Env = append(os.Environ(), readEnvFile("/etc/printdeck/deck.env")...)
+	cmd.Env = append(cmd.Env, readEnvFile(filepath.Join(stateDir, "settings.env"))...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	if err := cmd.Start(); err != nil {
 		say("start screen: " + err.Error())

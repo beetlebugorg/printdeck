@@ -115,6 +115,24 @@ func applySettings(log io.Writer) error {
 		}
 	}
 
+	// The settings of the deck (deck.env) in lower case, for example display_rotate=270. The deck
+	// service reads settings.env after deck.env, so these win. Only the names in deckSettings count.
+	var env strings.Builder
+	for _, name := range deckSettings {
+		if v := get(strings.ToLower(name)); v != "" {
+			fmt.Fprintf(&env, "%s=%s\n", name, v)
+		}
+	}
+	envFile := filepath.Join(stateDir, "settings.env")
+	if env.Len() > 0 {
+		os.MkdirAll(stateDir, 0o700)
+		if err := writeFile(envFile, []byte(env.String()), 0o644); err != nil {
+			fmt.Fprintf(log, "deck settings: not applied: %v\n", err)
+		}
+	} else {
+		os.Remove(envFile)
+	}
+
 	// With the Wi-Fi set here, the touch screen does not open its setup screen.
 	if ssid != "" {
 		os.MkdirAll(stateDir, 0o700)
@@ -133,6 +151,13 @@ func applySettings(log io.Writer) error {
 	}
 	return nil
 }
+
+// deckSettings are the settings of deck.env that printdeck.txt can change. The paths and the
+// address of the web server are not in the list.
+var deckSettings = []string{"DISPLAY_ROTATE", "TOUCH_INVERT_X", "TOUCH_INVERT_Y", "TOUCH_SWAP_XY",
+	"TOUCH_OFFSET_X", "TOUCH_OFFSET_Y", "TOUCH_LOG", "SPOTIFY_DEVICE_NAME", "VOLUME_FLOOR_DB",
+	"VOLUME_CEIL_DB", "MAX_VOLUME", "PREHEAT_TOOL", "PREHEAT_BED", "FILAMENT_UNLOAD_MM",
+	"FILAMENT_LOAD_MM", "JOG_INVERT_Y", "NIGHT_FROM", "NIGHT_TO"}
 
 // placeholder is the printer.cfg of a new system: Klipper starts, and the deck shows the printer
 // setup (no [mcu] section).

@@ -77,6 +77,24 @@ func TestSettings(t *testing.T) {
 	}
 }
 
+func TestDeckSettings(t *testing.T) {
+	fakeSettings(t)
+	os.WriteFile(filepath.Join(configDir, "printdeck.txt"), []byte("display_rotate=90\r\nmax_volume=80\nremote_addr=:8080\n"), 0o644)
+	if err := applySettings(io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(filepath.Join(stateDir, "settings.env"))
+	if string(b) != "DISPLAY_ROTATE=90\nMAX_VOLUME=80\n" {
+		t.Errorf("settings.env %q", b)
+	}
+	// With no settings in the file, settings.env goes.
+	os.WriteFile(filepath.Join(configDir, "printdeck.txt"), []byte("hostname=x\n"), 0o644)
+	applySettings(io.Discard)
+	if _, err := os.Stat(filepath.Join(stateDir, "settings.env")); err == nil {
+		t.Error("settings.env stayed")
+	}
+}
+
 func TestPlaceholder(t *testing.T) {
 	fakeSettings(t)
 	if err := placeholderPrinterCfg(); err != nil {
