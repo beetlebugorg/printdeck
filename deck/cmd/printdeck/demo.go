@@ -4,6 +4,7 @@ import (
 	"context"
 	"image/png"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -12,12 +13,14 @@ import (
 
 	"printdeck/internal/board"
 	"printdeck/internal/eq"
+	"printdeck/internal/gcodestore"
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
 	"printdeck/internal/remote"
 	"printdeck/internal/spotify"
 	"printdeck/internal/touch"
 	"printdeck/internal/ui"
+	"printdeck/internal/webui"
 	"printdeck/internal/wifi"
 )
 
@@ -134,8 +137,8 @@ func demo(args []string) {
 	}
 }
 
-// remoteDemo serves the remote screen of a demo deck on ADDR (default :8080), to try the remote
-// screen and the UI in a browser with no Pi. The password is "demo".
+// remoteDemo serves the remote screen (/screen) and the page for phones (/) of a demo deck on ADDR
+// (default :8080), to try them in a browser with no Pi. The password is "demo".
 func remoteDemo(args []string) {
 	addr := ":8080"
 	if len(args) > 0 {
@@ -143,11 +146,20 @@ func remoteDemo(args []string) {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	a, _, _ := demoApp()
+	a, m, p := demoApp()
 	events := make(chan touch.Event, 64)
 	rs := remote.New()
 	rs.Password = func() string { return "demo" }
 	rs.Touch = func(e touch.Event) { events <- e }
-	go func() { log.Fatal(rs.ListenAndServe(addr)) }()
+	mux := http.NewServeMux()
+	mux.Handle("/", rs.Handler())
+	// The page for phones. In the demo it needs no login, to look at it in a browser at once.
+	page := &webui.Server{Printer: p, Music: m, Volume: a.Vol, PreheatTool: 200, PreheatBed: 60,
+		Store: &gcodestore.Store{Dir: os.TempDir()}, Auth: func(h http.HandlerFunc) http.HandlerFunc { return h }}
+	page.Register(mux)
+	go func() {
+		log.Printf("demo on %s", addr)
+		log.Fatal((&http.Server{Addr: addr, Handler: remote.SecurityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}).ListenAndServe())
+	}()
 	a.Run(ctx, events, rs.Publish)
 }

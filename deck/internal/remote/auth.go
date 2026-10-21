@@ -29,7 +29,7 @@ func (s *Server) auth(h http.HandlerFunc) http.HandlerFunc {
 			h(w, r)
 			return
 		}
-		if r.Method == http.MethodGet && r.URL.Path == "/" {
+		if r.Method == http.MethodGet && (r.URL.Path == "/" || r.URL.Path == "/screen" || r.URL.Path == "/system") {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
