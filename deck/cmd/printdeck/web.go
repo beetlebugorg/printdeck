@@ -50,7 +50,7 @@ func startWeb(cfg config.Config, host *setupHost, events chan<- touch.Event, pr 
 		}
 		mux.Handle("/", rs.Handler())
 		klippyLog := filepath.Join(filepath.Dir(filepath.Dir(cfg.KlipperConfig)), "logs", "klippy.log")
-		registerSystemPage(mux, rs, pr, klippyLog)
+		registerSystemPage(mux, rs, pr, klippyLog, cfg.OctoPrintKey)
 		page := &webui.Server{Printer: pr, Volume: app.Vol, Store: &gcodestore.Store{Dir: cfg.GcodeDir},
 			PreheatTool: cfg.PreheatTool, PreheatBed: cfg.PreheatBed, Auth: rs.Auth}
 		if app.Music != nil {
