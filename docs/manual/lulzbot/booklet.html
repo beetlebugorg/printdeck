@@ -1,0 +1,2070 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Printdeck instruction booklet</title>
+<style>
+   
+  :root { --page-w: 5.5in; --page-h: 8.5in; --blue: #1d47b5; --ink: #1a1a1a; --dim: #55524c;
+    --orange: #e85a1c; --lcd: #1f4bd1; --paper: #ffffff; }
+  @page { size: 5.5in 8.5in; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #8a8781; }
+  body { font: 9.4pt/1.45 "IBM Plex Sans", "Noto Sans", Arial, sans-serif; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .sheet { position: relative; width: var(--page-w); height: var(--page-h); margin: 0 auto 24px; background: var(--paper);
+    overflow: hidden; break-after: page; padding: .5in .5in .6in; }
+  @media print { html, body { background: none; } .sheet { margin: 0; } }
+  @media screen { body { padding: 24px 0; } }
+   
+  .spread { display: flex; width: 11in; height: 8.5in; margin: 0 auto 24px; break-after: page; background: var(--paper); }
+  .spread .sheet { margin: 0; break-after: auto; }
+  @media print { .spread { margin: 0; } }
+
+   
+  .folio { position: absolute; bottom: .3in; font: 600 9pt "IBM Plex Mono", monospace; }
+  .odd .folio { right: .5in; }
+  .even .folio { left: .5in; }
+  .chapter-tab { position: absolute; top: .28in; font: 600 7pt "IBM Plex Mono", monospace; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--dim); }
+  .odd .chapter-tab { right: .5in; }
+  .even .chapter-tab { left: .5in; }
+
+  h2 { margin: .04in 0 .12in; font: italic 700 19pt/1.1 "IBM Plex Sans", "Noto Sans", Arial, sans-serif; color: var(--blue); letter-spacing: -.01em; }
+  h3 { margin: 0 0 .12in; font: italic 700 13pt/1.15 "IBM Plex Sans", "Noto Sans", Arial, sans-serif; color: var(--blue); }
+  p { margin: 0 0 .1in; text-align: justify; hyphens: auto; }
+  ol.steps { list-style: none; margin: .1in 0 0; padding: 0; }
+  ol.steps li { display: grid; grid-template-columns: .32in 1fr; margin-bottom: .08in; }
+  ol.steps .n { width: .22in; height: .22in; background: var(--orange); color: #fff; font: 700 9pt/.22in "IBM Plex Mono", monospace;
+    text-align: center; border-radius: 2px; margin-top: .01in; }
+
+  ol.steps + ol.steps { margin-top: 0; }
+  table + table { margin-top: 0; }
+   
+  .figure { margin-top: .16in; }
+  h2 + .figure { margin-top: 0; }
+  .figure .frame { position: relative; margin: 0 auto .18in; }
+  .figure .frame.tall { height: 4.3in; aspect-ratio: 944 / 480; }
+  .figure .frame.wide { width: 100%; aspect-ratio: 944 / 480; }
+  .frame svg.marks2 { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .shot-box { position: absolute; top: 0; bottom: 0; left: calc(100% * 72 / 944); right: calc(100% * 72 / 944);
+    border: 2.5px solid var(--ink); border-radius: 6px; overflow: hidden; background: #000; }
+  .shot-box img { display: block; width: 100%; height: 100%; }
+  .leader { fill: none; stroke: var(--ink); stroke-width: 2.5; }
+  .dot { fill: var(--orange); stroke: var(--ink); stroke-width: 2; }
+  .bdg { fill: var(--ink); stroke: #fff; stroke-width: 2.5; }
+  .bdg-n { fill: #fff; font: 700 17px "IBM Plex Mono", monospace; text-anchor: middle; dominant-baseline: central; }
+  .dimmed { opacity: .25; }
+  .figure ol.parts { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: .25in; font-size: 8.2pt; line-height: 1.38; }
+  .figure ol.parts li { display: grid; grid-template-columns: .24in 1fr; margin-bottom: .07in; break-inside: avoid; }
+  .figure ol.parts .badge { width: .17in; height: .17in; border-radius: 50%; background: var(--ink); color: #fff;
+    font: 700 7pt/.17in "IBM Plex Mono", monospace; text-align: center; margin-top: .01in; }
+  .figure ol.parts b { font-weight: 700; }
+  .note { font-size: 8.4pt; border-left: 2.5px solid var(--orange); padding-left: .08in; text-align: left; margin-top: .08in; }
+
+   
+  .cover { padding: .25in; }
+  .cover .panel { position: relative; height: 100%; background: var(--lcd); border-radius: .14in; color: #f2f6ff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; padding: .4in; }
+  .cover .code { position: absolute; top: .22in; right: .3in; font: 600 7.5pt "IBM Plex Mono", monospace; letter-spacing: .08em; }
+  .cover .title { width: 4.2in; image-rendering: pixelated; }
+  .cover .rule { width: 4in; border-top: 1.5px solid #f2f6ff; margin: .06in 0 .14in; }
+  .cover .sub { font: 700 12pt "IBM Plex Sans", "Noto Sans", Arial, sans-serif; letter-spacing: .32em; }
+  .cover .for { margin-top: .1in; font: italic 600 9pt "IBM Plex Sans", "Noto Sans", Arial, sans-serif; opacity: .85; }
+  .cover .status { width: 3.4in; image-rendering: pixelated; margin-top: .9in; border-radius: 4px; }
+
+  .contents ol { list-style: none; margin: 0; padding: 0; font-size: 8.8pt; columns: 2; column-gap: .3in; }
+  .contents li.ch { break-after: avoid; }
+  .contents li { display: flex; gap: .06in; break-inside: avoid; margin-bottom: .02in; }
+  .contents li .dots { flex: 1; border-bottom: 1px dotted var(--dim); transform: translateY(-.05in); }
+  .contents li.ch { font: 700 7.4pt "IBM Plex Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--blue); margin-top: .14in; }
+  .contents li.ch:first-child { margin-top: 0; }
+
+  .lcdgrid { display: grid; grid-template-columns: 1fr 1fr; gap: .2in .22in; margin-top: .1in; }
+  .lcdgrid img { width: 100%; image-rendering: pixelated; border: 3px solid #b6b2a8; border-radius: 4px; display: block; }
+  .lcdgrid div { font: 600 7pt "IBM Plex Mono", monospace; text-transform: uppercase; color: var(--dim); margin-top: .04in; }
+  table { border-collapse: collapse; width: 100%; font-size: 8.6pt; }
+  td { border-top: 1px solid #c9c5bb; padding: .06in .06in; vertical-align: top; }
+  td:first-child { font: 600 8pt "IBM Plex Mono", monospace; width: 44%; }
+  .notes .line { border-bottom: 1px solid #c9c5bb; height: .34in; }
+   
+  h4 { margin: .14in 0 .06in; font: 700 8pt "IBM Plex Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--blue); }
+  .pics { display: flex; justify-content: center; gap: .2in; margin: .06in 0 .12in; }
+  .pics img { max-width: 100%; object-fit: contain; }
+  .chips { display: flex; flex-wrap: wrap; gap: .06in; margin: .04in 0 .1in; }
+  .chips span { border: 1.2px solid var(--ink); border-radius: 99px; padding: .015in .1in; font: 600 7.4pt "IBM Plex Mono", monospace; }
+  ul.list { margin: .02in 0 .08in; padding-left: .2in; }
+  ul.list li { margin-bottom: .04in; }
+  table.grid th, table.parts-plan th { text-align: left; font: 700 7pt "IBM Plex Mono", monospace; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--dim); padding: .03in .06in; border-bottom: 1.5px solid var(--ink); }
+  table.grid td:first-child { width: auto; white-space: nowrap; }
+  table.parts-plan td { vertical-align: middle; }
+  table.parts-plan td:first-child { width: .55in; padding: .02in; }
+  table.parts-plan img { width: .5in; height: .38in; object-fit: contain; display: block; }
+  table.parts-plan .file { font: 6.8pt "IBM Plex Mono", monospace; color: var(--dim); }
+  table.parts-plan td.n, table.parts-plan th.n { text-align: right; white-space: nowrap; }
+  .sw { display: inline-block; width: .11in; height: .11in; border-radius: 2px; border: 1px solid #888; vertical-align: -1px; margin-right: .04in; }
+  .step { margin-top: .12in; break-inside: avoid; }
+  h2 + .para + .step, h2 + p + .step { margin-top: .08in; }
+  .step-head { display: flex; align-items: center; gap: .1in; border-bottom: 2px solid var(--ink); padding-bottom: .04in; margin-bottom: .06in; }
+  .step-n { font: 800 20pt/1 "IBM Plex Mono", monospace; color: var(--orange); }
+  .step-body { display: grid; grid-template-columns: 1.55in 1fr; gap: .16in; align-items: start; }
+  .step-body img { width: 100%; max-height: 2.1in; object-fit: contain; }
+  .step-body ol.steps { margin-top: 0; }
+  .step-t { font: italic 700 13pt "IBM Plex Sans", "Noto Sans", Arial, sans-serif; color: var(--blue); }
+
+   
+  .sheet.ad { padding: .25in; }
+  .adv { height: 100%; border: 3px solid #111; padding: .22in .26in .16in; display: flex; flex-direction: column; background: #fffdf6;
+    font-family: "URW Bookman", "Bookman Old Style", "Bookman", serif; color: #111; }
+  .ad-kicker { font: 700 7.6pt "URW Gothic", "Century Gothic", sans-serif; letter-spacing: .2em; text-transform: uppercase;
+    color: #c8102e; border-bottom: 1.5px solid #111; padding-bottom: .05in; }
+  .ad-head { font: italic 700 25pt/1.02 "URW Bookman", "Bookman Old Style", serif; margin: .1in 0 .06in; letter-spacing: -.02em; }
+  .ad-head span { display: block; }
+  .ad-hero { position: relative; height: 2.15in; display: flex; justify-content: center; }
+  .ad-hero img { height: 100%; }
+  .ad-burst { position: absolute; right: .05in; top: 0; width: 1.15in; height: 1.15in; display: flex; align-items: center; justify-content: center;
+    background: #ffd400; transform: rotate(-12deg); text-align: center;
+    clip-path: polygon(50% 0, 61% 14%, 79% 9%, 79% 27%, 96% 32%, 86% 47%, 99% 61%, 82% 69%, 85% 87%, 67% 85%, 57% 100%, 45% 87%, 28% 96%, 24% 78%, 6% 75%, 13% 58%, 0 44%, 15% 34%, 11% 16%, 30% 16%, 38% 2%); }
+  .ad-burst span { font: 700 10.5pt/1.05 "URW Gothic", "Century Gothic", sans-serif; text-transform: uppercase; width: .8in; color: #c8102e; }
+  .ad-body { display: grid; grid-template-columns: 1fr 1.45in; gap: .16in; margin-top: .08in; }
+  .ad-copy { columns: 2; column-gap: .14in; font-size: 7.4pt; line-height: 1.32; text-align: left; hyphens: auto; }
+  .ad-copy p { margin: 0 0 .05in; text-align: left; }
+  .ad-copy p:first-child::first-letter { float: left; font: 700 24pt/.8 "URW Bookman", serif; margin: .02in .04in 0 0; color: #c8102e; }
+  .ad-checks { list-style: none; margin: 0; padding: .08in .1in; border: 2px solid #111; background: #111; color: #fffdf6;
+    font: 700 7.4pt/1.3 "URW Gothic", "Century Gothic", sans-serif; align-self: start; }
+  .ad-checks li { margin-bottom: .07in; padding-left: .16in; position: relative; }
+  .ad-checks li::before { content: "✔"; position: absolute; left: 0; color: #ffd400; }
+  .ad-coupon { position: relative; margin-top: .14in; border: 1.6px dashed #111; padding: .09in .12in; font: 7.6pt "URW Gothic", "Century Gothic", sans-serif; }
+  .ad-coupon b { font: italic 700 10pt "URW Bookman", serif; }
+  .ad-scissors { position: absolute; top: -.11in; left: .15in; background: #fffdf6; padding: 0 .04in; font-size: 11pt; }
+  .ad-boxes { display: flex; gap: .2in; margin: .05in 0; }
+  .ad-lines { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: .06in; align-items: end; margin: .08in 0 .04in; }
+  .ad-lines i { border-bottom: 1px solid #111; height: .14in; }
+  .ad-mail { font-size: 6.6pt; color: #444; }
+  .ad-fine { font: 5.6pt/1.3 "URW Gothic", "Century Gothic", sans-serif; color: #555; margin-top: .07in; }
+
+  .back { display: flex; flex-direction: column; justify-content: flex-end; font-size: 8.4pt; color: var(--dim); }
+</style>
+<script>
+  
+  
+  
+  if (location.search.includes("sheets")) {
+    const s = document.createElement("style");
+    s.textContent = "@page { size: 11in 8.5in; margin: 0; }";
+    document.head.append(s);
+    addEventListener("DOMContentLoaded", () => {
+      const pages = [...document.querySelectorAll("body > .sheet")];
+      const n = pages.length;
+      for (let i = 0; i < n / 4; i++) {
+        for (const [l, r] of [[n - 2 * i, 1 + 2 * i], [2 + 2 * i, n - 1 - 2 * i]]) {
+          const d = document.createElement("div");
+          d.className = "spread";
+          d.append(pages[l - 1].cloneNode(true), pages[r - 1].cloneNode(true));
+          document.body.append(d);
+        }
+      }
+      pages.forEach((p) => p.remove());
+    });
+  }
+</script>
+</head>
+<body>
+
+<section class="sheet cover odd">
+  
+  <div class="panel">
+    <div class="code">PD-TAZ-WH-1</div>
+    <img class="title" src="img/cover-title.png" alt="Printdeck">
+    <div class="rule"></div>
+    <div class="sub">UPGRADE KIT</div>
+    <div class="for">For the LulzBot TAZ Workhorse</div>
+    <img class="status" src="img/cover-status.png" alt="">
+  </div>
+  
+  
+</section>
+
+<section class="sheet ad even">
+  
+  <div class="adv">
+    <div class="ad-kicker">Introducing Printdeck for the TAZ Workhorse</div>
+    <h1 class="ad-head"><span>Your Workhorse called.</span> <span>It wants a dashboard.</span> </h1>
+    <div class="ad-hero"><img src="img/lulzbot-ad.png" alt="The Printdeck on a TAZ Workhorse"><div class="ad-burst"><span>Now with touch!</span></div></div>
+    <div class="ad-body">
+      <div class="ad-copy"><p>Let’s be honest. Your TAZ Workhorse works fine. It prints. It has a knob. Nobody asked you to change a thing.</p><p>That is exactly why you should.</p><p>Printdeck puts a seven-inch touch screen on the front of the printer, in a case that you print on the very printer you upgrade. The printer builds its own upgrade. If that is not the future, we do not know what is.</p><p>Inside is Klipper, ported to Go, in one program. It plans every move with the same look-ahead as the printer, so the time left is the real time left. Not a guess. Not a mood.</p><p>It updates itself. It flashes the firmware of the printer for you. It even takes over the old display of the printer and puts the same menus on it, so the knob gets a promotion too.</p><p>No drilling. No nuts in the rail. Two cover screws and two printed clips. If you can turn a hex key, you are qualified.</p></div>
+      <ul class="ad-checks"><li>7-inch color touch screen, mounted wide</li><li>The Klipper host, in Go, in one program</li><li>Time left from the motion planner</li><li>Signed updates that install themselves</li><li>310 g of PLA, 18 h 28 min, no supports</li></ul>
+    </div>
+    <div class="ad-coupon">
+      <div class="ad-scissors">✂</div>
+      <b>YES! Upgrade my Workhorse. I have no good reason.</b>
+      <div class="ad-boxes"><span>☐ Because I can</span><span>☐ Because I can</span><span>☐ Both</span></div>
+      <div class="ad-lines"><span>Name</span><i></i><span>Printer</span><i></i></div>
+      <div class="ad-mail">Mail to: your own printer. Allow 18 h 28 min for delivery.</div>
+    </div>
+    <div class="ad-fine">Printdeck is free software (AGPL-3.0). Printer not included. LulzBot and TAZ Workhorse are names of their owner. Printdeck is not made by LulzBot and is not connected with LulzBot. The time left is exact for the moves of the file; the heating and your pauses are your own business.</div>
+  </div>
+  
+  
+</section>
+
+<section class="sheet contents odd">
+  
+    <h2>Contents</h2>
+    <ol><li class="ch">Upgrade the Workhorse</li><li><span>What you build</span><span class="dots"></span><span>4</span></li><li><span>Print the parts</span><span class="dots"></span><span>5</span></li><li><span>What you need</span><span class="dots"></span><span>7</span></li><li><span>Before you start</span><span class="dots"></span><span>9</span></li><li><span>Prepare the drive</span><span class="dots"></span><span>11</span></li><li class="ch">Build the mount</li><li><span>Build the mount</span><span class="dots"></span><span>12</span></li><li><span>Connect and start</span><span class="dots"></span><span>19</span></li><li class="ch">Set up</li><li><span>Connect to Wi-Fi</span><span class="dots"></span><span>21</span></li><li><span>Choose your printer</span><span class="dots"></span><span>23</span></li><li><span>Install the Klipper firmware</span><span class="dots"></span><span>25</span></li><li class="ch">Meet your Printdeck</li><li><span>The deck</span><span class="dots"></span><span>26</span></li><li><span>The display of the printer</span><span class="dots"></span><span>27</span></li><li><span>The deck in a browser</span><span class="dots"></span><span>28</span></li><li class="ch">Print a part</li><li><span>Send a file from the slicer</span><span class="dots"></span><span>29</span></li><li><span>Start a print</span><span class="dots"></span><span>30</span></li><li><span>Watch the print</span><span class="dots"></span><span>32</span></li><li class="ch">Change the filament</li><li><span>Change the filament</span><span class="dots"></span><span>38</span></li><li class="ch">Move and heat</li><li><span>Move the head and heat</span><span class="dots"></span><span>40</span></li><li class="ch">Level and calibrate</li><li><span>Level and calibrate</span><span class="dots"></span><span>42</span></li><li class="ch">Look after the printer</li><li><span>Look after the printer</span><span class="dots"></span><span>46</span></li><li><span>Update the Printdeck</span><span class="dots"></span><span>49</span></li><li class="ch">When something goes wrong</li><li><span>When something goes wrong</span><span class="dots"></span><span>50</span></li><li><span>Settings</span><span class="dots"></span><span>51</span></li></ol>
+  
+  
+    
+    <div class="folio">3</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h2>What you build</h2>
+    
+    
+    <p>This kit puts the Printdeck on the front left of your TAZ Workhorse. The 7 inch touch screen is in a wide head below the TAZ Workhorse logo, and the Raspberry Pi 5 is in a pod on the left side of the electronics chassis. The head leans back 15 degrees, so you see the screen from the front of the printer.</p>
+    
+    
+    <p>You print the parts on the Workhorse itself. Two printed clips snap into the front rail, and two screws of the side cover hold the plate. You drill no hole in the printer, and you put no nut in the rail.</p>
+    
+    
+    <div class="pics"><img src="img/lulzbot-hero.png" alt="" style="max-height: 3.1in"><img src="img/lulzbot-side.png" alt="" style="max-height: 3.1in"></div>
+    
+    
+    <div class="chips"><span>7 printed parts</span><span>310 g of PLA</span><span>18 h 28 min of printing</span><span>No supports</span><span>No holes in the printer</span></div>
+    
+    
+    <p>The deck screens in this booklet are the wide screens: the display is mounted wide in the head.</p>
+    
+    
+  
+  
+    <div class="chapter-tab">Upgrade the Workhorse</div>
+    <div class="folio">4</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>Print the parts</h2>
+    
+    
+    <p>The STL files are in lulzbot/stl/, in their print orientation. Load them as they are. The numbers come from slices with the Cura profiles of the mount: LulzBot TAZ Workhorse, SE tool head, 0.5 mm nozzle, 2.85 mm PLA.</p>
+    
+    
+    <table class="parts-plan"><tr><th></th><th>Part</th><th>Colour</th><th class="n">Filament</th><th class="n">Time</th><th class="n">Cost</th></tr>
+      <tr><td><img src="img/lulzbot-part_head.png" alt=""></td><td><b>head</b><br><span class="file">stl/head.stl</span></td>
+      <td><span class="sw" style="background: #1F2B4D"></span>Navy</td><td class="n">92 g</td><td class="n">5 h 24 min</td><td class="n">$2.12</td></tr><tr><td><img src="img/lulzbot-part_pod.png" alt=""></td><td><b>pod</b><br><span class="file">stl/pod.stl</span></td>
+      <td><span class="sw" style="background: #1F2B4D"></span>Navy</td><td class="n">75 g</td><td class="n">4 h 17 min</td><td class="n">$1.72</td></tr><tr><td><img src="img/lulzbot-part_back.png" alt=""></td><td><b>back</b><br><span class="file">stl/back.stl</span></td>
+      <td><span class="sw" style="background: #E8742A"></span>Orange</td><td class="n">66 g</td><td class="n">4 h 30 min</td><td class="n">$1.52</td></tr><tr><td><img src="img/lulzbot-part_plate.png" alt=""></td><td><b>plate</b><br><span class="file">stl/plate.stl</span></td>
+      <td><span class="sw" style="background: #E8742A"></span>Orange</td><td class="n">53 g</td><td class="n">2 h 52 min</td><td class="n">$1.22</td></tr><tr><td><img src="img/lulzbot-part_clip.png" alt=""></td><td><b>clip</b> (2 ×)<br><span class="file">stl/clip.stl</span></td>
+      <td><span class="sw" style="background: #E8742A"></span>Orange</td><td class="n">12 g</td><td class="n">0 h 38 min</td><td class="n">$0.28</td></tr><tr><td><img src="img/lulzbot-part_grille.png" alt=""></td><td><b>grille</b><br><span class="file">stl/grille.stl</span></td>
+      <td><span class="sw" style="background: #F2F2EE"></span>White</td><td class="n">12 g</td><td class="n">0 h 47 min</td><td class="n">$0.28</td></tr></table>
+    
+    
+    <p class="note">Total: 310 g of PLA (39 m), 18 h 28 min of printing, $7.13 at $22.99 a kilogram. The fit test of the screen opening (stl/fit_display.stl, 21 g, 1 h 19 min) is optional.</p>
+    
+    
+    <p class="note">Print the head and the back panel first: steps 2 to 4 need them. Then print the plate, the clips, the pod and the grille.</p>
+    
+    
+  
+  
+    <div class="chapter-tab">Upgrade the Workhorse</div>
+    <div class="folio">5</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h4>Settings</h4>
+    
+    
+    <table><tr><td>Profiles</td><td>One Cura profile for each part: run python3 cura/make_profiles.py --install with Cura closed, then pick “Printdeck - LulzBot …”.</td></tr></table>
+    
+    
+    <table><tr><td>Printer</td><td>LulzBot TAZ Workhorse, SE tool head, 0.5 mm nozzle</td></tr></table>
+    
+    
+    <table><tr><td>Material</td><td>PLA, 2.85 mm</td></tr></table>
+    
+    
+    <table><tr><td>Head, pod, back panel, grille, clip</td><td>0.3 mm layers, 1.5 mm walls, 1.2 mm top and bottom, 15 % grid infill, skirt</td></tr></table>
+    
+    
+    <table><tr><td>Plate</td><td>0.3 mm layers, 1.5 mm walls, 15 % grid infill, skirt</td></tr></table>
+    
+    
+    <table><tr><td>Supports</td><td>Off for all parts. Every hole, pocket, and hook has 45° faces. A slice of each part with supports on (60°, everywhere) adds 0 g of support.</td></tr></table>
+    
+    
+  
+  
+    <div class="chapter-tab">Upgrade the Workhorse</div>
+    <div class="folio">6</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>What you need</h2>
+    
+    
+    <h4>Hardware</h4>
+    
+    
+    <table class="grid"><tr><th></th><th>Item</th><th>Where</th></tr><tr><td>6 ×</td><td>M3 × 10 socket cap head</td><td>2 × plate on the cover (upper pair of PP-FP0164); 4 × back panel into the head</td></tr><tr><td>2 ×</td><td>M3 × 12 socket cap head</td><td>2 × plate flange into the back panel</td></tr><tr><td>12 ×</td><td>M3 × 6 socket cap head</td><td>4 × display board; 4 × Pi; 4 × drive on the back panel</td></tr><tr><td>2 ×</td><td>M3 × 8 socket cap head</td><td>2 × pod onto the plate</td></tr><tr><td>2 ×</td><td>M3 washer</td><td>2 × under the cover screws</td></tr><tr><td>10 ×</td><td>M3 × 5 heat-set insert</td><td>4 × head, display bosses (3 to 5 mm fits); 4 × plate, Pi bosses (3 to 5 mm fits); 2 × plate, pod screw blocks (3 to 5 mm fits)</td></tr><tr><td>6 ×</td><td>M3 × 7 heat-set insert</td><td>4 × head, back screws (3 to 7 mm fits); 2 × back panel, flange screws (3 to 7 mm fits)</td></tr></table>
+    
+    
+    <p>All the screws are M3 socket cap screws, for a 2.5 mm hex key. A shorter or a longer heat-set insert fits, up to the length in brackets.</p>
+    
+    
+  
+  
+    <div class="chapter-tab">Upgrade the Workhorse</div>
+    <div class="folio">7</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h4>Electronics and cables</h4>
+    
+    
+    <ul class="list"><li>1 × Raspberry Pi 5 (from the Slate build)</li><li>1 × Raspberry Pi Active Cooler, max. 10.5 mm high (buy, if you do not have one)</li><li>1 × Adafruit 7 inch HDMI display with touch, product 2407 (from the Slate build)</li><li>1 × 2.5 inch SATA drive with its USB adapter board, the boot drive (from the Slate build)</li><li>1 × HDMI cable: micro HDMI to HDMI, straight plugs, a flat ribbon of 30 cm or more (the route is 24 cm). The ribbon kit of the Slate fits.</li><li>1 × Micro USB to USB-A cable, straight plugs, max. 3.5 mm thick, 15 cm or more (the route is 12 cm).</li><li>1 × USB 3 cable for the drive: micro-B SuperSpeed to USB-A, 15 to 20 cm (the route is 13 cm).</li><li>1 × USB-A to USB-B cable for the printer: 31 cm in the pod, plus the run behind the printer to the USB socket of the printer board.</li><li>1 × USB-C power cable: 9 cm in the pod, plus the run behind the printer to the Raspberry Pi 27 W USB-C power supply.</li></ul>
+    
+    
+    <h4>Tools</h4>
+    
+    
+    <ul class="list"><li>Drill with a 3.2 mm bit (for the four holes of the Pi)</li><li>Soldering iron with a heat-set insert tip, at 220 °C</li><li>2.5 mm hex key (M3 socket cap screws)</li><li>One strip of 2 mm foam tape, between the panel and the display board</li></ul>
+    
+    
+  
+  
+    <div class="chapter-tab">Upgrade the Workhorse</div>
+    <div class="folio">8</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>Before you start</h2>
+    
+    
+    <div class="pics"><img src="img/lulzbot-exploded.png" alt="" style="max-height: 2.6in"></div>
+    
+    
+    <p>The mount uses two screws of the printer and the front rail. The upper pair of screws of the side cover (PP-FP0164) holds the plate. Two printed clips in the front slot of the front left rail hold the right end of the head. Two screws through a flange of the plate hold up the head, and the pod slides onto two hooks of the plate.</p>
+    
+    
+  
+  
+    <div class="chapter-tab">Upgrade the Workhorse</div>
+    <div class="folio">9</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h4>Check on your printer</h4>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Check the rear screw of the upper pair on the cover: 237.3 mm above the bottom edge of the cover, and about 3.6 mm from the rear edge of the cover. The design uses the value of the LulzBot drawing.</span></li><li><span class="n">2</span><span>Measure the TAZ Workhorse logo on the front of the chassis. The top of the head is 260 mm above the bottom of the chassis; the LulzBot drawing gives the logo at 264 mm, and the drawing is not to scale.</span></li><li><span class="n">3</span><span>Look at the front slot of the front left rail. The clips need a free slot from 150 to 230 mm above the bottom of the chassis: remove the dust cover there, if the rail has one.</span></li><li><span class="n">4</span><span>Move the bed to the front and the X axis to the bottom. Check that the head is clear of the bed, the print, and the tool head: it is 72 to 324 mm to the right of the left face of the chassis, and 125 to 260 mm above the bottom of the chassis.</span></li><li><span class="n">5</span><span>Check behind the printer: the printer USB cable and the power cable leave the pod at the rear face of the chassis, 128 to 149 mm above its bottom.</span></li></ol>
+    
+    
+  
+  
+    <div class="chapter-tab">Upgrade the Workhorse</div>
+    <div class="folio">10</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>Prepare the drive</h2>
+    
+    
+    <p>The Printdeck starts from the 2.5 inch drive. Write the Printdeck image to it before you build the mount: the drive goes into the head in step 3.</p>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Build the image on a computer with Docker: run os/build.sh in the Printdeck repository. It writes os/out/printdeck.img.xz.</span></li><li><span class="n">2</span><span>Connect the drive to the computer with its USB adapter. Write printdeck.img.xz to the drive with Raspberry Pi Imager (Use custom) or balenaEtcher.</span></li><li><span class="n">3</span><span>Open the PRINTDECK partition of the drive, and open printdeck.txt in a text editor.</span></li><li><span class="n">4</span><span>Set display_rotate=180. The display is upside down in the head, so the deck turns its picture. A width larger than the height gives the wide layout.</span></li><li><span class="n">5</span><span>Fill in the name and the password of your Wi-Fi network, if you want to skip the Wi-Fi setup. The deck reads the file at each start, and then clears the password in it.</span></li></ol>
+    
+    
+    <p class="note">If the picture is upside down at the first start, set display_rotate=0.</p>
+    
+    
+  
+  
+    <div class="chapter-tab">Upgrade the Workhorse</div>
+    <div class="folio">11</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h2>Build the mount</h2>
+    
+    
+    <p>Each step names the parts and the hardware that it needs. The parts from an earlier step have the number of that step.</p>
+    
+    
+    
+    <div class="step">
+      <div class="step-head"><span class="step-n">1</span><span class="step-t">Drill the Pi</span></div>
+      <div class="chips"><span>Pi 5</span><span>3.2 mm drill</span></div>
+      <div class="step-body">
+        <img src="img/lulzbot-step_drill.png" alt="">
+        <div><ol class="steps"><li><span class="n">1</span><span>The mounting holes of the Pi 5 are 2.7 mm, for M2.5. Drill the four holes to 3.2 mm for M3.</span></li><li><span class="n">2</span><span>Drill slowly, from the top of the board, with the board flat on a piece of wood.</span></li><li><span class="n">3</span><span>Keep the drill straight. Stay inside the plated ring of each hole: do not touch the tracks or the parts around it.</span></li><li><span class="n">4</span><span>Remove all the dust from the board with a brush or with air before you continue.</span></li></ol>
+        <p class="note">Skip this step if your Pi already has 3.2 mm holes.</p></div>
+      </div>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Build the mount</div>
+    <div class="folio">12</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    
+    <div class="step">
+      <div class="step-head"><span class="step-n">2</span><span class="step-t">Display into the head</span></div>
+      <div class="chips"><span>head</span><span>display</span><span>foam tape</span><span>4 × M3 × 5 insert</span><span>4 × M3 × 7 insert</span><span>4 × M3 × 6</span></div>
+      <div class="step-body">
+        <img src="img/lulzbot-step_display.png" alt="">
+        <div><ol class="steps"><li><span class="n">1</span><span>Press the four M3 × 5 inserts into the four bosses of the head, and the four M3 × 7 inserts into the two columns and the two blocks at the back. Use a soldering iron at 220 °C. Stop when the insert is flush.</span></li><li><span class="n">2</span><span>Put the head face down on a soft cloth.</span></li><li><span class="n">3</span><span>Put the display glass down into the pocket: the sockets of the board at the left (seen from the front), the FPC edge of the panel at the top.</span></li><li><span class="n">4</span><span>Put the foam tape on the back of the panel. Put the board on the four bosses, and attach it with four M3 × 6 screws.</span></li><li><span class="n">5</span><span>Connect the HDMI cable and the micro USB cable to the board. Both plugs point to the left.</span></li></ol>
+        <p class="note">The screen opening is at the centre of the face: the border is the same at the left and the right.</p></div>
+      </div>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Build the mount</div>
+    <div class="folio">13</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    
+    <div class="step">
+      <div class="step-head"><span class="step-n">3</span><span class="step-t">Drive on the back panel</span></div>
+      <div class="chips"><span>back panel</span><span>drive</span><span>2 × M3 × 7 insert</span><span>4 × M3 × 6</span></div>
+      <div class="step-body">
+        <img src="img/lulzbot-step_drive.png" alt="">
+        <div><ol class="steps"><li><span class="n">1</span><span>Press the two M3 × 7 inserts into the two bosses on the front face of the back panel, from the rear.</span></li><li><span class="n">2</span><span>Put the drive on the front face of the back panel: the adapter toward the left (the pod side), the M3 holes against the panel.</span></li><li><span class="n">3</span><span>Attach it with four M3 × 6 screws from the rear face of the panel.</span></li><li><span class="n">4</span><span>Connect the micro-B plug of the drive cable to the adapter.</span></li></ol>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    <div class="step">
+      <div class="step-head"><span class="step-n">4</span><span class="step-t">Back panel onto the head</span></div>
+      <div class="chips"><span>head (step 2)</span><span>back panel (step 3)</span><span>4 × M3 × 10</span></div>
+      <div class="step-body">
+        <img src="img/lulzbot-step_back.png" alt="">
+        <div><ol class="steps"><li><span class="n">1</span><span>Put the display cables through the upper window at the left of the back panel, and the drive cable through the lower window.</span></li><li><span class="n">2</span><span>Put the back panel on the head. Attach it with four M3 × 10 screws from the rear face, into the inserts.</span></li></ol>
+        <p class="note">The heads of the screws stay on the rear face. They are behind the head, and they do not show.</p></div>
+      </div>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Build the mount</div>
+    <div class="folio">14</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    
+    <div class="step">
+      <div class="step-head"><span class="step-n">5</span><span class="step-t">Plate on the cover</span></div>
+      <div class="chips"><span>plate</span><span>6 × M3 × 5 insert</span><span>2 × M3 × 10</span><span>2 × M3 washer</span></div>
+      <div class="step-body">
+        <img src="img/lulzbot-step_plate.png" alt="">
+        <div><ol class="steps"><li><span class="n">1</span><span>Press four M3 × 5 inserts into the four Pi bosses, and two into the two blocks at the bottom of the plate (from below).</span></li><li><span class="n">2</span><span>The cover is PP-FP0164, with 10 screws. Remove its upper pair of screws from the left side of the chassis: the front one and the rear one, 237.3 mm above the bottom edge of the cover.</span></li><li><span class="n">3</span><span>Put the plate on the cover, with the slots of the two pads over the two holes. Attach it with two M3 × 10 screws, each with a washer.</span></li></ol>
+        <p class="note">The slots in the pads let the plate fit 5 mm up or down and 0.5 mm to the front or the rear. The pad is 4 mm thick, so the M3 × 10 goes into the nut of the chassis the same depth as the old screw.</p></div>
+      </div>
+    </div>
+    
+    
+    
+    <div class="step">
+      <div class="step-head"><span class="step-n">6</span><span class="step-t">Pi on the plate</span></div>
+      <div class="chips"><span>Pi 5 (step 1)</span><span>Active Cooler</span><span>4 × M3 × 6</span></div>
+      <div class="step-body">
+        <img src="img/lulzbot-step_pi.png" alt="">
+        <div><ol class="steps"><li><span class="n">1</span><span>Put the Active Cooler on the Pi, and connect its cable to the fan connector.</span></li><li><span class="n">2</span><span>Put the Pi on the four bosses: the USB ports toward the front of the printer, the USB-C and HDMI ports down.</span></li><li><span class="n">3</span><span>Attach it with four M3 × 6 screws.</span></li></ol>
+        </div>
+      </div>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Build the mount</div>
+    <div class="folio">15</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    
+    <div class="step">
+      <div class="step-head"><span class="step-n">7</span><span class="step-t">Clips in the rail</span></div>
+      <div class="chips"><span>2 × rail clip</span></div>
+      <div class="step-body">
+        <img src="img/lulzbot-step_clips.png" alt="">
+        <div><ol class="steps"><li><span class="n">1</span><span>Hold the back panel on the front face of the front left rail, with its bottom edge 125 mm above the bottom of the chassis. Mark the top of the two long slots in the panel on the rail.</span></li><li><span class="n">2</span><span>Push each clip into the front slot of the rail, with its top at a mark, until it clicks. The dovetail key points to the front.</span></li></ol>
+        <p class="note">The clips need no nut: their two legs snap behind the lips of the slot. A clip slides in the slot, so you can move it up or down by hand.</p></div>
+      </div>
+    </div>
+    
+    
+    
+    <div class="step">
+      <div class="step-head"><span class="step-n">8</span><span class="step-t">Hang the head</span></div>
+      <div class="chips"><span>head (step 4)</span><span>2 × M3 × 12</span></div>
+      <div class="step-body">
+        <img src="img/lulzbot-step_hang.png" alt="">
+        <div><ol class="steps"><li><span class="n">1</span><span>Hold the head 30 mm above its place, with the two windows of the back panel over the two clip keys. Push the back panel against the clips.</span></li><li><span class="n">2</span><span>Let the head drop 30 mm. The keys go into the dovetail slots.</span></li><li><span class="n">3</span><span>Lead the display cables and the drive cable out of the windows into the pod.</span></li><li><span class="n">4</span><span>From inside the pod, put the two M3 × 12 screws through the flange of the plate into the back panel.</span></li></ol>
+        <p class="note">The two screws through the flange hold up the head. The clips hold its right end against the rail.</p></div>
+      </div>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Build the mount</div>
+    <div class="folio">16</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    
+    <div class="step">
+      <div class="step-head"><span class="step-n">9</span><span class="step-t">Cables</span></div>
+      
+      <div class="step-body">
+        <img src="img/lulzbot-step_cables.png" alt="">
+        <div><ol class="steps"><li><span class="n">1</span><span>Connect the HDMI cable to the HDMI 0 port (next to the USB-C port).</span></li><li><span class="n">2</span><span>Connect the touch cable to the upper USB 3 port (blue), and the drive cable to the lower USB 3 port.</span></li><li><span class="n">3</span><span>Connect the printer cable to the lower USB 2 port. Lead it up the front of the pod, over the Pi, down at the rear end of the Pi, and out of the upper notch in the rear wall.</span></li><li><span class="n">4</span><span>Connect the power cable to the USB-C port. Lead it down and to the rear, out of the lower notch.</span></li><li><span class="n">5</span><span>Behind the printer, connect the printer cable to the USB socket of the printer board, and the power cable to the power supply.</span></li></ol>
+        <p class="note">No cable goes through a hole in the printer, and no cable shows on the front or the side.</p></div>
+      </div>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Build the mount</div>
+    <div class="folio">17</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    
+    <div class="step">
+      <div class="step-head"><span class="step-n">10</span><span class="step-t">Grille and pod</span></div>
+      <div class="chips"><span>grille</span><span>pod</span><span>2 × M3 × 8</span></div>
+      <div class="step-body">
+        <img src="img/lulzbot-step_pod.png" alt="">
+        <div><ol class="steps"><li><span class="n">1</span><span>Push the grille into the pocket of the pod from the outside, with the fingernail notch at the bottom. Push both sides until the two tabs click. The grille is flush with the pod.</span></li><li><span class="n">2</span><span>Hold the pod about 6 mm low and 6 mm out from its place, and 4 mm to the rear. Move it 4 mm to the front, then push it up and in at 45° onto the two hooks of the plate. The rear wall goes over the two cables.</span></li><li><span class="n">3</span><span>Put the two M3 × 8 screws up through the bottom of the pod into the plate. They pull the pod up, and the 45° hooks pull it onto the plate.</span></li></ol>
+        <p class="note">To remove the grille, put a fingernail or a small screwdriver into the notch at its bottom edge, and lift.</p></div>
+      </div>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Build the mount</div>
+    <div class="folio">18</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>Connect and start</h2>
+    
+    
+    <div class="pics"><img src="img/lulzbot-connect.png" alt="" style="max-height: 2.6in"></div>
+    
+    
+    <table class="grid"><tr><th>Cable</th><th>Length</th><th>Route</th></tr><tr><td>HDMI</td><td>24 cm</td><td>HDMI 0 port to the display, plug to plug</td></tr><tr><td>Touch USB</td><td>12 cm</td><td>upper USB 3 port to the display, plug to plug</td></tr><tr><td>Drive</td><td>13 cm</td><td>lower USB 3 port to the drive, plug to plug</td></tr><tr><td>Printer USB</td><td>31 cm</td><td>lower USB 2 port to the rear face of the chassis</td></tr><tr><td>Power</td><td>9 cm</td><td>USB-C port to the rear face of the chassis</td></tr></table>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Connect the power cable to the Raspberry Pi 27 W USB-C power supply behind the printer.</span></li><li><span class="n">2</span><span>Connect the printer cable to the USB socket of the printer board.</span></li><li><span class="n">3</span><span>Turn on the printer and the power supply. The deck starts from the drive and opens the setup. The guides after this page show the setup.</span></li></ol>
+    
+    
+  
+  
+    <div class="chapter-tab">Build the mount</div>
+    <div class="folio">19</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h4>To open the mount</h4>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Remove the two screws under the pod. Move the pod down and out at 45 degrees, off the hooks, then 4 mm to the rear and out. To remove the grille, lift it at the fingernail notch.</span></li><li><span class="n">2</span><span>Disconnect the cables from the Pi. Remove the two flange screws from inside the pod.</span></li><li><span class="n">3</span><span>Lift the head 30 mm and pull it off the clip keys. The display and the drive come off with it.</span></li><li><span class="n">4</span><span>To get to the display or the drive, remove the four screws from the rear of the back panel.</span></li></ol>
+    
+    
+  
+  
+    <div class="chapter-tab">Build the mount</div>
+    <div class="folio">20</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>Connect to Wi-Fi</h2>
+    
+    
+    <p>At the first start, the deck makes its password and opens the setup.</p>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Switch on the Printdeck. The setup opens.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">2</span><span>Tap your Wi-Fi network, then type its password.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">3</span><span>Wait until the deck is connected, then tap Next.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">4</span><span>Write down the address and the password, then tap Finish.</span></li></ol>
+    
+    
+    
+    <div class="figure">
+      <h3>The setup: step 1</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/setup-wifi.png" alt="The setup: step 1"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="825" y1="220" x2="776" y2="220" class="leader"/>
+          <circle cx="776" cy="220" r="6" class="dot"/>
+          <circle cx="840" cy="220" r="16" class="bdg"/>
+          <text x="840" y="220" class="bdg-n">1</text></g><g>
+          <line x1="-25" y1="410" x2="24" y2="410" class="leader"/>
+          <circle cx="24" cy="410" r="6" class="dot"/>
+          <circle cx="-40" cy="410" r="16" class="bdg"/>
+          <text x="-40" y="410" class="bdg-n">2</text></g><g>
+          <line x1="-25" y1="444" x2="277" y2="410" class="leader"/>
+          <circle cx="277" cy="410" r="6" class="dot"/>
+          <circle cx="-40" cy="444" r="16" class="bdg"/>
+          <text x="-40" y="444" class="bdg-n">3</text></g><g>
+          <line x1="825" y1="410" x2="776" y2="410" class="leader"/>
+          <circle cx="776" cy="410" r="6" class="dot"/>
+          <circle cx="840" cy="410" r="16" class="bdg"/>
+          <text x="840" y="410" class="bdg-n">4</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Networks.</b> The Wi-Fi networks near the deck, with the signal. A lock shows a network with a password. Tap a network, then type its password.</span></li><li><span class="badge">2</span><span><b>Scan.</b> Looks for the networks again. The list also scans by itself.</span></li><li><span class="badge">3</span><span><b>Hidden.</b> For a network that does not show its name: type the name and the password.</span></li><li><span class="badge">4</span><span><b>Next.</b> Goes to the summary when the deck is connected.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Set up</div>
+    <div class="folio">21</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    
+    <div class="figure">
+      <h3>The setup: step 2</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/setup-done.png" alt="The setup: step 2"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="825" y1="122" x2="760" y2="122" class="leader"/>
+          <circle cx="760" cy="122" r="6" class="dot"/>
+          <circle cx="840" cy="122" r="16" class="bdg"/>
+          <text x="840" y="122" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="192" x2="760" y2="192" class="leader"/>
+          <circle cx="760" cy="192" r="6" class="dot"/>
+          <circle cx="840" cy="192" r="16" class="bdg"/>
+          <text x="840" y="192" class="bdg-n">2</text></g><g>
+          <line x1="825" y1="410" x2="776" y2="410" class="leader"/>
+          <circle cx="776" cy="410" r="6" class="dot"/>
+          <circle cx="840" cy="410" r="16" class="bdg"/>
+          <text x="840" y="410" class="bdg-n">3</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Address.</b> The address of the deck on your network. Open it in a browser for the web pages.</span></li><li><span class="badge">2</span><span><b>Password.</b> The password of the web pages. To see it again, open Machine &gt; Wi-Fi and help.</span></li><li><span class="badge">3</span><span><b>Finish.</b> Closes the setup. The deck does not open it again.</span></li></ol>
+      <p class="note">You can also set the Wi-Fi before the first start: put the disk in a computer, and fill in printdeck.txt on the PRINTDECK partition.</p>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Set up</div>
+    <div class="folio">22</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>Choose your printer</h2>
+    
+    
+    <p>A new Printdeck has no printer config. The deck then shows the printer setup.</p>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Connect the printer to the Printdeck with a USB cable, and switch the printer on.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">2</span><span>Wait until the deck finds the board. Tap Search again if it does not show.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">3</span><span>Tap Choose printer. The printers of the brand of your board are at the top.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">4</span><span>Tap your printer, then Use. Klipper restarts with its config.</span></li></ol>
+    
+    
+    
+    <div class="figure">
+      <h3>No printer yet</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/setup.png" alt="No printer yet"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="825" y1="86" x2="784" y2="86" class="leader"/>
+          <circle cx="784" cy="86" r="6" class="dot"/>
+          <circle cx="840" cy="86" r="16" class="bdg"/>
+          <text x="840" y="86" class="bdg-n">1</text></g><g>
+          <line x1="-25" y1="424" x2="16" y2="424" class="leader"/>
+          <circle cx="16" cy="424" r="6" class="dot"/>
+          <circle cx="-40" cy="424" r="16" class="bdg"/>
+          <text x="-40" y="424" class="bdg-n">2</text></g><g>
+          <line x1="825" y1="424" x2="408" y2="424" class="leader"/>
+          <circle cx="408" cy="424" r="6" class="dot"/>
+          <circle cx="840" cy="424" r="16" class="bdg"/>
+          <text x="840" y="424" class="bdg-n">3</text></g><g>
+          <line x1="825" y1="210" x2="773" y2="210" class="leader"/>
+          <circle cx="773" cy="210" r="6" class="dot"/>
+          <circle cx="840" cy="210" r="16" class="bdg"/>
+          <text x="840" y="210" class="bdg-n">4</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Board.</b> The board that the deck found on USB, its MCU, and its Klipper firmware.</span></li><li><span class="badge">2</span><span><b>Choose printer.</b> Opens the list of Klipper&#39;s example configs. See below.</span></li><li><span class="badge">3</span><span><b>Search again.</b> Looks for the board again, for example after you connect the printer.</span></li><li><span class="badge">4</span><span><b>Your own config.</b> You can also copy your own printer.cfg to the PRINTDECK partition, and start the deck again.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Set up</div>
+    <div class="folio">23</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    
+    <div class="figure">
+      <h3>Choose your printer</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/configs.png" alt="Choose your printer"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="-25" y1="326" x2="8" y2="326" class="leader"/>
+          <circle cx="8" cy="326" r="6" class="dot"/>
+          <circle cx="-40" cy="326" r="16" class="bdg"/>
+          <text x="-40" y="326" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="54" x2="784" y2="54" class="leader"/>
+          <circle cx="784" cy="54" r="6" class="dot"/>
+          <circle cx="840" cy="54" r="16" class="bdg"/>
+          <text x="840" y="54" class="bdg-n">2</text></g><g>
+          <line x1="-25" y1="398" x2="16" y2="398" class="leader"/>
+          <circle cx="16" cy="398" r="6" class="dot"/>
+          <circle cx="-40" cy="398" r="16" class="bdg"/>
+          <text x="-40" y="398" class="bdg-n">3</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Chip.</b> The list shows the printers with the same chip as your board.</span></li><li><span class="badge">2</span><span><b>Printer.</b> The brand, the model, the year and the chip. Tap your printer. The deck writes its config as printer.cfg, with the port of your board, and restarts Klipper. The old printer.cfg stays as printer.cfg.bak.</span></li><li><span class="badge">3</span><span><b>Show all printers.</b> Shows the printers for all chips.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Set up</div>
+    <div class="folio">24</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>Install the Klipper firmware</h2>
+    
+    
+    <p>The board of the printer must run the Klipper firmware of this Printdeck. The deck writes it through the USB cable.</p>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Open Maintenance, then tap Firmware. A new board shows Install Klipper firmware on the setup screen.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">2</span><span>Tap Write. Do not switch off the printer until the deck shows the result.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">3</span><span>Tap OK. Klipper restarts and connects to the board.</span></li></ol>
+    
+    
+    
+    <div class="figure">
+      <h3>The firmware flash</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/flash.png" alt="The firmware flash"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="825" y1="44" x2="544" y2="44" class="leader"/>
+          <circle cx="544" cy="44" r="6" class="dot"/>
+          <circle cx="840" cy="44" r="16" class="bdg"/>
+          <text x="840" y="44" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="102" x2="784" y2="102" class="leader"/>
+          <circle cx="784" cy="102" r="6" class="dot"/>
+          <circle cx="840" cy="102" r="16" class="bdg"/>
+          <text x="840" y="102" class="bdg-n">2</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Step.</b> Starting the bootloader, Writing, then Checking.</span></li><li><span class="badge">2</span><span><b>Progress.</b> The part of the firmware that is done.</span></li></ol>
+      <p class="note">The deck stops Klipper, resets the board into its bootloader, writes the firmware, and reads it back to check it. Then Klipper starts again. The setup screen and the Klipper error screen also show this key when the board has no Klipper firmware or old firmware. Printdeck can flash boards with an atmega2560 and an STK500v2 bootloader now, for example the RAMBo and RAMPS boards.</p>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Set up</div>
+    <div class="folio">25</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h2>The deck</h2>
+    
+    
+    <p>Printdeck is a touch screen for a 3D printer that runs Klipper. It shows the print, and it controls the printer.</p>
+    
+    
+    <p>The deck shows the display of the printer at the top of each screen. When the printer does not print, it shows the idle screen. The largest key is the action that you need most: Print a file.</p>
+    
+    
+    
+    <div class="figure">
+      <h3>The idle screen</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/home.png" alt="The idle screen"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="-25" y1="83" x2="16" y2="83" class="leader"/>
+          <circle cx="16" cy="83" r="6" class="dot"/>
+          <circle cx="-40" cy="83" r="16" class="bdg"/>
+          <text x="-40" y="83" class="bdg-n">1</text></g><g>
+          <line x1="-25" y1="117" x2="145" y2="83" class="leader"/>
+          <circle cx="145" cy="83" r="6" class="dot"/>
+          <circle cx="-40" cy="117" r="16" class="bdg"/>
+          <text x="-40" y="117" class="bdg-n">2</text></g><g>
+          <line x1="-25" y1="151" x2="274" y2="83" class="leader"/>
+          <circle cx="274" cy="83" r="6" class="dot"/>
+          <circle cx="-40" cy="151" r="16" class="bdg"/>
+          <text x="-40" y="151" class="bdg-n">3</text></g><g>
+          <line x1="-25" y1="185" x2="16" y2="179" class="leader"/>
+          <circle cx="16" cy="179" r="6" class="dot"/>
+          <circle cx="-40" cy="185" r="16" class="bdg"/>
+          <text x="-40" y="185" class="bdg-n">4</text></g><g>
+          <line x1="-25" y1="280" x2="16" y2="280" class="leader"/>
+          <circle cx="16" cy="280" r="6" class="dot"/>
+          <circle cx="-40" cy="280" r="16" class="bdg"/>
+          <text x="-40" y="280" class="bdg-n">5</text></g><g>
+          <line x1="-25" y1="374" x2="16" y2="374" class="leader"/>
+          <circle cx="16" cy="374" r="6" class="dot"/>
+          <circle cx="-40" cy="374" r="16" class="bdg"/>
+          <text x="-40" y="374" class="bdg-n">6</text></g><g>
+          <line x1="-25" y1="408" x2="218" y2="374" class="leader"/>
+          <circle cx="218" cy="374" r="6" class="dot"/>
+          <circle cx="-40" cy="408" r="16" class="bdg"/>
+          <text x="-40" y="408" class="bdg-n">7</text></g><g>
+          <line x1="825" y1="65" x2="784" y2="65" class="leader"/>
+          <circle cx="784" cy="65" r="6" class="dot"/>
+          <circle cx="840" cy="65" r="16" class="bdg"/>
+          <text x="840" y="65" class="bdg-n">8</text></g><g>
+          <line x1="825" y1="291" x2="784" y2="291" class="leader"/>
+          <circle cx="784" cy="291" r="6" class="dot"/>
+          <circle cx="840" cy="291" r="16" class="bdg"/>
+          <text x="840" y="291" class="bdg-n">9</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Nozzle.</b> The nozzle now, and its target under it while the heater is on. The icon is filled while the heater is on, and waves rise while it heats. Tap it to set the temperature.</span></li><li><span class="badge">2</span><span><b>Bed.</b> The same for the bed.</span></li><li><span class="badge">3</span><span><b>Fan.</b> The part cooling fan. Its blades turn at its speed.</span></li><li><span class="badge">4</span><span><b>Status.</b> The position of the head, the state of the printer with the loaded filament, and the clock. This is the status screen of the display of the printer: the same picture on both screens.</span></li><li><span class="badge">5</span><span><b>Print a file.</b> Opens the files. See Files.</span></li><li><span class="badge">6</span><span><b>Preheat.</b> Heats the nozzle and the bed for the loaded filament.</span></li><li><span class="badge">7</span><span><b>Cool down.</b> Turns off both heaters.</span></li><li><span class="badge">8</span><span><b>Last print.</b> The last print and its result. Reprint starts it again, after a question.</span></li><li><span class="badge">9</span><span><b>Pages.</b> Filament, Move, Maintenance and Machine. Each page has its own section.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Meet your Printdeck</div>
+    <div class="folio">26</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>The display of the printer</h2>
+    
+    
+    <p>When the printer has a display, the deck draws it. The display shows the status screen, the same picture as the idle screen of the deck.</p>
+    
+    
+    <p>Turn or click the knob to open the menu. The menu has the same pages and keys as the touch screen: the knob moves the cursor, and a click taps the key. The touch screen shows the cursor with an orange ring. The top item goes back: Status on the home menu, Back on a page. A long click also goes back. With no turn for 20 seconds, the display shows the status screen again.</p>
+    
+    
+    <p>While an action runs, the display shows an animation.</p>
+    
+    
+    <div class="lcdgrid"><div><img src="img/lcd-status.png" alt="The status screen"><div>The status screen</div></div><div><img src="img/lcd-printing.png" alt="During a print"><div>During a print</div></div><div><img src="img/lcd-home.png" alt="The home menu: turn the knob to choose"><div>The home menu: turn the knob to choose</div></div><div><img src="img/lcd-list.png" alt="A page: Maintenance"><div>A page: Maintenance</div></div><div><img src="img/lcd-action.png" alt="An action runs"><div>An action runs</div></div></div>
+    
+    
+  
+  
+    <div class="chapter-tab">Meet your Printdeck</div>
+    <div class="folio">27</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h2>The deck in a browser</h2>
+    
+    
+    <p>Open http://printdeck.local in a browser on the same network, and log in with the password of the deck. The browser shows the same screens as the touch screen, sharp at the pixel density of the phone. Each browser has its own screens, so a phone can show the files while the deck shows the print.</p>
+    
+    
+    <p>On a phone, use Add to Home Screen: the deck then opens as an app, with no browser bars.</p>
+    
+    
+    <p>The page http://printdeck.local/system shows the version, the services, the logs and the API key for slicers. It also installs an update: choose the update file, then Install. The deck writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one.</p>
+    
+    
+  
+  
+    <div class="chapter-tab">Meet your Printdeck</div>
+    <div class="folio">28</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>Send a file from the slicer</h2>
+    
+    
+    <p>The deck answers the OctoPrint API that slicers use to send files and to start prints.</p>
+    
+    
+    <p>In Cura, add the deck with the OctoPrint Connection plugin. The deck asks &#34;Allow Cura to use the Printdeck?&#34;. Tap Allow.</p>
+    
+    
+    <p>In OrcaSlicer or PrusaSlicer, add a printer of the type OctoPrint with the address http://printdeck.local, and the API key of the system page.</p>
+    
+    
+  
+  
+    <div class="chapter-tab">Print a part</div>
+    <div class="folio">29</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h2>Start a print</h2>
+    
+    
+    <p>The files are the G-code files that the slicer sent, or that you uploaded in the browser. The newest file is at the top.</p>
+    
+    
+    <p>Each file shows what the slicer wrote into it: the print time, the filament and the layer height. Cura, PrusaSlicer, OrcaSlicer and Bambu Studio write this data. A thumbnail shows when the slicer adds one.</p>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Tap Print a file on the idle screen.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">2</span><span>Tap the file. Check the print time, the filament and the temperatures.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">3</span><span>Tap Print, then Print again.</span></li></ol>
+    
+    
+    
+    <div class="figure">
+      <h3>The file list</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/files.png" alt="The file list"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="-25" y1="310" x2="8" y2="310" class="leader"/>
+          <circle cx="8" cy="310" r="6" class="dot"/>
+          <circle cx="-40" cy="310" r="16" class="bdg"/>
+          <text x="-40" y="310" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="88" x2="502" y2="63" class="leader"/>
+          <circle cx="502" cy="63" r="6" class="dot"/>
+          <circle cx="840" cy="88" r="16" class="bdg"/>
+          <text x="840" y="88" class="bdg-n">2</text></g><g>
+          <line x1="825" y1="54" x2="656" y2="54" class="leader"/>
+          <circle cx="656" cy="54" r="6" class="dot"/>
+          <circle cx="840" cy="54" r="16" class="bdg"/>
+          <text x="840" y="54" class="bdg-n">3</text></g><g>
+          <line x1="825" y1="122" x2="524" y2="89" class="leader"/>
+          <circle cx="524" cy="89" r="6" class="dot"/>
+          <circle cx="840" cy="122" r="16" class="bdg"/>
+          <text x="840" y="122" class="bdg-n">4</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Count.</b> The number of files.</span></li><li><span class="badge">2</span><span><b>Picture.</b> The thumbnail of the slicer, or the shape of a part.</span></li><li><span class="badge">3</span><span><b>File.</b> The name, the print time, the filament and the layer height.</span></li><li><span class="badge">4</span><span><b>Date.</b> When the file arrived.</span></li></ol>
+      <p class="note">Drag the list up and down. Tap a file to open it.</p>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Print a part</div>
+    <div class="folio">30</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    
+    <div class="figure">
+      <h3>A file</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/file.png" alt="A file"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="825" y1="134" x2="718" y2="134" class="leader"/>
+          <circle cx="718" cy="134" r="6" class="dot"/>
+          <circle cx="840" cy="134" r="16" class="bdg"/>
+          <text x="840" y="134" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="360" x2="784" y2="360" class="leader"/>
+          <circle cx="784" cy="360" r="6" class="dot"/>
+          <circle cx="840" cy="360" r="16" class="bdg"/>
+          <text x="840" y="360" class="bdg-n">2</text></g><g>
+          <line x1="-25" y1="418" x2="16" y2="418" class="leader"/>
+          <circle cx="16" cy="418" r="6" class="dot"/>
+          <circle cx="-40" cy="418" r="16" class="bdg"/>
+          <text x="-40" y="418" class="bdg-n">3</text></g><g>
+          <line x1="-25" y1="452" x2="264" y2="418" class="leader"/>
+          <circle cx="264" cy="418" r="6" class="dot"/>
+          <circle cx="-40" cy="452" r="16" class="bdg"/>
+          <text x="-40" y="452" class="bdg-n">4</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Picture.</b> The thumbnail of the file.</span></li><li><span class="badge">2</span><span><b>Slicer data.</b> The print time, the filament, the layer height, the temperatures, the slicer and the date.</span></li><li><span class="badge">3</span><span><b>Print.</b> Starts the print, after a question.</span></li><li><span class="badge">4</span><span><b>Delete.</b> Removes the file, after a question. The file that prints now cannot be removed.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Print a part</div>
+    <div class="folio">31</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h2>Watch the print</h2>
+    
+    
+    <p>During a print, the deck shows the screen of the phase of the print. The deck knows the phase from the printer and from the G-code of the file.</p>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Watch the first layer. Use − and &#43; to set the height of the nozzle while it prints.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">2</span><span>Tap Save to keep the Z offset for the next prints.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">3</span><span>Use Tune to change the speed, the flow or the fan while the print runs.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">4</span><span>When the print is done, wait for the bed to cool, then take the part off.</span></li></ol>
+    
+    
+    
+    <div class="figure">
+      <h3>Preparing</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/preparing.png" alt="Preparing"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="-25" y1="116" x2="16" y2="116" class="leader"/>
+          <circle cx="16" cy="116" r="6" class="dot"/>
+          <circle cx="-40" cy="116" r="16" class="bdg"/>
+          <text x="-40" y="116" class="bdg-n">1</text></g><g>
+          <line x1="-25" y1="343" x2="16" y2="343" class="leader"/>
+          <circle cx="16" cy="343" r="6" class="dot"/>
+          <circle cx="-40" cy="343" r="16" class="bdg"/>
+          <text x="-40" y="343" class="bdg-n">2</text></g><g>
+          <line x1="825" y1="424" x2="784" y2="424" class="leader"/>
+          <circle cx="784" cy="424" r="6" class="dot"/>
+          <circle cx="840" cy="424" r="16" class="bdg"/>
+          <text x="840" y="424" class="bdg-n">3</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Display.</b> The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time of the print and the time left. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>Steps.</b> The steps of the start macro of your printer, in its order. The deck follows the commands that the printer runs: the step that runs has a lit LED, and a done step has a dot.</span></li><li><span class="badge">3</span><span><b>Cancel print.</b> Stops the print, after a question.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Print a part</div>
+    <div class="folio">32</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    
+    <div class="figure">
+      <h3>The first layer</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/first-layer.png" alt="The first layer"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="-25" y1="116" x2="16" y2="116" class="leader"/>
+          <circle cx="16" cy="116" r="6" class="dot"/>
+          <circle cx="-40" cy="116" r="16" class="bdg"/>
+          <text x="-40" y="116" class="bdg-n">1</text></g><g>
+          <line x1="-25" y1="268" x2="16" y2="268" class="leader"/>
+          <circle cx="16" cy="268" r="6" class="dot"/>
+          <circle cx="-40" cy="268" r="16" class="bdg"/>
+          <text x="-40" y="268" class="bdg-n">2</text></g><g>
+          <line x1="-25" y1="302" x2="92" y2="268" class="leader"/>
+          <circle cx="92" cy="268" r="6" class="dot"/>
+          <circle cx="-40" cy="302" r="16" class="bdg"/>
+          <text x="-40" y="302" class="bdg-n">3</text></g><g>
+          <line x1="825" y1="268" x2="408" y2="268" class="leader"/>
+          <circle cx="408" cy="268" r="6" class="dot"/>
+          <circle cx="840" cy="268" r="16" class="bdg"/>
+          <text x="840" y="268" class="bdg-n">4</text></g><g>
+          <line x1="-25" y1="336" x2="16" y2="334" class="leader"/>
+          <circle cx="16" cy="334" r="6" class="dot"/>
+          <circle cx="-40" cy="336" r="16" class="bdg"/>
+          <text x="-40" y="336" class="bdg-n">5</text></g><g>
+          <line x1="-25" y1="394" x2="16" y2="394" class="leader"/>
+          <circle cx="16" cy="394" r="6" class="dot"/>
+          <circle cx="-40" cy="394" r="16" class="bdg"/>
+          <text x="-40" y="394" class="bdg-n">6</text></g><g>
+          <line x1="825" y1="39" x2="550" y2="39" class="leader"/>
+          <circle cx="550" cy="39" r="6" class="dot"/>
+          <circle cx="840" cy="39" r="16" class="bdg"/>
+          <text x="840" y="39" class="bdg-n">7</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Display.</b> The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time of the print and the time left. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>− and &#43;.</b> − moves the nozzle closer to the bed, &#43; away from it. A line that is too round and thin needs −. A line that is flat and rough needs &#43;.</span></li><li><span class="badge">3</span><span><b>Z offset.</b> The height of the nozzle above its normal height. Watch the first lines while they print.</span></li><li><span class="badge">4</span><span><b>Save.</b> Writes the Z offset into the config of the printer. Save config in Maintenance then writes the file.</span></li><li><span class="badge">5</span><span><b>Step.</b> How far one tap moves the nozzle, in mm.</span></li><li><span class="badge">6</span><span><b>Pause, Cancel.</b> Pauses the print, or stops it after a question.</span></li><li><span class="badge">7</span><span><b>Layer.</b> The first layer of the model.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Print a part</div>
+    <div class="folio">33</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    
+    <div class="figure">
+      <h3>Printing</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/printing.png" alt="Printing"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="-25" y1="116" x2="16" y2="116" class="leader"/>
+          <circle cx="16" cy="116" r="6" class="dot"/>
+          <circle cx="-40" cy="116" r="16" class="bdg"/>
+          <text x="-40" y="116" class="bdg-n">1</text></g><g>
+          <line x1="-25" y1="268" x2="16" y2="268" class="leader"/>
+          <circle cx="16" cy="268" r="6" class="dot"/>
+          <circle cx="-40" cy="268" r="16" class="bdg"/>
+          <text x="-40" y="268" class="bdg-n">2</text></g><g>
+          <line x1="-25" y1="302" x2="149" y2="268" class="leader"/>
+          <circle cx="149" cy="268" r="6" class="dot"/>
+          <circle cx="-40" cy="302" r="16" class="bdg"/>
+          <text x="-40" y="302" class="bdg-n">3</text></g><g>
+          <line x1="825" y1="274" x2="408" y2="268" class="leader"/>
+          <circle cx="408" cy="268" r="6" class="dot"/>
+          <circle cx="840" cy="274" r="16" class="bdg"/>
+          <text x="840" y="274" class="bdg-n">4</text></g><g>
+          <line x1="825" y1="240" x2="784" y2="240" class="leader"/>
+          <circle cx="784" cy="240" r="6" class="dot"/>
+          <circle cx="840" cy="240" r="16" class="bdg"/>
+          <text x="840" y="240" class="bdg-n">5</text></g><g>
+          <line x1="825" y1="440" x2="766" y2="440" class="leader"/>
+          <circle cx="766" cy="440" r="6" class="dot"/>
+          <circle cx="840" cy="440" r="16" class="bdg"/>
+          <text x="840" y="440" class="bdg-n">6</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Display.</b> The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time of the print and the time left. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>Pause.</b> Pauses the print.</span></li><li><span class="badge">3</span><span><b>Tune.</b> Changes the print while it runs. See Tune.</span></li><li><span class="badge">4</span><span><b>Cancel.</b> Stops the print, after a question.</span></li><li><span class="badge">5</span><span><b>Model.</b> The model up to the layer that prints now, with the move now and its speed at the top right.</span></li><li><span class="badge">6</span><span><b>Layer slider.</b> Drag it to look at another layer. Live goes back to the layer that prints.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Print a part</div>
+    <div class="folio">34</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    
+    <div class="figure">
+      <h3>Tune</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/tune.png" alt="Tune"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="825" y1="75" x2="784" y2="75" class="leader"/>
+          <circle cx="784" cy="75" r="6" class="dot"/>
+          <circle cx="840" cy="75" r="16" class="bdg"/>
+          <text x="840" y="75" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="197" x2="784" y2="197" class="leader"/>
+          <circle cx="784" cy="197" r="6" class="dot"/>
+          <circle cx="840" cy="197" r="16" class="bdg"/>
+          <text x="840" y="197" class="bdg-n">2</text></g><g>
+          <line x1="825" y1="319" x2="784" y2="319" class="leader"/>
+          <circle cx="784" cy="319" r="6" class="dot"/>
+          <circle cx="840" cy="319" r="16" class="bdg"/>
+          <text x="840" y="319" class="bdg-n">3</text></g><g>
+          <line x1="-25" y1="356" x2="16" y2="356" class="leader"/>
+          <circle cx="16" cy="356" r="6" class="dot"/>
+          <circle cx="-40" cy="356" r="16" class="bdg"/>
+          <text x="-40" y="356" class="bdg-n">4</text></g><g>
+          <line x1="-25" y1="426" x2="16" y2="426" class="leader"/>
+          <circle cx="16" cy="426" r="6" class="dot"/>
+          <circle cx="-40" cy="426" r="16" class="bdg"/>
+          <text x="-40" y="426" class="bdg-n">5</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Speed.</b> The speed of the print, in percent of the speed of the slicer.</span></li><li><span class="badge">2</span><span><b>Flow.</b> The amount of plastic, in percent.</span></li><li><span class="badge">3</span><span><b>Z offset.</b> The height of the nozzle during the print.</span></li><li><span class="badge">4</span><span><b>Fan.</b> The part cooling fan.</span></li><li><span class="badge">5</span><span><b>Temperatures.</b> Tap a card to change its temperature.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Print a part</div>
+    <div class="folio">35</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    
+    <div class="figure">
+      <h3>Paused</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/paused.png" alt="Paused"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="-25" y1="116" x2="16" y2="116" class="leader"/>
+          <circle cx="16" cy="116" r="6" class="dot"/>
+          <circle cx="-40" cy="116" r="16" class="bdg"/>
+          <text x="-40" y="116" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="58" x2="784" y2="58" class="leader"/>
+          <circle cx="784" cy="58" r="6" class="dot"/>
+          <circle cx="840" cy="58" r="16" class="bdg"/>
+          <text x="840" y="58" class="bdg-n">2</text></g><g>
+          <line x1="-25" y1="276" x2="16" y2="276" class="leader"/>
+          <circle cx="16" cy="276" r="6" class="dot"/>
+          <circle cx="-40" cy="276" r="16" class="bdg"/>
+          <text x="-40" y="276" class="bdg-n">3</text></g><g>
+          <line x1="-25" y1="358" x2="16" y2="361" class="leader"/>
+          <circle cx="16" cy="361" r="6" class="dot"/>
+          <circle cx="-40" cy="358" r="16" class="bdg"/>
+          <text x="-40" y="358" class="bdg-n">4</text></g><g>
+          <line x1="-25" y1="392" x2="218" y2="361" class="leader"/>
+          <circle cx="218" cy="361" r="6" class="dot"/>
+          <circle cx="-40" cy="392" r="16" class="bdg"/>
+          <text x="-40" y="392" class="bdg-n">5</text></g><g>
+          <line x1="-25" y1="426" x2="16" y2="431" class="leader"/>
+          <circle cx="16" cy="431" r="6" class="dot"/>
+          <circle cx="-40" cy="426" r="16" class="bdg"/>
+          <text x="-40" y="426" class="bdg-n">6</text></g><g>
+          <line x1="-25" y1="460" x2="218" y2="431" class="leader"/>
+          <circle cx="218" cy="431" r="6" class="dot"/>
+          <circle cx="-40" cy="460" r="16" class="bdg"/>
+          <text x="-40" y="460" class="bdg-n">7</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Display.</b> The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time of the print and the time left. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>Where.</b> The layer of the pause, and the message of the printer.</span></li><li><span class="badge">3</span><span><b>Resume.</b> Continues the print.</span></li><li><span class="badge">4</span><span><b>Change filament.</b> The guided filament change, for a new color. See Change the filament.</span></li><li><span class="badge">5</span><span><b>Move head.</b> Opens Move, to move the head out of the way.</span></li><li><span class="badge">6</span><span><b>Tune.</b> Changes the print.</span></li><li><span class="badge">7</span><span><b>Cancel.</b> Stops the print, after a question.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Print a part</div>
+    <div class="folio">36</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    
+    <div class="figure">
+      <h3>Done</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/done.png" alt="Done"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="825" y1="220" x2="784" y2="220" class="leader"/>
+          <circle cx="784" cy="220" r="6" class="dot"/>
+          <circle cx="840" cy="220" r="16" class="bdg"/>
+          <text x="840" y="220" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="444" x2="784" y2="444" class="leader"/>
+          <circle cx="784" cy="444" r="6" class="dot"/>
+          <circle cx="840" cy="444" r="16" class="bdg"/>
+          <text x="840" y="444" class="bdg-n">2</text></g><g>
+          <line x1="-25" y1="283" x2="16" y2="283" class="leader"/>
+          <circle cx="16" cy="283" r="6" class="dot"/>
+          <circle cx="-40" cy="283" r="16" class="bdg"/>
+          <text x="-40" y="283" class="bdg-n">3</text></g><g>
+          <line x1="-25" y1="382" x2="16" y2="382" class="leader"/>
+          <circle cx="16" cy="382" r="6" class="dot"/>
+          <circle cx="-40" cy="382" r="16" class="bdg"/>
+          <text x="-40" y="382" class="bdg-n">4</text></g><g>
+          <line x1="-25" y1="416" x2="218" y2="382" class="leader"/>
+          <circle cx="218" cy="382" r="6" class="dot"/>
+          <circle cx="-40" cy="416" r="16" class="bdg"/>
+          <text x="-40" y="416" class="bdg-n">5</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Model.</b> The model of the print.</span></li><li><span class="badge">2</span><span><b>Result.</b> Done, Cancelled or Failed, the file, the time and the filament of the print.</span></li><li><span class="badge">3</span><span><b>Bed.</b> The temperature of the bed. The bar is full when the part comes off easily (35°).</span></li><li><span class="badge">4</span><span><b>Reprint.</b> Prints the file again.</span></li><li><span class="badge">5</span><span><b>Done.</b> Closes this screen.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Print a part</div>
+    <div class="folio">37</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h2>Change the filament</h2>
+    
+    
+    <p>Set the loaded filament here, so that Preheat uses its temperatures. The guided change heats the nozzle, unloads the old filament and loads the new one.</p>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Open Filament, then tap Change filament.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">2</span><span>Tap the new filament. The nozzle heats to its temperature.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">3</span><span>Tap Unload, and hold the filament lightly while it comes out.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">4</span><span>Push the new filament into the extruder until it stops, then tap Load.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">5</span><span>Check that clean plastic of the new color comes out, then tap Done.</span></li></ol>
+    
+    
+    
+    <div class="figure">
+      <h3>The Filament page</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/filament.png" alt="The Filament page"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="-25" y1="320" x2="16" y2="320" class="leader"/>
+          <circle cx="16" cy="320" r="6" class="dot"/>
+          <circle cx="-40" cy="320" r="16" class="bdg"/>
+          <text x="-40" y="320" class="bdg-n">1</text></g><g>
+          <line x1="-25" y1="374" x2="16" y2="374" class="leader"/>
+          <circle cx="16" cy="374" r="6" class="dot"/>
+          <circle cx="-40" cy="374" r="16" class="bdg"/>
+          <text x="-40" y="374" class="bdg-n">2</text></g><g>
+          <line x1="825" y1="84" x2="784" y2="84" class="leader"/>
+          <circle cx="784" cy="84" r="6" class="dot"/>
+          <circle cx="840" cy="84" r="16" class="bdg"/>
+          <text x="840" y="84" class="bdg-n">3</text></g><g>
+          <line x1="825" y1="205" x2="784" y2="205" class="leader"/>
+          <circle cx="784" cy="205" r="6" class="dot"/>
+          <circle cx="840" cy="205" r="16" class="bdg"/>
+          <text x="840" y="205" class="bdg-n">4</text></g><g>
+          <line x1="825" y1="308" x2="784" y2="308" class="leader"/>
+          <circle cx="784" cy="308" r="6" class="dot"/>
+          <circle cx="840" cy="308" r="16" class="bdg"/>
+          <text x="840" y="308" class="bdg-n">5</text></g><g>
+          <line x1="825" y1="413" x2="784" y2="413" class="leader"/>
+          <circle cx="784" cy="413" r="6" class="dot"/>
+          <circle cx="840" cy="413" r="16" class="bdg"/>
+          <text x="840" y="413" class="bdg-n">6</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Loaded.</b> The filament that is in the printer, and its temperatures.</span></li><li><span class="badge">2</span><span><b>Material.</b> Tap the material that is in the printer.</span></li><li><span class="badge">3</span><span><b>Change filament.</b> The guided change: choose, heat, unload, insert, load, check.</span></li><li><span class="badge">4</span><span><b>Load, Unload.</b> Only the load, or only the unload.</span></li><li><span class="badge">5</span><span><b>Extrude, Retract.</b> Pushes or pulls 10 mm. The nozzle must be at 170° or more.</span></li><li><span class="badge">6</span><span><b>Heat, Cool down.</b> Heats the nozzle for the loaded filament, or turns the heaters off.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Change the filament</div>
+    <div class="folio">38</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    
+    <div class="figure">
+      <h3>The guided change, step 1</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/swap.png" alt="The guided change, step 1"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="-25" y1="328" x2="8" y2="328" class="leader"/>
+          <circle cx="8" cy="328" r="6" class="dot"/>
+          <circle cx="-40" cy="328" r="16" class="bdg"/>
+          <text x="-40" y="328" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="162" x2="784" y2="162" class="leader"/>
+          <circle cx="784" cy="162" r="6" class="dot"/>
+          <circle cx="840" cy="162" r="16" class="bdg"/>
+          <text x="840" y="162" class="bdg-n">2</text></g><g>
+          <line x1="825" y1="388" x2="784" y2="388" class="leader"/>
+          <circle cx="784" cy="388" r="6" class="dot"/>
+          <circle cx="840" cy="388" r="16" class="bdg"/>
+          <text x="840" y="388" class="bdg-n">3</text></g><g>
+          <line x1="-25" y1="275" x2="286" y2="275" class="leader"/>
+          <circle cx="286" cy="275" r="6" class="dot"/>
+          <circle cx="-40" cy="275" r="16" class="bdg"/>
+          <text x="-40" y="275" class="bdg-n">4</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Step.</b> The step of the change.</span></li><li><span class="badge">2</span><span><b>Materials.</b> The new filament. The nozzle heats to its temperature, and the deck sets it as the loaded filament.</span></li><li><span class="badge">3</span><span><b>Other temperature.</b> A temperature that you type.</span></li><li><span class="badge">4</span><span><b>Close.</b> Stops the change.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Change the filament</div>
+    <div class="folio">39</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h2>Move the head and heat</h2>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Open Move, and tap Home all after each start of the printer.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">2</span><span>Hold the joystick to move the head. Use Z for the height.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">3</span><span>Tap a temperature on the idle screen to set it with the keypad.</span></li></ol>
+    
+    
+    
+    <div class="figure">
+      <h3>The Move page</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/move.png" alt="The Move page"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="-25" y1="320" x2="16" y2="320" class="leader"/>
+          <circle cx="16" cy="320" r="6" class="dot"/>
+          <circle cx="-40" cy="320" r="16" class="bdg"/>
+          <text x="-40" y="320" class="bdg-n">1</text></g><g>
+          <line x1="-25" y1="378" x2="16" y2="378" class="leader"/>
+          <circle cx="16" cy="378" r="6" class="dot"/>
+          <circle cx="-40" cy="378" r="16" class="bdg"/>
+          <text x="-40" y="378" class="bdg-n">2</text></g><g>
+          <line x1="825" y1="193" x2="777" y2="193" class="leader"/>
+          <circle cx="777" cy="193" r="6" class="dot"/>
+          <circle cx="840" cy="193" r="16" class="bdg"/>
+          <text x="840" y="193" class="bdg-n">3</text></g><g>
+          <line x1="825" y1="378" x2="408" y2="378" class="leader"/>
+          <circle cx="408" cy="378" r="6" class="dot"/>
+          <circle cx="840" cy="378" r="16" class="bdg"/>
+          <text x="840" y="378" class="bdg-n">4</text></g><g>
+          <line x1="825" y1="431" x2="784" y2="431" class="leader"/>
+          <circle cx="784" cy="431" r="6" class="dot"/>
+          <circle cx="840" cy="431" r="16" class="bdg"/>
+          <text x="840" y="431" class="bdg-n">5</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Position.</b> X, Y and Z of the head. A lit LED shows a homed axis.</span></li><li><span class="badge">2</span><span><b>Home.</b> Homes all axes, or one axis. Home after each start of the printer.</span></li><li><span class="badge">3</span><span><b>Joystick.</b> Hold a finger on the pad to move the head in X and Y. The farther from the middle, the faster it moves.</span></li><li><span class="badge">4</span><span><b>Z.</b> Moves Z up or down by the step: 0.1, 1 or 10 mm.</span></li><li><span class="badge">5</span><span><b>Park, Center, Motors off.</b> Park moves the head to the back left. Center moves it to the middle of the bed. Motors off lets you move the head by hand.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Move and heat</div>
+    <div class="folio">40</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    
+    <div class="figure">
+      <h3>The keypad of a temperature</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/keypad.png" alt="The keypad of a temperature"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="-25" y1="110" x2="40" y2="110" class="leader"/>
+          <circle cx="40" cy="110" r="6" class="dot"/>
+          <circle cx="-40" cy="110" r="16" class="bdg"/>
+          <text x="-40" y="110" class="bdg-n">1</text></g><g>
+          <line x1="-25" y1="182" x2="40" y2="182" class="leader"/>
+          <circle cx="40" cy="182" r="6" class="dot"/>
+          <circle cx="-40" cy="182" r="16" class="bdg"/>
+          <text x="-40" y="182" class="bdg-n">2</text></g><g>
+          <line x1="-25" y1="237" x2="412" y2="237" class="leader"/>
+          <circle cx="412" cy="237" r="6" class="dot"/>
+          <circle cx="-40" cy="237" r="16" class="bdg"/>
+          <text x="-40" y="237" class="bdg-n">3</text></g><g>
+          <line x1="-25" y1="412" x2="222" y2="412" class="leader"/>
+          <circle cx="222" cy="412" r="6" class="dot"/>
+          <circle cx="-40" cy="412" r="16" class="bdg"/>
+          <text x="-40" y="412" class="bdg-n">4</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Value.</b> The temperature that you type.</span></li><li><span class="badge">2</span><span><b>Presets.</b> Off, and the temperatures of the materials.</span></li><li><span class="badge">3</span><span><b>Keys.</b> The digits. C clears the value, DEL removes the last digit.</span></li><li><span class="badge">4</span><span><b>Set.</b> Sets the heater. Cancel closes the keypad with no change.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Move and heat</div>
+    <div class="folio">41</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h2>Level and calibrate</h2>
+    
+    
+    <p>Maintenance lists the calibrations that your printer has. The list comes from the config of the printer.</p>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Open Maintenance.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">2</span><span>Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">3</span><span>Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">4</span><span>Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">5</span><span>Tap Save config to write the results. Klipper restarts.</span></li></ol>
+    
+    
+  
+  
+    <div class="chapter-tab">Level and calibrate</div>
+    <div class="folio">42</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    
+    <div class="figure">
+      <h3>The Maintenance page</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/maintenance.png" alt="The Maintenance page"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="825" y1="51" x2="784" y2="51" class="leader"/>
+          <circle cx="784" cy="51" r="6" class="dot"/>
+          <circle cx="840" cy="51" r="16" class="bdg"/>
+          <text x="840" y="51" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="126" x2="784" y2="126" class="leader"/>
+          <circle cx="784" cy="126" r="6" class="dot"/>
+          <circle cx="840" cy="126" r="16" class="bdg"/>
+          <text x="840" y="126" class="bdg-n">2</text></g><g>
+          <line x1="825" y1="201" x2="784" y2="201" class="leader"/>
+          <circle cx="784" cy="201" r="6" class="dot"/>
+          <circle cx="840" cy="201" r="16" class="bdg"/>
+          <text x="840" y="201" class="bdg-n">3</text></g><g>
+          <line x1="825" y1="276" x2="784" y2="276" class="leader"/>
+          <circle cx="784" cy="276" r="6" class="dot"/>
+          <circle cx="840" cy="276" r="16" class="bdg"/>
+          <text x="840" y="276" class="bdg-n">4</text></g><g>
+          <line x1="825" y1="351" x2="784" y2="351" class="leader"/>
+          <circle cx="784" cy="351" r="6" class="dot"/>
+          <circle cx="840" cy="351" r="16" class="bdg"/>
+          <text x="840" y="351" class="bdg-n">5</text></g><g>
+          <line x1="825" y1="426" x2="784" y2="426" class="leader"/>
+          <circle cx="784" cy="426" r="6" class="dot"/>
+          <circle cx="840" cy="426" r="16" class="bdg"/>
+          <text x="840" y="426" class="bdg-n">6</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Bed tilt.</b> Probes the bed, and corrects its tilt (BED_TILT_CALIBRATE). A printer with a bed mesh shows Bed mesh.</span></li><li><span class="badge">2</span><span><b>Probe Z offset.</b> The paper test for the height of the nozzle (PROBE_CALIBRATE).</span></li><li><span class="badge">3</span><span><b>PID tune.</b> Heats the nozzle to 210° and the bed to 60°, and finds the PID settings of each heater (PID_CALIBRATE). Save config then writes them.</span></li><li><span class="badge">4</span><span><b>Nozzle change.</b> Heats the nozzle to 250° and raises the head, to change the nozzle.</span></li><li><span class="badge">5</span><span><b>Firmware.</b> Writes the Klipper firmware of this Printdeck to the board of the printer. Orange text shows old firmware. See below.</span></li><li><span class="badge">6</span><span><b>Save config.</b> Writes the results of the calibrations into printer.cfg. Klipper restarts. Orange text shows unsaved results.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Level and calibrate</div>
+    <div class="folio">43</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    
+    <div class="figure">
+      <h3>An action runs</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/action.png" alt="An action runs"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="825" y1="95" x2="784" y2="95" class="leader"/>
+          <circle cx="784" cy="95" r="6" class="dot"/>
+          <circle cx="840" cy="95" r="16" class="bdg"/>
+          <text x="840" y="95" class="bdg-n">1</text></g><g>
+          <line x1="-25" y1="420" x2="16" y2="420" class="leader"/>
+          <circle cx="16" cy="420" r="6" class="dot"/>
+          <circle cx="-40" cy="420" r="16" class="bdg"/>
+          <text x="-40" y="420" class="bdg-n">2</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Action.</b> The time since the start, a bar that moves while the action runs, and the temperatures.</span></li><li><span class="badge">2</span><span><b>Stop the printer.</b> Stops the printer at once, after one question. Then use Firmware restart.</span></li></ol>
+      <p class="note">While an action runs, the deck shows it on the deck and in each browser, and the other keys are off. The display of the printer shows the name of the action and a moving bar. When the action ends, a short message says that it is done. When it fails, the deck shows the error of Klipper until you tap OK.</p>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Level and calibrate</div>
+    <div class="folio">44</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    
+    <div class="figure">
+      <h3>The paper test</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/paper.png" alt="The paper test"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="-25" y1="62" x2="16" y2="62" class="leader"/>
+          <circle cx="16" cy="62" r="6" class="dot"/>
+          <circle cx="-40" cy="62" r="16" class="bdg"/>
+          <text x="-40" y="62" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="173" x2="784" y2="173" class="leader"/>
+          <circle cx="784" cy="173" r="6" class="dot"/>
+          <circle cx="840" cy="173" r="16" class="bdg"/>
+          <text x="840" y="173" class="bdg-n">2</text></g><g>
+          <line x1="-25" y1="415" x2="424" y2="415" class="leader"/>
+          <circle cx="424" cy="415" r="6" class="dot"/>
+          <circle cx="-40" cy="415" r="16" class="bdg"/>
+          <text x="-40" y="415" class="bdg-n">3</text></g><g>
+          <line x1="825" y1="415" x2="784" y2="415" class="leader"/>
+          <circle cx="784" cy="415" r="6" class="dot"/>
+          <circle cx="840" cy="415" r="16" class="bdg"/>
+          <text x="840" y="415" class="bdg-n">4</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Height.</b> The height of the nozzle now.</span></li><li><span class="badge">2</span><span><b>Steps.</b> Moves the nozzle down (−) or up (&#43;), in mm.</span></li><li><span class="badge">3</span><span><b>Accept.</b> Takes the height. Save config then writes it.</span></li><li><span class="badge">4</span><span><b>Abort.</b> Stops the test with no change.</span></li></ol>
+      <p class="note">This screen shows by itself while Klipper runs a paper test, also when it started from a macro.</p>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Level and calibrate</div>
+    <div class="folio">45</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h2>Look after the printer</h2>
+    
+    
+    <p>Machine has the information of the printer, the history of the prints, the macros and the console.</p>
+    
+    
+    
+    <div class="figure">
+      <h3>The Machine page</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/machine.png" alt="The Machine page"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="-25" y1="346" x2="16" y2="346" class="leader"/>
+          <circle cx="16" cy="346" r="6" class="dot"/>
+          <circle cx="-40" cy="346" r="16" class="bdg"/>
+          <text x="-40" y="346" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="45" x2="784" y2="45" class="leader"/>
+          <circle cx="784" cy="45" r="6" class="dot"/>
+          <circle cx="840" cy="45" r="16" class="bdg"/>
+          <text x="840" y="45" class="bdg-n">2</text></g><g>
+          <line x1="825" y1="100" x2="784" y2="100" class="leader"/>
+          <circle cx="784" cy="100" r="6" class="dot"/>
+          <circle cx="840" cy="100" r="16" class="bdg"/>
+          <text x="840" y="100" class="bdg-n">3</text></g><g>
+          <line x1="825" y1="155" x2="784" y2="155" class="leader"/>
+          <circle cx="784" cy="155" r="6" class="dot"/>
+          <circle cx="840" cy="155" r="16" class="bdg"/>
+          <text x="840" y="155" class="bdg-n">4</text></g><g>
+          <line x1="825" y1="210" x2="784" y2="210" class="leader"/>
+          <circle cx="784" cy="210" r="6" class="dot"/>
+          <circle cx="840" cy="210" r="16" class="bdg"/>
+          <text x="840" y="210" class="bdg-n">5</text></g><g>
+          <line x1="825" y1="265" x2="784" y2="265" class="leader"/>
+          <circle cx="784" cy="265" r="6" class="dot"/>
+          <circle cx="840" cy="265" r="16" class="bdg"/>
+          <text x="840" y="265" class="bdg-n">6</text></g><g>
+          <line x1="825" y1="320" x2="784" y2="320" class="leader"/>
+          <circle cx="784" cy="320" r="6" class="dot"/>
+          <circle cx="840" cy="320" r="16" class="bdg"/>
+          <text x="840" y="320" class="bdg-n">7</text></g><g>
+          <line x1="825" y1="375" x2="784" y2="375" class="leader"/>
+          <circle cx="784" cy="375" r="6" class="dot"/>
+          <circle cx="840" cy="375" r="16" class="bdg"/>
+          <text x="840" y="375" class="bdg-n">8</text></g><g>
+          <line x1="825" y1="430" x2="784" y2="430" class="leader"/>
+          <circle cx="784" cy="430" r="6" class="dot"/>
+          <circle cx="840" cy="430" r="16" class="bdg"/>
+          <text x="840" y="430" class="bdg-n">9</text></g><g>
+          <line x1="-25" y1="426" x2="16" y2="432" class="leader"/>
+          <circle cx="16" cy="432" r="6" class="dot"/>
+          <circle cx="-40" cy="426" r="16" class="bdg"/>
+          <text x="-40" y="426" class="bdg-n">10</text></g><g>
+          <line x1="-25" y1="460" x2="218" y2="432" class="leader"/>
+          <circle cx="218" cy="432" r="6" class="dot"/>
+          <circle cx="-40" cy="460" r="16" class="bdg"/>
+          <text x="-40" y="460" class="bdg-n">11</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Information.</b> The version of Klipper, the state of the firmware of the board, the network address, and the totals.</span></li><li><span class="badge">2</span><span><b>Software update.</b> The version of the deck, and a new version when there is one. See Update the Printdeck.</span></li><li><span class="badge">3</span><span><b>Statistics.</b> The totals of all prints.</span></li><li><span class="badge">4</span><span><b>Print history.</b> Each print, with its result. Tap a print to print it again.</span></li><li><span class="badge">5</span><span><b>Macros.</b> The macros of the printer. Tap one to run it.</span></li><li><span class="badge">6</span><span><b>Console.</b> The G-code terminal of Klipper. See below.</span></li><li><span class="badge">7</span><span><b>Theme.</b> The colors of the screen: day, night, or auto (night from 20:00 to 7:00). Tap it to change them.</span></li><li><span class="badge">8</span><span><b>Clock.</b> The clock of the screens and the display of the printer: 12 hours (2:24 PM) or 24 hours (14:24). Tap it to change it.</span></li><li><span class="badge">9</span><span><b>Wi-Fi and help.</b> The network, the password and the addresses.</span></li><li><span class="badge">10</span><span><b>Restart Klipper.</b> Restarts the Klipper host, which reads printer.cfg again.</span></li><li><span class="badge">11</span><span><b>Firmware restart.</b> Restarts the firmware of the board, for example after a stop.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Look after the printer</div>
+    <div class="folio">46</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    
+    <div class="figure">
+      <h3>Statistics</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/stats.png" alt="Statistics"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="-25" y1="379" x2="16" y2="379" class="leader"/>
+          <circle cx="16" cy="379" r="6" class="dot"/>
+          <circle cx="-40" cy="379" r="16" class="bdg"/>
+          <text x="-40" y="379" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="32" x2="784" y2="32" class="leader"/>
+          <circle cx="784" cy="32" r="6" class="dot"/>
+          <circle cx="840" cy="32" r="16" class="bdg"/>
+          <text x="840" y="32" class="bdg-n">2</text></g><g>
+          <line x1="825" y1="254" x2="784" y2="254" class="leader"/>
+          <circle cx="784" cy="254" r="6" class="dot"/>
+          <circle cx="840" cy="254" r="16" class="bdg"/>
+          <text x="840" y="254" class="bdg-n">3</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Totals.</b> The number of prints, the success rate, the print time and the filament.</span></li><li><span class="badge">2</span><span><b>Results.</b> Done (amber), cancelled and failed (red).</span></li><li><span class="badge">3</span><span><b>Details.</b> The filament in grams (for 1.75 mm PLA), the average and the longest print, the prints of the last 7 and 30 days, and the file that you print most.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Look after the printer</div>
+    <div class="folio">47</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    
+    <div class="figure">
+      <h3>The console</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/console.png" alt="The console"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="825" y1="240" x2="784" y2="240" class="leader"/>
+          <circle cx="784" cy="240" r="6" class="dot"/>
+          <circle cx="840" cy="240" r="16" class="bdg"/>
+          <text x="840" y="240" class="bdg-n">1</text></g><g>
+          <line x1="-25" y1="331" x2="16" y2="331" class="leader"/>
+          <circle cx="16" cy="331" r="6" class="dot"/>
+          <circle cx="-40" cy="331" r="16" class="bdg"/>
+          <text x="-40" y="331" class="bdg-n">2</text></g><g>
+          <line x1="-25" y1="409" x2="16" y2="409" class="leader"/>
+          <circle cx="16" cy="409" r="6" class="dot"/>
+          <circle cx="-40" cy="409" r="16" class="bdg"/>
+          <text x="-40" y="409" class="bdg-n">3</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Replies.</b> Your commands (amber, after &gt;), the replies of Klipper, and errors (red). Drag down to read older lines.</span></li><li><span class="badge">2</span><span><b>Type a command.</b> Opens the keyboard. It shows your last command, so you can change it and send it again.</span></li><li><span class="badge">3</span><span><b>Quick keys.</b> Home (G28), Status (STATUS) and Help (HELP, the list of the commands).</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Look after the printer</div>
+    <div class="folio">48</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>Update the Printdeck</h2>
+    
+    
+    <p>The deck checks for a new version once a day. Machine then shows Software update in orange.</p>
+    
+    
+    <p>Each version has a signature. The deck installs only a version with a valid signature of Printdeck. It writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one.</p>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Open Machine, then Software update.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">2</span><span>Read the notes of the new version, then tap Install. The deck does not install during a print.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">3</span><span>Wait while the deck downloads and writes the update. It restarts into the new version.</span></li></ol>
+    
+    
+    
+    <div class="figure">
+      <h3>Software update</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/update.png" alt="Software update"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="-25" y1="343" x2="16" y2="343" class="leader"/>
+          <circle cx="16" cy="343" r="6" class="dot"/>
+          <circle cx="-40" cy="343" r="16" class="bdg"/>
+          <text x="-40" y="343" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="72" x2="782" y2="72" class="leader"/>
+          <circle cx="782" cy="72" r="6" class="dot"/>
+          <circle cx="840" cy="72" r="16" class="bdg"/>
+          <text x="840" y="72" class="bdg-n">2</text></g><g>
+          <line x1="825" y1="420" x2="784" y2="420" class="leader"/>
+          <circle cx="784" cy="420" r="6" class="dot"/>
+          <circle cx="840" cy="420" r="16" class="bdg"/>
+          <text x="840" y="420" class="bdg-n">3</text></g><g>
+          <line x1="-25" y1="426" x2="16" y2="430" class="leader"/>
+          <circle cx="16" cy="430" r="6" class="dot"/>
+          <circle cx="-40" cy="426" r="16" class="bdg"/>
+          <text x="-40" y="426" class="bdg-n">4</text></g><g>
+          <line x1="-25" y1="460" x2="218" y2="430" class="leader"/>
+          <circle cx="218" cy="430" r="6" class="dot"/>
+          <circle cx="-40" cy="460" r="16" class="bdg"/>
+          <text x="-40" y="460" class="bdg-n">5</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Versions.</b> The version of this deck, the newest version, and the channel.</span></li><li><span class="badge">2</span><span><b>Notes.</b> What the new version changes.</span></li><li><span class="badge">3</span><span><b>Install.</b> Downloads the new version, checks it, and installs it, after a question. The deck restarts.</span></li><li><span class="badge">4</span><span><b>Check now.</b> Checks for a new version now.</span></li><li><span class="badge">5</span><span><b>Beta updates.</b> On: the deck also gets the betas, the versions with new features for tests. Off: only the stable versions.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Look after the printer</div>
+    <div class="folio">49</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h2>When something goes wrong</h2>
+    
+    
+    <p>When Klipper stops with an error, the deck shows all the lines of its message.</p>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Read the message. It often names the setting in printer.cfg.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">2</span><span>After a stop or a power cut of the printer, tap Firmware restart.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">3</span><span>After a change to printer.cfg, tap Restart Klipper.</span></li></ol>
+    
+    
+    
+    <div class="figure">
+      <h3>A Klipper error</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/error.png" alt="A Klipper error"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="825" y1="137" x2="784" y2="137" class="leader"/>
+          <circle cx="784" cy="137" r="6" class="dot"/>
+          <circle cx="840" cy="137" r="16" class="bdg"/>
+          <text x="840" y="137" class="bdg-n">1</text></g><g>
+          <line x1="-25" y1="420" x2="16" y2="420" class="leader"/>
+          <circle cx="16" cy="420" r="6" class="dot"/>
+          <circle cx="-40" cy="420" r="16" class="bdg"/>
+          <text x="-40" y="420" class="bdg-n">2</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Message.</b> What Klipper reports, with all its lines.</span></li><li><span class="badge">2</span><span><b>Restart Klipper.</b> Restarts Klipper. It reads printer.cfg again.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">When something goes wrong</div>
+    <div class="folio">50</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>Settings</h2>
+    
+    
+    <p>The file printdeck.txt on the PRINTDECK partition holds the settings. Put the disk in a computer to change it. The deck reads it at each start, then clears the Wi-Fi password in it.</p>
+    
+    
+    <table><tr><td>wifi_ssid, wifi_password, wifi_country</td><td>The Wi-Fi network</td></tr></table>
+    
+    
+    <table><tr><td>hostname, timezone</td><td>The name on the network, and the time zone</td></tr></table>
+    
+    
+    <table><tr><td>display_rotate</td><td>90 or 270 for a display that is mounted tall, 0 or 180 for one that is mounted wide</td></tr></table>
+    
+    
+    <table><tr><td>touch_invert_x, touch_invert_y, touch_swap_xy</td><td>1 turns an axis of the touch screen</td></tr></table>
+    
+    
+    <table><tr><td>preheat_tool, preheat_bed</td><td>The temperatures of Preheat with no filament set</td></tr></table>
+    
+    
+    <table><tr><td>night_from, night_to</td><td>The hours of the night colors</td></tr></table>
+    
+    
+    <table><tr><td>printer.cfg (a file)</td><td>A Klipper config. The deck takes it at the next start.</td></tr></table>
+    
+    
+  
+  
+    <div class="chapter-tab">When something goes wrong</div>
+    <div class="folio">51</div>
+  
+</section>
+
+<section class="sheet back even">
+  
+    <p>Printdeck is free software: AGPL-3.0, with the Go port of Klipper under GPL-3.0. The deck draws every picture of this booklet.</p>
+    <p>https://github.com/beetlebugorg/printdeck</p>
+  
+  
+</section>
+
+</body>
+</html>
