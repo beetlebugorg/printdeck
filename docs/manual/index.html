@@ -1133,20 +1133,54 @@ XYZ HOMED
         <circle cx="520" cy="215" r="15" class="badge"/>
         <text x="520" y="215" class="badge-n">1</text>
         
-        <line x1="505" y1="335" x2="240" y2="335" class="leader"/>
-        <circle cx="240" cy="335" r="5" class="dot"/>
+        <line x1="-25" y1="335" x2="126" y2="335" class="leader"/>
+        <circle cx="126" cy="335" r="5" class="dot"/>
+        <circle cx="-40" cy="335" r="15" class="badge"/>
+        <text x="-40" y="335" class="badge-n">2</text>
+        
+        <line x1="505" y1="335" x2="354" y2="335" class="leader"/>
+        <circle cx="354" cy="335" r="5" class="dot"/>
         <circle cx="520" cy="335" r="15" class="badge"/>
-        <text x="520" y="335" class="badge-n">2</text>
+        <text x="520" y="335" class="badge-n">3</text>
         
         <line x1="505" y1="400" x2="240" y2="400" class="leader"/>
         <circle cx="240" cy="400" r="5" class="dot"/>
         <circle cx="520" cy="400" r="15" class="badge"/>
-        <text x="520" y="400" class="badge-n">3</text>
+        <text x="520" y="400" class="badge-n">4</text>
         
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Board</b>The board that the deck found on USB, its MCU, and its Klipper firmware.</span></li><li><span class="badge">2</span><span><b>Search again</b>Looks for the board again, for example after you connect the printer.</span></li><li><span class="badge">3</span><span><b>Next step</b>Copy printer.cfg to the PRINTDECK partition, and start the deck again.</span></li>
+      <li><span class="badge">1</span><span><b>Board</b>The board that the deck found on USB, its MCU, and its Klipper firmware.</span></li><li><span class="badge">2</span><span><b>Choose printer</b>Opens the list of Klipper&#39;s example configs. See below.</span></li><li><span class="badge">3</span><span><b>Search again</b>Looks for the board again, for example after you connect the printer.</span></li><li><span class="badge">4</span><span><b>Your own config</b>You can also copy your own printer.cfg to the PRINTDECK partition, and start the deck again.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>Choose your printer</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/configs.png" alt="Choose your printer" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="140" x2="240" y2="140" class="leader"/>
+        <circle cx="240" cy="140" r="5" class="dot"/>
+        <circle cx="520" cy="140" r="15" class="badge"/>
+        <text x="520" y="140" class="badge-n">1</text>
+        
+        <line x1="505" y1="200" x2="240" y2="200" class="leader"/>
+        <circle cx="240" cy="200" r="5" class="dot"/>
+        <circle cx="520" cy="200" r="15" class="badge"/>
+        <text x="520" y="200" class="badge-n">2</text>
+        
+        <line x1="505" y1="680" x2="240" y2="680" class="leader"/>
+        <circle cx="240" cy="680" r="5" class="dot"/>
+        <circle cx="520" cy="680" r="15" class="badge"/>
+        <text x="520" y="680" class="badge-n">3</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Chip</b>The list shows the printers with the same chip as your board.</span></li><li><span class="badge">2</span><span><b>Printer</b>The brand, the model, the year and the chip. Tap your printer. The deck writes its config as printer.cfg, with the port of your board, and restarts Klipper. The old printer.cfg stays as printer.cfg.bak.</span></li><li><span class="badge">3</span><span><b>Show all printers</b>Shows the printers for all chips.</span></li>
     </ol>
     
   </figure>

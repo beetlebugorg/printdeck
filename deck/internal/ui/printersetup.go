@@ -50,11 +50,100 @@ func (a *App) drawPrinterSetup(c *gfx.Canvas, st printer.State) {
 		}
 	}
 
-	if !probing {
+	if !probing && len(boards) > 0 {
+		b := boards[0]
+		for _, x := range boards {
+			if x.Klipper {
+				b = x
+				break
+			}
+		}
+		half := (W - 48 - 12) / 2
+		a.button(c, image.Rect(24, y, 24+half, y+72), "Choose printer", orange, onAcc, func() {
+			a.configBoard, a.configScroll, a.configAll = b, 0, false
+			a.open(pageConfigs)
+		})
+		a.button(c, image.Rect(W-24-half, y, W-24, y+72), "Search again", raised, text, pr.ProbeBoards)
+		y += 92
+	} else if !probing {
 		a.button(c, image.Rect(24, y, W-24, y+72), "Search again", raised, text, pr.ProbeBoards)
 		y += 92
 	}
-	para("Then copy printer.cfg to the PRINTDECK partition of the disk, and restart the Pi.", 18, dim)
+	para("Or copy your own printer.cfg to the PRINTDECK partition of the disk, and restart the Pi.", 18, dim)
+}
+
+// drawConfigs is the list of Klipper's example configs for complete printers. It shows the configs
+// for the chip of the board first. A tap writes the config as printer.cfg, after a question.
+func (a *App) drawConfigs(c *gfx.Canvas) {
+	pr := a.Printer
+	heading(c, "Your printer")
+	a.backButton(c)
+	b := a.configBoard
+	var list []printer.Example
+	for _, e := range printer.Examples() {
+		if a.configAll || b.MCU == "" || e.Fits(b.MCU) {
+			list = append(list, e)
+		}
+	}
+	top := menuTop
+	if b.MCU != "" {
+		what := "Printers for your " + b.MCU + " board"
+		if a.configAll {
+			what = "All printers. Your board: " + b.MCU
+		}
+		c.Text(image.Rect(24, top-4, W-24, top+24), gfx.Fit(gfx.Face(false, 16), what, W-48), gfx.Face(false, 16), dim, gfx.Left)
+		top += 30
+	}
+	const rowH = 76
+	bottom := contentY1 - 8
+	if b.MCU != "" {
+		bottom -= 80
+		label := "Show all printers"
+		if a.configAll {
+			label = "Only for this board"
+		}
+		a.button(c, image.Rect(24, bottom+8, W-24, bottom+72), label, raised, text, func() {
+			a.configAll, a.configScroll = !a.configAll, 0
+		})
+	}
+	maxScroll := max(0, len(list)*rowH-(bottom-top))
+	a.configScroll = max(0, min(a.configScroll, maxScroll))
+	c.Clipped(image.Rect(0, top, W, bottom), func(c *gfx.Canvas) {
+		for i, e := range list {
+			y := top + i*rowH - a.configScroll
+			if y+rowH < top || y > bottom {
+				continue
+			}
+			sub := e.Year
+			if e.MCU != "" {
+				sub += " · " + e.MCU
+			}
+			col := dim
+			if e.Fits(b.MCU) {
+				col = orange
+			}
+			a.menuRow(c, image.Rect(24, y, W-24, y+rowH-8), e.Name(), sub, col, nil)
+		}
+	})
+	a.addHit(hit{r: image.Rect(0, top, W, bottom),
+		scroll: func(dy int) { a.configScroll = max(0, min(a.configScroll+dy, maxScroll)) },
+		tapAt: func(p image.Point) {
+			i := (p.Y - top + a.configScroll) / rowH
+			if i < 0 || i >= len(list) {
+				return
+			}
+			e := list[i]
+			a.confirm = &confirmBox{question: "Use the config of the " + gfx.Fit(gfx.Face(true, 28), e.Name(), 300) + "?", yes: "Use", onYes: func() {
+				a.Toast("Writing printer.cfg…")
+				a.do(func() error {
+					if err := pr.UseConfig(e.File, b.Device); err != nil {
+						return err
+					}
+					a.post(func() { a.pages = nil })
+					return nil
+				})
+			}}
+		}})
 }
 
 // drawBoard draws one probe result in a window, and returns the bottom of the window.

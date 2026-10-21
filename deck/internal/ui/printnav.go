@@ -27,6 +27,7 @@ const (
 	pageHistory
 	pageConsole
 	pageStats
+	pageConfigs // the example configs of Klipper, for the setup of a new printer
 )
 
 // open shows a page over the current one.
