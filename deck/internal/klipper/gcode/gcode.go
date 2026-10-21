@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 
 	"printdeck/internal/klipper/configfile"
@@ -267,6 +268,10 @@ type Dispatch struct {
 	gcodeHelp          map[string]string
 	statusCommands     map[string]map[string]string
 	defaultHandler     Handler
+
+	// The command stack of printdeck.go.
+	stackMu sync.Mutex
+	stack   []string
 }
 
 func New(printer *host.Printer) *Dispatch {
@@ -497,6 +502,8 @@ func (g *Dispatch) processCommands(commands []string, needAck bool) {
 }
 
 func (g *Dispatch) runHandler(handler Handler, gcmd *Command, cmd string, needAck bool) {
+	g.pushCommand(gcmd.commandline)
+	defer g.popCommand()
 	defer func() {
 		r := recover()
 		if r == nil {

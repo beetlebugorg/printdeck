@@ -78,6 +78,10 @@ type State struct {
 	// Preparing is true while the start of a print runs: heating, homing, probing, priming. HasWipe
 	// is true when the start wipes the nozzle.
 	Preparing, HasWipe bool
+	// Prep has the steps of the start macro, from the commands that run now (PrepN of them). It
+	// is a fixed array, so that State stays comparable.
+	Prep  [8]PrepStep
+	PrepN int
 
 	// NeedsSetup is true when printer.cfg has no [mcu] section: Klipper has no printer to use.
 	NeedsSetup bool
