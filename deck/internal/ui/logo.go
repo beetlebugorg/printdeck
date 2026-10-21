@@ -17,9 +17,9 @@ import (
 // LogoRotate is the rotation of the display on the Printdeck OS image (DISPLAY_ROTATE).
 const LogoRotate = 270
 
-// logoRect is the part of the start screen in the kernel logo: the plate, with a border of the
-// background. The kernel fills the rest of the screen with the color of the first pixel.
-var logoRect = image.Rect(16, 236, BaseW-16, BaseH-236)
+// logoRect is the part of the start screen in the kernel logo: all of it. The kernel fills the
+// rest of the screen with the color of the first pixel.
+var logoRect = image.Rect(0, 0, BaseW, BaseH)
 
 // logoColors is the most colors that the kernel takes from the file.
 const logoColors = 224
@@ -27,12 +27,13 @@ const logoColors = 224
 // SplashLogo returns the start screen as the TGA file that the kernel shows when the display starts
 // (fullscreen_logo). The kernel does not turn the image for the rotated console, so the pixels are
 // in the order of the framebuffer, as fb.Present writes them. The start screen of "printdeck
-// splash" then draws the same pixels, and adds the hint and the version.
+// splash" then draws the same pixels, and adds the hint. The dots of the empty display look the
+// same at each rotation, so a display that is mounted wide shows the same picture.
 func SplashLogo(rotate int) []byte {
 	c := gfx.New(BaseW, BaseH)
 	drawMu.Lock()
 	setSize(kit.Screen{W: BaseW, H: BaseH})
-	DrawSplash(c, "", true)
+	DrawSplash(c, false)
 	drawMu.Unlock()
 
 	// The framebuffer position of a canvas pixel (fb.Present).
@@ -126,9 +127,9 @@ func encodeTGA(img *image.RGBA) []byte {
 // screen on the night background, 512 x 512 pixels, as a PNG.
 func Icon() []byte {
 	c := gfx.New(BaseW, BaseH)
-	drawMu.Lock() // DrawSplash sets the palette and uses H, which the App draws with
+	drawMu.Lock() // drawPlate sets the palette and uses H, which the App draws with
 	setSize(kit.Screen{W: BaseW, H: BaseH})
-	DrawSplash(c, "", true)
+	drawPlate(c, "", true)
 	drawMu.Unlock()
 	const size = 512
 	out := image.NewRGBA(image.Rect(0, 0, size, size))
@@ -136,7 +137,7 @@ func Icon() []byte {
 	for i := 0; i < len(out.Pix); i += 4 {
 		out.Pix[i], out.Pix[i+1], out.Pix[i+2], out.Pix[i+3] = bgc.R, bgc.G, bgc.B, 255
 	}
-	// The plate (box of DrawSplash), scaled to fit with a margin.
+	// The plate (box of drawPlate), scaled to fit with a margin.
 	plate := image.Rect(32, 252, W-32, 548)
 	w := size - 48
 	h := plate.Dy() * w / plate.Dx()

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -81,10 +82,10 @@ func openSplash(cfg config.Config) (*fb.FB, string) {
 			continue
 		}
 		if screen, err := fb.Open(cfg.Framebuffer, cfg.Rotate); err == nil {
-			c := gfx.New(ui.BaseW, ui.BaseH)
-			// The night palette, as the kernel logo (ui.SplashLogo), so that only the hint and
-			// the version appear.
-			ui.DrawSplash(c, osVersion(), true)
+			// The empty display of the kernel logo (ui.SplashLogo), with the hint. The deck
+			// starts the animation on it.
+			c := gfx.New(screen.LogicalW, screen.LogicalH)
+			ui.DrawSplash(c, true)
 			screen.Present(c)
 			return screen, name
 		}
@@ -129,4 +130,51 @@ func osVersion() string {
 		}
 	}
 	return ""
+}
+
+// playIntro plays the start animation of the deck on the screen (ui.DrawIntro), and then fades
+// into the first screen of the app. The touches during the animation are dropped.
+func playIntro(screen *fb.FB, app *ui.App, events chan touch.Event) {
+	w, h := screen.LogicalW, screen.LogicalH
+	c := gfx.New(w, h)
+	tick := time.NewTicker(time.Second / 30)
+	defer tick.Stop()
+	start := time.Now()
+	for t := time.Duration(0); t < ui.IntroLength; t = time.Since(start) {
+		ui.DrawIntro(c, t, osVersion())
+		screen.Present(c)
+		<-tick.C
+	}
+	ui.DrawIntro(c, ui.IntroLength, osVersion())
+	from := gfx.New(w, h)
+	copy(from.Pix, c.Pix)
+	to := gfx.New(app.Screen().W, app.Screen().H)
+	app.Draw(to)
+	const steps = 15 // half a second
+	for i := 1; i <= steps; i++ {
+		ui.Crossfade(c, from, to, float64(i)/steps)
+		screen.Present(c)
+		<-tick.C
+	}
+	for {
+		select {
+		case <-events:
+		default:
+			return
+		}
+	}
+}
+
+// uptime is the time since the boot, from /proc/uptime.
+func uptime() time.Duration {
+	b, err := os.ReadFile("/proc/uptime")
+	if err != nil {
+		return 0
+	}
+	f := strings.Fields(string(b))
+	if len(f) == 0 {
+		return 0
+	}
+	s, _ := strconv.ParseFloat(f[0], 64)
+	return time.Duration(s * float64(time.Second))
 }

@@ -8,10 +8,22 @@ import (
 	"printdeck/kit"
 )
 
-// DrawSplash draws the start screen: the Printdeck name on a character display, in a plate on the chassis.
+// DrawSplash draws the start screen: the empty blue display of the start animation (DrawIntro
+// at 0), on the whole canvas. The system shows it from the first second of the boot until the
+// deck starts the animation. hint adds the hint for the boot messages at the bottom.
+func DrawSplash(c *gfx.Canvas, hint bool) {
+	DrawIntro(c, 0, "")
+	if hint {
+		b := c.Bounds()
+		c.Text(image.Rect(b.Min.X+24, b.Max.Y-96, b.Max.X-24, b.Max.Y-72), "Hold the screen for the boot messages.",
+			gfx.Face(false, 14), introInk, gfx.Center)
+	}
+}
+
+// drawPlate draws the old start screen: the Printdeck name on a character display, in a plate on the chassis.
 // The system shows it from the first second of the boot until the deck draws its first frame.
 // version is printed at the bottom, for example "v2.1.0". It can be empty. night selects the night palette.
-func DrawSplash(c *gfx.Canvas, version string, night bool) {
+func drawPlate(c *gfx.Canvas, version string, night bool) {
 	setNight(night)
 	scr := c.Bounds()
 	c.Fill(scr, bg)

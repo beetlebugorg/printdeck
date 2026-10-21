@@ -204,3 +204,7 @@ var font6x10 = bitmapFont{w: 6, h: 10, glyphs: [][]byte{
 	{0x00, 0x48, 0xa8, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 	{0x00, 0x20, 0x50, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 }}
+
+// Glyph5x8 returns the rows of a character of the 5 x 8 font of the display: one byte for each
+// row, the left pixel in the high bit.
+func Glyph5x8(ch byte) []byte { return font5x8.glyph(ch) }

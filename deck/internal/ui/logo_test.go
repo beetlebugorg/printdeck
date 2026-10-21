@@ -3,6 +3,7 @@ package ui
 import (
 	"bytes"
 	"flag"
+	"image/color"
 	"os"
 	"testing"
 )
@@ -47,8 +48,10 @@ func TestSplashLogoFormat(t *testing.T) {
 	if len(colors) > logoColors {
 		t.Fatalf("%d colors", len(colors))
 	}
-	// The kernel fills the screen with the first pixel: it must be the background.
-	if bg := nightPalette.bg; b[18] != bg.B || b[19] != bg.G || b[20] != bg.R {
-		t.Fatal("the first pixel is not the background")
+	// The kernel fills the rest of the screen with the first pixel. The logo covers the screen, so
+	// the first pixel is a color of the empty display.
+	px := color.RGBA{b[20], b[19], b[18], 255}
+	if px != introBG && px != introCell {
+		t.Fatalf("the first pixel %v is not a color of the display", px)
 	}
 }
