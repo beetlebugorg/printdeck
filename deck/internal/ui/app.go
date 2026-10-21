@@ -214,6 +214,9 @@ type App struct {
 	Material   string
 	OnMaterial func(string)
 
+	// mirror is what the display of the printer shows of this screen (MirrorState).
+	mirror Mirror
+
 	// Record makes Run draw each frame on a recording canvas (gfx.NewRecording), for a browser.
 	Record bool
 	// Height is the height of the screen, from BaseH to MaxH. 0 is BaseH.
@@ -423,6 +426,13 @@ func (a *App) Draw(c *gfx.Canvas) {
 	drawMu.Lock()
 	defer drawMu.Unlock()
 	setHeight(a.Height)
+	// The touch screen is the screen that the display of the printer follows.
+	if !a.Record && a.Printer != nil {
+		m := a.screenMirror(a.Printer.State())
+		mirrorMu.Lock()
+		a.mirror = m
+		mirrorMu.Unlock()
+	}
 	if n := a.isNight(); n != night {
 		setNight(n)
 	}

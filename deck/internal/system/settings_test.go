@@ -95,6 +95,25 @@ func TestDeckSettings(t *testing.T) {
 	}
 }
 
+func TestDisplayCfg(t *testing.T) {
+	fakeSettings(t)
+	os.MkdirAll(klipperConfigDir, 0o755)
+	path := filepath.Join(klipperConfigDir, "printdeck-display.cfg")
+	os.WriteFile(filepath.Join(klipperConfigDir, "printer.cfg"), []byte("[mcu]\n[display]\nlcd_type: st7920\n"), 0o664)
+	if err := writeDisplayCfg(); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(path); string(b) != displayCfg {
+		t.Error("no display layout for a printer with a display")
+	}
+	// With no display, the layout goes: a [display_data] section breaks a config with no display.
+	os.WriteFile(filepath.Join(klipperConfigDir, "printer.cfg"), []byte("[mcu]\n#[display]\n"), 0o664)
+	writeDisplayCfg()
+	if _, err := os.Stat(path); err == nil {
+		t.Error("a display layout for a printer with no display")
+	}
+}
+
 func TestPlaceholder(t *testing.T) {
 	fakeSettings(t)
 	if err := placeholderPrinterCfg(); err != nil {
