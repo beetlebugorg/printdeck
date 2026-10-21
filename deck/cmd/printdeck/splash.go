@@ -82,10 +82,10 @@ func openSplash(cfg config.Config) (*fb.FB, string) {
 			continue
 		}
 		if screen, err := fb.Open(cfg.Framebuffer, cfg.Rotate); err == nil {
-			// The empty display of the kernel logo (ui.SplashLogo), with the hint. The deck
-			// starts the animation on it.
+			// The start screen on the empty display of the kernel logo (ui.SplashLogo), with
+			// the hint.
 			c := gfx.New(screen.LogicalW, screen.LogicalH)
-			ui.DrawSplash(c, true)
+			ui.DrawSplash(c, osVersion(), true)
 			screen.Present(c)
 			return screen, name
 		}
@@ -132,24 +132,16 @@ func osVersion() string {
 	return ""
 }
 
-// playIntro plays the start animation of the deck on the screen (ui.DrawIntro), and then fades
-// into the first screen of the app. The touches during the animation are dropped.
-func playIntro(screen *fb.FB, app *ui.App, events chan touch.Event) {
+// fadeFromStart changes the screen from the start screen to the first screen of the app in half
+// a second. The touches during the change are dropped.
+func fadeFromStart(screen *fb.FB, app *ui.App, events chan touch.Event) {
 	w, h := screen.LogicalW, screen.LogicalH
-	c := gfx.New(w, h)
-	tick := time.NewTicker(time.Second / 30)
-	defer tick.Stop()
-	start := time.Now()
-	for t := time.Duration(0); t < ui.IntroLength(c.Bounds()); t = time.Since(start) {
-		ui.DrawIntro(c, t, osVersion())
-		screen.Present(c)
-		<-tick.C
-	}
-	ui.DrawIntro(c, ui.IntroLength(c.Bounds()), osVersion())
-	from := gfx.New(w, h)
-	copy(from.Pix, c.Pix)
+	c, from := gfx.New(w, h), gfx.New(w, h)
+	ui.DrawSplash(from, osVersion(), false)
 	to := gfx.New(app.Screen().W, app.Screen().H)
 	app.Draw(to)
+	tick := time.NewTicker(time.Second / 30)
+	defer tick.Stop()
 	const steps = 15 // half a second
 	for i := 1; i <= steps; i++ {
 		ui.Crossfade(c, from, to, float64(i)/steps)

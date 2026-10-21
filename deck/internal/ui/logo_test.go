@@ -51,7 +51,7 @@ func TestSplashLogoFormat(t *testing.T) {
 	// The kernel fills the rest of the screen with the first pixel. The logo covers the screen, so
 	// the first pixel is a color of the empty display.
 	px := color.RGBA{b[20], b[19], b[18], 255}
-	if px != introBG && px != introCell {
+	if px != startBG && px != startCell {
 		t.Fatalf("the first pixel %v is not a color of the display", px)
 	}
 }

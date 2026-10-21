@@ -8,15 +8,15 @@ import (
 	"printdeck/kit"
 )
 
-// DrawSplash draws the start screen: the empty blue display of the start animation (DrawIntro
-// at 0), on the whole canvas. The system shows it from the first second of the boot until the
-// deck starts the animation. hint adds the hint for the boot messages at the bottom.
-func DrawSplash(c *gfx.Canvas, hint bool) {
-	DrawIntro(c, 0, "")
+// DrawSplash draws the start screen on the whole canvas: PRINTDECK and the version on the blue
+// LCD. The system shows it after the kernel logo until the deck starts. hint adds the hint for
+// the boot messages at the bottom.
+func DrawSplash(c *gfx.Canvas, version string, hint bool) {
+	drawStart(c, version)
 	if hint {
 		b := c.Bounds()
 		c.Text(image.Rect(b.Min.X+24, b.Max.Y-96, b.Max.X-24, b.Max.Y-72), "Hold the screen for the boot messages.",
-			gfx.Face(false, 14), introInk, gfx.Center)
+			gfx.Face(false, 14), startInk, gfx.Center)
 	}
 }
 
