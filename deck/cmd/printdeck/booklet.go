@@ -47,10 +47,11 @@ type bookEntry struct {
 	Page           int
 }
 
-// The estimated heights on a page, in inches. A page of a guide has 7.4 inches for its blocks.
+// The estimated heights on a page, in inches. A page of a guide has 7.4 inches for its blocks;
+// the estimates use 7 inches, because they are not exact.
 // The width of a line of text is about 82 characters, and of a column of callouts about 40.
 const (
-	bookPageH     = 7.3
+	bookPageH     = 7.0
 	bookLine      = 0.19 // a line of text
 	bookPartLine  = 0.157
 	bookTitleH    = 0.5
