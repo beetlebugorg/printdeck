@@ -70,8 +70,9 @@ func say(msg string) {
 }
 
 // rescue reports a boot error on the console and on the config partition, where a computer can
-// read it. The debug image then starts a shell. The release image has no shell: it waits, because
-// the first program must not end.
+// read it. After a tryboot into a new slot, it restarts, and the firmware starts the old slot. Else
+// the debug image starts a shell. The release image has no shell: it waits, because the first
+// program must not end.
 func rescue(msg string) {
 	say(msg)
 	if con, err := os.OpenFile("/dev/console", os.O_WRONLY, 0); err == nil {
@@ -87,6 +88,12 @@ func rescue(msg string) {
 		}
 		os.WriteFile(filepath.Join(configDir, "printdeck-boot.log"), []byte(log), 0o644)
 		umount()
+	}
+	if Tryboot() {
+		say("restarting into the old slot in 10 seconds")
+		time.Sleep(10 * time.Second)
+		syscall.Sync()
+		syscall.Reboot(syscall.LINUX_REBOOT_CMD_RESTART)
 	}
 	if _, err := os.Stat("/bin/sh"); err == nil {
 		con, _ := os.OpenFile("/dev/console", os.O_RDWR, 0)
