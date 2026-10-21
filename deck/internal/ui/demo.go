@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image"
+	"strings"
 	"time"
 
 	"printdeck/internal/board"
@@ -171,3 +172,20 @@ func (d *DemoUpdater) Status() UpdateStatus { return d.S }
 func (d *DemoUpdater) Check()               {}
 func (d *DemoUpdater) Install()             {}
 func (d *DemoUpdater) SetChannel(beta bool) { d.S.Beta = beta }
+
+// KeyRect returns the place of the key with the label of the last frame: the key with the same
+// label, or else the first key whose label starts with it. The manual places its callouts with it.
+func (a *App) KeyRect(label string) (image.Rectangle, bool) {
+	want := lcdText(label)
+	for _, f := range a.focus {
+		if f.label == want {
+			return f.r, true
+		}
+	}
+	for _, f := range a.focus {
+		if strings.HasPrefix(f.label, want) {
+			return f.r, true
+		}
+	}
+	return image.Rectangle{}, false
+}
