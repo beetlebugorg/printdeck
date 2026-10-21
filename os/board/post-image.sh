@@ -50,10 +50,24 @@ genimage \
   --config "$BINARIES_DIR/genimage.cfg"
 
 # The update bundle for printdeck-update: both boot images, the root file system, and checksums,
-# compressed with xz. The boot images are mostly empty space.
+# compressed with xz. The boot images are mostly empty space. With PRINTDECK_SIGNING_KEY (an
+# ed25519 private key in PEM), SHA256SUMS.sig is the signature of SHA256SUMS: a release image
+# installs only a bundle with a signature by its key (deck/internal/system/sign.go).
 (cd "$BINARIES_DIR" \
   && sha256sum boot-a.vfat boot-b.vfat rootfs.erofs > SHA256SUMS \
-  && tar -cf printdeck-update.tar SHA256SUMS boot-a.vfat boot-b.vfat rootfs.erofs \
+  && rm -f SHA256SUMS.sig)
+SIG=""
+if [ -n "${PRINTDECK_SIGNING_KEY:-}" ]; then
+  KEY=$(mktemp)
+  printf '%s\n' "$PRINTDECK_SIGNING_KEY" > "$KEY"
+  openssl pkeyutl -sign -rawin -inkey "$KEY" -in "$BINARIES_DIR/SHA256SUMS" -out "$BINARIES_DIR/SHA256SUMS.sig"
+  rm -f "$KEY"
+  SIG=SHA256SUMS.sig
+else
+  echo "post-image: no PRINTDECK_SIGNING_KEY, the update bundle has no signature" >&2
+fi
+(cd "$BINARIES_DIR" \
+  && tar -cf printdeck-update.tar SHA256SUMS $SIG boot-a.vfat boot-b.vfat rootfs.erofs \
   && xz -T0 -9 -f printdeck-update.tar)
 
 # The disk image is mostly empty space, so it goes out compressed with xz.
