@@ -26,6 +26,11 @@
   .toc ol { margin: 0; padding-left: 0; list-style: none; columns: 2; column-gap: 32px; }
   .toc li { break-inside: avoid; padding: 2px 0; }
   .toc a { color: var(--ink); text-decoration: none; }
+  .toc .chapter { font: 700 13px "IBM Plex Mono", monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); padding-top: 10px; }
+  ol.steps { margin: 0 0 16px; padding-left: 0; list-style: none; counter-reset: step; max-width: 72ch; }
+  ol.steps li { counter-increment: step; display: grid; grid-template-columns: 34px 1fr; margin-bottom: 8px; }
+  ol.steps li::before { content: counter(step); font: 700 15px "IBM Plex Mono", monospace; color: #fff; background: var(--orange);
+    width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
   .toc .num { color: var(--orange); font-weight: 700; margin-right: 8px; }
   /* A section */
   section { margin: 40px 0; break-before: page; }
@@ -90,13 +95,14 @@
 
 <nav class="toc">
   <h2>CONTENTS</h2>
-  <ol>{{range $i, $s := .Sections}}<li><a href="#{{$s.ID}}"><span class="num">{{printf "%02d" (inc $i)}}</span>{{$s.Title}}</a></li>{{end}}</ol>
+  <ol>{{range $i, $s := .Sections}}{{if newChapter $i}}<li class="chapter">{{$s.Chapter}}</li>{{end}}<li><a href="#{{$s.ID}}"><span class="num">{{printf "%02d" (inc $i)}}</span>{{$s.Title}}</a></li>{{end}}</ol>
 </nav>
 
 {{range $i, $s := .Sections}}
 <section id="{{$s.ID}}">
   <h2 class="title"><span class="num">{{printf "%02d" (inc $i)}}</span>{{$s.Title}}</h2>
   {{range $s.Intro}}<p>{{.}}</p>{{end}}
+  {{if $s.Steps}}<ol class="steps">{{range $s.Steps}}<li>{{.}}</li>{{end}}</ol>{{end}}
   {{range $s.Figures}}
   <figure>
     <h3>{{.Caption}}</h3>

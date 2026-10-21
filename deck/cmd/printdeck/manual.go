@@ -103,7 +103,9 @@ func layoutBadges(cs []callout) []badge {
 
 type section struct {
 	ID, Title string
+	Chapter   string // the chapter of the guide, in the contents
 	Intro     []string
+	Steps     []string // the steps of a guide, numbered
 	Figures   []figure
 	After     []string
 	Table     [][2]string // an optional table of two columns, after the text
@@ -126,7 +128,9 @@ var (
 		Elapsed: 75 * time.Minute, FilamentUsed: 25600, Tool: 209.6, ToolTarget: 210, Bed: 60, BedTarget: 60, SpeedPct: 100, FlowPct: 100}
 )
 
-func manualSections() []section {
+// manualParts are the texts and the pictures of the manual, by subject. manualSections puts them
+// in the order of the guides.
+func manualParts() []section {
 	idle := func(s *manualState) {
 		s.p.State_ = stIdle
 		s.a.OpenPrintScreen("")
@@ -471,6 +475,140 @@ func manualSections() []section {
 	}
 }
 
+// manualSections are the guides of the manual, by chapter: the things that a user wants to do,
+// with the steps and the pictures for each.
+func manualSections() []section {
+	parts := map[string]section{}
+	figs := map[string]figure{}
+	for _, p := range manualParts() {
+		parts[p.ID] = p
+		for _, f := range p.Figures {
+			figs[f.Name] = f
+		}
+	}
+	fig := func(names ...string) []figure {
+		var out []figure
+		for _, n := range names {
+			f, ok := figs[n]
+			if !ok {
+				log.Fatalf("manual: no figure %q", n)
+			}
+			out = append(out, f)
+		}
+		return out
+	}
+	const (
+		meet   = "Meet your Printdeck"
+		setup  = "Set up"
+		prints = "Print a part"
+		care   = "Look after the printer"
+	)
+	return []section{
+		{Chapter: setup, ID: "wifi", Title: "Connect to Wi-Fi",
+			Intro: []string{"At the first start, the deck makes its password and opens the setup."},
+			Steps: []string{
+				"Switch on the Printdeck. The setup opens.",
+				"Tap your Wi-Fi network, then type its password.",
+				"Wait until the deck is connected, then tap Next.",
+				"Write down the address and the password, then tap Finish.",
+			},
+			Figures: fig("setup-wifi", "setup-done")},
+		{Chapter: setup, ID: "printer", Title: "Choose your printer",
+			Intro: []string{"A new Printdeck has no printer config. The Print tab then shows the printer setup."},
+			Steps: []string{
+				"Connect the printer to the Printdeck with a USB cable, and switch the printer on.",
+				"Wait until the deck finds the board. Tap Search again if it does not show.",
+				"Tap Choose printer. The printers of the brand of your board are at the top.",
+				"Tap your printer, then Use. Klipper restarts with its config.",
+			},
+			Figures: fig("setup", "configs")},
+		{Chapter: setup, ID: "firmware", Title: "Install the Klipper firmware",
+			Intro: []string{"The board of the printer must run the Klipper firmware of this Printdeck. The deck writes it through the USB cable."},
+			Steps: []string{
+				"Open Maintenance, then tap Firmware. A new board shows Install Klipper firmware on the setup screen.",
+				"Tap Write. Do not switch off the printer until the deck shows the result.",
+				"Tap OK. Klipper restarts and connects to the board.",
+			},
+			Figures: fig("flash")},
+
+		{Chapter: meet, ID: "deck", Title: "The deck",
+			Intro: []string{
+				"Printdeck is a touch screen for a 3D printer that runs Klipper. It shows the print, and it controls the printer.",
+				"The Print tab has all the screens of the printer. When the printer does not print, it shows the idle screen. The largest key is the action that you need most: Print a file.",
+			},
+			Figures: fig("status", "home")},
+		{Chapter: meet, ID: "lcd", Title: "The display of the printer",
+			Intro: parts["lcd"].Intro, Table: parts["lcd"].Table},
+		{Chapter: meet, ID: "web", Title: "The deck in a browser", Intro: parts["web"].Intro},
+
+		{Chapter: prints, ID: "send", Title: "Send a file from the slicer", Intro: parts["slicers"].Intro},
+		{Chapter: prints, ID: "start-print", Title: "Start a print", Intro: parts["files"].Intro,
+			Steps: []string{
+				"Tap Print a file on the idle screen.",
+				"Tap the file. Check the print time, the filament and the temperatures.",
+				"Tap Print, then Print again.",
+			},
+			Figures: fig("files", "file")},
+		{Chapter: prints, ID: "watch", Title: "Watch the print", Intro: parts["printing"].Intro,
+			Steps: []string{
+				"Watch the first layer. Use − and + to set the height of the nozzle while it prints.",
+				"Tap Save to keep the Z offset for the next prints.",
+				"Use Tune to change the speed, the flow or the fan while the print runs.",
+				"When the print is done, wait for the bed to cool, then take the part off.",
+			},
+			Figures: fig("preparing", "first-layer", "printing", "tune", "paused", "done")},
+
+		{Chapter: "Change the filament", ID: "filament", Title: "Change the filament", Intro: parts["filament"].Intro,
+			Steps: []string{
+				"Open Filament, then tap Change filament.",
+				"Tap the new filament. The nozzle heats to its temperature.",
+				"Tap Unload, and hold the filament lightly while it comes out.",
+				"Push the new filament into the extruder until it stops, then tap Load.",
+				"Check that clean plastic of the new color comes out, then tap Done.",
+			},
+			Figures: fig("filament", "swap")},
+		{Chapter: "Move and heat", ID: "move", Title: "Move the head and heat",
+			Steps: []string{
+				"Open Move, and tap Home all after each start of the printer.",
+				"Hold the joystick to move the head. Use Z for the height.",
+				"Tap a temperature on the idle screen to set it with the keypad.",
+			},
+			Figures: fig("move", "keypad")},
+
+		{Chapter: "Level and calibrate", ID: "calibrate", Title: "Level and calibrate", Intro: parts["maintenance"].Intro,
+			Steps: []string{
+				"Open Maintenance.",
+				"Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.",
+				"Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.",
+				"Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.",
+				"Tap Save config to write the results. Klipper restarts.",
+			},
+			Figures: fig("maintenance", "action", "paper")},
+
+		{Chapter: care, ID: "machine", Title: "Look after the printer",
+			Intro:   []string{"Machine has the information of the printer, the history of the prints, the macros and the console."},
+			Figures: fig("machine", "stats", "console")},
+		{Chapter: care, ID: "update", Title: "Update the Printdeck",
+			Steps: []string{
+				"Download the update file of the new version.",
+				"Open http://printdeck.local/system in a browser, and log in.",
+				"Choose the update file, then tap Install. The deck restarts into the new version.",
+			},
+			Intro: []string{"The deck writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one."}},
+
+		{Chapter: "When something goes wrong", ID: "problems", Title: "When something goes wrong",
+			Intro: []string{"When Klipper stops with an error, the Print tab shows all the lines of its message."},
+			Steps: []string{
+				"Read the message. It often names the setting in printer.cfg.",
+				"After a stop or a power cut of the printer, tap Firmware restart.",
+				"After a change to printer.cfg, tap Restart Klipper.",
+			},
+			Figures: fig("error")},
+		{Chapter: "When something goes wrong", ID: "settings", Title: "Settings",
+			Intro: parts["settings"].Intro, Table: parts["settings"].Table},
+	}
+}
+
 func manual(args []string) {
 	if len(args) < 1 {
 		log.Fatal("usage: printdeck manual DIR")
@@ -531,14 +669,16 @@ func manual(args []string) {
 		writePNG(filepath.Join(dir, "img", name+".png"), scr.Image(3, 3))
 	}
 	tpl := template.Must(template.New("manual").Funcs(template.FuncMap{
-		"pct":  func(v, of int) string { return fmt.Sprintf("%.2f%%", 100*float64(v)/float64(of)) },
-		"inc":  func(i int) int { return i + 1 },
-		"W":    func() int { return ui.W },
-		"G":    func() int { return gutter },
-		"VW":   func() int { return ui.W + 2*gutter },
-		"H":    func() int { return ui.BaseH },
-		"date": func() string { return time.Now().Format("January 2006") },
+		"pct":        func(v, of int) string { return fmt.Sprintf("%.2f%%", 100*float64(v)/float64(of)) },
+		"inc":        func(i int) int { return i + 1 },
+		"W":          func() int { return ui.W },
+		"G":          func() int { return gutter },
+		"VW":         func() int { return ui.W + 2*gutter },
+		"H":          func() int { return ui.BaseH },
+		"date":       func() string { return time.Now().Format("January 2006") },
+		"newChapter": func(i int) bool { return i == 0 || secs[i].Chapter != secs[i-1].Chapter },
 	}).Parse(manualHTML))
+	writeBooklet(dir, secs)
 	f, err := os.Create(filepath.Join(dir, "index.html"))
 	if err != nil {
 		log.Fatal(err)

@@ -26,6 +26,11 @@
   .toc ol { margin: 0; padding-left: 0; list-style: none; columns: 2; column-gap: 32px; }
   .toc li { break-inside: avoid; padding: 2px 0; }
   .toc a { color: var(--ink); text-decoration: none; }
+  .toc .chapter { font: 700 13px "IBM Plex Mono", monospace; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); padding-top: 10px; }
+  ol.steps { margin: 0 0 16px; padding-left: 0; list-style: none; counter-reset: step; max-width: 72ch; }
+  ol.steps li { counter-increment: step; display: grid; grid-template-columns: 34px 1fr; margin-bottom: 8px; }
+  ol.steps li::before { content: counter(step); font: 700 15px "IBM Plex Mono", monospace; color: #fff; background: var(--orange);
+    width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
   .toc .num { color: var(--orange); font-weight: 700; margin-right: 8px; }
    
   section { margin: 40px 0; break-before: page; }
@@ -90,13 +95,14 @@
 
 <nav class="toc">
   <h2>CONTENTS</h2>
-  <ol><li><a href="#start"><span class="num">01</span>Getting started</a></li><li><a href="#deck"><span class="num">02</span>The deck</a></li><li><a href="#home"><span class="num">03</span>Print: the idle screen</a></li><li><a href="#files"><span class="num">04</span>Files</a></li><li><a href="#printing"><span class="num">05</span>Print: during a print</a></li><li><a href="#filament"><span class="num">06</span>Filament</a></li><li><a href="#move"><span class="num">07</span>Move</a></li><li><a href="#maintenance"><span class="num">08</span>Maintenance</a></li><li><a href="#machine"><span class="num">09</span>Machine</a></li><li><a href="#web"><span class="num">10</span>The deck in the browser</a></li><li><a href="#lcd"><span class="num">11</span>The display of the printer</a></li><li><a href="#slicers"><span class="num">12</span>Slicers</a></li><li><a href="#settings"><span class="num">13</span>Settings</a></li><li><a href="#problems"><span class="num">14</span>Problems</a></li></ol>
+  <ol><li class="chapter">Set up</li><li><a href="#wifi"><span class="num">01</span>Connect to Wi-Fi</a></li><li><a href="#printer"><span class="num">02</span>Choose your printer</a></li><li><a href="#firmware"><span class="num">03</span>Install the Klipper firmware</a></li><li class="chapter">Meet your Printdeck</li><li><a href="#deck"><span class="num">04</span>The deck</a></li><li><a href="#lcd"><span class="num">05</span>The display of the printer</a></li><li><a href="#web"><span class="num">06</span>The deck in a browser</a></li><li class="chapter">Print a part</li><li><a href="#send"><span class="num">07</span>Send a file from the slicer</a></li><li><a href="#start-print"><span class="num">08</span>Start a print</a></li><li><a href="#watch"><span class="num">09</span>Watch the print</a></li><li class="chapter">Change the filament</li><li><a href="#filament"><span class="num">10</span>Change the filament</a></li><li class="chapter">Move and heat</li><li><a href="#move"><span class="num">11</span>Move the head and heat</a></li><li class="chapter">Level and calibrate</li><li><a href="#calibrate"><span class="num">12</span>Level and calibrate</a></li><li class="chapter">Look after the printer</li><li><a href="#machine"><span class="num">13</span>Look after the printer</a></li><li><a href="#update"><span class="num">14</span>Update the Printdeck</a></li><li class="chapter">When something goes wrong</li><li><a href="#problems"><span class="num">15</span>When something goes wrong</a></li><li><a href="#settings"><span class="num">16</span>Settings</a></li></ol>
 </nav>
 
 
-<section id="start">
-  <h2 class="title"><span class="num">01</span>Getting started</h2>
-  <p>Printdeck is a touch screen for a 3D printer that runs Klipper. It shows the print, and it controls the printer.</p><p>At the first start, the deck makes its password and opens the setup. Connect the deck to your Wi-Fi network there.</p>
+<section id="wifi">
+  <h2 class="title"><span class="num">01</span>Connect to Wi-Fi</h2>
+  <p>At the first start, the deck makes its password and opens the setup.</p>
+  <ol class="steps"><li>Switch on the Printdeck. The setup opens.</li><li>Tap your Wi-Fi network, then type its password.</li><li>Wait until the deck is connected, then tap Next.</li><li>Write down the address and the password, then tap Finish.</li></ol>
   
   <figure>
     <h3>The setup: step 1</h3>
@@ -165,9 +171,115 @@
   
 </section>
 
+<section id="printer">
+  <h2 class="title"><span class="num">02</span>Choose your printer</h2>
+  <p>A new Printdeck has no printer config. The Print tab then shows the printer setup.</p>
+  <ol class="steps"><li>Connect the printer to the Printdeck with a USB cable, and switch the printer on.</li><li>Wait until the deck finds the board. Tap Search again if it does not show.</li><li>Tap Choose printer. The printers of the brand of your board are at the top.</li><li>Tap your printer, then Use. Klipper restarts with its config.</li></ol>
+  
+  <figure>
+    <h3>No printer yet</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/setup.png" alt="No printer yet" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="215" x2="240" y2="215" class="leader"/>
+        <circle cx="240" cy="215" r="5" class="dot"/>
+        <circle cx="520" cy="215" r="15" class="badge"/>
+        <text x="520" y="215" class="badge-n">1</text>
+        
+        <line x1="-25" y1="335" x2="34" y2="335" class="leader"/>
+        <circle cx="34" cy="335" r="5" class="dot"/>
+        <circle cx="-40" cy="335" r="15" class="badge"/>
+        <text x="-40" y="335" class="badge-n">2</text>
+        
+        <line x1="505" y1="335" x2="466" y2="335" class="leader"/>
+        <circle cx="466" cy="335" r="5" class="dot"/>
+        <circle cx="520" cy="335" r="15" class="badge"/>
+        <text x="520" y="335" class="badge-n">3</text>
+        
+        <line x1="505" y1="400" x2="242" y2="400" class="leader"/>
+        <circle cx="242" cy="400" r="5" class="dot"/>
+        <circle cx="520" cy="400" r="15" class="badge"/>
+        <text x="520" y="400" class="badge-n">4</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Board</b>The board that the deck found on USB, its MCU, and its Klipper firmware.</span></li><li><span class="badge">2</span><span><b>Choose printer</b>Opens the list of Klipper&#39;s example configs. See below.</span></li><li><span class="badge">3</span><span><b>Search again</b>Looks for the board again, for example after you connect the printer.</span></li><li><span class="badge">4</span><span><b>Your own config</b>You can also copy your own printer.cfg to the PRINTDECK partition, and start the deck again.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>Choose your printer</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/configs.png" alt="Choose your printer" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="140" x2="354" y2="140" class="leader"/>
+        <circle cx="354" cy="140" r="5" class="dot"/>
+        <circle cx="520" cy="140" r="15" class="badge"/>
+        <text x="520" y="140" class="badge-n">1</text>
+        
+        <line x1="505" y1="200" x2="324" y2="200" class="leader"/>
+        <circle cx="324" cy="200" r="5" class="dot"/>
+        <circle cx="520" cy="200" r="15" class="badge"/>
+        <text x="520" y="200" class="badge-n">2</text>
+        
+        <line x1="505" y1="680" x2="240" y2="680" class="leader"/>
+        <circle cx="240" cy="680" r="5" class="dot"/>
+        <circle cx="520" cy="680" r="15" class="badge"/>
+        <text x="520" y="680" class="badge-n">3</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Chip</b>The list shows the printers with the same chip as your board.</span></li><li><span class="badge">2</span><span><b>Printer</b>The brand, the model, the year and the chip. Tap your printer. The deck writes its config as printer.cfg, with the port of your board, and restarts Klipper. The old printer.cfg stays as printer.cfg.bak.</span></li><li><span class="badge">3</span><span><b>Show all printers</b>Shows the printers for all chips.</span></li>
+    </ol>
+    
+  </figure>
+  
+  
+  
+</section>
+
+<section id="firmware">
+  <h2 class="title"><span class="num">03</span>Install the Klipper firmware</h2>
+  <p>The board of the printer must run the Klipper firmware of this Printdeck. The deck writes it through the USB cable.</p>
+  <ol class="steps"><li>Open Maintenance, then tap Firmware. A new board shows Install Klipper firmware on the setup screen.</li><li>Tap Write. Do not switch off the printer until the deck shows the result.</li><li>Tap OK. Klipper restarts and connects to the board.</li></ol>
+  
+  <figure>
+    <h3>The firmware flash</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/flash.png" alt="The firmware flash" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="148" x2="240" y2="148" class="leader"/>
+        <circle cx="240" cy="148" r="5" class="dot"/>
+        <circle cx="520" cy="148" r="15" class="badge"/>
+        <text x="520" y="148" class="badge-n">1</text>
+        
+        <line x1="505" y1="206" x2="240" y2="206" class="leader"/>
+        <circle cx="240" cy="206" r="5" class="dot"/>
+        <circle cx="520" cy="206" r="15" class="badge"/>
+        <text x="520" y="206" class="badge-n">2</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Step</b>Starting the bootloader, Writing, then Checking.</span></li><li><span class="badge">2</span><span><b>Progress</b>The part of the firmware that is done.</span></li>
+    </ol>
+    <p class="note">The deck stops Klipper, resets the board into its bootloader, writes the firmware, and reads it back to check it. Then Klipper starts again. The setup screen and the Klipper error screen also show this key when the board has no Klipper firmware or old firmware. Printdeck can flash boards with an atmega2560 and an STK500v2 bootloader now, for example the RAMBo and RAMPS boards.</p>
+  </figure>
+  
+  
+  
+</section>
+
 <section id="deck">
-  <h2 class="title"><span class="num">02</span>The deck</h2>
-  <p>The Print tab has all the screens of the printer. The status bar is at the top of every screen.</p>
+  <h2 class="title"><span class="num">04</span>The deck</h2>
+  <p>Printdeck is a touch screen for a 3D printer that runs Klipper. It shows the print, and it controls the printer.</p><p>The Print tab has all the screens of the printer. When the printer does not print, it shows the idle screen. The largest key is the action that you need most: Print a file.</p>
+  
   
   <figure>
     <h3>The status bar and the tabs</h3>
@@ -197,14 +309,6 @@
     </ol>
     
   </figure>
-  
-  
-  
-</section>
-
-<section id="home">
-  <h2 class="title"><span class="num">03</span>Print: the idle screen</h2>
-  <p>When the printer does not print, the Print tab shows the idle screen. The largest key is the action that you need most: Print a file.</p>
   
   <figure>
     <h3>The idle screen</h3>
@@ -265,47 +369,43 @@
     
   </figure>
   
-  <figure>
-    <h3>The keypad of a temperature</h3>
-    <div class="frame">
-      <div class="shot"><img src="img/keypad.png" alt="The keypad of a temperature" width="480" height="800"></div>
-      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
-        
-        <line x1="505" y1="160" x2="300" y2="160" class="leader"/>
-        <circle cx="300" cy="160" r="5" class="dot"/>
-        <circle cx="520" cy="160" r="15" class="badge"/>
-        <text x="520" y="160" class="badge-n">1</text>
-        
-        <line x1="505" y1="240" x2="240" y2="240" class="leader"/>
-        <circle cx="240" cy="240" r="5" class="dot"/>
-        <circle cx="520" cy="240" r="15" class="badge"/>
-        <text x="520" y="240" class="badge-n">2</text>
-        
-        <line x1="505" y1="460" x2="252" y2="460" class="leader"/>
-        <circle cx="252" cy="460" r="5" class="dot"/>
-        <circle cx="520" cy="460" r="15" class="badge"/>
-        <text x="520" y="460" class="badge-n">3</text>
-        
-        <line x1="505" y1="676" x2="350" y2="676" class="leader"/>
-        <circle cx="350" cy="676" r="5" class="dot"/>
-        <circle cx="520" cy="676" r="15" class="badge"/>
-        <text x="520" y="676" class="badge-n">4</text>
-        
-      </svg>
-    </div>
-    <ol class="parts">
-      <li><span class="badge">1</span><span><b>Value</b>The temperature that you type.</span></li><li><span class="badge">2</span><span><b>Presets</b>Off, and the temperatures of the materials.</span></li><li><span class="badge">3</span><span><b>Keys</b>The digits. C clears the value, DEL removes the last digit.</span></li><li><span class="badge">4</span><span><b>Set</b>Sets the heater. Cancel closes the keypad with no change.</span></li>
-    </ol>
-    
-  </figure>
+  
+  
+</section>
+
+<section id="lcd">
+  <h2 class="title"><span class="num">05</span>The display of the printer</h2>
+  <p>When the printer has a display, the deck draws it. The display shows the status screen, the same picture as the idle screen of the deck.</p><p>Turn or click the knob to open the menu. The menu has the same pages and keys as the touch screen: the knob moves the cursor, and a click taps the key. The touch screen shows the cursor with an orange ring. The top item goes back: Status on the home menu, Back on a page. A long click also goes back. With no turn for 20 seconds, the display shows the status screen again.</p><p>While an action runs, the display shows an animation.</p>
+  
+  
+  
+  <div class="glcd-row"><div><img class="lcd-shot" src="img/lcd-status.png" alt="The status screen"><div class="glcd-cap">The status screen</div></div><div><img class="lcd-shot" src="img/lcd-printing.png" alt="During a print"><div class="glcd-cap">During a print</div></div><div><img class="lcd-shot" src="img/lcd-home.png" alt="The home menu: turn the knob to choose"><div class="glcd-cap">The home menu: turn the knob to choose</div></div><div><img class="lcd-shot" src="img/lcd-list.png" alt="A page: Maintenance"><div class="glcd-cap">A page: Maintenance</div></div><div><img class="lcd-shot" src="img/lcd-action.png" alt="An action runs"><div class="glcd-cap">An action runs</div></div></div>
+  
+  
+</section>
+
+<section id="web">
+  <h2 class="title"><span class="num">06</span>The deck in a browser</h2>
+  <p>Open http://printdeck.local in a browser on the same network, and log in with the password of the deck. The browser shows the same screens as the touch screen, sharp at the pixel density of the phone. Each browser has its own screens, so a phone can show the files while the deck shows the print.</p><p>On a phone, use Add to Home Screen: the deck then opens as an app, with no browser bars.</p><p>The page http://printdeck.local/system shows the version, the services, the logs and the API key for slicers. It also installs an update: choose the update file, then Install. The deck writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one.</p>
+  
   
   
   
 </section>
 
-<section id="files">
-  <h2 class="title"><span class="num">04</span>Files</h2>
+<section id="send">
+  <h2 class="title"><span class="num">07</span>Send a file from the slicer</h2>
+  <p>The deck answers the OctoPrint API that slicers use to send files and to start prints.</p><p>In Cura, add the deck with the OctoPrint Connection plugin. The deck asks &#34;Allow Cura to use the Printdeck?&#34;. Tap Allow.</p><p>In OrcaSlicer or PrusaSlicer, add a printer of the type OctoPrint with the address http://printdeck.local, and the API key of the system page.</p>
+  
+  
+  
+  
+</section>
+
+<section id="start-print">
+  <h2 class="title"><span class="num">08</span>Start a print</h2>
   <p>The files are the G-code files that the slicer sent, or that you uploaded in the browser. The newest file is at the top.</p><p>Each file shows what the slicer wrote into it: the print time, the filament and the layer height. Cura, PrusaSlicer, OrcaSlicer and Bambu Studio write this data. A thumbnail shows when the slicer adds one.</p>
+  <ol class="steps"><li>Tap Print a file on the idle screen.</li><li>Tap the file. Check the print time, the filament and the temperatures.</li><li>Tap Print, then Print again.</li></ol>
   
   <figure>
     <h3>The file list</h3>
@@ -379,9 +479,10 @@
   
 </section>
 
-<section id="printing">
-  <h2 class="title"><span class="num">05</span>Print: during a print</h2>
+<section id="watch">
+  <h2 class="title"><span class="num">09</span>Watch the print</h2>
   <p>During a print, the Print tab shows the screen of the phase of the print. The deck knows the phase from the printer and from the G-code of the file.</p>
+  <ol class="steps"><li>Watch the first layer. Use − and &#43; to set the height of the nozzle while it prints.</li><li>Tap Save to keep the Z offset for the next prints.</li><li>Use Tune to change the speed, the flow or the fan while the print runs.</li><li>When the print is done, wait for the bed to cool, then take the part off.</li></ol>
   
   <figure>
     <h3>Preparing</h3>
@@ -389,8 +490,8 @@
       <div class="shot"><img src="img/preparing.png" alt="Preparing" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="108" x2="240" y2="108" class="leader"/>
-        <circle cx="240" cy="108" r="5" class="dot"/>
+        <line x1="505" y1="108" x2="262" y2="108" class="leader"/>
+        <circle cx="262" cy="108" r="5" class="dot"/>
         <circle cx="520" cy="108" r="15" class="badge"/>
         <text x="520" y="108" class="badge-n">1</text>
         
@@ -467,8 +568,8 @@
         <circle cx="520" cy="88" r="15" class="badge"/>
         <text x="520" y="88" class="badge-n">1</text>
         
-        <line x1="505" y1="128" x2="240" y2="128" class="leader"/>
-        <circle cx="240" cy="128" r="5" class="dot"/>
+        <line x1="505" y1="128" x2="244" y2="128" class="leader"/>
+        <circle cx="244" cy="128" r="5" class="dot"/>
         <circle cx="520" cy="128" r="15" class="badge"/>
         <text x="520" y="128" class="badge-n">2</text>
         
@@ -604,8 +705,8 @@
       <div class="shot"><img src="img/done.png" alt="Done" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="108" x2="240" y2="108" class="leader"/>
-        <circle cx="240" cy="108" r="5" class="dot"/>
+        <line x1="505" y1="108" x2="244" y2="108" class="leader"/>
+        <circle cx="244" cy="108" r="5" class="dot"/>
         <circle cx="520" cy="108" r="15" class="badge"/>
         <text x="520" y="108" class="badge-n">1</text>
         
@@ -637,8 +738,9 @@
 </section>
 
 <section id="filament">
-  <h2 class="title"><span class="num">06</span>Filament</h2>
+  <h2 class="title"><span class="num">10</span>Change the filament</h2>
   <p>Set the loaded filament here, so that Preheat uses its temperatures. The guided change heats the nozzle, unloads the old filament and loads the new one.</p>
+  <ol class="steps"><li>Open Filament, then tap Change filament.</li><li>Tap the new filament. The nozzle heats to its temperature.</li><li>Tap Unload, and hold the filament lightly while it comes out.</li><li>Push the new filament into the extruder until it stops, then tap Load.</li><li>Check that clean plastic of the new color comes out, then tap Done.</li></ol>
   
   <figure>
     <h3>The Filament page</h3>
@@ -723,8 +825,9 @@
 </section>
 
 <section id="move">
-  <h2 class="title"><span class="num">07</span>Move</h2>
+  <h2 class="title"><span class="num">11</span>Move the head and heat</h2>
   
+  <ol class="steps"><li>Open Move, and tap Home all after each start of the printer.</li><li>Hold the joystick to move the head. Use Z for the height.</li><li>Tap a temperature on the idle screen to set it with the keypad.</li></ol>
   
   <figure>
     <h3>The Move page</h3>
@@ -765,13 +868,48 @@
     
   </figure>
   
+  <figure>
+    <h3>The keypad of a temperature</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/keypad.png" alt="The keypad of a temperature" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="160" x2="300" y2="160" class="leader"/>
+        <circle cx="300" cy="160" r="5" class="dot"/>
+        <circle cx="520" cy="160" r="15" class="badge"/>
+        <text x="520" y="160" class="badge-n">1</text>
+        
+        <line x1="505" y1="240" x2="240" y2="240" class="leader"/>
+        <circle cx="240" cy="240" r="5" class="dot"/>
+        <circle cx="520" cy="240" r="15" class="badge"/>
+        <text x="520" y="240" class="badge-n">2</text>
+        
+        <line x1="505" y1="460" x2="252" y2="460" class="leader"/>
+        <circle cx="252" cy="460" r="5" class="dot"/>
+        <circle cx="520" cy="460" r="15" class="badge"/>
+        <text x="520" y="460" class="badge-n">3</text>
+        
+        <line x1="505" y1="676" x2="350" y2="676" class="leader"/>
+        <circle cx="350" cy="676" r="5" class="dot"/>
+        <circle cx="520" cy="676" r="15" class="badge"/>
+        <text x="520" y="676" class="badge-n">4</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Value</b>The temperature that you type.</span></li><li><span class="badge">2</span><span><b>Presets</b>Off, and the temperatures of the materials.</span></li><li><span class="badge">3</span><span><b>Keys</b>The digits. C clears the value, DEL removes the last digit.</span></li><li><span class="badge">4</span><span><b>Set</b>Sets the heater. Cancel closes the keypad with no change.</span></li>
+    </ol>
+    
+  </figure>
+  
   
   
 </section>
 
-<section id="maintenance">
-  <h2 class="title"><span class="num">08</span>Maintenance</h2>
+<section id="calibrate">
+  <h2 class="title"><span class="num">12</span>Level and calibrate</h2>
   <p>Maintenance lists the calibrations that your printer has. The list comes from the config of the printer.</p>
+  <ol class="steps"><li>Open Maintenance.</li><li>Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.</li><li>Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.</li><li>Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.</li><li>Tap Save config to write the results. Klipper restarts.</li></ol>
   
   <figure>
     <h3>The Maintenance page</h3>
@@ -818,30 +956,6 @@
   </figure>
   
   <figure>
-    <h3>The firmware flash</h3>
-    <div class="frame">
-      <div class="shot"><img src="img/flash.png" alt="The firmware flash" width="480" height="800"></div>
-      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
-        
-        <line x1="505" y1="148" x2="240" y2="148" class="leader"/>
-        <circle cx="240" cy="148" r="5" class="dot"/>
-        <circle cx="520" cy="148" r="15" class="badge"/>
-        <text x="520" y="148" class="badge-n">1</text>
-        
-        <line x1="505" y1="206" x2="240" y2="206" class="leader"/>
-        <circle cx="240" cy="206" r="5" class="dot"/>
-        <circle cx="520" cy="206" r="15" class="badge"/>
-        <text x="520" y="206" class="badge-n">2</text>
-        
-      </svg>
-    </div>
-    <ol class="parts">
-      <li><span class="badge">1</span><span><b>Step</b>Starting the bootloader, Writing, then Checking.</span></li><li><span class="badge">2</span><span><b>Progress</b>The part of the firmware that is done.</span></li>
-    </ol>
-    <p class="note">The deck stops Klipper, resets the board into its bootloader, writes the firmware, and reads it back to check it. Then Klipper starts again. The setup screen and the Klipper error screen also show this key when the board has no Klipper firmware or old firmware. Printdeck can flash boards with an atmega2560 and an STK500v2 bootloader now, for example the RAMBo and RAMPS boards.</p>
-  </figure>
-  
-  <figure>
     <h3>An action runs</h3>
     <div class="frame">
       <div class="shot"><img src="img/action.png" alt="An action runs" width="480" height="800"></div>
@@ -871,8 +985,8 @@
       <div class="shot"><img src="img/paper.png" alt="The paper test" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="108" x2="240" y2="108" class="leader"/>
-        <circle cx="240" cy="108" r="5" class="dot"/>
+        <line x1="505" y1="108" x2="262" y2="108" class="leader"/>
+        <circle cx="262" cy="108" r="5" class="dot"/>
         <circle cx="520" cy="108" r="15" class="badge"/>
         <text x="520" y="108" class="badge-n">1</text>
         
@@ -904,7 +1018,8 @@
 </section>
 
 <section id="machine">
-  <h2 class="title"><span class="num">09</span>Machine</h2>
+  <h2 class="title"><span class="num">13</span>Look after the printer</h2>
+  <p>Machine has the information of the printer, the history of the prints, the macros and the console.</p>
   
   
   <figure>
@@ -962,35 +1077,6 @@
   </figure>
   
   <figure>
-    <h3>The console</h3>
-    <div class="frame">
-      <div class="shot"><img src="img/console.png" alt="The console" width="480" height="800"></div>
-      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
-        
-        <line x1="505" y1="300" x2="240" y2="300" class="leader"/>
-        <circle cx="240" cy="300" r="5" class="dot"/>
-        <circle cx="520" cy="300" r="15" class="badge"/>
-        <text x="520" y="300" class="badge-n">1</text>
-        
-        <line x1="505" y1="611" x2="332" y2="611" class="leader"/>
-        <circle cx="332" cy="611" r="5" class="dot"/>
-        <circle cx="520" cy="611" r="15" class="badge"/>
-        <text x="520" y="611" class="badge-n">2</text>
-        
-        <line x1="505" y1="685" x2="282" y2="685" class="leader"/>
-        <circle cx="282" cy="685" r="5" class="dot"/>
-        <circle cx="520" cy="685" r="15" class="badge"/>
-        <text x="520" y="685" class="badge-n">3</text>
-        
-      </svg>
-    </div>
-    <ol class="parts">
-      <li><span class="badge">1</span><span><b>Replies</b>Your commands (amber, after &gt;), the replies of Klipper, and errors (red). Drag down to read older lines.</span></li><li><span class="badge">2</span><span><b>Type a command</b>Opens the keyboard. It shows your last command, so you can change it and send it again.</span></li><li><span class="badge">3</span><span><b>Quick keys</b>Home (G28), Status (STATUS) and Help (HELP, the list of the commands).</span></li>
-    </ol>
-    
-  </figure>
-  
-  <figure>
     <h3>Statistics</h3>
     <div class="frame">
       <div class="shot"><img src="img/stats.png" alt="Statistics" width="480" height="800"></div>
@@ -1019,112 +1105,52 @@
     
   </figure>
   
+  <figure>
+    <h3>The console</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/console.png" alt="The console" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="300" x2="240" y2="300" class="leader"/>
+        <circle cx="240" cy="300" r="5" class="dot"/>
+        <circle cx="520" cy="300" r="15" class="badge"/>
+        <text x="520" y="300" class="badge-n">1</text>
+        
+        <line x1="505" y1="611" x2="332" y2="611" class="leader"/>
+        <circle cx="332" cy="611" r="5" class="dot"/>
+        <circle cx="520" cy="611" r="15" class="badge"/>
+        <text x="520" y="611" class="badge-n">2</text>
+        
+        <line x1="505" y1="685" x2="282" y2="685" class="leader"/>
+        <circle cx="282" cy="685" r="5" class="dot"/>
+        <circle cx="520" cy="685" r="15" class="badge"/>
+        <text x="520" y="685" class="badge-n">3</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Replies</b>Your commands (amber, after &gt;), the replies of Klipper, and errors (red). Drag down to read older lines.</span></li><li><span class="badge">2</span><span><b>Type a command</b>Opens the keyboard. It shows your last command, so you can change it and send it again.</span></li><li><span class="badge">3</span><span><b>Quick keys</b>Home (G28), Status (STATUS) and Help (HELP, the list of the commands).</span></li>
+    </ol>
+    
+  </figure>
+  
   
   
 </section>
 
-<section id="web">
-  <h2 class="title"><span class="num">10</span>The deck in the browser</h2>
-  <p>Open http://printdeck.local in a browser on the same network, and log in with the password of the deck. The browser shows the same screens as the touch screen, sharp at the pixel density of the phone. Each browser has its own screens, so a phone can show the files while the deck shows the print.</p><p>On a phone, use Add to Home Screen: the deck then opens as an app, with no browser bars.</p><p>The page http://printdeck.local/system shows the version, the services, the logs and the API key for slicers. It also installs an update: choose the update file, then Install. The deck writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one.</p>
+<section id="update">
+  <h2 class="title"><span class="num">14</span>Update the Printdeck</h2>
+  <p>The deck writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one.</p>
+  <ol class="steps"><li>Download the update file of the new version.</li><li>Open http://printdeck.local/system in a browser, and log in.</li><li>Choose the update file, then tap Install. The deck restarts into the new version.</li></ol>
   
-  
-  
-</section>
-
-<section id="lcd">
-  <h2 class="title"><span class="num">11</span>The display of the printer</h2>
-  <p>When the printer has a display, the deck draws it. The display shows the status screen, the same picture as the idle screen of the deck.</p><p>Turn or click the knob to open the menu. The menu has the same pages and keys as the touch screen: the knob moves the cursor, and a click taps the key. The touch screen shows the cursor with an orange ring. The top item goes back: Status on the home menu, Back on a page. A long click also goes back. With no turn for 20 seconds, the display shows the status screen again.</p><p>While an action runs, the display shows an animation.</p>
-  
-  
-  <div class="glcd-row"><div><img class="lcd-shot" src="img/lcd-status.png" alt="The status screen"><div class="glcd-cap">The status screen</div></div><div><img class="lcd-shot" src="img/lcd-printing.png" alt="During a print"><div class="glcd-cap">During a print</div></div><div><img class="lcd-shot" src="img/lcd-home.png" alt="The home menu: turn the knob to choose"><div class="glcd-cap">The home menu: turn the knob to choose</div></div><div><img class="lcd-shot" src="img/lcd-list.png" alt="A page: Maintenance"><div class="glcd-cap">A page: Maintenance</div></div><div><img class="lcd-shot" src="img/lcd-action.png" alt="An action runs"><div class="glcd-cap">An action runs</div></div></div>
-  
-  
-</section>
-
-<section id="slicers">
-  <h2 class="title"><span class="num">12</span>Slicers</h2>
-  <p>The deck answers the OctoPrint API that slicers use to send files and to start prints.</p><p>In Cura, add the deck with the OctoPrint Connection plugin. The deck asks &#34;Allow Cura to use the Printdeck?&#34;. Tap Allow.</p><p>In OrcaSlicer or PrusaSlicer, add a printer of the type OctoPrint with the address http://printdeck.local, and the API key of the system page.</p>
-  
-  
-  
-</section>
-
-<section id="settings">
-  <h2 class="title"><span class="num">13</span>Settings</h2>
-  <p>The file printdeck.txt on the PRINTDECK partition holds the settings. Put the disk in a computer to change it. The deck reads it at each start, then clears the Wi-Fi password in it.</p>
-  
-  
-  <table><tr><td>wifi_ssid, wifi_password, wifi_country</td><td>The Wi-Fi network</td></tr><tr><td>hostname, timezone</td><td>The name on the network, and the time zone</td></tr><tr><td>display_rotate</td><td>90 or 270 for a display that is mounted in portrait</td></tr><tr><td>touch_invert_x, touch_invert_y, touch_swap_xy</td><td>1 turns an axis of the touch screen</td></tr><tr><td>preheat_tool, preheat_bed</td><td>The temperatures of Preheat with no filament set</td></tr><tr><td>night_from, night_to</td><td>The hours of the night colors</td></tr><tr><td>printer.cfg (a file)</td><td>A Klipper config. The deck takes it at the next start.</td></tr></table>
   
   
 </section>
 
 <section id="problems">
-  <h2 class="title"><span class="num">14</span>Problems</h2>
-  
-  
-  <figure>
-    <h3>No printer yet</h3>
-    <div class="frame">
-      <div class="shot"><img src="img/setup.png" alt="No printer yet" width="480" height="800"></div>
-      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
-        
-        <line x1="505" y1="215" x2="240" y2="215" class="leader"/>
-        <circle cx="240" cy="215" r="5" class="dot"/>
-        <circle cx="520" cy="215" r="15" class="badge"/>
-        <text x="520" y="215" class="badge-n">1</text>
-        
-        <line x1="-25" y1="335" x2="34" y2="335" class="leader"/>
-        <circle cx="34" cy="335" r="5" class="dot"/>
-        <circle cx="-40" cy="335" r="15" class="badge"/>
-        <text x="-40" y="335" class="badge-n">2</text>
-        
-        <line x1="505" y1="335" x2="466" y2="335" class="leader"/>
-        <circle cx="466" cy="335" r="5" class="dot"/>
-        <circle cx="520" cy="335" r="15" class="badge"/>
-        <text x="520" y="335" class="badge-n">3</text>
-        
-        <line x1="505" y1="400" x2="242" y2="400" class="leader"/>
-        <circle cx="242" cy="400" r="5" class="dot"/>
-        <circle cx="520" cy="400" r="15" class="badge"/>
-        <text x="520" y="400" class="badge-n">4</text>
-        
-      </svg>
-    </div>
-    <ol class="parts">
-      <li><span class="badge">1</span><span><b>Board</b>The board that the deck found on USB, its MCU, and its Klipper firmware.</span></li><li><span class="badge">2</span><span><b>Choose printer</b>Opens the list of Klipper&#39;s example configs. See below.</span></li><li><span class="badge">3</span><span><b>Search again</b>Looks for the board again, for example after you connect the printer.</span></li><li><span class="badge">4</span><span><b>Your own config</b>You can also copy your own printer.cfg to the PRINTDECK partition, and start the deck again.</span></li>
-    </ol>
-    
-  </figure>
-  
-  <figure>
-    <h3>Choose your printer</h3>
-    <div class="frame">
-      <div class="shot"><img src="img/configs.png" alt="Choose your printer" width="480" height="800"></div>
-      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
-        
-        <line x1="505" y1="140" x2="354" y2="140" class="leader"/>
-        <circle cx="354" cy="140" r="5" class="dot"/>
-        <circle cx="520" cy="140" r="15" class="badge"/>
-        <text x="520" y="140" class="badge-n">1</text>
-        
-        <line x1="505" y1="200" x2="324" y2="200" class="leader"/>
-        <circle cx="324" cy="200" r="5" class="dot"/>
-        <circle cx="520" cy="200" r="15" class="badge"/>
-        <text x="520" y="200" class="badge-n">2</text>
-        
-        <line x1="505" y1="680" x2="240" y2="680" class="leader"/>
-        <circle cx="240" cy="680" r="5" class="dot"/>
-        <circle cx="520" cy="680" r="15" class="badge"/>
-        <text x="520" y="680" class="badge-n">3</text>
-        
-      </svg>
-    </div>
-    <ol class="parts">
-      <li><span class="badge">1</span><span><b>Chip</b>The list shows the printers with the same chip as your board.</span></li><li><span class="badge">2</span><span><b>Printer</b>The brand, the model, the year and the chip. Tap your printer. The deck writes its config as printer.cfg, with the port of your board, and restarts Klipper. The old printer.cfg stays as printer.cfg.bak.</span></li><li><span class="badge">3</span><span><b>Show all printers</b>Shows the printers for all chips.</span></li>
-    </ol>
-    
-  </figure>
+  <h2 class="title"><span class="num">15</span>When something goes wrong</h2>
+  <p>When Klipper stops with an error, the Print tab shows all the lines of its message.</p>
+  <ol class="steps"><li>Read the message. It often names the setting in printer.cfg.</li><li>After a stop or a power cut of the printer, tap Firmware restart.</li><li>After a change to printer.cfg, tap Restart Klipper.</li></ol>
   
   <figure>
     <h3>A Klipper error</h3>
@@ -1150,6 +1176,17 @@
     
   </figure>
   
+  
+  
+</section>
+
+<section id="settings">
+  <h2 class="title"><span class="num">16</span>Settings</h2>
+  <p>The file printdeck.txt on the PRINTDECK partition holds the settings. Put the disk in a computer to change it. The deck reads it at each start, then clears the Wi-Fi password in it.</p>
+  
+  
+  
+  <table><tr><td>wifi_ssid, wifi_password, wifi_country</td><td>The Wi-Fi network</td></tr><tr><td>hostname, timezone</td><td>The name on the network, and the time zone</td></tr><tr><td>display_rotate</td><td>90 or 270 for a display that is mounted in portrait</td></tr><tr><td>touch_invert_x, touch_invert_y, touch_swap_xy</td><td>1 turns an axis of the touch screen</td></tr><tr><td>preheat_tool, preheat_bed</td><td>The temperatures of Preheat with no filament set</td></tr><tr><td>night_from, night_to</td><td>The hours of the night colors</td></tr><tr><td>printer.cfg (a file)</td><td>A Klipper config. The deck takes it at the next start.</td></tr></table>
   
   
 </section>
