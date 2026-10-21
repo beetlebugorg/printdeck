@@ -48,6 +48,26 @@ type State struct {
 	Tool, ToolTarget float64
 	Bed, BedTarget   float64
 
+	// The position of the head (X, Y and Z with HasZ), and the homed axes, for example "xyz".
+	X, Y  float64
+	Homed string
+	// The time since the start of the print, and the filament used in mm.
+	Elapsed      time.Duration
+	FilamentUsed float64
+	// Message is the message of M117.
+	Message string
+	// The Z offset of the head (SET_GCODE_OFFSET), and the speed and flow factors in percent.
+	ZOffset           float64
+	SpeedPct, FlowPct int
+	// The end of the last print: Finished is "complete", "cancelled" or "error", or "" when no
+	// print has ended since Klipper started.
+	Finished                   string
+	FinishedFile, FinishedPath string
+	FinishedTime               time.Duration
+	FinishedFilament           float64 // mm
+	FinishedError              string
+	SaveConfigPending          bool // a calibration changed the config, and SAVE_CONFIG writes it
+
 	// NeedsSetup is true when printer.cfg has no [mcu] section: Klipper has no printer to use.
 	NeedsSetup bool
 	// Firmware is the version of the firmware on the board. FirmwareOld is true when it is not
@@ -58,3 +78,20 @@ type State struct {
 
 // Busy reports that a job is running or paused.
 func (s State) Busy() bool { return s.Printing || s.Paused }
+
+// Machine is what the printer has: the Klipper version, its modules and its macros.
+type Machine struct {
+	KlipperVersion string
+	Modules        []string // the objects of Klipper with no name, for example "probe" or "bed_tilt"
+	Macros         []string // the macros that a person can run (no name with "_" first)
+}
+
+// Has reports that the printer has a module.
+func (m Machine) Has(module string) bool {
+	for _, x := range m.Modules {
+		if x == module {
+			return true
+		}
+	}
+	return false
+}

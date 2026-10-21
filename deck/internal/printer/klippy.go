@@ -48,12 +48,19 @@ type Klippy struct {
 
 	boards  []board.Info // what the last probe found
 	probing bool
+
+	// From the connection to Klipper: its version, and the names of its objects (objects/list).
+	version string
+	objects []string
 }
 
 // klippyObjects are the printer objects that the deck follows. nil means all fields.
 var klippyObjects = map[string][]string{
 	"webhooks":       {"state", "state_message"},
-	"print_stats":    {"state", "filename", "print_duration", "message"},
+	"print_stats":    {"state", "filename", "print_duration", "total_duration", "filament_used", "message"},
+	"display_status": {"message"},
+	"gcode_move":     {"homing_origin", "speed_factor", "extrude_factor"},
+	"configfile":     {"save_config_pending"},
 	"virtual_sdcard": {"file_position", "file_size", "progress"},
 	"extruder":       {"temperature", "target"},
 	"heater_bed":     {"temperature", "target"},
@@ -153,8 +160,10 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 		k.setDown(err.Error(), notify)
 		return
 	}
+	version, objects := klipperObjects(ctx, conn)
 	k.mu.Lock()
 	k.conn, k.status, k.err = conn, status, ""
+	k.version, k.objects = version, objects
 	k.mu.Unlock()
 	k.LoadFiles()
 	k.refresh(notify)
@@ -167,6 +176,48 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 	k.conn = nil
 	k.mu.Unlock()
 	k.setDown("Klipper is not running", notify)
+}
+
+// Machine returns the version, the modules and the macros of the connected Klipper.
+func (k *Klippy) Machine() Machine {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	m := Machine{KlipperVersion: k.version}
+	if k.conn == nil {
+		return m
+	}
+	for _, o := range k.objects {
+		if name, ok := strings.CutPrefix(o, "gcode_macro "); ok {
+			if !strings.HasPrefix(name, "_") {
+				m.Macros = append(m.Macros, name)
+			}
+		} else if !strings.Contains(o, " ") {
+			m.Modules = append(m.Modules, o)
+		}
+	}
+	return m
+}
+
+// klipperObjects asks Klipper for its version and the names of its objects, for example "probe",
+// "bed_tilt" or "gcode_macro PRINT_START".
+func klipperObjects(ctx context.Context, conn *klippy.Conn) (version string, objects []string) {
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if res, err := conn.Call(cctx, "info", map[string]any{}); err == nil {
+		var i struct {
+			Version string `json:"software_version"`
+		}
+		json.Unmarshal(res, &i)
+		version = i.Version
+	}
+	if res, err := conn.Call(cctx, "objects/list", map[string]any{}); err == nil {
+		var l struct {
+			Objects []string `json:"objects"`
+		}
+		json.Unmarshal(res, &l)
+		objects = l.Objects
+	}
+	return version, objects
 }
 
 func info(ctx context.Context, conn *klippy.Conn) (state, msg string, err error) {
@@ -230,14 +281,33 @@ func klippyState(s klippy.Status, down string) State {
 	st.Firmware = str(s["mcu"]["mcu_version"])
 	st.FirmwareOld = st.Firmware != "" && !board.SameVersion(st.Firmware, HostVersion)
 	ps := s["print_stats"]
-	switch str(ps["state"]) {
+	switch state := str(ps["state"]); state {
 	case "printing":
 		st.Text, st.Printing = "Printing", true
 	case "paused":
 		st.Text, st.Printing, st.Paused = "Paused", true, true
-	default: // standby, complete, cancelled, error
+	case "complete", "cancelled", "error":
+		// Klipper keeps the file and the times of the last print until the next one.
+		st.Text = "Operational"
+		if f := str(ps["filename"]); f != "" {
+			st.Finished, st.FinishedPath, st.FinishedFile = state, f, path.Base(f)
+			st.FinishedTime = time.Duration(num(ps["total_duration"]) * float64(time.Second))
+			st.FinishedFilament = num(ps["filament_used"])
+			st.FinishedError = str(ps["message"])
+		}
+	default: // standby
 		st.Text = "Operational"
 	}
+	st.Message = str(s["display_status"]["message"])
+	gm := s["gcode_move"]
+	if o, ok := gm["homing_origin"].([]any); ok && len(o) >= 3 {
+		st.ZOffset = num(o[2])
+	}
+	st.SpeedPct, st.FlowPct = int(num(gm["speed_factor"])*100+0.5), int(num(gm["extrude_factor"])*100+0.5)
+	if _, ok := gm["speed_factor"]; !ok {
+		st.SpeedPct, st.FlowPct = 100, 100
+	}
+	st.SaveConfigPending, _ = s["configfile"]["save_config_pending"].(bool)
 	if st.Busy() {
 		st.FilePath = str(ps["filename"])
 		st.File = path.Base(st.FilePath)
@@ -249,6 +319,8 @@ func klippyState(s klippy.Status, down string) State {
 		if d := num(ps["print_duration"]); progress > 0.02 && d > 0 {
 			st.TimeLeft, st.HasTimeLeft = time.Duration((d/progress-d)*float64(time.Second)), true
 		}
+		st.Elapsed = time.Duration(num(ps["total_duration"]) * float64(time.Second))
+		st.FilamentUsed = num(ps["filament_used"])
 	}
 	st.Tool, st.ToolTarget = num(s["extruder"]["temperature"]), num(s["extruder"]["target"])
 	st.Bed, st.BedTarget = num(s["heater_bed"]["temperature"]), num(s["heater_bed"]["target"])
@@ -256,8 +328,9 @@ func klippyState(s klippy.Status, down string) State {
 		st.Fan, st.HasFan = num(v)*100, true
 	}
 	if pos, ok := s["toolhead"]["position"].([]any); ok && len(pos) >= 3 {
-		st.Z, st.HasZ = num(pos[2]), true
+		st.X, st.Y, st.Z, st.HasZ = num(pos[0]), num(pos[1]), num(pos[2]), true
 	}
+	st.Homed = str(s["toolhead"]["homed_axes"])
 	return st
 }
 

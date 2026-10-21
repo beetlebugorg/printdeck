@@ -18,24 +18,39 @@ import (
 
 func TestKlippyState(t *testing.T) {
 	st := klippyState(klippy.Status{
-		"print_stats":    {"state": "printing", "filename": "parts/cap.gcode", "print_duration": 600.0},
+		"print_stats": {"state": "printing", "filename": "parts/cap.gcode", "print_duration": 600.0,
+			"total_duration": 660.0, "filament_used": 812.5},
 		"virtual_sdcard": {"file_size": 1000.0, "file_position": 250.0, "progress": 0.25},
 		"extruder":       {"temperature": 209.6, "target": 210.0},
 		"heater_bed":     {"temperature": 60.0, "target": 60.0},
 		"fan":            {"speed": 0.5},
-		"toolhead":       {"position": []any{10.0, 20.0, 3.6, 100.0}},
+		"toolhead":       {"position": []any{10.0, 20.0, 3.6, 100.0}, "homed_axes": "xyz"},
+		"display_status": {"message": "Layer 3"},
+		"gcode_move":     {"homing_origin": []any{0.0, 0.0, -0.05, 0.0}, "speed_factor": 1.1, "extrude_factor": 0.95},
+		"configfile":     {"save_config_pending": true},
 	}, "")
 	want := State{Reachable: true, Connected: true, Text: "Printing", Printing: true, File: "cap.gcode",
 		FilePath: "parts/cap.gcode", FileSize: 1000, FilePos: 250, Completion: 25, TimeLeft: 30 * time.Minute,
-		HasTimeLeft: true, Tool: 209.6, ToolTarget: 210, Bed: 60, BedTarget: 60, Fan: 50, HasFan: true, Z: 3.6, HasZ: true}
+		HasTimeLeft: true, Tool: 209.6, ToolTarget: 210, Bed: 60, BedTarget: 60, Fan: 50, HasFan: true, Z: 3.6, HasZ: true,
+		X: 10, Y: 20, Homed: "xyz", Elapsed: 11 * time.Minute, FilamentUsed: 812.5, Message: "Layer 3",
+		ZOffset: -0.05, SpeedPct: 110, FlowPct: 95, SaveConfigPending: true}
 	if st != want {
 		t.Errorf("printing:\n got %+v\nwant %+v", st, want)
 	}
 	if st := klippyState(klippy.Status{"print_stats": {"state": "paused"}}, ""); !st.Paused || !st.Busy() || st.Text != "Paused" {
 		t.Errorf("paused: %+v", st)
 	}
-	if st := klippyState(klippy.Status{"print_stats": {"state": "complete", "filename": "x.gcode"}}, ""); st.Busy() || st.File != "" {
+	st = klippyState(klippy.Status{"print_stats": {"state": "complete", "filename": "parts/x.gcode",
+		"total_duration": 3720.0, "filament_used": 4100.0}}, "")
+	if st.Busy() || st.File != "" || st.Finished != "complete" || st.FinishedFile != "x.gcode" ||
+		st.FinishedPath != "parts/x.gcode" || st.FinishedTime != 62*time.Minute || st.FinishedFilament != 4100 {
 		t.Errorf("complete: %+v", st)
+	}
+	if st := klippyState(klippy.Status{"print_stats": {"state": "error", "filename": "x.gcode", "message": "Heater fault"}}, ""); st.Finished != "error" || st.FinishedError != "Heater fault" {
+		t.Errorf("error: %+v", st)
+	}
+	if st := klippyState(klippy.Status{"print_stats": {"state": "standby"}}, ""); st.Finished != "" || st.SpeedPct != 100 {
+		t.Errorf("standby: %+v", st)
 	}
 	if st := klippyState(nil, "mcu 'mcu': Unable to connect"); st.Connected || st.Err != "mcu 'mcu': Unable to connect" {
 		t.Errorf("down: %+v", st)
