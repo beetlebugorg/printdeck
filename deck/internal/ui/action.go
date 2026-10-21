@@ -26,6 +26,7 @@ func (a *App) drawAction(c *gfx.Canvas, st printer.State) {
 	win := s.Next(150)
 	s.Skip(30)
 	window(c, win)
+	a.region("Action", win)
 	el := max(0, a.Now().Sub(st.ActionStart))
 	r := kit.Rows(kit.Inset(win, 16, 14, 16, 10), 0, kit.Px(36), kit.Px(20), kit.Px(30), kit.Px(10), kit.Px(30))
 	c.Text(r[0], "RUNNING", gfx.Face(true, 22), lcdInk, gfx.Left)

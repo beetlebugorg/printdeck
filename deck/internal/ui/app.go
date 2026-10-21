@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/image/font"
+
 	"printdeck/internal/board"
 	"printdeck/internal/gcodemeta"
 	"printdeck/internal/gfx"
@@ -135,6 +137,7 @@ type App struct {
 	setupProbed   bool            // the printer setup started a probe of the USB ports
 	confirm       *confirmBox     // modal question
 	in            kit.Input       // the touch areas of the frame, and the finger on them
+	names         []focusItem     // the keys and the named parts of the frame, for the manual (KeyRect)
 	joyArea       image.Rectangle // the joystick pad of the last frame of the Move page
 	wake          chan struct{}
 	posted        chan func() // changes from other goroutines, run by the UI loop
@@ -311,6 +314,7 @@ func (a *App) Draw(c *gfx.Canvas) {
 	// The touch screen is the screen that the display of the printer follows: its keys are the
 	// menu of the display.
 	drawing, a.focus, a.lcdTitle, a.lcdNotes = a, a.focus[:0], "", a.lcdNotes[:0]
+	a.names = a.names[:0]
 	defer func() { drawing, a.collect = nil, false }()
 	if !a.Record && a.Printer != nil {
 		defer a.endFocus(c, a.Printer.State())
@@ -374,6 +378,23 @@ func (a *App) button(c *gfx.Canvas, r image.Rectangle, label string, fill, fg co
 	key(c, r, label, fill, fg, a.isPressed(r))
 	a.addHit(kit.Hit{R: r, Tap: tap})
 	a.addFocus(label, r, tap)
+	a.region(label, r)
+}
+
+// region names a part of the frame: a key, or a part that is no key, such as a display or a list.
+// The manual places its callouts with the names (KeyRect).
+func (a *App) region(name string, r image.Rectangle) {
+	a.names = append(a.names, focusItem{label: lcdText(name), r: r})
+}
+
+// textRegion names lines of text at the left of r, in face: the part is as wide as the longest
+// line, with 8 pixels more at each side.
+func (a *App) textRegion(name string, r image.Rectangle, face font.Face, lines ...string) {
+	w := 0
+	for _, l := range lines {
+		w = max(w, gfx.Width(face, l))
+	}
+	a.region(name, image.Rect(r.Min.X-8, r.Min.Y, r.Min.X+w+8, r.Max.Y))
 }
 
 func lighten(c color.RGBA) color.RGBA {

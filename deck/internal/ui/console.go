@@ -35,6 +35,8 @@ func (a *App) drawConsole(c *gfx.Canvas) {
 		win, typeKey, quick = kit.Inset(r[0], 0, 0, 0, 6), r[1], r[2]
 	}
 	window(c, win)
+	a.region("Replies", win)
+	a.region("Quick keys", quick)
 	face := gfx.Face(false, 16)
 	const lineH = 22
 	var rows []printer.ConsoleLine

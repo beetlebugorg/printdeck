@@ -72,6 +72,10 @@ func (a *App) drawLCDPanel(c *gfx.Canvas, st printer.State, s *lcdscreen.Status,
 	}
 	a.addHit(kit.Hit{R: col(0, 43), Tap: func() { a.editTemp("Nozzle temperature", int(st.ToolTarget), 300, toolPresets, pr.SetToolTemp) }})
 	a.addHit(kit.Hit{R: col(43, 86), Tap: func() { a.editTemp("Bed temperature", int(st.BedTarget), 120, bedPresets, pr.SetBedTemp) }})
+	a.region("Nozzle", col(0, 43))
+	a.region("Bed", col(43, 86))
+	a.region("Fan", col(86, 128))
+	a.region("Status", image.Rect(r.Min.X, r.Min.Y+42*lcdScale, r.Max.X, r.Max.Y))
 }
 
 // statusPanel draws the status screen of the printer display at its place on a state screen.
@@ -88,6 +92,7 @@ func (a *App) statusPanelAt(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 	if st.FirmwareOld && !st.Busy() {
 		s.Message = "Firmware is old"
 	}
+	a.region("Display", r)
 	a.drawLCDPanel(c, st, s, r)
 }
 

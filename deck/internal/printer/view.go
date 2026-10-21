@@ -266,3 +266,13 @@ func (v *View) render(gc *gcode.Model, mesh *stl.Mesh, pos int64) {
 	v.img, v.imgPos, v.rendering = img, pos, false
 	v.mu.Unlock()
 }
+
+// PreviewSTL draws the model view of a part from an STL file, printed up to the height frac (0 to
+// 1), with the layer under frac hot. The manual shows it as the print that runs.
+func PreviewSTL(r io.Reader, frac float64) (image.Image, error) {
+	m, err := stl.Parse(r)
+	if err != nil {
+		return nil, err
+	}
+	return m.Render(PreviewW, PreviewH, max(0, frac-0.04), frac, printedColor, hotColor, ghostColor), nil
+}

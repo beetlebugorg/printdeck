@@ -173,16 +173,27 @@ func (d *DemoUpdater) Check()               {}
 func (d *DemoUpdater) Install()             {}
 func (d *DemoUpdater) SetChannel(beta bool) { d.S.Beta = beta }
 
-// KeyRect returns the place of the key with the label of the last frame: the key with the same
-// label, or else the first key whose label starts with it. The manual places its callouts with it.
+// Parts returns the places of the keys and the named parts of the last frame.
+func (a *App) Parts() []image.Rectangle {
+	out := make([]image.Rectangle, len(a.names))
+	for i, f := range a.names {
+		out[i] = f.r
+	}
+	return out
+}
+
+// KeyRect returns the place of the key or the named part (region) of the last frame: the last
+// one with the same label, or else the first whose label starts with it. A part of a screen is
+// drawn after the status display, so the part of the screen wins over a part of the display with
+// the same name. The manual places its callouts with it.
 func (a *App) KeyRect(label string) (image.Rectangle, bool) {
 	want := lcdText(label)
-	for _, f := range a.focus {
-		if f.label == want {
+	for i := len(a.names) - 1; i >= 0; i-- {
+		if f := a.names[i]; f.label == want {
 			return f.r, true
 		}
 	}
-	for _, f := range a.focus {
+	for _, f := range a.names {
 		if strings.HasPrefix(f.label, want) {
 			return f.r, true
 		}

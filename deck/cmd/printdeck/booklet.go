@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"printdeck/internal/lcd"
-	"printdeck/internal/ui"
 )
 
 // The booklet: the manual as the instruction booklet of an old game. The pages are 5.5 x 4.25
@@ -121,7 +120,7 @@ func bookPages(secs []section) []bookPage {
 }
 
 // writeBooklet writes DIR/booklet.html and the pictures of its cover.
-func writeBooklet(dir string, secs []section) {
+func writeBooklet(dir string, secs []section, w, h int) {
 	// The title of the cover, in the font of the printer display.
 	writePNG(filepath.Join(dir, "img", "cover-title.png"),
 		lcd.DotLines([]string{"PRINTDECK"}, 9, "8x16", 7, rgb(0x1f4bd1), rgb(0x2a58e0), rgb(0xf2f6ff)))
@@ -133,10 +132,10 @@ func writeBooklet(dir string, secs []section) {
 		"inc":  func(i int) int { return i + 1 },
 		"add":  func(a, b int) int { return a + b },
 		"even": func(n int) bool { return n%2 == 0 },
-		"W":    func() int { return ui.BaseW },
+		"W":    func() int { return w },
 		"G":    func() int { return gutter },
-		"VW":   func() int { return ui.BaseW + 2*gutter },
-		"H":    func() int { return ui.BaseH },
+		"VW":   func() int { return w + 2*gutter },
+		"H":    func() int { return h },
 		"shown": func(p bookPage, n int) bool { // a badge of a callout on this page
 			return n >= p.From && n < p.From+len(p.Callouts)
 		},
@@ -146,7 +145,7 @@ func writeBooklet(dir string, secs []section) {
 		log.Fatal(err)
 	}
 	defer out.Close()
-	if err := tpl.Execute(out, map[string]any{"Pages": bookPages(secs), "Version": osVersion()}); err != nil {
+	if err := tpl.Execute(out, map[string]any{"Pages": bookPages(secs), "Version": osVersion(), "Wide": w > h}); err != nil {
 		log.Fatal(err)
 	}
 }

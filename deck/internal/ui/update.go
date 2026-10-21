@@ -65,6 +65,7 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 		info, notes, bar, install, keys = r[0], r[1], r[2], r[3], r[4]
 	}
 	window(c, info)
+	a.region("Versions", info)
 	lineH := min(36, (info.Dy()-20)/3)
 	latest := "—"
 	if u.Latest != "" {
@@ -109,6 +110,7 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 		}
 		c.Text(s.Next(26), l, face, col, gfx.Left)
 	}
+	a.textRegion("Notes", image.Rect(notes.Min.X, notes.Min.Y, notes.Max.X, s.Y()), face, wrapText(face, msg, notes.Dx())...)
 	if u.Busy == "Downloading" && u.Total > 0 {
 		window(c, bar)
 		w := int(int64(bar.Dx()-8) * u.Done / u.Total)

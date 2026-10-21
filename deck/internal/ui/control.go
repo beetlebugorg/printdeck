@@ -141,6 +141,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 
 	// The position, with an LED for each homed axis.
 	window(c, pos)
+	a.region("Position", pos)
 	axes := kit.Cols(kit.Inset(pos, 14, 0, 0, 0), 0, kit.Fr(1), kit.Fr(1), kit.Fr(1))
 	for i, ax := range []struct {
 		n string
@@ -170,6 +171,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 
 	// The joystick for X and Y.
 	a.drawJoystick(c, pad, moving)
+	a.region("Joystick", pad)
 	if !f.wide {
 		label(c, image.Rect(pad.Min.X, pad.Max.Y+6, pad.Max.X, pad.Max.Y+26), "XY  hold to move · Z mm per tap below", gfx.Center)
 	}

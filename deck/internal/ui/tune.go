@@ -40,7 +40,9 @@ func (a *App) drawTune(c *gfx.Canvas) {
 	rowH := min(110, (rows.Dy()+12)/3-12)
 	s := kit.NewStack(rows, 12)
 	row := func(name, value string, minus, plus func()) {
-		r := kit.Cols(s.Next(rowH), 0, kit.Px(labelW), kit.Fr(1))
+		rr := s.Next(rowH)
+		a.region(name, rr)
+		r := kit.Cols(rr, 0, kit.Px(labelW), kit.Fr(1))
 		label(c, r[0], name, gfx.Left)
 		k := kit.Cols(r[1], 8, kit.Px(keyW), kit.Fr(1), kit.Px(keyW))
 		a.button(c, k[0], "−", raised, text, minus)
@@ -69,6 +71,7 @@ func (a *App) drawTune(c *gfx.Canvas) {
 	label(c, zHint, "Z offset −: nozzle closer to the bed", gfx.Left)
 
 	// Fan
+	a.region("Fan", fanRow)
 	fan := kit.Cols(fanRow, 0, kit.Px(66), kit.Fr(1))
 	label(c, fan[0], "Fan", gfx.Left)
 	for i, r := range kit.Cols(kit.Inset(fan[1], 0, 2, 0, 2), 8, kit.Fr(1), kit.Fr(1), kit.Fr(1)) {

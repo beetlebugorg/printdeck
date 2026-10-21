@@ -221,6 +221,7 @@ func (a *App) drawSetupWifi(c *gfx.Canvas, box image.Rectangle) {
 	// The list of networks. It scrolls when it is longer than the window.
 	list := image.Rect(24, 112, W-24, box.Max.Y-140)
 	window(c, list)
+	a.region("Networks", list)
 	maxScroll := max(0, len(s.nets)*setupRowH-list.Dy())
 	s.scroll = max(0, min(s.scroll, maxScroll))
 	for i, n := range s.nets {
@@ -260,6 +261,7 @@ func (a *App) drawSetupWifi(c *gfx.Canvas, box image.Rectangle) {
 	bw := (W - 48 - 16) / 3
 	if s.busy {
 		key(c, image.Rect(24, y, 24+bw, y+68), "Scan", surface, dim, false)
+		a.region("Scan", image.Rect(24, y, 24+bw, y+68))
 	} else {
 		a.button(c, image.Rect(24, y, 24+bw, y+68), "Scan", raised, text, a.setupScan)
 	}
@@ -325,6 +327,12 @@ func (a *App) drawSetupDone(c *gfx.Canvas, box image.Rectangle) {
 		c.Text(label, strings.ToUpper(lines[2*i]), gfx.Face(true, 13), lcdDim, gfx.Left)
 		face := gfx.Face(true, 20)
 		c.Text(value, gfx.Fit(face, lines[2*i+1], value.Dx()), face, lcdInk, gfx.Left)
+		switch {
+		case lines[2*i] == "Remote screen and slicers":
+			a.region("Address", cell)
+		case strings.HasPrefix(lines[2*i], "Password"):
+			a.region("Password", cell)
+		}
 	}
 	y := box.Max.Y - 92
 	half := (W - 48 - 8) / 2

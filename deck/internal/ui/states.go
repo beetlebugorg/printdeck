@@ -83,6 +83,7 @@ func (a *App) drawPreparing(c *gfx.Canvas, st printer.State) {
 
 	rowH := min(48, (area.Dy()-30)/max(1, len(steps)))
 	box := kit.Rows(area, 0, kit.Px(len(steps)*rowH+30))[0]
+	a.region("Steps", box)
 	panel(c, box, "PRINT START  ·  "+strings.ToUpper(gfx.Fit(gfx.Face(true, 13), st.File, 300)))
 	for i, s := range steps {
 		y := box.Min.Y + 22 + i*rowH
@@ -147,11 +148,14 @@ func (a *App) drawFirstLayer(c *gfx.Canvas, st printer.State) {
 	a.button(c, z[0], "−", raised, text, func() { a.do(func() error { return pr.BabyStep(-step) }) })
 	win := z[1]
 	window(c, win)
+	a.region("Z offset", win)
+	a.region("− and +", z[0].Union(z[2]))
 	label(c, image.Rect(win.Min.X+10, win.Min.Y+4, win.Max.X, win.Min.Y+22), "Z OFFSET", gfx.Left)
 	c.Text(image.Rect(win.Min.X, win.Min.Y+14, win.Max.X, win.Max.Y), fmt.Sprintf("%+.3f", st.ZOffset), gfx.Face(true, 34), lcdInk, gfx.Center)
 	a.button(c, z[2], "+", raised, text, func() { a.do(func() error { return pr.BabyStep(step) }) })
 	a.button(c, z[3], "Save", raised, text, func() { a.saveZOffset(st) })
 	steps := kit.Cols(r[1], 8, kit.Px(76), kit.Px(76), kit.Px(76), kit.Fr(1))
+	a.region("Step", steps[0].Union(steps[2]))
 	for i, s := range zSteps {
 		fill, fg := raised, text
 		if a.zBaby == s {
@@ -165,7 +169,9 @@ func (a *App) drawFirstLayer(c *gfx.Canvas, st printer.State) {
 	a.button(c, pc[0], "Pause", raised, text, pr.Pause)
 	a.button(c, pc[1], "Cancel", raised, red, a.askCancel)
 	a.modelView(c, box, st)
-	c.Text(image.Rect(box.Min.X+14, box.Min.Y+8, box.Max.X-14, box.Min.Y+30), fmt.Sprintf("LAYER 1 OF %d", st.Layers), gfx.Face(true, 13), lcdDim, gfx.Left)
+	layer := image.Rect(box.Min.X+14, box.Min.Y+8, box.Max.X-14, box.Min.Y+30)
+	c.Text(layer, fmt.Sprintf("LAYER 1 OF %d", st.Layers), gfx.Face(true, 13), lcdDim, gfx.Left)
+	a.textRegion("Layer", layer, gfx.Face(true, 13), fmt.Sprintf("LAYER 1 OF %d", st.Layers))
 }
 
 // saveZOffset writes the Z offset of the first layer into the config: into the probe offset with a
@@ -208,6 +214,7 @@ func (a *App) drawPaused(c *gfx.Canvas, st printer.State) {
 		a.modelView(c, r[3], st)
 	}
 	plate(c, info)
+	a.region("Where", info)
 	where := "Paused"
 	if st.Layers > 0 {
 		where = fmt.Sprintf("Paused at layer %d of %d", st.Layer, st.Layers)
@@ -255,8 +262,10 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 		line += fmt.Sprintf(" · %.1f m", st.FinishedFilament/1000)
 	}
 	c.Text(result, gfx.Fit(gfx.Face(true, 18), line, result.Dx()), gfx.Face(true, 18), text, gfx.Center)
+	a.region("Result", result)
 
 	plate(c, info)
+	a.region("Bed", info)
 	if st.Finished == "error" && st.FinishedError != "" {
 		c.Text(image.Rect(info.Min.X+18, info.Min.Y+8, info.Max.X-18, info.Min.Y+40), "What happened", gfx.Face(true, 19), text, gfx.Left)
 		for i, l := range wrapText(gfx.Face(false, 16), st.FinishedError, info.Dx()-36) {

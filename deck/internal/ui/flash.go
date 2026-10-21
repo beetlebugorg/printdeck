@@ -44,7 +44,9 @@ func (a *App) drawFlash(c *gfx.Canvas) {
 	area, ok := a.takeover(c, "Firmware")
 	s := kit.NewStack(kit.Inset(area, 0, 6, 0, 0), 0)
 	title := func(t string, col color.RGBA) {
-		c.Text(s.Next(36), t, gfx.Face(true, 24), col, gfx.Left)
+		r := s.Next(36)
+		c.Text(r, t, gfx.Face(true, 24), col, gfx.Left)
+		a.textRegion("Step", r, gfx.Face(true, 24), t)
 		s.Skip(20)
 	}
 	switch {
@@ -52,6 +54,7 @@ func (a *App) drawFlash(c *gfx.Canvas) {
 		title(f.step+"…", text)
 		bar := s.Next(40)
 		window(c, bar)
+		a.region("Progress", bar)
 		if f.total > 0 {
 			w := (bar.Dx() - 8) * f.done / f.total
 			c.RoundRect(image.Rect(bar.Min.X+4, bar.Min.Y+4, bar.Min.X+4+w, bar.Max.Y-4), 3, lcdInk)

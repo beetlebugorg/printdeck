@@ -135,6 +135,7 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	}
 	r := kit.Rows(rest, 12, kit.Px(90), kit.Fr(1))
 	a.drawLastPrint(c, st, r[0])
+	a.region("Pages", r[1])
 	pages := []struct {
 		name string
 		p    page
@@ -148,6 +149,7 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 // drawLastPrint draws the last print in r, with Reprint.
 func (a *App) drawLastPrint(c *gfx.Canvas, st printer.State, last image.Rectangle) {
 	plate(c, last)
+	a.region("Last print", last)
 	l, ok := a.lastPrint(st)
 	if !ok {
 		c.Text(last, "No print yet", gfx.Face(false, 18), dim, gfx.Center)
@@ -175,6 +177,7 @@ func (a *App) confirmPrint(path string) {
 // is tapped; nil draws a row with no action.
 func (a *App) menuRow(c *gfx.Canvas, r image.Rectangle, title, sub string, subCol color.RGBA, tap func()) {
 	plate(c, r)
+	a.region(title, r)
 	if tap != nil && a.isPressed(r) {
 		c.RoundRect(r.Inset(1), 4, raised)
 	}
