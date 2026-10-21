@@ -13,9 +13,9 @@ import (
 	"printdeck/internal/printer"
 )
 
-// The Print tab while Klipper is not ready: the setup of a new printer, or the error of Klipper.
+// The screen while Klipper is not ready: the setup of a new printer, or the error of Klipper.
 
-// drawPrinterSetup draws the Print tab when Klipper has no printer (no [mcu] in printer.cfg). It
+// drawPrinterSetup draws the screen when Klipper has no printer (no [mcu] in printer.cfg). It
 // shows the boards that the probe found on the USB ports.
 func (a *App) drawPrinterSetup(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
@@ -26,7 +26,7 @@ func (a *App) drawPrinterSetup(c *gfx.Canvas, st printer.State) {
 		pr.ProbeBoards()
 	}
 
-	y := 120
+	y := 74
 	para := func(s string, px int, col color.RGBA) {
 		face := gfx.Face(false, px)
 		for _, l := range wrapText(face, s, W-48) {
@@ -187,7 +187,7 @@ func (a *App) drawBoard(c *gfx.Canvas, y int, b board.Info) int {
 	return r.Max.Y
 }
 
-// drawKlipperError draws the Print tab when Klipper is not running, or stopped with an error: all
+// drawKlipperError draws the screen when Klipper is not running, or stopped with an error: all
 // the lines of the message, and a restart of Klipper, which reads printer.cfg again.
 func (a *App) drawKlipperError(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
@@ -201,7 +201,7 @@ func (a *App) drawKlipperError(c *gfx.Canvas, st printer.State) {
 		msg = st.Err
 	}
 	face := gfx.Face(false, 18)
-	y := 120
+	y := 74
 	for _, l := range wrapText(face, msg, W-48) {
 		if y > 560 {
 			break
@@ -209,19 +209,19 @@ func (a *App) drawKlipperError(c *gfx.Canvas, st printer.State) {
 		c.Text(image.Rect(24, y, W-24, y+26), l, face, text, gfx.Left)
 		y += 26
 	}
-	restart, cap, ink := image.Rect(24, 600, W-24, 680), orange, onAcc
+	restart, cap, ink := image.Rect(24, 554, W-24, 634), orange, onAcc
 	if strings.Contains(strings.ToLower(msg), "shutdown") {
 		// The board stopped itself. Only a reset of the board clears this state.
 		half := (W - 48 - 12) / 2
 		restart.Max.X, cap, ink = 24+half, raised, text
-		a.button(c, image.Rect(W-24-half, 600, W-24, 680), "Firmware restart", orange, onAcc, func() {
+		a.button(c, image.Rect(W-24-half, 554, W-24, 634), "Firmware restart", orange, onAcc, func() {
 			a.Toast("Restarting the firmware…")
 			a.do(pr.FirmwareRestart)
 		})
 	} else if strings.Contains(msg, "older version of the") && board.CanFlash("") {
 		half := (W - 48 - 12) / 2
 		restart.Max.X, cap, ink = 24+half, raised, text
-		a.button(c, image.Rect(W-24-half, 600, W-24, 680), "Write firmware", orange, onAcc, func() { a.askFlash("") })
+		a.button(c, image.Rect(W-24-half, 554, W-24, 634), "Write firmware", orange, onAcc, func() { a.askFlash("") })
 	}
 	a.button(c, restart, "Restart Klipper", cap, ink, func() {
 		a.Toast("Restarting Klipper…")

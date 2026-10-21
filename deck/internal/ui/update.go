@@ -52,7 +52,7 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 	heading(c, "Software update")
 	a.backButton(c)
 	u := up.Status()
-	info := image.Rect(24, 122, W-24, 250)
+	info := image.Rect(24, 76, W-24, 204)
 	window(c, info)
 	latest := "—"
 	if u.Latest != "" {
@@ -69,7 +69,7 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 			gfx.Face(true, 19), lcdInk, gfx.Right)
 	}
 
-	y := 266
+	y := 220
 	face := gfx.Face(false, 17)
 	msg := ""
 	switch {
@@ -99,7 +99,7 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 		y += 26
 	}
 	if u.Busy == "Downloading" && u.Total > 0 {
-		bar := image.Rect(24, 490, W-24, 520)
+		bar := image.Rect(24, 444, W-24, 474)
 		window(c, bar)
 		w := int(int64(bar.Dx()-8) * u.Done / u.Total)
 		c.RoundRect(image.Rect(bar.Min.X+4, bar.Min.Y+4, bar.Min.X+4+w, bar.Max.Y-4), 3, lcdInk)
@@ -108,7 +108,7 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 	half := (W - 48 - 12) / 2
 	if u.Busy == "" {
 		if u.Newer {
-			a.button(c, image.Rect(24, 540, W-24, 620), "Install "+u.Latest, orange, onAcc, func() {
+			a.button(c, image.Rect(24, 494, W-24, 574), "Install "+u.Latest, orange, onAcc, func() {
 				if st.Busy() {
 					a.Toast("Install the update after the print")
 					return
@@ -117,11 +117,11 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 					onYes: up.Install}
 			})
 		}
-		a.button(c, image.Rect(24, 636, 24+half, 712), "Check now", raised, text, up.Check)
+		a.button(c, image.Rect(24, 590, 24+half, 666), "Check now", raised, text, up.Check)
 		beta := "Beta updates: off"
 		if u.Beta {
 			beta = "Beta updates: on"
 		}
-		a.button(c, image.Rect(W-24-half, 636, W-24, 712), beta, raised, text, func() { up.SetChannel(!u.Beta) })
+		a.button(c, image.Rect(W-24-half, 590, W-24, 666), beta, raised, text, func() { up.SetChannel(!u.Beta) })
 	}
 }

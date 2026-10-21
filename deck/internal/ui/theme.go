@@ -227,8 +227,8 @@ func playhead(c *gfx.Canvas, r image.Rectangle, f float64) {
 // heading is the title of a screen: an orange mark and uppercase type.
 func heading(c *gfx.Canvas, title string) {
 	setHeading(title)
-	c.Fill(image.Rect(24, 76, 34, 96), orange)
-	c.Text(image.Rect(44, 64, W-150, 108), strings.ToUpper(title), gfx.Face(true, 24), text, gfx.Left)
+	c.Fill(image.Rect(24, 30, 34, 50), orange)
+	c.Text(image.Rect(44, 18, W-150, 62), strings.ToUpper(title), gfx.Face(true, 24), text, gfx.Left)
 }
 
 // charLCD is a character display of the printer: lines of text as the dots of a dot-matrix display,

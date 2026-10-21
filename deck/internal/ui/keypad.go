@@ -44,7 +44,7 @@ func (a *App) drawKeypad(c *gfx.Canvas) {
 	kp := a.keypad
 	a.hits = a.hits[:0] // the keypad blocks everything below it
 	c.Dim(3)
-	box := image.Rect(24, 70, W-24, 716)
+	box := image.Rect(24, 24, W-24, 670)
 	panel(c, box, "")
 	c.Fill(image.Rect(box.Min.X+24, box.Min.Y+24, box.Min.X+32, box.Min.Y+40), orange)
 	c.Text(image.Rect(box.Min.X+42, box.Min.Y+14, box.Max.X-24, box.Min.Y+50), strings.ToUpper(kp.title), gfx.Face(true, 20), text, gfx.Left)

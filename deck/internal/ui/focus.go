@@ -11,7 +11,7 @@ import (
 	"printdeck/internal/printer"
 )
 
-// The knob of the printer display moves a focus through the keys of the Print tab, and a click
+// The knob of the printer display moves a focus through the keys of the touch screen, and a click
 // taps the focused key. The keys of each frame are the menu of the display, under the heading of
 // the page. The touch screen shows the focus with a ring for a while after each turn.
 

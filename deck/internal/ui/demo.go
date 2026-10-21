@@ -73,7 +73,7 @@ func (a *App) ResetScreens() {
 	a.doneSeen = ""
 }
 
-// OpenPrintScreen opens a screen of the Print tab by name; for the demo.
+// OpenPrintScreen opens a screen by name; for the demo.
 func (a *App) OpenPrintScreen(name string) {
 	a.pages, a.tune, a.swap, a.keypad = nil, false, nil, nil
 	switch name {

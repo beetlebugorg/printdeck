@@ -11,7 +11,7 @@ import (
 )
 
 // A maintenance action (bed tilt, PID tune, a macro) runs in Klipper for seconds or minutes. While
-// it runs, the Print tab shows it over everything, on every screen, and the other keys are off.
+// it runs, the deck shows it over everything, on every screen, and the other keys are off.
 // The display of the printer shows it too.
 
 // runAction runs a maintenance action.
@@ -22,7 +22,7 @@ func (a *App) runAction(name string, lines ...string) {
 // drawAction is the screen of the action that runs now.
 func (a *App) drawAction(c *gfx.Canvas, st printer.State) {
 	heading(c, st.Action)
-	y := 124
+	y := 78
 	win := image.Rect(24, y, W-24, y+150)
 	window(c, win)
 	el := a.Now().Sub(st.ActionStart)
@@ -67,7 +67,7 @@ func (a *App) drawAction(c *gfx.Canvas, st printer.State) {
 // drawActionError is the screen of an action that failed, until OK.
 func (a *App) drawActionError(c *gfx.Canvas, r printer.ActionResult) {
 	heading(c, r.Name)
-	y := 130
+	y := 84
 	c.Text(image.Rect(24, y, W-24, y+36), "It failed", gfx.Face(true, 24), red, gfx.Left)
 	y += 56
 	face := gfx.Face(false, 20)

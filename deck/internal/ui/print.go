@@ -108,7 +108,7 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 }
 
 // jobBox is the model view of the job screen, with the layer slider at its bottom edge, down to
-// the tabs.
+// the bottom of the screen.
 func jobBox() image.Rectangle { return image.Rect(24, belowPanel+keyRowH+12, W-24, contentY1-8) }
 
 // drawJob is the screen of a running print: the status display, the keys, and the model view.

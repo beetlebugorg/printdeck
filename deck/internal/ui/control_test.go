@@ -111,7 +111,7 @@ func TestNoMovesWhilePrinting(t *testing.T) {
 	ev(a, touch.Down, joyCX+joyR-2, joyCY)
 	time.Sleep(2 * joyTick)
 	ev(a, touch.Up, joyCX+joyR-2, joyCY)
-	tapAt(a, cv, 60, 215) // Home all
+	tapAt(a, cv, 60, 169) // Home all
 	time.Sleep(50 * time.Millisecond)
 	if c := pr.Calls(); len(c) != 0 {
 		t.Errorf("commands while printing: %v", c)
@@ -121,18 +121,18 @@ func TestNoMovesWhilePrinting(t *testing.T) {
 func TestKeypadSetsTemperature(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.Draw(cv)
-	tapAt(a, cv, 100, 120) // the nozzle gauge of the status screen on the idle screen
+	tapAt(a, cv, 100, 74) // the nozzle gauge of the status screen on the idle screen
 	if a.keypad == nil {
 		t.Fatal("no keypad")
 	}
-	// Type 2 4 5 with the keys, then Set. Keys: 3 columns from x 48, rows from y 274, 80 apart.
+	// Type 2 4 5 with the keys, then Set. Keys: 3 columns from x 48, rows from y 228, 80 apart.
 	kw := (W - 48 - 48 - 16) / 3
-	key := func(col, row int) { tapAt(a, cv, 48+col*(kw+8)+kw/2, 70+204+row*80+36) }
+	key := func(col, row int) { tapAt(a, cv, 48+col*(kw+8)+kw/2, 24+204+row*80+36) }
 	key(0, 3)                      // C
 	key(1, 0)                      // 2
 	key(0, 1)                      // 4
 	key(1, 1)                      // 5
-	tapAt(a, cv, W-100, 716-84+32) // Set
+	tapAt(a, cv, W-100, 670-84+32) // Set
 	if c := pr.wait(1); len(c) != 1 || c[0] != "tool 245" {
 		t.Errorf("calls %v, want tool 245", c)
 	}
@@ -144,7 +144,7 @@ func TestKeypadSetsTemperature(t *testing.T) {
 func TestFilamentSwapSteps(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.swap = &swapState{}
-	tapAt(a, cv, W*3/4, 310) // PETG 240, the second key of the first row
+	tapAt(a, cv, W*3/4, 264) // PETG 240, the second key of the first row
 	if c := pr.wait(1); c[0] != "tool 240" || a.swap.step != swapHeat {
 		t.Fatalf("after PETG: %v, step %d", c, a.swap.step)
 	}
@@ -154,8 +154,8 @@ func TestFilamentSwapSteps(t *testing.T) {
 	if a.swap.step != swapUnload {
 		t.Fatalf("step %d, want unload", a.swap.step)
 	}
-	tapAt(a, cv, W/2, 460) // Unload
-	tapAt(a, cv, W/2, 460) // Load
+	tapAt(a, cv, W/2, 414) // Unload
+	tapAt(a, cv, W/2, 414) // Load
 	c := pr.wait(3)
 	if len(c) != 3 || c[1] != "gcode M83; G1 E10 F300; G1 E-80 F1500; M82" || c[2] != "gcode M83; G1 E70 F600; G1 E20 F150; M82" {
 		t.Errorf("calls %q", c)
@@ -170,7 +170,7 @@ func TestFirmwareRestartOnMachinePage(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.pages = []page{pageMachine}
 	a.Draw(cv)
-	tapAt(a, cv, W-100, 680) // Firmware restart
+	tapAt(a, cv, W-100, 710) // Firmware restart
 	if a.confirm == nil {
 		t.Fatal("no confirmation")
 	}
