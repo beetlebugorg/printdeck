@@ -49,3 +49,14 @@ func Flash(device string, progress FlashProgress) error {
 	defer p.Close()
 	return FlashAVR(p, Firmware, progress)
 }
+
+// Check reads the chip of the board on device through its bootloader, and writes nothing. The
+// program of the board starts again after it.
+func Check(device string) (Chip, error) {
+	p, err := serialport.Open(device, 115200, false)
+	if err != nil {
+		return Chip{}, err
+	}
+	defer p.Close()
+	return CheckAVR(p)
+}

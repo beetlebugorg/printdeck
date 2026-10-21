@@ -125,18 +125,22 @@ func (s *stk500v2) call(body []byte, timeout time.Duration) ([]byte, error) {
 }
 
 // resetToBootloader resets the board with the DTR and RTS lines, and signs on to the bootloader in
-// the time that it waits.
+// the time that it waits. The bootloader misses a message that comes in the first 50 ms or so
+// after the reset (a CR-10 V3 board), so the deck waits, and tries again with a longer wait.
 func (s *stk500v2) resetToBootloader() error {
-	s.port.SetDTR(false)
-	s.port.SetRTS(false)
-	time.Sleep(250 * time.Millisecond)
-	s.port.SetDTR(true)
-	s.port.SetRTS(true)
-	time.Sleep(50 * time.Millisecond)
-	s.buf = nil
-	for range 20 {
-		if _, err := s.call([]byte{cmdSignOn}, 100*time.Millisecond); err == nil {
-			return nil
+	for _, wait := range []time.Duration{200 * time.Millisecond, 400 * time.Millisecond} {
+		s.port.SetDTR(false)
+		s.port.SetRTS(false)
+		time.Sleep(250 * time.Millisecond)
+		s.port.SetDTR(true)
+		s.port.SetRTS(true)
+		time.Sleep(wait)
+		s.port.ReadFor(0) // drop the bytes of the program before the reset
+		s.buf = nil
+		for range 8 {
+			if _, err := s.call([]byte{cmdSignOn}, 100*time.Millisecond); err == nil {
+				return nil
+			}
 		}
 	}
 	return errors.New("the board does not answer. It has no bootloader, or the bootloader is not STK500v2")
@@ -228,4 +232,16 @@ func FlashAVR(port stkPort, firmware func(chip string) ([]byte, error), progress
 	}
 	s.call([]byte{cmdLeaveProgmode, 1, 1}, time.Second)
 	return err
+}
+
+// CheckAVR resets the board on the port into its STK500v2 bootloader, reads its chip, and leaves
+// the bootloader. It writes nothing.
+func CheckAVR(port stkPort) (Chip, error) {
+	s := &stk500v2{port: port}
+	if err := s.resetToBootloader(); err != nil {
+		return Chip{}, err
+	}
+	c, err := s.chip()
+	s.call([]byte{cmdLeaveProgmode, 1, 1}, time.Second)
+	return c, err
 }

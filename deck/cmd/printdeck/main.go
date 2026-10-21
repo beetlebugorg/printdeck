@@ -82,6 +82,9 @@ func main() {
 		case "board":
 			boardList()
 			return
+		case "flash":
+			boardFlash(os.Args[2:])
+			return
 		case "manual":
 			manual(os.Args[2:])
 			return
