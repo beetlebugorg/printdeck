@@ -88,13 +88,13 @@
 
 <nav class="toc">
   <h2>CONTENTS</h2>
-  <ol><li><a href="#start"><span class="num">01</span>Getting started</a></li><li><a href="#deck"><span class="num">02</span>The deck</a></li><li><a href="#home"><span class="num">03</span>Print: the idle screen</a></li><li><a href="#files"><span class="num">04</span>Files</a></li><li><a href="#printing"><span class="num">05</span>Print: during a print</a></li><li><a href="#filament"><span class="num">06</span>Filament</a></li><li><a href="#move"><span class="num">07</span>Move</a></li><li><a href="#maintenance"><span class="num">08</span>Maintenance</a></li><li><a href="#machine"><span class="num">09</span>Machine</a></li><li><a href="#music"><span class="num">10</span>Music</a></li><li><a href="#web"><span class="num">11</span>The deck in the browser</a></li><li><a href="#lcd"><span class="num">12</span>The display of the printer</a></li><li><a href="#slicers"><span class="num">13</span>Slicers</a></li><li><a href="#settings"><span class="num">14</span>Settings</a></li><li><a href="#problems"><span class="num">15</span>Problems</a></li></ol>
+  <ol><li><a href="#start"><span class="num">01</span>Getting started</a></li><li><a href="#deck"><span class="num">02</span>The deck</a></li><li><a href="#home"><span class="num">03</span>Print: the idle screen</a></li><li><a href="#files"><span class="num">04</span>Files</a></li><li><a href="#printing"><span class="num">05</span>Print: during a print</a></li><li><a href="#filament"><span class="num">06</span>Filament</a></li><li><a href="#move"><span class="num">07</span>Move</a></li><li><a href="#maintenance"><span class="num">08</span>Maintenance</a></li><li><a href="#machine"><span class="num">09</span>Machine</a></li><li><a href="#web"><span class="num">10</span>The deck in the browser</a></li><li><a href="#lcd"><span class="num">11</span>The display of the printer</a></li><li><a href="#slicers"><span class="num">12</span>Slicers</a></li><li><a href="#settings"><span class="num">13</span>Settings</a></li><li><a href="#problems"><span class="num">14</span>Problems</a></li></ol>
 </nav>
 
 
 <section id="start">
   <h2 class="title"><span class="num">01</span>Getting started</h2>
-  <p>Printdeck is a touch screen for a 3D printer that runs Klipper. It shows the print, controls the printer, and plays music from Spotify on its speakers.</p><p>At the first start, the deck makes its password and opens the setup. Connect the deck to your Wi-Fi network there.</p>
+  <p>Printdeck is a touch screen for a 3D printer that runs Klipper. It shows the print, and it controls the printer.</p><p>At the first start, the deck makes its password and opens the setup. Connect the deck to your Wi-Fi network there.</p>
   
   <figure>
     <h3>The setup: step 1</h3>
@@ -107,8 +107,8 @@
         <circle cx="520" cy="240" r="15" class="badge"/>
         <text x="520" y="240" class="badge-n">1</text>
         
-        <line x1="-25" y1="728" x2="68" y2="728" class="leader"/>
-        <circle cx="68" cy="728" r="5" class="dot"/>
+        <line x1="-25" y1="728" x2="62" y2="728" class="leader"/>
+        <circle cx="62" cy="728" r="5" class="dot"/>
         <circle cx="-40" cy="728" r="15" class="badge"/>
         <text x="-40" y="728" class="badge-n">2</text>
         
@@ -117,8 +117,8 @@
         <circle cx="-40" cy="762" r="15" class="badge"/>
         <text x="-40" y="762" class="badge-n">3</text>
         
-        <line x1="505" y1="728" x2="394" y2="728" class="leader"/>
-        <circle cx="394" cy="728" r="5" class="dot"/>
+        <line x1="505" y1="728" x2="418" y2="728" class="leader"/>
+        <circle cx="418" cy="728" r="5" class="dot"/>
         <circle cx="520" cy="728" r="15" class="badge"/>
         <text x="520" y="728" class="badge-n">4</text>
         
@@ -136,8 +136,8 @@
       <div class="shot"><img src="img/setup-done.png" alt="The setup: step 2" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="150" x2="240" y2="150" class="leader"/>
-        <circle cx="240" cy="150" r="5" class="dot"/>
+        <line x1="505" y1="150" x2="342" y2="150" class="leader"/>
+        <circle cx="342" cy="150" r="5" class="dot"/>
         <circle cx="520" cy="150" r="15" class="badge"/>
         <text x="520" y="150" class="badge-n">1</text>
         
@@ -146,8 +146,8 @@
         <circle cx="520" cy="330" r="15" class="badge"/>
         <text x="520" y="330" class="badge-n">2</text>
         
-        <line x1="505" y1="728" x2="312" y2="728" class="leader"/>
-        <circle cx="312" cy="728" r="5" class="dot"/>
+        <line x1="505" y1="728" x2="392" y2="728" class="leader"/>
+        <circle cx="392" cy="728" r="5" class="dot"/>
         <circle cx="520" cy="728" r="15" class="badge"/>
         <text x="520" y="728" class="badge-n">3</text>
         
@@ -165,7 +165,7 @@
 
 <section id="deck">
   <h2 class="title"><span class="num">02</span>The deck</h2>
-  <p>The deck has two tabs, Music and Print. The status bar is at the top of every screen.</p>
+  <p>The Print tab has all the screens of the printer. The status bar is at the top of every screen.</p>
   
   <figure>
     <h3>The status bar and the tabs</h3>
@@ -178,30 +178,20 @@
         <circle cx="-40" cy="29" r="15" class="badge"/>
         <text x="-40" y="29" class="badge-n">1</text>
         
-        <line x1="505" y1="29" x2="300" y2="29" class="leader"/>
-        <circle cx="300" cy="29" r="5" class="dot"/>
+        <line x1="505" y1="29" x2="451" y2="29" class="leader"/>
+        <circle cx="451" cy="29" r="5" class="dot"/>
         <circle cx="520" cy="29" r="15" class="badge"/>
         <text x="520" y="29" class="badge-n">2</text>
         
-        <line x1="505" y1="63" x2="425" y2="29" class="leader"/>
-        <circle cx="425" cy="29" r="5" class="dot"/>
-        <circle cx="520" cy="63" r="15" class="badge"/>
-        <text x="520" y="63" class="badge-n">3</text>
-        
-        <line x1="-25" y1="764" x2="120" y2="764" class="leader"/>
-        <circle cx="120" cy="764" r="5" class="dot"/>
-        <circle cx="-40" cy="764" r="15" class="badge"/>
-        <text x="-40" y="764" class="badge-n">4</text>
-        
-        <line x1="505" y1="764" x2="360" y2="764" class="leader"/>
-        <circle cx="360" cy="764" r="5" class="dot"/>
+        <line x1="505" y1="764" x2="420" y2="764" class="leader"/>
+        <circle cx="420" cy="764" r="5" class="dot"/>
         <circle cx="520" cy="764" r="15" class="badge"/>
-        <text x="520" y="764" class="badge-n">5</text>
+        <text x="520" y="764" class="badge-n">3</text>
         
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Clock</b>The time. Tap it to change the colors: day, night, or auto (night from 20:00 to 7:00).</span></li><li><span class="badge">2</span><span><b>The other tab</b>What the other tab does: the print and its percent on the Music tab, the song on the Print tab. Tap it to open that tab.</span></li><li><span class="badge">3</span><span><b>Stop</b>Shows while the printer prints or heats. It stops the printer at once, after one question. Klipper must restart after a stop.</span></li><li><span class="badge">4</span><span><b>Music</b>The Spotify player.</span></li><li><span class="badge">5</span><span><b>Print</b>The printer.</span></li>
+      <li><span class="badge">1</span><span><b>Clock</b>The time. Tap it to change the colors: day, night, or auto (night from 20:00 to 7:00).</span></li><li><span class="badge">2</span><span><b>Stop</b>Shows while the printer prints or heats. It stops the printer at once, after one question. Klipper must restart after a stop.</span></li><li><span class="badge">3</span><span><b>Print</b>The screens of the printer.</span></li>
     </ol>
     
   </figure>
@@ -230,18 +220,18 @@
         <circle cx="520" cy="208" r="15" class="badge"/>
         <text x="520" y="208" class="badge-n">2</text>
         
-        <line x1="505" y1="304" x2="240" y2="304" class="leader"/>
-        <circle cx="240" cy="304" r="5" class="dot"/>
+        <line x1="505" y1="304" x2="318" y2="304" class="leader"/>
+        <circle cx="318" cy="304" r="5" class="dot"/>
         <circle cx="520" cy="304" r="15" class="badge"/>
         <text x="520" y="304" class="badge-n">3</text>
         
-        <line x1="-25" y1="386" x2="140" y2="386" class="leader"/>
-        <circle cx="140" cy="386" r="5" class="dot"/>
+        <line x1="-25" y1="386" x2="64" y2="386" class="leader"/>
+        <circle cx="64" cy="386" r="5" class="dot"/>
         <circle cx="-40" cy="386" r="15" class="badge"/>
         <text x="-40" y="386" class="badge-n">4</text>
         
-        <line x1="505" y1="386" x2="340" y2="386" class="leader"/>
-        <circle cx="340" cy="386" r="5" class="dot"/>
+        <line x1="505" y1="386" x2="404" y2="386" class="leader"/>
+        <circle cx="404" cy="386" r="5" class="dot"/>
         <circle cx="520" cy="386" r="15" class="badge"/>
         <text x="520" y="386" class="badge-n">5</text>
         
@@ -269,8 +259,8 @@
       <div class="shot"><img src="img/keypad.png" alt="The keypad of a temperature" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="160" x2="240" y2="160" class="leader"/>
-        <circle cx="240" cy="160" r="5" class="dot"/>
+        <line x1="505" y1="160" x2="300" y2="160" class="leader"/>
+        <circle cx="300" cy="160" r="5" class="dot"/>
         <circle cx="520" cy="160" r="15" class="badge"/>
         <text x="520" y="160" class="badge-n">1</text>
         
@@ -279,8 +269,8 @@
         <circle cx="520" cy="240" r="15" class="badge"/>
         <text x="520" y="240" class="badge-n">2</text>
         
-        <line x1="505" y1="460" x2="240" y2="460" class="leader"/>
-        <circle cx="240" cy="460" r="5" class="dot"/>
+        <line x1="505" y1="460" x2="252" y2="460" class="leader"/>
+        <circle cx="252" cy="460" r="5" class="dot"/>
         <circle cx="520" cy="460" r="15" class="badge"/>
         <text x="520" y="460" class="badge-n">3</text>
         
@@ -311,23 +301,23 @@
       <div class="shot"><img src="img/files.png" alt="The file list" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="-25" y1="124" x2="130" y2="124" class="leader"/>
-        <circle cx="130" cy="124" r="5" class="dot"/>
+        <line x1="-25" y1="124" x2="16" y2="124" class="leader"/>
+        <circle cx="16" cy="124" r="5" class="dot"/>
         <circle cx="-40" cy="124" r="15" class="badge"/>
         <text x="-40" y="124" class="badge-n">1</text>
         
-        <line x1="-25" y1="187" x2="58" y2="187" class="leader"/>
-        <circle cx="58" cy="187" r="5" class="dot"/>
+        <line x1="-25" y1="187" x2="52" y2="187" class="leader"/>
+        <circle cx="52" cy="187" r="5" class="dot"/>
         <circle cx="-40" cy="187" r="15" class="badge"/>
         <text x="-40" y="187" class="badge-n">2</text>
         
-        <line x1="505" y1="190" x2="260" y2="190" class="leader"/>
-        <circle cx="260" cy="190" r="5" class="dot"/>
+        <line x1="505" y1="190" x2="332" y2="190" class="leader"/>
+        <circle cx="332" cy="190" r="5" class="dot"/>
         <circle cx="520" cy="190" r="15" class="badge"/>
         <text x="520" y="190" class="badge-n">3</text>
         
-        <line x1="505" y1="233" x2="260" y2="233" class="leader"/>
-        <circle cx="260" cy="233" r="5" class="dot"/>
+        <line x1="505" y1="233" x2="464" y2="233" class="leader"/>
+        <circle cx="464" cy="233" r="5" class="dot"/>
         <circle cx="520" cy="233" r="15" class="badge"/>
         <text x="520" y="233" class="badge-n">4</text>
         
@@ -355,13 +345,13 @@
         <circle cx="520" cy="495" r="15" class="badge"/>
         <text x="520" y="495" class="badge-n">2</text>
         
-        <line x1="-25" y1="674" x2="160" y2="674" class="leader"/>
-        <circle cx="160" cy="674" r="5" class="dot"/>
+        <line x1="-25" y1="674" x2="126" y2="674" class="leader"/>
+        <circle cx="126" cy="674" r="5" class="dot"/>
         <circle cx="-40" cy="674" r="15" class="badge"/>
         <text x="-40" y="674" class="badge-n">3</text>
         
-        <line x1="505" y1="674" x2="386" y2="674" class="leader"/>
-        <circle cx="386" cy="674" r="5" class="dot"/>
+        <line x1="505" y1="674" x2="426" y2="674" class="leader"/>
+        <circle cx="426" cy="674" r="5" class="dot"/>
         <circle cx="520" cy="674" r="15" class="badge"/>
         <text x="520" y="674" class="badge-n">4</text>
         
@@ -392,8 +382,8 @@
         <circle cx="520" cy="108" r="15" class="badge"/>
         <text x="520" y="108" class="badge-n">1</text>
         
-        <line x1="505" y1="238" x2="240" y2="238" class="leader"/>
-        <circle cx="240" cy="238" r="5" class="dot"/>
+        <line x1="505" y1="238" x2="444" y2="238" class="leader"/>
+        <circle cx="444" cy="238" r="5" class="dot"/>
         <circle cx="520" cy="238" r="15" class="badge"/>
         <text x="520" y="238" class="badge-n">2</text>
         
@@ -402,8 +392,8 @@
         <circle cx="520" cy="496" r="15" class="badge"/>
         <text x="520" y="496" class="badge-n">3</text>
         
-        <line x1="505" y1="676" x2="240" y2="676" class="leader"/>
-        <circle cx="240" cy="676" r="5" class="dot"/>
+        <line x1="505" y1="676" x2="246" y2="676" class="leader"/>
+        <circle cx="246" cy="676" r="5" class="dot"/>
         <circle cx="520" cy="676" r="15" class="badge"/>
         <text x="520" y="676" class="badge-n">4</text>
         
@@ -421,8 +411,8 @@
       <div class="shot"><img src="img/first-layer.png" alt="The first layer" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="250" x2="240" y2="250" class="leader"/>
-        <circle cx="240" cy="250" r="5" class="dot"/>
+        <line x1="505" y1="250" x2="332" y2="250" class="leader"/>
+        <circle cx="332" cy="250" r="5" class="dot"/>
         <circle cx="520" cy="250" r="15" class="badge"/>
         <text x="520" y="250" class="badge-n">1</text>
         
@@ -436,8 +426,8 @@
         <circle cx="-40" cy="366" r="15" class="badge"/>
         <text x="-40" y="366" class="badge-n">3</text>
         
-        <line x1="505" y1="366" x2="378" y2="366" class="leader"/>
-        <circle cx="378" cy="366" r="5" class="dot"/>
+        <line x1="505" y1="366" x2="426" y2="366" class="leader"/>
+        <circle cx="426" cy="366" r="5" class="dot"/>
         <circle cx="520" cy="366" r="15" class="badge"/>
         <text x="520" y="366" class="badge-n">4</text>
         
@@ -480,8 +470,8 @@
         <circle cx="520" cy="494" r="15" class="badge"/>
         <text x="520" y="494" class="badge-n">4</text>
         
-        <line x1="505" y1="530" x2="240" y2="530" class="leader"/>
-        <circle cx="240" cy="530" r="5" class="dot"/>
+        <line x1="505" y1="530" x2="450" y2="530" class="leader"/>
+        <circle cx="450" cy="530" r="5" class="dot"/>
         <circle cx="520" cy="530" r="15" class="badge"/>
         <text x="520" y="530" class="badge-n">5</text>
         
@@ -490,18 +480,18 @@
         <circle cx="520" cy="590" r="15" class="badge"/>
         <text x="520" y="590" class="badge-n">6</text>
         
-        <line x1="-25" y1="666" x2="100" y2="666" class="leader"/>
-        <circle cx="100" cy="666" r="5" class="dot"/>
+        <line x1="-25" y1="666" x2="68" y2="666" class="leader"/>
+        <circle cx="68" cy="666" r="5" class="dot"/>
         <circle cx="-40" cy="666" r="15" class="badge"/>
         <text x="-40" y="666" class="badge-n">7</text>
         
-        <line x1="505" y1="666" x2="240" y2="666" class="leader"/>
-        <circle cx="240" cy="666" r="5" class="dot"/>
+        <line x1="505" y1="666" x2="270" y2="666" class="leader"/>
+        <circle cx="270" cy="666" r="5" class="dot"/>
         <circle cx="520" cy="666" r="15" class="badge"/>
         <text x="520" y="666" class="badge-n">8</text>
         
-        <line x1="505" y1="700" x2="380" y2="666" class="leader"/>
-        <circle cx="380" cy="666" r="5" class="dot"/>
+        <line x1="505" y1="700" x2="418" y2="666" class="leader"/>
+        <circle cx="418" cy="666" r="5" class="dot"/>
         <circle cx="520" cy="700" r="15" class="badge"/>
         <text x="520" y="700" class="badge-n">9</text>
         
@@ -534,8 +524,8 @@
         <circle cx="520" cy="347" r="15" class="badge"/>
         <text x="520" y="347" class="badge-n">3</text>
         
-        <line x1="505" y1="452" x2="380" y2="452" class="leader"/>
-        <circle cx="380" cy="452" r="5" class="dot"/>
+        <line x1="505" y1="452" x2="428" y2="452" class="leader"/>
+        <circle cx="428" cy="452" r="5" class="dot"/>
         <circle cx="520" cy="452" r="15" class="badge"/>
         <text x="520" y="452" class="badge-n">4</text>
         
@@ -563,28 +553,28 @@
         <circle cx="520" cy="213" r="15" class="badge"/>
         <text x="520" y="213" class="badge-n">1</text>
         
-        <line x1="505" y1="315" x2="240" y2="315" class="leader"/>
-        <circle cx="240" cy="315" r="5" class="dot"/>
+        <line x1="505" y1="315" x2="282" y2="315" class="leader"/>
+        <circle cx="282" cy="315" r="5" class="dot"/>
         <circle cx="520" cy="315" r="15" class="badge"/>
         <text x="520" y="315" class="badge-n">2</text>
         
-        <line x1="-25" y1="409" x2="126" y2="409" class="leader"/>
-        <circle cx="126" cy="409" r="5" class="dot"/>
+        <line x1="-25" y1="409" x2="32" y2="409" class="leader"/>
+        <circle cx="32" cy="409" r="5" class="dot"/>
         <circle cx="-40" cy="409" r="15" class="badge"/>
         <text x="-40" y="409" class="badge-n">3</text>
         
-        <line x1="505" y1="409" x2="354" y2="409" class="leader"/>
-        <circle cx="354" cy="409" r="5" class="dot"/>
+        <line x1="505" y1="409" x2="412" y2="409" class="leader"/>
+        <circle cx="412" cy="409" r="5" class="dot"/>
         <circle cx="520" cy="409" r="15" class="badge"/>
         <text x="520" y="409" class="badge-n">4</text>
         
-        <line x1="-25" y1="491" x2="126" y2="491" class="leader"/>
-        <circle cx="126" cy="491" r="5" class="dot"/>
+        <line x1="-25" y1="491" x2="98" y2="491" class="leader"/>
+        <circle cx="98" cy="491" r="5" class="dot"/>
         <circle cx="-40" cy="491" r="15" class="badge"/>
         <text x="-40" y="491" class="badge-n">5</text>
         
-        <line x1="505" y1="491" x2="354" y2="491" class="leader"/>
-        <circle cx="354" cy="491" r="5" class="dot"/>
+        <line x1="505" y1="491" x2="394" y2="491" class="leader"/>
+        <circle cx="394" cy="491" r="5" class="dot"/>
         <circle cx="520" cy="491" r="15" class="badge"/>
         <text x="520" y="491" class="badge-n">6</text>
         
@@ -607,18 +597,18 @@
         <circle cx="520" cy="108" r="15" class="badge"/>
         <text x="520" y="108" class="badge-n">1</text>
         
-        <line x1="505" y1="509" x2="240" y2="509" class="leader"/>
-        <circle cx="240" cy="509" r="5" class="dot"/>
+        <line x1="505" y1="509" x2="336" y2="509" class="leader"/>
+        <circle cx="336" cy="509" r="5" class="dot"/>
         <circle cx="520" cy="509" r="15" class="badge"/>
         <text x="520" y="509" class="badge-n">2</text>
         
-        <line x1="-25" y1="635" x2="126" y2="635" class="leader"/>
-        <circle cx="126" cy="635" r="5" class="dot"/>
+        <line x1="-25" y1="635" x2="80" y2="635" class="leader"/>
+        <circle cx="80" cy="635" r="5" class="dot"/>
         <circle cx="-40" cy="635" r="15" class="badge"/>
         <text x="-40" y="635" class="badge-n">3</text>
         
-        <line x1="505" y1="635" x2="354" y2="635" class="leader"/>
-        <circle cx="354" cy="635" r="5" class="dot"/>
+        <line x1="505" y1="635" x2="382" y2="635" class="leader"/>
+        <circle cx="382" cy="635" r="5" class="dot"/>
         <circle cx="520" cy="635" r="15" class="badge"/>
         <text x="520" y="635" class="badge-n">4</text>
         
@@ -644,8 +634,8 @@
       <div class="shot"><img src="img/filament.png" alt="The Filament page" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="149" x2="240" y2="149" class="leader"/>
-        <circle cx="240" cy="149" r="5" class="dot"/>
+        <line x1="505" y1="149" x2="250" y2="149" class="leader"/>
+        <circle cx="250" cy="149" r="5" class="dot"/>
         <circle cx="520" cy="149" r="15" class="badge"/>
         <text x="520" y="149" class="badge-n">1</text>
         
@@ -654,8 +644,8 @@
         <circle cx="520" cy="236" r="15" class="badge"/>
         <text x="520" y="236" class="badge-n">2</text>
         
-        <line x1="505" y1="412" x2="240" y2="412" class="leader"/>
-        <circle cx="240" cy="412" r="5" class="dot"/>
+        <line x1="505" y1="412" x2="338" y2="412" class="leader"/>
+        <circle cx="338" cy="412" r="5" class="dot"/>
         <circle cx="520" cy="412" r="15" class="badge"/>
         <text x="520" y="412" class="badge-n">3</text>
         
@@ -688,8 +678,8 @@
       <div class="shot"><img src="img/swap.png" alt="The guided change, step 1" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="-25" y1="126" x2="120" y2="126" class="leader"/>
-        <circle cx="120" cy="126" r="5" class="dot"/>
+        <line x1="-25" y1="126" x2="16" y2="126" class="leader"/>
+        <circle cx="16" cy="126" r="5" class="dot"/>
         <circle cx="-40" cy="126" r="15" class="badge"/>
         <text x="-40" y="126" class="badge-n">1</text>
         
@@ -698,13 +688,13 @@
         <circle cx="520" cy="310" r="15" class="badge"/>
         <text x="520" y="310" class="badge-n">2</text>
         
-        <line x1="505" y1="510" x2="240" y2="510" class="leader"/>
-        <circle cx="240" cy="510" r="5" class="dot"/>
+        <line x1="505" y1="510" x2="348" y2="510" class="leader"/>
+        <circle cx="348" cy="510" r="5" class="dot"/>
         <circle cx="520" cy="510" r="15" class="badge"/>
         <text x="520" y="510" class="badge-n">3</text>
         
-        <line x1="505" y1="88" x2="422" y2="88" class="leader"/>
-        <circle cx="422" cy="88" r="5" class="dot"/>
+        <line x1="505" y1="88" x2="432" y2="88" class="leader"/>
+        <circle cx="432" cy="88" r="5" class="dot"/>
         <circle cx="520" cy="88" r="15" class="badge"/>
         <text x="520" y="88" class="badge-n">4</text>
         
@@ -730,8 +720,8 @@
       <div class="shot"><img src="img/move.png" alt="The Move page" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="149" x2="240" y2="149" class="leader"/>
-        <circle cx="240" cy="149" r="5" class="dot"/>
+        <line x1="505" y1="149" x2="304" y2="149" class="leader"/>
+        <circle cx="304" cy="149" r="5" class="dot"/>
         <circle cx="520" cy="149" r="15" class="badge"/>
         <text x="520" y="149" class="badge-n">1</text>
         
@@ -740,18 +730,18 @@
         <circle cx="520" cy="217" r="15" class="badge"/>
         <text x="520" y="217" class="badge-n">2</text>
         
-        <line x1="-25" y1="392" x2="152" y2="392" class="leader"/>
-        <circle cx="152" cy="392" r="5" class="dot"/>
+        <line x1="-25" y1="392" x2="126" y2="392" class="leader"/>
+        <circle cx="126" cy="392" r="5" class="dot"/>
         <circle cx="-40" cy="392" r="15" class="badge"/>
         <text x="-40" y="392" class="badge-n">3</text>
         
-        <line x1="505" y1="400" x2="374" y2="400" class="leader"/>
-        <circle cx="374" cy="400" r="5" class="dot"/>
+        <line x1="505" y1="400" x2="462" y2="400" class="leader"/>
+        <circle cx="462" cy="400" r="5" class="dot"/>
         <circle cx="520" cy="400" r="15" class="badge"/>
         <text x="520" y="400" class="badge-n">4</text>
         
-        <line x1="505" y1="593" x2="240" y2="593" class="leader"/>
-        <circle cx="240" cy="593" r="5" class="dot"/>
+        <line x1="505" y1="593" x2="282" y2="593" class="leader"/>
+        <circle cx="282" cy="593" r="5" class="dot"/>
         <circle cx="520" cy="593" r="15" class="badge"/>
         <text x="520" y="593" class="badge-n">5</text>
         
@@ -840,6 +830,30 @@
   </figure>
   
   <figure>
+    <h3>An action runs</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/action.png" alt="An action runs" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="199" x2="240" y2="199" class="leader"/>
+        <circle cx="240" cy="199" r="5" class="dot"/>
+        <circle cx="520" cy="199" r="15" class="badge"/>
+        <text x="520" y="199" class="badge-n">1</text>
+        
+        <line x1="505" y1="664" x2="246" y2="664" class="leader"/>
+        <circle cx="246" cy="664" r="5" class="dot"/>
+        <circle cx="520" cy="664" r="15" class="badge"/>
+        <text x="520" y="664" class="badge-n">2</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Action</b>The time since the start, a bar that moves while the action runs, and the temperatures.</span></li><li><span class="badge">2</span><span><b>Stop the printer</b>Stops the printer at once, after one question. Then use Firmware restart.</span></li>
+    </ol>
+    <p class="note">While an action runs, the Print tab shows it on the deck and in each browser, and the other keys are off. The display of the printer shows the name of the action and a moving bar. When the action ends, a short message says that it is done. When it fails, the deck shows the error of Klipper until you tap OK.</p>
+  </figure>
+  
+  <figure>
     <h3>The paper test</h3>
     <div class="frame">
       <div class="shot"><img src="img/paper.png" alt="The paper test" width="480" height="800"></div>
@@ -855,13 +869,13 @@
         <circle cx="520" cy="430" r="15" class="badge"/>
         <text x="520" y="430" class="badge-n">2</text>
         
-        <line x1="-25" y1="605" x2="126" y2="605" class="leader"/>
-        <circle cx="126" cy="605" r="5" class="dot"/>
+        <line x1="-25" y1="605" x2="86" y2="605" class="leader"/>
+        <circle cx="86" cy="605" r="5" class="dot"/>
         <circle cx="-40" cy="605" r="15" class="badge"/>
         <text x="-40" y="605" class="badge-n">3</text>
         
-        <line x1="505" y1="605" x2="354" y2="605" class="leader"/>
-        <circle cx="354" cy="605" r="5" class="dot"/>
+        <line x1="505" y1="605" x2="388" y2="605" class="leader"/>
+        <circle cx="388" cy="605" r="5" class="dot"/>
         <circle cx="520" cy="605" r="15" class="badge"/>
         <text x="520" y="605" class="badge-n">4</text>
         
@@ -917,13 +931,13 @@
         <circle cx="520" cy="601" r="15" class="badge"/>
         <text x="520" y="601" class="badge-n">6</text>
         
-        <line x1="-25" y1="677" x2="126" y2="677" class="leader"/>
-        <circle cx="126" cy="677" r="5" class="dot"/>
+        <line x1="-25" y1="677" x2="32" y2="677" class="leader"/>
+        <circle cx="32" cy="677" r="5" class="dot"/>
         <circle cx="-40" cy="677" r="15" class="badge"/>
         <text x="-40" y="677" class="badge-n">7</text>
         
-        <line x1="505" y1="677" x2="354" y2="677" class="leader"/>
-        <circle cx="354" cy="677" r="5" class="dot"/>
+        <line x1="505" y1="677" x2="454" y2="677" class="leader"/>
+        <circle cx="454" cy="677" r="5" class="dot"/>
         <circle cx="520" cy="677" r="15" class="badge"/>
         <text x="520" y="677" class="badge-n">8</text>
         
@@ -946,13 +960,13 @@
         <circle cx="520" cy="300" r="15" class="badge"/>
         <text x="520" y="300" class="badge-n">1</text>
         
-        <line x1="505" y1="611" x2="240" y2="611" class="leader"/>
-        <circle cx="240" cy="611" r="5" class="dot"/>
+        <line x1="505" y1="611" x2="332" y2="611" class="leader"/>
+        <circle cx="332" cy="611" r="5" class="dot"/>
         <circle cx="520" cy="611" r="15" class="badge"/>
         <text x="520" y="611" class="badge-n">2</text>
         
-        <line x1="505" y1="685" x2="240" y2="685" class="leader"/>
-        <circle cx="240" cy="685" r="5" class="dot"/>
+        <line x1="505" y1="685" x2="282" y2="685" class="leader"/>
+        <circle cx="282" cy="685" r="5" class="dot"/>
         <circle cx="520" cy="685" r="15" class="badge"/>
         <text x="520" y="685" class="badge-n">3</text>
         
@@ -970,8 +984,8 @@
       <div class="shot"><img src="img/stats.png" alt="Statistics" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="226" x2="240" y2="226" class="leader"/>
-        <circle cx="240" cy="226" r="5" class="dot"/>
+        <line x1="505" y1="226" x2="466" y2="226" class="leader"/>
+        <circle cx="466" cy="226" r="5" class="dot"/>
         <circle cx="520" cy="226" r="15" class="badge"/>
         <text x="520" y="226" class="badge-n">1</text>
         
@@ -997,121 +1011,16 @@
   
 </section>
 
-<section id="music">
-  <h2 class="title"><span class="num">10</span>Music</h2>
-  <p>The deck is a Spotify Connect speaker. Choose Printdeck in the Spotify app, or play a playlist on the deck.</p>
-  
-  <figure>
-    <h3>The player</h3>
-    <div class="frame">
-      <div class="shot"><img src="img/music.png" alt="The player" width="480" height="800"></div>
-      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
-        
-        <line x1="505" y1="230" x2="240" y2="230" class="leader"/>
-        <circle cx="240" cy="230" r="5" class="dot"/>
-        <circle cx="520" cy="230" r="15" class="badge"/>
-        <text x="520" y="230" class="badge-n">1</text>
-        
-        <line x1="-25" y1="458" x2="80" y2="458" class="leader"/>
-        <circle cx="80" cy="458" r="5" class="dot"/>
-        <circle cx="-40" cy="458" r="15" class="badge"/>
-        <text x="-40" y="458" class="badge-n">2</text>
-        
-        <line x1="-25" y1="492" x2="182" y2="458" class="leader"/>
-        <circle cx="182" cy="458" r="5" class="dot"/>
-        <circle cx="-40" cy="492" r="15" class="badge"/>
-        <text x="-40" y="492" class="badge-n">3</text>
-        
-        <line x1="505" y1="458" x2="296" y2="458" class="leader"/>
-        <circle cx="296" cy="458" r="5" class="dot"/>
-        <circle cx="520" cy="458" r="15" class="badge"/>
-        <text x="520" y="458" class="badge-n">4</text>
-        
-        <line x1="505" y1="492" x2="400" y2="458" class="leader"/>
-        <circle cx="400" cy="458" r="5" class="dot"/>
-        <circle cx="520" cy="492" r="15" class="badge"/>
-        <text x="520" y="492" class="badge-n">5</text>
-        
-        <line x1="505" y1="526" x2="240" y2="512" class="leader"/>
-        <circle cx="240" cy="512" r="5" class="dot"/>
-        <circle cx="520" cy="526" r="15" class="badge"/>
-        <text x="520" y="526" class="badge-n">6</text>
-        
-        <line x1="505" y1="600" x2="240" y2="600" class="leader"/>
-        <circle cx="240" cy="600" r="5" class="dot"/>
-        <circle cx="520" cy="600" r="15" class="badge"/>
-        <text x="520" y="600" class="badge-n">7</text>
-        
-        <line x1="505" y1="690" x2="240" y2="690" class="leader"/>
-        <circle cx="240" cy="690" r="5" class="dot"/>
-        <circle cx="520" cy="690" r="15" class="badge"/>
-        <text x="520" y="690" class="badge-n">8</text>
-        
-      </svg>
-    </div>
-    <ol class="parts">
-      <li><span class="badge">1</span><span><b>Cover</b>The cover of the song. Swipe it to the left for the next song, to the right for the previous one.</span></li><li><span class="badge">2</span><span><b>Playlists</b>Your playlists. Tap one to play it.</span></li><li><span class="badge">3</span><span><b>Like</b>Adds the song to your Liked Songs, or removes it.</span></li><li><span class="badge">4</span><span><b>Add</b>Adds the song to a playlist.</span></li><li><span class="badge">5</span><span><b>Equalizer</b>The sound. See below.</span></li><li><span class="badge">6</span><span><b>Position</b>Drag it to go to another part of the song.</span></li><li><span class="badge">7</span><span><b>Transport</b>Shuffle, previous, play or pause, next, repeat.</span></li><li><span class="badge">8</span><span><b>Volume</b>Drag it. The Spotify app shows the same volume.</span></li>
-    </ol>
-    
-  </figure>
-  
-  <figure>
-    <h3>The equalizer</h3>
-    <div class="frame">
-      <div class="shot"><img src="img/eq.png" alt="The equalizer" width="480" height="800"></div>
-      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
-        
-        <line x1="505" y1="166" x2="240" y2="166" class="leader"/>
-        <circle cx="240" cy="166" r="5" class="dot"/>
-        <circle cx="520" cy="166" r="15" class="badge"/>
-        <text x="520" y="166" class="badge-n">1</text>
-        
-        <line x1="505" y1="420" x2="240" y2="420" class="leader"/>
-        <circle cx="240" cy="420" r="5" class="dot"/>
-        <circle cx="520" cy="420" r="15" class="badge"/>
-        <text x="520" y="420" class="badge-n">2</text>
-        
-      </svg>
-    </div>
-    <ol class="parts">
-      <li><span class="badge">1</span><span><b>Presets</b>Flat, Bass, Loud (for a low volume), Voice and Treble.</span></li><li><span class="badge">2</span><span><b>Bands</b>Drag a band up to boost it, down to cut it. You hear the change at once.</span></li>
-    </ol>
-    
-  </figure>
-  
-  <figure>
-    <h3>Link Spotify</h3>
-    <div class="frame">
-      <div class="shot"><img src="img/link.png" alt="Link Spotify" width="480" height="800"></div>
-      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
-        
-        <line x1="505" y1="300" x2="240" y2="300" class="leader"/>
-        <circle cx="240" cy="300" r="5" class="dot"/>
-        <circle cx="520" cy="300" r="15" class="badge"/>
-        <text x="520" y="300" class="badge-n">1</text>
-        
-      </svg>
-    </div>
-    <ol class="parts">
-      <li><span class="badge">1</span><span><b>QR code</b>Scan it with your phone, and log in to Spotify. The deck needs the client ID of a Spotify app in printdeck.txt.</span></li>
-    </ol>
-    
-  </figure>
-  
-  
-  
-</section>
-
 <section id="web">
-  <h2 class="title"><span class="num">11</span>The deck in the browser</h2>
-  <p>Open http://printdeck.local in a browser on the same network, and log in with the password of the deck. The browser shows the same screens as the touch screen, sharp at the pixel density of the phone. Each browser has its own screens, so you can use Music on the phone while the deck shows the print.</p><p>On a phone, use Add to Home Screen: the deck then opens as an app, with no browser bars.</p><p>The page http://printdeck.local/system shows the version, the services, the logs and the API key for slicers. It also installs an update: choose the update file, then Install. The deck writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one.</p>
+  <h2 class="title"><span class="num">10</span>The deck in the browser</h2>
+  <p>Open http://printdeck.local in a browser on the same network, and log in with the password of the deck. The browser shows the same screens as the touch screen, sharp at the pixel density of the phone. Each browser has its own screens, so a phone can show the files while the deck shows the print.</p><p>On a phone, use Add to Home Screen: the deck then opens as an app, with no browser bars.</p><p>The page http://printdeck.local/system shows the version, the services, the logs and the API key for slicers. It also installs an update: choose the update file, then Install. The deck writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one.</p>
   
   
   
 </section>
 
 <section id="lcd">
-  <h2 class="title"><span class="num">12</span>The display of the printer</h2>
+  <h2 class="title"><span class="num">11</span>The display of the printer</h2>
   <p>When the printer has a display, it shows what the deck shows: the step of a filament change, the paper test, the page that is open, or the state of the print. The rows below show the temperatures, the print time and the progress. During a filament change or while the printer heats, the bottom row shows an animation.</p>
   
   
@@ -1130,7 +1039,7 @@ XYZ HOMED
 </section>
 
 <section id="slicers">
-  <h2 class="title"><span class="num">13</span>Slicers</h2>
+  <h2 class="title"><span class="num">12</span>Slicers</h2>
   <p>The deck answers the OctoPrint API that slicers use to send files and to start prints.</p><p>In Cura, add the deck with the OctoPrint Connection plugin. The deck asks &#34;Allow Cura to use the Printdeck?&#34;. Tap Allow.</p><p>In OrcaSlicer or PrusaSlicer, add a printer of the type OctoPrint with the address http://printdeck.local, and the API key of the system page.</p>
   
   
@@ -1138,17 +1047,17 @@ XYZ HOMED
 </section>
 
 <section id="settings">
-  <h2 class="title"><span class="num">14</span>Settings</h2>
+  <h2 class="title"><span class="num">13</span>Settings</h2>
   <p>The file printdeck.txt on the PRINTDECK partition holds the settings. Put the disk in a computer to change it. The deck reads it at each start, then clears the Wi-Fi password in it.</p>
   
   
-  <table><tr><td>wifi_ssid, wifi_password, wifi_country</td><td>The Wi-Fi network</td></tr><tr><td>spotify_client_id</td><td>The client ID of your Spotify app</td></tr><tr><td>hostname, timezone</td><td>The name on the network, and the time zone</td></tr><tr><td>display_rotate</td><td>90 or 270 for a display that is mounted in portrait</td></tr><tr><td>touch_invert_x, touch_invert_y, touch_swap_xy</td><td>1 turns an axis of the touch screen</td></tr><tr><td>max_volume</td><td>The highest volume, in percent</td></tr><tr><td>preheat_tool, preheat_bed</td><td>The temperatures of Preheat with no filament set</td></tr><tr><td>night_from, night_to</td><td>The hours of the night colors</td></tr><tr><td>printer.cfg (a file)</td><td>A Klipper config. The deck takes it at the next start.</td></tr></table>
+  <table><tr><td>wifi_ssid, wifi_password, wifi_country</td><td>The Wi-Fi network</td></tr><tr><td>hostname, timezone</td><td>The name on the network, and the time zone</td></tr><tr><td>display_rotate</td><td>90 or 270 for a display that is mounted in portrait</td></tr><tr><td>touch_invert_x, touch_invert_y, touch_swap_xy</td><td>1 turns an axis of the touch screen</td></tr><tr><td>preheat_tool, preheat_bed</td><td>The temperatures of Preheat with no filament set</td></tr><tr><td>night_from, night_to</td><td>The hours of the night colors</td></tr><tr><td>printer.cfg (a file)</td><td>A Klipper config. The deck takes it at the next start.</td></tr></table>
   
   
 </section>
 
 <section id="problems">
-  <h2 class="title"><span class="num">15</span>Problems</h2>
+  <h2 class="title"><span class="num">14</span>Problems</h2>
   
   
   <figure>
@@ -1162,18 +1071,18 @@ XYZ HOMED
         <circle cx="520" cy="215" r="15" class="badge"/>
         <text x="520" y="215" class="badge-n">1</text>
         
-        <line x1="-25" y1="335" x2="126" y2="335" class="leader"/>
-        <circle cx="126" cy="335" r="5" class="dot"/>
+        <line x1="-25" y1="335" x2="34" y2="335" class="leader"/>
+        <circle cx="34" cy="335" r="5" class="dot"/>
         <circle cx="-40" cy="335" r="15" class="badge"/>
         <text x="-40" y="335" class="badge-n">2</text>
         
-        <line x1="505" y1="335" x2="354" y2="335" class="leader"/>
-        <circle cx="354" cy="335" r="5" class="dot"/>
+        <line x1="505" y1="335" x2="466" y2="335" class="leader"/>
+        <circle cx="466" cy="335" r="5" class="dot"/>
         <circle cx="520" cy="335" r="15" class="badge"/>
         <text x="520" y="335" class="badge-n">3</text>
         
-        <line x1="505" y1="400" x2="240" y2="400" class="leader"/>
-        <circle cx="240" cy="400" r="5" class="dot"/>
+        <line x1="505" y1="400" x2="242" y2="400" class="leader"/>
+        <circle cx="242" cy="400" r="5" class="dot"/>
         <circle cx="520" cy="400" r="15" class="badge"/>
         <text x="520" y="400" class="badge-n">4</text>
         
@@ -1191,13 +1100,13 @@ XYZ HOMED
       <div class="shot"><img src="img/configs.png" alt="Choose your printer" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="140" x2="240" y2="140" class="leader"/>
-        <circle cx="240" cy="140" r="5" class="dot"/>
+        <line x1="505" y1="140" x2="354" y2="140" class="leader"/>
+        <circle cx="354" cy="140" r="5" class="dot"/>
         <circle cx="520" cy="140" r="15" class="badge"/>
         <text x="520" y="140" class="badge-n">1</text>
         
-        <line x1="505" y1="200" x2="240" y2="200" class="leader"/>
-        <circle cx="240" cy="200" r="5" class="dot"/>
+        <line x1="505" y1="200" x2="324" y2="200" class="leader"/>
+        <circle cx="324" cy="200" r="5" class="dot"/>
         <circle cx="520" cy="200" r="15" class="badge"/>
         <text x="520" y="200" class="badge-n">2</text>
         
@@ -1225,8 +1134,8 @@ XYZ HOMED
         <circle cx="520" cy="200" r="15" class="badge"/>
         <text x="520" y="200" class="badge-n">1</text>
         
-        <line x1="505" y1="640" x2="240" y2="640" class="leader"/>
-        <circle cx="240" cy="640" r="5" class="dot"/>
+        <line x1="505" y1="640" x2="338" y2="640" class="leader"/>
+        <circle cx="338" cy="640" r="5" class="dot"/>
         <circle cx="520" cy="640" r="15" class="badge"/>
         <text x="520" y="640" class="badge-n">2</text>
         
