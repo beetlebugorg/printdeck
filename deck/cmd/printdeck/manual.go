@@ -139,7 +139,7 @@ func manualSections() []section {
 	return []section{
 		{ID: "start", Title: "Getting started",
 			Intro: []string{
-				"Printdeck is a touch screen for a 3D printer that runs Klipper. It shows the print, controls the printer, and plays music from Spotify on its speakers.",
+				"Printdeck is a touch screen for a 3D printer that runs Klipper. It shows the print, and it controls the printer.",
 				"At the first start, the deck makes its password and opens the setup. Connect the deck to your Wi-Fi network there.",
 			},
 			Figures: []figure{
@@ -161,19 +161,16 @@ func manualSections() []section {
 					Notes: []string{"You can also set the Wi-Fi before the first start: put the disk in a computer, and fill in printdeck.txt on the PRINTDECK partition."}},
 			}},
 		{ID: "deck", Title: "The deck",
-			Intro: []string{"The deck has two tabs, Music and Print. The status bar is at the top of every screen."},
+			Intro: []string{"The Print tab has all the screens of the printer. The status bar is at the top of every screen."},
 			Figures: []figure{
 				{Name: "status", Caption: "The status bar and the tabs",
 					Setup: func(s *manualState) {
 						s.p.State_ = stPrinting
-						s.a.SetTab(ui.TabMusic)
 					},
 					Callouts: []callout{
 						{52, 29, "Clock", "The time. Tap it to change the colors: day, night, or auto (night from 20:00 to 7:00)."},
-						{300, 29, "The other tab", "What the other tab does: the print and its percent on the Music tab, the song on the Print tab. Tap it to open that tab."},
 						{425, 29, "Stop", "Shows while the printer prints or heats. It stops the printer at once, after one question. Klipper must restart after a stop."},
-						{120, 764, "Music", "The Spotify player."},
-						{360, 764, "Print", "The printer."},
+						{360, 764, "Print", "The screens of the printer."},
 					}},
 			}},
 		{ID: "home", Title: "Print: the idle screen",
@@ -350,6 +347,12 @@ func manualSections() []section {
 						{240, 148, "Step", "Starting the bootloader, Writing, then Checking."},
 						{240, 206, "Progress", "The part of the firmware that is done."},
 					}},
+				{Name: "action", Caption: "An action runs", Setup: page("action"),
+					Notes: []string{"While an action runs, the Print tab shows it on the deck and in each browser, and the other keys are off. The display of the printer shows the name of the action and a moving bar. When the action ends, a short message says that it is done. When it fails, the deck shows the error of Klipper until you tap OK."},
+					Callouts: []callout{
+						{240, 199, "Action", "The time since the start, a bar that moves while the action runs, and the temperatures."},
+						{240, 664, "Stop the printer", "Stops the printer at once, after one question. Then use Firmware restart."},
+					}},
 				{Name: "paper", Caption: "The paper test",
 					Setup: func(s *manualState) {
 						s.p.State_ = printer.State{Reachable: true, Text: "Operational", Connected: true, ManualProbe: true, ManualZ: 0.425}
@@ -402,41 +405,9 @@ func manualSections() []section {
 						{240, 510, "Details", "The filament in grams (for 1.75 mm PLA), the average and the longest print, the prints of the last 7 and 30 days, and the file that you print most."},
 					}},
 			}},
-		{ID: "music", Title: "Music",
-			Intro: []string{"The deck is a Spotify Connect speaker. Choose Printdeck in the Spotify app, or play a playlist on the deck."},
-			Figures: []figure{
-				{Name: "music", Caption: "The player",
-					Setup: func(s *manualState) {
-						s.p.State_ = stIdle
-						s.m.State_ = spotify.State{Authorized: true, Active: true, Mine: true, Playing: true, Shuffle: true, Repeat: "context",
-							Title: "Everything In Its Right Place", Artist: "Radiohead", URI: "spotify:track:demo", Liked: true, Duration: 251 * time.Second}
-						s.a.SetTab(ui.TabMusic)
-					},
-					Callouts: []callout{
-						{240, 230, "Cover", "The cover of the song. Swipe it to the left for the next song, to the right for the previous one."},
-						{80, 458, "Playlists", "Your playlists. Tap one to play it."},
-						{182, 458, "Like", "Adds the song to your Liked Songs, or removes it."},
-						{296, 458, "Add", "Adds the song to a playlist."},
-						{400, 458, "Equalizer", "The sound. See below."},
-						{240, 512, "Position", "Drag it to go to another part of the song."},
-						{240, 600, "Transport", "Shuffle, previous, play or pause, next, repeat."},
-						{240, 690, "Volume", "Drag it. The Spotify app shows the same volume."},
-					}},
-				{Name: "eq", Caption: "The equalizer",
-					Setup: func(s *manualState) { s.a.SetTab(ui.TabMusic); s.a.OpenEQ() },
-					Callouts: []callout{
-						{240, 166, "Presets", "Flat, Bass, Loud (for a low volume), Voice and Treble."},
-						{240, 420, "Bands", "Drag a band up to boost it, down to cut it. You hear the change at once."},
-					}},
-				{Name: "link", Caption: "Link Spotify",
-					Setup: func(s *manualState) { s.m.State_ = spotify.State{}; s.a.SetTab(ui.TabMusic) },
-					Callouts: []callout{
-						{240, 300, "QR code", "Scan it with your phone, and log in to Spotify. The deck needs the client ID of a Spotify app in printdeck.txt."},
-					}},
-			}},
 		{ID: "web", Title: "The deck in the browser",
 			Intro: []string{
-				"Open http://printdeck.local in a browser on the same network, and log in with the password of the deck. The browser shows the same screens as the touch screen, sharp at the pixel density of the phone. Each browser has its own screens, so you can use Music on the phone while the deck shows the print.",
+				"Open http://printdeck.local in a browser on the same network, and log in with the password of the deck. The browser shows the same screens as the touch screen, sharp at the pixel density of the phone. Each browser has its own screens, so a phone can show the files while the deck shows the print.",
 				"On a phone, use Add to Home Screen: the deck then opens as an app, with no browser bars.",
 				"The page http://printdeck.local/system shows the version, the services, the logs and the API key for slicers. It also installs an update: choose the update file, then Install. The deck writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one.",
 			}},
@@ -457,11 +428,9 @@ func manualSections() []section {
 			Intro: []string{"The file printdeck.txt on the PRINTDECK partition holds the settings. Put the disk in a computer to change it. The deck reads it at each start, then clears the Wi-Fi password in it."},
 			Table: [][2]string{
 				{"wifi_ssid, wifi_password, wifi_country", "The Wi-Fi network"},
-				{"spotify_client_id", "The client ID of your Spotify app"},
 				{"hostname, timezone", "The name on the network, and the time zone"},
 				{"display_rotate", "90 or 270 for a display that is mounted in portrait"},
 				{"touch_invert_x, touch_invert_y, touch_swap_xy", "1 turns an axis of the touch screen"},
-				{"max_volume", "The highest volume, in percent"},
 				{"preheat_tool, preheat_bed", "The temperatures of Preheat with no filament set"},
 				{"night_from, night_to", "The hours of the night colors"},
 				{"printer.cfg (a file)", "A Klipper config. The deck takes it at the next start."},
@@ -512,6 +481,8 @@ func manual(args []string) {
 			{SSID: "Guest", Signal: -71}, {SSID: "NETGEAR-5G", Signal: -82, Secure: true}},
 		Status_: wifi.Status{State: "COMPLETED", SSID: "Extremely", IP: "192.168.76.119"},
 	}
+	// The manual is about the printer: the status bar shows no song.
+	m.State_ = spotify.State{}
 	st := &manualState{a, m, p}
 	secs := manualSections()
 	const k = 2 // the pictures are drawn at twice the size
@@ -528,6 +499,9 @@ func manual(args []string) {
 			out := gfx.New(ui.W*k, ui.BaseH*k)
 			if err := gfx.ReplayScaled(out, rec.JSON(), gfx.ImageByID, k); err != nil {
 				log.Fatal(err)
+			}
+			for i := range f.Badges {
+				f.Badges[i].X = clearSpot(out.RGBA, k, f.Badges[i].X, f.Badges[i].Y, f.Badges[i].Right)
 			}
 			writePNG(filepath.Join(dir, "img", f.Name+".png"), out.RGBA)
 		}
@@ -549,6 +523,37 @@ func manual(args []string) {
 	if err := tpl.Execute(f, map[string]any{"Sections": secs, "Version": osVersion()}); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// clearSpot moves the dot of a callout to the side of its number, until the dot covers no text or
+// line of the picture, so that the dot does not hide the words of the part. img is drawn at k
+// times the units of the UI. It returns the new x, or x when it finds no clear place.
+func clearSpot(img *image.RGBA, k, x, y int, right bool) int {
+	const r = 7 // the radius of the dot, with room around it
+	clear := func(cx int) bool {
+		lo, hi := 255, 0
+		for py := (y - r) * k; py <= (y+r)*k; py++ {
+			for px := (cx - r) * k; px <= (cx+r)*k; px++ {
+				if !image.Pt(px, py).In(img.Rect) {
+					return false
+				}
+				c := img.RGBAAt(px, py)
+				l := (int(c.R)*299 + int(c.G)*587 + int(c.B)*114) / 1000
+				lo, hi = min(lo, l), max(hi, l)
+			}
+		}
+		return hi-lo < 40
+	}
+	step := 2
+	if !right {
+		step = -2
+	}
+	for cx := x; cx >= r && cx <= ui.W-r; cx += step {
+		if clear(cx) {
+			return cx
+		}
+	}
+	return x
 }
 
 // demoPrinterCopy keeps the fixed data of the demo printer (machine, history, files) for each
