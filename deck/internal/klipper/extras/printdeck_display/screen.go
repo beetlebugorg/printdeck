@@ -12,14 +12,25 @@ type Screen struct {
 	Anim    string `json:"anim,omitempty"`
 	Title   string `json:"title,omitempty"`
 	Caption string `json:"caption,omitempty"`
+	// Font is the font of the rows: "5x8" (25 characters, 8 rows), "6x10" (21 characters, 6
+	// rows), or "" for the 8 x 16 font of Klipper (16 characters, 4 rows).
+	Font string `json:"font,omitempty"`
+	// Status is the status screen. With a status, the rows are not used.
+	Status *Status `json:"status,omitempty"`
 }
 
-// Row is a row of 16 characters: text at the left and at the right, a selection bar (Selected),
-// or a progress bar (Bar from 0 to 1; a negative Bar is no bar).
+// moves reports that the screen has frames: an animation, or a status with a part that moves.
+func (s *Screen) moves() bool { return s.Anim != "" || s.Status != nil && s.Status.moves() }
+
+// Row is a row of text: text at the left and at the right, or a progress bar (Bar from 0 to 1,
+// with HasBar). An Item is a key of a menu: it has room for the cursor, which shows at the
+// Selected item. A Bold row is a heading.
 type Row struct {
 	Left     string  `json:"left,omitempty"`
 	Right    string  `json:"right,omitempty"`
+	Item     bool    `json:"item,omitempty"`
 	Selected bool    `json:"selected,omitempty"`
+	Bold     bool    `json:"bold,omitempty"`
 	Bar      float64 `json:"bar,omitempty"`
 	HasBar   bool    `json:"has_bar,omitempty"`
 }
@@ -29,8 +40,21 @@ const cols = 16
 
 // draw draws the screen at the time frame (4 frames a second).
 func (s *Screen) draw(c *canvas, frame int) {
+	if s.Status != nil {
+		s.Status.draw(c, frame)
+		return
+	}
 	if s.Anim != "" {
 		s.drawAnim(c, frame)
+		return
+	}
+	if f := fonts[s.Font]; f != nil {
+		for i, r := range s.Rows {
+			if (i+1)*f.h > canvasH {
+				break
+			}
+			r.drawSmall(c, f, i*f.h)
+		}
 		return
 	}
 	for i, r := range s.Rows {
@@ -39,6 +63,38 @@ func (s *Screen) draw(c *canvas, frame int) {
 		}
 		r.draw(c, i*16)
 	}
+}
+
+// fonts are the small fonts of the rows.
+var fonts = map[string]*bitmapFont{"5x8": &font5x8, "6x10": &font6x10}
+
+// drawSmall draws a row in a small font, with its top at y.
+func (r Row) drawSmall(c *canvas, f *bitmapFont, y int) {
+	n := canvasW / f.w
+	x := 0
+	if r.Item {
+		if r.Selected {
+			c.smallText(f, 0, y, ">", true)
+		}
+		x, n = f.w+2, n-1
+	}
+	left, right := fit(r.Left, n), fit(r.Right, n)
+	if len(left)+len(right) > n {
+		left = left[:max(0, n-len(right)-1)]
+	}
+	if r.HasBar {
+		x0 := x
+		if left != "" {
+			x0 = x + (len(left)+1)*f.w
+		}
+		c.frame(x0, y+1, canvasW, y+f.h-1)
+		w := int(float64(canvasW-x0-4) * min(max(r.Bar, 0), 1))
+		c.fill(x0+2, y+3, x0+2+w, y+f.h-3, true)
+		c.smallText(f, x, y, left, r.Bold)
+		return
+	}
+	c.smallText(f, x, y, left, r.Bold)
+	c.smallText(f, canvasW-f.w*len(right), y, right, r.Bold)
 }
 
 func (r Row) draw(c *canvas, y int) {
