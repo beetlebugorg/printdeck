@@ -8,6 +8,7 @@ import (
 	"image/png"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"sync"
@@ -33,6 +34,9 @@ func bench(args []string) {
 	k := printer.NewKlippy(args[0], &gcodestore.Store{Dir: dir})
 	app := ui.New()
 	app.Printer, app.Music, app.Vol = k, &ui.DemoMusic{}, ui.DemoVolume(0) // no music on a bench
+	if os.Getenv("DEMO_HEAT") != "" {
+		app.Printer = &heatDemo{Klippy: k, start: time.Now()}
+	}
 	app.SetTab(ui.TabPrint)
 	if f, ok := os.LookupEnv("LCD_FONT"); ok {
 		app.LCDFont = f
@@ -41,6 +45,11 @@ func bench(args []string) {
 	ctx := context.Background()
 	go k.Run(ctx, app.Redraw)
 	go lcdLoop(ctx, k, app)
+	go func() { // the heat demo changes with the time: draw it again
+		for range time.Tick(500 * time.Millisecond) {
+			app.Redraw()
+		}
+	}()
 	go func() {
 		last := ""
 		for range time.Tick(250 * time.Millisecond) {
@@ -81,6 +90,30 @@ func bench(args []string) {
 		mu.Unlock()
 		os.WriteFile(args[1], b.Bytes(), 0o644)
 	})
+}
+
+// heatDemo is the printer of a bench with DEMO_HEAT: a heat-up of 90 seconds to 210/60 degrees,
+// with the fan on when the nozzle is hot, then 30 seconds of cool-down, again and again. The
+// board of the bench has no heaters.
+type heatDemo struct {
+	*printer.Klippy
+	start time.Time
+}
+
+func (h *heatDemo) State() printer.State {
+	st := h.Klippy.State()
+	t := math.Mod(time.Since(h.start).Seconds(), 120)
+	ramp := func(target, secs float64) float64 { return 25 + (target-25)*min(1, t/secs) }
+	if t < 90 {
+		st.ToolTarget, st.BedTarget = 210, 60
+		st.Tool, st.Bed = ramp(210, 50), ramp(60, 70)
+		if st.Tool >= 205 {
+			st.Fan = min(100, (t-50)*5)
+		}
+	} else {
+		st.Tool, st.Bed = 210-(t-90)*6, 60-(t-90)
+	}
+	return st
 }
 
 // benchAddr is the address of the page of the bench.
