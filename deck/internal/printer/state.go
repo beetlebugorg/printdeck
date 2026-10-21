@@ -20,6 +20,7 @@ type File struct {
 type State struct {
 	Reachable     bool
 	Err           string
+	ErrDetail     string // all the lines of Klipper's message, when Klipper reports an error
 	Text          string // "Printing", "Operational", "Offline", ...
 	Connected     bool   // the printer answers
 	Printing      bool   // printing, pausing, or paused: a job is active
@@ -46,6 +47,13 @@ type State struct {
 	HasNow           bool
 	Tool, ToolTarget float64
 	Bed, BedTarget   float64
+
+	// NeedsSetup is true when printer.cfg has no [mcu] section: Klipper has no printer to use.
+	NeedsSetup bool
+	// Firmware is the version of the firmware on the board. FirmwareOld is true when it is not
+	// the Klipper commit of the host.
+	Firmware    string
+	FirmwareOld bool
 }
 
 // Busy reports that a job is running or paused.

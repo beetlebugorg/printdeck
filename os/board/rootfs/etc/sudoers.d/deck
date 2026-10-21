@@ -1,2 +1,3 @@
-# The touch screen sets the Wi-Fi network and the login. It runs as the user deck.
-deck ALL=(root) NOPASSWD: /usr/bin/printdeck-wifi, /usr/bin/printdeck-user
+# The touch screen sets the Wi-Fi network and the login, and restarts Klipper after a change of
+# printer.cfg. It runs as the user deck.
+deck ALL=(root) NOPASSWD: /usr/bin/printdeck-wifi, /usr/bin/printdeck-user, /usr/bin/systemctl restart klipper

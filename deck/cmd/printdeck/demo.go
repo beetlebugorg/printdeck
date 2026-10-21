@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"printdeck/internal/eq"
+	"printdeck/internal/board"
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
 	"printdeck/internal/remote"
@@ -97,6 +98,18 @@ func demo(args []string) {
 		a.OpenPrintScreen(n)
 		snap("print-" + n)
 	}
+	p.State_.FirmwareOld = true
+	a.OpenPrintScreen("")
+	snap("print-firmware-old")
+	// The printer setup, with the board of the test printer, and an error of Klipper.
+	p.State_ = printer.State{Err: "Klipper is not ready", NeedsSetup: true}
+	p.Boards_ = []board.Info{{Name: "UltiMachine ultimachine.com RAMBo", Klipper: true, MCU: "atmega2560",
+		Version: "v0.13.0-777-g7bc4d0946-prind-20260930_185514-10f1cdde21e6"}}
+	snap("print-setup")
+	p.Boards_ = []board.Info{{Name: "1a86 USB Serial"}}
+	snap("print-setup-stock")
+	p.State_ = printer.State{Err: "Error in printer.cfg", ErrDetail: "Option 'rotation_distance' in section 'stepper_x' must be specified\n\nOnce the underlying issue is corrected, use the\n\"RESTART\" command to reload the config and\nrestart the host software.\nPrinter is halted"}
+	snap("print-error")
 	a.OpenPrintScreen("")
 	m.State_ = spotify.State{Authorized: true}
 	a.SetTab(ui.TabMusic)
