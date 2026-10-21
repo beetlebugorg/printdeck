@@ -168,10 +168,10 @@ func (a *App) lcdMenu() bool {
 // lcdScreen makes the screen of the display: an animation, the status of the printer, or the
 // heading and the keys of the page.
 func (a *App) lcdScreen(st printer.State) printer.LCDScreen {
-	l1, l2, anim := a.lcdStatus(st)
-	if anim != "" {
-		return printer.LCDScreen{Anim: anim, Title: strings.TrimSpace(l1), Caption: strings.TrimSpace(l2)}
+	if s := a.lcdAction(st); s != nil {
+		return *s
 	}
+	l1, l2 := StatusLines(st, a.Material, a.Now())
 	font := a.LCDFont
 	nrows, ok := lcdFonts[font]
 	if !ok {

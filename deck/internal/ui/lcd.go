@@ -101,20 +101,29 @@ func pad(l, r string) string {
 	return l + strings.Repeat(" ", max(0, n-len(l))) + r
 }
 
-// lcdStatus is what the display shows when the screen has no keys for the knob: the step of a
-// filament change, an action, or the state of the printer. anim is a full screen animation of the
-// display, or "".
-func (a *App) lcdStatus(st printer.State) (l1, l2, anim string) {
-	if a.flash != nil && !a.flash.finished {
-		return "Firmware", fmt.Sprintf("%s %d%%", a.flash.step, 100*a.flash.done/max(a.flash.total, 1)), "work"
+// lcdAction is the screen of the display while an action or a firmware flash runs, or nil.
+func (a *App) lcdAction(st printer.State) *printer.LCDScreen {
+	if f := a.flash; f != nil && !f.finished {
+		return &printer.LCDScreen{Anim: "flash", Title: "Firmware", Caption: f.step,
+			Footer: "Keep the printer on", Progress: float64(f.done) / float64(max(f.total, 1))}
 	}
-	if st.Action != "" && !st.ManualProbe {
-		s := int(a.Now().Sub(st.ActionStart).Seconds())
-		return st.Action, fmt.Sprintf("Running %d:%02d", s/60, s%60), "work"
+	if st.Action == "" || st.ManualProbe {
+		return nil
 	}
-	l1, l2 = StatusLines(st, a.Material, a.Now())
-	if st.Busy() && st.Preparing && strings.HasPrefix(st.Activity, "Heating") {
-		anim = "heat"
+	s := int(a.Now().Sub(st.ActionStart).Seconds())
+	return &printer.LCDScreen{Anim: actionAnim(st.Action), Title: st.Action,
+		Caption: fmt.Sprintf("%d:%02d", s/60, s%60), Footer: "Stop on the deck"}
+}
+
+// actionAnim is the scene of an action on the display, by its name.
+func actionAnim(name string) string {
+	n := strings.ToLower(name)
+	switch {
+	case strings.Contains(n, "pid"):
+		return "pid"
+	case strings.Contains(n, "tilt"), strings.Contains(n, "mesh"), strings.Contains(n, "probe"),
+		strings.Contains(n, "screw"):
+		return "probe"
 	}
-	return l1, l2, anim
+	return "work"
 }

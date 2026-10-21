@@ -3,6 +3,7 @@ package ui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"printdeck/internal/gfx"
 )
@@ -85,8 +86,10 @@ func TestKnobAction(t *testing.T) {
 	st := idle
 	st.Action = "Bed tilt"
 	a, _, cv := newPrintApp(st)
+	st.ActionStart = a.Now().Add(-42 * time.Second)
+	a.Printer.(*recPrinter).State_ = st
 	a.Draw(cv)
-	if s := a.LCD(); s.Anim != "work" || s.Title != "Bed tilt" || !strings.HasPrefix(s.Caption, "Running") {
+	if s := a.LCD(); s.Anim != "probe" || s.Title != "Bed tilt" || s.Caption != "0:42" {
 		t.Errorf("screen %+v", s)
 	}
 }

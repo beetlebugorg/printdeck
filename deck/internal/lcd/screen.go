@@ -7,7 +7,10 @@
 // This file may be distributed under the terms of the GNU GPLv3 license.
 package lcd
 
-import "strings"
+import (
+	"math"
+	"strings"
+)
 
 // Screen is what the deck shows on the display: up to 4 rows of text, or a title, an animation
 // and a caption. The deck sends it with printdeck/screen.
@@ -16,9 +19,14 @@ type Screen struct {
 	// Anim is a full screen animation: "work" (an action), "heat", "in" (load filament), "out"
 	// (unload filament), or "". With an animation, Title is the top row and Caption the bottom
 	// row, and the rows are not used.
-	Anim    string `json:"anim,omitempty"`
-	Title   string `json:"title,omitempty"`
-	Caption string `json:"caption,omitempty"`
+	// Anim is an action: "probe", "pid", "flash", "in", "out", or "work" for any other action.
+	// Title is its name, Caption the time at the top right, Footer the line at the bottom, and
+	// Progress the part that is done (for "flash").
+	Anim     string  `json:"anim,omitempty"`
+	Title    string  `json:"title,omitempty"`
+	Caption  string  `json:"caption,omitempty"`
+	Footer   string  `json:"footer,omitempty"`
+	Progress float64 `json:"progress,omitempty"`
 	// Font is the font of the rows: "5x8" (25 characters, 8 rows), "6x10" (21 characters, 6
 	// rows), or "" for the 8 x 16 font of Klipper (16 characters, 4 rows).
 	Font string `json:"font,omitempty"`
@@ -164,66 +172,169 @@ func fit(s string, n int) string {
 	return b.String()
 }
 
-// drawAnim draws the title at the top, the caption at the bottom, and the animation between them,
-// in the rows from y 16 to 48.
+// drawAnim draws an action: a header with the title and the time (Caption), a scene in the middle
+// (y 11 to 52), and a line at the bottom (Footer).
 func (s *Screen) drawAnim(c *canvas, frame int) {
-	t := fit(s.Title, cols)
-	c.text((canvasW-8*len(t))/2, 0, t)
-	c.line(0, 15, canvasW-1, 15)
-	cap := fit(s.Caption, cols)
-	c.text((canvasW-8*len(cap))/2, 48, cap)
+	f := &font5x8
+	c.smallText(f, 0, 0, fit(s.Title, 25-len(s.Caption)-1), false)
+	c.smallText(f, canvasW-f.w*len(s.Caption), 0, s.Caption, false)
+	c.line(0, 9, canvasW-1, 9)
+	foot := fit(s.Footer, 25)
+	c.smallText(f, (canvasW-f.w*len(foot))/2, 56, foot, false)
 	switch s.Anim {
-	case "work":
-		// A nozzle goes to and fro over the bed, and probes it now and then.
-		const bedY = 44
-		c.line(4, bedY, canvasW-5, bedY)
-		span := canvasW - 24
-		p := (frame * 4) % (2 * span)
-		if p > span {
-			p = 2*span - p
-		}
-		x := 12 + p
-		down := frame%8 >= 6 // the probe goes down for 2 of 8 frames
-		tip := 34
-		if down {
-			tip = bedY - 1
-		}
-		c.frame(x-6, 18, x+7, 24) // the heater block
-		c.line(x-4, 24, x, 28)    // the nozzle
-		c.line(x+4, 24, x, 28)
-		c.line(x, 29, x, tip)
-		if down {
-			c.line(x-3, bedY-2, x+3, bedY-2)
-		}
-	case "heat":
-		// Heat waves rise from the bed.
-		c.line(8, 44, canvasW-9, 44)
-		for i := 0; i < 6; i++ {
-			x0 := 18 + i*19
-			for y := 18; y < 42; y++ {
-				c.set(x0+wave(3, float64(y+frame*3)/3.5), y, true)
-			}
-		}
+	case "probe":
+		animProbe(c, frame)
+	case "pid":
+		animPID(c, frame)
+	case "flash":
+		animFlash(c, frame, s.Progress)
 	case "in", "out":
-		// The filament moves into the extruder, or out of it.
-		c.line(0, 30, canvasW-27, 30) // the filament
-		c.line(0, 33, canvasW-27, 33)
-		c.frame(canvasW-26, 20, canvasW-6, 44) // the extruder
-		dir := 1
-		if s.Anim == "out" {
-			dir = -1
+		animFilament(c, frame, s.Anim == "in")
+	default:
+		animGears(c, frame)
+	}
+}
+
+// animProbe: the hotend goes to three points of the bed, and goes down to each. A ring shows at
+// the touch, and the points that are done are filled.
+func animProbe(c *canvas, frame int) {
+	const bedY = 47
+	points := []int{26, 64, 102}
+	c.line(10, bedY, canvasW-11, bedY)
+	c.line(10, bedY+1, canvasW-11, bedY+1)
+	// 12 frames for each point: 4 to move, 3 down, 2 touch, 3 up.
+	step := frame % (12 * len(points))
+	pi, ph := step/12, step%12
+	from := points[(pi+len(points)-1)%len(points)]
+	x := points[pi]
+	y := 14
+	switch {
+	case ph < 4:
+		x = from + (points[pi]-from)*(ph+1)/4
+	case ph < 7:
+		y = 14 + (bedY-31)*(ph-3)/3
+	case ph < 9:
+		y = bedY - 31 + 2
+	default:
+		y = bedY - 31 - (bedY-31-14)*(ph-8)/3
+	}
+	for i, px := range points {
+		if i < pi || i == pi && ph >= 7 {
+			c.fill(px-2, bedY-4, px+3, bedY-1, true)
+		} else {
+			c.frame(px-2, bedY-4, px+3, bedY-1)
 		}
+	}
+	drawArt(c, x-8, y, hotendArt)
+	if ph == 7 || ph == 8 {
+		r := 4 + (ph-7)*3
+		for a := 0; a < 16; a++ {
+			ang := float64(a) * math.Pi / 8
+			c.set(x+int(math.Round(float64(r)*1.6*math.Cos(ang))), bedY-2+int(math.Round(float64(r)*0.5*math.Sin(ang))), true)
+		}
+	}
+}
+
+// animPID: the temperature swings around the target (a dashed line) and scrolls to the left, as
+// in a PID tune. The swing gets smaller.
+func animPID(c *canvas, frame int) {
+	const mid = 31
+	for x := 0; x < canvasW; x += 4 {
+		c.set(x, mid, true)
+		c.set(x+1, mid, true)
+	}
+	prev := -1
+	for x := 0; x < canvasW; x++ {
+		t := float64(x+frame*3) / 14
+		amp := 6 + 10*math.Exp(-float64((x+frame*3)%180)/90)
+		y := mid - int(math.Round(amp*math.Sin(t)))
+		if prev >= 0 {
+			c.line(x-1, prev, x, y)
+		}
+		prev = y
+	}
+	// The head of the curve.
+	c.fill(canvasW-3, prev-1, canvasW, prev+2, true)
+}
+
+// animFlash: bits flow into a chip, and a bar shows the progress (0 to 1).
+func animFlash(c *canvas, frame int, progress float64) {
+	const cx, cy = 88, 26
+	c.frame(cx-12, cy-11, cx+13, cy+12)
+	c.frame(cx-8, cy-7, cx+9, cy+8)
+	for i := 0; i < 5; i++ {
+		y := cy - 8 + i*4
+		c.line(cx-15, y, cx-13, y)
+		c.line(cx+13, y, cx+15, y)
+	}
+	for i := 0; i < 3; i++ {
+		y := cy - 6 + i*6
 		for k := 0; k < 4; k++ {
-			x := ((frame*dir*6+k*26)%104 + 104) % 104
-			for i := 0; i < 6; i++ {
-				if dir > 0 {
-					c.set(x+i, 26+i, true)
-					c.set(x+i, 37-i, true)
-				} else {
-					c.set(x+5-i, 26+i, true)
-					c.set(x+5-i, 37-i, true)
-				}
+			x := 8 + ((frame*4 + k*16 + i*7) % 60)
+			if (k+i+frame/2)%2 == 0 {
+				c.fill(x, y, x+3, y+3, true)
+			} else {
+				c.frame(x, y, x+3, y+3)
 			}
 		}
+	}
+	w := int(float64(canvasW-24) * min(max(progress, 0), 1))
+	c.frame(10, 43, canvasW-10, 50)
+	c.fill(12, 45, 12+w, 48, true)
+}
+
+// animFilament: the filament goes down into the extruder (in) or up out of it (out), between two
+// gears that turn.
+func animFilament(c *canvas, frame int, in bool) {
+	dir := 1
+	if !in {
+		dir = -1
+	}
+	gear(c, 52, 30, 9, float64(frame*dir)*0.35, 8)
+	gear(c, 76, 30, 9, -float64(frame*dir)*0.35, 8)
+	c.line(62, 11, 62, 52)
+	c.line(66, 11, 66, 52)
+	for k := 0; k < 5; k++ {
+		y := 11 + ((frame*dir*3+k*9)%45+45)%45
+		c.line(63, y, 65, y)
+	}
+	// An arrow at the side, in the direction of the filament, that moves with it.
+	ax, ay := 100, 22+((frame*dir*2)%6+6)%6
+	c.line(ax, ay, ax, ay+10)
+	c.line(ax+1, ay, ax+1, ay+10)
+	for i := 0; i < 5; i++ {
+		if in {
+			c.line(ax-4+i, ay+6+i, ax+5-i, ay+6+i)
+		} else {
+			c.line(ax-4+i, ay+4-i, ax+5-i, ay+4-i)
+		}
+	}
+}
+
+// animGears: two gears that turn together.
+func animGears(c *canvas, frame int) {
+	a := float64(frame) * 0.3
+	gear(c, 50, 31, 13, a, 10)
+	gear(c, 80, 26, 9, -a*13/9+0.3, 7)
+}
+
+// gear draws a gear with its center at cx, cy, its radius r, turned by angle a, with n teeth.
+func gear(c *canvas, cx, cy, r int, a float64, n int) {
+	px, py := -1, -1
+	for i := 0; i <= 360; i++ {
+		t := float64(i) * math.Pi / 180
+		rr := float64(r) - 2
+		if math.Mod((t-a)*float64(n)/(2*math.Pi)+100, 1) < 0.5 {
+			rr = float64(r)
+		}
+		x, y := cx+int(math.Round(rr*math.Cos(t))), cy+int(math.Round(rr*math.Sin(t)))
+		if px >= 0 {
+			c.line(px, py, x, y)
+		}
+		px, py = x, y
+	}
+	for i := 0; i < 360; i += 15 { // the hub
+		t := float64(i) * math.Pi / 180
+		c.set(cx+int(math.Round(2.5*math.Cos(t))), cy+int(math.Round(2.5*math.Sin(t))), true)
 	}
 }

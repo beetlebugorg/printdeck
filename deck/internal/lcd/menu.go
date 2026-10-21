@@ -49,7 +49,7 @@ func (m *Menu) drawCarousel(c *canvas, sel, frame int) {
 	// The large icon, 24 x 24, in a frame with round corners.
 	const bx, by = canvasW/2 - 16, 12
 	roundFrame(c, bx, by, bx+32, by+30)
-	c.icon(it.Icon, bx+4, by+3, 3)
+	c.bigIcon(it.Icon, bx+4, by+3)
 	// The neighbours, 16 x 16, and the arrows to them.
 	if sel > 0 {
 		c.icon(m.Items[sel-1].Icon, 12, by+7, 2)
