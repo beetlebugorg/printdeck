@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	PreviewW, PreviewH = 400, 310
+	PreviewW, PreviewH = 428, 350
 	maxModelSize       = 80 << 20 // larger G-code files are not drawn
 )
 

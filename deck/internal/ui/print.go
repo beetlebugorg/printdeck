@@ -107,49 +107,43 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	a.drawHome(c, st)
 }
 
-// drawJob is the screen of a running or paused print: the model, the progress, the temperatures, and the buttons.
-// The places on the job screen.
-var (
-	jobLCD = image.Rect(16, 62, W-16, 154)
-	jobBox = image.Rect(40, 164, W-40, 164+350) // the model view, with the scrubber at the bottom
-)
+// jobBox is the model view of the job screen, with the layer slider at its bottom edge, down to
+// the tabs.
+func jobBox() image.Rectangle { return image.Rect(24, belowPanel+keyRowH+12, W-24, contentY1-8) }
 
-// drawJob is the screen of a running or paused print: a character display with the status, the model,
-// the progress, the temperatures, and the keys.
+// drawJob is the screen of a running print: the status display, the keys, and the model view.
 func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
+	a.statusPanel(c, st)
 
-	// The character display: what it does, and the move now with its speed.
-	charLCD(c, jobLCD, a.lcdLines(st), 20)
-
-	box := jobBox
-	window(c, box)
-	if img := pr.Preview(); img != nil {
-		c.Image(box, img)
-	} else {
-		c.Text(image.Rect(box.Min.X, box.Min.Y, box.Max.X, box.Min.Y+260), "LOADING MODEL…", gfx.Face(true, 18), lcdDim, gfx.Center)
-	}
-	c.Text(image.Rect(box.Min.X+200, box.Min.Y+8, box.Max.X-14, box.Min.Y+30), strings.ToUpper(st.File), gfx.Face(true, 13), lcdDim, gfx.Right)
-	a.drawScrubber(c, box, st)
-
-	segments(c, image.Rect(40, box.Max.Y+8, W-40, box.Max.Y+22), st.Completion/100)
-	info := hm(int(st.Elapsed.Minutes())) + " elapsed"
-	if st.FilamentUsed > 0 {
-		info += fmt.Sprintf(" · %.1f m filament", st.FilamentUsed/1000)
-	}
-	label(c, image.Rect(40, box.Max.Y+24, W-40, box.Max.Y+44), info, gfx.Center)
-	a.temps(c, box.Max.Y+46, 58, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
-
-	label, fn := "Pause", pr.Pause
-	if st.Paused {
-		label, fn = "Resume", pr.Resume
-	}
-	third := (W - 80 - 16) / 3
-	a.button(c, image.Rect(40, 626, 40+third, 626+80), label, orange, onAcc, fn)
-	a.button(c, image.Rect(40+third+8, 626, 40+2*third+8, 626+80), "Tune", raised, text, func() { a.tune = true })
-	a.button(c, image.Rect(W-40-third, 626, W-40, 626+80), "Cancel", raised, red, func() {
+	third := (W - 48 - 16) / 3
+	y := belowPanel
+	a.button(c, image.Rect(24, y, 24+third, y+keyRowH), "Pause", orange, onAcc, pr.Pause)
+	a.button(c, image.Rect(24+third+8, y, 24+2*third+8, y+keyRowH), "Tune", raised, text, func() { a.tune = true })
+	a.button(c, image.Rect(W-24-third, y, W-24, y+keyRowH), "Cancel", raised, red, func() {
 		a.confirm = &confirmBox{question: "Cancel this print?", yes: "Cancel print", danger: true, onYes: pr.Cancel}
 	})
+
+	box := jobBox()
+	a.modelView(c, box, st)
+	a.drawScrubber(c, box, st)
+}
+
+// modelView draws the model in a window, with the move now and its speed at the top right.
+func (a *App) modelView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
+	window(c, box)
+	if img := a.Printer.Preview(); img != nil {
+		b := img.Bounds()
+		c.Clipped(box.Inset(2), func(in *gfx.Canvas) {
+			in.Image(image.Rect(box.Min.X+(box.Dx()-b.Dx())/2, box.Min.Y+(box.Dy()-b.Dy())/2, box.Max.X, box.Max.Y), img)
+		})
+	} else {
+		c.Text(box, "LOADING MODEL…", gfx.Face(true, 18), lcdDim, gfx.Center)
+	}
+	if st.HasNow {
+		now := fmt.Sprintf("%s %.0f MM/S", strings.ToUpper(st.NowKind), st.NowSpeed*float64(a.speedFactor(st))/100)
+		c.Text(image.Rect(box.Min.X+200, box.Min.Y+8, box.Max.X-14, box.Min.Y+30), now, gfx.Face(true, 13), lcdDim, gfx.Right)
+	}
 }
 
 // speedFactor is the speed in percent that the tune sheet set for this print.

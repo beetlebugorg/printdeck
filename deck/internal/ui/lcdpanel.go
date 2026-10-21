@@ -77,6 +77,24 @@ func (a *App) drawLCDPanel(c *gfx.Canvas, st printer.State, s *lcdscreen.Status)
 	a.addHit(hit{r: col(43, 86), tap: func() { a.editTemp("Bed temperature", int(st.BedTarget), 120, bedPresets, pr.SetBedTemp) }})
 }
 
+// statusPanel draws the status screen of the printer display at the top of a Print screen: the
+// same picture as the display of the printer.
+func (a *App) statusPanel(c *gfx.Canvas, st printer.State) {
+	l1, l2 := StatusLines(st, a.Material, a.Now())
+	s := a.lcdStatusScreen(st, l1, l2)
+	s.Hint = "" // the touch screen has no knob
+	if st.FirmwareOld && !st.Busy() {
+		s.Message = "Firmware is old"
+	}
+	a.drawLCDPanel(c, st, s)
+}
+
+// The places of the Print screens under the status display.
+const (
+	belowPanel = 278 // the top of the first row under the display
+	keyRowH    = 72  // the height of a row of keys
+)
+
 // redrawSoon draws a new frame after d, for a picture that moves. It asks once for each frame.
 func (a *App) redrawSoon(d time.Duration) {
 	if a.redrawPending.Swap(true) {

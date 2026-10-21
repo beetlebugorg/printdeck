@@ -32,70 +32,74 @@ func (a *App) lastPrint(st printer.State) (printer.Record, bool) {
 // hm is a duration as hours and minutes, for example "1:42".
 func hm(m int) string { return fmt.Sprintf("%d:%02d", m/60, m%60) }
 
-// drawPreparing is the start of a print: the steps of the start, with the heating of the step that
-// runs now.
+// drawPreparing is the start of a print: the steps of the start macro, with the step that runs now.
+// The steps come from the commands that the printer runs (State.Prep). With no command stack, the
+// deck guesses them from the temperatures.
 func (a *App) drawPreparing(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
-	type step struct{ name, match string }
-	steps := []step{{"Heat the bed", "Heating bed"}}
-	if st.HasWipe {
-		steps = append(steps, step{"Wipe the nozzle", "wipe"})
+	a.statusPanel(c, st)
+	type step struct {
+		name      string
+		done, now bool
+		kind      string
 	}
-	steps = append(steps, step{"Heat the nozzle", "Heating nozzle"}, step{"Probe and prime", "Probing"})
-	now := -1
-	for i, s := range steps {
-		if strings.Contains(strings.ToLower(st.Activity), strings.ToLower(s.match)) {
-			now = i
+	var steps []step
+	if st.PrepN > 0 {
+		for _, p := range st.Prep[:st.PrepN] {
+			steps = append(steps, step{p.Name, p.Done, p.Now, p.Kind})
 		}
+	} else {
+		// A guess from the temperatures and the activity.
+		names := []step{{name: "Heat the bed", kind: "heat-bed"}}
+		if st.HasWipe {
+			names = append(names, step{name: "Wipe the nozzle", kind: "wipe"})
+		}
+		names = append(names, step{name: "Heat the nozzle", kind: "heat-nozzle"}, step{name: "Probe and prime", kind: "probe"})
+		now := 0
+		act := strings.ToLower(st.Activity)
+		for i, s := range names {
+			if strings.Contains(act, strings.ToLower(strings.TrimPrefix(s.name, "Heat the "))) ||
+				s.kind == "wipe" && strings.Contains(act, "wip") || s.kind == "probe" && strings.Contains(act, "prob") {
+				now = i
+			}
+		}
+		for i := range names {
+			names[i].done, names[i].now = i < now, i == now
+		}
+		steps = names
 	}
-	if strings.HasPrefix(st.Activity, "Wiping") {
-		now = 1
-	}
-	right := ""
-	if now >= 0 {
-		right = fmt.Sprintf("STEP %d/%d", now+1, len(steps))
-	}
-	charLCD(c, printLCD, lcd2("Preparing", right, strings.ReplaceAll(st.Activity, "  ", " "), ""), 20)
 
-	box := image.Rect(24, 170, W-24, 170+len(steps)*62+24)
+	rowH := min(48, (contentY1-8-keyRowH-16-belowPanel-36)/max(1, len(steps)))
+	box := image.Rect(24, belowPanel, W-24, belowPanel+len(steps)*rowH+30)
 	panel(c, box, "PRINT START  ·  "+strings.ToUpper(gfx.Fit(gfx.Face(true, 13), st.File, 300)))
 	for i, s := range steps {
-		y := box.Min.Y + 24 + i*62
-		done := now > i
-		led(c, box.Min.X+34, y+24, i == now)
-		if done {
-			c.RoundRect(image.Rect(box.Min.X+28, y+18, box.Min.X+40, y+30), 6, dim)
+		y := box.Min.Y + 22 + i*rowH
+		led(c, box.Min.X+34, y+rowH/2-4, s.now)
+		if s.done {
+			c.RoundRect(image.Rect(box.Min.X+28, y+rowH/2-10, box.Min.X+40, y+rowH/2+2), 6, dim)
 		}
 		col := text
-		if !done && i != now {
+		if !s.done && !s.now {
 			col = dim
 		}
-		c.Text(image.Rect(box.Min.X+60, y, box.Max.X-160, y+48), s.name, gfx.Face(true, 20), col, gfx.Left)
-		info := ""
+		c.Text(image.Rect(box.Min.X+60, y, box.Max.X-160, y+rowH-8), s.name, gfx.Face(true, 19), col, gfx.Left)
+		info, f := "", 0.0
 		switch {
-		case done:
+		case s.done:
 			info = "Done"
-		case i == now && s.match == "Heating bed":
-			info = fmt.Sprintf("%.0f° of %.0f°", st.Bed, st.BedTarget)
-		case i == now && strings.HasPrefix(s.match, "Heating nozzle"):
-			info = fmt.Sprintf("%.0f° of %.0f°", st.Tool, st.ToolTarget)
+		case s.now && s.kind == "heat-bed" && st.BedTarget > 0:
+			info, f = fmt.Sprintf("%.0f° of %.0f°", st.Bed, st.BedTarget), st.Bed/st.BedTarget
+		case s.now && s.kind == "heat-nozzle" && st.ToolTarget > 0:
+			info, f = fmt.Sprintf("%.0f° of %.0f°", st.Tool, st.ToolTarget), st.Tool/st.ToolTarget
+		case s.now && s.kind == "cool":
+			info = fmt.Sprintf("%.0f°", st.Tool)
 		}
-		c.Text(image.Rect(box.Max.X-190, y, box.Max.X-22, y+48), info, gfx.Face(false, 17), orange, gfx.Right)
-		if i == now {
-			f := 0.0
-			switch {
-			case s.match == "Heating bed" && st.BedTarget > 0:
-				f = st.Bed / st.BedTarget
-			case strings.HasPrefix(s.match, "Heating nozzle") && st.ToolTarget > 0:
-				f = st.Tool / st.ToolTarget
-			}
-			if f > 0 {
-				segments(c, image.Rect(box.Min.X+60, y+44, box.Max.X-22, y+54), min(1, f))
-			}
+		c.Text(image.Rect(box.Max.X-190, y, box.Max.X-22, y+rowH-8), info, gfx.Face(false, 16), orange, gfx.Right)
+		if f > 0 {
+			segments(c, image.Rect(box.Min.X+60, y+rowH-12, box.Max.X-22, y+rowH-4), min(1, f))
 		}
 	}
-	a.temps(c, box.Max.Y+16, 76, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, true)
-	a.button(c, image.Rect(24, 636, W-24, 716), "Cancel print", raised, red, func() {
+	a.button(c, image.Rect(24, contentY1-8-keyRowH, W-24, contentY1-8), "Cancel print", raised, red, func() {
 		a.confirm = &confirmBox{question: "Cancel this print?", yes: "Cancel print", danger: true, onYes: pr.Cancel}
 	})
 }
@@ -104,29 +108,27 @@ func (a *App) drawPreparing(c *gfx.Canvas, st printer.State) {
 var zSteps = []float64{0.01, 0.025, 0.05}
 
 // drawFirstLayer is the first layer: the Z offset is the main control, to fix the height of the
-// first layer while it prints.
+// first layer while it prints, and the model view shows the first layer.
 func (a *App) drawFirstLayer(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
-	right := fmt.Sprintf("%.0f%%", st.Completion)
-	if st.HasTimeLeft {
-		right += " " + hm(int(st.TimeLeft.Minutes()))
-	}
-	charLCD(c, printLCD, lcd2("First layer", right, "Z offset", fmt.Sprintf("%+.3fMM", st.ZOffset)), 20)
-
-	z := image.Rect(24, 170, W-24, 420)
-	panel(c, z, "01  Z OFFSET  ·  WATCH THE FIRST LINES")
-	win := image.Rect(z.Min.X+110, z.Min.Y+34, z.Max.X-110, z.Min.Y+124)
-	window(c, win)
-	c.Text(win, fmt.Sprintf("%+.3f", st.ZOffset), gfx.Face(true, 48), lcdInk, gfx.Center)
+	a.statusPanel(c, st)
 	if a.zBaby == 0 {
 		a.zBaby = 0.025
 	}
 	step := a.zBaby
-	a.button(c, image.Rect(z.Min.X+18, z.Min.Y+34, z.Min.X+98, z.Min.Y+124), "−", raised, text, func() { a.do(func() error { return pr.BabyStep(-step) }) })
-	a.button(c, image.Rect(z.Max.X-98, z.Min.Y+34, z.Max.X-18, z.Min.Y+124), "+", raised, text, func() { a.do(func() error { return pr.BabyStep(step) }) })
-	label(c, image.Rect(z.Min.X+18, z.Min.Y+132, z.Max.X-18, z.Min.Y+154), "− moves the nozzle closer to the bed", gfx.Center)
+	// −, the Z offset, + and Save in one row.
+	y := belowPanel
+	a.button(c, image.Rect(24, y, 104, y+keyRowH), "−", raised, text, func() { a.do(func() error { return pr.BabyStep(-step) }) })
+	win := image.Rect(116, y, W-206, y+keyRowH)
+	window(c, win)
+	label(c, image.Rect(win.Min.X+10, win.Min.Y+4, win.Max.X, win.Min.Y+22), "Z OFFSET", gfx.Left)
+	c.Text(image.Rect(win.Min.X, win.Min.Y+14, win.Max.X, win.Max.Y), fmt.Sprintf("%+.3f", st.ZOffset), gfx.Face(true, 34), lcdInk, gfx.Center)
+	a.button(c, image.Rect(W-194, y, W-114, y+keyRowH), "+", raised, text, func() { a.do(func() error { return pr.BabyStep(step) }) })
+	a.button(c, image.Rect(W-104, y, W-24, y+keyRowH), "Save", raised, text, func() { a.saveZOffset(st) })
+	// The step of a tap, and the hint.
+	y += keyRowH + 8
 	for i, s := range zSteps {
-		r := image.Rect(z.Min.X+18+i*110, z.Min.Y+166, z.Min.X+18+i*110+100, z.Min.Y+226)
+		r := image.Rect(24+i*84, y, 24+i*84+76, y+44)
 		fill, fg := raised, text
 		if a.zBaby == s {
 			fill, fg = orange, onAcc
@@ -134,22 +136,18 @@ func (a *App) drawFirstLayer(c *gfx.Canvas, st printer.State) {
 		v := s
 		a.button(c, r, fmt.Sprint(s), fill, fg, func() { a.zBaby = v })
 	}
-	a.button(c, image.Rect(z.Max.X-102, z.Min.Y+166, z.Max.X-18, z.Min.Y+226), "Save", raised, text, func() {
-		a.saveZOffset(st)
-	})
-
-	box := image.Rect(24, 432, W-24, 540)
-	window(c, box)
-	if img := pr.Preview(); img != nil {
-		c.Clipped(box.Inset(2), func(in *gfx.Canvas) { in.Image(box, img) })
-	}
-	c.Text(image.Rect(box.Min.X+14, box.Min.Y+6, box.Max.X-14, box.Min.Y+28), fmt.Sprintf("LAYER 1 OF %d", st.Layers), gfx.Face(true, 13), lcdDim, gfx.Left)
-	a.temps(c, 552, 70, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, true)
+	c.Text(image.Rect(24+3*84, y, W-24, y+44), "− is closer", gfx.Face(false, 15), dim, gfx.Right)
+	// Pause and Cancel.
+	y += 44 + 8
 	half := (W - 48 - 12) / 2
-	a.button(c, image.Rect(24, 636, 24+half, 716), "Pause", raised, text, pr.Pause)
-	a.button(c, image.Rect(W-24-half, 636, W-24, 716), "Cancel", raised, red, func() {
+	a.button(c, image.Rect(24, y, 24+half, y+60), "Pause", raised, text, pr.Pause)
+	a.button(c, image.Rect(W-24-half, y, W-24, y+60), "Cancel", raised, red, func() {
 		a.confirm = &confirmBox{question: "Cancel this print?", yes: "Cancel print", danger: true, onYes: pr.Cancel}
 	})
+	// The model view, with the first layer.
+	box := image.Rect(24, y+60+12, W-24, contentY1-8)
+	a.modelView(c, box, st)
+	c.Text(image.Rect(box.Min.X+14, box.Min.Y+8, box.Max.X-14, box.Min.Y+30), fmt.Sprintf("LAYER 1 OF %d", st.Layers), gfx.Face(true, 13), lcdDim, gfx.Left)
 }
 
 // saveZOffset writes the Z offset of the first layer into the config: into the probe offset with a
@@ -174,28 +172,34 @@ func (a *App) saveZOffset(st printer.State) {
 // drawPaused is a paused print: Resume first, then the actions that a pause is for.
 func (a *App) drawPaused(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
-	charLCD(c, printLCD, lcd2("Paused", fmt.Sprintf("%.0f%%", st.Completion), st.Message, ""), 20)
-	info := image.Rect(24, 170, W-24, 256)
+	a.statusPanel(c, st)
+	y := belowPanel
+	info := image.Rect(24, y, W-24, y+76)
 	plate(c, info)
 	where := "Paused"
 	if st.Layers > 0 {
 		where = fmt.Sprintf("Paused at layer %d of %d", st.Layer, st.Layers)
 	}
-	c.Text(image.Rect(info.Min.X+18, info.Min.Y+8, info.Max.X-18, info.Min.Y+40), where, gfx.Face(true, 19), text, gfx.Left)
+	c.Text(image.Rect(info.Min.X+18, info.Min.Y+6, info.Max.X-18, info.Min.Y+38), where, gfx.Face(true, 19), text, gfx.Left)
 	sub := "The heaters stay on until Klipper's idle timeout."
-	if st.ToolTarget > 0 {
+	switch {
+	case st.Message != "":
+		sub = st.Message
+	case st.ToolTarget > 0:
 		sub = fmt.Sprintf("The nozzle stays at %.0f°.", st.ToolTarget)
 	}
-	c.Text(image.Rect(info.Min.X+18, info.Min.Y+40, info.Max.X-18, info.Max.Y-8), sub, gfx.Face(false, 16), dim, gfx.Left)
-	a.button(c, image.Rect(24, 270, W-24, 360), "Resume", orange, onAcc, pr.Resume)
+	c.Text(image.Rect(info.Min.X+18, info.Min.Y+38, info.Max.X-18, info.Max.Y-6), gfx.Fit(gfx.Face(false, 16), sub, info.Dx()-36), gfx.Face(false, 16), dim, gfx.Left)
+	y += 76 + 12
+	a.button(c, image.Rect(24, y, W-24, y+88), "Resume", orange, onAcc, pr.Resume)
+	y += 88 + 12
 	half := (W - 48 - 12) / 2
-	a.button(c, image.Rect(24, 374, 24+half, 444), "Change filament", raised, text, func() { a.swap = &swapState{} })
-	a.button(c, image.Rect(W-24-half, 374, W-24, 444), "Move head", raised, text, func() { a.open(pageMove) })
-	a.button(c, image.Rect(24, 456, 24+half, 526), "Tune", raised, text, func() { a.tune = true })
-	a.button(c, image.Rect(W-24-half, 456, W-24, 526), "Cancel", raised, red, func() {
+	a.button(c, image.Rect(24, y, 24+half, y+keyRowH), "Change filament", raised, text, func() { a.swap = &swapState{} })
+	a.button(c, image.Rect(W-24-half, y, W-24, y+keyRowH), "Move head", raised, text, func() { a.open(pageMove) })
+	y += keyRowH + 12
+	a.button(c, image.Rect(24, y, 24+half, y+keyRowH), "Tune", raised, text, func() { a.tune = true })
+	a.button(c, image.Rect(W-24-half, y, W-24, y+keyRowH), "Cancel", raised, red, func() {
 		a.confirm = &confirmBox{question: "Cancel this print?", yes: "Cancel print", danger: true, onYes: pr.Cancel}
 	})
-	a.temps(c, 546, 84, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, true)
 }
 
 // releaseBed is the bed temperature below which a part comes off a PEI sheet easily.
@@ -204,28 +208,17 @@ const releaseBed = 35.0
 // drawDone is the end of a print: the result, the bed until the part comes off easily, Reprint
 // and Done.
 func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
+	a.statusPanel(c, st)
+	box := image.Rect(24, belowPanel, W-24, 470)
+	a.modelView(c, box, st)
 	title := map[string]string{"complete": "Print done", "cancelled": "Cancelled", "error": "Print failed"}[st.Finished]
-	right := ""
-	if st.Finished == "complete" {
-		right = "100%"
-	}
-	l2 := hm(int(st.FinishedTime.Minutes()))
+	line := title + " · " + st.FinishedFile + " · " + hm(int(st.FinishedTime.Minutes()))
 	if st.FinishedFilament > 0 {
-		l2 += fmt.Sprintf(" · %.1fM", st.FinishedFilament/1000)
+		line += fmt.Sprintf(" · %.1f m", st.FinishedFilament/1000)
 	}
-	charLCD(c, printLCD, lcd2(title, right, l2, a.Now().Format("15:04")), 20)
+	c.Text(image.Rect(24, 476, W-24, 508), gfx.Fit(gfx.Face(true, 18), line, W-48), gfx.Face(true, 18), text, gfx.Center)
 
-	box := image.Rect(90, 166, W-90, 400)
-	window(c, box)
-	if img := a.Printer.Preview(); img != nil {
-		c.Clipped(box.Inset(2), func(in *gfx.Canvas) {
-			b := img.Bounds()
-			in.Image(image.Rect(box.Min.X+(box.Dx()-b.Dx())/2, box.Min.Y+(box.Dy()-b.Dy())/2, box.Max.X, box.Max.Y), img)
-		})
-	}
-	c.Text(image.Rect(24, 410, W-24, 444), gfx.Fit(gfx.Face(true, 22), st.FinishedFile, W-48), gfx.Face(true, 22), text, gfx.Center)
-
-	info := image.Rect(24, 458, W-24, 560)
+	info := image.Rect(24, 516, W-24, 618)
 	plate(c, info)
 	if st.Finished == "error" && st.FinishedError != "" {
 		c.Text(image.Rect(info.Min.X+18, info.Min.Y+8, info.Max.X-18, info.Min.Y+40), "What happened", gfx.Face(true, 19), text, gfx.Left)
@@ -252,6 +245,6 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 	half := (W - 48 - 12) / 2
 	key := finishedKey(st)
 	path := st.FinishedPath
-	a.button(c, image.Rect(24, 590, 24+half, 680), "Reprint", raised, text, func() { a.confirmPrint(path) })
-	a.button(c, image.Rect(W-24-half, 590, W-24, 680), "Done", orange, onAcc, func() { a.doneSeen = key })
+	a.button(c, image.Rect(24, contentY1-8-keyRowH, 24+half, contentY1-8), "Reprint", raised, text, func() { a.confirmPrint(path) })
+	a.button(c, image.Rect(W-24-half, contentY1-8-keyRowH, W-24, contentY1-8), "Done", orange, onAcc, func() { a.doneSeen = key })
 }
