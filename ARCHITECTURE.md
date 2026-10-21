@@ -2,8 +2,8 @@
 
 ## The goal
 
-Printdeck is a very small operating system with one purpose: run one 3D printer, its touch screen,
-and its speakers. The goals are a small image, a fast start, and a low use of memory and CPU.
+Printdeck is a very small operating system with one purpose: run one 3D printer and its touch
+screen. The goals are a small image, a fast start, and a low use of memory and CPU.
 
 The Printdeck program is one static Go binary with no runtime dependencies: no shared libraries,
 and no other programs for its work. cgo is allowed only when it links statically. Today the binary
@@ -16,11 +16,10 @@ Dropbear, `sudo` and the CA certificates. Buildroot makes the image.
 
 | Step | What changes | State |
 |---|---|---|
-| 1 | A Buildroot image: read-only A/B system, Klipper, OctoPrint, go-librespot, CamillaDSP, and the deck | Done |
+| 1 | A Buildroot image: read-only A/B system, Klipper, OctoPrint, and the deck | Done |
 | 2 | The deck serves the remote screen and the API for slicers, and talks to Klipper directly. OctoPrint goes. | Done |
 | 3 | A Go port of the Klipper host (`printdeck klippy`). Python goes. | Done. It printed on the TAZ Workhorse. |
-| 4 | go-librespot in the deck, with pure Go decoders, a pure Go ALSA output, and a Go port of the equalizer. go-librespot, CamillaDSP, alsa-lib, amixer and the ALSA loopback go. | Done, then removed. Printdeck has no music now. |
-| 5 | The deck runs as the unprivileged user `deck`. | Done in the image. To test on the Pi. |
+| 4 | The deck runs as the unprivileged user `deck`. | Done in the image. To test on the Pi. |
 
 The deck still runs two programs of the system:
 
