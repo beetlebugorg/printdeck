@@ -1,1 +1,2 @@
 source "$BR2_EXTERNAL_PRINTDECK_PATH/package/printdeck-deck/Config.in"
+source "$BR2_EXTERNAL_PRINTDECK_PATH/package/klipper-firmware/Config.in"

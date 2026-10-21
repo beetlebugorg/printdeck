@@ -12,6 +12,7 @@ import (
 	"sort"
 	"time"
 
+	"printdeck/internal/board"
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
 	"printdeck/internal/spotify"
@@ -117,7 +118,7 @@ type manualState struct {
 // The printer states of the pictures.
 var (
 	stIdle = printer.State{Reachable: true, Text: "Operational", Connected: true, Tool: 24, Bed: 23, Homed: "xyz",
-		X: 110, Y: 110, Z: 5, Axis: [2][3]float64{{0, 0, 0}, {280, 280, 270}}}
+		X: 110, Y: 110, Z: 5, Axis: [2][3]float64{{0, 0, 0}, {280, 280, 270}}, Firmware: printer.HostVersion + "-20261021_112706-printdeck"}
 	stPrinting = printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true,
 		File: "printdeck_body.gcode", FilePath: "printdeck_body.gcode", Activity: "Printing", Layer: 12, Layers: 27,
 		HasNow: true, NowKind: "Outer wall", NowSpeed: 30, Completion: 42.4, TimeLeft: 83 * time.Minute, HasTimeLeft: true,
@@ -340,7 +341,14 @@ func manualSections() []section {
 						{240, 265, "Probe Z offset", "The paper test for the height of the nozzle (PROBE_CALIBRATE)."},
 						{240, 363, "PID tune", "Heats the nozzle to 210° and the bed to 60°, and finds the PID settings of each heater (PID_CALIBRATE). Save config then writes them."},
 						{240, 461, "Nozzle change", "Heats the nozzle to 250° and raises the head, to change the nozzle."},
-						{240, 559, "Save config", "Writes the results of the calibrations into printer.cfg. Klipper restarts. Orange text shows unsaved results."},
+						{240, 559, "Firmware", "Writes the Klipper firmware of this Printdeck to the board of the printer. Orange text shows old firmware. See below."},
+						{240, 657, "Save config", "Writes the results of the calibrations into printer.cfg. Klipper restarts. Orange text shows unsaved results."},
+					}},
+				{Name: "flash", Caption: "The firmware flash", Setup: page("flash"),
+					Notes: []string{"The deck stops Klipper, resets the board into its bootloader, writes the firmware, and reads it back to check it. Then Klipper starts again. The setup screen and the Klipper error screen also show this key when the board has no Klipper firmware or old firmware. Printdeck can flash boards with an atmega2560 and an STK500v2 bootloader now, for example the RAMBo and RAMPS boards."},
+					Callouts: []callout{
+						{240, 148, "Step", "Starting the bootloader, Writing, then Checking."},
+						{240, 206, "Progress", "The part of the firmware that is done."},
 					}},
 				{Name: "paper", Caption: "The paper test",
 					Setup: func(s *manualState) {
@@ -491,6 +499,12 @@ func manual(args []string) {
 	}
 	dir := args[0]
 	os.MkdirAll(filepath.Join(dir, "img"), 0o755)
+	// The pictures show the firmware keys of the OS image.
+	fwDir, _ := os.MkdirTemp("", "printdeck-firmware")
+	defer os.RemoveAll(fwDir)
+	os.WriteFile(filepath.Join(fwDir, "klipper-atmega2560.bin"), []byte{0}, 0o644)
+	os.WriteFile(filepath.Join(fwDir, "version"), []byte(printer.HostVersion+"\n"), 0o644)
+	board.FirmwareDir = fwDir
 	a, m, p := demoApp()
 	a.Now = func() time.Time { return time.Date(2026, 10, 20, 14, 24, 0, 0, time.Local) }
 	a.Setup = &ui.DemoSetup{

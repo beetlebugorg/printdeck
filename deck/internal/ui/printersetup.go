@@ -58,6 +58,10 @@ func (a *App) drawPrinterSetup(c *gfx.Canvas, st printer.State) {
 				break
 			}
 		}
+		if (!b.Klipper || !board.SameVersion(b.Version, printer.HostVersion)) && board.CanFlash(b.MCU) {
+			a.button(c, image.Rect(24, y, W-24, y+72), "Install Klipper firmware", orange, onAcc, func() { a.askFlash(b.Device) })
+			y += 92
+		}
 		half := (W - 48 - 12) / 2
 		a.button(c, image.Rect(24, y, 24+half, y+72), "Choose printer", orange, onAcc, func() {
 			a.configBoard, a.configScroll, a.configAll = b, 0, false
@@ -190,7 +194,13 @@ func (a *App) drawKlipperError(c *gfx.Canvas, st printer.State) {
 		c.Text(image.Rect(24, y, W-24, y+26), l, face, text, gfx.Left)
 		y += 26
 	}
-	a.button(c, image.Rect(24, 600, W-24, 680), "Restart Klipper", orange, onAcc, func() {
+	restart, cap, ink := image.Rect(24, 600, W-24, 680), orange, onAcc
+	if strings.Contains(msg, "older version of the") && board.CanFlash("") {
+		half := (W - 48 - 12) / 2
+		restart.Max.X, cap, ink = 24+half, raised, text
+		a.button(c, image.Rect(W-24-half, 600, W-24, 680), "Write firmware", orange, onAcc, func() { a.askFlash("") })
+	}
+	a.button(c, restart, "Restart Klipper", cap, ink, func() {
 		a.Toast("Restarting Klipper…")
 		a.do(pr.RestartKlipper)
 	})

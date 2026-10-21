@@ -76,3 +76,26 @@ func (k *Klippy) RestartKlipper() error {
 	}
 	return k.RestartService()
 }
+
+// MCUSerial returns the serial port of [mcu] in a Klipper config file, or "".
+func MCUSerial(path string) string {
+	f, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	s := bufio.NewScanner(f)
+	inMCU := false
+	for s.Scan() {
+		l := strings.TrimSpace(s.Text())
+		if strings.HasPrefix(l, "[") {
+			inMCU = strings.ToLower(l) == "[mcu]"
+			continue
+		}
+		if k, v, ok := strings.Cut(l, ":"); inMCU && ok && strings.TrimSpace(k) == "serial" {
+			v, _, _ = strings.Cut(v, "#")
+			return strings.TrimSpace(v)
+		}
+	}
+	return ""
+}

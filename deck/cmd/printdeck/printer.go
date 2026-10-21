@@ -24,5 +24,6 @@ func newPrinter(cfg config.Config) printerBackend {
 	k.ConfigPath = cfg.KlipperConfig
 	k.Hist = &printer.History{Path: filepath.Join(cfg.StateDir, "history.json")}
 	k.RestartService = func() error { return system.AskHelper(system.HelperRequest{Action: "restart-klipper"}) }
+	k.StopService = func() error { return system.AskHelper(system.HelperRequest{Action: "stop-klipper"}) }
 	return k
 }

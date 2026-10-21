@@ -1,0 +1,5 @@
+config BR2_PACKAGE_KLIPPER_FIRMWARE
+	bool "klipper-firmware"
+	help
+	  The Klipper firmware for the printer boards, at the Klipper
+	  commit of the Go host. The deck flashes it on the board.

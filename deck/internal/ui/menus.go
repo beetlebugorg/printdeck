@@ -7,6 +7,7 @@ import (
 
 	"image/color"
 
+	"printdeck/internal/board"
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
 )
@@ -90,6 +91,19 @@ func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 			a.do(func() error { return pr.Gcode(lines...) })
 		}}
 	}})
+	if board.CanFlash("") && st.Firmware != "" {
+		sub, warn := "Klipper firmware is current", false
+		if st.FirmwareOld {
+			sub, warn = "Old: write the firmware of this Klipper", true
+		}
+		rows = append(rows, row{"Firmware", sub, warn, func() {
+			if !idle {
+				a.Toast("Wait until the print ends")
+				return
+			}
+			a.askFlash("")
+		}})
+	}
 	if st.SaveConfigPending {
 		rows = append(rows, row{"Save config", "Calibration results are not saved yet", true, func() {
 			if !idle {

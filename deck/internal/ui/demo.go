@@ -123,35 +123,36 @@ func (d *DemoEQ) Connected() bool           { return true }
 // OpenEQ opens the equalizer; for the demo.
 func (a *App) OpenEQ() { a.eqOpen, a.picker, a.tracks = true, nil, nil }
 
-func (d *DemoPrinter) Gcode(...string) error            { return nil }
-func (d *DemoPrinter) Home(...string) error             { return nil }
-func (d *DemoPrinter) Jog(x, y, z float64, s int) error { return nil }
-func (d *DemoPrinter) SetToolTemp(int) error            { return nil }
-func (d *DemoPrinter) SetBedTemp(int) error             { return nil }
-func (d *DemoPrinter) Extrude(float64, int) error       { return nil }
-func (d *DemoPrinter) Fan(int) error                    { return nil }
-func (d *DemoPrinter) MotorsOff() error                 { return nil }
-func (d *DemoPrinter) SpeedFactor(int) error            { return nil }
-func (d *DemoPrinter) FlowFactor(int) error             { return nil }
-func (d *DemoPrinter) BabyStep(float64) error           { return nil }
-func (d *DemoPrinter) EmergencyStop() error             { return nil }
-func (d *DemoPrinter) FirmwareRestart() error           { return nil }
-func (d *DemoPrinter) Boards() ([]board.Info, bool)     { return d.Boards_, false }
-func (d *DemoPrinter) Machine() printer.Machine         { return d.Machine_ }
-func (d *DemoPrinter) FileMeta(string) gcodemeta.Meta   { return d.Meta_ }
-func (d *DemoPrinter) DeleteFile(string) error          { return nil }
-func (d *DemoPrinter) History() []printer.Record        { return d.History_ }
-func (d *DemoPrinter) ProbeBoards()                     {}
-func (d *DemoPrinter) RestartKlipper() error            { return nil }
-func (d *DemoPrinter) UseConfig(string, string) error   { return nil }
-func (d *DemoPrinter) Console() []printer.ConsoleLine   { return d.Console_ }
+func (d *DemoPrinter) Gcode(...string) error                        { return nil }
+func (d *DemoPrinter) Home(...string) error                         { return nil }
+func (d *DemoPrinter) Jog(x, y, z float64, s int) error             { return nil }
+func (d *DemoPrinter) SetToolTemp(int) error                        { return nil }
+func (d *DemoPrinter) SetBedTemp(int) error                         { return nil }
+func (d *DemoPrinter) Extrude(float64, int) error                   { return nil }
+func (d *DemoPrinter) Fan(int) error                                { return nil }
+func (d *DemoPrinter) MotorsOff() error                             { return nil }
+func (d *DemoPrinter) SpeedFactor(int) error                        { return nil }
+func (d *DemoPrinter) FlowFactor(int) error                         { return nil }
+func (d *DemoPrinter) BabyStep(float64) error                       { return nil }
+func (d *DemoPrinter) EmergencyStop() error                         { return nil }
+func (d *DemoPrinter) FirmwareRestart() error                       { return nil }
+func (d *DemoPrinter) Boards() ([]board.Info, bool)                 { return d.Boards_, false }
+func (d *DemoPrinter) Machine() printer.Machine                     { return d.Machine_ }
+func (d *DemoPrinter) FileMeta(string) gcodemeta.Meta               { return d.Meta_ }
+func (d *DemoPrinter) DeleteFile(string) error                      { return nil }
+func (d *DemoPrinter) History() []printer.Record                    { return d.History_ }
+func (d *DemoPrinter) ProbeBoards()                                 {}
+func (d *DemoPrinter) RestartKlipper() error                        { return nil }
+func (d *DemoPrinter) FlashBoard(string, board.FlashProgress) error { return nil }
+func (d *DemoPrinter) UseConfig(string, string) error               { return nil }
+func (d *DemoPrinter) Console() []printer.ConsoleLine               { return d.Console_ }
 func (d *DemoPrinter) SendConsole(line string) {
 	d.Console_ = append(d.Console_, printer.ConsoleLine{Kind: "in", Text: line})
 }
 
 // ResetScreens closes every screen, dialog and page; for the pictures of the manual.
 func (a *App) ResetScreens() {
-	a.setup, a.pages, a.swap, a.tune, a.keypad, a.confirm, a.consoleKB = nil, nil, nil, false, nil, nil, nil
+	a.setup, a.pages, a.swap, a.tune, a.keypad, a.confirm, a.consoleKB, a.flash = nil, nil, nil, false, nil, nil, nil, nil
 	a.picker, a.tracks, a.eqOpen, a.doneSeen = nil, nil, false, ""
 }
 
@@ -178,6 +179,8 @@ func (a *App) OpenPrintScreen(name string) {
 	case "configs":
 		a.configBoard = board.Info{Device: "/dev/serial/by-id/usb-UltiMachine_RAMBo_64033353730351918201-if00", Name: "UltiMachine RAMBo", Klipper: true, MCU: "atmega2560"}
 		a.pages = []page{pageConfigs}
+	case "flash":
+		a.flash = &flashState{step: "Writing", done: 41, total: 100}
 	case "console":
 		a.pages = []page{pageMachine, pageConsole}
 	case "setup", "error":
