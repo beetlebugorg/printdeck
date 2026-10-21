@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image"
+	"printdeck/kit"
 	"strings"
 	"unicode/utf8"
 
@@ -172,5 +173,5 @@ func (a *App) textKey(c *gfx.Canvas, r image.Rectangle, pad image.Point, label s
 		size = 16 // a word, like shift
 	}
 	c.Text(face, label, gfx.Face(false, size), ink, gfx.Center)
-	a.addHit(hit{r: hr, tap: tap})
+	a.addHit(kit.Hit{R: hr, Tap: tap})
 }

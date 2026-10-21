@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image"
+	"printdeck/kit"
 	"strings"
 
 	"image/color"
@@ -283,9 +284,9 @@ func (a *App) drawMacros(c *gfx.Canvas, st printer.State) {
 			a.runAction(m, m)
 		}}
 	}
-	a.addHit(hit{r: image.Rect(0, menuTop, W, bottom),
-		scroll: func(dy int) { a.macroScroll = max(0, min(a.macroScroll+dy, maxScroll)) },
-		tapAt:  func(p image.Point) { run((p.Y - menuTop + a.macroScroll) / rowH) }})
+	a.addHit(kit.Hit{R: image.Rect(0, menuTop, W, bottom),
+		Scroll: func(dy int) { a.macroScroll = max(0, min(a.macroScroll+dy, maxScroll)) },
+		TapAt:  func(p image.Point) { run((p.Y - menuTop + a.macroScroll) / rowH) }})
 	a.listFocus(len(macros), menuTop, bottom, rowH, &a.macroScroll, func(i int) string { return macros[i] }, run)
 }
 
@@ -325,9 +326,9 @@ func (a *App) drawHistory(c *gfx.Canvas) {
 			a.confirmPrint(recs[i].Path)
 		}
 	}
-	a.addHit(hit{r: image.Rect(0, menuTop, W, bottom),
-		scroll: func(dy int) { a.historyScroll = max(0, min(a.historyScroll+dy, maxScroll)) },
-		tapAt:  func(p image.Point) { reprint((p.Y - menuTop + a.historyScroll) / rowH) }})
+	a.addHit(kit.Hit{R: image.Rect(0, menuTop, W, bottom),
+		Scroll: func(dy int) { a.historyScroll = max(0, min(a.historyScroll+dy, maxScroll)) },
+		TapAt:  func(p image.Point) { reprint((p.Y - menuTop + a.historyScroll) / rowH) }})
 	a.listFocus(len(recs), menuTop, bottom, rowH, &a.historyScroll, func(i int) string { return recs[i].File }, reprint)
 }
 

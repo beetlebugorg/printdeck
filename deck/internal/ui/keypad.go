@@ -42,7 +42,7 @@ var (
 
 func (a *App) drawKeypad(c *gfx.Canvas) {
 	kp := a.keypad
-	a.hits = a.hits[:0] // the keypad blocks everything below it
+	a.in.Reset() // the keypad blocks everything below it
 	c.Dim(3)
 	box := image.Rect(24, 24, W-24, 670)
 	panel(c, box, "")

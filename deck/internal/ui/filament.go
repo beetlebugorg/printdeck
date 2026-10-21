@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image"
+	"printdeck/kit"
 
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
@@ -51,7 +52,7 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 	ext := func(r image.Rectangle, name string, mm float64) {
 		if cold {
 			key(c, r, name, surface, dim, false)
-			a.addHit(hit{r: r, tap: func() { a.Toast(fmt.Sprintf("Heat the nozzle to %d° first", minExtrudeTemp)) }})
+			a.addHit(kit.Hit{R: r, Tap: func() { a.Toast(fmt.Sprintf("Heat the nozzle to %d° first", minExtrudeTemp)) }})
 			return
 		}
 		a.button(c, r, name, raised, text, func() { a.do(func() error { return pr.Extrude(mm, 300) }) })

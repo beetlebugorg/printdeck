@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image"
+	"printdeck/kit"
 	"sort"
 	"sync"
 	"time"
@@ -69,9 +70,9 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 			a.open(pageFile)
 		}
 	}
-	a.addHit(hit{r: image.Rect(0, filesTop, W, bottom),
-		scroll: func(dy int) { a.fileList.scroll = max(0, min(a.fileList.scroll+dy, maxScroll)) },
-		tapAt:  func(p image.Point) { open((p.Y - filesTop + a.fileList.scroll) / fileRowH) }})
+	a.addHit(kit.Hit{R: image.Rect(0, filesTop, W, bottom),
+		Scroll: func(dy int) { a.fileList.scroll = max(0, min(a.fileList.scroll+dy, maxScroll)) },
+		TapAt:  func(p image.Point) { open((p.Y - filesTop + a.fileList.scroll) / fileRowH) }})
 	a.listFocus(len(files), filesTop, bottom, fileRowH, &a.fileList.scroll, func(i int) string { return files[i].Name }, open)
 }
 

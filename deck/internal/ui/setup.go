@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"os"
+	"printdeck/kit"
 	"strings"
 	"time"
 
@@ -177,7 +178,7 @@ func (a *App) setupJoin(ssid, pass string) {
 
 func (a *App) drawSetup(c *gfx.Canvas) {
 	s := a.setup
-	a.hits = a.hits[:0]
+	a.in.Reset()
 	if s.kb != nil {
 		a.drawKeyboard(c, s.kb)
 		a.setupMessage(c, image.Rect(24, 222, W-24, 252))
@@ -241,7 +242,7 @@ func (a *App) drawSetupWifi(c *gfx.Canvas, box image.Rectangle) {
 		}
 		signalBars(c, image.Pt(row.Max.X-50, row.Min.Y+setupRowH/2+12), n.Signal)
 	}
-	a.addHit(hit{r: list, scroll: func(dy int) { s.scroll += dy }, tapAt: func(p image.Point) {
+	a.addHit(kit.Hit{R: list, Scroll: func(dy int) { s.scroll += dy }, TapAt: func(p image.Point) {
 		i := (p.Y - list.Min.Y + s.scroll) / setupRowH
 		if i < 0 || i >= len(s.nets) || s.busy {
 			return

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image"
+	"printdeck/kit"
 	"strings"
 
 	"golang.org/x/image/font"
@@ -62,7 +63,7 @@ func (a *App) drawConsole(c *gfx.Canvas) {
 	if len(rows) == 0 {
 		c.Text(inner, "Klipper's replies show here", face, lcdDim, gfx.Center)
 	}
-	a.addHit(hit{r: win, scroll: func(dy int) { a.consoleScroll = max(0, min(a.consoleScroll-dy, maxScroll)) }})
+	a.addHit(kit.Hit{R: win, Scroll: func(dy int) { a.consoleScroll = max(0, min(a.consoleScroll-dy, maxScroll)) }})
 
 	a.button(c, image.Rect(24, keysY-72, W-24, keysY-6), "Type a command", raised, text, func() {
 		a.consoleKB = &keyboard{title: "G-code command", max: 200, ok: "Send", cancel: "Back",

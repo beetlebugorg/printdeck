@@ -20,6 +20,9 @@ import (
 	"printdeck/internal/wifi"
 )
 
+// demoNow is the fixed time of the pictures, so that two runs make the same pictures.
+func demoNow() time.Time { return time.Date(2026, 10, 20, 14, 24, 0, 0, time.Local) }
+
 // demoApp is a deck with fixed data: a running print, a short history, and the files.
 func demoApp() (*ui.App, *ui.DemoPrinter) {
 	p := &ui.DemoPrinter{View: -1, State_: printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true,
@@ -57,6 +60,7 @@ func demo(args []string) {
 	}
 	os.MkdirAll(dir, 0o755)
 	a, p := demoApp()
+	a.Now = demoNow
 	snap := func(name string) {
 		c := gfx.New(ui.W, ui.BaseH)
 		a.Draw(c)
