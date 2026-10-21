@@ -38,9 +38,15 @@ func hm(m int) string { return fmt.Sprintf("%d:%02d", m/60, m%60) }
 // deck guesses them from the temperatures.
 func (a *App) drawPreparing(c *gfx.Canvas, st printer.State) {
 	a.statusPanel(c, st)
+	// Tall: the steps and Cancel under the display. Wide: the steps in the left column; the model
+	// and Cancel at the right.
 	f, keys, view := a.stateAreas()
-	area, cancel := view, kit.Rows(keys, 0, kit.Px(keyRowH))[0]
-	if !f.wide {
+	area, cancel := keys, image.Rectangle{}
+	if f.wide {
+		r := kit.Rows(view, 12, kit.Fr(1), kit.Px(keyRowH))
+		a.modelView(c, r[0], st)
+		cancel = r[1]
+	} else {
 		r := kit.Rows(view, 16, kit.Fr(1), kit.Px(keyRowH))
 		area, cancel = r[0], r[1]
 	}
@@ -75,7 +81,7 @@ func (a *App) drawPreparing(c *gfx.Canvas, st printer.State) {
 		steps = names
 	}
 
-	rowH := min(48, (area.Dy()-36)/max(1, len(steps)))
+	rowH := min(48, (area.Dy()-30)/max(1, len(steps)))
 	box := kit.Rows(area, 0, kit.Px(len(steps)*rowH+30))[0]
 	panel(c, box, "PRINT START  ·  "+strings.ToUpper(gfx.Fit(gfx.Face(true, 13), st.File, 300)))
 	for i, s := range steps {

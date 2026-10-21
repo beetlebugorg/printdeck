@@ -438,7 +438,7 @@ func manualParts() []section {
 			Table: [][2]string{
 				{"wifi_ssid, wifi_password, wifi_country", "The Wi-Fi network"},
 				{"hostname, timezone", "The name on the network, and the time zone"},
-				{"display_rotate", "90 or 270 for a display that is mounted in portrait"},
+				{"display_rotate", "90 or 270 for a display that is mounted tall, 0 or 180 for one that is mounted wide"},
 				{"touch_invert_x, touch_invert_y, touch_swap_xy", "1 turns an axis of the touch screen"},
 				{"preheat_tool, preheat_bed", "The temperatures of Preheat with no filament set"},
 				{"night_from, night_to", "The hours of the night colors"},

@@ -137,12 +137,32 @@ func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	a.statusPanel(c, st)
 	keys, box := a.jobAreas()
+	if f, _, _ := a.stateAreas(); f.wide {
+		// Under the keys in the left column: the file, the layer and the end of the print.
+		_, side, _ := a.stateAreas()
+		a.jobCard(c, kit.Rows(side, 12, kit.Px(keyRowH), kit.Fr(1))[1], st)
+	}
 	k := kit.Cols(keys, 8, kit.Fr(1), kit.Fr(1), kit.Fr(1))
 	a.button(c, k[0], "Pause", orange, onAcc, pr.Pause)
 	a.button(c, k[1], "Tune", raised, text, func() { a.tune = true })
 	a.button(c, k[2], "Cancel", raised, red, a.askCancel)
 	a.modelView(c, box, st)
 	a.drawScrubber(c, box, st)
+}
+
+// jobCard draws the file of the print, its layer, and the time of its end, in a plate.
+func (a *App) jobCard(c *gfx.Canvas, r image.Rectangle, st printer.State) {
+	plate(c, r)
+	in := kit.Inset(r, 18, 10, 18, 10)
+	s := kit.NewStack(in, 4)
+	c.Text(s.Next(30), gfx.Fit(gfx.Face(true, 20), st.File, in.Dx()), gfx.Face(true, 20), text, gfx.Left)
+	if st.Layers > 0 {
+		c.Text(s.Next(26), fmt.Sprintf("Layer %d of %d", st.Layer, st.Layers), gfx.Face(false, 17), dim, gfx.Left)
+	}
+	if st.HasTimeLeft {
+		end := clockText(a.Now().Add(st.TimeLeft), a.Clock24)
+		c.Text(s.Next(26), fmt.Sprintf("%s left · done at %s", duration(st.TimeLeft), end), gfx.Face(false, 17), dim, gfx.Left)
+	}
 }
 
 // askCancel asks before it cancels the print.

@@ -222,9 +222,11 @@ func (a *App) Ask(question, yes, no string, answer func(bool)) {
 }
 
 // Session returns a new App on the same printer and settings, with its own screens: the UI
-// for one browser. Its theme changes are saved as those of a.
-func (a *App) Session(height int) *App {
+// for one browser, with the shape of its window. A window wider than high gets the wide screen.
+// Its theme changes are saved as those of a.
+func (a *App) Session(width, height int) *App {
 	s := New()
+	s.Wide = width > height
 	s.Height = max(BaseH, min(MaxH, height))
 	s.Printer, s.Setup = a.Printer, a.Setup
 	s.PreheatTool, s.PreheatBed, s.UnloadMM, s.LoadMM, s.JogInvertY = a.PreheatTool, a.PreheatBed, a.UnloadMM, a.LoadMM, a.JogInvertY

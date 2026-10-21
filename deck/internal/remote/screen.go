@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"image"
 	"image/png"
 	"net/http"
 	"strconv"
@@ -70,7 +71,7 @@ func (b *frameBox) take() []byte {
 	return f
 }
 
-// serveEvents starts a session and sends its frames (Server-Sent Events). ?h= is the height that
+// serveEvents starts a session and sends its frames (Server-Sent Events). ?w= and ?h= are the size that
 // the browser asks for. The first event is the number of the session, for the touches, and the
 // height of its screen. The session ends when the browser closes the stream.
 func (s *Server) serveEvents(w http.ResponseWriter, r *http.Request) {
@@ -91,15 +92,17 @@ func (s *Server) serveEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer s.removeSession(id)
-	height, _ := strconv.Atoi(r.URL.Query().Get("h"))
-	height, t := s.NewSession(ctx, height, box.put)
+	var size image.Point
+	size.X, _ = strconv.Atoi(r.URL.Query().Get("w"))
+	size.Y, _ = strconv.Atoi(r.URL.Query().Get("h"))
+	size, t := s.NewSession(ctx, size, box.put)
 	s.mu.Lock()
 	ss.touch = t
 	s.mu.Unlock()
 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-store")
-	fmt.Fprintf(w, "event: session\ndata: %s %d\n\n", id, height)
+	fmt.Fprintf(w, "event: session\ndata: %s %d %d\n\n", id, size.X, size.Y)
 	flusher.Flush()
 	ping := time.NewTicker(30 * time.Second) // keeps the connection open through proxies
 	defer ping.Stop()

@@ -24,19 +24,21 @@ import (
 // frame as a PNG. It draws the frame from the drawing commands, as a browser does. It is for the
 // manual and for checks of a Printdeck with no SSH.
 //
-//	printdeck snapshot URL PASSWORD OUT.png [h=HEIGHT] [tap=X,Y ...] [wait=MS]
+//	printdeck snapshot URL PASSWORD OUT.png [w=WIDTH] [h=HEIGHT] [tap=X,Y ...] [wait=MS]
 //
-// X and Y are in the units of the UI: 480 wide.
+// X and Y are in the units of the UI: 480 wide, or 800 x 480 with w=800 h=480 (the wide screen).
 func snapshot(args []string) {
 	if len(args) < 3 {
-		log.Fatal("usage: printdeck snapshot URL PASSWORD OUT.png [h=HEIGHT] [tap=X,Y ...] [wait=MS]")
+		log.Fatal("usage: printdeck snapshot URL PASSWORD OUT.png [w=WIDTH] [h=HEIGHT] [tap=X,Y ...] [wait=MS]")
 	}
 	base, password, out := strings.TrimSuffix(args[0], "/"), args[1], args[2]
-	height, wait := ui.BaseH, 1500*time.Millisecond
+	width, height, wait := ui.BaseW, ui.BaseH, 1500*time.Millisecond
 	var taps []image.Point
 	for _, a := range args[3:] {
 		k, v, _ := strings.Cut(a, "=")
 		switch k {
+		case "w":
+			width, _ = strconv.Atoi(v)
 		case "h":
 			height, _ = strconv.Atoi(v)
 		case "wait":
@@ -61,7 +63,7 @@ func snapshot(args []string) {
 	}
 
 	stream := &http.Client{Jar: jar}
-	resp, err := stream.Get(fmt.Sprintf("%s/ui/events?h=%d", base, height))
+	resp, err := stream.Get(fmt.Sprintf("%s/ui/events?w=%d&h=%d", base, width, height))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -79,11 +81,16 @@ func snapshot(args []string) {
 			case strings.HasPrefix(l, "event: "):
 				event = l[7:]
 			case strings.HasPrefix(l, "data: ") && event == "session":
-				id, h, _ := strings.Cut(l[6:], " ")
-				if n, err := strconv.Atoi(h); err == nil {
-					height = n
+				// The session, the width and the height.
+				f := strings.Fields(l[6:])
+				if len(f) == 3 {
+					w, errW := strconv.Atoi(f[1])
+					h, errH := strconv.Atoi(f[2])
+					if errW == nil && errH == nil {
+						width, height = w, h
+					}
 				}
-				session <- id
+				session <- f[0]
 				event = ""
 			case strings.HasPrefix(l, "data: "):
 				mu.Lock()
@@ -95,7 +102,7 @@ func snapshot(args []string) {
 	id := <-session
 	time.Sleep(500 * time.Millisecond)
 	touch := func(kind string, p image.Point) {
-		body := fmt.Sprintf(`{"kind":%q,"x":%f,"y":%f}`, kind, float64(p.X)/ui.BaseW, float64(p.Y)/float64(height))
+		body := fmt.Sprintf(`{"kind":%q,"x":%f,"y":%f}`, kind, float64(p.X)/float64(width), float64(p.Y)/float64(height))
 		if r, err := client.Post(base+"/ui/touch?s="+id, "application/json", strings.NewReader(body)); err == nil {
 			r.Body.Close()
 		}
@@ -114,7 +121,7 @@ func snapshot(args []string) {
 		log.Fatal("no frame")
 	}
 	images := map[int]image.Image{}
-	c := gfx.New(ui.BaseW, height)
+	c := gfx.New(width, height)
 	err = gfx.Replay(c, f, func(n int) image.Image {
 		if img, ok := images[n]; ok {
 			return img

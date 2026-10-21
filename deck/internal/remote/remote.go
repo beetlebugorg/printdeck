@@ -11,6 +11,7 @@ import (
 	"context"
 	_ "embed"
 	"html/template"
+	"image"
 	"log"
 	"net/http"
 	"sync"
@@ -29,10 +30,11 @@ var loginPage []byte
 type Server struct {
 	// Password returns the password for the login. When it returns "", nobody can log in.
 	Password func() string
-	// NewSession starts a session of the UI for one browser, with a screen height for the shape of
-	// its window (480 wide). It gives each frame (the JSON of a gfx.Recording) to frame, until ctx
-	// ends, and returns the height that it uses and the function that takes the touches.
-	NewSession func(ctx context.Context, height int, frame func([]byte)) (int, func(touch.Event))
+	// NewSession starts a session of the UI for one browser, with a screen size for the shape of
+	// its window: 480 wide and a height for a tall window, or wider than high for a wide window. It
+	// gives each frame (the JSON of a gfx.Recording) to frame, until ctx ends, and returns the size
+	// that it uses and the function that takes the touches.
+	NewSession func(ctx context.Context, size image.Point, frame func([]byte)) (image.Point, func(touch.Event))
 	// Icon is the PNG icon of the page, for the home screen of a phone.
 	Icon []byte
 	// NoLogin lets every request through, for the demo (printdeck remote-demo).
