@@ -89,3 +89,12 @@ func TestMCUSerial(t *testing.T) {
 		t.Errorf("serial %q", s)
 	}
 }
+
+func TestSuggestedBrand(t *testing.T) {
+	if b := SuggestedBrand("UltiMachine ultimachine.com RAMBo"); b != "LulzBot" {
+		t.Errorf("RAMBo: %q", b)
+	}
+	if b := SuggestedBrand("1a86 USB Serial"); b != "" {
+		t.Errorf("CH340: %q", b)
+	}
+}

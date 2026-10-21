@@ -3,6 +3,7 @@ package ui
 import (
 	"image"
 	"image/color"
+	"sort"
 	"strings"
 
 	"golang.org/x/image/font"
@@ -83,12 +84,22 @@ func (a *App) drawConfigs(c *gfx.Canvas) {
 	heading(c, "Your printer")
 	a.backButton(c)
 	b := a.configBoard
-	var list []printer.Example
+	// The printers of the brand of the board come first.
+	brand := printer.SuggestedBrand(b.Name)
+	var list, rest []printer.Example
 	for _, e := range printer.Examples() {
-		if a.configAll || b.MCU == "" || e.Fits(b.MCU) {
+		switch {
+		case !a.configAll && b.MCU != "" && !e.Fits(b.MCU):
+		case brand != "" && e.Brand == brand && (b.MCU == "" || e.Fits(b.MCU)):
 			list = append(list, e)
+		default:
+			rest = append(rest, e)
 		}
 	}
+	// The newest printers of the brand first.
+	sort.SliceStable(list, func(i, j int) bool { return list[i].Year > list[j].Year })
+	suggested := len(list)
+	list = append(list, rest...)
 	top := menuTop
 	if b.MCU != "" {
 		what := "Printers for your " + b.MCU + " board"
@@ -121,6 +132,9 @@ func (a *App) drawConfigs(c *gfx.Canvas) {
 			sub := e.Year
 			if e.MCU != "" {
 				sub += " · " + e.MCU
+			}
+			if i < suggested {
+				sub = "Suggested · " + sub
 			}
 			col := dim
 			if e.Fits(b.MCU) {
