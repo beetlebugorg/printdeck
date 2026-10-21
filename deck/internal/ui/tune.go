@@ -18,7 +18,7 @@ func (a *App) drawTune(c *gfx.Canvas) {
 	if st.FilePath != a.tuneFile { // a new print starts as sliced
 		a.tuneFile, a.tuneSpeed, a.tuneFlow, a.tuneZ = st.FilePath, 100, 100, 0
 	}
-	f := a.pageBack(c, "Tune", func() { a.tune = false })
+	f := a.pageBack(c, "Tune", "Back", func() { a.tune = false })
 	// Tall: the file, the speed, flow and Z rows, the fan, and the temperatures. Wide: the file, the
 	// fan and the temperatures in the left column; the rows at the right.
 	var file, rows, zHint, fanRow, tHint, temps image.Rectangle

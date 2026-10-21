@@ -146,7 +146,7 @@ func TestKeypadSetsTemperature(t *testing.T) {
 func TestFilamentSwapSteps(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.swap = &swapState{}
-	tapAt(a, cv, W*3/4, 264) // PETG 240, the second key of the first row
+	tapLabel(t, a, cv, "PETG  240°")
 	if c := pr.wait(1); c[0] != "tool 240" || a.swap.step != swapHeat {
 		t.Fatalf("after PETG: %v, step %d", c, a.swap.step)
 	}
@@ -156,8 +156,8 @@ func TestFilamentSwapSteps(t *testing.T) {
 	if a.swap.step != swapUnload {
 		t.Fatalf("step %d, want unload", a.swap.step)
 	}
-	tapAt(a, cv, W/2, 414) // Unload
-	tapAt(a, cv, W/2, 414) // Load
+	tapLabel(t, a, cv, "Unload")
+	tapLabel(t, a, cv, "Load")
 	c := pr.wait(3)
 	if len(c) != 3 || c[1] != "gcode M83; G1 E10 F300; G1 E-80 F1500; M82" || c[2] != "gcode M83; G1 E70 F600; G1 E20 F150; M82" {
 		t.Errorf("calls %q", c)
@@ -185,4 +185,19 @@ func TestFirmwareRestartOnMachinePage(t *testing.T) {
 // ev sends a touch event at x, y in the units of the UI.
 func ev(a *App, k touch.Kind, x, y int) {
 	a.handle(touch.Event{Kind: k, X: float64(x) / float64(a.Screen().W), Y: float64(y) / float64(a.Screen().H)})
+}
+
+// tapLabel draws a frame and taps the key with the label.
+func tapLabel(t *testing.T, a *App, cv *gfx.Canvas, label string) {
+	t.Helper()
+	a.Draw(cv)
+	for _, f := range a.focus {
+		if f.label == lcdText(label) {
+			p := f.r.Min.Add(f.r.Size().Div(2))
+			ev(a, touch.Down, p.X, p.Y)
+			ev(a, touch.Up, p.X, p.Y)
+			return
+		}
+	}
+	t.Fatalf("no key %q", label)
 }
