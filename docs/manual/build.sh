@@ -1,7 +1,7 @@
 #!/bin/sh
 # Builds the manual three times: for a display that is mounted tall (this folder), for a display
-# that is mounted wide (wide/), and the upgrade booklet for the LulzBot TAZ Workhorse (lulzbot/),
-# which has the guides of the mount from lulzbot/guide/ before the wide manual. The deck draws the
+# that is mounted wide (wide/), and the upgrade booklet for the LulzBot TAZ Workhorse
+# (docs/lulzbot/), which has the guides of the mount from lulzbot/guide/ before the wide manual. The deck draws the
 # pictures and writes index.html (the web manual) and booklet.html (the instruction booklet). Then
 # Chromium prints each booklet two times:
 #
@@ -29,4 +29,4 @@ build() {
 }
 build "$DIR" ""
 build "$DIR/wide" wide
-build "$DIR/lulzbot" lulzbot
+build "$(cd "$DIR/.." && pwd)/lulzbot" lulzbot

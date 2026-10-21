@@ -28,7 +28,7 @@ has two versions, one for each mount of the display:
 - Wide: [docs/manual/wide/index.html](docs/manual/wide/index.html), or the booklet
   [docs/manual/wide/printdeck-manual.pdf](docs/manual/wide/printdeck-manual.pdf).
 - The upgrade kit for the LulzBot TAZ Workhorse: the booklet
-  [docs/manual/lulzbot/printdeck-manual.pdf](docs/manual/lulzbot/printdeck-manual.pdf) has the
+  [docs/lulzbot/printdeck-manual.pdf](docs/lulzbot/printdeck-manual.pdf) has the
   print plan, the hardware and the steps of the mount in [lulzbot/](lulzbot/), then the wide
   manual.
 
