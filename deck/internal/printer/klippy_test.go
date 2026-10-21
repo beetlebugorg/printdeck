@@ -209,3 +209,30 @@ func TestKlippyNotRunning(t *testing.T) {
 		t.Errorf("home with no Klipper: %v", err)
 	}
 }
+
+func TestRunAction(t *testing.T) {
+	f := &fakeKlippy{}
+	k := NewKlippy(f.serve(t), emptyStore{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ready := make(chan struct{}, 1)
+	go k.Run(ctx, func() {
+		if k.State().Connected {
+			select {
+			case ready <- struct{}{}:
+			default:
+			}
+		}
+	})
+	<-ready
+	if err := k.RunAction("Bed tilt", "BED_TILT_CALIBRATE"); err != nil {
+		t.Fatal(err)
+	}
+	st := k.State()
+	if st.Action != "" || st.LastAction.Name != "Bed tilt" || st.LastAction.Err != "" || st.LastAction.End.IsZero() {
+		t.Errorf("state after the action: %q %+v", st.Action, st.LastAction)
+	}
+	if scripts, _ := f.got(); scripts[len(scripts)-1] != "BED_TILT_CALIBRATE" {
+		t.Errorf("scripts %q", scripts)
+	}
+}

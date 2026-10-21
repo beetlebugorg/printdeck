@@ -61,6 +61,11 @@ type Klippy struct {
 
 	console
 
+	// The maintenance action that runs now, and the last one that ended (RunAction).
+	action      string
+	actionStart time.Time
+	lastAction  ActionResult
+
 	// From the connection to Klipper: its version, and the names of its objects (objects/list).
 	version string
 	objects []string
@@ -100,7 +105,40 @@ func NewKlippy(socket string, store Store) *Klippy {
 func (k *Klippy) State() State {
 	k.mu.Lock()
 	defer k.mu.Unlock()
-	return k.st
+	st := k.st
+	st.Action, st.ActionStart, st.LastAction = k.action, k.actionStart, k.lastAction
+	return st
+}
+
+// ErrActionRunning is the error of RunAction while another action runs.
+var ErrActionRunning = errors.New("Another action runs. Wait until it ends.")
+
+// RunAction runs a maintenance action, for example "Bed tilt" with BED_TILT_CALIBRATE, and waits
+// for its end. The state shows the action while it runs, on all screens, and its result after.
+func (k *Klippy) RunAction(name string, lines ...string) error {
+	k.mu.Lock()
+	if k.action != "" {
+		k.mu.Unlock()
+		return ErrActionRunning
+	}
+	k.action, k.actionStart = name, time.Now()
+	notify := k.notify
+	k.mu.Unlock()
+	if notify != nil {
+		notify()
+	}
+	err := k.script(lines...)
+	k.mu.Lock()
+	k.lastAction = ActionResult{Name: name, End: time.Now()}
+	if err != nil {
+		k.lastAction.Err = err.Error()
+	}
+	k.action = ""
+	k.mu.Unlock()
+	if notify != nil {
+		notify()
+	}
+	return err
 }
 
 func (k *Klippy) Files() []File {

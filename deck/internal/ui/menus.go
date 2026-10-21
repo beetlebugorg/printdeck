@@ -30,22 +30,13 @@ func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 		tap        func()
 	}
 	var rows []row
-	run := func(question, yes string, lines ...string) func() {
+	run := func(name, question, yes string, lines ...string) func() {
 		return func() {
 			if !idle {
 				a.Toast("Wait until the print ends")
 				return
 			}
-			a.confirm = &confirmBox{question: question, yes: yes, onYes: func() {
-				a.Toast("Running…")
-				a.do(func() error {
-					if err := pr.Gcode(lines...); err != nil {
-						return err
-					}
-					a.Toast("Done")
-					return nil
-				})
-			}}
+			a.confirm = &confirmBox{question: question, yes: yes, onYes: func() { a.runAction(name, lines...) }}
 		}
 	}
 	home := func() []string {
@@ -56,19 +47,19 @@ func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 	}
 	if mach.Has("bed_mesh") {
 		rows = append(rows, row{"Bed mesh", "Probe the bed and map its height", false,
-			run("Probe the bed now?", "Probe", append(home(), "BED_MESH_CALIBRATE")...)})
+			run("Bed mesh", "Probe the bed now?", "Probe", append(home(), "BED_MESH_CALIBRATE")...)})
 	}
 	if mach.Has("bed_tilt") {
 		rows = append(rows, row{"Bed tilt", "Probe the bed and correct its tilt", false,
-			run("Probe the bed now?", "Probe", append(home(), "BED_TILT_CALIBRATE")...)})
+			run("Bed tilt", "Probe the bed now?", "Probe", append(home(), "BED_TILT_CALIBRATE")...)})
 	}
 	if mach.Has("screws_tilt_adjust") {
 		rows = append(rows, row{"Screw adjust", "How far to turn each bed screw", false,
-			run("Probe the bed screws now?", "Probe", append(home(), "SCREWS_TILT_CALCULATE")...)})
+			run("Screw adjust", "Probe the bed screws now?", "Probe", append(home(), "SCREWS_TILT_CALCULATE")...)})
 	}
 	if mach.Has("probe") {
 		rows = append(rows, row{"Probe Z offset", "Find the nozzle height with a sheet of paper", false,
-			run("Start the paper test?", "Start", append(home(), "PROBE_CALIBRATE")...)})
+			run("Probe Z offset", "Start the paper test?", "Start", append(home(), "PROBE_CALIBRATE")...)})
 	}
 	if mach.Has("extruder") {
 		lines := []string{"PID_CALIBRATE HEATER=extruder TARGET=210"}
@@ -76,7 +67,7 @@ func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 			lines = append(lines, "PID_CALIBRATE HEATER=heater_bed TARGET=60")
 		}
 		rows = append(rows, row{"PID tune", "Tune the heaters: about 10 minutes", false,
-			run("Heat and tune the heaters now?", "Tune", lines...)})
+			run("PID tune", "Heat and tune the heaters now?", "Tune", lines...)})
 	}
 	rows = append(rows, row{"Nozzle change", "Heat to 250°, and raise the head", false, func() {
 		if !idle {
@@ -277,7 +268,7 @@ func (a *App) drawMacros(c *gfx.Canvas, st printer.State) {
 			}
 			m := macros[i]
 			a.confirm = &confirmBox{question: "Run " + gfx.Fit(gfx.Face(true, 28), m, 300) + "?", yes: "Run", onYes: func() {
-				a.do(func() error { return pr.Gcode(m) })
+				a.runAction(m, m)
 			}}
 		}})
 }

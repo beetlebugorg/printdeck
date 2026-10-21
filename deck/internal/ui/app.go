@@ -106,6 +106,9 @@ type Printer interface {
 	Console() []printer.ConsoleLine
 	SendConsole(line string)
 
+	// RunAction runs a maintenance action and waits for its end. State shows it while it runs.
+	RunAction(name string, lines ...string) error
+
 	// The setup of a new printer: the boards on the USB ports, and a restart of the Klipper service.
 	Boards() (boards []board.Info, probing bool)
 	ProbeBoards()
@@ -177,6 +180,8 @@ type App struct {
 	configAll     bool         // the printer list shows all printers, not only those for the board
 	configBoard   board.Info   // the board that the printer list is for
 	flash         *flashState  // the flash of the firmware, while it runs and until OK
+	created       time.Time    // the start of this App: older action results do not show
+	actionSeen    time.Time    // the end of the last action result that this screen showed
 	historyScroll int          // the scroll position of the history
 	doneSeen      string       // the done screen of this print was closed (its history key)
 	setupProbed   bool         // the printer setup started a probe of the USB ports
@@ -273,7 +278,7 @@ func (a *App) Session(height int) *App {
 var drawMu sync.Mutex
 
 func New() *App {
-	return &App{Now: time.Now, dragFrac: -1, wake: make(chan struct{}, 1), posted: make(chan func(), 16),
+	return &App{Now: time.Now, created: time.Now(), dragFrac: -1, wake: make(chan struct{}, 1), posted: make(chan func(), 16),
 		joy: &joystick{}, zStep: 1, fanSet: -1, UnloadMM: 80, LoadMM: 70, tuneSpeed: 100, tuneFlow: 100, Theme: "auto", NightFrom: 20, NightTo: 7}
 }
 
