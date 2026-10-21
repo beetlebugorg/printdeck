@@ -5,16 +5,18 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
 	"printdeck/internal/gfx"
+	"printdeck/internal/printer"
 )
 
-// The control screen: home, move the head with a joystick, Z, extruder, fan, motors, filament, stop.
+// The Move page: home, move the head with a joystick, Z, park and center, motors.
 
 const (
-	joyCX, joyCY, joyR = 154, 344, 124 // the joystick pad
+	joyCX, joyCY, joyR = 152, 392, 128 // the joystick pad of the Move page
 	joyDead            = 0.15          // the middle part that does not move
 	joyTick            = 150 * time.Millisecond
 	joyMinSpeed        = 2.0  // mm/s just outside the middle
@@ -108,24 +110,28 @@ func (a *App) do(f func() error) {
 	}()
 }
 
-func (a *App) drawControl(c *gfx.Canvas) {
+// drawMove is the Move page: the position and the homed axes, homing, the joystick for X and Y,
+// Z, park and center, and the motors.
+func (a *App) drawMove(c *gfx.Canvas) {
 	pr := a.Printer
 	st := pr.State()
-	heading(c, "Control")
-	a.button(c, image.Rect(W-130, 66, W-24, 110), "Back", raised, text, func() { a.control = false })
-	if a.Setup != nil {
-		a.button(c, image.Rect(W-250, 66, W-138, 110), "Help", raised, text, a.OpenHelp)
-	}
+	heading(c, "Move")
+	a.backButton(c)
 
-	moving := st.Connected && !st.Busy()
-	hint := "Home first after power-on."
-	switch {
-	case !st.Connected:
-		hint = "The printer is not connected."
-	case st.Busy():
-		hint = "Moving is off while a print runs."
+	moving := st.Connected && (!st.Busy() || st.Paused)
+
+	// The position, with an LED for each homed axis.
+	pos := image.Rect(24, 122, W-24, 176)
+	window(c, pos)
+	for i, ax := range []struct {
+		n string
+		v float64
+		f string
+	}{{"X", st.X, "%.1f"}, {"Y", st.Y, "%.1f"}, {"Z", st.Z, "%.2f"}} {
+		x := pos.Min.X + 14 + i*146
+		led(c, x+8, pos.Min.Y+27, strings.Contains(st.Homed, strings.ToLower(ax.n)))
+		c.Text(image.Rect(x+22, pos.Min.Y, x+146, pos.Max.Y), ax.n+" "+fmt.Sprintf(ax.f, ax.v), gfx.Face(true, 22), lcdInk, gfx.Left)
 	}
-	label(c, image.Rect(24, 112, W-24, 132), hint, gfx.Left)
 
 	btn := func(r image.Rectangle, label string, fill, fg color.RGBA, f func() error) {
 		if !moving {
@@ -136,15 +142,14 @@ func (a *App) drawControl(c *gfx.Canvas) {
 	}
 
 	// Home
-	w := (W - 48 - 24) / 4
-	btn(image.Rect(24, 142, 24+w+w/2, 198), "Home all", orange, onAcc, func() error { return pr.Home() })
+	q := (W - 48 - 24) / 4
+	btn(image.Rect(24, 188, 24+q, 246), "Home all", orange, onAcc, func() error { return pr.Home() })
 	for i, ax := range []string{"X", "Y", "Z"} {
-		x0 := 24 + w + w/2 + 8 + i*(w/2+w/3+8)
-		axis := ax
-		btn(image.Rect(x0, 142, x0+w/2+w/3, 198), axis, raised, text, func() error { return pr.Home(map[string]string{"X": "x", "Y": "y", "Z": "z"}[axis]) })
+		axis := strings.ToLower(ax)
+		btn(image.Rect(24+(i+1)*(q+8), 188, 24+(i+1)*(q+8)+q, 246), ax, raised, text, func() error { return pr.Home(axis) })
 	}
 
-	// Joystick for X and Y: an XY pad in a display window.
+	// The joystick for X and Y: an XY pad in a display window.
 	vx, vy, _ := a.joy.get()
 	pad := image.Rect(joyCX-joyR, joyCY-joyR, joyCX+joyR, joyCY+joyR)
 	window(c, pad)
@@ -186,14 +191,14 @@ func (a *App) drawControl(c *gfx.Canvas) {
 		}
 		a.addHit(hit{r: pad, pad: a.joyPad})
 	}
-	label(c, image.Rect(pad.Min.X, pad.Max.Y+6, pad.Max.X, pad.Max.Y+22), "XY  hold to move", gfx.Center)
+	label(c, image.Rect(pad.Min.X, pad.Max.Y+6, pad.Max.X, pad.Max.Y+26), "XY  hold to move", gfx.Center)
 
 	// Z
-	zx0, zx1 := 300, W-24
-	btn(image.Rect(zx0, 214, zx1, 290), "Z ▲", raised, text, func() error { return pr.Jog(0, 0, a.zStep, 600) })
+	zx0, zx1 := pad.Max.X+12, W-24
+	btn(image.Rect(zx0, pad.Min.Y, zx1, pad.Min.Y+82), "Z ▲", raised, text, func() error { return pr.Jog(0, 0, a.zStep, 600) })
 	for i, s := range []float64{0.1, 1, 10} {
-		pw := (zx1 - zx0 - 16) / 3
-		r := image.Rect(zx0+i*(pw+8), 298, zx0+i*(pw+8)+pw, 342)
+		pw := (zx1 - zx0 - 12) / 3
+		r := image.Rect(zx0+i*(pw+6), pad.Min.Y+94, zx0+i*(pw+6)+pw, pad.Min.Y+146)
 		fill, fg := raised, text
 		if a.zStep == s {
 			fill, fg = orange, onAcc
@@ -202,56 +207,40 @@ func (a *App) drawControl(c *gfx.Canvas) {
 		key(c, r, fmt.Sprint(s), fill, fg, a.isPressed(r))
 		a.addHit(hit{r: r, tap: func() { a.zStep = step }})
 	}
-	btn(image.Rect(zx0, 350, zx1, 426), "Z ▼", raised, text, func() error { return pr.Jog(0, 0, -a.zStep, 600) })
-	label(c, image.Rect(zx0, 432, zx1, 452), "Z  mm per tap", gfx.Center)
+	btn(image.Rect(zx0, pad.Min.Y+158, zx1, pad.Min.Y+240), "Z ▼", raised, text, func() error { return pr.Jog(0, 0, -a.zStep, 600) })
+	label(c, image.Rect(zx0, pad.Min.Y+248, zx1, pad.Min.Y+270), "Z mm per tap", gfx.Center)
 
-	// Extruder: needs a hot nozzle
-	half := (W - 48 - 8) / 2
-	cold := st.Tool < minExtrudeTemp
-	ext := func(r image.Rectangle, label string, mm float64) {
-		if moving && cold {
-			key(c, r, label, surface, dim, false)
-			a.addHit(hit{r: r, tap: func() { a.Toast(fmt.Sprintf("Heat the nozzle to %d° first", minExtrudeTemp)) }})
+	// Park and center need the homed axes. Motors off lets the head move by hand.
+	third := (W - 48 - 16) / 3
+	y := pad.Max.Y + 38
+	homed := strings.Contains(st.Homed, "x") && strings.Contains(st.Homed, "y")
+	park := func(r image.Rectangle, name string, g func() []string) {
+		if !homed {
+			btn(r, name, raised, text, func() error { return fmt.Errorf("Home X and Y first") })
 			return
 		}
-		btn(r, label, raised, text, func() error { return pr.Extrude(mm, 300) })
+		btn(r, name, raised, text, func() error { return pr.Gcode(g()...) })
 	}
-	ext(image.Rect(24, 490, 24+half, 548), "Extrude 10 mm", 10)
-	ext(image.Rect(24+half+8, 490, W-24, 548), "Retract 10 mm", -10)
+	park(image.Rect(24, y, 24+third, y+70), "Park", func() []string { return ParkGcode(st) })
+	park(image.Rect(24+third+8, y, 24+2*third+8, y+70), "Center", func() []string { return CenterGcode(st) })
+	btn(image.Rect(W-24-third, y, W-24, y+70), "Motors off", raised, text, pr.MotorsOff)
+	hint := "Motors off lets you move the head by hand."
+	switch {
+	case !st.Connected:
+		hint = "The printer is not connected."
+	case st.Busy() && !st.Paused:
+		hint = "Moving is off while a print runs."
+	}
+	label(c, image.Rect(24, y+80, W-24, y+104), hint, gfx.Center)
+}
 
-	// Fan: the printer does not report it, so the last choice is shown.
-	label(c, image.Rect(24, 558, 90, 614), "Fan", gfx.Left)
-	for i, p := range []int{0, 50, 100} {
-		fw := (W - 24 - 90 - 16) / 3
-		r := image.Rect(90+i*(fw+8), 560, 90+i*(fw+8)+fw, 612)
-		fill, fg := raised, text
-		if a.fanSet == p {
-			fill, fg = green, onAcc
-		}
-		label := fmt.Sprintf("%d%%", p)
-		if p == 0 {
-			label = "Off"
-		}
-		pct := p
-		if !st.Connected {
-			key(c, r, label, surface, dim, false)
-			continue
-		}
-		a.button(c, r, label, fill, fg, func() { a.fanSet = pct; a.do(func() error { return pr.Fan(pct) }) })
-	}
+// ParkGcode moves the head to the back left, 10 mm up, out of the way of the part.
+func ParkGcode(st printer.State) []string {
+	z := min(st.Z+10, st.Axis[1][2])
+	return []string{"G90", fmt.Sprintf("G1 Z%.2f F600", z), fmt.Sprintf("G1 X%.1f Y%.1f F6000", st.Axis[0][0]+5, st.Axis[1][1]-5)}
+}
 
-	// Filament, motors, stop
-	tw := (W - 48 - 16) / 3
-	y := 628
-	if moving {
-		a.button(c, image.Rect(24, y, 24+tw, y+76), "Filament", orange, onAcc, func() { a.swap = &swapState{} })
-	} else {
-		btn(image.Rect(24, y, 24+tw, y+76), "Filament", orange, onAcc, nil)
-	}
-	btn(image.Rect(24+tw+8, y, 24+2*tw+8, y+76), "Motors off", raised, text, pr.MotorsOff)
-	if st.Connected {
-		a.button(c, image.Rect(W-24-tw, y, W-24, y+76), "Stop", redCap, onRed, func() {
-			a.confirm = &confirmBox{question: "Stop the printer now?", yes: "Stop", danger: true, onYes: func() { a.do(pr.EmergencyStop) }}
-		})
-	}
+// CenterGcode moves the head to the middle of the bed.
+func CenterGcode(st printer.State) []string {
+	return []string{"G90", fmt.Sprintf("G1 X%.1f Y%.1f F6000", (st.Axis[0][0]+st.Axis[1][0])/2, (st.Axis[0][1]+st.Axis[1][1])/2)}
 }

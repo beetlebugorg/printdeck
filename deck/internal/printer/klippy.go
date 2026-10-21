@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"printdeck/internal/board"
+	"printdeck/internal/gcodemeta"
 	"printdeck/internal/klipper/cli"
 	"printdeck/internal/klippy"
 )
@@ -21,6 +22,8 @@ type Store interface {
 	Source
 	Files() []File
 	Stat(path string) (fs.FileInfo, error)
+	FullPath(path string) (string, error)
+	Delete(path string) error
 }
 
 // Klippy is the printer backend: it follows the Klipper host over its API socket, and prints the
@@ -32,6 +35,8 @@ type Klippy struct {
 
 	// ConfigPath is printer.cfg. With no [mcu] section in it, the state asks for the setup.
 	ConfigPath string
+	// Hist records the finished prints.
+	Hist *History
 	// RestartService restarts the Klipper service, which reads printer.cfg again. The API of
 	// Klipper has no restart while the config has an error.
 	RestartService func() error
@@ -49,6 +54,8 @@ type Klippy struct {
 	boards  []board.Info // what the last probe found
 	probing bool
 
+	meta gcodemeta.Cache // the slicer data of the files
+
 	// From the connection to Klipper: its version, and the names of its objects (objects/list).
 	version string
 	objects []string
@@ -61,11 +68,12 @@ var klippyObjects = map[string][]string{
 	"display_status": {"message"},
 	"gcode_move":     {"homing_origin", "speed_factor", "extrude_factor"},
 	"configfile":     {"save_config_pending"},
+	"manual_probe":   {"is_active", "z_position"},
 	"virtual_sdcard": {"file_position", "file_size", "progress"},
 	"extruder":       {"temperature", "target"},
 	"heater_bed":     {"temperature", "target"},
 	"fan":            {"speed"},
-	"toolhead":       {"position", "homed_axes"},
+	"toolhead":       {"position", "homed_axes", "axis_minimum", "axis_maximum"},
 	"mcu":            {"mcu_version"},
 }
 
@@ -178,6 +186,35 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 	k.setDown("Klipper is not running", notify)
 }
 
+// FileMeta returns what the slicer wrote about a file: the time, the filament, the thumbnail.
+func (k *Klippy) FileMeta(path string) gcodemeta.Meta {
+	full, err := k.store.FullPath(path)
+	if err != nil {
+		return gcodemeta.Meta{}
+	}
+	return k.meta.Get(full)
+}
+
+// DeleteFile removes a file, and reads the file list again. A file that prints now stays.
+func (k *Klippy) DeleteFile(path string) error {
+	if st := k.State(); st.Busy() && st.FilePath == path {
+		return errors.New("This file prints now.")
+	}
+	if err := k.store.Delete(path); err != nil {
+		return err
+	}
+	k.LoadFiles()
+	return nil
+}
+
+// History returns the finished prints, newest first.
+func (k *Klippy) History() []Record {
+	if k.Hist == nil {
+		return nil
+	}
+	return k.Hist.Records()
+}
+
 // Machine returns the version, the modules and the macros of the connected Klipper.
 func (k *Klippy) Machine() Machine {
 	k.mu.Lock()
@@ -264,6 +301,9 @@ func (k *Klippy) refresh(notify func()) {
 		}
 	}
 	k.View.Activity(&st)
+	if k.Hist != nil && st.Reachable {
+		k.Hist.add(st, time.Now())
+	}
 	k.mu.Lock()
 	k.st = st
 	k.mu.Unlock()
@@ -308,6 +348,8 @@ func klippyState(s klippy.Status, down string) State {
 		st.SpeedPct, st.FlowPct = 100, 100
 	}
 	st.SaveConfigPending, _ = s["configfile"]["save_config_pending"].(bool)
+	st.ManualProbe, _ = s["manual_probe"]["is_active"].(bool)
+	st.ManualZ = num(s["manual_probe"]["z_position"])
 	if st.Busy() {
 		st.FilePath = str(ps["filename"])
 		st.File = path.Base(st.FilePath)
@@ -331,6 +373,13 @@ func klippyState(s klippy.Status, down string) State {
 		st.X, st.Y, st.Z, st.HasZ = num(pos[0]), num(pos[1]), num(pos[2]), true
 	}
 	st.Homed = str(s["toolhead"]["homed_axes"])
+	for i, key := range []string{"axis_minimum", "axis_maximum"} {
+		if v, ok := s["toolhead"][key].([]any); ok && len(v) >= 3 {
+			for j := range 3 {
+				st.Axis[i][j] = num(v[j])
+			}
+		}
+	}
 	return st
 }
 

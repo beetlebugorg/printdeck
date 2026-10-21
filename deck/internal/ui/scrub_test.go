@@ -53,12 +53,22 @@ func TestLayerScrubber(t *testing.T) {
 
 func TestLCDLines(t *testing.T) {
 	a := New()
+	at := time.Date(2026, 10, 20, 15, 37, 0, 0, time.Local) // a time with an even 4-second count
+	a.Now = func() time.Time { return at }
 	st := printer.State{Activity: "Printing", Completion: 41.4, HasTimeLeft: true, TimeLeft: 30 * time.Minute,
 		HasNow: true, NowKind: "Outer wall", NowSpeed: 60}
+	if at.Unix()/4%2 == 1 {
+		at = at.Add(4 * time.Second)
+	}
 	lines := a.lcdLines(st)
 	want := []string{"PRINTING     41% 0:30", "OUTER WALL    60MM/S"}
 	if len(lines) != 2 || lines[1] != want[1] || !strings.HasPrefix(lines[0], "PRINTING") || !strings.HasSuffix(lines[0], "41% 0:30") {
 		t.Errorf("lines %q, want like %q", lines, want)
+	}
+	// 4 seconds later, the second line has the time of the finish.
+	at = at.Add(4 * time.Second)
+	if l := a.lcdLines(st)[1]; l != "DONE AT        "+at.Add(30*time.Minute).Format("15:04") {
+		t.Errorf("second line %q, want the time of the finish", l)
 	}
 	for _, l := range lines {
 		if len([]rune(l)) != 20 {

@@ -51,6 +51,8 @@ type State struct {
 	// The position of the head (X, Y and Z with HasZ), and the homed axes, for example "xyz".
 	X, Y  float64
 	Homed string
+	// Axis is the travel of X, Y and Z: Axis[0] the minimum, Axis[1] the maximum.
+	Axis [2][3]float64
 	// The time since the start of the print, and the filament used in mm.
 	Elapsed      time.Duration
 	FilamentUsed float64
@@ -67,6 +69,15 @@ type State struct {
 	FinishedFilament           float64 // mm
 	FinishedError              string
 	SaveConfigPending          bool // a calibration changed the config, and SAVE_CONFIG writes it
+
+	// ManualProbe is true while a manual Z probe runs (PROBE_CALIBRATE, Z_ENDSTOP_CALIBRATE): the
+	// nozzle is at ManualZ, and TESTZ, ACCEPT and ABORT finish it.
+	ManualProbe bool
+	ManualZ     float64
+
+	// Preparing is true while the start of a print runs: heating, homing, probing, priming. HasWipe
+	// is true when the start wipes the nozzle.
+	Preparing, HasWipe bool
 
 	// NeedsSetup is true when printer.cfg has no [mcu] section: Klipper has no printer to use.
 	NeedsSetup bool

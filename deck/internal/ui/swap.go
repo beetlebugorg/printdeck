@@ -12,7 +12,15 @@ import (
 type swapState struct {
 	step int
 	temp int
+	mode int // swapChange, swapLoadOnly or swapUnloadOnly
 }
+
+// The modes of the flow: a change of the filament, a load, or an unload.
+const (
+	swapChange = iota
+	swapLoadOnly
+	swapUnloadOnly
+)
 
 const (
 	swapChoose = iota
@@ -26,11 +34,19 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 	sw := a.swap
 	pr := a.Printer
 	st := pr.State()
-	heading(c, "Filament swap")
+	heading(c, []string{"Filament swap", "Load filament", "Unload filament"}[sw.mode])
 	a.button(c, image.Rect(W-130, 66, W-24, 110), "Close", raised, text, func() { a.swap = nil })
 
+	// The steps of the mode: a load has no unload, an unload has no load.
+	total := 5
+	if sw.mode != swapChange {
+		total = 4
+	}
 	step := func(n int, title string) {
-		c.Text(image.Rect(24, 112, W-24, 140), fmt.Sprintf("Step %d of 5", n), gfx.Face(false, 17), dim, gfx.Left)
+		if sw.mode == swapLoadOnly && n > 2 {
+			n--
+		}
+		c.Text(image.Rect(24, 112, W-24, 140), fmt.Sprintf("Step %d of %d", n, total), gfx.Face(false, 17), dim, gfx.Left)
 		c.Text(image.Rect(24, 140, W-24, 184), title, gfx.Face(true, 26), orange, gfx.Left)
 	}
 	para := func(y int, lines ...string) {
@@ -44,19 +60,25 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 
 	switch sw.step {
 	case swapChoose:
-		step(1, "Which filament goes in?")
-		para(200, "The nozzle heats to the temperature", "of the new filament.")
-		for i, m := range []struct {
-			name string
-			t    int
-		}{{"PLA", 210}, {"PETG", 240}, {"ABS", 250}} {
-			t := m.t
-			a.button(c, image.Rect(24, 280+i*92, W-24, 280+i*92+80), fmt.Sprintf("%s  %d°", m.name, m.t), raised, text, func() {
+		if sw.mode == swapUnloadOnly {
+			step(1, "Which filament comes out?")
+			para(200, "The nozzle heats to the temperature", "of the loaded filament.")
+		} else {
+			step(1, "Which filament goes in?")
+			para(200, "The nozzle heats to the temperature", "of the new filament.")
+		}
+		for i, m := range materials {
+			t, name := m.Tool, m.Name
+			r := image.Rect(24+(i%2)*((W-48)/2+6), 270+(i/2)*92, 24+(i%2)*((W-48)/2+6)+(W-48)/2-6, 270+(i/2)*92+80)
+			a.button(c, r, fmt.Sprintf("%s  %d°", m.Name, m.Tool), raised, text, func() {
 				sw.temp, sw.step = t, swapHeat
+				if sw.mode != swapUnloadOnly {
+					a.setMaterial(name)
+				}
 				a.do(func() error { return pr.SetToolTemp(t) })
 			})
 		}
-		a.button(c, image.Rect(24, 556, W-24, 636), "Other temperature", raised, text, func() {
+		a.button(c, image.Rect(24, 470, W-24, 550), "Other temperature", raised, text, func() {
 			a.editTemp("Nozzle for the new filament", 220, 300, toolPresets, func(t int) error {
 				a.post(func() { sw.temp, sw.step = t, swapHeat })
 				return pr.SetToolTemp(t)
@@ -70,6 +92,9 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		para(370, "The next step starts when the nozzle", "is hot.")
 		if st.Tool >= float64(sw.temp)-3 {
 			sw.step = swapUnload
+			if sw.mode == swapLoadOnly {
+				sw.step = swapInsert
+			}
 			a.Redraw()
 		}
 		a.button(c, image.Rect(24, 620, W-24, 700), "Cancel and cool down", raised, text, func() {
@@ -82,6 +107,10 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		para(200, "The extruder pushes a little out,", fmt.Sprintf("then pulls the filament back %.0f mm.", a.UnloadMM), "", "Hold the filament lightly.")
 		bigButton(420, "Unload", func() {
 			sw.step = swapInsert
+			if sw.mode == swapUnloadOnly {
+				sw.step = swapCheck
+				a.setMaterial("")
+			}
 			a.do(func() error {
 				return pr.Gcode("M83", "G1 E10 F300", fmt.Sprintf("G1 E-%.0f F1500", a.UnloadMM), "M82")
 			})
@@ -99,6 +128,16 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		a.button(c, image.Rect(24, 520, W-24, 590), "Unload again", raised, text, func() { sw.step = swapUnload })
 
 	case swapCheck:
+		if sw.mode == swapUnloadOnly {
+			step(4, "Take the filament out")
+			para(200, "Pull the filament out of the", "extruder, and store it dry.")
+			bigButton(400, "Done, cool down", func() {
+				a.swap = nil
+				a.do(func() error { return pr.SetToolTemp(0) })
+			})
+			a.button(c, image.Rect(24, 500, W-24, 580), "Unload again", raised, text, func() { sw.step = swapUnload })
+			return
+		}
 		step(5, "Check the nozzle")
 		para(200, "Clean plastic in the new colour", "should come out of the nozzle.")
 		a.button(c, image.Rect(24, 300, W-24, 380), "Purge 10 mm more", raised, text, func() {

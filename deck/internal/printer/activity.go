@@ -44,6 +44,7 @@ func (v *View) Activity(st *State) {
 
 	if gc == nil {
 		// The G-code is not loaded yet. The temperatures show the heating.
+		st.Preparing = (bedCold || toolCold) && st.Completion < 1
 		switch {
 		case bedCold:
 			st.Activity = fmt.Sprintf("Heating bed  %.0f/%.0f°", st.Bed, st.BedTarget)
@@ -64,6 +65,7 @@ func (v *View) Activity(st *State) {
 	switch {
 	case gc.StartEnd > 0 && st.FilePos <= gc.StartEnd:
 		// The start macro runs. The file position does not move until it ends.
+		st.Preparing, st.HasWipe = true, gc.WipeTemp > 0
 		switch {
 		case st.BedTarget == 0 && st.ToolTarget == 0:
 			st.Activity = "Starting"

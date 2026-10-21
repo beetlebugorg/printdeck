@@ -119,6 +119,15 @@ func (s *Store) Save(path string, r io.Reader) (string, error) {
 	return p, os.Rename(tmp.Name(), dst)
 }
 
+// FullPath returns the path in the file system of a file of the store.
+func (s *Store) FullPath(path string) (string, error) {
+	p, err := clean(path)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(s.Dir, p), nil
+}
+
 // Delete removes a file of the store.
 func (s *Store) Delete(path string) error {
 	p, err := clean(path)
