@@ -506,7 +506,7 @@ class AdaptiveSpeed(Script):
             # Straight runs: the boost of the kind, more for longer runs (never over air). Short paths: slower.
             air = m.bridge or m.over > 0.05
             f = 1.0 if air else 1 + (boost[m.kind] - 1) * min(1.0, runs[m] / long_)
-            slow = {}  # each factor that slows the move, as the speed it alone would allow
+            slow = {}  # each factor that slows the move, as the speed limit from that factor alone
             if paths[m] < p["short_path"]:
                 g = p["short_factor"] + (1 - p["short_factor"]) * paths[m] / p["short_path"]
                 f *= g

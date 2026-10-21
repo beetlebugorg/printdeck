@@ -404,7 +404,7 @@ func layerCount(line string) (int, bool) {
 
 // objectName reads the name of an object: ";MESH:name" (Cura), "EXCLUDE_OBJECT_DEFINE NAME=name"
 // (Klipper, OrcaSlicer and PrusaSlicer), "; printing object name" (OrcaSlicer and PrusaSlicer).
-// Cura's ";MESH:NONMESH" is the travel between objects, not an object.
+// Cura's ";MESH:NONMESH" is the travel between objects. It does not mark an object.
 func objectName(line string) (mark, name string, ok bool) {
 	line = strings.TrimSpace(line)
 	if v, ok := strings.CutPrefix(line, ";MESH:"); ok {
