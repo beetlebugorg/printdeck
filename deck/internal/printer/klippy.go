@@ -537,7 +537,25 @@ func (k *Klippy) Jog(x, y, z float64, speed int) error {
 func (k *Klippy) EmergencyStop() error { return k.call("emergency_stop", nil) }
 
 // FirmwareRestart restarts Klipper and its firmware after an emergency stop or an error.
-func (k *Klippy) FirmwareRestart() error { return k.call("gcode/firmware_restart", nil) }
+// FirmwareRestart resets the board and restarts Klipper. It works also while Klipper is not ready,
+// for example after an MCU shutdown: then it uses a connection of its own.
+func (k *Klippy) FirmwareRestart() error {
+	k.mu.Lock()
+	conn := k.conn
+	k.mu.Unlock()
+	if conn != nil {
+		return k.call("gcode/firmware_restart", nil)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	c, err := klippy.Dial(ctx, k.socket)
+	if err != nil {
+		return ErrNotReady
+	}
+	defer c.Close()
+	_, err = c.Call(ctx, "gcode/firmware_restart", nil)
+	return err
+}
 
 func num(v any) float64 {
 	f, _ := v.(float64)
