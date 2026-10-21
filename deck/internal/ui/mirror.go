@@ -158,7 +158,7 @@ func (a *App) screenMirror(st printer.State) Mirror {
 			return Mirror{pad("Print this?", ""), pad(a.file.Name, ""), ""}
 		case pageMaintenance:
 			return Mirror{pad("Maintenance", ""), pad("", ""), ""}
-		case pageMachine, pageStats, pageHistory, pageMacros:
+		case pageMachine, pageStats, pageHistory, pageMacros, pageConsole:
 			return Mirror{pad("Machine", ""), pad("", ""), ""}
 		}
 	}

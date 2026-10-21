@@ -57,6 +57,8 @@ type Klippy struct {
 
 	meta gcodemeta.Cache // the slicer data of the files
 
+	console
+
 	// From the connection to Klipper: its version, and the names of its objects (objects/list).
 	version string
 	objects []string
@@ -166,6 +168,13 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 		k.refresh(notify)
 	})
 	if err != nil {
+		k.setDown(err.Error(), notify)
+		return
+	}
+	if err := conn.SubscribeOutput(ctx, func(line string) {
+		k.console.add("out", line)
+		notify()
+	}); err != nil {
 		k.setDown(err.Error(), notify)
 		return
 	}
@@ -453,14 +462,33 @@ func (k *Klippy) PrintFile(path string) {
 }
 
 func (k *Klippy) Gcode(lines ...string) error { return k.script(lines...) }
-func (k *Klippy) Home(axes ...string) error   { return k.script(HomeGcode(axes...)) }
-func (k *Klippy) SetToolTemp(t int) error     { return k.script(fmt.Sprintf("M104 S%d", t)) }
-func (k *Klippy) SetBedTemp(t int) error      { return k.script(fmt.Sprintf("M140 S%d", t)) }
-func (k *Klippy) Fan(percent int) error       { return k.script(FanGcode(percent)) }
-func (k *Klippy) MotorsOff() error            { return k.script("M84") }
-func (k *Klippy) SpeedFactor(p int) error     { return k.script(SpeedGcode(p)) }
-func (k *Klippy) FlowFactor(p int) error      { return k.script(FlowGcode(p)) }
-func (k *Klippy) BabyStep(mm float64) error   { return k.script(BabyStepGcode(mm)) }
+
+// SendConsole runs a command of the console in the background. Klipper writes the reply, and a
+// refusal as "!! message", to the console.
+func (k *Klippy) SendConsole(line string) {
+	k.console.add("in", line)
+	k.later(func() error {
+		err := k.script(line)
+		if errors.Is(err, ErrNotReady) {
+			k.console.add("error", err.Error())
+		}
+		k.mu.Lock()
+		notify := k.notify
+		k.mu.Unlock()
+		if notify != nil {
+			notify()
+		}
+		return err
+	})
+}
+func (k *Klippy) Home(axes ...string) error { return k.script(HomeGcode(axes...)) }
+func (k *Klippy) SetToolTemp(t int) error   { return k.script(fmt.Sprintf("M104 S%d", t)) }
+func (k *Klippy) SetBedTemp(t int) error    { return k.script(fmt.Sprintf("M140 S%d", t)) }
+func (k *Klippy) Fan(percent int) error     { return k.script(FanGcode(percent)) }
+func (k *Klippy) MotorsOff() error          { return k.script("M84") }
+func (k *Klippy) SpeedFactor(p int) error   { return k.script(SpeedGcode(p)) }
+func (k *Klippy) FlowFactor(p int) error    { return k.script(FlowGcode(p)) }
+func (k *Klippy) BabyStep(mm float64) error { return k.script(BabyStepGcode(mm)) }
 func (k *Klippy) Extrude(mm float64, speed int) error {
 	return k.script(ExtrudeGcode(mm, speed)...)
 }
