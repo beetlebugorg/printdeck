@@ -84,7 +84,7 @@ func (p *PrintdeckDisplay) handleScreen(req *webhooks.WebRequest) {
 	p.mu.Unlock()
 	if p.lcd != nil {
 		p.lcd.RequestRedraw()
-		if s != nil && s.Anim != "" {
+		if s != nil && s.moves() {
 			p.reactor.UpdateTimer(p.animTimer, now+frameTime)
 		}
 	}
@@ -134,7 +134,7 @@ func (p *PrintdeckDisplay) drawScreen(eventtime float64) bool {
 // animEvent draws the next frame of an animation.
 func (p *PrintdeckDisplay) animEvent(eventtime float64) float64 {
 	s := p.current(eventtime)
-	if s == nil || s.Anim == "" {
+	if s == nil || !s.moves() {
 		return reactor.Never
 	}
 	p.lcd.RequestRedraw()

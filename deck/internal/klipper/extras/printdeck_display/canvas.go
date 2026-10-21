@@ -55,6 +55,42 @@ func (c *canvas) frame(x0, y0, x1, y1 int) {
 	}
 }
 
+// bitmapFont is a font of fixed width.
+type bitmapFont struct {
+	w, h   int
+	glyphs [][]byte
+}
+
+// glyph returns the rows of a character: ASCII, or the degree sign (0xf8 of the 8 x 16 font).
+func (f *bitmapFont) glyph(ch byte) []byte {
+	switch {
+	case ch == 0xf8:
+		return f.glyphs[len(f.glyphs)-1]
+	case ch >= 32 && ch < 127:
+		return f.glyphs[ch-32]
+	}
+	return f.glyphs[0]
+}
+
+// smallText draws text in a small font with its top left corner at x, y. bold draws each pixel
+// two times, one pixel apart. It returns the x after the text.
+func (c *canvas) smallText(f *bitmapFont, x, y int, s string, bold bool) int {
+	for _, ch := range []byte(s) {
+		for row, bits := range f.glyph(ch) {
+			for b := 0; b < 8; b++ {
+				if bits&(0x80>>b) != 0 {
+					c.set(x+b, y+row, true)
+					if bold {
+						c.set(x+b+1, y+row, true)
+					}
+				}
+			}
+		}
+		x += f.w
+	}
+	return x
+}
+
 // text draws text in the 8 x 16 font of the display, with its top left corner at x, y. It returns
 // the x after the text.
 func (c *canvas) text(x, y int, s string) int {
