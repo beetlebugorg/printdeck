@@ -29,7 +29,7 @@ PRINTS = [
     ("slab", "Navy", "Front face down. The screen opening is in the first layers: use a smooth sheet for a clean face."),
     ("chin", "Orange", "Front face down. The tongues stand up at the two sides."),
     ("back", "Orange", "Front face (the drive side) down. The bosses and the fan posts point up."),
-    ("foot", "Gray", "Flat, the four hooks up."),
+    ("foot", "Gray", "Flat, the screw pockets down."),
 ]
 
 SETTINGS = [
@@ -39,15 +39,17 @@ SETTINGS = [
     ("Slab, chin", "0.3 mm layers, 1.5 mm walls, 1.2 mm top and bottom, 20 % grid infill, skirt"),
     ("Back plate", "0.3 mm layers, 40 % grid infill, skirt"),
     ("Foot", "0.3 mm layers, 20 % grid infill, skirt"),
-    ("Supports", "Off for all parts. Every hook, pocket, and slot has 45° faces. A slice of each part with supports "
+    ("Supports", "Off for all parts. Every pocket, hole, and slot has 45° faces. A slice of each part with supports "
                  "on (60°, everywhere) adds 0 g of support."),
 ]
 
 HARDWARE = [
-    (4, "M3 heat-set insert, for a 4.0 mm hole, 4 mm long (display)"),
+    (10, "M3 heat-set insert, for a 4.0 mm hole, 4 mm long (display, chin, foot)"),
     (4, "M3 heat-set insert, for a 4.0 mm hole, max. 5.5 mm long (Pi)"),
     (4, "M3 × 6 screw (display)"),
     (4, "M3 × 5 screw (drive)"),
+    (2, "M3 × 10 button head screw (chin)"),
+    (4, "M3 × 8 socket head screw (foot)"),
     (4, "M3 × 16 screw, pan head (fan). It cuts its thread in the printed boss."),
     (3, "Twist tie, 15 cm, max. 3 mm wide (orange looks best)"),
 ]
@@ -93,14 +95,18 @@ STEPS = [
         "Keep the slab face down. Lead the two display cables through the two notches in the bottom edge of the back plate: the USB cable at the left, the ribbon at the right.",
         "Put the edges of the back plate into the grooves of the slab, at the open bottom. Slide the plate up until it stops at the top wall.",
     ], "The drive is behind the display plugs. If the plate does not slide, look at the plugs first."),
-    ("step4", "Chin", ["chin"], [
+    ("step4", "Chin", ["chin", "6 × insert (4 mm)", "2 × M3 × 10"], [
+        "Press four 4 mm M3 heat-set inserts into the four holes in the bottom of the chin, at the front corners. Stop when the insert is flush.",
+        "Press one 4 mm M3 heat-set insert into the hole in the outer face of each tongue. Stop when the insert is flush.",
         "Put the extra length of the display cables into the chin.",
         "Push the chin up onto the slab: its grooves take the bottom of the back plate. Push until the two tongues click.",
+        "Put an M3 × 10 button head screw through the hole in each side wall of the slab, into the insert in the tongue.",
     ], "The chin holds the back plate. The case is now closed."),
-    ("step5", "Foot", ["foot"], [
+    ("step5", "Foot", ["foot", "4 × M3 × 8"], [
         "Put the case on the foot. The foot is 6 mm in from the front and the sides, and it reaches far to the rear.",
-        "Push down until the four hooks click into the floor of the chin.",
-    ], None),
+        "Align the four holes in the foot with the four inserts in the chin.",
+        "Put the four M3 × 8 screws up through the foot, from below. Tighten them until the heads touch the bottom of their pockets. Do not tighten more.",
+    ], "The screw heads are below the bottom face of the foot, so the foot stands flat."),
     ("step6", "Cables on the rear", ["3 × twist tie"], [
         "Lead the drive cable over the top of the Pi. Connect it to the blue USB 3 port next to the board, from above.",
         "Lead the HDMI ribbon to the left, then up the left side of the back plate. Tie it at the pair of holes at the left. Connect it to the micro HDMI port next to the USB-C port.",
@@ -169,7 +175,7 @@ def cover():
   <p style="margin-top:4mm;max-width:160mm">A compact slab for the Printdeck: Raspberry Pi 5, HiFiBerry Amp2, the 7 inch
   touch display in portrait, and the drive. The slab leans back 15° on a gray foot. The Pi is open on the orange back plate at the
   rear, as a backpack: every port has free space, so you plug the power, the printer, and the speakers straight
-  into it. The front and the sides stay clean. All the cables show only on the rear. The case parts snap together.</p>
+  into it. The front and the sides stay clean. All the cables show only on the rear. The case parts snap together, and screws make the chin and the foot rigid.</p>
   <div class="fig"><img src="{img('hero')}" style="max-height:120mm;max-width:49%"><img src="{img('rear')}" style="max-height:120mm;max-width:49%"></div>
   <div class="need"><div class="chip"><span class="sw" style="background:#1F2B4D"></span>Navy (blue) PLA</div>
     <div class="chip"><span class="sw" style="background:#E8742A"></span>Orange PLA</div>
@@ -206,8 +212,8 @@ def parts_page():
   Cost at ${PRICE_PER_KG:.2f}/kg. By colour: {by_colour}.</p>
   <div class="cols" style="margin-top:6mm">
     <div><h2>Hardware</h2><table>{hw}</table>
-      <p style="font-size:10pt">The case parts hold with snap hooks. The screws hold only the display and the drive;
-      the Pi stack goes on its own standoffs.</p></div>
+      <p style="font-size:10pt">The slab, the chin, and the back plate hold with snap tongues and grooves. Screws
+      hold the chin, the foot, the display, and the drive; the Pi stack goes on its own standoffs.</p></div>
     <div><h2>Electronics</h2><table style="font-size:9.5pt">{el}</table></div>
   </div>
   {foot(2)}
@@ -255,7 +261,8 @@ def end_page(n):
     <li>Put the right-angle plug of the Amp2 power supply into the jack on the left edge of the Amp2. Turn the cable to the rear.</li>
     <li>Connect the speaker wires to the screw terminals on the left edge of the Amp2.</li></ol>
   <h2 style="margin-top:6mm">To open the case</h2>
-  <ol><li>Disconnect the cables on the rear. Pull the foot off. Its hooks let go when you pull hard.</li>
+  <ol><li>Disconnect the cables on the rear. Remove the four screws under the foot, and lift the case off the foot.</li>
+    <li>Remove the screw from each side wall of the slab.</li>
     <li>Push a pin or a paper clip into the small hole in each side wall, just above the chin. Each pin pushes
       the ridge of one chin tongue out of its groove. Pull the chin down.</li>
     <li>Slide the back plate down and out of the grooves. The drive and the Pi come out with it.</li></ol>

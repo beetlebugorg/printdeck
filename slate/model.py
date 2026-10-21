@@ -48,7 +48,7 @@ PRINTED = {
 GROUPS = {"ssd_cable": "ssd_cable", "fan_cable": "fan_cable", "plug_fan": "pi_plugs", "stub_": "cables",
           "display_": "display", "ssd_": "ssd", "pi_": "pi", "amp_": "pi", "plug_pi": "pi_plugs",
           "plug_touch": "pi_plugs", "plug_ssd": "pi_plugs", "plug_printer": "pi_plugs", "plug_amp": "pi_plugs",
-          "fan_": "fan", "cable_": "cables", "tie": "cables"}
+          "fan_": "fan", "foot_screw": "foot_screws", "side_screw0": "side_screw_r", "side_screw1": "side_screw_l", "cable_": "cables", "tie": "cables"}
 
 # Hardware pairs that touch on purpose: (prefix, prefix). A pair matches if one name starts
 # with the first prefix and the other with the second.
@@ -89,13 +89,14 @@ def build():
     }
     log(f"  printed parts built in {time.time() - t:.0f} s")
     hw, zones = [], []
-    for builder in (P.display, P.ssd, P.pi_stack, P.fan):
+    for builder in (P.display, P.ssd, P.pi_stack, P.fan, P.side_screws):
         p, z = builder()
         hw += p
         zones += z
     hw += P.cables()
     hw = [(n, P.to_world(s), m) for n, s, m in hw]
     zones = [(n, P.to_world(s)) for n, s in zones]
+    hw += P.foot_screws()
     return printed, hw, zones
 
 
