@@ -15,6 +15,7 @@ import (
 	"printdeck/internal/remote"
 	"printdeck/internal/touch"
 	"printdeck/internal/ui"
+	"printdeck/internal/webui"
 )
 
 // startWeb starts the web server of the Printdeck on addr, and returns the remote screen (or nil).
@@ -50,8 +51,14 @@ func startWeb(cfg config.Config, host *setupHost, events chan<- touch.Event, pr 
 		mux.Handle("/", rs.Handler())
 		klippyLog := filepath.Join(filepath.Dir(filepath.Dir(cfg.KlipperConfig)), "logs", "klippy.log")
 		registerSystemPage(mux, rs, pr, klippyLog)
+		page := &webui.Server{Printer: pr, Volume: app.Vol, Store: &gcodestore.Store{Dir: cfg.GcodeDir},
+			PreheatTool: cfg.PreheatTool, PreheatBed: cfg.PreheatBed, Auth: rs.Auth}
+		if app.Music != nil {
+			page.Music = app.Music
+		}
+		page.Register(mux)
 	}
-	srv := &http.Server{Addr: cfg.RemoteAddr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Addr: cfg.RemoteAddr, Handler: remote.SecurityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		log.Printf("web server on %s", cfg.RemoteAddr)
 		if err := srv.ListenAndServe(); err != nil {

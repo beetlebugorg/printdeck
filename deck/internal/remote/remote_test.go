@@ -47,16 +47,22 @@ func TestLoginProtectsTheScreen(t *testing.T) {
 			t.Errorf("%s with no login: %d, want 401", path, r.StatusCode)
 		}
 	}
-	r, _ := c.Get(ts.URL + "/")
+	r, _ := c.Get(ts.URL + "/screen")
 	r.Body.Close()
 	if r.Request.URL.Path != "/login" {
-		t.Errorf("/ with no login went to %s, want /login", r.Request.URL.Path)
+		t.Errorf("/screen with no login went to %s, want /login", r.Request.URL.Path)
 	}
 	if r := login(t, c, ts.URL, "wrong"); r.Request.URL.Path != "/login" {
 		t.Errorf("a wrong password went to %s, want /login", r.Request.URL.Path)
 	}
-	if r := login(t, c, ts.URL, "stamp-ocean-cider-brick"); r.Request.URL.Path != "/" || r.StatusCode != http.StatusOK {
-		t.Errorf("the right password went to %s (%d), want / (200)", r.Request.URL.Path, r.StatusCode)
+	// The login goes to the page of the deck (/), which the web server of the deck serves.
+	if r := login(t, c, ts.URL, "stamp-ocean-cider-brick"); r.Request.URL.Path != "/" {
+		t.Errorf("the right password went to %s, want /", r.Request.URL.Path)
+	}
+	r, _ = c.Get(ts.URL + "/screen")
+	r.Body.Close()
+	if r.StatusCode != http.StatusOK {
+		t.Errorf("/screen after the login: %d, want 200", r.StatusCode)
 	}
 }
 

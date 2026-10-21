@@ -54,7 +54,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /login", s.servePage(loginPage))
 	mux.HandleFunc("POST /login", s.login)
 	mux.HandleFunc("POST /logout", s.logout)
-	mux.HandleFunc("GET /{$}", s.auth(s.servePage(screenPage)))
+	mux.HandleFunc("GET /screen", s.auth(s.servePage(screenPage)))
 	mux.HandleFunc("GET /frame.png", s.auth(s.serveFrame))
 	mux.HandleFunc("GET /events", s.auth(s.serveEvents))
 	mux.HandleFunc("POST /touch", s.auth(s.serveTouch))
@@ -87,6 +87,9 @@ const DefaultSource = "https://github.com/beetlebugorg/printdeck"
 
 // securityHeaders stops other sites from framing the pages, and the pages from loading anything
 // from other sites.
+// SecurityHeaders adds the security headers of the remote screen to the responses of h.
+func SecurityHeaders(h http.Handler) http.Handler { return securityHeaders(h) }
+
 func securityHeaders(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Frame-Options", "DENY")
