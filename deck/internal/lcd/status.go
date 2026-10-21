@@ -252,7 +252,8 @@ func fanIcon(c *canvas, x, y int, speed float64, frame int) {
 	c.set(x+1, y+14, true)
 	c.set(x+14, y+14, true)
 	// The blades: the parts of the circle in three sectors that bend with the radius.
-	turn := float64(frame) * speed * 0.7
+	// The blades turn against their curve, as the blades of a real fan.
+	turn := -float64(frame) * speed * 0.7
 	const cx, cy = 7.5, 7.5
 	for py := 1; py < 15; py++ {
 		for px := 1; px < 15; px++ {
