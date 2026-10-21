@@ -13,25 +13,18 @@ wifi_country=US
 # SSH. A public SSH key here lets you log in to the debug image with the key, on one line.
 ssh_key=
 
-# The client ID of your Spotify app, from the Spotify developer dashboard. Add the redirect URI
-# https://printdeck.local:8888/callback to the app. Then the touch screen shows a QR code to link
-# Spotify with your phone.
-spotify_client_id=
-
 hostname=printdeck
 timezone=America/New_York
 
 # The settings of the touch screen. An empty value keeps the setting of the image.
 # display_rotate: 90 or 270 for a display that is mounted in portrait, 0 for none.
 # touch_invert_x, touch_invert_y, touch_swap_xy: 1 to turn the touch axes.
-# max_volume: the highest volume, in percent.
 # preheat_tool, preheat_bed: the temperatures of the Preheat button.
 # night_from, night_to: the hours of the night colors.
 display_rotate=
 touch_invert_x=
 touch_invert_y=
 touch_swap_xy=
-max_volume=
 preheat_tool=
 preheat_bed=
 night_from=

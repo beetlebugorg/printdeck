@@ -9,18 +9,17 @@ ConditionPathExists=!/dev/.printdeck-diagnostics
 
 [Service]
 EnvironmentFile=/etc/printdeck/deck.env
-# The API key from printdeck-credentials, and the Spotify client ID from printdeck.txt.
+# The API key from printdeck-credentials.
 EnvironmentFile=-/var/lib/printdeck/api.env
-EnvironmentFile=-/var/lib/printdeck/spotify.env
 # The settings of printdeck.txt that change deck.env (printdeck-settings writes it).
 EnvironmentFile=-/var/lib/printdeck/settings.env
 # The deck runs as the user deck, with the groups of its devices: the framebuffer (video), the
-# touch screen (input), the amp (audio), tty1 (tty), Klipper's socket and uploads (printer), the
+# touch screen (input), tty1 (tty), Klipper's socket and uploads (printer), the
 # USB serial ports, to find the printer board at the setup (dialout), and the journal for the
 # system page of the web server (systemd-journal).
 User=deck
 Group=deck
-SupplementaryGroups=video input audio tty printer dialout systemd-journal
+SupplementaryGroups=video input tty printer dialout systemd-journal
 # Port 80 for the remote screen and the slicers, and the graphics mode of tty1. The bounding set
 # stays full: sudo runs printdeck-wifi and printdeck-user as root, and needs CAP_SETUID and
 # CAP_SETGID for that.
