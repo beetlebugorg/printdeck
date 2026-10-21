@@ -423,6 +423,7 @@ func (k *Klippy) refresh(notify func()) {
 		}
 	}
 	k.View.Activity(&st)
+	k.View.TimeLeft(&st, time.Now())
 	k.mu.Lock()
 	var stack []string
 	if cmds, ok := k.status["printdeck_display"]["commands"].([]any); ok {
@@ -501,6 +502,7 @@ func klippyState(s klippy.Status, down string) State {
 			st.TimeLeft, st.HasTimeLeft = time.Duration((d/progress-d)*float64(time.Second)), true
 		}
 		st.Elapsed = time.Duration(num(ps["total_duration"]) * float64(time.Second))
+		st.PrintDuration = time.Duration(num(ps["print_duration"]) * float64(time.Second))
 		st.FilamentUsed = num(ps["filament_used"])
 	}
 	st.Tool, st.ToolTarget = num(s["extruder"]["temperature"]), num(s["extruder"]["target"])

@@ -7,6 +7,7 @@ import (
 	"image/color"
 	"io"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -40,6 +41,46 @@ type Model struct {
 
 	// Objects is the number of objects on the bed, from the object marks of the slicer; 0 if it has none.
 	Objects int
+
+	// The timeline of the print: TimePos are file offsets, TimeVal the seconds of printing at each
+	// offset, from the start of the moves. The marks come from the slicer (Cura ";TIME_ELAPSED:",
+	// the "M73 R" lines of PrusaSlicer and OrcaSlicer). A file with no marks gets a timeline from
+	// the lengths and the speeds of its moves. TimeTotal is the time of the whole print.
+	TimePos    []int64
+	TimeVal    []float32
+	TimeTotal  float32
+	TimeSlicer bool // the timeline comes from the slicer
+}
+
+// TimeAt is the time of printing at the file offset pos, from the timeline: the seconds before
+// pos, and the seconds of the whole print. ok is false for a file with no timeline.
+func (m *Model) TimeAt(pos int64) (elapsed, total float64, ok bool) {
+	n := len(m.TimePos)
+	if n == 0 || m.TimeTotal <= 0 {
+		return 0, 0, false
+	}
+	i := sort.Search(n, func(i int) bool { return m.TimePos[i] > pos })
+	switch {
+	case i == 0:
+		return 0, float64(m.TimeTotal), true
+	case i == n:
+		return float64(m.TimeVal[n-1]), float64(m.TimeTotal), true
+	}
+	// Between two marks, the time follows the offset.
+	p0, p1, t0, t1 := m.TimePos[i-1], m.TimePos[i], m.TimeVal[i-1], m.TimeVal[i]
+	f := float64(pos-p0) / float64(max(1, p1-p0))
+	return float64(t0) + f*float64(t1-t0), float64(m.TimeTotal), true
+}
+
+// timeline collects the marks of a timeline: offsets, and the seconds at each one.
+type timeline struct {
+	pos   []int64
+	val   []float32
+	total float64
+}
+
+func (t *timeline) add(pos int64, sec float64) {
+	t.pos, t.val = append(t.pos, pos), append(t.val, float32(sec))
 }
 
 // Parse reads G-code. Moves that do not extrude are skipped.
@@ -53,6 +94,9 @@ func Parse(r io.Reader) (*Model, error) {
 	st := newSpeedStats()
 	objects := map[string]map[string]bool{} // names by kind of mark: each slicer names an object its own way per mark
 	var pos int64
+	// The timelines: the marks of the slicer, and the time of the moves at each layer.
+	var slicer, moves timeline
+	moveT, m73Total := 0.0, 0.0
 	for {
 		line, err := br.ReadString('\n')
 		pos += int64(len(line))
@@ -61,6 +105,15 @@ func Parse(r io.Reader) (*Model, error) {
 		} else if strings.HasPrefix(line, ";LAYER:") || strings.HasPrefix(line, ";LAYER_CHANGE") {
 			// Cura writes ";LAYER:n", PrusaSlicer and OrcaSlicer ";LAYER_CHANGE".
 			m.LayerPos = append(m.LayerPos, pos-int64(len(line)))
+			moves.add(pos-int64(len(line)), moveT)
+		} else if v, ok := strings.CutPrefix(line, ";TIME_ELAPSED:"); ok {
+			if t, err := strconv.ParseFloat(strings.TrimSpace(v), 64); err == nil {
+				slicer.add(pos, t)
+			}
+		} else if v, ok := strings.CutPrefix(line, ";TIME:"); ok {
+			if t, err := strconv.ParseFloat(strings.TrimSpace(v), 64); err == nil {
+				slicer.total = t
+			}
 		} else if n, ok := layerCount(line); ok {
 			m.LayerCount = n
 		} else if mark, name, ok := objectName(line); ok {
@@ -105,6 +158,18 @@ func Parse(r io.Reader) (*Model, error) {
 					}
 				}
 				m.FanPos, m.FanVal = append(m.FanPos, pos), append(m.FanVal, v)
+			case "M73":
+				// PrusaSlicer and OrcaSlicer: M73 P<percent> R<minutes left>. The first one has the
+				// whole time.
+				for _, w := range f[1:] {
+					if r, ok := word(w, 'R'); ok {
+						if m73Total == 0 {
+							m73Total = r * 60
+						}
+						slicer.add(pos, m73Total-r*60)
+						slicer.total = max(slicer.total, m73Total)
+					}
+				}
 			case "PRINT_END":
 				m.EndStart = pos - int64(len(line))
 			case "G90":
@@ -139,6 +204,9 @@ func Parse(r io.Reader) (*Model, error) {
 					}
 				}
 				length := math.Hypot(nx-x, ny-y)
+				if d := math.Sqrt(length*length + (nz-z)*(nz-z)); d > 0 && feed > 0 {
+					moveT += d / (feed / 60)
+				}
 				if hasE && ne > e && length > 0 {
 					m.Segs = append(m.Segs, Seg{float32(x), float32(y), float32(z), float32(nx), float32(ny), float32(nz), pos, kind, float32(feed / 60)})
 					m.MaxZ = max(m.MaxZ, float32(nz))
@@ -154,6 +222,15 @@ func Parse(r io.Reader) (*Model, error) {
 		}
 	}
 	m.Speeds = st.result()
+	moves.add(pos, moveT)
+	moves.total = moveT
+	// The marks of the slicer are better than the time of the moves: they know the accelerations.
+	if len(slicer.pos) >= 2 {
+		slicer.total = max(slicer.total, float64(slicer.val[len(slicer.val)-1]))
+		m.TimePos, m.TimeVal, m.TimeTotal, m.TimeSlicer = slicer.pos, slicer.val, float32(slicer.total), true
+	} else if moveT > 0 {
+		m.TimePos, m.TimeVal, m.TimeTotal = moves.pos, moves.val, float32(moves.total)
+	}
 	for _, names := range objects {
 		m.Objects = max(m.Objects, len(names))
 	}
