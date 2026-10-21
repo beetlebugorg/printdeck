@@ -186,6 +186,8 @@ func (a *App) OpenPrintScreen(name string) {
 		}
 	case "flash":
 		a.flash = &flashState{step: "Writing", done: 41, total: 100}
+	case "update":
+		a.pages = []page{pageMachine, pageUpdate}
 	case "console":
 		a.pages = []page{pageMachine, pageConsole}
 	case "setup", "error":
@@ -241,3 +243,11 @@ func (a *App) OpenSetupScreen(name string) {
 		a.setup.step, a.setup.help = setupDone, true
 	}
 }
+
+// DemoUpdater is an updater with a fixed state; for the demo and the manual.
+type DemoUpdater struct{ S UpdateStatus }
+
+func (d *DemoUpdater) Status() UpdateStatus { return d.S }
+func (d *DemoUpdater) Check()               {}
+func (d *DemoUpdater) Install()             {}
+func (d *DemoUpdater) SetChannel(beta bool) { d.S.Beta = beta }

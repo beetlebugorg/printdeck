@@ -206,6 +206,15 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		{"Macros", macros, func() { a.open(pageMacros) }},
 		{"Console", "Type G-code, and read the replies", func() { a.open(pageConsole) }},
 	}
+	upWarn := false
+	if a.Updater != nil {
+		line, warn := updateLine(a.Updater.Status())
+		upWarn = warn
+		rows = append([]struct {
+			t, s string
+			tap  func()
+		}{{"Software update", line, func() { a.open(pageUpdate) }}}, rows...)
+	}
 	if a.Setup != nil {
 		rows = append(rows, struct {
 			t, s string
@@ -213,16 +222,20 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		}{"Wi-Fi and help", "The network, the password, the addresses", a.OpenHelp})
 	}
 	for i, r := range rows {
-		a.menuRow(c, image.Rect(24, 262+i*76, W-24, 262+i*76+70), r.t, r.s, dim, r.tap)
+		col := dim
+		if i == 0 && upWarn {
+			col = orange
+		}
+		a.menuRow(c, image.Rect(24, 256+i*65, W-24, 256+i*65+60), r.t, r.s, col, r.tap)
 	}
 	half := (W - 48 - 12) / 2
-	a.button(c, image.Rect(24, 642, 24+half, 712), "Restart Klipper", raised, text, func() {
+	a.button(c, image.Rect(24, 650, 24+half, 716), "Restart Klipper", raised, text, func() {
 		a.confirm = &confirmBox{question: "Restart Klipper?", yes: "Restart", onYes: func() {
 			a.Toast("Restarting Klipper…")
 			a.do(pr.RestartKlipper)
 		}}
 	})
-	a.button(c, image.Rect(W-24-half, 642, W-24, 712), "Firmware restart", raised, red, func() {
+	a.button(c, image.Rect(W-24-half, 650, W-24, 716), "Firmware restart", raised, red, func() {
 		a.confirm = &confirmBox{question: "Restart the printer firmware?", yes: "Restart", danger: true, onYes: func() {
 			a.Toast("Restarting the firmware…")
 			a.do(pr.FirmwareRestart)

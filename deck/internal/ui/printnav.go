@@ -28,6 +28,7 @@ const (
 	pageConsole
 	pageStats
 	pageConfigs // the example configs of Klipper, for the setup of a new printer
+	pageUpdate  // the software update
 )
 
 // open shows a page over the current one.
