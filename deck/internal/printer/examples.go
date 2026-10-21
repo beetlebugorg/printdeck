@@ -171,3 +171,22 @@ func UseExample(path, file, serial string) error {
 	}
 	return os.Rename(tmp, path)
 }
+
+// boardBrands are words in the USB names of printer boards, and the brand of the printers that
+// come with the board.
+var boardBrands = []struct{ word, brand string }{
+	{"rambo", "LulzBot"}, {"ultimachine", "LulzBot"}, {"einsy", "Prusa"}, {"prusa", "Prusa"},
+	{"creality", "Creality"}, {"anycubic", "Anycubic"}, {"flashforge", "FlashForge"},
+}
+
+// SuggestedBrand returns the brand of the printers that usually have a board, from the USB name
+// of the board, or "".
+func SuggestedBrand(boardName string) string {
+	n := strings.ToLower(boardName)
+	for _, b := range boardBrands {
+		if strings.Contains(n, b.word) {
+			return b.brand
+		}
+	}
+	return ""
+}
