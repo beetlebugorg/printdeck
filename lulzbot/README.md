@@ -19,25 +19,32 @@ electronics chassis, and it wraps around the front left edge of the chassis.
 - The drive is in the head, flat on the back panel, behind the display.
 - The pod is on the left side of the chassis (the aluminium cover), at the same height as the
   head. It holds the Pi and the cables. The white grille snaps into a pocket of the pod.
-- There is no hole to drill and no nut in the rail. Two printed clips snap into the front slot of
-  the rail and hold the right end of the head. Two screws through a flange of the plate hold up the
-  head. The printer USB cable and the power cable leave at the rear face of the chassis.
+- There is no hole to drill and no metal nut in the rail. Two printed clips hold the right end of
+  the head on the front slot of the rail. A printed twist nut goes into the slot along it and
+  turns a quarter turn behind the lips, and an M3 x 8 screw from the clip pulls it up. Two screws
+  through a flange of the plate hold up the head. The printer USB cable and the power cable leave
+  at the rear face of the chassis.
 
 ## Parts
 
 | File | Colour | Print orientation | Filament | Time |
 |---|---|---|---|---|
-| `stl/head.stl` | Navy | Face down | 92 g | 5 h 24 min |
-| `stl/pod.stl` | Navy | Outer face down | 75 g | 4 h 17 min |
-| `stl/back.stl` | Orange | Rear face down | 66 g | 4 h 30 min |
-| `stl/plate.stl` | Orange | Cover face down | 53 g | 2 h 52 min |
-| `stl/clip.stl` (print 2) | Orange | On its end | 2 x 6 g | 2 x 19 min |
-| `stl/grille.stl` | White | Back down | 12 g | 0 h 47 min |
+| `stl/head.stl` | Navy | Face down | 87 g | 4 h 28 min |
+| `stl/pod.stl` | Navy | Outer face down | 75 g | 3 h 45 min |
+| `stl/back.stl` | Orange | Rear face down, 0.4 mm layers | 69 g | 3 h 16 min |
+| `stl/plate.stl` | Orange | Cover face down, 0.4 mm layers | 58 g | 2 h 11 min |
+| `stl/clip.stl` (print 2) | Orange | On its end, with a brim | 2 x 4 g | 2 x 18 min |
+| `stl/clip_nut.stl` (print 2) | Orange | Wide face down | 2 x 1 g | 2 x 2 min |
+| `stl/grille.stl` | White | Back down | 12 g | 0 h 42 min |
 
-In total: 310 g of PLA (navy 167 g, orange 131 g, white 12 g) and 18 h 28 min of printing. The
-numbers come from slices with the Cura profiles in `cura/` (CuraEngine, TAZ Workhorse SE tool
-head, 0.5 mm nozzle, 2.85 mm PLA). `make.sh` checks each part: one closed mesh, no flat ceiling,
-no face flatter than 40 degrees, and 0 g of support in a slice with supports on.
+In total: 311 g of PLA (navy 162 g, orange 137 g, white 12 g) and 15 h 2 min of printing. Print
+the display fit test first (`stl/fit_display.stl`, 22 g, 1 h 10 min): the display pocket has
+0.3 mm of clearance at each side. The numbers come from slices with the Cura profiles in `cura/`
+(CuraEngine, TAZ Workhorse SE tool head, 0.5 mm nozzle, 2.85 mm PLA). The profiles keep the flow
+at 12 mm3/s or less, with slower outer walls. `make.sh` checks each part: one closed mesh, no
+flat ceiling, no face flatter than 40 degrees, and 0 g of support in a slice with supports on.
+CuraEngine crashes on the head with supports everywhere, so the head is sliced with supports
+from the build plate; the overhang check on the STL covers the rest.
 
 ## Hardware
 
@@ -45,13 +52,17 @@ no face flatter than 40 degrees, and 0 g of support in a slice with supports on.
 each screw, washer, and heat-set insert is in the model at its place, and `make_pdf.py` stops if
 the step chips and the list do not agree. All screws are M3 socket cap head screws.
 
-- M3 x 6 socket cap head: 12 (display 4, Pi 4, drive 4)
-- M3 x 8 socket cap head: 2 (pod onto the plate)
+- M3 x 6 socket cap head: 12 (display 4, Pi 4, drive 4). The display and Pi screws cut their
+  own thread in a 2.5 mm hole in the boss: turn them until snug, no more.
+- M3 x 8 socket cap head: 4 (pod onto the plate 2, rail clips into the twist nuts 2)
 - M3 x 10 socket cap head: 6 (back panel into the head 4; plate on the cover 2, upper pair of PP-FP0164)
 - M3 x 12 socket cap head: 2 (plate flange into the back panel)
 - M3 washer: 2 (under the cover screws)
-- M3 x 5 heat-set insert: 10 (display bosses 4, Pi bosses 4, pod blocks 2; 3 to 5 mm fits)
 - M3 x 7 heat-set insert: 6 (head 4, back panel 2; 3 to 7 mm fits)
+- M3 x 5 heat-set insert: 2 (pod blocks; 3 to 5 mm fits)
+- M3 x 4 heat-set insert: 2 (twist nuts; 3 to 4 mm fits)
+
+The drive sits on four 0.5 mm pads, so its M3 x 6 screws go 2.5 mm into the drive.
 
 Drill the four mounting holes of the Pi 5 from 2.7 mm to 3.2 mm for M3 (step 1 of the PDF).
 

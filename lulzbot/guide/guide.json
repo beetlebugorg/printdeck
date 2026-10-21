@@ -1,10 +1,10 @@
 {
  "totals": {
-  "grams": 310,
+  "grams": 311,
   "metres": 39,
-  "time": "18 h 28 min",
-  "cost": "$7.13",
-  "parts": 7,
+  "time": "15 h 02 min",
+  "cost": "$7.15",
+  "parts": 9,
   "pricePerKg": "$22.99"
  },
  "prints": [
@@ -14,10 +14,10 @@
    "colour": "Navy",
    "swatch": "#1F2B4D",
    "count": 1,
-   "grams": 92,
-   "metres": 11.6,
-   "time": "5 h 24 min",
-   "cost": "$2.12",
+   "grams": 87,
+   "metres": 11.0,
+   "time": "4 h 28 min",
+   "cost": "$2.00",
    "size": "252 × 126 × 50",
    "notes": "Face down. The screen opening is in the first layers: use a smooth sheet for a clean face.",
    "image": "lulzbot-part_head"
@@ -30,9 +30,9 @@
    "count": 1,
    "grams": 75,
    "metres": 9.5,
-   "time": "4 h 17 min",
+   "time": "3 h 45 min",
    "cost": "$1.72",
-   "size": "173 × 135 × 22",
+   "size": "173 × 135 × 24",
    "notes": "Outer face down. The grille pocket and the vents are in the first layers.",
    "image": "lulzbot-part_pod"
   },
@@ -42,11 +42,11 @@
    "colour": "Orange",
    "swatch": "#E8742A",
    "count": 1,
-   "grams": 66,
-   "metres": 8.4,
-   "time": "4 h 30 min",
-   "cost": "$1.52",
-   "size": "252 × 131 × 9",
+   "grams": 69,
+   "metres": 8.7,
+   "time": "3 h 16 min",
+   "cost": "$1.59",
+   "size": "252 × 131 × 10",
    "notes": "Rear face down. A flat plate with the clip slots and the windows.",
    "image": "lulzbot-part_back"
   },
@@ -56,10 +56,10 @@
    "colour": "Orange",
    "swatch": "#E8742A",
    "count": 1,
-   "grams": 53,
-   "metres": 6.7,
-   "time": "2 h 52 min",
-   "cost": "$1.22",
+   "grams": 58,
+   "metres": 7.3,
+   "time": "2 h 11 min",
+   "cost": "$1.33",
    "size": "173 × 135 × 23",
    "notes": "The face that goes on the cover down. The bosses and the hooks point up.",
    "image": "lulzbot-part_plate"
@@ -70,13 +70,27 @@
    "colour": "Orange",
    "swatch": "#E8742A",
    "count": 2,
-   "grams": 12,
-   "metres": 1.4,
-   "time": "0 h 38 min",
-   "cost": "$0.28",
-   "size": "10 × 16 × 24",
-   "notes": "On its end: the section is on the bed, so the legs bend along the layers. Print 2.",
+   "grams": 8,
+   "metres": 0.8,
+   "time": "0 h 36 min",
+   "cost": "$0.18",
+   "size": "6 × 16 × 24",
+   "notes": "On its end, with a brim: the section of the clip is on the bed. Print 2.",
    "image": "lulzbot-part_clip"
+  },
+  {
+   "file": "stl/clip_nut.stl",
+   "name": "clip nut",
+   "colour": "Orange",
+   "swatch": "#E8742A",
+   "count": 2,
+   "grams": 2,
+   "metres": 0.2,
+   "time": "0 h 04 min",
+   "cost": "$0.05",
+   "size": "12 × 5 × 4",
+   "notes": "The wide face down. Print 2.",
+   "image": "lulzbot-part_clip_nut"
   },
   {
    "file": "stl/grille.stl",
@@ -86,7 +100,7 @@
    "count": 1,
    "grams": 12,
    "metres": 1.5,
-   "time": "0 h 47 min",
+   "time": "0 h 42 min",
    "cost": "$0.28",
    "size": "58 × 84 × 3",
    "notes": "Back down. The front face is the top layer. The snap tabs bend along the layers.",
@@ -99,10 +113,10 @@
   "colour": "Navy",
   "swatch": "#1F2B4D",
   "count": 1,
-  "grams": 21,
+  "grams": 22,
   "metres": 2.7,
-  "time": "1 h 19 min",
-  "cost": "$0.48",
+  "time": "1 h 10 min",
+  "cost": "$0.51",
   "size": "0 × 0 × 0",
   "notes": "Optional fit test of the screen opening. Face down.",
   "image": "lulzbot-part_fit_display"
@@ -121,12 +135,20 @@
    "PLA, 2.85 mm"
   ],
   [
-   "Head, pod, back panel, grille, clip",
+   "Head, pod, grille",
    "0.3 mm layers, 1.5 mm walls, 1.2 mm top and bottom, 15 % grid infill, skirt"
   ],
   [
-   "Plate",
-   "0.3 mm layers, 1.5 mm walls, 15 % grid infill, skirt"
+   "Back panel, plate",
+   "0.4 mm layers (a 0.3 mm first layer), 1.5 mm walls, 15 % grid infill, skirt"
+  ],
+  [
+   "Clip, twist nut",
+   "0.3 mm layers, 100 % infill. The clip has a brim."
+  ],
+  [
+   "Speeds",
+   "Infill 75 mm/s (60 mm/s with 0.4 mm layers), inner walls 60 mm/s, outer walls 35 mm/s (30 mm/s on a face that shows), travel 200 mm/s. The flow stays at 12 mm³/s or less."
   ],
   [
    "Supports",
@@ -147,12 +169,12 @@
   {
    "count": 12,
    "item": "M3 × 6 socket cap head",
-   "where": "4 × display board; 4 × Pi; 4 × drive on the back panel"
+   "where": "4 × display board (it cuts its thread); 4 × Pi (it cuts its thread); 4 × drive on the back panel"
   },
   {
-   "count": 2,
+   "count": 4,
    "item": "M3 × 8 socket cap head",
-   "where": "2 × pod onto the plate"
+   "where": "2 × pod onto the plate; 2 × rail clip into its twist nut"
   },
   {
    "count": 2,
@@ -160,9 +182,14 @@
    "where": "2 × under the cover screws"
   },
   {
-   "count": 10,
+   "count": 2,
+   "item": "M3 × 4 heat-set insert",
+   "where": "2 × twist nuts (3 to 4 mm fits)"
+  },
+  {
+   "count": 2,
    "item": "M3 × 5 heat-set insert",
-   "where": "4 × head, display bosses (3 to 5 mm fits); 4 × plate, Pi bosses (3 to 5 mm fits); 2 × plate, pod screw blocks (3 to 5 mm fits)"
+   "where": "2 × plate, pod screw blocks (3 to 5 mm fits)"
   },
   {
    "count": 6,
@@ -243,15 +270,14 @@
     "head",
     "display",
     "foam tape",
-    "4 × M3 × 5 insert",
     "4 × M3 × 7 insert",
     "4 × M3 × 6"
    ],
    "items": [
-    "Press the four M3 × 5 inserts into the four bosses of the head, and the four M3 × 7 inserts into the two columns and the two blocks at the back. Use a soldering iron at 220 °C. Stop when the insert is flush.",
+    "Press the four M3 × 7 inserts into the two columns and the two blocks at the back of the head. Use a soldering iron at 220 °C. Stop when the insert is flush.",
     "Put the head face down on a soft cloth.",
     "Put the display glass down into the pocket: the sockets of the board at the left (seen from the front), the FPC edge of the panel at the top.",
-    "Put the foam tape on the back of the panel. Put the board on the four bosses, and attach it with four M3 × 6 screws.",
+    "Put the foam tape on the back of the panel. Put the board on the four bosses, and attach it with four M3 × 6 screws. They cut their own thread in the bosses: turn them until they are snug, and no more.",
     "Connect the HDMI cable and the micro USB cable to the board. Both plugs point to the left."
    ],
    "note": "The screen opening is at the centre of the face: the border is the same at the left and the right."
@@ -267,7 +293,7 @@
    ],
    "items": [
     "Press the two M3 × 7 inserts into the two bosses on the front face of the back panel, from the rear.",
-    "Put the drive on the front face of the back panel: the adapter toward the left (the pod side), the M3 holes against the panel.",
+    "Put the drive on the four pads on the front face of the back panel: the adapter toward the left (the pod side), the M3 holes on the pads.",
     "Attach it with four M3 × 6 screws from the rear face of the panel.",
     "Connect the micro-B plug of the drive cable to the adapter."
    ],
@@ -292,16 +318,16 @@
    "title": "Plate on the cover",
    "need": [
     "plate",
-    "6 × M3 × 5 insert",
+    "2 × M3 × 5 insert",
     "2 × M3 × 10",
     "2 × M3 washer"
    ],
    "items": [
-    "Press four M3 × 5 inserts into the four Pi bosses, and two into the two blocks at the bottom of the plate (from below).",
+    "Press the two M3 × 5 inserts into the two blocks at the bottom of the plate (from below).",
     "The cover is PP-FP0164, with 10 screws. Remove its upper pair of screws from the left side of the chassis: the front one and the rear one, 237.3 mm above the bottom edge of the cover.",
     "Put the plate on the cover, with the slots of the two pads over the two holes. Attach it with two M3 × 10 screws, each with a washer."
    ],
-   "note": "The slots in the pads let the plate fit 5 mm up or down and 0.5 mm to the front or the rear. The pad is 4 mm thick, so the M3 × 10 goes into the nut of the chassis the same depth as the old screw."
+   "note": "The slots in the pads let the plate fit 5 mm up or down and 0.5 mm to the front or the rear. The pad is 4 mm thick, so the M3 × 10 goes 3.5 mm into the nut of the chassis (the old screw went 4.0 mm)."
   },
   {
    "image": "step_pi",
@@ -314,7 +340,7 @@
    "items": [
     "Put the Active Cooler on the Pi, and connect its cable to the fan connector.",
     "Put the Pi on the four bosses: the USB ports toward the front of the printer, the USB-C and HDMI ports down.",
-    "Attach it with four M3 × 6 screws."
+    "Attach it with four M3 × 6 screws. They cut their own thread in the bosses: turn them until they are snug, and no more."
    ],
    "note": ""
   },
@@ -322,13 +348,19 @@
    "image": "step_clips",
    "title": "Clips in the rail",
    "need": [
-    "2 × rail clip"
+    "2 × rail clip",
+    "2 × twist nut",
+    "2 × M3 × 4 insert",
+    "2 × M3 × 8"
    ],
    "items": [
+    "Press an M3 × 4 insert into the hole of each twist nut, from the narrow face. Stop when it is flush.",
+    "Put an M3 × 8 screw into the counterbore in the key of each clip, and turn it two turns into a nut. The wide face of the nut points to the clip.",
     "Hold the back panel on the front face of the front left rail, with its bottom edge 125 mm above the bottom of the chassis. Mark the top of the two long slots in the panel on the rail.",
-    "Push each clip into the front slot of the rail, with its top at a mark, until it clicks. The dovetail key points to the front."
+    "Turn a clip a quarter turn, so that the nut is along the slot. Push the nut into the front slot of the rail at a mark. Turn the clip back until the key is along the rail: the nut turns with it, behind the lips.",
+    "Tighten the screw until the clip is tight on the rail. Do the same with the second clip."
    ],
-   "note": "The clips need no nut: their two legs snap behind the lips of the slot. A clip slides in the slot, so you can move it up or down by hand."
+   "note": "The nut is wider than the opening of the slot when it is across the slot. If the nut does not turn with the clip, hold the clip and turn the screw back a little, then try again."
   },
   {
    "image": "step_hang",

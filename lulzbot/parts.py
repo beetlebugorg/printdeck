@@ -2,12 +2,12 @@
 # are in mount coordinates (see shape.py). The head is in head coordinates.
 # LOC moves mount coordinates to the printer; HEAD_LOC moves head coordinates to the mount.
 #
-# Joints. Six M3 x 10 screws hold the plate on the chassis cover, in the holes of the cover
-# screws (four for each cover version). Four countersunk M3 screws hold the head on the back
-# panel. The back panel hangs on two M5 screws in the front left rail (keyholes), and two M3
-# screws through a flange of the plate hold its left end. The pod slides up and in at 45
-# degrees onto two hooks on the plate, and two M3 screws go up through its bottom wall into the
-# plate. The grille is in a window of the pod; two posts on the plate hold it in. Every hole
+# Joints. Two M3 x 10 screws hold the plate on the chassis cover, in the holes of the upper pair
+# of cover screws. Four M3 x 10 socket cap screws hold the head on the back panel. The back
+# panel hangs on the dovetail keys of two clips in the front left rail (a twist nut and an
+# M3 x 8 screw hold each clip), and two M3 screws through a flange of the plate hold its left
+# end. The pod slides up and in at 45 degrees onto two hooks on the plate, and two M3 screws go
+# up through its bottom wall into the plate. The grille snaps into a pocket of the pod. Every hole
 # and hook has 45 degree faces in place of overhangs, so no part needs supports.
 
 import math
@@ -200,7 +200,8 @@ def head():
     inner = rounded_rect(p0 + S.WALL, p1 - S.WALL, q0 + S.WALL, q1 - S.WALL, S.R_IN, -151, -S.SKIN)
     s = (outer - inner) & keep_front()
     # Display (landscape): the LCD pocket in the skin (the glass lies on a 1 mm lip), the
-    # opening, and the four bosses with M3 heat-set inserts. The board ears rest on the bosses.
+    # opening, and the four bosses. The board ears rest on the bosses; the M3 x 6 screws cut
+    # their thread in a 2.5 mm hole.
     ph, pv = S.POCKET_HV
     dp, dq = S.DISP_OFF
     s = s - box(dp - ph / 2, dp + ph / 2, dq - pv / 2, dq + pv / 2, -S.SKIN - 0.01, -S.LIP)
@@ -210,7 +211,7 @@ def head():
     for a, b in S.EARS:
         h, v = dp + b, dq - a
         s = s + cyl_z(h, v, S.BOSS_R, board_front, -S.SKIN + 0.01)
-        s = s - cyl_z(h, v, S.INSERT_D / 2, board_front - 0.01, board_front + S.INSERT_DEPTH)
+        s = s - cyl_z(h, v, S.TAP_D / 2, board_front - 0.01, board_front + S.DISPLAY_TAP_DEPTH)
     inside = box(p0 + 0.5, p1 - 0.5, q0 + 0.5, q1 - 0.5, -150, -S.SKIN + 0.01)
     for y, z in head_screw_points():
         if z < -100:
@@ -276,10 +277,14 @@ def back():
     # rear face, behind the head (a socket cap head is 3 mm high: the panel is 3.5 mm from the chassis).
     for y, z in head_screw_points() + drive_holes():
         b = b - cyl_x(y, z, 1.7, x0 - 1, x1 + 1)
+    # The pads under the drive, at its four holes.
+    for y, z in drive_holes():
+        b = b + cyl_x(y, z, 4.5, x1 - 0.01, x1 + S.DRIVE_PAD)
+        b = b - cyl_x(y, z, 1.7, x0 - 1, x1 + S.DRIVE_PAD + 1)
     # Bosses with M3 heat-set inserts for the two screws through the plate flange.
     depth = S.INSERTS["back_flange"][2] + S.INSERT_BLIND
     for y, z in S.FLANGE_SCREWS:
-        b = b + cyl_x(y, z, 4.5, x1 - 0.01, x0 + depth + 1.0)
+        b = b + cyl_x(y, z, 4.5, x1 - 0.01, x0 + depth + 2.4)   # past the point of the pocket
         b = b - cyl_x(y, z, S.INSERT_D / 2, x0 - 0.01, x0 + depth)
         b = b - Pos(x0 + depth - 0.01, y, z) * Rot(0, 90, 0) * Cone(S.INSERT_D / 2, 0.15, S.INSERT_D / 2 - 0.15,
                                                                     align=(Align.CENTER, Align.CENTER, Align.MIN))
@@ -350,7 +355,7 @@ def plate():
         p = p - rounded_rect(x - r, x + r, y - h - r, y + h + r, r - 0.01, -1, S.PAD_T + 1)
     for x, y in S.PI_HOLES:
         p = p + cyl_z(x, y, S.PI_BOSS_R, S.T_PLATE - 0.01, S.PI_Z)
-        p = p - cyl_z(x, y, S.INSERT_D / 2, S.PI_Z - S.INSERTS["pi"][2] - S.INSERT_BLIND, S.PI_Z + 0.01)
+        p = p - cyl_z(x, y, S.TAP_D / 2, S.PI_Z - S.PI_TAP_DEPTH, S.PI_Z + 0.01)
     # Windows: the plate is a frame on the cover (less filament).
     for x0, x1, y0, y1 in S.PLATE_WINDOWS:
         p = p - rounded_rect(x0, x1, y0, y1, 5.0, -1, S.T_PLATE + 1)
@@ -477,14 +482,12 @@ def inserts():
     out = []
     bf = -S.LIP + S.BOARD_C[1]
     dp, dq = S.DISP_OFF
-    for i, (a, b) in enumerate(S.EARS):
-        out.append((f"insert_display{i}", HEAD_LOC * insert_tube("z", dp + b, dq - a, bf, 1, u["display"]), "brass"))
     for i, (y, z) in enumerate(head_screw_points()):
         out.append((f"insert_head_back{i}", insert_tube("x", y, z, S.BACK_X[1], 1, u["head_back"]), "brass"))
     for i, (y, z) in enumerate(S.FLANGE_SCREWS):
         out.append((f"insert_back_flange{i}", insert_tube("x", y, z, S.BACK_X[0], 1, u["back_flange"]), "brass"))
-    for i, (x, y) in enumerate(S.PI_HOLES):
-        out.append((f"insert_pi{i}", insert_tube("z", x, y, S.PI_Z, -1, u["pi"]), "brass"))
+    for i, yc in enumerate(S.CLIPS_Y):
+        out.append((f"insert_clip_nut{i}", insert_tube("x", yc, S.RAIL_SLOT_Z, nut_x()[0], -1, u["clip_nut"]), "brass"))
     for i, x in enumerate(S.BOTTOM_SCREWS_X):
         out.append((f"insert_pod_block{i}", insert_tube("y", x, S.BOTTOM_SCREW_Z, S.POD_Y0 + S.BLOCK_Y[0], 1,
                                                         u["pod_block"]), "brass"))
@@ -510,8 +513,10 @@ def head_screws():
 
 
 def clip(yc):
-    """A rail clip (mount coordinates): a flange on the rail face, two legs with barbs that snap
-    behind the lips of the slot, and a dovetail key for the back panel."""
+    """A rail clip (mount coordinates): a flange on the rail face, and a dovetail key for the back
+    panel. An M3 x 8 screw goes from a counterbore in the key through the clip into the twist
+    nut behind the lips of the slot. The clip prints on its end (+y up), so the screw hole has
+    a 45 degree point toward +y."""
     zc = S.RAIL_SLOT_Z
     xr = S.RAIL_FRONT_X
     x0, x1 = S.BACK_X
@@ -520,14 +525,46 @@ def clip(yc):
     c = prism_y([(zc - fw, xr + 0.05), (zc + fw, xr + 0.05), (zc + fw, x0), (zc - fw, x0)], y0, y1)
     k0, k1 = S.CLIP_KEY[0] / 2, S.CLIP_KEY[1] / 2
     c = c + prism_y([(zc - k0, x0 - 0.01), (zc + k0, x0 - 0.01), (zc + k1, x1), (zc - k1, x1)], y0, y1)
-    li, lo = S.CLIP_LEG
-    bt = S.CLIP_BARB
-    xb = xr - 2.0                       # the catch face, 0.3 mm behind the lip
-    xe = xr - S.CLIP_LEG_DEPTH
-    for sg in (1, -1):
-        pts = [(li, xr + 0.06), (lo, xr + 0.06), (lo, xb), (bt, xb), (lo, xe + 0.5), (li, xe)]
-        c = c + prism_y([(zc + sg * u, v) for u, v in pts], y0, y1)
+    d, depth = S.CBORE[3]
+    c = c - teardrop_up(yc, zc, 1.7, xr - 1, x1 + 1)
+    c = c - teardrop_up(yc, zc, d / 2, x1 - depth, x1 + 1)
     return c
+
+
+def teardrop_up(y, z, r, x0, x1):
+    """A hole along x with a 45 degree point toward +y (up in the print of the clip)."""
+    q = r / SQ2
+    pts = [(y, z), (y + q, z - q), (y + r * SQ2, z), (y + q, z + q)]
+    return cyl_x(y, z, r, x0, x1) + prism_x(pts, x0, x1)
+
+
+def nut_x():
+    """The x range of the twist nut: its wide face 0.1 mm behind the lips of the slot."""
+    top = S.RAIL_FRONT_X - S.RAIL_LIP - S.NUT_GAP
+    return top, top - S.NUT[2]
+
+
+def clip_nut(yc):
+    """The twist nut of a clip, in its place behind the lips (mount coordinates): 11.6 mm across
+    the slot at the lips, 4.8 mm along it, with 45 degree sides like the V of the slot, two
+    opposite round corners, and a hole for an M3 heat-set insert. It prints with the wide face
+    on the bed."""
+    zc = S.RAIL_SLOT_Z
+    a, b, t = S.NUT
+    top, bottom = nut_x()
+    h = a / 2
+    n = prism_y([(zc - h, top), (zc + h, top), (zc + h - t, bottom), (zc - h + t, bottom)], yc - b / 2, yc + b / 2)
+    # Round the two corners at (+y, +z) and (-y, -z), so the nut turns easily.
+    n = fillet(n.edges().filter_by(lambda e: abs(e.tangent_at(0.5).Y) < 0.5).filter_by(
+        lambda e: (e.center().Y - yc) * (e.center().Z - zc) > 0.5), S.NUT_ROUND)
+    return n - cyl_x(yc, zc, S.INSERT_D / 2, bottom - 1, top + 1)
+
+
+def clip_screws():
+    """M3 x 8, from the counterbore in the key of each clip into the twist nut."""
+    seat = S.BACK_X[1] - S.CBORE[3][1]
+    return [(f"clip_screw{i}", cap("x", yc, S.RAIL_SLOT_Z, seat, -1, S.CLIP_SCREW), "black_steel")
+            for i, yc in enumerate(S.CLIPS_Y)]
 
 
 def drive_screws():
@@ -619,7 +656,7 @@ def drive_frame():
     """The drive frame (from the Slate): local x along the drive toward the adapter (+z in
     mount), local z out of the back panel (+x), local y = -y. Origin: drive centre on the panel."""
     zc = S.DRIVE_Z_ADAPTER - S.DRIVE_ADAPTER
-    return Location(Plane(origin=(S.BACK_X[1], S.DRIVE_Y, zc), x_dir=(0, 0, 1), z_dir=(1, 0, 0)))
+    return Location(Plane(origin=(S.BACK_X[1] + S.DRIVE_PAD, S.DRIVE_Y, zc), x_dir=(0, 0, 1), z_dir=(1, 0, 0)))
 
 
 def drive_holes():
