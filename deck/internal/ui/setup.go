@@ -309,15 +309,22 @@ func (a *App) drawSetupDone(c *gfx.Canvas, box image.Rectangle) {
 	} else if pass != "" {
 		lines = append(lines, "Password of the remote screen", pass)
 	}
+	// Each label over its value; in two columns on a wide screen.
 	const rowH = 30
-	win := image.Rect(24, 80, W-24, 80+len(lines)/2*(2*rowH+10)+14)
+	cols := 1
+	if W > H {
+		cols = 2
+	}
+	n := len(lines) / 2
+	rows := (n + cols - 1) / cols
+	win := image.Rect(24, 80, W-24, 80+rows*(2*rowH+10)+14)
 	window(c, win)
-	for i := 0; i < len(lines); i += 2 {
-		y := win.Min.Y + 12 + i/2*(2*rowH+10)
-		label, value := image.Rect(win.Min.X+16, y, win.Max.X-16, y+rowH), image.Rect(win.Min.X+16, y+rowH, win.Max.X-16, y+2*rowH)
-		c.Text(label, strings.ToUpper(lines[i]), gfx.Face(true, 13), lcdDim, gfx.Left)
+	for i, cell := range kit.Grid(kit.Inset(win, 16, 12, 16, 12), cols, rows, 10)[:n] {
+		r := kit.Rows(cell, 0, kit.Px(rowH), kit.Px(rowH))
+		label, value := r[0], r[1]
+		c.Text(label, strings.ToUpper(lines[2*i]), gfx.Face(true, 13), lcdDim, gfx.Left)
 		face := gfx.Face(true, 20)
-		c.Text(value, gfx.Fit(face, lines[i+1], value.Dx()), face, lcdInk, gfx.Left)
+		c.Text(value, gfx.Fit(face, lines[2*i+1], value.Dx()), face, lcdInk, gfx.Left)
 	}
 	y := box.Max.Y - 92
 	half := (W - 48 - 8) / 2
