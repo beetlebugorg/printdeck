@@ -18,23 +18,11 @@ type Config struct {
 	// is to the right and down.
 	TouchOffsetX, TouchOffsetY int
 
-	SpotifyClientID string
-	DeviceName      string
-	LinkBase        string // address of this speaker for the login with a phone
-	StateDir        string
+	StateDir string
 
 	OctoPrintKey string // the key of the OctoPrint-compatible API for slicers
 	ModelDir     string // folder with STL files for the preview
 
-	AlsaCard string
-	// Speaker runs the Spotify Connect speaker (go-librespot) in this program, on SpeakerDevice,
-	// with its state in SpotifyDir.
-	Speaker            bool
-	SpeakerDevice      string
-	SpotifyDir         string
-	SpotifyDebug       bool // log the debug messages of go-librespot
-	MaxVolume          int
-	FloorDB, CeilDB    float64 // the decibels at 0% and 100% of the volume
 	PreheatTool        int
 	UnloadMM, LoadMM   float64 // filament lengths of the swap
 	JogInvertY         bool
@@ -48,40 +36,29 @@ type Config struct {
 
 func Load() Config {
 	c := Config{
-		Framebuffer:     str("FRAMEBUFFER", "/dev/fb0"),
-		Rotate:          num("DISPLAY_ROTATE", 90),
-		TouchInvertX:    num("TOUCH_INVERT_X", 0) == 1,
-		TouchInvertY:    num("TOUCH_INVERT_Y", 0) == 1,
-		TouchSwapXY:     num("TOUCH_SWAP_XY", 0) == 1,
-		TouchLog:        num("TOUCH_LOG", 0) == 1,
-		TouchOffsetX:    num("TOUCH_OFFSET_X", 0),
-		TouchOffsetY:    num("TOUCH_OFFSET_Y", 0),
-		SpotifyClientID: str("SPOTIFY_CLIENT_ID", ""),
-		DeviceName:      str("SPOTIFY_DEVICE_NAME", "Printdeck"),
-		LinkBase:        linkBase(),
-		StateDir:        str("STATE_DIRECTORY", "/var/lib/printdeck"),
-		RemoteAddr:      str("REMOTE_ADDR", ""),
-		KlippySocket:    str("KLIPPY_SOCKET", "/run/klipper/klippy.sock"),
-		GcodeDir:        str("GCODE_DIR", "/var/lib/klipper/gcodes"),
-		KlipperConfig:   str("KLIPPER_CONFIG", "/var/lib/klipper/config/printer.cfg"),
-		OctoPrintKey:    str("OCTOPRINT_API_KEY", ""),
-		ModelDir:        str("MODEL_DIR", "/var/lib/printdeck/models"),
-		AlsaCard:        str("ALSA_CARD", "sndrpihifiberry"),
-		Speaker:         str("SPOTIFY_SPEAKER", "1") == "1",
-		SpotifyDebug:    str("SPOTIFY_DEBUG", "0") == "1",
-		MaxVolume:       num("MAX_VOLUME", 100),
-		FloorDB:         float64(num("VOLUME_FLOOR_DB", -40)),
-		CeilDB:          float64(num("VOLUME_CEIL_DB", -10)),
-		PreheatTool:     num("PREHEAT_TOOL", 200),
-		UnloadMM:        float64(num("FILAMENT_UNLOAD_MM", 80)),
-		LoadMM:          float64(num("FILAMENT_LOAD_MM", 70)),
-		JogInvertY:      num("JOG_INVERT_Y", 0) == 1,
-		NightFrom:       num("NIGHT_FROM", 20),
-		NightTo:         num("NIGHT_TO", 7),
-		PreheatBed:      num("PREHEAT_BED", 60),
+		Framebuffer:   str("FRAMEBUFFER", "/dev/fb0"),
+		Rotate:        num("DISPLAY_ROTATE", 90),
+		TouchInvertX:  num("TOUCH_INVERT_X", 0) == 1,
+		TouchInvertY:  num("TOUCH_INVERT_Y", 0) == 1,
+		TouchSwapXY:   num("TOUCH_SWAP_XY", 0) == 1,
+		TouchLog:      num("TOUCH_LOG", 0) == 1,
+		TouchOffsetX:  num("TOUCH_OFFSET_X", 0),
+		TouchOffsetY:  num("TOUCH_OFFSET_Y", 0),
+		StateDir:      str("STATE_DIRECTORY", "/var/lib/printdeck"),
+		RemoteAddr:    str("REMOTE_ADDR", ""),
+		KlippySocket:  str("KLIPPY_SOCKET", "/run/klipper/klippy.sock"),
+		GcodeDir:      str("GCODE_DIR", "/var/lib/klipper/gcodes"),
+		KlipperConfig: str("KLIPPER_CONFIG", "/var/lib/klipper/config/printer.cfg"),
+		OctoPrintKey:  str("OCTOPRINT_API_KEY", ""),
+		ModelDir:      str("MODEL_DIR", "/var/lib/printdeck/models"),
+		PreheatTool:   num("PREHEAT_TOOL", 200),
+		UnloadMM:      float64(num("FILAMENT_UNLOAD_MM", 80)),
+		LoadMM:        float64(num("FILAMENT_LOAD_MM", 70)),
+		JogInvertY:    num("JOG_INVERT_Y", 0) == 1,
+		NightFrom:     num("NIGHT_FROM", 20),
+		NightTo:       num("NIGHT_TO", 7),
+		PreheatBed:    num("PREHEAT_BED", 60),
 	}
-	c.SpeakerDevice = str("SPEAKER_DEVICE", "hw:"+c.AlsaCard)
-	c.SpotifyDir = str("SPOTIFY_DIR", c.StateDir+"/spotify")
 	return c
 }
 
@@ -97,17 +74,4 @@ func num(k string, def int) int {
 		return v
 	}
 	return def
-}
-
-// linkBase is the address that the phone uses to reach the speaker for the Spotify login.
-// SPOTIFY_LINK_BASE changes it, for example to https://192.168.1.20:8888 when the phone cannot find .local names.
-func linkBase() string {
-	if v := os.Getenv("SPOTIFY_LINK_BASE"); v != "" {
-		return v
-	}
-	host, err := os.Hostname()
-	if err != nil || host == "" {
-		return ""
-	}
-	return "https://" + host + ".local:8888"
 }

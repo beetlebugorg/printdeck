@@ -31,7 +31,7 @@ func TestSettings(t *testing.T) {
 	fakeSettings(t)
 	// A file from a Windows computer, with CR LF line ends.
 	txt := "# Printdeck settings\r\nwifi_ssid=Workshop\r\nwifi_password=ThisIsAPassword\r\nwifi_country=DE\r\n" +
-		"spotify_client_id=0036c6efc79a4ccc97d8e3cd15337e5f\r\nhostname=deck2\r\ntimezone=Europe/Berlin\r\n"
+		"hostname=deck2\r\ntimezone=Europe/Berlin\r\n"
 	os.WriteFile(filepath.Join(configDir, "printdeck.txt"), []byte(txt), 0o644)
 	os.WriteFile(filepath.Join(configDir, "printer.cfg"), []byte("[mcu]\r\nserial: /dev/ttyACM0\r\n"), 0o644)
 	if err := applySettings(io.Discard); err != nil {
@@ -48,9 +48,6 @@ func TestSettings(t *testing.T) {
 	conf, _ := os.ReadFile(wpaConf)
 	if want, _ := wifiConf("Workshop", "ThisIsAPassword", "DE"); string(conf) != want {
 		t.Errorf("wpa config:\n%s", conf)
-	}
-	if b, _ := os.ReadFile(filepath.Join(stateDir, "spotify.env")); string(b) != "SPOTIFY_CLIENT_ID=0036c6efc79a4ccc97d8e3cd15337e5f\n" {
-		t.Errorf("spotify.env %q", b)
 	}
 	if b, _ := os.ReadFile(filepath.Join(etcDir, "hostname")); string(b) != "deck2\n" {
 		t.Errorf("hostname %q", b)
@@ -79,12 +76,12 @@ func TestSettings(t *testing.T) {
 
 func TestDeckSettings(t *testing.T) {
 	fakeSettings(t)
-	os.WriteFile(filepath.Join(configDir, "printdeck.txt"), []byte("display_rotate=90\r\nmax_volume=80\nremote_addr=:8080\n"), 0o644)
+	os.WriteFile(filepath.Join(configDir, "printdeck.txt"), []byte("display_rotate=90\r\npreheat_bed=70\nremote_addr=:8080\n"), 0o644)
 	if err := applySettings(io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	b, _ := os.ReadFile(filepath.Join(stateDir, "settings.env"))
-	if string(b) != "DISPLAY_ROTATE=90\nMAX_VOLUME=80\n" {
+	if string(b) != "DISPLAY_ROTATE=90\nPREHEAT_BED=70\n" {
 		t.Errorf("settings.env %q", b)
 	}
 	// With no settings in the file, settings.env goes.

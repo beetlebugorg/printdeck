@@ -7,7 +7,6 @@ import (
 
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
-	"printdeck/internal/spotify"
 	"printdeck/internal/touch"
 )
 
@@ -15,9 +14,7 @@ func TestLayerScrubber(t *testing.T) {
 	pr := &DemoPrinter{View: -1, State_: printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true,
 		Activity: "Printing", Layer: 12, Layers: 27, Completion: 40, Tool: 210, ToolTarget: 210, HasTimeLeft: true, TimeLeft: time.Hour}}
 	a := New()
-	a.Music = &DemoMusic{State_: spotify.State{Authorized: true}}
-	a.Printer, a.Vol = pr, DemoVolume(10)
-	a.SetTab(TabPrint)
+	a.Printer = pr
 	cv := gfx.New(W, BaseH)
 	a.Draw(cv)
 

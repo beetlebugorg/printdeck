@@ -1,4 +1,4 @@
-// Package ui is the full screen application: a Music tab and a Print tab on a 480x800 portrait canvas.
+// Package ui is the full screen application: the screens of the printer on a 480x800 portrait canvas.
 package ui
 
 import (
@@ -16,7 +16,6 @@ import (
 	"printdeck/internal/gcodemeta"
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
-	"printdeck/internal/spotify"
 	"printdeck/internal/touch"
 )
 
@@ -25,16 +24,15 @@ const (
 	BaseH     = 800 // the height of the touch screen
 	MaxH      = 1200
 	statusH   = 56
-	tabH      = 72
 	contentY0 = statusH
 )
 
 // H is the height of the screen of the App that draws or handles a touch now: BaseH for the touch
-// screen, more for a tall phone (App.Height). The tab bar and the keyboard are at the bottom, and
-// the rest of the layout is at the top. drawMu protects these values.
+// screen, more for a tall phone (App.Height). The keyboard is at the bottom, and the rest of the
+// layout is at the top. drawMu protects these values.
 var (
 	H         = BaseH
-	contentY1 = H - tabH
+	contentY1 = H
 )
 
 // setHeight sets H and the positions that depend on it. The caller holds drawMu.
@@ -42,29 +40,8 @@ func setHeight(h int) {
 	if h < BaseH {
 		h = BaseH
 	}
-	H, contentY1 = h, h-tabH
+	H, contentY1 = h, h
 	kbY0 = h - 24 - 5*kbKeyH - 4*kbRowGap
-	listBottom = contentY1 - 8
-}
-
-// Music is what the Music tab needs from Spotify.
-type Music interface {
-	State() spotify.State
-	Cover() image.Image
-	Toggle()
-	Next()
-	Previous()
-	Seek(time.Duration)
-	SetShuffle(bool)
-	CycleRepeat()
-	ToggleLike() error
-	LoadPlaylists() error
-	Playlists() []spotify.Playlist
-	AddToPlaylist(id string) error
-	PlayPlaylist(uri string) error
-	LoadTracks(uri string, offset int) ([]spotify.Track, int, error)
-	PlayTrack(context, track string) error
-	LinkURL() string // address for the QR code of the login, or ""
 }
 
 // Printer is what the Print tab needs from the printer.
@@ -122,20 +99,6 @@ type Printer interface {
 	FlashBoard(device string, progress board.FlashProgress) error
 }
 
-// Volume is the amplifier.
-type Volume interface {
-	Volume() int
-	Max() int
-	Set(int)
-}
-
-type Tab int
-
-const (
-	TabMusic Tab = iota
-	TabPrint
-)
-
 type hit struct {
 	r    image.Rectangle
 	tap  func()
@@ -160,16 +123,12 @@ const (
 )
 
 type App struct {
-	Music                   Music
 	Printer                 Printer
-	Vol                     Volume
-	Equalizer               Equalizer
 	Setup                   SetupHost // nil when the system has no setup screen, as in Docker
 	PreheatTool, PreheatBed int
 
 	Now func() time.Time // replaced in tests
 
-	tab           Tab
 	pages         []page       // the pages of the Print tab over its state screen, the top last
 	file          printer.File // the file of the file page
 	fileList      fileList     // the scroll position of the Files page
@@ -201,9 +160,6 @@ type App struct {
 	wake          chan struct{}
 	posted        chan func() // changes from other goroutines, run by the UI loop
 
-	picker *picker    // list of playlists on the Music tab
-	tracks *trackList // the songs of one playlist
-	eqOpen bool       // the equalizer is open on the Music tab
 	tune   bool       // the tune sheet of a running print is open
 	swap   *swapState // the filament swap is open
 	keypad *keypad    // number entry, over everything
@@ -280,17 +236,16 @@ func (a *App) Ask(question, yes, no string, answer func(bool)) {
 	})
 }
 
-// Session returns a new App on the same printer, music and settings, with its own screens: the UI
+// Session returns a new App on the same printer and settings, with its own screens: the UI
 // for one browser. Its theme changes are saved as those of a.
 func (a *App) Session(height int) *App {
 	s := New()
 	s.Height = max(BaseH, min(MaxH, height))
-	s.Music, s.Printer, s.Vol, s.Equalizer, s.Setup = a.Music, a.Printer, a.Vol, a.Equalizer, a.Setup
+	s.Printer, s.Setup = a.Printer, a.Setup
 	s.PreheatTool, s.PreheatBed, s.UnloadMM, s.LoadMM, s.JogInvertY = a.PreheatTool, a.PreheatBed, a.UnloadMM, a.LoadMM, a.JogInvertY
 	s.Theme, s.NightFrom, s.NightTo, s.OnTheme = a.Theme, a.NightFrom, a.NightTo, a.OnTheme
 	s.Material, s.OnMaterial = a.Material, a.OnMaterial
 	s.Updater = a.Updater
-	s.tab = a.tab
 	return s
 }
 
@@ -483,15 +438,10 @@ func (a *App) Draw(c *gfx.Canvas) {
 		a.drawSetup(c)
 		return
 	}
-	if a.tab == TabMusic {
-		a.drawMusic(c)
-	} else {
-		a.collect = !a.Record
-		a.drawPrint(c)
-		a.collect = false
-	}
+	a.collect = !a.Record
+	a.drawPrint(c)
+	a.collect = false
 	a.drawStatus(c)
-	a.drawTabs(c)
 	a.drawToast(c)
 	if a.keypad != nil {
 		a.collect, a.focus = !a.Record, a.focus[:0]
@@ -530,50 +480,6 @@ func (a *App) drawStatus(c *gfx.Canvas) {
 	c.Text(image.Rect(win.Min.X+92, win.Min.Y, win.Min.X+150, win.Max.Y), strings.ToUpper(a.Theme), gfx.Face(true, 13), lcdDim, gfx.Left)
 	a.addHit(hit{r: image.Rect(0, 0, 160, statusH), tap: a.cycleTheme})
 
-	// A short summary of the other tab. Tapping it opens that tab.
-	var s string
-	var to Tab
-	if a.tab == TabMusic {
-		if p := a.Printer.State(); p.Busy() {
-			s, to = "PRINT "+pct(p.Completion), TabPrint
-			if p.Paused {
-				s = "PAUSED " + pct(p.Completion)
-			}
-		}
-	} else if m := a.Music.State(); m.Playing && m.Title != "" {
-		s, to = "♪ "+m.Title, TabMusic
-	}
-	if s != "" {
-		r := image.Rect(160, win.Min.Y, win.Max.X-12, win.Max.Y)
-		a.addHit(hit{r: r, tap: func() { a.setTab(to) }})
-		c.Text(r, s, gfx.Face(false, 18), lcdInk, gfx.Right)
-	}
-}
-
-func (a *App) setTab(t Tab) {
-	a.tab, a.pages, a.confirm, a.picker, a.tracks, a.eqOpen = t, nil, nil, nil, nil, false
-	a.tune, a.swap, a.keypad = false, nil, nil
-	a.Redraw()
-}
-
-// drawTabs is the mode switch at the bottom: two keys, the LED of the active one is lit.
-func (a *App) drawTabs(c *gfx.Canvas) {
-	c.Fill(image.Rect(0, contentY1, W, H), bg)
-	c.Fill(image.Rect(0, contentY1, W, contentY1+1), edge)
-	for i, name := range []string{"Music", "Print"} {
-		r := image.Rect(16+i*(W/2-8), contentY1+12, (i+1)*(W/2-8), H-10)
-		tab := Tab(i)
-		active := a.tab == tab
-		cap, ink := raised, text
-		if active {
-			cap, ink = keyOn, keyOnInk
-		}
-		key(c, r, "", cap, ink, a.isPressed(r))
-		face := image.Rect(r.Min.X, r.Min.Y, r.Max.X, r.Max.Y-5)
-		led(c, face.Min.X+22, face.Min.Y+face.Dy()/2, active)
-		c.Text(image.Rect(face.Min.X+36, face.Min.Y, face.Max.X-12, face.Max.Y), fmt.Sprintf("%02d %s", i+1, strings.ToUpper(name)), gfx.Face(true, 18), ink, gfx.Center)
-		a.addHit(hit{r: r, tap: func() { a.setTab(tab) }})
-	}
 }
 
 func (a *App) drawConfirm(c *gfx.Canvas) {

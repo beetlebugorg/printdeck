@@ -89,14 +89,6 @@ func applySettings(log io.Writer) error {
 		}
 	}
 
-	// The touch screen links Spotify with a QR code. It needs the client ID of a Spotify app.
-	if id := get("spotify_client_id"); id != "" {
-		os.MkdirAll(stateDir, 0o700)
-		if err := writeFile(filepath.Join(stateDir, "spotify.env"), []byte("SPOTIFY_CLIENT_ID="+id+"\n"), 0o644); err != nil {
-			fmt.Fprintf(log, "Spotify: not applied: %v\n", err)
-		}
-	}
-
 	if host := get("hostname"); host != "" {
 		cur, _ := os.ReadFile(filepath.Join(etcDir, "hostname"))
 		if host != strings.TrimSpace(string(cur)) {
@@ -159,8 +151,7 @@ func applySettings(log io.Writer) error {
 // deckSettings are the settings of deck.env that printdeck.txt can change. The paths and the
 // address of the web server are not in the list.
 var deckSettings = []string{"DISPLAY_ROTATE", "TOUCH_INVERT_X", "TOUCH_INVERT_Y", "TOUCH_SWAP_XY",
-	"TOUCH_OFFSET_X", "TOUCH_OFFSET_Y", "TOUCH_LOG", "SPOTIFY_DEVICE_NAME", "VOLUME_FLOOR_DB",
-	"VOLUME_CEIL_DB", "MAX_VOLUME", "PREHEAT_TOOL", "PREHEAT_BED", "FILAMENT_UNLOAD_MM",
+	"TOUCH_OFFSET_X", "TOUCH_OFFSET_Y", "TOUCH_LOG", "PREHEAT_TOOL", "PREHEAT_BED", "FILAMENT_UNLOAD_MM",
 	"FILAMENT_LOAD_MM", "JOG_INVERT_Y", "NIGHT_FROM", "NIGHT_TO"}
 
 // removeDisplayCfg removes the display layout of older versions. The module printdeck_display of

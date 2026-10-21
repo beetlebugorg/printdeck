@@ -16,7 +16,6 @@ import (
 	"printdeck/internal/gfx"
 	"printdeck/internal/lcd"
 	"printdeck/internal/printer"
-	"printdeck/internal/spotify"
 	"printdeck/internal/ui"
 	"printdeck/internal/wifi"
 )
@@ -114,7 +113,6 @@ type section struct {
 // manualState is the demo deck that the setups change.
 type manualState struct {
 	a *ui.App
-	m *ui.DemoMusic
 	p *ui.DemoPrinter
 }
 
@@ -634,18 +632,16 @@ func manual(args []string) {
 	os.WriteFile(filepath.Join(fwDir, "klipper-atmega2560.bin"), []byte{0}, 0o644)
 	os.WriteFile(filepath.Join(fwDir, "version"), []byte(printer.HostVersion+"\n"), 0o644)
 	board.FirmwareDir = fwDir
-	a, m, p := demoApp()
+	a, p := demoApp()
 	a.Now = func() time.Time { return time.Date(2026, 10, 20, 14, 24, 0, 0, time.Local) }
 	a.Setup = &ui.DemoSetup{
 		Nets: []wifi.Network{{SSID: "Extremely", Signal: -48, Secure: true}, {SSID: "Workshop", Signal: -63, Secure: true},
 			{SSID: "Guest", Signal: -71}, {SSID: "NETGEAR-5G", Signal: -82, Secure: true}},
 		Status_: wifi.Status{State: "COMPLETED", SSID: "Extremely", IP: "192.168.76.119"},
 	}
-	// The manual is about the printer: the status bar shows no song.
-	m.State_ = spotify.State{}
 	a.Updater = &ui.DemoUpdater{S: ui.UpdateStatus{Current: "v0.3.0", Latest: "v0.4.0", Newer: true, Checked: true,
 		Notes: "The printer display shows the menus of the deck, with the knob. New status screen with icons. Signed updates."}}
-	st := &manualState{a, m, p}
+	st := &manualState{a, p}
 	secs := manualSections()
 	const k = 2 // the pictures are drawn at twice the size
 	for si := range secs {
@@ -654,7 +650,6 @@ func manual(args []string) {
 			f.Badges = layoutBadges(f.Callouts)
 			*p = *demoPrinterCopy(p)
 			a.ResetScreens()
-			a.SetTab(ui.TabPrint)
 			f.Setup(st)
 			c, rec := gfx.NewRecording(ui.W, ui.BaseH)
 			a.Draw(c)
