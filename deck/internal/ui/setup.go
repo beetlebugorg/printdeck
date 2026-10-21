@@ -17,8 +17,9 @@ type SetupHost interface {
 	Networks() ([]wifi.Network, error)
 	Status() (wifi.Status, error)
 	SetWifi(ssid, password string) error
-	// Login is the user and password for SSH, sudo and the remote screen, which the system made at
-	// the first start. They are empty when the system has none.
+	// Login is the password of the remote screen, which the system made at the first start. The
+	// debug image also has a user with this password for SSH and sudo. user is empty when the
+	// system has no such user, and both are empty when the system has no password.
 	Login() (user, password string)
 	Done() // the setup is finished, so the deck does not open it again at the next start
 }
@@ -304,6 +305,8 @@ func (a *App) drawSetupDone(c *gfx.Canvas, box image.Rectangle) {
 	if user, pass := a.Setup.Login(); user != "" {
 		lines = append(lines, "User (SSH, sudo, remote screen)", user, "Password", pass,
 			"SSH", fmt.Sprintf("ssh %s@%s.local", user, s.host))
+	} else if pass != "" {
+		lines = append(lines, "Password of the remote screen", pass)
 	}
 	const rowH = 30
 	win := image.Rect(24, 80, W-24, 80+len(lines)/2*(2*rowH+10)+14)

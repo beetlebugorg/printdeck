@@ -1,0 +1,12 @@
+[Unit]
+Description=The socket of the Printdeck system helper
+
+[Socket]
+# Only the deck (the group deck) can send requests to the helper, which runs as root.
+ListenStream=/run/printdeck-helper.sock
+SocketUser=root
+SocketGroup=deck
+SocketMode=0660
+
+[Install]
+WantedBy=sockets.target

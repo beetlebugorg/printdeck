@@ -12,7 +12,7 @@ RuntimeDirectory=klipper
 RuntimeDirectoryMode=0750
 RuntimeDirectoryPreserve=yes
 UMask=0002
-ExecStartPre=/bin/sh -c '[ -f /var/lib/klipper/config/printer.cfg ] || printf "# Put the printer configuration above this line.\\n[include /usr/share/printdeck/klipper/printdeck.cfg]\\n" > /var/lib/klipper/config/printer.cfg'
+# printdeck-settings writes a placeholder printer.cfg before Klipper starts.
 ExecStart=/usr/bin/printdeck klippy /var/lib/klipper/config/printer.cfg -l /var/lib/klipper/logs/klippy.log -a /run/klipper/klippy.sock
 Restart=always
 RestartSec=10

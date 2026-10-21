@@ -11,6 +11,7 @@
 //	printdeck splash    show the start screen at boot (started by printdeck-init)
 //	printdeck password  print a new random password of four words
 //	printdeck board     find the printer board, and print its MCU and firmware version
+//	printdeck helper    the system helper: the actions of the deck that need root (started by systemd)
 //	printdeck klipper-probe DEVICE [BAUD]  connect to a Klipper board and print what it reports
 //	printdeck klippy [options] CONFIG  run the Klipper host (the Go port of klippy.py)
 package main
@@ -37,11 +38,15 @@ import (
 	"printdeck/internal/klipper/cli"
 	"printdeck/internal/speaker"
 	"printdeck/internal/spotify"
+	"printdeck/internal/system"
 	"printdeck/internal/touch"
 	"printdeck/internal/ui"
 )
 
 func main() {
+	if systemMain(programName(), os.Args[1:]) {
+		return
+	}
 	// The Klipper host runs in its own process, as klippy does, before the deck settings load.
 	if len(os.Args) > 1 && os.Args[1] == "klippy" {
 		os.Exit(cli.Main(os.Args[2:]))
@@ -75,10 +80,17 @@ func main() {
 		case "board":
 			boardList()
 			return
-		case "password":
-			if err := password(); err != nil {
+		case "helper":
+			if err := system.Helper(); err != nil {
 				log.Fatal(err)
 			}
+			return
+		case "password":
+			p, err := system.NewPassword()
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Println(p)
 			return
 		default:
 			log.Fatalf("unknown command %q", os.Args[1])

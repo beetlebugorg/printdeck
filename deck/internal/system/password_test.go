@@ -1,4 +1,4 @@
-package main
+package system
 
 import (
 	"strings"
@@ -11,7 +11,7 @@ func TestNewPassword(t *testing.T) {
 	}
 	seen := map[string]bool{}
 	for i := 0; i < 100; i++ {
-		p, err := newPassword()
+		p, err := NewPassword()
 		if err != nil {
 			t.Fatal(err)
 		}
