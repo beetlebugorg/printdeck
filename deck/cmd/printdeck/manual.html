@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Printdeck manual</title>
+<style>
+  :root { --paper: #f4f0e6; --ink: #171717; --dim: #4a4742; --edge: #a9a59c; --orange: #ff5a1f;
+    --glcd: #1f4bd1; --glcdCell: #2a58e0; --glcdInk: #f2f6ff; --plate: #e6e3dc; }
+  * { box-sizing: border-box; }
+  html { background: #d3d0c8; }
+  body { margin: 0 auto; max-width: 980px; padding: 24px 16px 64px; background: var(--paper); color: var(--ink);
+    font: 16px/1.5 "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; }
+  .mono, h1, h2, h3, .num, .callout { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+  /* The cover */
+  .cover { text-align: center; padding: 48px 16px 40px; border: 4px solid var(--ink); border-radius: 12px; margin-bottom: 32px;
+    background: repeating-linear-gradient(135deg, var(--paper) 0 18px, #efe9db 18px 36px); }
+  .lcd { display: inline-block; background: var(--glcd); border: 6px solid #a9a59c; border-radius: 10px; padding: 18px 26px;
+    color: var(--glcdInk); font: 700 clamp(34px, 9vw, 72px)/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .12em;
+    box-shadow: inset 0 0 0 3px #173aa6; }
+  .cover .sub { margin-top: 22px; font: 700 20px "IBM Plex Mono", monospace; letter-spacing: .3em; }
+  .cover .meta { margin-top: 10px; color: var(--dim); }
+  /* The contents */
+  .toc { border: 3px solid var(--ink); border-radius: 10px; padding: 16px 22px; margin-bottom: 32px; background: var(--plate); }
+  .toc h2 { margin: 0 0 8px; font-size: 18px; letter-spacing: .1em; }
+  .toc ol { margin: 0; padding-left: 0; list-style: none; columns: 2; column-gap: 32px; }
+  .toc li { break-inside: avoid; padding: 2px 0; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .toc .num { color: var(--orange); font-weight: 700; margin-right: 8px; }
+  /* A section */
+  section { margin: 40px 0; break-before: page; }
+  section:first-of-type { break-before: auto; }
+  h2.title { display: flex; align-items: center; gap: 14px; margin: 0 0 14px; font-size: clamp(22px, 4vw, 30px);
+    text-transform: uppercase; letter-spacing: .06em; }
+  h2.title .num { background: var(--ink); color: var(--paper); border-radius: 6px; padding: 2px 10px; }
+  h2.title::after { content: ""; flex: 1; height: 6px; background: var(--orange); border-radius: 3px; }
+  p { margin: 0 0 12px; max-width: 72ch; }
+  /* A picture with callouts */
+  figure { margin: 22px 0 28px; display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); gap: 24px; align-items: start;
+    break-inside: avoid; }
+  figure h3 { grid-column: 1 / -1; margin: 0; font-size: 16px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); }
+  /* The picture sits between two margins, where the numbers are. */
+  .frame { position: relative; padding: 0 calc(100% * 72 / 624); }
+  .shot { position: relative; border: 5px solid var(--ink); border-radius: 14px; overflow: hidden; background: #000;
+    box-shadow: 6px 6px 0 var(--edge); }
+  .shot img { display: block; width: 100%; height: auto; }
+  .marks { position: absolute; inset: 5px 0; width: 100%; height: calc(100% - 10px); overflow: visible; pointer-events: none; }
+  .leader { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linejoin: round; }
+  .dot { fill: var(--orange); stroke: var(--ink); stroke-width: 2; }
+  .badge { fill: var(--ink); stroke: #fff; stroke-width: 2.5; }
+  .badge-n { fill: #fff; font: 700 16px "IBM Plex Mono", monospace; text-anchor: middle; dominant-baseline: central; }
+  ol.parts { list-style: none; margin: 0; padding: 0; counter-reset: part; }
+  ol.parts li { display: grid; grid-template-columns: 30px 1fr; gap: 10px; margin-bottom: 12px; break-inside: avoid; }
+  ol.parts .badge { width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: #fff; font: 700 13px "IBM Plex Mono", monospace;
+    display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+  ol.parts b { display: block; text-transform: uppercase; letter-spacing: .04em; font-family: "IBM Plex Mono", monospace; }
+  .note { grid-column: 1 / -1; border-left: 6px solid var(--orange); padding: 6px 12px; background: var(--plate); border-radius: 0 8px 8px 0; }
+  /* Tables */
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; break-inside: avoid; }
+  td { border-top: 2px solid var(--edge); padding: 8px 10px; vertical-align: top; }
+  td:first-child { font-family: "IBM Plex Mono", monospace; font-weight: 600; width: 45%; }
+  /* The display of the printer: 16 x 4 cells */
+  .glcd-row { display: flex; flex-wrap: wrap; gap: 20px; margin: 14px 0; }
+  .glcd { background: var(--glcd); border: 6px solid #a9a59c; border-radius: 8px; padding: 10px 12px; display: inline-block;
+    font: 700 18px/1.25 "IBM Plex Mono", monospace; color: var(--glcdInk); white-space: pre; box-shadow: inset 0 0 0 2px #173aa6; }
+  .glcd-cap { margin-top: 6px; font: 600 13px "IBM Plex Mono", monospace; text-transform: uppercase; color: var(--dim); }
+  footer { margin-top: 48px; color: var(--dim); font-size: 14px; text-align: center; }
+  @media (max-width: 720px) {
+    figure { grid-template-columns: minmax(0, 1fr); }
+    .frame { max-width: 440px; }
+    .toc ol { columns: 1; }
+  }
+  @media print {
+    html, body { background: #fff; }
+    body { max-width: none; padding: 0; }
+    .shot { box-shadow: none; }
+    a { color: inherit; text-decoration: none; }
+    @page { size: letter; margin: 14mm; }
+  }
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="lcd">PRINTDECK</div>
+  <div class="sub">INSTRUCTION MANUAL</div>
+  <div class="meta">{{if .Version}}Version {{.Version}} · {{end}}{{date}}</div>
+</div>
+
+<nav class="toc">
+  <h2>CONTENTS</h2>
+  <ol>{{range $i, $s := .Sections}}<li><a href="#{{$s.ID}}"><span class="num">{{printf "%02d" (inc $i)}}</span>{{$s.Title}}</a></li>{{end}}</ol>
+</nav>
+
+{{range $i, $s := .Sections}}
+<section id="{{$s.ID}}">
+  <h2 class="title"><span class="num">{{printf "%02d" (inc $i)}}</span>{{$s.Title}}</h2>
+  {{range $s.Intro}}<p>{{.}}</p>{{end}}
+  {{range $s.Figures}}
+  <figure>
+    <h3>{{.Caption}}</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/{{.Name}}.png" alt="{{.Caption}}" width="{{W}}" height="{{H}}"></div>
+      <svg class="marks" viewBox="-{{G}} 0 {{VW}} {{H}}" aria-hidden="true">
+        {{range .Badges}}
+        <line x1="{{.LineStartX}}" y1="{{.BY}}" x2="{{.X}}" y2="{{.Y}}" class="leader"/>
+        <circle cx="{{.X}}" cy="{{.Y}}" r="5" class="dot"/>
+        <circle cx="{{.BX}}" cy="{{.BY}}" r="15" class="badge"/>
+        <text x="{{.BX}}" y="{{.BY}}" class="badge-n">{{.N}}</text>
+        {{end}}
+      </svg>
+    </div>
+    <ol class="parts">
+      {{range $n, $c := .Callouts}}<li><span class="badge">{{inc $n}}</span><span><b>{{$c.Title}}</b>{{$c.Text}}</span></li>{{end}}
+    </ol>
+    {{range .Notes}}<p class="note">{{.}}</p>{{end}}
+  </figure>
+  {{end}}
+  {{if eq $s.ID "lcd"}}
+  <div class="glcd-row">{{range $s.Table}}<div><div class="glcd">{{index . 0}}</div><div class="glcd-cap">{{index . 1}}</div></div>{{end}}</div>
+  {{else if $s.Table}}
+  <table>{{range $s.Table}}<tr><td>{{index . 0}}</td><td>{{index . 1}}</td></tr>{{end}}</table>
+  {{end}}
+  {{range $s.After}}<p>{{.}}</p>{{end}}
+</section>
+{{end}}
+
+<footer>Printdeck is free software (AGPL-3.0). The deck draws every picture of this manual.</footer>
+</body>
+</html>

@@ -143,6 +143,12 @@ func (d *DemoPrinter) History() []printer.Record        { return d.History_ }
 func (d *DemoPrinter) ProbeBoards()                     {}
 func (d *DemoPrinter) RestartKlipper() error            { return nil }
 
+// ResetScreens closes every screen, dialog and page; for the pictures of the manual.
+func (a *App) ResetScreens() {
+	a.setup, a.pages, a.swap, a.tune, a.keypad, a.confirm = nil, nil, nil, false, nil, nil
+	a.picker, a.tracks, a.eqOpen, a.doneSeen = nil, nil, false, ""
+}
+
 // OpenPrintScreen opens a screen of the Print tab by name; for the demo.
 func (a *App) OpenPrintScreen(name string) {
 	a.tab, a.pages, a.tune, a.swap, a.keypad = TabPrint, nil, false, nil, nil
@@ -163,6 +169,17 @@ func (a *App) OpenPrintScreen(name string) {
 		a.pages = []page{pageMachine, pageHistory}
 	case "stats":
 		a.pages = []page{pageMachine, pageStats}
+	case "setup", "error":
+		if d, ok := a.Printer.(*DemoPrinter); ok {
+			if name == "setup" {
+				d.State_ = printer.State{Err: "Klipper is not ready", NeedsSetup: true}
+				d.Boards_ = []board.Info{{Name: "UltiMachine ultimachine.com RAMBo", Klipper: true, MCU: "atmega2560",
+					Version: "v0.13.0-777-g7bc4d0946-prind-20260930_185514-10f1cdde21e6"}}
+			} else {
+				d.State_ = printer.State{Err: "Error in printer.cfg", ErrDetail: "Option 'rotation_distance' in section 'stepper_x' must be specified\n\nOnce the underlying issue is corrected, use the \"RESTART\" command to reload the config and restart the host software.\nPrinter is halted"}
+			}
+			a.setupProbed = true
+		}
 	case "file":
 		a.file = a.Printer.Files()[0]
 		a.pages = []page{pageFiles, pageFile}
