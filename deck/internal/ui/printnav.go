@@ -105,13 +105,7 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	m := a.loaded()
 	// The status screen of the printer display: the same picture on both screens.
-	l1, l2 := StatusLines(st, a.Material, a.Now())
-	s := a.lcdStatusScreen(st, l1, l2)
-	s.Hint = "" // the touch screen has no knob
-	if st.FirmwareOld {
-		s.Message = "Firmware is old"
-	}
-	a.drawLCDPanel(c, st, s)
+	a.statusPanel(c, st)
 
 	a.button(c, image.Rect(40, 280, W-40, 360), "Print a file", orange, onAcc, func() {
 		go func() { pr.LoadFiles(); a.Redraw() }()
