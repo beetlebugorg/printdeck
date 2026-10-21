@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"printdeck/internal/klipper/toolhead"
 	"sort"
 	"strings"
 	"sync"
@@ -256,6 +257,9 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 		}
 	})
 	version, objects, macros := klipperObjects(ctx, conn)
+	if l, ok := motionLimits(ctx, conn); ok {
+		k.View.SetLimits(l)
+	}
 	k.mu.Lock()
 	k.macros = macros
 	k.conn, k.err = conn, ""
@@ -377,6 +381,32 @@ func klipperObjects(ctx context.Context, conn *klippy.Conn) (version string, obj
 		}
 	}
 	return version, objects, macros
+}
+
+// motionLimits reads the motion limits of the printer from its config, with the defaults of
+// Klipper (configfile settings), for the plan of a print.
+func motionLimits(ctx context.Context, conn *klippy.Conn) (toolhead.Limits, bool) {
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	res, err := conn.Call(cctx, "objects/query", map[string]any{"objects": map[string]any{"configfile": []string{"settings"}}})
+	if err != nil {
+		return toolhead.Limits{}, false
+	}
+	var q struct {
+		Status struct {
+			Configfile struct {
+				Settings map[string]map[string]any `json:"settings"`
+			} `json:"configfile"`
+		} `json:"status"`
+	}
+	json.Unmarshal(res, &q)
+	pr, ex := q.Status.Configfile.Settings["printer"], q.Status.Configfile.Settings["extruder"]
+	l := toolhead.Limits{MaxVelocity: num(pr["max_velocity"]), MaxAccel: num(pr["max_accel"]),
+		MinCruiseRatio: num(pr["minimum_cruise_ratio"]), SquareCornerVelocity: num(pr["square_corner_velocity"]),
+		MaxZVelocity: num(pr["max_z_velocity"]), MaxZAccel: num(pr["max_z_accel"]),
+		InstantCornerVelocity:  num(ex["instantaneous_corner_velocity"]),
+		MaxExtrudeOnlyVelocity: num(ex["max_extrude_only_velocity"]), MaxExtrudeAcc: num(ex["max_extrude_only_accel"])}
+	return l, l.MaxVelocity > 0 && l.MaxAccel > 0
 }
 
 func info(ctx context.Context, conn *klippy.Conn) (state, msg string, err error) {

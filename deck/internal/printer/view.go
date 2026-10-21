@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"printdeck/internal/klipper/toolhead"
 	"sort"
 	"strings"
 	"sync"
@@ -51,7 +52,16 @@ type View struct {
 	viewImg  image.Image
 	viewBusy bool
 
-	est estimate // the time left of the print
+	est    estimate        // the time left of the print
+	limits toolhead.Limits // the motion limits of the printer, for the plan of a print
+	plan   *plan           // the plan of the loaded G-code, or nil
+}
+
+// SetLimits sets the motion limits of the printer. The next G-code that loads gets a plan.
+func (v *View) SetLimits(l toolhead.Limits) {
+	v.mu.Lock()
+	v.limits = l
+	v.mu.Unlock()
 }
 
 func NewView(src Source) *View { return &View{src: src, view: -1} }
@@ -148,6 +158,17 @@ func (v *View) loadModel(path, key string) {
 		gc, _ = gcode.Parse(body)
 		body.Close()
 	}
+	// The plan of the print, on the motion planner with the limits of the printer.
+	v.mu.Lock()
+	limits := v.limits
+	v.mu.Unlock()
+	var pl *plan
+	if gc != nil && limits.MaxVelocity > 0 {
+		if body, err := v.src.Open(path); err == nil {
+			pl = planFile(body, gc.StartEnd, limits)
+			body.Close()
+		}
+	}
 	// An STL is one object. With more on the bed, only the toolpath shows them all.
 	var mesh *stl.Mesh
 	if gc != nil && gc.Objects <= 1 {
@@ -157,7 +178,7 @@ func (v *View) loadModel(path, key string) {
 	defer v.mu.Unlock()
 	v.loading = false
 	// On failure the key is still stored, so the same file is not tried again on each update.
-	v.file, v.gc, v.mesh, v.img, v.view = key, gc, mesh, nil, -1
+	v.file, v.gc, v.mesh, v.img, v.view, v.plan = key, gc, mesh, nil, -1, pl
 }
 
 // stem makes names comparable: "LTAZ_lower_panel.gcode" and "Lower Panel.STL" give a match.

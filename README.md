@@ -83,7 +83,6 @@ on the rear. `slate/README.md` lists the parts and the files.
 
 - Lower the CPU use of the screen loop.
 - Test the slicer uploads (Cura, OrcaSlicer) to the Printdeck API.
-- A time estimate from Klipper's look-ahead planner, in place of PrintTimeGenius.
 
 ## License
 
