@@ -180,7 +180,7 @@ func (s *Screen) drawAnim(c *canvas, frame int) {
 	c.smallText(f, canvasW-f.w*len(s.Caption), 0, s.Caption, false)
 	c.line(0, 9, canvasW-1, 9)
 	foot := fit(s.Footer, 25)
-	c.smallText(f, (canvasW-f.w*len(foot))/2, 56, foot, false)
+	c.smallText(f, (canvasW-f.w*len(foot))/2, 54, foot, false)
 	switch s.Anim {
 	case "probe":
 		animProbe(c, frame)

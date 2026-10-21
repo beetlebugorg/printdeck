@@ -36,9 +36,9 @@ func heating(temp, target float64) bool { return target > 0 && temp < target-2 }
 
 // The columns of the three gauges: their centers.
 const (
-	colTool = 21
-	colBed  = 64
-	colFan  = 107
+	colTool = canvasW/2 - 42
+	colBed  = canvasW / 2
+	colFan  = canvasW/2 + 42
 )
 
 // The layout, from the top: the icons (y 0 to 15), the temperatures in the large font (16 to
@@ -84,7 +84,7 @@ func (s *Status) draw(c *canvas, frame int) {
 		c.set(x, 42, true)
 	}
 
-	const line1, line2 = 45, 55
+	const line1, line2 = 44, 54
 	if s.Printing {
 		pct := fmt.Sprintf("%.0f%%", s.Progress*100)
 		x1 := canvasW - small.w*4 - 3
