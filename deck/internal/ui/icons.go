@@ -97,4 +97,3 @@ func drawList(c *gfx.Canvas, cx, cy, r int, col color.RGBA) {
 		c.RoundRect(image.Rect(cx-r+4*t, cy+dy-t, cx+r, cy+dy+t), t, col)
 	}
 }
-

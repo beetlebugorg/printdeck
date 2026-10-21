@@ -209,16 +209,16 @@ const releaseBed = 35.0
 // and Done.
 func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 	a.statusPanel(c, st)
-	box := image.Rect(24, belowPanel, W-24, 470)
+	box := image.Rect(24, belowPanel, W-24, 424)
 	a.modelView(c, box, st)
 	title := map[string]string{"complete": "Print done", "cancelled": "Cancelled", "error": "Print failed"}[st.Finished]
 	line := title + " · " + st.FinishedFile + " · " + hm(int(st.FinishedTime.Minutes()))
 	if st.FinishedFilament > 0 {
 		line += fmt.Sprintf(" · %.1f m", st.FinishedFilament/1000)
 	}
-	c.Text(image.Rect(24, 476, W-24, 508), gfx.Fit(gfx.Face(true, 18), line, W-48), gfx.Face(true, 18), text, gfx.Center)
+	c.Text(image.Rect(24, 430, W-24, 462), gfx.Fit(gfx.Face(true, 18), line, W-48), gfx.Face(true, 18), text, gfx.Center)
 
-	info := image.Rect(24, 516, W-24, 618)
+	info := image.Rect(24, 470, W-24, 572)
 	plate(c, info)
 	if st.Finished == "error" && st.FinishedError != "" {
 		c.Text(image.Rect(info.Min.X+18, info.Min.Y+8, info.Max.X-18, info.Min.Y+40), "What happened", gfx.Face(true, 19), text, gfx.Left)

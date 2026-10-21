@@ -19,7 +19,7 @@ import (
 
 const (
 	fileRowH   = 96
-	filesTop   = 144
+	filesTop   = 98
 	thumbSmall = 68
 )
 
@@ -38,11 +38,11 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 	heading(c, "Files")
 	a.backButton(c)
 	files := a.sortedFiles()
-	label(c, image.Rect(24, 112, W-24, 136), fmt.Sprintf("Newest first · %d files", len(files)), gfx.Left)
+	label(c, image.Rect(24, 66, W-24, 90), fmt.Sprintf("Newest first · %d files", len(files)), gfx.Left)
 	if len(files) == 0 {
-		c.Text(image.Rect(30, 300, W-30, 340), "No files yet", gfx.Face(true, 22), dim, gfx.Center)
-		c.Text(image.Rect(30, 340, W-30, 380), "Send a file from the slicer,", gfx.Face(false, 18), dim, gfx.Center)
-		c.Text(image.Rect(30, 370, W-30, 410), "or upload it in the browser.", gfx.Face(false, 18), dim, gfx.Center)
+		c.Text(image.Rect(30, 254, W-30, 294), "No files yet", gfx.Face(true, 22), dim, gfx.Center)
+		c.Text(image.Rect(30, 294, W-30, 334), "Send a file from the slicer,", gfx.Face(false, 18), dim, gfx.Center)
+		c.Text(image.Rect(30, 324, W-30, 364), "or upload it in the browser.", gfx.Face(false, 18), dim, gfx.Center)
 		return
 	}
 	bottom := a.filesBottom()
@@ -171,7 +171,7 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 	heading(c, gfx.Fit(gfx.Face(true, 24), f.Name, W-200))
 	a.backButton(c)
 	m := a.Printer.FileMeta(f.Path)
-	a.thumb(c, image.Rect(110, 124, W-110, 384), f.Path, m)
+	a.thumb(c, image.Rect(110, 78, W-110, 338), f.Path, m)
 
 	var rows [][2]string
 	if m.PrintTime > 0 {
@@ -203,7 +203,7 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 		rows = append(rows, [2]string{"Slicer", m.Slicer})
 	}
 	rows = append(rows, [2]string{"Uploaded", fileDate(f.Date, a.Now())})
-	box := image.Rect(24, 396, W-24, 396+len(rows)*30+20)
+	box := image.Rect(24, 350, W-24, 350+len(rows)*30+20)
 	plate(c, box)
 	for i, kv := range rows {
 		y := box.Min.Y + 10 + i*30
@@ -214,11 +214,11 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	path := f.Path
 	if st.Busy() {
-		key(c, image.Rect(24, 632, W-180, 716), "A print runs", surface, dim, false)
+		key(c, image.Rect(24, 586, W-180, 670), "A print runs", surface, dim, false)
 	} else {
-		a.button(c, image.Rect(24, 632, W-180, 716), "Print", orange, onAcc, func() { a.confirmPrint(path) })
+		a.button(c, image.Rect(24, 586, W-180, 670), "Print", orange, onAcc, func() { a.confirmPrint(path) })
 	}
-	a.button(c, image.Rect(W-168, 632, W-24, 716), "Delete", raised, red, func() {
+	a.button(c, image.Rect(W-168, 586, W-24, 670), "Delete", raised, red, func() {
 		a.confirm = &confirmBox{question: "Delete " + gfx.Fit(gfx.Face(true, 28), f.Name, 300) + "?", yes: "Delete", danger: true, onYes: func() {
 			a.do(func() error {
 				if err := pr.DeleteFile(path); err != nil {

@@ -20,11 +20,9 @@ import (
 )
 
 const (
-	W         = 480
-	BaseH     = 800 // the height of the touch screen
-	MaxH      = 1200
-	statusH   = 56
-	contentY0 = statusH
+	W     = 480
+	BaseH = 800 // the height of the touch screen
+	MaxH  = 1200
 )
 
 // H is the height of the screen of the App that draws or handles a touch now: BaseH for the touch
@@ -44,7 +42,7 @@ func setHeight(h int) {
 	kbY0 = h - 24 - 5*kbKeyH - 4*kbRowGap
 }
 
-// Printer is what the Print tab needs from the printer.
+// Printer is what the screens need from the printer.
 type Printer interface {
 	State() printer.State
 	Files() []printer.File
@@ -129,7 +127,7 @@ type App struct {
 
 	Now func() time.Time // replaced in tests
 
-	pages         []page       // the pages of the Print tab over its state screen, the top last
+	pages         []page       // the pages over the state screen, the top last
 	file          printer.File // the file of the file page
 	fileList      fileList     // the scroll position of the Files page
 	macroScroll   int          // the scroll position of the Macros page
@@ -168,7 +166,7 @@ type App struct {
 	// Settings of the control screens.
 	UnloadMM, LoadMM float64 // filament lengths of the swap
 
-	// Theme is "day", "night", or "auto": night from NightFrom to NightTo o'clock. Tapping the clock changes it,
+	// Theme is "day", "night", or "auto": night from NightFrom to NightTo o'clock. The Theme row of the Machine page changes it,
 	// and OnTheme is told, to save it.
 	Theme              string
 	NightFrom, NightTo int
@@ -441,7 +439,6 @@ func (a *App) Draw(c *gfx.Canvas) {
 	a.collect = !a.Record
 	a.drawPrint(c)
 	a.collect = false
-	a.drawStatus(c)
 	a.drawToast(c)
 	if a.keypad != nil {
 		a.collect, a.focus = !a.Record, a.focus[:0]
@@ -460,26 +457,6 @@ func (a *App) addHit(h hit) *hit {
 
 func (a *App) isPressed(r image.Rectangle) bool {
 	return a.pressed != nil && a.pressed.r == r
-}
-
-// drawStatus is the display strip at the top: the time, and what the other tab is doing.
-func (a *App) drawStatus(c *gfx.Canvas) {
-	c.Fill(image.Rect(0, 0, W, statusH), bg)
-	win := image.Rect(10, 8, W-10, statusH-6)
-	// The Stop key while the printer prints, moves or heats, on every screen.
-	estop := a.estopVisible()
-	if estop {
-		win.Max.X = W - 108
-	}
-	window(c, win)
-	if estop {
-		defer a.drawEstop(c)
-	}
-	c.Text(image.Rect(win.Min.X+12, win.Min.Y, win.Min.X+90, win.Max.Y), a.Now().Format("15:04"), gfx.Face(true, 24), lcdInk, gfx.Left)
-	// The clock is also the key for the theme: day, night, auto.
-	c.Text(image.Rect(win.Min.X+92, win.Min.Y, win.Min.X+150, win.Max.Y), strings.ToUpper(a.Theme), gfx.Face(true, 13), lcdDim, gfx.Left)
-	a.addHit(hit{r: image.Rect(0, 0, 160, statusH), tap: a.cycleTheme})
-
 }
 
 func (a *App) drawConfirm(c *gfx.Canvas) {
@@ -519,7 +496,7 @@ func lighten(c color.RGBA) color.RGBA {
 	return color.RGBA{f(c.R), f(c.G), f(c.B), 255}
 }
 
-// Toast shows a short message above the tab bar for a few seconds.
+// Toast shows a short message at the bottom of the screen for a few seconds.
 func (a *App) Toast(msg string) {
 	a.post(func() { a.toast, a.toastAt = msg, a.Now() })
 }
@@ -564,14 +541,24 @@ func (a *App) isNight() bool {
 	return h >= a.NightFrom && h < a.NightTo
 }
 
+// themeLine tells the theme: day, night, or auto with the hours of the night.
+func themeLine(theme string, from, to int) string {
+	switch theme {
+	case "day":
+		return "Day mode"
+	case "night":
+		return "Night mode"
+	}
+	return fmt.Sprintf("Auto: night from %d:00 to %d:00", from, to)
+}
+
 // cycleTheme goes day, night, auto, day.
 func (a *App) cycleTheme() {
 	a.Theme = map[string]string{"day": "night", "night": "auto", "auto": "day"}[a.Theme]
 	if a.Theme == "" {
 		a.Theme = "auto"
 	}
-	msg := map[string]string{"day": "Day mode", "night": "Night mode", "auto": fmt.Sprintf("Auto: night from %d:00 to %d:00", a.NightFrom, a.NightTo)}[a.Theme]
-	a.Toast(msg)
+	a.Toast(themeLine(a.Theme, a.NightFrom, a.NightTo))
 	if a.OnTheme != nil {
 		a.OnTheme(a.Theme)
 	}

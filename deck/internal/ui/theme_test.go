@@ -27,17 +27,19 @@ func TestNightHours(t *testing.T) {
 	}
 }
 
-func TestClockCyclesTheme(t *testing.T) {
+// The Theme row of the Machine page goes day, night, auto.
+func TestThemeRowCyclesTheme(t *testing.T) {
 	a := New()
 	a.Theme = "day"
 	var saved []string
 	a.OnTheme = func(s string) { saved = append(saved, s) }
 	a.Printer = &DemoPrinter{View: -1}
 	cv := gfx.New(W, BaseH)
+	a.pages = []page{pageMachine}
 	for i := 0; i < 3; i++ {
 		a.Draw(cv)
-		ev(a, touch.Down, 40, 28)
-		ev(a, touch.Up, 40, 28)
+		ev(a, touch.Down, W/2, 210+4*65+30) // the fifth row
+		ev(a, touch.Up, W/2, 210+4*65+30)
 	}
 	if len(saved) != 3 || saved[0] != "night" || saved[1] != "auto" || saved[2] != "day" {
 		t.Errorf("themes %v", saved)

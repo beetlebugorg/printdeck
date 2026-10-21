@@ -51,7 +51,7 @@ func lcdImage(bits [64][16]byte, gap, off, on color.RGBA) *image.RGBA {
 }
 
 // lcdPanelRect is the place of the display on the idle screen.
-var lcdPanelRect = image.Rect((W-128*lcdScale)/2, 66, (W+128*lcdScale)/2, 66+64*lcdScale)
+var lcdPanelRect = image.Rect((W-128*lcdScale)/2, 20, (W+128*lcdScale)/2, 20+64*lcdScale)
 
 // drawLCDPanel draws the status screen in a display window. A tap on the nozzle or the bed sets
 // its temperature.
@@ -91,7 +91,7 @@ func (a *App) statusPanel(c *gfx.Canvas, st printer.State) {
 
 // The places of the Print screens under the status display.
 const (
-	belowPanel = 278 // the top of the first row under the display
+	belowPanel = 232 // the top of the first row under the display
 	keyRowH    = 72  // the height of a row of keys
 )
 

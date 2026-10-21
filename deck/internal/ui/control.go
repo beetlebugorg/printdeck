@@ -16,7 +16,7 @@ import (
 // The Move page: home, move the head with a joystick, Z, park and center, motors.
 
 const (
-	joyCX, joyCY, joyR = 152, 392, 128 // the joystick pad of the Move page
+	joyCX, joyCY, joyR = 152, 346, 128 // the joystick pad of the Move page
 	joyDead            = 0.15          // the middle part that does not move
 	joyTick            = 150 * time.Millisecond
 	joyMinSpeed        = 2.0  // mm/s just outside the middle
@@ -121,7 +121,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 	moving := st.Connected && (!st.Busy() || st.Paused)
 
 	// The position, with an LED for each homed axis.
-	pos := image.Rect(24, 122, W-24, 176)
+	pos := image.Rect(24, 76, W-24, 130)
 	window(c, pos)
 	for i, ax := range []struct {
 		n string
@@ -143,10 +143,10 @@ func (a *App) drawMove(c *gfx.Canvas) {
 
 	// Home
 	q := (W - 48 - 24) / 4
-	btn(image.Rect(24, 188, 24+q, 246), "Home all", orange, onAcc, func() error { return pr.Home() })
+	btn(image.Rect(24, 142, 24+q, 200), "Home all", orange, onAcc, func() error { return pr.Home() })
 	for i, ax := range []string{"X", "Y", "Z"} {
 		axis := strings.ToLower(ax)
-		btn(image.Rect(24+(i+1)*(q+8), 188, 24+(i+1)*(q+8)+q, 246), ax, raised, text, func() error { return pr.Home(axis) })
+		btn(image.Rect(24+(i+1)*(q+8), 142, 24+(i+1)*(q+8)+q, 200), ax, raised, text, func() error { return pr.Home(axis) })
 	}
 
 	// The joystick for X and Y: an XY pad in a display window.

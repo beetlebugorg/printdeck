@@ -62,7 +62,7 @@ The screens of the touch screen:
 - Control (when no print runs): home X, Y, Z; a joystick moves the head (faster further out, stops when you lift the finger); Z in steps of 0.1, 1, 10 mm; extrude and retract; fan; motors off; emergency stop. A filament swap leads through heat, unload, load, and purge.
 - Tune (while a print runs): speed and flow in percent, Z offset in baby steps, fan.
 - Tap a temperature to set it with a keypad.
-- Tap the clock to choose the day theme, the night theme, or auto (night from `NIGHT_FROM` to `NIGHT_TO`, 20 to 7). The choice is saved in `/var/lib/printdeck/theme`.
+- Machine > Theme chooses the day theme, the night theme, or auto (night from `NIGHT_FROM` to `NIGHT_TO`, 20 to 7). The choice is saved in `/var/lib/printdeck/theme`.
 - Setup (at the first start) sets the Wi-Fi. Help (Print > Control > Help) shows the addresses, the user and the password.
 
 `slicer/` has a Cura post-processing script that sets the speed of each move. See `slicer/README.md`.

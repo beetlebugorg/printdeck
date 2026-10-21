@@ -10,7 +10,7 @@ import (
 	"printdeck/internal/printer"
 )
 
-// The Print tab: a screen for the state of the printer (idle, preparing, first layer, printing,
+// The screens: a screen for the state of the printer (idle, preparing, first layer, printing,
 // paused, done, error), and the pages that the idle screen opens: Files, Move, Filament,
 // Maintenance and Machine. The pages are a stack: Back goes one page up.
 
@@ -54,7 +54,7 @@ func (a *App) topPage() page {
 
 // backButton is the Back key at the top right of a page.
 func (a *App) backButton(c *gfx.Canvas) {
-	a.button(c, image.Rect(W-130, 66, W-24, 112), "Back", raised, text, a.back)
+	a.button(c, image.Rect(W-130, 20, W-24, 66), "Back", raised, text, a.back)
 }
 
 // material is a filament with its temperatures.
@@ -96,8 +96,8 @@ func lcd2(l1, r1, l2, r2 string) []string {
 	return []string{lr(l1, r1), lr(l2, r2)}
 }
 
-// printLCD is the character display of the other screens of the Print tab.
-var printLCD = image.Rect(16, 62, W-16, 154)
+// printLCD is the character display of the other screens.
+var printLCD = image.Rect(16, 16, W-16, 108)
 
 // drawHome is the idle screen: the status screen of the printer display, Print, preheat, the last
 // print, and the menus.
@@ -107,7 +107,7 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	// The status screen of the printer display: the same picture on both screens.
 	a.statusPanel(c, st)
 
-	a.button(c, image.Rect(40, 280, W-40, 360), "Print a file", orange, onAcc, func() {
+	a.button(c, image.Rect(40, 234, W-40, 330), "Print a file", orange, onAcc, func() {
 		go func() { pr.LoadFiles(); a.Redraw() }()
 		a.open(pageFiles)
 	})
@@ -116,11 +116,11 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	if m.Name != "" {
 		pre = "Preheat " + m.Name
 	}
-	a.button(c, image.Rect(40, 372, 40+half, 432), pre, raised, text, func() { pr.Heat(m.Tool, m.Bed) })
-	a.button(c, image.Rect(W-40-half, 372, W-40, 432), "Cool down", raised, text, func() { pr.Heat(0, 0) })
+	a.button(c, image.Rect(40, 342, 40+half, 410), pre, raised, text, func() { pr.Heat(m.Tool, m.Bed) })
+	a.button(c, image.Rect(W-40-half, 342, W-40, 410), "Cool down", raised, text, func() { pr.Heat(0, 0) })
 
 	// The last print, with Reprint.
-	last := image.Rect(40, 446, W-40, 536)
+	last := image.Rect(40, 424, W-40, 514)
 	if l, ok := a.lastPrint(st); ok {
 		plate(c, last)
 		label(c, image.Rect(last.Min.X+16, last.Min.Y+8, last.Max.X, last.Min.Y+28), "Last print", gfx.Left)
@@ -140,9 +140,9 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 		p    page
 	}{{"Filament", pageFilament}, {"Move", pageMove}, {"Maintenance", pageMaintenance}, {"Machine", pageMachine}} {
 		x0 := 40 + (i%2)*(half+12)
-		y0 := 550 + (i/2)*86
+		y0 := 528 + (i/2)*110
 		p := t.p
-		a.button(c, image.Rect(x0, y0, x0+half, y0+76), t.name, raised, text, func() { a.open(p) })
+		a.button(c, image.Rect(x0, y0, x0+half, y0+98), t.name, raised, text, func() { a.open(p) })
 	}
 }
 
@@ -171,23 +171,4 @@ func (a *App) menuRow(c *gfx.Canvas, r image.Rectangle, title, sub string, subCo
 	c.Polygon([]image.Point{{cx - 5, cy - 10}, {cx + 5, cy}, {cx - 5, cy + 10}, {cx - 9, cy + 6}, {cx - 3, cy}, {cx - 9, cy - 6}}, dim)
 	a.addHit(hit{r: r, tap: tap})
 	a.addFocus(title, r, tap)
-}
-
-// estop is the Stop key in the status bar while the printer prints, moves or heats.
-func (a *App) estopVisible() bool {
-	if a.Printer == nil {
-		return false
-	}
-	st := a.Printer.State()
-	return st.Reachable && st.Connected && (st.Busy() || st.ToolTarget > 0 || st.BedTarget > 0)
-}
-
-func (a *App) drawEstop(c *gfx.Canvas) {
-	r := image.Rect(W-100, 6, W-10, statusH-4)
-	pr := a.Printer
-	a.button(c, r, "Stop", redCap, onRed, func() {
-		a.confirm = &confirmBox{question: "Stop the printer now?", yes: "Stop", danger: true, onYes: func() {
-			a.do(pr.EmergencyStop)
-		}}
-	})
 }

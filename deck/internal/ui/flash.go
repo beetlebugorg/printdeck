@@ -8,7 +8,7 @@ import (
 	"printdeck/internal/gfx"
 )
 
-// The flash of the Klipper firmware to the printer's board, over the whole Print tab until it ends.
+// The flash of the Klipper firmware to the printer's board, over the whole screen until it ends.
 
 type flashState struct {
 	step        string
@@ -41,7 +41,7 @@ func (a *App) askFlash(device string) {
 func (a *App) drawFlash(c *gfx.Canvas) {
 	f := a.flash
 	heading(c, "Firmware")
-	y := 130
+	y := 84
 	face := gfx.Face(false, 20)
 	title := func(t string, col color.RGBA) {
 		c.Text(image.Rect(24, y, W-24, y+36), t, gfx.Face(true, 24), col, gfx.Left)

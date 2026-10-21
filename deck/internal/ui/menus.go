@@ -14,7 +14,7 @@ import (
 
 // The menu pages of the idle screen: Maintenance and Machine, and the pages that Machine opens.
 
-const menuTop, menuRowH = 124, 98
+const menuTop, menuRowH = 78, 98
 
 // drawMaintenance lists the calibrations that the printer has (the modules of Klipper).
 func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
@@ -122,7 +122,7 @@ func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 func (a *App) drawManualProbe(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	charLCD(c, printLCD, lcd2("Paper test", "", "Nozzle at Z", fmt.Sprintf("%.3f", st.ManualZ)), 20)
-	box := image.Rect(24, 170, W-24, 330)
+	box := image.Rect(24, 124, W-24, 284)
 	plate(c, box)
 	lines := []string{"Put a sheet of paper under the", "nozzle. Lower the nozzle until the", "paper drags a little when you move", "it, then tap Accept."}
 	for i, l := range lines {
@@ -131,14 +131,14 @@ func (a *App) drawManualProbe(c *gfx.Canvas, st printer.State) {
 	steps := []float64{-1, -0.1, -0.025, 0.025, 0.1, 1}
 	third := (W - 48 - 16) / 3
 	for i, s := range steps {
-		r := image.Rect(24+(i%3)*(third+8), 346+(i/3)*84, 24+(i%3)*(third+8)+third, 346+(i/3)*84+74)
+		r := image.Rect(24+(i%3)*(third+8), 300+(i/3)*84, 24+(i%3)*(third+8)+third, 300+(i/3)*84+74)
 		v := s
 		name := fmt.Sprintf("%+g", s)
 		a.button(c, r, name, raised, text, func() { a.do(func() error { return pr.Gcode(fmt.Sprintf("TESTZ Z=%g", v)) }) })
 	}
-	label(c, image.Rect(24, 516, W-24, 540), "− lowers the nozzle, + raises it (mm)", gfx.Center)
+	label(c, image.Rect(24, 470, W-24, 494), "− lowers the nozzle, + raises it (mm)", gfx.Center)
 	half := (W - 48 - 12) / 2
-	a.button(c, image.Rect(24, 560, 24+half, 650), "Accept", orange, onAcc, func() {
+	a.button(c, image.Rect(24, 514, 24+half, 604), "Accept", orange, onAcc, func() {
 		a.do(func() error {
 			if err := pr.Gcode("ACCEPT"); err != nil {
 				return err
@@ -147,7 +147,7 @@ func (a *App) drawManualProbe(c *gfx.Canvas, st printer.State) {
 			return nil
 		})
 	})
-	a.button(c, image.Rect(W-24-half, 560, W-24, 650), "Abort", raised, red, func() { a.do(func() error { return pr.Gcode("ABORT") }) })
+	a.button(c, image.Rect(W-24-half, 514, W-24, 604), "Abort", raised, red, func() { a.do(func() error { return pr.Gcode("ABORT") }) })
 }
 
 // drawMachine is the Machine page: the versions and the totals, and the advanced pages.
@@ -156,7 +156,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 	heading(c, "Machine")
 	a.backButton(c)
 	mach := pr.Machine()
-	info := image.Rect(24, 122, W-24, 250)
+	info := image.Rect(24, 76, W-24, 204)
 	window(c, info)
 	fw := "—"
 	switch {
@@ -205,6 +205,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		{"Print history", "Each print, with the result", func() { a.open(pageHistory) }},
 		{"Macros", macros, func() { a.open(pageMacros) }},
 		{"Console", "Type G-code, and read the replies", func() { a.open(pageConsole) }},
+		{"Theme", themeLine(a.Theme, a.NightFrom, a.NightTo), a.cycleTheme},
 	}
 	upWarn := false
 	if a.Updater != nil {
@@ -226,16 +227,16 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		if i == 0 && upWarn {
 			col = orange
 		}
-		a.menuRow(c, image.Rect(24, 256+i*65, W-24, 256+i*65+60), r.t, r.s, col, r.tap)
+		a.menuRow(c, image.Rect(24, 210+i*65, W-24, 210+i*65+60), r.t, r.s, col, r.tap)
 	}
 	half := (W - 48 - 12) / 2
-	a.button(c, image.Rect(24, 650, 24+half, 716), "Restart Klipper", raised, text, func() {
+	a.button(c, image.Rect(24, 680, 24+half, 746), "Restart Klipper", raised, text, func() {
 		a.confirm = &confirmBox{question: "Restart Klipper?", yes: "Restart", onYes: func() {
 			a.Toast("Restarting Klipper…")
 			a.do(pr.RestartKlipper)
 		}}
 	})
-	a.button(c, image.Rect(W-24-half, 650, W-24, 716), "Firmware restart", raised, red, func() {
+	a.button(c, image.Rect(W-24-half, 680, W-24, 746), "Firmware restart", raised, red, func() {
 		a.confirm = &confirmBox{question: "Restart the printer firmware?", yes: "Restart", danger: true, onYes: func() {
 			a.Toast("Restarting the firmware…")
 			a.do(pr.FirmwareRestart)
@@ -250,7 +251,7 @@ func (a *App) drawMacros(c *gfx.Canvas, st printer.State) {
 	a.backButton(c)
 	macros := pr.Machine().Macros
 	if len(macros) == 0 {
-		c.Text(image.Rect(30, 300, W-30, 340), "The printer has no macros", gfx.Face(false, 20), dim, gfx.Center)
+		c.Text(image.Rect(30, 254, W-30, 294), "The printer has no macros", gfx.Face(false, 20), dim, gfx.Center)
 		return
 	}
 	const rowH = 70
@@ -294,7 +295,7 @@ func (a *App) drawHistory(c *gfx.Canvas) {
 	a.backButton(c)
 	recs := pr.History()
 	if len(recs) == 0 {
-		c.Text(image.Rect(30, 300, W-30, 340), "No finished prints yet", gfx.Face(false, 20), dim, gfx.Center)
+		c.Text(image.Rect(30, 254, W-30, 294), "No finished prints yet", gfx.Face(false, 20), dim, gfx.Center)
 		return
 	}
 	const rowH = 90
@@ -335,7 +336,7 @@ func (a *App) drawStats(c *gfx.Canvas) {
 	a.backButton(c)
 	s := printer.ComputeStats(a.Printer.History(), a.Now())
 	if s.Prints == 0 {
-		c.Text(image.Rect(30, 300, W-30, 340), "No finished prints yet", gfx.Face(false, 20), dim, gfx.Center)
+		c.Text(image.Rect(30, 254, W-30, 294), "No finished prints yet", gfx.Face(false, 20), dim, gfx.Center)
 		return
 	}
 	// Four big numbers in display windows.
@@ -348,14 +349,14 @@ func (a *App) drawStats(c *gfx.Canvas) {
 	}
 	half := (W - 48 - 12) / 2
 	for i, t := range tiles {
-		r := image.Rect(24+(i%2)*(half+12), 122+(i/2)*104, 24+(i%2)*(half+12)+half, 122+(i/2)*104+92)
+		r := image.Rect(24+(i%2)*(half+12), 76+(i/2)*104, 24+(i%2)*(half+12)+half, 76+(i/2)*104+92)
 		window(c, r)
 		c.Text(image.Rect(r.Min.X+14, r.Min.Y+8, r.Max.X-14, r.Min.Y+30), t[0], gfx.Face(true, 14), lcdDim, gfx.Left)
 		c.Text(image.Rect(r.Min.X+14, r.Min.Y+30, r.Max.X-14, r.Max.Y-6), t[1], gfx.Face(true, 40), lcdInk, gfx.Left)
 	}
 
 	// The results as a bar: completed, cancelled, failed.
-	bar := image.Rect(24, 336, W-24, 360)
+	bar := image.Rect(24, 290, W-24, 314)
 	window(c, bar)
 	in := bar.Inset(4)
 	x := in.Min.X
@@ -367,9 +368,9 @@ func (a *App) drawStats(c *gfx.Canvas) {
 		c.Fill(image.Rect(x, in.Min.Y, x+w, in.Max.Y), part.col)
 		x += w
 	}
-	label(c, image.Rect(24, 364, W-24, 388), fmt.Sprintf("%d done · %d cancelled · %d failed", s.Completed, s.Cancelled, s.Failed), gfx.Center)
+	label(c, image.Rect(24, 318, W-24, 342), fmt.Sprintf("%d done · %d cancelled · %d failed", s.Completed, s.Cancelled, s.Failed), gfx.Center)
 
-	box := image.Rect(24, 398, W-24, 398+6*36+16)
+	box := image.Rect(24, 352, W-24, 352+6*36+16)
 	plate(c, box)
 	top := "—"
 	if s.TopFile != "" {
