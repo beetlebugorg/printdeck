@@ -37,8 +37,14 @@ func (v *View) TimeLeft(st *State, now time.Time) {
 		return
 	}
 	gc := v.gc
-	el, total, ok := gc.TimeAt(st.FilePos)
-	if !ok {
+	// The plan of the motion planner is the time of the moves on this printer. Without it, the
+	// timeline of the slicer.
+	var el, total float64
+	if v.plan != nil && v.plan.total > 0 {
+		el, total = v.plan.at(st.FilePos)
+	} else if e, t, ok := gc.TimeAt(st.FilePos); ok {
+		el, total = e, t
+	} else {
 		return
 	}
 	e := &v.est
