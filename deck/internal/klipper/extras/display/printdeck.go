@@ -14,3 +14,6 @@ func (d *PrinterLCD) SetHooks(screen func(eventtime float64) bool, key func(key 
 
 // LCD returns the low level handler of the display.
 func (d *PrinterLCD) LCD() LCDChip { return d.lcdChip }
+
+// MenuRunning reports that the menu of Klipper is open.
+func (d *PrinterLCD) MenuRunning() bool { return d.menu != nil && d.menu.running }
