@@ -17,6 +17,12 @@ type Record struct {
 	Duration time.Duration `json:"duration"`
 	Filament float64       `json:"filament"` // mm
 	End      time.Time     `json:"end"`
+	// The timings of the print, for better estimates: the steps of the start macro, the seconds
+	// that the bed took to cool to ReleaseBed after the print, and the seconds of the moves in
+	// the plan of the file.
+	Phases  []Phase `json:"phases,omitempty"`
+	CoolBed float64 `json:"cool_bed,omitempty"`
+	Planned float64 `json:"planned,omitempty"`
 }
 
 // Summary is a short line for the screen, for example "Done · 1:42 · 12 g". grams gives the
@@ -43,6 +49,7 @@ type History struct {
 	records []Record
 	loaded  bool
 	last    string // the key of the last added print
+	rates   *Rates // the timings from the records; nil after a change
 }
 
 func (h *History) load() {
@@ -74,24 +81,58 @@ func (h *History) Records() []Record {
 }
 
 // add records the end of a print once: the state of Klipper shows the last print until the next
-// one, also after a new connection.
-func (h *History) add(st State, now time.Time) {
+// one, also after a new connection. phases and planned are the timings of the print. It returns
+// the key of a new record, or "".
+func (h *History) add(st State, now time.Time, phases []Phase, planned float64) string {
 	if st.Finished == "" {
-		return
+		return ""
 	}
 	r := Record{File: st.FinishedFile, Path: st.FinishedPath, Result: st.Finished, Duration: st.FinishedTime,
-		Filament: st.FinishedFilament, End: now}
+		Filament: st.FinishedFilament, End: now, Phases: phases, Planned: planned}
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.load()
 	if key(r) == h.last {
-		return
+		return ""
 	}
 	h.last = key(r)
 	h.records = append([]Record{r}, h.records...)
 	if len(h.records) > maxHistory {
 		h.records = h.records[:maxHistory]
 	}
+	h.rates = nil
+	h.save()
+	return h.last
+}
+
+// setCool sets the cooling time of the bed of the record with the key.
+func (h *History) setCool(k string, seconds float64) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for i := range h.records {
+		if key(h.records[i]) == k {
+			h.records[i].CoolBed = seconds
+			h.rates = nil
+			h.save()
+			return
+		}
+	}
+}
+
+// Rates returns the timings of this printer from the history.
+func (h *History) Rates() Rates {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.load()
+	if h.rates == nil {
+		r := ComputeRates(h.records)
+		h.rates = &r
+	}
+	return *h.rates
+}
+
+// save writes the history to its file. The caller holds the lock.
+func (h *History) save() {
 	if h.Path == "" {
 		return
 	}

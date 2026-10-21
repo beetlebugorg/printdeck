@@ -76,6 +76,7 @@ type Klippy struct {
 	// From the connection to Klipper: its version, and the names of its objects (objects/list).
 	version  string
 	diameter float64 // filament_diameter of the extruder, in mm
+	timer    timer   // the timings of the running print
 	objects  []string
 }
 
@@ -311,6 +312,14 @@ func (k *Klippy) History() []Record {
 }
 
 // Machine returns the version, the modules and the macros of the connected Klipper.
+// Rates returns the timings of this printer, from its history.
+func (k *Klippy) Rates() Rates {
+	if k.Hist == nil {
+		return ComputeRates(nil)
+	}
+	return k.Hist.Rates()
+}
+
 func (k *Klippy) Machine() Machine {
 	k.mu.Lock()
 	defer k.mu.Unlock()
@@ -456,7 +465,7 @@ func (k *Klippy) refresh(notify func()) {
 		}
 	}
 	k.View.Activity(&st)
-	k.View.TimeLeft(&st, time.Now())
+	now := time.Now()
 	k.mu.Lock()
 	var stack []string
 	if cmds, ok := k.status["printdeck_display"]["commands"].([]any); ok {
@@ -473,9 +482,38 @@ func (k *Klippy) refresh(notify func()) {
 			st.Preparing = true
 		}
 	}
+	// The timings of the print: the steps of the start macro, the plan, and the cooling of the
+	// bed after the print.
+	k.timer.update(st, now)
+	if st.Busy() {
+		if total, ok := k.View.PlanTotal(fileKey(st)); ok {
+			k.timer.planned = total
+		}
+	}
 	k.mu.Unlock()
+	rates := ComputeRates(nil)
+	if k.Hist != nil {
+		rates = k.Hist.Rates()
+	}
+	k.mu.Lock()
+	prepLeft := rates.prepLeft(st, &k.timer, now)
+	k.mu.Unlock()
+	k.View.TimeLeft(&st, now, prepLeft)
 	if k.Hist != nil && st.Reachable {
-		k.Hist.add(st, time.Now())
+		k.mu.Lock()
+		phases, planned := append([]Phase(nil), k.timer.phases...), k.timer.planned
+		k.mu.Unlock()
+		if key := k.Hist.add(st, now, phases, planned); key != "" {
+			k.mu.Lock()
+			k.timer.coolStart, k.timer.coolKey = now, key
+			k.mu.Unlock()
+		}
+		k.mu.Lock()
+		seconds, key, done := k.timer.cooling(st, now)
+		k.mu.Unlock()
+		if done {
+			k.Hist.setCool(key, seconds)
+		}
 	}
 	k.mu.Lock()
 	k.st = st

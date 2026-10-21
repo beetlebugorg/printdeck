@@ -42,10 +42,18 @@ func demoApp() (*ui.App, *ui.DemoPrinter) {
 		Modules: []string{"probe", "bed_tilt", "extruder", "heater_bed"},
 		Macros:  []string{"NOZZLE_WIPE", "PRINT_START", "PRINT_END", "G29", "G12"}, FilamentDiameter: 2.85}
 	end := time.Date(2026, 10, 20, 11, 42, 0, 0, time.Local)
+	// The timings of a TAZ Workhorse: the bed heats at about 6 s for each degree, the nozzle at
+	// about 0.7 s, and the probe takes about a minute and a half.
+	phases := func(bed, nozzle, probe float64) []printer.Phase {
+		return []printer.Phase{{Kind: "heat-bed", Seconds: bed, From: 23, To: 60},
+			{Kind: "heat-nozzle", Seconds: nozzle, From: 24, To: 210}, {Kind: "probe", Seconds: probe}}
+	}
 	p.History_ = []printer.Record{
-		{File: "benchy.gcode", Path: "benchy.gcode", Result: "complete", Duration: 102 * time.Minute, Filament: 4100, End: end},
+		{File: "benchy.gcode", Path: "benchy.gcode", Result: "complete", Duration: 102 * time.Minute, Filament: 4100, End: end,
+			Phases: phases(222, 128, 86), CoolBed: 640, Planned: 5560},
 		{File: "cable_clip_x8.gcode", Path: "cable_clip_x8.gcode", Result: "cancelled", Duration: 12 * time.Minute, Filament: 600, End: end.AddDate(0, 0, -1)},
-		{File: "amp_bracket.gcode", Path: "amp_bracket.gcode", Result: "complete", Duration: 65 * time.Minute, Filament: 6300, End: end.AddDate(0, 0, -3)},
+		{File: "rail_clip.gcode", Path: "rail_clip.gcode", Result: "complete", Duration: 65 * time.Minute, Filament: 6300, End: end.AddDate(0, 0, -3),
+			Phases: phases(230, 131, 90), CoolBed: 610, Planned: 3420},
 	}
 	p.Meta_ = gcodemeta.Meta{Slicer: "Cura 5.13.0", PrintTime: 102 * time.Minute, FilamentMM: 4100, LayerHeight: 0.2,
 		NozzleTemp: 210, BedTemp: 60}

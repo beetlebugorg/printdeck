@@ -89,6 +89,7 @@ type Printer interface {
 
 	// What the printer has (version, modules, macros), and the finished prints, newest first.
 	Machine() printer.Machine
+	Rates() printer.Rates // the timings of this printer, from its history
 	History() []printer.Record
 	// What the slicer wrote about a file, and the removal of a file.
 	FileMeta(path string) gcodemeta.Meta
