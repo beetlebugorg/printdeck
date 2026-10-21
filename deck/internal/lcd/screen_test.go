@@ -22,12 +22,28 @@ func lit(c *canvas, x0, y0, x1, y1 int) int {
 func TestRowText(t *testing.T) {
 	var c canvas
 	(&Screen{Rows: []Row{{Left: "A", Right: "B"}}}).draw(&c, 0)
-	for row, bits := range display.VGAFont['A'] {
-		if c[row][0] != bits {
-			t.Fatalf("row %d of A: %08b, want %08b", row, c[row][0], bits)
+	// The pixels of a glyph at x in the area of the screens.
+	glyphAt := func(x, row int) byte {
+		var b byte
+		for i := 0; i < 8; i++ {
+			if c.get(x+i, row) {
+				b |= 0x80 >> i
+			}
 		}
-		if c[row][15] != display.VGAFont['B'][row] {
-			t.Fatalf("row %d of B at the right: %08b", row, c[row][15])
+		return b
+	}
+	for row, bits := range display.VGAFont['A'][:canvasH/4] {
+		if got := glyphAt(0, row); got != bits {
+			t.Fatalf("row %d of A: %08b, want %08b", row, got, bits)
+		}
+		if got := glyphAt(canvasW-8, row); got != display.VGAFont['B'][row] {
+			t.Fatalf("row %d of B at the right: %08b", row, got)
+		}
+	}
+	// The margin of the panel stays dark.
+	for y := 0; y < panelH; y++ {
+		if c[y][0]&0xc0 != 0 || c[y][15]&0x03 != 0 {
+			t.Fatalf("a lit pixel in the margin at row %d", y)
 		}
 	}
 }

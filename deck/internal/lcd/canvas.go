@@ -6,19 +6,24 @@ import (
 	"printdeck/internal/klipper/extras/display"
 )
 
-// canvas is the 128 x 64 pixels of the display, one bit each, 8 pixels in a byte with the left
+// canvas is the 128 x 64 pixels of the panel, one bit each, 8 pixels in a byte with the left
 // pixel in the top bit, as the graphics of the ST7920.
 type canvas [64][16]byte
 
+// The panel has 128 x 64 pixels. The screens draw in an area with a margin of 2 pixels at the
+// sides and 1 pixel at the top and the bottom, so that nothing touches the edge of the panel.
 const (
-	canvasW = 128
-	canvasH = 64
+	panelW, panelH   = 128, 64
+	marginX, marginY = 2, 1
+	canvasW          = panelW - 2*marginX // the width of the area of the screens
+	canvasH          = panelH - 2*marginY
 )
 
 func (c *canvas) set(x, y int, on bool) {
 	if x < 0 || x >= canvasW || y < 0 || y >= canvasH {
 		return
 	}
+	x, y = x+marginX, y+marginY
 	bit := byte(0x80) >> (x & 7)
 	if on {
 		c[y][x>>3] |= bit
@@ -31,6 +36,7 @@ func (c *canvas) get(x, y int) bool {
 	if x < 0 || x >= canvasW || y < 0 || y >= canvasH {
 		return false
 	}
+	x, y = x+marginX, y+marginY
 	return c[y][x>>3]&(byte(0x80)>>(x&7)) != 0
 }
 

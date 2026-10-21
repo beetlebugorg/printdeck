@@ -22,9 +22,9 @@ func (s *Screen) Image(frame, scale int) *image.RGBA {
 // BitsImage draws a frame as a picture, scale pixels for each pixel, in the colors off and on.
 func BitsImage(c [64][16]byte, scale int, off, on color.RGBA) *image.RGBA {
 	pixelOff, pixelOn := off, on
-	img := image.NewRGBA(image.Rect(0, 0, canvasW*scale, canvasH*scale))
-	for y := 0; y < canvasH; y++ {
-		for x := 0; x < canvasW; x++ {
+	img := image.NewRGBA(image.Rect(0, 0, panelW*scale, panelH*scale))
+	for y := 0; y < panelH; y++ {
+		for x := 0; x < panelW; x++ {
 			col := pixelOff
 			if c[y][x>>3]&(0x80>>(x&7)) != 0 {
 				col = pixelOn
@@ -42,12 +42,12 @@ func BitsImage(c [64][16]byte, scale int, off, on color.RGBA) *image.RGBA {
 // DotImage draws a frame as a picture of a dot-matrix display: each pixel is a square dot of
 // scale-1 pixels in the color on or off, with a gap of one pixel in the color gap.
 func DotImage(c [64][16]byte, scale int, gap, off, on color.RGBA) *image.RGBA {
-	img := image.NewRGBA(image.Rect(0, 0, canvasW*scale, canvasH*scale))
+	img := image.NewRGBA(image.Rect(0, 0, panelW*scale, panelH*scale))
 	for i := 0; i < len(img.Pix); i += 4 {
 		img.Pix[i], img.Pix[i+1], img.Pix[i+2], img.Pix[i+3] = gap.R, gap.G, gap.B, gap.A
 	}
-	for y := 0; y < canvasH; y++ {
-		for x := 0; x < canvasW; x++ {
+	for y := 0; y < panelH; y++ {
+		for x := 0; x < panelW; x++ {
 			col := off
 			if c[y][x>>3]&(0x80>>(x&7)) != 0 {
 				col = on
