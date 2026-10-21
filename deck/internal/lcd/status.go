@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 )
 
 // Status is the status screen of the deck: the heaters and the fan with their icons, and the
@@ -11,7 +12,7 @@ import (
 // blades of the fan at its speed.
 type Status struct {
 	State    string  `json:"state"`              // for example "Ready" or "Printing"
-	Clock    string  `json:"clock,omitempty"`    // for example "14:24"
+	Clock    string  `json:"clock,omitempty"`    // for example "2:24PM" or "14:24" (see Clock)
 	Message  string  `json:"message,omitempty"`  // the M117 message, or the next step
 	Tool     float64 `json:"tool"`               // degrees
 	ToolT    float64 `json:"tool_target"`        // degrees, 0 is off
@@ -276,4 +277,12 @@ func fanIcon(c *canvas, x, y int, speed float64, frame int) {
 			}
 		}
 	}
+}
+
+// Clock is the time for the display: "2:24PM" on a 12-hour clock, or "14:24" on a 24-hour clock.
+func Clock(t time.Time, h24 bool) string {
+	if h24 {
+		return t.Format("15:04")
+	}
+	return t.Format("3:04PM")
 }

@@ -60,7 +60,7 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 			a.thumb(c, image.Rect(r.Min.X+10, r.Min.Y+9, r.Min.X+10+thumbSmall, r.Min.Y+9+thumbSmall), f.Path, m)
 			c.Text(image.Rect(r.Min.X+92, r.Min.Y+8, r.Max.X-12, r.Min.Y+38), gfx.Fit(gfx.Face(true, 19), f.Name, r.Dx()-104), gfx.Face(true, 19), text, gfx.Left)
 			c.Text(image.Rect(r.Min.X+92, r.Min.Y+36, r.Max.X-12, r.Min.Y+60), metaLine(m), gfx.Face(false, 16), dim, gfx.Left)
-			c.Text(image.Rect(r.Min.X+92, r.Min.Y+58, r.Max.X-12, r.Max.Y-6), fileDate(f.Date, a.Now()), gfx.Face(false, 14), dim, gfx.Left)
+			c.Text(image.Rect(r.Min.X+92, r.Min.Y+58, r.Max.X-12, r.Max.Y-6), fileDate(f.Date, a.Now(), a.Clock24), gfx.Face(false, 14), dim, gfx.Left)
 		}
 	})
 	open := func(i int) {
@@ -103,7 +103,7 @@ func metaLine(m gcodemeta.Meta) string {
 }
 
 // fileDate is the upload time: today, yesterday, or the date.
-func fileDate(t, now time.Time) string {
+func fileDate(t, now time.Time, clock24 bool) string {
 	if t.IsZero() {
 		return ""
 	}
@@ -111,9 +111,9 @@ func fileDate(t, now time.Time) string {
 	y2, m2, d2 := now.Date()
 	switch {
 	case y1 == y2 && m1 == m2 && d1 == d2:
-		return "Today " + t.Format("15:04")
+		return "Today " + clockText(t, clock24)
 	case now.Sub(t) < 48*time.Hour && now.AddDate(0, 0, -1).Day() == d1:
-		return "Yesterday " + t.Format("15:04")
+		return "Yesterday " + clockText(t, clock24)
 	case y1 == y2:
 		return t.Format("Jan 2")
 	}
@@ -202,7 +202,7 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 	if m.Slicer != "" {
 		rows = append(rows, [2]string{"Slicer", m.Slicer})
 	}
-	rows = append(rows, [2]string{"Uploaded", fileDate(f.Date, a.Now())})
+	rows = append(rows, [2]string{"Uploaded", fileDate(f.Date, a.Now(), a.Clock24)})
 	box := image.Rect(24, 350, W-24, 350+len(rows)*30+20)
 	plate(c, box)
 	for i, kv := range rows {

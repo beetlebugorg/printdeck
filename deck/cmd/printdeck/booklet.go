@@ -125,7 +125,7 @@ func writeBooklet(dir string, secs []section) {
 	// The title of the cover, in the font of the printer display.
 	writePNG(filepath.Join(dir, "img", "cover-title.png"),
 		lcd.DotLines([]string{"PRINTDECK"}, 9, "8x16", 7, rgb(0x1f4bd1), rgb(0x2a58e0), rgb(0xf2f6ff)))
-	status := &lcd.Screen{Status: &lcd.Status{State: "READY PLA", Clock: "14:24", Message: "XYZ HOMED", Tool: 210, ToolT: 210,
+	status := &lcd.Screen{Status: &lcd.Status{State: "READY PLA", Clock: "2:24PM", Message: "XYZ HOMED", Tool: 210, ToolT: 210,
 		Bed: 60, BedT: 60, Fan: 1, Position: "X110 Y110 Z5.00"}}
 	writePNG(filepath.Join(dir, "img", "cover-status.png"), lcd.DotImage(status.Bits(3), 4, rgb(0x1f4bd1), rgb(0x2a58e0), rgb(0xf2f6ff)))
 

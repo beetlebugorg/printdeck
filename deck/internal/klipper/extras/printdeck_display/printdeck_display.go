@@ -45,6 +45,7 @@ type PrintdeckDisplay struct {
 	mu        sync.Mutex
 	screen    *lcd.Screen
 	screenEnd float64 // the time when the screen ends: screenTTL after the last one
+	clock24   bool    // the clock of the last screen of the deck
 	clients   map[webhooks.ClientConn]map[string]any
 	animTimer *reactor.Timer
 }
@@ -95,6 +96,9 @@ func (p *PrintdeckDisplay) handleScreen(req *webhooks.WebRequest) {
 	now := p.reactor.Monotonic()
 	p.mu.Lock()
 	p.screen, p.screenEnd = s, now+screenTTL
+	if s != nil {
+		p.clock24 = s.Clock24
+	}
 	p.mu.Unlock()
 	if p.lcd != nil {
 		p.lcd.RequestRedraw()
@@ -167,7 +171,7 @@ func (p *PrintdeckDisplay) ownStatus(eventtime float64) *lcd.Status {
 		return 0
 	}
 	ex, bed, fan := status("extruder"), status("heater_bed"), status("fan")
-	s := &lcd.Status{State: "Ready", Clock: time.Now().Format("15:04"),
+	s := &lcd.Status{State: "Ready", Clock: lcd.Clock(time.Now(), p.clock24),
 		Tool: num(ex, "temperature"), ToolT: num(ex, "target"),
 		Bed: num(bed, "temperature"), BedT: num(bed, "target"), Fan: num(fan, "speed")}
 	if ps := status("print_stats"); ps != nil {

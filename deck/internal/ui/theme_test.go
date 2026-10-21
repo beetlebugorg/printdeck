@@ -55,3 +55,21 @@ func TestThemeRowCyclesTheme(t *testing.T) {
 		t.Error("still night")
 	}
 }
+
+// The Clock row of the Machine page changes between the 12-hour and the 24-hour clock.
+func TestClockRowTogglesClock(t *testing.T) {
+	a := New()
+	var saved []bool
+	a.OnClock = func(h24 bool) { saved = append(saved, h24) }
+	a.Printer = &DemoPrinter{View: -1}
+	cv := gfx.New(W, BaseH)
+	a.pages = []page{pageMachine}
+	for i := 0; i < 2; i++ {
+		a.Draw(cv)
+		ev(a, touch.Down, W/2, 210+5*65+30) // the sixth row
+		ev(a, touch.Up, W/2, 210+5*65+30)
+	}
+	if len(saved) != 2 || !saved[0] || saved[1] {
+		t.Errorf("clocks %v", saved)
+	}
+}

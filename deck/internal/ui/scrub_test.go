@@ -64,7 +64,8 @@ func TestLCDLines(t *testing.T) {
 	}
 	// 4 seconds later, the second line has the time of the finish.
 	at = at.Add(4 * time.Second)
-	if l := a.lcdLines(st)[1]; l != "DONE AT        "+at.Add(30*time.Minute).Format("15:04") {
+	end := at.Add(30 * time.Minute).Format("3:04PM")
+	if l := a.lcdLines(st)[1]; l != "DONE AT"+strings.Repeat(" ", 13-len(end))+end {
 		t.Errorf("second line %q, want the time of the finish", l)
 	}
 	for _, l := range lines {

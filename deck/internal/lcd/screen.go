@@ -34,6 +34,9 @@ type Screen struct {
 	Status *Status `json:"status,omitempty"`
 	// Menu is a menu with icons. With a menu, the rows are not used.
 	Menu *Menu `json:"menu,omitempty"`
+	// Clock24 is the clock of the deck: true for 24 hours. The module keeps it for its own status
+	// screen, when no deck sends a screen.
+	Clock24 bool `json:"clock_24h,omitempty"`
 }
 
 // Moves reports that the screen has frames: an animation, or a status with a part that moves.

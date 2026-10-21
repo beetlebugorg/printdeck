@@ -32,9 +32,9 @@ func TestRenderStatus(t *testing.T) {
 		t.Skip()
 	}
 	for name, s := range map[string]*Screen{
-		"idle":     {Status: &Status{State: "Ready  PLA", Clock: "14:24", Message: "XYZ homed", Tool: 24, Bed: 23, Position: "X110 Y110 Z5.00", Hint: "Click for menu"}},
-		"heating":  {Status: &Status{State: "Preparing", Clock: "14:24", Message: "Heating bed 52/60", Tool: 150, ToolT: 210, Bed: 52, BedT: 60, Fan: 0, Position: "X0 Y0 Z10.00"}},
-		"printing": {Status: &Status{State: "Printing", Clock: "14:24", Message: "benchy.gcode", Tool: 210, ToolT: 210, Bed: 60, BedT: 60, Fan: 1, Printing: true, Progress: 0.42, Elapsed: "0:58", Left: "1:23"}},
+		"idle":     {Status: &Status{State: "Ready  PLA", Clock: "2:24PM", Message: "XYZ homed", Tool: 24, Bed: 23, Position: "X110 Y110 Z5.00", Hint: "Click for menu"}},
+		"heating":  {Status: &Status{State: "Preparing", Clock: "2:24PM", Message: "Heating bed 52/60", Tool: 150, ToolT: 210, Bed: 52, BedT: 60, Fan: 0, Position: "X0 Y0 Z10.00"}},
+		"printing": {Status: &Status{State: "Printing", Clock: "2:24PM", Message: "benchy.gcode", Tool: 210, ToolT: 210, Bed: 60, BedT: 60, Fan: 1, Printing: true, Progress: 0.42, Elapsed: "0:58", Left: "1:23"}},
 		"a-probe":  {Anim: "probe", Title: "Bed tilt", Caption: "0:42", Footer: "Stop on the deck"},
 		"a-pid":    {Anim: "pid", Title: "PID tune", Caption: "3:10", Footer: "Stop on the deck"},
 		"a-work":   {Anim: "work", Title: "PRINT_START", Caption: "0:05", Footer: "Stop on the deck"},

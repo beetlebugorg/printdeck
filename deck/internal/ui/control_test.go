@@ -170,7 +170,7 @@ func TestFirmwareRestartOnMachinePage(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.pages = []page{pageMachine}
 	a.Draw(cv)
-	tapAt(a, cv, W-100, 710) // Firmware restart
+	tapAt(a, cv, W-100, 745) // Firmware restart
 	if a.confirm == nil {
 		t.Fatal("no confirmation")
 	}
