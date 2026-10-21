@@ -57,16 +57,16 @@ func (a *App) stateFrame() frame {
 
 // page draws the title and the Back key of a page, and on a wide screen the display of the printer
 // over them. It returns the frame of the page.
-func (a *App) page(c *gfx.Canvas, title string) frame { return a.pageBack(c, title, a.back) }
+func (a *App) page(c *gfx.Canvas, title string) frame { return a.pageBack(c, title, "Back", a.back) }
 
-// pageBack is page with another action for Back.
-func (a *App) pageBack(c *gfx.Canvas, title string, back func()) frame {
+// pageBack is page with another key in the place of Back: its label and its action.
+func (a *App) pageBack(c *gfx.Canvas, title, label string, back func()) frame {
 	f := a.pageFrame()
 	if f.wide {
 		a.statusPanelAt(c, a.Printer.State(), f.lcd)
 	}
 	headingAt(c, f.head, title)
-	a.button(c, backRect(f.head), "Back", raised, text, back)
+	a.button(c, backRect(f.head), label, raised, text, back)
 	return f
 }
 
