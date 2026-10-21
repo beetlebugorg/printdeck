@@ -203,8 +203,9 @@ func (a *App) drawPaused(c *gfx.Canvas, st printer.State) {
 		k := kit.Rows(keys, 12, kit.Px(88), kit.Fr(1))
 		resume, grid = k[0], kit.Grid(k[1], 2, 2, 12)
 	} else {
-		r := kit.Rows(view, 12, kit.Px(76), kit.Px(88), kit.Px(2*keyRowH+12))
+		r := kit.Rows(view, 12, kit.Px(76), kit.Px(88), kit.Px(2*keyRowH+12), kit.Fr(1))
 		info, resume, grid = r[0], r[1], kit.Grid(r[2], 2, 2, 12)
+		a.modelView(c, r[3], st)
 	}
 	plate(c, info)
 	where := "Paused"

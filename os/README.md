@@ -216,7 +216,8 @@ without it the kernel stops at boot.
 The image keeps only what Printdeck uses:
 
 - No Python: the Printdeck program has the Klipper host.
-- No sound: no ALSA library and no sound drivers in the kernel.
+- No sound: no ALSA library and no sound drivers. The kernel keeps only the sound core, because
+  the display driver (vc4) needs it for HDMI audio.
 - The Printdeck program runs as the unprivileged user `deck`. It has the groups of its devices
   (`video`, `input`, `tty`, `dialout`, `systemd-journal`) and of Klipper (`printer`), and
   two capabilities: port 80 and the graphics mode of the console. The system helper does the

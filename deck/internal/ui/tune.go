@@ -28,7 +28,7 @@ func (a *App) drawTune(c *gfx.Canvas) {
 		r := kit.Rows(f.body(), 8, kit.Fr(1), kit.Px(20))
 		rows, zHint = r[0], r[1]
 	} else {
-		r := kit.Rows(kit.Inset(f.body(), 0, -4, 0, 0), 12, kit.Px(26), kit.Px(3*84-12), kit.Px(20), kit.Px(56), kit.Px(20), kit.Px(100))
+		r := kit.Rows(kit.Inset(f.body(), 0, -4, 0, 8), 12, kit.Px(26), kit.Fr(1), kit.Px(20), kit.Px(56), kit.Px(20), kit.Px(100))
 		file, rows, zHint, fanRow, tHint, temps = r[0], r[1], r[2], r[3], r[4], kit.Inset(r[5], 16, -4, 16, 4)
 	}
 	c.Text(file, gfx.Fit(gfx.Face(false, 17), st.File, file.Dx()), gfx.Face(false, 17), dim, gfx.Left)
@@ -37,7 +37,7 @@ func (a *App) drawTune(c *gfx.Canvas) {
 	if f.wide {
 		labelW, keyW = 88, 64
 	}
-	rowH := min(90, (rows.Dy()+12)/3-12)
+	rowH := min(110, (rows.Dy()+12)/3-12)
 	s := kit.NewStack(rows, 12)
 	row := func(name, value string, minus, plus func()) {
 		r := kit.Cols(s.Next(rowH), 0, kit.Px(labelW), kit.Fr(1))

@@ -132,10 +132,11 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		side := min(r[0].Dx(), r[0].Dy())
 		pad, hint, parks = kit.Center(r[0], side, side), r[1], r[2]
 	} else {
-		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 0), 12, kit.Px(54), kit.Px(58), kit.Px(2*joyR+26), kit.Px(70), kit.Px(24))
-		pos, home, parks, hint = r[0], r[1], r[3], r[4]
-		col := kit.Cols(r[2], 12, kit.Px(2*joyR), kit.Fr(1))
-		pad, zArea = kit.Rows(col[0], 0, kit.Px(2*joyR))[0], kit.Rows(col[1], 0, kit.Px(2*joyR))[0]
+		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 0), 12, kit.Px(54), kit.Px(58), kit.Fr(1), kit.Px(60), kit.Px(70), kit.Px(24))
+		pos, home, zArea, parks, hint = r[0], r[1], r[3], r[4], r[5]
+		// The joystick as large as the space allows, in the middle; the Z row under it.
+		side := min(r[2].Dx(), r[2].Dy()-26)
+		pad = kit.Center(kit.Rows(r[2], 0, kit.Px(side))[0], side, side)
 	}
 
 	// The position, with an LED for each homed axis.
@@ -170,19 +171,12 @@ func (a *App) drawMove(c *gfx.Canvas) {
 	// The joystick for X and Y.
 	a.drawJoystick(c, pad, moving)
 	if !f.wide {
-		label(c, image.Rect(pad.Min.X, pad.Max.Y+6, pad.Max.X, pad.Max.Y+26), "XY  hold to move", gfx.Center)
+		label(c, image.Rect(pad.Min.X, pad.Max.Y+6, pad.Max.X, pad.Max.Y+26), "XY  hold to move · Z mm per tap below", gfx.Center)
 	}
 
-	// Z: a column beside the joystick, or a row in the left column. The steps are in the middle.
-	var up, steps, down image.Rectangle
-	if f.wide {
-		z := kit.Cols(zArea, 6, kit.Fr(1.3), kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1.3))
-		down, up, steps = z[0], z[4], image.Rect(z[1].Min.X, zArea.Min.Y, z[3].Max.X, zArea.Max.Y)
-	} else {
-		z := kit.Rows(zArea, 12, kit.Fr(1.6), kit.Fr(1), kit.Fr(1.6))
-		up, steps, down = z[0], z[1], z[2]
-		label(c, image.Rect(zArea.Min.X, pad.Max.Y+6, zArea.Max.X, pad.Max.Y+26), "Z mm per tap", gfx.Center)
-	}
+	// Z: a row with the steps in the middle.
+	z := kit.Cols(zArea, 6, kit.Fr(1.3), kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1.3))
+	down, up, steps := z[0], z[4], image.Rect(z[1].Min.X, zArea.Min.Y, z[3].Max.X, zArea.Max.Y)
 	btn(up, "Z ▲", raised, text, func() error { return pr.Jog(0, 0, a.zStep, 600) })
 	for i, r := range kit.Cols(steps, 6, kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
 		s := []float64{0.1, 1, 10}[i]

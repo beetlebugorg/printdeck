@@ -60,13 +60,14 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 			}
 			return kit.Rows(f.body(), 12, s...)
 		}
-		txt.Skip(16)
-		var out []image.Rectangle
-		for _, z := range sizes {
-			out = append(out, txt.Next(z.px))
-			txt.Skip(12)
+		// At the bottom of the screen, a little larger than their size.
+		s := make([]kit.Size, len(sizes)+1)
+		s[0] = kit.Fr(1)
+		for i, z := range sizes {
+			s[i+1] = kit.Px(z.px * 5 / 4)
 		}
-		return out
+		r := kit.Rows(kit.Inset(txt.Rest(), 0, 16, 0, 8), 12, s...)
+		return r[1:]
 	}
 
 	// The steps of the mode: a load has no unload, an unload has no load.
