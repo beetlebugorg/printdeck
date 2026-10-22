@@ -316,7 +316,7 @@ func (a *App) handle(ev touch.Event) {
 	a.touchAt = a.Now()
 	p := image.Pt(int(ev.X*float64(W)+0.5), int(ev.Y*float64(H)+0.5))
 	kind := map[touch.Kind]kit.Kind{touch.Down: kit.Down, touch.Move: kit.Move, touch.Up: kit.Up}[ev.Kind]
-	a.in.Handle(kit.Event{Kind: kind, P: p})
+	a.in.Handle(kit.Event{Kind: kind, P: p, At: a.Now()})
 	a.Redraw()
 }
 
@@ -335,6 +335,11 @@ func (a *App) Draw(c *gfx.Canvas) {
 	}
 	if n := a.isNight(); n != night {
 		setNight(n)
+	}
+	// A flicked list goes on: the fling moves it before the touch areas of this frame replace those
+	// of the last one, and the next frame comes soon.
+	if a.in.Fling(a.Now()) {
+		a.redrawSoon(33 * time.Millisecond)
 	}
 	a.in.Reset()
 	c.Fill(c.Bounds(), bg)

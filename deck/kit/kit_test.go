@@ -3,6 +3,7 @@ package kit
 import (
 	"image"
 	"testing"
+	"time"
 )
 
 func TestRowsAndCols(t *testing.T) {
@@ -64,7 +65,7 @@ func TestTapSliderScrollSwipe(t *testing.T) {
 	in.Add(Hit{R: slider, Drag: func(f float64) { at = f }, End: func(f float64) { end = f }})
 	in.Add(Hit{R: list, Scroll: func(dy int) { scrolled += dy }, TapAt: func(p image.Point) { tapAt = p }})
 	in.Add(Hit{R: swipe, Swipe: func(dir int) { swiped = dir }})
-	ev := func(k Kind, x, y int) { in.Handle(Event{k, image.Pt(x, y)}) }
+	ev := func(k Kind, x, y int) { in.Handle(Event{Kind: k, P: image.Pt(x, y)}) }
 
 	ev(Down, 50, 25)
 	if !in.Pressed(key) {
@@ -120,10 +121,10 @@ func TestPadGetsUpAfterReset(t *testing.T) {
 	var in Input
 	var phases []Phase
 	in.Add(Hit{R: image.Rect(0, 0, 100, 100), Pad: func(p image.Point, ph Phase) { phases = append(phases, ph) }})
-	in.Handle(Event{Down, image.Pt(10, 10)})
-	in.Handle(Event{Move, image.Pt(20, 10)})
+	in.Handle(Event{Kind: Down, P: image.Pt(10, 10)})
+	in.Handle(Event{Kind: Move, P: image.Pt(20, 10)})
 	in.Reset()
-	in.Handle(Event{Up, image.Pt(20, 10)})
+	in.Handle(Event{Kind: Up, P: image.Pt(20, 10)})
 	if len(phases) != 3 || phases[2] != PadUp {
 		t.Errorf("phases %v", phases)
 	}
@@ -145,5 +146,37 @@ func TestList(t *testing.T) {
 	h.TapAt(image.Pt(10, 120))
 	if scroll != 700 || tapped != 7 {
 		t.Errorf("scroll %d, tapped %d", scroll, tapped)
+	}
+}
+
+// A flick of a list goes on after the lift, slower and slower, and a new touch stops it.
+func TestFling(t *testing.T) {
+	var in Input
+	scrolled := 0
+	in.Add(Hit{R: image.Rect(0, 0, 100, 400), Scroll: func(dy int) { scrolled += dy }})
+	t0 := time.Unix(100, 0)
+	at := func(ms int) time.Time { return t0.Add(time.Duration(ms) * time.Millisecond) }
+	in.Handle(Event{Kind: Down, P: image.Pt(50, 300), At: at(0)})
+	for i := 1; i <= 5; i++ { // 20 pixels each 20 ms: 1000 pixels a second
+		in.Handle(Event{Kind: Move, P: image.Pt(50, 300-20*i), At: at(20 * i)})
+	}
+	in.Handle(Event{Kind: Up, P: image.Pt(50, 200), At: at(180)}) // the panel reports the lift 80 ms late
+	byFinger := scrolled
+	if !in.Fling(at(213)) || scrolled <= byFinger {
+		t.Fatalf("no fling: scrolled %d, by the finger %d", scrolled, byFinger)
+	}
+	moving := true
+	for ms := 246; moving && ms < 5000; ms += 33 {
+		moving = in.Fling(at(ms))
+	}
+	if moving {
+		t.Fatal("the fling does not stop")
+	}
+	// A slow drag has no fling.
+	in.Handle(Event{Kind: Down, P: image.Pt(50, 300), At: at(6000)})
+	in.Handle(Event{Kind: Move, P: image.Pt(50, 280), At: at(6200)})
+	in.Handle(Event{Kind: Up, P: image.Pt(50, 280), At: at(6300)})
+	if in.Fling(at(6333)) {
+		t.Error("a slow drag flings")
 	}
 }
