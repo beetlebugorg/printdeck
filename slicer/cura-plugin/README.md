@@ -57,7 +57,7 @@ the pocket away from the new models, and turns it back on when you clear the bas
 2. Download `Printdeck.curapackage` from the latest release, and drag it onto the Cura window.
    Restart Cura.
 
-The plugin works with Cura 4.13 (Cura LulzBot Edition) and later.
+The plugin needs Cura 5. Cura LulzBot Edition (Cura 4.13) does not show the Printdeck tab and the Print on a part tool.
 
 ## Develop
 
