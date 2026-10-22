@@ -3,22 +3,23 @@
 #
 #   python3 desktop/cad/deck.py
 #
-# The mount is in the coordinates of the CAD of LulzBot, as cad/export.py, so the meshes go to the
-# group of the frame, in the same scene coordinates and the same file format: deck_navy,
-# deck_orange and deck_white.
-import math, os, struct
+# The mount is in the coordinates of the CAD of LulzBot, as cad/export.py, so the meshes are in the
+# same scene coordinates and file format, in the group of the frame. Each assembly group of the
+# build booklet (lulzbot/lineart/render.mjs) and each material is one file
+# deck_GROUP_MATERIAL.bin, so the film can put the groups on the printer one at a time.
+# meshes/deck.json lists them. The cables are not drawn.
+import json, math, os, struct
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-MESH = os.path.join(HERE, "..", "..", "lulzbot", "build", "mesh")
+BUILD = os.path.join(HERE, "..", "..", "lulzbot", "build")
 OUT = os.path.join(HERE, "..", "meshes")
 
-# The parts of the mount, by colour. The display, the Pi and the hardware are not shown: the
-# 3D window draws the screen on the face.
-PARTS = {
-    "deck_navy": ["head", "pod"],
-    "deck_orange": ["back", "plate", "clip_a", "clip_b", "clip_nut_a", "clip_nut_b"],
-    "deck_white": ["grille"],
-}
+# The groups of the booklet: the inserts, the screws of the Pi, the display and the clips have
+# groups of their own (REGROUP and PREFIX of render.mjs).
+PREFIX = [("hw_insert_head_back", "ins_head"), ("hw_insert_back_flange", "ins_back"),
+          ("hw_insert_clip_nut", "ins_nut"), ("hw_insert_pod_block", "ins_block"), ("hw_pi_screw", "pi_screws"),
+          ("hw_display_screw", "display_screws"), ("hw_clip_screw", "clip_screws"), ("clip_", "clips")]
+SKIP = {"printer", "cables", "printer_cable", "power", "pi_plugs", "display_cables", "drive_cable"}
 
 # The scene from the CAD, as in cad/export.py.
 OFFSET = (294.9, 540.6, 55.1)
@@ -39,10 +40,31 @@ def scene(p):
     return (-p[0] + OFFSET[0], p[1] + OFFSET[1], -p[2] + OFFSET[2])
 
 
-for name, parts in PARTS.items():
+def group_of(part):
+    for prefix, group in PREFIX:
+        if part["name"].startswith(prefix):
+            return group
+    if part["name"].startswith(("hw_cable_", "hw_plug_")):
+        return "cables"
+    return part["group"]
+
+
+manifest = json.load(open(os.path.join(BUILD, "manifest.json")))
+files = {}  # (group, material) -> list of STL names
+for part in manifest["parts"]:
+    g = group_of(part)
+    if g not in SKIP:
+        files.setdefault((g, part["material"]), []).append(part["file"])
+
+for name in os.listdir(OUT):
+    if name.startswith("deck_"):
+        os.remove(os.path.join(OUT, name))
+index = []
+for (group, material), stls in sorted(files.items()):
+    name = f"deck_{group}_{material}"
     with open(os.path.join(OUT, name + ".bin"), "wb") as f:
-        for part in parts:
-            for tri in triangles(os.path.join(MESH, part + ".stl")):
+        for stl in stls:
+            for tri in triangles(os.path.join(BUILD, "mesh", stl)):
                 a, b, c = (scene(p) for p in tri)
                 u = [b[i] - a[i] for i in range(3)]
                 w = [c[i] - a[i] for i in range(3)]
@@ -51,4 +73,7 @@ for name, parts in PARTS.items():
                 n = tuple(x / ln for x in n)
                 for p in (a, b, c):
                     f.write(struct.pack("<3h3bx", *(round(x * 50) for x in p), *(round(x * 127) for x in n)))
-    print(name, os.path.getsize(os.path.join(OUT, name + ".bin")))
+    index.append({"group": group, "material": material, "mesh": name})
+with open(os.path.join(OUT, "deck.json"), "w") as f:
+    json.dump(index, f, indent=1)
+print(len(index), "meshes:", sorted({i["group"] for i in index}))

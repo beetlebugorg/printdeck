@@ -384,3 +384,83 @@ void SimFeed::setScreen(const QImage &image)
     m_screen = image;
     emit screenChanged();
 }
+
+FilmRecorder::FilmRecorder(const QString &path, QObject *parent) : QObject(parent), m_path(path)
+{
+    m_check.setInterval(500);
+    connect(&m_check, &QTimer::timeout, this, [this] {
+        QFile go(m_path + QStringLiteral(".go"));
+        if (!m_armed && go.open(QIODevice::ReadOnly)) {
+            const QStringList v = QString::fromUtf8(go.readAll()).split(QLatin1Char(' '), Qt::SkipEmptyParts);
+            if (v.size() >= 3) {
+                m_from = v[0].toDouble();
+                m_to = v[1].toDouble();
+                m_fps = qMax(1, v[2].trimmed().toInt());
+            }
+            m_armed = true;
+            m_check.stop();
+            emit armedChanged();
+        }
+    });
+    m_check.start();
+}
+
+bool FilmRecorder::start(int width, int height, int fps)
+{
+    if (m_ffmpeg)
+        return false;
+    m_size = QSize(width, height);
+    m_ffmpeg = new QProcess(this);
+    m_ffmpeg->setProcessChannelMode(QProcess::ForwardedErrorChannel);
+    m_ffmpeg->start(QStringLiteral("ffmpeg"),
+                    {QStringLiteral("-y"), QStringLiteral("-loglevel"), QStringLiteral("error"),
+                     QStringLiteral("-f"), QStringLiteral("rawvideo"), QStringLiteral("-pix_fmt"), QStringLiteral("rgba"),
+                     QStringLiteral("-s"), QStringLiteral("%1x%2").arg(width).arg(height),
+                     QStringLiteral("-r"), QString::number(fps), QStringLiteral("-i"), QStringLiteral("-"),
+                     QStringLiteral("-c:v"), QStringLiteral("libx264"), QStringLiteral("-preset"), QStringLiteral("medium"),
+                     QStringLiteral("-crf"), QStringLiteral("14"), QStringLiteral("-pix_fmt"), QStringLiteral("yuv420p"), m_path});
+    if (!m_ffmpeg->waitForStarted()) {
+        qWarning("FilmRecorder: ffmpeg did not start");
+        return false;
+    }
+    return true;
+}
+
+void FilmRecorder::frame(const QImage &image)
+{
+    if (!m_ffmpeg)
+        return;
+    QImage f = image.convertToFormat(QImage::Format_RGBA8888);
+    if (f.size() != m_size)
+        f = f.scaled(m_size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    for (int y = 0; y < f.height(); y++)
+        m_ffmpeg->write(reinterpret_cast<const char *>(f.constScanLine(y)), f.width() * 4);
+    m_ffmpeg->waitForBytesWritten(-1);
+    if (++m_frames % 30 == 0)
+        qInfo("FilmRecorder: %d frames", m_frames);
+}
+
+void FilmRecorder::finish()
+{
+    if (!m_ffmpeg)
+        return;
+    m_ffmpeg->closeWriteChannel();
+    m_ffmpeg->waitForFinished(-1);
+    qInfo("FilmRecorder: %d frames in %s", m_frames, qPrintable(m_path));
+    m_ffmpeg->deleteLater();
+    m_ffmpeg = nullptr;
+    m_frames = 0;
+    // The next take starts when the .go file is there again.
+    QFile::remove(m_path + QStringLiteral(".go"));
+    m_armed = false;
+    emit armedChanged();
+    m_check.start();
+}
+
+QVariant SimFeed::resource(const QString &path) const
+{
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly))
+        return {};
+    return QJsonDocument::fromJson(f.readAll()).toVariant();
+}

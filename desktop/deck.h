@@ -34,6 +34,8 @@ public:
 
     // start starts printdeck app. program is the path of the printdeck program.
     void start(const QString &program, const QStringList &args);
+    // attach connects to a printdeck app that runs already: hello is its first line of output.
+    bool attach(const QByteArray &hello);
     // stop ends printdeck app: it ends when its input closes.
     void stop();
 
