@@ -42,6 +42,13 @@ Item
             onClicked: UM.Controller.triggerAction("placeOnBase")
         }
 
+        Cura.SecondaryButton
+        {
+            visible: hasBase
+            text: "Place as in the files"
+            onClicked: UM.Controller.triggerAction("placeAsInFiles")
+        }
+
         UM.CheckBox
         {
             visible: hasBase

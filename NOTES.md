@@ -39,12 +39,13 @@ on the bittlx Pi addon panel (`~/Projects/3d/bittlx/bittle_pi_addon/stl/print/po
    ```
 
 3. Restart Cura. The plugin is in `~/.local/share/cura/5.13/plugins/Printdeck`.
-4. Open `pod_panel.stl`. Turn it so that the logo pocket is up (it prints with that side down).
-   Put it at the back middle of the bed.
-5. Open `pod_logo_white.stl`. Turn it top up, and put it over the logo pocket of the panel.
-6. Select the panel, open the Print on a part tool, and tap **Set as base**.
-7. Select the logo, and tap **Place on the base**. The logo inlay goes into a 1.0 mm pocket of the
-   panel, so lower it with the Z of the Move tool: Z = the top of the panel less 1.0 mm.
+4. Open `stl/installed/pod_panel.stl` and `stl/installed/pod_logo_white.stl` (the assembly frame,
+   so the logo has its exact place). The panel loads on its side: turn it 90 degrees about X, top
+   up. Put it at the back middle of the bed.
+5. Select the panel, open the Print on a part tool, and tap **Set as base**.
+6. Select the logo, and tap **Place as in the files**. In the test, the logo went 1.0 mm into the
+   logo pocket of the panel (27.7 to 28.5 mm, the top of the panel at 28.7 mm).
+7. (Optional) Add text with **Add text**.
 8. Print with white. On the deck: put the panel in the pocket, tap **Check the height**, do the
    paper test on the panel, then Resume.
 9. For red: change the filament, swap the logo for `pod_logo_red.stl`, check **The pocket is on
@@ -69,9 +70,9 @@ on the bittlx Pi addon panel (`~/Projects/3d/bittlx/bittle_pi_addon/stl/print/po
 
 ## Open points
 
-- XY of the logo over the panel pocket: today you place it by eye. The `stl/installed/` STLs of
-  bittlx have the panel and the logos in one frame. A later tool could place a model at the same
-  place as in an assembly.
+- Place as in the files uses the offset that Cura removes when it loads a file. It works for files
+  of one frame (the `stl/installed/` STLs of bittlx), not for the `stl/print/` STLs, which each
+  have their own print position.
 - The first layer on plastic prints with the normal layer settings. It can need a hotter nozzle or
   a slower first layer on the part.
 - The panel of the tool uses `UM 1.5` controls: Cura 5 only. Cura LulzBot Edition (4.13) needs a

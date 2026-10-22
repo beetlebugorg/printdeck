@@ -33,6 +33,9 @@ its place is exact, and the deck checks its height with a paper test.
 3. Select a new model, and tap **Place on the base**. It goes to the top of the part and stays at
    that height. Move it on the face as usual. To print into a pocket of the part, lower it with the
    Z of the Move tool.
+   When the part and the new models come from one assembly (files in one frame), select the new
+   models and tap **Place as in the files**: they go to their exact place on the part, also after
+   you turned the part.
    For lettering, type the text, its size and how high it stands, and tap **Add text**. The text
    goes on the top of the part at its middle; move and turn it as usual.
 4. Print. The file prints the pocket, then lifts and pauses: put the part in the pocket, and tap
