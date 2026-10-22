@@ -16,6 +16,7 @@ import json
 import os
 import tempfile
 import threading
+import time
 import urllib.parse
 import urllib.request
 
@@ -28,6 +29,7 @@ from . import logic
 
 POLL_SECONDS = 10
 BUTTON = "Print to Printdeck"
+SENT_SECONDS = 300  # the time from a write to the change to Monitor, with the upload dialog
 
 
 def _message(text):
@@ -51,6 +53,7 @@ class PrintdeckPlugin(Extension):
         self._warned = None  # the roll and the grams of the last warning
         self._layer = None  # the job and the layer that the Preview shows
         self._job = None  # the file that prints
+        self._sent = 0.0  # the time of the last write, to see the change to Monitor after it
         self._stop = threading.Event()
 
         app = CuraApplication.getInstance()
@@ -62,6 +65,7 @@ class PrintdeckPlugin(Extension):
         app.getPrintInformation().materialWeightsChanged.connect(self._checkRoll)
         app.getOutputDeviceManager().writeStarted.connect(self._tagMaterial)
         app.fileCompleted.connect(self._onFileCompleted)
+        app.getController().activeStageChanged.connect(self._onStage)
         threading.Thread(target=self._poll, name="Printdeck", daemon=True).start()
         Logger.log("i", "Printdeck: started")
 
@@ -279,9 +283,22 @@ class PrintdeckPlugin(Extension):
         CuraApplication.getInstance().getMachineManager().setMaterialById("0", base)
         _message("The Printdeck has %s. Cura now prints with %s." % (name, label))
 
+    def _onStage(self):
+        """The OctoPrint plugin opens Monitor when it sends a print. After a write, the Printdeck tab
+        opens in its place: it shows the print in the style of the deck."""
+        controller = CuraApplication.getInstance().getController()
+        stage = controller.getActiveStage()
+        if not self._stage or not stage or stage.getPluginId() != "MonitorStage":
+            return
+        if time.monotonic() - self._sent > SENT_SECONDS:
+            return  # the user opened Monitor
+        self._sent = 0.0
+        CuraApplication.getInstance().callLater(controller.setActiveStage, self._stage.getPluginId())
+
     def _tagMaterial(self, output_device=None):
         """Adds the material of the first extruder to the header of the G-code that Cura writes."""
         app = CuraApplication.getInstance()
+        self._sent = time.monotonic()
         _, extruder = self._extruder()
         scene = app.getController().getScene()
         gcode_dict = getattr(scene, "gcode_dict", None)
