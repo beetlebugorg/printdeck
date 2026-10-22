@@ -10,10 +10,10 @@
 //     was configured with it, in a thermal model. The thermistor reads as a "Generic 3950" with a
 //     4.7k pullup.
 //   - The steppers: the queued steps, with their times, give the position of each stepper.
-//   - The endstops and the probe: the first homing of a switch triggers in the move (so the zero
-//     of the simulated bed is not at Z 0),
-//     and the board keeps that stepper position as the place of the switch. Later homings trigger
-//     at that place, so they agree with each other, as on a real machine.
+//   - The endstops and the probe: with the mechanics of the config (Configure, machine.go), an
+//     endstop triggers at its position_endstop, and the probe on the top of a washer. Without them,
+//     the first homing of a switch triggers in the move, and the board keeps that stepper position
+//     as the place of the switch. Later homings trigger at that place.
 //
 // The temperatures and the places of the axes and switches are in one World for the life of the
 // process, so a firmware restart does not change them.
@@ -95,10 +95,19 @@ func Open() (io.ReadWriteCloser, error) {
 		board.Close()
 		return nil, err
 	}
+	boardMu.Lock()
+	current = b
+	boardMu.Unlock()
 	go b.serve()
 	go b.run()
 	return host, nil
 }
+
+// current is the board of the session that runs, for Place.
+var (
+	boardMu sync.Mutex
+	current *Board
+)
 
 // Board is one session of the simulated board: from a start to a reset.
 type Board struct {
@@ -164,6 +173,11 @@ func (b *Board) close() {
 	b.closeOnce.Do(func() {
 		close(b.closed)
 		b.conn.Close()
+		boardMu.Lock()
+		if current == b {
+			current = nil
+		}
+		boardMu.Unlock()
 	})
 }
 
@@ -346,21 +360,23 @@ func (b *Board) command(text string) {
 	case "endstop_home":
 		b.mu.Lock()
 		if e := b.endstops[oid]; e != nil {
-			e.home(b, num(a, "sample_count") != 0, num(a, "pin_value"), num(a, "trsync_oid"), num(a, "trigger_reason"), b.clock64(num(a, "clock")))
+			e.home(b, num(a, "sample_count") != 0, num(a, "pin_value"), num(a, "trsync_oid"), num(a, "trigger_reason"), b.clock64(num(a, "clock")), uint64(num(a, "rest_ticks")))
 		}
 		b.mu.Unlock()
 	case "endstop_query_state":
 		b.mu.Lock()
 		var homing, pin int64
+		next := b.now()
 		if e := b.endstops[oid]; e != nil {
 			if e.homing {
 				homing = 1
 			}
 			pin = 1 - e.pinValue // the switch is open
+			next = e.nextClock(next)
 		}
 		b.mu.Unlock()
 		b.send("endstop_state", map[string]msgproto.Value{"oid": oid, "homing": homing,
-			"next_clock": int64(uint32(b.now())), "pin_value": pin})
+			"next_clock": int64(uint32(next)), "pin_value": pin})
 	case "config_trsync":
 		b.mu.Lock()
 		b.trsyncs[oid] = &trsync{}

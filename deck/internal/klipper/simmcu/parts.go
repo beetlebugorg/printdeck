@@ -1,6 +1,9 @@
 package simmcu
 
-import "sort"
+import (
+	"math"
+	"sort"
+)
 
 // segment is one queue_step: count steps, the first at first, each next one add ticks later than
 // the step before it.
@@ -39,8 +42,9 @@ type stepper struct {
 	last      uint64  // the clock of the last queued step
 	nextDir   bool
 	segs      []segment
-	trsync    int64 // the trsync that stops it, or -1
-	needReset bool  // stopped by a trigger: steps wait for reset_step_clock
+	done      []segment // the last segments that advance counted, for a look back (at)
+	trsync    int64     // the trsync that stops it, or -1
+	needReset bool      // stopped by a trigger: steps wait for reset_step_clock
 }
 
 func newStepper(pin string) *stepper {
@@ -60,19 +64,32 @@ func (s *stepper) queue(interval, count, add int64, clock64 func(int64) uint64) 
 	s.last = g.time(count)
 }
 
-// advance counts the segments that are done at the clock into the position.
+// advance counts the segments that are done at the clock into the position. It keeps the last
+// of them, so that at can look back to a clock before this one.
 func (s *stepper) advance(clock uint64) {
 	for len(s.segs) > 0 && s.segs[0].time(s.segs[0].count) <= clock {
 		g := s.segs[0]
 		s.pos += g.sign() * g.count
 		s.segs = s.segs[1:]
+		s.done = append(s.done, g)
+	}
+	if n := len(s.done) - 256; n > 0 {
+		s.done = append(s.done[:0], s.done[n:]...)
 	}
 }
 
-// at is the position at the clock, with the steps of a segment that runs.
+// at is the position at the clock, with the steps of a segment that runs. The clock can be
+// before the last advance: the steps of the done segments after it do not count.
 func (s *stepper) at(clock uint64) int64 {
 	s.advance(clock)
 	pos := s.pos
+	for i := len(s.done) - 1; i >= 0; i-- {
+		g := s.done[i]
+		if g.time(g.count) <= clock {
+			break
+		}
+		pos -= g.sign() * (g.count - g.done(clock))
+	}
 	if len(s.segs) > 0 {
 		pos += s.segs[0].sign() * s.segs[0].done(clock)
 	}
@@ -82,10 +99,19 @@ func (s *stepper) at(clock uint64) int64 {
 // physical is the place of the axis at the clock, in steps since the start of the World.
 func (s *stepper) physical(clock uint64) float64 { return s.base + float64(s.at(clock)) }
 
+// final is the place after all the queued steps, in steps since the start of the World.
+func (s *stepper) final() float64 {
+	pos := s.pos
+	for _, g := range s.segs {
+		pos += g.sign() * g.count
+	}
+	return s.base + float64(pos)
+}
+
 // stop stops the stepper at the clock: the steps after it do not run.
 func (s *stepper) stop(clock uint64) {
 	s.pos = s.at(clock)
-	s.segs, s.needReset, s.last = nil, true, clock
+	s.segs, s.done, s.needReset, s.last = nil, nil, true, clock
 }
 
 // endstop is a switch: an endstop or a probe.
@@ -99,14 +125,33 @@ type endstop struct {
 	checked    uint64  // the clock of the last check
 	startPlace float64 // the place of the stepper at the start, once known
 	started    bool
+	rest       uint64 // the ticks between two checks of the pin (rest_ticks)
+	trippedAt  uint64 // the clock of the trigger of this homing, or 0
 }
 
-func (e *endstop) home(b *Board, on bool, pinValue, trsyncOID, reason int64, clock uint64) {
+func (e *endstop) home(b *Board, on bool, pinValue, trsyncOID, reason int64, clock, rest uint64) {
 	e.homing = on
 	if !on {
 		return
 	}
 	e.pinValue, e.trsync, e.reason, e.start, e.checked, e.started = pinValue, trsyncOID, reason, clock, clock, false
+	e.rest, e.trippedAt = rest, 0
+}
+
+// nextClock is the next_clock of endstop_query_state. After a trigger the firmware keeps the
+// clock of the check after the trigger: the host reads the time of the trigger from it, less
+// rest_ticks.
+func (e *endstop) nextClock(now uint64) uint64 {
+	if e.trippedAt != 0 {
+		return e.trippedAt + e.rest
+	}
+	return now
+}
+
+// tripAt triggers the switch at the clock. b.mu is locked.
+func (e *endstop) tripAt(b *Board, clock uint64) {
+	e.trippedAt = clock
+	b.trigger(e.trsync, e.reason, clock, true)
 }
 
 // check triggers the switch when its stepper reaches the place of the switch. The first homing of a
@@ -130,6 +175,12 @@ func (e *endstop) check(b *Board, now uint64) {
 		e.startPlace, e.started = s.physical(e.start), true
 		debugf("home %s: start at %.0f, %d segments, last step %d, now %d", e.pin, e.startPlace, len(s.segs), s.last, now)
 	}
+	if m := theMachine(); m != nil {
+		if crossed := e.contact(b, m, s); crossed != nil {
+			e.trip(b, now, crossed)
+			return
+		}
+	}
 	world.mu.Lock()
 	place, known := world.switches[e.pin]
 	world.mu.Unlock()
@@ -146,7 +197,7 @@ func (e *endstop) check(b *Board, now uint64) {
 		world.mu.Lock()
 		world.switches[e.pin] = s.physical(at)
 		world.mu.Unlock()
-		b.trigger(e.trsync, e.reason, at, true)
+		e.tripAt(b, at)
 		return
 	}
 	if now-e.checked > uint64(b.freq) { // once a second
@@ -156,11 +207,16 @@ func (e *endstop) check(b *Board, now uint64) {
 		p := s.physical(clock)
 		return p != e.startPlace && (e.startPlace-place)*(p-place) <= 0
 	}
+	e.trip(b, now, crossed)
+}
+
+// trip triggers the switch at the first clock that crossed is true, between the last check and
+// now. b.mu is locked.
+func (e *endstop) trip(b *Board, now uint64, crossed func(uint64) bool) {
 	if !crossed(now) {
 		e.checked = now
 		return
 	}
-	// The clock of the crossing, between the last check and now.
 	lo, hi := e.checked, now
 	for hi-lo > 1 {
 		mid := lo + (hi-lo)/2
@@ -170,7 +226,36 @@ func (e *endstop) check(b *Board, now uint64) {
 			lo = mid
 		}
 	}
-	b.trigger(e.trsync, e.reason, hi, true)
+	e.tripAt(b, hi)
+}
+
+// contact is the test of the switch in the mechanics: an endstop at its place in mm, the probe on
+// a washer. It is nil for a switch that is not in the mechanics.
+func (e *endstop) contact(b *Board, m *machine, s *stepper) func(uint64) bool {
+	if e.pin == m.probe {
+		return func(clock uint64) bool {
+			p, ok := m.place(b, clock)
+			return ok && m.touches(p)
+		}
+	}
+	at, ok := m.switches[e.pin]
+	if !ok {
+		return nil
+	}
+	a, ok := m.axes[s.pin]
+	if !ok {
+		return nil
+	}
+	start, end := a.start+a.stepDist*e.startPlace, a.start+a.stepDist*s.final()
+	if end == start {
+		return func(uint64) bool { return false } // no steps yet
+	}
+	// The switch is at its place or past it, in the direction of the move.
+	dir := math.Copysign(1, end-start)
+	return func(clock uint64) bool {
+		v, _, _ := m.mm(s, clock)
+		return (v-at)*dir >= 0
+	}
 }
 
 // trsync is a trigger synchronization: the switches and the steppers that stop together.

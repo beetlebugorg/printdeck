@@ -486,6 +486,11 @@ func newConnectHelper(config *configfile.Wrapper, m *MCU, cs *clocksync.ClockSyn
 		c.serialport != simmcu.Serial {
 		c.baud = config.GetInt("baud", configfile.Default(250000), configfile.Min(2400))
 	}
+	if c.serialport == simmcu.Serial {
+		// The simulated board moves in mm, with the steppers, switches and probe of the config.
+		simmcu.Configure(config.FileConfig().Get)
+		printer.AddObject("simmcu", simStatus{})
+	}
 	printer.RegisterEventHandler("klippy:mcu_identify", func(...any) { c.mcuIdentify() })
 	c.restart = newRestartHelper(config, c)
 	printer.RegisterEventHandler("klippy:shutdown", func(...any) { c.shutdown(false) })
@@ -1047,4 +1052,16 @@ func (c *configHelper) getQuerySlot(oid int) int64 {
 	slot := c.mcu.SecondsToClock(float64(oid) * .01)
 	t := int64(c.mcu.EstimatedPrintTime(c.printer.Reactor().Monotonic()) + 1.5)
 	return c.mcu.PrintTimeToClock(float64(t)) + slot
+}
+
+// simStatus is the status of the simulated board: the place of its nozzle in mm, for the 3D
+// window of the desktop app. Klipper has no such object.
+type simStatus struct{}
+
+func (simStatus) Status(eventtime float64) map[string]any {
+	p, ok := simmcu.Place()
+	if !ok {
+		return map[string]any{"place": nil}
+	}
+	return map[string]any{"place": []float64{p[0], p[1], p[2]}}
 }

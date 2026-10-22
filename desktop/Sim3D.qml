@@ -2,7 +2,8 @@
 // moves it, with the part that grows on its bed. The view starts isometric. The left button turns
 // it, the right button pans, the middle button walks on the ground, the wheel zooms, and the side
 // buttons move down and up. The keys move the point of the view too: W A S D or the arrows forward,
-// left, back and right, Q and E down and up, with Shift faster.
+// left, back and right, Q and E down and up, with Shift faster. T makes the tool head see-through
+// or solid.
 //
 // The coordinates are mm. A point of the printer (x right, y back, z up) is (x, z, -y) in the
 // scene. The tool head moves in X, the gantry in Z, and the bed in Y: the nozzle stays in the plane
@@ -21,6 +22,8 @@ Window
     color: "#1b1c1a"
 
     property vector3d p: sim.position
+    // The tool head is see-through, so the part under it shows. T turns it solid and back.
+    property bool seeThrough: true
     // The glow of a heater: from no glow at the room to full at hot.
     function glow(t, hot) { return Math.max(0, Math.min(1, (t - 30) / (hot - 30))) }
 
@@ -40,7 +43,7 @@ Window
         Node
         {
             id: pivot
-            position: Qt.vector3d(120, 240, -140)
+            position: Qt.vector3d(120, 230, 0)
             eulerRotation: Qt.vector3d(view.pitch, view.yaw, 0)
             PerspectiveCamera
             {
@@ -55,168 +58,129 @@ Window
         DirectionalLight { eulerRotation: Qt.vector3d(-25, 150, 0); brightness: 0.6 }
         DirectionalLight { eulerRotation: Qt.vector3d(-80, 0, 0); brightness: 0.35 }
 
-        // --- The frame, which does not move.
-        component Box: Model
+        // A part of the printer: a mesh of the CAD of LulzBot (cad/export.py), in one material.
+        component Part: Model
         {
-            property vector3d size: Qt.vector3d(10, 10, 10)
-            property color tint: "#3a3b39"
-            property real metal: 0.2
+            property string mesh
+            property color tint: "#2a2b29"
+            property real metal: 0
+            property real rough: 0.65
             property color glowColor: "black"
-            source: "#Cube"
-            scale: Qt.vector3d(size.x / 100, size.y / 100, size.z / 100)
-            materials: PrincipledMaterial { baseColor: tint; metalness: metal * 0.45; roughness: 0.5; emissiveFactor: Qt.vector3d(glowColor.r, glowColor.g, glowColor.b) }
+            geometry: MeshGeometry { source: ":/meshes/" + mesh + ".bin" }
+            materials: PrincipledMaterial
+            {
+                baseColor: tint; metalness: metal; roughness: rough; cullMode: Material.NoCulling
+                emissiveFactor: Qt.vector3d(glowColor.r, glowColor.g, glowColor.b)
+            }
         }
-        // A rod, a lead screw, a shaft: a cylinder along an axis of the scene.
-        component Rod: Model
-        {
-            property real radius: 4
-            property real length: 100
-            property color tint: "#c4c6c8"
-            source: "#Cylinder"
-            scale: Qt.vector3d(radius / 50, length / 100, radius / 50)
-            materials: PrincipledMaterial { baseColor: tint; metalness: 0.35; roughness: 0.35 }
-        }
-        // A NEMA 17 stepper motor: a black body between two silver end caps, with its axis on Y of
-        // the motor.
-        component Motor: Node
-        {
-            property real length: 48
-            Box { size: Qt.vector3d(42, 6, 42); y: length / 2 - 3; tint: "#b8babc"; metal: 0.7 }
-            Box { size: Qt.vector3d(42, length - 12, 42); tint: "#161616" }
-            Box { size: Qt.vector3d(42, 6, 42); y: -length / 2 + 3; tint: "#b8babc"; metal: 0.7 }
-            Rod { radius: 2.5; length: 22; y: length / 2 + 11; tint: "#d0d2d4" }
-        }
-        // The base and the Y rails.
-        Box { position: Qt.vector3d(120, -75, -140); size: Qt.vector3d(470, 30, 640) }
-        Box { position: Qt.vector3d(40, -48, -140); size: Qt.vector3d(20, 20, 600); tint: "#9a9c9e"; metal: 0.8 }
-        Box { position: Qt.vector3d(200, -48, -140); size: Qt.vector3d(20, 20, 600); tint: "#9a9c9e"; metal: 0.8 }
-        // The two uprights and the top bar, behind the plane of the nozzle.
-        Box { position: Qt.vector3d(-110, 200, -60); size: Qt.vector3d(40, 580, 40) }
-        Box { position: Qt.vector3d(355, 200, -60); size: Qt.vector3d(40, 580, 40) }
-        Box { position: Qt.vector3d(122, 470, -60); size: Qt.vector3d(505, 40, 40) }
-        // The Z motors on the top of the uprights, and their lead screws down to the base.
-        Motor { position: Qt.vector3d(-110, 514, -15); eulerRotation: Qt.vector3d(180, 0, 0) }
-        Motor { position: Qt.vector3d(355, 514, -15); eulerRotation: Qt.vector3d(180, 0, 0) }
-        Rod { position: Qt.vector3d(-110, 205, -15); radius: 4; length: 560 }
-        Rod { position: Qt.vector3d(355, 205, -15); radius: 4; length: 560 }
-        // The Y motor at the front of the base, and the Y belt under the bed.
-        Motor { position: Qt.vector3d(120, -60, 160); eulerRotation: Qt.vector3d(0, 0, 90) }
-        Box { position: Qt.vector3d(120, -40, -140); size: Qt.vector3d(6, 2, 600); tint: "#111111" }
-        // The electronics: the RAMBo in its box at the back left.
-        Box { position: Qt.vector3d(-40, -10, -420); size: Qt.vector3d(160, 100, 50); tint: "#2a2b29" }
-        Box { position: Qt.vector3d(-40, -10, -394); size: Qt.vector3d(120, 60, 2); tint: "#1d4f8a" }
-        // The spool on its holder over the top bar, with orange filament.
-        Rod { position: Qt.vector3d(122, 520, -60); eulerRotation: Qt.vector3d(0, 0, 90); radius: 6; length: 120; tint: "#8a8d90" }
-        Model
-        {
-            source: "#Cylinder"
-            position: Qt.vector3d(122, 545, -60); eulerRotation: Qt.vector3d(0, 0, 90)
-            scale: Qt.vector3d(1.9, 0.62, 1.9)
-            materials: PrincipledMaterial { baseColor: "#1a1a1a"; roughness: 0.6 }
-        }
-        Model
-        {
-            source: "#Cylinder"
-            position: Qt.vector3d(122, 545, -60); eulerRotation: Qt.vector3d(0, 0, 90)
-            scale: Qt.vector3d(1.6, 0.66, 1.6)
-            materials: PrincipledMaterial { baseColor: "#ff7a1a"; roughness: 0.5 }
-        }
+        // The materials of the kinds of parts.
+        component Metal: Part { tint: "#c4c6c8"; metal: 0.35; rough: 0.35 }
+        component Printed: Part { tint: "#2a2b29" }
+        component Motor: Part { tint: "#161616"; rough: 0.5 }
+        component Belt: Part { tint: "#0e0e0e"; rough: 0.8 }
 
-        // --- The filament: from the spool down into the top of the tool head, which it follows. A
-        // cylinder between the two points: its Y axis turned onto the direction between them.
-        Model
-        {
-            id: filament
-            property vector3d from: Qt.vector3d(122, 470, 10) // where it leaves the spool
-            property vector3d to: Qt.vector3d(win.p.x, win.p.z + 140, -10) // the top of the extruder
-            property vector3d d: to.minus(from)
-            property real length: d.length()
-            property vector3d u: d.normalized()
-            // The rotation of (0, 1, 0) onto u: about the axis Y × u, by the angle between them.
-            property real angle: Math.acos(Math.max(-1, Math.min(1, u.y)))
-            property vector3d axis: Qt.vector3d(u.z, 0, -u.x).normalized()
-            source: "#Cylinder"
-            position: from.plus(d.times(0.5))
-            rotation: Qt.quaternion(Math.cos(angle / 2), axis.x * Math.sin(angle / 2), axis.y * Math.sin(angle / 2), axis.z * Math.sin(angle / 2))
-            scale: Qt.vector3d(0.0285, length / 100, 0.0285)
-            materials: PrincipledMaterial { baseColor: "#ff7a1a"; roughness: 0.4 }
-        }
-
-        // --- The gantry, at the height of Z: two rods of X, and the tool head on them.
+        // --- The printer. The meshes are at the pose of the CAD (cad/export.py). The nodes move
+        // them to the places of the printer: the place (x, y, z) of the nozzle is (x, z, -y) in
+        // the scene, and the bed moves under the nozzle, so the place (x, y) of the bed is at
+        // (x, 0, p.y - y). The part that is printed uses the same coordinates, so the nozzle is
+        // exactly at its strands.
+        //
+        // At the pose of the CAD the center of the nozzle tip is at (137.02, 26.60, 0.50), the top
+        // of the bed at Y 0.03, and the center of the front left washer at X -9.97 and Z 142.15.
+        // The washers are around the middle of the bed, so the front left one is at -14, -14 of
+        // the printer (simmcu/machine.go), and the printer is 4.03 mm to the left of its pose.
+        //
+        // The X of the CAD does not agree with printer.cfg: at X -50 (position_endstop of
+        // stepper_x) the carriage is 52 mm past the X switch of the CAD, in the X motor mount.
+        // The bed mounts of the frame and the Y base agree with each other, so the frame and the
+        // bed stay at the places of the CAD, and the nozzle goes where printer.cfg puts it.
+        property real frameX: -14 - -9.97
+        property real bedX: frameX
+        // The X of the carriage from its pose.
+        property real carriageX: win.p.x - 137.02 - frameX
         Node
         {
-            id: gantry
-            y: win.p.z
-            Box { position: Qt.vector3d(122, 30, -40); size: Qt.vector3d(470, 12, 12); tint: "#c4c6c8"; metal: 0.9 }
-            Box { position: Qt.vector3d(122, 75, -40); size: Qt.vector3d(470, 12, 12); tint: "#c4c6c8"; metal: 0.9 }
-            Box { position: Qt.vector3d(-110, 52, -40); size: Qt.vector3d(60, 70, 30) } // the Z carriages
-            Box { position: Qt.vector3d(355, 52, -40); size: Qt.vector3d(60, 70, 30) }
-            // The X motor at the left end, and the X belt to the idler at the right.
-            Motor { position: Qt.vector3d(-75, 52, -75); eulerRotation: Qt.vector3d(90, 0, 0) }
-            Box { position: Qt.vector3d(122, 52, -32); size: Qt.vector3d(420, 6, 2); tint: "#111111" }
+            id: machine
+            position: Qt.vector3d(view.frameX, 0, -0.50)
+            Metal { mesh: "frame_metal" }
+            Printed { mesh: "frame_printed" }
+            Belt { mesh: "frame_belt" }
 
+            // The gantry, at the height of Z, with the tool head on it.
             Node
             {
-                id: head
-                x: win.p.x
-                // The body, the fan duct, the heater block that glows, and the nozzle.
-                Box { position: Qt.vector3d(0, 60, -10); size: Qt.vector3d(64, 80, 56); tint: "#202120" }
-                Box { position: Qt.vector3d(0, 72, 19); size: Qt.vector3d(56, 50, 4); tint: "#a5c43a" } // the LulzBot face
-                Box { position: Qt.vector3d(0, 30, 16); size: Qt.vector3d(40, 16, 14); tint: "#ff5a1f" } // the fan duct
-                // The extruder motor on the top of the tool head.
-                Motor { position: Qt.vector3d(0, 124, -10); length: 26 }
-                Box
+                y: win.p.z - 26.60
+                Metal { mesh: "gantry_metal" }
+                Printed { mesh: "gantry_printed" }
+                Motor { mesh: "gantry_motor" }
+                Belt { mesh: "gantry_belt" }
+                // The top run of the X belt: from the motor pulley (X -51.5) to the clamp of the
+                // carriage (95 at the pose), and from the tensioner of the carriage (184) to the
+                // idler (405). Each part stretches between its two ends. Past the switch of the CAD
+                // (see frameX) the left part has no length.
+                Node
                 {
-                    position: Qt.vector3d(0, 12, 0); size: Qt.vector3d(20, 10, 16); tint: "#8a8d90"; metal: 0.7
-                    glowColor: Qt.rgba(0.9 * win.glow(sim.tool, 230), 0.25 * win.glow(sim.tool, 230), 0, 1)
+                    x: -51.5
+                    scale.x: Math.max(0.001, (95 + view.carriageX - -51.5) / (95 - -51.5))
+                    Belt { mesh: "xbeltl_belt"; x: 51.5 }
                 }
-                Model
+                Node
                 {
-                    source: "#Cone"
-                    position: Qt.vector3d(0, 3.5, 0)
-                    eulerRotation: Qt.vector3d(180, 0, 0)
-                    scale: Qt.vector3d(0.08, 0.07, 0.08)
-                    materials: PrincipledMaterial { baseColor: "#c9a24b"; metalness: 0.9; roughness: 0.3 }
+                    x: 405
+                    scale.x: Math.max(0.001, (405 - (184 + view.carriageX)) / (405 - 184))
+                    Belt { mesh: "xbeltr_belt"; x: -405 }
                 }
-                // The molten plastic at the tip of the nozzle, while the extruder pushes.
-                Model
+                Node
                 {
-                    source: "#Sphere"
-                    visible: sim.extruding
-                    position: Qt.vector3d(0, 0.2, 0)
-                    scale: Qt.vector3d(0.012, 0.008, 0.012)
-                    materials: PrincipledMaterial { baseColor: "#ff7a1a"; emissiveFactor: Qt.vector3d(0.3, 0.1, 0) }
+                    x: view.carriageX
+                    Belt { mesh: "carriage_belt" }
+                    // The body of the tool head; the nozzle and the heater block stay solid.
+                    Node
+                    {
+                        opacity: win.seeThrough ? 0.3 : 1
+                        Metal { mesh: "carriage_metal" }
+                        Printed { mesh: "carriage_printed" }
+                        Motor { mesh: "carriage_motor" }
+                    }
+                    Part { mesh: "carriage_nozzle"; tint: "#c9a24b"; metal: 0.6; rough: 0.3 }
+                    // The heater block glows when it is hot.
+                    Metal
+                    {
+                        mesh: "carriage_heater"
+                        glowColor: Qt.rgba(0.9 * win.glow(sim.tool, 230), 0.25 * win.glow(sim.tool, 230), 0, 1)
+                    }
                 }
             }
         }
-
-        // --- The bed, which moves in Y, with the part on it.
+        // The base of the Y axis: its rails, its motor and its belt.
         Node
         {
-            id: bed
-            z: win.p.y
-            // The plate: PEI on aluminum, which glows when it is hot.
-            Box { position: Qt.vector3d(140, -9, -140); size: Qt.vector3d(340, 10, 340); tint: "#55575a"; metal: 0.6 }
-            Box
+            position: Qt.vector3d(view.bedX, 0, -0.50)
+            Metal { mesh: "ybase_metal" }
+            Printed { mesh: "ybase_printed" }
+            Motor { mesh: "ybase_motor" }
+            Belt { mesh: "ybase_belt" }
+        }
+        // The bed, which moves in Y.
+        Node
+        {
+            position: Qt.vector3d(view.bedX, -0.03, win.p.y + 14 - 142.15)
+            Metal { mesh: "bed_metal" }
+            Printed { mesh: "bed_printed" }
+            // The washers of the probe. The simulated board puts their tops at the z_offset of the
+            // probe (0.86 in simprinter.cfg, simmcu/machine.go); the CAD has them at 1.78.
+            Metal { mesh: "bed_washer"; y: 0.86 - 1.78 }
+            // The PEI sheet glows when it is hot.
+            Part
             {
-                position: Qt.vector3d(140, -2, -140); size: Qt.vector3d(330, 4, 330); tint: "#b8923f"
+                mesh: "bed_surface"; tint: "#b8923f"; rough: 0.5
                 glowColor: Qt.rgba(0.35 * win.glow(sim.bed, 110), 0.08 * win.glow(sim.bed, 110), 0, 1)
             }
-            // The 4 washers of the probe, at the corners.
-            Repeater3D
-            {
-                model: [[-10, -10], [290, -10], [290, 290], [-10, 290]]
-                Model
-                {
-                    source: "#Cylinder"
-                    position: Qt.vector3d(modelData[0], 0.6, -modelData[1])
-                    scale: Qt.vector3d(0.16, 0.012, 0.16)
-                    materials: PrincipledMaterial { baseColor: "#d8dadc"; metalness: 1; roughness: 0.25 }
-                }
-            }
-            // The wiper pad at the left of the bed.
-            Box { position: Qt.vector3d(-16, 0, -60); size: Qt.vector3d(10, 3, 80); tint: "#7a1f1a" }
-            // The part, and the strands of the last moments up to the nozzle.
+        }
+        // The part, and the strands of the last moments up to the nozzle.
+        Node
+        {
+            z: win.p.y
             Model
             {
                 geometry: PathGeometry { id: part }
@@ -229,6 +193,59 @@ Window
                 materials: PrincipledMaterial { baseColor: "#ff7a1a"; roughness: 0.45; cullMode: Material.NoCulling }
                 Component.onCompleted: sim.recent = recent
             }
+        }
+        // The molten plastic at the tip of the nozzle, while the extruder pushes.
+        Model
+        {
+            source: "#Sphere"
+            visible: sim.extruding
+            position: Qt.vector3d(win.p.x, win.p.z + 0.2, 0)
+            scale: Qt.vector3d(0.012, 0.008, 0.012)
+            materials: PrincipledMaterial { baseColor: "#ff7a1a"; emissiveFactor: Qt.vector3d(0.3, 0.1, 0) }
+        }
+
+        // --- The spool, on the top of the frame over the back bar: the CAD has no spool holder.
+        Model
+        {
+            source: "#Cylinder"
+            position: Qt.vector3d(170 + view.frameX, 440, -95); eulerRotation: Qt.vector3d(0, 0, 90)
+            scale: Qt.vector3d(0.12, 1.2, 0.12)
+            materials: PrincipledMaterial { baseColor: "#8a8d90"; metalness: 0.35; roughness: 0.35 }
+        }
+        Model
+        {
+            source: "#Cylinder"
+            position: Qt.vector3d(170 + view.frameX, 520, -95); eulerRotation: Qt.vector3d(0, 0, 90)
+            scale: Qt.vector3d(1.9, 0.62, 1.9)
+            materials: PrincipledMaterial { baseColor: "#1a1a1a"; roughness: 0.6 }
+        }
+        Model
+        {
+            source: "#Cylinder"
+            position: Qt.vector3d(170 + view.frameX, 520, -95); eulerRotation: Qt.vector3d(0, 0, 90)
+            scale: Qt.vector3d(1.6, 0.66, 1.6)
+            materials: PrincipledMaterial { baseColor: "#ff7a1a"; roughness: 0.5 }
+        }
+
+        // --- The filament: from the spool down into the top of the extruder, 113 mm over the
+        // nozzle tip, which it follows. A cylinder between the two points: its Y axis turned onto
+        // the direction between them.
+        Model
+        {
+            id: filament
+            property vector3d from: Qt.vector3d(170 + view.frameX, 520, -15) // where it leaves the spool
+            property vector3d to: Qt.vector3d(win.p.x, win.p.z + 113, 0) // the top of the extruder
+            property vector3d d: to.minus(from)
+            property real length: d.length()
+            property vector3d u: d.normalized()
+            // The rotation of (0, 1, 0) onto u: about the axis Y × u, by the angle between them.
+            property real angle: Math.acos(Math.max(-1, Math.min(1, u.y)))
+            property vector3d axis: Qt.vector3d(u.z, 0, -u.x).normalized()
+            source: "#Cylinder"
+            position: from.plus(d.times(0.5))
+            rotation: Qt.quaternion(Math.cos(angle / 2), axis.x * Math.sin(angle / 2), axis.y * Math.sin(angle / 2), axis.z * Math.sin(angle / 2))
+            scale: Qt.vector3d(0.0285, length / 100, 0.0285)
+            materials: PrincipledMaterial { baseColor: "#ff7a1a"; roughness: 0.4 }
         }
 
         // The angles of the view: isometric at the start, 45° to the side and 35° from above.
@@ -293,6 +310,11 @@ Window
         Keys.onPressed: function(event) {
             if (event.isAutoRepeat)
                 return
+            if (event.key == Qt.Key_T) {
+                win.seeThrough = !win.seeThrough
+                event.accepted = true
+                return
+            }
             var h = held
             h[event.key] = true
             held = h
@@ -353,7 +375,7 @@ Window
     Text
     {
         anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 12
-        text: "Left turn · right pan · middle walk · wheel zoom · side buttons down/up · W A S D Q E move"
+        text: "Left turn · right pan · middle walk · wheel zoom · side buttons down/up · W A S D Q E move · T see-through"
         color: "#6f6b63"; font.pixelSize: 12
     }
 }

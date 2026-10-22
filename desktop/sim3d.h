@@ -45,7 +45,8 @@ private:
 };
 
 // MeshGeometry is a mesh of the printer from the CAD of LulzBot (cad/export.py): a file of
-// triangles, each vertex 6 float32 (the position and the normal), in the resources.
+// triangles in the resources, each vertex 10 bytes (the position as 3 int16 in steps of 1/50 mm,
+// the normal as 3 int8 in steps of 1/127, and 1 byte of padding).
 class MeshGeometry : public QQuick3DGeometry
 {
     Q_OBJECT
@@ -127,6 +128,8 @@ private:
     // since the part took them last.
     QList<float> m_pending, m_laid;
     qint64 m_committed = 0; // the time when the part took the laid moves, in ms
+    QVector3D m_last;       // the place of the nozzle at the last state, for the trail
+    bool m_hasLast = false;
     QString m_key; // the print of the moves in the path
     int m_next = 0; // the next move to read
 };
