@@ -110,10 +110,7 @@ func (a *App) lockedKey(c *gfx.Canvas, r image.Rectangle, label string, fill col
 // lock in the place of the arrow. A tap says to wait. The menu of the printer display does not
 // have it.
 func (a *App) lockedRow(c *gfx.Canvas, r image.Rectangle, title, sub string) {
-	plate(c, r)
-	a.region(title, r)
-	rowText(c, r, title, sub, dim, dim)
-	drawLock(c, r.Max.X-28, r.Min.Y+r.Dy()/2-2, dim)
+	a.drawMenuRow(c, r, title, sub, dim, false, true)
 	a.addHit(kit.Hit{R: r, Tap: func() { a.Toast(waitText) }})
 }
 
@@ -122,7 +119,12 @@ func (a *App) lockedRow(c *gfx.Canvas, r image.Rectangle, title, sub string) {
 func (a *App) drawPrintBar(c *gfx.Canvas, st printer.State) {
 	r := image.Rect(0, H-barH, W, H)
 	c.Fill(r, bg)
-	kr := kit.Inset(r, 12, 6, 12, 8)
+	// The key in line with the content: the margin of the screen, and 8 pixels over and under it.
+	m := margin
+	if W > H {
+		m = gridM
+	}
+	kr := kit.Inset(r, m, 8, m, 8)
 	// Pause on each screen, as the feed hold of a machine: the pause shows the screen of the print.
 	if st.Printing && !st.Paused && !st.Preparing && !st.Finishing {
 		k := kit.Cols(kr, 8, kit.Px(112), kit.Fr(1))

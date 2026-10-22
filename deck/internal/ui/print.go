@@ -146,9 +146,10 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 func (a *App) stateAreas() (f frame, keys, view image.Rectangle) {
 	f = a.stateFrame()
 	if f.wide {
-		return f, kit.Inset(f.side, wideOut, 0, wideIn, lcdTop), kit.Inset(f.main, wideIn, lcdTop, wideOut, lcdTop)
+		return f, f.side, f.main
 	}
-	body := kit.Inset(f.main, margin, 0, margin, 8)
+	// Under the display, in line with its bezel.
+	body := image.Rect(f.lcd.Min.X-8, f.main.Min.Y, f.lcd.Max.X+8, f.main.Max.Y-8)
 	return f, body, body
 }
 

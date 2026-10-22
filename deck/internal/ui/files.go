@@ -34,15 +34,11 @@ func (a *App) sortedFiles() []printer.File {
 }
 
 func (a *App) drawFiles(c *gfx.Canvas) {
-	f := a.page(c, "Files")
+	f := a.navPage(c, "Files")
 	files := a.sortedFiles()
-	// The count above the list; in the left column of a wide screen.
-	body := f.body()
-	count, area := f.aside(), body
-	if !f.wide {
-		r := kit.Rows(body, 8, kit.Px(24), kit.Fr(1))
-		count, area = r[0], r[1]
-	}
+	// The count above the list.
+	r := kit.Rows(f.body(), 8, kit.Px(24), kit.Fr(1))
+	count, area := r[0], r[1]
 	countR, countText := kit.Rows(count, 0, kit.Px(24))[0], fmt.Sprintf("Newest first · %d files", len(files))
 	label(c, countR, countText, gfx.Left)
 	a.textRegion("Count", countR, gfx.Face(true, 14), strings.ToUpper(countText))
@@ -187,8 +183,8 @@ func drawModelShape(c *gfx.Canvas, r image.Rectangle) {
 // drawFile is the page of one file: the thumbnail, what the slicer wrote, Print and Delete.
 func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 	f := a.file
-	pf := a.pageFrame()
-	pg := a.page(c, gfx.Fit(gfx.Face(true, 24), f.Name, pf.head.Dx()-200))
+	pf := a.navFrame()
+	pg := a.navPage(c, gfx.Fit(gfx.Face(true, 24), f.Name, pf.head.Dx()-200))
 	m := a.Printer.FileMeta(f.Path)
 
 	var rows [][2]string
@@ -233,10 +229,11 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 	tableH := len(rows)*30 + 20
 	var pic, box, keys image.Rectangle
 	if pg.wide {
-		r := kit.Rows(pg.body(), 12, kit.Fr(1), kit.Px(tableH))
-		side := min(r[0].Dx(), r[0].Dy())
-		pic, box = kit.Center(r[0], side, side), r[1]
-		keys = kit.Rows(pg.aside(), 0, kit.Fr(1), kit.Px(84))[1]
+		// The picture and the slicer data side by side, the keys in the row of actions.
+		content, acts := pg.split()
+		side := min(content.Dy(), 180)
+		cols := kit.Cols(content, 16, kit.Px(side), kit.Fr(1))
+		pic, box, keys = kit.Rows(cols[0], 0, kit.Px(side))[0], kit.Rows(cols[1], 0, kit.Px(min(tableH, content.Dy())))[0], acts
 	} else {
 		r := kit.Rows(kit.Inset(pg.body(), 0, 12, 0, 8), 12, kit.Fr(1), kit.Px(tableH), kit.Px(84))
 		side := min(r[0].Dx(), r[0].Dy())
@@ -246,22 +243,19 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 	a.region("Picture", pic)
 	plate(c, box)
 	a.region("Slicer data", box)
-	for i, kv := range rows {
-		y := box.Min.Y + 10 + i*30
-		label(c, image.Rect(box.Min.X+18, y, box.Max.X, y+30), kv[0], gfx.Left)
-		c.Text(image.Rect(box.Min.X+170, y, box.Max.X-18, y+30), gfx.Fit(gfx.Face(true, 17), kv[1], box.Dx()-190), gfx.Face(true, 17), text, gfx.Right)
-	}
+	detailRows(c, kit.Inset(box, 18, 10, 18, 10), rows, 30)
 
 	pr := a.Printer
 	path := f.Path
-	k := kit.Cols(keys, 12, kit.Fr(1), kit.Px(144))
-	a.printerKey(c, k[0], "Print", orange, onAcc, func() { a.confirmPrint(path) })
+	// Delete, the destructive action, at the left; Print at the right.
+	k := kit.Cols(keys, 12, kit.Px(144), kit.Fr(1))
+	a.printerKey(c, k[1], "Print", orange, onAcc, func() { a.confirmPrint(path) })
 	if st.Busy() && path == st.FilePath {
 		// The file of the print that runs.
-		a.lockedKey(c, k[1], "Delete", raised)
+		a.lockedKey(c, k[0], "Delete", raised)
 		return
 	}
-	a.button(c, k[1], "Delete", raised, red, func() {
+	a.button(c, k[0], "Delete", raised, red, func() {
 		a.confirm = &confirmBox{question: "Delete " + gfx.Fit(gfx.Face(true, 28), f.Name, 300) + "?", yes: "Delete", danger: true, onYes: func() {
 			a.do(func() error {
 				if err := pr.DeleteFile(path); err != nil {

@@ -19,40 +19,81 @@ import (
 // column.
 type frame struct {
 	wide bool
+	nav  bool            // a main page with the key panel (navPage)
 	lcd  image.Rectangle // the display of the printer; empty on a tall page
-	head image.Rectangle // the title and Back of a page
+	head image.Rectangle // the title and Back of a page, inside the margins
 	side image.Rectangle // wide: the free space of the left column, under the display or the title
-	main image.Rectangle // the content
+	main image.Rectangle // the content; inside the margins on a wide screen
 }
 
 const (
-	sideW    = 416 // the left column of a wide screen
-	margin   = 24  // the space between the content and the edges of the screen
-	headH    = 66  // the title and Back of a page
-	lcdTop   = 20  // the top of the display
-	lcdBelow = 232 // the top of the space under the display
+	margin   = 24 // tall: the space between the content and the edges of the screen
+	headH    = 66 // tall: the top of the content of a page, under the title and Back
+	lcdTop   = 20 // tall: the top of the display
+	lcdBelow = 232
+	keyH     = 46 // the height of the head of a page: the height of Back
 )
 
-// wideIn and wideOut are the margins of the two columns of a wide screen: at the edges of the
-// screen, and between the columns.
-const wideIn, wideOut = 8, 16
+// The grid of a wide screen: a margin of gridM at the edges, and gridM between the zones. The left
+// column is as wide as the display with its bezel, so the keys under the display line up with it.
+// A state screen has the display at 3 times its size: it is the main instrument. A page has it at
+// 2 times, and its content gets the space.
+const gridM = 16
 
-// lcdRect is the display of the printer in a pane: at the top, in the middle.
-func lcdRect(pane image.Rectangle) image.Rectangle { return lcdRectAt(pane, lcdScale) }
+// bezelW is the width of the display at a scale, with its bezel of 8 pixels.
+func bezelW(scale int) int { return 128*scale + 16 }
 
-// lcdRectAt is lcdRect at another scale.
-func lcdRectAt(pane image.Rectangle, scale int) image.Rectangle {
+// wideZones are the two columns of a wide screen, inside the margins, down to the bottom of the
+// content (above the print bar when it shows). The left column has the width of the display at
+// scale.
+func wideZones(scale int) (left, right image.Rectangle) {
+	bottom := H - gridM
+	if contentY1 < H {
+		bottom = contentY1 - 8 // the key of the print bar is 8 pixels under contentY1
+	}
+	left = image.Rect(gridM, gridM, gridM+bezelW(scale), bottom)
+	right = image.Rect(left.Max.X+gridM, gridM, W-gridM, bottom)
+	return left, right
+}
+
+// displayIn is the picture of the display at the top of the left column, in the middle, and the
+// space under its bezel.
+func displayIn(left image.Rectangle, scale int) (lcd, under image.Rectangle) {
 	w, h := 128*scale, 64*scale
+	x := left.Min.X + (left.Dx()-w)/2
+	lcd = image.Rect(x, left.Min.Y+8, x+w, left.Min.Y+8+h)
+	return lcd, image.Rect(left.Min.X, lcd.Max.Y+8+gridM, left.Max.X, left.Max.Y)
+}
+
+// displayScale is the scale of the display of a wide state screen: smaller when the print bar
+// takes the bottom, so the screen keeps its space.
+func displayScale() int {
+	if contentY1 < H {
+		return lcdScale - 1
+	}
+	return lcdScale
+}
+
+// pageScale is the scale of the display of a wide page.
+const pageScale = lcdScale - 1
+
+// lcdRect is the display of the printer in a pane of a tall screen: at the top, in the middle.
+func lcdRect(pane image.Rectangle) image.Rectangle {
+	w, h := 128*lcdScale, 64*lcdScale
 	x := pane.Min.X + (pane.Dx()-w)/2
 	return image.Rect(x, pane.Min.Y+lcdTop, x+w, pane.Min.Y+lcdTop+h)
 }
+
+// tallHead is the head of a page on a tall screen, inside the margins.
+func tallHead() image.Rectangle { return image.Rect(margin, lcdTop, W-margin, lcdTop+keyH) }
 
 // stateFrame is the frame of a state screen (idle, printing, paused...).
 func (a *App) stateFrame() frame {
 	scr := kit.Screen{W: W, H: contentY1}
 	if scr.Wide() {
-		side, main := scr.Split(sideW)
-		return frame{wide: true, lcd: lcdRect(side), side: kit.Inset(side, 0, lcdBelow, 0, 0), main: main}
+		left, right := wideZones(displayScale())
+		lcd, under := displayIn(left, displayScale())
+		return frame{wide: true, lcd: lcd, side: under, main: right}
 	}
 	top, main := scr.Split(lcdBelow)
 	return frame{lcd: lcdRect(top), main: main}
@@ -93,38 +134,35 @@ func (a *App) takeover(c *gfx.Canvas, title string) (content, key image.Rectangl
 func (a *App) plain(c *gfx.Canvas, title string) (wide bool, text, info image.Rectangle) {
 	scr := kit.Screen{W: W, H: contentY1}
 	if scr.Wide() {
-		side, main := scr.Split(sideW)
-		r := kit.Rows(side, 0, kit.Px(headH), kit.Fr(1))
-		headingAt(c, r[0], title)
-		return true, kit.Inset(r[1], wideOut, 8, wideIn, lcdTop), kit.Inset(main, wideIn, lcdTop, wideOut, lcdTop)
+		left, right := wideZones(lcdScale)
+		head := image.Rect(left.Min.X, left.Min.Y, left.Max.X, left.Min.Y+keyH)
+		headingAt(c, head, title)
+		return true, image.Rect(left.Min.X, head.Max.Y+gridM, left.Max.X, left.Max.Y), right
 	}
-	r := kit.Rows(scr.Bounds(), 8, kit.Px(headH), kit.Fr(1))
-	headingAt(c, r[0], title)
-	body := kit.Inset(r[1], margin, 0, margin, 8)
+	headingAt(c, tallHead(), title)
+	body := image.Rect(margin, headH+8, W-margin, contentY1-8)
 	return false, body, body
 }
 
-// pageFrame is the frame of a page, with no drawing.
+// pageFrame is the frame of a page that is a step of a task (Tune, the filament swap, a form),
+// with no drawing. A wide screen has the display, the title and Back in the left column.
 func (a *App) pageFrame() frame {
 	scr := kit.Screen{W: W, H: contentY1}
 	if scr.Wide() {
-		side, main := scr.Split(sideW)
-		if contentY1 < H {
-			// The print bar takes the bottom: the display is smaller, so the page keeps its space.
-			r := kit.Rows(side, 0, kit.Px(lcdBelow-barH), kit.Px(headH), kit.Fr(1))
-			return frame{wide: true, lcd: lcdRectAt(side, lcdScale-1), head: r[1], side: r[2], main: main}
-		}
-		r := kit.Rows(side, 0, kit.Px(lcdBelow), kit.Px(headH), kit.Fr(1))
-		return frame{wide: true, lcd: lcdRect(side), head: r[1], side: r[2], main: main}
+		left, right := wideZones(pageScale)
+		lcd, under := displayIn(left, pageScale)
+		head := image.Rect(under.Min.X, under.Min.Y, under.Max.X, under.Min.Y+keyH)
+		side := image.Rect(under.Min.X, head.Max.Y+gridM, under.Max.X, under.Max.Y)
+		return frame{wide: true, lcd: lcd, head: head, side: side, main: right}
 	}
-	head, main := kit.Screen{W: W, H: contentY1}.Split(headH)
-	return frame{head: head, main: main}
+	_, main := kit.Screen{W: W, H: contentY1}.Split(headH)
+	return frame{head: tallHead(), main: main}
 }
 
 // body is the content area of a page: in the main pane, inside the margins.
 func (f frame) body() image.Rectangle {
 	if f.wide {
-		return kit.Inset(f.main, wideIn, lcdTop, wideOut, lcdTop)
+		return f.main
 	}
 	return kit.Inset(f.main, margin, 0, margin, 8)
 }
@@ -135,20 +173,27 @@ func (f frame) aside() image.Rectangle {
 	if !f.wide {
 		return image.Rectangle{}
 	}
-	return kit.Inset(f.side, wideOut, 0, wideIn, lcdTop)
+	return f.side
 }
 
 // backRect is the place of the Back key in the head of a page: at the right.
 func backRect(head image.Rectangle) image.Rectangle {
-	return image.Rect(head.Max.X-130, head.Min.Y+20, head.Max.X-margin, head.Min.Y+66)
+	return image.Rect(head.Max.X-106, head.Min.Y, head.Max.X, head.Min.Y+keyH)
 }
 
-// headingAt draws the title of a page in its head: an orange mark and the title.
+// headingAt draws the title of a page in its head: an orange mark at the left edge of the head, and
+// the title, in the middle of the height of Back.
 func headingAt(c *gfx.Canvas, head image.Rectangle, title string) {
 	setHeading(title)
 	x, y := head.Min.X, head.Min.Y
-	c.Fill(image.Rect(x+margin, y+30, x+34, y+50), orange)
-	c.Text(image.Rect(x+44, y+18, head.Max.X-150, y+62), strings.ToUpper(title), gfx.Face(true, 24), text, gfx.Left)
+	c.Fill(image.Rect(x, y+13, x+10, y+33), orange)
+	// A long title gets a smaller font, down to 18 pixels, and then loses its end.
+	title, w := strings.ToUpper(title), head.Max.X-118-(x+20)
+	size := 24
+	for size > 18 && gfx.Width(gfx.Face(true, size), title) > w {
+		size--
+	}
+	c.Text(image.Rect(x+20, y, head.Max.X-118, y+keyH), gfx.Fit(gfx.Face(true, size), title, w), gfx.Face(true, size), text, gfx.Left)
 }
 
 // helpKey draws a Help key in the head of a page, at the left of Back. It opens Wi-Fi and help,

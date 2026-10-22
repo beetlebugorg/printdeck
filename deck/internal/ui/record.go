@@ -14,8 +14,8 @@ import (
 // printed in colour.
 func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 	r := a.record
-	pf := a.pageFrame()
-	pg := a.page(c, gfx.Fit(gfx.Face(true, 24), r.File, pf.head.Dx()-200))
+	pf := a.navFrame()
+	pg := a.navPage(c, gfx.Fit(gfx.Face(true, 24), r.File, pf.head.Dx()-200))
 	res := map[string]string{"complete": "Done", "cancelled": "Cancelled", "error": "Failed"}[r.Result]
 	rows := [][2]string{
 		{"Result", res},
@@ -41,9 +41,12 @@ func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 	tableH := len(rows)*30 + 20
 	var pic, box, keys image.Rectangle
 	if pg.wide {
-		rr := kit.Rows(pg.body(), 12, kit.Fr(1), kit.Px(tableH))
-		pic, box = rr[0], rr[1]
-		keys = kit.Rows(pg.aside(), 0, kit.Fr(1), kit.Px(84))[1]
+		// The picture and the details side by side, Reprint at the right of the row of actions.
+		content, acts := pg.split()
+		side := min(content.Dy(), 180)
+		cols := kit.Cols(content, 16, kit.Px(side), kit.Fr(1))
+		pic, box = kit.Rows(cols[0], 0, kit.Px(side))[0], kit.Rows(cols[1], 0, kit.Px(min(tableH, content.Dy())))[0]
+		keys = kit.Cols(acts, 12, kit.Fr(1), kit.Fr(1))[1]
 	} else {
 		rr := kit.Rows(kit.Inset(pg.body(), 0, 12, 0, 8), 12, kit.Fr(1), kit.Px(tableH), kit.Px(84))
 		pic, box, keys = rr[0], rr[1], rr[2]
@@ -61,11 +64,7 @@ func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 	}
 	plate(c, box)
 	a.region("Details", box)
-	for i, kv := range rows {
-		y := box.Min.Y + 10 + i*30
-		label(c, image.Rect(box.Min.X+18, y, box.Max.X, y+30), kv[0], gfx.Left)
-		c.Text(image.Rect(box.Min.X+170, y, box.Max.X-18, y+30), gfx.Fit(gfx.Face(true, 17), kv[1], box.Dx()-190), gfx.Face(true, 17), text, gfx.Right)
-	}
+	detailRows(c, kit.Inset(box, 18, 10, 18, 10), rows, 30)
 
 	// The picture is nil when the file is gone.
 	switch {

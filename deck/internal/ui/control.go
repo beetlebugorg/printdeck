@@ -114,23 +114,27 @@ func (a *App) do(f func() error) {
 }
 
 // drawMove is the Move page: the position and the homed axes, homing, the joystick for X and Y,
-// Z, park and center, and the motors. A wide screen has the position and the keys in the left
-// column, and the joystick and Z at the right.
+// Z, park and center, and the motors.
 func (a *App) drawMove(c *gfx.Canvas) {
 	pr := a.Printer
 	st := pr.State()
-	f := a.page(c, "Move")
+	f := a.navPage(c, "Move")
 	moving := st.Connected && (!st.Busy() || st.Paused)
 
-	// Tall: the position, Home, the joystick with the Z column, the park keys, and a hint. Wide: the
-	// position, Home and a Z row in the left column; a large joystick and the park keys at the right.
+	// Tall: the position, Home, the joystick with the Z column, the park keys, and a hint.
 	var pos, home, zArea, pad, parks, hint image.Rectangle
 	if f.wide {
-		k := kit.Rows(f.aside(), 10, kit.Px(44), kit.Px(52), kit.Px(52))
-		pos, home, zArea = k[0], k[1], k[2]
-		r := kit.Rows(f.body(), 8, kit.Fr(1), kit.Px(20), kit.Px(58))
-		side := min(r[0].Dx(), r[0].Dy())
-		pad, hint, parks = kit.Center(r[0], side, side), r[1], r[2]
+		// The position over all; the joystick at the left, Home and the Z row at its right; the
+		// park keys in the row of actions.
+		content, acts := f.split()
+		r := kit.Rows(content, 10, kit.Px(44), kit.Fr(1))
+		pos, parks = r[0], acts
+		side := min(r[1].Dy()-26, r[1].Dx()/2)
+		cols := kit.Cols(r[1], 16, kit.Px(side), kit.Fr(1))
+		l := kit.Rows(cols[0], 6, kit.Px(side), kit.Px(20))
+		pad, hint = l[0], l[1]
+		k := kit.Rows(cols[1], 10, kit.Px(52), kit.Px(52))
+		home, zArea = k[0], k[1]
 	} else {
 		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 0), 12, kit.Px(54), kit.Px(58), kit.Fr(1), kit.Px(60), kit.Px(70), kit.Px(24))
 		pos, home, zArea, parks, hint = r[0], r[1], r[3], r[4], r[5]

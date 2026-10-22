@@ -114,7 +114,7 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	a.statusPanelAt(c, st, f.lcd)
 	var keys, rest image.Rectangle
 	if f.wide {
-		keys, rest = kit.Inset(f.side, wideOut, 0, wideIn, lcdTop), kit.Inset(f.main, wideIn, lcdTop, wideOut, lcdTop)
+		keys, rest = f.side, f.main
 	} else {
 		s := kit.NewStack(kit.Inset(f.main, 40, 2, 40, 0), 12)
 		keys, rest = s.Next(96+12+68), s.Rest()
@@ -271,17 +271,30 @@ func rowText(c *gfx.Canvas, r image.Rectangle, title, sub string, titleCol, subC
 // menuRow is a row of a menu page: a title, a line under it, and an arrow. tap runs when the row
 // is tapped; nil draws a row with no action.
 func (a *App) menuRow(c *gfx.Canvas, r image.Rectangle, title, sub string, subCol color.RGBA, tap func()) {
-	plate(c, r)
-	a.region(title, r)
-	if tap != nil && a.isPressed(r) {
-		c.RoundRect(r.Inset(1), 4, raised)
-	}
-	rowText(c, r, title, sub, text, subCol)
+	a.drawMenuRow(c, r, title, sub, subCol, tap != nil, false)
 	if tap == nil {
 		return
 	}
-	cx, cy := r.Max.X-28, r.Min.Y+r.Dy()/2
-	c.Polygon([]image.Point{{cx - 5, cy - 10}, {cx + 5, cy}, {cx - 5, cy + 10}, {cx - 9, cy + 6}, {cx - 3, cy}, {cx - 9, cy - 6}}, dim)
 	a.addHit(kit.Hit{R: r, Tap: tap})
 	a.addFocus(title, r, tap)
+}
+
+// drawMenuRow draws a row of a menu page, with no touch area: the title and the text, and at the
+// right an arrow (arrow), or a lock for an action that waits for the end of the print (locked).
+func (a *App) drawMenuRow(c *gfx.Canvas, r image.Rectangle, title, sub string, subCol color.RGBA, arrow, locked bool) {
+	plate(c, r)
+	a.region(title, r)
+	if locked {
+		rowText(c, r, title, sub, dim, dim)
+		drawLock(c, r.Max.X-28, r.Min.Y+r.Dy()/2-2, dim)
+		return
+	}
+	if arrow && a.isPressed(r) {
+		c.RoundRect(r.Inset(1), 4, raised)
+	}
+	rowText(c, r, title, sub, text, subCol)
+	if arrow {
+		cx, cy := r.Max.X-28, r.Min.Y+r.Dy()/2
+		c.Polygon([]image.Point{{cx - 5, cy - 10}, {cx + 5, cy}, {cx - 5, cy + 10}, {cx - 9, cy + 6}, {cx - 3, cy}, {cx - 9, cy - 6}}, dim)
+	}
 }

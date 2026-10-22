@@ -133,6 +133,7 @@ type App struct {
 	form          *rollForm      // the form of a new roll, over everything
 	fileList      fileList       // the scroll position of the Files page
 	macroScroll   int            // the scroll position of the Macros page
+	menuScroll    map[page]*int  // the scroll positions of the menu pages with more rows than fit
 	consoleScroll int            // how far the Console page shows above its newest line
 	consoleKB     *keyboard      // the keyboard of the Console page, while it is open
 	consoleLast   string         // the last typed command, for the next one
