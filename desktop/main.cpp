@@ -41,17 +41,21 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("printdeck"), &deck);
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
                      [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
-    engine.load(QUrl(QStringLiteral("qrc:/Main.qml")));
 
     // -parent: printdeck app ends when the window closes its input.
     QStringList args{QStringLiteral("app"), QStringLiteral("-parent")};
     args += app.arguments().mid(1);
 
-    // With -sim, a second window shows the simulated printer in 3D (Sim3D.qml).
-    if (args.contains(QStringLiteral("-sim"))) {
+    // With -sim, a second window shows the simulated printer in 3D (Sim3D.qml), and the deck
+    // window gives it the picture of the deck UI (simOn, sim.screen).
+    const bool simOn = args.contains(QStringLiteral("-sim"));
+    engine.rootContext()->setContextProperty(QStringLiteral("sim"), &sim);
+    engine.rootContext()->setContextProperty(QStringLiteral("simOn"), simOn);
+    engine.load(QUrl(QStringLiteral("qrc:/Main.qml")));
+    if (simOn) {
         qmlRegisterType<PathGeometry>("Printdeck.Sim", 1, 0, "PathGeometry");
         qmlRegisterType<MeshGeometry>("Printdeck.Sim", 1, 0, "MeshGeometry");
-        engine.rootContext()->setContextProperty(QStringLiteral("sim"), &sim);
+        qmlRegisterType<ImageTexture>("Printdeck.Sim", 1, 0, "ImageTexture");
         engine.load(QUrl(QStringLiteral("qrc:/Sim3D.qml")));
         QObject::connect(&deck, &Deck::screenChanged, &sim, [&deck, &sim] {
             static bool started = false;

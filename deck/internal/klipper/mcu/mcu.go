@@ -14,6 +14,7 @@
 package mcu
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"hash/crc32"
@@ -1054,14 +1055,26 @@ func (c *configHelper) getQuerySlot(oid int) int64 {
 	return c.mcu.PrintTimeToClock(float64(t)) + slot
 }
 
-// simStatus is the status of the simulated board: the place of its nozzle in mm, for the 3D
-// window of the desktop app. Klipper has no such object.
+// simStatus is the status of the simulated board, for the 3D window of the desktop app: the
+// place of its nozzle in mm, and its display: the graphics (64 rows of 16 bytes) and the text (4
+// rows of 16 characters), in hex.
+// Klipper has no such object.
 type simStatus struct{}
 
 func (simStatus) Status(eventtime float64) map[string]any {
-	p, ok := simmcu.Place()
-	if !ok {
-		return map[string]any{"place": nil}
+	out := map[string]any{"place": nil, "lcd": "", "lcd_text": ""}
+	if p, ok := simmcu.Place(); ok {
+		out["place"] = []float64{p[0], p[1], p[2]}
 	}
-	return map[string]any{"place": []float64{p[0], p[1], p[2]}}
+	if g, t, ok := simmcu.LCD(); ok {
+		var b, tb []byte
+		for _, row := range g {
+			b = append(b, row[:]...)
+		}
+		for _, row := range t {
+			tb = append(tb, row[:]...)
+		}
+		out["lcd"], out["lcd_text"] = hex.EncodeToString(b), hex.EncodeToString(tb)
+	}
+	return out
 }

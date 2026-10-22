@@ -52,6 +52,12 @@ func lcdImage(bits [64][16]byte, scale int, gap, off, on color.RGBA) *image.RGBA
 	return img
 }
 
+// LCDPicture is a picture of the bits of a printer display, as the touch screen shows it: dots
+// at scale times the size of the display.
+func LCDPicture(bits [64][16]byte, scale int) *image.RGBA {
+	return lcdscreen.DotImage(bits, scale, glcd, glcdCell, glcdInk)
+}
+
 // drawLCDPanel draws the status screen in a display window, at the scale of r (r is 128 x 64 times
 // the scale). A tap on the nozzle or the bed sets its temperature. Away from the print, the taps
 // wait for its end.
