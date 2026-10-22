@@ -41,7 +41,6 @@ class PrintdeckPlugin(Extension):
         super().__init__()
         self._stage = stage  # the Printdeck tab, or None
         if stage:
-            stage.command = self._command
             stage.showPrint = self._showPrint
         self._printerAddr = None  # the base URL and the API key of the last answer
         self._status = None  # the last answer of the Printdeck
@@ -89,7 +88,9 @@ class PrintdeckPlugin(Extension):
         return None
 
     def _poll(self):
-        while not self._stop.wait(POLL_SECONDS):
+        first = True
+        while first or not self._stop.wait(POLL_SECONDS):
+            first = False
             app = CuraApplication.getInstance()
             printer = self._printer()
             status = None
@@ -195,27 +196,6 @@ class PrintdeckPlugin(Extension):
         _, caution = self._loading
         self._loading = None
         CuraApplication.getInstance().getPreferences().setValue("gcodereader/show_caution", caution)
-
-    def _command(self, command, action):
-        """Sends a job command of the OctoPrint API (pause, resume, cancel) on a thread."""
-        printer = self._printer()
-        if not printer:
-            return
-        base, key = printer
-        body = {"command": command}
-        if action:
-            body["action"] = action
-
-        def send():
-            try:
-                req = urllib.request.Request(base.rstrip("/") + "/api/job", data=json.dumps(body).encode(), method="POST",
-                                             headers={"X-Api-Key": key, "Content-Type": "application/json"})
-                urllib.request.urlopen(req, timeout=10).close()
-            except Exception as e:
-                Logger.log("w", "Printdeck: %s %s: %s", command, action, e)
-                CuraApplication.getInstance().callLater(_message, "The Printdeck did not take the command: %s" % e)
-
-        threading.Thread(target=send, daemon=True).start()
 
     def _nameButton(self):
         """Names the print button. The OctoPrint plugin makes a new device after a reconnect, so this
