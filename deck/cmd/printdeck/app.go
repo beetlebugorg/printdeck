@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 
 	"printdeck/internal/awake"
@@ -44,11 +46,12 @@ type appHello struct {
 // shows the UI with the remote screen. It sends the token of the first line in the X-Api-Key
 // header.
 //
-//	printdeck app [-dir DIR] [-addr ADDR]
+//	printdeck app [-dir DIR] [-addr ADDR] [-parent]
 func desktopApp(args []string) {
 	fs := flag.NewFlagSet("app", flag.ExitOnError)
 	dir := fs.String("dir", "", "the folder of the app (default: the configuration folder of the user)")
 	addr := fs.String("addr", appAddr, "the address of the web server")
+	parent := fs.Bool("parent", false, "end when the input closes (the window of the app started the program)")
 	fs.Parse(args)
 	if *dir == "" {
 		base, err := os.UserConfigDir()
@@ -62,8 +65,17 @@ func desktopApp(args []string) {
 		log.Fatal(err)
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if *parent {
+		// The window keeps the input open. It closes it at the end, and the system closes it when
+		// the window stops. Both end the app.
+		go func() {
+			io.Copy(io.Discard, os.Stdin)
+			log.Print("app: the window closed the input")
+			stop()
+		}()
+	}
 
 	kl := &klippyProcess{cfg: cfg}
 	go kl.run(ctx)

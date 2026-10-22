@@ -11,6 +11,7 @@ import (
 	"image/png"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -159,9 +160,9 @@ func (s *Server) serveTouch(w http.ResponseWriter, r *http.Request) {
 }
 
 // serveImage sends an image of the frames as a PNG. An image number is for one image only, so
-// the browser keeps it.
+// the browser keeps it. The number can have ".png" at the end.
 func (s *Server) serveImage(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.PathValue("id"))
+	id, err := strconv.Atoi(strings.TrimSuffix(r.PathValue("id"), ".png"))
 	img := gfx.ImageByID(id)
 	if err != nil || img == nil {
 		http.NotFound(w, r)

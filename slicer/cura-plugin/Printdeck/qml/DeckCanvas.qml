@@ -1,5 +1,7 @@
 // The deck UI on a canvas: the drawing commands of each frame of the deck (gfx.Recording), as in
-// page.html of the deck. The clicks go to the deck as touches.
+// page.html of the deck. The clicks go to the deck as touches. The deck object gives the frames, and
+// the addresses of the images (imageBase + "N.png") and of the fonts (fontBase + "regular.ttf").
+// The Cura plugin and the desktop app use this file.
 import QtQuick 2.7
 
 Canvas
@@ -10,8 +12,8 @@ Canvas
     property real sh: 480
     property string family: ""
 
-    FontLoader { id: regular; source: canvas.deck && canvas.deck.fontsReady ? canvas.deck.folderUrl + "regular.ttf" : "" }
-    FontLoader { id: bold; source: canvas.deck && canvas.deck.fontsReady ? canvas.deck.folderUrl + "bold.ttf" : "" }
+    FontLoader { id: regular; source: canvas.deck && canvas.deck.fontsReady ? canvas.deck.fontBase + "regular.ttf" : "" }
+    FontLoader { id: bold; source: canvas.deck && canvas.deck.fontsReady ? canvas.deck.fontBase + "bold.ttf" : "" }
 
     Connections
     {
@@ -32,7 +34,7 @@ Canvas
     // The URL of the image of a command, or of the last image of its rectangle while it loads, or "".
     function image(op) {
         var key = op.slice(1, 5).join(",")
-        var url = deck.folderUrl + "img/" + op[5] + ".png"
+        var url = deck.imageBase + op[5] + ".png"
         if (isImageLoaded(url)) {
             if (shown[key] && shown[key] != url) unloadImage(shown[key])
             shown[key] = url
