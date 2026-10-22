@@ -34,12 +34,14 @@ type Klippy struct {
 	socket string
 	store  Store
 	*View
-	lastPos int64 // the file position of the last busy state, for the history; k.mu
 
 	// ConfigPath is printer.cfg. With no [mcu] section in it, the state asks for the setup.
 	ConfigPath string
 	// Hist records the finished prints.
 	Hist *History
+	// Spools are the rolls of filament. Each finished print uses filament of the roll in the
+	// printer.
+	Spools *Spools
 	// RestartService restarts the Klipper service, which reads printer.cfg again. The API of
 	// Klipper has no restart while the config has an error.
 	RestartService func() error
@@ -79,6 +81,7 @@ type Klippy struct {
 	diameter float64 // filament_diameter of the extruder, in mm
 	timer    timer   // the timings of the running print
 	objects  []string
+	lastPos  int64 // the file position of the last busy state, for the history
 }
 
 // klippyObjects are the printer objects that the deck follows. nil means all fields.
@@ -321,6 +324,22 @@ func (k *Klippy) Rates() Rates {
 	return k.Hist.Rates()
 }
 
+// SpoolStore returns the rolls of filament, or nil.
+func (k *Klippy) SpoolStore() *Spools { return k.Spools }
+
+// useSpool subtracts the filament of the print with the history key from the roll in the
+// printer, and records the roll and the cost.
+func (k *Klippy) useSpool(key string, mm float64) {
+	if k.Spools == nil || mm <= 0 {
+		return
+	}
+	d := k.Machine().Diameter()
+	sp, cost, ok := k.Spools.Use(func(material string) float64 { return FilamentGrams(mm, d, material) })
+	if ok {
+		k.Hist.setSpool(key, sp.Label(), cost)
+	}
+}
+
 func (k *Klippy) Machine() Machine {
 	k.mu.Lock()
 	defer k.mu.Unlock()
@@ -510,6 +529,7 @@ func (k *Klippy) refresh(notify func()) {
 		k.mu.Unlock()
 		material := func(path string) string { return k.FileMeta(path).Material }
 		if key := k.Hist.add(st, now, phases, planned, pos, material); key != "" {
+			k.useSpool(key, st.FinishedFilament)
 			k.mu.Lock()
 			k.timer.coolStart, k.timer.coolKey = now, key
 			k.mu.Unlock()

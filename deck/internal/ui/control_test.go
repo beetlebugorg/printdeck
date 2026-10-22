@@ -274,3 +274,40 @@ func TestHelpOnKlipperError(t *testing.T) {
 		t.Error("help is not open")
 	}
 }
+
+// A new roll from the filament change goes in the printer, and the nozzle heats for its material.
+func TestSwapNewRoll(t *testing.T) {
+	a, pr, cv := newPrintApp(idle)
+	pr.Spools_ = &printer.Spools{}
+	a.openSwap(swapChange)
+	tapLabel(t, a, cv, "New roll")
+	if a.form == nil {
+		t.Fatal("no form")
+	}
+	tapLabel(t, a, cv, "PETG")
+	a.form.name, a.form.scale, a.form.reel, a.form.price = "Clear", 1200, 200, 25
+	tapLabel(t, a, cv, "Save")
+	in, ok := pr.Spools_.In()
+	if !ok || in.Name != "Clear" || in.Material != "PETG" || in.Left() != 1000 {
+		t.Fatalf("roll %+v %v", in, ok)
+	}
+	if c := pr.wait(1); len(c) != 1 || c[0] != "tool 240" || a.swap.step != swapHeat {
+		t.Errorf("calls %v, step %d", c, a.swap.step)
+	}
+}
+
+// A saved roll from the filament change goes in the printer.
+func TestSwapSavedRoll(t *testing.T) {
+	a, pr, cv := newPrintApp(idle)
+	pr.Spools_ = &printer.Spools{}
+	sp := pr.Spools_.Add("Black", "PLA", 1200, 200, 0, time.Unix(1, 0))
+	pr.Spools_.Put("")
+	a.openSwap(swapChange)
+	tapRegion(t, a, cv, "Black")
+	if in, ok := pr.Spools_.In(); !ok || in.ID != sp.ID {
+		t.Errorf("roll in the printer %+v %v", in, ok)
+	}
+	if c := pr.wait(1); len(c) != 1 || c[0] != "tool 210" {
+		t.Errorf("calls %v", c)
+	}
+}

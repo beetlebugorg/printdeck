@@ -63,6 +63,14 @@ func demoApp() (*ui.App, *ui.DemoPrinter) {
 		{File: "rail_clip.gcode", Path: "rail_clip.gcode", Result: "complete", Duration: 65 * time.Minute, Filament: 6300, End: end.AddDate(0, 0, -3),
 			Phases: phases(230, 131, 90), CoolBed: 610, Planned: 3420},
 	}
+	// The rolls of filament: the black roll is in the printer.
+	p.Spools_ = &printer.Spools{}
+	p.Spools_.Add("Galaxy Black", "PLA", 1180, 180, 22, end.AddDate(0, 0, -30))
+	p.Spools_.Add("Signal Orange", "PLA", 690, 180, 22, end.AddDate(0, 0, -12))
+	black := p.Spools_.List()[1]
+	p.Spools_.Put(black.ID)
+	p.Spools_.Use(func(string) float64 { return 358 })
+	p.History_[0].Spool, p.History_[0].Cost, p.History_[0].Material = "Galaxy Black", 0.71, "PLA"
 	p.Meta_ = gcodemeta.Meta{Slicer: "Cura 5.13.0", PrintTime: 102 * time.Minute, FilamentMM: 4100, LayerHeight: 0.2,
 		NozzleTemp: 210, BedTemp: 60}
 	return a, p
@@ -140,7 +148,7 @@ func demoShots(dir string, wide bool) {
 		X: 110, Y: 110, Z: 5, Axis: [2][3]float64{{0, 0, 0}, {280, 280, 270}}}
 	a.OpenPrintScreen("")
 	snap("print-idle")
-	for _, n := range []string{"move", "files", "filament", "maintenance", "machine", "macros", "history", "record", "stats", "swap", "swap-heat", "keypad"} {
+	for _, n := range []string{"move", "files", "filament", "maintenance", "machine", "macros", "history", "record", "rolls", "roll", "new-roll", "stats", "swap", "swap-heat", "keypad"} {
 		a.OpenPrintScreen(n)
 		snap("print-" + n)
 	}

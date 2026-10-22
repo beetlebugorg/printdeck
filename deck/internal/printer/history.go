@@ -28,6 +28,9 @@ type Record struct {
 	Pos int64 `json:"pos,omitempty"`
 	// Material is the material that the slicer wrote in the file, for example "PLA", or "".
 	Material string `json:"material,omitempty"`
+	// The roll that was in the printer (Spool.Label), and the cost of the filament of the print.
+	Spool string  `json:"spool,omitempty"`
+	Cost  float64 `json:"cost,omitempty"`
 }
 
 // Summary is a short line for the screen, for example "Done · 1:42 · 12 g". grams gives the
@@ -122,6 +125,19 @@ func (h *History) setCool(k string, seconds float64) {
 		if key(h.records[i]) == k {
 			h.records[i].CoolBed = seconds
 			h.rates = nil
+			h.save()
+			return
+		}
+	}
+}
+
+// setSpool sets the roll and the cost of the record with the key.
+func (h *History) setSpool(k, spool string, cost float64) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for i := range h.records {
+		if key(h.records[i]) == k {
+			h.records[i].Spool, h.records[i].Cost = spool, cost
 			h.save()
 			return
 		}

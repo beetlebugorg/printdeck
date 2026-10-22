@@ -146,11 +146,15 @@ func headingAt(c *gfx.Canvas, head image.Rectangle, title string) {
 // helpKey draws a Help key in the head of a page, at the left of Back. It opens Wi-Fi and help,
 // which shows the address and the password. The key is not drawn when the deck has no SetupHost.
 func (a *App) helpKey(c *gfx.Canvas, head image.Rectangle) {
-	if a.Setup == nil {
-		return
+	if a.Setup != nil {
+		a.headKey(c, head, "Help", a.OpenHelp)
 	}
+}
+
+// headKey draws a key in the head of a page, at the left of Back.
+func (a *App) headKey(c *gfx.Canvas, head image.Rectangle, label string, tap func()) {
 	b := backRect(head)
-	a.button(c, b.Sub(image.Pt(b.Dx()+12, 0)), "Help", raised, text, a.OpenHelp)
+	a.button(c, b.Sub(image.Pt(b.Dx()+12, 0)), label, raised, text, tap)
 }
 
 // systemKeys draws Wi-Fi and help, and Software update, side by side in r. They are the way out of
