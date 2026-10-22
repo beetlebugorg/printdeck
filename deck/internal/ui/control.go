@@ -198,7 +198,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 	btn(up, "Z ▲", raised, text, func() error { return pr.Jog(0, 0, a.zStep, 600) })
 	for i, r := range kit.Cols(steps, 6, kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
 		s := []float64{0.1, 1, 10}[i]
-		fill, fg := raised, text
+		fill, fg := keyOff, text
 		if a.zStep == s {
 			fill, fg = keyOn, keyOnInk
 		}

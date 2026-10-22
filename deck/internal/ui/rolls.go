@@ -69,7 +69,7 @@ func (a *App) drawRollForm(c *gfx.Canvas) {
 	a.region("Material", mats)
 	for i, r := range kit.Cols(mats, 6, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
 		name := materials[i].Name
-		fill, fg := raised, text
+		fill, fg := keyOff, text
 		if fm.material == name {
 			fill, fg = keyOn, keyOnInk
 		}

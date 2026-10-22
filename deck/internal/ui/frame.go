@@ -228,7 +228,7 @@ func (a *App) headKey(c *gfx.Canvas, head image.Rectangle, label string, tap fun
 // its place.
 func (a *App) headKeyOn(c *gfx.Canvas, head image.Rectangle, label string, on bool, tap func()) {
 	b := backRect(head)
-	fill, ink := raised, text
+	fill, ink := keyOff, text
 	if on {
 		fill, ink = keyOn, keyOnInk
 	}

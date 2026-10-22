@@ -118,7 +118,7 @@ func (a *App) drawKeyboard(c *gfx.Canvas, k *keyboard) {
 
 	a.button(c, keys[0], k.cancel, raised, text, func() { k.back() })
 	if k.secret {
-		fill, ink := raised, text
+		fill, ink := keyOff, text
 		if k.show {
 			fill, ink = keyOn, keyOnInk
 		}
@@ -140,8 +140,8 @@ func (a *App) drawKeyboard(c *gfx.Canvas, k *keyboard) {
 			sw := 62
 			shiftPad := image.Pt(x-kbGap/2-(kbX0+sw), kbRowGap/2)
 			delPad := image.Pt(kbX1-sw-(x+width+kbGap/2), kbRowGap/2)
-			a.textKey(c, image.Rect(kbX0, ry, kbX0+sw, ry+kbKeyH), shiftPad, "shift", k.shift, func() { k.shift = !k.shift })
-			a.textKey(c, image.Rect(kbX1-sw, ry, kbX1, ry+kbKeyH), delPad, "del", false, func() {
+			a.textKey(c, image.Rect(kbX0, ry, kbX0+sw, ry+kbKeyH), shiftPad, "shift", true, k.shift, func() { k.shift = !k.shift })
+			a.textKey(c, image.Rect(kbX1-sw, ry, kbX1, ry+kbKeyH), delPad, "del", false, false, func() {
 				if r := []rune(k.value); len(r) > 0 {
 					k.value = string(r[:len(r)-1])
 				}
@@ -149,7 +149,7 @@ func (a *App) drawKeyboard(c *gfx.Canvas, k *keyboard) {
 		}
 		for _, ch := range chars {
 			s := string(ch)
-			a.textKey(c, image.Rect(x, ry, x+kw, ry+kbKeyH), kbPad, s, false, func() { k.typed(s) })
+			a.textKey(c, image.Rect(x, ry, x+kw, ry+kbKeyH), kbPad, s, false, false, func() { k.typed(s) })
 			x += kw + kbGap
 		}
 	}
@@ -158,17 +158,20 @@ func (a *App) drawKeyboard(c *gfx.Canvas, k *keyboard) {
 	if k.sym {
 		layer = "abc"
 	}
-	a.textKey(c, image.Rect(kbX0, ry, kbX0+100, ry+kbKeyH), kbBottomPad, layer, k.sym, func() { k.sym, k.shift = !k.sym, false })
-	a.textKey(c, image.Rect(kbX0+108, ry, kbX1, ry+kbKeyH), kbBottomPad, "space", false, func() { k.typed(" ") })
+	a.textKey(c, image.Rect(kbX0, ry, kbX0+100, ry+kbKeyH), kbBottomPad, layer, true, k.sym, func() { k.sym, k.shift = !k.sym, false })
+	a.textKey(c, image.Rect(kbX0+108, ry, kbX1, ry+kbKeyH), kbBottomPad, "space", false, false, func() { k.typed(" ") })
 }
 
 // textKey is a key with a label in its own case. key() writes all labels in capitals. The touch
 // area of the key is r with pad added on each side: half the gap to the next key, so that a tap in
-// a gap goes to the nearest key.
-func (a *App) textKey(c *gfx.Canvas, r image.Rectangle, pad image.Point, label string, on bool, tap func()) {
+// a gap goes to the nearest key. A toggle (shift, the symbols) has an LED, lit when it is on.
+func (a *App) textKey(c *gfx.Canvas, r image.Rectangle, pad image.Point, label string, toggle, on bool, tap func()) {
 	fill, ink := raised, text
-	if on {
+	switch {
+	case on:
 		fill, ink = keyOn, keyOnInk
+	case toggle:
+		fill = keyOff
 	}
 	hr := image.Rectangle{r.Min.Sub(pad), r.Max.Add(pad)}
 	pressed := a.isPressed(hr)

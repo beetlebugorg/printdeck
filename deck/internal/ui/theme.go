@@ -21,6 +21,7 @@ var (
 	lcd, lcdInk, lcdDim, lcdCell     color.RGBA // display window, its amber digits, and an unlit character cell
 	ledOff, ledGlow                  color.RGBA
 	keyOn, keyOnInk                  color.RGBA // the cap of a key that is on, like the active mode key
+	keyOff                           color.RGBA // the cap of a key with an on/off state that is off
 	// The character display, in the colors of the graphic LCD of a LulzBot: a blue backlight with
 	// white pixels.
 	glcd, glcdCell, glcdInk color.RGBA
@@ -70,6 +71,7 @@ func setNight(on bool) {
 	lcd, lcdInk, lcdDim, lcdCell = p.lcd, p.lcdInk, p.lcdDim, p.lcdCell
 	ledOff, ledGlow = p.ledOff, p.ledGlow
 	keyOn, keyOnInk = p.keyOn, p.keyOnInk
+	keyOff = color.RGBA{p.raised.R, p.raised.G, p.raised.B, 254} // a mark, not a color: key draws raised
 	redCap, onRed = p.redCap, p.onRed
 	glcd, glcdCell, glcdInk = p.glcd, p.glcdCell, p.glcdInk
 }
@@ -121,9 +123,10 @@ func led(c *gfx.Canvas, x, y int, on bool) {
 	c.RoundRect(image.Rect(x-4, y-4, x+4, y+4), 4, ledOff)
 }
 
-// key draws a key of the panel: a membrane key with a printed frame and an LED at its top left, as
-// on the panel of a machine. The LED is lit when the key is on (cap keyOn: the open page, the
-// material in the printer), and dark when it is off. A pressed key gets darker.
+// key draws a key of the panel: a membrane key with a printed frame, as on the panel of a machine.
+// A key with an on/off state that stays in view has an LED at its top left: lit for cap keyOn (the
+// open page, the material in the printer), dark for cap keyOff. A key that only acts has no LED.
+// A pressed key gets darker.
 func key(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pressed bool) {
 	keyBeside(c, r, label, cap, ink, pressed, 0)
 }
@@ -131,8 +134,8 @@ func key(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pr
 // keyBeside is key with room at the right of the label: right pixels of the cap stay free, for a
 // sign such as the lock of printerKey.
 func keyBeside(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pressed bool, right int) {
-	led := cap == keyOn
-	if led {
+	on, hasLED := cap == keyOn, cap == keyOn || cap == keyOff
+	if hasLED {
 		cap = raised
 		if ink == keyOnInk {
 			ink = text
@@ -156,15 +159,17 @@ func keyBeside(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RG
 	c.RoundRect(r.Inset(in), 2, darken(face, 0.10))
 	c.RoundRect(r.Inset(in+1), 2, face)
 	// The LED: lit orange when the key is on, dark when it is off.
-	l := image.Rect(r.Min.X+in+5, r.Min.Y+in+4, r.Min.X+in+17, r.Min.Y+in+9)
-	if r.Dy() < 50 {
-		l = image.Rect(r.Min.X+in+3, r.Min.Y+in+3, r.Min.X+in+11, r.Min.Y+in+7)
-	}
-	c.RoundRect(l.Inset(-1), 2, darken(face, 0.4))
-	if led {
-		c.RoundRect(l, 2, orange)
-	} else {
-		c.RoundRect(l, 2, darken(face, 0.25))
+	if hasLED {
+		l := image.Rect(r.Min.X+in+5, r.Min.Y+in+4, r.Min.X+in+17, r.Min.Y+in+9)
+		if r.Dy() < 50 {
+			l = image.Rect(r.Min.X+in+3, r.Min.Y+in+3, r.Min.X+in+11, r.Min.Y+in+7)
+		}
+		c.RoundRect(l.Inset(-1), 2, darken(face, 0.4))
+		if on {
+			c.RoundRect(l, 2, orange)
+		} else {
+			c.RoundRect(l, 2, darken(face, 0.25))
+		}
 	}
 	area := r.Inset(in)
 	if pressed {

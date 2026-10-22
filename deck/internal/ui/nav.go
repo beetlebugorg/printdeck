@@ -86,9 +86,9 @@ func (a *App) drawNavKeys(c *gfx.Canvas, r image.Rectangle) {
 		case k.p == open:
 			a.button(c, cell, k.name, keyOn, keyOnInk, tap)
 		case k.p == pageMove:
-			a.printerKey(c, cell, k.name, raised, text, tap)
+			a.printerKey(c, cell, k.name, keyOff, text, tap)
 		default:
-			a.button(c, cell, k.name, raised, text, tap)
+			a.button(c, cell, k.name, keyOff, text, tap)
 		}
 	}
 }
