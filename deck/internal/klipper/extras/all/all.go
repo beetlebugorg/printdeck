@@ -25,6 +25,7 @@ import (
 	_ "printdeck/internal/klipper/extras/homing"
 	_ "printdeck/internal/klipper/extras/idle_timeout"
 	_ "printdeck/internal/klipper/extras/manual_probe"
+	_ "printdeck/internal/klipper/extras/max_mode"
 	_ "printdeck/internal/klipper/extras/motion_queuing"
 	_ "printdeck/internal/klipper/extras/motion_report"
 	_ "printdeck/internal/klipper/extras/pause_resume"

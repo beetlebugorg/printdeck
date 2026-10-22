@@ -54,7 +54,15 @@ type GCodeMove struct {
 	moveTransform                       MoveTransform
 	moveWithTransform                   func(newpos []float64, speed float64)
 	positionWithTransform               func() []float64
+	speedHook                           SpeedHook
 }
+
+// SpeedHook returns the speed of a G1 move from the position from to the position to, in mm/s
+// before the speed factor, or 0 for the F speed. It is an addition of Printdeck for max mode.
+type SpeedHook func(from, to []float64) float64
+
+// SetSpeedHook sets the function that gives the speed of each G1 move.
+func (m *GCodeMove) SetSpeedHook(h SpeedHook) { m.speedHook = h }
 
 func defaultAxisMap() []axis { return []axis{{"X", 0}, {"Y", 1}, {"Z", 2}, {"E", 3}} }
 
@@ -228,6 +236,10 @@ func (m *GCodeMove) CmdG1(gcmd *gcode.Command) {
 	// Move
 	params := gcmd.Params()
 	unable := func() { panic(gcmd.Error("Unable to parse move '%s'", gcmd.Commandline())) }
+	var from []float64
+	if m.speedHook != nil {
+		from = append(from, m.lastPosition...)
+	}
 	for _, a := range m.axisMap {
 		s, ok := params[a.name]
 		if !ok {
@@ -262,7 +274,15 @@ func (m *GCodeMove) CmdG1(gcmd *gcode.Command) {
 		}
 		m.speed = gcodeSpeed * m.speedFactor
 	}
-	m.moveWithTransform(m.lastPosition, m.speed)
+	speed := m.speed
+	if m.speedHook != nil {
+		// Max mode: the speed of the hook in place of the F speed. The speed factor (M220)
+		// still applies.
+		if v := m.speedHook(from, m.lastPosition); v > 0 {
+			speed = v * m.speedFactor * 60.
+		}
+	}
+	m.moveWithTransform(m.lastPosition, speed)
 }
 
 // G-Code coordinate manipulation

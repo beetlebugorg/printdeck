@@ -269,9 +269,10 @@ type Dispatch struct {
 	statusCommands     map[string]map[string]string
 	defaultHandler     Handler
 
-	// The command stack of printdeck.go.
-	stackMu sync.Mutex
-	stack   []string
+	// The command stack and the comment handlers of printdeck.go.
+	stackMu         sync.Mutex
+	stack           []string
+	commentHandlers []func(comment string)
 }
 
 func New(printer *host.Printer) *Dispatch {
@@ -473,6 +474,7 @@ func (g *Dispatch) processCommands(commands []string, needAck bool) {
 		line = strings.TrimSpace(line)
 		origline := line
 		if cpos := strings.IndexByte(line, ';'); cpos >= 0 {
+			g.comment(line[cpos+1:])
 			line = line[:cpos]
 		}
 		// Break line into parts and determine command
