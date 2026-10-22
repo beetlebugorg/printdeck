@@ -10,6 +10,10 @@ The plugin works by itself, and tells you in a message what it did:
 - After a slice, Cura warns when the model needs more filament than the roll has.
 - During a print of the file that Cura has open, the Preview shows the layer that prints.
 - When a print ends, Cura tells you.
+- The Printdeck tab, next to Monitor, shows the screen of the deck, the print and the time left,
+  the roll and its grams, and the keys Pause, Resume and Cancel, in the style of the deck.
+- When Cura starts during a print, it offers to show the print in the Preview: it downloads the
+  file from the Printdeck, and the Preview follows the layer that prints.
 - Each file that Cura sends has the material of Cura in its header. Before the Printdeck prints a
   file for another material, it asks on the touch screen.
 

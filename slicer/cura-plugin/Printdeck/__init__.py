@@ -1,11 +1,13 @@
-# The Printdeck plugin for Cura. The plugin module loads only in Cura, so the tests can import logic.
+# The Printdeck plugin for Cura: an extension that follows the Printdeck, and the Printdeck tab.
+# The plugin modules load only in Cura, so the tests can import logic.
 
 
 def getMetaData():
-    return {}
+    return {"stage": {"name": "Printdeck", "weight": 35}}
 
 
 def register(app):
-    from . import PrintdeckPlugin
+    from . import PrintdeckPlugin, PrintdeckStage
 
-    return {"extension": PrintdeckPlugin.PrintdeckPlugin()}
+    stage = PrintdeckStage.PrintdeckStage()
+    return {"extension": PrintdeckPlugin.PrintdeckPlugin(stage), "stage": stage}
