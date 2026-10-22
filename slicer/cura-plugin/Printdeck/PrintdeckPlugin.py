@@ -1,10 +1,13 @@
 # The Printdeck plugin for Cura. It reads the roll of filament and the print from the Printdeck,
-# through the printer of the OctoPrint connection plugin, and:
+# through the printer of the OctoPrint connection plugin. It works by itself, and tells the user
+# what it did in a message:
 #
-# - offers to use the material of the roll when Cura uses another material,
-# - warns when the sliced model needs more filament than the roll has,
-# - moves the layer of the Preview to the layer that prints, when Cura has the same file,
-# - writes the material of Cura into the header of each G-code file, so that the Printdeck asks
+# - the print button says "Print to Printdeck",
+# - when the roll in the Printdeck changes, Cura changes to the material of the roll,
+# - after a slice, it warns when the model needs more filament than the roll has,
+# - during a print of the file that Cura has open, the Preview shows the layer that prints,
+# - it tells when a print ends,
+# - it writes the material of Cura into the header of each G-code file, so that the Printdeck asks
 #   before it prints a file for another material.
 #
 # It asks the Printdeck every 10 seconds, on a thread, and changes Cura on the main thread.
@@ -21,19 +24,22 @@ from cura.CuraApplication import CuraApplication
 from . import logic
 
 POLL_SECONDS = 10
+BUTTON = "Print to Printdeck"
+
+
+def _message(text):
+    Message(text, title="Printdeck").show()
 
 
 class PrintdeckPlugin(Extension):
     def __init__(self):
         super().__init__()
-        self.setMenuName("Printdeck")
-        self.addMenuItem("Use the material of the roll", self._useRollMaterial)
-        self.addMenuItem("Follow the print in Preview", self._toggleFollow)
-
         self._status = None  # the last answer of the Printdeck
-        self._follow = False
-        self._asked = None  # the roll and the material of the last question, so it is asked once
+        self._connected = False
+        self._roll = None  # the roll and the material of the last answer, to see a change
         self._warned = None  # the roll and the grams of the last warning
+        self._layer = None  # the job and the layer that the Preview shows
+        self._job = None  # the file that prints
         self._stop = threading.Event()
 
         app = CuraApplication.getInstance()
@@ -48,15 +54,21 @@ class PrintdeckPlugin(Extension):
 
     # The connection.
 
+    def _devices(self):
+        """Returns the OctoPrint devices: the ones with a base URL and an API key."""
+        out = []
+        for device in CuraApplication.getInstance().getOutputDeviceManager().getOutputDevices():
+            if getattr(device, "_base_url", None) and getattr(device, "_api_key", None):
+                out.append(device)
+        return out
+
     def _printer(self):
         """Returns the base URL and the API key of the connected OctoPrint device, or None."""
-        for device in CuraApplication.getInstance().getOutputDeviceManager().getOutputDevices():
-            base = getattr(device, "_base_url", None)
-            key = getattr(device, "_api_key", None)
-            if base and key:
-                if isinstance(key, bytes):
-                    key = key.decode()
-                return base, key
+        for device in self._devices():
+            key = device._api_key
+            if isinstance(key, bytes):
+                key = key.decode()
+            return device._base_url, key
         return None
 
     def _poll(self):
@@ -77,10 +89,19 @@ class PrintdeckPlugin(Extension):
     def _update(self, status):
         self._status = status
         if not status:
+            self._connected = False
             return
-        self._askMaterial()
+        if not self._connected:
+            self._connected = True
+            self._nameButton()
+        self._followRoll()
         self._checkRoll()
         self._followPrint()
+
+    def _nameButton(self):
+        for device in self._devices():
+            device.setShortDescription(BUTTON)
+            device.setDescription(BUTTON)
 
     # The material.
 
@@ -91,7 +112,7 @@ class PrintdeckPlugin(Extension):
         return stack, stack.extruderList[0]
 
     def _rollMaterial(self):
-        """Returns the base file of the Cura material for the roll, or None."""
+        """Returns the base file and the name of the Cura material for the roll, or None."""
         from cura.Machines.ContainerTree import ContainerTree
 
         stack, extruder = self._extruder()
@@ -99,36 +120,41 @@ class PrintdeckPlugin(Extension):
             return None
         try:
             machine = ContainerTree.getInstance().machines[stack.definition.getId()]
-            nodes = machine.variants[extruder.variant.getName()].materials.values()
+            nodes = list(machine.variants[extruder.variant.getName()].materials.values())
         except (KeyError, AttributeError):
             return None
-        return logic.choose_material(self._status["material"], [(n.base_file, n.material_type, n.brand) for n in nodes])
+        base = logic.choose_material(self._status["material"], [(n.base_file, n.material_type, n.brand) for n in nodes])
+        if not base:
+            return None
+        node = next(n for n in nodes if n.base_file == base)
+        name = node.container.getName() if getattr(node, "container", None) else base
+        return base, name
 
-    def _askMaterial(self):
-        stack, extruder = self._extruder()
+    def _followRoll(self):
+        """When the roll in the Printdeck changes, Cura changes to its material."""
         material = self._status["material"]
-        if not extruder or not material:
-            return
-        current = extruder.material.getMetaDataEntry("material") or ""
         spool = self._status["spool"]
-        key = (spool.get("id") if spool else "", material, current)
-        if logic.same_material(current, material) or key == self._asked:
+        roll = (spool.get("id") if spool else "", material)
+        if roll == self._roll or not material:
+            self._roll = roll
             return
-        self._asked = key
+        self._roll = roll
+        _, extruder = self._extruder()
+        if not extruder:
+            return
         name = logic.spool_name(spool) if spool else material
-        message = Message("The Printdeck has %s (%s). Cura prints with %s." % (name, material, current or "no material"),
-                          lifetime=0, title="Printdeck")
-        message.addAction("use", "Use %s" % material, "", "Choose the material of the roll")
-        message.actionTriggered.connect(lambda m, action: (m.hide(), self._useRollMaterial()))
-        message.show()
-
-    def _useRollMaterial(self):
-        base_file = self._rollMaterial()
-        if not base_file:
-            material = self._status["material"] if self._status else ""
-            Message("Cura has no %s material for this printer." % (material or "matching"), title="Printdeck").show()
+        if name != material:
+            name = "%s (%s)" % (name, material)
+        current = extruder.material.getMetaDataEntry("material") or ""
+        if logic.same_material(current, material):
             return
-        CuraApplication.getInstance().getMachineManager().setMaterialById("0", base_file)
+        found = self._rollMaterial()
+        if not found:
+            _message("The Printdeck has %s. Cura has no %s material for this printer." % (name, material))
+            return
+        base, label = found
+        CuraApplication.getInstance().getMachineManager().setMaterialById("0", base)
+        _message("The Printdeck has %s. Cura now prints with %s." % (name, label))
 
     def _tagMaterial(self, output_device=None):
         """Adds the material of the first extruder to the header of the G-code that Cura writes."""
@@ -167,19 +193,24 @@ class PrintdeckPlugin(Extension):
 
     # The print.
 
-    def _toggleFollow(self):
-        self._follow = not self._follow
-        if self._follow:
-            Message("The Preview follows the layer that prints when Cura has the same file.", title="Printdeck").show()
-            self._followPrint()
-
     def _followPrint(self):
-        if not self._follow or not self._status or not self._status["job"]:
-            return
         app = CuraApplication.getInstance()
         job = self._status["job"]
+        if not job:
+            if self._job:
+                _message("The print of %s ended." % self._job)
+            self._job, self._layer = None, None
+            return
+        self._job = job.get("file", "").split("/")[-1]
         if not logic.job_matches(app.getPrintInformation().jobName, job.get("file", "")):
             return
+        layer = logic.preview_layer(job)
+        if (self._job, layer) == self._layer:
+            return  # the same layer: the user can look at other layers until the next one
+        first = self._layer is None or self._layer[0] != self._job
+        self._layer = (self._job, layer)
         view = app.getController().getView("SimulationView")
         if view and view.getMaxLayers() > 0:
-            view.setLayer(min(view.getMaxLayers(), logic.preview_layer(job)))
+            view.setLayer(min(view.getMaxLayers(), layer))
+            if first:
+                _message("The Preview shows the layer that prints on the Printdeck.")
