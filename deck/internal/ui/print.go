@@ -23,7 +23,8 @@ func duration(d time.Duration) string {
 
 func (a *App) drawPrint(c *gfx.Canvas) {
 	if W > H {
-		defer divider(c) // over the content, so no zone hides it
+		// Under the content: the zones leave the gap free, and a full-screen keyboard covers it.
+		divider(c)
 	}
 	if a.picker != nil {
 		a.drawCuraPicker(c)
