@@ -22,9 +22,10 @@ type navKey struct {
 	p    page
 }
 
-// Home is the home screen (no page). The rolls are a part of Filament (its head key Rolls), and
+// Main is the home screen (no page): not "Home", which is the homing of the axes on a printer. The
+// rolls are a part of Filament (its head key Rolls), and
 // History a part of Machine, so the panel has no keys for them.
-var navKeys = []navKey{{"Home", 0}, {"Files", pageFiles}, {"Filament", pageFilament},
+var navKeys = []navKey{{"Main", 0}, {"Files", pageFiles}, {"Filament", pageFilament},
 	{"Move", pageMove}, {"Maintenance", pageMaintenance}, {"Machine", pageMachine}}
 
 // actH is the height of the row of actions at the bottom of a page.
@@ -61,7 +62,7 @@ func (a *App) navPage(c *gfx.Canvas, title string) frame {
 func (a *App) drawNavKeys(c *gfx.Canvas, r image.Rectangle) {
 	a.region("Pages", r)
 	// The lit key is the deepest page of the stack that has a key: Filament for Rolls, opened from
-	// Filament; Home with no page.
+	// Filament; Main with no page.
 	open := page(0)
 	for _, p := range a.pages {
 		for _, k := range navKeys {
