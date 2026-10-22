@@ -178,7 +178,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 	}
 
 	// Home
-	h := kit.Cols(home, 8, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1))
+	h := kit.Cols(home, 8, kit.Fr(1.8), kit.Fr(1), kit.Fr(1), kit.Fr(1)) // "Home all" needs the room
 	notPaused(h[0], "Home all", orange, onAcc, func() error { return pr.Home() })
 	for i, ax := range []string{"X", "Y", "Z"} {
 		axis := strings.ToLower(ax)
@@ -200,7 +200,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		s := []float64{0.1, 1, 10}[i]
 		fill, fg := raised, text
 		if a.zStep == s {
-			fill, fg = orange, onAcc
+			fill, fg = keyOn, keyOnInk
 		}
 		key(c, r, fmt.Sprint(s), fill, fg, a.isPressed(r))
 		a.addHit(kit.Hit{R: r, Tap: func() { a.zStep = s }})

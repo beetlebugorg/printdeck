@@ -121,7 +121,9 @@ func led(c *gfx.Canvas, x, y int, on bool) {
 	c.RoundRect(image.Rect(x-4, y-4, x+4, y+4), 4, ledOff)
 }
 
-// key draws a physical key: a dark wall below a cap that moves down when pressed.
+// key draws a key of the panel: a membrane key with a printed frame, as on the panel of a
+// machine. A key that is on (cap keyOn: the open page, the material in the printer) has a lit LED
+// at its top left; a key with no state has no LED. A pressed key gets darker.
 func key(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pressed bool) {
 	keyBeside(c, r, label, cap, ink, pressed, 0)
 }
@@ -129,29 +131,53 @@ func key(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pr
 // keyBeside is key with room at the right of the label: right pixels of the cap stay free, for a
 // sign such as the lock of printerKey.
 func keyBeside(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pressed bool, right int) {
-	const depth = 5
-	wall := darken(cap, 0.35)
-	if cap == raised {
-		wall = edge
+	led := cap == keyOn
+	if led {
+		cap = raised
+		if ink == keyOnInk {
+			ink = text
+		}
 	}
-	c.RoundRect(r, 6, wall)
-	face := image.Rect(r.Min.X, r.Min.Y, r.Max.X, r.Max.Y-depth)
+	face := cap
 	if pressed {
-		face = face.Add(image.Pt(0, depth-1))
+		face = darken(cap, 0.12)
 	}
-	c.RoundRect(face, 6, cap)
-	c.Fill(image.Rect(face.Min.X+6, face.Min.Y+1, face.Max.X-6, face.Min.Y+2), lighten(lighten(cap)))
+	border := darken(cap, 0.35)
+	if cap == raised {
+		border = edge
+	}
+	c.RoundRect(r, 4, border)
+	c.RoundRect(r.Inset(2), 3, face)
+	// The printed frame: closer to the edge on a small key.
+	in := 6
+	if min(r.Dx(), r.Dy()) < 50 {
+		in = 4
+	}
+	c.RoundRect(r.Inset(in), 2, darken(face, 0.10))
+	c.RoundRect(r.Inset(in+1), 2, face)
+	if led {
+		l := image.Rect(r.Min.X+in+5, r.Min.Y+in+4, r.Min.X+in+17, r.Min.Y+in+9)
+		if r.Dy() < 50 {
+			l = image.Rect(r.Min.X+in+3, r.Min.Y+in+3, r.Min.X+in+11, r.Min.Y+in+7)
+		}
+		c.RoundRect(l.Inset(-1), 2, darken(orange, 0.4))
+		c.RoundRect(l, 2, orange)
+	}
+	area := r.Inset(in)
+	if pressed {
+		area = area.Add(image.Pt(0, 1))
+	}
 	size := 20
-	if face.Dy() < 44 {
+	if area.Dy() < 40 {
 		size = 16
 	}
-	// A label that is too long gets a smaller font, down to 14 pixels.
+	// A label that is too long gets a smaller font, down to 13 pixels.
 	label = strings.ToUpper(label)
-	face.Max.X -= right
-	for size > 14 && gfx.Width(gfx.Face(true, size), label) > face.Dx()-16 {
+	area.Max.X -= right
+	for size > 13 && gfx.Width(gfx.Face(true, size), label) > area.Dx()-12 {
 		size--
 	}
-	c.Text(face, label, gfx.Face(true, size), ink, gfx.Center)
+	c.Text(area, label, gfx.Face(true, size), ink, gfx.Center)
 }
 
 // fader draws a horizontal slider: a slot, the part up to the value in orange, and a grip cap.

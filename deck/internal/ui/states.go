@@ -214,7 +214,7 @@ func (a *App) drawFirstLayer(c *gfx.Canvas, st printer.State) {
 	for i, s := range zSteps {
 		fill, fg := raised, text
 		if a.zBaby == s {
-			fill, fg = orange, onAcc
+			fill, fg = keyOn, keyOnInk
 		}
 		v := s
 		a.button(c, steps[i], fmt.Sprint(s), fill, fg, func() { a.zBaby = v })
