@@ -1,4 +1,5 @@
 # Tests of the parts of the Printdeck plugin that do not need Cura: python3 -m unittest test_logic
+import json
 import unittest
 
 from Printdeck import logic
@@ -61,6 +62,34 @@ class TestCuraMaterialList(unittest.TestCase):
         self.assertEqual([m["id"] for m in got], ["mc_white", "fav_petg", "cur_abs", "generic_pla"])
         self.assertNotIn("readonly", got[0])
         self.assertEqual(got[0]["color"], "#ffffff")
+
+
+class TestRollMaterial(unittest.TestCase):
+    nodes = [("generic_pla", "PLA", "Generic"), ("generic_petg", "PETG", "Generic"), ("acme_pla", "PLA", "Acme")]
+
+    def test_base(self):
+        # The material of Cura now, when it has the type of the roll: its settings carry over.
+        self.assertEqual(logic.choose_base("PLA", "mc_white", "PLA", self.nodes), "mc_white")
+        # Another type: the generic material of the type of the roll.
+        self.assertEqual(logic.choose_base("PETG", "mc_white", "PLA", self.nodes), "generic_petg")
+
+    def test_names(self):
+        self.assertEqual(logic.material_slug("Galaxy Black (eSun)"), "galaxy_black_esun")
+        self.assertEqual(logic.material_slug("!!"), "roll")
+        self.assertEqual(logic.roll_brand("Generic"), "Printdeck")
+        self.assertEqual(logic.roll_brand("Microcenter"), "Microcenter")
+
+    def test_spool_settings(self):
+        s = logic.spool_settings('{"other": {"spool_cost": 5}}', "g1", {"price": 22, "full": 1000})
+        v = json.loads(s)
+        self.assertEqual(v["g1"], {"spool_cost": 22.0, "spool_weight": 1000.0})
+        self.assertEqual(v["other"], {"spool_cost": 5})
+        self.assertEqual(json.loads(logic.spool_settings("bad", "g1", {})), {})
+
+    def test_color_from_name(self):
+        self.assertEqual(logic.color_from_name("Orange eSun"), "#ff7a1a")
+        self.assertEqual(logic.color_from_name("Galaxy Black"), "#1a1a1a")
+        self.assertEqual(logic.color_from_name("Redline"), "")
 
 
 if __name__ == "__main__":

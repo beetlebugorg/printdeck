@@ -111,6 +111,30 @@ func (s *Server) serveSlicerMaterials(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// serveRollMaterial links a roll to a material of Cura: {"id": the roll, "cura_material": the
+// base file, "color": "#rrggbb"}. The Cura plugin makes a material for a roll that has none.
+func (s *Server) serveRollMaterial(w http.ResponseWriter, r *http.Request) {
+	if s.Spools == nil {
+		http.NotFound(w, r)
+		return
+	}
+	var in struct {
+		ID           string `json:"id"`
+		CuraMaterial string `json:"cura_material"`
+		Color        string `json:"color"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in); err != nil || in.ID == "" {
+		apiError(w, http.StatusBadRequest, "bad roll")
+		return
+	}
+	if _, ok := s.Spools.Get(in.ID); !ok {
+		apiError(w, http.StatusNotFound, "no such roll")
+		return
+	}
+	s.Spools.SetCuraMaterial(in.ID, printer.SlicerMaterial{ID: in.CuraMaterial, Color: in.Color})
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // frameJPEG is a frame of the screen as a JPEG.
 func (s *Server) frameJPEG() ([]byte, error) {
 	var b bytes.Buffer

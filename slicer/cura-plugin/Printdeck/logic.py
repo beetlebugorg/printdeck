@@ -1,6 +1,7 @@
 # The parts of the Printdeck plugin that do not need Cura: the answer of the Printdeck, the choice
 # of the material, the warning for a short roll, and the match of a Cura job with the print.
 
+import json
 import re
 
 
@@ -126,3 +127,62 @@ def cura_material_list(materials, favorites, current):
         seen.add(m["id"])
         answer.append({k: str(m.get(k) or "") for k in ("id", "name", "brand", "material", "color")})
     return answer
+
+
+def material_slug(name):
+    """A part of a material ID from a name: lower-case letters, digits and "_"."""
+    slug = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+    return slug or "roll"
+
+
+def choose_base(material, current_base, current_type, nodes):
+    """The base file of the material that a new material for a roll copies: the material of Cura
+    now when it has the type of the roll, so its settings carry over, else the material that
+    choose_material gives. nodes are as for choose_material."""
+    if current_base and same_material(current_type, material):
+        return current_base
+    return choose_material(material, nodes)
+
+
+def roll_brand(base_brand):
+    """The brand of a material that the plugin makes for a roll: the brand of the material that it
+    copies, or Printdeck for a generic one."""
+    if not base_brand or base_brand.lower() == "generic":
+        return "Printdeck"
+    return base_brand
+
+
+def spool_settings(settings, guid, spool):
+    """The preference cura/material_settings (JSON) with the price and the grams of a roll for the
+    material with the GUID, so that Cura shows the cost of a print as the Printdeck does."""
+    try:
+        values = json.loads(settings or "{}")
+    except ValueError:
+        values = {}
+    if not isinstance(values, dict):
+        values = {}
+    entry = dict(values.get(guid) or {})
+    if spool.get("price"):
+        entry["spool_cost"] = float(spool["price"])
+    if spool.get("full"):
+        entry["spool_weight"] = float(spool["full"])
+    if entry:
+        values[guid] = entry
+    return json.dumps(values)
+
+
+# The colors of the usual color words in the names of rolls.
+_COLORS = [("black", "#1a1a1a"), ("white", "#f5f5f5"), ("orange", "#ff7a1a"), ("red", "#d22b2b"),
+           ("blue", "#2a62d0"), ("green", "#2e9d4a"), ("yellow", "#f4d03f"), ("purple", "#7d3fb5"),
+           ("pink", "#f28dc0"), ("brown", "#7a4b2a"), ("grey", "#8a8a8a"), ("gray", "#8a8a8a"),
+           ("silver", "#c0c0c0"), ("gold", "#d4a531"), ("natural", "#efe6cf"), ("clear", "#e8f1f5")]
+
+
+def color_from_name(name):
+    """The color of a roll from a color word in its name, for example "#ff7a1a" for "Orange eSun",
+    or ""."""
+    words = re.findall(r"[a-z]+", name.lower())
+    for word, color in _COLORS:
+        if word in words:
+            return color
+    return ""
