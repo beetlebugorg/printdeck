@@ -165,8 +165,13 @@ class PrintdeckStage(CuraStage):
         return self._frame
 
     @pyqtProperty(str, constant=True)
-    def folderUrl(self):
-        """The folder of the images and the fonts of the deck UI, as a URL with a "/" at the end."""
+    def imageBase(self):
+        """The folder of the images of the deck UI, as a URL with a "/" at the end."""
+        return QUrl.fromLocalFile(os.path.join(self._folder, "img")).toString() + "/"
+
+    @pyqtProperty(str, constant=True)
+    def fontBase(self):
+        """The folder of the fonts of the deck UI, as a URL with a "/" at the end."""
         return QUrl.fromLocalFile(self._folder).toString() + "/"
 
     @pyqtProperty(bool, notify=screenChanged)
