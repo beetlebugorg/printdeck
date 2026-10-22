@@ -5,11 +5,13 @@
 # Cura, so the tests can use it.
 
 import http.client
+import ipaddress
 import json
 import os
 import queue
 import socket
 import threading
+import time
 import urllib.parse
 
 # The sizes of the deck UI, as in page.html of the deck: a wide area gets the wide UI, 800 x 480. A
@@ -20,6 +22,77 @@ TALL_W, MIN_H, MAX_H = 480, 800, 1200
 # The time out of a read of the stream, in seconds. The deck sends a ping each 30 seconds.
 READ_TIMEOUT = 75
 CONNECT_TIMEOUT = 5
+
+
+# The name of the deck, for example printdeck.local, resolves once in RESOLVE_SECONDS. A lookup of
+# a .local name for all address families waits for the IPv6 answer, which can take 5 seconds.
+RESOLVE_SECONDS = 300
+_resolved = {}  # the host -> (the address, the time of the lookup)
+_resolve_lock = threading.Lock()
+
+
+def resolve(host, port=80):
+    """The IP address of host: IPv4 first, then any family. host when it has no address."""
+    try:
+        ipaddress.ip_address(host)
+        return host
+    except ValueError:
+        pass
+    with _resolve_lock:
+        hit = _resolved.get(host)
+        if hit and time.monotonic() - hit[1] < RESOLVE_SECONDS:
+            return hit[0]
+    addr = host
+    for family in (socket.AF_INET, socket.AF_UNSPEC):
+        try:
+            addr = socket.getaddrinfo(host, port, family, socket.SOCK_STREAM)[0][4][0]
+            break
+        except OSError:
+            continue
+    if addr != host:
+        with _resolve_lock:
+            _resolved[host] = (addr, time.monotonic())
+    return addr
+
+
+def direct(url):
+    """The URL with the IP address of its host, and the headers for the request: the Host header of
+    the name. An https URL stays the same, for its certificate."""
+    u = urllib.parse.urlsplit(url)
+    if u.scheme != "http" or not u.hostname:
+        return url, {}
+    addr = resolve(u.hostname, u.port or 80)
+    if addr == u.hostname:
+        return url, {}
+    netloc = ("[%s]" % addr if ":" in addr else addr) + (":%d" % u.port if u.port else "")
+    return urllib.parse.urlunsplit((u.scheme, netloc, u.path, u.query, u.fragment)), {"Host": u.netloc}
+
+
+class _Client:
+    """One kept-alive connection to the deck, for the requests of one thread. A request that fails
+    on a connection that the deck closed tries once again on a new connection."""
+
+    def __init__(self, stream, timeout):
+        self._stream, self._timeout, self._conn = stream, timeout, None
+
+    def request(self, method, path, body=None, headers=None):
+        """Returns the status and the body of the answer."""
+        for attempt in (0, 1):
+            if self._conn is None:
+                self._conn = self._stream._connection(self._timeout)
+            try:
+                self._conn.request(method, path, body=body, headers=self._stream._headers(headers))
+                r = self._conn.getresponse()
+                return r.status, r.read()
+            except (OSError, http.client.HTTPException):
+                self.close()
+                if attempt:
+                    raise
+
+    def close(self):
+        if self._conn:
+            self._conn.close()
+            self._conn = None
 
 
 def wanted_size(w, h):
@@ -89,6 +162,8 @@ class DeckStream:
         self._stopped = threading.Event()
         self._sock = None  # the socket of the stream, to end it from another thread
         self._touches = queue.Queue()
+        self._addr = self._host  # the IP address of the host, after the lookup in _run
+        self._ready = threading.Event()  # set after the lookup
 
     # The folders of the images and the fonts.
 
@@ -120,21 +195,25 @@ class DeckStream:
     # The requests.
 
     def _connection(self, timeout):
-        cls = http.client.HTTPSConnection if self._https else http.client.HTTPConnection
-        return cls(self._host, self._port, timeout=timeout)
+        if self._https:
+            return http.client.HTTPSConnection(self._host, self._port, timeout=timeout)
+        return http.client.HTTPConnection(self._addr, self._port, timeout=timeout)
+
+    def _headers(self, extra=None):
+        """The headers of a request: the API key, and the name of the deck as the Host."""
+        h = {"X-Api-Key": self._key}
+        if self._addr != self._host:
+            h["Host"] = self._host + (":%d" % self._port if self._port else "")
+        h.update(extra or {})
+        return h
 
     def _get(self, path):
         """GET a file of the deck. Returns its bytes, or None."""
-        conn = self._connection(CONNECT_TIMEOUT * 2)
         try:
-            conn.request("GET", self._path + path, headers={"X-Api-Key": self._key})
-            r = conn.getresponse()
-            body = r.read()
-            return body if r.status == 200 else None
+            status, body = self._files.request("GET", self._path + path)
+            return body if status == 200 else None
         except (OSError, http.client.HTTPException):
             return None
-        finally:
-            conn.close()
 
     def _save(self, path, data):
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -161,11 +240,18 @@ class DeckStream:
 
     def _run(self):
         error = None
+        self._files = _Client(self, CONNECT_TIMEOUT * 2)
         try:
+            if not self._https:
+                self._addr = resolve(self._host, self._port or 80)
+            self._ready.set()
             self._fonts()
             self._stream()
         except Exception as e:  # the deck is off, or the network failed
             error = e
+        finally:
+            self._files.close()
+            self._ready.set()
         if self._stopped.is_set():
             error = None
         self._touches.put(None)
@@ -180,7 +266,7 @@ class DeckStream:
             if self._stopped.is_set():
                 return
             conn.request("GET", "%s/ui/events?w=%d&h=%d" % (self._path, self._size[0], self._size[1]),
-                         headers={"X-Api-Key": self._key, "Accept": "text/event-stream"})
+                         headers=self._headers({"Accept": "text/event-stream"}))
             r = conn.getresponse()
             if r.status in (401, 403, 404):
                 raise Refused("the deck answered %d" % r.status)
@@ -207,6 +293,14 @@ class DeckStream:
             conn.close()
 
     def _send_touches(self):
+        self._ready.wait()
+        self._touch = _Client(self, CONNECT_TIMEOUT)
+        try:
+            self._touch_loop()
+        finally:
+            self._touch.close()
+
+    def _touch_loop(self):
         while True:
             t = self._touches.get()
             if t is None or self._stopped.is_set():
@@ -227,13 +321,9 @@ class DeckStream:
     def _post(self, t):
         if not self._session:
             return
-        conn = self._connection(CONNECT_TIMEOUT)
+        body = json.dumps({"kind": t[0], "x": t[1], "y": t[2]})
         try:
-            body = json.dumps({"kind": t[0], "x": t[1], "y": t[2]})
-            conn.request("POST", "%s/ui/touch?s=%s" % (self._path, self._session), body=body,
-                         headers={"X-Api-Key": self._key, "Content-Type": "application/json"})
-            conn.getresponse().read()
+            self._touch.request("POST", "%s/ui/touch?s=%s" % (self._path, self._session), body=body,
+                                headers={"Content-Type": "application/json"})
         except (OSError, http.client.HTTPException):
             pass
-        finally:
-            conn.close()
