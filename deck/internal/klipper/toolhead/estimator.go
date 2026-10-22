@@ -35,6 +35,10 @@ type Estimator struct {
 	time    float64 // the time of the moves that left the look-ahead queue
 	pending []pendingMark
 	Marks   []Mark
+
+	// OnMove, when set, gets each move after the look-ahead plans it: its start, cruise and end
+	// speeds are known then.
+	OnMove func(m *Move)
 }
 
 // NewEstimator returns an Estimator for a printer with the limits l.
@@ -124,6 +128,9 @@ func (e *Estimator) flush(lazy bool) {
 	moves := e.th.lookahead.flush(lazy)
 	for _, m := range moves {
 		e.time += m.AccelT + m.CruiseT + m.DecelT
+		if e.OnMove != nil {
+			e.OnMove(m)
+		}
 		for len(e.pending) > 0 && e.pending[0].move == m {
 			e.Marks = append(e.Marks, Mark{e.pending[0].key, e.time})
 			e.pending = e.pending[1:]
