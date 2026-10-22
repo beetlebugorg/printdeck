@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"path"
 	"strings"
-	"syscall"
 
 	"printdeck/internal/gcodestore"
 	"printdeck/internal/printer"
@@ -66,14 +65,6 @@ func (s *Server) serveFiles(w http.ResponseWriter, r *http.Request) {
 	}
 	free, total := diskSpace(s.Store.Dir)
 	writeJSON(w, http.StatusOK, map[string]any{"files": list, "free": free, "total": total})
-}
-
-func diskSpace(dir string) (free, total uint64) {
-	var st syscall.Statfs_t
-	if syscall.Statfs(dir, &st) != nil {
-		return 0, 0
-	}
-	return st.Bavail * uint64(st.Bsize), st.Blocks * uint64(st.Bsize)
 }
 
 // serveUpload takes a file from a slicer: a multipart form with "file", and optional "path" (a

@@ -1,3 +1,5 @@
+//go:build linux
+
 // Package fakemcu is a fake Klipper board for tests. It speaks the Klipper protocol on a
 // pseudo-terminal with a real data dictionary: it answers identify, get_clock, get_uptime and
 // get_config, acknowledges each message block as the firmware does, and logs the commands that it

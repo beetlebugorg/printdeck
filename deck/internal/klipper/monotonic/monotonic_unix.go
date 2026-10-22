@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 // Package monotonic is the clock of the Klipper host: get_monotonic of chelper/pyhelper.c.
 // Klipper reads CLOCK_MONOTONIC_RAW, which NTP does not slew. The monotonic clock of Go
 // (CLOCK_MONOTONIC) changes its rate while timesyncd corrects the time, and then the clock
