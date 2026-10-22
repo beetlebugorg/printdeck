@@ -12,21 +12,24 @@ import wave
 import numpy as np
 from kokoro_onnx import Kokoro
 
-# The time of each line in seconds, and its words.
+# The time of each line in seconds, and its words: a text, or a list of texts and pauses in
+# seconds, for the timing of a joke.
 LINES = [
-    (0.5, "3D printer people are a peculiar type."),
-    (4.0, "They buy 3D printers... to print things for their 3D printers."),
-    (8.8, "Printdeck is no different. A touch screen for the Taz Workhorse. Let's take a look. Anyway."),
-    (15.0, "Its case? Printed on the very printer it's for."),
-    (18.1, "It boots a system smaller than most cat videos. Twenty seven megabytes."),
-    (23.4, "It knows your rolls of filament. What they cost. Which prints ate them. And which ones you've been ignoring."),
-    (34.4, "Your old LCD? Still works. It's the second display now. It's taking it well."),
-    (40.6, "Slice in Cura, and the whole deck is right there, in its own tab."),
-    (45.4, "Cura switches to the roll that's loaded... and warns you when it's too short. Rude. But helpful."),
-    (55.0, "Hear that? Your stepper motors. Enjoy them. Your software isn't getting in their way."),
-    (60.7, "Underneath, the Klipper host, rewritten in Go. No Python. No dependencies."),
-    (66.4, "One Raspberry Pi. One program. And a printer with a touch screen it never asked for."),
-    (72.8, "Printdeck. Print the next thing for your printer."),
+    (0.5, ["3D printer people are a peculiar type.", 0.35, "We buy a printer...", 0.25,
+           "to print parts for the printer."]),
+    (9.0, ["Printdeck is that part.", 0.3, "A touch screen for the Taz Workhorse."]),
+    (14.3, ["Printed on the printer it's for.", 0.25, "Naturally."]),
+    (18.2, ["Twenty seven megabytes.", 0.25, "Smaller than most cat videos."]),
+    (23.4, ["It tracks every roll of filament.", 0.2, "What it cost.", 0.2, "Which prints ate it.", 0.45,
+            "It does not judge.", 0.35, "Much."]),
+    (34.4, ["Your old LCD?", 0.3, "It's the second display now.", 0.35, "It's taking it well."]),
+    (40.8, ["Slice in Cura, and the deck is right there, in its own tab."]),
+    (45.4, ["Cura switches to the roll that's loaded...", 0.3, "and tells you when it's too short.", 0.3,
+            "Before the print. Not after."]),
+    (55.0, ["Hear that?", 0.35, "Stepper motors.", 0.25, "Your software isn't in the way."]),
+    (60.5, ["The Klipper host, in Go.", 0.2, "No Python.", 0.15, "No pip install at midnight."]),
+    (66.8, ["One Pi.", 0.15, "One program.", 0.3, "And a touch screen the printer never asked for."]),
+    (73.1, ["Printdeck.", 0.4, "Print the next thing for your printer."]),
 ]
 
 model, voices, voice, music_path, out_path = sys.argv[1:6]
@@ -38,8 +41,14 @@ with wave.open(music_path, "rb") as w:
 
 speech = np.zeros(len(music), np.float32)
 for at, text in LINES:
-    x, src = kokoro.create(text, voice=voice, speed=0.95, lang="en-us")
-    x = np.asarray(x, np.float32)
+    parts, src = [], 24000
+    for piece in text if isinstance(text, list) else [text]:
+        if isinstance(piece, (int, float)):
+            parts.append(np.zeros(int(piece * src), np.float32))
+            continue
+        y, src = kokoro.create(piece, voice=voice, speed=0.95, lang="en-us")
+        parts.append(np.asarray(y, np.float32))
+    x = np.concatenate(parts)
     # To the rate of the music.
     x = np.interp(np.arange(int(len(x) * rate / src)) * src / rate, np.arange(len(x)), x)
     i = int(at * rate)

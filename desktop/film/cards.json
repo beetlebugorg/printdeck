@@ -1,0 +1,11 @@
+[
+ {"t0": 0.6, "t1": 7.4, "kind": "title", "text": "PRINTDECK", "sub": "A TOUCH SCREEN FOR THE TAZ WORKHORSE"},
+ {"t0": 8.0, "t1": 11.8, "kind": "card", "text": "PRINTED ON THE PRINTER IT MOUNTS ON"},
+ {"t0": 17.9, "t1": 22.3, "kind": "card", "text": "A 27 MB SYSTEM"},
+ {"t0": 25.4, "t1": 33.4, "kind": "card", "text": "YOUR ROLLS, THEIR COST, THEIR PRINTS"},
+ {"t0": 34.4, "t1": 40.0, "kind": "card", "text": "THE OLD LCD IS THE SECOND DISPLAY"},
+ {"t0": 40.6, "t1": 48.4, "kind": "card", "text": "THE CURA PLUGIN"},
+ {"t0": 60.9, "t1": 65.6, "kind": "card", "text": "THE KLIPPER HOST, IN GO"},
+ {"t0": 66.9, "t1": 72.7, "kind": "card", "text": "ONE RASPBERRY PI 5. ONE PROGRAM."},
+ {"t0": 73.0, "t1": 80.5, "kind": "end", "text": "PRINTDECK", "sub": "BEETLEBUG.ORG"}
+]

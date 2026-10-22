@@ -147,6 +147,8 @@ Window
                     glowStrength: 0.8
                     glowBloom: 0.15
                     glowBlendMode: ExtendedSceneEnvironment.GlowBlendMode.Additive
+                    // Dithering, so that the dark gradients do not band in the video.
+                    ditheringEnabled: true
                     vignetteEnabled: true
                     vignetteStrength: 0.35
                     vignetteRadius: 0.4

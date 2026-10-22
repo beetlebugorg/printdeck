@@ -5,7 +5,7 @@
 #
 #   desktop/film/film.sh OUT        (OUT is a folder; the voice model goes to OUT/voices)
 #
-# It needs uv (build123d, numpy, piper-tts), CuraEngine in /opt/ultimaker-cura, and ffmpeg.
+# It needs uv (build123d, numpy, kokoro-onnx), Go, CuraEngine in /opt/ultimaker-cura, and ffmpeg.
 set -eu
 FILM="$(cd "$(dirname "$0")" && pwd)"
 OUT="$(mkdir -p "$1" && cd "$1" && pwd)"
@@ -13,11 +13,13 @@ OUT="$(mkdir -p "$1" && cd "$1" && pwd)"
 uv run --no-project --with build123d python "$FILM/plaque.py" "$OUT/plaque.stl"
 python3 "$FILM/slice.py" "$OUT/plaque.stl" "$OUT/printdeck-plaque.gcode"
 uv run --no-project --with numpy python "$FILM/music.py" "$OUT/music.wav"
-if [ ! -f "$OUT/voices/en_US-ryan-high.onnx" ]; then
-  uv run --no-project --with piper-tts python -m piper.download_voices --download-dir "$OUT/voices" en_US-ryan-high
-fi
-uv run --no-project --with piper-tts --with numpy python "$FILM/voice.py" \
-  "$OUT/voices/en_US-ryan-high.onnx" "$OUT/music.wav" "$OUT/soundtrack.wav"
+(cd "$FILM/../../deck" && go run ./cmd/filmcards "$FILM/cards.json" "$OUT/cards")
+for f in kokoro-v1.0.onnx voices-v1.0.bin; do
+  [ -f "$OUT/voices/$f" ] || curl -sSL --create-dirs -o "$OUT/voices/$f" \
+    "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/$f"
+done
+uv run --no-project --with kokoro-onnx --with numpy python "$FILM/voice.py" \
+  "$OUT/voices/kokoro-v1.0.onnx" "$OUT/voices/voices-v1.0.bin" bm_george "$OUT/music.wav" "$OUT/soundtrack.wav"
 
 cat <<EOF
 The parts are in $OUT. To record the film:
