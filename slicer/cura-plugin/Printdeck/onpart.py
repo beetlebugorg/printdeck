@@ -215,3 +215,50 @@ def on_part_start(gcode_list):
         gcode_list[i] = chunk[:m.start()] + start + chunk[m.end():]
         return True
     return False
+
+
+def bitmap_rects(rows):
+    """Returns the dark pixels of a bitmap as rectangles (x0, y0, x1, y1) in pixels, with x1 and
+    y1 out of the rectangle. rows is a list of rows of booleans, the top row first. A run of dark
+    pixels in a row becomes a rectangle, and the same run in the rows under it makes it taller."""
+    open_runs = {}  # (x0, x1) -> the first row of the rectangle
+    rects = []
+    for y, row in enumerate(rows + [[]]):
+        runs = set()
+        x = 0
+        n = len(row)
+        while x < n:
+            if row[x]:
+                x0 = x
+                while x < n and row[x]:
+                    x += 1
+                runs.add((x0, x))
+            else:
+                x += 1
+        for run in list(open_runs):
+            if run not in runs:
+                rects.append((run[0], open_runs.pop(run), run[1], y))
+        for run in runs:
+            open_runs.setdefault(run, y)
+    return rects
+
+
+def raised_boxes(rects, px, cx, cz, width, height, y0, depth):
+    """The boxes of raised lettering: the rectangles of a bitmap of width x height pixels of px mm,
+    centered at (cx, cz) of the scene, from y0 up depth mm. The top row of the bitmap is at the back
+    (-z), so the text reads from the front of the bed. Each box is (xa, za, xb, zb, y0, y1)."""
+    out = []
+    for x0, r0, x1, r1 in rects:
+        xa = cx + (x0 - width / 2) * px
+        xb = cx + (x1 - width / 2) * px
+        za = cz + (r0 - height / 2) * px
+        zb = cz + (r1 - height / 2) * px
+        out.append((xa, za, xb, zb, y0, y0 + depth))
+    return out
+
+
+def box_mesh_at(box):
+    """box_mesh for a box (xa, za, xb, zb, y0, y1) that starts at y0."""
+    xa, za, xb, zb, y0, y1 = box
+    verts, tris = box_mesh((xa, za, xb, zb, y1 - y0))
+    return [(x, y + y0, z) for x, y, z in verts], tris
