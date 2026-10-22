@@ -33,7 +33,7 @@ func (a *App) menuRows(c *gfx.Canvas, area image.Rectangle, wide bool, rowH, gap
 }
 
 // minRowH is the least height of a menu row: a row that a finger hits with no error.
-const minRowH = 52
+const minRowH = 60 // also the height of the two lines of a row (rowText)
 
 // pageScroll is the scroll position of the list of the page that is open.
 func (a *App) pageScroll() *int {
@@ -57,7 +57,7 @@ func (a *App) menuRowsWait(c *gfx.Canvas, area image.Rectangle, wide bool, rowH,
 	rowH = min(limit, (area.Dy()+gap)/max(1, len(items))-gap)
 	if rowH < minRowH {
 		// Too many rows for the area: rows of a size to touch, in a list that scrolls.
-		l := kit.List{Area: area, N: len(items), RowH: minRowH, Gap: gap, Scroll: a.pageScroll()}
+		l := kit.List{Area: area, N: len(items), RowH: minRowH + gap, Gap: gap, Scroll: a.pageScroll()}
 		a.list(c, l, func(i int) string { return items[i].title }, func(c *gfx.Canvas, i int, r image.Rectangle) {
 			it := items[i]
 			a.drawMenuRow(c, r, it.title, it.sub, it.col, it.tap != nil, wait && it.tap != nil)
@@ -193,7 +193,7 @@ func (a *App) drawManualProbe(c *gfx.Canvas, st printer.State) {
 	scr := kit.Screen{W: W, H: contentY1}
 	var lcdR, box, steps, hint, end image.Rectangle
 	if scr.Wide() {
-		left, right := wideZones(lcdScale)
+		left, right := wideZones(wideScale)
 		l := kit.Rows(left, 16, kit.Px(92), kit.Fr(1))
 		lcdR, box = l[0], l[1]
 		r := kit.Rows(right, 10, kit.Fr(1), kit.Px(24), kit.Px(90))

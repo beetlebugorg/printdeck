@@ -35,10 +35,12 @@ const (
 )
 
 // The grid of a wide screen: a margin of gridM at the edges, and gridM between the zones. The left
-// column is as wide as the display with its bezel, so the keys under the display line up with it.
-// A state screen has the display at 3 times its size: it is the main instrument. A page has it at
-// 2 times, and its content gets the space.
-const gridM = 16
+// column is as wide as the display with its bezel (at wideScale), so the keys under the display
+// line up with it. The display has the same size and place on each wide screen.
+const (
+	gridM     = 16
+	wideScale = 2 // the scale of the display on a wide screen
+)
 
 // bezelW is the width of the display at a scale, with its bezel of 8 pixels.
 func bezelW(scale int) int { return 128*scale + 16 }
@@ -65,23 +67,34 @@ func displayIn(left image.Rectangle, scale int) (lcd, under image.Rectangle) {
 	return lcd, image.Rect(left.Min.X, lcd.Max.Y+8+gridM, left.Max.X, left.Max.Y)
 }
 
-// displayScale is the scale of the display of a wide state screen: smaller when the print bar
-// takes the bottom, so the screen keeps its space.
-func displayScale() int {
-	if contentY1 < H {
-		return lcdScale - 1
-	}
-	return lcdScale
-}
-
-// pageScale is the scale of the display of a wide page.
-const pageScale = lcdScale - 1
-
 // lcdRect is the display of the printer in a pane of a tall screen: at the top, in the middle.
 func lcdRect(pane image.Rectangle) image.Rectangle {
 	w, h := 128*lcdScale, 64*lcdScale
 	x := pane.Min.X + (pane.Dx()-w)/2
 	return image.Rect(x, pane.Min.Y+lcdTop, x+w, pane.Min.Y+lcdTop+h)
+}
+
+// divider draws the seam between the two columns of a wide screen: a groove in the middle of the
+// gap, a dark line and a light line, as the joint of two panels.
+func divider(c *gfx.Canvas) {
+	left, _ := wideZones(wideScale)
+	x := left.Max.X + gridM/2 - 1
+	c.Fill(image.Rect(x, left.Min.Y, x+1, left.Max.Y), edge)
+	c.Fill(image.Rect(x+1, left.Min.Y, x+2, left.Max.Y), shine)
+}
+
+// systemKeyList are the keys of systemKeys, each a function that draws it in a place.
+func (a *App) systemKeyList(c *gfx.Canvas) []func(image.Rectangle) {
+	var keys []func(image.Rectangle)
+	if a.Setup != nil {
+		keys = append(keys, func(r image.Rectangle) { a.button(c, r, "Wi-Fi and help", raised, text, a.OpenHelp) })
+	}
+	if a.Updater != nil {
+		keys = append(keys, func(r image.Rectangle) {
+			a.button(c, r, "Software update", raised, text, func() { a.open(pageUpdate) })
+		})
+	}
+	return keys
 }
 
 // tallHead is the head of a page on a tall screen, inside the margins.
@@ -91,8 +104,8 @@ func tallHead() image.Rectangle { return image.Rect(margin, lcdTop, W-margin, lc
 func (a *App) stateFrame() frame {
 	scr := kit.Screen{W: W, H: contentY1}
 	if scr.Wide() {
-		left, right := wideZones(displayScale())
-		lcd, under := displayIn(left, displayScale())
+		left, right := wideZones(wideScale)
+		lcd, under := displayIn(left, wideScale)
 		return frame{wide: true, lcd: lcd, side: under, main: right}
 	}
 	top, main := scr.Split(lcdBelow)
@@ -134,10 +147,11 @@ func (a *App) takeover(c *gfx.Canvas, title string) (content, key image.Rectangl
 func (a *App) plain(c *gfx.Canvas, title string) (wide bool, text, info image.Rectangle) {
 	scr := kit.Screen{W: W, H: contentY1}
 	if scr.Wide() {
-		left, right := wideZones(lcdScale)
-		head := image.Rect(left.Min.X, left.Min.Y, left.Max.X, left.Min.Y+keyH)
+		// The title at the top of the right column, as on each wide screen.
+		left, right := wideZones(wideScale)
+		head := image.Rect(right.Min.X, right.Min.Y, right.Max.X, right.Min.Y+keyH)
 		headingAt(c, head, title)
-		return true, image.Rect(left.Min.X, head.Max.Y+gridM, left.Max.X, left.Max.Y), right
+		return true, left, image.Rect(right.Min.X, head.Max.Y+gridM, right.Max.X, right.Max.Y)
 	}
 	headingAt(c, tallHead(), title)
 	body := image.Rect(margin, headH+8, W-margin, contentY1-8)
@@ -145,15 +159,16 @@ func (a *App) plain(c *gfx.Canvas, title string) (wide bool, text, info image.Re
 }
 
 // pageFrame is the frame of a page that is a step of a task (Tune, the filament swap, a form),
-// with no drawing. A wide screen has the display, the title and Back in the left column.
+// with no drawing. A wide screen has the display in the left column, and the title and Back at the
+// top of the right column, as each wide screen.
 func (a *App) pageFrame() frame {
 	scr := kit.Screen{W: W, H: contentY1}
 	if scr.Wide() {
-		left, right := wideZones(pageScale)
-		lcd, under := displayIn(left, pageScale)
-		head := image.Rect(under.Min.X, under.Min.Y, under.Max.X, under.Min.Y+keyH)
-		side := image.Rect(under.Min.X, head.Max.Y+gridM, under.Max.X, under.Max.Y)
-		return frame{wide: true, lcd: lcd, head: head, side: side, main: right}
+		left, right := wideZones(wideScale)
+		lcd, under := displayIn(left, wideScale)
+		head := image.Rect(right.Min.X, right.Min.Y, right.Max.X, right.Min.Y+keyH)
+		main := image.Rect(right.Min.X, head.Max.Y+gridM, right.Max.X, right.Max.Y)
+		return frame{wide: true, lcd: lcd, head: head, side: under, main: main}
 	}
 	_, main := kit.Screen{W: W, H: contentY1}.Split(headH)
 	return frame{head: tallHead(), main: main}
@@ -214,20 +229,17 @@ func (a *App) headKey(c *gfx.Canvas, head image.Rectangle, label string, tap fun
 // a screen that has no pages, such as an error of Klipper. A key is not drawn when the deck has no
 // SetupHost or no Updater.
 func (a *App) systemKeys(c *gfx.Canvas, r image.Rectangle) {
-	var keys []func(image.Rectangle)
-	if a.Setup != nil {
-		keys = append(keys, func(r image.Rectangle) { a.button(c, r, "Wi-Fi and help", raised, text, a.OpenHelp) })
-	}
-	if a.Updater != nil {
-		keys = append(keys, func(r image.Rectangle) {
-			a.button(c, r, "Software update", raised, text, func() { a.open(pageUpdate) })
-		})
-	}
+	keys := a.systemKeyList(c)
 	sizes := make([]kit.Size, len(keys))
 	for i := range sizes {
 		sizes[i] = kit.Fr(1)
 	}
-	for i, k := range kit.Cols(r, 12, sizes...) {
+	// Side by side, or under each other in a narrow column.
+	cells := kit.Cols(r, 12, sizes...)
+	if r.Dx() < 320 {
+		cells = kit.Rows(image.Rect(r.Min.X, r.Max.Y-len(keys)*keyH-(len(keys)-1)*12, r.Max.X, r.Max.Y), 12, sizes...)
+	}
+	for i, k := range cells {
 		keys[i](k)
 	}
 }

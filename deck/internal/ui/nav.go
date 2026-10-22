@@ -22,8 +22,9 @@ type navKey struct {
 	p    page
 }
 
-var navKeys = []navKey{{"Files", pageFiles}, {"Filament", pageFilament}, {"Rolls", pageSpools},
-	{"Move", pageMove}, {"Maintenance", pageMaintenance}, {"Machine", pageMachine}}
+// The rolls are a part of Filament (its head key Rolls), so the panel has no key for them.
+var navKeys = []navKey{{"Files", pageFiles}, {"Filament", pageFilament}, {"Move", pageMove},
+	{"History", pageHistory}, {"Maintenance", pageMaintenance}, {"Machine", pageMachine}}
 
 // actH is the height of the row of actions at the bottom of a page.
 const actH = 72
@@ -33,8 +34,8 @@ func (a *App) navFrame() frame {
 	if !(kit.Screen{W: W, H: contentY1}).Wide() {
 		return a.pageFrame()
 	}
-	left, right := wideZones(pageScale)
-	lcd, under := displayIn(left, pageScale)
+	left, right := wideZones(wideScale)
+	lcd, under := displayIn(left, wideScale)
 	head := image.Rect(right.Min.X, right.Min.Y, right.Max.X, right.Min.Y+keyH)
 	main := image.Rect(right.Min.X, head.Max.Y+gridM, right.Max.X, right.Max.Y)
 	return frame{wide: true, nav: true, lcd: lcd, side: under, head: head, main: main}
@@ -58,7 +59,8 @@ func (a *App) navPage(c *gfx.Canvas, title string) frame {
 // and a tap opens a page at its top. During a print, Move waits for its end.
 func (a *App) drawNavKeys(c *gfx.Canvas, r image.Rectangle) {
 	a.region("Pages", r)
-	// The lit key is the deepest page of the stack that has a key: Rolls, opened from Filament.
+	// The lit key is the deepest page of the stack that has a key: Filament for Rolls, opened from
+	// Filament; History for the History opened from Machine.
 	open := page(0)
 	for _, p := range a.pages {
 		for _, k := range navKeys {

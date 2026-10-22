@@ -16,7 +16,7 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	f := a.navPage(c, "Filament")
 	rolls := pr.SpoolStore()
-	if rolls != nil && !f.wide { // a wide page has Rolls in the key panel
+	if rolls != nil {
 		a.headKey(c, f.head, "Rolls", func() { a.open(pageSpools) })
 	}
 	m := a.loaded()

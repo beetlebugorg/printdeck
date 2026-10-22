@@ -22,6 +22,9 @@ func duration(d time.Duration) string {
 }
 
 func (a *App) drawPrint(c *gfx.Canvas) {
+	if W > H {
+		defer divider(c) // over the content, so no zone hides it
+	}
 	if a.picker != nil {
 		a.drawCuraPicker(c)
 		return
@@ -158,7 +161,8 @@ func (a *App) stateAreas() (f frame, keys, view image.Rectangle) {
 func (a *App) jobAreas() (keys, box image.Rectangle) {
 	f, keys, view := a.stateAreas()
 	if f.wide {
-		return kit.Rows(keys, 0, kit.Px(keyRowH))[0], view
+		// Two rows of two keys: the column is narrow.
+		return kit.Rows(keys, 0, kit.Px(2*keyRowH+10))[0], view
 	}
 	r := kit.Rows(view, 12, kit.Px(keyRowH), kit.Fr(1))
 	return r[0], r[1]
@@ -172,9 +176,12 @@ func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 	if f, _, _ := a.stateAreas(); f.wide {
 		// Under the keys in the left column: the file, the layer and the end of the print.
 		_, side, _ := a.stateAreas()
-		a.jobCard(c, kit.Rows(side, 12, kit.Px(keyRowH), kit.Fr(1))[1], st)
+		a.jobCard(c, kit.Rows(side, 12, kit.Px(keys.Dy()), kit.Fr(1))[1], st)
 	}
 	k := kit.Cols(keys, 8, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1))
+	if keys.Dx() < 320 {
+		k = kit.Grid(keys, 2, 2, 10) // two rows of two in a narrow column
+	}
 	a.button(c, k[0], "Pause", orange, onAcc, pr.Pause)
 	a.button(c, k[1], "Tune", raised, text, func() { a.tune = true })
 	a.button(c, k[2], "Cancel", raised, red, a.askCancel)
@@ -279,15 +286,29 @@ func (a *App) temps(c *gfx.Canvas, area image.Rectangle, tool, toolT, bed, bedT 
 		if ok && target > 0 {
 			ic = orange // heater on
 		}
-		icon(r.Min.X+34, r.Min.Y+h/2, 15, ic)
-		label(c, image.Rect(r.Min.X+62, r.Min.Y+8, r.Max.X-14, r.Min.Y+28), name, gfx.Left)
+		// A narrow card has a smaller icon, closer to the edge, and a value that fits.
+		ix, tx, ir := 34, 62, 15
+		if r.Dx() < 180 {
+			ix, tx, ir = 22, 40, 11
+		}
+		icon(r.Min.X+ix, r.Min.Y+h/2, ir, ic)
+		label(c, image.Rect(r.Min.X+tx, r.Min.Y+8, r.Max.X-14, r.Min.Y+28), name, gfx.Left)
 		val := "—"
 		if ok {
 			val = fmt.Sprintf("%.0f°", v)
 		}
-		c.Text(image.Rect(r.Min.X+62, r.Min.Y+26, r.Max.X-10, r.Max.Y-4), val, gfx.Face(true, 30), text, gfx.Left)
+		size := 30
+		for size > 18 && gfx.Width(gfx.Face(true, size), val) > r.Max.X-10-(r.Min.X+tx) {
+			size -= 2
+		}
+		c.Text(image.Rect(r.Min.X+tx, r.Min.Y+26, r.Max.X-10, r.Max.Y-4), val, gfx.Face(true, size), text, gfx.Left)
 		if ok && target > 0 {
-			c.Text(image.Rect(r.Min.X+62, r.Min.Y+6, r.Max.X-10, r.Min.Y+28), fmt.Sprintf("SET %.0f°", target), gfx.Face(true, 13), orange, gfx.Right)
+			set := fmt.Sprintf("SET %.0f°", target)
+			if r.Dx() < 180 { // a narrow card: under the value
+				c.Text(image.Rect(r.Min.X+tx, r.Max.Y-24, r.Max.X-10, r.Max.Y-6), set, gfx.Face(true, 13), orange, gfx.Left)
+			} else {
+				c.Text(image.Rect(r.Min.X+tx, r.Min.Y+6, r.Max.X-10, r.Min.Y+28), set, gfx.Face(true, 13), orange, gfx.Right)
+			}
 		}
 	}
 	cards := kit.Cols(area, 16, kit.Fr(1), kit.Fr(1))
