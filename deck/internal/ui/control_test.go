@@ -33,7 +33,9 @@ func (r *recPrinter) SetBedTemp(t int) error  { return r.rec(fmt.Sprint("bed ", 
 func (r *recPrinter) Jog(x, y, z float64, s int) error {
 	return r.rec(fmt.Sprintf("jog %.2f %.2f %.2f %d", x, y, z, s))
 }
-func (r *recPrinter) FirmwareRestart() error { return r.Gcode("FIRMWARE_RESTART") }
+func (r *recPrinter) FirmwareRestart() error  { return r.Gcode("FIRMWARE_RESTART") }
+func (r *recPrinter) MotorsOff() error        { return r.rec("motors off") }
+func (r *recPrinter) SpeedFactor(p int) error { return r.rec(fmt.Sprint("speed ", p)) }
 
 func (r *recPrinter) Calls() []string {
 	r.mu.Lock()
@@ -202,4 +204,73 @@ func tapLabel(t *testing.T, a *App, cv *gfx.Canvas, label string) {
 		}
 	}
 	t.Fatalf("no key %q", label)
+}
+
+var paused = printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true, Paused: true,
+	File: "benchy.gcode", Layer: 12, Layers: 27, Tool: 210, ToolTarget: 210, Bed: 60, BedTarget: 60}
+
+// tapRegion draws a frame and taps the named part of the frame.
+func tapRegion(t *testing.T, a *App, cv *gfx.Canvas, name string) {
+	t.Helper()
+	a.Draw(cv)
+	r, ok := a.KeyRect(name)
+	if !ok {
+		t.Fatalf("no part %q", name)
+	}
+	p := r.Min.Add(r.Size().Div(2))
+	ev(a, touch.Down, p.X, p.Y)
+	ev(a, touch.Up, p.X, p.Y)
+}
+
+// During a pause, Home and Motors off send no command.
+func TestMoveDuringPause(t *testing.T) {
+	a, pr, cv := newPrintApp(paused)
+	a.pages = []page{pageMove}
+	for _, k := range []string{"Home all", "Z", "Center", "Motors off"} {
+		tapRegion(t, a, cv, k)
+	}
+	time.Sleep(20 * time.Millisecond)
+	if c := pr.Calls(); len(c) != 0 {
+		t.Errorf("calls %v, want none", c)
+	}
+	if len(a.posted) != 4 { // a toast for each tap
+		t.Errorf("%d toasts, want 4", len(a.posted))
+	}
+}
+
+// A swap during a pause ends at the nozzle target of the print.
+func TestSwapDuringPauseKeepsPrintTemp(t *testing.T) {
+	a, pr, cv := newPrintApp(paused)
+	a.openSwap(swapChange)
+	tapLabel(t, a, cv, "PETG  240°")
+	pr.wait(1)
+	tapLabel(t, a, cv, "Cancel")
+	if c := pr.wait(2); len(c) != 2 || c[0] != "tool 240" || c[1] != "tool 210" {
+		t.Errorf("calls %v, want tool 240, tool 210", c)
+	}
+	if a.swap != nil {
+		t.Error("swap still open")
+	}
+}
+
+// The tune sheet counts from the speed of the printer.
+func TestTuneUsesPrinterSpeed(t *testing.T) {
+	st := paused
+	st.Paused, st.SpeedPct, st.FlowPct = false, 120, 100
+	a, pr, cv := newPrintApp(st)
+	a.tune = true
+	tapLabel(t, a, cv, "+")
+	if c := pr.wait(1); len(c) != 1 || c[0] != "speed 130" {
+		t.Errorf("calls %v, want speed 130", c)
+	}
+}
+
+// The error screen of Klipper opens Wi-Fi and help.
+func TestHelpOnKlipperError(t *testing.T) {
+	a, _, cv := newPrintApp(printer.State{Err: "Error in printer.cfg", ErrDetail: "Option missing"})
+	a.Setup = &DemoSetup{}
+	tapLabel(t, a, cv, "Wi-Fi and help")
+	if a.setup == nil || !a.setup.help {
+		t.Error("help is not open")
+	}
 }

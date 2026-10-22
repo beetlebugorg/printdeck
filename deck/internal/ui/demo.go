@@ -24,7 +24,13 @@ type DemoPrinter struct {
 	Meta_    gcodemeta.Meta // the slicer data of every file
 }
 
-func (d *DemoPrinter) State() printer.State { return d.State_ }
+func (d *DemoPrinter) State() printer.State {
+	st := d.State_
+	if st.SpeedPct == 0 { // Klipper reports 100 % when no M220 or M221 ran
+		st.SpeedPct, st.FlowPct = 100, 100
+	}
+	return st
+}
 func (d *DemoPrinter) Files() []printer.File {
 	return []printer.File{{Path: "benchy.gcode", Name: "benchy.gcode"}, {Path: "case_body.gcode", Name: "case_body.gcode"}}
 }

@@ -160,13 +160,25 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		}
 		a.button(c, r, label, fill, fg, func() { a.do(f) })
 	}
+	// During a pause, Home, Center and Motors off are off: homing Z and Center move the nozzle
+	// into the part, and Motors off loses the position that Resume goes back to.
+	paused := st.Busy() && st.Paused
+	notPaused := func(r image.Rectangle, label string, fill, fg color.RGBA, f func() error) {
+		if !paused {
+			btn(r, label, fill, fg, f)
+			return
+		}
+		key(c, r, label, surface, dim, false)
+		a.region(label, r)
+		a.addHit(kit.Hit{R: r, Tap: func() { a.Toast("Not during a pause") }})
+	}
 
 	// Home
 	h := kit.Cols(home, 8, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1))
-	btn(h[0], "Home all", orange, onAcc, func() error { return pr.Home() })
+	notPaused(h[0], "Home all", orange, onAcc, func() error { return pr.Home() })
 	for i, ax := range []string{"X", "Y", "Z"} {
 		axis := strings.ToLower(ax)
-		btn(h[i+1], ax, raised, text, func() error { return pr.Home(axis) })
+		notPaused(h[i+1], ax, raised, text, func() error { return pr.Home(axis) })
 	}
 
 	// The joystick for X and Y.
@@ -202,13 +214,19 @@ func (a *App) drawMove(c *gfx.Canvas) {
 	}
 	p := kit.Cols(parks, 8, kit.Fr(1), kit.Fr(1), kit.Fr(1))
 	park(p[0], "Park", func() []string { return ParkGcode(st) })
-	park(p[1], "Center", func() []string { return CenterGcode(st) })
-	btn(p[2], "Motors off", raised, text, pr.MotorsOff)
+	if paused {
+		notPaused(p[1], "Center", raised, text, nil)
+	} else {
+		park(p[1], "Center", func() []string { return CenterGcode(st) })
+	}
+	notPaused(p[2], "Motors off", raised, text, pr.MotorsOff)
 	msg := "Motors off lets you move the head by hand."
 	switch {
 	case !st.Connected:
 		msg = "The printer is not connected."
-	case st.Busy() && !st.Paused:
+	case paused:
+		msg = "Park lifts the nozzle 10 mm and moves it away."
+	case st.Busy():
 		msg = "Moving is off while a print runs."
 	}
 	label(c, hint, msg, gfx.Center)

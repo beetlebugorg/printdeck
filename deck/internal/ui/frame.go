@@ -142,3 +142,35 @@ func headingAt(c *gfx.Canvas, head image.Rectangle, title string) {
 	c.Fill(image.Rect(x+margin, y+30, x+34, y+50), orange)
 	c.Text(image.Rect(x+44, y+18, head.Max.X-150, y+62), strings.ToUpper(title), gfx.Face(true, 24), text, gfx.Left)
 }
+
+// helpKey draws a Help key in the head of a page, at the left of Back. It opens Wi-Fi and help,
+// which shows the address and the password. The key is not drawn when the deck has no SetupHost.
+func (a *App) helpKey(c *gfx.Canvas, head image.Rectangle) {
+	if a.Setup == nil {
+		return
+	}
+	b := backRect(head)
+	a.button(c, b.Sub(image.Pt(b.Dx()+12, 0)), "Help", raised, text, a.OpenHelp)
+}
+
+// systemKeys draws Wi-Fi and help, and Software update, side by side in r. They are the way out of
+// a screen that has no pages, such as an error of Klipper. A key is not drawn when the deck has no
+// SetupHost or no Updater.
+func (a *App) systemKeys(c *gfx.Canvas, r image.Rectangle) {
+	var keys []func(image.Rectangle)
+	if a.Setup != nil {
+		keys = append(keys, func(r image.Rectangle) { a.button(c, r, "Wi-Fi and help", raised, text, a.OpenHelp) })
+	}
+	if a.Updater != nil {
+		keys = append(keys, func(r image.Rectangle) {
+			a.button(c, r, "Software update", raised, text, func() { a.open(pageUpdate) })
+		})
+	}
+	sizes := make([]kit.Size, len(keys))
+	for i := range sizes {
+		sizes[i] = kit.Fr(1)
+	}
+	for i, k := range kit.Cols(r, 12, sizes...) {
+		keys[i](k)
+	}
+}
