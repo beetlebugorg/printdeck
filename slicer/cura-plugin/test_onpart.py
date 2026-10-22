@@ -46,6 +46,21 @@ class TestOnPart(unittest.TestCase):
         self.assertLess(g[4].index("PRINTDECK_PAUSE"), travel)
         self.assertLess(travel, back)
 
+    def test_bitmap_rects(self):
+        # An L: a column of 3 and a foot of 3.
+        rows = [[True, False, False], [True, False, False], [True, True, True]]
+        rects = sorted(onpart.bitmap_rects(rows))
+        self.assertEqual(rects, [(0, 0, 1, 2), (0, 2, 3, 3)])
+        area = sum((x1 - x0) * (y1 - y0) for x0, y0, x1, y1 in rects)
+        self.assertEqual(area, 5)
+
+    def test_raised_boxes(self):
+        boxes = onpart.raised_boxes([(0, 0, 10, 10)], 0.1, 50, 20, 10, 10, 28.7, 0.6)
+        self.assertEqual(boxes, [(49.5, 19.5, 50.5, 20.5, 28.7, 29.3)])
+        verts, _ = onpart.box_mesh_at(boxes[0])
+        self.assertAlmostEqual(min(v[1] for v in verts), 28.7)
+        self.assertAlmostEqual(max(v[1] for v in verts), 29.3)
+
     def test_on_part_start(self):
         g = [";FLAVOR:Marlin\n", ";Generated\nPRINT_START BED=60 EXTRUDER=220 WIPE=160\nM117 x\n"]
         self.assertTrue(onpart.on_part_start(g))

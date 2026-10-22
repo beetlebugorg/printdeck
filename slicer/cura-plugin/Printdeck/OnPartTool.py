@@ -9,6 +9,8 @@
 # 4. Print. The file prints the pocket, then pauses: put the base in the pocket, check its height on
 #    the deck, and the new models print on it.
 #
+# Add text puts raised lettering on the top of the base, at its middle: move and turn it as usual.
+#
 # For the next color, the pocket is on the bed already: check "The pocket is on the bed". The file
 # then has no pocket and starts with no prime line on the bed (onpart.on_part_start).
 
@@ -51,7 +53,11 @@ class OnPartTool(Tool):
         self._pushFree = None  # the "Ensure models are kept apart" preference before a base was set
         self._watched = None  # the base whose moves move the pocket
         self._pocketLater = False
-        self.setExposedProperties("HasBase", "BaseName", "Message", "PocketOnBed", "Clearance", "WallHeight", "Warning")
+        self._text = ""
+        self._textSize = 8.0  # mm, the size of the font
+        self._textDepth = 0.6  # mm, the height of the letters over the face
+        self.setExposedProperties("HasBase", "BaseName", "Message", "PocketOnBed", "Clearance", "WallHeight", "Warning",
+                                  "Text", "TextSize", "TextDepth")
 
     # The scene.
 
@@ -133,7 +139,86 @@ class OnPartTool(Tool):
             return "Move the base away from the front and the left edge: the start of the print primes there."
         return ""
 
+    def getText(self):
+        return self._text
+
+    def setText(self, value):
+        self._text = str(value)
+        self.propertyChanged.emit()
+
+    def getTextSize(self):
+        return self._textSize
+
+    def setTextSize(self, value):
+        self._textSize = max(2.0, float(value))
+        self.propertyChanged.emit()
+
+    def getTextDepth(self):
+        return self._textDepth
+
+    def setTextDepth(self, value):
+        self._textDepth = max(0.2, float(value))
+        self.propertyChanged.emit()
+
     # The actions of the panel.
+
+    def addText(self):
+        """Adds raised lettering on the top of the base, at the middle of the base. Qt draws the
+        text at 0.1 mm a pixel, and each run of dark pixels becomes a box."""
+        base = self.base()
+        text = self._text.strip()
+        if not base or not text:
+            return
+        try:
+            from PyQt6.QtGui import QColor, QFont, QFontMetricsF, QImage, QPainter
+            gray = QImage.Format.Format_Grayscale8
+        except ImportError:
+            from PyQt5.QtGui import QColor, QFont, QFontMetricsF, QImage, QPainter
+            gray = QImage.Format_Grayscale8
+        px = 0.1
+        font = QFont("Sans Serif")
+        font.setPixelSize(max(8, round(self._textSize / px)))
+        font.setBold(True)
+        fm = QFontMetricsF(font)
+        w, h = int(fm.horizontalAdvance(text)) + 4, int(fm.height()) + 4
+        image = QImage(w, h, gray)
+        image.fill(QColor(255, 255, 255))
+        painter = QPainter(image)
+        painter.setFont(font)
+        painter.setPen(QColor(0, 0, 0))
+        painter.drawText(2, int(fm.ascent()) + 2, text)
+        painter.end()
+        rows = [[image.pixelColor(x, y).red() < 128 for x in range(w)] for y in range(h)]
+        rects = onpart.bitmap_rects(rows)
+        if not rects:
+            return
+        b = base.getBoundingBox()
+        # The mesh is around the origin of the node, and the node is at the middle of the top of the
+        # base, so the Rotate tool turns the text about its middle.
+        boxes = onpart.raised_boxes(rects, px, 0, 0, w, h, 0, self._textDepth)
+        verts, tris = [], []
+        for box in boxes:
+            v, t = onpart.box_mesh_at(box)
+            tris += [(a + len(verts), c + len(verts), d + len(verts)) for a, c, d in t]
+            verts += v
+        mesh = MeshBuilder()
+        mesh.setVertices(numpy.asarray(verts, dtype=numpy.float32))
+        mesh.setIndices(numpy.asarray(tris, dtype=numpy.int32))
+        mesh.calculateNormals()
+        node = CuraSceneNode()
+        node.setName("Text " + text)
+        node.setMeshData(mesh.build())
+        node.setSelectable(True)
+        node.addDecorator(BuildPlateDecorator(CuraApplication.getInstance().getMultiBuildPlateModel().activeBuildPlate))
+        node.addDecorator(SliceableObjectDecorator())
+        node.setSetting(SceneNodeSettings.AutoDropDown, False)
+        root = CuraApplication.getInstance().getController().getScene().getRoot()
+        AddSceneNodeOperation(node, root).push()
+        node.setPosition(Vector(b.center.x, b.top, b.center.z))
+        Selection.clear()
+        Selection.add(node)
+        self.propertyChanged.emit()
+
 
     def setBase(self):
         node = Selection.getSelectedObject(0)
@@ -186,6 +271,9 @@ class OnPartTool(Tool):
 
     def _movePocket(self):
         self._pocketLater = False
+        self._text = ""
+        self._textSize = 8.0  # mm, the size of the font
+        self._textDepth = 0.6  # mm, the height of the letters over the face
         self.updatePocket()
         self.propertyChanged.emit()
 

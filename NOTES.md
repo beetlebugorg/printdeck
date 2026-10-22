@@ -76,7 +76,9 @@ on the bittlx Pi addon panel (`~/Projects/3d/bittlx/bittle_pi_addon/stl/print/po
   a slower first layer on the part.
 - The panel of the tool uses `UM 1.5` controls: Cura 5 only. Cura LulzBot Edition (4.13) needs a
   Qt 5 panel.
-- Text (lettering) is not done. The plan: Qt text paths to a mesh, on the top face.
+- Lettering: **Add text** in the tool. Qt draws the text (bold Sans Serif) at 0.1 mm a pixel, and
+  each run of dark pixels becomes a box; CuraEngine joins the boxes. A font choice is not in the
+  panel yet. The same method can turn an image (for example the LineChef avatar) into a model.
 - The deck manual has no figure of the Paused screen with a message.
 - The Printdeck tab: the time and the filament of a loaded G-code do not show in Cura's panel (a
   limit of Cura).

@@ -76,6 +76,48 @@ Item
             }
         }
 
+        UM.Label { visible: hasBase; text: "Text on the base" }
+        RowLayout
+        {
+            visible: hasBase
+            spacing: UM.Theme.getSize("default_margin").width
+            Cura.TextField
+            {
+                Layout.fillWidth: true
+                text: UM.Controller.properties.getValue("Text")
+                onEditingFinished: UM.Controller.setProperty("Text", text)
+            }
+            UM.TextFieldWithUnit
+            {
+                Layout.preferredWidth: 70 * screenScaleFactor
+                height: UM.Theme.getSize("setting_control").height
+                unit: "mm"
+                text: UM.Controller.properties.getValue("TextSize")
+                validator: DoubleValidator { bottom: 2; top: 100; decimals: 1 }
+                onEditingFinished: UM.Controller.setProperty("TextSize", parseFloat(text))
+            }
+        }
+        RowLayout
+        {
+            visible: hasBase
+            spacing: UM.Theme.getSize("default_margin").width
+            UM.Label { text: "Raised" }
+            UM.TextFieldWithUnit
+            {
+                Layout.preferredWidth: 70 * screenScaleFactor
+                height: UM.Theme.getSize("setting_control").height
+                unit: "mm"
+                text: UM.Controller.properties.getValue("TextDepth")
+                validator: DoubleValidator { bottom: 0.2; top: 10; decimals: 2 }
+                onEditingFinished: UM.Controller.setProperty("TextDepth", parseFloat(text))
+            }
+            Cura.SecondaryButton
+            {
+                text: "Add text"
+                onClicked: UM.Controller.triggerAction("addText")
+            }
+        }
+
         UM.Label { visible: hasBase; text: "Message on the deck" }
         Cura.TextField
         {
