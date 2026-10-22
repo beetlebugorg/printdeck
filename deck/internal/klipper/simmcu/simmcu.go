@@ -10,7 +10,8 @@
 //     was configured with it, in a thermal model. The thermistor reads as a "Generic 3950" with a
 //     4.7k pullup.
 //   - The steppers: the queued steps, with their times, give the position of each stepper.
-//   - The endstops and the probe: the first homing of a switch triggers in the middle of the move,
+//   - The endstops and the probe: the first homing of a switch triggers in the move (so the zero
+//     of the simulated bed is not at Z 0),
 //     and the board keeps that stepper position as the place of the switch. Later homings trigger
 //     at that place, so they agree with each other, as on a real machine.
 //
@@ -27,6 +28,7 @@ import (
 	"log"
 	"math"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -307,7 +309,7 @@ func (b *Board) command(text string) {
 	case "queue_step":
 		b.mu.Lock()
 		if s := b.steppers[oid]; s != nil {
-			s.queue(num(a, "interval"), num(a, "count"), num(a, "add"))
+			s.queue(num(a, "interval"), num(a, "count"), num(a, "add"), b.clock64)
 		}
 		b.mu.Unlock()
 	case "set_next_step_dir":
@@ -570,6 +572,15 @@ func (b *Board) adcValue(ad *adc) int64 {
 	return int64(math.Round(frac*b.adcMax)) * ad.count
 }
 
+// debug logs the homing of the simulated board, with PRINTDECK_SIM_DEBUG=1.
+var debug = os.Getenv("PRINTDECK_SIM_DEBUG") != ""
+
+func debugf(format string, args ...any) {
+	if debug {
+		log.Printf("simmcu: "+format, args...)
+	}
+}
+
 // trigger triggers a trsync at clock: its steppers stop there, and the host gets the report.
 // fromSwitch is true when an endstop or a probe triggered it. b.mu is locked.
 func (b *Board) trigger(oid, reason int64, clock uint64, fromSwitch bool) {
@@ -578,6 +589,7 @@ func (b *Board) trigger(oid, reason int64, clock uint64, fromSwitch bool) {
 		return
 	}
 	t.active, t.reason = false, reason
+	debugf("trsync %d triggered: reason %d at %d (switch %v)", oid, reason, clock, fromSwitch)
 	for _, s := range b.steppers {
 		if s.trsync == oid {
 			s.stop(clock)
