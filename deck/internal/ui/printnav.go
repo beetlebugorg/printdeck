@@ -167,13 +167,73 @@ func (a *App) drawLastPrint(c *gfx.Canvas, st printer.State, last image.Rectangl
 	})
 }
 
-// confirmPrint asks before it starts a file.
+// confirmPrint asks before it starts a file. The question checks the material of the file
+// (materialCheck).
 func (a *App) confirmPrint(path string) {
 	name := path[strings.LastIndex(path, "/")+1:]
-	a.confirm = &confirmBox{question: "Print " + gfx.Fit(gfx.Face(true, 28), name, 300) + "?", yes: "Print", onYes: func() {
+	q, yes, danger, set := a.materialCheck(path)
+	if q == "" {
+		q, yes = "Print "+gfx.Fit(gfx.Face(true, 28), name, 300)+"?", "Print"
+	}
+	a.confirm = &confirmBox{question: q, yes: yes, danger: danger, onYes: func() {
+		if set != "" {
+			a.setMaterial(set)
+		}
 		a.Printer.PrintFile(path)
 		a.pages = nil
 	}}
+}
+
+// ConfirmFilePrint starts a print that a slicer sent. When the material of the file is not known to
+// be in the printer, the touch screen asks first. It is safe to call from any goroutine.
+func (a *App) ConfirmFilePrint(path string) {
+	a.post(func() {
+		q, yes, danger, set := a.materialCheck(path)
+		if q == "" {
+			a.Printer.PrintFile(path)
+			return
+		}
+		a.confirm = &confirmBox{question: q, yes: yes, danger: danger, onYes: func() {
+			if set != "" {
+				a.setMaterial(set)
+			}
+			a.Printer.PrintFile(path)
+			a.pages = nil
+		}}
+	})
+}
+
+// materialCheck compares the material of a file with the material in the printer: the roll, or the
+// loaded material. It returns "" when the file names no material, or when the material is in the
+// printer. Else it returns the question and its yes key. danger is true when another material is
+// in the printer. set is the material to set as loaded after yes, when none is set.
+func (a *App) materialCheck(path string) (question, yes string, danger bool, set string) {
+	m := a.Printer.FileMeta(path)
+	want := m.Material
+	if want == "" {
+		return "", "", false, ""
+	}
+	wantName := want
+	if m.MaterialName != "" {
+		wantName = m.MaterialName
+	}
+	have, haveName := a.Material, a.Material
+	if s := a.Printer.SpoolStore(); s != nil {
+		if sp, ok := s.In(); ok {
+			have, haveName = sp.Material, sp.Label()
+			if !strings.EqualFold(sp.Label(), sp.Material) {
+				haveName += " (" + sp.Material + ")"
+			}
+		}
+	}
+	fit := func(s string) string { return gfx.Fit(gfx.Face(true, 28), s, 400) }
+	switch {
+	case have == "":
+		return "Is " + fit(wantName) + " in the printer?", "Yes, print", false, strings.ToUpper(want)
+	case !strings.EqualFold(have, want):
+		return "The file is for " + fit(wantName) + ". " + fit(haveName) + " is in the printer.", "Print anyway", true, ""
+	}
+	return "", "", false, ""
 }
 
 // menuRow is a row of a menu page: a title, a line under it, and an arrow. tap runs when the row

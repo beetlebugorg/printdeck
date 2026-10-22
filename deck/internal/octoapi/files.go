@@ -131,7 +131,7 @@ func (s *Server) serveUpload(w http.ResponseWriter, r *http.Request) {
 			apiError(w, http.StatusConflict, "The file is saved, but the printer is busy or not operational")
 			return
 		}
-		s.Printer.PrintFile(saved)
+		s.startPrint(saved)
 		effectivePrint = true
 	}
 	ref := baseURL(r) + "/api/files/local/" + escapePath(saved)
@@ -194,7 +194,7 @@ func (s *Server) serveFileCommand(w http.ResponseWriter, r *http.Request) {
 			apiError(w, http.StatusConflict, "Printer is already printing")
 			return
 		}
-		s.Printer.PrintFile(strings.TrimPrefix(p, "/"))
+		s.startPrint(strings.TrimPrefix(p, "/"))
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

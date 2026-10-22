@@ -1,0 +1,8 @@
+{
+    "name": "Printdeck",
+    "author": "Printdeck",
+    "version": "0.1.0",
+    "description": "Shows the roll of filament in the Printdeck, chooses its material, warns when the roll is too short for the model, and follows the print in Preview. It uses the printer of the OctoPrint connection.",
+    "api": 7,
+    "supported_sdk_versions": ["7.0.0", "8.0.0"]
+}
