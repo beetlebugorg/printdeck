@@ -239,19 +239,27 @@ func (a *App) drawPaused(c *gfx.Canvas, st printer.State) {
 	f, keys, view := a.stateAreas()
 	var info, resume image.Rectangle
 	var grid []image.Rectangle
+	infoH := 76
+	if st.PausePrompt != "" {
+		infoH = 112 // the message of the file, in two lines, and the height check
+	}
 	if f.wide {
-		v := kit.Rows(view, 12, kit.Px(76), kit.Fr(1))
+		v := kit.Rows(view, 12, kit.Px(infoH), kit.Fr(1))
 		info = v[0]
 		a.modelView(c, v[1], st)
 		k := kit.Rows(keys, 12, kit.Px(88), kit.Fr(1))
 		resume, grid = k[0], kit.Grid(k[1], 2, 2, 12)
 	} else {
-		r := kit.Rows(view, 12, kit.Px(76), kit.Px(88), kit.Px(2*keyRowH+12), kit.Fr(1))
+		r := kit.Rows(view, 12, kit.Px(infoH), kit.Px(88), kit.Px(2*keyRowH+12), kit.Fr(1))
 		info, resume, grid = r[0], r[1], kit.Grid(r[2], 2, 2, 12)
 		a.modelView(c, r[3], st)
 	}
 	plate(c, info)
 	a.region("Where", info)
+	if st.PausePrompt != "" {
+		a.drawPausePrompt(c, st, info, resume, grid)
+		return
+	}
 	where := "Paused"
 	if st.Layers > 0 {
 		where = fmt.Sprintf("Paused at layer %d of %d", st.Layer, st.Layers)
@@ -327,4 +335,50 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 	k := kit.Cols(end, 12, kit.Fr(1), kit.Fr(1))
 	a.button(c, k[0], "Reprint", raised, text, func() { a.confirmPrint(path) })
 	a.button(c, k[1], "Done", orange, onAcc, func() { a.doneSeen = key })
+}
+
+// drawPausePrompt is a pause of the file (PRINTDECK_PAUSE): its message, and the height check on
+// the part. Resume asks first when the height is not checked.
+func (a *App) drawPausePrompt(c *gfx.Canvas, st printer.State, info, resume image.Rectangle, grid []image.Rectangle) {
+	pr := a.Printer
+	face := gfx.Face(true, 17)
+	lines := wrapText(face, st.PausePrompt, info.Dx()-36)
+	sub := ""
+	switch {
+	case st.PauseChecked:
+		sub = fmt.Sprintf("Height checked: %+.2f mm from the file.", st.PauseDelta)
+	case st.PauseCheck:
+		sub = "Then check the height of the part."
+	}
+	y := info.Min.Y + 6
+	for i, l := range lines {
+		if i == 2 {
+			break
+		}
+		c.Text(image.Rect(info.Min.X+18, y, info.Max.X-18, y+28), l, face, text, gfx.Left)
+		y += 28
+	}
+	if sub != "" {
+		c.Text(image.Rect(info.Min.X+18, y+2, info.Max.X-18, info.Max.Y-6), gfx.Fit(gfx.Face(false, 16), sub, info.Dx()-36), gfx.Face(false, 16), dim, gfx.Left)
+	}
+	a.button(c, resume, "Resume", orange, onAcc, func() {
+		if st.PauseCheck && !st.PauseChecked {
+			a.confirm = &confirmBox{question: "Resume with no height check on the part?", yes: "Resume", onYes: pr.Resume}
+			return
+		}
+		pr.Resume()
+	})
+	check := func() { a.do(func() error { return pr.Gcode("PRINTDECK_CHECK_HEIGHT") }) }
+	if st.PauseCheck {
+		fill, ink := raised, text
+		if !st.PauseChecked {
+			fill, ink = orange, onAcc
+		}
+		a.button(c, grid[0], "Check the height", fill, ink, check)
+	} else {
+		a.button(c, grid[0], "Change filament", raised, text, func() { a.openSwap(swapChange) })
+	}
+	a.button(c, grid[1], "Move head", raised, text, func() { a.open(pageMove) })
+	a.button(c, grid[2], "Tune", raised, text, func() { a.tune = true })
+	a.button(c, grid[3], "Cancel", raised, red, a.askCancel)
 }

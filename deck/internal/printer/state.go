@@ -92,6 +92,15 @@ type State struct {
 
 	// NeedsSetup is true when printer.cfg has no [mcu] section: Klipper has no printer to use.
 	NeedsSetup bool
+	// PausePrompt is the message of a pause of the file (PRINTDECK_PAUSE), for example "Put the
+	// case in the pocket", or "". PauseCheck is true when the pause has a height check on a part,
+	// PauseChecked when it is done, and PauseDelta is the height of the part less the height in
+	// the file, in mm.
+	PauseActive              bool // a PRINTDECK_PAUSE: PRINTDECK_RESUME primes and resumes
+	PausePrompt              string
+	PauseCheck, PauseChecked bool
+	PauseDelta               float64
+
 	// Starting is true while Klipper starts: it reports "startup", or its socket is not there yet,
 	// soon after the deck or Klipper started (startGrace). After that, the error shows.
 	Starting bool

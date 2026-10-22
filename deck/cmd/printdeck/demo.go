@@ -137,6 +137,13 @@ func demoShots(dir string, wide bool) {
 		Activity: "Cooling the bed  52°", Finishing: true, Layer: 27, Layers: 27, Completion: 100, Tool: 120, Bed: 52, BedTarget: 45, PrepN: 1}
 	p.State_.Prep[0] = printer.PrepStep{Kind: "cool-bed", Name: "Cool the bed", Now: true}
 	snap("print-finishing")
+	// A pause of the file with a message and a height check: the part goes in its pocket.
+	p.State_ = printer.State{Reachable: true, Text: "Paused", Connected: true, Printing: true, Paused: true, File: "pod_panel_logo.gcode",
+		Layer: 61, Layers: 64, Completion: 82, Tool: 210, ToolTarget: 210, Bed: 60, BedTarget: 60,
+		PausePrompt: "Put the panel in the pocket on the bed, top up.", PauseCheck: true}
+	snap("print-pause-prompt")
+	p.State_.PauseChecked, p.State_.PauseDelta = true, 0.12
+	snap("print-pause-checked")
 	p.State_ = printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true, File: "benchy.gcode",
 		Activity: "Printing", Layer: 1, Layers: 27, Completion: 2, HasTimeLeft: true, TimeLeft: 100 * time.Minute,
 		ZOffset: 0.04, Tool: 210, ToolTarget: 210, Bed: 60, BedTarget: 60}

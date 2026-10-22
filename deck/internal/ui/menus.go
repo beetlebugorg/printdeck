@@ -181,7 +181,11 @@ func (a *App) drawManualProbe(c *gfx.Canvas, st printer.State) {
 			if err := pr.Gcode("ACCEPT"); err != nil {
 				return err
 			}
-			a.Toast("Accepted. Save config in Maintenance writes it.")
+			if st.PauseCheck {
+				a.Toast("Accepted. The print goes on from this height.")
+			} else {
+				a.Toast("Accepted. Save config in Maintenance writes it.")
+			}
 			return nil
 		})
 	})
