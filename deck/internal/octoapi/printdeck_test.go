@@ -48,6 +48,18 @@ func TestPrintdeckAPI(t *testing.T) {
 	if sp, _ := m["spool"].(map[string]any); sp["cura_material"] != "mc_white" || sp["color"] != "#ffffff" {
 		t.Errorf("roll with a material of Cura: %v", m["spool"])
 	}
+
+	// The plugin links a roll to a material that it made.
+	body = `{"id":"` + in.ID + `","cura_material":"printdeck_orange","color":"#ff7a1a"}`
+	if r, _ := do(t, "POST", ts.URL+"/api/plugin/printdeck/roll", mainKey, strings.NewReader(body), "application/json"); r.StatusCode != http.StatusNoContent {
+		t.Fatalf("roll: %d", r.StatusCode)
+	}
+	if sp, _ := s.Spools.Get(in.ID); sp.CuraMaterial != "printdeck_orange" || sp.Color != "#ff7a1a" || sp.Material != "PLA" {
+		t.Errorf("linked roll %+v", sp)
+	}
+	if r, _ := do(t, "POST", ts.URL+"/api/plugin/printdeck/roll", mainKey, strings.NewReader(`{"id":"nope"}`), "application/json"); r.StatusCode != http.StatusNotFound {
+		t.Errorf("no such roll: %d", r.StatusCode)
+	}
 }
 
 // With a frame, the settings have a webcam with the key in its address, and the snapshot is a JPEG.
