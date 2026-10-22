@@ -191,6 +191,27 @@ func (m *GCodeMove) Status(eventtime float64) map[string]any {
 		"position": coord(m.lastPosition), "gcode_position": coord(m.gcodePosition()), "axis_map": axisMap}
 }
 
+// HomingZ is the Z of the G-code offset (SET_GCODE_OFFSET), in mm. Printdeck uses it to compare a
+// Z of the file with a Z of the toolhead.
+func (m *GCodeMove) HomingZ() float64 { return m.homingPosition[2] }
+
+// AdjustSavedZ adds dz to the Z offset of a saved G-code state (SAVE_GCODE_STATE), so that the
+// print goes on dz higher after RESTORE_GCODE_STATE. It reports false when the state is not saved.
+// Printdeck uses it after a height check on a part (printdeck_pause).
+func (m *GCodeMove) AdjustSavedZ(name string, dz float64) bool {
+	state, ok := m.savedStates[name]
+	if !ok {
+		return false
+	}
+	// As SET_GCODE_OFFSET: the offset and the base position of the moves.
+	state.homingPosition = append([]float64(nil), state.homingPosition...)
+	state.homingPosition[2] += dz
+	state.basePosition = append([]float64(nil), state.basePosition...)
+	state.basePosition[2] += dz
+	m.savedStates[name] = state
+	return true
+}
+
 // ResetLastPosition sets the last position from the transform (or the toolhead).
 func (m *GCodeMove) ResetLastPosition() {
 	if m.isPrinterReady {

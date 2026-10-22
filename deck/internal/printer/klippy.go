@@ -107,6 +107,8 @@ var klippyObjects = map[string][]string{
 	"mcu":            {"mcu_version"},
 	// The command stack of the Printdeck module of the Klipper host, for the steps of PRINT_START.
 	"printdeck_display": {"commands"},
+	// A pause of the file with a message, and the height check on a part (PRINTDECK_PAUSE).
+	"printdeck_pause": {"active", "message", "check", "checked", "delta"},
 }
 
 // HostVersion is the Klipper version of the host. The firmware of the board must be this version.
@@ -624,6 +626,13 @@ func klippyState(s klippy.Status, down string) State {
 		st.SpeedPct, st.FlowPct = 100, 100
 	}
 	st.SaveConfigPending, _ = s["configfile"]["save_config_pending"].(bool)
+	if active, _ := s["printdeck_pause"]["active"].(bool); active {
+		st.PauseActive = true
+		st.PausePrompt = str(s["printdeck_pause"]["message"])
+		st.PauseCheck, _ = s["printdeck_pause"]["check"].(bool)
+		st.PauseChecked, _ = s["printdeck_pause"]["checked"].(bool)
+		st.PauseDelta = num(s["printdeck_pause"]["delta"])
+	}
 	st.ManualProbe, _ = s["manual_probe"]["is_active"].(bool)
 	st.ManualZ = num(s["manual_probe"]["z_position"])
 	if st.Busy() {
@@ -684,8 +693,25 @@ func (k *Klippy) later(f func() error) {
 	go f()
 }
 
-func (k *Klippy) Pause()  { k.later(func() error { return k.call("pause_resume/pause", nil) }) }
-func (k *Klippy) Resume() { k.later(func() error { return k.call("pause_resume/resume", nil) }) }
+// Pause pauses the print. With [printdeck_pause], PRINTDECK_PAUSE also parks the nozzle away from
+// the print, so that a filament change purges beside it.
+func (k *Klippy) Pause() {
+	if k.Machine().Has("printdeck_pause") {
+		k.later(func() error { return k.script("PRINTDECK_PAUSE") })
+		return
+	}
+	k.later(func() error { return k.call("pause_resume/pause", nil) })
+}
+
+// Resume resumes the print. After a PRINTDECK_PAUSE, PRINTDECK_RESUME primes the nozzle and takes the
+// height check, then resumes.
+func (k *Klippy) Resume() {
+	if k.State().PauseActive {
+		k.later(func() error { return k.script("PRINTDECK_RESUME") })
+		return
+	}
+	k.later(func() error { return k.call("pause_resume/resume", nil) })
+}
 func (k *Klippy) Cancel() { k.later(func() error { return k.call("pause_resume/cancel", nil) }) }
 
 // Connect restarts the firmware after an error or an emergency stop.

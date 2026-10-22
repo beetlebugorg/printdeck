@@ -368,3 +368,19 @@ func TestStartingScreen(t *testing.T) {
 		t.Error("no error screen after the start")
 	}
 }
+
+// A pause of the file shows its message. The height check runs PRINTDECK_CHECK_HEIGHT, and
+// Resume asks first while the height is not checked.
+func TestPausePrompt(t *testing.T) {
+	st := paused
+	st.PausePrompt, st.PauseCheck = "Put the panel in the pocket on the bed, top up.", true
+	a, pr, cv := newPrintApp(st)
+	tapLabel(t, a, cv, "Check the height")
+	if c := pr.wait(1); len(c) != 1 || c[0] != "gcode PRINTDECK_CHECK_HEIGHT" {
+		t.Errorf("calls %v", c)
+	}
+	tapLabel(t, a, cv, "Resume")
+	if a.confirm == nil {
+		t.Error("Resume did not ask with no height check")
+	}
+}
