@@ -22,6 +22,10 @@ func duration(d time.Duration) string {
 }
 
 func (a *App) drawPrint(c *gfx.Canvas) {
+	if a.picker != nil {
+		a.drawCuraPicker(c)
+		return
+	}
 	if a.form != nil {
 		a.drawRollForm(c)
 		return

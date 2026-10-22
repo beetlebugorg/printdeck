@@ -129,6 +129,7 @@ type App struct {
 	record        printer.Record // the print of the record page
 	spoolID       string         // the roll of the roll page
 	spoolScroll   int            // the scroll position of the Rolls page
+	picker        *curaPicker    // the list of the materials of Cura, over everything
 	form          *rollForm      // the form of a new roll, over everything
 	fileList      fileList       // the scroll position of the Files page
 	macroScroll   int            // the scroll position of the Macros page

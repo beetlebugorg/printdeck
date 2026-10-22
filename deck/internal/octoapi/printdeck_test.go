@@ -32,6 +32,22 @@ func TestPrintdeckAPI(t *testing.T) {
 	if job["file"] != "benchy.gcode" || job["layer"] != 12.0 || job["progress"] != 0.42 || job["left"] != 4980.0 {
 		t.Errorf("job: %v", job)
 	}
+
+	// The plugin sends the materials of Cura; the roll gets one, and the answer has it.
+	body := `[{"id":"mc_white","name":"Microcenter White PLA","brand":"Microcenter","material":"PLA","color":"#ffffff"},{"id":""}]`
+	if r, _ := do(t, "POST", ts.URL+"/api/plugin/printdeck/materials", mainKey, strings.NewReader(body), "application/json"); r.StatusCode != http.StatusNoContent {
+		t.Fatalf("materials: %d", r.StatusCode)
+	}
+	list := s.Spools.SlicerMaterials()
+	if len(list) != 1 || list[0].Name != "Microcenter White PLA" {
+		t.Fatalf("materials %+v", list)
+	}
+	in, _ := s.Spools.In()
+	s.Spools.SetCuraMaterial(in.ID, list[0])
+	_, m = do(t, "GET", ts.URL+"/api/plugin/printdeck", mainKey, nil, "")
+	if sp, _ := m["spool"].(map[string]any); sp["cura_material"] != "mc_white" || sp["color"] != "#ffffff" {
+		t.Errorf("roll with a material of Cura: %v", m["spool"])
+	}
 }
 
 // With a frame, the settings have a webcam with the key in its address, and the snapshot is a JPEG.

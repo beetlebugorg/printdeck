@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -21,6 +22,21 @@ type Spool struct {
 	Reel     float64   `json:"reel"`  // grams of the empty reel
 	Price    float64   `json:"price"` // the price of the roll, or 0
 	Added    time.Time `json:"added"`
+	// CuraMaterial is the ID of the material of Cura for the roll, or "": the base file of the
+	// material, for example "generic_pla". Color is its color, for example "#ff7a1a", or "".
+	CuraMaterial string `json:"cura_material,omitempty"`
+	Color        string `json:"color,omitempty"`
+}
+
+// SlicerMaterial is a material of the slicer (a material of Cura, not a profile of print
+// settings), for the rolls: the Cura plugin sends the materials that fit the printer. Material is
+// its type, as Spool.Material.
+type SlicerMaterial struct {
+	ID       string `json:"id"`       // the base file of the material in Cura
+	Name     string `json:"name"`     // for example "Microcenter White PLA"
+	Brand    string `json:"brand"`    // for example "Microcenter"
+	Material string `json:"material"` // the type, for example "PLA"
+	Color    string `json:"color"`    // for example "#ffffff", or ""
 }
 
 // Left is the grams of filament that the roll has now.
@@ -53,6 +69,8 @@ type Spools struct {
 		In     string  `json:"in"`   // the ID of the roll in the printer, or ""
 		Reel   float64 `json:"reel"` // the reel weight of the last new roll
 		Next   int     `json:"next"` // the number of the next ID
+		// The materials of the slicer, from the Cura plugin.
+		SlicerMaterials []SlicerMaterial `json:"slicer_materials,omitempty"`
 	}
 }
 
@@ -155,6 +173,53 @@ func (s *Spools) Put(id string) {
 	s.load()
 	s.data.In = id
 	s.save()
+}
+
+// SetCuraMaterial sets the material of Cura of a roll, its color and its type. An empty material
+// removes it.
+func (s *Spools) SetCuraMaterial(id string, p SlicerMaterial) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.load()
+	if i := s.find(id); i >= 0 {
+		sp := &s.data.Spools[i]
+		sp.CuraMaterial, sp.Color = p.ID, p.Color
+		if p.Material != "" {
+			sp.Material = p.Material
+		}
+		s.save()
+	}
+}
+
+// SetSlicerMaterials keeps the materials of the slicer. It reports a change.
+func (s *Spools) SetSlicerMaterials(list []SlicerMaterial) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.load()
+	if slices.Equal(s.data.SlicerMaterials, list) {
+		return false
+	}
+	s.data.SlicerMaterials = slices.Clone(list)
+	s.save()
+	return true
+}
+
+// SlicerMaterials are the materials of the slicer, as the Cura plugin sent them last.
+func (s *Spools) SlicerMaterials() []SlicerMaterial {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.load()
+	return slices.Clone(s.data.SlicerMaterials)
+}
+
+// SlicerMaterial is the material of the slicer with the ID.
+func (s *Spools) SlicerMaterial(id string) (SlicerMaterial, bool) {
+	for _, p := range s.SlicerMaterials() {
+		if p.ID == id {
+			return p, true
+		}
+	}
+	return SlicerMaterial{}, false
 }
 
 // Weigh sets the filament of a roll from the weight on the scale.
