@@ -58,6 +58,9 @@ int main(int argc, char *argv[])
     FilmRecorder film(filmPath);
     engine.rootContext()->setContextProperty(QStringLiteral("filmOn"), simOn && !filmPath.isEmpty());
     engine.rootContext()->setContextProperty(QStringLiteral("film"), &film);
+    // The pictures of the title cards (film/film.sh): the folder cards next to OUT.mp4.
+    engine.rootContext()->setContextProperty(QStringLiteral("filmCards"),
+                                             QFileInfo(filmPath).absolutePath() + QStringLiteral("/cards"));
     engine.load(QUrl(QStringLiteral("qrc:/Main.qml")));
     if (simOn) {
         qmlRegisterType<PathGeometry>("Printdeck.Sim", 1, 0, "PathGeometry");
