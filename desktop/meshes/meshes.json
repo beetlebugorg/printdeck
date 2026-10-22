@@ -26,13 +26,18 @@
  },
  {
   "group": "carriage",
+  "kind": "hardware",
+  "triangles": 17536
+ },
+ {
+  "group": "carriage",
   "kind": "heater",
   "triangles": 2174
  },
  {
   "group": "carriage",
   "kind": "metal",
-  "triangles": 30474
+  "triangles": 29838
  },
  {
   "group": "carriage",
@@ -47,7 +52,7 @@
  {
   "group": "carriage",
   "kind": "printed",
-  "triangles": 67976
+  "triangles": 51076
  },
  {
   "group": "frame",
@@ -57,12 +62,17 @@
  {
   "group": "frame",
   "kind": "metal",
-  "triangles": 71342
+  "triangles": 70846
  },
  {
   "group": "frame",
   "kind": "printed",
   "triangles": 60752
+ },
+ {
+  "group": "frame",
+  "kind": "rod",
+  "triangles": 496
  },
  {
   "group": "gantry",
@@ -72,7 +82,7 @@
  {
   "group": "gantry",
   "kind": "metal",
-  "triangles": 22624
+  "triangles": 22376
  },
  {
   "group": "gantry",
@@ -83,6 +93,11 @@
   "group": "gantry",
   "kind": "printed",
   "triangles": 16476
+ },
+ {
+  "group": "gantry",
+  "kind": "rod",
+  "triangles": 248
  },
  {
   "group": "xbeltl",
@@ -102,7 +117,7 @@
  {
   "group": "ybase",
   "kind": "metal",
-  "triangles": 12536
+  "triangles": 12032
  },
  {
   "group": "ybase",
@@ -113,5 +128,10 @@
   "group": "ybase",
   "kind": "printed",
   "triangles": 25604
+ },
+ {
+  "group": "ybase",
+  "kind": "rod",
+  "triangles": 504
  }
 ]

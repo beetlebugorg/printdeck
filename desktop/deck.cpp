@@ -92,18 +92,24 @@ void Deck::readHello()
     int nl = m_out.indexOf('\n');
     if (nl < 0)
         return;
-    QJsonObject hello = QJsonDocument::fromJson(m_out.left(nl)).object();
+    const QByteArray line = m_out.left(nl);
     m_out.clear();
-    QUrl url(hello.value(QStringLiteral("url")).toString());
-    QByteArray token = hello.value(QStringLiteral("token")).toString().toUtf8();
-    if (!url.isValid() || token.isEmpty()) {
+    if (!attach(line))
         fail(QStringLiteral("printdeck app gave no address"));
-        return;
-    }
+}
+
+bool Deck::attach(const QByteArray &hello)
+{
+    QJsonObject o = QJsonDocument::fromJson(hello.trimmed()).object();
+    QUrl url(o.value(QStringLiteral("url")).toString());
+    QByteArray token = o.value(QStringLiteral("token")).toString().toUtf8();
+    if (!url.isValid() || token.isEmpty())
+        return false;
     m_base = url;
     m_token = token;
     emit screenChanged();
     connectStream();
+    return true;
 }
 
 void Deck::connectStream()

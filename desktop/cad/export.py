@@ -7,8 +7,9 @@
 # final_frame, x_axis, y_bed, aerostruder_v2_HS0.5 and control_box (.fcstd).
 #
 # Each part goes to a group by the part of the printer that moves it (frame, ybase, bed, gantry,
-# carriage, and the stretched parts of the X belt) and to a kind by its name (metal, printed,
-# motor, belt, surface, washer, nozzle, heater). Each group and kind is one file GROUP_KIND.bin:
+# carriage, and the stretched parts of the X belt) and to a kind by its name: metal, printed,
+# motor, belt, surface, washer (of the probe), hardware (screws, nuts, washers, inserts), rod,
+# nozzle and heater. Each group and kind is one file GROUP_KIND.bin:
 # triangles of 3 vertices, in the coordinates of the scene of Sim3D.qml (mm; Y up, X to the
 # right, Z to the front), at the pose of the CAD. Sim3D.qml moves the groups from that pose to the
 # places of the printer. A vertex is 10 bytes, little endian: the position as 3 int16 in steps of
@@ -53,7 +54,11 @@ def kind(label):
         return "motor"
     if "belt" in l and not any(w in l for w in ("clamp", "mount", "anchor", "tensioner")):
         return "belt"
-    if any(w in l for w in ("rod", "t_slot", "extrusion", "plate", "bracket", "bearing", "bushing", "washer",
+    if any(w in l for w in ("screw", "shcs", "bhcs", "fhcs", "nut", "washer", "insert", "bolt")):
+        return "hardware"
+    if any(w in l for w in ("rod", "shaft")):
+        return "rod"
+    if any(w in l for w in ("t_slot", "extrusion", "plate", "bracket", "bearing", "bushing", "washer",
                             "pully", "pulley", "yz_idler", "standoff", "heatsink", "heater", "nozzle", "block",
                             "chassis", "spring", "screw", "nut", "shaft", "gear")):
         return "metal"

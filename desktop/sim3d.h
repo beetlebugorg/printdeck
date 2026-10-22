@@ -8,6 +8,7 @@
 #include <QQuick3DTextureData>
 #include <QNetworkAccessManager>
 #include <QObject>
+#include <QProcess>
 #include <QPointer>
 #include <QQuick3DGeometry>
 #include <QTimer>
@@ -84,6 +85,42 @@ private:
     QImage m_image;
 };
 
+// FilmRecorder writes the frames of the video of the 3D window (desktop/film/) to ffmpeg, as raw
+// RGBA, at a fixed rate: each frame is 1/fps of the video. armed is true when the file path.go
+// exists: the take starts then. The file can have "FROM TO FPS": the take is the seconds FROM to
+// TO of the film at FPS frames a second (0 60 30 when the file is empty).
+class FilmRecorder : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(bool armed READ armed NOTIFY armedChanged)
+    Q_PROPERTY(double from READ from NOTIFY armedChanged)
+    Q_PROPERTY(double to READ to NOTIFY armedChanged)
+    Q_PROPERTY(int fps READ fps NOTIFY armedChanged)
+
+public:
+    explicit FilmRecorder(const QString &path, QObject *parent = nullptr);
+    bool armed() const { return m_armed; }
+    double from() const { return m_from; }
+    double to() const { return m_to; }
+    int fps() const { return m_fps; }
+    Q_INVOKABLE bool start(int width, int height, int fps);
+    Q_INVOKABLE void frame(const QImage &image);
+    Q_INVOKABLE void finish();
+
+signals:
+    void armedChanged();
+
+private:
+    QString m_path;
+    bool m_armed = false;
+    double m_from = 0, m_to = 60;
+    int m_fps = 30;
+    QTimer m_check;
+    QProcess *m_ffmpeg = nullptr;
+    QSize m_size;
+    int m_frames = 0;
+};
+
 // SimFeed reads the state of the simulator from the app.
 class SimFeed : public QObject
 {
@@ -130,6 +167,8 @@ public:
     QImage lcd() const { return m_lcd; }
     QImage screen() const { return m_screen; }
     void setScreen(const QImage &image);
+    // resource is the JSON of a file of the resources, for example ":/meshes/deck.json".
+    Q_INVOKABLE QVariant resource(const QString &path) const;
 
 signals:
     void stateChanged();

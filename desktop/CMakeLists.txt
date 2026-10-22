@@ -26,6 +26,10 @@ qt_add_resources(printdeck-desktop qml PREFIX / FILES
     ${plugin_qml}/Connecting.qml)
 # The meshes of the printer, from the CAD of LulzBot (cad/export.py, meshes/README.md).
 file(GLOB meshes RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} meshes/*.bin)
-qt_add_resources(printdeck-desktop meshes PREFIX / FILES ${meshes})
+qt_add_resources(printdeck-desktop meshes PREFIX / FILES ${meshes} meshes/deck.json)
+# The font of the titles of the film (film/).
+set(plex ${CMAKE_CURRENT_SOURCE_DIR}/../deck/internal/gfx/fonts/IBMPlexMono-SemiBold.ttf)
+set_source_files_properties(${plex} PROPERTIES QT_RESOURCE_ALIAS film/plex.ttf)
+qt_add_resources(printdeck-desktop film PREFIX / FILES ${plex} FilmSky.qml FilmTitles.qml)
 
 target_link_libraries(printdeck-desktop PRIVATE Qt6::Gui Qt6::Network Qt6::Qml Qt6::Quick Qt6::Quick3D)

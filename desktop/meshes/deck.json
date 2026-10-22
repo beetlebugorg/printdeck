@@ -1,0 +1,167 @@
+[
+ {
+  "group": "back",
+  "material": "pla_orange",
+  "mesh": "deck_back_pla_orange"
+ },
+ {
+  "group": "bottom_screws",
+  "material": "black_steel",
+  "mesh": "deck_bottom_screws_black_steel"
+ },
+ {
+  "group": "clip_screws",
+  "material": "black_steel",
+  "mesh": "deck_clip_screws_black_steel"
+ },
+ {
+  "group": "clips",
+  "material": "pla_orange",
+  "mesh": "deck_clips_pla_orange"
+ },
+ {
+  "group": "display",
+  "material": "black_glass",
+  "mesh": "deck_display_black_glass"
+ },
+ {
+  "group": "display",
+  "material": "black_plastic",
+  "mesh": "deck_display_black_plastic"
+ },
+ {
+  "group": "display",
+  "material": "lcd_metal",
+  "mesh": "deck_display_lcd_metal"
+ },
+ {
+  "group": "display",
+  "material": "pcb_green",
+  "mesh": "deck_display_pcb_green"
+ },
+ {
+  "group": "display",
+  "material": "steel",
+  "mesh": "deck_display_steel"
+ },
+ {
+  "group": "display_screws",
+  "material": "black_steel",
+  "mesh": "deck_display_screws_black_steel"
+ },
+ {
+  "group": "drive",
+  "material": "alu_dark",
+  "mesh": "deck_drive_alu_dark"
+ },
+ {
+  "group": "drive",
+  "material": "black_plastic",
+  "mesh": "deck_drive_black_plastic"
+ },
+ {
+  "group": "drive",
+  "material": "pcb_green",
+  "mesh": "deck_drive_pcb_green"
+ },
+ {
+  "group": "drive",
+  "material": "steel",
+  "mesh": "deck_drive_steel"
+ },
+ {
+  "group": "drive_screws",
+  "material": "black_steel",
+  "mesh": "deck_drive_screws_black_steel"
+ },
+ {
+  "group": "flange_screws",
+  "material": "black_steel",
+  "mesh": "deck_flange_screws_black_steel"
+ },
+ {
+  "group": "grille",
+  "material": "pla_white",
+  "mesh": "deck_grille_pla_white"
+ },
+ {
+  "group": "head",
+  "material": "pla_navy",
+  "mesh": "deck_head_pla_navy"
+ },
+ {
+  "group": "head_screws",
+  "material": "black_steel",
+  "mesh": "deck_head_screws_black_steel"
+ },
+ {
+  "group": "ins_back",
+  "material": "brass",
+  "mesh": "deck_ins_back_brass"
+ },
+ {
+  "group": "ins_block",
+  "material": "brass",
+  "mesh": "deck_ins_block_brass"
+ },
+ {
+  "group": "ins_head",
+  "material": "brass",
+  "mesh": "deck_ins_head_brass"
+ },
+ {
+  "group": "ins_nut",
+  "material": "brass",
+  "mesh": "deck_ins_nut_brass"
+ },
+ {
+  "group": "mount_screws",
+  "material": "black_steel",
+  "mesh": "deck_mount_screws_black_steel"
+ },
+ {
+  "group": "mount_screws",
+  "material": "steel",
+  "mesh": "deck_mount_screws_steel"
+ },
+ {
+  "group": "pi",
+  "material": "alu_dark",
+  "mesh": "deck_pi_alu_dark"
+ },
+ {
+  "group": "pi",
+  "material": "black_plastic",
+  "mesh": "deck_pi_black_plastic"
+ },
+ {
+  "group": "pi",
+  "material": "nickel",
+  "mesh": "deck_pi_nickel"
+ },
+ {
+  "group": "pi",
+  "material": "pcb_green",
+  "mesh": "deck_pi_pcb_green"
+ },
+ {
+  "group": "pi",
+  "material": "steel",
+  "mesh": "deck_pi_steel"
+ },
+ {
+  "group": "pi_screws",
+  "material": "black_steel",
+  "mesh": "deck_pi_screws_black_steel"
+ },
+ {
+  "group": "plate",
+  "material": "pla_orange",
+  "mesh": "deck_plate_pla_orange"
+ },
+ {
+  "group": "pod",
+  "material": "pla_navy",
+  "mesh": "deck_pod_pla_navy"
+ }
+]

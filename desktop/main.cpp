@@ -2,6 +2,7 @@
 // The window starts printdeck app, and shows its remote screen (deck.h).
 #include <QCoreApplication>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
@@ -51,6 +52,12 @@ int main(int argc, char *argv[])
     const bool simOn = args.contains(QStringLiteral("-sim"));
     engine.rootContext()->setContextProperty(QStringLiteral("sim"), &sim);
     engine.rootContext()->setContextProperty(QStringLiteral("simOn"), simOn);
+    // PRINTDECK_FILM=OUT.mp4 (with -sim): the 3D window shows the film of desktop/film/, and
+    // records it to OUT.mp4 when OUT.mp4.go exists.
+    const QString filmPath = qEnvironmentVariable("PRINTDECK_FILM");
+    FilmRecorder film(filmPath);
+    engine.rootContext()->setContextProperty(QStringLiteral("filmOn"), simOn && !filmPath.isEmpty());
+    engine.rootContext()->setContextProperty(QStringLiteral("film"), &film);
     engine.load(QUrl(QStringLiteral("qrc:/Main.qml")));
     if (simOn) {
         qmlRegisterType<PathGeometry>("Printdeck.Sim", 1, 0, "PathGeometry");
@@ -65,7 +72,17 @@ int main(int argc, char *argv[])
             }
         });
     }
-    deck.start(printdeckProgram(), args);
+    // PRINTDECK_ATTACH=FILE: the window connects to a printdeck app that runs already, with the
+    // first line of its output in FILE, and starts no app. The app then goes on when the window
+    // closes, for example a print of the simulator while the film changes.
+    const QString attachFile = qEnvironmentVariable("PRINTDECK_ATTACH");
+    QFile hello(attachFile);
+    if (!attachFile.isEmpty()) {
+        if (!hello.open(QIODevice::ReadOnly) || !deck.attach(hello.readLine()))
+            qWarning("PRINTDECK_ATTACH: no address in %s", qPrintable(attachFile));
+    } else {
+        deck.start(printdeckProgram(), args);
+    }
     QObject::connect(&app, &QCoreApplication::aboutToQuit, &deck, &Deck::stop);
 
     // PRINTDECK_SHOT=FILE.png writes a picture of the windows after PRINTDECK_SHOT_SECONDS (8), and
