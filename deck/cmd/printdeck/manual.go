@@ -305,6 +305,19 @@ func manualParts() []section {
 						{"Model", "The model up to the layer that prints now, with the move now and its speed at the top right."},
 						{"Layer slider", "Drag it to look at another layer. Live goes back to the layer that prints."},
 					}},
+				{Name: "pause-prompt", Caption: "A pause of the file",
+					Setup: func(s *manualState) {
+						st := stPrinting
+						st.Paused, st.PauseActive, st.PauseCheck = true, true, true
+						st.PausePrompt = "Put the panel in the pocket on the bed, top up."
+						s.p.State_ = st
+						s.a.OpenPrintScreen("")
+					},
+					Callouts: []callout{
+						{"Where", "The message of the file, for example for a part in a pocket on the bed (Print on a part in the Cura plugin)."},
+						{"Check the height", "A paper test on the part. The print goes on from the measured height."},
+						{"Resume", "Primes the nozzle and continues. With no height check, the deck asks first."},
+					}},
 				{Name: "finishing", Caption: "The end of the print",
 					Setup: func(s *manualState) {
 						st := printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true, File: "benchy.gcode",
@@ -651,7 +664,7 @@ func manualSections() []section {
 				"Use Tune to change the speed, the flow or the fan while the print runs.",
 				"When the print is done, wait for the bed to cool, then take the part off.",
 			},
-			Figures: fig("preparing", "first-layer", "printing", "tune", "paused", "finishing", "done")},
+			Figures: fig("preparing", "first-layer", "printing", "tune", "paused", "pause-prompt", "finishing", "done")},
 
 		{Chapter: "Change the filament", ID: "filament", Title: "Change the filament", Intro: parts["filament"].Intro,
 			Steps: []string{
