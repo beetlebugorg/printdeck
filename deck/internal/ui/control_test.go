@@ -325,6 +325,35 @@ func TestSwapNewRoll(t *testing.T) {
 	}
 }
 
+// The new roll form offers the materials of Cura. A choice sets the type and the name, and the
+// roll keeps the material of Cura.
+func TestNewRollCuraMaterial(t *testing.T) {
+	a, pr, cv := newPrintApp(idle)
+	pr.Spools_ = &printer.Spools{}
+	pr.Spools_.SetSlicerMaterials([]printer.SlicerMaterial{
+		{ID: "generic_pla", Name: "Generic PLA", Brand: "Generic", Material: "PLA"},
+		{ID: "mc_orange", Name: "Microcenter Orange PETG", Brand: "Microcenter", Material: "PETG", Color: "#ff7a1a"},
+	})
+	a.openRollForm(nil)
+	a.Draw(cv)
+	tapRegion(t, a, cv, "Cura material")
+	if a.picker == nil {
+		t.Fatal("no list of the materials of Cura")
+	}
+	a.Draw(cv)
+	tapRegion(t, a, cv, "Microcenter Orange PETG")
+	if a.picker != nil || a.form.cura.ID != "mc_orange" || a.form.material != "PETG" || a.form.name != "Microcenter Orange PETG" {
+		t.Fatalf("form %+v", a.form)
+	}
+	a.form.scale, a.form.reel = 1200, 200
+	a.Draw(cv)
+	tapLabel(t, a, cv, "Save")
+	in, ok := pr.Spools_.In()
+	if !ok || in.CuraMaterial != "mc_orange" || in.Color != "#ff7a1a" || in.Material != "PETG" {
+		t.Errorf("roll %+v %v", in, ok)
+	}
+}
+
 // A saved roll from the filament change goes in the printer.
 func TestSwapSavedRoll(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)

@@ -2,6 +2,7 @@ package octoapi
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -37,6 +38,9 @@ type spoolJSON struct {
 	Left     float64 `json:"left"`
 	Full     float64 `json:"full"`
 	Price    float64 `json:"price"`
+	// CuraMaterial is the base file of the material of Cura of the roll, or "".
+	CuraMaterial string `json:"cura_material,omitempty"`
+	Color        string `json:"color,omitempty"`
 }
 
 // jobJSON is the print that runs, in the API.
@@ -66,7 +70,8 @@ func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.Spools != nil {
 		if sp, ok := s.Spools.In(); ok {
-			out.Spool = &spoolJSON{ID: sp.ID, Name: sp.Label(), Material: sp.Material, Left: sp.Left(), Full: sp.Full, Price: sp.Price}
+			out.Spool = &spoolJSON{ID: sp.ID, Name: sp.Label(), Material: sp.Material, Left: sp.Left(), Full: sp.Full, Price: sp.Price,
+				CuraMaterial: sp.CuraMaterial, Color: sp.Color}
 			out.Material = sp.Material
 		}
 	}
@@ -82,6 +87,28 @@ func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
 		out.Job = j
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// serveSlicerMaterials takes the materials of Cura for the rolls: a JSON list of
+// printer.SlicerMaterial. The new-roll form of the deck offers them.
+func (s *Server) serveSlicerMaterials(w http.ResponseWriter, r *http.Request) {
+	if s.Spools == nil {
+		http.NotFound(w, r)
+		return
+	}
+	var list []printer.SlicerMaterial
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&list); err != nil {
+		apiError(w, http.StatusBadRequest, "bad materials")
+		return
+	}
+	var keep []printer.SlicerMaterial
+	for _, p := range list {
+		if p.ID != "" && p.Name != "" && len(keep) < 200 {
+			keep = append(keep, p)
+		}
+	}
+	s.Spools.SetSlicerMaterials(keep)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // frameJPEG is a frame of the screen as a JPEG.

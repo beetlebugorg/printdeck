@@ -99,6 +99,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/files/local/{path...}", s.key(s.serveDelete))
 	mux.HandleFunc("GET /downloads/files/local/{path...}", s.key(s.serveDownload))
 	mux.HandleFunc("GET /api/plugin/printdeck", s.key(s.servePrintdeck))
+	mux.HandleFunc("POST /api/plugin/printdeck/materials", s.key(s.serveSlicerMaterials))
 	mux.HandleFunc("GET /webcam/stream", s.key(s.serveStream))
 	mux.HandleFunc("GET /webcam/snapshot", s.key(s.serveSnapshot))
 }

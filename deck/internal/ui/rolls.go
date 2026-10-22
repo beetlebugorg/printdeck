@@ -18,6 +18,7 @@ import (
 // rollForm is the form of a new roll, over everything until Save or Back.
 type rollForm struct {
 	material string
+	cura     printer.SlicerMaterial // the material of Cura, or none
 	name     string
 	scale    int // grams on the scale, with the reel
 	reel     int // grams of the empty reel
@@ -71,7 +72,12 @@ func (a *App) drawRollForm(c *gfx.Canvas) {
 		if fm.material == name {
 			fill, fg = orange, onAcc
 		}
-		a.button(c, r, name, fill, fg, func() { fm.material = name })
+		a.button(c, r, name, fill, fg, func() {
+			fm.material = name
+			if !strings.EqualFold(fm.cura.Material, name) {
+				fm.cura = printer.SlicerMaterial{} // the material of Cura is of another type
+			}
+		})
 	}
 	grams := func(v int) string {
 		if v <= 0 {
@@ -102,6 +108,28 @@ func (a *App) drawRollForm(c *gfx.Canvas) {
 			a.editNumber("Price of the roll in dollars", fm.price, 999, "", func(v int) { fm.price = v })
 		}},
 	}
+	// The material of Cura, when the Cura plugin sent the materials. Its type and its name go into
+	// the form.
+	if len(a.curaMaterials()) > 0 {
+		sub := "Tap to choose it, for example Generic PLA"
+		if fm.cura.ID != "" {
+			sub = fm.cura.Name
+		}
+		items = append([]menuItem{{"Cura material", sub, dim, func() {
+			a.pickCuraMaterial(fm.material, func(m printer.SlicerMaterial) {
+				fm.cura = m
+				if m.Material != "" {
+					fm.material = m.Material
+				}
+				if fm.name == "" && m.Name != "" {
+					fm.name = m.Name
+					if r := []rune(fm.name); len(r) > 32 { // the most that the name takes
+						fm.name = string(r[:32])
+					}
+				}
+			})
+		}}}, items...)
+	}
 	a.menuRows(c, rows, f.wide, 86, 12, items)
 
 	left := fm.scale - fm.reel
@@ -121,6 +149,10 @@ func (a *App) drawRollForm(c *gfx.Canvas) {
 			return
 		}
 		sp := s.Add(fm.name, fm.material, float64(fm.scale), float64(fm.reel), float64(fm.price), a.Now())
+		if fm.cura.ID != "" {
+			s.SetCuraMaterial(sp.ID, fm.cura)
+			sp, _ = s.Get(sp.ID)
+		}
 		a.setMaterial(sp.Material)
 		a.form = nil
 		if fm.done != nil {
@@ -192,8 +224,15 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 	}
 	pf := a.pageFrame()
 	f := a.page(c, gfx.Fit(gfx.Face(true, 24), sp.Label(), pf.head.Dx()-200))
+	cura := "None"
+	if m, ok := s.SlicerMaterial(sp.CuraMaterial); ok {
+		cura = m.Name
+	} else if sp.CuraMaterial != "" {
+		cura = sp.CuraMaterial
+	}
 	rows := [][2]string{
 		{"Material", sp.Material},
+		{"Cura material", cura},
 		{"Filament left", printer.Weight(sp.Left())},
 		{"Used since weighed", printer.Weight(sp.Used)},
 		{"Empty reel", printer.Weight(sp.Reel)},
@@ -224,6 +263,13 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 		a.region("Left", bar)
 	}
 	id := sp.ID
+	// Cura material, over the other keys, when the Cura plugin sent the materials.
+	if len(a.curaMaterials()) > 0 {
+		r := kit.Rows(image.Rect(keys.Min.X, keys.Min.Y-84, keys.Max.X, keys.Max.Y), 12, kit.Px(72), kit.Px(72))
+		a.button(c, r[0], "Cura material", raised, text, func() {
+			a.pickCuraMaterial(sp.Material, func(m printer.SlicerMaterial) { s.SetCuraMaterial(id, m) })
+		})
+	}
 	k := kit.Cols(keys, 12, kit.Fr(1), kit.Px(144))
 	a.button(c, k[0], "Weigh again", raised, text, func() {
 		a.editNumber("Roll on the scale", int(sp.Left()+sp.Reel+0.5), 9999, " g", func(v int) { s.Weigh(id, float64(v)) })

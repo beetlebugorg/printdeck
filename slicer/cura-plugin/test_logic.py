@@ -46,5 +46,22 @@ class TestLogic(unittest.TestCase):
         self.assertEqual(logic.preview_layer({"layer": 0}), 0)
 
 
+
+class TestCuraMaterialList(unittest.TestCase):
+    def test_order_and_filter(self):
+        mats = [
+            {"id": "generic_pla", "name": "Generic PLA", "brand": "Generic", "material": "PLA", "color": "#fff", "readonly": True},
+            {"id": "acme_pla", "name": "Acme PLA", "brand": "Acme", "material": "PLA", "color": "", "readonly": True},
+            {"id": "mc_white", "name": "Microcenter White PLA", "brand": "Microcenter", "material": "PLA",
+             "color": "#ffffff", "readonly": False},
+            {"id": "fav_petg", "name": "Fav PETG", "brand": "Fav", "material": "PETG", "color": "", "readonly": True},
+            {"id": "cur_abs", "name": "Current ABS", "brand": "Cur", "material": "ABS", "color": "", "readonly": True},
+        ]
+        got = logic.cura_material_list(mats, {"fav_petg"}, "cur_abs")
+        self.assertEqual([m["id"] for m in got], ["mc_white", "fav_petg", "cur_abs", "generic_pla"])
+        self.assertNotIn("readonly", got[0])
+        self.assertEqual(got[0]["color"], "#ffffff")
+
+
 if __name__ == "__main__":
     unittest.main()

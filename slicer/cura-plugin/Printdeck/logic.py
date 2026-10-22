@@ -96,3 +96,33 @@ def connected_text(status):
                 "the Printdeck: Filament > Rolls." % status["material"])
     return "Connected to the Printdeck. No filament is set on the Printdeck: Filament on the touch screen."
 
+
+
+def cura_material_list(materials, favorites, current):
+    """The materials of Cura for the rolls of the Printdeck: the materials of the user, the
+    favorites, the material that Cura has now, and the generic ones, in that order, then by name.
+
+    materials are dicts with the keys id (the base file), name, brand, material (the type), color
+    and readonly (False for a material of the user). favorites is a set of ids. Each material of the
+    answer has the keys id, name, brand, material and color."""
+    out = []
+    for m in materials:
+        if not m.get("readonly", True):
+            group = 0
+        elif m["id"] in favorites:
+            group = 1
+        elif m["id"] == current:
+            group = 2
+        elif (m.get("brand") or "").lower() == "generic":
+            group = 3
+        else:
+            continue
+        out.append((group, (m.get("name") or "").lower(), m))
+    out.sort(key=lambda g: g[:2])
+    seen, answer = set(), []
+    for _, _, m in out:
+        if m["id"] in seen:
+            continue
+        seen.add(m["id"])
+        answer.append({k: str(m.get(k) or "") for k in ("id", "name", "brand", "material", "color")})
+    return answer
