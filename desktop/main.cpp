@@ -10,6 +10,7 @@
 #include <QTimer>
 
 #include "deck.h"
+#include "sim3d.h"
 
 // printdeckProgram is the path of the printdeck program: $PRINTDECK, or the program next to the
 // window program.
@@ -33,6 +34,7 @@ int main(int argc, char *argv[])
     app.setOrganizationName(QStringLiteral("Printdeck"));
 
     Deck deck;
+    SimFeed sim; // before the engine: the QML of the 3D window reads it until the engine ends
     QQmlApplicationEngine engine;
     Factory factory(&deck);
     engine.setNetworkAccessManagerFactory(&factory);
@@ -44,17 +46,41 @@ int main(int argc, char *argv[])
     // -parent: printdeck app ends when the window closes its input.
     QStringList args{QStringLiteral("app"), QStringLiteral("-parent")};
     args += app.arguments().mid(1);
+
+    // With -sim, a second window shows the simulated printer in 3D (Sim3D.qml).
+    if (args.contains(QStringLiteral("-sim"))) {
+        qmlRegisterType<PathGeometry>("Printdeck.Sim", 1, 0, "PathGeometry");
+        engine.rootContext()->setContextProperty(QStringLiteral("sim"), &sim);
+        engine.load(QUrl(QStringLiteral("qrc:/Sim3D.qml")));
+        QObject::connect(&deck, &Deck::screenChanged, &sim, [&deck, &sim] {
+            static bool started = false;
+            if (!started && deck.base().isValid()) {
+                started = true;
+                sim.start(deck.base(), deck.token());
+            }
+        });
+    }
     deck.start(printdeckProgram(), args);
     QObject::connect(&app, &QCoreApplication::aboutToQuit, &deck, &Deck::stop);
 
-    // PRINTDECK_SHOT=FILE.png writes a picture of the window after 8 seconds, and ends the app.
+    // PRINTDECK_SHOT=FILE.png writes a picture of the windows after PRINTDECK_SHOT_SECONDS (8), and
+    // ends the app.
     // It is for the pictures of the manual and for tests.
     QString shot = qEnvironmentVariable("PRINTDECK_SHOT");
     if (!shot.isEmpty()) {
-        QTimer::singleShot(8000, &app, [&engine, shot] {
-            auto *win = qobject_cast<QQuickWindow *>(engine.rootObjects().value(0));
-            if (win)
-                win->grabWindow().save(shot);
+        int seconds = qEnvironmentVariableIntValue("PRINTDECK_SHOT_SECONDS");
+        QTimer::singleShot((seconds > 0 ? seconds : 8) * 1000, &app, [&engine, shot] {
+            // The deck window to FILE, the 3D window (with -sim) to FILE with "-3d" before .png.
+            const auto roots = engine.rootObjects();
+            for (int i = 0; i < roots.size(); i++) {
+                auto *win = qobject_cast<QQuickWindow *>(roots[i]);
+                if (!win)
+                    continue;
+                QString name = shot;
+                if (i > 0)
+                    name.replace(QStringLiteral(".png"), QStringLiteral("-3d.png"));
+                win->grabWindow().save(name);
+            }
             QCoreApplication::quit();
         });
     }

@@ -863,3 +863,16 @@ func firstLine(s string) string {
 	}
 	return s
 }
+
+// Query reads objects of Klipper now, for example the live position of motion_report.
+func (k *Klippy) Query(objects map[string][]string) (klippy.Status, error) {
+	k.mu.Lock()
+	conn := k.conn
+	k.mu.Unlock()
+	if conn == nil {
+		return nil, ErrNotReady
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), controlTimeout)
+	defer cancel()
+	return conn.Query(ctx, objects)
+}
