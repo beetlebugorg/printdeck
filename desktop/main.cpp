@@ -50,6 +50,7 @@ int main(int argc, char *argv[])
     // With -sim, a second window shows the simulated printer in 3D (Sim3D.qml).
     if (args.contains(QStringLiteral("-sim"))) {
         qmlRegisterType<PathGeometry>("Printdeck.Sim", 1, 0, "PathGeometry");
+        qmlRegisterType<MeshGeometry>("Printdeck.Sim", 1, 0, "MeshGeometry");
         engine.rootContext()->setContextProperty(QStringLiteral("sim"), &sim);
         engine.load(QUrl(QStringLiteral("qrc:/Sim3D.qml")));
         QObject::connect(&deck, &Deck::screenChanged, &sim, [&deck, &sim] {

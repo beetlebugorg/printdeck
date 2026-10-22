@@ -44,6 +44,25 @@ private:
     QVector3D m_min, m_max;
 };
 
+// MeshGeometry is a mesh of the printer from the CAD of LulzBot (cad/export.py): a file of
+// triangles, each vertex 6 float32 (the position and the normal), in the resources.
+class MeshGeometry : public QQuick3DGeometry
+{
+    Q_OBJECT
+    Q_PROPERTY(QString source READ source WRITE setSource NOTIFY sourceChanged)
+
+public:
+    explicit MeshGeometry(QQuick3DObject *parent = nullptr);
+    QString source() const { return m_source; }
+    void setSource(const QString &source);
+
+signals:
+    void sourceChanged();
+
+private:
+    QString m_source;
+};
+
 // SimFeed reads the state of the simulator from the app.
 class SimFeed : public QObject
 {

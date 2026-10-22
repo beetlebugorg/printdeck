@@ -1,6 +1,7 @@
 #include "sim3d.h"
 
 #include <QDateTime>
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -106,6 +107,42 @@ void PathGeometry::upload()
     setBounds(m_min, m_max);
     update();
     emit movesChanged();
+}
+
+MeshGeometry::MeshGeometry(QQuick3DObject *parent) : QQuick3DGeometry(parent)
+{
+    setPrimitiveType(PrimitiveType::Triangles);
+    setStride(vertexStride);
+    addAttribute(Attribute::PositionSemantic, 0, Attribute::F32Type);
+    addAttribute(Attribute::NormalSemantic, 3 * sizeof(float), Attribute::F32Type);
+}
+
+void MeshGeometry::setSource(const QString &source)
+{
+    if (source == m_source)
+        return;
+    m_source = source;
+    QFile f(source);
+    QByteArray data;
+    if (f.open(QIODevice::ReadOnly))
+        data = f.readAll();
+    else
+        qWarning("MeshGeometry: %s: %s", qPrintable(source), qPrintable(f.errorString()));
+    data.truncate(data.size() - data.size() % vertexStride);
+    // The bounds, for the culling of the view.
+    QVector3D lo, hi;
+    const float *v = reinterpret_cast<const float *>(data.constData());
+    for (qsizetype i = 0; i < data.size() / vertexStride; i++) {
+        QVector3D p(v[6 * i], v[6 * i + 1], v[6 * i + 2]);
+        if (i == 0)
+            lo = hi = p;
+        lo = QVector3D(std::min(lo.x(), p.x()), std::min(lo.y(), p.y()), std::min(lo.z(), p.z()));
+        hi = QVector3D(std::max(hi.x(), p.x()), std::max(hi.y(), p.y()), std::max(hi.z(), p.z()));
+    }
+    setVertexData(data);
+    setBounds(lo, hi);
+    update();
+    emit sourceChanged();
 }
 
 SimFeed::SimFeed(QObject *parent) : QObject(parent)
@@ -223,9 +260,14 @@ void SimFeed::pollState()
             return;
         }
         QJsonObject o = QJsonDocument::fromJson(r->readAll()).object();
-        QJsonArray p = o.value(QStringLiteral("pos")).toArray();
-        if (p.size() >= 3)
+        // The position in the coordinates of the G-code, as the moves of the part: the tool head
+        // less the offset of the G-code (the bed tilt of the probe, the G-code offsets).
+        QJsonArray p = o.value(QStringLiteral("pos")).toArray(), off = o.value(QStringLiteral("offset")).toArray();
+        if (p.size() >= 3) {
             m_pos = QVector3D(p[0].toDouble(), p[1].toDouble(), p[2].toDouble());
+            if (off.size() >= 3)
+                m_pos -= QVector3D(off[0].toDouble(), off[1].toDouble(), off[2].toDouble());
+        }
         m_extruding = o.value(QStringLiteral("ev")).toDouble() > 0.01;
         m_tool = o.value(QStringLiteral("tool")).toDouble();
         m_toolT = o.value(QStringLiteral("toolT")).toDouble();
