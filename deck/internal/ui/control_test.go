@@ -149,6 +149,33 @@ func TestKeypadSetsTemperature(t *testing.T) {
 	}
 }
 
+// The keypad takes as many digits as its maximum has: a roll of 1250 g, and no 4th digit for a
+// temperature.
+func TestKeypadDigits(t *testing.T) {
+	a, _, cv := newPrintApp(idle)
+	got := 0
+	a.editNumber("Roll on the scale", 0, 9999, " g", func(v int) { got = v })
+	a.Draw(cv)
+	for _, k := range []string{"1", "2", "5", "0", "7"} {
+		tapLabel(t, a, cv, k)
+	}
+	if a.keypad.digits != "1250" {
+		t.Errorf("digits %q, want 1250", a.keypad.digits)
+	}
+	tapLabel(t, a, cv, "Set")
+	if got != 1250 {
+		t.Errorf("set %d, want 1250", got)
+	}
+	a.editTemp("Nozzle", 0, 300, nil, func(int) error { return nil })
+	a.Draw(cv)
+	for _, k := range []string{"2", "1", "0", "5"} {
+		tapLabel(t, a, cv, k)
+	}
+	if a.keypad.digits != "210" {
+		t.Errorf("digits %q, want 210", a.keypad.digits)
+	}
+}
+
 func TestFilamentSwapSteps(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.swap = &swapState{}
