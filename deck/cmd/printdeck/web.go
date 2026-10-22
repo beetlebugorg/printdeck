@@ -34,34 +34,14 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 		return nil
 	}
 	mux := http.NewServeMux()
-	var api *octoapi.Server
-	if k, ok := pr.(*printer.Klippy); ok {
-		api = octoapi.New(k, &gcodestore.Store{Dir: cfg.GcodeDir}, cfg.OctoPrintKey, filepath.Join(cfg.StateDir, "apikeys.json"))
-		api.Version, api.Ask = osVersion(), app.Ask
-		api.Spools = k.Spools
-		api.Diameter = func() float64 { return k.Machine().Diameter() }
-		materialFile := filepath.Join(cfg.StateDir, "material")
-		api.Material = func() string {
-			b, _ := os.ReadFile(materialFile)
-			return strings.TrimSpace(string(b))
-		}
-		api.Frame = cameraFrame(app)
-		api.StartPrint = app.ConfirmFilePrint
-		api.Register(mux)
-	}
+	api := newAPI(cfg, pr, app, mux)
 	var rs *remote.Server
 	if host != nil {
-		rs = remote.New()
-		rs.Source = sourceURL(osVersion())
-		rs.Password = func() string {
+		rs = newRemote(app, api, func() string {
 			_, pass := host.Login()
 			return pass
-		}
-		rs.NewSession = uiSession(app)
-		rs.Icon = ui.Icon()
-		if api != nil {
-			rs.APIKey = api.ValidKey
-		}
+		}, nil)
+		rs.Source = sourceURL(osVersion())
 		mux.Handle("/", rs.Handler())
 		klippyLog := filepath.Join(filepath.Dir(filepath.Dir(cfg.KlipperConfig)), "logs", "klippy.log")
 		registerSystemPage(mux, rs, pr, klippyLog, cfg.OctoPrintKey)
@@ -73,6 +53,41 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 			log.Printf("web server is off: %v", err)
 		}
 	}()
+	return rs
+}
+
+// newAPI registers the OctoPrint-compatible API for slicers on mux, and returns it. It returns nil
+// for a printer that is not a Klipper host.
+func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMux) *octoapi.Server {
+	k, ok := pr.(*printer.Klippy)
+	if !ok {
+		return nil
+	}
+	api := octoapi.New(k, &gcodestore.Store{Dir: cfg.GcodeDir}, cfg.OctoPrintKey, filepath.Join(cfg.StateDir, "apikeys.json"))
+	api.Version, api.Ask = osVersion(), app.Ask
+	api.Spools = k.Spools
+	api.Diameter = func() float64 { return k.Machine().Diameter() }
+	materialFile := filepath.Join(cfg.StateDir, "material")
+	api.Material = func() string {
+		b, _ := os.ReadFile(materialFile)
+		return strings.TrimSpace(string(b))
+	}
+	api.Frame = cameraFrame(app)
+	api.StartPrint = app.ConfirmFilePrint
+	api.Register(mux)
+	return api
+}
+
+// newRemote returns the remote screen of app. password is the password of the login. The screen
+// also accepts the API keys of api (for the Printdeck tab of Cura) and the keys that key accepts.
+func newRemote(app *ui.App, api *octoapi.Server, password func() string, key func(*http.Request) bool) *remote.Server {
+	rs := remote.New()
+	rs.Password = password
+	rs.NewSession = uiSession(app)
+	rs.Icon = ui.Icon()
+	rs.APIKey = func(r *http.Request) bool {
+		return (key != nil && key(r)) || (api != nil && api.ValidKey(r))
+	}
 	return rs
 }
 
