@@ -373,6 +373,7 @@ func (a *App) detailLink(c *gfx.Canvas, r image.Rectangle, kv [2]string, tap fun
 	c.Text(v, gfx.Fit(vf, kv[1], v.Dx()), vf, text, gfx.Right)
 	cx, cy := r.Max.X-24, r.Min.Y+r.Dy()/2
 	c.Polygon([]image.Point{{cx - 4, cy - 8}, {cx + 4, cy}, {cx - 4, cy + 8}, {cx - 7, cy + 5}, {cx - 2, cy}, {cx - 7, cy - 5}}, dim)
+	a.region(kv[0], r)
 	a.addHit(kit.Hit{R: r, Tap: tap})
 	a.addFocus(kv[0], r, tap)
 }

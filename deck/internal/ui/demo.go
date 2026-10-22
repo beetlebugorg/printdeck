@@ -89,8 +89,15 @@ func (a *App) ResetScreens() {
 // DemoAway shows the screen that is open now as it is away from the print (Menu on the screen of
 // the print), with the print bar; for the demo.
 func (a *App) DemoAway() {
-	a.away, a.awayFile, a.touchAt = true, a.Printer.State().FilePath, a.Now()
+	st := a.Printer.State()
+	a.away, a.awayFile, a.touchAt = true, st.FilePath, a.Now()
+	// The print runs already: it is no new print for followPrint.
+	a.followed, a.wasBusy, a.wasPaused = true, st.Reachable && st.Busy(), st.Paused
 }
+
+// DemoScroll scrolls the list of the page that is open to px from its top; for the pictures of
+// the manual.
+func (a *App) DemoScroll(px int) { *a.pageScroll() = px }
 
 // OpenPrintScreen opens a screen by name; for the demo.
 func (a *App) OpenPrintScreen(name string) {

@@ -59,8 +59,12 @@ type figure struct {
 	Caption  string
 	Setup    func(s *manualState)
 	Callouts []callout
-	Notes    []string // the text after the list
-	Badges   []badge  // the numbers in the margins, from layoutBadges
+	// Wide and Tall are the callouts of the parts of one layout, after Callouts.
+	Wide, Tall []callout
+	// Layout is "wide" or "tall" for a figure of one layout only, or "" for both.
+	Layout string
+	Notes  []string // the text after the list
+	Badges []badge  // the numbers in the margins, from layoutBadges
 }
 
 // badge is a number in the margin of a picture, with a line to its part.
@@ -142,10 +146,12 @@ type section struct {
 	ID, Title string
 	Chapter   string // the chapter of the guide, in the contents
 	Intro     []string
-	Steps     []string // the steps of a guide, numbered
-	Figures   []figure
-	After     []string
-	Table     [][2]string // an optional table of two columns, after the text
+	// Wide and Tall are the paragraphs of one layout, after Intro.
+	Wide, Tall []string
+	Steps      []string // the steps of a guide, numbered
+	Figures    []figure
+	After      []string
+	Table      [][2]string // an optional table of two columns, after the text
 }
 
 // manualState is the demo deck that the setups change.
@@ -229,10 +235,15 @@ func manualParts() []section {
 						{"Fan", "The part cooling fan. Its blades turn at its speed."},
 						{"Status", "The position of the head, the state of the printer with the loaded filament, and the clock. This is the status screen of the display of the printer: the same picture on both screens."},
 						{"Print a file", "Opens the files. See Files."},
-						{"Preheat", "Heats the nozzle and the bed for the loaded filament."},
+						{"Preheat", "Heats the nozzle and the bed for the loaded filament. Its LED is lit while the heaters hold those temperatures: tap it again to turn them off."},
 						{"Cool down", "Turns off both heaters."},
 						{"Last print", "The last print and its result. Reprint starts it again, after a question."},
+					},
+					Tall: []callout{
 						{"Pages", "Filament, Move, Maintenance and Machine. Each page has its own section."},
+					},
+					Wide: []callout{
+						{"Pages", "The key panel: Main (this screen), Files, Filament, Move, Maintenance and Machine. The LED of the page that is open is lit. Each page has its own section."},
 					}},
 				{Name: "keypad", Caption: "The keypad of a temperature",
 					Setup: func(s *manualState) { s.p.State_ = stIdle; s.a.OpenPrintScreen("keypad") },
@@ -278,6 +289,7 @@ func manualParts() []section {
 						{"Display", "The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature."},
 						{"Steps", "The steps of the start macro of your printer, in its order. The deck follows the commands that the printer runs: the step that runs has a lit LED, and a done step has a dot."},
 						{"Help", "Opens Wi-Fi and help: the network, the address and the password of the deck."},
+						{"Menu", "Shows the other screens while the print runs. See Look around during a print."},
 						{"Cancel print", "Stops the print, after a question."},
 					}},
 				{Name: "first-layer", Caption: "The first layer",
@@ -294,6 +306,7 @@ func manualParts() []section {
 						{"Save", "Writes the Z offset into the config of the printer. Save config in Maintenance then writes the file."},
 						{"Step", "How far one tap moves the nozzle, in mm."},
 						{"Pause, Cancel", "Pauses the print, or stops it after a question."},
+						{"Menu", "Shows the other screens while the print runs. See Look around during a print."},
 						{"Help", "Opens Wi-Fi and help: the network, the address and the password of the deck."},
 						{"Layer", "The first layer of the model."},
 					}},
@@ -304,6 +317,7 @@ func manualParts() []section {
 						{"Pause", "Pauses the print."},
 						{"Tune", "Changes the print while it runs. See Tune."},
 						{"Cancel", "Stops the print, after a question."},
+						{"Menu", "Shows the other screens while the print runs. See Look around during a print."},
 						{"Model", "The model up to the layer that prints now, with the move now and its speed at the top right."},
 						{"Layer slider", "Drag it to look at another layer. Live goes back to the layer that prints."},
 					}},
@@ -333,7 +347,20 @@ func manualParts() []section {
 					Callouts: []callout{
 						{"Steps", "The steps of the end macro of your printer, for example the cooling of the bed before the print moves to the front."},
 						{"Model", "The finished model."},
-						{"Home", "Goes to the home screen while the end macro runs. Back to the print on the home screen comes back here. The deck shows the done screen at the end of the print."},
+						{"Menu", "Shows the other screens while the end macro runs. The print bar at the bottom comes back here. The deck shows the done screen at the end of the print."},
+					}},
+				{Name: "away", Caption: "Filament during a print",
+					Setup: func(s *manualState) {
+						s.p.State_ = stPrinting
+						s.a.OpenPrintScreen("filament")
+						s.a.DemoAway()
+					},
+					Callouts: []callout{
+						{"Print bar", "The layer and the time left of the print, with Pause at its left. Tap the bar to go back to the screen of the print."},
+						{"Change filament", "A key that moves, heats or changes the printer is dim and has a lock. A tap shows Wait until the print ends."},
+					},
+					Wide: []callout{
+						{"Pages", "The key panel opens each page, as when the printer does not print."},
 					}},
 				{Name: "tune", Caption: "Tune",
 					Setup: func(s *manualState) { s.p.State_ = stPrinting; s.a.OpenPrintScreen("tune") },
@@ -343,7 +370,12 @@ func manualParts() []section {
 						{"Flow", "The amount of plastic, in percent."},
 						{"Z offset", "The height of the nozzle above its normal height. Save writes it into the config of the printer, as on the first layer screen."},
 						{"Fan", "The part cooling fan."},
+					},
+					Tall: []callout{
 						{"Temperatures", "Tap a card to change its temperature."},
+					},
+					Wide: []callout{
+						{"Display", "Tap the nozzle or the bed on the display to change its temperature."},
 					}},
 				{Name: "paused", Caption: "Paused",
 					Setup: func(s *manualState) {
@@ -383,7 +415,7 @@ func manualParts() []section {
 			Figures: []figure{
 				{Name: "filament", Caption: "The Filament page", Setup: page("filament"),
 					Callouts: []callout{
-						{"Rolls", "Opens the list of your rolls."},
+						{"Rolls", "Opens the list of your rolls. On the list, the key stays in its place with its LED lit, and a tap comes back here."},
 						{"Loaded", "The roll that is in the printer and the filament on it, or the material and its temperatures."},
 						{"Material", "Tap the material that is in the printer."},
 						{"Change filament", "The guided change: choose, heat, unload, insert, load, check."},
@@ -418,6 +450,7 @@ func manualParts() []section {
 					Callouts: []callout{
 						{"Details", "The filament on the roll, the filament that prints used, and the price."},
 						{"Left", "The filament on the roll, of the filament when you added it."},
+						{"Prints", "The number of prints that used the roll, and their filament. Tap it for the list of the prints. A tap on a print opens its page."},
 						{"Weigh again", "Sets the filament from the weight on a scale."},
 						{"Remove", "Removes an empty roll from the list."},
 					}},
@@ -479,12 +512,21 @@ func manualParts() []section {
 						{"Statistics", "The totals of all prints."},
 						{"Print history", "Each print, with its result. Tap a print to see its model, its time and its filament, and to print it again."},
 						{"Macros", "The macros of the printer. Tap one to run it."},
+						{"Restart Klipper", "Restarts the Klipper host, which reads printer.cfg again."},
+						{"Firmware restart", "Restarts the firmware of the board, for example after a stop."},
+					},
+					Tall: []callout{
 						{"Console", "The G-code terminal of Klipper. See below."},
 						{"Theme", "The colors of the screen: day, night, or auto (night from 20:00 to 7:00). Tap it to change them."},
 						{"Clock", "The clock of the screens and the display of the printer: 12 hours (2:24 PM) or 24 hours (14:24). Tap it to change it."},
 						{"Wi-Fi and help", "The network, the password and the addresses."},
-						{"Restart Klipper", "Restarts the Klipper host, which reads printer.cfg again."},
-						{"Firmware restart", "Restarts the firmware of the board, for example after a stop."},
+					}},
+				{Name: "machine-more", Caption: "The Machine page, further down", Layout: "wide",
+					Setup: func(s *manualState) { s.p.State_ = stIdle; s.a.OpenPrintScreen("machine"); s.a.DemoScroll(9999) },
+					Callouts: []callout{
+						{"Theme", "The colors of the screen: day, night, or auto (night from 20:00 to 7:00). Tap it to change them."},
+						{"Clock", "The clock of the screens and the display of the printer: 12 hours (2:24 PM) or 24 hours (14:24). Tap it to change it."},
+						{"Wi-Fi and help", "The network, the password and the addresses."},
 					}},
 				{Name: "console", Caption: "The console",
 					Setup: func(s *manualState) {
@@ -646,7 +688,14 @@ func manualSections() []section {
 		{Chapter: meet, ID: "deck", Title: "The deck",
 			Intro: []string{
 				"Printdeck is a touch screen for a 3D printer that runs Klipper. It shows the print, and it controls the printer.",
-				"The deck shows the display of the printer at the top of each screen. When the printer does not print, it shows the idle screen. The largest key is the action that you need most: Print a file.",
+				"When the printer does not print, the deck shows the idle screen. The largest key is the action that you need most: Print a file.",
+				"The keys are the keys of a machine. A key with an LED has two states, and its LED is lit while it is on: the page that is open, the material in the printer, Preheat. A key with no LED does an action: an orange ring shows that it took the tap.",
+			},
+			Tall: []string{
+				"The deck shows the display of the printer at the top of each screen. The keys of the pages are at the bottom of the idle screen. Each page has its title and Back at the top, and its actions at the bottom.",
+			},
+			Wide: []string{
+				"Each screen has the same places. At the left, the display of the printer, and under it the key panel: Main (the idle screen), Files, Filament, Move, Maintenance and Machine. At the right, the page that is open: its title and Back at the top, and its actions in one row at the bottom, with the main action at the right.",
 			},
 			Figures: fig("home")},
 		{Chapter: meet, ID: "lcd", Title: "The display of the printer",
@@ -669,6 +718,12 @@ func manualSections() []section {
 				"When the print is done, wait for the bed to cool, then take the part off.",
 			},
 			Figures: fig("preparing", "first-layer", "printing", "tune", "paused", "pause-prompt", "finishing", "done")},
+		{Chapter: prints, ID: "away", Title: "Look around during a print",
+			Intro: []string{
+				"Menu on the screens of the print shows the other screens while the print runs: the files, the filament and the rolls, the history. They are read only for the printer, so a tap cannot change the print by mistake.",
+				"The print bar at the bottom of each screen shows the print. Tap it to go back. The deck also goes back to the print at a pause, at a new print, and after 2 minutes with no touch.",
+			},
+			Figures: fig("away")},
 
 		{Chapter: "Change the filament", ID: "filament", Title: "Change the filament", Intro: parts["filament"].Intro,
 			Steps: []string{
@@ -699,7 +754,7 @@ func manualSections() []section {
 
 		{Chapter: care, ID: "machine", Title: "Look after the printer",
 			Intro:   []string{"Machine has the information of the printer, the history of the prints, the macros and the console."},
-			Figures: fig("machine", "stats", "console")},
+			Figures: fig("machine", "machine-more", "stats", "console")},
 		{Chapter: care, ID: "update", Title: "Update the Printdeck",
 			Intro: []string{
 				"The deck checks for a new version once a day. Machine then shows Software update in orange.",
@@ -759,6 +814,22 @@ func manual(args []string) {
 		Notes: "The printer display shows the menus of the deck, with the knob. New status screen with icons. Signed updates."}}
 	st := &manualState{a: a, p: p, part: partPreview(0.42), done: partPreview(1)}
 	secs := manualSections()
+	// The paragraphs and the figures of this layout.
+	for i := range secs {
+		sec := &secs[i]
+		if wide {
+			sec.Intro = append(sec.Intro, sec.Wide...)
+		} else {
+			sec.Intro = append(sec.Intro, sec.Tall...)
+		}
+		var figs []figure
+		for _, f := range sec.Figures {
+			if f.Layout == "" || f.Layout == map[bool]string{true: "wide", false: "tall"}[wide] {
+				figs = append(figs, f)
+			}
+		}
+		sec.Figures = figs
+	}
 	const k = 2 // the pictures are drawn at twice the size
 	for si := range secs {
 		for fi := range secs[si].Figures {
@@ -769,6 +840,12 @@ func manual(args []string) {
 			f.Setup(st)
 			c, rec := gfx.NewRecording(w, h)
 			a.Draw(c)
+			// The callouts of the parts of this layout.
+			if wide {
+				f.Callouts = append(f.Callouts, f.Wide...)
+			} else {
+				f.Callouts = append(f.Callouts, f.Tall...)
+			}
 			// Each callout points at the middle of its part, wherever the layout puts it.
 			parts := make([]image.Rectangle, len(f.Callouts))
 			for i, co := range f.Callouts {
