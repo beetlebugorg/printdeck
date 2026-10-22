@@ -29,6 +29,12 @@ type menuItem struct {
 // area. On a wide screen a row is at most rowH high, on a tall screen at most 1.6 times rowH, so
 // that the rows fill the screen.
 func (a *App) menuRows(c *gfx.Canvas, area image.Rectangle, wide bool, rowH, gap int, items []menuItem) {
+	a.menuRowsWait(c, area, wide, rowH, gap, items, false)
+}
+
+// menuRowsWait is menuRows. When wait is true, the rows with an action wait for the end of the
+// print (lockedRow).
+func (a *App) menuRowsWait(c *gfx.Canvas, area image.Rectangle, wide bool, rowH, gap int, items []menuItem, wait bool) {
 	limit := rowH
 	if !wide {
 		limit = rowH * 16 / 10
@@ -36,6 +42,10 @@ func (a *App) menuRows(c *gfx.Canvas, area image.Rectangle, wide bool, rowH, gap
 	rowH = min(limit, (area.Dy()+gap)/max(1, len(items))-gap)
 	s := kit.NewStack(area, gap)
 	for _, it := range items {
+		if wait && it.tap != nil {
+			a.lockedRow(c, s.Next(rowH), it.title, it.sub)
+			continue
+		}
 		a.menuRow(c, s.Next(rowH), it.title, it.sub, it.col, it.tap)
 	}
 }
@@ -139,7 +149,7 @@ func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 		}
 		items = append(items, menuItem{r.title, r.sub, col, r.tap})
 	}
-	a.menuRows(c, a.listArea(f), f.wide, 86, 12, items)
+	a.menuRowsWait(c, a.listArea(f), f.wide, 86, 12, items, st.Busy())
 }
 
 // drawManualProbe is the paper test of a manual Z probe: move the nozzle until a sheet of paper
@@ -306,7 +316,12 @@ func (a *App) drawMacros(c *gfx.Canvas, st printer.State) {
 	l := kit.List{Area: area, N: len(macros), RowH: 70, Gap: 10, Scroll: &a.macroScroll}
 	a.list(c, l, func(i int) string { return macros[i] }, func(c *gfx.Canvas, i int, r image.Rectangle) {
 		plate(c, r)
-		c.Text(kit.Inset(r, 18, 0, 18, 0), macros[i], gfx.Face(true, 19), text, gfx.Left)
+		ink := text
+		if st.Busy() {
+			ink = dim
+			drawLock(c, r.Max.X-28, r.Min.Y+r.Dy()/2-2, dim)
+		}
+		c.Text(kit.Inset(r, 18, 0, 48, 0), macros[i], gfx.Face(true, 19), ink, gfx.Left)
 	}, run)
 }
 

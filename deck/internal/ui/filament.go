@@ -48,6 +48,11 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 	if !hint.Empty() {
 		label(c, hint, "Tap the material that is in the printer", gfx.Left)
 	}
+	// During a print, the page keeps its keys in their places, and they wait for its end.
+	fkey := a.button
+	if st.Busy() && !st.Paused {
+		fkey = a.printerKey
+	}
 	for i, r := range kit.Cols(mats, 6, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
 		mat := materials[i]
 		fill, fg := raised, text
@@ -55,7 +60,11 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 			fill, fg = orange, onAcc
 		}
 		name := mat.Name
-		a.button(c, r, name, fill, fg, func() {
+		if st.Busy() && !st.Paused {
+			a.lockedKey(c, r, name, fill) // the material in the printer stays lit
+			continue
+		}
+		fkey(c, r, name, fill, fg, func() {
 			a.setMaterial(name)
 			// A roll of another material is not in the printer.
 			if rolls != nil {
@@ -68,24 +77,20 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 
 	a.temps(c, temps, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
 
-	if st.Busy() && !st.Paused {
-		key(c, change, "A print runs", surface, dim, false)
-		return
-	}
-	a.button(c, change, "Change filament", orange, onAcc, func() { a.openSwap(swapChange) })
+	fkey(c, change, "Change filament", orange, onAcc, func() { a.openSwap(swapChange) })
 	lu := kit.Cols(load, 12, kit.Fr(1), kit.Fr(1))
-	a.button(c, lu[0], "Load", raised, text, func() { a.openSwap(swapLoadOnly) })
-	a.button(c, lu[1], "Unload", raised, text, func() { a.openSwap(swapUnloadOnly) })
+	fkey(c, lu[0], "Load", raised, text, func() { a.openSwap(swapLoadOnly) })
+	fkey(c, lu[1], "Unload", raised, text, func() { a.openSwap(swapUnloadOnly) })
 
 	cold := st.Tool < minExtrudeTemp
 	extrude := func(r image.Rectangle, name string, mm float64) {
-		if cold {
+		if cold && !(st.Busy() && !st.Paused) {
 			key(c, r, name, surface, dim, false)
 			a.region(name, r)
 			a.addHit(kit.Hit{R: r, Tap: func() { a.Toast(fmt.Sprintf("Heat the nozzle to %d° first", minExtrudeTemp)) }})
 			return
 		}
-		a.button(c, r, name, raised, text, func() { a.do(func() error { return pr.Extrude(mm, 300) }) })
+		fkey(c, r, name, raised, text, func() { a.do(func() error { return pr.Extrude(mm, 300) }) })
 	}
 	er := kit.Cols(ext, 12, kit.Fr(1), kit.Fr(1))
 	extrude(er[0], "Extrude 10 mm", 10)
@@ -97,6 +102,6 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 	}
 	tool := m.Tool
 	hc := kit.Cols(heat, 12, kit.Fr(1), kit.Fr(1))
-	a.button(c, hc[0], name, raised, text, func() { a.do(func() error { return pr.SetToolTemp(tool) }) })
-	a.button(c, hc[1], "Cool down", raised, text, func() { pr.Heat(0, 0) })
+	fkey(c, hc[0], name, raised, text, func() { a.do(func() error { return pr.SetToolTemp(tool) }) })
+	fkey(c, hc[1], "Cool down", raised, text, func() { pr.Heat(0, 0) })
 }

@@ -28,11 +28,12 @@ var lcdImages struct {
 
 type lcdKey struct {
 	bits         [64][16]byte
+	scale        int
 	gap, off, on color.RGBA
 }
 
-func lcdImage(bits [64][16]byte, gap, off, on color.RGBA) *image.RGBA {
-	k := lcdKey{bits, gap, off, on}
+func lcdImage(bits [64][16]byte, scale int, gap, off, on color.RGBA) *image.RGBA {
+	k := lcdKey{bits, scale, gap, off, on}
 	lcdImages.Lock()
 	defer lcdImages.Unlock()
 	if img, ok := lcdImages.byKey[k]; ok {
@@ -41,7 +42,7 @@ func lcdImage(bits [64][16]byte, gap, off, on color.RGBA) *image.RGBA {
 	if lcdImages.byKey == nil {
 		lcdImages.byKey = map[lcdKey]*image.RGBA{}
 	}
-	img := lcdscreen.DotImage(bits, lcdScale, gap, off, on)
+	img := lcdscreen.DotImage(bits, scale, gap, off, on)
 	lcdImages.byKey[k] = img
 	lcdImages.order = append(lcdImages.order, k)
 	if len(lcdImages.order) > 24 {
@@ -51,14 +52,16 @@ func lcdImage(bits [64][16]byte, gap, off, on color.RGBA) *image.RGBA {
 	return img
 }
 
-// drawLCDPanel draws the status screen in a display window. A tap on the nozzle or the bed sets
-// its temperature.
+// drawLCDPanel draws the status screen in a display window, at the scale of r (r is 128 x 64 times
+// the scale). A tap on the nozzle or the bed sets its temperature. Away from the print, the taps
+// wait for its end.
 func (a *App) drawLCDPanel(c *gfx.Canvas, st printer.State, s *lcdscreen.Status, r image.Rectangle) {
+	scale := max(1, r.Dx()/128)
 	c.RoundRect(r.Inset(-8), 8, edge)
 	c.RoundRect(r.Inset(-6), 6, glcd)
 	scr := &lcdscreen.Screen{Status: s}
 	frame := int(a.Now().UnixMilli() / 250) // 4 frames a second, as on the display
-	c.PixelImage(r, lcdImage(scr.Bits(frame), glcd, glcdCell, glcdInk))
+	c.PixelImage(r, lcdImage(scr.Bits(frame), scale, glcd, glcdCell, glcdInk))
 	if scr.Moves() {
 		a.redrawSoon(250 * time.Millisecond)
 	}
@@ -68,14 +71,20 @@ func (a *App) drawLCDPanel(c *gfx.Canvas, st printer.State, s *lcdscreen.Status,
 	pr := a.Printer
 	// The gauges are the columns of the picture: 0 to 42 pixels the nozzle, 43 to 85 the bed.
 	col := func(x0, x1 int) image.Rectangle {
-		return image.Rect(r.Min.X+x0*lcdScale, r.Min.Y, r.Min.X+x1*lcdScale, r.Min.Y+42*lcdScale)
+		return image.Rect(r.Min.X+x0*scale, r.Min.Y, r.Min.X+x1*scale, r.Min.Y+42*scale)
 	}
-	a.addHit(kit.Hit{R: col(0, 43), Tap: func() { a.editTemp("Nozzle temperature", int(st.ToolTarget), 300, toolPresets, pr.SetToolTemp) }})
-	a.addHit(kit.Hit{R: col(43, 86), Tap: func() { a.editTemp("Bed temperature", int(st.BedTarget), 120, bedPresets, pr.SetBedTemp) }})
+	nozzle := func() { a.editTemp("Nozzle temperature", int(st.ToolTarget), 300, toolPresets, pr.SetToolTemp) }
+	bed := func() { a.editTemp("Bed temperature", int(st.BedTarget), 120, bedPresets, pr.SetBedTemp) }
+	if a.bar {
+		nozzle = func() { a.Toast(waitText) }
+		bed = nozzle
+	}
+	a.addHit(kit.Hit{R: col(0, 43), Tap: nozzle})
+	a.addHit(kit.Hit{R: col(43, 86), Tap: bed})
 	a.region("Nozzle", col(0, 43))
 	a.region("Bed", col(43, 86))
 	a.region("Fan", col(86, 128))
-	a.region("Status", image.Rect(r.Min.X, r.Min.Y+42*lcdScale, r.Max.X, r.Max.Y))
+	a.region("Status", image.Rect(r.Min.X, r.Min.Y+42*scale, r.Max.X, r.Max.Y))
 }
 
 // statusPanel draws the status screen of the printer display at its place on a state screen.

@@ -105,8 +105,8 @@ var printLCD = image.Rect(16, 16, BaseW-16, 108)
 
 // drawHome is the idle screen: the status screen of the printer display, Print, preheat, the last
 // print, and the menus. A wide screen has Print and preheat under the display, and the rest at the
-// right. While a print runs (Home on the screen of the print), it has the pages to look at, and the
-// keys that change the printer wait.
+// right. While a print runs (Menu on the screen of the print), the keys stay in their places, and
+// those that change the printer wait.
 func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	m := a.loaded()
@@ -153,13 +153,15 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 		name string
 		p    page
 	}
+	// The pages stay in their places during a print. Move waits for its end; the others open,
+	// and their keys that change the printer wait.
 	pages := []homePage{{"Filament", pageFilament}, {"Move", pageMove}, {"Maintenance", pageMaintenance}, {"Machine", pageMachine}}
-	if st.Busy() {
-		// Filament and Move change the printer: the pages to look at in their place.
-		pages = []homePage{{"Rolls", pageSpools}, {"History", pageHistory}, {"Console", pageConsole}, {"Machine", pageMachine}}
-	}
 	for i, cell := range kit.Grid(r[1], 2, 2, 12) {
 		p := pages[i].p
+		if p == pageMove {
+			a.printerKey(c, cell, pages[i].name, raised, text, func() { a.open(p) })
+			continue
+		}
 		a.button(c, cell, pages[i].name, raised, text, func() { a.open(p) })
 	}
 }
@@ -251,6 +253,21 @@ func (a *App) materialCheck(path string) (question, yes string, danger bool, set
 	return "", "", false, ""
 }
 
+// rowText draws the title and the text of a menu row: in two lines, or in one line when the row is
+// low (many rows on a wide screen), with the text at the right of the title.
+func rowText(c *gfx.Canvas, r image.Rectangle, title, sub string, titleCol, subCol color.RGBA) {
+	title = strings.ToUpper(title)
+	if r.Dy() >= 58 {
+		c.Text(image.Rect(r.Min.X+18, r.Min.Y+8, r.Max.X-50, r.Min.Y+40), title, gfx.Face(true, 20), titleCol, gfx.Left)
+		c.Text(image.Rect(r.Min.X+18, r.Min.Y+38, r.Max.X-50, r.Max.Y-8), gfx.Fit(gfx.Face(false, 16), sub, r.Dx()-70), gfx.Face(false, 16), subCol, gfx.Left)
+		return
+	}
+	tf, sf := gfx.Face(true, 17), gfx.Face(false, 14)
+	tw := gfx.Width(tf, title)
+	c.Text(image.Rect(r.Min.X+16, r.Min.Y, r.Min.X+16+tw, r.Max.Y), title, tf, titleCol, gfx.Left)
+	c.Text(image.Rect(r.Min.X+28+tw, r.Min.Y, r.Max.X-46, r.Max.Y), gfx.Fit(sf, sub, r.Dx()-74-tw), sf, subCol, gfx.Right)
+}
+
 // menuRow is a row of a menu page: a title, a line under it, and an arrow. tap runs when the row
 // is tapped; nil draws a row with no action.
 func (a *App) menuRow(c *gfx.Canvas, r image.Rectangle, title, sub string, subCol color.RGBA, tap func()) {
@@ -259,8 +276,7 @@ func (a *App) menuRow(c *gfx.Canvas, r image.Rectangle, title, sub string, subCo
 	if tap != nil && a.isPressed(r) {
 		c.RoundRect(r.Inset(1), 4, raised)
 	}
-	c.Text(image.Rect(r.Min.X+18, r.Min.Y+8, r.Max.X-50, r.Min.Y+40), strings.ToUpper(title), gfx.Face(true, 20), text, gfx.Left)
-	c.Text(image.Rect(r.Min.X+18, r.Min.Y+38, r.Max.X-50, r.Max.Y-8), gfx.Fit(gfx.Face(false, 16), sub, r.Dx()-70), gfx.Face(false, 16), subCol, gfx.Left)
+	rowText(c, r, title, sub, text, subCol)
 	if tap == nil {
 		return
 	}

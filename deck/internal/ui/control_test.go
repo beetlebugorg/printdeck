@@ -409,11 +409,11 @@ func TestFinishingScreen(t *testing.T) {
 	if _, ok := a.KeyRect("Cancel print"); ok {
 		t.Error("Cancel at the end of a print")
 	}
-	// Home leaves the screen; the end macro still runs, and the home screen leads back.
-	tapLabel(t, a, cv, "Home")
+	// Menu leaves the screen; the end macro still runs, and the home screen leads back.
+	tapLabel(t, a, cv, "Menu")
 	a.Draw(cv)
 	if _, ok := a.KeyRect("Steps"); ok {
-		t.Error("the steps after Home")
+		t.Error("the steps after Menu")
 	}
 	if _, ok := a.KeyRect("Print a file"); ok {
 		t.Error("Print a file while the end macro runs")

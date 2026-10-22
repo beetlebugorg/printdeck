@@ -9,6 +9,7 @@ import (
 )
 
 func (r *recPrinter) Heat(tool, bed int) { r.rec(fmt.Sprint("heat ", tool, " ", bed)) }
+func (r *recPrinter) Pause()             { r.rec("pause") }
 
 var printing = printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true,
 	File: "benchy.gcode", FilePath: "benchy.gcode", Layer: 12, Layers: 27, Tool: 210, ToolTarget: 210, Bed: 60, BedTarget: 60}
@@ -23,21 +24,24 @@ func hasKey(a *App, label string) bool {
 	return false
 }
 
-// Home on the screen of the print shows the home screen with the print bar. The bar goes back.
+// Menu on the screen of the print shows the home screen with the print bar. The bar goes back.
 func TestAwayAndBack(t *testing.T) {
 	a, _, cv := newPrintApp(printing)
-	tapLabel(t, a, cv, "Home")
+	tapLabel(t, a, cv, "Menu")
 	a.Draw(cv)
-	if !a.away || !hasKey(a, "Back to the print") || !hasKey(a, "Rolls") {
+	if !a.away || !hasKey(a, "Back to the print") || !hasKey(a, "Machine") {
 		t.Fatalf("away %v: no home screen with the print bar", a.away)
 	}
 	if contentY1 != H-barH {
 		t.Errorf("content ends at %d, want %d", contentY1, H-barH)
 	}
-	tapLabel(t, a, cv, "Rolls")
+	tapLabel(t, a, cv, "Filament")
 	a.Draw(cv)
-	if a.topPage() != pageSpools || !hasKey(a, "Back to the print") {
-		t.Fatal("the Rolls page has no print bar")
+	if a.topPage() != pageFilament || !hasKey(a, "Back to the print") {
+		t.Fatal("the Filament page has no print bar")
+	}
+	if hasKey(a, "Load") {
+		t.Error("Load is in the display menu during a print")
 	}
 	tapLabel(t, a, cv, "Back to the print")
 	a.Draw(cv)
@@ -49,7 +53,7 @@ func TestAwayAndBack(t *testing.T) {
 // While away, the keys that change the printer wait: a tap gives a toast and no command.
 func TestAwayLocksPrinterKeys(t *testing.T) {
 	a, pr, cv := newPrintApp(printing)
-	tapLabel(t, a, cv, "Home")
+	tapLabel(t, a, cv, "Menu")
 	a.Draw(cv)
 	if hasKey(a, "Cool down") {
 		t.Error("the display menu has a key that waits")
@@ -69,8 +73,8 @@ func TestAwayComesBack(t *testing.T) {
 	a, pr, cv := newPrintApp(printing)
 	now := time.Unix(1000, 0)
 	a.Now = func() time.Time { return now }
-	tapLabel(t, a, cv, "Home")
-	tapLabel(t, a, cv, "History")
+	tapLabel(t, a, cv, "Menu")
+	tapLabel(t, a, cv, "Machine")
 	pr.State_.Paused = true
 	a.Draw(cv)
 	if a.away || len(a.pages) != 0 || !hasKey(a, "Resume") {
@@ -79,7 +83,7 @@ func TestAwayComesBack(t *testing.T) {
 
 	pr.State_.Paused = false
 	a.Draw(cv)
-	tapLabel(t, a, cv, "Home")
+	tapLabel(t, a, cv, "Menu")
 	now = now.Add(awayIdle - time.Second)
 	a.Draw(cv)
 	if !a.away {
@@ -101,5 +105,16 @@ func TestNewPrintShowsIt(t *testing.T) {
 	a.Draw(cv)
 	if len(a.pages) != 0 || !hasKey(a, "Pause") {
 		t.Fatal("the new print did not show its screen")
+	}
+}
+
+// The print bar has Pause, so a print can stop from each screen.
+func TestBarPause(t *testing.T) {
+	a, pr, cv := newPrintApp(printing)
+	tapLabel(t, a, cv, "Menu")
+	tapLabel(t, a, cv, "Machine")
+	tapLabel(t, a, cv, "Pause")
+	if c := pr.wait(1); len(c) != 1 || c[0] != "pause" {
+		t.Fatalf("calls %v, want pause", c)
 	}
 }

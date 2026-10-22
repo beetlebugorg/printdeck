@@ -48,7 +48,7 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		return
 	}
 	a.followPrint(st)
-	if a.showsBar(st) {
+	if a.bar = a.showsBar(st); a.bar {
 		// The print bar at the bottom: the screens get the space above it.
 		contentY1 = H - barH
 		defer a.drawPrintBar(c, st)
@@ -118,7 +118,7 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	if st.Busy() {
 		switch {
 		case a.away:
-			// Home on the screen of the print: the home screen, while the print goes on.
+			// Menu on the screen of the print: the home screen, while the print goes on.
 			a.drawHome(c, st)
 		case st.Paused:
 			a.drawPaused(c, st)
@@ -177,7 +177,7 @@ func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 	a.button(c, k[0], "Pause", orange, onAcc, pr.Pause)
 	a.button(c, k[1], "Tune", raised, text, func() { a.tune = true })
 	a.button(c, k[2], "Cancel", raised, red, a.askCancel)
-	a.button(c, k[3], "Home", raised, text, func() { a.leavePrint(st) })
+	a.button(c, k[3], "Menu", raised, text, func() { a.leavePrint(st) })
 	a.modelView(c, box, st)
 	a.drawScrubber(c, box, st)
 }

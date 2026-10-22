@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -110,9 +111,11 @@ func demoShots(dir string, wide bool) {
 		f.Close()
 	}
 	snap("print-busy")
-	for _, name := range []string{"away", "away-rolls", "away-file"} {
+	// The screens away from the print (Menu), with the print bar.
+	for _, name := range []string{"", "files", "file", "filament", "rolls", "roll", "maintenance", "machine", "history", "record", "stats", "console", "macros", "update"} {
 		a.OpenPrintScreen(name)
-		snap("print-" + name)
+		a.DemoAway()
+		snap(strings.TrimSuffix("print-away-"+name, "-"))
 	}
 	a.OpenPrintScreen("")
 	a.Theme = "night"
