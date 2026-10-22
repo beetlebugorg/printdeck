@@ -74,7 +74,7 @@ func (a *App) drawConsole(c *gfx.Canvas) {
 	}
 	a.addHit(kit.Hit{R: win, Scroll: func(dy int) { a.consoleScroll = max(0, min(a.consoleScroll-dy, maxScroll)) }})
 
-	a.button(c, typeKey, "Type a command", raised, text, func() {
+	a.printerKey(c, typeKey, "Type a command", raised, text, func() {
 		a.consoleKB = &keyboard{title: "G-code command", max: 200, ok: "Send", cancel: "Back",
 			back: func() { a.consoleKB = nil },
 			done: func(v string) {

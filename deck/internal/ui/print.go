@@ -47,6 +47,12 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		a.drawManualProbe(c, st)
 		return
 	}
+	a.followPrint(st)
+	if a.showsBar(st) {
+		// The print bar at the bottom: the screens get the space above it.
+		contentY1 = H - barH
+		defer a.drawPrintBar(c, st)
+	}
 	switch a.topPage() {
 	case pageFiles:
 		a.drawFiles(c)
@@ -109,13 +115,10 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		}
 		return
 	}
-	if !st.Busy() {
-		a.finishLeft = false
-	}
 	if st.Busy() {
 		switch {
-		case st.Finishing && a.finishLeft && a.finishFile == st.FilePath:
-			// The user left the end of the print: the home screen, while the end macro runs.
+		case a.away:
+			// Home on the screen of the print: the home screen, while the print goes on.
 			a.drawHome(c, st)
 		case st.Paused:
 			a.drawPaused(c, st)
@@ -170,10 +173,11 @@ func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 		_, side, _ := a.stateAreas()
 		a.jobCard(c, kit.Rows(side, 12, kit.Px(keyRowH), kit.Fr(1))[1], st)
 	}
-	k := kit.Cols(keys, 8, kit.Fr(1), kit.Fr(1), kit.Fr(1))
+	k := kit.Cols(keys, 8, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1))
 	a.button(c, k[0], "Pause", orange, onAcc, pr.Pause)
 	a.button(c, k[1], "Tune", raised, text, func() { a.tune = true })
 	a.button(c, k[2], "Cancel", raised, red, a.askCancel)
+	a.button(c, k[3], "Home", raised, text, func() { a.leavePrint(st) })
 	a.modelView(c, box, st)
 	a.drawScrubber(c, box, st)
 }

@@ -110,6 +110,11 @@ func demoShots(dir string, wide bool) {
 		f.Close()
 	}
 	snap("print-busy")
+	for _, name := range []string{"away", "away-rolls", "away-file"} {
+		a.OpenPrintScreen(name)
+		snap("print-" + name)
+	}
+	a.OpenPrintScreen("")
 	a.Theme = "night"
 	snap("night-print-busy")
 	a.OpenPrintScreen("control")

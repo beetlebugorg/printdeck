@@ -144,8 +144,12 @@ type App struct {
 	actionSeen    time.Time      // the end of the last action result that this screen showed
 	historyScroll int            // the scroll position of the history
 	doneSeen      string         // the done screen of this print was closed (its history key)
-	finishLeft    bool           // the screen of the end of the print finishFile was left with Home
-	finishFile    string
+	away          bool           // Home on the screen of the print awayFile showed the other screens (away.go)
+	awayFile      string
+	touchAt       time.Time       // the last touch
+	followed      bool            // followPrint saw a frame
+	wasBusy       bool            // the printer printed at the last frame
+	wasPaused     bool            // the print was paused at the last frame
 	setupProbed   bool            // the printer setup started a probe of the USB ports
 	confirm       *confirmBox     // modal question
 	in            kit.Input       // the touch areas of the frame, and the finger on them
@@ -307,6 +311,7 @@ func (a *App) handle(ev touch.Event) {
 	drawMu.Lock()
 	defer drawMu.Unlock()
 	setSize(a.Screen())
+	a.touchAt = a.Now()
 	p := image.Pt(int(ev.X*float64(W)+0.5), int(ev.Y*float64(H)+0.5))
 	kind := map[touch.Kind]kit.Kind{touch.Down: kit.Down, touch.Move: kit.Move, touch.Up: kit.Up}[ev.Kind]
 	a.in.Handle(kit.Event{Kind: kind, P: p})

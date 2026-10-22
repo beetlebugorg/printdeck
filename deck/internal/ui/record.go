@@ -75,6 +75,6 @@ func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 		key(c, keys, "A print runs", surface, dim, false)
 	default:
 		path := r.Path
-		a.button(c, keys, "Reprint", orange, onAcc, func() { a.confirmPrint(path) })
+		a.printerKey(c, keys, "Reprint", orange, onAcc, func() { a.confirmPrint(path) })
 	}
 }
