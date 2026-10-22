@@ -8,6 +8,9 @@ import (
 )
 
 type Config struct {
+	// Display is the screen of the UI: "panel" (the framebuffer and the touch panel of the deck) or
+	// "none" (no local screen; the remote screen only).
+	Display     string
 	Framebuffer string
 	// Rotate turns the UI onto the landscape panel: 90 or 270 for a display that is mounted tall,
 	// 0 or 180 for a display that is mounted wide.
@@ -38,6 +41,7 @@ type Config struct {
 
 func Load() Config {
 	c := Config{
+		Display:       str("DISPLAY_KIND", "panel"),
 		Framebuffer:   str("FRAMEBUFFER", "/dev/fb0"),
 		Rotate:        num("DISPLAY_ROTATE", 90),
 		TouchInvertX:  num("TOUCH_INVERT_X", 0) == 1,

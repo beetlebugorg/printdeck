@@ -34,7 +34,7 @@ import (
 	"time"
 
 	"printdeck/internal/config"
-	"printdeck/internal/fb"
+	"printdeck/internal/display"
 	"printdeck/internal/gfx"
 	"printdeck/internal/klipper/cli"
 	"printdeck/internal/printer"
@@ -120,19 +120,14 @@ func run(cfg config.Config) {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	screen, err := fb.Open(cfg.Framebuffer, cfg.Rotate)
-	if err != nil {
-		log.Fatalf("framebuffer: %v", err)
-	}
+	screen := openDisplay(cfg)
 	defer screen.Close()
-	pw, ph := screen.PanelSize()
-	log.Printf("framebuffer %s: %dx%d, rotation %d", cfg.Framebuffer, pw, ph, cfg.Rotate)
 
 	pr := newPrinter(cfg)
 	app := ui.New()
 	app.Printer = pr
 	// The UI is wide when the turned panel is wider than high (DISPLAY_ROTATE 0 or 180).
-	app.Wide = screen.LogicalW > screen.LogicalH
+	app.Wide = screen.Size().X > screen.Size().Y
 	app.PreheatTool, app.PreheatBed = cfg.PreheatTool, cfg.PreheatBed
 	app.UnloadMM, app.LoadMM, app.JogInvertY = cfg.UnloadMM, cfg.LoadMM, cfg.JogInvertY
 	// The theme (day, night, auto) is kept in the state folder.
@@ -177,14 +172,17 @@ func run(cfg config.Config) {
 	go pr.Run(ctx, app.Redraw)
 	go lcdLoop(ctx, pr, app)
 
-	go touch.Run(ctx, touch.Options{InvertX: cfg.TouchInvertX, InvertY: cfg.TouchInvertY, Swap: cfg.TouchSwapXY,
-		Rotate: cfg.Rotate, Log: cfg.TouchLog,
-		OffsetX: float64(cfg.TouchOffsetX) / float64(app.Screen().W),
-		OffsetY: float64(cfg.TouchOffsetY) / float64(app.Screen().H)}, events)
+	if p, ok := screen.(interface{ SetTouch(touch.Options) }); ok {
+		p.SetTouch(touch.Options{InvertX: cfg.TouchInvertX, InvertY: cfg.TouchInvertY, Swap: cfg.TouchSwapXY,
+			Rotate: cfg.Rotate, Log: cfg.TouchLog,
+			OffsetX: float64(cfg.TouchOffsetX) / float64(app.Screen().W),
+			OffsetY: float64(cfg.TouchOffsetY) / float64(app.Screen().H)})
+	}
+	go screen.Run(ctx, events)
 
 	startWeb(cfg, host, pr, app)
 	// After a boot, a soft change from the start screen to the first screen.
-	if uptime() < 90*time.Second {
+	if _, ok := screen.(display.None); !ok && uptime() < 90*time.Second {
 		fadeFromStart(screen, app, events)
 	}
 	app.Run(ctx, events, screen.Present)
