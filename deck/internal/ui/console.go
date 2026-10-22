@@ -11,8 +11,9 @@ import (
 	"printdeck/internal/printer"
 )
 
-// consoleQuick are the keys under the console, for the commands that users type most.
-var consoleQuick = [][2]string{{"Home", "G28"}, {"Status", "STATUS"}, {"Help", "HELP"}}
+// consoleQuick are the keys under the console, for the commands that users type most. "Home axes"
+// moves the printer, so it waits for the end of a print.
+var consoleQuick = [][2]string{{"Home axes", "G28"}, {"Status", "STATUS"}, {"Help", "HELP"}}
 
 // drawConsole is the Console page: the G-code terminal of Klipper. The newest line is at the
 // bottom. Drag up to read older lines.
@@ -91,7 +92,11 @@ func (a *App) drawConsole(c *gfx.Canvas) {
 	for i, r := range kit.Cols(quick, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
 		q := consoleQuick[i]
 		cmd := q[1]
-		a.button(c, r, q[0], raised, text, func() {
+		qkey := a.button
+		if cmd == "G28" {
+			qkey = a.printerKey
+		}
+		qkey(c, r, q[0], raised, text, func() {
 			a.consoleScroll = 0
 			pr.SendConsole(cmd)
 		})

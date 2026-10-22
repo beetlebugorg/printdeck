@@ -86,20 +86,16 @@ func (a *App) ResetScreens() {
 	a.doneSeen = ""
 }
 
+// DemoAway shows the screen that is open now as it is away from the print (Menu on the screen of
+// the print), with the print bar; for the demo.
+func (a *App) DemoAway() {
+	a.away, a.awayFile, a.touchAt = true, a.Printer.State().FilePath, a.Now()
+}
+
 // OpenPrintScreen opens a screen by name; for the demo.
 func (a *App) OpenPrintScreen(name string) {
 	a.pages, a.tune, a.swap, a.keypad, a.form, a.away = nil, false, nil, nil, nil, false
 	switch name {
-	case "away", "away-rolls", "away-file":
-		// Home on the screen of the print: the other screens, with the print bar.
-		a.away, a.awayFile, a.touchAt = true, a.Printer.State().FilePath, a.Now()
-		switch name {
-		case "away-rolls":
-			a.pages = []page{pageSpools}
-		case "away-file":
-			a.file = a.Printer.Files()[0]
-			a.pages = []page{pageFiles, pageFile}
-		}
 	case "control", "move":
 		a.pages = []page{pageMove}
 	case "files":

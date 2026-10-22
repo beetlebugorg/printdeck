@@ -144,10 +144,11 @@ type App struct {
 	actionSeen    time.Time      // the end of the last action result that this screen showed
 	historyScroll int            // the scroll position of the history
 	doneSeen      string         // the done screen of this print was closed (its history key)
-	away          bool           // Home on the screen of the print awayFile showed the other screens (away.go)
+	away          bool           // Menu on the screen of the print awayFile showed the other screens (away.go)
 	awayFile      string
 	touchAt       time.Time       // the last touch
 	followed      bool            // followPrint saw a frame
+	bar           bool            // the frame has the print bar
 	wasBusy       bool            // the printer printed at the last frame
 	wasPaused     bool            // the print was paused at the last frame
 	setupProbed   bool            // the printer setup started a probe of the USB ports
@@ -326,7 +327,7 @@ func (a *App) Draw(c *gfx.Canvas) {
 	// The touch screen is the screen that the display of the printer follows: its keys are the
 	// menu of the display.
 	drawing, a.focus, a.lcdTitle, a.lcdNotes = a, a.focus[:0], "", a.lcdNotes[:0]
-	a.names = a.names[:0]
+	a.names, a.bar = a.names[:0], false
 	defer func() { drawing, a.collect = nil, false }()
 	if !a.Record && a.Printer != nil {
 		defer a.endFocus(c, a.Printer.State())

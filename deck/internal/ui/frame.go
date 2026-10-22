@@ -38,8 +38,11 @@ const (
 const wideIn, wideOut = 8, 16
 
 // lcdRect is the display of the printer in a pane: at the top, in the middle.
-func lcdRect(pane image.Rectangle) image.Rectangle {
-	w, h := 128*lcdScale, 64*lcdScale
+func lcdRect(pane image.Rectangle) image.Rectangle { return lcdRectAt(pane, lcdScale) }
+
+// lcdRectAt is lcdRect at another scale.
+func lcdRectAt(pane image.Rectangle, scale int) image.Rectangle {
+	w, h := 128*scale, 64*scale
 	x := pane.Min.X + (pane.Dx()-w)/2
 	return image.Rect(x, pane.Min.Y+lcdTop, x+w, pane.Min.Y+lcdTop+h)
 }
@@ -106,6 +109,11 @@ func (a *App) pageFrame() frame {
 	scr := kit.Screen{W: W, H: contentY1}
 	if scr.Wide() {
 		side, main := scr.Split(sideW)
+		if contentY1 < H {
+			// The print bar takes the bottom: the display is smaller, so the page keeps its space.
+			r := kit.Rows(side, 0, kit.Px(lcdBelow-barH), kit.Px(headH), kit.Fr(1))
+			return frame{wide: true, lcd: lcdRectAt(side, lcdScale-1), head: r[1], side: r[2], main: main}
+		}
 		r := kit.Rows(side, 0, kit.Px(lcdBelow), kit.Px(headH), kit.Fr(1))
 		return frame{wide: true, lcd: lcdRect(side), head: r[1], side: r[2], main: main}
 	}

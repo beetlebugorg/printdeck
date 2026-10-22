@@ -12,10 +12,10 @@ import (
 	"printdeck/kit"
 )
 
-// Away from the print: while a print runs, Home on the screen of the print shows the other
+// Away from the print: while a print runs, Menu on the screen of the print shows the other
 // screens. They are read only for the printer: a key that moves, heats or changes the printer is
 // dim, and a tap says to wait (printerKey). The print bar at the bottom of each screen shows the
-// print, and a tap on it goes back. A new print, a pause, and a time with no touch also go back.
+// print and has Pause, and a tap on it goes back. A new print, a pause, and a time with no touch also go back.
 
 const (
 	// awayIdle is the time with no touch after which the screen of the print comes back.
@@ -91,23 +91,44 @@ func (a *App) printerKey(c *gfx.Canvas, r image.Rectangle, label string, fill, f
 // label. A tap says to wait. The menu of the printer display does not have it.
 func (a *App) lockedKey(c *gfx.Canvas, r image.Rectangle, label string, fill color.RGBA) {
 	pressed := a.isPressed(r)
-	keyBeside(c, r, label, fill, dim, pressed, 26)
+	ink := dim
+	if fill == orange {
+		ink = onAcc // a choice that is on, as the material in the printer
+	}
+	keyBeside(c, r, label, fill, ink, pressed, 26)
 	y := r.Min.Y + (r.Dy()-5)/2
 	if pressed {
 		y += 4
 	}
-	drawLock(c, r.Max.X-19, y, dim)
+	drawLock(c, r.Max.X-19, y, ink)
 	tap := func() { a.Toast(waitText) }
 	a.addHit(kit.Hit{R: r, Tap: tap})
 	a.region(label, r)
 }
 
-// drawPrintBar draws the print bar at the bottom of the screen: what the print does, its
+// lockedRow draws a row of a menu page whose action waits for the end of the print: dim, with a
+// lock in the place of the arrow. A tap says to wait. The menu of the printer display does not
+// have it.
+func (a *App) lockedRow(c *gfx.Canvas, r image.Rectangle, title, sub string) {
+	plate(c, r)
+	a.region(title, r)
+	rowText(c, r, title, sub, dim, dim)
+	drawLock(c, r.Max.X-28, r.Min.Y+r.Dy()/2-2, dim)
+	a.addHit(kit.Hit{R: r, Tap: func() { a.Toast(waitText) }})
+}
+
+// drawPrintBar draws the print bar at the bottom of the screen: Pause, what the print does, its
 // progress, and the way back to it.
 func (a *App) drawPrintBar(c *gfx.Canvas, st printer.State) {
 	r := image.Rect(0, H-barH, W, H)
 	c.Fill(r, bg)
 	kr := kit.Inset(r, 12, 6, 12, 8)
+	// Pause on each screen, as the feed hold of a machine: the pause shows the screen of the print.
+	if st.Printing && !st.Paused && !st.Preparing && !st.Finishing {
+		k := kit.Cols(kr, 8, kit.Px(112), kit.Fr(1))
+		a.button(c, k[0], "Pause", raised, text, a.Printer.Pause)
+		kr = k[1]
+	}
 	tap := func() { a.returnToPrint() }
 	key(c, kr, "", orange, onAcc, a.isPressed(kr))
 	a.addHit(kit.Hit{R: kr, Tap: tap})
@@ -121,7 +142,17 @@ func (a *App) drawPrintBar(c *gfx.Canvas, st printer.State) {
 	face := gfx.Face(true, 16)
 	gw := gfx.Width(face, go1)
 	c.Text(image.Rect(in.Max.X-gw, in.Min.Y, in.Max.X, in.Max.Y), go1, face, onAcc, gfx.Right)
-	c.Text(image.Rect(in.Min.X, in.Min.Y, in.Max.X-gw-16, in.Max.Y), gfx.Fit(face, what, in.Dx()-gw-16), face, onAcc, gfx.Left)
+	// A narrow bar drops the end of the text a part at a time: " LEFT", then the time.
+	room := in.Dx() - gw - 16
+	for _, cut := range []string{" LEFT", " · "} {
+		if gfx.Width(face, what) <= room {
+			break
+		}
+		if i := strings.LastIndex(what, cut); i > 0 {
+			what = what[:i]
+		}
+	}
+	c.Text(image.Rect(in.Min.X, in.Min.Y, in.Max.X-gw-16, in.Max.Y), gfx.Fit(face, what, room), face, onAcc, gfx.Left)
 	// The progress: a line at the bottom of the bar.
 	if frac > 0 {
 		line := image.Rect(kr.Min.X+10, kr.Max.Y-9, kr.Max.X-10, kr.Max.Y-6)
