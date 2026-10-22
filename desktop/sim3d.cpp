@@ -34,6 +34,18 @@ void quad(QByteArray &b, QVector3D a, QVector3D bb, QVector3D c, QVector3D d, QV
     put(b, d, n);
 }
 
+// quadN adds two triangles a b c, a c d with a normal at each corner, for a round surface.
+void quadN(QByteArray &b, QVector3D a, QVector3D na, QVector3D bb, QVector3D nb, QVector3D c, QVector3D nc,
+           QVector3D d, QVector3D nd)
+{
+    put(b, a, na);
+    put(b, bb, nb);
+    put(b, c, nc);
+    put(b, a, na);
+    put(b, c, nc);
+    put(b, d, nd);
+}
+
 // scene turns a point of the printer (x right, y back, z up) into the scene (x right, y up, z to
 // the viewer).
 QVector3D scene(float x, float y, float z) { return QVector3D(x, z, -y); }
@@ -61,17 +73,27 @@ void PathGeometry::add(const QList<float> &segs)
         float dx = x1 - x0, dy = y1 - y0, len = std::hypot(dx, dy);
         if (len < 0.01f)
             continue;
-        // The side of the strand: half the width, across the move.
-        float sx = -dy / len * lineWidth / 2, sy = dx / len * lineWidth / 2;
-        float top = z1, bot = z1 - m_layer;
-        QVector3D a = scene(x0 + sx, y0 + sy, top), b = scene(x1 + sx, y1 + sy, top);
-        QVector3D c = scene(x1 - sx, y1 - sy, top), d = scene(x0 - sx, y0 - sy, top);
-        QVector3D ab = scene(x0 + sx, y0 + sy, bot), bb = scene(x1 + sx, y1 + sy, bot);
-        QVector3D cb = scene(x1 - sx, y1 - sy, bot), db = scene(x0 - sx, y0 - sy, bot);
-        QVector3D side = scene(sx, sy, 0).normalized();
-        quad(m_vertices, a, b, c, d, QVector3D(0, 1, 0)); // the top
-        quad(m_vertices, ab, bb, b, a, side);              // one side
-        quad(m_vertices, c, cb, db, d, -side);             // the other side
+        // A bead: straight sides, round shoulders, and a ridge in the middle, as a strand of
+        // plastic. It goes half its width past each end, so the strands of a corner meet.
+        const float ux = dx / len, uy = dy / len, half = lineWidth / 2;
+        x0 -= ux * half;
+        y0 -= uy * half;
+        x1 += ux * half;
+        y1 += uy * half;
+        const float sx = -uy * half, sy = ux * half;
+        const float top = z1, bot = z1 - m_layer, shoulder = top - 0.4f * m_layer;
+        // The profile across the strand, from one side to the other: the place and the normal.
+        const QVector3D out = scene(sx, sy, 0).normalized(), up(0, 1, 0);
+        struct Edge { float s, z; QVector3D n; };
+        const Edge prof[5] = {{1, bot, out}, {1, shoulder, (out + up).normalized()}, {0, top, up},
+                              {-1, shoulder, (up - out).normalized()}, {-1, bot, -out}};
+        auto at = [&](float x, float y, const Edge &e) { return scene(x + e.s * sx, y + e.s * sy, e.z); };
+        for (int k = 0; k < 4; k++) {
+            const Edge &e0 = prof[k], &e1 = prof[k + 1];
+            quadN(m_vertices, at(x0, y0, e0), e0.n, at(x0, y0, e1), e1.n, at(x1, y1, e1), e1.n, at(x1, y1, e0), e0.n);
+        }
+        const QVector3D a = at(x0, y0, prof[0]), c = at(x1, y1, prof[4]);
+        const QVector3D bb = scene(x1 + sx, y1 + sy, bot), db = scene(x0 - sx, y0 - sy, top);
         for (QVector3D p : {a, c, bb, db}) {
             if (m_moves == 0 && p == a)
                 m_min = m_max = p;
@@ -224,7 +246,8 @@ void SimFeed::follow(bool busy)
     m_hasLast = true;
     auto trail = [&] {
         const float d = (m_pos - last).length();
-        if (!m_extruding || !hasLast || d < 0.05f || d > 20)
+        // Only before the first move of the file: the moves of the file have their own strands.
+        if (!m_extruding || !hasLast || d < 0.05f || d > 20 || m_path->moves() > 0 || m_next > 0)
             return;
         m_laid << last.x() << last.y() << last.z() << m_pos.x() << m_pos.y() << m_pos.z();
         if (QDateTime::currentMSecsSinceEpoch() - m_committed > 500)
@@ -245,18 +268,24 @@ void SimFeed::follow(bool busy)
     const float px = m_pos.x(), py = m_pos.y(), pz = m_pos.z();
     int best = -1;
     float bestD = 1.5f, bestT = 0;
-    const int n = std::min<int>(m_pending.size() / 6, 400);
-    for (int j = 0; j < n; j++) {
-        const float *s = m_pending.constData() + 6 * j;
-        if (std::abs(s[5] - pz) > 0.15f)
-            continue;
-        float dx = s[3] - s[0], dy = s[4] - s[1], l2 = dx * dx + dy * dy;
-        float t = l2 > 0 ? std::clamp(((px - s[0]) * dx + (py - s[1]) * dy) / l2, 0.f, 1.f) : 1.f;
-        float d = std::hypot(s[0] + t * dx - px, s[1] + t * dy - py);
-        if (d < bestD) {
-            best = j;
-            bestD = d;
-            bestT = t;
+    // The next moves first; when none matches, all of them: a print that starts in the middle of
+    // its file (M26) has the moves before the nozzle as printed.
+    int n = std::min<int>(m_pending.size() / 6, 400);
+    for (int pass = 0; pass < 2 && best < 0; pass++) {
+        if (pass == 1)
+            n = m_pending.size() / 6;
+        for (int j = 0; j < n; j++) {
+            const float *s = m_pending.constData() + 6 * j;
+            if (std::abs(s[5] - pz) > 0.15f)
+                continue;
+            float dx = s[3] - s[0], dy = s[4] - s[1], l2 = dx * dx + dy * dy;
+            float t = l2 > 0 ? std::clamp(((px - s[0]) * dx + (py - s[1]) * dy) / l2, 0.f, 1.f) : 1.f;
+            float d = std::hypot(s[0] + t * dx - px, s[1] + t * dy - py);
+            if (d < bestD) {
+                best = j;
+                bestD = d;
+                bestT = t;
+            }
         }
     }
     if (best < 0) {
@@ -423,6 +452,10 @@ bool FilmRecorder::start(int width, int height, int fps)
         qWarning("FilmRecorder: ffmpeg did not start");
         return false;
     }
+    m_motion.setFileName(m_path + QStringLiteral(".motion.csv"));
+    if (m_motion.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        m_motion.write(QByteArrayLiteral("frame,fps,x,y,z,extruding\n"));
+    m_fps = fps;
     return true;
 }
 
@@ -440,8 +473,16 @@ void FilmRecorder::frame(const QImage &image)
         qInfo("FilmRecorder: %d frames", m_frames);
 }
 
+void FilmRecorder::motion(double x, double y, double z, bool extruding)
+{
+    if (m_motion.isOpen())
+        m_motion.write(QStringLiteral("%1,%2,%3,%4,%5,%6\n").arg(m_frames).arg(m_fps).arg(x, 0, 'f', 3).arg(y, 0, 'f', 3)
+                           .arg(z, 0, 'f', 3).arg(extruding ? 1 : 0).toUtf8());
+}
+
 void FilmRecorder::finish()
 {
+    m_motion.close();
     if (!m_ffmpeg)
         return;
     m_ffmpeg->closeWriteChannel();
