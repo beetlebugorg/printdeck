@@ -95,3 +95,15 @@ func TestAnimations(t *testing.T) {
 		}
 	}
 }
+
+// A heater at its temperature moves while it has power, and stops while it has none.
+func TestHeaterMovesWithPower(t *testing.T) {
+	s := Status{Tool: 210, ToolT: 210, ToolPow: 0.3}
+	if !s.Moves() {
+		t.Error("a heater with power does not move")
+	}
+	s.ToolPow = 0
+	if s.Moves() {
+		t.Error("a heater with no power moves")
+	}
+}

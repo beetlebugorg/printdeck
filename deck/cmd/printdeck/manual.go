@@ -273,7 +273,7 @@ func manualParts() []section {
 						s.a.OpenPrintScreen("")
 					},
 					Callouts: []callout{
-						{"Display", "The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time of the print and the time left. Tap the nozzle or the bed to set its temperature."},
+						{"Display", "The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature."},
 						{"Steps", "The steps of the start macro of your printer, in its order. The deck follows the commands that the printer runs: the step that runs has a lit LED, and a done step has a dot."},
 						{"Help", "Opens Wi-Fi and help: the network, the address and the password of the deck."},
 						{"Cancel print", "Stops the print, after a question."},
@@ -286,7 +286,7 @@ func manualParts() []section {
 						s.a.OpenPrintScreen("")
 					},
 					Callouts: []callout{
-						{"Display", "The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time of the print and the time left. Tap the nozzle or the bed to set its temperature."},
+						{"Display", "The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature."},
 						{"− and +", "− moves the nozzle closer to the bed, + away from it. A line that is too round and thin needs −. A line that is flat and rough needs +."},
 						{"Z offset", "The height of the nozzle above its normal height. Watch the first lines while they print."},
 						{"Save", "Writes the Z offset into the config of the printer. Save config in Maintenance then writes the file."},
@@ -298,7 +298,7 @@ func manualParts() []section {
 				{Name: "printing", Caption: "Printing",
 					Setup: func(s *manualState) { s.p.State_ = stPrinting; s.a.OpenPrintScreen("") },
 					Callouts: []callout{
-						{"Display", "The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time of the print and the time left. Tap the nozzle or the bed to set its temperature."},
+						{"Display", "The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature."},
 						{"Pause", "Pauses the print."},
 						{"Tune", "Changes the print while it runs. See Tune."},
 						{"Cancel", "Stops the print, after a question."},
@@ -323,7 +323,7 @@ func manualParts() []section {
 						s.a.OpenPrintScreen("")
 					},
 					Callouts: []callout{
-						{"Display", "The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time of the print and the time left. Tap the nozzle or the bed to set its temperature."},
+						{"Display", "The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature."},
 						{"Where", "The layer of the pause, and the message of the printer."},
 						{"Resume", "Continues the print."},
 						{"Change filament", "The guided filament change, for a new color. See Change the filament."},
@@ -733,7 +733,7 @@ func manual(args []string) {
 		"lcd-status": {Status: &lcd.Status{State: "READY PLA", Clock: "2:24PM", Message: "XYZ HOMED", Tool: 24, Bed: 23,
 			Position: "X110 Y110 Z5.00", Hint: "Click for menu"}},
 		"lcd-printing": {Status: &lcd.Status{State: "PRINTING", Clock: "2:24PM", Tool: 209, ToolT: 210, Bed: 60, BedT: 60,
-			Fan: 1, Printing: true, Progress: 0.42, Elapsed: "0:58", Left: "1:23"}},
+			Fan: 1, Printing: true, Progress: 0.42, Elapsed: "0:58", Left: "1:23", Done: "3:47PM"}},
 		"lcd-home": {Menu: &lcd.Menu{Title: "Printdeck", Carousel: true, Selected: 1, Items: []lcd.MenuItem{
 			{Label: "Status", Icon: "status"}, {Label: "Print a file", Icon: "print"}, {Label: "Preheat PLA", Icon: "preheat"}}}},
 		"lcd-list": {Menu: &lcd.Menu{Title: "Maintenance", Selected: 2, Items: []lcd.MenuItem{{Label: "Back", Icon: "back"},

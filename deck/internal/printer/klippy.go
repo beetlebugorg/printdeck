@@ -89,8 +89,8 @@ var klippyObjects = map[string][]string{
 	"configfile":     {"save_config_pending"},
 	"manual_probe":   {"is_active", "z_position"},
 	"virtual_sdcard": {"file_position", "file_size", "progress"},
-	"extruder":       {"temperature", "target"},
-	"heater_bed":     {"temperature", "target"},
+	"extruder":       {"temperature", "target", "power"},
+	"heater_bed":     {"temperature", "target", "power"},
 	"fan":            {"speed"},
 	"toolhead":       {"position", "homed_axes", "axis_minimum", "axis_maximum"},
 	"mcu":            {"mcu_version"},
@@ -578,6 +578,7 @@ func klippyState(s klippy.Status, down string) State {
 	}
 	st.Tool, st.ToolTarget = num(s["extruder"]["temperature"]), num(s["extruder"]["target"])
 	st.Bed, st.BedTarget = num(s["heater_bed"]["temperature"]), num(s["heater_bed"]["target"])
+	st.ToolPower, st.BedPower = num(s["extruder"]["power"]), num(s["heater_bed"]["power"])
 	if v, ok := s["fan"]["speed"]; ok {
 		st.Fan, st.HasFan = num(v)*100, true
 	}
