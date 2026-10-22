@@ -91,12 +91,9 @@ HARDWARE = [
     ("clip_screw", "m3x8", "M3 × 8 socket cap head", "VIGRUE M3 kit", "rail clip into its twist nut"),
     ("insert_head_back", "ins_m3x7", "M3 × 7 heat-set insert", "FFVRVSS insert kit", "head, back screws (3 to 7 mm fits)"),
     ("insert_back_flange", "ins_m3x7", "M3 × 7 heat-set insert", "FFVRVSS insert kit", "back panel, flange screws (3 to 7 mm fits)"),
-    ("insert_clip_nut", "ins_m3x4", "M3 × 4 heat-set insert", "FFVRVSS insert kit", "twist nuts (3 to 4 mm fits)"),
     ("insert_pod_block", "ins_m3x5", "M3 × 5 heat-set insert", "FFVRVSS insert kit", "plate, pod screw blocks (3 to 5 mm fits)"),
 ]
-# The M3 x 4 inserts are few: an M3 x 3 insert also fits the twist nut.
-STOCK = {"m3x6": 55, "m3x8": 55, "m3x10": 55, "m3x12": 55, "m3_washer": 300, "ins_m3x5": 50, "ins_m3x7": 30,
-         "ins_m3x4": 4}
+STOCK = {"m3x6": 55, "m3x8": 55, "m3x10": 55, "m3x12": 55, "m3_washer": 300, "ins_m3x5": 50, "ins_m3x7": 30}
 
 
 def hardware_list(hw):
@@ -174,7 +171,7 @@ def pair_in(m, n, pairs):
 
 
 # The screws that cut their own thread in a printed part: they go into a 2.5 mm hole.
-SELF_TAP = [("display_screw", "head"), ("pi_screw", "plate")]
+SELF_TAP = [("display_screw", "head"), ("pi_screw", "plate"), ("clip_screw", "clip_nut")]
 
 
 def check_case(printed, hw):

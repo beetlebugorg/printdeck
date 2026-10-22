@@ -89,9 +89,8 @@ INSERTS = {                       # place: (count, shortest, longest insert in m
     "head_back": (4, 3.0, 7.0),
     "back_flange": (2, 3.0, 7.0),
     "pod_block": (2, 3.0, 5.0),
-    "clip_nut": (2, 3.0, 4.0),
 }
-INSERT_USE = {"head_back": 7, "back_flange": 7, "pod_block": 5, "clip_nut": 4}   # the length in the model
+INSERT_USE = {"head_back": 7, "back_flange": 7, "pod_block": 5}   # the length in the model
 # The display board and the Pi have little load: their M3 x 6 screws cut their own thread in a
 # 2.5 mm hole in the boss, with no insert. Do not tighten them more than snug.
 TAP_D = 2.5
@@ -173,12 +172,17 @@ FLANGE_Z = (12.5, 23.2)          # the flange block (its underside slopes 45 deg
 # round), the lip is 1.7 mm thick, and behind the lip the slot is 12.4 mm wide (16.6 mm deeper
 # in) and 6.55 mm deep; measured in the model, the cavity behind the lips is a 45 degree V:
 # 12.9 mm wide at 0.5 mm, 4.9 mm wide at 4.5 mm. A metal nut cannot go through a 5.1 mm
-# opening. A printed twist nut (11.6 x 4.8 mm at the lips, with 45 degree sides like the V, and
-# an M3 heat-set insert) goes in lengthwise, and turns a quarter turn behind the lips, until it
-# is across the slot. Two opposite corners are round, so it turns easily; the model checks that
-# it turns free of the rail. An M3 x 8 screw from a counterbore in the key of the clip pulls the
-# nut against the lips. Clip coordinates: the slot centre and the rail face. The clip prints on
-# its end, so its section is on the bed and it needs no supports; the nut prints flat.
+# opening. A printed twist nut (11.6 x 4.8 mm at the lips, with 45 degree sides like the V)
+# goes in lengthwise, and turns a quarter turn behind the lips, until it is across the slot.
+# Two opposite corners are round, so it turns easily; the model checks that it turns free of
+# the rail. An M3 x 8 screw from a counterbore in the key of the clip cuts its own thread in a
+# 2.5 mm hole in the nut and pulls the nut against the lips. The nut is 4.8 mm wide along the
+# slot, so a 4 mm heat-set insert leaves 0.4 mm of plastic, and an M3 hex nut (5.5 mm across
+# the flats) does not fit. Below the lips a round boss (4.8 mm, the width of the nut) goes
+# down the V of the slot, so the 2.5 mm hole has at least 1.15 mm of plastic around it for
+# the full 3.9 mm of thread. The boss is round, so it turns free at each angle. Clip
+# coordinates: the slot centre and the rail face. The clip prints on its end, so its section
+# is on the bed and it needs no supports; the nut prints flat.
 CLIP_T = 2.5                     # the flange of the clip on the rail face
 CLIP_L = 24.0                    # the length along the slot
 CLIP_FLANGE_W = 16.0
@@ -187,6 +191,7 @@ RAIL_LIP = 1.7                   # the lip of the slot
 NUT = (11.6, 4.8, 4.0)           # the twist nut: across the slot (at the lips), along the slot, thick
 NUT_GAP = 0.1                    # from the back of the lips to the nut (the screw pulls it up)
 NUT_ROUND = 2.0                  # the radius of its two round corners
+NUT_BOSS = (2.4, 4.4, 0.3)       # the round boss: radius, depth from the wide face, 45 degree chamfer at its end
 CLIP_SCREW = 8.0                 # M3 x 8 from the counterbore into the nut
 CLIPS_Y = (158.0, 214.0)         # y of the clip centres (the back panel sets their height)
 CLIP_SLACK = 3.0                 # the dovetail slot is longer by this on each end
