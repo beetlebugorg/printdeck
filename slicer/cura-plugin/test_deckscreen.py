@@ -19,6 +19,7 @@ class FakeDeck(http.server.ThreadingHTTPServer):
     def __init__(self):
         self.touches = queue.Queue()
         self.size = None
+        self.hosts = set()
         super().__init__(("127.0.0.1", 0), Handler)
 
 
@@ -36,6 +37,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        self.server.hosts.add(self.headers.get("Host"))
         if self.headers.get("X-Api-Key") != KEY:
             return self._send(401)
         if self.path.startswith("/ui/events"):
@@ -119,6 +121,26 @@ class TestDeckScreen(unittest.TestCase):
         self.assertEqual(deck.touches.get(timeout=5)["kind"], "up")
         s.stop()
         self.assertEqual(events.get(timeout=5), ("end", None))
+
+    def test_direct(self):
+        self.assertEqual(deckscreen.direct("http://localhost:8080/api?x=1"),
+                         ("http://127.0.0.1:8080/api?x=1", {"Host": "localhost:8080"}))
+        self.assertEqual(deckscreen.direct("http://127.0.0.1/api"), ("http://127.0.0.1/api", {}))
+        self.assertEqual(deckscreen.direct("https://deck.example/api"), ("https://deck.example/api", {}))
+
+    def test_stream_by_name(self):
+        # The stream connects to the address, and sends the name as the Host.
+        deck = self._deck()
+        port = deck.server_address[1]
+        events = queue.Queue()
+        s = deckscreen.DeckStream("http://localhost:%d" % port, KEY, (800, 480), tempfile.mkdtemp(),
+                                  on_session=lambda w, h: events.put("session"), on_frame=lambda t: events.put("frame"),
+                                  on_end=lambda e: events.put(("end", e)))
+        s.start()
+        self.assertEqual(events.get(timeout=5), "session")
+        self.assertEqual(events.get(timeout=5), "frame")
+        s.stop()
+        self.assertEqual(deck.hosts, {"localhost:%d" % port})
 
     def test_wrong_key(self):
         deck = self._deck()

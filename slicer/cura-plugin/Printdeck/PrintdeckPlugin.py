@@ -25,7 +25,7 @@ from UM.Logger import Logger
 from UM.Message import Message
 from cura.CuraApplication import CuraApplication
 
-from . import logic
+from . import deckscreen, logic
 
 POLL_SECONDS = 10
 BUTTON = "Print to Printdeck"
@@ -97,7 +97,8 @@ class PrintdeckPlugin(Extension):
             if printer:
                 base, key = printer
                 try:
-                    req = urllib.request.Request(base.rstrip("/") + "/api/plugin/printdeck", headers={"X-Api-Key": key})
+                    url, headers = deckscreen.direct(base.rstrip("/") + "/api/plugin/printdeck")
+                    req = urllib.request.Request(url, headers=dict(headers, **{"X-Api-Key": key}))
                     with urllib.request.urlopen(req, timeout=5) as r:
                         status = logic.parse_status(json.loads(r.read().decode()))
                 except Exception as e:  # not a Printdeck, or the Printdeck is off
@@ -158,7 +159,8 @@ class PrintdeckPlugin(Extension):
         def download():
             try:
                 os.makedirs(os.path.dirname(target), exist_ok=True)
-                req = urllib.request.Request(url, headers={"X-Api-Key": key})
+                url, headers = deckscreen.direct(url)
+                req = urllib.request.Request(url, headers=dict(headers, **{"X-Api-Key": key}))
                 with urllib.request.urlopen(req, timeout=120) as r, open(target, "wb") as f:
                     while True:
                         chunk = r.read(1 << 20)
