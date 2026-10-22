@@ -183,6 +183,19 @@ def page():
     <a href="manual/printdeck-manual.pdf">PDF</a>. For a display that is mounted wide, read the
     <a href="manual/wide/">wide manual</a> or its <a href="manual/wide/printdeck-manual.pdf">PDF</a>.</p>
 
+  <h2>Cura plugin</h2>
+  <div class="step"><img class="plain" src="cura/img/cura-tab.png" alt="The touch screen of the deck in the Printdeck tab of Cura"><div>
+    <p>The Printdeck plugin for Cura shows the deck in a Printdeck tab, live. Click the screen in Cura as you tap the
+      touch screen. Cura follows the roll in the deck, warns when the roll is too short, and shows the layer that
+      prints in the Preview.</p>
+    <p>The Print on a part tool prints new models on a part that is printed already, for example a logo in another
+      color on a lid. The deck prints a pocket for the part, and checks its height with a paper test.</p>
+    <p>Download Printdeck.curapackage from the <a href="{repo}/releases">releases</a>, and drag it onto the Cura
+      window.</p>
+    <p><a class="btn" href="cura/printdeck-cura.pdf">Cura plugin booklet (PDF)</a>
+      <a class="btn" href="cura/">Booklet on the web</a>
+      <a class="btn" href="{repo}/releases">Download the plugin</a></p></div></div>
+
   <h2>On the LulzBot TAZ Workhorse</h2>
   <div class="step">{lulzbot}<div>
     <p>A second mount puts the Printdeck on the front left of a LulzBot TAZ Workhorse, with the display wide. You

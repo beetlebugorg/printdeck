@@ -46,13 +46,17 @@ has two versions, one for each mount of the display:
   [docs/lulzbot/printdeck-manual.pdf](docs/lulzbot/printdeck-manual.pdf) has the
   print plan, the hardware and the steps of the mount in [lulzbot/](lulzbot/), then the wide
   manual.
+- The Cura plugin: [the booklet on the web](https://beetlebug.org/printdeck/cura/), or
+  [docs/cura/printdeck-cura.pdf](docs/cura/printdeck-cura.pdf). It shows the setup, the
+  Printdeck tab, and the Print on a part tool.
 
 Read the booklets on screen, or print them. The booklet has half-letter pages. A print shop
 makes a saddle-stitched booklet from printdeck-manual.pdf. To print it yourself, print
 printdeck-manual-print.pdf on both sides of letter paper (flip on the short edge), fold the
 stack, and staple it in the fold.
 
-The deck draws the pictures itself: after a change to the UI, run `docs/manual/build.sh`.
+The deck draws the pictures itself: after a change to the UI, run `docs/manual/build.sh`. After a
+change to the Cura plugin, run `docs/cura/build.sh`.
 
 ## Hardware
 
