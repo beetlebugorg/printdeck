@@ -187,32 +187,38 @@ def pause_lines(message, check, lift_z, layer_z, xy=None):
 
 
 _start = re.compile(r"^PRINT_START\b.*$", re.M)
+_bed_heat = re.compile(r"^M1[49]0 S(?!0\b)[0-9.]+.*$", re.M)
 
 
 def on_part_start(gcode_list):
     """Replaces the PRINT_START line of the start G-code with a start for a print on a part that is
     in its pocket already: Z homes up first, away from the part, there is no probe of the bed and no
     prime line on it, and the nozzle purges at the park position. The height check of the pause
-    sets the Z. It returns True when it found PRINT_START."""
+    sets the Z. The bed stays off: the pocket holds the part, and a hot bed softens a part of PLA.
+    It returns True when it found PRINT_START."""
     for i, chunk in enumerate(gcode_list):
         m = _start.search(chunk)
         if not m:
             continue
         params = dict(re.findall(r"(\w+)=([0-9.]+)", m.group(0)))
-        bed, ext = params.get("BED", "60"), params.get("EXTRUDER", "210")
+        ext = params.get("EXTRUDER", "210")
         start = "\n".join([
             "; Printdeck: a print on a part in its pocket. Z homes up first, and the height check sets the Z.",
-            "M140 S%s" % bed,
+            "; The bed stays off.",
+            "M140 S0",
             "M104 S%s" % ext,
             "G28 Z",
             "G28 X Y",
             "G90",
-            "M190 S%s" % bed,
             "M109 S%s" % ext,
             "PRINTDECK_PURGE",
             "G92 E0",
         ])
         gcode_list[i] = chunk[:m.start()] + start + chunk[m.end():]
+        # No bed heat in the rest of the file: Cura can set the bed temperature again after the
+        # first layer.
+        for j, c in enumerate(gcode_list):
+            gcode_list[j] = _bed_heat.sub("; Printdeck: no bed heat on a part", c)
         return True
     return False
 
