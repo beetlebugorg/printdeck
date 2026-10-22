@@ -103,9 +103,10 @@ def cura_material_list(materials, favorites, current):
     """The materials of Cura for the rolls of the Printdeck: the materials of the user, the
     favorites, the material that Cura has now, and the generic ones, in that order, then by name.
 
-    materials are dicts with the keys id (the base file), name, brand, material (the type), color
-    and readonly (False for a material of the user). favorites is a set of ids. Each material of the
-    answer has the keys id, name, brand, material and color."""
+    materials are dicts with the keys id (the base file), name, brand, material (the type), color,
+    readonly (False for a material of the user) and density (g/cm³, a number or a text). favorites
+    is a set of ids. Each material of the answer has the keys id, name, brand, material and color
+    (texts), and density (a number, or 0 when it is unknown)."""
     out = []
     for m in materials:
         if not m.get("readonly", True):
@@ -125,8 +126,19 @@ def cura_material_list(materials, favorites, current):
         if m["id"] in seen:
             continue
         seen.add(m["id"])
-        answer.append({k: str(m.get(k) or "") for k in ("id", "name", "brand", "material", "color")})
+        entry = {k: str(m.get(k) or "") for k in ("id", "name", "brand", "material", "color")}
+        entry["density"] = _number(m.get("density"))
+        answer.append(entry)
     return answer
+
+
+def _number(value):
+    """value as a positive float, or 0."""
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return v if v > 0 else 0.0
 
 
 def material_slug(name):

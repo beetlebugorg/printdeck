@@ -273,7 +273,8 @@ class PrintdeckPlugin(Extension):
                 continue  # a filament of another diameter
             found.append({"id": node.base_file, "name": meta.get("name", node.base_file),
                           "brand": meta.get("brand", ""), "material": meta.get("material", ""),
-                          "color": meta.get("color_code", ""), "readonly": registry.isReadOnly(node.base_file)})
+                          "color": meta.get("color_code", ""), "readonly": registry.isReadOnly(node.base_file),
+                          "density": (meta.get("properties") or {}).get("density")})
         favorites = set((app.getPreferences().getValue("cura/favorite_materials") or "").split(";"))
         materials = logic.cura_material_list(found, favorites, current)
         printer = self._printer()

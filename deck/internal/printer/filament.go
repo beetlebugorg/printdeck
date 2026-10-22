@@ -12,15 +12,22 @@ import (
 // densities are the densities of the materials of the deck, in g/cm³.
 var densities = map[string]float64{"PLA": 1.24, "PETG": 1.27, "ABS": 1.04, "TPU": 1.21}
 
-// FilamentGrams is the weight in grams of mm millimetres of filament with the diameter d in mm,
-// of the material. A material that the deck does not know counts as PLA.
-func FilamentGrams(mm, d float64, material string) float64 {
-	rho, ok := densities[strings.ToUpper(strings.TrimSpace(material))]
-	if !ok {
-		rho = densities["PLA"]
+// Density is the density of a material of the deck in g/cm³. A material that the deck does not
+// know counts as PLA.
+func Density(material string) float64 {
+	if rho, ok := densities[strings.ToUpper(strings.TrimSpace(material))]; ok {
+		return rho
 	}
-	return mm * math.Pi * d * d / 4 * rho / 1000
+	return densities["PLA"]
 }
+
+// FilamentGrams is the weight in grams of mm millimetres of filament with the diameter d in mm,
+// of the material (see Density).
+func FilamentGrams(mm, d float64, material string) float64 { return GramsAt(mm, d, Density(material)) }
+
+// GramsAt is the weight in grams of mm millimetres of filament with the diameter d in mm and the
+// density rho in g/cm³.
+func GramsAt(mm, d, rho float64) float64 { return mm * math.Pi * d * d / 4 * rho / 1000 }
 
 // Weight is a weight in grams for the screen: "4.2 g", "92 g" or "1.24 kg".
 func Weight(g float64) string {

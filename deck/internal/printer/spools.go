@@ -37,6 +37,9 @@ type SlicerMaterial struct {
 	Brand    string `json:"brand"`    // for example "Microcenter"
 	Material string `json:"material"` // the type, for example "PLA"
 	Color    string `json:"color"`    // for example "#ffffff", or ""
+	// Density is the density of the material in Cura, in g/cm³, or 0. The deck uses it for the
+	// grams of a roll with this material, so the deck and Cura count the same grams.
+	Density float64 `json:"density,omitempty"`
 }
 
 // Left is the grams of filament that the roll has now.
@@ -249,9 +252,9 @@ func (s *Spools) Remove(id string) {
 }
 
 // Use subtracts the filament of a print from the roll in the printer. grams gives the weight of
-// the filament for the material of the roll. It returns the roll and the cost of the filament,
+// the filament for a density (see Density). It returns the roll and the cost of the filament,
 // and false when no roll is in the printer.
-func (s *Spools) Use(grams func(material string) float64) (Spool, float64, bool) {
+func (s *Spools) Use(grams func(density float64) float64) (Spool, float64, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.load()
@@ -260,8 +263,27 @@ func (s *Spools) Use(grams func(material string) float64) (Spool, float64, bool)
 		return Spool{}, 0, false
 	}
 	sp := &s.data.Spools[i]
-	g := grams(sp.Material)
+	g := grams(s.density(*sp))
 	sp.Used += g
 	s.save()
 	return *sp, sp.Cost(g), true
+}
+
+// Density is the density of the filament of a roll in g/cm³: the density of its material in
+// Cura, else the density of its type.
+func (s *Spools) Density(sp Spool) float64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.load()
+	return s.density(sp)
+}
+
+// density is Density. s.mu must be locked.
+func (s *Spools) density(sp Spool) float64 {
+	for _, m := range s.data.SlicerMaterials {
+		if m.ID == sp.CuraMaterial && sp.CuraMaterial != "" && m.Density > 0 {
+			return m.Density
+		}
+	}
+	return Density(sp.Material)
 }

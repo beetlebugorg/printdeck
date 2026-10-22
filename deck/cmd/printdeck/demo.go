@@ -69,7 +69,7 @@ func demoApp() (*ui.App, *ui.DemoPrinter) {
 	p.Spools_.Add("Signal Orange", "PLA", 690, 180, 22, end.AddDate(0, 0, -12))
 	black := p.Spools_.List()[1]
 	p.Spools_.Put(black.ID)
-	p.Spools_.Use(func(string) float64 { return 358 })
+	p.Spools_.Use(func(float64) float64 { return 358 })
 	p.History_[0].Spool, p.History_[0].Cost, p.History_[0].Material = "Galaxy Black", 0.71, "PLA"
 	p.Meta_ = gcodemeta.Meta{Slicer: "Cura 5.13.0", PrintTime: 102 * time.Minute, FilamentMM: 4100, LayerHeight: 0.2,
 		NozzleTemp: 210, BedTemp: 60}
