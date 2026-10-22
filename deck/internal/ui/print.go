@@ -105,8 +105,14 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		}
 		return
 	}
+	if !st.Busy() {
+		a.finishLeft = false
+	}
 	if st.Busy() {
 		switch {
+		case st.Finishing && a.finishLeft && a.finishFile == st.FilePath:
+			// The user left the end of the print: the home screen, while the end macro runs.
+			a.drawHome(c, st)
 		case st.Paused:
 			a.drawPaused(c, st)
 		case st.Preparing:

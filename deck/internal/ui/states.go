@@ -155,9 +155,14 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 		if !f.wide {
 			a.modelView(c, image.Rect(area.Min.X, box.Max.Y+16, area.Max.X, area.Max.Y), st)
 		}
+		// Home leaves the screen while the end macro runs. The deck follows the cooling of the bed
+		// all the same, and shows the done screen at the end of the print.
+		k := kit.Cols(cancel, 12, kit.Px(130), kit.Fr(1))
 		if a.Setup != nil {
-			a.button(c, kit.Cols(cancel, 12, kit.Px(130), kit.Fr(1))[0], "Help", raised, text, a.OpenHelp)
+			a.button(c, k[0], "Help", raised, text, a.OpenHelp)
 		}
+		file := st.FilePath
+		a.button(c, k[1], "Home", raised, text, func() { a.finishLeft, a.finishFile = true, file })
 		return
 	}
 	if a.Setup != nil {
