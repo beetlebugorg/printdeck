@@ -28,8 +28,8 @@ type Status struct {
 	Done     string  `json:"done,omitempty"`     // the end of the print on the clock, for example "3:47PM"
 	// Cooling is the end of a print that waits for the bed to cool: the bar is the cooling
 	// (Progress), to CoolTo degrees, and Left is the time that it needs, for example "4 min".
-	Cooling bool    `json:"cooling,omitempty"`
-	CoolTo  float64 `json:"cool_to,omitempty"`
+	Cooling  bool    `json:"cooling,omitempty"`
+	CoolTo   float64 `json:"cool_to,omitempty"`
 	Position string  `json:"position,omitempty"` // for example "X110 Y110 Z5.00", when no print runs
 	Hint     string  `json:"hint,omitempty"`     // for example "Click for menu", when no print runs
 }
