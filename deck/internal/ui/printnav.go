@@ -120,17 +120,29 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	}
 
 	k := kit.Rows(keys, 12, kit.Px(96), kit.Px(68))
-	a.button(c, k[0], "Print a file", orange, onAcc, func() {
-		go func() { pr.LoadFiles(); a.Redraw() }()
-		a.open(pageFiles)
-	})
 	heat := kit.Cols(k[1], 12, kit.Fr(1), kit.Fr(1))
 	pre := fmt.Sprintf("Preheat %d/%d", m.Tool, m.Bed)
 	if m.Name != "" {
 		pre = "Preheat " + m.Name
 	}
-	a.button(c, heat[0], pre, raised, text, func() { pr.Heat(m.Tool, m.Bed) })
-	a.button(c, heat[1], "Cool down", raised, text, func() { pr.Heat(0, 0) })
+	if st.Busy() {
+		// The end macro of a print still runs: the way back to it. A new temperature would
+		// change the cooling of the bed, so the heat keys do nothing.
+		back := "Back to the print"
+		if st.HasBedCoolLeft {
+			back += " · " + shortWait(st.BedCoolLeft)
+		}
+		a.button(c, k[0], back, orange, onAcc, func() { a.finishLeft = false })
+		a.button(c, heat[0], pre, raised, dim, func() {})
+		a.button(c, heat[1], "Cool down", raised, dim, func() {})
+	} else {
+		a.button(c, k[0], "Print a file", orange, onAcc, func() {
+			go func() { pr.LoadFiles(); a.Redraw() }()
+			a.open(pageFiles)
+		})
+		a.button(c, heat[0], pre, raised, text, func() { pr.Heat(m.Tool, m.Bed) })
+		a.button(c, heat[1], "Cool down", raised, text, func() { pr.Heat(0, 0) })
+	}
 
 	// The last print, and the pages in the space under it, down to the bottom.
 	if !f.wide {

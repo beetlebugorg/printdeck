@@ -333,6 +333,7 @@ func manualParts() []section {
 					Callouts: []callout{
 						{"Steps", "The steps of the end macro of your printer, for example the cooling of the bed before the print moves to the front."},
 						{"Model", "The finished model."},
+						{"Home", "Goes to the home screen while the end macro runs. Back to the print on the home screen comes back here. The deck shows the done screen at the end of the print."},
 					}},
 				{Name: "tune", Caption: "Tune",
 					Setup: func(s *manualState) { s.p.State_ = stPrinting; s.a.OpenPrintScreen("tune") },

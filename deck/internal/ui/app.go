@@ -124,25 +124,27 @@ type App struct {
 
 	Now func() time.Time // replaced in tests
 
-	pages         []page          // the pages over the state screen, the top last
-	file          printer.File    // the file of the file page
-	record        printer.Record  // the print of the record page
-	spoolID       string          // the roll of the roll page
-	spoolScroll   int             // the scroll position of the Rolls page
-	form          *rollForm       // the form of a new roll, over everything
-	fileList      fileList        // the scroll position of the Files page
-	macroScroll   int             // the scroll position of the Macros page
-	consoleScroll int             // how far the Console page shows above its newest line
-	consoleKB     *keyboard       // the keyboard of the Console page, while it is open
-	consoleLast   string          // the last typed command, for the next one
-	configScroll  int             // the scroll position of the printer list of the setup
-	configAll     bool            // the printer list shows all printers, not only those for the board
-	configBoard   board.Info      // the board that the printer list is for
-	flash         *flashState     // the flash of the firmware, while it runs and until OK
-	created       time.Time       // the start of this App: older action results do not show
-	actionSeen    time.Time       // the end of the last action result that this screen showed
-	historyScroll int             // the scroll position of the history
-	doneSeen      string          // the done screen of this print was closed (its history key)
+	pages         []page         // the pages over the state screen, the top last
+	file          printer.File   // the file of the file page
+	record        printer.Record // the print of the record page
+	spoolID       string         // the roll of the roll page
+	spoolScroll   int            // the scroll position of the Rolls page
+	form          *rollForm      // the form of a new roll, over everything
+	fileList      fileList       // the scroll position of the Files page
+	macroScroll   int            // the scroll position of the Macros page
+	consoleScroll int            // how far the Console page shows above its newest line
+	consoleKB     *keyboard      // the keyboard of the Console page, while it is open
+	consoleLast   string         // the last typed command, for the next one
+	configScroll  int            // the scroll position of the printer list of the setup
+	configAll     bool           // the printer list shows all printers, not only those for the board
+	configBoard   board.Info     // the board that the printer list is for
+	flash         *flashState    // the flash of the firmware, while it runs and until OK
+	created       time.Time      // the start of this App: older action results do not show
+	actionSeen    time.Time      // the end of the last action result that this screen showed
+	historyScroll int            // the scroll position of the history
+	doneSeen      string         // the done screen of this print was closed (its history key)
+	finishLeft    bool           // the screen of the end of the print finishFile was left with Home
+	finishFile    string
 	setupProbed   bool            // the printer setup started a probe of the USB ports
 	confirm       *confirmBox     // modal question
 	in            kit.Input       // the touch areas of the frame, and the finger on them
