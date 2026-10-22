@@ -203,3 +203,32 @@ func TestPagesLinkTheSource(t *testing.T) {
 		t.Error("the login page has no link to the source of this version")
 	}
 }
+
+func TestAPIKeyOpensOnlyTheScreenData(t *testing.T) {
+	s, ts, c, _ := newTest(t)
+	s.APIKey = func(r *http.Request) bool { return r.Header.Get("X-Api-Key") == "key1" }
+	get := func(path, key string) int {
+		req, _ := http.NewRequest("GET", ts.URL+path, nil)
+		if key != "" {
+			req.Header.Set("X-Api-Key", key)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		r, err := c.Do(req.WithContext(ctx))
+		if err != nil {
+			t.Fatal(err)
+		}
+		r.Body.Close()
+		return r.StatusCode
+	}
+	if code := get("/ui/events?w=800&h=480", "key1"); code != http.StatusOK {
+		t.Errorf("events with the key: %d", code)
+	}
+	if code := get("/ui/events", "wrong"); code != http.StatusUnauthorized {
+		t.Errorf("events with a wrong key: %d", code)
+	}
+	c.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	if code := get("/", "key1"); code != http.StatusSeeOther {
+		t.Errorf("the page with the key: %d, want the login", code)
+	}
+}

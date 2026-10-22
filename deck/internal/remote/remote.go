@@ -39,6 +39,10 @@ type Server struct {
 	Icon []byte
 	// NoLogin lets every request through, for the demo (printdeck remote-demo).
 	NoLogin bool
+	// APIKey tells if a request has a valid API key of the slicer API, or is nil. A valid key lets
+	// the requests of the screen data (/ui/) through, with no login: the Printdeck plugin of Cura
+	// shows the deck UI with it.
+	APIKey func(r *http.Request) bool
 	// Source is the address of the source code of this version. The pages link to it, as the
 	// AGPL-3.0 asks for a program that people use over a network.
 	Source string

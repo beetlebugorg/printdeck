@@ -34,8 +34,9 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 		return nil
 	}
 	mux := http.NewServeMux()
+	var api *octoapi.Server
 	if k, ok := pr.(*printer.Klippy); ok {
-		api := octoapi.New(k, &gcodestore.Store{Dir: cfg.GcodeDir}, cfg.OctoPrintKey, filepath.Join(cfg.StateDir, "apikeys.json"))
+		api = octoapi.New(k, &gcodestore.Store{Dir: cfg.GcodeDir}, cfg.OctoPrintKey, filepath.Join(cfg.StateDir, "apikeys.json"))
 		api.Version, api.Ask = osVersion(), app.Ask
 		api.Spools = k.Spools
 		api.Diameter = func() float64 { return k.Machine().Diameter() }
@@ -58,6 +59,9 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 		}
 		rs.NewSession = uiSession(app)
 		rs.Icon = ui.Icon()
+		if api != nil {
+			rs.APIKey = api.ValidKey
+		}
 		mux.Handle("/", rs.Handler())
 		klippyLog := filepath.Join(filepath.Dir(filepath.Dir(cfg.KlipperConfig)), "logs", "klippy.log")
 		registerSystemPage(mux, rs, pr, klippyLog, cfg.OctoPrintKey)
