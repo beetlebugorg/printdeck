@@ -46,18 +46,24 @@ Rectangle
         id: area
         anchors.fill: parent
         anchors.margins: 24
-        anchors.bottomMargin: preview.visible ? 24 + preview.height + 16 : 24
         visible: root.view == "live" || root.view == "connecting"
         onWidthChanged: if (root.deck) root.deck.setArea(width - 20, height - 20)
         onHeightChanged: if (root.deck) root.deck.setArea(width - 20, height - 20)
 
         property real sw: root.deck ? root.deck.screenWidth : 800
         property real sh: root.deck ? root.deck.screenHeight : 480
-        property real k: Math.min((width - 20) / sw, (height - 20) / sh)
+        // The scale of the deck UI: as large as the tab allows, up to the size of the deck itself
+        // (one pixel of the deck on one pixel of the screen). A larger UI is hard to take in.
+        property real k: Math.min(maxScale, (width - 20) / sw, (height - 20 - keyRoom) / sh)
+        readonly property real maxScale: 1.0
+        // The room for Show in Preview under the screen.
+        readonly property real keyRoom: preview.visible ? preview.height + 16 : 0
 
         Rectangle
         {
+            id: bezel
             anchors.centerIn: parent
+            anchors.verticalCenterOffset: -area.keyRoom / 2
             width: area.sw * area.k + 20; height: area.sh * area.k + 20
             radius: 10; color: "#1b1c1a"
 
@@ -77,17 +83,17 @@ Rectangle
                 family: plexBold.name
             }
         }
-    }
 
-    // The file of the print in the Preview of Cura, under the deck UI.
-    Key
-    {
-        id: preview
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom; anchors.bottomMargin: 24
-        width: 300; visible: root.view == "live" && root.busy
-        text: "Show in Preview"
-        onClicked: root.deck.openInPreview()
+        // The file of the print in the Preview of Cura, under the deck UI.
+        Key
+        {
+            id: preview
+            anchors.horizontalCenter: bezel.horizontalCenter
+            anchors.top: bezel.bottom; anchors.topMargin: 16
+            width: 300; visible: root.view == "live" && root.busy
+            text: "Show in Preview"
+            onClicked: root.deck.openInPreview()
+        }
     }
 
     // No Printdeck, or a Printdeck that refused the screen.
