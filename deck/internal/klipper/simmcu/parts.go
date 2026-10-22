@@ -2,10 +2,10 @@ package simmcu
 
 import "sort"
 
-// segment is one queue_step: count steps, the first interval ticks after start, each next one add
-// ticks longer than the one before.
+// segment is one queue_step: count steps, the first at first, each next one add ticks later than
+// the step before it.
 type segment struct {
-	start         uint64
+	first         uint64
 	interval, add int64
 	count         int64
 	dir           bool
@@ -13,7 +13,7 @@ type segment struct {
 
 // time is the clock of step k (1 to count).
 func (g segment) time(k int64) uint64 {
-	return g.start + uint64(k*g.interval+g.add*k*(k-1)/2)
+	return g.first + uint64((k-1)*g.interval+g.add*k*(k-1)/2)
 }
 
 // done is the number of steps of the segment at the clock.
@@ -47,11 +47,15 @@ func newStepper(pin string) *stepper {
 	return &stepper{pin: pin, base: world.physicalSteps(pin), trsync: -1}
 }
 
-func (s *stepper) queue(interval, count, add int64) {
+// queue adds a queue_step. The firmware adds the interval to the time of the last step in 32 bits,
+// so an interval after "reset_step_clock clock=0" wraps to the right time: the first step is that
+// sum, on the 64-bit clock near now (clock64).
+func (s *stepper) queue(interval, count, add int64, clock64 func(int64) uint64) {
 	if s.needReset || count <= 0 {
 		return
 	}
-	g := segment{start: s.last, interval: interval, count: count, add: add, dir: s.nextDir}
+	first := clock64(int64(uint32(s.last) + uint32(interval)))
+	g := segment{first: first, interval: interval, count: count, add: add, dir: s.nextDir}
 	s.segs = append(s.segs, g)
 	s.last = g.time(count)
 }
@@ -106,7 +110,7 @@ func (e *endstop) home(b *Board, on bool, pinValue, trsyncOID, reason int64, clo
 }
 
 // check triggers the switch when its stepper reaches the place of the switch. The first homing of a
-// switch has no place yet: it triggers at 2/5 of the time of the move, and that place is the
+// switch has no place yet: it triggers in its move, and that place is the
 // place of the switch from then on. b.mu is locked.
 func (e *endstop) check(b *Board, now uint64) {
 	if !e.homing || now < e.start {
@@ -124,16 +128,18 @@ func (e *endstop) check(b *Board, now uint64) {
 	}
 	if !e.started {
 		e.startPlace, e.started = s.physical(e.start), true
+		debugf("home %s: start at %.0f, %d segments, last step %d, now %d", e.pin, e.startPlace, len(s.segs), s.last, now)
 	}
 	world.mu.Lock()
 	place, known := world.switches[e.pin]
 	world.mu.Unlock()
 	if !known {
-		t := b.trsyncs[e.trsync]
-		if t == nil || t.expireAt == 0 {
+		// 3/4 of the time to the last queued step: the host queues the steps of a move up to
+		// about 2 s ahead, so this is late in a short move, and in the middle of a long one.
+		if s.last <= e.start {
 			return
 		}
-		at := e.start + (t.expireAt-e.start)*2/5
+		at := e.start + (s.last-e.start)*3/4
 		if now < at {
 			return
 		}
@@ -142,6 +148,9 @@ func (e *endstop) check(b *Board, now uint64) {
 		world.mu.Unlock()
 		b.trigger(e.trsync, e.reason, at, true)
 		return
+	}
+	if now-e.checked > uint64(b.freq) { // once a second
+		debugf("home %s: at %.0f, switch at %.0f, %d segments", e.pin, s.physical(now), place, len(s.segs))
 	}
 	crossed := func(clock uint64) bool {
 		p := s.physical(clock)
