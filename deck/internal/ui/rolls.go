@@ -70,7 +70,7 @@ func (a *App) drawRollForm(c *gfx.Canvas) {
 		name := materials[i].Name
 		fill, fg := raised, text
 		if fm.material == name {
-			fill, fg = orange, onAcc
+			fill, fg = keyOn, keyOnInk
 		}
 		a.button(c, r, name, fill, fg, func() {
 			fm.material = name

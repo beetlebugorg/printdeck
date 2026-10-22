@@ -58,11 +58,11 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 		mat := materials[i]
 		fill, fg := raised, text
 		if mat.Name == m.Name {
-			fill, fg = orange, onAcc
+			fill, fg = keyOn, keyOnInk
 		}
 		name := mat.Name
 		if st.Busy() && !st.Paused {
-			a.lockedKey(c, r, name, fill) // the material in the printer stays lit
+			a.lockedKey(c, r, name, fill) // the LED of the material in the printer stays lit
 			continue
 		}
 		fkey(c, r, name, fill, fg, func() {

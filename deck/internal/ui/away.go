@@ -92,15 +92,9 @@ func (a *App) printerKey(c *gfx.Canvas, r image.Rectangle, label string, fill, f
 func (a *App) lockedKey(c *gfx.Canvas, r image.Rectangle, label string, fill color.RGBA) {
 	pressed := a.isPressed(r)
 	ink := dim
-	if fill == orange {
-		ink = onAcc // a choice that is on, as the material in the printer
-	}
 	keyBeside(c, r, label, fill, ink, pressed, 26)
-	y := r.Min.Y + (r.Dy()-5)/2
-	if pressed {
-		y += 4
-	}
-	drawLock(c, r.Max.X-19, y, ink)
+	y := r.Min.Y + r.Dy()/2
+	drawLock(c, r.Max.X-19, y, dim)
 	tap := func() { a.Toast(waitText) }
 	a.addHit(kit.Hit{R: r, Tap: tap})
 	a.region(label, r)
