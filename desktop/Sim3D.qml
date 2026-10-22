@@ -122,6 +122,26 @@ Window
             materials: PrincipledMaterial { baseColor: "#ff7a1a"; roughness: 0.5 }
         }
 
+        // --- The filament: from the spool down into the top of the tool head, which it follows. A
+        // cylinder between the two points: its Y axis turned onto the direction between them.
+        Model
+        {
+            id: filament
+            property vector3d from: Qt.vector3d(122, 470, 10) // where it leaves the spool
+            property vector3d to: Qt.vector3d(win.p.x, win.p.z + 140, -10) // the top of the extruder
+            property vector3d d: to.minus(from)
+            property real length: d.length()
+            property vector3d u: d.normalized()
+            // The rotation of (0, 1, 0) onto u: about the axis Y × u, by the angle between them.
+            property real angle: Math.acos(Math.max(-1, Math.min(1, u.y)))
+            property vector3d axis: Qt.vector3d(u.z, 0, -u.x).normalized()
+            source: "#Cylinder"
+            position: from.plus(d.times(0.5))
+            rotation: Qt.quaternion(Math.cos(angle / 2), axis.x * Math.sin(angle / 2), axis.y * Math.sin(angle / 2), axis.z * Math.sin(angle / 2))
+            scale: Qt.vector3d(0.0285, length / 100, 0.0285)
+            materials: PrincipledMaterial { baseColor: "#ff7a1a"; roughness: 0.4 }
+        }
+
         // --- The gantry, at the height of Z: two rods of X, and the tool head on them.
         Node
         {
@@ -158,6 +178,15 @@ Window
                     scale: Qt.vector3d(0.08, 0.07, 0.08)
                     materials: PrincipledMaterial { baseColor: "#c9a24b"; metalness: 0.9; roughness: 0.3 }
                 }
+                // The molten plastic at the tip of the nozzle, while the extruder pushes.
+                Model
+                {
+                    source: "#Sphere"
+                    visible: sim.extruding
+                    position: Qt.vector3d(0, 0.2, 0)
+                    scale: Qt.vector3d(0.012, 0.008, 0.012)
+                    materials: PrincipledMaterial { baseColor: "#ff7a1a"; emissiveFactor: Qt.vector3d(0.3, 0.1, 0) }
+                }
             }
         }
 
@@ -187,12 +216,18 @@ Window
             }
             // The wiper pad at the left of the bed.
             Box { position: Qt.vector3d(-16, 0, -60); size: Qt.vector3d(10, 3, 80); tint: "#7a1f1a" }
-            // The part.
+            // The part, and the strands of the last moments up to the nozzle.
             Model
             {
                 geometry: PathGeometry { id: part }
                 materials: PrincipledMaterial { baseColor: "#ff7a1a"; roughness: 0.45; cullMode: Material.NoCulling }
                 Component.onCompleted: sim.path = part
+            }
+            Model
+            {
+                geometry: PathGeometry { id: recent }
+                materials: PrincipledMaterial { baseColor: "#ff7a1a"; roughness: 0.45; cullMode: Material.NoCulling }
+                Component.onCompleted: sim.recent = recent
             }
         }
 
