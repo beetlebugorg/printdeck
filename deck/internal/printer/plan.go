@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"printdeck/internal/klipper/toolhead"
+	"printdeck/internal/maxmode"
 )
 
 // The plan of a print: the time of each part of the G-code file on this printer, from the motion
@@ -43,8 +44,16 @@ func (p *plan) at(pos int64) (elapsed, total float64) {
 // planFile plans the moves of a G-code file after the offset start (the end of the start macro):
 // G0 to G3, G4, the absolute and relative modes, G92, M204, M220 and SET_VELOCITY_LIMIT. The
 // commands that wait for heaters or that home take a time that the file does not tell.
-func planFile(r io.Reader, start int64, l toolhead.Limits) *plan {
+//
+// With mm, the moves have the speeds of max mode, as the max_mode module of the Klipper host gives
+// them. factors are the min_layer_time factors of the layers (maxmode.LayerFactors).
+func planFile(r io.Reader, start int64, l toolhead.Limits, mm *maxmode.Settings, factors []float64) *plan {
 	e := toolhead.NewEstimator(l)
+	var sh *maxmode.Shaper
+	if mm != nil {
+		sh = maxmode.NewShaper(*mm)
+		sh.S.MaxVelocity = l.MaxVelocity
+	}
 	br := bufio.NewReaderSize(r, 1<<16)
 	pos, lastMark := int64(0), int64(0)
 	absXYZ, absE := true, true
@@ -63,6 +72,9 @@ func planFile(r io.Reader, start int64, l toolhead.Limits) *plan {
 			continue
 		}
 		if i := strings.IndexByte(line, ';'); i >= 0 {
+			if sh != nil && sh.Comment(line[i+1:]) && sh.Layer() < len(factors) {
+				sh.SetFactor(factors[sh.Layer()])
+			}
 			line = line[:i]
 		}
 		f := strings.Fields(line)
@@ -102,7 +114,17 @@ func planFile(r io.Reader, start int64, l toolhead.Limits) *plan {
 					}
 				}
 				speed := feed * speedFactor
-				if cmd == "G2" || cmd == "G3" || cmd == "G02" || cmd == "G03" {
+				arc := cmd == "G2" || cmd == "G3" || cmd == "G02" || cmd == "G03"
+				if sh != nil {
+					d := []float64{next[0] - cur[0], next[1] - cur[1], next[2] - cur[2], next[3] - cur[3]}
+					if arc {
+						d[0], d[1] = maxmode.ArcLength(cur[0], cur[1], next[0], next[1], i, j, cmd == "G2" || cmd == "G02"), 0
+					}
+					if v := sh.Speed(d); v > 0 {
+						speed = v * speedFactor
+					}
+				}
+				if arc {
 					planArc(e, cur, next, i, j, cmd == "G2" || cmd == "G02", speed)
 				} else {
 					e.Move(next, speed)
@@ -179,6 +201,9 @@ func planFile(r io.Reader, start int64, l toolhead.Limits) *plan {
 					return math.NaN()
 				}
 				e.SetLimits(get("VELOCITY"), get("ACCEL"), get("SQUARE_CORNER_VELOCITY"), get("MINIMUM_CRUISE_RATIO"))
+				if v := get("VELOCITY"); sh != nil && !math.IsNaN(v) {
+					sh.S.MaxVelocity = v
+				}
 			}
 		}
 		if pos-lastMark >= planMarkEvery {

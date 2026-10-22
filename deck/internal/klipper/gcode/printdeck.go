@@ -26,3 +26,18 @@ func (g *Dispatch) CommandStack() []string {
 	defer g.stackMu.Unlock()
 	return append([]string(nil), g.stack...)
 }
+
+// The comment handlers: an addition of Printdeck, not part of Klipper. Max mode reads the feature
+// type and layer comments of the slicer with them.
+
+// RegisterCommentHandler adds a function that gets the comment of each G-code line: the text after
+// the ';'. It runs before the command of the line.
+func (g *Dispatch) RegisterCommentHandler(fn func(comment string)) {
+	g.commentHandlers = append(g.commentHandlers, fn)
+}
+
+func (g *Dispatch) comment(c string) {
+	for _, fn := range g.commentHandlers {
+		fn(c)
+	}
+}
