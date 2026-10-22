@@ -21,6 +21,7 @@ import (
 	"printdeck/internal/klipper/msgproto"
 	"printdeck/internal/klipper/reactor"
 	"printdeck/internal/klipper/serialport"
+	"printdeck/internal/klipper/simmcu"
 	"printdeck/internal/klipper/serialqueue"
 )
 
@@ -228,8 +229,8 @@ func (s *SerialReader) startSession(port Port) bool {
 	return true
 }
 
-// ConnectPipe connects to a pseudo-terminal or a pipe, such as a simulator. It runs in reactor
-// code, and tries for 90 seconds.
+// ConnectPipe connects to a pseudo-terminal or a pipe, such as a simulator. "sim" is the simulated
+// board of the deck (simmcu), in this process. It runs in reactor code, and tries for 90 seconds.
 func (s *SerialReader) ConnectPipe(filename string) error {
 	log.Printf("%sStarting connect", s.warnPrefix)
 	start := s.reactor.Monotonic()
@@ -237,7 +238,13 @@ func (s *SerialReader) ConnectPipe(filename string) error {
 		if s.reactor.Monotonic() > start+90. {
 			return s.errorf("Unable to connect")
 		}
-		p, err := serialport.Open(filename, 250000, false)
+		var p Port
+		var err error
+		if filename == simmcu.Serial {
+			p, err = simmcu.Open()
+		} else {
+			p, err = serialport.Open(filename, 250000, false)
+		}
 		if err != nil {
 			log.Printf("%sUnable to open port: %v", s.warnPrefix, err)
 			s.reactor.Pause(s.reactor.Monotonic() + 5.)

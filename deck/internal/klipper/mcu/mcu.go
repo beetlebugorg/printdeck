@@ -30,6 +30,7 @@ import (
 	"printdeck/internal/klipper/msgproto"
 	"printdeck/internal/klipper/pins"
 	"printdeck/internal/klipper/serialhdl"
+	"printdeck/internal/klipper/simmcu"
 	"printdeck/internal/klipper/serialqueue"
 )
 
@@ -480,7 +481,9 @@ func newConnectHelper(config *configfile.Wrapper, m *MCU, cs *clocksync.ClockSyn
 		configfile.Raise("CAN bus boards are not supported")
 	}
 	c.serialport = config.Get("serial")
-	if !strings.HasPrefix(c.serialport, "/dev/rpmsg_") && !strings.HasPrefix(c.serialport, "/tmp/klipper_host_") {
+	// A pipe has no baud rate: the host MCU of Linux, and the simulated board (serial: sim).
+	if !strings.HasPrefix(c.serialport, "/dev/rpmsg_") && !strings.HasPrefix(c.serialport, "/tmp/klipper_host_") &&
+		c.serialport != simmcu.Serial {
 		c.baud = config.GetInt("baud", configfile.Default(250000), configfile.Min(2400))
 	}
 	printer.RegisterEventHandler("klippy:mcu_identify", func(...any) { c.mcuIdentify() })
