@@ -121,9 +121,9 @@ func led(c *gfx.Canvas, x, y int, on bool) {
 	c.RoundRect(image.Rect(x-4, y-4, x+4, y+4), 4, ledOff)
 }
 
-// key draws a key of the panel: a membrane key with a printed frame, as on the panel of a
-// machine. A key that is on (cap keyOn: the open page, the material in the printer) has a lit LED
-// at its top left; a key with no state has no LED. A pressed key gets darker.
+// key draws a key of the panel: a membrane key with a printed frame and an LED at its top left, as
+// on the panel of a machine. The LED is lit when the key is on (cap keyOn: the open page, the
+// material in the printer), and dark when it is off. A pressed key gets darker.
 func key(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pressed bool) {
 	keyBeside(c, r, label, cap, ink, pressed, 0)
 }
@@ -155,13 +155,16 @@ func keyBeside(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RG
 	}
 	c.RoundRect(r.Inset(in), 2, darken(face, 0.10))
 	c.RoundRect(r.Inset(in+1), 2, face)
+	// The LED: lit orange when the key is on, dark when it is off.
+	l := image.Rect(r.Min.X+in+5, r.Min.Y+in+4, r.Min.X+in+17, r.Min.Y+in+9)
+	if r.Dy() < 50 {
+		l = image.Rect(r.Min.X+in+3, r.Min.Y+in+3, r.Min.X+in+11, r.Min.Y+in+7)
+	}
+	c.RoundRect(l.Inset(-1), 2, darken(face, 0.4))
 	if led {
-		l := image.Rect(r.Min.X+in+5, r.Min.Y+in+4, r.Min.X+in+17, r.Min.Y+in+9)
-		if r.Dy() < 50 {
-			l = image.Rect(r.Min.X+in+3, r.Min.Y+in+3, r.Min.X+in+11, r.Min.Y+in+7)
-		}
-		c.RoundRect(l.Inset(-1), 2, darken(orange, 0.4))
 		c.RoundRect(l, 2, orange)
+	} else {
+		c.RoundRect(l, 2, darken(face, 0.25))
 	}
 	area := r.Inset(in)
 	if pressed {

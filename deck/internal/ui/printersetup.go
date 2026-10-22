@@ -86,20 +86,28 @@ func (a *App) drawPrinterSetup(c *gfx.Canvas, st printer.State) {
 		rows = append(rows, []func(image.Rectangle){func(r image.Rectangle) { a.button(c, r, "Search again", raised, text, pr.ProbeBoards) }})
 	}
 	// Wi-Fi and help, and Software update: this screen has no pages.
-	if a.Setup != nil || a.Updater != nil {
-		rows = append(rows, []func(image.Rectangle){func(r image.Rectangle) { a.systemKeys(c, r) }})
+	if sk := a.systemKeyList(c); len(sk) > 0 {
+		rows = append(rows, sk)
 	}
-	keys := right
+	keys, rowH := right, 72
 	if wide {
-		h := len(rows)*92 - 20
-		keys = kit.NewStack(kit.Rows(textArea, 0, kit.Fr(1), kit.Px(max(0, h)))[1], 20)
+		// The narrow column: each key in its own row, at the bottom of the column.
+		var flat [][]func(image.Rectangle)
+		for _, row := range rows {
+			for _, k := range row {
+				flat = append(flat, []func(image.Rectangle){k})
+			}
+		}
+		rows, rowH = flat, 56
+		h := len(rows)*(rowH+12) - 12
+		keys = kit.NewStack(kit.Rows(textArea, 0, kit.Fr(1), kit.Px(max(0, h)))[1], 12)
 	}
 	for _, row := range rows {
 		sizes := make([]kit.Size, len(row))
 		for i := range sizes {
 			sizes[i] = kit.Fr(1)
 		}
-		for i, r := range kit.Cols(keys.Next(72), 12, sizes...) {
+		for i, r := range kit.Cols(keys.Next(rowH), 12, sizes...) {
 			row[i](r)
 		}
 		if !wide {

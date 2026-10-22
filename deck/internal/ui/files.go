@@ -229,9 +229,10 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 	tableH := len(rows)*30 + 20
 	var pic, box, keys image.Rectangle
 	if pg.wide {
-		// The picture and the slicer data side by side, the keys in the row of actions.
+		// The picture and the slicer data side by side, as high as each other; the keys in the row
+		// of actions.
 		content, acts := pg.split()
-		side := min(content.Dy(), 180)
+		side := min(content.Dy(), tableH, content.Dx()/2)
 		cols := kit.Cols(content, 16, kit.Px(side), kit.Fr(1))
 		pic, box, keys = kit.Rows(cols[0], 0, kit.Px(side))[0], kit.Rows(cols[1], 0, kit.Px(min(tableH, content.Dy())))[0], acts
 	} else {

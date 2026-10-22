@@ -68,12 +68,14 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		closeSwap = end
 	}
 	f := a.pageBack(c, []string{"Filament swap", "Load filament", "Unload filament"}[sw.mode], "Close", closeSwap)
-	// Tall: the step, its text and its keys under each other. Wide: the step and its text in the
-	// left column, and the keys in the right column, which they fill.
+	// Tall: the step, its text and its keys under each other. Wide: the step and its text at the
+	// top of the right column, and the keys under them, which fill the column.
 	var txt *kit.Stack
+	var keyArea image.Rectangle
 	lineH, face := 30, gfx.Face(false, 20)
 	if f.wide {
-		txt, lineH, face = kit.NewStack(kit.Inset(f.aside(), 0, -6, 0, 0), 0), 26, gfx.Face(false, 18)
+		r := kit.Rows(f.body(), 12, kit.Px(140), kit.Fr(1))
+		txt, keyArea, lineH, face = kit.NewStack(r[0], 0), r[1], 26, gfx.Face(false, 18)
 	} else {
 		txt = kit.NewStack(f.body(), 0)
 	}
@@ -89,7 +91,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 			for i, z := range sizes {
 				s[i] = kit.Fr(z.fr)
 			}
-			return kit.Rows(f.body(), 12, s...)
+			return kit.Rows(keyArea, 12, s...)
 		}
 		// At the bottom of the screen, a little larger than their size.
 		s := make([]kit.Size, len(sizes)+1)

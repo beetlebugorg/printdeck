@@ -36,14 +36,13 @@ func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 		rows = append(rows, [2]string{"Cost", fmt.Sprintf("$%.2f", r.Cost)})
 	}
 
-	// Tall: the picture, the table, and Reprint. Wide: the picture and the table at the right,
-	// Reprint in the left column.
+	// Tall: the picture, the table, and Reprint. Wide: the picture and the table side by side, as
+	// high as each other, and Reprint at the right of the row of actions.
 	tableH := len(rows)*30 + 20
 	var pic, box, keys image.Rectangle
 	if pg.wide {
-		// The picture and the details side by side, Reprint at the right of the row of actions.
 		content, acts := pg.split()
-		side := min(content.Dy(), 180)
+		side := min(content.Dy(), tableH, content.Dx()/2)
 		cols := kit.Cols(content, 16, kit.Px(side), kit.Fr(1))
 		pic, box = kit.Rows(cols[0], 0, kit.Px(side))[0], kit.Rows(cols[1], 0, kit.Px(min(tableH, content.Dy())))[0]
 		keys = kit.Cols(acts, 12, kit.Fr(1), kit.Fr(1))[1]
@@ -66,12 +65,11 @@ func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 	a.region("Details", box)
 	detailRows(c, kit.Inset(box, 18, 10, 18, 10), rows, 30)
 
-	// The picture is nil when the file is gone.
+	// The picture is nil when the file is gone: Reprint is off, and the picture says why.
 	switch {
 	case img == nil && !loading:
-		key(c, keys, "The file is gone", surface, dim, false)
-	case st.Busy():
-		key(c, keys, "A print runs", surface, dim, false)
+		key(c, keys, "Reprint", surface, dim, false)
+		a.region("Reprint", keys)
 	default:
 		path := r.Path
 		a.printerKey(c, keys, "Reprint", orange, onAcc, func() { a.confirmPrint(path) })

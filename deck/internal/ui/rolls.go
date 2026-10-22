@@ -54,13 +54,14 @@ func (a *App) drawRollForm(c *gfx.Canvas) {
 		return
 	}
 	f := a.pageBack(c, "New roll", "Back", func() { a.form = nil })
-	// Tall: the material, the four rows, the filament and Save under each other. Wide: the
-	// material, the filament and Save in the left column; the rows at the right.
+	// The material, the rows, the filament and Save under each other. Wide: the rows in two
+	// columns, and Save at the right of the row of actions.
 	var mats, rows, net, save image.Rectangle
 	if f.wide {
-		l := kit.Rows(f.aside(), 10, kit.Px(52), kit.Fr(1), kit.Px(28), kit.Px(72))
-		mats, net, save = l[0], l[2], l[3]
-		rows = f.body()
+		content, acts := f.split()
+		l := kit.Rows(content, 10, kit.Px(52), kit.Fr(1), kit.Px(24))
+		mats, rows, net = l[0], l[1], l[2]
+		save = kit.Cols(acts, 12, kit.Fr(1), kit.Fr(1))[1]
 	} else {
 		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 8), 12, kit.Px(52), kit.Fr(1), kit.Px(28), kit.Px(80))
 		mats, rows, net, save = r[0], r[1], r[2], r[3]
@@ -130,7 +131,15 @@ func (a *App) drawRollForm(c *gfx.Canvas) {
 			})
 		}}}, items...)
 	}
-	a.menuRows(c, rows, f.wide, 86, 12, items)
+	if f.wide {
+		n := (len(items) + 1) / 2
+		for i, cell := range kit.Grid(rows, 2, n, 10)[:len(items)] {
+			it := items[i]
+			a.menuRow(c, cell, it.title, it.sub, it.col, it.tap)
+		}
+	} else {
+		a.menuRows(c, rows, f.wide, 86, 12, items)
+	}
 
 	left := fm.scale - fm.reel
 	msg := "Weigh the roll with its reel"
