@@ -149,6 +149,7 @@ type App struct {
 	awayFile      string
 	touchAt       time.Time       // the last touch
 	followed      bool            // followPrint saw a frame
+	hub           *hub            // shared with the sessions of this App (hub.go)
 	ackR          image.Rectangle // the key that the finger tapped last, and when (drawAck)
 	ackAt         time.Time
 	bar           bool            // the frame has the print bar
@@ -228,15 +229,14 @@ type confirmBox struct {
 	danger        bool
 	onYes         func()
 	onNo          func() // or nil
+	shared        bool   // a question of the hub, on each screen
 }
 
 // Ask shows a question with two answers over the screen, for example when an app asks for access
 // to the printer. answer gets true for yes. It is safe to call from any goroutine.
 func (a *App) Ask(question, yes, no string, answer func(bool)) {
-	a.post(func() {
-		a.confirm = &confirmBox{question: question, yes: yes, no: no,
-			onYes: func() { answer(true) }, onNo: func() { answer(false) }}
-	})
+	a.hub.ask(&confirmBox{question: question, yes: yes, no: no,
+		onYes: func() { answer(true) }, onNo: func() { answer(false) }})
 }
 
 // Session returns a new App on the same printer and settings, with its own screens: the UI
@@ -252,6 +252,7 @@ func (a *App) Session(width, height int) *App {
 	s.Clock24, s.OnClock = a.Clock24, a.OnClock
 	s.Material, s.OnMaterial = a.Material, a.OnMaterial
 	s.Updater = a.Updater
+	s.hub = a.hub
 	return s
 }
 
@@ -259,7 +260,7 @@ func (a *App) Session(width, height int) *App {
 var drawMu sync.Mutex
 
 func New() *App {
-	return &App{Now: time.Now, created: time.Now(), LCDFont: "5x8", wake: make(chan struct{}, 1), posted: make(chan func(), 16),
+	return &App{hub: newHub(), Now: time.Now, created: time.Now(), LCDFont: "5x8", wake: make(chan struct{}, 1), posted: make(chan func(), 16),
 		joy: &joystick{}, zStep: 1, UnloadMM: 80, LoadMM: 70, Theme: "auto", NightFrom: 20, NightTo: 7}
 }
 
@@ -273,6 +274,8 @@ func (a *App) Redraw() {
 
 // Run handles input and draws frames until ctx ends.
 func (a *App) Run(ctx context.Context, events <-chan touch.Event, present func(*gfx.Canvas)) {
+	a.hub.join(a)
+	defer a.hub.leave(a)
 	cv := gfx.New(a.Screen().W, a.Screen().H)
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
@@ -329,6 +332,7 @@ func (a *App) Draw(c *gfx.Canvas) {
 	setSize(a.Screen())
 	// The touch screen is the screen that the display of the printer follows: its keys are the
 	// menu of the display.
+	a.showShared()
 	drawing, a.focus, a.lcdTitle, a.lcdNotes = a, a.focus[:0], "", a.lcdNotes[:0]
 	a.names, a.bar = a.names[:0], false
 	defer func() { drawing, a.collect = nil, false }()

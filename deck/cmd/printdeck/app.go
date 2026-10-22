@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
@@ -46,21 +47,26 @@ type appHello struct {
 // shows the UI with the remote screen. It sends the token of the first line in the X-Api-Key
 // header.
 //
-//	printdeck app [-dir DIR] [-addr ADDR] [-parent]
+//	printdeck app [-dir DIR] [-addr ADDR] [-parent] [-sim]
 func desktopApp(args []string) {
 	fs := flag.NewFlagSet("app", flag.ExitOnError)
 	dir := fs.String("dir", "", "the folder of the app (default: the configuration folder of the user)")
 	addr := fs.String("addr", appAddr, "the address of the web server")
 	parent := fs.Bool("parent", false, "end when the input closes (the window of the app started the program)")
+	sim := fs.Bool("sim", false, "a simulated printer: the TAZ Workhorse on the simulated board, in its own folder")
 	fs.Parse(args)
 	if *dir == "" {
 		base, err := os.UserConfigDir()
 		if err != nil {
 			log.Fatal(err)
 		}
-		*dir = filepath.Join(base, "Printdeck")
+		name := "Printdeck"
+		if *sim {
+			name = "Printdeck Sim"
+		}
+		*dir = filepath.Join(base, name)
 	}
-	cfg, err := appConfig(*dir)
+	cfg, err := appConfig(*dir, *sim)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -124,8 +130,8 @@ func desktopApp(args []string) {
 
 // appConfig makes the folders of the app in dir, and returns the configuration of the deck for
 // them. A new folder gets a printer.cfg with only the include of the Printdeck sections: the
-// user adds the printer.
-func appConfig(dir string) (config.Config, error) {
+// user adds the printer. With sim, a new folder gets the simulated printer (simprinter.cfg).
+func appConfig(dir string, sim bool) (config.Config, error) {
 	cfg := config.Load()
 	cfg.Display = "none"
 	cfg.StateDir = dir
@@ -144,7 +150,11 @@ func appConfig(dir string) (config.Config, error) {
 		return cfg, err
 	}
 	if _, err := os.Stat(cfg.KlipperConfig); os.IsNotExist(err) {
-		if err := os.WriteFile(cfg.KlipperConfig, []byte(appPrinterCfg), 0o644); err != nil {
+		body := appPrinterCfg
+		if sim {
+			body = simPrinterCfg + "\n[include printdeck.cfg]\n"
+		}
+		if err := os.WriteFile(cfg.KlipperConfig, []byte(body), 0o644); err != nil {
 			return cfg, err
 		}
 	}
@@ -161,6 +171,11 @@ func socketPath(dir string) string {
 	sum := sha256.Sum256([]byte(dir))
 	return filepath.Join(os.TempDir(), "printdeck-"+hex.EncodeToString(sum[:4])+".sock")
 }
+
+// simPrinterCfg is the printer of "printdeck app -sim": the TAZ Workhorse on the simulated board.
+//
+//go:embed simprinter.cfg
+var simPrinterCfg string
 
 // appPrinterCfg is the printer.cfg of a new app folder.
 const appPrinterCfg = `# Put the configuration of the printer above this line: the [mcu] section with the serial port

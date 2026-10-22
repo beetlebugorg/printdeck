@@ -235,13 +235,13 @@ func (a *App) ConfirmFilePrint(path string) {
 			a.Printer.PrintFile(path)
 			return
 		}
-		a.confirm = &confirmBox{question: q, yes: yes, danger: danger, onYes: func() {
+		// A print from a slicer: the question is on each screen of the deck.
+		a.hub.ask(&confirmBox{question: q, yes: yes, danger: danger, onYes: func() {
 			if set != "" {
 				a.setMaterial(set)
 			}
 			a.Printer.PrintFile(path)
-			a.pages = nil
-		}}
+		}})
 	})
 }
 
