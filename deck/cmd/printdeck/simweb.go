@@ -34,10 +34,23 @@ func registerSim(mux *http.ServeMux, k *printer.Klippy, ok func(*http.Request) b
 		out := map[string]any{"state": st.Text, "busy": st.Busy(), "file": st.File, "filepos": st.FilePos,
 			"tool": st.Tool, "toolT": st.ToolTarget, "bed": st.Bed, "bedT": st.BedTarget, "fan": st.Fan / 100}
 		if q, err := k.Query(map[string][]string{"motion_report": {"live_position", "live_extruder_velocity"},
-			"toolhead": {"homed_axes"}}); err == nil {
+			"toolhead": {"homed_axes", "position"}, "gcode_move": {"gcode_position"}}); err == nil {
 			out["pos"] = q["motion_report"]["live_position"]
 			out["ev"] = q["motion_report"]["live_extruder_velocity"]
 			out["homed"] = q["toolhead"]["homed_axes"]
+			// The offset of the G-code from the tool head: the bed tilt (z_adjust, a move transform
+			// after gcode_move) and the G-code offsets. The moves of /sim/path are G-code positions.
+			pos, _ := q["toolhead"]["position"].([]any)
+			gpos, _ := q["gcode_move"]["gcode_position"].([]any)
+			if len(pos) >= 3 && len(gpos) >= 3 {
+				off := make([]float64, 3)
+				for i := range off {
+					a, _ := pos[i].(float64)
+					b, _ := gpos[i].(float64)
+					off[i] = a - b
+				}
+				out["offset"] = off
+			}
 		}
 		json.NewEncoder(w).Encode(out)
 	}))
