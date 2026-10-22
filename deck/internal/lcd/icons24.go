@@ -109,6 +109,50 @@ var icons24 = map[string]func(c *canvas, x, y int){
 			c.fill(lx-2, y+k, lx+3, y+k+4, true)
 		}
 	},
+	"folder": func(c *canvas, x, y int) { // a folder with a tab
+		c.fill(x+1, y+4, x+10, y+7, true)
+		c.frame(x+1, y+6, x+23, y+21)
+		c.frame(x+2, y+7, x+22, y+20)
+		c.line(x+2, y+10, x+21, y+10)
+	},
+	"menu": func(c *canvas, x, y int) { // four keys in a grid, as the pages of the home screen
+		for _, p := range [][2]int{{2, 2}, {13, 2}, {2, 13}, {13, 13}} {
+			c.fill(x+p[0], y+p[1], x+p[0]+9, y+p[1]+9, true)
+			c.set(x+p[0], y+p[1], false)
+			c.set(x+p[0]+8, y+p[1], false)
+			c.set(x+p[0], y+p[1]+8, false)
+			c.set(x+p[0]+8, y+p[1]+8, false)
+		}
+	},
+	"yes": func(c *canvas, x, y int) { // a check mark
+		for i := 0; i < 3; i++ {
+			c.line(x+3, y+12+i, x+9, y+18+i)
+			c.line(x+9, y+18+i, x+21, y+5+i)
+		}
+	},
+	"help": func(c *canvas, x, y int) { // a question mark in a circle
+		c.arc(x+12, y+12, 11, 0, 2*math.Pi)
+		c.arc(x+12, y+12, 10, 0, 2*math.Pi)
+		c.arc(x+12, y+9, 4, math.Pi, 2.4*math.Pi)
+		c.arc(x+12, y+9, 3, math.Pi, 2.4*math.Pi)
+		c.fill(x+11, y+12, x+14, y+15, true)
+		c.fill(x+11, y+17, x+14, y+20, true)
+	},
+	"save": func(c *canvas, x, y int) { // a disk: the shutter at the top, the label at the bottom
+		c.polygon([][2]int{{2, 2}, {19, 2}, {22, 5}, {22, 22}, {2, 22}}, x, y, true)
+		c.fill(x+6, y+3, x+17, y+9, false)
+		c.fill(x+13, y+4, x+16, y+8, true)
+		c.fill(x+5, y+13, x+20, y+21, false)
+		c.line(x+7, y+16, x+17, y+16)
+		c.line(x+7, y+18, x+17, y+18)
+	},
+	"plus": func(c *canvas, x, y int) {
+		c.fill(x+10, y+3, x+14, y+21, true)
+		c.fill(x+3, y+10, x+21, y+14, true)
+	},
+	"minus": func(c *canvas, x, y int) {
+		c.fill(x+3, y+10, x+21, y+14, true)
+	},
 	"no": func(c *canvas, x, y int) { // a cross in a circle
 		c.arc(x+12, y+12, 11, 0, 2*math.Pi)
 		c.arc(x+12, y+12, 10, 0, 2*math.Pi)

@@ -214,17 +214,27 @@ func (a *App) lcdScreen(st printer.State) printer.LCDScreen {
 	return printer.LCDScreen{Menu: m, Font: font}
 }
 
-// lcdIcons are the icons of the keys on the display, by a word of the label.
+// lcdIcons are the icons of the keys on the display, by a word of the label. The first match
+// wins, so a label with two words of the list has its specific entry first ("print history").
 var lcdIcons = []struct{ word, icon string }{
-	{"back", "back"}, {"close", "back"}, {"status", "status"}, {"print a file", "print"}, {"reprint", "print"},
-	{"print", "print"}, {"preheat", "preheat"}, {"heat", "preheat"}, {"cool", "cool"}, {"filament", "filament"},
-	{"unload", "unload"}, {"load", "load"}, {"purge", "load"}, {"move", "move"}, {"park", "move"},
-	{"center", "move"}, {"home", "home"}, {"motors", "move"}, {"maintenance", "maint"}, {"nozzle", "maint"},
-	{"machine", "machine"}, {"console", "console"}, {"macro", "macro"}, {"history", "history"},
-	{"statistics", "stats"}, {"wi-fi", "wifi"}, {"bed", "bed"}, {"probe", "probe"}, {"pid", "pid"},
-	{"firmware", "chip"}, {"save", "save"}, {"stop", "stop"}, {"pause", "pause"}, {"resume", "play"},
-	{"cancel", "no"}, {"restart", "machine"}, {"tune", "tune"}, {"run", "play"}, {"use", "yes"},
-	{"yes", "yes"}, {"ok", "yes"}, {"done", "yes"}, {"no", "no"},
+	{"back to the print", "status"}, {"print history", "history"}, {"bed mesh", "mesh"}, {"home axes", "home"},
+	{"home all", "home"}, {"software update", "update"}, {"no cura material", "no"}, {"cura material", "layers"},
+	{"new roll", "plus"}, {"firmware restart", "chip"}, {"check the height", "probe"}, {"check now", "update"},
+	{"back", "back"}, {"close", "back"}, {"status", "status"}, {"menu", "menu"}, {"files", "folder"},
+	{"print a file", "print"}, {"reprint", "print"}, {"print", "print"}, {"preheat", "preheat"}, {"heat", "preheat"},
+	{"cool", "cool"}, {"filament", "filament"}, {"rolls", "filament"}, {"pla", "filament"}, {"petg", "filament"},
+	{"abs", "filament"}, {"tpu", "filament"}, {"unload", "unload"}, {"load", "load"}, {"purge", "load"},
+	{"extrude", "load"}, {"retract", "unload"}, {"move", "move"}, {"park", "move"}, {"center", "move"},
+	{"home", "home"}, {"motors", "move"}, {"maintenance", "maint"}, {"nozzle", "maint"}, {"machine", "machine"},
+	{"console", "console"}, {"type", "console"}, {"macro", "macro"}, {"history", "history"},
+	{"statistics", "stats"}, {"theme", "theme"}, {"clock", "clock"}, {"wi-fi", "wifi"}, {"scan", "wifi"},
+	{"search", "wifi"}, {"help", "help"}, {"bed", "bed"}, {"screw", "screw"}, {"probe", "probe"}, {"pid", "pid"},
+	{"firmware", "chip"}, {"write firmware", "chip"}, {"install", "update"},
+	{"update", "update"}, {"save", "save"}, {"stop", "stop"}, {"pause", "pause"}, {"resume", "play"},
+	{"cancel", "no"}, {"abort", "no"}, {"restart", "machine"}, {"tune", "tune"}, {"run", "play"},
+	{"weigh", "weigh"}, {"remove", "trash"}, {"delete", "trash"}, {"+", "plus"}, {"−", "minus"},
+	{"use", "yes"}, {"accept", "yes"}, {"set", "yes"}, {"yes", "yes"}, {"ok", "yes"}, {"done", "yes"},
+	{"finish", "yes"}, {"no", "no"},
 }
 
 // lcdIcon returns the icon of a key: by the first word that its label has, else a file for a
