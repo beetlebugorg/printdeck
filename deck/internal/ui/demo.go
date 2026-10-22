@@ -88,8 +88,18 @@ func (a *App) ResetScreens() {
 
 // OpenPrintScreen opens a screen by name; for the demo.
 func (a *App) OpenPrintScreen(name string) {
-	a.pages, a.tune, a.swap, a.keypad, a.form = nil, false, nil, nil, nil
+	a.pages, a.tune, a.swap, a.keypad, a.form, a.away = nil, false, nil, nil, nil, false
 	switch name {
+	case "away", "away-rolls", "away-file":
+		// Home on the screen of the print: the other screens, with the print bar.
+		a.away, a.awayFile, a.touchAt = true, a.Printer.State().FilePath, a.Now()
+		switch name {
+		case "away-rolls":
+			a.pages = []page{pageSpools}
+		case "away-file":
+			a.file = a.Printer.Files()[0]
+			a.pages = []page{pageFiles, pageFile}
+		}
 	case "control", "move":
 		a.pages = []page{pageMove}
 	case "files":

@@ -255,10 +255,11 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	path := f.Path
 	k := kit.Cols(keys, 12, kit.Fr(1), kit.Px(144))
-	if st.Busy() {
-		key(c, k[0], "A print runs", surface, dim, false)
-	} else {
-		a.button(c, k[0], "Print", orange, onAcc, func() { a.confirmPrint(path) })
+	a.printerKey(c, k[0], "Print", orange, onAcc, func() { a.confirmPrint(path) })
+	if st.Busy() && path == st.FilePath {
+		// The file of the print that runs.
+		a.lockedKey(c, k[1], "Delete", raised)
+		return
 	}
 	a.button(c, k[1], "Delete", raised, red, func() {
 		a.confirm = &confirmBox{question: "Delete " + gfx.Fit(gfx.Face(true, 28), f.Name, 300) + "?", yes: "Delete", danger: true, onYes: func() {

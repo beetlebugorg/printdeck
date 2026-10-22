@@ -97,3 +97,13 @@ func drawList(c *gfx.Canvas, cx, cy, r int, col color.RGBA) {
 		c.RoundRect(image.Rect(cx-r+4*t, cy+dy-t, cx+r, cy+dy+t), t, col)
 	}
 }
+
+// drawLock draws a small padlock with its middle at cx, cy: the sign of a key that waits for the
+// end of the print.
+func drawLock(c *gfx.Canvas, cx, cy int, col color.RGBA) {
+	// The shackle: an arch of two posts and a top bar, over the body.
+	c.Fill(image.Rect(cx-5, cy-7, cx-3, cy-1), col)
+	c.Fill(image.Rect(cx+3, cy-7, cx+5, cy-1), col)
+	c.Fill(image.Rect(cx-4, cy-9, cx+4, cy-7), col)
+	c.RoundRect(image.Rect(cx-7, cy-2, cx+7, cy+8), 2, col)
+}

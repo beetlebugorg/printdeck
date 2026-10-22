@@ -271,10 +271,14 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 		})
 	}
 	k := kit.Cols(keys, 12, kit.Fr(1), kit.Px(144))
-	a.button(c, k[0], "Weigh again", raised, text, func() {
+	rollKey := a.button
+	if in, ok := s.In(); ok && in.ID == id {
+		rollKey = a.printerKey // the roll in the printer: a print takes its filament
+	}
+	rollKey(c, k[0], "Weigh again", raised, text, func() {
 		a.editNumber("Roll on the scale", int(sp.Left()+sp.Reel+0.5), 9999, " g", func(v int) { s.Weigh(id, float64(v)) })
 	})
-	a.button(c, k[1], "Remove", raised, red, func() {
+	rollKey(c, k[1], "Remove", raised, red, func() {
 		a.confirm = &confirmBox{question: "Remove " + gfx.Fit(gfx.Face(true, 28), sp.Label(), 300) + "?", yes: "Remove", danger: true,
 			onYes: func() { s.Remove(id); a.back() }}
 	})

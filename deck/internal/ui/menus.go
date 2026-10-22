@@ -270,13 +270,13 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 	}
 	a.menuRows(c, rowsArea, f.wide, 60, 5, items)
 	k := kit.Cols(restart, 12, kit.Fr(1), kit.Fr(1))
-	a.button(c, k[0], "Restart Klipper", raised, text, func() {
+	a.printerKey(c, k[0], "Restart Klipper", raised, text, func() {
 		a.confirm = &confirmBox{question: "Restart Klipper?", yes: "Restart", onYes: func() {
 			a.Toast("Restarting Klipper…")
 			a.do(pr.RestartKlipper)
 		}}
 	})
-	a.button(c, k[1], "Firmware restart", raised, red, func() {
+	a.printerKey(c, k[1], "Firmware restart", raised, red, func() {
 		a.confirm = &confirmBox{question: "Restart the printer firmware?", yes: "Restart", danger: true, onYes: func() {
 			a.Toast("Restarting the firmware…")
 			a.do(pr.FirmwareRestart)

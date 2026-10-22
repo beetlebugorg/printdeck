@@ -123,6 +123,12 @@ func led(c *gfx.Canvas, x, y int, on bool) {
 
 // key draws a physical key: a dark wall below a cap that moves down when pressed.
 func key(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pressed bool) {
+	keyBeside(c, r, label, cap, ink, pressed, 0)
+}
+
+// keyBeside is key with room at the right of the label: right pixels of the cap stay free, for a
+// sign such as the lock of printerKey.
+func keyBeside(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pressed bool, right int) {
 	const depth = 5
 	wall := darken(cap, 0.35)
 	if cap == raised {
@@ -141,6 +147,7 @@ func key(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pr
 	}
 	// A label that is too long gets a smaller font, down to 14 pixels.
 	label = strings.ToUpper(label)
+	face.Max.X -= right
 	for size > 14 && gfx.Width(gfx.Face(true, size), label) > face.Dx()-16 {
 		size--
 	}

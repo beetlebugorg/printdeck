@@ -161,16 +161,18 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 		if a.Setup != nil {
 			a.button(c, k[0], "Help", raised, text, a.OpenHelp)
 		}
-		file := st.FilePath
-		a.button(c, k[1], "Home", raised, text, func() { a.finishLeft, a.finishFile = true, file })
+		a.button(c, k[1], "Home", raised, text, func() { a.leavePrint(st) })
 		return
 	}
+	// Help, Home and Cancel print. Home leaves the start of the print; the print goes on.
+	k := kit.Cols(cancel, 12, kit.Px(130), kit.Fr(1))
 	if a.Setup != nil {
-		k := kit.Cols(cancel, 12, kit.Px(130), kit.Fr(1))
+		k = kit.Cols(cancel, 12, kit.Px(110), kit.Px(110), kit.Fr(1))
 		a.button(c, k[0], "Help", raised, text, a.OpenHelp)
-		cancel = k[1]
+		k = k[1:]
 	}
-	a.button(c, cancel, "Cancel print", raised, red, a.askCancel)
+	a.button(c, k[0], "Home", raised, text, func() { a.leavePrint(st) })
+	a.button(c, k[1], "Cancel print", raised, red, a.askCancel)
 }
 
 // zSteps are the steps of the Z offset on the first layer screen, in mm.
@@ -218,13 +220,14 @@ func (a *App) drawFirstLayer(c *gfx.Canvas, st printer.State) {
 		a.button(c, steps[i], fmt.Sprint(s), fill, fg, func() { a.zBaby = v })
 	}
 	c.Text(steps[3], "− is closer", gfx.Face(false, 15), dim, gfx.Right)
-	pc := kit.Cols(r[2], 12, kit.Fr(1), kit.Fr(1))
+	pc := kit.Cols(r[2], 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
 	if a.Setup != nil {
-		pc = kit.Cols(r[2], 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
-		a.button(c, pc[2], "Help", raised, text, a.OpenHelp)
+		pc = kit.Cols(r[2], 8, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1))
+		a.button(c, pc[3], "Help", raised, text, a.OpenHelp)
 	}
 	a.button(c, pc[0], "Pause", raised, text, pr.Pause)
 	a.button(c, pc[1], "Cancel", raised, red, a.askCancel)
+	a.button(c, pc[2], "Home", raised, text, func() { a.leavePrint(st) })
 	a.modelView(c, box, st)
 	layer := image.Rect(box.Min.X+14, box.Min.Y+8, box.Max.X-14, box.Min.Y+30)
 	c.Text(layer, fmt.Sprintf("LAYER 1 OF %d", st.Layers), gfx.Face(true, 13), lcdDim, gfx.Left)

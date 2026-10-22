@@ -105,7 +105,8 @@ var printLCD = image.Rect(16, 16, BaseW-16, 108)
 
 // drawHome is the idle screen: the status screen of the printer display, Print, preheat, the last
 // print, and the menus. A wide screen has Print and preheat under the display, and the rest at the
-// right.
+// right. While a print runs (Home on the screen of the print), it has the pages to look at, and the
+// keys that change the printer wait.
 func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	m := a.loaded()
@@ -126,23 +127,20 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 		pre = "Preheat " + m.Name
 	}
 	if st.Busy() {
-		// The end macro of a print still runs: the way back to it. A new temperature would
-		// change the cooling of the bed, so the heat keys do nothing.
-		back := "Back to the print"
-		if st.HasBedCoolLeft {
-			back += " · " + shortWait(st.BedCoolLeft)
-		}
-		a.button(c, k[0], back, orange, onAcc, func() { a.finishLeft = false })
-		a.button(c, heat[0], pre, raised, dim, func() {})
-		a.button(c, heat[1], "Cool down", raised, dim, func() {})
+		// Away from the print: the files to look at, and the heat keys wait for the end of the
+		// print. The print bar at the bottom goes back to the print.
+		a.button(c, k[0], "Files", raised, text, func() {
+			go func() { pr.LoadFiles(); a.Redraw() }()
+			a.open(pageFiles)
+		})
 	} else {
 		a.button(c, k[0], "Print a file", orange, onAcc, func() {
 			go func() { pr.LoadFiles(); a.Redraw() }()
 			a.open(pageFiles)
 		})
-		a.button(c, heat[0], pre, raised, text, func() { pr.Heat(m.Tool, m.Bed) })
-		a.button(c, heat[1], "Cool down", raised, text, func() { pr.Heat(0, 0) })
 	}
+	a.printerKey(c, heat[0], pre, raised, text, func() { pr.Heat(m.Tool, m.Bed) })
+	a.printerKey(c, heat[1], "Cool down", raised, text, func() { pr.Heat(0, 0) })
 
 	// The last print, and the pages in the space under it, down to the bottom.
 	if !f.wide {
@@ -151,10 +149,15 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	r := kit.Rows(rest, 12, kit.Px(90), kit.Fr(1))
 	a.drawLastPrint(c, st, r[0])
 	a.region("Pages", r[1])
-	pages := []struct {
+	type homePage struct {
 		name string
 		p    page
-	}{{"Filament", pageFilament}, {"Move", pageMove}, {"Maintenance", pageMaintenance}, {"Machine", pageMachine}}
+	}
+	pages := []homePage{{"Filament", pageFilament}, {"Move", pageMove}, {"Maintenance", pageMaintenance}, {"Machine", pageMachine}}
+	if st.Busy() {
+		// Filament and Move change the printer: the pages to look at in their place.
+		pages = []homePage{{"Rolls", pageSpools}, {"History", pageHistory}, {"Console", pageConsole}, {"Machine", pageMachine}}
+	}
 	for i, cell := range kit.Grid(r[1], 2, 2, 12) {
 		p := pages[i].p
 		a.button(c, cell, pages[i].name, raised, text, func() { a.open(p) })
@@ -174,7 +177,7 @@ func (a *App) drawLastPrint(c *gfx.Canvas, st printer.State, last image.Rectangl
 	c.Text(image.Rect(last.Min.X+16, last.Min.Y+28, last.Max.X-150, last.Min.Y+58), gfx.Fit(gfx.Face(true, 20), l.File, last.Dx()-170), gfx.Face(true, 20), text, gfx.Left)
 	c.Text(image.Rect(last.Min.X+16, last.Min.Y+56, last.Max.X-150, last.Max.Y-8), l.Summary(func(mm float64) float64 { return a.grams(mm, "") }), gfx.Face(false, 16), dim, gfx.Left)
 	path := l.Path
-	a.button(c, image.Rect(last.Max.X-140, last.Min.Y+20, last.Max.X-14, last.Max.Y-16), "Reprint", raised, text, func() {
+	a.printerKey(c, image.Rect(last.Max.X-140, last.Min.Y+20, last.Max.X-14, last.Max.Y-16), "Reprint", raised, text, func() {
 		a.confirmPrint(path)
 	})
 }
