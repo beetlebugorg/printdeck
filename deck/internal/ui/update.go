@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 	"printdeck/kit"
 	"strings"
@@ -26,8 +27,8 @@ type UpdateStatus struct {
 	Latest   string // the newest release of the channel, or ""
 	Notes    string // the notes of the newest release
 	Newer    bool   // the newest release is newer than this Printdeck
-	Busy     string // "Downloading", "Installing", or ""
-	Done     int64  // the bytes of the download
+	Busy     string // the step: "Downloading", the steps of the install (system.Step...), "Restarting", or ""
+	Done     int64  // the bytes of the step, of Total; 0 of 0 for a step with no size
 	Total    int64
 	Err      string
 }
@@ -86,7 +87,11 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 	msg := ""
 	switch {
 	case u.Busy != "":
-		msg = u.Busy + "… The Printdeck restarts into the new version when it is done."
+		msg = u.Busy + "…"
+		if u.Total > 0 {
+			msg += fmt.Sprintf(" %d %%", u.Done*100/u.Total)
+		}
+		msg += " The Printdeck restarts into the new version when it is done."
 	case u.Err != "":
 		msg = u.Err
 	case u.Newer:
@@ -111,7 +116,7 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 		c.Text(s.Next(26), l, face, col, gfx.Left)
 	}
 	a.textRegion("Notes", image.Rect(notes.Min.X, notes.Min.Y, notes.Max.X, s.Y()), face, wrapText(face, msg, notes.Dx())...)
-	if u.Busy == "Downloading" && u.Total > 0 {
+	if u.Busy != "" && u.Total > 0 {
 		window(c, bar)
 		w := int(int64(bar.Dx()-8) * u.Done / u.Total)
 		c.RoundRect(image.Rect(bar.Min.X+4, bar.Min.Y+4, bar.Min.X+4+w, bar.Max.Y-4), 3, lcdInk)

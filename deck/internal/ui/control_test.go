@@ -354,3 +354,17 @@ func TestFinishingScreen(t *testing.T) {
 		t.Error("Cancel at the end of a print")
 	}
 }
+
+// While Klipper starts, the deck shows its start screen, not the error of Klipper.
+func TestStartingScreen(t *testing.T) {
+	a, _, cv := newPrintApp(printer.State{Err: "Klipper is not running", Starting: true})
+	a.Draw(cv)
+	if _, ok := a.KeyRect("Restart Klipper"); ok {
+		t.Error("the error screen shows while Klipper starts")
+	}
+	a.Printer.(*recPrinter).State_.Starting = false
+	a.Draw(cv)
+	if _, ok := a.KeyRect("Restart Klipper"); !ok {
+		t.Error("no error screen after the start")
+	}
+}

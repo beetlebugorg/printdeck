@@ -142,11 +142,16 @@ func (u *updater) Install() {
 			fail("The download failed: " + err.Error())
 			return
 		}
-		u.set(func(st *ui.UpdateStatus) { st.Busy = "Installing" })
+		u.set(func(st *ui.UpdateStatus) { st.Busy, st.Done, st.Total = system.StepUnpack, 0, 0 })
 		log.Printf("update: installing %s", rel.Tag)
-		// The helper checks the signature, writes the other slot, and restarts.
-		if err := system.AskHelper(system.HelperRequest{Action: "update"}); err != nil {
+		// The helper checks the signature, writes the other slot, and restarts. It tells its steps.
+		err = system.AskHelperProgress(system.HelperRequest{Action: "update"}, func(step string, done, total int64) {
+			u.set(func(st *ui.UpdateStatus) { st.Busy, st.Done, st.Total = step, done, total })
+		})
+		if err != nil {
 			fail("The update failed: " + err.Error())
+			return
 		}
+		u.set(func(st *ui.UpdateStatus) { st.Busy, st.Done, st.Total = "Restarting", 0, 0 })
 	}()
 }

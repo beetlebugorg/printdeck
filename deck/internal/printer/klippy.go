@@ -82,8 +82,14 @@ type Klippy struct {
 	diameter float64 // filament_diameter of the extruder, in mm
 	timer    timer   // the timings of the running print
 	objects  []string
-	lastPos  int64 // the file position of the last busy state, for the history
+	lastPos  int64     // the file position of the last busy state, for the history
+	startup  bool      // Klipper reports "startup"
+	since    time.Time // the start of the deck, or the last restart of Klipper, for startGrace
 }
+
+// startGrace is how long Klipper may be away after the deck or a restart of Klipper started,
+// before the deck shows that it does not run.
+const startGrace = 30 * time.Second
 
 // klippyObjects are the printer objects that the deck follows. nil means all fields.
 var klippyObjects = map[string][]string{
@@ -113,7 +119,7 @@ const controlTimeout = 5 * time.Minute
 var ErrNotReady = errors.New("Klipper is not ready")
 
 func NewKlippy(socket string, store Store) *Klippy {
-	k := &Klippy{socket: socket, store: store, err: "Klipper is not running"}
+	k := &Klippy{socket: socket, store: store, err: "Klipper is not running", since: time.Now()}
 	k.View = NewView(store)
 	return k
 }
@@ -206,6 +212,7 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 		// "startup", "shutdown" or "error": the message says why, for example a missing MCU.
 		k.mu.Lock()
 		k.errDetail = strings.TrimSpace(msg)
+		k.startup = state == "startup"
 		k.mu.Unlock()
 		k.setDown(firstLine(msg), notify)
 		select {
@@ -271,7 +278,7 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 	k.mu.Lock()
 	k.diameter = diameter
 	k.macros = macros
-	k.conn, k.err = conn, ""
+	k.conn, k.err, k.startup = conn, "", false
 	k.version, k.objects = version, objects
 	k.mu.Unlock()
 	k.LoadFiles()
@@ -482,7 +489,13 @@ func (k *Klippy) setDown(why string, notify func()) {
 	if why != firstLine(k.errDetail) {
 		k.errDetail = ""
 	}
+	if k.err == "" {
+		k.since = time.Now() // Klipper was ready: it restarts, for example after RESTART
+	}
 	k.err, k.status = why, nil
+	if why == "Klipper is not running" {
+		k.startup = false
+	}
 	k.mu.Unlock()
 	k.refresh(notify)
 }
@@ -493,6 +506,7 @@ func (k *Klippy) refresh(notify func()) {
 	st := klippyState(k.status, k.err)
 	if !st.Reachable {
 		st.ErrDetail = k.errDetail
+		st.Starting = (k.startup || k.err == "Klipper is not running") && time.Since(k.since) < startGrace
 	}
 	k.mu.Unlock()
 	if !st.Reachable && k.ConfigPath != "" {

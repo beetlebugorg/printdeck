@@ -2,10 +2,10 @@ package system
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -33,9 +33,17 @@ func TestUpdate(t *testing.T) {
 		t.Skip("no bundle: run os/build.sh")
 	}
 	dir := fakeSystem(t, "root=PARTLABEL=printdeck-root-a ro printdeck.slot=a quiet\n")
-	slot, err := Update(testBundle, io.Discard)
+	var steps []string
+	slot, err := Update(testBundle, func(step string, done, total int64) {
+		if len(steps) == 0 || steps[len(steps)-1] != step {
+			steps = append(steps, step)
+		}
+	})
 	if err != nil || slot != "b" {
 		t.Fatalf("Update = %q, %v", slot, err)
+	}
+	if want := []string{StepUnpack, StepCheck, StepWrite}; strings.Join(steps, ",") != strings.Join(want, ",") {
+		t.Errorf("steps %v, want %v", steps, want)
 	}
 	// The partitions of slot b have the files of the bundle, as the script with tar and dd.
 	ref := filepath.Join(dir, "ref")
@@ -75,7 +83,7 @@ func TestUpdateDamaged(t *testing.T) {
 	if out, err := exec.Command("sh", "-c", script).CombinedOutput(); err != nil {
 		t.Fatalf("make bad bundle: %v %s", err, out)
 	}
-	if _, err := Update(filepath.Join(dir, "bad.tar.xz"), io.Discard); err == nil {
+	if _, err := Update(filepath.Join(dir, "bad.tar.xz"), nil); err == nil {
 		t.Fatal("a damaged bundle was written")
 	}
 	for _, part := range []string{"printdeck-boot-a", "printdeck-root-a"} {

@@ -24,11 +24,25 @@ var (
 	partLabelDir  = "/dev/disk/by-partlabel"
 )
 
+// Progress tells the step of an update, and how far it is: done of total bytes, or 0 of 0 for a
+// step with no size.
+type Progress func(step string, done, total int64)
+
+// The steps of an update, for Progress.
+const (
+	StepUnpack = "Unpacking"
+	StepCheck  = "Checking the signature"
+	StepWrite  = "Writing the system"
+)
+
 // Update writes an update bundle (printdeck-update.tar.xz) to the other slot. Then Reboot with
 // tryboot starts the other slot one time. After the restart, Commit makes the new slot the default
 // if the services start. If the new system does not start, the next restart returns to the current
-// slot. log gets the steps.
-func Update(bundle string, log io.Writer) (slot string, err error) {
+// slot. progress gets the steps, or it is nil.
+func Update(bundle string, progress Progress) (slot string, err error) {
+	if progress == nil {
+		progress = func(string, int64, int64) {}
+	}
 	cur, err := Slot()
 	if err != nil {
 		return "", err
@@ -40,9 +54,10 @@ func Update(bundle string, log io.Writer) (slot string, err error) {
 		return "", err
 	}
 	defer os.RemoveAll(work)
-	if err := extractBundle(bundle, work); err != nil {
+	if err := extractBundleProgress(bundle, work, func(done, total int64) { progress(StepUnpack, done, total) }); err != nil {
 		return "", err
 	}
+	progress(StepCheck, 0, 0)
 	if err := checkSignature(work); err != nil {
 		return "", err
 	}
@@ -50,11 +65,24 @@ func Update(bundle string, log io.Writer) (slot string, err error) {
 		return "", err
 	}
 
-	fmt.Fprintf(log, "Writing slot %s.\n", slot)
-	if err := copyToDevice(filepath.Join(work, "boot-"+slot+".vfat"), filepath.Join(partLabelDir, "printdeck-boot-"+slot)); err != nil {
+	// The boot partition and the root file system, as one step.
+	boot, root := filepath.Join(work, "boot-"+slot+".vfat"), filepath.Join(work, "rootfs.erofs")
+	var total int64
+	for _, f := range []string{boot, root} {
+		if fi, err := os.Stat(f); err == nil {
+			total += fi.Size()
+		}
+	}
+	var written int64
+	write := func(n int64) {
+		written += n
+		progress(StepWrite, written, total)
+	}
+	progress(StepWrite, 0, total)
+	if err := copyToDevice(boot, filepath.Join(partLabelDir, "printdeck-boot-"+slot), write); err != nil {
 		return "", err
 	}
-	if err := copyToDevice(filepath.Join(work, "rootfs.erofs"), filepath.Join(partLabelDir, "printdeck-root-"+slot)); err != nil {
+	if err := copyToDevice(root, filepath.Join(partLabelDir, "printdeck-root-"+slot), write); err != nil {
 		return "", err
 	}
 	return slot, nil
@@ -90,13 +118,22 @@ func RebootTryboot() error {
 }
 
 // extractBundle unpacks the files of a bundle into dir. It takes only the files of a bundle.
-func extractBundle(bundle, dir string) error {
+func extractBundle(bundle, dir string) error { return extractBundleProgress(bundle, dir, nil) }
+
+// extractBundleProgress is extractBundle, and tells the bytes of the bundle that it read.
+func extractBundleProgress(bundle, dir string, progress func(done, total int64)) error {
 	f, err := os.Open(bundle)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	zr, err := xz.NewReader(bufio.NewReaderSize(f, 1<<20))
+	var in io.Reader = f
+	if progress != nil {
+		if fi, err := f.Stat(); err == nil {
+			in = &countReader{r: f, total: fi.Size(), progress: progress}
+		}
+	}
+	zr, err := xz.NewReader(bufio.NewReaderSize(in, 1<<20))
 	if err != nil {
 		return fmt.Errorf("The bundle is damaged: %w", err)
 	}
@@ -168,7 +205,7 @@ func fileSum(path string) (string, error) {
 
 // copyToDevice writes a file to a partition and waits until the data is on the disk (dd
 // conv=fsync).
-func copyToDevice(src, dev string) error {
+func copyToDevice(src, dev string, written func(n int64)) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return err
@@ -178,7 +215,11 @@ func copyToDevice(src, dev string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := io.CopyBuffer(out, in, make([]byte, 4<<20)); err != nil {
+	var r io.Reader = in
+	if written != nil {
+		r = &countReader{r: in, progress: func(n, _ int64) { written(n) }, delta: true}
+	}
+	if _, err := io.CopyBuffer(out, r, make([]byte, 4<<20)); err != nil {
 		out.Close()
 		return fmt.Errorf("writing %s: %w", dev, err)
 	}
@@ -187,4 +228,26 @@ func copyToDevice(src, dev string) error {
 		return fmt.Errorf("writing %s: %w", dev, err)
 	}
 	return out.Close()
+}
+
+// countReader tells progress the bytes that it read: the sum and the total, or with delta the
+// bytes of each read.
+type countReader struct {
+	r        io.Reader
+	n, total int64
+	delta    bool
+	progress func(done, total int64)
+}
+
+func (c *countReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	if n > 0 {
+		c.n += int64(n)
+		if c.delta {
+			c.progress(int64(n), 0)
+		} else {
+			c.progress(c.n, c.total)
+		}
+	}
+	return n, err
 }

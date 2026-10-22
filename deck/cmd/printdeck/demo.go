@@ -171,6 +171,8 @@ func demoShots(dir string, wide bool) {
 	snap("print-setup-stock")
 	p.State_ = printer.State{Err: "Error in printer.cfg", ErrDetail: "Option 'rotation_distance' in section 'stepper_x' must be specified\n\nOnce the underlying issue is corrected, use the\n\"RESTART\" command to reload the config and\nrestart the host software.\nPrinter is halted"}
 	snap("print-error")
+	p.State_ = printer.State{Err: "Printer is not ready", Starting: true, ErrDetail: "Printer is not ready\nThe klippy host software is attempting to connect."}
+	snap("print-starting")
 	for _, n := range []string{"wifi", "password", "done", "help"} {
 		a.OpenSetupScreen(n)
 		snap("setup-" + n)

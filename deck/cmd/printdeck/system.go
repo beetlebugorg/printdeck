@@ -27,7 +27,14 @@ func systemMain(name string, args []string) bool {
 			usage("printdeck-update printdeck-update.tar.xz")
 		}
 		var slot string
-		if slot, err = system.Update(args[0], os.Stdout); err == nil {
+		step := ""
+		progress := func(s string, done, total int64) {
+			if s != step {
+				step = s
+				fmt.Println(s + ".")
+			}
+		}
+		if slot, err = system.Update(args[0], progress); err == nil {
 			fmt.Printf("Restarting into slot %s.\n", slot)
 			err = system.RebootTryboot()
 		}

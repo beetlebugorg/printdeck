@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"strings"
+	"time"
 
 	"printdeck/internal/board"
 )
@@ -74,6 +75,9 @@ func (k *Klippy) RestartKlipper() error {
 	if k.RestartService == nil {
 		return errors.New("Klipper cannot be restarted here")
 	}
+	k.mu.Lock()
+	k.since = time.Now()
+	k.mu.Unlock()
 	return k.RestartService()
 }
 

@@ -134,6 +134,10 @@ func (a *App) OpenPrintScreen(name string) {
 		a.pages = []page{pageMachine, pageUpdate}
 	case "console":
 		a.pages = []page{pageMachine, pageConsole}
+	case "starting":
+		if d, ok := a.Printer.(*DemoPrinter); ok {
+			d.State_ = printer.State{Err: "Printer is not ready", Starting: true, ErrDetail: "Printer is not ready\nThe klippy host software is attempting to connect."}
+		}
 	case "setup", "error":
 		if d, ok := a.Printer.(*DemoPrinter); ok {
 			if name == "setup" {

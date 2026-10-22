@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"printdeck/internal/remote"
@@ -49,9 +51,67 @@ func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend
 		renderSystem(w, klippyLog, apiKey, "", false)
 	}))
 	mux.HandleFunc("POST /system/update", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
+		// The script of the page installs in the background, and reads the progress.
+		if r.Header.Get("X-Printdeck-Progress") == "1" {
+			msg, failed := saveUpload(w, r, pr)
+			if !failed {
+				installing.Lock()
+				installing.installState = installState{Step: system.StepUnpack, Running: true}
+				installing.Unlock()
+				go installSaved()
+			}
+			writeInstallJSON(w, map[string]any{"error": map[bool]string{true: msg}[failed]})
+			return
+		}
 		msg, failed := installUpload(w, r, pr)
 		renderSystem(w, klippyLog, apiKey, msg, failed)
 	}))
+	mux.HandleFunc("GET /system/update/progress", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
+		installing.Lock()
+		st := installing.installState
+		installing.Unlock()
+		writeInstallJSON(w, map[string]any{"version": osVersion(), "step": st.Step, "done": st.Done, "total": st.Total,
+			"error": st.Err, "running": st.Running, "finished": st.Finished})
+	}))
+}
+
+// installState is the progress of an update that the system page installs.
+type installState struct {
+	Step        string
+	Done, Total int64
+	Err         string
+	Running     bool
+	Finished    bool // the slot is written, and the Printdeck restarts
+}
+
+var installing struct {
+	sync.Mutex
+	installState
+}
+
+// installSaved installs the saved bundle with the helper, and keeps its progress for the page.
+func installSaved() {
+	log.Printf("system page: installing an uploaded update")
+	err := system.AskHelperProgress(system.HelperRequest{Action: "update"}, func(step string, done, total int64) {
+		installing.Lock()
+		installing.Step, installing.Done, installing.Total = step, done, total
+		installing.Unlock()
+	})
+	installing.Lock()
+	defer installing.Unlock()
+	installing.Running = false
+	if err != nil {
+		os.Remove(system.UpdateBundle)
+		installing.Err = "The update failed: " + err.Error()
+		return
+	}
+	installing.Step, installing.Finished = "Restarting", true
+}
+
+func writeInstallJSON(w http.ResponseWriter, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	json.NewEncoder(w).Encode(v)
 }
 
 func renderSystem(w http.ResponseWriter, klippyLog, apiKey, msg string, failed bool) {
@@ -88,6 +148,26 @@ func renderSystem(w http.ResponseWriter, klippyLog, apiKey, msg string, failed b
 // installUpload saves an uploaded update bundle, and asks the system helper to install it. The
 // helper writes the other slot, answers, and restarts the Printdeck.
 func installUpload(w http.ResponseWriter, r *http.Request, pr printerBackend) (string, bool) {
+	if msg, failed := saveUpload(w, r, pr); failed {
+		return msg, true
+	}
+	log.Printf("system page: installing an uploaded update")
+	if err := system.AskHelper(system.HelperRequest{Action: "update"}); err != nil {
+		os.Remove(system.UpdateBundle)
+		return "The update failed: " + err.Error(), true
+	}
+	return "The update is written. The Printdeck restarts into it now. Load this page again in a minute.", false
+}
+
+// saveUpload saves an uploaded update bundle as system.UpdateBundle. It fails during a print, or
+// while an update installs.
+func saveUpload(w http.ResponseWriter, r *http.Request, pr printerBackend) (string, bool) {
+	installing.Lock()
+	running := installing.Running
+	installing.Unlock()
+	if running {
+		return "An update installs now.", true
+	}
 	if pr != nil && pr.State().Busy() {
 		return "A print runs. Install the update after the print.", true
 	}
@@ -117,12 +197,7 @@ func installUpload(w http.ResponseWriter, r *http.Request, pr printerBackend) (s
 	if err := os.Rename(tmp, system.UpdateBundle); err != nil {
 		return err.Error(), true
 	}
-	log.Printf("system page: installing an uploaded update")
-	if err := system.AskHelper(system.HelperRequest{Action: "update"}); err != nil {
-		os.Remove(system.UpdateBundle)
-		return "The update failed: " + err.Error(), true
-	}
-	return "The update is written. The Printdeck restarts into it now. Load this page again in a minute.", false
+	return "", false
 }
 
 // memoryUse is the memory in use and the total memory, from /proc/meminfo.

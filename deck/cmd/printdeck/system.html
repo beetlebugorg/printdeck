@@ -27,6 +27,8 @@
   button { margin-top: 12px; font: inherit; font-weight: 600; padding: 10px 16px; border: 0;
     border-radius: 4px; background: var(--orange); color: #121212; cursor: pointer; }
   .hint { font-size: 13px; color: var(--dim); margin-top: 8px; line-height: 1.4; }
+  .bar { margin-top: 10px; height: 16px; background: var(--lcd); border-radius: 4px; padding: 3px; }
+  .fill { height: 100%; width: 0; background: var(--amber); border-radius: 2px; transition: width .3s; }
   a { color: var(--dim); }
 </style>
 </head>
@@ -48,10 +50,11 @@
   </section>
   <section>
     <h2>UPDATE</h2>
-    <form method="post" action="/system/update" enctype="multipart/form-data">
+    <form id="update" method="post" action="/system/update" enctype="multipart/form-data">
       <input type="file" name="bundle" accept=".xz" required>
       <button type="submit">Install</button>
     </form>
+    <div id="progress" hidden><div id="step"></div><div class="bar"><div class="fill" id="fill"></div></div></div>
     <div class="hint">Choose printdeck-update.tar.xz or printdeck-debug-update.tar.xz. The Printdeck writes
       the other slot and restarts into it. If the new system does not start, it goes back to this one.
       Do not install during a print.</div>
@@ -59,5 +62,56 @@
   <section><h2>SYSTEM LOG</h2><pre>{{.Journal}}</pre></section>
   <section><h2>KLIPPER LOG</h2><pre>{{.Klippy}}</pre></section>
 </main>
+<script>
+// The update: the upload, then the steps of the install, then the restart. The page loads again
+// when the Printdeck answers with another version.
+(function () {
+  const form = document.getElementById("update"), box = document.getElementById("progress"),
+    stepEl = document.getElementById("step"), fill = document.getElementById("fill");
+  const version = {{.Version}};
+  function show(text, frac, bad) {
+    box.hidden = false;
+    stepEl.textContent = text;
+    stepEl.className = bad ? "bad" : "";
+    fill.style.width = frac == null ? "100%" : Math.round(frac * 100) + "%";
+    fill.style.opacity = frac == null ? 0.35 : 1;
+  }
+  function waitForRestart() {
+    show("Restarting. This page loads again when the Printdeck is back.", null);
+    const poll = () => fetch("/system/update/progress", {cache: "no-store"})
+      .then(r => r.ok && !r.redirected ? r.json() : Promise.reject())
+      .then(s => s.version !== version ? location.reload() : setTimeout(poll, 2000))
+      .catch(() => setTimeout(() => fetch("/system", {cache: "no-store"})
+        .then(r => r.ok ? location.reload() : setTimeout(poll, 2000)).catch(() => setTimeout(poll, 2000)), 2000));
+    setTimeout(poll, 5000);
+  }
+  function follow() {
+    fetch("/system/update/progress", {cache: "no-store"}).then(r => r.json()).then(s => {
+      if (s.error) { show(s.error, 0, true); form.hidden = false; return; }
+      if (s.finished) { waitForRestart(); return; }
+      const pct = s.total > 0 ? " " + Math.floor(s.done * 100 / s.total) + " %" : "";
+      show(s.step + "…" + pct, s.total > 0 ? s.done / s.total : null);
+      setTimeout(follow, 500);
+    }).catch(() => setTimeout(follow, 1000));
+  }
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    const x = new XMLHttpRequest();
+    x.open("POST", "/system/update");
+    x.setRequestHeader("X-Printdeck-Progress", "1");
+    x.upload.onprogress = p => p.lengthComputable && show("Uploading… " + Math.floor(p.loaded * 100 / p.total) + " %", p.loaded / p.total);
+    x.onload = () => {
+      let r = {};
+      try { r = JSON.parse(x.responseText); } catch (err) { r.error = "The upload failed: " + x.status; }
+      if (r.error) { show(r.error, 0, true); form.hidden = false; return; }
+      follow();
+    };
+    x.onerror = () => { show("The upload failed.", 0, true); form.hidden = false; };
+    form.hidden = true;
+    show("Uploading… 0 %", 0);
+    x.send(new FormData(form));
+  });
+})();
+</script>
 </body>
 </html>

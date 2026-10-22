@@ -4,6 +4,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -24,7 +25,7 @@ func startHelper(t *testing.T, allowed map[uint32]bool, idle time.Duration) chan
 func TestHelper(t *testing.T) {
 	var got []HelperRequest
 	ran := false
-	helperActions = func(r HelperRequest) (func(), error) {
+	helperActions = func(r HelperRequest, _ Progress) (func(), error) {
 		got = append(got, r)
 		if r.Action == "restart-klipper" {
 			return func() { ran = true }, nil
@@ -60,12 +61,32 @@ func TestHelper(t *testing.T) {
 
 func TestHelperRefusesOtherUsers(t *testing.T) {
 	called := false
-	helperActions = func(HelperRequest) (func(), error) { called = true; return nil, nil }
+	helperActions = func(HelperRequest, Progress) (func(), error) { called = true; return nil, nil }
 	startHelper(t, map[uint32]bool{12345: true}, time.Second)
 	if err := AskHelper(HelperRequest{Action: "restart-klipper"}); err == nil || err.Error() != "not allowed" {
 		t.Errorf("err = %v", err)
 	}
 	if called {
 		t.Error("the action ran for a user that is not allowed")
+	}
+}
+
+// An update sends its progress before the answer: a line when the step or the percent changes.
+func TestHelperProgress(t *testing.T) {
+	helperActions = func(r HelperRequest, progress Progress) (func(), error) {
+		progress(StepUnpack, 0, 1000)
+		progress(StepUnpack, 5, 1000) // the same percent: no line
+		progress(StepUnpack, 500, 1000)
+		progress(StepWrite, 1000, 1000)
+		return nil, nil
+	}
+	startHelper(t, map[uint32]bool{uint32(os.Getuid()): true}, 300*time.Millisecond)
+	var lines []string
+	err := AskHelperProgress(HelperRequest{Action: "update"}, func(step string, done, total int64) {
+		lines = append(lines, step+" "+strconv.FormatInt(done, 10))
+	})
+	want := "Unpacking 0,Unpacking 500,Writing the system 1000"
+	if err != nil || strings.Join(lines, ",") != want {
+		t.Errorf("%v %q, want %q", err, strings.Join(lines, ","), want)
 	}
 }
