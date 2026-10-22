@@ -93,6 +93,8 @@ type Printer interface {
 	History() []printer.Record
 	// RecordPicture is the picture of a finished print. loading is true while it is drawn.
 	RecordPicture(r printer.Record) (img image.Image, loading bool)
+	// SpoolStore is the rolls of filament, or nil.
+	SpoolStore() *printer.Spools
 	// What the slicer wrote about a file, and the removal of a file.
 	FileMeta(path string) gcodemeta.Meta
 	DeleteFile(path string) error
@@ -125,6 +127,9 @@ type App struct {
 	pages         []page          // the pages over the state screen, the top last
 	file          printer.File    // the file of the file page
 	record        printer.Record  // the print of the record page
+	spoolID       string          // the roll of the roll page
+	spoolScroll   int             // the scroll position of the Rolls page
+	form          *rollForm       // the form of a new roll, over everything
 	fileList      fileList        // the scroll position of the Files page
 	macroScroll   int             // the scroll position of the Macros page
 	consoleScroll int             // how far the Console page shows above its newest line

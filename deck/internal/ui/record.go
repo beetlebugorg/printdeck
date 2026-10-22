@@ -29,6 +29,12 @@ func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 	if r.Material != "" {
 		rows = append(rows, [2]string{"Material", r.Material})
 	}
+	if r.Spool != "" {
+		rows = append(rows, [2]string{"Roll", r.Spool})
+	}
+	if r.Cost > 0 {
+		rows = append(rows, [2]string{"Cost", fmt.Sprintf("$%.2f", r.Cost)})
+	}
 
 	// Tall: the picture, the table, and Reprint. Wide: the picture and the table at the right,
 	// Reprint in the left column.

@@ -38,7 +38,8 @@ const (
 )
 
 const (
-	swapChoose = iota
+	swapChoose   = iota // the roll that goes in, or the material that comes out
+	swapMaterial        // the material that goes in, with no roll
 	swapHeat
 	swapUnload
 	swapInsert
@@ -128,35 +129,63 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		cancelLabel, doneLabel = "Cancel", "Done"
 	}
 
+	// heatFor heats the nozzle for a material and goes on to the heating step.
+	heatFor := func(material string) {
+		t := 210
+		for _, m := range materials {
+			if m.Name == material {
+				t = m.Tool
+			}
+		}
+		sw.temp, sw.step = t, swapHeat
+		a.do(func() error { return pr.SetToolTemp(t) })
+	}
+	rolls := pr.SpoolStore()
+	if sw.step == swapChoose && sw.mode != swapUnloadOnly && rolls == nil {
+		sw.step = swapMaterial
+	}
+
 	switch sw.step {
 	case swapChoose:
-		if sw.mode == swapUnloadOnly {
-			step(1, "Which filament comes out?")
-			para("The nozzle heats to the temperature of the loaded filament.")
-		} else {
-			step(1, "Which filament goes in?")
-			para("The nozzle heats to the temperature of the new filament.")
-		}
-		k := keys(size{172, 2}, size{80, 1})
-		a.region("Materials", k[0])
-		for i, r := range kit.Grid(k[0], 2, 2, 12) {
-			m := materials[i]
-			t, name := m.Tool, m.Name
-			a.button(c, r, fmt.Sprintf("%s  %d°", m.Name, m.Tool), raised, text, func() {
-				sw.temp, sw.step = t, swapHeat
-				if sw.mode != swapUnloadOnly {
-					a.setMaterial(name)
-				}
-				a.do(func() error { return pr.SetToolTemp(t) })
+		if sw.mode != swapUnloadOnly {
+			step(1, "Which roll goes in?")
+			para("The nozzle heats for the material of the roll.")
+			k := keys(size{240, 3}, size{80, 1})
+			list := rolls.List()
+			a.region("Rolls", k[0])
+			if len(list) == 0 {
+				noItems(c, k[0], "", "No rolls yet")
+			} else {
+				l := kit.List{Area: k[0], N: len(list), RowH: 80, Gap: 8, Scroll: &a.spoolScroll}
+				in, _ := rolls.In()
+				a.list(c, l, func(i int) string { return list[i].Label() }, func(c *gfx.Canvas, i int, r image.Rectangle) {
+					title := list[i].Label()
+					if list[i].ID == in.ID {
+						title += " · loaded"
+					}
+					a.menuRow(c, r, title, rollLine(list[i]), dim, nil)
+				}, func(i int) {
+					sp := list[i]
+					rolls.Put(sp.ID)
+					a.setMaterial(sp.Material)
+					heatFor(sp.Material)
+				})
+			}
+			b := kit.Cols(k[1], 12, kit.Fr(1), kit.Fr(1))
+			a.button(c, b[0], "New roll", orange, onAcc, func() {
+				a.openRollForm(func(sp printer.Spool) { heatFor(sp.Material) })
 			})
+			a.button(c, b[1], "Other", raised, text, func() { sw.step = swapMaterial })
+			return
 		}
-		a.button(c, k[1], "Other temperature", raised, text, func() {
-			a.editTemp("Nozzle for the new filament", 220, 300, toolPresets, func(t int) error {
-				a.post(func() { sw.temp, sw.step = t, swapHeat })
-				return pr.SetToolTemp(t)
-			})
-		})
+		step(1, "Which filament comes out?")
+		para("The nozzle heats to the temperature of the loaded filament.")
+		a.materialKeys(c, sw, keys(size{172, 2}, size{80, 1}))
 
+	case swapMaterial:
+		step(1, "Which filament goes in?")
+		para("The nozzle heats to the temperature of the new filament.")
+		a.materialKeys(c, sw, keys(size{172, 2}, size{80, 1}))
 	case swapHeat:
 		step(2, "Heating the nozzle")
 		var temp, bar, cancel image.Rectangle
@@ -194,6 +223,9 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 			if sw.mode == swapUnloadOnly {
 				sw.step = swapCheck
 				a.setMaterial("")
+				if rolls != nil {
+					rolls.Put("")
+				}
 			}
 			a.do(func() error {
 				return pr.Gcode("M83", "G1 E10 F300", fmt.Sprintf("G1 E-%.0f F1500", a.UnloadMM), "M82")
@@ -239,4 +271,31 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		a.button(c, k[1], doneLabel, orange, onAcc, end)
 		a.button(c, k[2], "Done, keep hot", raised, text, func() { a.swap = nil })
 	}
+}
+
+// materialKeys draws the materials and Other temperature in k: a tap heats the nozzle for the
+// filament. A material that goes in has no roll.
+func (a *App) materialKeys(c *gfx.Canvas, sw *swapState, k []image.Rectangle) {
+	pr := a.Printer
+	a.region("Materials", k[0])
+	for i, r := range kit.Grid(k[0], 2, 2, 12) {
+		m := materials[i]
+		t, name := m.Tool, m.Name
+		a.button(c, r, fmt.Sprintf("%s  %d°", m.Name, m.Tool), raised, text, func() {
+			sw.temp, sw.step = t, swapHeat
+			if sw.mode != swapUnloadOnly {
+				a.setMaterial(name)
+				if s := pr.SpoolStore(); s != nil {
+					s.Put("") // a filament with no roll
+				}
+			}
+			a.do(func() error { return pr.SetToolTemp(t) })
+		})
+	}
+	a.button(c, k[1], "Other temperature", raised, text, func() {
+		a.editTemp("Nozzle for the new filament", 220, 300, toolPresets, func(t int) error {
+			a.post(func() { sw.temp, sw.step = t, swapHeat })
+			return pr.SetToolTemp(t)
+		})
+	})
 }

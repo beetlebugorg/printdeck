@@ -22,6 +22,10 @@ func duration(d time.Duration) string {
 }
 
 func (a *App) drawPrint(c *gfx.Canvas) {
+	if a.form != nil {
+		a.drawRollForm(c)
+		return
+	}
 	if a.swap != nil {
 		a.drawSwap(c)
 		return
@@ -66,6 +70,12 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		return
 	case pageRecord:
 		a.drawRecord(c, st)
+		return
+	case pageSpools:
+		a.drawSpools(c)
+		return
+	case pageSpool:
+		a.drawSpool(c)
 		return
 	case pageStats:
 		a.drawStats(c)

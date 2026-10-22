@@ -21,7 +21,8 @@ type DemoPrinter struct {
 	Machine_ printer.Machine
 	History_ []printer.Record
 	Console_ []printer.ConsoleLine
-	Meta_    gcodemeta.Meta // the slicer data of every file
+	Meta_    gcodemeta.Meta  // the slicer data of every file
+	Spools_  *printer.Spools // the rolls of filament, or nil
 }
 
 func (d *DemoPrinter) State() printer.State {
@@ -38,13 +39,14 @@ func (d *DemoPrinter) Preview() image.Image { return d.Img }
 func (d *DemoPrinter) RecordPicture(printer.Record) (image.Image, bool) {
 	return d.Img, false
 }
-func (d *DemoPrinter) LoadFiles()       {}
-func (d *DemoPrinter) Pause()           {}
-func (d *DemoPrinter) Resume()          {}
-func (d *DemoPrinter) Cancel()          {}
-func (d *DemoPrinter) Connect()         {}
-func (d *DemoPrinter) Heat(int, int)    {}
-func (d *DemoPrinter) PrintFile(string) {}
+func (d *DemoPrinter) SpoolStore() *printer.Spools { return d.Spools_ }
+func (d *DemoPrinter) LoadFiles()                  {}
+func (d *DemoPrinter) Pause()                      {}
+func (d *DemoPrinter) Resume()                     {}
+func (d *DemoPrinter) Cancel()                     {}
+func (d *DemoPrinter) Connect()                    {}
+func (d *DemoPrinter) Heat(int, int)               {}
+func (d *DemoPrinter) PrintFile(string)            {}
 
 func (d *DemoPrinter) SetViewLayer(l int) { d.View = l }
 func (d *DemoPrinter) ViewLayer() int     { return d.View }
@@ -80,13 +82,13 @@ func (d *DemoPrinter) SendConsole(line string) {
 
 // ResetScreens closes every screen, dialog and page; for the pictures of the manual.
 func (a *App) ResetScreens() {
-	a.setup, a.pages, a.swap, a.tune, a.keypad, a.confirm, a.consoleKB, a.flash = nil, nil, nil, false, nil, nil, nil, nil
+	a.setup, a.pages, a.swap, a.tune, a.keypad, a.confirm, a.consoleKB, a.flash, a.form = nil, nil, nil, false, nil, nil, nil, nil, nil
 	a.doneSeen = ""
 }
 
 // OpenPrintScreen opens a screen by name; for the demo.
 func (a *App) OpenPrintScreen(name string) {
-	a.pages, a.tune, a.swap, a.keypad = nil, false, nil, nil
+	a.pages, a.tune, a.swap, a.keypad, a.form = nil, false, nil, nil, nil
 	switch name {
 	case "control", "move":
 		a.pages = []page{pageMove}
@@ -102,6 +104,18 @@ func (a *App) OpenPrintScreen(name string) {
 		a.pages = []page{pageMachine, pageMacros}
 	case "history":
 		a.pages = []page{pageMachine, pageHistory}
+	case "rolls":
+		a.pages = []page{pageFilament, pageSpools}
+	case "roll":
+		if s := a.Printer.SpoolStore(); s != nil {
+			if sp, ok := s.In(); ok {
+				a.spoolID = sp.ID
+			}
+		}
+		a.pages = []page{pageFilament, pageSpools, pageSpool}
+	case "new-roll":
+		a.openRollForm(nil)
+		a.form.name, a.form.scale, a.form.reel, a.form.price = "Galaxy Black", 1180, 180, 22
 	case "record":
 		a.record = a.Printer.History()[0]
 		a.pages = []page{pageMachine, pageHistory, pageRecord}

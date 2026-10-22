@@ -204,6 +204,19 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 			v += " " + m.Material
 		}
 		rows = append(rows, [2]string{"Filament", v})
+		// The roll in the printer: is there enough filament on it, and the cost of the print.
+		if s := a.Printer.SpoolStore(); s != nil {
+			if sp, ok := s.In(); ok {
+				roll := sp.Label()
+				if g > sp.Left() {
+					roll = "Only " + printer.Weight(sp.Left()) + " left"
+				}
+				rows = append(rows, [2]string{"Roll", roll})
+				if cost := sp.Cost(g); cost > 0 {
+					rows = append(rows, [2]string{"Cost", fmt.Sprintf("$%.2f", cost)})
+				}
+			}
+		}
 	}
 	if m.LayerHeight > 0 {
 		rows = append(rows, [2]string{"Layer height", fmt.Sprintf("%.2f mm", m.LayerHeight)})

@@ -432,15 +432,15 @@
       <div class="shot"><img src="img/file.png" alt="A file" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="277" x2="439" y2="277" class="leader"/>
-        <circle cx="439" cy="277" r="5" class="dot"/>
-        <circle cx="520" cy="277" r="15" class="badge"/>
-        <text x="520" y="277" class="badge-n">1</text>
+        <line x1="505" y1="247" x2="409" y2="247" class="leader"/>
+        <circle cx="409" cy="247" r="5" class="dot"/>
+        <circle cx="520" cy="247" r="15" class="badge"/>
+        <text x="520" y="247" class="badge-n">1</text>
         
-        <line x1="505" y1="588" x2="456" y2="588" class="leader"/>
-        <circle cx="456" cy="588" r="5" class="dot"/>
-        <circle cx="520" cy="588" r="15" class="badge"/>
-        <text x="520" y="588" class="badge-n">2</text>
+        <line x1="505" y1="558" x2="456" y2="558" class="leader"/>
+        <circle cx="456" cy="558" r="5" class="dot"/>
+        <circle cx="520" cy="558" r="15" class="badge"/>
+        <text x="520" y="558" class="badge-n">2</text>
         
         <line x1="-25" y1="742" x2="24" y2="742" class="leader"/>
         <circle cx="24" cy="742" r="5" class="dot"/>
@@ -739,8 +739,8 @@
 
 <section id="filament">
   <h2 class="title"><span class="num">10</span>Change the filament</h2>
-  <p>Set the loaded filament here, so that Preheat uses its temperatures. The guided change heats the nozzle, unloads the old filament and loads the new one.</p>
-  <ol class="steps"><li>Open Filament, then tap Change filament.</li><li>Tap the new filament. The nozzle heats to its temperature.</li><li>Tap Unload, and hold the filament lightly while it comes out.</li><li>Push the new filament into the extruder until it stops, then tap Load.</li><li>Check that clean plastic of the new color comes out, then tap Done.</li></ol>
+  <p>Set the loaded filament here, so that Preheat uses its temperatures. The guided change heats the nozzle, unloads the old filament and loads the new one.</p><p>The deck keeps a list of your rolls of filament. Weigh a new roll with its reel, and the deck subtracts the weight of the empty reel. Each print subtracts the filament that it used from the roll in the printer.</p>
+  <ol class="steps"><li>Open Filament, then tap Change filament.</li><li>Tap the roll that goes in, or tap New roll and weigh it. The nozzle heats for its material.</li><li>Tap Unload, and hold the filament lightly while it comes out.</li><li>Push the new filament into the extruder until it stops, then tap Load.</li><li>Check that clean plastic of the new color comes out, then tap Done.</li></ol>
   
   <figure>
     <h3>The Filament page</h3>
@@ -748,40 +748,45 @@
       <div class="shot"><img src="img/filament.png" alt="The Filament page" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
+        <line x1="-25" y1="43" x2="232" y2="43" class="leader"/>
+        <circle cx="232" cy="43" r="5" class="dot"/>
+        <circle cx="-40" cy="43" r="15" class="badge"/>
+        <text x="-40" y="43" class="badge-n">1</text>
+        
         <line x1="505" y1="103" x2="456" y2="103" class="leader"/>
         <circle cx="456" cy="103" r="5" class="dot"/>
         <circle cx="520" cy="103" r="15" class="badge"/>
-        <text x="520" y="103" class="badge-n">1</text>
+        <text x="520" y="103" class="badge-n">2</text>
         
         <line x1="505" y1="190" x2="456" y2="190" class="leader"/>
         <circle cx="456" cy="190" r="5" class="dot"/>
         <circle cx="520" cy="190" r="15" class="badge"/>
-        <text x="520" y="190" class="badge-n">2</text>
+        <text x="520" y="190" class="badge-n">3</text>
         
         <line x1="505" y1="386" x2="456" y2="386" class="leader"/>
         <circle cx="456" cy="386" r="5" class="dot"/>
         <circle cx="520" cy="386" r="15" class="badge"/>
-        <text x="520" y="386" class="badge-n">3</text>
+        <text x="520" y="386" class="badge-n">4</text>
         
         <line x1="505" y1="515" x2="456" y2="515" class="leader"/>
         <circle cx="456" cy="515" r="5" class="dot"/>
         <circle cx="520" cy="515" r="15" class="badge"/>
-        <text x="520" y="515" class="badge-n">4</text>
+        <text x="520" y="515" class="badge-n">5</text>
         
         <line x1="505" y1="623" x2="456" y2="623" class="leader"/>
         <circle cx="456" cy="623" r="5" class="dot"/>
         <circle cx="520" cy="623" r="15" class="badge"/>
-        <text x="520" y="623" class="badge-n">5</text>
+        <text x="520" y="623" class="badge-n">6</text>
         
         <line x1="505" y1="732" x2="456" y2="732" class="leader"/>
         <circle cx="456" cy="732" r="5" class="dot"/>
         <circle cx="520" cy="732" r="15" class="badge"/>
-        <text x="520" y="732" class="badge-n">6</text>
+        <text x="520" y="732" class="badge-n">7</text>
         
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Loaded</b>The filament that is in the printer, and its temperatures.</span></li><li><span class="badge">2</span><span><b>Material</b>Tap the material that is in the printer.</span></li><li><span class="badge">3</span><span><b>Change filament</b>The guided change: choose, heat, unload, insert, load, check.</span></li><li><span class="badge">4</span><span><b>Load, Unload</b>Only the load, or only the unload.</span></li><li><span class="badge">5</span><span><b>Extrude, Retract</b>Pushes or pulls 10 mm. The nozzle must be at 170° or more.</span></li><li><span class="badge">6</span><span><b>Heat, Cool down</b>Heats the nozzle for the loaded filament, or turns the heaters off.</span></li>
+      <li><span class="badge">1</span><span><b>Rolls</b>Opens the list of your rolls.</span></li><li><span class="badge">2</span><span><b>Loaded</b>The roll that is in the printer and the filament on it, or the material and its temperatures.</span></li><li><span class="badge">3</span><span><b>Material</b>Tap the material that is in the printer.</span></li><li><span class="badge">4</span><span><b>Change filament</b>The guided change: choose, heat, unload, insert, load, check.</span></li><li><span class="badge">5</span><span><b>Load, Unload</b>Only the load, or only the unload.</span></li><li><span class="badge">6</span><span><b>Extrude, Retract</b>Pushes or pulls 10 mm. The nozzle must be at 170° or more.</span></li><li><span class="badge">7</span><span><b>Heat, Cool down</b>Heats the nozzle for the loaded filament, or turns the heaters off.</span></li>
     </ol>
     
   </figure>
@@ -797,25 +802,127 @@
         <circle cx="-40" cy="102" r="15" class="badge"/>
         <text x="-40" y="102" class="badge-n">1</text>
         
-        <line x1="505" y1="564" x2="456" y2="564" class="leader"/>
-        <circle cx="456" cy="564" r="5" class="dot"/>
-        <circle cx="520" cy="564" r="15" class="badge"/>
-        <text x="520" y="564" class="badge-n">2</text>
+        <line x1="505" y1="522" x2="456" y2="522" class="leader"/>
+        <circle cx="456" cy="522" r="5" class="dot"/>
+        <circle cx="520" cy="522" r="15" class="badge"/>
+        <text x="520" y="522" class="badge-n">2</text>
+        
+        <line x1="-25" y1="734" x2="24" y2="734" class="leader"/>
+        <circle cx="24" cy="734" r="5" class="dot"/>
+        <circle cx="-40" cy="734" r="15" class="badge"/>
+        <text x="-40" y="734" class="badge-n">3</text>
         
         <line x1="505" y1="734" x2="456" y2="734" class="leader"/>
         <circle cx="456" cy="734" r="5" class="dot"/>
         <circle cx="520" cy="734" r="15" class="badge"/>
-        <text x="520" y="734" class="badge-n">3</text>
+        <text x="520" y="734" class="badge-n">4</text>
         
         <line x1="505" y1="43" x2="456" y2="43" class="leader"/>
         <circle cx="456" cy="43" r="5" class="dot"/>
         <circle cx="520" cy="43" r="15" class="badge"/>
-        <text x="520" y="43" class="badge-n">4</text>
+        <text x="520" y="43" class="badge-n">5</text>
         
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Step</b>The step of the change.</span></li><li><span class="badge">2</span><span><b>Materials</b>The new filament. The nozzle heats to its temperature, and the deck sets it as the loaded filament.</span></li><li><span class="badge">3</span><span><b>Other temperature</b>A temperature that you type.</span></li><li><span class="badge">4</span><span><b>Close</b>Stops the change. During a pause, the nozzle goes back to the temperature of the print.</span></li>
+      <li><span class="badge">1</span><span><b>Step</b>The step of the change.</span></li><li><span class="badge">2</span><span><b>Rolls</b>Your rolls. Tap the roll that goes in. The nozzle heats for its material.</span></li><li><span class="badge">3</span><span><b>New roll</b>Adds a roll: its material, its name, its weight on a scale, the weight of an empty reel, and its price.</span></li><li><span class="badge">4</span><span><b>Other</b>A filament with no roll: choose the material or type a temperature.</span></li><li><span class="badge">5</span><span><b>Close</b>Stops the change. During a pause, the nozzle goes back to the temperature of the print.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>A new roll</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/new-roll.png" alt="A new roll" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="102" x2="456" y2="102" class="leader"/>
+        <circle cx="456" cy="102" r="5" class="dot"/>
+        <circle cx="520" cy="102" r="15" class="badge"/>
+        <text x="520" y="102" class="badge-n">1</text>
+        
+        <line x1="505" y1="199" x2="456" y2="199" class="leader"/>
+        <circle cx="456" cy="199" r="5" class="dot"/>
+        <circle cx="520" cy="199" r="15" class="badge"/>
+        <text x="520" y="199" class="badge-n">2</text>
+        
+        <line x1="505" y1="330" x2="456" y2="330" class="leader"/>
+        <circle cx="456" cy="330" r="5" class="dot"/>
+        <circle cx="520" cy="330" r="15" class="badge"/>
+        <text x="520" y="330" class="badge-n">3</text>
+        
+        <line x1="505" y1="461" x2="456" y2="461" class="leader"/>
+        <circle cx="456" cy="461" r="5" class="dot"/>
+        <circle cx="520" cy="461" r="15" class="badge"/>
+        <text x="520" y="461" class="badge-n">4</text>
+        
+        <line x1="505" y1="592" x2="456" y2="592" class="leader"/>
+        <circle cx="456" cy="592" r="5" class="dot"/>
+        <circle cx="520" cy="592" r="15" class="badge"/>
+        <text x="520" y="592" class="badge-n">5</text>
+        
+        <line x1="505" y1="744" x2="456" y2="744" class="leader"/>
+        <circle cx="456" cy="744" r="5" class="dot"/>
+        <circle cx="520" cy="744" r="15" class="badge"/>
+        <text x="520" y="744" class="badge-n">6</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Material</b>The material of the roll.</span></li><li><span class="badge">2</span><span><b>Name</b>A name that you type, for example the color and the brand.</span></li><li><span class="badge">3</span><span><b>On the scale</b>The weight of the roll with its reel, in grams.</span></li><li><span class="badge">4</span><span><b>Empty reel</b>The weight of an empty reel of the same brand. The deck keeps the last one.</span></li><li><span class="badge">5</span><span><b>Price</b>The price of the roll in dollars. The deck shows the cost of each print from it.</span></li><li><span class="badge">6</span><span><b>Save</b>Adds the roll and puts it in the printer.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>The rolls</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/rolls.png" alt="The rolls" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="756" x2="456" y2="756" class="leader"/>
+        <circle cx="456" cy="756" r="5" class="dot"/>
+        <circle cx="520" cy="756" r="15" class="badge"/>
+        <text x="520" y="756" class="badge-n">1</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>New roll</b>Adds a roll without a filament change.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>One roll</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/roll.png" alt="One roll" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="178" x2="456" y2="178" class="leader"/>
+        <circle cx="456" cy="178" r="5" class="dot"/>
+        <circle cx="520" cy="178" r="15" class="badge"/>
+        <text x="520" y="178" class="badge-n">1</text>
+        
+        <line x1="505" y1="304" x2="456" y2="304" class="leader"/>
+        <circle cx="456" cy="304" r="5" class="dot"/>
+        <circle cx="520" cy="304" r="15" class="badge"/>
+        <text x="520" y="304" class="badge-n">2</text>
+        
+        <line x1="-25" y1="748" x2="24" y2="748" class="leader"/>
+        <circle cx="24" cy="748" r="5" class="dot"/>
+        <circle cx="-40" cy="748" r="15" class="badge"/>
+        <text x="-40" y="748" class="badge-n">3</text>
+        
+        <line x1="505" y1="748" x2="456" y2="748" class="leader"/>
+        <circle cx="456" cy="748" r="5" class="dot"/>
+        <circle cx="520" cy="748" r="15" class="badge"/>
+        <text x="520" y="748" class="badge-n">4</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Details</b>The filament on the roll, the filament that prints used, and the price.</span></li><li><span class="badge">2</span><span><b>Left</b>The filament on the roll, of the filament when you added it.</span></li><li><span class="badge">3</span><span><b>Weigh again</b>Sets the filament from the weight on a scale.</span></li><li><span class="badge">4</span><span><b>Remove</b>Removes an empty roll from the list.</span></li>
     </ol>
     
   </figure>

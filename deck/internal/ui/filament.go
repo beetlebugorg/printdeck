@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"printdeck/kit"
+	"strings"
 
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
@@ -14,6 +15,10 @@ import (
 func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	f := a.page(c, "Filament")
+	rolls := pr.SpoolStore()
+	if rolls != nil {
+		a.headKey(c, f.head, "Rolls", func() { a.open(pageSpools) })
+	}
 	m := a.loaded()
 	// Tall: the material, the temperatures and the actions under each other. Wide: the material and
 	// the temperatures in the left column, and the actions in rows that fill the right column.
@@ -34,6 +39,11 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 	if m.Name != "" {
 		loaded = fmt.Sprintf("%s LOADED · %d° / %d°", m.Name, m.Tool, m.Bed)
 	}
+	if rolls != nil {
+		if sp, ok := rolls.In(); ok {
+			loaded = strings.ToUpper(gfx.Fit(gfx.Face(true, 20), sp.Label(), win.Dx()-200) + " · " + printer.Weight(sp.Left()) + " left")
+		}
+	}
 	c.Text(win, loaded, gfx.Face(true, 20), lcdInk, gfx.Center)
 	if !hint.Empty() {
 		label(c, hint, "Tap the material that is in the printer", gfx.Left)
@@ -45,7 +55,15 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 			fill, fg = orange, onAcc
 		}
 		name := mat.Name
-		a.button(c, r, name, fill, fg, func() { a.setMaterial(name) })
+		a.button(c, r, name, fill, fg, func() {
+			a.setMaterial(name)
+			// A roll of another material is not in the printer.
+			if rolls != nil {
+				if sp, ok := rolls.In(); ok && sp.Material != name {
+					rolls.Put("")
+				}
+			}
+		})
 	}
 
 	a.temps(c, temps, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
