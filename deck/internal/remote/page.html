@@ -28,7 +28,7 @@
 </head>
 <body>
 <canvas id="ui" aria-label="Printdeck"></canvas>
-<div id="status">Connecting…</div>
+<div id="status" class="show">Connecting…</div>
 <script>
 "use strict";
 // The deck draws its UI for this browser and sends the drawing commands of each frame (see
@@ -202,9 +202,12 @@ function listen() {
     const [id, sw, sh] = e.data.split(" ").map((v, i) => (i ? Number(v) : v));
     session = id;
     if (sw && sh && (sw !== W || sh !== H)) { W = sw; H = sh; layout(); }
-    showStatus("");
   });
-  events.onmessage = (e) => { frame = JSON.parse(e.data); requestAnimationFrame(paint); };
+  events.onmessage = (e) => {
+    if (!frame) showStatus(""); // the first frame: the screen shows
+    frame = JSON.parse(e.data);
+    requestAnimationFrame(paint);
+  };
   events.onerror = () => {
     events.close();
     session = "";

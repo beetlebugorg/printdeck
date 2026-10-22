@@ -23,24 +23,63 @@
     background: var(--bg); color: var(--ink); }
   button { width: 100%; margin-top: 16px; font: inherit; font-weight: 600; padding: 12px; border: 0;
     border-radius: 4px; background: var(--orange); color: #121212; cursor: pointer; }
+  button:disabled { opacity: .7; cursor: wait; }
+  button:disabled::after { content: ""; display: inline-block; width: .8em; height: .8em; margin-left: .6em;
+    vertical-align: -.1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+    animation: turn .8s linear infinite; }
+  @keyframes turn { to { transform: rotate(360deg); } }
   .wrong { display: none; color: var(--orange); font-size: 14px; margin-top: 12px; }
   .hint { font-size: 13px; color: var(--dim); margin-top: 16px; line-height: 1.4; }
   .hint a { color: var(--dim); }
 </style>
 </head>
 <body>
-<form method="post" action="/login">
+<form method="post" action="/login" id="login">
   <h1>00 REMOTE SCREEN</h1>
   <div class="name">PRINTDECK</div>
   <label for="password">Password</label>
   <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
-  <button type="submit">Log in</button>
-  <div class="wrong" id="wrong">The password is not correct.</div>
+  <button type="submit" id="go">Log in</button>
+  <div class="wrong" id="wrong" role="alert">The password is not correct.</div>
   <div class="hint">The touch screen shows the password: Print &gt; Control &gt; Help.</div>
   <div class="hint">Printdeck is free software (AGPL-3.0). <a href="{{SOURCE}}">Source code</a></div>
 </form>
 <script>
-  if (location.search.includes("wrong")) document.getElementById("wrong").style.display = "block";
+  "use strict";
+  // The form sends the password in the background, so the page shows what happens: the key turns
+  // while the deck checks the password, a wrong password shows at once, and no answer shows after
+  // 15 seconds. Without JavaScript the form posts as usual.
+  const form = document.getElementById("login"), go = document.getElementById("go");
+  const wrong = document.getElementById("wrong"), pw = document.getElementById("password");
+  function say(text) { wrong.textContent = text; wrong.style.display = text ? "block" : "none"; }
+  if (location.search.includes("wrong")) say("The password is not correct.");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    say("");
+    go.disabled = true;
+    go.textContent = "Checking";
+    const stop = new AbortController();
+    const timer = setTimeout(() => stop.abort(), 15000);
+    try {
+      const r = await fetch("/login", { method: "POST", body: new URLSearchParams({ password: pw.value }),
+        signal: stop.signal });
+      if (new URL(r.url).pathname === "/login") {
+        say("The password is not correct.");
+        pw.select();
+      } else {
+        go.textContent = "Opening the screen";
+        location.href = "/";
+        return;
+      }
+    } catch (err) {
+      say(stop.signal.aborted ? "The deck did not answer. Check that it is on, and try again."
+        : "No connection to the deck. Check the network, and try again.");
+    } finally {
+      clearTimeout(timer);
+    }
+    go.disabled = false;
+    go.textContent = "Log in";
+  });
 </script>
 </body>
 </html>
