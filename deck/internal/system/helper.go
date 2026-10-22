@@ -40,12 +40,17 @@ type HelperRequest struct {
 	Country  string `json:"country,omitempty"`
 }
 
+// helperResponse is the answer of the helper. Before the answer, an update sends lines with Step,
+// for its progress.
 type helperResponse struct {
 	Error string `json:"error,omitempty"`
+	Step  string `json:"step,omitempty"`
+	Done  int64  `json:"done,omitempty"`
+	Total int64  `json:"total,omitempty"`
 }
 
-// helperActions does the actions. Tests replace it.
-var helperActions = func(r HelperRequest) (after func(), err error) {
+// helperActions does the actions. progress sends the progress of an update. Tests replace it.
+var helperActions = func(r HelperRequest, progress Progress) (after func(), err error) {
 	switch r.Action {
 	case "wifi":
 		return nil, SetWifi(r.SSID, r.Password, r.Country)
@@ -54,7 +59,7 @@ var helperActions = func(r HelperRequest) (after func(), err error) {
 	case "stop-klipper":
 		return nil, run("systemctl", "stop", "klipper.service")
 	case "update":
-		slot, err := Update(UpdateBundle, io.Discard)
+		slot, err := Update(UpdateBundle, progress)
 		os.Remove(UpdateBundle)
 		if err != nil {
 			return nil, err
@@ -120,8 +125,22 @@ func serveHelper(ln *net.UnixListener, allowed map[uint32]bool, idle time.Durati
 				json.NewEncoder(c).Encode(helperResponse{Error: "not allowed"})
 				return
 			}
+			// The progress of an update: a line when the step or the percent changes.
+			enc := json.NewEncoder(c)
+			lastStep, lastPct := "", int64(-1)
+			progress := func(step string, done, total int64) {
+				pct := int64(0)
+				if total > 0 {
+					pct = done * 100 / total
+				}
+				if step == lastStep && pct == lastPct {
+					return
+				}
+				lastStep, lastPct = step, pct
+				enc.Encode(helperResponse{Step: step, Done: done, Total: total})
+			}
 			mu.Lock()
-			after, err := helperActions(r)
+			after, err := helperActions(r, progress)
 			mu.Unlock()
 			resp := helperResponse{}
 			if err != nil {
@@ -156,7 +175,10 @@ func peerUID(c *net.UnixConn) (uint32, error) {
 }
 
 // AskHelper sends a request to the helper and waits for its answer. An update can take a minute.
-func AskHelper(r HelperRequest) error {
+func AskHelper(r HelperRequest) error { return AskHelperProgress(r, nil) }
+
+// AskHelperProgress is AskHelper, and gives the progress of an update to progress.
+func AskHelperProgress(r HelperRequest, progress Progress) error {
 	c, err := net.DialTimeout("unix", HelperSocket, 5*time.Second)
 	if err != nil {
 		return fmt.Errorf("the system helper does not answer: %w", err)
@@ -166,9 +188,19 @@ func AskHelper(r HelperRequest) error {
 	if err := json.NewEncoder(c).Encode(r); err != nil {
 		return err
 	}
+	dec := json.NewDecoder(c)
 	var resp helperResponse
-	if err := json.NewDecoder(c).Decode(&resp); err != nil {
-		return fmt.Errorf("the system helper did not answer: %w", err)
+	for {
+		resp = helperResponse{}
+		if err := dec.Decode(&resp); err != nil {
+			return fmt.Errorf("the system helper did not answer: %w", err)
+		}
+		if resp.Step == "" {
+			break
+		}
+		if progress != nil {
+			progress(resp.Step, resp.Done, resp.Total)
+		}
 	}
 	if resp.Error != "" {
 		return errors.New(resp.Error)

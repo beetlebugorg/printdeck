@@ -95,9 +95,12 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		return
 	}
 	if !st.Reachable {
-		if st.NeedsSetup {
+		switch {
+		case st.NeedsSetup:
 			a.drawPrinterSetup(c, st)
-		} else {
+		case st.Starting:
+			a.drawStarting(c, st)
+		default:
 			a.drawKlipperError(c, st)
 		}
 		return

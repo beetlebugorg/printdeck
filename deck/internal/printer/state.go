@@ -92,6 +92,9 @@ type State struct {
 
 	// NeedsSetup is true when printer.cfg has no [mcu] section: Klipper has no printer to use.
 	NeedsSetup bool
+	// Starting is true while Klipper starts: it reports "startup", or its socket is not there yet,
+	// soon after the deck or Klipper started (startGrace). After that, the error shows.
+	Starting bool
 	// Firmware is the version of the firmware on the board. FirmwareOld is true when it is not
 	// the Klipper commit of the host.
 	Firmware    string

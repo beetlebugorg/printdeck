@@ -214,6 +214,16 @@ func (a *App) drawBoard(c *gfx.Canvas, r image.Rectangle, b board.Info) {
 	c.Text(image.Rect(r.Min.X+16, y+104, r.Max.X-16, y+128), gfx.Fit(gfx.Face(false, 14), b.Version, r.Dx()-32), gfx.Face(false, 14), lcdDim, gfx.Left)
 }
 
+// drawStarting draws the start screen while Klipper starts and connects to the printer. It is the
+// screen of the boot, so the deck goes from the boot to its first screen with no error between.
+func (a *App) drawStarting(c *gfx.Canvas, st printer.State) {
+	version := ""
+	if a.Updater != nil {
+		version = a.Updater.Status().Current
+	}
+	drawStart(c, version)
+}
+
 // drawKlipperError draws the screen when Klipper is not running, or stopped with an error: all
 // the lines of the message, and a restart of Klipper, which reads printer.cfg again.
 func (a *App) drawKlipperError(c *gfx.Canvas, st printer.State) {
