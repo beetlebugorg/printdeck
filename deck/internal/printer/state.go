@@ -39,13 +39,13 @@ type State struct {
 	BedCoolTo      float64
 	HasBedCoolLeft bool
 	// BedCoolFrom is the bed temperature at the start of the cooling, for its progress.
-	BedCoolFrom float64
-	Activity       string // what the printer does now: "Wiping nozzle", "Heating bed", "Printing"
-	Layer, Layers  int
-	Fan            float64 // percent
-	HasFan         bool
-	Z              float64 // height of the head, mm
-	HasZ           bool
+	BedCoolFrom   float64
+	Activity      string // what the printer does now: "Wiping nozzle", "Heating bed", "Printing"
+	Layer, Layers int
+	Fan           float64 // percent
+	HasFan        bool
+	Z             float64 // height of the head, mm
+	HasZ          bool
 
 	// The move at the print position: its kind and its commanded speed in mm/s. The printer buffers a few
 	// moves, so this can be a moment ahead of the nozzle.
