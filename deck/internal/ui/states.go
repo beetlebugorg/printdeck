@@ -303,6 +303,27 @@ func (a *App) drawPaused(c *gfx.Canvas, st printer.State) {
 	a.button(c, grid[3], "Cancel", raised, red, a.askCancel)
 }
 
+// finishedView draws the finished print in box: the model as the print left it. The model view of
+// a running print (modelView) has no picture after the end of the print.
+func (a *App) finishedView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
+	window(c, box)
+	a.region("Model", box)
+	r, ok := a.lastPrint(st)
+	if !ok {
+		return
+	}
+	img, loading := a.Printer.RecordPicture(r)
+	switch {
+	case img != nil:
+		picture(c, box, img)
+	case loading:
+		c.Text(box, "LOADING MODEL…", gfx.Face(true, 18), lcdDim, gfx.Center)
+		a.redrawSoon(250 * time.Millisecond) // the picture is drawn in the background
+	default:
+		c.Text(box, "NO PICTURE OF THE MODEL", gfx.Face(true, 18), lcdDim, gfx.Center)
+	}
+}
+
 // drawDone is the end of a print: the result, the bed until the part comes off easily, Reprint
 // and Done.
 func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
@@ -320,7 +341,7 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 		r := kit.Rows(view, 8, kit.Px(190), kit.Px(32), kit.Px(102), kit.Fr(1), kit.Px(keyRowH))
 		box, result, info, end = r[0], r[1], r[2], r[4]
 	}
-	a.modelView(c, box, st)
+	a.finishedView(c, box, st)
 	title := map[string]string{"complete": "Print done", "cancelled": "Cancelled", "error": "Print failed"}[st.Finished]
 	line := title + " · " + st.FinishedFile + " · " + hm(int(st.FinishedTime.Minutes()))
 	if st.FinishedFilament > 0 {
