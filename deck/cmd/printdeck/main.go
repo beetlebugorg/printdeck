@@ -3,6 +3,7 @@
 // the Klipper host.
 //
 //	printdeck           run the application (started by systemd)
+//	printdeck app       run the desktop app: the deck for a printer on USB, with no screen
 //	printdeck demo DIR  write PNG pictures of the screens to DIR
 //	printdeck remote-demo [ADDR]  serve the remote screen of a demo deck (password "demo")
 //	printdeck preview FILE.png  write the model view of the print that runs now
@@ -55,6 +56,9 @@ func main() {
 
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
+		case "app":
+			desktopApp(os.Args[2:])
+			return
 		case "shot":
 			shot(cfg, os.Args[2:])
 			return

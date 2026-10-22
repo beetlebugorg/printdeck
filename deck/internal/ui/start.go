@@ -2,7 +2,6 @@ package ui
 
 import (
 	"image"
-	"image/draw"
 	"math"
 	"sync"
 
@@ -98,7 +97,7 @@ func startBackground(g startGeom) *image.RGBA {
 // drawEmptyDisplay draws the empty display on the whole canvas. It is the kernel logo.
 func drawEmptyDisplay(c *gfx.Canvas) {
 	b := c.Bounds()
-	draw.Draw(c.RGBA, b, startBackground(startLayout(b)), image.Point{}, draw.Src)
+	c.PixelImage(b, startBackground(startLayout(b)))
 }
 
 // drawStart draws the start screen on the whole canvas. version is printed under the bed; it can
@@ -106,7 +105,8 @@ func drawEmptyDisplay(c *gfx.Canvas) {
 func drawStart(c *gfx.Canvas, version string) {
 	b := c.Bounds()
 	g := startLayout(b)
-	draw.Draw(c.RGBA, b, startBackground(g), image.Point{}, draw.Src)
+	// An image command, so a recorded frame of a remote screen has the grid too.
+	c.PixelImage(b, startBackground(g))
 	for y := range g.rows {
 		for x := range g.cols {
 			if g.lit(x, y) {
