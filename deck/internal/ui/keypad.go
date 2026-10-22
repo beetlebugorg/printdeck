@@ -108,7 +108,8 @@ func (a *App) drawKeypad(c *gfx.Canvas) {
 					kp.digits = kp.digits[:len(kp.digits)-1]
 				}
 			default:
-				if len(kp.digits) < 3 {
+				// As many digits as the maximum has: 3 for a temperature, 4 for grams.
+				if len(kp.digits) < len(strconv.Itoa(kp.max)) {
 					kp.digits = trimZero(kp.digits + key)
 				}
 			}
