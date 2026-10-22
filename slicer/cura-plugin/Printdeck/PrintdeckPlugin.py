@@ -13,7 +13,10 @@
 # It asks the Printdeck every 10 seconds, on a thread, and changes Cura on the main thread.
 
 import json
+import os
+import tempfile
 import threading
+import urllib.parse
 import urllib.request
 
 from UM.Extension import Extension
@@ -32,11 +35,17 @@ def _message(text):
 
 
 class PrintdeckPlugin(Extension):
-    def __init__(self):
+    def __init__(self, stage=None):
         super().__init__()
+        self._stage = stage  # the Printdeck tab, or None
+        if stage:
+            stage.command = self._command
+            stage.showPrint = self._showPrint
+        self._printerAddr = None  # the base URL and the API key of the last answer
         self._status = None  # the last answer of the Printdeck
         self._connected = False
         self._greeted = False
+        self._offer = None  # the message that offers to show the print
         self._roll = None  # the roll and the material of the last answer, to see a change
         self._warned = None  # the roll and the grams of the last warning
         self._layer = None  # the job and the layer that the Preview shows
@@ -86,10 +95,14 @@ class PrintdeckPlugin(Extension):
                         status = logic.parse_status(json.loads(r.read().decode()))
                 except Exception as e:  # not a Printdeck, or the Printdeck is off
                     Logger.log("d", "Printdeck: %s", e)
+            self._printerAddr = printer
             app.callLater(self._update, status)
 
     def _update(self, status):
         self._status = status
+        if self._stage:
+            base, key = self._printerAddr or ("", "")
+            self._stage.setStatus(status, base, key)
         if not status:
             self._connected = False
             return
@@ -99,10 +112,86 @@ class PrintdeckPlugin(Extension):
             if not self._greeted:  # once each time Cura starts
                 self._greeted = True
                 _message(logic.connected_text(status))
+                self._offerPrint()
         self._nameButton()
         self._followRoll()
         self._checkRoll()
         self._followPrint()
+
+    def _offerPrint(self):
+        """During a print of a file that Cura does not have open, offers to show it in the Preview."""
+        job = self._status["job"]
+        app = CuraApplication.getInstance()
+        if not job or logic.job_matches(app.getPrintInformation().jobName, job.get("file", "")):
+            return
+        name = job.get("file", "").split("/")[-1]
+        message = Message("The Printdeck prints %s. Cura can show it in the Preview, at the layer that prints." % name,
+                          title="Printdeck", lifetime=0)
+        message.addAction("show", "Show the print", "", "Open the file of the print in the Preview")
+        message.actionTriggered.connect(lambda m, action: (m.hide(), self._showPrint()))
+        message.show()
+        self._offer = message
+
+    def _showPrint(self):
+        """Downloads the file of the print from the Printdeck, and opens it in the Preview."""
+        printer = self._printer()
+        job = self._status["job"] if self._status else None
+        if not printer or not job:
+            return
+        base, key = printer
+        path = job.get("file", "")
+        url = base.rstrip("/") + "/downloads/files/local/" + urllib.parse.quote(path)
+        target = os.path.join(tempfile.gettempdir(), "printdeck", path.split("/")[-1])
+
+        def download():
+            try:
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                req = urllib.request.Request(url, headers={"X-Api-Key": key})
+                with urllib.request.urlopen(req, timeout=120) as r, open(target, "wb") as f:
+                    while True:
+                        chunk = r.read(1 << 20)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+            except Exception as e:
+                CuraApplication.getInstance().callLater(_message, "The file of the print did not download: %s" % e)
+                return
+            CuraApplication.getInstance().callLater(self._open, target)
+
+        _message("Downloading %s from the Printdeck…" % path.split("/")[-1])
+        threading.Thread(target=download, daemon=True).start()
+
+    def _open(self, path):
+        try:
+            from PyQt6.QtCore import QUrl
+        except ImportError:
+            from PyQt5.QtCore import QUrl
+        self._layer = None  # the Preview goes to the layer that prints when the file is loaded
+        if self._offer:
+            self._offer.hide()
+            self._offer = None
+        CuraApplication.getInstance().readLocalFile(QUrl.fromLocalFile(path))
+
+    def _command(self, command, action):
+        """Sends a job command of the OctoPrint API (pause, resume, cancel) on a thread."""
+        printer = self._printer()
+        if not printer:
+            return
+        base, key = printer
+        body = {"command": command}
+        if action:
+            body["action"] = action
+
+        def send():
+            try:
+                req = urllib.request.Request(base.rstrip("/") + "/api/job", data=json.dumps(body).encode(), method="POST",
+                                             headers={"X-Api-Key": key, "Content-Type": "application/json"})
+                urllib.request.urlopen(req, timeout=10).close()
+            except Exception as e:
+                Logger.log("w", "Printdeck: %s %s: %s", command, action, e)
+                CuraApplication.getInstance().callLater(_message, "The Printdeck did not take the command: %s" % e)
+
+        threading.Thread(target=send, daemon=True).start()
 
     def _nameButton(self):
         """Names the print button. The OctoPrint plugin makes a new device after a reconnect, so this
