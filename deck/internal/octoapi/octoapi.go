@@ -116,6 +116,13 @@ func (s *Server) key(h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// ValidKey tells if a request has a valid API key. The remote screen uses it, so that a slicer
+// plugin can show the deck UI with its API key.
+func (s *Server) ValidKey(r *http.Request) bool {
+	k := requestKey(r)
+	return k != "" && s.keys.valid(k)
+}
+
 // requestKey is the API key of a request, or "".
 func requestKey(r *http.Request) string {
 	if k := r.Header.Get("X-Api-Key"); k != "" {
