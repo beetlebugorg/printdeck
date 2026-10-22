@@ -51,6 +51,7 @@ class PrintdeckPlugin(Extension):
         app.getPrintInformation().materialWeightsChanged.connect(self._checkRoll)
         app.getOutputDeviceManager().writeStarted.connect(self._tagMaterial)
         threading.Thread(target=self._poll, name="Printdeck", daemon=True).start()
+        Logger.log("i", "Printdeck: started")
 
     # The connection.
 
@@ -93,15 +94,24 @@ class PrintdeckPlugin(Extension):
             return
         if not self._connected:
             self._connected = True
-            self._nameButton()
+            Logger.log("i", "Printdeck: connected")
+        self._nameButton()
         self._followRoll()
         self._checkRoll()
         self._followPrint()
 
     def _nameButton(self):
+        """Names the print button. The OctoPrint plugin makes a new device after a reconnect, so this
+        runs at each answer. Cura reads the name of the button when the active device changes."""
+        renamed = False
         for device in self._devices():
-            device.setShortDescription(BUTTON)
-            device.setDescription(BUTTON)
+            if device.getShortDescription() != BUTTON:
+                device.setShortDescription(BUTTON)
+                device.setDescription(BUTTON)
+                renamed = True
+        if renamed:
+            Logger.log("i", "Printdeck: the print button says %s", BUTTON)
+            CuraApplication.getInstance().getOutputDeviceManager().activeDeviceChanged.emit()
 
     # The material.
 
