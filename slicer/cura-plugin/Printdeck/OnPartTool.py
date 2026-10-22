@@ -9,6 +9,10 @@
 # 4. Print. The file prints the pocket, then pauses: put the base in the pocket, check its height on
 #    the deck, and the new models print on it.
 #
+# Place as in the files puts the selected models where they are relative to the base in their files:
+# files from one assembly (for example the panel and its logo inlays) share one frame. Cura centers
+# each mesh when it loads it, and keeps the offset (MeshData.getCenterPosition).
+#
 # Add text puts raised lettering on the top of the base, at its middle: move and turn it as usual.
 #
 # For the next color, the pocket is on the bed already: check "The pocket is on the bed". The file
@@ -288,6 +292,27 @@ class OnPartTool(Tool):
             node.setSetting(SceneNodeSettings.AutoDropDown, False)
             dy = top - node.getBoundingBox().bottom
             TranslateOperation(node, Vector(0, dy, 0)).push()
+        self.propertyChanged.emit()
+
+    def placeAsInFiles(self):
+        """Puts the selected models at their place relative to the base in their files, with the
+        turn and the move of the base."""
+        from UM.Math.Matrix import Matrix
+        base = self.base()
+        if not base or not base.getMeshData():
+            return
+        cb = base.getMeshData().getCenterPosition()
+        for node in Selection.getAllSelectedObjects():
+            if node is base or node.getSetting(POCKET, False) or not node.getMeshData():
+                continue
+            cm = node.getMeshData().getCenterPosition()
+            if cb is None or cm is None:
+                Logger.log("w", "Printdeck: %s has no position of its file", node.getName())
+                continue
+            offset = Matrix()
+            offset.setByTranslation(cm - cb)
+            node.setSetting(SceneNodeSettings.AutoDropDown, False)
+            node.setTransformation(base.getWorldTransformation().multiply(offset, copy=True))
         self.propertyChanged.emit()
 
     def updatePocket(self):
