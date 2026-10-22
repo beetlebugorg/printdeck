@@ -1,0 +1,117 @@
+[
+ {
+  "group": "bed",
+  "kind": "metal",
+  "triangles": 21624
+ },
+ {
+  "group": "bed",
+  "kind": "printed",
+  "triangles": 11864
+ },
+ {
+  "group": "bed",
+  "kind": "surface",
+  "triangles": 12
+ },
+ {
+  "group": "bed",
+  "kind": "washer",
+  "triangles": 1408
+ },
+ {
+  "group": "carriage",
+  "kind": "belt",
+  "triangles": 580
+ },
+ {
+  "group": "carriage",
+  "kind": "heater",
+  "triangles": 2174
+ },
+ {
+  "group": "carriage",
+  "kind": "metal",
+  "triangles": 30474
+ },
+ {
+  "group": "carriage",
+  "kind": "motor",
+  "triangles": 4056
+ },
+ {
+  "group": "carriage",
+  "kind": "nozzle",
+  "triangles": 856
+ },
+ {
+  "group": "carriage",
+  "kind": "printed",
+  "triangles": 67976
+ },
+ {
+  "group": "frame",
+  "kind": "belt",
+  "triangles": 544
+ },
+ {
+  "group": "frame",
+  "kind": "metal",
+  "triangles": 71342
+ },
+ {
+  "group": "frame",
+  "kind": "printed",
+  "triangles": 60752
+ },
+ {
+  "group": "gantry",
+  "kind": "belt",
+  "triangles": 284
+ },
+ {
+  "group": "gantry",
+  "kind": "metal",
+  "triangles": 22624
+ },
+ {
+  "group": "gantry",
+  "kind": "motor",
+  "triangles": 992
+ },
+ {
+  "group": "gantry",
+  "kind": "printed",
+  "triangles": 16476
+ },
+ {
+  "group": "xbeltl",
+  "kind": "belt",
+  "triangles": 12
+ },
+ {
+  "group": "xbeltr",
+  "kind": "belt",
+  "triangles": 12
+ },
+ {
+  "group": "ybase",
+  "kind": "belt",
+  "triangles": 272
+ },
+ {
+  "group": "ybase",
+  "kind": "metal",
+  "triangles": 12536
+ },
+ {
+  "group": "ybase",
+  "kind": "motor",
+  "triangles": 992
+ },
+ {
+  "group": "ybase",
+  "kind": "printed",
+  "triangles": 25604
+ }
+]

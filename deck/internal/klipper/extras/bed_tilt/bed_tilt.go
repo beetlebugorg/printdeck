@@ -62,6 +62,12 @@ func (bt *BedTilt) Move(newpos []float64, speed float64) {
 	bt.toolhead.Move(pos, speed)
 }
 
+// Status is the plane of the tilt. Klipper has no status for bed_tilt: the 3D window of the
+// simulator (cmd/printdeck/simweb.go) reads it.
+func (bt *BedTilt) Status(eventtime float64) map[string]any {
+	return map[string]any{"x_adjust": bt.xAdjust, "y_adjust": bt.yAdjust, "z_adjust": bt.zAdjust}
+}
+
 // UpdateAdjust sets the tilt, and stages it for SAVE_CONFIG.
 func (bt *BedTilt) UpdateAdjust(x, y, z float64) {
 	bt.xAdjust, bt.yAdjust, bt.zAdjust = x, y, z

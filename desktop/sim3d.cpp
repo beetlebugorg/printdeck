@@ -123,17 +123,23 @@ void MeshGeometry::setSource(const QString &source)
         return;
     m_source = source;
     QFile f(source);
-    QByteArray data;
+    QByteArray in;
     if (f.open(QIODevice::ReadOnly))
-        data = f.readAll();
+        in = f.readAll();
     else
         qWarning("MeshGeometry: %s: %s", qPrintable(source), qPrintable(f.errorString()));
-    data.truncate(data.size() - data.size() % vertexStride);
-    // The bounds, for the culling of the view.
+    constexpr int fileStride = 10;
+    const qsizetype n = in.size() / fileStride;
+    QByteArray data;
+    data.reserve(n * vertexStride);
+    // The vertices as float32, and the bounds for the culling of the view.
     QVector3D lo, hi;
-    const float *v = reinterpret_cast<const float *>(data.constData());
-    for (qsizetype i = 0; i < data.size() / vertexStride; i++) {
-        QVector3D p(v[6 * i], v[6 * i + 1], v[6 * i + 2]);
+    for (qsizetype i = 0; i < n; i++) {
+        const uchar *r = reinterpret_cast<const uchar *>(in.constData()) + i * fileStride;
+        auto i16 = [r](int k) { return float(qint16(r[2 * k] | r[2 * k + 1] << 8)) / 50; };
+        auto i8 = [r](int k) { return float(qint8(r[6 + k])) / 127; };
+        QVector3D p(i16(0), i16(1), i16(2));
+        put(data, p, QVector3D(i8(0), i8(1), i8(2)));
         if (i == 0)
             lo = hi = p;
         lo = QVector3D(std::min(lo.x(), p.x()), std::min(lo.y(), p.y()), std::min(lo.z(), p.z()));
@@ -184,6 +190,9 @@ void SimFeed::setRecent(PathGeometry *p)
 // follow shows the moves that the nozzle has laid: the moves before the move that it is on now,
 // and that move up to the nozzle. The file of the print is read ahead of the nozzle, so the moves
 // wait in m_pending until the nozzle gets to them. At the end of a print, all of them show.
+//
+// An extruding move that is not in the file (the prime line and the other moves of the macros)
+// leaves a trail: a strand from the last place of the nozzle to its place now.
 void SimFeed::follow(bool busy)
 {
     if (!m_path || !m_recent)
@@ -194,6 +203,19 @@ void SimFeed::follow(bool busy)
         m_laid.clear();
         m_committed = QDateTime::currentMSecsSinceEpoch();
     };
+    const QVector3D last = m_last;
+    const bool hasLast = m_hasLast;
+    m_last = m_pos;
+    m_hasLast = true;
+    auto trail = [&] {
+        const float d = (m_pos - last).length();
+        if (!m_extruding || !hasLast || d < 0.05f || d > 20)
+            return;
+        m_laid << last.x() << last.y() << last.z() << m_pos.x() << m_pos.y() << m_pos.z();
+        if (QDateTime::currentMSecsSinceEpoch() - m_committed > 500)
+            commit();
+        m_recent->set(m_laid, m_path->layer());
+    };
     if (!busy) {
         if (!m_pending.isEmpty() || !m_laid.isEmpty()) {
             m_laid += m_pending;
@@ -201,6 +223,7 @@ void SimFeed::follow(bool busy)
             commit();
             m_recent->clear();
         }
+        trail();
         return;
     }
     // The move that the nozzle is on: the nearest one at its height, among the next moves.
@@ -221,8 +244,10 @@ void SimFeed::follow(bool busy)
             bestT = t;
         }
     }
-    if (best < 0)
-        return; // a travel move, or a wait: nothing new
+    if (best < 0) {
+        trail(); // a travel move, a wait, or a move of a macro
+        return;
+    }
     m_laid += m_pending.mid(0, 6 * best);
     m_pending.remove(0, 6 * best);
     if (QDateTime::currentMSecsSinceEpoch() - m_committed > 500 || m_laid.size() > 6 * 800)
@@ -260,14 +285,10 @@ void SimFeed::pollState()
             return;
         }
         QJsonObject o = QJsonDocument::fromJson(r->readAll()).object();
-        // The position in the coordinates of the G-code, as the moves of the part: the tool head
-        // less the offset of the G-code (the bed tilt of the probe, the G-code offsets).
-        QJsonArray p = o.value(QStringLiteral("pos")).toArray(), off = o.value(QStringLiteral("offset")).toArray();
-        if (p.size() >= 3) {
+        // The place of the nozzle in mm, as the moves of the part.
+        QJsonArray p = o.value(QStringLiteral("pos")).toArray();
+        if (p.size() >= 3)
             m_pos = QVector3D(p[0].toDouble(), p[1].toDouble(), p[2].toDouble());
-            if (off.size() >= 3)
-                m_pos -= QVector3D(off[0].toDouble(), off[1].toDouble(), off[2].toDouble());
-        }
         m_extruding = o.value(QStringLiteral("ev")).toDouble() > 0.01;
         m_tool = o.value(QStringLiteral("tool")).toDouble();
         m_toolT = o.value(QStringLiteral("toolT")).toDouble();

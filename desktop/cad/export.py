@@ -6,12 +6,14 @@
 # The folder has the files of production_parts/assemblies/sub_assemblies/: final_assembly,
 # final_frame, x_axis, y_bed, aerostruder_v2_HS0.5 and control_box (.fcstd).
 #
-# Each part goes to a group by the axis that moves it (frame, bed, gantry, carriage) and to a kind
-# by its name (metal, printed, motor, belt, surface). Each group and kind is one file
-# GROUP_KIND.bin: triangles of 3 vertices of 6 float32 (the position and the normal), in the
-# coordinates of the scene of Sim3D.qml (mm; Y up, X to the right, Z to the front), at the pose of
-# the CAD: the tool head at X 137, the bed at Y 132 and the gantry at Z 26.6 of the printer.
-import FreeCAD, MeshPart, os, struct, json
+# Each part goes to a group by the part of the printer that moves it (frame, ybase, bed, gantry,
+# carriage, and the stretched parts of the X belt) and to a kind by its name (metal, printed,
+# motor, belt, surface, washer, nozzle, heater). Each group and kind is one file GROUP_KIND.bin:
+# triangles of 3 vertices, in the coordinates of the scene of Sim3D.qml (mm; Y up, X to the
+# right, Z to the front), at the pose of the CAD. Sim3D.qml moves the groups from that pose to the
+# places of the printer. A vertex is 10 bytes, little endian: the position as 3 int16 in steps of
+# 1/50 mm, the normal as 3 int8 in steps of 1/127, and 1 byte of padding.
+import FreeCAD, MeshPart, Part, os, struct, json
 
 CAD = os.environ["CAD"]
 OUT = os.environ["OUT"]
@@ -45,6 +47,8 @@ def kind(label):
     l = label.lower()
     if "heatbed" in l:
         return "surface"
+    if "bed_leveling_washer" in l:
+        return "washer"
     if "nema" in l:
         return "motor"
     if "belt" in l and not any(w in l for w in ("clamp", "mount", "anchor", "tensioner")):
@@ -55,15 +59,57 @@ def kind(label):
         return "metal"
     return "printed"
 
+# The hot end is in the part of the extruder (aeroM), as shells. kind_aero sorts a shell by its
+# height in the part: the nozzle at the bottom, the heater block over it, and the heat break.
+def kind_aero(b):
+    if b.ZMax < -100:
+        return "nozzle"
+    if b.ZMin < -104:
+        return "heater"
+    if b.ZMin < -95:
+        return "metal"
+    return "printed"
+
 meshes = {}  # (group, kind) -> list of triangles
+
+# The X belt ends at the carriage: its top run goes from the motor pulley to the clamp at the
+# left of the carriage, and from the tensioner at the right of the carriage to the idler. The parts
+# of that run stretch as the carriage moves (Sim3D.qml): xbeltl from X -51.5 to 95 of the scene,
+# xbeltr from 184 to 405. The ends at the clamp and the tensioner (95 to 184) move with the
+# carriage. The rest of the loop does not move.
+XBELT = {"xbeltl": (-51.5, 95, 95), "carriage": (95, 184, 89), "xbeltr": (184, 405, 95)}
+
+def scene_box(x0, x1, y0):
+    """A box of the CAD over the scene X x0..x1 and the scene Y over y0."""
+    return Part.makeBox(x1 - x0, 1000, 2000, FreeCAD.Vector(294.9 - x1, y0 - 540.6, -1000))
+
+def add_xbelt(shape, pl):
+    s = shape.copy()
+    s.transformShape(pl.toMatrix())
+    rest = s
+    for group, (x0, x1, y0) in XBELT.items():
+        box = scene_box(x0, x1, y0)
+        mesh(group, "belt", s.common(box), FreeCAD.Placement())
+        rest = rest.cut(box)
+    mesh("gantry", "belt", rest, FreeCAD.Placement())
 
 def add(group, label, shape, pl):
     if label.startswith(SKIP):
         return
+    if label.startswith("x_belt_01"):
+        add_xbelt(shape, pl)
+        return
+    if label.startswith("aeroM") and shape.Shells:
+        for sh in shape.Shells:
+            mesh(group, kind_aero(sh.BoundBox), sh, pl)
+        return
+    mesh(group, kind(label), shape, pl)
+
+def mesh(group, k, shape, pl):
     s = shape.copy()
     s.transformShape(pl.toMatrix())
     m = MeshPart.meshFromShape(Shape=s, LinearDeflection=0.4, AngularDeflection=0.4, Relative=False)
-    tris = meshes.setdefault((group, kind(label)), [])
+    tris = meshes.setdefault((group, k), [])
     for f in m.Facets:
         n = normal(f.Normal)
         tris.append([(scene(FreeCAD.Vector(*p)), n) for p in f.Points])
@@ -79,7 +125,7 @@ def parts(sub, label, group_of):
 
 parts("final_frame", "final_frame_01", lambda l: "frame")
 parts("control_box", "control_box_01", lambda l: "frame")
-parts("y_bed", "y_bed_01", lambda l: "bed" if l.startswith(BED) else "frame")
+parts("y_bed", "y_bed_01", lambda l: "bed" if l.startswith(BED) else "ybase")
 parts("x_axis", "x_axis_01", lambda l: "carriage" if l.startswith(CARRIAGE) else "gantry")
 parts("aerostruder_v2_HS0.5", "aerostruder_v2_HS0_5_01", lambda l: "carriage")
 for o in fin.Objects:
@@ -93,7 +139,8 @@ for (group, k), tris in sorted(meshes.items()):
     with open("%s/%s_%s.bin" % (OUT, group, k), "wb") as f:
         for tri in tris:
             for p, n in tri:
-                f.write(struct.pack("<6f", p.x, p.y, p.z, n.x, n.y, n.z))
+                f.write(struct.pack("<3h3bx", *(round(c * 50) for c in (p.x, p.y, p.z)),
+                                    *(round(c * 127) for c in (n.x, n.y, n.z))))
     manifest.append({"group": group, "kind": k, "triangles": len(tris)})
 with open(OUT + "/meshes.json", "w") as f:
     json.dump(manifest, f, indent=1)

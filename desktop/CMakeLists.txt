@@ -24,5 +24,8 @@ qt_add_resources(printdeck-desktop qml PREFIX / FILES
     Sim3D.qml
     ${plugin_qml}/DeckCanvas.qml
     ${plugin_qml}/Connecting.qml)
+# The meshes of the printer, from the CAD of LulzBot (cad/export.py, meshes/README.md).
+file(GLOB meshes RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} meshes/*.bin)
+qt_add_resources(printdeck-desktop meshes PREFIX / FILES ${meshes})
 
 target_link_libraries(printdeck-desktop PRIVATE Qt6::Gui Qt6::Network Qt6::Qml Qt6::Quick Qt6::Quick3D)
