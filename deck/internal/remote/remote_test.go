@@ -31,10 +31,11 @@ func newTest(t *testing.T) (*Server, *httptest.Server, *http.Client, *fakeUI) {
 	ui := &fakeUI{touches: make(chan touch.Event, 4), ended: make(chan struct{}, 4)}
 	s := New()
 	s.Password = func() string { return "stamp-ocean-cider-brick" }
-	s.NewSession = func(ctx context.Context, size image.Point, frame func([]byte)) (image.Point, func(touch.Event)) {
+	s.NewSession = func(ctx context.Context, size image.Point, frame func([]byte)) (image.Point, Input) {
 		frame([]byte(`[["f",0,0,480,800,1184273]]`))
 		go func() { <-ctx.Done(); ui.ended <- struct{}{} }()
-		return image.Pt(480, max(800, size.Y)), func(e touch.Event) { ui.touches <- e }
+		return image.Pt(480, max(800, size.Y)), Input{Touch: func(e touch.Event) { ui.touches <- e },
+			Key: func(text, name string) {}}
 	}
 	ts := httptest.NewServer(s.Handler())
 	t.Cleanup(ts.Close)

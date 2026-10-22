@@ -19,6 +19,25 @@ Window
     {
         id: area
         anchors.fill: parent
+        // The keyboard of the computer types on the deck: in its keyboard, its keypad, its
+        // questions; Escape goes back.
+        focus: true
+        Keys.onPressed: function(event) {
+            var name = ""
+            switch (event.key) {
+            case Qt.Key_Return:
+            case Qt.Key_Enter: name = "Enter"; break
+            case Qt.Key_Escape: name = "Escape"; break
+            case Qt.Key_Backspace: name = "Backspace"; break
+            }
+            if (name != "") {
+                printdeck.key("", name)
+                event.accepted = true
+            } else if (event.text.length > 0 && event.text.charCodeAt(0) >= 32) {
+                printdeck.key(event.text, "")
+                event.accepted = true
+            }
+        }
         onWidthChanged: printdeck.setArea(width, height)
         onHeightChanged: printdeck.setArea(width, height)
         Component.onCompleted: printdeck.setArea(width, height)

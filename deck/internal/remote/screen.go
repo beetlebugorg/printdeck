@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"printdeck/internal/gfx"
 	"printdeck/internal/touch"
@@ -27,7 +28,7 @@ import (
 const maxSessions = 8
 
 type session struct {
-	touch func(touch.Event)
+	input Input
 }
 
 func (s *Server) addSession(id string, ss *session) bool {
@@ -96,9 +97,9 @@ func (s *Server) serveEvents(w http.ResponseWriter, r *http.Request) {
 	var size image.Point
 	size.X, _ = strconv.Atoi(r.URL.Query().Get("w"))
 	size.Y, _ = strconv.Atoi(r.URL.Query().Get("h"))
-	size, t := s.NewSession(ctx, size, box.put)
+	size, in := s.NewSession(ctx, size, box.put)
 	s.mu.Lock()
-	ss.touch = t
+	ss.input = in
 	s.mu.Unlock()
 
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -148,7 +149,7 @@ func (s *Server) serveTouch(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	var touchFn func(touch.Event)
 	if ss := s.ui[r.URL.Query().Get("s")]; ss != nil {
-		touchFn = ss.touch
+		touchFn = ss.input.Touch
 	}
 	s.mu.Unlock()
 	if touchFn == nil {
@@ -156,6 +157,35 @@ func (s *Server) serveTouch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	touchFn(touch.Event{Kind: kind, X: t.X, Y: t.Y})
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// keyNames are the keys with no text that a session reads.
+var keyNames = map[string]bool{"Enter": true, "Escape": true, "Backspace": true}
+
+// serveKey receives one key of a real keyboard for a session: {"text": "a"} for a key that types
+// text, or {"name": "Enter"} for Enter, Escape or Backspace. ?s= is the number of the session.
+func (s *Server) serveKey(w http.ResponseWriter, r *http.Request) {
+	var k struct {
+		Text string `json:"text"`
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 256)).Decode(&k); err != nil ||
+		utf8.RuneCountInString(k.Text) > 8 || (k.Text == "") == (k.Name == "") || (k.Name != "" && !keyNames[k.Name]) {
+		http.Error(w, "bad key", http.StatusBadRequest)
+		return
+	}
+	s.mu.Lock()
+	var keyFn func(text, name string)
+	if ss := s.ui[r.URL.Query().Get("s")]; ss != nil {
+		keyFn = ss.input.Key
+	}
+	s.mu.Unlock()
+	if keyFn == nil {
+		http.Error(w, "no session", http.StatusGone)
+		return
+	}
+	keyFn(k.Text, k.Name)
 	w.WriteHeader(http.StatusNoContent)
 }
 

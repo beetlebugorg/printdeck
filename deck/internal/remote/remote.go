@@ -26,6 +26,13 @@ var screenPage []byte
 //go:embed login.html
 var loginPage []byte
 
+// Input is the input of a session: the touches, and the keys of a real keyboard. Key gets the
+// text that a key types, or the name of a key: "Enter", "Escape" or "Backspace".
+type Input struct {
+	Touch func(touch.Event)
+	Key   func(text, name string)
+}
+
 // Server is the deck UI in the browser.
 type Server struct {
 	// Password returns the password for the login. When it returns "", nobody can log in.
@@ -33,8 +40,8 @@ type Server struct {
 	// NewSession starts a session of the UI for one browser, with a screen size for the shape of
 	// its window: 480 wide and a height for a tall window, or wider than high for a wide window. It
 	// gives each frame (the JSON of a gfx.Recording) to frame, until ctx ends, and returns the size
-	// that it uses and the function that takes the touches.
-	NewSession func(ctx context.Context, size image.Point, frame func([]byte)) (image.Point, func(touch.Event))
+	// that it uses and the functions that take the touches and the keys.
+	NewSession func(ctx context.Context, size image.Point, frame func([]byte)) (image.Point, Input)
 	// Icon is the PNG icon of the page, for the home screen of a phone.
 	Icon []byte
 	// NoLogin lets every request through, for the demo (printdeck remote-demo).
@@ -66,6 +73,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /screen", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/", http.StatusMovedPermanently) })
 	mux.HandleFunc("GET /ui/events", s.auth(s.serveEvents))
 	mux.HandleFunc("POST /ui/touch", s.auth(s.serveTouch))
+	mux.HandleFunc("POST /ui/key", s.auth(s.serveKey))
 	mux.HandleFunc("GET /ui/img/{id}", s.auth(s.serveImage))
 	mux.HandleFunc("GET /ui/font/{name}", s.serveFont)
 	mux.HandleFunc("GET /manifest.webmanifest", s.serveManifest)
