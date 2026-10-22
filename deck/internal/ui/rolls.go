@@ -183,6 +183,10 @@ func rollLine(sp printer.Spool) string {
 // A tap opens the page of a roll.
 func (a *App) drawSpools(c *gfx.Canvas) {
 	f := a.navPage(c, "Rolls")
+	// Opened with the Rolls key of Filament: the key stays in its place, lit, and goes back.
+	if n := len(a.pages); n >= 2 && a.pages[n-2] == pageFilament {
+		a.headKeyOn(c, f.head, "Rolls", true, a.back)
+	}
 	s := a.Printer.SpoolStore()
 	var list []printer.Spool
 	in := ""

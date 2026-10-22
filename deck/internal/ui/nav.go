@@ -22,9 +22,10 @@ type navKey struct {
 	p    page
 }
 
-// The rolls are a part of Filament (its head key Rolls), so the panel has no key for them.
-var navKeys = []navKey{{"Files", pageFiles}, {"Filament", pageFilament}, {"Move", pageMove},
-	{"History", pageHistory}, {"Maintenance", pageMaintenance}, {"Machine", pageMachine}}
+// Home is the home screen (no page). The rolls are a part of Filament (its head key Rolls), and
+// History a part of Machine, so the panel has no keys for them.
+var navKeys = []navKey{{"Home", 0}, {"Files", pageFiles}, {"Filament", pageFilament},
+	{"Move", pageMove}, {"Maintenance", pageMaintenance}, {"Machine", pageMachine}}
 
 // actH is the height of the row of actions at the bottom of a page.
 const actH = 72
@@ -60,7 +61,7 @@ func (a *App) navPage(c *gfx.Canvas, title string) frame {
 func (a *App) drawNavKeys(c *gfx.Canvas, r image.Rectangle) {
 	a.region("Pages", r)
 	// The lit key is the deepest page of the stack that has a key: Filament for Rolls, opened from
-	// Filament; History for the History opened from Machine.
+	// Filament; Home with no page.
 	open := page(0)
 	for _, p := range a.pages {
 		for _, k := range navKeys {
@@ -75,7 +76,10 @@ func (a *App) drawNavKeys(c *gfx.Canvas, r image.Rectangle) {
 			if k.p == pageFiles {
 				go func() { a.Printer.LoadFiles(); a.Redraw() }()
 			}
-			a.pages = []page{k.p}
+			a.pages = nil
+			if k.p != 0 {
+				a.pages = []page{k.p}
+			}
 			a.Redraw()
 		}
 		switch {
