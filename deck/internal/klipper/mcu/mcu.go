@@ -30,8 +30,8 @@ import (
 	"printdeck/internal/klipper/msgproto"
 	"printdeck/internal/klipper/pins"
 	"printdeck/internal/klipper/serialhdl"
-	"printdeck/internal/klipper/simmcu"
 	"printdeck/internal/klipper/serialqueue"
+	"printdeck/internal/klipper/simmcu"
 )
 
 // Error is an error of a board (mcu.error).
