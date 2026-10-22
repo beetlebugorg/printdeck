@@ -29,7 +29,10 @@ type Meta struct {
 	NozzleTemp  int
 	BedTemp     int
 	Material    string // for example "PLA"
-	Thumbnail   image.Image
+	// MaterialName is the material that the slicer chose, for example "Black ABS", or "". The
+	// Printdeck plugin for Cura writes it.
+	MaterialName string
+	Thumbnail    image.Image
 }
 
 // The slicers write the thumbnails at the start, and PrusaSlicer, OrcaSlicer and Bambu Studio write
@@ -153,6 +156,10 @@ func (m *parser) line(l string) {
 		}
 	case "filament_type":
 		m.Material = strings.Split(strings.Trim(val, `"`), ";")[0]
+	case "printdeck_material": // the Printdeck plugin for Cura
+		m.Material = val
+	case "printdeck_material_name":
+		m.MaterialName = val
 	}
 }
 

@@ -13,6 +13,7 @@ on:
     paths:
       - "deck/**"
       - "os/**"
+      - "slicer/cura-plugin/**"
       - ".github/workflows/os.yml"
   workflow_dispatch:
     inputs:
@@ -78,6 +79,10 @@ jobs:
           retention-days: 14
           compression-level: 0
 
+      # The Printdeck plugin for Cura: drag it onto the Cura window.
+      - name: Package the Cura plugin
+        run: slicer/cura-plugin/package.sh "$PWD/os/out/Printdeck.curapackage"
+
       - name: Release
         if: ${{ startsWith(github.ref, 'refs/tags/v') && env.VARIANT == '' }}
         env:
@@ -86,5 +91,5 @@ jobs:
           tag="$GITHUB_REF_NAME"
           pre=""
           case "$tag" in *-*) pre="--prerelease" ;; esac
-          gh release create "$tag" os/out/printdeck.img.xz os/out/printdeck-update.tar.xz \
+          gh release create "$tag" os/out/printdeck.img.xz os/out/printdeck-update.tar.xz os/out/Printdeck.curapackage \
             --title "Printdeck $tag" --generate-notes --verify-tag $pre

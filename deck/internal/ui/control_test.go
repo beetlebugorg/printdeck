@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"printdeck/internal/gcodemeta"
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
 	"printdeck/internal/touch"
@@ -36,6 +37,7 @@ func (r *recPrinter) Jog(x, y, z float64, s int) error {
 func (r *recPrinter) FirmwareRestart() error  { return r.Gcode("FIRMWARE_RESTART") }
 func (r *recPrinter) MotorsOff() error        { return r.rec("motors off") }
 func (r *recPrinter) SpeedFactor(p int) error { return r.rec(fmt.Sprint("speed ", p)) }
+func (r *recPrinter) PrintFile(path string)   { r.rec("print " + path) }
 
 func (r *recPrinter) Calls() []string {
 	r.mu.Lock()
@@ -309,5 +311,31 @@ func TestSwapSavedRoll(t *testing.T) {
 	}
 	if c := pr.wait(1); len(c) != 1 || c[0] != "tool 210" {
 		t.Errorf("calls %v", c)
+	}
+}
+
+// A print checks the material of the file against the roll in the printer.
+func TestMaterialCheck(t *testing.T) {
+	a, pr, _ := newPrintApp(idle)
+	pr.Meta_ = gcodemeta.Meta{Material: "ABS", MaterialName: "Black ABS"}
+	if q, _, danger, set := a.materialCheck("x.gcode"); q != "Is Black ABS in the printer?" || danger || set != "ABS" {
+		t.Errorf("nothing loaded: %q %v %q", q, danger, set)
+	}
+	pr.Spools_ = &printer.Spools{}
+	pr.Spools_.Add("White", "PLA", 1200, 200, 0, time.Unix(1, 0))
+	if q, yes, danger, _ := a.materialCheck("x.gcode"); q != "The file is for Black ABS. White (PLA) is in the printer." || yes != "Print anyway" || !danger {
+		t.Errorf("another material: %q %q %v", q, yes, danger)
+	}
+	pr.Meta_.Material = "pla"
+	if q, _, _, _ := a.materialCheck("x.gcode"); q != "" {
+		t.Errorf("the same material: %q", q)
+	}
+	// A print from a slicer starts at once when the material is in the printer.
+	a.ConfirmFilePrint("x.gcode")
+	for len(a.posted) > 0 {
+		(<-a.posted)()
+	}
+	if c := pr.Calls(); a.confirm != nil || len(c) != 1 || c[0] != "print x.gcode" {
+		t.Errorf("confirm %v, calls %v", a.confirm, pr.Calls())
 	}
 }

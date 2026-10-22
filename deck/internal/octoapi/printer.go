@@ -3,6 +3,7 @@ package octoapi
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -18,12 +19,20 @@ func (s *Server) serveServer(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"version": serverVersion, "safemode": nil})
 }
 
-// serveSettings answers the few settings that the slicers read. There is no camera.
+// serveSettings answers the few settings that the slicers read. The webcam is the screen of the
+// deck (printdeck.go), with the key of the request in its address, because the slicers do not send
+// the key with the stream.
 func (s *Server) serveSettings(w http.ResponseWriter, r *http.Request) {
+	webcam := map[string]any{"webcamEnabled": false, "streamUrl": "", "snapshotUrl": ""}
+	if s.Frame != nil {
+		q := "?apikey=" + url.QueryEscape(requestKey(r))
+		webcam = map[string]any{"webcamEnabled": true, "streamUrl": "/webcam/stream" + q,
+			"snapshotUrl": "/webcam/snapshot" + q, "flipH": false, "flipV": false, "rotate90": false}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"api":     map[string]any{"allowCrossOrigin": false},
 		"feature": map[string]any{"sdSupport": false},
-		"webcam":  map[string]any{"webcamEnabled": false, "streamUrl": "", "snapshotUrl": ""},
+		"webcam":  webcam,
 		"plugins": map[string]any{},
 	})
 }

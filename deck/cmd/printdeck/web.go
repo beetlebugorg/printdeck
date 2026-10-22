@@ -6,9 +6,11 @@ import (
 	"image"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"printdeck/internal/config"
@@ -35,6 +37,15 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 	if k, ok := pr.(*printer.Klippy); ok {
 		api := octoapi.New(k, &gcodestore.Store{Dir: cfg.GcodeDir}, cfg.OctoPrintKey, filepath.Join(cfg.StateDir, "apikeys.json"))
 		api.Version, api.Ask = osVersion(), app.Ask
+		api.Spools = k.Spools
+		api.Diameter = func() float64 { return k.Machine().Diameter() }
+		materialFile := filepath.Join(cfg.StateDir, "material")
+		api.Material = func() string {
+			b, _ := os.ReadFile(materialFile)
+			return strings.TrimSpace(string(b))
+		}
+		api.Frame = cameraFrame(app)
+		api.StartPrint = app.ConfirmFilePrint
 		api.Register(mux)
 	}
 	var rs *remote.Server
@@ -105,3 +116,28 @@ var (
 	describeAfterTag = regexp.MustCompile(`^.+-[0-9]+-g([0-9a-f]{7,40})$`)
 	tagOrCommit      = regexp.MustCompile(`^(v[0-9][0-9A-Za-z.\-]*|[0-9a-f]{7,40})$`)
 )
+
+// cameraFrame returns a function that draws the screen of the deck, as on a display that is
+// mounted wide, for the webcam of the slicers. The frames have their own screens, like a browser.
+func cameraFrame(app *ui.App) func() image.Image {
+	var mu sync.Mutex
+	var s *ui.App
+	var cv *gfx.Canvas
+	return func() image.Image {
+		mu.Lock()
+		defer mu.Unlock()
+		if s == nil {
+			s = app.Session(800, 480)
+			cv = gfx.New(800, 480)
+		}
+		s.Draw(cv)
+		return image.Image(cloneRGBA(cv.RGBA))
+	}
+}
+
+// cloneRGBA copies an image, so that the next frame does not change it.
+func cloneRGBA(src *image.RGBA) *image.RGBA {
+	dst := image.NewRGBA(src.Rect)
+	copy(dst.Pix, src.Pix)
+	return dst
+}

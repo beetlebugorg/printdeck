@@ -358,7 +358,19 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 	box := kit.Center(image.Rect(0, 0, W, contentY1), min(W-60, 560), 280) // in the middle of the screen
 	panel(c, box, "CONFIRM")
 	cf := a.confirm
-	c.Text(image.Rect(box.Min.X+20, box.Min.Y+30, box.Max.X-20, box.Min.Y+150), cf.question, gfx.Face(true, 28), text, gfx.Center)
+	// The question, in lines that fit the box: smaller when it has more than three lines.
+	q := image.Rect(box.Min.X+20, box.Min.Y+26, box.Max.X-20, box.Min.Y+170)
+	face, lineH := gfx.Face(true, 28), 38
+	lines := wrapText(face, cf.question, q.Dx())
+	if len(lines) > 3 {
+		face, lineH = gfx.Face(true, 22), 30
+		lines = wrapText(face, cf.question, q.Dx())
+	}
+	y := q.Min.Y + (q.Dy()-len(lines)*lineH)/2
+	for _, l := range lines {
+		c.Text(image.Rect(q.Min.X, y, q.Max.X, y+lineH), l, face, text, gfx.Center)
+		y += lineH
+	}
 	no := cf.no
 	if no == "" {
 		no = "Back"

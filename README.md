@@ -96,6 +96,8 @@ The screens of the touch screen:
 - Setup (at the first start) sets the Wi-Fi. Machine > Wi-Fi and help, and Help during a print, show the address and the password.
 
 `slicer/` has a Cura post-processing script that sets the speed of each move. See `slicer/README.md`.
+`slicer/cura-plugin/` is the Printdeck plugin for Cura: the roll in the printer, its material, and
+the print in Preview. See `slicer/cura-plugin/README.md`.
 
 To look at the screens without the hardware, run `go run ./cmd/printdeck demo /tmp/shots` in
 `deck/`. It writes PNG files. To use the screens in a browser, run

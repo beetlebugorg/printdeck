@@ -10,6 +10,7 @@
 //	printer.go  version, printer, job, connection and commands
 //	files.go    the file list, upload, select and print, delete, download
 //	appkeys.go  the App Keys flow: an app asks for a key, and the touch screen asks the user
+//	printdeck.go the loaded filament, for the Printdeck plugin for Cura
 package octoapi
 
 import (
@@ -53,6 +54,8 @@ type Server struct {
 	// Ask shows a question on the touch screen, for the App Keys flow. answer gets true for yes.
 	// When it is nil, apps cannot get a key.
 	Ask func(question, yes, no string, answer func(bool))
+	// The loaded filament, for the Printdeck plugin for Cura (printdeck.go).
+	printdeckFields
 
 	keys *keyStore
 
@@ -95,25 +98,33 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/files/local/{path...}", s.key(s.serveFileCommand))
 	mux.HandleFunc("DELETE /api/files/local/{path...}", s.key(s.serveDelete))
 	mux.HandleFunc("GET /downloads/files/local/{path...}", s.key(s.serveDownload))
+	mux.HandleFunc("GET /api/plugin/printdeck", s.key(s.servePrintdeck))
+	mux.HandleFunc("GET /webcam/stream", s.key(s.serveStream))
+	mux.HandleFunc("GET /webcam/snapshot", s.key(s.serveSnapshot))
 }
 
 // key lets a request through with a valid API key: in the X-Api-Key header, as a Bearer token, or
 // as the apikey parameter.
 func (s *Server) key(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		k := r.Header.Get("X-Api-Key")
-		if k == "" {
-			k = strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		}
-		if k == "" {
-			k = r.URL.Query().Get("apikey")
-		}
+		k := requestKey(r)
 		if k == "" || !s.keys.valid(k) {
 			apiError(w, http.StatusForbidden, "Invalid API key")
 			return
 		}
 		h(w, r)
 	}
+}
+
+// requestKey is the API key of a request, or "".
+func requestKey(r *http.Request) string {
+	if k := r.Header.Get("X-Api-Key"); k != "" {
+		return k
+	}
+	if k := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "); k != "" {
+		return k
+	}
+	return r.URL.Query().Get("apikey")
 }
 
 func writeJSON(w http.ResponseWriter, code int, v any) {
