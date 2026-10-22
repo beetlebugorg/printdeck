@@ -72,12 +72,13 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 	// top of the right column, and the keys under them, which fill the column.
 	var txt *kit.Stack
 	var keyArea image.Rectangle
-	lineH, face := 30, gfx.Face(false, 20)
+	// One size of text on both screens: the label of the step, its title, and the text.
+	lineH, face := 26, gfx.Face(false, 18)
 	if f.wide {
-		r := kit.Rows(f.body(), 12, kit.Px(140), kit.Fr(1))
-		txt, keyArea, lineH, face = kit.NewStack(r[0], 0), r[1], 26, gfx.Face(false, 18)
+		r := kit.Rows(f.body(), 12, kit.Px(130), kit.Fr(1))
+		txt, keyArea = kit.NewStack(r[0], 0), r[1]
 	} else {
-		txt = kit.NewStack(f.body(), 0)
+		txt = kit.NewStack(kit.Inset(f.body(), 0, 10, 0, 0), 0)
 	}
 	// keys gives the places of the keys of the step: px high on a tall screen, a share fr of the
 	// right column on a wide screen.
@@ -112,12 +113,12 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		if sw.mode == swapLoadOnly && n > 2 {
 			n--
 		}
-		r := txt.Next(28)
-		c.Text(r, fmt.Sprintf("Step %d of %d", n, total), gfx.Face(false, 17), dim, gfx.Left)
-		t := txt.Next(44)
-		c.Text(t, title, gfx.Face(true, 26), orange, gfx.Left)
-		a.textRegion("Step", image.Rect(r.Min.X, r.Min.Y, r.Max.X, t.Max.Y), gfx.Face(true, 26), title)
-		txt.Skip(16)
+		r := txt.Next(22)
+		label(c, r, fmt.Sprintf("Step %d of %d", n, total), gfx.Left)
+		t := txt.Next(38)
+		c.Text(t, title, gfx.Face(true, 24), orange, gfx.Left)
+		a.textRegion("Step", image.Rect(r.Min.X, r.Min.Y, r.Max.X, t.Max.Y), gfx.Face(true, 24), title)
+		txt.Skip(12)
 		a.lcdNote(printer.LCDRow{Left: fmt.Sprintf("%d/%d %s", n, total, title)})
 	}
 	// para draws a text, with its lines broken to the width.
@@ -193,18 +194,19 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		var temp, bar, cancel image.Rectangle
 		if f.wide {
 			para("The next step starts when the nozzle is hot.")
-			r := kit.Rows(f.body(), 12, kit.Fr(1), kit.Px(80), kit.Px(20), kit.Fr(1), kit.Px(80))
+			// The temperature and its bar under the text, Cancel at the bottom.
+			r := kit.Rows(keyArea, 12, kit.Fr(1), kit.Px(56), kit.Px(20), kit.Fr(1), kit.Px(actH))
 			temp, bar, cancel = r[1], kit.Inset(r[2], 16, 0, 16, 0), r[4]
 		} else {
 			// The temperature over the text.
-			temp = txt.Next(80)
+			temp = txt.Next(64)
 			txt.Skip(20)
 			bar = kit.Inset(txt.Next(20), 16, 0, 16, 0)
 			txt.Skip(30)
 			para("The next step starts when the nozzle is hot.")
 			cancel = keys(size{80, 1})[0]
 		}
-		c.Text(temp, fmt.Sprintf("%.0f° / %d°", st.Tool, sw.temp), gfx.Face(true, 56), text, gfx.Center)
+		c.Text(temp, fmt.Sprintf("%.0f° / %d°", st.Tool, sw.temp), gfx.Face(true, 44), text, gfx.Center)
 		segments(c, bar, max(0, min(1, st.Tool/float64(max(sw.temp, 1)))))
 		a.lcdNote(printer.LCDRow{Left: fmt.Sprintf("%.0f/%d°", st.Tool, sw.temp), HasBar: true, Bar: st.Tool / float64(max(sw.temp, 1))})
 		if st.Tool >= float64(sw.temp)-3 {
