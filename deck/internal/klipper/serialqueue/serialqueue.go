@@ -718,11 +718,7 @@ func (sq *SerialQueue) background() {
 		sq.mu.Lock()
 		next := min(sq.timerCmd, sq.timerRetrans)
 		sq.mu.Unlock()
-		wait := time.Hour
-		if next < prNever {
-			wait = time.Duration(max(next-sq.Now(), 0) * float64(time.Second))
-		}
-		timer.Reset(wait)
+		timer.Reset(timerWait(next, sq.Now()))
 		select {
 		case <-sq.exit:
 			return
@@ -736,6 +732,13 @@ func (sq *SerialQueue) background() {
 		case <-timer.C:
 		}
 	}
+}
+
+// timerWait is the wait from now until the timer time next, at most one hour. A wake time far in
+// the future (for example MaxClock as a time) is too large for a time.Duration: the conversion
+// gives a negative wait on amd64, and then the loop runs without a pause.
+func timerWait(next, now float64) time.Duration {
+	return time.Duration(min(max(next-now, 0), 3600) * float64(time.Second))
 }
 
 // Exit stops the loop. Pull returns false after the queue is empty.
