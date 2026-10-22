@@ -44,7 +44,7 @@ func TestTimer(t *testing.T) {
 	done := State{Finished: "complete", FinishedFile: "x.gcode", FinishedPath: "x.gcode", FinishedTime: time.Hour,
 		Bed: 58}
 	tm.update(done, at(4000))
-	key := h.add(done, at(4000), tm.phases, 3300)
+	key := h.add(done, at(4000), tm.phases, 3300, 0, nil)
 	if key == "" {
 		t.Fatal("no record")
 	}

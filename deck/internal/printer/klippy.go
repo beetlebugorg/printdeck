@@ -34,6 +34,7 @@ type Klippy struct {
 	socket string
 	store  Store
 	*View
+	lastPos int64 // the file position of the last busy state, for the history; k.mu
 
 	// ConfigPath is printer.cfg. With no [mcu] section in it, the state asks for the setup.
 	ConfigPath string
@@ -502,8 +503,13 @@ func (k *Klippy) refresh(notify func()) {
 	if k.Hist != nil && st.Reachable {
 		k.mu.Lock()
 		phases, planned := append([]Phase(nil), k.timer.phases...), k.timer.planned
+		if st.Busy() {
+			k.lastPos = st.FilePos
+		}
+		pos := k.lastPos
 		k.mu.Unlock()
-		if key := k.Hist.add(st, now, phases, planned); key != "" {
+		material := func(path string) string { return k.FileMeta(path).Material }
+		if key := k.Hist.add(st, now, phases, planned, pos, material); key != "" {
 			k.mu.Lock()
 			k.timer.coolStart, k.timer.coolKey = now, key
 			k.mu.Unlock()

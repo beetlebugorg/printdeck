@@ -91,6 +91,8 @@ type Printer interface {
 	Machine() printer.Machine
 	Rates() printer.Rates // the timings of this printer, from its history
 	History() []printer.Record
+	// RecordPicture is the picture of a finished print. loading is true while it is drawn.
+	RecordPicture(r printer.Record) (img image.Image, loading bool)
 	// What the slicer wrote about a file, and the removal of a file.
 	FileMeta(path string) gcodemeta.Meta
 	DeleteFile(path string) error
@@ -122,6 +124,7 @@ type App struct {
 
 	pages         []page          // the pages over the state screen, the top last
 	file          printer.File    // the file of the file page
+	record        printer.Record  // the print of the record page
 	fileList      fileList        // the scroll position of the Files page
 	macroScroll   int             // the scroll position of the Macros page
 	consoleScroll int             // how far the Console page shows above its newest line

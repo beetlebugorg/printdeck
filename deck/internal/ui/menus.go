@@ -315,7 +315,7 @@ func (a *App) listArea(f frame) image.Rectangle {
 	return kit.Inset(f.body(), 0, menuTop-headH, 0, 0)
 }
 
-// drawHistory lists the finished prints, newest first. A tap prints a file again.
+// drawHistory lists the finished prints, newest first. A tap opens the page of the print.
 func (a *App) drawHistory(c *gfx.Canvas) {
 	pr := a.Printer
 	f := a.page(c, "Print history")
@@ -325,10 +325,9 @@ func (a *App) drawHistory(c *gfx.Canvas) {
 		noItems(c, area, "", "No finished prints yet")
 		return
 	}
-	reprint := func(i int) {
-		if !pr.State().Busy() {
-			a.confirmPrint(recs[i].Path)
-		}
+	open := func(i int) {
+		a.record = recs[i]
+		a.open(pageRecord)
 	}
 	if f.wide {
 		st := printer.ComputeStats(recs, a.Now())
@@ -351,7 +350,7 @@ func (a *App) drawHistory(c *gfx.Canvas) {
 		sum := line
 		sum.Max.X -= gfx.Width(gfx.Face(false, 14), date) + 12
 		c.Text(sum, gfx.Fit(gfx.Face(false, 16), r.Summary(func(mm float64) float64 { return a.grams(mm, "") }), sum.Dx()), gfx.Face(false, 16), col, gfx.Left)
-	}, reprint)
+	}, open)
 }
 
 // drawStats is the Statistics page: the totals of the print history. A wide screen has the four

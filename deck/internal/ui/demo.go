@@ -35,13 +35,16 @@ func (d *DemoPrinter) Files() []printer.File {
 	return []printer.File{{Path: "benchy.gcode", Name: "benchy.gcode"}, {Path: "case_body.gcode", Name: "case_body.gcode"}}
 }
 func (d *DemoPrinter) Preview() image.Image { return d.Img }
-func (d *DemoPrinter) LoadFiles()           {}
-func (d *DemoPrinter) Pause()               {}
-func (d *DemoPrinter) Resume()              {}
-func (d *DemoPrinter) Cancel()              {}
-func (d *DemoPrinter) Connect()             {}
-func (d *DemoPrinter) Heat(int, int)        {}
-func (d *DemoPrinter) PrintFile(string)     {}
+func (d *DemoPrinter) RecordPicture(printer.Record) (image.Image, bool) {
+	return d.Img, false
+}
+func (d *DemoPrinter) LoadFiles()       {}
+func (d *DemoPrinter) Pause()           {}
+func (d *DemoPrinter) Resume()          {}
+func (d *DemoPrinter) Cancel()          {}
+func (d *DemoPrinter) Connect()         {}
+func (d *DemoPrinter) Heat(int, int)    {}
+func (d *DemoPrinter) PrintFile(string) {}
 
 func (d *DemoPrinter) SetViewLayer(l int) { d.View = l }
 func (d *DemoPrinter) ViewLayer() int     { return d.View }
@@ -99,6 +102,9 @@ func (a *App) OpenPrintScreen(name string) {
 		a.pages = []page{pageMachine, pageMacros}
 	case "history":
 		a.pages = []page{pageMachine, pageHistory}
+	case "record":
+		a.record = a.Printer.History()[0]
+		a.pages = []page{pageMachine, pageHistory, pageRecord}
 	case "stats":
 		a.pages = []page{pageMachine, pageStats}
 	case "configs":

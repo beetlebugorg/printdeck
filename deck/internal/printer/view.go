@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"printdeck/internal/klipper/toolhead"
@@ -55,6 +56,8 @@ type View struct {
 	est    estimate        // the time left of the print
 	limits toolhead.Limits // the motion limits of the printer, for the plan of a print
 	plan   *plan           // the plan of the loaded G-code, or nil
+
+	records map[string]*recordPic // the pictures of finished prints (RecordPicture)
 }
 
 // SetLimits sets the motion limits of the printer. The next G-code that loads gets a plan.
@@ -275,4 +278,61 @@ func PreviewSTL(r io.Reader, frac float64) (image.Image, error) {
 		return nil, err
 	}
 	return m.Render(PreviewW, PreviewH, max(0, frac-0.04), frac, printedColor, hotColor, ghostColor), nil
+}
+
+// recordPic is the picture of a finished print, drawn once.
+type recordPic struct {
+	img     image.Image
+	loading bool
+}
+
+// RecordPicture returns the picture of a finished print: the model, and for a print that did not
+// complete, the part that printed in colour and the rest as a ghost. The first call starts the
+// drawing in the background and reports loading. img is nil when the file is gone.
+func (v *View) RecordPicture(r Record) (img image.Image, loading bool) {
+	k := fmt.Sprintf("%s|%d|%d", r.Path, r.Pos, r.End.Unix())
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if p, ok := v.records[k]; ok {
+		return p.img, p.loading
+	}
+	if v.records == nil || len(v.records) >= 8 {
+		v.records = map[string]*recordPic{}
+	}
+	p := &recordPic{loading: true}
+	v.records[k] = p
+	go func() {
+		img := v.drawRecord(r)
+		v.mu.Lock()
+		p.img, p.loading = img, false
+		v.mu.Unlock()
+	}()
+	return nil, true
+}
+
+// drawRecord draws the picture of a finished print, or returns nil.
+func (v *View) drawRecord(r Record) image.Image {
+	body, err := v.src.Open(r.Path)
+	if err != nil {
+		return nil
+	}
+	gc, _ := gcode.Parse(body)
+	body.Close()
+	if gc == nil {
+		return nil
+	}
+	pos := int64(math.MaxInt64)
+	if r.Result != "complete" && r.Pos > 0 {
+		pos = r.Pos
+	}
+	if gc.Objects <= 1 {
+		if mesh := v.findSTL(r.Path); mesh != nil {
+			top := 1.0
+			if pos != math.MaxInt64 {
+				top = float64(gc.ZAt(pos)) / float64(max(gc.MaxZ, 0.001))
+			}
+			return mesh.Render(PreviewW, PreviewH, top, top, printedColor, hotColor, ghostColor)
+		}
+	}
+	return gc.Render(PreviewW, PreviewH, pos, math.MaxInt64, pathWarm, pathCool, hotColor, pathGhost)
 }

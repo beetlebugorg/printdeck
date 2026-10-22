@@ -23,6 +23,11 @@ type Record struct {
 	Phases  []Phase `json:"phases,omitempty"`
 	CoolBed float64 `json:"cool_bed,omitempty"`
 	Planned float64 `json:"planned,omitempty"`
+	// Pos is the bytes of the file that the printer read before the print ended, or 0. The
+	// picture of a cancelled or failed print shows the model up to there.
+	Pos int64 `json:"pos,omitempty"`
+	// Material is the material that the slicer wrote in the file, for example "PLA", or "".
+	Material string `json:"material,omitempty"`
 }
 
 // Summary is a short line for the screen, for example "Done · 1:42 · 12 g". grams gives the
@@ -81,19 +86,23 @@ func (h *History) Records() []Record {
 }
 
 // add records the end of a print once: the state of Klipper shows the last print until the next
-// one, also after a new connection. phases and planned are the timings of the print. It returns
-// the key of a new record, or "".
-func (h *History) add(st State, now time.Time, phases []Phase, planned float64) string {
+// one, also after a new connection. phases and planned are the timings of the print, and pos is
+// the last file position of the print. material gives the material of the file, for a new record.
+// It returns the key of a new record, or "".
+func (h *History) add(st State, now time.Time, phases []Phase, planned float64, pos int64, material func(path string) string) string {
 	if st.Finished == "" {
 		return ""
 	}
 	r := Record{File: st.FinishedFile, Path: st.FinishedPath, Result: st.Finished, Duration: st.FinishedTime,
-		Filament: st.FinishedFilament, End: now, Phases: phases, Planned: planned}
+		Filament: st.FinishedFilament, End: now, Phases: phases, Planned: planned, Pos: pos}
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.load()
 	if key(r) == h.last {
 		return ""
+	}
+	if material != nil {
+		r.Material = material(r.Path)
 	}
 	h.last = key(r)
 	h.records = append([]Record{r}, h.records...)
