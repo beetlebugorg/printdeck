@@ -220,7 +220,7 @@ var lcdIcons = []struct{ word, icon string }{
 	{"back to the print", "status"}, {"print history", "history"}, {"bed mesh", "mesh"}, {"home axes", "home"},
 	{"home all", "home"}, {"software update", "update"}, {"no cura material", "no"}, {"cura material", "layers"},
 	{"new roll", "plus"}, {"firmware restart", "chip"}, {"check the height", "probe"}, {"check now", "update"},
-	{"back", "back"}, {"close", "back"}, {"status", "status"}, {"menu", "menu"}, {"files", "folder"},
+	{"back", "back"}, {"close", "back"}, {"status", "status"}, {"main", "status"}, {"menu", "menu"}, {"files", "folder"},
 	{"print a file", "print"}, {"reprint", "print"}, {"print", "print"}, {"preheat", "preheat"}, {"heat", "preheat"},
 	{"cool", "cool"}, {"filament", "filament"}, {"rolls", "filament"}, {"pla", "filament"}, {"petg", "filament"},
 	{"abs", "filament"}, {"tpu", "filament"}, {"unload", "unload"}, {"load", "load"}, {"purge", "load"},

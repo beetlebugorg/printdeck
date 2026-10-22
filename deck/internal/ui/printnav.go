@@ -150,12 +150,12 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 }
 
 // drawHomeWide is the home screen of a wide screen, as a main page: the display and the key panel
-// at the left, with Home lit; Print a file, preheat and the last print at the right.
+// at the left, with Main lit; Print a file, preheat and the last print at the right.
 func (a *App) drawHomeWide(c *gfx.Canvas, st printer.State) {
 	f := a.navFrame()
 	a.statusPanelAt(c, st, f.lcd)
 	a.drawNavKeys(c, f.side)
-	headingAt(c, f.head, "Home")
+	headingAt(c, f.head, "Main")
 	r := kit.Rows(f.main, 12, kit.Px(96), kit.Px(68), kit.Px(90))
 	a.homeKeys(c, st, r[0], r[1])
 	a.drawLastPrint(c, st, r[2])
