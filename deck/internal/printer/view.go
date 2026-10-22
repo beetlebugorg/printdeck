@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"printdeck/internal/gcode"
+	"printdeck/internal/maxmode"
 	"printdeck/internal/stl"
 )
 
@@ -52,15 +53,17 @@ type View struct {
 	viewImg  image.Image
 	viewBusy bool
 
-	est    estimate        // the time left of the print
-	limits toolhead.Limits // the motion limits of the printer, for the plan of a print
-	plan   *plan           // the plan of the loaded G-code, or nil
+	est     estimate          // the time left of the print
+	limits  toolhead.Limits   // the motion limits of the printer, for the plan of a print
+	maxMode *maxmode.Settings // the [max_mode] section of the printer when it has enable: True, or nil
+	plan    *plan             // the plan of the loaded G-code, or nil
 }
 
-// SetLimits sets the motion limits of the printer. The next G-code that loads gets a plan.
-func (v *View) SetLimits(l toolhead.Limits) {
+// SetLimits sets the motion limits of the printer, and the max mode settings for a printer that
+// has max mode on (or nil). The next G-code that loads gets a plan.
+func (v *View) SetLimits(l toolhead.Limits, mm *maxmode.Settings) {
 	v.mu.Lock()
-	v.limits = l
+	v.limits, v.maxMode = l, mm
 	v.mu.Unlock()
 }
 
@@ -160,12 +163,22 @@ func (v *View) loadModel(path, key string) {
 	}
 	// The plan of the print, on the motion planner with the limits of the printer.
 	v.mu.Lock()
-	limits := v.limits
+	limits, mm := v.limits, v.maxMode
 	v.mu.Unlock()
 	var pl *plan
+	var factors []float64
+	if gc != nil && limits.MaxVelocity > 0 && mm != nil {
+		// Max mode: the min_layer_time factors of the layers need a first read of the file.
+		if body, err := v.src.Open(path); err == nil {
+			s := *mm
+			s.MaxVelocity = limits.MaxVelocity
+			factors = maxmode.LayerFactors(body, s, gc.StartEnd)
+			body.Close()
+		}
+	}
 	if gc != nil && limits.MaxVelocity > 0 {
 		if body, err := v.src.Open(path); err == nil {
-			pl = planFile(body, gc.StartEnd, limits)
+			pl = planFile(body, gc.StartEnd, limits, mm, factors)
 			body.Close()
 		}
 	}
