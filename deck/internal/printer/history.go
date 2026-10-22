@@ -32,9 +32,25 @@ type Record struct {
 	Pos int64 `json:"pos,omitempty"`
 	// Material is the material that the slicer wrote in the file, for example "PLA", or "".
 	Material string `json:"material,omitempty"`
-	// The roll that was in the printer (Spool.Label), and the cost of the filament of the print.
-	Spool string  `json:"spool,omitempty"`
-	Cost  float64 `json:"cost,omitempty"`
+	// The roll that was in the printer (Spool.Label and Spool.ID), the grams of filament that the
+	// print used from it, and the cost of that filament. A record from before SpoolID has only
+	// the name of the roll.
+	Spool   string  `json:"spool,omitempty"`
+	SpoolID string  `json:"spool_id,omitempty"`
+	Grams   float64 `json:"grams,omitempty"`
+	Cost    float64 `json:"cost,omitempty"`
+}
+
+// OfSpool is the records of the prints that used the roll, in the order of recs. A record with
+// no SpoolID matches by the name of the roll.
+func OfSpool(recs []Record, sp Spool) []Record {
+	var out []Record
+	for _, r := range recs {
+		if r.SpoolID == sp.ID || r.SpoolID == "" && r.Spool != "" && r.Spool == sp.Label() {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // Summary is a short line for the screen, for example "Done · 1:42 · 12 g". grams gives the
@@ -136,13 +152,14 @@ func (h *History) setCool(k string, seconds, from, room float64) {
 	}
 }
 
-// setSpool sets the roll and the cost of the record with the key.
-func (h *History) setSpool(k, spool string, cost float64) {
+// setSpool sets the roll, the grams from it, and the cost of the record with the key.
+func (h *History) setSpool(k string, sp Spool, grams, cost float64) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for i := range h.records {
 		if key(h.records[i]) == k {
-			h.records[i].Spool, h.records[i].Cost = spool, cost
+			r := &h.records[i]
+			r.Spool, r.SpoolID, r.Grams, r.Cost = sp.Label(), sp.ID, grams, cost
 			h.save()
 			return
 		}

@@ -91,6 +91,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	case pageSpool:
 		a.drawSpool(c)
 		return
+	case pageSpoolPrints:
+		a.drawSpoolPrints(c)
+		return
 	case pageStats:
 		a.drawStats(c)
 		return

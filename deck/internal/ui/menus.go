@@ -383,21 +383,26 @@ func (a *App) drawHistory(c *gfx.Canvas) {
 	}
 	l := kit.List{Area: area, N: len(recs), RowH: 90, Gap: 10, Scroll: &a.historyScroll}
 	a.list(c, l, func(i int) string { return recs[i].File }, func(c *gfx.Canvas, i int, box image.Rectangle) {
-		r := recs[i]
-		plate(c, box)
-		col := dim
-		if r.Result != "complete" {
-			col = red
-		}
-		c.Text(image.Rect(box.Min.X+18, box.Min.Y+8, box.Max.X-18, box.Min.Y+38), gfx.Fit(gfx.Face(true, 19), r.File, box.Dx()-36), gfx.Face(true, 19), text, gfx.Left)
-		// The date at the right, and the summary in the space that it leaves.
-		date := fileDate(r.End, a.Now(), a.Clock24)
-		line := image.Rect(box.Min.X+18, box.Min.Y+38, box.Max.X-18, box.Max.Y-8)
-		c.Text(line, date, gfx.Face(false, 14), dim, gfx.Right)
-		sum := line
-		sum.Max.X -= gfx.Width(gfx.Face(false, 14), date) + 12
-		c.Text(sum, gfx.Fit(gfx.Face(false, 16), r.Summary(func(mm float64) float64 { return a.grams(mm, "") }), sum.Dx()), gfx.Face(false, 16), col, gfx.Left)
+		a.recordRow(c, box, recs[i], recs[i].Summary(func(mm float64) float64 { return a.grams(mm, "") }))
 	}, open)
+}
+
+// recordRow is the row of a finished print in a list: the file, and under it the summary at the
+// left and the date at the right. The summary is red for a print that did not complete.
+func (a *App) recordRow(c *gfx.Canvas, box image.Rectangle, r printer.Record, summary string) {
+	plate(c, box)
+	col := dim
+	if r.Result != "complete" {
+		col = red
+	}
+	c.Text(image.Rect(box.Min.X+18, box.Min.Y+8, box.Max.X-18, box.Min.Y+38), gfx.Fit(gfx.Face(true, 19), r.File, box.Dx()-36), gfx.Face(true, 19), text, gfx.Left)
+	// The date at the right, and the summary in the space that it leaves.
+	date := fileDate(r.End, a.Now(), a.Clock24)
+	line := image.Rect(box.Min.X+18, box.Min.Y+38, box.Max.X-18, box.Max.Y-8)
+	c.Text(line, date, gfx.Face(false, 14), dim, gfx.Right)
+	sum := line
+	sum.Max.X -= gfx.Width(gfx.Face(false, 14), date) + 12
+	c.Text(sum, gfx.Fit(gfx.Face(false, 16), summary, sum.Dx()), gfx.Face(false, 16), col, gfx.Left)
 }
 
 // drawStats is the Statistics page: the totals of the print history. A wide screen has the four

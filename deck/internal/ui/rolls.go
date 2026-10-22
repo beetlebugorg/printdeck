@@ -11,9 +11,9 @@ import (
 	"printdeck/internal/printer"
 )
 
-// The rolls of filament: the form of a new roll, the Rolls page, and the page of one roll. The
-// filament on a roll is the weight on a scale less the weight of the empty reel. Each finished
-// print uses filament of the roll in the printer (printer.Spools).
+// The rolls of filament: the form of a new roll, the Rolls page, the page of one roll, and the
+// prints that used a roll. The filament on a roll is the weight on a scale less the weight of the
+// empty reel. Each finished print uses filament of the roll in the printer (printer.Spools).
 
 // rollForm is the form of a new roll, over everything until Save or Back.
 type rollForm struct {
@@ -257,6 +257,14 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 		rows = append(rows, [2]string{"Price", fmt.Sprintf("$%.0f · $%.2f/100 g", sp.Price, sp.Cost(100))})
 	}
 	rows = append(rows, [2]string{"Added", fileDate(sp.Added, a.Now(), a.Clock24)})
+	prints := printer.OfSpool(a.Printer.History(), sp)
+	if len(prints) > 0 {
+		grams := 0.0
+		for _, r := range prints {
+			grams += a.recordGrams(r, sp)
+		}
+		rows = append(rows, [2]string{"Prints", fmt.Sprintf("%d · %s", len(prints), printer.Weight(grams))})
+	}
 	tableH := len(rows)*30 + 20
 	var box, bar, keys image.Rectangle
 	if f.wide {
@@ -269,7 +277,18 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 	}
 	plate(c, box)
 	a.region("Details", box)
-	detailRows(c, kit.Inset(box, 18, 10, 18, 10), rows, 30)
+	table := kit.Inset(box, 18, 10, 18, 10)
+	if len(prints) > 0 {
+		// The last row, Prints, opens the list of the prints of the roll.
+		detailRows(c, table, rows[:len(rows)-1], 30)
+		y := table.Min.Y + (len(rows)-1)*30
+		a.detailLink(c, image.Rect(box.Min.X+4, y, box.Max.X-4, y+30), rows[len(rows)-1], func() {
+			a.printsScroll = 0
+			a.open(pageSpoolPrints)
+		})
+	} else {
+		detailRows(c, table, rows, 30)
+	}
 	if sp.Full > 0 {
 		segments(c, bar, sp.Left()/sp.Full)
 		a.region("Left", bar)
@@ -295,4 +314,65 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 		a.confirm = &confirmBox{question: "Remove " + gfx.Fit(gfx.Face(true, 28), sp.Label(), 300) + "?", yes: "Remove", danger: true,
 			onYes: func() { s.Remove(id); a.back() }}
 	})
+}
+
+// recordGrams is the grams of filament that a print used from the roll: the grams of the record,
+// or for a record from before them, its filament at the density of the roll.
+func (a *App) recordGrams(r printer.Record, sp printer.Spool) float64 {
+	if r.Grams > 0 {
+		return r.Grams
+	}
+	return a.grams(r.Filament, sp.Material)
+}
+
+// drawSpoolPrints is the page of the prints that used one roll, newest first. A tap opens the
+// page of the print.
+func (a *App) drawSpoolPrints(c *gfx.Canvas) {
+	s := a.Printer.SpoolStore()
+	var sp printer.Spool
+	ok := false
+	if s != nil {
+		sp, ok = s.Get(a.spoolID)
+	}
+	if !ok {
+		a.back()
+		return
+	}
+	pf := a.navFrame()
+	f := a.navPage(c, gfx.Fit(gfx.Face(true, 24), "Prints · "+sp.Label(), pf.head.Dx()-200))
+	recs := printer.OfSpool(a.Printer.History(), sp)
+	area := a.listArea(f)
+	if len(recs) == 0 {
+		noItems(c, area, "", "No prints used this roll")
+		return
+	}
+	l := kit.List{Area: area, N: len(recs), RowH: 90, Gap: 10, Scroll: &a.printsScroll}
+	a.list(c, l, func(i int) string { return recs[i].File }, func(c *gfx.Canvas, i int, box image.Rectangle) {
+		r := recs[i]
+		sum := r.Summary(func(float64) float64 { return a.recordGrams(r, sp) })
+		if r.Cost > 0 {
+			sum += fmt.Sprintf(" · $%.2f", r.Cost)
+		}
+		a.recordRow(c, box, r, sum)
+	}, func(i int) {
+		a.record = recs[i]
+		a.open(pageRecord)
+	})
+}
+
+// detailLink is a row of a table of details that opens a page: the label and the value, with an
+// arrow at the right. r is the full width of the plate of the table.
+func (a *App) detailLink(c *gfx.Canvas, r image.Rectangle, kv [2]string, tap func()) {
+	if a.isPressed(r) {
+		c.RoundRect(r, 4, raised)
+	}
+	t := kit.Inset(r, 14, 0, 40, 0)
+	label(c, t, kv[0], gfx.Left)
+	vf := gfx.Face(true, 17)
+	v := image.Rect(t.Min.X+gfx.Width(gfx.Face(true, 14), strings.ToUpper(kv[0]))+16, t.Min.Y, t.Max.X, t.Max.Y)
+	c.Text(v, gfx.Fit(vf, kv[1], v.Dx()), vf, text, gfx.Right)
+	cx, cy := r.Max.X-24, r.Min.Y+r.Dy()/2
+	c.Polygon([]image.Point{{cx - 4, cy - 8}, {cx + 4, cy}, {cx - 4, cy + 8}, {cx - 7, cy + 5}, {cx - 2, cy}, {cx - 7, cy - 5}}, dim)
+	a.addHit(kit.Hit{R: r, Tap: tap})
+	a.addFocus(kv[0], r, tap)
 }

@@ -344,9 +344,13 @@ func (k *Klippy) useSpool(key string, mm float64) {
 		return
 	}
 	d := k.Machine().Diameter()
-	sp, cost, ok := k.Spools.Use(func(rho float64) float64 { return GramsAt(mm, d, rho) })
+	var grams float64
+	sp, cost, ok := k.Spools.Use(func(rho float64) float64 {
+		grams = GramsAt(mm, d, rho)
+		return grams
+	})
 	if ok {
-		k.Hist.setSpool(key, sp.Label(), cost)
+		k.Hist.setSpool(key, sp, grams, cost)
 	}
 }
 

@@ -2,6 +2,7 @@ package printer
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -36,5 +37,24 @@ func TestHistory(t *testing.T) {
 	if st.Prints != 2 || st.Completed != 1 || st.Cancelled != 1 || st.Time != 67*time.Minute ||
 		st.Filament != 8200 || st.Longest != 62*time.Minute || st.Last7 != 2 || st.TopFile != "x.gcode" || st.TopCount != 2 {
 		t.Errorf("stats %+v", st)
+	}
+}
+
+// OfSpool finds the prints of a roll by its ID, and an old record by the name of the roll.
+func TestOfSpool(t *testing.T) {
+	black := Spool{ID: "s1", Name: "Black"}
+	recs := []Record{
+		{File: "a.gcode", Spool: "Black", SpoolID: "s1"},
+		{File: "b.gcode", Spool: "White", SpoolID: "s2"},
+		{File: "c.gcode", Spool: "Black"},
+		{File: "d.gcode", Spool: "Black", SpoolID: "s3"}, // a newer roll with the same name
+		{File: "e.gcode"},
+	}
+	var got []string
+	for _, r := range OfSpool(recs, black) {
+		got = append(got, r.File)
+	}
+	if strings.Join(got, " ") != "a.gcode c.gcode" {
+		t.Errorf("prints %v, want a.gcode c.gcode", got)
 	}
 }
