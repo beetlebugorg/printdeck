@@ -338,8 +338,9 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 		k := kit.Rows(keys, 12, kit.Px(102), kit.Px(keyRowH))
 		info, end = k[0], k[1]
 	} else {
-		r := kit.Rows(view, 8, kit.Px(190), kit.Px(32), kit.Px(102), kit.Fr(1), kit.Px(keyRowH))
-		box, result, info, end = r[0], r[1], r[2], r[4]
+		// The model gets the height that is free: a taller screen shows a larger model.
+		r := kit.Rows(view, 8, kit.Fr(1), kit.Px(32), kit.Px(102), kit.Px(keyRowH))
+		box, result, info, end = r[0], r[1], r[2], r[3]
 	}
 	a.finishedView(c, box, st)
 	title := map[string]string{"complete": "Print done", "cancelled": "Cancelled", "error": "Print failed"}[st.Finished]
