@@ -114,3 +114,10 @@ func DotLines(lines []string, cols int, font string, scale int, gap, off, on col
 	}
 	return img
 }
+
+// Glyph8x16 is the glyph of a character in the 8 x 16 font of Klipper (the VGA font): 16 rows,
+// with the bit 0x80 at the left.
+func Glyph8x16(ch byte) []byte {
+	g := display.VGAFont[ch]
+	return g[:]
+}

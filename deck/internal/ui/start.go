@@ -10,54 +10,45 @@ import (
 	lcdscreen "printdeck/internal/lcd"
 )
 
-// The start screen: one blue dot-matrix LCD over the whole screen. PRINTDECK is in orange dots on
-// the white bed icon, and the version is under the bed in a small font. A tall screen has the
-// word on two lines, PRINT over DECK, for larger dots.
+// The start screen: one blue dot-matrix LCD over the whole screen, with the title of the cover of
+// the manual: PRINTDECK in white dots of the 8 x 16 font of the printer display, a white rule under
+// it, and the version under the rule in a small font.
 
 const (
-	startFont   = 8 // the rows of the 5 x 8 font
-	startGap    = 2 // the empty rows between two lines
-	startBed    = 3 // the rows of the bed: the plate and its legs
-	startVerGap = 2 // the empty rows between the bed and the version
-	startRows   = startBed + startVerGap + tinyRows
+	startFont   = 16 // the rows of the 8 x 16 font
+	startRule   = 2  // the empty rows between the word and the rule
+	startVerGap = 2  // the empty rows between the rule and the version
+	startRows   = startRule + 1 + startVerGap + tinyRows
 )
 
-// The colours: the display of the day palette, the print (PLA orange), the white of the bed, and
-// the pale blue of the version.
+// The colours: the display of the day palette, the white of the word, and the pale blue of the
+// version.
 var (
 	startBG   = rgb(0x1f4bd1)
 	startCell = rgb(0x2a58e0)
 	startInk  = rgb(0xf2f6ff)
-	startPLA  = rgb(0xff7a1a)
 	startDim  = rgb(0x8fa8ef)
 )
 
+// startWord is the word of the start screen.
+const startWord = "PRINTDECK"
+
 // startGeom is the grid of the display: the size of its dots, and the screen place of the dot
-// 0, 0. The dot 0, 0 is the top left dot of the word. The word has cols x rows dots. The bed is
-// under it, and the version is under the bed.
+// 0, 0. The dot 0, 0 is the top left dot of the word. The word has cols x rows dots. The rule and
+// the version are under it.
 type startGeom struct {
 	b          image.Rectangle
-	lines      []string
 	cols, rows int
 	pitch      int
 	x0, y0     int
 }
 
-// startLayout puts the word, the bed and the version in the middle of the screen, with the
+// startLayout puts the word, the rule and the version in the middle of the screen, with the
 // largest dots that fit.
 func startLayout(b image.Rectangle) startGeom {
-	lines := []string{"PRINTDECK"}
-	if b.Dy() > b.Dx() {
-		lines = []string{"PRINT", "DECK"}
-	}
-	cols := 0 // the 5 x 8 font, with one empty column between the letters
-	for _, l := range lines {
-		cols = max(cols, len(l)*6-1)
-	}
-	rows := len(lines)*startFont + (len(lines)-1)*startGap
-	// The bed is one dot wider than the word at each end.
-	pitch := max(4, min(14, (b.Dx()-48)/(cols+2), (b.Dy()-48)/(rows+startRows)))
-	return startGeom{b: b, lines: lines, cols: cols, rows: rows, pitch: pitch,
+	cols, rows := len(startWord)*8, startFont
+	pitch := max(4, min(14, (b.Dx()-48)/cols, (b.Dy()-48)/(rows+startRows)))
+	return startGeom{b: b, cols: cols, rows: rows, pitch: pitch,
 		x0: b.Min.X + (b.Dx()-cols*pitch)/2, y0: b.Min.Y + (b.Dy()-(rows+startRows)*pitch)/2}
 }
 
@@ -67,22 +58,12 @@ func (g startGeom) cell(x, y int) image.Rectangle {
 	return image.Rect(px+1, py+1, px+g.pitch-1, py+g.pitch-1)
 }
 
-// lit reports the dots of the word. Each line is in the middle of the word.
+// lit reports the dots of the word.
 func (g startGeom) lit(x, y int) bool {
-	line, row := y/(startFont+startGap), y%(startFont+startGap)
-	if row >= startFont || line >= len(g.lines) {
+	if x < 0 || y < 0 || x >= g.cols || y >= g.rows {
 		return false
 	}
-	return glyphDot(g.lines[line], x-(g.cols-(len(g.lines[line])*6-1))/2, row)
-}
-
-// glyphDot reports the dot at column x and row y of a text in the 5 x 8 font.
-func glyphDot(s string, x, y int) bool {
-	ch, col := x/6, x%6
-	if x < 0 || col == 5 || ch >= len(s) {
-		return false
-	}
-	return lcdscreen.Glyph5x8(s[ch])[y]&(0x80>>col) != 0
+	return lcdscreen.Glyph8x16(startWord[x/8])[y]&(0x80>>(x%8)) != 0
 }
 
 // The empty display of a screen size, drawn once.
@@ -129,22 +110,18 @@ func drawStart(c *gfx.Canvas, version string) {
 	for y := range g.rows {
 		for x := range g.cols {
 			if g.lit(x, y) {
-				c.Fill(g.cell(x, y), startPLA)
+				c.Fill(g.cell(x, y), startInk)
 			}
 		}
 	}
-	// The bed icon: a plate of two rows, one dot wider than the word at each end, and two legs.
-	top := g.rows
-	for x := -1; x <= g.cols; x++ {
-		c.Fill(g.cell(x, top), startInk)
-		c.Fill(g.cell(x, top+1), startInk)
-	}
-	c.Fill(g.cell(0, top+2), startInk)
-	c.Fill(g.cell(g.cols-1, top+2), startInk)
-	// The version, in the small font, in the middle under the bed.
-	version = tinyText(version, g.cols+2)
+	// The rule: a line in the middle of its row of dots, as wide as the word.
+	ry := g.y0 + (g.rows+startRule)*g.pitch + g.pitch/2
+	lw := max(2, g.pitch/3)
+	c.Fill(image.Rect(g.x0+1, ry-lw/2, g.x0+g.cols*g.pitch-1, ry-lw/2+lw), startInk)
+	// The version, in the small font, in the middle under the rule.
+	version = tinyText(version, g.cols)
 	cols := max(0, len(version)*tinyAdvance-1)
-	vx, vy := (g.cols-cols)/2, top+startBed+startVerGap
+	vx, vy := (g.cols-cols)/2, g.rows+startRule+1+startVerGap
 	for y := range tinyRows {
 		for x := range cols {
 			if tinyDot(version, x, y) {
