@@ -423,7 +423,7 @@ func manualParts() []section {
 						{"Information", "The version of Klipper, the state of the firmware of the board, the network address, and the totals."},
 						{"Software update", "The version of the deck, and a new version when there is one. See Update the Printdeck."},
 						{"Statistics", "The totals of all prints."},
-						{"Print history", "Each print, with its result. Tap a print to print it again."},
+						{"Print history", "Each print, with its result. Tap a print to see its model, its time and its filament, and to print it again."},
 						{"Macros", "The macros of the printer. Tap one to run it."},
 						{"Console", "The G-code terminal of Klipper. See below."},
 						{"Theme", "The colors of the screen: day, night, or auto (night from 20:00 to 7:00). Tap it to change them."},

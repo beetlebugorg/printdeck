@@ -64,6 +64,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	case pageHistory:
 		a.drawHistory(c)
 		return
+	case pageRecord:
+		a.drawRecord(c, st)
+		return
 	case pageStats:
 		a.drawStats(c)
 		return
@@ -176,15 +179,7 @@ func (a *App) modelView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 	window(c, box)
 	a.region("Model", box)
 	if img := a.Printer.Preview(); img != nil {
-		b, in := img.Bounds(), box.Inset(2)
-		if b.Dx() > in.Dx() || b.Dy() > in.Dy() {
-			s := min(float64(in.Dx())/float64(b.Dx()), float64(in.Dy())/float64(b.Dy()))
-			c.Cover(kit.Center(in, int(float64(b.Dx())*s), int(float64(b.Dy())*s)), img)
-		} else {
-			c.Clipped(in, func(in *gfx.Canvas) {
-				in.Image(image.Rect(box.Min.X+(box.Dx()-b.Dx())/2, box.Min.Y+(box.Dy()-b.Dy())/2, box.Max.X, box.Max.Y), img)
-			})
-		}
+		picture(c, box, img)
 	} else {
 		c.Text(box, "LOADING MODEL…", gfx.Face(true, 18), lcdDim, gfx.Center)
 	}
@@ -192,6 +187,20 @@ func (a *App) modelView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 		now := fmt.Sprintf("%s %.0f MM/S", strings.ToUpper(st.NowKind), st.NowSpeed*float64(a.speedFactor(st))/100)
 		c.Text(image.Rect(box.Min.X+200, box.Min.Y+8, box.Max.X-14, box.Min.Y+30), now, gfx.Face(true, 13), lcdDim, gfx.Right)
 	}
+}
+
+// picture draws a picture of the model in the middle of a window box. A picture that is larger
+// than the window becomes smaller to fit.
+func picture(c *gfx.Canvas, box image.Rectangle, img image.Image) {
+	b, in := img.Bounds(), box.Inset(2)
+	if b.Dx() > in.Dx() || b.Dy() > in.Dy() {
+		s := min(float64(in.Dx())/float64(b.Dx()), float64(in.Dy())/float64(b.Dy()))
+		c.Cover(kit.Center(in, int(float64(b.Dx())*s), int(float64(b.Dy())*s)), img)
+		return
+	}
+	c.Clipped(in, func(in *gfx.Canvas) {
+		in.Image(image.Rect(box.Min.X+(box.Dx()-b.Dx())/2, box.Min.Y+(box.Dy()-b.Dy())/2, box.Max.X, box.Max.Y), img)
+	})
 }
 
 // speedFactor is the speed in percent of the print (M220).
