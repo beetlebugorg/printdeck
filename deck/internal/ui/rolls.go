@@ -265,14 +265,17 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 		}
 		rows = append(rows, [2]string{"Prints", fmt.Sprintf("%d · %s", len(prints), printer.Weight(grams))})
 	}
-	tableH := len(rows)*30 + 20
+	// The rows are 30 high, or less on a wide screen with the print bar, so that the table and
+	// the meter fit over the actions.
+	rowH := 30
 	var box, bar, keys image.Rectangle
 	if f.wide {
 		content, acts := f.split()
-		r := kit.Rows(content, 12, kit.Px(tableH), kit.Px(20))
+		rowH = max(22, min(30, (content.Dy()-12-20-20)/len(rows)))
+		r := kit.Rows(content, 12, kit.Px(len(rows)*rowH+20), kit.Px(20))
 		box, bar, keys = r[0], r[1], acts
 	} else {
-		r := kit.Rows(kit.Inset(f.body(), 0, 12, 0, 8), 16, kit.Px(tableH), kit.Px(20), kit.Fr(1), kit.Px(72))
+		r := kit.Rows(kit.Inset(f.body(), 0, 12, 0, 8), 16, kit.Px(len(rows)*rowH+20), kit.Px(20), kit.Fr(1), kit.Px(72))
 		box, bar, keys = r[0], r[1], r[3]
 	}
 	plate(c, box)
@@ -280,14 +283,14 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 	table := kit.Inset(box, 18, 10, 18, 10)
 	if len(prints) > 0 {
 		// The last row, Prints, opens the list of the prints of the roll.
-		detailRows(c, table, rows[:len(rows)-1], 30)
-		y := table.Min.Y + (len(rows)-1)*30
-		a.detailLink(c, image.Rect(box.Min.X+4, y, box.Max.X-4, y+30), rows[len(rows)-1], func() {
+		detailRows(c, table, rows[:len(rows)-1], rowH)
+		y := table.Min.Y + (len(rows)-1)*rowH
+		a.detailLink(c, image.Rect(box.Min.X+4, y, box.Max.X-4, y+rowH), rows[len(rows)-1], func() {
 			a.printsScroll = 0
 			a.open(pageSpoolPrints)
 		})
 	} else {
-		detailRows(c, table, rows, 30)
+		detailRows(c, table, rows, rowH)
 	}
 	if sp.Full > 0 {
 		segments(c, bar, sp.Left()/sp.Full)
