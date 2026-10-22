@@ -104,6 +104,9 @@ func (s *Server) serveSlicerMaterials(w http.ResponseWriter, r *http.Request) {
 	var keep []printer.SlicerMaterial
 	for _, p := range list {
 		if p.ID != "" && p.Name != "" && len(keep) < 200 {
+			if p.Density < 0.5 || p.Density > 3 {
+				p.Density = 0 // not a density of a filament: the deck uses its own
+			}
 			keep = append(keep, p)
 		}
 	}

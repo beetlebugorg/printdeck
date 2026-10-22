@@ -54,7 +54,7 @@ class TestCuraMaterialList(unittest.TestCase):
             {"id": "generic_pla", "name": "Generic PLA", "brand": "Generic", "material": "PLA", "color": "#fff", "readonly": True},
             {"id": "acme_pla", "name": "Acme PLA", "brand": "Acme", "material": "PLA", "color": "", "readonly": True},
             {"id": "mc_white", "name": "Microcenter White PLA", "brand": "Microcenter", "material": "PLA",
-             "color": "#ffffff", "readonly": False},
+             "color": "#ffffff", "readonly": False, "density": "1.25"},
             {"id": "fav_petg", "name": "Fav PETG", "brand": "Fav", "material": "PETG", "color": "", "readonly": True},
             {"id": "cur_abs", "name": "Current ABS", "brand": "Cur", "material": "ABS", "color": "", "readonly": True},
         ]
@@ -62,6 +62,9 @@ class TestCuraMaterialList(unittest.TestCase):
         self.assertEqual([m["id"] for m in got], ["mc_white", "fav_petg", "cur_abs", "generic_pla"])
         self.assertNotIn("readonly", got[0])
         self.assertEqual(got[0]["color"], "#ffffff")
+        # The density of Cura goes to the deck as a number, and 0 when Cura has none.
+        self.assertEqual(got[0]["density"], 1.25)
+        self.assertEqual(got[1]["density"], 0.0)
 
 
 class TestRollMaterial(unittest.TestCase):

@@ -401,14 +401,22 @@ func (a *App) button(c *gfx.Canvas, r image.Rectangle, label string, fill, fg co
 }
 
 // grams is the weight of mm millimetres of filament, with the filament diameter of the printer.
-// material is the material of the filament; "" is the loaded material.
+// material is the material of the filament; "" is the loaded filament.
 func (a *App) grams(mm float64, material string) float64 {
-	if material == "" {
-		material = a.Material
-	}
 	d := 1.75
+	var store *printer.Spools
 	if a.Printer != nil {
 		d = a.Printer.Machine().Diameter()
+		store = a.Printer.SpoolStore()
+	}
+	if material == "" {
+		// The loaded filament: the roll in the printer, with the density of its Cura material.
+		if store != nil {
+			if sp, ok := store.In(); ok {
+				return printer.GramsAt(mm, d, store.Density(sp))
+			}
+		}
+		material = a.Material
 	}
 	return printer.FilamentGrams(mm, d, material)
 }
