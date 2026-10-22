@@ -36,6 +36,7 @@ class PrintdeckPlugin(Extension):
         super().__init__()
         self._status = None  # the last answer of the Printdeck
         self._connected = False
+        self._greeted = False
         self._roll = None  # the roll and the material of the last answer, to see a change
         self._warned = None  # the roll and the grams of the last warning
         self._layer = None  # the job and the layer that the Preview shows
@@ -95,6 +96,9 @@ class PrintdeckPlugin(Extension):
         if not self._connected:
             self._connected = True
             Logger.log("i", "Printdeck: connected")
+            if not self._greeted:  # once each time Cura starts
+                self._greeted = True
+                _message(logic.connected_text(status))
         self._nameButton()
         self._followRoll()
         self._checkRoll()
