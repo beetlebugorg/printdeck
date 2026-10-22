@@ -425,6 +425,18 @@ func TestFinishingScreen(t *testing.T) {
 	}
 }
 
+// While the end macro cools the bed, the display shows the cooling and its time, not the print.
+func TestFinishingDisplay(t *testing.T) {
+	st := printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true, Finishing: true,
+		Layer: 33, Layers: 33, Completion: 100, Bed: 52, BedTarget: 45, HasBedCoolLeft: true,
+		BedCoolLeft: 4 * time.Minute, BedCoolTo: 45, BedCoolFrom: 59}
+	a, _, _ := newPrintApp(st)
+	s := a.lcdStatusScreen(st, "", "")
+	if !s.Cooling || s.CoolTo != 45 || s.Left != "4 min" || s.Done != "" || math.Abs(s.Progress-0.5) > 1e-9 {
+		t.Errorf("display %+v", s)
+	}
+}
+
 // While Klipper starts, the deck shows its start screen, not the error of Klipper.
 func TestStartingScreen(t *testing.T) {
 	a, _, cv := newPrintApp(printer.State{Err: "Klipper is not running", Starting: true})

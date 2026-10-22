@@ -26,6 +26,10 @@ type Status struct {
 	Elapsed  string  `json:"elapsed,omitempty"`  // the time of the print, for example "0:42"
 	Left     string  `json:"left,omitempty"`     // the time left of the print, for example "1:23"
 	Done     string  `json:"done,omitempty"`     // the end of the print on the clock, for example "3:47PM"
+	// Cooling is the end of a print that waits for the bed to cool: the bar is the cooling
+	// (Progress), to CoolTo degrees, and Left is the time that it needs, for example "4 min".
+	Cooling bool    `json:"cooling,omitempty"`
+	CoolTo  float64 `json:"cool_to,omitempty"`
 	Position string  `json:"position,omitempty"` // for example "X110 Y110 Z5.00", when no print runs
 	Hint     string  `json:"hint,omitempty"`     // for example "Click for menu", when no print runs
 }
@@ -89,6 +93,18 @@ func (s *Status) draw(c *canvas, frame int) {
 	}
 
 	const line1, line2 = 44, 54
+	if s.Printing && s.Cooling {
+		to := fmt.Sprintf("%.0f\xf8", s.CoolTo)
+		x1 := canvasW - small.w*4 - 3
+		roundBar(c, 0, line1+1, x1, line1+7, s.Progress)
+		c.smallText(small, canvasW-small.w*len(to), line1, to, false)
+		c.smallText(small, 0, line2, "cooling bed", false)
+		if s.Left != "" {
+			l := s.Left + " left"
+			c.smallText(small, canvasW-small.w*len(l), line2, l, false)
+		}
+		return
+	}
 	if s.Printing {
 		pct := fmt.Sprintf("%.0f%%", s.Progress*100)
 		x1 := canvasW - small.w*4 - 3
