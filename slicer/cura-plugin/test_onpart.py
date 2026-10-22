@@ -62,8 +62,15 @@ class TestOnPart(unittest.TestCase):
         self.assertAlmostEqual(max(v[1] for v in verts), 29.3)
 
     def test_on_part_start(self):
-        g = [";FLAVOR:Marlin\n", ";Generated\nPRINT_START BED=60 EXTRUDER=220 WIPE=160\nM117 x\n"]
+        g = [";FLAVOR:Marlin\n", ";Generated\nPRINT_START BED=60 EXTRUDER=220 WIPE=160\nM117 x\n",
+             ";LAYER:1\nM140 S55\nM190 S55\nG1 X1\n", ";End\nM140 S0\n"]
         self.assertTrue(onpart.on_part_start(g))
+        # The bed stays off.
+        text = "".join(g)
+        self.assertIn("M140 S0", g[1])
+        self.assertNotIn("M190", text)
+        self.assertNotIn("M140 S55", text)
+        self.assertIn("M140 S0", g[3])
         self.assertNotIn("PRINT_START", g[1])
         self.assertIn("G28 Z\nG28 X Y", g[1])
         self.assertIn("M109 S220", g[1])

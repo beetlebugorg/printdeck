@@ -45,7 +45,8 @@ its place is exact, and the deck checks its height with a paper test.
 4. Print. The file prints the pocket, then lifts and pauses: put the part in the pocket, and tap
    **Check the height** on the deck. The paper test on the part sets the height of the new models.
 5. For the next color, keep the part in its pocket and check **The pocket is on the bed**. The file
-   then has no pocket, homes Z up first, does not probe the bed, and purges beside it.
+   then has no pocket, homes Z up first, does not probe the bed, does not heat the bed, and purges
+   beside it.
 
 While a part is the base, the tool turns off Cura's "Ensure models are kept apart", which would push
 the pocket away from the new models, and turns it back on when you clear the base.

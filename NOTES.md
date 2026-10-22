@@ -59,6 +59,7 @@ on the bittlx Pi addon panel (`~/Projects/3d/bittlx/bittle_pi_addon/stl/print/po
 - The check point is on the top face of the base, beside the new models (3 mm margin). A face with a
   hole or a pocket there gives a bad check. The tool picks the center of the largest flat triangle
   at the top.
+- The second job does not heat the bed: the pocket holds the part, and a hot bed softens PLA.
 - The second job skips the bed probe (`BED_TILT_CALIBRATE`) and the prime strip. The Workhorse
   homes Z at the top switch, so its Z zero is rough. The paper test on the part corrects that, so
   the height check is important in the second job.

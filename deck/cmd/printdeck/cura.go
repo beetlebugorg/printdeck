@@ -268,7 +268,7 @@ func curaGuides() []bookGuide {
 		"the difference from the file, for example +0.12 mm. If you tap Resume with no height check, the deck asks first.")
 	run.sub("The next color")
 	run.para("Keep the part in its pocket. In the tool, check The pocket is on the bed, and send the next file. That " +
-		"file has no pocket. It homes Z up first, does not probe the bed, and purges beside the pocket.")
+		"file has no pocket. It homes Z up first, does not probe or heat the bed, and purges beside the pocket.")
 	run.note("The pause and the height check need the deck bundle with [printdeck_pause]: v0.2.0-beta.1-9 or later.")
 
 	cube := bookGuide{Chapter: chCuraPart, Title: "Test print: the cube"}
