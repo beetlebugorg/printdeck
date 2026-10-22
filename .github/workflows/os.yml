@@ -93,3 +93,6 @@ jobs:
           case "$tag" in *-*) pre="--prerelease" ;; esac
           gh release create "$tag" os/out/printdeck.img.xz os/out/printdeck-update.tar.xz os/out/Printdeck.curapackage \
             --title "Printdeck $tag" --generate-notes --verify-tag $pre
+          # Add the change log under the notes from GitHub.
+          { gh release view "$tag" --json body --jq .body; echo; scripts/changelog.sh "$tag"; } > notes.md
+          gh release edit "$tag" --notes-file notes.md
