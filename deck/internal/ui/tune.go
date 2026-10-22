@@ -18,12 +18,13 @@ func (a *App) drawTune(c *gfx.Canvas) {
 	st := pr.State()
 	f := a.pageBack(c, "Tune", "Back", func() { a.tune = false })
 	a.helpKey(c, f.head)
-	// Tall: the file, the speed, flow and Z rows, the fan, and the temperatures. Wide: the file, the
-	// fan and the temperatures in the left column; the rows at the right.
+	// Tall: the file, the speed, flow and Z rows, the fan, and the temperatures. Wide: the file and
+	// the fan in the left column, under the display, which shows the temperatures (a tap on one
+	// changes it); the rows at the right.
 	var file, rows, zHint, fanRow, tHint, temps image.Rectangle
 	if f.wide {
-		l := kit.Rows(f.aside(), 10, kit.Px(22), kit.Px(52), kit.Fr(1))
-		file, fanRow, temps = l[0], l[1], l[2]
+		l := kit.Rows(f.aside(), 10, kit.Px(22), kit.Px(52), kit.Px(40))
+		file, fanRow, tHint = l[0], l[1], l[2]
 		r := kit.Rows(f.body(), 8, kit.Fr(1), kit.Px(20))
 		rows, zHint = r[0], r[1]
 	} else {
@@ -80,7 +81,7 @@ func (a *App) drawTune(c *gfx.Canvas) {
 		p := []int{0, 50, 100}[i]
 		fill, fg := raised, text
 		if st.HasFan && math.Abs(st.Fan-float64(p)) < 1 {
-			fill, fg = green, onAcc
+			fill, fg = keyOn, keyOnInk
 		}
 		label := fmt.Sprintf("%d%%", p)
 		if p == 0 {
@@ -90,8 +91,11 @@ func (a *App) drawTune(c *gfx.Canvas) {
 		a.button(c, r, label, fill, fg, func() { a.do(func() error { return pr.Fan(pct) }) })
 	}
 
-	if !tHint.Empty() {
+	switch {
+	case f.wide:
+		label(c, tHint, "Tap a temperature on the display", gfx.Left)
+	default:
 		label(c, tHint, "Tap a temperature to change it", gfx.Left)
+		a.temps(c, temps, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
 	}
-	a.temps(c, temps, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
 }
