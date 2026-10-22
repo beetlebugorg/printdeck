@@ -71,10 +71,13 @@ td { border-bottom: 1px solid var(--line); padding: 6px 8px 6px 0; vertical-alig
 td.q { font: 700 0.85rem var(--mono); white-space: nowrap; width: 3.5rem; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
 code { font: 0.85em var(--mono); }
+.shots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 24px 0; }
+.shots img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 10px; }
+img.plain { width: 100%; height: auto; background: #ffffff; border: 1px solid var(--line); border-radius: 10px; padding: 16px; box-sizing: border-box; }
 footer { max-width: 1080px; margin: 0 auto; padding: 24px 16px 48px; color: var(--ink-3); font: 0.8rem var(--mono); border-top: 1px solid var(--line); }
 @media (max-width: 760px) {
   .hero, .step, .two { grid-template-columns: 1fr; }
-  .stats, .cards { grid-template-columns: 1fr 1fr; }
+  .stats, .cards, .shots { grid-template-columns: 1fr 1fr; }
 }
 """
 
@@ -85,6 +88,9 @@ def copy_images():
         for theme in ("light", "dark"):
             src = P.IMG / f"{name}-{theme}.png"
             subprocess.run(["magick", str(src), "-resize", "1200x1200>", "-strip", str(IMG / src.name)], check=True)
+    # The mount for the LulzBot TAZ Workhorse, on the printer.
+    src = HERE.parent / "lulzbot" / "renders" / "printer-front-left.png"
+    subprocess.run(["magick", str(src), "-resize", "1200x1200>", "-strip", str(IMG / "lulzbot-printer.png")], check=True)
 
 
 def pic(name, alt):
@@ -110,6 +116,12 @@ def page():
     st = "".join(f"<tr><td><b>{k}</b></td><td>{v}</td></tr>" for k, v in P.SETTINGS)
     files = "".join(f'<a class="btn" href="files/{n}.stl">{n}.stl</a>' for n, _, _ in P.PRINTS)
     repo = "https://github.com/beetlebugorg/printdeck"
+    shots = "".join(f'<img src="manual/img/{n}.png" alt="{html.escape(a)}">' for n, a in (
+        ("printing", "A print with the model up to the layer that prints now"),
+        ("first-layer", "The first layer with the Z offset"),
+        ("file", "A file with its print time, filament, roll and cost"),
+        ("filament", "The Filament page with the roll in the printer")))
+    lulzbot = '<img class="plain" src="img/lulzbot-printer.png" alt="The Printdeck mount on the front left of a LulzBot TAZ Workhorse">'
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -127,6 +139,8 @@ def page():
   <h1>Printdeck</h1>
   <p class="lede">A desk slab next to the 3D printer. It runs Klipper, and shows and controls the print on a 7" touch
     screen. The Pi 5 is on the rear, so every port is open.</p>
+  <a class="btn" href="{repo}/releases/latest">Download Printdeck OS</a>
+  <a class="btn" href="manual/printdeck-manual.pdf">Manual (PDF)</a>
   <a class="btn" href="files/printdeck-slate-build.pdf">Build instructions (PDF)</a>
   <a class="btn" href="{repo}">Source on GitHub</a>
 </header>
@@ -160,7 +174,21 @@ def page():
   <h2>Software</h2>
   <p>The Printdeck runs Printdeck OS: one Go program that is the Klipper host, the touch screen, the display of
     the printer, and the web pages. The touch screen shows a 3D view of the print, the temperatures, and the printer
-    controls. The steps to build and install the OS are in the <a href="{repo}/tree/main/os">os/README.md</a>.</p>
+    controls. The deck keeps a list of your rolls of filament, and shows the cost of each print.</p>
+  <div class="shots">{shots}</div>
+  <p>Download the image from the <a href="{repo}/releases/latest">latest release</a>, and write it to a USB SSD or an
+    SD card with Raspberry Pi Imager. The deck updates itself from the releases. The steps to build the OS are in the
+    <a href="{repo}/tree/main/os">os/README.md</a>.</p>
+  <p>The manual shows each screen: read it <a href="manual/">on the web</a> or as a
+    <a href="manual/printdeck-manual.pdf">PDF</a>. For a display that is mounted wide, read the
+    <a href="manual/wide/">wide manual</a> or its <a href="manual/wide/printdeck-manual.pdf">PDF</a>.</p>
+
+  <h2>On the LulzBot TAZ Workhorse</h2>
+  <div class="step">{lulzbot}<div>
+    <p>A second mount puts the Printdeck on the front left of a LulzBot TAZ Workhorse, with the display wide. You
+      print its nine parts on the Workhorse itself, and drill no hole in the printer.</p>
+    <p><a class="btn" href="lulzbot/printdeck-manual.pdf">Upgrade booklet (PDF)</a>
+      <a class="btn" href="{repo}/tree/main/lulzbot">STL and STEP files</a></p></div></div>
 </main>
 <footer>Printdeck · the CAD, the images, and this page come from <a href="{repo}/tree/main/slate">slate/</a></footer>
 </body>
