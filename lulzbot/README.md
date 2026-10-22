@@ -21,9 +21,9 @@ electronics chassis, and it wraps around the front left edge of the chassis.
   head. It holds the Pi and the cables. The white grille snaps into a pocket of the pod.
 - There is no hole to drill and no metal nut in the rail. Two printed clips hold the right end of
   the head on the front slot of the rail. A printed twist nut goes into the slot along it and
-  turns a quarter turn behind the lips, and an M3 x 8 screw from the clip pulls it up. Two screws
-  through a flange of the plate hold up the head. The printer USB cable and the power cable leave
-  at the rear face of the chassis.
+  turns a quarter turn behind the lips. An M3 x 8 screw from the clip cuts its own thread in a
+  2.5 mm hole in the nut and pulls it up. Two screws through a flange of the plate hold up the
+  head. The printer USB cable and the power cable leave at the rear face of the chassis.
 
 ## Parts
 
@@ -54,13 +54,20 @@ the step chips and the list do not agree. All screws are M3 socket cap head scre
 
 - M3 x 6 socket cap head: 12 (display 4, Pi 4, drive 4). The display and Pi screws cut their
   own thread in a 2.5 mm hole in the boss: turn them until snug, no more.
-- M3 x 8 socket cap head: 4 (pod onto the plate 2, rail clips into the twist nuts 2)
+- M3 x 8 socket cap head: 4 (pod onto the plate 2, rail clips into the twist nuts 2). The clip
+  screws cut their own thread in a 2.5 mm hole in the twist nut. Cut the thread before the nut
+  goes into the rail: hold the nut with pliers and turn the screw in until the head touches it.
 - M3 x 10 socket cap head: 6 (back panel into the head 4; plate on the cover 2, upper pair of PP-FP0164)
 - M3 x 12 socket cap head: 2 (plate flange into the back panel)
 - M3 washer: 2 (under the cover screws)
 - M3 x 7 heat-set insert: 6 (head 4, back panel 2; 3 to 7 mm fits)
 - M3 x 5 heat-set insert: 2 (pod blocks; 3 to 5 mm fits)
-- M3 x 4 heat-set insert: 2 (twist nuts; 3 to 4 mm fits)
+
+The twist nut has no insert and no metal nut. It is 4.8 mm wide along the slot, because it must go
+through the 5.1 mm opening of the slot. A 4 mm insert leaves 0.4 mm of plastic at each side, and
+the plastic melts and does not hold the insert. An M3 hex nut (5.5 mm across the flats) does not
+fit. A round boss on the nut goes down into the V of the slot, so the 2.5 mm hole has at least
+1.15 mm of plastic around it for 3.9 mm of thread.
 
 The drive sits on four 0.5 mm pads, so its M3 x 6 screws go 2.5 mm into the drive.
 

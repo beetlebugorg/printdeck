@@ -183,11 +183,6 @@
   },
   {
    "count": 2,
-   "item": "M3 × 4 heat-set insert",
-   "where": "2 × twist nuts (3 to 4 mm fits)"
-  },
-  {
-   "count": 2,
    "item": "M3 × 5 heat-set insert",
    "where": "2 × plate, pod screw blocks (3 to 5 mm fits)"
   },
@@ -238,7 +233,8 @@
  "tools": [
   "Drill with a 3.2 mm bit (for the four holes of the Pi)",
   "Soldering iron with a heat-set insert tip, at 220 °C",
-  "2.5 mm hex key (M3 socket cap screws)"
+  "2.5 mm hex key (M3 socket cap screws)",
+  "Pliers (to hold a twist nut while the screw cuts its thread)"
  ],
  "checks": [
   "Check the rear screw of the upper pair on the cover: 237.3 mm above the bottom edge of the cover, and about 3.6 mm from the rear edge of the cover. The design uses the value of the LulzBot drawing.",
@@ -350,11 +346,10 @@
    "need": [
     "2 × rail clip",
     "2 × twist nut",
-    "2 × M3 × 4 insert",
     "2 × M3 × 8"
    ],
    "items": [
-    "Press an M3 × 4 insert into the hole of each twist nut, from the narrow face. Stop when it is flush.",
+    "Cut the thread in each twist nut: hold the nut with pliers, turn an M3 × 8 screw into the hole from the wide face until the head touches the nut, then remove the screw.",
     "Put an M3 × 8 screw into the counterbore in the key of each clip, and turn it two turns into a nut. The wide face of the nut points to the clip.",
     "Hold the back panel on the front face of the front left rail, with its bottom edge 125 mm above the bottom of the chassis. Mark the top of the two long slots in the panel on the rail.",
     "Turn a clip a quarter turn, so that the nut is along the slot. Push the nut into the front slot of the rail at a mark. Turn the clip back until the key is along the rail: the nut turns with it, behind the lips.",

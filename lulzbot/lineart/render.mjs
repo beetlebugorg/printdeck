@@ -23,7 +23,7 @@ const REGROUP = {
   hw_cable_hdmi: "display_cables", hw_cable_touch: "display_cables", hw_cable_drive: "drive_cable",
 };
 const PREFIX = [
-  ["hw_insert_head_back", "ins_head"], ["hw_insert_back_flange", "ins_back"], ["hw_insert_clip_nut", "ins_nut"],
+  ["hw_insert_head_back", "ins_head"], ["hw_insert_back_flange", "ins_back"],
   ["hw_insert_pod_block", "ins_block"], ["hw_pi_screw", "pi_screws"], ["hw_display_screw", "display_screws"],
   ["hw_clip_screw", "clip_screws"], ["clip_", "clips"],
 ];
@@ -49,15 +49,14 @@ const LABEL = {
   pi_screws: "4 × M3 × 6", clips: "2 × rail clip + twist nut", clip_screws: "2 × M3 × 8",
   display_cables: "Display cables", drive_cable: "Drive cable", printer_cable: "Printer USB", power: "Power",
   ins_head: "4 × insert M3 × 7", ins_back: "2 × insert M3 × 7", ins_block: "2 × insert M3 × 5",
-  ins_nut: "2 × insert M3 × 4",
 };
 
-const INS = ["ins_head", "ins_back", "ins_block", "ins_nut"];
+const INS = ["ins_head", "ins_back", "ins_block"];
 const HEAD = ["head", "display", "display_screws", "back", "drive", "drive_screws", "head_screws", "ins_head",
   "ins_back"];
 const PI = ["pi", "pi_screws"];
 const CABLES = ["pi_plugs", "display_cables", "drive_cable", "printer_cable", "power"];
-const ALL = ["printer", "plate", "mount_screws", "ins_block", ...PI, "clips", "clip_screws", "ins_nut", ...HEAD, "flange_screws",
+const ALL = ["printer", "plate", "mount_screws", "ins_block", ...PI, "clips", "clip_screws", ...HEAD, "flange_screws",
   ...CABLES, "pod", "grille", "bottom_screws"];
 const NO_CABLES = ALL.filter((g) => !CABLES.includes(g));
 const FRONT_LEFT = [1.1, 0.75, -1.4];
@@ -103,9 +102,9 @@ const SHOTS = {
     explode: { pi: [40, 0, 0], pi_screws: [70, 0, 0] },
   },
   step_clips: {
-    show: ["printer", "plate", "mount_screws", ...PI, "clips", "clip_screws", "ins_nut"],
-    focus: ["clips", "clip_screws", "ins_nut"],
-    explode: { clips: [0, 0, -40], clip_screws: [0, 0, -75], ins_nut: [0, 0, -40] }, camera: [0.7, 0.6, -1.4],
+    show: ["printer", "plate", "mount_screws", ...PI, "clips", "clip_screws"],
+    focus: ["clips", "clip_screws"],
+    explode: { clips: [0, 0, -40], clip_screws: [0, 0, -75] }, camera: [0.7, 0.6, -1.4],
   },
   step_hang: {
     show: ["printer", "plate", "mount_screws", ...PI, "clips", "clip_screws", ...HEAD, "flange_screws"], focus: [...HEAD, "flange_screws"],

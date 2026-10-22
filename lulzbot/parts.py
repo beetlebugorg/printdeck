@@ -486,8 +486,6 @@ def inserts():
         out.append((f"insert_head_back{i}", insert_tube("x", y, z, S.BACK_X[1], 1, u["head_back"]), "brass"))
     for i, (y, z) in enumerate(S.FLANGE_SCREWS):
         out.append((f"insert_back_flange{i}", insert_tube("x", y, z, S.BACK_X[0], 1, u["back_flange"]), "brass"))
-    for i, yc in enumerate(S.CLIPS_Y):
-        out.append((f"insert_clip_nut{i}", insert_tube("x", yc, S.RAIL_SLOT_Z, nut_x()[0], -1, u["clip_nut"]), "brass"))
     for i, x in enumerate(S.BOTTOM_SCREWS_X):
         out.append((f"insert_pod_block{i}", insert_tube("y", x, S.BOTTOM_SCREW_Z, S.POD_Y0 + S.BLOCK_Y[0], 1,
                                                         u["pod_block"]), "brass"))
@@ -539,7 +537,8 @@ def teardrop_up(y, z, r, x0, x1):
 
 
 def nut_x():
-    """The x range of the twist nut: its wide face 0.1 mm behind the lips of the slot."""
+    """The x range of the twist nut without its boss: its wide face 0.1 mm behind the lips of
+    the slot."""
     top = S.RAIL_FRONT_X - S.RAIL_LIP - S.NUT_GAP
     return top, top - S.NUT[2]
 
@@ -547,8 +546,8 @@ def nut_x():
 def clip_nut(yc):
     """The twist nut of a clip, in its place behind the lips (mount coordinates): 11.6 mm across
     the slot at the lips, 4.8 mm along it, with 45 degree sides like the V of the slot, two
-    opposite round corners, and a hole for an M3 heat-set insert. It prints with the wide face
-    on the bed."""
+    opposite round corners, a round boss down the V, and a 2.5 mm hole for the M3 screw to cut
+    its thread. It prints with the wide face on the bed."""
     zc = S.RAIL_SLOT_Z
     a, b, t = S.NUT
     top, bottom = nut_x()
@@ -557,7 +556,10 @@ def clip_nut(yc):
     # Round the two corners at (+y, +z) and (-y, -z), so the nut turns easily.
     n = fillet(n.edges().filter_by(lambda e: abs(e.tangent_at(0.5).Y) < 0.5).filter_by(
         lambda e: (e.center().Y - yc) * (e.center().Z - zc) > 0.5), S.NUT_ROUND)
-    return n - cyl_x(yc, zc, S.INSERT_D / 2, bottom - 1, top + 1)
+    r, depth, c = S.NUT_BOSS
+    n = n + cyl_x(yc, zc, r, top - depth + c, top)
+    n = n + Pos(top - depth + c, yc, zc) * Rot(0, -90, 0) * Cone(r, r - c, c, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    return n - cyl_x(yc, zc, S.TAP_D / 2, top - depth - 1, top + 1)
 
 
 def clip_screws():

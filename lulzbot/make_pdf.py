@@ -92,6 +92,7 @@ TOOLS = [
     "Drill with a 3.2 mm bit (for the four holes of the Pi)",
     "Soldering iron with a heat-set insert tip, at 220 °C",
     "2.5 mm hex key (M3 socket cap screws)",
+    "Pliers (to hold a twist nut while the screw cuts its thread)",
 ]
 
 
@@ -161,8 +162,9 @@ STEPS = [
         "Attach it with four M3 × 6 screws. They cut their own thread in the bosses: turn them until they are "
         "snug, and no more.",
     ], None),
-    ("step_clips", "Clips in the rail", ["2 × rail clip", "2 × twist nut"], {"ins_m3x4": 2, "m3x8": 2}, [
-        "Press an M3 × 4 insert into the hole of each twist nut, from the narrow face. Stop when it is flush.",
+    ("step_clips", "Clips in the rail", ["2 × rail clip", "2 × twist nut"], {"m3x8": 2}, [
+        "Cut the thread in each twist nut: hold the nut with pliers, turn an M3 × 8 screw into the hole from the "
+        "wide face until the head touches the nut, then remove the screw.",
         "Put an M3 × 8 screw into the counterbore in the key of each clip, and turn it two turns into a nut. The "
         "wide face of the nut points to the clip.",
         "Hold the back panel on the front face of the front left rail, with its bottom edge 125 mm above the bottom "
@@ -407,8 +409,8 @@ def mount_page():
     screws with a washer. They are at: {pos}. The pads have slots 10 mm long and 4.4 mm wide, so the plate fits 5 mm
     up or down.</li>
     <li><b>Front rail.</b> Two printed clips hold on the front slot of the front left rail. A printed twist nut goes
-    into the slot along it, and turns a quarter turn behind the lips; an M3 × 8 screw pulls it up. The slot opening
-    is 5.1 mm at the round lips (from the LulzBot model), so no metal nut goes in. The dovetail keys of the clips
+    into the slot along it, and turns a quarter turn behind the lips; an M3 × 8 screw cuts its own thread in the nut
+    and pulls it up. The slot opening is 5.1 mm at the round lips (from the LulzBot model), so no metal nut goes in. The dovetail keys of the clips
     hold the right end of the head against the rail.</li>
     <li><b>Flange.</b> Two M3 × 12 socket cap screws go from inside the pod through the flange of the plate into the
     back panel. They hold up the head.</li>
