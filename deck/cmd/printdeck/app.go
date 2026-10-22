@@ -107,9 +107,13 @@ func desktopApp(args []string) {
 	mux := http.NewServeMux()
 	api := newAPI(cfg, pr, app, mux)
 	// No password opens the login: the window of the app has the token.
-	rs := newRemote(app, api, func() string { return "" }, func(r *http.Request) bool {
+	tokenOK := func(r *http.Request) bool {
 		return subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Api-Key")), []byte(token)) == 1
-	})
+	}
+	rs := newRemote(app, api, func() string { return "" }, tokenOK)
+	if k, ok := pr.(*printer.Klippy); ok && *sim {
+		registerSim(mux, k, tokenOK) // for the 3D window of the simulated printer
+	}
 	mux.Handle("/", rs.Handler())
 	srv := &http.Server{Handler: remote.SecurityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}
 	go func() {

@@ -349,3 +349,24 @@ func (v *View) drawRecord(r Record) image.Image {
 	}
 	return gc.Render(PreviewW, PreviewH, pos, math.MaxInt64, pathWarm, pathCool, hotColor, pathGhost)
 }
+
+// Toolpath gives the extruding moves of the print from move from, up to the file position upto:
+// the part that is printed. key names the G-code of the print: when it is not key, the moves start
+// at 0, for a new print. It returns the key of the print, the index of the first move, and the
+// moves, at most max of them.
+func (v *View) Toolpath(key string, from int, upto int64, max int) (string, int, []gcode.Seg) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if v.gc == nil {
+		return "", 0, nil
+	}
+	if key != v.file {
+		from = 0
+	}
+	from = min(from, len(v.gc.Segs))
+	end := from
+	for end < len(v.gc.Segs) && end-from < max && v.gc.Segs[end].Pos <= upto {
+		end++
+	}
+	return v.file, from, v.gc.Segs[from:end]
+}
