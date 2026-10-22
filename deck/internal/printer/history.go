@@ -22,7 +22,11 @@ type Record struct {
 	// the plan of the file.
 	Phases  []Phase `json:"phases,omitempty"`
 	CoolBed float64 `json:"cool_bed,omitempty"`
-	Planned float64 `json:"planned,omitempty"`
+	// CoolFrom is the bed temperature at the end of the print, at the start of CoolBed, and
+	// CoolRoom the room temperature then.
+	CoolFrom float64 `json:"cool_from,omitempty"`
+	CoolRoom float64 `json:"cool_room,omitempty"`
+	Planned  float64 `json:"planned,omitempty"`
 	// Pos is the bytes of the file that the printer read before the print ended, or 0. The
 	// picture of a cancelled or failed print shows the model up to there.
 	Pos int64 `json:"pos,omitempty"`
@@ -117,13 +121,14 @@ func (h *History) add(st State, now time.Time, phases []Phase, planned float64, 
 	return h.last
 }
 
-// setCool sets the cooling time of the bed of the record with the key.
-func (h *History) setCool(k string, seconds float64) {
+// setCool sets the cooling of the bed of the record with the key: its seconds, and the bed and
+// room temperatures at its start.
+func (h *History) setCool(k string, seconds, from, room float64) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for i := range h.records {
 		if key(h.records[i]) == k {
-			h.records[i].CoolBed = seconds
+			h.records[i].CoolBed, h.records[i].CoolFrom, h.records[i].CoolRoom = seconds, from, room
 			h.rates = nil
 			h.save()
 			return

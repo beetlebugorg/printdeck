@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"strings"
+	"time"
 
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
@@ -32,6 +33,18 @@ func (a *App) lastPrint(st printer.State) (printer.Record, bool) {
 
 // hm is a duration as hours and minutes, for example "1:42".
 func hm(m int) string { return fmt.Sprintf("%d:%02d", m/60, m%60) }
+
+// shortWait is a short time to wait, for example "6 min", "<1 min" or "1 h 05".
+func shortWait(d time.Duration) string {
+	m := int(d.Round(time.Minute).Minutes())
+	switch {
+	case d < time.Minute:
+		return "<1 min"
+	case m < 60:
+		return fmt.Sprintf("%d min", m)
+	}
+	return fmt.Sprintf("%d h %02d", m/60, m%60)
+}
 
 // drawPreparing is the start of a print: the steps of the start macro, with the step that runs now.
 // The steps come from the commands that the printer runs (State.Prep). With no command stack, the
@@ -119,6 +132,8 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 			info, f = fmt.Sprintf("%.0f° of %.0f°", st.Tool, st.ToolTarget), st.Tool/st.ToolTarget
 		case s.now && s.kind == "cool":
 			info = fmt.Sprintf("%.0f°", st.Tool)
+		case s.now && s.kind == "cool-bed" && st.HasBedCoolLeft:
+			info = fmt.Sprintf("%.0f°  %s left", st.Bed, shortWait(st.BedCoolLeft))
 		case s.now && s.kind == "cool-bed" && st.BedTarget > 0:
 			info = fmt.Sprintf("%.0f° to %.0f°", st.Bed, st.BedTarget)
 		case s.now && s.kind == "cool-bed":
@@ -319,6 +334,12 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 		drawBed(c, info.Min.X+40, info.Min.Y+40, 16, orange)
 		c.Text(image.Rect(info.Min.X+70, info.Min.Y+10, info.Max.X-18, info.Min.Y+44), fmt.Sprintf("Bed %.0f°", st.Bed), gfx.Face(true, 22), text, gfx.Left)
 		msg := fmt.Sprintf("Easy to remove below %.0f°.", printer.ReleaseBed)
+		if st.HasBedCoolLeft && st.BedCoolTo == printer.ReleaseBed {
+			msg = "Easy to remove in about " + shortWait(st.BedCoolLeft) + "."
+			if st.BedCoolLeft < time.Minute {
+				msg = "Easy to remove in a minute."
+			}
+		}
 		if st.Bed <= printer.ReleaseBed {
 			msg = "Cool enough to remove the part."
 		}

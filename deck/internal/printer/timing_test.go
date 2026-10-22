@@ -56,7 +56,7 @@ func TestTimer(t *testing.T) {
 	if !ok || s != 600 || k != key {
 		t.Fatalf("cooling %v %q %v", s, k, ok)
 	}
-	h.setCool(k, s)
+	h.setCool(k, s, 0, 0)
 
 	r := h.Rates()
 	if math.Abs(r.Heat["heat-bed"]-6.0) > 0.01 || math.Abs(r.Heat["heat-nozzle"]-130.0/186) > 0.01 ||
@@ -72,5 +72,51 @@ func TestTimer(t *testing.T) {
 	got := r.prepLeft(st, &tm2, at(0)).Seconds()
 	if wantLeft := 30*6.0 + 130 + 80; math.Abs(got-wantLeft) > 0.5 {
 		t.Errorf("prep left %.1f s, want %.1f s", got, wantLeft)
+	}
+}
+
+func TestCoolModel(t *testing.T) {
+	// A bed with tau 600 s in a room at 20°: from 60° to 35° in 600 * ln(40/15) s.
+	want := 600 * math.Log(40.0/15.0)
+	if tau := coolTau(want, 60, 35, 20); math.Abs(tau-600) > 1e-6 {
+		t.Errorf("tau %v", tau)
+	}
+	if s, ok := coolTime(60, 35, 20, 600); !ok || math.Abs(s-want) > 1e-6 {
+		t.Errorf("time %v %v", s, ok)
+	}
+	if _, ok := coolTime(60, 20.2, 20, 600); ok {
+		t.Error("the bed does not reach the room temperature")
+	}
+	if s, ok := coolTime(30, 35, 20, 600); !ok || s != 0 {
+		t.Error("a cool bed needs no time")
+	}
+
+	// The history gives tau: two prints that cooled from 60° and 100° in a room at 20°.
+	recs := []Record{
+		{CoolBed: want, CoolFrom: 60, CoolRoom: 20},
+		{CoolBed: 600 * math.Log(80.0/15.0), CoolFrom: 100, CoolRoom: 20},
+	}
+	r := ComputeRates(recs)
+	if math.Abs(r.CoolTau-600) > 1e-6 {
+		t.Errorf("rates tau %v", r.CoolTau)
+	}
+
+	// A cooling that runs: the room from a cold bed, then a fall of the bed with its heater off.
+	var tm timer
+	t0 := time.Unix(1000, 0)
+	tm.observe(State{Reachable: true, Bed: 20}, t0)
+	tm.observe(State{Reachable: true, Bed: 60}, t0.Add(time.Hour))
+	// After 300 s the bed is at 20 + 40 exp(-300/600).
+	at := t0.Add(time.Hour + 300*time.Second)
+	st := State{Reachable: true, Bed: 20 + 40*math.Exp(-0.5)}
+	tm.observe(st, at)
+	left, ok := tm.coolLeft(Rates{}, st, 35, at)
+	if !ok || math.Abs(left.Seconds()-(want-300)) > 1 {
+		t.Errorf("left %v, want %v s", left, want-300)
+	}
+	// The heater heats again: no more fall.
+	tm.observe(State{Reachable: true, Bed: 50, BedTarget: 60, BedPower: 0.8}, at.Add(time.Second))
+	if !tm.fallStart.IsZero() {
+		t.Error("the fall goes on while the bed heats")
 	}
 }

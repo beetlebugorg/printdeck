@@ -134,7 +134,8 @@ func demoShots(dir string, wide bool) {
 	snap("print-preparing")
 	// The end macro: the bed cools to 45° before the print moves to the front.
 	p.State_ = printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true, File: "benchy.gcode",
-		Activity: "Cooling the bed  52°", Finishing: true, Layer: 27, Layers: 27, Completion: 100, Tool: 120, Bed: 52, BedTarget: 45, PrepN: 1}
+		Activity: "Cooling the bed  52°", Finishing: true, Layer: 27, Layers: 27, Completion: 100, Tool: 120, Bed: 52, BedTarget: 45, PrepN: 1,
+		HasBedCoolLeft: true, BedCoolLeft: 4 * time.Minute, BedCoolTo: 45}
 	p.State_.Prep[0] = printer.PrepStep{Kind: "cool-bed", Name: "Cool the bed", Now: true}
 	snap("print-finishing")
 	// A pause of the file with a message and a height check: the part goes in its pocket.
@@ -152,7 +153,7 @@ func demoShots(dir string, wide bool) {
 	snap("print-paused")
 	p.State_ = printer.State{Reachable: true, Text: "Operational", Connected: true, Tool: 80, Bed: 48,
 		Finished: "complete", FinishedFile: "benchy.gcode", FinishedPath: "benchy.gcode", FinishedTime: 102 * time.Minute,
-		FinishedFilament: 4100}
+		FinishedFilament: 4100, HasBedCoolLeft: true, BedCoolLeft: 9 * time.Minute, BedCoolTo: printer.ReleaseBed}
 	snap("print-done")
 	p.State_ = printer.State{Reachable: true, Text: "Operational", Connected: true, ManualProbe: true, ManualZ: 0.425}
 	snap("print-manual-probe")

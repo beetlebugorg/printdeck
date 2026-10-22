@@ -546,6 +546,7 @@ func (k *Klippy) refresh(notify func()) {
 	// The timings of the print: the steps of the start macro, the plan, and the cooling of the
 	// bed after the print.
 	k.timer.update(st, now)
+	k.timer.observe(st, now)
 	if st.Busy() {
 		if total, ok := k.View.PlanTotal(fileKey(st)); ok {
 			k.timer.planned = total
@@ -558,6 +559,10 @@ func (k *Klippy) refresh(notify func()) {
 	}
 	k.mu.Lock()
 	prepLeft := rates.prepLeft(st, &k.timer, now)
+	if to := coolTarget(st); to > 0 {
+		st.BedCoolLeft, st.HasBedCoolLeft = k.timer.coolLeft(rates, st, to, now)
+		st.BedCoolTo = to
+	}
 	k.mu.Unlock()
 	k.View.TimeLeft(&st, now, prepLeft)
 	if k.Hist != nil && st.Reachable {
@@ -572,14 +577,15 @@ func (k *Klippy) refresh(notify func()) {
 		if key := k.Hist.add(st, now, phases, planned, pos, material); key != "" {
 			k.useSpool(key, st.FinishedFilament)
 			k.mu.Lock()
-			k.timer.coolStart, k.timer.coolKey = now, key
+			k.timer.coolStart, k.timer.coolKey, k.timer.coolFrom = now, key, st.Bed
 			k.mu.Unlock()
 		}
 		k.mu.Lock()
 		seconds, key, done := k.timer.cooling(st, now)
+		from, room := k.timer.coolFrom, k.timer.roomTemp()
 		k.mu.Unlock()
 		if done {
-			k.Hist.setCool(key, seconds)
+			k.Hist.setCool(key, seconds, from, room)
 		}
 	}
 	k.mu.Lock()
