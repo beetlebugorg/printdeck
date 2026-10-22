@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Printdeck Cura plugin booklet</title>
+<style>
+   
+  :root { --page-w: 5.5in; --page-h: 8.5in; --blue: #1d47b5; --ink: #1a1a1a; --dim: #55524c;
+    --orange: #e85a1c; --lcd: #1f4bd1; --paper: #ffffff; }
+  @page { size: 5.5in 8.5in; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #8a8781; }
+  body { font: 9.4pt/1.45 "IBM Plex Sans", "Noto Sans", Arial, sans-serif; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .sheet { position: relative; width: var(--page-w); height: var(--page-h); margin: 0 auto 24px; background: var(--paper);
+    overflow: hidden; break-after: page; padding: .5in .5in .6in; }
+  @media print { html, body { background: none; } .sheet { margin: 0; } }
+  @media screen { body { padding: 24px 0; } }
+   
+  .spread { display: flex; width: 11in; height: 8.5in; margin: 0 auto 24px; break-after: page; background: var(--paper); }
+  .spread .sheet { margin: 0; break-after: auto; }
+  @media print { .spread { margin: 0; } }
+
+   
+  .folio { position: absolute; bottom: .3in; font: 600 9pt "IBM Plex Mono", monospace; }
+  .odd .folio { right: .5in; }
+  .even .folio { left: .5in; }
+  .chapter-tab { position: absolute; top: .28in; font: 600 7pt "IBM Plex Mono", monospace; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--dim); }
+  .odd .chapter-tab { right: .5in; }
+  .even .chapter-tab { left: .5in; }
+
+  h2 { margin: .04in 0 .12in; font: italic 700 19pt/1.1 "IBM Plex Sans", "Noto Sans", Arial, sans-serif; color: var(--blue); letter-spacing: -.01em; }
+  h3 { margin: 0 0 .12in; font: italic 700 13pt/1.15 "IBM Plex Sans", "Noto Sans", Arial, sans-serif; color: var(--blue); }
+  p { margin: 0 0 .1in; text-align: justify; hyphens: auto; }
+  ol.steps { list-style: none; margin: .1in 0 0; padding: 0; }
+  ol.steps li { display: grid; grid-template-columns: .32in 1fr; margin-bottom: .08in; }
+  ol.steps .n { width: .22in; height: .22in; background: var(--orange); color: #fff; font: 700 9pt/.22in "IBM Plex Mono", monospace;
+    text-align: center; border-radius: 2px; margin-top: .01in; }
+
+  ol.steps + ol.steps { margin-top: 0; }
+  table + table { margin-top: 0; }
+   
+  .figure { margin-top: .16in; }
+  h2 + .figure { margin-top: 0; }
+  .figure .frame { position: relative; margin: 0 auto .18in; }
+  .figure .frame.tall { height: 4.3in; aspect-ratio: 944 / 480; }
+  .figure .frame.wide { width: 100%; aspect-ratio: 944 / 480; }
+  .frame svg.marks2 { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .shot-box { position: absolute; top: 0; bottom: 0; left: calc(100% * 72 / 944); right: calc(100% * 72 / 944);
+    border: 2.5px solid var(--ink); border-radius: 6px; overflow: hidden; background: #000; }
+  .shot-box img { display: block; width: 100%; height: 100%; }
+  .leader { fill: none; stroke: var(--ink); stroke-width: 2.5; }
+  .dot { fill: var(--orange); stroke: var(--ink); stroke-width: 2; }
+  .bdg { fill: var(--ink); stroke: #fff; stroke-width: 2.5; }
+  .bdg-n { fill: #fff; font: 700 17px "IBM Plex Mono", monospace; text-anchor: middle; dominant-baseline: central; }
+  .dimmed { opacity: .25; }
+  .figure ol.parts { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: .25in; font-size: 8.2pt; line-height: 1.38; }
+  .figure ol.parts li { display: grid; grid-template-columns: .24in 1fr; margin-bottom: .07in; break-inside: avoid; }
+  .figure ol.parts .badge { width: .17in; height: .17in; border-radius: 50%; background: var(--ink); color: #fff;
+    font: 700 7pt/.17in "IBM Plex Mono", monospace; text-align: center; margin-top: .01in; }
+  .figure ol.parts b { font-weight: 700; }
+  .note { font-size: 8.4pt; border-left: 2.5px solid var(--orange); padding-left: .08in; text-align: left; margin-top: .08in; }
+
+   
+  .cover { padding: .25in; }
+  .cover .panel { position: relative; height: 100%; background: var(--lcd); border-radius: .14in; color: #f2f6ff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; padding: .4in; }
+  .cover .code { position: absolute; top: .22in; right: .3in; font: 600 7.5pt "IBM Plex Mono", monospace; letter-spacing: .08em; }
+  .cover .title { width: 4.2in; image-rendering: pixelated; }
+  .cover .rule { width: 4in; border-top: 1.5px solid #f2f6ff; margin: .06in 0 .14in; }
+  .cover .sub { font: 700 12pt "IBM Plex Sans", "Noto Sans", Arial, sans-serif; letter-spacing: .32em; }
+  .cover .for { margin-top: .1in; font: italic 600 9pt "IBM Plex Sans", "Noto Sans", Arial, sans-serif; opacity: .85; }
+  .cover .status { width: 3.4in; image-rendering: pixelated; margin-top: .9in; border-radius: 4px; }
+
+  .contents ol { list-style: none; margin: 0; padding: 0; font-size: 8.8pt; columns: 2; column-gap: .3in; }
+  .contents li.ch { break-after: avoid; }
+  .contents li { display: flex; gap: .06in; break-inside: avoid; margin-bottom: .02in; }
+  .contents li .dots { flex: 1; border-bottom: 1px dotted var(--dim); transform: translateY(-.05in); }
+  .contents li.ch { font: 700 7.4pt "IBM Plex Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--blue); margin-top: .14in; }
+  .contents li.ch:first-child { margin-top: 0; }
+
+  .lcdgrid { display: grid; grid-template-columns: 1fr 1fr; gap: .2in .22in; margin-top: .1in; }
+  .lcdgrid img { width: 100%; image-rendering: pixelated; border: 3px solid #b6b2a8; border-radius: 4px; display: block; }
+  .lcdgrid div { font: 600 7pt "IBM Plex Mono", monospace; text-transform: uppercase; color: var(--dim); margin-top: .04in; }
+  table { border-collapse: collapse; width: 100%; font-size: 8.6pt; }
+  td { border-top: 1px solid #c9c5bb; padding: .06in .06in; vertical-align: top; }
+  td:first-child { font: 600 8pt "IBM Plex Mono", monospace; width: 44%; }
+  .notes .line { border-bottom: 1px solid #c9c5bb; height: .34in; }
+   
+  h4 { margin: .14in 0 .06in; font: 700 8pt "IBM Plex Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--blue); }
+  .pics { display: flex; justify-content: center; gap: .2in; margin: .06in 0 .12in; }
+  .pics img { max-width: 100%; object-fit: contain; }
+  .chips { display: flex; flex-wrap: wrap; gap: .06in; margin: .04in 0 .1in; }
+  .chips span { border: 1.2px solid var(--ink); border-radius: 99px; padding: .015in .1in; font: 600 7.4pt "IBM Plex Mono", monospace; }
+  ul.list { margin: .02in 0 .08in; padding-left: .2in; }
+  ul.list li { margin-bottom: .04in; }
+  table.grid th, table.parts-plan th { text-align: left; font: 700 7pt "IBM Plex Mono", monospace; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--dim); padding: .03in .06in; border-bottom: 1.5px solid var(--ink); }
+  table.grid td:first-child { width: auto; white-space: nowrap; }
+  table.parts-plan td { vertical-align: middle; }
+  table.parts-plan td:first-child { width: .55in; padding: .02in; }
+  table.parts-plan img { width: .5in; height: .38in; object-fit: contain; display: block; }
+  table.parts-plan .file { font: 6.8pt "IBM Plex Mono", monospace; color: var(--dim); }
+  table.parts-plan td.n, table.parts-plan th.n { text-align: right; white-space: nowrap; }
+  .sw { display: inline-block; width: .11in; height: .11in; border-radius: 2px; border: 1px solid #888; vertical-align: -1px; margin-right: .04in; }
+  .step { margin-top: .12in; break-inside: avoid; }
+  h2 + .para + .step, h2 + p + .step { margin-top: .08in; }
+  .step-head { display: flex; align-items: center; gap: .1in; border-bottom: 2px solid var(--ink); padding-bottom: .04in; margin-bottom: .06in; }
+  .step-n { font: 800 20pt/1 "IBM Plex Mono", monospace; color: var(--orange); }
+  .step-body { display: grid; grid-template-columns: 1.55in 1fr; gap: .16in; align-items: start; }
+  .step-body img { width: 100%; max-height: 2.1in; object-fit: contain; }
+  .step-body ol.steps { margin-top: 0; }
+  .step-t { font: italic 700 13pt "IBM Plex Sans", "Noto Sans", Arial, sans-serif; color: var(--blue); }
+
+   
+  .sheet.ad { padding: .25in; }
+  .adv { height: 100%; border: 3px solid #111; padding: .22in .26in .16in; display: flex; flex-direction: column; background: #fffdf6;
+    font-family: "URW Bookman", "Bookman Old Style", "Bookman", serif; color: #111; }
+  .ad-kicker { font: 700 7.6pt "URW Gothic", "Century Gothic", sans-serif; letter-spacing: .2em; text-transform: uppercase;
+    color: #c8102e; border-bottom: 1.5px solid #111; padding-bottom: .05in; }
+  .ad-head { font: italic 700 25pt/1.02 "URW Bookman", "Bookman Old Style", serif; margin: .1in 0 .06in; letter-spacing: -.02em; }
+  .ad-head span { display: block; }
+  .ad-hero { position: relative; height: 2.15in; display: flex; justify-content: center; }
+  .ad-hero img { height: 100%; }
+  .ad-burst { position: absolute; right: .05in; top: 0; width: 1.15in; height: 1.15in; display: flex; align-items: center; justify-content: center;
+    background: #ffd400; transform: rotate(-12deg); text-align: center;
+    clip-path: polygon(50% 0, 61% 14%, 79% 9%, 79% 27%, 96% 32%, 86% 47%, 99% 61%, 82% 69%, 85% 87%, 67% 85%, 57% 100%, 45% 87%, 28% 96%, 24% 78%, 6% 75%, 13% 58%, 0 44%, 15% 34%, 11% 16%, 30% 16%, 38% 2%); }
+  .ad-burst span { font: 700 10.5pt/1.05 "URW Gothic", "Century Gothic", sans-serif; text-transform: uppercase; width: .8in; color: #c8102e; }
+  .ad-body { display: grid; grid-template-columns: 1fr 1.45in; gap: .16in; margin-top: .08in; }
+  .ad-copy { columns: 2; column-gap: .14in; font-size: 7.4pt; line-height: 1.32; text-align: left; hyphens: auto; }
+  .ad-copy p { margin: 0 0 .05in; text-align: left; }
+  .ad-copy p:first-child::first-letter { float: left; font: 700 24pt/.8 "URW Bookman", serif; margin: .02in .04in 0 0; color: #c8102e; }
+  .ad-checks { list-style: none; margin: 0; padding: .08in .1in; border: 2px solid #111; background: #111; color: #fffdf6;
+    font: 700 7.4pt/1.3 "URW Gothic", "Century Gothic", sans-serif; align-self: start; }
+  .ad-checks li { margin-bottom: .07in; padding-left: .16in; position: relative; }
+  .ad-checks li::before { content: "✔"; position: absolute; left: 0; color: #ffd400; }
+  .ad-coupon { position: relative; margin-top: .14in; border: 1.6px dashed #111; padding: .09in .12in; font: 7.6pt "URW Gothic", "Century Gothic", sans-serif; }
+  .ad-coupon b { font: italic 700 10pt "URW Bookman", serif; }
+  .ad-scissors { position: absolute; top: -.11in; left: .15in; background: #fffdf6; padding: 0 .04in; font-size: 11pt; }
+  .ad-boxes { display: flex; gap: .2in; margin: .05in 0; }
+  .ad-lines { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: .06in; align-items: end; margin: .08in 0 .04in; }
+  .ad-lines i { border-bottom: 1px solid #111; height: .14in; }
+  .ad-mail { font-size: 6.6pt; color: #444; }
+  .ad-fine { font: 5.6pt/1.3 "URW Gothic", "Century Gothic", sans-serif; color: #555; margin-top: .07in; }
+
+   
+  .shot { text-align: center; }
+  .shot .pic { position: relative; display: inline-block; margin: 0 0 .14in; }
+  .shot .pic img { display: block; max-width: 100%; border: 1.5px solid var(--ink); border-radius: 4px; }
+  .shot .mk { position: absolute; width: .2in; height: .2in; margin: -.1in 0 0 -.1in; border-radius: 50%; background: var(--ink);
+    color: #fff; border: 1.5px solid #fff; box-shadow: 0 0 0 1px var(--ink); font: 700 7.5pt/.17in "IBM Plex Mono", monospace; text-align: center; }
+  .shot ol.parts { text-align: left; }
+
+  .back { display: flex; flex-direction: column; justify-content: flex-end; font-size: 8.4pt; color: var(--dim); }
+</style>
+<script>
+  
+  
+  
+  if (location.search.includes("sheets")) {
+    const s = document.createElement("style");
+    s.textContent = "@page { size: 11in 8.5in; margin: 0; }";
+    document.head.append(s);
+    addEventListener("DOMContentLoaded", () => {
+      const pages = [...document.querySelectorAll("body > .sheet")];
+      const n = pages.length;
+      for (let i = 0; i < n / 4; i++) {
+        for (const [l, r] of [[n - 2 * i, 1 + 2 * i], [2 + 2 * i, n - 1 - 2 * i]]) {
+          const d = document.createElement("div");
+          d.className = "spread";
+          d.append(pages[l - 1].cloneNode(true), pages[r - 1].cloneNode(true));
+          document.body.append(d);
+        }
+      }
+      pages.forEach((p) => p.remove());
+    });
+  }
+</script>
+</head>
+<body>
+
+<section class="sheet cover odd">
+  
+  <div class="panel">
+    <div class="code">PD-CURA-1</div>
+    <img class="title" src="img/cover-title.png" alt="Printdeck">
+    <div class="rule"></div>
+    <div class="sub">CURA PLUGIN</div>
+    <div class="for">For Cura 5 and the Printdeck</div>
+    <img class="status" src="img/cover-status.png" alt="">
+  </div>
+  
+  
+</section>
+
+<section class="sheet contents even">
+  
+    <h2>Contents</h2>
+    <ol><li class="ch">Setup</li><li><span>What the plugin does</span><span class="dots"></span><span>3</span></li><li><span>Install the plugin</span><span class="dots"></span><span>4</span></li><li><span>Connect the Printdeck</span><span class="dots"></span><span>5</span></li><li class="ch">Printing</li><li><span>Send a print</span><span class="dots"></span><span>6</span></li><li><span>The Printdeck tab</span><span class="dots"></span><span>7</span></li><li><span>The roll and the material</span><span class="dots"></span><span>9</span></li><li><span>Follow the print</span><span class="dots"></span><span>10</span></li><li class="ch">Print on a part</li><li><span>Print on a part</span><span class="dots"></span><span>11</span></li><li><span>Prepare the job</span><span class="dots"></span><span>12</span></li><li><span>At the printer</span><span class="dots"></span><span>13</span></li><li><span>Test print: the cube</span><span class="dots"></span><span>14</span></li></ol>
+  
+  
+    
+    <div class="folio">2</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>What the plugin does</h2>
+    
+    
+    <p>The Printdeck plugin connects Cura to the Printdeck. It uses the printer of the OctoPrint connection plugin, with the same address and API key. After the setup, the plugin works by itself. A message in Cura tells you what it did.</p>
+    
+    
+    
+    <div class="figure shot">
+      <h3>The deck in the Printdeck tab of Cura</h3>
+      <div class="pic"><img src="img/cura-tab.png" alt="The deck in the Printdeck tab of Cura" style="max-height: 2.45in"></div>
+      
+      
+    </div>
+    
+    
+    <ul class="list"><li>The print button says Print to Printdeck. After a send, Cura opens the Printdeck tab.</li><li>The Printdeck tab shows the touch screen of the deck, live. You click it as you tap the touch screen.</li><li>When the roll in the deck changes, Cura changes to the material of the roll.</li><li>After a slice, Cura warns you when the roll is too short for the model.</li><li>During a print, the Preview of Cura shows the layer that prints.</li><li>The Print on a part tool prints new models on a part that is printed already.</li></ul>
+    
+    
+    <p>The plugin works with Cura 4.13 (Cura LulzBot Edition) and later. The pictures in this booklet show Cura 5.</p>
+    
+    
+  
+  
+    <div class="chapter-tab">Setup</div>
+    <div class="folio">3</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h2>Install the plugin</h2>
+    
+    
+    <h4>From the release</h4>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Open the releases of the Printdeck: https://github.com/beetlebugorg/printdeck/releases.</span></li><li><span class="n">2</span><span>Download the file Printdeck.curapackage from the latest release.</span></li><li><span class="n">3</span><span>Drag the file onto the Cura window. Cura installs the plugin.</span></li><li><span class="n">4</span><span>Close Cura, and start it again.</span></li></ol>
+    
+    
+    <h4>From the repository</h4>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>In Cura, select Help &gt; Show Configuration Folder.</span></li><li><span class="n">2</span><span>Copy the folder slicer/cura-plugin/Printdeck of the Printdeck repository into the plugins folder of the configuration folder.</span></li><li><span class="n">3</span><span>Close Cura, and start it again.</span></li></ol>
+    
+    
+    <p class="note">To make the package yourself, run slicer/cura-plugin/package.sh. It writes Printdeck.curapackage.</p>
+    
+    
+  
+  
+    <div class="chapter-tab">Setup</div>
+    <div class="folio">4</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>Connect the Printdeck</h2>
+    
+    
+    <p>The plugin uses the printer of the OctoPrint connection plugin. The deck answers the OctoPrint API, so Cura sees it as an OctoPrint printer named Printdeck. Install the OctoPrint connection plugin first.</p>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>In Cura, open the Marketplace. Install OctoPrint Connection, and restart Cura.</span></li><li><span class="n">2</span><span>Select Preferences &gt; Configure Cura &gt; Printers. Select your printer, and click Connect OctoPrint.</span></li><li><span class="n">3</span><span>Select Printdeck in the list. If the list does not show it, click Add, and type the address printdeck.local.</span></li><li><span class="n">4</span><span>Click Request to get the API key.</span></li><li><span class="n">5</span><span>The touch screen asks &#34;Allow Cura to use the Printdeck?&#34;. Tap Allow.</span></li><li><span class="n">6</span><span>Click Connect, and close the preferences.</span></li></ol>
+    
+    
+    <p>When Cura connects, the plugin shows the filament in the printer, for example: &#34;Connected to the Printdeck. PLA is in the printer.&#34;</p>
+    
+    
+    <p class="note">The system page of the deck also shows the API key for slicers: http://printdeck.local/system.</p>
+    
+    
+  
+  
+    <div class="chapter-tab">Setup</div>
+    <div class="folio">5</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h2>Send a print</h2>
+    
+    
+    
+    <div class="figure shot">
+      <h3>The print button</h3>
+      <div class="pic"><img src="img/cura-button.png" alt="The print button" style="max-height: 0.95in"></div>
+      
+      
+    </div>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Slice the model as usual.</span></li><li><span class="n">2</span><span>Click Print to Printdeck. Cura sends the file to the deck.</span></li><li><span class="n">3</span><span>Cura opens the Printdeck tab. The tab shows the deck as the print starts.</span></li></ol>
+    
+    
+    <p>The OctoPrint connection starts the print after the upload when its option &#34;Automatically start print job after uploading&#34; is on. Each file that Cura sends has the material of Cura in its header.</p>
+    
+    
+  
+  
+    <div class="chapter-tab">Printing</div>
+    <div class="folio">6</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>The Printdeck tab</h2>
+    
+    
+    <p>The Printdeck tab is next to Monitor. It shows the screens of the deck, live. Click a key in the tab as you tap it on the touch screen.</p>
+    
+    
+    
+    <div class="figure shot">
+      
+      <div class="pic"><img src="img/cura-tab.png" alt="" style="max-height: 2.45in"><span class="mk" style="left: 58.4%; top: 2.2%">1</span><span class="mk" style="left: 11.5%; top: 13%">2</span><span class="mk" style="left: 14.5%; top: 52.5%">3</span><span class="mk" style="left: 27.5%; top: 52.5%">4</span><span class="mk" style="left: 40.5%; top: 52.5%">5</span><span class="mk" style="left: 47.5%; top: 73.5%">6</span><span class="mk" style="left: 88%; top: 14%">7</span></div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Printdeck.</b> The tab of the plugin, next to Monitor.</span></li><li><span class="badge">2</span><span><b>Printer display.</b> The temperatures, the fan, and the progress of the print.</span></li><li><span class="badge">3</span><span><b>Pause.</b> Pauses the print.</span></li><li><span class="badge">4</span><span><b>Tune.</b> Opens the speed, the flow, the Z offset, the fan and the heaters.</span></li><li><span class="badge">5</span><span><b>Cancel.</b> Cancels the print. The deck asks first.</span></li><li><span class="badge">6</span><span><b>The file.</b> The name of the file, the layer, and the time left.</span></li><li><span class="badge">7</span><span><b>The layer.</b> The model up to the layer that prints now.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Printing</div>
+    <div class="folio">7</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    
+    <div class="figure shot">
+      <h3>Tune, after a click on Tune</h3>
+      <div class="pic"><img src="img/cura-tune.png" alt="Tune, after a click on Tune" style="max-height: 2.45in"></div>
+      
+      
+    </div>
+    
+    
+    <p>While the tab connects to the deck, it shows the start screen of the deck with the words &#34;Connecting to printdeck.local&#34;. The tab gets the screens only while it shows.</p>
+    
+    
+    <p>During a print, the key Show in Preview is under the screen. It opens the file of the print in the Preview.</p>
+    
+    
+    <h4>When the tab shows no deck</h4>
+    
+    
+    <table><tr><td>Cura has no connection to a Printdeck</td><td>Connect the printer with the OctoPrint connection plugin. See Connect the Printdeck.</td></tr></table>
+    
+    
+    <table><tr><td>The Printdeck refused the screen</td><td>Update Printdeck OS, and check the API key of the OctoPrint connection.</td></tr></table>
+    
+    
+  
+  
+    <div class="chapter-tab">Printing</div>
+    <div class="folio">8</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>The roll and the material</h2>
+    
+    
+    <p>The deck keeps a list of your rolls of filament: Filament on the touch screen. The plugin reads the roll in the printer every 10 seconds.</p>
+    
+    
+    <h4>Cura follows the roll</h4>
+    
+    
+    <p>When the roll in the deck changes, Cura changes to the material of the roll. A message tells you, for example: &#34;The Printdeck has Black (PLA). Cura now prints with Generic PLA.&#34; When Cura has no profile for that material on this printer, the message tells you, and Cura keeps its material.</p>
+    
+    
+    <h4>A short roll</h4>
+    
+    
+    <p>After a slice, Cura compares the grams of the model with the grams left on the roll. When the roll is too short, a message stays until you close it: &#34;The model needs 120 g of filament. Black has 80 g left.&#34;</p>
+    
+    
+    <h4>A file for another material</h4>
+    
+    
+    <p>Cura writes its material into the header of each file that it sends. Before the deck prints a file for another material, the touch screen asks first, for example: &#34;The file is for Black ABS. White (PLA) is in the printer.&#34; Tap Print anyway to print the file. To print with the correct material, change the roll first.</p>
+    
+    
+  
+  
+    <div class="chapter-tab">Printing</div>
+    <div class="folio">9</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h2>Follow the print</h2>
+    
+    
+    <p>During a print of the file that Cura has open, the Preview shows the layer that prints. The Preview goes to the next layer when the deck starts it. Between two layers, you can look at other layers.</p>
+    
+    
+    
+    <div class="figure shot">
+      <h3>The messages of the plugin</h3>
+      <div class="pic"><img src="img/cura-messages.png" alt="The messages of the plugin" style="max-height: 1.75in"></div>
+      
+      
+    </div>
+    
+    
+    <h4>After a restart of Cura</h4>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Start Cura during a print. Cura connects to the deck, and shows the message &#34;The Printdeck prints &lt;file&gt;. Cura can show it in the Preview, at the layer that prints.&#34;</span></li><li><span class="n">2</span><span>Click Show the print. Cura downloads the file from the deck, and opens it in the Preview.</span></li><li><span class="n">3</span><span>The Preview follows the layer that prints.</span></li></ol>
+    
+    
+    <p>Cura shows no print time for a G-code file. The Printdeck tab shows the time left. When the print ends, Cura shows a message.</p>
+    
+    
+  
+  
+    <div class="chapter-tab">Printing</div>
+    <div class="folio">10</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>Print on a part</h2>
+    
+    
+    <p>The Print on a part tool prints new models on a part that is printed already, for example a logo in another color on a lid. The part goes into a pocket that the deck prints on the bed, so its place is exact. The deck then checks the height of the part with a paper test.</p>
+    
+    
+    
+    <div class="figure shot">
+      <h3>The tool</h3>
+      <div class="pic"><img src="img/cura-panel.png" alt="The tool" style="max-height: 2.4in"><span class="mk" style="left: 7%; top: 4%">1</span><span class="mk" style="left: 54.1%; top: 22.3%">2</span><span class="mk" style="left: 66.9%; top: 35.1%">3</span><span class="mk" style="left: 72.6%; top: 47.9%">4</span><span class="mk" style="left: 95.5%; top: 59.3%">5</span><span class="mk" style="left: 60.5%; top: 69.5%">6</span><span class="mk" style="left: 61.1%; top: 91.1%">7</span></div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Print on a part.</b> The tool, at the bottom of the left toolbar of Prepare.</span></li><li><span class="badge">2</span><span><b>Set as base.</b> The selected model is the base: the part that is printed already. Cura does not print it, and adds the pocket.</span></li><li><span class="badge">3</span><span><b>Place on the base.</b> Puts the selected model on the top of the base.</span></li><li><span class="badge">4</span><span><b>The pocket is on the bed.</b> For the next color. The file then has no pocket.</span></li><li><span class="badge">5</span><span><b>Clearance and Wall.</b> The gap around the part, and the height of the pocket wall, in mm.</span></li><li><span class="badge">6</span><span><b>Message on the deck.</b> The text of the pause on the touch screen.</span></li><li><span class="badge">7</span><span><b>Clear the base.</b> The base is a usual model again, and Cura removes the pocket.</span></li></ol>
+      
+    </div>
+    
+    
+    <p>The tool also has Place as in the files, and the fields of the text on the base. The next page explains them.</p>
+    
+    
+  
+  
+    <div class="chapter-tab">Print on a part</div>
+    <div class="folio">11</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h2>Prepare the job</h2>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Open the part and the new models in Cura. Lay the part on the bed with its face for the new models up.</span></li><li><span class="n">2</span><span>Keep the part away from the front and the left edge. The print primes the nozzle there.</span></li><li><span class="n">3</span><span>Select the part, and click Set as base. Cura adds the pocket: a low wall around the part, with open corners.</span></li><li><span class="n">4</span><span>Select a new model, and click Place on the base. The model goes to the top of the part, and stays at that height.</span></li><li><span class="n">5</span><span>Move the model on the face as usual. To print into a pocket of the part, lower the model with the Z of the Move tool.</span></li></ol>
+    
+    
+    
+    <div class="figure shot">
+      <h3>A part in its pocket</h3>
+      <div class="pic"><img src="img/cura-pocket.png" alt="A part in its pocket" style="max-height: 1.2in"></div>
+      
+      
+    </div>
+    
+    
+    <h4>Files from one assembly</h4>
+    
+    
+    <p>When the part and the new models come from one assembly, their files share one frame. Select the new models, and click Place as in the files. The models go to their exact place on the part, also after you turned the part.</p>
+    
+    
+    <h4>Lettering</h4>
+    
+    
+    <p>Type the text, its size, and its height over the face (Raised). Then click Add text. The text goes on the top of the part, at its middle. Move and turn it as usual.</p>
+    
+    
+    <p class="note">While a part is the base, the tool turns off &#34;Ensure models are kept apart&#34; in the preferences of Cura. That setting pushes the pocket away from the new models. Click Clear the base to turn it on again.</p>
+    
+    
+  
+  
+    <div class="chapter-tab">Print on a part</div>
+    <div class="folio">12</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>At the printer</h2>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Click Print to Printdeck. The deck prints the pocket on the bed.</span></li><li><span class="n">2</span><span>The nozzle lifts, and the print pauses. The touch screen shows the message of the pause.</span></li><li><span class="n">3</span><span>Put the part in the pocket.</span></li><li><span class="n">4</span><span>For another color, change the filament now.</span></li><li><span class="n">5</span><span>Tap Check the height. The nozzle goes over the part.</span></li><li><span class="n">6</span><span>Put a sheet of paper under the nozzle. Lower the nozzle until the paper drags a little, then tap Accept.</span></li><li><span class="n">7</span><span>Tap Resume. The new models print on the part.</span></li></ol>
+    
+    
+    <p class="note">The height check sets the height of the new models on the real part. After the check, the screen shows the difference from the file, for example &#43;0.12 mm. If you tap Resume with no height check, the deck asks first.</p>
+    
+    
+    <h4>The next color</h4>
+    
+    
+    <p>Keep the part in its pocket. In the tool, check The pocket is on the bed, and send the next file. That file has no pocket. It homes Z up first, does not probe the bed, and purges beside the pocket.</p>
+    
+    
+    <p class="note">The pause and the height check need the deck bundle with [printdeck_pause]: v0.2.0-beta.1-9 or later.</p>
+    
+    
+  
+  
+    <div class="chapter-tab">Print on a part</div>
+    <div class="folio">13</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <h2>Test print: the cube</h2>
+    
+    
+    <p>The files are in slicer/test-prints/onpart/ of the repository. The test is a 20 mm cube, then a cross on its top in another color. The cross is 1 mm high, with arms of 14 x 3 mm.</p>
+    
+    
+    <div class="pics"><img src="img/cube.png" alt="" style="max-height: 0.9in"><img src="img/cura-cube.png" alt="" style="max-height: 0.9in"></div>
+    
+    
+    <h4>Job 1: the cube</h4>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Open cube.stl in Cura, and print it (about 16 minutes).</span></li><li><span class="n">2</span><span>Take the cube off the bed.</span></li></ol>
+    
+    
+    <h4>Job 2: the holder and the cross</h4>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Clear the build plate. Open cube.stl and cross.stl.</span></li><li><span class="n">2</span><span>Select the cube, and click Set as base. Cura adds the holder (the pocket) around the cube, and does not print the cube.</span></li><li><span class="n">3</span><span>Select the cross, and click Place as in the files. The cross goes on the top of the cube.</span></li><li><span class="n">4</span><span>Print. The deck prints the holder, then lifts the nozzle and pauses.</span></li><li><span class="n">5</span><span>Put the cube in the holder.</span></li><li><span class="n">6</span><span>Change the filament to the second color.</span></li><li><span class="n">7</span><span>Tap Check the height, and do the paper test on the top of the cube.</span></li><li><span class="n">8</span><span>Tap Resume. The deck prints the cross.</span></li></ol>
+    
+    
+    <h4>What to look at</h4>
+    
+    
+    <ul class="list"><li>XY: the cross is at the center of the top. Measure the 3 mm from each arm end to the edge of the cube.</li><li>Z: the first layer of the cross sticks to the cube. It is not squashed, and it is not in the air.</li><li>The purge after the filament change does not go on the cube.</li></ul>
+    
+    
+  
+  
+    <div class="chapter-tab">Print on a part</div>
+    <div class="folio">14</div>
+  
+</section>
+
+<section class="sheet notes odd">
+  
+    <h2>Notes</h2>
+    <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
+  
+  
+    
+    <div class="folio">15</div>
+  
+</section>
+
+<section class="sheet back even">
+  
+    <p>The Printdeck plugin for Cura is part of the Printdeck repository, in slicer/cura-plugin/.</p><p>Plugin version 0.1.0. https://github.com/beetlebugorg/printdeck</p>
+  
+  
+</section>
+
+</body>
+</html>

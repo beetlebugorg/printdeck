@@ -1,5 +1,9 @@
 # Printdeck plugin for Cura
 
+The booklet of the plugin has the setup and each feature, with pictures:
+[on the web](https://beetlebug.org/printdeck/cura/), or
+[docs/cura/printdeck-cura.pdf](../../docs/cura/printdeck-cura.pdf).
+
 The plugin connects Cura to the Printdeck through the printer of the OctoPrint connection plugin. It
 uses the same address and API key, so it needs no setup.
 

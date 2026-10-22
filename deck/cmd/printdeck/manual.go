@@ -25,10 +25,12 @@ import (
 // and the text for each part. The deck draws the pictures itself, so the manual follows the UI.
 // Each callout points at the part of the screen with its name (keysRect).
 //
-//	printdeck manual DIR [wide|lulzbot]   write DIR/index.html, DIR/booklet.html and the pictures in
+//	printdeck manual DIR [wide|lulzbot|cura]
+//	                                      write DIR/index.html, DIR/booklet.html and the pictures in
 //	                                      DIR/img. wide draws the screens of a display that is mounted
 //	                                      wide. lulzbot is the wide manual with the upgrade guides for
-//	                                      the TAZ Workhorse (upgrade.go).
+//	                                      the TAZ Workhorse (upgrade.go). cura is the booklet of the
+//	                                      Cura plugin (cura.go).
 
 //go:embed manual.html
 var manualHTML string
@@ -322,7 +324,8 @@ func manualParts() []section {
 					Setup: func(s *manualState) {
 						st := printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true, File: "benchy.gcode",
 							Activity: "Cooling the bed  52°", Finishing: true, Layer: 27, Layers: 27, Completion: 100,
-							Tool: 120, Bed: 52, BedTarget: 45, PrepN: 1}
+							Tool: 120, Bed: 52, BedTarget: 45, PrepN: 1,
+							HasBedCoolLeft: true, BedCoolLeft: 4 * time.Minute, BedCoolTo: 45}
 						st.Prep[0] = printer.PrepStep{Kind: "cool-bed", Name: "Cool the bed", Now: true}
 						s.p.State_ = st
 						s.a.OpenPrintScreen("")
@@ -361,14 +364,14 @@ func manualParts() []section {
 					Setup: func(s *manualState) {
 						s.p.State_ = printer.State{Reachable: true, Text: "Operational", Connected: true, Tool: 80, Bed: 48,
 							Finished: "complete", FinishedFile: "benchy.gcode", FinishedPath: "benchy.gcode", FinishedTime: 102 * time.Minute,
-							FinishedFilament: 4100}
+							FinishedFilament: 4100, HasBedCoolLeft: true, BedCoolLeft: 9 * time.Minute, BedCoolTo: printer.ReleaseBed}
 						s.p.Img = s.done
 						s.a.OpenPrintScreen("")
 					},
 					Callouts: []callout{
 						{"Model", "The model of the print."},
 						{"Result", "Done, Cancelled or Failed, the file, the time and the filament of the print."},
-						{"Bed", "The temperature of the bed. The bar is full when the part comes off easily (35°)."},
+						{"Bed", "The temperature of the bed, and the time until the part comes off easily (35°). The deck learns the time from the cooling after each print. The bar is full at 35°."},
 						{"Reprint", "Prints the file again."},
 						{"Done", "Closes this screen."},
 					}},
@@ -723,12 +726,16 @@ func manualSections() []section {
 
 func manual(args []string) {
 	if len(args) < 1 {
-		log.Fatal("usage: printdeck manual DIR [wide|lulzbot]")
+		log.Fatal("usage: printdeck manual DIR [wide|lulzbot|cura]")
 	}
 	dir := args[0]
 	mode := ""
 	if len(args) > 1 {
 		mode = args[1]
+	}
+	if mode == "cura" {
+		curaBooklet(dir)
+		return
 	}
 	wide := mode == "wide" || mode == "lulzbot"
 	os.MkdirAll(filepath.Join(dir, "img"), 0o755)
