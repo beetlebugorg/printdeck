@@ -149,6 +149,8 @@ type App struct {
 	awayFile      string
 	touchAt       time.Time       // the last touch
 	followed      bool            // followPrint saw a frame
+	ackR          image.Rectangle // the key that the finger tapped last, and when (drawAck)
+	ackAt         time.Time
 	bar           bool            // the frame has the print bar
 	wasBusy       bool            // the printer printed at the last frame
 	wasPaused     bool            // the print was paused at the last frame
@@ -406,10 +408,37 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 
 // button draws a key and registers it. fill is the colour of the cap.
 func (a *App) button(c *gfx.Canvas, r image.Rectangle, label string, fill, fg color.RGBA, tap func()) {
+	a.drawAck(c, r)
 	key(c, r, label, fill, fg, a.isPressed(r))
-	a.addHit(kit.Hit{R: r, Tap: tap})
-	a.addFocus(label, r, tap)
+	// The key that the finger tapped flashes, so a key that acts and stays in view shows that it
+	// took the tap.
+	acked := func() {
+		a.ackR, a.ackAt = r, a.Now()
+		tap()
+	}
+	a.addHit(kit.Hit{R: r, Tap: acked})
+	a.addFocus(label, r, acked)
 	a.region(label, r)
+}
+
+// ackTime is how long a tapped key flashes.
+const ackTime = 450 * time.Millisecond
+
+// drawAck draws the flash of a key that the finger tapped a moment ago: an orange ring around the
+// key that fades out. Draw it before the key, which covers its inside.
+func (a *App) drawAck(c *gfx.Canvas, r image.Rectangle) {
+	if r != a.ackR || a.ackAt.IsZero() {
+		return
+	}
+	e := a.Now().Sub(a.ackAt)
+	if e >= ackTime {
+		return
+	}
+	k := 1 - float64(e)/float64(ackTime)
+	mix := func(x, y uint8) uint8 { return uint8(float64(y) + (float64(x)-float64(y))*k) }
+	col := color.RGBA{mix(orange.R, bg.R), mix(orange.G, bg.G), mix(orange.B, bg.B), 255}
+	c.RoundRect(r.Inset(-4), 7, col)
+	a.redrawSoon(33 * time.Millisecond)
 }
 
 // grams is the weight of mm millimetres of filament, with the filament diameter of the printer.

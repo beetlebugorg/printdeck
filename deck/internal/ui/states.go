@@ -237,7 +237,7 @@ func (a *App) drawFirstLayer(c *gfx.Canvas, st printer.State) {
 	}
 	a.region("Step", steps[0].Union(steps[2]))
 	for i, s := range zSteps {
-		fill, fg := raised, text
+		fill, fg := keyOff, text
 		if a.zBaby == s {
 			fill, fg = keyOn, keyOnInk
 		}

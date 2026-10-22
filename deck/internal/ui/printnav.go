@@ -182,7 +182,12 @@ func (a *App) homeKeys(c *gfx.Canvas, st printer.State, main, heat image.Rectang
 		a.button(c, main, "Print a file", orange, onAcc, files)
 	}
 	h := kit.Cols(heat, 12, kit.Fr(1), kit.Fr(1))
-	a.printerKey(c, h[0], pre, raised, text, func() { pr.Heat(m.Tool, m.Bed) })
+	// Preheat is on while the heaters hold its temperatures: a tap then turns them off.
+	if st.ToolTarget == float64(m.Tool) && st.BedTarget == float64(m.Bed) && m.Tool > 0 {
+		a.printerKey(c, h[0], pre, keyOn, keyOnInk, func() { pr.Heat(0, 0) })
+	} else {
+		a.printerKey(c, h[0], pre, keyOff, text, func() { pr.Heat(m.Tool, m.Bed) })
+	}
 	a.printerKey(c, h[1], "Cool down", raised, text, func() { pr.Heat(0, 0) })
 }
 

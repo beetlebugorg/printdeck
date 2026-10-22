@@ -79,7 +79,7 @@ func (a *App) drawTune(c *gfx.Canvas) {
 	label(c, fan[0], "Fan", gfx.Left)
 	for i, r := range kit.Cols(kit.Inset(fan[1], 0, 2, 0, 2), 8, kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
 		p := []int{0, 50, 100}[i]
-		fill, fg := raised, text
+		fill, fg := keyOff, text
 		if st.HasFan && math.Abs(st.Fan-float64(p)) < 1 {
 			fill, fg = keyOn, keyOnInk
 		}

@@ -56,7 +56,7 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 	}
 	for i, r := range kit.Cols(mats, 6, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
 		mat := materials[i]
-		fill, fg := raised, text
+		fill, fg := keyOff, text
 		if mat.Name == m.Name {
 			fill, fg = keyOn, keyOnInk
 		}
@@ -105,6 +105,11 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 	}
 	tool := m.Tool
 	hc := kit.Cols(heat, 12, kit.Fr(1), kit.Fr(1))
-	fkey(c, hc[0], name, raised, text, func() { a.do(func() error { return pr.SetToolTemp(tool) }) })
+	// Heat is on while the nozzle holds the temperature of the material: a tap then turns it off.
+	if st.ToolTarget == float64(tool) && tool > 0 {
+		fkey(c, hc[0], name, keyOn, keyOnInk, func() { a.do(func() error { return pr.SetToolTemp(0) }) })
+	} else {
+		fkey(c, hc[0], name, keyOff, text, func() { a.do(func() error { return pr.SetToolTemp(tool) }) })
+	}
 	fkey(c, hc[1], "Cool down", raised, text, func() { pr.Heat(0, 0) })
 }
