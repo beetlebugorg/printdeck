@@ -217,6 +217,38 @@ void Deck::touch(const QString &kind, qreal x, qreal y)
     connect(r, &QNetworkReply::finished, r, &QObject::deleteLater);
 }
 
+void Deck::key(const QString &text, const QString &name)
+{
+    if (m_session.isEmpty())
+        return;
+    QJsonObject body;
+    if (name.isEmpty())
+        body.insert(QStringLiteral("text"), text);
+    else
+        body.insert(QStringLiteral("name"), name);
+    m_keys.append(QJsonDocument(body).toJson(QJsonDocument::Compact));
+    sendKey();
+}
+
+// sendKey sends the next key of the queue, one at a time, so fast typing keeps its order.
+void Deck::sendKey()
+{
+    if (m_keySending || m_keys.isEmpty() || m_session.isEmpty())
+        return;
+    QUrl url = m_base.resolved(QUrl(QStringLiteral("/ui/key")));
+    url.setQuery(QStringLiteral("s=") + m_session);
+    QNetworkRequest req(url);
+    req.setRawHeader("X-Api-Key", m_token);
+    req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    m_keySending = true;
+    QNetworkReply *r = m_net.post(req, m_keys.takeFirst());
+    connect(r, &QNetworkReply::finished, this, [this, r] {
+        r->deleteLater();
+        m_keySending = false;
+        sendKey();
+    });
+}
+
 void Deck::fail(const QString &error)
 {
     if (!m_error.isEmpty())

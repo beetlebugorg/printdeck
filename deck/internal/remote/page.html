@@ -249,6 +249,31 @@ canvas.addEventListener("pointermove", (e) => { if (down) send("move", e); });
 const up = (e) => { if (down) { down = false; send("up", e); } };
 canvas.addEventListener("pointerup", up);
 canvas.addEventListener("pointercancel", up);
+// The keyboard of the computer types on the deck: in its keyboard, its keypad, its questions;
+// Escape goes back. Keys with Ctrl, Alt or Meta stay with the browser.
+const keyNames = { Enter: "Enter", Escape: "Escape", Backspace: "Backspace" };
+addEventListener("keydown", (e) => {
+  if (!session || e.ctrlKey || e.altKey || e.metaKey) return;
+  let body = null;
+  if (keyNames[e.key]) body = { name: keyNames[e.key] };
+  else if (e.key.length === 1) body = { text: e.key };
+  if (!body) return;
+  e.preventDefault();
+  keys.push(body);
+  sendKey();
+});
+// The keys go one at a time, so fast typing keeps its order.
+const keys = [];
+let keySending = false;
+async function sendKey() {
+  if (keySending || !session || !keys.length) return;
+  keySending = true;
+  try {
+    await fetch("/ui/key?s=" + session, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(keys.shift()), keepalive: true });
+  } catch (err) {
+  } finally { keySending = false; sendKey(); }
+}
 addEventListener("contextmenu", (e) => e.preventDefault());
 document.addEventListener("gesturestart", (e) => e.preventDefault());
 

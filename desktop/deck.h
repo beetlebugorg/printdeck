@@ -55,6 +55,9 @@ public:
     Q_INVOKABLE void setArea(qreal w, qreal h);
     // touch sends a touch: kind is "down", "move" or "up", and x and y are 0..1 of the screen.
     Q_INVOKABLE void touch(const QString &kind, qreal x, qreal y);
+    // key sends a key of the keyboard of the computer: the text that it types, or the name of a
+    // key with no text ("Enter", "Escape" or "Backspace").
+    Q_INVOKABLE void key(const QString &text, const QString &name);
 
 signals:
     void screenChanged();
@@ -67,6 +70,7 @@ private:
     void streamEnded();
     void event(const QByteArray &name, const QByteArray &data);
     void fail(const QString &error);
+    void sendKey();
 
     QProcess m_process;
     QByteArray m_out; // the output of printdeck app before the first line
@@ -84,6 +88,8 @@ private:
     QSize m_screen{800, 480};
     QSizeF m_area;
     QTimer m_retry;
+    QList<QByteArray> m_keys; // the keys to send, in order
+    bool m_keySending = false;
 };
 
 // Factory gives QML a network manager that sends the token in the requests to the deck: the
