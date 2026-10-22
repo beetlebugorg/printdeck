@@ -25,8 +25,11 @@ public:
 
     // add adds moves: 6 numbers each, x0 y0 z0 x1 y1 z1 in the coordinates of the printer.
     void add(const QList<float> &segs);
+    // set replaces the moves, with the layer height layer.
+    void set(const QList<float> &segs, float layer);
     void clear();
     int moves() const { return m_moves; }
+    float layer() const { return m_layer; }
 
 signals:
     void movesChanged();
@@ -57,6 +60,8 @@ class SimFeed : public QObject
     Q_PROPERTY(QString file READ file NOTIFY stateChanged)
     Q_PROPERTY(bool connected READ connected NOTIFY stateChanged)
     Q_PROPERTY(PathGeometry *path READ path WRITE setPath NOTIFY pathChanged)
+    // recent is the strands of the last moments, and the strand that the nozzle lays now.
+    Q_PROPERTY(PathGeometry *recent READ recent WRITE setRecent NOTIFY pathChanged)
 
 public:
     explicit SimFeed(QObject *parent = nullptr);
@@ -76,6 +81,8 @@ public:
     bool connected() const { return m_connected; }
     PathGeometry *path() const { return m_path; }
     void setPath(PathGeometry *p);
+    PathGeometry *recent() const { return m_recent; }
+    void setRecent(PathGeometry *p);
 
 signals:
     void stateChanged();
@@ -84,6 +91,7 @@ signals:
 private:
     void pollState();
     void pollPath();
+    void follow(bool busy);
     QNetworkReply *get(const QString &path);
 
     QNetworkAccessManager m_net;
@@ -95,7 +103,11 @@ private:
     bool m_extruding = false, m_connected = false;
     double m_tool = 0, m_toolT = 0, m_bed = 0, m_bedT = 0, m_fan = 0;
     QString m_state, m_file;
-    QPointer<PathGeometry> m_path;
+    QPointer<PathGeometry> m_path, m_recent;
+    // The moves that the nozzle has not laid yet (6 numbers each), and the moves that it laid
+    // since the part took them last.
+    QList<float> m_pending, m_laid;
+    qint64 m_committed = 0; // the time when the part took the laid moves, in ms
     QString m_key; // the print of the moves in the path
     int m_next = 0; // the next move to read
 };

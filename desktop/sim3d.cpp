@@ -1,5 +1,6 @@
 #include "sim3d.h"
 
+#include <QDateTime>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -52,7 +53,7 @@ void PathGeometry::add(const QList<float> &segs)
         float x0 = segs[i], y0 = segs[i + 1], z0 = segs[i + 2], x1 = segs[i + 3], y1 = segs[i + 4], z1 = segs[i + 5];
         // The height of a strand is the step from the layer under it.
         if (z1 > m_lastZ + 0.01f) {
-            if (m_lastZ > 0)
+            if (m_lastZ > 0 && z1 - m_lastZ < 1.0f)
                 m_layer = std::clamp(z1 - m_lastZ, 0.08f, 0.6f);
             m_lastZ = z1;
         }
@@ -79,6 +80,15 @@ void PathGeometry::add(const QList<float> &segs)
         m_moves++;
     }
     upload();
+}
+
+void PathGeometry::set(const QList<float> &segs, float layer)
+{
+    m_vertices.clear();
+    m_moves = 0;
+    m_lastZ = 0;
+    m_layer = layer;
+    add(segs);
 }
 
 void PathGeometry::clear()
@@ -121,7 +131,70 @@ void SimFeed::setPath(PathGeometry *p)
     m_path = p;
     m_key.clear();
     m_next = 0;
+    m_pending.clear();
+    m_laid.clear();
     emit pathChanged();
+}
+
+void SimFeed::setRecent(PathGeometry *p)
+{
+    if (m_recent == p)
+        return;
+    m_recent = p;
+    emit pathChanged();
+}
+
+// follow shows the moves that the nozzle has laid: the moves before the move that it is on now,
+// and that move up to the nozzle. The file of the print is read ahead of the nozzle, so the moves
+// wait in m_pending until the nozzle gets to them. At the end of a print, all of them show.
+void SimFeed::follow(bool busy)
+{
+    if (!m_path || !m_recent)
+        return;
+    auto commit = [this] {
+        if (!m_laid.isEmpty())
+            m_path->add(m_laid);
+        m_laid.clear();
+        m_committed = QDateTime::currentMSecsSinceEpoch();
+    };
+    if (!busy) {
+        if (!m_pending.isEmpty() || !m_laid.isEmpty()) {
+            m_laid += m_pending;
+            m_pending.clear();
+            commit();
+            m_recent->clear();
+        }
+        return;
+    }
+    // The move that the nozzle is on: the nearest one at its height, among the next moves.
+    const float px = m_pos.x(), py = m_pos.y(), pz = m_pos.z();
+    int best = -1;
+    float bestD = 1.5f, bestT = 0;
+    const int n = std::min<int>(m_pending.size() / 6, 400);
+    for (int j = 0; j < n; j++) {
+        const float *s = m_pending.constData() + 6 * j;
+        if (std::abs(s[5] - pz) > 0.15f)
+            continue;
+        float dx = s[3] - s[0], dy = s[4] - s[1], l2 = dx * dx + dy * dy;
+        float t = l2 > 0 ? std::clamp(((px - s[0]) * dx + (py - s[1]) * dy) / l2, 0.f, 1.f) : 1.f;
+        float d = std::hypot(s[0] + t * dx - px, s[1] + t * dy - py);
+        if (d < bestD) {
+            best = j;
+            bestD = d;
+            bestT = t;
+        }
+    }
+    if (best < 0)
+        return; // a travel move, or a wait: nothing new
+    m_laid += m_pending.mid(0, 6 * best);
+    m_pending.remove(0, 6 * best);
+    if (QDateTime::currentMSecsSinceEpoch() - m_committed > 500 || m_laid.size() > 6 * 800)
+        commit();
+    // The strands since the last commit, and the move up to the nozzle.
+    QList<float> recent = m_laid;
+    const float *s = m_pending.constData();
+    recent << s[0] << s[1] << s[2] << s[0] + bestT * (s[3] - s[0]) << s[1] + bestT * (s[4] - s[1]) << s[5];
+    m_recent->set(recent, m_path->layer());
 }
 
 QNetworkReply *SimFeed::get(const QString &path)
@@ -162,6 +235,7 @@ void SimFeed::pollState()
         m_state = o.value(QStringLiteral("state")).toString();
         m_file = o.value(QStringLiteral("file")).toString();
         m_connected = true;
+        follow(o.value(QStringLiteral("busy")).toBool());
         emit stateChanged();
     });
 }
@@ -185,8 +259,13 @@ void SimFeed::pollPath()
         int from = o.value(QStringLiteral("from")).toInt();
         if (key != m_key || from == 0) {
             // A new print, or no print: the part starts again.
-            if (key != m_key || m_next != 0)
+            if (key != m_key || m_next != 0) {
                 m_path->clear();
+                if (m_recent)
+                    m_recent->clear();
+                m_pending.clear();
+                m_laid.clear();
+            }
             m_key = key;
             m_next = 0;
         }
@@ -195,8 +274,7 @@ void SimFeed::pollPath()
         segs.reserve(s.size());
         for (const QJsonValue &v : s)
             segs.append(float(v.toDouble()));
-        if (!segs.isEmpty())
-            m_path->add(segs);
+        m_pending += segs; // they show when the nozzle gets to them (follow)
         m_next = from + segs.size() / 6;
         // More moves wait: read them now.
         if (segs.size() / 6 >= 20000)
