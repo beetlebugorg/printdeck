@@ -46,11 +46,20 @@ Window
 
         DeckCanvas
         {
+            id: canvas
             anchors.centerIn: parent
             width: printdeck.screenWidth * area.k; height: printdeck.screenHeight * area.k
             visible: printdeck.view == "live"
             deck: printdeck
             sw: printdeck.screenWidth; sh: printdeck.screenHeight
+        }
+        // With -sim, the 3D window shows the deck UI on the display of the Printdeck: a picture of
+        // the canvas, 10 times a second.
+        Timer
+        {
+            interval: 100; repeat: true
+            running: simOn && canvas.visible
+            onTriggered: canvas.grabToImage(function(result) { sim.screen = result.image })
         }
         Connecting
         {

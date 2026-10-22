@@ -73,6 +73,20 @@ Window
                 emissiveFactor: Qt.vector3d(glowColor.r, glowColor.g, glowColor.b)
             }
         }
+        // A screen: a picture on a rectangle that faces +Z, with no light on it.
+        component Screen: Model
+        {
+            property size size: Qt.size(100, 100)
+            property alias image: tex.image
+            source: "#Rectangle"
+            scale: Qt.vector3d(size.width / 100, size.height / 100, 1)
+            materials: PrincipledMaterial
+            {
+                lighting: PrincipledMaterial.NoLighting
+                // The rows of the texture data go from the bottom up.
+                baseColorMap: Texture { flipV: true; textureData: ImageTexture { id: tex } }
+            }
+        }
         // The materials of the kinds of parts.
         component Metal: Part { tint: "#c4c6c8"; metal: 0.35; rough: 0.35 }
         component Printed: Part { tint: "#2a2b29" }
@@ -105,6 +119,37 @@ Window
             Metal { mesh: "frame_metal" }
             Printed { mesh: "frame_printed" }
             Belt { mesh: "frame_belt" }
+
+            // The display of the printer, in the window of its bezel (72 x 40 mm): the picture of
+            // the simulated display, as the touch screen draws it.
+            Screen { position: Qt.vector3d(-165.0, 343.8, 61.5); size: Qt.size(72, 40); image: sim.lcd }
+
+            // The Printdeck on its mount (cad/deck.py): the head under the logo, the pod on the
+            // side of the chassis, and the deck UI on its display. The face leans back 15°; the
+            // opening is 155.1 x 86.9 mm, and the active area of the display 154.21 x 85.92 mm.
+            Part { mesh: "deck_navy"; tint: "#1c2541"; rough: 0.6 }
+            Part { mesh: "deck_orange"; tint: "#f26b1d"; rough: 0.6 }
+            Part { mesh: "deck_white"; tint: "#e8e6e1"; rough: 0.6 }
+            Node
+            {
+                position: Qt.vector3d(-137.45, 114.16, 102.07)
+                eulerRotation.x: -15
+                // The black of the display around the deck UI.
+                Model
+                {
+                    source: "#Rectangle"
+                    z: -0.05
+                    scale: Qt.vector3d(1.5421, 0.8592, 1)
+                    materials: PrincipledMaterial { baseColor: "#050505"; roughness: 0.2 }
+                }
+                // The deck UI, as large as it fits.
+                Screen
+                {
+                    property real aspect: sim.screen.width > 0 ? sim.screen.width / sim.screen.height : 1024 / 600
+                    size: aspect > 154.21 / 85.92 ? Qt.size(154.21, 154.21 / aspect) : Qt.size(85.92 * aspect, 85.92)
+                    image: sim.screen
+                }
+            }
 
             // The gantry, at the height of Z, with the tool head on it.
             Node

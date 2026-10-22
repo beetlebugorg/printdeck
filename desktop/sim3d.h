@@ -4,6 +4,8 @@
 #pragma once
 
 #include <QByteArray>
+#include <QImage>
+#include <QQuick3DTextureData>
 #include <QNetworkAccessManager>
 #include <QObject>
 #include <QPointer>
@@ -64,6 +66,24 @@ private:
     QString m_source;
 };
 
+// ImageTexture is a texture from a picture: the display of the printer, or the screen of the deck.
+class ImageTexture : public QQuick3DTextureData
+{
+    Q_OBJECT
+    Q_PROPERTY(QImage image READ image WRITE setImage NOTIFY imageChanged)
+
+public:
+    explicit ImageTexture(QQuick3DObject *parent = nullptr) : QQuick3DTextureData(parent) {}
+    QImage image() const { return m_image; }
+    void setImage(const QImage &image);
+
+signals:
+    void imageChanged();
+
+private:
+    QImage m_image;
+};
+
 // SimFeed reads the state of the simulator from the app.
 class SimFeed : public QObject
 {
@@ -82,6 +102,10 @@ class SimFeed : public QObject
     Q_PROPERTY(PathGeometry *path READ path WRITE setPath NOTIFY pathChanged)
     // recent is the strands of the last moments, and the strand that the nozzle lays now.
     Q_PROPERTY(PathGeometry *recent READ recent WRITE setRecent NOTIFY pathChanged)
+    // lcd is the picture of the display of the printer (/sim/lcd.png), 4 times a second.
+    Q_PROPERTY(QImage lcd READ lcd NOTIFY lcdChanged)
+    // screen is the picture of the deck UI: the window of the deck sets it.
+    Q_PROPERTY(QImage screen READ screen WRITE setScreen NOTIFY screenChanged)
 
 public:
     explicit SimFeed(QObject *parent = nullptr);
@@ -103,22 +127,29 @@ public:
     void setPath(PathGeometry *p);
     PathGeometry *recent() const { return m_recent; }
     void setRecent(PathGeometry *p);
+    QImage lcd() const { return m_lcd; }
+    QImage screen() const { return m_screen; }
+    void setScreen(const QImage &image);
 
 signals:
     void stateChanged();
     void pathChanged();
+    void lcdChanged();
+    void screenChanged();
 
 private:
     void pollState();
     void pollPath();
+    void pollLCD();
     void follow(bool busy);
     QNetworkReply *get(const QString &path);
 
     QNetworkAccessManager m_net;
     QUrl m_base;
     QByteArray m_token;
-    QTimer m_stateTimer, m_pathTimer;
-    bool m_stateBusy = false, m_pathBusy = false;
+    QTimer m_stateTimer, m_pathTimer, m_lcdTimer;
+    bool m_stateBusy = false, m_pathBusy = false, m_lcdBusy = false;
+    QImage m_lcd, m_screen;
     QVector3D m_pos;
     bool m_extruding = false, m_connected = false;
     double m_tool = 0, m_toolT = 0, m_bed = 0, m_bedT = 0, m_fan = 0;

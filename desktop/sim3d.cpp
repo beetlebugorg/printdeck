@@ -151,12 +151,26 @@ void MeshGeometry::setSource(const QString &source)
     emit sourceChanged();
 }
 
+void ImageTexture::setImage(const QImage &image)
+{
+    m_image = image;
+    if (!image.isNull()) {
+        QImage rgba = image.convertToFormat(QImage::Format_RGBA8888);
+        setSize(rgba.size());
+        setFormat(QQuick3DTextureData::RGBA8);
+        setTextureData(QByteArray(reinterpret_cast<const char *>(rgba.constBits()), rgba.sizeInBytes()));
+    }
+    emit imageChanged();
+}
+
 SimFeed::SimFeed(QObject *parent) : QObject(parent)
 {
     m_stateTimer.setInterval(33); // 30 times a second: the moves of the printer
     m_pathTimer.setInterval(1000);
     connect(&m_stateTimer, &QTimer::timeout, this, &SimFeed::pollState);
     connect(&m_pathTimer, &QTimer::timeout, this, &SimFeed::pollPath);
+    m_lcdTimer.setInterval(250);
+    connect(&m_lcdTimer, &QTimer::timeout, this, &SimFeed::pollLCD);
 }
 
 void SimFeed::start(const QUrl &base, const QByteArray &token)
@@ -165,6 +179,7 @@ void SimFeed::start(const QUrl &base, const QByteArray &token)
     m_token = token;
     m_stateTimer.start();
     m_pathTimer.start();
+    m_lcdTimer.start();
 }
 
 void SimFeed::setPath(PathGeometry *p)
@@ -343,4 +358,29 @@ void SimFeed::pollPath()
         if (segs.size() / 6 >= 20000)
             QTimer::singleShot(0, this, &SimFeed::pollPath);
     });
+}
+
+void SimFeed::pollLCD()
+{
+    if (m_lcdBusy)
+        return;
+    m_lcdBusy = true;
+    QNetworkReply *r = get(QStringLiteral("/sim/lcd.png"));
+    connect(r, &QNetworkReply::finished, this, [this, r] {
+        r->deleteLater();
+        m_lcdBusy = false;
+        if (r->error() != QNetworkReply::NoError)
+            return;
+        QImage img;
+        if (img.loadFromData(r->readAll(), "PNG") && img != m_lcd) {
+            m_lcd = img;
+            emit lcdChanged();
+        }
+    });
+}
+
+void SimFeed::setScreen(const QImage &image)
+{
+    m_screen = image;
+    emit screenChanged();
 }

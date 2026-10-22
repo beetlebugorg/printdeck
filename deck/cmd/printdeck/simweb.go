@@ -1,18 +1,23 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
+	"image/png"
 	"math"
 	"net/http"
 	"strconv"
 
+	"printdeck/internal/lcd"
 	"printdeck/internal/printer"
+	"printdeck/internal/ui"
 )
 
 // The state of the simulated printer for the 3D window of the desktop app (desktop/Sim3D.qml):
 //
 //	GET /sim/state  the live position of the tool head and the bed, the temperatures, the fan,
 //	                and the place of the print in its file
+//	GET /sim/lcd.png  the picture of the display of the printer, as the touch screen draws it
 //	GET /sim/path?key=K&from=N  the extruding moves of the print from move N, up to the place of
 //	                the print: the part that is printed. A new print has a new key.
 //
@@ -47,6 +52,32 @@ func registerSim(mux *http.ServeMux, k *printer.Klippy, ok func(*http.Request) b
 			out["homed"] = q["toolhead"]["homed_axes"]
 		}
 		json.NewEncoder(w).Encode(out)
+	}))
+	mux.HandleFunc("GET /sim/lcd.png", auth(func(w http.ResponseWriter, r *http.Request) {
+		// The graphics, and over them the characters of the text in the 8 x 16 font.
+		var bits [64][16]byte
+		if q, err := k.Query(map[string][]string{"simmcu": {"lcd", "lcd_text"}}); err == nil {
+			s, _ := q["simmcu"]["lcd"].(string)
+			if b, err := hex.DecodeString(s); err == nil && len(b) == 64*16 {
+				for y := range bits {
+					copy(bits[y][:], b[16*y:])
+				}
+			}
+			s, _ = q["simmcu"]["lcd_text"].(string)
+			if t, err := hex.DecodeString(s); err == nil && len(t) == 4*16 {
+				for i, ch := range t {
+					if ch < 0x20 || ch > 0x7e {
+						continue // a glyph of the CGRAM
+					}
+					g := lcd.Glyph8x16(ch)
+					for r := 0; r < 16 && r < len(g); r++ {
+						bits[i/16*16+r][i%16] |= g[r]
+					}
+				}
+			}
+		}
+		w.Header().Set("Content-Type", "image/png")
+		png.Encode(w, ui.LCDPicture(bits, 4))
 	}))
 	mux.HandleFunc("GET /sim/path", auth(func(w http.ResponseWriter, r *http.Request) {
 		st := k.State()

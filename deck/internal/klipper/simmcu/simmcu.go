@@ -125,6 +125,7 @@ type Board struct {
 	crc       string // the CRC of finalize_config, or ""
 	shutdown  string // the reason of a shutdown, or ""
 	steppers  map[int64]*stepper
+	lcds      map[int64]*st7920
 	endstops  map[int64]*endstop
 	trsyncs   map[int64]*trsync
 	adcs      []*adc
@@ -156,7 +157,7 @@ func newBoard(conn net.Conn) (*Board, error) {
 		return v
 	}
 	return &Board{conn: conn, parser: p, identify: z.Bytes(), freq: num("CLOCK_FREQ"), adcMax: num("ADC_MAX"),
-		pwmMax: num("PWM_MAX"), statics: d.StaticStrings, steppers: map[int64]*stepper{}, endstops: map[int64]*endstop{},
+		pwmMax: num("PWM_MAX"), statics: d.StaticStrings, steppers: map[int64]*stepper{}, lcds: map[int64]*st7920{}, endstops: map[int64]*endstop{},
 		trsyncs: map[int64]*trsync{}, adcByOID: map[int64]*adc{}, outs: map[int64]*output{}, closed: make(chan struct{})}, nil
 }
 
@@ -264,6 +265,41 @@ func args(text string) (string, map[string]string) {
 	return f[0], m
 }
 
+// buffer reads the last parameter of a command in its text form, a buffer as Python writes it:
+// b'..' with \xHH, \n, \r, \t, \\ and \' escapes. A buffer can have spaces, so args cannot read it.
+func buffer(text string) []byte {
+	i := strings.Index(text, "=b'")
+	if i < 0 || !strings.HasSuffix(text, "'") {
+		return nil
+	}
+	s := text[i+3 : len(text)-1]
+	out := make([]byte, 0, len(s))
+	for j := 0; j < len(s); j++ {
+		if s[j] != '\\' || j+1 >= len(s) {
+			out = append(out, s[j])
+			continue
+		}
+		j++
+		switch s[j] {
+		case 'x':
+			if j+2 < len(s) {
+				v, _ := strconv.ParseUint(s[j+1:j+3], 16, 8)
+				out = append(out, byte(v))
+				j += 2
+			}
+		case 'n':
+			out = append(out, '\n')
+		case 'r':
+			out = append(out, '\r')
+		case 't':
+			out = append(out, '\t')
+		default:
+			out = append(out, s[j])
+		}
+	}
+	return out
+}
+
 func num(m map[string]string, k string) int64 {
 	v, _ := strconv.ParseInt(m[k], 10, 64)
 	return v
@@ -316,6 +352,21 @@ func (b *Board) command(text string) {
 			time.Sleep(50 * time.Millisecond)
 			b.close()
 		}()
+	case "config_st7920":
+		b.mu.Lock()
+		b.lcds[oid] = newST7920()
+		b.mu.Unlock()
+	case "st7920_send_cmds", "st7920_send_data":
+		buf := buffer(text)
+		b.mu.Lock()
+		if d := b.lcds[oid]; d != nil {
+			if name == "st7920_send_cmds" {
+				d.command(buf)
+			} else {
+				d.data(buf)
+			}
+		}
+		b.mu.Unlock()
 	case "config_stepper":
 		b.mu.Lock()
 		b.steppers[oid] = newStepper(a["step_pin"])
