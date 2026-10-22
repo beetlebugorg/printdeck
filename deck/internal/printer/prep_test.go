@@ -40,7 +40,7 @@ func TestPrepSteps(t *testing.T) {
 	var tr prepTracker
 	now := func(stack ...string) string {
 		var out []string
-		for _, s := range tr.steps(stack, macros) {
+		for _, s := range tr.steps(stack, macros, 2) {
 			mark := " "
 			switch {
 			case s.Now:
@@ -73,7 +73,20 @@ func TestPrepSteps(t *testing.T) {
 		t.Errorf("prime: %s", got)
 	}
 	// A G-code line of the file: no steps.
-	if s := tr.steps([]string{"G1 X10 Y10 E0.5"}, macros); s != nil {
+	if s := tr.steps([]string{"G1 X10 Y10 E0.5"}, macros, 2); s != nil {
 		t.Errorf("steps for a line of the file: %v", fmt.Sprint(s))
+	}
+}
+
+// An end macro that waits for the bed to cool has one step: Cool the bed.
+func TestEndMacroCoolsBed(t *testing.T) {
+	macros := map[string]string{"print_end": "M400\nM140 S45\nM104 S0\nG1 Z10\nM117 Cooling, please wait\nTEMPERATURE_WAIT SENSOR=heater_bed MAXIMUM=46\nG1 Y260 F1000\nM84"}
+	var tr prepTracker
+	if s := tr.steps([]string{"PRINT_END"}, macros, 2); s != nil {
+		t.Errorf("a start needs two steps: %v", s)
+	}
+	s := tr.steps([]string{"PRINT_END", "TEMPERATURE_WAIT SENSOR=heater_bed MAXIMUM=46"}, macros, 1)
+	if len(s) != 1 || s[0].Kind != "cool-bed" || s[0].Name != "Cool the bed" || !s[0].Now {
+		t.Errorf("steps %+v", s)
 	}
 }

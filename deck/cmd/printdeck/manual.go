@@ -305,6 +305,19 @@ func manualParts() []section {
 						{"Model", "The model up to the layer that prints now, with the move now and its speed at the top right."},
 						{"Layer slider", "Drag it to look at another layer. Live goes back to the layer that prints."},
 					}},
+				{Name: "finishing", Caption: "The end of the print",
+					Setup: func(s *manualState) {
+						st := printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true, File: "benchy.gcode",
+							Activity: "Cooling the bed  52°", Finishing: true, Layer: 27, Layers: 27, Completion: 100,
+							Tool: 120, Bed: 52, BedTarget: 45, PrepN: 1}
+						st.Prep[0] = printer.PrepStep{Kind: "cool-bed", Name: "Cool the bed", Now: true}
+						s.p.State_ = st
+						s.a.OpenPrintScreen("")
+					},
+					Callouts: []callout{
+						{"Steps", "The steps of the end macro of your printer, for example the cooling of the bed before the print moves to the front."},
+						{"Model", "The finished model."},
+					}},
 				{Name: "tune", Caption: "Tune",
 					Setup: func(s *manualState) { s.p.State_ = stPrinting; s.a.OpenPrintScreen("tune") },
 					Callouts: []callout{
@@ -638,7 +651,7 @@ func manualSections() []section {
 				"Use Tune to change the speed, the flow or the fan while the print runs.",
 				"When the print is done, wait for the bed to cool, then take the part off.",
 			},
-			Figures: fig("preparing", "first-layer", "printing", "tune", "paused", "done")},
+			Figures: fig("preparing", "first-layer", "printing", "tune", "paused", "finishing", "done")},
 
 		{Chapter: "Change the filament", ID: "filament", Title: "Change the filament", Intro: parts["filament"].Intro,
 			Steps: []string{

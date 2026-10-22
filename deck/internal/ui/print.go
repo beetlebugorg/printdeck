@@ -108,6 +108,8 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 			a.drawPaused(c, st)
 		case st.Preparing:
 			a.drawPreparing(c, st)
+		case st.Finishing:
+			a.drawFinishing(c, st)
 		case st.Layer == 1 && st.Layers > 1:
 			a.drawFirstLayer(c, st)
 		default:

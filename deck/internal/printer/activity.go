@@ -83,7 +83,12 @@ func (v *View) Activity(st *State) {
 			st.Activity = "Probing and priming"
 		}
 	case gc.EndStart > 0 && st.FilePos >= gc.EndStart:
+		// The end macro runs: every layer is done.
+		st.Finishing, st.Layer = true, gc.LayerCount
 		st.Activity = "Finishing"
+		if st.BedTarget == 0 || st.Bed > st.BedTarget+near {
+			st.Activity = fmt.Sprintf("Cooling the bed  %.0f°", st.Bed)
+		}
 	default:
 		st.Layer = gc.LayerAt(st.FilePos)
 		switch {

@@ -496,9 +496,15 @@ func (k *Klippy) refresh(notify func()) {
 		}
 	}
 	if st.Busy() {
-		steps := k.prep.steps(stack, k.macros)
+		// A start macro has two steps or more. An end macro can have one, such as the cooling
+		// of the bed.
+		minSteps := 2
+		if st.Finishing {
+			minSteps = 1
+		}
+		steps := k.prep.steps(stack, k.macros, minSteps)
 		st.PrepN = copy(st.Prep[:], steps)
-		if st.PrepN > 0 {
+		if st.PrepN > 0 && !st.Finishing {
 			st.Preparing = true
 		}
 	}

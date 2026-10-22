@@ -4,20 +4,21 @@ import (
 	"strings"
 )
 
-// The steps of a start macro (PRINT_START), from its text and from the commands that run now: the
-// command stack of the Klipper host (printdeck_display). The steps follow the order of the macro,
-// so they match the printer, also for a macro that wipes the nozzle while the bed heats.
+// The steps of a start macro (PRINT_START) or an end macro (PRINT_END), from its text and from the
+// commands that run now: the command stack of the Klipper host (printdeck_display). The steps
+// follow the order of the macro, so they match the printer, also for a macro that wipes the nozzle
+// while the bed heats.
 
 // PrepStep is a step of the start of a print.
 type PrepStep struct {
-	Kind string // "home", "heat-nozzle", "heat-bed", "cool", "wipe", "probe", "prime"
+	Kind string // "home", "heat-nozzle", "heat-bed", "cool", "cool-bed", "wipe", "probe", "prime"
 	Name string // for example "Wipe the nozzle"
 	Done bool
 	Now  bool
 }
 
 var prepNames = map[string]string{
-	"home": "Home", "heat-nozzle": "Heat the nozzle", "heat-bed": "Heat the bed", "cool": "Cool the nozzle",
+	"home": "Home", "heat-nozzle": "Heat the nozzle", "heat-bed": "Heat the bed", "cool": "Cool the nozzle", "cool-bed": "Cool the bed",
 	"wipe": "Wipe the nozzle", "probe": "Probe the bed", "prime": "Prime the nozzle",
 }
 
@@ -45,6 +46,9 @@ func prepKind(line string) string {
 			heater = "heat-bed"
 		}
 		if strings.Contains(l, "MAXIMUM") && !strings.Contains(l, "MINIMUM") {
+			if heater == "heat-bed" {
+				return "cool-bed"
+			}
 			return "cool"
 		}
 		return heater
@@ -95,9 +99,9 @@ type prepTracker struct {
 	at    int
 }
 
-// steps returns the steps of the start macro of the command stack, or nil when the stack has no
-// macro with steps. macros has the text of each macro, by its name in lower case.
-func (t *prepTracker) steps(stack []string, macros map[string]string) []PrepStep {
+// steps returns the steps of the macro of the command stack, or nil when the stack has no macro
+// with at least min steps. macros has the text of each macro, by its name in lower case.
+func (t *prepTracker) steps(stack []string, macros map[string]string, min int) []PrepStep {
 	if len(stack) == 0 {
 		t.macro = ""
 		return nil
@@ -115,7 +119,7 @@ func (t *prepTracker) steps(stack []string, macros map[string]string) []PrepStep
 		}
 		t.macro, t.plan, t.at = name, prepPlan(text), 0
 	}
-	if len(t.plan) < 2 {
+	if len(t.plan) < min {
 		return nil
 	}
 	// The deepest command with a step is the step now. A step goes forward only.

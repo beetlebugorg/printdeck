@@ -339,3 +339,18 @@ func TestMaterialCheck(t *testing.T) {
 		t.Errorf("confirm %v, calls %v", a.confirm, pr.Calls())
 	}
 }
+
+// While the end macro runs, the screen shows its steps, with no Cancel.
+func TestFinishingScreen(t *testing.T) {
+	st := printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true, Finishing: true,
+		Layer: 33, Layers: 33, Bed: 52, BedTarget: 45, PrepN: 1}
+	st.Prep[0] = printer.PrepStep{Kind: "cool-bed", Name: "Cool the bed", Now: true}
+	a, _, cv := newPrintApp(st)
+	a.Draw(cv)
+	if _, ok := a.KeyRect("Steps"); !ok {
+		t.Error("no steps")
+	}
+	if _, ok := a.KeyRect("Cancel print"); ok {
+		t.Error("Cancel at the end of a print")
+	}
+}

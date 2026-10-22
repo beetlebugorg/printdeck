@@ -36,7 +36,13 @@ func hm(m int) string { return fmt.Sprintf("%d:%02d", m/60, m%60) }
 // drawPreparing is the start of a print: the steps of the start macro, with the step that runs now.
 // The steps come from the commands that the printer runs (State.Prep). With no command stack, the
 // deck guesses them from the temperatures.
-func (a *App) drawPreparing(c *gfx.Canvas, st printer.State) {
+func (a *App) drawPreparing(c *gfx.Canvas, st printer.State) { a.drawSteps(c, st, false) }
+
+// drawFinishing is the end of a print: the steps of the end macro, such as the cooling of the bed.
+func (a *App) drawFinishing(c *gfx.Canvas, st printer.State) { a.drawSteps(c, st, true) }
+
+// drawSteps draws the steps of the start macro, or of the end macro when end is true.
+func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 	a.statusPanel(c, st)
 	// Tall: the steps and Cancel under the display. Wide: the steps in the left column; the model
 	// and Cancel at the right.
@@ -56,11 +62,15 @@ func (a *App) drawPreparing(c *gfx.Canvas, st printer.State) {
 		kind      string
 	}
 	var steps []step
-	if st.PrepN > 0 {
+	switch {
+	case st.PrepN > 0:
 		for _, p := range st.Prep[:st.PrepN] {
 			steps = append(steps, step{p.Name, p.Done, p.Now, p.Kind})
 		}
-	} else {
+	case end:
+		// No steps from the end macro: one step with what the printer does.
+		steps = []step{{name: "Finish the print", now: true}}
+	default:
 		// A guess from the temperatures and the activity.
 		names := []step{{name: "Heat the bed", kind: "heat-bed"}}
 		if st.HasWipe {
@@ -84,7 +94,11 @@ func (a *App) drawPreparing(c *gfx.Canvas, st printer.State) {
 	rowH := min(48, (area.Dy()-30)/max(1, len(steps)))
 	box := kit.Rows(area, 0, kit.Px(len(steps)*rowH+30))[0]
 	a.region("Steps", box)
-	panel(c, box, "PRINT START  ·  "+strings.ToUpper(gfx.Fit(gfx.Face(true, 13), st.File, 300)))
+	head := "PRINT START"
+	if end {
+		head = "PRINT END"
+	}
+	panel(c, box, head+"  ·  "+strings.ToUpper(gfx.Fit(gfx.Face(true, 13), st.File, 300)))
 	for i, s := range steps {
 		y := box.Min.Y + 22 + i*rowH
 		led(c, box.Min.X+34, y+rowH/2-4, s.now)
@@ -105,6 +119,10 @@ func (a *App) drawPreparing(c *gfx.Canvas, st printer.State) {
 			info, f = fmt.Sprintf("%.0f° of %.0f°", st.Tool, st.ToolTarget), st.Tool/st.ToolTarget
 		case s.now && s.kind == "cool":
 			info = fmt.Sprintf("%.0f°", st.Tool)
+		case s.now && s.kind == "cool-bed" && st.BedTarget > 0:
+			info = fmt.Sprintf("%.0f° to %.0f°", st.Bed, st.BedTarget)
+		case s.now && s.kind == "cool-bed":
+			info = fmt.Sprintf("%.0f°", st.Bed)
 		}
 		// The name gets the space that the information does not use.
 		nameR := image.Rect(box.Min.X+60, y, box.Max.X-22, y+rowH-8)
@@ -116,6 +134,16 @@ func (a *App) drawPreparing(c *gfx.Canvas, st printer.State) {
 		if f > 0 {
 			segments(c, image.Rect(box.Min.X+60, y+rowH-12, box.Max.X-22, y+rowH-4), min(1, f))
 		}
+	}
+	if end {
+		// The finished model under the steps on a tall screen. The print is done: only Help.
+		if !f.wide {
+			a.modelView(c, image.Rect(area.Min.X, box.Max.Y+16, area.Max.X, area.Max.Y), st)
+		}
+		if a.Setup != nil {
+			a.button(c, kit.Cols(cancel, 12, kit.Px(130), kit.Fr(1))[0], "Help", raised, text, a.OpenHelp)
+		}
+		return
 	}
 	if a.Setup != nil {
 		k := kit.Cols(cancel, 12, kit.Px(130), kit.Fr(1))
