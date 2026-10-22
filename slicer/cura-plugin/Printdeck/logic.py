@@ -95,3 +95,4 @@ def connected_text(status):
         return ("Connected to the Printdeck. %s is in the printer. To follow the grams of a roll, add the roll on "
                 "the Printdeck: Filament > Rolls." % status["material"])
     return "Connected to the Printdeck. No filament is set on the Printdeck: Filament on the touch screen."
+

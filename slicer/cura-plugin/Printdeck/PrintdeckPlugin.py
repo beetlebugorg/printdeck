@@ -46,6 +46,7 @@ class PrintdeckPlugin(Extension):
         self._connected = False
         self._greeted = False
         self._offer = None  # the message that offers to show the print
+        self._loading = None  # the file of the print that Cura loads, and the caution setting to restore
         self._roll = None  # the roll and the material of the last answer, to see a change
         self._warned = None  # the roll and the grams of the last warning
         self._layer = None  # the job and the layer that the Preview shows
@@ -60,6 +61,7 @@ class PrintdeckPlugin(Extension):
         app = CuraApplication.getInstance()
         app.getPrintInformation().materialWeightsChanged.connect(self._checkRoll)
         app.getOutputDeviceManager().writeStarted.connect(self._tagMaterial)
+        app.fileCompleted.connect(self._onFileCompleted)
         threading.Thread(target=self._poll, name="Printdeck", daemon=True).start()
         Logger.log("i", "Printdeck: started")
 
@@ -128,9 +130,14 @@ class PrintdeckPlugin(Extension):
         message = Message("The Printdeck prints %s. Cura can show it in the Preview, at the layer that prints." % name,
                           title="Printdeck", lifetime=0)
         message.addAction("show", "Show the print", "", "Open the file of the print in the Preview")
-        message.actionTriggered.connect(lambda m, action: (m.hide(), self._showPrint()))
+        # A method: the signals of Cura keep only a weak reference, so a lambda is gone before the click.
+        message.actionTriggered.connect(self._onOfferAction)
         message.show()
         self._offer = message
+
+    def _onOfferAction(self, message, action):
+        message.hide()
+        self._showPrint()
 
     def _showPrint(self):
         """Downloads the file of the print from the Printdeck, and opens it in the Preview."""
@@ -170,7 +177,20 @@ class PrintdeckPlugin(Extension):
         if self._offer:
             self._offer.hide()
             self._offer = None
-        CuraApplication.getInstance().readLocalFile(QUrl.fromLocalFile(path))
+        # The file comes from the Printdeck that prints it: no caution about the printer.
+        prefs = CuraApplication.getInstance().getPreferences()
+        self._loading = (path, prefs.getValue("gcodereader/show_caution"))
+        prefs.setValue("gcodereader/show_caution", False)
+        CuraApplication.getInstance().readLocalFile(QUrl.fromLocalFile(path), add_to_recent_files=False)
+
+    def _onFileCompleted(self, name):
+        """After the file of the print loaded, the caution setting comes back. Cura shows no time
+        for a G-code file: the Printdeck tab has the time of the print."""
+        if not self._loading or os.path.basename(name) != os.path.basename(self._loading[0]):
+            return
+        _, caution = self._loading
+        self._loading = None
+        CuraApplication.getInstance().getPreferences().setValue("gcodereader/show_caution", caution)
 
     def _command(self, command, action):
         """Sends a job command of the OctoPrint API (pause, resume, cancel) on a thread."""
