@@ -47,6 +47,9 @@ type State struct {
 	HasNow           bool
 	Tool, ToolTarget float64
 	Bed, BedTarget   float64
+	// The power of each heater now, 0 to 1: the PWM of the heater. A heater that holds its
+	// temperature switches on and off.
+	ToolPower, BedPower float64
 
 	// The position of the head (X, Y and Z with HasZ), and the homed axes, for example "xyz".
 	X, Y  float64

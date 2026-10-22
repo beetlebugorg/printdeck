@@ -8,8 +8,8 @@ import (
 )
 
 // Status is the status screen of the deck: the heaters and the fan with their icons, and the
-// progress of the print or the position. The icons move: heat waves while a heater heats, and the
-// blades of the fan at its speed.
+// progress of the print or the position. The icons move: heat waves while a heater has power, and
+// the blades of the fan at its speed.
 type Status struct {
 	State    string  `json:"state"`              // for example "Ready" or "Printing"
 	Clock    string  `json:"clock,omitempty"`    // for example "2:24PM" or "14:24" (see Clock)
@@ -18,22 +18,25 @@ type Status struct {
 	ToolT    float64 `json:"tool_target"`        // degrees, 0 is off
 	Bed      float64 `json:"bed"`                // degrees
 	BedT     float64 `json:"bed_target"`         // degrees, 0 is off
+	ToolPow  float64 `json:"tool_power"`         // 0 to 1, the power of the heater now
+	BedPow   float64 `json:"bed_power"`          // 0 to 1
 	Fan      float64 `json:"fan"`                // 0 to 1
 	Progress float64 `json:"progress"`           // 0 to 1, with Printing
 	Printing bool    `json:"printing,omitempty"` // a print runs: a progress bar
 	Elapsed  string  `json:"elapsed,omitempty"`  // the time of the print, for example "0:42"
 	Left     string  `json:"left,omitempty"`     // the time left of the print, for example "1:23"
+	Done     string  `json:"done,omitempty"`     // the end of the print on the clock, for example "3:47PM"
 	Position string  `json:"position,omitempty"` // for example "X110 Y110 Z5.00", when no print runs
 	Hint     string  `json:"hint,omitempty"`     // for example "Click for menu", when no print runs
 }
 
 // Moves reports that the status has a part that moves, so that the module draws its frames.
 func (s *Status) Moves() bool {
-	return heating(s.Tool, s.ToolT) || heating(s.Bed, s.BedT) || s.Fan > 0 || s.Printing || s.Hint != ""
+	return heating(s.Tool, s.ToolT, s.ToolPow) || heating(s.Bed, s.BedT, s.BedPow) || s.Fan > 0 || s.Hint != ""
 }
 
-// heating is true while a heater is more than 2 degrees under its target.
-func heating(temp, target float64) bool { return target > 0 && temp < target-2 }
+// heating is true while the heater has power, or while it is more than 2 degrees under its target.
+func heating(temp, target, power float64) bool { return power > 0 || target > 0 && temp < target-2 }
 
 // The columns of the three gauges: their centers.
 const (
@@ -59,8 +62,8 @@ func (s *Status) draw(c *canvas, frame int) {
 	}
 	big := func(cx int, t string) { c.text(max(0, min(cx-4*len(t), canvasW-8*len(t))), top+16, t) }
 
-	hotendIcon(c, colTool-8, top, s.ToolT > 0, heating(s.Tool, s.ToolT), frame)
-	bedIcon(c, colBed-8, top, s.BedT > 0, heating(s.Bed, s.BedT), frame)
+	hotendIcon(c, colTool-8, top, s.ToolT > 0, heating(s.Tool, s.ToolT, s.ToolPow), frame)
+	bedIcon(c, colBed-8, top, s.BedT > 0, heating(s.Bed, s.BedT, s.BedPow), frame)
 	fanIcon(c, colFan-8, top, s.Fan, frame)
 	big(colTool, fmt.Sprintf("%.0f\xf8", s.Tool))
 	big(colBed, fmt.Sprintf("%.0f\xf8", s.Bed))
@@ -89,9 +92,15 @@ func (s *Status) draw(c *canvas, frame int) {
 	if s.Printing {
 		pct := fmt.Sprintf("%.0f%%", s.Progress*100)
 		x1 := canvasW - small.w*4 - 3
-		roundBar(c, 0, line1+1, x1, line1+7, s.Progress, frame)
+		roundBar(c, 0, line1+1, x1, line1+7, s.Progress)
 		c.smallText(small, canvasW-small.w*len(pct), line1, pct, false)
-		c.smallText(small, 0, line2, s.Elapsed, false)
+		// The end of the print on the clock at the left, when the time left is known; else the
+		// time of the print.
+		if s.Done != "" {
+			c.smallText(small, 0, line2, "done "+s.Done, false)
+		} else {
+			c.smallText(small, 0, line2, s.Elapsed, false)
+		}
 		if s.Left != "" {
 			l := s.Left + " left"
 			c.smallText(small, canvasW-small.w*len(l), line2, l, false)
@@ -121,9 +130,8 @@ func (s *Status) draw(c *canvas, frame int) {
 // y32 is the top of the targets.
 const y32 = 32
 
-// roundBar draws a progress bar with round ends from x0, y0 to x1, y1, filled to v (0 to 1). A
-// spark runs along the filled part.
-func roundBar(c *canvas, x0, y0, x1, y1 int, v float64, frame int) {
+// roundBar draws a progress bar with round ends from x0, y0 to x1, y1, filled to v (0 to 1).
+func roundBar(c *canvas, x0, y0, x1, y1 int, v float64) {
 	c.line(x0+2, y0, x1-3, y0)
 	c.line(x0+2, y1-1, x1-3, y1-1)
 	c.line(x0, y0+2, x0, y1-3)
@@ -134,9 +142,6 @@ func roundBar(c *canvas, x0, y0, x1, y1 int, v float64, frame int) {
 	c.set(x1-2, y1-2, true)
 	w := int(float64(x1-x0-4) * min(max(v, 0), 1))
 	c.fill(x0+2, y0+2, x0+2+w, y1-2, true)
-	if w > 6 {
-		c.set(x0+2+(frame*3)%w, y0+2, false)
-	}
 }
 
 // alternate is the text that takes the place of the state on the bottom line for 3 of each 6

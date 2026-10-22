@@ -248,7 +248,8 @@ func (a *App) lcdStatusScreen(st printer.State, l1, l2 string) *printer.LCDStatu
 	// One space between the words: the status lines have the padding of 16 characters.
 	trim := func(s string) string { return strings.Join(strings.Fields(s), " ") }
 	s := &printer.LCDStatus{State: trim(l1), Message: trim(l2), Clock: lcdscreen.Clock(a.Now(), a.Clock24),
-		Tool: st.Tool, ToolT: st.ToolTarget, Bed: st.Bed, BedT: st.BedTarget, Fan: st.Fan / 100}
+		Tool: st.Tool, ToolT: st.ToolTarget, Bed: st.Bed, BedT: st.BedTarget, Fan: st.Fan / 100,
+		ToolPow: st.ToolPower, BedPow: st.BedPower}
 	if st.Busy() {
 		s.Printing, s.Progress = true, st.Completion/100
 		e := int(st.Elapsed.Minutes())
@@ -256,6 +257,7 @@ func (a *App) lcdStatusScreen(st printer.State, l1, l2 string) *printer.LCDStatu
 		if st.HasTimeLeft {
 			m := int(st.TimeLeft.Minutes())
 			s.Left = fmt.Sprintf("%d:%02d", m/60, m%60)
+			s.Done = lcdscreen.Clock(a.Now().Add(st.TimeLeft), a.Clock24)
 		}
 		return s
 	}
