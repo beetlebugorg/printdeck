@@ -10,6 +10,21 @@ controls the print on the touch screen, on the display of the printer, and in a 
 
 Website: https://beetlebug.org/printdeck/
 
+<p>
+  <img src="docs/manual/img/printing.png" alt="A print with the model up to the layer that prints now" width="190">
+  <img src="docs/manual/img/first-layer.png" alt="The first layer with the Z offset" width="190">
+  <img src="docs/manual/img/file.png" alt="A file with its print time, filament, roll and cost" width="190">
+  <img src="docs/manual/img/filament.png" alt="The Filament page with the roll in the printer" width="190">
+</p>
+
+## Install
+
+1. Download `printdeck.img.xz` from the [latest release](https://github.com/beetlebugorg/printdeck/releases/latest).
+2. Write it to a USB SSD or an SD card with Raspberry Pi Imager ("Use custom").
+3. Start the Pi. The setup on the touch screen connects the Wi-Fi and finds the printer.
+
+To update, open Machine > Software update on the touch screen. `os/README.md` has the details.
+
 ## Goal
 
 Printdeck is a very small operating system with one purpose. The Printdeck program is one static
@@ -23,18 +38,19 @@ spirit of open source, with the help of AI. `ARCHITECTURE.md` has the plan and t
 The manual shows each screen of the deck with numbered callouts, and explains each part. It
 has two versions, one for each mount of the display:
 
-- Tall: [docs/manual/index.html](docs/manual/index.html), or the booklet
+- Tall: [the web manual](https://beetlebug.org/printdeck/manual/), or the booklet
   [docs/manual/printdeck-manual.pdf](docs/manual/printdeck-manual.pdf).
-- Wide: [docs/manual/wide/index.html](docs/manual/wide/index.html), or the booklet
+- Wide: [the web manual](https://beetlebug.org/printdeck/manual/wide/), or the booklet
   [docs/manual/wide/printdeck-manual.pdf](docs/manual/wide/printdeck-manual.pdf).
 - The upgrade kit for the LulzBot TAZ Workhorse: the booklet
   [docs/lulzbot/printdeck-manual.pdf](docs/lulzbot/printdeck-manual.pdf) has the
   print plan, the hardware and the steps of the mount in [lulzbot/](lulzbot/), then the wide
   manual.
 
-The booklet has half-letter pages. A print shop makes a saddle-stitched booklet from
-printdeck-manual.pdf. To print it yourself, print printdeck-manual-print.pdf on both sides of
-letter paper (flip on the short edge), fold the stack, and staple it in the fold.
+Read the booklets on screen, or print them. The booklet has half-letter pages. A print shop
+makes a saddle-stitched booklet from printdeck-manual.pdf. To print it yourself, print
+printdeck-manual-print.pdf on both sides of letter paper (flip on the short edge), fold the
+stack, and staple it in the fold.
 
 The deck draws the pictures itself: after a change to the UI, run `docs/manual/build.sh`.
 
@@ -72,11 +88,12 @@ The screens of the touch screen:
 
 - The top of each screen shows the display of the printer, with the same dots: the state, the temperatures, the fan, the position of the head, and the progress.
 - The print screen shows a 3D view of the model that prints (the printed height in colour), the progress, the time left, and the temperatures. It can pause, resume, cancel, preheat, and start a file. The view is a shaded STL if the upload folder or `MODEL_DIR` (default `/var/lib/printdeck/models`) has an STL with a matching name. Otherwise it is the toolpath from the G-code.
-- Control (when no print runs): home X, Y, Z; a joystick moves the head (faster further out, stops when you lift the finger); Z in steps of 0.1, 1, 10 mm; extrude and retract; fan; motors off; emergency stop. A filament swap leads through heat, unload, load, and purge.
+- Move (when no print runs): home X, Y, Z; a joystick moves the head (faster further out, stops when you lift the finger); Z in steps of 0.1, 1, 10 mm; extrude and retract; fan; motors off; emergency stop. A filament swap leads through heat, unload, load, and purge.
 - Tune (while a print runs): speed and flow in percent, Z offset in baby steps, fan.
 - Tap a temperature to set it with a keypad.
 - Machine > Theme chooses the day theme, the night theme, or auto (night from `NIGHT_FROM` to `NIGHT_TO`, 20 to 7). The choice is saved in `/var/lib/printdeck/theme`.
-- Setup (at the first start) sets the Wi-Fi. Help (Print > Control > Help) shows the addresses, the user and the password.
+- Rolls: the deck keeps a list of your rolls of filament. Each print subtracts its filament from the roll in the printer, and the history shows the cost of each print.
+- Setup (at the first start) sets the Wi-Fi. Machine > Wi-Fi and help, and Help during a print, show the address and the password.
 
 `slicer/` has a Cura post-processing script that sets the speed of each move. See `slicer/README.md`.
 
@@ -89,6 +106,15 @@ To look at the screens without the hardware, run `go run ./cmd/printdeck demo /t
 The case is the Slate in `slate/`: a 35 mm slab that leans back 15 degrees on a foot, with the Pi
 on the rear. `slate/README.md` lists the parts and the files.
 `slate/printdeck-slate-build.pdf` has the parts list, the print settings, and the assembly steps.
+
+## On the LulzBot TAZ Workhorse
+
+<img src="lulzbot/renders/printer-front-left.png" alt="The Printdeck mount on the front left of a LulzBot TAZ Workhorse" width="420">
+
+A second mount puts the Printdeck on the front left of a LulzBot TAZ Workhorse, with the display
+wide. You print its nine parts on the Workhorse itself, and drill no hole in the printer. The
+[upgrade booklet](docs/lulzbot/printdeck-manual.pdf) has the print plan, the hardware and the
+steps. The files are in [lulzbot/](lulzbot/).
 
 ## Work that remains
 
