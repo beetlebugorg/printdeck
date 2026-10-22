@@ -173,7 +173,7 @@ func rollLine(sp printer.Spool) string {
 // drawSpools is the Rolls page: the rolls, the newest first, with the roll in the printer marked.
 // A tap opens the page of a roll.
 func (a *App) drawSpools(c *gfx.Canvas) {
-	f := a.page(c, "Rolls")
+	f := a.navPage(c, "Rolls")
 	s := a.Printer.SpoolStore()
 	var list []printer.Spool
 	in := ""
@@ -186,7 +186,10 @@ func (a *App) drawSpools(c *gfx.Canvas) {
 	area := a.listArea(f)
 	var add image.Rectangle
 	if f.wide {
-		add = kit.Rows(f.aside(), 0, kit.Fr(1), kit.Px(72))[1]
+		// The main action at the right of the row of actions.
+		var acts image.Rectangle
+		area, acts = f.split()
+		add = kit.Cols(acts, 12, kit.Fr(1), kit.Fr(1))[1]
 	} else {
 		r := kit.Rows(area, 12, kit.Fr(1), kit.Px(72))
 		area, add = r[0], r[1]
@@ -222,8 +225,8 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 		a.back()
 		return
 	}
-	pf := a.pageFrame()
-	f := a.page(c, gfx.Fit(gfx.Face(true, 24), sp.Label(), pf.head.Dx()-200))
+	pf := a.navFrame()
+	f := a.navPage(c, gfx.Fit(gfx.Face(true, 24), sp.Label(), pf.head.Dx()-200))
 	cura := "None"
 	if m, ok := s.SlicerMaterial(sp.CuraMaterial); ok {
 		cura = m.Name
@@ -244,20 +247,16 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 	tableH := len(rows)*30 + 20
 	var box, bar, keys image.Rectangle
 	if f.wide {
-		r := kit.Rows(f.body(), 12, kit.Px(tableH), kit.Px(20))
-		box, bar = r[0], r[1]
-		keys = kit.Rows(f.aside(), 0, kit.Fr(1), kit.Px(72))[1]
+		content, acts := f.split()
+		r := kit.Rows(content, 12, kit.Px(tableH), kit.Px(20))
+		box, bar, keys = r[0], r[1], acts
 	} else {
 		r := kit.Rows(kit.Inset(f.body(), 0, 12, 0, 8), 16, kit.Px(tableH), kit.Px(20), kit.Fr(1), kit.Px(72))
 		box, bar, keys = r[0], r[1], r[3]
 	}
 	plate(c, box)
 	a.region("Details", box)
-	for i, kv := range rows {
-		y := box.Min.Y + 10 + i*30
-		label(c, image.Rect(box.Min.X+18, y, box.Max.X, y+30), kv[0], gfx.Left)
-		c.Text(image.Rect(box.Min.X+190, y, box.Max.X-18, y+30), gfx.Fit(gfx.Face(true, 17), kv[1], box.Dx()-210), gfx.Face(true, 17), text, gfx.Right)
-	}
+	detailRows(c, kit.Inset(box, 18, 10, 18, 10), rows, 30)
 	if sp.Full > 0 {
 		segments(c, bar, sp.Left()/sp.Full)
 		a.region("Left", bar)
@@ -270,15 +269,16 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 			a.pickCuraMaterial(sp.Material, func(m printer.SlicerMaterial) { s.SetCuraMaterial(id, m) })
 		})
 	}
-	k := kit.Cols(keys, 12, kit.Fr(1), kit.Px(144))
+	// Remove, the destructive action, at the left.
+	k := kit.Cols(keys, 12, kit.Px(144), kit.Fr(1))
 	rollKey := a.button
 	if in, ok := s.In(); ok && in.ID == id {
 		rollKey = a.printerKey // the roll in the printer: a print takes its filament
 	}
-	rollKey(c, k[0], "Weigh again", raised, text, func() {
+	rollKey(c, k[1], "Weigh again", raised, text, func() {
 		a.editNumber("Roll on the scale", int(sp.Left()+sp.Reel+0.5), 9999, " g", func(v int) { s.Weigh(id, float64(v)) })
 	})
-	rollKey(c, k[1], "Remove", raised, red, func() {
+	rollKey(c, k[0], "Remove", raised, red, func() {
 		a.confirm = &confirmBox{question: "Remove " + gfx.Fit(gfx.Face(true, 28), sp.Label(), 300) + "?", yes: "Remove", danger: true,
 			onYes: func() { s.Remove(id); a.back() }}
 	})

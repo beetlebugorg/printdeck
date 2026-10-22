@@ -51,16 +51,18 @@ func updateLine(u UpdateStatus) (string, bool) {
 // drawUpdate is the Software update page.
 func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 	up := a.Updater
-	f := a.page(c, "Software update")
+	f := a.navPage(c, "Software update")
 	u := up.Status()
 	// Tall: the versions, the notes, the progress, Install, and the keys. Wide: the versions and the
 	// keys in the left column; the notes, the progress and Install at the right.
 	var info, notes, bar, install, keys image.Rectangle
 	if f.wide {
-		l := kit.Rows(f.aside(), 12, kit.Fr(1), kit.Px(60))
-		info, keys = l[0], l[1]
-		r := kit.Rows(f.body(), 16, kit.Fr(1), kit.Px(30), kit.Px(80))
-		notes, bar, install = r[0], r[1], r[2]
+		// The versions, the notes, the progress and the keys; Install at the right of the row of
+		// actions.
+		content, acts := f.split()
+		r := kit.Rows(content, 12, kit.Px(100), kit.Fr(1), kit.Px(26), kit.Px(56))
+		info, notes, bar, keys = r[0], r[1], r[2], r[3]
+		install = kit.Cols(acts, 12, kit.Fr(1), kit.Fr(1))[1]
 	} else {
 		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 8), 16, kit.Px(128), kit.Fr(1), kit.Px(30), kit.Px(80), kit.Px(76))
 		info, notes, bar, install, keys = r[0], r[1], r[2], r[3], r[4]

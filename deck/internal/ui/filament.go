@@ -14,9 +14,9 @@ import (
 // short extrude or retract, and the heating for the material.
 func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
-	f := a.page(c, "Filament")
+	f := a.navPage(c, "Filament")
 	rolls := pr.SpoolStore()
-	if rolls != nil {
+	if rolls != nil && !f.wide { // a wide page has Rolls in the key panel
 		a.headKey(c, f.head, "Rolls", func() { a.open(pageSpools) })
 	}
 	m := a.loaded()
@@ -24,10 +24,11 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 	// the temperatures in the left column, and the actions in rows that fill the right column.
 	var win, hint, mats, temps, change, load, ext, heat image.Rectangle
 	if f.wide {
-		l := kit.Rows(f.aside(), 6, kit.Px(44), kit.Px(52), kit.Fr(1))
-		win, mats, temps = l[0], l[1], l[2]
-		r := kit.Rows(f.body(), 12, kit.Fr(1.4), kit.Fr(1), kit.Fr(1), kit.Fr(1))
-		change, load, ext, heat = r[0], r[1], r[2], r[3]
+		// The display at the left shows the temperatures. Change filament is the main action.
+		content, acts := f.split()
+		r := kit.Rows(content, 10, kit.Px(44), kit.Px(52), kit.Fr(1), kit.Fr(1), kit.Fr(1))
+		win, mats, load, ext, heat = r[0], r[1], r[2], r[3], r[4]
+		change = kit.Cols(acts, 12, kit.Fr(1), kit.Fr(1))[1]
 	} else {
 		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 8), 8, kit.Px(54), kit.Px(22), kit.Px(52), kit.Px(80), kit.Fr(1.4), kit.Fr(1), kit.Fr(1), kit.Fr(1))
 		win, hint, mats, temps, change, load, ext, heat = r[0], r[1], kit.Inset(r[2], 0, -4, 0, 4), kit.Inset(r[3], 16, 6, 16, -6), r[4], r[5], r[6], r[7]
@@ -75,7 +76,9 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 		})
 	}
 
-	a.temps(c, temps, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
+	if !temps.Empty() {
+		a.temps(c, temps, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
+	}
 
 	fkey(c, change, "Change filament", orange, onAcc, func() { a.openSwap(swapChange) })
 	lu := kit.Cols(load, 12, kit.Fr(1), kit.Fr(1))

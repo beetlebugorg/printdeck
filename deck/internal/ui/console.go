@@ -23,14 +23,12 @@ func (a *App) drawConsole(c *gfx.Canvas) {
 		return
 	}
 	pr := a.Printer
-	f := a.page(c, "Console")
-	// Tall: the log, Type a command, and the quick keys. Wide: the log at the right, the keys in the
-	// left column.
+	f := a.navPage(c, "Console")
+	// The log, and under it the quick keys and Type a command.
 	var win, typeKey, quick image.Rectangle
 	if f.wide {
-		win = f.body()
-		k := kit.Rows(f.aside(), 12, kit.Px(66), kit.Px(66))
-		typeKey, quick = k[0], k[1]
+		r := kit.Rows(f.body(), 12, kit.Fr(1), kit.Px(56), kit.Px(actH))
+		win, quick, typeKey = r[0], r[1], r[2]
 	} else {
 		r := kit.Rows(kit.Inset(f.body(), 0, menuTop-headH, 0, 0), 6, kit.Fr(1), kit.Px(66), kit.Px(70))
 		win, typeKey, quick = kit.Inset(r[0], 0, 0, 0, 6), r[1], r[2]

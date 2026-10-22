@@ -203,6 +203,18 @@ func label(c *gfx.Canvas, r image.Rectangle, s string, a gfx.Align) {
 	c.Text(r, strings.ToUpper(s), gfx.Face(true, 14), dim, a)
 }
 
+// detailRows draws rows of a label at the left and a value at the right in box, rowH high each,
+// from the top of box. The value gets the width that its label leaves.
+func detailRows(c *gfx.Canvas, box image.Rectangle, rows [][2]string, rowH int) {
+	vf := gfx.Face(true, 17)
+	for i, kv := range rows {
+		r := image.Rect(box.Min.X, box.Min.Y+i*rowH, box.Max.X, box.Min.Y+(i+1)*rowH)
+		label(c, r, kv[0], gfx.Left)
+		v := image.Rect(r.Min.X+gfx.Width(gfx.Face(true, 14), strings.ToUpper(kv[0]))+16, r.Min.Y, r.Max.X, r.Max.Y)
+		c.Text(v, gfx.Fit(vf, kv[1], v.Dx()), vf, text, gfx.Right)
+	}
+}
+
 // segments is a meter of lit segments in a dark window, for progress.
 func segments(c *gfx.Canvas, r image.Rectangle, f float64) {
 	window(c, r)

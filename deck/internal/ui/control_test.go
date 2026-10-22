@@ -204,12 +204,11 @@ func TestFilamentSwapSteps(t *testing.T) {
 func TestFirmwareRestartOnMachinePage(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.pages = []page{pageMachine}
-	a.Draw(cv)
-	tapAt(a, cv, W-100, 745) // Firmware restart
+	tapLabel(t, a, cv, "Firmware restart")
 	if a.confirm == nil {
 		t.Fatal("no confirmation")
 	}
-	tapAt(a, cv, 340, 500) // the Reset key of the dialog
+	tapLabel(t, a, cv, "Restart") // the key of the dialog
 	if c := pr.wait(1); len(c) != 1 || c[0] != "gcode FIRMWARE_RESTART" {
 		t.Errorf("calls %v", c)
 	}
