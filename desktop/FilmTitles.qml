@@ -10,16 +10,18 @@ Item
     property real t: 0
 
     // kind: "title" (chrome, with a line under it), "card" (neon, at the bottom), or "end".
+    // Each card starts and ends with its shot (the shots of Sim3D.qml), and names what the shot
+    // shows.
     property var cards: [
-        { t0: 0.6, t1: 5.2, kind: "title", text: "PRINTDECK", sub: "A TOUCH SCREEN FOR KLIPPER" },
-        { t0: 8.4, t1: 12.4, kind: "card", text: "BUILT FOR THE TAZ WORKHORSE" },
-        { t0: 13.0, t1: 16.8, kind: "card", text: "PRINTED ON THE PRINTER IT MOUNTS ON" },
-        { t0: 18.6, t1: 22.8, kind: "card", text: "A 7-INCH TOUCH SCREEN" },
-        { t0: 25.5, t1: 29.8, kind: "card", text: "THE PRINTER DISPLAY, REDRAWN" },
-        { t0: 34.5, t1: 38.6, kind: "card", text: "THE KLIPPER HOST, REWRITTEN IN GO" },
-        { t0: 39.4, t1: 43.8, kind: "card", text: "SEND FROM CURA. WATCH IT PRINT." },
-        { t0: 47.5, t1: 52.5, kind: "card", text: "ONE RASPBERRY PI 5. ONE GO PROGRAM." },
-        { t0: 54.5, t1: 60.5, kind: "end", text: "PRINTDECK", sub: "BEETLEBUG.ORG" }
+        { t0: 0.6, t1: 7.4, kind: "title", text: "PRINTDECK", sub: "A TOUCH SCREEN FOR THE TAZ WORKHORSE" },
+        { t0: 8.0, t1: 11.8, kind: "card", text: "PRINTED ON THE PRINTER IT MOUNTS ON" },
+        { t0: 17.9, t1: 22.3, kind: "card", text: "A 27 MB SYSTEM" },
+        { t0: 25.4, t1: 33.4, kind: "card", text: "YOUR ROLLS, THEIR COST, THEIR PRINTS" },
+        { t0: 34.4, t1: 40.0, kind: "card", text: "THE OLD LCD IS THE SECOND DISPLAY" },
+        { t0: 40.6, t1: 48.4, kind: "card", text: "THE CURA PLUGIN" },
+        { t0: 60.9, t1: 65.6, kind: "card", text: "THE KLIPPER HOST, IN GO" },
+        { t0: 66.2, t1: 72.2, kind: "card", text: "ONE RASPBERRY PI 5. ONE PROGRAM." },
+        { t0: 72.6, t1: 80.5, kind: "end", text: "PRINTDECK", sub: "BEETLEBUG.ORG" }
     ]
 
     FontLoader { id: plex; source: "qrc:/film/plex.ttf" }

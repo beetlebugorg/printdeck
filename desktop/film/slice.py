@@ -32,8 +32,8 @@ M82 ;absolute extrusion mode
 G92 E0
 G1 F900 E-1.5
 """
-tail = """G1 F900 E-1.5
-M140 S0
+# No retract here: the file is in absolute extrusion (M82), and PRINT_END ends the print.
+tail = """M140 S0
 M107
 PRINT_END
 M104 S0

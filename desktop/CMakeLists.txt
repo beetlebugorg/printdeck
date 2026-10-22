@@ -30,6 +30,6 @@ qt_add_resources(printdeck-desktop meshes PREFIX / FILES ${meshes} meshes/deck.j
 # The font of the titles of the film (film/).
 set(plex ${CMAKE_CURRENT_SOURCE_DIR}/../deck/internal/gfx/fonts/IBMPlexMono-SemiBold.ttf)
 set_source_files_properties(${plex} PROPERTIES QT_RESOURCE_ALIAS film/plex.ttf)
-qt_add_resources(printdeck-desktop film PREFIX / FILES ${plex} FilmSky.qml FilmTitles.qml)
+qt_add_resources(printdeck-desktop film PREFIX / FILES ${plex} FilmSky.qml FilmTitles.qml film/cura-header.png)
 
 target_link_libraries(printdeck-desktop PRIVATE Qt6::Gui Qt6::Network Qt6::Qml Qt6::Quick Qt6::Quick3D)

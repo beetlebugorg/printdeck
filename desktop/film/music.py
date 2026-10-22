@@ -1,7 +1,7 @@
-# The music of the film (film.sh): 60 s of synth, made here from sine, saw and square waves and
+# The music of the film (film.sh): 80 s of synth, made here from sine, saw and square waves and
 # noise. The tempo puts the start of bar 9 at 17.4 s, when the display of the Printdeck turns on
 # (screenOn in Sim3D.qml): the pad and a soft arpeggio until then, the bass and the kick from bar
-# 5 (the assembly), and the full beat from bar 9. A last chord starts at 54.5 s (the end card).
+# 5 (the assembly), and the full beat from bar 9. A last chord starts at 72.5 s (the end card).
 #
 #   uv run --no-project --with numpy python desktop/film/music.py OUT.wav
 import sys
@@ -10,7 +10,7 @@ import wave
 import numpy as np
 
 RATE = 44100
-LENGTH = 60.0
+LENGTH = 80.0
 BEAT = 17.4 / 32  # 8 bars of 4 beats before the display turns on
 BAR = 4 * BEAT
 N = int(RATE * LENGTH)
@@ -77,7 +77,7 @@ def reverb(x, seconds=1.6, mix=0.25, seed=1):
 rng = np.random.default_rng(7)
 pad, arp, bass, drums = (np.zeros(N) for _ in range(4))
 bars = int(np.ceil(LENGTH / BAR))
-end_card = 54.5
+end_card = 72.5
 
 for b in range(bars):
     start = b * BAR

@@ -4,6 +4,7 @@
 #pragma once
 
 #include <QByteArray>
+#include <QFile>
 #include <QImage>
 #include <QQuick3DTextureData>
 #include <QNetworkAccessManager>
@@ -105,6 +106,9 @@ public:
     int fps() const { return m_fps; }
     Q_INVOKABLE bool start(int width, int height, int fps);
     Q_INVOKABLE void frame(const QImage &image);
+    // motion writes the place of the nozzle at a frame to path.motion.csv, for the sound of the
+    // steppers (film/steppers.py).
+    Q_INVOKABLE void motion(double x, double y, double z, bool extruding);
     Q_INVOKABLE void finish();
 
 signals:
@@ -117,6 +121,7 @@ private:
     int m_fps = 30;
     QTimer m_check;
     QProcess *m_ffmpeg = nullptr;
+    QFile m_motion;
     QSize m_size;
     int m_frames = 0;
 };

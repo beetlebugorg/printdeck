@@ -31,12 +31,29 @@ Window
     property bool seeThrough: true
     // The film: the time (s), the take that runs, and the point that follows the nozzle a little
     // behind it, so the camera does not shake.
+    // The tour of the deck UI in the film: a tap at each time, in the coordinates of the deck (0 to
+    // 1, the wide layout): Menu, Filament, Rolls, the first roll, its prints, and the print bar.
+    property var taps: [
+        { t: 22.6, x: 0.278, y: 0.613 }, { t: 23.8, x: 0.101, y: 0.606 }, { t: 25.0, x: 0.765, y: 0.083 },
+        { t: 27.0, x: 0.679, y: 0.246 }, { t: 29.0, x: 0.68, y: 0.652 }, { t: 33.6, x: 0.575, y: 0.931 }
+    ]
+    property int nextTap: 0
+    function tapsUpTo(t) {
+        while (nextTap < taps.length && taps[nextTap].t <= t) {
+            printdeck.touch("down", taps[nextTap].x, taps[nextTap].y)
+            printdeck.touch("up", taps[nextTap].x, taps[nextTap].y)
+            nextTap++
+        }
+    }
     property real ft: 0
     property bool filming: false
     property vector3d noz: Qt.vector3d(140, 40, 0)
     function nozzleNow() { return Qt.vector3d(p.x, p.z + 8, 0) }
     function startFilm() {
         ft = film.from
+        nextTap = 0
+        while (nextTap < taps.length && taps[nextTap].t < ft)
+            nextTap++
         noz = nozzleNow()
         view.applyCam(ft)
         if (!film.start(1920, 1080, film.fps))
@@ -47,6 +64,7 @@ Window
     // step records the frame of the time ft, and goes to the next frame.
     function step() {
         stage.grabToImage(function(r) {
+            film.motion(p.x, p.y, p.z, sim.extruding)
             film.frame(r.image)
             var dt = 1 / film.fps
             if (ft + dt > film.to + 1e-6) {
@@ -55,11 +73,29 @@ Window
                 return
             }
             ft += dt
+            tapsUpTo(ft)
             noz = noz.plus(nozzleNow().minus(noz).times(1 - Math.exp(-dt / 0.35)))
             view.applyCam(ft)
-            Qt.callLater(step)
+            // The next frame waits for the next state of the printer, so that each frame has a new
+            // place of the nozzle, and the timers of the feed run between the frames.
+            waitState = true
+            stateLate.restart()
         }, Qt.size(1920, 1080))
     }
+    property bool waitState: false
+    function nextFrame() {
+        if (!filming || !waitState)
+            return
+        waitState = false
+        step()
+    }
+    Connections
+    {
+        target: filmOn ? sim : null
+        function onStateChanged() { win.nextFrame() }
+    }
+    // A state that does not come: the frame goes on after 100 ms.
+    Timer { id: stateLate; interval: 100; onTriggered: win.nextFrame() }
     Connections
     {
         target: filmOn ? film : null
@@ -285,6 +321,20 @@ Window
                                 image: sim.screen
                                 opacity: view.power(win.ft)
                             }
+                            // The start screen, at the start of the display.
+                            Model
+                            {
+                                source: "#Rectangle"
+                                z: 0.02
+                                scale: Qt.vector3d(1.5421, 0.8592, 1)
+                                opacity: view.boot(win.ft)
+                                visible: opacity > 0
+                                materials: PrincipledMaterial
+                                {
+                                    lighting: PrincipledMaterial.NoLighting
+                                    baseColorMap: Texture { sourceItem: view.bootScreen }
+                                }
+                            }
                             // The flash of the display when it turns on.
                             Model
                             {
@@ -368,7 +418,7 @@ Window
                     // The PEI sheet glows when it is hot.
                     Part
                     {
-                        mesh: "bed_surface"; tint: "#b8923f"; rough: 0.5
+                        mesh: "bed_surface"; tint: filmOn ? "#7a5e28" : "#b8923f"; rough: 0.5
                         glowColor: Qt.rgba(0.35 * win.glow(sim.bed, 110), 0.08 * win.glow(sim.bed, 110), 0, 1)
                     }
                 }
@@ -379,13 +429,13 @@ Window
                     Model
                     {
                         geometry: PathGeometry { id: part }
-                        materials: PrincipledMaterial { baseColor: "#ff7a1a"; roughness: 0.45; cullMode: Material.NoCulling }
+                        materials: PrincipledMaterial { baseColor: filmOn ? "#ff4d1f" : "#ff7a1a"; roughness: 0.45; cullMode: Material.NoCulling }
                         Component.onCompleted: sim.path = part
                     }
                     Model
                     {
                         geometry: PathGeometry { id: recent }
-                        materials: PrincipledMaterial { baseColor: "#ff7a1a"; roughness: 0.45; cullMode: Material.NoCulling }
+                        materials: PrincipledMaterial { baseColor: filmOn ? "#ff4d1f" : "#ff7a1a"; roughness: 0.45; cullMode: Material.NoCulling }
                         Component.onCompleted: sim.recent = recent
                     }
                 }
@@ -399,48 +449,116 @@ Window
                     materials: PrincipledMaterial { baseColor: "#ff7a1a"; emissiveFactor: Qt.vector3d(0.3, 0.1, 0) }
                 }
 
-                // --- The spool, on the top of the frame over the back bar: the CAD has no spool holder.
+                // --- The film: a computer at the right of the printer, past the spool, with Cura and the tab of the Printdeck plugin
+                // (desktop/film/cura-header.png is the top of a screenshot of Cura). The deck in the tab is the
+                // deck UI of the app, as on the display of the Printdeck.
+                Node
+                {
+                    visible: filmOn
+                    position: Qt.vector3d(780, -92, 160)
+                    eulerRotation.y: -14
+                    // The monitor: a 24 inch screen (531 x 299 mm) on a stand, and the keyboard and the mouse.
+                    Model { source: "#Cube"; position: Qt.vector3d(0, 4, -40); scale: Qt.vector3d(2.2, 0.08, 1.6); materials: PrincipledMaterial { baseColor: "#1c1c1f"; metalness: 0.5; roughness: 0.35 } }
+                    Model { source: "#Cube"; position: Qt.vector3d(0, 70, -60); scale: Qt.vector3d(0.5, 1.3, 0.2); materials: PrincipledMaterial { baseColor: "#1c1c1f"; metalness: 0.5; roughness: 0.35 } }
+                    Model { source: "#Cube"; position: Qt.vector3d(0, 260, -50); scale: Qt.vector3d(5.51, 3.19, 0.25); materials: PrincipledMaterial { baseColor: "#111113"; roughness: 0.4 } }
+                    Model { source: "#Cube"; position: Qt.vector3d(0, 6, 120); scale: Qt.vector3d(4.4, 0.12, 1.3); materials: PrincipledMaterial { baseColor: "#232326"; roughness: 0.6 } }
+                    Model { source: "#Sphere"; position: Qt.vector3d(300, 8, 130); scale: Qt.vector3d(0.6, 0.3, 1.0); materials: PrincipledMaterial { baseColor: "#232326"; roughness: 0.5 } }
+                    Node
+                    {
+                        position: Qt.vector3d(0, 260, -37)
+                        // Cura: the top bar, and the background of the tab.
+                        Model
+                        {
+                            source: "#Rectangle"
+                            scale: Qt.vector3d(5.31, 2.99, 1)
+                            materials: PrincipledMaterial
+                            {
+                                lighting: PrincipledMaterial.NoLighting
+                                baseColorMap: Texture { sourceItem: view.curaScreen }
+                            }
+                        }
+                        // The deck in the tab, under the top bar.
+                        Screen
+                        {
+                            property real aspect: sim.screen.width > 0 ? sim.screen.width / sim.screen.height : 1024 / 600
+                            z: 0.2; y: -14
+                            size: aspect > 470 / 240 ? Qt.size(470, 470 / aspect) : Qt.size(240 * aspect, 240)
+                            image: sim.screen
+                        }
+                    }
+                }
+                property Item curaScreen: Item
+                {
+                    width: 1400; height: 788
+                    Rectangle { anchors.fill: parent; color: "#d3d0c8" }
+                    Image { width: parent.width; height: 70; source: "qrc:/film/cura-header.png" }
+                }
+
+                // --- The spool, on an arm at the right side of the frame (the CAD has no spool
+                // holder), and the PTFE tube that guides the filament up over the frame and down into
+                // the top of the extruder, 113 mm over the nozzle tip. The tube follows the tool head.
+                property vector3d spool: Qt.vector3d(520 + frameX, 300, -40)
                 Model
                 {
                     source: "#Cylinder"
-                    position: Qt.vector3d(170 + view.frameX, 440, -95); eulerRotation: Qt.vector3d(0, 0, 90)
-                    scale: Qt.vector3d(0.12, 1.2, 0.12)
-                    materials: PrincipledMaterial { baseColor: "#8a8d90"; metalness: 0.35; roughness: 0.35 }
+                    position: Qt.vector3d(view.spool.x - 35, view.spool.y, view.spool.z); eulerRotation: Qt.vector3d(0, 0, 90)
+                    scale: Qt.vector3d(0.12, 1.4, 0.12)
+                    materials: PrincipledMaterial { baseColor: "#8a8d90"; metalness: 0.6; roughness: 0.3 }
                 }
                 Model
                 {
                     source: "#Cylinder"
-                    position: Qt.vector3d(170 + view.frameX, 520, -95); eulerRotation: Qt.vector3d(0, 0, 90)
+                    position: view.spool; eulerRotation: Qt.vector3d(0, 0, 90)
                     scale: Qt.vector3d(1.9, 0.62, 1.9)
                     materials: PrincipledMaterial { baseColor: "#1a1a1a"; roughness: 0.6 }
                 }
                 Model
                 {
                     source: "#Cylinder"
-                    position: Qt.vector3d(170 + view.frameX, 520, -95); eulerRotation: Qt.vector3d(0, 0, 90)
+                    position: view.spool; eulerRotation: Qt.vector3d(0, 0, 90)
                     scale: Qt.vector3d(1.6, 0.66, 1.6)
                     materials: PrincipledMaterial { baseColor: "#ff7a1a"; roughness: 0.5 }
                 }
-
-                // --- The filament: from the spool down into the top of the extruder, 113 mm over the
-                // nozzle tip, which it follows. A cylinder between the two points: its Y axis turned onto
-                // the direction between them.
-                Model
+                // tube is the point at u (0 to 1) of the path of the tube: a cubic Bézier curve from
+                // the top of the spool, up, over the frame, and down into the extruder.
+                function tube(u) {
+                    var p0 = Qt.vector3d(spool.x, spool.y + 80, spool.z)
+                    var p1 = Qt.vector3d(spool.x, spool.y + 260, spool.z)
+                    var p3 = Qt.vector3d(win.p.x, win.p.z + 113, 0)
+                    var p2 = p3.plus(Qt.vector3d(60, 260, 0))
+                    var v = 1 - u
+                    return p0.times(v * v * v).plus(p1.times(3 * v * v * u)).plus(p2.times(3 * v * u * u)).plus(p3.times(u * u * u))
+                }
+                // A rod from a to b: a cylinder with its Y axis turned onto the direction between them.
+                component Link: Model
                 {
-                    id: filament
-                    property vector3d from: Qt.vector3d(170 + view.frameX, 520, -15) // where it leaves the spool
-                    property vector3d to: Qt.vector3d(win.p.x, win.p.z + 113, 0) // the top of the extruder
-                    property vector3d d: to.minus(from)
-                    property real length: d.length()
+                    property vector3d a
+                    property vector3d b
+                    property real radius: 2
+                    property color tint: "#ff7a1a"
+                    property real alpha: 1
+                    property vector3d d: b.minus(a)
                     property vector3d u: d.normalized()
                     // The rotation of (0, 1, 0) onto u: about the axis Y × u, by the angle between them.
                     property real angle: Math.acos(Math.max(-1, Math.min(1, u.y)))
                     property vector3d axis: Qt.vector3d(u.z, 0, -u.x).normalized()
                     source: "#Cylinder"
-                    position: from.plus(d.times(0.5))
+                    position: a.plus(d.times(0.5))
                     rotation: Qt.quaternion(Math.cos(angle / 2), axis.x * Math.sin(angle / 2), axis.y * Math.sin(angle / 2), axis.z * Math.sin(angle / 2))
-                    scale: Qt.vector3d(0.0285, length / 100, 0.0285)
-                    materials: PrincipledMaterial { baseColor: "#ff7a1a"; roughness: 0.4 }
+                    scale: Qt.vector3d(radius / 50, d.length() / 100 + 0.01, radius / 50)
+                    materials: PrincipledMaterial { baseColor: tint; roughness: 0.35; opacity: alpha }
+                }
+                // The tube (4 mm, white and clear) in 32 parts, with the filament (2.85 mm) in it.
+                Repeater3D
+                {
+                    model: 32
+                    Node
+                    {
+                        property vector3d a: { win.p; return view.tube(index / 32) }
+                        property vector3d b: { win.p; return view.tube((index + 1) / 32) }
+                        Link { a: parent.a; b: parent.b; radius: 1.425 }
+                        Link { a: parent.a; b: parent.b; radius: 2; tint: "#f2f4f6"; alpha: 0.35 }
+                    }
                 }
 
                 // The materials of the deck (lulzbot/build/manifest.json): the color, the metalness and
@@ -451,14 +569,14 @@ Window
                     steel: ["#c9ccd0", 0.7, 0.25], alu_dark: ["#3a3d42", 0.7, 0.35], pcb_green: ["#1f5a32", 0, 0.5],
                     lcd_metal: ["#9a9ea3", 0.6, 0.3], brass: ["#c9a24b", 0.7, 0.3], nickel: ["#b9bcc0", 0.7, 0.25]
                 })
-                // The assembly of the film, in the order of the build booklet (lulzbot/lineart/render.mjs):
-                // each group comes from v (mm of the scene) at the time t0, and is in place d seconds later.
-                // The display turns on at screenOn.
+                // The assembly of the film, in the order and the directions of the build booklet
+                // (lulzbot/lineart/render.mjs), farther for the camera: each group comes from v (mm of the
+                // scene) at the time t0, and is in place d seconds later. The head is built on the bench (the
+                // display goes in from the back, then the back panel with the drive), so it comes whole and
+                // hangs on the clips from the front and above. The display turns on at screenOn.
                 property real screenOn: 17.4
                 property var steps: {
-                    var r = Math.sin(15 * Math.PI / 180), c = Math.cos(15 * Math.PI / 180)
-                    var head = { t0: 12.6, d: 1.6, v: [0, 90, 220] }
-                    var display = { t0: 13.8, d: 1.1, v: [0, 220 * r, 220 * c] }
+                    var head = { t0: 12.6, d: 1.8, v: [0, 90, 75] }
                     return {
                         plate: { t0: 8.0, d: 1.2, v: [-140, 0, 0] }, ins_block: { t0: 8.0, d: 1.2, v: [-140, 0, 0] },
                         mount_screws: { t0: 9.0, d: 0.8, v: [-90, 0, 0] },
@@ -466,14 +584,15 @@ Window
                         clips: { t0: 11.2, d: 0.8, v: [0, 0, 120] }, ins_nut: { t0: 11.2, d: 0.8, v: [0, 0, 120] },
                         clip_screws: { t0: 11.8, d: 0.5, v: [0, 0, 75] },
                         head: head, ins_head: head, back: head, ins_back: head, drive: head, drive_screws: head, head_screws: head,
-                        display: display, display_screws: display,
+                        display: head, display_screws: head,
                         flange_screws: { t0: 14.8, d: 0.5, v: [0, 0, -60] },
                         pod: { t0: 15.2, d: 1.0, v: [-150, -25, 0] }, grille: { t0: 16.0, d: 0.8, v: [-200, -25, 0] },
                         bottom_screws: { t0: 16.6, d: 0.5, v: [0, -70, 0] }
                     }
                 }
                 // place is the offset, the visibility and the opacity of a group of the deck at the time t
-                // of the film: out of the picture before t0, then a move in that ends with a small bounce.
+                // of the film: out of the picture before t0, then a move in that slows to a stop at its place,
+                // with no overshoot, so that no part goes into another.
                 function place(group, t) {
                     var st = filmOn ? steps[group] : undefined
                     if (!st)
@@ -482,11 +601,20 @@ Window
                     if (p <= 0)
                         return { offset: Qt.vector3d(0, 0, 0), shown: false, alpha: 0 }
                     p = Math.min(1, p)
-                    var k = 1.6, e = 1 + (k + 1) * Math.pow(p - 1, 3) + k * Math.pow(p - 1, 2)
+                    var e = 1 - Math.pow(1 - p, 3)
                     return { offset: Qt.vector3d(st.v[0], st.v[1], st.v[2]).times(1 - e), shown: true, alpha: Math.min(1, p * 4) }
                 }
-                // power is the brightness of the deck UI: off until screenOn in the film, then on.
-                function power(t) { return filmOn ? Math.max(0, Math.min(1, (t - screenOn - 0.15) / 0.5)) : 1 }
+                // The display starts with the start screen of the deck for bootTime seconds, then shows the
+                // deck UI. power is the brightness of the deck UI, boot the one of the start screen.
+                property real bootTime: 3.2
+                function power(t) { return filmOn ? Math.max(0, Math.min(1, (t - screenOn - bootTime) / 0.5)) : 1 }
+                function boot(t) {
+                    if (!filmOn)
+                        return 0
+                    return Math.max(0, Math.min((t - screenOn - 0.15) / 0.3, (screenOn + bootTime + 0.3 - t) / 0.4, 1))
+                }
+                // The start screen of the deck (Connecting.qml): PRINTDECK in dots that print layer by layer.
+                property Item bootScreen: Connecting { width: 1024; height: 600; running: filmOn }
                 // flash is the white of the display as it turns on.
                 function flash(t) { return filmOn && t > screenOn && t < screenOn + 0.6 ? 1 - (t - screenOn) / 0.6 : 0 }
 
@@ -495,42 +623,74 @@ Window
                 // through them on a Catmull-Rom spline.
                 property var shots: [
                     { t: 0, at: [120, 160, 0], yaw: -25, pitch: -3, dist: 3800, fov: 26 },
-                    { t: 5, at: [100, 200, 0], yaw: -30, pitch: -10, dist: 2300, fov: 26 },
-                    { t: 7.5, at: [-150, 130, 20], yaw: -55, pitch: -14, dist: 900, fov: 26 },
-                    { t: 11, at: [-150, 130, 20], yaw: -72, pitch: -12, dist: 760, fov: 26 },
-                    { t: 14, at: [-140, 125, 40], yaw: -40, pitch: -10, dist: 700, fov: 26 },
-                    { t: 17, at: [-141.5, 114.2, 101.6], yaw: -15, pitch: -15, dist: 520, fov: 26 },
-                    { t: 21, at: [-141.5, 114.2, 101.6], yaw: -2, pitch: -15, dist: 300, fov: 24 },
-                    { t: 24, at: [-160, 260, 80], yaw: -8, pitch: -10, dist: 520, fov: 25 },
-                    { t: 27, at: [-169, 343.8, 61], yaw: -10, pitch: -6, dist: 300, fov: 25 },
-                    { t: 30, at: [-169, 343.8, 61], yaw: 4, pitch: -4, dist: 240, fov: 25 },
-                    { t: 32.5, at: [60, 120, 40], yaw: 25, pitch: -14, dist: 900, fov: 24 },
-                    { t: 35, at: "nozzle", yaw: 55, pitch: -10, dist: 420, fov: 22 },
-                    { t: 40, at: "nozzle", yaw: 35, pitch: -6, dist: 340, fov: 22 },
-                    { t: 44, at: "nozzle", yaw: -20, pitch: -18, dist: 520, fov: 22 },
-                    { t: 48, at: [120, 230, 0], yaw: 35, pitch: -8, dist: 1900, fov: 26 },
-                    { t: 53, at: [120, 230, 0], yaw: -10, pitch: -12, dist: 2000, fov: 26 },
-                    { t: 57, at: [120, 220, 0], yaw: -20, pitch: -4, dist: 3000, fov: 26 },
-                    { t: 60, at: [120, 220, 0], yaw: -22, pitch: -3, dist: 3400, fov: 26 }
+                    { t: 7.6, at: [100, 200, 0], yaw: -30, pitch: -10, dist: 2300, fov: 26 },
+                    { t: 7.6, cut: true, at: [-150, 130, 20], yaw: -78, pitch: -10, dist: 820, fov: 26 },
+                    { t: 12.0, at: [-150, 130, 20], yaw: -66, pitch: -13, dist: 720, fov: 26 },
+                    { t: 12.0, cut: true, at: [-140, 125, 40], yaw: -45, pitch: -9, dist: 760, fov: 26 },
+                    { t: 15.2, at: [-140, 125, 60], yaw: -32, pitch: -11, dist: 620, fov: 26 },
+                    { t: 15.2, cut: true, at: [-141.5, 114.2, 101.6], yaw: -22, pitch: -6, dist: 380, fov: 24 },
+                    { t: 17.4, at: [-141.5, 114.2, 101.6], yaw: -18, pitch: -8, dist: 330, fov: 24 },
+                    { t: 17.4, cut: true, at: [-141.5, 114.2, 101.6], yaw: 0, pitch: -15, dist: 310, fov: 24 },
+                    { t: 22.5, at: [-141.5, 114.2, 101.6], yaw: -2, pitch: -15, dist: 262, fov: 24 },
+                    { t: 34.0, at: [-141.5, 114.2, 101.6], yaw: 2, pitch: -15, dist: 255, fov: 24 },
+                    { t: 34.0, cut: true, at: [-169, 343.8, 61], yaw: -12, pitch: -6, dist: 300, fov: 25 },
+                    { t: 40.2, at: [-169, 343.8, 61], yaw: 4, pitch: -4, dist: 235, fov: 25 },
+                    { t: 40.2, cut: true, at: [780, 150, 160], yaw: 2, pitch: -6, dist: 1000, fov: 25 },
+                    { t: 45.4, at: [780, 160, 160], yaw: -6, pitch: -5, dist: 780, fov: 25 },
+                    { t: 45.4, cut: true, at: [780, 175, 80], yaw: -12, pitch: -4, dist: 420, fov: 25 },
+                    { t: 48.6, at: [780, 175, 80], yaw: -14, pitch: -4, dist: 380, fov: 25 },
+                    { t: 48.6, cut: true, at: [480, 150, 60], yaw: 40, pitch: -8, dist: 1500, fov: 25 },
+                    { t: 50.8, at: [480, 150, 60], yaw: 34, pitch: -9, dist: 1400, fov: 25 },
+                    { t: 50.8, cut: true, at: "nozzle", yaw: 0, pitch: -62, dist: 520, fov: 22 },
+                    { t: 52.4, at: "nozzle", yaw: 6, pitch: -64, dist: 480, fov: 22 },
+                    { t: 52.4, cut: true, at: "nozzle", yaw: 72, pitch: -6, dist: 330, fov: 22 },
+                    { t: 55.0, at: "nozzle", yaw: 66, pitch: -7, dist: 300, fov: 22 },
+                    { t: 55.0, cut: true, at: "nozzle", yaw: 20, pitch: -24, dist: 380, fov: 22 },
+                    { t: 60.6, at: "nozzle", yaw: -8, pitch: -18, dist: 320, fov: 22 },
+                    { t: 60.6, cut: true, at: "nozzle", yaw: -28, pitch: -5, dist: 300, fov: 22 },
+                    { t: 65.8, at: "nozzle", yaw: -18, pitch: -6, dist: 280, fov: 22 },
+                    { t: 65.8, cut: true, at: [80, 230, 0], yaw: 35, pitch: -8, dist: 2100, fov: 26 },
+                    { t: 72.4, at: [60, 230, 0], yaw: -10, pitch: -12, dist: 2300, fov: 26 },
+                    { t: 72.4, cut: true, at: [60, 220, 0], yaw: -20, pitch: -4, dist: 3200, fov: 26 },
+                    { t: 80, at: [60, 220, 0], yaw: -22, pitch: -3, dist: 3600, fov: 26 }
                 ]
                 // camAt is the camera of the film at the time t: the point, the angles, the distance and
-                // the field of view. nozzle is the point that follows the nozzle.
+                // the field of view. nozzle is the point that follows the nozzle. Each value goes through
+                // the keys on a monotone cubic curve (Fritsch-Carlson): smooth, and never past a key, so
+                // that a far key next to a close shot does not pull the camera away from it. A key with
+                // cut is a cut: the camera jumps there.
                 function camAt(t, nozzle) {
                     var k = shots, n = k.length
                     var i = 0
                     while (i < n - 2 && t >= k[i + 1].t)
                         i++
-                    var u = Math.max(0, Math.min(1, (t - k[i].t) / (k[i + 1].t - k[i].t)))
-                    var p0 = k[Math.max(0, i - 1)], p1 = k[i], p2 = k[i + 1], p3 = k[Math.min(n - 1, i + 2)]
-                    function cr(a, b, c, d) {
-                        return 0.5 * (2 * b + (c - a) * u + (2 * a - 5 * b + 4 * c - d) * u * u + (3 * b - a - 3 * c + d) * u * u * u)
-                    }
+                    var h = k[i + 1].t - k[i].t
+                    var u = Math.max(0, Math.min(1, (t - k[i].t) / h))
                     function at(key) { return key.at === "nozzle" ? [nozzle.x, nozzle.y, nozzle.z] : key.at }
-                    var a0 = at(p0), a1 = at(p1), a2 = at(p2), a3 = at(p3)
+                    // slope is the slope of the value at key j: 0 at a turn, else the harmonic mean of the
+                    // slopes of the two sides.
+                    // A key with cut starts a new shot: no slope goes across it.
+                    function slope(get, j) {
+                        var left = j > 0 && !k[j].cut, right = j < n - 1 && !k[j + 1].cut
+                        var d0 = left ? (get(k[j]) - get(k[j - 1])) / (k[j].t - k[j - 1].t) : 0
+                        var d1 = right ? (get(k[j + 1]) - get(k[j])) / (k[j + 1].t - k[j].t) : 0
+                        if (left && right)
+                            return d0 * d1 <= 0 ? 0 : 2 / (1 / d0 + 1 / d1)
+                        return left ? d0 : d1
+                    }
+                    function curve(get) {
+                        if (k[i + 1].cut)
+                            return get(k[i]) // the end of a shot, before the cut
+                        var y0 = get(k[i]), y1 = get(k[i + 1])
+                        var m0 = slope(get, i) * h, m1 = slope(get, i + 1) * h
+                        var u2 = u * u, u3 = u2 * u
+                        return (2 * u3 - 3 * u2 + 1) * y0 + (u3 - 2 * u2 + u) * m0 + (-2 * u3 + 3 * u2) * y1 + (u3 - u2) * m1
+                    }
                     return {
-                        at: Qt.vector3d(cr(a0[0], a1[0], a2[0], a3[0]), cr(a0[1], a1[1], a2[1], a3[1]), cr(a0[2], a1[2], a2[2], a3[2])),
-                        yaw: cr(p0.yaw, p1.yaw, p2.yaw, p3.yaw), pitch: cr(p0.pitch, p1.pitch, p2.pitch, p3.pitch),
-                        dist: cr(p0.dist, p1.dist, p2.dist, p3.dist), fov: cr(p0.fov, p1.fov, p2.fov, p3.fov)
+                        at: Qt.vector3d(curve(function(key) { return at(key)[0] }), curve(function(key) { return at(key)[1] }),
+                                        curve(function(key) { return at(key)[2] })),
+                        yaw: curve(function(key) { return key.yaw }), pitch: curve(function(key) { return key.pitch }),
+                        dist: curve(function(key) { return key.dist }), fov: curve(function(key) { return key.fov })
                     }
                 }
                 function applyCam(t) {
