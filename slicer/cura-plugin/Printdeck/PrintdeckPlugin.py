@@ -291,6 +291,11 @@ class PrintdeckPlugin(Extension):
         gcode_list = gcode_dict.get(plate)
         if not gcode_list or ";PRINTDECK_MATERIAL:" in gcode_list[0]:
             return
+        # A print on a part: the pause and the height check (OnPartTool).
+        from . import OnPartTool
+        if OnPartTool.instance and ";PRINTDECK_ONPART" not in gcode_list[0]:
+            if OnPartTool.instance.changeGcode(gcode_list):
+                gcode_list[0] += ";PRINTDECK_ONPART\n"
         material = extruder.material
         lines = logic.material_lines(material.getMetaDataEntry("material") or "", material.getName())
         if lines:
