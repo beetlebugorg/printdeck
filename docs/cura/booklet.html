@@ -196,7 +196,7 @@
 <section class="sheet contents even">
   
     <h2>Contents</h2>
-    <ol><li class="ch">Setup</li><li><span>What the plugin does</span><span class="dots"></span><span>3</span></li><li><span>Install the plugin</span><span class="dots"></span><span>4</span></li><li><span>Connect the Printdeck</span><span class="dots"></span><span>5</span></li><li class="ch">Printing</li><li><span>Send a print</span><span class="dots"></span><span>6</span></li><li><span>The Printdeck tab</span><span class="dots"></span><span>7</span></li><li><span>The roll and the material</span><span class="dots"></span><span>9</span></li><li><span>Follow the print</span><span class="dots"></span><span>10</span></li><li class="ch">Print on a part</li><li><span>Print on a part</span><span class="dots"></span><span>11</span></li><li><span>Prepare the job</span><span class="dots"></span><span>12</span></li><li><span>At the printer</span><span class="dots"></span><span>13</span></li><li><span>Test print: the cube</span><span class="dots"></span><span>14</span></li></ol>
+    <ol><li class="ch">Setup</li><li><span>What the plugin does</span><span class="dots"></span><span>3</span></li><li><span>Install the plugin</span><span class="dots"></span><span>4</span></li><li><span>Connect the Printdeck</span><span class="dots"></span><span>5</span></li><li class="ch">Printing</li><li><span>Send a print</span><span class="dots"></span><span>6</span></li><li><span>The Printdeck tab</span><span class="dots"></span><span>7</span></li><li><span>The roll and the material</span><span class="dots"></span><span>10</span></li><li><span>Follow the print</span><span class="dots"></span><span>11</span></li><li class="ch">Print on a part</li><li><span>Print on a part</span><span class="dots"></span><span>12</span></li><li><span>Prepare the job</span><span class="dots"></span><span>13</span></li><li><span>At the printer</span><span class="dots"></span><span>14</span></li><li><span>Test print: the cube</span><span class="dots"></span><span>15</span></li></ol>
   
   
     
@@ -225,7 +225,7 @@
     <ul class="list"><li>The print button says Print to Printdeck. After a send, Cura opens the Printdeck tab.</li><li>The Printdeck tab shows the touch screen of the deck, live. You click it as you tap the touch screen.</li><li>When the roll in the deck changes, Cura changes to the material of the roll.</li><li>After a slice, Cura warns you when the roll is too short for the model.</li><li>During a print, the Preview of Cura shows the layer that prints.</li><li>The Print on a part tool prints new models on a part that is printed already.</li></ul>
     
     
-    <p>The plugin works with Cura 4.13 (Cura LulzBot Edition) and later. The pictures in this booklet show Cura 5.</p>
+    <p>The plugin needs Cura 5. Cura LulzBot Edition (Cura 4.13) does not show the tab and the tool.</p>
     
     
   
@@ -353,11 +353,30 @@
     </div>
     
     
-    <p>While the tab connects to the deck, it shows the start screen of the deck with the words &#34;Connecting to printdeck.local&#34;. The tab gets the screens only while it shows.</p>
+    <p>While the tab connects to the deck, it shows the start screen of the deck with the words &#34;Connecting to printdeck.local&#34;. The dots of the word print from the bottom up, one layer at a time. The tab gets the screens only while it shows.</p>
+    
+    
+    
+    <div class="figure shot">
+      <h3>The start screen, while the tab connects</h3>
+      <div class="pic"><img src="img/cura-connecting.png" alt="The start screen, while the tab connects" style="max-height: 2.2in"></div>
+      
+      
+    </div>
     
     
     <p>During a print, the key Show in Preview is under the screen. It opens the file of the print in the Preview.</p>
     
+    
+  
+  
+    <div class="chapter-tab">Printing</div>
+    <div class="folio">8</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
     
     <h4>When the tab shows no deck</h4>
     
@@ -371,11 +390,11 @@
   
   
     <div class="chapter-tab">Printing</div>
-    <div class="folio">8</div>
+    <div class="folio">9</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>The roll and the material</h2>
@@ -405,11 +424,11 @@
   
   
     <div class="chapter-tab">Printing</div>
-    <div class="folio">9</div>
+    <div class="folio">10</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     <h2>Follow the print</h2>
@@ -439,11 +458,11 @@
   
   
     <div class="chapter-tab">Printing</div>
-    <div class="folio">10</div>
+    <div class="folio">11</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>Print on a part</h2>
@@ -455,23 +474,20 @@
     
     <div class="figure shot">
       <h3>The tool</h3>
-      <div class="pic"><img src="img/cura-panel.png" alt="The tool" style="max-height: 2.4in"><span class="mk" style="left: 7%; top: 4%">1</span><span class="mk" style="left: 54.1%; top: 22.3%">2</span><span class="mk" style="left: 66.9%; top: 35.1%">3</span><span class="mk" style="left: 72.6%; top: 47.9%">4</span><span class="mk" style="left: 95.5%; top: 59.3%">5</span><span class="mk" style="left: 60.5%; top: 69.5%">6</span><span class="mk" style="left: 61.1%; top: 91.1%">7</span></div>
-      <ol class="parts"><li><span class="badge">1</span><span><b>Print on a part.</b> The tool, at the bottom of the left toolbar of Prepare.</span></li><li><span class="badge">2</span><span><b>Set as base.</b> The selected model is the base: the part that is printed already. Cura does not print it, and adds the pocket.</span></li><li><span class="badge">3</span><span><b>Place on the base.</b> Puts the selected model on the top of the base.</span></li><li><span class="badge">4</span><span><b>The pocket is on the bed.</b> For the next color. The file then has no pocket.</span></li><li><span class="badge">5</span><span><b>Clearance and Wall.</b> The gap around the part, and the height of the pocket wall, in mm.</span></li><li><span class="badge">6</span><span><b>Message on the deck.</b> The text of the pause on the touch screen.</span></li><li><span class="badge">7</span><span><b>Clear the base.</b> The base is a usual model again, and Cura removes the pocket.</span></li></ol>
+      <div class="pic"><img src="img/cura-panel.png" alt="The tool" style="max-height: 2.6in"><span class="mk" style="left: 5.8%; top: 5.8%">1</span><span class="mk" style="left: 46%; top: 12.3%">2</span><span class="mk" style="left: 55.8%; top: 21.4%">3</span><span class="mk" style="left: 58.4%; top: 30.5%">4</span><span class="mk" style="left: 67.9%; top: 39.5%">5</span><span class="mk" style="left: 90.8%; top: 48.1%">6</span><span class="mk" style="left: 74.2%; top: 70%">7</span><span class="mk" style="left: 50%; top: 76.7%">8</span><span class="mk" style="left: 51.3%; top: 93.3%">9</span></div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Print on a part.</b> The tool, at the bottom of the left toolbar of Prepare.</span></li><li><span class="badge">2</span><span><b>Set as base.</b> The selected model is the base: the part that is printed already. Cura does not print it, and adds the pocket.</span></li><li><span class="badge">3</span><span><b>Place on the base.</b> Puts the selected model on the top of the base.</span></li><li><span class="badge">4</span><span><b>Place as in the files.</b> Puts the selected model where its file has it, for files from one assembly.</span></li><li><span class="badge">5</span><span><b>The pocket is on the bed.</b> For the next color. The file then has no pocket.</span></li><li><span class="badge">6</span><span><b>Clearance and Wall.</b> The gap around the part, and the height of the pocket wall, in mm.</span></li><li><span class="badge">7</span><span><b>Add text.</b> Raised text on the top of the base: the text, its height, and how high it stands, in mm.</span></li><li><span class="badge">8</span><span><b>Message on the deck.</b> The text of the pause on the touch screen.</span></li><li><span class="badge">9</span><span><b>Clear the base.</b> The base is a usual model again, and Cura removes the pocket.</span></li></ol>
       
     </div>
-    
-    
-    <p>The tool also has Place as in the files, and the fields of the text on the base. The next page explains them.</p>
     
     
   
   
     <div class="chapter-tab">Print on a part</div>
-    <div class="folio">11</div>
+    <div class="folio">12</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     <h2>Prepare the job</h2>
@@ -507,11 +523,11 @@
   
   
     <div class="chapter-tab">Print on a part</div>
-    <div class="folio">12</div>
+    <div class="folio">13</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>At the printer</h2>
@@ -535,11 +551,11 @@
   
   
     <div class="chapter-tab">Print on a part</div>
-    <div class="folio">13</div>
+    <div class="folio">14</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     <h2>Test print: the cube</h2>
@@ -572,17 +588,6 @@
   
   
     <div class="chapter-tab">Print on a part</div>
-    <div class="folio">14</div>
-  
-</section>
-
-<section class="sheet notes odd">
-  
-    <h2>Notes</h2>
-    <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
-  
-  
-    
     <div class="folio">15</div>
   
 </section>

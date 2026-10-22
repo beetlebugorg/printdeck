@@ -20,7 +20,7 @@ import (
 const curaPluginJSON = "../slicer/cura-plugin/Printdeck/plugin.json"
 
 // The screenshots of Cura in DIR/img.
-var curaShots = []string{"cura-tab", "cura-tune", "cura-button", "cura-messages", "cura-panel", "cura-pocket",
+var curaShots = []string{"cura-tab", "cura-tune", "cura-connecting", "cura-button", "cura-messages", "cura-panel", "cura-pocket",
 	"cura-cube", "cube"}
 
 const (
@@ -124,7 +124,7 @@ func curaGuides() []bookGuide {
 		"After a slice, Cura warns you when the roll is too short for the model.",
 		"During a print, the Preview of Cura shows the layer that prints.",
 		"The Print on a part tool prints new models on a part that is printed already.")
-	what.para("The plugin works with Cura 4.13 (Cura LulzBot Edition) and later. The pictures in this booklet show Cura 5.")
+	what.para("The plugin needs Cura 5. Cura LulzBot Edition (Cura 4.13) does not show the tab and the tool.")
 
 	install := bookGuide{Chapter: chCuraSetup, Title: "Install the plugin"}
 	install.title()
@@ -181,7 +181,9 @@ func curaGuides() []bookGuide {
 		callout{"The layer", "The model up to the layer that prints now."})
 	tab.shot("cura-tune", "Tune, after a click on Tune", 2.45, nil)
 	tab.para("While the tab connects to the deck, it shows the start screen of the deck with the words \"Connecting to " +
-		"printdeck.local\". The tab gets the screens only while it shows.")
+		"printdeck.local\". The dots of the word print from the bottom up, one layer at a time. The tab gets the " +
+		"screens only while it shows.")
+	tab.shot("cura-connecting", "The start screen, while the tab connects", 2.2, nil)
 	tab.para("During a print, the key Show in Preview is under the screen. It opens the file of the print in the Preview.")
 	tab.sub("When the tab shows no deck")
 	tab.row("Cura has no connection to a Printdeck", "Connect the printer with the OctoPrint connection plugin. See Connect the Printdeck.")
@@ -222,16 +224,17 @@ func curaGuides() []bookGuide {
 	part.para("The Print on a part tool prints new models on a part that is printed already, for example a logo in " +
 		"another color on a lid. The part goes into a pocket that the deck prints on the bed, so its place is exact. " +
 		"The deck then checks the height of the part with a paper test.")
-	part.shot("cura-panel", "The tool", 2.4, []mark{{1, 7, 4}, {2, 54.1, 22.3}, {3, 66.9, 35.1}, {4, 72.6, 47.9},
-		{5, 95.5, 59.3}, {6, 60.5, 69.5}, {7, 61.1, 91.1}},
+	part.shot("cura-panel", "The tool", 2.6, []mark{{1, 5.8, 5.8}, {2, 46, 12.3}, {3, 55.8, 21.4}, {4, 58.4, 30.5},
+		{5, 67.9, 39.5}, {6, 90.8, 48.1}, {7, 74.2, 70}, {8, 50, 76.7}, {9, 51.3, 93.3}},
 		callout{"Print on a part", "The tool, at the bottom of the left toolbar of Prepare."},
 		callout{"Set as base", "The selected model is the base: the part that is printed already. Cura does not print it, and adds the pocket."},
 		callout{"Place on the base", "Puts the selected model on the top of the base."},
+		callout{"Place as in the files", "Puts the selected model where its file has it, for files from one assembly."},
 		callout{"The pocket is on the bed", "For the next color. The file then has no pocket."},
 		callout{"Clearance and Wall", "The gap around the part, and the height of the pocket wall, in mm."},
+		callout{"Add text", "Raised text on the top of the base: the text, its height, and how high it stands, in mm."},
 		callout{"Message on the deck", "The text of the pause on the touch screen."},
 		callout{"Clear the base", "The base is a usual model again, and Cura removes the pocket."})
-	part.para("The tool also has Place as in the files, and the fields of the text on the base. The next page explains them.")
 
 	prep := bookGuide{Chapter: chCuraPart, Title: "Prepare the job"}
 	prep.title()
