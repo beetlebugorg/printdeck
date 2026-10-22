@@ -1,6 +1,10 @@
 package kit
 
-import "image"
+import (
+	"image"
+	"math"
+	"time"
+)
 
 // Kind is the kind of a touch event.
 type Kind int
@@ -11,10 +15,12 @@ const (
 	Up               // the finger lifts
 )
 
-// Event is a touch of the finger at P, in the pixels of the frame.
+// Event is a touch of the finger at P, in the pixels of the frame, at the time At. An event with no
+// time gives a list no fling.
 type Event struct {
 	Kind Kind
 	P    image.Point
+	At   time.Time
 }
 
 // Phase is the part of a touch that a pad gets.
@@ -59,6 +65,15 @@ const (
 	swipeShow  = 80 // the swipe offset that the program shows at most
 )
 
+// The fling of a list: a list that the finger flicks goes on, slower and slower.
+const (
+	flingMin   = 250                    // the least speed of a flick, in pixels a second
+	flingMax   = 4000                   // the most speed of a fling
+	flingStop  = 40                     // a fling stops under this speed
+	flingDecay = 0.35                   // the time constant of the slowing, in seconds
+	flingLift  = 150 * time.Millisecond // the longest time from the last move to the lift (the touch panel waits 80 ms)
+)
+
 // Input has the touch areas of the frame, and follows the finger on them. The program calls Reset
 // at the start of each frame, Add for each area while it draws, and Handle for each event.
 // The last area that it adds is on top.
@@ -72,6 +87,12 @@ type Input struct {
 	scrolling   *Hit // a list
 	lastY       int
 	scrollMoved bool
+	lastAt      time.Time // the time of the last move of the list
+	scrollV     float64   // the speed of the list, in pixels a second
+	fling       *Hit      // a list that goes on after a flick
+	flingV      float64
+	flingAt     time.Time
+	flingRest   float64 // the part of a pixel that the fling has not moved yet
 	swiping     *Hit
 	swipeDX     int
 	padding     *Hit
@@ -108,6 +129,8 @@ func (in *Input) Handle(ev Event) {
 	switch ev.Kind {
 	case Down:
 		in.downAt = p
+		in.fling = nil // the finger stops a fling
+		in.scrollV, in.lastAt = 0, ev.At
 		for i := len(in.hits) - 1; i >= 0; i-- {
 			h := in.hits[i] // the list changes on each frame, so keep a copy
 			if !p.In(h.R) {
@@ -144,7 +167,11 @@ func (in *Input) Handle(ev Event) {
 					h.Scroll(in.lastY - p.Y)
 				}
 			}
-			in.lastY = p.Y
+			// The speed, smoothed over the last moves.
+			if dt := ev.At.Sub(in.lastAt).Seconds(); !ev.At.IsZero() && !in.lastAt.IsZero() && dt > 0 {
+				in.scrollV = 0.7*float64(in.lastY-p.Y)/dt + 0.3*in.scrollV
+			}
+			in.lastY, in.lastAt = p.Y, ev.At
 		case in.swiping != nil:
 			in.swipeDX = max(-swipeShow, min(swipeShow, p.X-in.downAt.X))
 		case in.dragging != nil:
@@ -163,6 +190,9 @@ func (in *Input) Handle(ev Event) {
 			in.padding = nil
 		case in.scrolling != nil:
 			h, moved := in.find(in.scrolling.R), in.scrollMoved
+			if moved && !ev.At.IsZero() && ev.At.Sub(in.lastAt) < flingLift && math.Abs(in.scrollV) > flingMin {
+				in.fling, in.flingV, in.flingAt, in.flingRest = in.scrolling, max(-flingMax, min(flingMax, in.scrollV)), ev.At, 0
+			}
 			in.scrolling = nil
 			if h != nil && !moved && h.TapAt != nil {
 				h.TapAt(p)
@@ -192,6 +222,36 @@ func (in *Input) Handle(ev Event) {
 		}
 		in.pressed = nil
 	}
+}
+
+// Fling moves a list that the finger flicked, up to the time now, and slows it. It reports that the
+// list still moves: the program then draws the next frame soon. Call it before Reset, so that it
+// finds the list of the last frame.
+func (in *Input) Fling(now time.Time) bool {
+	if in.fling == nil {
+		return false
+	}
+	h := in.find(in.fling.R)
+	if h == nil || h.Scroll == nil {
+		in.fling = nil
+		return false
+	}
+	dt := now.Sub(in.flingAt).Seconds()
+	if dt <= 0 {
+		return true
+	}
+	in.flingAt = now
+	in.flingRest += in.flingV * dt
+	if step := int(in.flingRest); step != 0 {
+		in.flingRest -= float64(step)
+		h.Scroll(step)
+	}
+	in.flingV *= math.Exp(-dt / flingDecay)
+	if math.Abs(in.flingV) < flingStop {
+		in.fling = nil
+		return false
+	}
+	return true
 }
 
 // find returns the area of the current frame with the rectangle r.
