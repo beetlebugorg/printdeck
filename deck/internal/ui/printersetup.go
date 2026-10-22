@@ -85,6 +85,10 @@ func (a *App) drawPrinterSetup(c *gfx.Canvas, st printer.State) {
 	} else if !probing {
 		rows = append(rows, []func(image.Rectangle){func(r image.Rectangle) { a.button(c, r, "Search again", raised, text, pr.ProbeBoards) }})
 	}
+	// Wi-Fi and help, and Software update: this screen has no pages.
+	if a.Setup != nil || a.Updater != nil {
+		rows = append(rows, []func(image.Rectangle){func(r image.Rectangle) { a.systemKeys(c, r) }})
+	}
 	keys := right
 	if wide {
 		h := len(rows)*92 - 20
@@ -222,15 +226,18 @@ func (a *App) drawKlipperError(c *gfx.Canvas, st printer.State) {
 	if msg == "" {
 		msg = st.Err
 	}
-	// The message, and the keys under it; at the bottom of the left column of a wide screen.
+	// The message, the keys under it, and Wi-Fi and help and Software update; at the bottom of the
+	// left column of a wide screen.
 	wide, textArea, info := a.plain(c, title)
-	var keys image.Rectangle
+	var keys, sys image.Rectangle
 	if wide {
-		keys = kit.Rows(textArea, 0, kit.Fr(1), kit.Px(80))[1]
+		r := kit.Rows(textArea, 12, kit.Fr(1), kit.Px(72), kit.Px(80))
+		sys, keys = r[1], r[2]
 	} else {
-		r := kit.Rows(info, 0, kit.Px(480), kit.Fr(1), kit.Px(80), kit.Px(158))
-		info, keys = r[0], r[2]
+		r := kit.Rows(info, 0, kit.Px(440), kit.Fr(1), kit.Px(80), kit.Px(12), kit.Px(72), kit.Px(76))
+		info, keys, sys = r[0], r[2], r[4]
 	}
+	a.systemKeys(c, sys)
 	face := gfx.Face(false, 18)
 	s := kit.NewStack(info, 0)
 	for _, l := range wrapText(face, msg, info.Dx()) {

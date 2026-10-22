@@ -194,10 +194,10 @@ func (a *App) modelView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 	}
 }
 
-// speedFactor is the speed in percent that the tune sheet set for this print.
+// speedFactor is the speed in percent of the print (M220).
 func (a *App) speedFactor(st printer.State) int {
-	if a.tuneFile == st.FilePath && a.tuneSpeed > 0 {
-		return a.tuneSpeed
+	if st.SpeedPct > 0 {
+		return st.SpeedPct
 	}
 	return 100
 }

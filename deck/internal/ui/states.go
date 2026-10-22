@@ -117,6 +117,11 @@ func (a *App) drawPreparing(c *gfx.Canvas, st printer.State) {
 			segments(c, image.Rect(box.Min.X+60, y+rowH-12, box.Max.X-22, y+rowH-4), min(1, f))
 		}
 	}
+	if a.Setup != nil {
+		k := kit.Cols(cancel, 12, kit.Px(130), kit.Fr(1))
+		a.button(c, k[0], "Help", raised, text, a.OpenHelp)
+		cancel = k[1]
+	}
 	a.button(c, cancel, "Cancel print", raised, red, a.askCancel)
 }
 
@@ -166,6 +171,10 @@ func (a *App) drawFirstLayer(c *gfx.Canvas, st printer.State) {
 	}
 	c.Text(steps[3], "− is closer", gfx.Face(false, 15), dim, gfx.Right)
 	pc := kit.Cols(r[2], 12, kit.Fr(1), kit.Fr(1))
+	if a.Setup != nil {
+		pc = kit.Cols(r[2], 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
+		a.button(c, pc[2], "Help", raised, text, a.OpenHelp)
+	}
 	a.button(c, pc[0], "Pause", raised, text, pr.Pause)
 	a.button(c, pc[1], "Cancel", raised, red, a.askCancel)
 	a.modelView(c, box, st)
@@ -229,7 +238,7 @@ func (a *App) drawPaused(c *gfx.Canvas, st printer.State) {
 	}
 	c.Text(image.Rect(info.Min.X+18, info.Min.Y+38, info.Max.X-18, info.Max.Y-6), gfx.Fit(gfx.Face(false, 16), sub, info.Dx()-36), gfx.Face(false, 16), dim, gfx.Left)
 	a.button(c, resume, "Resume", orange, onAcc, pr.Resume)
-	a.button(c, grid[0], "Change filament", raised, text, func() { a.swap = &swapState{} })
+	a.button(c, grid[0], "Change filament", raised, text, func() { a.openSwap(swapChange) })
 	a.button(c, grid[1], "Move head", raised, text, func() { a.open(pageMove) })
 	a.button(c, grid[2], "Tune", raised, text, func() { a.tune = true })
 	a.button(c, grid[3], "Cancel", raised, red, a.askCancel)

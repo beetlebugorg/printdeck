@@ -54,10 +54,10 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 		key(c, change, "A print runs", surface, dim, false)
 		return
 	}
-	a.button(c, change, "Change filament", orange, onAcc, func() { a.swap = &swapState{} })
+	a.button(c, change, "Change filament", orange, onAcc, func() { a.openSwap(swapChange) })
 	lu := kit.Cols(load, 12, kit.Fr(1), kit.Fr(1))
-	a.button(c, lu[0], "Load", raised, text, func() { a.swap = &swapState{mode: swapLoadOnly} })
-	a.button(c, lu[1], "Unload", raised, text, func() { a.swap = &swapState{mode: swapUnloadOnly} })
+	a.button(c, lu[0], "Load", raised, text, func() { a.openSwap(swapLoadOnly) })
+	a.button(c, lu[1], "Unload", raised, text, func() { a.openSwap(swapUnloadOnly) })
 
 	cold := st.Tool < minExtrudeTemp
 	extrude := func(r image.Rectangle, name string, mm float64) {

@@ -3,22 +3,21 @@ package ui
 import (
 	"fmt"
 	"image"
+	"math"
 	"printdeck/kit"
 
 	"printdeck/internal/gfx"
 )
 
 // The tune sheet changes a running print: speed, flow, the height of the nozzle (baby steps), the fan,
-// and the temperatures. The printer does not report speed, flow and offset, so the screen counts from
-// the start of each print.
+// and the temperatures. The values come from the state of the printer, so each screen shows the same
+// values.
 
 func (a *App) drawTune(c *gfx.Canvas) {
 	pr := a.Printer
 	st := pr.State()
-	if st.FilePath != a.tuneFile { // a new print starts as sliced
-		a.tuneFile, a.tuneSpeed, a.tuneFlow, a.tuneZ = st.FilePath, 100, 100, 0
-	}
 	f := a.pageBack(c, "Tune", "Back", func() { a.tune = false })
+	a.helpKey(c, f.head)
 	// Tall: the file, the speed, flow and Z rows, the fan, and the temperatures. Wide: the file, the
 	// fan and the temperatures in the left column; the rows at the right.
 	var file, rows, zHint, fanRow, tHint, temps image.Rectangle
@@ -39,11 +38,18 @@ func (a *App) drawTune(c *gfx.Canvas) {
 	}
 	rowH := min(110, (rows.Dy()+12)/3-12)
 	s := kit.NewStack(rows, 12)
-	row := func(name, value string, minus, plus func()) {
+	// row draws a row with −, the value and +. With save, a Save key goes under the name.
+	row := func(name, value string, minus, plus, save func()) {
 		rr := s.Next(rowH)
 		a.region(name, rr)
 		r := kit.Cols(rr, 0, kit.Px(labelW), kit.Fr(1))
-		label(c, r[0], name, gfx.Left)
+		if save != nil {
+			l := kit.Rows(r[0], 4, kit.Fr(1), kit.Px(min(48, rowH/2)))
+			label(c, l[0], name, gfx.Left)
+			a.button(c, kit.Inset(l[1], 0, 0, 12, 0), "Save", raised, text, save)
+		} else {
+			label(c, r[0], name, gfx.Left)
+		}
 		k := kit.Cols(r[1], 8, kit.Px(keyW), kit.Fr(1), kit.Px(keyW))
 		a.button(c, k[0], "−", raised, text, minus)
 		ro := kit.Inset(k[1], 0, 8, 0, 8)
@@ -52,22 +58,18 @@ func (a *App) drawTune(c *gfx.Canvas) {
 		a.button(c, k[2], "+", raised, text, plus)
 	}
 	setSpeed := func(v int) {
-		a.tuneSpeed = max(10, min(300, v))
-		s := a.tuneSpeed
-		a.do(func() error { return pr.SpeedFactor(s) })
+		v = max(10, min(300, v))
+		a.do(func() error { return pr.SpeedFactor(v) })
 	}
 	setFlow := func(v int) {
-		a.tuneFlow = max(50, min(150, v))
-		f := a.tuneFlow
-		a.do(func() error { return pr.FlowFactor(f) })
+		v = max(50, min(150, v))
+		a.do(func() error { return pr.FlowFactor(v) })
 	}
-	z := func(d float64) {
-		a.tuneZ += d
-		a.do(func() error { return pr.BabyStep(d) })
-	}
-	row("Speed", fmt.Sprintf("%d%%", a.tuneSpeed), func() { setSpeed(a.tuneSpeed - 10) }, func() { setSpeed(a.tuneSpeed + 10) })
-	row("Flow", fmt.Sprintf("%d%%", a.tuneFlow), func() { setFlow(a.tuneFlow - 2) }, func() { setFlow(a.tuneFlow + 2) })
-	row("Z offset", fmt.Sprintf("%+.2f mm", a.tuneZ), func() { z(-0.025) }, func() { z(0.025) })
+	z := func(d float64) { a.do(func() error { return pr.BabyStep(d) }) }
+	speed, flow := st.SpeedPct, st.FlowPct
+	row("Speed", fmt.Sprintf("%d%%", speed), func() { setSpeed(speed - 10) }, func() { setSpeed(speed + 10) }, nil)
+	row("Flow", fmt.Sprintf("%d%%", flow), func() { setFlow(flow - 2) }, func() { setFlow(flow + 2) }, nil)
+	row("Z offset", fmt.Sprintf("%+.3f mm", st.ZOffset), func() { z(-0.025) }, func() { z(0.025) }, func() { a.saveZOffset(st) })
 	label(c, zHint, "Z offset −: nozzle closer to the bed", gfx.Left)
 
 	// Fan
@@ -77,7 +79,7 @@ func (a *App) drawTune(c *gfx.Canvas) {
 	for i, r := range kit.Cols(kit.Inset(fan[1], 0, 2, 0, 2), 8, kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
 		p := []int{0, 50, 100}[i]
 		fill, fg := raised, text
-		if a.fanSet == p {
+		if st.HasFan && math.Abs(st.Fan-float64(p)) < 1 {
 			fill, fg = green, onAcc
 		}
 		label := fmt.Sprintf("%d%%", p)
@@ -85,7 +87,7 @@ func (a *App) drawTune(c *gfx.Canvas) {
 			label = "Off"
 		}
 		pct := p
-		a.button(c, r, label, fill, fg, func() { a.fanSet = pct; a.do(func() error { return pr.Fan(pct) }) })
+		a.button(c, r, label, fill, fg, func() { a.do(func() error { return pr.Fan(pct) }) })
 	}
 
 	if !tHint.Empty() {

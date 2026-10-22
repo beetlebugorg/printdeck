@@ -162,17 +162,12 @@ type App struct {
 	OnClock    func(bool)
 	JogInvertY bool // up on the joystick moves Y back instead of forward
 
-	joy    *joystick
-	zStep  float64 // mm per tap of the Z buttons
-	zBaby  float64 // mm per tap of the Z offset on the first layer screen
-	fanSet int     // the last fan setting from the screen, -1 if none
+	joy   *joystick
+	zStep float64 // mm per tap of the Z buttons
+	zBaby float64 // mm per tap of the Z offset on the first layer screen
 
-	// The tune sheet, counted from the start of the print in tuneFile.
-	tuneFile            string
-	tuneSpeed, tuneFlow int
-	tuneZ               float64
-	toast               string
-	toastAt             time.Time
+	toast   string
+	toastAt time.Time
 
 	// Material is the loaded filament, for example "PLA", or "". OnMaterial is told when it changes,
 	// to save it.
@@ -246,7 +241,7 @@ var drawMu sync.Mutex
 
 func New() *App {
 	return &App{Now: time.Now, created: time.Now(), LCDFont: "5x8", wake: make(chan struct{}, 1), posted: make(chan func(), 16),
-		joy: &joystick{}, zStep: 1, fanSet: -1, UnloadMM: 80, LoadMM: 70, tuneSpeed: 100, tuneFlow: 100, Theme: "auto", NightFrom: 20, NightTo: 7}
+		joy: &joystick{}, zStep: 1, UnloadMM: 80, LoadMM: 70, Theme: "auto", NightFrom: 20, NightTo: 7}
 }
 
 // Redraw asks for a new frame. It is safe to call from any goroutine.

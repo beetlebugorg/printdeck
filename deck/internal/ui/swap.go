@@ -15,6 +15,19 @@ type swapState struct {
 	step int
 	temp int
 	mode int // swapChange, swapLoadOnly or swapUnloadOnly
+	// paused is true for a swap during a paused print. At its end the nozzle goes back to resume,
+	// the nozzle target of the pause, so that Resume prints at the temperature of the print.
+	paused bool
+	resume int
+}
+
+// openSwap opens the swap in a mode.
+func (a *App) openSwap(mode int) {
+	sw := &swapState{mode: mode}
+	if st := a.Printer.State(); st.Busy() && st.Paused {
+		sw.paused, sw.resume = true, int(st.ToolTarget+0.5)
+	}
+	a.swap = sw
 }
 
 // The modes of the flow: a change of the filament, a load, or an unload.
@@ -36,7 +49,24 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 	sw := a.swap
 	pr := a.Printer
 	st := pr.State()
-	f := a.pageBack(c, []string{"Filament swap", "Load filament", "Unload filament"}[sw.mode], "Close", func() { a.swap = nil })
+	// end closes the swap. It cools the nozzle, or during a pause sets it back to the temperature of
+	// the print.
+	end := func() {
+		a.swap = nil
+		t := 0
+		if sw.paused {
+			t = sw.resume
+			if t > 0 {
+				a.Toast(fmt.Sprintf("The nozzle goes back to %d° for the print", t))
+			}
+		}
+		a.do(func() error { return pr.SetToolTemp(t) })
+	}
+	closeSwap := func() { a.swap = nil }
+	if sw.paused {
+		closeSwap = end
+	}
+	f := a.pageBack(c, []string{"Filament swap", "Load filament", "Unload filament"}[sw.mode], "Close", closeSwap)
 	// Tall: the step, its text and its keys under each other. Wide: the step and its text in the
 	// left column, and the keys in the right column, which they fill.
 	var txt *kit.Stack
@@ -93,9 +123,9 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 			c.Text(txt.Next(lineH), l, face, text, gfx.Left)
 		}
 	}
-	coolDown := func() {
-		a.swap = nil
-		a.do(func() error { return pr.SetToolTemp(0) })
+	cancelLabel, doneLabel := "Cancel and cool down", "Done, cool down"
+	if sw.paused {
+		cancelLabel, doneLabel = "Cancel", "Done"
 	}
 
 	switch sw.step {
@@ -153,7 +183,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 			}
 			a.Redraw()
 		}
-		a.button(c, cancel, "Cancel and cool down", raised, text, coolDown)
+		a.button(c, cancel, cancelLabel, raised, text, end)
 
 	case swapUnload:
 		step(3, "Unload the old filament")
@@ -187,17 +217,26 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 			step(4, "Take the filament out")
 			para("Pull the filament out of the extruder, and store it dry.")
 			k := keys(size{84, 2}, size{80, 1})
-			a.button(c, k[0], "Done, cool down", orange, onAcc, coolDown)
+			a.button(c, k[0], doneLabel, orange, onAcc, end)
 			a.button(c, k[1], "Unload again", raised, text, func() { sw.step = swapUnload })
 			return
 		}
 		step(5, "Check the nozzle")
 		para("Clean plastic in the new colour should come out of the nozzle.")
+		purge := func(r image.Rectangle) {
+			a.button(c, r, "Purge 10 mm more", raised, text, func() {
+				a.do(func() error { return pr.Extrude(10, 150) })
+			})
+		}
+		if sw.paused {
+			k := keys(size{80, 1}, size{84, 1.4})
+			purge(k[0])
+			a.button(c, k[1], doneLabel, orange, onAcc, end)
+			return
+		}
 		k := keys(size{80, 1}, size{84, 1.4}, size{80, 1})
-		a.button(c, k[0], "Purge 10 mm more", raised, text, func() {
-			a.do(func() error { return pr.Extrude(10, 150) })
-		})
-		a.button(c, k[1], "Done, cool down", orange, onAcc, coolDown)
+		purge(k[0])
+		a.button(c, k[1], doneLabel, orange, onAcc, end)
 		a.button(c, k[2], "Done, keep hot", raised, text, func() { a.swap = nil })
 	}
 }

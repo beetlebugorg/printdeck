@@ -37,6 +37,14 @@ func demoApp() (*ui.App, *ui.DemoPrinter) {
 	a.Printer = p
 	a.PreheatTool, a.PreheatBed = 200, 60
 	a.Material = "PLA"
+	// The setup host and the updater of the deck, as on a Pi.
+	a.Setup = &ui.DemoSetup{
+		Nets: []wifi.Network{{SSID: "Extremely", Signal: -48, Secure: true}, {SSID: "Workshop", Signal: -63, Secure: true},
+			{SSID: "Guest", Signal: -71}, {SSID: "NETGEAR-5G", Signal: -82, Secure: true}},
+		Status_: wifi.Status{State: "COMPLETED", SSID: "Extremely", IP: "192.168.76.119"},
+	}
+	a.Updater = &ui.DemoUpdater{S: ui.UpdateStatus{Current: "v0.3.0", Latest: "v0.4.0", Newer: true, Checked: true,
+		Notes: "The printer display shows the menus of the deck, with the knob. New status screen with icons. Signed updates."}}
 	// What the test printer has, a short history, and the slicer data of the files.
 	p.Machine_ = printer.Machine{KlipperVersion: "v0.13.0-777-g7bc4d0946-printdeck-go",
 		Modules: []string{"probe", "bed_tilt", "extruder", "heater_bed"},
@@ -150,11 +158,6 @@ func demoShots(dir string, wide bool) {
 	snap("print-setup-stock")
 	p.State_ = printer.State{Err: "Error in printer.cfg", ErrDetail: "Option 'rotation_distance' in section 'stepper_x' must be specified\n\nOnce the underlying issue is corrected, use the\n\"RESTART\" command to reload the config and\nrestart the host software.\nPrinter is halted"}
 	snap("print-error")
-	a.Setup = &ui.DemoSetup{
-		Nets: []wifi.Network{{SSID: "Extremely", Signal: -48, Secure: true}, {SSID: "Workshop", Signal: -63, Secure: true},
-			{SSID: "Guest", Signal: -71}, {SSID: "NETGEAR-5G", Signal: -82, Secure: true}},
-		Status_: wifi.Status{State: "COMPLETED", SSID: "Extremely", IP: "192.168.76.119"},
-	}
 	for _, n := range []string{"wifi", "password", "done", "help"} {
 		a.OpenSetupScreen(n)
 		snap("setup-" + n)
@@ -163,8 +166,6 @@ func demoShots(dir string, wide bool) {
 	// firmware flash and an action.
 	a.OpenSetupScreen("")
 	p.State_ = printer.State{Reachable: true, Text: "Operational", Connected: true, Tool: 24, Bed: 23, Homed: "xyz"}
-	a.Updater = &ui.DemoUpdater{S: ui.UpdateStatus{Current: "v0.3.0", Latest: "v0.4.0", Newer: true, Checked: true,
-		Notes: "The printer display shows the menus of the deck, with the knob. New status screen with icons. Signed updates."}}
 	p.Console_ = []printer.ConsoleLine{{Kind: "in", Text: "G28"}, {Kind: "in", Text: "M105"},
 		{Kind: "out", Text: "ok T:24.1 /0.0 B:23.4 /0.0"}, {Kind: "in", Text: "G1 X400"},
 		{Kind: "error", Text: "Move out of range: 400.000 150.000 10.000 [0.000]"}}
