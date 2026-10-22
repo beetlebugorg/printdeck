@@ -83,3 +83,15 @@ def material_lines(material, name):
     if name and name.strip():
         out += ";PRINTDECK_MATERIAL_NAME: %s\n" % name.strip()
     return out
+
+
+def connected_text(status):
+    """The message when Cura connects to the Printdeck: the filament in the printer."""
+    spool = status.get("spool")
+    if spool:
+        return "Connected to the Printdeck. %s (%s) is in the printer, with %d g left." % (
+            spool_name(spool), spool.get("material") or "?", round(float(spool.get("left") or 0)))
+    if status.get("material"):
+        return ("Connected to the Printdeck. %s is in the printer. To follow the grams of a roll, add the roll on "
+                "the Printdeck: Filament > Rolls." % status["material"])
+    return "Connected to the Printdeck. No filament is set on the Printdeck: Filament on the touch screen."

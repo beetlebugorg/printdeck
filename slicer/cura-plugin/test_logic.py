@@ -36,6 +36,11 @@ class TestLogic(unittest.TestCase):
         self.assertEqual(logic.material_lines("PLA", ""), ";PRINTDECK_MATERIAL: PLA\n")
         self.assertEqual(logic.material_lines("", "x"), "")
 
+    def test_connected_text(self):
+        self.assertEqual(logic.connected_text({"material": "PLA", "spool": {"name": "Galaxy Black", "material": "PLA", "left": 642.4}}),
+                         "Connected to the Printdeck. Galaxy Black (PLA) is in the printer, with 642 g left.")
+        self.assertIn("PLA is in the printer", logic.connected_text({"material": "PLA", "spool": None}))
+
     def test_preview_layer(self):
         self.assertEqual(logic.preview_layer({"layer": 12}), 11)
         self.assertEqual(logic.preview_layer({"layer": 0}), 0)
