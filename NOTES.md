@@ -48,7 +48,8 @@ on the bittlx Pi addon panel (`~/Projects/3d/bittlx/bittle_pi_addon/stl/print/po
 7. (Optional) Add text with **Add text**.
 8. Print with white. On the deck: put the panel in the pocket, tap **Check the height**, do the
    paper test on the panel, then Resume.
-9. For red: change the filament, swap the logo for `pod_logo_red.stl`, check **The pocket is on
+9. For red: change the filament. In Cura, delete the white logo, open
+   `stl/installed/pod_logo_red.stl`, and tap **Place as in the files**. Check **The pocket is on
    the bed**, and print. The deck asks for the height check again.
 
 ## My guesses (please check)
