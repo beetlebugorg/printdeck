@@ -3,13 +3,15 @@
 The plugin connects Cura to the Printdeck through the printer of the OctoPrint connection plugin. It
 uses the same address and API key, so it needs no setup.
 
-- When the material of Cura is not the material of the roll in the Printdeck, Cura asks to use
-  the material of the roll.
+The plugin works by itself, and tells you in a message what it did:
+
+- The print button says "Print to Printdeck".
+- When the roll in the Printdeck changes, Cura changes to the material of the roll.
 - After a slice, Cura warns when the model needs more filament than the roll has.
+- During a print of the file that Cura has open, the Preview shows the layer that prints.
+- When a print ends, Cura tells you.
 - Each file that Cura sends has the material of Cura in its header. Before the Printdeck prints a
   file for another material, it asks on the touch screen.
-- Extensions > Printdeck > Follow the print in Preview moves the layer of the Preview to the
-  layer that prints, when Cura has the same file open.
 
 The OctoPrint connection plugin also shows the screen of the Printdeck in the Monitor tab, in
 place of a camera.
