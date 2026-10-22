@@ -259,6 +259,13 @@ func (a *App) lcdStatusScreen(st printer.State, l1, l2 string) *printer.LCDStatu
 			s.Left = fmt.Sprintf("%d:%02d", m/60, m%60)
 			s.Done = lcdscreen.Clock(a.Now().Add(st.TimeLeft), a.Clock24)
 		}
+		// The end macro waits for the bed: the cooling, not the print that is done.
+		if st.Finishing && st.HasBedCoolLeft && st.BedCoolTo > 0 {
+			s.Cooling, s.CoolTo, s.Left, s.Done = true, st.BedCoolTo, shortWait(st.BedCoolLeft), ""
+			if span := st.BedCoolFrom - st.BedCoolTo; span > 0 {
+				s.Progress = max(0, min(1, (st.BedCoolFrom-st.Bed)/span))
+			}
+		}
 		return s
 	}
 	if st.Reachable && st.HasZ && st.Homed != "" {

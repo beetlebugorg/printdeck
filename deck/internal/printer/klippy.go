@@ -561,7 +561,10 @@ func (k *Klippy) refresh(notify func()) {
 	prepLeft := rates.prepLeft(st, &k.timer, now)
 	if to := coolTarget(st); to > 0 {
 		st.BedCoolLeft, st.HasBedCoolLeft = k.timer.coolLeft(rates, st, to, now)
-		st.BedCoolTo = to
+		st.BedCoolTo, st.BedCoolFrom = to, st.Bed
+		if !k.timer.fallStart.IsZero() {
+			st.BedCoolFrom = k.timer.fallFrom
+		}
 	}
 	k.mu.Unlock()
 	k.View.TimeLeft(&st, now, prepLeft)

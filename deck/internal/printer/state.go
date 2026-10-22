@@ -38,6 +38,8 @@ type State struct {
 	BedCoolLeft    time.Duration
 	BedCoolTo      float64
 	HasBedCoolLeft bool
+	// BedCoolFrom is the bed temperature at the start of the cooling, for its progress.
+	BedCoolFrom float64
 	Activity       string // what the printer does now: "Wiping nozzle", "Heating bed", "Printing"
 	Layer, Layers  int
 	Fan            float64 // percent
