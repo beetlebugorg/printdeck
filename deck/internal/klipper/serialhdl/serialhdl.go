@@ -21,8 +21,8 @@ import (
 	"printdeck/internal/klipper/msgproto"
 	"printdeck/internal/klipper/reactor"
 	"printdeck/internal/klipper/serialport"
-	"printdeck/internal/klipper/simmcu"
 	"printdeck/internal/klipper/serialqueue"
+	"printdeck/internal/klipper/simmcu"
 )
 
 // Error is an error of the link.
