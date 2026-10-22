@@ -61,7 +61,7 @@ Item
                 height: UM.Theme.getSize("setting_control").height
                 unit: "mm"
                 text: UM.Controller.properties.getValue("Clearance")
-                validator: UM.FloatValidator { maxBeforeDecimal: 1; maxAfterDecimal: 2 }
+                validator: DoubleValidator { bottom: 0; top: 2; decimals: 2 }
                 onEditingFinished: UM.Controller.setProperty("Clearance", parseFloat(text))
             }
             UM.Label { text: "Wall" }
@@ -71,13 +71,13 @@ Item
                 height: UM.Theme.getSize("setting_control").height
                 unit: "mm"
                 text: UM.Controller.properties.getValue("WallHeight")
-                validator: UM.FloatValidator { maxBeforeDecimal: 2; maxAfterDecimal: 1 }
+                validator: DoubleValidator { bottom: 1; top: 20; decimals: 1 }
                 onEditingFinished: UM.Controller.setProperty("WallHeight", parseFloat(text))
             }
         }
 
         UM.Label { visible: hasBase; text: "Message on the deck" }
-        TextField
+        Cura.TextField
         {
             visible: hasBase
             Layout.fillWidth: true
