@@ -132,6 +132,11 @@ func demoShots(dir string, wide bool) {
 		Activity: "Heating bed  52/60°", Preparing: true, HasWipe: true, Tool: 24, Bed: 52, BedTarget: 60}
 	a.OpenPrintScreen("")
 	snap("print-preparing")
+	// The end macro: the bed cools to 45° before the print moves to the front.
+	p.State_ = printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true, File: "benchy.gcode",
+		Activity: "Cooling the bed  52°", Finishing: true, Layer: 27, Layers: 27, Completion: 100, Tool: 120, Bed: 52, BedTarget: 45, PrepN: 1}
+	p.State_.Prep[0] = printer.PrepStep{Kind: "cool-bed", Name: "Cool the bed", Now: true}
+	snap("print-finishing")
 	p.State_ = printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true, File: "benchy.gcode",
 		Activity: "Printing", Layer: 1, Layers: 27, Completion: 2, HasTimeLeft: true, TimeLeft: 100 * time.Minute,
 		ZOffset: 0.04, Tool: 210, ToolTarget: 210, Bed: 60, BedTarget: 60}

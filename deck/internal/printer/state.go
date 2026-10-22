@@ -83,8 +83,10 @@ type State struct {
 	// Preparing is true while the start of a print runs: heating, homing, probing, priming. HasWipe
 	// is true when the start wipes the nozzle.
 	Preparing, HasWipe bool
-	// Prep has the steps of the start macro, from the commands that run now (PrepN of them). It
-	// is a fixed array, so that State stays comparable.
+	// Finishing is true while the end of a print runs (PRINT_END), for example while the bed cools.
+	Finishing bool
+	// Prep has the steps of the start macro, or of the end macro, from the commands that run now
+	// (PrepN of them). It is a fixed array, so that State stays comparable.
 	Prep  [8]PrepStep
 	PrepN int
 
