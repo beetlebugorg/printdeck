@@ -172,16 +172,20 @@ type App struct {
 	// Settings of the control screens.
 	UnloadMM, LoadMM float64 // filament lengths of the swap
 
-	// Theme is "day", "night", or "auto": night from NightFrom to NightTo o'clock. The Theme row of the Machine page changes it,
+	// Theme is "day", "night", or "auto": night from NightFrom to NightTo o'clock. The Theme row of the Settings page changes it,
 	// and OnTheme is told, to save it.
 	Theme              string
 	NightFrom, NightTo int
 	OnTheme            func(string)
 	// Clock24 is true for a 24-hour clock, and false for a 12-hour clock. The Clock row of the
-	// Machine page changes it, and OnClock is told, to save it.
+	// Settings page changes it, and OnClock is told, to save it.
 	Clock24    bool
 	OnClock    func(bool)
 	JogInvertY bool // up on the joystick moves Y back instead of forward
+	// SwapHome is true when a filament change homes the printer while the nozzle heats. The
+	// Settings page changes it, and OnSwapHome is told, to save it.
+	SwapHome   bool
+	OnSwapHome func(bool)
 
 	joy   *joystick
 	zStep float64 // mm per tap of the Z buttons
@@ -262,7 +266,7 @@ var drawMu sync.Mutex
 
 func New() *App {
 	return &App{hub: newHub(), Now: time.Now, created: time.Now(), LCDFont: "5x8", wake: make(chan struct{}, 1), posted: make(chan func(), 16),
-		joy: &joystick{}, zStep: 1, UnloadMM: 80, LoadMM: 70, Theme: "auto", NightFrom: 20, NightTo: 7}
+		joy: &joystick{}, zStep: 1, UnloadMM: 80, LoadMM: 70, SwapHome: true, Theme: "auto", NightFrom: 20, NightTo: 7}
 }
 
 // Redraw asks for a new frame. It is safe to call from any goroutine.

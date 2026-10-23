@@ -63,9 +63,13 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		}
 		a.do(func() error { return pr.SetToolTemp(t) })
 	}
-	closeSwap := func() { a.swap = nil }
-	if sw.paused {
-		closeSwap = end
+	// Close before the swap heats the nozzle only closes. After it, Close is the same as Cancel.
+	closeSwap := func() {
+		if sw.paused || sw.temp > 0 {
+			end()
+			return
+		}
+		a.swap = nil
 	}
 	f := a.pageBack(c, []string{"Filament swap", "Load filament", "Unload filament"}[sw.mode], "Close", closeSwap)
 	// Tall: the step, its text and its keys under each other. Wide: the step and its text at the
@@ -141,7 +145,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 			}
 		}
 		sw.temp, sw.step = t, swapHeat
-		a.do(func() error { return pr.SetToolTemp(t) })
+		a.do(func() error { return a.swapHeat(sw, t) })
 	}
 	rolls := pr.SpoolStore()
 	if sw.step == swapChoose && sw.mode != swapUnloadOnly && rolls == nil {
@@ -192,8 +196,12 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 	case swapHeat:
 		step(2, "Heating the nozzle")
 		var temp, bar, cancel image.Rectangle
+		heatText := "The next step starts when the nozzle is hot."
+		if a.SwapHome && !sw.paused {
+			heatText = "The printer homes while the nozzle heats. The next step starts when the nozzle is hot."
+		}
 		if f.wide {
-			para("The next step starts when the nozzle is hot.")
+			para(heatText)
 			// The temperature and its bar under the text, Cancel at the bottom.
 			r := kit.Rows(keyArea, 12, kit.Fr(1), kit.Px(56), kit.Px(20), kit.Fr(1), kit.Px(actH))
 			temp, bar, cancel = r[1], kit.Inset(r[2], 16, 0, 16, 0), r[4]
@@ -203,7 +211,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 			txt.Skip(20)
 			bar = kit.Inset(txt.Next(20), 16, 0, 16, 0)
 			txt.Skip(30)
-			para("The next step starts when the nozzle is hot.")
+			para(heatText)
 			cancel = keys(size{80, 1})[0]
 		}
 		c.Text(temp, fmt.Sprintf("%.0f° / %d°", st.Tool, sw.temp), gfx.Face(true, 44), text, gfx.Center)
@@ -277,6 +285,18 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 	}
 }
 
+// swapHeat heats the nozzle to t for the swap. With SwapHome, the printer then homes while the
+// nozzle heats. A swap during a paused print does not home: the print goes on from its position.
+func (a *App) swapHeat(sw *swapState, t int) error {
+	if err := a.Printer.SetToolTemp(t); err != nil {
+		return err
+	}
+	if a.SwapHome && !sw.paused {
+		return a.Printer.Home()
+	}
+	return nil
+}
+
 // materialKeys draws the materials and Other temperature in k: a tap heats the nozzle for the
 // filament. A material that goes in has no roll.
 func (a *App) materialKeys(c *gfx.Canvas, sw *swapState, k []image.Rectangle) {
@@ -293,13 +313,13 @@ func (a *App) materialKeys(c *gfx.Canvas, sw *swapState, k []image.Rectangle) {
 					s.Put("") // a filament with no roll
 				}
 			}
-			a.do(func() error { return pr.SetToolTemp(t) })
+			a.do(func() error { return a.swapHeat(sw, t) })
 		})
 	}
 	a.button(c, k[1], "Other temperature", raised, text, func() {
 		a.editTemp("Nozzle for the new filament", 220, 300, toolPresets, func(t int) error {
 			a.post(func() { sw.temp, sw.step = t, swapHeat })
-			return pr.SetToolTemp(t)
+			return a.swapHeat(sw, t)
 		})
 	})
 }

@@ -180,7 +180,8 @@ func TestFilamentSwapSteps(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.swap = &swapState{}
 	tapLabel(t, a, cv, "PETG  240°")
-	if c := pr.wait(1); c[0] != "tool 240" || a.swap.step != swapHeat {
+	// The printer homes while the nozzle heats.
+	if c := pr.wait(2); len(c) != 2 || c[0] != "tool 240" || c[1] != "home []" || a.swap.step != swapHeat {
 		t.Fatalf("after PETG: %v, step %d", c, a.swap.step)
 	}
 	pr.State_.Tool = 239 // hot enough: the next draw goes on to unloading
@@ -191,8 +192,8 @@ func TestFilamentSwapSteps(t *testing.T) {
 	}
 	tapLabel(t, a, cv, "Unload")
 	tapLabel(t, a, cv, "Load")
-	c := pr.wait(3)
-	if len(c) != 3 || c[1] != "gcode M83; G1 E10 F300; G1 E-80 F1500; M82" || c[2] != "gcode M83; G1 E70 F600; G1 E20 F150; M82" {
+	c := pr.wait(4)
+	if len(c) != 4 || c[2] != "gcode M83; G1 E10 F300; G1 E-80 F1500; M82" || c[3] != "gcode M83; G1 E70 F600; G1 E20 F150; M82" {
 		t.Errorf("calls %q", c)
 	}
 	if a.swap.step != swapCheck {
@@ -281,6 +282,37 @@ func TestSwapDuringPauseKeepsPrintTemp(t *testing.T) {
 	}
 }
 
+// Close after the swap heated the nozzle turns the heater off.
+func TestSwapCloseCoolsNozzle(t *testing.T) {
+	a, pr, cv := newPrintApp(idle)
+	a.SwapHome = false
+	a.openSwap(swapChange)
+	tapLabel(t, a, cv, "PETG  240°")
+	pr.wait(1)
+	tapLabel(t, a, cv, "Close")
+	if c := pr.wait(2); len(c) != 2 || c[1] != "tool 0" {
+		t.Errorf("calls %v, want tool 240, tool 0", c)
+	}
+	if a.swap != nil {
+		t.Error("swap still open")
+	}
+}
+
+// A tap on a material of the Filament page asks before it changes the loaded material.
+func TestMaterialAsks(t *testing.T) {
+	a, _, cv := newPrintApp(idle)
+	a.pages = []page{pageFilament}
+	a.setMaterial("PLA")
+	tapLabel(t, a, cv, "PETG")
+	if a.Material != "PLA" || a.confirm == nil {
+		t.Fatalf("material %q, confirm %v", a.Material, a.confirm)
+	}
+	tapLabel(t, a, cv, "Set PETG")
+	if a.Material != "PETG" {
+		t.Errorf("material %q, want PETG", a.Material)
+	}
+}
+
 // The tune sheet counts from the speed of the printer.
 func TestTuneUsesPrinterSpeed(t *testing.T) {
 	st := paused
@@ -306,6 +338,7 @@ func TestHelpOnKlipperError(t *testing.T) {
 // A new roll from the filament change goes in the printer, and the nozzle heats for its material.
 func TestSwapNewRoll(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
+	a.SwapHome = false
 	pr.Spools_ = &printer.Spools{}
 	a.openSwap(swapChange)
 	tapLabel(t, a, cv, "New roll")
@@ -356,6 +389,7 @@ func TestNewRollCuraMaterial(t *testing.T) {
 // A saved roll from the filament change goes in the printer.
 func TestSwapSavedRoll(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
+	a.SwapHome = false
 	pr.Spools_ = &printer.Spools{}
 	sp := pr.Spools_.Add("Black", "PLA", 1200, 200, 0, time.Unix(1, 0))
 	pr.Spools_.Put("")
