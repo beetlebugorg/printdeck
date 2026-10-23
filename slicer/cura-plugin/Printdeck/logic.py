@@ -195,11 +195,13 @@ def color_from_name(name):
     return ""
 
 
-def roll_card(status, needed):
+def roll_card(status, needed, cura=None):
     """The texts of the roll card next to the slice button: a dict with the keys name, detail,
     color, fraction (the filament left on the roll, from 0 to 1), job (the line of the sliced
-    model, or "") and short (True when the roll has too little filament for the model). None when
-    the Printdeck has no roll and no material. needed is the grams of the sliced model, or 0."""
+    model, or ""), short (True when the roll has too little filament for the model) and warn (the
+    line when Cura has another material than the printer, or ""). None when the Printdeck has no
+    roll and no material. needed is the grams of the sliced model, or 0. cura is the material of
+    Cura: a dict with the keys base (the base file), name and material (PLA, PETG, ...), or None."""
     if not status:
         return None
     spool = status.get("spool")
@@ -208,12 +210,13 @@ def roll_card(status, needed):
         if not material:
             return None
         return {"name": material, "detail": "No roll on the Printdeck", "color": "", "fraction": 0.0,
-                "job": "", "short": False}
+                "job": "", "short": False, "warn": material_warning(cura, material, None)}
     left = float(spool.get("left") or 0)
     full = float(spool.get("full") or 0) or max(left, 1.0)
     card = {"name": spool_name(spool), "detail": "%s · %.1f g left" % (spool.get("material") or "?", left),
             "color": spool.get("color") or color_from_name(spool_name(spool)),
-            "fraction": max(0.0, min(1.0, left / full)), "job": "", "short": False}
+            "fraction": max(0.0, min(1.0, left / full)), "job": "", "short": False,
+            "warn": material_warning(cura, spool.get("material") or status.get("material") or "", spool)}
     if needed > 0:
         if needed > left:
             card["job"] = "This print: %.1f g. %.1f g short." % (needed, needed - left)
@@ -221,6 +224,23 @@ def roll_card(status, needed):
         else:
             card["job"] = "This print: %.1f g. %.1f g left after." % (needed, left - needed)
     return card
+
+
+def material_warning(cura, material, spool):
+    """The warning of the roll card when the material of Cura is not the filament in the printer,
+    or "". material is the material type in the printer, and spool the roll, or None. When the
+    roll has a material of Cura, the two materials must be the same. Otherwise the types must be
+    the same."""
+    if not cura:
+        return ""
+    name = cura.get("name") or cura.get("base") or "?"
+    if spool and spool.get("cura_material") and cura.get("base"):
+        if cura["base"] == spool["cura_material"]:
+            return ""
+        return "Cura uses %s. The printer has %s." % (name, spool_name(spool))
+    if material and cura.get("material") and cura["material"].strip().lower() != material.strip().lower():
+        return "Cura uses %s. The printer has %s." % (name, spool_name(spool) if spool else material)
+    return ""
 
 
 def roll_plan(spools, existing, made):

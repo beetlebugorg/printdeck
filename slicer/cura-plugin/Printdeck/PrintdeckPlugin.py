@@ -85,6 +85,10 @@ class RollCard(QObject):
     def short(self):
         return self._get("short", False)
 
+    @pyqtProperty(str, notify=changed)
+    def warn(self):
+        return self._get("warn", "")
+
 POLL_SECONDS = 10
 # The time between the answers while Play in the Preview follows the printer.
 FOLLOW_POLL_SECONDS = 1
@@ -136,6 +140,7 @@ class PrintdeckPlugin(Extension):
         # The favorite materials that the plugin added for the rolls, so that it removes only those.
         app.getPreferences().addPreference(ROLL_FAVORITES, "")
         app.getPrintInformation().materialWeightsChanged.connect(self._checkRoll)
+        app.getMachineManager().activeMaterialChanged.connect(self._checkRoll)
         app.getOutputDeviceManager().writeStarted.connect(self._tagMaterial)
         app.fileCompleted.connect(self._onFileCompleted)
         app.getController().activeStageChanged.connect(self._onStage)
@@ -731,8 +736,13 @@ class PrintdeckPlugin(Extension):
     def _checkRoll(self):
         weights = CuraApplication.getInstance().getPrintInformation().materialWeights
         needed = float(weights[0]) if weights else 0
-        stack, _ = self._extruder()
-        self._card.set(logic.roll_card(self._status, needed), stack.getName() if stack else "")
+        stack, extruder = self._extruder()
+        cura = None
+        if extruder:
+            m = extruder.material
+            cura = {"base": m.getMetaDataEntry("base_file") or "", "name": m.getName(),
+                    "material": m.getMetaDataEntry("material") or ""}
+        self._card.set(logic.roll_card(self._status, needed, cura), stack.getName() if stack else "")
         if not self._status or not self._status["spool"]:
             return
         text = logic.short_roll(needed, self._status["spool"])

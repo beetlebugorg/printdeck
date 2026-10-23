@@ -35,7 +35,7 @@ Rectangle
     radius: UM.Theme.getSize("default_radius").width
     color: UM.Theme.getColor("main_background")
     border.width: UM.Theme.getSize("default_lining").width
-    border.color: roll && roll.short ? UM.Theme.getColor("error") : UM.Theme.getColor("lining")
+    border.color: roll && (roll.short || roll.warn != "") ? UM.Theme.getColor("error") : UM.Theme.getColor("lining")
 
     Column
     {
@@ -110,6 +110,17 @@ Rectangle
                 radius: parent.radius
                 color: roll && roll.short ? UM.Theme.getColor("error") : UM.Theme.getColor("progressbar_control")
             }
+        }
+
+        // Cura has another material than the printer.
+        UM.Label
+        {
+            visible: text != ""
+            width: parent.width
+            text: roll ? roll.warn : ""
+            font: UM.Theme.getFont("default_bold")
+            wrapMode: Text.WordWrap
+            color: UM.Theme.getColor("error")
         }
 
         UM.Label
