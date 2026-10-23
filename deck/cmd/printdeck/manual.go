@@ -494,6 +494,16 @@ func manualParts() []section {
 						{"Nozzle change", "Heats the nozzle to 250° and raises the head, to change the nozzle."},
 						{"Firmware", "Writes the Klipper firmware of this Printdeck to the board of the printer. Orange text shows old firmware. See below."},
 						{"Save config", "Writes the results of the calibrations into printer.cfg. Klipper restarts. Orange text shows unsaved results."},
+					},
+					Tall: []callout{
+						{"Pressure advance test", "Prints a square tower, 30 mm high, with thin walls. The pressure advance goes up with the height: 0.005 for each mm. Measure the height where the corners are sharpest."},
+						{"Pressure advance", "Type the height of the sharpest corners. The deck sets the pressure advance from it, and writes it in printer.cfg."},
+					}},
+				{Name: "maintenance-more", Caption: "The Maintenance page, further down", Layout: "wide",
+					Setup: func(s *manualState) { page("maintenance")(s); s.a.DemoScroll(9999) },
+					Callouts: []callout{
+						{"Pressure advance test", "Prints a square tower, 30 mm high, with thin walls. The pressure advance goes up with the height: 0.005 for each mm. Look at the corners: low on the tower they bulge, high on the tower they are rounded. Measure the height where they are sharpest."},
+						{"Pressure advance", "Type the height of the sharpest corners. The deck sets the pressure advance from it, and writes it in printer.cfg."},
 					}},
 				{Name: "flash", Caption: "The firmware flash", Setup: page("flash"),
 					Notes: []string{"The deck stops Klipper, resets the board into its bootloader, writes the firmware, and reads it back to check it. Then Klipper starts again. The setup screen and the Klipper error screen also show this key when the board has no Klipper firmware or old firmware. Printdeck can flash boards with an atmega2560 and an STK500v2 bootloader now, for example the RAMBo and RAMPS boards."},
@@ -780,8 +790,9 @@ func manualSections() []section {
 				"Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.",
 				"Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.",
 				"Tap Save config to write the results. Klipper restarts.",
+				"Tap Pressure advance test to print the tower. Then tap Pressure advance, and type the height of its sharpest corners.",
 			},
-			Figures: fig("maintenance", "action", "paper")},
+			Figures: fig("maintenance", "maintenance-more", "action", "paper")},
 
 		{Chapter: care, ID: "machine", Title: "Look after the printer",
 			Intro:   []string{"Machine has the information of the printer, the history of the prints, the macros, the console and the settings."},

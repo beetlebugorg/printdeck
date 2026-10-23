@@ -146,6 +146,15 @@ type Machine struct {
 	Macros         []string // the macros that a person can run (no name with "_" first)
 	// FilamentDiameter is filament_diameter of the extruder in printer.cfg, in mm; 0 is not known.
 	FilamentDiameter float64
+	// From printer.cfg, 0 when it is not known: the nozzle_diameter of the extruder, the
+	// position_min and position_max of the X and Y steppers, the pressure_advance of the
+	// extruder, and the max_accel and square_corner_velocity of the printer.
+	NozzleDiameter       float64
+	MinX, MaxX           float64
+	MinY, MaxY           float64
+	PressureAdvance      float64
+	MaxAccel             float64
+	SquareCornerVelocity float64
 }
 
 // Has reports that the printer has a module.

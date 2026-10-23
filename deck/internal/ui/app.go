@@ -109,6 +109,10 @@ type Printer interface {
 
 	// RunAction runs a maintenance action and waits for its end. State shows it while it runs.
 	RunAction(name string, lines ...string) error
+	// PrintPATower prints the pressure advance tower (printer.PATower).
+	PrintPATower(tool, bed int, material string) error
+	// SetPressureAdvance sets the pressure advance now and in printer.cfg.
+	SetPressureAdvance(v float64) error
 
 	// The setup of a new printer: the boards on the USB ports, and a restart of the Klipper service.
 	Boards() (boards []board.Info, probing bool)

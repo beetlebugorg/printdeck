@@ -80,6 +80,7 @@ type Klippy struct {
 	// From the connection to Klipper: its version, and the names of its objects (objects/list).
 	version  string
 	diameter float64 // filament_diameter of the extruder, in mm
+	settings Machine // the settings of printer.cfg in Machine (machineSettings)
 	timer    timer   // the timings of the running print
 	objects  []string
 	lastPos  int64     // the file position of the last busy state, for the history
@@ -275,11 +276,12 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 	})
 	version, objects, macros := klipperObjects(ctx, conn)
 	l, mm, ok, diameter := motionLimits(ctx, conn)
+	settings := machineSettings(ctx, conn)
 	if ok {
 		k.View.SetLimits(l, mm)
 	}
 	k.mu.Lock()
-	k.diameter = diameter
+	k.diameter, k.settings = diameter, settings
 	k.macros = macros
 	k.conn, k.err, k.startup = conn, "", false
 	k.version, k.objects = version, objects
@@ -358,7 +360,8 @@ func (k *Klippy) useSpool(key string, mm float64) {
 func (k *Klippy) Machine() Machine {
 	k.mu.Lock()
 	defer k.mu.Unlock()
-	m := Machine{KlipperVersion: k.version, FilamentDiameter: k.diameter}
+	m := k.settings
+	m.KlipperVersion, m.FilamentDiameter = k.version, k.diameter
 	if k.conn == nil {
 		return m
 	}
@@ -472,6 +475,35 @@ func motionLimits(ctx context.Context, conn *klippy.Conn) (l toolhead.Limits, mm
 		mm = &s
 	}
 	return l, mm, l.MaxVelocity > 0 && l.MaxAccel > 0, num(ex["filament_diameter"])
+}
+
+// machineSettings reads the settings of printer.cfg that Machine has: the nozzle, the travel of X
+// and Y, the pressure advance, and the acceleration (configfile settings, with the defaults of
+// Klipper).
+func machineSettings(ctx context.Context, conn *klippy.Conn) Machine {
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	res, err := conn.Call(cctx, "objects/query", map[string]any{"objects": map[string]any{"configfile": []string{"settings"}}})
+	if err != nil {
+		return Machine{}
+	}
+	var q struct {
+		Status struct {
+			Configfile struct {
+				Settings map[string]map[string]any `json:"settings"`
+			} `json:"configfile"`
+		} `json:"status"`
+	}
+	json.Unmarshal(res, &q)
+	s := q.Status.Configfile.Settings
+	return Machine{
+		NozzleDiameter: num(s["extruder"]["nozzle_diameter"]),
+		MinX:           num(s["stepper_x"]["position_min"]), MaxX: num(s["stepper_x"]["position_max"]),
+		MinY: num(s["stepper_y"]["position_min"]), MaxY: num(s["stepper_y"]["position_max"]),
+		PressureAdvance:      num(s["extruder"]["pressure_advance"]),
+		MaxAccel:             num(s["printer"]["max_accel"]),
+		SquareCornerVelocity: num(s["printer"]["square_corner_velocity"]),
+	}
 }
 
 func info(ctx context.Context, conn *klippy.Conn) (state, msg string, err error) {
