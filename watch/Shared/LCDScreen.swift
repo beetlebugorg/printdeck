@@ -7,18 +7,26 @@ import Foundation
 /// The pixels of the display. The screens draw in an area with a margin of 2 pixels at the sides
 /// and 1 pixel at the top and the bottom.
 struct LCDCanvas {
-    static let panelW = 128, panelH = 64
     static let marginX = 2, marginY = 1
-    static let w = panelW - 2 * marginX
-    static let h = panelH - 2 * marginY
+    /// The pixels of the panel: 128 x 64 as the printer, or the portrait display of the watch.
+    let panelW: Int, panelH: Int
+    /// The area of the screens.
+    var w: Int { panelW - 2 * Self.marginX }
+    var h: Int { panelH - 2 * Self.marginY }
 
-    private(set) var bits = [Bool](repeating: false, count: panelW * panelH)
+    private(set) var bits: [Bool]
 
-    func lit(panelX x: Int, y: Int) -> Bool { bits[y * Self.panelW + x] }
+    init(width: Int = 128, height: Int = 64) {
+        panelW = width
+        panelH = height
+        bits = [Bool](repeating: false, count: width * height)
+    }
+
+    func lit(panelX x: Int, y: Int) -> Bool { bits[y * panelW + x] }
 
     mutating func set(_ x: Int, _ y: Int, _ on: Bool = true) {
-        guard x >= 0, x < Self.w, y >= 0, y < Self.h else { return }
-        bits[(y + Self.marginY) * Self.panelW + x + Self.marginX] = on
+        guard x >= 0, x < w, y >= 0, y < h else { return }
+        bits[(y + Self.marginY) * panelW + x + Self.marginX] = on
     }
 
     /// Sets a rectangle; x1 and y1 are not part of it.
@@ -95,6 +103,8 @@ struct LCDStatus: Equatable {
     var clock = ""
     var message = ""
     var tool = 0.0, toolT = 0.0, bed = 0.0, bedT = 0.0
+    /// The power of the heaters now, 0 to 1.
+    var toolPow = 0.0, bedPow = 0.0
     /// 0 to 1, or nil when the deck does not say it.
     var fan: Double?
     var progress = 0.0
@@ -104,23 +114,71 @@ struct LCDStatus: Equatable {
     var done = ""
     var hint = ""
 
-    /// A part moves: the heat waves, the fan, or the hint that takes the place of the state.
-    var moves: Bool { animates || !hint.isEmpty }
+    /// A part moves: the heat waves, the fan, or a line that changes every 3 seconds.
+    var moves: Bool { animates || !hint.isEmpty || printing }
 
     /// The icons move: 4 frames a second.
-    var animates: Bool { heating(tool, toolT) || heating(bed, bedT) || (fan ?? 0) > 0 }
+    var animates: Bool { heating(tool, toolT, toolPow) || heating(bed, bedT, bedPow) || (fan ?? 0) > 0 }
 
-    private func heating(_ temp: Double, _ target: Double) -> Bool { target > 0 && temp < target - 2 }
+    /// A heater heats while it has power, or while it is more than 2 degrees under its target.
+    private func heating(_ temp: Double, _ target: Double, _ power: Double) -> Bool {
+        power > 0 || target > 0 && temp < target - 2
+    }
+
+    /// The status screen of the watch, on a portrait display about 64 dots wide: the nozzle and the
+    /// bed in rows with the temperatures in the large font, then the progress. The parts are the
+    /// parts of the status screen of the deck.
+    func drawPortrait(_ c: inout LCDCanvas, frame: Int) {
+        let W = c.w, small = LCDFont.small, big = LCDFont.big
+        // The layout is 70 pixels high, in the middle of a taller display.
+        let oy = max(0, (c.h - 70) / 2)
+        func heater(_ y: Int, temp: Double, target: Double, icon: (inout LCDCanvas, Int, Int) -> Void) {
+            let y = y + oy
+            icon(&c, 0, y)
+            let t = deg(temp)
+            c.text(big, max(19, W - 8 * t.count), y, t)
+            if target > 0 {
+                let v = deg(target)
+                let x = max(19, W - small.w * v.count - 8)
+                let m = y + 21
+                c.line(x, m, x + 5, m); c.line(x + 3, m - 2, x + 5, m); c.line(x + 3, m + 2, x + 5, m)
+                c.text(small, x + 8, y + 17, v)
+            }
+        }
+        heater(0, temp: tool, target: toolT) { c, x, y in
+            hotend(&c, x, y, on: toolT > 0, heats: heating(tool, toolT, toolPow), frame: frame)
+        }
+        heater(26, temp: bed, target: bedT) { c, x, y in
+            bedIcon(&c, x, y, on: bedT > 0, heats: heating(bed, bedT, bedPow), frame: frame)
+        }
+        for x in stride(from: 0, to: W, by: 2) { c.set(x, oy + 52) }
+        let line1 = oy + 54, line2 = oy + 62
+        let alt = frame / 12 % 2 == 1
+        if printing {
+            let pct = String(format: "%.0f%%", progress * 100)
+            c.roundBar(0, line1 + 1, W - small.w * pct.count - 3, line1 + 7, progress)
+            c.text(small, W - small.w * pct.count, line1, pct)
+            let l = !left.isEmpty && (!alt || done.isEmpty) ? left + " left" : (!done.isEmpty ? "done " + done : elapsed)
+            c.text(small, max(0, (W - small.w * l.count) / 2), line2, lcdFit(l, W / small.w))
+            return
+        }
+        let n = W / small.w
+        let m = lcdFit(message.isEmpty ? state : message, n)
+        c.text(small, max(0, (W - small.w * m.count) / 2), line1, m)
+        let st = lcdFit(alt && !hint.isEmpty ? hint : (message.isEmpty ? "" : state), n - clock.count - 1)
+        c.text(small, 0, line2, st)
+        c.text(small, W - small.w * clock.count, line2, clock)
+    }
 
     func draw(_ c: inout LCDCanvas, frame: Int) {
-        let W = LCDCanvas.w
+        let W = c.w
         let small = LCDFont.small, big = LCDFont.big
         let colTool = W / 2 - 42, colBed = W / 2, colFan = W / 2 + 42
         let top = toolT <= 0 && bedT <= 0 ? 4 : 0
         func bigText(_ cx: Int, _ t: String) { c.text(big, max(0, min(cx - 4 * t.count, W - 8 * t.count)), top + 16, t) }
 
-        hotend(&c, colTool - 8, top, on: toolT > 0, heats: heating(tool, toolT), frame: frame)
-        bedIcon(&c, colBed - 8, top, on: bedT > 0, heats: heating(bed, bedT), frame: frame)
+        hotend(&c, colTool - 8, top, on: toolT > 0, heats: heating(tool, toolT, toolPow), frame: frame)
+        bedIcon(&c, colBed - 8, top, on: bedT > 0, heats: heating(bed, bedT, bedPow), frame: frame)
         fanIcon(&c, colFan - 8, top, speed: fan ?? 0, frame: frame)
         bigText(colTool, deg(tool))
         bigText(colBed, deg(bed))
@@ -238,10 +296,10 @@ struct LCDMenu: Equatable {
 
     func draw(_ c: inout LCDCanvas) {
         guard !items.isEmpty else { return }
-        let W = LCDCanvas.w, H = LCDCanvas.h, f = LCDFont.small
+        let W = c.w, H = c.h, f = LCDFont.small
         let sel = max(0, min(selected, items.count - 1))
-        c.text(f, 0, 0, lcdFit(title, 19))
         let pos = "\(sel + 1)/\(items.count)"
+        c.text(f, 0, 0, lcdFit(title, min(19, (W - f.w * pos.count) / f.w - 1)))
         c.text(f, W - f.w * pos.count, 0, pos)
         c.line(0, 9, W - 1, 9)
         var y = 11
@@ -290,18 +348,21 @@ enum LCDScreen: Equatable {
     var moves: Bool { if case let .status(s) = self { s.moves } else { false } }
     var animates: Bool { if case let .status(s) = self { s.animates } else { false } }
 
-    func canvas(frame: Int) -> LCDCanvas {
-        var c = LCDCanvas()
+    /// A frame of the screen on a display of width x height pixels: 128 x 64 as the printer, or a
+    /// narrow display, where the status screen has its portrait layout.
+    func canvas(frame: Int, width: Int = 128, height: Int = 64) -> LCDCanvas {
+        var c = LCDCanvas(width: width, height: height)
         switch self {
-        case .status(let s): s.draw(&c, frame: frame)
+        case .status(let s):
+            if width < 112 { s.drawPortrait(&c, frame: frame) } else { s.draw(&c, frame: frame) }
         case .menu(let m): m.draw(&c)
         case .rows(let rows):
-            let f = LCDFont.small, n = LCDCanvas.w / f.w
-            for (i, r) in rows.prefix(LCDCanvas.h / 9).enumerated() {
+            let f = LCDFont.small, n = c.w / f.w
+            for (i, r) in rows.prefix(c.h / 9).enumerated() {
                 let right = lcdFit(r.1, n)
                 let left = lcdFit(r.0, max(0, n - right.count - (right.isEmpty ? 0 : 1)))
                 c.text(f, 0, i * 9, left)
-                c.text(f, LCDCanvas.w - f.w * right.count, i * 9, right)
+                c.text(f, c.w - f.w * right.count, i * 9, right)
             }
         }
         return c

@@ -152,26 +152,31 @@ struct LCDView: View {
     @Environment(\.self) private var env
     @State private var cache = LCDImageCache()
     let screen: LCDScreen
+    /// The pixels of the display: 128 x 64 as the printer, or a portrait display on the watch.
+    var dotsW = 128, dotsH = 64
+    /// The pixels of a dot, or nil for the largest that fits.
+    var dotPixels: Int? = nil
 
-    private static let dotsW = LCDCanvas.panelW, dotsH = LCDCanvas.panelH
+    /// The space of the frame of the display at each side, in points.
+    static let bezel: CGFloat = 4
 
     var body: some View {
         GeometryReader { g in
             // Whole pixels for each dot, as large as the width allows.
-            let px = max(2, Int((min(g.size.width / CGFloat(Self.dotsW), g.size.height / CGFloat(Self.dotsH)) * displayScale)
+            let px = dotPixels ?? max(2, Int((min(g.size.width / CGFloat(dotsW), g.size.height / CGFloat(dotsH)) * displayScale)
                 .rounded(.down)))
             TimelineView(schedule) { t in
                 // The frame number wraps: Int has 32 bits on the watch, and the quarter seconds
                 // since 2001 do not fit. The screens use it modulo 24.
                 let frame = Int((t.date.timeIntervalSinceReferenceDate * 4).truncatingRemainder(dividingBy: 2_400_000))
-                let img = cache.image(screen.canvas(frame: frame), dotPixels: px, colors: colors)
+                let img = cache.image(screen.canvas(frame: frame, width: dotsW, height: dotsH), dotPixels: px, colors: colors)
                 Image(decorative: img, scale: displayScale)
                     .interpolation(.none)
                     .frame(width: g.size.width, height: g.size.height)
             }
         }
-        .aspectRatio(CGFloat(Self.dotsW) / CGFloat(Self.dotsH), contentMode: .fit)
-        .padding(3)
+        .aspectRatio(CGFloat(dotsW) / CGFloat(dotsH), contentMode: .fit)
+        .padding(Self.bezel - 1)
         .background(RoundedRectangle(cornerRadius: 5).fill(p.glcd))
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(p.edge, lineWidth: 1.5))
     }
@@ -199,10 +204,10 @@ final class LCDImageCache {
     /// gap, a dot that is off, and a dot that is on.
     func image(_ c: LCDCanvas, dotPixels px: Int, colors: [UInt32]) -> CGImage {
         if let k = key, let last, k.px == px, k.colors == colors, k.bits == c.bits { return last }
-        let w = LCDCanvas.panelW * px, h = LCDCanvas.panelH * px
+        let w = c.panelW * px, h = c.panelH * px
         var buf = [UInt32](repeating: colors[0], count: w * h)
-        for y in 0..<LCDCanvas.panelH {
-            for x in 0..<LCDCanvas.panelW {
+        for y in 0..<c.panelH {
+            for x in 0..<c.panelW {
                 let col = c.lit(panelX: x, y: y) ? colors[2] : colors[1]
                 for dy in 0..<(px - 1) {
                     let row = (y * px + dy) * w + x * px

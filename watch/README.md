@@ -8,11 +8,11 @@ deck over the local network.
   Cancel and Menu, the layer, the roll (color, a meter of what is left, the name and the grams),
   and the file with the progress and a playhead. A paused print has Resume. With no print, Print a
   file opens the files of the deck, newest first. Menu opens the setup.
-- The watch app is the display of the printer: the 128 x 64 status screen of the deck, with the
-  nozzle, the bed and the fan, the progress bar, the end time and the time left. A tap opens the
-  menu of the display: Pause or Resume, Cancel and Print info. The Digital Crown moves the
-  selection, as the knob of the printer, and OK or a tap selects. The keys under the display are
-  Cancel and Pause or Resume during a print. Each action asks first.
+- The watch app is the display of the printer: the status screen of the deck in a portrait layout
+  that fills the watch, with the nozzle and the bed, the progress bar, and the time left and the
+  end time. A tap opens the menu of the display: Pause or Resume, Cancel and Info. The Digital
+  Crown moves the selection, as the knob of the printer, and a tap selects. Each action asks
+  first.
 - The complication shows the progress and the time left on the watch face. It has a circular, a
   corner, an inline and a rectangular style.
 - The deck sends push messages to the iPhone: print done, print failed, paused, first layer done,
@@ -23,7 +23,9 @@ The apps read the deck every 5 seconds while they are open. The complication ask
 refresh every 15 minutes during a print, and watchOS chooses when it runs. Between two reads, its
 progress goes up in a straight line to the end time, and the time left counts down.
 
-The API has no fan speed, so the fan of the status screen shows "--". The deck shows its 3D model
+A deck with the `lcd` field in `/api/plugin/printdeck` gives the status screen as its touch screen
+draws it, with the fan and the message. With an older deck, the apps make the screen from the
+other fields, and the fan shows "--". The deck shows its 3D model
 under the print; the API has no model, so the iPhone shows the file and the playhead there.
 
 ## Folders

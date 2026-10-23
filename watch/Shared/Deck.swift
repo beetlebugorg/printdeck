@@ -36,6 +36,28 @@ struct Roll: Codable, Equatable {
     var color: String?
 }
 
+/// The status screen of the printer display, from the deck (lcd.Status in deck/internal/lcd).
+struct DeckLCD: Codable, Equatable {
+    var state: String?
+    var clock: String?
+    var message: String?
+    var tool: Double?
+    var tool_target: Double?
+    var bed: Double?
+    var bed_target: Double?
+    var tool_power: Double?
+    var bed_power: Double?
+    var fan: Double?
+    var progress: Double?
+    var printing: Bool?
+    var elapsed: String?
+    var left: String?
+    var done: String?
+    var cooling: Bool?
+    var cool_to: Double?
+    var position: String?
+}
+
 /// The state of the deck at one time.
 struct Status: Codable, Equatable {
     /// The state text of /api/job: "Printing", "Paused", "Operational", "Offline" and so on.
@@ -55,6 +77,8 @@ struct Status: Codable, Equatable {
     var tool: Temp?
     var bed: Temp?
     var roll: Roll?
+    /// The status screen of the printer display as the deck draws it, or nil from an older deck.
+    var lcd: DeckLCD?
     /// When the app read the status.
     var time: Date
 
@@ -228,6 +252,7 @@ struct DeckClient {
             st.tool = t["tool0"].map { Temp(actual: $0.actual, target: $0.target) }
             st.bed = t["bed"].map { Temp(actual: $0.actual, target: $0.target) }
         }
+        st.lcd = p.lcd
         if let s = p.spool {
             st.roll = Roll(name: s.name, material: s.material, left: s.left, full: s.full,
                            color: s.color?.isEmpty == false ? s.color : nil)
@@ -342,4 +367,5 @@ private struct PluginReply: Decodable {
     }
     var spool: Spool?
     var job: Job?
+    var lcd: DeckLCD?
 }

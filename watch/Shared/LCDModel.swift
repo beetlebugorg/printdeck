@@ -31,6 +31,23 @@ enum LCDModel {
             s.message = error.map(short) ?? ""
             return s
         }
+        if let l = st.lcd {
+            // The screen of the deck: the same fields as its touch screen.
+            s.state = l.state ?? ""
+            s.clock = l.clock ?? s.clock
+            s.message = l.message ?? ""
+            s.tool = l.tool ?? 0; s.toolT = l.tool_target ?? 0
+            s.bed = l.bed ?? 0; s.bedT = l.bed_target ?? 0
+            s.toolPow = l.tool_power ?? 0; s.bedPow = l.bed_power ?? 0
+            s.fan = l.fan ?? 0
+            s.progress = l.progress ?? 0
+            s.printing = l.printing ?? false
+            s.elapsed = l.elapsed ?? ""
+            s.left = l.left ?? ""
+            s.done = l.done ?? ""
+            if let e = error { s.message = short(e) }
+            return s
+        }
         s.tool = st.tool?.actual ?? 0
         s.toolT = st.tool?.target ?? 0
         s.bed = st.bed?.actual ?? 0
