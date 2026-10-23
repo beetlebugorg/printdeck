@@ -114,6 +114,13 @@ func desktopApp(args []string) {
 	if k, ok := pr.(*printer.Klippy); ok && *sim {
 		registerSim(mux, k, tokenOK) // for the 3D window of the simulated printer
 	}
+	// The pages of the rolls (the label sheet, and the page of a roll that its QR code opens): with
+	// the simulator, open to a browser on this computer, so that you can try them.
+	if *sim {
+		open := remote.New()
+		open.NoLogin = true
+		registerRollPages(mux, open, pr, app)
+	}
 	mux.Handle("/", rs.Handler())
 	srv := &http.Server{Handler: remote.SecurityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
