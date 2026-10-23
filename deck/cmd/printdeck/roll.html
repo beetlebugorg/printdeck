@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Load roll {{.Number}}</title>
+<style>
+  :root { color-scheme: light dark; --bg: #d3d0c8; --plate: #e6e3dc; --edge: #a9a59c; --ink: #171717;
+    --dim: #4a4742; --orange: #ff5a1f; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121211; --plate: #1c1c1a; --edge: #060606; --ink: #eee9df; --dim: #c2bcb0; --orange: #ff7a3a; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--ink);
+    font: 16px ui-monospace, "IBM Plex Mono", Menlo, monospace; }
+  main { max-width: 420px; margin: 0 auto; background: var(--plate); border: 1px solid var(--edge);
+    border-radius: 6px; padding: 24px 20px; text-align: center; }
+  .tag { font-size: 13px; letter-spacing: .08em; color: var(--dim); }
+  .dot { width: 96px; height: 96px; border-radius: 50%; margin: 18px auto; border: 3px solid var(--edge); }
+  h1 { font-size: 26px; margin: 0 0 8px; overflow-wrap: anywhere; }
+  .line { color: var(--dim); }
+  .msg { margin-top: 18px; line-height: 1.4; }
+  .bad { color: var(--orange); font-weight: 600; }
+  button { width: 100%; margin-top: 22px; font: inherit; font-size: 20px; font-weight: 700; padding: 16px;
+    border: 0; border-radius: 6px; background: var(--orange); color: #121212; cursor: pointer; }
+  button:disabled { opacity: .4; cursor: default; }
+  a { color: var(--dim); }
+  .links { margin-top: 18px; font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="tag">ROLL {{.Number}}{{if .In}} · IN THE PRINTER{{end}}</div>
+  <div class="dot" style="background: {{if .Color}}{{.Color}}{{else}}transparent{{end}}"></div>
+  <h1>Load the {{.Name}}?</h1>
+  <div class="line">{{.Line}}</div>
+  {{if .Message}}
+    <div class="msg{{if .Failed}} bad{{end}}">{{.Message}}</div>
+  {{else if .Busy}}
+    <div class="msg bad">The printer prints now. Load the roll after the print.</div>
+  {{else}}
+    <form method="post" action="/roll/{{.ID}}/load"><button type="submit">Load</button></form>
+    <div class="msg line">The deck opens the filament change, and heats the nozzle for this roll.</div>
+  {{end}}
+  <div class="links"><a href="/">Screen</a> · <a href="/rolls/labels">Labels</a></div>
+</main>
+</body>
+</html>

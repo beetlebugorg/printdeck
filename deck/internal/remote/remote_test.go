@@ -233,3 +233,12 @@ func TestAPIKeyOpensOnlyTheScreenData(t *testing.T) {
 		t.Errorf("the page with the key: %d, want the login", code)
 	}
 }
+
+func TestLocalPath(t *testing.T) {
+	for in, want := range map[string]string{"/roll/3": "/roll/3", "": "/", "//evil.example": "/",
+		"https://evil.example": "/", "/\\evil": "/", "/system": "/system"} {
+		if got := localPath(in); got != want {
+			t.Errorf("localPath(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

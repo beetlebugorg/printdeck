@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -37,8 +38,14 @@ func (s *Server) auth(h http.HandlerFunc) http.HandlerFunc {
 			h(w, r)
 			return
 		}
-		if r.Method == http.MethodGet && (r.URL.Path == "/" || r.URL.Path == "/system") {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+		if r.Method == http.MethodGet && (r.URL.Path == "/" || r.URL.Path == "/system" || strings.HasPrefix(r.URL.Path, "/roll")) {
+			// After the login, the browser comes back to the page, for example the page of a roll from
+			// the QR code of its label.
+			to := "/login"
+			if r.URL.Path != "/" {
+				to += "?next=" + url.QueryEscape(r.URL.RequestURI())
+			}
+			http.Redirect(w, r, to, http.StatusSeeOther)
 			return
 		}
 		http.Error(w, "log in first", http.StatusUnauthorized)
@@ -79,7 +86,16 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	s.mu.Unlock()
 	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: token, Path: "/", MaxAge: int(sessionAge.Seconds()),
 		HttpOnly: true, SameSite: http.SameSiteStrictMode})
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, localPath(r.FormValue("next")), http.StatusSeeOther)
+}
+
+// localPath is next when it is a path of this server, and else "/": a login never sends the
+// browser to another site.
+func localPath(next string) string {
+	if !strings.HasPrefix(next, "/") || strings.HasPrefix(next, "//") || strings.ContainsAny(next, "\\\r\n") {
+		return "/"
+	}
+	return next
 }
 
 // logout ends the session.

@@ -39,6 +39,7 @@
   <div class="name">PRINTDECK</div>
   <label for="password">Password</label>
   <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
+  <input id="next" name="next" type="hidden">
   <button type="submit" id="go">Log in</button>
   <div class="wrong" id="wrong" role="alert">The password is not correct.</div>
   <div class="hint">The touch screen shows the password: Print &gt; Control &gt; Help.</div>
@@ -53,6 +54,10 @@
   const wrong = document.getElementById("wrong"), pw = document.getElementById("password");
   function say(text) { wrong.textContent = text; wrong.style.display = text ? "block" : "none"; }
   if (location.search.includes("wrong")) say("The password is not correct.");
+  // The page to go back to after the login, for example the page of a roll; only a path of the deck.
+  let next = new URLSearchParams(location.search).get("next") || "/";
+  if (!next.startsWith("/") || next.startsWith("//")) next = "/";
+  document.getElementById("next").value = next;
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     say("");
@@ -61,14 +66,14 @@
     const stop = new AbortController();
     const timer = setTimeout(() => stop.abort(), 15000);
     try {
-      const r = await fetch("/login", { method: "POST", body: new URLSearchParams({ password: pw.value }),
+      const r = await fetch("/login", { method: "POST", body: new URLSearchParams({ password: pw.value, next }),
         signal: stop.signal });
       if (new URL(r.url).pathname === "/login") {
         say("The password is not correct.");
         pw.select();
       } else {
-        go.textContent = "Opening the screen";
-        location.href = "/";
+        go.textContent = next === "/" ? "Opening the screen" : "Opening the page";
+        location.href = next;
         return;
       }
     } catch (err) {

@@ -394,7 +394,7 @@ func TestSwapSavedRoll(t *testing.T) {
 	sp := pr.Spools_.Add("Black", "PLA", 1200, 200, 0, time.Unix(1, 0))
 	pr.Spools_.Put("")
 	a.openSwap(swapChange)
-	tapRegion(t, a, cv, "Black")
+	tapRegion(t, a, cv, "#1 Black")
 	if in, ok := pr.Spools_.In(); !ok || in.ID != sp.ID {
 		t.Errorf("roll in the printer %+v %v", in, ok)
 	}
