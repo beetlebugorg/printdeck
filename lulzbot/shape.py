@@ -398,8 +398,11 @@ GRILLE_NOTCH = (10.0, 1.6)       # the fingernail notch: width, depth
 # up to 10 mm high (the model has this height), with 4.1 mm of air under the fan.
 # The fan snaps in: four prongs stand up from the grille along the sides of the fan, one on each
 # side, near a corner, where the fan frame is solid. Each prong has a catch at its tip that clicks under the
-# far face of the fan frame, with a 45 degree lead-in. The grille prints back down, so each
-# prong stands on the bed: the catch top is level, and the lead-in is the only overhang.
+# far face of the fan frame. The lead-in of the catch is 30 degrees from the way the fan goes in,
+# so the fan pushes the prongs out gently; the base of each prong has a relief for the elephant
+# foot of the first layers, and the walls have a chamfer at the mouth of the pocket. The grille
+# prints back down, so each prong stands on the bed: the catch top is level, and the lead-in is the
+# only overhang (60 degrees above the bed).
 # The prong bends outward by the catch depth: the strain is 1.5 x thickness x depth / length^2,
 # 1.0 % in PLA. A 45 degree funnel above the fan holds it against the catches.
 # Screw bosses do not fit here: a 16 mm screw through 2 mm of the fan frame needs 14 mm of boss
@@ -411,10 +414,17 @@ FAN_CLR = 0.2                    # clearance between the fan and the walls of th
 FAN_PLAY = 0.2                   # the fan can move this far between the catches and the funnel
 HEATSINK_H = 10.0                # the highest heatsink in the model
 PRONG = (8.0, 1.0, 0.8)          # prong width, thickness, catch depth
+PRONG_LEAD = 30.0                # the lead-in of the catch, in degrees from the way the fan goes in
+PRONG_RELIEF = 0.4               # the relief at the base of each prong, on the face to the fan
+POCKET_CHAMFER = 0.5             # the chamfer of the walls at the mouth of the pocket
 PRONG_AT = 9.5                   # the prong centre, from the middle of its side
 PRONG_GAP = 1.0                  # the space behind each prong (it bends into it)
 BUMP_WALL = 1.5                  # the wall of the bump behind the prongs
 BUMP_TOP = 41.0                  # the outer face of the bump (15 mm out of the pod face)
 BUMP_R = 5.0                     # radius of the outer corners of the bump
 BUMP_SLOTS = (3.2, 5.6)          # vent slots in the bump: width, pitch
-FAN_GROOVE = (6.0, 2.2, 27.5)    # the groove for the fan cable in a corner: length, depth, top
+# The groove for the fan cable, in the wall near a corner. The mounting holes of a 30 mm fan are 3 mm
+# in from its corners, so the cable leaves the frame beside a corner hole, 4 to 12 mm from the
+# corner. The groove is wide enough for the usual fans: length, depth, top.
+FAN_GROOVE = (10.0, 2.2, 27.5)
+FAN_GROOVE_IN = 2.5              # the groove starts this far from the corner

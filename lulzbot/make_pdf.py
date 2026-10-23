@@ -211,10 +211,11 @@ STEPS = [
         "Hold the grille with its back toward you. Four prongs stand up around the opening of the bump.",
         "Turn the fan so that it blows away from the grille, onto the Pi. Most fans show the direction of the air with "
         "an arrow on the frame.",
-        "Turn the fan so that its cable comes out at the corner with the groove. With the grille on the pod, this "
-        "corner is at the top, toward the front of the printer.",
-        "Push the fan into the bump, between the four prongs, until the four catches click over the frame. Put the "
-        "cable into the groove.",
+        "Turn the fan so that its cable comes out next to the groove. The groove is in the side of the bump, near "
+        "a corner. With the grille on the pod, it is at the top, toward the front of the printer. If the cable "
+        "leaves the frame on the other side of that corner, turn the fan by 90 degrees.",
+        "Push the fan into the bump, square to the opening, between the four prongs, until the four catches click "
+        "over the frame. Put the cable into the groove.",
     ], "The catches hold the fan against the funnel in the bump, with 0.2 mm of play. To remove the fan, push the "
        "catches of two prongs out with a small screwdriver, and pull the fan out."),
     ("step_grille", "Grille", ["grille with the fan (step 11)"], {}, [
