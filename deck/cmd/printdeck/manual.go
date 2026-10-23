@@ -533,11 +533,20 @@ func manualParts() []section {
 						{"Settings", "The theme, the clock, and the homing in a filament change. See below."},
 						{"Wi-Fi and help", "The network, the password and the addresses."},
 					}},
-				{Name: "settings", Caption: "The Settings page", Setup: page("settings"),
+				{Name: "settings", Caption: "The Settings page",
+					Setup: func(s *manualState) {
+						page("settings")(s)
+						// The Screen row shows on the Printdeck OS, which restarts the deck.
+						s.a.Rotate, s.a.OnRotate = 90, func(int) {}
+						if s.a.Wide {
+							s.a.Rotate = 180
+						}
+					},
 					Callouts: []callout{
 						{"Theme", "The colors of the screen: day, night, or auto (night from 20:00 to 7:00). Tap it to change them."},
 						{"Clock", "The clock of the screens and the display of the printer: 12 hours (2:24 PM) or 24 hours (14:24). Tap it to change it."},
 						{"Home in a filament change", "On: the printer homes all axes while the nozzle heats for a filament change. A change during a paused print does not home. Tap it to turn it on or off."},
+						{"Screen", "The turn of the screen: 0° or 180° for a display that is mounted wide, 90° or 270° for a display that is mounted tall. A tap asks to turn it a quarter turn more, then the deck restarts in the new turn. The touch turns with the screen. A print goes on during the restart. This setting wins over display_rotate in printdeck.txt."},
 					}},
 				{Name: "console", Caption: "The console",
 					Setup: func(s *manualState) {

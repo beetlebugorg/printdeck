@@ -30,6 +30,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -124,6 +125,14 @@ func run(cfg config.Config) {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	// The turn of the screen from the Settings page wins over display_rotate of printdeck.txt.
+	rotateFile := filepath.Join(cfg.StateDir, "rotate")
+	if b, err := os.ReadFile(rotateFile); err == nil {
+		if r, err := strconv.Atoi(strings.TrimSpace(string(b))); err == nil && r%90 == 0 && r >= 0 && r < 360 {
+			cfg.Rotate = r
+		}
+	}
+
 	screen := openDisplay(cfg)
 	defer screen.Close()
 
@@ -176,6 +185,16 @@ func run(cfg config.Config) {
 	// for updates.
 	host := newSetupHost(cfg.StateDir)
 	if host != nil {
+		// The Screen row of the Settings page: the deck saves the turn and ends; systemd starts it
+		// again in the new turn. Only the Printdeck OS restarts the deck.
+		app.Rotate = cfg.Rotate
+		app.OnRotate = func(r int) {
+			if err := os.WriteFile(rotateFile, []byte(fmt.Sprintf("%d\n", r)), 0o644); err != nil {
+				app.Toast("The turn was not saved: " + err.Error())
+				return
+			}
+			stop()
+		}
 		up := newUpdater(cfg.StateDir, func() bool { return pr.State().Busy() }, app.Redraw)
 		app.Updater = up
 		go up.run(ctx)
