@@ -29,6 +29,9 @@ func TestPrintdeckAPI(t *testing.T) {
 	if m["material"] != "PLA" || m["diameter"] != 2.85 || sp["name"] != "Galaxy Black" || sp["left"] != 1000.0 {
 		t.Errorf("roll: %v", m)
 	}
+	if list, _ := m["spools"].([]any); len(list) != 1 || list[0].(map[string]any)["name"] != "Galaxy Black" {
+		t.Errorf("rolls: %v", m["spools"])
+	}
 	if job["file"] != "benchy.gcode" || job["layer"] != 12.0 || job["progress"] != 0.42 || job["left"] != 4980.0 {
 		t.Errorf("job: %v", job)
 	}
