@@ -48,6 +48,7 @@ class PrintdeckStage(CuraStage):
         self._screen = deckscreen.WIDE  # the size of the deck UI
         self._area = (0, 0)  # the size of the area of the tab for the UI
         self._folder = tempfile.mkdtemp(prefix="printdeck-")  # the images and the fonts of the UI
+        self._images = ""  # the folder of the images of the stream that sends the frames
         self._retry = QTimer()
         self._retry.setSingleShot(True)
         self._retry.timeout.connect(self._update)
@@ -108,6 +109,11 @@ class PrintdeckStage(CuraStage):
     def _onSession(self, stream, w, h):
         if stream is self._stream:
             self._screen = (w, h)
+            # The frames of the new session use the images of its stream. The images of the old
+            # stream are of no use.
+            if self._images and self._images != stream.img_folder:
+                shutil.rmtree(self._images, ignore_errors=True)
+            self._images = stream.img_folder
             self.screenChanged.emit()
 
     def _onFrame(self, stream, text):
@@ -164,10 +170,10 @@ class PrintdeckStage(CuraStage):
         """The drawing commands of the newest frame, as JSON."""
         return self._frame
 
-    @pyqtProperty(str, constant=True)
+    @pyqtProperty(str, notify=screenChanged)
     def imageBase(self):
-        """The folder of the images of the deck UI, as a URL with a "/" at the end."""
-        return QUrl.fromLocalFile(os.path.join(self._folder, "img")).toString() + "/"
+        """The folder of the images of the stream, as a URL with a "/" at the end."""
+        return QUrl.fromLocalFile(self._images or os.path.join(self._folder, "img")).toString() + "/"
 
     @pyqtProperty(str, constant=True)
     def fontBase(self):

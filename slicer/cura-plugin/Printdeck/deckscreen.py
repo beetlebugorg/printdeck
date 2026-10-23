@@ -6,6 +6,7 @@
 
 import http.client
 import ipaddress
+import itertools
 import json
 import os
 import queue
@@ -134,6 +135,10 @@ class SSEParser:
         return None
 
 
+# The number of the next stream, for the folder of its images.
+_streams = itertools.count(1)
+
+
 class Refused(Exception):
     """The deck refused the stream: an old deck with no API key on /ui/, or a wrong key."""
 
@@ -157,6 +162,9 @@ class DeckStream:
         self._key = key
         self._size = size
         self.folder = folder
+        # The images of each stream have their own folder. After a restart, the deck numbers its
+        # images from 1 again, so an image of an older stream can have the number of another image.
+        self.img_folder = os.path.join(folder, "img", str(next(_streams)))
         self._on_session, self._on_frame, self._on_end = on_session, on_frame, on_end
         self._session = ""
         self._stopped = threading.Event()
@@ -168,7 +176,7 @@ class DeckStream:
     # The folders of the images and the fonts.
 
     def image_path(self, n):
-        return os.path.join(self.folder, "img", "%d.png" % n)
+        return os.path.join(self.img_folder, "%d.png" % n)
 
     def font_path(self, name):
         return os.path.join(self.folder, name)

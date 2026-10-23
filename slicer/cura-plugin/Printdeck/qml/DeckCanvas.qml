@@ -30,24 +30,47 @@ Canvas
     // printer display) loads first, so the rectangle shows the old image until then, with no
     // flicker.
     property var shown: ({})
+    // The images that the canvas loaded, and the images of the frame that it paints now. After the
+    // frame, the canvas unloads the images that no rectangle shows.
+    property var loaded: ({})
+    property var used: ({})
 
     // The URL of the image of a command, or of the last image of its rectangle while it loads, or "".
+    // An image of another folder of images (an older stream) does not show.
     function image(op) {
         var key = op.slice(1, 5).join(",")
         var url = deck.imageBase + op[5] + ".png"
         if (isImageLoaded(url)) {
-            if (shown[key] && shown[key] != url) unloadImage(shown[key])
             shown[key] = url
+            used[url] = true
             return url
         }
         if (!isImageLoading(url)) loadImage(url)
-        return shown[key] || ""
+        loaded[url] = true
+        var old = shown[key]
+        if (!old || old.indexOf(deck.imageBase) != 0) return ""
+        used[old] = true
+        return old
+    }
+
+    // unloadUnused unloads the loaded images that the frame did not use.
+    function unloadUnused() {
+        for (var url in loaded) {
+            if (!used[url] && isImageLoaded(url)) {
+                unloadImage(url)
+                delete loaded[url]
+            }
+        }
+        for (var key in shown) {
+            if (!used[shown[key]]) delete shown[key]
+        }
     }
 
     onPaint:
     {
         var ctx = getContext("2d")
         ctx.reset()
+        used = {}
         if (!deck || deck.frame == "") return
         var frame = JSON.parse(deck.frame)
         var k = width / sw
@@ -58,6 +81,7 @@ Canvas
             // A command that fails does not stop the others: the rest of the frame still shows.
             try { drawOp(ctx, frame[i], face) } catch (e) { console.warn("DeckCanvas: " + frame[i][0] + ": " + e) }
         }
+        unloadUnused()
     }
 
     // drawOp draws one drawing command of a frame.
