@@ -160,11 +160,11 @@
   {
    "count": 4,
    "item": "M3 × 8 socket cap head",
-   "where": "2 × pod onto the plate; 2 × rail clip into its hammer nut"
+   "where": "2 × pod onto the plate; 2 × rail clip into its T-nut"
   },
   {
    "count": 2,
-   "item": "M3 hammer nut (drop-in T-nut) for 2020 extrusion, 6 mm slot",
+   "item": "M3 roll-in T-nut with spring ball, for 2020 extrusion, 6 mm slot",
    "where": "2 × rail clips"
   },
   {
@@ -335,16 +335,16 @@
    "title": "Clips in the rail",
    "need": [
     "2 × rail clip",
-    "2 × M3 hammer nut",
+    "2 × M3 roll-in T-nut",
     "2 × M3 × 8"
    ],
    "items": [
-    "Put an M3 × 8 screw through the counterbore in the key of each clip, and turn it two turns into a hammer nut. The sloped side of the nut points away from the clip.",
     "Hold the back panel on the front face of the front left rail, with its bottom edge 125 mm above the bottom of the chassis. Mark the top of the two long slots in the panel on the rail.",
-    "Turn a clip a quarter turn, so that the nut is along the slot. Push the nut into the front slot of the rail at a mark. Turn the clip back until the key is along the rail: the nut turns with it, behind the lips.",
+    "At each mark, put one edge of a T-nut into the front slot of the rail, with the thread toward you. Roll the nut in until it is behind the lips. The spring ball holds it in the slot.",
+    "Put a clip on the rail at a mark, with its key along the rail. Put an M3 × 8 screw through the counterbore in the key, and turn it into the nut.",
     "Tighten the screw until the clip is tight on the rail. Do the same with the second clip."
    ],
-   "note": "The hammer nut is wider than the opening of the slot when it is across the slot. If the nut does not turn with the clip, push it in with a small screwdriver beside the clip and turn it a quarter turn."
+   "note": "You can roll the nut into the slot at any point on the rail. You do not remove the ends of the rail. If the nut moves away from the mark, push it back with a small screwdriver."
   },
   {
    "image": "step_hang",
