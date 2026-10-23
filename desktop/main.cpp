@@ -89,10 +89,28 @@ int main(int argc, char *argv[])
     QObject::connect(&app, &QCoreApplication::aboutToQuit, &deck, &Deck::stop);
 
     // PRINTDECK_SHOT=FILE.png writes a picture of the windows after PRINTDECK_SHOT_SECONDS (8), and
-    // ends the app.
+    // ends the app. With PRINTDECK_SHOT_FRAMES=N (and -sim), it first writes N pictures of the 3D
+    // window, 10 a second, to FILE with "-3d-NNNN" before .png.
     // It is for the pictures of the manual and for tests.
     QString shot = qEnvironmentVariable("PRINTDECK_SHOT");
-    if (!shot.isEmpty()) {
+    int frames = qEnvironmentVariableIntValue("PRINTDECK_SHOT_FRAMES");
+    QTimer frameTimer;
+    int frame = 0;
+    if (!shot.isEmpty() && frames > 0) {
+        int seconds = qEnvironmentVariableIntValue("PRINTDECK_SHOT_SECONDS");
+        frameTimer.setInterval(100);
+        QObject::connect(&frameTimer, &QTimer::timeout, &app, [&] {
+            const auto roots = engine.rootObjects();
+            if (auto *win = roots.size() > 1 ? qobject_cast<QQuickWindow *>(roots[1]) : nullptr) {
+                QString name = shot;
+                name.replace(QStringLiteral(".png"), QStringLiteral("-3d-%1.png").arg(frame, 4, 10, QLatin1Char('0')));
+                win->grabWindow().save(name);
+            }
+            if (++frame >= frames)
+                QCoreApplication::quit();
+        });
+        QTimer::singleShot((seconds > 0 ? seconds : 8) * 1000, &frameTimer, qOverload<>(&QTimer::start));
+    } else if (!shot.isEmpty()) {
         int seconds = qEnvironmentVariableIntValue("PRINTDECK_SHOT_SECONDS");
         QTimer::singleShot((seconds > 0 ? seconds : 8) * 1000, &app, [&engine, shot] {
             // The deck window to FILE, the 3D window (with -sim) to FILE with "-3d" before .png.
