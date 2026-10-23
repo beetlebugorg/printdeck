@@ -121,6 +121,7 @@ func curaGuides() []bookGuide {
 		"The print button says Print to Printdeck. After a send, Cura opens the Printdeck tab.",
 		"The Printdeck tab shows the touch screen of the deck, live. You click it as you tap the touch screen.",
 		"When the roll in the deck changes, Cura changes to the material of the roll.",
+		"Each roll on the deck has a material in Cura, at the top of the material menu.",
 		"After a slice, Cura warns you when the roll is too short for the model.",
 		"During a print, the Preview of Cura shows the layer that prints.",
 		"The Print on a part tool prints new models on a part that is printed already.")
@@ -197,6 +198,14 @@ func curaGuides() []bookGuide {
 	roll.para("When the roll in the deck changes, Cura changes to the material of the roll. A message tells you, for " +
 		"example: \"The Printdeck has Black (PLA). Cura now prints with Generic PLA.\" When Cura has no profile for " +
 		"that material on this printer, the message tells you, and Cura keeps its material.")
+	roll.sub("Your rolls in the material menu")
+	roll.para("Each roll on the deck has a material in Cura, with the name and the color of the roll. The rolls are " +
+		"favorites, so they are at the top of the material menu. When a roll has no material in Cura, the plugin " +
+		"makes one: a copy of the Cura material of the same type, for example Generic PLA. The plugin makes one " +
+		"material every 10 seconds. When you change the name or the color of a roll on the deck, its material " +
+		"changes too. The price and the weight of the roll go to the material, so Cura shows the cost of a print.")
+	roll.para("When you remove a roll from the deck, its material leaves the favorites. The material stays in Cura, " +
+		"so that old projects still open. A material that you choose in Cura does not change the roll on the deck.")
 	roll.sub("A short roll")
 	roll.para("After a slice, Cura compares the grams of the model with the grams left on the roll. When the roll is " +
 		"too short, a message stays until you close it: \"The model needs 120 g of filament. Black has 80 g left.\"")
