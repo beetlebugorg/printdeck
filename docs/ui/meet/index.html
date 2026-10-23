@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meet your Printdeck · Printdeck</title>
+<meta name="description" content="The screens of the Printdeck for Meet your Printdeck, on a display that is mounted tall.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The hardware</a>
+<a href="../../hardware/slate/">The Slate case</a>
+<a href="../../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/meet/" aria-current="page">Tall</a><a href="../../ui/wide/meet/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/" aria-current="page">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/">Commands</a>
+<a href="../../reference/environment/">Environment variables</a>
+<a href="../../reference/files/">Files, paths and services</a>
+<a href="../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">Manual, tall display</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">The deck UI · tall</p>
+<h1>Meet your Printdeck</h1>
+
+<div class="layout-switch"><span>Layout:</span><a href="" aria-current="page">Tall</a><a href="../../ui/wide/meet/">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#deck">The deck</a></li><li><a href="#lcd">The display of the printer</a></li><li><a href="#web">The deck in a browser</a></li></ol></nav><div class="manual"><section id="deck">
+  <h2 class="title"><span class="num">04</span>The deck</h2>
+  <p>Printdeck is a touch screen for a 3D printer that runs Klipper. It shows the print, and it controls the printer.</p><p>When the printer does not print, the deck shows the idle screen. The largest key is the action that you need most: Print a file.</p><p>The keys are the keys of a machine. A key with an LED has two states, and its LED is lit while it is on: the page that is open, the material in the printer, Preheat. A key with no LED does an action: an orange ring shows that it took the tap.</p><p>The deck shows the display of the printer at the top of each screen. The keys of the pages are at the bottom of the idle screen. Each page has its title and Back at the top, and its actions at the bottom.</p>
+  
+  
+  <figure>
+    <h3>The idle screen</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/home.png" alt="The idle screen" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="-25" y1="83" x2="48" y2="83" class="leader"/>
+        <circle cx="48" cy="83" r="5" class="dot"/>
+        <circle cx="-40" cy="83" r="15" class="badge"/>
+        <text x="-40" y="83" class="badge-n">1</text>
+        
+        <line x1="505" y1="83" x2="306" y2="83" class="leader"/>
+        <circle cx="306" cy="83" r="5" class="dot"/>
+        <circle cx="520" cy="83" r="15" class="badge"/>
+        <text x="520" y="83" class="badge-n">2</text>
+        
+        <line x1="505" y1="117" x2="432" y2="83" class="leader"/>
+        <circle cx="432" cy="83" r="5" class="dot"/>
+        <circle cx="520" cy="117" r="15" class="badge"/>
+        <text x="520" y="117" class="badge-n">3</text>
+        
+        <line x1="505" y1="179" x2="432" y2="179" class="leader"/>
+        <circle cx="432" cy="179" r="5" class="dot"/>
+        <circle cx="520" cy="179" r="15" class="badge"/>
+        <text x="520" y="179" class="badge-n">4</text>
+        
+        <line x1="505" y1="282" x2="440" y2="282" class="leader"/>
+        <circle cx="440" cy="282" r="5" class="dot"/>
+        <circle cx="520" cy="282" r="15" class="badge"/>
+        <text x="520" y="282" class="badge-n">5</text>
+        
+        <line x1="-25" y1="376" x2="40" y2="376" class="leader"/>
+        <circle cx="40" cy="376" r="5" class="dot"/>
+        <circle cx="-40" cy="376" r="15" class="badge"/>
+        <text x="-40" y="376" class="badge-n">6</text>
+        
+        <line x1="505" y1="376" x2="440" y2="376" class="leader"/>
+        <circle cx="440" cy="376" r="5" class="dot"/>
+        <circle cx="520" cy="376" r="15" class="badge"/>
+        <text x="520" y="376" class="badge-n">7</text>
+        
+        <line x1="505" y1="467" x2="440" y2="467" class="leader"/>
+        <circle cx="440" cy="467" r="5" class="dot"/>
+        <circle cx="520" cy="467" r="15" class="badge"/>
+        <text x="520" y="467" class="badge-n">8</text>
+        
+        <line x1="505" y1="654" x2="440" y2="654" class="leader"/>
+        <circle cx="440" cy="654" r="5" class="dot"/>
+        <circle cx="520" cy="654" r="15" class="badge"/>
+        <text x="520" y="654" class="badge-n">9</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Nozzle</b>The nozzle now, and its target under it while the heater is on. The icon is filled while the heater is on, and waves rise while it heats. Tap it to set the temperature.</span></li><li><span class="badge">2</span><span><b>Bed</b>The same for the bed.</span></li><li><span class="badge">3</span><span><b>Fan</b>The part cooling fan. Its blades turn at its speed.</span></li><li><span class="badge">4</span><span><b>Status</b>The position of the head, the state of the printer with the loaded filament, and the clock. This is the status screen of the display of the printer: the same picture on both screens.</span></li><li><span class="badge">5</span><span><b>Print a file</b>Opens the files. See Files.</span></li><li><span class="badge">6</span><span><b>Preheat</b>Heats the nozzle and the bed for the loaded filament. Its LED is lit while the heaters hold those temperatures: tap it again to turn them off.</span></li><li><span class="badge">7</span><span><b>Cool down</b>Turns off both heaters.</span></li><li><span class="badge">8</span><span><b>Last print</b>The last print and its result. Reprint starts it again, after a question.</span></li><li><span class="badge">9</span><span><b>Pages</b>Filament, Move, Maintenance and Machine. Each page has its own section.</span></li>
+    </ol>
+    
+  </figure>
+  
+  
+  
+</section>
+<section id="lcd">
+  <h2 class="title"><span class="num">05</span>The display of the printer</h2>
+  <p>When the printer has a display, the deck draws it. The display shows the status screen, the same picture as the idle screen of the deck.</p><p>Turn or click the knob to open the menu. The menu has the same pages and keys as the touch screen: the knob moves the cursor, and a click taps the key. The touch screen shows the cursor with an orange ring. The top item goes back: Status on the home menu, Back on a page. A long click also goes back. With no turn for 20 seconds, the display shows the status screen again.</p><p>While an action runs, the display shows an animation.</p>
+  
+  
+  
+  <div class="glcd-row"><div><img class="lcd-shot" src="../../manual/img/lcd-status.png" alt="The status screen"><div class="glcd-cap">The status screen</div></div><div><img class="lcd-shot" src="../../manual/img/lcd-printing.png" alt="During a print"><div class="glcd-cap">During a print</div></div><div><img class="lcd-shot" src="../../manual/img/lcd-home.png" alt="The home menu: turn the knob to choose"><div class="glcd-cap">The home menu: turn the knob to choose</div></div><div><img class="lcd-shot" src="../../manual/img/lcd-list.png" alt="A page: Maintenance"><div class="glcd-cap">A page: Maintenance</div></div><div><img class="lcd-shot" src="../../manual/img/lcd-action.png" alt="An action runs"><div class="glcd-cap">An action runs</div></div></div>
+  
+  
+</section>
+<section id="web">
+  <h2 class="title"><span class="num">06</span>The deck in a browser</h2>
+  <p>Open http://printdeck.local in a browser on the same network, and log in with the password of the deck. The browser shows the same screens as the touch screen, sharp at the pixel density of the phone. Each browser has its own screens, so a phone can show the files while the deck shows the print.</p><p>On a phone, use Add to Home Screen: the deck then opens as an app, with no browser bars.</p><p>The page http://printdeck.local/system shows the version, the services, the logs and the API key for slicers. It also installs an update: choose the update file, then Install. The deck writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one.</p>
+  
+  
+  
+  
+</section></div>
+<p>From the <a href="../../manual/">manual for a tall display</a>. The deck draws every picture.</p>
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

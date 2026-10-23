@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Files, paths and services · Printdeck</title>
+<meta name="description" content="The config partition, the files of the deck, and the services of the image.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The hardware</a>
+<a href="../../hardware/slate/">The Slate case</a>
+<a href="../../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/setup/" aria-current="page">Tall</a><a href="../../ui/wide/setup/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/">Commands</a>
+<a href="../../reference/environment/">Environment variables</a>
+<a href="../../reference/files/" aria-current="page">Files, paths and services</a>
+<a href="../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">Manual, tall display</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Reference</p>
+<h1>Files, paths and services</h1>
+<p class="lede">The config partition, the files of the deck, and the services of the image.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#partition">The PRINTDECK partition</a></li><li><a href="#paths">Paths on the deck</a></li><li><a href="#services">Services</a></li><li><a href="#desktop">The desktop app</a></li></ol></nav>
+<h2 id="partition">The PRINTDECK partition</h2>
+<p>The first partition of the disk is FAT, with the label <code>PRINTDECK</code>. Any computer can open it. See <a href="../../os/#how-it-works">How it works</a> for the other partitions.</p>
+<div class="table-wrap"><table><tr><th>File</th><th>What it is</th></tr><tr><td><code>printdeck.txt</code></td><td>The settings that you can change before the first start, and the settings of the touch screen. The file below.</td></tr><tr><td><code>autoboot.txt</code></td><td>The A/B switch of the Pi firmware. printdeck-update and printdeck-commit change it.</td></tr><tr><td><code>printer.cfg</code></td><td>A Klipper configuration that you put there. The next start copies it to Klipper and renames it to printer.cfg.imported.</td></tr><tr><td><code>printdeck-boot.log</code></td><td>The kernel log, when printdeck-init cannot continue.</td></tr></table></div>
+<h3>printdeck.txt</h3>
+<pre><code># Printdeck settings
+#
+# Edit this file on any computer before the first boot, or set the Wi-Fi on the touch screen.
+# The Pi reads this file at each boot. Then it clears wifi_password.
+
+# The Wi-Fi network. wifi_country is the two-letter country code.
+wifi_ssid=
+wifi_password=
+wifi_country=US
+
+# The web pages (http://printdeck.local) have a random password. The touch screen shows it
+# (Print &gt; Control &gt; Help). The debug image also has the user &quot;printdeck&quot; with this password for
+# SSH. A public SSH key here lets you log in to the debug image with the key, on one line.
+ssh_key=
+
+hostname=printdeck
+timezone=America/New_York
+
+# The settings of the touch screen. An empty value keeps the setting of the image.
+# display_rotate: 90 or 270 for a display that is mounted tall, 0 or 180 for a display that is
+#   mounted wide (the deck then uses its wide layout).
+# touch_invert_x, touch_invert_y, touch_swap_xy: 1 to turn the touch axes.
+# preheat_tool, preheat_bed: the temperatures of the Preheat button.
+# night_from, night_to: the hours of the night colors.
+display_rotate=
+touch_invert_x=
+touch_invert_y=
+touch_swap_xy=
+preheat_tool=
+preheat_bed=
+night_from=
+night_to=
+</code></pre>
+<h2 id="paths">Paths on the deck</h2>
+<div class="table-wrap"><table><tr><th>Path</th><th>What it is</th></tr><tr><td><code>/etc/printdeck/deck.env</code></td><td>The settings of the deck, in the image. See the environment variables.</td></tr><tr><td><code>/var/lib/printdeck/</code></td><td>The state folder of the deck (STATE_DIRECTORY). Only the deck can read it.</td></tr><tr><td><code>/var/lib/printdeck/password</code></td><td>The password of the web pages, from printdeck-credentials at the first start.</td></tr><tr><td><code>/var/lib/printdeck/api.env</code></td><td>The API key for slicers (OCTOPRINT_API_KEY), from printdeck-credentials.</td></tr><tr><td><code>/var/lib/printdeck/settings.env</code></td><td>The settings from printdeck.txt, from printdeck-settings at each start.</td></tr><tr><td><code>/var/lib/printdeck/apikeys.json</code></td><td>The keys that the App Keys flow gave to slicers.</td></tr><tr><td><code>/var/lib/printdeck/spools.json</code></td><td>The rolls of filament.</td></tr><tr><td><code>/var/lib/printdeck/history.json</code></td><td>The history of the prints.</td></tr><tr><td><code>/var/lib/printdeck/theme, clock, material</code></td><td>The theme (day, night, auto), the clock (12 or 24) and the loaded material.</td></tr><tr><td><code>/var/lib/printdeck/update-channel</code></td><td>The update channel: beta, or stable.</td></tr><tr><td><code>/var/lib/printdeck/models/</code></td><td>STL files for the model view (MODEL_DIR). An STL with the name of the G-code file gives a shaded model.</td></tr><tr><td><code>/var/lib/klipper/config/printer.cfg</code></td><td>The Klipper configuration (KLIPPER_CONFIG).</td></tr><tr><td><code>/var/lib/klipper/gcodes/</code></td><td>The G-code files: the uploads of the slicers, the folder of [virtual_sdcard] (GCODE_DIR).</td></tr><tr><td><code>/var/lib/klipper/logs/klippy.log</code></td><td>The log of the Klipper host.</td></tr><tr><td><code>/run/klipper/klippy.sock</code></td><td>The API socket of the Klipper host (KLIPPY_SOCKET).</td></tr><tr><td><code>/usr/share/printdeck/klipper/printdeck.cfg</code></td><td>The Klipper sections that Printdeck needs. printer.cfg includes it as its last line.</td></tr><tr><td><code>/usr/share/printdeck/firmware/</code></td><td>The Klipper firmware files for the boards, and their version.</td></tr><tr><td><code>/var/log/journal/</code></td><td>The journal, on the data partition.</td></tr><tr><td><code>/data/</code></td><td>The data partition, with the writable layer over /etc, /var, /home and /root.</td></tr></table></div>
+<h3>printdeck.cfg</h3>
+<pre><code># The Klipper sections that Printdeck needs. Include this file at the END of printer.cfg:
+#
+#   [include /usr/share/printdeck/klipper/printdeck.cfg]
+#
+# Klipper uses the last value of a setting, so the end makes these settings win over the same
+# sections in printer.cfg, for example a [virtual_sdcard] path of another setup.
+#
+# Printdeck saves the uploads of the slicers in this folder, and starts them with
+# SDCARD_PRINT_FILE.
+[virtual_sdcard]
+path: /var/lib/klipper/gcodes
+
+# Pause, resume and cancel (PAUSE, RESUME, CANCEL_PRINT) for the touch screen and the slicers.
+[pause_resume]
+
+# The progress and the M117 message of the print.
+[display_status]
+
+# The deck draws the display of the printer, and reads its knob. With no [display] in printer.cfg,
+# this section has no effect.
+[printdeck_display]
+
+# A pause with a message for the user, for a part in a pocket or an insert (PRINTDECK_PAUSE), with a
+# height check on the part. The Printdeck plugin for Cura writes it in the G-code.
+[printdeck_pause]
+</code></pre>
+<h2 id="services">Services</h2>
+<p>The units of the image, in <code>os/board/rootfs/usr/lib/systemd/system/</code>:</p>
+<div class="table-wrap"><table><tr><th>Unit</th><th>Description</th></tr><tr><td><code>klipper.service</code></td><td>Klipper 3D printer host (the Go port in the Printdeck program)</td></tr><tr><td><code>printdeck-commit.service</code></td><td>Make the new slot the default after an update</td></tr><tr><td><code>printdeck-credentials.service</code></td><td>Make the Printdeck login at the first start</td></tr><tr><td><code>printdeck-deck.service</code></td><td>Printdeck touch screen</td></tr><tr><td><code>printdeck-helper.service</code></td><td>Printdeck system helper: the actions of the deck that need root</td></tr><tr><td><code>printdeck-helper.socket</code></td><td>The socket of the Printdeck system helper</td></tr><tr><td><code>printdeck-settings.service</code></td><td>Apply the settings in printdeck.txt</td></tr></table></div>
+<p>The deck serves the web pages on port 80. The address on the network is <code>printdeck.local</code> (mDNS), or the hostname of <code>printdeck.txt</code>.</p>
+<h2 id="desktop">The desktop app</h2>
+<p>The app keeps its files in the configuration folder of the user, in <code>Printdeck</code>, or <code>Printdeck Sim</code> with <code>-sim</code>. On Linux that is <code>~/.config/Printdeck</code>. The <code>-dir</code> flag sets another folder. The web server is on <code>127.0.0.1:7351</code>. See <a href="../../desktop/#app">printdeck app</a>.</p>
+
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>When something goes wrong · Printdeck</title>
+<meta name="description" content="The screens of the Printdeck for When something goes wrong, on a display that is mounted tall.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The hardware</a>
+<a href="../../hardware/slate/">The Slate case</a>
+<a href="../../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/problems/" aria-current="page">Tall</a><a href="../../ui/wide/problems/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/" aria-current="page">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/">Commands</a>
+<a href="../../reference/environment/">Environment variables</a>
+<a href="../../reference/files/">Files, paths and services</a>
+<a href="../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">Manual, tall display</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">The deck UI · tall</p>
+<h1>When something goes wrong</h1>
+
+<div class="layout-switch"><span>Layout:</span><a href="" aria-current="page">Tall</a><a href="../../ui/wide/problems/">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#problems">When something goes wrong</a></li><li><a href="#settings">Settings</a></li></ol></nav><div class="manual"><section id="problems">
+  <h2 class="title"><span class="num">16</span>When something goes wrong</h2>
+  <p>When Klipper stops with an error, the deck shows all the lines of its message.</p>
+  <ol class="steps"><li>Read the message. It often names the setting in printer.cfg.</li><li>After a stop or a power cut of the printer, tap Firmware restart.</li><li>After a change to printer.cfg, tap Restart Klipper.</li></ol>
+  
+  <figure>
+    <h3>A Klipper error</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/error.png" alt="A Klipper error" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="-25" y1="165" x2="16" y2="165" class="leader"/>
+        <circle cx="16" cy="165" r="5" class="dot"/>
+        <circle cx="-40" cy="165" r="15" class="badge"/>
+        <text x="-40" y="165" class="badge-n">1</text>
+        
+        <line x1="505" y1="592" x2="456" y2="592" class="leader"/>
+        <circle cx="456" cy="592" r="5" class="dot"/>
+        <circle cx="520" cy="592" r="15" class="badge"/>
+        <text x="520" y="592" class="badge-n">2</text>
+        
+        <line x1="-25" y1="680" x2="24" y2="680" class="leader"/>
+        <circle cx="24" cy="680" r="5" class="dot"/>
+        <circle cx="-40" cy="680" r="15" class="badge"/>
+        <text x="-40" y="680" class="badge-n">3</text>
+        
+        <line x1="505" y1="680" x2="456" y2="680" class="leader"/>
+        <circle cx="456" cy="680" r="5" class="dot"/>
+        <circle cx="520" cy="680" r="15" class="badge"/>
+        <text x="520" y="680" class="badge-n">4</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Message</b>What Klipper reports, with all its lines.</span></li><li><span class="badge">2</span><span><b>Restart Klipper</b>Restarts Klipper. It reads printer.cfg again.</span></li><li><span class="badge">3</span><span><b>Wi-Fi and help</b>The network, the address and the password of the deck.</span></li><li><span class="badge">4</span><span><b>Software update</b>Installs a new version of Printdeck OS. A new version can fix the problem.</span></li>
+    </ol>
+    
+  </figure>
+  
+  
+  
+</section>
+<section id="settings">
+  <h2 class="title"><span class="num">17</span>Settings</h2>
+  <p>The file printdeck.txt on the PRINTDECK partition holds the settings. Put the disk in a computer to change it. The deck reads it at each start, then clears the Wi-Fi password in it.</p>
+  
+  
+  
+  <table><tr><td>wifi_ssid, wifi_password, wifi_country</td><td>The Wi-Fi network</td></tr><tr><td>hostname, timezone</td><td>The name on the network, and the time zone</td></tr><tr><td>display_rotate</td><td>90 or 270 for a display that is mounted tall, 0 or 180 for one that is mounted wide</td></tr><tr><td>touch_invert_x, touch_invert_y, touch_swap_xy</td><td>1 turns an axis of the touch screen</td></tr><tr><td>preheat_tool, preheat_bed</td><td>The temperatures of Preheat with no filament set</td></tr><tr><td>night_from, night_to</td><td>The hours of the night colors</td></tr><tr><td>printer.cfg (a file)</td><td>A Klipper config. The deck takes it at the next start.</td></tr></table>
+  
+  
+</section></div>
+<p>From the <a href="../../manual/">manual for a tall display</a>. The deck draws every picture.</p>
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

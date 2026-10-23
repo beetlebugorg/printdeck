@@ -7,6 +7,8 @@ on:
       - "docs/**"
       - "slate/stl/**"
       - "slate/printdeck-slate-build.pdf"
+      - "lulzbot/stl/**"
+      - "lulzbot/printdeck-lulzbot-build.pdf"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -25,12 +27,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # slate/make_site.py writes docs/. The downloads come from slate/.
+      # docs/build.py writes the pages of docs/, and printdeck manual the manuals. The downloads
+      # of the two mounts come from slate/ and lulzbot/.
       - name: Stage the site
         run: |
-          mkdir -p _site/files
+          mkdir -p _site/files/lulzbot
           cp -r docs/. _site/
           cp slate/stl/*.stl slate/printdeck-slate-build.pdf _site/files/
+          cp lulzbot/stl/*.stl lulzbot/printdeck-lulzbot-build.pdf _site/files/lulzbot/
 
       - uses: actions/upload-pages-artifact@v4
         with:

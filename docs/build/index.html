@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build and release · Printdeck</title>
+<meta name="description" content="The OS image, the CI, the releases, the manuals and this site.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../hardware/">The hardware</a>
+<a href="../hardware/slate/">The Slate case</a>
+<a href="../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../ui/setup/" aria-current="page">Tall</a><a href="../ui/wide/setup/">Wide</a></div>
+<a href="../ui/">The screens</a>
+<span class="sub"><a href="../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../os/">Printdeck OS</a>
+<a href="../deck/">The printdeck program</a>
+<a href="../deck/klipper/">The Klipper host</a>
+<a href="../deck/printer/">The reference printer</a>
+<a href="../deck/remote/">Remote screen and API</a>
+<a href="../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../desktop/">Desktop app and simulator</a>
+<a href="../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../build/" aria-current="page">Build and release</a>
+<div class="group">Reference</div>
+<a href="../reference/commands/">Commands</a>
+<a href="../reference/environment/">Environment variables</a>
+<a href="../reference/files/">Files, paths and services</a>
+<a href="../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../manual/">Manual, tall display</a>
+<a href="../manual/wide/">Manual, wide display</a>
+<a href="../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Build and release</p>
+<h1>Build and release</h1>
+<p class="lede">The OS image, the CI, the releases, the manuals and this site.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#image">The OS image</a></li><li><a href="#ci">Continuous integration</a></li><li><a href="#site">The documentation</a></li></ol></nav>
+<h2 id="image">The OS image</h2>
+<p>You need Docker and about 20 GB of free disk. Then run:</p>
+<pre><code>os/build.sh</code></pre>
+<p>The first build takes about one hour. The next builds take a few minutes. For the debug image, run <code>os/build.sh debug</code>. The output is:</p>
+<div class="table-wrap"><table><thead><tr><th>File</th><th>What it is</th></tr></thead><tbody><tr><td><code>os/out/printdeck.img.xz</code></td><td>The full disk image, compressed with xz</td></tr><tr><td><code>os/out/printdeck-update.tar.xz</code></td><td>The update bundle for a Printdeck that runs this system</td></tr><tr><td><code>os/out/printdeck-debug.img.xz</code>, <code>os/out/printdeck-debug-update.tar.xz</code></td><td>The same for the debug image</td></tr></tbody></table></div>
+<p>The release image and the debug image have their own build folders. An update bundle of either image installs on a Printdeck that runs either image.</p>
+<p>Git ignores <code>os/out/</code>. The Buildroot tree, the downloads and the build files are in <code>~/.cache/printdeck-os</code>. Set <code>PRINTDECK_OS_CACHE</code> to use a different folder. Only one build can use the folder at a time (<code>build.lock</code>).</p>
+<p>Other Buildroot targets go through the same script, for example:</p>
+<pre><code>os/build.sh menuconfig          # change the system configuration
+os/build.sh savedefconfig       # write it back to os/configs/printdeck_defconfig
+os/build.sh clean               # delete the build files, for a build from the start
+os/build.sh debug clean         # the same for the debug image
+
+Each build builds the Printdeck program again from `deck/`.</code></pre>
+<p>Buildroot does not delete the files of a package that you turn off. After such a change, build from the start (<code>os/build.sh clean</code>, then <code>os/build.sh</code>).</p>
+<p>Build the Printdeck OS image in a Docker container.</p>
+<pre><code>os/build.sh                  build the release image
+os/build.sh debug            build the debug image: the release image with SSH and tools
+os/build.sh menuconfig       any other Buildroot target, for example linux-menuconfig or clean
+os/build.sh debug clean      a Buildroot target of the debug build</code></pre>
+<p>The images are os/out/printdeck.img.xz and os/out/printdeck-debug.img.xz, each with its update bundle. The Buildroot tree, the downloads and the build output are in ~/.cache/printdeck-os (set PRINTDECK_OS_CACHE to change it). A full build takes about one hour.</p>
+<h2 id="ci">Continuous integration</h2>
+<p>The workflow <code>.github/workflows/os.yml</code> builds the image on GitHub:</p>
+<p>Builds the Printdeck OS image with os/build.sh, and signs its update bundle with the secret PRINTDECK_SIGNING_KEY (deck/internal/system/sign.go has the public key). A push to main does not build the image: the build takes about an hour.</p><div class="table-wrap"><table><tr><th>Event</th><th>What runs</th></tr><tr><td>tag vX.Y.Z</td><td>a stable release with the images</td></tr><tr><td>tag vX.Y.Z-beta.N</td><td>a beta: a pre-release, for the Printdecks on the beta channel</td></tr><tr><td>pull request</td><td>a check build of a change to the image, with no signature; the images are an artifact of the run</td></tr><tr><td>run by hand</td><td>a test build (release or debug); the images are an artifact of the run</td></tr></table></div>
+<p>A release has the files <code>printdeck.img.xz</code>, <code>printdeck-update.tar.xz</code> and <code>Printdeck.curapackage</code>, the notes that GitHub generates, and the change log of <code>scripts/changelog.sh</code>. A tag with a hyphen, such as <code>v0.3.0-beta.1</code>, is a pre-release. The deck gets the betas when <a href="../ui/care/#update">Beta updates</a> is on.</p>
+<h3>The change log</h3>
+<p>Prints the change log of a release in Markdown, from the commits since the previous v* tag.</p>
+<pre><code>scripts/changelog.sh TAG [PREV]</code></pre>
+<p>PREV is the nearest earlier v* tag when it is not given. With no earlier tag, the log has all the commits up to TAG. Merge commits and commits that change only Markdown files or docs/ are not in the log. The Issues list has the closed GitHub issues in the range and the issues that the commits name as #N. It needs gh. If gh fails, the list is &quot;None&quot;.</p>
+<h3>The Cura plugin package</h3>
+<p>Builds Printdeck.curapackage: drag it onto the Cura window to install the plugin. The version is the version of plugin.json.</p>
+<h2 id="site">The documentation</h2>
+<p>The workflow <code>.github/workflows/pages.yml</code> publishes <code>docs/</code> to GitHub Pages at <a href="https://beetlebug.org/printdeck/">https://beetlebug.org/printdeck/</a>, with the STL files and the build PDFs of the two mounts under <code>files/</code>. It runs on a push to <code>main</code> that changes those files. The pages are in the repository: these scripts write them, and a commit publishes them.</p>
+<h3>The manuals</h3>
+<p>Builds the manual three times: for a display that is mounted tall (this folder), for a display that is mounted wide (wide/), and the upgrade booklet for the LulzBot TAZ Workhorse (docs/lulzbot/), which has the guides of the mount from lulzbot/guide/ before the wide manual. The deck draws the pictures and writes index.html (the web manual) and booklet.html (the instruction booklet). Then Chromium prints each booklet two times:</p>
+<pre><code>printdeck-manual.pdf        the half-letter pages (5.5 x 8.5 in) in order. A print shop
+makes a saddle-stitched booklet from this file.
+printdeck-manual-print.pdf  two pages on each side of a letter sheet, in the order of a
+folded booklet. Print it on both sides (flip on the short
+edge), then fold the stack and staple it in the fold.</code></pre>
+<p>Run it after a change to the UI.</p>
+<h3>The Cura plugin booklet</h3>
+<p>Builds the booklet of the Cura plugin in this folder. The deck writes booklet.html, index.html and the cover pictures. The screenshots of Cura are in img/. Then Chromium prints the booklet two times:</p>
+<pre><code>printdeck-cura.pdf        the half-letter pages (5.5 x 8.5 in) in order.
+printdeck-cura-print.pdf  two pages on each side of a letter sheet, in the order of a folded
+booklet. Print it on both sides (flip on the short edge), then fold
+the stack and staple it in the fold.</code></pre>
+<p>Run it after a change to the plugin or to cura.go.</p>
+<h3>The Slate</h3>
+<p>Build the Printdeck Slate: the parts in build123d (fit check, STEP, STL), the mesh check, the Cura profiles with the filament and the support check, the line-art renders, the build PDF, and the website in ../docs. Takes about 1 minute (more if CuraEngine stalls and the slice runs again).</p>
+<p><code>slate/make_site.py</code>, the last step, writes <code>slate/guide/guide.json</code> and the images of this site in <code>docs/img/</code>.</p>
+<h3>The TAZ Workhorse mount</h3>
+<p>Build the Printdeck LulzBot mount: the LulzBot reference meshes, the parts in build123d (fit check, STEP, STL), the display fit test, the mesh and overhang check, the Cura profiles with the filament, the print time, and the support check, the renders, the line-art images, and the build PDF. It stops if a check fails. It runs in about 3 minutes.</p>
+<p><code>lulzbot/make_pdf.py</code>, the last step, also writes <code>lulzbot/guide/guide.json</code> and the images in <code>lulzbot/guide/img/</code>. The upgrade booklet (<code>docs/manual/build.sh</code>) and this site read them.</p>
+<h3>This site</h3>
+<p>Printdeck: write the documentation site in docs/ (<a href="https://beetlebug.org/printdeck/">https://beetlebug.org/printdeck/</a>).</p>
+<p>The pages come from the files of the repository, so the site follows them:</p>
+<p>README.md, ARCHITECTURE.md, os/README.md, printer/README.md, slicer/README.md, slicer/cura-plugin/README.md, deck/internal/klipper/PORTING.md, desktop/meshes/README.md   the text of the pages slate/guide/guide.json, lulzbot/guide/guide.json             the two mounts docs/manual/index.html, docs/manual/wide/index.html          the screens of the deck deck/cmd/printdeck/*.go, deck/internal/config/config.go, os/board/, .github/workflows/, the build scripts              the reference pages</p>
+<p>Run it after docs/manual/build.sh, docs/cura/build.sh, slate/make.sh or lulzbot/make.sh, and after a change to a README. It needs only Python 3. At the end it checks every link of the site, and stops with an error for a link that goes nowhere.</p>
+<p>docs/build.py</p>
+
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

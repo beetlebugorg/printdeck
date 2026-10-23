@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Level and calibrate · Printdeck</title>
+<meta name="description" content="The screens of the Printdeck for Level and calibrate, on a display that is mounted wide.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../../hardware/">The hardware</a>
+<a href="../../../hardware/slate/">The Slate case</a>
+<a href="../../../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../../ui/calibrate/">Tall</a><a href="../../../ui/wide/calibrate/" aria-current="page">Wide</a></div>
+<a href="../../../ui/">The screens</a>
+<span class="sub"><a href="../../../ui/wide/setup/">Set up</a></span>
+<span class="sub"><a href="../../../ui/wide/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../../ui/wide/print/">Print a part</a></span>
+<span class="sub"><a href="../../../ui/wide/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../../ui/wide/move/">Move and heat</a></span>
+<span class="sub"><a href="../../../ui/wide/calibrate/" aria-current="page">Level and calibrate</a></span>
+<span class="sub"><a href="../../../ui/wide/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../../ui/wide/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../../os/">Printdeck OS</a>
+<a href="../../../deck/">The printdeck program</a>
+<a href="../../../deck/klipper/">The Klipper host</a>
+<a href="../../../deck/printer/">The reference printer</a>
+<a href="../../../deck/remote/">Remote screen and API</a>
+<a href="../../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../../desktop/">Desktop app and simulator</a>
+<a href="../../../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../../reference/commands/">Commands</a>
+<a href="../../../reference/environment/">Environment variables</a>
+<a href="../../../reference/files/">Files, paths and services</a>
+<a href="../../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../../manual/">Manual, tall display</a>
+<a href="../../../manual/wide/">Manual, wide display</a>
+<a href="../../../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">The deck UI · wide</p>
+<h1>Level and calibrate</h1>
+
+<div class="layout-switch"><span>Layout:</span><a href="../../../ui/calibrate/">Tall</a><a href="" aria-current="page">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#calibrate">Level and calibrate</a></li></ol></nav><div class="manual wide"><section id="calibrate">
+  <h2 class="title"><span class="num">13</span>Level and calibrate</h2>
+  <p>Maintenance lists the calibrations that your printer has. The list comes from the config of the printer.</p>
+  <ol class="steps"><li>Open Maintenance.</li><li>Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.</li><li>Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.</li><li>Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.</li><li>Tap Save config to write the results. Klipper restarts.</li></ol>
+  
+  <figure>
+    <h3>The Maintenance page</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../../manual/wide/img/maintenance.png" alt="The Maintenance page" width="800" height="480"></div>
+      <svg class="marks" viewBox="-72 0 944 480" aria-hidden="true">
+        
+        <line x1="825" y1="108" x2="784" y2="108" class="leader"/>
+        <circle cx="784" cy="108" r="5" class="dot"/>
+        <circle cx="840" cy="108" r="15" class="badge"/>
+        <text x="840" y="108" class="badge-n">1</text>
+        
+        <line x1="825" y1="180" x2="784" y2="180" class="leader"/>
+        <circle cx="784" cy="180" r="5" class="dot"/>
+        <circle cx="840" cy="180" r="15" class="badge"/>
+        <text x="840" y="180" class="badge-n">2</text>
+        
+        <line x1="825" y1="252" x2="784" y2="252" class="leader"/>
+        <circle cx="784" cy="252" r="5" class="dot"/>
+        <circle cx="840" cy="252" r="15" class="badge"/>
+        <text x="840" y="252" class="badge-n">3</text>
+        
+        <line x1="825" y1="324" x2="784" y2="324" class="leader"/>
+        <circle cx="784" cy="324" r="5" class="dot"/>
+        <circle cx="840" cy="324" r="15" class="badge"/>
+        <text x="840" y="324" class="badge-n">4</text>
+        
+        <line x1="825" y1="396" x2="784" y2="396" class="leader"/>
+        <circle cx="784" cy="396" r="5" class="dot"/>
+        <circle cx="840" cy="396" r="15" class="badge"/>
+        <text x="840" y="396" class="badge-n">5</text>
+        
+        <line x1="825" y1="460" x2="784" y2="468" class="leader"/>
+        <circle cx="784" cy="468" r="5" class="dot"/>
+        <circle cx="840" cy="460" r="15" class="badge"/>
+        <text x="840" y="460" class="badge-n">6</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Bed tilt</b>Probes the bed, and corrects its tilt (BED_TILT_CALIBRATE). A printer with a bed mesh shows Bed mesh.</span></li><li><span class="badge">2</span><span><b>Probe Z offset</b>The paper test for the height of the nozzle (PROBE_CALIBRATE).</span></li><li><span class="badge">3</span><span><b>PID tune</b>Heats the nozzle to 210° and the bed to 60°, and finds the PID settings of each heater (PID_CALIBRATE). Save config then writes them.</span></li><li><span class="badge">4</span><span><b>Nozzle change</b>Heats the nozzle to 250° and raises the head, to change the nozzle.</span></li><li><span class="badge">5</span><span><b>Firmware</b>Writes the Klipper firmware of this Printdeck to the board of the printer. Orange text shows old firmware. See below.</span></li><li><span class="badge">6</span><span><b>Save config</b>Writes the results of the calibrations into printer.cfg. Klipper restarts. Orange text shows unsaved results.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>An action runs</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../../manual/wide/img/action.png" alt="An action runs" width="800" height="480"></div>
+      <svg class="marks" viewBox="-72 0 944 480" aria-hidden="true">
+        
+        <line x1="825" y1="153" x2="784" y2="153" class="leader"/>
+        <circle cx="784" cy="153" r="5" class="dot"/>
+        <circle cx="840" cy="153" r="15" class="badge"/>
+        <text x="840" y="153" class="badge-n">1</text>
+        
+        <line x1="-25" y1="424" x2="16" y2="424" class="leader"/>
+        <circle cx="16" cy="424" r="5" class="dot"/>
+        <circle cx="-40" cy="424" r="15" class="badge"/>
+        <text x="-40" y="424" class="badge-n">2</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Action</b>The time since the start, a bar that moves while the action runs, and the temperatures.</span></li><li><span class="badge">2</span><span><b>Stop the printer</b>Stops the printer at once, after one question. Then use Firmware restart.</span></li>
+    </ol>
+    <p class="note">While an action runs, the deck shows it on the deck and in each browser, and the other keys are off. The display of the printer shows the name of the action and a moving bar. When the action ends, a short message says that it is done. When it fails, the deck shows the error of Klipper until you tap OK.</p>
+  </figure>
+  
+  <figure>
+    <h3>The paper test</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../../manual/wide/img/paper.png" alt="The paper test" width="800" height="480"></div>
+      <svg class="marks" viewBox="-72 0 944 480" aria-hidden="true">
+        
+        <line x1="-25" y1="62" x2="16" y2="62" class="leader"/>
+        <circle cx="16" cy="62" r="5" class="dot"/>
+        <circle cx="-40" cy="62" r="15" class="badge"/>
+        <text x="-40" y="62" class="badge-n">1</text>
+        
+        <line x1="825" y1="173" x2="784" y2="173" class="leader"/>
+        <circle cx="784" cy="173" r="5" class="dot"/>
+        <circle cx="840" cy="173" r="15" class="badge"/>
+        <text x="840" y="173" class="badge-n">2</text>
+        
+        <line x1="-25" y1="419" x2="304" y2="419" class="leader"/>
+        <circle cx="304" cy="419" r="5" class="dot"/>
+        <circle cx="-40" cy="419" r="15" class="badge"/>
+        <text x="-40" y="419" class="badge-n">3</text>
+        
+        <line x1="825" y1="419" x2="784" y2="419" class="leader"/>
+        <circle cx="784" cy="419" r="5" class="dot"/>
+        <circle cx="840" cy="419" r="15" class="badge"/>
+        <text x="840" y="419" class="badge-n">4</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Height</b>The height of the nozzle now.</span></li><li><span class="badge">2</span><span><b>Steps</b>Moves the nozzle down (−) or up (&#43;), in mm.</span></li><li><span class="badge">3</span><span><b>Accept</b>Takes the height. Save config then writes it.</span></li><li><span class="badge">4</span><span><b>Abort</b>Stops the test with no change.</span></li>
+    </ol>
+    <p class="note">This screen shows by itself while Klipper runs a paper test, also when it started from a macro.</p>
+  </figure>
+  
+  
+  
+</section></div>
+<p>From the <a href="../../../manual/wide/">manual for a wide display</a>. The deck draws every picture.</p>
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

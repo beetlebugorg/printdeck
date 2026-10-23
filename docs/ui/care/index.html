@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Look after the printer · Printdeck</title>
+<meta name="description" content="The screens of the Printdeck for Look after the printer, on a display that is mounted tall.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The hardware</a>
+<a href="../../hardware/slate/">The Slate case</a>
+<a href="../../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/care/" aria-current="page">Tall</a><a href="../../ui/wide/care/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/" aria-current="page">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/">Commands</a>
+<a href="../../reference/environment/">Environment variables</a>
+<a href="../../reference/files/">Files, paths and services</a>
+<a href="../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">Manual, tall display</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">The deck UI · tall</p>
+<h1>Look after the printer</h1>
+
+<div class="layout-switch"><span>Layout:</span><a href="" aria-current="page">Tall</a><a href="../../ui/wide/care/">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#machine">Look after the printer</a></li><li><a href="#update">Update the Printdeck</a></li></ol></nav><div class="manual"><section id="machine">
+  <h2 class="title"><span class="num">14</span>Look after the printer</h2>
+  <p>Machine has the information of the printer, the history of the prints, the macros and the console.</p>
+  
+  
+  <figure>
+    <h3>The Machine page</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/machine.png" alt="The Machine page" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="140" x2="456" y2="140" class="leader"/>
+        <circle cx="456" cy="140" r="5" class="dot"/>
+        <circle cx="520" cy="140" r="15" class="badge"/>
+        <text x="520" y="140" class="badge-n">1</text>
+        
+        <line x1="505" y1="240" x2="456" y2="240" class="leader"/>
+        <circle cx="456" cy="240" r="5" class="dot"/>
+        <circle cx="520" cy="240" r="15" class="badge"/>
+        <text x="520" y="240" class="badge-n">2</text>
+        
+        <line x1="505" y1="305" x2="456" y2="305" class="leader"/>
+        <circle cx="456" cy="305" r="5" class="dot"/>
+        <circle cx="520" cy="305" r="15" class="badge"/>
+        <text x="520" y="305" class="badge-n">3</text>
+        
+        <line x1="505" y1="370" x2="456" y2="370" class="leader"/>
+        <circle cx="456" cy="370" r="5" class="dot"/>
+        <circle cx="520" cy="370" r="15" class="badge"/>
+        <text x="520" y="370" class="badge-n">4</text>
+        
+        <line x1="505" y1="435" x2="456" y2="435" class="leader"/>
+        <circle cx="456" cy="435" r="5" class="dot"/>
+        <circle cx="520" cy="435" r="15" class="badge"/>
+        <text x="520" y="435" class="badge-n">5</text>
+        
+        <line x1="505" y1="745" x2="456" y2="745" class="leader"/>
+        <circle cx="456" cy="745" r="5" class="dot"/>
+        <circle cx="520" cy="745" r="15" class="badge"/>
+        <text x="520" y="745" class="badge-n">6</text>
+        
+        <line x1="-25" y1="745" x2="24" y2="745" class="leader"/>
+        <circle cx="24" cy="745" r="5" class="dot"/>
+        <circle cx="-40" cy="745" r="15" class="badge"/>
+        <text x="-40" y="745" class="badge-n">7</text>
+        
+        <line x1="505" y1="500" x2="456" y2="500" class="leader"/>
+        <circle cx="456" cy="500" r="5" class="dot"/>
+        <circle cx="520" cy="500" r="15" class="badge"/>
+        <text x="520" y="500" class="badge-n">8</text>
+        
+        <line x1="505" y1="565" x2="456" y2="565" class="leader"/>
+        <circle cx="456" cy="565" r="5" class="dot"/>
+        <circle cx="520" cy="565" r="15" class="badge"/>
+        <text x="520" y="565" class="badge-n">9</text>
+        
+        <line x1="505" y1="630" x2="456" y2="630" class="leader"/>
+        <circle cx="456" cy="630" r="5" class="dot"/>
+        <circle cx="520" cy="630" r="15" class="badge"/>
+        <text x="520" y="630" class="badge-n">10</text>
+        
+        <line x1="505" y1="695" x2="456" y2="695" class="leader"/>
+        <circle cx="456" cy="695" r="5" class="dot"/>
+        <circle cx="520" cy="695" r="15" class="badge"/>
+        <text x="520" y="695" class="badge-n">11</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Information</b>The version of Klipper, the state of the firmware of the board, the network address, and the totals.</span></li><li><span class="badge">2</span><span><b>Software update</b>The version of the deck, and a new version when there is one. See Update the Printdeck.</span></li><li><span class="badge">3</span><span><b>Statistics</b>The totals of all prints.</span></li><li><span class="badge">4</span><span><b>Print history</b>Each print, with its result. Tap a print to see its model, its time and its filament, and to print it again.</span></li><li><span class="badge">5</span><span><b>Macros</b>The macros of the printer. Tap one to run it.</span></li><li><span class="badge">6</span><span><b>Restart Klipper</b>Restarts the Klipper host, which reads printer.cfg again.</span></li><li><span class="badge">7</span><span><b>Firmware restart</b>Restarts the firmware of the board, for example after a stop.</span></li><li><span class="badge">8</span><span><b>Console</b>The G-code terminal of Klipper. See below.</span></li><li><span class="badge">9</span><span><b>Theme</b>The colors of the screen: day, night, or auto (night from 20:00 to 7:00). Tap it to change them.</span></li><li><span class="badge">10</span><span><b>Clock</b>The clock of the screens and the display of the printer: 12 hours (2:24 PM) or 24 hours (14:24). Tap it to change it.</span></li><li><span class="badge">11</span><span><b>Wi-Fi and help</b>The network, the password and the addresses.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>Statistics</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/stats.png" alt="Statistics" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="174" x2="456" y2="174" class="leader"/>
+        <circle cx="456" cy="174" r="5" class="dot"/>
+        <circle cx="520" cy="174" r="15" class="badge"/>
+        <text x="520" y="174" class="badge-n">1</text>
+        
+        <line x1="505" y1="302" x2="456" y2="302" class="leader"/>
+        <circle cx="456" cy="302" r="5" class="dot"/>
+        <circle cx="520" cy="302" r="15" class="badge"/>
+        <text x="520" y="302" class="badge-n">2</text>
+        
+        <line x1="505" y1="555" x2="456" y2="555" class="leader"/>
+        <circle cx="456" cy="555" r="5" class="dot"/>
+        <circle cx="520" cy="555" r="15" class="badge"/>
+        <text x="520" y="555" class="badge-n">3</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Totals</b>The number of prints, the success rate, the print time and the filament.</span></li><li><span class="badge">2</span><span><b>Results</b>Done (amber), cancelled and failed (red).</span></li><li><span class="badge">3</span><span><b>Details</b>The filament in grams (for 1.75 mm PLA), the average and the longest print, the prints of the last 7 and 30 days, and the file that you print most.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>The console</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/console.png" alt="The console" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="358" x2="456" y2="358" class="leader"/>
+        <circle cx="456" cy="358" r="5" class="dot"/>
+        <circle cx="520" cy="358" r="15" class="badge"/>
+        <text x="520" y="358" class="badge-n">1</text>
+        
+        <line x1="505" y1="683" x2="456" y2="683" class="leader"/>
+        <circle cx="456" cy="683" r="5" class="dot"/>
+        <circle cx="520" cy="683" r="15" class="badge"/>
+        <text x="520" y="683" class="badge-n">2</text>
+        
+        <line x1="505" y1="757" x2="456" y2="757" class="leader"/>
+        <circle cx="456" cy="757" r="5" class="dot"/>
+        <circle cx="520" cy="757" r="15" class="badge"/>
+        <text x="520" y="757" class="badge-n">3</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Replies</b>Your commands (amber, after &gt;), the replies of Klipper, and errors (red). Drag down to read older lines.</span></li><li><span class="badge">2</span><span><b>Type a command</b>Opens the keyboard. It shows your last command, so you can change it and send it again.</span></li><li><span class="badge">3</span><span><b>Quick keys</b>Home (G28), Status (STATUS) and Help (HELP, the list of the commands).</span></li>
+    </ol>
+    
+  </figure>
+  
+  
+  
+</section>
+<section id="update">
+  <h2 class="title"><span class="num">15</span>Update the Printdeck</h2>
+  <p>The deck checks for a new version once a day. Machine then shows Software update in orange.</p><p>Each version has a signature. The deck installs only a version with a valid signature of Printdeck. It writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one.</p>
+  <ol class="steps"><li>Open Machine, then Software update.</li><li>Read the notes of the new version, then tap Install. The deck does not install during a print.</li><li>Wait while the deck downloads and writes the update. It restarts into the new version.</li></ol>
+  
+  <figure>
+    <h3>Software update</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/update.png" alt="Software update" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="140" x2="456" y2="140" class="leader"/>
+        <circle cx="456" cy="140" r="5" class="dot"/>
+        <circle cx="520" cy="140" r="15" class="badge"/>
+        <text x="520" y="140" class="badge-n">1</text>
+        
+        <line x1="-25" y1="259" x2="16" y2="259" class="leader"/>
+        <circle cx="16" cy="259" r="5" class="dot"/>
+        <circle cx="-40" cy="259" r="15" class="badge"/>
+        <text x="-40" y="259" class="badge-n">2</text>
+        
+        <line x1="505" y1="652" x2="456" y2="652" class="leader"/>
+        <circle cx="456" cy="652" r="5" class="dot"/>
+        <circle cx="520" cy="652" r="15" class="badge"/>
+        <text x="520" y="652" class="badge-n">3</text>
+        
+        <line x1="-25" y1="746" x2="24" y2="746" class="leader"/>
+        <circle cx="24" cy="746" r="5" class="dot"/>
+        <circle cx="-40" cy="746" r="15" class="badge"/>
+        <text x="-40" y="746" class="badge-n">4</text>
+        
+        <line x1="505" y1="746" x2="456" y2="746" class="leader"/>
+        <circle cx="456" cy="746" r="5" class="dot"/>
+        <circle cx="520" cy="746" r="15" class="badge"/>
+        <text x="520" y="746" class="badge-n">5</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Versions</b>The version of this deck, the newest version, and the channel.</span></li><li><span class="badge">2</span><span><b>Notes</b>What the new version changes.</span></li><li><span class="badge">3</span><span><b>Install</b>Downloads the new version, checks it, and installs it, after a question. The deck restarts.</span></li><li><span class="badge">4</span><span><b>Check now</b>Checks for a new version now.</span></li><li><span class="badge">5</span><span><b>Beta updates</b>On: the deck also gets the betas, the versions with new features for tests. Off: only the stable versions.</span></li>
+    </ol>
+    
+  </figure>
+  
+  
+  
+</section></div>
+<p>From the <a href="../../manual/">manual for a tall display</a>. The deck draws every picture.</p>
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

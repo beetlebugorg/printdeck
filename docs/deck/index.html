@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The printdeck program · Printdeck</title>
+<meta name="description" content="One static Go binary: the Klipper host, the touch screen, the remote screen, the API for slicers and the display of the printer.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../hardware/">The hardware</a>
+<a href="../hardware/slate/">The Slate case</a>
+<a href="../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../ui/setup/" aria-current="page">Tall</a><a href="../ui/wide/setup/">Wide</a></div>
+<a href="../ui/">The screens</a>
+<span class="sub"><a href="../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../os/">Printdeck OS</a>
+<a href="../deck/" aria-current="page">The printdeck program</a>
+<a href="../deck/klipper/">The Klipper host</a>
+<a href="../deck/printer/">The reference printer</a>
+<a href="../deck/remote/">Remote screen and API</a>
+<a href="../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../desktop/">Desktop app and simulator</a>
+<a href="../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../reference/commands/">Commands</a>
+<a href="../reference/environment/">Environment variables</a>
+<a href="../reference/files/">Files, paths and services</a>
+<a href="../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../manual/">Manual, tall display</a>
+<a href="../manual/wide/">Manual, wide display</a>
+<a href="../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Software</p>
+<h1>The printdeck program</h1>
+<p class="lede">One static Go binary: the Klipper host, the touch screen, the remote screen, the API for slicers and the display of the printer.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#what">What the program does</a></li><li><a href="#the-goal">The goal</a></li><li><a href="#where-we-are">Where we are</a></li><li><a href="#the-klipper-port">The Klipper port</a></li><li><a href="#the-deck-program">The deck program</a></li><li><a href="#open-source-and-licenses">Open source and licenses</a></li><li><a href="#built-with-ai">Built with AI</a></li><li><a href="#demo">Demo mode</a></li><li><a href="#next">Work that remains</a></li></ol></nav>
+<h2 id="what">What the program does</h2>
+<p>The Printdeck runs Printdeck OS: a small, read-only Linux system that Buildroot makes from source. <code>os/README.md</code> tells how to build it, write it to a disk, set it up, and update it. It has:</p>
+<ul><li><code>deck/</code>, the Printdeck program (Go). It is one static binary with no cgo. It runs as the user <code>deck</code>, and does these things:<ul><li><code>printdeck klippy</code> is the Klipper host, a Go port of Klipper&#x27;s <code>klippy.py</code>. The <code>klipper</code> service runs it in its own process. It drives the printer. <code>deck/internal/klipper/PORTING.md</code> tells how the port follows Klipper.</li><li>It draws the full screen application on the 7&quot; display, without a desktop or a browser.</li><li>It serves the remote screen at <code>http://printdeck.local</code>: the touch screen in a browser, with the password of the <code>printdeck</code> user.</li><li>It serves the part of the OctoPrint API that slicers use. Cura, OrcaSlicer and PrusaSlicer see a printer named &quot;Printdeck&quot;, upload files to it, and start prints. Cura gets its key with a tap on the touch screen.</li><li>It follows the Klipper host through its API socket.</li><li>It draws the display of the printer (128 x 64) with the <code>printdeck_display</code> module of the Klipper host. The knob of the printer opens the same menus as the touch screen.</li></ul></li></ul>
+<p>The screens are on <a href="../ui/">the deck UI</a> pages. The commands of the program are in the <a href="../reference/commands/">reference</a>.</p>
+
+<h2 id="the-goal">The goal</h2>
+<p>Printdeck is a very small operating system with one purpose: run one 3D printer and its touch screen. The goals are a small image, a fast start, and a low use of memory and CPU.</p>
+<p>The Printdeck program is one static Go binary with no runtime dependencies: no shared libraries, and no other programs for its work. cgo is allowed only when it links statically. Today the binary builds with <code>CGO_ENABLED=0</code>.</p>
+<p>The system parts stay as they are: the kernel and its firmware, systemd, <code>wpa_supplicant</code>, Dropbear, <code>sudo</code> and the CA certificates. Buildroot makes the image.</p>
+<h2 id="where-we-are">Where we are</h2>
+<div class="table-wrap"><table><thead><tr><th>Step</th><th>What changes</th><th>State</th></tr></thead><tbody><tr><td>1</td><td>A Buildroot image: read-only A/B system, Klipper, OctoPrint, and the deck</td><td>Done</td></tr><tr><td>2</td><td>The deck serves the remote screen and the API for slicers, and talks to Klipper directly. OctoPrint goes.</td><td>Done</td></tr><tr><td>3</td><td>A Go port of the Klipper host (<code>printdeck klippy</code>). Python goes.</td><td>Done. It printed on the TAZ Workhorse.</td></tr><tr><td>4</td><td>The deck runs as the unprivileged user <code>deck</code>.</td><td>Done in the image. To test on the Pi.</td></tr></tbody></table></div>
+<p>The deck still runs two programs of the system:</p>
+<ul><li><code>sudo printdeck-wifi</code> and <code>sudo printdeck-user</code>, which change the Wi-Fi and the login as root, from the setup screen.</li><li><code>dmesg</code>, for the diagnostics of the boot splash.</li></ul>
+<h2 id="the-klipper-port">The Klipper port</h2>
+<p>A Go Klipper host can drive a heater or a motor in the wrong way. So the port follows these rules:</p>
+<ul><li>It starts from the Klipper commit that the printer&#x27;s firmware has, and keeps the same protocol.</li><li>The heater safety code (the PID loop, <code>verify_heater</code>, and the limits that the host gives the firmware) comes first.</li><li>The Go host must give the same board commands as Klipper&#x27;s batch mode (<code>klippy.py -o</code>) for the printer of <code>printer/</code>, before it drives the printer. Klipper&#x27;s own runs differ in the order of the commands of different objects, so the test compares the commands of each object, in order. <code>tools/klipper-reference</code> makes the reference data, and <code>deck/internal/klipper/PORTING.md</code> has the rules of the port.</li></ul>
+<h2 id="the-deck-program">The deck program</h2>
+<p><code>deck/</code> is the Go program. Its packages:</p>
+<div class="table-wrap"><table><thead><tr><th>Package</th><th>What it does</th></tr></thead><tbody><tr><td><code>cmd/printdeck</code></td><td>The program: the deck, the Klipper host (<code>klippy</code>), and the <code>demo</code>, <code>remote-demo</code>, <code>splash</code> and <code>password</code> commands</td></tr><tr><td><code>internal/klipper</code></td><td>The Go port of the Klipper host</td></tr><tr><td><code>internal/ui</code></td><td>The screens: Print, Control, Tune, Setup and Help</td></tr><tr><td><code>internal/gfx</code>, <code>internal/fb</code>, <code>internal/touch</code></td><td>Drawing, the framebuffer, and the touch screen</td></tr><tr><td><code>internal/printer</code></td><td>The printer state, the picture of the print, and the backends. The Klipper backend uses <code>internal/klippy</code>.</td></tr><tr><td><code>internal/klippy</code></td><td>The client for the API socket of the Klipper host</td></tr><tr><td><code>internal/gcodestore</code></td><td>The G-code files, in the folder of Klipper&#x27;s virtual SD card</td></tr><tr><td><code>internal/octoapi</code></td><td>The OctoPrint-compatible API for slicers, with App Keys on the touch screen</td></tr><tr><td><code>internal/remote</code></td><td>The remote screen in the browser</td></tr><tr><td><code>internal/gcode</code>, <code>internal/stl</code></td><td>G-code and STL reading for the picture of the print</td></tr><tr><td><code>internal/lcd</code></td><td>The display of the printer: the status screen, the menus and the animations</td></tr><tr><td><code>internal/wifi</code></td><td>Wi-Fi through wpa_supplicant</td></tr></tbody></table></div>
+<h2 id="open-source-and-licenses">Open source and licenses</h2>
+<p>Printdeck stands on the work of other open source projects: Klipper, OctoPrint, Moonraker, Buildroot and the Linux kernel. We do not take their code to hide it. We reform it into a small, single-purpose system, in the spirit of open source, and we give the result back under a compatible license.</p>
+<p>Every effort is made to respect the licenses:</p>
+<ul><li>Printdeck is licensed under the GNU Affero GPL, version 3 (<code>LICENSE</code>). Printdeck is a network device, so the AGPL also gives the source to people who use it over the network. The remote screen links to the source.</li><li>Klipper is GPL-3.0. Section 13 of the GPL-3.0 and of the AGPL-3.0 lets its code and Printdeck&#x27;s code be one program. Its files keep the GPL-3.0. OctoPrint is AGPL-3.0, the same as Printdeck.</li><li>Code that is ported from another project keeps its copyright and license notices, and names the project and its authors at the top of the file. For example, <code>internal/klippy</code> names Klipper&#x27;s <code>webhooks.py</code> and its author.</li><li>Where we only speak a protocol (the OctoPrint API for slicers, the Klipper API socket), we write our own code from the documentation and the behaviour, and say which project defines the protocol.</li><li>A release of the image includes the sources and the licenses of all its packages (<code>make legal-info</code> of Buildroot).</li><li>The proprietary firmware of the Pi and of the Wi-Fi chip is redistributable under its own licenses, and the image keeps those licenses.</li></ul>
+<p>If you find code in Printdeck without the credit or the license that it needs, please open an issue.</p>
+<h2 id="built-with-ai">Built with AI</h2>
+<p>Much of Printdeck is written with an AI coding assistant (Claude), directed and reviewed by a person. The same rules apply to that code: it must respect the licenses above, give credit where it ports or follows other code, and pass its tests.</p>
+<h2 id="demo">Demo mode</h2>
+<p>To look at the screens without the hardware, run <code>go run ./cmd/printdeck demo /tmp/shots</code> in <code>deck/</code>. It writes PNG files. To use the screens in a browser, run <code>go run ./cmd/printdeck remote-demo</code> and open <code>http://localhost:8080</code> (password <code>demo</code>).</p>
+<h2 id="next">Work that remains</h2>
+<p><code>ARCHITECTURE.md</code> has the plan to one Go program. The next steps:</p>
+<ul><li>Lower the CPU use of the screen loop.</li><li>Test the slicer uploads (Cura, OrcaSlicer) to the Printdeck API.</li></ul>
+
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

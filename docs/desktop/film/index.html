@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The film tools · Printdeck</title>
+<meta name="description" content="The scripts that make the film of the Printdeck with the simulator.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The hardware</a>
+<a href="../../hardware/slate/">The Slate case</a>
+<a href="../../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/setup/" aria-current="page">Tall</a><a href="../../ui/wide/setup/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/" aria-current="page">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/">Commands</a>
+<a href="../../reference/environment/">Environment variables</a>
+<a href="../../reference/files/">Files, paths and services</a>
+<a href="../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">Manual, tall display</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Software</p>
+<h1>The film tools</h1>
+<p class="lede">The scripts that make the film of the Printdeck with the simulator.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#film">film.sh</a></li><li><a href="#take">take.sh</a></li><li><a href="#files">The files</a></li></ol></nav>
+<figure class="frame-img white"><img src="../../img/sim.gif" alt="The 3D window of the simulator: a TAZ Workhorse with the Printdeck prints a plaque" loading="lazy"><figcaption>The 3D window of the simulator</figcaption></figure>
+<p><code>desktop/film/</code> makes a short film of the Printdeck with the 3D window of the simulator. Two scripts run it.</p>
+<h2 id="film">film.sh</h2>
+<p>Makes the parts of the film of the Printdeck: the G-code of the plaque that the simulator prints during the film, the music, the soundtrack with the announcer, and the title cards. take.sh records the film with the 3D window of the desktop app.</p>
+<pre><code>desktop/film/film.sh OUT        (OUT is a folder; the voice model goes to OUT/voices)</code></pre>
+<p>It needs uv (build123d, numpy, kokoro-onnx), Go, CuraEngine in /opt/ultimaker-cura, and ffmpeg.</p>
+<h2 id="take">take.sh</h2>
+<p>Records a take of the film of the Printdeck, with the parts that film.sh made in OUT. It builds the deck and the desktop app, starts the simulator on its own, and starts the print of the plaque at the layer of the letters (resume.py). Then it opens the 3D window in film mode, records the take, adds the steppers to the soundtrack (steppers.py), and encodes OUT/printdeck-film.mp4.</p>
+<pre><code>desktop/film/film.sh OUT        (once: the plaque, the music, the voice, and the cards)
+desktop/film/take.sh OUT [FROM TO FPS]</code></pre>
+<p>FROM TO FPS are the seconds of the film and the frames a second (0 80 30). &quot;0 80 1&quot; makes a fast preview. It needs Go, CMake, Ninja, Qt 6, uv, and ffmpeg.</p>
+<h2 id="files">The files</h2>
+<div class="table-wrap"><table><tr><th>File</th><th>What it does</th></tr><tr><td><code>music.py</code></td><td>The music of the film (film.sh): 80 s of synth, made here from sine, saw and square waves and noise. The tempo puts the start of bar 9 at 17.4 s, when the display of the Printdeck turns on (screenOn in Sim3D.qml): the pad and a soft arpeggio until then, the bass and the kick from bar 5 (the assembly), and the full beat from bar 9. A last chord starts at 72.5 s (the end card).</td></tr><tr><td><code>plaque.py</code></td><td>The part that the simulated printer prints in the video (film.sh): a plaque with the word PRINTDECK in raised letters, in the font of the deck.</td></tr><tr><td><code>resume.py</code></td><td>Starts a print of the simulator at a layer of its file, so that a take of the film (film.sh) does not wait for the layers before it. The deck shows the moves before that layer as printed.</td></tr><tr><td><code>slice.py</code></td><td>Slices the plaque of the video (plaque.py) for the simulated TAZ Workhorse, with the PLA settings of the mount (lulzbot/cura/make_profiles.py), and writes the G-code with the PRINT_START and PRINT_END macros of the Printdeck printer.</td></tr><tr><td><code>steppers.py</code></td><td>The sound of the printer in the film (film.sh): the song of the stepper motors, from the moves that the take recorded (take.mp4.motion.csv), under the music and the voice.</td></tr><tr><td><code>voice.py</code></td><td>The announcer of the film (film.sh): Kokoro (kokoro-onnx) speaks each line at its time, and the music goes softer under the voice. The lines are a joke about a touch screen that a printer does not need, timed to the shots of Sim3D.qml.</td></tr>
+<tr><td><code>cards.json</code></td><td>The title cards of the film, with their times.</td></tr>
+<tr><td><code>cura-header.png</code></td><td>A picture for the shot of the Cura plugin.</td></tr></table></div>
+<p>The window plays the film with <code>PRINTDECK_FILM</code>: see <a href="../../desktop/#window">the window</a>.</p>
+
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The screens of the deck · Printdeck</title>
+<meta name="description" content="Every screen of the touch screen, for a display that is mounted tall or wide.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../hardware/">The hardware</a>
+<a href="../hardware/slate/">The Slate case</a>
+<a href="../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../ui/setup/" aria-current="page">Tall</a><a href="../ui/wide/setup/">Wide</a></div>
+<a href="../ui/" aria-current="page">The screens</a>
+<span class="sub"><a href="../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../os/">Printdeck OS</a>
+<a href="../deck/">The printdeck program</a>
+<a href="../deck/klipper/">The Klipper host</a>
+<a href="../deck/printer/">The reference printer</a>
+<a href="../deck/remote/">Remote screen and API</a>
+<a href="../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../desktop/">Desktop app and simulator</a>
+<a href="../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../reference/commands/">Commands</a>
+<a href="../reference/environment/">Environment variables</a>
+<a href="../reference/files/">Files, paths and services</a>
+<a href="../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../manual/">Manual, tall display</a>
+<a href="../manual/wide/">Manual, wide display</a>
+<a href="../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">The deck UI</p>
+<h1>The screens of the deck</h1>
+<p class="lede">Every screen of the touch screen, for a display that is mounted tall or wide.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#screens">The screens</a></li><li><a href="#chapters">The chapters</a></li><li><a href="#manuals">The manuals and the booklets</a></li></ol></nav>
+<p>The deck is the application on the 7 inch touch screen. It has two layouts: for a display that is mounted tall, as in the Slate, and for a display that is mounted wide, as on the TAZ Workhorse. The pages of this section show every screen with numbered callouts, in the words of the manual. Each page has a switch between the tall and the wide layout.</p>
+<div class="pics four screens"><figure><img src="../manual/img/printing.png" alt="A print with the model up to the layer that prints now" loading="lazy"></figure><figure><img src="../manual/img/first-layer.png" alt="The first layer with the Z offset" loading="lazy"></figure><figure><img src="../manual/img/file.png" alt="A file with its print time, filament, roll and cost" loading="lazy"></figure><figure><img src="../manual/img/filament.png" alt="The Filament page with the roll in the printer" loading="lazy"></figure></div>
+<h2 id="screens">The screens</h2>
+<ul><li>The top of each screen shows the display of the printer, with the same dots: the state, the temperatures, the fan, the position of the head, and the progress.</li><li>The print screen shows a 3D view of the model that prints (the printed height in colour), the progress, the time left, and the temperatures. It can pause, resume, cancel, preheat, and start a file. The view is a shaded STL if the upload folder or <code>MODEL_DIR</code> (default <code>/var/lib/printdeck/models</code>) has an STL with a matching name. Otherwise it is the toolpath from the G-code.</li><li>Move (when no print runs): home X, Y, Z; a joystick moves the head (faster further out, stops when you lift the finger); Z in steps of 0.1, 1, 10 mm; extrude and retract; fan; motors off; emergency stop. A filament swap leads through heat, unload, load, and purge.</li><li>Tune (while a print runs): speed and flow in percent, Z offset in baby steps, fan.</li><li>Tap a temperature to set it with a keypad.</li><li>Machine &gt; Theme chooses the day theme, the night theme, or auto (night from <code>NIGHT_FROM</code> to <code>NIGHT_TO</code>, 20 to 7). The choice is saved in <code>/var/lib/printdeck/theme</code>.</li><li>Rolls: the deck keeps a list of your rolls of filament. Each print subtracts its filament from the roll in the printer, and the history shows the cost of each print. The page of each roll lists the prints that used it.</li><li>During a print, the other screens stay open to you. The controls that change the printer are locked, and the print bar at the bottom goes back to the print.</li><li>A display that is mounted wide gets the layout of a machine panel: the display of the printer and a key panel at the left, and the page at the right.</li><li>Setup (at the first start) sets the Wi-Fi. Machine &gt; Wi-Fi and help, and Help during a print, show the address and the password.</li></ul>
+<p><code>slicer/</code> has a Cura post-processing script that sets the speed of each move. See <code>slicer/README.md</code>. <code>slicer/cura-plugin/</code> is the Printdeck plugin for Cura: the roll in the printer, its material, and the print in Preview. See <code>slicer/cura-plugin/README.md</code>.</p>
+<h2 id="chapters">The chapters</h2>
+<div class="map"><a class="card" href="setup/"><b>Set up</b><span>Connect to Wi-Fi, Choose your printer, Install the Klipper firmware</span></a><a class="card" href="meet/"><b>Meet your Printdeck</b><span>The deck, The display of the printer, The deck in a browser</span></a><a class="card" href="print/"><b>Print a part</b><span>Send a file from the slicer, Start a print, Watch the print, Look around during a print</span></a><a class="card" href="filament/"><b>Change the filament</b><span>Change the filament</span></a><a class="card" href="move/"><b>Move and heat</b><span>Move the head and heat</span></a><a class="card" href="calibrate/"><b>Level and calibrate</b><span>Level and calibrate</span></a><a class="card" href="care/"><b>Look after the printer</b><span>Look after the printer, Update the Printdeck</span></a><a class="card" href="problems/"><b>When something goes wrong</b><span>When something goes wrong, Settings</span></a></div>
+<h2 id="manuals">The manuals and the booklets</h2>
+<p>The manual shows each screen of the deck with numbered callouts, and explains each part. It has two versions, one for each mount of the display:</p>
+<ul><li>Tall: <a href="https://beetlebug.org/printdeck/manual/">the web manual</a>, or the booklet <a href="../manual/printdeck-manual.pdf">docs/manual/printdeck-manual.pdf</a>.</li><li>Wide: <a href="https://beetlebug.org/printdeck/manual/wide/">the web manual</a>, or the booklet <a href="../manual/wide/printdeck-manual.pdf">docs/manual/wide/printdeck-manual.pdf</a>.</li><li>The upgrade kit for the LulzBot TAZ Workhorse: the booklet <a href="../lulzbot/printdeck-manual.pdf">docs/lulzbot/printdeck-manual.pdf</a> has the print plan, the hardware and the steps of the mount in <a href="https://github.com/beetlebugorg/printdeck/tree/main/lulzbot">lulzbot/</a>, then the wide manual.</li><li>The Cura plugin: <a href="https://beetlebug.org/printdeck/cura/">the booklet on the web</a>, or <a href="../cura/printdeck-cura.pdf">docs/cura/printdeck-cura.pdf</a>. It shows the setup, the Printdeck tab, and the Print on a part tool.</li></ul>
+<p>Read the booklets on screen, or print them. The booklet has half-letter pages. A print shop makes a saddle-stitched booklet from printdeck-manual.pdf. To print it yourself, print printdeck-manual-print.pdf on both sides of letter paper (flip on the short edge), fold the stack, and staple it in the fold.</p>
+<p>The deck draws the pictures itself: after a change to the UI, run <code>docs/manual/build.sh</code>. After a change to the Cura plugin, run <code>docs/cura/build.sh</code>. The documentation site in <code>docs/</code> comes from the README files, the guides of the two mounts and the manuals: after a change to one of them, run <code>docs/build.py</code>.</p>
+<p>The booklets have the same style as the pictures of this site. The booklet of the Workhorse upgrade has the guides of the mount and then the wide manual.</p>
+
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

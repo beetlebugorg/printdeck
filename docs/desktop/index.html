@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desktop app and simulator · Printdeck</title>
+<meta name="description" content="The Printdeck for a computer, and a simulated TAZ Workhorse in 3D.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../hardware/">The hardware</a>
+<a href="../hardware/slate/">The Slate case</a>
+<a href="../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../ui/setup/" aria-current="page">Tall</a><a href="../ui/wide/setup/">Wide</a></div>
+<a href="../ui/">The screens</a>
+<span class="sub"><a href="../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../os/">Printdeck OS</a>
+<a href="../deck/">The printdeck program</a>
+<a href="../deck/klipper/">The Klipper host</a>
+<a href="../deck/printer/">The reference printer</a>
+<a href="../deck/remote/">Remote screen and API</a>
+<a href="../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../desktop/" aria-current="page">Desktop app and simulator</a>
+<a href="../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../reference/commands/">Commands</a>
+<a href="../reference/environment/">Environment variables</a>
+<a href="../reference/files/">Files, paths and services</a>
+<a href="../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../manual/">Manual, tall display</a>
+<a href="../manual/wide/">Manual, wide display</a>
+<a href="../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Software</p>
+<h1>Desktop app and simulator</h1>
+<p class="lede">The Printdeck for a computer, and a simulated TAZ Workhorse in 3D.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#app">printdeck app</a></li><li><a href="#window">The window</a></li><li><a href="#meshes">The meshes of the 3D window</a></li></ol></nav>
+<img src="../img/sim.gif" alt="The 3D window of the simulator: a TAZ Workhorse with the Printdeck prints a plaque" width="420">
+<p><code>desktop/</code> is the Printdeck for a computer. It is a Qt 6 window around <code>printdeck app</code>, which runs the Klipper host and the deck UI for a printer on USB. Cura finds it at the same address after each start, as it finds a Printdeck. The keyboard of the computer types on the deck.</p>
+<p><code>printdeck app -sim</code> runs the deck with a simulated printer: a TAZ Workhorse on a simulated printer board. The board has the endstops, the probe and the display of the printer, at the places in <code>printer.cfg</code>. With <code>-sim</code>, a second window shows the printer in 3D:</p>
+<ul><li>The model of the Workhorse comes from the CAD files of LulzBot. The axes and the belts move with the steps of the board, and the filament goes down where the nozzle is.</li><li>The Printdeck mount from <code>lulzbot/</code> is on the printer, and its screen shows the deck UI.</li><li>The display of the printer shows the dots that the Klipper host sends to it.</li><li>The left button turns the view, the right button pans it, and the wheel zooms. T makes the tool head see-through.</li></ul>
+<p>To build it, you need Go, CMake, Ninja, and Qt 6.5 or later with Qt Quick 3D:</p>
+<pre><code>B=~/.cache/printdeck/desktop
+(cd deck &amp;&amp; go build -o $B/printdeck ./cmd/printdeck)
+cmake -S desktop -B $B -G Ninja -DCMAKE_BUILD_TYPE=Release
+ninja -C $B
+$B/Printdeck -sim</code></pre>
+<p><code>desktop/film/</code> makes a short film of the Printdeck with the 3D window. <code>desktop/film/film.sh</code> tells how.</p>
+<h2 id="app">printdeck app</h2>
+<p>The window starts <code>printdeck app</code> and shows its remote screen. The app runs the Klipper host in its own process, as the <code>klipper</code> service does on the deck, and serves the screen and the API for slicers on <code>127.0.0.1:7351</code>, so Cura finds it again after each start. Its flags, from <code>deck/cmd/printdeck/app.go</code>:</p>
+<div class="table-wrap"><table><tr><th>Flag</th><th>Default</th><th>What it does</th></tr><tr><td><code>-dir</code></td><td></td><td>the folder of the app (default: the configuration folder of the user)</td></tr><tr><td><code>-addr</code></td><td>127.0.0.1:7351</td><td>the address of the web server</td></tr><tr><td><code>-parent</code></td><td>off</td><td>end when the input closes (the window of the app started the program)</td></tr><tr><td><code>-sim</code></td><td>off</td><td>a simulated printer: the TAZ Workhorse on the simulated board, in its own folder</td></tr></table></div>
+<p>The folder of the app has <code>gcodes/</code>, <code>models/</code>, <code>klipper/printer.cfg</code>, <code>klipper/printdeck.cfg</code> (the app writes it at each start), <code>logs/klippy.log</code> and the API socket <code>klippy.sock</code>. A new folder gets a <code>printer.cfg</code> with only the include of the Printdeck sections: put the configuration of your printer above it. With <code>-sim</code>, a new folder gets the simulated printer (<code>deck/cmd/printdeck/simprinter.cfg</code>).</p>
+<h2 id="window">The window</h2>
+<p>The window program (<code>desktop/</code>) reads these environment variables:</p>
+<div class="table-wrap"><table><tr><th>Variable</th><th>What it does</th></tr>
+<tr><td><code>PRINTDECK</code></td><td>The path of the printdeck program. Without it, the window starts the program next to the window program.</td></tr>
+<tr><td><code>PRINTDECK_ATTACH</code></td><td>A file with the first line of the output of a <code>printdeck app</code> that runs already. The window connects to that app and starts no app.</td></tr>
+<tr><td><code>PRINTDECK_FILM</code></td><td>With <code>-sim</code>: the 3D window shows the film of <code>desktop/film/</code>, and records it to this file when the file with <code>.go</code> added exists.</td></tr>
+<tr><td><code>PRINTDECK_SHOT</code></td><td>A PNG file: the window writes a picture of the windows after <code>PRINTDECK_SHOT_SECONDS</code> (8), and ends. With <code>PRINTDECK_SHOT_FRAMES=N</code> and <code>-sim</code>, it first writes N pictures of the 3D window, 10 a second.</td></tr>
+</table></div>
+<p>The deck UI in the window is drawn by the QML files of the Cura plugin (<code>slicer/cura-plugin/Printdeck/qml</code>), so the two stay the same.</p>
+<h2 id="meshes">The meshes of the 3D window</h2>
+<p>The printer meshes come from the CAD of the LulzBot TAZ Workhorse (&quot;Redgum&quot;): <a href="https://gitlab.com/lulzbot3d/printers/redgum">https://gitlab.com/lulzbot3d/printers/redgum</a></p>
+<p>The CAD is by LulzBot. It has the licenses &quot;GPLv3 or later and/or CC BY-SA 4.0&quot;. These meshes have the same licenses.</p>
+<p>cad/export.py makes the meshes from the FreeCAD files of the CAD. The file has the steps.</p>
+<p>The deck_*.bin meshes are the Printdeck mount of this repository (lulzbot/). cad/deck.py makes them from the meshes of lulzbot/make.sh. They have the license of this repository.</p>
+
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

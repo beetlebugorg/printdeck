@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Klipper host · Printdeck</title>
+<meta name="description" content="A port of klippy, the host program of Klipper, to Go.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The hardware</a>
+<a href="../../hardware/slate/">The Slate case</a>
+<a href="../../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/setup/" aria-current="page">Tall</a><a href="../../ui/wide/setup/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/" aria-current="page">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/">Commands</a>
+<a href="../../reference/environment/">Environment variables</a>
+<a href="../../reference/files/">Files, paths and services</a>
+<a href="../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">Manual, tall display</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Software</p>
+<h1>The Klipper host</h1>
+<p class="lede">A port of klippy, the host program of Klipper, to Go.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#layout">Layout</a></li><li><a href="#rules">Rules</a></li><li><a href="#tests">Tests</a></li></ol></nav><p>The packages in this folder are a port of klippy, the host program of <a href="https://github.com/Klipper3d/klipper">Klipper</a>, to Go. The source is Klipper commit 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f (<code>klipper.version</code>). The port follows the Python code closely, so a change in Klipper is easy to find and copy.</p>
+<h2 id="layout">Layout</h2>
+<div class="table-wrap"><table><thead><tr><th>Klipper file</th><th>Go package</th></tr></thead><tbody><tr><td><code>klippy/klippy.py</code> (Printer)</td><td><code>host</code></td></tr><tr><td><code>klippy/configfile.py</code></td><td><code>configfile</code></td></tr><tr><td><code>klippy/pins.py</code></td><td><code>pins</code></td></tr><tr><td><code>klippy/mcu.py</code></td><td><code>mcu</code></td></tr><tr><td><code>klippy/gcode.py</code></td><td><code>gcode</code></td></tr><tr><td><code>klippy/extras/NAME.py</code></td><td><code>extras/NAME</code></td></tr><tr><td><code>klippy/kinematics/NAME.py</code></td><td><code>kinematics/NAME</code></td></tr><tr><td><code>klippy/serialhdl.py</code>, <code>msgproto.py</code>, <code>clocksync.py</code>, <code>reactor.py</code></td><td>same names</td></tr><tr><td><code>klippy/chelper/*.c</code></td><td><code>serialqueue</code>, and later packages for the motion code</td></tr></tbody></table></div>
+<p><code>extras/all</code> imports each module package. <code>batch</code> runs the host in klippy&#x27;s batch mode for the tests.</p>
+<h2 id="rules">Rules</h2>
+<ul><li>Each Go file starts with the Klipper file name, the commit, the copyright of the Klipper file, and the GPLv3 line. Copy the header of <code>mcu/mcu.go</code>.</li><li>Keep the names and the order of the Python code. A Python method <code>get_status</code> is <code>Status</code>, <code>get_name</code> is <code>Name</code>, <code>cmd_FOO</code> is <code>cmdFoo</code>.</li><li>Klipper&#x27;s exceptions are panics with a typed error: <code>*configfile.Error</code> for <code>config.error</code> and <code>printer.config_error</code>, <code>*pins.Error</code>, <code>*mcu.Error</code>, <code>*gcode.CommandError</code> for <code>gcmd.error</code> and <code>printer.command_error</code>. Use <code>configfile.Raise</code> and <code>gcode.Errorf</code>. The error messages are the same text as in Klipper.</li><li>A module registers itself in an init function: <code>host.RegisterModule(&quot;fan&quot;, load, loadPrefix)</code>. <code>load</code> makes the object of <code>[fan]</code>, and <code>loadPrefix</code> makes the object of <code>[fan name]</code>.</li><li>The order of the calls that make oids, config callbacks, and config commands is the order of the Python code. The board config and its CRC depend on it.</li><li>A module of another package is found as in Klipper, with <code>printer.LoadObject</code> or <code>printer.LookupObject</code>, and a small interface in the package that uses it. This keeps the packages independent.</li><li>Callbacks of the board (sensor reports) run on the reading goroutine. Use a <code>sync.Mutex</code> where Klipper uses a <code>threading.Lock</code>.</li><li>Numbers in text that Klipper writes with <code>%s</code> or <code>str()</code> use <code>pyfmt.Float</code>. <code>%.3f</code> and the other fixed formats are the same in Go.</li><li>Python&#x27;s <code>math</code> functions call the C library. Go&#x27;s <code>math.Sin</code>, <code>math.Cos</code>, <code>math.Atan2</code>, <code>math.Exp</code> and <code>math.Log</code> can differ from it in the last bit, so the tests of these modules have a small tolerance. Use <code>mathutil.Hypot</code> for <code>math.hypot</code>: <code>math.Hypot</code> differs from Python in about one third of the values.</li></ul>
+<h2 id="tests">Tests</h2>
+<p>Each package compares its result with the result of the real Klipper code where this is possible. <code>tools/klipper-reference</code> runs Klipper in Docker and writes the reference files. <code>batch</code> compares the board commands for <code>printer/printer.cfg</code> with the commands of the real host.</p>
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>
