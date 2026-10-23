@@ -161,8 +161,8 @@ class PrintdeckPlugin(Extension):
         def download():
             try:
                 os.makedirs(os.path.dirname(target), exist_ok=True)
-                url, headers = deckscreen.direct(url)
-                req = urllib.request.Request(url, headers=dict(headers, **{"X-Api-Key": key}))
+                direct, headers = deckscreen.direct(url)
+                req = urllib.request.Request(direct, headers=dict(headers, **{"X-Api-Key": key}))
                 with urllib.request.urlopen(req, timeout=120) as r, open(target, "wb") as f:
                     while True:
                         chunk = r.read(1 << 20)
