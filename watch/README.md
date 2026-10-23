@@ -10,9 +10,9 @@ deck over the local network.
   file opens the files of the deck, newest first. Menu opens the setup.
 - The watch app is a blue dot-matrix display, in the fonts and the icons of the printer display
   of the deck, over the whole watch. The first page is the progress of the print: the state, the
-  percent in a large font, the bar, the layer, the time left and the end. The Digital Crown, or a
-  swipe up and down, goes through the pages: the model of the print as the deck draws it, the
-  layers and the times of the print, and the filament. During a print, a tap opens a menu with
+  percent in a large font, the bar, the layer, the time left and the end. Under it, in one scroll
+  that the Digital Crown moves, are the model of the print as the deck draws it, the layers and
+  the times of the print, and the filament. During a print, a tap opens a menu with
   Pause or Resume and Cancel, each with a question first; the crown moves the selection, as the
   knob of the printer, and a tap selects.
 - The complication shows the progress and the time left on the watch face. It has a circular, a

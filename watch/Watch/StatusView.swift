@@ -2,28 +2,28 @@ import SwiftUI
 import WatchKit
 
 /// The watch as the display of the printer: the whole watch is the blue dot-matrix display. The
-/// status of the print is the first page. The Digital Crown, or a swipe up and down, goes through
-/// the pages: the status, the model of the print as the deck draws it, the print (layer and
-/// times), and the filament. During a print, a tap opens
-/// a short menu: Pause or Resume, and Cancel, each with a question first. In the menu the crown
-/// moves the selection, as the knob of the printer, and a tap selects.
+/// status of the print fills the first screen. Under it, in one scroll that the Digital Crown
+/// moves, are the model of the print as the deck draws it, the print (layers and times), and the
+/// filament. During a print, a tap opens a short menu: Pause or Resume, and Cancel, each with a
+/// question first. In the menu the crown moves the selection, as the knob of the printer, and a tap
+/// selects.
 struct StatusView: View {
     @Environment(DeckModel.self) private var model
     @Environment(\.scenePhase) private var phase
     @Environment(\.displayScale) private var scale
     @FocusState private var focused: Bool
-    @State private var mode = Mode.pages
+    @State private var mode = Mode.scroll
     @State private var crown = 0.0
 
     private let p = Palette.night
 
     enum Mode: Equatable {
-        case pages
+        case scroll
         case menu
         case confirm(DeckModel.Command)
     }
 
-    enum Page { case status, model, print, filament }
+    enum Section { case status, model, print, filament }
 
     private struct Action {
         let label: String
@@ -31,34 +31,48 @@ struct StatusView: View {
         let run: () -> Void
     }
 
+    /// The dots of the screen: the largest dots of whole pixels that leave 64 x 72 of them inside
+    /// the margins. The margins keep the screens away from the round corners: 18 points at the top,
+    /// beside the clock of watchOS at the top right.
+    private struct Grid {
+        let dot, cols, rows, top, clockW: Int
+        static let mx = 4, my = 5
+
+        init(size: CGSize, scale: CGFloat) {
+            let wpx = Int(size.width * scale), hpx = Int(size.height * scale)
+            let topPx = Int(18 * scale)
+            dot = max(2, min(wpx / (64 + 2 * Self.mx), (hpx - topPx) / (72 + Self.my)))
+            cols = wpx / dot
+            rows = hpx / dot
+            top = (topPx + dot - 1) / dot
+            clockW = Int(72 * scale) / dot
+        }
+    }
+
     var body: some View {
-        display
-            .ignoresSafeArea()
+        GeometryReader { g in
+            let grid = Grid(size: g.size, scale: scale)
+            Group {
+                if mode == .scroll {
+                    scroll(grid)
+                } else {
+                    menu(grid)
+                }
+            }
+            .onAppear { setModelSize(grid) }
+            .onChange(of: grid.dot) { setModelSize(grid) }
+        }
+        .ignoresSafeArea()
         .background(p.glcd.ignoresSafeArea())
         .environment(\.palette, p)
-        .focusable()
-        .focused($focused)
-        .digitalCrownRotation($crown, from: 0, through: Double(crownMax), by: 1,
-                              sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
-        .gesture(DragGesture(minimumDistance: 20).onEnded { g in
-            guard mode == .pages, abs(g.translation.height) > abs(g.translation.width) else { return }
-            let next = Int(crown.rounded()) + (g.translation.height < 0 ? 1 : -1)
-            crown = Double(max(0, min(pages.count - 1, next)))
-        })
-        .onAppear { focused = true }
         .task(id: phase == .active) {
-            if phase == .active {
-                focused = true
-                await model.poll()
-            }
+            if phase == .active { await model.poll() }
         }
         #if DEBUG
         .onAppear {
             // For screenshots in the simulator: PRINTDECK_SCREEN opens a screen.
             switch ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"] {
             case "menu": open(.menu)
-            case "page2": crown = 1
-            case "page3": crown = 2
             case "cancel": open(.confirm(.cancel))
             default: break
             }
@@ -66,90 +80,112 @@ struct StatusView: View {
         #endif
         .onChange(of: model.status?.busy) { _, busy in
             // A print that ends closes the menu.
-            if busy != true, mode != .pages { open(.pages) }
+            if busy != true, mode != .scroll { open(.scroll) }
         }
     }
 
-    private var display: some View {
-        GeometryReader { g in
-            // The dots fill the screen: the largest dots of whole pixels that leave 64 x 72 of them
-            // inside the margins. The margins keep the screens away from the round corners: 18
-            // points at the top, beside the clock of watchOS at the top right.
-            let mx = 4, my = 5
-            let wpx = Int(g.size.width * scale), hpx = Int(g.size.height * scale)
-            let topPx = Int(18 * scale)
-            let dot = max(2, min(wpx / (64 + 2 * mx), (hpx - topPx) / (72 + my)))
-            let top = (topPx + dot - 1) / dot
-            // The picture of the model fills the page under its header: a square.
-            let side = max(16, min(wpx / dot - 2 * mx, hpx / dot - top - my - 18))
-            LCDView(screen: screen, dotsW: wpx / dot, dotsH: hpx / dot, dotPixels: dot,
-                    marginX: mx, marginY: my, marginTop: top, clockW: Int(72 * scale) / dot, framed: false)
-                .onAppear { model.modelSize = (side, side) }
-                .onChange(of: side) { _, v in model.modelSize = (v, v) }
-                .frame(width: g.size.width, height: g.size.height)
-                .contentShape(Rectangle())
-                .onTapGesture { click() }
+    // MARK: The scroll
+
+    /// The status on the first screen, then the sections, each as high as its rows. The crown
+    /// scrolls, as in any scroll of watchOS.
+    private func scroll(_ grid: Grid) -> some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                lcd(statusScreen, grid: grid, rows: grid.rows, top: grid.top, clockW: grid.clockW)
+                ForEach(sections, id: \.self) { s in
+                    if let pg = page(s) {
+                        lcd(.page(pg), grid: grid, rows: pg.height + 3, top: 1, clockW: 0)
+                    }
+                }
+                // The end of the scroll: dots that are off, away from the round corners.
+                lcd(.rows([]), grid: grid, rows: Grid.my + 2, top: 0, clockW: 0)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { click() }
         }
+        .scrollIndicators(.hidden)
+        #if DEBUG
+        // For screenshots in the simulator: PRINTDECK_SCREEN=bottom opens the end of the scroll.
+        .defaultScrollAnchor(ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"] == "bottom" ? .bottom : .top)
+        #endif
     }
 
-    /// The pages: the status always, the print during a print, and the filament with a roll.
-    private var pages: [Page] {
-        var out: [Page] = [.status]
+    /// A part of the display, rows dots high.
+    private func lcd(_ screen: LCDScreen, grid: Grid, rows: Int, top: Int, clockW: Int) -> some View {
+        LCDView(screen: screen, dotsW: grid.cols, dotsH: rows, dotPixels: grid.dot,
+                marginX: Grid.mx, marginY: 0, marginTop: top, clockW: clockW, framed: false)
+            .frame(height: CGFloat(rows * grid.dot) / scale)
+    }
+
+    private var sections: [Section] {
+        var out: [Section] = []
         if model.status?.busy == true, model.model != nil { out.append(.model) }
         if model.status?.busy == true { out.append(.print) }
         if model.status?.roll != nil { out.append(.filament) }
         return out
     }
 
-    private var page: Page { pages[max(0, min(pages.count - 1, Int(crown.rounded())))] }
+    private var statusScreen: LCDScreen {
+        .status(LCDModel.status(model.status, connected: model.settings.isComplete, error: model.error,
+                                now: Date(), hint: ""))
+    }
 
-    private var crownMax: Int {
-        switch mode {
-        case .pages: max(1, pages.count - 1)
-        default: max(1, actions.count - 1)
+    private func page(_ s: Section) -> LCDPage? {
+        var pg: LCDPage
+        switch s {
+        case .status:
+            return nil
+        case .model:
+            guard let pic = model.model else { return nil }
+            pg = LCDPage(title: "Model", rows: [], picture: pic)
+        case .print:
+            guard let st = model.status else { return nil }
+            pg = LCDModel.printPage(st, now: Date())
+        case .filament:
+            guard let r = model.status?.roll else { return nil }
+            pg = LCDModel.filamentPage(r)
         }
+        pg.position = false
+        return pg
+    }
+
+    /// The picture of the model is a square as wide as the screen.
+    private func setModelSize(_ grid: Grid) {
+        let side = max(16, grid.cols - 2 * Grid.mx)
+        model.modelSize = (side, side)
+    }
+
+    // MARK: The menu
+
+    private func menu(_ grid: Grid) -> some View {
+        LCDView(screen: menuScreen, dotsW: grid.cols, dotsH: grid.rows, dotPixels: grid.dot,
+                marginX: Grid.mx, marginY: Grid.my, marginTop: grid.top, clockW: grid.clockW, framed: false)
+            .contentShape(Rectangle())
+            .onTapGesture { click() }
+            .focusable()
+            .focused($focused)
+            .digitalCrownRotation($crown, from: 0, through: Double(max(1, actions.count - 1)), by: 1,
+                                  sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
+            .onAppear { focused = true }
     }
 
     private var selected: Int { max(0, min(actions.count - 1, Int(crown.rounded()))) }
 
-    private var screen: LCDScreen {
+    private var menuScreen: LCDScreen {
+        let items = actions.map { LCDMenu.Item(label: $0.label, icon: $0.icon) }
         switch mode {
-        case .pages:
-            let now = Date()
-            var pg: LCDPage
-            switch page {
-            case .status:
-                return .status(LCDModel.status(model.status, connected: model.settings.isComplete,
-                                               error: model.error, now: now, hint: ""))
-            case .model:
-                guard let pic = model.model else { return .rows([]) }
-                pg = LCDPage(title: "Model", rows: [], picture: pic)
-            case .print:
-                guard let st = model.status else { return .rows([]) }
-                pg = LCDModel.printPage(st, now: now)
-            case .filament:
-                guard let r = model.status?.roll else { return .rows([]) }
-                pg = LCDModel.filamentPage(r)
-            }
-            pg.index = pages.firstIndex(of: page) ?? 0
-            pg.count = pages.count
-            return .page(pg)
-        case .menu:
-            return .menu(LCDMenu(title: "Print", items: actions.map { .init(label: $0.label, icon: $0.icon) },
-                                 selected: selected))
-        case .confirm(let c):
-            return .menu(LCDMenu(title: question(c), items: actions.map { .init(label: $0.label, icon: $0.icon) },
-                                 selected: selected))
+        case .confirm(let c): return .menu(LCDMenu(title: question(c), items: items, selected: selected))
+        default: return .menu(LCDMenu(title: "Print", items: items, selected: selected))
         }
     }
 
     /// The rows of the menu on the screen, with what they do.
     private var actions: [Action] {
         switch mode {
-        case .pages:
+        case .scroll:
             return []
         case .menu:
-            var a = [Action(label: "Back", icon: "back") { open(.pages) }]
+            var a = [Action(label: "Back", icon: "back") { open(.scroll) }]
             if model.status?.paused == true {
                 a.append(Action(label: "Resume", icon: "play") { open(.confirm(.resume)) })
             } else {
@@ -161,7 +197,7 @@ struct StatusView: View {
             return [
                 Action(label: "No", icon: "no") { open(.menu) },
                 Action(label: "Yes", icon: "yes") {
-                    open(.pages)
+                    open(.scroll)
                     Task { await model.send(c) }
                 },
             ]
@@ -171,7 +207,7 @@ struct StatusView: View {
     /// The click of the knob: the menu during a print.
     private func click() {
         switch mode {
-        case .pages:
+        case .scroll:
             if model.status?.busy == true { open(.menu) }
         default:
             guard actions.indices.contains(selected) else { return }

@@ -355,10 +355,19 @@ struct LCDPage: Equatable {
     var picture: LCDPicture?
     var index = 0
     var count = 1
+    /// The place in the pages in the header; a page in a scroll has none.
+    var position = true
+
+    /// The height of the page in pixels: the header, then the picture or the rows.
+    var height: Int {
+        12 + (picture?.height ?? rows.count * 10 - 2)
+    }
 
     func draw(_ c: inout LCDCanvas) {
         let W = c.w, f = LCDFont.small
-        if c.clockW > 0 {
+        if !position {
+            c.text(f, 0, 0, lcdFit(title, W / f.w))
+        } else if c.clockW > 0 {
             // The clock is at the top right: the title at the left, and the place in the pages as
             // dots at the bottom.
             c.text(f, 0, 0, lcdFit(title, (W - c.clockW) / f.w))
@@ -373,7 +382,8 @@ struct LCDPage: Equatable {
         }
         c.line(0, 9, W - 1, 9)
         if let pic = picture {
-            let ox = (W - pic.width) / 2, oy = 11 + max(0, (c.h - 17 - pic.height) / 2)
+            let ox = (W - pic.width) / 2
+            let oy = position ? 11 + max(0, (c.h - 17 - pic.height) / 2) : 12
             for y in 0..<pic.height {
                 for x in 0..<pic.width where pic.bits[y * pic.width + x] { c.set(ox + x, oy + y) }
             }
@@ -381,7 +391,7 @@ struct LCDPage: Equatable {
         }
         var y = 12
         let n = W / f.w
-        let bottom = c.clockW > 0 ? c.h - 6 : c.h
+        let bottom = c.clockW > 0 && position ? c.h - 6 : c.h
         for r in rows where y + 8 <= bottom {
             switch r {
             case let .text(l, rt):
