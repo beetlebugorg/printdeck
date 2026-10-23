@@ -1,10 +1,10 @@
 {
  "totals": {
-  "grams": 311,
+  "grams": 309,
   "metres": 39,
-  "time": "15 h 02 min",
-  "cost": "$7.15",
-  "parts": 9,
+  "time": "14 h 58 min",
+  "cost": "$7.10",
+  "parts": 7,
   "pricePerKg": "$22.99"
  },
  "prints": [
@@ -79,20 +79,6 @@
    "image": "lulzbot-part_clip"
   },
   {
-   "file": "stl/clip_nut.stl",
-   "name": "clip nut",
-   "colour": "Orange",
-   "swatch": "#E8742A",
-   "count": 2,
-   "grams": 2,
-   "metres": 0.2,
-   "time": "0 h 04 min",
-   "cost": "$0.05",
-   "size": "12 × 5 × 4",
-   "notes": "The wide face down. Print 2.",
-   "image": "lulzbot-part_clip_nut"
-  },
-  {
    "file": "stl/grille.stl",
    "name": "grille",
    "colour": "White",
@@ -143,8 +129,8 @@
    "0.4 mm layers (a 0.3 mm first layer), 1.5 mm walls, 15 % grid infill, skirt"
   ],
   [
-   "Clip, twist nut",
-   "0.3 mm layers, 100 % infill. The clip has a brim."
+   "Clip",
+   "0.3 mm layers, 100 % infill, with a brim."
   ],
   [
    "Speeds",
@@ -174,7 +160,12 @@
   {
    "count": 4,
    "item": "M3 × 8 socket cap head",
-   "where": "2 × pod onto the plate; 2 × rail clip into its twist nut"
+   "where": "2 × pod onto the plate; 2 × rail clip into its hammer nut"
+  },
+  {
+   "count": 2,
+   "item": "M3 hammer nut (drop-in T-nut) for 2020 extrusion, 6 mm slot",
+   "where": "2 × rail clips"
   },
   {
    "count": 2,
@@ -233,8 +224,7 @@
  "tools": [
   "Drill with a 3.2 mm bit (for the four holes of the Pi)",
   "Soldering iron with a heat-set insert tip, at 220 °C",
-  "2.5 mm hex key (M3 socket cap screws)",
-  "Pliers (to hold a twist nut while the screw cuts its thread)"
+  "2.5 mm hex key (M3 socket cap screws)"
  ],
  "checks": [
   "Check the rear screw of the upper pair on the cover: 237.3 mm above the bottom edge of the cover, and about 3.6 mm from the rear edge of the cover. The design uses the value of the LulzBot drawing.",
@@ -345,17 +335,16 @@
    "title": "Clips in the rail",
    "need": [
     "2 × rail clip",
-    "2 × twist nut",
+    "2 × M3 hammer nut",
     "2 × M3 × 8"
    ],
    "items": [
-    "Cut the thread in each twist nut: hold the nut with pliers, turn an M3 × 8 screw into the hole from the wide face until the head touches the nut, then remove the screw.",
-    "Put an M3 × 8 screw into the counterbore in the key of each clip, and turn it two turns into a nut. The wide face of the nut points to the clip.",
+    "Put an M3 × 8 screw through the counterbore in the key of each clip, and turn it two turns into a hammer nut. The sloped side of the nut points away from the clip.",
     "Hold the back panel on the front face of the front left rail, with its bottom edge 125 mm above the bottom of the chassis. Mark the top of the two long slots in the panel on the rail.",
     "Turn a clip a quarter turn, so that the nut is along the slot. Push the nut into the front slot of the rail at a mark. Turn the clip back until the key is along the rail: the nut turns with it, behind the lips.",
     "Tighten the screw until the clip is tight on the rail. Do the same with the second clip."
    ],
-   "note": "The nut is wider than the opening of the slot when it is across the slot. If the nut does not turn with the clip, hold the clip and turn the screw back a little, then try again."
+   "note": "The hammer nut is wider than the opening of the slot when it is across the slot. If the nut does not turn with the clip, push it in with a small screwdriver beside the clip and turn it a quarter turn."
   },
   {
    "image": "step_hang",

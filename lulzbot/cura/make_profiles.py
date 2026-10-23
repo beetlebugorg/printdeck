@@ -164,8 +164,6 @@ PROFILES = [
     # The clip stands 24 mm high on a small section: a brim holds it on the bed.
     profile("Clip", "LulzBot Rail clip", "clip.stl", {**FLAT, "infill_sparse_density": 100, "cool_min_layer_time": 12,
                                                       "adhesion_type": "brim", "brim_line_count": 8}),
-    profile("ClipNut", "LulzBot Twist nut", "clip_nut.stl", {**FLAT, "infill_sparse_density": 100,
-                                                            "cool_min_layer_time": 12}),
     profile("FitDisplay", "LulzBot Fit test", "fit_display.stl", {**FRONT, "cool_min_layer_time": 12}),
 ]
 

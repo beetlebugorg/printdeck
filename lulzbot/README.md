@@ -19,11 +19,10 @@ electronics chassis, and it wraps around the front left edge of the chassis.
 - The drive is in the head, flat on the back panel, behind the display.
 - The pod is on the left side of the chassis (the aluminium cover), at the same height as the
   head. It holds the Pi and the cables. The white grille snaps into a pocket of the pod.
-- There is no hole to drill and no metal nut in the rail. Two printed clips hold the right end of
-  the head on the front slot of the rail. A printed twist nut goes into the slot along it and
-  turns a quarter turn behind the lips. An M3 x 8 screw from the clip cuts its own thread in a
-  2.5 mm hole in the nut and pulls it up. Two screws through a flange of the plate hold up the
-  head. The printer USB cable and the power cable leave at the rear face of the chassis.
+- There is no hole to drill. Two printed clips hold the right end of the head on the front slot
+  of the rail. A metal M3 hammer nut for 2020 extrusion goes into the slot along it and turns a
+  quarter turn behind the lips, and an M3 x 8 screw from the clip pulls it up. Two screws through
+  a flange of the plate hold up the head. The printer USB cable and the power cable leave at the rear face of the chassis.
 
 ## Parts
 
@@ -34,10 +33,9 @@ electronics chassis, and it wraps around the front left edge of the chassis.
 | `stl/back.stl` | Orange | Rear face down, 0.4 mm layers | 69 g | 3 h 16 min |
 | `stl/plate.stl` | Orange | Cover face down, 0.4 mm layers | 58 g | 2 h 11 min |
 | `stl/clip.stl` (print 2) | Orange | On its end, with a brim | 2 x 4 g | 2 x 18 min |
-| `stl/clip_nut.stl` (print 2) | Orange | Wide face down | 2 x 1 g | 2 x 2 min |
 | `stl/grille.stl` | White | Back down | 12 g | 0 h 42 min |
 
-In total: 311 g of PLA (navy 162 g, orange 137 g, white 12 g) and 15 h 2 min of printing. Print
+In total: 309 g of PLA (navy 162 g, orange 135 g, white 12 g) and 14 h 58 min of printing. Print
 the display fit test first (`stl/fit_display.stl`, 22 g, 1 h 10 min): the display pocket has
 0.3 mm of clearance at each side. The numbers come from slices with the Cura profiles in `cura/`
 (CuraEngine, TAZ Workhorse SE tool head, 0.5 mm nozzle, 2.85 mm PLA). The profiles keep the flow
@@ -54,20 +52,22 @@ the step chips and the list do not agree. All screws are M3 socket cap head scre
 
 - M3 x 6 socket cap head: 12 (display 4, Pi 4, drive 4). The display and Pi screws cut their
   own thread in a 2.5 mm hole in the boss: turn them until snug, no more.
-- M3 x 8 socket cap head: 4 (pod onto the plate 2, rail clips into the twist nuts 2). The clip
-  screws cut their own thread in a 2.5 mm hole in the twist nut. Cut the thread before the nut
-  goes into the rail: hold the nut with pliers and turn the screw in until the head touches it.
+- M3 x 8 socket cap head: 4 (pod onto the plate 2, rail clips into the hammer nuts 2)
 - M3 x 10 socket cap head: 6 (back panel into the head 4; plate on the cover 2, upper pair of PP-FP0164)
 - M3 x 12 socket cap head: 2 (plate flange into the back panel)
 - M3 washer: 2 (under the cover screws)
 - M3 x 7 heat-set insert: 6 (head 4, back panel 2; 3 to 7 mm fits)
 - M3 x 5 heat-set insert: 2 (pod blocks; 3 to 5 mm fits)
+- M3 hammer nut (drop-in T-nut) for 2020 extrusion, 6 mm slot: 2 (rail clips). Search for
+  "M3 hammer nut 2020" or "M3 drop-in T-nut 2020 slot 6", or buy Misumi HNTAP5-3. The LulzBot
+  BOM uses Misumi HNTAP5-5 (the M5 size) in this frame.
 
-The twist nut has no insert and no metal nut. It is 4.8 mm wide along the slot, because it must go
-through the 5.1 mm opening of the slot. A 4 mm insert leaves 0.4 mm of plastic at each side, and
-the plastic melts and does not hold the insert. An M3 hex nut (5.5 mm across the flats) does not
-fit. A round boss on the nut goes down into the V of the slot, so the 2.5 mm hole has at least
-1.15 mm of plastic around it for 3.9 mm of thread.
+The rail is 2020 extrusion. The model has a typical hammer nut: 10 mm across the slot, 6 mm
+along it, 4 mm thick, with 45 degree sides at the bottom. Its top is 1.8 mm behind the face of
+the rail, so the M3 x 8 screw goes 3.9 mm into its thread. An M3 x 10 screw goes 7.7 mm behind
+the face, past the bottom of the slot (about 6.5 mm), so do not use one. A printed twist nut
+failed: it must be less than 5.1 mm wide to go through the lips, and the plastic around an M3
+insert or an M3 thread was too thin to hold.
 
 The drive sits on four 0.5 mm pads, so its M3 x 6 screws go 2.5 mm into the drive.
 
