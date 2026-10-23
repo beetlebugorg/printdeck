@@ -1,0 +1,581 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0C8A9F9A3D751A68DA0866C4 /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */; };
+		20B61A975B04B39116EDF951 /* PrintdeckWatch.app in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = D2114C330830B4B5C5D4EAE7 /* PrintdeckWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		2B3EF0FF41DF656F65D3D9D5 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A622D3ED72D7C6395B59AE5 /* Theme.swift */; };
+		4E388A1EA57482408CE4B85F /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB83763E3B47BF75CF93CE3 /* Store.swift */; };
+		5193435EBAFE2B3E122220CC /* PrintdeckComplication.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F5F06702BFE192990D619B34 /* PrintdeckComplication.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		6DE9BB11F05A23CA11727C26 /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */; };
+		80E4866E8E9381BD84E4FD22 /* StatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B2DE727763130438837F9CC /* StatusView.swift */; };
+		863803E55914375D0E896E96 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A622D3ED72D7C6395B59AE5 /* Theme.swift */; };
+		8F9B6078A6FA28D4B4008B63 /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB83763E3B47BF75CF93CE3 /* Store.swift */; };
+		95DD68693F435C22C6F611C0 /* Complication.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AD64238EF6EF070D61FD7D4 /* Complication.swift */; };
+		DDF48D2494A56CECB8A5DF64 /* PrintdeckApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F683BF97A6034681AF592CCA /* PrintdeckApp.swift */; };
+		E16BE60245900C967446E65A /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB83763E3B47BF75CF93CE3 /* Store.swift */; };
+		EC5A53CF6E5F64099A4619EC /* DeckModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C0B5552DFB46694231219C5 /* DeckModel.swift */; };
+		F43A110534B2B219678D0EEA /* PhoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C024260E6470548F3C91FC1F /* PhoneApp.swift */; };
+		F820DE4C589E62B5AA1846CE /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A622D3ED72D7C6395B59AE5 /* Theme.swift */; };
+		FFA1A39E87C13A72B53A34DD /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		533CFEC535A7A4565B2498F5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 628821D9C0615659551237E4 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A907661814D1F96890BBFD9B;
+			remoteInfo = PrintdeckWatch;
+		};
+		7D9BFDAD1CF5FECA8D68B500 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 628821D9C0615659551237E4 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 47F5A9ACDB9237387FC20089;
+			remoteInfo = PrintdeckComplication;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		68E9E9767CBD9F07B6C8FDAC /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				5193435EBAFE2B3E122220CC /* PrintdeckComplication.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E1D76BD940396DED91C39B04 /* Embed Dependencies */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				20B61A975B04B39116EDF951 /* PrintdeckWatch.app in Embed Dependencies */,
+			);
+			name = "Embed Dependencies";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		4C0B5552DFB46694231219C5 /* DeckModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckModel.swift; sourceTree = "<group>"; };
+		7808E4D4350E56889D134E9D /* Complication.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Complication.entitlements; sourceTree = "<group>"; };
+		7A622D3ED72D7C6395B59AE5 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		8AD64238EF6EF070D61FD7D4 /* Complication.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Complication.swift; sourceTree = "<group>"; };
+		8B2DE727763130438837F9CC /* StatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusView.swift; sourceTree = "<group>"; };
+		A539B7B79BF37C687CDF8579 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		A68F2D6FDB0283D4E2968E3F /* Watch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Watch.entitlements; sourceTree = "<group>"; };
+		AFAED1CD6BFAF7976E400B0B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Deck.swift; sourceTree = "<group>"; };
+		C024260E6470548F3C91FC1F /* PhoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneApp.swift; sourceTree = "<group>"; };
+		CB8994C1626052FC1E3F1B21 /* Printdeck.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Printdeck.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D2114C330830B4B5C5D4EAE7 /* PrintdeckWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrintdeckWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E0A1F82427E1BF89AE4574A9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		EFB83763E3B47BF75CF93CE3 /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
+		F5F06702BFE192990D619B34 /* PrintdeckComplication.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PrintdeckComplication.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		F683BF97A6034681AF592CCA /* PrintdeckApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrintdeckApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		2017EDE5D4F9064CAACE25F4 /* Complication */ = {
+			isa = PBXGroup;
+			children = (
+				7808E4D4350E56889D134E9D /* Complication.entitlements */,
+				8AD64238EF6EF070D61FD7D4 /* Complication.swift */,
+				E0A1F82427E1BF89AE4574A9 /* Info.plist */,
+			);
+			path = Complication;
+			sourceTree = "<group>";
+		};
+		59EC49CF6F201553EED7DBAF = {
+			isa = PBXGroup;
+			children = (
+				2017EDE5D4F9064CAACE25F4 /* Complication */,
+				61C74AF6BF53EDB17739E140 /* Phone */,
+				7ED177FB2ABAE0A5A21461E8 /* Shared */,
+				E8C9D0F6B14E74153FE50E5C /* Watch */,
+				98DF49283C2853ED6630EF08 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		61C74AF6BF53EDB17739E140 /* Phone */ = {
+			isa = PBXGroup;
+			children = (
+				A539B7B79BF37C687CDF8579 /* Info.plist */,
+				C024260E6470548F3C91FC1F /* PhoneApp.swift */,
+			);
+			path = Phone;
+			sourceTree = "<group>";
+		};
+		7ED177FB2ABAE0A5A21461E8 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */,
+				EFB83763E3B47BF75CF93CE3 /* Store.swift */,
+				7A622D3ED72D7C6395B59AE5 /* Theme.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		98DF49283C2853ED6630EF08 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				CB8994C1626052FC1E3F1B21 /* Printdeck.app */,
+				F5F06702BFE192990D619B34 /* PrintdeckComplication.appex */,
+				D2114C330830B4B5C5D4EAE7 /* PrintdeckWatch.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E8C9D0F6B14E74153FE50E5C /* Watch */ = {
+			isa = PBXGroup;
+			children = (
+				4C0B5552DFB46694231219C5 /* DeckModel.swift */,
+				AFAED1CD6BFAF7976E400B0B /* Info.plist */,
+				F683BF97A6034681AF592CCA /* PrintdeckApp.swift */,
+				8B2DE727763130438837F9CC /* StatusView.swift */,
+				A68F2D6FDB0283D4E2968E3F /* Watch.entitlements */,
+			);
+			path = Watch;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		47F5A9ACDB9237387FC20089 /* PrintdeckComplication */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E02D4589C6624AC6137B9F1A /* Build configuration list for PBXNativeTarget "PrintdeckComplication" */;
+			buildPhases = (
+				8C18931EA80837F5EFACA139 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PrintdeckComplication;
+			packageProductDependencies = (
+			);
+			productName = PrintdeckComplication;
+			productReference = F5F06702BFE192990D619B34 /* PrintdeckComplication.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		A907661814D1F96890BBFD9B /* PrintdeckWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EAA3859F3DB7F015FBD9CA3B /* Build configuration list for PBXNativeTarget "PrintdeckWatch" */;
+			buildPhases = (
+				DEBBF5971383EA96B1F54929 /* Sources */,
+				68E9E9767CBD9F07B6C8FDAC /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C952569EA3E1E481B200FABB /* PBXTargetDependency */,
+			);
+			name = PrintdeckWatch;
+			packageProductDependencies = (
+			);
+			productName = PrintdeckWatch;
+			productReference = D2114C330830B4B5C5D4EAE7 /* PrintdeckWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D73E004A060093EAA39157D9 /* Printdeck */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 350AA75B515533FFBC4BE677 /* Build configuration list for PBXNativeTarget "Printdeck" */;
+			buildPhases = (
+				BC95D24BBD67EEF97DD346F2 /* Sources */,
+				E1D76BD940396DED91C39B04 /* Embed Dependencies */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EED5A1492892AF6B31CC8D19 /* PBXTargetDependency */,
+			);
+			name = Printdeck;
+			packageProductDependencies = (
+			);
+			productName = Printdeck;
+			productReference = CB8994C1626052FC1E3F1B21 /* Printdeck.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		628821D9C0615659551237E4 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					47F5A9ACDB9237387FC20089 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					A907661814D1F96890BBFD9B = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					D73E004A060093EAA39157D9 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = C0BDE9C84314E09F1531FD59 /* Build configuration list for PBXProject "Printdeck" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 59EC49CF6F201553EED7DBAF;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 98DF49283C2853ED6630EF08 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D73E004A060093EAA39157D9 /* Printdeck */,
+				A907661814D1F96890BBFD9B /* PrintdeckWatch */,
+				47F5A9ACDB9237387FC20089 /* PrintdeckComplication */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8C18931EA80837F5EFACA139 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				95DD68693F435C22C6F611C0 /* Complication.swift in Sources */,
+				0C8A9F9A3D751A68DA0866C4 /* Deck.swift in Sources */,
+				4E388A1EA57482408CE4B85F /* Store.swift in Sources */,
+				F820DE4C589E62B5AA1846CE /* Theme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BC95D24BBD67EEF97DD346F2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FFA1A39E87C13A72B53A34DD /* Deck.swift in Sources */,
+				F43A110534B2B219678D0EEA /* PhoneApp.swift in Sources */,
+				8F9B6078A6FA28D4B4008B63 /* Store.swift in Sources */,
+				863803E55914375D0E896E96 /* Theme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DEBBF5971383EA96B1F54929 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6DE9BB11F05A23CA11727C26 /* Deck.swift in Sources */,
+				EC5A53CF6E5F64099A4619EC /* DeckModel.swift in Sources */,
+				DDF48D2494A56CECB8A5DF64 /* PrintdeckApp.swift in Sources */,
+				80E4866E8E9381BD84E4FD22 /* StatusView.swift in Sources */,
+				E16BE60245900C967446E65A /* Store.swift in Sources */,
+				2B3EF0FF41DF656F65D3D9D5 /* Theme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C952569EA3E1E481B200FABB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 47F5A9ACDB9237387FC20089 /* PrintdeckComplication */;
+			targetProxy = 7D9BFDAD1CF5FECA8D68B500 /* PBXContainerItemProxy */;
+		};
+		EED5A1492892AF6B31CC8D19 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A907661814D1F96890BBFD9B /* PrintdeckWatch */;
+			targetProxy = 533CFEC535A7A4565B2498F5 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1FCDBAC672C788411BB8E73A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Complication/Complication.entitlements;
+				INFOPLIST_FILE = Complication/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_PREFIX).watchkitapp.complication";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Release;
+		};
+		60870404854F7E925B1415B0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				APP_GROUP = "group.$(BUNDLE_PREFIX)";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				BUNDLE_PREFIX = org.beetlebug.printdeck;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		8CB6D61F55DA8EF89A986333 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				APP_GROUP = "group.$(BUNDLE_PREFIX)";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				BUNDLE_PREFIX = org.beetlebug.printdeck;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		9068A0F31E881E05845DBEBF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Complication/Complication.entitlements;
+				INFOPLIST_FILE = Complication/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_PREFIX).watchkitapp.complication";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Debug;
+		};
+		93C67992FFFB89EC17318EBD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Phone/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_PREFIX)";
+				PRODUCT_NAME = Printdeck;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		9D20B30FF8C191E71DBC7753 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Watch/Watch.entitlements;
+				INFOPLIST_FILE = Watch/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_PREFIX).watchkitapp";
+				PRODUCT_NAME = Printdeck;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Release;
+		};
+		9FBCA34B97E24E920F211537 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Phone/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_PREFIX)";
+				PRODUCT_NAME = Printdeck;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		A2498AA1440FCB2221351443 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Watch/Watch.entitlements;
+				INFOPLIST_FILE = Watch/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_PREFIX).watchkitapp";
+				PRODUCT_NAME = Printdeck;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		350AA75B515533FFBC4BE677 /* Build configuration list for PBXNativeTarget "Printdeck" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				93C67992FFFB89EC17318EBD /* Debug */,
+				9FBCA34B97E24E920F211537 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C0BDE9C84314E09F1531FD59 /* Build configuration list for PBXProject "Printdeck" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8CB6D61F55DA8EF89A986333 /* Debug */,
+				60870404854F7E925B1415B0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E02D4589C6624AC6137B9F1A /* Build configuration list for PBXNativeTarget "PrintdeckComplication" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9068A0F31E881E05845DBEBF /* Debug */,
+				1FCDBAC672C788411BB8E73A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EAA3859F3DB7F015FBD9CA3B /* Build configuration list for PBXNativeTarget "PrintdeckWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A2498AA1440FCB2221351443 /* Debug */,
+				9D20B30FF8C191E71DBC7753 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 628821D9C0615659551237E4 /* Project object */;
+}
