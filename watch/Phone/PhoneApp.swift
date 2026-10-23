@@ -70,6 +70,7 @@ struct DeckView: View {
             }
         }
         #endif
+        .onChange(of: model.status) { _, st in PrintLiveActivity.update(st) }
         .task(id: phase == .active && model.settings.isComplete) {
             if phase == .active && model.settings.isComplete { await model.poll() }
         }

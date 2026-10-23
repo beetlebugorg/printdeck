@@ -3,6 +3,17 @@ import Foundation
 
 /// The dots of the complications: the rectangle and the circle, for a status at a time.
 struct ComplicationLCD {
+    /// The hotend of the status screen of the deck, 16 x 16.
+    static func hotend(_ c: inout LCDCanvas, x: Int, y: Int) {
+        let art = ["......####......", "......####......", "..############..", "..#..........#..",
+                   "..############..", "..#..........#..", "..############..", "................",
+                   "...##########...", "...#........#...", "...#........#...", "...##########...",
+                   ".....######.....", "......####......", ".......##.......", "................"]
+        for (dy, row) in art.enumerated() {
+            for (dx, ch) in row.enumerated() where ch == "#" { c.set(x + dx, y + dy) }
+        }
+    }
+
     let status: Status?
     let date: Date
 
@@ -65,12 +76,7 @@ struct ComplicationLCD {
             }
         }
         guard busy else {
-            let art = ["......####......", "......####......", "..############..", "..#..........#..",
-                       "..############..", "..#..........#..", "..############..", "................",
-                       "...##########...", "...#........#...", "...#........#...", "...##########...",
-                       ".....######.....", "......####......", ".......##.......", "................"]
-            let ox = W / 2 - 8, oy = H / 2 - 7
-            for (y, row) in art.enumerated() { for (x, ch) in row.enumerated() where ch == "#" { c.set(ox + x, oy + y) } }
+            Self.hotend(&c, x: W / 2 - 8, y: H / 2 - 7)
             return
         }
         let t = percentNumber

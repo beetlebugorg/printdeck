@@ -24,6 +24,10 @@ deck over the local network.
 - The iPhone has widgets in the same dots. On the Home Screen, the small widget is the status
   screen of the watch, and the medium widget is the 128 x 64 status screen of the deck. On the
   Lock Screen are the rectangle, the circle and the inline text of the complications.
+- During a print, a Live Activity shows the print on the Lock Screen and in the Dynamic Island:
+  the hotend in dots, the time left, the bar, the end and the layer. The app starts it when it
+  sees a print, updates it from its readings, and ends it after the print. Between the readings,
+  the system timers move the time left and the bar to the end time.
 - The deck sends push messages to the iPhone: print done, print failed, paused, first layer done,
   and a roll that runs short. The messages are encrypted from the deck to the iPhone. The watch
   shows the notifications of the iPhone.

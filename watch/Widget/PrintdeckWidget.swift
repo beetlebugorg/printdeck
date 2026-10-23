@@ -31,6 +31,13 @@ struct WidgetView: View {
 }
 
 @main
+struct PrintdeckWidgets: WidgetBundle {
+    var body: some Widget {
+        PrintdeckWidget()
+        PrintActivityWidget()
+    }
+}
+
 struct PrintdeckWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "PrintdeckProgress", provider: Provider()) { entry in
