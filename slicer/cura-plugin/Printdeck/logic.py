@@ -238,9 +238,9 @@ def material_warning(cura, material, spool):
     if spool and spool.get("cura_material") and cura.get("base"):
         if cura["base"] == spool["cura_material"]:
             return ""
-        return "Cura uses %s. The printer has %s." % (name, spool_name(spool))
+        return "You have %s selected, the printer has %s installed." % (name, spool_name(spool))
     if material and cura.get("material") and cura["material"].strip().lower() != material.strip().lower():
-        return "Cura uses %s. The printer has %s." % (name, spool_name(spool) if spool else material)
+        return "You have %s selected, the printer has %s installed." % (name, spool_name(spool) if spool else material)
     return ""
 
 

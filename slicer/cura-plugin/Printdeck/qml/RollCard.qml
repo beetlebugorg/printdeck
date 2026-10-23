@@ -13,7 +13,7 @@ Rectangle
 {
     id: card
     property var roll: printdeckRoll
-    property real margin: UM.Theme.getSize("thick_margin").width
+    property real margin: UM.Theme.getSize("default_margin").width
 
     // The action panel: the sibling of the area of the card with the property outputAvailable.
     property Item panel:
@@ -29,7 +29,7 @@ Rectangle
     }
 
     visible: roll ? roll.shown : false
-    width: UM.Theme.getSize("action_panel_widget").width * 0.75
+    width: UM.Theme.getSize("action_panel_widget").width
     height: Math.max(content.height + 2 * margin, panel ? panel.height : 0)
     y: 2 * UM.Theme.getSize("thick_margin").height - height / 2
     radius: UM.Theme.getSize("default_radius").width
@@ -45,7 +45,7 @@ Rectangle
         anchors.verticalCenter: parent.verticalCenter
         anchors.leftMargin: card.margin
         anchors.rightMargin: card.margin
-        spacing: UM.Theme.getSize("default_margin").height
+        spacing: UM.Theme.getSize("narrow_margin").height
 
         // What the card shows: the roll that is loaded in the printer.
         UM.Label
