@@ -196,7 +196,7 @@
 <section class="sheet contents even">
   
     <h2>Contents</h2>
-    <ol><li class="ch">Set up</li><li><span>Connect to Wi-Fi</span><span class="dots"></span><span>3</span></li><li><span>Choose your printer</span><span class="dots"></span><span>6</span></li><li><span>Install the Klipper firmware</span><span class="dots"></span><span>9</span></li><li class="ch">Meet your Printdeck</li><li><span>The deck</span><span class="dots"></span><span>11</span></li><li><span>The display of the printer</span><span class="dots"></span><span>14</span></li><li><span>The deck in a browser</span><span class="dots"></span><span>15</span></li><li class="ch">Print a part</li><li><span>Send a file from the slicer</span><span class="dots"></span><span>16</span></li><li><span>Start a print</span><span class="dots"></span><span>17</span></li><li><span>Watch the print</span><span class="dots"></span><span>20</span></li><li><span>Look around during a print</span><span class="dots"></span><span>31</span></li><li class="ch">Change the filament</li><li><span>Change the filament</span><span class="dots"></span><span>33</span></li><li class="ch">Move and heat</li><li><span>Move the head and heat</span><span class="dots"></span><span>40</span></li><li class="ch">Level and calibrate</li><li><span>Level and calibrate</span><span class="dots"></span><span>43</span></li><li class="ch">Look after the printer</li><li><span>Look after the printer</span><span class="dots"></span><span>47</span></li><li><span>Update the Printdeck</span><span class="dots"></span><span>53</span></li><li class="ch">When something goes wrong</li><li><span>When something goes wrong</span><span class="dots"></span><span>55</span></li><li><span>Settings</span><span class="dots"></span><span>57</span></li></ol>
+    <ol><li class="ch">Set up</li><li><span>Connect to Wi-Fi</span><span class="dots"></span><span>3</span></li><li><span>Choose your printer</span><span class="dots"></span><span>6</span></li><li><span>Install the Klipper firmware</span><span class="dots"></span><span>9</span></li><li class="ch">Meet your Printdeck</li><li><span>The deck</span><span class="dots"></span><span>11</span></li><li><span>The display of the printer</span><span class="dots"></span><span>14</span></li><li><span>The deck in a browser</span><span class="dots"></span><span>15</span></li><li class="ch">Print a part</li><li><span>Send a file from the slicer</span><span class="dots"></span><span>16</span></li><li><span>Start a print</span><span class="dots"></span><span>17</span></li><li><span>Watch the print</span><span class="dots"></span><span>20</span></li><li><span>Look around during a print</span><span class="dots"></span><span>31</span></li><li class="ch">Change the filament</li><li><span>Change the filament</span><span class="dots"></span><span>33</span></li><li class="ch">Move and heat</li><li><span>Move the head and heat</span><span class="dots"></span><span>41</span></li><li class="ch">Level and calibrate</li><li><span>Level and calibrate</span><span class="dots"></span><span>44</span></li><li class="ch">Look after the printer</li><li><span>Look after the printer</span><span class="dots"></span><span>48</span></li><li><span>Update the Printdeck</span><span class="dots"></span><span>54</span></li><li class="ch">When something goes wrong</li><li><span>When something goes wrong</span><span class="dots"></span><span>56</span></li><li><span>Settings</span><span class="dots"></span><span>58</span></li></ol>
   
   
     
@@ -429,7 +429,7 @@
     <p>The board of the printer must run the Klipper firmware of this Printdeck. The deck writes it through the USB cable.</p>
     
     
-    <ol class="steps"><li><span class="n">1</span><span>Open Maintenance, then tap Firmware. A new board shows Install Klipper firmware on the setup screen.</span></li></ol>
+    <ol class="steps"><li><span class="n">1</span><span>Open Machine, then Maintenance, then tap Firmware. A new board shows Install Klipper firmware on the setup screen.</span></li></ol>
     
     
     <ol class="steps"><li><span class="n">2</span><span>Tap Write. Do not switch off the printer until the deck shows the result.</span></li></ol>
@@ -610,7 +610,7 @@
           <text x="520" y="654" class="bdg-n">9</text></g>
         </svg>
       </div>
-      <ol class="parts"><li><span class="badge">8</span><span><b>Last print.</b> The last print and its result. Reprint starts it again, after a question.</span></li><li><span class="badge">9</span><span><b>Pages.</b> Filament, Move, Maintenance and Machine. Each page has its own section.</span></li></ol>
+      <ol class="parts"><li><span class="badge">8</span><span><b>Last print.</b> The last print and its result. Reprint starts it again, after a question.</span></li><li><span class="badge">9</span><span><b>Pages.</b> Filament, Toolhead and Machine. Each page has its own section.</span></li></ol>
       
     </div>
     
@@ -1021,25 +1021,29 @@
           <circle cx="440" cy="268" r="6" class="dot"/>
           <circle cx="520" cy="302" r="16" class="bdg"/>
           <text x="520" y="302" class="bdg-n">5</text></g><g>
-          <line x1="505" y1="554" x2="440" y2="554" class="leader"/>
-          <circle cx="440" cy="554" r="6" class="dot"/>
-          <circle cx="520" cy="554" r="16" class="bdg"/>
-          <text x="520" y="554" class="bdg-n">6</text></g><g class="dimmed">
-          <line x1="505" y1="366" x2="426" y2="366" class="leader"/>
-          <circle cx="426" cy="366" r="6" class="dot"/>
-          <circle cx="520" cy="366" r="16" class="bdg"/>
-          <text x="520" y="366" class="bdg-n">7</text></g><g class="dimmed">
-          <line x1="505" y1="406" x2="426" y2="406" class="leader"/>
-          <circle cx="426" cy="406" r="6" class="dot"/>
-          <circle cx="520" cy="406" r="16" class="bdg"/>
-          <text x="520" y="406" class="bdg-n">8</text></g><g class="dimmed">
+          <line x1="-25" y1="343" x2="48" y2="343" class="leader"/>
+          <circle cx="48" cy="343" r="6" class="dot"/>
+          <circle cx="-40" cy="343" r="16" class="bdg"/>
+          <text x="-40" y="343" class="bdg-n">6</text></g><g class="dimmed">
+          <line x1="505" y1="378" x2="424" y2="378" class="leader"/>
+          <circle cx="424" cy="378" r="6" class="dot"/>
+          <circle cx="520" cy="378" r="16" class="bdg"/>
+          <text x="520" y="378" class="bdg-n">7</text></g><g class="dimmed">
+          <line x1="505" y1="421" x2="424" y2="421" class="leader"/>
+          <circle cx="424" cy="421" r="6" class="dot"/>
+          <circle cx="520" cy="421" r="16" class="bdg"/>
+          <text x="520" y="421" class="bdg-n">8</text></g><g class="dimmed">
+          <line x1="505" y1="630" x2="440" y2="630" class="leader"/>
+          <circle cx="440" cy="630" r="6" class="dot"/>
+          <circle cx="520" cy="630" r="16" class="bdg"/>
+          <text x="520" y="630" class="bdg-n">9</text></g><g class="dimmed">
           <line x1="505" y1="772" x2="422" y2="772" class="leader"/>
           <circle cx="422" cy="772" r="6" class="dot"/>
           <circle cx="520" cy="772" r="16" class="bdg"/>
-          <text x="520" y="772" class="bdg-n">9</text></g>
+          <text x="520" y="772" class="bdg-n">10</text></g>
         </svg>
       </div>
-      <ol class="parts"><li><span class="badge">1</span><span><b>Display.</b> The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>Pause.</b> Pauses the print.</span></li><li><span class="badge">3</span><span><b>Tune.</b> Changes the print while it runs. See Tune.</span></li><li><span class="badge">4</span><span><b>Cancel.</b> Stops the print, after a question.</span></li><li><span class="badge">5</span><span><b>Menu.</b> Shows the other screens while the print runs. See Look around during a print.</span></li><li><span class="badge">6</span><span><b>Model.</b> The model up to the layer that prints now, with the kind of the move now at the top right.</span></li></ol>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Display.</b> The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>Pause.</b> Pauses the print.</span></li><li><span class="badge">3</span><span><b>Tune.</b> Changes the print while it runs. See Tune.</span></li><li><span class="badge">4</span><span><b>Cancel.</b> Stops the print, after a question.</span></li><li><span class="badge">5</span><span><b>Menu.</b> Shows the other screens while the print runs. See Look around during a print.</span></li><li><span class="badge">6</span><span><b>Layer.</b> The layer that prints now, and the kind of the move now with the live speed of the head.</span></li></ol>
       
     </div>
     
@@ -1081,25 +1085,29 @@
           <circle cx="440" cy="268" r="6" class="dot"/>
           <circle cx="520" cy="302" r="16" class="bdg"/>
           <text x="520" y="302" class="bdg-n">5</text></g><g class="dimmed">
-          <line x1="505" y1="554" x2="440" y2="554" class="leader"/>
-          <circle cx="440" cy="554" r="6" class="dot"/>
-          <circle cx="520" cy="554" r="16" class="bdg"/>
-          <text x="520" y="554" class="bdg-n">6</text></g><g>
-          <line x1="505" y1="366" x2="426" y2="366" class="leader"/>
-          <circle cx="426" cy="366" r="6" class="dot"/>
-          <circle cx="520" cy="366" r="16" class="bdg"/>
-          <text x="520" y="366" class="bdg-n">7</text></g><g>
-          <line x1="505" y1="406" x2="426" y2="406" class="leader"/>
-          <circle cx="426" cy="406" r="6" class="dot"/>
-          <circle cx="520" cy="406" r="16" class="bdg"/>
-          <text x="520" y="406" class="bdg-n">8</text></g><g>
+          <line x1="-25" y1="343" x2="48" y2="343" class="leader"/>
+          <circle cx="48" cy="343" r="6" class="dot"/>
+          <circle cx="-40" cy="343" r="16" class="bdg"/>
+          <text x="-40" y="343" class="bdg-n">6</text></g><g>
+          <line x1="505" y1="378" x2="424" y2="378" class="leader"/>
+          <circle cx="424" cy="378" r="6" class="dot"/>
+          <circle cx="520" cy="378" r="16" class="bdg"/>
+          <text x="520" y="378" class="bdg-n">7</text></g><g>
+          <line x1="505" y1="421" x2="424" y2="421" class="leader"/>
+          <circle cx="424" cy="421" r="6" class="dot"/>
+          <circle cx="520" cy="421" r="16" class="bdg"/>
+          <text x="520" y="421" class="bdg-n">8</text></g><g>
+          <line x1="505" y1="630" x2="440" y2="630" class="leader"/>
+          <circle cx="440" cy="630" r="6" class="dot"/>
+          <circle cx="520" cy="630" r="16" class="bdg"/>
+          <text x="520" y="630" class="bdg-n">9</text></g><g>
           <line x1="505" y1="772" x2="422" y2="772" class="leader"/>
           <circle cx="422" cy="772" r="6" class="dot"/>
           <circle cx="520" cy="772" r="16" class="bdg"/>
-          <text x="520" y="772" class="bdg-n">9</text></g>
+          <text x="520" y="772" class="bdg-n">10</text></g>
         </svg>
       </div>
-      <ol class="parts"><li><span class="badge">7</span><span><b>Roll.</b> The roll in the printer: a dot in its color, the filament that is left on it, its name, and its grams. The filament of the print counts while it prints. Cura gives a roll its color.</span></li><li><span class="badge">8</span><span><b>Speed.</b> The live speed of the head over the last 30 seconds: a bar for each moment, the newest at the right in orange. At the right, the live speed in mm/s and the flow of plastic out of the nozzle in mm³/s. The bars drop at each corner and rise on long lines of infill.</span></li><li><span class="badge">9</span><span><b>Layer slider.</b> Drag it to look at another layer. Live goes back to the layer that prints.</span></li></ol>
+      <ol class="parts"><li><span class="badge">7</span><span><b>Roll.</b> The roll in the printer: a dot in its color, the filament that is left on it, its name, and its grams. The filament of the print counts while it prints. Cura gives a roll its color.</span></li><li><span class="badge">8</span><span><b>Layer times.</b> A bar for each layer: its time. The layers that are done are dark, with the time that they took. The layer now is orange, and the layers to come are light, with the time of the slicer. At the right, the time of the layer now and its plan, and the mean time of a layer. A short layer can need more cooling.</span></li><li><span class="badge">9</span><span><b>Model.</b> The model up to the layer that prints now, in the color of the roll.</span></li><li><span class="badge">10</span><span><b>Layer slider.</b> Drag it to look at another layer. Live goes back to the layer that prints.</span></li></ol>
       
     </div>
     
@@ -1199,7 +1207,7 @@
           <text x="520" y="540" class="bdg-n">7</text></g>
         </svg>
       </div>
-      <ol class="parts"><li><span class="badge">1</span><span><b>Display.</b> The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>Where.</b> The layer of the pause, and the message of the printer.</span></li><li><span class="badge">3</span><span><b>Resume.</b> Continues the print.</span></li><li><span class="badge">4</span><span><b>Change filament.</b> The guided filament change, for a new color. See Change the filament.</span></li><li><span class="badge">5</span><span><b>Move head.</b> Opens Move, to move the head out of the way.</span></li><li><span class="badge">6</span><span><b>Tune.</b> Changes the print.</span></li><li><span class="badge">7</span><span><b>Cancel.</b> Stops the print, after a question.</span></li></ol>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Display.</b> The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>Where.</b> The layer of the pause, and the message of the printer.</span></li><li><span class="badge">3</span><span><b>Resume.</b> Continues the print.</span></li><li><span class="badge">4</span><span><b>Change filament.</b> The guided filament change, for a new color. See Change the filament.</span></li><li><span class="badge">5</span><span><b>Move head.</b> Opens Toolhead, to move the head out of the way.</span></li><li><span class="badge">6</span><span><b>Tune.</b> Changes the print.</span></li><li><span class="badge">7</span><span><b>Cancel.</b> Stops the print, after a question.</span></li></ol>
       
     </div>
     
@@ -1574,22 +1582,22 @@
           <circle cx="456" cy="102" r="6" class="dot"/>
           <circle cx="520" cy="102" r="16" class="bdg"/>
           <text x="520" y="102" class="bdg-n">1</text></g><g>
-          <line x1="505" y1="199" x2="456" y2="199" class="leader"/>
-          <circle cx="456" cy="199" r="6" class="dot"/>
-          <circle cx="520" cy="199" r="16" class="bdg"/>
-          <text x="520" y="199" class="bdg-n">2</text></g><g>
-          <line x1="505" y1="330" x2="456" y2="330" class="leader"/>
-          <circle cx="456" cy="330" r="6" class="dot"/>
-          <circle cx="520" cy="330" r="16" class="bdg"/>
-          <text x="520" y="330" class="bdg-n">3</text></g><g>
-          <line x1="505" y1="461" x2="456" y2="461" class="leader"/>
-          <circle cx="456" cy="461" r="6" class="dot"/>
-          <circle cx="520" cy="461" r="16" class="bdg"/>
-          <text x="520" y="461" class="bdg-n">4</text></g><g>
-          <line x1="505" y1="592" x2="456" y2="592" class="leader"/>
-          <circle cx="456" cy="592" r="6" class="dot"/>
-          <circle cx="520" cy="592" r="16" class="bdg"/>
-          <text x="520" y="592" class="bdg-n">5</text></g><g>
+          <line x1="505" y1="186" x2="456" y2="186" class="leader"/>
+          <circle cx="456" cy="186" r="6" class="dot"/>
+          <circle cx="520" cy="186" r="16" class="bdg"/>
+          <text x="520" y="186" class="bdg-n">2</text></g><g>
+          <line x1="505" y1="394" x2="456" y2="394" class="leader"/>
+          <circle cx="456" cy="394" r="6" class="dot"/>
+          <circle cx="520" cy="394" r="16" class="bdg"/>
+          <text x="520" y="394" class="bdg-n">3</text></g><g>
+          <line x1="505" y1="498" x2="456" y2="498" class="leader"/>
+          <circle cx="456" cy="498" r="6" class="dot"/>
+          <circle cx="520" cy="498" r="16" class="bdg"/>
+          <text x="520" y="498" class="bdg-n">4</text></g><g>
+          <line x1="505" y1="602" x2="456" y2="602" class="leader"/>
+          <circle cx="456" cy="602" r="6" class="dot"/>
+          <circle cx="520" cy="602" r="16" class="bdg"/>
+          <text x="520" y="602" class="bdg-n">5</text></g><g>
           <line x1="505" y1="744" x2="456" y2="744" class="leader"/>
           <circle cx="456" cy="744" r="6" class="dot"/>
           <circle cx="520" cy="744" r="16" class="bdg"/>
@@ -1646,29 +1654,33 @@
         <div class="shot-box"><img src="img/roll.png" alt="One roll"></div>
         <svg class="marks2" viewBox="-72 0 624 800" aria-hidden="true">
           <g>
-          <line x1="505" y1="208" x2="456" y2="208" class="leader"/>
-          <circle cx="456" cy="208" r="6" class="dot"/>
-          <circle cx="520" cy="208" r="16" class="bdg"/>
-          <text x="520" y="208" class="bdg-n">1</text></g><g>
-          <line x1="505" y1="364" x2="456" y2="364" class="leader"/>
-          <circle cx="456" cy="364" r="6" class="dot"/>
-          <circle cx="520" cy="364" r="16" class="bdg"/>
-          <text x="520" y="364" class="bdg-n">2</text></g><g>
-          <line x1="505" y1="313" x2="452" y2="313" class="leader"/>
-          <circle cx="452" cy="313" r="6" class="dot"/>
-          <circle cx="520" cy="313" r="16" class="bdg"/>
-          <text x="520" y="313" class="bdg-n">3</text></g><g>
+          <line x1="505" y1="223" x2="456" y2="223" class="leader"/>
+          <circle cx="456" cy="223" r="6" class="dot"/>
+          <circle cx="520" cy="223" r="16" class="bdg"/>
+          <text x="520" y="223" class="bdg-n">1</text></g><g>
+          <line x1="505" y1="133" x2="452" y2="133" class="leader"/>
+          <circle cx="452" cy="133" r="6" class="dot"/>
+          <circle cx="520" cy="133" r="16" class="bdg"/>
+          <text x="520" y="133" class="bdg-n">2</text></g><g>
+          <line x1="505" y1="394" x2="456" y2="394" class="leader"/>
+          <circle cx="456" cy="394" r="6" class="dot"/>
+          <circle cx="520" cy="394" r="16" class="bdg"/>
+          <text x="520" y="394" class="bdg-n">3</text></g><g>
+          <line x1="505" y1="343" x2="452" y2="343" class="leader"/>
+          <circle cx="452" cy="343" r="6" class="dot"/>
+          <circle cx="520" cy="343" r="16" class="bdg"/>
+          <text x="520" y="343" class="bdg-n">4</text></g><g>
           <line x1="505" y1="748" x2="456" y2="748" class="leader"/>
           <circle cx="456" cy="748" r="6" class="dot"/>
           <circle cx="520" cy="748" r="16" class="bdg"/>
-          <text x="520" y="748" class="bdg-n">4</text></g><g>
+          <text x="520" y="748" class="bdg-n">5</text></g><g>
           <line x1="-25" y1="748" x2="24" y2="748" class="leader"/>
           <circle cx="24" cy="748" r="6" class="dot"/>
           <circle cx="-40" cy="748" r="16" class="bdg"/>
-          <text x="-40" y="748" class="bdg-n">5</text></g>
+          <text x="-40" y="748" class="bdg-n">6</text></g>
         </svg>
       </div>
-      <ol class="parts"><li><span class="badge">1</span><span><b>Details.</b> The filament on the roll, the filament that prints used, and the price.</span></li><li><span class="badge">2</span><span><b>Left.</b> The filament on the roll, of the filament when you added it.</span></li><li><span class="badge">3</span><span><b>Prints.</b> The number of prints that used the roll, and their filament. Tap it for the list of the prints. A tap on a print opens its page.</span></li><li><span class="badge">4</span><span><b>Weigh again.</b> Sets the filament from the weight on a scale.</span></li><li><span class="badge">5</span><span><b>Remove.</b> Removes an empty roll from the list.</span></li></ol>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Details.</b> The filament on the roll, the filament that prints used, and the price.</span></li><li><span class="badge">2</span><span><b>Color.</b> The color of the roll. Tap it to choose a color. The print screen and Cura show it.</span></li><li><span class="badge">3</span><span><b>Left.</b> The filament on the roll, of the filament when you added it.</span></li><li><span class="badge">4</span><span><b>Prints.</b> The number of prints that used the roll, and their filament. Tap it for the list of the prints. A tap on a print opens its page.</span></li><li><span class="badge">5</span><span><b>Weigh again.</b> Sets the filament from the weight on a scale.</span></li><li><span class="badge">6</span><span><b>Remove.</b> Removes an empty roll from the list.</span></li></ol>
       
     </div>
     
@@ -1683,10 +1695,42 @@
 <section class="sheet guide even">
   
     
+    
+    <div class="figure">
+      <h3>The color of a roll</h3>
+      <div class="frame tall">
+        <div class="shot-box"><img src="img/roll-color.png" alt="The color of a roll"></div>
+        <svg class="marks2" viewBox="-72 0 624 800" aria-hidden="true">
+          <g>
+          <line x1="505" y1="388" x2="456" y2="388" class="leader"/>
+          <circle cx="456" cy="388" r="6" class="dot"/>
+          <circle cx="520" cy="388" r="16" class="bdg"/>
+          <text x="520" y="388" class="bdg-n">1</text></g><g>
+          <line x1="505" y1="748" x2="456" y2="748" class="leader"/>
+          <circle cx="456" cy="748" r="6" class="dot"/>
+          <circle cx="520" cy="748" r="16" class="bdg"/>
+          <text x="520" y="748" class="bdg-n">2</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Colors.</b> The colors of filament. The color of the roll now is lit.</span></li><li><span class="badge">2</span><span><b>No color.</b> Removes the color.</span></li></ol>
+      <p class="note">A tap on a color sets it, and closes the page. The Cura plugin gives the material of the roll in Cura the same color. A color that you set in Cura comes back to the deck.</p>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Change the filament</div>
+    <div class="folio">40</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
     <h2>Move the head and heat</h2>
     
     
-    <ol class="steps"><li><span class="n">1</span><span>Open Move, and tap Home all after each start of the printer.</span></li></ol>
+    <ol class="steps"><li><span class="n">1</span><span>Open Toolhead, and tap Home all after each start of the printer.</span></li></ol>
     
     
     <ol class="steps"><li><span class="n">2</span><span>Hold the joystick to move the head. Use Z for the height.</span></li></ol>
@@ -1698,18 +1742,18 @@
   
   
     <div class="chapter-tab">Move and heat</div>
-    <div class="folio">40</div>
+    <div class="folio">41</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
     <div class="figure">
-      <h3>The Move page</h3>
+      <h3>The Toolhead page</h3>
       <div class="frame tall">
-        <div class="shot-box"><img src="img/move.png" alt="The Move page"></div>
+        <div class="shot-box"><img src="img/move.png" alt="The Toolhead page"></div>
         <svg class="marks2" viewBox="-72 0 624 800" aria-hidden="true">
           <g>
           <line x1="505" y1="103" x2="456" y2="103" class="leader"/>
@@ -1742,11 +1786,11 @@
   
   
     <div class="chapter-tab">Move and heat</div>
-    <div class="folio">41</div>
+    <div class="folio">42</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -1782,20 +1826,20 @@
   
   
     <div class="chapter-tab">Move and heat</div>
-    <div class="folio">42</div>
+    <div class="folio">43</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>Level and calibrate</h2>
     
     
-    <p>Maintenance lists the calibrations that your printer has. The list comes from the config of the printer.</p>
+    <p>Maintenance lists the calibrations that your printer has. The list comes from the config of the printer. Open it from Machine.</p>
     
     
-    <ol class="steps"><li><span class="n">1</span><span>Open Maintenance.</span></li></ol>
+    <ol class="steps"><li><span class="n">1</span><span>Open Machine, then Maintenance.</span></li></ol>
     
     
     <ol class="steps"><li><span class="n">2</span><span>Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.</span></li></ol>
@@ -1813,11 +1857,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">43</div>
+    <div class="folio">44</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -1861,11 +1905,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">44</div>
+    <div class="folio">45</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -1893,11 +1937,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">45</div>
+    <div class="folio">46</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -1933,22 +1977,6 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">46</div>
-  
-</section>
-
-<section class="sheet guide odd">
-  
-    
-    <h2>Look after the printer</h2>
-    
-    
-    <p>Machine has the information of the printer, the history of the prints, the macros, the console and the settings.</p>
-    
-    
-  
-  
-    <div class="chapter-tab">Look after the printer</div>
     <div class="folio">47</div>
   
 </section>
@@ -1956,58 +1984,10 @@
 <section class="sheet guide even">
   
     
+    <h2>Look after the printer</h2>
     
-    <div class="figure">
-      <h3>The Machine page</h3>
-      <div class="frame tall">
-        <div class="shot-box"><img src="img/machine.png" alt="The Machine page"></div>
-        <svg class="marks2" viewBox="-72 0 624 800" aria-hidden="true">
-          <g>
-          <line x1="505" y1="140" x2="456" y2="140" class="leader"/>
-          <circle cx="456" cy="140" r="6" class="dot"/>
-          <circle cx="520" cy="140" r="16" class="bdg"/>
-          <text x="520" y="140" class="bdg-n">1</text></g><g>
-          <line x1="505" y1="243" x2="456" y2="243" class="leader"/>
-          <circle cx="456" cy="243" r="6" class="dot"/>
-          <circle cx="520" cy="243" r="16" class="bdg"/>
-          <text x="520" y="243" class="bdg-n">2</text></g><g>
-          <line x1="505" y1="314" x2="456" y2="314" class="leader"/>
-          <circle cx="456" cy="314" r="6" class="dot"/>
-          <circle cx="520" cy="314" r="16" class="bdg"/>
-          <text x="520" y="314" class="bdg-n">3</text></g><g>
-          <line x1="505" y1="385" x2="456" y2="385" class="leader"/>
-          <circle cx="456" cy="385" r="6" class="dot"/>
-          <circle cx="520" cy="385" r="16" class="bdg"/>
-          <text x="520" y="385" class="bdg-n">4</text></g><g>
-          <line x1="505" y1="456" x2="456" y2="456" class="leader"/>
-          <circle cx="456" cy="456" r="6" class="dot"/>
-          <circle cx="520" cy="456" r="16" class="bdg"/>
-          <text x="520" y="456" class="bdg-n">5</text></g><g>
-          <line x1="505" y1="745" x2="456" y2="745" class="leader"/>
-          <circle cx="456" cy="745" r="6" class="dot"/>
-          <circle cx="520" cy="745" r="16" class="bdg"/>
-          <text x="520" y="745" class="bdg-n">6</text></g><g>
-          <line x1="-25" y1="745" x2="24" y2="745" class="leader"/>
-          <circle cx="24" cy="745" r="6" class="dot"/>
-          <circle cx="-40" cy="745" r="16" class="bdg"/>
-          <text x="-40" y="745" class="bdg-n">7</text></g><g>
-          <line x1="505" y1="527" x2="456" y2="527" class="leader"/>
-          <circle cx="456" cy="527" r="6" class="dot"/>
-          <circle cx="520" cy="527" r="16" class="bdg"/>
-          <text x="520" y="527" class="bdg-n">8</text></g><g class="dimmed">
-          <line x1="505" y1="598" x2="456" y2="598" class="leader"/>
-          <circle cx="456" cy="598" r="6" class="dot"/>
-          <circle cx="520" cy="598" r="16" class="bdg"/>
-          <text x="520" y="598" class="bdg-n">9</text></g><g class="dimmed">
-          <line x1="505" y1="669" x2="456" y2="669" class="leader"/>
-          <circle cx="456" cy="669" r="6" class="dot"/>
-          <circle cx="520" cy="669" r="16" class="bdg"/>
-          <text x="520" y="669" class="bdg-n">10</text></g>
-        </svg>
-      </div>
-      <ol class="parts"><li><span class="badge">1</span><span><b>Information.</b> The version of Klipper, the state of the firmware of the board, the network address, and the totals.</span></li><li><span class="badge">2</span><span><b>Software update.</b> The version of the deck, and a new version when there is one. See Update the Printdeck.</span></li><li><span class="badge">3</span><span><b>Statistics.</b> The totals of all prints.</span></li><li><span class="badge">4</span><span><b>Print history.</b> Each print, with its result. Tap a print to see its model, its time and its filament, and to print it again.</span></li><li><span class="badge">5</span><span><b>Macros.</b> The macros of the printer. Tap one to run it.</span></li><li><span class="badge">6</span><span><b>Restart Klipper.</b> Restarts the Klipper host, which reads printer.cfg again.</span></li><li><span class="badge">7</span><span><b>Firmware restart.</b> Restarts the firmware of the board, for example after a stop.</span></li><li><span class="badge">8</span><span><b>Console.</b> The G-code terminal of Klipper. See below.</span></li></ol>
-      
-    </div>
+    
+    <p>Machine has the information of the printer, the history of the prints, the macros, the console and the settings.</p>
     
     
   
@@ -2022,54 +2002,58 @@
     
     
     <div class="figure">
-      <h3>The Machine page (more)</h3>
+      <h3>The Machine page</h3>
       <div class="frame tall">
         <div class="shot-box"><img src="img/machine.png" alt="The Machine page"></div>
         <svg class="marks2" viewBox="-72 0 624 800" aria-hidden="true">
-          <g class="dimmed">
+          <g>
           <line x1="505" y1="140" x2="456" y2="140" class="leader"/>
           <circle cx="456" cy="140" r="6" class="dot"/>
           <circle cx="520" cy="140" r="16" class="bdg"/>
-          <text x="520" y="140" class="bdg-n">1</text></g><g class="dimmed">
-          <line x1="505" y1="243" x2="456" y2="243" class="leader"/>
-          <circle cx="456" cy="243" r="6" class="dot"/>
-          <circle cx="520" cy="243" r="16" class="bdg"/>
-          <text x="520" y="243" class="bdg-n">2</text></g><g class="dimmed">
-          <line x1="505" y1="314" x2="456" y2="314" class="leader"/>
-          <circle cx="456" cy="314" r="6" class="dot"/>
-          <circle cx="520" cy="314" r="16" class="bdg"/>
-          <text x="520" y="314" class="bdg-n">3</text></g><g class="dimmed">
-          <line x1="505" y1="385" x2="456" y2="385" class="leader"/>
-          <circle cx="456" cy="385" r="6" class="dot"/>
-          <circle cx="520" cy="385" r="16" class="bdg"/>
-          <text x="520" y="385" class="bdg-n">4</text></g><g class="dimmed">
-          <line x1="505" y1="456" x2="456" y2="456" class="leader"/>
-          <circle cx="456" cy="456" r="6" class="dot"/>
-          <circle cx="520" cy="456" r="16" class="bdg"/>
-          <text x="520" y="456" class="bdg-n">5</text></g><g class="dimmed">
+          <text x="520" y="140" class="bdg-n">1</text></g><g>
+          <line x1="505" y1="240" x2="456" y2="240" class="leader"/>
+          <circle cx="456" cy="240" r="6" class="dot"/>
+          <circle cx="520" cy="240" r="16" class="bdg"/>
+          <text x="520" y="240" class="bdg-n">2</text></g><g>
+          <line x1="505" y1="305" x2="456" y2="305" class="leader"/>
+          <circle cx="456" cy="305" r="6" class="dot"/>
+          <circle cx="520" cy="305" r="16" class="bdg"/>
+          <text x="520" y="305" class="bdg-n">3</text></g><g>
+          <line x1="505" y1="370" x2="456" y2="370" class="leader"/>
+          <circle cx="456" cy="370" r="6" class="dot"/>
+          <circle cx="520" cy="370" r="16" class="bdg"/>
+          <text x="520" y="370" class="bdg-n">4</text></g><g>
+          <line x1="505" y1="435" x2="456" y2="435" class="leader"/>
+          <circle cx="456" cy="435" r="6" class="dot"/>
+          <circle cx="520" cy="435" r="16" class="bdg"/>
+          <text x="520" y="435" class="bdg-n">5</text></g><g>
           <line x1="505" y1="745" x2="456" y2="745" class="leader"/>
           <circle cx="456" cy="745" r="6" class="dot"/>
           <circle cx="520" cy="745" r="16" class="bdg"/>
-          <text x="520" y="745" class="bdg-n">6</text></g><g class="dimmed">
+          <text x="520" y="745" class="bdg-n">6</text></g><g>
           <line x1="-25" y1="745" x2="24" y2="745" class="leader"/>
           <circle cx="24" cy="745" r="6" class="dot"/>
           <circle cx="-40" cy="745" r="16" class="bdg"/>
           <text x="-40" y="745" class="bdg-n">7</text></g><g class="dimmed">
-          <line x1="505" y1="527" x2="456" y2="527" class="leader"/>
-          <circle cx="456" cy="527" r="6" class="dot"/>
-          <circle cx="520" cy="527" r="16" class="bdg"/>
-          <text x="520" y="527" class="bdg-n">8</text></g><g>
-          <line x1="505" y1="598" x2="456" y2="598" class="leader"/>
-          <circle cx="456" cy="598" r="6" class="dot"/>
-          <circle cx="520" cy="598" r="16" class="bdg"/>
-          <text x="520" y="598" class="bdg-n">9</text></g><g>
-          <line x1="505" y1="669" x2="456" y2="669" class="leader"/>
-          <circle cx="456" cy="669" r="6" class="dot"/>
-          <circle cx="520" cy="669" r="16" class="bdg"/>
-          <text x="520" y="669" class="bdg-n">10</text></g>
+          <line x1="505" y1="500" x2="456" y2="500" class="leader"/>
+          <circle cx="456" cy="500" r="6" class="dot"/>
+          <circle cx="520" cy="500" r="16" class="bdg"/>
+          <text x="520" y="500" class="bdg-n">8</text></g><g class="dimmed">
+          <line x1="505" y1="565" x2="456" y2="565" class="leader"/>
+          <circle cx="456" cy="565" r="6" class="dot"/>
+          <circle cx="520" cy="565" r="16" class="bdg"/>
+          <text x="520" y="565" class="bdg-n">9</text></g><g class="dimmed">
+          <line x1="505" y1="630" x2="456" y2="630" class="leader"/>
+          <circle cx="456" cy="630" r="6" class="dot"/>
+          <circle cx="520" cy="630" r="16" class="bdg"/>
+          <text x="520" y="630" class="bdg-n">10</text></g><g class="dimmed">
+          <line x1="505" y1="695" x2="456" y2="695" class="leader"/>
+          <circle cx="456" cy="695" r="6" class="dot"/>
+          <circle cx="520" cy="695" r="16" class="bdg"/>
+          <text x="520" y="695" class="bdg-n">11</text></g>
         </svg>
       </div>
-      <ol class="parts"><li><span class="badge">9</span><span><b>Settings.</b> The theme, the clock, and the homing in a filament change. See below.</span></li><li><span class="badge">10</span><span><b>Wi-Fi and help.</b> The network, the password and the addresses.</span></li></ol>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Information.</b> The version of Klipper, the state of the firmware of the board, the network address, and the totals.</span></li><li><span class="badge">2</span><span><b>Software update.</b> The version of the deck, and a new version when there is one. See Update the Printdeck.</span></li><li><span class="badge">3</span><span><b>Maintenance.</b> The calibrations, the firmware, and Save config. See Maintenance.</span></li><li><span class="badge">4</span><span><b>Statistics.</b> The totals of all prints.</span></li><li><span class="badge">5</span><span><b>Print history.</b> Each print, with its result. Tap a print to see its model, its time and its filament, and to print it again.</span></li><li><span class="badge">6</span><span><b>Restart Klipper.</b> Restarts the Klipper host, which reads printer.cfg again.</span></li><li><span class="badge">7</span><span><b>Firmware restart.</b> Restarts the firmware of the board, for example after a stop.</span></li></ol>
       
     </div>
     
@@ -2082,6 +2066,74 @@
 </section>
 
 <section class="sheet guide even">
+  
+    
+    
+    <div class="figure">
+      <h3>The Machine page (more)</h3>
+      <div class="frame tall">
+        <div class="shot-box"><img src="img/machine.png" alt="The Machine page"></div>
+        <svg class="marks2" viewBox="-72 0 624 800" aria-hidden="true">
+          <g class="dimmed">
+          <line x1="505" y1="140" x2="456" y2="140" class="leader"/>
+          <circle cx="456" cy="140" r="6" class="dot"/>
+          <circle cx="520" cy="140" r="16" class="bdg"/>
+          <text x="520" y="140" class="bdg-n">1</text></g><g class="dimmed">
+          <line x1="505" y1="240" x2="456" y2="240" class="leader"/>
+          <circle cx="456" cy="240" r="6" class="dot"/>
+          <circle cx="520" cy="240" r="16" class="bdg"/>
+          <text x="520" y="240" class="bdg-n">2</text></g><g class="dimmed">
+          <line x1="505" y1="305" x2="456" y2="305" class="leader"/>
+          <circle cx="456" cy="305" r="6" class="dot"/>
+          <circle cx="520" cy="305" r="16" class="bdg"/>
+          <text x="520" y="305" class="bdg-n">3</text></g><g class="dimmed">
+          <line x1="505" y1="370" x2="456" y2="370" class="leader"/>
+          <circle cx="456" cy="370" r="6" class="dot"/>
+          <circle cx="520" cy="370" r="16" class="bdg"/>
+          <text x="520" y="370" class="bdg-n">4</text></g><g class="dimmed">
+          <line x1="505" y1="435" x2="456" y2="435" class="leader"/>
+          <circle cx="456" cy="435" r="6" class="dot"/>
+          <circle cx="520" cy="435" r="16" class="bdg"/>
+          <text x="520" y="435" class="bdg-n">5</text></g><g class="dimmed">
+          <line x1="505" y1="745" x2="456" y2="745" class="leader"/>
+          <circle cx="456" cy="745" r="6" class="dot"/>
+          <circle cx="520" cy="745" r="16" class="bdg"/>
+          <text x="520" y="745" class="bdg-n">6</text></g><g class="dimmed">
+          <line x1="-25" y1="745" x2="24" y2="745" class="leader"/>
+          <circle cx="24" cy="745" r="6" class="dot"/>
+          <circle cx="-40" cy="745" r="16" class="bdg"/>
+          <text x="-40" y="745" class="bdg-n">7</text></g><g>
+          <line x1="505" y1="500" x2="456" y2="500" class="leader"/>
+          <circle cx="456" cy="500" r="6" class="dot"/>
+          <circle cx="520" cy="500" r="16" class="bdg"/>
+          <text x="520" y="500" class="bdg-n">8</text></g><g>
+          <line x1="505" y1="565" x2="456" y2="565" class="leader"/>
+          <circle cx="456" cy="565" r="6" class="dot"/>
+          <circle cx="520" cy="565" r="16" class="bdg"/>
+          <text x="520" y="565" class="bdg-n">9</text></g><g>
+          <line x1="505" y1="630" x2="456" y2="630" class="leader"/>
+          <circle cx="456" cy="630" r="6" class="dot"/>
+          <circle cx="520" cy="630" r="16" class="bdg"/>
+          <text x="520" y="630" class="bdg-n">10</text></g><g>
+          <line x1="505" y1="695" x2="456" y2="695" class="leader"/>
+          <circle cx="456" cy="695" r="6" class="dot"/>
+          <circle cx="520" cy="695" r="16" class="bdg"/>
+          <text x="520" y="695" class="bdg-n">11</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">8</span><span><b>Macros.</b> The macros of the printer. Tap one to run it.</span></li><li><span class="badge">9</span><span><b>Console.</b> The G-code terminal of Klipper. See below.</span></li><li><span class="badge">10</span><span><b>Settings.</b> The theme, the clock, and the homing in a filament change. See below.</span></li><li><span class="badge">11</span><span><b>Wi-Fi and help.</b> The network, the password and the addresses.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Look after the printer</div>
+    <div class="folio">50</div>
+  
+</section>
+
+<section class="sheet guide odd">
   
     
     
@@ -2117,11 +2169,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">50</div>
+    <div class="folio">51</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2153,11 +2205,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">51</div>
+    <div class="folio">52</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2189,11 +2241,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">52</div>
+    <div class="folio">53</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>Update the Printdeck</h2>
@@ -2217,11 +2269,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">53</div>
+    <div class="folio">54</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2261,11 +2313,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">54</div>
+    <div class="folio">55</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>When something goes wrong</h2>
@@ -2286,11 +2338,11 @@
   
   
     <div class="chapter-tab">When something goes wrong</div>
-    <div class="folio">55</div>
+    <div class="folio">56</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2326,11 +2378,11 @@
   
   
     <div class="chapter-tab">When something goes wrong</div>
-    <div class="folio">56</div>
+    <div class="folio">57</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>Settings</h2>
@@ -2363,17 +2415,6 @@
   
   
     <div class="chapter-tab">When something goes wrong</div>
-    <div class="folio">57</div>
-  
-</section>
-
-<section class="sheet notes even">
-  
-    <h2>Notes</h2>
-    <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
-  
-  
-    
     <div class="folio">58</div>
   
 </section>
