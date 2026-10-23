@@ -1,0 +1,105 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  The push relay of the Printdeck app. A Lambda function behind a function URL gives encrypted
+  messages from the decks to APNs. The APNs key is in a Secrets Manager secret.
+
+Parameters:
+  BundleId:
+    Type: String
+    Description: The bundle ID of the Printdeck iPhone app, the topic of the pushes.
+  CodeBucket:
+    Type: String
+    Description: The S3 bucket with the code (deploy.sh sets it).
+  CodeKey:
+    Type: String
+    Description: The key of the zip of the code in CodeBucket (deploy.sh sets it).
+
+Resources:
+  # key_id, team_id and p8 are empty until set-apple-key.sh writes them. relay_secret signs the
+  # send tokens, and CloudFormation makes it at random.
+  Secret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: printdeck-relay
+      Description: The APNs key of the Printdeck app, and the secret of the send tokens.
+      GenerateSecretString:
+        SecretStringTemplate: '{"key_id":"","team_id":"","p8":""}'
+        GenerateStringKey: relay_secret
+        PasswordLength: 48
+        ExcludePunctuation: true
+
+  Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: read-the-secret
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref Secret
+
+  Logs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/printdeck-relay
+      RetentionInDays: 14
+
+  Function:
+    Type: AWS::Lambda::Function
+    DependsOn: Logs
+    Properties:
+      FunctionName: printdeck-relay
+      Runtime: provided.al2023
+      Architectures: [arm64]
+      Handler: bootstrap
+      MemorySize: 128
+      Timeout: 15
+      Role: !GetAtt Role.Arn
+      Code:
+        S3Bucket: !Ref CodeBucket
+        S3Key: !Ref CodeKey
+      Environment:
+        Variables:
+          SECRET_ARN: !Ref Secret
+          TOPIC: !Ref BundleId
+
+  # The URL has no AWS auth: the relay checks the send token of each push.
+  Url:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !GetAtt Function.Arn
+      AuthType: NONE
+
+  UrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref Function
+      Action: lambda:InvokeFunctionUrl
+      Principal: "*"
+      FunctionUrlAuthType: NONE
+
+  UrlInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref Function
+      Action: lambda:InvokeFunction
+      Principal: "*"
+      InvokedViaFunctionUrl: true
+
+Outputs:
+  RelayUrl:
+    Description: The URL of the relay, for the app and the decks.
+    Value: !GetAtt Url.FunctionUrl
+  SecretArn:
+    Description: The secret of the relay, for set-apple-key.sh.
+    Value: !Ref Secret
