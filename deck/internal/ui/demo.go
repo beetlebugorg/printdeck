@@ -39,15 +39,15 @@ func (d *DemoPrinter) Preview() image.Image { return d.Img }
 func (d *DemoPrinter) RecordPicture(printer.Record) (image.Image, bool) {
 	return d.Img, false
 }
-func (d *DemoPrinter) FilePicture(printer.File) image.Image { return nil }
-func (d *DemoPrinter) SpoolStore() *printer.Spools          { return d.Spools_ }
-func (d *DemoPrinter) LoadFiles()                           {}
-func (d *DemoPrinter) Pause()                               {}
-func (d *DemoPrinter) Resume()                              {}
-func (d *DemoPrinter) Cancel()                              {}
-func (d *DemoPrinter) Connect()                             {}
-func (d *DemoPrinter) Heat(int, int)                        {}
-func (d *DemoPrinter) PrintFile(string)                     {}
+func (d *DemoPrinter) FilePicture(printer.File, string) image.Image { return nil }
+func (d *DemoPrinter) SpoolStore() *printer.Spools                  { return d.Spools_ }
+func (d *DemoPrinter) LoadFiles()                                   {}
+func (d *DemoPrinter) Pause()                                       {}
+func (d *DemoPrinter) Resume()                                      {}
+func (d *DemoPrinter) Cancel()                                      {}
+func (d *DemoPrinter) Connect()                                     {}
+func (d *DemoPrinter) Heat(int, int)                                {}
+func (d *DemoPrinter) PrintFile(string)                             {}
 
 func (d *DemoPrinter) SetViewLayer(l int) { d.View = l }
 func (d *DemoPrinter) ViewLayer() int     { return d.View }

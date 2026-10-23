@@ -726,7 +726,8 @@ class PrintdeckPlugin(Extension):
             if OnPartTool.instance.changeGcode(gcode_list):
                 gcode_list[0] += ";PRINTDECK_ONPART\n"
         material = extruder.material
-        lines = logic.material_lines(material.getMetaDataEntry("material") or "", material.getName())
+        lines = logic.material_lines(material.getMetaDataEntry("material") or "", material.getName(),
+                                     material.getMetaDataEntry("color_code") or "")
         if lines:
             # At the end of the header: some programs read ;FLAVOR on the first line.
             if not gcode_list[0].endswith("\n"):

@@ -84,9 +84,9 @@ func TestNoComments(t *testing.T) {
 
 // The Printdeck plugin for Cura writes the material of Cura in the header.
 func TestPrintdeckMaterial(t *testing.T) {
-	g := ";FLAVOR:Marlin\n;Generated with Cura_SteamEngine 5.13.0\n;PRINTDECK_MATERIAL: ABS\n;PRINTDECK_MATERIAL_NAME: Generic Black ABS\nG28\n"
+	g := ";FLAVOR:Marlin\n;Generated with Cura_SteamEngine 5.13.0\n;PRINTDECK_MATERIAL: ABS\n;PRINTDECK_MATERIAL_NAME: Generic Black ABS\n;PRINTDECK_COLOR: #1a1a1a\nG28\n"
 	m, err := Parse(strings.NewReader(g), int64(len(g)))
-	if err != nil || m.Material != "ABS" || m.MaterialName != "Generic Black ABS" {
+	if err != nil || m.Material != "ABS" || m.MaterialName != "Generic Black ABS" || m.Color != "#1a1a1a" {
 		t.Errorf("%+v %v", m, err)
 	}
 }

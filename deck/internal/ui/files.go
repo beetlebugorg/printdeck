@@ -148,7 +148,12 @@ func (a *App) thumb(c *gfx.Canvas, r image.Rectangle, f printer.File, m gcodemet
 	window(c, r)
 	img := m.Thumbnail
 	if img == nil {
-		img = a.Printer.FilePicture(f)
+		// The color that the slicer wrote, or the color word of the material, for example "Navy PLA".
+		hex := m.Color
+		if _, ok := printer.ParseHex(hex); !ok {
+			hex = printer.ColorFromName(m.MaterialName)
+		}
+		img = a.Printer.FilePicture(f, hex)
 	}
 	if img == nil {
 		drawModelShape(c, r)

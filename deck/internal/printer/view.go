@@ -61,7 +61,11 @@ type View struct {
 
 	records map[string]*recordPic // the pictures of finished prints (RecordPicture)
 	files   map[string]*recordPic // the pictures of files with no thumbnail (FilePicture)
-	fileRun bool                  // a picture of a file is drawn now
+	color   string                // the color of the roll in the printer, for the print now
+
+	// Rolls are the rolls of filament, or nil. The picture of a print has the color of its roll.
+	Rolls   *Spools
+	fileRun bool // a picture of a file is drawn now
 }
 
 // SetLimits sets the motion limits of the printer, and the max mode settings for a printer that
@@ -111,7 +115,7 @@ func (v *View) SetViewLayer(layer int) {
 func (v *View) renderView() {
 	for {
 		v.mu.Lock()
-		layer, gc, mesh := v.view, v.gc, v.mesh
+		layer, gc, mesh, hex := v.view, v.gc, v.mesh, v.color
 		if layer < 0 || gc == nil {
 			v.viewBusy = false
 			v.mu.Unlock()
@@ -119,7 +123,7 @@ func (v *View) renderView() {
 		}
 		v.mu.Unlock()
 
-		img := drawAt(gc, mesh, gc.LayerEnd(layer), gc.LayerStart(layer))
+		img := drawAt(gc, mesh, gc.LayerEnd(layer), gc.LayerStart(layer), hex)
 
 		v.mu.Lock()
 		if v.view == layer { // still the one that is wanted
@@ -133,8 +137,17 @@ func (v *View) renderView() {
 
 // Update follows the job: it reads the G-code of a new job, and draws the print again when it moved.
 func (v *View) Update(st State) {
+	hex := ""
+	if v.Rolls != nil {
+		if sp, ok := v.Rolls.In(); ok {
+			hex = rollHex(sp.Color, sp.Label())
+		}
+	}
 	v.mu.Lock()
 	defer v.mu.Unlock()
+	if hex != v.color {
+		v.color, v.img = hex, nil // draw again in the new color
+	}
 	if !st.Busy() || st.FilePath == "" {
 		v.img, v.imgPos, v.view, v.viewImg = nil, 0, -1, nil
 		return
@@ -150,7 +163,7 @@ func (v *View) Update(st State) {
 	// Draw again when the print has moved. A render is about 30 ms.
 	if v.gc != nil && !v.rendering && (v.img == nil || st.FilePos != v.imgPos) {
 		v.rendering = true
-		go v.render(v.gc, v.mesh, st.FilePos)
+		go v.render(v.gc, v.mesh, st.FilePos, v.color)
 	}
 }
 
@@ -257,13 +270,13 @@ var (
 	printedColor = color.RGBA{0xff, 0x9f, 0x43, 255}
 	hotColor     = color.RGBA{0xff, 0xf0, 0xb0, 255} // the layer that prints now
 	ghostColor   = color.RGBA{0x55, 0x5e, 0x6d, 255}
-	pathWarm     = color.RGBA{0xff, 0xb3, 0x6b, 255} // toolpath, low layers
-	pathCool     = color.RGBA{0xff, 0x7a, 0x2e, 255} // toolpath, high layers
 	pathGhost    = color.RGBA{0x2c, 0x33, 0x3f, 255}
 )
 
-// drawAt draws the print as it is at file offset pos, with the layer that starts at curStart as the one in progress.
-func drawAt(gc *gcode.Model, mesh *stl.Mesh, pos, curStart int64) *image.RGBA {
+// drawAt draws the print as it is at file offset pos, with the layer that starts at curStart as the
+// one in progress, in the color of the filament hex.
+func drawAt(gc *gcode.Model, mesh *stl.Mesh, pos, curStart int64, hex string) *image.RGBA {
+	col := modelColor(hex)
 	if mesh != nil {
 		top := float64(gc.ZAt(pos)) / float64(max(gc.MaxZ, 0.001))
 		low := 0.0
@@ -273,13 +286,13 @@ func drawAt(gc *gcode.Model, mesh *stl.Mesh, pos, curStart int64) *image.RGBA {
 		if pos < 0 {
 			top = -1
 		}
-		return mesh.Render(PreviewW, PreviewH, low, top, printedColor, hotColor, ghostColor)
+		return mesh.Render(PreviewW, PreviewH, low, top, col, hotColor, ghostColor)
 	}
-	return gc.Render(PreviewW, PreviewH, pos, curStart, pathWarm, pathCool, hotColor, pathGhost)
+	return gc.Render(PreviewW, PreviewH, pos, curStart, col, hotColor, pathGhost)
 }
 
-func (v *View) render(gc *gcode.Model, mesh *stl.Mesh, pos int64) {
-	img := drawAt(gc, mesh, pos, gc.LayerStart(gc.LayerAt(pos)))
+func (v *View) render(gc *gcode.Model, mesh *stl.Mesh, pos int64, hex string) {
+	img := drawAt(gc, mesh, pos, gc.LayerStart(gc.LayerAt(pos)), hex)
 	v.mu.Lock()
 	v.img, v.imgPos, v.rendering = img, pos, false
 	v.mu.Unlock()
@@ -305,7 +318,13 @@ type recordPic struct {
 // complete, the part that printed in colour and the rest as a ghost. The first call starts the
 // drawing in the background and reports loading. img is nil when the file is gone.
 func (v *View) RecordPicture(r Record) (img image.Image, loading bool) {
-	k := fmt.Sprintf("%s|%d|%d", r.Path, r.Pos, r.End.Unix())
+	hex := ColorFromName(r.Spool)
+	if v.Rolls != nil {
+		if sp, ok := v.Rolls.Get(r.SpoolID); ok {
+			hex = rollHex(sp.Color, sp.Label())
+		}
+	}
+	k := fmt.Sprintf("%s|%d|%d|%s", r.Path, r.Pos, r.End.Unix(), hex)
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	if p, ok := v.records[k]; ok {
@@ -317,7 +336,7 @@ func (v *View) RecordPicture(r Record) (img image.Image, loading bool) {
 	p := &recordPic{loading: true}
 	v.records[k] = p
 	go func() {
-		img := v.drawRecord(r)
+		img := v.drawRecord(r, hex)
 		v.mu.Lock()
 		p.img, p.loading = img, false
 		v.mu.Unlock()
@@ -328,12 +347,12 @@ func (v *View) RecordPicture(r Record) (img image.Image, loading bool) {
 // FilePictureSize is the width and the height of the picture of a file (FilePicture).
 const FilePictureSize = 240
 
-// FilePicture returns a picture of the G-code of a file, for a file that has no thumbnail from the
-// slicer. It returns nil while the picture is drawn, and for a file that has no extruding moves.
+// FilePicture returns a picture of the G-code of a file in the color hex of its filament, for a
+// file that has no thumbnail from the slicer. It returns nil while the picture is drawn, and for a file that has no extruding moves.
 // The pictures are drawn one at a time: a call while another file draws returns nil, and a later
 // call starts the file.
-func (v *View) FilePicture(f File) image.Image {
-	k := fmt.Sprintf("%s|%d", f.Path, f.Date.Unix())
+func (v *View) FilePicture(f File, hex string) image.Image {
+	k := fmt.Sprintf("%s|%d|%s", f.Path, f.Date.Unix(), hex)
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	if p, ok := v.files[k]; ok {
@@ -354,7 +373,7 @@ func (v *View) FilePicture(f File) image.Image {
 			gc, _ := gcode.Parse(io.LimitReader(body, maxModelSize))
 			body.Close()
 			if gc != nil && len(gc.Segs) > 0 {
-				img = gc.Render(FilePictureSize, FilePictureSize, math.MaxInt64, math.MaxInt64, pathWarm, pathCool, hotColor, pathGhost)
+				img = gc.Render(FilePictureSize, FilePictureSize, math.MaxInt64, math.MaxInt64, modelColor(hex), hotColor, pathGhost)
 			}
 		}
 		v.mu.Lock()
@@ -365,7 +384,8 @@ func (v *View) FilePicture(f File) image.Image {
 }
 
 // drawRecord draws the picture of a finished print, or returns nil.
-func (v *View) drawRecord(r Record) image.Image {
+func (v *View) drawRecord(r Record, hex string) image.Image {
+	col := modelColor(hex)
 	body, err := v.src.Open(r.Path)
 	if err != nil {
 		return nil
@@ -385,10 +405,10 @@ func (v *View) drawRecord(r Record) image.Image {
 			if pos != math.MaxInt64 {
 				top = float64(gc.ZAt(pos)) / float64(max(gc.MaxZ, 0.001))
 			}
-			return mesh.Render(PreviewW, PreviewH, top, top, printedColor, hotColor, ghostColor)
+			return mesh.Render(PreviewW, PreviewH, top, top, col, hotColor, ghostColor)
 		}
 	}
-	return gc.Render(PreviewW, PreviewH, pos, math.MaxInt64, pathWarm, pathCool, hotColor, pathGhost)
+	return gc.Render(PreviewW, PreviewH, pos, math.MaxInt64, col, hotColor, pathGhost)
 }
 
 // Toolpath gives the extruding moves of the print from move from, up to the file position upto:
@@ -410,4 +430,12 @@ func (v *View) Toolpath(key string, from int, upto int64, max int) (string, int,
 		end++
 	}
 	return v.file, from, v.gc.Segs[from:end]
+}
+
+// rollHex is the color of a roll: its color, or the color word of its name, or "".
+func rollHex(hex, name string) string {
+	if _, ok := ParseHex(hex); ok {
+		return hex
+	}
+	return ColorFromName(name)
 }

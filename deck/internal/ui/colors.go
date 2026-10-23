@@ -5,25 +5,12 @@ import (
 	"strings"
 
 	"printdeck/internal/gfx"
+	"printdeck/internal/printer"
 	"printdeck/kit"
 )
 
 // The color of a roll: a choice from the colors of filament, over everything until a choice or
 // Back. The roll gauge of the print screen and the Cura plugin show it.
-
-// rollColor is a color of filament, with its name.
-type rollColor struct {
-	name, hex string
-}
-
-// rollColors are the colors of the palette. The Cura plugin finds the same colors from the words
-// in the name of a roll.
-var rollColors = []rollColor{
-	{"White", "#f5f5f5"}, {"Natural", "#efe6cf"}, {"Silver", "#c0c0c0"}, {"Gray", "#8a8a8a"},
-	{"Black", "#1a1a1a"}, {"Brown", "#7a4b2a"}, {"Red", "#d22b2b"}, {"Orange", "#ff7a1a"},
-	{"Yellow", "#f4d03f"}, {"Gold", "#d4a531"}, {"Green", "#2e9d4a"}, {"Teal", "#16867d"},
-	{"Blue", "#2a62d0"}, {"Navy", "#1f2a5a"}, {"Purple", "#7d3fb5"}, {"Pink", "#f28dc0"},
-}
 
 // colorName is the name of a color of the palette, "Other" for a color from Cura that is not in
 // the palette, or "None".
@@ -31,9 +18,9 @@ func colorName(hex string) string {
 	if hex == "" {
 		return "None"
 	}
-	for _, rc := range rollColors {
-		if strings.EqualFold(rc.hex, hex) {
-			return rc.name
+	for _, rc := range printer.RollColors {
+		if strings.EqualFold(rc.Hex, hex) {
+			return rc.Name
 		}
 	}
 	return "Other"
@@ -65,25 +52,25 @@ func (a *App) drawColorPicker(c *gfx.Canvas) {
 	}
 	cols := 4
 	a.region("Colors", grid)
-	for i, cell := range kit.Grid(grid, cols, (len(rollColors)+cols-1)/cols, 10) {
-		if i >= len(rollColors) {
+	for i, cell := range kit.Grid(grid, cols, (len(printer.RollColors)+cols-1)/cols, 10) {
+		if i >= len(printer.RollColors) {
 			break
 		}
-		rc := rollColors[i]
+		rc := printer.RollColors[i]
 		fill := keyOff
-		if strings.EqualFold(rc.hex, p.current) {
+		if strings.EqualFold(rc.Hex, p.current) {
 			fill = keyOn
 		}
 		a.button(c, cell, "", fill, text, func() {
 			a.colors = nil
-			p.done(rc.hex)
+			p.done(rc.Hex)
 		})
 		// The chip, and the name under it.
 		d := min(cell.Dy()/2, 40)
 		top := cell.Min.Y + (cell.Dy()-d-26)/2
 		chip := image.Rect(cell.Min.X+(cell.Dx()-d)/2, top, cell.Min.X+(cell.Dx()+d)/2, top+d)
-		swatch(c, chip, rc.hex)
-		c.Text(image.Rect(cell.Min.X+4, chip.Max.Y+4, cell.Max.X-4, chip.Max.Y+26), strings.ToUpper(rc.name), gfx.Face(true, 15), text, gfx.Center)
+		swatch(c, chip, rc.Hex)
+		c.Text(image.Rect(cell.Min.X+4, chip.Max.Y+4, cell.Max.X-4, chip.Max.Y+26), strings.ToUpper(rc.Name), gfx.Face(true, 15), text, gfx.Center)
 	}
 	a.button(c, none, "No color", raised, text, func() {
 		a.colors = nil

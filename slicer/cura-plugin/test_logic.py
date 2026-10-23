@@ -36,6 +36,9 @@ class TestLogic(unittest.TestCase):
         self.assertEqual(logic.material_lines("ABS", "Generic Black ABS"), ";PRINTDECK_MATERIAL: ABS\n;PRINTDECK_MATERIAL_NAME: Generic Black ABS\n")
         self.assertEqual(logic.material_lines("PLA", ""), ";PRINTDECK_MATERIAL: PLA\n")
         self.assertEqual(logic.material_lines("", "x"), "")
+        self.assertEqual(logic.material_lines("PLA", "Navy", "#1F2A5A"),
+                         ";PRINTDECK_MATERIAL: PLA\n;PRINTDECK_MATERIAL_NAME: Navy\n;PRINTDECK_COLOR: #1f2a5a\n")
+        self.assertEqual(logic.material_lines("PLA", "", "none"), ";PRINTDECK_MATERIAL: PLA\n")
 
     def test_preview_layer(self):
         self.assertEqual(logic.preview_layer({"layer": 12}), 11)

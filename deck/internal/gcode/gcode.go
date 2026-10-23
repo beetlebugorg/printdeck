@@ -256,8 +256,9 @@ func word(w string, letter byte) (float64, bool) {
 var (
 	sinA, cosA = math.Sincos(35 * math.Pi / 180)
 	sinE, cosE = math.Sincos(40 * math.Pi / 180)
-	// Directions to the key light and to the weaker fill light, as in the STL picture.
-	keyLight  = unit([3]float64{-0.4, -0.5, 0.8})
+	// Directions to the key light and to the weaker fill light. The key light is at the left, so
+	// that the two walls that face the viewer have different shades.
+	keyLight  = unit([3]float64{-0.7, -0.25, 0.7})
 	fillLight = unit([3]float64{0.7, 0.3, 0.2})
 	// The direction to the viewer: the depth axis of project.
 	viewer = [3]float64{-sinA * cosE, -cosA * cosE, sinE}
@@ -273,17 +274,22 @@ func project(x, y, z float32) (u, v, d float64) {
 // lineWidth is the width of an extruded line in mm, for the picture.
 const lineWidth = 0.45
 
-// Render draws the model into a w x h picture. The part up to file offset pos is in colour, with the
-// layer that starts at curStart (the one being printed) in the colour hot and a mark at the end, and the rest
-// is a faint outline. The result has a transparent background.
+// supersample is the scale at which Render draws, before it scales the picture down to smooth
+// the edges.
+const supersample = 2
+
+// Render draws the model into a w x h picture. The part up to file offset pos is in the colour
+// printed, with the layer that starts at curStart (the one being printed) in the colour hot and a
+// mark at the end. The rest is in the colour ghost. The result has a transparent background.
 //
-// Each line is a band of the width of an extruded line, in front of the lines that it hides. A wall
-// is lit by its side, which faces the viewer; the other lines are lit as a top surface. The rest of
+// Each line is a round extrusion of the width of a line, in front of the lines that it hides. A
+// key light, a fill light and a highlight shade it across its width, as plastic. A wall is lit at
+// its side, which faces the viewer, and the other lines are lit as the top of a layer. The rest of
 // the model does not hide the printed part.
-func (m *Model) Render(w, h int, pos, curStart int64, warm, cool, hot, ghost color.RGBA) *image.RGBA {
-	img := image.NewRGBA(image.Rect(0, 0, w, h))
+func (m *Model) Render(w, h int, pos, curStart int64, printed, hot, ghost color.RGBA) *image.RGBA {
+	out := image.NewRGBA(image.Rect(0, 0, w, h))
 	if len(m.Segs) == 0 {
-		return img
+		return out
 	}
 	minU, minV, maxU, maxV := math.Inf(1), math.Inf(1), math.Inf(-1), math.Inf(-1)
 	for i := range m.Segs {
@@ -302,11 +308,13 @@ func (m *Model) Render(w, h int, pos, curStart int64, warm, cool, hot, ghost col
 		u, v, d := project(x, y, z)
 		return ox + (u-minU)*scale, oy + (v-minV)*scale, d
 	}
-	zbuf := make([]float64, w*h)
+	ss := supersample
+	img := image.NewRGBA(image.Rect(0, 0, w*ss, h*ss))
+	zbuf := make([]float64, w*ss*h*ss)
 	for i := range zbuf {
 		zbuf[i] = math.Inf(-1)
 	}
-	px := max(2, int(math.Round(lineWidth*scale)))
+	half := math.Max(1, lineWidth*scale*float64(ss)/2)
 	last := -1 // the last move that is done: where the nozzle is
 	// The printed part first, and then the rest in the pixels that the printed part leaves: the rest
 	// does not hide the printed part.
@@ -328,7 +336,7 @@ func (m *Model) Render(w, h int, pos, curStart int64, warm, cool, hot, ghost col
 			}
 			col := ghost
 			if done {
-				col = mix(warm, cool, float64(s.Z1/max(m.MaxZ, 0.001)))
+				col = printed
 				if s.Pos > curStart {
 					col = hot
 				}
@@ -336,16 +344,78 @@ func (m *Model) Render(w, h int, pos, curStart int64, warm, cool, hot, ghost col
 			}
 			x0, y0, d0 := pt(s.X0, s.Y0, s.Z0)
 			x1, y1, d1 := pt(s.X1, s.Y1, s.Z1)
-			band(img, zbuf, x0, y0, d0, x1, y1, d1, px, lit(col, segNormal(s)))
+			f := float64(ss)
+			tube(img, zbuf, x0*f, y0*f, d0, x1*f, y1*f, d1, half, col, s)
 		}
 	}
+	shrink(out, img, ss)
 	// The mark of the nozzle, while the print has moves to do.
 	if last >= 0 && last < len(m.Segs)-1 {
 		sg := &m.Segs[last]
 		x, y, _ := pt(sg.X1, sg.Y1, sg.Z1)
-		dot(img, int(x), int(y), 5, color.RGBA{255, 255, 255, 255})
+		dot(out, int(x), int(y), 5, color.RGBA{255, 255, 255, 255})
 	}
-	return img
+	return out
+}
+
+// tubeSteps is the number of shades across the width of a line.
+const tubeSteps = 9
+
+// tube draws a line of the model from (x0, y0) to (x1, y1), with the depths d0 and d1 at its ends,
+// half pixels wide at each side. The surface of the line is round across its width: a wall turns
+// from its side to the top and the bottom, and a top line from the top to its sides. A pixel is
+// drawn only when it is nearer than what zbuf has.
+func tube(img *image.RGBA, zbuf []float64, x0, y0, d0, x1, y1, d1, half float64, c color.RGBA, s *Seg) {
+	w, h := img.Bounds().Dx(), img.Bounds().Dy()
+	// The direction across the line on the screen, and in the model.
+	dx, dy := x1-x0, y1-y0
+	l := math.Hypot(dx, dy)
+	px, py := 0.0, 1.0
+	if l > 0 {
+		px, py = -dy/l, dx/l
+	}
+	// A wall is round from its top to its bottom. A top line is flatter: the lines of a top
+	// surface touch each other.
+	n := segNormal(s)
+	var across [3]float64
+	curve := 0.45
+	if s.Kind == KindOuterWall || s.Kind == KindInnerWall {
+		across, curve = [3]float64{0, 0, 1}, 1.0
+	} else {
+		across = unit([3]float64{float64(s.Y1 - s.Y0), float64(s.X0 - s.X1), 0})
+	}
+	// Turn across so that it goes the way of (px, py) on the screen.
+	au := across[0]*cosA - across[1]*sinA
+	av := -((across[0]*sinA+across[1]*cosA)*sinE + across[2]*cosE)
+	if au*px+av*py < 0 {
+		across = [3]float64{-across[0], -across[1], -across[2]}
+	}
+	// The shades across the width, from one side to the other.
+	var shades [tubeSteps]color.RGBA
+	for i := range shades {
+		a := (float64(i)/(tubeSteps-1)*2 - 1) * curve // radians from the middle of the line
+		sa, ca := math.Sincos(a)
+		shades[i] = plastic(c, unit([3]float64{n[0]*ca + across[0]*sa, n[1]*ca + across[1]*sa, n[2]*ca + across[2]*sa}))
+	}
+	steps := int(math.Ceil(l)) + 1
+	for i := 0; i < steps; i++ {
+		t := 0.0
+		if steps > 1 {
+			t = float64(i) / float64(steps-1)
+		}
+		cx, cy := x0+dx*t, y0+dy*t
+		d := d0 + (d1-d0)*t
+		for k := -half; k <= half; k += 0.5 {
+			x, y := int(cx+px*k), int(cy+py*k)
+			if x < 0 || y < 0 || x >= w || y >= h {
+				continue
+			}
+			if j := y*w + x; d > zbuf[j] {
+				zbuf[j] = d
+				img.SetRGBA(x, y, shades[int(math.Round((k/half+1)/2*(tubeSteps-1)))])
+			}
+		}
+	}
 }
 
 // segNormal is the direction that the surface of a line faces. A wall faces out at its side,
@@ -361,13 +431,18 @@ func segNormal(s *Seg) [3]float64 {
 	return n
 }
 
-// lit is the colour c of a surface that faces n, under the key light and the fill light.
-func lit(c color.RGBA, n [3]float64) color.RGBA {
+// plastic is the colour c of a surface that faces n: the key light and the fill light, and a
+// highlight of the key light, as on plastic.
+func plastic(c color.RGBA, n [3]float64) color.RGBA {
 	dot := func(a, b [3]float64) float64 { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2] }
-	shade := 0.32 + 0.58*max(0, dot(n, keyLight)) + 0.18*max(0, dot(n, fillLight))
-	f := func(v uint8) uint8 { return uint8(min(255, float64(v)*shade)) }
+	diffuse := 0.36 + 0.6*max(0, dot(n, keyLight)) + 0.22*max(0, dot(n, fillLight))
+	spec := 0.35 * math.Pow(max(0, dot(n, halfway)), 28)
+	f := func(v uint8) uint8 { return uint8(min(255, float64(v)*diffuse+255*spec)) }
 	return color.RGBA{f(c.R), f(c.G), f(c.B), 255}
 }
+
+// halfway is the direction between the key light and the viewer, for the highlight.
+var halfway = unit([3]float64{keyLight[0] + viewer[0], keyLight[1] + viewer[1], keyLight[2] + viewer[2]})
 
 func unit(v [3]float64) [3]float64 {
 	l := math.Sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2])
@@ -377,28 +452,25 @@ func unit(v [3]float64) [3]float64 {
 	return [3]float64{v[0] / l, v[1] / l, v[2] / l}
 }
 
-// band draws a line px pixels wide from (x0, y0) to (x1, y1), with the depths d0 and d1 at its
-// ends. A pixel is drawn only when it is nearer than what zbuf has.
-func band(img *image.RGBA, zbuf []float64, x0, y0, d0, x1, y1, d1 float64, px int, c color.RGBA) {
-	w, h := img.Bounds().Dx(), img.Bounds().Dy()
-	n := int(math.Ceil(math.Max(math.Abs(x1-x0), math.Abs(y1-y0))))
-	lo := -(px - 1) / 2
-	for i := 0; i <= n; i++ {
-		t := 0.0
-		if n > 0 {
-			t = float64(i) / float64(n)
-		}
-		cx, cy := int(x0+(x1-x0)*t), int(y0+(y1-y0)*t)
-		d := d0 + (d1-d0)*t
-		for y := cy + lo; y < cy+lo+px; y++ {
-			for x := cx + lo; x < cx+lo+px; x++ {
-				if x < 0 || y < 0 || x >= w || y >= h {
-					continue
+// shrink scales src down by the whole factor k into dst: each pixel of dst is the mean of k x k
+// pixels of src. The colours of image.RGBA are premultiplied, so the edges blend into the
+// transparent background.
+func shrink(dst, src *image.RGBA, k int) {
+	b := dst.Bounds()
+	for y := 0; y < b.Dy(); y++ {
+		for x := 0; x < b.Dx(); x++ {
+			var sum [4]int
+			for j := 0; j < k; j++ {
+				o := src.PixOffset(x*k, y*k+j)
+				for i := 0; i < k; i++ {
+					for c := 0; c < 4; c++ {
+						sum[c] += int(src.Pix[o+i*4+c])
+					}
 				}
-				if k := y*w + x; d > zbuf[k] {
-					zbuf[k] = d
-					img.SetRGBA(x, y, c)
-				}
+			}
+			o := dst.PixOffset(x, y)
+			for c := 0; c < 4; c++ {
+				dst.Pix[o+c] = uint8(sum[c] / (k * k))
 			}
 		}
 	}

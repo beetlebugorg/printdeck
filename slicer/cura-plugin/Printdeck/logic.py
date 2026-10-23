@@ -84,13 +84,16 @@ def preview_layer(job):
     return max(0, int(job.get("layer") or 1) - 1)
 
 
-def material_lines(material, name):
-    """The lines that tell the Printdeck the material of a file, for the header of the G-code."""
+def material_lines(material, name, color=""):
+    """The lines that tell the Printdeck the material of a file, for the header of the G-code:
+    the type, the name and the color ("#rrggbb") of the material."""
     if not material:
         return ""
     out = ";PRINTDECK_MATERIAL: %s\n" % material.strip()
     if name and name.strip():
         out += ";PRINTDECK_MATERIAL_NAME: %s\n" % name.strip()
+    if re.fullmatch(r"#[0-9a-fA-F]{6}", (color or "").strip()):
+        out += ";PRINTDECK_COLOR: %s\n" % color.strip().lower()
     return out
 
 
