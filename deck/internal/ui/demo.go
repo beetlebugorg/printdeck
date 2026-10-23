@@ -17,6 +17,8 @@ type DemoPrinter struct {
 	State_   printer.State
 	Img      image.Image
 	View     int          // layer of the scrubber, -1 for live
+	// LayerTimes_ is the seconds of each layer of the print, from the slicer.
+	LayerTimes_ []float64
 	Boards_  []board.Info // the boards of the printer setup
 	Machine_ printer.Machine
 	History_ []printer.Record
@@ -36,6 +38,7 @@ func (d *DemoPrinter) Files() []printer.File {
 	return []printer.File{{Path: "benchy.gcode", Name: "benchy.gcode"}, {Path: "case_body.gcode", Name: "case_body.gcode"}}
 }
 func (d *DemoPrinter) Preview() image.Image { return d.Img }
+func (d *DemoPrinter) LayerTimes() []float64 { return d.LayerTimes_ }
 func (d *DemoPrinter) RecordPicture(printer.Record) (image.Image, bool) {
 	return d.Img, false
 }
