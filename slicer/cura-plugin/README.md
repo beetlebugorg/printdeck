@@ -23,8 +23,8 @@ The plugin works by itself, and tells you in a message what it did:
 - When a print ends, Cura tells you.
 - The Printdeck tab, next to Monitor, shows the screen of the deck, the print and the time left,
   the roll and its grams, and the keys Pause, Resume and Cancel, in the style of the deck.
-- When Cura starts during a print, it offers to show the print in the Preview: it downloads the
-  file from the Printdeck, and the Preview follows the layer that prints.
+- Show in Preview, in the Printdeck tab, downloads the file of the print from the Printdeck and
+  opens it in the Preview. The Preview follows the layer that prints.
 - In the Preview of the G-code file that prints, Play follows the printer: the nozzle of the Preview
   moves with the move that prints. The plugin asks the Printdeck for the position in the file each
   second while Play runs. Without Play, the Preview shows the layer that prints.
