@@ -31,27 +31,33 @@ struct StatusView: View {
         let run: () -> Void
     }
 
-    /// The dots of the screen: the largest dots of whole pixels that leave 64 x 72 of them inside
-    /// the margins. The margins keep the screens away from the round corners: 18 points at the top,
-    /// beside the clock of watchOS at the top right.
+    /// The dots of the screen, and the window of the scroll in it: from under the clock of watchOS
+    /// to 24 points over the bottom, so that the text stays away from the round corners. The dots
+    /// are the largest of whole pixels that leave 64 x 72 of them in the window.
     private struct Grid {
-        let dot, cols, rows, top, clockW: Int
-        static let mx = 4, my = 5
+        let dot, cols, rows, top, window: Int
+        static let mx = 4
 
-        init(size: CGSize, scale: CGFloat) {
-            let wpx = Int(size.width * scale), hpx = Int(size.height * scale)
-            let topPx = Int(18 * scale)
-            dot = max(2, min(wpx / (64 + 2 * Self.mx), (hpx - topPx) / (72 + Self.my)))
+        init(screen: CGSize, clockBand: CGFloat, scale: CGFloat) {
+            let wpx = Int(screen.width * scale), hpx = Int(screen.height * scale)
+            // The safe area of watchOS starts well under the clock (56 points on a 49 mm watch);
+            // the clock itself ends at about 36 points.
+            let topPx = Int(min(max(clockBand, 20), 40) * scale), bottomPx = Int(24 * scale)
+            dot = max(2, min(wpx / (64 + 2 * Self.mx), (hpx - topPx - bottomPx) / 72))
             cols = wpx / dot
             rows = hpx / dot
             top = (topPx + dot - 1) / dot
-            clockW = Int(72 * scale) / dot
+            window = (hpx - bottomPx) / dot - top
         }
     }
 
+    /// The height of the clock of watchOS at the top of the screen, in points.
+    @State private var clockBand: CGFloat = 0
+
     var body: some View {
-        GeometryReader { g in
-            let grid = Grid(size: g.size, scale: scale)
+        // The safe area starts under the clock: its top is the height of the clock band.
+        GeometryReader { r in
+            let grid = Grid(screen: WKInterfaceDevice.current().screenBounds.size, clockBand: clockBand, scale: scale)
             Group {
                 if mode == .scroll {
                     scroll(grid)
@@ -59,10 +65,16 @@ struct StatusView: View {
                     menu(grid)
                 }
             }
-            .onAppear { setModelSize(grid) }
+            .frame(width: WKInterfaceDevice.current().screenBounds.width,
+                   height: WKInterfaceDevice.current().screenBounds.height, alignment: .top)
+            .offset(y: -r.frame(in: .global).minY)
+            .onAppear {
+                clockBand = r.frame(in: .global).minY
+                setModelSize(grid)
+            }
+            .onChange(of: r.frame(in: .global).minY) { _, v in clockBand = v }
             .onChange(of: grid.dot) { setModelSize(grid) }
         }
-        .ignoresSafeArea()
         .background(p.glcd.ignoresSafeArea())
         .environment(\.palette, p)
         .task(id: phase == .active) {
@@ -87,33 +99,39 @@ struct StatusView: View {
     // MARK: The scroll
 
     /// The status on the first screen, then the sections, each as high as its rows. The crown
-    /// scrolls, as in any scroll of watchOS.
+    /// scrolls, as in any scroll of watchOS. The scroll is in the window of the grid, over dots that
+    /// are off, so the text stays away from the clock and the round corners, and the whole screen
+    /// is the display.
     private func scroll(_ grid: Grid) -> some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                lcd(statusScreen, grid: grid, rows: grid.rows, top: grid.top, clockW: grid.clockW)
-                ForEach(sections, id: \.self) { s in
-                    if let pg = page(s) {
-                        lcd(.page(pg), grid: grid, rows: pg.height + 3, top: 1, clockW: 0)
+        ZStack(alignment: .top) {
+            lcd(.rows([]), grid: grid, rows: grid.rows, top: 0)
+            ScrollView {
+                VStack(spacing: 0) {
+                    lcd(statusScreen, grid: grid, rows: grid.window, top: 0)
+                    ForEach(sections, id: \.self) { s in
+                        if let pg = page(s) {
+                            lcd(.page(pg), grid: grid, rows: pg.height + 4, top: 2)
+                        }
                     }
                 }
-                // The end of the scroll: dots that are off, away from the round corners.
-                lcd(.rows([]), grid: grid, rows: Grid.my + 2, top: 0, clockW: 0)
+                .contentShape(Rectangle())
+                .onTapGesture { click() }
             }
-            .contentShape(Rectangle())
-            .onTapGesture { click() }
+            .scrollIndicators(.hidden)
+            #if DEBUG
+            // For screenshots in the simulator: PRINTDECK_SCREEN=bottom opens the end of the scroll.
+            .defaultScrollAnchor(ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"] == "bottom" ? .bottom : .top)
+            #endif
+            .frame(height: CGFloat(grid.window * grid.dot) / scale)
+            .clipped()
+            .padding(.top, CGFloat(grid.top * grid.dot) / scale)
         }
-        .scrollIndicators(.hidden)
-        #if DEBUG
-        // For screenshots in the simulator: PRINTDECK_SCREEN=bottom opens the end of the scroll.
-        .defaultScrollAnchor(ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"] == "bottom" ? .bottom : .top)
-        #endif
     }
 
     /// A part of the display, rows dots high.
-    private func lcd(_ screen: LCDScreen, grid: Grid, rows: Int, top: Int, clockW: Int) -> some View {
+    private func lcd(_ screen: LCDScreen, grid: Grid, rows: Int, top: Int) -> some View {
         LCDView(screen: screen, dotsW: grid.cols, dotsH: rows, dotPixels: grid.dot,
-                marginX: Grid.mx, marginY: 0, marginTop: top, clockW: clockW, framed: false)
+                marginX: Grid.mx, marginY: 0, marginTop: top, framed: false)
             .frame(height: CGFloat(rows * grid.dot) / scale)
     }
 
@@ -158,8 +176,10 @@ struct StatusView: View {
     // MARK: The menu
 
     private func menu(_ grid: Grid) -> some View {
-        LCDView(screen: menuScreen, dotsW: grid.cols, dotsH: grid.rows, dotPixels: grid.dot,
-                marginX: Grid.mx, marginY: Grid.my, marginTop: grid.top, clockW: grid.clockW, framed: false)
+        LCDView(screen: menuScreen, dotsW: grid.cols, dotsH: grid.top + grid.window, dotPixels: grid.dot,
+                marginX: Grid.mx, marginY: 0, marginTop: grid.top, framed: false)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .background(lcd(.rows([]), grid: grid, rows: grid.rows, top: 0), alignment: .top)
             .contentShape(Rectangle())
             .onTapGesture { click() }
             .focusable()

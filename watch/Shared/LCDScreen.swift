@@ -153,21 +153,24 @@ struct LCDStatus: Equatable {
             c.text(small, W - small.w * right.count, y, right)
         }
         let temps = "N" + deg(tool) + (toolT > 0 ? "/" + deg(toolT) : "") + " B" + deg(bed)
-        // The first row is beside the clock: text at the left only.
-        let first = lcdFit(state, max(1, (W - c.clockW) / small.w))
+        func centered(_ y: Int, _ t: String) {
+            let t = lcdFit(t, n)
+            c.text(small, max(0, (W - small.w * t.count) / 2), y, t)
+        }
         if printing {
-            c.text(small, 0, 0, first.isEmpty ? "Printing" : first)
+            centered(0, state.isEmpty ? "Printing" : state)
             let pct = String(format: "%.0f%%", progress * 100)
             let k = 16 * pct.count <= W ? 2 : 1
-            c.text(big, max(0, (W - 8 * k * pct.count) / 2), 11, pct, scale: k)
-            c.roundBar(0, 45, W, 52, progress)
-            row(56, "Layer", layer.hasPrefix("L") ? String(layer.dropFirst()) : layer)
-            row(65, "Left", left.isEmpty ? "--" : left)
-            row(74, "End", done.isEmpty ? "--" : done)
-            row(83, temps, "")
+            c.text(big, max(0, (W - 8 * k * pct.count) / 2), 10, pct, scale: k)
+            c.roundBar(0, 44, W, 51, progress)
+            // The rows in the order of what matters most; a short screen leaves out the last.
+            row(54, "Left", left.isEmpty ? "--" : left)
+            row(63, "End", done.isEmpty ? "--" : done)
+            row(72, "Layer", layer.hasPrefix("L") ? String(layer.dropFirst()) : layer)
+            row(81, temps, "")
             return
         }
-        c.text(small, 0, 0, first)
+        centered(0, state)
         let st = lcdFit(clock, W / big.w)
         c.text(big, max(0, (W - big.w * st.count) / 2), 14, st)
         let m = lcdFit(message, n)
