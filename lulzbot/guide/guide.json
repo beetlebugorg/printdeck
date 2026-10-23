@@ -1,9 +1,9 @@
 {
  "totals": {
-  "grams": 321,
-  "metres": 40,
-  "time": "15 h 29 min",
-  "cost": "$7.38",
+  "grams": 324,
+  "metres": 41,
+  "time": "15 h 35 min",
+  "cost": "$7.45",
   "parts": 7,
   "pricePerKg": "$22.99"
  },
@@ -56,10 +56,10 @@
    "colour": "Orange",
    "swatch": "#E8742A",
    "count": 1,
-   "grams": 58,
-   "metres": 7.3,
-   "time": "2 h 11 min",
-   "cost": "$1.33",
+   "grams": 61,
+   "metres": 7.7,
+   "time": "2 h 18 min",
+   "cost": "$1.40",
    "size": "173 × 135 × 23",
    "notes": "The face that goes on the cover down. The bosses and the hooks point up.",
    "image": "lulzbot-part_plate"
@@ -85,8 +85,8 @@
    "swatch": "#F2F2EE",
    "count": 1,
    "grams": 24,
-   "metres": 3.1,
-   "time": "1 h 13 min",
+   "metres": 3.0,
+   "time": "1 h 12 min",
    "cost": "$0.55",
    "size": "58 × 84 × 18",
    "notes": "Back down. The bump and the four fan prongs point up. The snap tabs bend along the layers.",
@@ -225,15 +225,15 @@
   ],
   [
    1,
-   "HDMI cable: micro HDMI to HDMI, straight plugs, a flat ribbon of 30 cm or more (the route is 24 cm). The ribbon kit of the Slate fits."
+   "HDMI cable: micro HDMI to HDMI, straight plugs, a flat ribbon of 30 cm or more (the route is 27 cm). The ribbon kit of the Slate fits."
   ],
   [
    1,
-   "Micro USB to USB-A cable, straight plugs, max. 3.5 mm thick, 15 cm or more (the route is 12 cm)."
+   "Micro USB to USB-A cable, straight plugs, max. 3.5 mm thick, 15 cm or more (the route is 13 cm)."
   ],
   [
    1,
-   "USB 3 cable for the drive: micro-B SuperSpeed to USB-A, 15 to 20 cm (the route is 13 cm)."
+   "USB 3 cable for the drive: micro-B SuperSpeed to USB-A, 15 to 20 cm (the route is 15 cm)."
   ],
   [
    1,
@@ -389,7 +389,7 @@
    "title": "Cables",
    "need": [],
    "items": [
-    "Connect the HDMI cable to the HDMI 0 port (next to the USB-C port).",
+    "Connect the HDMI cable to the HDMI 0 port (next to the USB-C port). Push the plug straight in. Let the cable go straight down from the plug, then turn it to the front in a wide curve along the bottom of the pod. Do not bend it at the plug.",
     "Connect the touch cable to the upper USB 3 port (blue), and the drive cable to the lower USB 3 port.",
     "Connect the printer cable to the lower USB 2 port. Lead it up the front of the pod, over the Pi, down at the rear end of the Pi, and out of the upper notch in the rear wall.",
     "Connect the power cable to the USB-C port. Lead it down and to the rear, out of the lower notch.",
@@ -442,17 +442,17 @@
  "cables": [
   [
    "HDMI",
-   "24 cm",
+   "27 cm",
    "HDMI 0 port to the display, plug to plug"
   ],
   [
    "Touch USB",
-   "12 cm",
+   "13 cm",
    "upper USB 3 port to the display, plug to plug"
   ],
   [
    "Drive",
-   "13 cm",
+   "15 cm",
    "lower USB 3 port to the drive, plug to plug"
   ],
   [

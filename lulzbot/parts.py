@@ -746,12 +746,13 @@ def pi5():
         p.append((f"pi_screw{i}", cyl_z(x, y, 2.75, b, b + 3.0) + cyl_z(x, y, 1.5, b, b - 6.0), "black_steel"))
     p += [
         # Plugs: USB-C power and micro HDMI (bottom edge), the touch (USB 3, upper port) and the
-        # printer (USB 2, lower port) at the front edge.
-        ("plug_pi_power", box(-37.3, -25.3, -57.3, -29.3, b - 1.65, b + 4.85), "black_plastic"),
-        ("plug_pi_hdmi", box(-22.7, -10.7, -49.3, -29.3, b - 1.5, b + 4.5), "black_plastic"),
-        ("plug_touch_usb", box(44.6, 74.6, -6.4, 8.6, b + 8, b + 15), "black_plastic"),
-        ("plug_drive_usb", box(44.6, 74.6, -6.4, 8.6, b + 0.8, b + 7.8), "black_plastic"),
-        ("plug_printer_usb", box(44.6, 74.6, 11.5, 26.5, b + 0.8, b + 7.8), "black_plastic"),
+        # printer (USB 2, lower port) at the front edge. Each is as long as a real plug with the
+        # stiff part of its cable (shape.py).
+        ("plug_pi_power", box(-37.3, -25.3, -29.3 - S.PLUG_USB_C, -29.3, b - 1.65, b + 4.85), "black_plastic"),
+        ("plug_pi_hdmi", box(-22.7, -10.7, -29.3 - S.PLUG_MICRO_HDMI, -29.3, b - 1.5, b + 4.5), "black_plastic"),
+        ("plug_touch_usb", box(44.6, 44.6 + S.PLUG_USB_A, -6.4, 8.6, b + 8, b + 15), "black_plastic"),
+        ("plug_drive_usb", box(44.6, 44.6 + S.PLUG_USB_A, -6.4, 8.6, b + 0.8, b + 7.8), "black_plastic"),
+        ("plug_printer_usb", box(44.6, 44.6 + S.PLUG_USB_A, 11.5, 26.5, b + 0.8, b + 7.8), "black_plastic"),
         ("plug_pi_fan", box(23.0, 25.5, 21.5, 26.5, b + 3.6, b + 7), "nickel"),     # from the Slate
     ]
     m = Pos(S.PI_X, S.PI_Y, S.PI_Z)
@@ -878,11 +879,12 @@ def disp_plug_end(kind):
 
 def cable_paths():
     """The centre lines of the cables, in mount coordinates.
-    HDMI: from the Pi down, along the bottom of the pod (over the screw blocks), up at the front,
+    HDMI: from the Pi straight down, then a bend of HDMI_BEND radius to the front, along the bottom
+    of the pod (over the screw blocks), up at the front,
     through the upper window into the head, right behind the display board, into the plug.
     Touch: from the upper USB 3 port straight into the upper window, then right behind the board.
     Drive: from the lower USB 3 port down the front, through the lower window, into the drive plug.
-    Printer: from the lower USB 2 port up the front, over the Pi, down at the rear end of the Pi,
+    Printer: from the lower USB 2 port up the front, over the Pi, down behind the rear end of the Pi,
     and out of the upper exit at the rear. Power: from the USB-C port to the lower exit.
     Fan: from the corner of the fan down the groove of the bump, over the end of the GPIO header,
     into the plug on the fan socket of the Pi.
@@ -892,31 +894,35 @@ def cable_paths():
 
     xb = S.BACK_X[1]
     xr = -S.X_FRONT - 25.0
-    # HDMI.
-    ph = S.pi_pt(-16.7, -49.3, 1.5 + 1.5)
+    # HDMI: the plug points down; the cable goes straight on, then turns to the front.
+    ux = 44.6 + S.PLUG_USB_A
+    ph = S.pi_pt(-16.7, -29.3 - S.PLUG_MICRO_HDMI, 1.5 + 1.5)
+    hy = ph[1] - S.HDMI_BEND                  # the cable along the bottom of the pod
     hw = (xb, 166.0, 17.0)
     he = disp_plug_end("hdmi")
-    hdmi = [ph, (ph[0], ph[1] - 5.0, 10.0), (ph[0] + 6.0, 121.5, 16.0), (69.0, 121.5, 17.0), (75.0, 128.0, 16.0),
-            (75.0, 158.0, 16.0), (82.0, 165.0, 17.0), hw, (xb + 4.0, 171.0, 22.0),
-            hp(he[0] - 9.0, he[1], he[2] - 7.0), hp(he[0] - 6.0, he[1], he[2]), hp(*he)]
-    # Touch.
-    pt = S.pi_pt(74.6, 1.1, 1.5 + 11.5)
+    hdmi = [ph, (ph[0], ph[1] - 4.0, 9.5), (ph[0] + 3.0, hy + 1.5, 13.0), (ph[0] + S.HDMI_BEND + 10.0, hy, 16.0),
+            (69.0, hy + 4.0, 17.0), (75.0, 128.0, 16.0), (75.0, 158.0, 16.0), (82.0, 165.0, 17.0), hw,
+            (xb + 4.0, 171.0, 22.0), hp(he[0] - 9.0, he[1], he[2] - 7.0), hp(he[0] - 6.0, he[1], he[2]), hp(*he)]
+    # Touch: from the upper USB 3 port down to the upper window.
+    pt = S.pi_pt(ux, 1.1, 1.5 + 11.5)
     tw = (xb, 182.0, 19.0)
     te = disp_plug_end("usb")
-    touch = [pt, (pt[0] + 4.0, pt[1] + 1.0, pt[2] + 0.5), tw, (xb + 4.0, 190.0, 23.0),
+    touch = [pt, (pt[0] + 5.0, pt[1] - 3.0, pt[2]), (86.0, 186.0, 19.0), tw, (xb + 4.0, 190.0, 23.0),
              hp(te[0] - 9.0, te[1], te[2] - 7.0), hp(te[0] - 6.0, te[1], te[2]), hp(*te)]
     # Drive.
-    pd = S.pi_pt(74.6, 1.1, 1.5 + 4.3)
+    pd = S.pi_pt(ux, 1.1, 1.5 + 4.3)
     de = drive_plug_end()
-    drive_c = [pd, (pd[0] + 2.5, pd[1] - 3.0, 10.5), (82.5, 140.0, 10.5), (84.0, 131.0, 10.5), (xb, de[1], 13.0),
+    drive_c = [pd, (pd[0] + 4.0, pd[1] - 4.0, 10.5), (82.0, 150.0, 10.5), (84.0, 131.0, 10.5), (xb, de[1], 13.0),
                (de[0], de[1], 17.5), de]
-    # Printer.
-    pp = S.pi_pt(74.6, 19.0, 1.5 + 4.3)
+    # Printer: over the top of the Pi, then down between the Pi and the rear hook.
+    pp = S.pi_pt(ux, 19.0, 1.5 + 4.3)
     ye = sum(S.EXITS[1][:2]) / 2
-    printer = [pp, (pp[0] + 2.5, pp[1] + 3.0, 10.5), (82.0, 218.0, 10.5), (76.0, 224.0, 10.0), (-36.0, 224.0, 10.0),
-               (-43.0, 217.0, 9.0), (-43.0, 137.0, 8.0), (-50.0, ye, 7.0), (-S.X_IN + 10.0, ye, 6.5), (xr, ye, 6.5)]
+    yt = S.PI_Y + 36.0                        # over the board and the GPIO header
+    xd = S.HOOKS[0][0][1] + 3.0               # down between the rear hook and the Pi
+    printer = [pp, (pp[0] + 4.0, pp[1] + 3.0, 10.5), (80.0, yt - 5.0, 10.5), (72.0, yt, 10.0), (xd + 7.0, yt, 10.0),
+               (xd, yt - 7.0, 9.0), (xd, 145.0, 8.0), (xd - 7.0, ye, 7.0), (-S.X_IN + 10.0, ye, 6.5), (xr, ye, 6.5)]
     # Power.
-    pc = S.pi_pt(-31.3, -57.3, 1.5 + 1.6)
+    pc = S.pi_pt(-31.3, -29.3 - S.PLUG_USB_C, 1.5 + 1.6)
     yl = sum(S.EXITS[0][:2]) / 2
     power = [pc, (pc[0], pc[1] - 2.5, pc[2] - 0.6), (pc[0] - 6.0, yl, 6.0), (-S.X_IN + 10.0, yl, 6.0), (xr, yl, 6.0)]
     # Fan.
@@ -924,7 +930,8 @@ def cable_paths():
     cw = S.FAN[0] / 2 + S.FAN_CLR
     gx, gy = S.FAN_XY[0] + cw - gl / 2, S.FAN_XY[1] + cw + gd / 2
     pf = S.pi_pt(24.25, 24.0, 1.5 + 7.1)
-    fan_c = [(gx, gy, 27.0), (gx, gy, 21.5), (18.0, 198.0, 19.5), (pf[0], pf[1], 19.0), pf]
+    fm = S.pi_pt(13.0, 19.0, 0.0)
+    fan_c = [(gx, gy, 27.0), (gx, gy, 21.5), (fm[0], fm[1], 19.5), (pf[0], pf[1], 19.0), pf]
     return {"hdmi": hdmi, "touch": touch, "drive": drive_c, "printer": printer, "power": power, "fan": fan_c}
 
 
