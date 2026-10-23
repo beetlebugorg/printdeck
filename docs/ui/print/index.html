@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Print a part · Printdeck</title>
+<meta name="description" content="The screens of the Printdeck for Print a part, on a display that is mounted tall.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The hardware</a>
+<a href="../../hardware/slate/">The Slate case</a>
+<a href="../../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/print/" aria-current="page">Tall</a><a href="../../ui/wide/print/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/" aria-current="page">Print a part</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/">Commands</a>
+<a href="../../reference/environment/">Environment variables</a>
+<a href="../../reference/files/">Files, paths and services</a>
+<a href="../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">Manual, tall display</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">The deck UI · tall</p>
+<h1>Print a part</h1>
+
+<div class="layout-switch"><span>Layout:</span><a href="" aria-current="page">Tall</a><a href="../../ui/wide/print/">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#send">Send a file from the slicer</a></li><li><a href="#start-print">Start a print</a></li><li><a href="#watch">Watch the print</a></li><li><a href="#away">Look around during a print</a></li></ol></nav><div class="manual"><section id="send">
+  <h2 class="title"><span class="num">07</span>Send a file from the slicer</h2>
+  <p>The deck answers the OctoPrint API that slicers use to send files and to start prints.</p><p>In Cura, add the deck with the OctoPrint Connection plugin. The deck asks &#34;Allow Cura to use the Printdeck?&#34;. Tap Allow.</p><p>In OrcaSlicer or PrusaSlicer, add a printer of the type OctoPrint with the address http://printdeck.local, and the API key of the system page.</p>
+  
+  
+  
+  
+</section>
+<section id="start-print">
+  <h2 class="title"><span class="num">08</span>Start a print</h2>
+  <p>The files are the G-code files that the slicer sent, or that you uploaded in the browser. The newest file is at the top.</p><p>Each file shows what the slicer wrote into it: the print time, the filament and the layer height. Cura, PrusaSlicer, OrcaSlicer and Bambu Studio write this data. A thumbnail shows when the slicer adds one.</p>
+  <ol class="steps"><li>Tap Print a file on the idle screen.</li><li>Tap the file. Check the print time, the filament and the temperatures.</li><li>Tap Print, then Print again.</li></ol>
+  
+  <figure>
+    <h3>The file list</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/files.png" alt="The file list" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="-25" y1="78" x2="16" y2="78" class="leader"/>
+        <circle cx="16" cy="78" r="5" class="dot"/>
+        <circle cx="-40" cy="78" r="15" class="badge"/>
+        <text x="-40" y="78" class="badge-n">1</text>
+        
+        <line x1="-25" y1="141" x2="34" y2="141" class="leader"/>
+        <circle cx="34" cy="141" r="5" class="dot"/>
+        <circle cx="-40" cy="141" r="15" class="badge"/>
+        <text x="-40" y="141" class="badge-n">2</text>
+        
+        <line x1="505" y1="132" x2="256" y2="132" class="leader"/>
+        <circle cx="256" cy="132" r="5" class="dot"/>
+        <circle cx="520" cy="132" r="15" class="badge"/>
+        <text x="520" y="132" class="badge-n">3</text>
+        
+        <line x1="505" y1="167" x2="124" y2="167" class="leader"/>
+        <circle cx="124" cy="167" r="5" class="dot"/>
+        <circle cx="520" cy="167" r="15" class="badge"/>
+        <text x="520" y="167" class="badge-n">4</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Count</b>The number of files.</span></li><li><span class="badge">2</span><span><b>Picture</b>The thumbnail of the slicer, or the shape of a part.</span></li><li><span class="badge">3</span><span><b>File</b>The name, the print time, the filament and the layer height.</span></li><li><span class="badge">4</span><span><b>Date</b>When the file arrived.</span></li>
+    </ol>
+    <p class="note">Drag the list up and down. Tap a file to open it.</p>
+  </figure>
+  
+  <figure>
+    <h3>A file</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/file.png" alt="A file" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="247" x2="409" y2="247" class="leader"/>
+        <circle cx="409" cy="247" r="5" class="dot"/>
+        <circle cx="520" cy="247" r="15" class="badge"/>
+        <text x="520" y="247" class="badge-n">1</text>
+        
+        <line x1="505" y1="558" x2="456" y2="558" class="leader"/>
+        <circle cx="456" cy="558" r="5" class="dot"/>
+        <circle cx="520" cy="558" r="15" class="badge"/>
+        <text x="520" y="558" class="badge-n">2</text>
+        
+        <line x1="505" y1="742" x2="456" y2="742" class="leader"/>
+        <circle cx="456" cy="742" r="5" class="dot"/>
+        <circle cx="520" cy="742" r="15" class="badge"/>
+        <text x="520" y="742" class="badge-n">3</text>
+        
+        <line x1="-25" y1="742" x2="24" y2="742" class="leader"/>
+        <circle cx="24" cy="742" r="5" class="dot"/>
+        <circle cx="-40" cy="742" r="15" class="badge"/>
+        <text x="-40" y="742" class="badge-n">4</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Picture</b>The thumbnail of the file.</span></li><li><span class="badge">2</span><span><b>Slicer data</b>The print time, the filament, the layer height, the temperatures, the slicer and the date.</span></li><li><span class="badge">3</span><span><b>Print</b>Starts the print, after a question.</span></li><li><span class="badge">4</span><span><b>Delete</b>Removes the file, after a question. The file that prints now cannot be removed.</span></li>
+    </ol>
+    
+  </figure>
+  
+  
+  
+</section>
+<section id="watch">
+  <h2 class="title"><span class="num">09</span>Watch the print</h2>
+  <p>During a print, the deck shows the screen of the phase of the print. The deck knows the phase from the printer and from the G-code of the file.</p>
+  <ol class="steps"><li>Watch the first layer. Use − and &#43; to set the height of the nozzle while it prints.</li><li>Tap Save to keep the Z offset for the next prints.</li><li>Use Tune to change the speed, the flow or the fan while the print runs.</li><li>When the print is done, wait for the bed to cool, then take the part off.</li></ol>
+  
+  <figure>
+    <h3>Preparing</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/preparing.png" alt="Preparing" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="116" x2="432" y2="116" class="leader"/>
+        <circle cx="432" cy="116" r="5" class="dot"/>
+        <circle cx="520" cy="116" r="15" class="badge"/>
+        <text x="520" y="116" class="badge-n">1</text>
+        
+        <line x1="505" y1="343" x2="440" y2="343" class="leader"/>
+        <circle cx="440" cy="343" r="5" class="dot"/>
+        <circle cx="520" cy="343" r="15" class="badge"/>
+        <text x="520" y="343" class="badge-n">2</text>
+        
+        <line x1="-25" y1="746" x2="40" y2="756" class="leader"/>
+        <circle cx="40" cy="756" r="5" class="dot"/>
+        <circle cx="-40" cy="746" r="15" class="badge"/>
+        <text x="-40" y="746" class="badge-n">3</text>
+        
+        <line x1="-25" y1="780" x2="162" y2="756" class="leader"/>
+        <circle cx="162" cy="756" r="5" class="dot"/>
+        <circle cx="-40" cy="780" r="15" class="badge"/>
+        <text x="-40" y="780" class="badge-n">4</text>
+        
+        <line x1="505" y1="756" x2="440" y2="756" class="leader"/>
+        <circle cx="440" cy="756" r="5" class="dot"/>
+        <circle cx="520" cy="756" r="15" class="badge"/>
+        <text x="520" y="756" class="badge-n">5</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Display</b>The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>Steps</b>The steps of the start macro of your printer, in its order. The deck follows the commands that the printer runs: the step that runs has a lit LED, and a done step has a dot.</span></li><li><span class="badge">3</span><span><b>Help</b>Opens Wi-Fi and help: the network, the address and the password of the deck.</span></li><li><span class="badge">4</span><span><b>Menu</b>Shows the other screens while the print runs. See Look around during a print.</span></li><li><span class="badge">5</span><span><b>Cancel print</b>Stops the print, after a question.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>The first layer</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/first-layer.png" alt="The first layer" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="116" x2="432" y2="116" class="leader"/>
+        <circle cx="432" cy="116" r="5" class="dot"/>
+        <circle cx="520" cy="116" r="15" class="badge"/>
+        <text x="520" y="116" class="badge-n">1</text>
+        
+        <line x1="-25" y1="268" x2="40" y2="268" class="leader"/>
+        <circle cx="40" cy="268" r="5" class="dot"/>
+        <circle cx="-40" cy="268" r="15" class="badge"/>
+        <text x="-40" y="268" class="badge-n">2</text>
+        
+        <line x1="-25" y1="302" x2="132" y2="268" class="leader"/>
+        <circle cx="132" cy="268" r="5" class="dot"/>
+        <circle cx="-40" cy="302" r="15" class="badge"/>
+        <text x="-40" y="302" class="badge-n">3</text>
+        
+        <line x1="505" y1="268" x2="440" y2="268" class="leader"/>
+        <circle cx="440" cy="268" r="5" class="dot"/>
+        <circle cx="520" cy="268" r="15" class="badge"/>
+        <text x="520" y="268" class="badge-n">4</text>
+        
+        <line x1="-25" y1="336" x2="40" y2="334" class="leader"/>
+        <circle cx="40" cy="334" r="5" class="dot"/>
+        <circle cx="-40" cy="336" r="15" class="badge"/>
+        <text x="-40" y="336" class="badge-n">5</text>
+        
+        <line x1="-25" y1="394" x2="40" y2="394" class="leader"/>
+        <circle cx="40" cy="394" r="5" class="dot"/>
+        <circle cx="-40" cy="394" r="15" class="badge"/>
+        <text x="-40" y="394" class="badge-n">6</text>
+        
+        <line x1="505" y1="394" x2="338" y2="394" class="leader"/>
+        <circle cx="338" cy="394" r="5" class="dot"/>
+        <circle cx="520" cy="394" r="15" class="badge"/>
+        <text x="520" y="394" class="badge-n">7</text>
+        
+        <line x1="505" y1="428" x2="440" y2="394" class="leader"/>
+        <circle cx="440" cy="394" r="5" class="dot"/>
+        <circle cx="520" cy="428" r="15" class="badge"/>
+        <text x="520" y="428" class="badge-n">8</text>
+        
+        <line x1="-25" y1="451" x2="46" y2="451" class="leader"/>
+        <circle cx="46" cy="451" r="5" class="dot"/>
+        <circle cx="-40" cy="451" r="15" class="badge"/>
+        <text x="-40" y="451" class="badge-n">9</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Display</b>The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>− and &#43;</b>− moves the nozzle closer to the bed, &#43; away from it. A line that is too round and thin needs −. A line that is flat and rough needs &#43;.</span></li><li><span class="badge">3</span><span><b>Z offset</b>The height of the nozzle above its normal height. Watch the first lines while they print.</span></li><li><span class="badge">4</span><span><b>Save</b>Writes the Z offset into the config of the printer. Save config in Maintenance then writes the file.</span></li><li><span class="badge">5</span><span><b>Step</b>How far one tap moves the nozzle, in mm.</span></li><li><span class="badge">6</span><span><b>Pause, Cancel</b>Pauses the print, or stops it after a question.</span></li><li><span class="badge">7</span><span><b>Menu</b>Shows the other screens while the print runs. See Look around during a print.</span></li><li><span class="badge">8</span><span><b>Help</b>Opens Wi-Fi and help: the network, the address and the password of the deck.</span></li><li><span class="badge">9</span><span><b>Layer</b>The first layer of the model.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>Printing</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/printing.png" alt="Printing" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="116" x2="432" y2="116" class="leader"/>
+        <circle cx="432" cy="116" r="5" class="dot"/>
+        <circle cx="520" cy="116" r="15" class="badge"/>
+        <text x="520" y="116" class="badge-n">1</text>
+        
+        <line x1="-25" y1="268" x2="40" y2="268" class="leader"/>
+        <circle cx="40" cy="268" r="5" class="dot"/>
+        <circle cx="-40" cy="268" r="15" class="badge"/>
+        <text x="-40" y="268" class="badge-n">2</text>
+        
+        <line x1="-25" y1="302" x2="142" y2="268" class="leader"/>
+        <circle cx="142" cy="268" r="5" class="dot"/>
+        <circle cx="-40" cy="302" r="15" class="badge"/>
+        <text x="-40" y="302" class="badge-n">3</text>
+        
+        <line x1="505" y1="268" x2="338" y2="268" class="leader"/>
+        <circle cx="338" cy="268" r="5" class="dot"/>
+        <circle cx="520" cy="268" r="15" class="badge"/>
+        <text x="520" y="268" class="badge-n">4</text>
+        
+        <line x1="505" y1="302" x2="440" y2="268" class="leader"/>
+        <circle cx="440" cy="268" r="5" class="dot"/>
+        <circle cx="520" cy="302" r="15" class="badge"/>
+        <text x="520" y="302" class="badge-n">5</text>
+        
+        <line x1="505" y1="554" x2="440" y2="554" class="leader"/>
+        <circle cx="440" cy="554" r="5" class="dot"/>
+        <circle cx="520" cy="554" r="15" class="badge"/>
+        <text x="520" y="554" class="badge-n">6</text>
+        
+        <line x1="505" y1="772" x2="422" y2="772" class="leader"/>
+        <circle cx="422" cy="772" r="5" class="dot"/>
+        <circle cx="520" cy="772" r="15" class="badge"/>
+        <text x="520" y="772" class="badge-n">7</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Display</b>The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>Pause</b>Pauses the print.</span></li><li><span class="badge">3</span><span><b>Tune</b>Changes the print while it runs. See Tune.</span></li><li><span class="badge">4</span><span><b>Cancel</b>Stops the print, after a question.</span></li><li><span class="badge">5</span><span><b>Menu</b>Shows the other screens while the print runs. See Look around during a print.</span></li><li><span class="badge">6</span><span><b>Model</b>The model up to the layer that prints now, with the move now and its speed at the top right.</span></li><li><span class="badge">7</span><span><b>Layer slider</b>Drag it to look at another layer. Live goes back to the layer that prints.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>Tune</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/tune.png" alt="Tune" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="-25" y1="43" x2="232" y2="43" class="leader"/>
+        <circle cx="232" cy="43" r="5" class="dot"/>
+        <circle cx="-40" cy="43" r="15" class="badge"/>
+        <text x="-40" y="43" class="badge-n">1</text>
+        
+        <line x1="505" y1="155" x2="456" y2="155" class="leader"/>
+        <circle cx="456" cy="155" r="5" class="dot"/>
+        <circle cx="520" cy="155" r="15" class="badge"/>
+        <text x="520" y="155" class="badge-n">2</text>
+        
+        <line x1="505" y1="277" x2="456" y2="277" class="leader"/>
+        <circle cx="456" cy="277" r="5" class="dot"/>
+        <circle cx="520" cy="277" r="15" class="badge"/>
+        <text x="520" y="277" class="badge-n">3</text>
+        
+        <line x1="505" y1="399" x2="456" y2="399" class="leader"/>
+        <circle cx="456" cy="399" r="5" class="dot"/>
+        <circle cx="520" cy="399" r="15" class="badge"/>
+        <text x="520" y="399" class="badge-n">4</text>
+        
+        <line x1="505" y1="612" x2="456" y2="612" class="leader"/>
+        <circle cx="456" cy="612" r="5" class="dot"/>
+        <circle cx="520" cy="612" r="15" class="badge"/>
+        <text x="520" y="612" class="badge-n">5</text>
+        
+        <line x1="505" y1="730" x2="440" y2="730" class="leader"/>
+        <circle cx="440" cy="730" r="5" class="dot"/>
+        <circle cx="520" cy="730" r="15" class="badge"/>
+        <text x="520" y="730" class="badge-n">6</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Help</b>Opens Wi-Fi and help: the network, the address and the password of the deck.</span></li><li><span class="badge">2</span><span><b>Speed</b>The speed of the print, in percent of the speed of the slicer.</span></li><li><span class="badge">3</span><span><b>Flow</b>The amount of plastic, in percent.</span></li><li><span class="badge">4</span><span><b>Z offset</b>The height of the nozzle above its normal height. Save writes it into the config of the printer, as on the first layer screen.</span></li><li><span class="badge">5</span><span><b>Fan</b>The part cooling fan.</span></li><li><span class="badge">6</span><span><b>Temperatures</b>Tap a card to change its temperature.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>Paused</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/paused.png" alt="Paused" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="116" x2="432" y2="116" class="leader"/>
+        <circle cx="432" cy="116" r="5" class="dot"/>
+        <circle cx="520" cy="116" r="15" class="badge"/>
+        <text x="520" y="116" class="badge-n">1</text>
+        
+        <line x1="505" y1="270" x2="440" y2="270" class="leader"/>
+        <circle cx="440" cy="270" r="5" class="dot"/>
+        <circle cx="520" cy="270" r="15" class="badge"/>
+        <text x="520" y="270" class="badge-n">2</text>
+        
+        <line x1="505" y1="364" x2="440" y2="364" class="leader"/>
+        <circle cx="440" cy="364" r="5" class="dot"/>
+        <circle cx="520" cy="364" r="15" class="badge"/>
+        <text x="520" y="364" class="badge-n">3</text>
+        
+        <line x1="-25" y1="456" x2="40" y2="456" class="leader"/>
+        <circle cx="40" cy="456" r="5" class="dot"/>
+        <circle cx="-40" cy="456" r="15" class="badge"/>
+        <text x="-40" y="456" class="badge-n">4</text>
+        
+        <line x1="505" y1="456" x2="440" y2="456" class="leader"/>
+        <circle cx="440" cy="456" r="5" class="dot"/>
+        <circle cx="520" cy="456" r="15" class="badge"/>
+        <text x="520" y="456" class="badge-n">5</text>
+        
+        <line x1="-25" y1="540" x2="40" y2="540" class="leader"/>
+        <circle cx="40" cy="540" r="5" class="dot"/>
+        <circle cx="-40" cy="540" r="15" class="badge"/>
+        <text x="-40" y="540" class="badge-n">6</text>
+        
+        <line x1="505" y1="540" x2="440" y2="540" class="leader"/>
+        <circle cx="440" cy="540" r="5" class="dot"/>
+        <circle cx="520" cy="540" r="15" class="badge"/>
+        <text x="520" y="540" class="badge-n">7</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Display</b>The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>Where</b>The layer of the pause, and the message of the printer.</span></li><li><span class="badge">3</span><span><b>Resume</b>Continues the print.</span></li><li><span class="badge">4</span><span><b>Change filament</b>The guided filament change, for a new color. See Change the filament.</span></li><li><span class="badge">5</span><span><b>Move head</b>Opens Move, to move the head out of the way.</span></li><li><span class="badge">6</span><span><b>Tune</b>Changes the print.</span></li><li><span class="badge">7</span><span><b>Cancel</b>Stops the print, after a question.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>A pause of the file</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/pause-prompt.png" alt="A pause of the file" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="288" x2="440" y2="288" class="leader"/>
+        <circle cx="440" cy="288" r="5" class="dot"/>
+        <circle cx="520" cy="288" r="15" class="badge"/>
+        <text x="520" y="288" class="badge-n">1</text>
+        
+        <line x1="-25" y1="492" x2="40" y2="492" class="leader"/>
+        <circle cx="40" cy="492" r="5" class="dot"/>
+        <circle cx="-40" cy="492" r="15" class="badge"/>
+        <text x="-40" y="492" class="badge-n">2</text>
+        
+        <line x1="505" y1="400" x2="440" y2="400" class="leader"/>
+        <circle cx="440" cy="400" r="5" class="dot"/>
+        <circle cx="520" cy="400" r="15" class="badge"/>
+        <text x="520" y="400" class="badge-n">3</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Where</b>The message of the file, for example for a part in a pocket on the bed (Print on a part in the Cura plugin).</span></li><li><span class="badge">2</span><span><b>Check the height</b>A paper test on the part. The print goes on from the measured height.</span></li><li><span class="badge">3</span><span><b>Resume</b>Primes the nozzle and continues. With no height check, the deck asks first.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>The end of the print</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/finishing.png" alt="The end of the print" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="271" x2="440" y2="271" class="leader"/>
+        <circle cx="440" cy="271" r="5" class="dot"/>
+        <circle cx="520" cy="271" r="15" class="badge"/>
+        <text x="520" y="271" class="badge-n">1</text>
+        
+        <line x1="505" y1="515" x2="440" y2="515" class="leader"/>
+        <circle cx="440" cy="515" r="5" class="dot"/>
+        <circle cx="520" cy="515" r="15" class="badge"/>
+        <text x="520" y="515" class="badge-n">2</text>
+        
+        <line x1="505" y1="756" x2="440" y2="756" class="leader"/>
+        <circle cx="440" cy="756" r="5" class="dot"/>
+        <circle cx="520" cy="756" r="15" class="badge"/>
+        <text x="520" y="756" class="badge-n">3</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Steps</b>The steps of the end macro of your printer, for example the cooling of the bed before the print moves to the front.</span></li><li><span class="badge">2</span><span><b>Model</b>The finished model.</span></li><li><span class="badge">3</span><span><b>Menu</b>Shows the other screens while the end macro runs. The print bar at the bottom comes back here. The deck shows the done screen at the end of the print.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>Done</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/done.png" alt="Done" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="397" x2="440" y2="397" class="leader"/>
+        <circle cx="440" cy="397" r="5" class="dot"/>
+        <circle cx="520" cy="397" r="15" class="badge"/>
+        <text x="520" y="397" class="badge-n">1</text>
+        
+        <line x1="505" y1="586" x2="440" y2="586" class="leader"/>
+        <circle cx="440" cy="586" r="5" class="dot"/>
+        <circle cx="520" cy="586" r="15" class="badge"/>
+        <text x="520" y="586" class="badge-n">2</text>
+        
+        <line x1="505" y1="661" x2="440" y2="661" class="leader"/>
+        <circle cx="440" cy="661" r="5" class="dot"/>
+        <circle cx="520" cy="661" r="15" class="badge"/>
+        <text x="520" y="661" class="badge-n">3</text>
+        
+        <line x1="-25" y1="756" x2="40" y2="756" class="leader"/>
+        <circle cx="40" cy="756" r="5" class="dot"/>
+        <circle cx="-40" cy="756" r="15" class="badge"/>
+        <text x="-40" y="756" class="badge-n">4</text>
+        
+        <line x1="505" y1="756" x2="440" y2="756" class="leader"/>
+        <circle cx="440" cy="756" r="5" class="dot"/>
+        <circle cx="520" cy="756" r="15" class="badge"/>
+        <text x="520" y="756" class="badge-n">5</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Model</b>The model of the print.</span></li><li><span class="badge">2</span><span><b>Result</b>Done, Cancelled or Failed, the file, the time and the filament of the print.</span></li><li><span class="badge">3</span><span><b>Bed</b>The temperature of the bed, and the time until the part comes off easily (35°). The deck learns the time from the cooling after each print. The bar is full at 35°.</span></li><li><span class="badge">4</span><span><b>Reprint</b>Prints the file again.</span></li><li><span class="badge">5</span><span><b>Done</b>Closes this screen.</span></li>
+    </ol>
+    
+  </figure>
+  
+  
+  
+</section>
+<section id="away">
+  <h2 class="title"><span class="num">10</span>Look around during a print</h2>
+  <p>Menu on the screens of the print shows the other screens while the print runs: the files, the filament and the rolls, the history. They are read only for the printer, so a tap cannot change the print by mistake.</p><p>The print bar at the bottom of each screen shows the print. Tap it to go back. The deck also goes back to the print at a pause, at a new print, and after 2 minutes with no touch.</p>
+  
+  
+  <figure>
+    <h3>Filament during a print</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/away.png" alt="Filament during a print" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="768" x2="456" y2="768" class="leader"/>
+        <circle cx="456" cy="768" r="5" class="dot"/>
+        <circle cx="520" cy="768" r="15" class="badge"/>
+        <text x="520" y="768" class="badge-n">1</text>
+        
+        <line x1="505" y1="376" x2="456" y2="376" class="leader"/>
+        <circle cx="456" cy="376" r="5" class="dot"/>
+        <circle cx="520" cy="376" r="15" class="badge"/>
+        <text x="520" y="376" class="badge-n">2</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Print bar</b>The print: the file, the layer and the time left, with Pause. Tap the bar to go back to the screen of the print.</span></li><li><span class="badge">2</span><span><b>Change filament</b>A key that moves, heats or changes the printer is dim and has a lock. A tap shows Wait until the print ends.</span></li>
+    </ol>
+    
+  </figure>
+  
+  
+  
+</section></div>
+<p>From the <a href="../../manual/">manual for a tall display</a>. The deck draws every picture.</p>
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

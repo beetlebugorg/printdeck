@@ -56,7 +56,9 @@ printdeck-manual-print.pdf on both sides of letter paper (flip on the short edge
 stack, and staple it in the fold.
 
 The deck draws the pictures itself: after a change to the UI, run `docs/manual/build.sh`. After a
-change to the Cura plugin, run `docs/cura/build.sh`.
+change to the Cura plugin, run `docs/cura/build.sh`. The documentation site in `docs/` comes from
+the README files, the guides of the two mounts and the manuals: after a change to one of them,
+run `docs/build.py`.
 
 ## Hardware
 

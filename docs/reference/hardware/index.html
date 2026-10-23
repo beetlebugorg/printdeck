@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hardware lists · Printdeck</title>
+<meta name="description" content="The parts, the screws, the inserts and the cables of the two mounts.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The hardware</a>
+<a href="../../hardware/slate/">The Slate case</a>
+<a href="../../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/setup/" aria-current="page">Tall</a><a href="../../ui/wide/setup/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/">Commands</a>
+<a href="../../reference/environment/">Environment variables</a>
+<a href="../../reference/files/">Files, paths and services</a>
+<a href="../../reference/hardware/" aria-current="page">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">Manual, tall display</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Reference</p>
+<h1>Hardware lists</h1>
+<p class="lede">The parts, the screws, the inserts and the cables of the two mounts.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#connections">The connections</a></li><li><a href="#slate">The Slate</a></li><li><a href="#workhorse">The TAZ Workhorse mount</a></li></ol></nav>
+<h2 id="connections">The connections</h2>
+<div class="table-wrap"><table><thead><tr><th>Part</th><th>Connection</th></tr></thead><tbody><tr><td>Raspberry Pi 5</td><td>USB-C power supply, 27 W</td></tr><tr><td>30 mm fan</td><td>Fan connector of the Pi</td></tr><tr><td>Adafruit 7&quot; HDMI backpack display</td><td>Micro HDMI port. Portrait position in the front.</td></tr><tr><td>AR1100 touch controller</td><td>USB</td></tr><tr><td>2.5&quot; SSD</td><td>USB 3 port, boot device</td></tr></tbody></table></div>
+<h2 id="slate">The Slate</h2>
+<p>From <code>slate/guide/guide.json</code>. The page of the <a href="../../hardware/slate/">Slate</a> has the steps.</p>
+<div class="two"><div><h3>Hardware</h3><div class="table-wrap"><table><tr><td class="q">10×</td><td>M3 heat-set insert, for a 4.0 mm hole, 4 mm long (display, chin, foot)</td></tr><tr><td class="q">4×</td><td>M3 heat-set insert, for a 4.0 mm hole, max. 5.5 mm long (Pi)</td></tr><tr><td class="q">4×</td><td>M3 × 6 screw (display)</td></tr><tr><td class="q">4×</td><td>M3 × 5 screw (drive)</td></tr><tr><td class="q">2×</td><td>M3 × 6 socket head screw (chin)</td></tr><tr><td class="q">4×</td><td>M3 × 8 socket head screw (foot)</td></tr><tr><td class="q">4×</td><td>M3 × 16 screw, pan head (fan). It cuts its thread in the printed boss.</td></tr><tr><td class="q">4×</td><td>M3 × 6 screw, pan head (Pi)</td></tr><tr><td class="q">3×</td><td>Twist tie, 15 cm, max. 3 mm wide (orange looks best)</td></tr></table></div></div>
+<div><h3>Electronics</h3><div class="table-wrap"><table><tr><td class="q">1×</td><td>Raspberry Pi 5</td></tr><tr><td class="q">1×</td><td>Heatsink for the Pi 5 SoC, max. 16 × 16 × 8 mm, with thermal tape</td></tr><tr><td class="q">1×</td><td>Adafruit 7 inch HDMI display with touch</td></tr><tr><td class="q">1×</td><td>2.5 inch SATA drive with a USB adapter board</td></tr><tr><td class="q">1×</td><td>30 mm fan, 10 mm thick, with a Pi 5 fan plug</td></tr><tr><td class="q">1×</td><td>HDMI ribbon cable kit: HDMI A plug, micro HDMI plug, flat ribbon 40 to 50 cm (the route is 24 cm). A round HDMI cable cannot bend in the 10 mm under the display.</td></tr><tr><td class="q">1×</td><td>USB-A to micro USB cable, thin (max. 3.5 mm), 50 to 60 cm (the route is 36 cm). Straight plugs, max. 30 mm long.</td></tr><tr><td class="q">1×</td><td>USB 3 cable for the drive: micro-B SuperSpeed to USB-A, 15 to 20 cm (the route is 11 cm). Straight micro-B plug, max. 22 mm long from the socket. Cable max. 4.5 mm diameter.</td></tr><tr><td class="q">1×</td><td>Raspberry Pi 27 W USB-C power supply</td></tr></table></div></div></div>
+<h2 id="workhorse">The TAZ Workhorse mount</h2>
+<p>From <code>lulzbot/guide/guide.json</code>. The page of the <a href="../../hardware/workhorse/">mount</a> has the steps.</p>
+<h3>Hardware</h3>
+<div class="table-wrap"><table><tr><th></th><th>Item</th><th>Where</th></tr><tr><td class="q">6×</td><td>M3 × 10 socket cap head</td><td>2 × plate on the cover (upper pair of PP-FP0164); 4 × back panel into the head</td></tr><tr><td class="q">2×</td><td>M3 × 12 socket cap head</td><td>2 × plate flange into the back panel</td></tr><tr><td class="q">12×</td><td>M3 × 6 socket cap head</td><td>4 × display board (it cuts its thread); 4 × Pi (it cuts its thread); 4 × drive on the back panel</td></tr><tr><td class="q">4×</td><td>M3 × 8 socket cap head</td><td>2 × pod onto the plate; 2 × rail clip into its T-nut</td></tr><tr><td class="q">2×</td><td>M3 roll-in T-nut with spring ball, for 2020 extrusion, 6 mm slot</td><td>2 × rail clips</td></tr><tr><td class="q">2×</td><td>M3 washer</td><td>2 × under the cover screws</td></tr><tr><td class="q">2×</td><td>M3 × 5 heat-set insert</td><td>2 × plate, pod screw blocks (3 to 5 mm fits)</td></tr><tr><td class="q">6×</td><td>M3 × 7 heat-set insert</td><td>4 × head, back screws (3 to 7 mm fits); 2 × back panel, flange screws (3 to 7 mm fits)</td></tr></table></div>
+<h3>Electronics and cables</h3>
+<div class="table-wrap"><table><tr><td class="q">1×</td><td>Raspberry Pi 5 (from the Slate build)</td></tr><tr><td class="q">1×</td><td>Raspberry Pi Active Cooler, max. 10.5 mm high (buy, if you do not have one)</td></tr><tr><td class="q">1×</td><td>Adafruit 7 inch HDMI display with touch, product 2407 (from the Slate build)</td></tr><tr><td class="q">1×</td><td>2.5 inch SATA drive with its USB adapter board, the boot drive (from the Slate build)</td></tr><tr><td class="q">1×</td><td>HDMI cable: micro HDMI to HDMI, straight plugs, a flat ribbon of 30 cm or more (the route is 24 cm). The ribbon kit of the Slate fits.</td></tr><tr><td class="q">1×</td><td>Micro USB to USB-A cable, straight plugs, max. 3.5 mm thick, 15 cm or more (the route is 12 cm).</td></tr><tr><td class="q">1×</td><td>USB 3 cable for the drive: micro-B SuperSpeed to USB-A, 15 to 20 cm (the route is 13 cm).</td></tr><tr><td class="q">1×</td><td>USB-A to USB-B cable for the printer: 31 cm in the pod, plus the run behind the printer to the USB socket of the printer board.</td></tr><tr><td class="q">1×</td><td>USB-C power cable: 9 cm in the pod, plus the run behind the printer to the Raspberry Pi 27 W USB-C power supply.</td></tr></table></div>
+<h3>Tools</h3>
+<ul><li>Drill with a 3.2 mm bit (for the four holes of the Pi)</li><li>Soldering iron with a heat-set insert tip, at 220 °C</li><li>2.5 mm hex key (M3 socket cap screws)</li></ul>
+
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Commands · Printdeck</title>
+<meta name="description" content="The commands and the flags of the printdeck program.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The hardware</a>
+<a href="../../hardware/slate/">The Slate case</a>
+<a href="../../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/setup/" aria-current="page">Tall</a><a href="../../ui/wide/setup/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/" aria-current="page">Commands</a>
+<a href="../../reference/environment/">Environment variables</a>
+<a href="../../reference/files/">Files, paths and services</a>
+<a href="../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">Manual, tall display</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Reference</p>
+<h1>Commands</h1>
+<p class="lede">The commands and the flags of the printdeck program.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#details">The options of the commands</a></li><li><a href="#klippy">printdeck klippy</a></li><li><a href="#system">The system programs</a></li></ol></nav>
+<p>The program is <code>printdeck</code>, in <code>deck/cmd/printdeck</code>. Without a command, it runs the application on the touch screen; systemd starts it that way on the deck. The commands, from the comment at the top of <code>main.go</code>:</p>
+<div class="table-wrap"><table><tr><th>Command</th><th>What it does</th></tr><tr><td><code>printdeck</code></td><td>run the application (started by systemd)</td></tr><tr><td><code>printdeck app</code></td><td>run the desktop app: the deck for a printer on USB, with no screen</td></tr><tr><td><code>printdeck demo DIR</code></td><td>write PNG pictures of the screens to DIR</td></tr><tr><td><code>printdeck remote-demo [ADDR]</code></td><td>serve the remote screen of a demo deck (password &quot;demo&quot;)</td></tr><tr><td><code>printdeck preview FILE.png</code></td><td>write the model view of the print that runs now</td></tr><tr><td><code>printdeck shot FILE.png</code></td><td>write a picture of the screen, with live data</td></tr><tr><td><code>printdeck splash</code></td><td>show the start screen at boot (started by printdeck-init)</td></tr><tr><td><code>printdeck password</code></td><td>print a new random password of four words</td></tr><tr><td><code>printdeck board</code></td><td>find the printer board, and print its MCU and firmware version</td></tr><tr><td><code>printdeck manual DIR</code></td><td>write the manual (DIR/index.html and its pictures)</td></tr><tr><td><code>printdeck snapshot URL PASSWORD OUT.png [h=H] [tap=X,Y ...]</code></td><td>a frame of the UI of a Printdeck, as a PNG</td></tr><tr><td><code>printdeck helper</code></td><td>the system helper: the actions of the deck that need root (started by systemd)</td></tr><tr><td><code>printdeck klipper-probe DEVICE [BAUD]</code></td><td>connect to a Klipper board and print what it reports</td></tr><tr><td><code>printdeck klippy [options] CONFIG</code></td><td>run the Klipper host (the Go port of klippy.py)</td></tr><tr><td><code>printdeck verify FILE</code></td><td>check the signature and the checksums of an update file</td></tr><tr><td><code>printdeck bench SOCKET OUT.png</code></td><td>run the deck UI with no screen on a Klipper host (a test bench)</td></tr></table></div>
+<h2 id="details">The options of the commands</h2>
+<p>The usage lines from the files of the commands.</p>
+<h4 id="app"><code>printdeck app</code> <span class="eyebrow">app.go</span></h4><pre><code>printdeck app [-dir DIR] [-addr ADDR] [-parent] [-sim]</code></pre><h4 id="bench"><code>printdeck bench</code> <span class="eyebrow">bench.go</span></h4><pre><code>printdeck bench SOCKET OUT.png</code></pre><h4 id="board"><code>printdeck board</code> <span class="eyebrow">board.go</span></h4><pre><code>printdeck board</code></pre><h4 id="flash"><code>printdeck flash</code> <span class="eyebrow">board.go</span></h4><pre><code>printdeck flash [-check] DEVICE</code></pre><h4 id="klipper-probe"><code>printdeck klipper-probe</code> <span class="eyebrow">klipperprobe.go</span></h4><pre><code>printdeck klipper-probe DEVICE [BAUD]</code></pre><h4 id="manual"><code>printdeck manual</code> <span class="eyebrow">cura.go</span></h4><pre><code>printdeck manual DIR cura</code></pre><h4 id="manual"><code>printdeck manual</code> <span class="eyebrow">manual.go</span></h4><pre><code>printdeck manual DIR [wide|lulzbot|cura]
+                                      write DIR/index.html, DIR/booklet.html and the pictures in
+                                      DIR/img. wide draws the screens of a display that is mounted
+                                      wide. lulzbot is the wide manual with the upgrade guides for
+                                      the TAZ Workhorse (upgrade.go). cura is the booklet of the
+                                      Cura plugin (cura.go).</code></pre><h4 id="manual"><code>printdeck manual</code> <span class="eyebrow">upgrade.go</span></h4><pre><code>printdeck manual DIR lulzbot</code></pre><h4 id="snapshot"><code>printdeck snapshot</code> <span class="eyebrow">snapshot.go</span></h4><pre><code>printdeck snapshot URL PASSWORD OUT.png [w=WIDTH] [h=HEIGHT] [tap=X,Y ...] [wait=MS]</code></pre>
+<h2 id="klippy">printdeck klippy</h2>
+<p>The Klipper host has the options of <code>klippy.py</code>. The G-code pseudo-terminal (<code>-I</code>) is not ported: the deck sends G-code through the API socket. The Klipper version of the port is <code>v0.13.0-777-g7bc4d0946</code>, and the firmware of the board must be this version.</p>
+<pre><code>usage: printdeck klippy [options] &lt;config file&gt;
+
+  -i FILE   read commands from file instead of from tty port
+  -a FILE   api server unix domain socket filename
+  -l FILE   write log to file instead of stderr
+  -v        enable debug messages
+  -o FILE   write output to file instead of to serial port
+  -d FILE   file to read for mcu protocol dictionary (or NAME=FILE)</code></pre>
+<h2 id="system">The system programs</h2>
+<p>On Printdeck OS, these names are links to the printdeck program in <code>/usr/bin</code>. The program runs the program of the name it was started under.</p>
+<div class="table-wrap"><table><tr><th>Program</th><th>What it does</th></tr><tr><td><code>printdeck-init</code></td><td>the first program at boot</td></tr><tr><td><code>printdeck-update BUNDLE</code></td><td>write an update bundle to the other slot, and restart</td></tr><tr><td><code>printdeck-commit</code></td><td>make the new slot the default after an update</td></tr><tr><td><code>printdeck-credentials</code></td><td>make the password and the API key at the first start</td></tr><tr><td><code>printdeck-settings</code></td><td>apply the settings of the config partition</td></tr><tr><td><code>printdeck-wifi SSID PASSWORD [COUNTRY]</code></td><td>set the Wi-Fi network</td></tr></table></div>
+<p>The deck runs as the user <code>deck</code>. The actions that need root go through the system helper (<code>printdeck helper</code>) on a socket. See <a href="../../os/#how-it-works">How it works</a>.</p>
+
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

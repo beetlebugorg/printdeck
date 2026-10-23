@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The hardware · Printdeck</title>
+<meta name="description" content="A Raspberry Pi 5, a 7 inch touch display, a drive and a fan, in one of two printed mounts.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../hardware/" aria-current="page">The hardware</a>
+<a href="../hardware/slate/">The Slate case</a>
+<a href="../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../ui/setup/" aria-current="page">Tall</a><a href="../ui/wide/setup/">Wide</a></div>
+<a href="../ui/">The screens</a>
+<span class="sub"><a href="../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../os/">Printdeck OS</a>
+<a href="../deck/">The printdeck program</a>
+<a href="../deck/klipper/">The Klipper host</a>
+<a href="../deck/printer/">The reference printer</a>
+<a href="../deck/remote/">Remote screen and API</a>
+<a href="../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../desktop/">Desktop app and simulator</a>
+<a href="../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../reference/commands/">Commands</a>
+<a href="../reference/environment/">Environment variables</a>
+<a href="../reference/files/">Files, paths and services</a>
+<a href="../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../manual/">Manual, tall display</a>
+<a href="../manual/wide/">Manual, wide display</a>
+<a href="../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Hardware</p>
+<h1>The hardware</h1>
+<p class="lede">A Raspberry Pi 5, a 7 inch touch display, a drive and a fan, in one of two printed mounts.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#parts">The parts</a></li><li><a href="#mounts">The two mounts</a></li></ol></nav>
+<h2 id="parts">The parts</h2>
+<div class="table-wrap"><table><thead><tr><th>Part</th><th>Connection</th></tr></thead><tbody><tr><td>Raspberry Pi 5</td><td>USB-C power supply, 27 W</td></tr><tr><td>30 mm fan</td><td>Fan connector of the Pi</td></tr><tr><td>Adafruit 7&quot; HDMI backpack display</td><td>Micro HDMI port. Portrait position in the front.</td></tr><tr><td>AR1100 touch controller</td><td>USB</td></tr><tr><td>2.5&quot; SSD</td><td>USB 3 port, boot device</td></tr></tbody></table></div>
+<p>Both mounts hold the same parts. The lists with the screws, the inserts and the cables are on the page of each mount, and together on the <a href="../reference/hardware/">hardware lists</a> page.</p>
+<h2 id="mounts">The two mounts</h2>
+<div class="pics">
+  <div class="card"><a href="slate/"><picture class="frame-img"><source media="(prefers-color-scheme: dark)" srcset="../img/hero-dark.png"><img src="../img/hero-light.png" alt="The Printdeck Slate on its foot" loading="lazy"></picture></a><div class="text"><b>The Slate</b>
+  <p>The case is the Slate in <code>slate/</code>: a 35 mm slab that leans back 15 degrees on a foot, with the Pi on the rear. <code>slate/README.md</code> lists the parts and the files. <code>slate/printdeck-slate-build.pdf</code> has the parts list, the print settings, and the assembly steps.</p>
+  <div class="chips"><span class="chip">132 × 221 × 35 mm</span><span class="chip">4 printed parts</span><span class="chip">271 g of PLA</span><span class="chip">No supports</span></div>
+  <p><a class="btn" href="slate/">The Slate case</a></p></div></div>
+  <div class="card"><a href="workhorse/"><picture class="frame-img white"><img src="../img/lulzbot-printer.png" alt="The Printdeck mount on the front left of a LulzBot TAZ Workhorse" loading="lazy"></picture></a><div class="text"><b>The TAZ Workhorse mount</b>
+  <p>A second mount puts the Printdeck on the front left of a LulzBot TAZ Workhorse, with the display wide. You print its seven parts on the Workhorse itself: 309 g of PLA in 14 h 58 min, with no supports. Two metal M3 roll-in T-nuts hold the clips in the front rail, and you drill no hole in the printer. The <a href="../lulzbot/printdeck-manual.pdf">upgrade booklet</a> has the print plan, the hardware and the steps. The files are in <a href="https://github.com/beetlebugorg/printdeck/tree/main/lulzbot">lulzbot/</a>.</p>
+  <div class="chips"><span class="chip">7 printed parts</span><span class="chip">309 g of PLA</span><span class="chip">14 h 58 min</span><span class="chip">No supports</span><span class="chip">No holes in the printer</span></div>
+  <p><a class="btn" href="workhorse/">The TAZ Workhorse mount</a></p></div></div>
+</div>
+
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

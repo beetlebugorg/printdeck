@@ -3,145 +3,100 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Printdeck</title>
-<meta name="description" content="A Raspberry Pi 5 desk slab that runs Klipper for the 3D printer. Four printed parts, no supports.">
+<title>Printdeck · Printdeck</title>
+<meta name="description" content="The documentation of Printdeck: a touch screen and a Klipper print server for a 3D printer on a Raspberry Pi 5.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;600;800&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg: #fbfbf9; --raised: #ffffff; --ink: #16181a; --ink-2: #4a4f55; --ink-3: #80868d;
-  --line: #e2e2dc; --accent: #0a7f63; --accent-soft: #e3f3ee; --grid: rgba(22, 24, 26, 0.045);
-  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1112; --raised: #161a1c; --ink: #eceeed; --ink-2: #b2b8b6; --ink-3: #7c8482;
-    --line: #262b2d; --accent: #3fd1a6; --accent-soft: #10302a; --grid: rgba(236, 238, 237, 0.05);
-    color-scheme: dark;
-  }
-}
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 var(--sans); }
-a { color: var(--accent); }
-main { max-width: 1080px; margin: 0 auto; padding: 0 16px 80px; }
-header { max-width: 1080px; margin: 0 auto; padding: 48px 16px 8px; }
-.eyebrow { font: 600 0.75rem var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin: 0 0 8px; }
-h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); line-height: 1.05; letter-spacing: -0.03em; margin: 0; }
-h2 { font-size: 1.7rem; letter-spacing: -0.02em; margin: 64px 0 8px; }
-h3 { margin: 0 0 6px; font-size: 1.1rem; }
-.lede { font-size: 1.15rem; color: var(--ink-2); max-width: 46rem; }
-.grid-bg { background-color: var(--bg); border: 1px solid var(--line); border-radius: 10px;
-  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-  background-size: 24px 24px; }
-picture img { display: block; width: 100%; height: auto; }
-.hero { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
-.hero picture { padding: 24px; }
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 24px 0 0; padding: 16px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.stats b { display: block; font-size: 1.3rem; letter-spacing: -0.02em; }
-.stats span { color: var(--ink-3); font: 500 0.75rem var(--mono); text-transform: uppercase; letter-spacing: 0.06em; }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-.chip { font: 600 0.75rem var(--mono); color: var(--ink-2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; background: var(--raised); }
-.btn { display: inline-block; font: 600 0.8rem var(--mono); color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 6px 14px; text-decoration: none; background: var(--raised); margin: 0 8px 8px 0; }
-.btn:hover { background: var(--accent-soft); }
-.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-.card { background: var(--raised); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 0.9rem; }
-.card picture { padding: 12px; border: 0; border-radius: 0; border-bottom: 1px solid var(--line); }
-.card picture img { height: 120px; object-fit: contain; }
-.card div { padding: 12px; color: var(--ink-2); }
-.card b { color: var(--ink); }
-.step { display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; align-items: start; padding: 32px 0; border-top: 1px solid var(--line); }
-.step picture { padding: 16px; }
-.step .num { font: 800 3rem/1 var(--mono); color: var(--accent); }
-.step ol { padding-left: 20px; color: var(--ink-2); }
-.step li { margin-bottom: 6px; }
-.note { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 10px; padding: 10px 14px; font-size: 0.9rem; }
-table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
-td { border-bottom: 1px solid var(--line); padding: 6px 8px 6px 0; vertical-align: top; }
-td.q { font: 700 0.85rem var(--mono); white-space: nowrap; width: 3.5rem; }
-.two { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
-code { font: 0.85em var(--mono); }
-.shots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 24px 0; }
-.shots img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 10px; }
-img.plain { width: 100%; height: auto; background: #ffffff; border: 1px solid var(--line); border-radius: 10px; padding: 16px; box-sizing: border-box; }
-footer { max-width: 1080px; margin: 0 auto; padding: 24px 16px 48px; color: var(--ink-3); font: 0.8rem var(--mono); border-top: 1px solid var(--line); }
-@media (max-width: 760px) {
-  .hero, .step, .two { grid-template-columns: 1fr; }
-  .stats, .cards, .shots { grid-template-columns: 1fr 1fr; }
-}
-</style>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="site.css">
 </head>
 <body>
-<header>
-  <p class="eyebrow">Cyberdeck · Raspberry Pi 5</p>
-  <h1>Printdeck</h1>
-  <p class="lede">A desk slab next to the 3D printer. It runs Klipper, and shows and controls the print on a 7" touch
-    screen. The Pi 5 is on the rear, so every port is open.</p>
-  <a class="btn" href="https://github.com/beetlebugorg/printdeck/releases/latest">Download Printdeck OS</a>
-  <a class="btn" href="manual/printdeck-manual.pdf">Manual (PDF)</a>
-  <a class="btn" href="files/printdeck-slate-build.pdf">Build instructions (PDF)</a>
-  <a class="btn" href="https://github.com/beetlebugorg/printdeck">Source on GitHub</a>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href=""><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
 </header>
+<div class="layout">
+<aside class="side"><nav><a href="" aria-current="page">Overview</a>
+<div class="group">Hardware</div>
+<a href="hardware/">The hardware</a>
+<a href="hardware/slate/">The Slate case</a>
+<a href="hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="ui/setup/" aria-current="page">Tall</a><a href="ui/wide/setup/">Wide</a></div>
+<a href="ui/">The screens</a>
+<span class="sub"><a href="ui/setup/">Set up</a></span>
+<span class="sub"><a href="ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="ui/print/">Print a part</a></span>
+<span class="sub"><a href="ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="ui/move/">Move and heat</a></span>
+<span class="sub"><a href="ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="os/">Printdeck OS</a>
+<a href="deck/">The printdeck program</a>
+<a href="deck/klipper/">The Klipper host</a>
+<a href="deck/printer/">The reference printer</a>
+<a href="deck/remote/">Remote screen and API</a>
+<a href="slicer/cura-plugin/">The Cura plugin</a>
+<a href="slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="desktop/">Desktop app and simulator</a>
+<a href="desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="reference/commands/">Commands</a>
+<a href="reference/environment/">Environment variables</a>
+<a href="reference/files/">Files, paths and services</a>
+<a href="reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="manual/">Manual, tall display</a>
+<a href="manual/wide/">Manual, wide display</a>
+<a href="lulzbot/">Workhorse upgrade booklet</a>
+<a href="cura/">Cura plugin booklet</a></nav></aside>
 <main>
-  <div class="hero"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/hero-dark.png"><img src="img/hero-light.png" alt="The Printdeck from the front"></picture><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/rear-dark.png"><img src="img/rear-light.png" alt="The Printdeck from the rear, with the Pi and the cables"></picture></div>
-  <div class="stats">
-    <div><b>132 × 221 × 35 mm</b><span>Size</span></div>
-    <div><b>4 parts · 271 g</b><span>Printed</span></div>
-    <div><b>$6.23</b><span>Filament at $22.99/kg</span></div>
-    <div><b>No supports</b><span>All parts</span></div>
-  </div>
+<p class="eyebrow">Documentation</p>
+<h1>Printdeck</h1>
+<p class="lede">A Raspberry Pi 5 with a 7" touch screen next to the 3D printer. It runs Klipper, and shows and controls the print on the touch screen, on the display of the printer, and in a browser.</p>
 
-  <h2>Print</h2>
-  <p>The STL files are in their print orientation. Load them, do not turn them.</p>
-  <div class="cards"><div class="card"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/part_slab-dark.png"><img src="img/part_slab-light.png" alt="slab"></picture><div><b>Slab</b> · Navy PLA · 82 g<br>Front face down. The screen opening is in the first layers: use a smooth sheet for a clean face.</div></div><div class="card"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/part_chin-dark.png"><img src="img/part_chin-light.png" alt="chin"></picture><div><b>Chin</b> · Orange PLA · 44 g<br>Front face down. The tongues stand up at the two sides.</div></div><div class="card"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/part_back-dark.png"><img src="img/part_back-light.png" alt="back"></picture><div><b>Back</b> · Orange PLA · 89 g<br>Front face (the drive side) down. The bosses and the fan posts point up.</div></div><div class="card"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/part_foot-dark.png"><img src="img/part_foot-light.png" alt="foot"></picture><div><b>Foot</b> · Gray PLA · 56 g<br>Flat, the screw pockets down.</div></div></div>
-  <p style="margin-top:16px"><a class="btn" href="files/slab.stl">slab.stl</a><a class="btn" href="files/chin.stl">chin.stl</a><a class="btn" href="files/back.stl">back.stl</a><a class="btn" href="files/foot.stl">foot.stl</a></p>
-  <table><tr><td><b>Profiles</b></td><td>One Cura profile for each part: run <code>python3 cura/make_profiles.py --install</code> with Cura closed, then pick “Printdeck - Slate …”.</td></tr><tr><td><b>Material</b></td><td>PLA, 2.85 mm, 0.5 mm nozzle</td></tr><tr><td><b>Slab, chin</b></td><td>0.3 mm layers, 1.5 mm walls, 1.2 mm top and bottom, 20 % grid infill, skirt</td></tr><tr><td><b>Back plate</b></td><td>0.3 mm layers, 40 % grid infill, skirt</td></tr><tr><td><b>Foot</b></td><td>0.3 mm layers, 20 % grid infill, skirt</td></tr><tr><td><b>Supports</b></td><td>Off for all parts. Every pocket, hole, and slot has 45° faces. A slice of each part with supports on (60°, everywhere) adds 0 g of support.</td></tr></table>
+<p>
+  <a class="btn primary" href="https://github.com/beetlebugorg/printdeck/releases/latest">Download Printdeck OS</a>
+  <a class="btn" href="#install">Install</a>
+  <a class="btn" href="manual/">The manual</a>
+  <a class="btn" href="hardware/">Build the hardware</a>
+  <a class="btn" href="https://github.com/beetlebugorg/printdeck">Source on GitHub</a>
+</p>
+<div class="pics">
+  <figure class="frame-img"><picture class=""><source media="(prefers-color-scheme: dark)" srcset="img/hero-dark.png"><img src="img/hero-light.png" alt="The Printdeck Slate on its foot" loading="lazy"></picture><figcaption>The Slate: a desk slab, 4 printed parts</figcaption></figure>
+  <figure class="frame-img white"><img src="img/lulzbot-printer.png" alt="The Printdeck mount on the front left of a LulzBot TAZ Workhorse"><figcaption>The mount on the LulzBot TAZ Workhorse</figcaption></figure>
+</div>
+<div class="pics four screens"><figure><img src="manual/img/printing.png" alt="A print with the model up to the layer that prints now" loading="lazy"></figure><figure><img src="manual/img/first-layer.png" alt="The first layer with the Z offset" loading="lazy"></figure><figure><img src="manual/img/file.png" alt="A file with its print time, filament, roll and cost" loading="lazy"></figure><figure><img src="manual/img/filament.png" alt="The Filament page with the roll in the printer" loading="lazy"></figure></div>
+<h2 id="install">Install</h2>
+<ol><li>Download <code>printdeck.img.xz</code> from the <a href="https://github.com/beetlebugorg/printdeck/releases/latest">latest release</a>.</li><li>Write it to a USB SSD or an SD card with Raspberry Pi Imager (&quot;Use custom&quot;).</li><li>Start the Pi. The setup on the touch screen connects the Wi-Fi and finds the printer.</li></ol>
+<p>To update, open Machine &gt; Software update on the touch screen. <code>os/README.md</code> has the details.</p>
+<p>The <a href="os/">Printdeck OS</a> page has the first start, the login, the settings and the update in full.</p>
 
-  <h2>Parts</h2>
-  <div class="two"><div><h3>Hardware</h3><table><tr><td class="q">10×</td><td>M3 heat-set insert, for a 4.0 mm hole, 4 mm long (display, chin, foot)</td></tr><tr><td class="q">4×</td><td>M3 heat-set insert, for a 4.0 mm hole, max. 5.5 mm long (Pi)</td></tr><tr><td class="q">4×</td><td>M3 × 6 screw (display)</td></tr><tr><td class="q">4×</td><td>M3 × 5 screw (drive)</td></tr><tr><td class="q">2×</td><td>M3 × 6 socket head screw (chin)</td></tr><tr><td class="q">4×</td><td>M3 × 8 socket head screw (foot)</td></tr><tr><td class="q">4×</td><td>M3 × 16 screw, pan head (fan). It cuts its thread in the printed boss.</td></tr><tr><td class="q">4×</td><td>M3 × 6 screw, pan head (Pi)</td></tr><tr><td class="q">3×</td><td>Twist tie, 15 cm, max. 3 mm wide (orange looks best)</td></tr></table></div><div><h3>Electronics</h3><table><tr><td class="q">1×</td><td>Raspberry Pi 5</td></tr><tr><td class="q">1×</td><td>Heatsink for the Pi 5 SoC, max. 16 × 16 × 8 mm, with thermal tape</td></tr><tr><td class="q">1×</td><td>Adafruit 7 inch HDMI display with touch</td></tr><tr><td class="q">1×</td><td>2.5 inch SATA drive with a USB adapter board</td></tr><tr><td class="q">1×</td><td>30 mm fan, 10 mm thick, with a Pi 5 fan plug</td></tr><tr><td class="q">1×</td><td>HDMI ribbon cable kit: HDMI A plug, micro HDMI plug, flat ribbon 40 to 50 cm (the route is 24 cm). A round HDMI cable cannot bend in the 10 mm under the display.</td></tr><tr><td class="q">1×</td><td>USB-A to micro USB cable, thin (max. 3.5 mm), 50 to 60 cm (the route is 36 cm). Straight plugs, max. 30 mm long.</td></tr><tr><td class="q">1×</td><td>USB 3 cable for the drive: micro-B SuperSpeed to USB-A, 15 to 20 cm (the route is 11 cm). Straight micro-B plug, max. 22 mm long from the socket. Cable max. 4.5 mm diameter.</td></tr><tr><td class="q">1×</td><td>Raspberry Pi 27 W USB-C power supply</td></tr></table></div></div>
+<h2 id="docs">The documentation</h2>
+<div class="map">
+  <a class="card" href="hardware/"><b>Hardware</b><span>The parts, the Slate case for the desk, and the mount for the LulzBot TAZ Workhorse: print plans, hardware lists and assembly steps.</span></a>
+  <a class="card" href="ui/"><b>The deck UI</b><span>Every screen of the touch screen with numbered callouts, for a display that is mounted tall or wide.</span></a>
+  <a class="card" href="os/"><b>Printdeck OS</b><span>The read-only Linux image: install, the first start, the two system slots, the update, the release and the debug image.</span></a>
+  <a class="card" href="deck/"><b>The printdeck program</b><span>One Go program: the Klipper host, the touch screen, the remote screen, the API for slicers and the display of the printer.</span></a>
+  <a class="card" href="slicer/cura-plugin/"><b>Slicers</b><span>The Printdeck plugin for Cura with the Print on a part tool, and the Adaptive Speed script.</span></a>
+  <a class="card" href="desktop/"><b>Desktop app and simulator</b><span>The Printdeck for a computer, the simulated TAZ Workhorse in 3D, and the tools that make the film.</span></a>
+  <a class="card" href="build/"><b>Build and release</b><span>The OS image, the CI, the tags of a release, the manuals and this site.</span></a>
+  <a class="card" href="reference/commands/"><b>Reference</b><span>The commands and flags of printdeck, the environment variables, the files and paths, and the hardware lists.</span></a>
+</div>
 
-  <h2>Build</h2>
-  <p>Left and right are as seen from the front of the case.</p>
-  <section class="step"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/step1-dark.png"><img src="img/step1-light.png" alt="Step 1: Display"></picture><div><div class="num">1</div><h3>Display</h3><div class="chips"><span class="chip">slab</span><span class="chip">display</span><span class="chip">4 × insert (4 mm)</span><span class="chip">4 × M3 × 6</span></div><ol><li>Press four 4 mm M3 heat-set inserts into the four bosses in the slab. Use a soldering iron at 220 °C. Stop when the insert is flush: the face is only 3.85 mm away.</li><li>Put the slab face down on a soft cloth.</li><li>Connect the HDMI ribbon cable and the USB cable to the display.</li><li>Put the display into the slab: glass to the front, sockets at the bottom. The cables come out of the open bottom of the slab.</li><li>Attach the display with four M3 × 6 screws.</li></ol></div></section><section class="step"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/step2-dark.png"><img src="img/step2-light.png" alt="Step 2: Drive"></picture><div><div class="num">2</div><h3>Drive</h3><div class="chips"><span class="chip">back plate</span><span class="chip">drive</span><span class="chip">4 × M3 × 5</span></div><ol><li>Put the drive on the flat front of the back plate: adapter up, the M3 holes against the plate. Attach it with four M3 × 5 screws from the rear.</li><li>Connect the drive cable to the micro-B socket of the drive adapter. Bend the cable to the rear through the notch in the top edge of the plate.</li></ol></div></section><section class="step"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/step2_pi-dark.png"><img src="img/step2_pi-light.png" alt="Step 3: Fan and Pi"></picture><div><div class="num">3</div><h3>Fan and Pi</h3><div class="chips"><span class="chip">back plate (step 2)</span><span class="chip">fan</span><span class="chip">Pi 5</span><span class="chip">heatsink</span><span class="chip">4 × insert</span><span class="chip">4 × M3 × 16</span><span class="chip">4 × M3 × 6</span></div><ol><li>Press four M3 heat-set inserts into the four tall bosses on the rear of the back plate.</li><li>Put the fan in between the four corner guides on the rear, with the cable toward the right of the case. The label side goes away from the plate: the fan blows onto the Pi.</li><li>Attach the fan with four M3 × 16 screws through its corner holes into the four bosses. Turn each screw until the fan touches the boss. Do not tighten more: the thread is in plastic.</li><li>Put the heatsink on the SoC of the Pi.</li><li>Put the Pi on the four bosses: the USB ports up, the USB-C and HDMI ports toward the left of the case. Attach it with four M3 × 6 screws through the Pi into the inserts.</li><li>Lead the fan cable around the right edge of the Pi, above the end of the GPIO header. Connect it to the fan connector of the Pi.</li></ol><p class="note"><b>Note.</b> Left and right are as seen from the front of the case.</p></div></section><section class="step"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/step3-dark.png"><img src="img/step3-light.png" alt="Step 4: Back plate into the slab"></picture><div><div class="num">4</div><h3>Back plate into the slab</h3><div class="chips"><span class="chip">slab (step 1)</span><span class="chip">back plate (step 3)</span></div><ol><li>Keep the slab face down. Lead the two display cables through the two notches in the bottom edge of the back plate: the USB cable at the left, the ribbon at the right.</li><li>Put the edges of the back plate into the grooves of the slab, at the open bottom. Slide the plate up until it stops at the top wall.</li></ol><p class="note"><b>Note.</b> The drive is behind the display plugs. If the plate does not slide, look at the plugs first.</p></div></section><section class="step"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/step4-dark.png"><img src="img/step4-light.png" alt="Step 5: Chin"></picture><div><div class="num">5</div><h3>Chin</h3><div class="chips"><span class="chip">chin</span><span class="chip">6 × insert (4 mm)</span><span class="chip">2 × M3 × 6</span></div><ol><li>Press four 4 mm M3 heat-set inserts into the four holes in the bottom of the chin, at the front corners. Stop when the insert is flush.</li><li>Press one 4 mm M3 heat-set insert into the hole in the outer face of each tongue. Stop when the insert is flush.</li><li>Put the extra length of the display cables into the chin.</li><li>Push the chin up onto the slab: its grooves take the bottom of the back plate. Push until the two tongues click.</li><li>Put an M3 × 6 socket head screw through the hole in each side wall of the slab, into the insert in the tongue. The head goes into the recess and is flush with the wall.</li></ol><p class="note"><b>Note.</b> The chin holds the back plate. The case is now closed.</p></div></section><section class="step"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/step5-dark.png"><img src="img/step5-light.png" alt="Step 6: Foot"></picture><div><div class="num">6</div><h3>Foot</h3><div class="chips"><span class="chip">foot</span><span class="chip">4 × M3 × 8</span></div><ol><li>Put the case on the foot. The foot is 6 mm in from the front and the sides, and it reaches far to the rear.</li><li>Align the four holes in the foot with the four inserts in the chin.</li><li>Put the four M3 × 8 screws up through the foot, from below. Tighten them until the heads touch the bottom of their pockets. Do not tighten more.</li></ol><p class="note"><b>Note.</b> The screw heads are below the bottom face of the foot, so the foot stands flat.</p></div></section><section class="step"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/step6-dark.png"><img src="img/step6-light.png" alt="Step 7: Cables on the rear"></picture><div><div class="num">7</div><h3>Cables on the rear</h3><div class="chips"><span class="chip">3 × twist tie</span></div><ol><li>Lead the drive cable over the top of the Pi. Connect it to the blue USB 3 port next to the board, from above.</li><li>Lead the HDMI ribbon to the left, then up the left side of the back plate. Tie it at the pair of holes at the left. Connect it to the micro HDMI port next to the USB-C port.</li><li>Lead the USB cable to the right, then up the right side of the back plate. Tie it at the two pairs of holes at the right. Bend it over the top and connect it to the black USB 2 port away from the board, from above.</li><li>Connect the printer to the black USB 2 port next to the board. The USB ports point up, so you connect them from the top of the case.</li><li>For each tie: put it in through one hole and out through the other, around the cable. Twist it closed on the rear.</li></ol><p class="note"><b>Note.</b> No cable shows on the front or the sides. On the rear the cables are part of the look: keep them tight, with no loops.</p></div></section>
+<h2 id="goal">Goal</h2>
+<p>Printdeck is a very small operating system with one purpose. The Printdeck program is one static Go binary with no runtime dependencies, on a minimal Linux system. We build it from open source projects, such as Klipper. We respect their licenses, give credit, and keep our license compatible. We are not here to take code. We reform it into something new and give it back, in the spirit of open source, with the help of AI. <code>ARCHITECTURE.md</code> has the plan and the rules.</p>
+<h2 id="license">License</h2>
+<p>Printdeck is free software under the GNU Affero General Public License, version 3. See <code>LICENSE</code>, and the &quot;Open source and licenses&quot; section of <code>ARCHITECTURE.md</code>. The Printdeck program contains a port of Klipper&#x27;s host (GPL-3.0). The OS image contains the other packages of the image, each under its own license.</p>
 
-  <h2>Connect</h2>
-  <div class="step"><picture class="grid-bg"><source media="(prefers-color-scheme: dark)" srcset="img/connect-dark.png"><img src="img/connect-light.png" alt="The plugs for the printer and the power"></picture><div><ol>
-    <li>Connect the USB-C power supply to the Pi. The port is on the left edge of the Pi.</li>
-    <li>Connect the 3D printer to the black USB 2 port next to the board, from above.</li></ol></div></div>
-
-  <h2>Software</h2>
-  <p>The Printdeck runs Printdeck OS: one Go program that is the Klipper host, the touch screen, the display of
-    the printer, and the web pages. The touch screen shows a 3D view of the print, the temperatures, and the printer
-    controls. The deck keeps a list of your rolls of filament, and shows the cost of each print.</p>
-  <div class="shots"><img src="manual/img/printing.png" alt="A print with the model up to the layer that prints now"><img src="manual/img/first-layer.png" alt="The first layer with the Z offset"><img src="manual/img/file.png" alt="A file with its print time, filament, roll and cost"><img src="manual/img/filament.png" alt="The Filament page with the roll in the printer"></div>
-  <p>Download the image from the <a href="https://github.com/beetlebugorg/printdeck/releases/latest">latest release</a>, and write it to a USB SSD or an
-    SD card with Raspberry Pi Imager. The deck updates itself from the releases. The steps to build the OS are in the
-    <a href="https://github.com/beetlebugorg/printdeck/tree/main/os">os/README.md</a>.</p>
-  <p>The manual shows each screen: read it <a href="manual/">on the web</a> or as a
-    <a href="manual/printdeck-manual.pdf">PDF</a>. For a display that is mounted wide, read the
-    <a href="manual/wide/">wide manual</a> or its <a href="manual/wide/printdeck-manual.pdf">PDF</a>.</p>
-
-  <h2>Cura plugin</h2>
-  <div class="step"><img class="plain" src="cura/img/cura-tab.png" alt="The touch screen of the deck in the Printdeck tab of Cura"><div>
-    <p>The Printdeck plugin for Cura shows the deck in a Printdeck tab, live. Click the screen in Cura as you tap the
-      touch screen. Cura follows the roll in the deck, warns when the roll is too short, and shows the layer that
-      prints in the Preview.</p>
-    <p>The Print on a part tool prints new models on a part that is printed already, for example a logo in another
-      color on a lid. The deck prints a pocket for the part, and checks its height with a paper test.</p>
-    <p>Download Printdeck.curapackage from the <a href="https://github.com/beetlebugorg/printdeck/releases">releases</a>, and drag it onto the Cura
-      window.</p>
-    <p><a class="btn" href="cura/printdeck-cura.pdf">Cura plugin booklet (PDF)</a>
-      <a class="btn" href="cura/">Booklet on the web</a>
-      <a class="btn" href="https://github.com/beetlebugorg/printdeck/releases">Download the plugin</a></p></div></div>
-
-  <h2>On the LulzBot TAZ Workhorse</h2>
-  <div class="step"><img class="plain" src="img/lulzbot-printer.png" alt="The Printdeck mount on the front left of a LulzBot TAZ Workhorse"><div>
-    <p>A second mount puts the Printdeck on the front left of a LulzBot TAZ Workhorse, with the display wide. You
-      print its nine parts on the Workhorse itself, and drill no hole in the printer.</p>
-    <p><a class="btn" href="lulzbot/printdeck-manual.pdf">Upgrade booklet (PDF)</a>
-      <a class="btn" href="https://github.com/beetlebugorg/printdeck/tree/main/lulzbot">STL and STEP files</a></p></div></div>
 </main>
-<footer>Printdeck · the CAD, the images, and this page come from <a href="https://github.com/beetlebugorg/printdeck/tree/main/slate">slate/</a></footer>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
 </body>
 </html>

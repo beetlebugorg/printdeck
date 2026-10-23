@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Cura plugin · Printdeck</title>
+<meta name="description" content="Cura follows the roll in the deck, shows the deck in a tab, and prints on a part that is printed already.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The hardware</a>
+<a href="../../hardware/slate/">The Slate case</a>
+<a href="../../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/setup/" aria-current="page">Tall</a><a href="../../ui/wide/setup/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/" aria-current="page">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/">Commands</a>
+<a href="../../reference/environment/">Environment variables</a>
+<a href="../../reference/files/">Files, paths and services</a>
+<a href="../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">Manual, tall display</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Software</p>
+<h1>The Cura plugin</h1>
+<p class="lede">Cura follows the roll in the deck, shows the deck in a tab, and prints on a part that is printed already.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#print-on-a-part">Print on a part</a></li><li><a href="#install">Install</a></li><li><a href="#develop">Develop</a></li><li><a href="#booklet">The booklet</a></li></ol></nav>
+<figure class="frame-img white"><img src="../../cura/img/cura-tab.png" alt="The touch screen of the deck in the Printdeck tab of Cura" loading="lazy"><figcaption>The deck in the Printdeck tab of Cura</figcaption></figure>
+<p>The booklet of the plugin has the setup and each feature, with pictures: <a href="https://beetlebug.org/printdeck/cura/">on the web</a>, or <a href="../../cura/printdeck-cura.pdf">docs/cura/printdeck-cura.pdf</a>.</p>
+<p>The plugin connects Cura to the Printdeck through the printer of the OctoPrint connection plugin. It uses the same address and API key, so it needs no setup.</p>
+<p>The plugin works by itself, and tells you in a message what it did:</p>
+<ul><li>The print button says &quot;Print to Printdeck&quot;.</li><li>When the roll in the Printdeck changes, Cura changes to the material of the roll.</li><li>After a slice, Cura warns when the model needs more filament than the roll has.</li><li>During a print of the file that Cura has open, the Preview shows the layer that prints.</li><li>When a print ends, Cura tells you.</li><li>The Printdeck tab, next to Monitor, shows the screen of the deck, the print and the time left, the roll and its grams, and the keys Pause, Resume and Cancel, in the style of the deck.</li><li>When Cura starts during a print, it offers to show the print in the Preview: it downloads the file from the Printdeck, and the Preview follows the layer that prints.</li><li>Each file that Cura sends has the material of Cura in its header. Before the Printdeck prints a file for another material, it asks on the touch screen.</li></ul>
+<p>The OctoPrint connection plugin also shows the screen of the Printdeck in the Monitor tab, in place of a camera.</p>
+<h2 id="print-on-a-part">Print on a part</h2>
+<p>The Print on a part tool (the left toolbar of Prepare) prints new models on a part that is printed already, for example a logo in another color on a lid. The part goes into a pocket on the bed, so its place is exact, and the deck checks its height with a paper test.</p>
+<ol><li>Open the part and the new models. Lay the part on the bed with its face for the new models up, away from the front and the left edge (the start of the print primes there).</li><li>Select the part, and tap <strong>Set as base</strong>. Cura does not print it, and puts no support in it. The tool adds the pocket: a low wall around the part, with open corners.</li><li>Select a new model, and tap <strong>Place on the base</strong>. It goes to the top of the part and stays at that height. Move it on the face as usual. To print into a pocket of the part, lower it with the Z of the Move tool. When the part and the new models come from one assembly (files in one frame), select the new models and tap <strong>Place as in the files</strong>: they go to their exact place on the part, also after you turned the part. For lettering, type the text, its size and how high it stands, and tap <strong>Add text</strong>. The text goes on the top of the part at its middle; move and turn it as usual.</li><li>Print. The file prints the pocket, then lifts and pauses: put the part in the pocket, and tap <strong>Check the height</strong> on the deck. The paper test on the part sets the height of the new models.</li><li>For the next color, keep the part in its pocket and check <strong>The pocket is on the bed</strong>. The file then has no pocket, homes Z up first, does not probe the bed, does not heat the bed, and purges beside it.</li></ol>
+<p>While a part is the base, the tool turns off Cura&#x27;s &quot;Ensure models are kept apart&quot;, which would push the pocket away from the new models, and turns it back on when you clear the base.</p>
+<h2 id="install">Install</h2>
+<ol><li>Install the OctoPrint connection plugin from the Marketplace of Cura, and connect it to the Printdeck.</li><li>Download <code>Printdeck.curapackage</code> from the latest release, and drag it onto the Cura window. Restart Cura.</li></ol>
+<p>The plugin needs Cura 5. Cura LulzBot Edition (Cura 4.13) does not show the Printdeck tab and the Print on a part tool.</p>
+<h2 id="develop">Develop</h2>
+<ul><li><code>./package.sh</code> builds <code>Printdeck.curapackage</code>.</li><li><code>python3 -m unittest test_logic</code> tests the parts that do not need Cura.</li><li>The Printdeck answers <code>GET /api/plugin/printdeck</code> (<code>deck/internal/octoapi/printdeck.go</code>).</li></ul>
+<h2 id="booklet">The booklet</h2>
+<p>The booklet shows the setup, the Printdeck tab, the messages and the Print on a part tool with pictures of Cura: <a href="../../cura/">on the web</a>, or as a <a href="../../cura/printdeck-cura.pdf">PDF</a>. The print version <a href="../../cura/printdeck-cura-print.pdf">printdeck-cura-print.pdf</a> has two pages on each side of a letter sheet.</p>
+
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

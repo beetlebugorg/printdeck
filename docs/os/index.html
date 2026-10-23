@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Printdeck OS · Printdeck</title>
+<meta name="description" content="A small, read-only Linux system for the Printdeck, with two system slots.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../hardware/">The hardware</a>
+<a href="../hardware/slate/">The Slate case</a>
+<a href="../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../ui/setup/" aria-current="page">Tall</a><a href="../ui/wide/setup/">Wide</a></div>
+<a href="../ui/">The screens</a>
+<span class="sub"><a href="../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../os/" aria-current="page">Printdeck OS</a>
+<a href="../deck/">The printdeck program</a>
+<a href="../deck/klipper/">The Klipper host</a>
+<a href="../deck/printer/">The reference printer</a>
+<a href="../deck/remote/">Remote screen and API</a>
+<a href="../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../desktop/">Desktop app and simulator</a>
+<a href="../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../reference/commands/">Commands</a>
+<a href="../reference/environment/">Environment variables</a>
+<a href="../reference/files/">Files, paths and services</a>
+<a href="../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../manual/">Manual, tall display</a>
+<a href="../manual/wide/">Manual, wide display</a>
+<a href="../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Software</p>
+<h1>Printdeck OS</h1>
+<p class="lede">A small, read-only Linux system for the Printdeck, with two system slots.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#install">Install</a></li><li><a href="#the-first-start">The first start</a></li><li><a href="#the-login">The login</a></li><li><a href="#the-web-pages">The web pages</a></li><li><a href="#slicers">Slicers</a></li><li><a href="#klipper">Klipper</a></li><li><a href="#settings">Settings</a></li><li><a href="#update">Update</a></li><li><a href="#how-it-works">How it works</a></li><li><a href="#build">Build</a></li></ol></nav><p>A small Linux system for the Printdeck Raspberry Pi 5. It holds only what Printdeck needs:</p>
+<ul><li>The Printdeck program (<code>deck/</code>), one static program with no other files: the Klipper host (a Go port of klippy, at the version of the printer&#x27;s firmware), the touch screen, a web page for phones, the remote screen in the browser, an OctoPrint-compatible API for slicers, and the system programs of the image</li><li>Wi-Fi, mDNS (<code>printdeck.local</code>) and NTP</li></ul>
+<p>It has no package manager, no Docker, no compiler, no shell and no SSH. Buildroot makes the system from source. The Printdeck program is one static Go binary, on the standard parts of a small Linux system (systemd, wpa_supplicant). See <code>ARCHITECTURE.md</code> in the top folder.</p>
+<p>The debug image is the same system with SSH, sudo, a shell and tools such as strace and tcpdump. Use it to develop and to find problems.</p>
+<h2 id="install">Install</h2>
+<p>The image works on an SD card and on a USB SSD. Write it with Raspberry Pi Imager (&quot;Use custom&quot;), or with <code>xz</code> and <code>dd</code>:</p>
+<pre><code>xz -dc os/out/printdeck.img.xz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress</code></pre>
+<p>A Pi 5 starts from USB when no SD card is in it. To set this, run <code>sudo raspi-config</code> on Raspberry Pi OS: Advanced Options &gt; Boot Order.</p>
+<h2 id="the-first-start">The first start</h2>
+<p>The touch screen shows the Printdeck start screen until the Printdeck program starts. To see the boot messages instead, hold a finger on the screen for one second during the start. Then the touch screen program does not start, so the messages stay. Start the Pi again to go back.</p>
+<p>The first start makes the data partition fill the disk, and makes the login (see below). Then the touch screen opens the setup screen:</p>
+<ol><li>The Wi-Fi networks show. Tap one and type its password, or tap Hidden for a network that is not in the list. The list scans again by itself.</li><li>The summary shows the address of the Printdeck and the password of its web pages. The debug image also shows the user name and the SSH command.</li></ol>
+<p>To see the summary again, open Print &gt; Control &gt; Help. The Help screen also has a button for the Wi-Fi.</p>
+<p>You can also set up before the first start. Put the disk in a computer and open the <code>PRINTDECK</code> partition. Fill in <code>printdeck.txt</code>:</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>What it does</th></tr></thead><tbody><tr><td><code>wifi_ssid</code>, <code>wifi_password</code>, <code>wifi_country</code></td><td>The Wi-Fi network. The Pi clears the password in the file after it reads it.</td></tr><tr><td><code>ssh_key</code></td><td>A public SSH key for the user <code>printdeck</code> (debug image only)</td></tr><tr><td><code>printer.cfg</code> (a file, next to <code>printdeck.txt</code>)</td><td>The Klipper configuration (see &quot;Klipper&quot;)</td></tr><tr><td><code>hostname</code>, <code>timezone</code></td><td>The name on the network (<code>printdeck.local</code>) and the time zone</td></tr><tr><td><code>display_rotate</code>, <code>touch_invert_x</code>, <code>preheat_tool</code>, ...</td><td>The settings of the touch screen (see &quot;Settings&quot;)</td></tr></tbody></table></div>
+<h2 id="the-login">The login</h2>
+<p>At the first start, <code>printdeck-credentials</code> makes a random password of four words, for example <code>stamp-ocean-cider-brick</code>. The words come from the EFF short word list, so the password is easy to type and has about 41 bits of randomness. The password logs in to the web pages. In the debug image, it is also the password of the user <code>printdeck</code> for SSH and <code>sudo</code>.</p>
+<p>The touch screen shows the password on the Help screen (Print &gt; Control &gt; Help). The password is in <code>/var/lib/printdeck/password</code>.</p>
+<h2 id="the-web-pages">The web pages</h2>
+<p>Open <code>http://printdeck.local</code> in a browser and log in with the password. The web server uses plain HTTP, so use it only on your own network. It has two pages:</p>
+<ul><li><code>/</code>: the Printdeck UI, with all the screens of the touch screen. Each browser has its own session of the UI: the deck draws it for that browser and sends the drawing commands, and the browser draws them at the pixel density of its screen. The height of the UI follows the shape of the window, so the tab bar of a phone is at the bottom. On a phone, &quot;Add to Home Screen&quot; makes it an app with no browser bars.</li><li><code>/system</code>: the version, the slot, the memory, the services, the system log and the Klipper log, the API key for slicers, the update (see &quot;Update&quot;), and the link to the source code of the running version, because Printdeck is under the AGPL-3.0.</li></ul>
+<h2 id="slicers">Slicers</h2>
+<p>The Printdeck answers the OctoPrint API that slicers use to send files and start prints. The slicers see a printer named &quot;Printdeck&quot;. The API is on port 80, and the files go to the folder of Klipper&#x27;s virtual SD card (<code>/var/lib/klipper/gcodes</code>). Klipper then prints the file itself.</p>
+<ul><li><strong>Cura</strong> (the OctoPrint Connection plugin): the Printdeck shows in the list of OctoPrint printers. Select it and tap &quot;Request&quot;. The touch screen asks &quot;Allow Cura to use the Printdeck?&quot;. Tap Allow.</li><li><strong>OrcaSlicer, PrusaSlicer</strong>: add a physical printer of the type OctoPrint, with the address <code>http://printdeck.local</code>. The API key is on the system page (<code>/system</code>).</li></ul>
+<p>The touch screen shows the uploads in the file list of the Print tab.</p>
+<h2 id="klipper">Klipper</h2>
+<p>The Klipper configuration is <code>/var/lib/klipper/config/printer.cfg</code>. To bring your own, put it on the <code>PRINTDECK</code> partition as <code>printer.cfg</code>, from any computer. At the next start, the Pi copies it to Klipper and renames the file on the partition to <code>printer.cfg.imported</code>. So a later <code>SAVE_CONFIG</code> on the Pi stays.</p>
+<p>The last line of <code>printer.cfg</code> must include the sections that Printdeck needs. The import adds it:</p>
+<pre><code>[include /usr/share/printdeck/klipper/printdeck.cfg]</code></pre>
+<p>That file sets <code>[virtual_sdcard]</code> to the upload folder, and adds <code>[pause_resume]</code> and <code>[display_status]</code>. It must be the last line, because Klipper uses the last value of a setting: then the upload folder wins over a <code>[virtual_sdcard]</code> path of another setup. If your configuration has a <code>CANCEL_PRINT</code> macro, the Cancel button runs it.</p>
+<p>The printer&#x27;s board keeps its firmware. The Klipper version in <code>deck/internal/klipper/klipper.version</code> must match the firmware on the board. The <code>klipper</code> service runs the host: <code>printdeck klippy</code>, with the options of <code>klippy.py</code>.</p>
+<h2 id="settings">Settings</h2>
+<p>The settings of the Printdeck program are in <code>/etc/printdeck/deck.env</code>, for example the screen rotation, the touch axes and the preheat temperatures. To change one, put it in <code>printdeck.txt</code> in lower case, for example <code>display_rotate=90</code>, and start the Pi again. <code>printdeck-settings</code> writes these settings to <code>/var/lib/printdeck/settings.env</code>, which the deck reads after <code>deck.env</code>. The release image needs no SSH for any setting.</p>
+<h2 id="update">Update</h2>
+<p>The disk has two system slots, A and B. The running system stays as it is while an update writes the other slot. Open <code>http://printdeck.local/system</code>, choose <code>printdeck-update.tar.xz</code> (or <code>printdeck-debug-update.tar.xz</code>), and click Install. The page refuses an update during a print. With <code>curl</code>:</p>
+<pre><code>curl -c cookies -d password=PASSWORD http://printdeck.local/login
+curl -b cookies -F bundle=@os/out/printdeck-update.tar.xz http://printdeck.local/system/update</code></pre>
+<p>The debug image can also install a bundle over SSH: <code>sudo printdeck-update FILE</code>.</p>
+<p>The Pi restarts into the new slot one time. If Klipper and the touch screen start, the new slot becomes the default. If they do not start, or the system stops, the Pi starts the old slot again.</p>
+<h2 id="how-it-works">How it works</h2>
+<div class="table-wrap"><table><thead><tr><th>Partition</th><th>File system</th><th>Contents</th></tr></thead><tbody><tr><td>1 <code>PRINTDECK</code></td><td>FAT</td><td><code>autoboot.txt</code> (the A/B switch) and <code>printdeck.txt</code></td></tr><tr><td>2 boot A, 3 boot B</td><td>FAT</td><td>Kernel, device trees, overlays, <code>config.txt</code>, <code>cmdline.txt</code></td></tr><tr><td>4 root A, 5 root B</td><td>EROFS</td><td>The system, read-only</td></tr><tr><td>6 data</td><td>ext4</td><td>The changes to <code>/etc</code>, <code>/var</code>, <code>/home</code> and <code>/root</code>. It fills the disk after the first start.</td></tr></tbody></table></div>
+<p>The root file system is read-only. At the start, <code>printdeck-init</code> mounts the data partition and puts a writable layer from it over <code>/etc</code>, <code>/var</code>, <code>/home</code> and <code>/root</code>. It starts the start screen (<code>printdeck splash</code>), and then systemd. To reset the system, delete the files in the data partition. If <code>printdeck-init</code> cannot continue, it writes the kernel log to <code>printdeck-boot.log</code> on the <code>PRINTDECK</code> partition. After an update, it then restarts into the old slot. Otherwise the debug image starts a shell on the console, and the release image waits.</p>
+<p>The Pi firmware selects the slot with <code>autoboot.txt</code> and its <code>tryboot</code> mode. <code>printdeck-update</code> writes the other slot and restarts with <code>tryboot</code>. <code>printdeck-commit</code> changes <code>autoboot.txt</code> after a good start. <code>panic=10</code> on the kernel command line restarts the Pi after a kernel panic, so a new slot that stops at the start goes back to the old slot too.</p>
+<p>The system programs (<code>printdeck-init</code>, <code>-update</code>, <code>-commit</code>, <code>-credentials</code>, <code>-settings</code> and <code>-wifi</code>) are links to the Printdeck program, which runs the program of the name. The deck runs as the user <code>deck</code>. For the actions that need root (the Wi-Fi, a restart of Klipper, an update), it asks the system helper (<code>printdeck helper</code>) on a socket that only the group <code>deck</code> can open.</p>
+<p>The journal is on the data partition (<code>/var/log/journal</code>), so the logs of the last starts stay. To read them on another computer, copy the folder and run <code>journalctl --directory</code>.</p>
+<p>The boot partitions have the overlays from the kernel build, so they match its device trees. The Pi 5 with the D0 chip needs <code>overlays/bcm2712d0.dtbo</code>: the firmware applies it by itself, and without it the kernel stops at boot.</p>
+<h3 id="size">Size</h3>
+<p>The image keeps only what Printdeck uses:</p>
+<ul><li>No Python: the Printdeck program has the Klipper host.</li><li>No sound: no ALSA library and no sound drivers. The kernel keeps only the sound core, because the display driver (vc4) needs it for HDMI audio.</li><li>The Printdeck program runs as the unprivileged user <code>deck</code>. It has the groups of its devices (<code>video</code>, <code>input</code>, <code>tty</code>, <code>dialout</code>, <code>systemd-journal</code>) and of Klipper (<code>printer</code>), and two capabilities: port 80 and the graphics mode of the console. The system helper does the actions that need root.</li><li>No shell, no BusyBox, no SSH and no sudo. <code>board/release-prune.sh</code> keeps a list of programs and the libraries that they link or load, and removes the other programs, libraries and units.</li><li>No OctoPrint: the Printdeck program has the OctoPrint-compatible API that slicers use.</li><li>No hardware database, console keymaps or <code>timedated</code>, and no command-line tools that come with libraries (for example <code>sqlite3</code>, <code>flac</code>, <code>systemd-nspawn</code>).</li><li>Only the Wi-Fi firmware of the Pi 5, and no Bluetooth.</li><li>No libraries that no program links or loads, such as <code>libstdc++</code> (<code>board/post-build.sh</code>).</li><li>The kernel has only the modules that the Printdeck uses: the display, the Wi-Fi, the USB serial ports of the printer boards, the fan, and the buses they use (<code>board/linux-modules.txt</code>). The SSD, the touch screen and the file systems are built into the kernel. The display driver (<code>vc4</code>) is built in too, so that the start screen has the full display from the first frame.</li><li>The kernel shows the start screen when the display starts (<code>fullscreen_logo</code>), from <code>board/firmware/printdeck-logo.tga</code>. The deck makes this file from its start screen: after a change to the start screen, run <code>go test ./internal/ui -run SplashLogo -update-logo</code> in <code>deck</code>, then <code>os/build.sh linux-rebuild</code>. <code>board/linux-patches</code> has a fix for the logo code of the kernel.</li><li>The kernel modules are not compressed, because Buildroot&#x27;s <code>depmod</code> cannot read compressed modules, and EROFS compresses the root file system already.</li></ul>
+<h3 id="the-kernel-config">The kernel config</h3>
+<p><code>board/linux.config</code> is the <code>bcm2712</code> defconfig of the Raspberry Pi kernel, reduced with <code>make localmodconfig</code> to the modules of <code>board/linux-modules.txt</code>. To add a module, add its name to <code>board/linux-modules.txt</code>, then make the config again in the kernel folder of the build:</p>
+<pre><code>cd ~/.cache/printdeck-os/output/build/linux-custom
+make ARCH=arm64 bcm2712_defconfig
+make ARCH=arm64 LSMOD=/path/to/os/board/linux-modules.txt localmodconfig
+make ARCH=arm64 savedefconfig   # then copy defconfig to board/linux.config</code></pre>
+<p>Then set these options to <code>y</code> in <code>board/linux.config</code>, because <code>localmodconfig</code> makes them modules: <code>CONFIG_DRM</code>, <code>CONFIG_DRM_VC4</code>, <code>CONFIG_SND</code>, <code>CONFIG_SND_SOC</code> and <code>CONFIG_I2C_BRCMSTB</code>.</p>
+<p>The build container has the tools: run the commands in it, with the cross compiler of <code>output/per-package/linux/host/bin</code> in <code>PATH</code> and <code>CROSS_COMPILE=aarch64-linux-</code>.</p>
+<h3 id="files">Files</h3>
+<div class="table-wrap"><table><thead><tr><th>Path</th><th>What it is</th></tr></thead><tbody><tr><td><code>build.sh</code>, <code>docker/</code></td><td>The build script and its container</td></tr><tr><td><code>configs/printdeck_defconfig</code></td><td>The Buildroot configuration</td></tr><tr><td><code>board/</code></td><td>Boot files, partition layout, the kernel config and its module list, Busybox options, and the post-build scripts</td></tr><tr><td><code>board/rootfs/</code></td><td>The files of the root file system: services, settings, and the scripts below</td></tr><tr><td><code>board/rootfs/usr/bin/</code></td><td><code>printdeck-init</code>, <code>-settings</code>, <code>-credentials</code>, <code>-wifi</code>, <code>-user</code>, <code>-update</code> and <code>-commit</code></td></tr><tr><td><code>board/rootfs/usr/lib/systemd/system-preset/</code></td><td>The services that start</td></tr><tr><td><code>board/rootfs/usr/share/printdeck/</code></td><td>The first settings of Klipper</td></tr><tr><td><code>package/</code></td><td>The Buildroot package of the Printdeck program</td></tr></tbody></table></div><h2 id="build">Build</h2><p>The build of the image is on the <a href="../build/">Build and release</a> page.</p>
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

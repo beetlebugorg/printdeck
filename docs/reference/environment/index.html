@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Environment variables · Printdeck</title>
+<meta name="description" content="The settings of the deck, and the variables of the tools and the build.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The hardware</a>
+<a href="../../hardware/slate/">The Slate case</a>
+<a href="../../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/setup/" aria-current="page">Tall</a><a href="../../ui/wide/setup/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/">Commands</a>
+<a href="../../reference/environment/" aria-current="page">Environment variables</a>
+<a href="../../reference/files/">Files, paths and services</a>
+<a href="../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">Manual, tall display</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Reference</p>
+<h1>Environment variables</h1>
+<p class="lede">The settings of the deck, and the variables of the tools and the build.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#deck">The settings of the deck</a></li><li><a href="#other">Other variables</a></li></ol></nav>
+<h2 id="deck">The settings of the deck</h2>
+<p>The deck reads its settings from the environment (<code>deck/internal/config/config.go</code>). On Printdeck OS, the service <code>printdeck-deck</code> loads them from <code>/etc/printdeck/deck.env</code>, then the API key from <code>/var/lib/printdeck/api.env</code>, then <code>/var/lib/printdeck/settings.env</code>, which <code>printdeck-settings</code> writes from <code>printdeck.txt</code> on the <code>PRINTDECK</code> partition. To change a setting on a release image, put it in <code>printdeck.txt</code> in lower case, for example <code>display_rotate=90</code>. See <a href="../../reference/files/">Files, paths and services</a>.</p>
+<div class="table-wrap"><table><tr><th>Variable</th><th>Default</th><th>What it does</th></tr><tr><td><code>DISPLAY_KIND</code></td><td><code>panel</code></td><td>Display is the screen of the UI: &quot;panel&quot; (the framebuffer and the touch panel of the deck) or &quot;none&quot; (no local screen; the remote screen only).</td></tr><tr><td><code>FRAMEBUFFER</code></td><td><code>/dev/fb0</code></td><td></td></tr><tr><td><code>DISPLAY_ROTATE</code></td><td><code>90</code></td><td>90 or 270 for a tall display, whichever is the right way up. 0 or 180 for a wide display: the deck then uses its wide layout.</td></tr><tr><td><code>TOUCH_INVERT_X</code></td><td><code>0</code></td><td>Set to 1 if touches land mirrored.</td></tr><tr><td><code>TOUCH_INVERT_Y</code></td><td><code>0</code></td><td>Set to 1 if touches land mirrored.</td></tr><tr><td><code>TOUCH_SWAP_XY</code></td><td><code>0</code></td><td>Set to 1 if touches land mirrored.</td></tr><tr><td><code>TOUCH_LOG</code></td><td><code>0</code></td><td>Set to 1 to log each touch sample (raw panel values and the position), to measure the calibration.</td></tr><tr><td><code>TOUCH_OFFSET_X</code></td><td><code>0</code></td><td>Move each touch by this many pixels (right and down are positive), for a panel that reads the touches beside the finger. Measure the offset with TOUCH_LOG=1.</td></tr><tr><td><code>TOUCH_OFFSET_Y</code></td><td><code>0</code></td><td>Move each touch by this many pixels (right and down are positive), for a panel that reads the touches beside the finger. Measure the offset with TOUCH_LOG=1.</td></tr><tr><td><code>STATE_DIRECTORY</code></td><td><code>/var/lib/printdeck</code></td><td></td></tr><tr><td><code>REMOTE_ADDR</code></td><td><code>(empty)</code></td><td>The remote screen: open http://printdeck.local and log in with the password of the printdeck user. Empty turns it off.</td></tr><tr><td><code>KLIPPY_SOCKET</code></td><td><code>/run/klipper/klippy.sock</code></td><td>The deck follows Klipper directly, and serves the OctoPrint-compatible API for slicers on REMOTE_ADDR.</td></tr><tr><td><code>GCODE_DIR</code></td><td><code>/var/lib/klipper/gcodes</code></td><td>The deck follows Klipper directly, and serves the OctoPrint-compatible API for slicers on REMOTE_ADDR.</td></tr><tr><td><code>KLIPPER_CONFIG</code></td><td><code>/var/lib/klipper/config/printer.cfg</code></td><td>printer.cfg of the Klipper host</td></tr><tr><td><code>OCTOPRINT_API_KEY</code></td><td><code>(empty)</code></td><td>the key of the OctoPrint-compatible API for slicers</td></tr><tr><td><code>MODEL_DIR</code></td><td><code>/var/lib/printdeck/models</code></td><td>folder with STL files for the preview</td></tr><tr><td><code>PREHEAT_TOOL</code></td><td><code>200</code></td><td></td></tr><tr><td><code>JOG_INVERT_Y</code></td><td><code>0</code></td><td></td></tr><tr><td><code>NIGHT_FROM</code></td><td><code>20</code></td><td>hours of the night theme in auto mode</td></tr><tr><td><code>NIGHT_TO</code></td><td><code>7</code></td><td>hours of the night theme in auto mode</td></tr><tr><td><code>PREHEAT_BED</code></td><td><code>60</code></td><td></td></tr></table></div>
+<h3>deck.env of the image</h3>
+<pre><code># Settings for the touch screen. Restart it after a change: sudo systemctl restart printdeck-deck
+
+# The deck follows Klipper directly, and serves the OctoPrint-compatible API for slicers on
+# REMOTE_ADDR.
+KLIPPY_SOCKET=/run/klipper/klippy.sock
+GCODE_DIR=/var/lib/klipper/gcodes
+
+# The remote screen: open http://printdeck.local and log in with the password of the printdeck user.
+# Empty turns it off.
+REMOTE_ADDR=:80
+
+# 90 or 270 for a tall display, whichever is the right way up. 0 or 180 for a wide display: the
+# deck then uses its wide layout.
+DISPLAY_ROTATE=270
+# Set to 1 if touches land mirrored.
+TOUCH_INVERT_X=0
+TOUCH_INVERT_Y=0
+TOUCH_SWAP_XY=0
+# Move each touch by this many pixels (right and down are positive), for a panel that reads the
+# touches beside the finger. Measure the offset with TOUCH_LOG=1.
+TOUCH_OFFSET_X=0
+TOUCH_OFFSET_Y=0
+# Set to 1 to log each touch sample (raw panel values and the position), to measure the calibration.
+TOUCH_LOG=0
+
+PREHEAT_TOOL=200
+PREHEAT_BED=60
+
+FILAMENT_UNLOAD_MM=80
+FILAMENT_LOAD_MM=70
+JOG_INVERT_Y=0
+
+NIGHT_FROM=20
+NIGHT_TO=7
+</code></pre>
+<h2 id="other">Other variables</h2>
+<p>These variables are for the tools and the build. The window of the desktop app has its own: see <a href="../../desktop/#window">the window</a>.</p>
+<div class="table-wrap"><table><tr><th>Variable</th><th>Where</th><th>What it does</th></tr><tr><td><code>FIRMWARE_DIR</code></td><td>printdeck flash</td><td>The folder of the Klipper firmware files (default /usr/share/printdeck/firmware).</td></tr><tr><td><code>DEMO_PREVIEW</code></td><td>printdeck demo, manual</td><td>A PNG file for the model view of the demo print.</td></tr><tr><td><code>DEMO_HEAT</code></td><td>printdeck bench</td><td>Set: the bench shows a heater that heats.</td></tr><tr><td><code>LCD_FONT</code></td><td>printdeck bench</td><td>A font for the display of the printer on the bench.</td></tr><tr><td><code>PRINTDECK_SIM_DEBUG</code></td><td>printdeck app -sim</td><td>Set: the simulated board logs its homing.</td></tr><tr><td><code>PRINTDECK_OS_CACHE</code></td><td>os/build.sh</td><td>The folder of the Buildroot tree, the downloads and the build files (default ~/.cache/printdeck-os).</td></tr><tr><td><code>PRINTDECK_SIGNING_KEY</code></td><td>os/build.sh, CI</td><td>The ed25519 key in PEM that signs the update bundle. With no key, the bundle has no signature, and only a debug image installs it.</td></tr><tr><td><code>PRINTDECK_SIGNING_KEY_FILE</code></td><td>os/build.sh</td><td>The file of the key (default ~/.config/printdeck/update-signing-key.pem).</td></tr><tr><td><code>GCODE_FILES</code></td><td>slicer tests</td><td>G-code files that test_adaptive_speed also checks: only the speeds may change.</td></tr></table></div>
+
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

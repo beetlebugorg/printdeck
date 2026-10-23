@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Move and heat · Printdeck</title>
+<meta name="description" content="The screens of the Printdeck for Move and heat, on a display that is mounted tall.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The hardware</a>
+<a href="../../hardware/slate/">The Slate case</a>
+<a href="../../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/move/" aria-current="page">Tall</a><a href="../../ui/wide/move/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/" aria-current="page">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/">The film tools</a>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/">Commands</a>
+<a href="../../reference/environment/">Environment variables</a>
+<a href="../../reference/files/">Files, paths and services</a>
+<a href="../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">Manual, tall display</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">The deck UI · tall</p>
+<h1>Move and heat</h1>
+
+<div class="layout-switch"><span>Layout:</span><a href="" aria-current="page">Tall</a><a href="../../ui/wide/move/">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#move">Move the head and heat</a></li></ol></nav><div class="manual"><section id="move">
+  <h2 class="title"><span class="num">12</span>Move the head and heat</h2>
+  
+  <ol class="steps"><li>Open Move, and tap Home all after each start of the printer.</li><li>Hold the joystick to move the head. Use Z for the height.</li><li>Tap a temperature on the idle screen to set it with the keypad.</li></ol>
+  
+  <figure>
+    <h3>The Move page</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/move.png" alt="The Move page" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="103" x2="456" y2="103" class="leader"/>
+        <circle cx="456" cy="103" r="5" class="dot"/>
+        <circle cx="520" cy="103" r="15" class="badge"/>
+        <text x="520" y="103" class="badge-n">1</text>
+        
+        <line x1="-25" y1="171" x2="24" y2="171" class="leader"/>
+        <circle cx="24" cy="171" r="5" class="dot"/>
+        <circle cx="-40" cy="171" r="15" class="badge"/>
+        <text x="-40" y="171" class="badge-n">2</text>
+        
+        <line x1="505" y1="394" x2="422" y2="394" class="leader"/>
+        <circle cx="422" cy="394" r="5" class="dot"/>
+        <circle cx="520" cy="394" r="15" class="badge"/>
+        <text x="520" y="394" class="badge-n">3</text>
+        
+        <line x1="505" y1="171" x2="456" y2="171" class="leader"/>
+        <circle cx="456" cy="171" r="5" class="dot"/>
+        <circle cx="520" cy="171" r="15" class="badge"/>
+        <text x="520" y="171" class="badge-n">4</text>
+        
+        <line x1="505" y1="721" x2="456" y2="721" class="leader"/>
+        <circle cx="456" cy="721" r="5" class="dot"/>
+        <circle cx="520" cy="721" r="15" class="badge"/>
+        <text x="520" y="721" class="badge-n">5</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Position</b>X, Y and Z of the head. A lit LED shows a homed axis.</span></li><li><span class="badge">2</span><span><b>Home</b>Homes all axes, or one axis. Home after each start of the printer.</span></li><li><span class="badge">3</span><span><b>Joystick</b>Hold a finger on the pad to move the head in X and Y. The farther from the middle, the faster it moves.</span></li><li><span class="badge">4</span><span><b>Z</b>Moves Z up or down by the step: 0.1, 1 or 10 mm.</span></li><li><span class="badge">5</span><span><b>Park, Center, Motors off</b>Park moves the head to the back left. Center moves it to the middle of the bed. Motors off lets you move the head by hand. During a pause, Home, Center and Motors off are off, so that the print can continue. Park lifts the nozzle 10 mm before it moves.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>The keypad of a temperature</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/keypad.png" alt="The keypad of a temperature" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="118" x2="432" y2="118" class="leader"/>
+        <circle cx="432" cy="118" r="5" class="dot"/>
+        <circle cx="520" cy="118" r="15" class="badge"/>
+        <text x="520" y="118" class="badge-n">1</text>
+        
+        <line x1="505" y1="190" x2="432" y2="190" class="leader"/>
+        <circle cx="432" cy="190" r="5" class="dot"/>
+        <circle cx="520" cy="190" r="15" class="badge"/>
+        <text x="520" y="190" class="badge-n">2</text>
+        
+        <line x1="505" y1="384" x2="432" y2="384" class="leader"/>
+        <circle cx="432" cy="384" r="5" class="dot"/>
+        <circle cx="520" cy="384" r="15" class="badge"/>
+        <text x="520" y="384" class="badge-n">3</text>
+        
+        <line x1="505" y1="618" x2="432" y2="618" class="leader"/>
+        <circle cx="432" cy="618" r="5" class="dot"/>
+        <circle cx="520" cy="618" r="15" class="badge"/>
+        <text x="520" y="618" class="badge-n">4</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Value</b>The temperature that you type.</span></li><li><span class="badge">2</span><span><b>Presets</b>Off, and the temperatures of the materials.</span></li><li><span class="badge">3</span><span><b>Keys</b>The digits. C clears the value, DEL removes the last digit.</span></li><li><span class="badge">4</span><span><b>Set</b>Sets the heater. Cancel closes the keypad with no change.</span></li>
+    </ol>
+    
+  </figure>
+  
+  
+  
+</section></div>
+<p>From the <a href="../../manual/">manual for a tall display</a>. The deck draws every picture.</p>
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>
