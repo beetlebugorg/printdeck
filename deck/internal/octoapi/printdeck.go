@@ -20,10 +20,12 @@ import (
 //
 //	{"material": "PLA", "diameter": 2.85,
 //	 "spool": {"id": "3", "name": "Galaxy Black", "material": "PLA", "left": 642, "full": 1000, "price": 22},
+//	 "spools": [{"id": "3", "name": "Galaxy Black", ...}, {"id": "4", "name": "Signal Orange", ...}],
 //	 "job": {"file": "benchy.gcode", "state": "printing", "layer": 12, "layers": 27, "progress": 0.42, "left": 4980}}
 //
 // material is the loaded material, or "". spool is the roll in the printer, or null. left and full
-// are grams of filament, and price is the price of the roll, or 0. job is the print that runs, or
+// are grams of filament, and price is the price of the roll, or 0. spools is the list of all rolls,
+// with the same fields: the plugin makes a material of Cura for each roll. job is the print that runs, or
 // null: its state ("printing" or "paused"), its layer, its progress from 0 to 1, and the seconds
 // left (-1 when the time left is not known).
 //
@@ -43,6 +45,12 @@ type spoolJSON struct {
 	Color        string `json:"color,omitempty"`
 }
 
+// rollJSON is a roll in the API.
+func rollJSON(sp printer.Spool) spoolJSON {
+	return spoolJSON{ID: sp.ID, Name: sp.Label(), Material: sp.Material, Left: sp.Left(), Full: sp.Full, Price: sp.Price,
+		CuraMaterial: sp.CuraMaterial, Color: sp.Color}
+}
+
 // jobJSON is the print that runs, in the API.
 type jobJSON struct {
 	File     string  `json:"file"`
@@ -54,10 +62,11 @@ type jobJSON struct {
 }
 
 type printdeckJSON struct {
-	Material string     `json:"material"`
-	Diameter float64    `json:"diameter"`
-	Spool    *spoolJSON `json:"spool"`
-	Job      *jobJSON   `json:"job"`
+	Material string      `json:"material"`
+	Diameter float64     `json:"diameter"`
+	Spool    *spoolJSON  `json:"spool"`
+	Spools   []spoolJSON `json:"spools"`
+	Job      *jobJSON    `json:"job"`
 }
 
 func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
@@ -70,9 +79,13 @@ func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.Spools != nil {
 		if sp, ok := s.Spools.In(); ok {
-			out.Spool = &spoolJSON{ID: sp.ID, Name: sp.Label(), Material: sp.Material, Left: sp.Left(), Full: sp.Full, Price: sp.Price,
-				CuraMaterial: sp.CuraMaterial, Color: sp.Color}
+			j := rollJSON(sp)
+			out.Spool = &j
 			out.Material = sp.Material
+		}
+		out.Spools = []spoolJSON{}
+		for _, sp := range s.Spools.List() {
+			out.Spools = append(out.Spools, rollJSON(sp))
 		}
 	}
 	if st := s.Printer.State(); st.Busy() {
