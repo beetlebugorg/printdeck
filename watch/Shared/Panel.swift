@@ -143,41 +143,82 @@ struct WindowRow: View {
 }
 
 /// The 128 x 64 display of the printer, as the deck shows it: each pixel a dot with a gap of one
-/// pixel, the dots that are off visible, in the blue frame of the display. A screen that moves (heat
-/// waves, the fan) draws 4 frames a second, as on the deck.
+/// pixel, the dots that are off visible, in the blue frame of the display. The dots are a bitmap,
+/// as DotImage of the deck. Heat waves and the fan draw 4 frames a second; the hint of the status
+/// screen changes every 3 seconds.
 struct LCDView: View {
     @Environment(\.palette) private var p
     @Environment(\.displayScale) private var displayScale
+    @Environment(\.self) private var env
+    @State private var cache = LCDImageCache()
     let screen: LCDScreen
 
     private static let dotsW = LCDCanvas.panelW, dotsH = LCDCanvas.panelH
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 0.25, paused: !screen.moves)) { t in
-            let frame = screen.moves ? Int(t.date.timeIntervalSinceReferenceDate * 4) : 0
-            let bits = screen.canvas(frame: frame)
-            Canvas { ctx, size in
-                let px = 1 / displayScale
-                var pitch = min(size.width / CGFloat(Self.dotsW), size.height / CGFloat(Self.dotsH))
-                pitch = max(2 * px, (pitch * displayScale).rounded(.down) / displayScale)
-                let dot = pitch - px
-                let ox = ((size.width - CGFloat(Self.dotsW) * pitch) / 2 * displayScale).rounded() / displayScale
-                let oy = ((size.height - CGFloat(Self.dotsH) * pitch) / 2 * displayScale).rounded() / displayScale
-                var on = Path(), off = Path()
-                for y in 0..<Self.dotsH {
-                    for x in 0..<Self.dotsW {
-                        let r = CGRect(x: ox + CGFloat(x) * pitch, y: oy + CGFloat(y) * pitch, width: dot, height: dot)
-                        if bits.lit(panelX: x, y: y) { on.addRect(r) } else { off.addRect(r) }
-                    }
-                }
-                ctx.fill(off, with: .color(p.glcdCell))
-                ctx.fill(on, with: .color(p.glcdInk))
+        GeometryReader { g in
+            // Whole pixels for each dot, as large as the width allows.
+            let px = max(2, Int((min(g.size.width / CGFloat(Self.dotsW), g.size.height / CGFloat(Self.dotsH)) * displayScale)
+                .rounded(.down)))
+            TimelineView(schedule) { t in
+                // The frame number wraps: Int has 32 bits on the watch, and the quarter seconds
+                // since 2001 do not fit. The screens use it modulo 24.
+                let frame = Int((t.date.timeIntervalSinceReferenceDate * 4).truncatingRemainder(dividingBy: 2_400_000))
+                let img = cache.image(screen.canvas(frame: frame), dotPixels: px, colors: colors)
+                Image(decorative: img, scale: displayScale)
+                    .interpolation(.none)
+                    .frame(width: g.size.width, height: g.size.height)
             }
         }
         .aspectRatio(CGFloat(Self.dotsW) / CGFloat(Self.dotsH), contentMode: .fit)
         .padding(3)
         .background(RoundedRectangle(cornerRadius: 5).fill(p.glcd))
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(p.edge, lineWidth: 1.5))
+    }
+
+    private var schedule: PeriodicTimelineSchedule {
+        .periodic(from: .now, by: screen.animates ? 0.25 : screen.moves ? 3 : 3600)
+    }
+
+    private var colors: [UInt32] {
+        [p.glcd, p.glcdCell, p.glcdInk].map { c in
+            let r = c.resolve(in: env)
+            func b(_ v: Float) -> UInt32 { UInt32(max(0, min(255, (v * 255).rounded()))) }
+            // RGBA in memory order, for a little-endian 32-bit pixel.
+            return b(r.red) | b(r.green) << 8 | b(r.blue) << 16 | 0xff00_0000
+        }
+    }
+}
+
+/// The last picture of the display, so that a frame that does not change is not drawn again.
+final class LCDImageCache {
+    private var key: (bits: [Bool], px: Int, colors: [UInt32])?
+    private var last: CGImage?
+
+    /// A frame as a bitmap: dotPixels pixels for each dot, the last one the gap. colors are the
+    /// gap, a dot that is off, and a dot that is on.
+    func image(_ c: LCDCanvas, dotPixels px: Int, colors: [UInt32]) -> CGImage {
+        if let k = key, let last, k.px == px, k.colors == colors, k.bits == c.bits { return last }
+        let w = LCDCanvas.panelW * px, h = LCDCanvas.panelH * px
+        var buf = [UInt32](repeating: colors[0], count: w * h)
+        for y in 0..<LCDCanvas.panelH {
+            for x in 0..<LCDCanvas.panelW {
+                let col = c.lit(panelX: x, y: y) ? colors[2] : colors[1]
+                for dy in 0..<(px - 1) {
+                    let row = (y * px + dy) * w + x * px
+                    for dx in 0..<(px - 1) { buf[row + dx] = col }
+                }
+            }
+        }
+        let data = buf.withUnsafeBytes { Data($0) } as CFData
+        let img = CGImage(width: w, height: h, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: w * 4,
+                          space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                          bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
+                          provider: CGDataProvider(data: data)!, decode: nil, shouldInterpolate: false,
+                          intent: .defaultIntent)!
+        key = (c.bits, px, colors)
+        last = img
+        return img
     }
 }
 

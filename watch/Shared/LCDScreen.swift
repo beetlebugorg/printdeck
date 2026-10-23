@@ -104,7 +104,11 @@ struct LCDStatus: Equatable {
     var done = ""
     var hint = ""
 
-    var moves: Bool { heating(tool, toolT) || heating(bed, bedT) || (fan ?? 0) > 0 || !hint.isEmpty }
+    /// A part moves: the heat waves, the fan, or the hint that takes the place of the state.
+    var moves: Bool { animates || !hint.isEmpty }
+
+    /// The icons move: 4 frames a second.
+    var animates: Bool { heating(tool, toolT) || heating(bed, bedT) || (fan ?? 0) > 0 }
 
     private func heating(_ temp: Double, _ target: Double) -> Bool { target > 0 && temp < target - 2 }
 
@@ -284,6 +288,7 @@ enum LCDScreen: Equatable {
     }
 
     var moves: Bool { if case let .status(s) = self { s.moves } else { false } }
+    var animates: Bool { if case let .status(s) = self { s.animates } else { false } }
 
     func canvas(frame: Int) -> LCDCanvas {
         var c = LCDCanvas()
