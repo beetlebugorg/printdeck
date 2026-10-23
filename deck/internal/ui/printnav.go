@@ -203,7 +203,7 @@ func (a *App) drawLastPrint(c *gfx.Canvas, st printer.State, last image.Rectangl
 		return
 	}
 	label(c, image.Rect(last.Min.X+16, last.Min.Y+8, last.Max.X, last.Min.Y+28), "Last print", gfx.Left)
-	c.Text(image.Rect(last.Min.X+16, last.Min.Y+28, last.Max.X-150, last.Min.Y+58), gfx.Fit(gfx.Face(true, 20), l.File, last.Dx()-170), gfx.Face(true, 20), text, gfx.Left)
+	c.Text(image.Rect(last.Min.X+16, last.Min.Y+28, last.Max.X-150, last.Min.Y+58), l.File, gfx.Face(true, 20), text, gfx.Left)
 	c.Text(image.Rect(last.Min.X+16, last.Min.Y+56, last.Max.X-150, last.Max.Y-8), l.Summary(func(mm float64) float64 { return a.grams(mm, "") }), gfx.Face(false, 16), dim, gfx.Left)
 	path := l.Path
 	a.printerKey(c, image.Rect(last.Max.X-140, last.Min.Y+20, last.Max.X-14, last.Max.Y-16), "Reprint", raised, text, func() {
@@ -286,13 +286,13 @@ func rowText(c *gfx.Canvas, r image.Rectangle, title, sub string, titleCol, subC
 	title = strings.ToUpper(title)
 	if r.Dy() >= 58 {
 		c.Text(image.Rect(r.Min.X+18, r.Min.Y+8, r.Max.X-50, r.Min.Y+40), title, gfx.Face(true, 20), titleCol, gfx.Left)
-		c.Text(image.Rect(r.Min.X+18, r.Min.Y+38, r.Max.X-50, r.Max.Y-8), gfx.Fit(gfx.Face(false, 16), sub, r.Dx()-70), gfx.Face(false, 16), subCol, gfx.Left)
+		c.Text(image.Rect(r.Min.X+18, r.Min.Y+38, r.Max.X-50, r.Max.Y-8), sub, gfx.Face(false, 16), subCol, gfx.Left)
 		return
 	}
 	tf, sf := gfx.Face(true, 17), gfx.Face(false, 14)
 	tw := gfx.Width(tf, title)
 	c.Text(image.Rect(r.Min.X+16, r.Min.Y, r.Min.X+16+tw, r.Max.Y), title, tf, titleCol, gfx.Left)
-	c.Text(image.Rect(r.Min.X+28+tw, r.Min.Y, r.Max.X-46, r.Max.Y), gfx.Fit(sf, sub, r.Dx()-74-tw), sf, subCol, gfx.Right)
+	c.Text(image.Rect(r.Min.X+28+tw, r.Min.Y, r.Max.X-46, r.Max.Y), sub, sf, subCol, gfx.Right)
 }
 
 // menuRow is a row of a menu page: a title, a line under it, and an arrow. tap runs when the row

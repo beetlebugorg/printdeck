@@ -281,7 +281,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 	for i, l := range lines {
 		y := info.Min.Y + 10 + i*lineH
 		c.Text(image.Rect(info.Min.X+16, y, info.Max.X, y+lineH), l[0], gfx.Face(true, 14), lcdDim, gfx.Left)
-		c.Text(image.Rect(info.Min.X+130, y, info.Max.X-16, y+lineH), gfx.Fit(gfx.Face(true, 17), l[1], info.Dx()-150), gfx.Face(true, 17), lcdInk, gfx.Right)
+		c.Text(image.Rect(info.Min.X+130, y, info.Max.X-16, y+lineH), l[1], gfx.Face(true, 17), lcdInk, gfx.Right)
 	}
 
 	macros := "No macros"
@@ -394,14 +394,14 @@ func (a *App) recordRow(c *gfx.Canvas, box image.Rectangle, r printer.Record, su
 	if r.Result != "complete" {
 		col = red
 	}
-	c.Text(image.Rect(box.Min.X+18, box.Min.Y+8, box.Max.X-18, box.Min.Y+38), gfx.Fit(gfx.Face(true, 19), r.File, box.Dx()-36), gfx.Face(true, 19), text, gfx.Left)
+	c.Text(image.Rect(box.Min.X+18, box.Min.Y+8, box.Max.X-18, box.Min.Y+38), r.File, gfx.Face(true, 19), text, gfx.Left)
 	// The date at the right, and the summary in the space that it leaves.
 	date := fileDate(r.End, a.Now(), a.Clock24)
 	line := image.Rect(box.Min.X+18, box.Min.Y+38, box.Max.X-18, box.Max.Y-8)
 	c.Text(line, date, gfx.Face(false, 14), dim, gfx.Right)
 	sum := line
 	sum.Max.X -= gfx.Width(gfx.Face(false, 14), date) + 12
-	c.Text(sum, gfx.Fit(gfx.Face(false, 16), summary, sum.Dx()), gfx.Face(false, 16), col, gfx.Left)
+	c.Text(sum, summary, gfx.Face(false, 16), col, gfx.Left)
 }
 
 // drawSettings is the Settings page: a row for each setting of the deck. A tap changes it.
@@ -485,7 +485,7 @@ func (a *App) drawStats(c *gfx.Canvas) {
 	a.region("Details", box)
 	top := "—"
 	if s.TopFile != "" {
-		top = fmt.Sprintf("%s (%d×)", s.TopFile, s.TopCount)
+		top = fmt.Sprintf("%d× %s", s.TopCount, strings.TrimSuffix(s.TopFile, ".gcode")) // the count first: a long name loses its end
 	}
 	rows := [][2]string{
 		{"Filament", fmt.Sprintf("%s · %.0f m", a.weight(s.Filament), s.Filament/1000)},
@@ -512,7 +512,7 @@ func (a *App) drawStats(c *gfx.Canvas) {
 		cool = mmss(rt.CoolBed)
 	}
 	if rt.PlanSamples > 0 {
-		plan = fmt.Sprintf("%+.0f %% (%d prints)", 100*rt.PlanError, rt.PlanSamples)
+		plan = fmt.Sprintf("%+.0f %%", 100*rt.PlanError)
 	}
 	rows = append(rows, [][2]string{
 		{"Bed heats", heat("heat-bed")},

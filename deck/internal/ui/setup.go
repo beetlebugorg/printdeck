@@ -206,7 +206,7 @@ func (a *App) drawSetup(c *gfx.Canvas) {
 
 func (a *App) setupMessage(c *gfx.Canvas, r image.Rectangle) {
 	if m := a.setup.msg; m != "" {
-		c.Text(r, gfx.Fit(gfx.Face(false, 16), m, r.Dx()), gfx.Face(false, 16), dim, gfx.Center)
+		c.Text(r, m, gfx.Face(false, 16), dim, gfx.Center)
 	}
 }
 
@@ -237,7 +237,7 @@ func (a *App) drawSetupWifi(c *gfx.Canvas, box image.Rectangle) {
 			led(c, row.Min.X+20, row.Min.Y+setupRowH/2, true)
 		}
 		face := gfx.Face(true, 20)
-		c.Text(image.Rect(row.Min.X+38, row.Min.Y, row.Max.X-110, row.Max.Y), gfx.Fit(face, n.SSID, row.Dx()-150), face, lcdInk, gfx.Left)
+		c.Text(image.Rect(row.Min.X+38, row.Min.Y, row.Max.X-110, row.Max.Y), n.SSID, face, lcdInk, gfx.Left)
 		if n.Secure {
 			c.Text(image.Rect(row.Max.X-110, row.Min.Y, row.Max.X-62, row.Max.Y), "LOCK", gfx.Face(true, 12), lcdDim, gfx.Right)
 		}
@@ -326,7 +326,7 @@ func (a *App) drawSetupDone(c *gfx.Canvas, box image.Rectangle) {
 		label, value := r[0], r[1]
 		c.Text(label, strings.ToUpper(lines[2*i]), gfx.Face(true, 13), lcdDim, gfx.Left)
 		face := gfx.Face(true, 20)
-		c.Text(value, gfx.Fit(face, lines[2*i+1], value.Dx()), face, lcdInk, gfx.Left)
+		c.Text(value, lines[2*i+1], face, lcdInk, gfx.Left)
 		switch {
 		case lines[2*i] == "Remote screen and slicers":
 			a.region("Address", cell)

@@ -202,13 +202,15 @@ func (a *App) jobCard(c *gfx.Canvas, r image.Rectangle, st printer.State) {
 	plate(c, r)
 	in := kit.Inset(r, 18, 10, 18, 10)
 	s := kit.NewStack(in, 4)
-	c.Text(s.Next(30), gfx.Fit(gfx.Face(true, 20), st.File, in.Dx()), gfx.Face(true, 20), text, gfx.Left)
+	c.Text(s.Next(30), st.File, gfx.Face(true, 20), text, gfx.Left)
 	if st.Layers > 0 {
 		c.Text(s.Next(26), fmt.Sprintf("Layer %d of %d", st.Layer, st.Layers), gfx.Face(false, 17), dim, gfx.Left)
 	}
 	if st.HasTimeLeft {
+		// The time left and the end on two lines: the column is narrow.
 		end := clockText(a.Now().Add(st.TimeLeft), a.Clock24)
-		c.Text(s.Next(26), fmt.Sprintf("%s left · done at %s", duration(st.TimeLeft), end), gfx.Face(false, 17), dim, gfx.Left)
+		c.Text(s.Next(26), duration(st.TimeLeft)+" left", gfx.Face(false, 17), dim, gfx.Left)
+		c.Text(s.Next(26), "Done at "+end, gfx.Face(false, 17), dim, gfx.Left)
 	}
 }
 
@@ -272,7 +274,7 @@ func (a *App) rollGauge(c *gfx.Canvas, r image.Rectangle, st printer.State) bool
 	face := gfx.Face(true, 13)
 	t := image.Rect(bar.Max.X+12, r.Min.Y, r.Max.X, r.Max.Y)
 	line := strings.ToUpper(sp.Label() + " · " + printer.Weight(left))
-	c.Text(t, gfx.Fit(face, line, t.Dx()), face, lcdDim, gfx.Left)
+	c.Text(t, line, face, lcdDim, gfx.Left)
 	a.region("Roll", r)
 	return true
 }

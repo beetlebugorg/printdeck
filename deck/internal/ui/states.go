@@ -320,7 +320,7 @@ func (a *App) drawPaused(c *gfx.Canvas, st printer.State) {
 	case st.ToolTarget > 0:
 		sub = fmt.Sprintf("The nozzle stays at %.0f°.", st.ToolTarget)
 	}
-	c.Text(image.Rect(info.Min.X+18, info.Min.Y+38, info.Max.X-18, info.Max.Y-6), gfx.Fit(gfx.Face(false, 16), sub, info.Dx()-36), gfx.Face(false, 16), dim, gfx.Left)
+	c.Text(image.Rect(info.Min.X+18, info.Min.Y+38, info.Max.X-18, info.Max.Y-6), sub, gfx.Face(false, 16), dim, gfx.Left)
 	a.button(c, resume, "Resume", orange, onAcc, pr.Resume)
 	a.button(c, grid[0], "Change filament", raised, text, func() { a.openSwap(swapChange) })
 	a.button(c, grid[1], "Move head", raised, text, func() { a.open(pageMove) })
@@ -373,7 +373,7 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 	if st.FinishedFilament > 0 {
 		line += " · " + a.weight(st.FinishedFilament)
 	}
-	c.Text(result, gfx.Fit(gfx.Face(true, 18), line, result.Dx()), gfx.Face(true, 18), text, gfx.Center)
+	c.Text(result, line, gfx.Face(true, 18), text, gfx.Center)
 	a.region("Result", result)
 
 	plate(c, info)
@@ -390,7 +390,7 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 		c.Text(image.Rect(info.Min.X+70, info.Min.Y+10, info.Max.X-18, info.Min.Y+44), fmt.Sprintf("Bed %.0f°", st.Bed), gfx.Face(true, 22), text, gfx.Left)
 		msg := fmt.Sprintf("Easy to remove below %.0f°.", printer.ReleaseBed)
 		if st.HasBedCoolLeft && st.BedCoolTo == printer.ReleaseBed {
-			msg = "Easy to remove in about " + shortWait(st.BedCoolLeft) + "."
+			msg = "Easy to remove in " + shortWait(st.BedCoolLeft) + "."
 			if st.BedCoolLeft < time.Minute {
 				msg = "Easy to remove in a minute."
 			}
@@ -435,7 +435,7 @@ func (a *App) drawPausePrompt(c *gfx.Canvas, st printer.State, info, resume imag
 		y += 28
 	}
 	if sub != "" {
-		c.Text(image.Rect(info.Min.X+18, y+2, info.Max.X-18, info.Max.Y-6), gfx.Fit(gfx.Face(false, 16), sub, info.Dx()-36), gfx.Face(false, 16), dim, gfx.Left)
+		c.Text(image.Rect(info.Min.X+18, y+2, info.Max.X-18, info.Max.Y-6), sub, gfx.Face(false, 16), dim, gfx.Left)
 	}
 	a.button(c, resume, "Resume", orange, onAcc, func() {
 		if st.PauseCheck && !st.PauseChecked {
