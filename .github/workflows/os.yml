@@ -1,15 +1,19 @@
 name: OS image
 
 # Builds the Printdeck OS image with os/build.sh, and signs its update bundle with the secret
-# PRINTDECK_SIGNING_KEY (deck/internal/system/sign.go has the public key).
+# PRINTDECK_SIGNING_KEY (deck/internal/system/sign.go has the public key). A push to main does
+# not build the image: the build takes about an hour.
 #
-#   push to main      a test build; the images are an artifact of the run
 #   tag vX.Y.Z        a stable release with the images
 #   tag vX.Y.Z-beta.N a beta: a pre-release, for the Printdecks on the beta channel
+#   pull request      a check build of a change to the image, with no signature; the images are
+#                     an artifact of the run
+#   run by hand       a test build (release or debug); the images are an artifact of the run
 on:
   push:
-    branches: [main]
     tags: ["v*"]
+  pull_request:
+    branches: [main]
     paths:
       - "deck/**"
       - "os/**"
@@ -55,7 +59,7 @@ jobs:
 
       - name: Build
         env:
-          PRINTDECK_SIGNING_KEY: ${{ secrets.PRINTDECK_SIGNING_KEY }}
+          PRINTDECK_SIGNING_KEY: ${{ github.event_name != 'pull_request' && secrets.PRINTDECK_SIGNING_KEY || '' }}
         run: os/build.sh $VARIANT
 
       - uses: actions/setup-go@v6
@@ -65,7 +69,7 @@ jobs:
 
       # A release must have a valid signature: the same check as on a Printdeck.
       - name: Check the signature
-        if: env.VARIANT == ''
+        if: env.VARIANT == '' && github.event_name != 'pull_request'
         run: cd deck && go run ./cmd/printdeck verify ../os/out/printdeck-update.tar.xz
 
       - name: Upload the images
