@@ -121,17 +121,24 @@ func main() {
 	run(cfg)
 }
 
-func run(cfg config.Config) {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	// The turn of the screen from the Settings page wins over display_rotate of printdeck.txt.
-	rotateFile := filepath.Join(cfg.StateDir, "rotate")
-	if b, err := os.ReadFile(rotateFile); err == nil {
+// settingsRotate sets the turn of the screen from the Settings page in cfg: it wins over
+// display_rotate of printdeck.txt. The start screen and the deck both use it, so the start screen
+// has the shape of the deck. It returns the file of the setting.
+func settingsRotate(cfg *config.Config) string {
+	file := filepath.Join(cfg.StateDir, "rotate")
+	if b, err := os.ReadFile(file); err == nil {
 		if r, err := strconv.Atoi(strings.TrimSpace(string(b))); err == nil && r%90 == 0 && r >= 0 && r < 360 {
 			cfg.Rotate = r
 		}
 	}
+	return file
+}
+
+func run(cfg config.Config) {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	rotateFile := settingsRotate(&cfg)
 
 	screen := openDisplay(cfg)
 	defer screen.Close()
