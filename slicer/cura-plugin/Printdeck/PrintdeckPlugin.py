@@ -102,9 +102,15 @@ def _message(text):
     Message(text, title="Printdeck").show()
 
 
+# The extension of this Cura, for the Colors tool (the rolls of the Printdeck).
+instance = None
+
+
 class PrintdeckPlugin(Extension):
     def __init__(self, stage=None):
         super().__init__()
+        global instance
+        instance = self
         self._stage = stage  # the Printdeck tab, or None
         if stage:
             stage.showPrint = self._showPrint
@@ -698,6 +704,11 @@ class PrintdeckPlugin(Extension):
         if OnPartTool.instance and ";PRINTDECK_ONPART" not in gcode_list[0]:
             if OnPartTool.instance.changeGcode(gcode_list):
                 gcode_list[0] += ";PRINTDECK_ONPART\n"
+        # The color changes: a pause for each roll of the models (ColorTool).
+        from . import ColorTool
+        if ColorTool.instance and ";PRINTDECK_COLORS" not in gcode_list[0]:
+            if ColorTool.instance.changeGcode(gcode_list):
+                gcode_list[0] += ";PRINTDECK_COLORS\n"
         material = extruder.material
         lines = logic.material_lines(material.getMetaDataEntry("material") or "", material.getName(),
                                      material.getMetaDataEntry("color_code") or "")
