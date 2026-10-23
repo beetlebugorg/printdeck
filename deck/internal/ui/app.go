@@ -205,9 +205,12 @@ type App struct {
 	zStep float64 // mm per tap of the Z buttons
 	zBaby float64 // mm per tap of the Z offset on the first layer screen
 
-	layers      layerClock // the measured times of the layers of the print (layerChart)
-	scrubLayer  int        // the layer under the finger on the layer slider, or -1
-	notesScroll int        // the scroll position of the release notes (drawNotes)
+	layers     layerClock // the measured times of the layers of the print (layerChart)
+	scrubLayer int        // the layer under the finger on the layer slider, or -1
+	// swapAfterPause opens the filament swap when the print has paused: Change filament on the
+	// Filament page during a print.
+	swapAfterPause bool
+	notesScroll    int // the scroll position of the release notes (drawNotes)
 
 	toast   string
 	toastAt time.Time

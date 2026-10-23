@@ -57,6 +57,15 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		return
 	}
 	a.followPrint(st)
+	switch {
+	case a.swapAfterPause && st.Paused:
+		a.swapAfterPause = false
+		a.openSwap(swapChange)
+		a.drawSwap(c)
+		return
+	case a.swapAfterPause && !st.Busy():
+		a.swapAfterPause = false // the print ended before the pause
+	}
 	// The print bar at the bottom of a tall screen: the screens get the space above it. A wide
 	// screen has no print bar: its key panel is on each page, and Main is the print.
 	if a.bar = a.showsBar(st) && W <= H; a.bar {
