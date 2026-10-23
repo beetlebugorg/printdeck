@@ -11,3 +11,6 @@ deck/printdeck
 
 # The OS image build output
 os/out/
+
+# The deck program that go build makes in its folder.
+/deck/cmd/printdeck/printdeck
