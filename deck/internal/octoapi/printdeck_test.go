@@ -17,6 +17,7 @@ func TestPrintdeckAPI(t *testing.T) {
 	s.Spools = &printer.Spools{}
 	s.Spools.Add("Galaxy Black", "PLA", 1180, 180, 22, time.Unix(1, 0))
 	s.Diameter = func() float64 { return 2.85 }
+	s.Status = func() any { return map[string]any{"state": "Printing", "fan": 0.5, "message": "Layer 12"} }
 	p.st = printer.State{Reachable: true, Connected: true, Printing: true, FilePath: "benchy.gcode",
 		Layer: 12, Layers: 27, Completion: 42, FilePos: 51234, HasTimeLeft: true, TimeLeft: 83 * time.Minute}
 
@@ -26,6 +27,9 @@ func TestPrintdeckAPI(t *testing.T) {
 	_, m := do(t, "GET", ts.URL+"/api/plugin/printdeck", mainKey, nil, "")
 	sp, _ := m["spool"].(map[string]any)
 	job, _ := m["job"].(map[string]any)
+	if l, _ := m["lcd"].(map[string]any); l["fan"] != 0.5 || l["message"] != "Layer 12" {
+		t.Errorf("lcd: %v", m["lcd"])
+	}
 	if m["material"] != "PLA" || m["diameter"] != 2.85 || sp["name"] != "Galaxy Black" || sp["left"] != 1000.0 {
 		t.Errorf("roll: %v", m)
 	}

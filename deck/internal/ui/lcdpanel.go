@@ -98,6 +98,17 @@ func (a *App) statusPanel(c *gfx.Canvas, st printer.State) {
 	a.statusPanelAt(c, st, a.stateFrame().lcd)
 }
 
+// StatusScreen is the status screen of the printer display as the touch screen shows it: the
+// state, the message, the heaters, the fan, and the progress. For the apps (the Printdeck API).
+// It is safe to call from any goroutine.
+func (a *App) StatusScreen() *printer.LCDStatus {
+	st := a.Printer.State()
+	l1, l2 := StatusLines(st, a.Material, a.Now(), a.Clock24)
+	s := a.lcdStatusScreen(st, l1, l2)
+	s.Hint = "" // the apps have no knob
+	return s
+}
+
 // statusPanelAt draws the status screen of the printer display in r: the same picture as the
 // display of the printer.
 func (a *App) statusPanelAt(c *gfx.Canvas, st printer.State, r image.Rectangle) {

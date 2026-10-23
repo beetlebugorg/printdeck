@@ -70,10 +70,16 @@ type printdeckJSON struct {
 	Spool    *spoolJSON  `json:"spool"`
 	Spools   []spoolJSON `json:"spools"`
 	Job      *jobJSON    `json:"job"`
+	// LCD is the status screen of the printer display: the state, the message, the heaters, the
+	// fan (0 to 1), and the progress, for an app that draws the display.
+	LCD any `json:"lcd,omitempty"`
 }
 
 func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
 	out := printdeckJSON{}
+	if s.Status != nil {
+		out.LCD = s.Status()
+	}
 	if s.Material != nil {
 		out.Material = s.Material()
 	}
@@ -220,6 +226,8 @@ type printdeckFields struct {
 	// StartPrint starts a print of a file in place of Printer.PrintFile, or nil. The deck first
 	// checks that the material of the file is in the printer, and asks on the touch screen.
 	StartPrint func(path string)
+	// Status gives the status screen of the printer display (lcd.Status), or nil.
+	Status func() any
 }
 
 // startPrint starts a print of a file, with StartPrint when the Server has it.
