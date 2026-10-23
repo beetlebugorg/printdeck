@@ -198,3 +198,31 @@ def color_from_name(name):
         if word in words:
             return color
     return ""
+
+
+def roll_card(status, needed):
+    """The texts of the roll card next to the slice button: a dict with the keys name, detail,
+    color, fraction (the filament left on the roll, from 0 to 1), job (the line of the sliced
+    model, or "") and short (True when the roll has too little filament for the model). None when
+    the Printdeck has no roll and no material. needed is the grams of the sliced model, or 0."""
+    if not status:
+        return None
+    spool = status.get("spool")
+    if not spool:
+        material = status.get("material") or ""
+        if not material:
+            return None
+        return {"name": material, "detail": "No roll on the Printdeck", "color": "", "fraction": 0.0,
+                "job": "", "short": False}
+    left = float(spool.get("left") or 0)
+    full = float(spool.get("full") or 0) or max(left, 1.0)
+    card = {"name": spool_name(spool), "detail": "%s · %d g left" % (spool.get("material") or "?", round(left)),
+            "color": spool.get("color") or color_from_name(spool_name(spool)),
+            "fraction": max(0.0, min(1.0, left / full)), "job": "", "short": False}
+    if needed > 0:
+        if needed > left:
+            card["job"] = "This print: %d g. %d g short." % (round(needed), round(needed - left))
+            card["short"] = True
+        else:
+            card["job"] = "This print: %d g. %d g left after." % (round(needed), round(left - needed))
+    return card
