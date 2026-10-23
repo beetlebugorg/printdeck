@@ -93,6 +93,8 @@ type Printer interface {
 	History() []printer.Record
 	// RecordPicture is the picture of a finished print. loading is true while it is drawn.
 	RecordPicture(r printer.Record) (img image.Image, loading bool)
+	// FilePicture is a picture of the G-code of a file with no thumbnail, or nil while it is drawn.
+	FilePicture(f printer.File) image.Image
 	// SpoolStore is the rolls of filament, or nil.
 	SpoolStore() *printer.Spools
 	// What the slicer wrote about a file, and the removal of a file.
