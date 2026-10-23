@@ -14,6 +14,13 @@ final class DeckModel {
     private(set) var error: String?
     /// A command is on its way to the deck.
     private(set) var sending = false
+    /// The model of the print in dots, or nil.
+    private(set) var model: LCDPicture?
+    /// The size of the picture of the model that the screen has room for, in dots, or nil for no
+    /// picture.
+    var modelSize: (w: Int, h: Int)?
+    private var modelTime = Date.distantPast
+    private var modelLayer: Int?
 
     private var lastReload = Date.distantPast
     #if os(watchOS)
@@ -66,6 +73,7 @@ final class DeckModel {
             error = nil
             Store.lastStatus = new
             reloadComplication(old: old, new: new)
+            await refreshModel(new)
         } catch {
             self.error = errorText(error)
         }
@@ -79,6 +87,19 @@ final class DeckModel {
             lastReload = Date()
             WidgetCenter.shared.reloadAllTimelines()
         }
+    }
+
+    /// Reads the picture of the model at a new layer, or every 20 seconds. The picture changes
+    /// with the layers.
+    private func refreshModel(_ st: Status) async {
+        guard st.busy, let size = modelSize else {
+            model = nil
+            return
+        }
+        guard st.layer != modelLayer || Date().timeIntervalSince(modelTime) > 20 else { return }
+        modelTime = Date()
+        modelLayer = st.layer
+        model = await DeckClient(settings: settings).model(width: size.w, height: size.h)
     }
 
     enum Command { case pause, resume, cancel }

@@ -31,6 +31,7 @@ enum LCDModel {
             s.message = error.map(short) ?? ""
             return s
         }
+        if let l = st.layer, let n = st.layers { s.layer = "L\(l)/\(n)" }
         if let l = st.lcd {
             // The screen of the deck: the same fields as its touch screen.
             s.state = l.state ?? ""
@@ -53,6 +54,7 @@ enum LCDModel {
         s.bed = st.bed?.actual ?? 0
         s.bedT = st.bed?.target ?? 0
         if st.busy {
+            s.state = st.paused ? "Paused" : "Printing"
             s.printing = true
             s.progress = st.progress ?? 0
             s.elapsed = st.elapsed.map(hm) ?? ""
@@ -69,6 +71,39 @@ enum LCDModel {
             s.message = "\(r.name) \(Int(r.left.rounded()))g"
         }
         return s
+    }
+
+    /// The page of the print: the file, the layers and the times. The status screen has the
+    /// progress and the end.
+    static func printPage(_ st: Status, now: Date) -> LCDPage {
+        var rows: [LCDRow] = [.text(st.file ?? "Print", "")]
+        if let l = st.layer, let n = st.layers {
+            rows.append(.text("Layer", "\(l)/\(n)"))
+            rows.append(.text("To go", "\(max(0, n - l))"))
+        }
+        if let e = st.elapsed {
+            rows.append(.text("Printed", hm(e)))
+        } else if let e = st.lcd?.elapsed {
+            rows.append(.text("Printed", e))
+        }
+        // The mean time of a layer, from the time of the print and the layers that are done.
+        if let e = st.elapsed, let l = st.layer, l > 1 {
+            rows.append(.text("Per layer", hm(e / Double(l - 1))))
+        }
+        if let left = st.left(at: now) { rows.append(.text("Left", hm(left))) }
+        return LCDPage(title: "Print", rows: rows)
+    }
+
+    /// The page of the roll in the printer: the name, the material, and the grams left of a full
+    /// roll.
+    static func filamentPage(_ r: Roll) -> LCDPage {
+        var rows: [LCDRow] = [.text(r.name, ""), .text("Material", r.material),
+                              .text("Left", "\(Int(r.left.rounded()))g")]
+        if r.full > 0 {
+            rows.append(.bar(r.left / r.full))
+            rows.append(.text("Of", "\(Int(r.full.rounded()))g"))
+        }
+        return LCDPage(title: "Filament", rows: rows)
     }
 
     /// The rows of the print info screen.

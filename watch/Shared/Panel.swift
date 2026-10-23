@@ -156,6 +156,14 @@ struct LCDView: View {
     var dotsW = 128, dotsH = 64
     /// The pixels of a dot, or nil for the largest that fits.
     var dotPixels: Int? = nil
+    /// The margin of the screens in dots: more on the round corners of the watch.
+    var marginX = 2, marginY = 1
+    /// The margin at the top in dots, or nil for marginY.
+    var marginTop: Int? = nil
+    /// The width of the clock of watchOS at the top right, in dots, or 0.
+    var clockW = 0
+    /// The blue frame of the display. The watch has none: the display is the whole watch.
+    var framed = true
 
     /// The space of the frame of the display at each side, in points.
     static let bezel: CGFloat = 4
@@ -169,16 +177,16 @@ struct LCDView: View {
                 // The frame number wraps: Int has 32 bits on the watch, and the quarter seconds
                 // since 2001 do not fit. The screens use it modulo 24.
                 let frame = Int((t.date.timeIntervalSinceReferenceDate * 4).truncatingRemainder(dividingBy: 2_400_000))
-                let img = cache.image(screen.canvas(frame: frame, width: dotsW, height: dotsH), dotPixels: px, colors: colors)
+                let img = cache.image(screen.canvas(frame: frame, width: dotsW, height: dotsH, marginX: marginX, marginY: marginY, marginTop: marginTop, clockW: clockW), dotPixels: px, colors: colors)
                 Image(decorative: img, scale: displayScale)
                     .interpolation(.none)
                     .frame(width: g.size.width, height: g.size.height)
             }
         }
         .aspectRatio(CGFloat(dotsW) / CGFloat(dotsH), contentMode: .fit)
-        .padding(Self.bezel - 1)
+        .padding(framed ? Self.bezel - 1 : 0)
         .background(RoundedRectangle(cornerRadius: 5).fill(p.glcd))
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(p.edge, lineWidth: 1.5))
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(framed ? p.edge : .clear, lineWidth: 1.5))
     }
 
     private var schedule: PeriodicTimelineSchedule {

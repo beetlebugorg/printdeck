@@ -8,11 +8,13 @@ deck over the local network.
   Cancel and Menu, the layer, the roll (color, a meter of what is left, the name and the grams),
   and the file with the progress and a playhead. A paused print has Resume. With no print, Print a
   file opens the files of the deck, newest first. Menu opens the setup.
-- The watch app is the display of the printer: the status screen of the deck in a portrait layout
-  that fills the watch, with the nozzle and the bed, the progress bar, and the time left and the
-  end time. A tap opens the menu of the display: Pause or Resume, Cancel and Info. The Digital
-  Crown moves the selection, as the knob of the printer, and a tap selects. Each action asks
-  first.
+- The watch app is a blue dot-matrix display, in the fonts and the icons of the printer display
+  of the deck, over the whole watch. The first page is the progress of the print: the state, the
+  percent in a large font, the bar, the layer, the time left and the end. The Digital Crown, or a
+  swipe up and down, goes through the pages: the model of the print as the deck draws it, the
+  layers and the times of the print, and the filament. During a print, a tap opens a menu with
+  Pause or Resume and Cancel, each with a question first; the crown moves the selection, as the
+  knob of the printer, and a tap selects.
 - The complication shows the progress and the time left on the watch face. It has a circular, a
   corner, an inline and a rectangular style.
 - The deck sends push messages to the iPhone: print done, print failed, paused, first layer done,
@@ -134,6 +136,8 @@ All other requests have the header `X-Api-Key`.
 - `GET /api/files?recursive=true`: the files. `POST /api/files/local/<path>` with
   `{"command":"select","print":true}` prints one. The deck asks on its touch screen when the
   material of the file is not the material in the printer.
+- `GET /api/plugin/printdeck/model.png?w=..&h=..&mono=1`: the model of the print in 1-bit dots,
+  for the model page of the watch. The page shows when the deck answers.
 - `POST /api/plugin/printdeck/push/pair`, `DELETE /api/plugin/printdeck/push/<id>`: the pairing
   for push messages.
 

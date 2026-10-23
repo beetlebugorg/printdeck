@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 
 /// The address and the API key of the deck.
 struct DeckSettings: Codable, Equatable {
@@ -300,9 +301,35 @@ struct DeckClient {
         _ = try await send("/api/files/local/" + path, method: "POST", body: ["command": "select", "print": true])
     }
 
+    /// The model of the print as the deck draws it, in 1-bit dots of w x h: the printed part solid,
+    /// the rest a checker. nil when no print runs, or on a deck without the picture.
+    func model(width w: Int, height h: Int) async -> LCDPicture? {
+        guard let data = try? await send("/api/plugin/printdeck/model.png?w=\(w)&h=\(h)&mono=1"),
+              let src = CGImageSourceCreateWithData(data as CFData, nil),
+              let img = CGImageSourceCreateImageAtIndex(src, 0, nil) else { return nil }
+        let iw = img.width, ih = img.height
+        var gray = [UInt8](repeating: 0, count: iw * ih)
+        let ok = gray.withUnsafeMutableBytes { buf -> Bool in
+            guard let ctx = CGContext(data: buf.baseAddress, width: iw, height: ih, bitsPerComponent: 8, bytesPerRow: iw,
+                                      space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)
+            else { return false }
+            ctx.draw(img, in: CGRect(x: 0, y: 0, width: iw, height: ih))
+            return true
+        }
+        guard ok else { return nil }
+        return LCDPicture(width: iw, height: ih, bits: gray.map { $0 >= 128 })
+    }
+
     func pause() async throws { _ = try await send("/api/job", method: "POST", body: ["command": "pause", "action": "pause"]) }
     func resume() async throws { _ = try await send("/api/job", method: "POST", body: ["command": "pause", "action": "resume"]) }
     func cancel() async throws { _ = try await send("/api/job", method: "POST", body: ["command": "cancel"]) }
+}
+
+/// A picture in dots, the top row first.
+struct LCDPicture: Equatable {
+    var width: Int
+    var height: Int
+    var bits: [Bool]
 }
 
 /// A G-code file on the deck.

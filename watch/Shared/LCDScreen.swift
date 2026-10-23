@@ -7,18 +7,28 @@ import Foundation
 /// The pixels of the display. The screens draw in an area with a margin of 2 pixels at the sides
 /// and 1 pixel at the top and the bottom.
 struct LCDCanvas {
-    static let marginX = 2, marginY = 1
     /// The pixels of the panel: 128 x 64 as the printer, or the portrait display of the watch.
     let panelW: Int, panelH: Int
+    /// The margin of the area of the screens: 2 and 1 on the printer, more on the round corners
+    /// of the watch.
+    let marginX: Int, marginY: Int
+    /// The margin at the top: marginY, or more on the watch.
+    let marginTop: Int
+    /// The width of the clock of watchOS at the top right of the area, in pixels, or 0. The first
+    /// row of a screen has text at the left only.
+    var clockW = 0
     /// The area of the screens.
-    var w: Int { panelW - 2 * Self.marginX }
-    var h: Int { panelH - 2 * Self.marginY }
+    var w: Int { panelW - 2 * marginX }
+    var h: Int { panelH - marginTop - marginY }
 
     private(set) var bits: [Bool]
 
-    init(width: Int = 128, height: Int = 64) {
+    init(width: Int = 128, height: Int = 64, marginX: Int = 2, marginY: Int = 1, marginTop: Int? = nil) {
         panelW = width
         panelH = height
+        self.marginX = marginX
+        self.marginY = marginY
+        self.marginTop = marginTop ?? marginY
         bits = [Bool](repeating: false, count: width * height)
     }
 
@@ -26,7 +36,7 @@ struct LCDCanvas {
 
     mutating func set(_ x: Int, _ y: Int, _ on: Bool = true) {
         guard x >= 0, x < w, y >= 0, y < h else { return }
-        bits[(y + Self.marginY) * panelW + x + Self.marginX] = on
+        bits[(y + marginTop) * panelW + x + marginX] = on
     }
 
     /// Sets a rectangle; x1 and y1 are not part of it.
@@ -47,17 +57,18 @@ struct LCDCanvas {
     }
 
     /// Text with its top left corner at x, y. bold draws each pixel two times, one pixel apart.
+    /// scale draws each pixel of the font as scale x scale pixels.
     @discardableResult
-    mutating func text(_ f: LCDFont, _ x: Int, _ y: Int, _ s: String, bold: Bool = false) -> Int {
+    mutating func text(_ f: LCDFont, _ x: Int, _ y: Int, _ s: String, bold: Bool = false, scale k: Int = 1) -> Int {
         var x = x
         for ch in s {
             for (row, b) in f.glyph(ch).enumerated() {
                 for i in 0..<8 where b & (0x80 >> UInt8(i)) != 0 {
-                    set(x + i, y + row)
-                    if bold { set(x + i + 1, y + row) }
+                    fill(x + i * k, y + row * k, x + (i + 1) * k, y + (row + 1) * k)
+                    if bold { fill(x + (i + 1) * k, y + row * k, x + (i + 2) * k, y + (row + 1) * k) }
                 }
             }
-            x += f.w
+            x += f.w * k
         }
         return x
     }
@@ -113,6 +124,8 @@ struct LCDStatus: Equatable {
     var left = ""
     var done = ""
     var hint = ""
+    /// The layer, as "L12/27", or "".
+    var layer = ""
 
     /// A part moves: the heat waves, the fan, or a line that changes every 3 seconds.
     var moves: Bool { animates || !hint.isEmpty || printing }
@@ -125,49 +138,43 @@ struct LCDStatus: Equatable {
         power > 0 || target > 0 && temp < target - 2
     }
 
-    /// The status screen of the watch, on a portrait display about 64 dots wide: the nozzle and the
-    /// bed in rows with the temperatures in the large font, then the progress. The parts are the
-    /// parts of the status screen of the deck.
+    /// The status screen of the watch, on a portrait display about 64 dots wide. The progress
+    /// comes first: the state and the layer, the percent in the large font at 2 times its size, the
+    /// bar, the time left and the end. The temperatures are the last row, which a small watch
+    /// leaves out.
     func drawPortrait(_ c: inout LCDCanvas, frame: Int) {
         let W = c.w, small = LCDFont.small, big = LCDFont.big
-        // The layout is 70 pixels high, in the middle of a taller display.
-        let oy = max(0, (c.h - 70) / 2)
-        func heater(_ y: Int, temp: Double, target: Double, icon: (inout LCDCanvas, Int, Int) -> Void) {
-            let y = y + oy
-            icon(&c, 0, y)
-            let t = deg(temp)
-            c.text(big, max(19, W - 8 * t.count), y, t)
-            if target > 0 {
-                let v = deg(target)
-                let x = max(19, W - small.w * v.count - 8)
-                let m = y + 21
-                c.line(x, m, x + 5, m); c.line(x + 3, m - 2, x + 5, m); c.line(x + 3, m + 2, x + 5, m)
-                c.text(small, x + 8, y + 17, v)
-            }
+        let n = W / small.w
+        // A row of small text, when it fits on the screen.
+        func row(_ y: Int, _ l: String, _ r: String) {
+            guard y + 8 <= c.h else { return }
+            let right = lcdFit(r, n)
+            c.text(small, 0, y, lcdFit(l, max(0, n - right.count - 1)))
+            c.text(small, W - small.w * right.count, y, right)
         }
-        heater(0, temp: tool, target: toolT) { c, x, y in
-            hotend(&c, x, y, on: toolT > 0, heats: heating(tool, toolT, toolPow), frame: frame)
-        }
-        heater(26, temp: bed, target: bedT) { c, x, y in
-            bedIcon(&c, x, y, on: bedT > 0, heats: heating(bed, bedT, bedPow), frame: frame)
-        }
-        for x in stride(from: 0, to: W, by: 2) { c.set(x, oy + 52) }
-        let line1 = oy + 54, line2 = oy + 62
-        let alt = frame / 12 % 2 == 1
+        let temps = "N" + deg(tool) + (toolT > 0 ? "/" + deg(toolT) : "") + " B" + deg(bed)
+        // The first row is beside the clock: text at the left only.
+        let first = lcdFit(state, max(1, (W - c.clockW) / small.w))
         if printing {
+            c.text(small, 0, 0, first.isEmpty ? "Printing" : first)
             let pct = String(format: "%.0f%%", progress * 100)
-            c.roundBar(0, line1 + 1, W - small.w * pct.count - 3, line1 + 7, progress)
-            c.text(small, W - small.w * pct.count, line1, pct)
-            let l = !left.isEmpty && (!alt || done.isEmpty) ? left + " left" : (!done.isEmpty ? "done " + done : elapsed)
-            c.text(small, max(0, (W - small.w * l.count) / 2), line2, lcdFit(l, W / small.w))
+            let k = 16 * pct.count <= W ? 2 : 1
+            c.text(big, max(0, (W - 8 * k * pct.count) / 2), 11, pct, scale: k)
+            c.roundBar(0, 45, W, 52, progress)
+            row(56, "Layer", layer.hasPrefix("L") ? String(layer.dropFirst()) : layer)
+            row(65, "Left", left.isEmpty ? "--" : left)
+            row(74, "End", done.isEmpty ? "--" : done)
+            row(83, temps, "")
             return
         }
-        let n = W / small.w
-        let m = lcdFit(message.isEmpty ? state : message, n)
-        c.text(small, max(0, (W - small.w * m.count) / 2), line1, m)
-        let st = lcdFit(alt && !hint.isEmpty ? hint : (message.isEmpty ? "" : state), n - clock.count - 1)
-        c.text(small, 0, line2, st)
-        c.text(small, W - small.w * clock.count, line2, clock)
+        c.text(small, 0, 0, first)
+        let st = lcdFit(clock, W / big.w)
+        c.text(big, max(0, (W - big.w * st.count) / 2), 14, st)
+        let m = lcdFit(message, n)
+        c.text(small, max(0, (W - small.w * m.count) / 2), 36, m)
+        for x in stride(from: 0, to: W, by: 2) { c.set(x, 48) }
+        let t = lcdFit(temps, n)
+        c.text(small, max(0, (W - small.w * t.count) / 2), 52, t)
     }
 
     func draw(_ c: inout LCDCanvas, frame: Int) {
@@ -298,9 +305,13 @@ struct LCDMenu: Equatable {
         guard !items.isEmpty else { return }
         let W = c.w, H = c.h, f = LCDFont.small
         let sel = max(0, min(selected, items.count - 1))
-        let pos = "\(sel + 1)/\(items.count)"
-        c.text(f, 0, 0, lcdFit(title, min(19, (W - f.w * pos.count) / f.w - 1)))
-        c.text(f, W - f.w * pos.count, 0, pos)
+        if c.clockW > 0 {
+            c.text(f, 0, 0, lcdFit(title, (W - c.clockW) / f.w))
+        } else {
+            let pos = "\(sel + 1)/\(items.count)"
+            c.text(f, 0, 0, lcdFit(title, min(19, (W - f.w * pos.count) / f.w - 1)))
+            c.text(f, W - f.w * pos.count, 0, pos)
+        }
         c.line(0, 9, W - 1, 9)
         var y = 11
         for n in notes {
@@ -329,17 +340,76 @@ struct LCDMenu: Equatable {
     }
 }
 
-/// A screen of the display: the status screen, a menu, or rows of text in the 5 x 8 font (25
-/// characters, 7 rows) with text at the left and the right.
+/// A row of a page: text at the left and the right, or a progress bar from 0 to 1.
+enum LCDRow: Equatable {
+    case text(String, String)
+    case bar(Double)
+}
+
+/// A page of the watch: a header with the title and the place in the pages, as the menus have
+/// it, and rows in the 5 x 8 font.
+struct LCDPage: Equatable {
+    var title: String
+    var rows: [LCDRow]
+    /// A picture under the header, in place of the rows: the model of the print.
+    var picture: LCDPicture?
+    var index = 0
+    var count = 1
+
+    func draw(_ c: inout LCDCanvas) {
+        let W = c.w, f = LCDFont.small
+        if c.clockW > 0 {
+            // The clock is at the top right: the title at the left, and the place in the pages as
+            // dots at the bottom.
+            c.text(f, 0, 0, lcdFit(title, (W - c.clockW) / f.w))
+            for i in 0..<count {
+                let x = W / 2 - count * 4 + i * 8 + 2
+                if i == index { c.fill(x, c.h - 4, x + 4, c.h) } else { c.frame(x, c.h - 4, x + 4, c.h) }
+            }
+        } else {
+            let pos = "\(index + 1)/\(count)"
+            c.text(f, 0, 0, lcdFit(title, (W - f.w * pos.count) / f.w - 1))
+            c.text(f, W - f.w * pos.count, 0, pos)
+        }
+        c.line(0, 9, W - 1, 9)
+        if let pic = picture {
+            let ox = (W - pic.width) / 2, oy = 11 + max(0, (c.h - 17 - pic.height) / 2)
+            for y in 0..<pic.height {
+                for x in 0..<pic.width where pic.bits[y * pic.width + x] { c.set(ox + x, oy + y) }
+            }
+            return
+        }
+        var y = 12
+        let n = W / f.w
+        let bottom = c.clockW > 0 ? c.h - 6 : c.h
+        for r in rows where y + 8 <= bottom {
+            switch r {
+            case let .text(l, rt):
+                let right = lcdFit(rt, n)
+                let left = lcdFit(l, max(0, n - right.count - (right.isEmpty ? 0 : 1)))
+                c.text(f, 0, y, left)
+                c.text(f, W - f.w * right.count, y, right)
+            case let .bar(v):
+                c.roundBar(0, y + 1, W, y + 7, v)
+            }
+            y += 10
+        }
+    }
+}
+
+/// A screen of the display: the status screen, a menu, a page, or rows of text in the 5 x 8 font
+/// (25 characters, 7 rows) with text at the left and the right.
 enum LCDScreen: Equatable {
     case status(LCDStatus)
     case menu(LCDMenu)
+    case page(LCDPage)
     case rows([(String, String)])
 
     static func == (a: LCDScreen, b: LCDScreen) -> Bool {
         switch (a, b) {
         case let (.status(x), .status(y)): x == y
         case let (.menu(x), .menu(y)): x == y
+        case let (.page(x), .page(y)): x == y
         case let (.rows(x), .rows(y)): x.map { $0.0 + "\u{0}" + $0.1 } == y.map { $0.0 + "\u{0}" + $0.1 }
         default: false
         }
@@ -350,12 +420,15 @@ enum LCDScreen: Equatable {
 
     /// A frame of the screen on a display of width x height pixels: 128 x 64 as the printer, or a
     /// narrow display, where the status screen has its portrait layout.
-    func canvas(frame: Int, width: Int = 128, height: Int = 64) -> LCDCanvas {
-        var c = LCDCanvas(width: width, height: height)
+    func canvas(frame: Int, width: Int = 128, height: Int = 64, marginX: Int = 2, marginY: Int = 1,
+                marginTop: Int? = nil, clockW: Int = 0) -> LCDCanvas {
+        var c = LCDCanvas(width: width, height: height, marginX: marginX, marginY: marginY, marginTop: marginTop)
+        c.clockW = clockW
         switch self {
         case .status(let s):
-            if width < 112 { s.drawPortrait(&c, frame: frame) } else { s.draw(&c, frame: frame) }
+            if c.w < 112 { s.drawPortrait(&c, frame: frame) } else { s.draw(&c, frame: frame) }
         case .menu(let m): m.draw(&c)
+        case .page(let p): p.draw(&c)
         case .rows(let rows):
             let f = LCDFont.small, n = c.w / f.w
             for (i, r) in rows.prefix(c.h / 9).enumerated() {
