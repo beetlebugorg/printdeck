@@ -161,6 +161,8 @@ PROFILES = [
     profile("Back", "LulzBot Back", "back.stl", {**FRONT, **COARSE, "cool_min_layer_time": 12}),
     profile("Plate", "LulzBot Plate", "plate.stl", {**FLAT, **COARSE}),
     profile("Grille", "LulzBot Grille", "grille.stl", {**FRONT, "cool_min_layer_time": 12}),
+    # The fan plate prints grille side down; its four prongs stand 12 mm high on a small section.
+    profile("FanPlate", "LulzBot Fan plate", "fan_plate.stl", {**FRONT, "cool_min_layer_time": 12}),
     # The clip stands 24 mm high on a small section: a brim holds it on the bed.
     profile("Clip", "LulzBot Rail clip", "clip.stl", {**FLAT, "infill_sparse_density": 100, "cool_min_layer_time": 12,
                                                       "adhesion_type": "brim", "brim_line_count": 8}),

@@ -1,10 +1,10 @@
 {
  "totals": {
-  "grams": 324,
-  "metres": 41,
-  "time": "15 h 34 min",
-  "cost": "$7.45",
-  "parts": 7,
+  "grams": 344,
+  "metres": 43,
+  "time": "16 h 42 min",
+  "cost": "$7.91",
+  "parts": 8,
   "pricePerKg": "$22.99"
  },
  "prints": [
@@ -28,11 +28,11 @@
    "colour": "Navy",
    "swatch": "#1F2B4D",
    "count": 1,
-   "grams": 75,
-   "metres": 9.5,
-   "time": "3 h 45 min",
-   "cost": "$1.72",
-   "size": "173 × 135 × 24",
+   "grams": 95,
+   "metres": 12.1,
+   "time": "4 h 42 min",
+   "cost": "$2.18",
+   "size": "173 × 135 × 36",
    "notes": "Outer face down. The grille pocket and the vents are in the first layers.",
    "image": "lulzbot-part_pod"
   },
@@ -84,13 +84,27 @@
    "colour": "White",
    "swatch": "#F2F2EE",
    "count": 1,
-   "grams": 24,
-   "metres": 3.1,
-   "time": "1 h 11 min",
-   "cost": "$0.55",
-   "size": "58 × 84 × 18",
-   "notes": "Back down. The bump and the four fan prongs point up. The snap tabs bend along the layers.",
+   "grams": 12,
+   "metres": 1.5,
+   "time": "0 h 42 min",
+   "cost": "$0.28",
+   "size": "58 × 84 × 3",
+   "notes": "Back down. The snap tabs bend along the layers. The flat grille of the first pod: if you have it, do not print it again.",
    "image": "lulzbot-part_grille"
+  },
+  {
+   "file": "stl/fan_plate.stl",
+   "name": "fan plate",
+   "colour": "White",
+   "swatch": "#F2F2EE",
+   "count": 1,
+   "grams": 12,
+   "metres": 1.5,
+   "time": "0 h 40 min",
+   "cost": "$0.28",
+   "size": "57 × 84 × 6",
+   "notes": "Grille side down. The four posts for the fan point up.",
+   "image": "lulzbot-part_fan_plate"
   }
  ],
  "test": {
@@ -135,7 +149,7 @@
    "PLA, 2.85 mm"
   ],
   [
-   "Head, pod, grille",
+   "Head, pod, grille, fan plate",
    "0.3 mm layers, 1.5 mm walls, 1.2 mm top and bottom, 15 % grid infill, skirt"
   ],
   [
@@ -178,6 +192,11 @@
   },
   {
    "count": 2,
+   "item": "M2.5 self-tapping round head Phillips, 8 to 11 mm long",
+   "where": "2 × fan onto the fan plate (it cuts its thread)"
+  },
+  {
+   "count": 2,
    "item": "M3 hex nut, 5.5 mm across the flats",
    "where": "2 × printed roll-in nuts, in place of the T-nuts (option)"
   },
@@ -209,11 +228,11 @@
   ],
   [
    1,
-   "30 × 30 × 10 mm 5 V fan with the Pi 5 fan plug (4-pin JST-SH), the same as the Slate. From the corner of the fan to the fan socket of the Pi, the cable route is 4 cm. The cable must also let you hold the grille next to the pod while you connect it."
+   "30 × 30 × 10 mm 5 V fan with the Pi 5 fan plug (4-pin JST-SH), the same as the Slate. From the fan to the fan socket of the Pi, the cable route is 4 cm. The cable must be 8 cm or more, so that the fan plate with the fan comes out of the pod on its cable."
   ],
   [
    1,
-   "Stick-on heatsinks for the Pi 5 (a set), max. 10 mm high. The heatsink of the SoC can be up to 20 × 20 mm."
+   "Stick-on heatsinks for the Pi 5 (a set), max. 13 mm high. The heatsink of the SoC can be up to 20 × 20 mm."
   ],
   [
    1,
@@ -347,7 +366,7 @@
     "4 × M3 × 6"
    ],
    "items": [
-    "Stick the heatsinks on the Pi: on the SoC (the large chip at the middle) and on the RP1 (the chip between the SoC and the USB ports). A heatsink can be up to 10 mm high.",
+    "Stick the heatsinks on the Pi: on the SoC (the large chip at the middle) and on the RP1 (the chip between the SoC and the USB ports). A heatsink can be up to 13 mm high.",
     "Put the Pi on the four bosses: the USB ports toward the front of the printer, the USB-C and HDMI ports down.",
     "Attach it with four M3 × 6 screws. They cut their own thread in the bosses: turn them until they are snug, and no more."
    ],
@@ -405,38 +424,40 @@
     "2 × M3 × 8"
    ],
    "items": [
+    "Connect the fan cable to the fan socket of the Pi: the small 4-pin socket between the end of the GPIO header and the USB ports. Lay the fan on the Pi.",
     "Hold the pod about 6 mm low and 6 mm out from its place, and 4 mm to the rear. Move it 4 mm to the front, then push it up and in at 45° onto the two hooks of the plate. The rear wall goes over the two cables.",
     "Put the two M3 × 8 screws up through the bottom of the pod into the plate. They pull the pod up, and the 45° hooks pull it onto the plate."
    ],
-   "note": ""
+   "note": "Two notches in the front edge of the pod are for the heads of the two screws into the left wall of the head."
   },
   {
    "image": "step_fan",
-   "title": "Fan into the grille",
+   "title": "Fan onto the fan plate",
    "need": [
-    "grille",
-    "fan"
+    "fan plate",
+    "fan",
+    "2 × M2.5 self-tapping round head Phillips, 8 to 11 mm long"
    ],
    "items": [
-    "Hold the grille with its back toward you. Four prongs stand up around the opening of the bump.",
-    "Turn the fan so that it blows away from the grille, onto the Pi. Most fans show the direction of the air with an arrow on the frame.",
-    "Turn the fan so that its cable comes out next to the groove. The groove is in the side of the bump, near a corner. With the grille on the pod, it is at the top, toward the front of the printer. If the cable leaves the frame on the other side of that corner, turn the fan by 90 degrees.",
-    "Push the fan into the bump, square to the opening, between the four prongs, until the four catches click over the frame. Put the cable into the groove."
+    "Take the fan out of the pod through the grille pocket. Its cable stays on the Pi.",
+    "Hold the fan plate with its four posts toward you. Turn the fan so that it blows away from the fan plate, onto the Pi. Most fans show the direction of the air with an arrow on the frame.",
+    "Push the fan onto the four posts, until it is flat on the fan plate. The two solid posts hold it in place.",
+    "Put the two M2.5 screws into the other two holes, from the far face of the fan. Turn them into the hollow posts until they are snug, and no more. They cut their own thread."
    ],
-   "note": "The catches hold the fan against the funnel in the bump, with 0.2 mm of play. To remove the fan, push the catches of two prongs out with a small screwdriver, and pull the fan out."
+   "note": "A screw of 8 to 11 mm fits: it goes through the fan hole into the post. A 10 mm screw has 4 mm of thread. The fan cable leaves the frame from a side: it does not touch the posts or the screw heads."
   },
   {
    "image": "step_grille",
-   "title": "Grille",
+   "title": "Fan plate and grille",
    "need": [
-    "grille with the fan (step 11)"
+    "fan plate with the fan (step 11)",
+    "grille"
    ],
    "items": [
-    "Connect the fan cable to the fan socket of the Pi: the small 4-pin socket between the end of the GPIO header and the USB ports.",
-    "Hold the grille at the pocket of the pod, with the fingernail notch at the bottom. The cable goes from the groove over the end of the GPIO header to the socket.",
-    "Push the grille into the pocket from the outside. Push both sides until the two tabs click. The plate of the grille is flush with the pod, and the bump is 15 mm out of the pod."
+    "Push the fan plate with the fan into the grille pocket of the pod from the outside, the fan first. The fan plate goes down onto the ledge of the pocket. The cable stays inside the pod.",
+    "Hold the grille at the pocket, with its tabs at the sides. Push it into the pocket over the fan plate. Push both sides until the two tabs click. The grille is flush with the pod."
    ],
-   "note": "To remove the grille, put a fingernail or a small screwdriver into the notch at its bottom edge, and lift. Then disconnect the fan cable."
+   "note": "To get to the fan, put a small screwdriver into a vent slot near a tab, and lift the grille out. Then pull the fan plate out at its air hole. The fan comes out with it, on its cable."
   }
  ],
  "cables": [

@@ -27,7 +27,7 @@ const PREFIX = [
   ["hw_insert_head_back", "ins_head"], ["hw_insert_back_flange", "ins_back"],
   ["hw_insert_pod_block", "ins_block"], ["hw_pi_screw", "pi_screws"], ["hw_display_screw", "display_screws"],
   ["hw_clip_screw", "clip_screws"], ["hw_hammer_nut", "hammer_nuts"], ["clip_", "clips"],
-  ["hw_pi_heatsink", "heatsinks"],
+  ["hw_pi_heatsink", "heatsinks"], ["hw_fan_screw", "fan_screws"],
 ];
 for (const p of MANIFEST.parts) {
   p.group = REGROUP[p.name] ?? PREFIX.find(([k]) => p.name.startsWith(k))?.[1] ?? p.group;
@@ -45,13 +45,14 @@ const FINISH = {
   black_glass: "dark", black_plastic: "dark", alu_dark: "dark", black_steel: "dark", printer: "printer",
 };
 const LABEL = {
-  head: "Head", back: "Back panel", pod: "Pod", plate: "Plate", grille: "Grille", display: "7\" display",
+  head: "Head", back: "Back panel", pod: "Pod", plate: "Plate", grille: "Grille", fan_plate: "Fan plate",
+  display: "7\" display",
   drive: "Drive", pi: "Pi 5", pi_plugs: "Plugs", mount_screws: "2 × M3 × 10 + washer", bottom_screws: "2 × M3 × 8",
   head_screws: "4 × M3 × 10", flange_screws: "2 × M3 × 12", drive_screws: "4 × M3 × 6", display_screws: "4 × M3 × 6",
   pi_screws: "4 × M3 × 6", clips: "2 × rail clip", clip_screws: "2 × M3 × 8",
   hammer_nuts: "2 × M3 hammer nut",
   display_cables: "Display cables", drive_cable: "Drive cable", printer_cable: "Printer USB", power: "Power",
-  fan: "30 mm fan", heatsinks: "Heatsinks", fan_cable: "Fan cable",
+  fan: "30 mm fan", heatsinks: "Heatsinks", fan_cable: "Fan cable", fan_screws: "2 × M2.5 screw",
   ins_head: "4 × insert M3 × 7", ins_back: "2 × insert M3 × 7", ins_block: "2 × insert M3 × 5",
 };
 
@@ -61,7 +62,7 @@ const HEAD = ["head", "display", "display_screws", "back", "drive", "drive_screw
 const PI = ["pi", "pi_screws", "heatsinks"];
 const CABLES = ["pi_plugs", "display_cables", "drive_cable", "printer_cable", "power", "fan_cable"];
 const ALL = ["printer", "plate", "mount_screws", "ins_block", ...PI, "clips", "clip_screws", "hammer_nuts", ...HEAD, "flange_screws",
-  ...CABLES, "pod", "grille", "fan", "bottom_screws"];
+  ...CABLES, "pod", "fan_plate", "grille", "fan", "fan_screws", "bottom_screws"];
 const NO_CABLES = ALL.filter((g) => !CABLES.includes(g));
 const FRONT_LEFT = [1.1, 0.75, -1.4];
 const LEFT = [1.4, 0.5, -0.55];
@@ -79,7 +80,9 @@ const SHOTS = {
     show: NO_CABLES.filter((g) => g !== "printer"), focus: [], camera: FRONT_LEFT,
     explode: { ...each(HEAD, mul(R, 70)), display: mul(R, 110), display_screws: mul(R, 70), head_screws: [0, 0, 110],
       back: [0, 0, 35], drive: [0, 0, 35], drive_screws: [0, 0, 70], ins_head: mul(R, 70), ins_back: [0, 0, 35],
-      pod: [70, -20, 0], grille: [110, -20, 0], fan: [110, -20, 0], bottom_screws: [70, -70, 0], ...each(PI, [35, 0, 0]),
+      pod: [70, -20, 0], fan_plate: [100, -20, 0], grille: [120, -20, 0], fan: [100, -20, 0], fan_screws: [100, -20, 0],
+      bottom_screws: [70, -70, 0],
+      ...each(PI, [35, 0, 0]),
       mount_screws: [25, 0, 0], clips: [0, 0, -30], flange_screws: [0, 0, 30] },
   },
   step_drill: { show: ["pi"], focus: ["pi"], explode: {}, camera: [0.9, 1.3, -0.6] },
@@ -120,14 +123,20 @@ const SHOTS = {
     focus: CABLES.filter((g) => g !== "pi_plugs"), explode: {}, camera: [1.3, 0.55, -0.9], labels: { pi_plugs: "" },
   },
   step_pod: {
-    show: NO_CABLES.filter((g) => g !== "grille" && g !== "fan"), focus: ["pod", "bottom_screws"], camera: LEFT,
+    show: NO_CABLES.filter((g) => !["grille", "fan", "fan_plate", "fan_screws"].includes(g)), focus: ["pod", "bottom_screws"],
+    camera: LEFT,
     explode: { pod: [55, -25, 0], bottom_screws: [0, -70, 0] },
   },
-  // The fan goes into the back of the grille (seen from the back), then the grille into the pod.
-  step_fan: { show: ["grille", "fan"], focus: ["fan"], explode: { fan: [-60, 0, 0] }, camera: [-1.4, 0.5, -0.9] },
+  // The fan goes onto the posts of the fan plate (seen from the inner side), then the fan plate and
+  // the grille into the pod.
+  step_fan: {
+    show: ["fan_plate", "fan", "fan_screws"], focus: ["fan", "fan_screws"],
+    explode: { fan: [-50, 0, 0], fan_screws: [-90, 0, 0] }, camera: [-1.4, 0.5, -0.9],
+  },
   step_grille: {
-    show: NO_CABLES, focus: ["grille", "fan"], camera: LEFT,
-    explode: { grille: [70, 0, 0], fan: [70, 0, 0] }, labels: { grille: "Grille + fan", fan: "Grille + fan" },
+    show: NO_CABLES, focus: ["fan_plate", "fan", "fan_screws", "grille"], camera: LEFT,
+    explode: { fan_plate: [50, 0, 0], fan: [50, 0, 0], fan_screws: [50, 0, 0], grille: [90, 0, 0] },
+    labels: { fan_plate: "Fan plate + fan", fan: "Fan plate + fan", fan_screws: "Fan plate + fan" },
   },
   connect: {
     show: ALL, focus: ["printer_cable", "power"], camera: REAR_LEFT,
@@ -151,7 +160,7 @@ function shotParts(spec) {
 function jobs() {
   const out = Object.entries(SHOTS).map(([name, spec]) => [name, { parts: shotParts(spec), camera: spec.camera, up: UP }]);
   // Each printed part in its print orientation, from its STL file (Z up on the bed).
-  for (const p of ["head", "pod", "back", "plate", "grille", "clip", "roll_nut", "fit_display"]) {
+  for (const p of ["head", "pod", "back", "plate", "grille", "fan_plate", "clip", "roll_nut", "fit_display"]) {
     out.push([`part_${p}`, { parts: [{ url: `/stl/${p}.stl`, finish: "print" }], camera: PRINT_VIEW, up: [0, 0, 1] }]);
   }
   return out;

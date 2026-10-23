@@ -55,7 +55,9 @@ PRINTS = [
     ("back", "back", "Orange", 1, "Rear face down. A flat plate with the clip slots and the windows."),
     ("plate", "plate", "Orange", 1, "The face that goes on the cover down. The bosses and the hooks point up."),
     ("clip_a", "clip", "Orange", 2, "On its end, with a brim: the section of the clip is on the bed. Print 2."),
-    ("grille", "grille", "White", 1, "Back down. The bump and the four fan prongs point up. The snap tabs bend along the layers."),
+    ("grille", "grille", "White", 1, "Back down. The snap tabs bend along the layers. The flat grille of the first "
+     "pod: if you have it, do not print it again."),
+    ("fan_plate", "fan_plate", "White", 1, "Grille side down. The four posts for the fan point up."),
 ]
 TEST = ("fit_display", "fit_display", "Navy", 1, "Optional fit test of the screen opening. Face down.")
 # An option until you have the metal T-nuts: a printed roll-in nut with an M3 hex nut in it.
@@ -67,7 +69,7 @@ SETTINGS = [
                  "closed, then pick “Printdeck - LulzBot …”."),
     ("Printer", "LulzBot TAZ Workhorse, SE tool head, 0.5 mm nozzle"),
     ("Material", "PLA, 2.85 mm"),
-    ("Head, pod, grille", "0.3 mm layers, 1.5 mm walls, 1.2 mm top and bottom, 15 % grid infill, skirt"),
+    ("Head, pod, grille, fan plate", "0.3 mm layers, 1.5 mm walls, 1.2 mm top and bottom, 15 % grid infill, skirt"),
     ("Back panel, plate", "0.4 mm layers (a 0.3 mm first layer), 1.5 mm walls, 15 % grid infill, skirt"),
     ("Clip, roll-in nut", "0.3 mm layers, 100 % infill, with a brim."),
     ("Speeds", "Infill 75 mm/s (60 mm/s with 0.4 mm layers), inner walls 60 mm/s, outer walls 35 mm/s (30 mm/s on a face "
@@ -78,10 +80,10 @@ SETTINGS = [
 
 ELECTRONICS = [
     (1, "Raspberry Pi 5 (from the Slate build)"),
-    (1, f"30 × 30 × 10 mm 5 V fan with the Pi 5 fan plug (4-pin JST-SH), the same as the Slate. From the corner of "
-        f"the fan to the fan socket of the Pi, the cable route is {cm(CABLES['fan'])}. The cable must also let you hold "
-        "the grille next to the pod while you connect it."),
-    (1, "Stick-on heatsinks for the Pi 5 (a set), max. 10 mm high. The heatsink of the SoC can be up to 20 × 20 mm."),
+    (1, f"30 × 30 × 10 mm 5 V fan with the Pi 5 fan plug (4-pin JST-SH), the same as the Slate. From the fan to "
+        f"the fan socket of the Pi, the cable route is {cm(CABLES['fan'])}. The cable must be 8 cm or more, so that "
+        "the fan plate with the fan comes out of the pod on its cable."),
+    (1, "Stick-on heatsinks for the Pi 5 (a set), max. 13 mm high. The heatsink of the SoC can be up to 20 × 20 mm."),
     (1, "Adafruit 7 inch HDMI display with touch, product 2407 (from the Slate build)"),
     (1, "2.5 inch SATA drive with its USB adapter board, the boot drive (from the Slate build)"),
     (1, f"HDMI cable: micro HDMI to HDMI, straight plugs, a flat ribbon of 30 cm or more (the route is "
@@ -165,7 +167,7 @@ STEPS = [
        "thick, so the M3 × 10 goes 3.5 mm into the nut of the chassis (the old screw went 4.0 mm)."),
     ("step_pi", "Pi on the plate", ["Pi 5 (step 1)", "heatsinks"], {"m3x6": 4}, [
         "Stick the heatsinks on the Pi: on the SoC (the large chip at the middle) and on the RP1 (the chip between the "
-        "SoC and the USB ports). A heatsink can be up to 10 mm high.",
+        "SoC and the USB ports). A heatsink can be up to 13 mm high.",
         "Put the Pi on the four bosses: the USB ports toward the front of the printer, the USB-C and HDMI ports down.",
         "Attach it with four M3 × 6 screws. They cut their own thread in the bosses: turn them until they are "
         "snug, and no more.",
@@ -202,31 +204,30 @@ STEPS = [
         "the power supply.",
     ], "No cable goes through a hole in the printer, and no cable shows on the front or the side."),
     ("step_pod", "Pod", ["pod"], {"m3x8": 2}, [
+        "Connect the fan cable to the fan socket of the Pi: the small 4-pin socket between the end of the GPIO "
+        "header and the USB ports. Lay the fan on the Pi.",
         "Hold the pod about 6 mm low and 6 mm out from its place, and 4 mm to the rear. Move it 4 mm to the front, "
         "then push it up and in at 45° onto the two hooks of the plate. The rear wall goes over the two cables.",
         "Put the two M3 × 8 screws up through the bottom of the pod into the plate. They pull the pod up, and the "
         "45° hooks pull it onto the plate.",
-    ], None),
-    ("step_fan", "Fan into the grille", ["grille", "fan"], {}, [
-        "Hold the grille with its back toward you. Four prongs stand up around the opening of the bump.",
-        "Turn the fan so that it blows away from the grille, onto the Pi. Most fans show the direction of the air with "
-        "an arrow on the frame.",
-        "Turn the fan so that its cable comes out next to the groove. The groove is in the side of the bump, near "
-        "a corner. With the grille on the pod, it is at the top, toward the front of the printer. If the cable "
-        "leaves the frame on the other side of that corner, turn the fan by 90 degrees.",
-        "Push the fan into the bump, square to the opening, between the four prongs, until the four catches click "
-        "over the frame. Put the cable into the groove.",
-    ], "The catches hold the fan against the funnel in the bump, with 0.2 mm of play. To remove the fan, push the "
-       "catches of two prongs out with a small screwdriver, and pull the fan out."),
-    ("step_grille", "Grille", ["grille with the fan (step 11)"], {}, [
-        "Connect the fan cable to the fan socket of the Pi: the small 4-pin socket between the end of the GPIO "
-        "header and the USB ports.",
-        "Hold the grille at the pocket of the pod, with the fingernail notch at the bottom. The cable goes from the "
-        "groove over the end of the GPIO header to the socket.",
-        "Push the grille into the pocket from the outside. Push both sides until the two tabs click. The plate of the "
-        "grille is flush with the pod, and the bump is 15 mm out of the pod.",
-    ], "To remove the grille, put a fingernail or a small screwdriver into the notch at its bottom edge, and lift. "
-       "Then disconnect the fan cable."),
+    ], "Two notches in the front edge of the pod are for the heads of the two screws into the left wall of the head."),
+    ("step_fan", "Fan onto the fan plate", ["fan plate", "fan"], {"m25_rh": 2}, [
+        "Take the fan out of the pod through the grille pocket. Its cable stays on the Pi.",
+        "Hold the fan plate with its four posts toward you. Turn the fan so that it blows away from the fan plate, "
+        "onto the Pi. Most fans show the direction of the air with an arrow on the frame.",
+        "Push the fan onto the four posts, until it is flat on the fan plate. The two solid posts hold it in place.",
+        "Put the two M2.5 screws into the other two holes, from the far face of the fan. Turn them into the hollow "
+        "posts until they are snug, and no more. They cut their own thread.",
+    ], "A screw of 8 to 11 mm fits: it goes through the fan hole into the post. A 10 mm screw has 4 mm of thread. "
+       "The fan cable leaves the frame from a side: it does not touch the posts or the screw heads."),
+    ("step_grille", "Fan plate and grille", ["fan plate with the fan (step 11)", "grille"], {}, [
+        "Push the fan plate with the fan into the grille pocket of the pod from the outside, the fan first. The fan "
+        "plate goes down onto the ledge of the pocket. The cable stays inside "
+        "the pod.",
+        "Hold the grille at the pocket, with its tabs at the sides. Push it into the pocket over the fan plate. Push both sides until the two tabs click. The grille is flush with the pod.",
+    ], "To get to the fan, put a small screwdriver into a vent slot near a tab, and lift the grille out. Then "
+       "pull the fan plate out at its air hole. The fan comes out with it, on its "
+       "cable."),
 ]
 
 
@@ -379,10 +380,10 @@ def plan_page():
   {hours(FILAMENT[ROLL[1]]["minutes"] * ROLL[3])}.</div>
   <div class="note"><b>Order.</b> Print the fit test first ({hours(f["minutes"])}): the display pocket has 0.3 mm
   of clearance at each side, so check it before the head. Then the head and the back panel: steps 2 to 4 need them.
-  Then the plate, the clips, the pod, and the grille.</div>
+  Then the plate, the clips, the pod, the fan plate, and the grille.</div>
   <div class="note"><b>By colour.</b> You can also print one job for each colour: the head and the pod together
   (navy, with the head profile), the back panel, the plate, the clips together (orange, with the plate
-  profile; set the clips to 100 % infill in Cura), and the grille (white). The time is the same, with
+  profile; set the clips to 100 % infill in Cura), and the grille and the fan plate (white). The time is the same, with
   fewer changes of the spool; a failure costs more than one part.</div>
   {foot(2)}
 </section>"""
@@ -488,8 +489,9 @@ def end_page(n):
     <li>Connect the printer cable to the USB socket of the printer board.</li>
     <li>Turn on the printer. The deck starts from the drive.</li></ol>
   <h2 style="margin-top:4mm">To open the mount</h2>
-  <ol><li>Lift the grille out at the fingernail notch, and disconnect the fan cable. Remove the two screws under the
-      pod. Move the pod down and out at 45°, off the hooks, then 4 mm to the rear and out.</li>
+  <ol><li>Lift the grille out with a small screwdriver in a vent slot, pull the fan plate out at its air hole, and
+      disconnect the fan cable. Remove the
+      two screws under the pod. Move the pod down and out at 45°, off the hooks, then 4 mm to the rear and out.</li>
     <li>Disconnect the cables from the Pi. Remove the two flange screws from inside the pod.</li>
     <li>Lift the head 30 mm and pull it off the clip keys. The display and the drive come off with it.</li>
     <li>To get to the display or the drive, remove the four screws from the rear of the back panel.</li></ol>

@@ -166,13 +166,14 @@ def main():
     render(allcase, (0, 0, 1), (0, 1, 0), os.path.join(OUT, "mount-front.png"), size=(1700, 1100))
     render(allcase, (-1, 0, 0), (0, 1, 0), os.path.join(OUT, "mount-left.png"), size=(1500, 1400))
     # Inside: the head, the back panel, the pod, and the grille are off. The cables show.
-    inside = case_items(manifest, colours, skip_names=("head", "back", "pod", "grille", "hw_display_glass",
+    inside = case_items(manifest, colours, skip_names=("head", "back", "pod", "grille", "fan_plate", "hw_display_glass",
                                                        "hw_display_lcd"))
     render(inside, (-0.55, -0.3, 0.8), (0, 1, 0), os.path.join(OUT, "mount-inside.png"), size=(1600, 1400))
     render(inside, (-1, 0, 0), (0, 1, 0), os.path.join(OUT, "mount-inside-left.png"), size=(1500, 1400))
     # Exploded: the head with the display forward (-Z), the pod and the grille out (+X).
     off = {"head": (0, 0, -90), "display": (0, 0, -60), "head_screws": (0, 0, 25), "back": (0, 0, -25),
-           "pod": (70, 0, 0), "grille": (110, 0, 0), "fan": (110, 0, 0), "bottom_screws": (70, -30, 0)}
+           "pod": (70, 0, 0), "fan_plate": (95, 0, 0), "fan": (95, 0, 0), "grille": (125, 0, 0),
+           "bottom_screws": (70, -30, 0)}
     exploded = case_items(manifest, colours, offsets=off)
     render([near[0], near[-2]] + exploded, (-0.62, -0.3, 0.75), (0, 1, 0), os.path.join(OUT, "exploded.png"), size=(1800, 1500))
     # Each printed part in its print orientation and colour.

@@ -115,12 +115,14 @@ _P_HALF = abs(DISP_OFF[0]) + BOARD_B + PLUG_BAND + CLR + WALL
 _Q_HALF = abs(DISP_OFF[1]) + EAR_A + CLR + 1.0 + WALL
 HEAD_P = (-_P_HALF, _P_HALF)     # outer faces of the side walls
 HEAD_Q = (-_Q_HALF, _Q_HALF)
-HEAD_LEFT_OUT = 20.0             # the left face of the head is this far past the outer face of the pod
+HEAD_LEFT_OUT = 20.0             # the left face of the head is this far past HEAD_POD_Z
 BACK_X = (RAIL_FRONT_X + 2.5, RAIL_FRONT_X + 5.5)   # the back panel: on the flanges of the rail clips
 HEAD_TOP_DEPTH = 16.0            # from the back panel to the top edge of the face
-POD_Z = 26.0                     # the outer face of the pod and the left face of the head
+# The head is where it was with the first pod, 26 mm out of the cover. The pod is now deeper for
+# the fan (POD_Z, below), and the head does not move.
+HEAD_POD_Z = 26.0
 HEAD_TOP = (BACK_X[1] + HEAD_TOP_DEPTH, H)    # (x, y) of the top edge of the face
-HEAD_ZC = POD_Z + HEAD_LEFT_OUT + HEAD_P[0]   # z of p = 0 (p points to -z)
+HEAD_ZC = HEAD_POD_Z + HEAD_LEFT_OUT + HEAD_P[0]   # z of p = 0 (p points to -z)
 
 
 def head_dirs():
@@ -380,51 +382,48 @@ GRILLE_WIN = (-47.0, 10.0, 156.0, 240.0)   # x0, x1, y0, y1 (left of the USB por
 # the inner face of the skin; its floor is a 45 degree ledge (no flat ceiling in the print).
 # Each long side of the grille has a flexible tab (a 14 mm cantilever in the plane of the
 # grille, printed flat, so it bends along the layers) with a ridge that clicks into a groove in
-# the pocket wall. A notch at the bottom edge of the pocket is for a fingernail or a small
-# screwdriver to lift the grille out.
+# the pocket wall. A small screwdriver in a vent slot lifts the grille out. The pocket has no
+# fingernail notch: with the deeper rim, a notch in its wall crashes CuraEngine in the support check.
 GRILLE_SLOT_W = 3.2              # vent slots, the same width as the slots in the chassis
 GRILLE_SLOT_PITCH = 6.4
 GRILLE_CLR = 0.2                 # clearance around the grille in the pocket
 GRILLE_T = 3.0                   # the grille thickness = the pocket depth (flush with the skin)
-GRILLE_RIM = (3.5, 2.5)          # the rim on the inner face of the skin: width, height
+GRILLE_RIM = (3.5, 4.5)          # the rim on the inner face of the skin: width, height (past the fan plate)
 GRILLE_LEDGE = 1.2               # the 45 degree ledge under the grille
 GRILLE_TAB = (14.0, 2.0, 1.4)    # tab length, tab width, the slot between the tab and the grille
 GRILLE_RIDGE = 0.6               # the ridge on the tab (the snap); the groove is 0.2 mm deeper
-GRILLE_NOTCH = (10.0, 1.6)       # the fingernail notch: width, depth
 
 # Fan: a 30 x 30 x 10 mm 5 V fan with the Pi 5 fan plug (4-pin JST-SH), the same as the Slate.
-# It is in a raised section (the bump) of the grille, over the SoC of the Pi, and it blows onto
-# the Pi. The air comes in through the vents of the bump. Stick-on heatsinks on the Pi can be
-# up to 10 mm high (the model has this height), with 4.1 mm of air under the fan.
-# The fan snaps in: four prongs stand up from the grille along the sides of the fan, one on each
-# side, near a corner, where the fan frame is solid. Each prong has a catch at its tip that clicks under the
-# far face of the fan frame. The lead-in of the catch is 30 degrees from the way the fan goes in,
-# so the fan pushes the prongs out gently; the base of each prong has a relief for the elephant
-# foot of the first layers, and the walls have a chamfer at the mouth of the pocket. The grille
-# prints back down, so each prong stands on the bed: the catch top is level, and the lead-in is the
-# only overhang (60 degrees above the bed).
-# The prong bends outward by the catch depth: the strain is 1.5 x thickness x depth / length^2,
-# 1.0 % in PLA. A 45 degree funnel above the fan holds it against the catches.
-# Screw bosses do not fit here: a 16 mm screw through 2 mm of the fan frame needs 14 mm of boss
-# above the fan, and a boss that prints with no supports starts 2 mm above the fan (45 degree
-# faces from the walls), so a 6 mm screw does not reach it.
+# It is inside the pod, over the SoC of the Pi, and it blows onto the Pi. The air comes in through
+# the grille. The grille is the flat grille of the first pod: the user has it printed, so its
+# shape stays the same, and its pocket moved with the Pi so that its vent slots are over the fan.
+# The fan is on a fan plate (a separate part): a flat plate under the grille, in a deeper part of
+# the grille pocket, with a round hole for the air. The grille holds the fan plate on the 45 degree
+# ledge of the pocket. A part of the pod cannot hold the fan: the fan is under the middle of the
+# grille window, and a part there has nothing under it in the print of the pod (outer face down).
+# The fan plate goes in from the outside, so the fan comes out with it for service, on its cable.
+# The fan holes of a 30 mm fan are on a 24 mm square, 3.2 to 3.4 mm across, through the 10 mm frame.
+# Four posts stand from the fan plate, one into each hole. Two diagonal posts are solid: they
+# locate the fan. The other two are hollow, with a pilot hole for an M2.5 self-tapping screw. The
+# screw goes into the hole from the far face of the fan (the face to the Pi), and cuts its thread
+# in the post and then in the fan plate. The fan hole holds the thin wall of the post from outside.
+# A screw of 8 to 11 mm fits: an 8 mm screw has 2 mm of thread in the post, a 10 mm screw 4 mm.
+# The fan plate prints flat, grille side down, so the posts stand up from the bed with their layers
+# across them. They are short, and the screws hold the fan on the plate, so they carry little load.
+# The cable leaves the fan frame from a side, beside a corner hole: it does not touch the posts or
+# the screw heads, at any corner.
 FAN = (30.0, 10.0)               # size, thickness
 FAN_XY = (PI_X - 12.0, PI_Y + 2.5)   # the centre of the fan: over the centre of the SoC
-FAN_CLR = 0.2                    # clearance between the fan and the walls of the bump
-FAN_PLAY = 0.2                   # the fan can move this far between the catches and the funnel
-HEATSINK_H = 10.0                # the highest heatsink in the model
-PRONG = (8.0, 1.0, 0.8)          # prong width, thickness, catch depth
-PRONG_LEAD = 30.0                # the lead-in of the catch, in degrees from the way the fan goes in
-PRONG_RELIEF = 0.4               # the relief at the base of each prong, on the face to the fan
-POCKET_CHAMFER = 0.5             # the chamfer of the walls at the mouth of the pocket
-PRONG_AT = 9.5                   # the prong centre, from the middle of its side
-PRONG_GAP = 1.0                  # the space behind each prong (it bends into it)
-BUMP_WALL = 1.5                  # the wall of the bump behind the prongs
-BUMP_TOP = 41.0                  # the outer face of the bump (15 mm out of the pod face)
-BUMP_R = 5.0                     # radius of the outer corners of the bump
-BUMP_SLOTS = (3.2, 5.6)          # vent slots in the bump: width, pitch
-# The groove for the fan cable, in the wall near a corner. The mounting holes of a 30 mm fan are 3 mm
-# in from its corners, so the cable leaves the frame beside a corner hole, 4 to 12 mm from the
-# corner. The groove is wide enough for the usual fans: length, depth, top.
-FAN_GROOVE = (10.0, 2.2, 27.5)
-FAN_GROOVE_IN = 2.5              # the groove starts this far from the corner
+FAN_AIR = 1.0                    # the least air between the fan and the highest heatsink
+HEATSINK_H = 13.0                # the highest heatsink in the model
+FAN_PLATE_T = 2.0                # the fan plate, under the grille
+FAN_HOLE = 28.0                  # the hole for the air in the fan plate
+FAN_PLATE_EDGE = 0.8             # the chamfer of the fan plate on the 45 degree ledge
+FAN_HOLES = 12.0                 # the fan holes, from the centre of the fan (a 24 mm square)
+FAN_HOLE_D = 3.3                 # a fan hole in the model
+POST = (3.0, 4.0, 0.5)           # the posts: diameter (a slip fit in the fan hole), length into the hole, tip chamfer
+PILOT = (2.0, 1.5)               # the pilot hole for the M2.5 screw: diameter, depth into the fan plate
+FAN_SCREW = (2.5, 4.5, 1.8, 10.0)   # M2.5 round head: diameter, head diameter, head height, length
+# The outer face of the pod: the grille, the fan plate, the fan, the air, and the highest heatsink
+# on the SoC of the Pi, in 0.5 mm steps.
+POD_Z = math.ceil(2 * (PI_Z + 1.5 + 2.2 + HEATSINK_H + FAN_AIR + FAN[1] + FAN_PLATE_T + GRILLE_T)) / 2
