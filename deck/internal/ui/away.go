@@ -122,7 +122,11 @@ func (a *App) drawPrintBar(c *gfx.Canvas, st printer.State) {
 	}
 	// Pause on each screen, as the feed hold of a machine: the pause shows the screen of the print.
 	if st.Printing && !st.Paused && !st.Preparing && !st.Finishing {
-		k := kit.Cols(kr, 8, kit.Px(min(112, kr.Dx()*2/5)), kit.Fr(1))
+		pw := 112
+		if sideBar {
+			pw = 96 // the left column is narrow: the way back gets the room
+		}
+		k := kit.Cols(kr, 8, kit.Px(pw), kit.Fr(1))
 		a.button(c, k[0], "Pause", raised, text, a.Printer.Pause)
 		kr = k[1]
 	}
@@ -130,34 +134,32 @@ func (a *App) drawPrintBar(c *gfx.Canvas, st printer.State) {
 	key(c, kr, "", orange, onAcc, a.isPressed(kr))
 	a.addHit(kit.Hit{R: kr, Tap: tap})
 	a.addFocus("Back to the print", kr, tap)
-	in := kit.Inset(kr, 16, 0, 16, 5)
 	what, frac := printBarText(st)
-	// In the narrow left column of a wide screen, only the arrow: the text of the print needs the room.
-	go1 := "BACK TO PRINT ›"
-	switch {
-	case sideBar:
-		go1 = "›"
-	case W < 600:
-		go1 = "BACK ›"
-	}
 	face := gfx.Face(true, 16)
-	gw := gfx.Width(face, go1)
-	c.Text(image.Rect(in.Max.X-gw, in.Min.Y, in.Max.X, in.Max.Y), go1, face, onAcc, gfx.Right)
-	// A narrow bar drops the end of the text a part at a time: " LEFT", then the time, then the
-	// word LAYER.
-	room := in.Dx() - gw - 16
-	for _, cut := range []string{" LEFT", " · "} {
-		if gfx.Width(face, what) <= room {
-			break
+	if sideBar {
+		// In the left column of a wide screen: the display above shows the state of the print, so
+		// the key only goes back to it.
+		c.Text(kit.Inset(kr, 14, 0, 14, 4), "BACK TO PRINT ›", gfx.Face(true, 14), onAcc, gfx.Center)
+	} else {
+		in := kit.Inset(kr, 16, 0, 16, 5)
+		go1 := "BACK TO PRINT ›"
+		if W < 600 {
+			go1 = "BACK ›"
 		}
-		if i := strings.LastIndex(what, cut); i > 0 {
-			what = what[:i]
+		gw := gfx.Width(face, go1)
+		c.Text(image.Rect(in.Max.X-gw, in.Min.Y, in.Max.X, in.Max.Y), go1, face, onAcc, gfx.Right)
+		// A narrow bar drops the end of the text a part at a time: " LEFT", then the time.
+		room := in.Dx() - gw - 16
+		for _, cut := range []string{" LEFT", " · "} {
+			if gfx.Width(face, what) <= room {
+				break
+			}
+			if i := strings.LastIndex(what, cut); i > 0 {
+				what = what[:i]
+			}
 		}
+		c.Text(image.Rect(in.Min.X, in.Min.Y, in.Max.X-gw-16, in.Max.Y), what, face, onAcc, gfx.Left)
 	}
-	if gfx.Width(face, what) > room {
-		what = strings.TrimPrefix(what, "LAYER ") // "12/27" in the narrowest bar
-	}
-	c.Text(image.Rect(in.Min.X, in.Min.Y, in.Max.X-gw-16, in.Max.Y), what, face, onAcc, gfx.Left)
 	// The progress: a line at the bottom of the bar.
 	if frac > 0 {
 		line := image.Rect(kr.Min.X+10, kr.Max.Y-9, kr.Max.X-10, kr.Max.Y-6)
