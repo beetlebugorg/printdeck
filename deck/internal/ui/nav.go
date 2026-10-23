@@ -81,7 +81,7 @@ func (a *App) drawNavKeys(c *gfx.Canvas, r image.Rectangle) {
 			if k.p == pageFiles {
 				go func() { a.Printer.LoadFiles(); a.Redraw() }()
 			}
-			a.pages = nil
+			a.pages, a.away = nil, false // Main during a print is the print
 			if k.p != 0 {
 				a.pages = []page{k.p}
 			}

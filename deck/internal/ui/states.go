@@ -56,14 +56,23 @@ func (a *App) drawFinishing(c *gfx.Canvas, st printer.State) { a.drawSteps(c, st
 
 // drawSteps draws the steps of the start macro, or of the end macro when end is true.
 func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
-	a.statusPanel(c, st)
-	// Tall: the steps and Cancel under the display. Wide: the keys under the display; the steps
-	// and the model at the right.
-	f, keys, view := a.stateAreas()
-	area, cancel := keys, image.Rectangle{}
-	if f.wide {
-		area, cancel = view, keys
+	// Tall: the steps and Cancel under the display. Wide: the Main page, with the steps and the
+	// model, and Cancel print and Help at the bottom.
+	wide := W > H
+	var area, cancel image.Rectangle
+	if wide {
+		title := "Starting the print"
+		if end {
+			title = "Finishing the print"
+		}
+		keysH := actH
+		if end && a.Setup == nil {
+			keysH = 0
+		}
+		area, cancel = a.statePage(c, st, title, keysH)
 	} else {
+		a.statusPanel(c, st)
+		_, _, view := a.stateAreas()
 		r := kit.Rows(view, 16, kit.Fr(1), kit.Px(keyRowH))
 		area, cancel = r[0], r[1]
 	}
@@ -148,21 +157,23 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 			segments(c, image.Rect(box.Min.X+60, y+rowH-12, box.Max.X-22, y+rowH-4), min(1, f))
 		}
 	}
-	// The model under the steps: on a tall screen at the end, on a wide screen always.
-	if f.wide || end {
-		a.modelView(c, image.Rect(area.Min.X, box.Max.Y+16, area.Max.X, area.Max.Y), st)
+	// The model under the steps: on a tall screen at the end, on a wide screen when it has the room.
+	if model := image.Rect(area.Min.X, box.Max.Y+16, area.Max.X, area.Max.Y); end || wide && model.Dy() >= 120 {
+		a.modelView(c, model, st)
 	}
-	// The keys: in a row on a tall screen, under each other in the narrow column of a wide one.
-	keysIn := func(widths ...kit.Size) []image.Rectangle {
-		if f.wide {
-			heights := make([]kit.Size, len(widths))
-			for i := range heights {
-				heights[i] = kit.Px(keyRowH)
-			}
-			return kit.Rows(cancel, 10, heights...)
+	if wide {
+		// Cancel print, the destructive action, at the left, and Help at the right. Main is the
+		// print, so the page needs no Menu.
+		k := kit.Cols(cancel, 12, kit.Fr(1), kit.Fr(1))
+		if !end {
+			a.button(c, k[0], "Cancel print", raised, red, a.askCancel)
 		}
-		return kit.Cols(cancel, 12, widths...)
+		if a.Setup != nil {
+			a.button(c, k[1], "Help", raised, text, a.OpenHelp)
+		}
+		return
 	}
+	keysIn := func(widths ...kit.Size) []image.Rectangle { return kit.Cols(cancel, 12, widths...) }
 	if end {
 		// Menu leaves the screen while the end macro runs. The deck follows the cooling of the bed
 		// all the same, and shows the done screen at the end of the print.
@@ -191,28 +202,26 @@ var zSteps = []float64{0.01, 0.025, 0.05}
 // first layer while it prints, and the model view shows the first layer.
 func (a *App) drawFirstLayer(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
-	a.statusPanel(c, st)
 	if a.zBaby == 0 {
 		a.zBaby = 0.025
 	}
 	step := a.zBaby
-	// −, the Z offset, + and Save in one row; the steps of a tap; Pause and Cancel; the model view
-	// with the first layer. The narrow column of a wide screen has Save in the row of Help.
-	f, keys, view := a.stateAreas()
-	var zRow, stepRow, saveRow, printRow, box image.Rectangle
-	if f.wide {
-		r := kit.Rows(keys, 10, kit.Px(keyRowH), kit.Px(44), kit.Px(52), kit.Px(keyRowH))
-		zRow, stepRow, saveRow, printRow, box = r[0], r[1], r[2], r[3], view
+	// −, the Z offset, + and Save in one row; the steps of a tap; the model view with the first
+	// layer; Pause and Cancel. A wide screen has them in the Main page, with Cancel at the left of
+	// the keys at the bottom and Pause at the right.
+	wide := W > H
+	var zRow, stepRow, printRow, box image.Rectangle
+	if wide {
+		view, keys := a.statePage(c, st, "First layer", actH)
+		r := kit.Rows(view, 10, kit.Px(keyRowH), kit.Px(44), kit.Fr(1))
+		zRow, stepRow, box, printRow = r[0], r[1], r[2], keys
 	} else {
+		a.statusPanel(c, st)
+		_, keys, _ := a.stateAreas()
 		r := kit.Rows(keys, 8, kit.Px(keyRowH), kit.Px(44), kit.Px(60), kit.Fr(1))
 		zRow, stepRow, printRow, box = r[0], r[1], r[2], r[3]
 	}
-	var z []image.Rectangle
-	if f.wide {
-		z = kit.Cols(zRow, 10, kit.Px(64), kit.Fr(1), kit.Px(64))
-	} else {
-		z = kit.Cols(zRow, 12, kit.Px(80), kit.Fr(1), kit.Px(80), kit.Px(80))
-	}
+	z := kit.Cols(zRow, 12, kit.Px(80), kit.Fr(1), kit.Px(80), kit.Px(80))
 	a.button(c, z[0], "−", raised, text, func() { a.do(func() error { return pr.BabyStep(-step) }) })
 	win := z[1]
 	window(c, win)
@@ -221,20 +230,9 @@ func (a *App) drawFirstLayer(c *gfx.Canvas, st printer.State) {
 	label(c, image.Rect(win.Min.X+10, win.Min.Y+4, win.Max.X, win.Min.Y+22), "Z offset", gfx.Left)
 	c.Text(image.Rect(win.Min.X, win.Min.Y+14, win.Max.X, win.Max.Y), fmt.Sprintf("%+.3f", st.ZOffset), gfx.Face(true, 30), lcdInk, gfx.Center)
 	a.button(c, z[2], "+", raised, text, func() { a.do(func() error { return pr.BabyStep(step) }) })
-	save := func(r image.Rectangle) { a.button(c, r, "Save", raised, text, func() { a.saveZOffset(st) }) }
-	var steps []image.Rectangle
-	if f.wide {
-		steps = kit.Cols(stepRow, 8, kit.Fr(1), kit.Fr(1), kit.Fr(1))
-		sr := kit.Cols(saveRow, 10, kit.Fr(1), kit.Fr(1))
-		save(sr[0])
-		if a.Setup != nil {
-			a.button(c, sr[1], "Help", raised, text, a.OpenHelp)
-		}
-	} else {
-		save(z[3])
-		steps = kit.Cols(stepRow, 8, kit.Px(76), kit.Px(76), kit.Px(76), kit.Fr(1))
-		c.Text(steps[3], "− is closer", gfx.Face(false, 15), dim, gfx.Right)
-	}
+	a.button(c, z[3], "Save", raised, text, func() { a.saveZOffset(st) })
+	steps := kit.Cols(stepRow, 8, kit.Px(76), kit.Px(76), kit.Px(76), kit.Fr(1))
+	c.Text(steps[3], "− is closer", gfx.Face(false, 15), dim, gfx.Right)
 	a.region("Step", steps[0].Union(steps[2]))
 	for i, s := range zSteps {
 		fill, fg := keyOff, text
@@ -244,14 +242,23 @@ func (a *App) drawFirstLayer(c *gfx.Canvas, st printer.State) {
 		v := s
 		a.button(c, steps[i], fmt.Sprint(s), fill, fg, func() { a.zBaby = v })
 	}
-	pc := kit.Cols(printRow, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
-	if a.Setup != nil && !f.wide {
-		pc = kit.Cols(printRow, 8, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1))
-		a.button(c, pc[3], "Help", raised, text, a.OpenHelp)
+	if wide {
+		pc := kit.Cols(printRow, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
+		a.button(c, pc[0], "Cancel", raised, red, a.askCancel)
+		if a.Setup != nil {
+			a.button(c, pc[1], "Help", raised, text, a.OpenHelp)
+		}
+		a.button(c, pc[2], "Pause", orange, onAcc, pr.Pause)
+	} else {
+		pc := kit.Cols(printRow, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
+		if a.Setup != nil {
+			pc = kit.Cols(printRow, 8, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1))
+			a.button(c, pc[3], "Help", raised, text, a.OpenHelp)
+		}
+		a.button(c, pc[0], "Pause", raised, text, pr.Pause)
+		a.button(c, pc[1], "Cancel", raised, red, a.askCancel)
+		a.button(c, pc[2], "Menu", raised, text, func() { a.leavePrint(st) })
 	}
-	a.button(c, pc[0], "Pause", raised, text, pr.Pause)
-	a.button(c, pc[1], "Cancel", raised, red, a.askCancel)
-	a.button(c, pc[2], "Menu", raised, text, func() { a.leavePrint(st) })
 	a.modelView(c, box, st)
 	layer := image.Rect(box.Min.X+14, box.Min.Y+8, box.Max.X-14, box.Min.Y+30)
 	c.Text(layer, fmt.Sprintf("LAYER 1 OF %d", st.Layers), gfx.Face(true, 13), lcdDim, gfx.Left)
@@ -280,24 +287,27 @@ func (a *App) saveZOffset(st printer.State) {
 // drawPaused is a paused print: Resume first, then the actions that a pause is for.
 func (a *App) drawPaused(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
-	a.statusPanel(c, st)
-	// Tall: the pause, Resume, and two rows of keys. Wide: Resume and the keys at the left, the
-	// pause and the model view at the right.
-	f, keys, view := a.stateAreas()
+	// Tall: the pause, Resume, and two rows of keys. Wide: the Main page, with the pause and the
+	// model, and two rows of keys at the bottom: Change filament, Move head and Tune; then Cancel at
+	// the left and Resume at the right.
 	var info, resume image.Rectangle
 	var grid []image.Rectangle
 	infoH := 76
 	if st.PausePrompt != "" {
 		infoH = 112 // the message of the file, in two lines, and the height check
 	}
-	if f.wide {
+	if W > H {
+		view, keys := a.statePage(c, st, "Paused", 2*actH+12)
 		v := kit.Rows(view, 12, kit.Px(infoH), kit.Fr(1))
 		info = v[0]
 		a.modelView(c, v[1], st)
-		// Resume, and the four keys under each other: the column is narrow.
-		k := kit.Rows(keys, 10, kit.Px(keyRowH), kit.Fr(1))
-		resume, grid = k[0], kit.Grid(k[1], 1, 4, 10)
+		k := kit.Rows(keys, 12, kit.Fr(1), kit.Fr(1))
+		top := kit.Cols(k[0], 12, kit.Fr(3), kit.Fr(2), kit.Fr(2)) // Change filament is the longest
+		bottom := kit.Cols(k[1], 12, kit.Fr(1), kit.Fr(2))
+		grid, resume = []image.Rectangle{top[0], top[1], top[2], bottom[0]}, bottom[1]
 	} else {
+		a.statusPanel(c, st)
+		_, _, view := a.stateAreas()
 		r := kit.Rows(view, 12, kit.Px(infoH), kit.Px(88), kit.Px(2*keyRowH+12), kit.Fr(1))
 		info, resume, grid = r[0], r[1], kit.Grid(r[2], 2, 2, 12)
 		a.modelView(c, r[3], st)
@@ -352,23 +362,22 @@ func (a *App) finishedView(c *gfx.Canvas, box image.Rectangle, st printer.State)
 // drawDone is the end of a print: the result, the bed until the part comes off easily, Reprint
 // and Done.
 func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
-	a.statusPanel(c, st)
-	// Tall: the model, the result, the bed, and the keys. Wide: the bed and the keys at the left,
-	// the model and the result at the right.
-	f, keys, view := a.stateAreas()
+	// Tall: the model, the result, the bed, and the keys. Wide: the Main page, with the model, the
+	// result and the bed, and Reprint and Done at the bottom.
+	title := map[string]string{"complete": "Print done", "cancelled": "Cancelled", "error": "Print failed"}[st.Finished]
 	var box, result, info, end image.Rectangle
-	if f.wide {
-		v := kit.Rows(view, 8, kit.Fr(1), kit.Px(32))
-		box, result = v[0], v[1]
-		k := kit.Rows(keys, 12, kit.Px(102), kit.Px(keyRowH))
-		info, end = k[0], k[1]
+	if W > H {
+		view, keys := a.statePage(c, st, title, actH)
+		v := kit.Rows(view, 8, kit.Fr(1), kit.Px(32), kit.Px(102))
+		box, result, info, end = v[0], v[1], v[2], keys
 	} else {
+		a.statusPanel(c, st)
+		_, _, view := a.stateAreas()
 		// The model gets the height that is free: a taller screen shows a larger model.
 		r := kit.Rows(view, 8, kit.Fr(1), kit.Px(32), kit.Px(102), kit.Px(keyRowH))
 		box, result, info, end = r[0], r[1], r[2], r[3]
 	}
 	a.finishedView(c, box, st)
-	title := map[string]string{"complete": "Print done", "cancelled": "Cancelled", "error": "Print failed"}[st.Finished]
 	line := title + " · " + st.FinishedFile + " · " + hm(int(st.FinishedTime.Minutes()))
 	if st.FinishedFilament > 0 {
 		line += " · " + a.weight(st.FinishedFilament)

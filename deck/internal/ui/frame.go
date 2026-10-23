@@ -48,9 +48,6 @@ func bezelW(scale int) int { return 128*scale + 16 }
 // wideZones are the two columns of a wide screen, inside the margins, down to the bottom of the
 // content (above the print bar when it shows). The left column has the width of the display at
 // scale.
-//
-// On a wide screen the print bar is at the bottom of the left column (sideBar), so the left column
-// ends over it, and the right column goes down to the bottom.
 func wideZones(scale int) (left, right image.Rectangle) {
 	bottom := H - gridM
 	if contentY1 < H {
@@ -58,18 +55,7 @@ func wideZones(scale int) (left, right image.Rectangle) {
 	}
 	left = image.Rect(gridM, gridM, gridM+bezelW(scale), bottom)
 	right = image.Rect(left.Max.X+gridM, gridM, W-gridM, bottom)
-	if sideBar {
-		left.Max.Y = sideBarRect().Min.Y - gridM
-	}
 	return left, right
-}
-
-// sideBar is true when the print bar of a wide screen is at the bottom of the left column.
-var sideBar bool
-
-// sideBarRect is the print bar at the bottom of the left column of a wide screen.
-func sideBarRect() image.Rectangle {
-	return image.Rect(gridM, H-gridM-(barH-16), gridM+bezelW(wideScale), H-gridM)
 }
 
 // displayIn is the picture of the display at the top of the left column, in the middle, and the
