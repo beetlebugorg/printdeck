@@ -186,6 +186,10 @@ type App struct {
 	// Settings page changes it, and OnSwapHome is told, to save it.
 	SwapHome   bool
 	OnSwapHome func(bool)
+	// Rotate is the turn of the UI on the panel in degrees: 0, 90, 180 or 270. OnRotate saves a new
+	// turn and restarts the deck in it; with no OnRotate, the Settings page has no Screen row.
+	Rotate   int
+	OnRotate func(int)
 
 	joy   *joystick
 	zStep float64 // mm per tap of the Z buttons

@@ -160,6 +160,9 @@ case, for example `display_rotate=90`, and start the Pi again. `printdeck-settin
 settings to `/var/lib/printdeck/settings.env`, which the deck reads after `deck.env`. The
 release image needs no SSH for any setting.
 
+The Screen row of Settings (on the Machine page) turns the screen a quarter turn and restarts the
+deck. The deck keeps that turn in `/var/lib/printdeck/rotate`, and it wins over `display_rotate`.
+
 ## Update
 
 The disk has two system slots, A and B. The running system stays as it is while an update writes

@@ -412,7 +412,27 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 		{"Clock", clockLine(a.Clock24), dim, a.toggleClock},
 		{"Home in a filament change", swapHomeLine(a.SwapHome), dim, a.toggleSwapHome},
 	}
+	if a.OnRotate != nil {
+		items = append(items, menuItem{"Screen", rotateLine(a.Rotate), dim, a.askRotate})
+	}
 	a.menuRows(c, f.body(), f.wide, 60, 5, items)
+}
+
+// rotateLine is the line of the Screen row: the turn of the UI, and its shape.
+func rotateLine(deg int) string {
+	shape := "wide"
+	if deg == 90 || deg == 270 {
+		shape = "tall"
+	}
+	return fmt.Sprintf("Turned %d°, %s", deg, shape)
+}
+
+// askRotate asks to turn the UI a quarter turn more, and then restarts the deck in that turn. Four
+// taps go round once. The touch turns with the UI, so each turn can be used.
+func (a *App) askRotate() {
+	next := (a.Rotate + 90) % 360
+	a.confirm = &confirmBox{question: fmt.Sprintf("Turn the screen to %d°? The deck restarts.", next), yes: "Turn",
+		onYes: func() { a.OnRotate(next) }}
 }
 
 // swapHomeLine is the line of the Home in a filament change row.

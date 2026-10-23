@@ -70,3 +70,21 @@ func TestClockRowTogglesClock(t *testing.T) {
 		t.Errorf("clocks %v", saved)
 	}
 }
+
+// The Screen row asks for the next quarter turn, and gives it to OnRotate.
+func TestScreenRowTurns(t *testing.T) {
+	a := New()
+	a.Printer = &DemoPrinter{View: -1}
+	got := -1
+	a.Rotate, a.OnRotate = 270, func(r int) { got = r }
+	cv := gfx.New(W, BaseH)
+	a.pages = []page{pageMachine, pageSettings}
+	tapLabel(t, a, cv, "Screen")
+	if a.confirm == nil {
+		t.Fatal("no question")
+	}
+	tapLabel(t, a, cv, "Turn")
+	if got != 0 {
+		t.Errorf("turn %d, want 0", got)
+	}
+}
