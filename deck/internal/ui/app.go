@@ -42,7 +42,7 @@ var (
 
 // setSize sets W, H and the positions that depend on them. The caller holds drawMu.
 func setSize(s kit.Screen) {
-	W, H, contentY1 = s.W, s.H, s.H
+	W, H, contentY1, sideBar = s.W, s.H, s.H, false
 	kbX1 = W - 24
 	kbY0 = H - 24 - 5*kbKeyH - 4*kbRowGap
 	printLCD = image.Rect(16, 16, W-16, 108)

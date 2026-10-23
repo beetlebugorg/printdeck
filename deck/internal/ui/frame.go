@@ -48,6 +48,9 @@ func bezelW(scale int) int { return 128*scale + 16 }
 // wideZones are the two columns of a wide screen, inside the margins, down to the bottom of the
 // content (above the print bar when it shows). The left column has the width of the display at
 // scale.
+//
+// On a wide screen the print bar is at the bottom of the left column (sideBar), so the left column
+// ends over it, and the right column goes down to the bottom.
 func wideZones(scale int) (left, right image.Rectangle) {
 	bottom := H - gridM
 	if contentY1 < H {
@@ -55,7 +58,18 @@ func wideZones(scale int) (left, right image.Rectangle) {
 	}
 	left = image.Rect(gridM, gridM, gridM+bezelW(scale), bottom)
 	right = image.Rect(left.Max.X+gridM, gridM, W-gridM, bottom)
+	if sideBar {
+		left.Max.Y = sideBarRect().Min.Y - gridM
+	}
 	return left, right
+}
+
+// sideBar is true when the print bar of a wide screen is at the bottom of the left column.
+var sideBar bool
+
+// sideBarRect is the print bar at the bottom of the left column of a wide screen.
+func sideBarRect() image.Rectangle {
+	return image.Rect(gridM, H-gridM-(barH-16), gridM+bezelW(wideScale), H-gridM)
 }
 
 // displayIn is the picture of the display at the top of the left column, in the middle, and the
@@ -77,10 +91,10 @@ func lcdRect(pane image.Rectangle) image.Rectangle {
 // divider draws the seam between the two columns of a wide screen: a groove in the middle of the
 // gap, a dark line and a light line, as the joint of two panels.
 func divider(c *gfx.Canvas) {
-	left, _ := wideZones(wideScale)
+	left, right := wideZones(wideScale)
 	x := left.Max.X + gridM/2 - 1
-	c.Fill(image.Rect(x, left.Min.Y, x+1, left.Max.Y), edge)
-	c.Fill(image.Rect(x+1, left.Min.Y, x+2, left.Max.Y), shine)
+	c.Fill(image.Rect(x, left.Min.Y, x+1, right.Max.Y), edge)
+	c.Fill(image.Rect(x+1, left.Min.Y, x+2, right.Max.Y), shine)
 }
 
 // systemKeyList are the keys of systemKeys, each a function that draws it in a place.

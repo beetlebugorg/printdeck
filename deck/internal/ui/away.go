@@ -111,17 +111,18 @@ func (a *App) lockedRow(c *gfx.Canvas, r image.Rectangle, title, sub string) {
 // drawPrintBar draws the print bar at the bottom of the screen: Pause, what the print does, its
 // progress, and the way back to it.
 func (a *App) drawPrintBar(c *gfx.Canvas, st printer.State) {
-	r := image.Rect(0, H-barH, W, H)
-	c.Fill(r, bg)
 	// The key in line with the content: the margin of the screen, and 8 pixels over and under it.
-	m := margin
-	if W > H {
-		m = gridM
+	// A wide screen has it at the bottom of the left column.
+	r := image.Rect(0, H-barH, W, H)
+	kr := kit.Inset(r, margin, 8, margin, 8)
+	if sideBar {
+		kr = sideBarRect()
+	} else {
+		c.Fill(r, bg)
 	}
-	kr := kit.Inset(r, m, 8, m, 8)
 	// Pause on each screen, as the feed hold of a machine: the pause shows the screen of the print.
 	if st.Printing && !st.Paused && !st.Preparing && !st.Finishing {
-		k := kit.Cols(kr, 8, kit.Px(112), kit.Fr(1))
+		k := kit.Cols(kr, 8, kit.Px(min(112, kr.Dx()*2/5)), kit.Fr(1))
 		a.button(c, k[0], "Pause", raised, text, a.Printer.Pause)
 		kr = k[1]
 	}
@@ -132,7 +133,10 @@ func (a *App) drawPrintBar(c *gfx.Canvas, st printer.State) {
 	in := kit.Inset(kr, 16, 0, 16, 5)
 	what, frac := printBarText(st)
 	go1 := "BACK TO PRINT ›"
-	if W < 600 {
+	switch {
+	case kr.Dx() < 240:
+		go1 = "›"
+	case W < 600:
 		go1 = "BACK ›"
 	}
 	face := gfx.Face(true, 16)

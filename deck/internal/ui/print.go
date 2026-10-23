@@ -58,8 +58,13 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	}
 	a.followPrint(st)
 	if a.bar = a.showsBar(st); a.bar {
-		// The print bar at the bottom: the screens get the space above it.
-		contentY1 = H - barH
+		// The print bar at the bottom: the screens get the space above it. A wide screen has it at
+		// the bottom of the left column, so it does not go across the two columns.
+		if W > H {
+			sideBar = true
+		} else {
+			contentY1 = H - barH
+		}
 		defer a.drawPrintBar(c, st)
 	}
 	switch a.topPage() {
