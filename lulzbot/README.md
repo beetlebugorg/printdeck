@@ -20,8 +20,8 @@ electronics chassis, and it wraps around the front left edge of the chassis.
 - The pod is on the left side of the chassis (the aluminium cover), at the same height as the
   head. It holds the Pi and the cables. The white grille snaps into a pocket of the pod.
 - There is no hole to drill. Two printed clips hold the right end of the head on the front slot
-  of the rail. A metal M3 hammer nut for 2020 extrusion goes into the slot along it and turns a
-  quarter turn behind the lips, and an M3 x 8 screw from the clip pulls it up. Two screws through
+  of the rail. A metal M3 roll-in T-nut for 2020 extrusion rolls into the slot behind the
+  lips, and an M3 x 8 screw from the clip pulls it up. Two screws through
   a flange of the plate hold up the head. The printer USB cable and the power cable leave at the rear face of the chassis.
 
 ## Parts
@@ -52,17 +52,18 @@ the step chips and the list do not agree. All screws are M3 socket cap head scre
 
 - M3 x 6 socket cap head: 12 (display 4, Pi 4, drive 4). The display and Pi screws cut their
   own thread in a 2.5 mm hole in the boss: turn them until snug, no more.
-- M3 x 8 socket cap head: 4 (pod onto the plate 2, rail clips into the hammer nuts 2)
+- M3 x 8 socket cap head: 4 (pod onto the plate 2, rail clips into the T-nuts 2)
 - M3 x 10 socket cap head: 6 (back panel into the head 4; plate on the cover 2, upper pair of PP-FP0164)
 - M3 x 12 socket cap head: 2 (plate flange into the back panel)
 - M3 washer: 2 (under the cover screws)
 - M3 x 7 heat-set insert: 6 (head 4, back panel 2; 3 to 7 mm fits)
 - M3 x 5 heat-set insert: 2 (pod blocks; 3 to 5 mm fits)
-- M3 hammer nut (drop-in T-nut) for 2020 extrusion, 6 mm slot: 2 (rail clips). Search for
-  "M3 hammer nut 2020" or "M3 drop-in T-nut 2020 slot 6", or buy Misumi HNTAP5-3. The LulzBot
-  BOM uses Misumi HNTAP5-5 (the M5 size) in this frame.
+- M3 roll-in T-nut with spring ball, for 2020 extrusion, 6 mm slot: 2 (rail clips). Buy the uxcell
+  M3 roll-in spring T-nut with ball, 2020 series (Amazon B09MFT1PKF). It rolls into the slot at
+  any point on the rail, and the spring ball holds it in place. The LulzBot BOM uses Misumi
+  HNTAP5-5 drop-in T-nuts (the M5 size) in this frame.
 
-The rail is 2020 extrusion. The model has a typical hammer nut: 10 mm across the slot, 6 mm
+The rail is 2020 extrusion. The model has a typical M3 T-nut: 10 mm across the slot, 6 mm
 along it, 4 mm thick, with 45 degree sides at the bottom. Its top is 1.8 mm behind the face of
 the rail, so the M3 x 8 screw goes 3.9 mm into its thread. An M3 x 10 screw goes 7.7 mm behind
 the face, past the bottom of the slot (about 6.5 mm), so do not use one. A printed twist nut

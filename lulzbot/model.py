@@ -86,9 +86,9 @@ HARDWARE = [
     ("drive_screw", "m3x6", "M3 × 6 socket cap head", "VIGRUE M3 kit", "drive on the back panel"),
     ("display_screw", "m3x6", "M3 × 6 socket cap head", "VIGRUE M3 kit", "display board (it cuts its thread)"),
     ("pi_screw", "m3x6", "M3 × 6 socket cap head", "VIGRUE M3 kit", "Pi (it cuts its thread)"),
-    ("clip_screw", "m3x8", "M3 × 8 socket cap head", "VIGRUE M3 kit", "rail clip into its hammer nut"),
-    ("hammer_nut", "m3_hammer", "M3 hammer nut (drop-in T-nut) for 2020 extrusion, 6 mm slot", "buy: search "
-     "“M3 hammer nut 2020” or Misumi HNTAP5-3", "rail clips"),
+    ("clip_screw", "m3x8", "M3 × 8 socket cap head", "VIGRUE M3 kit", "rail clip into its T-nut"),
+    ("hammer_nut", "m3_hammer", "M3 roll-in T-nut with spring ball, for 2020 extrusion, 6 mm slot", "buy: uxcell M3 roll-in "
+     "spring T-nut with ball, 2020 series (Amazon B09MFT1PKF)", "rail clips"),
     ("insert_head_back", "ins_m3x7", "M3 × 7 heat-set insert", "FFVRVSS insert kit", "head, back screws (3 to 7 mm fits)"),
     ("insert_back_flange", "ins_m3x7", "M3 × 7 heat-set insert", "FFVRVSS insert kit", "back panel, flange screws (3 to 7 mm fits)"),
     ("insert_pod_block", "ins_m3x5", "M3 × 5 heat-set insert", "FFVRVSS insert kit", "plate, pod screw blocks (3 to 5 mm fits)"),

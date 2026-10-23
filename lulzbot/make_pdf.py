@@ -44,7 +44,7 @@ def chip(key, n):
     """A hardware chip: the count and the short name of an item of the hardware list."""
     item = ITEMS[key]["item"]
     short = item.replace(" socket cap head", "").replace(" heat-set insert", " insert")
-    short = short.replace(" (drop-in T-nut) for 2020 extrusion, 6 mm slot", "")
+    short = short.replace(" with spring ball, for 2020 extrusion, 6 mm slot", "")
     return f"{n} × {short}"
 
 
@@ -162,15 +162,15 @@ STEPS = [
         "snug, and no more.",
     ], None),
     ("step_clips", "Clips in the rail", ["2 × rail clip"], {"m3_hammer": 2, "m3x8": 2}, [
-        "Put an M3 × 8 screw through the counterbore in the key of each clip, and turn it two turns into a hammer "
-        "nut. The sloped side of the nut points away from the clip.",
         "Hold the back panel on the front face of the front left rail, with its bottom edge 125 mm above the bottom "
         "of the chassis. Mark the top of the two long slots in the panel on the rail.",
-        "Turn a clip a quarter turn, so that the nut is along the slot. Push the nut into the front slot of the rail "
-        "at a mark. Turn the clip back until the key is along the rail: the nut turns with it, behind the lips.",
+        "At each mark, put one edge of a T-nut into the front slot of the rail, with the thread toward you. Roll the "
+        "nut in until it is behind the lips. The spring ball holds it in the slot.",
+        "Put a clip on the rail at a mark, with its key along the rail. Put an M3 × 8 screw through the counterbore "
+        "in the key, and turn it into the nut.",
         "Tighten the screw until the clip is tight on the rail. Do the same with the second clip.",
-    ], "The hammer nut is wider than the opening of the slot when it is across the slot. If the nut does not turn "
-       "with the clip, push it in with a small screwdriver beside the clip and turn it a quarter turn."),
+    ], "You can roll the nut into the slot at any point on the rail. You do not remove the ends of the rail. If "
+       "the nut moves away from the mark, push it back with a small screwdriver."),
     ("step_hang", "Hang the head", ["head (step 4)"], {"m3x12": 2}, [
         "Hold the head 30 mm above its place, with the two windows of the back panel over the two clip keys. Push the "
         "back panel against the clips.",
@@ -284,7 +284,7 @@ def cover():
   the 7 inch touch display in a wide head below the TAZ Workhorse logo, and the Raspberry Pi 5 in a pod on the
   left side of the electronics chassis. The head leans back 15°, the same as the Slate, and faces the front of the
   printer. The drive is in the head, behind the display. There is no hole to drill:
-  two printed clips hold on the front rail with metal hammer nuts, the upper pair of screws of the cover
+  two printed clips hold on the front rail with metal T-nuts, the upper pair of screws of the cover
   (PP-FP0164) holds the plate, and the cables leave at the rear of the chassis.</p>
   <div class="fig"><img src="{img('hero')}" style="max-height:120mm;max-width:49%"><img src="{img('side')}" style="max-height:120mm;max-width:49%"></div>
   <div class="need"><div class="chip"><span class="sw" style="background:#1F2B4D"></span>Navy PLA</div>
@@ -405,8 +405,8 @@ def mount_page():
     screws into nuts in the chassis. The two screws of its upper pair, under the plate, change to M3 × 10 socket cap
     screws with a washer. They are at: {pos}. The pads have slots 10 mm long and 4.4 mm wide, so the plate fits 5 mm
     up or down.</li>
-    <li><b>Front rail.</b> Two printed clips hold on the front slot of the front left rail. An M3 hammer nut for
-    2020 extrusion goes into the slot along it, and turns a quarter turn behind the lips; an M3 × 8 screw pulls it
+    <li><b>Front rail.</b> Two printed clips hold on the front slot of the front left rail. An M3 roll-in T-nut for
+    2020 extrusion rolls into the slot behind the lips, and an M3 × 8 screw pulls it
     up. You drill no hole in the rail. The dovetail keys of the clips
     hold the right end of the head against the rail.</li>
     <li><b>Flange.</b> Two M3 × 12 socket cap screws go from inside the pod through the flange of the plate into the

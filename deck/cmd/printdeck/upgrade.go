@@ -207,9 +207,8 @@ func lulzGuides(g lulzGuide) []bookGuide {
 	para(&what, "This kit puts the Printdeck on the front left of your TAZ Workhorse. The 7 inch touch screen is in a "+
 		"wide head below the TAZ Workhorse logo, and the Raspberry Pi 5 is in a pod on the left side of the "+
 		"electronics chassis. The head leans back 15 degrees, so you see the screen from the front of the printer.")
-	para(&what, "You print the parts on the Workhorse itself. Two printed clips hold on the front rail with printed twist "+
-		"nuts, and two screws of the side cover hold the plate. You drill no hole in the printer, and you put no metal nut "+
-		"in the rail.")
+	para(&what, "You print the parts on the Workhorse itself. Two printed clips hold on the front rail with metal "+
+		"T-nuts, and two screws of the side cover hold the plate. You drill no hole in the printer.")
 	what.add(bookBlock{Kind: "image", Images: []string{"lulzbot-hero", "lulzbot-side"}, ImageH: 3.1}, 3.25)
 	what.add(bookBlock{Kind: "chips", Chips: []string{
 		fmt.Sprintf("%d printed parts", t.Parts), fmt.Sprintf("%d g of PLA", t.Grams), t.Time + " of printing",
@@ -224,8 +223,8 @@ func lulzGuides(g lulzGuide) []bookGuide {
 	note(&plan, fmt.Sprintf("Total: %d g of PLA (%d m), %s of printing, %s at %s a kilogram. The fit test of the "+
 		"screen opening (%s, %d g, %s) is optional.", t.Grams, t.Metres, t.Time, t.Cost, t.PricePerKg, g.Test.File, g.Test.Grams, g.Test.Time))
 	note(&plan, "Print the fit test first, and check the display in it: the display pocket has 0.3 mm of clearance at each "+
-		"side. Then print the head and the back panel: steps 2 to 4 need them. Then print the plate, the clips and the "+
-		"nuts, the pod and the grille.")
+		"side. Then print the head and the back panel: steps 2 to 4 need them. Then print the plate, the clips, the pod "+
+		"and the grille.")
 	sub(&plan, "Settings")
 	for _, r := range g.Settings {
 		plan.add(bookBlock{Kind: "table", Rows: [][2]string{r}}, lines(len(r[1]), 44)*0.17+0.12)
@@ -256,7 +255,7 @@ func lulzGuides(g lulzGuide) []bookGuide {
 	check.add(bookBlock{Kind: "image", Images: []string{"lulzbot-exploded"}, ImageH: 2.6}, 2.75)
 	para(&check, "The mount uses two screws of the printer and the front rail. The upper pair of screws of the side cover "+
 		"(PP-FP0164) holds the plate. Two printed clips on the front slot of the front left rail hold the right end of the "+
-		"head: a printed twist nut turns behind the lips of the slot, and an M3 × 8 screw pulls it up. Two screws through a flange of the plate hold up the head, and the pod slides onto two hooks of the plate.")
+		"head: a metal T-nut rolls into the slot behind the lips, and an M3 × 8 screw pulls it up. Two screws through a flange of the plate hold up the head, and the pod slides onto two hooks of the plate.")
 	sub(&check, "Check on your printer")
 	list(&check, "olist", g.Checks)
 

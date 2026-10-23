@@ -173,8 +173,8 @@ FLANGE_Z = (12.5, 23.2)          # the flange block (its underside slopes 45 deg
 # in) and 6.55 mm deep; measured in the model, the cavity behind the lips is a 45 degree V:
 # 12.9 mm wide at 0.5 mm, 4.9 mm wide at 4.5 mm. The rail is 2020 extrusion with a 6 mm slot.
 # The LulzBot BOM puts Misumi HNTAP5-5 drop-in T-nuts (M5) in this frame. Each clip has a metal
-# M3 hammer nut for a 2020 6 mm slot: it drops in through the opening along the slot, and turns
-# a quarter turn behind the lips. An M3 x 8 screw from a counterbore in the key of the clip
+# M3 roll-in T-nut for a 2020 6 mm slot (the uxcell nut with a spring ball): it rolls in through
+# the opening, behind the lips. An M3 x 8 screw from a counterbore in the key of the clip
 # pulls the nut against the lips. A printed nut failed: it must be less than 5.1 mm wide to go
 # in, so the plastic around the M3 thread was too thin to hold. Clip coordinates: the slot
 # centre and the rail face. The clip prints on its end, so its section is on the bed and it
