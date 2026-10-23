@@ -141,3 +141,13 @@ In a debug build, the environment variables `PRINTDECK_ADDRESS` and `PRINTDECK_K
 and `PRINTDECK_SCREEN` opens a screen: `menu`, `info` or `cancel` on the watch, `files` or
 `setup` on the iPhone. With `xcrun simctl launch`, give them the prefix `SIMCTL_CHILD_`. The
 simulated deck of `printdeck app -sim` reads its API key from `OCTOPRINT_API_KEY`.
+
+## License
+
+The code in this folder is under the MIT License (`LICENSE`). The rest of the repository is under
+the AGPL. `Shared/LCDScreen.swift` is a port of `deck/internal/lcd` of the deck, by the same
+authors, under the MIT License here.
+
+- `Shared/Fonts/`: IBM Plex Mono, SIL Open Font License 1.1 (`Shared/Fonts/OFL.txt`).
+- `Shared/LCDFonts.swift`: the X11 misc-fixed font 5x8 (public domain), and the glyphs of the
+  VGA 8 x 16 font of the fntcol16 package (public domain), as the displays of Klipper have them.
