@@ -7,15 +7,23 @@ import re
 
 def parse_status(data):
     """Returns the answer of GET /api/plugin/printdeck as a dict with the keys material, diameter,
-    spool and job. spool and job are None when the Printdeck has none."""
+    spool, spools and job. spool and job are None when the Printdeck has none. spools is None
+    when the Printdeck does not send the list of its rolls."""
     if not isinstance(data, dict):
         return None
     spool = data.get("spool") if isinstance(data.get("spool"), dict) else None
     job = data.get("job") if isinstance(data.get("job"), dict) else None
+    # spools is the list of all rolls, or None from an older Printdeck.
+    spools = data.get("spools")
+    if isinstance(spools, list):
+        spools = [sp for sp in spools if isinstance(sp, dict) and sp.get("id")]
+    else:
+        spools = None
     return {
         "material": str(data.get("material") or ""),
         "diameter": float(data.get("diameter") or 0),
         "spool": spool,
+        "spools": spools,
         "job": job,
     }
 
@@ -213,3 +221,56 @@ def roll_card(status, needed):
         else:
             card["job"] = "This print: %d g. %d g left after." % (round(needed), round(left - needed))
     return card
+
+
+def roll_plan(spools, existing, made):
+    """What each roll of the Printdeck needs in Cura. spools is the list of the rolls, existing the
+    set of the base files of the materials of Cura, and made maps the ID of a roll to the base file
+    of the material that the plugin made for it. Returns a list of (roll, action, base file):
+
+    - "keep": the material of the roll is in Cura.
+    - "link": the Printdeck has no material of Cura for the roll, or a material that Cura has no
+      more, but the plugin made one before. The plugin tells the Printdeck that material.
+    - "make": the roll has no material in Cura. The base file is "".
+    """
+    plan = []
+    for sp in spools:
+        cura = sp.get("cura_material") or ""
+        if cura and cura in existing:
+            plan.append((sp, "keep", cura))
+        elif made.get(sp["id"]) in existing:
+            plan.append((sp, "link", made[sp["id"]]))
+        else:
+            plan.append((sp, "make", ""))
+    return plan
+
+
+def roll_favorites(favorites, added, wanted):
+    """The favorite materials of Cura with the materials of the rolls. favorites is the list of
+    the favorites now (the preference cura/favorite_materials), added the materials that the plugin
+    added before, and wanted the materials of the rolls now. A favorite that the plugin added and
+    that no roll has now goes. The favorites of the user stay. Returns the new favorites and the
+    new list of the materials that the plugin added."""
+    added, wanted = set(added), [w for w in wanted if w]
+    keep = [f for f in favorites if f and (f not in added or f in wanted)]
+    mine = [w for w in wanted if w in added or w not in favorites]
+    for w in wanted:
+        if w not in keep:
+            keep.append(w)
+    return keep, sorted(set(mine))
+
+
+def roll_material_changes(meta, spool):
+    """The metadata of a material that the plugin made, which must change to follow its roll: a dict
+    with name, color_code and color_name, or an empty dict. meta is the metadata of the material.
+    A roll with no color keeps the color of the material."""
+    name = spool_name(spool)
+    changes = {}
+    if meta.get("name") != name:
+        changes["name"] = name
+    color = spool.get("color") or ""
+    if color and meta.get("color_code", "").lower() != color.lower():
+        changes["color_code"] = color
+    if (changes.get("color_code") or meta.get("color_code")) and meta.get("color_name") != name:
+        changes["color_name"] = name
+    return changes

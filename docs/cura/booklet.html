@@ -222,7 +222,7 @@
     </div>
     
     
-    <ul class="list"><li>The print button says Print to Printdeck. After a send, Cura opens the Printdeck tab.</li><li>The Printdeck tab shows the touch screen of the deck, live. You click it as you tap the touch screen.</li><li>When the roll in the deck changes, Cura changes to the material of the roll.</li><li>After a slice, Cura warns you when the roll is too short for the model.</li><li>During a print, the Preview of Cura shows the layer that prints.</li><li>The Print on a part tool prints new models on a part that is printed already.</li></ul>
+    <ul class="list"><li>The print button says Print to Printdeck. After a send, Cura opens the Printdeck tab.</li><li>The Printdeck tab shows the touch screen of the deck, live. You click it as you tap the touch screen.</li><li>When the roll in the deck changes, Cura changes to the material of the roll.</li><li>Each roll on the deck has a material in Cura, at the top of the material menu.</li><li>After a slice, Cura warns you when the roll is too short for the model.</li><li>During a print, the Preview of Cura shows the layer that prints.</li><li>The Print on a part tool prints new models on a part that is printed already.</li></ul>
     
     
     <p>The plugin needs Cura 5. Cura LulzBot Edition (Cura 4.13) does not show the tab and the tool.</p>
@@ -407,6 +407,15 @@
     
     
     <p>When the roll in the deck changes, Cura changes to the material of the roll. A message tells you, for example: &#34;The Printdeck has Black (PLA). Cura now prints with Generic PLA.&#34; When Cura has no profile for that material on this printer, the message tells you, and Cura keeps its material.</p>
+    
+    
+    <h4>Your rolls in the material menu</h4>
+    
+    
+    <p>Each roll on the deck has a material in Cura, with the name and the color of the roll. The rolls are favorites, so they are at the top of the material menu. When a roll has no material in Cura, the plugin makes one: a copy of the Cura material of the same type, for example Generic PLA. The plugin makes one material every 10 seconds. When you change the name or the color of a roll on the deck, its material changes too. The price and the weight of the roll go to the material, so Cura shows the cost of a print.</p>
+    
+    
+    <p>When you remove a roll from the deck, its material leaves the favorites. The material stays in Cura, so that old projects still open. A material that you choose in Cura does not change the roll on the deck.</p>
     
     
     <h4>A short roll</h4>

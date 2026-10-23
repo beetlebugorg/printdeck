@@ -80,6 +80,8 @@ class RollCard(QObject):
         return self._get("short", False)
 
 POLL_SECONDS = 10
+# The preference with the favorite materials that the plugin added for the rolls, ";" between them.
+ROLL_FAVORITES = "printdeck/roll_favorites"
 BUTTON = "Print to Printdeck"
 SENT_SECONDS = 300  # the time from a write to the change to Monitor, with the upload dialog
 
@@ -116,6 +118,8 @@ class PrintdeckPlugin(Extension):
 
     def _start(self):
         app = CuraApplication.getInstance()
+        # The favorite materials that the plugin added for the rolls, so that it removes only those.
+        app.getPreferences().addPreference(ROLL_FAVORITES, "")
         app.getPrintInformation().materialWeightsChanged.connect(self._checkRoll)
         app.getOutputDeviceManager().writeStarted.connect(self._tagMaterial)
         app.fileCompleted.connect(self._onFileCompleted)
@@ -183,6 +187,7 @@ class PrintdeckPlugin(Extension):
                 self._offerPrint()
         self._nameButton()
         self._sendMaterials()
+        self._syncRolls()
         self._followRoll()
         self._checkRoll()
         self._followPrint()
@@ -369,10 +374,22 @@ class PrintdeckPlugin(Extension):
         if new != old:
             prefs.setValue("cura/material_settings", new)
 
-    def _makeRollMaterial(self, spool):
-        """Makes a material of Cura for a roll that has none: a copy of the material of Cura now when
-        it has the type of the roll, else of the generic one, with the name and the color of the
-        roll. Then Cura selects it, and the Printdeck links the roll to it."""
+    def _madeMaterials(self):
+        """The materials that the plugin made for rolls: a dict from the ID of the roll to the
+        metadata of the root material."""
+        from cura.Settings.CuraContainerRegistry import CuraContainerRegistry
+
+        made = {}
+        for m in CuraContainerRegistry.getInstance().findInstanceContainersMetadata(type="material"):
+            rid = m.get("printdeck_roll")
+            if rid and m.get("base_file") == m.get("id"):
+                made.setdefault(rid, m)
+        return made
+
+    def _newRollMaterial(self, spool):
+        """Makes a material of Cura for a roll: a copy of the material of Cura now when it has the
+        type of the roll, else of the generic one, with the name and the color of the roll. Returns
+        the base file of the new material and the name of the material that it copies, or None."""
         import uuid
 
         from cura.Settings.CuraContainerRegistry import CuraContainerRegistry
@@ -382,31 +399,113 @@ class PrintdeckPlugin(Extension):
         rid = spool["id"]
         name = logic.spool_name(spool)
         material = spool.get("material") or ""
-        # A material that the plugin made for the roll before.
-        made = [m for m in registry.findInstanceContainersMetadata(type="material", printdeck_roll=rid)
-                if m.get("base_file") == m.get("id")]
+        _, extruder = self._extruder()
+        if not extruder:
+            return None
+        nodes = self._materialNodes()
+        base = logic.choose_base(material, extruder.material.getMetaDataEntry("base_file"),
+                                 extruder.material.getMetaDataEntry("material") or "",
+                                 [(n.base_file, n.material_type, n.brand) for n in nodes])
+        node = next((n for n in nodes if n.base_file == base), None)
+        if not node:
+            Logger.log("w", "Printdeck: no %s material of Cura for the roll %s", material, name)
+            return None
+        meta = {"name": name, "brand": logic.roll_brand(node.brand), "GUID": str(uuid.uuid4()), "printdeck_roll": rid}
+        color = spool.get("color") or logic.color_from_name(name)
+        if color:
+            meta["color_code"], meta["color_name"] = color, name
+        base_id = app.getMaterialManagementModel().duplicateMaterialByBaseFile(
+            base, registry.uniqueName("printdeck_" + logic.material_slug(name)), meta)
+        if not base_id:
+            return None
+        Logger.log("i", "Printdeck: made the material %s for the roll %s from %s", base_id, rid, base)
+        return base_id, node.container.getName()
+
+    def _syncRolls(self):
+        """Gives each roll of the Printdeck a material of Cura, keeps the name, the color and the
+        cost of the materials that the plugin made in step with the rolls, and puts the materials of
+        the rolls in the favorites, at the top of the material menu. An older Printdeck sends no
+        list of rolls: then the plugin does nothing here."""
+        from cura.Settings.CuraContainerRegistry import CuraContainerRegistry
+
+        spools = self._status.get("spools")
+        if spools is None:
+            return
+        registry = CuraContainerRegistry.getInstance()
+        made = self._madeMaterials()
+        existing = {m["id"] for m in registry.findInstanceContainersMetadata(type="material")
+                    if m.get("base_file") == m.get("id")}
+        wanted, new = [], 0
+        for sp, action, base_id in logic.roll_plan(spools, existing, {rid: m["id"] for rid, m in made.items()}):
+            if action == "make":
+                # One new material in each answer of the Printdeck: Cura adds a material to its tree
+                # in its event loop, and many at once make it slow.
+                if new:
+                    continue
+                new += 1
+                result = self._newRollMaterial(sp)
+                if not result:
+                    continue
+                base_id = result[0]
+                meta = (registry.findInstanceContainersMetadata(id=base_id) or [{}])[0]
+                self._linkRoll(sp["id"], base_id, meta.get("color_code", ""))
+            elif action == "link":
+                self._linkRoll(sp["id"], base_id, made[sp["id"]].get("color_code", ""))
+            mine = made.get(sp["id"])
+            if mine and mine["id"] == base_id:
+                self._followRollName(base_id, mine, sp)
+            self._setSpoolCost(base_id, sp)
+            wanted.append(base_id)
+        self._setRollFavorites(wanted)
+
+    def _followRollName(self, base_id, meta, spool):
+        """Gives a material that the plugin made the name and the color of its roll."""
+        from cura.Settings.CuraContainerRegistry import CuraContainerRegistry
+
+        changes = logic.roll_material_changes(meta, spool)
+        if not changes:
+            return
+        containers = CuraContainerRegistry.getInstance().findContainers(id=base_id)
+        if not containers:
+            return
+        root = containers[0]
+        if "name" in changes:
+            root.setName(changes.pop("name"))
+        for key, value in changes.items():
+            root.setMetaDataEntry(key, value)
+        Logger.log("i", "Printdeck: the material %s follows its roll %s", base_id, spool.get("id"))
+
+    def _setRollFavorites(self, wanted):
+        """Puts the materials of the rolls in the favorites of Cura, and takes out the materials
+        that the plugin added for rolls that are gone."""
+        prefs = CuraApplication.getInstance().getPreferences()
+        favorites = (prefs.getValue("cura/favorite_materials") or "").split(";")
+        added = [f for f in (prefs.getValue(ROLL_FAVORITES) or "").split(";") if f]
+        new, mine = logic.roll_favorites(favorites, added, wanted)
+        if new != [f for f in favorites if f]:
+            prefs.setValue("cura/favorite_materials", ";".join(new))
+        if mine != sorted(set(added)):
+            prefs.setValue(ROLL_FAVORITES, ";".join(mine))
+
+    def _makeRollMaterial(self, spool):
+        """Selects the material of Cura of the roll in the printer: the material that the plugin
+        made for the roll before, or a new one. The Printdeck then links the roll to it."""
+        from cura.Settings.CuraContainerRegistry import CuraContainerRegistry
+
+        app = CuraApplication.getInstance()
+        registry = CuraContainerRegistry.getInstance()
+        rid = spool["id"]
+        name = logic.spool_name(spool)
+        material = spool.get("material") or ""
+        made = self._madeMaterials().get(rid)
         if made:
-            base_id, copied = made[0]["id"], None
+            base_id, copied = made["id"], None
         else:
-            _, extruder = self._extruder()
-            nodes = self._materialNodes()
-            base = logic.choose_base(material, extruder.material.getMetaDataEntry("base_file"),
-                                     extruder.material.getMetaDataEntry("material") or "",
-                                     [(n.base_file, n.material_type, n.brand) for n in nodes])
-            node = next((n for n in nodes if n.base_file == base), None)
-            if not node:
+            result = self._newRollMaterial(spool)
+            if not result:
                 _message("The Printdeck has %s. Cura has no %s material for this printer to start from." % (name, material))
                 return
-            copied = node.container.getName()
-            meta = {"name": name, "brand": logic.roll_brand(node.brand), "GUID": str(uuid.uuid4()), "printdeck_roll": rid}
-            color = spool.get("color") or logic.color_from_name(name)
-            if color:
-                meta["color_code"], meta["color_name"] = color, name
-            base_id = app.getMaterialManagementModel().duplicateMaterialByBaseFile(
-                base, registry.uniqueName("printdeck_" + logic.material_slug(name)), meta)
-            if not base_id:
-                return
-            Logger.log("i", "Printdeck: made the material %s for the roll %s from %s", base_id, rid, base)
+            base_id, copied = result
         self._setSpoolCost(base_id, spool)
         color = (registry.findInstanceContainersMetadata(id=base_id) or [{}])[0].get("color_code", "")
         # Cura adds the new material to its tree in its event loop: select it a moment later.

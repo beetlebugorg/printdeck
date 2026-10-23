@@ -106,5 +106,35 @@ class TestRollMaterial(unittest.TestCase):
         self.assertIsNone(logic.roll_card(None, 0))
 
 
+    def test_roll_plan(self):
+        rolls = [{"id": "1", "cura_material": "generic_pla"}, {"id": "2", "cura_material": "gone"},
+                 {"id": "3"}, {"id": "4"}]
+        plan = logic.roll_plan(rolls, {"generic_pla", "printdeck_red"}, {"2": "printdeck_red", "4": "printdeck_old"})
+        self.assertEqual([(sp["id"], action, base) for sp, action, base in plan],
+                         [("1", "keep", "generic_pla"), ("2", "link", "printdeck_red"), ("3", "make", ""), ("4", "make", "")])
+
+    def test_roll_favorites(self):
+        # The user has generic_abs. The plugin added printdeck_old before; its roll is gone.
+        favs, added = logic.roll_favorites(["generic_abs", "printdeck_old", ""], ["printdeck_old"],
+                                           ["printdeck_white", "generic_abs", ""])
+        self.assertEqual(favs, ["generic_abs", "printdeck_white"])
+        self.assertEqual(added, ["printdeck_white"])  # generic_abs was a favorite of the user
+        # The next time, nothing changes.
+        self.assertEqual(logic.roll_favorites(favs, added, ["printdeck_white", "generic_abs"]), (favs, added))
+        # The roll goes: its material leaves the favorites, the favorite of the user stays.
+        self.assertEqual(logic.roll_favorites(favs, added, []), (["generic_abs"], []))
+
+    def test_roll_material_changes(self):
+        meta = {"name": "White", "color_code": "#f5f5f5", "color_name": "White"}
+        self.assertEqual(logic.roll_material_changes(meta, {"name": "White"}), {})
+        self.assertEqual(logic.roll_material_changes(meta, {"name": "Snow", "color": "#FFFFFF"}),
+                         {"name": "Snow", "color_code": "#FFFFFF", "color_name": "Snow"})
+        self.assertEqual(logic.roll_material_changes(meta, {"name": "White", "color": "#F5F5F5"}), {})
+
+    def test_parse_rolls(self):
+        s = logic.parse_status({"material": "PLA", "spools": [{"id": "1"}, {"name": "no id"}, 3]})
+        self.assertEqual(s["spools"], [{"id": "1"}])
+        self.assertIsNone(logic.parse_status({"material": "PLA"})["spools"])
+
 if __name__ == "__main__":
     unittest.main()
