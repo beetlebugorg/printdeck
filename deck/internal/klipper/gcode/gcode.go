@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"unicode"
 
 	"printdeck/internal/klipper/configfile"
@@ -256,6 +257,9 @@ type mux struct {
 
 // Dispatch reads G-code and runs the handlers (GCodeDispatch).
 type Dispatch struct {
+	// abort stops the script that runs now before its next command, for RunScriptAbort. Printdeck:
+	// Klipper has no way to stop a long macro, such as a start macro that heats and probes.
+	abort              atomic.Bool
 	printer            *host.Printer
 	isFileinput        bool
 	isPrinterReady     bool
@@ -470,6 +474,9 @@ func joinRange(parts []string, from, to int) string {
 
 func (g *Dispatch) processCommands(commands []string, needAck bool) {
 	for _, line := range commands {
+		if g.abort.Load() {
+			return // RunScriptAbort waits for the mutex
+		}
 		// Ignore comments and leading/trailing spaces
 		line = strings.TrimSpace(line)
 		origline := line
@@ -534,6 +541,21 @@ func (g *Dispatch) runHandler(handler Handler, gcmd *Command, cmd string, needAc
 func (g *Dispatch) RunScriptFromCommand(script string) {
 	g.processCommands(strings.Split(script, "\n"), false)
 }
+
+// RunScriptAbort runs a script after the script that runs now: that script stops before its next
+// command, and a wait for a temperature ends (Aborting). For a cancel during a long macro, such as
+// the start macro of a print. Printdeck: not in Klipper.
+func (g *Dispatch) RunScriptAbort(script string) {
+	g.abort.Store(true)
+	g.mutex.Lock()
+	g.abort.Store(false)
+	defer g.mutex.Unlock()
+	g.processCommands(strings.Split(script, "\n"), false)
+}
+
+// Aborting reports that RunScriptAbort waits for the script that runs now. A long wait in a
+// command ends when it is true.
+func (g *Dispatch) Aborting() bool { return g.abort.Load() }
 
 // RunScript runs a script. A command error panics.
 func (g *Dispatch) RunScript(script string) {

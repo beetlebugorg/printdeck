@@ -539,7 +539,7 @@ func (ph *PrinterHeaters) waitForTemperature(heater *Heater) {
 	g := gcode.Of(ph.printer)
 	r := ph.printer.Reactor()
 	eventtime := r.Monotonic()
-	for !ph.printer.IsShutdown() && heater.CheckBusy(eventtime) {
+	for !ph.printer.IsShutdown() && !g.Aborting() && heater.CheckBusy(eventtime) {
 		th.LastMoveTime()
 		g.RespondRaw(ph.getTemp(eventtime))
 		eventtime = r.Pause(eventtime + 1.)
@@ -575,7 +575,7 @@ func (ph *PrinterHeaters) cmdTemperatureWait(gcmd *gcode.Command) {
 	th := ph.printer.LookupObject("toolhead").(toolhead)
 	r := ph.printer.Reactor()
 	eventtime := r.Monotonic()
-	for !ph.printer.IsShutdown() {
+	for !ph.printer.IsShutdown() && !gcode.Of(ph.printer).Aborting() {
 		temp, _ := sensor.GetTemp(eventtime)
 		if temp >= minTemp && temp <= maxTemp {
 			return
