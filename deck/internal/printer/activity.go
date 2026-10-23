@@ -28,6 +28,16 @@ func (v *View) Activity(st *State) {
 	default:
 		st.Activity = "Printing"
 	}
+	v.mu.Lock()
+	gc := v.gc
+	if v.file != fileKey(*st) {
+		gc = nil
+	}
+	v.mu.Unlock()
+	if st.Paused && gc != nil {
+		// The layer of the pause, for the paused screen and the app.
+		st.Layers, st.Layer = gc.LayerCount, gc.LayerAt(st.FilePos)
+	}
 	if st.Paused || low != "printing" {
 		return
 	}
@@ -35,12 +45,6 @@ func (v *View) Activity(st *State) {
 	const near = 3.0 // degrees: closer than this to the target counts as reached
 	toolCold := st.ToolTarget > 0 && st.Tool < st.ToolTarget-near
 	bedCold := st.BedTarget > 0 && st.Bed < st.BedTarget-near
-	v.mu.Lock()
-	gc := v.gc
-	if v.file != fileKey(*st) {
-		gc = nil
-	}
-	v.mu.Unlock()
 
 	if gc == nil {
 		// The G-code is not loaded yet. The temperatures show the heating.
