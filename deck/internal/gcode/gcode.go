@@ -256,16 +256,30 @@ func word(w string, letter byte) (float64, bool) {
 var (
 	sinA, cosA = math.Sincos(35 * math.Pi / 180)
 	sinE, cosE = math.Sincos(40 * math.Pi / 180)
+	// Directions to the key light and to the weaker fill light, as in the STL picture.
+	keyLight  = unit([3]float64{-0.4, -0.5, 0.8})
+	fillLight = unit([3]float64{0.7, 0.3, 0.2})
+	// The direction to the viewer: the depth axis of project.
+	viewer = [3]float64{-sinA * cosE, -cosA * cosE, sinE}
 )
 
-func project(x, y, z float32) (u, v float64) {
+// project returns the screen coordinates of a point, and its depth (larger is nearer to the viewer).
+func project(x, y, z float32) (u, v, d float64) {
 	fx, fy, fz := float64(x), float64(y), float64(z)
-	return fx*cosA - fy*sinA, -((fx*sinA+fy*cosA)*sinE + fz*cosE)
+	depth := fx*sinA + fy*cosA
+	return fx*cosA - fy*sinA, -(depth*sinE + fz*cosE), -(depth * cosE) + fz*sinE
 }
+
+// lineWidth is the width of an extruded line in mm, for the picture.
+const lineWidth = 0.45
 
 // Render draws the model into a w x h picture. The part up to file offset pos is in colour, with the
 // layer that starts at curStart (the one being printed) in the colour hot and a mark at the end, and the rest
 // is a faint outline. The result has a transparent background.
+//
+// Each line is a band of the width of an extruded line, in front of the lines that it hides. A wall
+// is lit by its side, which faces the viewer; the other lines are lit as a top surface. The rest of
+// the model does not hide the printed part.
 func (m *Model) Render(w, h int, pos, curStart int64, warm, cool, hot, ghost color.RGBA) *image.RGBA {
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 	if len(m.Segs) == 0 {
@@ -275,7 +289,7 @@ func (m *Model) Render(w, h int, pos, curStart int64, warm, cool, hot, ghost col
 	for i := range m.Segs {
 		s := &m.Segs[i]
 		for _, p := range [2][3]float32{{s.X0, s.Y0, s.Z0}, {s.X1, s.Y1, s.Z1}} {
-			u, v := project(p[0], p[1], p[2])
+			u, v, _ := project(p[0], p[1], p[2])
 			minU, maxU = math.Min(minU, u), math.Max(maxU, u)
 			minV, maxV = math.Min(minV, v), math.Max(maxV, v)
 		}
@@ -284,38 +298,109 @@ func (m *Model) Render(w, h int, pos, curStart int64, warm, cool, hot, ghost col
 	scale := math.Min((float64(w)-2*pad)/(maxU-minU), (float64(h)-2*pad)/(maxV-minV))
 	ox := (float64(w) - (maxU-minU)*scale) / 2
 	oy := (float64(h) - (maxV-minV)*scale) / 2
-	pt := func(x, y, z float32) (int, int) {
-		u, v := project(x, y, z)
-		return int(ox + (u-minU)*scale), int(oy + (v-minV)*scale)
+	pt := func(x, y, z float32) (float64, float64, float64) {
+		u, v, d := project(x, y, z)
+		return ox + (u-minU)*scale, oy + (v-minV)*scale, d
 	}
+	zbuf := make([]float64, w*h)
+	for i := range zbuf {
+		zbuf[i] = math.Inf(-1)
+	}
+	px := max(2, int(math.Round(lineWidth*scale)))
 	last := -1 // the last move that is done: where the nozzle is
+	// The printed part first, and then the rest in the pixels that the printed part leaves: the rest
+	// does not hide the printed part.
 	for pass := 0; pass < 2; pass++ {
+		if pass == 1 {
+			for i := range zbuf {
+				if img.Pix[i*4+3] == 0 {
+					zbuf[i] = math.Inf(-1)
+				} else {
+					zbuf[i] = math.Inf(1)
+				}
+			}
+		}
 		for i := range m.Segs {
 			s := &m.Segs[i]
 			done := s.Pos <= pos
-			if (pass == 0) == done {
+			if (pass == 0) != done {
 				continue
 			}
 			col := ghost
 			if done {
-				t := float64(s.Z1 / max(m.MaxZ, 0.001))
-				col = mix(warm, cool, t)
+				col = mix(warm, cool, float64(s.Z1/max(m.MaxZ, 0.001)))
 				if s.Pos > curStart {
 					col = hot
 				}
 				last = i
 			}
-			x0, y0 := pt(s.X0, s.Y0, s.Z0)
-			x1, y1 := pt(s.X1, s.Y1, s.Z1)
-			line(img, x0, y0, x1, y1, col)
+			x0, y0, d0 := pt(s.X0, s.Y0, s.Z0)
+			x1, y1, d1 := pt(s.X1, s.Y1, s.Z1)
+			band(img, zbuf, x0, y0, d0, x1, y1, d1, px, lit(col, segNormal(s)))
 		}
 	}
 	if last >= 0 {
 		sg := &m.Segs[last]
-		x, y := pt(sg.X1, sg.Y1, sg.Z1)
-		dot(img, x, y, 5, color.RGBA{255, 255, 255, 255})
+		x, y, _ := pt(sg.X1, sg.Y1, sg.Z1)
+		dot(img, int(x), int(y), 5, color.RGBA{255, 255, 255, 255})
 	}
 	return img
+}
+
+// segNormal is the direction that the surface of a line faces. A wall faces out at its side,
+// turned to the viewer. The other lines are the top of a layer, and face up.
+func segNormal(s *Seg) [3]float64 {
+	if s.Kind != KindOuterWall && s.Kind != KindInnerWall {
+		return [3]float64{0, 0, 1}
+	}
+	n := unit([3]float64{float64(s.Y1 - s.Y0), float64(s.X0 - s.X1), 0})
+	if n[0]*viewer[0]+n[1]*viewer[1] < 0 {
+		n[0], n[1] = -n[0], -n[1]
+	}
+	return n
+}
+
+// lit is the colour c of a surface that faces n, under the key light and the fill light.
+func lit(c color.RGBA, n [3]float64) color.RGBA {
+	dot := func(a, b [3]float64) float64 { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2] }
+	shade := 0.32 + 0.58*max(0, dot(n, keyLight)) + 0.18*max(0, dot(n, fillLight))
+	f := func(v uint8) uint8 { return uint8(min(255, float64(v)*shade)) }
+	return color.RGBA{f(c.R), f(c.G), f(c.B), 255}
+}
+
+func unit(v [3]float64) [3]float64 {
+	l := math.Sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2])
+	if l == 0 {
+		return v
+	}
+	return [3]float64{v[0] / l, v[1] / l, v[2] / l}
+}
+
+// band draws a line px pixels wide from (x0, y0) to (x1, y1), with the depths d0 and d1 at its
+// ends. A pixel is drawn only when it is nearer than what zbuf has.
+func band(img *image.RGBA, zbuf []float64, x0, y0, d0, x1, y1, d1 float64, px int, c color.RGBA) {
+	w, h := img.Bounds().Dx(), img.Bounds().Dy()
+	n := int(math.Ceil(math.Max(math.Abs(x1-x0), math.Abs(y1-y0))))
+	lo := -(px - 1) / 2
+	for i := 0; i <= n; i++ {
+		t := 0.0
+		if n > 0 {
+			t = float64(i) / float64(n)
+		}
+		cx, cy := int(x0+(x1-x0)*t), int(y0+(y1-y0)*t)
+		d := d0 + (d1-d0)*t
+		for y := cy + lo; y < cy+lo+px; y++ {
+			for x := cx + lo; x < cx+lo+px; x++ {
+				if x < 0 || y < 0 || x >= w || y >= h {
+					continue
+				}
+				if k := y*w + x; d > zbuf[k] {
+					zbuf[k] = d
+					img.SetRGBA(x, y, c)
+				}
+			}
+		}
+	}
 }
 
 // dot draws a filled circle with a dark edge.
@@ -360,47 +445,6 @@ func (m *Model) LayerStart(n int) int64 {
 func mix(a, b color.RGBA, t float64) color.RGBA {
 	l := func(x, y uint8) uint8 { return uint8(float64(x)*(1-t) + float64(y)*t) }
 	return color.RGBA{l(a.R, b.R), l(a.G, b.G), l(a.B, b.B), 255}
-}
-
-// line draws a 2 pixel wide Bresenham line.
-func line(img *image.RGBA, x0, y0, x1, y1 int, c color.RGBA) {
-	dx, dy := abs(x1-x0), -abs(y1-y0)
-	sx, sy := 1, 1
-	if x0 > x1 {
-		sx = -1
-	}
-	if y0 > y1 {
-		sy = -1
-	}
-	err := dx + dy
-	b := img.Bounds()
-	for {
-		for _, d := range [2]image.Point{{0, 0}, {1, 0}} {
-			p := image.Pt(x0+d.X, y0+d.Y)
-			if p.In(b) {
-				img.SetRGBA(p.X, p.Y, c)
-			}
-		}
-		if x0 == x1 && y0 == y1 {
-			return
-		}
-		e2 := 2 * err
-		if e2 >= dy {
-			err += dy
-			x0 += sx
-		}
-		if e2 <= dx {
-			err += dx
-			y0 += sy
-		}
-	}
-}
-
-func abs(a int) int {
-	if a < 0 {
-		return -a
-	}
-	return a
 }
 
 // ZAt returns the height of the print head at file offset pos.
