@@ -97,6 +97,7 @@ func desktopApp(args []string) {
 	app.UnloadMM, app.LoadMM, app.JogInvertY = cfg.UnloadMM, cfg.LoadMM, cfg.JogInvertY
 	go pr.Run(ctx, app.Redraw)
 	go lcdLoop(ctx, pr, app)
+	startNotify(ctx, cfg.StateDir, pr, app)
 	go keepAwake(ctx, pr)
 
 	token := randomToken()

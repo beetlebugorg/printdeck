@@ -35,6 +35,10 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		a.drawColorPicker(c)
 		return
 	}
+	if a.textKB != nil {
+		a.drawKeyboard(c, a.textKB)
+		return
+	}
 	if a.form != nil {
 		a.drawRollForm(c)
 		return

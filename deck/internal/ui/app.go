@@ -194,8 +194,12 @@ type App struct {
 	JogInvertY bool // up on the joystick moves Y back instead of forward
 	// SwapHome is true when a filament change homes the printer while the nozzle heats. The
 	// Settings page changes it, and OnSwapHome is told, to save it.
-	SwapHome   bool
-	OnSwapHome func(bool)
+	SwapHome bool
+	// NotifyTopic is the ntfy topic of the push messages of a print, or "" for none. OnNotify
+	// saves a new topic, and sends a test message to it.
+	NotifyTopic string
+	OnNotify    func(topic string)
+	OnSwapHome  func(bool)
 	// Rotate is the turn of the UI on the panel in degrees: 0, 90, 180 or 270. OnRotate saves a new
 	// turn and restarts the deck in it; with no OnRotate, the Settings page has no Screen row.
 	Rotate   int
@@ -210,7 +214,8 @@ type App struct {
 	// swapAfterPause opens the filament swap when the print has paused: Change filament on the
 	// Filament page during a print.
 	swapAfterPause bool
-	notesScroll    int // the scroll position of the release notes (drawNotes)
+	textKB         *keyboard // a keyboard over everything, for a setting with text
+	notesScroll    int       // the scroll position of the release notes (drawNotes)
 
 	toast   string
 	toastAt time.Time

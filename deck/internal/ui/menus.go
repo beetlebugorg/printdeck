@@ -329,7 +329,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		{"Print history", "Each print, with the result", dim, func() { a.open(pageHistory) }},
 		{"Macros", macros, dim, func() { a.open(pageMacros) }},
 		{"Console", "Type G-code, and read the replies", dim, func() { a.open(pageConsole) }},
-		{"Settings", "Theme, clock, filament change", dim, func() { a.open(pageSettings) }},
+		{"Settings", "Theme, clock, notifications", dim, func() { a.open(pageSettings) }},
 	}
 	if a.Updater != nil {
 		line, warn := updateLine(a.Updater.Status())
@@ -448,7 +448,35 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 	if a.OnRotate != nil {
 		items = append(items, menuItem{"Screen", rotateLine(a.Rotate), dim, a.askRotate})
 	}
+	if a.OnNotify != nil {
+		items = append(items, menuItem{"Notifications", notifyLine(a.NotifyTopic), dim, a.editNotify})
+	}
 	a.menuRows(c, f.body(), f.wide, 60, 5, items)
+}
+
+// notifyLine is the line of the Notifications row: the ntfy topic, or Off.
+func notifyLine(topic string) string {
+	if topic == "" {
+		return "Off · tap to type an ntfy topic"
+	}
+	return "ntfy · " + topic
+}
+
+// editNotify opens the keyboard for the ntfy topic of the push messages. An empty topic turns
+// them off. A new topic gets a test message.
+func (a *App) editNotify() {
+	a.textKB = &keyboard{title: "ntfy topic, or the address of a topic", value: a.NotifyTopic, max: 120, ok: "Save", cancel: "Back",
+		back: func() { a.textKB = nil },
+		done: func(v string) {
+			a.textKB = nil
+			a.NotifyTopic = strings.TrimSpace(v)
+			if a.NotifyTopic == "" {
+				a.Toast("Notifications are off")
+			} else {
+				a.Toast("A test message goes to " + a.NotifyTopic)
+			}
+			a.OnNotify(a.NotifyTopic)
+		}}
 }
 
 // rotateLine is the line of the Screen row: the turn of the UI, and its shape.

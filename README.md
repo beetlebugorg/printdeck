@@ -100,6 +100,7 @@ The screens of the touch screen:
 - Machine > Settings > Theme chooses the day theme, the night theme, or auto (night from `NIGHT_FROM` to `NIGHT_TO`, 20 to 7). The choice is saved in `/var/lib/printdeck/theme`.
 - Rolls: the deck keeps a list of your rolls of filament, each with a number and a color. Each print subtracts its filament from the roll in the printer, and the history shows the cost of each print. The page of each roll lists the prints that used it. `printdeck.local/rolls/labels` prints round labels with a QR code. A phone camera on a label opens the page of the roll, and Load starts the filament change with it.
 - Machine > Maintenance has the calibrations of the printer, the firmware, and the pressure advance test.
+- Machine > Settings > Notifications sends push messages to an ntfy topic: print done, print failed, a pause, the end of the first layer, and a roll that runs short. The ntfy app shows them on the phone and the watch.
 - During a print, the other screens stay open to you. The controls that change the printer are locked. On a wide screen, Main is the print. On a tall screen, the print bar at the bottom goes back to the print.
 - A display that is mounted wide gets the layout of a machine panel: the display of the printer and a key panel at the left, and the page at the right.
 - Setup (at the first start) sets the Wi-Fi. Machine > Wi-Fi and help, and Help during a print, show the address and the password.
