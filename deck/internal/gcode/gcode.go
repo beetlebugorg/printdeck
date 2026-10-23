@@ -339,7 +339,8 @@ func (m *Model) Render(w, h int, pos, curStart int64, warm, cool, hot, ghost col
 			band(img, zbuf, x0, y0, d0, x1, y1, d1, px, lit(col, segNormal(s)))
 		}
 	}
-	if last >= 0 {
+	// The mark of the nozzle, while the print has moves to do.
+	if last >= 0 && last < len(m.Segs)-1 {
 		sg := &m.Segs[last]
 		x, y, _ := pt(sg.X1, sg.Y1, sg.Z1)
 		dot(img, int(x), int(y), 5, color.RGBA{255, 255, 255, 255})

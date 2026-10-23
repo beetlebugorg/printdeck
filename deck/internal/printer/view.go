@@ -60,6 +60,8 @@ type View struct {
 	plan    *plan             // the plan of the loaded G-code, or nil
 
 	records map[string]*recordPic // the pictures of finished prints (RecordPicture)
+	files   map[string]*recordPic // the pictures of files with no thumbnail (FilePicture)
+	fileRun bool                  // a picture of a file is drawn now
 }
 
 // SetLimits sets the motion limits of the printer, and the max mode settings for a printer that
@@ -321,6 +323,45 @@ func (v *View) RecordPicture(r Record) (img image.Image, loading bool) {
 		v.mu.Unlock()
 	}()
 	return nil, true
+}
+
+// FilePictureSize is the width and the height of the picture of a file (FilePicture).
+const FilePictureSize = 240
+
+// FilePicture returns a picture of the G-code of a file, for a file that has no thumbnail from the
+// slicer. It returns nil while the picture is drawn, and for a file that has no extruding moves.
+// The pictures are drawn one at a time: a call while another file draws returns nil, and a later
+// call starts the file.
+func (v *View) FilePicture(f File) image.Image {
+	k := fmt.Sprintf("%s|%d", f.Path, f.Date.Unix())
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if p, ok := v.files[k]; ok {
+		return p.img
+	}
+	if v.fileRun {
+		return nil
+	}
+	if v.files == nil || len(v.files) >= 64 {
+		v.files = map[string]*recordPic{}
+	}
+	p := &recordPic{loading: true}
+	v.files[k] = p
+	v.fileRun = true
+	go func() {
+		var img image.Image
+		if body, err := v.src.Open(f.Path); err == nil {
+			gc, _ := gcode.Parse(io.LimitReader(body, maxModelSize))
+			body.Close()
+			if gc != nil && len(gc.Segs) > 0 {
+				img = gc.Render(FilePictureSize, FilePictureSize, math.MaxInt64, math.MaxInt64, pathWarm, pathCool, hotColor, pathGhost)
+			}
+		}
+		v.mu.Lock()
+		p.img, p.loading, v.fileRun = img, false, false
+		v.mu.Unlock()
+	}()
+	return nil
 }
 
 // drawRecord draws the picture of a finished print, or returns nil.

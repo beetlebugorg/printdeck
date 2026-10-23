@@ -56,7 +56,7 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 		plate(c, r)
 		m := a.Printer.FileMeta(f.Path)
 		pic := image.Rect(r.Min.X+10, r.Min.Y+9, r.Min.X+10+thumbSmall, r.Min.Y+9+thumbSmall)
-		a.thumb(c, pic, f.Path, m)
+		a.thumb(c, pic, f, m)
 		if i == 0 { // the names of the first row
 			a.region("Picture", pic)
 		}
@@ -141,11 +141,15 @@ var thumbs struct {
 	small map[image.Image]*image.RGBA
 }
 
-// thumb draws the thumbnail of a file in a display window, or a model shape when the slicer wrote
-// none. A browser gets the image at its full size, for its pixel density.
-func (a *App) thumb(c *gfx.Canvas, r image.Rectangle, path string, m gcodemeta.Meta) {
+// thumb draws the thumbnail of a file in a display window. When the slicer wrote none, it draws the
+// G-code of the file, and a model shape while the G-code is drawn. A browser gets the image at its
+// full size, for its pixel density.
+func (a *App) thumb(c *gfx.Canvas, r image.Rectangle, f printer.File, m gcodemeta.Meta) {
 	window(c, r)
 	img := m.Thumbnail
+	if img == nil {
+		img = a.Printer.FilePicture(f)
+	}
 	if img == nil {
 		drawModelShape(c, r)
 		return
@@ -240,7 +244,7 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 		side := min(r[0].Dx(), r[0].Dy())
 		pic, box, keys = kit.Center(r[0], side, side), r[1], r[2]
 	}
-	a.thumb(c, pic, f.Path, m)
+	a.thumb(c, pic, f, m)
 	a.region("Picture", pic)
 	plate(c, box)
 	a.region("Slicer data", box)
