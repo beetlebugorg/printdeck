@@ -57,14 +57,10 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		return
 	}
 	a.followPrint(st)
-	if a.bar = a.showsBar(st); a.bar {
-		// The print bar at the bottom: the screens get the space above it. A wide screen has it at
-		// the bottom of the left column, so it does not go across the two columns.
-		if W > H {
-			sideBar = true
-		} else {
-			contentY1 = H - barH
-		}
+	// The print bar at the bottom of a tall screen: the screens get the space above it. A wide
+	// screen has no print bar: its key panel is on each page, and Main is the print.
+	if a.bar = a.showsBar(st) && W <= H; a.bar {
+		contentY1 = H - barH
 		defer a.drawPrintBar(c, st)
 	}
 	switch a.topPage() {
@@ -173,6 +169,22 @@ func (a *App) stateAreas() (f frame, keys, view image.Rectangle) {
 	return f, body, body
 }
 
+// statePage draws the frame of a print screen on a wide screen, as a main page: the display and
+// the key panel at the left, with Main lit, and the title at the right. The keys of the screen are
+// in rows at the bottom of the right column, keysH high, and the view of the screen is over them.
+// Main during a print is the print, so the screen needs no Menu.
+func (a *App) statePage(c *gfx.Canvas, st printer.State, title string, keysH int) (view, keys image.Rectangle) {
+	f := a.navFrame()
+	a.statusPanelAt(c, st, f.lcd)
+	a.drawNavKeys(c, f.side)
+	headingAt(c, f.head, title)
+	if keysH <= 0 {
+		return f.main, image.Rectangle{}
+	}
+	r := kit.Rows(f.main, 12, kit.Fr(1), kit.Px(keysH))
+	return r[0], r[1]
+}
+
 // jobAreas are the keys and the model view of the job screen. The view has the layer slider at its
 // bottom edge.
 func (a *App) jobAreas() (keys, box image.Rectangle) {
@@ -188,6 +200,20 @@ func (a *App) jobAreas() (keys, box image.Rectangle) {
 // drawJob is the screen of a running print: the status display, the keys, and the model view.
 func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
+	if W > H {
+		// Wide: the print is the Main page. The data and the model, and the keys at the bottom:
+		// Cancel, the destructive action, at the left, and Pause at the right.
+		view, keys := a.statePage(c, st, gfx.Fit(gfx.Face(true, 24), st.File, a.navFrame().head.Dx()-20), actH)
+		k := kit.Cols(keys, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
+		a.button(c, k[0], "Cancel", raised, red, a.askCancel)
+		a.button(c, k[1], "Tune", raised, text, func() { a.tune = true })
+		a.button(c, k[2], "Pause", orange, onAcc, pr.Pause)
+		r := kit.Rows(view, 12, kit.Px(a.printInfoH(st)), kit.Fr(1))
+		a.modelView(c, r[1], st)
+		a.drawScrubber(c, r[1], st)
+		a.printInfo(c, r[0], st)
+		return
+	}
 	a.statusPanel(c, st)
 	keys, box := a.jobAreas()
 	if f, _, _ := a.stateAreas(); f.wide {

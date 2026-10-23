@@ -291,8 +291,10 @@ func manualParts() []section {
 						{"Display", "The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature."},
 						{"Steps", "The steps of the start macro of your printer, in its order. The deck follows the commands that the printer runs: the step that runs has a lit LED, and a done step has a dot."},
 						{"Help", "Opens Wi-Fi and help: the network, the address and the password of the deck."},
-						{"Menu", "Shows the other screens while the print runs. See Look around during a print."},
 						{"Cancel print", "Stops the print, after a question."},
+					},
+					Tall: []callout{
+						{"Menu", "Shows the other screens while the print runs. See Look around during a print."},
 					}},
 				{Name: "first-layer", Caption: "The first layer",
 					Setup: func(s *manualState) {
@@ -308,9 +310,11 @@ func manualParts() []section {
 						{"Save", "Writes the Z offset into the config of the printer. Save config in Maintenance then writes the file."},
 						{"Step", "How far one tap moves the nozzle, in mm."},
 						{"Pause, Cancel", "Pauses the print, or stops it after a question."},
-						{"Menu", "Shows the other screens while the print runs. See Look around during a print."},
 						{"Help", "Opens Wi-Fi and help: the network, the address and the password of the deck."},
 						{"Layer", "The first layer of the model."},
+					},
+					Tall: []callout{
+						{"Menu", "Shows the other screens while the print runs. See Look around during a print."},
 					}},
 				{Name: "printing", Caption: "Printing",
 					Setup: func(s *manualState) {
@@ -325,12 +329,17 @@ func manualParts() []section {
 						{"Pause", "Pauses the print."},
 						{"Tune", "Changes the print while it runs. See Tune."},
 						{"Cancel", "Stops the print, after a question."},
-						{"Menu", "Shows the other screens while the print runs. See Look around during a print."},
 						{"Layer", "The layer that prints now, and the kind of the move now with the live speed of the head."},
 						{"Roll", "The roll in the printer: a dot in its color, the filament that is left on it, its name, and its grams. The filament of the print counts while it prints. Cura gives a roll its color."},
 						{"Layer times", "A bar for each layer: its time. The layers that are done are dark, with the time that they took. The layer now is orange, and the layers to come are light, with the time of the slicer. At the right, the time of the layer now and its plan, and the mean time of a layer. A short layer can need more cooling."},
 						{"Model", "The model up to the layer that prints now, in the color of the roll."},
 						{"Layer slider", "Drag it to look at another layer. Live goes back to the layer that prints."},
+					},
+					Tall: []callout{
+						{"Menu", "Shows the other screens while the print runs. See Look around during a print."},
+					},
+					Wide: []callout{
+						{"Pages", "During a print, Main is the print. The other keys open their pages while the print goes on, and Main comes back to the print."},
 					}},
 				{Name: "pause-prompt", Caption: "A pause of the file",
 					Setup: func(s *manualState) {
@@ -358,6 +367,8 @@ func manualParts() []section {
 					Callouts: []callout{
 						{"Steps", "The steps of the end macro of your printer, for example the cooling of the bed before the print moves to the front."},
 						{"Model", "The finished model."},
+					},
+					Tall: []callout{
 						{"Menu", "Shows the other screens while the end macro runs. The print bar at the bottom comes back here. The deck shows the done screen at the end of the print."},
 					}},
 				{Name: "away", Caption: "Filament during a print",
@@ -367,8 +378,10 @@ func manualParts() []section {
 						s.a.DemoAway()
 					},
 					Callouts: []callout{
-						{"Print bar", "The layer and the time left of the print, with Pause at its left. Tap the bar to go back to the screen of the print."},
 						{"Change filament", "A key that moves, heats or changes the printer is dim and has a lock. A tap shows Wait until the print ends."},
+					},
+					Tall: []callout{
+						{"Print bar", "The layer and the time left of the print, with Pause at its left. Tap the bar to go back to the screen of the print."},
 					},
 					Wide: []callout{
 						{"Pages", "The key panel opens each page, as when the printer does not print."},
@@ -764,8 +777,13 @@ func manualSections() []section {
 			Figures: fig("preparing", "first-layer", "printing", "tune", "paused", "pause-prompt", "finishing", "done")},
 		{Chapter: prints, ID: "away", Title: "Look around during a print",
 			Intro: []string{
-				"Menu on the screens of the print shows the other screens while the print runs: the files, the filament and the rolls, the history. They are read only for the printer, so a tap cannot change the print by mistake.",
-				"The print bar at the bottom of each screen shows the print. Tap it to go back. The deck also goes back to the print at a pause, at a new print, and after 2 minutes with no touch.",
+				"The other screens are read only for the printer while it prints: the files, the filament and the rolls, the history. A tap cannot change the print by mistake. The deck goes back to the print at a pause, at a new print, and after 2 minutes with no touch.",
+			},
+			Tall: []string{
+				"Menu on the screens of the print shows the other screens while the print runs. The print bar at the bottom of each screen shows the print. Tap it to go back.",
+			},
+			Wide: []string{
+				"During a print, Main is the print. The key panel opens the other pages as at any time, and Main goes back to the print.",
 			},
 			Figures: fig("away")},
 
