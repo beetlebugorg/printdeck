@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 the Printdeck authors. See watch/LICENSE.
+
 import Foundation
 
 // The 128 x 64 display of the printer, as the deck draws it (deck/internal/lcd): the status screen,

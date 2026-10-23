@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 the Printdeck authors. See watch/LICENSE.
+
 import SwiftUI
 
 /// The colors of the night palette of the deck (deck/internal/ui/theme.go). The watch uses them.

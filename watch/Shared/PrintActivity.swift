@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 the Printdeck authors. See watch/LICENSE.
+
 #if os(iOS)
 import ActivityKit
 import Foundation

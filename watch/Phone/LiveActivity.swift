@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 the Printdeck authors. See watch/LICENSE.
+
 import ActivityKit
 import Foundation
 
@@ -8,7 +11,7 @@ enum PrintLiveActivity {
         Activity<PrintActivityAttributes>.activities.first
     }
 
-    /// The state of the last update, so that a reading that changes nothing sends nothing.
+    /// The state of the last update. A reading with the same state sends no update.
     private static var last: PrintActivityAttributes.ContentState?
 
     static func update(_ st: Status?, model: LCDPicture?) {
@@ -48,7 +51,7 @@ enum PrintLiveActivity {
         Task { await a.end(ActivityContent(state: state, staleDate: nil), dismissalPolicy: .default) }
     }
 
-    /// A new state is worth an update: the pause, the layer, or the end time moved a minute.
+    /// A new state needs an update: the pause, the layer or the model changed, or the end time moved a minute.
     private static func changed(_ s: PrintActivityAttributes.ContentState) -> Bool {
         guard let l = last else { return true }
         if s.paused != l.paused || s.layer != l.layer || s.model != l.model { return true }

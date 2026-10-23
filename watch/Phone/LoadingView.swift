@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 the Printdeck authors. See watch/LICENSE.
+
 import SwiftUI
 
 /// The loading screen: the start screen of the deck in dots over the whole screen, with the deck

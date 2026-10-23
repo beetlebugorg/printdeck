@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 the Printdeck authors. See watch/LICENSE.
+
 import SwiftUI
 
 /// The setup: the connection to the deck, the watch, and the notifications. The app finds the deck

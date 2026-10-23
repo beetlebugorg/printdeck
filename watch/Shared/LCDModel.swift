@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 the Printdeck authors. See watch/LICENSE.
+
 import Foundation
 
 /// The screens of the printer display for the state of the app, as the deck makes them

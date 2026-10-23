@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 the Printdeck authors. See watch/LICENSE.
+
 // The fonts and the small icons of the 128 x 64 display of the printer, from the deck
 // (deck/internal/lcd). font5x8 is the X11 misc-fixed font 5x8 (public domain). vga8x16 is the VGA
 // 8 x 16 font of the displays of Klipper (klippy/extras/display/font8x14.py, from the fntcol16

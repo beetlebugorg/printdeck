@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 the Printdeck authors. See watch/LICENSE.
+
 import UserNotifications
 
 /// Decrypts the message of the deck in the key "e" of a push (relay/README.md), and shows its title

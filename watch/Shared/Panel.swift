@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 the Printdeck authors. See watch/LICENSE.
+
 import SwiftUI
 
 // The parts of the panel of the deck (deck/internal/ui/theme.go), for the iPhone and the watch:

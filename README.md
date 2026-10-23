@@ -175,5 +175,6 @@ steps. The files are in [lulzbot/](lulzbot/).
 
 Printdeck is free software under the GNU Affero General Public License, version 3. See `LICENSE`,
 and the "Open source and licenses" section of `ARCHITECTURE.md`.
+The iPhone and Apple Watch apps in `watch/` are under the MIT License: see `watch/LICENSE`.
 The Printdeck program contains a port of Klipper's host (GPL-3.0). The OS image
 contains the other packages of the image, each under its own license.
