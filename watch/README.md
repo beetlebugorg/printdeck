@@ -15,8 +15,11 @@ deck over the local network.
   the times of the print, and the filament. During a print, a tap opens a menu with
   Pause or Resume and Cancel, each with a question first; the crown moves the selection, as the
   knob of the printer, and a tap selects.
-- The complication shows the progress and the time left on the watch face. It has a circular, a
-  corner, an inline and a rectangular style.
+- The complications are dot-matrix displays too. The rectangle has the percent in the large font,
+  the time left, the bar, and the end and the layer. The circle is a ring of dots that light with
+  the progress, around the percent; with no print, the hotend. The corner and the inline
+  complications are text. On a face with tint the lit dots take the tint; on a face in full color
+  the display has its blue light. `Shared/ComplicationLCD.swift` draws them.
 - The deck sends push messages to the iPhone: print done, print failed, paused, first layer done,
   and a roll that runs short. The messages are encrypted from the deck to the iPhone. The watch
   shows the notifications of the iPhone.

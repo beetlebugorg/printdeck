@@ -46,20 +46,26 @@ struct Provider: TimelineProvider {
     }
 }
 
+/// The complications as the dot-matrix display of the printer. On a face with tint the lit dots
+/// take the tint and the dots that are off are faint; on a face in full color the display has its
+/// blue light.
 struct ComplicationView: View {
     @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetRenderingMode) private var mode
+    @Environment(\.displayScale) private var scale
     let entry: Entry
 
     var body: some View {
         switch family {
-        case .accessoryCircular: circular
+        case .accessoryCircular: dots(circle: true)
         case .accessoryCorner: corner
         case .accessoryInline: inline
-        default: rectangular
+        default: dots(circle: false)
         }
     }
 
     private var busy: Bool { entry.status?.busy == true }
+    private var progress: Double { busy ? entry.progress ?? 0 : 0 }
 
     private var percentNumber: String {
         guard busy, let p = entry.progress else { return "--" }
@@ -72,17 +78,26 @@ struct ComplicationView: View {
         return Format.shortDuration(left)
     }
 
-    private var circular: some View {
-        Gauge(value: busy ? entry.progress ?? 0 : 0) {
-            Text("%")
-        } currentValueLabel: {
-            Text(percentNumber)
-                .font(Theme.digits(16))
+    // MARK: The dots
+
+    /// The display: the rectangle, or the round display of the circular complication.
+    private func dots(circle: Bool) -> some View {
+        GeometryReader { g in
+            let px = Int(g.size.width * scale)
+            // Dots of 2 pixels or more: 84 across the rectangle, 31 across the circle.
+            let dot = max(2, px / (circle ? 31 : 84))
+            let cols = Int(g.size.width * scale) / dot, rows = Int(g.size.height * scale) / dot
+            var c = LCDCanvas(width: cols, height: rows, marginX: circle ? 0 : 1, marginY: circle ? 0 : 1)
+            let lcd = ComplicationLCD(status: entry.status, date: entry.date)
+            let _ = circle ? lcd.drawCircle(&c) : lcd.drawRect(&c)
+            Image(decorative: ComplicationDots.image(c, dot: dot, fullColor: mode == .fullColor), scale: scale)
+                .interpolation(.none)
+                .widgetAccentable()
+                .frame(width: g.size.width, height: g.size.height)
         }
-        .gaugeStyle(.accessoryCircularCapacity)
-        .tint(Theme.orange)
-        .widgetAccentable()
     }
+
+    // MARK: Text
 
     private var corner: some View {
         Text(busy ? percentNumber + "%" : "--")
@@ -90,7 +105,7 @@ struct ComplicationView: View {
             .widgetCurvesContent()
             .widgetLabel {
                 if busy {
-                    Gauge(value: entry.progress ?? 0) { Text(leftText) }
+                    Gauge(value: progress) { Text(leftText) }
                         .tint(Theme.orange)
                 } else {
                     Text("PRINTDECK")
@@ -101,41 +116,6 @@ struct ComplicationView: View {
     private var inline: some View {
         Text(busy ? "\(percentNumber)%  \(leftText)" : "Printdeck --")
     }
-
-    private var rectangular: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            HStack {
-                Text(entry.status?.state.uppercased() ?? "PRINTDECK")
-                    .font(Theme.label(12))
-                    .foregroundStyle(Theme.orange)
-                    .widgetAccentable()
-                Spacer()
-                if busy {
-                    Text(percentNumber + "%")
-                        .font(Theme.digits(15))
-                }
-            }
-            if busy, let st = entry.status {
-                Text(st.file ?? "")
-                    .font(.system(size: 13))
-                    .lineLimit(1)
-                Gauge(value: entry.progress ?? 0) { EmptyView() }
-                    .gaugeStyle(.accessoryLinearCapacity)
-                    .tint(Theme.orange)
-                HStack {
-                    Text(st.paused ? "PAUSED" : "LEFT " + leftText)
-                    Spacer()
-                    if !st.paused, let end = st.end {
-                        Text("END " + end.formatted(date: .omitted, time: .shortened))
-                    }
-                }
-                .font(Theme.label(11))
-            } else {
-                Text(entry.status == nil ? "No status" : "No print")
-                    .font(.system(size: 13))
-            }
-        }
-    }
 }
 
 @main
@@ -143,7 +123,7 @@ struct PrintdeckComplication: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "PrintdeckProgress", provider: Provider()) { entry in
             ComplicationView(entry: entry)
-                .containerBackground(Color.black, for: .widget)
+                .containerBackground(Color(rgb: 0x1f4bd1), for: .widget)
         }
         .configurationDisplayName("Print")
         .description("The progress and the time left of the print.")
