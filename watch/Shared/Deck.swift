@@ -85,14 +85,16 @@ enum DeckError: LocalizedError {
     case refused(String)
     case http(Int)
     case badReply
+    case denied
 
     var errorDescription: String? {
         switch self {
-        case .noSettings: "Set the deck address and key in Printdeck on the iPhone."
+        case .noSettings: "Connect to the deck in Printdeck on the iPhone."
         case .badKey: "The deck does not accept the API key."
         case .refused(let msg): msg
         case .http(let code): "The deck sent HTTP \(code)."
         case .badReply: "The reply of the deck has an unknown format."
+        case .denied: "The deck denied the app, or nobody tapped Allow within 2 minutes."
         }
     }
 }
@@ -144,6 +146,40 @@ struct DeckClient {
         default:
             throw DeckError.http(code)
         }
+    }
+
+    /// Asks the deck for a key of its own with the App Keys flow of OctoPrint. The touch screen of
+    /// the deck asks to allow the app, and the request waits up to 2 minutes for the answer.
+    static func requestKey(base: URL, app: String) async throws -> String {
+        var req = URLRequest(url: base.appending(path: "/plugin/appkeys/request"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(["app": app])
+        let (data, resp) = try await session.data(for: req)
+        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        guard code == 201, let token = (try? JSONDecoder().decode([String: String].self, from: data))?["app_token"] else {
+            throw code == 404 ? DeckError.refused("The deck has app keys off.") : DeckError.http(code)
+        }
+        let poll = base.appending(path: "/plugin/appkeys/request/" + token)
+        let end = Date().addingTimeInterval(150)
+        while Date() < end {
+            try await Task.sleep(for: .seconds(1))
+            let (data, resp) = try await session.data(from: poll)
+            switch (resp as? HTTPURLResponse)?.statusCode ?? 0 {
+            case 202:
+                continue
+            case 200:
+                guard let key = (try? JSONDecoder().decode([String: String].self, from: data))?["api_key"] else {
+                    throw DeckError.badReply
+                }
+                return key
+            case 404:
+                throw DeckError.denied
+            case let c:
+                throw DeckError.http(c)
+            }
+        }
+        throw DeckError.denied
     }
 
     private func get<T: Decodable>(_ path: String) async throws -> T {

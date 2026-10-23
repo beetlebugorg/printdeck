@@ -1,12 +1,10 @@
 import Foundation
+import Security
 
-/// The settings and the last status, in the defaults of the app group. The watch app and the
-/// complication share them.
+/// The settings and the last status, in a keychain group. The watch app and the complication
+/// share the group. The group is in the KeychainGroup key of the Info.plist.
 enum Store {
-    static var defaults: UserDefaults {
-        let group = Bundle.main.object(forInfoDictionaryKey: "AppGroup") as? String ?? ""
-        return UserDefaults(suiteName: group) ?? .standard
-    }
+    private static let service = "org.beetlebug.printdeck"
 
     static var settings: DeckSettings {
         get { read("settings") ?? DeckSettings() }
@@ -18,16 +16,53 @@ enum Store {
         set { write(newValue, "status") }
     }
 
-    private static func read<T: Decodable>(_ key: String) -> T? {
-        guard let data = defaults.data(forKey: key) else { return nil }
+    private static var group: String? {
+        guard let g = Bundle.main.object(forInfoDictionaryKey: "KeychainGroup") as? String,
+              !g.isEmpty, !g.hasPrefix(".") else { return nil }
+        return g
+    }
+
+    /// The query of an item. A build with no team has no group prefix, and then the item is in
+    /// the keychain of the app only.
+    private static func query(_ account: String, group: String?) -> [String: Any] {
+        var q: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+        ]
+        if let group { q[kSecAttrAccessGroup as String] = group }
+        return q
+    }
+
+    private static func read<T: Decodable>(_ account: String) -> T? {
+        var q = query(account, group: group)
+        q[kSecReturnData as String] = true
+        q[kSecMatchLimit as String] = kSecMatchLimitOne
+        var out: CFTypeRef?
+        var status = SecItemCopyMatching(q as CFDictionary, &out)
+        if status == errSecMissingEntitlement {
+            q[kSecAttrAccessGroup as String] = nil
+            status = SecItemCopyMatching(q as CFDictionary, &out)
+        }
+        guard status == errSecSuccess, let data = out as? Data else { return nil }
         return try? JSONDecoder().decode(T.self, from: data)
     }
 
-    private static func write<T: Encodable>(_ value: T?, _ key: String) {
-        if let value, let data = try? JSONEncoder().encode(value) {
-            defaults.set(data, forKey: key)
-        } else {
-            defaults.removeObject(forKey: key)
+    private static func write<T: Encodable>(_ value: T?, _ account: String) {
+        var g = group
+        var status = SecItemDelete(query(account, group: g) as CFDictionary)
+        if status == errSecMissingEntitlement {
+            g = nil
+            SecItemDelete(query(account, group: nil) as CFDictionary)
+        }
+        guard let value, let data = try? JSONEncoder().encode(value) else { return }
+        var q = query(account, group: g)
+        q[kSecValueData as String] = data
+        q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        status = SecItemAdd(q as CFDictionary, nil)
+        if status == errSecMissingEntitlement, g != nil {
+            q[kSecAttrAccessGroup as String] = nil
+            SecItemAdd(q as CFDictionary, nil)
         }
     }
 }

@@ -7,21 +7,34 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0312E9D1C16E71952B648BAB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 74DD018BBD9721DD779A3905 /* Assets.xcassets */; };
+		035F982F6A10B83C3964E58C /* Panel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C70A31CF69D7CC7E8C5AE8D /* Panel.swift */; };
+		03BE91F0A633FF8F2979EEA7 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 770B96494514D1F98C3D0ADF /* IBMPlexMono-Regular.ttf */; };
+		048B21374671AFF9BE5BCC1F /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AC2BBFF7CE76D76E8134DBA /* IBMPlexMono-SemiBold.ttf */; };
 		0C8A9F9A3D751A68DA0866C4 /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */; };
+		0E0DE9F95C7112EDB912F4C4 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 770B96494514D1F98C3D0ADF /* IBMPlexMono-Regular.ttf */; };
+		198F4ACDF70F3734387889AC /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 58645DA084A54E4D7E787CE2 /* OFL.txt */; };
 		20B61A975B04B39116EDF951 /* PrintdeckWatch.app in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = D2114C330830B4B5C5D4EAE7 /* PrintdeckWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2B3EF0FF41DF656F65D3D9D5 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A622D3ED72D7C6395B59AE5 /* Theme.swift */; };
 		4E388A1EA57482408CE4B85F /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB83763E3B47BF75CF93CE3 /* Store.swift */; };
 		5193435EBAFE2B3E122220CC /* PrintdeckComplication.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F5F06702BFE192990D619B34 /* PrintdeckComplication.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		64F35B9FA58B132E14704F2D /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 58645DA084A54E4D7E787CE2 /* OFL.txt */; };
 		6DE9BB11F05A23CA11727C26 /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */; };
+		803DFE0F9037F2AB771472F2 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AC2BBFF7CE76D76E8134DBA /* IBMPlexMono-SemiBold.ttf */; };
 		80E4866E8E9381BD84E4FD22 /* StatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B2DE727763130438837F9CC /* StatusView.swift */; };
 		863803E55914375D0E896E96 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A622D3ED72D7C6395B59AE5 /* Theme.swift */; };
 		8F9B6078A6FA28D4B4008B63 /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB83763E3B47BF75CF93CE3 /* Store.swift */; };
 		95DD68693F435C22C6F611C0 /* Complication.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AD64238EF6EF070D61FD7D4 /* Complication.swift */; };
+		A1A90A282A036D846E613BAE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6DE65B34DD84D0ADAF8829A4 /* Assets.xcassets */; };
+		A3C14F3456C6052D0BB8DCB6 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AC2BBFF7CE76D76E8134DBA /* IBMPlexMono-SemiBold.ttf */; };
+		CD2B0EFAA2A3AB9E7F6D891A /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 770B96494514D1F98C3D0ADF /* IBMPlexMono-Regular.ttf */; };
 		DDF48D2494A56CECB8A5DF64 /* PrintdeckApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F683BF97A6034681AF592CCA /* PrintdeckApp.swift */; };
 		E16BE60245900C967446E65A /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB83763E3B47BF75CF93CE3 /* Store.swift */; };
 		EC5A53CF6E5F64099A4619EC /* DeckModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C0B5552DFB46694231219C5 /* DeckModel.swift */; };
+		F1F15583B7B535D2202E8422 /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 58645DA084A54E4D7E787CE2 /* OFL.txt */; };
 		F43A110534B2B219678D0EEA /* PhoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C024260E6470548F3C91FC1F /* PhoneApp.swift */; };
 		F820DE4C589E62B5AA1846CE /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A622D3ED72D7C6395B59AE5 /* Theme.swift */; };
+		FBA67ABC5887D7F5B03D612E /* Finder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251FEC8FBC5B7C7E2E9DBD8A /* Finder.swift */; };
 		FFA1A39E87C13A72B53A34DD /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */; };
 /* End PBXBuildFile section */
 
@@ -68,11 +81,19 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		251FEC8FBC5B7C7E2E9DBD8A /* Finder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Finder.swift; sourceTree = "<group>"; };
+		2AC2BBFF7CE76D76E8134DBA /* IBMPlexMono-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-SemiBold.ttf"; sourceTree = "<group>"; };
+		3C70A31CF69D7CC7E8C5AE8D /* Panel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panel.swift; sourceTree = "<group>"; };
 		4C0B5552DFB46694231219C5 /* DeckModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckModel.swift; sourceTree = "<group>"; };
+		58645DA084A54E4D7E787CE2 /* OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL.txt; sourceTree = "<group>"; };
+		6DE65B34DD84D0ADAF8829A4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		74DD018BBD9721DD779A3905 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		770B96494514D1F98C3D0ADF /* IBMPlexMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Regular.ttf"; sourceTree = "<group>"; };
 		7808E4D4350E56889D134E9D /* Complication.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Complication.entitlements; sourceTree = "<group>"; };
 		7A622D3ED72D7C6395B59AE5 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		8AD64238EF6EF070D61FD7D4 /* Complication.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Complication.swift; sourceTree = "<group>"; };
 		8B2DE727763130438837F9CC /* StatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusView.swift; sourceTree = "<group>"; };
+		A3F141F7CE39B1948949216E /* Phone.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Phone.entitlements; sourceTree = "<group>"; };
 		A539B7B79BF37C687CDF8579 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A68F2D6FDB0283D4E2968E3F /* Watch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Watch.entitlements; sourceTree = "<group>"; };
 		AFAED1CD6BFAF7976E400B0B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -97,6 +118,16 @@
 			path = Complication;
 			sourceTree = "<group>";
 		};
+		2D490B5DFDA2B0C93EEAAB61 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				770B96494514D1F98C3D0ADF /* IBMPlexMono-Regular.ttf */,
+				2AC2BBFF7CE76D76E8134DBA /* IBMPlexMono-SemiBold.ttf */,
+				58645DA084A54E4D7E787CE2 /* OFL.txt */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
 		59EC49CF6F201553EED7DBAF = {
 			isa = PBXGroup;
 			children = (
@@ -111,7 +142,11 @@
 		61C74AF6BF53EDB17739E140 /* Phone */ = {
 			isa = PBXGroup;
 			children = (
+				74DD018BBD9721DD779A3905 /* Assets.xcassets */,
+				251FEC8FBC5B7C7E2E9DBD8A /* Finder.swift */,
 				A539B7B79BF37C687CDF8579 /* Info.plist */,
+				3C70A31CF69D7CC7E8C5AE8D /* Panel.swift */,
+				A3F141F7CE39B1948949216E /* Phone.entitlements */,
 				C024260E6470548F3C91FC1F /* PhoneApp.swift */,
 			);
 			path = Phone;
@@ -123,6 +158,7 @@
 				B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */,
 				EFB83763E3B47BF75CF93CE3 /* Store.swift */,
 				7A622D3ED72D7C6395B59AE5 /* Theme.swift */,
+				2D490B5DFDA2B0C93EEAAB61 /* Fonts */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -140,6 +176,7 @@
 		E8C9D0F6B14E74153FE50E5C /* Watch */ = {
 			isa = PBXGroup;
 			children = (
+				6DE65B34DD84D0ADAF8829A4 /* Assets.xcassets */,
 				4C0B5552DFB46694231219C5 /* DeckModel.swift */,
 				AFAED1CD6BFAF7976E400B0B /* Info.plist */,
 				F683BF97A6034681AF592CCA /* PrintdeckApp.swift */,
@@ -157,6 +194,7 @@
 			buildConfigurationList = E02D4589C6624AC6137B9F1A /* Build configuration list for PBXNativeTarget "PrintdeckComplication" */;
 			buildPhases = (
 				8C18931EA80837F5EFACA139 /* Sources */,
+				B861779682568C39AC167883 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -174,6 +212,7 @@
 			buildConfigurationList = EAA3859F3DB7F015FBD9CA3B /* Build configuration list for PBXNativeTarget "PrintdeckWatch" */;
 			buildPhases = (
 				DEBBF5971383EA96B1F54929 /* Sources */,
+				BF555478B347B35958879FDD /* Resources */,
 				68E9E9767CBD9F07B6C8FDAC /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -193,6 +232,7 @@
 			buildConfigurationList = 350AA75B515533FFBC4BE677 /* Build configuration list for PBXNativeTarget "Printdeck" */;
 			buildPhases = (
 				BC95D24BBD67EEF97DD346F2 /* Sources */,
+				6C7DB1F422CFD63D59B14F43 /* Resources */,
 				E1D76BD940396DED91C39B04 /* Embed Dependencies */,
 			);
 			buildRules = (
@@ -217,15 +257,15 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					47F5A9ACDB9237387FC20089 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = 7UZF9976U3;
 						ProvisioningStyle = Automatic;
 					};
 					A907661814D1F96890BBFD9B = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = 7UZF9976U3;
 						ProvisioningStyle = Automatic;
 					};
 					D73E004A060093EAA39157D9 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = 7UZF9976U3;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -251,6 +291,41 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		6C7DB1F422CFD63D59B14F43 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0312E9D1C16E71952B648BAB /* Assets.xcassets in Resources */,
+				CD2B0EFAA2A3AB9E7F6D891A /* IBMPlexMono-Regular.ttf in Resources */,
+				803DFE0F9037F2AB771472F2 /* IBMPlexMono-SemiBold.ttf in Resources */,
+				F1F15583B7B535D2202E8422 /* OFL.txt in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B861779682568C39AC167883 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				03BE91F0A633FF8F2979EEA7 /* IBMPlexMono-Regular.ttf in Resources */,
+				A3C14F3456C6052D0BB8DCB6 /* IBMPlexMono-SemiBold.ttf in Resources */,
+				64F35B9FA58B132E14704F2D /* OFL.txt in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BF555478B347B35958879FDD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1A90A282A036D846E613BAE /* Assets.xcassets in Resources */,
+				0E0DE9F95C7112EDB912F4C4 /* IBMPlexMono-Regular.ttf in Resources */,
+				048B21374671AFF9BE5BCC1F /* IBMPlexMono-SemiBold.ttf in Resources */,
+				198F4ACDF70F3734387889AC /* OFL.txt in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		8C18931EA80837F5EFACA139 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -268,6 +343,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				FFA1A39E87C13A72B53A34DD /* Deck.swift in Sources */,
+				FBA67ABC5887D7F5B03D612E /* Finder.swift in Sources */,
+				035F982F6A10B83C3964E58C /* Panel.swift in Sources */,
 				F43A110534B2B219678D0EEA /* PhoneApp.swift in Sources */,
 				8F9B6078A6FA28D4B4008B63 /* Store.swift in Sources */,
 				863803E55914375D0E896E96 /* Theme.swift in Sources */,
@@ -313,7 +390,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_PREFIX).watchkitapp.complication";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_PREFIX).watchkitapp.widget";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 4;
@@ -324,7 +401,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				APP_GROUP = "group.$(BUNDLE_PREFIX)";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
 				BUNDLE_PREFIX = org.beetlebug.printdeck;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -360,7 +436,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 7UZF9976U3;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -374,6 +450,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)$(BUNDLE_PREFIX).shared";
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -389,7 +466,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				APP_GROUP = "group.$(BUNDLE_PREFIX)";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
 				BUNDLE_PREFIX = org.beetlebug.printdeck;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -425,7 +501,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 7UZF9976U3;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -445,6 +521,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				KEYCHAIN_GROUP = "$(AppIdentifierPrefix)$(BUNDLE_PREFIX).shared";
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -467,7 +544,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_PREFIX).watchkitapp.complication";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_PREFIX).watchkitapp.widget";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 4;
@@ -478,6 +555,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Phone/Phone.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Phone/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -509,6 +587,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Phone/Phone.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Phone/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

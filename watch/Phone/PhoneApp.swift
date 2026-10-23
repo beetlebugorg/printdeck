@@ -10,73 +10,155 @@ struct PhoneApp: App {
     }
 }
 
-/// The settings of the deck on the iPhone. Save keeps them, sends them to the watch and reads the
-/// deck with them.
+/// The connection to the deck. The app finds the deck on the network and asks it for a key: the
+/// touch screen of the deck asks to allow the app. The address and the key go to the watch.
 struct SettingsView: View {
+    @Environment(\.colorScheme) private var scheme
+    @State private var settings = Store.settings
+    @State private var finder = DeckFinder()
+    @State private var link = WatchLink()
+    @State private var busy = false
+    @State private var step: String?
+    @State private var result: String?
+    @State private var manual = false
     @State private var address = Store.settings.address
     @State private var key = Store.settings.key
-    @State private var result: String?
-    @State private var testing = false
-    @State private var link = WatchLink()
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("192.168.1.50", text: $address)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .font(.system(.body, design: .monospaced))
-                } header: {
-                    Text("DECK ADDRESS")
-                } footer: {
-                    Text("The IP address of the deck. The watch may not find printdeck.local, so use the IP address. Machine > Wi-Fi and help on the deck shows it.")
-                }
-                Section {
-                    TextField("API key", text: $key)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .font(.system(.body, design: .monospaced))
-                } header: {
-                    Text("API KEY")
-                } footer: {
-                    Text("The key is on the System page of the deck: http://printdeck.local/system")
-                }
-                Section {
-                    Button(testing ? "Reading the deck..." : "Save and send to the watch") {
-                        Task { await save() }
-                    }
-                    .disabled(testing)
-                    if let result {
-                        Text(result)
-                            .font(.system(.footnote, design: .monospaced))
-                    }
-                } footer: {
-                    Text(link.state)
-                }
+        let p = Palette.of(scheme)
+        ScrollView {
+            VStack(spacing: 14) {
+                Heading(title: "Printdeck")
+                    .padding(.top, 8)
+                deckPlate
+                if settings.isComplete { watchPlate }
+                handPlate
             }
-            .navigationTitle("Printdeck")
+            .padding(16)
         }
-        .tint(Theme.orange)
+        .background(p.bg.ignoresSafeArea())
+        .environment(\.palette, p)
+        .onAppear { finder.start() }
+        .onDisappear { finder.stop() }
     }
 
-    private func save() async {
-        let settings = DeckSettings(address: address.trimmingCharacters(in: .whitespaces),
-                                    key: key.trimmingCharacters(in: .whitespaces))
-        Store.settings = settings
-        link.send(settings)
-        testing = true
-        defer { testing = false }
-        do {
-            let st = try await DeckClient(settings: settings).status()
-            if st.busy {
-                result = "OK: \(st.state) \(st.file ?? ""), \(Format.percent(st.progress ?? 0))"
-            } else {
-                result = "OK: \(st.state)"
+    private var deckPlate: some View {
+        Plate(label: "01 Deck") {
+            DisplayWindow {
+                Text(windowTitle)
+                    .font(Theme.plex(20))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Text(windowLine)
+                    .font(Theme.plex(14, bold: false))
+                    .opacity(0.8)
             }
+            if finder.decks.isEmpty && !busy {
+                Text("LOOKING FOR THE DECK ON THIS NETWORK")
+                    .font(Theme.plex(12))
+                    .foregroundStyle(Palette.of(scheme).dim)
+                    .padding(.horizontal, 4)
+            }
+            ForEach(finder.decks) { deck in
+                Button(settings.isComplete ? "Connect \(deck.name) again" : "Connect \(deck.name)") {
+                    Task { await connect(deck) }
+                }
+                .buttonStyle(KeyStyle(cap: settings.isComplete ? .raised : .orange))
+                .disabled(busy)
+            }
+            Text("Tap the key, then tap Allow on the touch screen of the deck.")
+                .font(Theme.plex(12, bold: false))
+                .foregroundStyle(Palette.of(scheme).dim)
+                .padding(.horizontal, 4)
+        }
+    }
+
+    private var watchPlate: some View {
+        Plate(label: "02 Watch") {
+            DisplayWindow {
+                Text(link.state.isEmpty ? "WAITING FOR THE WATCH" : link.state.uppercased())
+                    .font(Theme.plex(14))
+            }
+            Button("Send to the watch") { link.send(settings) }
+                .buttonStyle(KeyStyle())
+        }
+    }
+
+    private var handPlate: some View {
+        Plate(label: settings.isComplete ? "03 By hand" : "02 By hand") {
+            Button("Enter the address") { withAnimation { manual.toggle() } }
+                .buttonStyle(KeyStyle(led: manual))
+            if manual {
+                PanelField(label: "Address", prompt: "192.168.1.50", text: $address, keyboard: .URL)
+                Button("Ask the deck for a key") { Task { await connect(address: address) } }
+                    .buttonStyle(KeyStyle(cap: .orange))
+                    .disabled(busy || DeckSettings(address: address).baseURL == nil)
+                PanelField(label: "API key", prompt: "From printdeck.local/system", text: $key)
+                Button("Save the address and key") { Task { await save(DeckSettings(address: address, key: key)) } }
+                    .buttonStyle(KeyStyle())
+                    .disabled(busy || !DeckSettings(address: address, key: key).isComplete)
+                Text("Machine > Wi-Fi and help on the deck shows its address.")
+                    .font(Theme.plex(12, bold: false))
+                    .foregroundStyle(Palette.of(scheme).dim)
+                    .padding(.horizontal, 4)
+            }
+        }
+    }
+
+    private var windowTitle: String {
+        if let step { return step.uppercased() }
+        return settings.isComplete ? settings.address : "NOT CONNECTED"
+    }
+
+    private var windowLine: String {
+        if busy { return "WAITING" }
+        if step != nil { return "TRY AGAIN" }
+        return result ?? (settings.isComplete ? "CONNECTED" : "\(finder.decks.count) DECK\(finder.decks.count == 1 ? "" : "S") FOUND")
+    }
+
+    private func connect(_ deck: FoundDeck) async {
+        busy = true
+        step = "Finding the deck"
+        do {
+            let a = try await DeckFinder.address(of: deck)
+            await connect(address: a)
         } catch {
-            result = errorText(error)
+            step = errorText(error)
+            busy = false
+        }
+    }
+
+    private func connect(address: String) async {
+        let a = address.trimmingCharacters(in: .whitespaces)
+        guard let base = DeckSettings(address: a).baseURL else { return }
+        busy = true
+        defer { busy = false }
+        step = "Tap Allow on the deck"
+        do {
+            let k = try await DeckClient.requestKey(base: base, app: "Printdeck on iPhone")
+            step = nil
+            await save(DeckSettings(address: a, key: k))
+        } catch {
+            step = errorText(error)
+        }
+    }
+
+    private func save(_ new: DeckSettings) async {
+        let s = DeckSettings(address: new.address.trimmingCharacters(in: .whitespaces),
+                             key: new.key.trimmingCharacters(in: .whitespaces))
+        Store.settings = s
+        settings = s
+        address = s.address
+        key = s.key
+        manual = false
+        step = nil
+        link.send(s)
+        result = "READING THE DECK"
+        do {
+            let st = try await DeckClient(settings: s).status()
+            result = (st.busy ? "\(st.state) \(Format.percent(st.progress ?? 0))" : st.state).uppercased()
+        } catch {
+            result = errorText(error).uppercased()
         }
     }
 }

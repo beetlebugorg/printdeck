@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The colors of the night palette of the deck (deck/internal/ui/theme.go).
+/// The colors of the night palette of the deck (deck/internal/ui/theme.go). The watch uses them.
 enum Theme {
     static let orange = Color(rgb: 0xff5a1f)
     static let lcd = Color(rgb: 0x080808)
@@ -11,9 +11,35 @@ enum Theme {
     static let dim = Color(rgb: 0xc2bcb0)
     static let red = Color(rgb: 0x9c2216)
 
+    /// IBM Plex Mono, the type of the deck (Shared/Fonts, SIL Open Font License).
+    static func plex(_ size: CGFloat, bold: Bool = true) -> Font {
+        .custom(bold ? "IBMPlexMono-SmBld" : "IBMPlexMono", fixedSize: size)
+    }
+
     /// A small uppercase label, as printed on the panel of the deck.
-    static func label(_ size: CGFloat = 11) -> Font { .system(size: size, weight: .semibold, design: .monospaced) }
-    static func digits(_ size: CGFloat) -> Font { .system(size: size, weight: .medium, design: .monospaced) }
+    static func label(_ size: CGFloat = 11) -> Font { plex(size) }
+    static func digits(_ size: CGFloat) -> Font { plex(size, bold: false) }
+}
+
+/// The day and night palettes of the deck, for the iPhone app.
+struct Palette {
+    var bg, surface, raised, edge, shine, text, dim, orange, onAcc, lcd, lcdInk, lcdDim, ledOff: Color
+
+    static let day = Palette(
+        bg: Color(rgb: 0xd3d0c8), surface: Color(rgb: 0xe6e3dc), raised: Color(rgb: 0xf3f1ec),
+        edge: Color(rgb: 0xa9a59c), shine: Color(rgb: 0xfbfaf7), text: Color(rgb: 0x171717),
+        dim: Color(rgb: 0x4a4742), orange: Color(rgb: 0xff5a1f), onAcc: Color(rgb: 0x121212),
+        lcd: Color(rgb: 0x1b1c1a), lcdInk: Color(rgb: 0xff7a30), lcdDim: Color(rgb: 0xc27a48),
+        ledOff: Color(rgb: 0x8f8a80))
+
+    static let night = Palette(
+        bg: Color(rgb: 0x121211), surface: Color(rgb: 0x1c1c1a), raised: Color(rgb: 0x292825),
+        edge: Color(rgb: 0x060606), shine: Color(rgb: 0x34332f), text: Color(rgb: 0xeee9df),
+        dim: Color(rgb: 0xc2bcb0), orange: Color(rgb: 0xff7a3a), onAcc: Color(rgb: 0x0e0e0d),
+        lcd: Color(rgb: 0x080808), lcdInk: Color(rgb: 0xff8c4a), lcdDim: Color(rgb: 0xd98a55),
+        ledOff: Color(rgb: 0x3a3834))
+
+    static func of(_ scheme: ColorScheme) -> Palette { scheme == .dark ? night : day }
 }
 
 extension Color {
