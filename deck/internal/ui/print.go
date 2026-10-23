@@ -222,15 +222,59 @@ func (a *App) askCancel() {
 func (a *App) modelView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 	window(c, box)
 	a.region("Model", box)
+	// The roll in the printer on the second line, under the layer. The picture is between it and
+	// the layer slider.
+	pic := box
+	if a.rollGauge(c, image.Rect(box.Min.X+16, box.Min.Y+38, box.Max.X-14, box.Min.Y+62), st) {
+		pic.Min.Y, pic.Max.Y = pic.Min.Y+64, pic.Max.Y-40
+	}
 	if img := a.Printer.Preview(); img != nil {
-		picture(c, box, img)
+		picture(c, pic, img)
 	} else {
-		c.Text(box, "LOADING MODEL…", gfx.Face(true, 18), lcdDim, gfx.Center)
+		c.Text(pic, "LOADING MODEL…", gfx.Face(true, 18), lcdDim, gfx.Center)
 	}
 	if st.HasNow {
 		now := fmt.Sprintf("%s %.0f MM/S", strings.ToUpper(st.NowKind), st.NowSpeed*float64(a.speedFactor(st))/100)
 		c.Text(image.Rect(box.Min.X+200, box.Min.Y+8, box.Max.X-14, box.Min.Y+30), now, gfx.Face(true, 13), lcdDim, gfx.Right)
 	}
+}
+
+// rollGauge draws the roll in the printer in r: a dot in the color of the roll, a bar that shows
+// the filament on the roll, its name, and its grams. The filament of the print so far counts
+// already, so the bar goes down while the print runs. It reports false when no roll is in the
+// printer, and then draws nothing.
+func (a *App) rollGauge(c *gfx.Canvas, r image.Rectangle, st printer.State) bool {
+	rolls := a.Printer.SpoolStore()
+	if rolls == nil {
+		return false
+	}
+	sp, ok := rolls.In()
+	if !ok {
+		return false
+	}
+	left := max(0, sp.Left()-a.grams(st.FilamentUsed, ""))
+	full := sp.Full
+	if full <= 0 {
+		full = max(sp.Net, 1)
+	}
+	// The dot has a light ring, so that a dark color shows on the window. A roll with no color has
+	// the color of the display.
+	d := r.Dy()
+	dot := image.Rect(r.Min.X, r.Min.Y, r.Min.X+d, r.Max.Y)
+	c.RoundRect(dot, d/2, lcdDim)
+	if col, ok := parseHex(sp.Color); ok {
+		c.RoundRect(dot.Inset(3), d/2-3, col)
+	} else {
+		c.RoundRect(dot.Inset(3), d/2-3, lcd)
+	}
+	bar := image.Rect(dot.Max.X+10, r.Min.Y+7, dot.Max.X+10+64, r.Max.Y-7)
+	segments(c, bar, min(1, left/full))
+	face := gfx.Face(true, 13)
+	t := image.Rect(bar.Max.X+12, r.Min.Y, r.Max.X, r.Max.Y)
+	line := strings.ToUpper(sp.Label() + " · " + printer.Weight(left))
+	c.Text(t, gfx.Fit(face, line, t.Dx()), face, lcdDim, gfx.Left)
+	a.region("Roll", r)
+	return true
 }
 
 // picture draws a picture of the model in the middle of a window box. A picture that is larger
