@@ -72,40 +72,39 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		a.swap = nil
 	}
 	f := a.pageBack(c, []string{"Filament swap", "Load filament", "Unload filament"}[sw.mode], "Close", closeSwap)
-	// Tall: the step, its text and its keys under each other. Wide: the step and its text at the
-	// top of the right column, and the keys under them, which fill the column.
-	var txt *kit.Stack
-	var keyArea image.Rectangle
+	// The step, its text and its keys under each other, with the keys at the bottom. A wide
+	// screen has the same order in the right column, with lower keys.
 	// One size of text on both screens: the label of the step, its title, and the text.
 	lineH, face := 26, gfx.Face(false, 18)
-	if f.wide {
-		r := kit.Rows(f.body(), 12, kit.Px(130), kit.Fr(1))
-		txt, keyArea = kit.NewStack(r[0], 0), r[1]
-	} else {
-		txt = kit.NewStack(kit.Inset(f.body(), 0, 10, 0, 0), 0)
-	}
-	// keys gives the places of the keys of the step: px high on a tall screen, a share fr of the
-	// right column on a wide screen.
+	txt := kit.NewStack(kit.Inset(f.body(), 0, 10, 0, 0), 0)
+	// keys gives the places of the keys of the step, under the text: px high on a tall screen, a
+	// little larger than px. On a wide screen they are 3/4 of px high, and at least minRowH. When
+	// they do not fit, they share the space in the parts fr.
 	type size struct {
 		px int
 		fr float64
 	}
 	keys := func(sizes ...size) []image.Rectangle {
-		if f.wide {
-			s := make([]kit.Size, len(sizes))
+		area := kit.Inset(txt.Rest(), 0, 16, 0, 8)
+		s := make([]kit.Size, len(sizes)+1)
+		s[0] = kit.Fr(1)
+		need := 12 * len(sizes)
+		for i, z := range sizes {
+			h := z.px * 5 / 4
+			if f.wide {
+				h = max(minRowH, z.px*3/4)
+			}
+			s[i+1] = kit.Px(h)
+			need += h
+		}
+		if need > area.Dy() {
+			s = s[1:]
 			for i, z := range sizes {
 				s[i] = kit.Fr(z.fr)
 			}
-			return kit.Rows(keyArea, 12, s...)
+			return kit.Rows(area, 12, s...)
 		}
-		// At the bottom of the screen, a little larger than their size.
-		s := make([]kit.Size, len(sizes)+1)
-		s[0] = kit.Fr(1)
-		for i, z := range sizes {
-			s[i+1] = kit.Px(z.px * 5 / 4)
-		}
-		r := kit.Rows(kit.Inset(txt.Rest(), 0, 16, 0, 8), 12, s...)
-		return r[1:]
+		return kit.Rows(area, 12, s...)[1:]
 	}
 
 	// The steps of the mode: a load has no unload, an unload has no load.
@@ -203,7 +202,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		if f.wide {
 			para(heatText)
 			// The temperature and its bar under the text, Cancel at the bottom.
-			r := kit.Rows(keyArea, 12, kit.Fr(1), kit.Px(56), kit.Px(20), kit.Fr(1), kit.Px(actH))
+			r := kit.Rows(kit.Inset(txt.Rest(), 0, 16, 0, 8), 12, kit.Fr(1), kit.Px(56), kit.Px(20), kit.Fr(1), kit.Px(actH))
 			temp, bar, cancel = r[1], kit.Inset(r[2], 16, 0, 16, 0), r[4]
 		} else {
 			// The temperature over the text.
