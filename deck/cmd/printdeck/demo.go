@@ -68,6 +68,11 @@ func demoApp() (*ui.App, *ui.DemoPrinter) {
 	p.Spools_ = &printer.Spools{}
 	p.Spools_.Add("Galaxy Black", "PLA", 1180, 180, 22, end.AddDate(0, 0, -30))
 	p.Spools_.Add("Signal Orange", "PLA", 690, 180, 22, end.AddDate(0, 0, -12))
+	// The colors of the rolls, as from the materials of Cura.
+	for _, sp := range p.Spools_.List() {
+		col := map[string]string{"Galaxy Black": "#2b2d33", "Signal Orange": "#ff6a13"}[sp.Name]
+		p.Spools_.SetCuraMaterial(sp.ID, printer.SlicerMaterial{Material: "PLA", Color: col})
+	}
 	black := p.Spools_.List()[1]
 	p.Spools_.Put(black.ID)
 	p.Spools_.Use(func(float64) float64 { return 358 })

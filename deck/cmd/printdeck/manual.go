@@ -319,6 +319,7 @@ func manualParts() []section {
 						{"Cancel", "Stops the print, after a question."},
 						{"Menu", "Shows the other screens while the print runs. See Look around during a print."},
 						{"Model", "The model up to the layer that prints now, with the move now and its speed at the top right."},
+						{"Roll", "The roll in the printer: a dot in its color, the filament that is left on it, its name, and its grams. The filament of the print counts while it prints. Cura gives a roll its color."},
 						{"Layer slider", "Drag it to look at another layer. Live goes back to the layer that prints."},
 					}},
 				{Name: "pause-prompt", Caption: "A pause of the file",
