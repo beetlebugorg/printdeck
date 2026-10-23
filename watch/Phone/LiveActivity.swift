@@ -11,13 +11,13 @@ enum PrintLiveActivity {
     /// The state of the last update, so that a reading that changes nothing sends nothing.
     private static var last: PrintActivityAttributes.ContentState?
 
-    static func update(_ st: Status?) {
+    static func update(_ st: Status?, model: LCDPicture?) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled, let st else { return }
         guard st.busy else {
             end()
             return
         }
-        let state = PrintActivityAttributes.ContentState(st)
+        let state = PrintActivityAttributes.ContentState(st, model: model)
         // The stale time: a while after the end, when the app has not read the deck since.
         let stale = (state.end ?? Date().addingTimeInterval(3600)).addingTimeInterval(15 * 60)
         let content = ActivityContent(state: state, staleDate: stale)
@@ -51,7 +51,7 @@ enum PrintLiveActivity {
     /// A new state is worth an update: the pause, the layer, or the end time moved a minute.
     private static func changed(_ s: PrintActivityAttributes.ContentState) -> Bool {
         guard let l = last else { return true }
-        if s.paused != l.paused || s.layer != l.layer { return true }
+        if s.paused != l.paused || s.layer != l.layer || s.model != l.model { return true }
         switch (s.end, l.end) {
         case let (a?, b?): return abs(a.timeIntervalSince(b)) > 60
         case (nil, nil): return abs(s.progress - l.progress) > 0.01

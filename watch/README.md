@@ -6,7 +6,7 @@ deck over the local network.
 - The iPhone app has the look of the touch screen of the deck, in its tall layout: the display of
   the printer at the top, then the keys and the plates of the print. During a print it has Pause,
   Cancel and Menu, the layer, the roll (color, a meter of what is left, the name and the grams),
-  and the file with the progress and a playhead. A paused print has Resume. With no print, Print a
+  and the model as the deck draws it, with the file, the progress and a playhead. A paused print has Resume. With no print, Print a
   file opens the files of the deck, newest first. Menu opens the setup. At the start, the app
   shows the start screen of the deck in dots until the first reading of the deck.
 - The watch app is a blue dot-matrix display, in the fonts and the icons of the printer display
@@ -25,7 +25,8 @@ deck over the local network.
   screen of the watch, and the medium widget is the 128 x 64 status screen of the deck. On the
   Lock Screen are the rectangle, the circle and the inline text of the complications.
 - During a print, a Live Activity shows the print on the Lock Screen and in the Dynamic Island:
-  the hotend in dots, the time left, the bar, the end and the layer. The app starts it when it
+  the model of the print in dots (the hotend before the deck has the model), the time left, the
+  bar, the end and the layer. The app starts it when it
   sees a print, updates it from its readings, and ends it after the print. Between the readings,
   the system timers move the time left and the bar to the end time.
 - The deck sends push messages to the iPhone: print done, print failed, paused, first layer done,
@@ -38,8 +39,8 @@ progress goes up in a straight line to the end time, and the time left counts do
 
 A deck with the `lcd` field in `/api/plugin/printdeck` gives the status screen as its touch screen
 draws it, with the fan and the message. With an older deck, the apps make the screen from the
-other fields, and the fan shows "--". The deck shows its 3D model
-under the print; the API has no model, so the iPhone shows the file and the playhead there.
+other fields, and the fan shows "--". The model of the print comes from
+`model.png` of the deck: in color on the iPhone, in dots on the watch and in the Live Activity.
 
 ## Folders
 

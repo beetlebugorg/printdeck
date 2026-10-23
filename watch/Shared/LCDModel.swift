@@ -34,7 +34,8 @@ enum LCDModel {
         if let l = st.layer, let n = st.layers { s.layer = "L\(l)/\(n)" }
         if let l = st.lcd {
             // The screen of the deck: the same fields as its touch screen.
-            s.state = l.state ?? ""
+            // The state line of the deck ends in the percent, which the screens have in large.
+            s.state = (l.state ?? "").replacingOccurrences(of: #"\s+\d+%$"#, with: "", options: .regularExpression)
             s.clock = l.clock ?? s.clock
             s.message = l.message ?? ""
             s.tool = l.tool ?? 0; s.toolT = l.tool_target ?? 0

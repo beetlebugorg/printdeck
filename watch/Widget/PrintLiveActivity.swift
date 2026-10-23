@@ -15,7 +15,7 @@ struct PrintActivityWidget: Widget {
             let st = context.state
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Nozzle(size: 34).padding(.leading, 4)
+                    ModelDots(state: st, size: 52).padding(.leading, 4)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     TimeLeft(state: st, size: 26)
@@ -58,7 +58,7 @@ private struct LockScreenView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 12) {
-                Nozzle(size: 40)
+                ModelDots(state: state, size: 56)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(Theme.plex(12))
@@ -80,6 +80,33 @@ private struct LockScreenView: View {
     private var title: String {
         if !state.finished.isEmpty { return state.finished.uppercased() }
         return state.paused ? "PAUSED" : "PRINTING"
+    }
+}
+
+/// The model of the print in dots, on the blue of the display, or the hotend when the activity has
+/// no model.
+private struct ModelDots: View {
+    let state: PrintActivityAttributes.ContentState
+    let size: CGFloat
+    @Environment(\.displayScale) private var scale
+
+    var body: some View {
+        if let pic = state.modelPicture {
+            let dot = max(2, Int(size * scale) / (pic.width + 2))
+            var c = LCDCanvas(width: pic.width + 2, height: pic.height + 2, marginX: 1, marginY: 1)
+            let _ = draw(pic, &c)
+            Image(decorative: ComplicationDots.image(c, dot: dot, fullColor: true), scale: scale)
+                .interpolation(.none)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+        } else {
+            Nozzle(size: size * 0.75)
+        }
+    }
+
+    private func draw(_ pic: LCDPicture, _ c: inout LCDCanvas) {
+        for y in 0..<pic.height {
+            for x in 0..<pic.width where pic.bits[y * pic.width + x] { c.set(x, y) }
+        }
     }
 }
 

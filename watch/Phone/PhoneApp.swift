@@ -70,7 +70,13 @@ struct DeckView: View {
             }
         }
         #endif
-        .onChange(of: model.status) { _, st in PrintLiveActivity.update(st) }
+        .onChange(of: model.status) { _, st in PrintLiveActivity.update(st, model: model.model) }
+        .onChange(of: model.model) { _, m in PrintLiveActivity.update(model.status, model: m) }
+        .onAppear {
+            // The model in dots for the Live Activity, and in color for the window of the print.
+            model.modelSize = (48, 48)
+            model.modelImageSize = (720, 480)
+        }
         .task(id: phase == .active && model.settings.isComplete) {
             if phase == .active && model.settings.isComplete { await model.poll() }
         }
@@ -211,6 +217,13 @@ struct DeckView: View {
     private func progressWindow(_ st: Status) -> some View {
         let p = Palette.of(scheme)
         return VStack(alignment: .leading, spacing: 14) {
+            // The model as the deck draws it in its window, when the deck has the picture.
+            if let img = model.modelImage {
+                Image(decorative: img, scale: 3)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: .infinity, maxHeight: 220)
+            }
             Text(st.file ?? "")
                 .font(Theme.plex(17))
                 .foregroundStyle(p.lcdInk)

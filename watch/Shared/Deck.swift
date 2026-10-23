@@ -320,6 +320,14 @@ struct DeckClient {
         return LCDPicture(width: iw, height: ih, bits: gray.map { $0 >= 128 })
     }
 
+    /// The model of the print as the deck draws it, in its colors on a clear background, w x h
+    /// pixels, or nil.
+    func modelImage(width w: Int, height h: Int) async -> CGImage? {
+        guard let data = try? await send("/api/plugin/printdeck/model.png?w=\(w)&h=\(h)"),
+              let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        return CGImageSourceCreateImageAtIndex(src, 0, nil)
+    }
+
     func pause() async throws { _ = try await send("/api/job", method: "POST", body: ["command": "pause", "action": "pause"]) }
     func resume() async throws { _ = try await send("/api/job", method: "POST", body: ["command": "pause", "action": "resume"]) }
     func cancel() async throws { _ = try await send("/api/job", method: "POST", body: ["command": "cancel"]) }
@@ -330,6 +338,22 @@ struct LCDPicture: Equatable {
     var width: Int
     var height: Int
     var bits: [Bool]
+}
+
+extension LCDPicture {
+    /// The bits in bytes, 8 to a byte, the first in the top bit: small enough for the state of a
+    /// Live Activity.
+    var packed: Data {
+        var out = Data(count: (bits.count + 7) / 8)
+        for (i, b) in bits.enumerated() where b { out[i / 8] |= 0x80 >> UInt8(i % 8) }
+        return out
+    }
+
+    init?(packed: Data, width: Int, height: Int) {
+        guard packed.count * 8 >= width * height else { return nil }
+        self.init(width: width, height: height,
+                  bits: (0..<(width * height)).map { packed[$0 / 8] & (0x80 >> UInt8($0 % 8)) != 0 })
+    }
 }
 
 /// A G-code file on the deck.

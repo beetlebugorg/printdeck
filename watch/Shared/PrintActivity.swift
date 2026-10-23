@@ -19,6 +19,14 @@ struct PrintActivityAttributes: ActivityAttributes {
         var layer: String
         /// The state at the end of the print: "Done" or "Stopped", or "".
         var finished: String
+        /// The model of the print in dots, packed (LCDPicture.packed), modelSide x modelSide, or
+        /// nil.
+        var model: Data?
+        var modelSide = 0
+
+        var modelPicture: LCDPicture? {
+            model.flatMap { LCDPicture(packed: $0, width: modelSide, height: modelSide) }
+        }
     }
 
     /// The file of the print.
@@ -27,12 +35,16 @@ struct PrintActivityAttributes: ActivityAttributes {
 
 extension PrintActivityAttributes.ContentState {
     /// The state of an activity for a status of the deck.
-    init(_ st: Status, now: Date = Date()) {
+    init(_ st: Status, model pic: LCDPicture?, now: Date = Date()) {
         let p = min(1, max(0, st.progress ?? 0))
         progress = p
         paused = st.paused
         if let l = st.layer, let n = st.layers { layer = "L\(l)/\(n)" } else { layer = "" }
         finished = ""
+        if let pic, pic.width == pic.height {
+            model = pic.packed
+            modelSide = pic.width
+        }
         if !st.paused, let left = st.left(at: now), left > 0, p < 1 {
             end = now.addingTimeInterval(left)
             // The line through the progress now and 1 at the end gives the time of 0.

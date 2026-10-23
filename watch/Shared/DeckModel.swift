@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Observation
 import WidgetKit
@@ -16,6 +17,10 @@ final class DeckModel {
     private(set) var sending = false
     /// The model of the print in dots, or nil.
     private(set) var model: LCDPicture?
+    /// The model of the print in the colors of the deck, for the iPhone, or nil.
+    private(set) var modelImage: CGImage?
+    /// The size of the picture in color in pixels, or nil for none.
+    var modelImageSize: (w: Int, h: Int)?
     /// The size of the picture of the model that the screen has room for, in dots, or nil for no
     /// picture.
     var modelSize: (w: Int, h: Int)?
@@ -94,12 +99,15 @@ final class DeckModel {
     private func refreshModel(_ st: Status) async {
         guard st.busy, let size = modelSize else {
             model = nil
+            modelImage = nil
             return
         }
         guard st.layer != modelLayer || Date().timeIntervalSince(modelTime) > 20 else { return }
         modelTime = Date()
         modelLayer = st.layer
-        model = await DeckClient(settings: settings).model(width: size.w, height: size.h)
+        let client = DeckClient(settings: settings)
+        model = await client.model(width: size.w, height: size.h)
+        if let c = modelImageSize { modelImage = await client.modelImage(width: c.w, height: c.h) }
     }
 
     enum Command { case pause, resume, cancel }
