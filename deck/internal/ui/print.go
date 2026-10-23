@@ -31,6 +31,10 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		a.drawCuraPicker(c)
 		return
 	}
+	if a.colors != nil {
+		a.drawColorPicker(c)
+		return
+	}
 	if a.form != nil {
 		a.drawRollForm(c)
 		return

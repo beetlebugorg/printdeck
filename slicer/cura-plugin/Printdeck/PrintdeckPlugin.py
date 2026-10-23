@@ -524,6 +524,7 @@ class PrintdeckPlugin(Extension):
         color = spool.get("color") or logic.color_from_name(name)
         if color:
             meta["color_code"], meta["color_name"] = color, name
+        meta["printdeck_color"] = (spool.get("color") or "").lower()
         base_id = app.getMaterialManagementModel().duplicateMaterialByBaseFile(
             base, registry.uniqueName("printdeck_" + logic.material_slug(name)), meta)
         if not base_id:
@@ -569,10 +570,13 @@ class PrintdeckPlugin(Extension):
         self._setRollFavorites(wanted)
 
     def _followRollName(self, base_id, meta, spool):
-        """Gives a material that the plugin made the name and the color of its roll."""
+        """Gives a material that the plugin made the name of its roll, and keeps the color of the
+        roll and of the material the same (logic.roll_material_changes)."""
         from cura.Settings.CuraContainerRegistry import CuraContainerRegistry
 
-        changes = logic.roll_material_changes(meta, spool)
+        changes, to_deck = logic.roll_material_changes(meta, spool)
+        if to_deck:
+            self._linkRoll(spool["id"], base_id, to_deck)
         if not changes:
             return
         containers = CuraContainerRegistry.getInstance().findContainers(id=base_id)

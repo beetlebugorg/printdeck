@@ -19,6 +19,7 @@ import (
 type rollForm struct {
 	material string
 	cura     printer.SlicerMaterial // the material of Cura, or none
+	color    string                 // the color of the roll, or "": the color of the material of Cura
 	name     string
 	scale    int // grams on the scale, with the reel
 	reel     int // grams of the empty reel
@@ -99,6 +100,9 @@ func (a *App) drawRollForm(c *gfx.Canvas) {
 			fm.kb = &keyboard{title: "Name of the roll", value: fm.name, max: 32, ok: "OK", cancel: "Back",
 				back: func() { fm.kb = nil }, done: func(v string) { fm.name, fm.kb = strings.TrimSpace(v), nil }}
 		}},
+		{"Color", colorName(fm.color), dim, func() {
+			a.pickColor(fm.color, func(hex string) { fm.color = hex })
+		}},
 		{"On the scale", grams(fm.scale), dim, func() {
 			a.editNumber("Roll on the scale", fm.scale, 9999, " g", func(v int) { fm.scale = v })
 		}},
@@ -160,8 +164,11 @@ func (a *App) drawRollForm(c *gfx.Canvas) {
 		sp := s.Add(fm.name, fm.material, float64(fm.scale), float64(fm.reel), float64(fm.price), a.Now())
 		if fm.cura.ID != "" {
 			s.SetCuraMaterial(sp.ID, fm.cura)
-			sp, _ = s.Get(sp.ID)
 		}
+		if fm.color != "" {
+			s.SetColor(sp.ID, fm.color)
+		}
+		sp, _ = s.Get(sp.ID)
 		a.setMaterial(sp.Material)
 		a.form = nil
 		if fm.done != nil {
@@ -248,6 +255,7 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 	}
 	rows := [][2]string{
 		{"Material", sp.Material},
+		{"Color", colorName(sp.Color)},
 		{"Cura material", cura},
 		{"Filament left", printer.Weight(sp.Left())},
 		{"Used since weighed", printer.Weight(sp.Used)},
@@ -281,6 +289,21 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 	plate(c, box)
 	a.region("Details", box)
 	table := kit.Inset(box, 18, 10, 18, 10)
+	id := sp.ID
+	// The second row, Color, opens the palette. The chip of the color is left of its name.
+	detailRows(c, table, rows[:1], rowH)
+	{
+		y := table.Min.Y + rowH
+		r := image.Rect(box.Min.X+4, y, box.Max.X-4, y+rowH)
+		a.detailLink(c, r, rows[1], func() { a.pickColor(sp.Color, func(hex string) { s.SetColor(id, hex) }) })
+		if sp.Color != "" {
+			x := r.Max.X - 40 - gfx.Width(gfx.Face(true, 17), rows[1][1]) - 10
+			d := min(20, rowH-8)
+			swatch(c, image.Rect(x-d, r.Min.Y+(rowH-d)/2, x, r.Min.Y+(rowH+d)/2), sp.Color)
+		}
+		table.Min.Y += 2 * rowH
+		rows = rows[2:]
+	}
 	if len(prints) > 0 {
 		// The last row, Prints, opens the list of the prints of the roll.
 		detailRows(c, table, rows[:len(rows)-1], rowH)
@@ -296,7 +319,6 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 		segments(c, bar, sp.Left()/sp.Full)
 		a.region("Left", bar)
 	}
-	id := sp.ID
 	// Cura material, over the other keys, when the Cura plugin sent the materials.
 	if len(a.curaMaterials()) > 0 {
 		r := kit.Rows(image.Rect(keys.Min.X, keys.Min.Y-84, keys.Max.X, keys.Max.Y), 12, kit.Px(72), kit.Px(72))
