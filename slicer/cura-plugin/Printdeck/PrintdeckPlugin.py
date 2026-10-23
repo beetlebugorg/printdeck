@@ -42,11 +42,17 @@ class RollCard(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._card = None
+        self._printer = ""
 
-    def set(self, card):
-        if card != self._card:
-            self._card = card
+    def set(self, card, printer=""):
+        """Sets the texts of the card, and the name of the printer in Cura."""
+        if (card, printer) != (self._card, self._printer):
+            self._card, self._printer = card, printer
             self.changed.emit()
+
+    @pyqtProperty(str, notify=changed)
+    def printer(self):
+        return self._printer
 
     def _get(self, key, empty):
         return self._card[key] if self._card else empty
@@ -626,7 +632,8 @@ class PrintdeckPlugin(Extension):
     def _checkRoll(self):
         weights = CuraApplication.getInstance().getPrintInformation().materialWeights
         needed = float(weights[0]) if weights else 0
-        self._card.set(logic.roll_card(self._status, needed))
+        stack, _ = self._extruder()
+        self._card.set(logic.roll_card(self._status, needed), stack.getName() if stack else "")
         if not self._status or not self._status["spool"]:
             return
         text = logic.short_roll(needed, self._status["spool"])
