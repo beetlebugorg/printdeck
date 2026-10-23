@@ -166,12 +166,16 @@ COL_R = 3.5
 # front slot of the rail hold the back panel against the rail: each clip snaps into the slot,
 # and its dovetail key goes into a slot in the back panel. You need no nut in the rail.
 WINDOWS = [(158.0, 192.0, 2.8, 22.8), (116.0, 140.0, 2.8, 22.8)]   # y0, y1, z0, z1: display cables; drive cable
-FLANGE_X = (82.3, None)          # the flange of the plate; its front is the back panel (CLR)
+FLANGE_X = (82.3, None)          # the flange of the plate; its front is the back panel (FLANGE_GAP)
 FLANGE_SCREWS = [(149.0, 19.0), (232.0, 19.0)]   # (y, z)
 FLANGE_HALF = 6.0                # half height of each flange block
+# The gap between the flange blocks and the back panel. It is more than CLR, so that a block never
+# pushes the plate off the panel; the flange screws pull the block to the panel, and the slots of
+# the cover screws let the plate follow.
+FLANGE_GAP = 0.8
 FLANGE_Z = (12.5, 23.2)          # the flange block (its underside slopes 45 degrees to a web in front of the cables)
 # A heat-set insert often stands a little proud of the rear face of the back panel, with a ring of
-# melted plastic around it. The gap between the flange and the back panel is only CLR, so a relief
+# melted plastic around it. The gap between the flange and the back panel is only FLANGE_GAP, so a relief
 # around each flange screw hole takes the insert and the ring: radius, depth into the flange.
 FLANGE_RELIEF = (3.6, 1.0)
 
@@ -320,16 +324,17 @@ PI_HOLE_D = 3.2                  # drill the four 2.7 mm holes of the Pi to 3.2 
 # front face); it is to be confirmed. Type new values here and run make.sh. Each cover screw
 # under the plate changes to a longer M3 socket cap screw with a washer: the plate pad is 4 mm
 # thick, so an M3 x 10 goes 3.5 mm into the PEM nut of the chassis (the old screw: 4.0 mm). The holes in
-# the plate are slots, MOUNT_SLOT mm long up and down and MOUNT_SLOT_W mm wide (+-0.5 mm front to
-# back for the measurement), so a few mm of difference fits.
+# the plate are slots, MOUNT_SLOT mm long up and down and MOUNT_SLOT_W mm wide (+-1.0 mm front to
+# back), so a few mm of difference fits. The play front to back lets the plate go to the back
+# panel when the flange screws pull it, so the plate does not bend between the cover and the panel.
 COVER_SCREWS_MM = [(239.8, 6.1), (239.8, 163.9)]
 COVER_SCREW_NOTES = ["front: measured (237.3 mm up, 3.6 mm from the cover edge)",
                      "rear: from the drawing, mirrored; to be confirmed"]
-MOUNT_SLOT_W = 4.4
+MOUNT_SLOT_W = 5.4
 COVER_SCREWS_CONFIRMED = False
 MOUNT_SLOT = 10.0
 PAD_T = 4.0
-PAD_R = 3.9                      # half width of each pad (a washer is 7 mm)
+PAD_R = 4.4                      # half width of each pad (a washer is 7 mm)
 MOUNT_SCREWS = [(X_FRONT - f, b - Y_BASE) for b, f in COVER_SCREWS_MM]   # (x, y) in mount coordinates
 
 # Cable exits: two notches in the rear wall of the pod, at the rear face of the chassis. The
