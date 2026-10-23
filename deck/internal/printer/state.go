@@ -112,6 +112,8 @@ type State struct {
 	PausePrompt              string
 	PauseCheck, PauseChecked bool
 	PauseDelta               float64
+	// PauseRoll is the ID of the roll of a color change of the file (PRINTDECK_PAUSE ROLL), or "".
+	PauseRoll string
 
 	// Starting is true while Klipper starts: it reports "startup", or its socket is not there yet,
 	// soon after the deck or Klipper started (startGrace). After that, the error shows.

@@ -457,13 +457,21 @@ func (a *App) drawPausePrompt(c *gfx.Canvas, st printer.State, info, resume imag
 		pr.Resume()
 	})
 	check := func() { a.do(func() error { return pr.Gcode("PRINTDECK_CHECK_HEIGHT") }) }
-	if st.PauseCheck {
+	switch {
+	case st.PauseRoll != "":
+		// A color change of the file: the filament change has the roll of the file.
+		roll := st.PauseRoll
+		a.button(c, grid[0], "Change filament", orange, onAcc, func() {
+			a.openSwap(swapChange)
+			a.swap.roll = roll
+		})
+	case st.PauseCheck:
 		fill, ink := raised, text
 		if !st.PauseChecked {
 			fill, ink = orange, onAcc
 		}
 		a.button(c, grid[0], "Check the height", fill, ink, check)
-	} else {
+	default:
 		a.button(c, grid[0], "Change filament", raised, text, func() { a.openSwap(swapChange) })
 	}
 	a.button(c, grid[1], "Move head", raised, text, func() { a.open(pageMove) })

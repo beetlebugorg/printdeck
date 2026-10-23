@@ -2,14 +2,16 @@
 // a pocket on the bed or an insert in the print. It is a module of Printdeck, not a port of a
 // Klipper module. The config section is [printdeck_pause] (printdeck.cfg has it).
 //
-//	PRINTDECK_PAUSE [MESSAGE="Put the part in the pocket"] [CHECK_X=x CHECK_Y=y CHECK_Z=z]
+//	PRINTDECK_PAUSE [MESSAGE="Put the part in the pocket"] [CHECK_X=x CHECK_Y=y CHECK_Z=z] [ROLL=id]
 //
 // pauses the print (PAUSE), retracts, lifts the nozzle, and parks it, away from the print. The
 // Pause key of the deck uses it with no message, so that a filament change purges beside the print. With CHECK_Z, the deck offers
 // a height check: PRINTDECK_CHECK_HEIGHT moves the nozzle over CHECK_X, CHECK_Y of the part and
 // starts a manual probe (the paper test). After ACCEPT, the difference between the measured
 // height and CHECK_Z, the height of the face in the file, goes into the Z offset of the paused
-// print. PRINTDECK_RESUME primes the nozzle and resumes the print.
+// print. With ROLL, the pause is a change of the filament to the roll with that ID of the deck (a
+// color change that the Cura plugin adds): the filament change of the deck has that roll.
+// PRINTDECK_RESUME primes the nozzle and resumes the print.
 //
 //	PRINTDECK_PURGE [LENGTH=15]
 //
@@ -51,6 +53,7 @@ type PrintdeckPause struct {
 	checkZ         float64 // the height of the face in the file
 	checked        bool
 	delta          float64 // the measured height less checkZ, in mm
+	roll           string  // the roll of a color change, or ""
 }
 
 func load(config *configfile.Wrapper) any {
@@ -74,11 +77,12 @@ func init() { host.RegisterModule("printdeck_pause", load, nil) }
 // Status is the pause for the deck: its message, and the height check.
 func (p *PrintdeckPause) Status(eventtime float64) map[string]any {
 	return map[string]any{"active": p.active, "message": p.message, "check": p.check, "checked": p.checked,
-		"delta": p.delta}
+		"delta": p.delta, "roll": p.roll}
 }
 
 func (p *PrintdeckPause) cmdPause(gcmd *gcode.Command) {
 	p.message = gcmd.GetString("MESSAGE", gcode.Default(""))
+	p.roll = gcmd.GetString("ROLL", gcode.Default(""))
 	z := gcmd.GetFloat("CHECK_Z", gcode.Default(math.NaN()))
 	p.check = !math.IsNaN(z)
 	p.checkX = gcmd.GetFloat("CHECK_X", gcode.Default(0.))

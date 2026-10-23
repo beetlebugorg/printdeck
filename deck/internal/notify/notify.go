@@ -114,7 +114,11 @@ func (w *Watcher) Step(st printer.State, roll Roll) []Message {
 		case st.Layers > 0:
 			body = fmt.Sprintf("%s · layer %d of %d", st.File, st.Layer, st.Layers)
 		}
-		out = append(out, Message{Title: "Print paused", Body: body, Tags: "pause_button", Priority: 4})
+		title := "Print paused"
+		if st.PauseRoll != "" {
+			title = "Change the filament"
+		}
+		out = append(out, Message{Title: title, Body: body, Tags: "pause_button", Priority: 4})
 	}
 	if busy && !w.firstLayer && st.Layers > 1 && st.Layer >= 2 {
 		w.firstLayer = true

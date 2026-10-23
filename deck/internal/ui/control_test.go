@@ -525,3 +525,23 @@ func TestSwapAfterPause(t *testing.T) {
 		t.Fatalf("swap %+v", a.swap)
 	}
 }
+
+// A color change of the file: Change filament on the pause takes the roll of the file.
+func TestColorChangePause(t *testing.T) {
+	st := printer.State{Reachable: true, Connected: true, Text: "Paused", Printing: true, Paused: true, PauseActive: true,
+		File: "a.gcode", PausePrompt: "Load #2 Navy for the lettering", PauseRoll: "2", Tool: 210, ToolTarget: 210}
+	a, pr, cv := newPrintApp(st)
+	a.SwapHome = false
+	pr.Spools_ = &printer.Spools{}
+	pr.Spools_.Add("White", "PLA", 1200, 200, 0, time.Unix(1, 0))
+	pr.Spools_.Add("Navy", "PLA", 1200, 200, 0, time.Unix(2, 0))
+	pr.Spools_.Put("1")
+	tapRegion(t, a, cv, "Change filament")
+	a.Draw(cv)
+	if a.swap == nil || !a.swap.paused || a.swap.step != swapHeat {
+		t.Fatalf("swap %+v", a.swap)
+	}
+	if in, _ := pr.Spools_.In(); in.ID != "2" {
+		t.Errorf("roll in the printer %q, want 2", in.ID)
+	}
+}
