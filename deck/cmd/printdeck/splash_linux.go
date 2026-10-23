@@ -29,6 +29,7 @@ const (
 // splash shows the start screen. If a finger stays on the screen at the start, it shows the boot messages
 // instead. printdeck-init starts it before systemd.
 func splash(cfg config.Config) {
+	settingsRotate(&cfg)
 	screen, name := openSplash(cfg)
 	if screen == nil {
 		log.Fatal("no framebuffer")
