@@ -147,14 +147,17 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 			info = fmt.Sprintf("%.0f°", st.Bed)
 		}
 		// The name gets the space that the information does not use.
-		nameR := image.Rect(box.Min.X+60, y, box.Max.X-22, y+rowH-8)
+		nameR := image.Rect(box.Min.X+60, y, box.Max.X-22, y+rowH-12)
 		if info != "" {
 			nameR.Max.X = box.Max.X - 160
 		}
 		c.Text(nameR, s.name, gfx.Face(true, 19), col, gfx.Left)
-		c.Text(image.Rect(box.Max.X-190, y, box.Max.X-22, y+rowH-8), info, gfx.Face(false, 16), orange, gfx.Right)
+		c.Text(image.Rect(box.Max.X-190, y, box.Max.X-22, y+rowH-12), info, gfx.Face(false, 16), orange, gfx.Right)
 		if f > 0 {
-			segments(c, image.Rect(box.Min.X+60, y+rowH-12, box.Max.X-22, y+rowH-4), min(1, f))
+			// A thin bar under the name, with a gap: the segments of a meter crowd the line.
+			bar := image.Rect(box.Min.X+60, y+rowH-8, box.Max.X-22, y+rowH-4)
+			c.RoundRect(bar, 2, mix(surface, dim, 0.3))
+			c.RoundRect(image.Rect(bar.Min.X, bar.Min.Y, bar.Min.X+int(float64(bar.Dx())*min(1, f)), bar.Max.Y), 2, orange)
 		}
 	}
 	// The model under the steps: on a tall screen at the end, on a wide screen when it has the room.
