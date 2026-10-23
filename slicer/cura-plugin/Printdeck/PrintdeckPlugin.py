@@ -658,10 +658,7 @@ class PrintdeckPlugin(Extension):
         layer = logic.preview_layer(job)
         if (self._job, layer) == self._layer:
             return  # the same layer: the user can look at other layers until the next one
-        first = self._layer is None or self._layer[0] != self._job
         self._layer = (self._job, layer)
         view = app.getController().getView("SimulationView")
         if view and view.getMaxLayers() > 0:
             view.setLayer(min(view.getMaxLayers(), layer))
-            if first:
-                _message("The Preview shows the layer that prints on the Printdeck.")
