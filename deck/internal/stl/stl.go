@@ -70,8 +70,11 @@ func Parse(r io.Reader) (*Mesh, error) {
 var (
 	sinA, cosA = math.Sincos(35 * math.Pi / 180)
 	sinE, cosE = math.Sincos(40 * math.Pi / 180)
-	// Direction to the light, in model space.
+	// Directions to the key light and to the weaker fill light, in model space.
 	light = norm([3]float64{-0.4, -0.5, 0.8})
+	fill  = norm([3]float64{0.7, 0.3, 0.2})
+	// The direction to the viewer, in model space: the depth axis of project.
+	viewer = [3]float64{-sinA * cosE, -cosA * cosE, sinE}
 )
 
 func norm(v [3]float64) [3]float64 {
@@ -90,7 +93,7 @@ func project(p [3]float32) (u, v, d float64) {
 	return u, -(depth*sinE + z*cosE), -(depth * cosE) + z*sinE
 }
 
-// Render draws the mesh with flat shading. The part below the height zFrac (0..1 of the model height)
+// Render draws the mesh with flat shading, from a key light and a fill light. The part below the height zFrac (0..1 of the model height)
 // is drawn in the printed colour, the rest in the ghost colour. The part from zLow to zFrac, the layer that
 // is printed now, is drawn in the colour hot.
 func (m *Mesh) Render(w, h int, zLow, zFrac float64, printed, hot, ghost color.RGBA) *image.RGBA {
@@ -119,27 +122,40 @@ func (m *Mesh) Render(w, h int, zLow, zFrac float64, printed, hot, ghost color.R
 			u, v, d := project(p)
 			sx[i], sy[i], sd[i] = ox+(u-minU)*scale, oy+(v-minV)*scale, d
 		}
-		// Face normal for shading.
+		// Face normal for shading, turned to the viewer: meshes differ in winding.
 		a := [3]float64{float64(t.V[1][0] - t.V[0][0]), float64(t.V[1][1] - t.V[0][1]), float64(t.V[1][2] - t.V[0][2])}
 		b := [3]float64{float64(t.V[2][0] - t.V[0][0]), float64(t.V[2][1] - t.V[0][1]), float64(t.V[2][2] - t.V[0][2])}
 		n := norm([3]float64{a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]})
-		lum := math.Abs(n[0]*light[0] + n[1]*light[1] + n[2]*light[2]) // two-sided: meshes differ in winding
-		shade := 0.35 + 0.65*lum
-		cz := float64(t.V[0][2]+t.V[1][2]+t.V[2][2]) / 3
-		base := ghost
-		if cz <= zcut {
-			base = printed
-			if cz > zlow {
-				base = hot
-			}
+		if dot(n, viewer) < 0 {
+			n = [3]float64{-n[0], -n[1], -n[2]}
 		}
-		col := color.RGBA{uint8(float64(base.R) * shade), uint8(float64(base.G) * shade), uint8(float64(base.B) * shade), 255}
-		raster(img, zbuf, sx, sy, sd, col)
+		shade := 0.32 + 0.58*max(0, dot(n, light)) + 0.18*max(0, dot(n, fill))
+		lit := func(c color.RGBA) color.RGBA {
+			f := func(v uint8) uint8 { return uint8(min(255, float64(v)*shade)) }
+			return color.RGBA{f(c.R), f(c.G), f(c.B), 255}
+		}
+		// The colour of each pixel follows its height, so the printed part ends on a straight cut.
+		cols := [3]color.RGBA{lit(ghost), lit(printed), lit(hot)}
+		colorAt := func(z float64) color.RGBA {
+			switch {
+			case z > zcut:
+				return cols[0]
+			case z > zlow:
+				return cols[2]
+			}
+			return cols[1]
+		}
+		wz := [3]float64{float64(t.V[0][2]), float64(t.V[1][2]), float64(t.V[2][2])}
+		raster(img, zbuf, sx, sy, sd, wz, colorAt)
 	}
 	return img
 }
 
-func raster(img *image.RGBA, zbuf []float64, sx, sy, sd [3]float64, c color.RGBA) {
+func dot(a, b [3]float64) float64 { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2] }
+
+// raster fills a triangle at the screen points sx, sy with the depths sd, in front of what zbuf
+// has. wz are the heights of its corners in the model, and colorAt gives the colour of a height.
+func raster(img *image.RGBA, zbuf []float64, sx, sy, sd, wz [3]float64, colorAt func(z float64) color.RGBA) {
 	w, h := img.Bounds().Dx(), img.Bounds().Dy()
 	minX := int(math.Floor(math.Min(sx[0], math.Min(sx[1], sx[2]))))
 	maxX := int(math.Ceil(math.Max(sx[0], math.Max(sx[1], sx[2]))))
@@ -163,7 +179,7 @@ func raster(img *image.RGBA, zbuf []float64, sx, sy, sd [3]float64, c color.RGBA
 			d := l0*sd[0] + l1*sd[1] + l2*sd[2]
 			if i := y*w + x; d > zbuf[i] {
 				zbuf[i] = d
-				img.SetRGBA(x, y, c)
+				img.SetRGBA(x, y, colorAt(l0*wz[0]+l1*wz[1]+l2*wz[2]))
 			}
 		}
 	}
