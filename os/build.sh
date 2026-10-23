@@ -54,7 +54,7 @@ run() {
     --user "$(id -u):$(id -g)" \
     -e HOME=/cache/home \
     -e BR2_DL_DIR=/cache/dl \
-    -e PRINTDECK_VERSION="$(git -C "$REPO" describe --always --dirty 2>/dev/null || echo unknown)" \
+    -e PRINTDECK_VERSION="$(git -C "$REPO" describe --tags --match 'v*' --always --dirty 2>/dev/null || echo unknown)" \
     -e PRINTDECK_VARIANT="$VARIANT" \
     -e PRINTDECK_SIGNING_KEY \
     -v "$CACHE:/cache" \
