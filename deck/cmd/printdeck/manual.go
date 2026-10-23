@@ -235,14 +235,16 @@ func manualParts() []section {
 						{"Fan", "The part cooling fan. Its blades turn at its speed."},
 						{"Status", "The position of the head, the state of the printer with the loaded filament, and the clock. This is the status screen of the display of the printer: the same picture on both screens."},
 						{"Print a file", "Opens the files. See Files."},
+					},
+					Tall: []callout{
 						{"Preheat", "Heats the nozzle and the bed for the loaded filament. Its LED is lit while the heaters hold those temperatures: tap it again to turn them off."},
 						{"Cool down", "Turns off both heaters."},
 						{"Last print", "The last print and its result. Reprint starts it again, after a question."},
-					},
-					Tall: []callout{
 						{"Pages", "Filament, Toolhead and Machine. Each page has its own section."},
 					},
 					Wide: []callout{
+						{"Last print", "The last print, as on its page of the history: the result, the time, the filament, the roll and the cost. Reprint starts it again, after a question. Preheat and Cool down are in Filament."},
+						{"Model", "The model of the last print, in the color of its roll. Tap it to open the page of the print in the history."},
 						{"Pages", "The key panel: Main (this screen), Files, Filament, Toolhead and Machine. The LED of the page that is open is lit. Each page has its own section."},
 					}},
 				{Name: "keypad", Caption: "The keypad of a temperature",
