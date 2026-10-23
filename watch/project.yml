@@ -55,6 +55,7 @@ targets:
           destination: productsDirectory
           subpath: $(CONTENTS_FOLDER_PATH)/Watch
       - target: PrintdeckNotifications
+      - target: PrintdeckWidget
     scheme:
       testTargets: [PrintdeckTests]
   PrintdeckNotifications:
@@ -80,6 +81,28 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_PREFIX).notifications
+        TARGETED_DEVICE_FAMILY: "1"
+  PrintdeckWidget:
+    type: app-extension
+    platform: iOS
+    sources: [Widget, Shared]
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleDisplayName: Printdeck
+        KeychainGroup: $(KEYCHAIN_GROUP)
+        UIAppFonts: [IBMPlexMono-Regular.ttf, IBMPlexMono-SemiBold.ttf]
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    entitlements:
+      path: Widget/Widget.entitlements
+      properties:
+        keychain-access-groups: [$(KEYCHAIN_GROUP)]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_PREFIX).widget
         TARGETED_DEVICE_FAMILY: "1"
   PrintdeckTests:
     type: bundle.unit-test

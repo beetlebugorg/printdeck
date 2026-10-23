@@ -20,6 +20,9 @@ deck over the local network.
   the progress, around the percent; with no print, the hotend. The corner and the inline
   complications are text. On a face with tint the lit dots take the tint; on a face in full color
   the display has its blue light. `Shared/ComplicationLCD.swift` draws them.
+- The iPhone has widgets in the same dots. On the Home Screen, the small widget is the status
+  screen of the watch, and the medium widget is the 128 x 64 status screen of the deck. On the
+  Lock Screen are the rectangle, the circle and the inline text of the complications.
 - The deck sends push messages to the iPhone: print done, print failed, paused, first layer done,
   and a roll that runs short. The messages are encrypted from the deck to the iPhone. The watch
   shows the notifications of the iPhone.
@@ -48,7 +51,9 @@ under the print; the API has no model, so the iPhone shows the file and the play
   the setup (`SetupView.swift`), the search for the deck (`Finder.swift`), the pairing for push
   messages (`Push.swift`), and the settings for the watch (`WatchLink.swift`).
 - `Watch/`: the watch app.
-- `Complication/`: the WidgetKit extension with the complications.
+- `Complication/`: the WidgetKit extension with the complications of the watch.
+- `Widget/`: the WidgetKit extension with the widgets of the iPhone. `Shared/DeckWidget.swift`
+  has the timeline and the views that both have.
 - `Notifications/`: the notification service extension that decrypts the push messages.
 - `Push/PushCrypto.swift`: the key agreement and the decryption of the push messages.
 - `Tests/`: the tests of `PushCrypto`, with vectors from the Go code of the deck.
@@ -66,9 +71,9 @@ The deployment targets are iOS 17 and watchOS 10. The project was built and test
 1. Set `DEVELOPMENT_TEAM` in `project.yml` to your team ID and run `xcodegen`. The project uses
    automatic signing.
 2. The bundle IDs start with `BUNDLE_PREFIX` (`org.beetlebug.printdeck`): the iPhone app, then
-   `.notifications`, `.watchkitapp` and `.watchkitapp.widget`. The keychain group is the team ID,
-   the prefix and `.shared`. If your team cannot use this prefix, change `BUNDLE_PREFIX` in
-   `project.yml` and run `xcodegen`.
+   `.notifications`, `.widget`, `.watchkitapp` and `.watchkitapp.widget`. The keychain group is
+   the team ID, the prefix and `.shared`. If your team cannot use this prefix, change
+   `BUNDLE_PREFIX` in `project.yml` and run `xcodegen`.
 3. Open `Printdeck.xcodeproj`, connect the iPhone, choose the `Printdeck` scheme and the iPhone,
    and run. The watch app is in the iPhone app.
 4. For the watch, choose the `PrintdeckWatch` scheme and the watch, and run. Xcode adds the watch
