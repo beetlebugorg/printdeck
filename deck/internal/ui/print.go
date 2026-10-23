@@ -300,33 +300,16 @@ func (a *App) speedTrace(c *gfx.Canvas, r image.Rectangle, st printer.State) boo
 	if n <= 0 {
 		return true
 	}
-	// The fastest speed of each part. A part with no sample keeps the speed of the part before it.
-	now := a.Now()
-	peak := make([]float64, n)
-	has := make([]bool, n)
-	top := 50.0 // the speed at the top of the chart: at least 50 mm/s, in steps of 50
-	for _, s := range a.trace {
-		i := n - 1 - int(float64(now.Sub(s.at))/float64(traceSpan)*float64(n))
-		if i < 0 || i >= n {
-			continue
-		}
-		peak[i], has[i] = max(peak[i], s.speed), true
-		top = max(top, math.Ceil(s.speed/50)*50)
-	}
+	peak, top := tracePeaks(a.trace, a.Now(), n)
 	// The base line, and a dotted line at the top with its speed.
 	c.Fill(image.Rect(chart.Min.X, chart.Max.Y-1, chart.Max.X, chart.Max.Y), lcdDim)
 	for x := chart.Min.X; x < chart.Max.X; x += 6 {
 		c.Fill(image.Rect(x, chart.Min.Y, x+2, chart.Min.Y+1), lcdDim)
 	}
 	c.Text(image.Rect(chart.Max.X+4, chart.Min.Y-6, nums.Min.X, chart.Min.Y+8), fmt.Sprint(top), gfx.Face(false, 11), lcdDim, gfx.Left)
-	started := false
 	for i := 0; i < n; i++ {
-		if !has[i] && started && i > 0 {
-			peak[i] = peak[i-1]
-		}
-		started = started || has[i]
-		if !started {
-			continue
+		if peak[i] < 0 {
+			continue // before the first sample
 		}
 		h := int(peak[i] / top * float64(chart.Dy()-1))
 		x := chart.Min.X + i*(barW+gap)
@@ -339,6 +322,38 @@ func (a *App) speedTrace(c *gfx.Canvas, r image.Rectangle, st printer.State) boo
 	}
 	a.region("Speed", r)
 	return true
+}
+
+// tracePeaks gives the fastest speed of each of n bars of the trace that ends at now, and the speed
+// of the top of the chart: at least 50 mm/s, in steps of 50. Each bar is a fixed slot of the clock,
+// so a sample stays in its bar from frame to frame, and the bars move a whole bar at a time. A bar
+// with no sample keeps the speed of the bar before it; a bar before the first sample is -1.
+func tracePeaks(trace []traceSample, now time.Time, n int) ([]float64, float64) {
+	slot := int64(traceSpan) / int64(n)
+	cur := now.UnixNano() / slot
+	peak := make([]float64, n)
+	has := make([]bool, n)
+	top := 50.0
+	for _, s := range trace {
+		i := n - 1 - int(cur-s.at.UnixNano()/slot)
+		if i < 0 || i >= n {
+			continue
+		}
+		peak[i], has[i] = max(peak[i], s.speed), true
+		top = max(top, math.Ceil(s.speed/50)*50)
+	}
+	started := false
+	for i := range peak {
+		switch {
+		case has[i]:
+			started = true
+		case started:
+			peak[i] = peak[i-1]
+		default:
+			peak[i] = -1
+		}
+	}
+	return peak, top
 }
 
 // DemoTrace fills the trace of the live speed with 30 s of a print: slow walls and fast infill.
