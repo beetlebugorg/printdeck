@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
+	"image/png"
 	"net/http"
+	"strconv"
 	"time"
 
 	"printdeck/internal/printer"
@@ -228,6 +230,8 @@ type printdeckFields struct {
 	StartPrint func(path string)
 	// Status gives the status screen of the printer display (lcd.Status), or nil.
 	Status func() any
+	// Model draws the model of the print for an app (printer.View.ModelPicture), or nil.
+	Model func(st printer.State, w, h int, mono bool) image.Image
 }
 
 // startPrint starts a print of a file, with StartPrint when the Server has it.
@@ -237,4 +241,30 @@ func (s *Server) startPrint(path string) {
 		return
 	}
 	s.Printer.PrintFile(path)
+}
+
+// serveModel is the picture of the model of the print, as a PNG of w x h pixels (16 to 512, 128
+// by default). mono=1 gives three grays for a display of dots. It is 404 when no print runs, or
+// when its G-code is not loaded yet.
+func (s *Server) serveModel(w http.ResponseWriter, r *http.Request) {
+	st := s.Printer.State()
+	if s.Model == nil || !st.Busy() {
+		http.NotFound(w, r)
+		return
+	}
+	size := func(name string) int {
+		n, err := strconv.Atoi(r.URL.Query().Get(name))
+		if err != nil {
+			return 128
+		}
+		return max(16, min(512, n))
+	}
+	img := s.Model(st, size("w"), size("h"), r.URL.Query().Get("mono") == "1")
+	if img == nil {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "no-store")
+	png.Encode(w, img)
 }

@@ -353,7 +353,7 @@ func (m *Model) Render(w, h int, pos, curStart int64, printed, hot, ghost color.
 	if last >= 0 && last < len(m.Segs)-1 {
 		sg := &m.Segs[last]
 		x, y, _ := pt(sg.X1, sg.Y1, sg.Z1)
-		dot(out, int(x), int(y), 5, color.RGBA{255, 255, 255, 255})
+		dot(out, int(x), int(y), max(2, min(5, w/90)), color.RGBA{255, 255, 255, 255}) // smaller in a small picture
 	}
 	return out
 }

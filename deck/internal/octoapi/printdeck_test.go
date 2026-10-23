@@ -3,6 +3,7 @@ package octoapi
 import (
 	"image"
 	"image/jpeg"
+	"image/png"
 	"net/http"
 	"strings"
 	"testing"
@@ -102,5 +103,30 @@ func TestScreenWebcam(t *testing.T) {
 	n, _ := r2.Body.Read(buf)
 	if !strings.HasPrefix(r2.Header.Get("Content-Type"), "multipart/x-mixed-replace") || !strings.Contains(string(buf[:n]), "--printdeckframe") {
 		t.Errorf("stream: %q %q", r2.Header.Get("Content-Type"), buf[:n])
+	}
+}
+
+// The picture of the model is 404 with no print, and a PNG of the size asked during a print.
+func TestModelPicture(t *testing.T) {
+	s, ts, p := newTest(t)
+	var asked [3]any
+	s.Model = func(st printer.State, w, h int, mono bool) image.Image {
+		asked = [3]any{w, h, mono}
+		return image.NewGray(image.Rect(0, 0, w, h))
+	}
+	if r, _ := do(t, "GET", ts.URL+"/api/plugin/printdeck/model.png", mainKey, nil, ""); r.StatusCode != http.StatusNotFound {
+		t.Errorf("no print: %d", r.StatusCode)
+	}
+	p.st = printer.State{Reachable: true, Connected: true, Printing: true, FilePath: "a.gcode"}
+	req, _ := http.NewRequest("GET", ts.URL+"/api/plugin/printdeck/model.png?w=96&h=2000&mono=1", nil)
+	req.Header.Set("X-Api-Key", mainKey)
+	r, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Body.Close()
+	img, err := png.Decode(r.Body)
+	if err != nil || r.StatusCode != 200 || img.Bounds().Dx() != 96 || img.Bounds().Dy() != 512 || asked[2] != true {
+		t.Errorf("%d %v %v %v", r.StatusCode, err, img.Bounds(), asked)
 	}
 }

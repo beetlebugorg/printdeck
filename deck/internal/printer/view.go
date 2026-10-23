@@ -478,3 +478,54 @@ func rollHex(hex, name string) string {
 	}
 	return ColorFromName(name)
 }
+
+// ModelPicture draws the model of the print of st at the size w x h, for an app: the printed part
+// up to the file position of st, and the rest of the model. With mono, the picture is gray with
+// three values only: the printed part is white, the rest is a checker of white and black, and
+// the background is black, for a display of dots. Else it has the colors of the screen of the deck
+// on a transparent background. It returns nil when the G-code of the print is not loaded.
+func (v *View) ModelPicture(st State, w, h int, mono bool) image.Image {
+	v.mu.Lock()
+	gc, mesh, hex := v.gc, v.mesh, v.color
+	if v.file != fileKey(st) {
+		gc = nil
+	}
+	v.mu.Unlock()
+	if gc == nil {
+		return nil
+	}
+	pos := st.FilePos
+	curStart := gc.LayerStart(gc.LayerAt(pos))
+	if !mono {
+		col := modelColor(hex)
+		if mesh != nil {
+			top := float64(gc.ZAt(pos)) / float64(max(gc.MaxZ, 0.001))
+			return mesh.Render(w, h, top, top, col, col, ghostColor)
+		}
+		return gc.Render(w, h, pos, curStart, col, hotColor, pathGhost)
+	}
+	// Red for the printed part and blue for the rest: the shading changes the brightness of a
+	// pixel, and the larger channel still tells the two apart.
+	red, blue := color.RGBA{255, 0, 0, 255}, color.RGBA{0, 0, 255, 255}
+	var img *image.RGBA
+	if mesh != nil {
+		top := float64(gc.ZAt(pos)) / float64(max(gc.MaxZ, 0.001))
+		img = mesh.Render(w, h, top, top, red, red, blue)
+	} else {
+		img = gc.Render(w, h, pos, math.MaxInt64, red, red, blue)
+	}
+	out := image.NewGray(image.Rect(0, 0, w, h))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			c := img.RGBAAt(x, y)
+			switch {
+			case c.A < 128:
+			case c.R >= c.B:
+				out.Pix[y*out.Stride+x] = 255
+			case (x+y)%2 == 0:
+				out.Pix[y*out.Stride+x] = 255
+			}
+		}
+	}
+	return out
+}

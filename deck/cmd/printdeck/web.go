@@ -77,6 +77,7 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 	api.Frame = cameraFrame(app)
 	api.StartPrint = app.ConfirmFilePrint
 	api.Status = func() any { return app.StatusScreen() }
+	api.Model = k.View.ModelPicture
 	// The phones of the Printdeck app for push messages; a new phone gets a test message.
 	api.Phones = phonesIn(cfg.StateDir)
 	api.OnPaired = func(ph notify.Phone) {

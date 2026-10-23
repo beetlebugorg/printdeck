@@ -103,6 +103,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/plugin/printdeck", s.key(s.servePrintdeck))
 	mux.HandleFunc("POST /api/plugin/printdeck/materials", s.key(s.serveSlicerMaterials))
 	mux.HandleFunc("POST /api/plugin/printdeck/roll", s.key(s.serveRollMaterial))
+	mux.HandleFunc("GET /api/plugin/printdeck/model.png", s.key(s.serveModel))
 	mux.HandleFunc("POST /api/plugin/printdeck/push/pair", s.key(s.servePair))
 	mux.HandleFunc("GET /api/plugin/printdeck/push", s.key(s.servePhones))
 	mux.HandleFunc("DELETE /api/plugin/printdeck/push/{id}", s.key(s.serveUnpair))
