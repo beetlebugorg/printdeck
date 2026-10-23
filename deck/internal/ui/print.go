@@ -181,7 +181,7 @@ func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 	a.statusPanel(c, st)
 	keys, box := a.jobAreas()
 	if f, _, _ := a.stateAreas(); f.wide {
-		// Under the keys in the left column: the file, the layer and the end of the print.
+		// Under the keys in the left column: the file, the time left and the end of the print.
 		_, side, _ := a.stateAreas()
 		a.jobCard(c, kit.Rows(side, 12, kit.Px(keys.Dy()), kit.Fr(1))[1], st)
 	}
@@ -197,15 +197,13 @@ func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 	a.drawScrubber(c, box, st)
 }
 
-// jobCard draws the file of the print, its layer, and the time of its end, in a plate.
+// jobCard draws the file of the print, the time left, and the time of its end, in a plate.
 func (a *App) jobCard(c *gfx.Canvas, r image.Rectangle, st printer.State) {
 	plate(c, r)
 	in := kit.Inset(r, 18, 10, 18, 10)
 	s := kit.NewStack(in, 4)
 	c.Text(s.Next(30), st.File, gfx.Face(true, 20), text, gfx.Left)
-	if st.Layers > 0 {
-		c.Text(s.Next(26), fmt.Sprintf("Layer %d of %d", st.Layer, st.Layers), gfx.Face(false, 17), dim, gfx.Left)
-	}
+	// The model view shows the layer.
 	if st.HasTimeLeft {
 		// The time left and the end on two lines: the column is narrow.
 		end := clockText(a.Now().Add(st.TimeLeft), a.Clock24)
