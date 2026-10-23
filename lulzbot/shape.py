@@ -18,6 +18,8 @@
 #   pod       navy    the cover over the Pi. It slides up and in onto two hooks on the plate.
 #   grille    white   the vent panel over the Pi. It snaps into a pocket of the pod.
 #   clip      orange  two clips on the front left rail, each held by a hammer nut in the slot.
+#   roll_nut  orange  an option: a printed roll-in nut with an M3 hex nut, until you have the
+#                     metal T-nuts. It is not in the assembly; model.py checks it on its own.
 # The orange edges of the plate and the back panel show as thin lines between the navy parts
 # and the black printer.
 #
@@ -190,6 +192,79 @@ HAMMER_NUT = (10.0, 6.0, 4.0)
 HAMMER_STRAIGHT = 1.2            # the straight upper part of its sides
 NUT_GAP = 0.1                    # from the back of the lips to the nut (the screw pulls it up)
 CLIP_SCREW = 8.0                 # M3 x 8 from the counterbore into the nut: 3.9 mm of thread.
+
+# Printed roll-in nut: an option until you have the metal T-nuts. A printed nut holds a standard
+# M3 hex nut (after the "T-NUT for 2020 profile" of nisi1t, Thingiverse 5155562, CC BY, which slides
+# in from an end of the rail). Its section across the slot is 7.1 mm wide and 3.6 mm thick, with
+# 1.4 mm rounds. It goes edge first into the opening and rolls in behind the lips at any point
+# of the rail: roll_nut.py checks the path in the section of the rail of the LulzBot model, with
+# 0.25 mm of clearance. A wider section does not roll in. The hex nut lies flat in a pocket from
+# the bottom, with its flats across the slot. The M3 x 8 screw pulls the nut up until its round
+# shoulders are on the round backs of the lips.
+ROLL_NUT_HALF = 4.0              # half the width of the top face, before the rounds
+ROLL_NUT_STRAIGHT = 0.6          # the straight part of the sides; then 45 degrees to the bottom
+ROLL_NUT_T = 3.6                 # thick
+ROLL_NUT_BOTTOM = 2.75           # half the width of the bottom, before the rounds
+ROLL_NUT_ROUND = 1.4             # the round of the corners
+ROLL_NUT_L = 11.0                # along the slot
+ROLL_NUT_TOP = 1.3               # the top face behind the rail face, with the nut pulled up on the lips
+HEX_NUT = (5.5, 2.4)             # the M3 hex nut: across the flats, thick
+HEX_TOP = 1.2                    # the hex nut is this far under the top face of the printed nut
+HEX_POCKET = 5.6                 # the pocket across the flats: a press fit
+ROLL_CLEAR = 0.25                # the clearance of the roll-in check
+
+
+def _clip_half_plane(poly, a, b, c):
+    """The part of the convex polygon poly where a * w + b * u <= c."""
+    out = []
+    for i, p in enumerate(poly):
+        q = poly[(i + 1) % len(poly)]
+        fp, fq = a * p[0] + b * p[1] - c, a * q[0] + b * q[1] - c
+        if fp <= 0:
+            out.append(p)
+        if fp * fq < 0:
+            t = fp / (fp - fq)
+            out.append((p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])))
+    return out
+
+
+def rounded(poly, r, n=10):
+    """The convex polygon poly with its corners rounded with radius r: the polygon moved in by r,
+    then out by r. Where an edge is too short for two rounds, the rounds meet."""
+    area = sum(p[0] * q[1] - q[0] * p[1] for p, q in zip(poly, poly[1:] + poly[:1]))
+    if area < 0:
+        poly = poly[::-1]
+    # Each edge as an outward normal (nx, nu) and an offset: nx * w + nu * u <= c.
+    lines = []
+    for p, q in zip(poly, poly[1:] + poly[:1]):
+        dw, du = q[0] - p[0], q[1] - p[1]
+        L = math.hypot(dw, du)
+        nx, nu = du / L, -dw / L
+        lines.append((nx, nu, nx * p[0] + nu * p[1]))
+    inner = [(-1e3, -1e3), (1e3, -1e3), (1e3, 1e3), (-1e3, 1e3)]
+    for nx, nu, c in lines:
+        inner = _clip_half_plane(inner, nx, nu, c - r)
+    out = []
+    for i, p in enumerate(inner):
+        a0 = inner[i - 1]
+        a1 = inner[(i + 1) % len(inner)]
+        # the outward normals of the two edges at p
+        n0 = math.atan2(-(p[0] - a0[0]), p[1] - a0[1])
+        n1 = math.atan2(-(a1[0] - p[0]), a1[1] - p[1])
+        if n1 < n0:
+            n1 += 2 * math.pi
+        k = max(1, int(n * (n1 - n0) / (math.pi / 2)))
+        for j in range(k + 1):
+            t = n0 + (n1 - n0) * j / k
+            out.append((p[0] + r * math.cos(t), p[1] + r * math.sin(t)))
+    return out
+
+
+def roll_nut_section():
+    """The section of the printed roll-in nut across the slot, as (w, u) points: w across the
+    slot from its middle, u down from the top face."""
+    a, k, t, b = ROLL_NUT_HALF, ROLL_NUT_STRAIGHT, ROLL_NUT_T, ROLL_NUT_BOTTOM
+    return rounded([(-a, 0.0), (a, 0.0), (a, k), (b, t), (-b, t), (-a, k)], ROLL_NUT_ROUND)
 # An M3 x 10 reaches 7.7 mm behind the rail face, past the bottom of the slot (6.5 mm).
 CLIPS_Y = (158.0, 214.0)         # y of the clip centres (the back panel sets their height)
 CLIP_SLACK = 3.0                 # the dovetail slot is longer by this on each end

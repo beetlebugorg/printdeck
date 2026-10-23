@@ -113,7 +113,7 @@ the stack and staple it in the fold.</code></pre>
 <p>Build the Printdeck Slate: the parts in build123d (fit check, STEP, STL), the mesh check, the Cura profiles with the filament and the support check, the line-art renders, the build PDF, and the website in ../docs. Takes about 1 minute (more if CuraEngine stalls and the slice runs again).</p>
 <p><code>slate/make_site.py</code>, the last step, writes <code>slate/guide/guide.json</code> and the images of this site in <code>docs/img/</code>.</p>
 <h3>The TAZ Workhorse mount</h3>
-<p>Build the Printdeck LulzBot mount: the LulzBot reference meshes, the parts in build123d (fit check, STEP, STL), the display fit test, the mesh and overhang check, the Cura profiles with the filament, the print time, and the support check, the renders, the line-art images, and the build PDF. It stops if a check fails. It runs in about 3 minutes.</p>
+<p>Build the Printdeck LulzBot mount: the LulzBot reference meshes, the parts in build123d (fit check, STEP, STL), the display fit test, the roll-in check of the printed nut, the mesh and overhang check, the Cura profiles with the filament, the print time, and the support check, the renders, the line-art images, and the build PDF. It stops if a check fails. It runs in about 3 minutes.</p>
 <p><code>lulzbot/make_pdf.py</code>, the last step, also writes <code>lulzbot/guide/guide.json</code> and the images in <code>lulzbot/guide/img/</code>. The upgrade booklet (<code>docs/manual/build.sh</code>) and this site read them.</p>
 <h3>This site</h3>
 <p>Printdeck: write the documentation site in docs/ (<a href="https://beetlebug.org/printdeck/">https://beetlebug.org/printdeck/</a>).</p>

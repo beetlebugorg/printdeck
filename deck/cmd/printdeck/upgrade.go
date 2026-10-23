@@ -35,6 +35,7 @@ type lulzGuide struct {
 	}
 	Prints   []lulzPrint
 	Test     lulzPrint
+	RollNut  lulzPrint // the printed roll-in nut: an option until you have the metal T-nuts
 	Settings [][2]string
 	Hardware []struct {
 		Count       int
@@ -222,6 +223,10 @@ func lulzGuides(g lulzGuide) []bookGuide {
 	plan.add(bookBlock{Kind: "parts", Parts: g.Prints}, 0.35+float64(len(g.Prints))*0.47+0.35)
 	note(&plan, fmt.Sprintf("Total: %d g of PLA (%d m), %s of printing, %s at %s a kilogram. The fit test of the "+
 		"screen opening (%s, %d g, %s) is optional.", t.Grams, t.Metres, t.Time, t.Cost, t.PricePerKg, g.Test.File, g.Test.Grams, g.Test.Time))
+	r := g.RollNut
+	note(&plan, fmt.Sprintf("Until you have the metal T-nuts, you can print %d roll-in nuts (%s, %d g, %s) and press an "+
+		"M3 hex nut into each one. They roll into the slot at any point on the rail, the same as the metal T-nuts.",
+		r.Count, r.File, r.Grams, r.Time))
 	note(&plan, "Print the fit test first, and check the display in it: the display pocket has 0.3 mm of clearance at each "+
 		"side. Then print the head and the back panel: steps 2 to 4 need them. Then print the plate, the clips, the pod "+
 		"and the grille.")

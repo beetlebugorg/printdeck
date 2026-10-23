@@ -38,7 +38,8 @@ electronics chassis, and it wraps around the front left edge of the chassis.
 
 In total: 321 g of PLA (navy 162 g, orange 135 g, white 24 g) and 15 h 29 min of printing. Print
 the display fit test first (`stl/fit_display.stl`, 22 g, 1 h 10 min): the display pocket has
-0.3 mm of clearance at each side. The numbers come from slices with the Cura profiles in `cura/`
+0.3 mm of clearance at each side. Until you have the metal T-nuts, also print two roll-in nuts
+(`stl/roll_nut.stl`, see Hardware). The numbers come from slices with the Cura profiles in `cura/`
 (CuraEngine, TAZ Workhorse SE tool head, 0.5 mm nozzle, 2.85 mm PLA). The profiles keep the flow
 at 12 mm3/s or less, with slower outer walls. `make.sh` checks each part: one closed mesh, no
 flat ceiling, no face flatter than 40 degrees, and 0 g of support in a slice with supports on.
@@ -70,6 +71,30 @@ the rail, so the M3 x 8 screw goes 3.9 mm into its thread. An M3 x 10 screw goes
 the face, past the bottom of the slot (about 6.5 mm), so do not use one. A printed twist nut
 failed: it must be less than 5.1 mm wide to go through the lips, and the plastic around an M3
 insert or an M3 thread was too thin to hold.
+
+### Printed roll-in nut (option)
+
+Until you have the metal T-nuts, you can print two roll-in nuts (`stl/roll_nut.stl`, 1 g and
+3 min each, orange, on its end with a brim, 100 % infill). Each one holds a standard M3 hex nut
+(5.5 mm across the flats, 2.4 mm thick): press the hex nut into the pocket from the bottom with
+pliers. The printed nut rolls into the slot at any point on the rail, the same as the metal
+T-nut. You do not remove the ends of the rail.
+
+- Its section across the slot is 7.1 mm wide and 3.6 mm thick, with 1.4 mm rounds, and it is
+  11 mm long. You put one long edge into the slot, with the hex nut away from you, and roll the
+  nut in behind the lips.
+- `roll_nut.py` checks the roll in the section of the rail of the LulzBot model, with 0.25 mm of
+  clearance. A wider section does not roll in, and a narrower one holds less of the lips.
+- The M3 x 8 screw pulls the nut up until its round shoulders are on the round backs of the
+  lips: its top face is then 1.3 mm behind the face of the rail. The screw goes through the full
+  2.4 mm thread of the hex nut and 0.8 mm past it. There is 1.2 mm of plastic between the hex nut
+  and the lips, and the bottom of the nut is 1.5 mm above the bottom of the slot.
+- The hex nut pocket has a 45 degree point up in the print, so the nut prints with no supports.
+- The printed nut is not as strong as a metal T-nut. Tighten the clip screw gently.
+
+The idea comes from the "T-NUT for 2020 profile" by nisi1t
+(https://www.thingiverse.com/thing:5155562, CC BY): a printed nut with an M3 hex nut in it. That
+nut slides in from an end of the rail. This one is a new design that rolls in.
 
 The drive sits on four 0.5 mm pads, so its M3 x 6 screws go 2.5 mm into the drive.
 
@@ -166,8 +191,13 @@ the board is the space for the FPC fold; put foam tape there, so the glass stays
     they touch no part of the printer,
   - the head drops onto the clip keys, and the pod slides onto its hooks, without a touch,
   - the fan sits on the four catches of the grille, the prongs bend less than 1.2 %, and the
-    grille with the fan goes into the pod without a touch.
+    grille with the fan goes into the pod without a touch,
+  - the printed roll-in nut is clear of the rail and the clip, it is on the lips, and the clip
+    screw goes through the full thread of its hex nut.
   It writes `cad/*.step` (each part and the assembly, on the printer) and `stl/*.stl`.
+- `roll_nut.py` checks that the printed roll-in nut rolls into the slot of the rail: in the
+  section of the rail, it finds a path of turns and moves from outside the rail to the place of
+  the nut, with 0.25 mm of clearance.
 - `fit_display.py` writes `stl/fit_display.stl`.
 - `cura/make_profiles.py` writes the Cura profiles, slices each part for the filament and the
   print time, and slices each part again with supports on (from the Slate).

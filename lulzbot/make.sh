@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build the Printdeck LulzBot mount: the LulzBot reference meshes, the parts in build123d
-# (fit check, STEP, STL), the display fit test, the mesh and overhang check, the Cura profiles
+# (fit check, STEP, STL), the display fit test, the roll-in check of the printed nut, the mesh and
+# overhang check, the Cura profiles
 # with the filament, the print time, and the support check, the renders, the line-art images,
 # and the build PDF. It stops if a check fails. It runs in about 3 minutes.
 set -euo pipefail
@@ -10,12 +11,14 @@ uv run --no-project --with build123d python workhorse.py > build/workhorse.log
 uv run --no-project --with build123d python model.py | tee build/model.log
 grep -q "RESULT: OK" build/model.log || { echo "fit check failed"; exit 1; }
 uv run --no-project --with build123d python fit_display.py
+uv run --no-project --with build123d --with shapely --with scipy python roll_nut.py | tee build/roll_nut.log
+grep -q "RESULT: OK" build/roll_nut.log || { echo "roll-in check failed"; exit 1; }
 # Mesh check (from the Slate): every STL must be one closed part. Overhang check: no flat
 # ceiling above the bed (a bridge), and no face flatter than 40 degrees above the bed.
 uv run --no-project --with numpy --with scipy --with trimesh --with networkx python - <<'PY'
 import sys, math, trimesh
 bad = False
-for n in ("head", "back", "pod", "plate", "grille", "clip", "fit_display"):
+for n in ("head", "back", "pod", "plate", "grille", "clip", "roll_nut", "fit_display"):
     m = trimesh.load(f"stl/{n}.stl")
     ok = m.is_watertight and m.is_winding_consistent and m.body_count == 1
     nz, zc, area = m.face_normals[:, 2], m.triangles_center[:, 2], m.area_faces
@@ -38,7 +41,7 @@ import json, sys
 s = json.load(open("build/supports.json"))
 bad = {k: v for k, v in s.items() if v > 0}
 print("  support check:", "0 g for all parts" if not bad else f"SUPPORT NEEDED {bad}")
-sys.exit(1 if bad or len(s) != 7 else 0)
+sys.exit(1 if bad or len(s) != 8 else 0)
 PY
 # Line-art images in three.js (headless Chromium), in the style of the Slate guide.
 [ -d lineart/node_modules ] || (cd lineart && npm ci --no-fund --no-audit)
