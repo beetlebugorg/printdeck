@@ -20,7 +20,7 @@ import (
 const curaPluginJSON = "../slicer/cura-plugin/Printdeck/plugin.json"
 
 // The screenshots of Cura in DIR/img.
-var curaShots = []string{"cura-tab", "cura-tune", "cura-connecting", "cura-button", "cura-messages", "cura-panel", "cura-pocket",
+var curaShots = []string{"cura-tab", "cura-tune", "cura-connecting", "cura-button", "cura-panel", "cura-pocket",
 	"cura-cube", "cube"}
 
 const (
@@ -218,17 +218,16 @@ func curaGuides() []bookGuide {
 	follow.title()
 	follow.para("During a print of the file that Cura has open, the Preview shows the layer that prints. The Preview " +
 		"goes to the next layer when the deck starts it. Between two layers, you can look at other layers.")
-	follow.shot("cura-messages", "The messages of the plugin", 1.75, nil)
-	follow.sub("After a restart of Cura")
+	follow.sub("A print that Cura does not have open")
 	follow.items("olist",
-		"Start Cura during a print. Cura connects to the deck, and shows the message \"The Printdeck prints "+
-			"<file>. Cura can show it in the Preview, at the layer that prints.\"",
-		"Click Show the print. Cura downloads the file from the deck, and opens it in the Preview.",
+		"Open the Printdeck tab.",
+		"Click Show in Preview, under the screen of the deck. Cura downloads the file from the deck, and opens "+
+			"it in the Preview.",
 		"The Preview follows the layer that prints.")
 	follow.sub("Play with the printer")
 	follow.para("In the Preview of the file that prints, click Play. The nozzle of the Preview then moves with the " +
 		"nozzle of the printer, move by move. To look at other layers, click Pause, or drag a slider. The Preview " +
-		"follows the printer only for the G-code file of the print, from Show the print or from the disk.")
+		"follows the printer only for the G-code file of the print, from Show in Preview or from the disk.")
 	follow.para("Cura shows no print time for a G-code file. The Printdeck tab shows the time left. When the print " +
 		"ends, Cura shows a message.")
 

@@ -111,8 +111,6 @@ class PrintdeckPlugin(Extension):
         self._printerAddr = None  # the base URL and the API key of the last answer
         self._status = None  # the last answer of the Printdeck
         self._connected = False
-        self._greeted = False
-        self._offer = None  # the message that offers to show the print
         self._loading = None  # the file of the print that Cura loads, and the caution setting to restore
         self._roll = None  # the roll and the material of the last answer, to see a change
         self._materialsSent = None  # the materials of Cura that the Printdeck has
@@ -207,9 +205,6 @@ class PrintdeckPlugin(Extension):
         if not self._connected:
             self._connected = True
             Logger.log("i", "Printdeck: connected")
-            if not self._greeted:  # once each time Cura starts; the roll card shows the roll
-                self._greeted = True
-                self._offerPrint()
         self._nameButton()
         self._sendMaterials()
         self._syncRolls()
@@ -219,25 +214,6 @@ class PrintdeckPlugin(Extension):
         self._watchPlay()
         self._checkFollowing()
         self._followPrint()
-
-    def _offerPrint(self):
-        """During a print of a file that Cura does not have open, offers to show it in the Preview."""
-        job = self._status["job"]
-        app = CuraApplication.getInstance()
-        if not job or logic.job_matches(app.getPrintInformation().jobName, job.get("file", "")):
-            return
-        name = job.get("file", "").split("/")[-1]
-        message = Message("The Printdeck prints %s. Cura can show it in the Preview, at the layer that prints." % name,
-                          title="Printdeck", lifetime=0)
-        message.addAction("show", "Show the print", "", "Open the file of the print in the Preview")
-        # A method: the signals of Cura keep only a weak reference, so a lambda is gone before the click.
-        message.actionTriggered.connect(self._onOfferAction)
-        message.show()
-        self._offer = message
-
-    def _onOfferAction(self, message, action):
-        message.hide()
-        self._showPrint()
 
     def _showPrint(self):
         """Downloads the file of the print from the Printdeck, and opens it in the Preview."""
@@ -275,9 +251,6 @@ class PrintdeckPlugin(Extension):
         except ImportError:
             from PyQt5.QtCore import QUrl
         self._layer = None  # the Preview goes to the layer that prints when the file is loaded
-        if self._offer:
-            self._offer.hide()
-            self._offer = None
         # The file comes from the Printdeck that prints it: no caution about the printer.
         prefs = CuraApplication.getInstance().getPreferences()
         self._loading = (path, prefs.getValue("gcodereader/show_caution"))
