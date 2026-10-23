@@ -47,6 +47,16 @@ Rectangle
         anchors.rightMargin: card.margin
         spacing: UM.Theme.getSize("default_margin").height
 
+        // What the card shows: the roll that is loaded in the printer.
+        UM.Label
+        {
+            width: parent.width
+            text: roll && roll.printer != "" ? "Loaded in " + roll.printer : "Loaded in the Printdeck"
+            font: UM.Theme.getFont("small")
+            color: UM.Theme.getColor("text_medium")
+            elide: Text.ElideRight
+        }
+
         Row
         {
             width: parent.width
