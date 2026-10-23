@@ -14,9 +14,10 @@ Fit check (a true boolean test of every pair whose boxes overlap):
   - the head with the back panel hangs on the rail: at each step of the 8 mm drop onto the rail
     screws, it touches no fixed part,
   - the pod slides on: at each step of its 45 degree path, it touches no fixed part,
-  - the fan sits in the snaps of the grille: the catches are under the fan, the funnel is over
-    it, and the prongs bend less than the strain limit,
-  - the grille with the fan goes into the pod straight from the outside and touches no part,
+  - the fan sits on the fan plate, with a post in each of its holes, and there is air over the
+    highest heatsink,
+  - the fan plate with the fan, then the grille, go into the pod straight from the outside and
+    touch no part,
   - the printed roll-in nut (an option for the hammer nut) is clear of the rail and the clip, it
     is on the lips, and the clip screw goes through the full thread of its hex nut (roll_nut.py
     checks its path into the slot).
@@ -60,6 +61,7 @@ PRINTED = {
     "pod": ("pla_navy", "outer", "pod"),
     "plate": ("pla_orange", "flat", "plate"),
     "grille": ("pla_white", "flat", "grille"),
+    "fan_plate": ("pla_white", "outer", "fan_plate"),
     "clip_a": ("pla_orange", "end", "clip"),
     "clip_b": ("pla_orange", "end", None),
 }
@@ -96,12 +98,14 @@ HARDWARE = [
     ("clip_screw", "m3x8", "M3 × 8 socket cap head", "VIGRUE M3 kit", "rail clip into its T-nut"),
     ("hammer_nut", "m3_hammer", "M3 roll-in T-nut with spring ball, for 2020 extrusion, 6 mm slot", "buy: uxcell M3 roll-in "
      "spring T-nut with ball, 2020 series (Amazon B09MFT1PKF)", "rail clips"),
+    ("fan_screw", "m25_rh", "M2.5 self-tapping round head Phillips, 8 to 11 mm long", "your fan screws",
+     "fan onto the fan plate (it cuts its thread)"),
     ("insert_head_back", "ins_m3x7", "M3 × 7 heat-set insert", "FFVRVSS insert kit", "head, back screws (3 to 7 mm fits)"),
     ("insert_back_flange", "ins_m3x7", "M3 × 7 heat-set insert", "FFVRVSS insert kit", "back panel, flange screws (3 to 7 mm fits)"),
     ("insert_pod_block", "ins_m3x5", "M3 × 5 heat-set insert", "FFVRVSS insert kit", "plate, pod screw blocks (3 to 5 mm fits)"),
 ]
 STOCK = {"m3x6": 55, "m3x8": 55, "m3x10": 55, "m3x12": 55, "m3_washer": 300, "ins_m3x5": 50, "ins_m3x7": 30,
-         "m3_hammer": 2}
+         "m3_hammer": 2, "m25_rh": 2}
 
 
 def hardware_list(hw):
@@ -110,7 +114,7 @@ def hardware_list(hw):
     out, problems = {}, []
     for name, _, _ in hw:
         if not name.startswith(("mount_", "head_screw", "flange_", "bottom_", "drive_screw", "display_screw",
-                                "pi_screw", "clip_screw", "hammer_nut", "insert_")):
+                                "pi_screw", "clip_screw", "hammer_nut", "insert_", "fan_screw")):
             continue
         entry = next((h for h in HARDWARE if name.startswith(h[0])), None)
         if entry is None:
@@ -151,12 +155,13 @@ def build():
         "pod": P.pod(),
         "plate": P.plate(),
         "grille": P.grille(),
+        "fan_plate": P.fan_plate(),
         "clip_a": P.clip(S.CLIPS_Y[0]),
         "clip_b": P.clip(S.CLIPS_Y[1]),
     }
     log(f"  printed parts built in {time.time() - t:.0f} s")
     hw = (P.display() + P.pi5() + P.mount_screws() + P.bottom_screws() + P.drive() + P.head_screws()
-          + P.flange_screws() + P.clip_screws() + P.hammer_nuts() + P.inserts() + P.fan() + P.cables())
+          + P.flange_screws() + P.clip_screws() + P.hammer_nuts() + P.inserts() + P.fan() + P.fan_screws() + P.cables())
     return printed, head_local, hw
 
 
@@ -177,7 +182,7 @@ def pair_in(m, n, pairs):
 
 
 # The screws that cut their own thread in a printed part: they go into a 2.5 mm hole.
-SELF_TAP = [("display_screw", "head"), ("pi_screw", "plate")]
+SELF_TAP = [("display_screw", "head"), ("pi_screw", "plate"), ("fan_screw", "fan_plate")]
 
 
 def check_case(printed, hw):
@@ -325,12 +330,19 @@ def check_paths(printed, hw):
                 v = overlap(ms, fs)
                 if v > 0.5:
                     problems.append(f"pod slide {s_mm:.1f} mm: {mn} touches {fn}: {v:.1f} mm3")
-    # The grille with the fan goes in last, straight into the pocket from the outside. The fan
-    # cable bends, so it is not in this check.
+    # The fan plate with the fan goes in, straight into the pocket from the outside, then the grille.
+    # The fan cable bends, so it is not in this check.
     fixed += [("pod", printed["pod"])] + [(n, s) for n, s in hwd.items() if n.startswith("cable_") and n != "cable_fan"]
-    on_grille = [("grille", printed["grille"])] + [(n, s) for n, s in hwd.items() if n.startswith("fan_")]
+    on_plate_fan = [("fan_plate", printed["fan_plate"])] + [(n, s) for n, s in hwd.items() if n.startswith("fan_")]
     for dz in (2.0, 5.0, 10.0, 15.0, 25.0, 40.0):
-        for mn, ms in moved(on_grille, Pos(0, 0, dz)):
+        for mn, ms in moved(on_plate_fan, Pos(0, 0, dz)):
+            for fn, fs in fixed:
+                v = overlap(ms, fs)
+                if v > 0.5:
+                    problems.append(f"fan plate in {dz:.0f} mm: {mn} touches {fn}: {v:.1f} mm3")
+    fixed += on_plate_fan
+    for dz in (2.0, 5.0, 10.0):                   # nearer, the tabs bend over the ridges
+        for mn, ms in moved([("grille", printed["grille"])], Pos(0, 0, dz)):
             for fn, fs in fixed:
                 v = overlap(ms, fs)
                 if v > 0.5:
@@ -339,26 +351,35 @@ def check_paths(printed, hw):
 
 
 def check_fan(printed, hw):
-    """The fan sits in the snaps of the grille: 0.2 mm lower, it goes into the four catches; it can
-    move up by FAN_PLAY to the funnel, and no more; the prongs bend less than 1.2 %."""
+    """The fan sits on the fan plate: on it, and 0.1 mm closer, in it; the posts are in its holes,
+    so 0.3 mm to a side it touches a post; the screws reach the hollow posts. The grille is on the
+    fan plate, and the fan plate is on the ledge. There is air over the highest heatsink."""
     problems = []
     frame = next(s for n, s, _ in hw if n == "fan_frame")
-    g = printed["grille"]
-    down = overlap(Pos(0, 0, -0.2) * frame, g)
-    w, _, d = S.PRONG
-    if down < 4 * 0.2 * w * (d - 0.1) * 0.9:          # the top 0.2 mm of each 45 degree catch
-        problems.append(f"the fan is not on the four catches: {down:.1f} mm3 under it")
-    if overlap(Pos(0, 0, S.FAN_PLAY - 0.05) * frame, g) > 0.5:
-        problems.append("the funnel of the bump presses on the fan")
-    if overlap(Pos(0, 0, S.FAN_PLAY + 0.15) * frame, g) < 0.5:
-        problems.append("the funnel of the bump does not stop the fan")
-    strain, length = P.prong_strain()
-    if strain > 0.012:
-        problems.append(f"the prongs bend {strain * 100:.1f} %: more than 1.2 %")
-    z0, _ = P.fan_z()
-    log(f"  fan: on four catches {d:.1f} mm deep, {S.FAN_PLAY:.1f} mm of play; prongs {length:.1f} mm long, "
-        f"{S.PRONG[1]:.1f} mm thick, strain {strain * 100:.2f} %; {z0 - S.PI_Z - 1.5 - 2.2 - S.HEATSINK_H:.1f} mm "
-        f"of air over a {S.HEATSINK_H:.0f} mm heatsink; the bump is {S.BUMP_TOP - S.POD_Z:.1f} mm out of the pod")
+    fp = printed["fan_plate"]
+    if overlap(frame, fp) > 0.05:
+        problems.append("the fan goes into the fan plate or a post")
+    if overlap(Pos(0, 0, 0.1) * frame, fp) < 0.5:
+        problems.append("the fan is not on the fan plate")
+    for dx, dy in ((0.3, 0), (-0.3, 0), (0, 0.3), (0, -0.3)):
+        if overlap(Pos(dx, dy, 0) * frame, fp) < 0.05:
+            problems.append(f"the posts do not hold the fan in place ({dx}, {dy})")
+    d, L, _ = S.POST
+    if L >= S.FAN[1] - 2.0:
+        problems.append("the posts are too long for an 8 mm fan screw")
+    if overlap(Pos(0, 0, -0.1) * printed["grille"], fp) < 0.5:
+        problems.append("the grille is not on the fan plate")
+    if overlap(Pos(0, 0, -0.1) * fp, printed["pod"]) < 0.5:
+        problems.append("the fan plate is not on the ledge of the pod")
+    _, zf = P.fan_z()
+    air = zf - (S.PI_Z + 1.5 + 2.2 + S.HEATSINK_H)
+    if air < S.FAN_AIR - 0.01:
+        problems.append(f"only {air:.1f} mm of air over the heatsink")
+    thread = S.FAN_SCREW[3] - (S.FAN[1] - L)
+    log(f"  fan: on the fan plate, on two {d:.1f} mm posts and two hollow posts, {L:.0f} mm into its holes; an M2.5 x "
+        f"{S.FAN_SCREW[3]:.0f} screw has {thread:.0f} mm of thread; {air:.1f} mm of air over a {S.HEATSINK_H:.0f} mm "
+        f"heatsink; the pod is {S.POD_Z:.1f} mm out of the cover ({S.POD_Z - S.HEAD_POD_Z:.1f} mm deeper than the "
+        f"first pod)")
     return problems
 
 
@@ -477,7 +498,7 @@ def export(printed, head_local, world_printed, world_hw):
     c = summary["cables"]
     log(f"  cables, plug to plug: HDMI {c['hdmi']} mm, touch USB {c['touch']} mm, drive {c['drive']} mm; "
         f"to the rear face of the chassis: "
-        f"printer USB {c['printer']} mm, power {c['power']} mm; fan, from the groove to the plug, {c['fan']} mm")
+        f"printer USB {c['printer']} mm, power {c['power']} mm; fan, from the fan to the plug, {c['fan']} mm")
     # Where the head is on the printer.
     face_top = P.LOC * Pos(*S.HEAD_TOP, 0)
     summary["head"] = {
@@ -539,7 +560,7 @@ def main():
     if not problems:
         log("  fit check: the display, the Pi, the fan, the screws, the inserts, and the cables are clear of the "
             "printed parts and the printer; no parts overlap; the head hangs on the clips, the pod slides on, and the "
-            "grille with the fan goes in; the fan sits in its snaps; the clips and their hammer nuts are on the rail "
+            "fan plate with the fan and the grille go in; the fan sits on its posts; the clips and their hammer nuts are on the rail "
             "slot; the hardware is in stock")
     if "--no-export" not in sys.argv:
         export(printed, head_local, world_printed, world_hw)

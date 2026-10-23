@@ -13,13 +13,13 @@ electronics chassis, and it wraps around the front left edge of the chassis.
   position: the HDMI and USB sockets are at the left, so normal straight plugs fit. The face
   leans back 15 degrees, the same as the Slate, and points to the front of the printer. The
   screen opening is at the centre of the face, so the border is the same at the left and the right.
-- The head is 252 mm wide. Its left end is 20 mm past the outer face of the pod (45 mm past the
+- The head is 252 mm wide. Its left end is 7 mm past the outer face of the pod (45 mm past the
   left side of the chassis). Its right end is 207 mm to the right of the left side of the chassis,
   in front of the front left rail.
 - The drive is in the head, flat on the back panel, behind the display.
 - The pod is on the left side of the chassis (the aluminium cover), at the same height as the
-  head. It holds the Pi and the cables. The white grille snaps into a pocket of the pod. A bump
-  of the grille, 15 mm out of the pod, holds the fan over the SoC of the Pi (see Fan).
+  head. It holds the Pi, the fan, and the cables. The white grille snaps into a pocket of the
+  pod, over a fan plate that holds the fan over the SoC of the Pi (see Fan).
 - There is no hole to drill. Two printed clips hold the right end of the head on the front slot
   of the rail. A metal M3 roll-in T-nut for 2020 extrusion rolls into the slot behind the
   lips, and an M3 x 8 screw from the clip pulls it up. Two screws through
@@ -30,13 +30,14 @@ electronics chassis, and it wraps around the front left edge of the chassis.
 | File | Colour | Print orientation | Filament | Time |
 |---|---|---|---|---|
 | `stl/head.stl` | Navy | Face down | 87 g | 4 h 28 min |
-| `stl/pod.stl` | Navy | Outer face down | 75 g | 3 h 45 min |
+| `stl/pod.stl` | Navy | Outer face down | 95 g | 4 h 42 min |
 | `stl/back.stl` | Orange | Rear face down, 0.4 mm layers | 69 g | 3 h 16 min |
 | `stl/plate.stl` | Orange | Cover face down, 0.4 mm layers | 61 g | 2 h 18 min |
 | `stl/clip.stl` (print 2) | Orange | On its end, with a brim | 2 x 4 g | 2 x 18 min |
-| `stl/grille.stl` | White | Back down | 24 g | 1 h 11 min |
+| `stl/grille.stl` | White | Back down (the flat grille of the first pod) | 12 g | 42 min |
+| `stl/fan_plate.stl` | White | Grille side down | 12 g | 40 min |
 
-In total: 324 g of PLA (navy 162 g, orange 138 g, white 24 g) and 15 h 34 min of printing. Print
+In total: 344 g of PLA (navy 182 g, orange 138 g, white 24 g) and 16 h 42 min of printing. Print
 the display fit test first (`stl/fit_display.stl`, 22 g, 1 h 10 min): the display pocket has
 0.3 mm of clearance at each side. Until you have the metal T-nuts, also print two roll-in nuts
 (`stl/roll_nut.stl`, see Hardware). The numbers come from slices with the Cura profiles in `cura/`
@@ -103,31 +104,35 @@ Drill the four mounting holes of the Pi 5 from 2.7 mm to 3.2 mm for M3 (step 1 o
 ## Fan
 
 The Pi has a 30 x 30 x 10 mm 5 V fan with the Pi 5 fan plug (the same as the Slate) and stick-on
-heatsinks. The fan is in a bump of the grille, over the centre of the SoC, and blows onto the
-Pi. The air comes in through the vents of the bump.
+heatsinks. The fan is inside the pod, over the centre of the SoC, and blows onto the Pi. The air
+comes in through the grille.
 
-- The bump is 37 x 37 mm and 15 mm out of the face of the pod. The fan is 5.4 mm above a 10 mm
-  heatsink on the SoC. The model has a 20 x 20 x 10 mm heatsink on the SoC and a 12 x 12 x 10 mm
-  heatsink on the RP1.
-- The fan snaps in. Four prongs stand up from the grille along the sides of the fan, one on each
-  side, near a corner, where the fan frame is solid. Each prong is 12.1 mm long, 1.0 mm thick,
-  and 8 mm wide. Its catch is 0.8 mm deep, with a lead-in 30 degrees from the way the fan goes in,
-  so the fan pushes the prongs out gently. The lead-in starts 0.4 mm behind the face of the prong,
-  so the elephant foot of the first layers does not stand in the way, and the walls have a 0.5 mm
-  chamfer at the mouth. When the fan goes in, each prong bends 0.8 mm: the strain is 0.8 % in PLA.
-  A 45 degree funnel in the bump stops the fan, with 0.2 mm of play.
-- The groove for the fan cable is in the top side of the bump, 2.5 to 12.5 mm from the front
-  corner. The mounting holes of a 30 mm fan are 3 mm in from its corners, so the cable leaves the
-  frame beside a corner hole, not at the corner itself.
-- The grille prints back down. The prongs stand on the bed, and the funnel goes in from the walls
-  of the bump to a square opening in the outer face, so there is no ceiling. Three vent slots go
-  from each side of the opening down the funnel, at right angles to the wall below them.
-- The bump has no screw bosses. A 16 mm screw through 2 mm of the fan frame needs 14 mm of boss
-  above the fan, so the bump is about 24 mm out of the pod. A boss that prints with no supports
-  starts 2 mm above the fan (45 degree faces from the walls), so a 6 mm screw does not reach it.
-- The fan cable goes through a groove in the top front corner of the bump to the back of the
-  grille. From there it goes over the end of the GPIO header to the fan socket of the Pi: 4 cm
-  from the corner of the fan to the plug.
+- The grille is the flat grille of the first pod, with no change. If you printed it before the
+  fan bump, use it. Its pocket moved 15 mm to the rear with the Pi, so its vent slots are over
+  the fan.
+- The pod is 39 mm out of the cover, 13 mm deeper than the first pod. Under the grille, the pocket
+  goes 2 mm deeper for the fan plate, to a 45 degree ledge. The head does not move: two notches in
+  the front edge of the pod take the heads of the two screws into the left wall of the head.
+- The fan plate is a separate part: a 2 mm plate with the outline of the grille, a 28 mm hole for
+  the air, and four posts for the fan. The grille holds the fan plate on the ledge. A part
+  of the pod cannot hold the fan: the fan is under the middle of the grille window, and the pod
+  prints outer face down, so a part there has nothing under it in the print.
+- The fan goes onto four posts of the fan plate, one in each fan hole (the holes are on a 24 mm
+  square, 3.2 to 3.4 mm across, through the 10 mm frame). The posts are 3.0 mm across and go 4 mm
+  into the holes. Two diagonal posts are solid and hold the fan in place. The other two are hollow,
+  with a 2.0 mm pilot hole: an M2.5 self-tapping round head screw goes into each from the far face
+  of the fan, and cuts its thread in the post and then in the fan plate. The fan hole holds the
+  thin wall of the post from outside. A screw of 8 to 11 mm fits; a 10 mm screw has 4 mm of thread.
+- The fan plate prints grille side down, so the posts stand on it with their layers across them.
+  They are short, and the screws hold the fan on the plate, so they carry little load.
+- The fan is 1.3 mm above a 13 mm heatsink on the SoC. The model has a 20 x 20 x 13 mm heatsink
+  on the SoC and a 12 x 12 x 13 mm heatsink on the RP1.
+- The fan cable leaves the frame from a side, beside a corner hole, and does not touch the posts
+  or the screw heads. It goes down past the end of the GPIO header to the fan socket of the Pi. It must be 8 cm or more, so
+  that the fan plate with the fan comes out of the pod on its cable.
+- To get to the fan, lift the grille out with a small screwdriver in a vent slot, then pull the
+  fan plate out at its air hole. The pocket has no fingernail notch: with the deeper rim, a notch
+  in its wall crashes CuraEngine in the support check of the pod.
 
 ## Cover screws
 
@@ -195,8 +200,9 @@ the board is the space for the FPC fold; put foam tape there, so the glass stays
   - the printer USB and the power cable go out of the rear notches, and 25 mm behind the chassis
     they touch no part of the printer,
   - the head drops onto the clip keys, and the pod slides onto its hooks, without a touch,
-  - the fan sits on the four catches of the grille, the prongs bend less than 1.2 %, and the
-    grille with the fan goes into the pod without a touch,
+  - the fan sits on the fan plate with a post in each of its holes, the screws reach the hollow
+    posts, there is 1 mm or more of air over the highest heatsink, and the fan plate with the fan, then
+    the grille, go into the pod without a touch,
   - the printed roll-in nut is clear of the rail and the clip, it is on the lips, and the clip
     screw goes through the full thread of its hex nut.
   It writes `cad/*.step` (each part and the assembly, on the printer) and `stl/*.stl`.
