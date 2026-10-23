@@ -45,7 +45,7 @@ func demoApp() (*ui.App, *ui.DemoPrinter) {
 		Status_: wifi.Status{State: "COMPLETED", SSID: "Extremely", IP: "192.168.76.119"},
 	}
 	a.Updater = &ui.DemoUpdater{S: ui.UpdateStatus{Current: "v0.3.0", Latest: "v0.4.0", Newer: true, Checked: true,
-		Notes: "The printer display shows the menus of the deck, with the knob. New status screen with icons. Signed updates."}}
+		Notes: demoNotes}}
 	// What the test printer has, a short history, and the slicer data of the files.
 	p.Machine_ = printer.Machine{KlipperVersion: "v0.13.0-777-g7bc4d0946-printdeck-go",
 		Modules: []string{"probe", "bed_tilt", "extruder", "heater_bed"},
@@ -234,3 +234,11 @@ func remoteDemo(args []string) {
 	}()
 	<-ctx.Done()
 }
+
+// demoNotes are the release notes of the demo updater, in Markdown as GitHub writes them.
+const demoNotes = "**Full Changelog**: https://github.com/beetlebugorg/printdeck/compare/v0.3.0...v0.4.0\n\n" +
+	"## Change log\n\nThe changes from v0.3.0 to v0.4.0.\n\n### New features\n\n" +
+	"- The printer display shows the menus of the deck, with the knob (a1b2c3d)\n" +
+	"- A new status screen with icons (b2c3d4e)\n- Signed updates (c3d4e5f)\n" +
+	"- A trace of the live speed on the print screen (d4e5f6a)\n\n### Fixes\n\n" +
+	"- The nozzle cools when you close a filament change (e5f6a7b)\n- Long texts get smaller before they lose their end (f6a7b8c)\n"

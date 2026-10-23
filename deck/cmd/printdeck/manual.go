@@ -831,7 +831,7 @@ func manual(args []string) {
 		Status_: wifi.Status{State: "COMPLETED", SSID: "Extremely", IP: "192.168.76.119"},
 	}
 	a.Updater = &ui.DemoUpdater{S: ui.UpdateStatus{Current: "v0.3.0", Latest: "v0.4.0", Newer: true, Checked: true,
-		Notes: "The printer display shows the menus of the deck, with the knob. New status screen with icons. Signed updates."}}
+		Notes: demoNotes}}
 	st := &manualState{a: a, p: p, part: partPreview(0.42), done: partPreview(1)}
 	secs := manualSections()
 	// The paragraphs and the figures of this layout.

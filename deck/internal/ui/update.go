@@ -106,18 +106,18 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 	default:
 		msg = "Checking for a new version…"
 	}
-	col := text
 	if u.Err != "" {
-		col = red
-	}
-	s := kit.NewStack(notes, 0)
-	for _, l := range wrapText(face, msg, notes.Dx()) {
-		if s.Y()+26 > notes.Max.Y {
-			break
+		s := kit.NewStack(notes, 0)
+		for _, l := range wrapText(face, msg, notes.Dx()) {
+			if s.Y()+26 > notes.Max.Y {
+				break
+			}
+			c.Text(s.Next(26), l, face, red, gfx.Left)
 		}
-		c.Text(s.Next(26), l, face, col, gfx.Left)
+	} else {
+		a.drawNotes(c, notes, msg)
 	}
-	a.textRegion("Notes", image.Rect(notes.Min.X, notes.Min.Y, notes.Max.X, s.Y()), face, wrapText(face, msg, notes.Dx())...)
+	a.region("Notes", notes)
 	if u.Busy != "" && u.Total > 0 {
 		window(c, bar)
 		w := int(int64(bar.Dx()-8) * u.Done / u.Total)
@@ -142,5 +142,35 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 			beta = "Beta updates: on"
 		}
 		a.button(c, k[1], beta, raised, text, func() { up.SetChannel(!u.Beta) })
+	}
+}
+
+// drawNotes draws the Markdown md in r, in a list that scrolls with a drag of the finger. A thin
+// bar at the right shows the part of the notes that shows.
+func (a *App) drawNotes(c *gfx.Canvas, r image.Rectangle, md string) {
+	const rowH = 26
+	lines := markdownLines(md, r.Dx()-14)
+	l := kit.List{Area: r, N: len(lines), RowH: rowH, Scroll: &a.notesScroll}
+	l.Clamp()
+	c.Clipped(r, func(c *gfx.Canvas) {
+		for i, ln := range lines {
+			if !l.Shows(i) || ln.text == "" {
+				continue
+			}
+			row := l.Row(i)
+			if ln.bullet {
+				cy := row.Min.Y + rowH/2
+				c.RoundRect(image.Rect(row.Min.X+6, cy-3, row.Min.X+12, cy+3), 3, orange)
+			}
+			c.Text(image.Rect(row.Min.X+ln.indent, row.Min.Y, row.Max.X-14, row.Max.Y), ln.text, gfx.Face(ln.bold, ln.size), ln.col, gfx.Left)
+		}
+	})
+	a.addHit(l.Hit(func(int) {}))
+	if m := l.MaxScroll(); m > 0 {
+		total := len(lines) * rowH
+		h := max(24, r.Dy()*r.Dy()/total)
+		y := r.Min.Y + (r.Dy()-h)*a.notesScroll/m
+		c.RoundRect(image.Rect(r.Max.X-5, r.Min.Y, r.Max.X-1, r.Max.Y), 2, darken(dim, 0.5))
+		c.RoundRect(image.Rect(r.Max.X-5, y, r.Max.X-1, y+h), 2, dim)
 	}
 }
