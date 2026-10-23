@@ -115,9 +115,11 @@ func screw(c *gfx.Canvas, x, y int) {
 
 // window is a dark display window, sunk into the plate.
 func window(c *gfx.Canvas, r image.Rectangle) {
-	c.RoundRect(r.Inset(-2), 6, edge)
-	c.RoundRect(r, 4, lcd)
-	c.Fill(image.Rect(r.Min.X+4, r.Min.Y, r.Max.X-4, r.Min.Y+2), color.RGBA{0x08, 0x08, 0x08, 255}) // inner shadow
+	// The edge is inside r, as the edge of a plate or a key, so a window lines up with them.
+	c.RoundRect(r, 6, edge)
+	in := r.Inset(2)
+	c.RoundRect(in, 4, lcd)
+	c.Fill(image.Rect(in.Min.X+4, in.Min.Y, in.Max.X-4, in.Min.Y+2), color.RGBA{0x08, 0x08, 0x08, 255}) // inner shadow
 }
 
 // led is an indicator light.
