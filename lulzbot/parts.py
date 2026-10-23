@@ -380,6 +380,9 @@ def plate():
                 (S.X_FRONT - 0.1, S.T_PLATE), (S.X_FRONT - 0.1, 0.0)]
         p = p + prism_y([(zz, xx) for xx, zz in prof], y - h, y + h)
         p = p - teardrop_x(y, z, 1.7, fx0 - 1, fx1 + 1, 1)
+        # The relief for a proud insert and its ring of melted plastic, on the face to the back panel.
+        rr, rd = S.FLANGE_RELIEF
+        p = p - teardrop_x(y, z, rr, fx1 - rd, fx1 + 1, 1)
     return p
 
 

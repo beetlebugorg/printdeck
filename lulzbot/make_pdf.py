@@ -147,7 +147,9 @@ STEPS = [
         "side), the M3 holes on the pads.",
         "Attach it with four M3 × 6 screws from the rear face of the panel.",
         "Connect the micro-B plug of the drive cable to the adapter.",
-    ], None),
+    ], "Press each insert in until it is flush with the rear face, or a little below it. Cut off any ring of melted "
+       "plastic around the insert. The plate flange has a relief for a small ring, but a large one holds the flange "
+       "off the back panel, and the two screws then bend the panel at its corner."),
     ("step_back", "Back panel onto the head", ["head (step 2)", "back panel (step 3)"], {"m3x10": 4}, [
         "Put the display cables through the upper window at the left of the back panel, and the drive cable through "
         "the lower window.",

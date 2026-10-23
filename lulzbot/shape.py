@@ -168,6 +168,10 @@ FLANGE_X = (82.3, None)          # the flange of the plate; its front is the bac
 FLANGE_SCREWS = [(149.0, 19.0), (232.0, 19.0)]   # (y, z)
 FLANGE_HALF = 6.0                # half height of each flange block
 FLANGE_Z = (12.5, 23.2)          # the flange block (its underside slopes 45 degrees to a web in front of the cables)
+# A heat-set insert often stands a little proud of the rear face of the back panel, with a ring of
+# melted plastic around it. The gap between the flange and the back panel is only CLR, so a relief
+# around each flange screw hole takes the insert and the ring: radius, depth into the flange.
+FLANGE_RELIEF = (3.6, 1.0)
 
 # Rail clip: from the slot of the rail (front slot of the front left upright, in the LulzBot
 # model): the opening is 6.15 mm wide at the face and 5.1 mm at its narrowest (the lips are
