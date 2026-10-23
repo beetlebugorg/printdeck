@@ -1,0 +1,37 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face { font-family: Plex; src: url(../../slicer/cura-plugin/Printdeck/fonts/IBMPlexMono-Regular.ttf); font-weight: 400; }
+@font-face { font-family: Plex; src: url(../../slicer/cura-plugin/Printdeck/fonts/IBMPlexMono-SemiBold.ttf); font-weight: 600; }
+html, body { margin: 0; width: 1280px; height: 640px; overflow: hidden; }
+body {
+  background:
+    radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 1.4px) 0 0 / 8px 8px,
+    radial-gradient(ellipse at 78% 50%, #26231f 0%, #141413 62%);
+  font-family: Plex, monospace; color: #ece7dd; position: relative;
+}
+.left { position: absolute; left: 64px; top: 0; bottom: 0; width: 450px; display: flex; flex-direction: column; justify-content: center; }
+.mark { display: flex; align-items: center; gap: 16px; }
+.mark i { width: 14px; height: 52px; background: #ff5a1f; display: block; border-radius: 2px; }
+h1 { font-weight: 600; font-size: 62px; letter-spacing: 1px; margin: 0; line-height: 1; }
+.tag { margin-top: 30px; font-size: 18px; line-height: 1.5; color: #c9c2b6; }
+.tag b { color: #ff7a3d; font-weight: 600; }
+.chips { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 10px; }
+.chips span { font-size: 14px; letter-spacing: 1px; color: #a49d91; border: 1px solid #3a3733; border-radius: 4px; padding: 6px 10px; text-transform: uppercase; }
+.bezel {
+  position: absolute; right: 56px; top: 50%; transform: translateY(-50%);
+  width: 700px; height: 420px; padding: 18px; background: #0c0c0b; border-radius: 22px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.55), 0 0 0 1px #2a2826, inset 0 1px 0 #2e2c29;
+}
+.bezel img { width: 700px; height: 420px; display: block; border-radius: 6px; }
+.glow { position: absolute; right: 120px; top: 120px; width: 560px; height: 400px; background: #ff5a1f; filter: blur(140px); opacity: 0.16; }
+</style></head>
+<body>
+  <div class="glow"></div>
+  <div class="left">
+    <div class="mark"><i></i><h1>PRINTDECK</h1></div>
+    <div class="tag">A touch screen for <b>Klipper</b> printers.<br>The Klipper host, ported to <b>Go</b>.<br>One binary on a Raspberry Pi 5.</div>
+    <div class="chips"><span>Live view</span><span>A/B updates</span><span>Cura plugin</span></div>
+  </div>
+  <div class="bezel"><img src="../manual/wide/img/printing.png"></div>
+</body></html>
