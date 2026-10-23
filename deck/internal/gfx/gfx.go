@@ -167,7 +167,7 @@ func (c *Canvas) Cover(r image.Rectangle, src image.Image) {
 		scaleCover(scaled, scaled.Rect, src)
 		coverCache.src, coverCache.w, coverCache.h, coverCache.scaled = src, r.Dx(), r.Dy(), scaled
 	}
-	draw.Draw(c.RGBA, r, coverCache.scaled, image.Point{}, draw.Src)
+	draw.Draw(c.RGBA, r, coverCache.scaled, image.Point{}, draw.Over) // a picture with a clear background shows what is under it
 }
 
 // Image draws img at its size at r.Min, only in r.
