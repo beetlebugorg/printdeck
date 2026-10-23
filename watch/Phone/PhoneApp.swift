@@ -1,213 +1,233 @@
 import SwiftUI
-import WatchConnectivity
 
 @main
 struct PhoneApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
+    @State private var model = DeckModel()
+    @State private var link = WatchLink()
+
     var body: some Scene {
         WindowGroup {
-            SettingsView()
+            DeckView(link: link)
+                .environment(model)
         }
     }
 }
 
-/// The connection to the deck. The app finds the deck on the network and asks it for a key: the
-/// touch screen of the deck asks to allow the app. The address and the key go to the watch.
-struct SettingsView: View {
+/// The main screen in the look of the touch screen of the deck (its tall layout): the display of
+/// the printer at the top, then the keys and the plates of the print, or of a printer with no
+/// print.
+struct DeckView: View {
+    @Environment(DeckModel.self) private var model
     @Environment(\.colorScheme) private var scheme
-    @State private var settings = Store.settings
-    @State private var finder = DeckFinder()
-    @State private var link = WatchLink()
-    @State private var busy = false
-    @State private var step: String?
-    @State private var result: String?
-    @State private var manual = false
-    @State private var address = Store.settings.address
-    @State private var key = Store.settings.key
+    @Environment(\.scenePhase) private var phase
+    let link: WatchLink
+
+    enum Sheet: Identifiable {
+        case setup, files
+        var id: Self { self }
+    }
+
+    @State private var sheet: Sheet?
+    @State private var confirm: DeckModel.Command?
 
     var body: some View {
         let p = Palette.of(scheme)
-        ScrollView {
-            VStack(spacing: 14) {
-                Heading(title: "Printdeck")
-                    .padding(.top, 8)
-                deckPlate
-                if settings.isComplete { watchPlate }
-                handPlate
+        Group {
+            if model.settings.isComplete {
+                deck
+            } else {
+                SetupView(link: link)
+            }
+        }
+        .environment(\.palette, p)
+        #if DEBUG
+        .onAppear {
+            // For screenshots in the simulator: PRINTDECK_SCREEN opens a page.
+            switch ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"] {
+            case "files": sheet = .files
+            case "setup": sheet = .setup
+            default: break
+            }
+        }
+        #endif
+        .task(id: phase == .active && model.settings.isComplete) {
+            if phase == .active && model.settings.isComplete { await model.poll() }
+        }
+        .fullScreenCover(item: $sheet) { s in
+            Group {
+                switch s {
+                case .setup: SetupView(link: link) { sheet = nil }
+                case .files: FilesView { sheet = nil }
+                }
+            }
+            .environment(model)
+            .environment(\.palette, p)
+        }
+    }
+
+    private var deck: some View {
+        let p = Palette.of(scheme)
+        let st = model.status
+        return ScrollView {
+            VStack(spacing: 12) {
+                LCDView(screen: .status(LCDModel.status(st, connected: true, error: model.error, now: Date(), hint: "")))
+                if let st, st.busy {
+                    if st.paused { paused(st) } else { printing(st) }
+                } else {
+                    idle(st)
+                }
+                if let e = model.error {
+                    Text(e.uppercased())
+                        .font(Theme.plex(12))
+                        .foregroundStyle(p.red)
+                }
             }
             .padding(16)
         }
         .background(p.bg.ignoresSafeArea())
-        .environment(\.palette, p)
-        .onAppear { finder.start() }
-        .onDisappear { finder.stop() }
-    }
-
-    private var deckPlate: some View {
-        Plate(label: "01 Deck") {
-            DisplayWindow {
-                Text(windowTitle)
-                    .font(Theme.plex(20))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                Text(windowLine)
-                    .font(Theme.plex(14, bold: false))
-                    .opacity(0.8)
+        .overlay {
+            if let c = confirm {
+                ConfirmPanel(question: question(c), yes: yesText(c), danger: c == .cancel,
+                             onYes: {
+                                 confirm = nil
+                                 Task { await model.send(c) }
+                             },
+                             onNo: { confirm = nil })
             }
-            if finder.decks.isEmpty && !busy {
-                Text("LOOKING FOR THE DECK ON THIS NETWORK")
-                    .font(Theme.plex(12))
-                    .foregroundStyle(Palette.of(scheme).dim)
-                    .padding(.horizontal, 4)
-            }
-            ForEach(finder.decks) { deck in
-                Button(settings.isComplete ? "Connect \(deck.name) again" : "Connect \(deck.name)") {
-                    Task { await connect(deck) }
-                }
-                .buttonStyle(KeyStyle(cap: settings.isComplete ? .raised : .orange))
-                .disabled(busy)
-            }
-            Text("Tap the key, then tap Allow on the touch screen of the deck.")
-                .font(Theme.plex(12, bold: false))
-                .foregroundStyle(Palette.of(scheme).dim)
-                .padding(.horizontal, 4)
         }
     }
 
-    private var watchPlate: some View {
-        Plate(label: "02 Watch") {
-            DisplayWindow {
-                Text(link.state.isEmpty ? "WAITING FOR THE WATCH" : link.state.uppercased())
-                    .font(Theme.plex(14))
+    // A print: Pause, Cancel and Menu, the layer and the roll, and the place in the print.
+    private func printing(_ st: Status) -> some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 10) {
+                Button("Pause") { confirm = .pause }.buttonStyle(KeyStyle(cap: .orange))
+                Button("Cancel") { confirm = .cancel }.buttonStyle(KeyStyle(cap: .danger))
+                Button("Menu") { sheet = .setup }.buttonStyle(KeyStyle())
             }
-            Button("Send to the watch") { link.send(settings) }
+            .disabled(model.sending)
+            layerPlate(st, title: layerText(st))
+            progressWindow(st)
+        }
+    }
+
+    // A paused print: what paused, Resume, Cancel and Menu.
+    private func paused(_ st: Status) -> some View {
+        VStack(spacing: 12) {
+            layerPlate(st, title: "Paused" + (st.layer.map { " at layer \($0) of \(st.layers ?? 0)" } ?? ""))
+            Button("Resume") { confirm = .resume }
+                .buttonStyle(KeyStyle(cap: .orange, height: 88))
+                .disabled(model.sending)
+            HStack(spacing: 10) {
+                Button("Cancel") { confirm = .cancel }.buttonStyle(KeyStyle(cap: .danger))
+                Button("Menu") { sheet = .setup }.buttonStyle(KeyStyle())
+            }
+            .disabled(model.sending)
+            progressWindow(st)
+        }
+    }
+
+    // No print: Print a file, the roll, and Menu.
+    private func idle(_ st: Status?) -> some View {
+        VStack(spacing: 12) {
+            Button("Print a file") { sheet = .files }
+                .buttonStyle(KeyStyle(cap: .orange, height: 88))
+            if let roll = st?.roll {
+                Plate(label: "Roll") { rollRow(roll) }
+            }
+            Button("Menu") { sheet = .setup }
                 .buttonStyle(KeyStyle())
         }
     }
 
-    private var handPlate: some View {
-        Plate(label: settings.isComplete ? "03 By hand" : "02 By hand") {
-            Button("Enter the address") { withAnimation { manual.toggle() } }
-                .buttonStyle(KeyStyle(led: manual))
-            if manual {
-                PanelField(label: "Address", prompt: "192.168.1.50", text: $address, keyboard: .URL)
-                Button("Ask the deck for a key") { Task { await connect(address: address) } }
-                    .buttonStyle(KeyStyle(cap: .orange))
-                    .disabled(busy || DeckSettings(address: address).baseURL == nil)
-                PanelField(label: "API key", prompt: "From printdeck.local/system", text: $key)
-                Button("Save the address and key") { Task { await save(DeckSettings(address: address, key: key)) } }
-                    .buttonStyle(KeyStyle())
-                    .disabled(busy || !DeckSettings(address: address, key: key).isComplete)
-                Text("Machine > Wi-Fi and help on the deck shows its address.")
-                    .font(Theme.plex(12, bold: false))
-                    .foregroundStyle(Palette.of(scheme).dim)
-                    .padding(.horizontal, 4)
+    private func layerText(_ st: Status) -> String {
+        if let l = st.layer, let n = st.layers { return "Layer \(l) of \(n)" }
+        return "Printing"
+    }
+
+    /// The plate under the keys: the layer or the pause at the top, and the roll.
+    private func layerPlate(_ st: Status, title: String) -> some View {
+        let p = Palette.of(scheme)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title.uppercased())
+                    .font(Theme.plex(17))
+                    .foregroundStyle(p.text)
+                Spacer()
+                if let end = st.end {
+                    Text("END " + LCDModel.clock(end))
+                        .font(Theme.plex(13))
+                        .foregroundStyle(p.dim)
+                }
             }
+            if let roll = st.roll { rollRow(roll) }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 5).fill(p.surface))
+        .overlay(RoundedRectangle(cornerRadius: 5).stroke(p.edge, lineWidth: 1))
+    }
+
+    /// The roll as the deck shows it: its color, a meter of what is left, the name and the grams.
+    private func rollRow(_ roll: Roll) -> some View {
+        let p = Palette.of(scheme)
+        return HStack(spacing: 12) {
+            Circle()
+                .fill(roll.color.flatMap(Color.init(hex:)) ?? p.dim)
+                .overlay(Circle().stroke(p.lcdDim, lineWidth: 3))
+                .frame(width: 22, height: 22)
+            SegmentMeter(value: roll.full > 0 ? roll.left / roll.full : 0)
+            Text("\(roll.name) · \(Int(roll.left.rounded())) g".uppercased())
+                .font(Theme.plex(13))
+                .foregroundStyle(p.dim)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
     }
 
-    private var windowTitle: String {
-        if let step { return step.uppercased() }
-        return settings.isComplete ? settings.address : "NOT CONNECTED"
+    /// The dark window under the plate: the file and the place in the print. The deck shows the
+    /// model there; the API has no model, so the window has the file and the playhead.
+    private func progressWindow(_ st: Status) -> some View {
+        let p = Palette.of(scheme)
+        return VStack(alignment: .leading, spacing: 14) {
+            Text(st.file ?? "")
+                .font(Theme.plex(17))
+                .foregroundStyle(p.lcdInk)
+                .lineLimit(1)
+            HStack(alignment: .firstTextBaseline) {
+                Text(Format.percent(st.progress ?? 0))
+                    .font(Theme.plex(54, bold: false))
+                    .foregroundStyle(p.lcdInk)
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(st.left.map { Format.duration($0) + " left" } ?? "")
+                    Text(st.elapsed.map { Format.duration($0) + " in" } ?? "")
+                }
+                .font(Theme.plex(15, bold: false))
+                .foregroundStyle(p.lcdDim)
+            }
+            Playhead(value: st.progress ?? 0)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 4).fill(p.lcd))
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(p.edge, lineWidth: 2))
     }
 
-    private var windowLine: String {
-        if busy { return "WAITING" }
-        if step != nil { return "TRY AGAIN" }
-        return result ?? (settings.isComplete ? "CONNECTED" : "\(finder.decks.count) DECK\(finder.decks.count == 1 ? "" : "S") FOUND")
-    }
-
-    private func connect(_ deck: FoundDeck) async {
-        busy = true
-        step = "Finding the deck"
-        do {
-            let a = try await DeckFinder.address(of: deck)
-            await connect(address: a)
-        } catch {
-            step = errorText(error)
-            busy = false
+    private func question(_ c: DeckModel.Command) -> String {
+        switch c {
+        case .pause: "Pause the print?"
+        case .resume: "Resume the print?"
+        case .cancel: "Cancel the print?"
         }
     }
 
-    private func connect(address: String) async {
-        let a = address.trimmingCharacters(in: .whitespaces)
-        guard let base = DeckSettings(address: a).baseURL else { return }
-        busy = true
-        defer { busy = false }
-        step = "Tap Allow on the deck"
-        do {
-            let k = try await DeckClient.requestKey(base: base, app: "Printdeck on iPhone")
-            step = nil
-            await save(DeckSettings(address: a, key: k))
-        } catch {
-            step = errorText(error)
+    private func yesText(_ c: DeckModel.Command) -> String {
+        switch c {
+        case .pause: "Pause"
+        case .resume: "Resume"
+        case .cancel: "Cancel print"
         }
-    }
-
-    private func save(_ new: DeckSettings) async {
-        let s = DeckSettings(address: new.address.trimmingCharacters(in: .whitespaces),
-                             key: new.key.trimmingCharacters(in: .whitespaces))
-        Store.settings = s
-        settings = s
-        address = s.address
-        key = s.key
-        manual = false
-        step = nil
-        link.send(s)
-        result = "READING THE DECK"
-        do {
-            let st = try await DeckClient(settings: s).status()
-            result = (st.busy ? "\(st.state) \(Format.percent(st.progress ?? 0))" : st.state).uppercased()
-        } catch {
-            result = errorText(error).uppercased()
-        }
-    }
-}
-
-/// The WatchConnectivity session that sends the settings to the watch as the application context.
-/// The watch gets the last context when it starts, so the watch app does not need to run.
-@Observable
-final class WatchLink: NSObject, WCSessionDelegate {
-    private(set) var state = ""
-
-    override init() {
-        super.init()
-        guard WCSession.isSupported() else {
-            state = "This iPhone has no watch."
-            return
-        }
-        WCSession.default.delegate = self
-        WCSession.default.activate()
-    }
-
-    func send(_ settings: DeckSettings) {
-        let s = WCSession.default
-        guard s.activationState == .activated else {
-            state = "The watch session is not active."
-            return
-        }
-        guard s.isPaired, s.isWatchAppInstalled else {
-            state = "Printdeck is not on the watch."
-            return
-        }
-        do {
-            try s.updateApplicationContext(["address": settings.address, "key": settings.key])
-            state = "Sent to the watch."
-        } catch {
-            state = "The watch did not get the settings: \(error.localizedDescription)"
-        }
-    }
-
-    func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState, error: Error?) {
-        let s = Store.settings
-        if state == .activated, s.isComplete, session.isWatchAppInstalled,
-           session.applicationContext["key"] as? String != s.key || session.applicationContext["address"] as? String != s.address {
-            try? session.updateApplicationContext(["address": s.address, "key": s.key])
-        }
-    }
-
-    func sessionDidBecomeInactive(_ session: WCSession) {}
-
-    func sessionDidDeactivate(_ session: WCSession) {
-        session.activate()
     }
 }

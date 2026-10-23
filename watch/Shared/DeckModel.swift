@@ -1,9 +1,12 @@
 import Foundation
 import Observation
-import WatchConnectivity
 import WidgetKit
+#if os(watchOS)
+import WatchConnectivity
+#endif
 
-/// The state of the watch app: the settings from the iPhone and the last status of the deck.
+/// The state of the app: the settings and the last status of the deck. The watch gets the settings
+/// from the iPhone.
 @MainActor @Observable
 final class DeckModel {
     private(set) var settings = Store.settings
@@ -12,16 +15,28 @@ final class DeckModel {
     /// A command is on its way to the deck.
     private(set) var sending = false
 
-    private var link: PhoneLink?
     private var lastReload = Date.distantPast
+    #if os(watchOS)
+    private var link: PhoneLink?
+    #endif
 
     init() {
+        #if DEBUG
+        // For screenshots in the simulator: PRINTDECK_ADDRESS and PRINTDECK_KEY set the deck.
+        let env = ProcessInfo.processInfo.environment
+        if let a = env["PRINTDECK_ADDRESS"], let k = env["PRINTDECK_KEY"] {
+            settings = DeckSettings(address: a, key: k)
+        }
+        #endif
+        #if os(watchOS)
         link = PhoneLink { [weak self] settings in
             Task { @MainActor in self?.apply(settings) }
         }
+        #endif
     }
 
-    private func apply(_ new: DeckSettings) {
+    /// Uses new settings: from the iPhone on the watch, from the setup on the iPhone.
+    func apply(_ new: DeckSettings) {
         guard new != settings else { return }
         settings = new
         Store.settings = new
@@ -86,6 +101,7 @@ final class DeckModel {
     }
 }
 
+#if os(watchOS)
 /// The WatchConnectivity session that receives the settings from the iPhone.
 final class PhoneLink: NSObject, WCSessionDelegate {
     private let received: (DeckSettings) -> Void
@@ -111,3 +127,4 @@ final class PhoneLink: NSObject, WCSessionDelegate {
         received(DeckSettings(address: address, key: key))
     }
 }
+#endif

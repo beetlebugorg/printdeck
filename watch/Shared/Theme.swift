@@ -21,23 +21,31 @@ enum Theme {
     static func digits(_ size: CGFloat) -> Font { plex(size, bold: false) }
 }
 
-/// The day and night palettes of the deck, for the iPhone app.
+/// The day and night palettes of the deck. The watch has the night palette.
 struct Palette {
     var bg, surface, raised, edge, shine, text, dim, orange, onAcc, lcd, lcdInk, lcdDim, ledOff: Color
+    var redCap, onRed: Color
+    /// Red text, for a key that stops or deletes.
+    var red: Color
+    /// The blue character display: the backlight, a dot that is off, and a dot that is on. Both
+    /// palettes have the bright blue of the day palette of the deck, as the app icon.
+    var glcd = Color(rgb: 0x1f4bd1), glcdCell = Color(rgb: 0x2a58e0), glcdInk = Color(rgb: 0xf2f6ff)
 
     static let day = Palette(
         bg: Color(rgb: 0xd3d0c8), surface: Color(rgb: 0xe6e3dc), raised: Color(rgb: 0xf3f1ec),
         edge: Color(rgb: 0xa9a59c), shine: Color(rgb: 0xfbfaf7), text: Color(rgb: 0x171717),
         dim: Color(rgb: 0x4a4742), orange: Color(rgb: 0xff5a1f), onAcc: Color(rgb: 0x121212),
         lcd: Color(rgb: 0x1b1c1a), lcdInk: Color(rgb: 0xff7a30), lcdDim: Color(rgb: 0xc27a48),
-        ledOff: Color(rgb: 0x8f8a80))
+        ledOff: Color(rgb: 0x8f8a80), redCap: Color(rgb: 0xc0291b), onRed: Color(rgb: 0xfbfaf7),
+        red: Color(rgb: 0xd12b1d))
 
     static let night = Palette(
         bg: Color(rgb: 0x121211), surface: Color(rgb: 0x1c1c1a), raised: Color(rgb: 0x292825),
         edge: Color(rgb: 0x060606), shine: Color(rgb: 0x34332f), text: Color(rgb: 0xeee9df),
         dim: Color(rgb: 0xc2bcb0), orange: Color(rgb: 0xff7a3a), onAcc: Color(rgb: 0x0e0e0d),
         lcd: Color(rgb: 0x080808), lcdInk: Color(rgb: 0xff8c4a), lcdDim: Color(rgb: 0xd98a55),
-        ledOff: Color(rgb: 0x3a3834))
+        ledOff: Color(rgb: 0x3a3834), redCap: Color(rgb: 0x9c2216), onRed: Color(rgb: 0xf3efe8),
+        red: Color(rgb: 0xff7a6a))
 
     static func of(_ scheme: ColorScheme) -> Palette { scheme == .dark ? night : day }
 }

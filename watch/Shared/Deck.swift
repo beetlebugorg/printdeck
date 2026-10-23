@@ -48,6 +48,8 @@ struct Status: Codable, Equatable {
     var progress: Double?
     /// Seconds left in the print, or nil when the deck has no estimate.
     var left: Double?
+    /// Seconds since the start of the print, or nil.
+    var elapsed: Double?
     var layer: Int?
     var layers: Int?
     var tool: Temp?
@@ -124,14 +126,18 @@ struct DeckClient {
         return URLSession(configuration: c)
     }()
 
-    private func send(_ path: String, method: String = "GET", body: [String: String]? = nil) async throws -> Data {
+    private func send(_ path: String, method: String = "GET", body: [String: Any]? = nil) async throws -> Data {
         guard settings.isComplete, let base = settings.baseURL else { throw DeckError.noSettings }
-        var req = URLRequest(url: base.appending(path: path))
+        // The path can have a query; appending(path:) encodes a "?".
+        let parts = path.split(separator: "?", maxSplits: 1)
+        var url = base.appending(path: String(parts[0]))
+        if parts.count > 1, let q = URL(string: url.absoluteString + "?" + parts[1]) { url = q }
+        var req = URLRequest(url: url)
         req.httpMethod = method
         req.setValue(settings.key.trimmingCharacters(in: .whitespaces), forHTTPHeaderField: "X-Api-Key")
         if let body {
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            req.httpBody = try JSONEncoder().encode(body)
+            req.httpBody = try JSONSerialization.data(withJSONObject: body)
         }
         let (data, resp) = try await Self.session.data(for: req)
         let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
@@ -140,7 +146,7 @@ struct DeckClient {
             return data
         case 403:
             throw DeckError.badKey
-        case 409:
+        case 400, 409:
             let msg = (try? JSONDecoder().decode([String: String].self, from: data))?["error"]
             throw DeckError.refused(msg ?? "The printer refused the command.")
         default:
@@ -212,6 +218,7 @@ struct DeckClient {
             st.file = j.job?.file?.name ?? pj.file.split(separator: "/").last.map(String.init)
             st.progress = pj.progress
             st.left = pj.left >= 0 ? pj.left : j.progress?.printTimeLeft
+            st.elapsed = j.progress?.printTime
             if pj.layers > 0 {
                 st.layer = pj.layer
                 st.layers = pj.layers
@@ -228,17 +235,82 @@ struct DeckClient {
         return st
     }
 
+    /// Pairs the iPhone for push messages. The reply has the ID of the phone and the X25519 public
+    /// key of the deck in base64.
+    func pairPush(_ request: [String: String]) async throws -> (id: String, publicKey: String) {
+        let data = try await send("/api/plugin/printdeck/push/pair", method: "POST", body: request)
+        guard let r = try? JSONDecoder().decode([String: String].self, from: data),
+              let id = r["id"], let key = r["public_key"] else { throw DeckError.badReply }
+        return (id, key)
+    }
+
+    /// Removes a paired phone from the deck. A phone that the deck does not have is no error.
+    func unpairPush(id: String) async throws {
+        do {
+            _ = try await send("/api/plugin/printdeck/push/" + id, method: "DELETE")
+        } catch DeckError.http(404) {
+        }
+    }
+
+    /// The G-code files on the deck, newest first.
+    func files() async throws -> [DeckFile] {
+        let r: FilesReply = try await get("/api/files?recursive=true")
+        var out: [DeckFile] = []
+        func walk(_ list: [FilesReply.Entry]) {
+            for e in list {
+                if e.type == "machinecode" {
+                    out.append(DeckFile(name: e.display ?? e.name, path: e.path,
+                                        date: e.date.map { Date(timeIntervalSince1970: $0) }, size: e.size))
+                }
+                walk(e.children ?? [])
+            }
+        }
+        walk(r.files)
+        return out.sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }
+    }
+
+    /// Starts a print of a file. The deck asks on its touch screen when the material of the file is
+    /// not the material in the printer.
+    func printFile(_ path: String) async throws {
+        _ = try await send("/api/files/local/" + path, method: "POST", body: ["command": "select", "print": true])
+    }
+
     func pause() async throws { _ = try await send("/api/job", method: "POST", body: ["command": "pause", "action": "pause"]) }
     func resume() async throws { _ = try await send("/api/job", method: "POST", body: ["command": "pause", "action": "resume"]) }
     func cancel() async throws { _ = try await send("/api/job", method: "POST", body: ["command": "cancel"]) }
 }
 
+/// A G-code file on the deck.
+struct DeckFile: Identifiable, Hashable {
+    var name: String
+    var path: String
+    var date: Date?
+    var size: Int?
+    var id: String { path }
+}
+
 // The replies of the deck. The fields are in deck/internal/octoapi.
+
+private struct FilesReply: Decodable {
+    struct Entry: Decodable {
+        var name: String
+        var display: String?
+        var path: String
+        var type: String?
+        var date: Double?
+        var size: Int?
+        var children: [Entry]?
+    }
+    var files: [Entry]
+}
 
 private struct JobReply: Decodable {
     struct File: Decodable { var name: String? }
     struct Job: Decodable { var file: File? }
-    struct Progress: Decodable { var printTimeLeft: Double? }
+    struct Progress: Decodable {
+        var printTimeLeft: Double?
+        var printTime: Double?
+    }
     var state: String?
     var job: Job?
     var progress: Progress?

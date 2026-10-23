@@ -1,217 +1,173 @@
 import SwiftUI
+import WatchKit
 
-/// The glance screen: the print, the temperatures, the roll and the keys.
+/// The watch as the display of the printer: the 128 x 64 status screen of the deck, and its menu.
+/// The Digital Crown turns like the knob of the printer, and a tap on the display or OK is the click
+/// of the knob. The keys under the display are the actions of the screen.
 struct StatusView: View {
     @Environment(DeckModel.self) private var model
     @Environment(\.scenePhase) private var phase
-    @State private var confirm: DeckModel.Command?
+    @State private var mode = Mode.status
+    @State private var crown = 0.0
+
+    private let p = Palette.night
+
+    enum Mode: Equatable {
+        case status
+        case menu
+        case info
+        case confirm(DeckModel.Command)
+    }
+
+    private struct Action {
+        let label: String
+        let icon: String
+        let run: () -> Void
+    }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 6) {
-                if let st = model.status {
-                    PrintPanel(status: st)
-                    TempPanel(status: st)
-                    if let roll = st.roll { RollPanel(roll: roll) }
-                    if st.busy { keys(st) }
-                }
-                footer
-            }
+        VStack(spacing: 8) {
+            LCDView(screen: screen)
+                .padding(.horizontal, -1)
+                .onTapGesture { click() }
+            keys
+            Spacer(minLength: 0)
         }
-        .background(Color.black)
+        .padding(.horizontal, 2)
+        .background(p.bg.ignoresSafeArea())
+        .environment(\.palette, p)
+        .environment(\.panelScale, 0.7)
+        .focusable(mode != .status && mode != .info)
+        .digitalCrownRotation($crown, from: 0, through: Double(max(0, actions.count - 1)), by: 1,
+                              sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
         .task(id: phase == .active) {
             if phase == .active { await model.poll() }
         }
-        .confirmationDialog(confirmTitle, isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }),
-                            titleVisibility: .visible) {
-            if let c = confirm {
-                Button(confirmButton(c), role: c == .cancel ? .destructive : nil) {
-                    Task { await model.send(c) }
-                }
+        #if DEBUG
+        .onAppear {
+            // For screenshots in the simulator: PRINTDECK_SCREEN opens a screen.
+            switch ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"] {
+            case "menu": open(.menu)
+            case "info": open(.info)
+            case "cancel": open(.confirm(.cancel))
+            default: break
             }
-            Button("Back", role: .cancel) {}
+        }
+        #endif
+        .onChange(of: model.status?.busy) { _, busy in
+            // A print that ends closes its menu.
+            if busy != true, case .confirm = mode { mode = .status }
         }
     }
 
-    @ViewBuilder private func keys(_ st: Status) -> some View {
+    private var selected: Int { max(0, min(actions.count - 1, Int(crown.rounded()))) }
+
+    private var screen: LCDScreen {
+        switch mode {
+        case .status:
+            return .status(LCDModel.status(model.status, connected: model.settings.isComplete, error: model.error,
+                                           now: Date(), hint: "Tap for menu"))
+        case .info:
+            var rows = LCDModel.info(model.status)
+            if let e = model.error { rows.insert((e, ""), at: 0) }
+            return .rows(rows)
+        case .menu:
+            return .menu(LCDMenu(title: "Printdeck", items: actions.map { .init(label: $0.label, icon: $0.icon) },
+                                 selected: selected))
+        case .confirm(let c):
+            return .menu(LCDMenu(title: question(c), items: actions.map { .init(label: $0.label, icon: $0.icon) },
+                                 selected: selected))
+        }
+    }
+
+    /// The rows of the menu on the screen, with what they do.
+    private var actions: [Action] {
+        switch mode {
+        case .status, .info:
+            return []
+        case .menu:
+            var a = [Action(label: "Back", icon: "back") { open(.status) }]
+            if let st = model.status, st.busy {
+                if st.paused {
+                    a.append(Action(label: "Resume print", icon: "play") { open(.confirm(.resume)) })
+                } else {
+                    a.append(Action(label: "Pause print", icon: "pause") { open(.confirm(.pause)) })
+                }
+                a.append(Action(label: "Cancel print", icon: "stop") { open(.confirm(.cancel)) })
+            }
+            a.append(Action(label: "Print info", icon: "status") { open(.info) })
+            return a
+        case .confirm(let c):
+            return [
+                Action(label: "No", icon: "no") { open(.menu) },
+                Action(label: "Yes, " + yesText(c).lowercased(), icon: "yes") {
+                    open(.status)
+                    Task { await model.send(c) }
+                },
+            ]
+        }
+    }
+
+    @ViewBuilder private var keys: some View {
         HStack(spacing: 6) {
-            Key(title: "CANCEL", color: Theme.red, ink: Theme.text) { confirm = .cancel }
-            if st.paused {
-                Key(title: "RESUME", color: Theme.orange) { confirm = .resume }
-            } else {
-                Key(title: "PAUSE", color: Theme.orange) { confirm = .pause }
+            switch mode {
+            case .status:
+                if let st = model.status, st.busy {
+                    Button("Cancel") { open(.confirm(.cancel)) }
+                        .buttonStyle(KeyStyle(cap: .red))
+                    Button(st.paused ? "Resume" : "Pause") { open(.confirm(st.paused ? .resume : .pause)) }
+                        .buttonStyle(KeyStyle(cap: .orange))
+                } else {
+                    Button("Menu") { open(.menu) }
+                        .buttonStyle(KeyStyle())
+                }
+            case .info:
+                Button("Back") { open(.status) }
+                    .buttonStyle(KeyStyle())
+            case .menu, .confirm:
+                Button("Back") { back() }
+                    .buttonStyle(KeyStyle())
+                Button("OK") { click() }
+                    .buttonStyle(KeyStyle(cap: .orange))
             }
         }
         .disabled(model.sending)
     }
 
-    @ViewBuilder private var footer: some View {
-        if let error = model.error {
-            Text(error)
-                .font(Theme.label(11))
-                .foregroundStyle(Theme.orange)
-                .multilineTextAlignment(.center)
-        } else if let st = model.status {
-            Text("READ " + st.time.formatted(date: .omitted, time: .standard))
-                .font(Theme.label(10))
-                .foregroundStyle(Theme.dim)
-        } else {
-            ProgressView()
+    /// The click of the knob.
+    private func click() {
+        switch mode {
+        case .status: open(.menu)
+        case .info: open(.status)
+        case .menu, .confirm:
+            guard actions.indices.contains(selected) else { return }
+            WKInterfaceDevice.current().play(.click)
+            actions[selected].run()
         }
     }
 
-    private var confirmTitle: String {
-        switch confirm {
-        case .pause: "Pause the print?"
-        case .resume: "Resume the print?"
-        case .cancel: "Cancel the print?"
-        case nil: ""
+    private func back() {
+        if case .confirm = mode { open(.menu) } else { open(.status) }
+    }
+
+    private func open(_ m: Mode) {
+        mode = m
+        crown = 0
+    }
+
+    private func question(_ c: DeckModel.Command) -> String {
+        switch c {
+        case .pause: "Pause print?"
+        case .resume: "Resume print?"
+        case .cancel: "Cancel print?"
         }
     }
 
-    private func confirmButton(_ c: DeckModel.Command) -> String {
+    private func yesText(_ c: DeckModel.Command) -> String {
         switch c {
         case .pause: "Pause"
         case .resume: "Resume"
-        case .cancel: "Cancel print"
+        case .cancel: "Cancel"
         }
-    }
-}
-
-/// A dark display window with an uppercase label, as on the deck.
-struct Panel<Content: View>: View {
-    let label: String
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(label)
-                .font(Theme.label(10))
-                .foregroundStyle(Theme.dim)
-            content
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(8)
-        .background(Theme.lcd, in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.plate, lineWidth: 2))
-    }
-}
-
-struct PrintPanel: View {
-    let status: Status
-
-    var body: some View {
-        Panel(label: status.state.uppercased()) {
-            if status.busy {
-                if let file = status.file {
-                    Text(file)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Theme.text)
-                        .lineLimit(2)
-                }
-                HStack(alignment: .firstTextBaseline) {
-                    Text(Format.percent(status.progress ?? 0))
-                        .font(Theme.digits(30))
-                        .foregroundStyle(Theme.digits)
-                    Spacer()
-                    if let layer = status.layer, let layers = status.layers {
-                        Text("L \(layer)/\(layers)")
-                            .font(Theme.digits(13))
-                            .foregroundStyle(Theme.digitsDim)
-                    }
-                }
-                ProgressView(value: status.progress ?? 0)
-                    .tint(Theme.orange)
-                HStack {
-                    Field(label: "LEFT", value: status.left.map(Format.duration) ?? "--")
-                    Spacer()
-                    Field(label: "END", value: status.end.map(Format.clock) ?? "--")
-                }
-            } else {
-                Text("No print")
-                    .font(Theme.digits(15))
-                    .foregroundStyle(Theme.digitsDim)
-            }
-        }
-    }
-}
-
-struct TempPanel: View {
-    let status: Status
-
-    var body: some View {
-        Panel(label: "TEMPERATURE") {
-            HStack {
-                Field(label: "NOZZLE", value: Format.temp(status.tool))
-                Spacer()
-                Field(label: "BED", value: Format.temp(status.bed))
-            }
-        }
-    }
-}
-
-struct RollPanel: View {
-    let roll: Roll
-
-    var body: some View {
-        Panel(label: "ROLL") {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(roll.color.flatMap(Color.init(hex:)) ?? Theme.dim)
-                    .overlay(Circle().stroke(Theme.dim, lineWidth: 1))
-                    .frame(width: 12, height: 12)
-                Text(roll.name)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Theme.text)
-                    .lineLimit(1)
-            }
-            HStack {
-                Text(roll.material)
-                    .font(Theme.label(12))
-                    .foregroundStyle(Theme.dim)
-                Spacer()
-                Text("\(Int(roll.left.rounded())) g")
-                    .font(Theme.digits(15))
-                    .foregroundStyle(Theme.digits)
-            }
-        }
-    }
-}
-
-/// A label and a value in amber digits.
-struct Field: View {
-    let label: String
-    let value: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(label)
-                .font(Theme.label(9))
-                .foregroundStyle(Theme.dim)
-            Text(value)
-                .font(Theme.digits(15))
-                .foregroundStyle(Theme.digits)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-        }
-    }
-}
-
-/// A key of the panel: a colored cap with a monospace label.
-struct Key: View {
-    let title: String
-    let color: Color
-    var ink = Color.black
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(Theme.label(12))
-                .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(color)
-        .foregroundStyle(ink)
     }
 }

@@ -16,6 +16,13 @@ enum Store {
         set { write(newValue, "status") }
     }
 
+    /// The pairing of the iPhone with the deck for push messages, or nil. The notification
+    /// service extension reads the message key from it.
+    static var pairing: Pairing? {
+        get { read("pairing") }
+        set { write(newValue, "pairing") }
+    }
+
     private static var group: String? {
         guard let g = Bundle.main.object(forInfoDictionaryKey: "KeychainGroup") as? String,
               !g.isEmpty, !g.hasPrefix(".") else { return nil }
@@ -65,4 +72,18 @@ enum Store {
             SecItemAdd(q as CFDictionary, nil)
         }
     }
+}
+
+/// A pairing with the deck for push messages.
+struct Pairing: Codable, Equatable {
+    /// The ID of the phone on the deck.
+    var id: String
+    /// The APNs device token, in hex.
+    var device: String
+    /// "sandbox" or "production".
+    var env: String
+    /// The message key, 32 bytes.
+    var key: Data
+    /// The address of the deck at the pairing.
+    var address: String
 }
