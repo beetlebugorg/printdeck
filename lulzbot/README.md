@@ -34,9 +34,9 @@ electronics chassis, and it wraps around the front left edge of the chassis.
 | `stl/back.stl` | Orange | Rear face down, 0.4 mm layers | 69 g | 3 h 16 min |
 | `stl/plate.stl` | Orange | Cover face down, 0.4 mm layers | 61 g | 2 h 18 min |
 | `stl/clip.stl` (print 2) | Orange | On its end, with a brim | 2 x 4 g | 2 x 18 min |
-| `stl/grille.stl` | White | Back down | 24 g | 1 h 12 min |
+| `stl/grille.stl` | White | Back down | 24 g | 1 h 11 min |
 
-In total: 324 g of PLA (navy 162 g, orange 138 g, white 24 g) and 15 h 35 min of printing. Print
+In total: 324 g of PLA (navy 162 g, orange 138 g, white 24 g) and 15 h 34 min of printing. Print
 the display fit test first (`stl/fit_display.stl`, 22 g, 1 h 10 min): the display pocket has
 0.3 mm of clearance at each side. Until you have the metal T-nuts, also print two roll-in nuts
 (`stl/roll_nut.stl`, see Hardware). The numbers come from slices with the Cura profiles in `cura/`
@@ -106,14 +106,19 @@ The Pi has a 30 x 30 x 10 mm 5 V fan with the Pi 5 fan plug (the same as the Sla
 heatsinks. The fan is in a bump of the grille, over the centre of the SoC, and blows onto the
 Pi. The air comes in through the vents of the bump.
 
-- The bump is 37 x 37 mm and 15 mm out of the face of the pod. The fan is 4.1 mm above a 10 mm
+- The bump is 37 x 37 mm and 15 mm out of the face of the pod. The fan is 5.4 mm above a 10 mm
   heatsink on the SoC. The model has a 20 x 20 x 10 mm heatsink on the SoC and a 12 x 12 x 10 mm
   heatsink on the RP1.
 - The fan snaps in. Four prongs stand up from the grille along the sides of the fan, one on each
-  side, near a corner, where the fan frame is solid. Each prong is 10.8 mm long, 1.0 mm thick,
-  and 8 mm wide. Its catch is 0.8 mm deep, with a 45 degree lead-in. When the fan goes in, each
-  prong bends 0.8 mm: the strain is 1.0 % in PLA. A 45 degree funnel in the bump stops the fan,
-  with 0.2 mm of play.
+  side, near a corner, where the fan frame is solid. Each prong is 12.1 mm long, 1.0 mm thick,
+  and 8 mm wide. Its catch is 0.8 mm deep, with a lead-in 30 degrees from the way the fan goes in,
+  so the fan pushes the prongs out gently. The lead-in starts 0.4 mm behind the face of the prong,
+  so the elephant foot of the first layers does not stand in the way, and the walls have a 0.5 mm
+  chamfer at the mouth. When the fan goes in, each prong bends 0.8 mm: the strain is 0.8 % in PLA.
+  A 45 degree funnel in the bump stops the fan, with 0.2 mm of play.
+- The groove for the fan cable is in the top side of the bump, 2.5 to 12.5 mm from the front
+  corner. The mounting holes of a 30 mm fan are 3 mm in from its corners, so the cable leaves the
+  frame beside a corner hole, not at the corner itself.
 - The grille prints back down. The prongs stand on the bed, and the funnel goes in from the walls
   of the bump to a square opening in the outer face, so there is no ceiling. Three vent slots go
   from each side of the opening down the funnel, at right angles to the wall below them.

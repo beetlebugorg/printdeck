@@ -455,9 +455,14 @@ def bump_half():
     return S.FAN[0] / 2 + S.PRONG[1] + S.PRONG_GAP + S.BUMP_WALL
 
 
+def catch_height():
+    """The height of a catch: its lead-in from the relief at the base to the full catch depth."""
+    return (S.PRONG[2] + S.PRONG_RELIEF) / math.tan(math.radians(S.PRONG_LEAD))
+
+
 def fan_z():
     """z of the far face of the fan (on the catches) and of the funnel at the walls of the bump."""
-    z0 = S.POD_Z - S.GRILLE_T + S.PRONG[2]
+    z0 = S.POD_Z - S.GRILLE_T + catch_height()
     return z0, z0 + S.FAN[1] + S.FAN_PLAY - S.FAN_CLR
 
 
@@ -490,9 +495,11 @@ def bump(g):
         cut, prong = prong_shapes()
         g = g - m * cut
         g = g + m * prong
+        g = g - m * mouth_chamfer()
     gl, gd, gt = S.FAN_GROOVE
-    groove = box(cw - gl, cw, cw - 0.01, cw + gd, zp - 1, gt)
-    groove = groove + prism_y([(gt - 0.01, cw - gl), (gt - 0.01, cw), (gt + gl / 2, cw - gl / 2)], cw - 0.01, cw + gd)
+    g1 = cw - S.FAN_GROOVE_IN
+    groove = box(g1 - gl, g1, cw - 0.01, cw + gd, zp - 1, gt)
+    groove = groove + prism_y([(gt - 0.01, g1 - gl), (gt - 0.01, g1), (gt + gl / 2, g1 - gl / 2)], cw - 0.01, cw + gd)
     return g - Pos(cx, cy, 0) * groove
 
 
@@ -500,8 +507,10 @@ def prong_shapes():
     """The prong on the +x side of the fan, near the +y corner, about the centre of the fan (the
     other three are the same, turned 90 degrees each): the cut that frees it (the
     space behind it and a slit at each side, with 45 degree roofs), and the prong with its catch.
-    The prong stands on the bed in the print. The catch has a 45 degree lead-in under it and a
-    level top that holds the far face of the fan."""
+    The prong stands on the bed in the print. The catch has a lead-in under it, PRONG_LEAD from
+    the way the fan goes in, and a level top that holds the far face of the fan. The lead-in starts
+    PRONG_RELIEF behind the face to the fan, so the elephant foot of the first layers does not
+    stand in the way."""
     zp = S.POD_Z - S.GRILLE_T
     w, t, d = S.PRONG
     gap, s = S.PRONG_GAP, 0.6
@@ -515,9 +524,30 @@ def prong_shapes():
         y0, y1 = sorted((c + sg * w / 2, c + sg * (w / 2 + s)))
         cut = cut + box(fh - 0.5, xg + 0.01, y0, y1, zp - 1, zr)
         cut = cut + prism_x([(y0, zr - 0.01), (y1, zr - 0.01), ((y0 + y1) / 2, zr + s / 2)], fh - 0.5, xg + 0.01)
+    e, hc = S.PRONG_RELIEF, catch_height()
     prong = box(fh, xg + 0.01, c - w / 2, c + w / 2, zp, zr)
-    prong = prong + prism_y([(zp, fh + 0.01), (zp + d, fh - d), (zp + d, fh + 0.01)], c - w / 2, c + w / 2)
+    prong = prong + prism_y([(zp + hc * e / (d + e), fh + 0.01), (zp + hc, fh - d), (zp + hc, fh + 0.01)],
+                            c - w / 2, c + w / 2)
+    # The relief at the base: the lead-in goes on to the bed, behind the face to the fan.
+    prong = prong - prism_y([(zp - 0.01, fh - 0.01), (zp - 0.01, fh + e), (zp + hc * e / (d + e), fh - 0.01)],
+                            c - w / 2 - 0.01, c + w / 2 + 0.01)
     return cut, prong
+
+
+def mouth_chamfer():
+    """The chamfer of the wall on the +x side at the mouth of the pocket, beside the prong: a
+    45 degree wedge along the inner face of the wall, at the back face of the grille."""
+    zp = S.POD_Z - S.GRILLE_T
+    w, _, _ = S.PRONG
+    fh, m = S.FAN[0] / 2, S.POCKET_CHAMFER
+    cw = fh + S.FAN_CLR
+    c, s = S.PRONG_AT, 0.6
+    wedge = [(zp - 0.01, cw - 0.01), (zp - 0.01, cw + m), (zp + m + 0.01, cw - 0.01)]
+    out = None
+    for y0, y1 in ((-cw, c - w / 2 - s), (c + w / 2 + s, cw)):
+        part = prism_y(wedge, y0, y1)
+        out = part if out is None else out + part
+    return out
 
 
 def prong_strain():
@@ -928,7 +958,7 @@ def cable_paths():
     # Fan.
     gl, gd, _ = S.FAN_GROOVE
     cw = S.FAN[0] / 2 + S.FAN_CLR
-    gx, gy = S.FAN_XY[0] + cw - gl / 2, S.FAN_XY[1] + cw + gd / 2
+    gx, gy = S.FAN_XY[0] + cw - S.FAN_GROOVE_IN - gl / 2, S.FAN_XY[1] + cw + gd / 2
     pf = S.pi_pt(24.25, 24.0, 1.5 + 7.1)
     fm = S.pi_pt(13.0, 19.0, 0.0)
     fan_c = [(gx, gy, 27.0), (gx, gy, 21.5), (fm[0], fm[1], 19.5), (pf[0], pf[1], 19.0), pf]
