@@ -456,6 +456,7 @@ func manualParts() []section {
 						{"New roll", "Adds a roll without a filament change."},
 					}},
 				{Name: "roll", Caption: "One roll", Setup: page("roll"),
+					Notes: []string{"Each roll has a number, for example #3. The deck does not use a number again. For a label with a QR code, open printdeck.local/rolls/labels in a browser, and print the sheet on round labels of 2 inches (Avery 22807). Choose the first free label of the sheet, so a sheet lasts for many rolls. A phone camera on the label opens the page of the roll: Load opens the filament change on the deck, with the roll."},
 					Callouts: []callout{
 						{"Details", "The filament on the roll, the filament that prints used, and the price."},
 						{"Color", "The color of the roll. Tap it to choose a color. The print screen and Cura show it."},

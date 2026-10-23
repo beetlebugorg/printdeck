@@ -53,6 +53,10 @@ func (s Spool) Cost(grams float64) float64 {
 	return grams * s.Price / s.Full
 }
 
+// Number is the number of the roll for its label, for example "#3". The deck gives each new roll
+// the next number, and does not use a number again.
+func (s Spool) Number() string { return "#" + s.ID }
+
 // Label is the name of the roll for the screen: its name, or its material.
 func (s Spool) Label() string {
 	if s.Name != "" {

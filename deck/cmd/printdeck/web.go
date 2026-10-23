@@ -45,6 +45,7 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 		mux.Handle("/", rs.Handler())
 		klippyLog := filepath.Join(filepath.Dir(filepath.Dir(cfg.KlipperConfig)), "logs", "klippy.log")
 		registerSystemPage(mux, rs, pr, klippyLog, cfg.OctoPrintKey)
+		registerRollPages(mux, rs, pr, app)
 	}
 	srv := &http.Server{Addr: cfg.RemoteAddr, Handler: remote.SecurityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}
 	go func() {

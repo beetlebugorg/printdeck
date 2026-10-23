@@ -457,7 +457,7 @@ func (a *App) rollGauge(c *gfx.Canvas, r image.Rectangle, st printer.State) bool
 	segments(c, bar, min(1, left/full))
 	face := gfx.Face(true, 13)
 	t := image.Rect(bar.Max.X+12, r.Min.Y, r.Max.X, r.Max.Y)
-	line := strings.ToUpper(sp.Label() + " · " + printer.Weight(left))
+	line := strings.ToUpper(sp.Number() + " " + sp.Label() + " · " + printer.Weight(left))
 	c.Text(t, line, face, dim, gfx.Left)
 	a.region("Roll", r)
 	return true

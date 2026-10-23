@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"printdeck/kit"
+	"time"
 
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
@@ -19,6 +20,8 @@ type swapState struct {
 	// the nozzle target of the pause, so that Resume prints at the temperature of the print.
 	paused bool
 	resume int
+	// roll is the ID of the roll that goes in, chosen before the swap opened (LoadRoll), or "".
+	roll string
 }
 
 // openSwap opens the swap in a mode.
@@ -28,6 +31,33 @@ func (a *App) openSwap(mode int) {
 		sw.paused, sw.resume = true, int(st.ToolTarget+0.5)
 	}
 	a.swap = sw
+}
+
+// LoadRoll opens the filament swap with the roll with the ID, for example from the page of the
+// roll that the QR code of its label opens. The swap heats for its material at once. It reports
+// false when the printer prints, or the deck has a swap open already. It is safe to call from any
+// goroutine.
+func (a *App) LoadRoll(id string) bool {
+	if st := a.Printer.State(); st.Busy() && !st.Paused {
+		return false
+	}
+	done := make(chan bool, 1)
+	a.post(func() {
+		if a.swap != nil {
+			done <- false
+			return
+		}
+		a.openSwap(swapChange)
+		a.swap.roll = id
+		a.confirm, a.keypad, a.form, a.picker, a.colors = nil, nil, nil, nil, nil
+		done <- true
+	})
+	select {
+	case ok := <-done:
+		return ok
+	case <-time.After(3 * time.Second):
+		return false
+	}
 }
 
 // The modes of the flow: a change of the filament, a load, or an unload.
@@ -153,6 +183,17 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 
 	switch sw.step {
 	case swapChoose:
+		// A roll chosen on its web page (LoadRoll): it goes in, as with a tap on its row.
+		if sw.roll != "" && rolls != nil {
+			if sp, ok := rolls.Get(sw.roll); ok {
+				sw.roll = ""
+				rolls.Put(sp.ID)
+				a.setMaterial(sp.Material)
+				heatFor(sp.Material)
+				return
+			}
+			sw.roll = ""
+		}
 		if sw.mode != swapUnloadOnly {
 			step(1, "Which roll goes in?")
 			para("The nozzle heats for the material of the roll.")
@@ -165,7 +206,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 				l := kit.List{Area: k[0], N: len(list), RowH: 80, Gap: 8, Scroll: &a.spoolScroll}
 				in, _ := rolls.In()
 				a.list(c, l, func(i int) string { return list[i].Label() }, func(c *gfx.Canvas, i int, r image.Rectangle) {
-					title := list[i].Label()
+					title := list[i].Number() + " " + list[i].Label()
 					if list[i].ID == in.ID {
 						title += " · loaded"
 					}

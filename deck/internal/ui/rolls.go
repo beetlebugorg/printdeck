@@ -222,7 +222,7 @@ func (a *App) drawSpools(c *gfx.Canvas) {
 	l := kit.List{Area: area, N: len(list), RowH: 90, Gap: 10, Scroll: &a.spoolScroll}
 	a.list(c, l, func(i int) string { return list[i].Label() }, func(c *gfx.Canvas, i int, r image.Rectangle) {
 		sp := list[i]
-		title := sp.Label()
+		title := sp.Number() + " " + sp.Label()
 		if sp.ID == in {
 			title += " · loaded"
 		}
@@ -246,7 +246,7 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 		return
 	}
 	pf := a.navFrame()
-	f := a.navPage(c, gfx.Fit(gfx.Face(true, 24), sp.Label(), pf.head.Dx()-200))
+	f := a.navPage(c, gfx.Fit(gfx.Face(true, 24), sp.Number()+" "+sp.Label(), pf.head.Dx()-200))
 	cura := "None"
 	if m, ok := s.SlicerMaterial(sp.CuraMaterial); ok {
 		cura = m.Name
