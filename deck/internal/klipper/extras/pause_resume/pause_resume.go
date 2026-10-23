@@ -49,7 +49,8 @@ func load(config *configfile.Wrapper) any {
 		"Clears the current paused state without resuming the print")
 	p.gcode.RegisterCommand("CANCEL_PRINT", p.cmdCancelPrint, false, "Cancel the current print")
 	wh := webhooks.Of(printer)
-	wh.RegisterEndpoint("pause_resume/cancel", func(*webhooks.WebRequest) { p.gcode.RunScript("CANCEL_PRINT") })
+	// A cancel stops the command that runs now, such as the start macro (RunScriptAbort, Printdeck).
+	wh.RegisterEndpoint("pause_resume/cancel", func(*webhooks.WebRequest) { p.gcode.RunScriptAbort("CANCEL_PRINT") })
 	wh.RegisterEndpoint("pause_resume/pause", func(*webhooks.WebRequest) { p.gcode.RunScript("PAUSE") })
 	wh.RegisterEndpoint("pause_resume/resume", func(*webhooks.WebRequest) { p.gcode.RunScript("RESUME") })
 	return p
