@@ -161,9 +161,60 @@ func (a *App) drawHomeWide(c *gfx.Canvas, st printer.State) {
 	a.statusPanelAt(c, st, f.lcd)
 	a.drawNavKeys(c, f.side)
 	headingAt(c, f.head, "Main")
-	r := kit.Rows(f.main, 12, kit.Px(96), kit.Px(68), kit.Px(90))
-	a.homeKeys(c, st, r[0], r[1])
-	a.drawLastPrint(c, st, r[2])
+	// Print a file, and the last print as on its page of the history. Preheat and Cool down are in
+	// Filament.
+	r := kit.Rows(f.main, 12, kit.Px(96), kit.Fr(1))
+	a.mainKey(c, st, r[0])
+	a.lastPrintPanel(c, st, r[1])
+}
+
+// lastPrintPanel draws the last print in a plate: its file and Reprint, and under them its model
+// and the table of its page in the history. A tap on the model opens that page.
+func (a *App) lastPrintPanel(c *gfx.Canvas, st printer.State, area image.Rectangle) {
+	plate(c, area)
+	a.region("Last print", area)
+	l, ok := a.lastPrint(st)
+	if !ok {
+		c.Text(area, "No print yet", gfx.Face(false, 18), dim, gfx.Center)
+		return
+	}
+	in := kit.Inset(area, 16, 10, 14, 14)
+	r := kit.Rows(in, 10, kit.Px(52), kit.Fr(1))
+	head, body := r[0], r[1]
+	hk := kit.Cols(head, 12, kit.Fr(1), kit.Px(140))
+	label(c, image.Rect(hk[0].Min.X, hk[0].Min.Y, hk[0].Max.X, hk[0].Min.Y+20), "Last print", gfx.Left)
+	c.Text(image.Rect(hk[0].Min.X, hk[0].Min.Y+20, hk[0].Max.X, hk[0].Max.Y), l.File, gfx.Face(true, 20), text, gfx.Left)
+	rows := a.recordRows(l)
+	side := min(body.Dy(), body.Dx()*2/5)
+	cols := kit.Cols(body, 16, kit.Px(side), kit.Fr(1))
+	pic := kit.Rows(cols[0], 0, kit.Px(side))[0]
+	gone := a.recordModel(c, pic, l)
+	if l.Path != "" {
+		rec := l
+		a.addHit(kit.Hit{R: pic, Tap: func() {
+			a.record = rec
+			a.pages = []page{pageMachine, pageHistory, pageRecord}
+			a.Redraw()
+		}})
+	}
+	rowH := max(20, min(28, (body.Dy()-8)/max(1, len(rows))))
+	detailRows(c, image.Rect(cols[1].Min.X, cols[1].Min.Y+4, cols[1].Max.X, cols[1].Max.Y), rows, rowH)
+	a.reprintKey(c, hk[1], l, gone, raised, text)
+}
+
+// mainKey draws the main key of the home screen: Print a file, or Files during a print. The print
+// bar goes back to the print.
+func (a *App) mainKey(c *gfx.Canvas, st printer.State, r image.Rectangle) {
+	pr := a.Printer
+	files := func() {
+		go func() { pr.LoadFiles(); a.Redraw() }()
+		a.open(pageFiles)
+	}
+	if st.Busy() {
+		a.button(c, r, "Files", raised, text, files)
+	} else {
+		a.button(c, r, "Print a file", orange, onAcc, files)
+	}
 }
 
 // homeKeys draws the main key of the home screen in main (Print a file, or Files during a print),
@@ -175,17 +226,7 @@ func (a *App) homeKeys(c *gfx.Canvas, st printer.State, main, heat image.Rectang
 	if m.Name != "" {
 		pre = "Preheat " + m.Name
 	}
-	files := func() {
-		go func() { pr.LoadFiles(); a.Redraw() }()
-		a.open(pageFiles)
-	}
-	if st.Busy() {
-		// Away from the print: the files to look at, and the heat keys wait for the end of the
-		// print. The print bar at the bottom goes back to the print.
-		a.button(c, main, "Files", raised, text, files)
-	} else {
-		a.button(c, main, "Print a file", orange, onAcc, files)
-	}
+	a.mainKey(c, st, main)
 	h := kit.Cols(heat, 12, kit.Fr(1), kit.Fr(1))
 	// Preheat is on while the heaters hold its temperatures: a tap then turns them off.
 	if st.ToolTarget == float64(m.Tool) && st.BedTarget == float64(m.Bed) && m.Tool > 0 {
