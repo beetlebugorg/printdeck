@@ -44,6 +44,31 @@ Store. The reply is `{"send_token": "..."}`.
 reply is 200 for a sent push, 403 for a send token that is not valid, 410 when the app is gone
 from the device (stop sending to it), and 400 or 502 for other errors, with `{"error": "..."}`.
 
+## Pairing with a deck
+
+The app pairs over the API of the deck, with the API key of the deck in the header `X-Api-Key`.
+The app makes an X25519 key pair, and posts:
+
+`POST /api/plugin/printdeck/push/pair`
+
+```json
+{"name": "Jeremy's iPhone", "device": "<device token in hex>", "env": "sandbox",
+ "send_token": "<from /register>", "relay": "https://<the relay URL>", "public_key": "<base64>"}
+```
+
+`public_key` is the raw X25519 public key of the app, 32 bytes, in standard base64. The reply is
+`{"id": "...", "public_key": "<base64>"}` with the X25519 public key of the deck. Both sides make
+the message key with HKDF-SHA256: the input key is the X25519 shared secret, the salt is the bytes
+of the device token (the hex decoded), the info is `printdeck push v1`, and the length is 32
+bytes. In CryptoKit that is `sharedSecret.hkdfDerivedSymmetricKey(using: SHA256.self, salt:
+deviceTokenBytes, sharedInfo: Data("printdeck push v1".utf8), outputByteCount: 32)`. Someone who
+listens on the network during the pairing sees the two public keys only.
+
+After a pairing, the deck sends the message "This phone gets the messages of your prints." A new
+pairing of the same device token makes a new key, with the same ID. `GET
+/api/plugin/printdeck/push` lists the phones (`id`, `name`, `env`, `added`), and `DELETE
+/api/plugin/printdeck/push/<id>` removes one. Settings > Phones on the deck shows the same list.
+
 ## The message
 
 The payload is AES-256-GCM with the message key: a 12-byte random nonce, then the ciphertext and

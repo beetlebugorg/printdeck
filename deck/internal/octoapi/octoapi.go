@@ -56,6 +56,8 @@ type Server struct {
 	Ask func(question, yes, no string, answer func(bool))
 	// The loaded filament, for the Printdeck plugin for Cura (printdeck.go).
 	printdeckFields
+	// The phones of the Printdeck app for push messages (push.go).
+	pushFields
 
 	keys *keyStore
 
@@ -101,6 +103,9 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/plugin/printdeck", s.key(s.servePrintdeck))
 	mux.HandleFunc("POST /api/plugin/printdeck/materials", s.key(s.serveSlicerMaterials))
 	mux.HandleFunc("POST /api/plugin/printdeck/roll", s.key(s.serveRollMaterial))
+	mux.HandleFunc("POST /api/plugin/printdeck/push/pair", s.key(s.servePair))
+	mux.HandleFunc("GET /api/plugin/printdeck/push", s.key(s.servePhones))
+	mux.HandleFunc("DELETE /api/plugin/printdeck/push/{id}", s.key(s.serveUnpair))
 	mux.HandleFunc("GET /webcam/stream", s.key(s.serveStream))
 	mux.HandleFunc("GET /webcam/snapshot", s.key(s.serveSnapshot))
 }

@@ -16,6 +16,7 @@ import (
 	"printdeck/internal/board"
 	"printdeck/internal/gfx"
 	"printdeck/internal/lcd"
+	"printdeck/internal/notify"
 	"printdeck/internal/printer"
 	"printdeck/internal/ui"
 	"printdeck/internal/wifi"
@@ -581,12 +582,14 @@ func manualParts() []section {
 							s.a.Rotate = 180
 						}
 						s.a.NotifyTopic, s.a.OnNotify = "printdeck-7f3a", func(string) {}
+						s.a.Phones = &notify.Phones{} // no file: no paired phone
 					},
 					Callouts: []callout{
 						{"Theme", "The colors of the screen: day, night, or auto (night from 20:00 to 7:00). Tap it to change them."},
 						{"Clock", "The clock of the screens and the display of the printer: 12 hours (2:24 PM) or 24 hours (14:24). Tap it to change it."},
 						{"Home in a filament change", "On: the printer homes all axes while the nozzle heats for a filament change. A change during a paused print does not home. Tap it to turn it on or off."},
 						{"Screen", "The turn of the screen: 0° or 180° for a display that is mounted wide, 90° or 270° for a display that is mounted tall. A tap asks to turn it a quarter turn more, then the deck restarts in the new turn. The touch turns with the screen. A print goes on during the restart. This setting wins over display_rotate in printdeck.txt."},
+						{"Phones", "The phones with the Printdeck app that get the push messages of the prints. The app pairs with the deck over the network, with the address and the API key. The messages are encrypted from the deck to the phone. Tap the row for the list; a tap on a phone asks to remove it."},
 						{"Notifications", "Push messages to your phone and watch: print done, print failed, a pause, the end of the first layer, and a roll that runs short. Install the ntfy app on the phone, and subscribe to a topic with a name that is hard to guess. Type the same topic here, or the address of a topic on your own ntfy server. A test message goes out when you save it. An empty topic turns the messages off."},
 					}},
 				{Name: "console", Caption: "The console",

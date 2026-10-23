@@ -448,10 +448,48 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 	if a.OnRotate != nil {
 		items = append(items, menuItem{"Screen", rotateLine(a.Rotate), dim, a.askRotate})
 	}
+	if a.Phones != nil {
+		items = append(items, menuItem{"Phones", phonesLine(len(a.Phones.List())), dim, func() { a.open(pagePhones) }})
+	}
 	if a.OnNotify != nil {
 		items = append(items, menuItem{"Notifications", notifyLine(a.NotifyTopic), dim, a.editNotify})
 	}
 	a.menuRows(c, f.body(), f.wide, 60, 5, items)
+}
+
+// phonesLine is the line of the Phones row: the number of paired phones.
+func phonesLine(n int) string {
+	switch n {
+	case 0:
+		return "None · pair a phone in the Printdeck app"
+	case 1:
+		return "1 phone gets the messages of the prints"
+	}
+	return fmt.Sprintf("%d phones get the messages of the prints", n)
+}
+
+// drawPhones is the list of the paired phones. A tap on a phone asks to remove it.
+func (a *App) drawPhones(c *gfx.Canvas) {
+	f := a.navPage(c, "Phones")
+	list := a.Phones.List()
+	area := a.listArea(f)
+	if len(list) == 0 {
+		noItems(c, area, "No phones", "Pair a phone in the Printdeck app,", "with the address and the API key.")
+		return
+	}
+	var items []menuItem
+	for _, ph := range list {
+		ph := ph
+		sub := "Paired " + fileDate(ph.Added, a.Now(), a.Clock24)
+		if ph.Env == "sandbox" {
+			sub += " · from Xcode"
+		}
+		items = append(items, menuItem{ph.Name, sub, dim, func() {
+			a.confirm = &confirmBox{question: "Remove " + gfx.Fit(gfx.Face(true, 28), ph.Name, 300) + "?", yes: "Remove", danger: true,
+				onYes: func() { a.Phones.Remove(ph.ID) }}
+		}})
+	}
+	a.menuRows(c, area, f.wide, 60, 5, items)
 }
 
 // notifyLine is the line of the Notifications row: the ntfy topic, or Off.

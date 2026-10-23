@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -13,6 +14,42 @@ import (
 	"printdeck/internal/printer"
 	"printdeck/internal/ui"
 )
+
+// phonesIn returns the paired phones of the Printdeck app in the state folder (push.json). The
+// API and the loop of startNotify share them.
+var phonesByDir struct {
+	sync.Mutex
+	m map[string]*notify.Phones
+}
+
+func phonesIn(stateDir string) *notify.Phones {
+	phonesByDir.Lock()
+	defer phonesByDir.Unlock()
+	if phonesByDir.m == nil {
+		phonesByDir.m = map[string]*notify.Phones{}
+	}
+	p := phonesByDir.m[stateDir]
+	if p == nil {
+		p = &notify.Phones{Path: filepath.Join(stateDir, "push.json")}
+		phonesByDir.m[stateDir] = p
+	}
+	return p
+}
+
+// sendPhones sends a message to each paired phone. A phone that removed the app is removed. The
+// log has the ID of a phone only.
+func sendPhones(ctx context.Context, phones *notify.Phones, m notify.Message) {
+	for _, ph := range phones.List() {
+		err := notify.SendPhone(ctx, ph, m, time.Now())
+		switch {
+		case err == notify.ErrGone:
+			phones.Remove(ph.ID)
+			log.Printf("notify: phone %s removed the app; it is unpaired", ph.ID)
+		case err != nil:
+			log.Printf("notify: phone %s: %s: %v", ph.ID, m.Title, err)
+		}
+	}
+}
 
 // startNotify sets up the push messages of a print (Settings > Notifications): the topic is kept
 // in the file notify of the state folder. It sends the messages of the events of each print, and a
@@ -38,6 +75,8 @@ func startNotify(ctx context.Context, stateDir string, pr printerBackend, app *u
 			}
 		}()
 	}
+	phones := phonesIn(stateDir)
+	app.Phones = phones
 	go func() {
 		var w notify.Watcher
 		tick := time.NewTicker(2 * time.Second)
@@ -51,10 +90,11 @@ func startNotify(ctx context.Context, stateDir string, pr printerBackend, app *u
 			st := pr.State()
 			msgs := w.Step(st, rollCheck(pr, st))
 			t := topic.Load().(string)
-			if t == "" {
-				continue
-			}
 			for _, m := range msgs {
+				sendPhones(ctx, phones, m)
+				if t == "" {
+					continue
+				}
 				if err := notify.Send(ctx, t, m); err != nil {
 					log.Printf("notify: %s: %v", m.Title, err)
 				}

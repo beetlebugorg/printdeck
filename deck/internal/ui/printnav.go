@@ -35,6 +35,7 @@ const (
 	pageSpool       // one roll (a.spoolID)
 	pageSpoolPrints // the prints that used one roll (a.spoolID)
 	pageSettings    // the settings of the deck
+	pagePhones      // the phones of the Printdeck app that get push messages
 )
 
 // open shows a page over the current one.

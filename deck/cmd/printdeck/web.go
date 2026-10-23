@@ -16,6 +16,7 @@ import (
 	"printdeck/internal/config"
 	"printdeck/internal/gcodestore"
 	"printdeck/internal/gfx"
+	"printdeck/internal/notify"
 	"printdeck/internal/octoapi"
 	"printdeck/internal/printer"
 	"printdeck/internal/remote"
@@ -75,6 +76,16 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 	}
 	api.Frame = cameraFrame(app)
 	api.StartPrint = app.ConfirmFilePrint
+	// The phones of the Printdeck app for push messages; a new phone gets a test message.
+	api.Phones = phonesIn(cfg.StateDir)
+	api.OnPaired = func(ph notify.Phone) {
+		go func() {
+			m := notify.Message{Title: "Printdeck", Body: "This phone gets the messages of your prints.", Tags: "printer"}
+			if err := notify.SendPhone(context.Background(), ph, m, time.Now()); err != nil {
+				log.Printf("notify: phone %s: the test message: %v", ph.ID, err)
+			}
+		}()
+	}
 	api.Register(mux)
 	return api
 }

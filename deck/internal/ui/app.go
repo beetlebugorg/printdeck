@@ -18,6 +18,7 @@ import (
 	"printdeck/internal/board"
 	"printdeck/internal/gcodemeta"
 	"printdeck/internal/gfx"
+	"printdeck/internal/notify"
 	"printdeck/internal/printer"
 	"printdeck/internal/touch"
 )
@@ -199,7 +200,9 @@ type App struct {
 	// saves a new topic, and sends a test message to it.
 	NotifyTopic string
 	OnNotify    func(topic string)
-	OnSwapHome  func(bool)
+	// Phones are the paired phones of the Printdeck app, or nil (Settings > Phones).
+	Phones     *notify.Phones
+	OnSwapHome func(bool)
 	// Rotate is the turn of the UI on the panel in degrees: 0, 90, 180 or 270. OnRotate saves a new
 	// turn and restarts the deck in it; with no OnRotate, the Settings page has no Screen row.
 	Rotate   int
