@@ -113,15 +113,15 @@ class TestRollMaterial(unittest.TestCase):
         white = {"base": "printdeck_white", "name": "White", "material": "PLA"}
         navy = {"base": "printdeck_navy", "name": "Navy", "material": "PLA"}
         self.assertEqual(logic.roll_card(status, 0, white)["warn"], "")
-        self.assertEqual(logic.roll_card(status, 0, navy)["warn"], "Cura uses Navy. The printer has White.")
+        self.assertEqual(logic.roll_card(status, 0, navy)["warn"], "You have Navy selected, the printer has White installed.")
         # A roll with no material of Cura: the types must be the same.
         status = {"material": "PLA", "spool": dict(roll, cura_material="")}
         self.assertEqual(logic.roll_card(status, 0, navy)["warn"], "")
         petg = {"base": "generic_petg", "name": "Generic PETG", "material": "PETG"}
-        self.assertEqual(logic.roll_card(status, 0, petg)["warn"], "Cura uses Generic PETG. The printer has White.")
+        self.assertEqual(logic.roll_card(status, 0, petg)["warn"], "You have Generic PETG selected, the printer has White installed.")
         # No roll: the material of the printer.
         card = logic.roll_card({"material": "PLA", "spool": None}, 0, petg)
-        self.assertEqual(card["warn"], "Cura uses Generic PETG. The printer has PLA.")
+        self.assertEqual(card["warn"], "You have Generic PETG selected, the printer has PLA installed.")
 
 
     def test_roll_plan(self):
