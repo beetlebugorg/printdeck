@@ -152,8 +152,8 @@ func curaGuides() []bookGuide {
 		"Click Request to get the API key.",
 		"The touch screen asks \"Allow Cura to use the Printdeck?\". Tap Allow.",
 		"Click Connect, and close the preferences.")
-	conn.para("When Cura connects, the plugin shows the filament in the printer, for example: \"Connected to the " +
-		"Printdeck. PLA is in the printer.\"")
+	conn.para("When Cura connects, a card next to the slice button shows the roll in the printer: its color, its " +
+		"name, and the filament that is left on it. After a slice, the card shows the filament of the model.")
 	conn.note("The system page of the deck also shows the API key for slicers: http://printdeck.local/system.")
 
 	send := bookGuide{Chapter: chCuraPrint, Title: "Send a print"}

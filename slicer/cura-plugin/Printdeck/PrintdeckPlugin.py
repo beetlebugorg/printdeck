@@ -178,9 +178,8 @@ class PrintdeckPlugin(Extension):
         if not self._connected:
             self._connected = True
             Logger.log("i", "Printdeck: connected")
-            if not self._greeted:  # once each time Cura starts
+            if not self._greeted:  # once each time Cura starts; the roll card shows the roll
                 self._greeted = True
-                _message(logic.connected_text(status))
                 self._offerPrint()
         self._nameButton()
         self._sendMaterials()
