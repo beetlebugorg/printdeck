@@ -93,13 +93,14 @@ The Printdeck runs Printdeck OS: a small, read-only Linux system that Buildroot 
 The screens of the touch screen:
 
 - The top of each screen shows the display of the printer, with the same dots: the state, the temperatures, the fan, the position of the head, and the progress.
-- The print screen shows a 3D view of the model that prints (the printed height in colour), the progress, the time left, and the temperatures. It can pause, resume, cancel, preheat, and start a file. The view is a shaded STL if the upload folder or `MODEL_DIR` (default `/var/lib/printdeck/models`) has an STL with a matching name. Otherwise it is the toolpath from the G-code.
-- Move (when no print runs): home X, Y, Z; a joystick moves the head (faster further out, stops when you lift the finger); Z in steps of 0.1, 1, 10 mm; extrude and retract; fan; motors off; emergency stop. A filament swap leads through heat, unload, load, and purge.
+- The print screen shows a 3D view of the model that prints, in the color of the roll, with the layer, the roll, and the time of each layer above it. It can pause, resume, tune, and cancel. The view is a shaded STL if the upload folder or `MODEL_DIR` (default `/var/lib/printdeck/models`) has an STL with a matching name. Otherwise it is the toolpath from the G-code.
+- Toolhead (when no print runs): home X, Y, Z; a joystick moves the head (faster further out, stops when you lift the finger); Z in steps of 0.1, 1, 10 mm; extrude and retract; fan; motors off; emergency stop. A filament swap leads through heat, unload, load, and purge.
 - Tune (while a print runs): speed and flow in percent, Z offset in baby steps, fan.
 - Tap a temperature to set it with a keypad.
-- Machine > Theme chooses the day theme, the night theme, or auto (night from `NIGHT_FROM` to `NIGHT_TO`, 20 to 7). The choice is saved in `/var/lib/printdeck/theme`.
-- Rolls: the deck keeps a list of your rolls of filament. Each print subtracts its filament from the roll in the printer, and the history shows the cost of each print. The page of each roll lists the prints that used it.
-- During a print, the other screens stay open to you. The controls that change the printer are locked, and the print bar at the bottom goes back to the print.
+- Machine > Settings > Theme chooses the day theme, the night theme, or auto (night from `NIGHT_FROM` to `NIGHT_TO`, 20 to 7). The choice is saved in `/var/lib/printdeck/theme`.
+- Rolls: the deck keeps a list of your rolls of filament, each with a number and a color. Each print subtracts its filament from the roll in the printer, and the history shows the cost of each print. The page of each roll lists the prints that used it. `printdeck.local/rolls/labels` prints round labels with a QR code. A phone camera on a label opens the page of the roll, and Load starts the filament change with it.
+- Machine > Maintenance has the calibrations of the printer, the firmware, and the pressure advance test.
+- During a print, the other screens stay open to you. The controls that change the printer are locked. On a wide screen, Main is the print. On a tall screen, the print bar at the bottom goes back to the print.
 - A display that is mounted wide gets the layout of a machine panel: the display of the printer and a key panel at the left, and the page at the right.
 - Setup (at the first start) sets the Wi-Fi. Machine > Wi-Fi and help, and Help during a print, show the address and the password.
 
