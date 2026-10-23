@@ -61,7 +61,7 @@ func (a *App) Screen() kit.Screen {
 type Printer interface {
 	State() printer.State
 	Files() []printer.File
-	Preview() image.Image   // picture of the model that prints, or nil
+	Preview() image.Image // picture of the model that prints, or nil
 	// LayerTimes is the seconds of each layer of the print, from the slicer, or nil.
 	LayerTimes() []float64
 	SetViewLayer(layer int) // shows the model up to a layer; a negative layer follows the print
@@ -201,9 +201,9 @@ type App struct {
 	zStep float64 // mm per tap of the Z buttons
 	zBaby float64 // mm per tap of the Z offset on the first layer screen
 
-	layers      layerClock    // the measured times of the layers of the print (layerChart)
-	scrubLayer  int           // the layer under the finger on the layer slider, or -1
-	notesScroll int           // the scroll position of the release notes (drawNotes)
+	layers      layerClock // the measured times of the layers of the print (layerChart)
+	scrubLayer  int        // the layer under the finger on the layer slider, or -1
+	notesScroll int        // the scroll position of the release notes (drawNotes)
 
 	toast   string
 	toastAt time.Time
