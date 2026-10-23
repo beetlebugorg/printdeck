@@ -242,3 +242,20 @@ const demoNotes = "**Full Changelog**: https://github.com/beetlebugorg/printdeck
 	"- A new status screen with icons (b2c3d4e)\n- Signed updates (c3d4e5f)\n" +
 	"- A trace of the live speed on the print screen (d4e5f6a)\n\n### Fixes\n\n" +
 	"- The nozzle cools when you close a filament change (e5f6a7b)\n- Long texts get smaller before they lose their end (f6a7b8c)\n"
+
+// demoLayerTimes are the seconds of n layers of the demo print: the solid bottom layers are long,
+// the walls are short, and the top layers are long again.
+func demoLayerTimes(n int) []float64 {
+	out := make([]float64, n)
+	for i := range out {
+		switch {
+		case i == 0:
+			out[i] = 420
+		case i < 4 || i >= n-3:
+			out[i] = 300
+		default:
+			out[i] = 150 + 20*float64(i%3)
+		}
+	}
+	return out
+}

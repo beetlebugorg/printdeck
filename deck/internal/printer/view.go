@@ -63,6 +63,9 @@ type View struct {
 	files   map[string]*recordPic // the pictures of files with no thumbnail (FilePicture)
 	color   string                // the color of the roll in the printer, for the print now
 
+	layerKey   string    // the file of layerTimes
+	layerTimes []float64 // the seconds of each layer of the print (LayerTimes)
+
 	// Rolls are the rolls of filament, or nil. The picture of a print has the color of its roll.
 	Rolls   *Spools
 	fileRun bool // a picture of a file is drawn now
@@ -87,6 +90,42 @@ func (v *View) Preview() image.Image {
 		return v.viewImg
 	}
 	return v.img
+}
+
+// LayerTimes returns the seconds of each layer of the print, from the plan of the slicer: the
+// first item is layer 1. It returns nil when the G-code is not loaded or has no times.
+func (v *View) LayerTimes() []float64 {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if v.gc == nil {
+		return nil
+	}
+	if v.layerKey != v.file {
+		v.layerKey, v.layerTimes = v.file, layerTimes(v.gc)
+	}
+	return v.layerTimes
+}
+
+// layerTimes is the seconds of each layer of gc, or nil.
+func layerTimes(gc *gcode.Model) []float64 {
+	n := len(gc.LayerPos)
+	if n == 0 {
+		return nil
+	}
+	if _, _, ok := gc.TimeAt(0); !ok {
+		return nil
+	}
+	out := make([]float64, n)
+	for i := range out {
+		end := int64(math.MaxInt64)
+		if i+1 < n {
+			end = gc.LayerPos[i+1]
+		}
+		t0, _, _ := gc.TimeAt(gc.LayerPos[i])
+		t1, _, _ := gc.TimeAt(end)
+		out[i] = max(0, t1-t0)
+	}
+	return out
 }
 
 // ViewLayer returns the layer of the scrubber, or -1 when the preview follows the print.

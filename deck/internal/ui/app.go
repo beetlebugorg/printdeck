@@ -62,6 +62,8 @@ type Printer interface {
 	State() printer.State
 	Files() []printer.File
 	Preview() image.Image   // picture of the model that prints, or nil
+	// LayerTimes is the seconds of each layer of the print, from the slicer, or nil.
+	LayerTimes() []float64
 	SetViewLayer(layer int) // shows the model up to a layer; a negative layer follows the print
 	ViewLayer() int         // the layer of the scrubber, or -1 when it follows the print
 	LoadFiles()
@@ -199,7 +201,8 @@ type App struct {
 	zStep float64 // mm per tap of the Z buttons
 	zBaby float64 // mm per tap of the Z offset on the first layer screen
 
-	trace       []traceSample // the live speed of the last traceSpan of a print (speedTrace)
+	layers      layerClock    // the measured times of the layers of the print (layerChart)
+	scrubLayer  int           // the layer under the finger on the layer slider, or -1
 	notesScroll int           // the scroll position of the release notes (drawNotes)
 
 	toast   string

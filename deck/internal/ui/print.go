@@ -198,8 +198,11 @@ func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 	a.button(c, k[1], "Tune", raised, text, func() { a.tune = true })
 	a.button(c, k[2], "Cancel", raised, red, a.askCancel)
 	a.button(c, k[3], "Menu", raised, text, func() { a.leavePrint(st) })
-	a.modelView(c, box, st)
-	a.drawScrubber(c, box, st)
+	// The data of the print in a plate, and the model under it.
+	r := kit.Rows(box, 12, kit.Px(a.printInfoH(st)), kit.Fr(1))
+	a.modelView(c, r[1], st)
+	a.drawScrubber(c, r[1], st)
+	a.printInfo(c, r[0], st)
 }
 
 // jobCard draws the file of the print, the time left, and the time of its end, in a plate.
@@ -222,159 +225,207 @@ func (a *App) askCancel() {
 	a.confirm = &confirmBox{question: "Cancel this print?", yes: "Cancel print", danger: true, onYes: a.Printer.Cancel}
 }
 
-// modelView draws the model in a window, with the move now and its speed at the top right. A
-// picture that is larger than the window becomes smaller to fit.
+// modelView draws the model in a window. A picture that is larger than the window becomes smaller
+// to fit. The window has only the model: the data of the print is in the plate above it
+// (printInfo).
 func (a *App) modelView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 	window(c, box)
 	a.region("Model", box)
-	// Under the layer: the roll in the printer, then the trace of the live speed. The picture is
-	// between them and the layer slider.
-	y := box.Min.Y + 38
-	if a.rollGauge(c, image.Rect(box.Min.X+16, y, box.Max.X-14, y+24), st) {
-		y += 32
-	}
-	a.sampleTrace(st)
-	if a.speedTrace(c, image.Rect(box.Min.X+16, y, box.Max.X-14, y+40), st) {
-		y += 48
-	}
 	pic := box
-	if y > box.Min.Y+38 {
-		pic.Min.Y, pic.Max.Y = y+4, pic.Max.Y-40
+	if st.Layers > 0 {
+		pic.Max.Y -= 40 // the layer slider
 	}
 	if img := a.Printer.Preview(); img != nil {
 		picture(c, pic, img)
 	} else {
 		c.Text(pic, "LOADING MODEL…", gfx.Face(true, 18), lcdDim, gfx.Center)
 	}
-	// The kind of the move at the top right. The trace has the live speed; with no trace, the
-	// speed of the G-code is here.
-	if st.HasNow {
-		now := strings.ToUpper(st.NowKind)
-		if !st.HasLive {
-			now += fmt.Sprintf(" %.0f MM/S", st.NowSpeed*float64(a.speedFactor(st))/100)
+}
+
+// printInfoH is the height of the plate of printInfo for st.
+func (a *App) printInfoH(st printer.State) int {
+	h := 12 + 30 + 12
+	if _, ok := a.rollIn(); ok {
+		h += 32
+	}
+	if len(a.Printer.LayerTimes()) > 0 {
+		h += 54
+	}
+	return h
+}
+
+// printInfo draws the data of the print in a plate above the model view: the layer and the move
+// now, the roll in the printer, and the times of the layers. While the slider shows another layer,
+// Live goes back to the layer that prints.
+func (a *App) printInfo(c *gfx.Canvas, r image.Rectangle, st printer.State) {
+	plate(c, r)
+	a.layers.sample(st, a.Now())
+	s := kit.NewStack(kit.Inset(r, 16, 12, 16, 12), 8)
+	top := s.Next(30)
+	pr := a.Printer
+	view := pr.ViewLayer()
+	if st.Layers > 0 {
+		shown, col := st.Layer, text
+		if v, ok := a.dragLayer(st); ok {
+			shown, col = v, orange
+		} else if view >= 0 {
+			shown, col = view, orange
 		}
-		c.Text(image.Rect(box.Min.X+200, box.Min.Y+8, box.Max.X-14, box.Min.Y+30), now, gfx.Face(true, 13), lcdDim, gfx.Right)
+		t := fmt.Sprintf("LAYER %d OF %d", shown, st.Layers)
+		c.Text(image.Rect(top.Min.X, top.Min.Y, top.Max.X-120, top.Max.Y), t, gfx.Face(true, 16), col, gfx.Left)
+		a.textRegion("Layer", top, gfx.Face(true, 16), t)
+	}
+	switch {
+	case view >= 0:
+		live := image.Rect(top.Max.X-90, top.Min.Y-4, top.Max.X, top.Max.Y+2)
+		a.button(c, live, "Live", orange, onAcc, func() { pr.SetViewLayer(-1) })
+	case st.HasNow:
+		// The kind of the move now, and its speed: the live speed of the head, or the speed of the
+		// G-code.
+		speed := st.NowSpeed * float64(a.speedFactor(st)) / 100
+		if st.HasLive {
+			speed = st.LiveSpeed
+		}
+		now := fmt.Sprintf("%s · %.0f MM/S", strings.ToUpper(st.NowKind), speed)
+		c.Text(image.Rect(top.Min.X+180, top.Min.Y, top.Max.X, top.Max.Y), now, gfx.Face(true, 14), dim, gfx.Right)
+	}
+	if _, ok := a.rollIn(); ok {
+		a.rollGauge(c, s.Next(24), st)
+	}
+	if times := pr.LayerTimes(); len(times) > 0 {
+		a.layerChart(c, s.Next(46), st, times)
 	}
 }
 
-// traceSample is the live speed of the head and the flow of the nozzle at a time.
-type traceSample struct {
-	at          time.Time
-	speed, flow float64 // mm/s, mm³/s
+// layerClock measures the time of each layer of a print: from the change to the layer to the
+// change to the next one. A layer with a pause, and the layer that printed when the deck started,
+// have no time.
+type layerClock struct {
+	file    string
+	layer   int
+	start   time.Time
+	known   bool // start is the start of the layer
+	paused  bool // the layer had a pause
+	measure map[int]float64
 }
 
-// traceSpan is the time of the trace of the live speed.
-const traceSpan = 30 * time.Second
-
-// sampleTrace adds the live speed of st to the trace, at most 10 times a second. The trace starts
-// again with each print, and after a pause.
-func (a *App) sampleTrace(st printer.State) {
-	now := a.Now()
-	if !st.HasLive || !st.Printing || st.Paused {
-		a.trace = nil
+// sample follows the layer of st at the time now.
+func (l *layerClock) sample(st printer.State, now time.Time) {
+	switch {
+	case !st.Busy():
+		*l = layerClock{}
+		return
+	case st.File != l.file:
+		*l = layerClock{file: st.File, layer: st.Layer, start: now, measure: map[int]float64{}}
 		return
 	}
-	if n := len(a.trace); n > 0 && now.Sub(a.trace[n-1].at) < 100*time.Millisecond {
-		return
+	if st.Paused {
+		l.paused = true
 	}
-	d := a.Printer.Machine().Diameter()
-	a.trace = append(a.trace, traceSample{now, st.LiveSpeed, st.LiveExtrude * math.Pi * d * d / 4})
-	i := 0
-	for i < len(a.trace) && now.Sub(a.trace[i].at) > traceSpan {
-		i++
+	if st.Layer != l.layer {
+		if st.Layer == l.layer+1 && l.known && !l.paused {
+			l.measure[l.layer] = now.Sub(l.start).Seconds()
+		}
+		l.layer, l.start, l.known, l.paused = st.Layer, now, true, false
 	}
-	a.trace = a.trace[i:]
 }
 
-// speedTrace draws the trace of the live speed in r: a bar for each part of the last traceSpan,
-// with the newest at the right, and the live speed and flow at the right of r. The bars are as
-// high as the fastest speed of their part, against the fastest speed of the trace. It reports
-// false when the printer has no live speed, and then draws nothing.
-func (a *App) speedTrace(c *gfx.Canvas, r image.Rectangle, st printer.State) bool {
-	if !st.HasLive || len(a.trace) == 0 {
-		return false
-	}
-	last := a.trace[len(a.trace)-1]
-	nums := image.Rect(r.Max.X-130, r.Min.Y, r.Max.X, r.Max.Y)
-	c.Text(image.Rect(nums.Min.X, r.Min.Y, nums.Max.X, r.Min.Y+22), fmt.Sprintf("%.0f MM/S", last.speed), gfx.Face(true, 17), lcdInk, gfx.Right)
-	c.Text(image.Rect(nums.Min.X, r.Min.Y+22, nums.Max.X, r.Max.Y), fmt.Sprintf("%.1f MM³/S", last.flow), gfx.Face(true, 13), lcdDim, gfx.Right)
-	chart := image.Rect(r.Min.X, r.Min.Y+4, nums.Min.X-40, r.Max.Y-2) // the speed of the top line at its right
-	const barW, gap = 3, 1
-	n := chart.Dx() / (barW + gap)
-	if n <= 0 {
-		return true
-	}
-	peak, top := tracePeaks(a.trace, a.Now(), n)
-	// The base line, and a dotted line at the top with its speed.
-	c.Fill(image.Rect(chart.Min.X, chart.Max.Y-1, chart.Max.X, chart.Max.Y), lcdDim)
-	for x := chart.Min.X; x < chart.Max.X; x += 6 {
-		c.Fill(image.Rect(x, chart.Min.Y, x+2, chart.Min.Y+1), lcdDim)
-	}
-	c.Text(image.Rect(chart.Max.X+4, chart.Min.Y-6, nums.Min.X, chart.Min.Y+8), fmt.Sprint(top), gfx.Face(false, 11), lcdDim, gfx.Left)
-	for i := 0; i < n; i++ {
-		if peak[i] < 0 {
-			continue // before the first sample
+// layerChart draws the times of the layers in r: a bar for each layer, or for each group of layers
+// on a narrow chart. A layer that is done has its measured time when the deck has it, and the
+// others the time of the slicer. The layers that are done are dark, the layer now is orange, and
+// the layers to come are light. At the right: the time of the layer now and its plan, and the
+// mean time of a layer.
+func (a *App) layerChart(c *gfx.Canvas, r image.Rectangle, st printer.State, plan []float64) {
+	n := len(plan)
+	cur := st.Layer // counting from 1
+	at := func(layer int) float64 {
+		if t, ok := a.layers.measure[layer]; ok {
+			return t
 		}
-		h := int(peak[i] / top * float64(chart.Dy()-1))
-		x := chart.Min.X + i*(barW+gap)
-		// The older a bar, the dimmer it is; the newest is orange.
-		col := mix(lcdDim, lcdInk, float64(i)/float64(n-1))
-		if i == n-1 {
+		return plan[layer-1]
+	}
+	nums := image.Rect(r.Max.X-150, r.Min.Y, r.Max.X, r.Max.Y)
+	now, of := "–", ""
+	if cur >= 1 && cur <= n {
+		of = " / " + mmss(plan[cur-1])
+		if a.layers.known && a.layers.layer == cur {
+			now = mmss(a.Now().Sub(a.layers.start).Seconds())
+		}
+	}
+	c.Text(image.Rect(nums.Min.X, r.Min.Y, nums.Max.X, r.Min.Y+24), now+of, gfx.Face(true, 17), text, gfx.Right)
+	sum, count := 0.0, 0
+	for layer, t := range a.layers.measure {
+		if layer >= 1 && layer <= n {
+			sum, count = sum+t, count+1
+		}
+	}
+	if count == 0 {
+		for _, t := range plan {
+			sum += t
+		}
+		count = n
+	}
+	c.Text(image.Rect(nums.Min.X, r.Min.Y+24, nums.Max.X, r.Max.Y), "AVG "+mmss(sum/float64(count))+" A LAYER", gfx.Face(true, 12), dim, gfx.Right)
+
+	chart := image.Rect(r.Min.X, r.Min.Y+2, nums.Min.X-16, r.Max.Y-2)
+	// One bar for each layer when they fit, else for each group of layers.
+	const gap = 1
+	per := 1
+	for n/per*(2+gap) > chart.Dx() {
+		per++
+	}
+	bars := (n + per - 1) / per
+	barW := min(10, max(2, chart.Dx()/max(1, bars)-gap))
+	vals := make([]float64, bars)
+	top := 1.0
+	for b := range vals {
+		k := 0
+		for layer := b*per + 1; layer <= min(n, (b+1)*per); layer++ {
+			vals[b] += at(layer)
+			k++
+		}
+		vals[b] /= float64(max(1, k))
+		top = max(top, vals[b])
+	}
+	c.Fill(image.Rect(chart.Min.X, chart.Max.Y-1, chart.Max.X, chart.Max.Y), edge)
+	later := mix(surface, dim, 0.3)
+	for b, v := range vals {
+		x := chart.Min.X + b*(barW+gap)
+		if x+barW > chart.Max.X {
+			break
+		}
+		first, last := b*per+1, min(n, (b+1)*per)
+		col := later
+		switch {
+		case cur >= first && cur <= last:
 			col = orange
+		case last < cur:
+			col = dim
 		}
+		h := max(1, int(v/top*float64(chart.Dy()-1)))
 		c.Fill(image.Rect(x, chart.Max.Y-1-h, x+barW, chart.Max.Y-1), col)
 	}
-	a.region("Speed", r)
-	return true
+	a.region("Layer times", r)
 }
 
-// tracePeaks gives the fastest speed of each of n bars of the trace that ends at now, and the speed
-// of the top of the chart: at least 50 mm/s, in steps of 50. Each bar is a fixed slot of the clock,
-// so a sample stays in its bar from frame to frame, and the bars move a whole bar at a time. A bar
-// with no sample keeps the speed of the bar before it; a bar before the first sample is -1.
-func tracePeaks(trace []traceSample, now time.Time, n int) ([]float64, float64) {
-	slot := int64(traceSpan) / int64(n)
-	cur := now.UnixNano() / slot
-	peak := make([]float64, n)
-	has := make([]bool, n)
-	top := 50.0
-	for _, s := range trace {
-		i := n - 1 - int(cur-s.at.UnixNano()/slot)
-		if i < 0 || i >= n {
-			continue
-		}
-		peak[i], has[i] = max(peak[i], s.speed), true
-		top = max(top, math.Ceil(s.speed/50)*50)
+// mmss is a time in seconds as m:ss, or h:mm:ss from an hour.
+func mmss(sec float64) string {
+	s := int(sec + 0.5)
+	if s >= 3600 {
+		return fmt.Sprintf("%d:%02d:%02d", s/3600, s/60%60, s%60)
 	}
-	started := false
-	for i := range peak {
-		switch {
-		case has[i]:
-			started = true
-		case started:
-			peak[i] = peak[i-1]
-		default:
-			peak[i] = -1
-		}
-	}
-	return peak, top
+	return fmt.Sprintf("%d:%02d", s/60, s%60)
 }
 
-// DemoTrace fills the trace of the live speed with 30 s of a print: slow walls and fast infill.
-// For the pictures of the manual.
-func (a *App) DemoTrace() {
+// DemoLayers measures the layers of the demo print before the layer now, at the plan with some
+// spread, and starts the layer now 42 seconds ago. For the pictures of the manual.
+func (a *App) DemoLayers() {
+	st := a.Printer.State()
+	plan := a.Printer.LayerTimes()
 	now := a.Now()
-	a.trace = nil
-	for t := traceSpan; t >= 0; t -= 100 * time.Millisecond {
-		sec := t.Seconds()
-		speed, flow := 30.0, 2.4 // the outer wall
-		switch int(sec) % 10 {
-		case 2, 3, 4, 5:
-			speed, flow = 150-20*math.Abs(math.Sin(sec*3)), 11.6 // the infill, slower at its turns
-		case 6, 7:
-			speed, flow = 60, 4.8 // the inner wall
-		}
-		a.trace = append(a.trace, traceSample{now.Add(-t), speed, flow})
+	a.layers = layerClock{file: st.File, layer: st.Layer, start: now.Add(-42 * time.Second), known: true, measure: map[int]float64{}}
+	for layer := 1; layer < st.Layer && layer <= len(plan); layer++ {
+		a.layers.measure[layer] = plan[layer-1] * (1 + 0.08*math.Sin(float64(layer)))
 	}
 }
 
@@ -383,11 +434,7 @@ func (a *App) DemoTrace() {
 // already, so the bar goes down while the print runs. It reports false when no roll is in the
 // printer, and then draws nothing.
 func (a *App) rollGauge(c *gfx.Canvas, r image.Rectangle, st printer.State) bool {
-	rolls := a.Printer.SpoolStore()
-	if rolls == nil {
-		return false
-	}
-	sp, ok := rolls.In()
+	sp, ok := a.rollIn()
 	if !ok {
 		return false
 	}
@@ -411,9 +458,17 @@ func (a *App) rollGauge(c *gfx.Canvas, r image.Rectangle, st printer.State) bool
 	face := gfx.Face(true, 13)
 	t := image.Rect(bar.Max.X+12, r.Min.Y, r.Max.X, r.Max.Y)
 	line := strings.ToUpper(sp.Label() + " · " + printer.Weight(left))
-	c.Text(t, line, face, lcdDim, gfx.Left)
+	c.Text(t, line, face, dim, gfx.Left)
 	a.region("Roll", r)
 	return true
+}
+
+// rollIn is the roll in the printer.
+func (a *App) rollIn() (printer.Spool, bool) {
+	if rolls := a.Printer.SpoolStore(); rolls != nil {
+		return rolls.In()
+	}
+	return printer.Spool{}, false
 }
 
 // picture draws a picture of the model in the middle of a window box. A picture that is larger
@@ -512,9 +567,10 @@ func (a *App) temps(c *gfx.Canvas, area image.Rectangle, tool, toolT, bed, bedT 
 	}
 }
 
-// drawScrubber is the strip under the model view: a slider through the layers, the layer, and a button to
-// go back to the layer that prints now.
+// drawScrubber is the slider at the bottom of the model view: it goes through the layers. While
+// a finger drags it, a.scrubLayer is the layer under the finger, for the plate above (printInfo).
 func (a *App) drawScrubber(c *gfx.Canvas, box image.Rectangle, st printer.State) {
+	a.scrubLayer = -1
 	if st.Layers == 0 {
 		return
 	}
@@ -525,28 +581,18 @@ func (a *App) drawScrubber(c *gfx.Canvas, box image.Rectangle, st printer.State)
 	slider := image.Rect(box.Min.X+18, box.Max.Y-36, box.Max.X-18, box.Max.Y-4)
 	a.region("Layer slider", slider)
 	f := float64(st.Layer) / float64(st.Layers)
-	shown := st.Layer
 	drag, dragging := a.in.Dragging(slider)
 	switch {
 	case dragging:
 		f = drag
-		shown = layerOf(f)
+		a.scrubLayer = layerOf(f)
 	case view >= 0:
-		f, shown = float64(view)/float64(st.Layers), view
-	}
-	col, label := dim, fmt.Sprintf("Layer %d of %d", shown, st.Layers)
-	if view >= 0 || dragging {
-		col = orange
-	}
-	if col == dim {
-		col = lcdDim
-	}
-	c.Text(image.Rect(box.Min.X+16, box.Min.Y+8, box.Min.X+240, box.Min.Y+34), strings.ToUpper(label), gfx.Face(true, 15), col, gfx.Left)
-	if view >= 0 {
-		live := image.Rect(box.Max.X-100, box.Min.Y+8, box.Max.X-14, box.Min.Y+40)
-		a.button(c, live, "Live", orange, onAcc, func() { pr.SetViewLayer(-1) })
+		f = float64(view) / float64(st.Layers)
 	}
 	set := func(f float64) { pr.SetViewLayer(layerOf(f)) }
 	faderWith(c, slider, f, orange, dayPalette.raised) // a light cap on the dark window
 	a.addHit(kit.Hit{R: slider, Drag: set, End: set})
 }
+
+// dragLayer is the layer under the finger on the layer slider.
+func (a *App) dragLayer(printer.State) (int, bool) { return a.scrubLayer, a.scrubLayer >= 0 }

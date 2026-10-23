@@ -314,8 +314,9 @@ func manualParts() []section {
 					Setup: func(s *manualState) {
 						s.p.State_ = stPrinting
 						s.p.State_.HasLive, s.p.State_.LiveSpeed, s.p.State_.LiveExtrude = true, 30, 1.0
+						s.p.LayerTimes_ = demoLayerTimes(s.p.State_.Layers)
 						s.a.OpenPrintScreen("")
-						s.a.DemoTrace()
+						s.a.DemoLayers()
 					},
 					Callouts: []callout{
 						{"Display", "The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature."},
@@ -323,9 +324,10 @@ func manualParts() []section {
 						{"Tune", "Changes the print while it runs. See Tune."},
 						{"Cancel", "Stops the print, after a question."},
 						{"Menu", "Shows the other screens while the print runs. See Look around during a print."},
-						{"Model", "The model up to the layer that prints now, with the kind of the move now at the top right."},
+						{"Layer", "The layer that prints now, and the kind of the move now with the live speed of the head."},
 						{"Roll", "The roll in the printer: a dot in its color, the filament that is left on it, its name, and its grams. The filament of the print counts while it prints. Cura gives a roll its color."},
-						{"Speed", "The live speed of the head over the last 30 seconds: a bar for each moment, the newest at the right in orange. At the right, the live speed in mm/s and the flow of plastic out of the nozzle in mm³/s. The bars drop at each corner and rise on long lines of infill."},
+						{"Layer times", "A bar for each layer: its time. The layers that are done are dark, with the time that they took. The layer now is orange, and the layers to come are light, with the time of the slicer. At the right, the time of the layer now and its plan, and the mean time of a layer. A short layer can need more cooling."},
+						{"Model", "The model up to the layer that prints now, in the color of the roll."},
 						{"Layer slider", "Drag it to look at another layer. Live goes back to the layer that prints."},
 					}},
 				{Name: "pause-prompt", Caption: "A pause of the file",
