@@ -225,6 +225,10 @@ func curaGuides() []bookGuide {
 			"<file>. Cura can show it in the Preview, at the layer that prints.\"",
 		"Click Show the print. Cura downloads the file from the deck, and opens it in the Preview.",
 		"The Preview follows the layer that prints.")
+	follow.sub("Play with the printer")
+	follow.para("In the Preview of the file that prints, click Play. The nozzle of the Preview then moves with the " +
+		"nozzle of the printer, move by move. To look at other layers, click Pause, or drag a slider. The Preview " +
+		"follows the printer only for the G-code file of the print, from Show the print or from the disk.")
 	follow.para("Cura shows no print time for a G-code file. The Printdeck tab shows the time left. When the print " +
 		"ends, Cura shows a message.")
 

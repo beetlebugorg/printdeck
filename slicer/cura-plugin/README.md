@@ -25,6 +25,9 @@ The plugin works by itself, and tells you in a message what it did:
   the roll and its grams, and the keys Pause, Resume and Cancel, in the style of the deck.
 - When Cura starts during a print, it offers to show the print in the Preview: it downloads the
   file from the Printdeck, and the Preview follows the layer that prints.
+- In the Preview of the G-code file that prints, Play follows the printer: the nozzle of the Preview
+  moves with the move that prints. The plugin asks the Printdeck for the position in the file each
+  second while Play runs. Without Play, the Preview shows the layer that prints.
 - Each file that Cura sends has the material of Cura in its header. Before the Printdeck prints a
   file for another material, it asks on the touch screen.
 

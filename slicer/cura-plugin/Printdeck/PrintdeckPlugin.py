@@ -25,7 +25,7 @@ from UM.Logger import Logger
 from UM.Message import Message
 from cura.CuraApplication import CuraApplication
 
-from . import deckscreen, logic
+from . import deckscreen, logic, playsync
 
 try:
     from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal
@@ -86,6 +86,8 @@ class RollCard(QObject):
         return self._get("short", False)
 
 POLL_SECONDS = 10
+# The time between the answers while Play in the Preview follows the printer.
+FOLLOW_POLL_SECONDS = 1
 # The preference with the favorite materials that the plugin added for the rolls, ";" between them.
 ROLL_FAVORITES = "printdeck/roll_favorites"
 BUTTON = "Print to Printdeck"
@@ -114,13 +116,20 @@ class PrintdeckPlugin(Extension):
         self._layer = None  # the job and the layer that the Preview shows
         self._job = None  # the file that prints
         self._sent = 0.0  # the time of the last write, to see the change to Monitor after it
+        # Play in the Preview follows the printer (playsync): the moves of the G-code file that Cura
+        # loaded, its name, and the move of the last answer with the time of the answer.
+        self._playMap = None
+        self._playFile = ""
+        self._playAt = None  # (layer, start, monotonic time, paused), or None
+        self._following = False  # Play follows the printer: the poll is faster
         self._stop = threading.Event()
+        self._wake = threading.Event()  # ends the wait of the poll before its time
         self._card = RollCard()
         self._cardView = None  # the QML item of the card; Cura keeps only the reference that we give it
 
         app = CuraApplication.getInstance()
         app.engineCreatedSignal.connect(self._start)
-        app.applicationShuttingDown.connect(self._stop.set)
+        app.applicationShuttingDown.connect(self._shutDown)
 
     def _start(self):
         app = CuraApplication.getInstance()
@@ -157,10 +166,12 @@ class PrintdeckPlugin(Extension):
             return device._base_url, key
         return None
 
+    def _shutDown(self):
+        self._stop.set()
+        self._wake.set()
+
     def _poll(self):
-        first = True
-        while first or not self._stop.wait(POLL_SECONDS):
-            first = False
+        while not self._stop.is_set():
             app = CuraApplication.getInstance()
             printer = self._printer()
             status = None
@@ -175,6 +186,8 @@ class PrintdeckPlugin(Extension):
                     Logger.log("d", "Printdeck: %s", e)
             self._printerAddr = printer
             app.callLater(self._update, status)
+            self._wake.wait(FOLLOW_POLL_SECONDS if self._following else POLL_SECONDS)
+            self._wake.clear()
 
     def _update(self, status):
         self._status = status
@@ -183,6 +196,7 @@ class PrintdeckPlugin(Extension):
             self._stage.setStatus(status, base, key)
         if not status:
             self._connected = False
+            self._following = False
             self._card.set(None)
             return
         if not self._connected:
@@ -196,6 +210,9 @@ class PrintdeckPlugin(Extension):
         self._syncRolls()
         self._followRoll()
         self._checkRoll()
+        self._anchorPlay()
+        self._watchPlay()
+        self._checkFollowing()
         self._followPrint()
 
     def _offerPrint(self):
@@ -264,12 +281,94 @@ class PrintdeckPlugin(Extension):
 
     def _onFileCompleted(self, name):
         """After the file of the print loaded, the caution setting comes back. Cura shows no time
-        for a G-code file: the Printdeck tab has the time of the print."""
+        for a G-code file: the Printdeck tab has the time of the print. A G-code file gets the map
+        of its moves, so that Play in the Preview can follow the printer."""
+        self._mapFile(name)
         if not self._loading or os.path.basename(name) != os.path.basename(self._loading[0]):
             return
         _, caution = self._loading
         self._loading = None
         CuraApplication.getInstance().getPreferences().setValue("gcodereader/show_caution", caution)
+
+    # Play in the Preview follows the printer.
+
+    def _mapFile(self, name):
+        """Reads the moves of a G-code file that Cura loaded, in a thread."""
+        self._playMap, self._playFile, self._playAt = None, "", None
+        if not name or not name.lower().endswith((".gcode", ".gco", ".g")) or not os.path.exists(name):
+            return
+
+        def read():
+            try:
+                with open(name, "rb") as f:
+                    gmap = playsync.GcodeMap.parse(f.read())
+            except OSError as e:
+                Logger.log("w", "Printdeck: the moves of %s: %s", name, e)
+                return
+            CuraApplication.getInstance().callLater(self._setMap, name, gmap)
+
+        threading.Thread(target=read, name="Printdeck moves", daemon=True).start()
+
+    def _setMap(self, name, gmap):
+        self._playMap, self._playFile = gmap, os.path.basename(name)
+        Logger.log("i", "Printdeck: %d moves in %s for Play in the Preview", len(gmap.ends), self._playFile)
+        self._anchorPlay()
+
+    def _anchorPlay(self):
+        """Keeps the move of the printer from the last answer, when the Preview shows the file that
+        prints."""
+        job = self._status["job"] if self._status else None
+        cura_job = CuraApplication.getInstance().getPrintInformation().jobName
+        if (not job or not self._playMap or not logic.job_matches(self._playFile, job.get("file", ""))
+                or not logic.job_matches(cura_job, job.get("file", ""))):
+            self._playAt = None
+            return
+        at = self._playMap.locate(playsync.file_pos(job, self._playMap.size))
+        if at:
+            self._playAt = (at[0], at[1], time.monotonic(), job.get("state") == "paused")
+
+    def _watchPlay(self):
+        """Puts the advance of the time of Play in the Preview through _advancePlay, once."""
+        view = CuraApplication.getInstance().getController().getView("SimulationView")
+        if not view or getattr(view, "_printdeckFollow", False) or not hasattr(view, "advanceTime"):
+            return
+        advance = view.advanceTime
+
+        def follow(duration):
+            if not self._advancePlay(view):
+                advance(duration)
+
+        # The Play timer of the Preview calls advanceTime of the view 15 times a second.
+        view.advanceTime = follow
+        view._printdeckFollow = True
+
+    def _checkFollowing(self):
+        """The poll is fast only while Play runs on the file that prints. Cura calls no
+        advanceTime while Play stops, so the answers check it too."""
+        controller = CuraApplication.getInstance().getController()
+        view = controller.getView("SimulationView")
+        self._following = (bool(self._playAt) and bool(view) and controller.getActiveView() is view
+                           and view.isSimulationRunning())
+
+    def _advancePlay(self, view):
+        """While Play runs on the file that prints, sets the Preview to the move of the printer, and
+        reports True. Else reports False, and Play runs as in Cura."""
+        at = self._playAt
+        following = bool(at) and view.isSimulationRunning() and time.monotonic() - at[2] < 4 * POLL_SECONDS
+        if following and not self._following:
+            self._wake.set()  # the next answer now, then one each FOLLOW_POLL_SECONDS
+        self._following = following
+        if not following:
+            return False
+        layer, start, when, paused = at
+        same = view.getCurrentLayer() == layer
+        if not same:
+            view.setLayer(layer)
+        elapsed = 0.0 if paused else time.monotonic() - when
+        factor = getattr(type(view), "SIMULATION_FACTOR", 2) or 2
+        current = view._current_time if same and hasattr(view, "_current_time") else None
+        view.setTime(playsync.follow_time(view.cumulativeLineDuration(), start, elapsed, current, factor))
+        return True
 
     def _nameButton(self):
         """Names the print button. The OctoPrint plugin makes a new device after a reconnect, so this
@@ -660,5 +759,5 @@ class PrintdeckPlugin(Extension):
             return  # the same layer: the user can look at other layers until the next one
         self._layer = (self._job, layer)
         view = app.getController().getView("SimulationView")
-        if view and view.getMaxLayers() > 0:
+        if view and view.getMaxLayers() > 0 and not (self._following and view.isSimulationRunning()):
             view.setLayer(min(view.getMaxLayers(), layer))

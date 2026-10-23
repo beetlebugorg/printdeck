@@ -18,7 +18,7 @@ func TestPrintdeckAPI(t *testing.T) {
 	s.Spools.Add("Galaxy Black", "PLA", 1180, 180, 22, time.Unix(1, 0))
 	s.Diameter = func() float64 { return 2.85 }
 	p.st = printer.State{Reachable: true, Connected: true, Printing: true, FilePath: "benchy.gcode",
-		Layer: 12, Layers: 27, Completion: 42, HasTimeLeft: true, TimeLeft: 83 * time.Minute}
+		Layer: 12, Layers: 27, Completion: 42, FilePos: 51234, HasTimeLeft: true, TimeLeft: 83 * time.Minute}
 
 	if r, _ := do(t, "GET", ts.URL+"/api/plugin/printdeck", "", nil, ""); r.StatusCode != http.StatusForbidden {
 		t.Errorf("no key: %d", r.StatusCode)
@@ -32,7 +32,7 @@ func TestPrintdeckAPI(t *testing.T) {
 	if list, _ := m["spools"].([]any); len(list) != 1 || list[0].(map[string]any)["name"] != "Galaxy Black" {
 		t.Errorf("rolls: %v", m["spools"])
 	}
-	if job["file"] != "benchy.gcode" || job["layer"] != 12.0 || job["progress"] != 0.42 || job["left"] != 4980.0 {
+	if job["file"] != "benchy.gcode" || job["layer"] != 12.0 || job["progress"] != 0.42 || job["left"] != 4980.0 || job["pos"] != 51234.0 {
 		t.Errorf("job: %v", job)
 	}
 

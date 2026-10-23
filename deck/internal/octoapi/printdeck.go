@@ -59,6 +59,9 @@ type jobJSON struct {
 	Layers   int     `json:"layers"`
 	Progress float64 `json:"progress"`
 	Left     float64 `json:"left"`
+	// Pos is the bytes of the file that the printer has read. The Cura plugin finds the move that
+	// prints from it.
+	Pos int64 `json:"pos"`
 }
 
 type printdeckJSON struct {
@@ -90,7 +93,7 @@ func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
 	}
 	if st := s.Printer.State(); st.Busy() {
 		j := &jobJSON{File: st.FilePath, State: "printing", Layer: st.Layer, Layers: st.Layers,
-			Progress: st.Completion / 100, Left: -1}
+			Progress: st.Completion / 100, Left: -1, Pos: st.FilePos}
 		if st.Paused {
 			j.State = "paused"
 		}
