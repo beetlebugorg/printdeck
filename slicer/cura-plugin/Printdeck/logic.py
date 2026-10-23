@@ -57,7 +57,7 @@ def short_roll(needed, spool):
     left = float(spool.get("left") or 0)
     if needed <= left:
         return None
-    return "The model needs %d g of filament. %s has %d g left." % (round(needed), spool_name(spool), round(left))
+    return "The model needs %.1f g of filament. %s has %.1f g left." % (needed, spool_name(spool), left)
 
 
 def spool_name(spool):
@@ -211,15 +211,15 @@ def roll_card(status, needed):
                 "job": "", "short": False}
     left = float(spool.get("left") or 0)
     full = float(spool.get("full") or 0) or max(left, 1.0)
-    card = {"name": spool_name(spool), "detail": "%s · %d g left" % (spool.get("material") or "?", round(left)),
+    card = {"name": spool_name(spool), "detail": "%s · %.1f g left" % (spool.get("material") or "?", left),
             "color": spool.get("color") or color_from_name(spool_name(spool)),
             "fraction": max(0.0, min(1.0, left / full)), "job": "", "short": False}
     if needed > 0:
         if needed > left:
-            card["job"] = "This print: %d g. %d g short." % (round(needed), round(needed - left))
+            card["job"] = "This print: %.1f g. %.1f g short." % (needed, needed - left)
             card["short"] = True
         else:
-            card["job"] = "This print: %d g. %d g left after." % (round(needed), round(left - needed))
+            card["job"] = "This print: %.1f g. %.1f g left after." % (needed, left - needed)
     return card
 
 

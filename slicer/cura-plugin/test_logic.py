@@ -22,7 +22,7 @@ class TestLogic(unittest.TestCase):
 
     def test_short_roll(self):
         spool = {"name": "Galaxy Black", "left": 80}
-        self.assertEqual(logic.short_roll(120.4, spool), "The model needs 120 g of filament. Galaxy Black has 80 g left.")
+        self.assertEqual(logic.short_roll(120.4, spool), "The model needs 120.4 g of filament. Galaxy Black has 80.0 g left.")
         self.assertIsNone(logic.short_roll(50, spool))
         self.assertIsNone(logic.short_roll(120, None))
 
@@ -92,14 +92,14 @@ class TestRollMaterial(unittest.TestCase):
     def test_roll_card(self):
         status = {"material": "PLA", "spool": {"id": "1", "name": "White", "material": "PLA", "left": 918, "full": 1000}}
         card = logic.roll_card(status, 0)
-        self.assertEqual((card["name"], card["detail"], card["job"]), ("White", "PLA · 918 g left", ""))
+        self.assertEqual((card["name"], card["detail"], card["job"]), ("White", "PLA · 918.0 g left", ""))
         self.assertAlmostEqual(card["fraction"], 0.918)
         self.assertEqual(card["color"], "#f5f5f5")  # from the color word of the name
         card = logic.roll_card(status, 45.4)
-        self.assertEqual(card["job"], "This print: 45 g. 873 g left after.")
+        self.assertEqual(card["job"], "This print: 45.4 g. 872.6 g left after.")
         self.assertFalse(card["short"])
         card = logic.roll_card(status, 1020)
-        self.assertEqual(card["job"], "This print: 1020 g. 102 g short.")
+        self.assertEqual(card["job"], "This print: 1020.0 g. 102.0 g short.")
         self.assertTrue(card["short"])
         self.assertEqual(logic.roll_card({"material": "PETG", "spool": None}, 0)["detail"], "No roll on the Printdeck")
         self.assertIsNone(logic.roll_card({"material": "", "spool": None}, 0))
