@@ -14,10 +14,10 @@ import (
 	"printdeck/internal/printer"
 )
 
-// The Move page: home, move the head with a joystick, Z, park and center, motors.
+// The Toolhead page: home, move the head with a joystick, Z, park and center, motors.
 
 const (
-	joyR           = 128  // the radius of the joystick pad of the Move page
+	joyR           = 128  // the radius of the joystick pad of the Toolhead page
 	joyDead        = 0.15 // the middle part that does not move
 	joyTick        = 150 * time.Millisecond
 	joyMinSpeed    = 2.0  // mm/s just outside the middle
@@ -113,12 +113,12 @@ func (a *App) do(f func() error) {
 	}()
 }
 
-// drawMove is the Move page: the position and the homed axes, homing, the joystick for X and Y,
+// drawMove is the Toolhead page: the position and the homed axes, homing, the joystick for X and Y,
 // Z, park and center, and the motors.
 func (a *App) drawMove(c *gfx.Canvas) {
 	pr := a.Printer
 	st := pr.State()
-	f := a.navPage(c, "Move")
+	f := a.navPage(c, "Toolhead")
 	moving := st.Connected && (!st.Busy() || st.Paused)
 
 	// Tall: the position, Home, the joystick with the Z column, the park keys, and a hint.

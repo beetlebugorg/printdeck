@@ -14,7 +14,7 @@ import (
 	"printdeck/internal/printer"
 )
 
-// The menu pages of the idle screen: Maintenance and Machine, and the pages that Machine opens.
+// The menu page Machine of the idle screen, and the pages that Machine opens: Maintenance and the others.
 
 const menuTop, menuRowH = 78, 98
 
@@ -292,6 +292,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		}
 	}
 	items := []menuItem{
+		{"Maintenance", "Calibrations, firmware, save config", dim, func() { a.open(pageMaintenance) }},
 		{"Statistics", fmt.Sprintf("%d prints · %d h · %s of filament", prints, hours, a.weight(filament)), dim, func() { a.open(pageStats) }},
 		{"Print history", "Each print, with the result", dim, func() { a.open(pageHistory) }},
 		{"Macros", macros, dim, func() { a.open(pageMacros) }},

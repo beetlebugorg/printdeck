@@ -240,10 +240,10 @@ func manualParts() []section {
 						{"Last print", "The last print and its result. Reprint starts it again, after a question."},
 					},
 					Tall: []callout{
-						{"Pages", "Filament, Move, Maintenance and Machine. Each page has its own section."},
+						{"Pages", "Filament, Toolhead and Machine. Each page has its own section."},
 					},
 					Wide: []callout{
-						{"Pages", "The key panel: Main (this screen), Files, Filament, Move, Maintenance and Machine. The LED of the page that is open is lit. Each page has its own section."},
+						{"Pages", "The key panel: Main (this screen), Files, Filament, Toolhead and Machine. The LED of the page that is open is lit. Each page has its own section."},
 					}},
 				{Name: "keypad", Caption: "The keypad of a temperature",
 					Setup: func(s *manualState) { s.p.State_ = stIdle; s.a.OpenPrintScreen("keypad") },
@@ -396,7 +396,7 @@ func manualParts() []section {
 						{"Where", "The layer of the pause, and the message of the printer."},
 						{"Resume", "Continues the print."},
 						{"Change filament", "The guided filament change, for a new color. See Change the filament."},
-						{"Move head", "Opens Move, to move the head out of the way."},
+						{"Move head", "Opens Toolhead, to move the head out of the way."},
 						{"Tune", "Changes the print."},
 						{"Cancel", "Stops the print, after a question."},
 					}},
@@ -462,9 +462,9 @@ func manualParts() []section {
 						{"Remove", "Removes an empty roll from the list."},
 					}},
 			}},
-		{ID: "move", Title: "Move",
+		{ID: "move", Title: "Toolhead",
 			Figures: []figure{
-				{Name: "move", Caption: "The Move page", Setup: page("move"),
+				{Name: "move", Caption: "The Toolhead page", Setup: page("move"),
 					Callouts: []callout{
 						{"Position", "X, Y and Z of the head. A lit LED shows a homed axis."},
 						{"Home", "Homes all axes, or one axis. Home after each start of the printer."},
@@ -474,7 +474,7 @@ func manualParts() []section {
 					}},
 			}},
 		{ID: "maintenance", Title: "Maintenance",
-			Intro: []string{"Maintenance lists the calibrations that your printer has. The list comes from the config of the printer."},
+			Intro: []string{"Maintenance lists the calibrations that your printer has. The list comes from the config of the printer. Open it from Machine."},
 			Figures: []figure{
 				{Name: "maintenance", Caption: "The Maintenance page", Setup: page("maintenance"),
 					Callouts: []callout{
@@ -516,13 +516,14 @@ func manualParts() []section {
 					Callouts: []callout{
 						{"Information", "The version of Klipper, the state of the firmware of the board, the network address, and the totals."},
 						{"Software update", "The version of the deck, and a new version when there is one. See Update the Printdeck."},
+						{"Maintenance", "The calibrations, the firmware, and Save config. See Maintenance."},
 						{"Statistics", "The totals of all prints."},
 						{"Print history", "Each print, with its result. Tap a print to see its model, its time and its filament, and to print it again."},
-						{"Macros", "The macros of the printer. Tap one to run it."},
 						{"Restart Klipper", "Restarts the Klipper host, which reads printer.cfg again."},
 						{"Firmware restart", "Restarts the firmware of the board, for example after a stop."},
 					},
 					Tall: []callout{
+						{"Macros", "The macros of the printer. Tap one to run it."},
 						{"Console", "The G-code terminal of Klipper. See below."},
 						{"Settings", "The theme, the clock, and the homing in a filament change. See below."},
 						{"Wi-Fi and help", "The network, the password and the addresses."},
@@ -699,7 +700,7 @@ func manualSections() []section {
 		{Chapter: setup, ID: "firmware", Title: "Install the Klipper firmware",
 			Intro: []string{"The board of the printer must run the Klipper firmware of this Printdeck. The deck writes it through the USB cable."},
 			Steps: []string{
-				"Open Maintenance, then tap Firmware. A new board shows Install Klipper firmware on the setup screen.",
+				"Open Machine, then Maintenance, then tap Firmware. A new board shows Install Klipper firmware on the setup screen.",
 				"Tap Write. Do not switch off the printer until the deck shows the result.",
 				"Tap OK. Klipper restarts and connects to the board.",
 			},
@@ -715,7 +716,7 @@ func manualSections() []section {
 				"The deck shows the display of the printer at the top of each screen. The keys of the pages are at the bottom of the idle screen. Each page has its title and Back at the top, and its actions at the bottom.",
 			},
 			Wide: []string{
-				"Each screen has the same places. At the left, the display of the printer, and under it the key panel: Main (the idle screen), Files, Filament, Move, Maintenance and Machine. At the right, the page that is open: its title and Back at the top, and its actions in one row at the bottom, with the main action at the right.",
+				"Each screen has the same places. At the left, the display of the printer, and under it the key panel: Main (the idle screen), Files, Filament, Toolhead and Machine. At the right, the page that is open: its title and Back at the top, and its actions in one row at the bottom, with the main action at the right.",
 			},
 			Figures: fig("home")},
 		{Chapter: meet, ID: "lcd", Title: "The display of the printer",
@@ -756,7 +757,7 @@ func manualSections() []section {
 			Figures: fig("filament", "swap", "new-roll", "rolls", "roll")},
 		{Chapter: "Move and heat", ID: "move", Title: "Move the head and heat",
 			Steps: []string{
-				"Open Move, and tap Home all after each start of the printer.",
+				"Open Toolhead, and tap Home all after each start of the printer.",
 				"Hold the joystick to move the head. Use Z for the height.",
 				"Tap a temperature on the idle screen to set it with the keypad.",
 			},
@@ -764,7 +765,7 @@ func manualSections() []section {
 
 		{Chapter: "Level and calibrate", ID: "calibrate", Title: "Level and calibrate", Intro: parts["maintenance"].Intro,
 			Steps: []string{
-				"Open Maintenance.",
+				"Open Machine, then Maintenance.",
 				"Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.",
 				"Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.",
 				"Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.",
