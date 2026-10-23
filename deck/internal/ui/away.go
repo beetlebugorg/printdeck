@@ -132,9 +132,10 @@ func (a *App) drawPrintBar(c *gfx.Canvas, st printer.State) {
 	a.addFocus("Back to the print", kr, tap)
 	in := kit.Inset(kr, 16, 0, 16, 5)
 	what, frac := printBarText(st)
+	// In the narrow left column of a wide screen, only the arrow: the text of the print needs the room.
 	go1 := "BACK TO PRINT ›"
 	switch {
-	case kr.Dx() < 240:
+	case sideBar:
 		go1 = "›"
 	case W < 600:
 		go1 = "BACK ›"
@@ -142,7 +143,8 @@ func (a *App) drawPrintBar(c *gfx.Canvas, st printer.State) {
 	face := gfx.Face(true, 16)
 	gw := gfx.Width(face, go1)
 	c.Text(image.Rect(in.Max.X-gw, in.Min.Y, in.Max.X, in.Max.Y), go1, face, onAcc, gfx.Right)
-	// A narrow bar drops the end of the text a part at a time: " LEFT", then the time.
+	// A narrow bar drops the end of the text a part at a time: " LEFT", then the time, then the
+	// word LAYER.
 	room := in.Dx() - gw - 16
 	for _, cut := range []string{" LEFT", " · "} {
 		if gfx.Width(face, what) <= room {
@@ -151,6 +153,9 @@ func (a *App) drawPrintBar(c *gfx.Canvas, st printer.State) {
 		if i := strings.LastIndex(what, cut); i > 0 {
 			what = what[:i]
 		}
+	}
+	if gfx.Width(face, what) > room {
+		what = strings.TrimPrefix(what, "LAYER ") // "12/27" in the narrowest bar
 	}
 	c.Text(image.Rect(in.Min.X, in.Min.Y, in.Max.X-gw-16, in.Max.Y), what, face, onAcc, gfx.Left)
 	// The progress: a line at the bottom of the bar.
