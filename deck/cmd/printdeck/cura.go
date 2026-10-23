@@ -208,7 +208,7 @@ func curaGuides() []bookGuide {
 		"so that old projects still open. A material that you choose in Cura does not change the roll on the deck.")
 	roll.sub("A short roll")
 	roll.para("After a slice, Cura compares the grams of the model with the grams left on the roll. When the roll is " +
-		"too short, a message stays until you close it: \"The model needs 120 g of filament. Black has 80 g left.\"")
+		"too short, a message stays until you close it: \"The model needs 120.4 g of filament. Black has 80.0 g left.\"")
 	roll.sub("A file for another material")
 	roll.para("Cura writes its material into the header of each file that it sends. Before the deck prints a file for " +
 		"another material, the touch screen asks first, for example: \"The file is for Black ABS. White (PLA) is in " +
