@@ -63,7 +63,7 @@
 <div class="layout-switch"><span>Layout:</span><a href="../../../ui/calibrate/">Tall</a><a href="" aria-current="page">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#calibrate">Level and calibrate</a></li></ol></nav><div class="manual wide"><section id="calibrate">
   <h2 class="title"><span class="num">13</span>Level and calibrate</h2>
   <p>Maintenance lists the calibrations that your printer has. The list comes from the config of the printer. Open it from Machine.</p>
-  <ol class="steps"><li>Open Machine, then Maintenance.</li><li>Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.</li><li>Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.</li><li>Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.</li><li>Tap Save config to write the results. Klipper restarts.</li></ol>
+  <ol class="steps"><li>Open Machine, then Maintenance.</li><li>Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.</li><li>Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.</li><li>Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.</li><li>Tap Save config to write the results. Klipper restarts.</li><li>Tap Pressure advance test to print the tower. Then tap Pressure advance, and type the height of its sharpest corners.</li></ol>
   
   <figure>
     <h3>The Maintenance page</h3>
@@ -105,6 +105,30 @@
     </div>
     <ol class="parts">
       <li><span class="badge">1</span><span><b>Bed tilt</b>Probes the bed, and corrects its tilt (BED_TILT_CALIBRATE). A printer with a bed mesh shows Bed mesh.</span></li><li><span class="badge">2</span><span><b>Probe Z offset</b>The paper test for the height of the nozzle (PROBE_CALIBRATE).</span></li><li><span class="badge">3</span><span><b>PID tune</b>Heats the nozzle to 210° and the bed to 60°, and finds the PID settings of each heater (PID_CALIBRATE). Save config then writes them.</span></li><li><span class="badge">4</span><span><b>Nozzle change</b>Heats the nozzle to 250° and raises the head, to change the nozzle.</span></li><li><span class="badge">5</span><span><b>Firmware</b>Writes the Klipper firmware of this Printdeck to the board of the printer. Orange text shows old firmware. See below.</span></li><li><span class="badge">6</span><span><b>Save config</b>Writes the results of the calibrations into printer.cfg. Klipper restarts. Orange text shows unsaved results.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>The Maintenance page, further down</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../../manual/wide/img/maintenance-more.png" alt="The Maintenance page, further down" width="800" height="480"></div>
+      <svg class="marks" viewBox="-72 0 944 480" aria-hidden="true">
+        
+        <line x1="825" y1="350" x2="784" y2="350" class="leader"/>
+        <circle cx="784" cy="350" r="5" class="dot"/>
+        <circle cx="840" cy="350" r="15" class="badge"/>
+        <text x="840" y="350" class="badge-n">1</text>
+        
+        <line x1="825" y1="422" x2="784" y2="422" class="leader"/>
+        <circle cx="784" cy="422" r="5" class="dot"/>
+        <circle cx="840" cy="422" r="15" class="badge"/>
+        <text x="840" y="422" class="badge-n">2</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Pressure advance test</b>Prints a square tower, 30 mm high, with thin walls. The pressure advance goes up with the height: 0.005 for each mm. Look at the corners: low on the tower they bulge, high on the tower they are rounded. Measure the height where they are sharpest.</span></li><li><span class="badge">2</span><span><b>Pressure advance</b>Type the height of the sharpest corners. The deck sets the pressure advance from it, and writes it in printer.cfg.</span></li>
     </ol>
     
   </figure>
