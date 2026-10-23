@@ -27,6 +27,58 @@ from cura.CuraApplication import CuraApplication
 
 from . import deckscreen, logic
 
+try:
+    from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal
+except ImportError:  # Cura 4 (Cura LulzBot Edition)
+    from PyQt5.QtCore import QObject, pyqtProperty, pyqtSignal
+
+
+class RollCard(QObject):
+    """The roll card next to the slice button (qml/RollCard.qml): the roll in the Printdeck, its
+    filament, and the filament of the sliced model. The texts come from logic.roll_card."""
+
+    changed = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._card = None
+
+    def set(self, card):
+        if card != self._card:
+            self._card = card
+            self.changed.emit()
+
+    def _get(self, key, empty):
+        return self._card[key] if self._card else empty
+
+    @pyqtProperty(bool, notify=changed)
+    def shown(self):
+        return self._card is not None
+
+    @pyqtProperty(str, notify=changed)
+    def name(self):
+        return self._get("name", "")
+
+    @pyqtProperty(str, notify=changed)
+    def detail(self):
+        return self._get("detail", "")
+
+    @pyqtProperty(str, notify=changed)
+    def color(self):
+        return self._get("color", "")
+
+    @pyqtProperty(float, notify=changed)
+    def fraction(self):
+        return self._get("fraction", 0.0)
+
+    @pyqtProperty(str, notify=changed)
+    def job(self):
+        return self._get("job", "")
+
+    @pyqtProperty(bool, notify=changed)
+    def short(self):
+        return self._get("short", False)
+
 POLL_SECONDS = 10
 BUTTON = "Print to Printdeck"
 SENT_SECONDS = 300  # the time from a write to the change to Monitor, with the upload dialog
@@ -55,6 +107,8 @@ class PrintdeckPlugin(Extension):
         self._job = None  # the file that prints
         self._sent = 0.0  # the time of the last write, to see the change to Monitor after it
         self._stop = threading.Event()
+        self._card = RollCard()
+        self._cardView = None  # the QML item of the card; Cura keeps only the reference that we give it
 
         app = CuraApplication.getInstance()
         app.engineCreatedSignal.connect(self._start)
@@ -67,6 +121,11 @@ class PrintdeckPlugin(Extension):
         app.fileCompleted.connect(self._onFileCompleted)
         app.getController().activeStageChanged.connect(self._onStage)
         threading.Thread(target=self._poll, name="Printdeck", daemon=True).start()
+        # The roll card, next to the slice button.
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "qml", "RollCard.qml")
+        self._cardView = app.createQmlComponent(path, {"printdeckRoll": self._card})
+        if self._cardView:
+            app.addAdditionalComponent("saveButton", self._cardView)
         Logger.log("i", "Printdeck: started")
 
     # The connection.
@@ -114,6 +173,7 @@ class PrintdeckPlugin(Extension):
             self._stage.setStatus(status, base, key)
         if not status:
             self._connected = False
+            self._card.set(None)
             return
         if not self._connected:
             self._connected = True
@@ -466,10 +526,11 @@ class PrintdeckPlugin(Extension):
     # The roll.
 
     def _checkRoll(self):
-        if not self._status or not self._status["spool"]:
-            return
         weights = CuraApplication.getInstance().getPrintInformation().materialWeights
         needed = float(weights[0]) if weights else 0
+        self._card.set(logic.roll_card(self._status, needed))
+        if not self._status or not self._status["spool"]:
+            return
         text = logic.short_roll(needed, self._status["spool"])
         key = (self._status["spool"].get("id"), round(needed))
         if text and key != self._warned:

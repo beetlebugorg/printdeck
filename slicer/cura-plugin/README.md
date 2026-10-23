@@ -12,6 +12,9 @@ The plugin works by itself, and tells you in a message what it did:
 - The print button says "Print to Printdeck".
 - When the roll in the Printdeck changes, Cura changes to the material of the roll.
 - After a slice, Cura warns when the model needs more filament than the roll has.
+- A card next to the slice button shows the roll in the Printdeck: its color, its name, and the
+  filament that is left on it. After a slice, the card shows the filament of the model, and the
+  filament that is left after the print.
 - During a print of the file that Cura has open, the Preview shows the layer that prints.
 - When a print ends, Cura tells you.
 - The Printdeck tab, next to Monitor, shows the screen of the deck, the print and the time left,
