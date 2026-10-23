@@ -456,10 +456,18 @@ func manualParts() []section {
 				{Name: "roll", Caption: "One roll", Setup: page("roll"),
 					Callouts: []callout{
 						{"Details", "The filament on the roll, the filament that prints used, and the price."},
+						{"Color", "The color of the roll. Tap it to choose a color. The print screen and Cura show it."},
 						{"Left", "The filament on the roll, of the filament when you added it."},
 						{"Prints", "The number of prints that used the roll, and their filament. Tap it for the list of the prints. A tap on a print opens its page."},
 						{"Weigh again", "Sets the filament from the weight on a scale."},
 						{"Remove", "Removes an empty roll from the list."},
+					}},
+				{Name: "roll-color", Caption: "The color of a roll",
+					Setup: func(s *manualState) { page("roll")(s); s.a.DemoPickColor("#1f2a5a") },
+					Notes: []string{"A tap on a color sets it, and closes the page. The Cura plugin gives the material of the roll in Cura the same color. A color that you set in Cura comes back to the deck."},
+					Callouts: []callout{
+						{"Colors", "The colors of filament. The color of the roll now is lit."},
+						{"No color", "Removes the color."},
 					}},
 			}},
 		{ID: "move", Title: "Toolhead",
@@ -754,7 +762,7 @@ func manualSections() []section {
 				"Push the new filament into the extruder until it stops, then tap Load.",
 				"Check that clean plastic of the new color comes out, then tap Done.",
 			},
-			Figures: fig("filament", "swap", "new-roll", "rolls", "roll")},
+			Figures: fig("filament", "swap", "new-roll", "rolls", "roll", "roll-color")},
 		{Chapter: "Move and heat", ID: "move", Title: "Move the head and heat",
 			Steps: []string{
 				"Open Toolhead, and tap Home all after each start of the printer.",

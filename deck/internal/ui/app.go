@@ -133,6 +133,7 @@ type App struct {
 	spoolScroll   int            // the scroll position of the Rolls page
 	printsScroll  int            // the scroll position of the prints of a roll
 	picker        *curaPicker    // the list of the materials of Cura, over everything
+	colors        *colorPicker   // the palette of the color of a roll, over everything
 	form          *rollForm      // the form of a new roll, over everything
 	fileList      fileList       // the scroll position of the Files page
 	macroScroll   int            // the scroll position of the Macros page

@@ -179,17 +179,31 @@ func (s *Spools) Put(id string) {
 }
 
 // SetCuraMaterial sets the material of Cura of a roll, its color and its type. An empty material
-// removes it.
+// removes it. A material with no color keeps the color of the roll.
 func (s *Spools) SetCuraMaterial(id string, p SlicerMaterial) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.load()
 	if i := s.find(id); i >= 0 {
 		sp := &s.data.Spools[i]
-		sp.CuraMaterial, sp.Color = p.ID, p.Color
+		sp.CuraMaterial = p.ID
+		if p.Color != "" {
+			sp.Color = p.Color
+		}
 		if p.Material != "" {
 			sp.Material = p.Material
 		}
+		s.save()
+	}
+}
+
+// SetColor sets the color of a roll, for example "#ff7a1a", or "" for no color.
+func (s *Spools) SetColor(id, hex string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.load()
+	if i := s.find(id); i >= 0 {
+		s.data.Spools[i].Color = hex
 		s.save()
 	}
 }

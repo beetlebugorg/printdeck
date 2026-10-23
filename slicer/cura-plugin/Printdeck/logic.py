@@ -182,7 +182,8 @@ def spool_settings(settings, guid, spool):
 _COLORS = [("black", "#1a1a1a"), ("white", "#f5f5f5"), ("orange", "#ff7a1a"), ("red", "#d22b2b"),
            ("blue", "#2a62d0"), ("green", "#2e9d4a"), ("yellow", "#f4d03f"), ("purple", "#7d3fb5"),
            ("pink", "#f28dc0"), ("brown", "#7a4b2a"), ("grey", "#8a8a8a"), ("gray", "#8a8a8a"),
-           ("silver", "#c0c0c0"), ("gold", "#d4a531"), ("natural", "#efe6cf"), ("clear", "#e8f1f5")]
+           ("silver", "#c0c0c0"), ("gold", "#d4a531"), ("natural", "#efe6cf"), ("clear", "#e8f1f5"),
+           ("navy", "#1f2a5a"), ("teal", "#16867d")]
 
 
 def color_from_name(name):
@@ -281,16 +282,28 @@ def roll_favorites(favorites, added, wanted):
 
 
 def roll_material_changes(meta, spool):
-    """The metadata of a material that the plugin made, which must change to follow its roll: a dict
-    with name, color_code and color_name, or an empty dict. meta is the metadata of the material.
-    A roll with no color keeps the color of the material."""
+    """What changes to keep a material that the plugin made in step with its roll. Returns a pair:
+    the metadata of the material that must change (a dict with name, color_code, color_name and
+    printdeck_color, or an empty dict), and the color for the roll in the Printdeck, or None.
+
+    meta is the metadata of the material. Its printdeck_color is the color of the last sync. A new
+    color on the Printdeck goes to Cura, and a new color in Cura goes to the Printdeck. When both
+    are new, the Printdeck wins. A roll with no color keeps the color of the material."""
     name = spool_name(spool)
-    changes = {}
+    changes, to_deck = {}, None
     if meta.get("name") != name:
         changes["name"] = name
-    color = spool.get("color") or ""
-    if color and meta.get("color_code", "").lower() != color.lower():
-        changes["color_code"] = color
+    deck = (spool.get("color") or "").lower()
+    cura = (meta.get("color_code") or "").lower()
+    last = (meta.get("printdeck_color") if "printdeck_color" in meta else meta.get("color_code") or "").lower()
+    if deck != last:
+        if deck and deck != cura:
+            changes["color_code"] = spool["color"]
+        changes["printdeck_color"] = deck
+    elif cura != last:
+        if cura:
+            to_deck = meta["color_code"]
+        changes["printdeck_color"] = cura
     if (changes.get("color_code") or meta.get("color_code")) and meta.get("color_name") != name:
         changes["color_name"] = name
-    return changes
+    return changes, to_deck

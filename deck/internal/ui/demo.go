@@ -81,9 +81,12 @@ func (d *DemoPrinter) SendConsole(line string) {
 	d.Console_ = append(d.Console_, printer.ConsoleLine{Kind: "in", Text: line})
 }
 
+// DemoPickColor opens the palette of the color of a roll, with the color hex lit.
+func (a *App) DemoPickColor(hex string) { a.pickColor(hex, func(string) {}) }
+
 // ResetScreens closes every screen, dialog and page; for the pictures of the manual.
 func (a *App) ResetScreens() {
-	a.setup, a.pages, a.swap, a.tune, a.keypad, a.confirm, a.consoleKB, a.flash, a.form = nil, nil, nil, false, nil, nil, nil, nil, nil
+	a.setup, a.pages, a.swap, a.tune, a.keypad, a.confirm, a.consoleKB, a.flash, a.form, a.colors = nil, nil, nil, false, nil, nil, nil, nil, nil, nil
 	a.doneSeen = ""
 }
 

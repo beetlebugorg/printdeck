@@ -143,11 +143,22 @@ class TestRollMaterial(unittest.TestCase):
         self.assertEqual(logic.roll_favorites(favs, added, []), (["generic_abs"], []))
 
     def test_roll_material_changes(self):
+        # A material from before the sync: its color is the color of the last sync.
         meta = {"name": "White", "color_code": "#f5f5f5", "color_name": "White"}
-        self.assertEqual(logic.roll_material_changes(meta, {"name": "White"}), {})
+        self.assertEqual(logic.roll_material_changes(meta, {"name": "White"}), ({"printdeck_color": ""}, None))
         self.assertEqual(logic.roll_material_changes(meta, {"name": "Snow", "color": "#FFFFFF"}),
-                         {"name": "Snow", "color_code": "#FFFFFF", "color_name": "Snow"})
-        self.assertEqual(logic.roll_material_changes(meta, {"name": "White", "color": "#F5F5F5"}), {})
+                         ({"name": "Snow", "color_code": "#FFFFFF", "printdeck_color": "#ffffff", "color_name": "Snow"}, None))
+        self.assertEqual(logic.roll_material_changes(meta, {"name": "White", "color": "#F5F5F5"}), ({}, None))
+        # A new color in Cura goes to the Printdeck.
+        meta = {"name": "White", "color_code": "#1f2a5a", "color_name": "White", "printdeck_color": "#f5f5f5"}
+        self.assertEqual(logic.roll_material_changes(meta, {"name": "White", "color": "#f5f5f5"}),
+                         ({"printdeck_color": "#1f2a5a"}, "#1f2a5a"))
+        # A new color on the Printdeck goes to Cura, also when Cura has a new color.
+        self.assertEqual(logic.roll_material_changes(meta, {"name": "White", "color": "#d22b2b"}),
+                         ({"color_code": "#d22b2b", "printdeck_color": "#d22b2b"}, None))
+        # In step.
+        meta["printdeck_color"] = "#1f2a5a"
+        self.assertEqual(logic.roll_material_changes(meta, {"name": "White", "color": "#1F2A5A"}), ({}, None))
 
     def test_parse_rolls(self):
         s = logic.parse_status({"material": "PLA", "spools": [{"id": "1"}, {"name": "no id"}, 3]})
