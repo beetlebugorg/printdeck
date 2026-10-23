@@ -407,7 +407,7 @@ def plate():
     # The flange at the front edge: a block for each screw into the back panel, and a web that
     # connects it to the plate in front of the cables. The holes have a 45 degree point (up in
     # the print).
-    fx0, fx1 = S.FLANGE_X[0], S.BACK_X[0] - S.CLR
+    fx0, fx1 = S.FLANGE_X[0], S.BACK_X[0] - S.FLANGE_GAP
     z0, z1 = S.FLANGE_Z
     for y, z in S.FLANGE_SCREWS:
         h = S.FLANGE_HALF

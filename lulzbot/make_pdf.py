@@ -162,8 +162,8 @@ STEPS = [
         "The cover is PP-FP0164, with 10 screws. Remove its upper pair of screws from the left side of the chassis: "
         "the front one and the rear one, 237.3 mm above the bottom edge of the cover.",
         "Put the plate on the cover, with the slots of the two pads over the two holes. Attach it with two M3 × 10 "
-        "screws, each with a washer.",
-    ], "The slots in the pads let the plate fit 5 mm up or down and 0.5 mm to the front or the rear. The pad is 4 mm "
+        "screws, each with a washer. Leave them loose: the flange screws pull the plate to the back panel first.",
+    ], "The slots in the pads let the plate fit 5 mm up or down and 1 mm to the front or the rear. The pad is 4 mm "
        "thick, so the M3 × 10 goes 3.5 mm into the nut of the chassis (the old screw went 4.0 mm)."),
     ("step_pi", "Pi on the plate", ["Pi 5 (step 1)", "heatsinks"], {"m3x6": 4}, [
         "Stick the heatsinks on the Pi: on the SoC (the large chip at the middle) and on the RP1 (the chip between the "
@@ -190,7 +190,8 @@ STEPS = [
         "back panel against the clips.",
         "Let the head drop 30 mm. The keys go into the dovetail slots.",
         "Lead the display cables and the drive cable out of the windows into the pod.",
-        "From inside the pod, put the two M3 × 12 screws through the flange of the plate into the back panel.",
+        "From inside the pod, put the two M3 × 12 screws through the flange of the plate into the back panel. "
+        "Tighten them, then tighten the two cover screws of the plate.",
     ], "The two screws through the flange hold up the head. The clips hold its right end against the rail."),
     ("step_cables", "Cables", [], {}, [
         "Connect the HDMI cable to the HDMI 0 port (next to the USB-C port). Push the plug straight in. Let the "
