@@ -25,7 +25,7 @@ const REGROUP = {
 const PREFIX = [
   ["hw_insert_head_back", "ins_head"], ["hw_insert_back_flange", "ins_back"],
   ["hw_insert_pod_block", "ins_block"], ["hw_pi_screw", "pi_screws"], ["hw_display_screw", "display_screws"],
-  ["hw_clip_screw", "clip_screws"], ["clip_", "clips"],
+  ["hw_clip_screw", "clip_screws"], ["hw_hammer_nut", "hammer_nuts"], ["clip_", "clips"],
 ];
 for (const p of MANIFEST.parts) {
   p.group = REGROUP[p.name] ?? PREFIX.find(([k]) => p.name.startsWith(k))?.[1] ?? p.group;
@@ -46,7 +46,8 @@ const LABEL = {
   head: "Head", back: "Back panel", pod: "Pod", plate: "Plate", grille: "Grille", display: "7\" display",
   drive: "Drive", pi: "Pi 5", pi_plugs: "Plugs", mount_screws: "2 × M3 × 10 + washer", bottom_screws: "2 × M3 × 8",
   head_screws: "4 × M3 × 10", flange_screws: "2 × M3 × 12", drive_screws: "4 × M3 × 6", display_screws: "4 × M3 × 6",
-  pi_screws: "4 × M3 × 6", clips: "2 × rail clip + twist nut", clip_screws: "2 × M3 × 8",
+  pi_screws: "4 × M3 × 6", clips: "2 × rail clip", clip_screws: "2 × M3 × 8",
+  hammer_nuts: "2 × M3 hammer nut",
   display_cables: "Display cables", drive_cable: "Drive cable", printer_cable: "Printer USB", power: "Power",
   ins_head: "4 × insert M3 × 7", ins_back: "2 × insert M3 × 7", ins_block: "2 × insert M3 × 5",
 };
@@ -56,7 +57,7 @@ const HEAD = ["head", "display", "display_screws", "back", "drive", "drive_screw
   "ins_back"];
 const PI = ["pi", "pi_screws"];
 const CABLES = ["pi_plugs", "display_cables", "drive_cable", "printer_cable", "power"];
-const ALL = ["printer", "plate", "mount_screws", "ins_block", ...PI, "clips", "clip_screws", ...HEAD, "flange_screws",
+const ALL = ["printer", "plate", "mount_screws", "ins_block", ...PI, "clips", "clip_screws", "hammer_nuts", ...HEAD, "flange_screws",
   ...CABLES, "pod", "grille", "bottom_screws"];
 const NO_CABLES = ALL.filter((g) => !CABLES.includes(g));
 const FRONT_LEFT = [1.1, 0.75, -1.4];
@@ -102,9 +103,9 @@ const SHOTS = {
     explode: { pi: [40, 0, 0], pi_screws: [70, 0, 0] },
   },
   step_clips: {
-    show: ["printer", "plate", "mount_screws", ...PI, "clips", "clip_screws"],
-    focus: ["clips", "clip_screws"],
-    explode: { clips: [0, 0, -40], clip_screws: [0, 0, -75] }, camera: [0.7, 0.6, -1.4],
+    show: ["printer", "plate", "mount_screws", ...PI, "clips", "clip_screws", "hammer_nuts"],
+    focus: ["clips", "clip_screws", "hammer_nuts"],
+    explode: { hammer_nuts: [0, 0, -15], clips: [0, 0, -40], clip_screws: [0, 0, -75] }, camera: [0.7, 0.6, -1.4],
   },
   step_hang: {
     show: ["printer", "plate", "mount_screws", ...PI, "clips", "clip_screws", ...HEAD, "flange_screws"], focus: [...HEAD, "flange_screws"],
@@ -141,7 +142,7 @@ function shotParts(spec) {
 function jobs() {
   const out = Object.entries(SHOTS).map(([name, spec]) => [name, { parts: shotParts(spec), camera: spec.camera, up: UP }]);
   // Each printed part in its print orientation, from its STL file (Z up on the bed).
-  for (const p of ["head", "pod", "back", "plate", "grille", "clip", "clip_nut", "fit_display"]) {
+  for (const p of ["head", "pod", "back", "plate", "grille", "clip", "fit_display"]) {
     out.push([`part_${p}`, { parts: [{ url: `/stl/${p}.stl`, finish: "print" }], camera: PRINT_VIEW, up: [0, 0, 1] }]);
   }
   return out;

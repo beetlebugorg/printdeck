@@ -4,7 +4,7 @@
 #
 # Joints. Two M3 x 10 screws hold the plate on the chassis cover, in the holes of the upper pair
 # of cover screws. Four M3 x 10 socket cap screws hold the head on the back panel. The back
-# panel hangs on the dovetail keys of two clips in the front left rail (a twist nut and an
+# panel hangs on the dovetail keys of two clips in the front left rail (a hammer nut and an
 # M3 x 8 screw hold each clip), and two M3 screws through a flange of the plate hold its left
 # end. The pod slides up and in at 45 degrees onto two hooks on the plate, and two M3 screws go
 # up through its bottom wall into the plate. The grille snaps into a pocket of the pod. Every hole
@@ -512,8 +512,8 @@ def head_screws():
 
 def clip(yc):
     """A rail clip (mount coordinates): a flange on the rail face, and a dovetail key for the back
-    panel. An M3 x 8 screw goes from a counterbore in the key through the clip into the twist
-    nut behind the lips of the slot. The clip prints on its end (+y up), so the screw hole has
+    panel. An M3 x 8 screw goes from a counterbore in the key through the clip into the
+    hammer nut behind the lips of the slot. The clip prints on its end (+y up), so the screw hole has
     a 45 degree point toward +y."""
     zc = S.RAIL_SLOT_Z
     xr = S.RAIL_FRONT_X
@@ -536,34 +536,25 @@ def teardrop_up(y, z, r, x0, x1):
     return cyl_x(y, z, r, x0, x1) + prism_x(pts, x0, x1)
 
 
-def nut_x():
-    """The x range of the twist nut without its boss: its wide face 0.1 mm behind the lips of
-    the slot."""
-    top = S.RAIL_FRONT_X - S.RAIL_LIP - S.NUT_GAP
-    return top, top - S.NUT[2]
-
-
-def clip_nut(yc):
-    """The twist nut of a clip, in its place behind the lips (mount coordinates): 11.6 mm across
-    the slot at the lips, 4.8 mm along it, with 45 degree sides like the V of the slot, two
-    opposite round corners, a round boss down the V, and a 2.5 mm hole for the M3 screw to cut
-    its thread. It prints with the wide face on the bed."""
+def hammer_nuts():
+    """The M3 hammer nut of each clip, in its place across the slot behind the lips: 10 mm
+    across the slot, 6 mm along it, 4 mm thick, with 45 degree sides at the bottom like the V
+    of the slot. The hole is the minor diameter of the M3 thread."""
     zc = S.RAIL_SLOT_Z
-    a, b, t = S.NUT
-    top, bottom = nut_x()
-    h = a / 2
-    n = prism_y([(zc - h, top), (zc + h, top), (zc + h - t, bottom), (zc - h + t, bottom)], yc - b / 2, yc + b / 2)
-    # Round the two corners at (+y, +z) and (-y, -z), so the nut turns easily.
-    n = fillet(n.edges().filter_by(lambda e: abs(e.tangent_at(0.5).Y) < 0.5).filter_by(
-        lambda e: (e.center().Y - yc) * (e.center().Z - zc) > 0.5), S.NUT_ROUND)
-    r, depth, c = S.NUT_BOSS
-    n = n + cyl_x(yc, zc, r, top - depth + c, top)
-    n = n + Pos(top - depth + c, yc, zc) * Rot(0, -90, 0) * Cone(r, r - c, c, align=(Align.CENTER, Align.CENTER, Align.MIN))
-    return n - cyl_x(yc, zc, S.TAP_D / 2, top - depth - 1, top + 1)
+    a, b, t = S.HAMMER_NUT
+    top = S.RAIL_FRONT_X - S.RAIL_LIP - S.NUT_GAP
+    k, h = top - S.HAMMER_STRAIGHT, a / 2
+    e = h - (t - S.HAMMER_STRAIGHT)
+    pts = [(zc - h, top), (zc + h, top), (zc + h, k), (zc + e, top - t), (zc - e, top - t), (zc - h, k)]
+    out = []
+    for i, yc in enumerate(S.CLIPS_Y):
+        n = prism_y(pts, yc - b / 2, yc + b / 2) - cyl_x(yc, zc, 1.25, top - t - 1, top + 1)
+        out.append((f"hammer_nut{i}", n, "steel"))
+    return out
 
 
 def clip_screws():
-    """M3 x 8, from the counterbore in the key of each clip into the twist nut."""
+    """M3 x 8, from the counterbore in the key of each clip into the hammer nut."""
     seat = S.BACK_X[1] - S.CBORE[3][1]
     return [(f"clip_screw{i}", cap("x", yc, S.RAIL_SLOT_Z, seat, -1, S.CLIP_SCREW), "black_steel")
             for i, yc in enumerate(S.CLIPS_Y)]

@@ -47,7 +47,7 @@ COLOURS = {
 # name: (material, print orientation, STL name). Orientations: "face" the face of the head on
 # the bed, "rear" the rear face of the back panel on the bed, "outer" the outer face of the pod
 # on the bed, "flat" as it is (the face against the cover on the bed), "end" the slot axis up (the
-# clip), "lips" the face against the lips on the bed (the twist nut).
+# clip).
 PRINTED = {
     "head": ("pla_navy", "face", "head"),
     "back": ("pla_orange", "rear", "back"),
@@ -56,8 +56,6 @@ PRINTED = {
     "grille": ("pla_white", "flat", "grille"),
     "clip_a": ("pla_orange", "end", "clip"),
     "clip_b": ("pla_orange", "end", None),
-    "clip_nut_a": ("pla_orange", "lips", "clip_nut"),
-    "clip_nut_b": ("pla_orange", "lips", None),
 }
 
 MATES = [
@@ -67,13 +65,13 @@ MATES = [
     ("plug_touch_usb", "pi_usb3"), ("plug_drive_usb", "pi_usb3"), ("plug_touch_usb", "plug_drive_usb"),
     ("plug_printer_usb", "pi_usb2"), ("cable_drive", "plug_drive_usb"), ("cable_drive", "ssd_cable_relief"),
     ("ssd_adapter", "ssd_drive"), ("ssd_usb", "ssd_adapter"), ("ssd_cable_metal", "ssd_usb"),
-    ("ssd_cable_metal", "ssd_cable_plug"), ("ssd_cable_plug", "ssd_cable_relief"), ("drive_screw", "ssd_drive"),
+    ("ssd_cable_metal", "ssd_cable_plug"), ("ssd_cable_plug", "ssd_cable_relief"), ("drive_screw", "ssd_drive"), ("clip_screw", "hammer_nut"),
     ("cable_hdmi", "display_plug_hdmi"), ("cable_hdmi", "plug_pi_hdmi"), ("cable_touch", "display_plug_usb"),
     ("cable_touch", "plug_touch_usb"), ("cable_printer", "plug_printer_usb"), ("cable_power", "plug_pi_power"),
 ]
 
 # Parts that go into the printer on purpose: the mounting screws into the cover and the PEM
-# nuts. (The rail screws are in the slot of the rail model; the slot nuts are not in the model.)
+# nuts. (The clip screws and their hammer nuts are in the slot of the rail and do not touch it.)
 INTO_PRINTER = [("mount_screw", "cover"), ("mount_screw", "chassis")]
 
 # The hardware list of the guide comes from the hardware parts in the model: each screw, washer,
@@ -88,12 +86,15 @@ HARDWARE = [
     ("drive_screw", "m3x6", "M3 × 6 socket cap head", "VIGRUE M3 kit", "drive on the back panel"),
     ("display_screw", "m3x6", "M3 × 6 socket cap head", "VIGRUE M3 kit", "display board (it cuts its thread)"),
     ("pi_screw", "m3x6", "M3 × 6 socket cap head", "VIGRUE M3 kit", "Pi (it cuts its thread)"),
-    ("clip_screw", "m3x8", "M3 × 8 socket cap head", "VIGRUE M3 kit", "rail clip into its twist nut"),
+    ("clip_screw", "m3x8", "M3 × 8 socket cap head", "VIGRUE M3 kit", "rail clip into its hammer nut"),
+    ("hammer_nut", "m3_hammer", "M3 hammer nut (drop-in T-nut) for 2020 extrusion, 6 mm slot", "buy: search "
+     "“M3 hammer nut 2020” or Misumi HNTAP5-3", "rail clips"),
     ("insert_head_back", "ins_m3x7", "M3 × 7 heat-set insert", "FFVRVSS insert kit", "head, back screws (3 to 7 mm fits)"),
     ("insert_back_flange", "ins_m3x7", "M3 × 7 heat-set insert", "FFVRVSS insert kit", "back panel, flange screws (3 to 7 mm fits)"),
     ("insert_pod_block", "ins_m3x5", "M3 × 5 heat-set insert", "FFVRVSS insert kit", "plate, pod screw blocks (3 to 5 mm fits)"),
 ]
-STOCK = {"m3x6": 55, "m3x8": 55, "m3x10": 55, "m3x12": 55, "m3_washer": 300, "ins_m3x5": 50, "ins_m3x7": 30}
+STOCK = {"m3x6": 55, "m3x8": 55, "m3x10": 55, "m3x12": 55, "m3_washer": 300, "ins_m3x5": 50, "ins_m3x7": 30,
+         "m3_hammer": 2}
 
 
 def hardware_list(hw):
@@ -102,7 +103,7 @@ def hardware_list(hw):
     out, problems = {}, []
     for name, _, _ in hw:
         if not name.startswith(("mount_", "head_screw", "flange_", "bottom_", "drive_screw", "display_screw",
-                                "pi_screw", "clip_screw", "insert_")):
+                                "pi_screw", "clip_screw", "hammer_nut", "insert_")):
             continue
         entry = next((h for h in HARDWARE if name.startswith(h[0])), None)
         if entry is None:
@@ -121,7 +122,7 @@ def hardware_list(hw):
 GROUPS = {"display_": "display", "pi_": "pi", "plug_": "pi", "cable_": "cables", "mount_screw": "mount_screws",
           "bottom_screw": "bottom_screws", "head_screw": "head_screws", "ssd_": "drive",
           "drive_screw": "drive_screws",
-          "flange_screw": "flange_screws", "clip_": "clips",
+          "flange_screw": "flange_screws", "clip_": "clips", "hammer_nut": "clips",
           "mount_washer": "mount_screws", "insert_": "inserts"}
 
 
@@ -145,12 +146,10 @@ def build():
         "grille": P.grille(),
         "clip_a": P.clip(S.CLIPS_Y[0]),
         "clip_b": P.clip(S.CLIPS_Y[1]),
-        "clip_nut_a": P.clip_nut(S.CLIPS_Y[0]),
-        "clip_nut_b": P.clip_nut(S.CLIPS_Y[1]),
     }
     log(f"  printed parts built in {time.time() - t:.0f} s")
     hw = (P.display() + P.pi5() + P.mount_screws() + P.bottom_screws() + P.drive() + P.head_screws()
-          + P.flange_screws() + P.clip_screws() + P.inserts() + P.cables())
+          + P.flange_screws() + P.clip_screws() + P.hammer_nuts() + P.inserts() + P.cables())
     return printed, head_local, hw
 
 
@@ -171,7 +170,7 @@ def pair_in(m, n, pairs):
 
 
 # The screws that cut their own thread in a printed part: they go into a 2.5 mm hole.
-SELF_TAP = [("display_screw", "head"), ("pi_screw", "plate"), ("clip_screw", "clip_nut")]
+SELF_TAP = [("display_screw", "head"), ("pi_screw", "plate")]
 
 
 def check_case(printed, hw):
@@ -285,7 +284,8 @@ def check_paths(printed, hw):
                                                                 "insert_display", "insert_head", "insert_back"))]
     on_plate = [("plate", printed["plate"])] + \
                [(n, s) for n, s in hwd.items() if n.startswith(("pi_", "plug_", "mount_", "insert_pi", "insert_pod"))] + \
-               [(n, printed[n]) for n in ("clip_a", "clip_b", "clip_nut_a", "clip_nut_b")]
+               [(n, printed[n]) for n in ("clip_a", "clip_b")] + \
+               [(n, s) for n, s in hwd.items() if n.startswith("hammer_nut")]
     printer = printer_solids()
     near = [(n, s) for n, s in printer.items() if n in ("chassis", "cover") or n == "final_frame_01_21"]
     # The head drops CLIP_DROP onto the clip keys; before that it comes straight from the front.
@@ -321,20 +321,6 @@ def check_paths(printed, hw):
     return problems
 
 
-def check_nut_turn(printed):
-    """Each twist nut goes into the slot lengthwise and turns a quarter turn behind the lips: it
-    must be free of the rail at each step of the turn."""
-    problems = []
-    frame = printer_solids()["final_frame_01_21"]
-    for name, yc in (("clip_nut_a", S.CLIPS_Y[0]), ("clip_nut_b", S.CLIPS_Y[1])):
-        for ang in range(-90, 1, 10):
-            turned = Pos(0, yc, S.RAIL_SLOT_Z) * Rot(ang, 0, 0) * Pos(0, -yc, -S.RAIL_SLOT_Z) * printed[name]
-            v = overlap(P.to_world(turned), frame)
-            if v > 0.05:
-                problems.append(f"{name} at {ang} degrees of its turn touches the rail: {v:.2f} mm3")
-    return problems
-
-
 def print_pose(name, shape, head_local):
     orient = PRINTED[name][1]
     if orient == "face":
@@ -345,8 +331,6 @@ def print_pose(name, shape, head_local):
         s = Rot(180, 0, 0) * shape
     elif orient == "end":
         s = Rot(90, 0, 0) * shape
-    elif orient == "lips":
-        s = Rot(0, 90, 0) * shape         # -x up: the wide face of the twist nut on the bed
     else:
         s = shape
     bb = s.bounding_box()
@@ -455,15 +439,14 @@ def main():
     printer = check_printer(world_printed, world_hw)
     _, hwp = hardware_list(hw)
     printer += hwp
-    printer += check_nut_turn(printed)
-    log(f"  printer check (with the turn of the twist nuts): {len(printer)} problems")
+    log(f"  printer check: {len(printer)} problems")
     problems += paths + holes + printer
     for p in problems:
         log("  CLASH: " + p)
     if not problems:
         log("  fit check: the display, the Pi, the screws, the inserts, and the cables are clear of the printed "
             "parts and the printer; no parts overlap; the head hangs on the clips and the pod slides on; the clips "
-            "are on the rail slot and their nuts turn free; the hardware is in stock")
+            "and their hammer nuts are on the rail slot; the hardware is in stock")
     if "--no-export" not in sys.argv:
         export(printed, head_local, world_printed, world_hw)
     log("RESULT: " + ("CLASHES" if problems else "OK"))
