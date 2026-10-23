@@ -148,7 +148,7 @@ func (a *App) drawPrintBar(c *gfx.Canvas, st printer.State) {
 			what = what[:i]
 		}
 	}
-	c.Text(image.Rect(in.Min.X, in.Min.Y, in.Max.X-gw-16, in.Max.Y), gfx.Fit(face, what, room), face, onAcc, gfx.Left)
+	c.Text(image.Rect(in.Min.X, in.Min.Y, in.Max.X-gw-16, in.Max.Y), what, face, onAcc, gfx.Left)
 	// The progress: a line at the bottom of the bar.
 	if frac > 0 {
 		line := image.Rect(kr.Min.X+10, kr.Max.Y-9, kr.Max.X-10, kr.Max.Y-6)

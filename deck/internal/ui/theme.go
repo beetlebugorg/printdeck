@@ -245,7 +245,7 @@ func detailRows(c *gfx.Canvas, box image.Rectangle, rows [][2]string, rowH int) 
 		r := image.Rect(box.Min.X, box.Min.Y+i*rowH, box.Max.X, box.Min.Y+(i+1)*rowH)
 		label(c, r, kv[0], gfx.Left)
 		v := image.Rect(r.Min.X+gfx.Width(gfx.Face(true, 14), strings.ToUpper(kv[0]))+16, r.Min.Y, r.Max.X, r.Max.Y)
-		c.Text(v, gfx.Fit(vf, kv[1], v.Dx()), vf, text, gfx.Right)
+		c.Text(v, kv[1], vf, text, gfx.Right)
 	}
 }
 

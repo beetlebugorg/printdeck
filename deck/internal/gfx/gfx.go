@@ -284,6 +284,27 @@ func (f fallbackFace) Metrics() font.Metrics { return f.primary.Metrics() }
 
 func Width(face font.Face, s string) int { return font.MeasureString(face, s).Ceil() }
 
+// Shrink returns the largest size of face, down to three quarters of its size, in which s fits in
+// width. It returns face when s fits, or when no size fits, or for a face that Face did not make.
+func Shrink(face font.Face, s string, width int) font.Face {
+	if Width(face, s) <= width {
+		return face
+	}
+	fontMu.Lock()
+	info, ok := faceInfo[face]
+	fontMu.Unlock()
+	if !ok {
+		return face
+	}
+	px, bold := info[0], info[1] == 1
+	for size := px - 1; size >= max(10, px*3/4); size-- {
+		if f := Face(bold, size); Width(f, s) <= width {
+			return f
+		}
+	}
+	return face
+}
+
 // Fit shortens s with an ellipsis until it fits in width.
 func Fit(face font.Face, s string, width int) string {
 	if Width(face, s) <= width {
@@ -305,8 +326,10 @@ func (c *Canvas) textAt(x, y int, s string, face font.Face, col color.Color) {
 	d.DrawString(s)
 }
 
-// Text draws s vertically centred in r.
+// Text draws s vertically centred in r. A text that is wider than r gets a smaller size of its
+// face (Shrink); a text that is still too wide ends in an ellipsis (Fit).
 func (c *Canvas) Text(r image.Rectangle, s string, face font.Face, col color.Color, a Align) {
+	face = Shrink(face, s, r.Dx())
 	s = Fit(face, s, r.Dx())
 	m := face.Metrics()
 	base := r.Min.Y + (r.Dy()+m.Ascent.Ceil()-m.Descent.Ceil())/2

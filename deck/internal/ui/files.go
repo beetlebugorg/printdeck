@@ -60,7 +60,7 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 		if i == 0 { // the names of the first row
 			a.region("Picture", pic)
 		}
-		c.Text(image.Rect(r.Min.X+92, r.Min.Y+8, r.Max.X-12, r.Min.Y+38), gfx.Fit(gfx.Face(true, 19), f.Name, r.Dx()-104), gfx.Face(true, 19), text, gfx.Left)
+		c.Text(image.Rect(r.Min.X+92, r.Min.Y+8, r.Max.X-12, r.Min.Y+38), f.Name, gfx.Face(true, 19), text, gfx.Left)
 		c.Text(image.Rect(r.Min.X+92, r.Min.Y+36, r.Max.X-12, r.Min.Y+60), a.metaLine(m), gfx.Face(false, 16), dim, gfx.Left)
 		if i == 0 {
 			a.textRegion("File", image.Rect(r.Min.X+92, r.Min.Y+8, r.Max.X-12, r.Min.Y+60), gfx.Face(true, 19), gfx.Fit(gfx.Face(true, 19), f.Name, r.Dx()-104))

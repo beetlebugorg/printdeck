@@ -208,7 +208,7 @@ func headingAt(c *gfx.Canvas, head image.Rectangle, title string) {
 	for size > 18 && gfx.Width(gfx.Face(true, size), title) > w {
 		size--
 	}
-	c.Text(image.Rect(x+20, y, head.Max.X-118, y+keyH), gfx.Fit(gfx.Face(true, size), title, w), gfx.Face(true, size), text, gfx.Left)
+	c.Text(image.Rect(x+20, y, head.Max.X-118, y+keyH), title, gfx.Face(true, size), text, gfx.Left)
 }
 
 // helpKey draws a Help key in the head of a page, at the left of Back. It opens Wi-Fi and help,

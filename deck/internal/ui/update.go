@@ -81,7 +81,7 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 	for i, l := range [][2]string{{"THIS DECK", u.Current}, {"LATEST", latest}, {"CHANNEL", channel}} {
 		y := info.Min.Y + 10 + i*lineH + (lineH-30)/2
 		c.Text(image.Rect(info.Min.X+16, y, info.Max.X, y+30), l[0], gfx.Face(true, 14), lcdDim, gfx.Left)
-		c.Text(image.Rect(info.Min.X+140, y, info.Max.X-16, y+30), gfx.Fit(gfx.Face(true, 19), l[1], info.Dx()-160),
+		c.Text(image.Rect(info.Min.X+140, y, info.Max.X-16, y+30), l[1],
 			gfx.Face(true, 19), lcdInk, gfx.Right)
 	}
 

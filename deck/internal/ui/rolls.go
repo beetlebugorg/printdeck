@@ -373,7 +373,7 @@ func (a *App) detailLink(c *gfx.Canvas, r image.Rectangle, kv [2]string, tap fun
 	label(c, t, kv[0], gfx.Left)
 	vf := gfx.Face(true, 17)
 	v := image.Rect(t.Min.X+gfx.Width(gfx.Face(true, 14), strings.ToUpper(kv[0]))+16, t.Min.Y, t.Max.X, t.Max.Y)
-	c.Text(v, gfx.Fit(vf, kv[1], v.Dx()), vf, text, gfx.Right)
+	c.Text(v, kv[1], vf, text, gfx.Right)
 	cx, cy := r.Max.X-24, r.Min.Y+r.Dy()/2
 	c.Polygon([]image.Point{{cx - 4, cy - 8}, {cx + 4, cy}, {cx - 4, cy + 8}, {cx - 7, cy + 5}, {cx - 2, cy}, {cx - 7, cy - 5}}, dim)
 	a.region(kv[0], r)

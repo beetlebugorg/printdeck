@@ -205,7 +205,7 @@ func (a *App) drawConfigs(c *gfx.Canvas) {
 func (a *App) drawBoard(c *gfx.Canvas, r image.Rectangle, b board.Info) {
 	y := r.Min.Y
 	window(c, r)
-	c.Text(image.Rect(r.Min.X+16, y+10, r.Max.X-16, y+44), gfx.Fit(gfx.Face(true, 22), b.Name, r.Dx()-32), gfx.Face(true, 22), lcdInk, gfx.Left)
+	c.Text(image.Rect(r.Min.X+16, y+10, r.Max.X-16, y+44), b.Name, gfx.Face(true, 22), lcdInk, gfx.Left)
 	small := gfx.Face(false, 18)
 	// The window is a dark display: its text is amber (lcdInk), and dimmer for the details.
 	if !b.Klipper {
@@ -219,7 +219,7 @@ func (a *App) drawBoard(c *gfx.Canvas, r image.Rectangle, b board.Info) {
 		v, col = "Klipper firmware is old", lcdInk
 	}
 	c.Text(image.Rect(r.Min.X+16, y+78, r.Max.X-16, y+106), v, small, col, gfx.Left)
-	c.Text(image.Rect(r.Min.X+16, y+104, r.Max.X-16, y+128), gfx.Fit(gfx.Face(false, 14), b.Version, r.Dx()-32), gfx.Face(false, 14), lcdDim, gfx.Left)
+	c.Text(image.Rect(r.Min.X+16, y+104, r.Max.X-16, y+128), b.Version, gfx.Face(false, 14), lcdDim, gfx.Left)
 }
 
 // drawStarting draws the start screen while Klipper starts and connects to the printer. It is the

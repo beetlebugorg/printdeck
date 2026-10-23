@@ -224,7 +224,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		park(p[1], "Center", func() []string { return CenterGcode(st) })
 	}
 	notPaused(p[2], "Motors off", raised, text, pr.MotorsOff)
-	msg := "Motors off lets you move the head by hand."
+	msg := "Motors off: move the head by hand."
 	switch {
 	case !st.Connected:
 		msg = "The printer is not connected."
