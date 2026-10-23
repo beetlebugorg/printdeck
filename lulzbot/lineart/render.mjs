@@ -151,7 +151,7 @@ function shotParts(spec) {
 function jobs() {
   const out = Object.entries(SHOTS).map(([name, spec]) => [name, { parts: shotParts(spec), camera: spec.camera, up: UP }]);
   // Each printed part in its print orientation, from its STL file (Z up on the bed).
-  for (const p of ["head", "pod", "back", "plate", "grille", "clip", "fit_display"]) {
+  for (const p of ["head", "pod", "back", "plate", "grille", "clip", "roll_nut", "fit_display"]) {
     out.push([`part_${p}`, { parts: [{ url: `/stl/${p}.stl`, finish: "print" }], camera: PRINT_VIEW, up: [0, 0, 1] }]);
   }
   return out;

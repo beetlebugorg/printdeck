@@ -16,11 +16,14 @@ Fit check (a true boolean test of every pair whose boxes overlap):
   - the pod slides on: at each step of its 45 degree path, it touches no fixed part,
   - the fan sits in the snaps of the grille: the catches are under the fan, the funnel is over
     it, and the prongs bend less than the strain limit,
-  - the grille with the fan goes into the pod straight from the outside and touches no part.
+  - the grille with the fan goes into the pod straight from the outside and touches no part,
+  - the printed roll-in nut (an option for the hammer nut) is clear of the rail and the clip, it
+    is on the lips, and the clip screw goes through the full thread of its hex nut (roll_nut.py
+    checks its path into the slot).
 Output:
   cad/<part>.step            each printed part, in its position on the printer
   cad/lulzbot-assembly.step  all parts and the hardware, with colours, on the printer
-  stl/<part>.stl             each printed part, in its print orientation
+  stl/<part>.stl             each printed part, in its print orientation, and stl/roll_nut.stl
   build/mesh/*.stl           the meshes for the renders (printer coordinates), build/manifest.json
 """
 
@@ -359,6 +362,42 @@ def check_fan(printed, hw):
     return problems
 
 
+def check_roll_nut(hw):
+    """The printed roll-in nut, an option for the hammer nut: at each clip, it touches no part of
+    the printer and no clip; 0.1 mm higher, it touches the lips (it is on them); its hex nut
+    touches no part of the printer; the clip screw goes through the full thread of the hex nut,
+    and touches no plastic."""
+    problems = []
+    hwd = {n: s for n, s, _ in hw}
+    rail = {n: s for n, s in printer_solids().items() if n.startswith("final_frame_01")}
+    clips = [P.clip(yc) for yc in S.CLIPS_Y]
+    for i, ((hn, hex_nut, _), yc) in enumerate(zip(P.hex_nuts(), S.CLIPS_Y)):
+        nut = P.roll_nut(yc)
+        for name, part in (("roll-in nut", nut), ("hex nut", hex_nut)):
+            for rn, rs in rail.items():
+                v = overlap(P.to_world(part), rs)
+                if v > 0.05:
+                    problems.append(f"the {name} of clip {i} touches the rail ({rn}): {v:.2f} mm3")
+        if sum(overlap(P.to_world(Pos(0.1, 0, 0) * nut), rs) for rs in rail.values()) < 0.05:
+            problems.append(f"the roll-in nut of clip {i} is not on the lips")
+        for c in clips:
+            if overlap(nut, c) > 0.05:
+                problems.append(f"the roll-in nut of clip {i} touches a clip")
+        screw = hwd[f"clip_screw{i}"]
+        if overlap(screw, nut) > 0.05:
+            problems.append(f"the screw of clip {i} touches the roll-in nut")
+        sb, nb = screw.bounding_box(), hex_nut.bounding_box()
+        thread = min(sb.max.X, nb.max.X) - max(sb.min.X, nb.min.X)
+        past = nb.min.X - sb.min.X
+        if thread < S.HEX_NUT[1] - 0.01:
+            problems.append(f"the screw of clip {i} goes {thread:.1f} mm into the hex nut, not the full thread")
+    top = S.ROLL_NUT_TOP
+    log(f"  roll-in nut (option): {S.ROLL_NUT_L:.0f} mm long; the screw goes through the {S.HEX_NUT[1]:.1f} mm "
+        f"thread of the hex nut and {past:.1f} mm past it; {S.HEX_TOP:.1f} mm of plastic over the hex nut; the bottom "
+        f"is {S.RAIL_LIP + 4.7 - top - S.ROLL_NUT_T:.1f} mm above the bottom of the slot; {len(problems)} problems")
+    return problems
+
+
 def print_pose(name, shape, head_local):
     orient = PRINTED[name][1]
     if orient == "face":
@@ -453,7 +492,21 @@ def export(printed, head_local, world_printed, world_hw):
     summary["pod"] = {"size_world": [round(pb.size.X, 1), round(pb.size.Y, 1), round(pb.size.Z, 1)]}
     log(f"  head on the printer: {summary['head']}")
     log(f"  pod on the printer: {summary['pod']}")
+    # The printed roll-in nut: an option for the hammer nut, not in the assembly.
+    nut = Rot(90, 0, 0) * P.roll_nut(S.CLIPS_Y[0])
+    bb = nut.bounding_box()
+    nut = Pos(-(bb.min.X + bb.max.X) / 2, -(bb.min.Y + bb.max.Y) / 2, -bb.min.Z) * nut
+    export_stl(nut, os.path.join(HERE, "stl", "roll_nut.stl"), tolerance=0.01, angular_tolerance=0.1)
+    bb = nut.bounding_box()
+    vol = nut.volume / 1000
+    summary["parts"]["roll_nut"] = {"size": [round(bb.size.X, 1), round(bb.size.Y, 1), round(bb.size.Z, 1)],
+                                    "volume_cm3": round(vol, 2), "grams_solid": round(vol * PLA, 1),
+                                    "material": "pla_orange"}
+    log(f"  roll_nut   print size {bb.size.X:5.1f} x {bb.size.Y:5.1f} x {bb.size.Z:5.1f} mm, "
+        f"volume {vol:5.2f} cm3, {vol * PLA:5.1f} g solid (option)")
     hlist, _ = hardware_list(world_hw)
+    hlist["m3_nut"] = {"item": "M3 hex nut, 5.5 mm across the flats", "box": "M3 hex nuts", "count": 2,
+                       "places": {"printed roll-in nuts, in place of the T-nuts (option)": 2}, "option": True}
     with open(os.path.join(BUILD, "hardware.json"), "w") as fh:
         json.dump({"items": hlist, "cover_confirmed": S.COVER_SCREWS_CONFIRMED, "cover_notes": S.COVER_SCREW_NOTES,
                    "cover_screws_mm": S.COVER_SCREWS_MM, "inserts": S.INSERTS}, fh, indent=1, ensure_ascii=False)
@@ -470,6 +523,7 @@ def main():
     paths = check_paths(printed, hw)
     log(f"  assembly path check: {len(paths)} problems")
     paths += check_fan(printed, hw)
+    paths += check_roll_nut(hw)
     holes, lines = check_screw_holes()
     for line in lines:
         log("  " + line)

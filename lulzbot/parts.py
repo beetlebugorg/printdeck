@@ -634,6 +634,41 @@ def hammer_nuts():
     return out
 
 
+def roll_nut(yc):
+    """The printed roll-in nut of the clip at yc, in its place in the slot, pulled up on the lips:
+    the section of roll_nut_section along the slot, a pocket from the bottom for the M3 hex nut
+    (its corners along the slot, with a 45 degree point up in the print over the 30 degree faces
+    of the hex), and the hole for the screw with a 45 degree point up. It prints on its end, as
+    the clip."""
+    zc = S.RAIL_SLOT_Z
+    top = S.RAIL_FRONT_X - S.ROLL_NUT_TOP
+    pts = [(zc + w, top - u) for w, u in S.roll_nut_section()]
+    n = prism_y(pts, yc - S.ROLL_NUT_L / 2, yc + S.ROLL_NUT_L / 2)
+    f = S.HEX_POCKET
+    x0, x1 = top - S.ROLL_NUT_T - 1, top - S.HEX_TOP
+    q = f / math.sqrt(3) / 2
+    n = n - hex_x(yc, zc, f, x0, x1) - prism_x([(yc + q, zc + f / 2), (yc + q + f / 2, zc), (yc + q, zc - f / 2)], x0, x1)
+    return n - teardrop_up(yc, zc, 1.6, top - S.ROLL_NUT_T - 1, top + 1)
+
+
+def hex_x(yc, zc, flats, x0, x1):
+    """A hex prism along x, with its flats across z (across the slot) and its corners along y."""
+    r = flats / math.sqrt(3)
+    pts = [(yc + r, zc), (yc + r / 2, zc + flats / 2), (yc - r / 2, zc + flats / 2), (yc - r, zc),
+           (yc - r / 2, zc - flats / 2), (yc + r / 2, zc - flats / 2)]
+    return prism_x(pts, x0, x1)
+
+
+def hex_nuts():
+    """The M3 hex nut in each printed roll-in nut, up in its pocket. The hole is the minor
+    diameter of the thread."""
+    zc = S.RAIL_SLOT_Z
+    x1 = S.RAIL_FRONT_X - S.ROLL_NUT_TOP - S.HEX_TOP
+    f, t = S.HEX_NUT
+    return [(f"hex_nut{i}", hex_x(yc, zc, f, x1 - t, x1) - cyl_x(yc, zc, 1.25, x1 - t - 1, x1 + 1), "steel")
+            for i, yc in enumerate(S.CLIPS_Y)]
+
+
 def clip_screws():
     """M3 x 8, from the counterbore in the key of each clip into the hammer nut."""
     seat = S.BACK_X[1] - S.CBORE[3][1]

@@ -58,6 +58,9 @@ PRINTS = [
     ("grille", "grille", "White", 1, "Back down. The bump and the four fan prongs point up. The snap tabs bend along the layers."),
 ]
 TEST = ("fit_display", "fit_display", "Navy", 1, "Optional fit test of the screen opening. Face down.")
+# An option until you have the metal T-nuts: a printed roll-in nut with an M3 hex nut in it.
+ROLL = ("roll_nut", "roll_nut", "Orange", 2, "Option until you have the metal T-nuts. On its end, with a brim. "
+        "Print 2.")
 
 SETTINGS = [
     ("Profiles", "One Cura profile for each part: run <code>python3 cura/make_profiles.py --install</code> with Cura "
@@ -66,7 +69,7 @@ SETTINGS = [
     ("Material", "PLA, 2.85 mm"),
     ("Head, pod, grille", "0.3 mm layers, 1.5 mm walls, 1.2 mm top and bottom, 15 % grid infill, skirt"),
     ("Back panel, plate", "0.4 mm layers (a 0.3 mm first layer), 1.5 mm walls, 15 % grid infill, skirt"),
-    ("Clip", "0.3 mm layers, 100 % infill, with a brim."),
+    ("Clip, roll-in nut", "0.3 mm layers, 100 % infill, with a brim."),
     ("Speeds", "Infill 75 mm/s (60 mm/s with 0.4 mm layers), inner walls 60 mm/s, outer walls 35 mm/s (30 mm/s on a face "
                "that shows), travel 200 mm/s. The flow stays at 12 mm³/s or less."),
     ("Supports", "Off for all parts. Every hole, pocket, and hook has 45° faces. A slice of each part with supports "
@@ -174,7 +177,10 @@ STEPS = [
         "in the key, and turn it into the nut.",
         "Tighten the screw until the clip is tight on the rail. Do the same with the second clip.",
     ], "You can roll the nut into the slot at any point on the rail. You do not remove the ends of the rail. If "
-       "the nut moves away from the mark, push it back with a small screwdriver."),
+       "the nut moves away from the mark, push it back with a small screwdriver. Until you have the metal T-nuts, "
+       "you can use the printed roll-in nuts (stl/roll_nut.stl). Press an M3 hex nut into the pocket of each one "
+       "with pliers. Put one long edge into the slot, with the hex nut away from you, and roll the nut in behind "
+       "the lips. Tighten the screw gently: the printed nut is not as strong as a metal T-nut."),
     ("step_hang", "Hang the head", ["head (step 4)"], {"m3x12": 2}, [
         "Hold the head 30 mm above its place, with the two windows of the back panel over the two clip keys. Push the "
         "back panel against the clips.",
@@ -221,14 +227,16 @@ STEPS = [
 
 def check_chips():
     """Every hardware chip of the steps is an item of the hardware list, and the counts agree.
-    The build stops when they do not."""
+    The build stops when they do not. An option (the hex nuts of the printed roll-in nuts) is in
+    no step."""
     used = {}
     for _, _, _, hw, _, _ in STEPS:
         for k, n in hw.items():
             if k not in ITEMS:
                 raise SystemExit(f"step hardware {k} is not in the hardware list of the model")
             used[k] = used.get(k, 0) + n
-    bad = {k: (used.get(k, 0), e["count"]) for k, e in ITEMS.items() if used.get(k, 0) != e["count"]}
+    bad = {k: (used.get(k, 0), e["count"]) for k, e in ITEMS.items()
+           if used.get(k, 0) != e["count"] and not e.get("option")}
     if bad:
         raise SystemExit("step hardware counts do not agree with the model: "
                          + ", ".join(f"{ITEMS[k]['item']}: steps {a}, model {b}" for k, (a, b) in bad.items()))
@@ -361,7 +369,9 @@ def plan_page():
   <th class="n">Spools</th></tr>{crow}</table>
   <div class="note"><b>Total.</b> {g} g of PLA ({m:.0f} m), {hours(t)} of printing, ${cost(g):.2f} at
   ${PRICE_PER_KG:.2f}/kg. With the fit test: {g + f["grams"]} g and {hours(t + f["minutes"])}. The largest part
-  (the head) needs a bed of {hb[0]:.0f} × {hb[1]:.0f} mm; the Workhorse bed is 280 × 280 mm.</div>
+  (the head) needs a bed of {hb[0]:.0f} × {hb[1]:.0f} mm; the Workhorse bed is 280 × 280 mm. Until you have the
+  metal T-nuts: {ROLL[3]} printed roll-in nuts (<code>stl/roll_nut.stl</code>), {FILAMENT[ROLL[1]]["grams"] * ROLL[3]} g and
+  {hours(FILAMENT[ROLL[1]]["minutes"] * ROLL[3])}.</div>
   <div class="note"><b>Order.</b> Print the fit test first ({hours(f["minutes"])}): the display pocket has 0.3 mm
   of clearance at each side, so check it before the head. Then the head and the back panel: steps 2 to 4 need them.
   Then the plate, the clips, the pod, and the grille.</div>
@@ -376,7 +386,7 @@ def plan_page():
 def print_page():
     cards = "".join(f'<div class="card"><img src="{img("part_" + s)}"><b>{s.replace("_", " ")}</b>'
                     f'<span class="sw" style="background:{SWATCH[c]}"></span>{c} · support check {SUPPORTS[s]:.0f} g<br>{t}</div>'
-                    for _, s, c, _, t in PRINTS + [TEST])
+                    for _, s, c, _, t in PRINTS + [TEST, ROLL])
     st = "".join(f"<tr><td>{k}</td><td>{v}</td></tr>" for k, v in SETTINGS)
     return f"""<section class="page">
   <h2>Print</h2>
@@ -503,7 +513,7 @@ def write_guide():
     run of make.sh."""
     import shutil
     (GUIDE / "img").mkdir(parents=True, exist_ok=True)
-    names = ["hero", "side", "exploded", "connect"] + ["part_" + s for _, s, *_ in PRINTS + [TEST]] + [s[0] for s in STEPS]
+    names = ["hero", "side", "exploded", "connect"] + ["part_" + s for _, s, *_ in PRINTS + [TEST, ROLL]] + [s[0] for s in STEPS]
     for n in dict.fromkeys(names):
         shutil.copyfile(IMG / f"{n}-light.png", GUIDE / "img" / f"lulzbot-{n}.png")
     from PIL import Image
@@ -531,6 +541,7 @@ def write_guide():
                    "parts": sum(c for *_, c, _ in PRINTS), "pricePerKg": f"${PRICE_PER_KG:.2f}"},
         "prints": [part(*p) for p in PRINTS],
         "test": part(*TEST),
+        "rollNut": part(*ROLL),
         "settings": [[k, plain(v)] for k, v in SETTINGS],
         "hardware": hw,
         "electronics": [[n, plain(t)] for n, t in ELECTRONICS],
