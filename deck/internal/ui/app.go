@@ -191,6 +191,8 @@ type App struct {
 	zStep float64 // mm per tap of the Z buttons
 	zBaby float64 // mm per tap of the Z offset on the first layer screen
 
+	trace []traceSample // the live speed of the last traceSpan of a print (speedTrace)
+
 	toast   string
 	toastAt time.Time
 

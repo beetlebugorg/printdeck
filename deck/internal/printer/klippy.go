@@ -105,6 +105,7 @@ var klippyObjects = map[string][]string{
 	"fan":            {"speed"},
 	"toolhead":       {"position", "homed_axes", "axis_minimum", "axis_maximum"},
 	"mcu":            {"mcu_version"},
+	"motion_report":  {"live_velocity", "live_extruder_velocity"},
 	// The command stack of the Printdeck module of the Klipper host, for the steps of PRINT_START.
 	"printdeck_display": {"commands"},
 	// A pause of the file with a message, and the height check on a part (PRINTDECK_PAUSE).
@@ -653,6 +654,11 @@ func klippyState(s klippy.Status, down string) State {
 		st.File = path.Base(st.FilePath)
 		sd := s["virtual_sdcard"]
 		st.FileSize, st.FilePos = int64(num(sd["file_size"])), int64(num(sd["file_position"]))
+		if mr := s["motion_report"]; mr != nil {
+			if _, ok := mr["live_velocity"]; ok {
+				st.LiveSpeed, st.LiveExtrude, st.HasLive = num(mr["live_velocity"]), num(mr["live_extruder_velocity"]), true
+			}
+		}
 		progress := num(sd["progress"])
 		st.Completion = progress * 100
 		// The time left from the time so far. The look-ahead estimate replaces this later.

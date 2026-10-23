@@ -76,6 +76,13 @@ func setNight(on bool) {
 	glcd, glcdCell, glcdInk = p.glcd, p.glcdCell, p.glcdInk
 }
 
+// mix is the color between a (f 0) and b (f 1).
+func mix(a, b color.RGBA, f float64) color.RGBA {
+	f = max(0, min(1, f))
+	m := func(x, y uint8) uint8 { return uint8(float64(x) + (float64(y)-float64(x))*f + 0.5) }
+	return color.RGBA{m(a.R, b.R), m(a.G, b.G), m(a.B, b.B), 255}
+}
+
 func darken(c color.RGBA, f float64) color.RGBA {
 	m := func(v uint8) uint8 { return uint8(float64(v) * (1 - f)) }
 	return color.RGBA{m(c.R), m(c.G), m(c.B), 255}

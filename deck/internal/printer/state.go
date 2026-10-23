@@ -49,9 +49,14 @@ type State struct {
 
 	// The move at the print position: its kind and its commanded speed in mm/s. The printer buffers a few
 	// moves, so this can be a moment ahead of the nozzle.
-	NowKind          string
-	NowSpeed         float64
-	HasNow           bool
+	NowKind  string
+	NowSpeed float64
+	HasNow   bool
+	// The live speed of the head and of the filament into the extruder, in mm/s, from
+	// motion_report of Klipper, during a print. HasLive is false when Klipper does not report them.
+	LiveSpeed, LiveExtrude float64
+	HasLive                bool
+
 	Tool, ToolTarget float64
 	Bed, BedTarget   float64
 	// The power of each heater now, 0 to 1: the PWM of the heater. A heater that holds its
