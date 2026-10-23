@@ -134,6 +134,8 @@ func (a *App) OpenPrintScreen(name string) {
 		a.pages = []page{pageMachine, pageHistory, pageRecord}
 	case "stats":
 		a.pages = []page{pageMachine, pageStats}
+	case "settings":
+		a.pages = []page{pageMachine, pageSettings}
 	case "configs":
 		a.configBoard = board.Info{Device: "/dev/serial/by-id/usb-UltiMachine_RAMBo_64033353730351918201-if00", Name: "UltiMachine RAMBo", Klipper: true, MCU: "atmega2560"}
 		a.pages = []page{pageConfigs}

@@ -897,7 +897,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Rolls</b>Opens the list of your rolls. On the list, the key stays in its place with its LED lit, and a tap comes back here.</span></li><li><span class="badge">2</span><span><b>Loaded</b>The roll that is in the printer and the filament on it, or the material and its temperatures.</span></li><li><span class="badge">3</span><span><b>Material</b>Tap the material that is in the printer.</span></li><li><span class="badge">4</span><span><b>Change filament</b>The guided change: choose, heat, unload, insert, load, check.</span></li><li><span class="badge">5</span><span><b>Load, Unload</b>Only the load, or only the unload.</span></li><li><span class="badge">6</span><span><b>Extrude, Retract</b>Pushes or pulls 10 mm. The nozzle must be at 170° or more.</span></li><li><span class="badge">7</span><span><b>Heat, Cool down</b>Heats the nozzle for the loaded filament, or turns the heaters off.</span></li>
+      <li><span class="badge">1</span><span><b>Rolls</b>Opens the list of your rolls. On the list, the key stays in its place with its LED lit, and a tap comes back here.</span></li><li><span class="badge">2</span><span><b>Loaded</b>The roll that is in the printer and the filament on it, or the material and its temperatures.</span></li><li><span class="badge">3</span><span><b>Material</b>Tap the material that is in the printer. The deck asks before it changes the loaded material.</span></li><li><span class="badge">4</span><span><b>Change filament</b>The guided change: choose, heat, unload, insert, load, check. The printer homes while the nozzle heats. Turn this off on the Settings page.</span></li><li><span class="badge">5</span><span><b>Load, Unload</b>Only the load, or only the unload.</span></li><li><span class="badge">6</span><span><b>Extrude, Retract</b>Pushes or pulls 10 mm. The nozzle must be at 170° or more.</span></li><li><span class="badge">7</span><span><b>Heat, Cool down</b>Heats the nozzle for the loaded filament, or turns the heaters off.</span></li>
     </ol>
     
   </figure>
@@ -936,7 +936,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Step</b>The step of the change.</span></li><li><span class="badge">2</span><span><b>Rolls</b>Your rolls. Tap the roll that goes in. The nozzle heats for its material.</span></li><li><span class="badge">3</span><span><b>New roll</b>Adds a roll: its material, its name, its weight on a scale, the weight of an empty reel, and its price.</span></li><li><span class="badge">4</span><span><b>Other</b>A filament with no roll: choose the material or type a temperature.</span></li><li><span class="badge">5</span><span><b>Close</b>Stops the change. During a pause, the nozzle goes back to the temperature of the print.</span></li>
+      <li><span class="badge">1</span><span><b>Step</b>The step of the change.</span></li><li><span class="badge">2</span><span><b>Rolls</b>Your rolls. Tap the roll that goes in. The nozzle heats for its material.</span></li><li><span class="badge">3</span><span><b>New roll</b>Adds a roll: its material, its name, its weight on a scale, the weight of an empty reel, and its price.</span></li><li><span class="badge">4</span><span><b>Other</b>A filament with no roll: choose the material or type a temperature.</span></li><li><span class="badge">5</span><span><b>Close</b>Stops the change. After the nozzle starts to heat, Close also turns the nozzle off. During a pause, the nozzle goes back to the temperature of the print.</span></li>
     </ol>
     
   </figure>
@@ -1242,7 +1242,7 @@
 
 <section id="machine">
   <h2 class="title"><span class="num">14</span>Look after the printer</h2>
-  <p>Machine has the information of the printer, the history of the prints, the macros and the console.</p>
+  <p>Machine has the information of the printer, the history of the prints, the macros, the console and the settings.</p>
   
   
   <figure>
@@ -1300,25 +1300,49 @@
       <div class="shot"><img src="img/machine-more.png" alt="The Machine page, further down" width="800" height="480"></div>
       <svg class="marks" viewBox="-72 0 944 480" aria-hidden="true">
         
-        <line x1="825" y1="215" x2="784" y2="215" class="leader"/>
-        <circle cx="784" cy="215" r="5" class="dot"/>
-        <circle cx="840" cy="215" r="15" class="badge"/>
-        <text x="840" y="215" class="badge-n">1</text>
-        
         <line x1="825" y1="280" x2="784" y2="280" class="leader"/>
         <circle cx="784" cy="280" r="5" class="dot"/>
         <circle cx="840" cy="280" r="15" class="badge"/>
-        <text x="840" y="280" class="badge-n">2</text>
+        <text x="840" y="280" class="badge-n">1</text>
         
         <line x1="825" y1="345" x2="784" y2="345" class="leader"/>
         <circle cx="784" cy="345" r="5" class="dot"/>
         <circle cx="840" cy="345" r="15" class="badge"/>
-        <text x="840" y="345" class="badge-n">3</text>
+        <text x="840" y="345" class="badge-n">2</text>
         
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Theme</b>The colors of the screen: day, night, or auto (night from 20:00 to 7:00). Tap it to change them.</span></li><li><span class="badge">2</span><span><b>Clock</b>The clock of the screens and the display of the printer: 12 hours (2:24 PM) or 24 hours (14:24). Tap it to change it.</span></li><li><span class="badge">3</span><span><b>Wi-Fi and help</b>The network, the password and the addresses.</span></li>
+      <li><span class="badge">1</span><span><b>Settings</b>The theme, the clock, and the homing in a filament change. See below.</span></li><li><span class="badge">2</span><span><b>Wi-Fi and help</b>The network, the password and the addresses.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>The Settings page</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/settings.png" alt="The Settings page" width="800" height="480"></div>
+      <svg class="marks" viewBox="-72 0 944 480" aria-hidden="true">
+        
+        <line x1="825" y1="108" x2="784" y2="108" class="leader"/>
+        <circle cx="784" cy="108" r="5" class="dot"/>
+        <circle cx="840" cy="108" r="15" class="badge"/>
+        <text x="840" y="108" class="badge-n">1</text>
+        
+        <line x1="825" y1="173" x2="784" y2="173" class="leader"/>
+        <circle cx="784" cy="173" r="5" class="dot"/>
+        <circle cx="840" cy="173" r="15" class="badge"/>
+        <text x="840" y="173" class="badge-n">2</text>
+        
+        <line x1="825" y1="238" x2="784" y2="238" class="leader"/>
+        <circle cx="784" cy="238" r="5" class="dot"/>
+        <circle cx="840" cy="238" r="15" class="badge"/>
+        <text x="840" y="238" class="badge-n">3</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Theme</b>The colors of the screen: day, night, or auto (night from 20:00 to 7:00). Tap it to change them.</span></li><li><span class="badge">2</span><span><b>Clock</b>The clock of the screens and the display of the printer: 12 hours (2:24 PM) or 24 hours (14:24). Tap it to change it.</span></li><li><span class="badge">3</span><span><b>Home in a filament change</b>On: the printer homes all axes while the nozzle heats for a filament change. A change during a paused print does not home. Tap it to turn it on or off.</span></li>
     </ol>
     
   </figure>

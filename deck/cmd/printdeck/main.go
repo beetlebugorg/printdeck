@@ -153,6 +153,18 @@ func run(cfg config.Config) {
 		}
 		os.WriteFile(clockFile, []byte(v+"\n"), 0o644)
 	}
+	// The homing in a filament change too. It is on when the file is not there.
+	swapHomeFile := filepath.Join(cfg.StateDir, "swap-home")
+	if b, err := os.ReadFile(swapHomeFile); err == nil {
+		app.SwapHome = strings.TrimSpace(string(b)) != "off"
+	}
+	app.OnSwapHome = func(on bool) {
+		v := "off"
+		if on {
+			v = "on"
+		}
+		os.WriteFile(swapHomeFile, []byte(v+"\n"), 0o644)
+	}
 	// The loaded material is kept in the state folder too.
 	materialFile := filepath.Join(cfg.StateDir, "material")
 	if b, err := os.ReadFile(materialFile); err == nil {

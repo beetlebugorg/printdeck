@@ -65,14 +65,20 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 			a.lockedKey(c, r, name, fill) // the LED of the material in the printer stays lit
 			continue
 		}
+		// A change of the loaded material asks first: a tap by mistake also takes the roll out.
 		fkey(c, r, name, fill, fg, func() {
-			a.setMaterial(name)
-			// A roll of another material is not in the printer.
-			if rolls != nil {
-				if sp, ok := rolls.In(); ok && sp.Material != name {
-					rolls.Put("")
-				}
+			if name == m.Name {
+				return
 			}
+			a.confirm = &confirmBox{question: fmt.Sprintf("Is %s in the printer?", name), yes: "Set " + name, onYes: func() {
+				a.setMaterial(name)
+				// A roll of another material is not in the printer.
+				if rolls != nil {
+					if sp, ok := rolls.In(); ok && sp.Material != name {
+						rolls.Put("")
+					}
+				}
+			}}
 		})
 	}
 

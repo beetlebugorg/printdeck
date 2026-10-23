@@ -417,8 +417,8 @@ func manualParts() []section {
 					Callouts: []callout{
 						{"Rolls", "Opens the list of your rolls. On the list, the key stays in its place with its LED lit, and a tap comes back here."},
 						{"Loaded", "The roll that is in the printer and the filament on it, or the material and its temperatures."},
-						{"Material", "Tap the material that is in the printer."},
-						{"Change filament", "The guided change: choose, heat, unload, insert, load, check."},
+						{"Material", "Tap the material that is in the printer. The deck asks before it changes the loaded material."},
+						{"Change filament", "The guided change: choose, heat, unload, insert, load, check. The printer homes while the nozzle heats. Turn this off on the Settings page."},
 						{"Load, Unload", "Only the load, or only the unload."},
 						{"Extrude, Retract", "Pushes or pulls 10 mm. The nozzle must be at 170° or more."},
 						{"Heat, Cool down", "Heats the nozzle for the loaded filament, or turns the heaters off."},
@@ -430,7 +430,7 @@ func manualParts() []section {
 						{"Rolls", "Your rolls. Tap the roll that goes in. The nozzle heats for its material."},
 						{"New roll", "Adds a roll: its material, its name, its weight on a scale, the weight of an empty reel, and its price."},
 						{"Other", "A filament with no roll: choose the material or type a temperature."},
-						{"Close", "Stops the change. During a pause, the nozzle goes back to the temperature of the print."},
+						{"Close", "Stops the change. After the nozzle starts to heat, Close also turns the nozzle off. During a pause, the nozzle goes back to the temperature of the print."},
 					}},
 				{Name: "new-roll", Caption: "A new roll",
 					Setup: func(s *manualState) { s.p.State_ = stIdle; s.a.OpenPrintScreen("new-roll") },
@@ -517,16 +517,20 @@ func manualParts() []section {
 					},
 					Tall: []callout{
 						{"Console", "The G-code terminal of Klipper. See below."},
-						{"Theme", "The colors of the screen: day, night, or auto (night from 20:00 to 7:00). Tap it to change them."},
-						{"Clock", "The clock of the screens and the display of the printer: 12 hours (2:24 PM) or 24 hours (14:24). Tap it to change it."},
+						{"Settings", "The theme, the clock, and the homing in a filament change. See below."},
 						{"Wi-Fi and help", "The network, the password and the addresses."},
 					}},
 				{Name: "machine-more", Caption: "The Machine page, further down", Layout: "wide",
 					Setup: func(s *manualState) { s.p.State_ = stIdle; s.a.OpenPrintScreen("machine"); s.a.DemoScroll(9999) },
 					Callouts: []callout{
+						{"Settings", "The theme, the clock, and the homing in a filament change. See below."},
+						{"Wi-Fi and help", "The network, the password and the addresses."},
+					}},
+				{Name: "settings", Caption: "The Settings page", Setup: page("settings"),
+					Callouts: []callout{
 						{"Theme", "The colors of the screen: day, night, or auto (night from 20:00 to 7:00). Tap it to change them."},
 						{"Clock", "The clock of the screens and the display of the printer: 12 hours (2:24 PM) or 24 hours (14:24). Tap it to change it."},
-						{"Wi-Fi and help", "The network, the password and the addresses."},
+						{"Home in a filament change", "On: the printer homes all axes while the nozzle heats for a filament change. A change during a paused print does not home. Tap it to turn it on or off."},
 					}},
 				{Name: "console", Caption: "The console",
 					Setup: func(s *manualState) {
@@ -753,8 +757,8 @@ func manualSections() []section {
 			Figures: fig("maintenance", "action", "paper")},
 
 		{Chapter: care, ID: "machine", Title: "Look after the printer",
-			Intro:   []string{"Machine has the information of the printer, the history of the prints, the macros and the console."},
-			Figures: fig("machine", "machine-more", "stats", "console")},
+			Intro:   []string{"Machine has the information of the printer, the history of the prints, the macros, the console and the settings."},
+			Figures: fig("machine", "machine-more", "settings", "stats", "console")},
 		{Chapter: care, ID: "update", Title: "Update the Printdeck",
 			Intro: []string{
 				"The deck checks for a new version once a day. Machine then shows Software update in orange.",

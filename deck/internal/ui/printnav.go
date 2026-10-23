@@ -34,6 +34,7 @@ const (
 	pageSpools      // the rolls of filament
 	pageSpool       // one roll (a.spoolID)
 	pageSpoolPrints // the prints that used one roll (a.spoolID)
+	pageSettings    // the settings of the deck
 )
 
 // open shows a page over the current one.

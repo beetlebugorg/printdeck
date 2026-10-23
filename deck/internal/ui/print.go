@@ -97,6 +97,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	case pageStats:
 		a.drawStats(c)
 		return
+	case pageSettings:
+		a.drawSettings(c)
+		return
 	case pageUpdate:
 		a.drawUpdate(c, st)
 		return

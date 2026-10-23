@@ -296,8 +296,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		{"Print history", "Each print, with the result", dim, func() { a.open(pageHistory) }},
 		{"Macros", macros, dim, func() { a.open(pageMacros) }},
 		{"Console", "Type G-code, and read the replies", dim, func() { a.open(pageConsole) }},
-		{"Theme", themeLine(a.Theme, a.NightFrom, a.NightTo), dim, a.cycleTheme},
-		{"Clock", clockLine(a.Clock24), dim, a.toggleClock},
+		{"Settings", "Theme, clock, filament change", dim, func() { a.open(pageSettings) }},
 	}
 	if a.Updater != nil {
 		line, warn := updateLine(a.Updater.Status())
@@ -403,6 +402,34 @@ func (a *App) recordRow(c *gfx.Canvas, box image.Rectangle, r printer.Record, su
 	sum := line
 	sum.Max.X -= gfx.Width(gfx.Face(false, 14), date) + 12
 	c.Text(sum, gfx.Fit(gfx.Face(false, 16), summary, sum.Dx()), gfx.Face(false, 16), col, gfx.Left)
+}
+
+// drawSettings is the Settings page: a row for each setting of the deck. A tap changes it.
+func (a *App) drawSettings(c *gfx.Canvas) {
+	f := a.navPage(c, "Settings")
+	items := []menuItem{
+		{"Theme", themeLine(a.Theme, a.NightFrom, a.NightTo), dim, a.cycleTheme},
+		{"Clock", clockLine(a.Clock24), dim, a.toggleClock},
+		{"Home in a filament change", swapHomeLine(a.SwapHome), dim, a.toggleSwapHome},
+	}
+	a.menuRows(c, f.body(), f.wide, 60, 5, items)
+}
+
+// swapHomeLine is the line of the Home in a filament change row.
+func swapHomeLine(on bool) string {
+	if on {
+		return "On: homes while the nozzle heats"
+	}
+	return "Off"
+}
+
+// toggleSwapHome turns the homing in a filament change on or off.
+func (a *App) toggleSwapHome() {
+	a.SwapHome = !a.SwapHome
+	a.Toast(swapHomeLine(a.SwapHome))
+	if a.OnSwapHome != nil {
+		a.OnSwapHome(a.SwapHome)
+	}
 }
 
 // drawStats is the Statistics page: the totals of the print history. A wide screen has the four
