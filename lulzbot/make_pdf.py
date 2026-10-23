@@ -191,7 +191,9 @@ STEPS = [
         "From inside the pod, put the two M3 × 12 screws through the flange of the plate into the back panel.",
     ], "The two screws through the flange hold up the head. The clips hold its right end against the rail."),
     ("step_cables", "Cables", [], {}, [
-        "Connect the HDMI cable to the HDMI 0 port (next to the USB-C port).",
+        "Connect the HDMI cable to the HDMI 0 port (next to the USB-C port). Push the plug straight in. Let the "
+        "cable go straight down from the plug, then turn it to the front in a wide curve along the bottom of the pod. "
+        "Do not bend it at the plug.",
         "Connect the touch cable to the upper USB 3 port (blue), and the drive cable to the lower USB 3 port.",
         "Connect the printer cable to the lower USB 2 port. Lead it up the front of the pod, over the Pi, down at the "
         "rear end of the Pi, and out of the upper notch in the rear wall.",

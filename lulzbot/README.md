@@ -32,11 +32,11 @@ electronics chassis, and it wraps around the front left edge of the chassis.
 | `stl/head.stl` | Navy | Face down | 87 g | 4 h 28 min |
 | `stl/pod.stl` | Navy | Outer face down | 75 g | 3 h 45 min |
 | `stl/back.stl` | Orange | Rear face down, 0.4 mm layers | 69 g | 3 h 16 min |
-| `stl/plate.stl` | Orange | Cover face down, 0.4 mm layers | 58 g | 2 h 11 min |
+| `stl/plate.stl` | Orange | Cover face down, 0.4 mm layers | 61 g | 2 h 18 min |
 | `stl/clip.stl` (print 2) | Orange | On its end, with a brim | 2 x 4 g | 2 x 18 min |
-| `stl/grille.stl` | White | Back down | 24 g | 1 h 13 min |
+| `stl/grille.stl` | White | Back down | 24 g | 1 h 12 min |
 
-In total: 321 g of PLA (navy 162 g, orange 135 g, white 24 g) and 15 h 29 min of printing. Print
+In total: 324 g of PLA (navy 162 g, orange 138 g, white 24 g) and 15 h 35 min of printing. Print
 the display fit test first (`stl/fit_display.stl`, 22 g, 1 h 10 min): the display pocket has
 0.3 mm of clearance at each side. Until you have the metal T-nuts, also print two roll-in nuts
 (`stl/roll_nut.stl`, see Hardware). The numbers come from slices with the Cura profiles in `cura/`

@@ -280,7 +280,16 @@ CLIP_DROP = CLIP_L + 2 * CLIP_SLACK   # the head drops this far from the windows
 # header, z up from the bottom of the board.
 POD_X = (-X_FRONT, BACK_X[0] - CLR)
 X_IN = X_FRONT - WALL            # the inner face of the rear wall is at -X_IN
-PI_X, PI_Y = 5.0, 179.0          # centre of the Pi board
+# The plugs need room. The USB plugs at the front edge are about 40 mm long, so the Pi is 15 mm
+# farther from the back panel than at first. The micro HDMI plug at the bottom edge is about 35 mm
+# with its strain relief, and its cable then turns to the front with a bend of 20 mm radius above
+# the bottom wall, so the Pi is 22 mm higher. The plug must sit straight in the Pi: a sharp bend
+# at the plug loosens it, and the display signal drops.
+PI_X, PI_Y = -10.0, 201.0        # centre of the Pi board
+PLUG_USB_A = 40.0                # a USB-A plug and the stiff part of its cable, from the port face
+PLUG_MICRO_HDMI = 35.0           # a micro HDMI plug with its strain relief, from the port face
+PLUG_USB_C = 30.0                # the USB-C power plug with its strain relief
+HDMI_BEND = 20.0                 # the least bend radius of the HDMI cable
 PI_BOSS_H = 3.5
 PI_BOSS_R = 3.5
 PI_Z = T_PLATE + PI_BOSS_H       # bottom of the Pi board
@@ -331,7 +340,7 @@ EXITS = [(113.5, 122.5, 11.0), (124.5, 134.5, 11.0)]
 # plate. They pull the pod up, and the 45 degree hooks pull it onto the plate.
 HOOKS = [
     # (x0, x1) of the fin (inner end first), y of the top of the fin base, the block hangs on
-    ((-65.0, -50.0), 166.0, "skin"),
+    ((-73.0, -58.0), 166.0, "skin"),     # behind the rear end of the Pi: the printer cable goes down there
     ((55.0, 72.0), 150.0, "skin"),
 ]
 FIN_T = 3.0
@@ -345,7 +354,7 @@ BLOCK_Y = (BOTTOM_BOSS_TOP + BOTTOM_GAP, 14.0)  # above POD_Y0; the HDMI cable i
 
 # Windows in the plate and the back panel (less filament): rounded rectangles away from the
 # screws, the bosses, and the hooks. Plate: (x0, x1, y0, y1). Back panel: (z0, z1, y0, y1).
-PLATE_WINDOWS = [(-72.0, -52.0, 120.0, 152.0), (-72.0, -42.0, 172.0, 238.0), (-28.0, 18.0, 160.0, 198.0),
+PLATE_WINDOWS = [(-72.0, -52.0, 120.0, 152.0), (-72.0, -56.0, 172.0, 238.0), (-40.0, 2.0, 182.0, 220.0),
                  (30.0, 72.0, 160.0, 220.0), (-38.0, 28.0, 126.0, 148.0)]
 
 # The 2.5 inch drive (the boot drive) with its USB adapter, in the head: flat on the inner face of
@@ -366,7 +375,7 @@ BACK_WINDOWS = [(118.0, 236.0, -194.0, -146.0), (190.0, 236.0, -100.0, -30.0), (
 
 # Grille: a window in the pod over the Pi, with a white panel in it. Two posts on the plate
 # hold its flange against the skin.
-GRILLE_WIN = (-32.0, 25.0, 156.0, 240.0)   # x0, x1, y0, y1 (left of the USB port bodies)
+GRILLE_WIN = (-47.0, 10.0, 156.0, 240.0)   # x0, x1, y0, y1 (left of the USB port bodies)
 # The grille snaps into a pocket in the pod. The pocket is the window in the skin and a rim on
 # the inner face of the skin; its floor is a 45 degree ledge (no flat ceiling in the print).
 # Each long side of the grille has a flexible tab (a 14 mm cantilever in the plane of the
