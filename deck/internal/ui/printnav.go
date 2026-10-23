@@ -12,8 +12,8 @@ import (
 )
 
 // The screens: a screen for the state of the printer (idle, preparing, first layer, printing,
-// paused, done, error), and the pages that the idle screen opens: Files, Move, Filament,
-// Maintenance and Machine. The pages are a stack: Back goes one page up.
+// paused, done, error), and the pages that the idle screen opens: Files, Toolhead, Filament
+// and Machine. Machine opens Maintenance. The pages are a stack: Back goes one page up.
 
 type page int
 
@@ -138,10 +138,13 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 		name string
 		p    page
 	}
-	// The pages stay in their places during a print. Move waits for its end; the others open,
-	// and their keys that change the printer wait.
-	pages := []homePage{{"Filament", pageFilament}, {"Move", pageMove}, {"Maintenance", pageMaintenance}, {"Machine", pageMachine}}
+	// The pages stay in their places during a print. Toolhead waits for its end; the others open,
+	// and their keys that change the printer wait. The last place is empty.
+	pages := []homePage{{"Filament", pageFilament}, {"Toolhead", pageMove}, {"Machine", pageMachine}}
 	for i, cell := range kit.Grid(r[1], 2, 2, 12) {
+		if i >= len(pages) {
+			break
+		}
 		p := pages[i].p
 		if p == pageMove {
 			a.printerKey(c, cell, pages[i].name, raised, text, func() { a.open(p) })

@@ -110,7 +110,7 @@ func (a *App) OpenPrintScreen(name string) {
 	case "filament":
 		a.pages = []page{pageFilament}
 	case "maintenance":
-		a.pages = []page{pageMaintenance}
+		a.pages = []page{pageMachine, pageMaintenance}
 	case "machine":
 		a.pages = []page{pageMachine}
 	case "macros":

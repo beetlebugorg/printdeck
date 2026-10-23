@@ -33,7 +33,7 @@ func lcdLines(a *App) []string {
 }
 
 // TestKnobMenu walks the menu of the printer display with the knob: from the idle screen to
-// Maintenance, and back.
+// Machine, and back.
 func TestKnobMenu(t *testing.T) {
 	a, _, cv := newPrintApp(idle)
 	a.Draw(cv)
@@ -46,20 +46,20 @@ func TestKnobMenu(t *testing.T) {
 	if lines[0] != "Printdeck" || !a.LCD().Menu.Carousel || lines[1] != "  Status" || lines[2] != "> Print a file" || a.topPage() != 0 {
 		t.Fatalf("menu: %q, page %v", lines, a.topPage())
 	}
-	// Turn the knob down to Maintenance, and click.
-	for i := 0; i < 20 && a.focus[a.lcdSel].label != "Maintenance"; i++ {
+	// Turn the knob down to Machine, and click.
+	for i := 0; i < 20 && a.focus[a.lcdSel].label != "Machine"; i++ {
 		knob(a, "down")
 	}
-	if a.focus[a.lcdSel].label != "Maintenance" {
-		t.Fatalf("no Maintenance key in %q", lcdLines(a))
+	if a.focus[a.lcdSel].label != "Machine" {
+		t.Fatalf("no Machine key in %q", lcdLines(a))
 	}
 	knob(a, "click")
-	if a.topPage() != pageMaintenance {
+	if a.topPage() != pageMachine {
 		t.Fatalf("page %v after the click", a.topPage())
 	}
 	lines = lcdLines(a)
-	if lines[0] != "Maintenance" || lines[1] != "  Back" || !strings.HasPrefix(lines[2], "> ") || a.LCD().Menu.Items[0].Icon != "back" {
-		t.Errorf("Maintenance: %q", lines)
+	if lines[0] != "Machine" || lines[1] != "  Back" || !strings.HasPrefix(lines[2], "> ") || a.LCD().Menu.Items[0].Icon != "back" {
+		t.Errorf("Machine: %q", lines)
 	}
 	// A turn up goes to Back, and a click goes back, to the key that opened the page.
 	knob(a, "up")
@@ -67,8 +67,8 @@ func TestKnobMenu(t *testing.T) {
 	if a.topPage() != 0 {
 		t.Errorf("page %v after Back", a.topPage())
 	}
-	if l := a.focus[a.lcdSel].label; l != "Maintenance" {
-		t.Errorf("the cursor is at %q after Back, want Maintenance", l)
+	if l := a.focus[a.lcdSel].label; l != "Machine" {
+		t.Errorf("the cursor is at %q after Back, want Machine", l)
 	}
 	// The touch screen shows the focus with a ring after a turn.
 	if a.knobAt.IsZero() {
