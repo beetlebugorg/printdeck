@@ -304,7 +304,7 @@ func lulzGuides(g lulzGuide) []bookGuide {
 	})
 	sub(&conn, "To open the mount")
 	list(&conn, "olist", []string{
-		"Remove the two screws under the pod. Move the pod down and out at 45 degrees, off the hooks, then 4 mm to the rear and out. To remove the grille, lift it at the fingernail notch.",
+		"Lift the grille out at the fingernail notch, and disconnect the fan cable. Remove the two screws under the pod. Move the pod down and out at 45 degrees, off the hooks, then 4 mm to the rear and out.",
 		"Disconnect the cables from the Pi. Remove the two flange screws from inside the pod.",
 		"Lift the head 30 mm and pull it off the clip keys. The display and the drive come off with it.",
 		"To get to the display or the drive, remove the four screws from the rear of the back panel.",

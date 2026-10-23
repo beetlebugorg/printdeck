@@ -7,8 +7,9 @@
 # panel hangs on the dovetail keys of two clips in the front left rail (a hammer nut and an
 # M3 x 8 screw hold each clip), and two M3 screws through a flange of the plate hold its left
 # end. The pod slides up and in at 45 degrees onto two hooks on the plate, and two M3 screws go
-# up through its bottom wall into the plate. The grille snaps into a pocket of the pod. Every hole
-# and hook has 45 degree faces in place of overhangs, so no part needs supports.
+# up through its bottom wall into the plate. The grille snaps into a pocket of the pod, and the
+# fan snaps into the grille. Every hole and hook has 45 degree faces in place of overhangs, so no
+# part needs supports.
 
 import math
 
@@ -420,7 +421,7 @@ def grille_tab_y():
 def grille():
     """The grille: a plate with vent slots, flush with the face of the pod, and a flexible tab on
     each long side with a ridge that clicks into the pod. The back edge has a 45 degree chamfer
-    that is on the ledge of the pocket."""
+    that is on the ledge of the pocket. Over the SoC, the bump holds the fan (see bump())."""
     x0, x1, y0, y1 = S.GRILLE_WIN
     c = S.GRILLE_CLR
     zp = S.POD_Z - S.GRILLE_T
@@ -429,6 +430,8 @@ def grille():
     n = int((y1 - y0 - 12) // S.GRILLE_SLOT_PITCH) + 1
     ys = [y0 + (y1 - y0) / 2 + (i - (n - 1) / 2) * S.GRILLE_SLOT_PITCH for i in range(n)]
     for y in ys:
+        if abs(y - S.FAN_XY[1]) < bump_half() + 1.0 + S.GRILLE_SLOT_W / 2:
+            continue                             # the bump is here
         g = g - slot_z(x0 + 7.0, x1 - 7.0, y, S.GRILLE_SLOT_W, zp - 1, S.POD_Z + 1)
     # The tabs: a slot frees each tab from the grille, except at its root (the lower end).
     L, tw, gap = S.GRILLE_TAB
@@ -441,7 +444,85 @@ def grille():
         g = g - box(xw + sg * 0.01, xi - sg * gap, ty1, ty1 + gap, zp - 1, S.POD_Z + 1)
         # The ridge: a 45 degree V near the free end of the tab.
         g = g + prism_y([(zm - r, xw - sg * 0.01), (zm, xw + sg * r), (zm + r, xw - sg * 0.01)], ty1 - 9.5, ty1 - 0.5)
-    return g
+    return bump(g)
+
+
+def bump_half():
+    """Half the outer width of the bump: the fan, a prong, the space behind it, and the wall."""
+    return S.FAN[0] / 2 + S.PRONG[1] + S.PRONG_GAP + S.BUMP_WALL
+
+
+def fan_z():
+    """z of the far face of the fan (on the catches) and of the funnel at the walls of the bump."""
+    z0 = S.POD_Z - S.GRILLE_T + S.PRONG[2]
+    return z0, z0 + S.FAN[1] + S.FAN_PLAY - S.FAN_CLR
+
+
+def bump(g):
+    """The bump of the grille, over the SoC: a box with round corners out of the face, open at the
+    back for the fan. Seen in the print (back down), the walls of the bump go up from the bed along
+    the sides of the fan. Above the fan, a 45 degree funnel goes in from the walls to a square
+    opening in the outer face, so there is no ceiling. Three vent slots go from each side of the
+    opening down the funnel, at right angles to the wall below them, so every layer is on the
+    layer under it. The four prongs and their catches hold the fan against the funnel. A groove
+    in one corner is for the fan cable, from the fan to the back of the grille."""
+    cx, cy = S.FAN_XY
+    zp = S.POD_Z - S.GRILLE_T
+    ho = bump_half()
+    fh = S.FAN[0] / 2
+    cw = fh + S.FAN_CLR                          # the inner faces of the walls
+    _, zf = fan_z()
+    b = rounded_rect(cx - ho, cx + ho, cy - ho, cy + ho, S.BUMP_R, zp + 0.5, S.BUMP_TOP)
+    b = chamfer(b.edges().filter_by(lambda e: abs(e.center().Z - S.BUMP_TOP) < 0.01), S.EDGE)
+    g = g + b
+    g = g - box(cx - cw, cx + cw, cy - cw, cy + cw, zp - 1, zf)
+    top = Plane(origin=(cx, cy, zf), z_dir=(0, 0, 1)) * Rectangle(2 * cw, 2 * cw)
+    g = g - extrude(top, amount=S.BUMP_TOP + 1 - zf, taper=45)
+    a = cw - (S.BUMP_TOP - zf)                   # half the opening in the outer face
+    w, pitch = S.BUMP_SLOTS
+    for k in range(4):
+        m = Pos(cx, cy, 0) * Rot(0, 0, 90 * k)
+        for o in (-pitch, 0.0, pitch):
+            g = g - m * rounded_rect(a - 2.0, cw - 0.6, o - w / 2, o + w / 2, w / 2 - 0.01, zf, S.BUMP_TOP + 1)
+        cut, prong = prong_shapes()
+        g = g - m * cut
+        g = g + m * prong
+    gl, gd, gt = S.FAN_GROOVE
+    groove = box(cw - gl, cw, cw - 0.01, cw + gd, zp - 1, gt)
+    groove = groove + prism_y([(gt - 0.01, cw - gl), (gt - 0.01, cw), (gt + gl / 2, cw - gl / 2)], cw - 0.01, cw + gd)
+    return g - Pos(cx, cy, 0) * groove
+
+
+def prong_shapes():
+    """The prong on the +x side of the fan, near the +y corner, about the centre of the fan (the
+    other three are the same, turned 90 degrees each): the cut that frees it (the
+    space behind it and a slit at each side, with 45 degree roofs), and the prong with its catch.
+    The prong stands on the bed in the print. The catch has a 45 degree lead-in under it and a
+    level top that holds the far face of the fan."""
+    zp = S.POD_Z - S.GRILLE_T
+    w, t, d = S.PRONG
+    gap, s = S.PRONG_GAP, 0.6
+    fh = S.FAN[0] / 2
+    _, zr = fan_z()
+    xg = fh + t                                  # the outer face of the prong
+    c = S.PRONG_AT
+    cut = box(xg, xg + gap, c - w / 2 - s, c + w / 2 + s, zp - 1, zr)
+    cut = cut + prism_y([(zr - 0.01, xg), (zr - 0.01, xg + gap), (zr + gap / 2, xg + gap / 2)], c - w / 2 - s, c + w / 2 + s)
+    for sg in (-1, 1):
+        y0, y1 = sorted((c + sg * w / 2, c + sg * (w / 2 + s)))
+        cut = cut + box(fh - 0.5, xg + 0.01, y0, y1, zp - 1, zr)
+        cut = cut + prism_x([(y0, zr - 0.01), (y1, zr - 0.01), ((y0 + y1) / 2, zr + s / 2)], fh - 0.5, xg + 0.01)
+    prong = box(fh, xg + 0.01, c - w / 2, c + w / 2, zp, zr)
+    prong = prong + prism_y([(zp, fh + 0.01), (zp + d, fh - d), (zp + d, fh + 0.01)], c - w / 2, c + w / 2)
+    return cut, prong
+
+
+def prong_strain():
+    """The strain in a prong when it bends out by the catch depth: 1.5 t d / L^2."""
+    _, t, d = S.PRONG
+    _, zr = fan_z()
+    L = zr - (S.POD_Z - S.GRILLE_T)
+    return 1.5 * t * d / L ** 2, L
 
 
 # ---------------------------------------------------------------- hardware
@@ -616,9 +697,10 @@ def pi5():
         ("pi_hdmi0", box(-20.3, -13.1, -29.2, -21.6, b, b + 3), "steel"),
         ("pi_hdmi1", box(-6.9, 0.3, -29.2, -21.6, b, b + 3), "steel"),
         ("pi_soc", box(-20.5, -3.5, -6, 11, b, b + 2.2), "nickel"),
-        # Raspberry Pi Active Cooler (heatsink and fan): an envelope 10.5 mm high.
-        ("pi_cooler", box(-34, 14, -21, 20, b + 2.2, b + 10.5), "alu_dark"),
         ("pi_rp1", box(4.5, 16.5, -4, 8, b, b + 1.2), "black_plastic"),
+        # Stick-on heatsinks, the highest that fits: 20 x 20 mm on the SoC, 12 x 12 mm on the RP1.
+        ("pi_heatsink_soc", heatsink(-22, -2, -7.5, 12.5, b + 2.2), "alu_dark"),
+        ("pi_heatsink_rp1", heatsink(4.5, 16.5, -4, 8, b + 1.2), "alu_dark"),
         ("pi_fan_socket", box(22.8, 25.7, 21, 27, b, b + 3.6), "nickel"),
         ("pi_sdcard", box(-44.5, -38.0, -6.0, 5.0, -1.4, 0.0), "black_plastic"),
     ]
@@ -632,9 +714,38 @@ def pi5():
         ("plug_touch_usb", box(44.6, 74.6, -6.4, 8.6, b + 8, b + 15), "black_plastic"),
         ("plug_drive_usb", box(44.6, 74.6, -6.4, 8.6, b + 0.8, b + 7.8), "black_plastic"),
         ("plug_printer_usb", box(44.6, 74.6, 11.5, 26.5, b + 0.8, b + 7.8), "black_plastic"),
+        ("plug_pi_fan", box(23.0, 25.5, 21.5, 26.5, b + 3.6, b + 7), "nickel"),     # from the Slate
     ]
     m = Pos(S.PI_X, S.PI_Y, S.PI_Z)
     return [(n, m * s, mat) for n, s, mat in p]
+
+
+def heatsink(x0, x1, y0, y1, z0):
+    """A heatsink HEATSINK_H high (Pi coordinates): a 2 mm base and fins along y."""
+    h = box(x0, x1, y0, y1, z0, z0 + S.HEATSINK_H)
+    n = int((x1 - x0) // 4)
+    for i in range(n - 1):
+        x = x0 + (x1 - x0) * (i + 1) / n
+        h = h - box(x - 0.8, x + 0.8, y0 - 1, y1 + 1, z0 + 2.0, z0 + S.HEATSINK_H + 1)
+    return h
+
+
+def fan():
+    """The 30 mm fan in the bump of the grille (from the Slate): the frame, the hub, and seven
+    blades. Its far face is on the catches of the prongs."""
+    cx, cy = S.FAN_XY
+    h, t = S.FAN[0] / 2, S.FAN[1]
+    body = box(-h, h, -h, h, 0, t) - Pos(0, 0, -1) * Cylinder(14, t + 2, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    for x in (-12, 12):
+        for y in (-12, 12):
+            body = body - cyl_z(x, y, 1.65, -1, t + 1)
+    p = [("fan_frame", body, "black_plastic"),
+         ("fan_hub", Pos(0, 0, 0.5) * Cylinder(6.3, t - 1, align=(Align.CENTER, Align.CENTER, Align.MIN)), "black_plastic")]
+    for i in range(7):
+        bl = Rot(0, 0, i * 360 / 7) * Pos(9.75, 0, t / 2) * Rot(35, 0, 0) * box(-3.75, 3.75, -3.2, 3.2, -0.4, 0.4)
+        p.append((f"fan_blade{i}", bl, "black_plastic"))
+    m = Pos(cx, cy, fan_z()[0])
+    return [(n, m * sh, mat) for n, sh, mat in p]
 
 
 def pi_board():
@@ -735,6 +846,8 @@ def cable_paths():
     Drive: from the lower USB 3 port down the front, through the lower window, into the drive plug.
     Printer: from the lower USB 2 port up the front, over the Pi, down at the rear end of the Pi,
     and out of the upper exit at the rear. Power: from the USB-C port to the lower exit.
+    Fan: from the corner of the fan down the groove of the bump, over the end of the GPIO header,
+    into the plug on the fan socket of the Pi.
     The printer and the power cable go 25 mm out of the rear face of the chassis."""
     def hp(p, q, r):
         return S.head_pt(p, q, r)
@@ -768,10 +881,16 @@ def cable_paths():
     pc = S.pi_pt(-31.3, -57.3, 1.5 + 1.6)
     yl = sum(S.EXITS[0][:2]) / 2
     power = [pc, (pc[0], pc[1] - 2.5, pc[2] - 0.6), (pc[0] - 6.0, yl, 6.0), (-S.X_IN + 10.0, yl, 6.0), (xr, yl, 6.0)]
-    return {"hdmi": hdmi, "touch": touch, "drive": drive_c, "printer": printer, "power": power}
+    # Fan.
+    gl, gd, _ = S.FAN_GROOVE
+    cw = S.FAN[0] / 2 + S.FAN_CLR
+    gx, gy = S.FAN_XY[0] + cw - gl / 2, S.FAN_XY[1] + cw + gd / 2
+    pf = S.pi_pt(24.25, 24.0, 1.5 + 7.1)
+    fan_c = [(gx, gy, 27.0), (gx, gy, 21.5), (18.0, 198.0, 19.5), (pf[0], pf[1], 19.0), pf]
+    return {"hdmi": hdmi, "touch": touch, "drive": drive_c, "printer": printer, "power": power, "fan": fan_c}
 
 
-CABLE_R = {"hdmi": 2.0, "touch": 1.75, "drive": 2.25, "printer": 2.0, "power": 2.0}
+CABLE_R = {"hdmi": 2.0, "touch": 1.75, "drive": 2.25, "printer": 2.0, "power": 2.0, "fan": 1.0}
 
 
 def cables():

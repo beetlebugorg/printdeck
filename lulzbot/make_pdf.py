@@ -55,7 +55,7 @@ PRINTS = [
     ("back", "back", "Orange", 1, "Rear face down. A flat plate with the clip slots and the windows."),
     ("plate", "plate", "Orange", 1, "The face that goes on the cover down. The bosses and the hooks point up."),
     ("clip_a", "clip", "Orange", 2, "On its end, with a brim: the section of the clip is on the bed. Print 2."),
-    ("grille", "grille", "White", 1, "Back down. The front face is the top layer. The snap tabs bend along the layers."),
+    ("grille", "grille", "White", 1, "Back down. The bump and the four fan prongs point up. The snap tabs bend along the layers."),
 ]
 TEST = ("fit_display", "fit_display", "Navy", 1, "Optional fit test of the screen opening. Face down.")
 
@@ -75,7 +75,10 @@ SETTINGS = [
 
 ELECTRONICS = [
     (1, "Raspberry Pi 5 (from the Slate build)"),
-    (1, "Raspberry Pi Active Cooler, max. 10.5 mm high (buy, if you do not have one)"),
+    (1, f"30 × 30 × 10 mm 5 V fan with the Pi 5 fan plug (4-pin JST-SH), the same as the Slate. From the corner of "
+        f"the fan to the fan socket of the Pi, the cable route is {cm(CABLES['fan'])}. The cable must also let you hold "
+        "the grille next to the pod while you connect it."),
+    (1, "Stick-on heatsinks for the Pi 5 (a set), max. 10 mm high. The heatsink of the SoC can be up to 20 × 20 mm."),
     (1, "Adafruit 7 inch HDMI display with touch, product 2407 (from the Slate build)"),
     (1, "2.5 inch SATA drive with its USB adapter board, the boot drive (from the Slate build)"),
     (1, f"HDMI cable: micro HDMI to HDMI, straight plugs, a flat ribbon of 30 cm or more (the route is "
@@ -155,8 +158,9 @@ STEPS = [
         "screws, each with a washer.",
     ], "The slots in the pads let the plate fit 5 mm up or down and 0.5 mm to the front or the rear. The pad is 4 mm "
        "thick, so the M3 × 10 goes 3.5 mm into the nut of the chassis (the old screw went 4.0 mm)."),
-    ("step_pi", "Pi on the plate", ["Pi 5 (step 1)", "Active Cooler"], {"m3x6": 4}, [
-        "Put the Active Cooler on the Pi, and connect its cable to the fan connector.",
+    ("step_pi", "Pi on the plate", ["Pi 5 (step 1)", "heatsinks"], {"m3x6": 4}, [
+        "Stick the heatsinks on the Pi: on the SoC (the large chip at the middle) and on the RP1 (the chip between the "
+        "SoC and the USB ports). A heatsink can be up to 10 mm high.",
         "Put the Pi on the four bosses: the USB ports toward the front of the printer, the USB-C and HDMI ports down.",
         "Attach it with four M3 × 6 screws. They cut their own thread in the bosses: turn them until they are "
         "snug, and no more.",
@@ -187,14 +191,31 @@ STEPS = [
         "Behind the printer, connect the printer cable to the USB socket of the printer board, and the power cable to "
         "the power supply.",
     ], "No cable goes through a hole in the printer, and no cable shows on the front or the side."),
-    ("step_pod", "Grille and pod", ["grille", "pod"], {"m3x8": 2}, [
-        "Push the grille into the pocket of the pod from the outside, with the fingernail notch at the bottom. Push "
-        "both sides until the two tabs click. The grille is flush with the pod.",
+    ("step_pod", "Pod", ["pod"], {"m3x8": 2}, [
         "Hold the pod about 6 mm low and 6 mm out from its place, and 4 mm to the rear. Move it 4 mm to the front, "
         "then push it up and in at 45° onto the two hooks of the plate. The rear wall goes over the two cables.",
         "Put the two M3 × 8 screws up through the bottom of the pod into the plate. They pull the pod up, and the "
         "45° hooks pull it onto the plate.",
-    ], "To remove the grille, put a fingernail or a small screwdriver into the notch at its bottom edge, and lift."),
+    ], None),
+    ("step_fan", "Fan into the grille", ["grille", "fan"], {}, [
+        "Hold the grille with its back toward you. Four prongs stand up around the opening of the bump.",
+        "Turn the fan so that it blows away from the grille, onto the Pi. Most fans show the direction of the air with "
+        "an arrow on the frame.",
+        "Turn the fan so that its cable comes out at the corner with the groove. With the grille on the pod, this "
+        "corner is at the top, toward the front of the printer.",
+        "Push the fan into the bump, between the four prongs, until the four catches click over the frame. Put the "
+        "cable into the groove.",
+    ], "The catches hold the fan against the funnel in the bump, with 0.2 mm of play. To remove the fan, push the "
+       "catches of two prongs out with a small screwdriver, and pull the fan out."),
+    ("step_grille", "Grille", ["grille with the fan (step 11)"], {}, [
+        "Connect the fan cable to the fan socket of the Pi: the small 4-pin socket between the end of the GPIO "
+        "header and the USB ports.",
+        "Hold the grille at the pocket of the pod, with the fingernail notch at the bottom. The cable goes from the "
+        "groove over the end of the GPIO header to the socket.",
+        "Push the grille into the pocket from the outside. Push both sides until the two tabs click. The plate of the "
+        "grille is flush with the pod, and the bump is 15 mm out of the pod.",
+    ], "To remove the grille, put a fingernail or a small screwdriver into the notch at its bottom edge, and lift. "
+       "Then disconnect the fan cable."),
 ]
 
 
@@ -452,8 +473,8 @@ def end_page(n):
     <li>Connect the printer cable to the USB socket of the printer board.</li>
     <li>Turn on the printer. The deck starts from the drive.</li></ol>
   <h2 style="margin-top:4mm">To open the mount</h2>
-  <ol><li>Remove the two screws under the pod. Move the pod down and out at 45°, off the hooks, then 4 mm to the rear
-      and out. To remove the grille, lift it at the fingernail notch.</li>
+  <ol><li>Lift the grille out at the fingernail notch, and disconnect the fan cable. Remove the two screws under the
+      pod. Move the pod down and out at 45°, off the hooks, then 4 mm to the rear and out.</li>
     <li>Disconnect the cables from the Pi. Remove the two flange screws from inside the pod.</li>
     <li>Lift the head 30 mm and pull it off the clip keys. The display and the drive come off with it.</li>
     <li>To get to the display or the drive, remove the four screws from the rear of the back panel.</li></ol>

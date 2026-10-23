@@ -1,9 +1,9 @@
 {
  "totals": {
-  "grams": 309,
-  "metres": 39,
-  "time": "14 h 58 min",
-  "cost": "$7.10",
+  "grams": 321,
+  "metres": 40,
+  "time": "15 h 29 min",
+  "cost": "$7.38",
   "parts": 7,
   "pricePerKg": "$22.99"
  },
@@ -84,12 +84,12 @@
    "colour": "White",
    "swatch": "#F2F2EE",
    "count": 1,
-   "grams": 12,
-   "metres": 1.5,
-   "time": "0 h 42 min",
-   "cost": "$0.28",
-   "size": "58 × 84 × 3",
-   "notes": "Back down. The front face is the top layer. The snap tabs bend along the layers.",
+   "grams": 24,
+   "metres": 3.1,
+   "time": "1 h 13 min",
+   "cost": "$0.55",
+   "size": "58 × 84 × 18",
+   "notes": "Back down. The bump and the four fan prongs point up. The snap tabs bend along the layers.",
    "image": "lulzbot-part_grille"
   }
  ],
@@ -190,7 +190,11 @@
   ],
   [
    1,
-   "Raspberry Pi Active Cooler, max. 10.5 mm high (buy, if you do not have one)"
+   "30 × 30 × 10 mm 5 V fan with the Pi 5 fan plug (4-pin JST-SH), the same as the Slate. From the corner of the fan to the fan socket of the Pi, the cable route is 4 cm. The cable must also let you hold the grille next to the pod while you connect it."
+  ],
+  [
+   1,
+   "Stick-on heatsinks for the Pi 5 (a set), max. 10 mm high. The heatsink of the SoC can be up to 20 × 20 mm."
   ],
   [
    1,
@@ -320,11 +324,11 @@
    "title": "Pi on the plate",
    "need": [
     "Pi 5 (step 1)",
-    "Active Cooler",
+    "heatsinks",
     "4 × M3 × 6"
    ],
    "items": [
-    "Put the Active Cooler on the Pi, and connect its cable to the fan connector.",
+    "Stick the heatsinks on the Pi: on the SoC (the large chip at the middle) and on the RP1 (the chip between the SoC and the USB ports). A heatsink can be up to 10 mm high.",
     "Put the Pi on the four bosses: the USB ports toward the front of the printer, the USB-C and HDMI ports down.",
     "Attach it with four M3 × 6 screws. They cut their own thread in the bosses: turn them until they are snug, and no more."
    ],
@@ -376,18 +380,44 @@
   },
   {
    "image": "step_pod",
-   "title": "Grille and pod",
+   "title": "Pod",
    "need": [
-    "grille",
     "pod",
     "2 × M3 × 8"
    ],
    "items": [
-    "Push the grille into the pocket of the pod from the outside, with the fingernail notch at the bottom. Push both sides until the two tabs click. The grille is flush with the pod.",
     "Hold the pod about 6 mm low and 6 mm out from its place, and 4 mm to the rear. Move it 4 mm to the front, then push it up and in at 45° onto the two hooks of the plate. The rear wall goes over the two cables.",
     "Put the two M3 × 8 screws up through the bottom of the pod into the plate. They pull the pod up, and the 45° hooks pull it onto the plate."
    ],
-   "note": "To remove the grille, put a fingernail or a small screwdriver into the notch at its bottom edge, and lift."
+   "note": ""
+  },
+  {
+   "image": "step_fan",
+   "title": "Fan into the grille",
+   "need": [
+    "grille",
+    "fan"
+   ],
+   "items": [
+    "Hold the grille with its back toward you. Four prongs stand up around the opening of the bump.",
+    "Turn the fan so that it blows away from the grille, onto the Pi. Most fans show the direction of the air with an arrow on the frame.",
+    "Turn the fan so that its cable comes out at the corner with the groove. With the grille on the pod, this corner is at the top, toward the front of the printer.",
+    "Push the fan into the bump, between the four prongs, until the four catches click over the frame. Put the cable into the groove."
+   ],
+   "note": "The catches hold the fan against the funnel in the bump, with 0.2 mm of play. To remove the fan, push the catches of two prongs out with a small screwdriver, and pull the fan out."
+  },
+  {
+   "image": "step_grille",
+   "title": "Grille",
+   "need": [
+    "grille with the fan (step 11)"
+   ],
+   "items": [
+    "Connect the fan cable to the fan socket of the Pi: the small 4-pin socket between the end of the GPIO header and the USB ports.",
+    "Hold the grille at the pocket of the pod, with the fingernail notch at the bottom. The cable goes from the groove over the end of the GPIO header to the socket.",
+    "Push the grille into the pocket from the outside. Push both sides until the two tabs click. The plate of the grille is flush with the pod, and the bump is 15 mm out of the pod."
+   ],
+   "note": "To remove the grille, put a fingernail or a small screwdriver into the notch at its bottom edge, and lift. Then disconnect the fan cable."
   }
  ],
  "cables": [
