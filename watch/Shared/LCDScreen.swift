@@ -417,19 +417,36 @@ enum LCDScreen: Equatable {
     case menu(LCDMenu)
     case page(LCDPage)
     case rows([(String, String)])
+    /// The start screen of the deck: the title in the large font as wide as the display, a line,
+    /// and lines of small text, the first with dots that run.
+    case splash(String, [String])
 
     static func == (a: LCDScreen, b: LCDScreen) -> Bool {
         switch (a, b) {
         case let (.status(x), .status(y)): x == y
         case let (.menu(x), .menu(y)): x == y
         case let (.page(x), .page(y)): x == y
+        case let (.splash(a, b), .splash(c, d)): a == c && b == d
         case let (.rows(x), .rows(y)): x.map { $0.0 + "\u{0}" + $0.1 } == y.map { $0.0 + "\u{0}" + $0.1 }
         default: false
         }
     }
 
-    var moves: Bool { if case let .status(s) = self { s.moves } else { false } }
-    var animates: Bool { if case let .status(s) = self { s.animates } else { false } }
+    var moves: Bool {
+        switch self {
+        case .status(let s): s.moves
+        case .splash: true
+        default: false
+        }
+    }
+
+    var animates: Bool {
+        switch self {
+        case .status(let s): s.animates
+        case .splash: true
+        default: false
+        }
+    }
 
     /// A frame of the screen on a display of width x height pixels: 128 x 64 as the printer, or a
     /// narrow display, where the status screen has its portrait layout.
@@ -442,6 +459,19 @@ enum LCDScreen: Equatable {
             if c.w < 112 { s.drawPortrait(&c, frame: frame) } else { s.draw(&c, frame: frame) }
         case .menu(let m): m.draw(&c)
         case .page(let p): p.draw(&c)
+        case let .splash(title, lines):
+            let big = LCDFont.big, small = LCDFont.small
+            let k = max(1, min(3, c.w / (big.w * max(1, title.count))))
+            let th = big.h * k
+            let y0 = max(0, c.h / 2 - th / 2 - 4)
+            c.text(big, (c.w - big.w * k * title.count) / 2, y0, title, scale: k)
+            c.fill(0, y0 + th + 4, c.w, y0 + th + 5)
+            for (i, l) in lines.enumerated() {
+                // The dots after the first line run, 2 frames each.
+                let t = lcdFit(i == 0 ? l + String(repeating: ".", count: frame / 2 % 4) : l, c.w / small.w)
+                let w = small.w * (i == 0 ? lcdFit(l, c.w / small.w).count + 3 : t.count)
+                c.text(small, (c.w - w) / 2, y0 + th + 12 + i * 11, t)
+            }
         case .rows(let rows):
             let f = LCDFont.small, n = c.w / f.w
             for (i, r) in rows.prefix(c.h / 9).enumerated() {

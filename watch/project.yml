@@ -31,7 +31,8 @@ targets:
         CFBundleDisplayName: Printdeck
         KeychainGroup: $(KEYCHAIN_GROUP)
         UIAppFonts: [IBMPlexMono-Regular.ttf, IBMPlexMono-SemiBold.ttf]
-        UILaunchScreen: {}
+        UILaunchScreen:
+          UIColorName: LaunchColor
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true

@@ -7,7 +7,8 @@ deck over the local network.
   the printer at the top, then the keys and the plates of the print. During a print it has Pause,
   Cancel and Menu, the layer, the roll (color, a meter of what is left, the name and the grams),
   and the file with the progress and a playhead. A paused print has Resume. With no print, Print a
-  file opens the files of the deck, newest first. Menu opens the setup.
+  file opens the files of the deck, newest first. Menu opens the setup. At the start, the app
+  shows the start screen of the deck in dots until the first reading of the deck.
 - The watch app is a blue dot-matrix display, in the fonts and the icons of the printer display
   of the deck, over the whole watch. The first page is the progress of the print: the state, the
   percent in a large font, the bar, the layer, the time left and the end. Under it, in one scroll
@@ -152,8 +153,8 @@ All other requests have the header `X-Api-Key`.
 ## Screenshots in the simulator
 
 In a debug build, the environment variables `PRINTDECK_ADDRESS` and `PRINTDECK_KEY` set the deck,
-and `PRINTDECK_SCREEN` opens a screen: `menu`, `info` or `cancel` on the watch, `files` or
-`setup` on the iPhone. With `xcrun simctl launch`, give them the prefix `SIMCTL_CHILD_`. The
+and `PRINTDECK_SCREEN` opens a screen: `menu` or `cancel` on the watch, `files`, `setup` or
+`loading` on the iPhone. With `xcrun simctl launch`, give them the prefix `SIMCTL_CHILD_`. The
 simulated deck of `printdeck app -sim` reads its API key from `OCTOPRINT_API_KEY`.
 
 ## License

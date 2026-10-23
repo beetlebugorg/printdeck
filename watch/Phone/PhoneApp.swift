@@ -30,17 +30,36 @@ struct DeckView: View {
 
     @State private var sheet: Sheet?
     @State private var confirm: DeckModel.Command?
+    /// The loading screen shows until the first reading of the deck.
+    @State private var loading = true
 
     var body: some View {
         let p = Palette.of(scheme)
-        Group {
+        ZStack {
             if model.settings.isComplete {
                 deck
             } else {
                 SetupView(link: link)
             }
+            if loading {
+                LoadingView(lines: model.settings.isComplete ? ["Connecting", model.settings.address] : ["Setting up"])
+                    .transition(.opacity)
+            }
         }
         .environment(\.palette, p)
+        .task {
+            // At least a second, so the screen does not flash, and up to 8 seconds for the deck.
+            try? await Task.sleep(for: .seconds(1))
+            for _ in 0..<35 {
+                if !model.settings.isComplete || model.status != nil || model.error != nil { break }
+                try? await Task.sleep(for: .milliseconds(200))
+            }
+            #if DEBUG
+            // For screenshots in the simulator: PRINTDECK_SCREEN=loading keeps the loading screen.
+            if ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"] == "loading" { return }
+            #endif
+            withAnimation(.easeOut(duration: 0.35)) { loading = false }
+        }
         #if DEBUG
         .onAppear {
             // For screenshots in the simulator: PRINTDECK_SCREEN opens a page.

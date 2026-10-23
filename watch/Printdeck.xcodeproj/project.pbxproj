@@ -40,6 +40,7 @@
 		5BEA86D6FD930072D2F8F8F3 /* LCDModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B022EC77AE6F9B9D53042D7 /* LCDModel.swift */; };
 		611D26B56710B4A5688DDC42 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 770B96494514D1F98C3D0ADF /* IBMPlexMono-Regular.ttf */; };
 		6149A119BB217C8B12B119EE /* DeckModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B99E447765312CFD4C878FD /* DeckModel.swift */; };
+		633901ECE9336374CC08360E /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF20419EDCAAD600A119469 /* LoadingView.swift */; };
 		64F35B9FA58B132E14704F2D /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 58645DA084A54E4D7E787CE2 /* OFL.txt */; };
 		6C57FAC94467977ECB078865 /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */; };
 		6DE9BB11F05A23CA11727C26 /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */; };
@@ -196,6 +197,7 @@
 		EFB83763E3B47BF75CF93CE3 /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
 		F5F06702BFE192990D619B34 /* PrintdeckComplication.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PrintdeckComplication.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F683BF97A6034681AF592CCA /* PrintdeckApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrintdeckApp.swift; sourceTree = "<group>"; };
+		FAF20419EDCAAD600A119469 /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingView.swift; sourceTree = "<group>"; };
 		FF065E98D227459FBD8169BB /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -242,6 +244,7 @@
 				B18B3A83A2D98FA589A08D3E /* FilesView.swift */,
 				251FEC8FBC5B7C7E2E9DBD8A /* Finder.swift */,
 				A539B7B79BF37C687CDF8579 /* Info.plist */,
+				FAF20419EDCAAD600A119469 /* LoadingView.swift */,
 				A3F141F7CE39B1948949216E /* Phone.entitlements */,
 				C024260E6470548F3C91FC1F /* PhoneApp.swift */,
 				3FAD54D561DB49920D460416 /* Push.swift */,
@@ -602,6 +605,7 @@
 				1D53332689C0FD450DC4F756 /* LCDFonts.swift in Sources */,
 				5BEA86D6FD930072D2F8F8F3 /* LCDModel.swift in Sources */,
 				71037600023E3A978BA45150 /* LCDScreen.swift in Sources */,
+				633901ECE9336374CC08360E /* LoadingView.swift in Sources */,
 				29674AE5CE7846046F269CD2 /* Panel.swift in Sources */,
 				F43A110534B2B219678D0EEA /* PhoneApp.swift in Sources */,
 				4E4BDF69F3AE2C06E9F3699E /* Push.swift in Sources */,
