@@ -13,7 +13,10 @@ Fit check (a true boolean test of every pair whose boxes overlap):
   - the printer USB and the power cable go out of the rear wall of the pod without a touch,
   - the head with the back panel hangs on the rail: at each step of the 8 mm drop onto the rail
     screws, it touches no fixed part,
-  - the pod slides on: at each step of its 45 degree path, it touches no fixed part.
+  - the pod slides on: at each step of its 45 degree path, it touches no fixed part,
+  - the fan sits in the snaps of the grille: the catches are under the fan, the funnel is over
+    it, and the prongs bend less than the strain limit,
+  - the grille with the fan goes into the pod straight from the outside and touches no part.
 Output:
   cad/<part>.step            each printed part, in its position on the printer
   cad/lulzbot-assembly.step  all parts and the hardware, with colours, on the printer
@@ -60,7 +63,7 @@ PRINTED = {
 
 MATES = [
     ("display_glass", "display_lcd"), ("display_screw", "display_board"), ("display_sockets", "display_board"),
-    ("display_plug", "display_sockets"), ("pi_screw", "pi_board"), ("pi_soc", "pi_cooler"), ("pi_rp1", "pi_cooler"),
+    ("display_plug", "display_sockets"), ("pi_screw", "pi_board"), ("pi_soc", "pi_heatsink"), ("pi_rp1", "pi_heatsink"),
     ("pi_sdcard", "pi_board"), ("plug_pi_power", "pi_usbc"), ("plug_pi_hdmi", "pi_hdmi0"),
     ("plug_touch_usb", "pi_usb3"), ("plug_drive_usb", "pi_usb3"), ("plug_touch_usb", "plug_drive_usb"),
     ("plug_printer_usb", "pi_usb2"), ("cable_drive", "plug_drive_usb"), ("cable_drive", "ssd_cable_relief"),
@@ -68,6 +71,7 @@ MATES = [
     ("ssd_cable_metal", "ssd_cable_plug"), ("ssd_cable_plug", "ssd_cable_relief"), ("drive_screw", "ssd_drive"), ("clip_screw", "hammer_nut"),
     ("cable_hdmi", "display_plug_hdmi"), ("cable_hdmi", "plug_pi_hdmi"), ("cable_touch", "display_plug_usb"),
     ("cable_touch", "plug_touch_usb"), ("cable_printer", "plug_printer_usb"), ("cable_power", "plug_pi_power"),
+    ("plug_pi_fan", "pi_fan_socket"), ("cable_fan", "plug_pi_fan"), ("fan_hub", "fan_blade"), ("fan_frame", "fan_blade"),
 ]
 
 # Parts that go into the printer on purpose: the mounting screws into the cover and the PEM
@@ -122,7 +126,7 @@ def hardware_list(hw):
 GROUPS = {"display_": "display", "pi_": "pi", "plug_": "pi", "cable_": "cables", "mount_screw": "mount_screws",
           "bottom_screw": "bottom_screws", "head_screw": "head_screws", "ssd_": "drive",
           "drive_screw": "drive_screws",
-          "flange_screw": "flange_screws", "clip_": "clips", "hammer_nut": "clips",
+          "flange_screw": "flange_screws", "clip_": "clips", "hammer_nut": "clips", "fan_": "fan",
           "mount_washer": "mount_screws", "insert_": "inserts"}
 
 
@@ -149,7 +153,7 @@ def build():
     }
     log(f"  printed parts built in {time.time() - t:.0f} s")
     hw = (P.display() + P.pi5() + P.mount_screws() + P.bottom_screws() + P.drive() + P.head_screws()
-          + P.flange_screws() + P.clip_screws() + P.hammer_nuts() + P.inserts() + P.cables())
+          + P.flange_screws() + P.clip_screws() + P.hammer_nuts() + P.inserts() + P.fan() + P.cables())
     return printed, head_local, hw
 
 
@@ -313,11 +317,45 @@ def check_paths(printed, hw):
     for dx, dy, dz in slide:
         s_mm = math.hypot(dy, dz)
         off = Pos(dx, dy, dz)
-        for mn, ms in moved([("pod", printed["pod"]), ("grille", printed["grille"])], off):
+        for mn, ms in moved([("pod", printed["pod"])], off):
             for fn, fs in fixed:
                 v = overlap(ms, fs)
                 if v > 0.5:
                     problems.append(f"pod slide {s_mm:.1f} mm: {mn} touches {fn}: {v:.1f} mm3")
+    # The grille with the fan goes in last, straight into the pocket from the outside. The fan
+    # cable bends, so it is not in this check.
+    fixed += [("pod", printed["pod"])] + [(n, s) for n, s in hwd.items() if n.startswith("cable_") and n != "cable_fan"]
+    on_grille = [("grille", printed["grille"])] + [(n, s) for n, s in hwd.items() if n.startswith("fan_")]
+    for dz in (2.0, 5.0, 10.0, 15.0, 25.0, 40.0):
+        for mn, ms in moved(on_grille, Pos(0, 0, dz)):
+            for fn, fs in fixed:
+                v = overlap(ms, fs)
+                if v > 0.5:
+                    problems.append(f"grille in {dz:.0f} mm: {mn} touches {fn}: {v:.1f} mm3")
+    return problems
+
+
+def check_fan(printed, hw):
+    """The fan sits in the snaps of the grille: 0.2 mm lower, it goes into the four catches; it can
+    move up by FAN_PLAY to the funnel, and no more; the prongs bend less than 1.2 %."""
+    problems = []
+    frame = next(s for n, s, _ in hw if n == "fan_frame")
+    g = printed["grille"]
+    down = overlap(Pos(0, 0, -0.2) * frame, g)
+    w, _, d = S.PRONG
+    if down < 4 * 0.2 * w * (d - 0.1) * 0.9:          # the top 0.2 mm of each 45 degree catch
+        problems.append(f"the fan is not on the four catches: {down:.1f} mm3 under it")
+    if overlap(Pos(0, 0, S.FAN_PLAY - 0.05) * frame, g) > 0.5:
+        problems.append("the funnel of the bump presses on the fan")
+    if overlap(Pos(0, 0, S.FAN_PLAY + 0.15) * frame, g) < 0.5:
+        problems.append("the funnel of the bump does not stop the fan")
+    strain, length = P.prong_strain()
+    if strain > 0.012:
+        problems.append(f"the prongs bend {strain * 100:.1f} %: more than 1.2 %")
+    z0, _ = P.fan_z()
+    log(f"  fan: on four catches {d:.1f} mm deep, {S.FAN_PLAY:.1f} mm of play; prongs {length:.1f} mm long, "
+        f"{S.PRONG[1]:.1f} mm thick, strain {strain * 100:.2f} %; {z0 - S.PI_Z - 1.5 - 2.2 - S.HEATSINK_H:.1f} mm "
+        f"of air over a {S.HEATSINK_H:.0f} mm heatsink; the bump is {S.BUMP_TOP - S.POD_Z:.1f} mm out of the pod")
     return problems
 
 
@@ -392,7 +430,7 @@ def export(printed, head_local, world_printed, world_hw):
     # plug and for the display HDMI plug, 20 mm for a micro HDMI plug, 32 mm for the micro USB
     # plug, 28 mm for a USB-C plug). For the printer and the power cable, the length is to the
     # rear face of the chassis.
-    plugs = {"hdmi": 50, "touch": 62, "drive": 52, "printer": 30, "power": 28}
+    plugs = {"hdmi": 50, "touch": 62, "drive": 52, "printer": 30, "power": 28, "fan": 0}
     for k, pts in P.cable_paths().items():
         if k in ("printer", "power"):
             pts = [p for p in pts if p[0] > -S.X_FRONT] + [(-S.X_FRONT, pts[-1][1], pts[-1][2])]
@@ -400,7 +438,7 @@ def export(printed, head_local, world_printed, world_hw):
     c = summary["cables"]
     log(f"  cables, plug to plug: HDMI {c['hdmi']} mm, touch USB {c['touch']} mm, drive {c['drive']} mm; "
         f"to the rear face of the chassis: "
-        f"printer USB {c['printer']} mm, power {c['power']} mm")
+        f"printer USB {c['printer']} mm, power {c['power']} mm; fan, from the groove to the plug, {c['fan']} mm")
     # Where the head is on the printer.
     face_top = P.LOC * Pos(*S.HEAD_TOP, 0)
     summary["head"] = {
@@ -431,6 +469,7 @@ def main():
     log(f"  mount check: {len(problems)} problems")
     paths = check_paths(printed, hw)
     log(f"  assembly path check: {len(paths)} problems")
+    paths += check_fan(printed, hw)
     holes, lines = check_screw_holes()
     for line in lines:
         log("  " + line)
@@ -444,9 +483,10 @@ def main():
     for p in problems:
         log("  CLASH: " + p)
     if not problems:
-        log("  fit check: the display, the Pi, the screws, the inserts, and the cables are clear of the printed "
-            "parts and the printer; no parts overlap; the head hangs on the clips and the pod slides on; the clips "
-            "and their hammer nuts are on the rail slot; the hardware is in stock")
+        log("  fit check: the display, the Pi, the fan, the screws, the inserts, and the cables are clear of the "
+            "printed parts and the printer; no parts overlap; the head hangs on the clips, the pod slides on, and the "
+            "grille with the fan goes in; the fan sits in its snaps; the clips and their hammer nuts are on the rail "
+            "slot; the hardware is in stock")
     if "--no-export" not in sys.argv:
         export(printed, head_local, world_printed, world_hw)
     log("RESULT: " + ("CLASHES" if problems else "OK"))

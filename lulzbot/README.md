@@ -3,8 +3,8 @@
 <img src="renders/printer-front-left.png" alt="The Printdeck LulzBot mount on the TAZ Workhorse" width="480">
 
 A mount for the Printdeck hardware on the LulzBot TAZ Workhorse: the Adafruit 7 inch HDMI
-display with the AR1100 touch controller, a Raspberry Pi 5 with the Active Cooler, and the
-2.5 inch boot drive. It is at the front left of the printer, below the TAZ Workhorse logo on the
+display with the AR1100 touch controller, a Raspberry Pi 5 with a 30 mm fan and stick-on
+heatsinks, and the 2.5 inch boot drive. It is at the front left of the printer, below the TAZ Workhorse logo on the
 electronics chassis, and it wraps around the front left edge of the chassis.
 
 `printdeck-lulzbot-build.pdf` has the print plan, the hardware list, and the assembly steps.
@@ -18,7 +18,8 @@ electronics chassis, and it wraps around the front left edge of the chassis.
   in front of the front left rail.
 - The drive is in the head, flat on the back panel, behind the display.
 - The pod is on the left side of the chassis (the aluminium cover), at the same height as the
-  head. It holds the Pi and the cables. The white grille snaps into a pocket of the pod.
+  head. It holds the Pi and the cables. The white grille snaps into a pocket of the pod. A bump
+  of the grille, 15 mm out of the pod, holds the fan over the SoC of the Pi (see Fan).
 - There is no hole to drill. Two printed clips hold the right end of the head on the front slot
   of the rail. A metal M3 roll-in T-nut for 2020 extrusion rolls into the slot behind the
   lips, and an M3 x 8 screw from the clip pulls it up. Two screws through
@@ -33,9 +34,9 @@ electronics chassis, and it wraps around the front left edge of the chassis.
 | `stl/back.stl` | Orange | Rear face down, 0.4 mm layers | 69 g | 3 h 16 min |
 | `stl/plate.stl` | Orange | Cover face down, 0.4 mm layers | 58 g | 2 h 11 min |
 | `stl/clip.stl` (print 2) | Orange | On its end, with a brim | 2 x 4 g | 2 x 18 min |
-| `stl/grille.stl` | White | Back down | 12 g | 0 h 42 min |
+| `stl/grille.stl` | White | Back down | 24 g | 1 h 13 min |
 
-In total: 309 g of PLA (navy 162 g, orange 135 g, white 12 g) and 14 h 58 min of printing. Print
+In total: 321 g of PLA (navy 162 g, orange 135 g, white 24 g) and 15 h 29 min of printing. Print
 the display fit test first (`stl/fit_display.stl`, 22 g, 1 h 10 min): the display pocket has
 0.3 mm of clearance at each side. The numbers come from slices with the Cura profiles in `cura/`
 (CuraEngine, TAZ Workhorse SE tool head, 0.5 mm nozzle, 2.85 mm PLA). The profiles keep the flow
@@ -73,6 +74,30 @@ insert or an M3 thread was too thin to hold.
 The drive sits on four 0.5 mm pads, so its M3 x 6 screws go 2.5 mm into the drive.
 
 Drill the four mounting holes of the Pi 5 from 2.7 mm to 3.2 mm for M3 (step 1 of the PDF).
+
+## Fan
+
+The Pi has a 30 x 30 x 10 mm 5 V fan with the Pi 5 fan plug (the same as the Slate) and stick-on
+heatsinks. The fan is in a bump of the grille, over the centre of the SoC, and blows onto the
+Pi. The air comes in through the vents of the bump.
+
+- The bump is 37 x 37 mm and 15 mm out of the face of the pod. The fan is 4.1 mm above a 10 mm
+  heatsink on the SoC. The model has a 20 x 20 x 10 mm heatsink on the SoC and a 12 x 12 x 10 mm
+  heatsink on the RP1.
+- The fan snaps in. Four prongs stand up from the grille along the sides of the fan, one on each
+  side, near a corner, where the fan frame is solid. Each prong is 10.8 mm long, 1.0 mm thick,
+  and 8 mm wide. Its catch is 0.8 mm deep, with a 45 degree lead-in. When the fan goes in, each
+  prong bends 0.8 mm: the strain is 1.0 % in PLA. A 45 degree funnel in the bump stops the fan,
+  with 0.2 mm of play.
+- The grille prints back down. The prongs stand on the bed, and the funnel goes in from the walls
+  of the bump to a square opening in the outer face, so there is no ceiling. Three vent slots go
+  from each side of the opening down the funnel, at right angles to the wall below them.
+- The bump has no screw bosses. A 16 mm screw through 2 mm of the fan frame needs 14 mm of boss
+  above the fan, so the bump is about 24 mm out of the pod. A boss that prints with no supports
+  starts 2 mm above the fan (45 degree faces from the walls), so a 6 mm screw does not reach it.
+- The fan cable goes through a groove in the top front corner of the bump to the back of the
+  grille. From there it goes over the end of the GPIO header to the fan socket of the Pi: 4 cm
+  from the corner of the fan to the plug.
 
 ## Cover screws
 
@@ -139,7 +164,9 @@ the board is the space for the FPC fold; put foam tape there, so the glass stays
   - every screw, washer, and insert is in the hardware list, and the counts are in stock,
   - the printer USB and the power cable go out of the rear notches, and 25 mm behind the chassis
     they touch no part of the printer,
-  - the head drops onto the clip keys, and the pod slides onto its hooks, without a touch.
+  - the head drops onto the clip keys, and the pod slides onto its hooks, without a touch,
+  - the fan sits on the four catches of the grille, the prongs bend less than 1.2 %, and the
+    grille with the fan goes into the pod without a touch.
   It writes `cad/*.step` (each part and the assembly, on the printer) and `stl/*.stl`.
 - `fit_display.py` writes `stl/fit_display.stl`.
 - `cura/make_profiles.py` writes the Cura profiles, slices each part for the filament and the
