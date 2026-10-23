@@ -32,7 +32,10 @@ type Meta struct {
 	// MaterialName is the material that the slicer chose, for example "Black ABS", or "". The
 	// Printdeck plugin for Cura writes it.
 	MaterialName string
-	Thumbnail    image.Image
+	// Color is the color of the filament, for example "#1f2a5a", or "". PrusaSlicer, OrcaSlicer and
+	// the Printdeck plugin for Cura write it.
+	Color     string
+	Thumbnail image.Image
 }
 
 // The slicers write the thumbnails at the start, and PrusaSlicer, OrcaSlicer and Bambu Studio write
@@ -160,6 +163,12 @@ func (m *parser) line(l string) {
 		m.Material = val
 	case "printdeck_material_name":
 		m.MaterialName = val
+	case "printdeck_color":
+		m.Color = val
+	case "filament_colour":
+		if m.Color == "" {
+			m.Color = strings.Split(strings.Trim(val, `"`), ";")[0]
+		}
 	}
 }
 

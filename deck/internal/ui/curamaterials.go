@@ -3,7 +3,6 @@ package ui
 import (
 	"image"
 	"image/color"
-	"strconv"
 	"strings"
 
 	"printdeck/internal/gfx"
@@ -87,14 +86,4 @@ func swatch(c *gfx.Canvas, r image.Rectangle, hex string) {
 }
 
 // parseHex reads a color "#rrggbb".
-func parseHex(s string) (color.RGBA, bool) {
-	s = strings.TrimPrefix(strings.TrimSpace(s), "#")
-	if len(s) != 6 {
-		return color.RGBA{}, false
-	}
-	v, err := strconv.ParseUint(s, 16, 32)
-	if err != nil {
-		return color.RGBA{}, false
-	}
-	return color.RGBA{uint8(v >> 16), uint8(v >> 8), uint8(v), 255}, true
-}
+func parseHex(s string) (color.RGBA, bool) { return printer.ParseHex(s) }
