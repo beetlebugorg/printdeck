@@ -78,6 +78,8 @@ func (d *DemoPrinter) ProbeBoards()                                 {}
 func (d *DemoPrinter) RestartKlipper() error                        { return nil }
 func (d *DemoPrinter) FlashBoard(string, board.FlashProgress) error { return nil }
 func (d *DemoPrinter) RunAction(string, ...string) error            { return nil }
+func (d *DemoPrinter) PrintPATower(int, int, string) error          { return nil }
+func (d *DemoPrinter) SetPressureAdvance(float64) error             { return nil }
 func (d *DemoPrinter) UseConfig(string, string) error               { return nil }
 func (d *DemoPrinter) Console() []printer.ConsoleLine               { return d.Console_ }
 func (d *DemoPrinter) SendConsole(line string) {

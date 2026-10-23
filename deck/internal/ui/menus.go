@@ -173,6 +173,38 @@ func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 	} else {
 		rows = append(rows, row{"Save config", "No unsaved changes", false, nil})
 	}
+	if mach.Has("extruder") {
+		// The pressure advance test: print the tower, then type the height of its best corners.
+		m := a.loaded()
+		rows = append(rows, row{"Pressure advance test", "Print a 30 mm tower: about 15 minutes", false, func() {
+			if !idle {
+				a.Toast("Wait until the print ends")
+				return
+			}
+			q := fmt.Sprintf("Print the pressure advance tower at %d°?", m.Tool)
+			a.confirm = &confirmBox{question: q, yes: "Print", onYes: func() {
+				a.do(func() error { return pr.PrintPATower(m.Tool, m.Bed, m.Name) })
+			}}
+		}})
+		rows = append(rows, row{"Pressure advance", fmt.Sprintf("Now %.3f · set it from the tower", mach.PressureAdvance), false, func() {
+			if !idle {
+				a.Toast("Wait until the print ends")
+				return
+			}
+			a.editNumber("Height of the best corners", 0, int(printer.PATowerHeight), " mm", func(h int) {
+				v := printer.PATowerValue(float64(h))
+				a.confirm = &confirmBox{question: fmt.Sprintf("Set the pressure advance to %.3f?", v), yes: "Set", onYes: func() {
+					a.do(func() error {
+						if err := pr.SetPressureAdvance(v); err != nil {
+							return err
+						}
+						a.Toast(fmt.Sprintf("Pressure advance %.3f, in printer.cfg", v))
+						return nil
+					})
+				}}
+			})
+		}})
+	}
 	var items []menuItem
 	for _, r := range rows {
 		col := dim
