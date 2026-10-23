@@ -21,6 +21,7 @@ type rollForm struct {
 	cura     printer.SlicerMaterial // the material of Cura, or none
 	color    string                 // the color of the roll, or "": the color of the material of Cura
 	name     string
+	size     int // grams of filament of a full roll, as it is sold
 	scale    int // grams on the scale, with the reel
 	reel     int // grams of the empty reel
 	price    int // dollars
@@ -39,7 +40,7 @@ func (a *App) openRollForm(done func(sp printer.Spool)) {
 	if s := a.Printer.SpoolStore(); s != nil {
 		reel = int(s.LastReel() + 0.5)
 	}
-	a.form = &rollForm{material: m, reel: reel, done: done}
+	a.form = &rollForm{material: m, reel: reel, size: int(printer.DefaultSize), done: done}
 }
 
 // editNumber opens the keypad for a whole number with a unit, for example grams.
@@ -109,6 +110,9 @@ func (a *App) drawRollForm(c *gfx.Canvas) {
 		{"Empty reel", grams(fm.reel), dim, func() {
 			a.editNumber("Weight of an empty reel", fm.reel, 2000, " g", func(v int) { fm.reel = v })
 		}},
+		{"Full roll", grams(fm.size), dim, func() {
+			a.editNumber("Filament of a full roll", fm.size, 9999, " g", func(v int) { fm.size = v })
+		}},
 		{"Price", price, dim, func() {
 			a.editNumber("Price of the roll in dollars", fm.price, 999, "", func(v int) { fm.price = v })
 		}},
@@ -167,6 +171,9 @@ func (a *App) drawRollForm(c *gfx.Canvas) {
 		}
 		if fm.color != "" {
 			s.SetColor(sp.ID, fm.color)
+		}
+		if fm.size > 0 {
+			s.SetSize(sp.ID, float64(fm.size))
 		}
 		sp, _ = s.Get(sp.ID)
 		a.setMaterial(sp.Material)
@@ -253,25 +260,37 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 	} else if sp.CuraMaterial != "" {
 		cura = sp.CuraMaterial
 	}
-	rows := [][2]string{
-		{"Material", sp.Material},
-		{"Color", colorName(sp.Color)},
-		{"Cura material", cura},
-		{"Filament left", printer.Weight(sp.Left())},
-		{"Used since weighed", printer.Weight(sp.Used)},
-		{"Empty reel", printer.Weight(sp.Reel)},
+	id := sp.ID
+	// The rows of the table. A row with a tap opens its page or its keypad, with an arrow.
+	type detail struct {
+		kv  [2]string
+		tap func()
+	}
+	rows := []detail{
+		{[2]string{"Material", sp.Material}, nil},
+		{[2]string{"Color", colorName(sp.Color)}, func() { a.pickColor(sp.Color, func(hex string) { s.SetColor(id, hex) }) }},
+		{[2]string{"Cura material", cura}, nil},
+		{[2]string{"Filament left", printer.Weight(sp.Left())}, nil},
+		{[2]string{"Full roll", printer.Weight(sp.Capacity())}, func() {
+			a.editNumber("Filament of a full roll", int(sp.Capacity()+0.5), 9999, " g", func(v int) { s.SetSize(id, float64(v)) })
+		}},
+		{[2]string{"Used since weighed", printer.Weight(sp.Used)}, nil},
+		{[2]string{"Empty reel", printer.Weight(sp.Reel)}, nil},
 	}
 	if sp.Price > 0 {
-		rows = append(rows, [2]string{"Price", fmt.Sprintf("$%.0f · $%.2f/100 g", sp.Price, sp.Cost(100))})
+		rows = append(rows, detail{[2]string{"Price", fmt.Sprintf("$%.0f · $%.2f/100 g", sp.Price, sp.Cost(100))}, nil})
 	}
-	rows = append(rows, [2]string{"Added", fileDate(sp.Added, a.Now(), a.Clock24)})
+	rows = append(rows, detail{[2]string{"Added", fileDate(sp.Added, a.Now(), a.Clock24)}, nil})
 	prints := printer.OfSpool(a.Printer.History(), sp)
 	if len(prints) > 0 {
 		grams := 0.0
 		for _, r := range prints {
 			grams += a.recordGrams(r, sp)
 		}
-		rows = append(rows, [2]string{"Prints", fmt.Sprintf("%d · %s", len(prints), printer.Weight(grams))})
+		rows = append(rows, detail{[2]string{"Prints", fmt.Sprintf("%d · %s", len(prints), printer.Weight(grams))}, func() {
+			a.printsScroll = 0
+			a.open(pageSpoolPrints)
+		}})
 	}
 	// The rows are 30 high, or less on a wide screen with the print bar, so that the table and
 	// the meter fit over the actions.
@@ -289,36 +308,23 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 	plate(c, box)
 	a.region("Details", box)
 	table := kit.Inset(box, 18, 10, 18, 10)
-	id := sp.ID
-	// The second row, Color, opens the palette. The chip of the color is left of its name.
-	detailRows(c, table, rows[:1], rowH)
-	{
-		y := table.Min.Y + rowH
-		r := image.Rect(box.Min.X+4, y, box.Max.X-4, y+rowH)
-		a.detailLink(c, r, rows[1], func() { a.pickColor(sp.Color, func(hex string) { s.SetColor(id, hex) }) })
-		if sp.Color != "" {
-			x := r.Max.X - 40 - gfx.Width(gfx.Face(true, 17), rows[1][1]) - 10
-			d := min(20, rowH-8)
-			swatch(c, image.Rect(x-d, r.Min.Y+(rowH-d)/2, x, r.Min.Y+(rowH+d)/2), sp.Color)
+	for i, d := range rows {
+		y := table.Min.Y + i*rowH
+		if d.tap == nil {
+			detailRows(c, image.Rect(table.Min.X, y, table.Max.X, y+rowH), [][2]string{d.kv}, rowH)
+			continue
 		}
-		table.Min.Y += 2 * rowH
-		rows = rows[2:]
+		r := image.Rect(box.Min.X+4, y, box.Max.X-4, y+rowH)
+		a.detailLink(c, r, d.kv, d.tap)
+		// The chip of the color, left of its name.
+		if d.kv[0] == "Color" && sp.Color != "" {
+			x := r.Max.X - 40 - gfx.Width(gfx.Face(true, 17), d.kv[1]) - 10
+			h := min(20, rowH-8)
+			swatch(c, image.Rect(x-h, r.Min.Y+(rowH-h)/2, x, r.Min.Y+(rowH+h)/2), sp.Color)
+		}
 	}
-	if len(prints) > 0 {
-		// The last row, Prints, opens the list of the prints of the roll.
-		detailRows(c, table, rows[:len(rows)-1], rowH)
-		y := table.Min.Y + (len(rows)-1)*rowH
-		a.detailLink(c, image.Rect(box.Min.X+4, y, box.Max.X-4, y+rowH), rows[len(rows)-1], func() {
-			a.printsScroll = 0
-			a.open(pageSpoolPrints)
-		})
-	} else {
-		detailRows(c, table, rows, rowH)
-	}
-	if sp.Full > 0 {
-		segments(c, bar, sp.Left()/sp.Full)
-		a.region("Left", bar)
-	}
+	segments(c, bar, sp.Fraction())
+	a.region("Left", bar)
 	// Cura material, over the other keys, when the Cura plugin sent the materials.
 	if len(a.curaMaterials()) > 0 {
 		r := kit.Rows(image.Rect(keys.Min.X, keys.Min.Y-84, keys.Max.X, keys.Max.Y), 12, kit.Px(72), kit.Px(72))

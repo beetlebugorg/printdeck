@@ -53,3 +53,19 @@ func TestSpoolDensity(t *testing.T) {
 		t.Fatalf("with a Cura material: density %v, want 1.31", used)
 	}
 }
+
+// A roll that was added part used: its bar and its price use a full roll of 1 kg.
+func TestSpoolCapacity(t *testing.T) {
+	part := Spool{Net: 221, Full: 221, Price: 20}
+	if part.Capacity() != 1000 || part.Fraction() != 0.221 || part.Cost(100) != 2 {
+		t.Errorf("part used: %v %v %v", part.Capacity(), part.Fraction(), part.Cost(100))
+	}
+	big := Spool{Net: 2010, Full: 2010}
+	if big.Capacity() != 2010 || big.Fraction() != 1 {
+		t.Errorf("2 kg: %v %v", big.Capacity(), big.Fraction())
+	}
+	small := Spool{Net: 100, Full: 100, Size: 250}
+	if small.Capacity() != 250 || small.Fraction() != 0.4 {
+		t.Errorf("250 g: %v %v", small.Capacity(), small.Fraction())
+	}
+}

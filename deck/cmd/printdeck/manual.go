@@ -478,7 +478,8 @@ func manualParts() []section {
 					Callouts: []callout{
 						{"Details", "The filament on the roll, the filament that prints used, and the price."},
 						{"Color", "The color of the roll. Tap it to choose a color. The print screen and Cura show it."},
-						{"Left", "The filament on the roll, of the filament when you added it."},
+						{"Full roll", "The filament of a full roll as it is sold: 1 kg unless you change it. Tap it to type it, for example 250 g or 2 kg. The bar and the price per gram use it, so a roll that you added part used shows how much of a full roll is left."},
+						{"Left", "The filament on the roll, as a part of a full roll."},
 						{"Prints", "The number of prints that used the roll, and their filament. Tap it for the list of the prints. A tap on a print opens its page."},
 						{"Weigh again", "Sets the filament from the weight on a scale."},
 						{"Remove", "Removes an empty roll from the list."},

@@ -13,15 +13,18 @@ import (
 // Spool is a roll of filament. The filament on it is the weight on a scale less the weight of the
 // empty reel. Each print subtracts the filament that it used.
 type Spool struct {
-	ID       string    `json:"id"`
-	Name     string    `json:"name"` // for example "Black eSun"
-	Material string    `json:"material"`
-	Net      float64   `json:"net"`   // grams of filament when the roll was last weighed
-	Used     float64   `json:"used"`  // grams that prints used since then
-	Full     float64   `json:"full"`  // grams of filament of the roll when it was added, for the price of a gram
-	Reel     float64   `json:"reel"`  // grams of the empty reel
-	Price    float64   `json:"price"` // the price of the roll, or 0
-	Added    time.Time `json:"added"`
+	ID       string  `json:"id"`
+	Name     string  `json:"name"` // for example "Black eSun"
+	Material string  `json:"material"`
+	Net      float64 `json:"net"`  // grams of filament when the roll was last weighed
+	Used     float64 `json:"used"` // grams that prints used since then
+	Full     float64 `json:"full"` // grams of filament of the roll when it was added
+	// Size is the grams of filament of a full roll as it is sold, for example 1000, or 0 for the
+	// default (Capacity).
+	Size  float64   `json:"size,omitempty"`
+	Reel  float64   `json:"reel"`  // grams of the empty reel
+	Price float64   `json:"price"` // the price of the roll, or 0
+	Added time.Time `json:"added"`
 	// CuraMaterial is the ID of the material of Cura for the roll, or "": the base file of the
 	// material, for example "generic_pla". Color is its color, for example "#ff7a1a", or "".
 	CuraMaterial string `json:"cura_material,omitempty"`
@@ -45,12 +48,29 @@ type SlicerMaterial struct {
 // Left is the grams of filament that the roll has now.
 func (s Spool) Left() float64 { return max(0, s.Net-s.Used) }
 
-// Cost is the price of grams of filament of the roll, or 0 when the roll has no price.
+// DefaultSize is the filament of a full roll when the roll does not say: most rolls are 1 kg.
+const DefaultSize = 1000.0
+
+// Capacity is the grams of filament of the roll when it is full: its size, or else 1 kg, or the
+// filament that it had when it was added when that is more. A roll that was added part used has
+// less filament than a full roll, so its bar and its price per gram use the full roll.
+func (s Spool) Capacity() float64 {
+	if s.Size > 0 {
+		return s.Size
+	}
+	return max(s.Full, DefaultSize)
+}
+
+// Fraction is the part of a full roll that the roll has now, 0 to 1.
+func (s Spool) Fraction() float64 { return max(0, min(1, s.Left()/s.Capacity())) }
+
+// Cost is the price of grams of filament of the roll, or 0 when the roll has no price. The price
+// is the price of a full roll (Capacity).
 func (s Spool) Cost(grams float64) float64 {
-	if s.Price <= 0 || s.Full <= 0 {
+	if s.Price <= 0 {
 		return 0
 	}
-	return grams * s.Price / s.Full
+	return grams * s.Price / s.Capacity()
 }
 
 // Number is the number of the roll for its label, for example "#3". The deck gives each new roll
@@ -197,6 +217,17 @@ func (s *Spools) SetCuraMaterial(id string, p SlicerMaterial) {
 		if p.Material != "" {
 			sp.Material = p.Material
 		}
+		s.save()
+	}
+}
+
+// SetSize sets the grams of filament of a full roll, for example 1000; 0 is the default.
+func (s *Spools) SetSize(id string, grams float64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.load()
+	if i := s.find(id); i >= 0 {
+		s.data.Spools[i].Size = max(0, grams)
 		s.save()
 	}
 }

@@ -486,10 +486,7 @@ func (a *App) rollGauge(c *gfx.Canvas, r image.Rectangle, st printer.State) bool
 		return false
 	}
 	left := max(0, sp.Left()-a.grams(st.FilamentUsed, ""))
-	full := sp.Full
-	if full <= 0 {
-		full = max(sp.Net, 1)
-	}
+	full := sp.Capacity()
 	// The dot has a light ring, so that a dark color shows on the window. A roll with no color has
 	// the color of the display.
 	d := r.Dy()

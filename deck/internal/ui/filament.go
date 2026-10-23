@@ -174,10 +174,7 @@ func (a *App) drawFilamentPrinting(c *gfx.Canvas, st printer.State) {
 		label(c, image.Rect(in.Min.X, in.Max.Y-24, in.Max.X, in.Max.Y), "Add the roll in Rolls to follow its filament", gfx.Left)
 	} else {
 		left := max(0, sp.Left()-a.grams(st.FilamentUsed, ""))
-		full := sp.Full
-		if full <= 0 {
-			full = max(sp.Net, 1)
-		}
+		full := sp.Capacity()
 		// The dot in the color of the roll, its number and name, and its material.
 		d := 64
 		dot := image.Rect(in.Min.X, in.Min.Y, in.Min.X+d, in.Min.Y+d)

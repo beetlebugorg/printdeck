@@ -49,7 +49,7 @@ type spoolJSON struct {
 
 // rollJSON is a roll in the API.
 func rollJSON(sp printer.Spool) spoolJSON {
-	return spoolJSON{ID: sp.ID, Name: sp.Label(), Material: sp.Material, Left: sp.Left(), Full: sp.Full, Price: sp.Price,
+	return spoolJSON{ID: sp.ID, Name: sp.Label(), Material: sp.Material, Left: sp.Left(), Full: sp.Capacity(), Price: sp.Price,
 		CuraMaterial: sp.CuraMaterial, Color: sp.Color}
 }
 
