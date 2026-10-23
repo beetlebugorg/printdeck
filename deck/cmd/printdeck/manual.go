@@ -185,7 +185,7 @@ var (
 	stPrinting = printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true,
 		File: "printdeck_body.gcode", FilePath: "printdeck_body.gcode", Activity: "Printing", Layer: 12, Layers: 27,
 		HasNow: true, NowKind: "Outer wall", NowSpeed: 30, Completion: 42.4, TimeLeft: 83 * time.Minute, HasTimeLeft: true,
-		Elapsed: 75 * time.Minute, FilamentUsed: 25600, Tool: 209.6, ToolTarget: 210, Bed: 60, BedTarget: 60, SpeedPct: 100, FlowPct: 100}
+		Elapsed: 75 * time.Minute, FilamentUsed: 1720, Tool: 209.6, ToolTarget: 210, Bed: 60, BedTarget: 60, SpeedPct: 100, FlowPct: 100}
 )
 
 // manualParts are the texts and the pictures of the manual, by subject. manualSections puts them
@@ -378,7 +378,9 @@ func manualParts() []section {
 						s.a.DemoAway()
 					},
 					Callouts: []callout{
-						{"Change filament", "A key that moves, heats or changes the printer is dim and has a lock. A tap shows Wait until the print ends."},
+						{"Roll", "The roll in the printer, and the filament that is left on it."},
+						{"Lasts", "The filament of the rest of the print, and what is left on the roll after it. Red text shows a roll that runs out before the end."},
+						{"Change filament", "Pauses the print, and opens the filament change. At its end, the nozzle goes back to the temperature of the print: tap Resume."},
 					},
 					Tall: []callout{
 						{"Print bar", "The layer and the time left of the print, with Pause at its left. Tap the bar to go back to the screen of the print."},

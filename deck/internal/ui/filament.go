@@ -13,6 +13,10 @@ import (
 // drawFilament is the Filament page: the loaded material, the guided change, load and unload, a
 // short extrude or retract, and the heating for the material.
 func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
+	if st.Busy() && !st.Paused {
+		a.drawFilamentPrinting(c, st)
+		return
+	}
 	pr := a.Printer
 	f := a.navPage(c, "Filament")
 	rolls := pr.SpoolStore()
@@ -118,4 +122,96 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 		fkey(c, hc[0], name, keyOff, text, func() { a.do(func() error { return pr.SetToolTemp(tool) }) })
 	}
 	fkey(c, hc[1], "Cool down", raised, text, func() { pr.Heat(0, 0) })
+}
+
+// drawFilamentPrinting is the Filament page during a print: the roll in the printer, and if it
+// lasts for the rest of the print. Its keys that heat and move the filament wait for the end of the
+// print, so the page has none of them; Change filament pauses the print first.
+func (a *App) drawFilamentPrinting(c *gfx.Canvas, st printer.State) {
+	pr := a.Printer
+	f := a.navPage(c, "Filament")
+	rolls := pr.SpoolStore()
+	if rolls != nil {
+		a.headKey(c, f.head, "Rolls", func() { a.open(pageSpools) })
+	}
+	var card, change image.Rectangle
+	if f.wide {
+		content, acts := f.split()
+		card, change = kit.Rows(content, 0, kit.Px(min(content.Dy(), 236)))[0], kit.Cols(acts, 12, kit.Fr(1), kit.Fr(1))[1]
+	} else {
+		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 8), 12, kit.Px(236), kit.Fr(1), kit.Px(84))
+		card, change = r[0], r[2]
+	}
+	plate(c, card)
+	a.region("Roll", card)
+	in := kit.Inset(card, 20, 16, 20, 16)
+
+	// The filament that the rest of the print uses, from what the slicer wrote and what printed.
+	meta := pr.FileMeta(st.FilePath)
+	rest := -1.0
+	switch {
+	case meta.FilamentMM > 0:
+		rest = a.grams(max(0, meta.FilamentMM-st.FilamentUsed), "")
+	case meta.FilamentG > 0:
+		rest = max(0, meta.FilamentG-a.grams(st.FilamentUsed, ""))
+	}
+
+	sp, ok := printer.Spool{}, false
+	if rolls != nil {
+		sp, ok = rolls.In()
+	}
+	if !ok {
+		// No roll: the material, and the filament of the rest of the print.
+		m := a.loaded()
+		name := "No roll in the printer"
+		if m.Name != "" {
+			name = m.Name + " · no roll"
+		}
+		c.Text(image.Rect(in.Min.X, in.Min.Y, in.Max.X, in.Min.Y+36), name, gfx.Face(true, 24), text, gfx.Left)
+		if rest >= 0 {
+			c.Text(image.Rect(in.Min.X, in.Min.Y+44, in.Max.X, in.Min.Y+70), "The rest of the print uses "+printer.Weight(rest)+".", gfx.Face(false, 17), dim, gfx.Left)
+		}
+		label(c, image.Rect(in.Min.X, in.Max.Y-24, in.Max.X, in.Max.Y), "Add the roll in Rolls to follow its filament", gfx.Left)
+	} else {
+		left := max(0, sp.Left()-a.grams(st.FilamentUsed, ""))
+		full := sp.Full
+		if full <= 0 {
+			full = max(sp.Net, 1)
+		}
+		// The dot in the color of the roll, its number and name, and its material.
+		d := 64
+		dot := image.Rect(in.Min.X, in.Min.Y, in.Min.X+d, in.Min.Y+d)
+		c.RoundRect(dot, d/2, edge)
+		if col, ok := parseHex(sp.Color); ok {
+			c.RoundRect(dot.Inset(3), d/2-3, col)
+		} else {
+			c.RoundRect(dot.Inset(3), d/2-3, lcd)
+		}
+		tx := dot.Max.X + 18
+		c.Text(image.Rect(tx, in.Min.Y+2, in.Max.X, in.Min.Y+34), sp.Number()+" "+sp.Label(), gfx.Face(true, 24), text, gfx.Left)
+		c.Text(image.Rect(tx, in.Min.Y+36, in.Max.X, in.Min.Y+62), sp.Material+" · "+printer.Weight(left)+" left", gfx.Face(false, 17), dim, gfx.Left)
+		segments(c, image.Rect(in.Min.X, in.Min.Y+d+16, in.Max.X, in.Min.Y+d+36), min(1, left/full))
+		// If the roll lasts: the filament of the rest of the print, and what is left after it.
+		y := in.Min.Y + d + 50
+		switch {
+		case rest < 0:
+			c.Text(image.Rect(in.Min.X, y, in.Max.X, y+26), "The file does not say how much filament it uses.", gfx.Face(false, 17), dim, gfx.Left)
+		case rest > left:
+			c.Text(image.Rect(in.Min.X, y, in.Max.X, y+28), fmt.Sprintf("Too little: the rest of the print uses %s.", printer.Weight(rest)), gfx.Face(true, 18), red, gfx.Left)
+			c.Text(image.Rect(in.Min.X, y+30, in.Max.X, y+56), "Change the roll before it runs out: Change filament pauses the print.", gfx.Face(false, 16), dim, gfx.Left)
+		default:
+			c.Text(image.Rect(in.Min.X, y, in.Max.X, y+28), fmt.Sprintf("The rest of the print uses %s.", printer.Weight(rest)), gfx.Face(true, 18), text, gfx.Left)
+			c.Text(image.Rect(in.Min.X, y+30, in.Max.X, y+56), printer.Weight(left-rest)+" left after the print.", gfx.Face(false, 16), dim, gfx.Left)
+		}
+		a.region("Lasts", image.Rect(in.Min.X, y, in.Max.X, y+56))
+	}
+
+	// Change filament in the print: a pause first, and then the filament swap, which goes back to
+	// the temperature of the print at its end (swapAfterPause).
+	a.button(c, change, "Change filament", raised, text, func() {
+		a.confirm = &confirmBox{question: "Pause the print, and change the filament?", yes: "Pause", onYes: func() {
+			a.swapAfterPause = true
+			pr.Pause()
+		}}
+	})
 }

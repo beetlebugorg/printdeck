@@ -499,3 +499,29 @@ func TestPausePrompt(t *testing.T) {
 		t.Error("Resume did not ask with no height check")
 	}
 }
+
+// Change filament on the Filament page of a print pauses it, and the swap opens at the pause.
+func TestSwapAfterPause(t *testing.T) {
+	st := printer.State{Reachable: true, Connected: true, Text: "Printing", Printing: true, File: "a.gcode",
+		Layer: 3, Layers: 10, Tool: 210, ToolTarget: 210}
+	a, pr, cv := newPrintApp(st)
+	a.Wide = true
+	cv = gfx.New(a.Screen().W, a.Screen().H)
+	a.pages = []page{pageFilament}
+	tapRegion(t, a, cv, "Change filament")
+	if a.confirm == nil {
+		t.Fatal("no question")
+	}
+	a.confirm.onYes()
+	a.confirm = nil
+	a.Draw(cv)
+	if a.swap != nil {
+		t.Fatal("the swap opened before the pause")
+	}
+	st.Paused = true
+	pr.State_ = st
+	a.Draw(cv)
+	if a.swap == nil || !a.swap.paused || a.swap.resume != 210 {
+		t.Fatalf("swap %+v", a.swap)
+	}
+}
