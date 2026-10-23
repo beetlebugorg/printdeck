@@ -96,12 +96,48 @@ The screens of the touch screen:
 - Tune (while a print runs): speed and flow in percent, Z offset in baby steps, fan.
 - Tap a temperature to set it with a keypad.
 - Machine > Theme chooses the day theme, the night theme, or auto (night from `NIGHT_FROM` to `NIGHT_TO`, 20 to 7). The choice is saved in `/var/lib/printdeck/theme`.
-- Rolls: the deck keeps a list of your rolls of filament. Each print subtracts its filament from the roll in the printer, and the history shows the cost of each print.
+- Rolls: the deck keeps a list of your rolls of filament. Each print subtracts its filament from the roll in the printer, and the history shows the cost of each print. The page of each roll lists the prints that used it.
+- During a print, the other screens stay open to you. The controls that change the printer are locked, and the print bar at the bottom goes back to the print.
+- A display that is mounted wide gets the layout of a machine panel: the display of the printer and a key panel at the left, and the page at the right.
 - Setup (at the first start) sets the Wi-Fi. Machine > Wi-Fi and help, and Help during a print, show the address and the password.
 
 `slicer/` has a Cura post-processing script that sets the speed of each move. See `slicer/README.md`.
 `slicer/cura-plugin/` is the Printdeck plugin for Cura: the roll in the printer, its material, and
 the print in Preview. See `slicer/cura-plugin/README.md`.
+
+## Desktop app and simulator
+
+<img src="docs/img/sim.gif" alt="The 3D window of the simulator: a TAZ Workhorse with the Printdeck prints a plaque" width="420">
+
+`desktop/` is the Printdeck for a computer. It is a Qt 6 window around `printdeck app`, which runs
+the Klipper host and the deck UI for a printer on USB. Cura finds it at the same address after
+each start, as it finds a Printdeck. The keyboard of the computer types on the deck.
+
+`printdeck app -sim` runs the deck with a simulated printer: a TAZ Workhorse on a simulated
+printer board. The board has the endstops, the probe and the display of the printer, at the
+places in `printer.cfg`. With `-sim`, a second window shows the printer in 3D:
+
+- The model of the Workhorse comes from the CAD files of LulzBot. The axes and the belts move with
+  the steps of the board, and the filament goes down where the nozzle is.
+- The Printdeck mount from `lulzbot/` is on the printer, and its screen shows the deck UI.
+- The display of the printer shows the dots that the Klipper host sends to it.
+- The left button turns the view, the right button pans it, and the wheel zooms. T makes the
+  tool head see-through.
+
+To build it, you need Go, CMake, Ninja, and Qt 6.5 or later with Qt Quick 3D:
+
+```sh
+B=~/.cache/printdeck/desktop
+(cd deck && go build -o $B/printdeck ./cmd/printdeck)
+cmake -S desktop -B $B -G Ninja -DCMAKE_BUILD_TYPE=Release
+ninja -C $B
+$B/Printdeck -sim
+```
+
+`desktop/film/` makes a short film of the Printdeck with the 3D window. `desktop/film/film.sh`
+tells how.
+
+## Demo mode
 
 To look at the screens without the hardware, run `go run ./cmd/printdeck demo /tmp/shots` in
 `deck/`. It writes PNG files. To use the screens in a browser, run
@@ -118,7 +154,9 @@ on the rear. `slate/README.md` lists the parts and the files.
 <img src="lulzbot/renders/printer-front-left.png" alt="The Printdeck mount on the front left of a LulzBot TAZ Workhorse" width="420">
 
 A second mount puts the Printdeck on the front left of a LulzBot TAZ Workhorse, with the display
-wide. You print its nine parts on the Workhorse itself, and drill no hole in the printer. The
+wide. You print its seven parts on the Workhorse itself: 309 g of PLA in 14 h 58 min, with no
+supports. Two metal M3 roll-in T-nuts hold the clips in the front rail, and you drill no hole in
+the printer. The
 [upgrade booklet](docs/lulzbot/printdeck-manual.pdf) has the print plan, the hardware and the
 steps. The files are in [lulzbot/](lulzbot/).
 
