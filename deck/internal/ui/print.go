@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"math"
 	lcdscreen "printdeck/internal/lcd"
 	"printdeck/kit"
 	"strings"
@@ -222,20 +223,139 @@ func (a *App) askCancel() {
 func (a *App) modelView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 	window(c, box)
 	a.region("Model", box)
-	// The roll in the printer on the second line, under the layer. The picture is between it and
-	// the layer slider.
+	// Under the layer: the roll in the printer, then the trace of the live speed. The picture is
+	// between them and the layer slider.
+	y := box.Min.Y + 38
+	if a.rollGauge(c, image.Rect(box.Min.X+16, y, box.Max.X-14, y+24), st) {
+		y += 32
+	}
+	a.sampleTrace(st)
+	if a.speedTrace(c, image.Rect(box.Min.X+16, y, box.Max.X-14, y+40), st) {
+		y += 48
+	}
 	pic := box
-	if a.rollGauge(c, image.Rect(box.Min.X+16, box.Min.Y+38, box.Max.X-14, box.Min.Y+62), st) {
-		pic.Min.Y, pic.Max.Y = pic.Min.Y+64, pic.Max.Y-40
+	if y > box.Min.Y+38 {
+		pic.Min.Y, pic.Max.Y = y+4, pic.Max.Y-40
 	}
 	if img := a.Printer.Preview(); img != nil {
 		picture(c, pic, img)
 	} else {
 		c.Text(pic, "LOADING MODEL…", gfx.Face(true, 18), lcdDim, gfx.Center)
 	}
+	// The kind of the move at the top right. The trace has the live speed; with no trace, the
+	// speed of the G-code is here.
 	if st.HasNow {
-		now := fmt.Sprintf("%s %.0f MM/S", strings.ToUpper(st.NowKind), st.NowSpeed*float64(a.speedFactor(st))/100)
+		now := strings.ToUpper(st.NowKind)
+		if !st.HasLive {
+			now += fmt.Sprintf(" %.0f MM/S", st.NowSpeed*float64(a.speedFactor(st))/100)
+		}
 		c.Text(image.Rect(box.Min.X+200, box.Min.Y+8, box.Max.X-14, box.Min.Y+30), now, gfx.Face(true, 13), lcdDim, gfx.Right)
+	}
+}
+
+// traceSample is the live speed of the head and the flow of the nozzle at a time.
+type traceSample struct {
+	at          time.Time
+	speed, flow float64 // mm/s, mm³/s
+}
+
+// traceSpan is the time of the trace of the live speed.
+const traceSpan = 30 * time.Second
+
+// sampleTrace adds the live speed of st to the trace, at most 10 times a second. The trace starts
+// again with each print, and after a pause.
+func (a *App) sampleTrace(st printer.State) {
+	now := a.Now()
+	if !st.HasLive || !st.Printing || st.Paused {
+		a.trace = nil
+		return
+	}
+	if n := len(a.trace); n > 0 && now.Sub(a.trace[n-1].at) < 100*time.Millisecond {
+		return
+	}
+	d := a.Printer.Machine().Diameter()
+	a.trace = append(a.trace, traceSample{now, st.LiveSpeed, st.LiveExtrude * math.Pi * d * d / 4})
+	i := 0
+	for i < len(a.trace) && now.Sub(a.trace[i].at) > traceSpan {
+		i++
+	}
+	a.trace = a.trace[i:]
+}
+
+// speedTrace draws the trace of the live speed in r: a bar for each part of the last traceSpan,
+// with the newest at the right, and the live speed and flow at the right of r. The bars are as
+// high as the fastest speed of their part, against the fastest speed of the trace. It reports
+// false when the printer has no live speed, and then draws nothing.
+func (a *App) speedTrace(c *gfx.Canvas, r image.Rectangle, st printer.State) bool {
+	if !st.HasLive || len(a.trace) == 0 {
+		return false
+	}
+	last := a.trace[len(a.trace)-1]
+	nums := image.Rect(r.Max.X-130, r.Min.Y, r.Max.X, r.Max.Y)
+	c.Text(image.Rect(nums.Min.X, r.Min.Y, nums.Max.X, r.Min.Y+22), fmt.Sprintf("%.0f MM/S", last.speed), gfx.Face(true, 17), lcdInk, gfx.Right)
+	c.Text(image.Rect(nums.Min.X, r.Min.Y+22, nums.Max.X, r.Max.Y), fmt.Sprintf("%.1f MM³/S", last.flow), gfx.Face(true, 13), lcdDim, gfx.Right)
+	chart := image.Rect(r.Min.X, r.Min.Y+4, nums.Min.X-40, r.Max.Y-2) // the speed of the top line at its right
+	const barW, gap = 3, 1
+	n := chart.Dx() / (barW + gap)
+	if n <= 0 {
+		return true
+	}
+	// The fastest speed of each part. A part with no sample keeps the speed of the part before it.
+	now := a.Now()
+	peak := make([]float64, n)
+	has := make([]bool, n)
+	top := 50.0 // the speed at the top of the chart: at least 50 mm/s, in steps of 50
+	for _, s := range a.trace {
+		i := n - 1 - int(float64(now.Sub(s.at))/float64(traceSpan)*float64(n))
+		if i < 0 || i >= n {
+			continue
+		}
+		peak[i], has[i] = max(peak[i], s.speed), true
+		top = max(top, math.Ceil(s.speed/50)*50)
+	}
+	// The base line, and a dotted line at the top with its speed.
+	c.Fill(image.Rect(chart.Min.X, chart.Max.Y-1, chart.Max.X, chart.Max.Y), lcdDim)
+	for x := chart.Min.X; x < chart.Max.X; x += 6 {
+		c.Fill(image.Rect(x, chart.Min.Y, x+2, chart.Min.Y+1), lcdDim)
+	}
+	c.Text(image.Rect(chart.Max.X+4, chart.Min.Y-6, nums.Min.X, chart.Min.Y+8), fmt.Sprint(top), gfx.Face(false, 11), lcdDim, gfx.Left)
+	started := false
+	for i := 0; i < n; i++ {
+		if !has[i] && started && i > 0 {
+			peak[i] = peak[i-1]
+		}
+		started = started || has[i]
+		if !started {
+			continue
+		}
+		h := int(peak[i] / top * float64(chart.Dy()-1))
+		x := chart.Min.X + i*(barW+gap)
+		// The older a bar, the dimmer it is; the newest is orange.
+		col := mix(lcdDim, lcdInk, float64(i)/float64(n-1))
+		if i == n-1 {
+			col = orange
+		}
+		c.Fill(image.Rect(x, chart.Max.Y-1-h, x+barW, chart.Max.Y-1), col)
+	}
+	a.region("Speed", r)
+	return true
+}
+
+// DemoTrace fills the trace of the live speed with 30 s of a print: slow walls and fast infill.
+// For the pictures of the manual.
+func (a *App) DemoTrace() {
+	now := a.Now()
+	a.trace = nil
+	for t := traceSpan; t >= 0; t -= 100 * time.Millisecond {
+		sec := t.Seconds()
+		speed, flow := 30.0, 2.4 // the outer wall
+		switch int(sec) % 10 {
+		case 2, 3, 4, 5:
+			speed, flow = 150-20*math.Abs(math.Sin(sec*3)), 11.6 // the infill, slower at its turns
+		case 6, 7:
+			speed, flow = 60, 4.8 // the inner wall
+		}
+		a.trace = append(a.trace, traceSample{now.Add(-t), speed, flow})
 	}
 }
 
