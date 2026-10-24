@@ -38,8 +38,8 @@ EARS = S.EARS                         # (a, b) of the ear holes from the panel c
 BORDER = 20.0                         # the border around the screen: the sides and the top
 CHIN = 34.0                           # the border at the bottom: the sockets of the display and their plugs are there
 R_EDGE = 4.0
-WALL = 2.0                            # the walls of the body
-SKIN = 2.0                            # the face
+WALL = 3.0                            # the walls of the body
+SKIN = 3.0                            # the face
 T_BACK = 3.0                          # the back plate
 TOP_DEPTH = 22.0                      # from the back to the face, at the top
 
@@ -203,7 +203,7 @@ def corner_blocks():
 # screw at 240 mm. Its slot is open at the bottom, and wide front to back: loosen the screw and lift.
 COVER_SCREW = (S.X_FRONT - 6.1, 240.0 - S.Y_BASE)
 NUB_T = Z_LEFT                                # flush with the outside of the left wall
-NUB_H = 22.0
+NUB_H = 30.0
 NUB_SLOT = (7.0, 3.6)                          # front to back, across (the screw is M3)
 
 
@@ -227,6 +227,33 @@ SOCKET_FLANGE = (38.3, 14.65, 30.0)            # length, width, screw spacing (A
 SOCKET_BODY = (20.0, 11.0)                     # the body inside [E]
 
 
+# Vents for the Active Cooler: air comes in through slots in the floor, behind the plug ends of the
+# display, and leaves through slots in the top, behind the display board: the warm air rises past
+# the Pi. Slots 2.5 wide, along x (front to back), 45 degree ends, so resin and FDM print them.
+VENT_W = 2.5
+VENT_PITCH = 6.0
+FLOOR_VENTS = (-24.0, -58.0)                  # z range in the floor (between the power plug and the HDMI plug)
+TOP_VENTS = (Z_RIGHT + 14.0, Z_LEFT - 14.0)   # z range in the top
+
+
+def vents():
+    cut = None
+    z0, z1 = sorted(FLOOR_VENTS)
+    x0, x1 = X_BACK + T_BACK + 2.0, X_BACK + T_BACK + 14.0
+    z = z0
+    while z <= z1 + 0.01:
+        v = box(x0, x1, Y_BOT - 1, Y_BOT + WALL + 1, z - VENT_W / 2, z + VENT_W / 2)
+        cut = v if cut is None else cut + v
+        z += VENT_PITCH
+    z0, z1 = sorted(TOP_VENTS)
+    x0, x1 = X_BACK + T_BACK + 3.0, face_x(Y_TOP) - SKIN - 4.0
+    z = z0
+    while z <= z1 + 0.01:
+        cut = cut + box(x0, x1, Y_TOP - WALL - 1, Y_TOP + 1, z - VENT_W / 2, z + VENT_W / 2)
+        z += VENT_PITCH
+    return cut
+
+
 def body():
     s = shell()
     add, cut = display_bosses()
@@ -241,6 +268,7 @@ def body():
     s = s + add - cut
     tab, slot = nub()
     s = s + tab - slot
+    s = s - vents()
     # The floor openings.
     px, py, pz = pi_port("usbc")
     s = s - box(px - PLUG[1] / 2 - 0.5, px + PLUG[1] / 2 + 0.5, Y_BOT - 1, Y_BOT + WALL + 1, pz - PLUG[0] / 2 - 0.5, pz + PLUG[0] / 2 + 0.5)
@@ -259,7 +287,7 @@ def body():
 # 56 (the USB-C edge at y = 0), z up from the bottom of the board.
 PI_STANDOFF = 4.0
 PI_HOLES = [(3.5, 3.5), (61.5, 3.5), (3.5, 52.5), (61.5, 52.5)]
-PI_LEFT_Z = Z_LEFT - WALL - 2.5               # the left edge of the board (STEP x = 0)
+PI_LEFT_Z = Z_LEFT - WALL - 1.0               # the left edge of the board (STEP x = 0); nothing is on that edge
 PI_Y0 = Y_BOT + WALL + 18.0                   # STEP y = 0 (room under it for the HDMI plug)
 PI_X0 = X_BACK + T_BACK + PI_STANDOFF         # the bottom of the board
 PORTS = {"usbc": (11.2, -1.0, 3.2), "hdmi0": (25.8, -1.0, 3.0), "hdmi1": (39.2, -1.0, 3.0)}
@@ -309,11 +337,14 @@ def back():
     k0, k1 = S.CLIP_KEY[0] / 2 + S.CLR, S.CLIP_KEY[1] / 2 + S.CLR
     for yc in CLIP_SLOT_Y:
         d0, d1 = yc - S.CLIP_L / 2 - S.CLIP_SLACK, yc + S.CLIP_L / 2 + S.CLIP_SLACK
-        p = p + box(X_BACK, X_BACK + 3.5, d0 - S.CLIP_DROP - 4, d1 + 4, max(zr, zc - k1 - 5), min(zl, zc + k1 + 5))
-        dov = Polygon((zc - k0, X_BACK - 0.01), (zc + k0, X_BACK - 0.01), (zc + k1, X_BACK + 3.51), (zc - k1, X_BACK + 3.51), align=None)
+        p = p + box(X_BACK, X_BACK + 4.5, d0 - S.CLIP_DROP - 6, d1 + 6, max(zr, zc - k1 - 6), min(zl, zc + k1 + 6))
+        # The dovetail is 3 mm deep with the flare of the current clips (CLIP_KEY over a 3 mm panel),
+        # so the same printed clips fit; the pad is thicker behind it.
+        kd = S.BACK_X[1] - S.BACK_X[0]
+        dov = Polygon((zc - k0, X_BACK - 0.01), (zc + k0, X_BACK - 0.01), (zc + k1, X_BACK + kd), (zc - k1, X_BACK + kd), align=None)
         slot = Location(Plane(origin=(0, d0, 0), x_dir=(0, 0, 1), z_dir=(0, 1, 0))) * extrude(Plane.XY * dov, amount=d1 - d0)
         p = p - slot
-        p = p - box(X_BACK - 1, X_BACK + 4.5, d0 - S.CLIP_DROP, d0 + 0.5, zc - k1 - 0.2, zc + k1 + 0.2)
+        p = p - box(X_BACK - 1, X_BACK + kd + 0.2, d0 - S.CLIP_DROP, d0 + 0.5, zc - k1 - 0.2, zc + k1 + 0.2)
     return p
 
 
@@ -342,7 +373,36 @@ if MODE == "fdm":
              ("back", back, "#E8762B")]
 
 
+def print_pose(name, shape):
+    """A part in its print position: the body (and the FDM top and chin) face down, the back plate on
+    its outer face. Resin slicers tilt and support the parts anyway."""
+    if name == "back":
+        s = Rot(0, -90, 0) * shape
+    else:
+        s = Rot(180, 0, 0) * (FACE_LOC.inverse() * shape)
+    bb = s.bounding_box()
+    return Pos(-(bb.min.X + bb.max.X) / 2, -(bb.min.Y + bb.max.Y) / 2, -bb.min.Z) * s
+
+
+def export(out_stl="stl", out_cad="cad"):
+    from build123d import export_step, export_stl
+    import os
+    here = os.path.dirname(os.path.abspath(__file__))
+    for name, fn, _ in PARTS:
+        sh = fn()
+        pose = print_pose(name, sh)
+        export_stl(pose, os.path.join(here, out_stl, f"deck_{name}.stl"), tolerance=0.01, angular_tolerance=0.1)
+        export_step(sh, os.path.join(here, out_cad, f"deck_{name}.step"))
+        bb = pose.bounding_box()
+        print(f"deck_{name}.stl: {bb.max.X - bb.min.X:.1f} x {bb.max.Y - bb.min.Y:.1f} x {bb.max.Z - bb.min.Z:.1f} mm "
+              f"(print), {sh.volume / 1000:.1f} cm3")
+
+
 if __name__ == "__main__":
+    import sys
+    if "export" in sys.argv:
+        export()
+        sys.exit(0)
     print(f"face {WIDTH:.1f} x {FACE_LEN:.1f}; {Y_BOT + S.Y_BASE:.1f} to {Y_TOP + S.Y_BASE:.1f} mm over the chassis bottom; "
           f"depth {TOP_DEPTH:.0f} at the top, {face_x(Y_BOT) - X_BACK:.1f} at the bottom")
     for name, fn, _ in PARTS:
