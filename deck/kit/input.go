@@ -190,6 +190,15 @@ func (in *Input) Handle(ev Event) {
 			in.padding = nil
 		case in.scrolling != nil:
 			h, moved := in.find(in.scrolling.R), in.scrollMoved
+			// The touch panel drops the moves while the program draws a slow frame. A finger that
+			// lifts far from where it went down scrolled, even with no move: it is never a tap.
+			if !moved && abs(p.Y-in.downAt.Y) > scrollSlop {
+				moved = true
+				if h != nil {
+					h.Scroll(in.lastY - p.Y)
+				}
+				in.lastY = p.Y
+			}
 			if moved && !ev.At.IsZero() && ev.At.Sub(in.lastAt) < flingLift && math.Abs(in.scrollV) > flingMin {
 				in.fling, in.flingV, in.flingAt, in.flingRest = in.scrolling, max(-flingMax, min(flingMax, in.scrollV)), ev.At, 0
 			}

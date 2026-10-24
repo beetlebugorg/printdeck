@@ -105,6 +105,14 @@ func TestTapSliderScrollSwipe(t *testing.T) {
 		t.Errorf("scrolled %d", scrolled)
 	}
 
+	// The moves of a swipe were lost (a slow frame): the lift far away scrolls, and it is no tap.
+	tapAt, scrolled = image.Point{}, 0
+	ev(Down, 50, 300)
+	ev(Up, 50, 240)
+	if scrolled != 60 || tapAt != (image.Point{}) {
+		t.Errorf("a swipe with no moves: scrolled %d, tapAt %v", scrolled, tapAt)
+	}
+
 	ev(Down, 300, 550)
 	ev(Move, 200, 555)
 	if in.SwipeOffset() != -80 {

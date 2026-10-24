@@ -75,3 +75,34 @@ func TestOffset(t *testing.T) {
 		t.Errorf("not clamped: %.6f", e.Y)
 	}
 }
+
+// A busy UI does not lose the moves of a swipe: it gets the newest position when it reads again.
+func TestBusyUIGetsTheNewestMove(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	raw := make(chan rawEvent, 100)
+	out := make(chan Event) // no buffer: the UI reads only when it is ready
+	go process(ctx, raw, Options{}, [4]int32{0, 4095, 0, 4095}, out)
+
+	raw <- abs(absX, 1000)
+	raw <- abs(absY, 1000)
+	raw <- key(1)
+	raw <- syn()
+	if e := <-out; e.Kind != Down {
+		t.Fatalf("first event %v, want Down", e.Kind)
+	}
+	// The UI draws a slow frame while the finger moves down the panel.
+	for y := int32(1100); y <= 3000; y += 100 {
+		raw <- abs(absY, y)
+		raw <- syn()
+	}
+	time.Sleep(20 * time.Millisecond)
+	e := <-out
+	if e.Kind != Move || math.Abs(e.Y-3000./4095) > 1e-9 {
+		t.Fatalf("after the slow frame: %v at y %.4f, want the Move at %.4f", e.Kind, e.Y, 3000./4095)
+	}
+	raw <- key(0)
+	if e := <-out; e.Kind != Up {
+		t.Fatalf("last event %v, want Up", e.Kind)
+	}
+}

@@ -63,6 +63,10 @@ func process(ctx context.Context, raw <-chan rawEvent, o Options, rng [4]int32, 
 	}
 	var release *time.Timer // running while the finger is off the panel, but the touch is not over yet
 	var releaseC <-chan time.Time
+	// The newest move that the UI did not take yet. A busy UI gets the last position when it is
+	// ready, not each sample: a list then follows the finger, and a swipe is not lost.
+	var waiting Event
+	var waitC chan<- Event
 	for {
 		select {
 		case e, ok := <-raw:
@@ -97,13 +101,17 @@ func process(ctx context.Context, raw <-chan rawEvent, o Options, rng [4]int32, 
 					logSample("move", p)
 					select {
 					case out <- Event{Move, p.X, p.Y}:
-					default: // drop move events when the UI is busy
+						waitC = nil
+					default: // the UI is busy: keep the newest move for later
+						waiting, waitC = Event{Move, p.X, p.Y}, out
 					}
 				}
 				moved = false
 			}
+		case waitC <- waiting:
+			waitC = nil
 		case <-releaseC:
-			touching, release, releaseC = false, nil, nil
+			touching, release, releaseC, waitC = false, nil, nil, nil // Up has the last position
 			p := adj(x, y, o)
 			logSample("up", p)
 			out <- Event{Up, p.X, p.Y}
