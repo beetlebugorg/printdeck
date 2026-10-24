@@ -19,9 +19,11 @@ done
 
 # The overlays come from the kernel build, so that they match its device trees. The firmware
 # applies bcm2712d0.dtbo itself on a board with the D0 chip. Without it, the kernel stops at boot
-# with an SError in the pin setup.
+# with an SError in the pin setup. display_auto_detect loads the overlay of a Touch Display 2 (5" or
+# 7") from this folder: without the file, the display stays dark.
 OVERLAYS="$BUILD_DIR/linux-custom/arch/arm64/boot/dts/overlays"
-for o in overlay_map.dtb bcm2712d0.dtbo vc4-kms-v3d-pi5.dtbo; do
+for o in overlay_map.dtb bcm2712d0.dtbo vc4-kms-v3d-pi5.dtbo vc4-kms-dsi-ili9881-5inch.dtbo \
+  vc4-kms-dsi-ili9881-7inch.dtbo; do
   cp "$OVERLAYS/$o" "$BOOT/overlays/"
 done
 
