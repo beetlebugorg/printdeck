@@ -80,6 +80,77 @@ def hardware():
     return out
 
 
+# ---------------------------------------------------------------- ribbons
+
+RIBBON_W = 10.0
+STOCK = (100.0, 200.0, 300.0)                 # Adafruit 3560, 3561, 3562
+
+
+def fpt(u, v, w):
+    return np.array(D.face_pt(u, v, w))
+
+
+def routes():
+    """The two ribbons: (points, the direction across the ribbon at each point). A flat ribbon only
+    bends across its width; a step to the side is two 45 degree folds (a Z-fold)."""
+    Z, Y = np.array([0, 0, 1.0]), np.array([0, 1.0, 0])
+    floor = D.Y_BOT + D.WALL + 0.6
+    bot = D.DISP_V - D.BOARD_HALF                       # v of the bottom end of the display board
+    bf = D.BOARD_FRONT_W - D.BOARD_T                    # w of the back of the board
+    # HDMI: the Pi end under HDMI1, its ribbon leaves to the front; the display end under the HDMI
+    # socket, its ribbon leaves downward.
+    hx = D.pi_to_mount(39.2, -8.0, 15.6)
+    hdmi_disp = fpt(S.HDMI_A, bot - 19.0, bf - 4.5)
+    zp, zd = hx[2], hdmi_disp[2]
+    hdmi = [(np.array(hx), Z), (np.array([hx[0] + 4, floor + 2, zp]), Z), (np.array([hx[0] + 12, floor, zp]), Z),
+            (np.array([hx[0] + 18, floor, zp]), Z),
+            (np.array([hx[0] + 18 + abs(zd - zp), floor, zd]), Z),       # the Z-fold: 45 degrees across
+            (np.array([hdmi_disp[0] - 6, floor, zd]), Z), (np.array([hdmi_disp[0] - 1, floor + 4, zd]), Z),
+            (hdmi_disp, Z)]
+    # Touch: the Pi end in the upper USB 2 port points right; the ribbon folds back, runs left and
+    # down behind the Pi's ports, and goes forward to the display end under the USB-C socket.
+    t0 = np.array(D.pi_to_mount(85.0 + 2.5 + 18.0, 28 + 19, 12.7))
+    usbc_disp = fpt(S.USB_A, bot - 17.0, bf - 3.0)
+    xt = t0[0]
+    xf = usbc_disp[0]
+    touch = [(t0, Y), (t0 + [0, 0, -6], Y), (t0 + [3, 0, -8], Y),           # the fold back (180 degrees)
+             (np.array([xt + 6, t0[1], t0[2] + 2]), Y),
+             (np.array([xt + 6, t0[1], D.PI_LEFT_Z - 92.0]), Y),
+             (np.array([xt + 8, floor + 14, D.PI_LEFT_Z - 92.0]), Z),
+             (np.array([xf - 8, floor + 14, usbc_disp[2]]), Z),
+             (np.array([xf - 2, floor + 8, usbc_disp[2]]), Z), (usbc_disp, Z)]
+    return {"hdmi": hdmi, "touch": touch}
+
+
+def ribbon_mesh(points, widths, w=RIBBON_W, t=0.3):
+    P = [np.asarray(p, float) for p in points]
+    W = [np.asarray(v, float) / np.linalg.norm(v) for v in widths]
+    verts, faces = [], []
+    for i, p in enumerate(P):
+        d = P[min(i + 1, len(P) - 1)] - P[max(i - 1, 0)]
+        n = np.cross(d / np.linalg.norm(d), W[i])
+        n = n / (np.linalg.norm(n) or 1)
+        for sw in (-1, 1):
+            for st in (-1, 1):
+                verts.append(p + sw * W[i] * w / 2 + st * n * t / 2)
+    for i in range(len(P) - 1):
+        a, b = 4 * i, 4 * (i + 1)
+        for q in [(0, 1, 3, 2), (0, 2, 6, 4), (1, 5, 7, 3), (0, 4, 5, 1), (2, 3, 7, 6)]:
+            idx = [(a if k < 4 else b) + (k % 4) for k in q]
+            faces += [(idx[0], idx[1], idx[2]), (idx[0], idx[2], idx[3])]
+    return trimesh.Trimesh(np.array(verts), np.array(faces), process=False)
+
+
+def route_lengths():
+    out = {}
+    for n, pts in routes().items():
+        P = [p for p, _ in pts]
+        L = sum(np.linalg.norm(P[i + 1] - P[i]) for i in range(len(P) - 1))
+        stock = next((s_ for s_ in STOCK if s_ >= L + 3.0), None)
+        out[n] = (L, stock)
+    return out
+
+
 # A plug may sit in its own port, a part may sit on its boss, and the sockets are on the board.
 ALLOWED = {frozenset(p) for p in [("drive", "pi_usb3"), ("touch_usb_a", "pi_usb2"), ("printer_plug", "pi_usb2"),
                                   ("hdmi_end", "pi_hdmi1"), ("power_plug", "pi_usbc"), ("plug_hdmi", "display_sockets"),
@@ -143,6 +214,12 @@ def main(out):
             if n.startswith("pi_"):
                 del meshes[n]
         meshes["pi5"] = (m, "#1F6B45")
+    for n, (L, stock) in route_lengths().items():
+        print(f"{n} ribbon: route {L:.0f} mm, stock {stock:.0f} mm, service loop {stock - L:.0f} mm")
+    for n, pts in routes().items():
+        m = ribbon_mesh([p for p, _ in pts], [w for _, w in pts])
+        m.apply_transform(M)
+        meshes["ribbon_" + n] = (m, "#D8A24A" if n == "hdmi" else "#D9D9D9")
     allm = list(meshes.values())
     printer = R.printer_items() + [(R.logo_mark(), "#DDDDDD")]
     R.render(printer + allm, (-0.45, -0.25, 0.85), (0, 1, 0), os.path.join(out, "deck-printer.png"), size=(1400, 1400))
@@ -150,6 +227,11 @@ def main(out):
     R.render(no_back, (-0.35, -0.3, -0.9), (0, 1, 0), os.path.join(out, "deck-inside.png"), size=(1300, 1400))
     R.render(allm, (-0.55, -0.3, 0.75), (0, 1, 0), os.path.join(out, "deck-front.png"), size=(1200, 1400))
     R.render([meshes["back"]], (-0.35, -0.3, -0.9), (0, 1, 0), os.path.join(out, "deck-back-plate.png"), size=(1100, 1300))
+    # The chin from behind and below, without the back plate: the plug ends and the ribbons.
+    # The chin from behind, without the back plate and the Pi: the plug ends and the ribbons.
+    hide = {"back", "pi5", "cooler", "drive", "printer_plug", "touch_usb_a"}
+    chin = [v for k, v in meshes.items() if k not in hide and not k.startswith("pi_")]
+    R.render(chin, (-0.25, 0.35, -0.9), (0, 1, 0), os.path.join(out, "deck-ribbons.png"), size=(1400, 1100))
     return bad
 
 
