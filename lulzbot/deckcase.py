@@ -36,8 +36,8 @@ BOARD_HALF = S.BOARD_B                # half length of the board
 EARS = S.EARS                         # (a, b) of the ear holes from the panel centre
 
 BORDER = 20.0                         # the border around the screen: the sides and the top
-CHIN = 30.0                           # the border at the bottom: the sockets of the display are there
-R_EDGE = 10.0
+CHIN = 34.0                           # the border at the bottom: the sockets of the display and their plugs are there
+R_EDGE = 4.0
 WALL = 2.0                            # the walls of the body
 SKIN = 2.0                            # the face
 T_BACK = 3.0                          # the back plate
@@ -166,10 +166,15 @@ BLOCK_D = 10.0
 CORNER_IN = WALL + BLOCK / 2 + 3.0            # from the outer walls to the screw axis
 
 
+# The two at the top are in the corners. The two at the bottom stand on the floor, between the HDMI
+# plug under the Pi and the printer socket: the corners there are the Pi's USB-C port and the socket.
+BOTTOM_BLOCKS_Z = (-64.0, -82.0)
+
+
 def corner_points():
-    yb, yt = Y_BOT + CORNER_IN + 4.0, Y_TOP - CORNER_IN
-    zr, zl = Z_RIGHT + CORNER_IN, Z_LEFT - CORNER_IN
-    return [(yt, zr), (yt, zl), (yb, zr), (yb, zl)]
+    yt = Y_TOP - CORNER_IN
+    yb = Y_BOT + WALL + BLOCK / 2
+    return [(yt, Z_RIGHT + CORNER_IN), (yt, Z_LEFT - CORNER_IN)] + [(yb, z) for z in BOTTOM_BLOCKS_Z]
 
 
 def corner_blocks():
@@ -180,8 +185,11 @@ def corner_blocks():
         # Joined to the nearest walls so that it is not a floating block.
         sy = 1 if y > (Y_TOP + Y_BOT) / 2 else -1
         sz = 1 if z > Z_MID else -1
-        blk = blk + box(x0, x0 + BLOCK_D, y, y + sy * (CORNER_IN), z - BLOCK / 2, z + BLOCK / 2)
-        blk = blk + box(x0, x0 + BLOCK_D, y - BLOCK / 2, y + BLOCK / 2, z, z + sz * CORNER_IN)
+        if sy > 0:                            # a top block: joined to the top wall and the side wall
+            blk = blk + box(x0, x0 + BLOCK_D, y, y + CORNER_IN, z - BLOCK / 2, z + BLOCK / 2)
+            blk = blk + box(x0, x0 + BLOCK_D, y - BLOCK / 2, y + BLOCK / 2, z, z + sz * CORNER_IN)
+        else:                                 # a bottom block: down to the floor
+            blk = blk + box(x0, x0 + BLOCK_D, Y_BOT + 0.5, y, z - BLOCK / 2, z + BLOCK / 2)
         hole = box(x0 - 1, x0 + BLOCK_D - 1.5, y - HOLE[3] / 2, y + HOLE[3] / 2, z - HOLE[3] / 2, z + HOLE[3] / 2)
         # The nut slot opens toward the middle of the case (up or down), never through a wall.
         trap = Location(Plane(origin=(x0 + 5.0, y, z), x_dir=(0, -sy, 0), z_dir=(1, 0, 0))) * nut_trap(3, BLOCK)
@@ -194,7 +202,7 @@ def corner_blocks():
 # The nub on the cover screw: a tab on the left wall that reaches back along the cover to the cover
 # screw at 240 mm. Its slot is open at the bottom, and wide front to back: loosen the screw and lift.
 COVER_SCREW = (S.X_FRONT - 6.1, 240.0 - S.Y_BASE)
-NUB_T = 4.0
+NUB_T = Z_LEFT                                # flush with the outside of the left wall
 NUB_H = 22.0
 NUB_SLOT = (7.0, 3.6)                          # front to back, across (the screw is M3)
 
@@ -202,7 +210,9 @@ NUB_SLOT = (7.0, 3.6)                          # front to back, across (the scre
 def nub():
     x_s, y_s = COVER_SCREW
     x0 = x_s - 9.0
-    tab = box(x0, X_BACK + 12.0, y_s - NUB_H / 2, y_s + NUB_H / 2, 0.0, NUB_T)
+    # Behind the case only: in the case, the left wall is the nub's root.
+    tab = box(x0, X_BACK, y_s - NUB_H / 2, y_s + NUB_H / 2, 0.0, NUB_T)
+    tab = tab + box(X_BACK - 0.01, X_BACK + 4.0, y_s - NUB_H / 2, y_s + NUB_H / 2, Z_LEFT - WALL, NUB_T)
     # Round the free end.
     tab = fillet(tab.edges().filter_by(Axis.Z).filter_by(lambda e: e.center().X < x0 + 0.1), 6.0)
     slot = box(x_s - NUB_SLOT[0] / 2, x_s + NUB_SLOT[0] / 2, y_s - NUB_H, y_s + NUB_SLOT[1] / 2, -1, NUB_T + 1)
@@ -219,13 +229,14 @@ SOCKET_BODY = (20.0, 11.0)                     # the body inside [E]
 
 def body():
     s = shell()
-    # The screen opening and the pocket of the glass, in face coordinates.
+    add, cut = display_bosses()
+    s = s + add - cut
+    # The screen opening and the pocket of the glass, in face coordinates. The pocket trims the
+    # bosses clear of the panel.
     oa, ob = AA[0] + 2 * S.OPEN_MARGIN, AA[1] + 2 * S.OPEN_MARGIN
     s = s - FACE_LOC * Pos(0, V_AA, 0) * Box(oa, ob, 10)
     pa, pb = LCM[0] + 2 * S.CLR, LCM[1] + 2 * S.CLR
-    s = s - FACE_LOC * Pos(0, DISP_V, -S.LIP - 3.0) * Box(pa, pb, 6.0)
-    add, cut = display_bosses()
-    s = s + add - cut
+    s = s - FACE_LOC * Pos(0, DISP_V, -S.LIP - 3.5) * Box(pa, pb, 7.0)
     add, cut = corner_blocks()
     s = s + add - cut
     tab, slot = nub()
@@ -268,7 +279,9 @@ def socket_xz():
     return X_BACK + T_BACK + 12.0, Z_RIGHT + WALL + 16.0
 
 
-CLIP_SLOT_Y = S.CLIPS_Y                       # the two rail clips (shape.py), mount y
+# The two rail clips, mount y: in the free part of the rail slot (150 to 230 mm over the chassis
+# bottom), and clear of the top corner block.
+CLIP_SLOT_Y = (150.0, 198.0)
 
 
 def back():
@@ -296,7 +309,7 @@ def back():
     k0, k1 = S.CLIP_KEY[0] / 2 + S.CLR, S.CLIP_KEY[1] / 2 + S.CLR
     for yc in CLIP_SLOT_Y:
         d0, d1 = yc - S.CLIP_L / 2 - S.CLIP_SLACK, yc + S.CLIP_L / 2 + S.CLIP_SLACK
-        p = p + box(X_BACK, X_BACK + 3.5, d0 - S.CLIP_DROP - 4, d1 + 4, zc - k1 - 5, zc + k1 + 5)
+        p = p + box(X_BACK, X_BACK + 3.5, d0 - S.CLIP_DROP - 4, d1 + 4, max(zr, zc - k1 - 5), min(zl, zc + k1 + 5))
         dov = Polygon((zc - k0, X_BACK - 0.01), (zc + k0, X_BACK - 0.01), (zc + k1, X_BACK + 3.51), (zc - k1, X_BACK + 3.51), align=None)
         slot = Location(Plane(origin=(0, d0, 0), x_dir=(0, 0, 1), z_dir=(0, 1, 0))) * extrude(Plane.XY * dov, amount=d1 - d0)
         p = p - slot
