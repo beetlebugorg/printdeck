@@ -295,6 +295,103 @@ PARTS = [("pod_body", body, "#1B1C20"), ("bracket", bracket, "#2A2B30"), ("mini_
 
 
 # ---------------------------------------------------------------- the bought parts, for the check and the renders
+SCREW = {2.5: (4.5, 2.0), 3: (5.5, 3.0)}   # size: head diameter, head height (cap or pan head)
+SCREW_COLOR = "#B9BEC6"
+
+
+def screw(size, length, origin, out_dir, frame=None):
+    """A screw: the head on origin, outside toward out_dir, the shank of length into the part (against
+    out_dir). frame is a Location to place the result, or None."""
+    hd, hh = SCREW[size]
+    s = Pos(0, 0, hh / 2) * Cylinder(hd / 2, hh) + Pos(0, 0, -length / 2) * Cylinder(size / 2 - 0.05, length)
+    s = s - Pos(0, 0, hh) * Cylinder(hd * 0.22, hh * 1.2)          # the socket, for the looks
+    s = Location(Plane(origin=origin, z_dir=out_dir)) * s
+    return frame * s if frame is not None else s
+
+
+def pod_screws():
+    """The screws of the pod, in pod coordinates: two M2.5 x 4 from the back of the body into the top
+    tabs of the display, and four M2.5 x 5 (in the box of the display) through the Pi into the
+    standoffs."""
+    disp = None
+    for u, v in TABS:
+        if v < 100:
+            continue
+        sc = screw(2.5, 4.0, (u, v, -THIN_W), (0, 0, -1))
+        disp = sc if disp is None else disp + sc
+    pi = None
+    for u, v in PI_HOLE_UV:
+        sc = screw(2.5, 5.0, (u, v, -STANDOFF_W - 1.6), (0, 0, -1))
+        pi = sc if pi is None else pi + sc
+    return [("screw_display", disp, SCREW_COLOR), ("screw_pi", pi, SCREW_COLOR)]
+
+
+# The details of the display back, from the 5 inch drawing and the photos of the Touch Display 2
+# (Raspberry Pi publishes no STEP model of it): the channel in the middle of the metal back, the
+# connector of the ribbon at the bottom of the channel, and the power connector beside it.
+CHANNEL = (32.6, FRAME_V0 + FRAME[1] - 3.81)      # the width, and the top of the channel
+DISP_FPC = (0.0, 36.9)                            # (u, v) of the ribbon connector
+DISP_POWER = (21.9, 51.1)                         # (u, v) of the power connector (2 pins)
+# The Pi: the display port CAM/DISP 0 (Pi 5 drawing: x 53.1 to 55.9, y 1 to 16.6) and the GPIO header.
+PI_DSI = (53.1, 55.9, 1.0, 16.6, 1.6, 3.6)
+PI_GPIO = (7.1, 57.9, 49.4, 54.4, 1.6, 10.1)
+PI_5V_PINS = (10.0, 52.8)                         # (x, y) of pins 2, 4 and 6 (5 V, 5 V, ground)
+RIBBON_W = 11.5                                   # the 22-pin end of the standard-mini cable
+RIBBON_T = 0.3
+
+
+def display_details():
+    out = []
+    ch = uvw_box(-CHANNEL[0] / 2, CHANNEL[0] / 2, DISP_FPC[1] - 6.0, CHANNEL[1], -FRAME_W, -FRAME_W + 1.2)
+    out.append(("channel", ch, "#6C7078"))
+    u, v = DISP_FPC
+    out.append(("display_fpc", uvw_box(u - 9.0, u + 9.0, v - 2.0, v + 2.0, -FRAME_W - 2.0, -FRAME_W), "#ECECEC"))
+    u, v = DISP_POWER
+    out.append(("display_power", uvw_box(u - 2.5, u + 2.5, v - 3.0, v + 3.0, -FRAME_W - 4.5, -FRAME_W), "#ECECEC"))
+    out.append(("pi_dsi", pi_box(*PI_DSI), "#ECECEC"))
+    out.append(("pi_gpio", pi_box(*PI_GPIO), "#1A1A1A"))
+    return out
+
+
+def ribbon_and_wire():
+    """The DSI ribbon (the standard-mini cable in the box of the display) and the 2-wire power cable.
+    The ribbon leaves the display connector downward, turns toward the USB-C edge under the Pi, wraps
+    round that edge, and comes back over the board to the display port: the route of the Raspberry
+    Pi diagram. It is approximate until the parts arrive."""
+    rw, t = RIBBON_W, RIBBON_T
+    b = pi_box(*PI_DSI).bounding_box()
+    edge = 28.0 + 3.0                                  # past the USB-C edge of the board
+    # Between the lower standoffs (v up to 36.4) and the power connector (v from 48.1).
+    v0, v1 = DISP_FPC[1] - 0.4, DISP_FPC[1] - 0.4 + rw
+    under, over = -FRAME_W - 2.6, -STANDOFF_W - 1.6 - 4.6
+    segs = [
+        uvw_box(-rw / 2, rw / 2, DISP_FPC[1] + 2.0, v0 + 0.01, under - t, under),  # out of the connector, up
+        uvw_box(-rw / 2, edge + t, v0, v1, under - t, under),                    # under the Pi, to the edge
+        uvw_box(edge, edge + t, v0, v1, over - t, under),                        # round the edge
+        uvw_box(22.0, edge + t, v0, v1, over - t, over),                          # back over the board
+        uvw_box(b.min.X + 2.0, b.max.X, b.max.Y, v1, over - t, b.min.Z),         # down into the port
+    ]
+    r = segs[0]
+    for sg in segs[1:]:
+        r = r + sg
+    # The power wire: from the display connector, under the Pi to the GPIO edge, up round it, to the
+    # 5 V pins.
+    import numpy as np
+    du, dv = DISP_POWER
+    pu, pv, pw = pi_uvw(PI_5V_PINS[0], PI_5V_PINS[1], PI_GPIO[5])
+    pts = [(du, dv, -FRAME_W - 4.5), (du, dv, -FRAME_W - 3.5), (du - 8, dv + 6, under - 1.5), (-31.0, pv - 6, under - 1.5),
+           (-31.0, pv, under - 1.5), (-31.0, pv, pw - 3.0), (pu, pv, pw - 3.0), (pu, pv, pw)]
+    path = rounded(pts, r=4.0)
+    wire = None
+    for a, c in zip(path[:-1], path[1:]):
+        L = float(np.linalg.norm(c - a))
+        if L < 0.05:
+            continue
+        sg = Location(Plane(origin=tuple((a + c) / 2), z_dir=tuple((c - a) / L))) * Cylinder(1.2, L + 0.4)
+        wire = sg if wire is None else wire + sg
+    return [("dsi_ribbon", r, "#D88A2E"), ("power_wire", wire, "#C0392B")]
+
+
 def hardware():
     out = []
     glass = extrude(Pos(0, GLASS[1] / 2, -LENS) * RectangleRounded(GLASS[0], GLASS[1], GLASS_R), amount=LENS)
@@ -306,17 +403,30 @@ def hardware():
     for i, (u, v) in enumerate(PI_HOLE_UV):
         out.append((f"standoff{i}", Pos(u, v, -(FRAME_W + STANDOFF_W) / 2) * Cylinder(2.5, STANDOFF_W - FRAME_W), "#C9CDD2"))
     for n, b in pi_parts().items():
-        out.append((n, pi_box(*b), "#30343A" if n == "cooler" else ("#1F6B45" if n == "pi_board" else "#C9CDD2")))
+        sh = pi_box(*b)
+        if n == "cooler":
+            # The Active Cooler leaves the display ports at the edge of the board open.
+            sh = sh - pi_box(PI_DSI[0] - 9.0, PI_DSI[1] + 2.0, -1.0, PI_DSI[3] + 1.5, 0.0, 20.0)
+        out.append((n, sh, "#30343A" if n == "cooler" else ("#1F6B45" if n == "pi_board" else "#C9CDD2")))
     # The plugs: the power plug from the right, the printer cable into a USB 2 port from below.
     u, v, w = pi_uvw(11.2, -1.0, 3.2)
     out.append(("power_plug", uvw_box(u + 6.5, u + 6.5 + 24.0, v - 6.0, v + 6.0, w - 3.5, w + 3.5), "#F2F2F2"))
     x0, x1, y0, y1, z0, z1 = pi_parts()["pi_usb2"]
     b = pi_box(x0, x1, y0, y1, z0, z0 + 7.5).bounding_box()
+    out += pod_screws()
+    out += display_details()
+    out += ribbon_and_wire()
     out.append(("printer_plug", uvw_box(b.min.X - 1.5, b.max.X + 1.5, b.min.Y - 30.0, b.min.Y + 2.0, b.min.Z - 0.6, b.max.Z + 0.6), "#151515"))
     return out
 
 
 ALLOWED = {frozenset(p) for p in [("power_plug", "pi_usbc"), ("printer_plug", "pi_usb2"), ("glass", "screen"),
+                                  ("screw_display", "tab1"), ("screw_display", "tab3"), ("screw_pi", "pi_board"),
+                                  ("channel", "frame"), ("display_fpc", "dsi_ribbon"), ("pi_dsi", "dsi_ribbon"),
+                                  ("pi_dsi", "pi_board"), ("pi_gpio", "pi_board"), ("pi_gpio", "power_wire"),
+                                  ("display_power", "power_wire"), ("pi_dsi", "cooler"), ("pi_gpio", "cooler"),
+                                  ("screw_pi", "standoff0"), ("screw_pi", "standoff1"), ("screw_pi", "standoff2"),
+                                  ("screw_pi", "standoff3"),
                                   ("glass", "frame"), ("frame", "pod_body")]}
 
 
@@ -441,11 +551,23 @@ def main(out, stills=True, which=("taz", "mini2")):
         R_inv = np.linalg.inv(matrix(loc))[:3, :3]
         clip_normals = {n: tuple(R_inv @ np.array(nv)) for n, _, nv in clip_groups}
         V = lambda d: [d[0], -d[2], d[1]]          # pod (u, v, w) to the view (x, y, z)
-        ex = lambda n: {"explode": [V(d) for d in explode_steps(n, clip_normals)]}
+        unplug = [i for i, (t, _) in enumerate(STAGES) if t.startswith("take out the four Pi")][0]
+
+        def ex(n):
+            e = {"explode": [V(d) for d in explode_steps(n, clip_normals)]}
+            if n in FLEX:
+                e["hide_after"] = unplug          # unplug the ribbon and the wire first
+            return e
         items = [(n, zup_m(m, zup), c, ex(n)) for n, (m, c) in pod.items()]
         b = brm.copy()
         b.apply_transform(zup @ np.linalg.inv(matrix(loc)))
         items.append(("bracket", b, "#2A2B30", ex("bracket")))
+        p = os.path.join(tmp, f"{name}_bracket_screws.stl")
+        export_stl(bracket_screws(name), p, tolerance=0.03, angular_tolerance=0.1)
+        bs = trimesh.load(p, force="mesh")
+        bsv = bs.copy()
+        bsv.apply_transform(zup @ np.linalg.inv(matrix(loc)))
+        items.append(("bracket_screws", bsv, SCREW_COLOR))
         by = {}
         for m, c in printer:
             by.setdefault(c, []).append(m)
@@ -460,7 +582,7 @@ def main(out, stills=True, which=("taz", "mini2")):
             print(f"{name}: {cab} cable route {length(path) / 1000:.2f} m")
             mv = m.copy()
             mv.apply_transform(zup @ np.linalg.inv(matrix(loc)))
-            items.append((f"{cab}_cable", mv, CABLE_COLOR[cab], {"hide_exploded": True}))
+            items.append((f"{cab}_cable", mv, CABLE_COLOR[cab], ex(f"{cab}_cable")))
             mw = m.copy()
             mw.apply_transform(frame_to_world)
             st.setdefault("cables", []).append((mw, CABLE_COLOR[cab]))
@@ -470,7 +592,7 @@ def main(out, stills=True, which=("taz", "mini2")):
             cm = trimesh.load(p, force="mesh")
             cv = cm.copy()
             cv.apply_transform(zup @ np.linalg.inv(matrix(loc)))
-            items.append((gname, cv, "#E8762B", ex(gname)))
+            items.append((gname, cv, SCREW_COLOR if "screws" in gname else "#E8762B", ex(gname)))
             cm.apply_transform(frame_to_world)
             st["cables"].append((cm, "#E8762B"))
         p = os.path.join(tmp, f"{name}_usb_b.stl")
@@ -478,10 +600,10 @@ def main(out, stills=True, which=("taz", "mini2")):
         plug = trimesh.load(p, force="mesh")
         pv_ = plug.copy()
         pv_.apply_transform(zup @ np.linalg.inv(matrix(loc)))
-        items.append(("usb_b_plug", pv_, "#151515", {"hide_exploded": True}))
+        items.append(("usb_b_plug", pv_, "#151515"))
         # The exploded view must not pass one part through another: the pod parts and the bracket,
         # in pod coordinates.
-        check_meshes = {n: m for n, (m, c) in pod.items()}
+        check_meshes = {n: m for n, (m, c) in pod.items() if n not in FLEX}
         bl = brm.copy()
         bl.apply_transform(np.linalg.inv(matrix(loc)))
         check_meshes["bracket"] = bl
@@ -569,9 +691,11 @@ def clips(name):
         rail, _ = C.rail_clip()
         # The cradles are 6 mm lower, on the straight run. Below 50 mm, the corner of the frame
         # stands 3 mm in front of the rail.
-        out = [Location(Plane(origin=(S.RAIL_FRONT_X, y, S.RAIL_SLOT_Z), x_dir=(0, 0, 1), z_dir=(1, 0, 0))) * rail
-               for y in (80.0, 110.0)]
-        groups.append(("rail_clips", out, (1.0, 0.0, 0.0)))
+        locs = [Location(Plane(origin=(S.RAIL_FRONT_X, y, S.RAIL_SLOT_Z), x_dir=(0, 0, 1), z_dir=(1, 0, 0)))
+                for y in (80.0, 110.0)]
+        groups.append(("rail_clips", [l * rail for l in locs], (1.0, 0.0, 0.0)))
+        # M3 x 10 through the counterbore into a roll-in nut in the slot.
+        groups.append(("rail_clip_screws", [l * screw(3, 10.0, (0, -6.0, C.BASE_T), (0, 0, 1)) for l in locs], (1.0, 0.0, 0.0)))
         pair, _ = C.tape_clip(True)
         out = [Location(Plane(origin=(x, TAZ_COVER_Y, C.TAPE), x_dir=(0, 1, 0), z_dir=(0, 0, 1))) * pair
                for x in (50.0, -10.0, -70.0)]
@@ -593,19 +717,23 @@ def clips(name):
 
 # ---------------------------------------------------------------- the exploded view
 # The stages, in the order the pod comes apart: (title, {part group: (u, v, w) in pod coordinates}).
-DISPLAY = ("glass", "screen", "frame", "tab", "standoff")
+DISPLAY = ("glass", "screen", "frame", "tab", "standoff", "channel", "display_")
 PI = ("pi5", "cooler", "pi_")
-POD_PARTS = DISPLAY + PI + ("pod_body", "power_plug", "printer_plug")
+FLEX = ("dsi_ribbon", "power_wire")      # they move with the display and hide when the Pi comes off
+POD_PARTS = DISPLAY + PI + FLEX + ("pod_body", "screw_display", "screw_pi")
 STAGES = [
+    ("unplug the power and printer cables", {("power_plug", "power_cable"): (40.0, 0.0, 0.0),
+                                             ("printer_plug", "printer_cable"): (0.0, -40.0, 0.0)}),
     ("lift the pod off the dovetail", {POD_PARTS: (0.0, DOVE_LIFT, 0.0)}),
     ("pull the pod forward off the bracket", {POD_PARTS: (0.0, 0.0, 60.0)}),
-    ("pull out the plugs", {("power_plug",): (50.0, 0.0, 0.0), ("printer_plug",): (0.0, -50.0, 0.0)}),
-    ("take the display and the Pi out of the front", {DISPLAY + PI: (0.0, 0.0, 80.0)}),
+    ("take out the two display screws", {("screw_display",): (0.0, 0.0, -30.0)}),
+    ("take the display and the Pi out of the front", {DISPLAY + PI + FLEX + ("screw_pi",): (0.0, 0.0, 80.0)}),
+    ("take out the four Pi screws", {("screw_pi",): (0.0, 0.0, -60.0)}),
     ("take the Pi off the display", {PI: (0.0, 0.0, -40.0)}),
     ("take the clips off", {}),
 ]
 CLIP_LIFT = 25.0
-HIDE_EXPLODED = ("power_cable", "printer_cable", "usb_b_plug")
+
 
 
 def explode_steps(part, clip_normals):
@@ -614,7 +742,7 @@ def explode_steps(part, clip_normals):
     for title, moves in STAGES:
         d = (0.0, 0.0, 0.0)
         for group, v in moves.items():
-            if any(part == g or (g.endswith("_") or g in ("tab", "standoff")) and part.startswith(g) for g in group):
+            if any(part.startswith(g) for g in group):
                 d = tuple(a + b for a, b in zip(d, v))
         if title.startswith("take the clips") and part in clip_normals:
             d = tuple(CLIP_LIFT * c for c in clip_normals[part])
@@ -650,6 +778,19 @@ def explode_check(meshes, clip_normals, steps=40):
             if fp not in base and not same:
                 bad.add((tuple(sorted(p)), STAGES[min(int(t - 1e-9), k - 1)][0]))
     return sorted(bad)
+
+
+def bracket_screws(name):
+    """The screws of the bracket, in the frame of the printer: on the TAZ the cover screw of the
+    printer through the nub, on the Mini 2 the two frame screws (M3 x 10) through the plate."""
+    if name == "taz":
+        x_s, y_s = COVER_SCREW
+        return screw(3, 8.0, (x_s, y_s, 3.3), (0, 0, 1))
+    out = None
+    for x, z in MINI_SCREWS:
+        sc = screw(3, 10.0, (x, MINI_PLATE_Y - PLATE, z), (0, -1, 0))
+        out = sc if out is None else out + sc
+    return out
 
 
 def usb_b_plugs(name):

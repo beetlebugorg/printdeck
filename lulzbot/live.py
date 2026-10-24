@@ -112,6 +112,9 @@ class Live:
             return self.printer
         if self.t > 0.01 and self.info.get(n, {}).get("hide_exploded"):
             return False
+        after = self.info.get(n, {}).get("hide_after")
+        if after is not None and self.t > after + 0.01:
+            return False
         return n not in self.hidden
 
     def place(self):
