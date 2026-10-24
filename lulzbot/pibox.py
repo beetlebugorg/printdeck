@@ -92,7 +92,9 @@ COVER_SCREW_Y = 240.0 - S.Y_BASE    # the cover screw that holds the box (mount 
 FRONT_GAP = 0.5                     # the front wall stops this far behind the chassis face
 
 
-def layout():
+def layout(top=None):
+    """The box. top is the mount y of its top; by default the board top edge is 8 mm over the
+    cover screw."""
     wall = 2.0
     # Front: the plugs end inside the front wall, which is just behind the chassis face.
     x1 = S.X_FRONT - FRONT_GAP
@@ -102,6 +104,8 @@ def layout():
     plug_low = min(p[2] for p in plugs().values())
     y0 = COVER_SCREW_Y + 8.0 - 28.0 - 3.0 - wall - (56.0)        # first guess, set below
     py = COVER_SCREW_Y + 8.0 - 28.0                               # the board top edge 8 mm over the screw
+    if top is not None:
+        py = top - wall - 3.0 - 28.0
     y0 = py + plug_low - 2.0 - wall
     y1 = py + 28.0 + 3.0 + wall
     x0 = px - 42.5 - 3.0 - wall

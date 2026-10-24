@@ -240,7 +240,7 @@ def build():
     L = T.workhorse()
     L.y_top = T.WORKHORSE_TOP
     slab = Slab(L)
-    b = PB.layout()
+    b = PB.layout(top=L.y_top)        # the top of the box is the top of the slab
     parts = {"slab": slab.meshes(), "pi": pi_meshes(b), "box": box_shell(b), "lid": box_shell(b, lid=True)[-1:]}
     # Drive, printer plug and socket, power plug: the boxes of pibox.
     for n, sh in PB.solids(b):
@@ -250,6 +250,20 @@ def build():
             parts.setdefault("pibox_parts", []).append(
                 (box_mesh(((bb.min.X + bb.max.X) / 2, (bb.min.Y + bb.max.Y) / 2, (bb.min.Z + bb.max.Z) / 2),
                           (bb.max.X - bb.min.X, bb.max.Y - bb.min.Y, bb.max.Z - bb.min.Z)), col))
+    # The neck: it joins the front end of the box to the cover-side wall of the slab, at the top,
+    # around the corner of the chassis. The ribbons go through it.
+    x0, x1, y0, y1, z0, z1 = b.outer
+    cw = slab.pt(-slab.width / 2, 0, 0)[2]
+    neck_h = 34.0
+    ny0, ny1 = y1 - neck_h, y1
+    back_at = lambda y: (slab.pt(0, 0, -SLAB_T)[0] + (L.y_top - y) * T.TAN)
+    nx0 = x1 - b.wall
+    prof = []
+    for yy in (ny0, ny1):
+        prof += [(nx0, yy), (back_at(yy) + 4.0, yy)]
+    pts3 = [(x, y, z) for x, y in prof for z in (cw, z1)]
+    neck = trimesh.convex.convex_hull(np.array(pts3))
+    parts["neck"] = [(neck, "#2C3E73")]
     socks = {n: (a, m) for n, a, m in slab.sockets()}
     parts["slab"] += [(m, "#C9CDD2") for _, m in socks.values()]
     routes = {}
@@ -277,27 +291,24 @@ def build():
     parts["ends"] = ends
     # Routes: (point, the direction across the ribbon). A flat ribbon bends only across its width,
     # so a turn in its own plane is a 45 degree fold; the renders show a fold as a short twist.
-    x0, x1, y0, y1, z0, z1 = b.outer
-    slot_y = y1 - b.wall - 7.0                                   # the slot in the front wall, at its top
-    fx = x1 - b.wall - 2.0                                       # inside the front wall
-    Y, Z, X = np.array([0, 1.0, 0]), np.array([0, 0, 1.0]), np.array([1.0, 0, 0])
-    cw = slab.pt(-slab.width / 2, 0, 0)[2]                       # z of the cover-side wall of the slab
-    hdmi_v, touch_v = slab.disp(0, bt - 13.0, 0) @ slab.v - slab.o @ slab.v, None
-    hw = (hp - slab.o) @ slab.w                                  # the HDMI ribbon lies at the w of its clip
-    tw = hw - 3.0                                                # the touch ribbon lies behind it
+    # The ribbons go up the inside of the front wall, through the neck and into the top band of
+    # the slab.
+    fx = x1 - b.wall - 2.0
+    Y, Z = np.array([0, 1.0, 0]), np.array([0, 0, 1.0])
     hv = (hp - slab.o) @ slab.v
-    tv = hv
+    hw = (hp - slab.o) @ slab.w
+    tw = hw - 3.0
+    ry = slab.pt(0, hv, hw)[1]                                   # the height of the ribbons in the neck
     def sp(u, v, w):
         return slab.pt(u, v, w)
-    # The HDMI ribbon goes down to the floor of the box and under the body of the printer socket.
     floor_z = b.wall + RIBBON[1] / 2 + 0.2
     hdmi = [(pp, Y), (pp + pd * 6, Y), ((pp[0] + 10, pp[1], floor_z), Y), ((fx, pp[1], floor_z), Y),
-            ((fx, pp[1] + 6, floor_z + 5.0), Z), ((fx, slot_y - 4, 9.0), Z), ((x1 + 2, slot_y, 9.0), Y), ((x1 + 8, slot_y, 4.0), Y),
-            (sp(-slab.width / 2 - 4, hv, hw), Y), (sp(-slab.width / 2 + 4, hv, hw), slab.v), (hp, slab.v)]
+            ((fx, pp[1] + 6, floor_z + 5.0), Z), ((fx, ry - 6, 9.0), Z), ((fx + 4, ry, 9.0), Y),
+            (sp(-slab.width / 2 - 2, hv, hw), Y), (sp(-slab.width / 2 + 4, hv, hw), slab.v), (hp, slab.v)]
     touch = [(tp, Y), (tp + td * 6, Y), ((fx, tp[1], tp[2]), Y), ((fx, tp[1] + 3, tp[2]), Z),
-             ((fx, slot_y - 4, 15.0), Z), ((x1 + 2, slot_y, 15.0), Y), ((x1 + 9, slot_y, 9.0), Y),
-             (sp(-slab.width / 2 - 4, tv, tw), Y), (sp(-slab.width / 2 + 4, tv, tw), slab.v),
-             (sp((up_ - slab.o) @ slab.u, tv, tw), slab.v), (up_ + ud * 6, -slab.u), (up_, -slab.u)]
+             ((fx, ry - 4, 16.0), Z), ((fx + 4, ry - 1, 16.0), Y), (sp(-slab.width / 2 - 2, hv, tw), Y),
+             (sp(-slab.width / 2 + 4, hv, tw), slab.v), (sp((up_ - slab.o) @ slab.u, hv, tw), slab.v),
+             (up_ + ud * 6, -slab.u), (up_, -slab.u)]
     routes["hdmi"] = hdmi
     routes["touch"] = touch
     rib = []
