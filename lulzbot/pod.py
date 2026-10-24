@@ -218,7 +218,23 @@ def bracket():
         dov = Polygon((zc - k0, X_BACK - 0.01), (zc + k0, X_BACK - 0.01), (zc + k1, X_BACK + kd), (zc - k1, X_BACK + kd), align=None)
         b = b - Location(Plane(origin=(0, d0, 0), x_dir=(0, 0, 1), z_dir=(0, 1, 0))) * extrude(Plane.XY * dov, amount=d1 - d0)
         b = b - mbox(X_BACK - 1, X_BACK + kd + 0.2, d0 - S.CLIP_DROP, d0 + 0.5, zc - k1 - 0.2, zc + k1 + 0.2)
+    # Zip-tie anchors on the front of the leg, under the pod: for the slack of the cables and to
+    # take a pull off the plugs.
+    for y in (CLIP_Y[0] - 6.0, CLIP_Y[0] + 14.0):
+        add, cut = tie_anchor(X_BACK + PLATE - 0.01, y, zc, "taz")
+        b = b + add - cut
     return b + wedge(POD_LOC, mbox(X_BACK + PLATE - 0.01, X_BACK + 400, -1000, 1000, -1000, 1000))
+
+
+def tie_anchor(x0, y0, z0, axis):
+    """A zip-tie anchor: a bridge on a plate, with a 4 x 2 mm passage under it for a tie up to
+    3.6 mm wide. axis is the direction of the passage ("y" or "z"); the bridge stands out of the plate
+    toward +x (TAZ) or -y (Mini 2): give the plate face as x0 or y0."""
+    if axis == "taz":
+        b = mbox(x0, x0 + 5.0, y0 - 6.0, y0 + 6.0, z0 - 4.0, z0 + 4.0)
+        return b, mbox(x0 + 0.01, x0 + 2.4, y0 - 7.0, y0 + 7.0, z0 - 2.2, z0 + 2.2)
+    b = mbox(x0 - 6.0, x0 + 6.0, y0 - 5.0, y0, z0 - 4.0, z0 + 4.0)
+    return b, mbox(x0 - 7.0, x0 + 7.0, y0 - 2.4, y0 - 0.01, z0 - 2.2, z0 + 2.2)
 
 
 def wedge(loc, front):
@@ -257,6 +273,10 @@ def mini_bracket():
     plate = mbox(-366.0, MINI_X + 15.0, MINI_PLATE_Y - PLATE, MINI_PLATE_Y, top - 60.0, 372.0)
     for x, z in MINI_SCREWS:
         plate = plate - Pos(x, MINI_PLATE_Y - PLATE / 2, z) * Rot(90, 0, 0) * Cylinder(1.7, PLATE + 2)
+    # Zip-tie anchors at the bottom of the plate, beside the pod: for the cables and their slack.
+    for z in (top - 54.0, top - 36.0):
+        add, cut = tie_anchor(-359.0, MINI_PLATE_Y - PLATE + 0.01, z, "mini")
+        plate = plate + add - cut
     return plate + wedge(MINI_LOC, mbox(-1000, 1000, -1000, MINI_PLATE_Y - PLATE + 0.01, -1000, 1000))
 
 
@@ -432,6 +452,22 @@ def main(out, stills=True, which=("taz", "mini2")):
             mw = m.copy()
             mw.apply_transform(frame_to_world)
             st.setdefault("cables", []).append((mw, CABLE_COLOR[cab]))
+        p = os.path.join(tmp, f"{name}_clips.stl")
+        export_stl(clips(name), p, tolerance=0.05, angular_tolerance=0.2)
+        cm = trimesh.load(p, force="mesh")
+        cv = cm.copy()
+        cv.apply_transform(zup @ np.linalg.inv(matrix(loc)))
+        items.append(("cable_clips", cv, "#E8762B"))
+        cm.apply_transform(frame_to_world)
+        st["cables"].append((cm, "#E8762B"))
+        p = os.path.join(tmp, f"{name}_usb_b.stl")
+        export_stl(usb_b_plugs(name), p, tolerance=0.05, angular_tolerance=0.2)
+        plug = trimesh.load(p, force="mesh")
+        pv_ = plug.copy()
+        pv_.apply_transform(zup @ np.linalg.inv(matrix(loc)))
+        items.append(("usb_b_plug", pv_, "#151515"))
+        plug.apply_transform(frame_to_world)
+        st["cables"].append((plug, "#151515"))
         gap = clearance([m for m, _ in pod.values()], pod_to_world, printer)
         print(f"{name}: the pod is {gap:.1f} mm from the printer at the closest point")
         note = ("no overlaps" if not bad else f"{len(bad)} overlaps") + f", {gap:.1f} mm from the printer"
@@ -493,7 +529,37 @@ BEND_R = 15.0
 
 
 TAZ_USB_B = (305.0, -84.0)       # mount (y, z) of the USB-B port on the rear face (x = -85): about
-USB_B_PLUG = 28.0                # the length of the USB-B plug body behind the port
+USB_B_PLUG = 28.0                # the length of the USB-B plug body outside the port
+MINI_USB_B = (-377.4, 73.5)      # (x, z) of the USB-B port in the front of the Mini 2 electronics case
+MINI_CASE_Y = -254.0             # the front of the case
+MINI_UPRIGHT_X = -335.0          # the power cable runs down the left upright, right of the case
+
+
+def clips(name):
+    """The cable clips, in the frame of the printer: printed clips in the rail slot on the TAZ,
+    adhesive clips on the Mini 2 upright and on the TAZ cover."""
+    out = []
+    if name == "taz":
+        for y in (60.0, 110.0, 160.0):
+            out.append(mbox(S.RAIL_FRONT_X, S.RAIL_FRONT_X + 8.0, y - 6, y + 6, S.RAIL_SLOT_Z - 5, S.RAIL_SLOT_Z + 5))
+        for x in (50.0, -10.0, -70.0):
+            out.append(mbox(x - 6, x + 6, 0.0, 14.0, 0.0, 10.0))
+    else:
+        for z in (60.0, 140.0, 220.0):
+            out.append(mbox(MINI_UPRIGHT_X - 6, MINI_UPRIGHT_X + 6, MINI_PLATE_Y - 8.0, MINI_PLATE_Y, z - 6, z + 6))
+    s = out[0]
+    for o in out[1:]:
+        s = s + o
+    return s
+
+
+def usb_b_plugs(name):
+    """The USB-B plug in the port of the printer, in the coordinates of the printer's frame."""
+    if name == "taz":
+        py, pz = TAZ_USB_B
+        return mbox(-85.0 - USB_B_PLUG, -85.0, py - 5.5, py + 5.5, pz - 6.0, pz + 6.0)
+    px, pz = MINI_USB_B
+    return mbox(px - 6.0, px + 6.0, MINI_CASE_Y - USB_B_PLUG, MINI_CASE_Y, pz - 5.5, pz + 5.5)
 
 
 def cable_starts():
@@ -518,25 +584,40 @@ def routes(name, pod_to_frame):
         if name == "taz":
             # Mount coordinates: x to the front, y up (the desk is y = -14), z out of the cover.
             desk = -12.0
+            rz, rx = S.RAIL_SLOT_Z, S.RAIL_FRONT_X + 3.0
             if cab == "power":
-                way = [(x, desk + 30, z), (x, desk, z + 30), (x + 40, desk, 60.0), (x + 160, desk, 140.0)]
+                # To the front rail, down its slot in printed clips, across the bottom of the front
+                # to the cover side, back along the lower edge of the cover, and out behind the
+                # printer to the outlet.
+                way = [(x, y, rz - 6.0), (rx + 6.0, y - 25.0, rz), (rx, y - 45.0, rz), (rx, 12.0, rz), (rx, 4.0, rz + 15.0),
+                       (rx, 4.0, -10.0), (rx - 8.0, 4.0, 6.0), (60.0, 4.0, 6.0), (-80.0, 4.0, 6.0), (-100.0, desk, 6.0),
+                       (-250.0, desk, 6.0)]
             else:
                 # Under the pod to the cover side, back along the outside of the cover, round the
                 # rear corner, and up the rear face to the USB-B port of the RAMBo. The port is
                 # left of the second extruder connector (seen from behind), at about its height.
+                # Down the front under the pod, along the lower edge of the cover with the power
+                # cable, round the rear corner and up the rear face to the port.
                 py, pz = TAZ_USB_B
-                way = [(x, y - 20, z), (x - 10, y - 30, 6.0), (60.0, y - 30, 6.0), (-80.0, y - 30, 6.0),
-                       (-94.0, y - 30, -8.0), (-94.0, py, -8.0), (-94.0, py, pz), (-85.0 - USB_B_PLUG, py, pz)]
+                way = [(x, 30.0, z), (rx, 10.0, z + 10.0), (rx, 10.0, -10.0), (rx - 8.0, 10.0, 6.0), (60.0, 10.0, 6.0),
+                       (-80.0, 10.0, 6.0), (-94.0, 10.0, -8.0), (-94.0, py, -8.0), (-94.0, py, pz),
+                       (-85.0 - USB_B_PLUG, py, pz)]
         else:
             # The Mini 2: z up (the desk is z = -7), the front toward -y.
             desk = -5.0
             if cab == "power":
-                way = [(x + 10, y, z - 30), (x + 10, y, desk + 30), (x - 20, y, desk), (-480.0, y, desk), (-560.0, y - 40, desk)]
+                # Back behind the pod, down the front of the left upright (clear of the opening and
+                # of the stock LCD), and out to the left on the desk.
+                ux = MINI_UPRIGHT_X
+                way = [(x + 4, y + 10, z - 20), (x, MINI_PLATE_Y - 4.0, z - 45.0), (ux, MINI_PLATE_Y - 4.0, z - 60.0),
+                       (ux, MINI_PLATE_Y - 4.0, 30.0), (ux, MINI_PLATE_Y - 20.0, desk), (-480.0, MINI_PLATE_Y - 40.0, desk),
+                       (-560.0, MINI_PLATE_Y - 80.0, desk)]
             else:
-                # Down to the top of the electronics case, back along it, down its rear face to the
-                # USB-B port (guess: the rear face, 150 mm up).
-                way = [(x, y, 240.0), (-390.0, y + 20, 232.0), (-390.0, -200.0, 228.0), (-390.0, 20.0, 228.0),
-                       (-390.0, 20.0, 150.0), (-390.0, 6.0, 150.0)]
+                # Down the front of the left upright to the USB-B port in the front of the
+                # electronics case; the plug goes in from the front.
+                px, pz = MINI_USB_B
+                way = [(x, y, 160.0), (px, y, 120.0), (px, y, pz + 20), (px, MINI_CASE_Y - USB_B_PLUG - 12, pz),
+                       (px, MINI_CASE_Y - USB_B_PLUG, pz)]
         out[cab] = [tuple(p0), tuple(p1)] + way
     return out
 
