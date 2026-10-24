@@ -58,7 +58,7 @@ FRONT_W = -(LENS + 0.05)        # the front rim of the body, against the back of
 PI_TOP_W = STANDOFF_W + 1.6 + 16.0                 # the top of the USB ports: 32.5
 DEEP_W = PI_TOP_W + GAP + WALL                     # the back of the body where the Pi is: 35.5
 THIN_W = TAB_W + 2.5            # the back of the body over the display only: 14.0
-STEP_V = (100.0, 112.0)         # the slope between the deep and the thin part
+STEP_V = (100.0, 104.0)         # the slope between the deep and the thin part
 
 
 def pi_uvw(x, y, z):
@@ -135,7 +135,11 @@ def vents():
     return cut
 
 
-DOVE = (10.0, 14.0, 3.0, (STEP_V[1] + 3.0, 136.0))    # the dovetail on the back: root, tip, height, v range
+# The dovetail on the back: root, tip, height, v range. The pod slides down onto the bracket by
+# the length of the dovetail and a little more (DOVE_LIFT). During the slide, the deep part of the
+# back must stay under the wedge of the bracket: the wedge starts DOVE_LIFT + 2 mm over the slope.
+DOVE_LIFT = 16.0
+DOVE = (10.0, 14.0, 3.0, (STEP_V[1] + DOVE_LIFT + 3.0, 136.0))
 
 
 def dovetail(clr=0.0, v_ext=0.0):
@@ -178,10 +182,12 @@ X_BACK = S.BACK_X[0]                     # the bracket stands on the flanges of 
 PLATE = 4.0
 GLASS_TOP_Y = 262.0 - S.Y_BASE           # under the logo
 POD_Z = (-102.6 - 2.0) / 2               # the middle of the front of the control box (cb_chassis)
-# The top back corner of the deep part (the Pi) is 2 mm in front of the plate. The bracket is a wedge
-# between the plate and the thin back over it.
+# The top back corner of the deep part (the Pi) is in front of the plate by PLATE_GAP. The slide onto
+# the dovetail runs up the tilted face, so it moves the pod toward the wall by DOVE_LIFT x sin(tilt):
+# the gap is that and 3 mm more. The bracket is a wedge between the plate and the thin back over it.
+PLATE_GAP = DOVE_LIFT * SIN + 3.0
 _deep = (STEP_V[0], -DEEP_W)
-POD_O = (X_BACK + PLATE + 2.0 + _deep[0] * SIN - _deep[1] * COS, GLASS_TOP_Y - GLASS[1] * COS, POD_Z)
+POD_O = (X_BACK + PLATE + PLATE_GAP + _deep[0] * SIN - _deep[1] * COS, GLASS_TOP_Y - GLASS[1] * COS, POD_Z)
 POD_LOC = Location(Plane(origin=POD_O, x_dir=U, z_dir=W))
 
 
@@ -241,7 +247,7 @@ def wedge(loc, front):
     """The wedge of a bracket: from the plate (front: the space in front of it) to the thin back of
     the pod at loc, behind the dovetail, with the slot of the dovetail open at the top."""
     va = DOVE[3][0]
-    w = (loc * uvw_box(-13, 13, va - 2.0, BODY_V[1], -THIN_W - 80, -THIN_W - 0.3)) & front
+    w = (loc * uvw_box(-13, 13, va - 1.0, BODY_V[1], -THIN_W - 80, -THIN_W - 0.3)) & front
     return w - loc * dovetail(0.25, 40.0)
 
 
@@ -261,7 +267,7 @@ MINI_PLATE_Y = -252.0                     # the back of the bracket: the front o
 MINI_GLASS_TOP_Z = 375.0
 MINI_X = -305.0                           # the mirror of the middle of the stock LCD
 MINI_SCREWS = [(-334.1, 364.0), (-358.1, 352.0)]   # the frame screws in the left upright (x, z)
-_front_y = MINI_PLATE_Y - PLATE - 2.0
+_front_y = MINI_PLATE_Y - PLATE - PLATE_GAP
 MINI_O = (MINI_X, _front_y - (_deep[0] * MINI_V[1] + _deep[1] * MINI_W[1]), MINI_GLASS_TOP_Z - GLASS[1] * COS)
 MINI_LOC = frame(MINI_U, MINI_V, MINI_W, MINI_O)
 
@@ -430,10 +436,16 @@ def main(out, stills=True, which=("taz", "mini2")):
         world_to_view = zup @ np.linalg.inv(pod_to_world)
         printer = st["printer"]()
         # The window: the pod as it is, the bracket and the printer moved into the frame of the pod.
-        items = [(n, zup_m(m, zup), c) for n, (m, c) in pod.items()]
+        clip_groups = clips(name)
+        # The clip normals in pod coordinates, for the exploded view.
+        R_inv = np.linalg.inv(matrix(loc))[:3, :3]
+        clip_normals = {n: tuple(R_inv @ np.array(nv)) for n, _, nv in clip_groups}
+        V = lambda d: [d[0], -d[2], d[1]]          # pod (u, v, w) to the view (x, y, z)
+        ex = lambda n: {"explode": [V(d) for d in explode_steps(n, clip_normals)]}
+        items = [(n, zup_m(m, zup), c, ex(n)) for n, (m, c) in pod.items()]
         b = brm.copy()
         b.apply_transform(zup @ np.linalg.inv(matrix(loc)))
-        items.append(("bracket", b, "#2A2B30"))
+        items.append(("bracket", b, "#2A2B30", ex("bracket")))
         by = {}
         for m, c in printer:
             by.setdefault(c, []).append(m)
@@ -448,30 +460,42 @@ def main(out, stills=True, which=("taz", "mini2")):
             print(f"{name}: {cab} cable route {length(path) / 1000:.2f} m")
             mv = m.copy()
             mv.apply_transform(zup @ np.linalg.inv(matrix(loc)))
-            items.append((f"{cab}_cable", mv, CABLE_COLOR[cab]))
+            items.append((f"{cab}_cable", mv, CABLE_COLOR[cab], {"hide_exploded": True}))
             mw = m.copy()
             mw.apply_transform(frame_to_world)
             st.setdefault("cables", []).append((mw, CABLE_COLOR[cab]))
-        p = os.path.join(tmp, f"{name}_clips.stl")
-        export_stl(clips(name), p, tolerance=0.05, angular_tolerance=0.2)
-        cm = trimesh.load(p, force="mesh")
-        cv = cm.copy()
-        cv.apply_transform(zup @ np.linalg.inv(matrix(loc)))
-        items.append(("cable_clips", cv, "#E8762B"))
-        cm.apply_transform(frame_to_world)
-        st["cables"].append((cm, "#E8762B"))
+        for gname, shape, _ in clip_groups:
+            p = os.path.join(tmp, f"{name}_{gname}.stl")
+            export_stl(shape, p, tolerance=0.05, angular_tolerance=0.2)
+            cm = trimesh.load(p, force="mesh")
+            cv = cm.copy()
+            cv.apply_transform(zup @ np.linalg.inv(matrix(loc)))
+            items.append((gname, cv, "#E8762B", ex(gname)))
+            cm.apply_transform(frame_to_world)
+            st["cables"].append((cm, "#E8762B"))
         p = os.path.join(tmp, f"{name}_usb_b.stl")
         export_stl(usb_b_plugs(name), p, tolerance=0.05, angular_tolerance=0.2)
         plug = trimesh.load(p, force="mesh")
         pv_ = plug.copy()
         pv_.apply_transform(zup @ np.linalg.inv(matrix(loc)))
-        items.append(("usb_b_plug", pv_, "#151515"))
+        items.append(("usb_b_plug", pv_, "#151515", {"hide_exploded": True}))
+        # The exploded view must not pass one part through another: the pod parts and the bracket,
+        # in pod coordinates.
+        check_meshes = {n: m for n, (m, c) in pod.items()}
+        bl = brm.copy()
+        bl.apply_transform(np.linalg.inv(matrix(loc)))
+        check_meshes["bracket"] = bl
+        clash = explode_check(check_meshes, clip_normals)
+        for pair, stage in clash:
+            print(f"{name}: exploded view: {pair[0]} passes through {pair[1]} ({stage})")
+        if not clash:
+            print(f"{name}: exploded view: no part passes through another")
         plug.apply_transform(frame_to_world)
         st["cables"].append((plug, "#151515"))
         gap = clearance([m for m, _ in pod.values()], pod_to_world, printer)
         print(f"{name}: the pod is {gap:.1f} mm from the printer at the closest point")
         note = ("no overlaps" if not bad else f"{len(bad)} overlaps") + f", {gap:.1f} mm from the printer"
-        viewer.publish(items, name, note)
+        viewer.publish(items, name, note, stages=[t for t, _ in STAGES])
         if not stills:
             continue
         allm = []
@@ -537,27 +561,95 @@ TAZ_COVER_Y = 7.5                # the two-cable clips on the side cover: the mi
 
 
 def clips(name):
-    """The printed cable clips (clips.py), placed in the frame of the printer."""
+    """The printed cable clips (clips.py), placed in the frame of the printer, in groups:
+    (name, shape, the normal of their mounting face in the frame)."""
     import clips as C
-    out = []
+    groups = []
     if name == "taz":
         rail, _ = C.rail_clip()
         # The cradles are 6 mm lower, on the straight run. Below 50 mm, the corner of the frame
         # stands 3 mm in front of the rail.
-        for y in (80.0, 110.0):
-            out.append(Location(Plane(origin=(S.RAIL_FRONT_X, y, S.RAIL_SLOT_Z), x_dir=(0, 0, 1), z_dir=(1, 0, 0))) * rail)
+        out = [Location(Plane(origin=(S.RAIL_FRONT_X, y, S.RAIL_SLOT_Z), x_dir=(0, 0, 1), z_dir=(1, 0, 0))) * rail
+               for y in (80.0, 110.0)]
+        groups.append(("rail_clips", out, (1.0, 0.0, 0.0)))
         pair, _ = C.tape_clip(True)
-        for x in (50.0, -10.0, -70.0):
-            out.append(Location(Plane(origin=(x, TAZ_COVER_Y, C.TAPE), x_dir=(0, 1, 0), z_dir=(0, 0, 1))) * pair)
+        out = [Location(Plane(origin=(x, TAZ_COVER_Y, C.TAPE), x_dir=(0, 1, 0), z_dir=(0, 0, 1))) * pair
+               for x in (50.0, -10.0, -70.0)]
+        groups.append(("cover_clips", out, (0.0, 0.0, 1.0)))
     else:
         one, _ = C.tape_clip()
         # On the front of the electronics case, between the frame screws (x -359, z 50, 124, 198).
-        for z in (90.0, 165.0):
-            out.append(Location(Plane(origin=(MINI_UPRIGHT_X, MINI_CASE_Y - C.TAPE, z), x_dir=(1, 0, 0), z_dir=(0, -1, 0))) * one)
-    s = out[0]
-    for o in out[1:]:
-        s = s + o
-    return s
+        out = [Location(Plane(origin=(MINI_UPRIGHT_X, MINI_CASE_Y - C.TAPE, z), x_dir=(1, 0, 0), z_dir=(0, -1, 0))) * one
+               for z in (90.0, 165.0)]
+        groups.append(("upright_clips", out, (0.0, -1.0, 0.0)))
+    res = []
+    for n, out, normal in groups:
+        s = out[0]
+        for o in out[1:]:
+            s = s + o
+        res.append((n, s, normal))
+    return res
+
+
+# ---------------------------------------------------------------- the exploded view
+# The stages, in the order the pod comes apart: (title, {part group: (u, v, w) in pod coordinates}).
+DISPLAY = ("glass", "screen", "frame", "tab", "standoff")
+PI = ("pi5", "cooler", "pi_")
+POD_PARTS = DISPLAY + PI + ("pod_body", "power_plug", "printer_plug")
+STAGES = [
+    ("lift the pod off the dovetail", {POD_PARTS: (0.0, DOVE_LIFT, 0.0)}),
+    ("pull the pod forward off the bracket", {POD_PARTS: (0.0, 0.0, 60.0)}),
+    ("pull out the plugs", {("power_plug",): (50.0, 0.0, 0.0), ("printer_plug",): (0.0, -50.0, 0.0)}),
+    ("take the display and the Pi out of the front", {DISPLAY + PI: (0.0, 0.0, 80.0)}),
+    ("take the Pi off the display", {PI: (0.0, 0.0, -40.0)}),
+    ("take the clips off", {}),
+]
+CLIP_LIFT = 25.0
+HIDE_EXPLODED = ("power_cable", "printer_cable", "usb_b_plug")
+
+
+def explode_steps(part, clip_normals):
+    """The move of a part in each stage, in pod coordinates."""
+    out = []
+    for title, moves in STAGES:
+        d = (0.0, 0.0, 0.0)
+        for group, v in moves.items():
+            if any(part == g or (g.endswith("_") or g in ("tab", "standoff")) and part.startswith(g) for g in group):
+                d = tuple(a + b for a, b in zip(d, v))
+        if title.startswith("take the clips") and part in clip_normals:
+            d = tuple(CLIP_LIFT * c for c in clip_normals[part])
+        out.append(d)
+    return out
+
+
+def explode_check(meshes, clip_normals, steps=40):
+    """Move the parts through the stages in small steps, and report each pair of parts that touch
+    during the move and did not touch when assembled."""
+    import numpy as np
+    import trimesh
+    names = list(meshes)
+    moves = {n: np.array(explode_steps(n, clip_normals)) for n in names}
+    cm = trimesh.collision.CollisionManager()
+    for n in names:
+        cm.add_object(n, meshes[n])
+    _, base = cm.in_collision_internal(return_names=True)
+    base = {frozenset(p) for p in base}
+    bad = set()
+    k = len(STAGES)
+    for i in range(1, steps * k + 1):
+        t = i / steps
+        for n in names:
+            off = sum(moves[n][j] * min(1.0, max(0.0, t - j)) for j in range(k))
+            T = np.eye(4)
+            T[:3, 3] = off
+            cm.set_transform(n, T)
+        hit, pairs = cm.in_collision_internal(return_names=True)
+        for p in pairs:
+            fp = frozenset(p)
+            same = all((moves[a] == moves[b]).all() for a, b in [tuple(p)])
+            if fp not in base and not same:
+                bad.add((tuple(sorted(p)), STAGES[min(int(t - 1e-9), k - 1)][0]))
+    return sorted(bad)
 
 
 def usb_b_plugs(name):
