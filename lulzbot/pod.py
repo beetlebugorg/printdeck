@@ -533,20 +533,24 @@ USB_B_PLUG = 28.0                # the length of the USB-B plug body outside the
 MINI_USB_B = (-377.4, 73.5)      # (x, z) of the USB-B port in the front of the Mini 2 electronics case
 MINI_CASE_Y = -254.0             # the front of the case
 MINI_UPRIGHT_X = -335.0          # the power cable runs down the left upright, right of the case
+TAZ_COVER_Y = 7.5                # the two-cable clips on the side cover: the middle of the pair
 
 
 def clips(name):
-    """The cable clips, in the frame of the printer: printed clips in the rail slot on the TAZ,
-    adhesive clips on the Mini 2 upright and on the TAZ cover."""
+    """The printed cable clips (clips.py), placed in the frame of the printer."""
+    import clips as C
     out = []
     if name == "taz":
-        for y in (60.0, 110.0, 160.0):
-            out.append(mbox(S.RAIL_FRONT_X, S.RAIL_FRONT_X + 8.0, y - 6, y + 6, S.RAIL_SLOT_Z - 5, S.RAIL_SLOT_Z + 5))
+        rail, _ = C.rail_clip()
+        for y in (45.0, 90.0, 135.0):          # the cradles are 6 mm lower, on the straight run
+            out.append(Location(Plane(origin=(S.RAIL_FRONT_X, y, S.RAIL_SLOT_Z), x_dir=(0, 0, 1), z_dir=(1, 0, 0))) * rail)
+        pair, _ = C.tape_clip(True)
         for x in (50.0, -10.0, -70.0):
-            out.append(mbox(x - 6, x + 6, 0.0, 14.0, 0.0, 10.0))
+            out.append(Location(Plane(origin=(x, TAZ_COVER_Y, C.TAPE), x_dir=(0, 1, 0), z_dir=(0, 0, 1))) * pair)
     else:
+        one, _ = C.tape_clip()
         for z in (60.0, 140.0, 220.0):
-            out.append(mbox(MINI_UPRIGHT_X - 6, MINI_UPRIGHT_X + 6, MINI_PLATE_Y - 8.0, MINI_PLATE_Y, z - 6, z + 6))
+            out.append(Location(Plane(origin=(MINI_UPRIGHT_X, MINI_PLATE_Y - C.TAPE, z), x_dir=(1, 0, 0), z_dir=(0, -1, 0))) * one)
     s = out[0]
     for o in out[1:]:
         s = s + o
@@ -584,14 +588,17 @@ def routes(name, pod_to_frame):
         if name == "taz":
             # Mount coordinates: x to the front, y up (the desk is y = -14), z out of the cover.
             desk = -12.0
-            rz, rx = S.RAIL_SLOT_Z, S.RAIL_FRONT_X + 3.0
+            import clips as C
+            rz, rx = S.RAIL_SLOT_Z, S.RAIL_FRONT_X + C.RAIL_CABLE_H
+            cz = C.TAPE_CABLE_H                        # the cables on the cover clips
+            yp, yu = TAZ_COVER_Y - C.PAIR / 2, TAZ_COVER_Y + C.PAIR / 2
             if cab == "power":
                 # To the front rail, down its slot in printed clips, across the bottom of the front
                 # to the cover side, back along the lower edge of the cover, and out behind the
                 # printer to the outlet.
-                way = [(x, y, rz - 6.0), (rx + 6.0, y - 25.0, rz), (rx, y - 45.0, rz), (rx, 12.0, rz), (rx, 4.0, rz + 15.0),
-                       (rx, 4.0, -10.0), (rx - 8.0, 4.0, 6.0), (60.0, 4.0, 6.0), (-80.0, 4.0, 6.0), (-100.0, desk, 6.0),
-                       (-250.0, desk, 6.0)]
+                way = [(x, y, rz - 6.0), (rx + 6.0, y - 25.0, rz), (rx, y - 45.0, rz), (rx, 30.0, rz), (rx + 6, yp, rz + 15.0),
+                       (rx + 6, yp, -10.0), (rx - 4.0, yp, cz), (60.0, yp, cz), (-80.0, yp, cz), (-100.0, desk, cz),
+                       (-250.0, desk, cz)]
             else:
                 # Under the pod to the cover side, back along the outside of the cover, round the
                 # rear corner, and up the rear face to the USB-B port of the RAMBo. The port is
@@ -599,8 +606,8 @@ def routes(name, pod_to_frame):
                 # Down the front under the pod, along the lower edge of the cover with the power
                 # cable, round the rear corner and up the rear face to the port.
                 py, pz = TAZ_USB_B
-                way = [(x, 30.0, z), (rx, 10.0, z + 10.0), (rx, 10.0, -10.0), (rx - 8.0, 10.0, 6.0), (60.0, 10.0, 6.0),
-                       (-80.0, 10.0, 6.0), (-94.0, 10.0, -8.0), (-94.0, py, -8.0), (-94.0, py, pz),
+                way = [(x, 30.0, z), (rx + 12, yu, z + 10.0), (rx + 12, yu, -10.0), (rx - 4.0, yu, cz), (60.0, yu, cz),
+                       (-80.0, yu, cz), (-94.0, yu, -8.0), (-94.0, py, -8.0), (-94.0, py, pz),
                        (-85.0 - USB_B_PLUG, py, pz)]
         else:
             # The Mini 2: z up (the desk is z = -7), the front toward -y.
@@ -608,9 +615,10 @@ def routes(name, pod_to_frame):
             if cab == "power":
                 # Back behind the pod, down the front of the left upright (clear of the opening and
                 # of the stock LCD), and out to the left on the desk.
-                ux = MINI_UPRIGHT_X
-                way = [(x + 4, y + 10, z - 20), (x, MINI_PLATE_Y - 4.0, z - 45.0), (ux, MINI_PLATE_Y - 4.0, z - 60.0),
-                       (ux, MINI_PLATE_Y - 4.0, 30.0), (ux, MINI_PLATE_Y - 20.0, desk), (-480.0, MINI_PLATE_Y - 40.0, desk),
+                import clips as C
+                ux, uy = MINI_UPRIGHT_X, MINI_PLATE_Y - C.TAPE_CABLE_H
+                way = [(x + 4, y + 10, z - 20), (x, uy, z - 45.0), (ux, uy, z - 60.0),
+                       (ux, uy, 30.0), (ux, MINI_PLATE_Y - 20.0, desk), (-480.0, MINI_PLATE_Y - 40.0, desk),
                        (-560.0, MINI_PLATE_Y - 80.0, desk)]
             else:
                 # Down the front of the left upright to the USB-B port in the front of the
