@@ -34,6 +34,21 @@ The plugin works by itself, and tells you in a message what it did:
 The OctoPrint connection plugin also shows the screen of the Printdeck in the Monitor tab, in
 place of a camera.
 
+## Colors
+
+The Colors tool (the left toolbar of Prepare) prints models in the filament of another roll of the
+Printdeck, with one nozzle. For example raised letters on a part:
+
+1. Put the part on the plate, and the letters on its top.
+2. Select the letters, open the Colors tool, and tap the roll of the letters.
+3. Print. The printer pauses at the first layer of the letters, and parks the nozzle. The pause
+   screen of the deck has Change filament in orange, with the roll of the letters. Change the
+   filament, then tap Resume.
+
+When other models go on above the colored ones, the printer pauses again at the first layer over
+them, for the roll that was in the printer at the start. The panel lists the changes. A model with
+a roll that stands on the plate is no change: the print starts with the roll in the printer.
+
 ## Print on a part
 
 The Print on a part tool (the left toolbar of Prepare) prints new models on a part that is printed
