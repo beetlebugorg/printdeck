@@ -120,31 +120,29 @@ def body():
     return s
 
 
-# The split between the navy top and the orange bottom: on the face, straight across just under the
-# screen; on the sides, a straight line up and back to the back of the case, high enough for the Pi.
+# The split between the navy shell and the orange L. The L is the back plate and the chin: the
+# chin is the part of the case under a straight line across the face, just under the screen. The
+# shell is the face, the top and the sides above that line; it holds the display.
 SPLIT_FACE_V = -(BORDER + AA[1] + 6.0)       # on the face: 6 mm under the active area
-SPLIT_BACK_Y = Y_BOT + 92.0                   # on the back
+SPLIT_Y = face_pt(0, SPLIT_FACE_V, 0)[1]     # the line is level: the chin is under this height
 
 
-def split_plane():
-    """The plane of the split: through the line across the face at SPLIT_FACE_V, and through the
-    line across the back at SPLIT_BACK_Y. Its normal points up (into the top part)."""
-    p1 = face_pt(0, SPLIT_FACE_V, 0)
-    p2 = (X_BACK, SPLIT_BACK_Y, p1[2])
-    d = (p2[0] - p1[0], p2[1] - p1[1], 0.0)
-    n = (-d[1], d[0], 0.0)                     # in the x-y plane, at right angles to d
-    if n[1] < 0:
-        n = (-n[0], -n[1], 0.0)
-    return Plane(origin=p1, z_dir=n, x_dir=(0, 0, 1))
+def back_plate():
+    """The flat back of the case, inside the walls of the shell, from the chin to the top wall."""
+    m = WALL + 0.3                           # in from the outer faces: inside the walls
+    return box(X_BACK, X_BACK + T_BACK, SPLIT_Y, Y_TOP - m, Z_RIGHT + m, Z_LEFT - m)
 
 
 def halves():
-    """The body cut at the split: (top, bottom)."""
+    """(shell, L): the body cut level at SPLIT_Y, and the chin with the back plate."""
     b = body()
-    pl = split_plane()
     big = 600.0
-    above = pl * Pos(0, 0, big / 2) * Box(big, big, big)
-    return b & above, b - above
+    above = Pos(0, SPLIT_Y + big / 2, 0) * Box(big, big, big)
+    shell_ = b & above
+    chin = b - above
+    # The chin gets its own back wall up to the split, and the back plate above it.
+    chin_back = box(X_BACK, X_BACK + T_BACK, Y_BOT + R_EDGE, SPLIT_Y, Z_RIGHT + WALL, Z_LEFT - WALL)
+    return shell_, chin + chin_back + back_plate()
 
 
 def top():
