@@ -25,6 +25,10 @@ final class PushPairing {
     private(set) var message: String?
 
     private var tokenWaiter: CheckedContinuation<Data, Error>?
+    /// Waits for the code of the relay, which comes in a background push.
+    private var codeWaiter: CheckedContinuation<String, Error>?
+    /// A code that came before anything waited for it.
+    private var earlyCode: String?
 
     /// The relay, from the PushRelay key of the Info.plist.
     private var relay: URL? {
@@ -126,18 +130,60 @@ final class PushPairing {
         }
     }
 
+    /// The send token of the relay. The relay can ask for proof that this iPhone has the device
+    /// token: it answers 202 and sends a code in a background push, and the app posts the code to
+    /// get the send token. A relay that asks for no proof answers 200 with the send token.
     private func register(relay: URL, token: Data, env: String) async throws -> String {
+        for attempt in 0..<2 {
+            earlyCode = nil
+            let (code, reply) = try await post(relay, ["device": token.hex, "env": env])
+            if code == 200, let t = reply["send_token"] { return t }
+            guard code == 202 else { throw DeckError.refused("The push relay answered \(code).") }
+            message = attempt == 0 ? "Waiting for the code from the relay" : "Asking the relay again"
+            guard let c = try await challengeCode() else { continue }
+            let (code2, reply2) = try await post(relay, ["device": token.hex, "env": env, "code": c])
+            if code2 == 200, let t = reply2["send_token"] { return t }
+            throw DeckError.refused("The push relay answered \(code2) to the code.")
+        }
+        throw DeckError.refused("The code of the relay did not come. Check the network and try again.")
+    }
+
+    private func post(_ relay: URL, _ body: [String: String]) async throws -> (Int, [String: String]) {
         var req = URLRequest(url: relay.appending(path: "register"))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try JSONEncoder().encode(["device": token.hex, "env": env])
+        req.httpBody = try JSONEncoder().encode(body)
         req.timeoutInterval = 15
         let (data, resp) = try await URLSession.shared.data(for: req)
-        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
-        guard code == 200, let t = (try? JSONDecoder().decode([String: String].self, from: data))?["send_token"] else {
-            throw DeckError.refused("The push relay answered \(code).")
+        let reply = (try? JSONDecoder().decode([String: String].self, from: data)) ?? [:]
+        return ((resp as? HTTPURLResponse)?.statusCode ?? 0, reply)
+    }
+
+    /// The code of the relay, or nil after 30 seconds. iOS can hold a background push back.
+    private func challengeCode() async throws -> String? {
+        if let c = earlyCode {
+            earlyCode = nil
+            return c
         }
-        return t
+        return try await withThrowingTaskGroup(of: String?.self) { group in
+            group.addTask { @MainActor in
+                try await withCheckedThrowingContinuation { c in
+                    self.codeWaiter?.resume(throwing: CancellationError())
+                    self.codeWaiter = c
+                }
+            }
+            group.addTask {
+                try await Task.sleep(for: .seconds(30))
+                return nil
+            }
+            defer { group.cancelAll() }
+            let code = try await group.next()!
+            if code == nil {
+                codeWaiter?.resume(throwing: CancellationError())
+                codeWaiter = nil
+            }
+            return code
+        }
     }
 
     // The callbacks of the app delegate.
@@ -162,6 +208,16 @@ final class PushPairing {
         }
     }
 
+    /// A background push from the relay with the code of a registration.
+    func received(code: String) {
+        if let w = codeWaiter {
+            codeWaiter = nil
+            w.resume(returning: code)
+        } else {
+            earlyCode = code
+        }
+    }
+
     func failed(_ error: Error) {
         tokenWaiter?.resume(throwing: error)
         tokenWaiter = nil
@@ -180,6 +236,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         Task { @MainActor in PushPairing.shared.received(token: deviceToken) }
+    }
+
+    /// The background push of the relay with the code of a registration ("c").
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+                     fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        if let code = userInfo["c"] as? String {
+            Task { @MainActor in PushPairing.shared.received(code: code) }
+        }
+        completionHandler(.noData)
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
