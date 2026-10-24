@@ -211,6 +211,9 @@ class Live:
         self.pl.show(auto_close=False, interactive_update=True)
         self.iso()
         iren = self.pl.iren
+        # VTK's own keys (e and q quit, w wireframe, f fly to, p pick, ...) come with the char event of
+        # the interactor. Our keys come with the key press event, so drop the char event.
+        iren.interactor.RemoveObservers("CharEvent")
         iren.add_observer("TimerEvent", self.tick)
         iren.create_timer(TICK_MS, repeating=True)
         iren.start()
