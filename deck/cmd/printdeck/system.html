@@ -24,6 +24,9 @@
   pre { margin: 0; background: var(--lcd); color: var(--amber); padding: 12px; border-radius: 4px;
     max-height: 420px; overflow: auto; font-size: 12px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
   input[type=file] { width: 100%; font: inherit; }
+  input[type=password] { width: 100%; max-width: 360px; font: inherit; padding: 8px; margin-top: 4px;
+    border: 1px solid var(--edge); border-radius: 4px; background: var(--bg); color: var(--ink); }
+  label { display: block; margin-top: 10px; }
   button { margin-top: 12px; font: inherit; font-weight: 600; padding: 10px 16px; border: 0;
     border-radius: 4px; background: var(--orange); color: #121212; cursor: pointer; }
   .hint { font-size: 13px; color: var(--dim); margin-top: 8px; line-height: 1.4; }
@@ -35,7 +38,7 @@
 <body>
 <main>
   <h1>00 PRINTDECK SYSTEM &nbsp;·&nbsp; <a href="/">Printdeck</a> &nbsp;·&nbsp; <a href="/rolls/labels">Roll labels</a> &nbsp;·&nbsp; <a href="{{.Source}}">Source code</a></h1>
-  {{if .Message}}<section><h2>UPDATE</h2><div class="{{if .Failed}}bad{{end}}">{{.Message}}</div></section>{{end}}
+  {{if .Message}}<section><h2>{{.Title}}</h2><div class="{{if .Failed}}bad{{end}}">{{.Message}}</div></section>{{end}}
   <section>
     <h2>SYSTEM</h2>
     <table>
@@ -58,6 +61,30 @@
     <div class="hint">Choose printdeck-update.tar.xz or printdeck-debug-update.tar.xz. The Printdeck writes
       the other slot and restarts into it. If the new system does not start, it goes back to this one.
       Do not install during a print.</div>
+  </section>
+  <section>
+    <h2>BACKUP</h2>
+    <form method="post" action="/system/backup">
+      <label>Backup password <input type="password" name="password" minlength="8" autocomplete="new-password" required></label>
+      <label>Type it again <input type="password" name="password2" minlength="8" autocomplete="new-password" required></label>
+      <label><input type="checkbox" name="gcode" value="1"> Include the G-code files</label>
+      <button type="submit">Download the backup</button>
+    </form>
+    <div class="hint">The backup has the rolls, the print history, the settings, the slicer API keys,
+      the paired phones and the Klipper config. It does not have the password of this Printdeck or
+      the Wi-Fi network. The backup password encrypts the file. Keep the password safe: without it,
+      nobody can open the backup.</div>
+  </section>
+  <section>
+    <h2>RESTORE</h2>
+    <form method="post" action="/system/restore" enctype="multipart/form-data">
+      <label>Backup password <input type="password" name="password" autocomplete="off" required></label>
+      <label>Backup file <input type="file" name="backup" accept=".pdbk" required></label>
+      <button type="submit">Restore</button>
+    </form>
+    <div class="hint">The Printdeck checks the whole file before it changes a file. Then it puts back
+      the files of the backup, and Klipper and the Printdeck restart. The password of this Printdeck
+      and its Wi-Fi network stay. Do not restore during a print.</div>
   </section>
   <section><h2>SYSTEM LOG</h2><pre>{{.Journal}}</pre></section>
   <section><h2>KLIPPER LOG</h2><pre>{{.Klippy}}</pre></section>

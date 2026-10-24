@@ -103,6 +103,7 @@ func main() {
 			snapshot(os.Args[2:])
 			return
 		case "helper":
+			system.SetDataDirs(cfg.StateDir, filepath.Dir(cfg.KlipperConfig), cfg.GcodeDir)
 			if err := system.Helper(); err != nil {
 				log.Fatal(err)
 			}

@@ -16,7 +16,7 @@ import (
 )
 
 // The helper does the few actions of the deck that need root: set the Wi-Fi network, restart
-// Klipper, and install an update. The deck runs as the user deck. systemd listens on the socket
+// Klipper, install an update, and make and restore a backup. The deck runs as the user deck. systemd listens on the socket
 // (printdeck-helper.socket), which only the group deck can open, and starts the helper at the first
 // request. The helper stops after a time with no requests.
 
@@ -33,10 +33,11 @@ const helperIdle = 30 * time.Second
 
 // HelperRequest is one request to the helper.
 type HelperRequest struct {
-	Action   string `json:"action"` // "wifi", "restart-klipper", "stop-klipper" or "update"
+	Action   string `json:"action"` // "wifi", "restart-klipper", "stop-klipper", "update", "backup" or "restore"
 	SSID     string `json:"ssid,omitempty"`
-	Password string `json:"password,omitempty"`
+	Password string `json:"password,omitempty"` // the Wi-Fi password, or the backup password
 	Country  string `json:"country,omitempty"`
+	Gcode    bool   `json:"gcode,omitempty"` // backup: with the G-code files
 }
 
 // helperResponse is the answer of the helper. Before the answer, an update sends lines with Step,
@@ -57,6 +58,13 @@ var helperActions = func(r HelperRequest, progress Progress) (after func(), err 
 		return nil, run("systemctl", "restart", "klipper.service")
 	case "stop-klipper":
 		return nil, run("systemctl", "stop", "klipper.service")
+	case "backup":
+		return nil, MakeBackup(r.Password, r.Gcode, progress)
+	case "restore":
+		if err := RestoreBackup(r.Password, progress); err != nil {
+			return nil, err
+		}
+		return restartAfterRestore, nil
 	case "update":
 		slot, err := Update(UpdateBundle, progress)
 		os.Remove(UpdateBundle)
@@ -154,6 +162,7 @@ func serveHelper(ln *net.UnixListener, allowed map[uint32]bool, idle time.Durati
 }
 
 // AskHelper sends a request to the helper and waits for its answer. An update can take a minute.
+// A backup with many G-code files can take longer: each line of progress gives 5 more minutes.
 func AskHelper(r HelperRequest) error { return AskHelperProgress(r, nil) }
 
 // AskHelperProgress is AskHelper, and gives the progress of an update to progress.
@@ -177,6 +186,7 @@ func AskHelperProgress(r HelperRequest, progress Progress) error {
 		if resp.Step == "" {
 			break
 		}
+		c.SetDeadline(time.Now().Add(5 * time.Minute))
 		if progress != nil {
 			progress(resp.Step, resp.Done, resp.Total)
 		}

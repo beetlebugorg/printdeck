@@ -645,6 +645,7 @@ func manualParts() []section {
 				"Open http://printdeck.local in a browser on the same network, and log in with the password of the deck. The browser shows the same screens as the touch screen, sharp at the pixel density of the phone. Each browser has its own screens, so a phone can show the files while the deck shows the print.",
 				"On a phone, use Add to Home Screen: the deck then opens as an app, with no browser bars.",
 				"The page http://printdeck.local/system shows the version, the services, the logs and the API key for slicers. It also installs an update: choose the update file, then Install. The deck writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one.",
+				"The same page makes a backup of your data and restores it. See Back up your data.",
 			}},
 		{ID: "lcd", Title: "The display of the printer",
 			Intro: []string{
@@ -886,6 +887,19 @@ func manualSections() []section {
 				"Wait while the deck downloads and writes the update. It restarts into the new version.",
 			},
 			Figures: fig("update")},
+		{Chapter: care, ID: "backup", Title: "Back up your data",
+			Intro: []string{
+				"A backup is one file with your data: the rolls, the print history, the settings, the slicer API keys, the paired phones and the Klipper config. It can also have the G-code files. Make a backup before you change the SD card, and keep it on a computer.",
+				"A backup password encrypts the file. Without the password, nobody can open the backup, and the Printdeck cannot restore it. The password cannot be recovered, so keep it safe.",
+				"The backup does not have the password of the Printdeck or the Wi-Fi network. A restore keeps the password and the Wi-Fi network of the Printdeck that you restore to.",
+			},
+			Steps: []string{
+				"Open http://printdeck.local/system in a browser, and log in with the password of the deck.",
+				"Under Backup, type a backup password of 8 characters or more two times. Select Include the G-code files to put them in the backup.",
+				"Click Download the backup. The browser saves a file with the name printdeck-backup-NAME-DATE.pdbk.",
+				"To restore, open the same page. Under Restore, type the backup password, choose the backup file, then click Restore. Do not restore during a print.",
+				"The Printdeck checks the whole file before it changes a file, so a wrong password or a damaged file changes no data. After the restore, Klipper and the Printdeck restart.",
+			}},
 
 		{Chapter: "When something goes wrong", ID: "problems", Title: "When something goes wrong",
 			Intro: []string{"When Klipper stops with an error, the deck shows all the lines of its message."},
