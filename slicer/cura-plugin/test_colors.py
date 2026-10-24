@@ -49,6 +49,13 @@ class TestColors(unittest.TestCase):
         self.assertLess(g[3].index("PRINTDECK_PAUSE"), g[3].index("G0 F6000 X20.000 Y20.000"))
         self.assertEqual(colors.insert_change(gcode([0.2, 0.4]), 5.0, "2", "#2 Navy"), -1)
 
+    def test_first_layer_thicker(self):
+        # A first layer of 0.25 mm: the layer at 3.05 mm is from 2.85 to 3.05, the top of a plate of
+        # 3 mm. The letters on it start in the layer at 3.25 mm.
+        g = gcode([0.25 + 0.2 * i for i in range(17)])
+        self.assertEqual(colors.insert_change(g, 3.0, "2", "#2 Navy"), 16)
+        self.assertIn("G1 Z3.250", g[16])
+
     def test_apply_two(self):
         # A band: in at 0.4 mm, back at 0.6 mm. Each change is at its own layer.
         g = gcode([0.2, 0.4, 0.6, 0.8])

@@ -41,6 +41,16 @@ func registerSim(mux *http.ServeMux, k *printer.Klippy, ok func(*http.Request) b
 		st := k.State()
 		out := map[string]any{"state": st.Text, "busy": st.Busy(), "file": st.File, "filepos": st.FilePos,
 			"tool": st.Tool, "toolT": st.ToolTarget, "bed": st.Bed, "bedT": st.BedTarget, "fan": st.Fan / 100}
+		// The color of the roll in the printer, for the plastic of the 3D view, or "".
+		if k.Spools != nil {
+			if sp, ok := k.Spools.In(); ok {
+				c := sp.Color
+				if _, ok := printer.ParseHex(c); !ok {
+					c = printer.ColorFromName(sp.Label())
+				}
+				out["color"] = c
+			}
+		}
 		if q, err := k.Query(map[string][]string{"motion_report": {"live_position", "live_extruder_velocity"},
 			"toolhead": {"homed_axes"}, "simmcu": {"place"}}); err == nil {
 			// The place of the nozzle on the simulated board, in mm: it moves before the homing too.

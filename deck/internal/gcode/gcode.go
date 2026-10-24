@@ -21,6 +21,13 @@ type Seg struct {
 	Feed                   float32 // commanded speed, mm/s
 }
 
+// Change is a color change of a file: from the file offset Pos, the print has the filament of the
+// roll with the ID Roll of the deck.
+type Change struct {
+	Pos  int64
+	Roll string
+}
+
 type Model struct {
 	Segs []Seg
 	MaxZ float32
@@ -34,7 +41,9 @@ type Model struct {
 	StartEnd, EndStart         int64
 	BedTemp, ExtTemp, WipeTemp float64
 
-	LayerPos   []int64   // offset of each ";LAYER:n" marker
+	LayerPos []int64 // offset of each ";LAYER:n" marker
+	// Changes are the color changes of the file (PRINTDECK_PAUSE ROLL), in their order.
+	Changes    []Change
 	FanPos     []int64   // offset after each fan command
 	FanVal     []float32 // fan speed 0..1 after the command
 	LayerCount int
@@ -128,6 +137,12 @@ func Parse(r io.Reader) (*Model, error) {
 		f := strings.Fields(line)
 		if len(f) > 0 {
 			switch strings.ToUpper(f[0]) {
+			case "PRINTDECK_PAUSE":
+				for _, w := range f[1:] {
+					if v, ok := strings.CutPrefix(strings.ToUpper(w), "ROLL="); ok {
+						m.Changes = append(m.Changes, Change{Pos: pos, Roll: v})
+					}
+				}
 			case "PRINT_START", "START_PRINT":
 				m.StartEnd = pos
 				for _, w := range f[1:] {
@@ -287,6 +302,14 @@ const supersample = 2
 // its side, which faces the viewer, and the other lines are lit as the top of a layer. The rest of
 // the model does not hide the printed part.
 func (m *Model) Render(w, h int, pos, curStart int64, printed, hot, ghost color.RGBA) *image.RGBA {
+	return m.RenderColors(w, h, pos, curStart, []color.RGBA{printed}, hot, ghost)
+}
+
+// RenderColors is Render with a colour for each part of a print with color changes (Changes): the
+// first colour before the first change, the second after it, and so on. The last colour is for
+// the changes that have no colour of their own.
+func (m *Model) RenderColors(w, h int, pos, curStart int64, colors []color.RGBA, hot, ghost color.RGBA) *image.RGBA {
+	printed := colors[0]
 	out := image.NewRGBA(image.Rect(0, 0, w, h))
 	if len(m.Segs) == 0 {
 		return out
@@ -341,6 +364,19 @@ func (m *Model) Render(w, h int, pos, curStart int64, printed, hot, ghost color.
 					col = hot
 				}
 				last = i
+			}
+			if len(colors) > 1 {
+				// The part of the print after the changes before this move.
+				k := 0
+				for k < len(m.Changes) && m.Changes[k].Pos <= s.Pos {
+					k++
+				}
+				part := colors[min(k, len(colors)-1)]
+				if done && col != hot {
+					col = part
+				} else if !done {
+					col = mix(ghost, part, 0.35) // the part to come, in a faint colour of its roll
+				}
 			}
 			x0, y0, d0 := pt(s.X0, s.Y0, s.Z0)
 			x1, y1, d1 := pt(s.X1, s.Y1, s.Z1)

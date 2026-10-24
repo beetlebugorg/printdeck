@@ -62,6 +62,9 @@ type View struct {
 	records map[string]*recordPic // the pictures of finished prints (RecordPicture)
 	files   map[string]*recordPic // the pictures of files with no thumbnail (FilePicture)
 	color   string                // the color of the roll in the printer, for the print now
+	// startColor is the color of the roll in the printer at the start of the print: the color of
+	// the part before the first color change of the file (gcode.Model.Changes).
+	startColor string
 
 	layerKey   string    // the file of layerTimes
 	layerTimes []float64 // the seconds of each layer of the print (LayerTimes)
@@ -154,7 +157,7 @@ func (v *View) SetViewLayer(layer int) {
 func (v *View) renderView() {
 	for {
 		v.mu.Lock()
-		layer, gc, mesh, hex := v.view, v.gc, v.mesh, v.color
+		layer, gc, mesh, hex := v.view, v.gc, v.mesh, v.startColor
 		if layer < 0 || gc == nil {
 			v.viewBusy = false
 			v.mu.Unlock()
@@ -162,7 +165,7 @@ func (v *View) renderView() {
 		}
 		v.mu.Unlock()
 
-		img := drawAt(gc, mesh, gc.LayerEnd(layer), gc.LayerStart(layer), hex)
+		img := drawAt(gc, mesh, gc.LayerEnd(layer), gc.LayerStart(layer), v.palette(gc, hex))
 
 		v.mu.Lock()
 		if v.view == layer { // still the one that is wanted
@@ -187,6 +190,9 @@ func (v *View) Update(st State) {
 	if hex != v.color {
 		v.color, v.img = hex, nil // draw again in the new color
 	}
+	if v.file != fileKey(st) || v.gc == nil || len(v.gc.Changes) == 0 {
+		v.startColor = hex // a print with no color change has the color of the roll now
+	}
 	if !st.Busy() || st.FilePath == "" {
 		v.img, v.imgPos, v.view, v.viewImg = nil, 0, -1, nil
 		return
@@ -202,7 +208,7 @@ func (v *View) Update(st State) {
 	// Draw again when the print has moved. A render is about 30 ms.
 	if v.gc != nil && !v.rendering && (v.img == nil || st.FilePos != v.imgPos) {
 		v.rendering = true
-		go v.render(v.gc, v.mesh, st.FilePos, v.color)
+		go v.render(v.gc, v.mesh, st.FilePos, v.startColor)
 	}
 }
 
@@ -313,9 +319,9 @@ var (
 )
 
 // drawAt draws the print as it is at file offset pos, with the layer that starts at curStart as the
-// one in progress, in the color of the filament hex.
-func drawAt(gc *gcode.Model, mesh *stl.Mesh, pos, curStart int64, hex string) *image.RGBA {
-	col := modelColor(hex)
+// one in progress, in the colors of palette: a color for each part of a print with color changes.
+func drawAt(gc *gcode.Model, mesh *stl.Mesh, pos, curStart int64, colors []color.RGBA) *image.RGBA {
+	col := colors[0]
 	if mesh != nil {
 		top := float64(gc.ZAt(pos)) / float64(max(gc.MaxZ, 0.001))
 		low := 0.0
@@ -327,11 +333,27 @@ func drawAt(gc *gcode.Model, mesh *stl.Mesh, pos, curStart int64, hex string) *i
 		}
 		return mesh.Render(PreviewW, PreviewH, low, top, col, hotColor, ghostColor)
 	}
-	return gc.Render(PreviewW, PreviewH, pos, curStart, col, hotColor, pathGhost)
+	return gc.RenderColors(PreviewW, PreviewH, pos, curStart, colors, hotColor, pathGhost)
 }
 
-func (v *View) render(gc *gcode.Model, mesh *stl.Mesh, pos int64, hex string) {
-	img := drawAt(gc, mesh, pos, gc.LayerStart(gc.LayerAt(pos)), hex)
+// palette is the colors of the parts of the print of gc: start, the color of the roll at the start
+// of the print, then the color of the roll of each color change of the file.
+func (v *View) palette(gc *gcode.Model, start string) []color.RGBA {
+	out := []color.RGBA{modelColor(start)}
+	for _, ch := range gc.Changes {
+		c := ""
+		if v.Rolls != nil {
+			if sp, ok := v.Rolls.Get(ch.Roll); ok {
+				c = rollHex(sp.Color, sp.Label())
+			}
+		}
+		out = append(out, modelColor(c))
+	}
+	return out
+}
+
+func (v *View) render(gc *gcode.Model, mesh *stl.Mesh, pos int64, start string) {
+	img := drawAt(gc, mesh, pos, gc.LayerStart(gc.LayerAt(pos)), v.palette(gc, start))
 	v.mu.Lock()
 	v.img, v.imgPos, v.rendering = img, pos, false
 	v.mu.Unlock()
@@ -412,7 +434,7 @@ func (v *View) FilePicture(f File, hex string) image.Image {
 			gc, _ := gcode.Parse(io.LimitReader(body, maxModelSize))
 			body.Close()
 			if gc != nil && len(gc.Segs) > 0 {
-				img = gc.Render(FilePictureSize, FilePictureSize, math.MaxInt64, math.MaxInt64, modelColor(hex), hotColor, pathGhost)
+				img = gc.RenderColors(FilePictureSize, FilePictureSize, math.MaxInt64, math.MaxInt64, v.palette(gc, hex), hotColor, pathGhost)
 			}
 		}
 		v.mu.Lock()
@@ -447,7 +469,7 @@ func (v *View) drawRecord(r Record, hex string) image.Image {
 			return mesh.Render(PreviewW, PreviewH, top, top, col, hotColor, ghostColor)
 		}
 	}
-	return gc.Render(PreviewW, PreviewH, pos, math.MaxInt64, col, hotColor, pathGhost)
+	return gc.RenderColors(PreviewW, PreviewH, pos, math.MaxInt64, v.palette(gc, hex), hotColor, pathGhost)
 }
 
 // Toolpath gives the extruding moves of the print from move from, up to the file position upto:

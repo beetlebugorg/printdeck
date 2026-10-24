@@ -141,6 +141,8 @@ class SimFeed : public QObject
     Q_PROPERTY(QString state READ state NOTIFY stateChanged)
     Q_PROPERTY(QString file READ file NOTIFY stateChanged)
     Q_PROPERTY(bool connected READ connected NOTIFY stateChanged)
+    // color is the color of the roll in the printer, "#rrggbb", or "".
+    Q_PROPERTY(QString color READ color NOTIFY stateChanged)
     Q_PROPERTY(PathGeometry *path READ path WRITE setPath NOTIFY pathChanged)
     // recent is the strands of the last moments, and the strand that the nozzle lays now.
     Q_PROPERTY(PathGeometry *recent READ recent WRITE setRecent NOTIFY pathChanged)
@@ -165,6 +167,7 @@ public:
     QString state() const { return m_state; }
     QString file() const { return m_file; }
     bool connected() const { return m_connected; }
+    QString color() const { return m_color; }
     PathGeometry *path() const { return m_path; }
     void setPath(PathGeometry *p);
     PathGeometry *recent() const { return m_recent; }
@@ -197,7 +200,7 @@ private:
     QVector3D m_pos;
     bool m_extruding = false, m_connected = false;
     double m_tool = 0, m_toolT = 0, m_bed = 0, m_bedT = 0, m_fan = 0;
-    QString m_state, m_file;
+    QString m_state, m_file, m_color;
     QPointer<PathGeometry> m_path, m_recent;
     // The moves that the nozzle has not laid yet (6 numbers each), and the moves that it laid
     // since the part took them last.

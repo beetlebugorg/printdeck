@@ -125,6 +125,8 @@ Window
             {
                 id: view
                 anchors.fill: parent
+                // The plastic in the color of the roll in the printer, else the orange of the deck.
+                property color plastic: sim.color !== "" ? sim.color : "#ff7a1a"
                 environment: filmOn ? filmEnv : plainEnv
                 property SceneEnvironment plainEnv: SceneEnvironment
                 {
@@ -431,13 +433,13 @@ Window
                     Model
                     {
                         geometry: PathGeometry { id: part }
-                        materials: PrincipledMaterial { baseColor: filmOn ? "#ff4d1f" : "#ff7a1a"; roughness: 0.45; cullMode: Material.NoCulling }
+                        materials: PrincipledMaterial { baseColor: filmOn ? "#ff4d1f" : view.plastic; roughness: 0.45; cullMode: Material.NoCulling }
                         Component.onCompleted: sim.path = part
                     }
                     Model
                     {
                         geometry: PathGeometry { id: recent }
-                        materials: PrincipledMaterial { baseColor: filmOn ? "#ff4d1f" : "#ff7a1a"; roughness: 0.45; cullMode: Material.NoCulling }
+                        materials: PrincipledMaterial { baseColor: filmOn ? "#ff4d1f" : view.plastic; roughness: 0.45; cullMode: Material.NoCulling }
                         Component.onCompleted: sim.recent = recent
                     }
                 }
