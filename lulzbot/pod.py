@@ -6,15 +6,17 @@ The glass of the display is the front of the pod. It is wider than the case, so 
 body behind the glass. The display hangs with its ribbon end up, and the Pi sits on it as Raspberry
 Pi mounts it: the USB ports down, the ribbon folded round the PCIe end of the Pi.
 
-The ports are the Pi's own ports: the USB-C power port in the right wall, and the USB-A and Ethernet
-ports at the bottom, in pockets of the bottom wall. The printer cable plugs straight into the Pi.
+The body has two parts: a thin part round the display frame, and a deep part close round the Pi. The
+ports are the Pi's own ports, flush with the walls of the deep part: the USB-C power port and the two
+micro HDMI ports in the right wall, and the USB-A and Ethernet ports in the bottom wall. The printer
+cable plugs straight into the Pi.
 
 Holding the display: two hooks in the bottom of the body catch the bottom edge of the display frame,
 and two screws go down tubes from the back of the body into the two raised tabs at the top of the
 display.
 
 Printing: the body prints standing on its bottom end, so the walls, the back and the dovetail are
-vertical.
+vertical. The bottom wall of the deep part stands out 22 mm over the thin part: it needs supports.
 
 The pod hangs on the bracket: a dovetail on the back of the pod drops into a slot in the bracket from
 above. The bracket stands on the two rail clips and the cover screw.
@@ -64,8 +66,15 @@ BODY_R = 6.0
 FRONT_W = -(LENS + 0.05)        # the front rim of the body, against the back of the glass
 PI_TOP_W = STANDOFF_W + 1.6 + 16.0                 # the top of the USB ports: 32.5
 DEEP_W = PI_TOP_W + GAP + WALL                     # the back of the body where the Pi is: 35.5
+# The deep part round the Pi: its walls are 0.6 mm outside the board, so the faces of the ports are
+# flush with the outside of the walls (USB-C on the right, USB and Ethernet at the bottom). The thin
+# part round the rest of the display frame is only as deep as the raised tabs.
+THIN_W = TAB_W + 0.2 + WALL                        # the back of the thin part: 13.7
 SCREW_FLOOR = (TAB_W + 0.2, TAB_W + 2.2)          # the floor of a screw well, over a top tab
 PI_V = PI_HOLE_UV[0][1] + 61.5                     # the v of the PCIe end of the Pi (STEP x = 0)
+DEEP_U = 28.0 + 0.6 + WALL                         # the half width of the deep part: 30.6
+DEEP_V0 = PI_V - 85.0 - 2.5                        # the bottom of the deep part: the faces of the ports
+DEEP_R = 3.5
 
 
 def pi_uvw(x, y, z):
@@ -89,19 +98,31 @@ def pi_parts():
     return V.pi_parts()
 
 
+def rounded_box(u0, u1, v0, v1, w0, w1, rad):
+    plan = Pos((u0 + u1) / 2, (v0 + v1) / 2, 0) * RectangleRounded(u1 - u0, v1 - v0, rad)
+    return Pos(0, 0, w0) * extrude(plan, amount=w1 - w0)
+
+
 def outer():
-    """The body envelope: the rounded outline, the full depth of the Pi from the bottom to the top. The
-    Pi and the fold of its ribbon fill all but the top 15 mm, so a thin part at the top gives no gain."""
+    """The body envelope: the thin part round the display frame, and the deep part round the Pi."""
     v0, v1 = BODY_V
-    plan = Pos(0, (v0 + v1) / 2, 0) * RectangleRounded(2 * BODY_U, v1 - v0, BODY_R)
-    o = Pos(0, 0, -DEEP_W) * extrude(plan, amount=DEEP_W + FRONT_W)
-    back = o.edges().filter_by(lambda e: e.center().Z < FRONT_W - 0.5)
-    for r in (4.0, 3.0, 2.0):
+    o = rounded_box(-BODY_U, BODY_U, v0, v1, -THIN_W, FRONT_W, BODY_R)
+    o = o + rounded_box(-DEEP_U, DEEP_U, DEEP_V0, v1, -DEEP_W, FRONT_W, DEEP_R)
+    back = o.edges().filter_by(lambda e: e.center().Z < -THIN_W - 0.5)
+    for r in (3.0, 2.0, 1.5):
         try:
             return fillet(back, r)
         except Exception:
             pass
     return o
+
+
+def inner():
+    """The inside of the body, open at the front."""
+    v0, v1 = BODY_V
+    i = rounded_box(-BODY_U + WALL, BODY_U - WALL, v0 + WALL, v1 - WALL, -THIN_W + WALL, FRONT_W + 1.0, BODY_R - WALL)
+    return i + rounded_box(-DEEP_U + WALL, DEEP_U - WALL, DEEP_V0 + WALL, v1 - WALL, -DEEP_W + WALL, FRONT_W + 1.0,
+                           DEEP_R - WALL)
 
 
 def ports_cut():
@@ -114,9 +135,14 @@ def ports_cut():
         bb = b.bounding_box()
         c = uvw_box(bb.min.X, bb.max.X, BODY_V[0] - 1, bb.max.Y - 4, bb.min.Z, bb.max.Z)
         cut = c if cut is None else cut + c
-    # The USB-C port in the right wall: room for the plug of the official supply (12 x 7).
+    # The USB-C port in the right wall: room for the plug of the official supply (12 x 7). The two
+    # micro HDMI ports beside it also reach into the wall: they get openings too.
     u, v, w = pi_uvw(11.2, -1.0, 1.6 + 1.6)
-    cut = cut + uvw_box(u, BODY_U + 1, v - 6.6, v + 6.6, w - 4.0, w + 4.0)
+    cut = cut + uvw_box(27.0, BODY_U + 1, v - 6.6, v + 6.6, w - 4.0, w + 4.0)
+    for name in ("pi_hdmi0", "pi_hdmi1"):
+        x0, x1, y0, y1, z0, z1 = p[name]
+        bb = pi_box(x0 - 0.5, x1 + 0.5, y0, y1, z0 - 0.5, z1 + 0.5).bounding_box()
+        cut = cut + uvw_box(27.0, BODY_U + 1, bb.min.Y, bb.max.Y, bb.min.Z, bb.max.Z)
     return cut
 
 
@@ -132,7 +158,7 @@ def vents():
         v += 5.0
     v = b.min.Y + 4
     while v < b.max.Y - 4:
-        cut = cut + uvw_box(-BODY_U - 1, -BODY_U + WALL + 1, v - 1.2, v + 1.2, -DEEP_W + 6, -STANDOFF_W - 4)
+        cut = cut + uvw_box(-DEEP_U - 1, -DEEP_U + WALL + 1, v - 1.2, v + 1.2, -DEEP_W + 6, -STANDOFF_W - 4)
         v += 5.0
     return cut
 
@@ -153,9 +179,7 @@ def dovetail(clr=0.0, v_ext=0.0):
 
 
 def body():
-    o = outer()
-    front = o.faces().sort_by(lambda f: f.center().Z)[-1]
-    s = offset(o, amount=-WALL, openings=[front])
+    s = outer() - inner()
     # The two top tabs: a tube from the back down to each tab, with a floor of 2 mm on the tab. The
     # M2.5 x 4 screw of the display box goes down the tube, through the floor, into the tab.
     f0, f1 = SCREW_FLOOR
@@ -357,7 +381,7 @@ def display_details():
 
 def ribbon_and_wire():
     """The DSI ribbon (the standard-mini cable in the box of the display) and the 2-wire power cable,
-    as in the photo of the parts. The ribbon leaves the display connector upward under the Pi, folds
+    from the photo of the parts. The ribbon leaves the display connector upward under the Pi, folds
     back past the PCIe end of the Pi, and comes down over the Active Cooler to the display port."""
     import numpy as np
     rw, t = RIBBON_W, RIBBON_T
@@ -378,12 +402,12 @@ def ribbon_and_wire():
     r = segs[0]
     for sg in segs[1:]:
         r = r + sg
-    # The power wire: from the display connector, under the Pi to the GPIO edge, up round it, to the
-    # 5 V pins.
+    # The power wire: from the display connector up under the Pi, round the PCIe end beside the
+    # ribbon, and back down over the GPIO header to the 5 V pins.
     du, dv = DISP_POWER
     pu, pv, pw = pi_uvw(PI_5V_PINS[0], PI_5V_PINS[1], PI_GPIO[5])
-    pts = [(du, dv, -FRAME_W - 4.5), (du, dv, -12.2), (-31.0, dv + 4.0, -12.2), (-31.0, pv, -12.2),
-           (-31.0, pv, pw - 3.0), (pu, pv, pw - 3.0), (pu, pv, pw)]
+    pts = [(du, dv, -FRAME_W - 4.5), (du, dv, -12.2), (-18.5, dv + 8.0, -12.2), (-18.5, fold, -12.2),
+           (-18.5, fold, pw - 3.0), (pu, fold, pw - 3.0), (pu, pv, pw - 3.0), (pu, pv, pw)]
     path = rounded(pts, r=4.0)
     wire = None
     for a, c in zip(path[:-1], path[1:]):
