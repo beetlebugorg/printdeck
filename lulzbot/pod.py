@@ -181,11 +181,12 @@ def dovetail(clr=0.0, v_ext=0.0):
 def body():
     s = outer() - inner()
     # The two top tabs: a tube from the back down to each tab, with a floor of 2 mm on the tab. The
-    # M2.5 x 4 screw of the display box goes down the tube, through the floor, into the tab.
+    # M2.5 x 4 screw of the display box goes down the tube, through the floor, into the tab. The tube
+    # takes a screwdriver shaft of up to 7.35 mm, and it stays inside the side wall of the deep part.
     f0, f1 = SCREW_FLOOR
     for u, v in TABS:
-        s = s + Pos(u, v, -(f0 + DEEP_W - 1.0) / 2) * Cylinder(4.5, DEEP_W - 1.0 - f0)
-        s = s - Pos(u, v, -(f1 + DEEP_W + 1.0) / 2) * Cylinder(3.25, DEEP_W + 1.0 - f1)
+        s = s + Pos(u, v, -(f0 + DEEP_W - 1.0) / 2) * Cylinder(DEEP_U - abs(u) - 0.1, DEEP_W - 1.0 - f0)
+        s = s - Pos(u, v, -(f1 + DEEP_W + 1.0) / 2) * Cylinder(3.95, DEEP_W + 1.0 - f1)
         s = s - Pos(u, v, -(f0 + f1) / 2) * Cylinder(1.45, f1 - f0 + 1.0)
     # The hooks at the bottom: they catch the bottom edge of the frame (beside the Pi).
     for sgn in (-1, 1):
