@@ -3,15 +3,18 @@ back of the display, in a printed case that fits close around them. A bracket fo
 the pod: the TAZ Workhorse bracket is here.
 
 The glass of the display is the front of the pod. It is wider than the case, so the case is a smaller
-body behind the glass. The body is thick at the bottom, where the Pi is, and thin at the top, where
-only the display is.
+body behind the glass. The display hangs with its ribbon end up, and the Pi sits on it as Raspberry
+Pi mounts it: the USB ports down, the ribbon folded round the PCIe end of the Pi.
 
 The ports are the Pi's own ports: the USB-C power port in the right wall, and the USB-A and Ethernet
-ports in the bottom wall. The printer cable plugs straight into the Pi.
+ports at the bottom, in pockets of the bottom wall. The printer cable plugs straight into the Pi.
 
 Holding the display: two hooks in the bottom of the body catch the bottom edge of the display frame,
-and two screws through the back of the body go into the top tabs of the display. The Pi covers the
-bottom tabs.
+and two screws go down tubes from the back of the body into the two raised tabs at the top of the
+display.
+
+Printing: the body prints standing on its bottom end, so the walls, the back and the dovetail are
+vertical.
 
 The pod hangs on the bracket: a dovetail on the back of the pod drops into a slot in the bracket from
 above. The bracket stands on the two rail clips and the cover screw.
@@ -35,37 +38,41 @@ import shape as S
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # ---------------------------------------------------------------- the display (product brief, 5 inch)
+# The display hangs with the end of its ribbon connector up: the drawing turned 180 degrees. The
+# drawing gives v from the other end of the glass, so the values below are GLASS[1] - v.
 GLASS = (91.46, 143.4)          # the cover glass: across, up
 GLASS_R = 5.0
 LENS = 0.7                      # the thickness of the glass at its border
 AA = (62.1, 110.4)              # the active area, in the middle of the glass
 FRAME = (72.96, 122.74)         # the metal back of the module
-FRAME_V0 = 12.8                 # the bottom of the frame over the bottom of the glass
+FRAME_V0 = GLASS[1] - 12.8 - FRAME[1]   # the bottom of the frame over the bottom of the glass: 7.86
 FRAME_W = 8.5                   # the back of the frame behind the front of the glass
-TABS = [(u, v) for u in (-25.5, 25.5) for v in (19.85, 19.85 + 103.7)]   # mounting tabs (51 x 103.7)
+# The two raised tabs at the top (the ribbon end). At the bottom there are only two holes in the flat
+# back (v 19.85), beside the ports of the Pi: the case does not use them.
+TABS = [(u, GLASS[1] - 19.85) for u in (-25.5, 25.5)]
 TAB_W = 11.5                    # the face of a tab behind the front of the glass
 TAB_SIZE = (8.0, 6.0)
-PI_HOLE_UV = [(u, v) for u in (-24.5, 24.5) for v in (33.91, 33.91 + 58.0)]   # the Pi standoffs (49 x 58)
+PI_HOLE_UV = [(u, v) for u in (-24.5, 24.5) for v in (GLASS[1] - 33.91 - 58.0, GLASS[1] - 33.91)]   # 49 x 58
 STANDOFF_W = 14.92              # the tips of the standoffs: the bottom of the Pi board
 
 # ---------------------------------------------------------------- the case
 WALL = 2.0
 GAP = 1.0                       # around the frame and the Pi
 BODY_U = FRAME[0] / 2 + GAP + WALL                # half width: 39.48
-BODY_V = (3.0, FRAME_V0 + FRAME[1] + GAP + WALL)   # bottom and top: 3.0 to 138.5
+BODY_V = (3.0, FRAME_V0 + FRAME[1] + GAP + WALL)   # bottom and top: 3.0 to 133.6
 BODY_R = 6.0
 FRONT_W = -(LENS + 0.05)        # the front rim of the body, against the back of the glass
 PI_TOP_W = STANDOFF_W + 1.6 + 16.0                 # the top of the USB ports: 32.5
 DEEP_W = PI_TOP_W + GAP + WALL                     # the back of the body where the Pi is: 35.5
-THIN_W = TAB_W + 2.5            # the back of the body over the display only: 14.0
-STEP_V = (100.0, 104.0)         # the slope between the deep and the thin part
+SCREW_FLOOR = (TAB_W + 0.2, TAB_W + 2.2)          # the floor of a screw well, over a top tab
+PI_V = PI_HOLE_UV[0][1] + 61.5                     # the v of the PCIe end of the Pi (STEP x = 0)
 
 
 def pi_uvw(x, y, z):
     """A point of the Pi (STEP coordinates: x along the 85 with the USB ports at +x, y along the 56 with
     the USB-C edge at y = 0, z up from the bottom of the board) on the back of the display: the USB
     end down, the USB-C edge to the right."""
-    return (28.0 - y, 33.91 + 61.5 - x, -STANDOFF_W - z)
+    return (28.0 - y, PI_V - x, -STANDOFF_W - z)
 
 
 def uvw_box(u0, u1, v0, v1, w0, w1):
@@ -83,16 +90,11 @@ def pi_parts():
 
 
 def outer():
-    """The body envelope: the rounded outline, with the side profile (deep at the bottom, thin at the
-    top)."""
+    """The body envelope: the rounded outline, the full depth of the Pi from the bottom to the top. The
+    Pi and the fold of its ribbon fill all but the top 15 mm, so a thin part at the top gives no gain."""
     v0, v1 = BODY_V
     plan = Pos(0, (v0 + v1) / 2, 0) * RectangleRounded(2 * BODY_U, v1 - v0, BODY_R)
     o = Pos(0, 0, -DEEP_W) * extrude(plan, amount=DEEP_W + FRONT_W)
-    # The side profile in (v, w), on a plane across u.
-    prof = Polygon((v0 - 1, FRONT_W + 1), (v0 - 1, -DEEP_W - 1), (STEP_V[0], -DEEP_W - 1), (STEP_V[0], -DEEP_W),
-                   (STEP_V[1], -THIN_W), (v1 + 1, -THIN_W), (v1 + 1, FRONT_W + 1), align=None)
-    side = extrude(Plane.YZ * prof, amount=BODY_U + 1, both=True)
-    o = o & side
     back = o.edges().filter_by(lambda e: e.center().Z < FRONT_W - 0.5)
     for r in (4.0, 3.0, 2.0):
         try:
@@ -136,16 +138,15 @@ def vents():
 
 
 # The dovetail on the back: root, tip, height, v range. The pod slides down onto the bracket by
-# the length of the dovetail and a little more (DOVE_LIFT). During the slide, the deep part of the
-# back must stay under the wedge of the bracket: the wedge starts DOVE_LIFT + 2 mm over the slope.
+# the length of the dovetail and a little more (DOVE_LIFT).
 DOVE_LIFT = 16.0
-DOVE = (10.0, 14.0, 3.0, (STEP_V[1] + DOVE_LIFT + 3.0, 136.0))
+DOVE = (10.0, 14.0, 3.0, (BODY_V[1] - 15.5, BODY_V[1] - 2.5))   # clear of the wedge when lifted
 
 
 def dovetail(clr=0.0, v_ext=0.0):
     r, t, h, (va, vb) = DOVE
-    prof = Polygon((-r / 2 - clr, -THIN_W + 0.5), (r / 2 + clr, -THIN_W + 0.5), (t / 2 + clr, -THIN_W - h - clr),
-                   (-t / 2 - clr, -THIN_W - h - clr), align=None)
+    prof = Polygon((-r / 2 - clr, -DEEP_W + 0.5), (r / 2 + clr, -DEEP_W + 0.5), (t / 2 + clr, -DEEP_W - h - clr),
+                   (-t / 2 - clr, -DEEP_W - h - clr), align=None)
     # Along v: the profile is in (u, w), on a plane across v.
     pl = Plane(origin=(0, va - clr, 0), x_dir=(1, 0, 0), z_dir=(0, 1, 0))
     return extrude(pl * Polygon(*[(p.X, -p.Y) for p in prof.vertices()], align=None), amount=vb - va + 2 * clr + v_ext)
@@ -155,12 +156,13 @@ def body():
     o = outer()
     front = o.faces().sort_by(lambda f: f.center().Z)[-1]
     s = offset(o, amount=-WALL, openings=[front])
-    # The bosses of the two top tabs, and their screw holes (M2.5 from the back).
+    # The two top tabs: a tube from the back down to each tab, with a floor of 2 mm on the tab. The
+    # M2.5 x 4 screw of the display box goes down the tube, through the floor, into the tab.
+    f0, f1 = SCREW_FLOOR
     for u, v in TABS:
-        if v < 100:
-            continue
-        s = s + Pos(u, v, -(TAB_W + THIN_W) / 2) * Cylinder(3.0, THIN_W - TAB_W)
-        s = s - Pos(u, v, -(TAB_W + THIN_W) / 2) * Cylinder(1.45, THIN_W - TAB_W + 2)
+        s = s + Pos(u, v, -(f0 + DEEP_W - 1.0) / 2) * Cylinder(4.5, DEEP_W - 1.0 - f0)
+        s = s - Pos(u, v, -(f1 + DEEP_W + 1.0) / 2) * Cylinder(3.25, DEEP_W + 1.0 - f1)
+        s = s - Pos(u, v, -(f0 + f1) / 2) * Cylinder(1.45, f1 - f0 + 1.0)
     # The hooks at the bottom: they catch the bottom edge of the frame (beside the Pi).
     for sgn in (-1, 1):
         u0, u1 = sorted((sgn * 29.5, sgn * (BODY_U - WALL + 0.01)))
@@ -186,7 +188,7 @@ POD_Z = (-102.6 - 2.0) / 2               # the middle of the front of the contro
 # the dovetail runs up the tilted face, so it moves the pod toward the wall by DOVE_LIFT x sin(tilt):
 # the gap is that and 3 mm more. The bracket is a wedge between the plate and the thin back over it.
 PLATE_GAP = DOVE_LIFT * SIN + 3.0
-_deep = (STEP_V[0], -DEEP_W)
+_deep = (BODY_V[1], -DEEP_W)
 POD_O = (X_BACK + PLATE + PLATE_GAP + _deep[0] * SIN - _deep[1] * COS, GLASS_TOP_Y - GLASS[1] * COS, POD_Z)
 POD_LOC = Location(Plane(origin=POD_O, x_dir=U, z_dir=W))
 
@@ -244,10 +246,10 @@ def tie_anchor(x0, y0, z0, axis):
 
 
 def wedge(loc, front):
-    """The wedge of a bracket: from the plate (front: the space in front of it) to the thin back of
+    """The wedge of a bracket: from the plate (front: the space in front of it) to the back of
     the pod at loc, behind the dovetail, with the slot of the dovetail open at the top."""
     va = DOVE[3][0]
-    w = (loc * uvw_box(-13, 13, va - 1.0, BODY_V[1], -THIN_W - 80, -THIN_W - 0.3)) & front
+    w = (loc * uvw_box(-13, 13, va - 1.0, BODY_V[1], -DEEP_W - 80, -DEEP_W - 0.3)) & front
     return w - loc * dovetail(0.25, 40.0)
 
 
@@ -275,7 +277,7 @@ MINI_LOC = frame(MINI_U, MINI_V, MINI_W, MINI_O)
 def mini_bracket():
     """The Mini 2 bracket: a plate on the front of the left upright, held by the two frame screws of
     its top corner (longer screws in the same holes), and the wedge with the dovetail slot."""
-    top = to_frame(MINI_LOC, 0, BODY_V[1], -THIN_W)[2]
+    top = to_frame(MINI_LOC, 0, BODY_V[1], -DEEP_W)[2]
     plate = mbox(-366.0, MINI_X + 15.0, MINI_PLATE_Y - PLATE, MINI_PLATE_Y, top - 60.0, 372.0)
     for x, z in MINI_SCREWS:
         plate = plate - Pos(x, MINI_PLATE_Y - PLATE / 2, z) * Rot(90, 0, 0) * Cylinder(1.7, PLATE + 2)
@@ -310,30 +312,30 @@ def screw(size, length, origin, out_dir, frame=None):
 
 
 def pod_screws():
-    """The screws of the pod, in pod coordinates: two M2.5 x 4 from the back of the body into the top
-    tabs of the display, and four M2.5 x 5 (in the box of the display) through the Pi into the
-    standoffs."""
+    """The screws of the pod, in pod coordinates: two M2.5 x 4 down the tubes of the body into the top
+    tabs of the display, and four M2.5 x 4 through the Pi into the standoffs (all from the box of
+    the display)."""
     disp = None
     for u, v in TABS:
-        if v < 100:
-            continue
-        sc = screw(2.5, 4.0, (u, v, -THIN_W), (0, 0, -1))
+        sc = screw(2.5, 4.0, (u, v, -SCREW_FLOOR[1]), (0, 0, -1))
         disp = sc if disp is None else disp + sc
     pi = None
     for u, v in PI_HOLE_UV:
-        sc = screw(2.5, 5.0, (u, v, -STANDOFF_W - 1.6), (0, 0, -1))
+        sc = screw(2.5, 4.0, (u, v, -STANDOFF_W - 1.6), (0, 0, -1))
         pi = sc if pi is None else pi + sc
     return [("screw_display", disp, SCREW_COLOR), ("screw_pi", pi, SCREW_COLOR)]
 
 
 # The details of the display back, from the 5 inch drawing and the photos of the Touch Display 2
 # (Raspberry Pi publishes no STEP model of it): the channel in the middle of the metal back, the
-# connector of the ribbon at the bottom of the channel, and the power connector beside it.
-CHANNEL = (32.6, FRAME_V0 + FRAME[1] - 3.81)      # the width, and the top of the channel
-DISP_FPC = (0.0, 36.9)                            # (u, v) of the ribbon connector
-DISP_POWER = (21.9, 51.1)                         # (u, v) of the power connector (2 pins)
-# The Pi: the display port CAM/DISP 0 (Pi 5 drawing: x 53.1 to 55.9, y 1 to 16.6) and the GPIO header.
-PI_DSI = (53.1, 55.9, 1.0, 16.6, 1.6, 3.6)
+# connector of the ribbon at the top of the channel, and the power connector beside it. The photo of
+# the parts (2026-10-24) agrees: the power connector is on the GPIO side of the Pi.
+CHANNEL = (32.6, GLASS[1] - 131.73)               # the width, and the bottom of the channel
+DISP_FPC = (0.0, GLASS[1] - 36.9)                 # (u, v) of the ribbon connector
+DISP_POWER = (-21.9, GLASS[1] - 51.1)             # (u, v) of the power connector (2 pins)
+# The Pi: the display port that the ribbon uses in the photo (J4, x 47 to 49.8; its opening faces the
+# PCIe end), and the GPIO header.
+PI_DSI = (47.0, 49.8, 1.0, 16.6, 1.6, 3.6)
 PI_GPIO = (7.1, 57.9, 49.4, 54.4, 1.6, 10.1)
 PI_5V_PINS = (10.0, 52.8)                         # (x, y) of pins 2, 4 and 6 (5 V, 5 V, ground)
 RIBBON_W = 11.5                                   # the 22-pin end of the standard-mini cable
@@ -342,7 +344,7 @@ RIBBON_T = 0.3
 
 def display_details():
     out = []
-    ch = uvw_box(-CHANNEL[0] / 2, CHANNEL[0] / 2, DISP_FPC[1] - 6.0, CHANNEL[1], -FRAME_W, -FRAME_W + 1.2)
+    ch = uvw_box(-CHANNEL[0] / 2, CHANNEL[0] / 2, CHANNEL[1], DISP_FPC[1] + 6.0, -FRAME_W, -FRAME_W + 1.2)
     out.append(("channel", ch, "#6C7078"))
     u, v = DISP_FPC
     out.append(("display_fpc", uvw_box(u - 9.0, u + 9.0, v - 2.0, v + 2.0, -FRAME_W - 2.0, -FRAME_W), "#ECECEC"))
@@ -354,33 +356,34 @@ def display_details():
 
 
 def ribbon_and_wire():
-    """The DSI ribbon (the standard-mini cable in the box of the display) and the 2-wire power cable.
-    The ribbon leaves the display connector downward, turns toward the USB-C edge under the Pi, wraps
-    round that edge, and comes back over the board to the display port: the route of the Raspberry
-    Pi diagram. It is approximate until the parts arrive."""
+    """The DSI ribbon (the standard-mini cable in the box of the display) and the 2-wire power cable,
+    as in the photo of the parts. The ribbon leaves the display connector upward under the Pi, folds
+    back past the PCIe end of the Pi, and comes down over the Active Cooler to the display port."""
+    import numpy as np
     rw, t = RIBBON_W, RIBBON_T
     b = pi_box(*PI_DSI).bounding_box()
-    edge = 28.0 + 3.0                                  # past the USB-C edge of the board
-    # Between the lower standoffs (v up to 36.4) and the power connector (v from 48.1).
-    v0, v1 = DISP_FPC[1] - 0.4, DISP_FPC[1] - 0.4 + rw
-    under, over = -FRAME_W - 2.6, -STANDOFF_W - 1.6 - 4.6
+    uc = (b.min.X + b.max.X) / 2
+    u0, u1 = uc - rw / 2, uc + rw / 2
+    fold = PI_V + 3.3                                    # past the PCIe end of the board
+    under = -FRAME_W - 2.3                               # on the display connector, under the Pi
+    over = -STANDOFF_W - 1.6 - 12.0 - 0.5                # over the cooler
+    plug = (b.min.Z + b.max.Z) / 2                       # in the display port
     segs = [
-        uvw_box(-rw / 2, rw / 2, DISP_FPC[1] + 2.0, v0 + 0.01, under - t, under),  # out of the connector, up
-        uvw_box(-rw / 2, edge + t, v0, v1, under - t, under),                    # under the Pi, to the edge
-        uvw_box(edge, edge + t, v0, v1, over - t, under),                        # round the edge
-        uvw_box(22.0, edge + t, v0, v1, over - t, over),                          # back over the board
-        uvw_box(b.min.X + 2.0, b.max.X, b.max.Y, v1, over - t, b.min.Z),         # down into the port
+        uvw_box(-8.0, 8.0, DISP_FPC[1], fold + t, under - t, under),     # out of the connector, up
+        uvw_box(-8.0, u1, fold, fold + t, over - t, under),              # the fold
+        uvw_box(u0, u1, b.max.Y + 1.2, fold + t, over - t, over),         # down over the cooler
+        uvw_box(u0, u1, b.max.Y + 1.2, b.max.Y + 1.2 + t, over - t, plug),  # down to the level of the port
+        uvw_box(u0, u1, b.max.Y - 1.0, b.max.Y + 1.2 + t, plug - t, plug),  # into the port
     ]
     r = segs[0]
     for sg in segs[1:]:
         r = r + sg
     # The power wire: from the display connector, under the Pi to the GPIO edge, up round it, to the
     # 5 V pins.
-    import numpy as np
     du, dv = DISP_POWER
     pu, pv, pw = pi_uvw(PI_5V_PINS[0], PI_5V_PINS[1], PI_GPIO[5])
-    pts = [(du, dv, -FRAME_W - 4.5), (du, dv, -FRAME_W - 3.5), (du - 8, dv + 6, under - 1.5), (-31.0, pv - 6, under - 1.5),
-           (-31.0, pv, under - 1.5), (-31.0, pv, pw - 3.0), (pu, pv, pw - 3.0), (pu, pv, pw)]
+    pts = [(du, dv, -FRAME_W - 4.5), (du, dv, -12.2), (-31.0, dv + 4.0, -12.2), (-31.0, pv, -12.2),
+           (-31.0, pv, pw - 3.0), (pu, pv, pw - 3.0), (pu, pv, pw)]
     path = rounded(pts, r=4.0)
     wire = None
     for a, c in zip(path[:-1], path[1:]):
@@ -421,7 +424,7 @@ def hardware():
 
 
 ALLOWED = {frozenset(p) for p in [("power_plug", "pi_usbc"), ("printer_plug", "pi_usb2"), ("glass", "screen"),
-                                  ("screw_display", "tab1"), ("screw_display", "tab3"), ("screw_pi", "pi_board"),
+                                  ("screw_display", "tab0"), ("screw_display", "tab1"), ("screw_pi", "pi_board"),
                                   ("channel", "frame"), ("display_fpc", "dsi_ribbon"), ("pi_dsi", "dsi_ribbon"),
                                   ("pi_dsi", "pi_board"), ("pi_gpio", "pi_board"), ("pi_gpio", "power_wire"),
                                   ("display_power", "power_wire"), ("pi_dsi", "cooler"), ("pi_gpio", "cooler"),
@@ -502,7 +505,7 @@ def local_meshes(body_local, hw_local, tmp):
         m = trimesh.load(pth, force="mesh")
         T = np.eye(4)
         T[:3, :3] = np.array([[0, -1, 0], [-1, 0, 0], [0, 0, -1]], float)
-        T[:3, 3] = (28.0, 33.91 + 61.5, -STANDOFF_W)
+        T[:3, 3] = (28.0, PI_V, -STANDOFF_W)
         m.apply_transform(T)
         for n in list(meshes):
             if n.startswith("pi_"):
