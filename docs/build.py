@@ -5,7 +5,8 @@ The pages come from the files of the repository, so the site follows them:
 
   README.md, ARCHITECTURE.md, os/README.md, printer/README.md,
   slicer/README.md, slicer/cura-plugin/README.md,
-  deck/internal/klipper/PORTING.md, desktop/meshes/README.md   the text of the pages
+  deck/internal/klipper/PORTING.md, desktop/meshes/README.md,
+  watch/README.md, relay/README.md                              the text of the pages
   slate/guide/guide.json, lulzbot/guide/guide.json             the two mounts
   docs/manual/index.html, docs/manual/wide/index.html          the screens of the deck
   deck/cmd/printdeck/*.go, deck/internal/config/config.go,
@@ -47,7 +48,7 @@ PAGE_OF = {
     "README.md": "", "ARCHITECTURE.md": "deck/", "os/README.md": "os/", "printer/README.md": "deck/printer/",
     "slicer/README.md": "slicer/adaptive-speed/", "slicer/cura-plugin/README.md": "slicer/cura-plugin/",
     "deck/internal/klipper/PORTING.md": "deck/klipper/", "slate/README.md": "hardware/slate/",
-    "lulzbot/README.md": "hardware/workhorse/",
+    "lulzbot/README.md": "hardware/workhorse/", "watch/README.md": "apps/", "relay/README.md": "apps/relay/",
 }
 
 
@@ -457,7 +458,7 @@ ol.steps li::before { content: counter(step); font: 700 15px var(--mono); color:
 CHAPTERS = {
     "Set up": "setup", "Meet your Printdeck": "meet", "Print a part": "print", "Change the filament": "filament",
     "Move and heat": "move", "Level and calibrate": "calibrate", "Look after the printer": "care",
-    "When something goes wrong": "problems",
+    "When something goes wrong": "problems", "Your iPhone and Apple Watch": "phone",
 }
 
 PAGES = {}  # path -> (title, body)
@@ -497,7 +498,8 @@ def nav_html(current, root, wide):
         ("Software", [("Printdeck OS", "os/"), ("The printdeck program", "deck/"), ("The Klipper host", "deck/klipper/"),
                       ("The reference printer", "deck/printer/"), ("Remote screen and API", "deck/remote/"),
                       ("The Cura plugin", "slicer/cura-plugin/"), ("Adaptive Speed", "slicer/adaptive-speed/"),
-                      ("Desktop app and simulator", "desktop/"), ("The film tools", "desktop/film/")]),
+                      ("Desktop app and simulator", "desktop/"), ("The film tools", "desktop/film/"),
+                      ("iPhone and Apple Watch", "apps/"), ("The push relay", "apps/relay/")]),
         ("Build and release", [("Build and release", "build/")]),
         ("Reference", [("Commands", "reference/commands/"), ("Environment variables", "reference/environment/"),
                        ("Files, paths and services", "reference/files/"), ("Hardware lists", "reference/hardware/")]),
@@ -944,6 +946,20 @@ def cura_page():
          "Cura follows the roll in the deck, shows the deck in a tab, and prints on a part that is printed already.", body)
 
 
+def apps_page():
+    root = "../"
+    page("apps/", "Software", "The iPhone and Apple Watch apps",
+         "The deck on the iPhone and the watch: the apps, the complications, the widgets, the Live Activity and the push messages.",
+         md("watch/README.md", root))
+
+
+def relay_page():
+    root = "../../"
+    page("apps/relay/", "Software", "The push relay",
+         "An AWS Lambda function that gives the encrypted messages of a deck to the iPhone app through APNs.",
+         md("relay/README.md", root))
+
+
 def adaptive_page():
     root = "../../"
     body = md("slicer/README.md", root)
@@ -1367,6 +1383,8 @@ def main():
     adaptive_page()
     desktop_page()
     film_page()
+    apps_page()
+    relay_page()
     build_page()
     commands_page()
     environment_page()

@@ -45,6 +45,13 @@ Printdeck, with one nozzle. For example raised letters on a part:
    screen of the deck has Change filament in orange, with the roll of the letters. Change the
    filament, then tap Resume.
 
+On Resume the deck draws a prime line of 40 mm at the front of the bed, behind the prime line of
+the start. The ooze of the new filament stays on that line. The deck then retracts, lifts straight
+up, and goes back to the part. The file has `PRINTDECK_PRIME` after the move down to the layer: the
+filament goes forward at the first point of the layer, so no ooze falls on the part. Each change
+of a print draws its line 2 mm behind the line before it. The `prime_*` options of
+`[printdeck_pause]` set the place, the length and the height of the line.
+
 When other models go on above the colored ones, the printer pauses again at the first layer over
 them, for the roll that was in the printer at the start. The panel lists the changes. A model with
 a roll that stands on the plate is no change: the print starts with the roll in the printer.

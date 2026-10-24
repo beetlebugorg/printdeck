@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The push relay · Printdeck</title>
+<meta name="description" content="An AWS Lambda function that gives the encrypted messages of a deck to the iPhone app through APNs.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The hardware</a>
+<a href="../../hardware/slate/">The Slate case</a>
+<a href="../../hardware/workhorse/">The TAZ Workhorse mount</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/setup/" aria-current="page">Tall</a><a href="../../ui/wide/setup/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../../ui/phone/">Your iPhone and Apple Watch</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/">The film tools</a>
+<a href="../../apps/">iPhone and Apple Watch</a>
+<a href="../../apps/relay/" aria-current="page">The push relay</a>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/">Commands</a>
+<a href="../../reference/environment/">Environment variables</a>
+<a href="../../reference/files/">Files, paths and services</a>
+<a href="../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">Manual, tall display</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../lulzbot/">Workhorse upgrade booklet</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Software</p>
+<h1>The push relay</h1>
+<p class="lede">An AWS Lambda function that gives the encrypted messages of a deck to the iPhone app through APNs.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#how-it-works">How it works</a></li><li><a href="#requests">Requests</a></li><li><a href="#pairing-with-a-deck">Pairing with a deck</a></li><li><a href="#the-message">The message</a></li><li><a href="#logs">Logs</a></li><li><a href="#deploy">Deploy</a></li></ol></nav><p>The relay gives the messages of a deck to the Printdeck app on an iPhone, through APNs. It is an AWS Lambda function behind a function URL. The APNs key of the app is in a Secrets Manager secret, so no deck has it. The messages are encrypted from the deck to the app, so the relay and Apple cannot read them.</p>
+<h2 id="how-it-works">How it works</h2>
+<ol><li>The app gets its device token from iOS, and posts it to the relay (<code>POST /register</code>). The relay returns a send token: an HMAC of the device token with <code>relay_secret</code>. The relay keeps no list of devices.</li><li>The app pairs with the deck on the local network. The deck and the app agree on a message key of 32 bytes. The app gives the deck the device token, its environment and the send token.</li><li>At an event of a print, the deck encrypts the message with the message key, and posts it to the relay (<code>POST /push</code>). The relay checks the send token, and gives APNs a push with the encrypted message in the key <code>e</code>.</li><li>The notification service extension of the app decrypts <code>e</code>, and shows the message. The watch shows the notifications of the phone.</li></ol>
+<p>A new <code>relay_secret</code> makes all send tokens invalid. A deck that is lost is revoked with a new pairing: the app makes a new message key.</p>
+<h2 id="requests">Requests</h2>
+<p>Both are <code>POST</code> with a JSON body, to the URL of the relay.</p>
+<p><code>/register</code>, from the app:</p>
+<pre><code>{&quot;device&quot;: &quot;&lt;device token in hex&gt;&quot;, &quot;env&quot;: &quot;production&quot;}</code></pre>
+<p><code>env</code> is <code>sandbox</code> for a build that Xcode installs, and <code>production</code> for TestFlight and the App Store. The reply is <code>{&quot;send_token&quot;: &quot;...&quot;}</code>.</p>
+<p><code>/push</code>, from the deck:</p>
+<pre><code>{&quot;device&quot;: &quot;...&quot;, &quot;env&quot;: &quot;production&quot;, &quot;send_token&quot;: &quot;...&quot;, &quot;payload&quot;: &quot;&lt;base64&gt;&quot;, &quot;priority&quot;: 5}</code></pre>
+<p><code>priority</code> is 1 to 5, as in ntfy; 1 to 3 gives APNs priority 5, and 4, 5 or none gives 10. The reply is 200 for a sent push, 403 for a send token that is not valid, 410 when the app is gone from the device (stop sending to it), and 400 or 502 for other errors, with <code>{&quot;error&quot;: &quot;...&quot;}</code>.</p>
+<h2 id="pairing-with-a-deck">Pairing with a deck</h2>
+<p>The app pairs over the API of the deck, with the API key of the deck in the header <code>X-Api-Key</code>. The app makes an X25519 key pair, and posts:</p>
+<p><code>POST /api/plugin/printdeck/push/pair</code></p>
+<pre><code>{&quot;name&quot;: &quot;Jeremy&#x27;s iPhone&quot;, &quot;device&quot;: &quot;&lt;device token in hex&gt;&quot;, &quot;env&quot;: &quot;sandbox&quot;,
+ &quot;send_token&quot;: &quot;&lt;from /register&gt;&quot;, &quot;relay&quot;: &quot;https://&lt;the relay URL&gt;&quot;, &quot;public_key&quot;: &quot;&lt;base64&gt;&quot;}</code></pre>
+<p><code>public_key</code> is the raw X25519 public key of the app, 32 bytes, in standard base64. The reply is <code>{&quot;id&quot;: &quot;...&quot;, &quot;public_key&quot;: &quot;&lt;base64&gt;&quot;}</code> with the X25519 public key of the deck. Both sides make the message key with HKDF-SHA256: the input key is the X25519 shared secret, the salt is the bytes of the device token (the hex decoded), the info is <code>printdeck push v1</code>, and the length is 32 bytes. In CryptoKit that is <code>sharedSecret.hkdfDerivedSymmetricKey(using: SHA256.self, salt: deviceTokenBytes, sharedInfo: Data(&quot;printdeck push v1&quot;.utf8), outputByteCount: 32)</code>. Someone who listens on the network during the pairing sees the two public keys only.</p>
+<p>After a pairing, the deck sends the message &quot;This phone gets the messages of your prints.&quot; A new pairing of the same device token makes a new key, with the same ID. <code>GET /api/plugin/printdeck/push</code> lists the phones (<code>id</code>, <code>name</code>, <code>env</code>, <code>added</code>), and <code>DELETE /api/plugin/printdeck/push/&lt;id&gt;</code> removes one. Settings &gt; Phones on the deck shows the same list.</p>
+<h2 id="the-message">The message</h2>
+<p>The payload is AES-256-GCM with the message key: a 12-byte random nonce, then the ciphertext and the 16-byte tag, in standard base64. The plaintext is JSON:</p>
+<pre><code>{&quot;title&quot;: &quot;Print done&quot;, &quot;body&quot;: &quot;benchy.gcode · 1h 42m&quot;, &quot;tags&quot;: &quot;white_check_mark&quot;, &quot;at&quot;: 1792790000}</code></pre>
+<p><code>at</code> is the time of the event in Unix seconds. The payload is at most 3000 bytes. The push has the alert &quot;Printdeck: A message from your printer&quot; and <code>mutable-content</code>, so iOS shows that text when the extension cannot decrypt the message.</p>
+<h2 id="logs">Logs</h2>
+<p>The logs in CloudWatch have fixed texts only. No request body, token, payload or part of the secret is in a log. The log group keeps 14 days.</p>
+<h2 id="deploy">Deploy</h2>
+<p>You need Go, the AWS CLI, and an APNs key (a <code>.p8</code> file) from the developer account.</p>
+<ol><li><code>relay/deploy.sh BUNDLE_ID</code> builds the function and makes the stack <code>printdeck-relay</code>, with an S3 bucket for the code. It prints the URL of the relay.</li><li><code>relay/set-apple-key.sh KEY_ID TEAM_ID AuthKey_KEYID.p8</code> writes the key into the secret. Run it on the computer that has the <code>.p8</code> file. It does not print the key.</li></ol>
+<p>Run <code>deploy.sh</code> again after a change to the code. To remove the relay, delete the stack and the bucket.</p>
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

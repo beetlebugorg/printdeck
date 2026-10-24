@@ -196,7 +196,7 @@
 <section class="sheet contents even">
   
     <h2>Contents</h2>
-    <ol><li class="ch">Set up</li><li><span>Connect to Wi-Fi</span><span class="dots"></span><span>3</span></li><li><span>Choose your printer</span><span class="dots"></span><span>5</span></li><li><span>Install the Klipper firmware</span><span class="dots"></span><span>7</span></li><li class="ch">Meet your Printdeck</li><li><span>The deck</span><span class="dots"></span><span>8</span></li><li><span>The display of the printer</span><span class="dots"></span><span>10</span></li><li><span>The deck in a browser</span><span class="dots"></span><span>11</span></li><li class="ch">Print a part</li><li><span>Send a file from the slicer</span><span class="dots"></span><span>12</span></li><li><span>Start a print</span><span class="dots"></span><span>13</span></li><li><span>Watch the print</span><span class="dots"></span><span>15</span></li><li><span>Look around during a print</span><span class="dots"></span><span>22</span></li><li class="ch">Change the filament</li><li><span>Change the filament</span><span class="dots"></span><span>23</span></li><li class="ch">Move and heat</li><li><span>Move the head and heat</span><span class="dots"></span><span>29</span></li><li class="ch">Level and calibrate</li><li><span>Level and calibrate</span><span class="dots"></span><span>31</span></li><li class="ch">Look after the printer</li><li><span>Look after the printer</span><span class="dots"></span><span>36</span></li><li><span>Update the Printdeck</span><span class="dots"></span><span>41</span></li><li class="ch">When something goes wrong</li><li><span>When something goes wrong</span><span class="dots"></span><span>42</span></li><li><span>Settings</span><span class="dots"></span><span>43</span></li></ol>
+    <ol><li class="ch">Set up</li><li><span>Connect to Wi-Fi</span><span class="dots"></span><span>3</span></li><li><span>Choose your printer</span><span class="dots"></span><span>5</span></li><li><span>Install the Klipper firmware</span><span class="dots"></span><span>7</span></li><li class="ch">Meet your Printdeck</li><li><span>The deck</span><span class="dots"></span><span>8</span></li><li><span>The display of the printer</span><span class="dots"></span><span>10</span></li><li><span>The deck in a browser</span><span class="dots"></span><span>11</span></li><li class="ch">Print a part</li><li><span>Send a file from the slicer</span><span class="dots"></span><span>12</span></li><li><span>Start a print</span><span class="dots"></span><span>13</span></li><li><span>Watch the print</span><span class="dots"></span><span>15</span></li><li><span>Print in two colors</span><span class="dots"></span><span>22</span></li><li><span>Look around during a print</span><span class="dots"></span><span>24</span></li><li class="ch">Your iPhone and Apple Watch</li><li><span>The iPhone and Apple Watch apps</span><span class="dots"></span><span>25</span></li><li class="ch">Change the filament</li><li><span>Change the filament</span><span class="dots"></span><span>27</span></li><li class="ch">Move and heat</li><li><span>Move the head and heat</span><span class="dots"></span><span>33</span></li><li class="ch">Level and calibrate</li><li><span>Level and calibrate</span><span class="dots"></span><span>35</span></li><li class="ch">Look after the printer</li><li><span>Look after the printer</span><span class="dots"></span><span>40</span></li><li><span>Update the Printdeck</span><span class="dots"></span><span>45</span></li><li class="ch">When something goes wrong</li><li><span>When something goes wrong</span><span class="dots"></span><span>46</span></li><li><span>Settings</span><span class="dots"></span><span>47</span></li></ol>
   
   
     
@@ -1078,6 +1078,73 @@
 <section class="sheet guide even">
   
     
+    <h2>Print in two colors</h2>
+    
+    
+    <p>The Colors tool of the Cura plugin gives a model the roll of another color, for example raised letters on a plate. The print pauses at the first layer of that model, and the deck asks for its roll.</p>
+    
+    
+    <p>On Resume the deck draws a short line at the front of the bed, behind the prime line of the start. The ooze of the new filament stays on that line. The nozzle then goes back to the part with the filament pulled back a little, and pushes it forward at the first point of the layer. Each change of a print draws its line 2 mm behind the line before it.</p>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>In Cura, put the letters on the part. Select the letters, open the Colors tool, and tap their roll.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">2</span><span>Print. At the first layer of the letters, the printer parks and the deck shows Change filament in orange.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">3</span><span>Tap Change filament. Unload, load the roll of the letters, and tap Done.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">4</span><span>Pull the ooze off the nozzle with tweezers, then tap Resume.</span></li></ol>
+    
+    
+  
+  
+    <div class="chapter-tab">Print a part</div>
+    <div class="folio">22</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    
+    <div class="figure">
+      <h3>A color change</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/color-change.png" alt="A color change"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="825" y1="134" x2="784" y2="134" class="leader"/>
+          <circle cx="784" cy="134" r="6" class="dot"/>
+          <circle cx="840" cy="134" r="16" class="bdg"/>
+          <text x="840" y="134" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="344" x2="499" y2="344" class="leader"/>
+          <circle cx="499" cy="344" r="6" class="dot"/>
+          <circle cx="840" cy="344" r="16" class="bdg"/>
+          <text x="840" y="344" class="bdg-n">2</text></g><g>
+          <line x1="825" y1="428" x2="784" y2="428" class="leader"/>
+          <circle cx="784" cy="428" r="6" class="dot"/>
+          <circle cx="840" cy="428" r="16" class="bdg"/>
+          <text x="840" y="428" class="bdg-n">3</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Where.</b> The roll of the next color, from the Colors tool of the Cura plugin.</span></li><li><span class="badge">2</span><span><b>Change filament.</b> Opens the filament change with that roll. Unload, load the new filament, and tap Done.</span></li><li><span class="badge">3</span><span><b>Resume.</b> Draws a short prime line at the front of the bed, then goes back to the part and continues.</span></li></ol>
+      
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Print a part</div>
+    <div class="folio">23</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
     <h2>Look around during a print</h2>
     
     
@@ -1120,7 +1187,72 @@
   
   
     <div class="chapter-tab">Print a part</div>
-    <div class="folio">22</div>
+    <div class="folio">24</div>
+  
+</section>
+
+<section class="sheet guide odd">
+  
+    
+    <h2>The iPhone and Apple Watch apps</h2>
+    
+    
+    <p>The Printdeck app for iPhone shows the deck as its touch screen: the display of the printer, the print, the roll and the model. It can pause, resume and cancel a print, and start a file of the deck. The watch app shows the print on a blue dot-matrix display.</p>
+    
+    
+    <p>The apps talk to the deck on the local network. The watch reaches the deck on Wi-Fi, or through the iPhone when it is near.</p>
+    
+    
+    <ol class="steps"><li><span class="n">1</span><span>Open Printdeck on the iPhone. It finds the deck on the network. Tap Connect.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">2</span><span>Tap Allow on the touch screen of the deck. The app gets its own key, and sends it to the watch.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">3</span><span>For push messages, open Menu, then Notifications, and tap Pair for notifications. Allow the notifications.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">4</span><span>To add the complication, edit the watch face and choose Printdeck.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">5</span><span>To add a widget, touch and hold the Home Screen or the Lock Screen, tap Edit, and choose Printdeck.</span></li></ol>
+    
+    
+    <table><tr><td>iPhone app</td><td>The display of the printer, the keys, the roll and the model of the print. Pause, Resume and Cancel during a print. Print a file opens the files of the deck.</td></tr></table>
+    
+    
+    <table><tr><td>Watch app</td><td>The progress, the time left and the end. Turn the Digital Crown for the model, the layer times and the filament. Tap for Pause, Resume or Cancel.</td></tr></table>
+    
+    
+    <table><tr><td>Complications</td><td>The progress and the time left on the watch face: a rectangle, a ring of dots, a corner and a line of text.</td></tr></table>
+    
+    
+    <table><tr><td>Home Screen widgets</td><td>The small widget shows the status of the watch. The medium widget shows the status screen of the deck.</td></tr></table>
+    
+    
+  
+  
+    <div class="chapter-tab">Your iPhone and Apple Watch</div>
+    <div class="folio">25</div>
+  
+</section>
+
+<section class="sheet guide even">
+  
+    
+    <table><tr><td>Lock Screen widgets</td><td>The rectangle, the circle and the line of text of the complications.</td></tr></table>
+    
+    
+    <table><tr><td>Live Activity</td><td>During a print, the model, the time left, the bar, the end and the layer on the Lock Screen and in the Dynamic Island.</td></tr></table>
+    
+    
+    <table><tr><td>Notifications</td><td>Print done, print failed, paused, first layer done, and a roll that runs short.</td></tr></table>
+    
+    
+  
+  
+    <div class="chapter-tab">Your iPhone and Apple Watch</div>
+    <div class="folio">26</div>
   
 </section>
 
@@ -1154,7 +1286,7 @@
   
   
     <div class="chapter-tab">Change the filament</div>
-    <div class="folio">23</div>
+    <div class="folio">27</div>
   
 </section>
 
@@ -1206,7 +1338,7 @@
   
   
     <div class="chapter-tab">Change the filament</div>
-    <div class="folio">24</div>
+    <div class="folio">28</div>
   
 </section>
 
@@ -1250,7 +1382,7 @@
   
   
     <div class="chapter-tab">Change the filament</div>
-    <div class="folio">25</div>
+    <div class="folio">29</div>
   
 </section>
 
@@ -1316,7 +1448,7 @@
   
   
     <div class="chapter-tab">Change the filament</div>
-    <div class="folio">26</div>
+    <div class="folio">30</div>
   
 </section>
 
@@ -1368,7 +1500,7 @@
   
   
     <div class="chapter-tab">Change the filament</div>
-    <div class="folio">27</div>
+    <div class="folio">31</div>
   
 </section>
 
@@ -1400,7 +1532,7 @@
   
   
     <div class="chapter-tab">Change the filament</div>
-    <div class="folio">28</div>
+    <div class="folio">32</div>
   
 </section>
 
@@ -1456,7 +1588,7 @@
   
   
     <div class="chapter-tab">Move and heat</div>
-    <div class="folio">29</div>
+    <div class="folio">33</div>
   
 </section>
 
@@ -1496,7 +1628,7 @@
   
   
     <div class="chapter-tab">Move and heat</div>
-    <div class="folio">30</div>
+    <div class="folio">34</div>
   
 </section>
 
@@ -1530,7 +1662,7 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">31</div>
+    <div class="folio">35</div>
   
 </section>
 
@@ -1578,7 +1710,7 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">32</div>
+    <div class="folio">36</div>
   
 </section>
 
@@ -1610,7 +1742,7 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">33</div>
+    <div class="folio">37</div>
   
 </section>
 
@@ -1642,7 +1774,7 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">34</div>
+    <div class="folio">38</div>
   
 </section>
 
@@ -1682,7 +1814,7 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">35</div>
+    <div class="folio">39</div>
   
 </section>
 
@@ -1740,7 +1872,7 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">36</div>
+    <div class="folio">40</div>
   
 </section>
 
@@ -1772,7 +1904,7 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">37</div>
+    <div class="folio">41</div>
   
 </section>
 
@@ -1820,7 +1952,7 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">38</div>
+    <div class="folio">42</div>
   
 </section>
 
@@ -1856,7 +1988,7 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">39</div>
+    <div class="folio">43</div>
   
 </section>
 
@@ -1892,7 +2024,7 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">40</div>
+    <div class="folio">44</div>
   
 </section>
 
@@ -1954,7 +2086,7 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">41</div>
+    <div class="folio">45</div>
   
 </section>
 
@@ -2009,7 +2141,7 @@
   
   
     <div class="chapter-tab">When something goes wrong</div>
-    <div class="folio">42</div>
+    <div class="folio">46</div>
   
 </section>
 
@@ -2046,7 +2178,7 @@
   
   
     <div class="chapter-tab">When something goes wrong</div>
-    <div class="folio">43</div>
+    <div class="folio">47</div>
   
 </section>
 

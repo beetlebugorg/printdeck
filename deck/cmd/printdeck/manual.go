@@ -355,6 +355,19 @@ func manualParts() []section {
 						{"Check the height", "A paper test on the part. The print goes on from the measured height."},
 						{"Resume", "Primes the nozzle and continues. With no height check, the deck asks first."},
 					}},
+				{Name: "color-change", Caption: "A color change",
+					Setup: func(s *manualState) {
+						st := stPrinting
+						st.Paused, st.PauseActive = true, true
+						st.PausePrompt, st.PauseRoll = "Load #2 Navy", "2"
+						s.p.State_ = st
+						s.a.OpenPrintScreen("")
+					},
+					Callouts: []callout{
+						{"Where", "The roll of the next color, from the Colors tool of the Cura plugin."},
+						{"Change filament", "Opens the filament change with that roll. Unload, load the new filament, and tap Done."},
+						{"Resume", "Draws a short prime line at the front of the bed, then goes back to the part and continues."},
+					}},
 				{Name: "finishing", Caption: "The end of the print",
 					Setup: func(s *manualState) {
 						st := printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true, File: "benchy.gcode",
@@ -783,6 +796,18 @@ func manualSections() []section {
 				"When the print is done, wait for the bed to cool, then take the part off.",
 			},
 			Figures: fig("preparing", "first-layer", "printing", "tune", "paused", "pause-prompt", "finishing", "done")},
+		{Chapter: prints, ID: "colors", Title: "Print in two colors",
+			Intro: []string{
+				"The Colors tool of the Cura plugin gives a model the roll of another color, for example raised letters on a plate. The print pauses at the first layer of that model, and the deck asks for its roll.",
+				"On Resume the deck draws a short line at the front of the bed, behind the prime line of the start. The ooze of the new filament stays on that line. The nozzle then goes back to the part with the filament pulled back a little, and pushes it forward at the first point of the layer. Each change of a print draws its line 2 mm behind the line before it.",
+			},
+			Steps: []string{
+				"In Cura, put the letters on the part. Select the letters, open the Colors tool, and tap their roll.",
+				"Print. At the first layer of the letters, the printer parks and the deck shows Change filament in orange.",
+				"Tap Change filament. Unload, load the roll of the letters, and tap Done.",
+				"Pull the ooze off the nozzle with tweezers, then tap Resume.",
+			},
+			Figures: fig("color-change")},
 		{Chapter: prints, ID: "away", Title: "Look around during a print",
 			Intro: []string{
 				"The other screens are read only for the printer while it prints: the files, the filament and the rolls, the history. A tap cannot change the print by mistake. The deck goes back to the print at a pause, at a new print, and after 2 minutes with no touch.",
@@ -795,6 +820,30 @@ func manualSections() []section {
 			},
 			Figures: fig("away")},
 
+		{Chapter: "Your iPhone and Apple Watch", ID: "phone", Title: "The iPhone and Apple Watch apps",
+			Intro: []string{
+				"The Printdeck app for iPhone shows the deck as its touch screen: the display of the printer, the print, the roll and the model. It can pause, resume and cancel a print, and start a file of the deck. The watch app shows the print on a blue dot-matrix display.",
+				"The apps talk to the deck on the local network. The watch reaches the deck on Wi-Fi, or through the iPhone when it is near.",
+			},
+			Steps: []string{
+				"Open Printdeck on the iPhone. It finds the deck on the network. Tap Connect.",
+				"Tap Allow on the touch screen of the deck. The app gets its own key, and sends it to the watch.",
+				"For push messages, open Menu, then Notifications, and tap Pair for notifications. Allow the notifications.",
+				"To add the complication, edit the watch face and choose Printdeck.",
+				"To add a widget, touch and hold the Home Screen or the Lock Screen, tap Edit, and choose Printdeck.",
+			},
+			After: []string{
+				"The deck sends a push message when a print is done, when it fails, at a pause, after the first layer, and when a roll runs short. Each message is encrypted on the deck. Only the paired phone can read it. The watch shows the notifications of the iPhone. Settings, then Phones, on the deck lists the paired phones.",
+			},
+			Table: [][2]string{
+				{"iPhone app", "The display of the printer, the keys, the roll and the model of the print. Pause, Resume and Cancel during a print. Print a file opens the files of the deck."},
+				{"Watch app", "The progress, the time left and the end. Turn the Digital Crown for the model, the layer times and the filament. Tap for Pause, Resume or Cancel."},
+				{"Complications", "The progress and the time left on the watch face: a rectangle, a ring of dots, a corner and a line of text."},
+				{"Home Screen widgets", "The small widget shows the status of the watch. The medium widget shows the status screen of the deck."},
+				{"Lock Screen widgets", "The rectangle, the circle and the line of text of the complications."},
+				{"Live Activity", "During a print, the model, the time left, the bar, the end and the layer on the Lock Screen and in the Dynamic Island."},
+				{"Notifications", "Print done, print failed, paused, first layer done, and a roll that runs short."},
+			}},
 		{Chapter: "Change the filament", ID: "filament", Title: "Change the filament", Intro: parts["filament"].Intro,
 			Steps: []string{
 				"Open Filament, then tap Change filament.",

@@ -99,7 +99,7 @@
 
 <nav class="toc">
   <h2>CONTENTS</h2>
-  <ol><li class="chapter">Set up</li><li><a href="#wifi"><span class="num">01</span>Connect to Wi-Fi</a></li><li><a href="#printer"><span class="num">02</span>Choose your printer</a></li><li><a href="#firmware"><span class="num">03</span>Install the Klipper firmware</a></li><li class="chapter">Meet your Printdeck</li><li><a href="#deck"><span class="num">04</span>The deck</a></li><li><a href="#lcd"><span class="num">05</span>The display of the printer</a></li><li><a href="#web"><span class="num">06</span>The deck in a browser</a></li><li class="chapter">Print a part</li><li><a href="#send"><span class="num">07</span>Send a file from the slicer</a></li><li><a href="#start-print"><span class="num">08</span>Start a print</a></li><li><a href="#watch"><span class="num">09</span>Watch the print</a></li><li><a href="#away"><span class="num">10</span>Look around during a print</a></li><li class="chapter">Change the filament</li><li><a href="#filament"><span class="num">11</span>Change the filament</a></li><li class="chapter">Move and heat</li><li><a href="#move"><span class="num">12</span>Move the head and heat</a></li><li class="chapter">Level and calibrate</li><li><a href="#calibrate"><span class="num">13</span>Level and calibrate</a></li><li class="chapter">Look after the printer</li><li><a href="#machine"><span class="num">14</span>Look after the printer</a></li><li><a href="#update"><span class="num">15</span>Update the Printdeck</a></li><li class="chapter">When something goes wrong</li><li><a href="#problems"><span class="num">16</span>When something goes wrong</a></li><li><a href="#settings"><span class="num">17</span>Settings</a></li></ol>
+  <ol><li class="chapter">Set up</li><li><a href="#wifi"><span class="num">01</span>Connect to Wi-Fi</a></li><li><a href="#printer"><span class="num">02</span>Choose your printer</a></li><li><a href="#firmware"><span class="num">03</span>Install the Klipper firmware</a></li><li class="chapter">Meet your Printdeck</li><li><a href="#deck"><span class="num">04</span>The deck</a></li><li><a href="#lcd"><span class="num">05</span>The display of the printer</a></li><li><a href="#web"><span class="num">06</span>The deck in a browser</a></li><li class="chapter">Print a part</li><li><a href="#send"><span class="num">07</span>Send a file from the slicer</a></li><li><a href="#start-print"><span class="num">08</span>Start a print</a></li><li><a href="#watch"><span class="num">09</span>Watch the print</a></li><li><a href="#colors"><span class="num">10</span>Print in two colors</a></li><li><a href="#away"><span class="num">11</span>Look around during a print</a></li><li class="chapter">Your iPhone and Apple Watch</li><li><a href="#phone"><span class="num">12</span>The iPhone and Apple Watch apps</a></li><li class="chapter">Change the filament</li><li><a href="#filament"><span class="num">13</span>Change the filament</a></li><li class="chapter">Move and heat</li><li><a href="#move"><span class="num">14</span>Move the head and heat</a></li><li class="chapter">Level and calibrate</li><li><a href="#calibrate"><span class="num">15</span>Level and calibrate</a></li><li class="chapter">Look after the printer</li><li><a href="#machine"><span class="num">16</span>Look after the printer</a></li><li><a href="#update"><span class="num">17</span>Update the Printdeck</a></li><li class="chapter">When something goes wrong</li><li><a href="#problems"><span class="num">18</span>When something goes wrong</a></li><li><a href="#settings"><span class="num">19</span>Settings</a></li></ol>
 </nav>
 
 
@@ -805,8 +805,46 @@
   
 </section>
 
+<section id="colors">
+  <h2 class="title"><span class="num">10</span>Print in two colors</h2>
+  <p>The Colors tool of the Cura plugin gives a model the roll of another color, for example raised letters on a plate. The print pauses at the first layer of that model, and the deck asks for its roll.</p><p>On Resume the deck draws a short line at the front of the bed, behind the prime line of the start. The ooze of the new filament stays on that line. The nozzle then goes back to the part with the filament pulled back a little, and pushes it forward at the first point of the layer. Each change of a print draws its line 2 mm behind the line before it.</p>
+  <ol class="steps"><li>In Cura, put the letters on the part. Select the letters, open the Colors tool, and tap their roll.</li><li>Print. At the first layer of the letters, the printer parks and the deck shows Change filament in orange.</li><li>Tap Change filament. Unload, load the roll of the letters, and tap Done.</li><li>Pull the ooze off the nozzle with tweezers, then tap Resume.</li></ol>
+  
+  <figure>
+    <h3>A color change</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/color-change.png" alt="A color change" width="800" height="480"></div>
+      <svg class="marks" viewBox="-72 0 944 480" aria-hidden="true">
+        
+        <line x1="825" y1="134" x2="784" y2="134" class="leader"/>
+        <circle cx="784" cy="134" r="5" class="dot"/>
+        <circle cx="840" cy="134" r="15" class="badge"/>
+        <text x="840" y="134" class="badge-n">1</text>
+        
+        <line x1="825" y1="344" x2="499" y2="344" class="leader"/>
+        <circle cx="499" cy="344" r="5" class="dot"/>
+        <circle cx="840" cy="344" r="15" class="badge"/>
+        <text x="840" y="344" class="badge-n">2</text>
+        
+        <line x1="825" y1="428" x2="784" y2="428" class="leader"/>
+        <circle cx="784" cy="428" r="5" class="dot"/>
+        <circle cx="840" cy="428" r="15" class="badge"/>
+        <text x="840" y="428" class="badge-n">3</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Where</b>The roll of the next color, from the Colors tool of the Cura plugin.</span></li><li><span class="badge">2</span><span><b>Change filament</b>Opens the filament change with that roll. Unload, load the new filament, and tap Done.</span></li><li><span class="badge">3</span><span><b>Resume</b>Draws a short prime line at the front of the bed, then goes back to the part and continues.</span></li>
+    </ol>
+    
+  </figure>
+  
+  
+  
+</section>
+
 <section id="away">
-  <h2 class="title"><span class="num">10</span>Look around during a print</h2>
+  <h2 class="title"><span class="num">11</span>Look around during a print</h2>
   <p>The other screens are read only for the printer while it prints: the files, the filament and the rolls, the history. A tap cannot change the print by mistake. The deck goes back to the print at a pause, at a new print, and after 2 minutes with no touch.</p><p>During a print, Main is the print. The key panel opens the other pages as at any time, and Main goes back to the print.</p>
   
   
@@ -848,8 +886,19 @@
   
 </section>
 
+<section id="phone">
+  <h2 class="title"><span class="num">12</span>The iPhone and Apple Watch apps</h2>
+  <p>The Printdeck app for iPhone shows the deck as its touch screen: the display of the printer, the print, the roll and the model. It can pause, resume and cancel a print, and start a file of the deck. The watch app shows the print on a blue dot-matrix display.</p><p>The apps talk to the deck on the local network. The watch reaches the deck on Wi-Fi, or through the iPhone when it is near.</p>
+  <ol class="steps"><li>Open Printdeck on the iPhone. It finds the deck on the network. Tap Connect.</li><li>Tap Allow on the touch screen of the deck. The app gets its own key, and sends it to the watch.</li><li>For push messages, open Menu, then Notifications, and tap Pair for notifications. Allow the notifications.</li><li>To add the complication, edit the watch face and choose Printdeck.</li><li>To add a widget, touch and hold the Home Screen or the Lock Screen, tap Edit, and choose Printdeck.</li></ol>
+  
+  
+  <table><tr><td>iPhone app</td><td>The display of the printer, the keys, the roll and the model of the print. Pause, Resume and Cancel during a print. Print a file opens the files of the deck.</td></tr><tr><td>Watch app</td><td>The progress, the time left and the end. Turn the Digital Crown for the model, the layer times and the filament. Tap for Pause, Resume or Cancel.</td></tr><tr><td>Complications</td><td>The progress and the time left on the watch face: a rectangle, a ring of dots, a corner and a line of text.</td></tr><tr><td>Home Screen widgets</td><td>The small widget shows the status of the watch. The medium widget shows the status screen of the deck.</td></tr><tr><td>Lock Screen widgets</td><td>The rectangle, the circle and the line of text of the complications.</td></tr><tr><td>Live Activity</td><td>During a print, the model, the time left, the bar, the end and the layer on the Lock Screen and in the Dynamic Island.</td></tr><tr><td>Notifications</td><td>Print done, print failed, paused, first layer done, and a roll that runs short.</td></tr></table>
+  
+  <p>The deck sends a push message when a print is done, when it fails, at a pause, after the first layer, and when a roll runs short. Each message is encrypted on the deck. Only the paired phone can read it. The watch shows the notifications of the iPhone. Settings, then Phones, on the deck lists the paired phones.</p>
+</section>
+
 <section id="filament">
-  <h2 class="title"><span class="num">11</span>Change the filament</h2>
+  <h2 class="title"><span class="num">13</span>Change the filament</h2>
   <p>Set the loaded filament here, so that Preheat uses its temperatures. The guided change heats the nozzle, unloads the old filament and loads the new one.</p><p>The deck keeps a list of your rolls of filament. Weigh a new roll with its reel, and the deck subtracts the weight of the empty reel. Each print subtracts the filament that it used from the roll in the printer.</p>
   <ol class="steps"><li>Open Filament, then tap Change filament.</li><li>Tap the roll that goes in, or tap New roll and weigh it. The nozzle heats for its material.</li><li>Tap Unload, and hold the filament lightly while it comes out.</li><li>Push the new filament into the extruder until it stops, then tap Load.</li><li>Check that clean plastic of the new color comes out, then tap Done.</li></ol>
   
@@ -1082,7 +1131,7 @@
 </section>
 
 <section id="move">
-  <h2 class="title"><span class="num">12</span>Move the head and heat</h2>
+  <h2 class="title"><span class="num">14</span>Move the head and heat</h2>
   
   <ol class="steps"><li>Open Toolhead, and tap Home all after each start of the printer.</li><li>Hold the joystick to move the head. Use Z for the height.</li><li>Tap a temperature on the idle screen to set it with the keypad.</li></ol>
   
@@ -1164,7 +1213,7 @@
 </section>
 
 <section id="calibrate">
-  <h2 class="title"><span class="num">13</span>Level and calibrate</h2>
+  <h2 class="title"><span class="num">15</span>Level and calibrate</h2>
   <p>Maintenance lists the calibrations that your printer has. The list comes from the config of the printer. Open it from Machine.</p>
   <ol class="steps"><li>Open Machine, then Maintenance.</li><li>Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.</li><li>Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.</li><li>Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.</li><li>Tap Save config to write the results. Klipper restarts.</li><li>Tap Pressure advance test to print the tower. Then tap Pressure advance, and type the height of its sharpest corners.</li></ol>
   
@@ -1299,7 +1348,7 @@
 </section>
 
 <section id="machine">
-  <h2 class="title"><span class="num">14</span>Look after the printer</h2>
+  <h2 class="title"><span class="num">16</span>Look after the printer</h2>
   <p>Machine has the information of the printer, the history of the prints, the macros, the console and the settings.</p>
   
   
@@ -1483,7 +1532,7 @@
 </section>
 
 <section id="update">
-  <h2 class="title"><span class="num">15</span>Update the Printdeck</h2>
+  <h2 class="title"><span class="num">17</span>Update the Printdeck</h2>
   <p>The deck checks for a new version once a day. Machine then shows Software update in orange.</p><p>Each version has a signature. The deck installs only a version with a valid signature of Printdeck. It writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one.</p>
   <ol class="steps"><li>Open Machine, then Software update.</li><li>Read the notes of the new version, then tap Install. The deck does not install during a print.</li><li>Wait while the deck downloads and writes the update. It restarts into the new version.</li></ol>
   
@@ -1531,7 +1580,7 @@
 </section>
 
 <section id="problems">
-  <h2 class="title"><span class="num">16</span>When something goes wrong</h2>
+  <h2 class="title"><span class="num">18</span>When something goes wrong</h2>
   <p>When Klipper stops with an error, the deck shows all the lines of its message.</p>
   <ol class="steps"><li>Read the message. It often names the setting in printer.cfg.</li><li>After a stop or a power cut of the printer, tap Firmware restart.</li><li>After a change to printer.cfg, tap Restart Klipper.</li></ol>
   
@@ -1574,7 +1623,7 @@
 </section>
 
 <section id="settings">
-  <h2 class="title"><span class="num">17</span>Settings</h2>
+  <h2 class="title"><span class="num">19</span>Settings</h2>
   <p>The file printdeck.txt on the PRINTDECK partition holds the settings. Put the disk in a computer to change it. The deck reads it at each start, then clears the Wi-Fi password in it.</p>
   
   
