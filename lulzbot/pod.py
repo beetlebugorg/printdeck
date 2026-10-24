@@ -177,7 +177,7 @@ W = (COS, SIN, 0.0)
 X_BACK = S.BACK_X[0]                     # the bracket stands on the flanges of the rail clips
 PLATE = 4.0
 GLASS_TOP_Y = 262.0 - S.Y_BASE           # under the logo
-POD_Z = S.RAIL_SLOT_Z - 10.0 + GLASS[0] / 2   # the right edge of the glass 10 mm past the rail
+POD_Z = (-102.6 - 2.0) / 2               # the middle of the front of the control box (cb_chassis)
 # The top back corner of the deep part (the Pi) is 2 mm in front of the plate. The bracket is a wedge
 # between the plate and the thin back over it.
 _deep = (STEP_V[0], -DEEP_W)
