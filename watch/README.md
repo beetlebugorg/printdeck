@@ -101,7 +101,8 @@ encrypted message only.
 
 1. In Menu > Notifications on the iPhone, tap Pair for notifications. iOS asks to allow
    notifications, and gives the app a device token.
-2. The app posts the token to the relay (`POST /register`) and gets a send token.
+2. The app posts the token to the relay (`POST /register`). The relay sends a code in a
+   background push. The app posts the token with the code, and gets a send token.
 3. The app makes an X25519 key pair and pairs with the deck (`POST
    /api/plugin/printdeck/push/pair`) with its public key, the device token, the send token and
    the relay URL. The reply has the public key of the deck. Both make the message key with

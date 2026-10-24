@@ -68,6 +68,9 @@ func handle(r *Relay, req events.LambdaFunctionURLRequest) events.LambdaFunction
 		if err != nil {
 			return errorReply(err)
 		}
+		if t == "" {
+			return reply(http.StatusAccepted, map[string]string{"status": "challenge sent"})
+		}
 		return reply(http.StatusOK, map[string]string{"send_token": t})
 	case "/push":
 		var in PushRequest

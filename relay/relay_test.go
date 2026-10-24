@@ -40,12 +40,35 @@ func testRelay(t *testing.T, status int) (*Relay, *ecdsa.PrivateKey, *http.Reque
 	return r, key, &last, &body
 }
 
+// register gets the send token as the app does: a request with no code, then the code of the
+// background push.
+func register(t *testing.T, r *Relay, last *http.Request, body *[]byte) string {
+	t.Helper()
+	tok, err := r.Register(RegisterRequest{Device: device, Env: "sandbox"})
+	if err != nil || tok != "" {
+		t.Fatalf("first request: %q %v", tok, err)
+	}
+	if last.Header.Get("apns-push-type") != "background" || last.Header.Get("apns-priority") != "5" {
+		t.Errorf("challenge headers %v", last.Header)
+	}
+	var p struct {
+		Aps map[string]any `json:"aps"`
+		C   string         `json:"c"`
+	}
+	json.Unmarshal(*body, &p)
+	if p.Aps["content-available"] != float64(1) || p.Aps["alert"] != nil || len(p.C) != 16 {
+		t.Fatalf("challenge payload %s", *body)
+	}
+	tok, err = r.Register(RegisterRequest{Device: device, Env: "sandbox", Code: p.C})
+	if err != nil || tok != r.SendToken("sandbox", device) {
+		t.Fatalf("second request: %q %v", tok, err)
+	}
+	return tok
+}
+
 func TestRegisterAndPush(t *testing.T) {
 	r, key, last, body := testRelay(t, http.StatusOK)
-	tok, err := r.Register(RegisterRequest{Device: device, Env: "sandbox"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	tok := register(t, r, last, body)
 	if err := r.Push(PushRequest{Device: device, Env: "sandbox", SendToken: tok, Payload: "AAECAw=="}); err != nil {
 		t.Fatal(err)
 	}
@@ -80,6 +103,32 @@ func TestPushRefusals(t *testing.T) {
 	}
 }
 
+// A code is good for its window and the window after it, for that device and environment only.
+func TestRegisterCode(t *testing.T) {
+	r, _, _, _ := testRelay(t, http.StatusOK)
+	now := time.Unix(1_800_000_000, 0)
+	r.Now = func() time.Time { return now }
+	code := r.Code("sandbox", device, now.Unix()/codeWindow)
+	other := "fedcba9876543210" + device[16:]
+	for name, req := range map[string]RegisterRequest{
+		"wrong code":   {Device: device, Env: "sandbox", Code: "x" + code[1:]},
+		"other device": {Device: other, Env: "sandbox", Code: code},
+		"other env":    {Device: device, Env: "production", Code: code},
+	} {
+		if _, err := r.Register(req); err == nil || err.(*Error).Status != http.StatusForbidden {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	now = now.Add(codeWindow * time.Second)
+	if _, err := r.Register(RegisterRequest{Device: device, Env: "sandbox", Code: code}); err != nil {
+		t.Errorf("the window after: %v", err)
+	}
+	now = now.Add(codeWindow * time.Second)
+	if _, err := r.Register(RegisterRequest{Device: device, Env: "sandbox", Code: code}); err == nil {
+		t.Error("two windows after: no error")
+	}
+}
+
 // A device that removed the app gives 410, so the deck can stop sending to it.
 func TestPushGone(t *testing.T) {
 	r, _, _, _ := testRelay(t, http.StatusGone)
@@ -109,6 +158,12 @@ func TestHandle(t *testing.T) {
 	req := events.LambdaFunctionURLRequest{RawPath: "/register", Body: `{"device":"` + device + `","env":"sandbox"}`}
 	req.RequestContext.HTTP.Method = "POST"
 	resp := handle(r, req)
+	if resp.StatusCode != http.StatusAccepted || strings.Contains(resp.Body, "send_token") {
+		t.Fatalf("no code: %d %s", resp.StatusCode, resp.Body)
+	}
+	code := r.Code("sandbox", device, r.Now().Unix()/codeWindow)
+	req.Body = `{"device":"` + device + `","env":"sandbox","code":"` + code + `"}`
+	resp = handle(r, req)
 	if resp.StatusCode != 200 || !strings.Contains(resp.Body, r.SendToken("sandbox", device)) {
 		t.Fatalf("%d %s", resp.StatusCode, resp.Body)
 	}

@@ -1,6 +1,7 @@
 // Package main is the push relay of the Printdeck app: an AWS Lambda function behind a function
 // URL. It has the APNs key of the app, so a deck does not. The iPhone app registers its device
-// token, and gets a send token. The deck posts the device token, the send token, and a message that
+// token, and gets a send token after it shows that it has the device: the relay sends a code to
+// the device in a background push, and the app sends the code back. The deck posts the device token, the send token, and a message that
 // the deck and the app encrypted with their own key at the pairing. The relay checks the send token
 // and gives the message to APNs. It cannot read the message.
 package main
@@ -81,7 +82,14 @@ func fail(status int, format string, a ...any) error {
 type RegisterRequest struct {
 	Device string `json:"device"` // the device token of APNs, in hex
 	Env    string `json:"env"`    // "production" or "sandbox" (a build from Xcode)
+	// Code is the code of the background push of the first request. A request with no code asks
+	// for that push.
+	Code string `json:"code,omitempty"`
 }
+
+// codeWindow is the time of one code. The relay takes the code of this window and of the window
+// before it, so a code is good for 10 to 20 minutes.
+const codeWindow = 600
 
 // PushRequest is the body of POST /push, from the deck.
 type PushRequest struct {
@@ -110,12 +118,33 @@ func checkDevice(env, device string) error {
 	return nil
 }
 
-// Register returns the send token of a device.
+// Code is the code of a device for a time window: an HMAC of the window, the environment and the
+// device token with the relay secret, 16 characters of base64url.
+func (r *Relay) Code(env, device string, window int64) string {
+	m := hmac.New(sha256.New, []byte(r.Secret.RelaySecret))
+	m.Write([]byte(fmt.Sprintf("challenge:%s:%s:%d", env, strings.ToLower(device), window)))
+	return base64.RawURLEncoding.EncodeToString(m.Sum(nil))[:16]
+}
+
+// Register returns the send token of a device for a request with a valid code. For a request with
+// no code, it sends the code to the device in a background push and returns "". Only the app on
+// that device gets the code, so a device token alone gives no send token.
 func (r *Relay) Register(req RegisterRequest) (string, error) {
 	if err := checkDevice(req.Env, req.Device); err != nil {
 		return "", err
 	}
-	return r.SendToken(req.Env, req.Device), nil
+	window := r.Now().Unix() / codeWindow
+	if req.Code == "" {
+		body, _ := json.Marshal(map[string]any{"aps": map[string]any{"content-available": 1},
+			"c": r.Code(req.Env, req.Device, window)})
+		return "", r.send(req.Env, req.Device, "background", "5", body)
+	}
+	for _, w := range []int64{window, window - 1} {
+		if hmac.Equal([]byte(r.Code(req.Env, req.Device, w)), []byte(req.Code)) {
+			return r.SendToken(req.Env, req.Device), nil
+		}
+	}
+	return "", fail(http.StatusForbidden, "the code is not valid for this device")
 }
 
 // Push checks the send token, and gives the message to APNs.
@@ -140,18 +169,23 @@ func (r *Relay) Push(req PushRequest) error {
 			"mutable-content": 1, "sound": "default"},
 		"e": req.Payload,
 	})
-	token, err := r.token()
-	if err != nil {
-		return err
-	}
-	hr, _ := http.NewRequest(http.MethodPost, r.Hosts[req.Env]+"/3/device/"+strings.ToLower(req.Device), bytes.NewReader(body))
-	hr.Header.Set("authorization", "bearer "+token)
-	hr.Header.Set("apns-topic", r.Topic)
-	hr.Header.Set("apns-push-type", "alert")
 	prio := "10"
 	if req.Priority > 0 && req.Priority < 4 {
 		prio = "5"
 	}
+	return r.send(req.Env, req.Device, "alert", prio, body)
+}
+
+// send gives a push to APNs.
+func (r *Relay) send(env, device, pushType, prio string, body []byte) error {
+	token, err := r.token()
+	if err != nil {
+		return err
+	}
+	hr, _ := http.NewRequest(http.MethodPost, r.Hosts[env]+"/3/device/"+strings.ToLower(device), bytes.NewReader(body))
+	hr.Header.Set("authorization", "bearer "+token)
+	hr.Header.Set("apns-topic", r.Topic)
+	hr.Header.Set("apns-push-type", pushType)
 	hr.Header.Set("apns-priority", prio)
 	resp, err := r.Client.Do(hr)
 	if err != nil {

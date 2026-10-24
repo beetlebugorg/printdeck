@@ -8,8 +8,10 @@ cannot read them.
 ## How it works
 
 1. The app gets its device token from iOS, and posts it to the relay (`POST /register`). The relay
-   returns a send token: an HMAC of the device token with `relay_secret`. The relay keeps no list
-   of devices.
+   sends a code to that device in a background push. The app posts the device token again with
+   the code, and the relay returns a send token: an HMAC of the device token with
+   `relay_secret`. Only the app on the device gets the code, so a device token alone gives no
+   send token. The relay keeps no list of devices.
 2. The app pairs with the deck on the local network. The deck and the app agree on a message key
    of 32 bytes. The app gives the deck the device token, its environment and the send token.
 3. At an event of a print, the deck encrypts the message with the message key, and posts it to
@@ -32,7 +34,18 @@ Both are `POST` with a JSON body, to the URL of the relay.
 ```
 
 `env` is `sandbox` for a build that Xcode installs, and `production` for TestFlight and the App
-Store. The reply is `{"send_token": "..."}`.
+Store. The reply is 202 `{"status": "challenge sent"}`. The relay sends a background push
+(`apns-push-type: background`, priority 5) to the device:
+
+```json
+{"aps": {"content-available": 1}, "c": "<code>"}
+```
+
+The app then posts the same body with `"code": "<code>"`. The reply is `{"send_token": "..."}`,
+or 403 for a wrong code. The code is an HMAC of the device token and a window of 10 minutes with
+`relay_secret`. The relay takes the code of the current window and of the window before it. iOS
+can hold back a background push, for example in Low Power Mode, so the app waits up to 30
+seconds and then asks again.
 
 `/push`, from the deck:
 
@@ -112,6 +125,6 @@ bill:
   the account. AWS mails the address at 80 % of it, and when the forecast passes it. AWS asks the
   address to confirm the first mail.
 
-`POST /register` gives a send token for any device token, with no proof that the caller has the
-device. Someone who knows a device token can then send pushes to it. They cannot read or write a
-message: the extension cannot decrypt their payload, so iOS shows the placeholder alert.
+`POST /register` gives a send token only for the code of its background push, so a caller needs
+the device and the app. A caller with a device token alone can make the relay send that device a
+background push. The push has no alert, and the app does not show it.
