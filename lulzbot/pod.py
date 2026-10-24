@@ -234,25 +234,29 @@ def frame(u, v, w, o):
 
 
 # ---------------------------------------------------------------- the place on the Mini 2
-# The Mini 2 model (build/mini2, from LulzBot's FreeCAD files): z up, the front toward -y. The stock
-# LCD hangs on a bracket on the front of the right frame upright; the back of that bracket is at
-# y = -220. The pod takes the place of the LCD and its bracket, with the same tilt and dovetail.
+# The Mini 2 model (build/mini2, from LulzBot's FreeCAD files): z up, the front toward -y. The front
+# of the frame is at y = -252. The stock LCD stays: it hangs on the top corner of the right upright,
+# on two frame screws. The pod goes on the top corner of the left upright, on the two mirror screws,
+# with the same tilt and dovetail as on the TAZ.
 MINI_U = (1.0, 0.0, 0.0)
 MINI_W = (0.0, -COS, SIN)
 MINI_V = (0.0, SIN, COS)
-MINI_PLATE_Y = -220.0                     # the back of the bracket
+MINI_PLATE_Y = -252.0                     # the back of the bracket: the front of the frame
 MINI_GLASS_TOP_Z = 375.0
-MINI_X = -60.0                            # the middle of the stock LCD
+MINI_X = -305.0                           # the mirror of the middle of the stock LCD
+MINI_SCREWS = [(-334.1, 364.0), (-358.1, 352.0)]   # the frame screws in the left upright (x, z)
 _front_y = MINI_PLATE_Y - PLATE - 2.0
 MINI_O = (MINI_X, _front_y - (_deep[0] * MINI_V[1] + _deep[1] * MINI_W[1]), MINI_GLASS_TOP_Z - GLASS[1] * COS)
 MINI_LOC = frame(MINI_U, MINI_V, MINI_W, MINI_O)
 
 
 def mini_bracket():
-    """The Mini 2 bracket: a plate on the right frame upright, in the place of the stock LCD bracket
-    (its screw holes: to measure on the printer), and the wedge with the dovetail slot."""
+    """The Mini 2 bracket: a plate on the front of the left upright, held by the two frame screws of
+    its top corner (longer screws in the same holes), and the wedge with the dovetail slot."""
     top = to_frame(MINI_LOC, 0, BODY_V[1], -THIN_W)[2]
-    plate = mbox(-98.0, -2.0, MINI_PLATE_Y - PLATE, MINI_PLATE_Y, top - 70.0, top + 2.0)
+    plate = mbox(-366.0, MINI_X + 15.0, MINI_PLATE_Y - PLATE, MINI_PLATE_Y, top - 60.0, 372.0)
+    for x, z in MINI_SCREWS:
+        plate = plate - Pos(x, MINI_PLATE_Y - PLATE / 2, z) * Rot(90, 0, 0) * Cylinder(1.7, PLATE + 2)
     return plate + wedge(MINI_LOC, mbox(-1000, 1000, -1000, MINI_PLATE_Y - PLATE + 0.01, -1000, 1000))
 
 
@@ -417,7 +421,20 @@ def main(out, stills=True, which=("taz", "mini2")):
             m = trimesh.util.concatenate(ms)
             m.apply_transform(world_to_view)
             items.append((f"printer{i}", m, c))
-        note = "no overlaps" if not bad else f"{len(bad)} overlaps"
+        # The cables, in the frame of the printer, then in the world and in the view.
+        frame_to_world = st["world"]
+        for cab, pts in routes(name, matrix(loc)).items():
+            m, path = cable_mesh(pts, CABLE_D[cab])
+            print(f"{name}: {cab} cable route {length(path) / 1000:.2f} m")
+            mv = m.copy()
+            mv.apply_transform(zup @ np.linalg.inv(matrix(loc)))
+            items.append((f"{cab}_cable", mv, CABLE_COLOR[cab]))
+            mw = m.copy()
+            mw.apply_transform(frame_to_world)
+            st.setdefault("cables", []).append((mw, CABLE_COLOR[cab]))
+        gap = clearance([m for m, _ in pod.values()], pod_to_world, printer)
+        print(f"{name}: the pod is {gap:.1f} mm from the printer at the closest point")
+        note = ("no overlaps" if not bad else f"{len(bad)} overlaps") + f", {gap:.1f} mm from the printer"
         viewer.publish(items, name, note)
         if not stills:
             continue
@@ -429,6 +446,7 @@ def main(out, stills=True, which=("taz", "mini2")):
         b = brm.copy()
         b.apply_transform(st["world"])
         allm.append((b, "#2A2B30"))
+        allm += st.get("cables", [])
         for d, tag in st["views"]:
             R.render((printer if tag == "printer" else []) + allm, d, st["up"], os.path.join(out, f"{name}-{tag}.png"),
                      size=(1200, 1200))
@@ -436,6 +454,119 @@ def main(out, stills=True, which=("taz", "mini2")):
     print(f"body {bb.max.X - bb.min.X:.1f} x {bb.max.Y - bb.min.Y:.1f} x {bb.max.Z - bb.min.Z:.1f} mm, "
           f"{body_local.volume / 1000:.1f} cm3")
     return bad
+
+
+def clearance(pod_meshes, pod_to_world, printer, n=20000):
+    """The smallest distance from the surface of the pod to the printer, in mm (0 when they touch or
+    cross), to about 0.5 mm: points on the pod, and a point tree of the printer surface within 30 mm
+    of the pod."""
+    import numpy as np
+    import trimesh
+    from scipy.spatial import cKDTree
+    pod = trimesh.util.concatenate([m.copy() for m in pod_meshes])
+    pod.apply_transform(pod_to_world)
+    lo, hi = pod.bounds[0] - 30, pod.bounds[1] + 30
+    cloud = []
+    for m, _ in printer:
+        b = m.bounds
+        if not (np.all(b[1] >= lo) and np.all(b[0] <= hi)):
+            continue
+        tri = m.triangles
+        keep = np.all((tri.max(axis=1) >= lo) & (tri.min(axis=1) <= hi), axis=1)
+        if not keep.any():
+            continue
+        sub = m.submesh([np.nonzero(keep)[0]], append=True)
+        k = int(min(300000, max(1000, sub.area / 0.25)))
+        cloud.append(sub.sample(k))
+        cloud.append(sub.vertices)
+    if not cloud:
+        return float("inf")
+    tree = cKDTree(np.vstack(cloud))
+    d, _ = tree.query(np.vstack([pod.sample(n), pod.vertices]), k=1)
+    return float(d.min())
+
+
+# ---------------------------------------------------------------- the cables
+CABLE_D = {"power": 4.0, "printer": 4.5}
+CABLE_COLOR = {"power": "#F2F2F2", "printer": "#151515"}
+BEND_R = 15.0
+
+
+TAZ_USB_B = (305.0, -84.0)       # mount (y, z) of the USB-B port on the rear face (x = -85): about
+USB_B_PLUG = 28.0                # the length of the USB-B plug body behind the port
+
+
+def cable_starts():
+    """Where each cable leaves its plug, in pod coordinates: (point, direction)."""
+    u, v, w = pi_uvw(11.2, -1.0, 3.2)
+    x0, x1, y0, y1, z0, z1 = pi_parts()["pi_usb2"]
+    b = pi_box(x0, x1, y0, y1, z0, z0 + 7.5).bounding_box()
+    return {"power": ((u + 6.5 + 24.0, v, w), (1.0, 0.0, 0.0)),
+            "printer": (((b.min.X + b.max.X) / 2, b.min.Y - 30.0, (b.min.Z + b.max.Z) / 2), (0.0, -1.0, 0.0))}
+
+
+def routes(name, pod_to_frame):
+    """The route of each cable in the coordinates of the printer's frame: from the end of its plug,
+    straight on for 20 mm, then through the waypoints. The port of the printer is a guess (marked)."""
+    import numpy as np
+    out = {}
+    for cab, (p, d) in cable_starts().items():
+        P = pod_to_frame @ np.array([*p, 1.0])
+        D = pod_to_frame[:3, :3] @ np.array(d)
+        p0, p1 = P[:3], P[:3] + 20.0 * D
+        x, y, z = p1
+        if name == "taz":
+            # Mount coordinates: x to the front, y up (the desk is y = -14), z out of the cover.
+            desk = -12.0
+            if cab == "power":
+                way = [(x, desk + 30, z), (x, desk, z + 30), (x + 40, desk, 60.0), (x + 160, desk, 140.0)]
+            else:
+                # Under the pod to the cover side, back along the outside of the cover, round the
+                # rear corner, and up the rear face to the USB-B port of the RAMBo. The port is
+                # left of the second extruder connector (seen from behind), at about its height.
+                py, pz = TAZ_USB_B
+                way = [(x, y - 20, z), (x - 10, y - 30, 6.0), (60.0, y - 30, 6.0), (-80.0, y - 30, 6.0),
+                       (-94.0, y - 30, -8.0), (-94.0, py, -8.0), (-94.0, py, pz), (-85.0 - USB_B_PLUG, py, pz)]
+        else:
+            # The Mini 2: z up (the desk is z = -7), the front toward -y.
+            desk = -5.0
+            if cab == "power":
+                way = [(x + 10, y, z - 30), (x + 10, y, desk + 30), (x - 20, y, desk), (-480.0, y, desk), (-560.0, y - 40, desk)]
+            else:
+                # Down to the top of the electronics case, back along it, down its rear face to the
+                # USB-B port (guess: the rear face, 150 mm up).
+                way = [(x, y, 240.0), (-390.0, y + 20, 232.0), (-390.0, -200.0, 228.0), (-390.0, 20.0, 228.0),
+                       (-390.0, 20.0, 150.0), (-390.0, 6.0, 150.0)]
+        out[cab] = [tuple(p0), tuple(p1)] + way
+    return out
+
+
+def rounded(points, r=BEND_R, steps=8):
+    """A path through the points with a round bend of radius about r at each corner."""
+    import numpy as np
+    pts = [np.array(p, float) for p in points]
+    out = [pts[0]]
+    for i in range(1, len(pts) - 1):
+        a, b, c = pts[i - 1], pts[i], pts[i + 1]
+        la, lc = np.linalg.norm(b - a), np.linalg.norm(c - b)
+        k = min(r, la / 2, lc / 2)
+        p, q = b + (a - b) / la * k, b + (c - b) / lc * k
+        for t in np.linspace(0, 1, steps):
+            out.append((1 - t) ** 2 * p + 2 * (1 - t) * t * b + t ** 2 * q)
+    out.append(pts[-1])
+    return np.array(out)
+
+
+def cable_mesh(points, d):
+    import trimesh
+    from shapely.geometry import Point
+    path = rounded(points)
+    return trimesh.creation.sweep_polygon(Point(0, 0).buffer(d / 2, 12), path), path
+
+
+def length(path):
+    import numpy as np
+    return float(np.linalg.norm(np.diff(path, axis=0), axis=1).sum())
 
 
 def zup_m(m, zup):
