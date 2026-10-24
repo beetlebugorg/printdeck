@@ -218,18 +218,50 @@ def bracket():
         dov = Polygon((zc - k0, X_BACK - 0.01), (zc + k0, X_BACK - 0.01), (zc + k1, X_BACK + kd), (zc - k1, X_BACK + kd), align=None)
         b = b - Location(Plane(origin=(0, d0, 0), x_dir=(0, 0, 1), z_dir=(0, 1, 0))) * extrude(Plane.XY * dov, amount=d1 - d0)
         b = b - mbox(X_BACK - 1, X_BACK + kd + 0.2, d0 - S.CLIP_DROP, d0 + 0.5, zc - k1 - 0.2, zc + k1 + 0.2)
-    # The wedge: from the plate to the back of the pod, behind the dovetail.
-    r, t, h, (va, vb) = DOVE
-    ya, yb = to_mount(0, va - 2.0, -THIN_W)[1], to_mount(0, vb, -THIN_W)[1]
-    wedge = mbox(X_BACK + PLATE - 0.01, X_BACK + 60, ya - 10, yb + 10, POD_Z - 13, POD_Z + 13)
-    wedge = wedge & (POD_LOC * uvw_box(-13, 13, va - 2.0, vb + 30, -THIN_W - 40, -THIN_W - 0.3))
-    wedge = wedge - POD_LOC * dovetail(0.25, 40.0)
-    b = b + wedge
-    # A rib from the bar down to the wedge.
-    return b
+    return b + wedge(POD_LOC, mbox(X_BACK + PLATE - 0.01, X_BACK + 400, -1000, 1000, -1000, 1000))
 
 
-PARTS = [("pod_body", lambda: POD_LOC * body(), "#1B1C20"), ("bracket", bracket, "#2A2B30")]
+def wedge(loc, front):
+    """The wedge of a bracket: from the plate (front: the space in front of it) to the thin back of
+    the pod at loc, behind the dovetail, with the slot of the dovetail open at the top."""
+    va = DOVE[3][0]
+    w = (loc * uvw_box(-13, 13, va - 2.0, BODY_V[1], -THIN_W - 80, -THIN_W - 0.3)) & front
+    return w - loc * dovetail(0.25, 40.0)
+
+
+def frame(u, v, w, o):
+    return Location(Plane(origin=o, x_dir=u, z_dir=w))
+
+
+# ---------------------------------------------------------------- the place on the Mini 2
+# The Mini 2 model (build/mini2, from LulzBot's FreeCAD files): z up, the front toward -y. The stock
+# LCD hangs on a bracket on the front of the right frame upright; the back of that bracket is at
+# y = -220. The pod takes the place of the LCD and its bracket, with the same tilt and dovetail.
+MINI_U = (1.0, 0.0, 0.0)
+MINI_W = (0.0, -COS, SIN)
+MINI_V = (0.0, SIN, COS)
+MINI_PLATE_Y = -220.0                     # the back of the bracket
+MINI_GLASS_TOP_Z = 375.0
+MINI_X = -60.0                            # the middle of the stock LCD
+_front_y = MINI_PLATE_Y - PLATE - 2.0
+MINI_O = (MINI_X, _front_y - (_deep[0] * MINI_V[1] + _deep[1] * MINI_W[1]), MINI_GLASS_TOP_Z - GLASS[1] * COS)
+MINI_LOC = frame(MINI_U, MINI_V, MINI_W, MINI_O)
+
+
+def mini_bracket():
+    """The Mini 2 bracket: a plate on the right frame upright, in the place of the stock LCD bracket
+    (its screw holes: to measure on the printer), and the wedge with the dovetail slot."""
+    top = to_frame(MINI_LOC, 0, BODY_V[1], -THIN_W)[2]
+    plate = mbox(-98.0, -2.0, MINI_PLATE_Y - PLATE, MINI_PLATE_Y, top - 70.0, top + 2.0)
+    return plate + wedge(MINI_LOC, mbox(-1000, 1000, -1000, MINI_PLATE_Y - PLATE + 0.01, -1000, 1000))
+
+
+def to_frame(loc, u, v, w):
+    p = loc * Pos(u, v, w)
+    return tuple(p.position)
+
+
+PARTS = [("pod_body", body, "#1B1C20"), ("bracket", bracket, "#2A2B30"), ("mini_bracket", mini_bracket, "#2A2B30")]
 
 
 # ---------------------------------------------------------------- the bought parts, for the check and the renders
@@ -279,92 +311,137 @@ def check(printed, hw):
     return bad
 
 
-def publish_live(meshes, printer, bad):
-    """Show the model in the live window (live.py). The printer goes once: its parts by color."""
+def matrix(loc):
+    import numpy as np
+    t = loc.wrapped.Transformation()
+    m = np.eye(4)
+    for i in range(3):
+        for j in range(4):
+            m[i, j] = t.Value(i + 1, j + 1)
+    return m
+
+
+def mini_printer():
+    import glob
     import trimesh
-    import viewer
+    out = []
+    for f in sorted(glob.glob(os.path.join(HERE, "build", "mini2", "*.stl"))):
+        if "lcd" not in os.path.basename(f):
+            out.append((trimesh.load(f, force="mesh"), "#C4C8CF" if "frame" in f else "#B0B4BC"))
+    return out
+
+
+def setups():
+    """Each printer: the place of the pod, the frame of the bracket in world coordinates, the bracket,
+    and the printer meshes (world)."""
     import numpy as np
     import kitview as K
-    # The window shows the pod in its own frame, z up: x = u to the right, z = v up, and the glass
-    # faces -y. The printer goes in the same frame.
-    P = np.eye(4)
-    P[:3, 0], P[:3, 1], P[:3, 2], P[:3, 3] = U, V, W, POD_O
-    Z_UP = np.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], float)
-    to_pod = Z_UP @ np.linalg.inv(K.mount_matrix() @ P)
-
-    def local(m):
-        m = m.copy()
-        m.apply_transform(to_pod)
-        return m
-    note = "no overlaps" if not bad else f"{len(bad)} overlaps"
-    viewer.publish([(n, local(m), c) for n, (m, c) in meshes.items()], "pod", note)
-    if not os.path.exists(os.path.join(viewer.OUT, "printer.json")):
-        by = {}
-        for m, c in printer:
-            by.setdefault(c, []).append(m)
-        viewer.publish([(f"printer{i}", local(trimesh.util.concatenate(ms)), c) for i, (c, ms) in enumerate(by.items())], "printer")
+    import render as R
+    return {
+        "taz": dict(loc=POD_LOC, world=K.mount_matrix(), bracket=bracket,
+                    printer=lambda: R.printer_items() + [(R.logo_mark(), "#DDDDDD")], up=(0, 1, 0),
+                    views=[((-0.75, -0.2, 0.62), "printer"), ((-0.6, -0.25, 0.75), "front")]),
+        "mini2": dict(loc=MINI_LOC, world=np.eye(4), bracket=mini_bracket, printer=mini_printer, up=(0, 0, 1),
+                      views=[((0.45, 1.0, -0.35), "printer"), ((0.5, 1.0, -0.3), "front")]),
+    }
 
 
-def main(out, stills=True):
+def local_meshes(body_local, hw_local, tmp):
+    """The pod and its parts as meshes in pod coordinates."""
     import numpy as np
     import trimesh
     from build123d import export_stl
-    import kitview as K
-    import render as R
-    os.makedirs(out, exist_ok=True)
-    body_local = body()
-    hw_local = hardware()
-    bad = check([("pod_body", body_local, "")], hw_local)
-    for a, c, v in bad:
-        print(f"overlap: {a} and {c}: {v} mm3")
-    print("no overlaps" if not bad else f"{len(bad)} overlaps")
-    br = bracket()
-    pod_back = (POD_LOC * body_local)
-    gap = (br & pod_back).volume
-    print(f"bracket and pod overlap: {gap:.1f} mm3")
-    M = K.mount_matrix()
-    tmp = os.path.join(out, "mesh")
-    os.makedirs(tmp, exist_ok=True)
     meshes = {}
-    items = [("pod_body", pod_back, "#1B1C20"), ("bracket", br, "#2A2B30")] + [(n, POD_LOC * s, c) for n, s, c in hw_local]
-    for n, s, c in items:
+    for n, s, c in [("pod_body", body_local, "#1B1C20")] + hw_local:
         p = os.path.join(tmp, n + ".stl")
         export_stl(s, p, tolerance=0.03, angular_tolerance=0.1)
-        m = trimesh.load(p, force="mesh")
-        m.apply_transform(M)
-        meshes[n] = (m, c)
-    # The Pi from its STEP model, for the looks: STEP -> pod -> mount -> world.
+        meshes[n] = (trimesh.load(p, force="mesh"), c)
+    # The Pi from its STEP model, for the looks: STEP -> pod.
     pth = os.path.join(HERE, "build", "ref", "pi5.stl")
     if os.path.exists(pth):
         m = trimesh.load(pth, force="mesh")
         T = np.eye(4)
         T[:3, :3] = np.array([[0, -1, 0], [-1, 0, 0], [0, 0, -1]], float)
         T[:3, 3] = (28.0, 33.91 + 61.5, -STANDOFF_W)
-        P = np.eye(4)
-        P[:3, 0], P[:3, 1], P[:3, 2], P[:3, 3] = U, V, W, POD_O
         m.apply_transform(T)
-        m.apply_transform(P)
-        m.apply_transform(M)
         for n in list(meshes):
             if n.startswith("pi_"):
                 del meshes[n]
         meshes["pi5"] = (m, "#1F6B45")
-    allm = list(meshes.values())
-    printer = R.printer_items() + [(R.logo_mark(), "#DDDDDD")]
-    publish_live(meshes, printer, bad)
-    if not stills:
-        return bad
-    R.render(printer + allm, (-0.75, -0.2, 0.62), (0, 1, 0), os.path.join(out, "pod-printer.png"), size=(1200, 1200))
-    R.render(allm, (-0.6, -0.25, 0.75), (0, 1, 0), os.path.join(out, "pod-front.png"), size=(1000, 1200))
-    R.render(allm, (0.05, -0.15, 1.0), (0, 1, 0), os.path.join(out, "pod-side.png"), size=(900, 1200))
-    R.render(allm, (-0.3, -0.9, 0.45), (0, 1, 0), os.path.join(out, "pod-under.png"), size=(1200, 1000))
-    inside = [v for k, v in meshes.items() if k not in ("pod_body", "bracket", "glass", "screen")]
-    R.render(inside + [meshes["pod_body"]], (0.9, -0.2, 0.4), (0, 1, 0), os.path.join(out, "pod-back.png"), size=(1000, 1200))
-    R.render(inside, (0.9, -0.2, 0.4), (0, 1, 0), os.path.join(out, "pod-inside.png"), size=(1000, 1200))
+    return meshes
+
+
+# The live window shows each printer in the frame of the pod, z up: x = u to the right, z = v up,
+# and the glass faces -y.
+Z_UP = [[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]]
+
+
+def main(out, stills=True, which=("taz", "mini2")):
+    import numpy as np
+    import trimesh
+    from build123d import export_stl
+    import render as R
+    import viewer
+    os.makedirs(out, exist_ok=True)
+    tmp = os.path.join(out, "mesh")
+    os.makedirs(tmp, exist_ok=True)
+    body_local = body()
+    hw_local = hardware()
+    bad = check([("pod_body", body_local, "")], hw_local)
+    for a, c, v in bad:
+        print(f"overlap: {a} and {c}: {v} mm3")
+    print("no overlaps" if not bad else f"{len(bad)} overlaps")
+    pod = local_meshes(body_local, hw_local, tmp)
+    zup = np.array(Z_UP, float)
+    for name, st in setups().items():
+        if name not in which:
+            continue
+        loc = st["loc"]
+        br = st["bracket"]()
+        print(f"{name}: bracket and pod overlap: {(br & (loc * body_local)).volume:.1f} mm3, bracket {br.volume / 1000:.1f} cm3")
+        p = os.path.join(tmp, f"{name}_bracket.stl")
+        export_stl(br, p, tolerance=0.03, angular_tolerance=0.1)
+        brm = trimesh.load(p, force="mesh")
+        pod_to_world = st["world"] @ matrix(loc)
+        world_to_view = zup @ np.linalg.inv(pod_to_world)
+        printer = st["printer"]()
+        # The window: the pod as it is, the bracket and the printer moved into the frame of the pod.
+        items = [(n, zup_m(m, zup), c) for n, (m, c) in pod.items()]
+        b = brm.copy()
+        b.apply_transform(zup @ np.linalg.inv(matrix(loc)))
+        items.append(("bracket", b, "#2A2B30"))
+        by = {}
+        for m, c in printer:
+            by.setdefault(c, []).append(m)
+        for i, (c, ms) in enumerate(by.items()):
+            m = trimesh.util.concatenate(ms)
+            m.apply_transform(world_to_view)
+            items.append((f"printer{i}", m, c))
+        note = "no overlaps" if not bad else f"{len(bad)} overlaps"
+        viewer.publish(items, name, note)
+        if not stills:
+            continue
+        allm = []
+        for n, (m, c) in pod.items():
+            m = m.copy()
+            m.apply_transform(pod_to_world)
+            allm.append((m, c))
+        b = brm.copy()
+        b.apply_transform(st["world"])
+        allm.append((b, "#2A2B30"))
+        for d, tag in st["views"]:
+            R.render((printer if tag == "printer" else []) + allm, d, st["up"], os.path.join(out, f"{name}-{tag}.png"),
+                     size=(1200, 1200))
     bb = body_local.bounding_box()
     print(f"body {bb.max.X - bb.min.X:.1f} x {bb.max.Y - bb.min.Y:.1f} x {bb.max.Z - bb.min.Z:.1f} mm, "
-          f"{body_local.volume / 1000:.1f} cm3; bracket {br.volume / 1000:.1f} cm3")
+          f"{body_local.volume / 1000:.1f} cm3")
     return bad
+
+
+def zup_m(m, zup):
+    m = m.copy()
+    m.apply_transform(zup)
+    return m
 
 
 if __name__ == "__main__":
