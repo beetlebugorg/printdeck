@@ -42,7 +42,9 @@ class TestColors(unittest.TestCase):
         # The colored models start at 0.4 mm: the change is at the layer at 0.6 mm.
         i = colors.insert_change(g, 0.4, "2", "#2 Navy")
         self.assertEqual(i, 3)
-        self.assertIn('PRINTDECK_PAUSE MESSAGE="Load #2 Navy" ROLL=2', g[3])
+        self.assertIn('PRINTDECK_PAUSE MESSAGE="Load #2 Navy" ROLL=2 PRIME=FILE', g[3])
+        # The prime is after the move down to the layer, before the first extrusion.
+        self.assertLess(g[3].index("G1 Z0.600 F600\nPRINTDECK_PRIME"), g[3].index("G1 X10"))
         self.assertTrue(g[3].startswith(";LAYER:2\n"))
         # The travel to the first point of the layer is after the pause.
         self.assertNotIn("G0 X20 Y20", g[2])

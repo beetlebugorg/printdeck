@@ -70,13 +70,15 @@ def insert_change(gcode_list, z, roll, name, lift=onpart.LIFT):
 
 def pause_lines(roll, name, lift_z, layer_z, xy=None):
     """The G-code of a change: a lift, PRINTDECK_PAUSE with the message and the roll, the travel to
-    the first point of the layer, and the move down to the layer."""
+    the first point of the layer, the move down to the layer, and PRINTDECK_PRIME. The deck draws a
+    prime line on the bed on resume, and the nozzle comes back retracted: PRINTDECK_PRIME pushes
+    the filament back at the first point of the layer, so no ooze falls on the part."""
     msg = message(name).replace('"', "'")
     out = ";PRINTDECK: change the filament to %s\nG1 Z%.3f F600\n" % (msg[5:], lift_z)
-    out += 'PRINTDECK_PAUSE MESSAGE="%s" ROLL=%s\n' % (msg, roll)
+    out += 'PRINTDECK_PAUSE MESSAGE="%s" ROLL=%s PRIME=FILE\n' % (msg, roll)
     if xy:
         out += "G0 F6000 X%.3f Y%.3f\n" % xy
-    return out + "G1 Z%.3f F600\n" % layer_z
+    return out + "G1 Z%.3f F600\nPRINTDECK_PRIME\n" % layer_z
 
 
 def apply(gcode_list, changes):

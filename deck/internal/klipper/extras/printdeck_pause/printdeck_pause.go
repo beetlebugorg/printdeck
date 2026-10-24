@@ -13,6 +13,13 @@
 // color change that the Cura plugin adds): the filament change of the deck has that roll.
 // PRINTDECK_RESUME primes the nozzle and resumes the print.
 //
+// With PRIME=FILE the file has PRINTDECK_PRIME after the move down to the layer (the Cura plugin
+// adds both). PRINTDECK_RESUME then draws a prime line on the bed, behind the prime strip of the
+// start (prime_x, prime_y, prime_step, prime_length), retracts, lifts straight up, and resumes.
+// The nozzle stays retracted on the way back to the part. PRINTDECK_PRIME, at the first point of
+// the layer, pushes the filament back: no ooze falls on the part. Each line of a print is
+// prime_step mm behind the line before it, and the eighth starts again at prime_y.
+//
 //	PRINTDECK_PURGE [LENGTH=15]
 //
 // purges at the park position, then runs the wipe G-code of the section (wipe_gcode), for the start
@@ -54,6 +61,14 @@ type PrintdeckPause struct {
 	checked        bool
 	delta          float64 // the measured height less checkZ, in mm
 	roll           string  // the roll of a color change, or ""
+	primeInFile    bool    // the file has PRINTDECK_PRIME after the pause
+
+	// The prime line of a color change on the bed: its start, the step between the lines, its
+	// length, its height, its width, its speed, and the filament for each mm of line.
+	primeX, primeY, primeStep, primeLength float64
+	primeZ, primeSpeed, primeE             float64
+	lines                                  int     // the prime lines that this deck drew
+	pending                                float64 // mm of filament that PRINTDECK_PRIME pushes back
 }
 
 func load(config *configfile.Wrapper) any {
@@ -64,11 +79,22 @@ func load(config *configfile.Wrapper) any {
 	p.lift = config.GetFloat("lift", configfile.Default(10.), configfile.Min(0.))
 	p.retract = config.GetFloat("retract", configfile.Default(2.), configfile.Min(0.))
 	p.wipe = config.Get("wipe_gcode", configfile.Default(""))
+	p.primeX = config.GetFloat("prime_x", configfile.Default(20.))
+	p.primeY = config.GetFloat("prime_y", configfile.Default(5.))
+	p.primeStep = config.GetFloat("prime_step", configfile.Default(2.), configfile.Above(0.))
+	p.primeLength = config.GetFloat("prime_length", configfile.Default(40.), configfile.Above(0.))
+	p.primeZ = config.GetFloat("prime_z", configfile.Default(0.3), configfile.Above(0.))
+	p.primeSpeed = config.GetFloat("prime_speed", configfile.Default(15.), configfile.Above(0.))
+	width := config.GetFloat("prime_width", configfile.Default(0.6), configfile.Above(0.))
+	d := config.GetSection("extruder").GetFloat("filament_diameter", configfile.Default(1.75), configfile.NoteValid(false))
+	p.primeE = width * p.primeZ / (math.Pi * d * d / 4)
 	p.gcode.RegisterCommand("PRINTDECK_PAUSE", p.cmdPause, false, "Pause the print with a message, and park")
 	p.gcode.RegisterCommand("PRINTDECK_CHECK_HEIGHT", p.cmdCheckHeight, false,
 		"Check the height of the part with a paper test")
 	p.gcode.RegisterCommand("PRINTDECK_RESUME", p.cmdResume, false, "Prime and resume a PRINTDECK_PAUSE")
 	p.gcode.RegisterCommand("PRINTDECK_PURGE", p.cmdPurge, false, "Purge at the park position, and wipe")
+	p.gcode.RegisterCommand("PRINTDECK_PRIME", p.cmdPrime, false,
+		"Push back the filament that PRINTDECK_RESUME retracted after a prime line")
 	return p
 }
 
@@ -83,6 +109,7 @@ func (p *PrintdeckPause) Status(eventtime float64) map[string]any {
 func (p *PrintdeckPause) cmdPause(gcmd *gcode.Command) {
 	p.message = gcmd.GetString("MESSAGE", gcode.Default(""))
 	p.roll = gcmd.GetString("ROLL", gcode.Default(""))
+	p.primeInFile = gcmd.GetString("PRIME", gcode.Default("")) == "FILE"
 	z := gcmd.GetFloat("CHECK_Z", gcode.Default(math.NaN()))
 	p.check = !math.IsNaN(z)
 	p.checkX = gcmd.GetFloat("CHECK_X", gcode.Default(0.))
@@ -157,9 +184,43 @@ func (p *PrintdeckPause) cmdResume(gcmd *gcode.Command) {
 	if p.checked && p.delta != 0 {
 		gcode_move.Of(p.printer).AdjustSavedZ(pauseState, p.delta)
 	}
-	// Prime the retract back. RESUME restores the extrusion mode and the E position of the print.
-	p.gcode.RunScriptFromCommand(fmt.Sprintf("M83\nG1 E%.3f F300\nRESUME", p.retract))
-	p.active, p.message, p.check, p.checked = false, "", false, false
+	if p.primeInFile {
+		p.primeLine()
+	} else {
+		// Prime the retract back. RESUME restores the extrusion mode and the E position of the print.
+		p.gcode.RunScriptFromCommand(fmt.Sprintf("M83\nG1 E%.3f F300\nRESUME", p.retract))
+	}
+	p.active, p.message, p.check, p.checked, p.primeInFile = false, "", false, false, false
+}
+
+// primeLine draws the prime line of a color change, and resumes. The moves near the bed are only
+// beside the prime strip: the nozzle goes there at the park height, down, along the line, back up,
+// and then RESUME moves it over the part. It stays retracted until PRINTDECK_PRIME.
+func (p *PrintdeckPause) primeLine() {
+	th := toolhead.Of(p.printer)
+	safe := th.Position()[2] - gcode_move.Of(p.printer).HomingZ() // the park height, over the part
+	y := p.primeY + float64(p.lines%8)*p.primeStep
+	p.lines++
+	x1 := p.primeX + p.primeLength
+	p.gcode.RunScriptFromCommand(fmt.Sprintf(
+		"G90\nM83\nG1 Z%.3f F600\nG1 X%.3f Y%.3f F6000\nG1 Z%.3f F600\n"+
+			"G1 E%.3f F300\nG1 X%.3f E%.4f F%.0f\n"+ // push the retract back, and draw the line
+			"G1 E-%.3f F2400\nG1 X%.3f F6000\n"+ // retract, and break the string off
+			"G1 Z%.3f F600\nRESUME",
+		safe, p.primeX, y, p.primeZ, p.retract, x1, p.primeLength*p.primeE, p.primeSpeed*60,
+		p.retract, x1+15, safe))
+	p.pending = p.retract
+}
+
+// cmdPrime pushes back the filament of the retract after a prime line, at the first point of the
+// layer, in the extrusion mode of the print.
+func (p *PrintdeckPause) cmdPrime(gcmd *gcode.Command) {
+	if p.pending <= 0 {
+		return
+	}
+	p.gcode.RunScriptFromCommand(fmt.Sprintf(
+		"SAVE_GCODE_STATE NAME=printdeck_prime\nM83\nG1 E%.3f F1800\nRESTORE_GCODE_STATE NAME=printdeck_prime", p.pending))
+	p.pending = 0
 }
 
 // axisLimits are the minimum and the maximum of the axes, from the status of the toolhead.
