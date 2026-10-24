@@ -253,6 +253,10 @@ type App struct {
 	Record bool
 	// Height is the height of the tall screen, from BaseH to MaxH. 0 is BaseH.
 	Height int
+	// Scale draws each frame at Scale[0]/Scale[1] times the size of the UI, for a screen with more
+	// pixels (the Touch Display 2: 720/480). Run records the frame and draws it again at the
+	// larger size, so the text and the shapes are sharp. Zero is 1.
+	Scale [2]int
 	// Wide draws the screen in landscape, wideW x wideH, for a display that is mounted wide.
 	Wide bool
 }
@@ -311,16 +315,28 @@ func (a *App) Run(ctx context.Context, events <-chan touch.Event, present func(*
 	a.hub.join(a)
 	defer a.hub.leave(a)
 	cv := gfx.New(a.Screen().W, a.Screen().H)
+	var big *gfx.Canvas // the frame at Scale
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
 	for {
 		t0 := time.Now()
-		if a.Record {
-			cv, _ = gfx.NewRecording(a.Screen().W, a.Screen().H)
+		var rec *gfx.Recording
+		if a.Record || a.Scale[0] > 0 {
+			cv, rec = gfx.NewRecording(a.Screen().W, a.Screen().H)
 		}
 		a.Draw(cv)
 		t1 := time.Now()
-		present(cv)
+		if a.Scale[0] > 0 && !a.Record {
+			s := a.Screen()
+			w, h := s.W*a.Scale[0]/a.Scale[1], s.H*a.Scale[0]/a.Scale[1]
+			if big == nil || big.Bounds().Dx() != w || big.Bounds().Dy() != h {
+				big = gfx.New(w, h)
+			}
+			rec.DrawScaled(big, a.Scale[0], a.Scale[1])
+			present(big)
+		} else {
+			present(cv)
+		}
 		// A slow frame shows as a pause on the screen. Log it, to find where the time goes.
 		if d := time.Since(t0); d > 100*time.Millisecond {
 			log.Printf("slow frame: draw %v, present %v", t1.Sub(t0).Round(time.Millisecond), time.Since(t1).Round(time.Millisecond))

@@ -5,8 +5,12 @@ disable_overscan=1
 # No rainbow square at power on. The start screen of Printdeck shows instead.
 disable_splash=1
 
-# The 7" display on HDMI. The deck draws on the framebuffer.
+# The display: the 7" display on HDMI, or a Raspberry Pi Touch Display 2 (5" or 7") on the DSI
+# port. The firmware finds a Touch Display 2 and loads its overlay. A fixed DSI overlay with no
+# display on the port stops the HDMI output, so the image does not set one. The deck draws on the
+# framebuffer.
 dtoverlay=vc4-kms-v3d
+display_auto_detect=1
 max_framebuffers=2
 disable_fw_kms_setup=1
 # The firmware does not drive HDMI. Its framebuffer is 640x480 and the display is 800x480, so the

@@ -155,7 +155,7 @@ var coverCache struct {
 // kept, so the next frames only copy it.
 func (c *Canvas) Cover(r image.Rectangle, src image.Image) {
 	if c.rec != nil {
-		c.rec.add(append([]any{"c"}, append(rect(r), imageID(src))...)...)
+		c.rec.add(append([]any{"c"}, append(rect(r), c.rec.image(src))...)...)
 	}
 	if !c.raster() {
 		return
@@ -183,7 +183,7 @@ func (c *Canvas) PixelImage(r image.Rectangle, img image.Image) {
 
 func (c *Canvas) image(r image.Rectangle, img image.Image, pixels bool) {
 	if c.rec != nil {
-		op := append([]any{"i"}, append(rect(r), imageID(img))...)
+		op := append([]any{"i"}, append(rect(r), c.rec.image(img))...)
 		if pixels {
 			op = append(op, 1)
 		}

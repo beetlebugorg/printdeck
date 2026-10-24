@@ -25,10 +25,21 @@ import (
 //
 // rgb is a number 0xRRGGBB. image is the number of an image (ImageByID).
 type Recording struct {
-	Ops []any
+	Ops  []any
+	imgs map[int]image.Image // the images of the commands, for DrawScaled
 }
 
 func (r *Recording) add(op ...any) { r.Ops = append(r.Ops, op) }
+
+// image registers an image of the recording and returns its number.
+func (r *Recording) image(img image.Image) int {
+	id := imageID(img)
+	if r.imgs == nil {
+		r.imgs = map[int]image.Image{}
+	}
+	r.imgs[id] = img
+	return id
+}
 
 // JSON returns the commands as a JSON array.
 func (r *Recording) JSON() []byte {
@@ -143,23 +154,62 @@ func Replay(c *Canvas, ops []byte, img func(id int) image.Image) error {
 // for sharp pictures, for example in a printed manual. The canvas is k times the size of the
 // recording.
 func ReplayScaled(c *Canvas, ops []byte, img func(id int) image.Image, k int) error {
-	var list [][]any
+	var list []any
 	if err := json.Unmarshal(ops, &list); err != nil {
 		return err
 	}
-	n := func(op []any, i int) int {
-		if i < len(op) {
-			if f, ok := op[i].(float64); ok {
-				return int(f)
-			}
+	replay(c, list, img, k, 1)
+	return nil
+}
+
+// DrawScaled draws a recording on a canvas at num/den times its size, for example 3/2 for the
+// 720 x 1280 Touch Display 2 and a UI of 480 x 853. The text and the shapes are drawn at the
+// larger size, so they are sharp.
+func (r *Recording) DrawScaled(c *Canvas, num, den int) {
+	replay(c, r.Ops, func(id int) image.Image {
+		if im, ok := r.imgs[id]; ok {
+			return im
+		}
+		return ImageByID(id)
+	}, num, den)
+}
+
+// replay draws the commands at num/den times their size. A command is a []any: from JSON its
+// numbers are float64, from a Recording in memory they are int or uint8.
+func replay(c *Canvas, list []any, img func(id int) image.Image, num, den int) {
+	num0 := func(v any) int {
+		switch v := v.(type) {
+		case float64:
+			return int(v)
+		case int:
+			return v
+		case uint8:
+			return int(v)
 		}
 		return 0
 	}
+	n := func(op []any, i int) int {
+		if i < len(op) {
+			return num0(op[i])
+		}
+		return 0
+	}
+	// sc scales a coordinate. The floor keeps the edges of two shapes that touch together.
+	sc := func(v int) int {
+		p := v * num
+		if p < 0 && p%den != 0 {
+			return p/den - 1
+		}
+		return p / den
+	}
 	col := func(v int) color.RGBA { return color.RGBA{uint8(v >> 16), uint8(v >> 8), uint8(v), 255} }
-	r := func(op []any) image.Rectangle { return image.Rect(n(op, 1)*k, n(op, 2)*k, n(op, 3)*k, n(op, 4)*k) }
+	r := func(op []any) image.Rectangle {
+		return image.Rect(sc(n(op, 1)), sc(n(op, 2)), sc(n(op, 3)), sc(n(op, 4)))
+	}
 	var clips []*Canvas
 	cur := c
-	for _, op := range list {
+	for _, o := range list {
+		op, _ := o.([]any)
 		if len(op) == 0 {
 			continue
 		}
@@ -168,37 +218,48 @@ func ReplayScaled(c *Canvas, ops []byte, img func(id int) image.Image, k int) er
 		case "f":
 			cur.Fill(r(op), col(n(op, 5)))
 		case "r":
-			cur.RoundRect(r(op), n(op, 5)*k, col(n(op, 6)))
+			cur.RoundRect(r(op), sc(n(op, 5)), col(n(op, 6)))
 		case "p":
-			xy, _ := op[1].([]any)
+			var xy []int
+			switch v := op[1].(type) {
+			case []int:
+				xy = v
+			case []any:
+				for _, e := range v {
+					xy = append(xy, num0(e))
+				}
+			}
 			var pts []image.Point
 			for i := 0; i+1 < len(xy); i += 2 {
-				x, _ := xy[i].(float64)
-				y, _ := xy[i+1].(float64)
-				pts = append(pts, image.Pt(int(x)*k, int(y)*k))
+				pts = append(pts, image.Pt(sc(xy[i]), sc(xy[i+1])))
 			}
 			if len(pts) > 0 {
 				cur.Polygon(pts, col(n(op, 2)))
 			}
 		case "t":
 			s, _ := op[3].(string)
-			cur.textAt(n(op, 1)*k, n(op, 2)*k, s, Face(n(op, 4) == 1, n(op, 5)*k), col(n(op, 6)))
+			cur.textAt(sc(n(op, 1)), sc(n(op, 2)), s, Face(n(op, 4) == 1, sc(n(op, 5))), col(n(op, 6)))
 		case "c", "i":
-			if im := img(n(op, 5)); im != nil {
-				if name == "c" {
-					cur.Cover(r(op), im)
-				} else if k == 1 {
-					cur.Image(r(op), im)
-				} else if len(op) > 6 && n(op, 6) == 1 {
-					// A picture of pixels: scale it with the rest, and keep its pixels sharp.
-					cur.Clipped(r(op), func(in *Canvas) { in.Image(r(op), scaleNearest(im, k)) })
-				} else {
-					// An image at its size: scale it with the rest.
-					b := im.Bounds()
-					cur.Clipped(r(op), func(in *Canvas) {
-						in.Cover(image.Rect(r(op).Min.X, r(op).Min.Y, r(op).Min.X+b.Dx()*k, r(op).Min.Y+b.Dy()*k), im)
-					})
-				}
+			im := img(n(op, 5))
+			if im == nil {
+				continue
+			}
+			rr := r(op)
+			switch {
+			case name == "c":
+				cur.Cover(rr, im)
+			case num == den:
+				cur.Image(rr, im)
+			case len(op) > 6 && n(op, 6) == 1:
+				// A picture of pixels: scale it with the rest, and keep its pixels sharp.
+				b := im.Bounds()
+				cur.Clipped(rr, func(in *Canvas) { in.Image(rr, scaleNearest(im, sc(b.Dx()), sc(b.Dy()))) })
+			default:
+				// An image at its size: scale it with the rest.
+				b := im.Bounds()
+				cur.Clipped(rr, func(in *Canvas) {
+					in.Cover(image.Rect(rr.Min.X, rr.Min.Y, rr.Min.X+sc(b.Dx()), rr.Min.Y+sc(b.Dy())), im)
+				})
 			}
 		case "d":
 			cur.Dim(uint8(n(op, 1)))
@@ -211,16 +272,15 @@ func ReplayScaled(c *Canvas, ops []byte, img func(id int) image.Image, k int) er
 			}
 		}
 	}
-	return nil
 }
 
-// scaleNearest makes an image k times larger, each pixel a square of k x k pixels.
-func scaleNearest(im image.Image, k int) *image.RGBA {
+// scaleNearest scales an image to w x h, each pixel a block of pixels.
+func scaleNearest(im image.Image, w, h int) *image.RGBA {
 	b := im.Bounds()
-	out := image.NewRGBA(image.Rect(0, 0, b.Dx()*k, b.Dy()*k))
-	for y := 0; y < b.Dy()*k; y++ {
-		for x := 0; x < b.Dx()*k; x++ {
-			out.Set(x, y, im.At(b.Min.X+x/k, b.Min.Y+y/k))
+	out := image.NewRGBA(image.Rect(0, 0, w, h))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			out.Set(x, y, im.At(b.Min.X+x*b.Dx()/w, b.Min.Y+y*b.Dy()/h))
 		}
 	}
 	return out

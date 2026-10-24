@@ -13,6 +13,6 @@ func openPanel(cfg config.Config) (display.Display, error) {
 		return nil, err
 	}
 	pw, ph := p.PanelSize()
-	log.Printf("framebuffer %s: %dx%d, rotation %d", cfg.Framebuffer, pw, ph, cfg.Rotate)
+	log.Printf("framebuffer %s: %dx%d, rotation %d", cfg.Framebuffer, pw, ph, p.Rotation())
 	return p, nil
 }

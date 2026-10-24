@@ -43,7 +43,7 @@ func Load() Config {
 	c := Config{
 		Display:       str("DISPLAY_KIND", "panel"),
 		Framebuffer:   str("FRAMEBUFFER", "/dev/fb0"),
-		Rotate:        num("DISPLAY_ROTATE", 90),
+		Rotate:        num("DISPLAY_ROTATE", -1), // -1: from the shape of the panel (fb.Open)
 		TouchInvertX:  num("TOUCH_INVERT_X", 0) == 1,
 		TouchInvertY:  num("TOUCH_INVERT_Y", 0) == 1,
 		TouchSwapXY:   num("TOUCH_SWAP_XY", 0) == 1,

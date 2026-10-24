@@ -142,12 +142,24 @@ func run(cfg config.Config) {
 
 	screen := openDisplay(cfg)
 	defer screen.Close()
+	// The default turn depends on the shape of the panel. The Settings page and the touch use the
+	// turn of the panel.
+	if p, ok := screen.(interface{ Rotation() int }); ok {
+		cfg.Rotate = p.Rotation()
+	}
 
 	pr := newPrinter(cfg)
 	app := ui.New()
 	app.Printer = pr
 	// The UI is wide when the turned panel is wider than high (DISPLAY_ROTATE 0 or 180).
 	app.Wide = screen.Size().X > screen.Size().Y
+	// A tall screen with more pixels than the UI (the Touch Display 2, 720 x 1280): the UI keeps
+	// its width of 480 and gets the height of the shape of the screen, and each frame is drawn
+	// at the size of the screen.
+	if sz := screen.Size(); !app.Wide && sz.X > ui.BaseW {
+		app.Height = (sz.Y*ui.BaseW + sz.X - 1) / sz.X
+		app.Scale = [2]int{sz.X, ui.BaseW}
+	}
 	app.PreheatTool, app.PreheatBed = cfg.PreheatTool, cfg.PreheatBed
 	app.UnloadMM, app.LoadMM, app.JogInvertY = cfg.UnloadMM, cfg.LoadMM, cfg.JogInvertY
 	// The theme (day, night, auto) is kept in the state folder.

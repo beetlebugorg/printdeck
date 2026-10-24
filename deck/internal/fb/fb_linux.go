@@ -22,7 +22,9 @@ type FB struct {
 }
 
 // Open maps the framebuffer. rot is 90 or 270 for a landscape panel that is mounted tall, 0 for
-// none, and 180 for a panel that is mounted upside down.
+// none, and 180 for a panel that is mounted upside down. A negative rot is the default for the
+// shape of the panel: 0 for a tall panel (the Touch Display 2), 270 for a wide panel that is
+// mounted tall.
 func Open(dev string, rot int) (*FB, error) {
 	name := strings.TrimPrefix(dev, "/dev/")
 	sys := "/sys/class/graphics/" + name + "/"
@@ -38,6 +40,12 @@ func Open(dev string, rot int) (*FB, error) {
 		b, _ := os.ReadFile(sys + n)
 		v, _ := strconv.Atoi(strings.TrimSpace(string(b)))
 		return v
+	}
+	if rot < 0 {
+		rot = 270
+		if h > w {
+			rot = 0
+		}
 	}
 	bpp, stride := read("bits_per_pixel"), read("stride")
 	if bpp != 16 && bpp != 32 {
@@ -127,6 +135,9 @@ func (d *FB) Present(c *gfx.Canvas) {
 	}
 	copy(d.prev, c.Pix)
 }
+
+// Rotation is the rotation from the canvas to the panel: 0, 90, 180 or 270.
+func (d *FB) Rotation() int { return d.rot }
 
 // PanelSize is the native size, used to map touch coordinates.
 func (d *FB) PanelSize() (int, int) { return d.w, d.h }
