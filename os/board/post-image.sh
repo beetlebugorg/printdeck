@@ -11,9 +11,10 @@ rm -rf "$BOOT"
 mkdir -p "$BOOT/overlays"
 cp "$BINARIES_DIR/Image" "$BINARIES_DIR"/bcm2712*.dtb "$BOOT/"
 cp "$BOARD/config.txt" "$BOOT/config.txt"
-# The kernel must have the display driver. The vc4 driver depends on the sound core (SND and
-# SND_SOC, for the HDMI audio), so a change of the sound options can remove it without an error.
-for opt in CONFIG_DRM_VC4=y CONFIG_FB=y CONFIG_FB_SIMPLE=y; do
+# The kernel must have the display drivers: vc4 for HDMI, and rp1-dsi for the DSI ports of the Pi 5
+# (the Touch Display 2). The vc4 driver depends on the sound core (SND and SND_SOC, for the HDMI
+# audio), so a change of the sound options can remove it without an error.
+for opt in CONFIG_DRM_VC4=y CONFIG_DRM_RP1_DSI=y CONFIG_FB=y CONFIG_FB_SIMPLE=y; do
   grep -qx "$opt" "$BUILD_DIR/linux-custom/.config" || { echo "kernel config: $opt is missing" >&2; exit 1; }
 done
 
