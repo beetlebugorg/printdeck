@@ -98,3 +98,20 @@ You need Go, the AWS CLI, and an APNs key (a `.p8` file) from the developer acco
 
 Run `deploy.sh` again after a change to the code. To remove the relay, delete the stack and the
 bucket.
+
+## Limits
+
+The function URL has no AWS auth: a deck or an app cannot keep an AWS key or a shared key secret.
+The send token is the auth of each push. Two limits keep a flood of requests from running up the
+bill:
+
+- `RELAY_CONCURRENCY` (default 5) is the most instances of the function at a time. AWS keeps 10
+  instances of an account unreserved, so an account with a concurrency quota of 10 needs
+  `RELAY_CONCURRENCY=0` for no limit, or a higher quota.
+- `ALERT_EMAIL=you@example.com` makes a budget of `BUDGET_USD` (default 5) US dollars a month for
+  the account. AWS mails the address at 80 % of it, and when the forecast passes it. AWS asks the
+  address to confirm the first mail.
+
+`POST /register` gives a send token for any device token, with no proof that the caller has the
+device. Someone who knows a device token can then send pushes to it. They cannot read or write a
+message: the extension cannot decrypt their payload, so iOS shows the placeholder alert.

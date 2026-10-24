@@ -3,6 +3,9 @@
 #
 #   relay/deploy.sh BUNDLE_ID
 #
+# RELAY_CONCURRENCY (default 5, 0 for no limit) is the most instances of the function at a time.
+# ALERT_EMAIL makes a budget of BUDGET_USD a month (default 5) that mails this address.
+#
 # The first run makes an S3 bucket for the code (printdeck-relay-code-ACCOUNT-REGION) and the stack
 # printdeck-relay. A later run changes the stack to the new code. It needs Go and the AWS CLI.
 set -eu
@@ -31,6 +34,7 @@ aws s3 cp --quiet "$BUILD/relay.zip" "s3://$BUCKET/$KEY"
 
 aws cloudformation deploy --stack-name printdeck-relay --template-file "$RELAY/template.yaml" \
   --capabilities CAPABILITY_IAM --no-fail-on-empty-changeset \
-  --parameter-overrides BundleId="$BUNDLE_ID" CodeBucket="$BUCKET" CodeKey="$KEY"
+  --parameter-overrides BundleId="$BUNDLE_ID" CodeBucket="$BUCKET" CodeKey="$KEY" \
+    Concurrency="${RELAY_CONCURRENCY:-5}" AlertEmail="${ALERT_EMAIL:-}" BudgetUSD="${BUDGET_USD:-5}"
 aws cloudformation describe-stacks --stack-name printdeck-relay \
   --query 'Stacks[0].Outputs[?OutputKey==`RelayUrl`].OutputValue' --output text

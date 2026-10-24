@@ -13,6 +13,26 @@ Parameters:
   CodeKey:
     Type: String
     Description: The key of the zip of the code in CodeBucket (deploy.sh sets it).
+  Concurrency:
+    Type: Number
+    Default: 5
+    MinValue: 0
+    Description: >-
+      The most instances of the function at a time, so that a flood of requests cannot run up the
+      bill. 0 is no limit: an account with a concurrency quota of 10 needs 0, because AWS keeps 10
+      unreserved.
+  AlertEmail:
+    Type: String
+    Default: ""
+    Description: The address for the alarm of the budget, or "" for no budget.
+  BudgetUSD:
+    Type: Number
+    Default: 5
+    Description: The cost of the account in a month, in US dollars, for the alarm of the budget.
+
+Conditions:
+  HasConcurrency: !Not [!Equals [!Ref Concurrency, 0]]
+  HasBudget: !Not [!Equals [!Ref AlertEmail, ""]]
 
 Resources:
   # key_id, team_id and p8 are empty until set-apple-key.sh writes them. relay_secret signs the
@@ -65,6 +85,7 @@ Resources:
       MemorySize: 128
       Timeout: 15
       Role: !GetAtt Role.Arn
+      ReservedConcurrentExecutions: !If [HasConcurrency, !Ref Concurrency, !Ref "AWS::NoValue"]
       Code:
         S3Bucket: !Ref CodeBucket
         S3Key: !Ref CodeKey
@@ -95,6 +116,23 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: "*"
       InvokedViaFunctionUrl: true
+
+  # A mail at 80 % of the budget of the month, and when the forecast passes it. The budget covers
+  # the cost of the whole account.
+  Budget:
+    Type: AWS::Budgets::Budget
+    Condition: HasBudget
+    Properties:
+      Budget:
+        BudgetName: printdeck-relay
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit: { Amount: !Ref BudgetUSD, Unit: USD }
+      NotificationsWithSubscribers:
+        - Notification: { NotificationType: ACTUAL, ComparisonOperator: GREATER_THAN, Threshold: 80 }
+          Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref AlertEmail }]
+        - Notification: { NotificationType: FORECASTED, ComparisonOperator: GREATER_THAN, Threshold: 100 }
+          Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref AlertEmail }]
 
 Outputs:
   RelayUrl:
