@@ -1,6 +1,6 @@
 """Printed cable clips for the pod cables.
 
-Each clip has the same cradle: a C round the cable, with a mouth a little narrower than the cable.
+Each clip has the same cradle: a C around the cable, with a mouth a little narrower than the cable.
 The cable presses in through the mouth. Two kinds of base:
 
 - the rail clip: a key in the front slot of the TAZ rail, and an M3 screw into a roll-in nut in the
@@ -27,7 +27,7 @@ SLOT_KEY = 5.8              # the key in the 6.2 mm front slot of the rail
 
 
 def cradle(x=0.0, z0=BASE_T):
-    """A C round a cable along y, its bottom on z0, at x. Returns (solid, cable centre z)."""
+    """A C around a cable along y, its bottom on z0, at x. Returns (solid, cable center z)."""
     r_in = CABLE_HOLE / 2
     r_out = r_in + CRADLE_WALL
     zc = z0 + r_in + 0.4
@@ -67,7 +67,7 @@ def tape_clip(pair=False):
     return b, zc
 
 
-# The cable centre over the mounting face, for the routes: a tape clip sits on its tape.
+# The cable center over the mounting face, for the routes: a tape clip sits on its tape.
 RAIL_CABLE_H = rail_clip()[1]
 TAPE_CABLE_H = tape_clip()[1] + TAPE
 

@@ -8,7 +8,7 @@ of the chassis is at X_FRONT), y up (0 is Y_BASE above the bottom of the chassis
 cover (the cover face is at 0, and the chassis face goes to about -102.6).
 
 The case stands on the flanges of the two rail clips, in front of the rail. A nub wraps around the
-front edge of the cover and takes the cover screw that is 240 mm up. The hole in the nub is a slot
+front edge of the cover and holds the cover screw that is 240 mm up. The hole in the nub is a slot
 front to back: the clips set the depth, and the screw only holds the case against the cover.
 """
 
@@ -28,7 +28,7 @@ class Display:
     lcm_t: float        # panel thickness with the touch panel
     aa: tuple           # active area (across, along)
     board: tuple        # board outline (across, along), over the ears
-    holes: tuple        # mounting holes (across, along) from the board centre, one quarter
+    holes: tuple        # mounting holes (across, along) from the board center, one quarter
     board_front: float  # from the front of the glass to the front of the board
     socket_band: float  # past the bottom edge of the board: the HDMI plug and its adapter board
 
@@ -51,7 +51,7 @@ PI = (56.0, 85.0, 1.6)            # across, along (vertical), thickness
 PI_STANDOFF = 3.5
 PI_TALL = 16.0                    # the highest part over the board: the USB and Ethernet stack
 PORT_OVER = 2.5                   # the ports go past the top edge of the board
-USB_LOWER = 4.3                   # the centre of the lower USB port over the board
+USB_LOWER = 4.3                   # the center of the lower USB port over the board
 # The boot drive: SanDisk Extreme PRO USB 3.2 (SDCZ880), 70.9 x 21.3 x 11.4. About 12 mm of it is
 # the plug, in the port.
 STICK = (21.3, 70.9, 11.4)

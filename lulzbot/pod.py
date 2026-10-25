@@ -4,9 +4,9 @@ the pod: the TAZ Workhorse bracket is here.
 
 The glass of the display is the front of the pod. It is wider than the case, so the case is a smaller
 body behind the glass. The display hangs with its ribbon end up, and the Pi sits on it as Raspberry
-Pi mounts it: the USB ports down, the ribbon folded round the PCIe end of the Pi.
+Pi mounts it: the USB ports down, the ribbon folded around the PCIe end of the Pi.
 
-The body has two parts: a thin part round the display frame, and a deep part close round the Pi. The
+The body has two parts: a thin part around the display frame, and a deep part close around the Pi. The
 ports are the Pi's own ports, flush with the walls of the deep part: the USB-C power port and the two
 micro HDMI ports in the right wall, and the USB-A and Ethernet ports in the bottom wall. The printer
 cable plugs straight into the Pi.
@@ -66,9 +66,9 @@ BODY_R = 6.0
 FRONT_W = -(LENS + 0.05)        # the front rim of the body, against the back of the glass
 PI_TOP_W = STANDOFF_W + 1.6 + 16.0                 # the top of the USB ports: 32.5
 DEEP_W = PI_TOP_W + GAP + WALL                     # the back of the body where the Pi is: 35.5
-# The deep part round the Pi: its walls are 0.6 mm outside the board, so the faces of the ports are
+# The deep part around the Pi: its walls are 0.6 mm outside the board, so the faces of the ports are
 # flush with the outside of the walls (USB-C on the right, USB and Ethernet at the bottom). The thin
-# part round the rest of the display frame is only as deep as the raised tabs.
+# part around the rest of the display frame is only as deep as the raised tabs.
 THIN_W = TAB_W + 0.2 + WALL                        # the back of the thin part: 13.7
 SCREW_FLOOR = (TAB_W + 0.2, TAB_W + 2.2)          # the floor of a screw well, over a top tab
 PI_V = PI_HOLE_UV[0][1] + 61.5                     # the v of the PCIe end of the Pi (STEP x = 0)
@@ -104,7 +104,7 @@ def rounded_box(u0, u1, v0, v1, w0, w1, rad):
 
 
 def outer():
-    """The body envelope: the thin part round the display frame, and the deep part round the Pi."""
+    """The body envelope: the thin part around the display frame, and the deep part around the Pi."""
     v0, v1 = BODY_V
     o = rounded_box(-BODY_U, BODY_U, v0, v1, -THIN_W, FRONT_W, BODY_R)
     o = o + rounded_box(-DEEP_U, DEEP_U, DEEP_V0, v1, -DEEP_W, FRONT_W, DEEP_R)
@@ -182,7 +182,7 @@ def body():
     s = outer() - inner()
     # The two top tabs: a tube from the back down to each tab, with a floor of 2 mm on the tab. The
     # M2.5 x 4 screw of the display box goes down the tube, through the floor, into the tab. The tube
-    # takes a screwdriver shaft of up to 7.35 mm, and it stays inside the side wall of the deep part.
+    # has room for a screwdriver shaft of up to 7.35 mm, and it stays inside the side wall of the deep part.
     f0, f1 = SCREW_FLOOR
     for u, v in TABS:
         s = s + Pos(u, v, -(f0 + DEEP_W - 1.0) / 2) * Cylinder(DEEP_U - abs(u) - 0.1, DEEP_W - 1.0 - f0)
@@ -403,7 +403,7 @@ def ribbon_and_wire():
     r = segs[0]
     for sg in segs[1:]:
         r = r + sg
-    # The power wire: from the display connector up under the Pi, round the PCIe end beside the
+    # The power wire: from the display connector up under the Pi, around the PCIe end beside the
     # ribbon, and back down over the GPIO header to the 5 V pins.
     du, dv = DISP_POWER
     pu, pv, pw = pi_uvw(PI_5V_PINS[0], PI_5V_PINS[1], PI_GPIO[5])
@@ -866,11 +866,11 @@ def routes(name, pod_to_frame):
                        (rx + 6, yp, -10.0), (rx - 4.0, yp, cz), (60.0, yp, cz), (-80.0, yp, cz), (-100.0, desk, cz),
                        (-250.0, desk, cz)]
             else:
-                # Under the pod to the cover side, back along the outside of the cover, round the
+                # Under the pod to the cover side, back along the outside of the cover, around the
                 # rear corner, and up the rear face to the USB-B port of the RAMBo. The port is
                 # left of the second extruder connector (seen from behind), at about its height.
                 # Down the front under the pod, along the lower edge of the cover with the power
-                # cable, round the rear corner and up the rear face to the port.
+                # cable, around the rear corner and up the rear face to the port.
                 py, pz = TAZ_USB_B
                 way = [(x, 30.0, z), (rx + 12, yu, z + 10.0), (rx + 12, yu, -10.0), (rx - 4.0, yu, cz), (60.0, yu, cz),
                        (-80.0, yu, cz), (-94.0, yu, -8.0), (-94.0, py, -8.0), (-94.0, py, pz),

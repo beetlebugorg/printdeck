@@ -33,7 +33,7 @@ def unit(v):
 
 
 def box_mesh(c, size, axes=None):
-    """A box with centre c and size (sx, sy, sz) along the three axes (columns of axes)."""
+    """A box with center c and size (sx, sy, sz) along the three axes (columns of axes)."""
     m = trimesh.creation.box(extents=size)
     M = np.eye(4)
     if axes is not None:
@@ -96,11 +96,11 @@ class Slab:
     def disp(self, a, b, c):
         """A point in portrait display coordinates (a across, b along with the HDMI end at -b, c out
         of the glass). The HDMI end is at the top of the slab."""
-        bc = self.board_top - self.L.d.board[1] / 2      # v of the display centre
+        bc = self.board_top - self.L.d.board[1] / 2      # v of the display center
         return self.pt(a, bc - b, -S.LIP + c)
 
     def meshes(self):
-        """The slab, open at the back, and the display: (mesh, colour)."""
+        """The slab, open at the back, and the display: (mesh, color)."""
         out = []
         W, Ln = self.width, self.length
         # The walls and the face as thin boxes (the face has the window of the active area).

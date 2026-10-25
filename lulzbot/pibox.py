@@ -80,7 +80,7 @@ POWER_PLUG = (12.0, 7.0, 24.0)
 
 @dataclass
 class PiBox:
-    pi: tuple          # mount position of the Pi origin (the centre of the board bottom)
+    pi: tuple          # mount position of the Pi origin (the center of the board bottom)
     outer: tuple       # x0, x1, y0, y1, z0, z1 of the box, mount coordinates
     wall: float = 2.0
 
@@ -96,7 +96,7 @@ def layout(top=None):
     """The box. top is the mount y of its top; by default the board top edge is 8 mm over the
     cover screw."""
     wall = 2.0
-    # Front: the plugs end inside the front wall, which is just behind the chassis face.
+    # Front: the plugs end inside the front wall. The front wall is just behind the chassis face.
     x1 = S.X_FRONT - FRONT_GAP
     plug_front = max(p[1] for p in plugs().values())
     px = x1 - wall - 2.0 - plug_front

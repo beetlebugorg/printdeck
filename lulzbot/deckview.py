@@ -32,7 +32,7 @@ def pi_box(x0, x1, y0, y1, z0, z1):
 
 
 # Pi 5 parts in STEP coordinates (board 85 x 56, from the corner; z up from the board bottom). From
-# the Slate model, moved from its centred coordinates (+42.5, +28).
+# the Slate model, moved from its centered coordinates (+42.5, +28).
 def pi_parts():
     c = lambda x0, x1, y0, y1, z0, z1: (x0 + 42.5, x1 + 42.5, y0 + 28, y1 + 28, z0, z1)
     b = 1.6
@@ -49,7 +49,7 @@ def pi_parts():
 
 
 def hardware():
-    """(name, shape, colour) in mount coordinates."""
+    """(name, shape, color) in mount coordinates."""
     out = []
     # The display: the glass and the panel, the board, and the sockets at its bottom end.
     la, lb = D.LCM

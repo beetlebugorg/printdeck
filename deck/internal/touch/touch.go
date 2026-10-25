@@ -64,7 +64,7 @@ func process(ctx context.Context, raw <-chan rawEvent, o Options, rng [4]int32, 
 	var release *time.Timer // running while the finger is off the panel, but the touch is not over yet
 	var releaseC <-chan time.Time
 	// The newest move that the UI did not take yet. A busy UI gets the last position when it is
-	// ready, not each sample: a list then follows the finger, and a swipe is not lost.
+	// ready. It does not get each sample. A list then follows the finger, and a swipe is kept.
 	var waiting Event
 	var waitC chan<- Event
 	for {

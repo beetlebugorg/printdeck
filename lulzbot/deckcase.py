@@ -33,7 +33,7 @@ LCM = S.LCM_AB                        # panel: across, along
 BOARD_FRONT = S.BOARD_C[1]            # the front of the board, behind the front of the glass (-7.35)
 BOARD_T = S.BOARD_C[1] - S.BOARD_C[0] # 2.0 in the model
 BOARD_HALF = S.BOARD_B                # half length of the board
-EARS = S.EARS                         # (a, b) of the ear holes from the panel centre
+EARS = S.EARS                         # (a, b) of the ear holes from the panel center
 
 BORDER = 20.0                         # the border around the screen: the sides and the top
 CHIN = 34.0                           # the border at the bottom: the sockets of the display and their plugs are there
@@ -69,9 +69,9 @@ def face_pt(u, v, w):
     return tuple(O[i] + u * U[i] + v * V[i] + w * W[i] for i in range(3))
 
 
-# The display centre on the face: the active area is BORDER under the top edge.
+# The display center on the face: the active area is BORDER under the top edge.
 V_AA = -(BORDER + AA[1] / 2)
-DISP_V = V_AA - S.AA_OFF_HV[1] * 0     # the panel centre (the small offset of the active area is ignored here)
+DISP_V = V_AA - S.AA_OFF_HV[1] * 0     # the panel center (the small offset of the active area is ignored here)
 
 
 def disp(a, b, c):
@@ -120,7 +120,7 @@ HOLE = {3: 3.4, 2.5: 2.9}                     # clearance holes
 
 
 def hexagon(af, h):
-    """A hexagonal prism, across flats af, height h, centred, along z."""
+    """A hexagonal prism, across flats af, height h, centered, along z."""
     r = af / math.sqrt(3)
     pts = [(r * math.cos(math.radians(60 * k)), r * math.sin(math.radians(60 * k))) for k in range(6)]
     return extrude(Plane.XY * Polygon(*pts, align=None), amount=h / 2, both=True)
@@ -287,7 +287,7 @@ def body():
 # 56 (the USB-C edge at y = 0), z up from the bottom of the board.
 PI_STANDOFF = 4.0
 PI_HOLES = [(3.5, 3.5), (61.5, 3.5), (3.5, 52.5), (61.5, 52.5)]
-PI_LEFT_Z = Z_LEFT - WALL - 1.0               # the left edge of the board (STEP x = 0); nothing is on that edge
+PI_LEFT_Z = Z_LEFT - WALL - 1.0               # the left edge of the board (STEP x = 0); that edge has no parts
 PI_Y0 = Y_BOT + WALL + 18.0                   # STEP y = 0 (room under it for the HDMI plug)
 PI_X0 = X_BACK + T_BACK + PI_STANDOFF         # the bottom of the board
 PORTS = {"usbc": (11.2, -1.0, 3.2), "hdmi0": (25.8, -1.0, 3.0), "hdmi1": (39.2, -1.0, 3.0)}
