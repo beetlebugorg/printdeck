@@ -50,6 +50,13 @@ docker run --rm --user "$(id -u):$(id -g)" \
   -v "$CACHE/klipper-$COMMIT:/klipper:ro" -v "$TTEST:/out" -v "$REPO/tools/klipper-reference:/tools:ro" \
   printdeck-klipper-ref python3 /tools/dumptemps.py /out/temps.json
 
+# The meshes of bed_mesh: the interpolation of the probed points.
+MTEST=$REPO/deck/internal/klipper/extras/bed_mesh/testdata
+mkdir -p "$MTEST"
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$CACHE/klipper-$COMMIT:/klipper:ro" -v "$MTEST:/out" -v "$REPO/tools/klipper-reference:/tools:ro" \
+  printdeck-klipper-ref python3 /tools/dumpmesh.py /out/meshes.json
+
 # The output of Jinja2, with the settings of Klipper, for the cases of the template engine.
 JTEST=$REPO/deck/internal/klipper/jinja/testdata
 docker run --rm --user "$(id -u):$(id -g)" \

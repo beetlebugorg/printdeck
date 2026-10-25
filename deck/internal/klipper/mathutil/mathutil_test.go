@@ -39,3 +39,19 @@ func TestHypotMatchesPython(t *testing.T) {
 	}
 	t.Logf("%d cases, %d differ from Python; math.Hypot differs in %d", len(hypotCases), bad, goBad)
 }
+
+// The values of Python 3: round(x, 2) and round(x, 6).
+func TestRound(t *testing.T) {
+	for _, c := range []struct {
+		x    float64
+		n    int
+		want float64
+	}{
+		{2.675, 2, 2.67}, {0.125, 2, 0.12}, {0.375, 2, 0.38}, {-1.005, 2, -1.0},
+		{1.0000005, 6, 1.000001}, {-0.0000005, 6, -0.0}, {123.456789, 2, 123.46},
+	} {
+		if got := Round(c.x, c.n); got != c.want {
+			t.Errorf("Round(%v, %d) = %v, want %v", c.x, c.n, got, c.want)
+		}
+	}
+}

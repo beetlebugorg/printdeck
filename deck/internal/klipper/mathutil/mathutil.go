@@ -10,7 +10,10 @@
 // This file may be distributed under the terms of the GNU GPLv3 license.
 package mathutil
 
-import "math"
+import (
+	"math"
+	"strconv"
+)
 
 // Matrix helper functions for NxM matrices
 
@@ -149,4 +152,14 @@ func GaussianSolve(a, rhs [][]float64, allowUnderdetermined bool) [][]float64 {
 func SolveLinearEquations(eqs, ans [][]float64, allowUnderdetermined bool) [][]float64 {
 	eqst := MatTransp(eqs)
 	return GaussianSolve(MatMulTransp(eqst), MatMatMul(eqst, ans), allowUnderdetermined)
+}
+
+// Round is Python's round(x, ndigits): the nearest value with ndigits decimals, from the exact
+// value of x, with ties to even. strconv rounds the same way.
+func Round(x float64, ndigits int) float64 {
+	if math.IsNaN(x) || math.IsInf(x, 0) {
+		return x
+	}
+	v, _ := strconv.ParseFloat(strconv.FormatFloat(x, 'f', ndigits, 64), 64)
+	return v
 }
