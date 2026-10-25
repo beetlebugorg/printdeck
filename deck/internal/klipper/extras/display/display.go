@@ -380,7 +380,8 @@ func (t *PrinterDisplayTemplate) loadConfig(config *configfile.Wrapper) {
 	}
 }
 
-func lookupDisplayTemplates(config *configfile.Wrapper) *PrinterDisplayTemplate {
+// LookupDisplayTemplates returns the display templates of the printer (lookup_display_templates).
+func LookupDisplayTemplates(config *configfile.Wrapper) *PrinterDisplayTemplate {
 	printer := host.Of(config)
 	dt, ok := printer.TryLookupObject("display_template").(*PrinterDisplayTemplate)
 	if !ok {
@@ -426,7 +427,7 @@ func newPrinterLCD(config *configfile.Wrapper) *PrinterLCD {
 	}
 	printer.LoadObject(config, "display_status")
 	// Configurable display
-	templates := lookupDisplayTemplates(config)
+	templates := LookupDisplayTemplates(config)
 	d.displayTemplates = templates.displayTemplates
 	d.displayDataGroups = templates.displayDataGroups
 	d.lcdChip.SetGlyphs(templates.displayGlyphs)
@@ -568,4 +569,9 @@ func (d *PrinterLCD) cmdSetDisplayGroup(gcmd *gcode.Command) {
 		panic(gcmd.Error("Unknown display_data group '%s'", group))
 	}
 	d.showDataGroup = newDG
+}
+
+// DisplayTemplates returns the [display_template] sections by name.
+func (t *PrinterDisplayTemplate) DisplayTemplates() map[string]*DisplayTemplate {
+	return t.displayTemplates
 }

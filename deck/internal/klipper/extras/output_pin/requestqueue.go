@@ -1,8 +1,8 @@
-// Package output_pin has the queue of the pin requests of the G-code commands, which the fans and
-// the output pins use.
+// Package output_pin is the [output_pin] section and SET_PIN, the template evaluator, and the queue
+// of the pin requests of the G-code commands, which the fans and the output pins use.
 //
 // Ported to Go from klippy/extras/output_pin.py of Klipper (https://github.com/Klipper3d/klipper),
-// commit 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f. Only GCodeRequestQueue is ported now.
+// commit 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f.
 //
 //	Copyright (C) 2017-2025  Kevin O'Connor <kevin@koconnor.net>
 //	Go port: Copyright (C) 2026  the Printdeck authors
