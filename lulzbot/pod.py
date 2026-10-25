@@ -19,8 +19,8 @@ The case is three printed parts. Each prints flat on its back with no support.
 - the body: the deep part round the Pi. Every opening in it is open to the front, or a hole in the
   back. Four M3 x 6 screws go from the back down posts at its corners into M3 heat-set inserts in the
   frame.
-- the mount: a plate with the dovetail, held to the back of the body by two countersunk M3 x 6
-  screws into M3 heat-set inserts.
+- the mount: a plate with the dovetail, held to the back of the body by two M3 x 6 cap screws from
+  inside the body into M3 heat-set inserts in the mount.
 
 The pod hangs on the bracket: the dovetail of the mount drops into a slot in the bracket from
 above. The bracket stands on the two rail clips and the cover screw.
@@ -38,7 +38,7 @@ import math
 import os
 import sys
 
-from build123d import (Box, Cone, Cylinder, Kind, Location, Plane, Polygon, Pos, Rectangle, RectangleRounded, Rot,
+from build123d import (Box, Cylinder, Kind, Location, Plane, Polygon, Pos, Rectangle, RectangleRounded, Rot,
                        extrude, fillet, offset)
 
 import shape as S
@@ -139,9 +139,9 @@ SLOPE = math.tan(math.radians(50))                 # the edges that print as ove
 POSTS = [(u, v) for u in (-34.0, 34.0) for v in (14.0, 110.0)]
 POST_R, POST_WELL, POST_FLOOR = 5.2, 3.95, 2.0     # the well takes a screwdriver shaft of 7.35 mm
 INSERT = (2.0, 3.6)                                # M3 heat-set insert: hole radius, depth
-# The mount: a plate with the dovetail, on the back of the body, held by two countersunk M3 x 6
-# screws into heat-set inserts in the body, over the cooler.
-MOUNT_T = 3.0
+# The mount: a plate with the dovetail, on the back of the body. Two M3 x 6 cap screws from inside
+# the body, over the cooler, go through the back into M3 heat-set inserts in the mount.
+MOUNT_T = 4.0
 MOUNT_U = 11.0
 MOUNT_V = (90.0, DEEP_V1 - 0.5)
 MOUNT_SCREWS = [(-6.0, 96.0), (6.0, 96.0)]
@@ -262,22 +262,19 @@ def body():
         f = SPLIT_W + 0.1 + POST_FLOOR                   # the floor of the well, its head side
         s = s - Pos(u, v, -(f + DEEP_W + 1.0) / 2) * Cylinder(POST_WELL, DEEP_W + 1.0 - f)
         s = s - Pos(u, v, -(SPLIT_W + f) / 2) * Cylinder(1.7, f - SPLIT_W + 1.0)
-    # The inserts for the screws of the mount, in bosses over the cooler.
+    # The holes for the screws of the mount.
     for u, v in MOUNT_SCREWS:
-        s = s + Pos(u, v, -(DEEP_W - WALL + DEEP_W - WALL - 4.0) / 2) * Cylinder(3.5, 4.0)
-        s = s - Pos(u, v, -DEEP_W + INSERT[1] / 2 - 0.01) * Cylinder(INSERT[0], INSERT[1])
+        s = s - Pos(u, v, -DEEP_W + WALL / 2) * Cylinder(1.7, WALL + 2.0)
     return s
 
 
 def mount():
-    """The mount: a flat plate on the back of the body with the dovetail, and two countersunk holes."""
+    """The mount: a flat plate on the back of the body with the dovetail, and the two inserts."""
     v0, v1 = MOUNT_V
     s = rounded_box(-MOUNT_U, MOUNT_U, v0, v1, -BACK_W, -DEEP_W - 0.05, 3.0)
     s = s + dovetail()
-    hd, hh = CSK[2.5]
     for u, v in MOUNT_SCREWS:
-        s = s - Pos(u, v, -(BACK_W + DEEP_W) / 2) * Cylinder(1.7, MOUNT_T + 2.0)
-        s = s - Pos(u, v, -BACK_W + 1.0) * Cone(6.2 / 2, 1.7, 2.0)
+        s = s - Pos(u, v, -DEEP_W - 0.05 - INSERT[1] / 2 + 0.01) * Cylinder(INSERT[0], INSERT[1])
     return s
 
 
@@ -348,10 +345,10 @@ def plate_y(v):
 BAR_Y = (plate_y(DOVE[3][0] - 3.0 - DOVE_CLR) - 1.0, 240.0)
 
 
-def bracket():
+def bracket(with_wedge=True):
     """The TAZ bracket, in mount coordinates: a leg on the rail with the two clips, a bar across the top
-    to the cover screw, and a wedge with the slot for the dovetail of the pod. It prints on its top
-    end with no supports."""
+    to the cover screw, and the wedge with the slot for the dovetail of the pod. The wedge is a separate
+    part (wedge_part), screwed to the plate; with_wedge adds it for the checks and the window."""
     zc = S.RAIL_SLOT_Z
     k0, k1 = S.CLIP_KEY[0] / 2 + S.CLR, S.CLIP_KEY[1] / 2 + S.CLR
     leg = mbox(X_BACK, X_BACK + PLATE, CLIP_Y[0] - 14, BAR_Y[1], zc - 10, zc + 10)
@@ -369,11 +366,10 @@ def bracket():
         dov = Polygon((zc - k0, X_BACK - 0.01), (zc + k0, X_BACK - 0.01), (zc + k1, X_BACK + kd), (zc - k1, X_BACK + kd), align=None)
         b = b - Location(Plane(origin=(0, d0, 0), x_dir=(0, 0, 1), z_dir=(0, 1, 0))) * extrude(Plane.XY * dov, amount=d1 - d0)
         b = b - mbox(X_BACK - 1, X_BACK + kd + 0.2, d0 - S.CLIP_DROP, d0 + 0.5, zc - k1 - 0.2, zc + k1 + 0.2)
-    b = b + wedge(POD_LOC, mbox(X_BACK + PLATE - 0.01, X_BACK + 400, -1000, 1000, -1000, 1000))
-    # A 45 degree gusset over the wedge: printed top end down, the top of the wedge is then no ledge.
-    xp, yt, k = X_BACK + PLATE - 0.01, plate_y(DEEP_V1) - 0.01, 5.0
-    tri = Polygon((xp, yt), (xp + k, yt + k * SIN / COS), (xp, yt + k + k * SIN / COS), align=None)
-    return b + Pos(0, 0, POD_Z - 13.0) * extrude(tri, amount=26.0) - POD_LOC * dovetail(DOVE_CLR, 40.0)
+    b = b - wedge_groove("taz", BAR_Y[1])
+    if with_wedge:
+        b = b + wedge("taz")
+    return b
 
 
 def tie_anchor(x0, y0, z0, axis):
@@ -387,13 +383,75 @@ def tie_anchor(x0, y0, z0, axis):
     return b, mbox(x0 - 7.0, x0 + 7.0, y0 - 2.4, y0 - 0.01, z0 - 2.2, z0 + 2.2)
 
 
-def wedge(loc, front):
-    """The wedge of a bracket: from the plate (front: the space in front of it) to the back of
-    the pod at loc, behind the dovetail, with the slot of the dovetail open at the top."""
+# The wedge is a separate part. A dovetail key on its back slides down into a dovetail groove in the
+# plate of the bracket, like the rail clips. The groove is open at the top and stops at the bottom, so
+# the weight of the pod holds the wedge down. On both printers the pod has the same tilt and gap, so
+# the wedge is the same part.
+KEY = (10.0, 12.5, 2.0)                  # the key: root width, tip width, depth into the plate (1.65 mm of plate stays behind the groove)
+TAZ_N, TAZ_UP, TAZ_ACROSS = (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)
+MINI_N, MINI_UP, MINI_ACROSS = (0.0, -1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0)
+TAZ_FRONT = mbox(X_BACK + PLATE - 0.01, X_BACK + 400, -1000, 1000, -1000, 1000)
+
+
+def wedge_frame(name):
+    """(loc, n, up, across, a point on the front of the plate, the space in front of the plate)."""
+    if name == "taz":
+        return POD_LOC, TAZ_N, TAZ_UP, TAZ_ACROSS, (X_BACK + PLATE, 0.0, POD_Z), TAZ_FRONT
+    fy = MINI_PLATE_Y - PLATE
+    return MINI_LOC, MINI_N, MINI_UP, MINI_ACROSS, (MINI_X, fy, 0.0), mbox(-1000, 1000, -1000, fy + 0.01, -1000, 1000)
+
+
+def wedge_bottom(name):
+    """The height (along up) of the level bottom of the wedge: the lowest point of the stop under the
+    slot of the dovetail."""
+    import numpy as np
+    loc, n, up, across, p0, _ = wedge_frame(name)
+    v = DOVE[3][0] - 3.0 - DOVE_CLR
+    pts = [np.array(to_frame(loc, u, v, w)) for u in (-13.0, 13.0) for w in np.linspace(-BACK_W - 0.3, -BACK_W - 30, 60)]
+    pts = [q for q in pts if np.dot(q - np.array(p0), n) >= 0]
+    return min(float(np.dot(q, up)) for q in pts)
+
+
+def key_prism(name, clr, v0, v1):
+    """The dovetail of the key (clr 0) or of the groove (clr > 0): its root on the front of the plate,
+    widening into the plate, along up from v0 to v1."""
+    import numpy as np
+    loc, n, up, across, p0, _ = wedge_frame(name)
+    r_, t, d = KEY
+    o = np.array(p0, float)
+    o = o - np.dot(o, up) * np.array(up) + v0 * np.array(up)
+    pl = Plane(origin=tuple(o), x_dir=across, z_dir=up)
+    sgn = -1.0 if np.dot(np.array([pl.y_dir.X, pl.y_dir.Y, pl.y_dir.Z]), n) > 0 else 1.0
+    prof = Polygon((-r_ / 2, -0.5 * sgn), (r_ / 2, -0.5 * sgn), (t / 2, d * sgn), (-t / 2, d * sgn), align=None)
+    if clr:
+        prof = offset(prof, amount=clr, kind=Kind.INTERSECTION)
+    return extrude(pl * prof, amount=v1 - v0, dir=up)
+
+
+def wedge(name):
+    """The wedge of a bracket: from the plate to the back of the pod, behind the dovetail of the mount,
+    with the slot of that dovetail open at the top, a level bottom, and the key on its back."""
+    import numpy as np
+    loc, n, up, across, p0, front = wedge_frame(name)
     va = DOVE[3][0]
-    # The stop under the slot is 3 mm: it holds the pod and the push of the plug from above.
-    w = (loc * uvw_box(-13, 13, va - 3.0 - DOVE_CLR, MOUNT_V[1], -BACK_W - 80, -BACK_W - 0.3)) & front
-    return w - loc * dovetail(DOVE_CLR, 40.0)
+    w = (loc * uvw_box(-13, 13, va - 30.0, MOUNT_V[1], -BACK_W - 80, -BACK_W - 0.3)) & front
+    yb = wedge_bottom(name)
+    big = 1000.0
+    above = Location(Plane(origin=tuple(np.array(up) * (yb + big / 2)), z_dir=up)) * Box(2 * big, 2 * big, big)
+    w = (w & above) - loc * dovetail(DOVE_CLR, 40.0)
+    top = max(float(np.dot(np.array([vv.X, vv.Y, vv.Z]), up)) for vv in w.vertices())
+    return w + key_prism(name, 0.0, yb, top)
+
+
+def wedge_groove(name, top):
+    """The groove for the key in the plate: from the bottom of the wedge to above the top of the
+    plate."""
+    return key_prism(name, DOVE_CLR, wedge_bottom(name) - DOVE_CLR, top + 1.0)
+
+
+def wedge_part():
+    """The wedge as printed (TAZ mount coordinates): it stands on its level bottom."""
+    return wedge("taz")
 
 
 def frame(u, v, w, o):
@@ -417,9 +475,10 @@ MINI_O = (MINI_X, _front_y - (_deep[0] * MINI_V[1] + _deep[1] * MINI_W[1]), MINI
 MINI_LOC = frame(MINI_U, MINI_V, MINI_W, MINI_O)
 
 
-def mini_bracket():
+def mini_bracket(with_wedge=True):
     """The Mini 2 bracket: a plate on the front of the left upright, held by the two frame screws of
-    its top corner (longer screws in the same holes), and the wedge with the dovetail slot."""
+    its top corner (longer screws in the same holes), and the wedge with the dovetail slot (a separate
+    part, screwed to the plate; with_wedge adds it)."""
     top = to_frame(MINI_LOC, 0, DEEP_V1, -DEEP_W)[2]
     plate = mbox(-366.0, MINI_X + 15.0, MINI_PLATE_Y - PLATE, MINI_PLATE_Y, top - 60.0, 372.0)
     for x, z in MINI_SCREWS:
@@ -428,7 +487,10 @@ def mini_bracket():
     for z in (top - 54.0, top - 36.0):
         add, cut = tie_anchor(-359.0, MINI_PLATE_Y - PLATE + 0.01, z, "mini")
         plate = plate + add - cut
-    return plate + wedge(MINI_LOC, mbox(-1000, 1000, -1000, MINI_PLATE_Y - PLATE + 0.01, -1000, 1000))
+    plate = plate - wedge_groove("mini2", 372.0)
+    if with_wedge:
+        plate = plate + wedge("mini2")
+    return plate
 
 
 def to_frame(loc, u, v, w):
@@ -444,19 +506,9 @@ SCREW = {2.5: (4.5, 2.0), 3: (5.5, 3.0)}   # size: head diameter, head height (c
 SCREW_COLOR = "#B9BEC6"
 
 
-CSK = {2.5: (5.0, 1.4), 3: (6.0, 1.7)}   # countersunk: head diameter, head height
-
-
-def screw(size, length, origin, out_dir, frame=None, csk=False):
+def screw(size, length, origin, out_dir, frame=None):
     """A screw: the head on origin, outside toward out_dir, the shank of length into the part (against
-    out_dir). A countersunk screw (csk) has its head in the part, flush with origin, and length is
-    the length overall. frame is a Location to place the result, or None."""
-    if csk:
-        hd, hh = CSK[size]
-        s = Pos(0, 0, -hh / 2) * Cone(size / 2, hd / 2, hh) + Pos(0, 0, -length / 2) * Cylinder(size / 2 - 0.05, length)
-        s = s - Pos(0, 0, 0) * Cylinder(hd * 0.22, hh * 1.2)
-        s = Location(Plane(origin=origin, z_dir=out_dir)) * s
-        return frame * s if frame is not None else s
+    out_dir). frame is a Location to place the result, or None."""
     hd, hh = SCREW[size]
     s = Pos(0, 0, hh / 2) * Cylinder(hd / 2, hh) + Pos(0, 0, -length / 2) * Cylinder(size / 2 - 0.05, length)
     s = s - Pos(0, 0, hh) * Cylinder(hd * 0.22, hh * 1.2)          # the socket, for the looks
@@ -469,7 +521,7 @@ def pod_screws():
     - the frame: four M2.5 x 4 into the display (through the back ring into the raised tabs, and
       down the wells into the top holes), from the box of the display;
     - the body: four M3 x 6 down the posts into the inserts of the frame;
-    - the mount: two countersunk M3 x 6 into the inserts of the body;
+    - the mount: two M3 x 6 from inside the body, through its back into the inserts of the mount;
     - the Pi: four M2.5 x 4 through the Pi into the standoffs, from the box of the display."""
     def group(items):
         out = None
@@ -479,7 +531,7 @@ def pod_screws():
     fr = group([screw(2.5, 4.0, (u, v, -SPLIT_W), (0, 0, -1)) for u, v in TABS]
                + [screw(2.5, 4.0, (u, v, -FRAME_W - 2.2), (0, 0, -1)) for u, v in HOLES])
     bd = group([screw(3, 6.0, (u, v, -SPLIT_W - 0.1 - POST_FLOOR), (0, 0, -1)) for u, v in POSTS])
-    mt = group([screw(3, 6.0, (u, v, -BACK_W), (0, 0, -1), csk=True) for u, v in MOUNT_SCREWS])
+    mt = group([screw(3, 6.0, (u, v, -DEEP_W + WALL), (0, 0, 1)) for u, v in MOUNT_SCREWS])
     pi = group([screw(2.5, 4.0, (u, v, -STANDOFF_W - 1.6), (0, 0, -1)) for u, v in PI_HOLE_UV])
     return [("screw_frame", fr, SCREW_COLOR), ("screw_body", bd, SCREW_COLOR), ("screw_mount", mt, SCREW_COLOR),
             ("screw_pi", pi, SCREW_COLOR)]
@@ -915,7 +967,7 @@ STAGES = [
     ("take out the four Pi screws", {("screw_pi",): (0.0, 0.0, -60.0)}),
     ("take the Pi off the display", {PI: (0.0, 0.0, -40.0)}),
     ("take the clips off", {}),
-    ("take out the two screws of the mount", {("screw_mount",): (0.0, 0.0, -40.0)}),
+    ("take out the two screws of the mount", {("screw_mount",): (0.0, 0.0, 30.0)}),
     ("take the mount off the body", {("pod_mount",): (0.0, 0.0, -25.0)}),
 ]
 CLIP_LIFT = 25.0
@@ -1114,27 +1166,31 @@ def print_parts(process):
     global DOVE_CLR
     keep, DOVE_CLR = DOVE_CLR, DOVE_CLR_BY[process]
     try:
-        case, fr, mt, taz, mini = body(), pod_frame(), mount(), bracket(), mini_bracket()
+        case, fr, mt, wd = body(), pod_frame(), mount(), wedge_part()
+        taz, mini = bracket(with_wedge=False), mini_bracket(with_wedge=False)
     finally:
         DOVE_CLR = keep
     one, _ = C.tape_clip()
     two, _ = C.tape_clip(True)
     if process == "fdm":
         # The body: flat on its back. The frame: flat on its back ring. The mount: flat on the face
-        # that goes on the body, the dovetail up. The TAZ bracket: the top end of the plate on the bed.
-        # The Mini 2 bracket: the frame side of the plate on the bed. The clips: the base on the bed.
-        rots = {"case": Rot(0, 0, 0), "frame": Rot(0, 0, 0), "mount": Rot(180, 0, 0), "taz": Rot(-90, 0, 0),
-                "mini": Rot(-90, 0, 0), "clip": Rot(0, 0, 0)}
+        # that goes on the body, the dovetail up. The wedge: standing on its level bottom, the key and
+        # the slot up. The TAZ bracket: the front of the plate on the bed. The Mini 2 bracket: the frame
+        # side of the plate on the bed. The clips: the base on the bed.
+        rots = {"case": Rot(0, 0, 0), "frame": Rot(0, 0, 0), "mount": Rot(180, 0, 0), "wedge": Rot(90, 0, 0),
+                "taz": Rot(0, 90, 0), "mini": Rot(-90, 0, 0), "clip": Rot(0, 0, 0)}
     else:
         # Resin prints from the build plate down: the backs of the body, the frame and the brackets
         # face the build plate, so the open fronts face away from it and no cup of resin forms. Every
         # part leans RESIN_TILT degrees. The slicer adds the supports.
         t = RESIN_TILT
         rots = {"case": Rot(t, 0, 0), "frame": Rot(t, 0, 0), "mount": Rot(t, 0, 0) * Rot(180, 0, 0),
+                "wedge": Rot(t, 0, 0) * Rot(90, 0, 0),
                 "taz": Rot(t, 0, 0) * Rot(0, -90, 0), "mini": Rot(t, 0, 0) * Rot(-90, 0, 0), "clip": Rot(t, 0, 0)}
     return [(f"pod-body_{process}.stl", on_bed(case, rots["case"]), 1),
             (f"pod-frame_{process}.stl", on_bed(fr, rots["frame"]), 1),
             (f"pod-mount_{process}.stl", on_bed(mt, rots["mount"]), 1),
+            (f"pod-wedge_{process}.stl", on_bed(wd, rots["wedge"]), 1),
             (f"pod-bracket-taz_{process}.stl", on_bed(taz, rots["taz"]), 1),
             (f"pod-bracket-mini2_{process}.stl", on_bed(mini, rots["mini"]), 1),
             (f"cable-clip-single_{process}.stl", on_bed(one, rots["clip"]), 5),
