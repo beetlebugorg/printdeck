@@ -1,0 +1,147 @@
+
+# ============================================================================
+# The LulzBot macros of printer/printer.cfg (the TAZ Workhorse), changed for the Mini 2, so a file
+# from the LulzBot Cura profile prints on the simulated Mini 2. make.sh adds them to mini2.cfg.
+# ============================================================================
+
+# The pause and the purge of Printdeck (printdeck.cfg has the section): after a purge at the park
+# position, wipe the nozzle on the wiper pad.
+[printdeck_pause]
+wipe_gcode: NOZZLE_WIPE
+
+# LulzBot G12: 12 strokes over the wiper pad at the back, X 45 to 115 at Z1. The simulated board
+# has no pad. Check the place of the pad on a real Mini 2 before you use this on it.
+[gcode_macro NOZZLE_WIPE]
+gcode:
+    SAVE_GCODE_STATE NAME=wipe
+    G90
+    G1 Z10 F1200
+    G1 X115 Y190 F6000
+    G1 Z1 F600
+    {% for i in range(12) %}
+      G1 X45 Y190 F3000
+      G1 X115 Y190 F3000
+    {% endfor %}
+    G1 Z10 F1200
+    RESTORE_GCODE_STATE NAME=wipe
+
+# The steps of the LulzBot Cura start G-code, as on the TAZ Workhorse.
+# Use in the slicer: PRINT_START BED=80 EXTRUDER=235 WIPE=170 LAYER=0.4 SPEED=40
+# Optional: PROBE=120 is the highest nozzle temperature for probing.
+# SPEED is the first layer speed in mm/s. The prime strip prints at this speed.
+[gcode_macro PRINT_START]
+gcode:
+    {% set bed = params.BED|default(80)|float %}
+    {% set extruder = params.EXTRUDER|default(235)|float %}
+    {% set wipe = params.WIPE|default(170)|float %}
+    {% set layer = params.LAYER|default(0.4)|float %}
+    {% set probe = params.PROBE|default(120)|float %}
+    {% set speed = params.SPEED|default(15)|float %}
+    {% set prime_lines = 2 %}
+    {% set prime_x0, prime_x1, prime_y0, prime_w = 10.0, 150.0, 2.0, 0.6 %}
+    # prime_e: mm of 2.85 mm filament per mm of strip line.
+    # prime_speed: the first layer speed, but max. 15 mm3/s.
+    {% set prime_e = prime_w * layer / 6.379 %}
+    {% set prime_speed = [speed, 15.0 / (prime_w * layer)]|min %}
+    M107
+    G90
+    M82
+    G92 E0
+    M104 S{wipe}
+    M140 S{bed}
+    G28
+    M117 Heating...
+    TEMPERATURE_WAIT SENSOR=extruder MINIMUM={wipe - 2}
+    M83
+    G1 E-3 F500                 ; retract to reduce drool
+    M106 S255                   ; fan helps the nozzle cool to the wipe temperature
+    M117 Wiping nozzle...
+    NOZZLE_WIPE
+    M104 S0
+    M117 Cooling nozzle...
+    TEMPERATURE_WAIT SENSOR=extruder MAXIMUM={probe}
+    M107
+    M117 Probing...
+    BED_TILT_CALIBRATE
+    M104 S{extruder}
+    G1 X{prime_x0} Y{prime_y0} Z10 F5000
+    M117 Heating...
+    TEMPERATURE_WAIT SENSOR=heater_bed MINIMUM={bed - 1}
+    TEMPERATURE_WAIT SENSOR=extruder MINIMUM={extruder - 2}
+    # Prime strip along the front edge: 2 lines at the first layer height and speed.
+    M117 Priming {prime_lines} lines...
+    G0 Z{layer} F1500
+    G1 E4 F300                  ; undo the 3 mm wipe retract and fill the nozzle
+    {% for i in range(prime_lines) %}
+      {% set x = prime_x1 if i % 2 == 0 else prime_x0 %}
+      G1 X{x} E{(prime_x1 - prime_x0) * prime_e} F{prime_speed * 60}
+      G1 Y{prime_y0 + (i + 1) * prime_w} E{prime_w * prime_e} F{prime_speed * 60}
+    {% endfor %}
+    {% set x_end = prime_x1 if prime_lines % 2 == 1 else prime_x0 %}
+    G1 X{x_end - 20 if x_end > prime_x0 else x_end + 20} Z{layer + 0.3} F3000  ; break the strip off
+    M82
+    G92 E1
+    G1 E0 F1800                 ; retract 1 mm
+    M117 Printing...
+
+[gcode_macro PRINT_END]
+gcode:
+    M400
+    M140 S45
+    M104 S0
+    M107
+    G91
+    G1 Z10 F1200
+    G90
+    G1 X75 Y0 F3000
+    M83
+    G1 E-14 F1800
+    M82
+    M117 Cooling, please wait
+    TEMPERATURE_WAIT SENSOR=heater_bed MAXIMUM=46
+    G1 Y190 F1000               ; present the print
+    M140 S0
+    M84
+    M117 Print complete
+
+# --- Marlin compatibility for G-code from the stock LulzBot Cura profile.
+# Marlin "M109 R" / "M190 R" = wait for the target, heating or cooling.
+[gcode_macro M109]
+rename_existing: M99109
+gcode:
+    {% set s = params.S|default(params.R|default(0))|float %}
+    M99109 S{s}
+
+[gcode_macro M190]
+rename_existing: M99190
+gcode:
+    {% set s = params.S|default(params.R|default(0))|float %}
+    M99190 S{s}
+
+[gcode_macro M104]
+rename_existing: M99104
+gcode:
+    {% set s = params.S|default(params.R|default(0))|float %}
+    M99104 S{s}
+
+[gcode_macro G29]
+gcode:
+    BED_TILT_CALIBRATE
+
+[gcode_macro G12]
+gcode:
+    NOZZLE_WIPE
+
+[gcode_macro M420]
+gcode:
+    # Klipper applies bed_tilt all the time. Nothing to do.
+
+[gcode_macro M206]
+gcode:
+    # Home offsets are not used. Nothing to do.
+
+[gcode_macro M75]
+gcode:
+
+[gcode_macro M77]
+gcode:

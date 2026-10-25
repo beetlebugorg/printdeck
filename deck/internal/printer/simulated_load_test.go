@@ -1,11 +1,13 @@
 package printer_test
 
 import (
+	"bytes"
 	"io"
 	"log"
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -59,6 +61,42 @@ func TestSimPrintersLoad(t *testing.T) {
 		result, msg := batch.Run(cfg, simDict, gcode, filepath.Join(t.TempDir(), "out.serial"))
 		if result != "exit" {
 			t.Errorf("%s: run result %q: %s", m.ID, result, msg)
+		}
+	}
+}
+
+// The simulated LulzBot printers run the start and the end G-code of the LulzBot Cura profile:
+// PRINT_START heats, wipes, probes and primes, and PRINT_END presents the print (batch mode, with
+// no board).
+func TestSimLulzBotPrintStart(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "print.gcode")
+	gcode := "PRINT_START BED=60 EXTRUDER=220 WIPE=170 LAYER=0.3 SPEED=20\n" +
+		"G1 X60 Y60 Z0.3 F3000\nG1 X80 E1 F1200\nPRINT_END\n"
+	if err := os.WriteFile(path, []byte(gcode), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"taz-workhorse", "mini2"} {
+		var out bytes.Buffer
+		log.SetOutput(&out)
+		// With no board, the probe triggers at once, and the tilt puts the prime strip under the bed.
+		// The probe of the washers is in TestSimPrintersHome.
+		cfg := simConfigFile(t, id)
+		f, err := os.OpenFile(cfg, os.O_APPEND|os.O_WRONLY, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f.WriteString("\n[gcode_macro BED_TILT_CALIBRATE]\nrename_existing: BED_TILT_CALIBRATE_BOARD\ngcode:\n    M400\n")
+		f.Close()
+		result, msg := batch.Run(cfg, simDict, path, filepath.Join(t.TempDir(), "out.serial"))
+		log.SetOutput(os.Stderr)
+		if result != "exit" {
+			t.Errorf("%s: run result %q: %s", id, result, msg)
+		}
+		for _, bad := range []string{"Unknown command", "Error", "error", "out of range", "below minimum"} {
+			if strings.Contains(out.String(), bad) {
+				t.Errorf("%s: the log has %q:\n%s", id, bad, out.String())
+				break
+			}
 		}
 	}
 }
