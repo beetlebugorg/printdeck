@@ -196,6 +196,16 @@ func backRect(head image.Rectangle) image.Rectangle {
 	return image.Rect(head.Max.X-106, head.Min.Y, head.Max.X, head.Min.Y+keyH)
 }
 
+// fitTitle shortens the title of a page with an ellipsis until it fits in width, in the smallest
+// size of the title (headingAt).
+func fitTitle(s string, width int) string {
+	size := 24
+	if gfx.FinePrint() {
+		size = 12 // Face makes it larger
+	}
+	return gfx.Fit(gfx.Face(true, size), s, width)
+}
+
 // headingAt draws the title of a page in its head: an orange mark at the left edge of the head, and
 // the title, in the middle of the height of Back.
 func headingAt(c *gfx.Canvas, head image.Rectangle, title string) {
@@ -204,8 +214,11 @@ func headingAt(c *gfx.Canvas, head image.Rectangle, title string) {
 	c.Fill(image.Rect(x, y+13, x+10, y+33), orange)
 	// A long title gets a smaller font, down to 18 pixels, and then loses its end.
 	title, w := strings.ToUpper(title), head.Max.X-118-(x+20)
-	size := 24
-	for size > 18 && gfx.Width(gfx.Face(true, size), title) > w {
+	size, least := 24, 18
+	if gfx.FinePrint() {
+		least = 12 // Face makes it larger
+	}
+	for size > least && gfx.Width(gfx.Face(true, size), title) > w {
 		size--
 	}
 	c.Text(image.Rect(x+20, y, head.Max.X-118, y+keyH), title, gfx.Face(true, size), text, gfx.Left)

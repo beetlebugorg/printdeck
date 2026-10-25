@@ -37,7 +37,10 @@ func (a *App) drawConsole(c *gfx.Canvas) {
 	a.region("Replies", win)
 	a.region("Quick keys", quick)
 	face := gfx.Face(false, 16)
-	const lineH = 22
+	lineH := 22
+	if gfx.FinePrint() {
+		lineH = 26
+	}
 	var rows []printer.ConsoleLine
 	for _, l := range pr.Console() {
 		t := l.Text

@@ -253,7 +253,7 @@ func (a *App) drawSpool(c *gfx.Canvas) {
 		return
 	}
 	pf := a.navFrame()
-	f := a.navPage(c, gfx.Fit(gfx.Face(true, 24), sp.Number()+" "+sp.Label(), pf.head.Dx()-200))
+	f := a.navPage(c, fitTitle(sp.Number()+" "+sp.Label(), pf.head.Dx()-200))
 	cura := "None"
 	if m, ok := s.SlicerMaterial(sp.CuraMaterial); ok {
 		cura = m.Name
@@ -370,14 +370,14 @@ func (a *App) drawSpoolPrints(c *gfx.Canvas) {
 		return
 	}
 	pf := a.navFrame()
-	f := a.navPage(c, gfx.Fit(gfx.Face(true, 24), "Prints · "+sp.Label(), pf.head.Dx()-200))
+	f := a.navPage(c, fitTitle("Prints · "+sp.Label(), pf.head.Dx()-200))
 	recs := printer.OfSpool(a.Printer.History(), sp)
 	area := a.listArea(f)
 	if len(recs) == 0 {
 		noItems(c, area, "", "No prints used this roll")
 		return
 	}
-	l := kit.List{Area: area, N: len(recs), RowH: 90, Gap: 10, Scroll: &a.printsScroll}
+	l := kit.List{Area: area, N: len(recs), RowH: recordRowH(), Gap: 10, Scroll: &a.printsScroll}
 	a.list(c, l, func(i int) string { return recs[i].File }, func(c *gfx.Canvas, i int, box image.Rectangle) {
 		r := recs[i]
 		sum := r.Summary(func(float64) float64 { return a.recordGrams(r, sp) })

@@ -52,7 +52,11 @@ func (a *App) drawPrinterSetup(c *gfx.Canvas, st printer.State) {
 	}
 	if !probing {
 		for i, b := range boards {
-			r := right.Next(132)
+			h := 132
+			if gfx.FinePrint() {
+				h = boardH(b, right.Rest().Dx()-32)
+			}
+			r := right.Next(h)
 			a.drawBoard(c, r, b)
 			if i == 0 {
 				a.region("Board", r)
@@ -205,6 +209,14 @@ func (a *App) drawConfigs(c *gfx.Canvas) {
 func (a *App) drawBoard(c *gfx.Canvas, r image.Rectangle, b board.Info) {
 	y := r.Min.Y
 	window(c, r)
+	if gfx.FinePrint() {
+		y += 8
+		for _, l := range boardLines(b, r.Dx()-32) {
+			c.Text(image.Rect(r.Min.X+16, y, r.Max.X-16, y+l.h), l.s, l.face, l.col, gfx.Left)
+			y += l.h
+		}
+		return
+	}
 	c.Text(image.Rect(r.Min.X+16, y+10, r.Max.X-16, y+44), b.Name, gfx.Face(true, 22), lcdInk, gfx.Left)
 	small := gfx.Face(false, 18)
 	// The window is a dark display: its text is amber (lcdInk), and dimmer for the details.
@@ -220,6 +232,66 @@ func (a *App) drawBoard(c *gfx.Canvas, r image.Rectangle, b board.Info) {
 	}
 	c.Text(image.Rect(r.Min.X+16, y+78, r.Max.X-16, y+106), v, small, col, gfx.Left)
 	c.Text(image.Rect(r.Min.X+16, y+104, r.Max.X-16, y+128), b.Version, gfx.Face(false, 14), lcdDim, gfx.Left)
+}
+
+// boardLine is a line of the window of a board with the large text.
+type boardLine struct {
+	s    string
+	face font.Face
+	col  color.RGBA
+	h    int
+}
+
+// boardLines are the lines of the window of a board with the large text, for the width w: the
+// name and the version can have two lines.
+func boardLines(b board.Info, w int) []boardLine {
+	var out []boardLine
+	name, small := gfx.Face(true, 22), gfx.Face(false, 18)
+	lines := wrapText(name, b.Name, w)
+	for _, l := range lines[:min(2, len(lines))] {
+		out = append(out, boardLine{l, name, lcdInk, 32})
+	}
+	if !b.Klipper {
+		return append(out, boardLine{"No Klipper firmware on this board", small, lcdInk, 28},
+			boardLine{"It needs the Klipper firmware first.", small, lcdDim, 28})
+	}
+	v, col := "Klipper firmware is current", lcdDim
+	if !board.SameVersion(b.Version, printer.HostVersion) {
+		v, col = "Klipper firmware is old", lcdInk
+	}
+	out = append(out, boardLine{"MCU  " + b.MCU, small, lcdDim, 28}, boardLine{v, small, col, 28})
+	ver := gfx.Face(false, 14)
+	for _, l := range dashWrap(ver, b.Version, w) {
+		out = append(out, boardLine{l, ver, lcdDim, 26})
+	}
+	return out
+}
+
+// boardH is the height of the window of a board with the large text, for text of the width w.
+func boardH(b board.Info, w int) int {
+	h := 8 + 8
+	for _, l := range boardLines(b, w) {
+		h += l.h
+	}
+	return h
+}
+
+// dashWrap breaks a text with no spaces, such as a version, into at most two lines that fit in
+// width. The first line ends after a dash.
+func dashWrap(face font.Face, s string, width int) []string {
+	if gfx.Width(face, s) <= width {
+		return []string{s}
+	}
+	cut := 0
+	for i, r := range s {
+		if r == '-' && gfx.Width(face, s[:i+1]) <= width {
+			cut = i + 1
+		}
+	}
+	if cut == 0 {
+		return []string{s}
+	}
+	return []string{s[:cut], s[cut:]}
 }
 
 // drawStarting draws the start screen while Klipper starts and connects to the printer. It is the

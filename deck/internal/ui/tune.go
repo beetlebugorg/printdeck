@@ -34,8 +34,11 @@ func (a *App) drawTune(c *gfx.Canvas) {
 	c.Text(file, st.File, gfx.Face(false, 17), dim, gfx.Left)
 
 	labelW, keyW := 136, 80 // narrower in the right column of a wide screen
-	if f.wide {
+	switch {
+	case f.wide:
 		labelW, keyW = 88, 64
+	case gfx.FinePrint():
+		labelW, keyW = 120, 72 // a wider value for the large text
 	}
 	rowH := min(110, (rows.Dy()+12)/3-12)
 	s := kit.NewStack(rows, 12)
@@ -55,7 +58,11 @@ func (a *App) drawTune(c *gfx.Canvas) {
 		a.button(c, k[0], "−", raised, text, minus)
 		ro := kit.Inset(k[1], 0, 8, 0, 8)
 		window(c, ro)
-		c.Text(ro, value, gfx.Face(true, 22), lcdInk, gfx.Center)
+		if gfx.FinePrint() {
+			c.Text(kit.Inset(ro, 6, 0, 6, 0), value, gfx.Face(true, 22), lcdInk, gfx.Center)
+		} else {
+			c.Text(ro, value, gfx.Face(true, 22), lcdInk, gfx.Center)
+		}
 		a.button(c, k[2], "+", raised, text, plus)
 	}
 	setSpeed := func(v int) {

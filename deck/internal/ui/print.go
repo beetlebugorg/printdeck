@@ -289,9 +289,15 @@ func (a *App) modelView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 	}
 }
 
+// nowLineH is the height of the line of the move in printInfo with the large text.
+const nowLineH = 24
+
 // printInfoH is the height of the plate of printInfo for st.
 func (a *App) printInfoH(st printer.State) int {
 	h := 12 + 30 + 12
+	if gfx.FinePrint() && st.HasNow && a.Printer.ViewLayer() < 0 {
+		h += nowLineH + 8 // the line of the move
+	}
 	if _, ok := a.rollIn(); ok {
 		h += 32
 	}
@@ -334,7 +340,12 @@ func (a *App) printInfo(c *gfx.Canvas, r image.Rectangle, st printer.State) {
 			speed = st.LiveSpeed
 		}
 		now := fmt.Sprintf("%s · %.0f MM/S", strings.ToUpper(st.NowKind), speed)
-		c.Text(image.Rect(top.Min.X+180, top.Min.Y, top.Max.X, top.Max.Y), now, gfx.Face(true, 14), dim, gfx.Right)
+		if gfx.FinePrint() {
+			// The large text: the move has a line of its own, under the layer.
+			c.Text(s.Next(nowLineH), now, gfx.Face(true, 14), dim, gfx.Left)
+		} else {
+			c.Text(image.Rect(top.Min.X+180, top.Min.Y, top.Max.X, top.Max.Y), now, gfx.Face(true, 14), dim, gfx.Right)
+		}
 	}
 	if _, ok := a.rollIn(); ok {
 		a.rollGauge(c, s.Next(24), st)
@@ -391,15 +402,6 @@ func (a *App) layerChart(c *gfx.Canvas, r image.Rectangle, st printer.State, pla
 		}
 		return plan[layer-1]
 	}
-	nums := image.Rect(r.Max.X-150, r.Min.Y, r.Max.X, r.Max.Y)
-	now, of := "–", ""
-	if cur >= 1 && cur <= n {
-		of = " / " + mmss(plan[cur-1])
-		if a.layers.known && a.layers.layer == cur {
-			now = mmss(a.Now().Sub(a.layers.start).Seconds())
-		}
-	}
-	c.Text(image.Rect(nums.Min.X, r.Min.Y, nums.Max.X, r.Min.Y+24), now+of, gfx.Face(true, 17), text, gfx.Right)
 	sum, count := 0.0, 0
 	for layer, t := range a.layers.measure {
 		if layer >= 1 && layer <= n {
@@ -412,7 +414,18 @@ func (a *App) layerChart(c *gfx.Canvas, r image.Rectangle, st printer.State, pla
 		}
 		count = n
 	}
-	c.Text(image.Rect(nums.Min.X, r.Min.Y+24, nums.Max.X, r.Max.Y), "AVG "+mmss(sum/float64(count))+" A LAYER", gfx.Face(true, 12), dim, gfx.Right)
+	avg := "AVG " + mmss(sum/float64(count)) + " A LAYER"
+	// The numbers at the right: wider for the large text.
+	nums := image.Rect(r.Max.X-max(150, gfx.Width(gfx.Face(true, 12), avg)), r.Min.Y, r.Max.X, r.Max.Y)
+	now, of := "–", ""
+	if cur >= 1 && cur <= n {
+		of = " / " + mmss(plan[cur-1])
+		if a.layers.known && a.layers.layer == cur {
+			now = mmss(a.Now().Sub(a.layers.start).Seconds())
+		}
+	}
+	c.Text(image.Rect(nums.Min.X, r.Min.Y, nums.Max.X, r.Min.Y+24), now+of, gfx.Face(true, 17), text, gfx.Right)
+	c.Text(image.Rect(nums.Min.X, r.Min.Y+24, nums.Max.X, r.Max.Y), avg, gfx.Face(true, 12), dim, gfx.Right)
 
 	chart := image.Rect(r.Min.X, r.Min.Y+2, nums.Min.X-16, r.Max.Y-2)
 	// One bar for each layer when they fit, else for each group of layers.
@@ -586,18 +599,29 @@ func (a *App) temps(c *gfx.Canvas, area image.Rectangle, tool, toolT, bed, bedT 
 		if ok {
 			val = fmt.Sprintf("%.0f°", v)
 		}
+		valR := image.Rect(r.Min.X+tx, r.Min.Y+26, r.Max.X-10, r.Max.Y-4)
+		// The large text: a target that does not fit at the right of the label goes at the right of
+		// the value.
+		x0 := r.Min.X + tx + gfx.Width(gfx.Face(true, 14), strings.ToUpper(name)) + 8
+		setR := image.Rectangle{}
+		if set := fmt.Sprintf("%.0f°", target); gfx.FinePrint() && ok && target > 0 && r.Dx() >= 180 &&
+			gfx.Width(gfx.Face(true, 13), set) > r.Max.X-10-x0 {
+			setR = valR
+			setR.Min.X = setR.Max.X - gfx.Width(gfx.Face(true, 13), set)
+			valR.Max.X = setR.Min.X - 8
+			c.Text(setR, set, gfx.Face(true, 13), orange, gfx.Right)
+		}
 		size := 30
-		for size > 18 && gfx.Width(gfx.Face(true, size), val) > r.Max.X-10-(r.Min.X+tx) {
+		for size > 18 && gfx.Width(gfx.Face(true, size), val) > valR.Dx() {
 			size -= 2
 		}
-		c.Text(image.Rect(r.Min.X+tx, r.Min.Y+26, r.Max.X-10, r.Max.Y-4), val, gfx.Face(true, size), text, gfx.Left)
-		if ok && target > 0 {
+		c.Text(valR, val, gfx.Face(true, size), text, gfx.Left)
+		if ok && target > 0 && setR.Empty() {
 			set := fmt.Sprintf("SET %.0f°", target)
 			if r.Dx() < 180 { // a narrow card: under the value
 				c.Text(image.Rect(r.Min.X+tx, r.Max.Y-24, r.Max.X-10, r.Max.Y-6), set, gfx.Face(true, 13), orange, gfx.Left)
 			} else {
 				// The target goes at the right of the label. Large text leaves room for the number only.
-				x0 := r.Min.X + tx + gfx.Width(gfx.Face(true, 14), strings.ToUpper(name)) + 8
 				if gfx.Width(gfx.Face(true, 13), set) > r.Max.X-10-x0 {
 					set = fmt.Sprintf("%.0f°", target)
 				}

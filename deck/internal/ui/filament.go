@@ -171,7 +171,11 @@ func (a *App) drawFilamentPrinting(c *gfx.Canvas, st printer.State) {
 		if rest >= 0 {
 			c.Text(image.Rect(in.Min.X, in.Min.Y+44, in.Max.X, in.Min.Y+70), "The rest of the print uses "+printer.Weight(rest)+".", gfx.Face(false, 17), dim, gfx.Left)
 		}
-		label(c, image.Rect(in.Min.X, in.Max.Y-24, in.Max.X, in.Max.Y), "Add the roll in Rolls to follow its filament", gfx.Left)
+		if hint := "Add the roll in Rolls to follow its filament"; gfx.FinePrint() {
+			textLines(c, image.Rect(in.Min.X, in.Max.Y-52, in.Max.X, in.Max.Y), strings.ToUpper(hint), gfx.Face(true, 14), dim, 26)
+		} else {
+			label(c, image.Rect(in.Min.X, in.Max.Y-24, in.Max.X, in.Max.Y), hint, gfx.Left)
+		}
 	} else {
 		left := max(0, sp.Left()-a.grams(st.FilamentUsed, ""))
 		full := sp.Capacity()
@@ -191,6 +195,12 @@ func (a *App) drawFilamentPrinting(c *gfx.Canvas, st printer.State) {
 		// If the roll lasts: the filament of the rest of the print, and what is left after it.
 		y := in.Min.Y + d + 50
 		switch {
+		case rest < 0 && gfx.FinePrint():
+			textLines(c, image.Rect(in.Min.X, y, in.Max.X, y+56), "The file does not say how much filament it uses.", gfx.Face(false, 17), dim, 28)
+		case rest > left && gfx.FinePrint():
+			// The large text: each sentence wraps.
+			n := textLines(c, image.Rect(in.Min.X, y, in.Max.X, y+56), fmt.Sprintf("Too little: the rest of the print uses %s.", printer.Weight(rest)), gfx.Face(true, 18), red, 28)
+			textLines(c, image.Rect(in.Min.X, y+n*28+4, in.Max.X, in.Max.Y), "Change the roll before it runs out: Change filament pauses the print.", gfx.Face(false, 16), dim, 26)
 		case rest < 0:
 			c.Text(image.Rect(in.Min.X, y, in.Max.X, y+26), "The file does not say how much filament it uses.", gfx.Face(false, 17), dim, gfx.Left)
 		case rest > left:

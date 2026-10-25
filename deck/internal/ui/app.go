@@ -567,8 +567,23 @@ func (a *App) drawToast(c *gfx.Canvas) {
 		return
 	}
 	r := image.Rect(30, contentY1-64, W-30, contentY1-12)
+	msg, face := strings.ToUpper(a.toast), gfx.Face(true, 16)
+	if w := r.Dx() - 32; gfx.FinePrint() && gfx.Width(gfx.Shrink(face, msg, w), msg) > w {
+		// The large text: a long message in two lines.
+		lines := wrapText(face, msg, w)
+		if len(lines) > 2 {
+			lines = append(lines[:1], strings.Join(lines[1:], " "))
+		}
+		r.Min.Y -= 26
+		window(c, r)
+		for i, l := range lines {
+			y := r.Min.Y + 12 + i*26
+			c.Text(image.Rect(r.Min.X+16, y, r.Max.X-16, y+26), l, face, lcdInk, gfx.Center)
+		}
+		return
+	}
 	window(c, r)
-	c.Text(image.Rect(r.Min.X+16, r.Min.Y, r.Max.X-16, r.Max.Y), strings.ToUpper(a.toast), gfx.Face(true, 16), lcdInk, gfx.Center)
+	c.Text(image.Rect(r.Min.X+16, r.Min.Y, r.Max.X-16, r.Max.Y), msg, face, lcdInk, gfx.Center)
 }
 
 func abs(v int) int {
@@ -632,10 +647,11 @@ func (a *App) toggleClock() {
 // The sizes of the large text: size 12 becomes fineMin, and the sizes up to fineTop go up in
 // proportion. On the Touch Display 2 (720 x 1280, about 11.6 pixels a millimeter) a pixel of the
 // UI is 0.13 mm, and on the 7 inch display (about 5.2 pixels a millimeter) it is 0.19 mm. Size 18
-// on the Touch Display 2 is as tall as size 12 on the 7 inch display.
+// on the Touch Display 2 is as tall as size 12 on the 7 inch display. Size 21 is a little larger,
+// for easier reading.
 const (
-	fineMin = 18
-	fineTop = 24
+	fineMin = 21
+	fineTop = 28
 )
 
 // largeText reports that this App draws the small text larger.

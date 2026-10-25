@@ -111,7 +111,40 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 		steps = names
 	}
 
-	rowH := min(48, (area.Dy()-30)/max(1, len(steps)))
+	stepInfo := func(s step) (string, float64) {
+		switch {
+		case s.done:
+			return "Done", 0
+		case s.now && s.kind == "heat-bed" && st.BedTarget > 0:
+			return fmt.Sprintf("%.0f° of %.0f°", st.Bed, st.BedTarget), st.Bed / st.BedTarget
+		case s.now && s.kind == "heat-nozzle" && st.ToolTarget > 0:
+			return fmt.Sprintf("%.0f° of %.0f°", st.Tool, st.ToolTarget), st.Tool / st.ToolTarget
+		case s.now && s.kind == "cool":
+			return fmt.Sprintf("%.0f°", st.Tool), 0
+		case s.now && s.kind == "cool-bed" && st.HasBedCoolLeft:
+			return fmt.Sprintf("%.0f°  %s left", st.Bed, shortWait(st.BedCoolLeft)), 0
+		case s.now && s.kind == "cool-bed" && st.BedTarget > 0:
+			return fmt.Sprintf("%.0f° to %.0f°", st.Bed, st.BedTarget), 0
+		case s.now && s.kind == "cool-bed":
+			return fmt.Sprintf("%.0f°", st.Bed), 0
+		}
+		return "", 0
+	}
+	infoF := gfx.Face(false, 16)
+	// under is true for a step whose information goes under its name: with the large text, when
+	// the name and the information do not fit in one line.
+	under := func(s step, box image.Rectangle) bool {
+		info, _ := stepInfo(s)
+		return gfx.FinePrint() && info != "" &&
+			gfx.Width(gfx.Face(true, 19), s.name)+12+gfx.Width(infoF, info) > box.Dx()-82
+	}
+	maxH := 48
+	for _, s := range steps {
+		if under(s, area) {
+			maxH = 48 + stepInfoH
+		}
+	}
+	rowH := min(maxH, (area.Dy()-30)/max(1, len(steps)))
 	box := kit.Rows(area, 0, kit.Px(len(steps)*rowH+30))[0]
 	a.region("Steps", box)
 	head := "PRINT START"
@@ -129,31 +162,23 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 		if !s.done && !s.now {
 			col = dim
 		}
-		info, f := "", 0.0
-		switch {
-		case s.done:
-			info = "Done"
-		case s.now && s.kind == "heat-bed" && st.BedTarget > 0:
-			info, f = fmt.Sprintf("%.0f° of %.0f°", st.Bed, st.BedTarget), st.Bed/st.BedTarget
-		case s.now && s.kind == "heat-nozzle" && st.ToolTarget > 0:
-			info, f = fmt.Sprintf("%.0f° of %.0f°", st.Tool, st.ToolTarget), st.Tool/st.ToolTarget
-		case s.now && s.kind == "cool":
-			info = fmt.Sprintf("%.0f°", st.Tool)
-		case s.now && s.kind == "cool-bed" && st.HasBedCoolLeft:
-			info = fmt.Sprintf("%.0f°  %s left", st.Bed, shortWait(st.BedCoolLeft))
-		case s.now && s.kind == "cool-bed" && st.BedTarget > 0:
-			info = fmt.Sprintf("%.0f° to %.0f°", st.Bed, st.BedTarget)
-		case s.now && s.kind == "cool-bed":
-			info = fmt.Sprintf("%.0f°", st.Bed)
-		}
+		info, f := stepInfo(s)
 		// The name gets the space that the information does not use.
 		nameR := image.Rect(box.Min.X+60, y, box.Max.X-22, y+rowH-12)
-		infoR, infoF := image.Rect(box.Max.X-190, y, box.Max.X-22, y+rowH-12), gfx.Face(false, 16)
-		if info != "" {
+		infoR := image.Rect(box.Max.X-190, y, box.Max.X-22, y+rowH-12)
+		switch {
+		case under(s, box):
+			nameR.Max.Y = y + rowH - 12 - stepInfoH
+			infoR = image.Rect(nameR.Min.X, nameR.Max.Y, nameR.Max.X, y+rowH-12)
+		case info != "":
 			nameR.Max.X = min(box.Max.X-160, infoR.Max.X-min(infoR.Dx(), gfx.Width(gfx.Shrink(infoF, info, infoR.Dx()), info))-12)
 		}
 		c.Text(nameR, s.name, gfx.Face(true, 19), col, gfx.Left)
-		c.Text(infoR, info, infoF, orange, gfx.Right)
+		if under(s, box) {
+			c.Text(infoR, info, infoF, orange, gfx.Left)
+		} else {
+			c.Text(infoR, info, infoF, orange, gfx.Right)
+		}
 		if f > 0 {
 			// A thin bar under the name, with a gap: the segments of a meter crowd the line.
 			bar := image.Rect(box.Min.X+60, y+rowH-8, box.Max.X-22, y+rowH-4)
@@ -312,6 +337,9 @@ func (a *App) drawPaused(c *gfx.Canvas, st printer.State) {
 	} else {
 		a.statusPanel(c, st)
 		_, _, view := a.stateAreas()
+		if gfx.FinePrint() {
+			infoH = pausedInfoH(st, view.Dx()-36)
+		}
 		r := kit.Rows(view, 12, kit.Px(infoH), kit.Px(88), kit.Px(2*keyRowH+12), kit.Fr(1))
 		info, resume, grid = r[0], r[1], kit.Grid(r[2], 2, 2, 12)
 		a.modelView(c, r[3], st)
@@ -327,19 +355,57 @@ func (a *App) drawPaused(c *gfx.Canvas, st printer.State) {
 		where = fmt.Sprintf("Paused at layer %d of %d", st.Layer, st.Layers)
 	}
 	c.Text(image.Rect(info.Min.X+18, info.Min.Y+6, info.Max.X-18, info.Min.Y+38), where, gfx.Face(true, 19), text, gfx.Left)
-	sub := "The heaters stay on until Klipper's idle timeout."
-	switch {
-	case st.Message != "":
-		sub = st.Message
-	case st.ToolTarget > 0:
-		sub = fmt.Sprintf("The nozzle stays at %.0f°.", st.ToolTarget)
+	sub := pausedSub(st)
+	if gfx.FinePrint() {
+		for i, l := range subLines(sub, info.Dx()-36) {
+			y := info.Min.Y + 38 + i*largeSubH
+			c.Text(image.Rect(info.Min.X+18, y, info.Max.X-18, y+largeSubH), l, gfx.Face(false, 16), dim, gfx.Left)
+		}
+	} else {
+		c.Text(image.Rect(info.Min.X+18, info.Min.Y+38, info.Max.X-18, info.Max.Y-6), sub, gfx.Face(false, 16), dim, gfx.Left)
 	}
-	c.Text(image.Rect(info.Min.X+18, info.Min.Y+38, info.Max.X-18, info.Max.Y-6), sub, gfx.Face(false, 16), dim, gfx.Left)
 	a.button(c, resume, "Resume", orange, onAcc, pr.Resume)
 	a.button(c, grid[0], "Change filament", raised, text, func() { a.openSwap(swapChange) })
 	a.button(c, grid[1], "Move head", raised, text, func() { a.open(pageMove) })
 	a.button(c, grid[2], "Tune", raised, text, func() { a.tune = true })
 	a.button(c, grid[3], "Cancel", raised, red, a.askCancel)
+}
+
+// stepInfoH is the height of the information of a step under its name, with the large text.
+const stepInfoH = 26
+
+// pausedSub is the line under the title of a pause.
+func pausedSub(st printer.State) string {
+	switch {
+	case st.Message != "":
+		return st.Message
+	case st.ToolTarget > 0:
+		return fmt.Sprintf("The nozzle stays at %.0f°.", st.ToolTarget)
+	}
+	return "The heaters stay on until Klipper's idle timeout."
+}
+
+// pausePromptSub is the line under the message of the file in a pause.
+func pausePromptSub(st printer.State) string {
+	switch {
+	case st.PauseChecked:
+		return fmt.Sprintf("Height checked: %+.2f mm from the file.", st.PauseDelta)
+	case st.PauseCheck:
+		return "Then check the height of the part."
+	}
+	return ""
+}
+
+// pausedInfoH is the height of the plate of a pause with the large text, for text of the width w.
+func pausedInfoH(st printer.State, w int) int {
+	if st.PausePrompt == "" {
+		return 6 + 32 + len(subLines(pausedSub(st), w))*largeSubH + 6
+	}
+	h := 6 + min(2, len(wrapText(gfx.Face(true, 17), st.PausePrompt, w)))*28 + 6
+	if sub := pausePromptSub(st); sub != "" {
+		h += 2 + len(subLines(sub, w))*largeSubH
+	}
+	return h
 }
 
 // finishedView draws the finished print in box: the model as the print left it. The model view of
@@ -378,15 +444,31 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 		a.statusPanel(c, st)
 		_, _, view := a.stateAreas()
 		// The model gets the height that is free: a taller screen shows a larger model.
-		r := kit.Rows(view, 8, kit.Fr(1), kit.Px(32), kit.Px(102), kit.Px(keyRowH))
+		resultH := 32
+		if gfx.FinePrint() {
+			resultH = 60 // two lines
+		}
+		infoH := 102
+		if gfx.FinePrint() && st.Finished == "error" && st.FinishedError != "" {
+			infoH = 128 // three lines of the error
+		}
+		r := kit.Rows(view, 8, kit.Fr(1), kit.Px(resultH), kit.Px(infoH), kit.Px(keyRowH))
 		box, result, info, end = r[0], r[1], r[2], r[3]
 	}
 	a.finishedView(c, box, st)
-	line := title + " · " + st.FinishedFile + " · " + hm(int(st.FinishedTime.Minutes()))
+	what := hm(int(st.FinishedTime.Minutes()))
 	if st.FinishedFilament > 0 {
-		line += " · " + a.weight(st.FinishedFilament)
+		what += " · " + a.weight(st.FinishedFilament)
 	}
-	c.Text(result, line, gfx.Face(true, 18), text, gfx.Center)
+	line := title + " · " + st.FinishedFile + " · " + what
+	if gfx.FinePrint() && result.Dy() >= 60 {
+		// The large text: the result and the file, and under them the time and the filament.
+		lines := kit.Rows(result, 0, kit.Fr(1), kit.Fr(1))
+		c.Text(lines[0], title+" · "+st.FinishedFile, gfx.Face(true, 18), text, gfx.Center)
+		c.Text(lines[1], what, gfx.Face(true, 18), text, gfx.Center)
+	} else {
+		c.Text(result, line, gfx.Face(true, 18), text, gfx.Center)
+	}
 	a.region("Result", result)
 
 	plate(c, info)
@@ -394,7 +476,7 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 	if st.Finished == "error" && st.FinishedError != "" {
 		c.Text(image.Rect(info.Min.X+18, info.Min.Y+8, info.Max.X-18, info.Min.Y+40), "What happened", gfx.Face(true, 19), text, gfx.Left)
 		for i, l := range wrapText(gfx.Face(false, 16), st.FinishedError, info.Dx()-36) {
-			if i < 2 {
+			if i < 2 || i < 3 && info.Dy() >= 128 {
 				c.Text(image.Rect(info.Min.X+18, info.Min.Y+40+i*26, info.Max.X-18, info.Min.Y+66+i*26), l, gfx.Face(false, 16), dim, gfx.Left)
 			}
 		}
@@ -432,13 +514,7 @@ func (a *App) drawPausePrompt(c *gfx.Canvas, st printer.State, info, resume imag
 	pr := a.Printer
 	face := gfx.Face(true, 17)
 	lines := wrapText(face, st.PausePrompt, info.Dx()-36)
-	sub := ""
-	switch {
-	case st.PauseChecked:
-		sub = fmt.Sprintf("Height checked: %+.2f mm from the file.", st.PauseDelta)
-	case st.PauseCheck:
-		sub = "Then check the height of the part."
-	}
+	sub := pausePromptSub(st)
 	y := info.Min.Y + 6
 	for i, l := range lines {
 		if i == 2 {
@@ -447,7 +523,13 @@ func (a *App) drawPausePrompt(c *gfx.Canvas, st printer.State, info, resume imag
 		c.Text(image.Rect(info.Min.X+18, y, info.Max.X-18, y+28), l, face, text, gfx.Left)
 		y += 28
 	}
-	if sub != "" {
+	switch {
+	case sub != "" && gfx.FinePrint():
+		for i, l := range subLines(sub, info.Dx()-36) {
+			ly := y + 2 + i*largeSubH
+			c.Text(image.Rect(info.Min.X+18, ly, info.Max.X-18, ly+largeSubH), l, gfx.Face(false, 16), dim, gfx.Left)
+		}
+	case sub != "":
 		c.Text(image.Rect(info.Min.X+18, y+2, info.Max.X-18, info.Max.Y-6), sub, gfx.Face(false, 16), dim, gfx.Left)
 	}
 	a.button(c, resume, "Resume", orange, onAcc, func() {

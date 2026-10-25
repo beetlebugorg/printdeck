@@ -16,7 +16,7 @@ import (
 func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 	r := a.record
 	pf := a.navFrame()
-	pg := a.navPage(c, gfx.Fit(gfx.Face(true, 24), r.File, pf.head.Dx()-200))
+	pg := a.navPage(c, fitTitle(r.File, pf.head.Dx()-200))
 	rows := a.recordRows(r)
 
 	// Tall: the picture, the table, and Reprint. Wide: the picture and the table side by side, as

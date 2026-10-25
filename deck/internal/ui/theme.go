@@ -5,7 +5,10 @@ import (
 	"image/color"
 	"strings"
 
+	"golang.org/x/image/font"
+
 	"printdeck/internal/gfx"
+	"printdeck/kit"
 )
 
 // The look of a piece of equipment: a light grey chassis with module plates, physical keys that travel when
@@ -194,7 +197,37 @@ func keyBeside(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RG
 	for size > 13 && gfx.Width(gfx.Face(true, size), label) > area.Dx()-12 {
 		size--
 	}
+	if gfx.FinePrint() {
+		keyLabel(c, area, label, gfx.Face(true, size), ink)
+		return
+	}
 	c.Text(area, label, gfx.Face(true, size), ink, gfx.Center)
+}
+
+// keyLabel draws the label of a key with the large text. The label keeps 6 pixels from the sides
+// of the key. A label that is too long for one line goes in two lines when the key is high enough.
+func keyLabel(c *gfx.Canvas, area image.Rectangle, label string, face font.Face, ink color.RGBA) {
+	in := kit.Inset(area, 6, 0, 6, 0)
+	const lineH = 27
+	if i := splitAt(label); gfx.Width(face, label) > in.Dx() && i > 0 && area.Dy() >= 2*lineH {
+		y := area.Min.Y + area.Dy()/2 - lineH
+		c.Text(image.Rect(in.Min.X, y, in.Max.X, y+lineH), label[:i], face, ink, gfx.Center)
+		c.Text(image.Rect(in.Min.X, y+lineH, in.Max.X, y+2*lineH), label[i+1:], face, ink, gfx.Center)
+		return
+	}
+	c.Text(in, label, face, ink, gfx.Center)
+}
+
+// splitAt returns the index of the space that splits s into two lines of about the same length,
+// or -1 when s has no space.
+func splitAt(s string) int {
+	best := -1
+	for i, r := range s {
+		if r == ' ' && (best < 0 || abs(len(s)-2*i) < abs(len(s)-2*best)) {
+			best = i
+		}
+	}
+	return best
 }
 
 // fader draws a horizontal slider: a slot, the part up to the value in orange, and a grip cap.
@@ -244,6 +277,22 @@ func faderCapWith(c *gfx.Canvas, x, y int, vertical bool, cap color.RGBA) {
 // label draws a small uppercase label, as printed on a panel.
 func label(c *gfx.Canvas, r image.Rectangle, s string, a gfx.Align) {
 	c.Text(r, strings.ToUpper(s), gfx.Face(true, 14), dim, a)
+}
+
+// textLines draws s in lines that fit the width of r, lineH high each, from the top of r, as many
+// as r has room for. The last line ends in an ellipsis when the text is longer. It returns the
+// number of lines.
+func textLines(c *gfx.Canvas, r image.Rectangle, s string, face font.Face, col color.RGBA, lineH int) int {
+	lines := wrapText(face, s, r.Dx())
+	n := max(1, min(len(lines), r.Dy()/lineH))
+	if len(lines) > n {
+		lines = append(lines[:n-1], strings.Join(lines[n-1:], " "))
+	}
+	for i, l := range lines {
+		y := r.Min.Y + i*lineH
+		c.Text(image.Rect(r.Min.X, y, r.Max.X, y+lineH), l, face, col, gfx.Left)
+	}
+	return len(lines)
 }
 
 // detailRows draws rows of a label at the left and a value at the right in box, rowH high each,

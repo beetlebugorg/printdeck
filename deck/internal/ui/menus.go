@@ -56,9 +56,16 @@ func (a *App) menuRowsWait(c *gfx.Canvas, area image.Rectangle, wide bool, rowH,
 		limit = rowH * 16 / 10
 	}
 	rowH = min(limit, (area.Dy()+gap)/max(1, len(items))-gap)
-	if rowH < minRowH {
+	least := minRowH
+	if gfx.FinePrint() {
+		// The large text: a row is high enough for the title and the lines under it.
+		for _, it := range items {
+			least = max(least, largeRowH(len(subLines(it.sub, area.Dx()-largeRowInset))))
+		}
+	}
+	if rowH < least {
 		// Too many rows for the area: rows of a size to touch, in a list that scrolls.
-		l := kit.List{Area: area, N: len(items), RowH: minRowH + gap, Gap: gap, Scroll: a.pageScroll()}
+		l := kit.List{Area: area, N: len(items), RowH: least + gap, Gap: gap, Scroll: a.pageScroll()}
 		a.list(c, l, func(i int) string { return items[i].title }, func(c *gfx.Canvas, i int, r image.Rectangle) {
 			it := items[i]
 			a.drawMenuRow(c, r, it.title, it.sub, it.col, it.tap != nil, wait && it.tap != nil)
@@ -242,8 +249,12 @@ func (a *App) drawManualProbe(c *gfx.Canvas, st printer.State) {
 	plate(c, box)
 	face := gfx.Face(false, 18)
 	ls := kit.NewStack(kit.Inset(box, 18, 14, 18, 0), 0)
+	lineH := 34
+	if gfx.FinePrint() {
+		lineH = 28 // the larger text has more lines
+	}
 	for _, l := range wrapText(face, "Put a sheet of paper under the nozzle. Lower the nozzle until the paper drags a little when you move it, then tap Accept.", box.Dx()-36) {
-		c.Text(ls.Next(34), l, face, text, gfx.Left)
+		c.Text(ls.Next(lineH), l, face, text, gfx.Left)
 	}
 	for i, r := range kit.Grid(steps, 3, 2, 10) {
 		v := []float64{-1, -0.1, -0.025, 0.025, 0.1, 1}[i]
@@ -414,10 +425,18 @@ func (a *App) drawHistory(c *gfx.Canvas) {
 		a.record = recs[i]
 		a.open(pageRecord)
 	}
-	l := kit.List{Area: area, N: len(recs), RowH: 90, Gap: 10, Scroll: &a.historyScroll}
+	l := kit.List{Area: area, N: len(recs), RowH: recordRowH(), Gap: 10, Scroll: &a.historyScroll}
 	a.list(c, l, func(i int) string { return recs[i].File }, func(c *gfx.Canvas, i int, box image.Rectangle) {
 		a.recordRow(c, box, recs[i], recs[i].Summary(func(mm float64) float64 { return a.grams(mm, "") }))
 	}, open)
+}
+
+// recordRowH is the height of a row of recordRow, with the gap under it.
+func recordRowH() int {
+	if gfx.FinePrint() {
+		return 114
+	}
+	return 90
 }
 
 // recordRow is the row of a finished print in a list: the file, and under it the summary at the
@@ -431,6 +450,12 @@ func (a *App) recordRow(c *gfx.Canvas, box image.Rectangle, r printer.Record, su
 	c.Text(image.Rect(box.Min.X+18, box.Min.Y+8, box.Max.X-18, box.Min.Y+38), r.File, gfx.Face(true, 19), text, gfx.Left)
 	// The date at the right, and the summary in the space that it leaves.
 	date := fileDate(r.End, a.Now(), a.Clock24)
+	if gfx.FinePrint() {
+		// The large text: the summary and the date in lines of their own.
+		c.Text(image.Rect(box.Min.X+18, box.Min.Y+38, box.Max.X-18, box.Min.Y+66), summary, gfx.Face(false, 16), col, gfx.Left)
+		c.Text(image.Rect(box.Min.X+18, box.Min.Y+66, box.Max.X-18, box.Min.Y+94), date, gfx.Face(false, 14), dim, gfx.Left)
+		return
+	}
 	line := image.Rect(box.Min.X+18, box.Min.Y+38, box.Max.X-18, box.Max.Y-8)
 	c.Text(line, date, gfx.Face(false, 14), dim, gfx.Right)
 	sum := line
@@ -587,7 +612,11 @@ func (a *App) drawStats(c *gfx.Canvas) {
 	}
 
 	// The results as a bar: completed, cancelled, failed. Then the details.
-	r := kit.Rows(kit.Inset(rest, 0, 0, 0, 8), 4, kit.Px(24), kit.Px(24), kit.Fr(1), kit.Px(22))
+	footH := 22
+	if gfx.FinePrint() {
+		footH = 48 // two lines
+	}
+	r := kit.Rows(kit.Inset(rest, 0, 0, 0, 8), 4, kit.Px(24), kit.Px(24), kit.Fr(1), kit.Px(footH))
 	bar := r[0]
 	window(c, bar)
 	a.region("Results", bar)
@@ -655,8 +684,15 @@ func (a *App) drawStats(c *gfx.Canvas) {
 		detailRows(c, area, rows, area.Dy()/len(rows))
 	}
 	if !s.Since.IsZero() {
-		label(c, kit.Inset(r[3], 0, 4, 0, 0), fmt.Sprintf("Since %s · grams for %.2f mm %s", s.Since.Format("Jan 2, 2006"),
-			a.Printer.Machine().Diameter(), cmp.Or(a.Material, "PLA")), gfx.Center)
+		since := "Since " + s.Since.Format("Jan 2, 2006")
+		grams := fmt.Sprintf("grams for %.2f mm %s", a.Printer.Machine().Diameter(), cmp.Or(a.Material, "PLA"))
+		if gfx.FinePrint() {
+			l := kit.Rows(kit.Inset(r[3], 0, 4, 0, 0), 0, kit.Fr(1), kit.Fr(1))
+			label(c, l[0], since, gfx.Center)
+			label(c, l[1], grams, gfx.Center)
+		} else {
+			label(c, kit.Inset(r[3], 0, 4, 0, 0), since+" · "+grams, gfx.Center)
+		}
 	}
 }
 

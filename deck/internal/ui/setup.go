@@ -205,9 +205,24 @@ func (a *App) drawSetup(c *gfx.Canvas) {
 }
 
 func (a *App) setupMessage(c *gfx.Canvas, r image.Rectangle) {
-	if m := a.setup.msg; m != "" {
-		c.Text(r, m, gfx.Face(false, 16), dim, gfx.Center)
+	m := a.setup.msg
+	if m == "" {
+		return
 	}
+	face := gfx.Face(false, 16)
+	if w := r.Dx(); gfx.FinePrint() && gfx.Width(gfx.Shrink(face, m, w), m) > w {
+		// The large text: a long message in two lines, from a little higher.
+		lines := wrapText(face, m, w)
+		if len(lines) > 2 {
+			lines = append(lines[:1], strings.Join(lines[1:], " "))
+		}
+		for i, l := range lines {
+			y := r.Min.Y - 12 + i*24
+			c.Text(image.Rect(r.Min.X, y, r.Max.X, y+24), l, face, dim, gfx.Center)
+		}
+		return
+	}
+	c.Text(r, m, face, dim, gfx.Center)
 }
 
 func (a *App) drawSetupWifi(c *gfx.Canvas, box image.Rectangle) {
@@ -301,6 +316,8 @@ func (a *App) drawSetupDone(c *gfx.Canvas, box image.Rectangle) {
 	var lines []string // a label, then its value
 	if s.status.Connected() {
 		lines = append(lines, "Wi-Fi", s.status.SSID+"  "+s.status.IP)
+	} else if gfx.FinePrint() {
+		lines = append(lines, "Wi-Fi", "Not connected · Ethernet works") // shorter for the large text
 	} else {
 		lines = append(lines, "Wi-Fi", "Not connected. Ethernet works with no setup.")
 	}

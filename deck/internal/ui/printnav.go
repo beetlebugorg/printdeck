@@ -329,6 +329,22 @@ func (a *App) materialCheck(path string) (question, yes string, danger bool, set
 // low (many rows on a wide screen), with the text at the right of the title.
 func rowText(c *gfx.Canvas, r image.Rectangle, title, sub string, titleCol, subCol color.RGBA) {
 	title = strings.ToUpper(title)
+	if gfx.FinePrint() && r.Dy() >= largeRowH(1) {
+		// The large text: the text under the title goes in two lines when it is too long for one
+		// line and the row is high enough. The lines are in the middle of the row.
+		subW := r.Dx() - largeRowInset
+		lines := subLines(sub, subW)
+		if r.Dy() < largeRowH(len(lines)) {
+			lines = []string{sub}
+		}
+		y := r.Min.Y + (r.Dy()-largeRowH(len(lines)))/2 + largeRowPad
+		c.Text(image.Rect(r.Min.X+18, y, r.Min.X+18+subW, y+largeTitleH), title, gfx.Face(true, 20), titleCol, gfx.Left)
+		for i, l := range lines {
+			ly := y + largeTitleH + i*largeSubH
+			c.Text(image.Rect(r.Min.X+18, ly, r.Min.X+18+subW, ly+largeSubH), l, gfx.Face(false, 16), subCol, gfx.Left)
+		}
+		return
+	}
 	if r.Dy() >= 58 {
 		c.Text(image.Rect(r.Min.X+18, r.Min.Y+8, r.Max.X-50, r.Min.Y+40), title, gfx.Face(true, 20), titleCol, gfx.Left)
 		c.Text(image.Rect(r.Min.X+18, r.Min.Y+38, r.Max.X-50, r.Max.Y-8), sub, gfx.Face(false, 16), subCol, gfx.Left)
@@ -338,6 +354,28 @@ func rowText(c *gfx.Canvas, r image.Rectangle, title, sub string, titleCol, subC
 	tw := gfx.Width(tf, title)
 	c.Text(image.Rect(r.Min.X+16, r.Min.Y, r.Min.X+16+tw, r.Max.Y), title, tf, titleCol, gfx.Left)
 	c.Text(image.Rect(r.Min.X+28+tw, r.Min.Y, r.Max.X-46, r.Max.Y), sub, sf, subCol, gfx.Right)
+}
+
+// The parts of a menu row with the large text: the space over and under the text, the title, and
+// each line of the text under it. largeRowInset is the width of the row that has no text: the
+// margin at the left, and the arrow with space around it at the right.
+const largeRowPad, largeTitleH, largeSubH, largeRowInset = 8, 30, 27, 18 + 58
+
+// largeRowH is the height of a menu row with the large text and n lines under the title.
+func largeRowH(n int) int { return 2*largeRowPad + largeTitleH + n*largeSubH }
+
+// subLines is the text under the title of a menu row with the large text: one line, or two lines
+// when it is too wide for one line in width. The two lines keep the full size.
+func subLines(sub string, width int) []string {
+	f := gfx.Face(false, 16)
+	if gfx.Width(f, sub) <= width {
+		return []string{sub}
+	}
+	lines := wrapText(f, sub, width)
+	if len(lines) > 2 {
+		lines = append(lines[:1], strings.Join(lines[1:], " "))
+	}
+	return lines
 }
 
 // menuRow is a row of a menu page: a title, a line under it, and an arrow. tap runs when the row

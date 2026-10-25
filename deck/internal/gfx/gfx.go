@@ -237,6 +237,13 @@ func SetFinePrint(min, top int) {
 	fontMu.Unlock()
 }
 
+// FinePrint reports that SetFinePrint makes the small sizes larger.
+func FinePrint() bool {
+	fontMu.Lock()
+	defer fontMu.Unlock()
+	return finePrint.min > 12
+}
+
 // fineSize returns the size of Face for the size px. The caller holds fontMu.
 func fineSize(px int) int {
 	lo, top := 12, finePrint.top
@@ -312,7 +319,9 @@ func (f fallbackFace) Metrics() font.Metrics { return f.primary.Metrics() }
 func Width(face font.Face, s string) int { return font.MeasureString(face, s).Ceil() }
 
 // Shrink returns the largest size of face, down to three quarters of its size, in which s fits in
-// width. It returns face when s fits, or when no size fits, or for a face that Face did not make.
+// width. A face that SetFinePrint made larger goes down to six sevenths of its size only, so that
+// the small text stays large. It returns face when s fits, or when no size fits, or for a face
+// that Face did not make.
 func Shrink(f0 font.Face, s string, width int) font.Face {
 	if Width(f0, s) <= width {
 		return f0
@@ -324,15 +333,13 @@ func Shrink(f0 font.Face, s string, width int) font.Face {
 		return f0
 	}
 	px, bold := info[0], info[1] == 1
-	// A face that SetFinePrint made larger can go down to three quarters of the size that the
-	// caller asked for.
+	floor := max(10, px*3/4)
 	fontMu.Lock()
-	asked := px
-	for asked > 1 && fineSize(asked-1) >= px {
-		asked--
+	if finePrint.min > 12 && px >= finePrint.min && px < finePrint.top {
+		floor = px * 6 / 7
 	}
 	fontMu.Unlock()
-	for size := px - 1; size >= max(10, min(px, asked)*3/4); size-- {
+	for size := px - 1; size >= floor; size-- {
 		fontMu.Lock()
 		f := face(bold, size)
 		fontMu.Unlock()

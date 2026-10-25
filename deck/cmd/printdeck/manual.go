@@ -26,12 +26,13 @@ import (
 // and the text for each part. The deck draws the pictures itself, so the manual follows the UI.
 // Each callout points at the part of the screen with its name (keysRect).
 //
-//	printdeck manual DIR [wide|lulzbot|cura]
+//	printdeck manual DIR [wide|lulzbot|cura|large]
 //	                                      write DIR/index.html, DIR/booklet.html and the pictures in
 //	                                      DIR/img. wide draws the screens of a display that is mounted
 //	                                      wide. lulzbot is the wide manual with the upgrade guides for
 //	                                      the TAZ Workhorse (upgrade.go). cura is the booklet of the
-//	                                      Cura plugin (cura.go).
+//	                                      Cura plugin (cura.go). large draws the tall screens with the
+//	                                      large text of the Touch Display 2.
 
 //go:embed manual.html
 var manualHTML string
@@ -919,7 +920,7 @@ func manualSections() []section {
 
 func manual(args []string) {
 	if len(args) < 1 {
-		log.Fatal("usage: printdeck manual DIR [wide|lulzbot|cura]")
+		log.Fatal("usage: printdeck manual DIR [wide|lulzbot|cura|large]")
 	}
 	dir := args[0]
 	mode := ""
@@ -941,6 +942,9 @@ func manual(args []string) {
 	a, p := demoApp()
 	a.Now = demoNow
 	a.Wide = wide
+	if mode == "large" {
+		a.TextSize = "large"
+	}
 	w, h := a.Screen().W, a.Screen().H
 	a.Setup = &ui.DemoSetup{
 		Nets: []wifi.Network{{SSID: "Extremely", Signal: -48, Secure: true}, {SSID: "Workshop", Signal: -63, Secure: true},
@@ -987,6 +991,10 @@ func manual(args []string) {
 			parts := make([]image.Rectangle, len(f.Callouts))
 			for i, co := range f.Callouts {
 				r, ok := keysRect(a, co.Title)
+				if !ok && mode == "large" {
+					// The large text can push a part off the screen, into a list that scrolls.
+					continue
+				}
 				if !ok {
 					log.Fatalf("manual: %s: the screen has no part %q", f.Name, co.Title)
 				}

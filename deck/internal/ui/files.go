@@ -60,12 +60,18 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 		if i == 0 { // the names of the first row
 			a.region("Picture", pic)
 		}
-		c.Text(image.Rect(r.Min.X+92, r.Min.Y+8, r.Max.X-12, r.Min.Y+38), f.Name, gfx.Face(true, 19), text, gfx.Left)
-		c.Text(image.Rect(r.Min.X+92, r.Min.Y+36, r.Max.X-12, r.Min.Y+60), a.metaLine(m), gfx.Face(false, 16), dim, gfx.Left)
+		// The name, the slicer data, and the date in three lines; a little further apart for the
+		// large text.
+		y1, y2, y3 := 8, 36, 58
+		if gfx.FinePrint() {
+			y1, y2, y3 = 4, 34, 60
+		}
+		c.Text(image.Rect(r.Min.X+92, r.Min.Y+y1, r.Max.X-12, r.Min.Y+y1+30), f.Name, gfx.Face(true, 19), text, gfx.Left)
+		c.Text(image.Rect(r.Min.X+92, r.Min.Y+y2, r.Max.X-12, r.Min.Y+y2+24), a.metaLine(m), gfx.Face(false, 16), dim, gfx.Left)
 		if i == 0 {
 			a.textRegion("File", image.Rect(r.Min.X+92, r.Min.Y+8, r.Max.X-12, r.Min.Y+60), gfx.Face(true, 19), gfx.Fit(gfx.Face(true, 19), f.Name, r.Dx()-104))
 		}
-		c.Text(image.Rect(r.Min.X+92, r.Min.Y+58, r.Max.X-12, r.Max.Y-6), fileDate(f.Date, a.Now(), a.Clock24), gfx.Face(false, 14), dim, gfx.Left)
+		c.Text(image.Rect(r.Min.X+92, r.Min.Y+y3, r.Max.X-12, r.Max.Y-6), fileDate(f.Date, a.Now(), a.Clock24), gfx.Face(false, 14), dim, gfx.Left)
 		if i == 0 {
 			a.textRegion("Date", image.Rect(r.Min.X+92, r.Min.Y+58, r.Max.X-12, r.Max.Y-6), gfx.Face(false, 14), fileDate(f.Date, a.Now(), a.Clock24))
 		}
@@ -193,7 +199,7 @@ func drawModelShape(c *gfx.Canvas, r image.Rectangle) {
 func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 	f := a.file
 	pf := a.navFrame()
-	pg := a.navPage(c, gfx.Fit(gfx.Face(true, 24), f.Name, pf.head.Dx()-200))
+	pg := a.navPage(c, fitTitle(f.Name, pf.head.Dx()-200))
 	m := a.Printer.FileMeta(f.Path)
 
 	var rows [][2]string

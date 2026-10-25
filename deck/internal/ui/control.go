@@ -189,7 +189,11 @@ func (a *App) drawMove(c *gfx.Canvas) {
 	a.drawJoystick(c, pad, moving)
 	a.region("Joystick", pad)
 	if !f.wide {
-		label(c, image.Rect(pad.Min.X, pad.Max.Y+6, pad.Max.X, pad.Max.Y+26), "XY  hold to move · Z mm per tap below", gfx.Center)
+		hint := "XY  hold to move · Z mm per tap below"
+		if gfx.FinePrint() {
+			hint = "XY hold to move · Z mm a tap" // shorter for the large text
+		}
+		label(c, image.Rect(pad.Min.X, pad.Max.Y+6, pad.Max.X, pad.Max.Y+26), hint, gfx.Center)
 	}
 
 	// Z: a row with the steps in the middle.
