@@ -721,6 +721,9 @@ func (sq *SerialQueue) background() {
 		timer.Reset(timerWait(next, sq.Now()))
 		select {
 		case <-sq.exit:
+			if sq.kind == DebugFile {
+				sq.drainDebugFile()
+			}
 			return
 		case data := <-sq.input:
 			sq.inputEvent(sq.Now(), data)
@@ -730,6 +733,19 @@ func (sq *SerialQueue) background() {
 			sq.timerCmd = prNow
 			sq.mu.Unlock()
 		case <-timer.C:
+		}
+	}
+}
+
+// drainDebugFile writes the commands that still wait for their clock, at the exit in batch mode.
+// The clock estimate of a batch run is 1e12 Hz from its start (clocksync.connect_file), so a
+// command waits a few milliseconds of real time before the loop writes it. The C loop drops the
+// commands that still wait at the exit. Klipper's Python host is slow enough that none wait. The
+// Go host is fast, so without this the end of the file depends on the speed of the computer.
+func (sq *SerialQueue) drainDebugFile() {
+	for {
+		if sq.commandEvent(sq.Now()+3600.) != prNow {
+			return
 		}
 	}
 }
