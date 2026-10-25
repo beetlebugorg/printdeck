@@ -319,3 +319,25 @@ func NewCartesianStepper(axis byte) *StepperKinematics {
 	}
 	return sk
 }
+
+// CoreXY kinematics stepper pulse time generation (kin_corexy.c).
+//
+//	Copyright (C) 2018-2019  Kevin O'Connor <kevin@koconnor.net>
+
+// NewCoreXYStepper makes the solver of a corexy stepper: '+' follows x + y, and '-' follows x - y.
+func NewCoreXYStepper(typ byte) *StepperKinematics {
+	sk := &StepperKinematics{}
+	if typ == '+' {
+		sk.CalcPosition = func(_ *StepperKinematics, m *Move, t float64) float64 {
+			c := m.GetCoord(t)
+			return c.X + c.Y
+		}
+	} else if typ == '-' {
+		sk.CalcPosition = func(_ *StepperKinematics, m *Move, t float64) float64 {
+			c := m.GetCoord(t)
+			return c.X - c.Y
+		}
+	}
+	sk.ActiveFlags = AFX | AFY
+	return sk
+}
