@@ -10,7 +10,7 @@ bracket has 0.35 mm of clearance on each side.
 
 | File | Print | On the bed | Supports |
 |---|---|---|---|
-| `pod-case_fdm.stl` | 1 | The open front | Inside the deep part only. Block the supports under the back of the thin part and in the side vents. Use a brim. |
+| `pod-case_fdm.stl` | 1 | The bottom end (it stands up) | None needed. Cura adds about 1 g at the rounded edges on the bed. Use a brim: the part is 132 mm tall. |
 | `pod-bracket-taz_fdm.stl` | 1, for the TAZ | The top end of the plate | Block the supports in the two slots for the rail clips. Their roofs are 12 mm bridges, and support in a slot spoils the fit of the clip. Use a brim. |
 | `pod-bracket-mini2_fdm.stl` | 1, for the Mini 2 | The side of the plate that goes on the frame | None |
 | `cable-clip-single_fdm.stl` | 5, for the TAZ | The base | None |

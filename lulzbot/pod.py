@@ -128,8 +128,10 @@ def rounded_box(u0, u1, v0, v1, w0, w1, rad):
 
 
 def outer():
-    """The body envelope: the thin part around the display frame, and the deep part around the Pi."""
-    v0, v1 = BODY_V
+    """The body envelope: the thin part around the display frame, and the deep part around the Pi. Both
+    go down to the bottom of the deep part, so the bottom end is one flat face: the case prints
+    standing on it."""
+    v0, v1 = min(BODY_V[0], DEEP_V0), BODY_V[1]
     o = rounded_box(-BODY_U, BODY_U, v0, v1, -THIN_W, FRONT_W, BODY_R)
     o = o + rounded_box(-DEEP_U, DEEP_U, DEEP_V0, DEEP_V1, -DEEP_W, FRONT_W, DEEP_R)
     back = o.edges().filter_by(lambda e: e.center().Z < -THIN_W - 0.5)
@@ -143,7 +145,7 @@ def outer():
 
 def inner():
     """The inside of the body, open at the front."""
-    v0, v1 = BODY_V
+    v0, v1 = min(BODY_V[0], DEEP_V0), BODY_V[1]
     i = rounded_box(-BODY_U + WALL, BODY_U - WALL, v0 + WALL, v1 - WALL, -THIN_W + WALL, FRONT_W + 1.0, BODY_R - WALL)
     return i + rounded_box(-DEEP_U + WALL, DEEP_U - WALL, DEEP_V0 + WALL, DEEP_V1 - WALL, -DEEP_W + WALL, FRONT_W + 1.0,
                            DEEP_R - WALL)
@@ -182,19 +184,20 @@ def ports_cut():
 
 
 def vents():
-    """Slots in the back over the fan of the cooler, and in the right wall beside the heatsink."""
+    """Slots in the back over the fan of the cooler, and in the right wall beside the heatsink. The
+    slots run along v: the case prints standing, and the top of each slot is then a 2.4 mm bridge."""
     x0, x1, y0, y1, z0, z1 = pi_parts()["cooler"]
     b = pi_box(x0, x1, y0, y1, z0, z1).bounding_box()
     cut = None
-    v = b.min.Y + 6
-    while v < b.max.Y - 6:
-        s = uvw_box(b.min.X + 6, b.max.X - 6, v - 1.2, v + 1.2, -DEEP_W - 1, -DEEP_W + WALL + 1)
+    u = b.min.X + 6
+    while u < b.max.X - 6:
+        s = uvw_box(u - 1.2, u + 1.2, b.min.Y + 6, b.max.Y - 6, -DEEP_W - 1, -DEEP_W + WALL + 1)
         cut = s if cut is None else cut + s
-        v += 5.0
-    v = b.min.Y + 4
-    while v < b.max.Y - 4:
-        cut = cut + uvw_box(DEEP_U - WALL - 1, DEEP_U + 1, v - 1.2, v + 1.2, -DEEP_W + 6, -STANDOFF_W - 4)
-        v += 5.0
+        u += 5.0
+    w = -DEEP_W + 6
+    while w < -STANDOFF_W - 4:
+        cut = cut + uvw_box(DEEP_U - WALL - 1, DEEP_U + 1, b.min.Y + 4, b.max.Y - 4, w - 1.2, w + 1.2)
+        w += 5.0
     return cut
 
 
@@ -213,7 +216,24 @@ def dovetail(clr=0.0, v_ext=0.0):
     if clr:
         prof = offset(prof, amount=clr, kind=Kind.INTERSECTION)
     pl = Plane(origin=(0, va - clr, 0), x_dir=(1, 0, 0), z_dir=(0, 1, 0))
-    return extrude(pl * prof, amount=vb - va + 2 * clr + v_ext)
+    d = extrude(pl * prof, amount=vb - va + 2 * clr + v_ext)
+    if not clr:
+        # The lower end of the dovetail slopes at 55 degrees: printed standing, it needs no support.
+        tri = Polygon((va - 0.01, -DEEP_W + 0.5), (va - 0.01, -DEEP_W - h - 1.0), (va + 1.5 * (h + 1.5), -DEEP_W - h - 1.0),
+                      align=None)
+        d = d - extrude(Plane.YZ * tri, amount=t, both=True)
+    return d
+
+
+def well(u, v, w0, w1, r):
+    """A screw well along w from w0 to w1: a hole of radius r with a point toward +v (a teardrop),
+    its sides 51 degrees from the horizontal. Printed standing, its top needs no support."""
+    d = 1.6 * r                                          # the point over the center
+    a = math.acos(r / d)                                 # the tangent points, from the axis
+    tip = Polygon((u - r * math.sin(a), v + r * math.cos(a)), (u + r * math.sin(a), v + r * math.cos(a)), (u, v + d),
+                  align=None)
+    lo, hi = sorted((w0, w1))
+    return Pos(u, v, (lo + hi) / 2) * Cylinder(r, hi - lo) + Pos(0, 0, lo) * extrude(tip, amount=hi - lo)
 
 
 def body():
@@ -224,14 +244,14 @@ def body():
     f0, f1 = SCREW_FLOOR
     for u, v in TABS:
         s = s + Pos(u, v, -(f0 + DEEP_W - 1.0) / 2) * Cylinder(DEEP_U - abs(u) - 0.1, DEEP_W - 1.0 - f0)
-        s = s - Pos(u, v, -(f1 + DEEP_W + 1.0) / 2) * Cylinder(3.95, DEEP_W + 1.0 - f1)
+        s = s - well(u, v, -f1, -DEEP_W - 1.0, 3.95)
         s = s - Pos(u, v, -(f0 + f1) / 2) * Cylinder(1.45, f1 - f0 + 1.0)
     # The two top holes: a boss from the thin back down to the metal back, with a well from the
     # back and a floor of 2 mm on the metal back.
     f0, f1 = HOLE_FLOOR
     for u, v in HOLES:
         s = s + Pos(u, v, -(f0 + THIN_W - 1.0) / 2) * Cylinder(5.0, THIN_W - 1.0 - f0)
-        s = s - Pos(u, v, -(f1 + THIN_W + 1.0) / 2) * Cylinder(3.95, THIN_W + 1.0 - f1)
+        s = s - well(u, v, -f1, -THIN_W - 1.0, 3.95)
         s = s - Pos(u, v, -(f0 + f1) / 2) * Cylinder(1.45, f1 - f0 + 1.0)
     s = s - ports_cut()
     s = s - vents()
@@ -1025,10 +1045,10 @@ def print_parts(process):
     one, _ = C.tape_clip()
     two, _ = C.tape_clip(True)
     if process == "fdm":
-        # The case: the open front on the bed (the back up), with supports inside the deep part. The
-        # TAZ bracket: the top end of the plate on the bed. The Mini 2 bracket: the frame side of the
-        # plate on the bed. The clips: the base on the bed.
-        rots = {"case": Rot(180, 0, 0), "taz": Rot(-90, 0, 0), "mini": Rot(-90, 0, 0), "clip": Rot(0, 0, 0)}
+        # The case: standing on its bottom end, so the back, the walls and the dovetail are vertical.
+        # The TAZ bracket: the top end of the plate on the bed. The Mini 2 bracket: the frame side of
+        # the plate on the bed. The clips: the base on the bed.
+        rots = {"case": Rot(90, 0, 0), "taz": Rot(-90, 0, 0), "mini": Rot(-90, 0, 0), "clip": Rot(0, 0, 0)}
     else:
         # Resin prints from the build plate down: the back of the case and the backs of the brackets
         # face the build plate, so the open front of the case faces away from it and no cup of resin
