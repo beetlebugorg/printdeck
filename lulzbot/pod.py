@@ -215,11 +215,15 @@ def vents():
         s = uvw_box(u - 1.2, u + 1.2, b.min.Y + 6, b.max.Y - 6, -DEEP_W - 1, -DEEP_W + WALL + 1)
         cut = s if cut is None else cut + s
         u += 5.0
-    # The slots in the right wall run front to back: the body prints flat on its back, and the top of
-    # each slot is then a 2.4 mm bridge.
+    # The slots in the right wall run front to back. The body prints flat on its back, so the top of
+    # each slot is a point with sides at 50 degrees, and it needs no support.
+    w0, w1 = -DEEP_W + 6, -STANDOFF_W - 4
     v = b.min.Y + 4
     while v < b.max.Y - 4:
-        cut = cut + uvw_box(DEEP_U - WALL - 1, DEEP_U + 1, v - 1.2, v + 1.2, -DEEP_W + 6, -STANDOFF_W - 4)
+        prof = Polygon((v - 1.2, w0), (v + 1.2, w0), (v + 1.2, w1 - 1.2 * SLOPE), (v, w1), (v - 1.2, w1 - 1.2 * SLOPE),
+                       align=None)
+        pl = Plane(origin=(DEEP_U - WALL - 1, 0, 0), x_dir=(0, 1, 0), z_dir=(1, 0, 0))
+        cut = cut + extrude(pl * prof, amount=WALL + 2)
         v += 5.0
     return cut
 

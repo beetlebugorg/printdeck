@@ -12,10 +12,10 @@ slides down into the groove of its bracket from the top.
 | File | Print | On the bed | Supports |
 |---|---|---|---|
 | `pod-frame_fdm.stl` | 1 | Its back | Off. The roofs of the screw wells and insert holes are round bridges of 4 to 8 mm. |
-| `pod-body_fdm.stl` | 1 | Its back | Off. The roofs of the four screw wells are round bridges of 8 mm. |
+| `pod-body_fdm.stl` | 1 | Its back | Off. The roofs of the four screw wells are round bridges of 8 mm. The vent slots in the side have pointed tops. |
 | `pod-mount_fdm.stl` | 1 | The face that goes on the body | Off |
 | `pod-wedge_fdm.stl` | 1 for each bracket | Its level bottom (it stands up) | Off |
-| `pod-bracket-taz_fdm.stl` | 1, for the TAZ | The front of the plate | On, touching the build plate: about 2 g under the nub for the cover screw |
+| `pod-bracket-taz_fdm.stl` | 1, for the TAZ | The front of the plate | Tree supports. The groove for the wedge opens onto the bed, and its roof is 12.5 mm wide. Normal supports leave the roof empty. Tree supports fill it, and the nub for the cover screw. |
 | `pod-bracket-mini2_fdm.stl` | 1, for the Mini 2 | The side of the plate that goes on the frame | None |
 | `cable-clip-single_fdm.stl` | 5, for the TAZ | The base | None |
 | `cable-clip-double_fdm.stl` | 2, for the Mini 2 | The base | None |
