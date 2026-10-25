@@ -618,6 +618,8 @@ def landing():
   <figure class="frame-img">{pic(root, "hero", "The Printdeck Slate on its foot", cls="")}<figcaption>The Slate: a desk slab, {t["parts"]} printed parts</figcaption></figure>
   <figure class="frame-img white"><img src="img/lulzbot-printer.png" alt="The Printdeck mount on the front left of a LulzBot TAZ Workhorse"><figcaption>The mount on the LulzBot TAZ Workhorse</figcaption></figure>
 </div>
+<h2 id="before">Before you use it</h2>
+{md_text(section_body("README.md", "Before you use it"), "", root)}
 {screens(root)}
 <h2 id="install">Install</h2>
 {md_text(section_body("README.md", "Install"), "", root)}

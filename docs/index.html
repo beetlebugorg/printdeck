@@ -75,6 +75,9 @@
   <figure class="frame-img"><picture class=""><source media="(prefers-color-scheme: dark)" srcset="img/hero-dark.png"><img src="img/hero-light.png" alt="The Printdeck Slate on its foot" loading="lazy"></picture><figcaption>The Slate: a desk slab, 4 printed parts</figcaption></figure>
   <figure class="frame-img white"><img src="img/lulzbot-printer.png" alt="The Printdeck mount on the front left of a LulzBot TAZ Workhorse"><figcaption>The mount on the LulzBot TAZ Workhorse</figcaption></figure>
 </div>
+<h2 id="before">Before you use it</h2>
+<p>Printdeck is a personal project, for personal use. It follows the goals of one person for print software.</p>
+<ul><li>Printdeck has run on one printer only: a LulzBot TAZ Workhorse.</li><li>AI writes the code and the documentation. The code gets tests, and a person reads the documents. Errors can still occur.</li><li>Results on your printer can be different. Use Printdeck at your own risk.</li></ul>
 <div class="pics four screens"><figure><img src="manual/img/printing.png" alt="A print with the model up to the layer that prints now" loading="lazy"></figure><figure><img src="manual/img/first-layer.png" alt="The first layer with the Z offset" loading="lazy"></figure><figure><img src="manual/img/file.png" alt="A file with its print time, filament, roll and cost" loading="lazy"></figure><figure><img src="manual/img/filament.png" alt="The Filament page with the roll in the printer" loading="lazy"></figure></div>
 <h2 id="install">Install</h2>
 <ol><li>Download <code>printdeck.img.xz</code> from the <a href="https://github.com/beetlebugorg/printdeck/releases/latest">latest release</a>.</li><li>Write it to a USB SSD or an SD card with Raspberry Pi Imager (&quot;Use custom&quot;).</li><li>Start the Pi. The setup on the touch screen connects the Wi-Fi and finds the printer.</li></ol>
@@ -95,6 +98,7 @@
 
 <h2 id="goal">Goal</h2>
 <p>Printdeck is a very small operating system with one purpose. The Printdeck program is one static Go binary with no runtime dependencies, on a minimal Linux system. We build it from open source projects, such as Klipper. We respect their licenses, give credit, and keep our license compatible. We are not here to take code. We reform it into something new and give it back, in the spirit of open source, with the help of AI. <code>ARCHITECTURE.md</code> has the plan and the rules.</p>
+<p>Printdeck is one integrated stack. The printer firmware, the touch screen, the web screen, the slicer integration, and the iPhone and Apple Watch apps are made to work together.</p>
 <h2 id="license">License</h2>
 <p>Printdeck is free software under the GNU Affero General Public License, version 3. See <code>LICENSE</code>, and the &quot;Open source and licenses&quot; section of <code>ARCHITECTURE.md</code>. The iPhone and Apple Watch apps in <code>watch/</code> are under the MIT License: see <code>watch/LICENSE</code>. The Printdeck program contains a port of Klipper&#x27;s host (GPL-3.0). The OS image contains the other packages of the image, each under its own license.</p>
 

@@ -17,6 +17,16 @@ Website: https://beetlebug.org/printdeck/
   <img src="docs/manual/img/filament.png" alt="The Filament page with the roll in the printer" width="190">
 </p>
 
+## Before you use it
+
+Printdeck is a personal project, for personal use. It follows the goals of one person for print
+software.
+
+- Printdeck has run on one printer only: a LulzBot TAZ Workhorse.
+- AI writes the code and the documentation. The code gets tests, and a person reads the documents.
+  Errors can still occur.
+- Results on your printer can be different. Use Printdeck at your own risk.
+
 ## Install
 
 1. Download `printdeck.img.xz` from the [latest release](https://github.com/beetlebugorg/printdeck/releases/latest).
@@ -32,6 +42,9 @@ Go binary with no runtime dependencies, on a minimal Linux system. We build it f
 projects, such as Klipper. We respect their licenses, give credit, and keep our license
 compatible. We are not here to take code. We reform it into something new and give it back, in the
 spirit of open source, with the help of AI. `ARCHITECTURE.md` has the plan and the rules.
+
+Printdeck is one integrated stack. The printer firmware, the touch screen, the web screen, the
+slicer integration, and the iPhone and Apple Watch apps are made to work together.
 
 ## Manual
 
