@@ -655,21 +655,37 @@ def hardware():
     out.append(("pod_mount", mount(), "#2A2B30"))
     out += display_details()
     out += ribbon_and_wire()
-    out.append(("printer_plug", uvw_box(b.min.X - 1.5, b.max.X + 1.5, b.max.Y - 2.0, b.max.Y + 30.0, b.min.Z - 0.6, b.max.Z + 0.6), "#151515"))
+    # The USB-A plug goes down into the port: +x of the plug is -v, its width is across u.
+    face = Pos((b.min.X + b.max.X) / 2, b.max.Y, (b.min.Z + b.max.Z) / 2) * Rot(0, 0, -90)
+    out.append(("printer_plug", face * cable_plug(*USBA_PLUG), "#151515"))
     return out
 
 
+def cable_plug(metal, body, relief, r=2.0):
+    """The end of a cable: the metal plug, the overmold with round edges, and the strain relief.
+    Each is (length, width, height). The plug points to +x with the face of the overmold at x = 0, and
+    the cable leaves to -x at the end of the strain relief."""
+    (ml, mw, mh), (bl, bw, bh), (rl, rw, rh) = metal, body, relief
+    m = Pos(ml / 2, 0, 0) * Box(ml, mw, mh)
+    b = fillet((Pos(-bl / 2, 0, 0) * Box(bl, bw, bh)).edges().filter_by(Axis.X), r)
+    t = fillet((Pos(-bl - rl / 2 + 0.005, 0, 0) * Box(rl + 0.01, rw, rh)).edges().filter_by(Axis.X), min(rw, rh) / 2 - 0.3)
+    return m + b + t
+
+
+# The USB-C end of the cable of the Raspberry Pi 27W power supply, from its product brief
+# (ref/raspberrypi/27w-usb-c-power-supply-product-brief.pdf): the metal plug 6.7 long, the overmold
+# 19 x 12 x 7, and the strain relief. The overmold and the strain relief are 24 long.
+USBC_PLUG = ((6.7, 8.25, 2.4), (19.0, 12.0, 7.0), (5.0, 5.3, 4.8))
+# The USB 2.0 A and B ends of the printer cable. The metal plugs have the sizes of the USB 2.0
+# standard. The overmolds have the sizes of a common cable, and were not measured. Each end is
+# 30 long out of its port.
+USBA_PLUG = ((12.0, 12.0, 4.5), (22.0, 16.0, 8.0), (8.0, 6.0, 6.0))
+USBB_PLUG = ((9.0, 12.0, 10.9), (20.0, 16.0, 15.0), (8.0, 7.0, 7.0))
+
+
 def usbc_plug(u0, v, w):
-    """The USB-C end of the cable of the Raspberry Pi 27W power supply, from its product brief
-    (ref/raspberrypi/27w-usb-c-power-supply-product-brief.pdf): the metal plug (6.7 long), the
-    overmold (19 x 12 x 7, round edges) and the strain relief (5 long). u0 is the face of the
-    overmold. The plug points to +u, and the cable leaves to -u."""
-    metal = uvw_box(u0, u0 + 6.7, v - 4.125, v + 4.125, w - 1.2, w + 1.2)
-    body = uvw_box(u0 - 19.0, u0, v - 6.0, v + 6.0, w - 3.5, w + 3.5)
-    body = fillet(body.edges().filter_by(Axis.X), 2.0)
-    relief = uvw_box(u0 - 24.0, u0 - 19.0 + 0.01, v - 2.65, v + 2.65, w - 2.4, w + 2.4)
-    relief = fillet(relief.edges().filter_by(Axis.X), 1.5)
-    return metal + body + relief
+    """The power plug in the USB-C port. u0 is the face of the overmold. The plug points to +u."""
+    return Pos(u0, v, w) * cable_plug(*USBC_PLUG)
 
 
 ALLOWED = {frozenset(p) for p in [("power_plug", "pi_usbc"), ("printer_plug", "pi_usb2"), ("glass", "screen"),
@@ -1052,10 +1068,12 @@ def bracket_screws(name):
 def usb_b_plugs(name):
     """The USB-B plug in the port of the printer, in the coordinates of the printer's frame."""
     if name == "taz":
+        # The port is in the rear face of the RAMBo, at x = -85: the plug points to +x, upright.
         py, pz = TAZ_USB_B
-        return mbox(-85.0 - USB_B_PLUG, -85.0, py - 5.5, py + 5.5, pz - 6.0, pz + 6.0)
+        return Pos(-85.0, py, pz) * Rot(90, 0, 0) * cable_plug(*USBB_PLUG)
+    # The port is in the front of the electronics case: the plug points to +y.
     px, pz = MINI_USB_B
-    return mbox(px - 6.0, px + 6.0, MINI_CASE_Y - USB_B_PLUG, MINI_CASE_Y, pz - 5.5, pz + 5.5)
+    return Pos(px, MINI_CASE_Y, pz) * Rot(0, 0, 90) * cable_plug(*USBB_PLUG)
 
 
 def cable_starts():
@@ -1130,9 +1148,15 @@ def routes(name, pod_to_frame):
 
 
 def rounded(points, r=BEND_R, steps=8):
-    """A path through the points with a round bend of radius about r at each corner."""
+    """A path through the points with a round bend of radius about r at each corner. A point on top
+    of the one before it is dropped: a step of length zero has no direction, and the sweep of the
+    cable twists there."""
     import numpy as np
-    pts = [np.array(p, float) for p in points]
+    pts = []
+    for p in points:
+        p = np.array(p, float)
+        if not pts or np.linalg.norm(p - pts[-1]) > 1e-3:
+            pts.append(p)
     out = [pts[0]]
     for i in range(1, len(pts) - 1):
         a, b, c = pts[i - 1], pts[i], pts[i + 1]
@@ -1142,7 +1166,11 @@ def rounded(points, r=BEND_R, steps=8):
         for t in np.linspace(0, 1, steps):
             out.append((1 - t) ** 2 * p + 2 * (1 - t) * t * b + t ** 2 * q)
     out.append(pts[-1])
-    return np.array(out)
+    keep = [out[0]]
+    for p in out[1:]:
+        if np.linalg.norm(p - keep[-1]) > 1e-3:
+            keep.append(p)
+    return np.array(keep)
 
 
 def cable_mesh(points, d):
