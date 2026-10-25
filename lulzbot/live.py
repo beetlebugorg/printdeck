@@ -7,8 +7,9 @@ The model is in the frame of the pod, z up, the front toward -y. The camera turn
 vertical, so the model stays upright: drag to turn, the wheel zooms, shift and drag pans.
 
 Keys: e explodes the pod in the order it comes apart (e again puts it together), n the next model
-(the TAZ, the Mini 2), i the isometric view from the front right, p shows or hides the printer,
-x makes the parts see-through, f fits the view, 1 to 9 hide or show the parts in the list.
+(the TAZ, the Mini 2), i the isometric view from the front right, k the view of the webcam (from its
+lens, with its field of view), p shows or hides the printer, c shows or hides the webcam and its
+mount, x makes the parts see-through, f fits the view, 1 to 9 hide or show the parts in the list.
 
 The window runs on the event loop of VTK: a timer checks for a new version and moves the parts of
 the exploded view, so the window answers at all times.
@@ -51,6 +52,8 @@ class Live:
         self.hidden = set()
         self.xray = False
         self.printer = True
+        self.camera = True
+        self.views = {}
         self.note = ""
         self.need_view = True
         self.t = 0.0              # the exploded view: 0 assembled, len(stages) apart
@@ -58,7 +61,7 @@ class Live:
         self.last_check = 0.0
         self.last_tick = time.time()
         keys = (("e", self.toggle_explode), ("n", self.next_model), ("i", self.iso), ("p", self.toggle_printer),
-                ("x", self.toggle_xray), ("f", self.fit))
+                ("x", self.toggle_xray), ("f", self.fit), ("c", self.toggle_camera), ("k", self.camera_view))
         for k, f in keys:
             self.pl.add_key_event(k, f)
         for i in range(1, 10):
@@ -92,6 +95,7 @@ class Live:
             self.info.pop(n, None)
         self.parts = [p["name"] for p in info["parts"] if not p["name"].startswith("printer")]
         self.stages = info.get("stages", [])
+        self.views = info.get("views", {})
         self.note = info.get("note", "")
         self.place()
         self.status()
@@ -110,6 +114,8 @@ class Live:
     def visible(self, n):
         if n.startswith("printer"):
             return self.printer
+        if n.startswith("camera") and not self.camera:
+            return False
         if self.t > 0.01 and self.info.get(n, {}).get("hide_exploded"):
             return False
         after = self.info.get(n, {}).get("hide_after")
@@ -156,7 +162,7 @@ class Live:
         lines.append("")
         for i, n in enumerate(self.parts[:9]):
             lines.append(f"{i + 1} {'-' if n in self.hidden else '+'} {n}")
-        lines += ["", "e explode   n next model   i iso", "p printer   x see-through   f fit"]
+        lines += ["", "e explode   n next model   i iso   k webcam view", "p printer   c webcam   x see-through   f fit"]
         self.pl.add_text("\n".join(lines), position="upper_left", font_size=9, color=TEXT, name="status")
 
     def pod_bounds(self):
@@ -166,6 +172,23 @@ class Live:
             return None
         bs = [a.GetBounds() for a in acts]
         return [min(b[i] for b in bs) if i % 2 == 0 else max(b[i] for b in bs) for i in range(6)]
+
+    def camera_view(self):
+        """The view of the webcam: from its lens, with its field of view. The perspective camera of the
+        window shows the view as the webcam sees it."""
+        v = self.views.get("camera")
+        if not v:
+            return
+        cam = self.pl.camera
+        cam.position, cam.focal_point, cam.up = v["eye"], v["focal"], v["up"]
+        cam.view_angle = v["fov"]
+        self.pl.reset_camera_clipping_range()
+        self.pl.render()
+
+    def toggle_camera(self):
+        self.camera = not self.camera
+        self.place()
+        self.pl.render()
 
     def iso(self, render=True):
         """The isometric view of the pod from the front, right and above, z up."""

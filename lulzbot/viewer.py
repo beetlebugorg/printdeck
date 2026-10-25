@@ -15,10 +15,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "build", "viewer")
 
 
-def publish(meshes, name="model", note="", stages=None):
+def publish(meshes, name="model", note="", stages=None, views=None):
     """meshes: (part name, trimesh, "#RRGGBB"[, extra]), in the view coordinates. extra is a dict for
     the window: "explode" (the move of the part in each stage of the exploded view) or
-    "hide_exploded"."""
+    "hide_exploded". views: named camera views for the window, each a dict with "eye", "focal",
+    "up", and "fov" (the vertical field of view in degrees)."""
     d = os.path.join(OUT, name)
     os.makedirs(d, exist_ok=True)
     stamp = f"{time.time():.3f}"
@@ -30,5 +31,5 @@ def publish(meshes, name="model", note="", stages=None):
         parts.append({"name": n, "color": c, "file": f, **(extra[0] if extra else {})})
     tmp = os.path.join(OUT, f".{name}.json")
     with open(tmp, "w") as fh:
-        json.dump({"t": stamp, "note": note, "stages": stages or [], "parts": parts}, fh)
+        json.dump({"t": stamp, "note": note, "stages": stages or [], "parts": parts, "views": views or {}}, fh)
     os.replace(tmp, os.path.join(OUT, f"{name}.json"))

@@ -893,6 +893,7 @@ def main(out, stills=True, which=("taz", "mini2")):
     import numpy as np
     import trimesh
     from build123d import export_stl
+    import camera as C
     import render as R
     import viewer
     os.makedirs(out, exist_ok=True)
@@ -968,6 +969,18 @@ def main(out, stills=True, which=("taz", "mini2")):
             items.append((gname, cv, SCREW_COLOR if "screws" in gname else "#E8762B", ex(gname)))
             cm.apply_transform(frame_to_world)
             st["cables"].append((cm, "#E8762B"))
+        # The webcam on the frame (camera.py), in the frame of the printer like the clips.
+        cam = C.meshes(name, tmp)
+        for n, (m, c) in cam.items():
+            cv = m.copy()
+            cv.apply_transform(zup @ np.linalg.inv(matrix(loc)))
+            items.append((n, cv, c))
+        for msg in C.check(name):
+            print(f"{name}: camera: {msg}")
+        near = printer + C.stock_lcd(name, printer)
+        cgap, agap = C.printer_gap(name, near, frame_to_world)
+        print(f"{name}: camera: {cgap:.1f} mm from the printer over its tilt range, the arm {agap:.1f} mm, "
+              f"the base {C.base_touch(name, near, frame_to_world):.2f} mm into the frame")
         p = os.path.join(tmp, f"{name}_usb_b.stl")
         export_stl(usb_b_plugs(name), p, tolerance=0.05, angular_tolerance=0.2)
         plug = trimesh.load(p, force="mesh")
@@ -990,7 +1003,8 @@ def main(out, stills=True, which=("taz", "mini2")):
         gap = clearance([m for m, _ in pod.values()], pod_to_world, printer)
         print(f"{name}: the pod is {gap:.1f} mm from the printer at the closest point")
         note = ("no overlaps" if not bad else f"{len(bad)} overlaps") + f", {gap:.1f} mm from the printer"
-        viewer.publish(items, name, note, stages=[t for t, _ in STAGES])
+        views = {"camera": C.camera_pose(name, zup @ np.linalg.inv(matrix(loc)))}
+        viewer.publish(items, name, note, stages=[t for t, _ in STAGES], views=views)
         if not stills:
             continue
         allm = []
@@ -1002,6 +1016,11 @@ def main(out, stills=True, which=("taz", "mini2")):
         b.apply_transform(st["world"])
         allm.append((b, "#2A2B30"))
         allm += st.get("cables", [])
+        for n, (m, c) in cam.items():
+            m = m.copy()
+            m.apply_transform(frame_to_world)
+            allm.append((m, c))
+        C.views(name, printer, allm, pod_to_world, frame_to_world, out)
         for d, tag in st["views"]:
             R.render((printer if tag == "printer" else []) + allm, d, st["up"], os.path.join(out, f"{name}-{tag}.png"),
                      size=(1200, 1200))
@@ -1345,6 +1364,7 @@ def on_bed(shape, rot):
 
 def print_parts(process):
     """(file name, shape, how many) for each printed part of the pod, in print orientation."""
+    import camera
     import clips as C
     global DOVE_CLR
     keep, DOVE_CLR = DOVE_CLR, DOVE_CLR_BY[process]
@@ -1355,14 +1375,16 @@ def print_parts(process):
         DOVE_CLR = keep
     one, _ = C.tape_clip()
     two, _ = C.tape_clip(True)
+    cam = [part for n in ("taz", "mini2") for part in camera.printed(n)]
     if process == "fdm":
         # The body: flat on its back. The frame: flat on its back ring. The mount: flat on the face
         # that goes on the body, the dovetail up. The wedge: standing on its level bottom, the key and
         # the slot up. The TAZ bracket: standing on the top end of its plate, so the groove of the
         # wedge and the slots of the clips run up from the bed. The Mini 2 bracket: the frame side of
-        # the plate on the bed. The clips: the base on the bed. No part needs supports.
+        # the plate on the bed. The clips: the base on the bed. The webcam parts print in the
+        # positions that camera.printed() gives. No part needs supports.
         rots = {"case": Rot(0, 0, 0), "frame": Rot(0, 0, 0), "mount": Rot(180, 0, 0), "wedge": Rot(90, 0, 0),
-                "taz": Rot(-90, 0, 0), "mini": Rot(-90, 0, 0), "clip": Rot(0, 0, 0)}
+                "taz": Rot(-90, 0, 0), "mini": Rot(-90, 0, 0), "clip": Rot(0, 0, 0), "camera": Rot(0, 0, 0)}
     else:
         # Resin prints from the build plate down: the backs of the body, the frame and the brackets
         # face the build plate, so the open fronts face away from it and no cup of resin forms. Every
@@ -1370,13 +1392,15 @@ def print_parts(process):
         t = RESIN_TILT
         rots = {"case": Rot(t, 0, 0), "frame": Rot(t, 0, 0), "mount": Rot(t, 0, 0) * Rot(180, 0, 0),
                 "wedge": Rot(t, 0, 0) * Rot(90, 0, 0),
-                "taz": Rot(t, 0, 0) * Rot(0, -90, 0), "mini": Rot(t, 0, 0) * Rot(-90, 0, 0), "clip": Rot(t, 0, 0)}
+                "taz": Rot(t, 0, 0) * Rot(0, -90, 0), "mini": Rot(t, 0, 0) * Rot(-90, 0, 0), "clip": Rot(t, 0, 0),
+                "camera": Rot(t, 0, 0)}
     return [(f"pod-body_{process}.stl", on_bed(case, rots["case"]), 1),
             (f"pod-frame_{process}.stl", on_bed(fr, rots["frame"]), 1),
             (f"pod-mount_{process}.stl", on_bed(mt, rots["mount"]), 1),
             (f"pod-wedge_{process}.stl", on_bed(wd, rots["wedge"]), 1),
             (f"pod-bracket-taz_{process}.stl", on_bed(taz, rots["taz"]), 1),
             (f"pod-bracket-mini2_{process}.stl", on_bed(mini, rots["mini"]), 1),
+            *[(f"{fn}_{process}.stl", on_bed(sh, rots["camera"] * rot), 1) for fn, sh, rot in cam],
             (f"cable-clip-single_{process}.stl", on_bed(one, rots["clip"]), 5),
             (f"cable-clip-double_{process}.stl", on_bed(two, rots["clip"]), 2)]
 
