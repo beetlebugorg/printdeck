@@ -58,6 +58,7 @@ import (
 	_ "printdeck/internal/klipper/extras/respond"
 	_ "printdeck/internal/klipper/extras/safe_z_home"
 	_ "printdeck/internal/klipper/extras/screws_tilt_adjust"
+	_ "printdeck/internal/klipper/extras/spi_temperature"
 	_ "printdeck/internal/klipper/extras/static_digital_output"
 	_ "printdeck/internal/klipper/extras/statistics"
 	_ "printdeck/internal/klipper/extras/temperature_fan"
