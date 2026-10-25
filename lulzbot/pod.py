@@ -1321,7 +1321,83 @@ def export_prints(out=PRINT_DIR):
                   f"{bb.max.Z - bb.min.Z:.1f} mm, print {n}")
 
 
+# ---------------------------------------------------------------- the overhang check
+# A face needs support when it faces down at less than 45 degrees above the bed (the faces on the bed
+# are out). A flat roof is a bridge, and it needs no support if the opening under it is BRIDGE mm
+# across or less: then each line of the bridge has its two ends on the walls of the opening.
+OVERHANG = 45.0
+BRIDGE = 6.0
+
+
+def overhangs(m, px=0.05):
+    """The faces of a mesh (in print orientation) that face down: (steep, roofs). steep is a mask of
+    the faces under OVERHANG degrees that are not flat. roofs is a list of (face indices, z, area,
+    span) for each flat roof: span is the width of the opening under it (the diameter of the
+    largest circle in the outline of the roof with its holes filled, that has no part of the layer
+    under it)."""
+    import numpy as np
+    from scipy import ndimage
+    from shapely import contains_xy
+    from shapely.geometry import Polygon as SP
+    from shapely.ops import unary_union
+    nz = m.face_normals[:, 2]
+    zc = m.triangles_center[:, 2]
+    up = zc > m.bounds[0][2] + 0.05
+    flat = up & (nz < -0.999)
+    steep = up & (nz < -math.sin(math.radians(OVERHANG)) - 1e-3) & ~flat
+    roofs = []
+    zs = np.round(zc, 2)
+    for z in np.unique(zs[flat]):
+        idx = np.nonzero(flat & (zs == z))[0]
+        tri = {i: SP(m.triangles[i][:, :2]).buffer(1e-4) for i in idx}
+        roof = unary_union(list(tri.values()))
+        sec = m.section(plane_origin=(0, 0, z - 0.05), plane_normal=(0, 0, 1))
+        below = SP()
+        for loop in (sec.discrete if sec is not None else []):
+            if len(loop) > 2:
+                below = below.symmetric_difference(SP(loop[:, :2]).buffer(0))
+        for g in getattr(roof, "geoms", [roof]):
+            if g.area < 0.05:
+                continue
+            full = SP(g.exterior)
+            x0, y0, x1, y1 = full.buffer(1.0).bounds
+            X, Y = np.meshgrid(np.arange(x0, x1, px), np.arange(y0, y1, px))
+            inside = contains_xy(full, X, Y)
+            d = ndimage.distance_transform_edt(~contains_xy(below, X, Y)) * px
+            span = 2 * float(d[inside].max()) if inside.any() else 0.0
+            faces = [i for i in idx if g.buffer(0.01).contains(tri[i].centroid)]
+            roofs.append((faces, float(z), g.area, span))
+    return steep, roofs
+
+
+def overhang_report(m):
+    """(area that needs support, area of the short bridges, the longest short bridge, the roofs
+    that need support as (z, area, span))."""
+    steep, roofs = overhangs(m)
+    long_ = [(z, a, s) for _, z, a, s in roofs if s > BRIDGE + 0.05]
+    short = [(z, a, s) for _, z, a, s in roofs if s <= BRIDGE + 0.05]
+    need = float(m.area_faces[steep].sum()) + sum(a for _, a, _ in long_)
+    return need, sum(a for _, a, _ in short), max([s for *_, s in short], default=0.0), long_
+
+
+def check_prints(out=PRINT_DIR):
+    """Print the overhang report of each FDM file."""
+    import glob
+    import trimesh
+    worst = 0.0
+    for p in sorted(glob.glob(os.path.join(out, "fdm", "*.stl"))):
+        need, short, span, long_ = overhang_report(trimesh.load(p, force="mesh"))
+        worst = max(worst, need)
+        print(f"{os.path.basename(p):30s} needs support {need:6.1f} mm2; bridges {short:6.1f} mm2, "
+              f"longest {span:.1f} mm")
+        for z, a, s in long_:
+            print(f"    roof at z {z:.2f}: {a:.1f} mm2, {s:.1f} mm across")
+    return worst
+
+
 if __name__ == "__main__":
+    if "overhangs" in sys.argv:
+        sys.exit(1 if check_prints() > 1.0 else 0)
     if "export" in sys.argv:
         export_prints()
         sys.exit()
