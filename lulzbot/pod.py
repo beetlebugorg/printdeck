@@ -141,10 +141,11 @@ def ports_cut():
     # micro HDMI ports beside it also reach into the wall: they get openings too.
     u, v, w = pi_uvw(11.2, -1.0, 1.6 + 1.6)
     cut = cut + uvw_box(-BODY_U - 1, -27.0, v - 6.6, v + 6.6, w - 4.0, w + 4.0)
-    for name in ("pi_hdmi0", "pi_hdmi1"):
-        x0, x1, y0, y1, z0, z1 = p[name]
-        bb = pi_box(x0 - 0.5, x1 + 0.5, y0, y1, z0 - 0.5, z1 + 0.5).bounding_box()
-        cut = cut + uvw_box(-BODY_U - 1, -27.0, bb.min.Y, bb.max.Y, bb.min.Z, bb.max.Z)
+    # One opening for both: in the STEP model of the Pi their shells stand 1.4 mm past the edge of the
+    # board, down to the level of the board.
+    h0, h1 = p["pi_hdmi0"], p["pi_hdmi1"]
+    bb = pi_box(min(h0[0], h1[0]) - 0.5, max(h0[1], h1[1]) + 0.5, h0[2], h0[3], 0.0, max(h0[5], h1[5]) + 0.5).bounding_box()
+    cut = cut + uvw_box(-BODY_U - 1, -27.0, bb.min.Y, bb.max.Y, bb.min.Z, bb.max.Z)
     return cut
 
 
