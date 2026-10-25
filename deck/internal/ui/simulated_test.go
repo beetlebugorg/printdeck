@@ -136,3 +136,26 @@ func TestSetupOffersSimulator(t *testing.T) {
 		}
 	}
 }
+
+// The Klipper error screen of the real printer has the key of the simulated printers, also after
+// a shutdown of the board.
+func TestKlipperErrorOffersSimulator(t *testing.T) {
+	for _, wide := range []bool{false, true} {
+		for name, detail := range map[string]string{
+			"klipper-error":    "mcu 'mcu': Unable to connect",
+			"klipper-shutdown": "MCU 'mcu' shutdown: ADC out of range",
+		} {
+			a := New()
+			a.Wide = wide
+			a.Printer = &DemoPrinter{View: -1, State_: printer.State{Err: "Klipper is not ready", ErrDetail: detail}}
+			if wide {
+				name += "-wide"
+			}
+			simFrame(t, a, name)
+			tapLabel(t, a, gfx.New(a.Screen().W, a.Screen().H), "Simulated printer")
+			if a.topPage() != pageSimulator {
+				t.Errorf("%s: the key opens page %v, want the simulated printers", name, a.topPage())
+			}
+		}
+	}
+}

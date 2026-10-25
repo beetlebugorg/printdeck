@@ -333,10 +333,11 @@ func (a *App) drawKlipperError(c *gfx.Canvas, st printer.State) {
 	// The message, the keys under it, and Wi-Fi and help and Software update; at the bottom of the
 	// left column of a wide screen.
 	wide, textArea, info := a.plain(c, title)
-	var keys, sys image.Rectangle
+	var keys, simKey, sys image.Rectangle
 	if wide {
-		r := kit.Rows(textArea, 12, kit.Fr(1), kit.Px(72), kit.Px(80))
-		sys, keys = r[1], r[2]
+		// The left column is narrow: the key of the simulated printers has its own row.
+		r := kit.Rows(textArea, 12, kit.Fr(1), kit.Px(72), kit.Px(72), kit.Px(80))
+		simKey, sys, keys = r[1], r[2], r[3]
 	} else {
 		r := kit.Rows(info, 0, kit.Px(440), kit.Fr(1), kit.Px(80), kit.Px(12), kit.Px(72), kit.Px(76))
 		info, keys, sys = r[0], r[2], r[4]
@@ -351,29 +352,52 @@ func (a *App) drawKlipperError(c *gfx.Canvas, st printer.State) {
 		c.Text(s.Next(26), l, face, text, gfx.Left)
 	}
 	a.textRegion("Message", image.Rect(info.Min.X, info.Min.Y, info.Max.X, s.Y()), face, wrapText(face, msg, info.Dx())...)
-	restart, cap, ink := keys, orange, onAcc
-	shutdown := strings.Contains(strings.ToLower(msg), "shutdown")
-	if shutdown || strings.Contains(msg, "older version of the") && board.CanFlash("") || st.Simulated != "" {
-		k := kit.Cols(keys, 12, kit.Fr(1), kit.Fr(1))
-		restart, cap, ink = k[0], raised, text
-		switch {
-		case shutdown:
-			// The board stopped itself. Only a reset of the board clears this state.
-			a.button(c, k[1], "Firmware restart", orange, onAcc, func() {
-				a.Toast("Restarting the firmware…")
-				a.do(pr.FirmwareRestart)
-			})
-		case st.Simulated != "":
-			// The page of the simulated printers puts the real printer.cfg back.
-			a.button(c, k[1], "Real printer", orange, onAcc, func() { a.open(pageSimulator) })
-		default:
-			a.button(c, k[1], "Write firmware", orange, onAcc, func() { a.askFlash("") })
-		}
+	// The keys: a restart of Klipper, a key for the cause of the error, and a simulated printer
+	// to try the deck while the real printer does not work.
+	type key struct {
+		label    string
+		cap, ink color.RGBA
+		tap      func()
 	}
-	a.button(c, restart, "Restart Klipper", cap, ink, func() {
+	restart := key{"Restart Klipper", orange, onAcc, func() {
 		a.Toast("Restarting Klipper…")
 		a.do(pr.RestartKlipper)
-	})
+	}}
+	var cause *key
+	shutdown := strings.Contains(strings.ToLower(msg), "shutdown")
+	switch {
+	case shutdown:
+		// The board stopped itself. Only a reset of the board clears this state.
+		cause = &key{"Firmware restart", orange, onAcc, func() {
+			a.Toast("Restarting the firmware…")
+			a.do(pr.FirmwareRestart)
+		}}
+	case st.Simulated != "":
+		// The page of the simulated printers puts the real printer.cfg back.
+		cause = &key{"Real printer", orange, onAcc, func() { a.open(pageSimulator) }}
+	case strings.Contains(msg, "older version of the") && board.CanFlash(""):
+		cause = &key{"Write firmware", orange, onAcc, func() { a.askFlash("") }}
+	}
+	row := []key{restart}
+	if cause != nil {
+		row[0].cap, row[0].ink = raised, text
+		row = append(row, *cause)
+	}
+	if st.Simulated == "" {
+		sim := key{"Simulated printer", raised, text, func() { a.open(pageSimulator) }}
+		if wide {
+			a.button(c, simKey, sim.label, sim.cap, sim.ink, sim.tap)
+		} else {
+			row = append(row, sim)
+		}
+	}
+	var tracks []kit.Size
+	for range row {
+		tracks = append(tracks, kit.Fr(1))
+	}
+	for i, r := range kit.Cols(keys, 12, tracks...) {
+		a.button(c, r, row[i].label, row[i].cap, row[i].ink, row[i].tap)
+	}
 }
 
 // wrapText breaks a text into lines that fit a width. An empty line starts a new paragraph, with
