@@ -38,7 +38,7 @@ import math
 import os
 import sys
 
-from build123d import (Box, Cylinder, Kind, Location, Plane, Polygon, Pos, Rectangle, RectangleRounded, Rot,
+from build123d import (Axis, Box, Cylinder, Kind, Location, Plane, Polygon, Pos, Rectangle, RectangleRounded, Rot,
                        extrude, fillet, offset)
 
 import shape as S
@@ -64,18 +64,19 @@ PI_HOLE_UV = [(u, v) for u in (-24.5, 24.5) for v in (33.91, 33.91 + 58.0)]   # 
 STANDOFF_W = 14.92              # the tips of the standoffs: the bottom of the Pi board
 
 # ---------------------------------------------------------------- the case
-WALL = 2.0
+WALL = 3.0                      # the side walls: 6 lines of a 0.5 mm nozzle
+FLOOR = 2.0                     # the backs of the frame and the body, which print flat on the bed
 GAP = 1.0                       # around the frame and the Pi
 BODY_U = FRAME[0] / 2 + GAP + WALL                # half width: 39.48
 BODY_V = (FRAME_V0 - GAP - WALL, FRAME_V0 + FRAME[1] + GAP + WALL)   # bottom and top: 9.8 to 138.5
 BODY_R = 5.4                    # the inside corners are 3.4 mm: the corners of the display frame are square
 FRONT_W = -(LENS + 0.05)        # the front rim of the body, against the back of the glass
 PI_TOP_W = STANDOFF_W + 1.6 + 16.0                 # the top of the USB ports: 32.5
-DEEP_W = PI_TOP_W + GAP + WALL                     # the back of the body where the Pi is: 35.5
+DEEP_W = PI_TOP_W + GAP + FLOOR                    # the back of the body where the Pi is: 35.5
 # The deep part around the Pi: its walls are 0.6 mm outside the board, so the faces of the ports are
 # flush with the outside of the walls (USB-C on the left, USB and Ethernet at the top). The thin
 # part around the rest of the display frame is only as deep as the raised tabs.
-THIN_W = TAB_W + 0.2 + WALL                        # the back of the thin part: 13.7
+THIN_W = TAB_W + 0.2 + FLOOR                       # the back of the thin part: 13.7
 PI_V0 = PI_HOLE_UV[0][1] - 3.5                     # the v of the PCIe end of the Pi (STEP x = 0): 30.41
 DEEP_U = 28.0 + 0.6 + WALL                         # the half width of the deep part: 30.6
 DEEP_V1 = PI_V0 + 88.2                             # the top of the deep part: the faces of the ports (STEP x 88.1)
@@ -212,7 +213,7 @@ def vents():
     cut = None
     u = b.min.X + 6
     while u < b.max.X - 6:
-        s = uvw_box(u - 1.2, u + 1.2, b.min.Y + 6, b.max.Y - 6, -DEEP_W - 1, -DEEP_W + WALL + 1)
+        s = uvw_box(u - 1.2, u + 1.2, b.min.Y + 6, b.max.Y - 6, -DEEP_W - 1, -DEEP_W + FLOOR + 1)
         cut = s if cut is None else cut + s
         u += 5.0
     # The slots in the right wall run front to back. The body prints flat on its back, so the top of
@@ -255,7 +256,7 @@ def dovetail(clr=0.0, v_ext=0.0):
 def body():
     """The body: the deep part round the Pi, open at the front, with the posts for the screws to the
     frame. It prints flat on its back: every opening is open to the front, or a hole in the back."""
-    inner = rounded_box(-DEEP_U + WALL, DEEP_U - WALL, DEEP_V0 + WALL, DEEP_V1 - WALL, -DEEP_W + WALL, -SPLIT_W + 1.0,
+    inner = rounded_box(-DEEP_U + WALL, DEEP_U - WALL, DEEP_V0 + WALL, DEEP_V1 - WALL, -DEEP_W + FLOOR, -SPLIT_W + 1.0,
                         DEEP_R - WALL)
     s = body_outer() - inner
     for u, v in POSTS:
@@ -268,7 +269,7 @@ def body():
         s = s - Pos(u, v, -(SPLIT_W + f) / 2) * Cylinder(1.7, f - SPLIT_W + 1.0)
     # The holes for the screws of the mount.
     for u, v in MOUNT_SCREWS:
-        s = s - Pos(u, v, -DEEP_W + WALL / 2) * Cylinder(1.7, WALL + 2.0)
+        s = s - Pos(u, v, -DEEP_W + FLOOR / 2) * Cylinder(1.7, FLOOR + 2.0)
     return s
 
 
@@ -287,15 +288,15 @@ def pod_frame():
     display. It goes down to the bottom of the body, and prints flat on its back ring."""
     v0, v1 = DEEP_V0, BODY_V[1]
     s = rounded_box(-BODY_U, BODY_U, v0, v1, -SPLIT_W, FRONT_W, BODY_R)
-    s = s - rounded_box(-BODY_U + WALL, BODY_U - WALL, v0 + WALL, v1 - WALL, -SPLIT_W + WALL, FRONT_W + 1.0, BODY_R - WALL)
+    s = s - rounded_box(-BODY_U + WALL, BODY_U - WALL, v0 + WALL, v1 - WALL, -SPLIT_W + FLOOR, FRONT_W + 1.0, BODY_R - WALL)
     # The opening for the Pi, and a notch under it for the loop of the ribbon.
-    s = s - rounded_box(OPEN_U[0], OPEN_U[1], OPEN_V[0], OPEN_V[1], -SPLIT_W - 1.0, -SPLIT_W + WALL + 0.5, 1.5)
+    s = s - rounded_box(OPEN_U[0], OPEN_U[1], OPEN_V[0], OPEN_V[1], -SPLIT_W - 1.0, -SPLIT_W + FLOOR + 0.5, 1.5)
     s = s - uvw_box(RIBBON_LOOP_U[0] - 0.6, RIBBON_LOOP_U[1] + 0.6, v0 + WALL - 0.01, OPEN_V[0] + 1.0, -SPLIT_W - 1.0,
-                    -SPLIT_W + WALL + 0.5)
+                    -SPLIT_W + FLOOR + 0.5)
     # The display screws: through the back ring into the raised tabs, and down wells with a 2 mm
     # floor into the holes at the top.
     for u, v in TABS:
-        s = s - Pos(u, v, -SPLIT_W + WALL / 2) * Cylinder(1.45, WALL + 2.0)
+        s = s - Pos(u, v, -SPLIT_W + FLOOR / 2) * Cylinder(1.45, FLOOR + 2.0)
     for u, v in HOLES:
         f0, f1 = FRAME_W + 0.2, FRAME_W + 2.2
         s = s + Pos(u, v, -(f0 + SPLIT_W - 1.0) / 2) * Cylinder(5.0, SPLIT_W - 1.0 - f0)
@@ -535,7 +536,7 @@ def pod_screws():
     fr = group([screw(2.5, 4.0, (u, v, -SPLIT_W), (0, 0, -1)) for u, v in TABS]
                + [screw(2.5, 4.0, (u, v, -FRAME_W - 2.2), (0, 0, -1)) for u, v in HOLES])
     bd = group([screw(3, 6.0, (u, v, -SPLIT_W - 0.1 - POST_FLOOR), (0, 0, -1)) for u, v in POSTS])
-    mt = group([screw(3, 6.0, (u, v, -DEEP_W + WALL), (0, 0, 1)) for u, v in MOUNT_SCREWS])
+    mt = group([screw(3, 6.0, (u, v, -DEEP_W + FLOOR), (0, 0, 1)) for u, v in MOUNT_SCREWS])
     pi = group([screw(2.5, 4.0, (u, v, -STANDOFF_W - 1.6), (0, 0, -1)) for u, v in PI_HOLE_UV])
     return [("screw_frame", fr, SCREW_COLOR), ("screw_body", bd, SCREW_COLOR), ("screw_mount", mt, SCREW_COLOR),
             ("screw_pi", pi, SCREW_COLOR)]
@@ -646,7 +647,7 @@ def hardware():
         out.append((n, sh, "#30343A" if n == "cooler" else ("#1F6B45" if n == "pi_board" else "#C9CDD2")))
     # The plugs: the power plug from the left, the printer cable into a USB 2 port from above.
     u, v, w = pi_uvw(11.2, -1.0, 3.2)
-    out.append(("power_plug", uvw_box(u - 6.5 - 24.0, u - 6.5, v - 6.0, v + 6.0, w - 3.5, w + 3.5), "#F2F2F2"))
+    out.append(("power_plug", usbc_plug(u - 6.5, v, w), "#F2F2F2"))
     x0, x1, y0, y1, z0, z1 = pi_parts()["pi_usb2"]
     b = pi_box(x0, x1, y0, y1, z0, z0 + 7.5).bounding_box()
     out += pod_screws()
@@ -656,6 +657,19 @@ def hardware():
     out += ribbon_and_wire()
     out.append(("printer_plug", uvw_box(b.min.X - 1.5, b.max.X + 1.5, b.max.Y - 2.0, b.max.Y + 30.0, b.min.Z - 0.6, b.max.Z + 0.6), "#151515"))
     return out
+
+
+def usbc_plug(u0, v, w):
+    """The USB-C end of the cable of the Raspberry Pi 27W power supply, from its product brief
+    (ref/raspberrypi/27w-usb-c-power-supply-product-brief.pdf): the metal plug (6.7 long), the
+    overmold (19 x 12 x 7, round edges) and the strain relief (5 long). u0 is the face of the
+    overmold. The plug points to +u, and the cable leaves to -u."""
+    metal = uvw_box(u0, u0 + 6.7, v - 4.125, v + 4.125, w - 1.2, w + 1.2)
+    body = uvw_box(u0 - 19.0, u0, v - 6.0, v + 6.0, w - 3.5, w + 3.5)
+    body = fillet(body.edges().filter_by(Axis.X), 2.0)
+    relief = uvw_box(u0 - 24.0, u0 - 19.0 + 0.01, v - 2.65, v + 2.65, w - 2.4, w + 2.4)
+    relief = fillet(relief.edges().filter_by(Axis.X), 1.5)
+    return metal + body + relief
 
 
 ALLOWED = {frozenset(p) for p in [("power_plug", "pi_usbc"), ("printer_plug", "pi_usb2"), ("glass", "screen"),
