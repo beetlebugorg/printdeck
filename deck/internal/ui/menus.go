@@ -571,9 +571,10 @@ func (a *App) drawHistory(c *gfx.Canvas) {
 		a.record = recs[i]
 		a.open(pageRecord)
 	}
+	files := a.fileIndex()
 	l := kit.List{Area: area, N: len(recs), RowH: recordRowH(), Gap: 10, Scroll: &a.historyScroll}
 	a.list(c, l, func(i int) string { return recs[i].File }, func(c *gfx.Canvas, i int, box image.Rectangle) {
-		a.recordRow(c, box, recs[i], recs[i].Summary(func(mm float64) float64 { return a.grams(mm, "") }))
+		a.recordRow(c, box, recs[i], recs[i].Summary(func(mm float64) float64 { return a.grams(mm, "") }), fileDate(recs[i].End, a.Now(), a.Clock24), files)
 	}, open)
 }
 
@@ -582,31 +583,28 @@ func recordRowH() int {
 	if gfx.FinePrint() {
 		return 114
 	}
-	return 90
+	return fileRowH
 }
 
-// recordRow is the row of a finished print in a list: the file, and under it the summary at the
-// left and the date at the right. The summary is red for a print that did not complete.
-func (a *App) recordRow(c *gfx.Canvas, box image.Rectangle, r printer.Record, summary string) {
+// recordRow is the row of a finished print in a list: the thumbnail of the file at the left, and
+// at its right the file, the summary and the date line in three lines, as a row of the Files page.
+// The summary is red for a print that did not complete.
+func (a *App) recordRow(c *gfx.Canvas, box image.Rectangle, r printer.Record, summary, date string, files map[string]printer.File) {
 	plate(c, box)
+	y := box.Min.Y + (box.Dy()-thumbSmall)/2
+	a.recordThumb(c, image.Rect(box.Min.X+10, y, box.Min.X+10+thumbSmall, y+thumbSmall), r, files)
 	col := dim
 	if r.Result != "complete" {
 		col = red
 	}
-	c.Text(image.Rect(box.Min.X+18, box.Min.Y+8, box.Max.X-18, box.Min.Y+38), r.File, gfx.Face(true, 19), text, gfx.Left)
-	// The date at the right, and the summary in the space that it leaves.
-	date := fileDate(r.End, a.Now(), a.Clock24)
+	y1, y2, y3 := 8, 36, 58
 	if gfx.FinePrint() {
-		// The large text: the summary and the date in lines of their own.
-		c.Text(image.Rect(box.Min.X+18, box.Min.Y+38, box.Max.X-18, box.Min.Y+66), summary, gfx.Face(false, 16), col, gfx.Left)
-		c.Text(image.Rect(box.Min.X+18, box.Min.Y+66, box.Max.X-18, box.Min.Y+94), date, gfx.Face(false, 14), dim, gfx.Left)
-		return
+		y1, y2, y3 = 8, 38, 66
 	}
-	line := image.Rect(box.Min.X+18, box.Min.Y+38, box.Max.X-18, box.Max.Y-8)
-	c.Text(line, date, gfx.Face(false, 14), dim, gfx.Right)
-	sum := line
-	sum.Max.X -= gfx.Width(gfx.Face(false, 14), date) + 12
-	c.Text(sum, summary, gfx.Face(false, 16), col, gfx.Left)
+	x := box.Min.X + 92
+	c.Text(image.Rect(x, box.Min.Y+y1, box.Max.X-12, box.Min.Y+y1+30), r.File, gfx.Face(true, 19), text, gfx.Left)
+	c.Text(image.Rect(x, box.Min.Y+y2, box.Max.X-12, box.Min.Y+y2+24), summary, gfx.Face(false, 16), col, gfx.Left)
+	c.Text(image.Rect(x, box.Min.Y+y3, box.Max.X-12, min(box.Max.Y-6, box.Min.Y+y3+28)), date, gfx.Face(false, 14), dim, gfx.Left)
 }
 
 // drawSettings is the Settings page: a row for each setting of the deck. A tap changes it.

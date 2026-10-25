@@ -377,14 +377,17 @@ func (a *App) drawSpoolPrints(c *gfx.Canvas) {
 		noItems(c, area, "", "No prints used this roll")
 		return
 	}
+	files := a.fileIndex()
 	l := kit.List{Area: area, N: len(recs), RowH: recordRowH(), Gap: 10, Scroll: &a.printsScroll}
 	a.list(c, l, func(i int) string { return recs[i].File }, func(c *gfx.Canvas, i int, box image.Rectangle) {
 		r := recs[i]
-		sum := r.Summary(func(float64) float64 { return a.recordGrams(r, sp) })
+		// The cost goes on the line of the date, so that the summary fits at the right of the
+		// thumbnail.
+		date := fileDate(r.End, a.Now(), a.Clock24)
 		if r.Cost > 0 {
-			sum += fmt.Sprintf(" · $%.2f", r.Cost)
+			date += fmt.Sprintf(" · $%.2f", r.Cost)
 		}
-		a.recordRow(c, box, r, sum)
+		a.recordRow(c, box, r, r.Summary(func(float64) float64 { return a.recordGrams(r, sp) }), date, files)
 	}, func(i int) {
 		a.record = recs[i]
 		a.open(pageRecord)

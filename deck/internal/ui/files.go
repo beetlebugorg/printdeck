@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"printdeck/kit"
 	"sort"
 	"strings"
@@ -162,7 +163,7 @@ func (a *App) thumb(c *gfx.Canvas, r image.Rectangle, f printer.File, m gcodemet
 		img = a.Printer.FilePicture(f, hex)
 	}
 	if img == nil {
-		drawModelShape(c, r)
+		drawModelShape(c, r, lcdInk, lcdDim)
 		return
 	}
 	in := r.Inset(3)
@@ -184,15 +185,52 @@ func (a *App) thumb(c *gfx.Canvas, r image.Rectangle, f printer.File, m gcodemet
 	c.Image(in, s)
 }
 
-// drawModelShape is the picture of a file with no thumbnail: a part on a bed, in the colors of the
-// display.
-func drawModelShape(c *gfx.Canvas, r image.Rectangle) {
+// drawModelShape is the picture of a file with no thumbnail: a part on a bed. The lower part and
+// the bed are in ink, the upper part in dim.
+func drawModelShape(c *gfx.Canvas, r image.Rectangle, ink, dim color.RGBA) {
 	cx, by := r.Min.X+r.Dx()/2, r.Max.Y-r.Dy()/5
 	s := float64(r.Dx()) / 200
 	p := func(x, y float64) image.Point { return image.Pt(cx+int(x*s), by+int(y*s)) }
-	c.Polygon([]image.Point{p(-80, 4), p(80, 4), p(80, 12), p(-80, 12)}, lcdDim)
-	c.Polygon([]image.Point{p(-50, 0), p(50, 0), p(40, -40), p(-40, -40)}, lcdInk)
-	c.Polygon([]image.Point{p(-22, -40), p(22, -40), p(18, -80), p(-18, -80)}, lcdDim)
+	c.Polygon([]image.Point{p(-80, 4), p(80, 4), p(80, 12), p(-80, 12)}, dim)
+	c.Polygon([]image.Point{p(-50, 0), p(50, 0), p(40, -40), p(-40, -40)}, ink)
+	c.Polygon([]image.Point{p(-22, -40), p(22, -40), p(18, -80), p(-18, -80)}, dim)
+}
+
+// fileIndex is the files of the printer by their path.
+func (a *App) fileIndex() map[string]printer.File {
+	files := a.Printer.Files()
+	out := make(map[string]printer.File, len(files))
+	for _, f := range files {
+		out[f.Path] = f
+	}
+	return out
+}
+
+// recordThumb draws the thumbnail of a finished print in a display window: the thumbnail of its
+// file, as on the Files page. When the file is gone, it draws the model shape in the color of the
+// roll of the print.
+func (a *App) recordThumb(c *gfx.Canvas, r image.Rectangle, rec printer.Record, files map[string]printer.File) {
+	if f, ok := files[rec.Path]; ok && rec.Path != "" {
+		a.thumb(c, r, f, a.Printer.FileMeta(f.Path))
+		return
+	}
+	window(c, r)
+	hex := printer.ColorFromName(rec.Spool)
+	if s := a.Printer.SpoolStore(); s != nil {
+		if sp, ok := s.Get(rec.SpoolID); ok {
+			if _, ok := printer.ParseHex(sp.Color); ok {
+				hex = sp.Color
+			} else if h := printer.ColorFromName(sp.Label()); h != "" {
+				hex = h
+			}
+		}
+	}
+	if hex == "" {
+		drawModelShape(c, r, lcdInk, lcdDim)
+		return
+	}
+	ink := printer.ModelColor(hex)
+	drawModelShape(c, r, ink, mix(ink, lcd, 0.35))
 }
 
 // drawFile is the page of one file: the thumbnail, what the slicer wrote, Print and Delete.

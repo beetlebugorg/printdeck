@@ -132,7 +132,7 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	if !f.wide {
 		rest = kit.Inset(rest, 0, 0, 0, 16)
 	}
-	r := kit.Rows(rest, 12, kit.Px(90), kit.Fr(1))
+	r := kit.Rows(rest, 12, kit.Px(lastPrintH()), kit.Fr(1))
 	a.drawLastPrint(c, st, r[0])
 	a.region("Pages", r[1])
 	type homePage struct {
@@ -238,7 +238,16 @@ func (a *App) homeKeys(c *gfx.Canvas, st printer.State, main, heat image.Rectang
 	a.printerKey(c, h[1], "Cool down", raised, text, func() { pr.Heat(0, 0) })
 }
 
-// drawLastPrint draws the last print in r, with Reprint.
+// lastPrintH is the height of the last print on the tall home screen (drawLastPrint).
+func lastPrintH() int {
+	if gfx.FinePrint() {
+		return 166
+	}
+	return 90
+}
+
+// drawLastPrint draws the last print in r: the thumbnail, the file and its summary, and Reprint at
+// the right. With the large text, Reprint is under them, so that the text has the width of r.
 func (a *App) drawLastPrint(c *gfx.Canvas, st printer.State, last image.Rectangle) {
 	plate(c, last)
 	a.region("Last print", last)
@@ -247,11 +256,21 @@ func (a *App) drawLastPrint(c *gfx.Canvas, st printer.State, last image.Rectangl
 		c.Text(last, "No print yet", gfx.Face(false, 18), dim, gfx.Center)
 		return
 	}
-	label(c, image.Rect(last.Min.X+16, last.Min.Y+8, last.Max.X, last.Min.Y+28), "Last print", gfx.Left)
-	c.Text(image.Rect(last.Min.X+16, last.Min.Y+28, last.Max.X-150, last.Min.Y+58), l.File, gfx.Face(true, 20), text, gfx.Left)
-	c.Text(image.Rect(last.Min.X+16, last.Min.Y+56, last.Max.X-150, last.Max.Y-8), l.Summary(func(mm float64) float64 { return a.grams(mm, "") }), gfx.Face(false, 16), dim, gfx.Left)
+	textR := last.Max.X - 150
+	reprint := image.Rect(last.Max.X-140, last.Min.Y+20, last.Max.X-14, last.Max.Y-16)
+	if gfx.FinePrint() {
+		textR = last.Max.X - 14
+		reprint = image.Rect(last.Min.X+14, last.Min.Y+92, last.Max.X-14, last.Max.Y-14)
+	}
+	// The thumbnail at the left, and the label, the file and the summary at its right.
+	y := last.Min.Y + 11
+	a.recordThumb(c, image.Rect(last.Min.X+11, y, last.Min.X+11+thumbSmall, y+thumbSmall), l, a.fileIndex())
+	x := last.Min.X + 92
+	label(c, image.Rect(x, last.Min.Y+8, textR, last.Min.Y+28), "Last print", gfx.Left)
+	c.Text(image.Rect(x, last.Min.Y+28, textR, last.Min.Y+58), l.File, gfx.Face(true, 20), text, gfx.Left)
+	c.Text(image.Rect(x, last.Min.Y+56, textR, last.Min.Y+82), l.Summary(func(mm float64) float64 { return a.grams(mm, "") }), gfx.Face(false, 16), dim, gfx.Left)
 	path := l.Path
-	a.printerKey(c, image.Rect(last.Max.X-140, last.Min.Y+20, last.Max.X-14, last.Max.Y-16), "Reprint", raised, text, func() {
+	a.printerKey(c, reprint, "Reprint", raised, text, func() {
 		a.confirmPrint(path)
 	})
 }

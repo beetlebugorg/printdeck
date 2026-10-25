@@ -51,9 +51,9 @@ func ParseHex(s string) (color.RGBA, bool) {
 	return color.RGBA{uint8(v >> 16), uint8(v >> 8), uint8(v), 255}, true
 }
 
-// modelColor is the color of a model of the filament hex, or the orange of the deck for no color.
+// ModelColor is the color of a model of the filament hex, or the orange of the deck for no color.
 // A very dark color is made lighter, so that the shading shows on the dark window of the picture.
-func modelColor(hex string) color.RGBA {
+func ModelColor(hex string) color.RGBA {
 	c, ok := ParseHex(hex)
 	if !ok {
 		return printedColor

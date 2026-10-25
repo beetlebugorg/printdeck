@@ -339,7 +339,7 @@ func drawAt(gc *gcode.Model, mesh *stl.Mesh, pos, curStart int64, colors []color
 // palette is the colors of the parts of the print of gc: start, the color of the roll at the start
 // of the print, then the color of the roll of each color change of the file.
 func (v *View) palette(gc *gcode.Model, start string) []color.RGBA {
-	out := []color.RGBA{modelColor(start)}
+	out := []color.RGBA{ModelColor(start)}
 	for _, ch := range gc.Changes {
 		c := ""
 		if v.Rolls != nil {
@@ -347,7 +347,7 @@ func (v *View) palette(gc *gcode.Model, start string) []color.RGBA {
 				c = rollHex(sp.Color, sp.Label())
 			}
 		}
-		out = append(out, modelColor(c))
+		out = append(out, ModelColor(c))
 	}
 	return out
 }
@@ -446,7 +446,7 @@ func (v *View) FilePicture(f File, hex string) image.Image {
 
 // drawRecord draws the picture of a finished print, or returns nil.
 func (v *View) drawRecord(r Record, hex string) image.Image {
-	col := modelColor(hex)
+	col := ModelColor(hex)
 	body, err := v.src.Open(r.Path)
 	if err != nil {
 		return nil
@@ -519,7 +519,7 @@ func (v *View) ModelPicture(st State, w, h int, mono bool) image.Image {
 	pos := st.FilePos
 	curStart := gc.LayerStart(gc.LayerAt(pos))
 	if !mono {
-		col := modelColor(hex)
+		col := ModelColor(hex)
 		if mesh != nil {
 			top := float64(gc.ZAt(pos)) / float64(max(gc.MaxZ, 0.001))
 			return mesh.Render(w, h, top, top, col, col, ghostColor)
