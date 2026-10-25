@@ -1033,6 +1033,19 @@ def on_bed(shape, rot):
     return Pos(-(bb.min.X + bb.max.X) / 2, -(bb.min.Y + bb.max.Y) / 2, -bb.min.Z) * s
 
 
+def snap_wall():
+    """FDM only: a thin wall that stands inside the open front of the case, under the front edge of
+    the top wall. Printed standing, the top wall then bridges 9.5 mm from the back to it, with a gap
+    of 0.3 mm (one layer) between them. A notch at its foot lets it snap off after the print."""
+    v0 = min(BODY_V[0], DEEP_V0) + WALL                  # the inside of the bottom wall
+    v1 = BODY_V[1] - WALL - 0.3                          # 0.3 mm under the inside of the top wall
+    u = BODY_U - WALL - 0.4
+    w0, w1 = FRONT_W - 1.45, FRONT_W - 0.25              # 1.2 mm thick, at the front
+    wall = uvw_box(-u, u, v0 + 1.0, v1, w0, w1)
+    neck = uvw_box(-u, u, v0 - 0.01, v0 + 1.0, w0 + 0.3, w1 - 0.3)
+    return wall + neck
+
+
 def print_parts(process):
     """(file name, shape, how many) for each printed part of the pod, in print orientation."""
     import clips as C
@@ -1042,6 +1055,8 @@ def print_parts(process):
         case, taz, mini = body(), bracket(), mini_bracket()
     finally:
         DOVE_CLR = keep
+    if process == "fdm":
+        case = case + snap_wall()
     one, _ = C.tape_clip()
     two, _ = C.tape_clip(True)
     if process == "fdm":

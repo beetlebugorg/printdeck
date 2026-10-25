@@ -10,11 +10,14 @@ bracket has 0.35 mm of clearance on each side.
 
 | File | Print | On the bed | Supports |
 |---|---|---|---|
-| `pod-case_fdm.stl` | 1 | The bottom end (it stands up) | None needed. Cura adds about 1 g at the rounded edges on the bed. Use a brim: the part is 132 mm tall. |
+| `pod-case_fdm.stl` | 1 | The bottom end (it stands up) | Built in: a thin wall inside the open front holds up the inside of the top wall. Turn Cura's supports off. Use a brim: the part is 132 mm tall. |
 | `pod-bracket-taz_fdm.stl` | 1, for the TAZ | The top end of the plate | Block the supports in the two slots for the rail clips. Their roofs are 12 mm bridges, and support in a slot spoils the fit of the clip. Use a brim. |
 | `pod-bracket-mini2_fdm.stl` | 1, for the Mini 2 | The side of the plate that goes on the frame | None |
 | `cable-clip-single_fdm.stl` | 5, for the TAZ | The base | None |
 | `cable-clip-double_fdm.stl` | 2, for the Mini 2 | The base | None |
+
+After the print, snap the built-in wall out of the front of the case: bend it at the notch along
+its foot. It is not part of the case.
 
 Print the clips in PETG. Their arms bend across the layer lines, and PLA can crack there.
 
