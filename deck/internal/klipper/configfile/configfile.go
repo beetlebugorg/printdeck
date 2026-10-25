@@ -341,6 +341,16 @@ func (c *Wrapper) GetFloatLists(option string, seps []string, count int, opts ..
 	return out
 }
 
+// GetLists returns a list of lists of strings, for example "a=b, c=d" with seps "=", ",".
+func (c *Wrapper) GetLists(option string, seps []string, count int, opts ...Opt) [][]string {
+	v := c.getLists(option, seps, count, parseStr, opts)
+	var out [][]string
+	for _, row := range anyList(v) {
+		out = append(out, toStrings(row))
+	}
+	return out
+}
+
 func anyList(v any) []any {
 	l, _ := v.([]any)
 	return l

@@ -8,6 +8,7 @@ import (
 	_ "printdeck/internal/klipper/extras/aio_executor"
 	_ "printdeck/internal/klipper/extras/bed_tilt"
 	_ "printdeck/internal/klipper/extras/bltouch"
+	_ "printdeck/internal/klipper/extras/board_pins"
 	_ "printdeck/internal/klipper/extras/bed_mesh"
 	_ "printdeck/internal/klipper/extras/bed_screws"
 	_ "printdeck/internal/klipper/extras/buttons"
