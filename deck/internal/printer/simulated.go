@@ -37,6 +37,16 @@ var simModels = []SimModel{
 // SimModels returns the simulated printers.
 func SimModels() []SimModel { return simModels }
 
+// SimModelID returns the ID of the simulated printer with a name (State.Simulated), or "".
+func SimModelID(name string) string {
+	for _, m := range simModels {
+		if m.Name == name {
+			return m.ID
+		}
+	}
+	return ""
+}
+
 // SimMarker is the first line of the config of a simulated printer, before its ID.
 const SimMarker = "# Printdeck simulated printer: "
 

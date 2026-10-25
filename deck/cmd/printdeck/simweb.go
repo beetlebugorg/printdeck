@@ -16,7 +16,8 @@ import (
 // The state of the simulated printer for the 3D window of the desktop app (desktop/Sim3D.qml):
 //
 //	GET /sim/state  the live position of the tool head and the bed, the temperatures, the fan,
-//	                and the place of the print in its file
+//	                the place of the print in its file, and the model of the simulated printer
+//	                (SimModel.ID, or "" for a different printer)
 //	GET /sim/lcd.png  the picture of the display of the printer, as the touch screen draws it
 //	GET /sim/path?key=K&from=N  the extruding moves of the print from move N, up to the place of
 //	                the print: the part that is printed. A new print has a new key.
@@ -40,7 +41,8 @@ func registerSim(mux *http.ServeMux, k *printer.Klippy, ok func(*http.Request) b
 	mux.HandleFunc("GET /sim/state", auth(func(w http.ResponseWriter, r *http.Request) {
 		st := k.State()
 		out := map[string]any{"state": st.Text, "busy": st.Busy(), "file": st.File, "filepos": st.FilePos,
-			"tool": st.Tool, "toolT": st.ToolTarget, "bed": st.Bed, "bedT": st.BedTarget, "fan": st.Fan / 100}
+			"tool": st.Tool, "toolT": st.ToolTarget, "bed": st.Bed, "bedT": st.BedTarget, "fan": st.Fan / 100,
+			"model": printer.SimModelID(st.Simulated)}
 		// The color of the roll in the printer, for the plastic of the 3D view, or "".
 		if k.Spools != nil {
 			if sp, ok := k.Spools.In(); ok {
