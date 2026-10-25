@@ -421,8 +421,8 @@ func (p *ParameterHelper) ProbeParams(gcmd *gcode.Command) Params {
 	}
 }
 
-// hwSession is the probing session of the probe hardware.
-type hwSession interface {
+// HWSession is the probing session of the probe hardware.
+type HWSession interface {
 	RunProbe(gcmd *gcode.Command)
 	PullProbedResults() []*result
 	EndProbeSession()
@@ -432,13 +432,13 @@ type hwSession interface {
 type SampleAveragingHelper struct {
 	printer        *host.Printer
 	paramHelper    *ParameterHelper
-	startSessionCB func(gcmd *gcode.Command) hwSession
-	hwProbeSession hwSession
+	startSessionCB func(gcmd *gcode.Command) HWSession
+	hwProbeSession HWSession
 	results        []*result
 }
 
 func NewSampleAveragingHelper(config *configfile.Wrapper, paramHelper *ParameterHelper,
-	startSession func(gcmd *gcode.Command) hwSession) *SampleAveragingHelper {
+	startSession func(gcmd *gcode.Command) HWSession) *SampleAveragingHelper {
 	s := &SampleAveragingHelper{printer: host.Of(config), paramHelper: paramHelper, startSessionCB: startSession}
 	s.printer.RegisterEventHandler("gcode:command_error", func(...any) {
 		if s.hwProbeSession != nil {
@@ -766,7 +766,7 @@ func (w *EndstopWrapper) runScript(t *gcode_macro.TemplateWrapper, what string) 
 	}
 }
 
-func (w *EndstopWrapper) StartProbeSession(gcmd *gcode.Command) hwSession {
+func (w *EndstopWrapper) StartProbeSession(gcmd *gcode.Command) HWSession {
 	w.homingHelper.ClearTriggerPositions()
 	if !w.stowOnEachSample {
 		w.multi = "FIRST"

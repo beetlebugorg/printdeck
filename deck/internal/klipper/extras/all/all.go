@@ -7,6 +7,7 @@ import (
 	_ "printdeck/internal/klipper/extras/adc_temperature"
 	_ "printdeck/internal/klipper/extras/aio_executor"
 	_ "printdeck/internal/klipper/extras/bed_tilt"
+	_ "printdeck/internal/klipper/extras/bltouch"
 	_ "printdeck/internal/klipper/extras/bed_screws"
 	_ "printdeck/internal/klipper/extras/buttons"
 	_ "printdeck/internal/klipper/extras/controller_fan"
