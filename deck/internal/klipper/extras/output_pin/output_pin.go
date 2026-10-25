@@ -40,6 +40,7 @@ type activeTemplate struct {
 	lparams       map[string]any
 	callback      func(text string)
 	flushCallback func()
+	flushKey      any
 }
 
 // PrinterTemplateEvaluator renders the display templates of SET_PIN TEMPLATE and SET_LED
@@ -91,7 +92,7 @@ func staticUID(template *display.DisplayTemplate, lparams map[string]any) string
 }
 
 func (te *PrinterTemplateEvaluator) activateTemplate(key any, callback func(string),
-	template *display.DisplayTemplate, lparams map[string]any, flushCallback func()) {
+	template *display.DisplayTemplate, lparams map[string]any, flushCallback func(), flushKey any) {
 	idx := -1
 	for i, at := range te.activeTemplates {
 		if at.key == key {
@@ -101,7 +102,7 @@ func (te *PrinterTemplateEvaluator) activateTemplate(key any, callback func(stri
 	if template != nil {
 		// Build a unique id to make it possible to cache duplicate rendering
 		at := &activeTemplate{key, staticUID(template, lparams), template, lparams, callback,
-			flushCallback}
+			flushCallback, flushKey}
 		if idx >= 0 {
 			te.activeTemplates[idx] = at
 		} else {
@@ -136,7 +137,7 @@ func (te *PrinterTemplateEvaluator) render(eventtime float64) float64 {
 	})
 	// Render all templates
 	var flushCallbacks []func()
-	flushSeen := map[string]bool{}
+	flushSeen := map[any]bool{}
 	renderCache := map[string]string{}
 	for _, at := range append([]*activeTemplate(nil), te.activeTemplates...) {
 		text, ok := "", false
@@ -158,9 +159,8 @@ func (te *PrinterTemplateEvaluator) render(eventtime float64) float64 {
 			}
 		}
 		if at.flushCallback != nil {
-			id := fmt.Sprintf("%p", at.flushCallback)
-			if !flushSeen[id] {
-				flushSeen[id] = true
+			if !flushSeen[at.flushKey] {
+				flushSeen[at.flushKey] = true
 				flushCallbacks = append(flushCallbacks, at.flushCallback)
 			}
 		}
@@ -174,9 +174,10 @@ func (te *PrinterTemplateEvaluator) render(eventtime float64) float64 {
 }
 
 // SetTemplate starts or stops the template of a command (TEMPLATE=name PARAM_x=value) for the
-// object key. callback gets each text; flushCallback runs after each render, or is nil.
+// object key. callback gets each text. flushCallback runs once after each render for each
+// flushKey, or is nil.
 func (te *PrinterTemplateEvaluator) SetTemplate(gcmd *gcode.Command, key any, callback func(string),
-	flushCallback func()) {
+	flushCallback func(), flushKey any) {
 	var template *display.DisplayTemplate
 	lparams := map[string]any{}
 	tplName := gcmd.GetString("TEMPLATE")
@@ -207,7 +208,7 @@ func (te *PrinterTemplateEvaluator) SetTemplate(gcmd *gcode.Command, key any, ca
 			lparams[p] = lv
 		}
 	}
-	te.activateTemplate(key, callback, template, lparams, flushCallback)
+	te.activateTemplate(key, callback, template, lparams, flushCallback, flushKey)
 	te.activateTimer()
 }
 
@@ -316,7 +317,7 @@ func (p *PrinterOutputPin) cmdSetPin(gcmd *gcode.Command) {
 	}
 	// Check for template setting
 	if hasTemplate {
-		p.templateEval.SetTemplate(gcmd, p, p.templateUpdate, nil)
+		p.templateEval.SetTemplate(gcmd, p, p.templateUpdate, nil, nil)
 		return
 	}
 	// Read requested value

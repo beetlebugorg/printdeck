@@ -65,7 +65,7 @@ func (f *PrinterFanGeneric) cmdSetFanSpeed(gcmd *gcode.Command) {
 	}
 	// Check for template setting
 	if hasTemplate {
-		f.templateEval.SetTemplate(gcmd, f, f.templateUpdate, nil)
+		f.templateEval.SetTemplate(gcmd, f, f.templateUpdate, nil, nil)
 		return
 	}
 	f.fan.SetSpeedFromCommand(speed)
