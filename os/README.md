@@ -152,6 +152,22 @@ The printer's board keeps its firmware. The Klipper version in
 `deck/internal/klipper/klipper.version` must match the firmware on the board. The `klipper`
 service runs the host: `printdeck klippy`, with the options of `klippy.py`.
 
+### A simulated printer
+
+The deck can run a simulated printer with no printer and no cable. Klipper then runs the config
+of a real printer with `serial: sim`: the board of the printer runs in the Klipper host. It
+heats, homes, probes and prints in real time, and no motor moves.
+
+1. Open Machine, then Simulated printer. The setup screen of a deck with no printer has the
+   same key.
+2. Tap a printer: the LulzBot TAZ Workhorse or the Creality CR-10 V3. Klipper restarts.
+3. To stop, tap Real printer on the same page. Klipper restarts with your config.
+
+The deck moves your `printer.cfg` to `printer.cfg.real`, and writes the config of the simulated
+printer as `printer.cfg`. Real printer moves `printer.cfg.real` back with no change. An orange
+band at the top of each screen shows the simulated printer. The configs are in the program
+(`deck/internal/printer/sim/`), and `make.sh` there makes them again.
+
 ## Settings
 
 The settings of the Printdeck program are in `/etc/printdeck/deck.env`, for example the screen

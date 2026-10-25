@@ -576,13 +576,15 @@ func manualParts() []section {
 						{"Firmware restart", "Restarts the firmware of the board, for example after a stop."},
 					},
 					Tall: []callout{
+						{"Simulated printer", "Runs a simulated printer in place of the real printer. See Try the deck with a simulated printer."},
 						{"Prints", "The totals of all prints. History on that page lists each print. See below."},
 					},
 					Notes: []string{"The rows are in groups: the printer, the history of the prints, and the deck. Drag the list up to see the rows further down."}},
 				{Name: "machine-prints", Caption: "The Machine page, further down", Layout: "wide",
-					// The list scrolled to the heading of the history: 24 + 5 + 3 × (60 + 5) + 10 pixels.
-					Setup: func(s *manualState) { s.p.State_ = stIdle; s.a.OpenPrintScreen("machine"); s.a.DemoScroll(234) },
+					// The list scrolled to the fourth row of the printer: 24 + 5 + 3 × (60 + 5) pixels.
+					Setup: func(s *manualState) { s.p.State_ = stIdle; s.a.OpenPrintScreen("machine"); s.a.DemoScroll(224) },
 					Callouts: []callout{
+						{"Simulated printer", "Runs a simulated printer in place of the real printer. See Try the deck with a simulated printer."},
 						{"Prints", "The totals of all prints. History on that page lists each print. See below."},
 					}},
 				{Name: "machine-more", Caption: "The Machine page, at the bottom",
@@ -633,6 +635,18 @@ func manualParts() []section {
 						{"Replies", "Your commands (amber, after >), the replies of Klipper, and errors (red). Drag down to read older lines."},
 						{"Type a command", "Opens the keyboard. It shows your last command, so you can change it and send it again."},
 						{"Quick keys", "Home (G28), Status (STATUS) and Help (HELP, the list of the commands)."},
+					}},
+				{Name: "simulator", Caption: "A simulated printer in use",
+					Setup: func(s *manualState) {
+						s.p.State_ = stIdle
+						s.p.State_.Simulated = "Creality CR-10 V3"
+						s.a.OpenPrintScreen("simulator")
+					},
+					Callouts: []callout{
+						{"Simulated", "The orange band at the top of each screen shows that the printer is simulated. No real printer moves."},
+						{"Real printer", "Puts your printer.cfg back, and restarts Klipper."},
+						{"Simulated LulzBot TAZ Workhorse", "The TAZ Workhorse: a probe on four washers, and bed tilt."},
+						{"Simulated Creality CR-10 V3", "The CR-10 V3: endstops on each axis, and no probe."},
 					}},
 				{Name: "monitor", Caption: "The System monitor", Setup: page("monitor"),
 					Callouts: []callout{
@@ -703,6 +717,7 @@ func manualParts() []section {
 						{"Board", "The board that the deck found on USB, its MCU, and its Klipper firmware."},
 						{"Choose printer", "Opens the list of Klipper's example configs. See below."},
 						{"Search again", "Looks for the board again, for example after you connect the printer."},
+						{"Simulated printer", "Runs a simulated printer, so you can try the deck with no printer."},
 						{"Your own config", "You can also copy your own printer.cfg to the PRINTDECK partition, and start the deck again."},
 						{"Wi-Fi and help", "The network, the address and the password of the deck."},
 						{"Software update", "Installs a new version of Printdeck OS. A new version can fix the problem."},
@@ -918,6 +933,20 @@ func manualSections() []section {
 				"To restore, open the same page. Under Restore, type the backup password, choose the backup file, then click Restore. Do not restore during a print.",
 				"The Printdeck checks the whole file before it changes a file, so a wrong password or a damaged file changes no data. After the restore, Klipper and the Printdeck restart.",
 			}},
+
+		{Chapter: care, ID: "simulator", Title: "Try the deck with a simulated printer",
+			Intro: []string{
+				"The deck can run a simulated printer in place of the real printer. Klipper then runs the config of a real printer on a board in the deck. The board heats, homes, probes and prints in real time, but no motor moves. Use it to learn the deck, or to test a file from the slicer. You need no cable and no printer.",
+				"The deck keeps your printer.cfg as printer.cfg.real while the simulated printer is in use. Real printer puts it back with no change. An orange band at the top of each screen shows the simulated printer.",
+			},
+			Steps: []string{
+				"Open Machine, then Simulated printer. A new deck with no printer has a Simulated printer key on the setup screen.",
+				"Tap the printer to simulate, then Simulate. Klipper restarts with the simulated printer.",
+				"Print as on a real printer: send a file from the slicer, or tap Print a file.",
+				"To stop the simulation, open Machine, then Simulated printer, and tap Real printer, then Go back. Klipper restarts with your printer.cfg.",
+			},
+			After:   []string{"The deck does not change the printer during a print. Wait until the print ends."},
+			Figures: fig("simulator")},
 
 		{Chapter: "When something goes wrong", ID: "problems", Title: "When something goes wrong",
 			Intro: []string{"When Klipper stops with an error, the deck shows all the lines of its message."},
