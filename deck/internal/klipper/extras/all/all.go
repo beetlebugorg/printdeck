@@ -71,6 +71,7 @@ import (
 	_ "printdeck/internal/klipper/extras/tmc2130"
 	_ "printdeck/internal/klipper/extras/tmc2208"
 	_ "printdeck/internal/klipper/extras/tmc2209"
+	_ "printdeck/internal/klipper/extras/tmc2660"
 	_ "printdeck/internal/klipper/extras/tuning_tower"
 	_ "printdeck/internal/klipper/extras/verify_heater"
 	_ "printdeck/internal/klipper/extras/virtual_sdcard"
