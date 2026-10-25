@@ -25,6 +25,7 @@ import (
 	"printdeck/internal/awake"
 	"printdeck/internal/config"
 	"printdeck/internal/display"
+	"printdeck/internal/hostmetrics"
 	"printdeck/internal/printer"
 	"printdeck/internal/remote"
 	"printdeck/internal/touch"
@@ -99,6 +100,9 @@ func desktopApp(args []string) {
 	go lcdLoop(ctx, pr, app)
 	startNotify(ctx, cfg.StateDir, pr, app)
 	go keepAwake(ctx, pr)
+	// The samples of the computer. A computer with no /proc has none, and the page shows that.
+	app.Metrics = hostmetrics.New(hostmetrics.Keep)
+	go app.Metrics.Run(ctx)
 
 	token := randomToken()
 	ln, err := net.Listen("tcp", *addr)

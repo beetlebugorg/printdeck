@@ -47,6 +47,7 @@
       <tr><td>Slot</td><td>{{.Slot}}</td></tr>
       <tr><td>Running for</td><td>{{.Uptime}}</td></tr>
       <tr><td>Memory in use</td><td>{{.Memory}}</td></tr>
+      {{if .Metrics}}<tr><td>Last minute</td><td>{{.Metrics}} · <a href="/system/metrics?range=1h">JSON</a></td></tr>{{end}}
       {{if .APIKey}}<tr><td>Slicer API key</td><td>{{.APIKey}}</td></tr>{{end}}
       {{range .Services}}<tr><td>{{.Name}}</td><td class="{{if ne .State "active"}}bad{{end}}">{{.State}}</td></tr>{{end}}
     </table>

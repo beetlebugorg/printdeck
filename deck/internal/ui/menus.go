@@ -475,6 +475,9 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 	if a.Setup != nil {
 		deckRows = append(deckRows, menuItem{"Wi-Fi and help", "The network, the password, the addresses", dim, a.OpenHelp})
 	}
+	if a.Metrics != nil {
+		deckRows = append(deckRows, menuItem{"System monitor", monitorLine, dim, func() { a.open(pageMonitor) }})
+	}
 	a.menuGroups(c, rowsArea, f.wide, 60, 5, []menuGroup{{"Printer", printerRows}, {"History", printRows}, {"Deck", deckRows}})
 	k := kit.Cols(restart, 12, kit.Fr(1), kit.Fr(1))
 	// The destructive action at the left.

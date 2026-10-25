@@ -18,6 +18,7 @@ import (
 	"printdeck/internal/board"
 	"printdeck/internal/gcodemeta"
 	"printdeck/internal/gfx"
+	"printdeck/internal/hostmetrics"
 	"printdeck/internal/notify"
 	"printdeck/internal/printer"
 	"printdeck/internal/touch"
@@ -242,6 +243,10 @@ type App struct {
 	lcdNotes []printer.LCDRow // rows under the heading of the page (lcdNote)
 	// Updater checks for new releases and installs them, or nil.
 	Updater Updater
+	// Metrics are the samples of the CPU, the memory and the disk writes of the host, or nil
+	// (Machine > System monitor).
+	Metrics      *hostmetrics.Recorder
+	monitorRange int // the time of the graphs of the System monitor page: an index of monitorRanges
 
 	redrawPending atomic.Bool // redrawSoon asked for a frame
 
@@ -296,6 +301,7 @@ func (a *App) Session(width, height int) *App {
 	s.Clock24, s.OnClock = a.Clock24, a.OnClock
 	s.Material, s.OnMaterial = a.Material, a.OnMaterial
 	s.Updater = a.Updater
+	s.Metrics = a.Metrics
 	s.hub = a.hub
 	return s
 }

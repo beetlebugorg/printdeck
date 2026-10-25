@@ -44,7 +44,7 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 		}, nil)
 		rs.Source = sourceURL(osVersion())
 		mux.Handle("/", rs.Handler())
-		registerSystemPage(mux, rs, pr, cfg.KlippyLog, cfg.OctoPrintKey)
+		registerSystemPage(mux, rs, pr, app.Metrics, cfg.KlippyLog, cfg.OctoPrintKey)
 		registerRollPages(mux, rs, pr, app)
 	}
 	srv := &http.Server{Addr: cfg.RemoteAddr, Handler: remote.SecurityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}

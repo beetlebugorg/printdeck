@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"printdeck/internal/hostmetrics"
 	"printdeck/internal/remote"
 	"printdeck/internal/system"
 )
@@ -41,6 +42,7 @@ const maxRestore = 16 << 30
 
 type systemView struct {
 	Version, Variant, Slot, Uptime, Memory string
+	Metrics                                string // the CPU and the disk writes of the last minute
 	APIKey                                 string // the key of the OctoPrint-compatible API, for slicers
 	Source                                 string // the source code of this version
 	Services                               []struct{ Name, State string }
@@ -49,7 +51,14 @@ type systemView struct {
 	Failed                                 bool
 }
 
-func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend, klippyLog, apiKey string) {
+// sysMetrics are the samples of the host for the system page, or nil.
+var sysMetrics *hostmetrics.Recorder
+
+func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend, metrics *hostmetrics.Recorder, klippyLog, apiKey string) {
+	sysMetrics = metrics
+	mux.HandleFunc("GET /system/metrics", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
+		writeMetricsJSON(w, r, metrics)
+	}))
 	mux.HandleFunc("GET /system", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
 		renderSystem(w, klippyLog, apiKey, "", false)
 	}))
@@ -144,6 +153,7 @@ func renderMessage(w http.ResponseWriter, klippyLog, apiKey, title, msg string, 
 		}
 	}
 	v.Memory = memoryUse()
+	v.Metrics = metricsLine(sysMetrics, time.Now())
 	for _, s := range systemServices {
 		out, _ := exec.Command("systemctl", "is-active", s).Output()
 		v.Services = append(v.Services, struct{ Name, State string }{strings.TrimSuffix(s, ".service"), strings.TrimSpace(string(out))})
@@ -378,4 +388,70 @@ func osRelease(key string) string {
 		}
 	}
 	return ""
+}
+
+// metricsLine is the line of the system page for the samples of the host: the CPU, and the writes
+// to the disk in the last minute. It is "" with no samples.
+func metricsLine(m *hostmetrics.Recorder, now time.Time) string {
+	if m == nil || m.Len() == 0 {
+		return ""
+	}
+	b := m.Total(now.Add(-time.Minute), now)
+	var parts []string
+	if b.HasCPU {
+		parts = append(parts, fmt.Sprintf("CPU %.0f%%", 100*b.CPU))
+	}
+	if b.HasDisk {
+		parts = append(parts, fmt.Sprintf("%d writes, %d KiB to %s in %.0f s", b.Writes, b.WriteBytes/1024, m.Disk(), b.Covered.Seconds()))
+	}
+	return strings.Join(parts, " · ")
+}
+
+// metricsBucket is a part of the time in the JSON of /system/metrics. A value with no data is
+// null.
+type metricsBucket struct {
+	Start      time.Time `json:"start"`
+	Seconds    float64   `json:"seconds"` // the time of the samples in the bucket
+	CPU        *float64  `json:"cpu"`     // the busy share, 0 to 1
+	MemUsed    *uint64   `json:"mem_used"`
+	MemTotal   *uint64   `json:"mem_total"`
+	Writes     *uint64   `json:"writes"`
+	WriteBytes *uint64   `json:"write_bytes"`
+}
+
+// writeMetricsJSON writes the samples of the host as JSON: the last 10 minutes in buckets of 10
+// seconds, or with range=1h or range=24h, the last hour in minutes or the last day in 15 minutes.
+func writeMetricsJSON(w http.ResponseWriter, r *http.Request, m *hostmetrics.Recorder) {
+	span, n := 10*time.Minute, 60
+	switch r.URL.Query().Get("range") {
+	case "1h":
+		span, n = time.Hour, 60
+	case "24h":
+		span, n = 24*time.Hour, 96
+	}
+	out := struct {
+		Interval float64         `json:"interval_s"`
+		Disk     string          `json:"disk"`
+		Buckets  []metricsBucket `json:"buckets"`
+	}{Interval: hostmetrics.Interval.Seconds(), Buckets: []metricsBucket{}}
+	if m != nil {
+		out.Disk = m.Disk()
+		now := time.Now()
+		for _, b := range m.Window(now.Add(-span), now, n) {
+			mb := metricsBucket{Start: b.Start.UTC(), Seconds: b.Covered.Seconds()}
+			if b.HasCPU {
+				mb.CPU = &b.CPU
+			}
+			if b.HasMem {
+				mb.MemUsed, mb.MemTotal = &b.MemUsed, &b.MemTotal
+			}
+			if b.HasDisk {
+				mb.Writes, mb.WriteBytes = &b.Writes, &b.WriteBytes
+			}
+			out.Buckets = append(out.Buckets, mb)
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	json.NewEncoder(w).Encode(out)
 }

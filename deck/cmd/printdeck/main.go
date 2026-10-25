@@ -38,6 +38,7 @@ import (
 	"printdeck/internal/config"
 	"printdeck/internal/display"
 	"printdeck/internal/gfx"
+	"printdeck/internal/hostmetrics"
 	"printdeck/internal/klipper/cli"
 	"printdeck/internal/printer"
 	"printdeck/internal/system"
@@ -229,6 +230,10 @@ func run(cfg config.Config) {
 			app.OpenSetup()
 		}
 	}
+
+	// The samples of the CPU, the memory and the disk writes, in memory only.
+	app.Metrics = hostmetrics.New(hostmetrics.Keep)
+	go app.Metrics.Run(ctx)
 
 	go pr.Run(ctx, app.Redraw)
 	go lcdLoop(ctx, pr, app)

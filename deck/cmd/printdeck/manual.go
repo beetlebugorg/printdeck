@@ -591,6 +591,7 @@ func manualParts() []section {
 						{"Settings", "The theme, the clock, and the homing in a filament change. See below."},
 						{"Software update", "The version of the deck, and a new version when there is one. See Update the Printdeck."},
 						{"Wi-Fi and help", "The network, the password and the addresses."},
+						{"System monitor", "Graphs of the CPU, the memory and the writes to the SD card. See below."},
 					}},
 				{Name: "settings", Caption: "The Settings page",
 					Setup: func(s *manualState) {
@@ -633,6 +634,14 @@ func manualParts() []section {
 						{"Type a command", "Opens the keyboard. It shows your last command, so you can change it and send it again."},
 						{"Quick keys", "Home (G28), Status (STATUS) and Help (HELP, the list of the commands)."},
 					}},
+				{Name: "monitor", Caption: "The System monitor", Setup: page("monitor"),
+					Callouts: []callout{
+						{"CPU", "The share of the time that the CPU is busy: now, the average and the peak of the graph."},
+						{"Memory", "The memory in use, of the memory of the deck."},
+						{"Writes", "The writes to the SD card in the last 60 seconds, and the amount. The bars are the writes a minute. The deck writes to the card as little as it can."},
+						{"1 h", "The time of the graphs: 10 minutes, 1 hour or 24 hours. The right end is now."},
+					},
+					Notes: []string{"The deck keeps a sample every 10 seconds for 24 hours, in memory only. A restart clears the samples."}},
 				{Name: "update", Caption: "Software update", Setup: page("update"),
 					Callouts: []callout{
 						{"Versions", "The version of this deck, the newest version, and the channel."},
@@ -884,7 +893,7 @@ func manualSections() []section {
 
 		{Chapter: care, ID: "machine", Title: "Look after the printer",
 			Intro:   []string{"Machine has the information of the printer, the history of the prints, the macros, the console and the settings."},
-			Figures: fig("machine", "machine-prints", "machine-more", "settings", "stats", "console")},
+			Figures: fig("machine", "machine-prints", "machine-more", "settings", "stats", "console", "monitor")},
 		{Chapter: care, ID: "update", Title: "Update the Printdeck",
 			Intro: []string{
 				"The deck checks for a new version once a day. Machine then shows Software update in orange.",

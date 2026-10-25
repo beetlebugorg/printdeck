@@ -15,6 +15,7 @@ import (
 	"printdeck/internal/board"
 	"printdeck/internal/gcodemeta"
 	"printdeck/internal/gfx"
+	"printdeck/internal/hostmetrics"
 	"printdeck/internal/printer"
 	"printdeck/internal/remote"
 	"printdeck/internal/ui"
@@ -46,6 +47,7 @@ func demoApp() (*ui.App, *ui.DemoPrinter) {
 	}
 	a.Updater = &ui.DemoUpdater{S: ui.UpdateStatus{Current: "v0.3.0", Latest: "v0.4.0", Newer: true, Checked: true,
 		Notes: demoNotes}}
+	a.Metrics = hostmetrics.Demo(demoNow())
 	// What the test printer has, a short history, and the slicer data of the files.
 	p.Machine_ = printer.Machine{KlipperVersion: "v0.13.0-777-g7bc4d0946-printdeck-go",
 		Modules: []string{"probe", "bed_tilt", "extruder", "heater_bed"},
@@ -174,7 +176,7 @@ func demoShots(dir string, wide bool) {
 		X: 110, Y: 110, Z: 5, Axis: [2][3]float64{{0, 0, 0}, {280, 280, 270}}}
 	a.OpenPrintScreen("")
 	snap("print-idle")
-	for _, n := range []string{"move", "files", "filament", "maintenance", "machine", "macros", "history", "record", "rolls", "roll", "new-roll", "stats", "swap", "swap-heat", "keypad"} {
+	for _, n := range []string{"move", "files", "filament", "maintenance", "machine", "macros", "history", "record", "rolls", "roll", "new-roll", "stats", "monitor", "swap", "swap-heat", "keypad"} {
 		a.OpenPrintScreen(n)
 		snap("print-" + n)
 	}

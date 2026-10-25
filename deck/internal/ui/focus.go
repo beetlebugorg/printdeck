@@ -227,7 +227,7 @@ var lcdIcons = []struct{ word, icon string }{
 	{"extrude", "load"}, {"retract", "unload"}, {"move", "move"}, {"park", "move"}, {"center", "move"},
 	{"home", "home"}, {"motors", "move"}, {"maintenance", "maint"}, {"nozzle", "maint"}, {"machine", "machine"},
 	{"console", "console"}, {"type", "console"}, {"macro", "macro"}, {"history", "history"},
-	{"statistics", "stats"}, {"theme", "theme"}, {"clock", "clock"}, {"wi-fi", "wifi"}, {"scan", "wifi"},
+	{"statistics", "stats"}, {"system monitor", "stats"}, {"theme", "theme"}, {"clock", "clock"}, {"wi-fi", "wifi"}, {"scan", "wifi"},
 	{"search", "wifi"}, {"help", "help"}, {"bed", "bed"}, {"screw", "screw"}, {"probe", "probe"}, {"pid", "pid"},
 	{"firmware", "chip"}, {"write firmware", "chip"}, {"install", "update"},
 	{"update", "update"}, {"save", "save"}, {"stop", "stop"}, {"pause", "pause"}, {"resume", "play"},

@@ -122,6 +122,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	case pagePhones:
 		a.drawPhones(c)
 		return
+	case pageMonitor:
+		a.drawMonitor(c)
+		return
 	case pageUpdate:
 		a.drawUpdate(c, st)
 		return
