@@ -2,8 +2,7 @@
 // modules.
 //
 // Ported to Go from klippy/extras/fan.py of Klipper (https://github.com/Klipper3d/klipper), commit
-// 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f. The tachometer (pulse_counter.py) is not ported yet:
-// a tachometer_pin is a config error.
+// 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f.
 //
 //	Copyright (C) 2016-2024  Kevin O'Connor <kevin@koconnor.net>
 //	Go port: Copyright (C) 2026  the Printdeck authors
@@ -16,6 +15,7 @@ import (
 
 	"printdeck/internal/klipper/configfile"
 	"printdeck/internal/klipper/extras/output_pin"
+	"printdeck/internal/klipper/extras/pulse_counter"
 	"printdeck/internal/klipper/gcode"
 	"printdeck/internal/klipper/host"
 	"printdeck/internal/klipper/mcu"
@@ -27,6 +27,7 @@ type Fan struct {
 	printer       *host.Printer
 	lastFanValue  float64
 	lastReqValue  float64
+	tachometer    *fanTachometer
 	maxPower      float64
 	kickStartTime float64
 	offBelow      float64
@@ -61,9 +62,7 @@ func NewFan(config *configfile.Wrapper, defaultShutdownSpeed float64) *Fan {
 	// Create gcode request queue
 	f.gcrq = output_pin.NewGCodeRequestQueue(config, f.mcuFan.MCU(), f.applySpeed)
 	// Setup tachometer
-	if _, ok := config.GetOptional("tachometer_pin", configfile.Default(nil)); ok {
-		configfile.Raise("tachometer_pin in section '%s' is not supported yet", config.Name())
-	}
+	f.tachometer = newFanTachometer(config)
 	// Register callbacks
 	printer.RegisterEventHandler("gcode:request_restart", func(args ...any) {
 		f.SetSpeed(0., args[0].(float64))
@@ -109,7 +108,33 @@ func (f *Fan) SetSpeedFromCommand(value float64) { f.gcrq.QueueGcodeRequest(valu
 
 // Status returns the speed, and the rpm (None with no tachometer).
 func (f *Fan) Status(eventtime float64) map[string]any {
-	return map[string]any{"speed": f.lastReqValue, "rpm": nil}
+	tachometerStatus := f.tachometer.status(eventtime)
+	return map[string]any{"speed": f.lastReqValue, "rpm": tachometerStatus}
+}
+
+// fanTachometer is the rpm of a fan with a tachometer_pin.
+type fanTachometer struct {
+	freqCounter *pulse_counter.FrequencyCounter
+	ppr         int
+}
+
+func newFanTachometer(config *configfile.Wrapper) *fanTachometer {
+	t := &fanTachometer{}
+	if pin, ok := config.GetOptional("tachometer_pin", configfile.Default(nil)); ok {
+		t.ppr = config.GetInt("tachometer_ppr", configfile.Default(2), configfile.Min(1))
+		pollTime := config.GetFloat("tachometer_poll_interval", configfile.Default(0.0015), configfile.Above(0.))
+		sampleTime := 1.
+		t.freqCounter = pulse_counter.NewFrequencyCounter(host.Of(config), pin, sampleTime, pollTime)
+	}
+	return t
+}
+
+// status returns the rpm, or nil with no tachometer.
+func (t *fanTachometer) status(eventtime float64) any {
+	if t.freqCounter != nil {
+		return t.freqCounter.Frequency() * 30. / float64(t.ppr)
+	}
+	return nil
 }
 
 // PrinterFan is the part cooling fan of [fan].
