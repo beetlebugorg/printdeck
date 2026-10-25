@@ -4,6 +4,7 @@
 #include <QJsonObject>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QSettings>
 #include <QUrlQuery>
 #include <cmath>
 
@@ -70,6 +71,8 @@ QString Deck::view() const
         return QStringLiteral("failed");
     if (m_live)
         return QStringLiteral("live");
+    if (m_pairing)
+        return QStringLiteral("pairing");
     return m_base.isValid() ? QStringLiteral("connecting") : QStringLiteral("starting");
 }
 
@@ -105,11 +108,81 @@ bool Deck::attach(const QByteArray &hello)
     QByteArray token = o.value(QStringLiteral("token")).toString().toUtf8();
     if (!url.isValid() || token.isEmpty())
         return false;
+    use(url, token);
+    return true;
+}
+
+// use connects the stream to the web server at url, with the token.
+void Deck::use(const QUrl &url, const QByteArray &token)
+{
     m_base = url;
     m_token = token;
+    m_pairing = false;
     emit screenChanged();
     connectStream();
-    return true;
+}
+
+void Deck::connectTo(const QUrl &url)
+{
+    m_remote = true;
+    m_base = url;
+    const QByteArray key = QSettings().value(keyName()).toByteArray();
+    if (!key.isEmpty())
+        use(url, key);
+    else
+        askKey();
+}
+
+// keyName is the name of the saved API key of the deck in the settings of the window.
+QString Deck::keyName() const
+{
+    return QStringLiteral("decks/%1/key").arg(m_base.authority().replace(QLatin1Char(':'), QLatin1Char('_')));
+}
+
+// askKey asks the deck for an API key. The touch screen of the deck asks its user.
+void Deck::askKey()
+{
+    m_pairing = true;
+    m_token.clear();
+    emit screenChanged();
+    QNetworkRequest req(m_base.resolved(QUrl(QStringLiteral("/plugin/appkeys/request"))));
+    req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    QJsonObject body{{QStringLiteral("app"), QStringLiteral("Printdeck desktop")}};
+    QNetworkReply *r = m_net.post(req, QJsonDocument(body).toJson(QJsonDocument::Compact));
+    connect(r, &QNetworkReply::finished, this, [this, r] {
+        r->deleteLater();
+        const QUrl poll = r->header(QNetworkRequest::LocationHeader).toUrl();
+        if (r->error() != QNetworkReply::NoError || !poll.isValid()) {
+            fail(QStringLiteral("The deck at %1 gave no API key: %2").arg(m_base.host(), r->errorString()));
+            return;
+        }
+        pollKey(poll);
+    });
+}
+
+// pollKey asks the deck each second if its user allowed the key.
+void Deck::pollKey(const QUrl &url)
+{
+    QNetworkRequest req(url);
+    req.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
+    QNetworkReply *r = m_net.get(req);
+    connect(r, &QNetworkReply::finished, this, [this, r, url] {
+        r->deleteLater();
+        const int status = r->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (status == 202) {
+            QTimer::singleShot(1000, this, [this, url] { pollKey(url); });
+            return;
+        }
+        const QByteArray key = QJsonDocument::fromJson(r->readAll()).object()
+                                   .value(QStringLiteral("api_key")).toString().toUtf8();
+        if (status != 200 || key.isEmpty()) {
+            fail(QStringLiteral("The deck at %1 denied the key. Start the window again to ask again.")
+                     .arg(m_base.host()));
+            return;
+        }
+        QSettings().setValue(keyName(), key);
+        use(m_base, key);
+    });
 }
 
 void Deck::connectStream()
@@ -186,9 +259,18 @@ void Deck::streamEnded()
     m_stream = nullptr;
     if (r) {
         int status = r->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        r->deleteLater();
+        if (status == 401 && m_remote) {
+            // The deck removed the key: forget it, and ask for a new one.
+            qWarning("printdeck: the deck refused the saved API key; asking for a new key");
+            QSettings().remove(keyName());
+            m_session.clear();
+            m_live = false;
+            askKey();
+            return;
+        }
         if (status == 401)
             qWarning("printdeck: the deck refused the token");
-        r->deleteLater();
     }
     m_session.clear();
     if (m_live) {

@@ -342,6 +342,7 @@ void SimFeed::pollState()
         m_state = o.value(QStringLiteral("state")).toString();
         m_file = o.value(QStringLiteral("file")).toString();
         m_color = o.value(QStringLiteral("color")).toString();
+        m_model = o.value(QStringLiteral("model")).toString();
         m_connected = true;
         follow(o.value(QStringLiteral("busy")).toBool());
         emit stateChanged();

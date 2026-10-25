@@ -822,6 +822,13 @@ Window
             x: 14; y: 10; spacing: 4
             Text { text: sim.connected ? sim.state.toUpperCase() : "CONNECTING…"; color: "#ff7a3a"; font.bold: true; font.pixelSize: 14; font.family: "monospace" }
             Text { text: sim.file; visible: sim.file != ""; color: "#eee9df"; font.pixelSize: 13; font.family: "monospace" }
+            // The 3D view has the TAZ Workhorse only: the moves of a different printer do not fit it.
+            Text
+            {
+                visible: sim.model != "" && sim.model != "taz-workhorse"
+                text: "THE 3D VIEW SHOWS A TAZ WORKHORSE. THE DECK SIMULATES " + sim.model.toUpperCase() + "."
+                color: "#ffcf3a"; font.pixelSize: 12; font.family: "monospace"
+            }
             Text
             {
                 text: "NOZZLE " + sim.tool.toFixed(0) + "° / " + sim.toolTarget.toFixed(0) + "°   BED " + sim.bed.toFixed(0) + "° / " + sim.bedTarget.toFixed(0) + "°"

@@ -1,5 +1,6 @@
 // Printdeck for the desktop: a window that shows the deck UI of printdeck app, for a printer on USB.
-// The window starts printdeck app, and shows its remote screen (deck.h).
+// The window starts printdeck app, and shows its remote screen (deck.h). With -deck ADDRESS, it
+// shows the remote screen of a Printdeck on the network.
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -47,6 +48,20 @@ int main(int argc, char *argv[])
     QStringList args{QStringLiteral("app"), QStringLiteral("-parent")};
     args += app.arguments().mid(1);
 
+    // -deck ADDRESS: the window shows the Printdeck at ADDRESS on the network, and starts no app.
+    // With -sim, the 3D window shows the simulated printer of that deck.
+    QUrl deckUrl;
+    if (int i = args.indexOf(QStringLiteral("-deck")); i >= 0 && i + 1 < args.size()) {
+        QString a = args.takeAt(i + 1);
+        args.removeAt(i);
+        deckUrl = QUrl::fromUserInput(a.contains(QStringLiteral("://")) ? a : QStringLiteral("http://") + a);
+        if (!deckUrl.isValid() || deckUrl.host().isEmpty()) {
+            qWarning("-deck: not an address: %s", qPrintable(a));
+            return 2;
+        }
+        deckUrl.setPath(QString());
+    }
+
     // With -sim, a second window shows the simulated printer in 3D (Sim3D.qml), and the deck
     // window gives it the picture of the deck UI (simOn, sim.screen).
     const bool simOn = args.contains(QStringLiteral("-sim"));
@@ -80,7 +95,9 @@ int main(int argc, char *argv[])
     // closes, for example a print of the simulator while the film changes.
     const QString attachFile = qEnvironmentVariable("PRINTDECK_ATTACH");
     QFile hello(attachFile);
-    if (!attachFile.isEmpty()) {
+    if (deckUrl.isValid()) {
+        deck.connectTo(deckUrl);
+    } else if (!attachFile.isEmpty()) {
         if (!hello.open(QIODevice::ReadOnly) || !deck.attach(hello.readLine()))
             qWarning("PRINTDECK_ATTACH: no address in %s", qPrintable(attachFile));
     } else {

@@ -64,10 +64,22 @@ Window
         Connecting
         {
             anchors.fill: parent
-            visible: printdeck.view == "starting" || printdeck.view == "connecting"
+            visible: printdeck.view == "starting" || printdeck.view == "connecting" || printdeck.view == "pairing"
             running: visible
             host: printdeck.host
             family: plexBold.name
+        }
+        Text
+        {
+            // The deck asks its user for the key of this window.
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom; anchors.bottomMargin: 48
+            width: Math.min(parent.width - 48, 560)
+            visible: printdeck.view == "pairing"
+            wrapMode: Text.WordWrap
+            horizontalAlignment: Text.AlignHCenter
+            color: "#f3f1ec"; font.pixelSize: 18
+            text: "On the touch screen of the Printdeck, tap Allow."
         }
         Text
         {

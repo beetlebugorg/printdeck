@@ -17,10 +17,11 @@ class QNetworkReply;
 class Deck : public QObject
 {
     Q_OBJECT
-    // "starting" (printdeck app starts), "connecting", "live" (a frame shows), or "failed".
+    // "starting" (printdeck app starts), "pairing" (the deck asks its user for a key),
+    // "connecting", "live" (a frame shows), or "failed".
     Q_PROPERTY(QString view READ view NOTIFY screenChanged)
     Q_PROPERTY(QString error READ error NOTIFY screenChanged)
-    Q_PROPERTY(QString host READ host CONSTANT)
+    Q_PROPERTY(QString host READ host NOTIFY screenChanged)
     Q_PROPERTY(int screenWidth READ screenWidth NOTIFY screenChanged)
     Q_PROPERTY(int screenHeight READ screenHeight NOTIFY screenChanged)
     Q_PROPERTY(QString frame READ frame NOTIFY frameChanged)
@@ -36,12 +37,16 @@ public:
     void start(const QString &program, const QStringList &args);
     // attach connects to a printdeck app that runs already: hello is its first line of output.
     bool attach(const QByteArray &hello);
+    // connectTo connects to the Printdeck at an address on the network, and starts no app. The
+    // first time, it asks the deck for an API key (the App Keys flow of the slicers): the touch
+    // screen of the deck asks its user. The window keeps the key for the next time.
+    void connectTo(const QUrl &url);
     // stop ends printdeck app: it ends when its input closes.
     void stop();
 
     QString view() const;
     QString error() const { return m_error; }
-    QString host() const { return QStringLiteral("this computer"); }
+    QString host() const { return m_remote ? m_base.host() : QStringLiteral("this computer"); }
     int screenWidth() const { return m_screen.width(); }
     int screenHeight() const { return m_screen.height(); }
     QString frame() const { return m_frame; }
@@ -67,6 +72,10 @@ signals:
 
 private:
     void readHello();
+    void use(const QUrl &url, const QByteArray &token);
+    void askKey();
+    void pollKey(const QUrl &url);
+    QString keyName() const;
     void connectStream();
     void readStream();
     void streamEnded();
@@ -78,6 +87,8 @@ private:
     QByteArray m_out; // the output of printdeck app before the first line
     QUrl m_base;
     QByteArray m_token;
+    bool m_remote = false;  // connectTo: a deck on the network
+    bool m_pairing = false; // the deck asks its user for a key
 
     QNetworkAccessManager m_net;
     QPointer<QNetworkReply> m_stream;
