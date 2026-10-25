@@ -17,7 +17,6 @@ var unsupported = map[string]string{
 	"printer-geeetech-A10T-A20T-2021.cfg":     "lcd_type 'aip31068_spi' in section 'display' is not supported",
 	"printer-makergear-m2-2012.cfg":           "Section 'endstop_phase stepper_x' is not a valid config section",
 	"printer-modix-big60-2020.cfg":            "Unknown temperature sensor 'MAX31865'",
-	"printer-tronxy-crux1-2022.cfg":           "Section 'pwm_cycle_time beeper_pin' is not a valid config section",
 }
 
 // chipDicts returns the firmware dictionaries to try for a chip (testdata/dict, from

@@ -52,6 +52,7 @@ import (
 	_ "printdeck/internal/klipper/extras/printdeck_display"
 	_ "printdeck/internal/klipper/extras/printdeck_pause"
 	_ "printdeck/internal/klipper/extras/probe"
+	_ "printdeck/internal/klipper/extras/pwm_cycle_time"
 	_ "printdeck/internal/klipper/extras/query_adc"
 	_ "printdeck/internal/klipper/extras/query_endstops"
 	_ "printdeck/internal/klipper/extras/respond"
