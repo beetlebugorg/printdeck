@@ -72,7 +72,7 @@ SCREW_FLOOR = (TAB_W + 0.2, TAB_W + 2.2)          # the thin back over a raised 
 HOLE_FLOOR = (FRAME_W + 0.2, FRAME_W + 2.2)       # the floor of a screw well, over a top hole
 PI_V0 = PI_HOLE_UV[0][1] - 3.5                     # the v of the PCIe end of the Pi (STEP x = 0): 30.41
 DEEP_U = 28.0 + 0.6 + WALL                         # the half width of the deep part: 30.6
-DEEP_V1 = PI_V0 + 85.0 + 2.5                       # the top of the deep part: the faces of the ports
+DEEP_V1 = PI_V0 + 88.2                             # the top of the deep part: the faces of the ports (STEP x 88.1)
 # The bottom of the deep part: under the fold of the ribbon, and over the shaft of a 7.35 mm
 # screwdriver in the screws of the raised tabs.
 DEEP_V0 = 24.0
@@ -136,6 +136,9 @@ def ports_cut():
         b = pi_box(x0, x1, y0 - m, y1 + m, z0 - 1.0, z1 + 1.2)
         bb = b.bounding_box()
         c = uvw_box(bb.min.X, bb.max.X, bb.min.Y + 4, BODY_V[1] + 1, bb.min.Z, bb.max.Z)
+        # The ports reach into the top wall. Through the wall the opening goes on to the front, so the
+        # Pi comes out of the front of the body.
+        c = c + uvw_box(bb.min.X, bb.max.X, DEEP_V1 - WALL - 1.0, DEEP_V1 + 0.01, bb.min.Z, -THIN_W + WALL + 0.2)
         cut = c if cut is None else cut + c
     # The USB-C port in the left wall: room for the plug of the official supply (12 x 7). The two
     # micro HDMI ports beside it also reach into the wall: they get openings too.
@@ -146,6 +149,9 @@ def ports_cut():
     h0, h1 = p["pi_hdmi0"], p["pi_hdmi1"]
     bb = pi_box(min(h0[0], h1[0]) - 0.5, max(h0[1], h1[1]) + 0.5, h0[2], h0[3], 0.0, max(h0[5], h1[5]) + 0.5).bounding_box()
     cut = cut + uvw_box(-BODY_U - 1, -27.0, bb.min.Y, bb.max.Y, bb.min.Z, bb.max.Z)
+    # The shells of the USB-C and micro HDMI ports stand past the edge of the board, so the Pi goes in
+    # from the front along a groove 1.3 mm deep in the inside of the left wall.
+    cut = cut + uvw_box(-DEEP_U + WALL - 1.3, -27.0, v - 6.6, bb.max.Y, -STANDOFF_W - 1.6 - 0.3, FRONT_W + 1.0)
     return cut
 
 
