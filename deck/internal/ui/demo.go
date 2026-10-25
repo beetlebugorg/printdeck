@@ -86,6 +86,17 @@ func (d *DemoPrinter) SendConsole(line string) {
 	d.Console_ = append(d.Console_, printer.ConsoleLine{Kind: "in", Text: line})
 }
 
+// UseSim sets the name of the simulated printer in the state of the demo.
+func (d *DemoPrinter) UseSim(id string) error {
+	d.State_.Simulated = ""
+	for _, m := range printer.SimModels() {
+		if m.ID == id {
+			d.State_.Simulated = m.Name
+		}
+	}
+	return nil
+}
+
 // DemoPickColor opens the palette of the color of a roll, with the color hex lit.
 func (a *App) DemoPickColor(hex string) { a.pickColor(hex, func(string) {}) }
 
@@ -147,6 +158,8 @@ func (a *App) OpenPrintScreen(name string) {
 		a.pages = []page{pageMachine, pageSettings}
 	case "monitor":
 		a.pages = []page{pageMachine, pageMonitor}
+	case "simulator":
+		a.pages = []page{pageMachine, pageSimulator}
 	case "configs":
 		a.configBoard = board.Info{Device: "/dev/serial/by-id/usb-UltiMachine_RAMBo_64033353730351918201-if00", Name: "UltiMachine RAMBo", Klipper: true, MCU: "atmega2560"}
 		a.pages = []page{pageConfigs}

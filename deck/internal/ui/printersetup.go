@@ -89,6 +89,14 @@ func (a *App) drawPrinterSetup(c *gfx.Canvas, st printer.State) {
 	} else if !probing {
 		rows = append(rows, []func(image.Rectangle){func(r image.Rectangle) { a.button(c, r, "Search again", raised, text, pr.ProbeBoards) }})
 	}
+	// A simulated printer, to try the deck with no printer: in the rows of keys on a tall screen,
+	// under the text of the right column on a wide screen.
+	simKey := func(r image.Rectangle) {
+		a.button(c, r, "Simulated printer", raised, text, func() { a.open(pageSimulator) })
+	}
+	if !wide {
+		rows = append(rows, []func(image.Rectangle){simKey})
+	}
 	// Wi-Fi and help, and Software update: this screen has no pages.
 	if sk := a.systemKeyList(c); len(sk) > 0 {
 		rows = append(rows, sk)
@@ -122,6 +130,12 @@ func (a *App) drawPrinterSetup(c *gfx.Canvas, st printer.State) {
 	ownW := right.Rest().Dx()
 	para(right, ownText, 18, dim)
 	a.textRegion("Your own config", image.Rect(right.Rest().Min.X, own, right.Rest().Max.X, right.Y()), gfx.Face(false, 18), wrapText(gfx.Face(false, 18), ownText, ownW)...)
+	if wide {
+		right.Skip(12)
+		para(right, "Or try the deck with a simulated printer.", 18, dim)
+		right.Skip(8)
+		simKey(kit.Cols(right.Next(56), 12, kit.Fr(1), kit.Fr(1))[0])
+	}
 }
 
 // drawConfigs is the list of Klipper's example configs for complete printers. It shows the configs
@@ -338,16 +352,21 @@ func (a *App) drawKlipperError(c *gfx.Canvas, st printer.State) {
 	}
 	a.textRegion("Message", image.Rect(info.Min.X, info.Min.Y, info.Max.X, s.Y()), face, wrapText(face, msg, info.Dx())...)
 	restart, cap, ink := keys, orange, onAcc
-	if strings.Contains(strings.ToLower(msg), "shutdown") || strings.Contains(msg, "older version of the") && board.CanFlash("") {
+	shutdown := strings.Contains(strings.ToLower(msg), "shutdown")
+	if shutdown || strings.Contains(msg, "older version of the") && board.CanFlash("") || st.Simulated != "" {
 		k := kit.Cols(keys, 12, kit.Fr(1), kit.Fr(1))
 		restart, cap, ink = k[0], raised, text
-		if strings.Contains(strings.ToLower(msg), "shutdown") {
+		switch {
+		case shutdown:
 			// The board stopped itself. Only a reset of the board clears this state.
 			a.button(c, k[1], "Firmware restart", orange, onAcc, func() {
 				a.Toast("Restarting the firmware…")
 				a.do(pr.FirmwareRestart)
 			})
-		} else {
+		case st.Simulated != "":
+			// The page of the simulated printers puts the real printer.cfg back.
+			a.button(c, k[1], "Real printer", orange, onAcc, func() { a.open(pageSimulator) })
+		default:
 			a.button(c, k[1], "Write firmware", orange, onAcc, func() { a.askFlash("") })
 		}
 	}

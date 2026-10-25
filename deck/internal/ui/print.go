@@ -131,6 +131,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	case pageConfigs:
 		a.drawConfigs(c)
 		return
+	case pageSimulator:
+		a.drawSimulator(c, st)
+		return
 	case pageConsole:
 		a.drawConsole(c)
 		return

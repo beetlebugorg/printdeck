@@ -104,6 +104,9 @@ type State struct {
 
 	// NeedsSetup is true when printer.cfg has no [mcu] section: Klipper has no printer to use.
 	NeedsSetup bool
+	// Simulated is the name of the simulated printer when printer.cfg has "serial: sim", or "".
+	// Then the prints run on the simulated board, and no real printer moves.
+	Simulated string
 	// PausePrompt is the message of a pause of the file (PRINTDECK_PAUSE), for example "Put the
 	// case in the pocket", or "". PauseCheck is true when the pause has a height check on a part,
 	// PauseChecked when it is done, and PauseDelta is the height of the part less the height in

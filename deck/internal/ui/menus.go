@@ -460,6 +460,8 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		{"Macros", macros, dim, func() { a.open(pageMacros) }},
 		{"Console", "Type G-code, and read the replies", dim, func() { a.open(pageConsole) }},
 	}
+	simSub, simCol := simLine(st)
+	printerRows = append(printerRows, menuItem{"Simulated printer", simSub, simCol, func() { a.open(pageSimulator) }})
 	printRows := []menuItem{
 		{"Prints", fmt.Sprintf("%d prints · %d h · %s", prints, hours, a.weight(filament)), dim, func() { a.open(pageStats) }},
 	}

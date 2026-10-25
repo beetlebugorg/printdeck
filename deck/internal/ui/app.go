@@ -123,6 +123,9 @@ type Printer interface {
 	// UseConfig writes one of Klipper's example configs (printer.Examples) as printer.cfg, for the
 	// board on the port serial, and restarts Klipper.
 	UseConfig(file, serial string) error
+	// UseSim switches Klipper to a simulated printer (printer.SimModels), and restarts it. An
+	// empty id switches back to the real printer.cfg.
+	UseSim(id string) error
 	// FlashBoard writes the Klipper firmware of the image to the board on device, or to the board
 	// of printer.cfg when device is "".
 	FlashBoard(device string, progress board.FlashProgress) error
@@ -419,6 +422,9 @@ func (a *App) Draw(c *gfx.Canvas) {
 	}
 	a.collect = !a.Record
 	a.drawPrint(c)
+	if a.Printer != nil {
+		a.drawSimBand(c, a.Printer.State())
+	}
 	a.collect = false
 	a.drawToast(c)
 	if a.keypad != nil {

@@ -86,6 +86,11 @@ type Klippy struct {
 	lastPos  int64     // the file position of the last busy state, for the history
 	startup  bool      // Klipper reports "startup"
 	since    time.Time // the start of the deck, or the last restart of Klipper, for startGrace
+
+	// sim is the name of the simulated printer of printer.cfg, or "" (SimulatedName). simRead is
+	// false until the deck reads printer.cfg, and again after a change to printer.cfg.
+	sim     string
+	simRead bool
 }
 
 // startGrace is how long Klipper may be away after the deck or a restart of Klipper started,
@@ -551,6 +556,7 @@ func (k *Klippy) refresh(notify func()) {
 	if !st.Reachable && k.ConfigPath != "" {
 		st.NeedsSetup = NeedsSetup(k.ConfigPath)
 	}
+	st.Simulated = k.simulated()
 	if st.FilePath != "" {
 		if fi, err := k.store.Stat(st.FilePath); err == nil {
 			st.FileDate = fi.ModTime().Unix()
@@ -786,7 +792,49 @@ func (k *Klippy) UseConfig(file, serial string) error {
 	if err := UseExample(k.ConfigPath, file, serial); err != nil {
 		return err
 	}
+	k.configChanged()
 	return k.RestartKlipper()
+}
+
+// UseSim writes the config of a simulated printer (SimModels) as printer.cfg, and restarts
+// Klipper. The real printer.cfg stays as printer.cfg.real. An empty id puts the real printer.cfg
+// back. It returns an error during a print.
+func (k *Klippy) UseSim(id string) error {
+	if k.ConfigPath == "" {
+		return errors.New("The deck has no printer.cfg")
+	}
+	if k.State().Busy() {
+		return errors.New("Wait until the print ends")
+	}
+	var err error
+	if id == "" {
+		err = LeaveSim(k.ConfigPath)
+	} else {
+		err = UseSim(k.ConfigPath, id)
+	}
+	k.configChanged()
+	if err != nil {
+		return err
+	}
+	return k.RestartKlipper()
+}
+
+// configChanged makes the next state read printer.cfg again.
+func (k *Klippy) configChanged() {
+	k.mu.Lock()
+	k.simRead = false
+	k.mu.Unlock()
+}
+
+// simulated returns the name of the simulated printer of printer.cfg, or "". It reads printer.cfg
+// once after each change.
+func (k *Klippy) simulated() string {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	if !k.simRead && k.ConfigPath != "" {
+		k.sim, k.simRead = SimulatedName(k.ConfigPath), true
+	}
+	return k.sim
 }
 
 // FlashBoard writes the Klipper firmware of the image to the board on device, or to the board of
