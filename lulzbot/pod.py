@@ -1184,11 +1184,45 @@ def rounded(points, r=BEND_R, steps=8):
     return np.array(keep)
 
 
-def cable_mesh(points, d):
+def cable_mesh(points, d, sides=16):
+    """The cable: a tube of diameter d along the rounded path. Each ring of the tube has the frame of
+    the ring before it, turned only as much as the path turns (parallel transport), so the tube has
+    no twist."""
+    import numpy as np
     import trimesh
-    from shapely.geometry import Point
     path = rounded(points)
-    return trimesh.creation.sweep_polygon(Point(0, 0).buffer(d / 2, 12), path), path
+    n = len(path)
+    seg = np.diff(path, axis=0)
+    seg /= np.linalg.norm(seg, axis=1)[:, None]
+    tang = np.vstack([seg[:1], seg[:-1] + seg[1:], seg[-1:]])
+    tang /= np.linalg.norm(tang, axis=1)[:, None]
+    a = np.cross(tang[0], [0.0, 0.0, 1.0])
+    if np.linalg.norm(a) < 1e-6:
+        a = np.cross(tang[0], [1.0, 0.0, 0.0])
+    normal = a / np.linalg.norm(a)
+    ang = np.linspace(0, 2 * np.pi, sides, endpoint=False)
+    rings = []
+    for i in range(n):
+        if i:
+            normal = normal - np.dot(normal, tang[i]) * tang[i]
+            normal /= np.linalg.norm(normal)
+        bi = np.cross(tang[i], normal)
+        rings.append(path[i] + d / 2 * (np.cos(ang)[:, None] * normal + np.sin(ang)[:, None] * bi))
+    verts = np.vstack(rings + [path[:1], path[-1:]])
+    faces = []
+    for i in range(n - 1):
+        for j in range(sides):
+            a0, a1 = i * sides + j, i * sides + (j + 1) % sides
+            b0, b1 = a0 + sides, a1 + sides
+            faces += [(a0, a1, b1), (a0, b1, b0)]
+    c0, c1 = n * sides, n * sides + 1
+    for j in range(sides):
+        faces.append((c0, (j + 1) % sides, j))
+        last = (n - 1) * sides
+        faces.append((c1, last + j, last + (j + 1) % sides))
+    m = trimesh.Trimesh(verts, np.array(faces), process=True)
+    m.fix_normals()
+    return m, path
 
 
 def length(path):
