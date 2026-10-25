@@ -80,7 +80,7 @@ func load(th *toolhead.ToolHead, config *configfile.Wrapper) toolhead.Kinematics
 		k.arm2[i] = arm * arm
 	}
 	for i, r := range k.rails {
-		k.absEndstops[i] = r.HomingInfo().PositionEndstop + math.Sqrt(k.arm2[i]-radius*radius)
+		k.absEndstops[i] = r.HomingInfo().PositionEndstop + mathutil.Sqrt(k.arm2[i]-radius*radius)
 	}
 	// Determine tower locations in cartesian space
 	for i, angle := range []float64{210., 330., 90.} {
@@ -121,16 +121,16 @@ func load(th *toolhead.ToolHead, config *configfile.Wrapper) toolhead.Kinematics
 	}
 	halfMinStepDist *= .5
 	ratioToXY := func(ratio float64) float64 {
-		return ratio*math.Sqrt(minArmLength*minArmLength/(ratio*ratio+1.)-
+		return ratio*mathutil.Sqrt(minArmLength*minArmLength/(ratio*ratio+1.)-
 			halfMinStepDist*halfMinStepDist) + halfMinStepDist - radius
 	}
 	sq := func(v float64) float64 { return v * v }
 	k.slowXY2 = sq(ratioToXY(SlowRatio))
 	k.verySlowXY2 = sq(ratioToXY(2. * SlowRatio))
 	k.maxXY2 = sq(math.Min(printRadius, math.Min(minArmLength-radius, ratioToXY(4.*SlowRatio))))
-	maxXY := math.Sqrt(k.maxXY2)
+	maxXY := mathutil.Sqrt(k.maxXY2)
 	log.Printf("Delta max build radius %.2fmm (moves slowed past %.2fmm and %.2fmm)",
-		maxXY, math.Sqrt(k.slowXY2), math.Sqrt(k.verySlowXY2))
+		maxXY, mathutil.Sqrt(k.slowXY2), mathutil.Sqrt(k.verySlowXY2))
 	k.axesMin = gcode.Coord{-maxXY, -maxXY, k.minZ}
 	k.axesMax = gcode.Coord{maxXY, maxXY, k.maxZ}
 	k.SetPosition([]float64{0., 0., 0.}, "")
@@ -202,7 +202,7 @@ func (k *DeltaKinematics) Home(hs stepper.HomingState) {
 	hs.(homingAxesSetter).SetAxes([]int{0, 1, 2})
 	forcepos := []float64{k.homePosition[0], k.homePosition[1], k.homePosition[2]}
 	maxArm2 := math.Max(k.arm2[0], math.Max(k.arm2[1], k.arm2[2]))
-	forcepos[2] = -1.5 * math.Sqrt(maxArm2-k.maxXY2)
+	forcepos[2] = -1.5 * mathutil.Sqrt(maxArm2-k.maxXY2)
 	hs.HomeRails(k.rails, forcepos, []float64{k.homePosition[0], k.homePosition[1], k.homePosition[2]})
 }
 
@@ -223,7 +223,7 @@ func (k *DeltaKinematics) CheckMove(move *toolhead.Move) {
 	if endZ > k.limitZ {
 		aboveZLimit := endZ - k.limitZ
 		d := k.minArmLength - aboveZLimit
-		allowedRadius := k.radius - math.Sqrt(k.minArm2-d*d)
+		allowedRadius := k.radius - mathutil.Sqrt(k.minArm2-d*d)
 		limitXY2 = math.Min(limitXY2, allowedRadius*allowedRadius)
 	}
 	if endXY2 > limitXY2 || endZ > k.maxZ || endZ < k.minZ {
@@ -294,7 +294,7 @@ func NewDeltaCalibration(radius float64, angles, arms, endstops, stepdists [3]fl
 	// Calculate the absolute Z height of each tower endstop
 	radius2 := radius * radius
 	for i := range endstops {
-		c.absEndstops[i] = endstops[i] + math.Sqrt(arms[i]*arms[i]-radius2)
+		c.absEndstops[i] = endstops[i] + mathutil.Sqrt(arms[i]*arms[i]-radius2)
 	}
 	return c
 }
@@ -346,7 +346,7 @@ func (c *DeltaCalibration) CalcStablePosition(coord [3]float64) [3]float64 {
 	for i, t := range c.towers {
 		a := c.Arms[i]
 		dx, dy := t[0]-coord[0], t[1]-coord[1]
-		steppos := math.Sqrt(a*a-dx*dx-dy*dy) + coord[2]
+		steppos := mathutil.Sqrt(a*a-dx*dx-dy*dy) + coord[2]
 		out[i] = (c.absEndstops[i] - steppos) / c.Stepdists[i]
 	}
 	return out

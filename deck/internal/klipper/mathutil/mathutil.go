@@ -13,6 +13,8 @@ package mathutil
 import (
 	"math"
 	"strconv"
+
+	"printdeck/internal/klipper/pyfmt"
 )
 
 // Matrix helper functions for NxM matrices
@@ -171,17 +173,17 @@ func Trilateration(sphereCoords [3][3]float64, radius2 [3]float64) [3]float64 {
 	s21 := MatrixSub(sphereCoord2, sphereCoord1)
 	s31 := MatrixSub(sphereCoord3, sphereCoord1)
 
-	d := math.Sqrt(MatrixMagsq(s21))
+	d := Sqrt(MatrixMagsq(s21))
 	ex := MatrixMul(s21, 1./d)
 	i := MatrixDot(ex, s31)
 	vectEy := MatrixSub(s31, MatrixMul(ex, i))
-	ey := MatrixMul(vectEy, 1./math.Sqrt(MatrixMagsq(vectEy)))
+	ey := MatrixMul(vectEy, 1./Sqrt(MatrixMagsq(vectEy)))
 	ez := MatrixCross(ex, ey)
 	j := MatrixDot(ey, s31)
 
 	x := (radius2[0] - radius2[1] + d*d) / (2. * d)
 	y := (radius2[0] - radius2[2] - x*x + (x-i)*(x-i) + j*j) / (2. * j)
-	z := -math.Sqrt(radius2[0] - x*x - y*y)
+	z := -Sqrt(radius2[0] - x*x - y*y)
 
 	exX := MatrixMul(ex, x)
 	eyY := MatrixMul(ey, y)
@@ -211,4 +213,77 @@ func MatrixSub(m1, m2 [3]float64) [3]float64 {
 
 func MatrixMul(m1 [3]float64, s float64) [3]float64 {
 	return [3]float64{m1[0] * s, m1[1] * s, m1[2] * s}
+}
+
+// ValueError is Python's ValueError of the math functions ("math domain error").
+type ValueError struct{ Msg string }
+
+func (e *ValueError) Error() string { return "ValueError: " + e.Msg }
+
+// Sqrt is Python's math.sqrt: a negative number panics with a *ValueError.
+func Sqrt(x float64) float64 {
+	if x < 0 {
+		panic(&ValueError{"math domain error"})
+	}
+	return math.Sqrt(x)
+}
+
+// CoordinateDescent adjusts the parameters adjParams of params to minimize errorFunc, and
+// returns the new parameters. logf gets the log lines, or is nil.
+func CoordinateDescent(adjParams []string, params map[string]float64, errorFunc func(map[string]float64) float64,
+	logf func(format string, args ...any)) map[string]float64 {
+	// Define potential changes
+	p := make(map[string]float64, len(params))
+	for k, v := range params {
+		p[k] = v
+	}
+	params = p
+	dp := make([]float64, len(adjParams))
+	for i := range dp {
+		dp[i] = 1.
+	}
+	// Calculate the error
+	bestErr := errorFunc(params)
+	if logf != nil {
+		logf("Coordinate descent initial error: %s", pyfmt.Float(bestErr))
+	}
+
+	threshold := 0.00001
+	rounds := 0
+
+	sum := func() float64 {
+		s := 0.
+		for _, v := range dp {
+			s += v
+		}
+		return s
+	}
+	for sum() > threshold && rounds < 10000 {
+		rounds++
+		for i, paramName := range adjParams {
+			orig := params[paramName]
+			params[paramName] = orig + dp[i]
+			err := errorFunc(params)
+			if err < bestErr {
+				// There was some improvement
+				bestErr = err
+				dp[i] *= 1.1
+				continue
+			}
+			params[paramName] = orig - dp[i]
+			err = errorFunc(params)
+			if err < bestErr {
+				// There was some improvement
+				bestErr = err
+				dp[i] *= 1.1
+				continue
+			}
+			params[paramName] = orig
+			dp[i] *= 0.9
+		}
+	}
+	if logf != nil {
+		logf("Coordinate descent best_err: %s  rounds: %d", pyfmt.Float(bestErr), rounds)
+	}
+	return params
 }

@@ -13,6 +13,7 @@ import (
 	_ "printdeck/internal/klipper/extras/bed_screws"
 	_ "printdeck/internal/klipper/extras/buttons"
 	_ "printdeck/internal/klipper/extras/controller_fan"
+	_ "printdeck/internal/klipper/extras/delta_calibrate"
 	_ "printdeck/internal/klipper/extras/display"
 	_ "printdeck/internal/klipper/extras/display_status"
 	_ "printdeck/internal/klipper/extras/error_mcu"
