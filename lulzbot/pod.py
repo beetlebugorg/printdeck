@@ -32,6 +32,7 @@ Run: uv run --no-project --with build123d --with numpy --with scipy --with trime
 --with pyrender --with PyOpenGL python pod.py [OUT_DIR | live | export]
 
 export writes the STL files for printing to stl/pod/fdm/ and stl/pod/resin/ (see stl/pod/README.md).
+The resin frame and mount have captive M3 hex nuts in place of the heat-set inserts.
 """
 
 import math
@@ -141,6 +142,12 @@ POSTS = [(u, v) for u in (-34.0, 34.0) for v in (14.0, 110.0)]
 POST_R, POST_WELL, POST_FLOOR = 5.2, 3.95, 2.0     # the well takes a screwdriver shaft of 7.35 mm
 INSERT = (2.0, 4.0)                                # M3 heat-set insert, 4 long: hole radius, depth
 INSERT_FLOOR = 1.0                                 # the plastic behind the hole of an insert
+# Resin: heat-set inserts do not work in cured resin, so the resin frame and mount have captive M3
+# hex nuts (5.5 mm across the flats, 2.4 mm thick), as in deckcase.py. print_parts() sets RESIN.
+RESIN = False
+NUT = (5.5, 2.4)
+NUT_CLR = 0.15                                     # resin prints close to size
+NUT_SKIN = 1.5                                     # resin: the frame boss between its back face and the nut
 # The mount: a plate with the dovetail, on the back of the body. Two M3 x 6 cap screws from inside
 # the body, over the cooler, go through the back into M3 heat-set inserts in the mount.
 MOUNT_T = INSERT[1] + INSERT_FLOOR
@@ -299,13 +306,35 @@ def insert_hole(w0, w1, w2):
     return hole + cone + Pos(0, 0, w2) * Cylinder(top, 1.0)
 
 
+def nut_pocket(w0, w1, rot=0.0):
+    """The pocket of a captive M3 nut, from w0 to w1 along w, with a corner of the hexagon at the angle
+    rot (degrees from +u)."""
+    af, t = NUT[0] + 2 * NUT_CLR, abs(w1 - w0)
+    r = af / math.sqrt(3)
+    pts = [(r * math.cos(math.radians(rot + 60 * k)), r * math.sin(math.radians(rot + 60 * k))) for k in range(6)]
+    return Pos(0, 0, min(w0, w1)) * extrude(Polygon(*pts, align=None), amount=t)
+
+
 def mount():
-    """The mount: a flat plate on the back of the body with the dovetail, and the two inserts."""
+    """The mount: a flat plate on the back of the body with the dovetail, and the two inserts. In
+    resin, each M3 screw goes into a captive nut. The nut slides in from the side edge of the plate,
+    into a pocket 1.2 mm from the face on the body. The screw pulls the nut onto that wall of the
+    pocket, so the plate is in the clamp."""
     v0, v1 = MOUNT_V
     s = rounded_box(-MOUNT_U, MOUNT_U, v0, v1, -BACK_W, -DEEP_W - 0.05, 3.0)
     s = s + dovetail()
     for u, v in MOUNT_SCREWS:
-        s = s - Pos(u, v, 0) * insert_hole(-DEEP_W - 0.04, -DEEP_W - 0.05 - INSERT[1], -BACK_W)
+        if not RESIN:
+            s = s - Pos(u, v, 0) * insert_hole(-DEEP_W - 0.04, -DEEP_W - 0.05 - INSERT[1], -BACK_W)
+            continue
+        w0 = -DEEP_W - 0.05 - 1.2
+        w1 = w0 - NUT[1] - 2 * NUT_CLR
+        side = 1.0 if u > 0 else -1.0
+        s = s - Pos(u, v, (-DEEP_W - BACK_W) / 2) * Cylinder(1.7, MOUNT_T + 1.0)
+        s = s - Pos(u, v, 0) * nut_pocket(w0, w1)
+        # The slot from the pocket to the side edge, as wide as the nut across its flats.
+        af = NUT[0] + 2 * NUT_CLR
+        s = s - uvw_box(u, u + side * (MOUNT_U - abs(u) + 1.0), v - af / 2, v + af / 2, w1, w0)
     return s
 
 
@@ -338,11 +367,19 @@ def pod_frame():
         s = s + Pos(u, v, -(f0 + SPLIT_W) / 2) * Cylinder(5.0, SPLIT_W - f0)    # from the bed: no ledge over the opening
         s = s - Pos(u, v, 0) * screw_well(-SPLIT_W - 1.0, -f1, 3.95, SCREW[2.5][0] / 2 + 0.15)
         s = s - Pos(u, v, -(f0 + f1) / 2) * Cylinder(DISPLAY_HOLE, f1 - f0 + 1.0)
-    # The bosses with the inserts for the screws of the body.
+    # The bosses with the inserts for the screws of the body. In resin, each boss has a captive M3
+    # nut in a pocket open toward the display: the nut goes in before the display, and the display
+    # holds it in. The M3 x 6 screw ends at the far face of the nut.
     for u, v in POSTS:
-        boss = INSERT[1] + INSERT_FLOOR
-        s = s + Pos(u, v, -SPLIT_W + boss / 2) * Cylinder(4.0, boss)
-        s = s - Pos(u, v, 0) * insert_hole(-SPLIT_W - 0.01, -SPLIT_W + INSERT[1], -SPLIT_W + boss)
+        if not RESIN:
+            boss = INSERT[1] + INSERT_FLOOR
+            s = s + Pos(u, v, -SPLIT_W + boss / 2) * Cylinder(4.0, boss)
+            s = s - Pos(u, v, 0) * insert_hole(-SPLIT_W - 0.01, -SPLIT_W + INSERT[1], -SPLIT_W + boss)
+            continue
+        boss = NUT_SKIN + NUT[1] + 2 * NUT_CLR
+        s = s + Pos(u, v, -SPLIT_W + boss / 2) * Cylinder(4.5, boss)
+        s = s - Pos(u, v, -SPLIT_W) * Cylinder(1.7, 2 * boss + 2.0)
+        s = s - Pos(u, v, 0) * nut_pocket(-SPLIT_W + NUT_SKIN, -SPLIT_W + boss + 0.01, 90.0)
     return s
 
 
@@ -1349,30 +1386,32 @@ def zup_m(m, zup):
 
 # ---------------------------------------------------------------- the STL files for printing
 # Each process has its own folder and its own clearance for the dovetail. Each part is turned to
-# its print orientation, centered on the bed, with its lowest point at z = 0.
+# its print orientation and centered on the bed. FDM parts have their lowest point at z = 0, resin
+# parts at z = RESIN_LIFT.
 PRINT_DIR = os.path.join(HERE, "stl", "pod")
-DOVE_CLR_BY = {"fdm": 0.35, "resin": 0.15}
-RESIN_TILT = 30.0               # resin: each part leans this far, so no layer is a large flat area
+DOVE_CLR_BY = {"fdm": 0.35, "resin": 0.2}
+RESIN_LIFT = 6.0                # resin: the parts hang on supports, this far over the build plate
 
 
-def on_bed(shape, rot):
-    """The shape turned by rot (a Rot or a chain of them), centered on the bed at z = 0."""
+def on_bed(shape, rot, lift=0.0):
+    """The shape turned by rot (a Rot or a chain of them), centered on the bed, its lowest point at
+    z = lift."""
     s = rot * shape
     bb = s.bounding_box()
-    return Pos(-(bb.min.X + bb.max.X) / 2, -(bb.min.Y + bb.max.Y) / 2, -bb.min.Z) * s
+    return Pos(-(bb.min.X + bb.max.X) / 2, -(bb.min.Y + bb.max.Y) / 2, lift - bb.min.Z) * s
 
 
 def print_parts(process):
     """(file name, shape, how many) for each printed part of the pod, in print orientation."""
     import camera
     import clips as C
-    global DOVE_CLR
-    keep, DOVE_CLR = DOVE_CLR, DOVE_CLR_BY[process]
+    global DOVE_CLR, RESIN
+    keep, DOVE_CLR, RESIN = DOVE_CLR, DOVE_CLR_BY[process], process == "resin"
     try:
         case, fr, mt, wd = body(), pod_frame(), mount(), wedge_part()
         taz, mini = bracket(with_wedge=False), mini_bracket(with_wedge=False)
     finally:
-        DOVE_CLR = keep
+        DOVE_CLR, RESIN = keep, False
     one, _ = C.tape_clip()
     two, _ = C.tape_clip(True)
     cam = [part for n in ("taz", "mini2") for part in camera.printed(n)]
@@ -1386,23 +1425,33 @@ def print_parts(process):
         rots = {"case": Rot(0, 0, 0), "frame": Rot(0, 0, 0), "mount": Rot(180, 0, 0), "wedge": Rot(90, 0, 0),
                 "taz": Rot(-90, 0, 0), "mini": Rot(-90, 0, 0), "clip": Rot(0, 0, 0), "camera": Rot(0, 0, 0)}
     else:
-        # Resin prints from the build plate down: the backs of the body, the frame and the brackets
-        # face the build plate, so the open fronts face away from it and no cup of resin forms. Every
-        # part leans RESIN_TILT degrees. The slicer adds the supports.
-        t = RESIN_TILT
-        rots = {"case": Rot(t, 0, 0), "frame": Rot(t, 0, 0), "mount": Rot(t, 0, 0) * Rot(180, 0, 0),
-                "wedge": Rot(t, 0, 0) * Rot(90, 0, 0),
-                "taz": Rot(t, 0, 0) * Rot(0, -90, 0), "mini": Rot(t, 0, 0) * Rot(-90, 0, 0), "clip": Rot(t, 0, 0),
-                "camera": Rot(t, 0, 0)}
-    return [(f"pod-body_{process}.stl", on_bed(case, rots["case"]), 1),
-            (f"pod-frame_{process}.stl", on_bed(fr, rots["frame"]), 1),
-            (f"pod-mount_{process}.stl", on_bed(mt, rots["mount"]), 1),
-            (f"pod-wedge_{process}.stl", on_bed(wd, rots["wedge"]), 1),
-            (f"pod-bracket-taz_{process}.stl", on_bed(taz, rots["taz"]), 1),
-            (f"pod-bracket-mini2_{process}.stl", on_bed(mini, rots["mini"]), 1),
-            *[(f"{fn}_{process}.stl", on_bed(sh, rots["camera"] * rot), 1) for fn, sh, rot in cam],
-            (f"cable-clip-single_{process}.stl", on_bed(one, rots["clip"]), 5),
-            (f"cable-clip-double_{process}.stl", on_bed(two, rots["clip"]), 2)]
+        # Resin: z = 0 is the build plate, and the slicer adds supports under each face that faces
+        # it. The faces that show on the pod face away from the plate. The angles come from a search
+        # of the support area, the largest layer and the cups (stl/pod/README.md).
+        # - body: the open front toward the plate, turned 45 degrees about its long axis and 15
+        #   degrees along it. The back and the side walls face away from the plate.
+        # - frame: it stands on its bottom end, leans 20 degrees with the back ring up, and turns 15
+        #   degrees. Supports go on the bottom end and inside.
+        # - mount: it stands on the lower end of the dovetail, the face on the body up 15 degrees.
+        # - wedge: on its level bottom, 15 degrees with the slot up, and 10 degrees across.
+        # - TAZ bracket: on the top end of the plate as in FDM, the back of the plate toward the
+        #   plate 20 degrees, and 10 degrees across.
+        # - clips: the base toward the plate, 30 and 15 degrees.
+        rots = {"case": Rot(0, 0, 90) * Rot(-165, 0, 0) * Rot(0, -45, 0),
+                "frame": Rot(110, 0, 0) * Rot(0, 15, 0), "mount": Rot(75, 0, 0),
+                "wedge": Rot(10, 0, 0) * Rot(0, -15, 0) * Rot(90, 0, 0),
+                "taz": Rot(0, 0, 90) * Rot(10, 0, 0) * Rot(0, -20, 0) * Rot(-90, 0, 0),
+                "mini": Rot(30, 0, 0) * Rot(-90, 0, 0), "clip": Rot(30, 0, 0) * Rot(0, 15, 0), "camera": Rot(30, 0, 0)}
+    lift = RESIN_LIFT if process == "resin" else 0.0
+    return [(f"pod-body_{process}.stl", on_bed(case, rots["case"], lift), 1),
+            (f"pod-frame_{process}.stl", on_bed(fr, rots["frame"], lift), 1),
+            (f"pod-mount_{process}.stl", on_bed(mt, rots["mount"], lift), 1),
+            (f"pod-wedge_{process}.stl", on_bed(wd, rots["wedge"], lift), 1),
+            (f"pod-bracket-taz_{process}.stl", on_bed(taz, rots["taz"], lift), 1),
+            (f"pod-bracket-mini2_{process}.stl", on_bed(mini, rots["mini"], lift), 1),
+            *[(f"{fn}_{process}.stl", on_bed(sh, rots["camera"] * rot, lift), 1) for fn, sh, rot in cam],
+            (f"cable-clip-single_{process}.stl", on_bed(one, rots["clip"], lift), 5),
+            (f"cable-clip-double_{process}.stl", on_bed(two, rots["clip"], lift), 2)]
 
 
 def export_prints(out=PRINT_DIR):

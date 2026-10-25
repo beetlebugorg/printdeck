@@ -1,7 +1,8 @@
 # Pod print files
 
-`pod.py export` writes these files. Each part is in its print orientation, centered on the bed,
-with its lowest point at z = 0. Load a file and print it as it is. Do not turn it.
+`pod.py export` writes these files. Each part is in its print orientation and centered on the bed.
+FDM parts have their lowest point at z = 0. Resin parts are 6 mm over z = 0, for the supports.
+Load a file and print it as it is. Do not turn it.
 
 ## FDM (`fdm/`)
 
@@ -42,13 +43,58 @@ Seam**.
 
 Print the clips in PETG. Their arms bend across the layer lines, and PLA can crack there.
 
+## Resin (`resin/`)
+
+These files are for the Peopoly Phenom (build area 276 x 155 mm, 4K screen of 12.5 inches: about
+72 um per pixel) and standard resin. The body, the frame, the mount, the wedge and the TAZ bracket
+fit on one plate. Each part stands on
+supports, 6 mm over the plate. The faces that show on the pod face away from the plate, so the
+supports touch only faces that do not show. The orientations come from a search of the area that
+needs support, the largest layer, and the cups. No layer is larger than 600 mm2, and no large face is
+parallel to the screen. The largest pocket of resin that a layer closes off is 6 mm3, in the body.
+
+The resin parts differ from the FDM parts:
+
+- Captive M3 hex nuts replace the heat-set inserts. Heat-set inserts do not hold in cured resin.
+  The frame has a nut pocket at the display end of each boss: put the 4 nuts in before the display.
+  The display keeps them in. The mount has a nut pocket with a slot to each side edge: slide the 2
+  nuts in before the mount goes on the body.
+- The dovetail slot of the wedge and the groove of the key in the TAZ bracket have 0.2 mm of
+  clearance on each side. Print the mount and the wedge first, and try the fit.
+- The clip slots of the bracket keep the FDM clearance (0.35 mm), because the rail clips are FDM.
+
+| File | Print | Toward the plate (supports) | Keep clean |
+|---|---|---|---|
+| `pod-body_resin.stl` | 1 | The open front: the rim on the frame and the inside. It turns 45 degrees about its long axis and tilts 15 degrees. | The back, the side walls, the posts and the ports |
+| `pod-frame_resin.stl` | 1 | The bottom end, and the inside of the top end. It stands on its bottom end and leans 20 degrees, the back ring up. | The back ring, the side walls, and the front rim on the glass |
+| `pod-mount_resin.stl` | 1 | The lower end of the plate and of the dovetail. It stands, the dovetail upright. | The dovetail and the face on the body |
+| `pod-wedge_resin.stl` | 1 | The level bottom. It stands as on the printer, tilted 15 and 10 degrees. | The slot and the key |
+| `pod-bracket-taz_resin.stl` | 1 | The top end of the plate, and the back of the plate (it goes on the printer). It leans 20 degrees, the front up. | The front of the plate and its edges, the groove, and the clip slots |
+
+Slicer settings for the Phenom:
+
+- Layer height 0.05 mm. Solid parts: do not hollow them. The walls are 2 to 3 mm.
+- Supports: medium density, about 3 to 4 mm apart. Tip contact 0.3 to 0.4 mm across on the
+  bottom end of a part, and 0.25 to 0.3 mm on the rim of the body. Use heavy supports and a raft
+  on the plate.
+- Put no support tip on the faces in the "Keep clean" column. Remove each tip that the
+  automatic supports put there. Supports may go through the openings of the body and the frame.
+- Do not put supports in the groove of the bracket, the clip slots, the dovetail slot of the
+  wedge, or the nut pockets.
+- After the cure, sand the rim of the body flat on a sheet of sandpaper on glass. Then the body
+  sits flat on the frame.
+
+Print the cable clips in PETG on an FDM printer (`fdm/`). By an estimate, their arms stretch about 3 percent as the
+cable goes in, and standard resin cracks there. The resin clip files are for tough resin only.
+
 ## Hardware for the pod
 
 | Part | Count | Where |
 |---|---|---|
 | M2.5 x 4 screw | 8 | In the box of the display: 4 hold the frame to the display, 4 hold the Pi |
-| M3 heat-set insert, 4 mm long | 6 | 4 in the bosses of the frame, 2 in the mount. The holes are 4.0 mm across and 4.0 mm deep, with a small hole through the floor. Press each insert flush with the face. |
+| M3 heat-set insert, 4 mm long | 6 | FDM parts only: 4 in the bosses of the frame, 2 in the mount. The holes are 4.0 mm across and 4.0 mm deep, with a small hole through the floor. Press each insert flush with the face. |
 | M3 x 6 cap screw | 6 | 4 down the posts of the body into the frame, 2 from inside the body into the mount |
+| M3 hex nut (5.5 mm across the flats, 2.4 mm thick) | 6 | Resin parts only, in place of the 6 heat-set inserts: 4 in the bosses of the frame, 2 in the mount |
 
 ## Webcam (option)
 
