@@ -475,7 +475,10 @@ MINI_W = (0.0, -COS, SIN)
 MINI_V = (0.0, SIN, COS)
 MINI_PLATE_Y = -252.0                     # the back of the bracket: the front of the frame
 MINI_GLASS_TOP_Z = 375.0
-MINI_X = -305.0                           # the mirror of the middle of the stock LCD
+# The pod is left of the left upright, over the electronics case. The bed moves forward past the front
+# of the frame between x -300 and -100, and the pod stays clear of it.
+MINI_X = -380.0
+MINI_TIE_X = -330.0                       # the zip-tie anchors, right of the pod on the upright
 MINI_SCREWS = [(-334.1, 364.0), (-358.1, 352.0)]   # the frame screws in the left upright (x, z)
 _front_y = MINI_PLATE_Y - PLATE - PLATE_GAP
 MINI_O = (MINI_X, _front_y - (_deep[0] * MINI_V[1] + _deep[1] * MINI_W[1]), MINI_GLASS_TOP_Z - GLASS[1] * COS)
@@ -487,12 +490,12 @@ def mini_bracket(with_wedge=True):
     its top corner (longer screws in the same holes), and the wedge with the dovetail slot (a separate
     part, screwed to the plate; with_wedge adds it)."""
     top = to_frame(MINI_LOC, 0, DEEP_V1, -DEEP_W)[2]
-    plate = mbox(-366.0, MINI_X + 15.0, MINI_PLATE_Y - PLATE, MINI_PLATE_Y, top - 60.0, 372.0)
+    plate = mbox(MINI_X - 15.0, MINI_TIE_X + 8.0, MINI_PLATE_Y - PLATE, MINI_PLATE_Y, top - 60.0, 372.0)
     for x, z in MINI_SCREWS:
         plate = plate - Pos(x, MINI_PLATE_Y - PLATE / 2, z) * Rot(90, 0, 0) * Cylinder(1.7, PLATE + 2)
-    # Zip-tie anchors at the bottom of the plate, beside the pod: for the cables and their slack.
+    # Zip-tie anchors on the plate, right of the pod: for the printer cable and its slack.
     for z in (top - 54.0, top - 36.0):
-        add, cut = tie_anchor(-359.0, MINI_PLATE_Y - PLATE + 0.01, z, "mini")
+        add, cut = tie_anchor(MINI_TIE_X, MINI_PLATE_Y - PLATE + 0.01, z, "mini")
         plate = plate + add - cut
     plate = plate - wedge_groove("mini2", 372.0)
     if with_wedge:
@@ -1136,22 +1139,23 @@ def routes(name, pod_to_frame):
             ux = MINI_UPRIGHT_X
             uy = MINI_CASE_Y - C.TAPE_CABLE_H
             if cab == "power":
-                # Out of the left side of the pod to the upright, down it, and out to the left on
-                # the desk.
+                # Out of the left side of the pod, down under the pod, back to the front of the
+                # electronics case, down it, and out to the left on the desk.
                 ux -= C.PAIR / 2
-                way = [(ux, uy, z - 15.0), (ux, uy, 30.0), (ux, MINI_PLATE_Y - 20.0, desk),
+                under = to_frame(MINI_LOC, 0, DEEP_V0, -DEEP_W)[2] - 20.0
+                way = [(x, y, under), (ux, uy, under - 25.0), (ux, uy, 30.0), (ux, MINI_PLATE_Y - 20.0, desk),
                        (-480.0, MINI_PLATE_Y - 40.0, desk), (-560.0, MINI_PLATE_Y - 80.0, desk)]
             else:
-                # Up out of the top of the pod, over its top to the left, down the upright to the
-                # USB-B port in the front of the electronics case; the plug goes in from the front.
-                # Beside the bracket plate it passes over its tie anchors, for a zip tie.
+                # Up out of the top of the pod, over its top to the right, down the upright past the
+                # tie anchors of the plate, for a zip tie, and down the front of the electronics case
+                # to the USB-B port. The plug goes in from the front.
                 ux += C.PAIR / 2
                 px, pz = MINI_USB_B
                 top = v0 + 20.0
                 a1 = pod(u0, top + 8.0, w0)
                 ya = MINI_PLATE_Y - PLATE - 5.0 - 2.5                     # in front of the tie anchors
                 low = to_frame(MINI_LOC, 0, DEEP_V1, -DEEP_W)[2] - 70.0    # under the bracket plate
-                way = [a1, pod(-BODY_U - 6.0, top + 8.0, w0), (ux, ya, a1[2] - 30.0), (ux, ya, low),
+                way = [a1, pod(BODY_U + 6.0, top + 8.0, w0), (MINI_TIE_X, ya, a1[2] - 30.0), (MINI_TIE_X, ya, low),
                        (ux, uy, low - 30.0), (ux, uy, pz + 40.0),
                        (px, uy, pz + 20.0), (px, MINI_CASE_Y - USB_B_PLUG - 12, pz), (px, MINI_CASE_Y - USB_B_PLUG, pz)]
         out[cab] = [tuple(p0), tuple(p1)] + way
