@@ -58,6 +58,7 @@ import (
 	_ "printdeck/internal/klipper/extras/screws_tilt_adjust"
 	_ "printdeck/internal/klipper/extras/static_digital_output"
 	_ "printdeck/internal/klipper/extras/statistics"
+	_ "printdeck/internal/klipper/extras/temperature_fan"
 	_ "printdeck/internal/klipper/extras/temperature_mcu"
 	_ "printdeck/internal/klipper/extras/temperature_sensor"
 	_ "printdeck/internal/klipper/extras/stepper_enable"

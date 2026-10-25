@@ -12,14 +12,13 @@ import (
 // unsupported are the example configs that the Go host does not load yet, with the start of
 // their error. Remove a config from the list when its modules are ported.
 var unsupported = map[string]string{
-	"printer-artillery-sidewinder-x3-plus-2024.cfg": "Section 'temperature_fan artillery_mcu' is not a valid config section",
-	"printer-creality-ender5-s1-2023.cfg":           "Section 'axis_twist_compensation' is not a valid config section",
-	"printer-flashforge-creator-pro-2018.cfg":       "lcd_type 'hd44780_spi' in section 'display' is not supported",
-	"printer-geeetech-A10T-A20T-2021.cfg":           "lcd_type 'aip31068_spi' in section 'display' is not supported",
-	"printer-makergear-m2-2012.cfg":                 "Section 'endstop_phase stepper_x' is not a valid config section",
-	"printer-modix-big60-2020.cfg":                  "Unknown temperature sensor 'MAX31865'",
-	"printer-sunlu-t3-2022.cfg":                     "Section 'filament_motion_sensor filament_sensor' is not a valid config section",
-	"printer-tronxy-crux1-2022.cfg":                 "Section 'pwm_cycle_time beeper_pin' is not a valid config section",
+	"printer-creality-ender5-s1-2023.cfg":     "Section 'axis_twist_compensation' is not a valid config section",
+	"printer-flashforge-creator-pro-2018.cfg": "lcd_type 'hd44780_spi' in section 'display' is not supported",
+	"printer-geeetech-A10T-A20T-2021.cfg":     "lcd_type 'aip31068_spi' in section 'display' is not supported",
+	"printer-makergear-m2-2012.cfg":           "Section 'endstop_phase stepper_x' is not a valid config section",
+	"printer-modix-big60-2020.cfg":            "Unknown temperature sensor 'MAX31865'",
+	"printer-sunlu-t3-2022.cfg":               "Section 'filament_motion_sensor filament_sensor' is not a valid config section",
+	"printer-tronxy-crux1-2022.cfg":           "Section 'pwm_cycle_time beeper_pin' is not a valid config section",
 }
 
 // chipDicts returns the firmware dictionaries to try for a chip (testdata/dict, from
