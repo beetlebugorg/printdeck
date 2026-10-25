@@ -12,13 +12,10 @@ import (
 // unsupported are the example configs that the Go host does not load yet, with the start of
 // their error. Remove a config from the list when its modules are ported.
 var unsupported = map[string]string{
-	"printer-artillery-sidewinder-x2-2022.cfg":      "Section 'temperature_sensor mainboard' is not a valid config section",
+	"printer-artillery-sidewinder-x2-2022.cfg":      "Section 'neopixel extruder' is not a valid config section",
 	"printer-artillery-sidewinder-x3-plus-2024.cfg": "Section 'led led_light' is not a valid config section",
 	"printer-biqu-bx-2021.cfg":                      "Section 'gcode_button lcd_button' is not a valid config section",
-	"printer-creality-cr10-smart-pro-2022.cfg":      "Section 'temperature_sensor board_mcu' is not a valid config section",
-	"printer-creality-cr30-2021.cfg":                "Section 'fan_generic k_fan2' is not a valid config section",
 	"printer-creality-ender5-s1-2023.cfg":           "Section 'axis_twist_compensation' is not a valid config section",
-	"printer-creality-sermoonV1-2022.cfg":           "Section 'fan_generic side_fan' is not a valid config section",
 	"printer-elegoo-neptune3-pro-2023.cfg":          "Section 'led top_leds' is not a valid config section",
 	"printer-flashforge-creator-pro-2018.cfg":       "lcd_type 'hd44780_spi' in section 'display' is not supported",
 	"printer-geeetech-301-2019.cfg":                 "Unknown pin chip name 'multi_pin'",
