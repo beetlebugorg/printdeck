@@ -34,6 +34,7 @@ import (
 	_ "printdeck/internal/klipper/extras/heater_fan"
 	_ "printdeck/internal/klipper/extras/heaters"
 	_ "printdeck/internal/klipper/extras/homing"
+	_ "printdeck/internal/klipper/extras/homing_heaters"
 	_ "printdeck/internal/klipper/extras/homing_override"
 	_ "printdeck/internal/klipper/extras/idle_timeout"
 	_ "printdeck/internal/klipper/extras/led"
