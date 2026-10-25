@@ -11,9 +11,9 @@ ports are the Pi's own ports, flush with the walls of the deep part: the USB-C p
 micro HDMI ports in the right wall, and the USB-A and Ethernet ports in the bottom wall. The printer
 cable plugs straight into the Pi.
 
-Holding the display: two hooks in the bottom of the body catch the bottom edge of the display frame,
-and two screws go down tubes from the back of the body into the two raised tabs at the top of the
-display.
+Holding the display: four M2.5 x 4 screws from the back of the body. At the top, two go down tubes
+into the two raised tabs of the display. At the bottom, two go through short wells in the thin back
+into the two holes in the flat metal back.
 
 Printing: the body prints standing on its bottom end, so the walls, the back and the dovetail are
 vertical. The bottom wall of the deep part stands out 22 mm over the thin part: it needs supports.
@@ -50,8 +50,9 @@ FRAME = (72.96, 122.74)         # the metal back of the module
 FRAME_V0 = GLASS[1] - 12.8 - FRAME[1]   # the bottom of the frame over the bottom of the glass: 7.86
 FRAME_W = 8.5                   # the back of the frame behind the front of the glass
 # The two raised tabs at the top (the ribbon end). At the bottom there are only two holes in the flat
-# back (v 19.85), beside the ports of the Pi: the case does not use them.
+# back (v 19.85), under the ports of the Pi.
 TABS = [(u, GLASS[1] - 19.85) for u in (-25.5, 25.5)]
+HOLES = [(u, 19.85) for u in (-25.5, 25.5)]
 TAB_W = 11.5                    # the face of a tab behind the front of the glass
 TAB_SIZE = (8.0, 6.0)
 PI_HOLE_UV = [(u, v) for u in (-24.5, 24.5) for v in (GLASS[1] - 33.91 - 58.0, GLASS[1] - 33.91)]   # 49 x 58
@@ -71,6 +72,7 @@ DEEP_W = PI_TOP_W + GAP + WALL                     # the back of the body where 
 # part around the rest of the display frame is only as deep as the raised tabs.
 THIN_W = TAB_W + 0.2 + WALL                        # the back of the thin part: 13.7
 SCREW_FLOOR = (TAB_W + 0.2, TAB_W + 2.2)          # the floor of a screw well, over a top tab
+HOLE_FLOOR = (FRAME_W + 0.2, FRAME_W + 2.2)       # the floor of a screw well, over a bottom hole
 PI_V = PI_HOLE_UV[0][1] + 61.5                     # the v of the PCIe end of the Pi (STEP x = 0)
 DEEP_U = 28.0 + 0.6 + WALL                         # the half width of the deep part: 30.6
 DEEP_V0 = PI_V - 85.0 - 2.5                        # the bottom of the deep part: the faces of the ports
@@ -188,11 +190,13 @@ def body():
         s = s + Pos(u, v, -(f0 + DEEP_W - 1.0) / 2) * Cylinder(DEEP_U - abs(u) - 0.1, DEEP_W - 1.0 - f0)
         s = s - Pos(u, v, -(f1 + DEEP_W + 1.0) / 2) * Cylinder(3.95, DEEP_W + 1.0 - f1)
         s = s - Pos(u, v, -(f0 + f1) / 2) * Cylinder(1.45, f1 - f0 + 1.0)
-    # The hooks at the bottom: they catch the bottom edge of the frame (beside the Pi).
-    for sgn in (-1, 1):
-        u0, u1 = sorted((sgn * 29.5, sgn * (BODY_U - WALL + 0.01)))
-        s = s + uvw_box(u0, u1, BODY_V[0] + WALL - 0.01, FRAME_V0 + 2.5, -FRAME_W - 2.2, -FRAME_W - 0.2)
-        s = s - uvw_box(u0 - 1, u1 + 1, BODY_V[0] + WALL + 1.0, FRAME_V0 + 0.3, -FRAME_W - 0.25, FRONT_W)
+    # The two bottom holes: a boss from the thin back down to the metal back, with a well from the
+    # back and a floor of 2 mm on the metal back.
+    f0, f1 = HOLE_FLOOR
+    for u, v in HOLES:
+        s = s + Pos(u, v, -(f0 + THIN_W - 1.0) / 2) * Cylinder(5.0, THIN_W - 1.0 - f0)
+        s = s - Pos(u, v, -(f1 + THIN_W + 1.0) / 2) * Cylinder(3.95, THIN_W + 1.0 - f1)
+        s = s - Pos(u, v, -(f0 + f1) / 2) * Cylinder(1.45, f1 - f0 + 1.0)
     s = s - ports_cut()
     s = s - vents()
     s = s + dovetail()
@@ -337,12 +341,12 @@ def screw(size, length, origin, out_dir, frame=None):
 
 
 def pod_screws():
-    """The screws of the pod, in pod coordinates: two M2.5 x 4 down the tubes of the body into the top
-    tabs of the display, and four M2.5 x 4 through the Pi into the standoffs (all from the box of
-    the display)."""
+    """The screws of the pod, in pod coordinates: four M2.5 x 4 from the back of the body into the
+    display (two in the top tabs, two in the bottom holes), and four M2.5 x 4 through the Pi into
+    the standoffs (all from the box of the display)."""
     disp = None
-    for u, v in TABS:
-        sc = screw(2.5, 4.0, (u, v, -SCREW_FLOOR[1]), (0, 0, -1))
+    for (u, v), w in [(t, SCREW_FLOOR[1]) for t in TABS] + [(h, HOLE_FLOOR[1]) for h in HOLES]:
+        sc = screw(2.5, 4.0, (u, v, -w), (0, 0, -1))
         disp = sc if disp is None else disp + sc
     pi = None
     for u, v in PI_HOLE_UV:
@@ -449,7 +453,7 @@ def hardware():
 
 
 ALLOWED = {frozenset(p) for p in [("power_plug", "pi_usbc"), ("printer_plug", "pi_usb2"), ("glass", "screen"),
-                                  ("screw_display", "tab0"), ("screw_display", "tab1"), ("screw_pi", "pi_board"),
+                                  ("screw_display", "tab0"), ("screw_display", "tab1"), ("screw_display", "frame"), ("screw_pi", "pi_board"),
                                   ("channel", "frame"), ("display_fpc", "dsi_ribbon"), ("pi_dsi", "dsi_ribbon"),
                                   ("pi_dsi", "pi_board"), ("pi_gpio", "pi_board"), ("pi_gpio", "power_wire"),
                                   ("display_power", "power_wire"), ("pi_dsi", "cooler"), ("pi_gpio", "cooler"),
@@ -754,7 +758,7 @@ STAGES = [
                                              ("printer_plug", "printer_cable"): (0.0, -40.0, 0.0)}),
     ("lift the pod off the dovetail", {POD_PARTS: (0.0, DOVE_LIFT, 0.0)}),
     ("pull the pod forward off the bracket", {POD_PARTS: (0.0, 0.0, 60.0)}),
-    ("take out the two display screws", {("screw_display",): (0.0, 0.0, -30.0)}),
+    ("take out the four display screws", {("screw_display",): (0.0, 0.0, -30.0)}),
     ("take the display and the Pi out of the front", {DISPLAY + PI + FLEX + ("screw_pi",): (0.0, 0.0, 80.0)}),
     ("take out the four Pi screws", {("screw_pi",): (0.0, 0.0, -60.0)}),
     ("take the Pi off the display", {PI: (0.0, 0.0, -40.0)}),
