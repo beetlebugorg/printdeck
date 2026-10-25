@@ -236,7 +236,8 @@ func TestAPIKeyOpensOnlyTheScreenData(t *testing.T) {
 
 func TestLocalPath(t *testing.T) {
 	for in, want := range map[string]string{"/roll/3": "/roll/3", "": "/", "//evil.example": "/",
-		"https://evil.example": "/", "/\\evil": "/", "/system": "/system"} {
+		"https://evil.example": "/", "/\\evil": "/", "/system": "/system",
+		"/\t/evil.example": "/", "/\n/evil.example": "/", "/a\\b": "/", "/": "/", "/roll/3?x=1": "/roll/3?x=1"} {
 		if got := localPath(in); got != want {
 			t.Errorf("localPath(%q) = %q, want %q", in, got, want)
 		}

@@ -85,15 +85,21 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	s.sessions[token] = time.Now().Add(sessionAge)
 	s.mu.Unlock()
 	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: token, Path: "/", MaxAge: int(sessionAge.Seconds()),
-		HttpOnly: true, SameSite: http.SameSiteStrictMode})
+		HttpOnly: true, SameSite: http.SameSiteStrictMode, Secure: r.TLS != nil})
 	http.Redirect(w, r, localPath(r.FormValue("next")), http.StatusSeeOther)
 }
 
 // localPath is next when it is a path of this server, and else "/": a login never sends the
-// browser to another site.
+// browser to another site. A browser removes tabs and line breaks from a URL and reads a backslash as "/",
+// so next must have none of them.
 func localPath(next string) string {
-	if !strings.HasPrefix(next, "/") || strings.HasPrefix(next, "//") || strings.ContainsAny(next, "\\\r\n") {
+	if len(next) == 0 || next[0] != '/' || (len(next) > 1 && (next[1] == '/' || next[1] == '\\')) {
 		return "/"
+	}
+	for _, c := range next {
+		if c < 0x20 || c == 0x7f || c == '\\' {
+			return "/"
+		}
 	}
 	return next
 }
@@ -105,6 +111,6 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 		delete(s.sessions, c.Value)
 		s.mu.Unlock()
 	}
-	http.SetCookie(w, &http.Cookie{Name: cookieName, Path: "/", MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: cookieName, Path: "/", MaxAge: -1, Secure: r.TLS != nil})
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }

@@ -55,8 +55,10 @@
   function say(text) { wrong.textContent = text; wrong.style.display = text ? "block" : "none"; }
   if (location.search.includes("wrong")) say("The password is not correct.");
   // The page to go back to after the login, for example the page of a roll; only a path of the deck.
+  // A browser removes tabs and line breaks from a URL and reads a backslash as "/", so the path must have
+  // none of them, and its second character must not be "/".
   let next = new URLSearchParams(location.search).get("next") || "/";
-  if (!next.startsWith("/") || next.startsWith("//")) next = "/";
+  if (!/^\/(?![\/\\])[^\\\x00-\x1f\x7f]*$/.test(next)) next = "/";
   document.getElementById("next").value = next;
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
