@@ -1,167 +1,308 @@
-[
- {
-  "group": "back",
-  "material": "pla_orange",
-  "mesh": "deck_back_pla_orange"
+{
+ "pod": [
+  {
+   "mesh": "pod_0d0e12",
+   "color": "#0D0E12",
+   "metal": 0.2,
+   "rough": 0.08
+  },
+  {
+   "mesh": "pod_1a1a1a",
+   "color": "#1A1A1A",
+   "metal": 0.0,
+   "rough": 0.6
+  },
+  {
+   "mesh": "pod_1b1c20",
+   "color": "#1B1C20",
+   "metal": 0.0,
+   "rough": 0.6
+  },
+  {
+   "mesh": "pod_1f6b45",
+   "color": "#1F6B45",
+   "metal": 0.0,
+   "rough": 0.6
+  },
+  {
+   "mesh": "pod_2a2b30",
+   "color": "#2A2B30",
+   "metal": 0.0,
+   "rough": 0.6
+  },
+  {
+   "mesh": "pod_2b2e35",
+   "color": "#2B2E35",
+   "metal": 0.0,
+   "rough": 0.6
+  },
+  {
+   "mesh": "pod_30343a",
+   "color": "#30343A",
+   "metal": 0.6,
+   "rough": 0.4
+  },
+  {
+   "mesh": "pod_6c7078",
+   "color": "#6C7078",
+   "metal": 0.6,
+   "rough": 0.4
+  },
+  {
+   "mesh": "pod_8c9097",
+   "color": "#8C9097",
+   "metal": 0.6,
+   "rough": 0.35
+  },
+  {
+   "mesh": "pod_b9bec6",
+   "color": "#B9BEC6",
+   "metal": 0.7,
+   "rough": 0.3
+  },
+  {
+   "mesh": "pod_c9a227",
+   "color": "#C9A227",
+   "metal": 0.7,
+   "rough": 0.3
+  },
+  {
+   "mesh": "pod_c9cdd2",
+   "color": "#C9CDD2",
+   "metal": 0.7,
+   "rough": 0.3
+  },
+  {
+   "mesh": "pod_ececec",
+   "color": "#ECECEC",
+   "metal": 0.0,
+   "rough": 0.6
+  }
+ ],
+ "screen": {
+  "position": [
+   0.0,
+   71.7,
+   0.0
+  ],
+  "size": [
+   62.1,
+   110.4
+  ]
  },
- {
-  "group": "bottom_screws",
-  "material": "black_steel",
-  "mesh": "deck_bottom_screws_black_steel"
+ "taz": {
+  "position": [
+   -165.02,
+   38.8512,
+   148.4495
+  ],
+  "rotation": [
+   0.991445,
+   -0.130526,
+   0.0,
+   0.0
+  ],
+  "up": [
+   0.0,
+   0.9659,
+   -0.2588
+  ],
+  "front": [
+   0.0,
+   0.2588,
+   0.9659
+  ],
+  "parts": [
+   {
+    "group": "bracket",
+    "mesh": "taz_bracket_2a2b30",
+    "color": "#2A2B30",
+    "metal": 0.0,
+    "rough": 0.6
+   },
+   {
+    "group": "bracket_screws",
+    "mesh": "taz_bracket_screws_b9bec6",
+    "color": "#B9BEC6",
+    "metal": 0.7,
+    "rough": 0.3
+   },
+   {
+    "group": "cover_clips",
+    "mesh": "taz_cover_clips_e8762b",
+    "color": "#E8762B",
+    "metal": 0.0,
+    "rough": 0.6
+   },
+   {
+    "group": "rail_clip_screws",
+    "mesh": "taz_rail_clip_screws_2a2a2c",
+    "color": "#2A2A2C",
+    "metal": 0.7,
+    "rough": 0.35
+   },
+   {
+    "group": "rail_clip_screws",
+    "mesh": "taz_rail_clip_screws_c4c6c8",
+    "color": "#C4C6C8",
+    "metal": 0.7,
+    "rough": 0.3
+   },
+   {
+    "group": "rail_clips",
+    "mesh": "taz_rail_clips_e8762b",
+    "color": "#E8762B",
+    "metal": 0.0,
+    "rough": 0.6
+   }
+  ]
  },
- {
-  "group": "clip_screws",
-  "material": "black_steel",
-  "mesh": "deck_clip_screws_black_steel"
- },
- {
-  "group": "clips",
-  "material": "pla_orange",
-  "mesh": "deck_clips_pla_orange"
- },
- {
-  "group": "display",
-  "material": "black_glass",
-  "mesh": "deck_display_black_glass"
- },
- {
-  "group": "display",
-  "material": "black_plastic",
-  "mesh": "deck_display_black_plastic"
- },
- {
-  "group": "display",
-  "material": "lcd_metal",
-  "mesh": "deck_display_lcd_metal"
- },
- {
-  "group": "display",
-  "material": "pcb_green",
-  "mesh": "deck_display_pcb_green"
- },
- {
-  "group": "display",
-  "material": "steel",
-  "mesh": "deck_display_steel"
- },
- {
-  "group": "display_screws",
-  "material": "black_steel",
-  "mesh": "deck_display_screws_black_steel"
- },
- {
-  "group": "drive",
-  "material": "alu_dark",
-  "mesh": "deck_drive_alu_dark"
- },
- {
-  "group": "drive",
-  "material": "black_plastic",
-  "mesh": "deck_drive_black_plastic"
- },
- {
-  "group": "drive",
-  "material": "pcb_green",
-  "mesh": "deck_drive_pcb_green"
- },
- {
-  "group": "drive",
-  "material": "steel",
-  "mesh": "deck_drive_steel"
- },
- {
-  "group": "drive_screws",
-  "material": "black_steel",
-  "mesh": "deck_drive_screws_black_steel"
- },
- {
-  "group": "flange_screws",
-  "material": "black_steel",
-  "mesh": "deck_flange_screws_black_steel"
- },
- {
-  "group": "grille",
-  "material": "pla_white",
-  "mesh": "deck_grille_pla_white"
- },
- {
-  "group": "head",
-  "material": "pla_navy",
-  "mesh": "deck_head_pla_navy"
- },
- {
-  "group": "head_screws",
-  "material": "black_steel",
-  "mesh": "deck_head_screws_black_steel"
- },
- {
-  "group": "ins_back",
-  "material": "brass",
-  "mesh": "deck_ins_back_brass"
- },
- {
-  "group": "ins_block",
-  "material": "brass",
-  "mesh": "deck_ins_block_brass"
- },
- {
-  "group": "ins_head",
-  "material": "brass",
-  "mesh": "deck_ins_head_brass"
- },
- {
-  "group": "ins_nut",
-  "material": "brass",
-  "mesh": "deck_ins_nut_brass"
- },
- {
-  "group": "mount_screws",
-  "material": "black_steel",
-  "mesh": "deck_mount_screws_black_steel"
- },
- {
-  "group": "mount_screws",
-  "material": "steel",
-  "mesh": "deck_mount_screws_steel"
- },
- {
-  "group": "pi",
-  "material": "alu_dark",
-  "mesh": "deck_pi_alu_dark"
- },
- {
-  "group": "pi",
-  "material": "black_plastic",
-  "mesh": "deck_pi_black_plastic"
- },
- {
-  "group": "pi",
-  "material": "nickel",
-  "mesh": "deck_pi_nickel"
- },
- {
-  "group": "pi",
-  "material": "pcb_green",
-  "mesh": "deck_pi_pcb_green"
- },
- {
-  "group": "pi",
-  "material": "steel",
-  "mesh": "deck_pi_steel"
- },
- {
-  "group": "pi_screws",
-  "material": "black_steel",
-  "mesh": "deck_pi_screws_black_steel"
- },
- {
-  "group": "plate",
-  "material": "pla_orange",
-  "mesh": "deck_plate_pla_orange"
- },
- {
-  "group": "pod",
-  "material": "pla_navy",
-  "mesh": "deck_pod_pla_navy"
+ "mini2": {
+  "position": [
+   -102.5,
+   151.3432,
+   211.3924
+  ],
+  "rotation": [
+   0.991445,
+   -0.130526,
+   0.0,
+   0.0
+  ],
+  "up": [
+   0.0,
+   0.9659,
+   -0.2588
+  ],
+  "front": [
+   0.0,
+   0.2588,
+   0.9659
+  ],
+  "tip": [
+   106.664,
+   130.666,
+   0.0
+  ],
+  "bedY": 160.681,
+  "washerTop": 1.5,
+  "washerSim": 1.377,
+  "lcd": {
+   "position": [
+    217.26,
+    222.239,
+    155.511
+   ],
+   "size": [
+    72.0,
+    39.75
+   ]
+  },
+  "parts": [
+   {
+    "group": "bed",
+    "kind": "metal",
+    "mesh": "mini2_bed_metal",
+    "color": "#B0B4BC",
+    "metal": 0.35,
+    "rough": 0.4
+   },
+   {
+    "group": "bed",
+    "kind": "surface",
+    "mesh": "mini2_bed_surface",
+    "color": "#B8923F",
+    "metal": 0.0,
+    "rough": 0.6
+   },
+   {
+    "group": "bed",
+    "kind": "washer",
+    "mesh": "mini2_bed_washer",
+    "color": "#B0B4BC",
+    "metal": 0.35,
+    "rough": 0.4
+   },
+   {
+    "group": "carriage",
+    "kind": "heater",
+    "mesh": "mini2_carriage_heater",
+    "color": "#C4C6C8",
+    "metal": 0.7,
+    "rough": 0.3
+   },
+   {
+    "group": "carriage",
+    "kind": "metal",
+    "mesh": "mini2_carriage_metal",
+    "color": "#B0B4BC",
+    "metal": 0.35,
+    "rough": 0.4
+   },
+   {
+    "group": "carriage",
+    "kind": "nozzle",
+    "mesh": "mini2_carriage_nozzle",
+    "color": "#C9A24B",
+    "metal": 0.6,
+    "rough": 0.3
+   },
+   {
+    "group": "frame",
+    "kind": "bracket",
+    "mesh": "mini2_frame_bracket_2a2b30",
+    "color": "#2A2B30",
+    "metal": 0.0,
+    "rough": 0.6
+   },
+   {
+    "group": "frame",
+    "kind": "bracket_screws",
+    "mesh": "mini2_frame_bracket_screws_b9bec6",
+    "color": "#B9BEC6",
+    "metal": 0.7,
+    "rough": 0.3
+   },
+   {
+    "group": "frame",
+    "kind": "lcd",
+    "mesh": "mini2_frame_lcd",
+    "color": "#3A3B3E",
+    "metal": 0.0,
+    "rough": 0.6
+   },
+   {
+    "group": "frame",
+    "kind": "metal",
+    "mesh": "mini2_frame_metal",
+    "color": "#C4C8CF",
+    "metal": 0.35,
+    "rough": 0.4
+   },
+   {
+    "group": "frame",
+    "kind": "screen",
+    "mesh": "mini2_frame_screen",
+    "color": "#1F4BD1",
+    "metal": 0.1,
+    "rough": 0.2
+   },
+   {
+    "group": "frame",
+    "kind": "upright_clips",
+    "mesh": "mini2_frame_upright_clips_e8762b",
+    "color": "#E8762B",
+    "metal": 0.0,
+    "rough": 0.6
+   },
+   {
+    "group": "gantry",
+    "kind": "metal",
+    "mesh": "mini2_gantry_metal",
+    "color": "#B0B4BC",
+    "metal": 0.35,
+    "rough": 0.4
+   }
+  ]
  }
-]
+}

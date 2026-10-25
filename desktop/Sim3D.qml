@@ -1,5 +1,5 @@
-// The 3D window of the simulated printer: a LulzBot TAZ Workhorse that moves as the simulated board
-// moves it, with the part that grows on its bed. The view starts isometric. The left button turns
+// The 3D window of the simulated printer: a LulzBot TAZ Workhorse or a LulzBot Mini 2 (sim.model) with
+// the Printdeck on it, that moves as the simulated board moves it, with the part that grows on its bed. The view starts isometric. The left button turns
 // it, the right button pans, the middle button walks on the ground, the wheel zooms, and the side
 // buttons move down and up. The keys move the point of the view too: W A S D or the arrows forward,
 // left, back and right, Q and E down and up, with Shift faster. T makes the tool head see-through
@@ -23,8 +23,17 @@ Window
     id: win
     width: 900; height: 720
     visible: true
-    title: "Printdeck Sim · TAZ Workhorse"
+    title: "Printdeck Sim · " + (mini ? "LulzBot Mini 2" : "TAZ Workhorse")
     color: "#1b1c1a"
+
+    // The model of the printer: the Mini 2, or the TAZ Workhorse for the other printers (and for "",
+    // an older app).
+    property bool mini: sim.model == "mini2"
+    // The view starts at the middle of the bed of the printer.
+    onMiniChanged: if (!filmOn) {
+        pivot.position = mini ? Qt.vector3d(80, 150, 0) : Qt.vector3d(120, 230, 0)
+        camera.z = mini ? 2100 : 3000
+    }
 
     property vector3d p: sim.position
     // The tool head is see-through, so the part under it shows. T turns it solid and back.
@@ -246,6 +255,71 @@ Window
                         baseColorMap: Texture { flipV: true; textureData: ImageTexture { id: tex } }
                     }
                 }
+                // The meshes of the Printdeck and of the Mini 2 (cad/deck.py), with their places.
+                property var deck: sim.resource(":/meshes/deck.json")
+                // A part of meshes/deck.json, in its color.
+                component DeckPart: Part
+                {
+                    property var data
+                    mesh: data.mesh
+                    tint: data.color; metal: data.metal; rough: data.rough
+                }
+                // The pod at a place of meshes/deck.json (the TAZ or the Mini 2), with the deck UI on
+                // its display. The meshes are in pod coordinates: u to the right, v up, and w out of
+                // the glass (lulzbot/pod.py). The display hangs with its ribbon end down, and the deck
+                // turns its picture 180 degrees, so the UI is upright on the glass.
+                component Pod: Node
+                {
+                    property var place
+                    position: Qt.vector3d(place.position[0], place.position[1], place.position[2])
+                    rotation: Qt.quaternion(place.rotation[0], place.rotation[1], place.rotation[2], place.rotation[3])
+                    Repeater3D
+                    {
+                        model: view.deck.pod
+                        DeckPart { data: modelData }
+                    }
+                    // The active area of the display (62.1 x 110.4 mm), on the front of the glass.
+                    Node
+                    {
+                        id: area
+                        property size size: Qt.size(view.deck.screen.size[0], view.deck.screen.size[1])
+                        position: Qt.vector3d(view.deck.screen.position[0], view.deck.screen.position[1], view.deck.screen.position[2])
+                        // The deck UI, as large as it fits, when the display is on.
+                        Screen
+                        {
+                            property real aspect: sim.screen.width > 0 ? sim.screen.width / sim.screen.height : 1024 / 600
+                            z: 0.05
+                            size: aspect > area.size.width / area.size.height ? Qt.size(area.size.width, area.size.width / aspect)
+                                                                              : Qt.size(area.size.height * aspect, area.size.height)
+                            image: sim.screen
+                            opacity: view.power(win.ft)
+                        }
+                        // The film: the start screen, at the start of the display.
+                        Model
+                        {
+                            source: "#Rectangle"
+                            z: 0.07
+                            scale: Qt.vector3d(area.size.width / 100, area.size.height / 100, 1)
+                            opacity: view.boot(win.ft)
+                            visible: opacity > 0
+                            materials: PrincipledMaterial
+                            {
+                                lighting: PrincipledMaterial.NoLighting
+                                baseColorMap: Texture { sourceItem: view.bootScreen }
+                            }
+                        }
+                        // The film: the flash of the display when it turns on.
+                        Model
+                        {
+                            source: "#Rectangle"
+                            z: 0.1
+                            scale: Qt.vector3d(area.size.width / 100, area.size.height / 100, 1)
+                            opacity: view.flash(win.ft)
+                            visible: opacity > 0
+                            materials: PrincipledMaterial { lighting: PrincipledMaterial.NoLighting; baseColor: "#e8f6ff" }
+                        }
+                    }
+                }
                 // The materials of the kinds of parts. The film has a black printer, with steel rods and
                 // screws.
                 component Metal: Part { tint: filmOn ? "#17181b" : "#c4c6c8"; metal: filmOn ? 0.55 : 0.35; rough: filmOn ? 0.32 : 0.35 }
@@ -276,6 +350,7 @@ Window
                 Node
                 {
                     id: machine
+                    visible: !win.mini
                     position: Qt.vector3d(view.frameX, 0, -0.50)
                     Metal { mesh: "frame_metal" }
                     Steel { mesh: "frame_rod" }
@@ -286,70 +361,28 @@ Window
                     // the simulated display, as the touch screen draws it.
                     Screen { position: Qt.vector3d(-165.0, 343.8, 61.5); size: Qt.size(72, 40); image: sim.lcd }
 
-                    // The Printdeck on its mount (cad/deck.py): the head under the logo, the pod on the
-                    // side of the chassis, and the deck UI on its display. Each group of the build booklet
-                    // has its own node, so the film can assemble them (view.place). The face leans back
-                    // 15°; the opening is 155.1 x 86.9 mm, and the active area of the display
-                    // 154.21 x 85.92 mm.
+                    // The Printdeck (cad/deck.py): the bracket on the two rail clips and the cover screw,
+                    // the pod on the bracket, and the cable clips on the cover. Each group has its own
+                    // node, so the film can assemble them (view.place).
                     Repeater3D
                     {
-                        model: sim.resource(":/meshes/deck.json")
+                        model: view.deck.taz.parts
                         Node
                         {
                             property var a: view.place(modelData.group, win.ft)
                             position: a.offset
                             visible: a.shown
                             opacity: a.alpha
-                            Part
-                            {
-                                property var m: view.materials[modelData.material] || ["#808080", 0, 0.5]
-                                mesh: modelData.mesh
-                                tint: m[0]; metal: m[1]; rough: m[2]
-                            }
+                            DeckPart { data: modelData }
                         }
                     }
                     Node
                     {
-                        property var a: view.place("display", win.ft)
+                        property var a: view.place("pod", win.ft)
                         position: a.offset
                         visible: a.shown
-                        Node
-                        {
-                            position: Qt.vector3d(-137.45, 114.16, 102.07)
-                            eulerRotation.x: -15
-                            // The deck UI, as large as it fits, when the display is on.
-                            Screen
-                            {
-                                property real aspect: sim.screen.width > 0 ? sim.screen.width / sim.screen.height : 1024 / 600
-                                size: aspect > 154.21 / 85.92 ? Qt.size(154.21, 154.21 / aspect) : Qt.size(85.92 * aspect, 85.92)
-                                image: sim.screen
-                                opacity: view.power(win.ft)
-                            }
-                            // The start screen, at the start of the display.
-                            Model
-                            {
-                                source: "#Rectangle"
-                                z: 0.02
-                                scale: Qt.vector3d(1.5421, 0.8592, 1)
-                                opacity: view.boot(win.ft)
-                                visible: opacity > 0
-                                materials: PrincipledMaterial
-                                {
-                                    lighting: PrincipledMaterial.NoLighting
-                                    baseColorMap: Texture { sourceItem: view.bootScreen }
-                                }
-                            }
-                            // The flash of the display when it turns on.
-                            Model
-                            {
-                                source: "#Rectangle"
-                                z: 0.05
-                                scale: Qt.vector3d(1.5421, 0.8592, 1)
-                                opacity: view.flash(win.ft)
-                                visible: opacity > 0
-                                materials: PrincipledMaterial { lighting: PrincipledMaterial.NoLighting; baseColor: "#e8f6ff" }
-                            }
-                        }
+                        opacity: a.alpha
+                        Pod { place: view.deck.taz }
                     }
 
                     // The gantry, at the height of Z, with the tool head on it.
@@ -403,6 +436,7 @@ Window
                 // The base of the Y axis: its rails, its motor and its belt.
                 Node
                 {
+                    visible: !win.mini
                     position: Qt.vector3d(view.bedX, 0, -0.50)
                     Metal { mesh: "ybase_metal" }
                     Steel { mesh: "ybase_rod" }
@@ -413,6 +447,7 @@ Window
                 // The bed, which moves in Y.
                 Node
                 {
+                    visible: !win.mini
                     position: Qt.vector3d(view.bedX, -0.03, win.p.y + 14 - 142.15)
                     Metal { mesh: "bed_metal" }
                     Printed { mesh: "bed_printed" }
@@ -426,6 +461,78 @@ Window
                         glowColor: Qt.rgba(0.35 * win.glow(sim.bed, 110), 0.08 * win.glow(sim.bed, 110), 0, 1)
                     }
                 }
+                // --- The LulzBot Mini 2 (cad/deck.py, from the CAD of LulzBot), with its stock LCD and the
+                // Printdeck on its bracket. The meshes are in the scene of the Mini 2: the point of the
+                // printer (x, y, z) is (x, z, -y) as on the TAZ. At the pose of the CAD the top of the bed
+                // is at Y 0, the tip of the nozzle is at mini.tip (in the plane Z 0), and the point of
+                // the bed at printer Y y is at Z mini2.bedY - y. The middle of the washers of the CAD is
+                // the middle of the probe points of mini2.cfg, so the printer X is the X of the scene.
+                // The bed moves in Y, the gantry in Z, and the carriage in X on the gantry.
+                property var mini2: deck.mini2
+                function miniParts(group) { return mini2.parts.filter(function(p) { return p.group === group }) }
+                Node
+                {
+                    visible: win.mini
+                    Repeater3D
+                    {
+                        model: view.miniParts("frame")
+                        DeckPart { data: modelData }
+                    }
+                    // The display of the printer, in the window of the LCD: the picture of the simulated
+                    // display.
+                    Screen
+                    {
+                        position: Qt.vector3d(view.mini2.lcd.position[0], view.mini2.lcd.position[1], view.mini2.lcd.position[2] + 0.05)
+                        size: Qt.size(view.mini2.lcd.size[0], view.mini2.lcd.size[1])
+                        image: sim.lcd
+                    }
+                    Pod { place: view.mini2 }
+                    // The gantry, at the height of Z, with the carriage on it at X.
+                    Node
+                    {
+                        y: win.p.z - view.mini2.tip[1]
+                        Repeater3D
+                        {
+                            model: view.miniParts("gantry")
+                            DeckPart { data: modelData }
+                        }
+                        Node
+                        {
+                            x: win.p.x - view.mini2.tip[0]
+                            Repeater3D
+                            {
+                                model: view.miniParts("carriage")
+                                DeckPart
+                                {
+                                    data: modelData
+                                    // The body of the tool head is see-through, as on the TAZ. The nozzle
+                                    // and the heater block stay solid, and the heater block glows when it is
+                                    // hot.
+                                    opacity: modelData.kind !== "metal" || !win.seeThrough ? 1 : 0.3
+                                    glowColor: modelData.kind === "heater" ? Qt.rgba(0.9 * win.glow(sim.tool, 230), 0.25 * win.glow(sim.tool, 230), 0, 1) : "black"
+                                }
+                            }
+                        }
+                    }
+                    // The bed, which moves in Y. The simulated board puts the tops of the washers at the
+                    // z_offset of the probe (mini2.washerSim); the CAD has them at mini2.washerTop.
+                    Node
+                    {
+                        z: win.p.y - view.mini2.bedY
+                        Repeater3D
+                        {
+                            model: view.miniParts("bed")
+                            DeckPart
+                            {
+                                data: modelData
+                                y: modelData.kind === "washer" ? view.mini2.washerSim - view.mini2.washerTop : 0
+                                // The PEI sheet glows when it is hot.
+                                glowColor: modelData.kind === "surface" ? Qt.rgba(0.35 * win.glow(sim.bed, 110), 0.08 * win.glow(sim.bed, 110), 0, 1) : "black"
+                            }
+                        }
+                    }
+                }
+
                 // The part, and the strands of the last moments up to the nozzle.
                 Node
                 {
@@ -498,12 +605,13 @@ Window
                     Image { width: parent.width; height: 70; source: "qrc:/film/cura-header.png" }
                 }
 
-                // --- The spool, on an arm at the right side of the frame (the CAD has no spool
+                // --- The TAZ: the spool, on an arm at the right side of the frame (the CAD has no spool
                 // holder), and the PTFE tube that guides the filament up over the frame and down into
                 // the top of the extruder, 113 mm over the nozzle tip. The tube follows the tool head.
                 property vector3d spool: Qt.vector3d(520 + frameX, 300, -40)
                 Model
                 {
+                    visible: !win.mini
                     source: "#Cylinder"
                     position: Qt.vector3d(view.spool.x - 35, view.spool.y, view.spool.z); eulerRotation: Qt.vector3d(0, 0, 90)
                     scale: Qt.vector3d(0.12, 1.4, 0.12)
@@ -511,6 +619,7 @@ Window
                 }
                 Model
                 {
+                    visible: !win.mini
                     source: "#Cylinder"
                     position: view.spool; eulerRotation: Qt.vector3d(0, 0, 90)
                     scale: Qt.vector3d(1.9, 0.62, 1.9)
@@ -518,6 +627,7 @@ Window
                 }
                 Model
                 {
+                    visible: !win.mini
                     source: "#Cylinder"
                     position: view.spool; eulerRotation: Qt.vector3d(0, 0, 90)
                     scale: Qt.vector3d(1.6, 0.66, 1.6)
@@ -558,6 +668,7 @@ Window
                     model: 32
                     Node
                     {
+                        visible: !win.mini
                         property vector3d a: { win.p; return view.tube(index / 32) }
                         property vector3d b: { win.p; return view.tube((index + 1) / 32) }
                         Link { a: parent.a; b: parent.b; radius: 1.425 }
@@ -565,34 +676,30 @@ Window
                     }
                 }
 
-                // The materials of the deck (lulzbot/build/manifest.json): the color, the metalness and
-                // the roughness.
-                property var materials: ({
-                    pla_navy: ["#1c2541", 0, 0.6], pla_orange: ["#f26b1d", 0, 0.6], pla_white: ["#e8e6e1", 0, 0.6],
-                    black_glass: ["#0a0a0c", 0.2, 0.08], black_plastic: ["#151515", 0, 0.5], black_steel: ["#2a2a2c", 0.7, 0.35],
-                    steel: ["#c9ccd0", 0.7, 0.25], alu_dark: ["#3a3d42", 0.7, 0.35], pcb_green: ["#1f5a32", 0, 0.5],
-                    lcd_metal: ["#9a9ea3", 0.6, 0.3], brass: ["#c9a24b", 0.7, 0.3], nickel: ["#b9bcc0", 0.7, 0.25]
-                })
-                // The assembly of the film, in the order and the directions of the build booklet
-                // (lulzbot/lineart/render.mjs), farther for the camera: each group comes from v (mm of the
-                // scene) at the time t0, and is in place d seconds later. The head is built on the bench (the
-                // display goes in from the back, then the back panel with the drive), so it comes whole and
-                // hangs on the clips from the front and above. The display turns on at screenOn.
+                // The assembly of the film on the TAZ, in the order of the build: each group comes from v
+                // (mm of the scene) at the time t0, and is in place d seconds later. The rail clips and
+                // their screws go on the rail from the front, the bracket drops onto the clips, and its
+                // screw goes through the nub into the cover. The pod is built on the bench, so it comes
+                // whole: from the front, and down onto the dovetail of the bracket (along v of the pod).
+                // The display turns on at screenOn.
                 property real screenOn: 17.4
                 property var steps: {
-                    var head = { t0: 12.6, d: 1.8, v: [0, 90, 75] }
+                    var up = deck.taz.up, front = deck.taz.front
                     return {
-                        plate: { t0: 8.0, d: 1.2, v: [-140, 0, 0] }, ins_block: { t0: 8.0, d: 1.2, v: [-140, 0, 0] },
-                        mount_screws: { t0: 9.0, d: 0.8, v: [-90, 0, 0] },
-                        pi: { t0: 9.8, d: 1.0, v: [-120, 0, 0] }, pi_screws: { t0: 10.6, d: 0.6, v: [-70, 0, 0] },
-                        clips: { t0: 11.2, d: 0.8, v: [0, 0, 120] }, ins_nut: { t0: 11.2, d: 0.8, v: [0, 0, 120] },
-                        clip_screws: { t0: 11.8, d: 0.5, v: [0, 0, 75] },
-                        head: head, ins_head: head, back: head, ins_back: head, drive: head, drive_screws: head, head_screws: head,
-                        display: head, display_screws: head,
-                        flange_screws: { t0: 14.8, d: 0.5, v: [0, 0, -60] },
-                        pod: { t0: 15.2, d: 1.0, v: [-150, -25, 0] }, grille: { t0: 16.0, d: 0.8, v: [-200, -25, 0] },
-                        bottom_screws: { t0: 16.6, d: 0.5, v: [0, -70, 0] }
+                        rail_clips: { t0: 8.0, d: 1.2, v: [0, 0, 140] },
+                        rail_clip_screws: { t0: 9.2, d: 0.8, v: [0, 0, 80] },
+                        bracket: { t0: 10.2, d: 1.4, v: [0, 90, 75] },
+                        bracket_screws: { t0: 11.6, d: 0.6, v: [-60, 0, 0] },
+                        pod: { t0: 12.6, d: 1.8, v: [0, 1, 2].map(function(i) { return 30 * up[i] + 110 * front[i] }) },
+                        cover_clips: { t0: 14.6, d: 0.6, v: [-80, 0, 0] }
                     }
+                }
+                // The middle of the active area of the display of the pod on the TAZ, in the scene: the
+                // camera of the film looks at it ("glass").
+                property vector3d glass: {
+                    var t = deck.taz, h = deck.screen.position[1]
+                    return Qt.vector3d(frameX + t.position[0] + h * t.up[0], t.position[1] + h * t.up[1],
+                                       -0.50 + t.position[2] + h * t.up[2])
                 }
                 // place is the offset, the visibility and the opacity of a group of the deck at the time t
                 // of the film: out of the picture before t0, then a move in that slows to a stop at its place,
@@ -617,14 +724,15 @@ Window
                         return 0
                     return Math.max(0, Math.min((t - screenOn - 0.15) / 0.3, (screenOn + bootTime + 0.3 - t) / 0.4, 1))
                 }
-                // The start screen of the deck (Connecting.qml): PRINTDECK in dots that print layer by layer.
-                property Item bootScreen: Connecting { width: 1024; height: 600; running: filmOn }
+                // The start screen of the deck (Connecting.qml): PRINTDECK in dots that print layer by layer,
+                // in the shape of the active area of the display.
+                property Item bootScreen: Connecting { width: 621; height: 1104; running: filmOn }
                 // flash is the white of the display as it turns on.
                 function flash(t) { return filmOn && t > screenOn && t < screenOn + 0.6 ? 1 - (t - screenOn) / 0.6 : 0 }
 
                 // The keys of the camera of the film: the time, the point of the view ("nozzle" follows
-                // the nozzle), the yaw, the pitch, the distance and the field of view. The camera goes
-                // through them on a Catmull-Rom spline.
+                // the nozzle, "glass" is the display of the pod), the yaw, the pitch, the distance and the
+                // field of view. The camera goes through them on a Catmull-Rom spline.
                 property var shots: [
                     { t: 0, at: [120, 160, 0], yaw: -25, pitch: -3, dist: 3800, fov: 26 },
                     { t: 7.6, at: [100, 200, 0], yaw: -30, pitch: -10, dist: 2300, fov: 26 },
@@ -632,11 +740,11 @@ Window
                     { t: 12.0, at: [-150, 130, 20], yaw: -66, pitch: -13, dist: 720, fov: 26 },
                     { t: 12.0, cut: true, at: [-140, 125, 40], yaw: -45, pitch: -9, dist: 760, fov: 26 },
                     { t: 15.2, at: [-140, 125, 60], yaw: -32, pitch: -11, dist: 620, fov: 26 },
-                    { t: 15.2, cut: true, at: [-141.5, 114.2, 101.6], yaw: -22, pitch: -6, dist: 380, fov: 24 },
-                    { t: 17.4, at: [-141.5, 114.2, 101.6], yaw: -18, pitch: -8, dist: 330, fov: 24 },
-                    { t: 17.4, cut: true, at: [-141.5, 114.2, 101.6], yaw: 0, pitch: -15, dist: 310, fov: 24 },
-                    { t: 22.5, at: [-141.5, 114.2, 101.6], yaw: -2, pitch: -15, dist: 262, fov: 24 },
-                    { t: 34.0, at: [-141.5, 114.2, 101.6], yaw: 2, pitch: -15, dist: 255, fov: 24 },
+                    { t: 15.2, cut: true, at: "glass", yaw: -22, pitch: -6, dist: 420, fov: 24 },
+                    { t: 17.4, at: "glass", yaw: -18, pitch: -8, dist: 390, fov: 24 },
+                    { t: 17.4, cut: true, at: "glass", yaw: 0, pitch: -15, dist: 380, fov: 24 },
+                    { t: 22.5, at: "glass", yaw: -2, pitch: -15, dist: 360, fov: 24 },
+                    { t: 34.0, at: "glass", yaw: 2, pitch: -15, dist: 355, fov: 24 },
                     { t: 34.0, cut: true, at: [-169, 343.8, 61], yaw: -12, pitch: -6, dist: 300, fov: 25 },
                     { t: 40.2, at: [-169, 343.8, 61], yaw: 4, pitch: -4, dist: 235, fov: 25 },
                     { t: 40.2, cut: true, at: [780, 150, 160], yaw: 2, pitch: -6, dist: 1000, fov: 25 },
@@ -670,7 +778,11 @@ Window
                         i++
                     var h = k[i + 1].t - k[i].t
                     var u = Math.max(0, Math.min(1, (t - k[i].t) / h))
-                    function at(key) { return key.at === "nozzle" ? [nozzle.x, nozzle.y, nozzle.z] : key.at }
+                    function at(key) {
+                        if (key.at === "nozzle")
+                            return [nozzle.x, nozzle.y, nozzle.z]
+                        return key.at === "glass" ? [glass.x, glass.y, glass.z] : key.at
+                    }
                     // slope is the slope of the value at key j: 0 at a turn, else the harmonic mean of the
                     // slopes of the two sides.
                     // A key with cut starts a new shot: no slope goes across it.
@@ -822,10 +934,11 @@ Window
             x: 14; y: 10; spacing: 4
             Text { text: sim.connected ? sim.state.toUpperCase() : "CONNECTING…"; color: "#ff7a3a"; font.bold: true; font.pixelSize: 14; font.family: "monospace" }
             Text { text: sim.file; visible: sim.file != ""; color: "#eee9df"; font.pixelSize: 13; font.family: "monospace" }
-            // The 3D view has the TAZ Workhorse only: the moves of a different printer do not fit it.
+            // The 3D view has the TAZ Workhorse and the Mini 2 only: the moves of a different printer do
+            // not fit them.
             Text
             {
-                visible: sim.model != "" && sim.model != "taz-workhorse"
+                visible: sim.model != "" && sim.model != "taz-workhorse" && !win.mini
                 text: "THE 3D VIEW SHOWS A TAZ WORKHORSE. THE DECK SIMULATES " + sim.model.toUpperCase() + "."
                 color: "#ffcf3a"; font.pixelSize: 12; font.family: "monospace"
             }
