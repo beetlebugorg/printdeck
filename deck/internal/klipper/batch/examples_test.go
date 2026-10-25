@@ -17,6 +17,7 @@ var loadedExamples = []string{
 	"printer-creality-cr10-v3-2020.cfg",
 	"printer-creality-cr10s-2017.cfg",
 	"printer-longer-lk4-pro-2019.cfg",
+	"printer-lulzbot-mini2-2018.cfg",
 	"printer-lulzbot-taz6-2017.cfg",
 	"printer-lulzbot-taz6-dual-v3-2017.cfg",
 	"printer-makergear-m2-2016.cfg",
