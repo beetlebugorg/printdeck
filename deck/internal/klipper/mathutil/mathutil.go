@@ -163,3 +163,52 @@ func Round(x float64, ndigits int) float64 {
 	v, _ := strconv.ParseFloat(strconv.FormatFloat(x, 'f', ndigits, 64), 64)
 	return v
 }
+
+// Trilateration returns the point at the distances sqrt(radius2) from three sphere centers: of
+// the two points, the one with the lower Z.
+func Trilateration(sphereCoords [3][3]float64, radius2 [3]float64) [3]float64 {
+	sphereCoord1, sphereCoord2, sphereCoord3 := sphereCoords[0], sphereCoords[1], sphereCoords[2]
+	s21 := MatrixSub(sphereCoord2, sphereCoord1)
+	s31 := MatrixSub(sphereCoord3, sphereCoord1)
+
+	d := math.Sqrt(MatrixMagsq(s21))
+	ex := MatrixMul(s21, 1./d)
+	i := MatrixDot(ex, s31)
+	vectEy := MatrixSub(s31, MatrixMul(ex, i))
+	ey := MatrixMul(vectEy, 1./math.Sqrt(MatrixMagsq(vectEy)))
+	ez := MatrixCross(ex, ey)
+	j := MatrixDot(ey, s31)
+
+	x := (radius2[0] - radius2[1] + d*d) / (2. * d)
+	y := (radius2[0] - radius2[2] - x*x + (x-i)*(x-i) + j*j) / (2. * j)
+	z := -math.Sqrt(radius2[0] - x*x - y*y)
+
+	exX := MatrixMul(ex, x)
+	eyY := MatrixMul(ey, y)
+	ezZ := MatrixMul(ez, z)
+	return MatrixAdd(sphereCoord1, MatrixAdd(exX, MatrixAdd(eyY, ezZ)))
+}
+
+// Matrix helper functions for 3x1 matrices
+
+func MatrixCross(m1, m2 [3]float64) [3]float64 {
+	return [3]float64{m1[1]*m2[2] - m1[2]*m2[1],
+		m1[2]*m2[0] - m1[0]*m2[2],
+		m1[0]*m2[1] - m1[1]*m2[0]}
+}
+
+func MatrixDot(m1, m2 [3]float64) float64 { return m1[0]*m2[0] + m1[1]*m2[1] + m1[2]*m2[2] }
+
+func MatrixMagsq(m1 [3]float64) float64 { return m1[0]*m1[0] + m1[1]*m1[1] + m1[2]*m1[2] }
+
+func MatrixAdd(m1, m2 [3]float64) [3]float64 {
+	return [3]float64{m1[0] + m2[0], m1[1] + m2[1], m1[2] + m2[2]}
+}
+
+func MatrixSub(m1, m2 [3]float64) [3]float64 {
+	return [3]float64{m1[0] - m2[0], m1[1] - m2[1], m1[2] - m2[2]}
+}
+
+func MatrixMul(m1 [3]float64, s float64) [3]float64 {
+	return [3]float64{m1[0] * s, m1[1] * s, m1[2] * s}
+}

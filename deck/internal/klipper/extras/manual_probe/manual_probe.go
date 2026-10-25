@@ -123,8 +123,10 @@ func load(config *configfile.Wrapper) any {
 		mp.gcode.RegisterCommand("Z_OFFSET_APPLY_ENDSTOP", mp.cmdZOffsetApplyEndstop, false,
 			"Adjust the z endstop_position")
 	}
+	// Linear delta printers with A,B,C towers
 	if config.GetSection("printer").Get("kinematics") == "delta" {
-		configfile.Raise("delta kinematics are not supported")
+		mp.gcode.RegisterCommand("Z_OFFSET_APPLY_ENDSTOP", mp.cmdZOffsetApplyDeltaEndstops, false,
+			"Adjust the z endstop_position")
 	}
 	mp.resetStatus()
 	return mp
@@ -195,6 +197,32 @@ func (mp *ManualProbe) cmdZOffsetApplyEndstop(gcmd *gcode.Command) {
 		return
 	}
 	mp.saveEndstop(mp.zPositionEndstop - offset)
+}
+
+func (mp *ManualProbe) cmdZOffsetApplyDeltaEndstops(gcmd *gcode.Command) {
+	gm := mp.printer.LookupObject("gcode_move").(statuser)
+	offset := gm.Status(0)["homing_origin"].(gcode.Coord).Z()
+	pconfig := mp.printer.LookupObject("configfile").(*configfile.PrinterConfig)
+	if offset == 0 {
+		mp.gcode.RespondInfo("Nothing to do: Z Offset is 0", true)
+		return
+	}
+	if mp.aEndstop == nil || mp.bEndstop == nil || mp.cEndstop == nil {
+		// Klipper reads position_endstop of each tower with no default, so a tower that uses the
+		// endstop of stepper_a is an internal error there too.
+		panic(fmt.Errorf("TypeError: unsupported operand type(s) for -: 'NoneType' and 'float'"))
+	}
+	newA := *mp.aEndstop - offset
+	newB := *mp.bEndstop - offset
+	newC := *mp.cEndstop - offset
+	mp.gcode.RespondInfo(fmt.Sprintf("stepper_a: position_endstop: %.3f\n"+
+		"stepper_b: position_endstop: %.3f\n"+
+		"stepper_c: position_endstop: %.3f\n"+
+		"The SAVE_CONFIG command will update the printer config file\n"+
+		"with the above and restart the printer.", newA, newB, newC), true)
+	pconfig.Set("stepper_a", "position_endstop", fmt.Sprintf("%.3f", newA))
+	pconfig.Set("stepper_b", "position_endstop", fmt.Sprintf("%.3f", newB))
+	pconfig.Set("stepper_c", "position_endstop", fmt.Sprintf("%.3f", newC))
 }
 
 // VerifyNoManualProbe is a command error when a manual probe is running.

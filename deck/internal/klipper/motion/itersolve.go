@@ -341,3 +341,20 @@ func NewCoreXYStepper(typ byte) *StepperKinematics {
 	sk.ActiveFlags = AFX | AFY
 	return sk
 }
+
+// Delta kinematics stepper pulse time generation (kin_delta.c).
+//
+//	Copyright (C) 2018-2019  Kevin O'Connor <kevin@koconnor.net>
+
+// NewDeltaStepper makes the solver of a delta tower: the arm length squared and the XY position
+// of the tower.
+func NewDeltaStepper(arm2, towerX, towerY float64) *StepperKinematics {
+	sk := &StepperKinematics{}
+	sk.CalcPosition = func(_ *StepperKinematics, m *Move, t float64) float64 {
+		c := m.GetCoord(t)
+		dx, dy := towerX-c.X, towerY-c.Y
+		return math.Sqrt(arm2-dx*dx-dy*dy) + c.Z
+	}
+	sk.ActiveFlags = AFX | AFY | AFZ
+	return sk
+}
