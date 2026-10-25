@@ -242,6 +242,10 @@ func (tw *TemplateWrapper) CreateTemplateContext(eventtime float64) map[string]a
 	return ctx
 }
 
+// CreateContext returns the context of the template with no event time (create_template_context
+// with no eventtime).
+func (tw *TemplateWrapper) CreateContext() map[string]any { return tw.createContext() }
+
 // RunGcodeFromCommand renders the template and runs it from a command handler.
 func (tw *TemplateWrapper) RunGcodeFromCommand(context map[string]any) {
 	tw.gcode.RunScriptFromCommand(tw.Render(context))

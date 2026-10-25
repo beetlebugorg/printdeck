@@ -23,13 +23,10 @@ var unsupported = map[string]string{
 	"printer-flashforge-creator-pro-2018.cfg":       "lcd_type 'hd44780_spi' in section 'display' is not supported",
 	"printer-geeetech-301-2019.cfg":                 "Unknown pin chip name 'multi_pin'",
 	"printer-geeetech-A10T-A20T-2021.cfg":           "lcd_type 'aip31068_spi' in section 'display' is not supported",
-	"printer-hiprecy-leo-2019.cfg":                  "Section 'homing_override' is not a valid config section",
-	"printer-lulzbot-mini1-2016.cfg":                "Section 'homing_override' is not a valid config section",
 	"printer-makergear-m2-2012.cfg":                 "Section 'endstop_phase stepper_x' is not a valid config section",
 	"printer-modix-big60-2020.cfg":                  "Unknown temperature sensor 'MAX31865'",
 	"printer-prusa-mini-plus-2020.cfg":              "tachometer_pin in section 'heater_fan hotend_fan' is not supported yet",
 	"printer-sunlu-t3-2022.cfg":                     "Section 'filament_motion_sensor filament_sensor' is not a valid config section",
-	"printer-tevo-flash-2018.cfg":                   "Section 'homing_override' is not a valid config section",
 	"printer-tronxy-crux1-2022.cfg":                 "Section 'pwm_cycle_time beeper_pin' is not a valid config section",
 }
 
