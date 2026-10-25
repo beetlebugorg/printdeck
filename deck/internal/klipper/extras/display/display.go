@@ -59,7 +59,7 @@ type LCDChip interface {
 // lcdChips are the lcd_type choices. A nil constructor is a chip that is not ported.
 var lcdChips = map[string]any{
 	"st7920": newST7920, "emulated_st7920": newEmulatedST7920,
-	"hd44780": newHD44780, "uc1701": nil, "ssd1306": nil, "sh1106": nil,
+	"hd44780": newHD44780, "uc1701": newUC1701, "ssd1306": newSSD1306, "sh1106": newSH1106,
 	"hd44780_spi": nil, "aip31068_spi": nil,
 }
 

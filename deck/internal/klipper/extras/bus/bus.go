@@ -1,9 +1,8 @@
-// Package bus has the helpers of the SPI devices of a board: the bus name, the config commands,
-// and the spi_send and spi_transfer commands.
+// Package bus has the helpers of the SPI and I2C devices of a board: the bus name, the config
+// commands, and the commands that send to the device and read from it.
 //
 // Ported to Go from klippy/extras/bus.py of Klipper (https://github.com/Klipper3d/klipper), commit
-// 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f. The I2C part and MCU_bus_digital_out are not ported
-// yet.
+// 7bc4d09465d31cd30fc0822e8d0abe02cc8c547f.
 //
 //	Copyright (C) 2018,2019  Kevin O'Connor <kevin@koconnor.net>
 //	Go port: Copyright (C) 2026  the Printdeck authors

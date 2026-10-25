@@ -23,11 +23,8 @@ var unsupported = map[string]string{
 	"printer-bq-hephestos-2014.cfg":                 "Section 'board_pins' is not a valid config section",
 	"printer-creality-cr10-smart-pro-2022.cfg":      "Section 'temperature_sensor board_mcu' is not a valid config section",
 	"printer-creality-cr10s-pro-v2-2020.cfg":        "Section 'screws_tilt_adjust' is not a valid config section",
-	"printer-creality-cr20-2018.cfg":                "lcd_type 'uc1701' in section 'display' is not supported",
-	"printer-creality-cr20-pro-2019.cfg":            "lcd_type 'uc1701' in section 'display' is not supported",
 	"printer-creality-cr30-2021.cfg":                "Section 'fan_generic k_fan2' is not a valid config section",
 	"printer-creality-cr5pro-ht-2022.cfg":           "Section 'screws_tilt_adjust' is not a valid config section",
-	"printer-creality-ender2-2017.cfg":              "lcd_type 'uc1701' in section 'display' is not supported",
 	"printer-creality-ender3-v2-neo-2022.cfg":       "Section 'screws_tilt_adjust' is not a valid config section",
 	"printer-creality-ender5-s1-2023.cfg":           "Section 'axis_twist_compensation' is not a valid config section",
 	"printer-creality-sermoonV1-2022.cfg":           "Section 'fan_generic side_fan' is not a valid config section",
@@ -53,12 +50,9 @@ var unsupported = map[string]string{
 	"printer-sovol-sv06-2022.cfg":                   "Unknown pin chip name 'tmc2209_stepper_x'",
 	"printer-sovol-sv06-plus-2023.cfg":              "Unknown pin chip name 'tmc2209_stepper_x'",
 	"printer-sunlu-t3-2022.cfg":                     "Section 'filament_motion_sensor filament_sensor' is not a valid config section",
-	"printer-tevo-flash-2018.cfg":                   "lcd_type 'uc1701' in section 'display' is not supported",
-	"printer-tevo-tarantula-pro-2020.cfg":           "lcd_type 'uc1701' in section 'display' is not supported",
+	"printer-tevo-flash-2018.cfg":                   "Section 'homing_override' is not a valid config section",
 	"printer-tronxy-crux1-2022.cfg":                 "Section 'pwm_cycle_time beeper_pin' is not a valid config section",
-	"printer-velleman-k8800-2017.cfg":               "lcd_type 'uc1701' in section 'display' is not supported",
-	"printer-wanhao-duplicator-6-2016.cfg":          "lcd_type 'ssd1306' in section 'display' is not supported",
-	"printer-wanhao-duplicator-i3-mini-2017.cfg":    "lcd_type 'uc1701' in section 'display' is not supported",
+	"printer-velleman-k8800-2017.cfg":               "Error loading kinematics 'delta'",
 }
 
 // chipDicts returns the firmware dictionaries to try for a chip (testdata/dict, from
