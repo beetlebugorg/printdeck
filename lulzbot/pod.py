@@ -23,7 +23,9 @@ Pod coordinates: u across the glass to the right (seen from the front), v up fro
 the glass, w out of the glass (the front of the glass is w = 0). The Pi is on the back: w < 0.
 
 Run: uv run --no-project --with build123d --with numpy --with scipy --with trimesh --with networkx
---with pyrender --with PyOpenGL python pod.py [OUT_DIR | export]
+--with pyrender --with PyOpenGL python pod.py [OUT_DIR | live | export]
+
+export writes the STL files for printing to stl/pod/fdm/ and stl/pod/resin/ (see stl/pod/README.md).
 """
 
 import math
@@ -996,6 +998,66 @@ def zup_m(m, zup):
     return m
 
 
+# ---------------------------------------------------------------- the STL files for printing
+# Each process has its own folder and its own clearance for the dovetail. Each part is turned to
+# its print orientation, centered on the bed, with its lowest point at z = 0.
+PRINT_DIR = os.path.join(HERE, "stl", "pod")
+DOVE_CLR_BY = {"fdm": 0.35, "resin": 0.15}
+RESIN_TILT = 30.0               # resin: each part leans this far, so no layer is a large flat area
+
+
+def on_bed(shape, rot):
+    """The shape turned by rot (a Rot or a chain of them), centered on the bed at z = 0."""
+    s = rot * shape
+    bb = s.bounding_box()
+    return Pos(-(bb.min.X + bb.max.X) / 2, -(bb.min.Y + bb.max.Y) / 2, -bb.min.Z) * s
+
+
+def print_parts(process):
+    """(file name, shape, how many) for each printed part of the pod, in print orientation."""
+    import clips as C
+    global DOVE_CLR
+    keep, DOVE_CLR = DOVE_CLR, DOVE_CLR_BY[process]
+    try:
+        case, taz, mini = body(), bracket(), mini_bracket()
+    finally:
+        DOVE_CLR = keep
+    one, _ = C.tape_clip()
+    two, _ = C.tape_clip(True)
+    if process == "fdm":
+        # The case: the open front on the bed (the back up), with supports inside the deep part. The
+        # TAZ bracket: the top end of the plate on the bed. The Mini 2 bracket: the frame side of the
+        # plate on the bed. The clips: the base on the bed.
+        rots = {"case": Rot(180, 0, 0), "taz": Rot(-90, 0, 0), "mini": Rot(-90, 0, 0), "clip": Rot(0, 0, 0)}
+    else:
+        # Resin prints from the build plate down: the back of the case and the backs of the brackets
+        # face the build plate, so the open front of the case faces away from it and no cup of resin
+        # forms. Every part leans RESIN_TILT degrees. The slicer adds the supports.
+        t = RESIN_TILT
+        rots = {"case": Rot(t, 0, 0), "taz": Rot(t, 0, 0) * Rot(0, -90, 0), "mini": Rot(t, 0, 0) * Rot(-90, 0, 0),
+                "clip": Rot(t, 0, 0)}
+    return [(f"pod-case_{process}.stl", on_bed(case, rots["case"]), 1),
+            (f"pod-bracket-taz_{process}.stl", on_bed(taz, rots["taz"]), 1),
+            (f"pod-bracket-mini2_{process}.stl", on_bed(mini, rots["mini"]), 1),
+            (f"cable-clip-single_{process}.stl", on_bed(one, rots["clip"]), 5),
+            (f"cable-clip-double_{process}.stl", on_bed(two, rots["clip"]), 2)]
+
+
+def export_prints(out=PRINT_DIR):
+    from build123d import export_stl
+    for process in ("fdm", "resin"):
+        d = os.path.join(out, process)
+        os.makedirs(d, exist_ok=True)
+        for name, shape, n in print_parts(process):
+            export_stl(shape, os.path.join(d, name), tolerance=0.01, angular_tolerance=0.1)
+            bb = shape.bounding_box()
+            print(f"{process}/{name}: {bb.max.X - bb.min.X:.1f} x {bb.max.Y - bb.min.Y:.1f} x "
+                  f"{bb.max.Z - bb.min.Z:.1f} mm, print {n}")
+
+
 if __name__ == "__main__":
+    if "export" in sys.argv:
+        export_prints()
+        sys.exit()
     args = [a for a in sys.argv[1:] if a != "live"]
     main(args[0] if args else os.path.join(HERE, "build", "pod"), stills="live" not in sys.argv)
