@@ -37,6 +37,7 @@ type Config struct {
 	KlippySocket       string // the API socket of the Klipper host
 	GcodeDir           string // the folder of Klipper's [virtual_sdcard]
 	KlipperConfig      string // printer.cfg of the Klipper host
+	KlippyLog          string // the log of the Klipper host, for the system page
 }
 
 func Load() Config {
@@ -55,15 +56,17 @@ func Load() Config {
 		KlippySocket:  str("KLIPPY_SOCKET", "/run/klipper/klippy.sock"),
 		GcodeDir:      str("GCODE_DIR", "/var/lib/klipper/gcodes"),
 		KlipperConfig: str("KLIPPER_CONFIG", "/var/lib/klipper/config/printer.cfg"),
-		OctoPrintKey:  str("OCTOPRINT_API_KEY", ""),
-		ModelDir:      str("MODEL_DIR", "/var/lib/printdeck/models"),
-		PreheatTool:   num("PREHEAT_TOOL", 200),
-		UnloadMM:      float64(num("FILAMENT_UNLOAD_MM", 80)),
-		LoadMM:        float64(num("FILAMENT_LOAD_MM", 70)),
-		JogInvertY:    num("JOG_INVERT_Y", 0) == 1,
-		NightFrom:     num("NIGHT_FROM", 20),
-		NightTo:       num("NIGHT_TO", 7),
-		PreheatBed:    num("PREHEAT_BED", 60),
+		// The log is in RAM, because the disk is an SD card.
+		KlippyLog:    str("KLIPPY_LOG", "/run/klipper/klippy.log"),
+		OctoPrintKey: str("OCTOPRINT_API_KEY", ""),
+		ModelDir:     str("MODEL_DIR", "/var/lib/printdeck/models"),
+		PreheatTool:  num("PREHEAT_TOOL", 200),
+		UnloadMM:     float64(num("FILAMENT_UNLOAD_MM", 80)),
+		LoadMM:       float64(num("FILAMENT_LOAD_MM", 70)),
+		JogInvertY:   num("JOG_INVERT_Y", 0) == 1,
+		NightFrom:    num("NIGHT_FROM", 20),
+		NightTo:      num("NIGHT_TO", 7),
+		PreheatBed:   num("PREHEAT_BED", 60),
 	}
 	return c
 }

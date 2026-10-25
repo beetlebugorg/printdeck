@@ -2,7 +2,9 @@ package cli
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -32,5 +34,28 @@ func TestParseArgs(t *testing.T) {
 	}
 	if _, err := parseArgs([]string{"a.cfg", "-I", "/tmp/printer"}); err == nil {
 		t.Error("-I must be an error")
+	}
+}
+
+func TestLogFileStartsNewFile(t *testing.T) {
+	name := filepath.Join(t.TempDir(), "klippy.log")
+	l, err := openLog(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	line := []byte(strings.Repeat("x", 1023) + "\n")
+	for range maxLog/len(line) + 10 {
+		if _, err := l.Write(line); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cur, _ := os.Stat(name)
+	old, err := os.Stat(name + ".1")
+	if err != nil {
+		t.Fatal("no klippy.log.1")
+	}
+	if cur.Size() != 10*int64(len(line)) || old.Size() > maxLog {
+		t.Errorf("sizes %d and %d", cur.Size(), old.Size())
 	}
 }

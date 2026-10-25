@@ -7,6 +7,8 @@ enable printdeck-settings.service
 enable printdeck-credentials.service
 enable printdeck-commit.service
 enable printdeck-helper.socket
+# Tell the SD card each week which blocks are free, for its wear leveling.
+enable fstrim.timer
 
 # wpa_supplicant@wlan0 controls the Wi-Fi. The D-Bus service is not necessary.
 disable wpa_supplicant.service

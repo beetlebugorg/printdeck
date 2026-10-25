@@ -5,15 +5,16 @@ Description=Klipper 3D printer host (the Go port in the Printdeck program)
 User=printer
 Group=printer
 SupplementaryGroups=dialout tty
-StateDirectory=klipper klipper/config klipper/logs klipper/gcodes
+StateDirectory=klipper klipper/config klipper/gcodes
 # The deck (in the group printer) saves the uploads in gcodes and uses the API socket.
 StateDirectoryMode=0775
 RuntimeDirectory=klipper
 RuntimeDirectoryMode=0750
 RuntimeDirectoryPreserve=yes
 UMask=0002
+# The log is in RAM (/run), because the disk is an SD card.
 # printdeck-settings writes a placeholder printer.cfg before Klipper starts.
-ExecStart=/usr/bin/printdeck klippy /var/lib/klipper/config/printer.cfg -l /var/lib/klipper/logs/klippy.log -a /run/klipper/klippy.sock
+ExecStart=/usr/bin/printdeck klippy /var/lib/klipper/config/printer.cfg -l /run/klipper/klippy.log -a /run/klipper/klippy.sock
 Restart=always
 RestartSec=10
 

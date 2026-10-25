@@ -13,7 +13,6 @@ package cli
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"runtime"
@@ -176,13 +175,13 @@ func Main(args []string) int {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	if o.logfile != "" {
 		startArgs["log_file"] = o.logfile
-		f, err := os.OpenFile(o.logfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+		f, err := openLog(o.logfile)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
 		defer f.Close()
-		log.SetOutput(io.Writer(f))
+		log.SetOutput(f)
 	}
 	log.Print("Starting Klippy...")
 	startArgs["software_version"] = SoftwareVersion
@@ -219,3 +218,43 @@ func Main(args []string) int {
 	}
 	return 0
 }
+
+// maxLog is the size of the log file at which a new file starts. The old file becomes
+// klippy.log.1. The log is in RAM on the Printdeck OS, so two files limit the memory it uses.
+const maxLog = 8 << 20
+
+// logFile is the log file of the host. When the file is larger than maxLog, Write starts a new file.
+// The log package calls Write under its lock.
+type logFile struct {
+	name string
+	f    *os.File
+	size int64
+}
+
+func openLog(name string) (*logFile, error) {
+	f, err := os.OpenFile(name, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return nil, err
+	}
+	l := &logFile{name: name, f: f}
+	if fi, err := f.Stat(); err == nil {
+		l.size = fi.Size()
+	}
+	return l, nil
+}
+
+func (l *logFile) Write(p []byte) (int, error) {
+	if l.size+int64(len(p)) > maxLog {
+		if err := os.Rename(l.name, l.name+".1"); err == nil {
+			if f, err := os.OpenFile(l.name, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644); err == nil {
+				l.f.Close()
+				l.f, l.size = f, 0
+			}
+		}
+	}
+	n, err := l.f.Write(p)
+	l.size += int64(n)
+	return n, err
+}
+
+func (l *logFile) Close() error { return l.f.Close() }

@@ -20,11 +20,19 @@ done
 # The mount point of the data partition. printdeck-init mounts it before systemd starts.
 mkdir -p "$TARGET_DIR/data" "$TARGET_DIR/boot/config"
 
-# Keep the journal on the data partition, so that a computer can read the logs of the last boots
-# with "journalctl --directory". Limit its size, because the data partition is on an SSD.
+# Keep the journal in RAM, because the disk is an SD card. The system page shows the journal of
+# this boot. Remove the journal and the Klipper log that older versions kept on the disk.
 mkdir -p "$TARGET_DIR/etc/systemd/journald.conf.d"
-printf '[Journal]\nStorage=persistent\nSystemMaxUse=64M\n' \
+printf '[Journal]\nStorage=volatile\nRuntimeMaxUse=16M\n' \
   > "$TARGET_DIR/etc/systemd/journald.conf.d/printdeck.conf"
+mkdir -p "$TARGET_DIR/usr/lib/tmpfiles.d"
+printf 'R /var/log/journal - - - - -\nR /var/lib/klipper/logs - - - - -\n' \
+  > "$TARGET_DIR/usr/lib/tmpfiles.d/printdeck-old-logs.conf"
+
+# systemd-timesyncd saves the time to the disk every 60 seconds by default. Save it once an hour.
+# It also saves the time when it stops.
+mkdir -p "$TARGET_DIR/etc/systemd/timesyncd.conf.d"
+printf '[Time]\nSaveIntervalSec=3600\n' > "$TARGET_DIR/etc/systemd/timesyncd.conf.d/printdeck.conf"
 
 # usr/lib/systemd/system-preset/10-printdeck.preset turns on the services.
 ln -sf /run/systemd/resolve/stub-resolv.conf "$TARGET_DIR/etc/resolv.conf"
