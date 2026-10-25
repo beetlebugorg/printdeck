@@ -13,8 +13,7 @@ import (
 // their error. Remove a config from the list when its modules are ported.
 var unsupported = map[string]string{
 	"printer-creality-ender5-s1-2023.cfg":     "Section 'axis_twist_compensation' is not a valid config section",
-	"printer-flashforge-creator-pro-2018.cfg": "lcd_type 'hd44780_spi' in section 'display' is not supported",
-	"printer-geeetech-A10T-A20T-2021.cfg":     "lcd_type 'aip31068_spi' in section 'display' is not supported",
+	"printer-flashforge-creator-pro-2018.cfg": "Unknown temperature sensor 'MAX6675'",
 	"printer-makergear-m2-2012.cfg":           "Section 'endstop_phase stepper_x' is not a valid config section",
 	"printer-modix-big60-2020.cfg":            "Unknown temperature sensor 'MAX31865'",
 }

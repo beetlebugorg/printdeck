@@ -60,7 +60,7 @@ type LCDChip interface {
 var lcdChips = map[string]any{
 	"st7920": newST7920, "emulated_st7920": newEmulatedST7920,
 	"hd44780": newHD44780, "uc1701": newUC1701, "ssd1306": newSSD1306, "sh1106": newSH1106,
-	"hd44780_spi": nil, "aip31068_spi": nil,
+	"hd44780_spi": newHD44780SPI, "aip31068_spi": newAIP31068SPI,
 }
 
 // Glyph is a [display_glyph] icon. A nil field is a missing icon.
