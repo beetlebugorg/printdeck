@@ -30,8 +30,8 @@ type Fan struct {
 	maxPower      float64
 	kickStartTime float64
 	offBelow      float64
-	mcuFan        *mcu.PWM
-	enablePin     *mcu.DigitalOut
+	mcuFan        mcu.PWMPin
+	enablePin     mcu.DigitalOutPin
 	gcrq          *output_pin.GCodeRequestQueue
 }
 
@@ -49,13 +49,13 @@ func NewFan(config *configfile.Wrapper, defaultShutdownSpeed float64) *Fan {
 		configfile.Min(0.), configfile.Max(1.))
 	// Setup pwm object
 	ppins := printer.LookupObject("pins").(*pins.Pins)
-	f.mcuFan = ppins.SetupPin("pwm", config.Get("pin")).(*mcu.PWM)
+	f.mcuFan = ppins.SetupPin("pwm", config.Get("pin")).(mcu.PWMPin)
 	f.mcuFan.SetupMaxDuration(0.)
 	f.mcuFan.SetupCycleTime(cycleTime, hardwarePWM)
 	shutdownPower := math.Max(0., math.Min(f.maxPower, shutdownSpeed))
 	f.mcuFan.SetupStartValue(0., shutdownPower)
 	if enablePin, ok := config.GetOptional("enable_pin", configfile.Default(nil)); ok {
-		f.enablePin = ppins.SetupPin("digital_out", enablePin).(*mcu.DigitalOut)
+		f.enablePin = ppins.SetupPin("digital_out", enablePin).(mcu.DigitalOutPin)
 		f.enablePin.SetupMaxDuration(0.)
 	}
 	// Create gcode request queue

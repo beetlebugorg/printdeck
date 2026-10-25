@@ -222,7 +222,7 @@ func (h *LEDHelper) cmdSetLEDTemplate(gcmd *gcode.Command) {
 
 type pwmPin struct {
 	idx int
-	pin *mcu.PWM
+	pin mcu.PWMPin
 }
 
 // PrinterPWMLED is an [led] section.
@@ -247,7 +247,7 @@ func loadPrefix(config *configfile.Wrapper) any {
 		if !ok {
 			continue
 		}
-		mcuPin := ppins.SetupPin("pwm", pinName).(*mcu.PWM)
+		mcuPin := ppins.SetupPin("pwm", pinName).(mcu.PWMPin)
 		mcuPin.SetupMaxDuration(0.)
 		mcuPin.SetupCycleTime(cycleTime, hardwarePWM)
 		p.pins = append(p.pins, pwmPin{i, mcuPin})

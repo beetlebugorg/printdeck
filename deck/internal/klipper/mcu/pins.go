@@ -652,3 +652,22 @@ func floorDiv(a, b int64) int64 {
 }
 
 func fmtf(format string, args ...any) string { return fmt.Sprintf(format, args...) }
+
+// PWMPin is a pwm output pin: an MCU pin, or a virtual pin of a chip such as multi_pin.
+type PWMPin interface {
+	MCU() *MCU
+	SetupMaxDuration(maxDuration float64)
+	SetupCycleTime(cycleTime float64, hardwarePWM bool)
+	SetupStartValue(startValue, shutdownValue float64)
+	NextAlignedPrintTime(printTime, allowEarly float64) float64
+	SetPWM(printTime, value float64)
+}
+
+// DigitalOutPin is a digital output pin: an MCU pin, or a virtual pin of a chip such as
+// multi_pin.
+type DigitalOutPin interface {
+	MCU() *MCU
+	SetupMaxDuration(maxDuration float64)
+	SetupStartValue(startValue, shutdownValue float64)
+	SetDigital(printTime float64, value bool)
+}

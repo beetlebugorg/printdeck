@@ -251,7 +251,7 @@ func loadPrefix(config *configfile.Wrapper) any {
 	// Determine pin type
 	p.isPWM = config.GetBool("pwm", configfile.Default(false))
 	if p.isPWM {
-		pwm := ppins.SetupPin("pwm", config.Get("pin")).(*mcu.PWM)
+		pwm := ppins.SetupPin("pwm", config.Get("pin")).(mcu.PWMPin)
 		p.mcuPin = pwm
 		maxDuration := pwm.MCU().MaxNominalDuration()
 		cycleTime := config.GetFloat("cycle_time", configfile.Default(0.100), configfile.Above(0.),
@@ -260,7 +260,7 @@ func loadPrefix(config *configfile.Wrapper) any {
 		pwm.SetupCycleTime(cycleTime, hardwarePWM)
 		p.scale = config.GetFloat("scale", configfile.Default(1.), configfile.Above(0.))
 	} else {
-		p.mcuPin = ppins.SetupPin("digital_out", config.Get("pin")).(*mcu.DigitalOut)
+		p.mcuPin = ppins.SetupPin("digital_out", config.Get("pin")).(mcu.DigitalOutPin)
 		p.scale = 1.
 	}
 	p.mcuPin.SetupMaxDuration(0.)
@@ -293,9 +293,9 @@ func (p *PrinterOutputPin) setPin(printTime, value float64) (string, float64) {
 	}
 	p.lastValue = value
 	if p.isPWM {
-		p.mcuPin.(*mcu.PWM).SetPWM(printTime, value)
+		p.mcuPin.(mcu.PWMPin).SetPWM(printTime, value)
 	} else {
-		p.mcuPin.(*mcu.DigitalOut).SetDigital(printTime, value != 0)
+		p.mcuPin.(mcu.DigitalOutPin).SetDigital(printTime, value != 0)
 	}
 	return ActionNone, 0.
 }

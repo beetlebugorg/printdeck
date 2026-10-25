@@ -93,7 +93,7 @@ type Heater struct {
 	nextPWMTime  float64
 	lastPWMValue float64
 	control      Control
-	mcuPWM       *mcu.PWM
+	mcuPWM       mcu.PWMPin
 }
 
 func newHeater(config *configfile.Wrapper, sensor Sensor) *Heater {
@@ -124,7 +124,7 @@ func newHeater(config *configfile.Wrapper, sensor Sensor) *Heater {
 	// Setup output heater pin
 	heaterPin := config.Get("heater_pin")
 	ppins := printer.LookupObject("pins").(*pins.Pins)
-	h.mcuPWM = ppins.SetupPin("pwm", heaterPin).(*mcu.PWM)
+	h.mcuPWM = ppins.SetupPin("pwm", heaterPin).(mcu.PWMPin)
 	pwmCycleTime := config.GetFloat("pwm_cycle_time", configfile.Default(0.100), configfile.Above(0.),
 		configfile.Max(h.pwmDelay))
 	h.mcuPWM.SetupCycleTime(pwmCycleTime, false)

@@ -51,7 +51,7 @@ type BLTouchProbe struct {
 	printer             *host.Printer
 	stowOnEachSample    bool
 	probeTouchMode      bool
-	mcuPWM              *mcu.PWM
+	mcuPWM              mcu.PWMPin
 	nextCmdTime         float64
 	actionEndTime       float64
 	finishHomeComplete  *reactor.Completion
@@ -74,7 +74,7 @@ func newBLTouchProbe(config *configfile.Wrapper, probeOffsets *probe.OffsetsHelp
 	b.probeTouchMode = config.GetBool("probe_with_touch_mode", configfile.Default(false))
 	// Create a pwm object to handle the control pin
 	ppins := b.printer.LookupObject("pins").(*pins.Pins)
-	b.mcuPWM = ppins.SetupPin("pwm", config.Get("control_pin")).(*mcu.PWM)
+	b.mcuPWM = ppins.SetupPin("pwm", config.Get("control_pin")).(mcu.PWMPin)
 	b.mcuPWM.SetupMaxDuration(0.)
 	b.mcuPWM.SetupCycleTime(SignalPeriod, false)
 	// Command timing
