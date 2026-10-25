@@ -134,7 +134,7 @@ func applySettings(log io.Writer) error {
 	// With the Wi-Fi set here, the touch screen does not open its setup screen.
 	if ssid != "" {
 		os.MkdirAll(stateDir, 0o700)
-		os.WriteFile(filepath.Join(stateDir, "setup-done"), nil, 0o644)
+		writeFile(filepath.Join(stateDir, "setup-done"), nil, 0o644)
 	}
 
 	// The file is on a FAT partition that any computer can read. Do not keep the password in it.

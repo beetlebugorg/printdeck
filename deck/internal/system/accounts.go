@@ -37,7 +37,7 @@ func MergeAccounts(upper, lower string) error {
 	}
 	if haveGroup {
 		upperGroup = mergeGroup(upperGroup, lowerGroup)
-		if err := os.WriteFile(filepath.Join(upper, "group"), join(upperGroup), 0o644); err != nil {
+		if err := writeFile(filepath.Join(upper, "group"), join(upperGroup), 0o644); err != nil {
 			return err
 		}
 	}
@@ -49,7 +49,7 @@ func MergeAccounts(upper, lower string) error {
 			return err
 		}
 		merged := mergePasswd(upperGroup, lowerGroup, upperPasswd, lowerPasswd)
-		if err := os.WriteFile(filepath.Join(upper, "passwd"), join(merged), 0o644); err != nil {
+		if err := writeFile(filepath.Join(upper, "passwd"), join(merged), 0o644); err != nil {
 			return err
 		}
 	}
@@ -66,7 +66,7 @@ func MergeAccounts(upper, lower string) error {
 		if fi != nil {
 			mode = fi.Mode().Perm()
 		}
-		if err := os.WriteFile(filepath.Join(upper, "shadow"), join(merged), mode); err != nil {
+		if err := writeFile(filepath.Join(upper, "shadow"), join(merged), mode); err != nil {
 			return err
 		}
 	}

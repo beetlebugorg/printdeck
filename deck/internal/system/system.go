@@ -88,8 +88,14 @@ func run(name string, args ...string) error {
 }
 
 // writeFile writes a file through a temporary file and a rename, so that a reader sees the old or
-// the new file, never a part.
+// the new file, never a part. It does not write a file that already has data and mode, because
+// the disk is an SD card and many of these files are written at each start.
 func writeFile(path string, data []byte, mode os.FileMode) error {
+	if fi, err := os.Stat(path); err == nil && fi.Mode().Perm() == mode {
+		if old, err := os.ReadFile(path); err == nil && bytes.Equal(old, data) {
+			return nil
+		}
+	}
 	tmp := path + ".new"
 	if err := os.WriteFile(tmp, data, mode); err != nil {
 		return err
