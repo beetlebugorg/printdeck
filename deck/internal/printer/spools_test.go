@@ -2,6 +2,7 @@ package printer
 
 import (
 	"math"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -33,6 +34,27 @@ func TestSpools(t *testing.T) {
 	again.Remove(sp.ID)
 	if len(again.List()) != 0 {
 		t.Error("the roll is still in the list")
+	}
+}
+
+// AddOut adds a roll and keeps the roll in the printer. Put writes the file only when the roll
+// in the printer changes.
+func TestSpoolsAddOut(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "spools.json")
+	s := &Spools{Path: path}
+	black := s.Add("Black", "PLA", 1250, 250, 20, time.Unix(1, 0))
+	white := s.AddOut("White", "PLA", 1250, 250, 20, time.Unix(2, 0))
+	if in, _ := s.In(); in.ID != black.ID || len(s.List()) != 2 || s.LastReel() != 250 {
+		t.Fatalf("roll in the printer %q, %d rolls", in.ID, len(s.List()))
+	}
+	os.Remove(path)
+	s.Put(black.ID)
+	if _, err := os.Stat(path); err == nil {
+		t.Error("Put of the same roll wrote the file")
+	}
+	s.Put(white.ID)
+	if in, _ := (&Spools{Path: path}).In(); in.ID != white.ID {
+		t.Errorf("roll in the file %q, want %q", in.ID, white.ID)
 	}
 }
 

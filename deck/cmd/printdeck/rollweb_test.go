@@ -67,6 +67,10 @@ func TestRollPages(t *testing.T) {
 	if !strings.Contains(string(b), "heats the nozzle for PLA") {
 		t.Errorf("load:\n%s", b)
 	}
+	// The roll goes in the printer only at the end of the filament change on the deck.
+	if in, _ := rolls.In(); in.ID != "2" {
+		t.Errorf("roll in the printer %q, want 2", in.ID)
+	}
 	// A second Load while the swap is open waits for it.
 	r, _ = http.PostForm(srv.URL+"/roll/2/load", url.Values{})
 	b, _ = io.ReadAll(r.Body)

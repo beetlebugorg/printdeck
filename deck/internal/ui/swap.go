@@ -22,6 +22,31 @@ type swapState struct {
 	resume int
 	// roll is the ID of the roll that goes in, chosen before the swap opened (LoadRoll), or "".
 	roll string
+	// When set is true, the swap changes the loaded filament at its end: newMaterial is the
+	// material, and newRoll is the ID of the roll, or "" for no roll. Only Done changes them. A
+	// cancel keeps the filament that was loaded before the swap.
+	set         bool
+	newMaterial string
+	newRoll     string
+}
+
+// setAtEnd keeps the material and the roll that the swap loads, for its end.
+func (sw *swapState) setAtEnd(material, roll string) {
+	sw.set, sw.newMaterial, sw.newRoll = true, material, roll
+}
+
+// finishSwap sets the loaded material and the roll in the printer from the swap. The settings are
+// written only when they change.
+func (a *App) finishSwap(sw *swapState) {
+	if !sw.set {
+		return
+	}
+	if s := a.Printer.SpoolStore(); s != nil {
+		s.Put(sw.newRoll)
+	}
+	if a.Material != sw.newMaterial {
+		a.setMaterial(sw.newMaterial)
+	}
 }
 
 // openSwap opens the swap in a mode.
@@ -92,6 +117,11 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 			}
 		}
 		a.do(func() error { return pr.SetToolTemp(t) })
+	}
+	// done is Done: the new filament is loaded. It closes the swap as end does.
+	done := func() {
+		a.finishSwap(sw)
+		end()
 	}
 	// Close before the swap heats the nozzle only closes. After it, Close is the same as Cancel.
 	closeSwap := func() {
@@ -187,8 +217,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		if sw.roll != "" && rolls != nil {
 			if sp, ok := rolls.Get(sw.roll); ok {
 				sw.roll = ""
-				rolls.Put(sp.ID)
-				a.setMaterial(sp.Material)
+				sw.setAtEnd(sp.Material, sp.ID)
 				heatFor(sp.Material)
 				return
 			}
@@ -213,14 +242,16 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 					a.menuRow(c, r, title, rollLine(list[i]), dim, nil)
 				}, func(i int) {
 					sp := list[i]
-					rolls.Put(sp.ID)
-					a.setMaterial(sp.Material)
+					sw.setAtEnd(sp.Material, sp.ID)
 					heatFor(sp.Material)
 				})
 			}
 			b := kit.Cols(k[1], 12, kit.Fr(1), kit.Fr(1))
 			a.button(c, b[0], "New roll", orange, onAcc, func() {
-				a.openRollForm(func(sp printer.Spool) { heatFor(sp.Material) })
+				a.openRollForm(func(sp printer.Spool) {
+					sw.setAtEnd(sp.Material, sp.ID)
+					heatFor(sp.Material)
+				})
 			})
 			a.button(c, b[1], "Other", raised, text, func() { sw.step = swapMaterial })
 			return
@@ -274,10 +305,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 			sw.step = swapInsert
 			if sw.mode == swapUnloadOnly {
 				sw.step = swapCheck
-				a.setMaterial("")
-				if rolls != nil {
-					rolls.Put("")
-				}
+				sw.setAtEnd("", "")
 			}
 			a.do(func() error {
 				return pr.Gcode("M83", "G1 E10 F300", fmt.Sprintf("G1 E-%.0f F1500", a.UnloadMM), "M82")
@@ -301,7 +329,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 			step(4, "Take the filament out")
 			para("Pull the filament out of the extruder, and store it dry.")
 			k := keys(size{84, 2}, size{80, 1})
-			a.button(c, k[0], doneLabel, orange, onAcc, end)
+			a.button(c, k[0], doneLabel, orange, onAcc, done)
 			a.button(c, k[1], "Unload again", raised, text, func() { sw.step = swapUnload })
 			return
 		}
@@ -315,13 +343,16 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		if sw.paused {
 			k := keys(size{80, 1}, size{84, 1.4})
 			purge(k[0])
-			a.button(c, k[1], doneLabel, orange, onAcc, end)
+			a.button(c, k[1], doneLabel, orange, onAcc, done)
 			return
 		}
 		k := keys(size{80, 1}, size{84, 1.4}, size{80, 1})
 		purge(k[0])
-		a.button(c, k[1], doneLabel, orange, onAcc, end)
-		a.button(c, k[2], "Done, keep hot", raised, text, func() { a.swap = nil })
+		a.button(c, k[1], doneLabel, orange, onAcc, done)
+		a.button(c, k[2], "Done, keep hot", raised, text, func() {
+			a.finishSwap(sw)
+			a.swap = nil
+		})
 	}
 }
 
@@ -338,9 +369,8 @@ func (a *App) swapHeat(sw *swapState, t int) error {
 }
 
 // materialKeys draws the materials and Other temperature in k: a tap heats the nozzle for the
-// filament. A material that goes in has no roll.
+// filament. A material that goes in has no roll. The swap sets it at its end.
 func (a *App) materialKeys(c *gfx.Canvas, sw *swapState, k []image.Rectangle) {
-	pr := a.Printer
 	a.region("Materials", k[0])
 	for i, r := range kit.Grid(k[0], 2, 2, 12) {
 		m := materials[i]
@@ -348,10 +378,7 @@ func (a *App) materialKeys(c *gfx.Canvas, sw *swapState, k []image.Rectangle) {
 		a.button(c, r, fmt.Sprintf("%s  %d°", m.Name, m.Tool), raised, text, func() {
 			sw.temp, sw.step = t, swapHeat
 			if sw.mode != swapUnloadOnly {
-				a.setMaterial(name)
-				if s := pr.SpoolStore(); s != nil {
-					s.Put("") // a filament with no roll
-				}
+				sw.setAtEnd(name, "") // a filament with no roll
 			}
 			a.do(func() error { return a.swapHeat(sw, t) })
 		})

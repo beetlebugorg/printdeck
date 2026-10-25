@@ -29,8 +29,8 @@ type rollForm struct {
 	done     func(sp printer.Spool) // after Save; nil only closes the form
 }
 
-// openRollForm opens the form of a new roll. done is called with the new roll, which is in the
-// printer after Save.
+// openRollForm opens the form of a new roll. With no done, the new roll goes in the printer after
+// Save. Else done is called with the new roll, and the roll in the printer stays.
 func (a *App) openRollForm(done func(sp printer.Spool)) {
 	m := a.Material
 	if m == "" {
@@ -165,7 +165,11 @@ func (a *App) drawRollForm(c *gfx.Canvas) {
 			a.form = nil
 			return
 		}
-		sp := s.Add(fm.name, fm.material, float64(fm.scale), float64(fm.reel), float64(fm.price), a.Now())
+		add := s.Add
+		if fm.done != nil {
+			add = s.AddOut // the filament change puts the roll in at its end
+		}
+		sp := add(fm.name, fm.material, float64(fm.scale), float64(fm.reel), float64(fm.price), a.Now())
 		if fm.cura.ID != "" {
 			s.SetCuraMaterial(sp.ID, fm.cura)
 		}
@@ -176,11 +180,12 @@ func (a *App) drawRollForm(c *gfx.Canvas) {
 			s.SetSize(sp.ID, float64(fm.size))
 		}
 		sp, _ = s.Get(sp.ID)
-		a.setMaterial(sp.Material)
 		a.form = nil
 		if fm.done != nil {
 			fm.done(sp)
+			return
 		}
+		a.setMaterial(sp.Material)
 	})
 }
 

@@ -180,6 +180,17 @@ func (s *Spools) LastReel() float64 {
 
 // Add adds a new roll with the weight on the scale, and puts it in the printer. It returns the roll.
 func (s *Spools) Add(name, material string, scale, reel, price float64, now time.Time) Spool {
+	return s.add(name, material, scale, reel, price, now, true)
+}
+
+// AddOut adds a new roll with the weight on the scale, and keeps the roll in the printer. A
+// filament change uses it: the new roll goes in the printer only at the end of the change.
+func (s *Spools) AddOut(name, material string, scale, reel, price float64, now time.Time) Spool {
+	return s.add(name, material, scale, reel, price, now, false)
+}
+
+// add adds a new roll. With in, the roll goes in the printer.
+func (s *Spools) add(name, material string, scale, reel, price float64, now time.Time, in bool) Spool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.load()
@@ -188,16 +199,23 @@ func (s *Spools) Add(name, material string, scale, reel, price float64, now time
 	sp := Spool{ID: strconv.Itoa(s.data.Next), Name: name, Material: material, Net: net, Full: net,
 		Reel: reel, Price: price, Added: now}
 	s.data.Spools = append(s.data.Spools, sp)
-	s.data.In, s.data.Reel = sp.ID, reel
+	s.data.Reel = reel
+	if in {
+		s.data.In = sp.ID
+	}
 	s.save()
 	return sp
 }
 
-// Put puts the roll with the ID in the printer. "" takes the roll out.
+// Put puts the roll with the ID in the printer. "" takes the roll out. The file is written only
+// when the roll in the printer changes.
 func (s *Spools) Put(id string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.load()
+	if s.data.In == id {
+		return
+	}
 	s.data.In = id
 	s.save()
 }

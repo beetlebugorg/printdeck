@@ -335,7 +335,22 @@ func TestHelpOnKlipperError(t *testing.T) {
 	}
 }
 
-// A new roll from the filament change goes in the printer, and the nozzle heats for its material.
+// finishSwap heats the nozzle of the swap and taps the keys of its steps, the last one Done.
+func finishSwap(t *testing.T, a *App, pr *recPrinter, cv *gfx.Canvas, keys ...string) {
+	t.Helper()
+	pr.State_.Tool = 300
+	a.Draw(cv)
+	a.Draw(cv)
+	for _, k := range keys {
+		tapLabel(t, a, cv, k)
+	}
+	if a.swap != nil {
+		t.Fatalf("the swap is open at step %d", a.swap.step)
+	}
+}
+
+// A new roll from the filament change goes in the printer at the end of the change, and the
+// nozzle heats for its material.
 func TestSwapNewRoll(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.SwapHome = false
@@ -348,12 +363,38 @@ func TestSwapNewRoll(t *testing.T) {
 	tapLabel(t, a, cv, "PETG")
 	a.form.name, a.form.scale, a.form.reel, a.form.price = "Clear", 1200, 200, 25
 	tapLabel(t, a, cv, "Save")
-	in, ok := pr.Spools_.In()
-	if !ok || in.Name != "Clear" || in.Material != "PETG" || in.Left() != 1000 {
-		t.Fatalf("roll %+v %v", in, ok)
-	}
 	if c := pr.wait(1); len(c) != 1 || c[0] != "tool 240" || a.swap.step != swapHeat {
 		t.Errorf("calls %v, step %d", c, a.swap.step)
+	}
+	if in, ok := pr.Spools_.In(); ok || a.Material != "" {
+		t.Fatalf("before the end: roll %+v, material %q", in, a.Material)
+	}
+	finishSwap(t, a, pr, cv, "Unload", "Load", "Done, cool down")
+	in, ok := pr.Spools_.In()
+	if !ok || in.Name != "Clear" || in.Material != "PETG" || in.Left() != 1000 || a.Material != "PETG" {
+		t.Fatalf("roll %+v %v, material %q", in, ok, a.Material)
+	}
+}
+
+// A new roll from a filament change that is cancelled stays in the list, and the roll in the
+// printer stays.
+func TestSwapNewRollCancel(t *testing.T) {
+	a, pr, cv := newPrintApp(idle)
+	a.SwapHome = false
+	pr.Spools_ = &printer.Spools{}
+	old := pr.Spools_.Add("Black", "PLA", 1200, 200, 0, time.Unix(1, 0))
+	a.Material = "PLA"
+	a.openSwap(swapChange)
+	tapLabel(t, a, cv, "New roll")
+	tapLabel(t, a, cv, "PETG")
+	a.form.name, a.form.scale, a.form.reel = "Clear", 1200, 200
+	tapLabel(t, a, cv, "Save")
+	tapLabel(t, a, cv, "Cancel and cool down")
+	if in, _ := pr.Spools_.In(); in.ID != old.ID || a.Material != "PLA" || a.swap != nil {
+		t.Errorf("roll %q, material %q, swap %v", in.ID, a.Material, a.swap)
+	}
+	if n := len(pr.Spools_.List()); n != 2 {
+		t.Errorf("%d rolls, want 2", n)
 	}
 }
 
@@ -386,20 +427,137 @@ func TestNewRollCuraMaterial(t *testing.T) {
 	}
 }
 
-// A saved roll from the filament change goes in the printer.
+// A saved roll from the filament change goes in the printer at the end of the change. The
+// material is saved one time.
 func TestSwapSavedRoll(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.SwapHome = false
 	pr.Spools_ = &printer.Spools{}
 	sp := pr.Spools_.Add("Black", "PLA", 1200, 200, 0, time.Unix(1, 0))
 	pr.Spools_.Put("")
+	saved := 0
+	a.OnMaterial = func(string) { saved++ }
 	a.openSwap(swapChange)
 	tapRegion(t, a, cv, "#1 Black")
-	if in, ok := pr.Spools_.In(); !ok || in.ID != sp.ID {
-		t.Errorf("roll in the printer %+v %v", in, ok)
-	}
 	if c := pr.wait(1); len(c) != 1 || c[0] != "tool 210" {
 		t.Errorf("calls %v", c)
+	}
+	if in, ok := pr.Spools_.In(); ok || saved != 0 {
+		t.Errorf("before the end: roll %+v, %d saves", in, saved)
+	}
+	finishSwap(t, a, pr, cv, "Unload", "Load", "Done, keep hot")
+	if in, ok := pr.Spools_.In(); !ok || in.ID != sp.ID || a.Material != "PLA" || saved != 1 {
+		t.Errorf("roll in the printer %+v %v, material %q, %d saves", in, ok, a.Material, saved)
+	}
+}
+
+// A cancel or Close at each step of the filament change keeps the roll and the material that
+// were loaded.
+func TestSwapCancelKeepsRoll(t *testing.T) {
+	for _, keys := range [][]string{
+		{"Cancel and cool down"},
+		{"Unload", "Close"},
+		{"Unload", "Load", "Close"},
+	} {
+		a, pr, cv := newPrintApp(idle)
+		a.SwapHome = false
+		pr.Spools_ = &printer.Spools{}
+		white := pr.Spools_.Add("White", "PETG", 1200, 200, 0, time.Unix(1, 0))
+		pr.Spools_.Add("Black", "PLA", 1200, 200, 0, time.Unix(2, 0))
+		pr.Spools_.Put(white.ID)
+		a.Material = "PETG"
+		saved := 0
+		a.OnMaterial = func(string) { saved++ }
+		a.openSwap(swapChange)
+		tapRegion(t, a, cv, "#2 Black")
+		if keys[0] != "Cancel and cool down" {
+			pr.State_.Tool = 300
+			a.Draw(cv)
+			a.Draw(cv)
+		}
+		for _, k := range keys {
+			tapLabel(t, a, cv, k)
+		}
+		if in, _ := pr.Spools_.In(); a.swap != nil || in.ID != white.ID || a.Material != "PETG" || saved != 0 {
+			t.Errorf("%v: swap %v, roll %q, material %q, %d saves", keys, a.swap, in.ID, a.Material, saved)
+		}
+	}
+}
+
+// A material with no roll takes the roll out of the printer at the end of the change only.
+func TestSwapMaterialNoRoll(t *testing.T) {
+	for _, cancel := range []bool{true, false} {
+		a, pr, cv := newPrintApp(idle)
+		a.SwapHome = false
+		pr.Spools_ = &printer.Spools{}
+		white := pr.Spools_.Add("White", "PLA", 1200, 200, 0, time.Unix(1, 0))
+		a.Material = "PLA"
+		a.openSwap(swapChange)
+		tapLabel(t, a, cv, "Other")
+		tapLabel(t, a, cv, "PETG  240°")
+		in, _ := pr.Spools_.In()
+		if in.ID != white.ID || a.Material != "PLA" {
+			t.Fatalf("before the end: roll %q, material %q", in.ID, a.Material)
+		}
+		want, mat := white.ID, "PLA"
+		if cancel {
+			tapLabel(t, a, cv, "Cancel and cool down")
+		} else {
+			finishSwap(t, a, pr, cv, "Unload", "Load", "Done, cool down")
+			want, mat = "", "PETG"
+		}
+		if in, _ := pr.Spools_.In(); in.ID != want || a.Material != mat {
+			t.Errorf("cancel %v: roll %q, material %q", cancel, in.ID, a.Material)
+		}
+	}
+}
+
+// Unload takes the roll and the material out at Done only.
+func TestSwapUnloadOnly(t *testing.T) {
+	for _, last := range []string{"Close", "Done, cool down"} {
+		a, pr, cv := newPrintApp(idle)
+		a.SwapHome = false
+		pr.Spools_ = &printer.Spools{}
+		white := pr.Spools_.Add("White", "PLA", 1200, 200, 0, time.Unix(1, 0))
+		a.Material = "PLA"
+		a.openSwap(swapUnloadOnly)
+		tapLabel(t, a, cv, "PLA  210°")
+		finishSwap(t, a, pr, cv, "Unload", last)
+		in, _ := pr.Spools_.In()
+		want, mat := white.ID, "PLA"
+		if last != "Close" {
+			want, mat = "", ""
+		}
+		if in.ID != want || a.Material != mat {
+			t.Errorf("%s: roll %q, material %q", last, in.ID, a.Material)
+		}
+	}
+}
+
+// A roll from its web page (LoadRoll) goes in the printer at the end of the change only.
+func TestLoadRollAtEnd(t *testing.T) {
+	for _, cancel := range []bool{true, false} {
+		a, pr, cv := newPrintApp(idle)
+		a.SwapHome = false
+		pr.Spools_ = &printer.Spools{}
+		navy := pr.Spools_.Add("Navy", "PETG", 1200, 200, 0, time.Unix(1, 0))
+		white := pr.Spools_.Add("White", "PLA", 1200, 200, 0, time.Unix(2, 0))
+		a.openSwap(swapChange)
+		a.swap.roll = navy.ID // as LoadRoll does
+		a.Draw(cv)
+		if in, _ := pr.Spools_.In(); in.ID != white.ID || a.swap.step != swapHeat {
+			t.Fatalf("before the end: roll %q, step %d", in.ID, a.swap.step)
+		}
+		want := navy.ID
+		if cancel {
+			tapLabel(t, a, cv, "Cancel and cool down")
+			want = white.ID
+		} else {
+			finishSwap(t, a, pr, cv, "Unload", "Load", "Done, cool down")
+		}
+		if in, _ := pr.Spools_.In(); in.ID != want {
+			t.Errorf("cancel %v: roll %q, want %q", cancel, in.ID, want)
+		}
 	}
 }
 
@@ -541,8 +699,33 @@ func TestColorChangePause(t *testing.T) {
 	if a.swap == nil || !a.swap.paused || a.swap.step != swapHeat {
 		t.Fatalf("swap %+v", a.swap)
 	}
+	if in, _ := pr.Spools_.In(); in.ID != "1" {
+		t.Errorf("before the end: roll in the printer %q, want 1", in.ID)
+	}
+	finishSwap(t, a, pr, cv, "Unload", "Load", "Done")
 	if in, _ := pr.Spools_.In(); in.ID != "2" {
 		t.Errorf("roll in the printer %q, want 2", in.ID)
+	}
+}
+
+// A cancelled color change keeps the roll of the print in the printer, so the print uses its
+// filament.
+func TestColorChangePauseCancel(t *testing.T) {
+	st := printer.State{Reachable: true, Connected: true, Text: "Paused", Printing: true, Paused: true, PauseActive: true,
+		File: "a.gcode", PausePrompt: "Load #2 Navy for the lettering", PauseRoll: "2", Tool: 210, ToolTarget: 210}
+	a, pr, cv := newPrintApp(st)
+	a.SwapHome = false
+	pr.Spools_ = &printer.Spools{}
+	pr.Spools_.Add("White", "PLA", 1200, 200, 0, time.Unix(1, 0))
+	pr.Spools_.Add("Navy", "PLA", 1200, 200, 0, time.Unix(2, 0))
+	pr.Spools_.Put("1")
+	tapRegion(t, a, cv, "Change filament")
+	a.Draw(cv) // the roll of the file: the nozzle heats
+	a.Draw(cv) // the nozzle is hot
+	tapLabel(t, a, cv, "Unload")
+	tapLabel(t, a, cv, "Close")
+	if in, _ := pr.Spools_.In(); a.swap != nil || in.ID != "1" {
+		t.Errorf("swap %v, roll in the printer %q, want 1", a.swap, in.ID)
 	}
 }
 
