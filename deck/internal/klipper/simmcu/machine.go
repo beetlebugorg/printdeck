@@ -43,10 +43,70 @@ var (
 // (-10 and 290). They are 22 mm wide.
 var workhorseWashers = []washer{{-14, -14, 11}, {294, -14, 11}, {294, 294, 11}, {-14, 294, 11}}
 
+// washersAt returns the washers of the probe points of bed_tilt: each one 4 mm out from its point,
+// away from the middle of the points, as on the TAZ Workhorse. It returns nil for no points.
+func washersAt(points string) []washer {
+	var pts [][2]float64
+	for _, line := range strings.Split(points, "\n") {
+		f := strings.Split(strings.SplitN(line, "#", 2)[0], ",")
+		if len(f) != 2 {
+			continue
+		}
+		x, err1 := strconv.ParseFloat(strings.TrimSpace(f[0]), 64)
+		y, err2 := strconv.ParseFloat(strings.TrimSpace(f[1]), 64)
+		if err1 == nil && err2 == nil {
+			pts = append(pts, [2]float64{x, y})
+		}
+	}
+	if len(pts) == 0 {
+		return nil
+	}
+	var cx, cy float64
+	for _, p := range pts {
+		cx += p[0] / float64(len(pts))
+		cy += p[1] / float64(len(pts))
+	}
+	out := func(v, c float64) float64 {
+		switch {
+		case v < c:
+			return v - 4
+		case v > c:
+			return v + 4
+		}
+		return v
+	}
+	var ws []washer
+	for _, p := range pts {
+		ws = append(ws, washer{out(p[0], cx), out(p[1], cy), 11})
+	}
+	return ws
+}
+
+// endstopSwitch returns the pin of the switch of an endstop_pin. The virtual endstop of a TMC
+// driver ("tmc2130_stepper_x:virtual_endstop") is its DIAG pin: the driver pulls it at a stall.
+func endstopSwitch(get func(section, option string) (string, bool), e string) string {
+	e = strings.TrimSpace(strings.SplitN(e, "#", 2)[0])
+	if chip, ok := strings.CutSuffix(e, ":virtual_endstop"); ok {
+		driver, stepper, _ := strings.Cut(chip, "_")
+		for _, o := range []string{"diag0_pin", "diag1_pin"} {
+			if d, ok := get(driver+" "+stepper, o); ok {
+				return strings.TrimLeft(strings.TrimSpace(strings.SplitN(d, "#", 2)[0]), "^~!")
+			}
+		}
+		return ""
+	}
+	return strings.TrimLeft(e, "^~!")
+}
+
 // Configure gives the board the mechanics of the printer: get reads an option of a section of the
 // config. The washer tops are at the z_offset of the probe, so the probe puts Z 0 on the bed.
 func Configure(get func(section, option string) (string, bool)) {
 	m := &machine{axes: map[string]axis{}, switches: map[string]float64{}, washers: workhorseWashers}
+	if pts, ok := get("bed_tilt", "points"); ok {
+		if ws := washersAt(pts); ws != nil {
+			m.washers = ws
+		}
+	}
 	f := func(section, option string) (float64, bool) {
 		v, ok := get(section, option)
 		if !ok {
@@ -82,8 +142,9 @@ func Configure(get func(section, option string) (string, bool)) {
 		m.axes[sp] = a
 		if e, ok := get(name, "endstop_pin"); ok {
 			if at, ok := f(name, "position_endstop"); ok {
-				ep, _ := pin(e)
-				m.switches[ep] = at
+				if ep := endstopSwitch(get, e); ep != "" {
+					m.switches[ep] = at
+				}
 			}
 		}
 	}

@@ -128,6 +128,7 @@ type Board struct {
 	lcds      map[int64]*st7920
 	endstops  map[int64]*endstop
 	trsyncs   map[int64]*trsync
+	tmc       map[[2]int64]*tmcRegs // the TMC drivers on SPI, by the oid of the bus and the place in the chain
 	adcs      []*adc
 	adcByOID  map[int64]*adc
 	outs      map[int64]*output
@@ -158,7 +159,7 @@ func newBoard(conn net.Conn) (*Board, error) {
 	}
 	return &Board{conn: conn, parser: p, identify: z.Bytes(), freq: num("CLOCK_FREQ"), adcMax: num("ADC_MAX"),
 		pwmMax: num("PWM_MAX"), statics: d.StaticStrings, steppers: map[int64]*stepper{}, lcds: map[int64]*st7920{}, endstops: map[int64]*endstop{},
-		trsyncs: map[int64]*trsync{}, adcByOID: map[int64]*adc{}, outs: map[int64]*output{}, closed: make(chan struct{})}, nil
+		trsyncs: map[int64]*trsync{}, tmc: map[[2]int64]*tmcRegs{}, adcByOID: map[int64]*adc{}, outs: map[int64]*output{}, closed: make(chan struct{})}, nil
 }
 
 // now is the clock of the board: CLOCK_FREQ ticks a second, since the start of the World.
@@ -497,6 +498,15 @@ func (b *Board) command(text string) {
 			o.value, o.max = float64(num(a, "value")), 1
 		}
 		b.mu.Unlock()
+	case "spi_send":
+		b.mu.Lock()
+		b.tmcDatagrams(oid, buffer(text))
+		b.mu.Unlock()
+	case "spi_transfer":
+		b.mu.Lock()
+		resp := b.tmcDatagrams(oid, buffer(text))
+		b.mu.Unlock()
+		b.send("spi_transfer_response", map[string]msgproto.Value{"oid": oid, "response": resp})
 	case "config_pwm_out":
 		b.mu.Lock()
 		o := &output{pin: a["pin"], value: float64(num(a, "value")), max: b.pwmMax}
@@ -512,7 +522,7 @@ func (b *Board) command(text string) {
 		}
 		b.mu.Unlock()
 	}
-	// Other commands (the display, SPI, buttons, static outputs) need no answer.
+	// Other commands (the display, buttons, static outputs) need no answer.
 }
 
 // doShutdown stops the board, as the firmware does after an error.
@@ -688,4 +698,46 @@ func (w *World) physicalSteps(pin string) float64 {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	return w.physical[pin]
+}
+
+// The registers of a TMC2130 that the board answers on its own.
+const (
+	tmcIholdIrun = 0x10
+	tmcDrvStatus = 0x6f
+)
+
+// tmcRegs is a TMC driver on SPI: its registers, and the address of the last datagram.
+type tmcRegs struct {
+	regs map[byte][4]byte
+	last byte
+}
+
+// tmcDatagrams sends SPI data to the TMC drivers of an SPI bus, and returns their answer. Each 5
+// bytes are a datagram for one driver of the chain: the address (with 0x80 for a write) and 4 bytes
+// of data. A driver answers a datagram with a status byte of 0 and the register of its last
+// datagram, so a write reads back as it was written. All the registers start at 0: a driver with
+// no error. DRV_STATUS reports the run current. b.mu is locked.
+func (b *Board) tmcDatagrams(oid int64, data []byte) []byte {
+	out := make([]byte, len(data))
+	for i := 0; i+5 <= len(data); i += 5 {
+		key := [2]int64{oid, int64(i / 5)}
+		t := b.tmc[key]
+		if t == nil {
+			t = &tmcRegs{regs: map[byte][4]byte{}}
+			b.tmc[key] = t
+		}
+		v := t.regs[t.last]
+		if t.last == tmcDrvStatus {
+			// The current scale of the driver is its run current (IRUN, bits 8 to 12 of
+			// IHOLD_IRUN), in bits 16 to 20. A scale of 0 is a reset driver.
+			v = [4]byte{0, t.regs[tmcIholdIrun][2] & 0x1f, 0, 0}
+		}
+		copy(out[i+1:i+5], v[:])
+		addr := data[i] & 0x7f
+		if data[i]&0x80 != 0 {
+			t.regs[addr] = [4]byte(data[i+1 : i+5])
+		}
+		t.last = addr
+	}
+	return out
 }

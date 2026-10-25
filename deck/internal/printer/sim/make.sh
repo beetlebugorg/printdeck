@@ -21,6 +21,16 @@ sim() {
 } > taz-workhorse.cfg
 
 {
+	echo '# Printdeck simulated printer: mini2'
+	echo "# Klipper's printer-lulzbot-mini2-2018.cfg (the LulzBot Mini 2) on the simulated board of the"
+	echo '# deck (serial: sim), with the thermistors that it simulates. Make it again with make.sh.'
+	echo
+	gzip -dc ../examples/printers.gz |
+		awk '/^\036/ { on = ($0 == "\036printer-lulzbot-mini2-2018.cfg"); next } on' |
+		sim
+} > mini2.cfg
+
+{
 	echo '# Printdeck simulated printer: cr10-v3'
 	echo "# Klipper's printer-creality-cr10-v3-2020.cfg (the Creality CR-10 V3) on the simulated board"
 	echo '# of the deck (serial: sim), with the thermistors that it simulates. Make it again with make.sh.'

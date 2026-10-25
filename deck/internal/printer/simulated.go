@@ -31,6 +31,7 @@ type SimModel struct {
 // simModels are the simulated printers, in the order of the list.
 var simModels = []SimModel{
 	{ID: "taz-workhorse", Name: "LulzBot TAZ Workhorse", Note: "280 x 280 mm bed, probe on washers, bed tilt"},
+	{ID: "mini2", Name: "LulzBot Mini 2", Note: "160 x 160 mm bed, probe on washers, bed tilt"},
 	{ID: "cr10-v3", Name: "Creality CR-10 V3", Note: "300 x 300 mm bed, endstops, no probe"},
 }
 
