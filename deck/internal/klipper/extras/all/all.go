@@ -16,6 +16,7 @@ import (
 	_ "printdeck/internal/klipper/extras/delayed_gcode"
 	_ "printdeck/internal/klipper/extras/delta_calibrate"
 	_ "printdeck/internal/klipper/extras/display"
+	_ "printdeck/internal/klipper/extras/endstop_phase"
 	_ "printdeck/internal/klipper/extras/display_status"
 	_ "printdeck/internal/klipper/extras/error_mcu"
 	_ "printdeck/internal/klipper/extras/exclude_object"

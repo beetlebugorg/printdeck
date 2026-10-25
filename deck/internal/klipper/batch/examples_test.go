@@ -13,7 +13,6 @@ import (
 // their error. Remove a config from the list when its modules are ported.
 var unsupported = map[string]string{
 	"printer-creality-ender5-s1-2023.cfg": "Section 'axis_twist_compensation' is not a valid config section",
-	"printer-makergear-m2-2012.cfg":       "Section 'endstop_phase stepper_x' is not a valid config section",
 }
 
 // chipDicts returns the firmware dictionaries to try for a chip (testdata/dict, from
