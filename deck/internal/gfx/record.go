@@ -238,7 +238,12 @@ func replay(c *Canvas, list []any, img func(id int) image.Image, num, den int) {
 			}
 		case "t":
 			s, _ := op[3].(string)
-			cur.textAt(sc(n(op, 1)), sc(n(op, 2)), s, Face(n(op, 4) == 1, sc(n(op, 5))), col(n(op, 6)))
+			// The size of the command is the size of the face that drew it: SetFinePrint does
+			// not change it again.
+			fontMu.Lock()
+			f := face(n(op, 4) == 1, sc(n(op, 5)))
+			fontMu.Unlock()
+			cur.textAt(sc(n(op, 1)), sc(n(op, 2)), s, f, col(n(op, 6)))
 		case "c", "i":
 			im := img(n(op, 5))
 			if im == nil {

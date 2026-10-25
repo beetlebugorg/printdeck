@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"printdeck/kit"
+	"slices"
 	"strings"
 
 	"image/color"
@@ -444,6 +445,9 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 		{"Theme", themeLine(a.Theme, a.NightFrom, a.NightTo), dim, a.cycleTheme},
 		{"Clock", clockLine(a.Clock24), dim, a.toggleClock},
 		{"Home in a filament change", swapHomeLine(a.SwapHome), dim, a.toggleSwapHome},
+	}
+	if !a.Wide {
+		items = slices.Insert(items, 2, menuItem{"Text", a.textSizeLine(), dim, a.cycleTextSize})
 	}
 	if a.OnRotate != nil {
 		items = append(items, menuItem{"Screen", rotateLine(a.Rotate), dim, a.askRotate})

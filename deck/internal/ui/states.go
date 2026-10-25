@@ -148,11 +148,12 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 		}
 		// The name gets the space that the information does not use.
 		nameR := image.Rect(box.Min.X+60, y, box.Max.X-22, y+rowH-12)
+		infoR, infoF := image.Rect(box.Max.X-190, y, box.Max.X-22, y+rowH-12), gfx.Face(false, 16)
 		if info != "" {
-			nameR.Max.X = box.Max.X - 160
+			nameR.Max.X = min(box.Max.X-160, infoR.Max.X-min(infoR.Dx(), gfx.Width(gfx.Shrink(infoF, info, infoR.Dx()), info))-12)
 		}
 		c.Text(nameR, s.name, gfx.Face(true, 19), col, gfx.Left)
-		c.Text(image.Rect(box.Max.X-190, y, box.Max.X-22, y+rowH-12), info, gfx.Face(false, 16), orange, gfx.Right)
+		c.Text(infoR, info, infoF, orange, gfx.Right)
 		if f > 0 {
 			// A thin bar under the name, with a gap: the segments of a meter crowd the line.
 			bar := image.Rect(box.Min.X+60, y+rowH-8, box.Max.X-22, y+rowH-4)

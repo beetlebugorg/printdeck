@@ -225,10 +225,37 @@ var (
 	fallR, fallB *opentype.Font
 )
 
-// Face returns a cached monospace face with the given pixel height.
+// finePrint is the setting of SetFinePrint. fontMu protects it.
+var finePrint struct{ min, top int }
+
+// SetFinePrint makes Face draw the small sizes larger, for a screen with small pixels. Size 12
+// becomes min, the sizes from 12 to top go up in proportion, and top and larger stay the same.
+// A min of 0 turns it off.
+func SetFinePrint(min, top int) {
+	fontMu.Lock()
+	finePrint.min, finePrint.top = min, top
+	fontMu.Unlock()
+}
+
+// fineSize returns the size of Face for the size px. The caller holds fontMu.
+func fineSize(px int) int {
+	lo, top := 12, finePrint.top
+	if finePrint.min <= lo || px >= top || top <= lo {
+		return px
+	}
+	return max(px, finePrint.min+(px-lo)*(top-finePrint.min)/(top-lo))
+}
+
+// Face returns a cached monospace face with the given pixel height. SetFinePrint can make the
+// face larger.
 func Face(bold bool, px int) font.Face {
 	fontMu.Lock()
 	defer fontMu.Unlock()
+	return face(bold, fineSize(px))
+}
+
+// face returns a cached face of exactly px. The caller holds fontMu.
+func face(bold bool, px int) font.Face {
 	if regF == nil {
 		regF, _ = opentype.Parse(plexRegular)
 		boldF, _ = opentype.Parse(plexBold)
@@ -286,23 +313,34 @@ func Width(face font.Face, s string) int { return font.MeasureString(face, s).Ce
 
 // Shrink returns the largest size of face, down to three quarters of its size, in which s fits in
 // width. It returns face when s fits, or when no size fits, or for a face that Face did not make.
-func Shrink(face font.Face, s string, width int) font.Face {
-	if Width(face, s) <= width {
-		return face
+func Shrink(f0 font.Face, s string, width int) font.Face {
+	if Width(f0, s) <= width {
+		return f0
 	}
 	fontMu.Lock()
-	info, ok := faceInfo[face]
+	info, ok := faceInfo[f0]
 	fontMu.Unlock()
 	if !ok {
-		return face
+		return f0
 	}
 	px, bold := info[0], info[1] == 1
-	for size := px - 1; size >= max(10, px*3/4); size-- {
-		if f := Face(bold, size); Width(f, s) <= width {
+	// A face that SetFinePrint made larger can go down to three quarters of the size that the
+	// caller asked for.
+	fontMu.Lock()
+	asked := px
+	for asked > 1 && fineSize(asked-1) >= px {
+		asked--
+	}
+	fontMu.Unlock()
+	for size := px - 1; size >= max(10, min(px, asked)*3/4); size-- {
+		fontMu.Lock()
+		f := face(bold, size)
+		fontMu.Unlock()
+		if Width(f, s) <= width {
 			return f
 		}
 	}
-	return face
+	return f0
 }
 
 // Fit shortens s with an ellipsis until it fits in width.

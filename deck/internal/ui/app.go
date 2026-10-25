@@ -259,6 +259,12 @@ type App struct {
 	Scale [2]int
 	// Wide draws the screen in landscape, wideW x wideH, for a display that is mounted wide.
 	Wide bool
+	// TextSize is "auto", "large", or "normal". Large draws the small text of the tall screen
+	// larger (gfx.SetFinePrint). Auto is large on a tall screen with Scale above 1, which has
+	// smaller pixels than the UI. The wide screen always has the normal size. The Text row of the
+	// Settings page changes it, and OnTextSize is told, to save it.
+	TextSize   string
+	OnTextSize func(string)
 }
 
 type confirmBox struct {
@@ -368,6 +374,7 @@ func (a *App) handle(ev touch.Event) {
 	drawMu.Lock()
 	defer drawMu.Unlock()
 	setSize(a.Screen())
+	a.setFinePrint()
 	a.touchAt = a.Now()
 	p := image.Pt(int(ev.X*float64(W)+0.5), int(ev.Y*float64(H)+0.5))
 	kind := map[touch.Kind]kit.Kind{touch.Down: kit.Down, touch.Move: kit.Move, touch.Up: kit.Up}[ev.Kind]
@@ -380,6 +387,7 @@ func (a *App) Draw(c *gfx.Canvas) {
 	drawMu.Lock()
 	defer drawMu.Unlock()
 	setSize(a.Screen())
+	a.setFinePrint()
 	// The touch screen is the screen that the display of the printer follows: its keys are the
 	// menu of the display.
 	a.showShared()
@@ -618,6 +626,65 @@ func (a *App) toggleClock() {
 	a.Toast(clockLine(a.Clock24))
 	if a.OnClock != nil {
 		a.OnClock(a.Clock24)
+	}
+}
+
+// The sizes of the large text: size 12 becomes fineMin, and the sizes up to fineTop go up in
+// proportion. On the Touch Display 2 (720 x 1280, about 11.6 pixels a millimeter) a pixel of the
+// UI is 0.13 mm, and on the 7 inch display (about 5.2 pixels a millimeter) it is 0.19 mm. Size 18
+// on the Touch Display 2 is as tall as size 12 on the 7 inch display.
+const (
+	fineMin = 18
+	fineTop = 24
+)
+
+// largeText reports that this App draws the small text larger.
+func (a *App) largeText() bool {
+	if a.Wide {
+		return false
+	}
+	switch a.TextSize {
+	case "large":
+		return true
+	case "normal":
+		return false
+	}
+	return a.Scale[1] > 0 && a.Scale[0] > a.Scale[1]
+}
+
+// setFinePrint sets the sizes of gfx.Face for this App. The caller holds drawMu.
+func (a *App) setFinePrint() {
+	if a.largeText() {
+		gfx.SetFinePrint(fineMin, fineTop)
+	} else {
+		gfx.SetFinePrint(0, 0)
+	}
+}
+
+// textSizeLine is the line of the Text row of the Settings page.
+func (a *App) textSizeLine() string {
+	size := "normal"
+	if a.largeText() {
+		size = "large"
+	}
+	switch a.TextSize {
+	case "large":
+		return "Large"
+	case "normal":
+		return "Normal"
+	}
+	return "Auto: " + size + " on this screen"
+}
+
+// cycleTextSize goes auto, large, normal, auto. An unknown value goes to large.
+func (a *App) cycleTextSize() {
+	a.TextSize = map[string]string{"large": "normal", "normal": "auto"}[a.TextSize]
+	if a.TextSize == "" {
+		a.TextSize = "large"
+	}
+	a.Toast("Text: " + a.textSizeLine())
+	if a.OnTextSize != nil {
+		a.OnTextSize(a.TextSize)
 	}
 }
 

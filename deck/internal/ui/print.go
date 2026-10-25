@@ -596,7 +596,12 @@ func (a *App) temps(c *gfx.Canvas, area image.Rectangle, tool, toolT, bed, bedT 
 			if r.Dx() < 180 { // a narrow card: under the value
 				c.Text(image.Rect(r.Min.X+tx, r.Max.Y-24, r.Max.X-10, r.Max.Y-6), set, gfx.Face(true, 13), orange, gfx.Left)
 			} else {
-				c.Text(image.Rect(r.Min.X+tx, r.Min.Y+6, r.Max.X-10, r.Min.Y+28), set, gfx.Face(true, 13), orange, gfx.Right)
+				// The target goes at the right of the label. Large text leaves room for the number only.
+				x0 := r.Min.X + tx + gfx.Width(gfx.Face(true, 14), strings.ToUpper(name)) + 8
+				if gfx.Width(gfx.Face(true, 13), set) > r.Max.X-10-x0 {
+					set = fmt.Sprintf("%.0f°", target)
+				}
+				c.Text(image.Rect(x0, r.Min.Y+6, r.Max.X-10, r.Min.Y+28), set, gfx.Face(true, 13), orange, gfx.Right)
 			}
 		}
 	}

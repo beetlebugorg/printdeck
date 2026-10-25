@@ -605,6 +605,9 @@ func manualParts() []section {
 						{"Screen", "The turn of the screen: 0° or 180° for a display that is mounted wide, 90° or 270° for a display that is mounted tall. A tap asks to turn it a quarter turn more, then the deck restarts in the new turn. The touch turns with the screen. A print goes on during the restart. This setting wins over display_rotate in printdeck.txt."},
 						{"Phones", "The phones with the Printdeck app that get the push messages of the prints. The app pairs with the deck over the network, with the address and the API key. The messages are encrypted from the deck to the phone. Tap the row for the list; a tap on a phone asks to remove it."},
 						{"Notifications", "Push messages to your phone and watch: print done, print failed, a pause, the end of the first layer, and a roll that runs short. Install the ntfy app on the phone, and subscribe to a topic with a name that is hard to guess. Type the same topic here, or the address of a topic on your own ntfy server. A test message goes out when you save it. An empty topic turns the messages off."},
+					},
+					Tall: []callout{
+						{"Text", "The size of the small text on a tall screen: auto, large, or normal. Auto is large on the Touch Display 2, which has smaller pixels. Tap it to change it."},
 					}},
 				{Name: "console", Caption: "The console",
 					Setup: func(s *manualState) {

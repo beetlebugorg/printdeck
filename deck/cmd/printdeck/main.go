@@ -182,6 +182,12 @@ func run(cfg config.Config) {
 		}
 		os.WriteFile(clockFile, []byte(v+"\n"), 0o644)
 	}
+	// The text size too. The file is written only when the Settings page changes it.
+	textSizeFile := filepath.Join(cfg.StateDir, "text-size")
+	if b, err := os.ReadFile(textSizeFile); err == nil {
+		app.TextSize = strings.TrimSpace(string(b))
+	}
+	app.OnTextSize = func(s string) { os.WriteFile(textSizeFile, []byte(s+"\n"), 0o644) }
 	// The homing in a filament change too. It is on when the file is not there.
 	swapHomeFile := filepath.Join(cfg.StateDir, "swap-home")
 	if b, err := os.ReadFile(swapHomeFile); err == nil {
