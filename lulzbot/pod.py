@@ -746,13 +746,30 @@ def matrix(loc):
     return m
 
 
+MINI_LCD_COLOR = "#3A3B3E"
+MINI_LCD_SCREEN_COLOR = "#1F4BD1"
+
+
 def mini_printer():
+    """The Mini 2 meshes (build/mini2, from LulzBot's hibiscus_assembled.fcstd), in the places of that
+    assembly. lcd_assem_01 is the stock LCD: the case on its bracket at the top of the right upright,
+    and the clips of its cable. The screen window of the LCD is the thin plate (0.8 mm) behind the
+    bezel, and it is blue."""
     import glob
     import trimesh
     out = []
     for f in sorted(glob.glob(os.path.join(HERE, "build", "mini2", "*.stl"))):
+        m = trimesh.load(f, force="mesh")
         if "lcd" not in os.path.basename(f):
-            out.append((trimesh.load(f, force="mesh"), "#C4C8CF" if "frame" in f else "#B0B4BC"))
+            out.append((m, "#C4C8CF" if "frame" in f else "#B0B4BC"))
+            continue
+        screen, rest = [], []
+        for b in m.split(only_watertight=False):
+            e = b.extents
+            (screen if e[1] < 1.5 and e[0] > 80.0 else rest).append(b)
+        out.append((trimesh.util.concatenate(rest), MINI_LCD_COLOR))
+        if screen:
+            out.append((trimesh.util.concatenate(screen), MINI_LCD_SCREEN_COLOR))
     return out
 
 
