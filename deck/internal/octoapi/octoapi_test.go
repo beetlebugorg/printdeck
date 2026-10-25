@@ -209,6 +209,9 @@ func TestAppKeysAllow(t *testing.T) {
 	if r.StatusCode != http.StatusCreated {
 		t.Fatalf("request %d", r.StatusCode)
 	}
+	if d, ok := m["auth_dialog"]; !ok || d != "" {
+		t.Errorf("auth_dialog %v (present %v), want an empty one: Cura opens a browser for any other", d, ok)
+	}
 	poll := ts.URL + "/plugin/appkeys/request/" + m["app_token"].(string)
 	if r, _ := do(t, "GET", poll, "", nil, ""); r.StatusCode != http.StatusAccepted {
 		t.Errorf("poll before the answer: %d, want 202", r.StatusCode)

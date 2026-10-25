@@ -14,7 +14,8 @@ import (
 
 // The App Keys flow of OctoPrint (https://docs.octoprint.org/en/master/bundledplugins/appkeys.html):
 //
-//  1. The app posts {"app": "Cura"} to /plugin/appkeys/request, and gets a token.
+//  1. The app posts {"app": "Cura"} to /plugin/appkeys/request, and gets a token and an empty
+//     auth_dialog.
 //  2. The touch screen asks "Allow Cura to use the Printdeck?".
 //  3. The app polls /plugin/appkeys/request/<token>: 202 while the user decides, 200 with the key
 //     after "Allow", and 404 after "Deny" or when the request is too old.
@@ -62,7 +63,9 @@ func (s *Server) requestKey(w http.ResponseWriter, r *http.Request) {
 		s.mu.Unlock()
 	})
 	w.Header().Set("Location", baseURL(r)+"/plugin/appkeys/request/"+token)
-	writeJSON(w, http.StatusCreated, map[string]string{"app_token": token})
+	// The empty auth_dialog tells the app that no web page asks the user: the OctoPrint plugin of
+	// Cura opens a browser to auth_dialog, or to the Printdeck when the answer has none.
+	writeJSON(w, http.StatusCreated, map[string]string{"app_token": token, "auth_dialog": ""})
 }
 
 func (s *Server) pollKey(w http.ResponseWriter, r *http.Request) {
