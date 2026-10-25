@@ -12,11 +12,9 @@ import (
 // unsupported are the example configs that the Go host does not load yet, with the start of
 // their error. Remove a config from the list when its modules are ported.
 var unsupported = map[string]string{
-	"printer-anycubic-kobra-plus-2022.cfg":          "Section 'tmc2209 stepper_x' is not a valid config section",
 	"printer-artillery-sidewinder-x2-2022.cfg":      "Section 'temperature_sensor mainboard' is not a valid config section",
 	"printer-artillery-sidewinder-x3-plus-2024.cfg": "Section 'led led_light' is not a valid config section",
-	"printer-biqu-b1-se-plus-2022.cfg":              "Section 'tmc2208 stepper_x' is not a valid config section",
-	"printer-biqu-bx-2021.cfg":                      "Unknown pin chip name 'tmc2209_stepper_x'",
+	"printer-biqu-bx-2021.cfg":                      "Section 'gcode_button lcd_button' is not a valid config section",
 	"printer-creality-cr10-smart-pro-2022.cfg":      "Section 'temperature_sensor board_mcu' is not a valid config section",
 	"printer-creality-cr10s-pro-v2-2020.cfg":        "Section 'screws_tilt_adjust' is not a valid config section",
 	"printer-creality-cr30-2021.cfg":                "Section 'fan_generic k_fan2' is not a valid config section",
@@ -25,7 +23,6 @@ var unsupported = map[string]string{
 	"printer-creality-ender5-s1-2023.cfg":           "Section 'axis_twist_compensation' is not a valid config section",
 	"printer-creality-sermoonV1-2022.cfg":           "Section 'fan_generic side_fan' is not a valid config section",
 	"printer-elegoo-neptune3-pro-2023.cfg":          "Section 'led top_leds' is not a valid config section",
-	"printer-eryone-er20-2021.cfg":                  "Unknown pin chip name 'tmc2209_stepper_x'",
 	"printer-flashforge-creator-pro-2018.cfg":       "lcd_type 'hd44780_spi' in section 'display' is not supported",
 	"printer-geeetech-301-2019.cfg":                 "Unknown pin chip name 'multi_pin'",
 	"printer-geeetech-A10T-A20T-2021.cfg":           "lcd_type 'aip31068_spi' in section 'display' is not supported",
@@ -34,10 +31,8 @@ var unsupported = map[string]string{
 	"printer-makergear-m2-2012.cfg":                 "Section 'endstop_phase stepper_x' is not a valid config section",
 	"printer-modix-big60-2020.cfg":                  "Unknown temperature sensor 'MAX31865'",
 	"printer-prusa-mini-plus-2020.cfg":              "tachometer_pin in section 'heater_fan hotend_fan' is not supported yet",
-	"printer-ratrig-v-minion-2021.cfg":              "Section 'tmc2209 stepper_x' is not a valid config section",
+	"printer-ratrig-v-minion-2021.cfg":              "Section 'screws_tilt_adjust' is not a valid config section",
 	"printer-sovol-sv05-2022.cfg":                   "Section 'screws_tilt_adjust' is not a valid config section",
-	"printer-sovol-sv06-2022.cfg":                   "Unknown pin chip name 'tmc2209_stepper_x'",
-	"printer-sovol-sv06-plus-2023.cfg":              "Unknown pin chip name 'tmc2209_stepper_x'",
 	"printer-sunlu-t3-2022.cfg":                     "Section 'filament_motion_sensor filament_sensor' is not a valid config section",
 	"printer-tevo-flash-2018.cfg":                   "Section 'homing_override' is not a valid config section",
 	"printer-tronxy-crux1-2022.cfg":                 "Section 'pwm_cycle_time beeper_pin' is not a valid config section",

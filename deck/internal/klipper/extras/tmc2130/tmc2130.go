@@ -42,6 +42,12 @@ var ReadRegisters = []string{
 	"CHOPCONF", "DRV_STATUS", "PWM_SCALE", "LOST_STEPS",
 }
 
+// FieldOrder is the order of the registers of Fields.
+var FieldOrder = []string{"GCONF", "GSTAT", "IOIN", "IHOLD_IRUN", "TPOWERDOWN", "TSTEP", "TPWMTHRS",
+	"TCOOLTHRS", "THIGH", "MSLUT0", "MSLUT1", "MSLUT2", "MSLUT3", "MSLUT4", "MSLUT5", "MSLUT6", "MSLUT7",
+	"MSLUTSEL", "MSLUTSTART", "MSCNT", "MSCURACT", "CHOPCONF", "COOLCONF", "DRV_STATUS", "PWMCONF",
+	"PWM_SCALE", "LOST_STEPS"}
+
 // Fields returns the fields of the registers. Each driver gets its own copy.
 func Fields() map[string]map[string]int64 {
 	f := map[string]map[string]int64{}
@@ -423,7 +429,7 @@ type TMC2130 struct {
 func loadPrefix(config *configfile.Wrapper) any {
 	t := &TMC2130{}
 	// Setup mcu communication
-	t.fields = tmc.NewFieldHelper(Fields(), SignedFields, FieldFormatters, nil)
+	t.fields = tmc.NewFieldHelper(Fields(), FieldOrder, SignedFields, FieldFormatters, nil)
 	t.mcuTMC = NewMCUTMCSPI(config, Registers, t.fields, TMCFrequency)
 	// Allow virtual pins to be created
 	tmc.NewTMCVirtualPinHelper(config, t.mcuTMC)

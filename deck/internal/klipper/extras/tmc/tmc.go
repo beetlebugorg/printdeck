@@ -109,7 +109,9 @@ type FieldHelper struct {
 	fieldToRegister map[string]string
 }
 
-func NewFieldHelper(allFields map[string]map[string]int64, signedFields []string,
+// NewFieldHelper makes the field helper of the fields of each register. regOrder is the order of
+// the registers in the Python dict: a field name in two registers belongs to the last one.
+func NewFieldHelper(allFields map[string]map[string]int64, regOrder []string, signedFields []string,
 	fieldFormatters map[string]func(int64) string, registers *Registers) *FieldHelper {
 	f := &FieldHelper{AllFields: allFields, signedFields: map[string]bool{},
 		fieldFormatters: fieldFormatters, Registers: registers, fieldToRegister: map[string]string{}}
@@ -119,8 +121,8 @@ func NewFieldHelper(allFields map[string]map[string]int64, signedFields []string
 	if f.Registers == nil {
 		f.Registers = NewRegisters()
 	}
-	for r, fields := range allFields {
-		for name := range fields {
+	for _, r := range regOrder {
+		for name := range allFields[r] {
 			f.fieldToRegister[name] = r
 		}
 	}
