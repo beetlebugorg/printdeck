@@ -49,41 +49,59 @@ func Update(bundle string, progress Progress) (slot string, err error) {
 	}
 	slot = otherSlot(cur)
 
+	// The bundle is not unpacked on the disk, because the disk is an SD card. The first read takes
+	// SHA256SUMS and its signature. The second read writes the files of the slot to its partitions,
+	// and checks the sum of each file. With a bad sum, Update fails and the Pi does not start the
+	// slot.
 	work, err := os.MkdirTemp(updateWorkDir, "update.")
 	if err != nil {
 		return "", err
 	}
 	defer os.RemoveAll(work)
-	if err := extractBundleProgress(bundle, work, func(done, total int64) { progress(StepUnpack, done, total) }); err != nil {
+	progress(StepUnpack, 0, 0)
+	if err := extractSums(bundle, work); err != nil {
 		return "", err
 	}
 	progress(StepCheck, 0, 0)
 	if err := checkSignature(work); err != nil {
 		return "", err
 	}
-	if err := checkSums(work); err != nil {
+	sums, err := readSums(work)
+	if err != nil {
 		return "", err
 	}
-
-	// The boot partition and the root file system, as one step.
-	boot, root := filepath.Join(work, "boot-"+slot+".vfat"), filepath.Join(work, "rootfs.erofs")
-	var total int64
-	for _, f := range []string{boot, root} {
-		if fi, err := os.Stat(f); err == nil {
-			total += fi.Size()
+	devs := map[string]string{
+		"boot-" + slot + ".vfat": filepath.Join(partLabelDir, "printdeck-boot-"+slot),
+		"rootfs.erofs":           filepath.Join(partLabelDir, "printdeck-root-"+slot),
+	}
+	progress(StepWrite, 0, 0)
+	err = readBundle(bundle, func(done, total int64) { progress(StepWrite, done, total) }, func(name string, r io.Reader) error {
+		if name == "SHA256SUMS" || name == "SHA256SUMS.sig" {
+			return nil
 		}
-	}
-	var written int64
-	write := func(n int64) {
-		written += n
-		progress(StepWrite, written, total)
-	}
-	progress(StepWrite, 0, total)
-	if err := copyToDevice(boot, filepath.Join(partLabelDir, "printdeck-boot-"+slot), write); err != nil {
+		h := sha256.New()
+		if dev, ok := devs[name]; ok {
+			if err := writeDevice(io.TeeReader(r, h), dev); err != nil {
+				return err
+			}
+			delete(devs, name)
+		} else if _, err := io.Copy(h, r); err != nil {
+			return fmt.Errorf("The bundle is damaged: %w", err)
+		}
+		if hex.EncodeToString(h.Sum(nil)) != sums[name] {
+			return fmt.Errorf("The bundle is damaged: %s", name)
+		}
+		delete(sums, name)
+		return nil
+	})
+	if err != nil {
 		return "", err
 	}
-	if err := copyToDevice(root, filepath.Join(partLabelDir, "printdeck-root-"+slot), write); err != nil {
-		return "", err
+	for name := range devs {
+		return "", fmt.Errorf("The bundle is damaged: it has no %s", name)
+	}
+	for name := range sums {
+		return "", fmt.Errorf("The bundle is damaged: it has no %s", name)
 	}
 	return slot, nil
 }
@@ -122,6 +140,55 @@ func extractBundle(bundle, dir string) error { return extractBundleProgress(bund
 
 // extractBundleProgress is extractBundle, and tells the bytes of the bundle that it read.
 func extractBundleProgress(bundle, dir string, progress func(done, total int64)) error {
+	return readBundle(bundle, progress, func(name string, r io.Reader) error {
+		out, err := os.Create(filepath.Join(dir, name))
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(out, r)
+		if cerr := out.Close(); err == nil {
+			err = cerr
+		}
+		if err != nil {
+			return fmt.Errorf("The bundle is damaged: %w", err)
+		}
+		return nil
+	})
+}
+
+// errStop ends readBundle early with no error.
+var errStop = errors.New("stop")
+
+// extractSums unpacks only SHA256SUMS and SHA256SUMS.sig into dir. The build puts them first in
+// the bundle, so it does not read the rest.
+func extractSums(bundle, dir string) error {
+	found := 0
+	err := readBundle(bundle, nil, func(name string, r io.Reader) error {
+		if name != "SHA256SUMS" && name != "SHA256SUMS.sig" {
+			return errStop
+		}
+		b, err := io.ReadAll(r)
+		if err != nil {
+			return fmt.Errorf("The bundle is damaged: %w", err)
+		}
+		found++
+		if err := os.WriteFile(filepath.Join(dir, name), b, 0o644); err != nil {
+			return err
+		}
+		if found == 2 {
+			return errStop
+		}
+		return nil
+	})
+	if err == errStop {
+		err = nil
+	}
+	return err
+}
+
+// readBundle calls file for each file of a bundle, with its name and its data. It takes only the
+// files of a bundle. progress, if not nil, gets the bytes of the bundle that it read.
+func readBundle(bundle string, progress func(done, total int64), file func(name string, r io.Reader) error) error {
 	f, err := os.Open(bundle)
 	if err != nil {
 		return err
@@ -150,18 +217,32 @@ func extractBundleProgress(bundle, dir string, progress func(done, total int64))
 		if h.Typeflag != tar.TypeReg || !bundleFiles[name] {
 			return fmt.Errorf("The bundle has an unknown file: %s", h.Name)
 		}
-		out, err := os.Create(filepath.Join(dir, name))
-		if err != nil {
+		if err := file(name, tr); err != nil {
 			return err
 		}
-		_, err = io.Copy(out, tr)
-		if cerr := out.Close(); err == nil {
-			err = cerr
+	}
+}
+
+// readSums reads SHA256SUMS in dir: the sum of each file. Each file of the bundle must be in it.
+func readSums(dir string) (map[string]string, error) {
+	b, err := os.ReadFile(filepath.Join(dir, "SHA256SUMS"))
+	if err != nil {
+		return nil, errors.New("The bundle is damaged: it has no SHA256SUMS")
+	}
+	sums := map[string]string{}
+	for _, l := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+		sum, name, ok := strings.Cut(l, "  ")
+		if !ok || !bundleFiles[name] || name == "SHA256SUMS" || name == "SHA256SUMS.sig" {
+			return nil, fmt.Errorf("The bundle is damaged: bad line in SHA256SUMS: %q", l)
 		}
-		if err != nil {
-			return fmt.Errorf("The bundle is damaged: %w", err)
+		sums[name] = sum
+	}
+	for name := range bundleFiles {
+		if _, ok := sums[name]; !ok && name != "SHA256SUMS" && name != "SHA256SUMS.sig" {
+			return nil, fmt.Errorf("The bundle is damaged: SHA256SUMS has no %s", name)
 		}
 	}
+	return sums, nil
 }
 
 // checkSums checks the files in SHA256SUMS (sha256sum -c). Each file of the bundle must be in it.
@@ -203,21 +284,11 @@ func fileSum(path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// copyToDevice writes a file to a partition and waits until the data is on the disk (dd
-// conv=fsync).
-func copyToDevice(src, dev string, written func(n int64)) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
+// writeDevice writes r to a partition and waits until the data is on the disk (dd conv=fsync).
+func writeDevice(r io.Reader, dev string) error {
 	out, err := os.OpenFile(dev, os.O_WRONLY, 0)
 	if err != nil {
 		return err
-	}
-	var r io.Reader = in
-	if written != nil {
-		r = &countReader{r: in, progress: func(n, _ int64) { written(n) }, delta: true}
 	}
 	if _, err := io.CopyBuffer(out, r, make([]byte, 4<<20)); err != nil {
 		out.Close()
