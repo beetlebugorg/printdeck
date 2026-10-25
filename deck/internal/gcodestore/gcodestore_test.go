@@ -75,3 +75,25 @@ func TestBrokenUploadKeepsTheOldFile(t *testing.T) {
 type errReader struct{}
 
 func (errReader) Read([]byte) (int, error) { return 0, errors.New("connection lost") }
+
+func TestSymlinkCanNotLeaveTheStore(t *testing.T) {
+	s := &Store{Dir: t.TempDir()}
+	outside := t.TempDir()
+	os.WriteFile(filepath.Join(outside, "secret.gcode"), []byte("x"), 0o644)
+	if err := os.Symlink(outside, filepath.Join(s.Dir, "link")); err != nil {
+		t.Skip(err)
+	}
+	if _, err := s.Save("link/evil.gcode", strings.NewReader("x")); err == nil {
+		t.Error("save through a symlink out of the store gave no error")
+	}
+	if _, err := os.Stat(filepath.Join(outside, "evil.gcode")); err == nil {
+		t.Error("save wrote a file outside the store")
+	}
+	if r, err := s.Open("link/secret.gcode"); err == nil {
+		r.Close()
+		t.Error("open read a file outside the store")
+	}
+	if err := s.Delete("link/secret.gcode"); err == nil {
+		t.Error("delete removed a file outside the store")
+	}
+}

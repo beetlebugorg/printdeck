@@ -208,6 +208,9 @@ func TestBadPaths(t *testing.T) {
 		{Name: "other/file", Typeflag: tar.TypeReg, Mode: 0o644},
 		{Name: "state/./spools.json", Typeflag: tar.TypeReg, Mode: 0o644},
 		{Name: "state/link", Typeflag: tar.TypeSymlink, Linkname: "/etc/passwd"},
+		{Name: "state/hard", Typeflag: tar.TypeLink, Linkname: "/etc/passwd"},
+		{Name: "state/..\\..\\escape", Typeflag: tar.TypeReg, Mode: 0o644},
+		{Name: "state//escape", Typeflag: tar.TypeReg, Mode: 0o644},
 	} {
 		b := encrypted(t, "pw", []tar.Header{{Name: "state/spools.json", Typeflag: tar.TypeReg, Mode: 0o644}, h})
 		restoreFails(t, b, "pw", sources, state)

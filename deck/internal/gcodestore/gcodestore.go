@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"sort"
@@ -80,7 +81,7 @@ func (s *Store) Open(path string) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	return os.Open(filepath.Join(s.Dir, p))
+	return os.OpenInRoot(s.Dir, p)
 }
 
 // Stat returns the information of a file of the store.
@@ -89,25 +90,40 @@ func (s *Store) Stat(path string) (fs.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return os.Stat(filepath.Join(s.Dir, p))
+	root, err := os.OpenRoot(s.Dir)
+	if err != nil {
+		return nil, err
+	}
+	defer root.Close()
+	return root.Stat(p)
 }
 
 // Save writes a file into the store, and returns its clean path. It writes to a temporary file first,
 // so a broken upload never replaces a good file, and Klipper never reads a half-written file.
+// All file operations go through an os.Root, so a symlink in the folder can not point a write outside it.
 func (s *Store) Save(path string, r io.Reader) (string, error) {
 	p, err := clean(path)
 	if err != nil {
 		return "", err
 	}
-	dst := filepath.Join(s.Dir, p)
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+	if err := os.MkdirAll(s.Dir, 0o755); err != nil {
 		return "", err
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(dst), ".upload-*")
+	root, err := os.OpenRoot(s.Dir)
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove(tmp.Name()) // after the rename this does nothing
+	defer root.Close()
+	dir := filepath.Dir(p)
+	if err := root.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	tmpName := filepath.Join(dir, fmt.Sprintf(".upload-%d", rand.Uint64()))
+	tmp, err := root.OpenFile(tmpName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return "", err
+	}
+	defer root.Remove(tmpName) // after the rename this does nothing
 	if _, err := io.Copy(tmp, r); err != nil {
 		tmp.Close()
 		return "", fmt.Errorf("gcodestore: save %s: %w", p, err)
@@ -115,8 +131,7 @@ func (s *Store) Save(path string, r io.Reader) (string, error) {
 	if err := tmp.Close(); err != nil {
 		return "", err
 	}
-	os.Chmod(tmp.Name(), 0o644)
-	return p, os.Rename(tmp.Name(), dst)
+	return p, root.Rename(tmpName, p)
 }
 
 // FullPath returns the path in the file system of a file of the store.
@@ -134,5 +149,10 @@ func (s *Store) Delete(path string) error {
 	if err != nil {
 		return err
 	}
-	return os.Remove(filepath.Join(s.Dir, p))
+	root, err := os.OpenRoot(s.Dir)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+	return root.Remove(p)
 }
