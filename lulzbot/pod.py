@@ -38,8 +38,8 @@ import math
 import os
 import sys
 
-from build123d import (Axis, Box, Cylinder, Kind, Location, Plane, Polygon, Pos, Rectangle, RectangleRounded, Rot,
-                       extrude, fillet, offset)
+from build123d import (Axis, Box, Cone, Cylinder, Kind, Location, Plane, Polygon, Pos, Rectangle, RectangleRounded, Rot,
+                       chamfer, extrude, fillet, offset)
 
 import shape as S
 
@@ -153,17 +153,20 @@ OPEN_U = (-30.0, 28.8)
 OPEN_V = (26.5, DEEP_V1 + 0.3)
 
 
+BACK_CHAMFER = 1.7              # the back edge of the body: a chamfer 1.7 in from the walls, at SLOPE
+BACK_ROUND = 3.0                # and a round from the chamfer to the walls
+
+
 def body_outer():
-    # The top corners are square: the ears sit on them.
+    # The top corners are square: the ears sit on them. The body prints on its back, so a round on
+    # the back edge faces the bed and needs support. The back edge is a chamfer that rises 50 degrees
+    # (SLOPE), with a round above it.
     o = rounded_box(-DEEP_U, DEEP_U, DEEP_V0, DEEP_V1 + DEEP_R + 1.0, -DEEP_W, -SPLIT_W - 0.1, DEEP_R)
     o = o - uvw_box(-DEEP_U - 1, DEEP_U + 1, DEEP_V1, DEEP_V1 + DEEP_R + 2.0, -DEEP_W - 1, -SPLIT_W + 1)
     back = o.edges().filter_by(lambda e: e.center().Z < -DEEP_W + 0.5)
-    for r in (3.0, 2.0, 1.5):
-        try:
-            return fillet(back, r)
-        except Exception:
-            pass
-    return o
+    o = chamfer(back, BACK_CHAMFER, angle=math.degrees(math.atan(SLOPE)), reference=o.faces().sort_by().first)
+    top = o.edges().filter_by(lambda e: abs(e.center().Z - (-DEEP_W + BACK_CHAMFER * SLOPE)) < 0.05)
+    return fillet(top, BACK_ROUND)
 
 
 def port_span():
@@ -266,12 +269,34 @@ def body():
     s = s - vents()
     for u, v in POSTS:
         f = SPLIT_W + 0.1 + POST_FLOOR                   # the floor of the well, its head side
-        s = s - Pos(u, v, -(f + DEEP_W + 1.0) / 2) * Cylinder(POST_WELL, DEEP_W + 1.0 - f)
+        s = s - Pos(u, v, 0) * screw_well(-DEEP_W - 1.0, -f, POST_WELL, SCREW[3][0] / 2 + 0.15)
         s = s - Pos(u, v, -(SPLIT_W + f) / 2) * Cylinder(1.7, f - SPLIT_W + 1.0)
     # The holes for the screws of the mount.
     for u, v in MOUNT_SCREWS:
         s = s - Pos(u, v, -DEEP_W + FLOOR / 2) * Cylinder(1.7, FLOOR + 2.0)
     return s
+
+
+def screw_well(w0, w1, r, seat):
+    """A well for a screw, open at w0 (on the bed), with the seat of the head at w1. The parts print
+    with the well open on the bed, so the roof of the well is a bridge. The well narrows at 50
+    degrees (SLOPE) from r to the radius of the seat, just out of the head, so the bridge is only
+    the flat seat: 2 x seat across. The head is taller than the cone, so the screwdriver goes in as before."""
+    h = (r - seat) * SLOPE
+    well = Pos(0, 0, (w0 + w1 - h) / 2) * Cylinder(r, w1 - h - w0)
+    return well + Pos(0, 0, w1 - h / 2) * Cone(r, seat, h)
+
+
+def insert_hole(w0, w1, w2):
+    """The hole of a heat-set insert, open at w0, the insert to w1, and the part to w2. The parts
+    print with the hole open on the bed. The end of the hole is a cone (SLOPE), through the floor
+    behind the insert, so the hole has no roof."""
+    sgn = 1.0 if w1 > w0 else -1.0
+    f = abs(w2 - w1)
+    top = INSERT[0] - f / SLOPE
+    hole = Pos(0, 0, (w0 + w1) / 2) * Cylinder(INSERT[0], abs(w1 - w0))
+    cone = Pos(0, 0, w1 + sgn * f / 2) * Rot(0 if sgn > 0 else 180, 0, 0) * Cone(INSERT[0], top, f)
+    return hole + cone + Pos(0, 0, w2) * Cylinder(top, 1.0)
 
 
 def mount():
@@ -280,8 +305,15 @@ def mount():
     s = rounded_box(-MOUNT_U, MOUNT_U, v0, v1, -BACK_W, -DEEP_W - 0.05, 3.0)
     s = s + dovetail()
     for u, v in MOUNT_SCREWS:
-        s = s - Pos(u, v, -DEEP_W - 0.05 - INSERT[1] / 2 + 0.01) * Cylinder(INSERT[0], INSERT[1])
+        s = s - Pos(u, v, 0) * insert_hole(-DEEP_W - 0.04, -DEEP_W - 0.05 - INSERT[1], -BACK_W)
     return s
+
+
+# The holes for the M2.5 screws into the display: 3.3 mm across, 0.4 mm on each side of the screw.
+# The positions are the ones of the drawing of the display. On the first print, one hole was 0.5 to
+# 0.8 mm off the hole of the display, so the holes are 0.4 mm larger than before.
+DISPLAY_HOLE = 1.65
+FOOT = 0.5                      # the chamfer on the bed edge of the frame, across
 
 
 def pod_frame():
@@ -289,6 +321,9 @@ def pod_frame():
     display. It goes down to the bottom of the body, and prints flat on its back ring."""
     v0, v1 = DEEP_V0, BODY_V[1]
     s = rounded_box(-BODY_U, BODY_U, v0, v1, -SPLIT_W, FRONT_W, BODY_R)
+    # The outer edge on the bed: a small chamfer at SLOPE, so the first layer does not bulge out.
+    bed = s.edges().filter_by(lambda e: e.center().Z < -SPLIT_W + 0.01)
+    s = chamfer(bed, FOOT, angle=math.degrees(math.atan(SLOPE)), reference=s.faces().sort_by().first)
     s = s - rounded_box(-BODY_U + WALL, BODY_U - WALL, v0 + WALL, v1 - WALL, -SPLIT_W + FLOOR, FRONT_W + 1.0, BODY_R - WALL)
     # The opening for the Pi, and a notch under it for the loop of the ribbon.
     s = s - rounded_box(OPEN_U[0], OPEN_U[1], OPEN_V[0], OPEN_V[1], -SPLIT_W - 1.0, -SPLIT_W + FLOOR + 0.5, 1.5)
@@ -297,17 +332,17 @@ def pod_frame():
     # The display screws: through the back ring into the raised tabs, and down wells with a 2 mm
     # floor into the holes at the top.
     for u, v in TABS:
-        s = s - Pos(u, v, -SPLIT_W + FLOOR / 2) * Cylinder(1.45, FLOOR + 2.0)
+        s = s - Pos(u, v, -SPLIT_W + FLOOR / 2) * Cylinder(DISPLAY_HOLE, FLOOR + 2.0)
     for u, v in HOLES:
         f0, f1 = FRAME_W + 0.2, FRAME_W + 2.2
-        s = s + Pos(u, v, -(f0 + SPLIT_W - 1.0) / 2) * Cylinder(5.0, SPLIT_W - 1.0 - f0)
-        s = s - Pos(u, v, -(f1 + SPLIT_W + 1.0) / 2) * Cylinder(3.95, SPLIT_W + 1.0 - f1)
-        s = s - Pos(u, v, -(f0 + f1) / 2) * Cylinder(1.45, f1 - f0 + 1.0)
+        s = s + Pos(u, v, -(f0 + SPLIT_W) / 2) * Cylinder(5.0, SPLIT_W - f0)    # from the bed: no ledge over the opening
+        s = s - Pos(u, v, 0) * screw_well(-SPLIT_W - 1.0, -f1, 3.95, SCREW[2.5][0] / 2 + 0.15)
+        s = s - Pos(u, v, -(f0 + f1) / 2) * Cylinder(DISPLAY_HOLE, f1 - f0 + 1.0)
     # The bosses with the inserts for the screws of the body.
     for u, v in POSTS:
         boss = INSERT[1] + INSERT_FLOOR
         s = s + Pos(u, v, -SPLIT_W + boss / 2) * Cylinder(4.0, boss)
-        s = s - Pos(u, v, -SPLIT_W + INSERT[1] / 2 - 0.01) * Cylinder(INSERT[0], INSERT[1])
+        s = s - Pos(u, v, 0) * insert_hole(-SPLIT_W - 0.01, -SPLIT_W + INSERT[1], -SPLIT_W + boss)
     return s
 
 
@@ -352,27 +387,43 @@ def plate_y(v):
 BAR_Y = (plate_y(DOVE[3][0] - 3.0 - DOVE_CLR) - 1.0, 240.0)
 
 
+NUB_GAP = 0.35                  # from the cover to the inner face of the nub
+CLIP_CLR = 0.35                 # the gap on each side of the key of a rail clip in its slot
+CLIP_TIP = 0.2                  # the gap at the tip of the key: 0.8 mm of plate stays in front of the slot
+
+
 def bracket(with_wedge=True):
     """The TAZ bracket, in mount coordinates: a leg on the rail with the two clips, a bar across the top
     to the cover screw, and the wedge with the slot for the dovetail of the pod. The wedge is a separate
     part (wedge_part), screwed to the plate; with_wedge adds it for the checks and the window."""
     zc = S.RAIL_SLOT_Z
-    k0, k1 = S.CLIP_KEY[0] / 2 + S.CLR, S.CLIP_KEY[1] / 2 + S.CLR
     leg = mbox(X_BACK, X_BACK + PLATE, CLIP_Y[0] - 14, BAR_Y[1], zc - 10, zc + 10)
-    bar = mbox(X_BACK, X_BACK + PLATE, BAR_Y[0], BAR_Y[1], zc - 10, 3.3)
+    bar = mbox(X_BACK, X_BACK + PLATE, BAR_Y[0], BAR_Y[1], zc - 10, NUB_GAP + 3.3)
     b = leg + bar
-    # The nub on the cover screw: a tab along the cover, its slot open at the bottom.
+    # The nub on the cover screw: a tab along the cover, its slot open at the bottom. Its inner face is
+    # NUB_GAP off the cover, so the bracket goes over the edge of the case without force. The cover
+    # screw pulls the nub onto the cover.
     x_s, y_s = COVER_SCREW
-    nub = mbox(x_s - 9.0, X_BACK + 0.01, BAR_Y[0], BAR_Y[1], 0.0, 3.3)
+    nub = mbox(x_s - 9.0, X_BACK + 0.01, BAR_Y[0], BAR_Y[1], NUB_GAP, NUB_GAP + 3.3)
     b = b + nub
     b = b - mbox(x_s - 3.5, x_s + 3.5, BAR_Y[0] - 1, y_s, -1, 4.3) - Pos(x_s, y_s, 1.65) * Cylinder(1.8, 6)
     # The dovetail slots of the clips (the same as the deck case).
+    # The slots are CLIP_CLR wider than the key on each side, and CLIP_TIP deeper than the key.
     kd = S.BACK_X[1] - S.BACK_X[0]
+    k0, k1 = S.CLIP_KEY[0] / 2 + CLIP_CLR, S.CLIP_KEY[1] / 2 + CLIP_CLR
     for yc in CLIP_Y:
         d0, d1 = yc - S.CLIP_L / 2 - S.CLIP_SLACK, yc + S.CLIP_L / 2 + S.CLIP_SLACK
-        dov = Polygon((zc - k0, X_BACK - 0.01), (zc + k0, X_BACK - 0.01), (zc + k1, X_BACK + kd), (zc - k1, X_BACK + kd), align=None)
+        dov = Polygon((zc - k0, X_BACK - 0.01), (zc + k0, X_BACK - 0.01), (zc + k1, X_BACK + kd),
+                      (zc + k1, X_BACK + kd + CLIP_TIP), (zc - k1, X_BACK + kd + CLIP_TIP), (zc - k1, X_BACK + kd),
+                      align=None)
         b = b - Location(Plane(origin=(0, d0, 0), x_dir=(0, 0, 1), z_dir=(0, 1, 0))) * extrude(Plane.XY * dov, amount=d1 - d0)
-        b = b - mbox(X_BACK - 1, X_BACK + kd + 0.2, d0 - S.CLIP_DROP, d0 + 0.5, zc - k1 - 0.2, zc + k1 + 0.2)
+        # The window where the clip drops in. The bracket prints standing on its top, so the lower end
+        # of the window closes at 45 degrees to a point, and it is not a flat roof.
+        ya, hw = d0 - S.CLIP_DROP, k1 + 0.2
+        win = Polygon((ya - k0, zc), (ya, zc + k0), (ya + hw - k0, zc + hw), (d0 + 0.5, zc + hw), (d0 + 0.5, zc - hw),
+                      (ya + hw - k0, zc - hw), (ya, zc - k0), align=None)
+        pl = Plane(origin=(X_BACK - 1, 0, 0), x_dir=(0, 1, 0), z_dir=(1, 0, 0))
+        b = b - extrude(pl * win, amount=kd + 1.0 + CLIP_TIP, dir=(1, 0, 0))
     b = b - wedge_groove("taz", BAR_Y[1])
     if with_wedge:
         b = b + wedge("taz")
@@ -386,8 +437,13 @@ def tie_anchor(x0, y0, z0, axis):
     if axis == "taz":
         b = mbox(x0, x0 + 5.0, y0 - 6.0, y0 + 6.0, z0 - 4.0, z0 + 4.0)
         return b, mbox(x0 + 0.01, x0 + 2.4, y0 - 7.0, y0 + 7.0, z0 - 2.2, z0 + 2.2)
+    # The Mini 2 bracket prints on the back of the plate, so the top of the passage is a point with
+    # sides at 45 degrees.
     b = mbox(x0 - 6.0, x0 + 6.0, y0 - 5.0, y0, z0 - 4.0, z0 + 4.0)
-    return b, mbox(x0 - 7.0, x0 + 7.0, y0 - 2.4, y0 - 0.01, z0 - 2.2, z0 + 2.2)
+    prof = Polygon((y0 - 0.01, z0 - 2.2), (y0 - 0.01, z0 + 2.2), (y0 - 1.4, z0 + 2.2), (y0 - 3.6, z0), (y0 - 1.4, z0 - 2.2),
+                   align=None)
+    pl = Plane(origin=(x0 - 7.0, 0, 0), x_dir=(0, 1, 0), z_dir=(1, 0, 0))
+    return b, extrude(pl * prof, amount=14.0, dir=(1, 0, 0))
 
 
 # The wedge is a separate part. A dovetail key on its back slides down into a dovetail groove in the
@@ -435,6 +491,20 @@ def key_prism(name, clr, v0, v1):
     return extrude(pl * prof, amount=v1 - v0, dir=up)
 
 
+def key_floor(name, drop=0.0):
+    """The space over the lower end of the key: a plane that rises into the plate at 50 degrees
+    (SLOPE), from the root of the key on the level bottom of the wedge. With drop, the plane is lower
+    by drop (the end of the groove). The TAZ bracket prints standing on its top, so the end of the
+    groove is a slope and not a flat roof."""
+    import numpy as np
+    loc, n, up, across, p0, _ = wedge_frame(name)
+    n, up = np.array(n), np.array(up)
+    o = np.array(p0, float)
+    o = o - np.dot(o, up) * up + (wedge_bottom(name) + 0.5 * SLOPE - drop) * up
+    big = 1000.0
+    return Location(Plane(origin=tuple(o), z_dir=tuple(up + SLOPE * n))) * Pos(0, 0, big / 2) * Box(big, big, big)
+
+
 def wedge(name):
     """The wedge of a bracket: from the plate to the back of the pod, behind the dovetail of the mount,
     with the slot of that dovetail open at the top, a level bottom, and the key on its back."""
@@ -447,13 +517,14 @@ def wedge(name):
     above = Location(Plane(origin=tuple(np.array(up) * (yb + big / 2)), z_dir=up)) * Box(2 * big, 2 * big, big)
     w = (w & above) - loc * dovetail(DOVE_CLR, 40.0)
     top = max(float(np.dot(np.array([vv.X, vv.Y, vv.Z]), up)) for vv in w.vertices())
-    return w + key_prism(name, 0.0, yb, top)
+    return w + (key_prism(name, 0.0, yb, top) & key_floor(name))
 
 
 def wedge_groove(name, top):
     """The groove for the key in the plate: from the bottom of the wedge to above the top of the
     plate."""
-    return key_prism(name, DOVE_CLR, wedge_bottom(name) - DOVE_CLR, top + 1.0)
+    yb = wedge_bottom(name)
+    return key_prism(name, DOVE_CLR, yb - DOVE_CLR - 3.0, top + 1.0) & key_floor(name, DOVE_CLR * math.hypot(1, SLOPE))
 
 
 def wedge_part():
@@ -1088,7 +1159,7 @@ def bracket_screws(name):
     printer through the nub, on the Mini 2 the two frame screws (M3 x 10) through the plate."""
     if name == "taz":
         x_s, y_s = COVER_SCREW
-        return screw(3, 8.0, (x_s, y_s, 3.3), (0, 0, 1))
+        return screw(3, 8.0, (x_s, y_s, NUB_GAP + 3.3), (0, 0, 1))
     out = None
     for x, z in MINI_SCREWS:
         sc = screw(3, 10.0, (x, MINI_PLATE_Y - PLATE, z), (0, -1, 0))
@@ -1287,10 +1358,11 @@ def print_parts(process):
     if process == "fdm":
         # The body: flat on its back. The frame: flat on its back ring. The mount: flat on the face
         # that goes on the body, the dovetail up. The wedge: standing on its level bottom, the key and
-        # the slot up. The TAZ bracket: the front of the plate on the bed. The Mini 2 bracket: the frame
-        # side of the plate on the bed. The clips: the base on the bed.
+        # the slot up. The TAZ bracket: standing on the top end of its plate, so the groove of the
+        # wedge and the slots of the clips run up from the bed. The Mini 2 bracket: the frame side of
+        # the plate on the bed. The clips: the base on the bed. No part needs supports.
         rots = {"case": Rot(0, 0, 0), "frame": Rot(0, 0, 0), "mount": Rot(180, 0, 0), "wedge": Rot(90, 0, 0),
-                "taz": Rot(0, 90, 0), "mini": Rot(-90, 0, 0), "clip": Rot(0, 0, 0)}
+                "taz": Rot(-90, 0, 0), "mini": Rot(-90, 0, 0), "clip": Rot(0, 0, 0)}
     else:
         # Resin prints from the build plate down: the backs of the body, the frame and the brackets
         # face the build plate, so the open fronts face away from it and no cup of resin forms. Every
