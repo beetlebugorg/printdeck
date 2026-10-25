@@ -22,6 +22,7 @@ import (
 	_ "printdeck/internal/klipper/extras/extruder_stepper"
 	_ "printdeck/internal/klipper/extras/fan"
 	_ "printdeck/internal/klipper/extras/fan_generic"
+	_ "printdeck/internal/klipper/extras/filament_motion_sensor"
 	_ "printdeck/internal/klipper/extras/filament_switch_sensor"
 	_ "printdeck/internal/klipper/extras/firmware_retraction"
 	_ "printdeck/internal/klipper/extras/force_move"
