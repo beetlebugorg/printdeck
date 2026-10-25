@@ -125,7 +125,7 @@ func (a *App) OpenPrintScreen(name string) {
 	case "macros":
 		a.pages = []page{pageMachine, pageMacros}
 	case "history":
-		a.pages = []page{pageMachine, pageHistory}
+		a.pages = []page{pageMachine, pageStats, pageHistory}
 	case "rolls":
 		a.pages = []page{pageFilament, pageSpools}
 	case "roll":
@@ -140,7 +140,7 @@ func (a *App) OpenPrintScreen(name string) {
 		a.form.name, a.form.scale, a.form.reel, a.form.price = "Galaxy Black", 1180, 180, 22
 	case "record":
 		a.record = a.Printer.History()[0]
-		a.pages = []page{pageMachine, pageHistory, pageRecord}
+		a.pages = []page{pageMachine, pageStats, pageHistory, pageRecord}
 	case "stats":
 		a.pages = []page{pageMachine, pageStats}
 	case "settings":

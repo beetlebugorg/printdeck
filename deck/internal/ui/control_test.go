@@ -545,3 +545,49 @@ func TestColorChangePause(t *testing.T) {
 		t.Errorf("roll in the printer %q, want 2", in.ID)
 	}
 }
+
+// Prints on the Machine page opens Statistics, and History there opens the list of the prints.
+// Back goes back the same way.
+func TestMachinePrints(t *testing.T) {
+	a, pr, cv := newPrintApp(idle)
+	pr.History_ = []printer.Record{{File: "cube.gcode", Result: "complete", Filament: 2000, End: time.Unix(20, 0)}}
+	a.pages = []page{pageMachine}
+	for _, step := range []struct {
+		key  string
+		want page
+	}{{"Prints", pageStats}, {"History", pageHistory}, {"Back", pageStats}, {"Back", pageMachine}} {
+		tapLabel(t, a, cv, step.key)
+		if a.topPage() != step.want {
+			t.Fatalf("page %v after %s, want %v", a.topPage(), step.key, step.want)
+		}
+	}
+}
+
+// On a wide screen the rows of Machine do not fit, and the list scrolls with its headings. A row
+// under the list takes no tap. The knob scrolls it into view, and then a tap opens its page.
+func TestMachineGroupsScroll(t *testing.T) {
+	a, _, _ := newPrintApp(idle)
+	a.Wide = true
+	cv := gfx.New(a.Screen().W, a.Screen().H)
+	a.pages = []page{pageMachine}
+	a.Draw(cv)
+	var settings focusItem
+	for _, f := range a.focus {
+		if f.label == lcdText("Settings") {
+			settings = f
+		}
+	}
+	if settings.reveal == nil {
+		t.Fatal("no Settings row")
+	}
+	p := settings.r.Min.Add(settings.r.Size().Div(2))
+	tapAt(a, cv, p.X, p.Y)
+	if a.topPage() != pageMachine {
+		t.Fatalf("a tap under the list opened page %v", a.topPage())
+	}
+	settings.reveal()
+	tapLabel(t, a, cv, "Settings")
+	if a.topPage() != pageSettings {
+		t.Fatalf("page %v, want Settings", a.topPage())
+	}
+}

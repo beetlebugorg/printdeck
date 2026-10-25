@@ -194,7 +194,7 @@ func (a *App) lastPrintPanel(c *gfx.Canvas, st printer.State, area image.Rectang
 		rec := l
 		a.addHit(kit.Hit{R: pic, Tap: func() {
 			a.record = rec
-			a.pages = []page{pageMachine, pageHistory, pageRecord}
+			a.pages = []page{pageMachine, pageStats, pageHistory, pageRecord}
 			a.Redraw()
 		}})
 	}

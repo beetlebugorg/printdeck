@@ -569,23 +569,27 @@ func manualParts() []section {
 				{Name: "machine", Caption: "The Machine page", Setup: page("machine"),
 					Callouts: []callout{
 						{"Information", "The version of Klipper, the state of the firmware of the board, the network address, and the totals."},
-						{"Software update", "The version of the deck, and a new version when there is one. See Update the Printdeck."},
-						{"Maintenance", "The calibrations, the firmware, and Save config. See Maintenance."},
-						{"Statistics", "The totals of all prints."},
-						{"Print history", "Each print, with its result. Tap a print to see its model, its time and its filament, and to print it again."},
+						{"Maintenance", "The calibrations that the printer has, the firmware, and Save config. See Maintenance."},
+						{"Macros", "The macros of the printer. Tap one to run it."},
+						{"Console", "The G-code terminal of Klipper. See below."},
 						{"Restart Klipper", "Restarts the Klipper host, which reads printer.cfg again."},
 						{"Firmware restart", "Restarts the firmware of the board, for example after a stop."},
 					},
 					Tall: []callout{
-						{"Macros", "The macros of the printer. Tap one to run it."},
-						{"Console", "The G-code terminal of Klipper. See below."},
-						{"Settings", "The theme, the clock, and the homing in a filament change. See below."},
-						{"Wi-Fi and help", "The network, the password and the addresses."},
+						{"Prints", "The totals of all prints. History on that page lists each print. See below."},
+					},
+					Notes: []string{"The rows are in groups: the printer, the history of the prints, and the deck. Drag the list up to see the rows further down."}},
+				{Name: "machine-prints", Caption: "The Machine page, further down", Layout: "wide",
+					// The list scrolled to the heading of the history: 24 + 5 + 3 × (60 + 5) + 10 pixels.
+					Setup: func(s *manualState) { s.p.State_ = stIdle; s.a.OpenPrintScreen("machine"); s.a.DemoScroll(234) },
+					Callouts: []callout{
+						{"Prints", "The totals of all prints. History on that page lists each print. See below."},
 					}},
-				{Name: "machine-more", Caption: "The Machine page, further down", Layout: "wide",
+				{Name: "machine-more", Caption: "The Machine page, at the bottom",
 					Setup: func(s *manualState) { s.p.State_ = stIdle; s.a.OpenPrintScreen("machine"); s.a.DemoScroll(9999) },
 					Callouts: []callout{
 						{"Settings", "The theme, the clock, and the homing in a filament change. See below."},
+						{"Software update", "The version of the deck, and a new version when there is one. See Update the Printdeck."},
 						{"Wi-Fi and help", "The network, the password and the addresses."},
 					}},
 				{Name: "settings", Caption: "The Settings page",
@@ -642,6 +646,7 @@ func manualParts() []section {
 						{"Totals", "The number of prints, the success rate, the print time and the filament."},
 						{"Results", "Done (amber), cancelled and failed (red)."},
 						{"Details", "The filament in grams (for 1.75 mm PLA), the average and the longest print, the prints of the last 7 and 30 days, and the file that you print most."},
+						{"History", "Each print, with its result. Tap a print to see its model, its time and its filament, and to print it again. Back goes to Statistics."},
 					}},
 			}},
 		{ID: "web", Title: "The deck in the browser",
@@ -879,7 +884,7 @@ func manualSections() []section {
 
 		{Chapter: care, ID: "machine", Title: "Look after the printer",
 			Intro:   []string{"Machine has the information of the printer, the history of the prints, the macros, the console and the settings."},
-			Figures: fig("machine", "machine-more", "settings", "stats", "console")},
+			Figures: fig("machine", "machine-prints", "machine-more", "settings", "stats", "console")},
 		{Chapter: care, ID: "update", Title: "Update the Printdeck",
 			Intro: []string{
 				"The deck checks for a new version once a day. Machine then shows Software update in orange.",

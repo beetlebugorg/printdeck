@@ -90,6 +90,125 @@ func (a *App) menuRowsWait(c *gfx.Canvas, area image.Rectangle, wide bool, rowH,
 	}
 }
 
+// menuGroup is a group of rows of a menu page, under a heading.
+type menuGroup struct {
+	heading string
+	items   []menuItem
+}
+
+// groupHeadH is the height of the heading of a group of rows. groupSpace is the space over the
+// heading of each group after the first.
+const groupHeadH, groupSpace = 24, 10
+
+// menuGroups draws the groups of rows of a menu page from the top of area, each group under its
+// heading. The rows share the height of the area, at most rowH high on a wide screen and 1.6 times
+// rowH on a tall screen, as in menuRows. When the rows do not fit, the headings and the rows are
+// in a list that scrolls, with rows of a size to touch.
+func (a *App) menuGroups(c *gfx.Canvas, area image.Rectangle, wide bool, rowH, gap int, groups []menuGroup) {
+	// The parts from the top of the list: the headings, and the rows.
+	type part struct {
+		y, h    int
+		top     int // the top of a row, or of the heading over the first row of a group
+		heading string
+		it      menuItem
+		row     bool
+	}
+	var shown []menuGroup
+	n := 0
+	for _, g := range groups {
+		if len(g.items) > 0 {
+			shown = append(shown, g)
+			n += len(g.items)
+		}
+	}
+	if n == 0 {
+		return
+	}
+	fixed := len(shown)*(groupHeadH+gap) + (len(shown)-1)*groupSpace
+	limit := rowH
+	if !wide {
+		limit = rowH * 16 / 10
+	}
+	rowH = min(limit, (area.Dy()-fixed+gap)/n-gap)
+	var parts []part
+	y := 0
+	for gi, g := range shown {
+		if gi > 0 {
+			y += groupSpace
+		}
+		top := y
+		parts = append(parts, part{y: y, h: groupHeadH, heading: g.heading})
+		y += groupHeadH + gap
+		for _, it := range g.items {
+			h := max(rowH, minRowH)
+			if gfx.FinePrint() {
+				// The large text: a row is high enough for the title and the lines under it.
+				h = max(h, largeRowH(len(subLines(it.sub, area.Dx()-largeRowInset))))
+			}
+			parts = append(parts, part{y: y, h: h, top: top, it: it, row: true})
+			y += h + gap
+			top = y
+		}
+	}
+	total := y - gap
+	scroll := a.pageScroll()
+	maxScroll := max(0, total-area.Dy())
+	*scroll = max(0, min(*scroll, maxScroll))
+	rect := func(p part) image.Rectangle {
+		y := area.Min.Y + p.y - *scroll
+		return image.Rect(area.Min.X, y, area.Max.X, y+p.h)
+	}
+	if maxScroll == 0 {
+		// All the rows fit: rows that stay in their place.
+		for _, p := range parts {
+			if p.row {
+				a.menuRow(c, rect(p), p.it.title, p.it.sub, p.it.col, p.it.tap)
+			} else {
+				label(c, rect(p), p.heading, gfx.Left)
+			}
+		}
+		return
+	}
+	c.Clipped(area, func(c *gfx.Canvas) {
+		for _, p := range parts {
+			switch r := rect(p); {
+			case !r.Overlaps(area):
+			case p.row:
+				a.drawMenuRow(c, r, p.it.title, p.it.sub, p.it.col, p.it.tap != nil, false)
+			default:
+				label(c, r, p.heading, gfx.Left)
+			}
+		}
+	})
+	a.addHit(kit.Hit{R: area,
+		Scroll: func(dy int) { *scroll = max(0, min(*scroll+dy, maxScroll)) },
+		TapAt: func(pt image.Point) {
+			for _, p := range parts {
+				if p.row && p.it.tap != nil && pt.In(rect(p)) {
+					p.it.tap()
+					return
+				}
+			}
+		}})
+	if !a.collect {
+		return
+	}
+	for _, p := range parts {
+		if !p.row || p.it.tap == nil {
+			continue
+		}
+		// The knob scrolls the row into view, with the heading over the first row of a group.
+		reveal := func() {
+			if p.top < *scroll {
+				*scroll = p.top
+			} else if p.y+p.h > *scroll+area.Dy() {
+				*scroll = p.y + p.h - area.Dy()
+			}
+		}
+		a.focus = append(a.focus, focusItem{label: lcdText(p.it.title), r: rect(p), tap: p.it.tap, reveal: reveal})
+	}
+}
+
 // drawMaintenance lists the calibrations that the printer has (the modules of Klipper).
 func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
@@ -335,26 +454,28 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 			macros += fmt.Sprintf(", %d more", n-2)
 		}
 	}
-	items := []menuItem{
-		{"Maintenance", "Calibrations, firmware, save config", dim, func() { a.open(pageMaintenance) }},
-		{"Statistics", fmt.Sprintf("%d prints · %d h · %s of filament", prints, hours, a.weight(filament)), dim, func() { a.open(pageStats) }},
-		{"Print history", "Each print, with the result", dim, func() { a.open(pageHistory) }},
+	// The groups, with the rows that are used most at the top.
+	printerRows := []menuItem{
+		{"Maintenance", maintenanceLine(mach, st), dim, func() { a.open(pageMaintenance) }},
 		{"Macros", macros, dim, func() { a.open(pageMacros) }},
 		{"Console", "Type G-code, and read the replies", dim, func() { a.open(pageConsole) }},
-		{"Settings", "Theme, clock, notifications", dim, func() { a.open(pageSettings) }},
 	}
+	printRows := []menuItem{
+		{"Prints", fmt.Sprintf("%d prints · %d h · %s", prints, hours, a.weight(filament)), dim, func() { a.open(pageStats) }},
+	}
+	deckRows := []menuItem{{"Settings", "Theme, clock, notifications", dim, func() { a.open(pageSettings) }}}
 	if a.Updater != nil {
 		line, warn := updateLine(a.Updater.Status())
 		col := dim
 		if warn {
 			col = orange
 		}
-		items = append([]menuItem{{"Software update", line, col, func() { a.open(pageUpdate) }}}, items...)
+		deckRows = append(deckRows, menuItem{"Software update", line, col, func() { a.open(pageUpdate) }})
 	}
 	if a.Setup != nil {
-		items = append(items, menuItem{"Wi-Fi and help", "The network, the password, the addresses", dim, a.OpenHelp})
+		deckRows = append(deckRows, menuItem{"Wi-Fi and help", "The network, the password, the addresses", dim, a.OpenHelp})
 	}
-	a.menuRows(c, rowsArea, f.wide, 60, 5, items)
+	a.menuGroups(c, rowsArea, f.wide, 60, 5, []menuGroup{{"Printer", printerRows}, {"History", printRows}, {"Deck", deckRows}})
 	k := kit.Cols(restart, 12, kit.Fr(1), kit.Fr(1))
 	// The destructive action at the left.
 	a.printerKey(c, k[1], "Restart Klipper", raised, text, func() {
@@ -369,6 +490,31 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 			a.do(pr.FirmwareRestart)
 		}}
 	})
+}
+
+// maintenanceLine is the line of the Maintenance row: the calibrations that the printer has, and
+// the firmware.
+func maintenanceLine(mach printer.Machine, st printer.State) string {
+	var names []string
+	for _, m := range []struct{ module, name string }{
+		{"bed_mesh", "bed mesh"}, {"bed_tilt", "bed tilt"}, {"screws_tilt_adjust", "screws"},
+		{"probe", "Z offset"}, {"extruder", "PID"},
+	} {
+		if mach.Has(m.module) {
+			names = append(names, m.name)
+		}
+	}
+	if board.CanFlash("") && st.Firmware != "" {
+		names = append(names, "firmware")
+	}
+	if len(names) == 0 {
+		return "Nozzle change, save config"
+	}
+	if len(names) > 4 {
+		names = append(names[:3], fmt.Sprintf("%d more", len(names)-3))
+	}
+	s := strings.Join(names, ", ")
+	return strings.ToUpper(s[:1]) + s[1:]
 }
 
 // drawMacros lists the macros of the printer. A tap runs one, after a question.
@@ -581,7 +727,8 @@ func (a *App) toggleSwapHome() {
 }
 
 // drawStats is the Statistics page: the totals of the print history. A wide screen has the four
-// totals in the left column, and the results and the details at the right.
+// totals in the left column, and the results and the details at the right. History in the head
+// opens the list of the prints.
 func (a *App) drawStats(c *gfx.Canvas) {
 	f := a.navPage(c, "Statistics")
 	s := printer.ComputeStats(a.Printer.History(), a.Now())
@@ -590,6 +737,7 @@ func (a *App) drawStats(c *gfx.Canvas) {
 		noItems(c, body, "", "No finished prints yet")
 		return
 	}
+	a.headKey(c, f.head, "History", func() { a.open(pageHistory) })
 	success := 100 * s.Completed / s.Prints
 	tiles := [][2]string{
 		{"PRINTS", fmt.Sprint(s.Prints)},
