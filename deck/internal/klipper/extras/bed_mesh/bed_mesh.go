@@ -972,11 +972,11 @@ func (c *BedMeshCalibrate) probeFinalize(results [][3]float64) {
 			idx := i + idxOffset
 			// Add "normal" points
 			correctedPts = append(correctedPts, positions[startIdx:idx]...)
-			sum := 0.
+			var zs []float64
 			for _, p := range positions[idx : idx+len(pts)] {
-				sum += p[2]
+				zs = append(zs, p[2])
 			}
-			avgZ := sum / float64(len(pts))
+			avgZ := mathutil.Sum(zs...) / float64(len(pts))
 			idxOffset += len(pts) - 1
 			startIdx = idx + len(pts)
 			fpt[2] = avgZ

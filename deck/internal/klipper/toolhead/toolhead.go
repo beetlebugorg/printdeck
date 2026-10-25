@@ -25,6 +25,7 @@ import (
 	"printdeck/internal/klipper/extras/motion_queuing"
 	"printdeck/internal/klipper/gcode"
 	"printdeck/internal/klipper/host"
+	"printdeck/internal/klipper/mathutil"
 	"printdeck/internal/klipper/mcu"
 	"printdeck/internal/klipper/motion"
 	"printdeck/internal/klipper/pins"
@@ -102,7 +103,7 @@ func NewMove(th *ToolHead, startPos, endPos []float64, speed float64) *Move {
 		m.AxesD[i] = endPos[i] - startPos[i]
 	}
 	axesD := m.AxesD
-	m.MoveD = math.Sqrt(axesD[0]*axesD[0] + axesD[1]*axesD[1] + axesD[2]*axesD[2])
+	m.MoveD = math.Sqrt(mathutil.Sum(axesD[0]*axesD[0], axesD[1]*axesD[1], axesD[2]*axesD[2]))
 	var invMoveD float64
 	if m.MoveD < .000000001 {
 		// Extrude only move

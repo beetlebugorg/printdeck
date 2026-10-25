@@ -25,6 +25,7 @@ import (
 	"printdeck/internal/klipper/extras/manual_probe"
 	"printdeck/internal/klipper/gcode"
 	"printdeck/internal/klipper/host"
+	"printdeck/internal/klipper/mathutil"
 	"printdeck/internal/klipper/mcu"
 	"printdeck/internal/klipper/pins"
 	"printdeck/internal/klipper/reactor"
@@ -45,21 +46,21 @@ func CalcProbeZAverage(positions []*result, method string) *result {
 	if method != "median" {
 		// Use mean average
 		inv := 1. / float64(len(positions))
-		var r result
-		for _, p := range positions {
-			r.BedX_ += p.BedX_
-			r.BedY_ += p.BedY_
-			r.BedZ_ += p.BedZ_
-			r.TestX += p.TestX
-			r.TestY += p.TestY
-			r.TestZ += p.TestZ
+		avg := func(get func(p *result) float64) float64 {
+			vals := make([]float64, len(positions))
+			for i, p := range positions {
+				vals[i] = get(p)
+			}
+			return mathutil.Sum(vals...) * inv
 		}
-		r.BedX_ *= inv
-		r.BedY_ *= inv
-		r.BedZ_ *= inv
-		r.TestX *= inv
-		r.TestY *= inv
-		r.TestZ *= inv
+		r := result{
+			BedX_: avg(func(p *result) float64 { return p.BedX_ }),
+			BedY_: avg(func(p *result) float64 { return p.BedY_ }),
+			BedZ_: avg(func(p *result) float64 { return p.BedZ_ }),
+			TestX: avg(func(p *result) float64 { return p.TestX }),
+			TestY: avg(func(p *result) float64 { return p.TestY }),
+			TestZ: avg(func(p *result) float64 { return p.TestZ }),
+		}
 		return &r
 	}
 	// Use median

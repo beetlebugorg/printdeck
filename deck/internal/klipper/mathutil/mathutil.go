@@ -20,14 +20,12 @@ import (
 // Matrix helper functions for NxM matrices
 
 func dot(a, b []float64) float64 {
-	s := 0.
-	for i := range a {
-		if i >= len(b) {
-			break
-		}
-		s += a[i] * b[i]
+	n := min(len(a), len(b))
+	prods := make([]float64, n)
+	for i := range n {
+		prods[i] = a[i] * b[i]
 	}
-	return s
+	return Sum(prods...)
 }
 
 // MatTransp transposes a matrix.
@@ -251,14 +249,7 @@ func CoordinateDescent(adjParams []string, params map[string]float64, errorFunc 
 	threshold := 0.00001
 	rounds := 0
 
-	sum := func() float64 {
-		s := 0.
-		for _, v := range dp {
-			s += v
-		}
-		return s
-	}
-	for sum() > threshold && rounds < 10000 {
+	for Sum(dp...) > threshold && rounds < 10000 {
 		rounds++
 		for i, paramName := range adjParams {
 			orig := params[paramName]

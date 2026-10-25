@@ -22,6 +22,7 @@ import (
 	"printdeck/internal/klipper/configfile"
 	"printdeck/internal/klipper/gcode"
 	"printdeck/internal/klipper/host"
+	"printdeck/internal/klipper/mathutil"
 	"printdeck/internal/klipper/mcu"
 	"printdeck/internal/klipper/pyfmt"
 	"printdeck/internal/klipper/reactor"
@@ -156,12 +157,12 @@ func mcuStepper(s mcu.Stepper) *stepper.MCUStepper { return s.(*stepper.MCUStepp
 
 func (hm *HomingMove) calcEndstopRate(endstop Endstop, movepos []float64, speed float64) float64 {
 	startpos := hm.toolhead.Position()
-	var sum float64
-	for i := 0; i < 3; i++ {
+	var sq [3]float64
+	for i := range 3 {
 		d := movepos[i] - startpos[i]
-		sum += d * d
+		sq[i] = d * d
 	}
-	moveT := math.Sqrt(sum) / speed
+	moveT := math.Sqrt(mathutil.Sum(sq[:]...)) / speed
 	maxSteps := math.Inf(-1)
 	for _, s := range endstop.Steppers() {
 		ms := mcuStepper(s)
@@ -392,14 +393,14 @@ func (h *Homing) retractMove(hi stepper.HomingInfo, forcepos, movepos []float64)
 	startpos := h.fillCoord(forcepos)
 	homepos := h.fillCoord(movepos)
 	axesD := make([]float64, len(homepos))
-	var sum float64
+	var sq []float64
 	for i := range homepos {
 		axesD[i] = homepos[i] - startpos[i]
 		if i < 3 {
-			sum += axesD[i] * axesD[i]
+			sq = append(sq, axesD[i]*axesD[i])
 		}
 	}
-	retractR := math.Min(1., hi.RetractDist/math.Sqrt(sum))
+	retractR := math.Min(1., hi.RetractDist/math.Sqrt(mathutil.Sum(sq...)))
 	retractpos := make([]float64, len(homepos))
 	for i := range homepos {
 		retractpos[i] = homepos[i] - axesD[i]*retractR

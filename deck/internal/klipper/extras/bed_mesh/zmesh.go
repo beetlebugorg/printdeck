@@ -104,11 +104,11 @@ func (s *MoveSplitter) buildMove(prevPos, nextPos []float64, factor float64) {
 	for i := range axesD {
 		axesD[i] = s.nextPos[i] - s.prevPos[i]
 	}
-	sum := 0.
+	var sq []float64
 	for _, d := range axesD[:min(3, n)] {
-		sum += d * d
+		sq = append(sq, d*d)
 	}
-	s.totalMoveLength = math.Sqrt(sum)
+	s.totalMoveLength = math.Sqrt(mathutil.Sum(sq...))
 	s.axisMove = make([]bool, n)
 	for i, d := range axesD {
 		s.axisMove[i] = !isclose(d, 0., 1e-09, 1e-10)
@@ -336,16 +336,13 @@ func (m *ZMesh) ZRange() (float64, float64) {
 // ZAverage returns the average of the mesh, rounded to the nearest 100th.
 func (m *ZMesh) ZAverage() float64 {
 	if m.meshMatrix != nil {
-		total := 0.
+		var rowSums []float64
 		count := 0
 		for _, row := range m.meshMatrix {
-			rowSum := 0.
-			for _, z := range row {
-				rowSum += z
-			}
-			total += rowSum
+			rowSums = append(rowSums, mathutil.Sum(row...))
 			count += len(row)
 		}
+		total := mathutil.Sum(rowSums...)
 		// Round average to the nearest 100th.  This
 		// should produce an offset that is divisible by common
 		// z step distances
