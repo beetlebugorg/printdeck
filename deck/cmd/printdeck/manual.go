@@ -641,7 +641,7 @@ func manualParts() []section {
 						{"Writes", "The writes to the SD card in the last 60 seconds, and the amount. The bars are the writes a minute. The deck writes to the card as little as it can."},
 						{"1 h", "The time of the graphs: 10 minutes, 1 hour or 24 hours. The right end is now."},
 					},
-					Notes: []string{"The deck keeps a sample every 10 seconds for 24 hours, in memory only. A restart clears the samples."}},
+					Notes: []string{"The deck keeps a sample every 2 seconds for 1 hour, and a sample a minute for 24 hours. The samples are in memory only, and a restart clears them."}},
 				{Name: "update", Caption: "Software update", Setup: page("update"),
 					Callouts: []callout{
 						{"Versions", "The version of this deck, the newest version, and the channel."},

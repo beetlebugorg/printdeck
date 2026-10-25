@@ -232,7 +232,7 @@ func run(cfg config.Config) {
 	}
 
 	// The samples of the CPU, the memory and the disk writes, in memory only.
-	app.Metrics = hostmetrics.New(hostmetrics.Keep)
+	app.Metrics = hostmetrics.New()
 	go app.Metrics.Run(ctx)
 
 	go pr.Run(ctx, app.Redraw)

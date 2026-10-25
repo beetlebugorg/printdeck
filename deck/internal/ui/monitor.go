@@ -26,10 +26,11 @@ type monitorRange struct {
 	bars      int
 }
 
-// monitorRanges are the times of the graphs. A bar is 10 seconds, 1 minute or 15 minutes.
+// monitorRanges are the times of the graphs. A bar is 6 seconds (3 samples), 30 seconds or 15
+// minutes.
 var monitorRanges = []monitorRange{
-	{"10 min", "−10 MIN", 10 * time.Minute, 60},
-	{"1 h", "−1 H", time.Hour, 60},
+	{"10 min", "−10 MIN", 10 * time.Minute, 100},
+	{"1 h", "−1 H", time.Hour, 120},
 	{"24 h", "−24 H", 24 * time.Hour, 96},
 }
 
@@ -60,7 +61,7 @@ func (a *App) drawMonitor(c *gfx.Canvas) {
 		noItems(c, content, "No data", "This computer has no /proc files", "for the CPU, the memory and the disk.")
 		return
 	case m.Len() == 0:
-		noItems(c, content, "Waiting for data", fmt.Sprintf("A sample comes every %d seconds.", int(hostmetrics.Interval.Seconds())))
+		noItems(c, content, "Waiting for data", fmt.Sprintf("A sample comes every %d seconds.", int(hostmetrics.FineInterval.Seconds())))
 		return
 	}
 
@@ -91,7 +92,7 @@ func (a *App) drawMonitor(c *gfx.Canvas) {
 		cpu.bars = append(cpu.bars, b.CPU)
 		cpu.has = append(cpu.has, b.HasCPU)
 		if b.HasCPU {
-			peak = max(peak, b.CPU)
+			peak = max(peak, b.CPUMax)
 		}
 	}
 	if total.HasCPU {

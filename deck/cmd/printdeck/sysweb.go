@@ -413,34 +413,37 @@ type metricsBucket struct {
 	Start      time.Time `json:"start"`
 	Seconds    float64   `json:"seconds"` // the time of the samples in the bucket
 	CPU        *float64  `json:"cpu"`     // the busy share, 0 to 1
+	CPUMax     *float64  `json:"cpu_max"` // the largest busy share of a 2 s sample
 	MemUsed    *uint64   `json:"mem_used"`
 	MemTotal   *uint64   `json:"mem_total"`
 	Writes     *uint64   `json:"writes"`
 	WriteBytes *uint64   `json:"write_bytes"`
 }
 
-// writeMetricsJSON writes the samples of the host as JSON: the last 10 minutes in buckets of 10
-// seconds, or with range=1h or range=24h, the last hour in minutes or the last day in 15 minutes.
+// writeMetricsJSON writes the samples of the host as JSON: the last 10 minutes in buckets of 2
+// seconds, or with range=1h or range=24h, the last hour in buckets of 10 seconds or the last day
+// in minutes.
 func writeMetricsJSON(w http.ResponseWriter, r *http.Request, m *hostmetrics.Recorder) {
-	span, n := 10*time.Minute, 60
+	span, n := 10*time.Minute, 300
 	switch r.URL.Query().Get("range") {
 	case "1h":
-		span, n = time.Hour, 60
+		span, n = time.Hour, 360
 	case "24h":
-		span, n = 24*time.Hour, 96
+		span, n = 24*time.Hour, 1440
 	}
 	out := struct {
 		Interval float64         `json:"interval_s"`
+		Bucket   float64         `json:"bucket_s"`
 		Disk     string          `json:"disk"`
 		Buckets  []metricsBucket `json:"buckets"`
-	}{Interval: hostmetrics.Interval.Seconds(), Buckets: []metricsBucket{}}
+	}{Interval: hostmetrics.FineInterval.Seconds(), Bucket: (span / time.Duration(n)).Seconds(), Buckets: []metricsBucket{}}
 	if m != nil {
 		out.Disk = m.Disk()
 		now := time.Now()
 		for _, b := range m.Window(now.Add(-span), now, n) {
 			mb := metricsBucket{Start: b.Start.UTC(), Seconds: b.Covered.Seconds()}
 			if b.HasCPU {
-				mb.CPU = &b.CPU
+				mb.CPU, mb.CPUMax = &b.CPU, &b.CPUMax
 			}
 			if b.HasMem {
 				mb.MemUsed, mb.MemTotal = &b.MemUsed, &b.MemTotal

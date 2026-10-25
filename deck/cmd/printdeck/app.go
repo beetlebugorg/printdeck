@@ -101,7 +101,7 @@ func desktopApp(args []string) {
 	startNotify(ctx, cfg.StateDir, pr, app)
 	go keepAwake(ctx, pr)
 	// The samples of the computer. A computer with no /proc has none, and the page shows that.
-	app.Metrics = hostmetrics.New(hostmetrics.Keep)
+	app.Metrics = hostmetrics.New()
 	go app.Metrics.Run(ctx)
 
 	token := randomToken()

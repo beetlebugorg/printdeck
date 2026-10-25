@@ -16,6 +16,7 @@ func TestMetricsJSON(t *testing.T) {
 	writeMetricsJSON(w, httptest.NewRequest("GET", "/system/metrics?range=1h", nil), m)
 	var out struct {
 		Interval float64 `json:"interval_s"`
+		Bucket   float64 `json:"bucket_s"`
 		Disk     string
 		Buckets  []struct {
 			CPU    *float64
@@ -25,8 +26,8 @@ func TestMetricsJSON(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
 		t.Fatal(err)
 	}
-	if out.Interval != 10 || out.Disk != "mmcblk0" || len(out.Buckets) != 60 {
-		t.Fatalf("interval %v, disk %q, %d buckets", out.Interval, out.Disk, len(out.Buckets))
+	if out.Interval != 2 || out.Bucket != 10 || out.Disk != "mmcblk0" || len(out.Buckets) != 360 {
+		t.Fatalf("interval %v, bucket %v, disk %q, %d buckets", out.Interval, out.Bucket, out.Disk, len(out.Buckets))
 	}
 	if out.Buckets[59].CPU == nil || out.Buckets[59].Writes == nil {
 		t.Error("the last bucket has no data")

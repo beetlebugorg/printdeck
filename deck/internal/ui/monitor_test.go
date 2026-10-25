@@ -53,13 +53,13 @@ func TestMonitorRanges(t *testing.T) {
 // A computer with no /proc, as the desktop app on a Mac: the page shows that it has no data.
 func TestMonitorNoData(t *testing.T) {
 	a := monitorApp(false)
-	a.Metrics = hostmetrics.New(10)
+	a.Metrics = hostmetrics.New()
 	a.Metrics.ReadFile = func(string) ([]byte, error) { return nil, errNoFile }
 	if f := monitorFrame(t, a); !strings.Contains(f, "Waiting for data") {
 		t.Error("an empty recorder before a read: no Waiting for data")
 	}
 	a.Metrics.Sample(a.Now())
-	a.Metrics.Sample(a.Now().Add(hostmetrics.Interval))
+	a.Metrics.Sample(a.Now().Add(hostmetrics.FineInterval))
 	if f := monitorFrame(t, a); !strings.Contains(f, "No data") {
 		t.Error("a recorder with no /proc files: no No data")
 	}
