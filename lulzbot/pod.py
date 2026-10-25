@@ -177,18 +177,22 @@ def ports_cut():
     # The ports reach into the top wall. Through the wall the opening goes on to the front, so the Pi
     # goes into the body from the front.
     cut = cut + uvw_box(u0, u1, DEEP_V1 - WALL - 1.0, DEEP_V1 + 0.01, w0, -SPLIT_W + 1.0)
-    # The USB-C port in the left wall: room for the plug of the official supply (12 x 7). The two
-    # micro HDMI ports beside it also reach into the wall: they get openings too.
+    # The USB-C port and the two micro HDMI ports in the left wall: one notch, open to the front. In
+    # the STEP model of the Pi their shells stand 1.4 mm past the edge of the board, so the Pi goes in
+    # from the front through the notch. Its upper edges rise 50 degrees toward the front: the body
+    # prints standing, and they need no support. Room for the plug of the official supply (12 x 7).
     u, v, w = pi_uvw(11.2, -1.0, 1.6 + 1.6)
-    cut = cut + uvw_box(-BODY_U - 1, -27.0, v - 6.6, v + 6.6, w - 4.0, w + 4.0)
-    # One opening for both: in the STEP model of the Pi their shells stand 1.4 mm past the edge of the
-    # board, down to the level of the board.
     h0, h1 = p["pi_hdmi0"], p["pi_hdmi1"]
-    bb = pi_box(min(h0[0], h1[0]) - 0.5, max(h0[1], h1[1]) + 0.5, h0[2], h0[3], 0.0, max(h0[5], h1[5]) + 0.5).bounding_box()
-    cut = cut + uvw_box(-BODY_U - 1, -27.0, bb.min.Y, bb.max.Y, bb.min.Z, bb.max.Z)
-    # The shells of the USB-C and micro HDMI ports stand past the edge of the board, so the Pi goes in
-    # from the front along a groove 1.3 mm deep in the inside of the left wall.
-    cut = cut + uvw_box(-DEEP_U + WALL - 1.3, -27.0, v - 6.6, bb.max.Y, -STANDOFF_W - 1.6 - 0.3, FRONT_W + 1.0)
+    hb = pi_box(min(h0[0], h1[0]) - 0.5, max(h0[1], h1[1]) + 0.5, h0[2], h0[3], 0.0, max(h0[5], h1[5]) + 0.5).bounding_box()
+    wc0 = w - 4.0                                        # the back of the USB-C opening
+    wh0 = hb.min.Z                                       # the back of the HDMI opening
+    front = -SPLIT_W + 1.0
+    rise = LATCH_SLOPE
+    prof = [(wc0, v - 6.6), (front, v - 6.6), (front, hb.max.Y + (front - wh0) * rise), (wh0, hb.max.Y),
+            (wh0, v + 6.6 + (wh0 - wc0) * rise), (wc0, v + 6.6)]
+    notch = extrude(Plane.YZ * Polygon(*[(vv, ww) for ww, vv in prof], align=None), amount=BODY_U + 1 - 27.0,
+                    dir=(-1, 0, 0))
+    cut = cut + Pos(-27.0, 0, 0) * notch
     return cut
 
 
