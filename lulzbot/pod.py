@@ -12,17 +12,18 @@ ports are the Pi's own ports, flush with the walls of the deep part: the USB-C p
 micro HDMI ports in the left wall, and the USB-A and Ethernet ports in the top wall. The printer
 cable plugs straight into the Pi from above.
 
-The case is two printed parts:
+The case is three printed parts. Each prints flat on its back with no support.
 - the frame: the thin part round the display, with a flat back ring over the metal back of the
-  display and an opening for the Pi. Two M2.5 x 4 screws hold it to the two raised tabs at the
-  bottom of the display. It prints flat on its back ring.
-- the body: the deep part round the Pi. The display, with the Pi and the frame on it, presses into
-  it: two latch arms at the bottom of the body snap over the back ring of the frame, and two ears at
-  the top of the body lie behind the frame, where two countersunk M2.5 x 8 screws go through the
-  ear and the frame into the holes at the top of the display. It prints standing on its bottom end.
+  display and an opening for the Pi. Four M2.5 x 4 screws from the box of the display hold it: two
+  through the back ring into the raised tabs, two down wells into the holes at the top.
+- the body: the deep part round the Pi. Every opening in it is open to the front, or a hole in the
+  back. Four M3 x 6 screws go from the back down posts at its corners into M3 heat-set inserts in the
+  frame.
+- the mount: a plate with the dovetail, held to the back of the body by two countersunk M3 x 6
+  screws into M3 heat-set inserts.
 
-The pod hangs on the bracket: a dovetail on the back of the deep part drops into a slot in the
-bracket from above. The bracket stands on the two rail clips and the cover screw.
+The pod hangs on the bracket: the dovetail of the mount drops into a slot in the bracket from
+above. The bracket stands on the two rail clips and the cover screw.
 
 Pod coordinates: u across the glass to the right (seen from the front), v up from the bottom edge of
 the glass, w out of the glass (the front of the glass is w = 0). The Pi is on the back: w < 0.
@@ -132,11 +133,19 @@ def rounded_box(u0, u1, v0, v1, w0, w1, rad):
 
 # The split of the two parts: the frame is in front of SPLIT_W, the body behind it.
 SPLIT_W = THIN_W
-EAR_W = (SPLIT_W + 0.1, SPLIT_W + 2.1)             # the ears of the body, behind the back ring of the frame
-EAR_V = (DEEP_V1 + 0.01, HOLES[0][1] + 4.5)
-LATCH_V = (9.8, 14.3)                              # the latch arms, under the Pi and the raised tabs
-LATCH_TIP = -10.2                                  # the front end of a latch arm
-LATCH_L = 16.0                                     # the free length of a latch arm behind the frame
+SLOPE = math.tan(math.radians(50))                 # the edges that print as overhangs rise 50 degrees
+# The body holds to the frame with four M3 x 6 screws: from the back, down posts at the corners of
+# the body (outside the Pi, behind the thin part of the frame), into M3 heat-set inserts in the frame.
+POSTS = [(u, v) for u in (-34.0, 34.0) for v in (14.0, 110.0)]
+POST_R, POST_WELL, POST_FLOOR = 5.2, 3.95, 2.0     # the well takes a screwdriver shaft of 7.35 mm
+INSERT = (2.0, 3.6)                                # M3 heat-set insert: hole radius, depth
+# The mount: a plate with the dovetail, on the back of the body, held by two countersunk M3 x 6
+# screws into heat-set inserts in the body, over the cooler.
+MOUNT_T = 3.0
+MOUNT_U = 11.0
+MOUNT_V = (90.0, DEEP_V1 - 0.5)
+MOUNT_SCREWS = [(-6.0, 96.0), (6.0, 96.0)]
+BACK_W = DEEP_W + MOUNT_T                          # the back of the mount plate
 # The opening of the frame: the Pi, its port shells and the ribbon loop go through it.
 OPEN_U = (-30.0, 28.8)
 OPEN_V = (26.5, DEEP_V1 + 0.3)
@@ -187,7 +196,7 @@ def ports_cut():
     wc0 = w - 4.0                                        # the back of the USB-C opening
     wh0 = hb.min.Z                                       # the back of the HDMI opening
     front = -SPLIT_W + 1.0
-    rise = LATCH_SLOPE
+    rise = SLOPE
     prof = [(wc0, v - 6.6), (front, v - 6.6), (front, hb.max.Y + (front - wh0) * rise), (wh0, hb.max.Y),
             (wh0, v + 6.6 + (wh0 - wc0) * rise), (wc0, v + 6.6)]
     notch = extrude(Plane.YZ * Polygon(*[(vv, ww) for ww, vv in prof], align=None), amount=BODY_U + 1 - 27.0,
@@ -197,8 +206,7 @@ def ports_cut():
 
 
 def vents():
-    """Slots in the back over the fan of the cooler, and in the right wall beside the heatsink. The
-    slots run along v: the case prints standing, and the top of each slot is then a 2.4 mm bridge."""
+    """Slots in the back over the fan of the cooler, and in the right wall beside the heatsink."""
     x0, x1, y0, y1, z0, z1 = pi_parts()["cooler"]
     b = pi_box(x0, x1, y0, y1, z0, z1).bounding_box()
     cut = None
@@ -207,10 +215,12 @@ def vents():
         s = uvw_box(u - 1.2, u + 1.2, b.min.Y + 6, b.max.Y - 6, -DEEP_W - 1, -DEEP_W + WALL + 1)
         cut = s if cut is None else cut + s
         u += 5.0
-    w = -DEEP_W + 6
-    while w < -STANDOFF_W - 4:
-        cut = cut + uvw_box(DEEP_U - WALL - 1, DEEP_U + 1, b.min.Y + 4, b.max.Y - 4, w - 1.2, w + 1.2)
-        w += 5.0
+    # The slots in the right wall run front to back: the body prints flat on its back, and the top of
+    # each slot is then a 2.4 mm bridge.
+    v = b.min.Y + 4
+    while v < b.max.Y - 4:
+        cut = cut + uvw_box(DEEP_U - WALL - 1, DEEP_U + 1, v - 1.2, v + 1.2, -DEEP_W + 6, -STANDOFF_W - 4)
+        v += 5.0
     return cut
 
 
@@ -225,100 +235,55 @@ def dovetail(clr=0.0, v_ext=0.0):
     """The dovetail, or with clr the slot for it: the profile offset by clr on every side."""
     r, t, h, (va, vb) = DOVE
     # Along v: the profile is in (u, -w), on a plane across v.
-    prof = Polygon((-r / 2, DEEP_W - 0.5), (r / 2, DEEP_W - 0.5), (t / 2, DEEP_W + h), (-t / 2, DEEP_W + h), align=None)
+    prof = Polygon((-r / 2, BACK_W - 0.5), (r / 2, BACK_W - 0.5), (t / 2, BACK_W + h), (-t / 2, BACK_W + h), align=None)
     if clr:
         prof = offset(prof, amount=clr, kind=Kind.INTERSECTION)
     pl = Plane(origin=(0, va - clr, 0), x_dir=(1, 0, 0), z_dir=(0, 1, 0))
     d = extrude(pl * prof, amount=vb - va + 2 * clr + v_ext)
     if not clr:
         # The lower end of the dovetail slopes at 55 degrees: printed standing, it needs no support.
-        tri = Polygon((va - 0.01, -DEEP_W + 0.5), (va - 0.01, -DEEP_W - h - 1.0), (va + 1.5 * (h + 1.5), -DEEP_W - h - 1.0),
+        tri = Polygon((va - 0.01, -BACK_W + 0.5), (va - 0.01, -BACK_W - h - 1.0), (va + 1.5 * (h + 1.5), -BACK_W - h - 1.0),
                       align=None)
         d = d - extrude(Plane.YZ * tri, amount=t, both=True)
     return d
 
 
-LATCH_SLOPE = math.tan(math.radians(50))           # the slits rise 50 degrees inward: they print standing
-
-
-def slanted(sgn, u_in, u_out, v_out, height, w0, w1):
-    """A prism along w: in (u, v) a parallelogram from u_in to u_out (on the side of sgn), height in v,
-    its lower edge at v_out on the outside and rising inward at LATCH_SLOPE."""
-    dv = (u_out - u_in) * LATCH_SLOPE
-    prof = [(u_out, v_out), (u_out, v_out + height), (u_in, v_out + dv + height), (u_in, v_out + dv)]
-    lo, hi = sorted((w0, w1))
-    return Pos(0, 0, lo) * extrude(Polygon(*[(sgn * u, v) for u, v in prof], align=None), amount=hi - lo, dir=(0, 0, 1))
-
-
-def latch(sgn):
-    """A latch arm of the body, on the left (sgn -1) or right (sgn 1) wall: the strip of the wall
-    between two slits, longer at the front, with a hook that snaps over the back ring of the frame.
-    The hook has a 45 degree ramp in front and a 30 degree catch behind, so a firm pull opens it."""
-    v0, v1 = LATCH_V
-    ui, uo = DEEP_U - WALL, DEEP_U
-    arm = slanted(sgn, ui, uo, v0, v1 - v0, -SPLIT_W - 0.2, LATCH_TIP)
-    prof = [(uo, LATCH_TIP), (uo + 1.0, LATCH_TIP - 1.0), (uo + 1.0, LATCH_TIP - 1.05), (uo, LATCH_TIP - 1.63)]
-    hook = extrude(Plane.XZ * Polygon(*[(sgn * u, w) for u, w in prof], align=None), amount=v1 - v0)
-    hook = Pos(0, v0 - hook.bounding_box().min.Y, 0) * hook
-    # The underside of the hook rises 50 degrees outward: printed standing, it needs no support.
-    cut = Polygon((sgn * (uo - 0.01), v0 - 0.01), (sgn * (uo + 1.2), v0 - 0.01), (sgn * (uo + 1.2), v0 + 1.21 * LATCH_SLOPE),
-                  align=None)
-    hook = hook - Pos(0, 0, LATCH_TIP - 2.0) * extrude(cut, amount=3.0, dir=(0, 0, 1))
-    return arm + hook
-
-
-def latch_slits(sgn):
-    v0, v1 = LATCH_V
-    w0, w1 = -SPLIT_W - LATCH_L, -SPLIT_W + 1.0
-    ui, uo = DEEP_U - WALL - 0.5, DEEP_U + 0.5
-    dv = 0.5 * LATCH_SLOPE                               # the slits start 0.5 mm outside the wall
-    return (slanted(sgn, ui, uo, v0 - 0.8 - dv, 0.8, w0, w1) + slanted(sgn, ui, uo, v1 - dv, 0.8, w0, w1))
-
-
-def ear(sgn):
-    """An ear of the body: a plate behind the back ring of the frame at a top hole, on the corner of
-    the top wall beside the ports, with a countersunk hole. Over the port opening its lower edge slopes
-    at 50 degrees from the corner, so it prints standing with no support."""
-    u, v = HOLES[0 if sgn < 0 else 1]
-    u0, u1, *_ = port_span()
-    corner = u1 if sgn > 0 else -u0                      # where the top wall ends beside the ports
-    a, b = abs(u) - 4.5, DEEP_U                          # the plate, on the side of sgn
-    v0, v1 = EAR_V
-    prof = [(corner, v0), (b, v0), (b, v1), (a, v1), (a, v0 + (corner - a) * math.tan(math.radians(50)))]
-    plate = extrude(Polygon(*[(sgn * x, y) for x, y in prof], align=None), amount=EAR_W[1] - EAR_W[0], dir=(0, 0, 1))
-    plate = Pos(0, 0, -EAR_W[1]) * plate
-    ra, rb = sorted((sgn * corner, sgn * DEEP_U))
-    root = uvw_box(ra, rb, DEEP_V1 - WALL, v0 + 0.5, -EAR_W[1], -SPLIT_W - 0.1)
-    e = plate + root
-    hd, hh = CSK[2.5]
-    e = e - Pos(u, v, -EAR_W[1] + hh / 2 - 0.01) * Cone(hd / 2 + 0.2, 1.45, hh + 0.02)
-    return e - Pos(u, v, -(EAR_W[0] + EAR_W[1]) / 2) * Cylinder(1.45, EAR_W[1] - EAR_W[0] + 2)
-
-
 def body():
-    """The body: the deep part round the Pi, open at the front, with the latch arms and the ears."""
+    """The body: the deep part round the Pi, open at the front, with the posts for the screws to the
+    frame. It prints flat on its back: every opening is open to the front, or a hole in the back."""
     inner = rounded_box(-DEEP_U + WALL, DEEP_U - WALL, DEEP_V0 + WALL, DEEP_V1 - WALL, -DEEP_W + WALL, -SPLIT_W + 1.0,
                         DEEP_R - WALL)
     s = body_outer() - inner
+    for u, v in POSTS:
+        s = s + Pos(u, v, -(DEEP_W + SPLIT_W + 0.1) / 2) * Cylinder(POST_R, DEEP_W - SPLIT_W - 0.1)
     s = s - ports_cut()
-    # Beside the port opening, the top wall is a strip of ceiling 1 to 1.3 mm wide inside the corner. A
-    # 50 degree gusset under it lets the body print standing with no support.
-    u0, u1, *_ = port_span()
-    for sgn, edge in ((-1, -u0), (1, u1)):
-        ui = DEEP_U - WALL
-        tri = Polygon((sgn * (edge - 0.1), DEEP_V1 - WALL + 0.01), (sgn * (ui + 0.01), DEEP_V1 - WALL + 0.01),
-                      (sgn * (ui + 0.01), DEEP_V1 - WALL - (ui - edge + 0.1) * LATCH_SLOPE), align=None)
-        s = s + Pos(0, 0, -DEEP_W + WALL - 0.01) * extrude(tri, amount=DEEP_W - WALL - SPLIT_W - 0.1 + 0.01, dir=(0, 0, 1))
     s = s - vents()
-    for sgn in (-1, 1):
-        s = s - latch_slits(sgn) + latch(sgn) + ear(sgn)
+    for u, v in POSTS:
+        f = SPLIT_W + 0.1 + POST_FLOOR                   # the floor of the well, its head side
+        s = s - Pos(u, v, -(f + DEEP_W + 1.0) / 2) * Cylinder(POST_WELL, DEEP_W + 1.0 - f)
+        s = s - Pos(u, v, -(SPLIT_W + f) / 2) * Cylinder(1.7, f - SPLIT_W + 1.0)
+    # The inserts for the screws of the mount, in bosses over the cooler.
+    for u, v in MOUNT_SCREWS:
+        s = s + Pos(u, v, -(DEEP_W - WALL + DEEP_W - WALL - 4.0) / 2) * Cylinder(3.5, 4.0)
+        s = s - Pos(u, v, -DEEP_W + INSERT[1] / 2 - 0.01) * Cylinder(INSERT[0], INSERT[1])
+    return s
+
+
+def mount():
+    """The mount: a flat plate on the back of the body with the dovetail, and two countersunk holes."""
+    v0, v1 = MOUNT_V
+    s = rounded_box(-MOUNT_U, MOUNT_U, v0, v1, -BACK_W, -DEEP_W - 0.05, 3.0)
     s = s + dovetail()
+    hd, hh = CSK[2.5]
+    for u, v in MOUNT_SCREWS:
+        s = s - Pos(u, v, -(BACK_W + DEEP_W) / 2) * Cylinder(1.7, MOUNT_T + 2.0)
+        s = s - Pos(u, v, -BACK_W + 1.0) * Cone(6.2 / 2, 1.7, 2.0)
     return s
 
 
 def pod_frame():
     """The frame: the thin part round the display, with the back ring over the metal back of the
-    display. It goes down to the bottom of the body."""
+    display. It goes down to the bottom of the body, and prints flat on its back ring."""
     v0, v1 = DEEP_V0, BODY_V[1]
     s = rounded_box(-BODY_U, BODY_U, v0, v1, -SPLIT_W, FRONT_W, BODY_R)
     s = s - rounded_box(-BODY_U + WALL, BODY_U - WALL, v0 + WALL, v1 - WALL, -SPLIT_W + WALL, FRONT_W + 1.0, BODY_R - WALL)
@@ -326,18 +291,19 @@ def pod_frame():
     s = s - rounded_box(OPEN_U[0], OPEN_U[1], OPEN_V[0], OPEN_V[1], -SPLIT_W - 1.0, -SPLIT_W + WALL + 0.5, 1.5)
     s = s - uvw_box(RIBBON_LOOP_U[0] - 0.6, RIBBON_LOOP_U[1] + 0.6, v0 + WALL - 0.01, OPEN_V[0] + 1.0, -SPLIT_W - 1.0,
                     -SPLIT_W + WALL + 0.5)
-    # The notches for the latch arms of the body (the arms slant: higher on the inside).
-    for sgn in (-1, 1):
-        a, b = sorted((sgn * (DEEP_U - WALL - 0.2), sgn * (DEEP_U + 0.2)))
-        top = LATCH_V[1] + (WALL + 0.2) * LATCH_SLOPE + 0.2
-        s = s - uvw_box(a, b, LATCH_V[0] - 0.2, top, -SPLIT_W - 1.0, -SPLIT_W + WALL + 0.5)
-    # The screws: through the back ring into the raised tabs, and through bosses down to the holes at
-    # the top.
+    # The display screws: through the back ring into the raised tabs, and down wells with a 2 mm
+    # floor into the holes at the top.
     for u, v in TABS:
         s = s - Pos(u, v, -SPLIT_W + WALL / 2) * Cylinder(1.45, WALL + 2.0)
     for u, v in HOLES:
-        s = s + Pos(u, v, -(FRAME_W + 0.2 + SPLIT_W - 1.0) / 2) * Cylinder(5.0, SPLIT_W - 1.0 - FRAME_W - 0.2)
-        s = s - Pos(u, v, -(FRAME_W + SPLIT_W) / 2) * Cylinder(1.45, SPLIT_W - FRAME_W + 2.0)
+        f0, f1 = FRAME_W + 0.2, FRAME_W + 2.2
+        s = s + Pos(u, v, -(f0 + SPLIT_W - 1.0) / 2) * Cylinder(5.0, SPLIT_W - 1.0 - f0)
+        s = s - Pos(u, v, -(f1 + SPLIT_W + 1.0) / 2) * Cylinder(3.95, SPLIT_W + 1.0 - f1)
+        s = s - Pos(u, v, -(f0 + f1) / 2) * Cylinder(1.45, f1 - f0 + 1.0)
+    # The bosses with the inserts for the screws of the body.
+    for u, v in POSTS:
+        s = s + Pos(u, v, -(SPLIT_W + SPLIT_W - 3.8) / 2) * Cylinder(4.0, 3.8)
+        s = s - Pos(u, v, -SPLIT_W + INSERT[1] / 2 - 0.01) * Cylinder(INSERT[0], INSERT[1])
     return s
 
 
@@ -355,7 +321,7 @@ POD_Z = (-102.6 - 2.0) / 2               # the middle of the front of the contro
 # the dovetail runs up the tilted face, so it moves the pod toward the wall by DOVE_LIFT x sin(tilt):
 # the gap is that and 3 mm more. The bracket is a wedge between the plate and the thin back over it.
 PLATE_GAP = DOVE_LIFT * SIN + 3.0
-_deep = (DEEP_V1, -DEEP_W)
+_deep = (MOUNT_V[1], -BACK_W)
 POD_O = (X_BACK + PLATE + PLATE_GAP + _deep[0] * SIN - _deep[1] * COS, GLASS_TOP_Y - GLASS[1] * COS, POD_Z)
 POD_LOC = Location(Plane(origin=POD_O, x_dir=U, z_dir=W))
 
@@ -426,7 +392,7 @@ def wedge(loc, front):
     the pod at loc, behind the dovetail, with the slot of the dovetail open at the top."""
     va = DOVE[3][0]
     # The stop under the slot is 3 mm: it holds the pod and the push of the plug from above.
-    w = (loc * uvw_box(-13, 13, va - 3.0 - DOVE_CLR, DEEP_V1, -DEEP_W - 80, -DEEP_W - 0.3)) & front
+    w = (loc * uvw_box(-13, 13, va - 3.0 - DOVE_CLR, MOUNT_V[1], -BACK_W - 80, -BACK_W - 0.3)) & front
     return w - loc * dovetail(DOVE_CLR, 40.0)
 
 
@@ -478,7 +444,7 @@ SCREW = {2.5: (4.5, 2.0), 3: (5.5, 3.0)}   # size: head diameter, head height (c
 SCREW_COLOR = "#B9BEC6"
 
 
-CSK = {2.5: (5.0, 1.4)}           # countersunk: head diameter, head height
+CSK = {2.5: (5.0, 1.4), 3: (6.0, 1.7)}   # countersunk: head diameter, head height
 
 
 def screw(size, length, origin, out_dir, frame=None, csk=False):
@@ -499,23 +465,24 @@ def screw(size, length, origin, out_dir, frame=None, csk=False):
 
 
 def pod_screws():
-    """The screws of the pod, in pod coordinates: two M2.5 x 4 through the frame into the raised tabs
-    at the bottom of the display, two countersunk M2.5 x 8 through the ears of the body and the frame
-    into the holes at the top, and four M2.5 x 4 through the Pi into the standoffs. The M2.5 x 4
-    screws are in the box of the display."""
-    bottom = None
-    for u, v in TABS:
-        sc = screw(2.5, 4.0, (u, v, -SPLIT_W), (0, 0, -1))
-        bottom = sc if bottom is None else bottom + sc
-    top = None
-    for u, v in HOLES:
-        sc = screw(2.5, 8.0, (u, v, -EAR_W[1]), (0, 0, -1), csk=True)
-        top = sc if top is None else top + sc
-    pi = None
-    for u, v in PI_HOLE_UV:
-        sc = screw(2.5, 4.0, (u, v, -STANDOFF_W - 1.6), (0, 0, -1))
-        pi = sc if pi is None else pi + sc
-    return [("screw_bottom", bottom, SCREW_COLOR), ("screw_top", top, SCREW_COLOR), ("screw_pi", pi, SCREW_COLOR)]
+    """The screws of the pod, in pod coordinates:
+    - the frame: four M2.5 x 4 into the display (through the back ring into the raised tabs, and
+      down the wells into the top holes), from the box of the display;
+    - the body: four M3 x 6 down the posts into the inserts of the frame;
+    - the mount: two countersunk M3 x 6 into the inserts of the body;
+    - the Pi: four M2.5 x 4 through the Pi into the standoffs, from the box of the display."""
+    def group(items):
+        out = None
+        for sc in items:
+            out = sc if out is None else out + sc
+        return out
+    fr = group([screw(2.5, 4.0, (u, v, -SPLIT_W), (0, 0, -1)) for u, v in TABS]
+               + [screw(2.5, 4.0, (u, v, -FRAME_W - 2.2), (0, 0, -1)) for u, v in HOLES])
+    bd = group([screw(3, 6.0, (u, v, -SPLIT_W - 0.1 - POST_FLOOR), (0, 0, -1)) for u, v in POSTS])
+    mt = group([screw(3, 6.0, (u, v, -BACK_W), (0, 0, -1), csk=True) for u, v in MOUNT_SCREWS])
+    pi = group([screw(2.5, 4.0, (u, v, -STANDOFF_W - 1.6), (0, 0, -1)) for u, v in PI_HOLE_UV])
+    return [("screw_frame", fr, SCREW_COLOR), ("screw_body", bd, SCREW_COLOR), ("screw_mount", mt, SCREW_COLOR),
+            ("screw_pi", pi, SCREW_COLOR)]
 
 
 # The details of the display back, from the 5 inch drawing and the photos of the Touch Display 2
@@ -628,6 +595,7 @@ def hardware():
     b = pi_box(x0, x1, y0, y1, z0, z0 + 7.5).bounding_box()
     out += pod_screws()
     out.append(("pod_frame", pod_frame(), "#2B2E35"))
+    out.append(("pod_mount", mount(), "#2A2B30"))
     out += display_details()
     out += ribbon_and_wire()
     out.append(("printer_plug", uvw_box(b.min.X - 1.5, b.max.X + 1.5, b.max.Y - 2.0, b.max.Y + 30.0, b.min.Z - 0.6, b.max.Z + 0.6), "#151515"))
@@ -635,9 +603,10 @@ def hardware():
 
 
 ALLOWED = {frozenset(p) for p in [("power_plug", "pi_usbc"), ("printer_plug", "pi_usb2"), ("glass", "screen"),
-                                  ("screw_bottom", "tab0"), ("screw_bottom", "tab1"), ("screw_bottom", "pod_frame"),
-                                  ("screw_top", "frame"), ("screw_top", "pod_frame"), ("screw_top", "pod_body"),
-                                  ("pod_frame", "pod_body"), ("screw_pi", "pi_board"),
+                                  ("screw_frame", "tab0"), ("screw_frame", "tab1"), ("screw_frame", "pod_frame"),
+                                  ("screw_frame", "frame"), ("screw_body", "pod_body"), ("screw_body", "pod_frame"),
+                                  ("screw_mount", "pod_mount"), ("screw_mount", "pod_body"), ("pod_frame", "pod_body"),
+                                  ("pod_mount", "pod_body"), ("screw_pi", "pi_board"),
                                   ("channel", "frame"), ("display_fpc", "dsi_ribbon"), ("pi_dsi", "dsi_ribbon"),
                                   ("pi_dsi", "pi_board"), ("pi_gpio", "pi_board"), ("pi_gpio", "power_wire"),
                                   ("display_power", "power_wire"), ("pi_dsi", "cooler"), ("pi_gpio", "cooler"),
@@ -931,20 +900,23 @@ def clips(name):
 DISPLAY = ("glass", "screen", "frame", "tab", "standoff", "channel", "display_")
 PI = ("pi5", "cooler", "pi_")
 FLEX = ("dsi_ribbon", "power_wire")      # they move with the display and hide when the Pi comes off
-POD_PARTS = DISPLAY + PI + FLEX + ("pod_body", "pod_frame", "screw_top", "screw_bottom", "screw_pi")
+POD_PARTS = DISPLAY + PI + FLEX + ("pod_body", "pod_frame", "pod_mount", "screw_frame", "screw_body", "screw_mount",
+                                   "screw_pi")
 STAGES = [
     ("unplug the power and printer cables", {("power_plug", "power_cable"): (-40.0, 0.0, 0.0),
                                              ("printer_plug", "printer_cable"): (0.0, 40.0, 0.0)}),
     ("lift the pod off the dovetail", {POD_PARTS: (0.0, DOVE_LIFT, 0.0)}),
     ("pull the pod forward off the bracket", {POD_PARTS: (0.0, 0.0, 60.0)}),
-    ("take out the two top screws", {("screw_top",): (0.0, 0.0, -30.0)}),
-    ("pull the display and the frame out of the body", {DISPLAY + PI + FLEX + ("pod_frame", "screw_bottom", "screw_pi"):
+    ("take out the four screws of the body", {("screw_body",): (0.0, 0.0, -30.0)}),
+    ("pull the display and the frame out of the body", {DISPLAY + PI + FLEX + ("pod_frame", "screw_frame", "screw_pi"):
                                                         (0.0, 0.0, 80.0)}),
-    ("take out the two bottom screws", {("screw_bottom",): (0.0, 0.0, -60.0)}),
+    ("take out the four screws of the frame", {("screw_frame",): (0.0, 0.0, -60.0)}),
     ("take the frame off the display", {("pod_frame",): (0.0, 0.0, -40.0)}),
     ("take out the four Pi screws", {("screw_pi",): (0.0, 0.0, -60.0)}),
     ("take the Pi off the display", {PI: (0.0, 0.0, -40.0)}),
     ("take the clips off", {}),
+    ("take out the two screws of the mount", {("screw_mount",): (0.0, 0.0, -40.0)}),
+    ("take the mount off the body", {("pod_mount",): (0.0, 0.0, -25.0)}),
 ]
 CLIP_LIFT = 25.0
 
@@ -1142,27 +1114,27 @@ def print_parts(process):
     global DOVE_CLR
     keep, DOVE_CLR = DOVE_CLR, DOVE_CLR_BY[process]
     try:
-        case, fr, taz, mini = body(), pod_frame(), bracket(), mini_bracket()
+        case, fr, mt, taz, mini = body(), pod_frame(), mount(), bracket(), mini_bracket()
     finally:
         DOVE_CLR = keep
     one, _ = C.tape_clip()
     two, _ = C.tape_clip(True)
     if process == "fdm":
-        # The body: standing on its bottom end, so the back, the walls, the dovetail, the ears and the
-        # latch arms are vertical (each latch arm bends along its layers). The frame: flat on its back
-        # ring. The TAZ bracket: the top end of the plate on the bed. The Mini 2 bracket: the frame side
-        # of the plate on the bed. The clips: the base on the bed.
-        rots = {"case": Rot(90, 0, 0), "frame": Rot(0, 0, 0), "taz": Rot(-90, 0, 0), "mini": Rot(-90, 0, 0),
-                "clip": Rot(0, 0, 0)}
+        # The body: flat on its back. The frame: flat on its back ring. The mount: flat on the face
+        # that goes on the body, the dovetail up. The TAZ bracket: the top end of the plate on the bed.
+        # The Mini 2 bracket: the frame side of the plate on the bed. The clips: the base on the bed.
+        rots = {"case": Rot(0, 0, 0), "frame": Rot(0, 0, 0), "mount": Rot(180, 0, 0), "taz": Rot(-90, 0, 0),
+                "mini": Rot(-90, 0, 0), "clip": Rot(0, 0, 0)}
     else:
         # Resin prints from the build plate down: the backs of the body, the frame and the brackets
-        # face the build plate, so the open fronts face away from it and no cup of resin forms. Every part leans RESIN_TILT degrees. The slicer adds the supports.
+        # face the build plate, so the open fronts face away from it and no cup of resin forms. Every
+        # part leans RESIN_TILT degrees. The slicer adds the supports.
         t = RESIN_TILT
-        rots = {"case": Rot(t, 0, 0), "frame": Rot(t, 0, 0), "taz": Rot(t, 0, 0) * Rot(0, -90, 0),
-                "mini": Rot(t, 0, 0) * Rot(-90, 0, 0),
-                "clip": Rot(t, 0, 0)}
+        rots = {"case": Rot(t, 0, 0), "frame": Rot(t, 0, 0), "mount": Rot(t, 0, 0) * Rot(180, 0, 0),
+                "taz": Rot(t, 0, 0) * Rot(0, -90, 0), "mini": Rot(t, 0, 0) * Rot(-90, 0, 0), "clip": Rot(t, 0, 0)}
     return [(f"pod-body_{process}.stl", on_bed(case, rots["case"]), 1),
             (f"pod-frame_{process}.stl", on_bed(fr, rots["frame"]), 1),
+            (f"pod-mount_{process}.stl", on_bed(mt, rots["mount"]), 1),
             (f"pod-bracket-taz_{process}.stl", on_bed(taz, rots["taz"]), 1),
             (f"pod-bracket-mini2_{process}.stl", on_bed(mini, rots["mini"]), 1),
             (f"cable-clip-single_{process}.stl", on_bed(one, rots["clip"]), 5),
