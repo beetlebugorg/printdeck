@@ -139,10 +139,11 @@ SLOPE = math.tan(math.radians(50))                 # the edges that print as ove
 # the body (outside the Pi, behind the thin part of the frame), into M3 heat-set inserts in the frame.
 POSTS = [(u, v) for u in (-34.0, 34.0) for v in (14.0, 110.0)]
 POST_R, POST_WELL, POST_FLOOR = 5.2, 3.95, 2.0     # the well takes a screwdriver shaft of 7.35 mm
-INSERT = (2.0, 3.6)                                # M3 heat-set insert: hole radius, depth
+INSERT = (2.0, 4.0)                                # M3 heat-set insert, 4 long: hole radius, depth
+INSERT_FLOOR = 1.0                                 # the plastic behind the hole of an insert
 # The mount: a plate with the dovetail, on the back of the body. Two M3 x 6 cap screws from inside
 # the body, over the cooler, go through the back into M3 heat-set inserts in the mount.
-MOUNT_T = 4.0
+MOUNT_T = INSERT[1] + INSERT_FLOOR
 MOUNT_U = 11.0
 MOUNT_V = (90.0, DEEP_V1 - 0.5)
 MOUNT_SCREWS = [(-6.0, 96.0), (6.0, 96.0)]
@@ -304,7 +305,8 @@ def pod_frame():
         s = s - Pos(u, v, -(f0 + f1) / 2) * Cylinder(1.45, f1 - f0 + 1.0)
     # The bosses with the inserts for the screws of the body.
     for u, v in POSTS:
-        s = s + Pos(u, v, -(SPLIT_W + SPLIT_W - 3.8) / 2) * Cylinder(4.0, 3.8)
+        boss = INSERT[1] + INSERT_FLOOR
+        s = s + Pos(u, v, -SPLIT_W + boss / 2) * Cylinder(4.0, boss)
         s = s - Pos(u, v, -SPLIT_W + INSERT[1] / 2 - 0.01) * Cylinder(INSERT[0], INSERT[1])
     return s
 
@@ -509,6 +511,7 @@ PARTS = [("pod_body", body, "#1B1C20"), ("bracket", bracket, "#2A2B30"), ("mini_
 # ---------------------------------------------------------------- the bought parts, for the check and the renders
 SCREW = {2.5: (4.5, 2.0), 3: (5.5, 3.0)}   # size: head diameter, head height (cap or pan head)
 SCREW_COLOR = "#B9BEC6"
+INSERT_COLOR = "#C9A227"                  # brass
 
 
 def screw(size, length, origin, out_dir, frame=None):
@@ -538,8 +541,16 @@ def pod_screws():
     bd = group([screw(3, 6.0, (u, v, -SPLIT_W - 0.1 - POST_FLOOR), (0, 0, -1)) for u, v in POSTS])
     mt = group([screw(3, 6.0, (u, v, -DEEP_W + FLOOR), (0, 0, 1)) for u, v in MOUNT_SCREWS])
     pi = group([screw(2.5, 4.0, (u, v, -STANDOFF_W - 1.6), (0, 0, -1)) for u, v in PI_HOLE_UV])
+    # The heat-set inserts: their top is flush with the face of the part.
+    ins_f = group([Pos(u, v, -SPLIT_W + INSERT[1] / 2) * insert() for u, v in POSTS])
+    ins_m = group([Pos(u, v, -DEEP_W - 0.05 - INSERT[1] / 2) * insert() for u, v in MOUNT_SCREWS])
     return [("screw_frame", fr, SCREW_COLOR), ("screw_body", bd, SCREW_COLOR), ("screw_mount", mt, SCREW_COLOR),
-            ("screw_pi", pi, SCREW_COLOR)]
+            ("screw_pi", pi, SCREW_COLOR), ("insert_frame", ins_f, INSERT_COLOR), ("insert_mount", ins_m, INSERT_COLOR)]
+
+
+def insert():
+    """An M3 heat-set insert, 4 long: the knurl melts 0.3 mm into the wall of its hole."""
+    return Cylinder(INSERT[0] + 0.3, INSERT[1]) - Cylinder(1.5, INSERT[1] + 1.0)
 
 
 # The details of the display back, from the 5 inch drawing and the photos of the Touch Display 2
@@ -691,7 +702,7 @@ def usbc_plug(u0, v, w):
 ALLOWED = {frozenset(p) for p in [("power_plug", "pi_usbc"), ("printer_plug", "pi_usb2"), ("glass", "screen"),
                                   ("screw_frame", "tab0"), ("screw_frame", "tab1"), ("screw_frame", "pod_frame"),
                                   ("screw_frame", "frame"), ("screw_body", "pod_body"), ("screw_body", "pod_frame"),
-                                  ("screw_mount", "pod_mount"), ("screw_mount", "pod_body"), ("pod_frame", "pod_body"),
+                                  ("screw_mount", "pod_mount"), ("insert_frame", "pod_frame"), ("insert_mount", "pod_mount"), ("screw_mount", "pod_body"), ("pod_frame", "pod_body"),
                                   ("pod_mount", "pod_body"), ("screw_pi", "pi_board"),
                                   ("channel", "frame"), ("display_fpc", "dsi_ribbon"), ("pi_dsi", "dsi_ribbon"),
                                   ("pi_dsi", "pi_board"), ("pi_gpio", "pi_board"), ("pi_gpio", "power_wire"),
@@ -987,22 +998,22 @@ DISPLAY = ("glass", "screen", "frame", "tab", "standoff", "channel", "display_")
 PI = ("pi5", "cooler", "pi_")
 FLEX = ("dsi_ribbon", "power_wire")      # they move with the display and hide when the Pi comes off
 POD_PARTS = DISPLAY + PI + FLEX + ("pod_body", "pod_frame", "pod_mount", "screw_frame", "screw_body", "screw_mount",
-                                   "screw_pi")
+                                   "screw_pi", "insert_frame", "insert_mount")
 STAGES = [
     ("unplug the power and printer cables", {("power_plug", "power_cable"): (-40.0, 0.0, 0.0),
                                              ("printer_plug", "printer_cable"): (0.0, 40.0, 0.0)}),
     ("lift the pod off the dovetail", {POD_PARTS: (0.0, DOVE_LIFT, 0.0)}),
     ("pull the pod forward off the bracket", {POD_PARTS: (0.0, 0.0, 60.0)}),
     ("take out the four screws of the body", {("screw_body",): (0.0, 0.0, -30.0)}),
-    ("pull the display and the frame out of the body", {DISPLAY + PI + FLEX + ("pod_frame", "screw_frame", "screw_pi"):
+    ("pull the display and the frame out of the body", {DISPLAY + PI + FLEX + ("pod_frame", "insert_frame", "screw_frame", "screw_pi"):
                                                         (0.0, 0.0, 80.0)}),
     ("take out the four screws of the frame", {("screw_frame",): (0.0, 0.0, -60.0)}),
-    ("take the frame off the display", {("pod_frame",): (0.0, 0.0, -40.0)}),
+    ("take the frame off the display", {("pod_frame", "insert_frame"): (0.0, 0.0, -40.0)}),
     ("take out the four Pi screws", {("screw_pi",): (0.0, 0.0, -60.0)}),
     ("take the Pi off the display", {PI: (0.0, 0.0, -40.0)}),
     ("take the clips off", {}),
     ("take out the two screws of the mount", {("screw_mount",): (0.0, 0.0, 30.0)}),
-    ("take the mount off the body", {("pod_mount",): (0.0, 0.0, -25.0)}),
+    ("take the mount off the body", {("pod_mount", "insert_mount"): (0.0, 0.0, -25.0)}),
 ]
 CLIP_LIFT = 25.0
 

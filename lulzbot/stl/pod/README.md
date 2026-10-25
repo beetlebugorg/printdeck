@@ -27,5 +27,5 @@ Print the clips in PETG. Their arms bend across the layer lines, and PLA can cra
 | Part | Count | Where |
 |---|---|---|
 | M2.5 x 4 screw | 8 | In the box of the display: 4 hold the frame to the display, 4 hold the Pi |
-| M3 heat-set insert | 6 | 4 in the back ring of the frame, 2 in the mount |
+| M3 heat-set insert, 4 mm long | 6 | 4 in the bosses of the frame, 2 in the mount. The holes are 4.0 mm across and 4.0 mm deep. Press each insert flush with the face. |
 | M3 x 6 cap screw | 6 | 4 down the posts of the body into the frame, 2 from inside the body into the mount |
