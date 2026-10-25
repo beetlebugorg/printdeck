@@ -84,7 +84,8 @@ int main(int argc, char *argv[])
         engine.load(QUrl(QStringLiteral("qrc:/Sim3D.qml")));
         QObject::connect(&deck, &Deck::screenChanged, &sim, [&deck, &sim] {
             static bool started = false;
-            if (!started && deck.base().isValid()) {
+            // A deck on the network gives its key after its address: start with the key.
+            if (!started && deck.base().isValid() && !deck.token().isEmpty()) {
                 started = true;
                 sim.start(deck.base(), deck.token());
             }
