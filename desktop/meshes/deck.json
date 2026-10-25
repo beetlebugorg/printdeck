@@ -128,6 +128,48 @@
     "rough": 0.3
    },
    {
+    "group": "camera",
+    "mesh": "taz_camera_16171a",
+    "color": "#16171A",
+    "metal": 0.0,
+    "rough": 0.6
+   },
+   {
+    "group": "camera",
+    "mesh": "taz_camera_3a4a66",
+    "color": "#3A4A66",
+    "metal": 0.0,
+    "rough": 0.6
+   },
+   {
+    "group": "camera",
+    "mesh": "taz_camera_9aa0a8",
+    "color": "#9AA0A8",
+    "metal": 0.0,
+    "rough": 0.6
+   },
+   {
+    "group": "camera",
+    "mesh": "taz_camera_b9bec6",
+    "color": "#B9BEC6",
+    "metal": 0.7,
+    "rough": 0.3
+   },
+   {
+    "group": "camera",
+    "mesh": "taz_camera_c9a227",
+    "color": "#C9A227",
+    "metal": 0.7,
+    "rough": 0.3
+   },
+   {
+    "group": "camera",
+    "mesh": "taz_camera_e8762b",
+    "color": "#E8762B",
+    "metal": 0.0,
+    "rough": 0.6
+   },
+   {
     "group": "cover_clips",
     "mesh": "taz_cover_clips_e8762b",
     "color": "#E8762B",
@@ -262,6 +304,46 @@
     "color": "#B9BEC6",
     "metal": 0.7,
     "rough": 0.3
+   },
+   {
+    "group": "frame",
+    "kind": "camera",
+    "mesh": "mini2_frame_camera_16171a",
+    "color": "#16171A",
+    "metal": 0.0,
+    "rough": 0.6
+   },
+   {
+    "group": "frame",
+    "kind": "camera",
+    "mesh": "mini2_frame_camera_3a4a66",
+    "color": "#3A4A66",
+    "metal": 0.0,
+    "rough": 0.6
+   },
+   {
+    "group": "frame",
+    "kind": "camera",
+    "mesh": "mini2_frame_camera_b9bec6",
+    "color": "#B9BEC6",
+    "metal": 0.7,
+    "rough": 0.3
+   },
+   {
+    "group": "frame",
+    "kind": "camera",
+    "mesh": "mini2_frame_camera_c9a227",
+    "color": "#C9A227",
+    "metal": 0.7,
+    "rough": 0.3
+   },
+   {
+    "group": "frame",
+    "kind": "camera",
+    "mesh": "mini2_frame_camera_e8762b",
+    "color": "#E8762B",
+    "metal": 0.0,
+    "rough": 0.6
    },
    {
     "group": "frame",

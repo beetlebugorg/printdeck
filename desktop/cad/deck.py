@@ -2,7 +2,8 @@
 # from the model of the pod (lulzbot/pod.py) and the Mini 2 meshes in lulzbot/build/mini2:
 #
 #   cd lulzbot && uv run --no-project --with build123d --with trimesh --with numpy --with scipy \
-#     --with networkx --with rtree --with fast-simplification python ../desktop/cad/deck.py
+#     --with networkx --with rtree --with shapely --with pyrender --with PyOpenGL \
+#     --with fast-simplification python ../desktop/cad/deck.py
 #
 # It needs lulzbot/build/workhorse (workhorse.py) and lulzbot/build/mini2 (the Mini 2 meshes from the
 # hibiscus_assembled.fcstd of LulzBot).
@@ -17,6 +18,7 @@
 # - mini2_*.bin: the Mini 2, its bracket, its screws and its cable clips, in the scene of the Mini 2
 #   (mini_scene below). The printer is in four groups that move apart (frame, bed, gantry,
 #   carriage), one file for each group and kind.
+# - The "camera" group of each printer: the C270 webcam on its mount (camera.py).
 #
 # meshes/deck.json lists the files with their colors, the place of the pod on each printer (the
 # position and the rotation of the pod coordinates in the scene, and the directions v and w of the pod
@@ -36,6 +38,7 @@ import fast_simplification
 from build123d import export_stl
 
 import pod as POD
+import camera as C
 import kitview as K
 import parts as P
 import shape as S
@@ -180,7 +183,21 @@ def mini_parts(tmp):
 # f(tmp) that returns a list of (group, color, mesh), where the mesh is a trimesh mesh or a build123d
 # shape. The parts go on the frame of the printer, in the color of the item (FINISH gives the
 # metalness and the roughness).
-EXTRA = {"taz": [], "mini2": []}
+def camera_parts(name):
+    """The C270 webcam and its mount on the frame of the printer (camera.py), as one group. camera.py
+    has them in the printer frame of pod.setups, and its "world" matrix moves them to the CAD."""
+    def f(tmp):
+        world = POD.setups()[name]["world"]
+        out = []
+        for n, shape, c in C.parts(name):
+            m = stl(shape, tmp, f"{name}_{n}")
+            m.apply_transform(world)
+            out.append(("camera", c, m))
+        return out
+    return f
+
+
+EXTRA = {"taz": [camera_parts("taz")], "mini2": [camera_parts("mini2")]}
 
 
 def extra_parts(name, tmp):
