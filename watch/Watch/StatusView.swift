@@ -6,8 +6,8 @@ import WatchKit
 
 /// The watch as the display of the printer: the whole watch is the blue dot-matrix display. The
 /// status of the print fills the first screen. Under it, in one scroll that the Digital Crown
-/// moves, are the model of the print as the deck draws it, the print (layers and times), and the
-/// filament. During a print, a tap opens a short menu: Pause or Resume, and Cancel, each with a
+/// moves, are the picture of the camera of the deck (when it has one), the model of the print as
+/// the deck draws it, the print (layers and times), and the filament. During a print, a tap opens a short menu: Pause or Resume, and Cancel, each with a
 /// question first. In the menu the crown moves the selection, as the knob of the printer, and a tap
 /// selects.
 struct StatusView: View {
@@ -17,6 +17,8 @@ struct StatusView: View {
     @FocusState private var focused: Bool
     @State private var mode = Mode.scroll
     @State private var crown = 0.0
+    /// The last picture of the camera of the deck, or nil.
+    @State private var photo: CGImage?
 
     private let p = Palette.night
 
@@ -111,6 +113,9 @@ struct StatusView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     lcd(statusScreen, grid: grid, rows: grid.window, top: 0)
+                    if model.status?.camera != nil {
+                        cameraPicture(grid)
+                    }
                     ForEach(sections, id: \.self) { s in
                         if let pg = page(s) {
                             lcd(.page(pg), grid: grid, rows: pg.height + 4, top: 2)
@@ -128,6 +133,30 @@ struct StatusView: View {
             .frame(height: CGFloat(grid.window * grid.dot) / scale)
             .clipped()
             .padding(.top, CGFloat(grid.top * grid.dot) / scale)
+        }
+    }
+
+    /// The picture of the camera of the deck, under the status, as wide as the text of the
+    /// display. It reads a small picture every 3 seconds while the app is active.
+    private func cameraPicture(_ grid: Grid) -> some View {
+        let w = CGFloat((grid.cols - 2 * Grid.mx) * grid.dot) / scale
+        return ZStack {
+            Rectangle().fill(.black)
+            if let photo {
+                Image(decorative: photo, scale: scale)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            }
+        }
+        .frame(width: w, height: w * 9 / 16)
+        .padding(.vertical, CGFloat(2 * grid.dot) / scale)
+        .task(id: phase == .active) {
+            guard phase == .active else { return }
+            let client = DeckClient(settings: model.settings)
+            while !Task.isCancelled {
+                if let img = await client.snapshot(width: Int(w * scale)) { photo = img }
+                try? await Task.sleep(for: .seconds(3))
+            }
         }
     }
 

@@ -27,7 +27,7 @@ struct DeckView: View {
     let link: WatchLink
 
     enum Sheet: Identifiable {
-        case setup, files
+        case setup, files, camera
         var id: Self { self }
     }
 
@@ -69,6 +69,7 @@ struct DeckView: View {
             switch ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"] {
             case "files": sheet = .files
             case "setup": sheet = .setup
+            case "camera": sheet = .camera
             default: break
             }
         }
@@ -88,6 +89,7 @@ struct DeckView: View {
                 switch s {
                 case .setup: SetupView(link: link) { sheet = nil }
                 case .files: FilesView { sheet = nil }
+                case .camera: CameraView { sheet = nil }
                 }
             }
             .environment(model)
@@ -137,6 +139,7 @@ struct DeckView: View {
             }
             .disabled(model.sending)
             layerPlate(st, title: layerText(st))
+            cameraKey(st)
             progressWindow(st)
         }
     }
@@ -153,6 +156,7 @@ struct DeckView: View {
                 Button("Menu") { sheet = .setup }.buttonStyle(KeyStyle())
             }
             .disabled(model.sending)
+            cameraKey(st)
             progressWindow(st)
         }
     }
@@ -165,7 +169,17 @@ struct DeckView: View {
             if let roll = st?.roll {
                 Plate(label: "Roll") { rollRow(roll) }
             }
+            cameraKey(st)
             Button("Menu") { sheet = .setup }
+                .buttonStyle(KeyStyle())
+        }
+    }
+
+    /// Camera opens the picture of the camera, when the deck has a camera on.
+    @ViewBuilder
+    private func cameraKey(_ st: Status?) -> some View {
+        if st?.camera != nil {
+            Button("Camera") { sheet = .camera }
                 .buttonStyle(KeyStyle())
         }
     }

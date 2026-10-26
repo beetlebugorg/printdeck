@@ -83,6 +83,8 @@ struct Status: Codable, Equatable {
     var roll: Roll?
     /// The status screen of the printer display as the deck draws it, or nil from an older deck.
     var lcd: DeckLCD?
+    /// The name of the camera of the deck, or nil when the deck has no camera on.
+    var camera: String?
     /// When the app read the status.
     var time: Date
 
@@ -257,6 +259,7 @@ struct DeckClient {
             st.bed = t["bed"].map { Temp(actual: $0.actual, target: $0.target) }
         }
         st.lcd = p.lcd
+        st.camera = p.camera?.name
         if let s = p.spool {
             st.roll = Roll(name: s.name, material: s.material, left: s.left, full: s.full,
                            color: s.color?.isEmpty == false ? s.color : nil)
@@ -327,6 +330,14 @@ struct DeckClient {
     /// pixels, or nil.
     func modelImage(width w: Int, height h: Int) async -> CGImage? {
         guard let data = try? await send("/api/plugin/printdeck/model.png?w=\(w)&h=\(h)"),
+              let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        return CGImageSourceCreateImageAtIndex(src, 0, nil)
+    }
+
+    /// A picture of the camera of the deck, w pixels wide, or nil. The deck sends its newest
+    /// frame. With no camera it sends a picture of its screen, so check Status.camera first.
+    func snapshot(width w: Int) async -> CGImage? {
+        guard let data = try? await send("/webcam/snapshot?w=\(w)"),
               let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         return CGImageSourceCreateImageAtIndex(src, 0, nil)
     }
@@ -419,7 +430,12 @@ private struct PluginReply: Decodable {
         var progress: Double
         var left: Double
     }
+    struct Camera: Decodable {
+        var name: String
+        var state: String
+    }
     var spool: Spool?
     var job: Job?
     var lcd: DeckLCD?
+    var camera: Camera?
 }

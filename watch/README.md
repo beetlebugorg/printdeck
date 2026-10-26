@@ -8,11 +8,13 @@ deck over the local network.
   Cancel and Menu, the layer, the roll (color, a meter of what is left, the name and the grams),
   and the model as the deck draws it, with the file, the progress and a playhead. A paused print has Resume. With no print, Print a
   file opens the files of the deck, newest first. Menu opens the setup. At the start, the app
-  shows the start screen of the deck in dots until the first reading of the deck.
+  shows the start screen of the deck in dots until the first reading of the deck. When the deck
+  has a camera, Camera opens its picture, 5 times a second while the page is open.
 - The watch app is a blue dot-matrix display, in the fonts and the icons of the printer display
   of the deck, over the whole watch. The first page is the progress of the print: the state, the
   percent in a large font, the bar, the layer, the time left and the end. Under it, in one scroll
-  that the Digital Crown moves, are the model of the print as the deck draws it, the layers and
+  that the Digital Crown moves, are the picture of the camera of the deck (when it has one, a
+  new picture every 3 seconds), the model of the print as the deck draws it, the layers and
   the times of the print, and the filament. During a print, a tap opens a menu with
   Pause or Resume and Cancel, each with a question first; the crown moves the selection, as the
   knob of the printer, and a tap selects.
@@ -144,8 +146,9 @@ All other requests have the header `X-Api-Key`.
 - `GET /api/job`: the state text, the file name and the time of the print.
 - `GET /api/printer`: the temperatures. The deck sends 409 when the printer is not connected,
   and the app shows no temperatures then.
-- `GET /api/plugin/printdeck`: the roll in the printer, and the print with its layer, progress
-  and seconds left.
+- `GET /api/plugin/printdeck`: the roll in the printer, the print with its layer, progress
+  and seconds left, and the camera (its name, or null with no camera).
+- `GET /webcam/snapshot?w=..`: the newest picture of the camera, as a JPEG w pixels wide.
 - `POST /api/job`: `{"command":"pause","action":"pause"}`, `{"command":"pause","action":"resume"}`
   and `{"command":"cancel"}`.
 - `GET /api/files?recursive=true`: the files. `POST /api/files/local/<path>` with
@@ -159,9 +162,10 @@ All other requests have the header `X-Api-Key`.
 ## Screenshots in the simulator
 
 In a debug build, the environment variables `PRINTDECK_ADDRESS` and `PRINTDECK_KEY` set the deck,
-and `PRINTDECK_SCREEN` opens a screen: `menu` or `cancel` on the watch, `files`, `setup` or
-`loading` on the iPhone. With `xcrun simctl launch`, give them the prefix `SIMCTL_CHILD_`. The
-simulated deck of `printdeck app -sim` reads its API key from `OCTOPRINT_API_KEY`.
+and `PRINTDECK_SCREEN` opens a screen: `menu` or `cancel` on the watch, `files`, `setup`,
+`camera` or `loading` on the iPhone. With `xcrun simctl launch`, give them the prefix
+`SIMCTL_CHILD_`. The simulated deck of `printdeck app -sim` reads its API key from
+`OCTOPRINT_API_KEY`.
 
 ## License
 
