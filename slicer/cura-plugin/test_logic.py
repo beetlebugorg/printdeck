@@ -168,5 +168,38 @@ class TestRollMaterial(unittest.TestCase):
         self.assertEqual(s["spools"], [{"id": "1"}])
         self.assertIsNone(logic.parse_status({"material": "PLA"})["spools"])
 
+    def test_parse_estimate(self):
+        e = logic.parse_estimate({"moves": 5850, "prep": 690, "total": 6540, "planned": 5625})
+        self.assertEqual(e, {"moves": 5850.0, "prep": 690.0, "total": 6540.0})
+        self.assertIsNone(logic.parse_estimate({"moves": 0, "prep": 0, "total": 0}))
+        self.assertIsNone(logic.parse_estimate({"moves": "x", "total": 10}))
+        self.assertIsNone(logic.parse_estimate({"moves": -1, "total": 10}))
+        self.assertIsNone(logic.parse_estimate([]))
+
+    def test_deck_feature_times(self):
+        # Cura: 1h 41m of moves. The Printdeck: 1h 33m of moves and 11 min of start macro.
+        cura = {"inset_0": 1800, "inset_x": 1200, "infill": 2400, "travel": 600, "none": 60}
+        out = logic.deck_feature_times(cura, 5580, 660)
+        self.assertEqual(sum(out.values()), 6240)
+        self.assertEqual(set(out), set(cura))
+        f = 5580 / 6060
+        self.assertEqual(out["infill"], round(2400 * f))
+        self.assertEqual(out["inset_0"], round(1800 * f))
+        self.assertAlmostEqual(out["none"], 60 * f + 660, delta=2)
+        # A Cura time of 0: all the time is "none".
+        self.assertEqual(logic.deck_feature_times({"infill": 0}, 100.4, 20), {"infill": 0, "none": 120})
+        self.assertEqual(logic.deck_feature_times({}, 100, 0), {"none": 100})
+        # The rounding goes over the total with no start macro: "none" stays at 0.
+        out = logic.deck_feature_times({"a": 1, "b": 1, "c": 1, "none": 0}, 4.5, 0)
+        self.assertEqual(sum(out.values()), 4)
+        self.assertTrue(all(v >= 0 for v in out.values()))
+
+    def test_deck_time_line(self):
+        self.assertEqual(logic.duration_text(6240), "1h 44m")
+        self.assertEqual(logic.duration_text(1500), "25 min")
+        self.assertEqual(logic.duration_text(20), "1 min")
+        self.assertEqual(logic.deck_time_line(6240, 6060), "Printdeck time: 1h 44m (Cura 1h 41m)")
+        self.assertEqual(logic.deck_time_line(6240, 0), "Printdeck time: 1h 44m")
+
 if __name__ == "__main__":
     unittest.main()

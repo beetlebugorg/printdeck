@@ -310,3 +310,53 @@ def roll_material_changes(meta, spool):
     if (changes.get("color_code") or meta.get("color_code")) and meta.get("color_name") != name:
         changes["color_name"] = name
     return changes, to_deck
+
+
+def parse_estimate(data):
+    """Returns the answer of POST /api/plugin/printdeck/estimate as a dict with the keys moves,
+    prep and total, in seconds, or None when the answer has no positive total."""
+    if not isinstance(data, dict):
+        return None
+    try:
+        out = {k: float(data.get(k) or 0) for k in ("moves", "prep", "total")}
+    except (TypeError, ValueError):
+        return None
+    if not out["total"] > 0 or out["moves"] < 0 or out["prep"] < 0:
+        return None
+    return out
+
+
+def deck_feature_times(times, moves, prep):
+    """The print times of the features of Cura for the time of the Printdeck. times is a dict from
+    the feature (such as "infill") to its seconds in Cura. Each feature gets the factor that makes
+    the sum the seconds of the moves. The feature "none" (Other in Cura) also gets prep, the
+    seconds of the start macro, and the rest of the rounding. The sum of the result is the rounded
+    total of the Printdeck."""
+    total = int(round(moves + prep))
+    cura = sum(max(0, t) for t in times.values())
+    factor = moves / cura if cura > 0 else 0.0
+    out = {k: int(round(max(0, t) * factor)) for k, t in times.items()}
+    out["none"] = out.get("none", 0) + total - sum(out.values())
+    if out["none"] < 0:
+        # The rounding went over the total: the largest feature gets the difference.
+        rest, out["none"] = out["none"], 0
+        top = max(out, key=out.get)
+        out[top] += rest
+    return out
+
+
+def duration_text(seconds):
+    """A time as the Printdeck shows it: "1h 44m", or "25 min" below an hour."""
+    m = int(seconds // 60)
+    if m >= 60:
+        return "%dh %02dm" % (m // 60, m % 60)
+    return "%d min" % max(m, 1)
+
+
+def deck_time_line(total, cura_total):
+    """The line of the roll card with the time of the Printdeck for the sliced model, and the time
+    of Cura before the change, in seconds."""
+    line = "Printdeck time: %s" % duration_text(total)
+    if cura_total > 0:
+        line += " (Cura %s)" % duration_text(cura_total)
+    return line

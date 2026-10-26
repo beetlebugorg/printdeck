@@ -132,5 +132,16 @@ Rectangle
             wrapMode: Text.WordWrap
             color: roll && roll.short ? UM.Theme.getColor("error") : UM.Theme.getColor("text")
         }
+
+        // The print time of the Printdeck, which Cura also shows as its print time.
+        UM.Label
+        {
+            visible: text != ""
+            width: parent.width
+            text: roll ? roll.time : ""
+            font: UM.Theme.getFont("default")
+            wrapMode: Text.WordWrap
+            color: UM.Theme.getColor("text")
+        }
     }
 }

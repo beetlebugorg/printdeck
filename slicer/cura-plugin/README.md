@@ -19,6 +19,10 @@ The plugin works by itself, and tells you in a message what it did:
 - A card next to the slice button shows the roll in the Printdeck: its color, its name, and the
   filament that is left on it. After a slice, the card shows the filament of the model, and the
   filament that is left after the print.
+- After a slice, the plugin sends the G-code to the Printdeck. The Printdeck plans the moves with
+  the limits of the printer and adds the time of the start macro. Cura then shows the time of the
+  Printdeck as its print time, and the card shows "Printdeck time" with the time of Cura next to
+  it. When the Printdeck does not answer, Cura keeps its own time.
 - During a print of the file that Cura has open, the Preview shows the layer that prints.
 - When a print ends, Cura tells you.
 - The Printdeck tab, next to Monitor, shows the screen of the deck, the print and the time left,

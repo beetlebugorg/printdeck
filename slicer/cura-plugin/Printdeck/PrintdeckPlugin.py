@@ -5,6 +5,8 @@
 # - the print button says "Print to Printdeck",
 # - when the roll in the Printdeck changes, Cura changes to the material of the roll,
 # - after a slice, it warns when the model needs more filament than the roll has,
+# - after a slice, it sends the G-code to the Printdeck, and Cura shows the print time of the
+#   Printdeck in place of its own, with a "Printdeck time" line on the roll card,
 # - during a print of the file that Cura has open, the Preview shows the layer that prints,
 # - it tells when a print ends,
 # - it writes the material of Cura into the header of each G-code file, so that the Printdeck asks
@@ -12,6 +14,7 @@
 #
 # It asks the Printdeck every 10 seconds, on a thread, and changes Cura on the main thread.
 
+import gzip
 import json
 import os
 import tempfile
@@ -43,6 +46,17 @@ class RollCard(QObject):
         super().__init__(parent)
         self._card = None
         self._printer = ""
+        self._time = ""
+
+    def setTime(self, line):
+        """Sets the line with the print time of the Printdeck, or ""."""
+        if line != self._time:
+            self._time = line
+            self.changed.emit()
+
+    @pyqtProperty(str, notify=changed)
+    def time(self):
+        return self._time
 
     def set(self, card, printer=""):
         """Sets the texts of the card, and the name of the printer in Cura."""
@@ -130,6 +144,7 @@ class PrintdeckPlugin(Extension):
         self._playFile = ""
         self._playAt = None  # (layer, start, monotonic time, paused), or None
         self._following = False  # Play follows the printer: the poll is faster
+        self._slice = 0  # the number of the slice, for the print time of the Printdeck
         self._stop = threading.Event()
         self._wake = threading.Event()  # ends the wait of the poll before its time
         self._card = RollCard()
@@ -148,6 +163,9 @@ class PrintdeckPlugin(Extension):
         app.getOutputDeviceManager().writeStarted.connect(self._tagMaterial)
         app.fileCompleted.connect(self._onFileCompleted)
         app.getController().activeStageChanged.connect(self._onStage)
+        backend = app.getBackend()
+        if backend:
+            backend.backendStateChange.connect(self._onBackendState)
         threading.Thread(target=self._poll, name="Printdeck", daemon=True).start()
         # The roll card, next to the slice button.
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "qml", "RollCard.qml")
@@ -739,6 +757,75 @@ class PrintdeckPlugin(Extension):
         if text and key != self._warned:
             self._warned = key
             Message(text, title="Printdeck", lifetime=0).show()
+
+    # The print time of the Printdeck.
+
+    def _onBackendState(self, state):
+        """After a slice, asks the Printdeck for the print time of the G-code. A new slice drops
+        the answer for the last one."""
+        from UM.Backend.Backend import BackendState
+
+        self._slice += 1
+        self._card.setTime("")
+        if state == BackendState.Done:
+            # Cura changes the G-code after the state changes: the request goes after that.
+            CuraApplication.getInstance().callLater(self._estimate, self._slice)
+
+    def _estimate(self, number):
+        """Sends the G-code of the slice to the Printdeck in a thread. The Printdeck plans the
+        moves on the printer and returns the print time (logic.parse_estimate)."""
+        app = CuraApplication.getInstance()
+        printer = self._printer()
+        if number != self._slice or not printer or not self._status:
+            return
+        plate = app.getMultiBuildPlateModel().activeBuildPlate
+        gcode_list = (getattr(app.getController().getScene(), "gcode_dict", None) or {}).get(plate)
+        if not gcode_list:
+            return
+        parts = list(gcode_list)
+        base, key = printer
+
+        def send():
+            try:
+                body = gzip.compress("".join(parts).encode("utf-8"), compresslevel=1)
+                url, headers = deckscreen.direct(base.rstrip("/") + "/api/plugin/printdeck/estimate")
+                req = urllib.request.Request(url, data=body, method="POST", headers=dict(
+                    headers, **{"X-Api-Key": key, "Content-Type": "text/x-gcode", "Content-Encoding": "gzip"}))
+                with urllib.request.urlopen(req, timeout=120) as r:
+                    est = logic.parse_estimate(json.loads(r.read().decode()))
+            except Exception as e:  # an older Printdeck, or the network: Cura keeps its time
+                Logger.log("w", "Printdeck: the print time: %s", e)
+                return
+            if est:
+                app.callLater(self._setDeckTime, number, plate, est)
+
+        threading.Thread(target=send, name="Printdeck time", daemon=True).start()
+
+    def _setDeckTime(self, number, plate, est):
+        """Gives the print time of Cura the time of the Printdeck: the time of each feature gets
+        a factor (logic.deck_feature_times), and the total is their sum. This uses the dicts of
+        PrintInformation that _onPrintDurationMessage fills."""
+        if number != self._slice:
+            return
+        info = CuraApplication.getInstance().getPrintInformation()
+        features = getattr(info, "_print_times_per_feature", {}).get(plate)
+        current = getattr(info, "_current_print_time", {}).get(plate)
+        if not features or current is None:
+            Logger.log("w", "Printdeck: this Cura has no print times to change")
+            return
+        times = {k: (int(d) if d.valid else 0) for k, d in features.items()}
+        cura_total = sum(times.values())
+        new = logic.deck_feature_times(times, est["moves"], est["prep"])
+        from UM.Qt.Duration import Duration
+
+        for k, seconds in new.items():
+            if k not in features:
+                features[k] = Duration(parent=info)
+            features[k].setDuration(seconds)
+        current.setDuration(sum(new.values()))
+        info.currentPrintTimeChanged.emit()
+        self._card.setTime(logic.deck_time_line(est["total"], cura_total))
+        Logger.log("i", "Printdeck: the print time is %d s (Cura %d s)", est["total"], cura_total)
 
     # The print.
 
