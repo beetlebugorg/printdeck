@@ -22,6 +22,15 @@ var wrongDelay = time.Second
 // web server.
 func (s *Server) Auth(h http.HandlerFunc) http.HandlerFunc { return s.auth(h) }
 
+// LoggedIn reports that a request comes from a browser with a login of the remote screen.
+func (s *Server) LoggedIn(r *http.Request) bool {
+	if s.NoLogin {
+		return true
+	}
+	c, err := r.Cookie(cookieName)
+	return err == nil && s.validSession(c.Value)
+}
+
 // auth lets a request through only with a valid session. Without one, the screen page goes to the
 // login page, and the other requests fail.
 func (s *Server) auth(h http.HandlerFunc) http.HandlerFunc {

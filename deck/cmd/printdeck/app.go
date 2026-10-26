@@ -116,6 +116,9 @@ func desktopApp(args []string) {
 		return subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Api-Key")), []byte(token)) == 1
 	}
 	rs := newRemote(app, api, func() string { return "" }, tokenOK)
+	if api != nil {
+		api.Allow = tokenOK // the webcam, with the token of the window
+	}
 	if k, ok := pr.(*printer.Klippy); ok && *sim {
 		registerSim(mux, k, tokenOK) // for the 3D window of the simulated printer
 	}

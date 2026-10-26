@@ -29,7 +29,7 @@ import (
 //
 //   - the remote screen at /, with the password of the Printdeck user (when the system has one)
 //   - the OctoPrint-compatible API for slicers at /api, /plugin/appkeys and /downloads (with the
-//     Klipper backend)
+//     Klipper backend), and the webcam at /webcam
 //   - the state of the simulated printer at /sim, for the 3D window of the desktop app (with an
 //     API key)
 func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App) *remote.Server {
@@ -45,6 +45,9 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 			return pass
 		}, nil)
 		rs.Source = sourceURL(osVersion())
+		if api != nil {
+			api.Allow = rs.LoggedIn // the webcam in a browser with the login of the remote screen
+		}
 		mux.Handle("/", rs.Handler())
 		registerSystemPage(mux, rs, pr, app.Metrics, cfg.KlippyLog, cfg.OctoPrintKey)
 		registerRollPages(mux, rs, pr, app)
@@ -80,6 +83,9 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 		return strings.TrimSpace(string(b))
 	}
 	api.Frame = cameraFrame(app)
+	if cam, ok := app.Camera.(octoapi.Camera); ok {
+		api.Camera = cam
+	}
 	api.StartPrint = app.ConfirmFilePrint
 	api.Status = func() any { return app.StatusScreen() }
 	api.Model = k.View.ModelPicture
@@ -156,7 +162,7 @@ var (
 )
 
 // cameraFrame returns a function that draws the screen of the deck, as on a display that is
-// mounted wide, for the webcam of the slicers. The frames have their own screens, like a browser.
+// mounted wide, for the webcam of the slicers when the deck has no camera. The frames have their own screens, like a browser.
 func cameraFrame(app *ui.App) func() image.Image {
 	var mu sync.Mutex
 	var s *ui.App

@@ -11,6 +11,7 @@
 //	files.go    the file list, upload, select and print, delete, download
 //	appkeys.go  the App Keys flow: an app asks for a key, and the touch screen asks the user
 //	printdeck.go the loaded filament, for the Printdeck plugin for Cura
+//	webcam.go   the webcam: the camera of the deck, or its screen
 package octoapi
 
 import (
@@ -107,8 +108,8 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/plugin/printdeck/push/pair", s.key(s.servePair))
 	mux.HandleFunc("GET /api/plugin/printdeck/push", s.key(s.servePhones))
 	mux.HandleFunc("DELETE /api/plugin/printdeck/push/{id}", s.key(s.serveUnpair))
-	mux.HandleFunc("GET /webcam/stream", s.key(s.serveStream))
-	mux.HandleFunc("GET /webcam/snapshot", s.key(s.serveSnapshot))
+	mux.HandleFunc("GET /webcam/stream", s.webcam(s.serveStream))
+	mux.HandleFunc("GET /webcam/snapshot", s.webcam(s.serveSnapshot))
 }
 
 // key lets a request through with a valid API key: in the X-Api-Key header, as a Bearer token, or

@@ -19,12 +19,13 @@ func (s *Server) serveServer(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"version": serverVersion, "safemode": nil})
 }
 
-// serveSettings answers the few settings that the slicers read. The webcam is the screen of the
-// deck (printdeck.go), with the key of the request in its address, because the slicers do not send
-// the key with the stream.
+// serveSettings answers the few settings that the slicers read. The webcam is the camera or the
+// screen of the deck (webcam.go), with the key of the request in its address, because the slicers
+// do not send the key with the stream. The deck turns the pictures itself, so flipH, flipV and
+// rotate90 are false.
 func (s *Server) serveSettings(w http.ResponseWriter, r *http.Request) {
 	webcam := map[string]any{"webcamEnabled": false, "streamUrl": "", "snapshotUrl": ""}
-	if s.Frame != nil {
+	if s.webcamOn() {
 		q := "?apikey=" + url.QueryEscape(requestKey(r))
 		webcam = map[string]any{"webcamEnabled": true, "streamUrl": "/webcam/stream" + q,
 			"snapshotUrl": "/webcam/snapshot" + q, "flipH": false, "flipV": false, "rotate90": false}

@@ -1,15 +1,11 @@
 package octoapi
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"image"
-	"image/jpeg"
 	"image/png"
 	"net/http"
 	"strconv"
-	"time"
 
 	"printdeck/internal/printer"
 )
@@ -23,16 +19,19 @@ import (
 //	{"material": "PLA", "diameter": 2.85,
 //	 "spool": {"id": "3", "name": "Galaxy Black", "material": "PLA", "left": 642, "full": 1000, "price": 22},
 //	 "spools": [{"id": "3", "name": "Galaxy Black", ...}, {"id": "4", "name": "Signal Orange", ...}],
-//	 "job": {"file": "benchy.gcode", "state": "printing", "layer": 12, "layers": 27, "progress": 0.42, "left": 4980}}
+//	 "job": {"file": "benchy.gcode", "state": "printing", "layer": 12, "layers": 27, "progress": 0.42, "left": 4980},
+//	 "camera": {"name": "C270 HD WEBCAM", "state": "idle", "width": 1280, "height": 720, "fps": 15}}
 //
 // material is the loaded material, or "". spool is the roll in the printer, or null. left and full
 // are grams of filament, and price is the price of the roll, or 0. spools is the list of all rolls,
 // with the same fields: the plugin makes a material of Cura for each roll. job is the print that runs, or
 // null: its state ("printing" or "paused"), its layer, its progress from 0 to 1, and the seconds
-// left (-1 when the time left is not known).
+// left (-1 when the time left is not known). camera is the camera of the deck, or null when the
+// deck has no camera on: its name, its state ("idle" with no viewer, "starting", "on" or "error"),
+// and the size and the rate of its frames when it has run.
 //
-// The webcam of the API is the screen of the deck, for a printer with no camera: /webcam/stream is
-// an MJPEG stream with one frame a second, and /webcam/snapshot is one JPEG.
+// The webcam of the API (webcam.go) is the camera of the deck, or the screen of the deck for a
+// printer with no camera.
 
 // spoolJSON is a roll of filament in the API.
 type spoolJSON struct {
@@ -72,13 +71,15 @@ type printdeckJSON struct {
 	Spool    *spoolJSON  `json:"spool"`
 	Spools   []spoolJSON `json:"spools"`
 	Job      *jobJSON    `json:"job"`
+	// Camera is the camera of the deck, or null when the webcam is the screen of the deck.
+	Camera *cameraJSON `json:"camera"`
 	// LCD is the status screen of the printer display: the state, the message, the heaters, the
 	// fan (0 to 1), and the progress, for an app that draws the display.
 	LCD any `json:"lcd,omitempty"`
 }
 
 func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
-	out := printdeckJSON{}
+	out := printdeckJSON{Camera: s.cameraInfo()}
 	if s.Status != nil {
 		out.LCD = s.Status()
 	}
@@ -162,59 +163,6 @@ func (s *Server) serveRollMaterial(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// frameJPEG is a frame of the screen as a JPEG.
-func (s *Server) frameJPEG() ([]byte, error) {
-	var b bytes.Buffer
-	err := jpeg.Encode(&b, s.Frame(), &jpeg.Options{Quality: 80})
-	return b.Bytes(), err
-}
-
-func (s *Server) serveSnapshot(w http.ResponseWriter, r *http.Request) {
-	if s.Frame == nil {
-		http.NotFound(w, r)
-		return
-	}
-	b, err := s.frameJPEG()
-	if err != nil {
-		apiError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	w.Header().Set("Content-Type", "image/jpeg")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Write(b)
-}
-
-// serveStream sends a frame of the screen each second, until the client goes.
-func (s *Server) serveStream(w http.ResponseWriter, r *http.Request) {
-	if s.Frame == nil {
-		http.NotFound(w, r)
-		return
-	}
-	const boundary = "printdeckframe"
-	w.Header().Set("Content-Type", "multipart/x-mixed-replace; boundary="+boundary)
-	w.Header().Set("Cache-Control", "no-store")
-	flush := http.NewResponseController(w)
-	tick := time.NewTicker(time.Second)
-	defer tick.Stop()
-	for {
-		b, err := s.frameJPEG()
-		if err != nil {
-			return
-		}
-		fmt.Fprintf(w, "--%s\r\nContent-Type: image/jpeg\r\nContent-Length: %d\r\n\r\n", boundary, len(b))
-		w.Write(b)
-		w.Write([]byte("\r\n"))
-		if flush.Flush() != nil {
-			return
-		}
-		select {
-		case <-r.Context().Done():
-			return
-		case <-tick.C:
-		}
-	}
-}
-
 // The fields of the Server for the Printdeck API.
 type printdeckFields struct {
 	// Spools are the rolls of filament, or nil.
@@ -225,6 +173,11 @@ type printdeckFields struct {
 	Diameter func() float64
 	// Frame draws the screen of the deck for the webcam, or nil for no webcam.
 	Frame func() image.Image
+	// Camera is the camera of the deck, or nil (webcam.go).
+	Camera Camera
+	// Allow lets a request to the webcam through with no API key, or is nil: the login of the
+	// remote screen, or the token of the desktop app.
+	Allow func(r *http.Request) bool
 	// StartPrint starts a print of a file in place of Printer.PrintFile, or nil. The deck first
 	// checks that the material of the file is in the printer, and asks on the touch screen.
 	StartPrint func(path string)
