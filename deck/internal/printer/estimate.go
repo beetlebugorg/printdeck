@@ -26,8 +26,9 @@ type estimate struct {
 
 // TimeLeft sets the time left of a running print from the timeline of its G-code. It keeps the
 // estimate of the backend when the G-code is not loaded or has no timeline. prep is the time
-// that the steps of the start macro still need (Rates.prepLeft).
-func (v *View) TimeLeft(st *State, now time.Time, prep time.Duration) {
+// that the steps of the start macro still need (Rates.prepLeft). planFactor is the real time of
+// the moves for each second of the plan (Rates.PlanFactor).
+func (v *View) TimeLeft(st *State, now time.Time, prep time.Duration, planFactor float64) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	key := fileKey(*st)
@@ -38,11 +39,15 @@ func (v *View) TimeLeft(st *State, now time.Time, prep time.Duration) {
 		return
 	}
 	gc := v.gc
-	// The plan of the motion planner is the time of the moves on this printer. Without it, the
-	// timeline of the slicer.
+	// The plan of the motion planner is the time of the moves on this printer, corrected by the
+	// plan factor of the past prints. Without it, the timeline of the slicer: the plan factor is
+	// from the plan, so it does not apply to the slicer. The speed of the printer below (k) is
+	// against the corrected plan: against the raw plan, k also contains the plan factor, and the
+	// correction counts twice.
 	var el, total float64
 	if v.plan != nil && v.plan.total > 0 {
 		el, total = v.plan.at(st.FilePos)
+		el, total = el*planFactor, total*planFactor
 	} else if e, t, ok := gc.TimeAt(st.FilePos); ok {
 		el, total = e, t
 	} else {
@@ -65,7 +70,8 @@ func (v *View) TimeLeft(st *State, now time.Time, prep time.Duration) {
 		// covers a deck that starts during a print.
 		e.started, e.clock0 = true, d-el
 	}
-	// The speed of this printer against the slicer: it counts more as the print goes on.
+	// The speed of this printer against the corrected plan or the slicer: it counts more as the
+	// print goes on.
 	k := 1.0
 	if actual := d - e.clock0; el > 60 && actual > 0 {
 		w := min(1, el/trustAfter)

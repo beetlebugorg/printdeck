@@ -231,6 +231,24 @@ type Rates struct {
 	PlanSamples int
 }
 
+// The limits of the plan factor: the prints that it needs, and its range, so that one strange
+// record does not change the estimates much.
+const (
+	planMinSamples = 3
+	planMinFactor  = 0.8
+	planMaxFactor  = 1.5
+)
+
+// PlanFactor is the real time of the moves on this printer for each second of the plan:
+// 1 + PlanError, between planMinFactor and planMaxFactor. With fewer than planMinSamples prints
+// in the history, it is 1.
+func (r Rates) PlanFactor() float64 {
+	if r.PlanSamples < planMinSamples {
+		return 1
+	}
+	return max(planMinFactor, min(planMaxFactor, 1+r.PlanError))
+}
+
 // median of a list of numbers; 0 for none.
 func median(v []float64) float64 {
 	if len(v) == 0 {

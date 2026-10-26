@@ -610,7 +610,7 @@ func (k *Klippy) refresh(notify func()) {
 		}
 	}
 	k.mu.Unlock()
-	k.View.TimeLeft(&st, now, prepLeft)
+	k.View.TimeLeft(&st, now, prepLeft, rates.PlanFactor())
 	if k.Hist != nil && st.Reachable {
 		k.mu.Lock()
 		phases, planned := append([]Phase(nil), k.timer.phases...), k.timer.planned
