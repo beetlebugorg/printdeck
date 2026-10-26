@@ -1431,18 +1431,20 @@ def print_parts(process):
         # Resin: z = 0 is the build plate, and the slicer adds supports under each face that faces
         # it. The faces that show on the pod face away from the plate. The angles come from a search
         # of the support area, the largest layer and the cups (stl/pod/README.md).
-        # - body: the open front toward the plate, turned 45 degrees about its long axis and 15
-        #   degrees along it. The back and the side walls face away from the plate.
+        # - body: the open front toward the plate, tilted 15 degrees along its long axis and 15
+        #   degrees across it. The back and the side walls face away from the plate, and all the
+        #   supports are inside the front.
         # - frame: it stands on its bottom end, leans 20 degrees with the back ring up, and turns 15
         #   degrees. Supports go on the bottom end and inside.
         # - mount: it stands on the lower end of the dovetail, the face on the body up 15 degrees.
-        # - wedge: on its level bottom, 15 degrees with the slot up, and 10 degrees across.
+        # - wedge: on its level bottom, 15 degrees with the slot up, and 15 degrees across. No layer
+        #   closes off a pocket of resin.
         # - TAZ bracket: on the top end of the plate as in FDM, the back of the plate toward the
         #   plate 20 degrees, and 10 degrees across.
         # - clips: the base toward the plate, 30 and 15 degrees.
-        rots = {"case": Rot(0, 0, 90) * Rot(-165, 0, 0) * Rot(0, -45, 0),
+        rots = {"case": Rot(0, 0, 90) * Rot(-195, 0, 0) * Rot(0, -15, 0),
                 "frame": Rot(110, 0, 0) * Rot(0, 15, 0), "mount": Rot(75, 0, 0),
-                "wedge": Rot(10, 0, 0) * Rot(0, -15, 0) * Rot(90, 0, 0),
+                "wedge": Rot(15, 0, 0) * Rot(0, 15, 0) * Rot(90, 0, 0),
                 "taz": Rot(0, 0, 90) * Rot(10, 0, 0) * Rot(0, -20, 0) * Rot(-90, 0, 0),
                 "mini": Rot(30, 0, 0) * Rot(-90, 0, 0), "clip": Rot(30, 0, 0) * Rot(0, 15, 0), "camera": Rot(30, 0, 0)}
     lift = RESIN_LIFT if process == "resin" else 0.0

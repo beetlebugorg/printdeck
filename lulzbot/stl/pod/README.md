@@ -51,8 +51,10 @@ These files are for the Peopoly Phenom (build area 276 x 155 mm, 4K screen of 12
 fit on one plate. Each part stands on
 supports, 6 mm over the plate. The faces that show on the pod face away from the plate, so the
 supports touch only faces that do not show. The orientations come from a search of the area that
-needs support, the largest layer, and the cups. No layer is larger than 600 mm2, and no large face is
-parallel to the screen. The largest pocket of resin that a layer closes off is 6 mm3, in the body.
+needs support, the largest layer, and the cups. The body and the wedge tilt 15 degrees on two
+axes. No layer is larger than 780 mm2, and no large face is parallel to the screen. The largest
+pocket of resin that a layer closes off is about 1.5 mm3, in the body. The back of the body is
+about 20 degrees from the screen, so its layer lines show more than on a steeper face.
 
 The resin parts differ from the FDM parts:
 
@@ -66,10 +68,10 @@ The resin parts differ from the FDM parts:
 
 | File | Print | Toward the plate (supports) | Keep clean |
 |---|---|---|---|
-| `pod-body_resin.stl` | 1 | The open front: the rim on the frame and the inside. It turns 45 degrees about its long axis and tilts 15 degrees. | The back, the side walls, the posts and the ports |
+| `pod-body_resin.stl` | 1 | The open front: the rim on the frame and the inside. It tilts 15 degrees along its long axis and 15 degrees across it. | The back, the side walls, the posts and the ports |
 | `pod-frame_resin.stl` | 1 | The bottom end, and the inside of the top end. It stands on its bottom end and leans 20 degrees, the back ring up. | The back ring, the side walls, and the front rim on the glass |
 | `pod-mount_resin.stl` | 1 | The lower end of the plate and of the dovetail. It stands, the dovetail upright. | The dovetail and the face on the body |
-| `pod-wedge_resin.stl` | 1 | The level bottom. It stands as on the printer, tilted 15 and 10 degrees. | The slot and the key |
+| `pod-wedge_resin.stl` | 1 | The level bottom. It stands as on the printer, tilted 15 degrees on two axes. | The slot and the key |
 | `pod-bracket-taz_resin.stl` | 1 | The top end of the plate, and the back of the plate (it goes on the printer). It leans 20 degrees, the front up. | The front of the plate and its edges, the groove, and the clip slots |
 
 Slicer settings for the Phenom:
