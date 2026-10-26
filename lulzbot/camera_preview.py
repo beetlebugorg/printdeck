@@ -197,6 +197,28 @@ def render_one(name, title, sc, view, o, bed, where, path):
                      in_frame=round(fp["in_frame"] * 100), seen=round(seen * 100))
 
 
+def pod_closeup(name, title, items, path):
+    """A view of the plugs and the cables at the top of the pod (the USB ports of the Pi), in the
+    coordinates of the live window (the pod frame: x across the glass, z up, the glass toward -y)."""
+    sc = scene(items)
+    target = np.array([10.0, 22.0, 135.0])
+    eye = target + np.array([150.0, -170.0, 120.0])
+    size = (1200, 900)
+    pose = R.look_at(eye, target, (0.0, 0.0, 1.0))
+    sc.add(pyrender.PerspectiveCamera(yfov=math.radians(32.0), aspectRatio=size[0] / size[1], znear=5.0, zfar=3000.0),
+           pose=pose)
+    sc.add(pyrender.DirectionalLight(intensity=2.5), pose=pose)
+    rr = pyrender.OffscreenRenderer(*size)
+    rgb, _ = rr.render(sc)
+    rr.delete()
+    img = caption(Image.fromarray(rgb), [f"{title}: the plugs and the cables at the Pi",
+                                         "Dark red: the camera on the arm (upper USB 2 port). Dark blue: the camera "
+                                         "over the bed (lower USB 3 port).",
+                                         "Black: the printer cable (lower USB 2 port). White: the power cable.", ""])
+    img.save(path)
+    print(f"wrote {path}")
+
+
 def aimed(views, lens):
     """A view from lens (printer coordinates) at the middle of the bed, level."""
     T = np.array(views["printer_to_view"])
@@ -210,6 +232,7 @@ def main():
     rows, chosen = [], []
     for name, title in PRINTERS:
         items, views = load(name)
+        pod_closeup(name, title, items, os.path.join(OUT, f"{name}-cables-at-pi.png"))
         sc = scene(items + test_parts(views))
         bed = views["bed"]
         sections = []

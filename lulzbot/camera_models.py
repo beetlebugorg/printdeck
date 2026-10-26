@@ -23,8 +23,8 @@ screw. The pivot of the U sets the tilt.
 The brackets are placeholders for the layout and the views: they are not a final design, and there
 are no STL files of them.
 
-cable_route() is the route of each cable to the USB port of the Pi in the pod, along the route of the
-C270 cable.
+Each camera has its own cable to its own USB-A port of the Pi in the pod (CAMERA_PORTS). cable_route()
+follows the route of the C270 cable, with the two camera cables side by side in the clips.
 
 Camera coordinates: the origin is the middle of the front face of the case (under the front plate),
 z out of the lens along the optical axis, y up in the picture, x = y cross z. lens_point() is the
@@ -312,10 +312,76 @@ def mount_lens(name):
 
 
 # ---------------------------------------------------------------- the cables
+# Each camera has its own 1 m cable, from the JST plug at the camera to a USB-A plug in its own port of
+# the Pi. The two USB-A stacks of the Pi 5 (pi_parts in deckview.py) each have a lower and an upper
+# port; the printer cable is in the lower USB 2 port. The RP1 chip of the Pi 5 has two USB host
+# controllers, each with one USB 3 port and one USB 2 port. Which physical ports share a controller is
+# not checked here (not in the files we have). The cameras go to the lower USB 3 port and the upper USB
+# 2 port: one in each stack, one lower and one upper. The camera on the arm is in the upper USB 2 port,
+# so the two camera cables do not cross on their way to the Pi.
+CAMERA_PORTS = {"mount": ("pi_usb2", True), "top": ("pi_usb3", False)}
+# The USB-A end of the B0561 cable: the same sizes as the USB-A end of the printer cable (a common
+# cable, not measured). 30 mm out of the port.
+USBA_OUT = 30.0
+# Where the two camera cables share the tape clips of camera.cable_clips, they lie side by side in a
+# two-cable clip (clips.tape_clip(pair=True)): each 3.5 mm to one side of the middle of the clip.
+SIDE = 3.5
+
+
+def pi_plug(where):
+    """The USB-A plug of the camera cable at where in its port, in pod coordinates: (shape, the point
+    where the cable leaves the strain relief)."""
+    stack, upper = CAMERA_PORTS[where]
+    x0, x1, y0, y1, z0, z1 = P.pi_parts()[stack]
+    zl = z1 - 7.5 if upper else z0
+    b = P.pi_box(x0, x1, y0, y1, zl, zl + 7.5).bounding_box()
+    c = ((b.min.X + b.max.X) / 2, b.max.Y, (b.min.Z + b.max.Z) / 2)
+    face = Pos(*c) * Rot(0, 0, -90)
+    return face * P.cable_plug(*P.USBA_PLUG), (c[0], c[1] + USBA_OUT, c[2])
+
+
+def plug_printer(name, where):
+    """The plug and the end of its cable, in printer coordinates."""
+    import numpy as np
+    sh, end = pi_plug(where)
+    T = P.matrix(C.pod_loc(name))
+    return C.pod_loc(name) * sh, (T @ np.array([*end, 1.0]))[:3]
+
+
+def side_by_side(route, flags, n, off):
+    """Move each flagged point of the route off to one side of the path, by off: the side is n (the
+    face of the clips) cross the direction of the path between the flagged points (the clips)."""
+    import numpy as np
+    idx = [i for i, f in enumerate(flags) if f]
+    out = list(route)
+    for k, i in enumerate(idx):
+        a, b = idx[max(k - 1, 0)], idx[min(k + 1, len(idx) - 1)]
+        d = unit(route[b] - route[a])
+        out[i] = route[i] + off * unit(np.cross(n, d))
+    return out
+
+
+def pi_tail(name, where):
+    """The end of the route at the Pi, in printer coordinates, from the clips to the plug: straight out
+    of the plug along the port (pod v). On the TAZ the printer cable turns over the USB 3 stack 28 mm
+    out of its port, so the cable from the lower USB 3 port turns back (pod -w) under it first, into
+    the lane of the upper ports. On the Mini 2 the printer cable turns the other way."""
+    import numpy as np
+    T = P.matrix(C.pod_loc(name))
+    _, e = pi_plug(where)
+    e = np.array(e)
+    v, w = np.array([0.0, 1.0, 0.0]), np.array([0.0, 0.0, 1.0])
+    if name == "taz" and CAMERA_PORTS[where] == ("pi_usb3", False):
+        pts = [e + 60 * v - 9 * w, e + 22 * v - 9 * w, e + 16 * v, e]
+    else:
+        pts = [e + 60 * v, e + 20 * v, e]
+    return [(T @ np.append(q, 1.0))[:3] for q in pts]
+
+
 def cable_route(name, where):
-    """The route of the cable of the camera at where ("mount" or "top") to the USB port of the Pi, in
-    printer coordinates: out of the plug, through the bend, then along the route of the C270 cable
-    (camera.cable_points) and its clips."""
+    """The route of the cable of the camera at where ("mount" or "top") to its own USB port of the Pi,
+    in printer coordinates: out of the plug, through the bend, along the route of the C270 cable
+    (camera.cable_points) and its clips beside the other camera cable, and into its USB-A plug."""
     import numpy as np
     import clips as K
     d = B0561
@@ -326,30 +392,83 @@ def cable_route(name, where):
     cam = arm_frame(name)[0] if where == "mount" else top_frame(name)[0]
     p = lambda x, y, z: np.array(tuple((cam * Pos(x, y, z)).position))
     start = [p(sx, sy, -dep), p(sx, sy, z0), p(sx, sy - R, z0 - R)]
-    c270 = C.cable_points(name)
-    if where == "mount":
-        return start + c270[2:]
+    c270 = [np.asarray(q, float) for q in C.cable_points(name)]
     b = np.array(C.BEDS[name][0])
     if name == "taz":
-        # Up and forward over the wall, down to the front face of the top front rail, then along the
-        # C270 route.
-        f = C.TAZ_UPRIGHT["front"] + K.TAPE_CABLE_H
-        o = base_point(top_frame(name)[1])
-        top = float(o[1]) + B0561["base_d"] / 2 + 10.0
-        return start + [np.array([float(o[0]) - 10.0, top, b[2]]), np.array([f, top, b[2]]),
-                        np.array([f, 476.0, b[2] + 30.0])] + c270[-6:]
-    # Up and forward over the wall to the front edge of the top of the frame, then along the C270 route.
+        # The clips are on the front faces of the top front rail and the front left upright. The C270
+        # route: ..., [100, 470, -690], the rail (3 points), the upright (2 points), then the plug.
+        n = np.array([1.0, 0.0, 0.0])
+        rail = c270[-6:-3]
+        tail = pi_tail(name, where)
+        if where == "mount":
+            mid = c270[2:-7]
+            rail = c270[-7:-6] + rail
+            route = start + mid + rail + tail
+            flags = [False] * (len(start) + len(mid)) + [True] * len(rail) + [False] * len(tail)
+        else:
+            f = C.TAZ_UPRIGHT["front"] + K.TAPE_CABLE_H
+            o = base_point(top_frame(name)[1])
+            top = float(o[1]) + B0561["base_d"] / 2 + 10.0
+            mid = [np.array([float(o[0]) - 10.0, top, b[2]]), np.array([f, top, b[2]])]
+            join = [np.array([f, 476.0, b[2] + 30.0])] + rail
+            route = start + mid + join + tail
+            flags = [False] * (len(start) + len(mid)) + [True] * len(join) + [False] * len(tail)
+        # The cable over the bed comes down onto the rail from above: it is in the upper lane, and on the
+        # left on the upright.
+        off = SIDE if where == "mount" else -SIDE
+        return side_by_side(route, flags, n, off)
+    # Mini 2: the clips are on the top of the frame along its front edge. The C270 route: ..., the
+    # clip line (2 points), then the plug.
+    n = np.array([0.0, 0.0, 1.0])
     zt = C.MINI_TOP_Z + K.TAPE_CABLE_H
-    o = base_point(top_frame(name)[1])
-    top = float(o[2]) + B0561["base_d"] / 2 + 10.0
-    return start + [np.array([b[0], float(o[1]) + 10.0, top]), np.array([b[0], -244.0, top]),
-                    np.array([b[0] - 30.0, -244.0, zt])] + c270[-4:]
+    line = c270[-5:-3]
+    tail = pi_tail(name, where)
+    if where == "mount":
+        mid = c270[2:-5]
+        route = start + mid + line + tail
+        flags = [False] * (len(start) + len(mid)) + [True] * len(line) + [False] * len(tail)
+    else:
+        o = base_point(top_frame(name)[1])
+        top = float(o[2]) + B0561["base_d"] / 2 + 10.0
+        mid = [np.array([b[0], float(o[1]) + 10.0, top]), np.array([b[0], -244.0, top])]
+        join = [np.array([b[0] - 30.0, -244.0, zt]), line[-1]]
+        # Along the back lane past the other camera cable, then forward into the tail.
+        tail = [np.array([tail[0][0], line[-1][1] + SIDE, tail[0][2]])] + tail
+        route = start + mid + join + tail
+        flags = [False] * (len(start) + len(mid)) + [True] * len(join) + [False] * len(tail)
+    # The cable over the bed comes onto the line of clips from the back: it is in the back lane.
+    return side_by_side(route, flags, n, SIDE if where == "mount" else -SIDE)
 
 
 def cable(name, where):
     """(the mesh of the cable, its length in mm)."""
     m, path = P.cable_mesh(cable_route(name, where), B0561["cable"][0])
     return m, P.length(path)
+
+
+def check_pi_end(name):
+    """The plugs at the Pi (the two camera plugs, the printer plug, the power plug) against each other
+    and against the pod (the body, the frame, the mount) and the bracket, in pod coordinates. Returns a
+    list of problems."""
+    sh = {"camera plug (mount)": pi_plug("mount")[0], "camera plug (top)": pi_plug("top")[0]}
+    for n, s, _ in P.hardware():
+        if n in ("printer_plug", "power_plug"):
+            sh[n.replace("_", " ")] = s
+    br = (P.bracket if name == "taz" else P.mini_bracket)()
+    others = {"pod body": P.body(), "pod frame": P.pod_frame(), "pod mount": P.mount(),
+              "bracket": C.pod_loc(name).inverse() * br}
+    bad = []
+    names = list(sh)
+    for i, a in enumerate(names):
+        for b in names[i + 1:]:
+            v = (sh[a] & sh[b]).volume
+            if v > 0.01:
+                bad.append(f"{a} and {b}: {v:.2f} mm3")
+        for b, o in others.items():
+            v = (sh[a] & o).volume
+            if v > 0.01:
+                bad.append(f"{a} and the {b}: {v:.2f} mm3")
+    return bad
 
 
 # ---------------------------------------------------------------- the views for the live window
@@ -372,9 +491,9 @@ def camera_views(name, T):
             "printer_to_view": [[float(x) for x in row] for row in T]}
 
 
-# The C270 parts that the camera on the arm replaces (the arm, the clamp, the screws, the clips, and the
-# USB plug in the Pi stay). camera_cable is the new cable.
-C270_PARTS = ("camera_body", "camera_lens", "camera_cable_end", "camera_cable")
+# The C270 parts that the camera on the arm replaces (the arm, the clamp, the screws, and the clips
+# stay). The cameras have their own cables and USB-A plugs.
+C270_PARTS = ("camera_body", "camera_lens", "camera_cable_end", "camera_cable", "camera_plug")
 
 
 def meshes(name, tmp, cam=None):
@@ -387,8 +506,13 @@ def meshes(name, tmp, cam=None):
         p = os.path.join(tmp, f"{name}_{k}.stl")
         export_stl(sh, p, tolerance=0.03, angular_tolerance=0.1)
         out[k] = (trimesh.load(p, force="mesh"), c)
-    out["camera_cable"] = (cable(name, "mount")[0], "#151515")
-    out["camera_top_cable"] = (cable(name, "top")[0], "#151515")
+    # Dark red: the cable of the camera on the arm. Dark blue: the cable of the camera over the bed.
+    out["camera_cable"] = (cable(name, "mount")[0], "#8B2A2A")
+    out["camera_top_cable"] = (cable(name, "top")[0], "#2B4C7E")
+    for where, k in (("mount", "camera_plug"), ("top", "camera_top_plug")):
+        p = os.path.join(tmp, f"{name}_{k}.stl")
+        export_stl(plug_printer(name, where)[0], p, tolerance=0.05, angular_tolerance=0.2)
+        out[k] = (trimesh.load(p, force="mesh"), "#151515")
     return out
 
 
@@ -495,10 +619,14 @@ def report():
               f"and its brackets")
         print(f"{name}: arm lens at {np.round(mount_lens(name), 1).tolist()} (printer coordinates), "
               f"{np.linalg.norm(mount_lens(name) - C.lens_point(name)):.1f} mm from the C270 lens")
+        bad = check_pi_end(name)
+        print(f"{name}: plugs at the Pi: " + ("; ".join(bad) if bad else "no touch with each other, the pod, or the bracket"))
         for where in ("mount", "top"):
             _, n = cable(name, where)
             have = B0561["cable_length"]
-            print(f"{name}: {where} camera cable route {n:.0f} mm to the Pi (the cable is {have:.0f} mm: "
+            stack, upper = CAMERA_PORTS[where]
+            print(f"{name}: {where} camera cable route {n:.0f} mm to the {'upper' if upper else 'lower'} {stack} port "
+                  f"(the cable is {have:.0f} mm: "
                   f"{'long enough' if have >= n else f'{n - have:.0f} mm short'})")
 
 
