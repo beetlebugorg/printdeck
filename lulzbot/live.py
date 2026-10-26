@@ -7,9 +7,15 @@ The model is in the frame of the pod, z up, the front toward -y. The camera turn
 vertical, so the model stays upright: drag to turn, the wheel zooms, shift and drag pans.
 
 Keys: e explodes the pod in the order it comes apart (e again puts it together), n the next model
-(the TAZ, the Mini 2), i the isometric view from the front right, k the view of the webcam (from its
-lens, with its field of view), p shows or hides the printer, c shows or hides the webcam and its
-mount, x makes the parts see-through, f fits the view, 1 to 9 hide or show the parts in the list.
+(the TAZ, the Mini 2), i the isometric view from the front right, k the view of the camera (from its
+lens, with its field of view), l the next camera and lens (camera_options.py), t the next camera
+position (the webcam mount, or over the bed), p shows or hides the printer, c shows or hides the
+webcam, its mount, and the view of the camera on the bed, x makes the parts see-through, f fits the
+view, 1 to 9 hide or show the parts in the list.
+
+In the view of the camera, the yellow frame is the edge of the picture, and the text at the bottom
+left gives the camera, the lens, the field of view, and the pixels per mm at the middle of the bed.
+Outside the camera view, yellow lines show the view of the camera on the bed.
 
 The window runs on the event loop of VTK: a timer checks for a new version and moves the parts of
 the exploded view, so the window answers at all times.
@@ -23,13 +29,19 @@ import time
 
 import numpy as np
 import pyvista as pv
+from vtkmodules.vtkCommonCore import vtkPoints
+from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
+from vtkmodules.vtkRenderingCore import vtkActor2D, vtkCoordinate, vtkPolyDataMapper2D
 
+import camera_options as CO
 from viewer import OUT
 
 TICK_MS = 40              # the timer: 25 frames a second while the parts move
 CHECK_S = 0.5             # how often to look for a new version
 EXPLODE_S = 1.2           # the time of one stage of the exploded view
 TEXT = "#E6E8EE"
+FRUSTUM = "#FFD23F"
+PLACES = (("camera", "the webcam mount"), ("camera_top", "over the bed"))
 
 
 def models():
@@ -56,12 +68,17 @@ class Live:
         self.views = {}
         self.note = ""
         self.need_view = True
+        self.place_i = 0          # the camera position (PLACES)
+        self.option = 0           # the camera and lens (camera_options.CAMERAS)
+        self.in_camera = False    # the window shows the view of the camera
+        self.frame2d = None       # the edge of the picture in the camera view
         self.t = 0.0              # the exploded view: 0 assembled, len(stages) apart
         self.goal = 0.0
         self.last_check = 0.0
         self.last_tick = time.time()
         keys = (("e", self.toggle_explode), ("n", self.next_model), ("i", self.iso), ("p", self.toggle_printer),
-                ("x", self.toggle_xray), ("f", self.fit), ("c", self.toggle_camera), ("k", self.camera_view))
+                ("x", self.toggle_xray), ("f", self.fit), ("c", self.toggle_camera), ("k", self.camera_view),
+                ("l", self.next_option), ("t", self.next_place))
         for k, f in keys:
             self.pl.add_key_event(k, f)
         for i in range(1, 10):
@@ -99,6 +116,7 @@ class Live:
         self.note = info.get("note", "")
         self.place()
         self.status()
+        self.lens_overlay()
         return True
 
     # ------------------------------------------------------------ the exploded view
@@ -162,7 +180,8 @@ class Live:
         lines.append("")
         for i, n in enumerate(self.parts[:9]):
             lines.append(f"{i + 1} {'-' if n in self.hidden else '+'} {n}")
-        lines += ["", "e explode   n next model   i iso   k webcam view", "p printer   c webcam   x see-through   f fit"]
+        lines += ["", "e explode   n next model   i iso   k camera view", "l next lens   t next camera position",
+                  "p printer   c webcam   x see-through   f fit"]
         self.pl.add_text("\n".join(lines), position="upper_left", font_size=9, color=TEXT, name="status")
 
     def pod_bounds(self):
@@ -173,31 +192,136 @@ class Live:
         bs = [a.GetBounds() for a in acts]
         return [min(b[i] for b in bs) if i % 2 == 0 else max(b[i] for b in bs) for i in range(6)]
 
-    def camera_view(self):
-        """The view of the webcam: from its lens, with its field of view. The perspective camera of the
-        window shows the view as the webcam sees it."""
-        v = self.views.get("camera")
-        if not v:
+    # ------------------------------------------------------------ the camera and its lens
+    def lens(self):
+        """(the view of the camera position, the camera option, its footprint on the bed), or None."""
+        v = self.views.get(PLACES[self.place_i][0])
+        bed = self.views.get("bed")
+        if not v or not bed:
+            return None
+        o = CO.CAMERAS[self.option]
+        return v, o, CO.footprint(v, o, bed)
+
+    def lens_overlay(self):
+        """The text of the camera option, and its view on the bed: lines from the lens to the corners of
+        the picture on the bed plane, and the outline there."""
+        self.pl.remove_actor("lens_text", render=False)
+        self.pl.remove_actor("lens_frustum", render=False)
+        got = self.lens()
+        if not got:
+            if self.views:
+                self.pl.add_text("no camera positions in this model: run pod.py live again", position="lower_left",
+                                 font_size=10, color=FRUSTUM, name="lens_text")
             return
+        v, o, fp = got
+        lines = [f"camera position: {PLACES[self.place_i][1]}   (option {self.option + 1} of {len(CO.CAMERAS)})",
+                 CO.label(o),
+                 f"bed center: {fp['px_mm']:.1f} px/mm across ({fp['width']:.0f} mm wide picture), "
+                 f"{fp['px_mm_depth']:.1f} px/mm along the bed",
+                 f"print area in the picture: {fp['in_frame'] * 100:.0f}%   (pinhole model, no lens distortion)"]
+        self.pl.add_text("\n".join(lines), position="lower_left", font_size=10, color=FRUSTUM, name="lens_text")
+        if not self.camera:
+            return
+        eye = np.asarray(v["eye"], float)
+        far = 4.0 * self.views["bed"]["size"]      # a corner past the horizon, or very far: a line this long
+        _, f, r, u = CO.frame(v)
+        th, tv = (np.tan(np.radians(a / 2)) for a in CO.fov(o))
+        pts = [eye]
+        for (sx, sy), c in zip(((-1, 1), (1, 1), (1, -1), (-1, -1)), fp["corners"]):
+            if c is None or np.linalg.norm(c - eye) > far:
+                ray = f + sx * th * r + sy * tv * u
+                c = eye + ray / np.linalg.norm(ray) * far
+            pts.append(c)
+        cells = [2, 0, 1, 2, 0, 2, 2, 0, 3, 2, 0, 4, 5, 1, 2, 3, 4, 1]
+        mesh = pv.PolyData(np.array(pts), lines=cells)
+        self.pl.add_mesh(mesh, color=FRUSTUM, line_width=2, name="lens_frustum", render=False)
+
+    def frame_2d(self, half=None):
+        """The edge of the picture in the camera view: half is (across, up) in parts of the window, or
+        None to remove it."""
+        if self.frame2d is not None:
+            self.pl.renderer.RemoveViewProp(self.frame2d)
+            self.frame2d = None
+        if half is None:
+            return
+        hx, hy = half
+        p = vtkPoints()
+        for x, y in ((-hx, -hy), (hx, -hy), (hx, hy), (-hx, hy)):
+            p.InsertNextPoint(0.5 + x, 0.5 + y, 0.0)
+        cells = vtkCellArray()
+        cells.InsertNextCell(5)
+        for i in (0, 1, 2, 3, 0):
+            cells.InsertCellPoint(i)
+        poly = vtkPolyData()
+        poly.SetPoints(p)
+        poly.SetLines(cells)
+        coord = vtkCoordinate()
+        coord.SetCoordinateSystemToNormalizedViewport()
+        mapper = vtkPolyDataMapper2D()
+        mapper.SetInputData(poly)
+        mapper.SetTransformCoordinate(coord)
+        a = vtkActor2D()
+        a.SetMapper(mapper)
+        a.GetProperty().SetColor(*[int(FRUSTUM[i:i + 2], 16) / 255 for i in (1, 3, 5)])
+        a.GetProperty().SetLineWidth(2)
+        self.pl.renderer.AddViewProp(a)
+        self.frame2d = a
+
+    def camera_view(self):
+        """The view of the camera: from its lens, with the field of view of the camera option. The
+        window shows a little more than the picture, and the yellow frame is the edge of the picture."""
+        got = self.lens()
+        if not got:
+            return
+        v, o, _ = got
+        th, tv = (np.tan(np.radians(a / 2)) for a in CO.fov(o))
+        w, h = self.pl.window_size
+        wa = w / h
+        tw = max(tv, th / wa) * 1.04
         cam = self.pl.camera
         cam.position, cam.focal_point, cam.up = v["eye"], v["focal"], v["up"]
-        cam.view_angle = v["fov"]
+        cam.view_angle = float(2 * np.degrees(np.arctan(tw)))
         self.pl.reset_camera_clipping_range()
+        self.in_camera = True
+        self.frame_2d((th / (tw * wa) / 2, tv / tw / 2))
         self.pl.render()
+
+    def leave_camera(self, *_):
+        if self.in_camera:
+            self.in_camera = False
+            self.frame_2d(None)
+
+    def next_option(self):
+        self.option = (self.option + 1) % len(CO.CAMERAS)
+        self.lens_changed()
+
+    def next_place(self):
+        self.place_i = (self.place_i + 1) % len(PLACES)
+        self.lens_changed()
+
+    def lens_changed(self):
+        self.lens_overlay()
+        if self.in_camera:
+            self.camera_view()
+        else:
+            self.pl.render()
 
     def toggle_camera(self):
         self.camera = not self.camera
         self.place()
+        self.lens_overlay()
         self.pl.render()
 
     def iso(self, render=True):
         """The isometric view of the pod from the front, right and above, z up."""
+        self.leave_camera()
         self.pl.camera_position = [(1.0, -1.0, 0.8), (0.0, 0.0, 0.0), (0.0, 0.0, 1.0)]
         self.pl.reset_camera(bounds=self.pod_bounds())
         if render:
             self.pl.render()
 
     def fit(self):
+        self.leave_camera()
         self.pl.reset_camera()
         self.pl.render()
 
@@ -209,6 +333,7 @@ class Live:
         for a in self.actors.values():
             self.pl.remove_actor(a, render=False)
         self.actors, self.info, self.stamp, self.need_view = {}, {}, None, True
+        self.leave_camera()
         self.last_check = 0.0
 
     def toggle_printer(self):
@@ -240,6 +365,10 @@ class Live:
         # VTK's own keys (e and q quit, w wireframe, f fly to, p pick, ...) come with the char event of
         # the interactor. Our keys come with the key press event, so drop the char event.
         iren.interactor.RemoveObservers("CharEvent")
+        # A drag or the wheel moves the view away from the camera: remove the edge of the picture.
+        for ev in ("LeftButtonPressEvent", "MiddleButtonPressEvent", "RightButtonPressEvent",
+                   "MouseWheelForwardEvent", "MouseWheelBackwardEvent"):
+            iren.add_observer(ev, self.leave_camera)
         iren.add_observer("TimerEvent", self.tick)
         iren.create_timer(TICK_MS, repeating=True)
         iren.start()

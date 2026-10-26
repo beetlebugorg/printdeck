@@ -1042,7 +1042,7 @@ def main(out, stills=True, which=("taz", "mini2")):
         gap = clearance([m for m, _ in pod.values()], pod_to_world, printer)
         print(f"{name}: the pod is {gap:.1f} mm from the printer at the closest point")
         note = ("no overlaps" if not bad else f"{len(bad)} overlaps") + f", {gap:.1f} mm from the printer"
-        views = {"camera": C.camera_pose(name, zup @ np.linalg.inv(matrix(loc)))}
+        views = C.camera_views(name, zup @ np.linalg.inv(matrix(loc)))
         viewer.publish(items, name, note, stages=[t for t, _ in STAGES], views=views)
         if not stills:
             continue
