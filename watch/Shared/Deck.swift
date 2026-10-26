@@ -62,6 +62,78 @@ struct DeckLCD: Codable, Equatable {
     var position: String?
 }
 
+/// The camera of the deck (cameraJSON in deck/internal/octoapi/webcam.go).
+struct DeckCamera: Codable, Equatable {
+    var name: String
+    /// "off", "none", "idle" (no viewer), "starting", "on", "nosignal" or "error".
+    var state: String
+    /// The size of the full picture, or nil before the first frame.
+    var width: Int?
+    var height: Int?
+    var error: String?
+
+    /// The width over the height of the picture: 16:9 until the deck has the size.
+    var aspect: CGFloat {
+        guard let width, let height, width > 0, height > 0 else { return 16 / 9 }
+        return CGFloat(width) / CGFloat(height)
+    }
+
+    /// The deck has a camera that is on.
+    var on: Bool { state != "off" && state != "none" }
+
+    /// A short text for a camera with no picture, or nil.
+    var problem: String? {
+        switch state {
+        case "nosignal": "No signal from the camera"
+        case "error": error ?? "The camera has an error"
+        case "starting": "Starting the camera"
+        default: nil
+        }
+    }
+}
+
+/// Reads an MJPEG stream (multipart/x-mixed-replace). URLSession splits the stream: each part
+/// comes as a response of its own, and its data is the JPEG alone.
+private final class MJPEGReader: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+    private let out: AsyncThrowingStream<CGImage, Error>.Continuation
+    /// The JPEG of the part now. Only the delegate queue of the session uses it.
+    private var jpeg = Data()
+
+    init(out: AsyncThrowingStream<CGImage, Error>.Continuation) {
+        self.out = out
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+                    completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            out.finish(throwing: http.statusCode == 403 ? DeckError.badKey : DeckError.http(http.statusCode))
+            completionHandler(.cancel)
+            return
+        }
+        // A new part: the last one ends.
+        emit()
+        completionHandler(.allow)
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        jpeg.append(data)
+        // A JPEG ends with FF D9: show it now, before the next part starts.
+        if jpeg.count > 2, jpeg[jpeg.endIndex - 2] == 0xff, jpeg[jpeg.endIndex - 1] == 0xd9 { emit() }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        emit()
+        out.finish(throwing: error ?? DeckError.refused("The camera stream ended."))
+    }
+
+    private func emit() {
+        defer { jpeg = Data() }
+        guard !jpeg.isEmpty, let src = CGImageSourceCreateWithData(jpeg as CFData, nil),
+              let img = CGImageSourceCreateImageAtIndex(src, 0, nil) else { return }
+        out.yield(img)
+    }
+}
+
 /// The state of the deck at one time.
 struct Status: Codable, Equatable {
     /// The state text of /api/job: "Printing", "Paused", "Operational", "Offline" and so on.
@@ -83,8 +155,8 @@ struct Status: Codable, Equatable {
     var roll: Roll?
     /// The status screen of the printer display as the deck draws it, or nil from an older deck.
     var lcd: DeckLCD?
-    /// The name of the camera of the deck, or nil when the deck has no camera on.
-    var camera: String?
+    /// The camera of the deck, or nil when the deck has no camera on.
+    var camera: DeckCamera?
     /// When the app read the status.
     var time: Date
 
@@ -156,7 +228,18 @@ struct DeckClient {
         return URLSession(configuration: c)
     }()
 
-    private func send(_ path: String, method: String = "GET", body: [String: Any]? = nil) async throws -> Data {
+    /// The configuration of the camera stream: a stream has no end, so no limit on the whole
+    /// request.
+    private static let streamSession: URLSession = {
+        let c = URLSessionConfiguration.ephemeral
+        c.timeoutIntervalForRequest = 10
+        c.timeoutIntervalForResource = 24 * 3600
+        c.waitsForConnectivity = false
+        return URLSession(configuration: c)
+    }()
+
+    /// A request to the deck with the API key.
+    private func request(_ path: String, method: String = "GET") throws -> URLRequest {
         guard settings.isComplete, let base = settings.baseURL else { throw DeckError.noSettings }
         // The path can have a query; appending(path:) encodes a "?".
         let parts = path.split(separator: "?", maxSplits: 1)
@@ -165,6 +248,11 @@ struct DeckClient {
         var req = URLRequest(url: url)
         req.httpMethod = method
         req.setValue(settings.key.trimmingCharacters(in: .whitespaces), forHTTPHeaderField: "X-Api-Key")
+        return req
+    }
+
+    private func send(_ path: String, method: String = "GET", body: [String: Any]? = nil) async throws -> Data {
+        var req = try request(path, method: method)
         if let body {
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
             req.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -259,7 +347,7 @@ struct DeckClient {
             st.bed = t["bed"].map { Temp(actual: $0.actual, target: $0.target) }
         }
         st.lcd = p.lcd
-        st.camera = p.camera?.name
+        st.camera = p.camera
         if let s = p.spool {
             st.roll = Roll(name: s.name, material: s.material, left: s.left, full: s.full,
                            color: s.color?.isEmpty == false ? s.color : nil)
@@ -340,6 +428,27 @@ struct DeckClient {
         guard let data = try? await send("/webcam/snapshot?w=\(w)"),
               let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         return CGImageSourceCreateImageAtIndex(src, 0, nil)
+    }
+
+    /// The pictures of the camera stream of the deck (MJPEG), w pixels wide, at most fps a second.
+    /// The stream ends with an error when the connection ends.
+    func stream(width w: Int, fps: Double) -> AsyncThrowingStream<CGImage, Error> {
+        let req = Result { try request("/webcam/stream?w=\(w)&fps=\(fps)") }
+        return AsyncThrowingStream(bufferingPolicy: .bufferingNewest(1)) { out in
+            do {
+                let reader = MJPEGReader(out: out)
+                let session = URLSession(configuration: Self.streamSession.configuration, delegate: reader,
+                                         delegateQueue: nil)
+                let task = session.dataTask(with: try req.get())
+                out.onTermination = { _ in
+                    task.cancel()
+                    session.invalidateAndCancel()
+                }
+                task.resume()
+            } catch {
+                out.finish(throwing: error)
+            }
+        }
     }
 
     func pause() async throws { _ = try await send("/api/job", method: "POST", body: ["command": "pause", "action": "pause"]) }
@@ -430,12 +539,8 @@ private struct PluginReply: Decodable {
         var progress: Double
         var left: Double
     }
-    struct Camera: Decodable {
-        var name: String
-        var state: String
-    }
     var spool: Spool?
     var job: Job?
     var lcd: DeckLCD?
-    var camera: Camera?
+    var camera: DeckCamera?
 }

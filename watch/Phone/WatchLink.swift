@@ -32,19 +32,34 @@ final class WatchLink: NSObject, WCSessionDelegate {
             return
         }
         do {
-            try s.updateApplicationContext(["address": settings.address, "key": settings.key])
+            try s.updateApplicationContext(Self.context(settings))
             state = "Sent to the watch."
         } catch {
             state = "The watch did not get the settings: \(error.localizedDescription)"
         }
     }
 
-    func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState, error: Error?) {
+    /// The context for the watch. The time makes each context new, so that WatchConnectivity
+    /// sends it again to a watch app that was installed again.
+    private static func context(_ s: DeckSettings) -> [String: Any] {
+        ["address": s.address, "key": s.key, "sent": Date().timeIntervalSince1970]
+    }
+
+    /// Sends the settings when the watch app is on the watch.
+    private func sendStored(_ session: WCSession) {
         let s = Store.settings
-        if state == .activated, s.isComplete, session.isWatchAppInstalled,
-           session.applicationContext["key"] as? String != s.key || session.applicationContext["address"] as? String != s.address {
-            try? session.updateApplicationContext(["address": s.address, "key": s.key])
-        }
+        guard session.activationState == .activated, s.isComplete, session.isPaired, session.isWatchAppInstalled
+        else { return }
+        try? session.updateApplicationContext(Self.context(s))
+    }
+
+    func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState, error: Error?) {
+        sendStored(session)
+    }
+
+    /// A new watch, or the watch app installed after the setup: the watch gets the settings now.
+    func sessionWatchStateDidChange(_ session: WCSession) {
+        sendStored(session)
     }
 
     func sessionDidBecomeInactive(_ session: WCSession) {}

@@ -50,6 +50,7 @@ struct LCDCanvas {
 
     /// The edge of a rectangle.
     mutating func frame(_ x0: Int, _ y0: Int, _ x1: Int, _ y1: Int) {
+        guard x1 > x0, y1 > y0 else { return }
         for x in x0..<x1 { set(x, y0); set(x, y1 - 1) }
         for y in y0..<y1 { set(x0, y); set(x1 - 1, y) }
     }
@@ -161,7 +162,10 @@ struct LCDStatus: Equatable {
             c.text(small, max(0, (W - small.w * t.count) / 2), y, t)
         }
         if printing {
-            centered(0, state.isEmpty ? "Printing" : state)
+            // Every 3 seconds the top line shows the message in place of the state: an error or the
+            // result of a command.
+            let top = state.isEmpty ? "Printing" : state
+            centered(0, !message.isEmpty && (frame / 12) % 2 == 1 ? message : top)
             let pct = String(format: "%.0f%%", progress * 100)
             let k = 16 * pct.count <= W ? 2 : 1
             c.text(big, max(0, (W - 8 * k * pct.count) / 2), 10, pct, scale: k)
@@ -325,7 +329,9 @@ struct LCDMenu: Equatable {
             y += 9
         }
         let rowH = 10
-        let n = (H - y) / rowH
+        // A screen too short for the rows shows none of them.
+        let n = max(0, (H - y) / rowH)
+        guard n > 0, !items.isEmpty else { return }
         var top = max(0, min(sel - n + 2, items.count - n))
         if sel < top { top = sel }
         let long = items.count > n

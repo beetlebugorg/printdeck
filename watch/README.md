@@ -9,12 +9,12 @@ deck over the local network.
   and the model as the deck draws it, with the file, the progress and a playhead. A paused print has Resume. With no print, Print a
   file opens the files of the deck, newest first. Menu opens the setup. At the start, the app
   shows the start screen of the deck in dots until the first reading of the deck. When the deck
-  has a camera, Camera opens its picture, 5 times a second while the page is open.
+  has a camera, Camera opens its stream, at most 10 pictures a second while the page is open.
 - The watch app is a blue dot-matrix display, in the fonts and the icons of the printer display
   of the deck, over the whole watch. The first page is the progress of the print: the state, the
   percent in a large font, the bar, the layer, the time left and the end. Under it, in one scroll
   that the Digital Crown moves, are the picture of the camera of the deck (when it has one, a
-  new picture every 3 seconds), the model of the print as the deck draws it, the layers and
+  new picture every 3 seconds while it is on the screen), the model of the print as the deck draws it, the layers and
   the times of the print, and the filament. During a print, a tap opens a menu with
   Pause or Resume and Cancel, each with a question first; the crown moves the selection, as the
   knob of the printer, and a tap selects.
@@ -72,7 +72,7 @@ other fields, and the fan shows "--". The model of the print comes from
 - `project.yml`: the XcodeGen file of `Printdeck.xcodeproj`. After a change to `project.yml`, run
   `xcodegen` in this folder.
 
-The deployment targets are iOS 17 and watchOS 10. The project was built and tested with Xcode 27.
+The deployment targets are iOS 17 and watchOS 11. The project was built and tested with Xcode 27.
 
 ## Install
 
@@ -147,8 +147,11 @@ All other requests have the header `X-Api-Key`.
 - `GET /api/printer`: the temperatures. The deck sends 409 when the printer is not connected,
   and the app shows no temperatures then.
 - `GET /api/plugin/printdeck`: the roll in the printer, the print with its layer, progress
-  and seconds left, and the camera (its name, or null with no camera).
-- `GET /webcam/snapshot?w=..`: the newest picture of the camera, as a JPEG w pixels wide.
+  and seconds left, and the camera (its name, state and size, or null with no camera).
+- `GET /webcam/snapshot?w=..`: the newest picture of the camera, as a JPEG w pixels wide, for
+  the watch.
+- `GET /webcam/stream?w=..&fps=..`: the camera as an MJPEG stream, for the iPhone. URLSession
+  gives each part of the stream as a response of its own.
 - `POST /api/job`: `{"command":"pause","action":"pause"}`, `{"command":"pause","action":"resume"}`
   and `{"command":"cancel"}`.
 - `GET /api/files?recursive=true`: the files. `POST /api/files/local/<path>` with

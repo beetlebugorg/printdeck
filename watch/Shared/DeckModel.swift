@@ -16,8 +16,14 @@ final class DeckModel {
     private(set) var settings = Store.settings
     private(set) var status = Store.lastStatus
     private(set) var error: String?
+    /// The status came from the deck since the start of the app, and the last read worked. A
+    /// status from the store, or after a failed read, is old.
+    private(set) var live = false
     /// A command is on its way to the deck.
     private(set) var sending = false
+    /// The result of the last command, for a few seconds: "Pausing" or the error of the deck.
+    private(set) var notice: String?
+    private var noticeEnd = Date.distantPast
     /// The model of the print in dots, or nil.
     private(set) var model: LCDPicture?
     /// The model of the print in the colors of the deck, for the iPhone, or nil.
@@ -31,6 +37,11 @@ final class DeckModel {
     private var modelLayer: Int?
 
     private var lastReload = Date.distantPast
+    /// The last status in the store: the app writes it again only when it changes.
+    private var stored: Status?
+    /// Goes up at new settings and at each command, so that an older read does not overwrite a
+    /// newer status.
+    private var generation = 0
     #if os(watchOS)
     private var link: PhoneLink?
     #endif
@@ -55,8 +66,16 @@ final class DeckModel {
         guard new != settings else { return }
         settings = new
         Store.settings = new
+        generation += 1
         status = nil
+        live = false
+        error = nil
+        model = nil
+        modelImage = nil
+        modelLayer = nil
+        modelTime = .distantPast
         Store.lastStatus = nil
+        stored = nil
         WidgetCenter.shared.reloadAllTimelines()
         Task { await refresh() }
     }
@@ -74,17 +93,47 @@ final class DeckModel {
             error = DeckError.noSettings.errorDescription
             return
         }
+        let gen = generation
         do {
             let new = try await DeckClient(settings: settings).status()
+            // New settings or a command came during the read: this status is older than theirs.
+            guard gen == generation else { return }
             let old = status
             status = new
+            live = true
             error = nil
-            Store.lastStatus = new
+            store(new)
             reloadComplication(old: old, new: new)
             await refreshModel(new)
         } catch {
+            guard gen == generation, !isCancel(error) else { return }
+            live = false
             self.error = errorText(error)
         }
+    }
+
+    /// The text of the command, or nil when it has ended.
+    var noticeNow: String? { Date() < noticeEnd ? notice : nil }
+
+    private func show(_ text: String, for seconds: Double) {
+        notice = text
+        noticeEnd = Date().addingTimeInterval(seconds)
+    }
+
+    /// A read that stopped because the task ended: the wrist went down, or the app left.
+    private func isCancel(_ error: Error) -> Bool {
+        error is CancellationError || (error as? URLError)?.code == .cancelled
+    }
+
+    /// Writes the status to the store for the widgets when the print changes, and at most every
+    /// minute otherwise. A keychain write is slow on the watch.
+    private func store(_ new: Status) {
+        if let s = stored, s.busy == new.busy, s.paused == new.paused, s.file == new.file, s.layer == new.layer,
+           s.roll == new.roll, new.time.timeIntervalSince(s.time) < 60 {
+            return
+        }
+        stored = new
+        Store.lastStatus = new
     }
 
     /// Reloads the complication when the print starts, pauses or ends, and at most every 10
@@ -106,18 +155,37 @@ final class DeckModel {
             return
         }
         guard st.layer != modelLayer || Date().timeIntervalSince(modelTime) > 20 else { return }
+        let gen = generation
+        let client = DeckClient(settings: settings)
+        // A failed read keeps the last picture, and the next reading tries again.
+        guard let pic = await client.model(width: size.w, height: size.h), gen == generation else { return }
+        model = pic
         modelTime = Date()
         modelLayer = st.layer
-        let client = DeckClient(settings: settings)
-        model = await client.model(width: size.w, height: size.h)
-        if let c = modelImageSize { modelImage = await client.modelImage(width: c.w, height: c.h) }
+        if let c = modelImageSize, let img = await client.modelImage(width: c.w, height: c.h), gen == generation {
+            modelImage = img
+        }
     }
 
-    enum Command { case pause, resume, cancel }
+    enum Command {
+        case pause, resume, cancel
+
+        var doing: String {
+            switch self {
+            case .pause: "Pausing"
+            case .resume: "Resuming"
+            case .cancel: "Cancelling"
+            }
+        }
+    }
 
     func send(_ command: Command) async {
+        guard !sending else { return }
         sending = true
         defer { sending = false }
+        // A read that started before the command has the old state.
+        generation += 1
+        show(command.doing, for: 30)
         let client = DeckClient(settings: settings)
         do {
             switch command {
@@ -125,9 +193,9 @@ final class DeckModel {
             case .resume: try await client.resume()
             case .cancel: try await client.cancel()
             }
-            error = nil
+            show(command.doing, for: 4)
         } catch {
-            self.error = errorText(error)
+            show(errorText(error), for: 8)
         }
         await refresh()
     }

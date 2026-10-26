@@ -20,6 +20,7 @@
 		1FF2F062FDF33F52530E6E02 /* LCDFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0354F5AD51AB7C9164C404AA /* LCDFonts.swift */; };
 		20B61A975B04B39116EDF951 /* PrintdeckWatch.app in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = D2114C330830B4B5C5D4EAE7 /* PrintdeckWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		22E0E3BEDCF8CDE0E4FE5EC9 /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB83763E3B47BF75CF93CE3 /* Store.swift */; };
+		254BB00BC761BD1650E29B36 /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5A9AC136FD37E5823BE3A56 /* CameraView.swift */; };
 		27FE4A77845A101C19047042 /* DeckModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B99E447765312CFD4C878FD /* DeckModel.swift */; };
 		29674AE5CE7846046F269CD2 /* Panel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6FAFDF150EF3F44516ECD16 /* Panel.swift */; };
 		2A5520A5B41E37EBCEDFC8C5 /* ComplicationLCD.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C28F6CE43513884ED2C3B9 /* ComplicationLCD.swift */; };
@@ -54,6 +55,8 @@
 		7D1781B100F517E9BD27F30F /* LCDModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B022EC77AE6F9B9D53042D7 /* LCDModel.swift */; };
 		803DFE0F9037F2AB771472F2 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AC2BBFF7CE76D76E8134DBA /* IBMPlexMono-SemiBold.ttf */; };
 		80E4866E8E9381BD84E4FD22 /* StatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B2DE727763130438837F9CC /* StatusView.swift */; };
+		816B466063128047E3ABA18B /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A622D3ED72D7C6395B59AE5 /* Theme.swift */; };
+		841EA80AD73B8CBA41F63990 /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */; };
 		84703D7207E291BD66B77C57 /* PushCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E1FEB4FB0B10A9C90AD479 /* PushCrypto.swift */; };
 		863803E55914375D0E896E96 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A622D3ED72D7C6395B59AE5 /* Theme.swift */; };
 		8F9B6078A6FA28D4B4008B63 /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB83763E3B47BF75CF93CE3 /* Store.swift */; };
@@ -72,8 +75,10 @@
 		BDC80FB004651AC26CA7AA16 /* LCDScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CA29D05ABBEBA3D309E9D9C /* LCDScreen.swift */; };
 		C0B4A56B3FF461600052B3DC /* PrintdeckWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 245C28DEF33556275FD6DCD5 /* PrintdeckWidget.swift */; };
 		C16C235FCF4B7A5F03E585AC /* DeckModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B99E447765312CFD4C878FD /* DeckModel.swift */; };
+		C4F387EA75B807640BEAAAF7 /* LCDFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0354F5AD51AB7C9164C404AA /* LCDFonts.swift */; };
 		C778CF960734F7685132B97E /* PrintActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEBF077F1F1B4F4F1ACD610 /* PrintActivity.swift */; };
 		C8FC801C329E392CDE365CD2 /* LCDFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0354F5AD51AB7C9164C404AA /* LCDFonts.swift */; };
+		CAC274207372161525B15BDA /* LCDScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CA29D05ABBEBA3D309E9D9C /* LCDScreen.swift */; };
 		CD2B0EFAA2A3AB9E7F6D891A /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 770B96494514D1F98C3D0ADF /* IBMPlexMono-Regular.ttf */; };
 		D3F3740F466B0DEE1A88D910 /* LCDFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0354F5AD51AB7C9164C404AA /* LCDFonts.swift */; };
 		DDF48D2494A56CECB8A5DF64 /* PrintdeckApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F683BF97A6034681AF592CCA /* PrintdeckApp.swift */; };
@@ -83,11 +88,13 @@
 		E4701B1E693851C9CA32094A /* ComplicationLCD.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C28F6CE43513884ED2C3B9 /* ComplicationLCD.swift */; };
 		E7232F5DAE9A25D374484C13 /* DeckWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = E772B35740867E17B68DB280 /* DeckWidget.swift */; };
 		ECF1D1DE17300C002EE018A4 /* PrintdeckWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1AD5CD2C3A6FE500CDE2C969 /* PrintdeckWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		EDF89FBAAD47114FB1CE1FDB /* LCDModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEC0909ABD03C04458C7F7E0 /* LCDModelTests.swift */; };
 		F1F15583B7B535D2202E8422 /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 58645DA084A54E4D7E787CE2 /* OFL.txt */; };
 		F43A110534B2B219678D0EEA /* PhoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C024260E6470548F3C91FC1F /* PhoneApp.swift */; };
 		F7D0C2E89DFCACFD338792E5 /* DeckWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = E772B35740867E17B68DB280 /* DeckWidget.swift */; };
 		F820DE4C589E62B5AA1846CE /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A622D3ED72D7C6395B59AE5 /* Theme.swift */; };
 		FBA67ABC5887D7F5B03D612E /* Finder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251FEC8FBC5B7C7E2E9DBD8A /* Finder.swift */; };
+		FE5C61BAA023AA33B7658516 /* LCDModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B022EC77AE6F9B9D53042D7 /* LCDModel.swift */; };
 		FFA1A39E87C13A72B53A34DD /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */; };
 /* End PBXBuildFile section */
 
@@ -200,8 +207,10 @@
 		D2114C330830B4B5C5D4EAE7 /* PrintdeckWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrintdeckWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D6FAFDF150EF3F44516ECD16 /* Panel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panel.swift; sourceTree = "<group>"; };
 		E0A1F82427E1BF89AE4574A9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		E5A9AC136FD37E5823BE3A56 /* CameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraView.swift; sourceTree = "<group>"; };
 		E6E1FEB4FB0B10A9C90AD479 /* PushCrypto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushCrypto.swift; sourceTree = "<group>"; };
 		E772B35740867E17B68DB280 /* DeckWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckWidget.swift; sourceTree = "<group>"; };
+		EEC0909ABD03C04458C7F7E0 /* LCDModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LCDModelTests.swift; sourceTree = "<group>"; };
 		EFB83763E3B47BF75CF93CE3 /* Store.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Store.swift; sourceTree = "<group>"; };
 		F5F06702BFE192990D619B34 /* PrintdeckComplication.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PrintdeckComplication.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F683BF97A6034681AF592CCA /* PrintdeckApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrintdeckApp.swift; sourceTree = "<group>"; };
@@ -250,6 +259,7 @@
 			isa = PBXGroup;
 			children = (
 				74DD018BBD9721DD779A3905 /* Assets.xcassets */,
+				E5A9AC136FD37E5823BE3A56 /* CameraView.swift */,
 				B18B3A83A2D98FA589A08D3E /* FilesView.swift */,
 				251FEC8FBC5B7C7E2E9DBD8A /* Finder.swift */,
 				A539B7B79BF37C687CDF8579 /* Info.plist */,
@@ -267,6 +277,7 @@
 		6D75E02FFD1FA8B0FDA66435 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				EEC0909ABD03C04458C7F7E0 /* LCDModelTests.swift */,
 				90E6942D32E2AF7FCD6D729E /* PushCryptoTests.swift */,
 			);
 			path = Tests;
@@ -570,8 +581,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				841EA80AD73B8CBA41F63990 /* Deck.swift in Sources */,
+				C4F387EA75B807640BEAAAF7 /* LCDFonts.swift in Sources */,
+				FE5C61BAA023AA33B7658516 /* LCDModel.swift in Sources */,
+				EDF89FBAAD47114FB1CE1FDB /* LCDModelTests.swift in Sources */,
+				CAC274207372161525B15BDA /* LCDScreen.swift in Sources */,
 				84703D7207E291BD66B77C57 /* PushCrypto.swift in Sources */,
 				957EF501A2E42BC3D8E20E20 /* PushCryptoTests.swift in Sources */,
+				816B466063128047E3ABA18B /* Theme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -609,6 +626,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				254BB00BC761BD1650E29B36 /* CameraView.swift in Sources */,
 				E4701B1E693851C9CA32094A /* ComplicationLCD.swift in Sources */,
 				FFA1A39E87C13A72B53A34DD /* Deck.swift in Sources */,
 				27FE4A77845A101C19047042 /* DeckModel.swift in Sources */,
@@ -825,7 +843,7 @@
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
-				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Release;
 		};
@@ -898,7 +916,7 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
-				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Debug;
 		};

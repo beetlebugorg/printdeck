@@ -102,13 +102,14 @@ struct DeckView: View {
         let st = model.status
         return ScrollView {
             VStack(spacing: 12) {
-                LCDView(screen: .status(LCDModel.status(st, connected: true, error: model.error, now: Date(), hint: "")))
+                LCDView(screen: .status(LCDModel.status(st, connected: true, error: model.error, now: Date(), hint: "",
+                                                              live: model.live, notice: model.noticeNow)))
                 if let st, st.busy {
                     if st.paused { paused(st) } else { printing(st) }
                 } else {
                     idle(st)
                 }
-                if let e = model.error {
+                if let e = model.error ?? model.noticeNow {
                     Text(e.uppercased())
                         .font(Theme.plex(12))
                         .foregroundStyle(p.red)
@@ -178,7 +179,7 @@ struct DeckView: View {
     /// Camera opens the picture of the camera, when the deck has a camera on.
     @ViewBuilder
     private func cameraKey(_ st: Status?) -> some View {
-        if st?.camera != nil {
+        if st?.camera?.on == true {
             Button("Camera") { sheet = .camera }
                 .buttonStyle(KeyStyle())
         }

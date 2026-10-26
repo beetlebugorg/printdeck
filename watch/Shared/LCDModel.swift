@@ -17,11 +17,27 @@ enum LCDModel {
 
     /// Hours and minutes as the display shows them: "1:23".
     static func hm(_ seconds: Double) -> String {
-        let m = Int(seconds / 60)
+        // Int has 32 bits on the watch: a wrong estimate of the deck must not trap.
+        let m = Int(min(max(seconds, 0), 1e8) / 60)
         return String(format: "%d:%02d", m / 60, m % 60)
     }
 
-    static func status(_ st: Status?, connected: Bool, error: String?, now: Date, hint: String) -> LCDStatus {
+    /// The status screen. live is false for a status from an earlier read: the screen then shows
+    /// its age, and the times stop. notice is the result of a command, for the message line.
+    static func status(_ st: Status?, connected: Bool, error: String?, now: Date, hint: String,
+                       live: Bool = true, notice: String? = nil) -> LCDStatus {
+        var s = statusLines(st, connected: connected, error: error, now: now, hint: hint, live: live)
+        if let notice, connected, st != nil { s.message = notice }
+        return s
+    }
+
+    /// "Read 3m ago" for an old status.
+    private static func age(_ st: Status, now: Date) -> String {
+        "Read " + Format.duration(max(0, now.timeIntervalSince(st.time))) + " ago"
+    }
+
+    private static func statusLines(_ st: Status?, connected: Bool, error: String?, now: Date, hint: String,
+                                    live: Bool) -> LCDStatus {
         var s = LCDStatus(clock: clock(now), hint: hint)
         guard connected else {
             s.state = "Not connected"
@@ -39,7 +55,6 @@ enum LCDModel {
             // The screen of the deck: the same fields as its touch screen.
             // The state line of the deck ends in the percent, which the screens have in large.
             s.state = (l.state ?? "").replacingOccurrences(of: #"\s+\d+%$"#, with: "", options: .regularExpression)
-            s.clock = l.clock ?? s.clock
             s.message = l.message ?? ""
             s.tool = l.tool ?? 0; s.toolT = l.tool_target ?? 0
             s.bed = l.bed ?? 0; s.bedT = l.bed_target ?? 0
@@ -51,6 +66,7 @@ enum LCDModel {
             s.left = l.left ?? ""
             s.done = l.done ?? ""
             if let e = error { s.message = short(e) }
+            if !live { old(&s, st, error: error, now: now) }
             return s
         }
         s.tool = st.tool?.actual ?? 0
@@ -62,10 +78,12 @@ enum LCDModel {
             s.printing = true
             s.progress = st.progress ?? 0
             s.elapsed = st.elapsed.map(hm) ?? ""
-            if let left = st.left(at: now) {
+            if let left = st.left(at: live ? now : st.time) {
                 s.left = hm(left)
-                s.done = clock(now.addingTimeInterval(left))
+                s.done = clock(st.time.addingTimeInterval(left))
             }
+            if let error { s.message = short(error) }
+            if !live { old(&s, st, error: error, now: now) }
             return s
         }
         s.state = st.state == "Operational" ? "Ready" : st.state
@@ -74,7 +92,18 @@ enum LCDModel {
         } else if let r = st.roll {
             s.message = "\(r.name) \(Int(r.left.rounded()))g"
         }
+        if !live { old(&s, st, error: error, now: now) }
         return s
+    }
+
+    /// Marks the screen of an old status: the state shows that the app has no new reading, the
+    /// message shows the age of the reading, and the icons stop.
+    private static func old(_ s: inout LCDStatus, _ st: Status, error: String?, now: Date) {
+        s.state = error == nil ? "Reading the deck" : "No connection"
+        s.message = age(st, now: now)
+        s.toolPow = 0
+        s.bedPow = 0
+        s.fan = 0
     }
 
     /// The page of the print: the file, the layers and the times. The status screen has the

@@ -167,6 +167,8 @@ struct LCDView: View {
     var clockW = 0
     /// The blue frame of the display. The watch has none: the display is the whole watch.
     var framed = true
+    /// The frames a second of the heat waves and the fan, or 0 for a still screen.
+    var framesPerSecond: Double = 4
 
     /// The space of the frame of the display at each side, in points.
     static let bezel: CGFloat = 4
@@ -193,7 +195,8 @@ struct LCDView: View {
     }
 
     private var schedule: PeriodicTimelineSchedule {
-        .periodic(from: .now, by: screen.animates ? 0.25 : screen.moves ? 3 : 3600)
+        if framesPerSecond <= 0 { return .periodic(from: .now, by: screen.moves ? 3 : 3600) }
+        return .periodic(from: .now, by: screen.animates ? 1 / framesPerSecond : screen.moves ? 3 : 3600)
     }
 
     private var colors: [UInt32] {

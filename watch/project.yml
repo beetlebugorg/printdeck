@@ -3,7 +3,7 @@ name: Printdeck
 options:
   deploymentTarget:
     iOS: "17.0"
-    watchOS: "10.0"
+    watchOS: "11.0"
   createIntermediateGroups: true
 settings:
   base:
@@ -113,6 +113,11 @@ targets:
     sources:
       - Tests
       - Push/PushCrypto.swift
+      - Shared/Deck.swift
+      - Shared/LCDModel.swift
+      - Shared/LCDScreen.swift
+      - Shared/LCDFonts.swift
+      - Shared/Theme.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_PREFIX).tests

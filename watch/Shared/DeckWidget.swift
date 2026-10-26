@@ -73,12 +73,15 @@ struct DotsView: View {
         GeometryReader { g in
             let wpx = Int(g.size.width * scale), hpx = Int(g.size.height * scale)
             let dot = max(2, min(wpx / dotsAcross, dotsDown > 0 ? hpx / dotsDown : Int.max))
-            var c = LCDCanvas(width: wpx / dot, height: hpx / dot, marginX: marginX, marginY: marginY)
-            let _ = draw(&c)
-            Image(decorative: ComplicationDots.image(c, dot: dot, fullColor: mode == .fullColor), scale: scale)
-                .interpolation(.none)
-                .widgetAccentable()
-                .frame(width: g.size.width, height: g.size.height)
+            // The first layout pass can have no size: no dots then.
+            if wpx / dot > 2 * marginX, hpx / dot > 2 * marginY {
+                var c = LCDCanvas(width: wpx / dot, height: hpx / dot, marginX: marginX, marginY: marginY)
+                let _ = draw(&c)
+                Image(decorative: ComplicationDots.image(c, dot: dot, fullColor: mode == .fullColor), scale: scale)
+                    .interpolation(.none)
+                    .widgetAccentable()
+                    .frame(width: g.size.width, height: g.size.height)
+            }
         }
     }
 }

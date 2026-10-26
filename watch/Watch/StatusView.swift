@@ -7,18 +7,29 @@ import WatchKit
 /// The watch as the display of the printer: the whole watch is the blue dot-matrix display. The
 /// status of the print fills the first screen. Under it, in one scroll that the Digital Crown
 /// moves, are the picture of the camera of the deck (when it has one), the model of the print as
-/// the deck draws it, the print (layers and times), and the filament. During a print, a tap opens a short menu: Pause or Resume, and Cancel, each with a
-/// question first. In the menu the crown moves the selection, as the knob of the printer, and a tap
-/// selects.
+/// the deck draws it, the print (layers and times), and the filament. During a print, a tap opens
+/// a short menu over the scroll: Pause or Resume, and Cancel, each with a question first. In the
+/// menu the crown moves the selection, as the knob of the printer, and a tap selects.
 struct StatusView: View {
     @Environment(DeckModel.self) private var model
     @Environment(\.scenePhase) private var phase
     @Environment(\.displayScale) private var scale
-    @FocusState private var focused: Bool
+    @Environment(\.isLuminanceReduced) private var dimmed
+    @FocusState private var focus: Focus?
     @State private var mode = Mode.scroll
     @State private var crown = 0.0
     /// The last picture of the camera of the deck, or nil.
     @State private var photo: CGImage?
+    /// The camera picture is on the screen.
+    @State private var cameraShown = false
+    /// The camera did not answer the last time.
+    @State private var cameraFailed = false
+    /// The end of the last scroll: a tap right after a scroll only stops the scroll.
+    @State private var scrolled = Date.distantPast
+    @State private var scrolling = false
+
+    /// What the crown moves: the scroll or the menu.
+    enum Focus { case scroll, menu }
 
     private let p = Palette.night
 
@@ -63,10 +74,11 @@ struct StatusView: View {
         // The safe area starts under the clock: its top is the height of the clock band.
         GeometryReader { r in
             let grid = Grid(screen: WKInterfaceDevice.current().screenBounds.size, clockBand: clockBand, scale: scale)
-            Group {
-                if mode == .scroll {
-                    scroll(grid)
-                } else {
+            // The menu covers the scroll, which stays in place under it.
+            ZStack(alignment: .top) {
+                scroll(grid)
+                    .allowsHitTesting(mode == .scroll)
+                if mode != .scroll {
                     menu(grid)
                 }
             }
@@ -76,6 +88,7 @@ struct StatusView: View {
             .onAppear {
                 clockBand = r.frame(in: .global).minY
                 setModelSize(grid)
+                focus = .scroll
             }
             .onChange(of: r.frame(in: .global).minY) { _, v in clockBand = v }
             .onChange(of: grid.dot) { setModelSize(grid) }
@@ -99,6 +112,10 @@ struct StatusView: View {
             // A print that ends closes the menu.
             if busy != true, mode != .scroll { open(.scroll) }
         }
+        .onChange(of: model.settings) {
+            photo = nil
+            cameraFailed = false
+        }
     }
 
     // MARK: The scroll
@@ -112,9 +129,9 @@ struct StatusView: View {
             lcd(.rows([]), grid: grid, rows: grid.rows, top: 0)
             ScrollView {
                 VStack(spacing: 0) {
-                    lcd(statusScreen, grid: grid, rows: grid.window, top: 0)
-                    if model.status?.camera != nil {
-                        cameraPicture(grid)
+                    lcd(statusScreen, grid: grid, rows: grid.window, top: 0, animated: !dimmed)
+                    if let cam = model.status?.camera, cam.on, !dimmed {
+                        cameraPicture(grid, cam)
                     }
                     ForEach(sections, id: \.self) { s in
                         if let pg = page(s) {
@@ -123,9 +140,17 @@ struct StatusView: View {
                     }
                 }
                 .contentShape(Rectangle())
-                .onTapGesture { click() }
+                .onTapGesture {
+                    // A tap that stops a scroll opens no menu.
+                    if !scrolling, Date().timeIntervalSince(scrolled) > 0.4 { click() }
+                }
             }
             .scrollIndicators(.hidden)
+            .focused($focus, equals: .scroll)
+            .onScrollPhaseChange { _, new in
+                scrolling = new != .idle
+                if new == .idle { scrolled = Date() }
+            }
             #if DEBUG
             // For screenshots in the simulator: PRINTDECK_SCREEN=bottom opens the end of the scroll.
             .defaultScrollAnchor(ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"] == "bottom" ? .bottom : .top)
@@ -137,33 +162,57 @@ struct StatusView: View {
     }
 
     /// The picture of the camera of the deck, under the status, as wide as the text of the
-    /// display. It reads a small picture every 3 seconds while the app is active.
-    private func cameraPicture(_ grid: Grid) -> some View {
+    /// display. It reads a small picture every 3 seconds while the app is active and the picture is
+    /// on the screen. A camera with no picture shows why.
+    private func cameraPicture(_ grid: Grid, _ cam: DeckCamera) -> some View {
         let w = CGFloat((grid.cols - 2 * Grid.mx) * grid.dot) / scale
+        let aspect = photo.map { CGFloat($0.width) / CGFloat(max(1, $0.height)) } ?? cam.aspect
+        let problem = cam.problem ?? (cameraFailed ? "No picture" : photo == nil ? "Camera" : nil)
         return ZStack {
             Rectangle().fill(.black)
             if let photo {
                 Image(decorative: photo, scale: scale)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
+                    .opacity(cameraFailed ? 0.4 : 1)
+            }
+            if let problem {
+                Text(problem.uppercased())
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(4)
             }
         }
-        .frame(width: w, height: w * 9 / 16)
+        .frame(width: w, height: w / aspect)
         .padding(.vertical, CGFloat(2 * grid.dot) / scale)
-        .task(id: phase == .active) {
-            guard phase == .active else { return }
+        .onScrollVisibilityChange(threshold: 0.1) { cameraShown = $0 }
+        .task(id: CameraTask(active: phase == .active && cameraShown, settings: model.settings)) {
+            guard phase == .active, cameraShown else { return }
             let client = DeckClient(settings: model.settings)
             while !Task.isCancelled {
-                if let img = await client.snapshot(width: Int(w * scale)) { photo = img }
+                if let img = await client.snapshot(width: Int(w * scale)) {
+                    photo = img
+                    cameraFailed = false
+                } else if !Task.isCancelled {
+                    cameraFailed = true
+                }
                 try? await Task.sleep(for: .seconds(3))
             }
         }
     }
 
+    /// The camera reads while this is active, from the deck of these settings.
+    private struct CameraTask: Equatable {
+        let active: Bool
+        let settings: DeckSettings
+    }
+
     /// A part of the display, rows dots high.
-    private func lcd(_ screen: LCDScreen, grid: Grid, rows: Int, top: Int) -> some View {
+    private func lcd(_ screen: LCDScreen, grid: Grid, rows: Int, top: Int, animated: Bool = true) -> some View {
         LCDView(screen: screen, dotsW: grid.cols, dotsH: rows, dotPixels: grid.dot,
-                marginX: Grid.mx, marginY: 0, marginTop: top, framed: false)
+                marginX: Grid.mx, marginY: 0, marginTop: top, framed: false,
+                framesPerSecond: animated ? 2 : 0)
             .frame(height: CGFloat(rows * grid.dot) / scale)
     }
 
@@ -177,7 +226,7 @@ struct StatusView: View {
 
     private var statusScreen: LCDScreen {
         .status(LCDModel.status(model.status, connected: model.settings.isComplete, error: model.error,
-                                now: Date(), hint: ""))
+                                now: Date(), hint: "", live: model.live, notice: model.noticeNow))
     }
 
     private func page(_ s: Section) -> LCDPage? {
@@ -215,10 +264,10 @@ struct StatusView: View {
             .contentShape(Rectangle())
             .onTapGesture { click() }
             .focusable()
-            .focused($focused)
+            .focusEffectDisabled()
+            .focused($focus, equals: .menu)
             .digitalCrownRotation($crown, from: 0, through: Double(max(1, actions.count - 1)), by: 1,
                                   sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
-            .onAppear { focused = true }
     }
 
     private var selected: Int { max(0, min(actions.count - 1, Int(crown.rounded()))) }
@@ -256,11 +305,12 @@ struct StatusView: View {
         }
     }
 
-    /// The click of the knob: the menu during a print.
+    /// The click of the knob: the menu during a print. An old status or a command on its way opens
+    /// no menu: the print can have changed.
     private func click() {
         switch mode {
         case .scroll:
-            if model.status?.busy == true { open(.menu) }
+            if model.status?.busy == true, model.live, !model.sending { open(.menu) }
         default:
             guard actions.indices.contains(selected) else { return }
             WKInterfaceDevice.current().play(.click)
@@ -271,6 +321,10 @@ struct StatusView: View {
     private func open(_ m: Mode) {
         mode = m
         crown = 0
+        // The crown goes to the menu, and back to the scroll when the menu closes. The focus moves
+        // after the view of the new mode is on the screen.
+        let f: Focus = m == .scroll ? .scroll : .menu
+        Task { @MainActor in focus = f }
     }
 
     private func question(_ c: DeckModel.Command) -> String {

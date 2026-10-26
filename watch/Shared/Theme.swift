@@ -70,7 +70,7 @@ extension Color {
 enum Format {
     /// A duration as "2h 05m", "14m" or "<1m".
     static func duration(_ seconds: Double) -> String {
-        let m = Int(seconds / 60)
+        let m = Int(min(max(seconds, 0), 1e8) / 60)
         if m < 1 { return "<1m" }
         if m < 60 { return "\(m)m" }
         return String(format: "%dh %02dm", m / 60, m % 60)
@@ -78,7 +78,7 @@ enum Format {
 
     /// A short duration for a small complication: "2h05" or "14m".
     static func shortDuration(_ seconds: Double) -> String {
-        let m = Int(seconds / 60)
+        let m = Int(min(max(seconds, 0), 1e8) / 60)
         if m < 60 { return "\(max(m, 0))m" }
         return String(format: "%dh%02d", m / 60, m % 60)
     }

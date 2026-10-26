@@ -3,8 +3,8 @@
 
 import SwiftUI
 
-/// The Camera page: the picture of the camera of the deck, 5 times a second while the page is
-/// open. It reads /webcam/snapshot at the width of the screen, and the deck sends its newest frame.
+/// The Camera page: the camera of the deck while the page is open. It reads /webcam/stream at the
+/// width of the screen, at most 10 pictures a second, and connects again after a failure.
 struct CameraView: View {
     @Environment(DeckModel.self) private var model
     @Environment(\.palette) private var p
@@ -24,7 +24,7 @@ struct CameraView: View {
                         .environment(\.panelScale, 0.75)
                 }
                 .padding(.top, 8)
-                Text((message ?? model.status?.camera ?? "").uppercased())
+                Text((model.status?.camera?.problem ?? message ?? model.status?.camera?.name ?? "").uppercased())
                     .font(Theme.plex(13))
                     .foregroundStyle(p.dim)
                 ZStack {
@@ -35,7 +35,7 @@ struct CameraView: View {
                             .aspectRatio(contentMode: .fit)
                     }
                 }
-                .aspectRatio(16 / 9, contentMode: .fit)
+                .aspectRatio(aspect, contentMode: .fit)
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(p.edge, lineWidth: 2))
                 Spacer()
             }
@@ -45,18 +45,27 @@ struct CameraView: View {
         .background(p.bg.ignoresSafeArea())
     }
 
-    /// Reads a picture 5 times a second until the page closes. After a failure it waits 2 seconds.
+    /// The shape of the picture: the last picture, or the camera before the first one.
+    private var aspect: CGFloat {
+        if let photo, photo.height > 0 { return CGFloat(photo.width) / CGFloat(photo.height) }
+        return model.status?.camera?.aspect ?? 16 / 9
+    }
+
+    /// Reads the stream until the page closes. After a failure it waits 2 seconds and connects
+    /// again.
     private func load(width: Int) async {
         let client = DeckClient(settings: model.settings)
         while !Task.isCancelled {
-            if let img = await client.snapshot(width: max(320, width)) {
-                photo = img
-                message = nil
-                try? await Task.sleep(for: .milliseconds(200))
-            } else {
+            do {
+                for try await img in client.stream(width: max(320, width), fps: 10) {
+                    photo = img
+                    message = nil
+                }
+            } catch {
+                if Task.isCancelled { return }
                 message = "No picture from the camera"
-                try? await Task.sleep(for: .seconds(2))
             }
+            try? await Task.sleep(for: .seconds(2))
         }
     }
 }
