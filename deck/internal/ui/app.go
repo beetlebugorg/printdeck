@@ -251,7 +251,9 @@ type App struct {
 	Metrics      *hostmetrics.Recorder
 	monitorRange int // the time of the graphs of the System monitor page: an index of monitorRanges
 	// Camera is the camera of the deck, or nil (Settings > Camera).
-	Camera Camera
+	Camera  Camera
+	camView string     // the view of the picture of the Camera page ("" is full)
+	calib   *calibFlow // the calibration of the camera, while it runs (calibrate.go)
 
 	redrawPending atomic.Bool // redrawSoon asked for a frame
 

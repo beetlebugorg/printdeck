@@ -137,6 +137,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	case pageCamera:
 		a.drawCamera(c)
 		return
+	case pageCalibrate:
+		a.drawCalibrate(c)
+		return
 	case pageConsole:
 		a.drawConsole(c)
 		return

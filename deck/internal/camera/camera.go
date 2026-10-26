@@ -5,6 +5,9 @@
 //	camera.go     the devices, the settings, and the frames
 //	hub.go        the capture runs only while a viewer watches, and one capture feeds all viewers
 //	scale.go      the conversion of raw pictures to JPEG, at a smaller size
+//	calib.go      the calibration: the projection from the places of the printer to the picture
+//	views.go      the views that follow the printer: the toolhead, the first layer, the part
+//	render.go     the crops of the views, and the dark blur around a part
 //	jpeg.go       the Huffman tables that some MJPEG cameras leave out of their frames
 //	v4l2_linux.go the devices and the capture with the V4L2 ioctls
 //
@@ -110,6 +113,10 @@ type Frame struct {
 	smalls map[int]*Frame // the smaller frames by width (Small)
 	order  []int          // the widths of smalls, the oldest first
 	err    error          // the decode error of the JPEG
+
+	plans     map[string]*viewPlan // the plan of each view, or nil for no plan (views.go)
+	views     map[string]*Frame    // the pictures of the views by view and width
+	viewOrder []string             // the keys of views, the oldest first
 }
 
 // newFrame makes a frame of a JPEG of w x h pixels. pic is the picture of the JPEG, or nil.

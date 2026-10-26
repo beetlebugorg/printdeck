@@ -3,6 +3,7 @@ package camera
 import (
 	"context"
 	"errors"
+	"image"
 	"log"
 	"sort"
 	"sync"
@@ -16,6 +17,9 @@ import (
 type Hub struct {
 	// OnSettings is told the new settings, to save them, or is nil.
 	OnSettings func(Settings)
+	// OnCalibration is told a new calibration, or nil for no calibration, to save it. It can be
+	// nil.
+	OnCalibration func(*Calibration)
 
 	mu        sync.Mutex
 	settings  Settings
@@ -34,6 +38,17 @@ type Hub struct {
 	lastLog string // the last error in the log, so that an error is in the log once
 	capture captureFunc
 	scan    func() []Device
+
+	// The views (views.go): the calibration, the places of the printer, the last format of each
+	// device, and the crop of the toolhead view with the time and the number of its frame.
+	cal     *Calibration
+	calGen  int // goes up at each change of the calibration
+	scene   Scene
+	formats map[string]Format
+	thCrop  [4]float64
+	thAt    time.Time
+	thSeq   uint64
+	thSize  image.Point
 }
 
 // Status tells the state of the camera, for the screen.
@@ -270,6 +285,10 @@ func (h *Hub) Run(ctx context.Context) {
 		err := h.capture(cctx, d, s, func(f Format) {
 			h.mu.Lock()
 			h.status.Format = f
+			if h.formats == nil {
+				h.formats = map[string]Format{}
+			}
+			h.formats[d.ID] = f
 			h.mu.Unlock()
 			h.logOnce(d.Name + " (" + d.Path + "): " + f.String())
 		}, h.publish)

@@ -66,7 +66,7 @@ func TestCameraPageWide(t *testing.T) {
 	a.Camera = cam
 	a.pages = []page{pageMachine, pageSettings, pageCamera}
 	f := simFrame(t, a, "camera-wide")
-	if !strings.Contains(f, `["c",`) || !strings.Contains(f, "TURN 180°") {
+	if !strings.Contains(f, `["c",`) || !strings.Contains(f, `"TURN"`) {
 		t.Error("no picture or no Turn key")
 	}
 	a.pages = []page{pageMachine, pageSettings}

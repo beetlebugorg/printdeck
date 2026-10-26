@@ -16,6 +16,9 @@ type DemoCamera struct {
 	State camera.Status
 	Frame *camera.Frame
 	Peeks int // the calls of Peek
+	// Cal is the calibration, or nil. With a calibration, each view is the middle half of the
+	// picture.
+	Cal *camera.Calibration
 }
 
 // NewDemoCamera returns a demo camera that is on, with a picture of 1280 x 720.
@@ -50,4 +53,26 @@ func (c *DemoCamera) SetSettings(s camera.Settings) { c.Set = s }
 func (c *DemoCamera) Devices() []camera.Device {
 	return []camera.Device{{Path: "/dev/video0", ID: "/dev/v4l/by-id/usb-Logitech_C270-video-index0", Name: "C270 HD WEBCAM"},
 		{Path: "/dev/video2", ID: "/dev/v4l/by-id/usb-Elgato_Cam_Link_4K-video-index0", Name: "Cam Link 4K"}}
+}
+
+func (c *DemoCamera) Calibration() (*camera.Calibration, bool) { return c.Cal, c.Cal != nil }
+func (c *DemoCamera) SetCalibration(cal *camera.Calibration)   { c.Cal = cal }
+
+func (c *DemoCamera) Views() []string {
+	if c.Cal == nil {
+		return []string{camera.ViewFull}
+	}
+	return camera.ViewNames
+}
+
+func (c *DemoCamera) View(f *camera.Frame, view string, w int) (*camera.Frame, string) {
+	if c.Cal == nil || view == camera.ViewFull || view == "" || f == nil {
+		if w > 0 {
+			return f.Small(w), camera.ViewFull
+		}
+		return f, camera.ViewFull
+	}
+	sz := f.Size()
+	v, _ := f.Crop(float64(sz.X)/2, float64(sz.Y)/2, float64(sz.X)/2, w)
+	return v, view
 }

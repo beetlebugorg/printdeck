@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -28,6 +29,11 @@ import (
 //	         of one width share it.
 //	fps=2    the most frames a second of the stream, from 0.1 up. The default is the rate of the
 //	         camera (up to 15 frames a second), or 1 for the screen.
+//	view=part  a part of the picture of a calibrated camera (camera/views.go): full (the default),
+//	         toolhead, firstlayer or part. A view has the size of the whole picture at the same w.
+//	         A view with no place now (no calibration, no print) and a name that is not a view
+//	         give the whole picture. The header X-Printdeck-View of the snapshot, and of each
+//	         frame of the stream, is the view of the picture.
 //
 // The camera runs only while a viewer watches, and stops a few seconds after the last viewer. A
 // snapshot starts it and waits for its first frame, so the first snapshot takes up to a second
@@ -41,6 +47,31 @@ type Camera interface {
 	Snapshot(ctx context.Context) (*camera.Frame, error)
 	Next(ctx context.Context, after uint64) (*camera.Frame, error)
 	Watch() (stop func())
+}
+
+// CameraViews is what the views need of the camera (camera.Hub). A Camera with no views gives
+// the whole picture for each view.
+type CameraViews interface {
+	// View returns the view of a frame at the width w, or 0, and the name of the view that it
+	// shows.
+	View(f *camera.Frame, view string, w int) (*camera.Frame, string)
+	// Views returns the views that show a part of the picture now, with full first.
+	Views() []string
+	// Calibration returns the calibration, and reports that it is valid for the camera.
+	Calibration() (*camera.Calibration, bool)
+}
+
+// cameraView returns the view of the request (the parameters view and w) of the frame f, and the
+// name of the view.
+func (s *Server) cameraView(f *camera.Frame, r *http.Request) (*camera.Frame, string) {
+	width := webcamWidth(r)
+	if v, ok := s.Camera.(CameraViews); ok {
+		return v.View(f, r.URL.Query().Get("view"), width)
+	}
+	if width > 0 {
+		f = f.Small(width)
+	}
+	return f, camera.ViewFull
 }
 
 // webcam lets a request through with an API key, or when Allow lets it through.
@@ -88,9 +119,8 @@ func (s *Server) serveSnapshot(w http.ResponseWriter, r *http.Request) {
 			apiError(w, http.StatusServiceUnavailable, "No picture from the camera")
 			return
 		}
-		if width := webcamWidth(r); width > 0 {
-			f = f.Small(width)
-		}
+		f, view := s.cameraView(f, r)
+		w.Header().Set("X-Printdeck-View", view)
 		b = f.JPEG()
 	case s.Frame != nil:
 		var err error
@@ -109,9 +139,13 @@ func (s *Server) serveSnapshot(w http.ResponseWriter, r *http.Request) {
 
 const boundary = "printdeckframe"
 
-// writePart writes one JPEG of the stream, and reports that the client takes it.
-func writePart(w http.ResponseWriter, rc *http.ResponseController, b []byte) bool {
-	fmt.Fprintf(w, "--%s\r\nContent-Type: image/jpeg\r\nContent-Length: %d\r\n\r\n", boundary, len(b))
+// writePart writes one JPEG of the stream, and reports that the client takes it. view is the
+// name of the view of the picture, or "".
+func writePart(w http.ResponseWriter, rc *http.ResponseController, b []byte, view string) bool {
+	if view != "" {
+		view = "X-Printdeck-View: " + view + "\r\n"
+	}
+	fmt.Fprintf(w, "--%s\r\nContent-Type: image/jpeg\r\nContent-Length: %d\r\n%s\r\n", boundary, len(b), view)
 	w.Write(b)
 	w.Write([]byte("\r\n"))
 	return rc.Flush() == nil
@@ -129,13 +163,13 @@ func (s *Server) serveStream(w http.ResponseWriter, r *http.Request) {
 	rc := http.NewResponseController(w)
 	width := webcamWidth(r)
 	if s.cameraOn() {
-		s.cameraStream(w, r, rc, width)
+		s.cameraStream(w, r, rc)
 		return
 	}
 	every := webcamRate(r, time.Second)
 	for {
 		b, err := s.screenJPEG(width)
-		if err != nil || !writePart(w, rc, b) {
+		if err != nil || !writePart(w, rc, b, "") {
 			return
 		}
 		select {
@@ -148,7 +182,7 @@ func (s *Server) serveStream(w http.ResponseWriter, r *http.Request) {
 
 // cameraStream sends the frames of the camera. A client that takes the frames slower than the
 // camera makes them gets the newest frame each time.
-func (s *Server) cameraStream(w http.ResponseWriter, r *http.Request, rc *http.ResponseController, width int) {
+func (s *Server) cameraStream(w http.ResponseWriter, r *http.Request, rc *http.ResponseController) {
 	stop := s.Camera.Watch()
 	defer stop()
 	every := webcamRate(r, 0)
@@ -162,10 +196,8 @@ func (s *Server) cameraStream(w http.ResponseWriter, r *http.Request, rc *http.R
 			return
 		}
 		last = f.Seq
-		if width > 0 {
-			f = f.Small(width)
-		}
-		if !writePart(w, rc, f.JPEG()) {
+		f, view := s.cameraView(f, r)
+		if !writePart(w, rc, f.JPEG(), view) {
 			return
 		}
 		if every > 0 {
@@ -200,6 +232,15 @@ type cameraJSON struct {
 	Height int    `json:"height,omitempty"`
 	FPS    int    `json:"fps,omitempty"`
 	Error  string `json:"error,omitempty"`
+	// Calibrated is true when the camera has a calibration for this camera: then the views can
+	// follow the printer. CalibratedAt is the time of the calibration (RFC 3339), and
+	// CalibrationError its RMS error in pixels of the picture.
+	Calibrated       bool    `json:"calibrated"`
+	CalibratedAt     string  `json:"calibratedAt,omitempty"`
+	CalibrationError float64 `json:"calibrationError,omitempty"`
+	// Views are the values of the parameter view that show a part of the picture now, with
+	// "full" first. Each view has the size of the whole picture (Width x Height).
+	Views []string `json:"views"`
 }
 
 // cameraInfo is the camera for the Printdeck API, or nil when the deck has no camera on.
@@ -208,6 +249,15 @@ func (s *Server) cameraInfo() *cameraJSON {
 		return nil
 	}
 	st := s.Camera.Status()
-	return &cameraJSON{Name: st.Device.Name, State: st.State, Width: st.Format.OutW, Height: st.Format.OutH,
-		FPS: st.Format.OutFPS, Error: st.Err}
+	out := &cameraJSON{Name: st.Device.Name, State: st.State, Width: st.Format.OutW, Height: st.Format.OutH,
+		FPS: st.Format.OutFPS, Error: st.Err, Views: []string{camera.ViewFull}}
+	if v, ok := s.Camera.(CameraViews); ok {
+		if c, valid := v.Calibration(); valid {
+			out.Calibrated = true
+			out.CalibratedAt = c.Time.UTC().Format(time.RFC3339)
+			out.CalibrationError = math.Round(c.Error*10) / 10
+		}
+		out.Views = v.Views()
+	}
+	return out
 }
