@@ -597,9 +597,10 @@ def plug(name):
 
 
 def cable_clips(name):
-    """The cable clips (clips.py) and their places: (shape in printer coordinates, how many)."""
+    """The cable clips (clips.py) and their places: (shape in printer coordinates, how many). Each is a
+    two-cable tape clip: the cables of the two cameras of camera_models.py lie side by side in it."""
     import clips as K
-    one, _ = K.tape_clip()
+    one, _ = K.tape_clip(pair=True)
     if name == "taz":
         # Tape clips on the front face of the top front rail of the frame, between the corner plates,
         # and one on the front left upright over the deck, under its corner plate.
@@ -901,6 +902,16 @@ def camera_pose(name, T):
     mv = lambda p: [float(x) for x in (T @ np.append(p, 1.0))[:3]]
     return {"eye": mv(eye), "focal": mv(eye + 300.0 * f), "up": [float(x) for x in T[:3, :3] @ up],
             "fov": 2 * half_fov()[1]}
+
+
+def bed_view(name, T):
+    """The bed for the live window: the center of its top face, its normal, the directions of its sides,
+    and the print area, moved by T."""
+    import numpy as np
+    c, a, b, size, _ = BEDS[name]
+    rot = lambda d: [float(x) for x in T[:3, :3] @ np.asarray(d, float)]
+    return {"center": [float(x) for x in (T @ np.append(c, 1.0))[:3]], "normal": rot(axes(name)[0]),
+            "a": rot(a), "b": rot(b), "size": size}
 
 
 def camera_view(name, scene, T, path, size=(1280, 720)):

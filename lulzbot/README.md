@@ -213,6 +213,24 @@ the board is the space for the FPC fold; put foam tape there, so the glass stays
 - `cura/make_profiles.py` writes the Cura profiles, slices each part for the filament and the
   print time, and slices each part again with supports on (from the Slate).
 - `render.py` writes the colour images in `renders/` (headless OpenGL with EGL).
+- `camera_options.py` has the camera and lens options for the camera of the printer, and their
+  fields of view (pinhole model, no lens distortion). In `live.py`, `l` selects the next option,
+  `t` the next camera position (the C270 mount, or over the middle of the bed), and `k` shows the
+  view of the camera. Each position starts with the camera to buy, the Arducam B0561.
+  `camera_preview.py` writes the view of each option from each position to
+  `renders/camera-preview/`, with a contact sheet for each printer, `chosen.png`, `mini2-places.png`
+  (other places for the camera on the Mini 2 frame), and `table.csv`.
+- `camera_models.py` has a placeholder model of the B0561 in its case on its U bracket (sizes from
+  the product photos, until measured), a placeholder link for it on the arm of the C270 mount, a
+  placeholder bracket for it over the bed on the top of the frame, and the cable routes to the Pi.
+  Each camera cable has its real length (1 m); the cable that the route does not use wraps on a
+  printed drum on the bracket of the camera, and on the TAZ the camera on the arm has a 0.5 m USB
+  extension, joined on a zip-tie tab on the top front rail. pod.py puts them in the live window.
+- `cable_physics.py` gives the shapes of the power, printer, and camera cables: each is an elastic
+  rod that does not stretch, held at its plugs and clips, with its own weight (EI 2e-5 N m2,
+  30 g/m, typical values). pod.py solves them with the other parts in place and keeps the result in
+  `build/cables`. `renders/camera-preview/cable-sag.png` shows how a span hangs with more or less
+  cable.
 - `lineart/render.mjs` writes the line-art images of the PDF (three.js in headless Chromium, from
   the Slate). `make_pdf.py` writes `printdeck-lulzbot-build.pdf` (same layout as the Slate guide).
 - `make.sh` runs all steps (about 2 to 3 minutes). It stops if a check fails.
