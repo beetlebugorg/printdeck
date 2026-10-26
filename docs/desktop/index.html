@@ -65,7 +65,7 @@
 <p class="lede">The Printdeck for a computer, and a simulated TAZ Workhorse in 3D.</p>
 <nav class="onpage"><b>On this page</b><ol><li><a href="#app">printdeck app</a></li><li><a href="#window">The window</a></li><li><a href="#meshes">The meshes of the 3D window</a></li></ol></nav>
 <img src="../img/sim.gif" alt="The 3D window of the simulator: a TAZ Workhorse with the Printdeck prints a plaque" width="420">
-<p><code>desktop/</code> is the Printdeck for a computer. It is a Qt 6 window around <code>printdeck app</code>, which runs the Klipper host and the deck UI for a printer on USB. Cura finds it at the same address after each start, as it finds a Printdeck. The keyboard of the computer types on the deck.</p>
+<p><code>desktop/</code> is the Printdeck for a computer. It is a Qt 6 window around <code>printdeck app</code>, which runs the Klipper host and the deck UI for a printer on USB. Cura finds it at the same address after each start, as it finds a Printdeck. The keyboard of the computer types on the deck. Ctrl+K (Cmd+K on a Mac) opens the camera of the deck in a window of its own, at up to 15 frames a second.</p>
 <p><code>printdeck app -sim</code> runs the deck with a simulated printer: a TAZ Workhorse on a simulated printer board. The board has the endstops, the probe and the display of the printer, at the places in <code>printer.cfg</code>. With <code>-sim</code>, a second window shows the printer in 3D:</p>
 <ul><li>The model of the Workhorse comes from the CAD files of LulzBot. The axes and the belts move with the steps of the board, and the filament goes down where the nozzle is.</li><li>The Printdeck mount from <code>lulzbot/</code> is on the printer, and its screen shows the deck UI.</li><li>The display of the printer shows the dots that the Klipper host sends to it.</li><li>The left button turns the view, the right button pans it, and the wheel zooms. T makes the tool head see-through.</li></ul>
 <p>To build it, you need Go, CMake, Ninja, and Qt 6.5 or later with Qt Quick 3D:</p>
@@ -85,7 +85,8 @@ $B/Printdeck -sim</code></pre>
 <tr><td><code>PRINTDECK</code></td><td>The path of the printdeck program. Without it, the window starts the program next to the window program.</td></tr>
 <tr><td><code>PRINTDECK_ATTACH</code></td><td>A file with the first line of the output of a <code>printdeck app</code> that runs already. The window connects to that app and starts no app.</td></tr>
 <tr><td><code>PRINTDECK_FILM</code></td><td>With <code>-sim</code>: the 3D window shows the film of <code>desktop/film/</code>, and records it to this file when the file with <code>.go</code> added exists.</td></tr>
-<tr><td><code>PRINTDECK_SHOT</code></td><td>A PNG file: the window writes a picture of the windows after <code>PRINTDECK_SHOT_SECONDS</code> (8), and ends. With <code>PRINTDECK_SHOT_FRAMES=N</code> and <code>-sim</code>, it first writes N pictures of the 3D window, 10 a second.</td></tr>
+<tr><td><code>PRINTDECK_CAMERA</code></td><td><code>1</code> opens the Camera window at the start. Ctrl+K opens and closes it.</td></tr>
+<tr><td><code>PRINTDECK_SHOT</code></td><td>A PNG file: the window writes a picture of the windows after <code>PRINTDECK_SHOT_SECONDS</code> (8), and ends. With <code>PRINTDECK_SHOT_FRAMES=N</code> and <code>-sim</code>, it first writes N pictures of the 3D window, 10 a second. An open Camera window goes to the file with <code>-camera</code> before <code>.png</code>.</td></tr>
 </table></div>
 <p>The deck UI in the window is drawn by the QML files of the Cura plugin (<code>slicer/cura-plugin/Printdeck/qml</code>), so the two stay the same.</p>
 <h2 id="meshes">The meshes of the 3D window</h2>

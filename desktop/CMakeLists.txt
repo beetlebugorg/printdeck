@@ -21,6 +21,7 @@ set_source_files_properties(${plugin_qml}/DeckCanvas.qml PROPERTIES QT_RESOURCE_
 set_source_files_properties(${plugin_qml}/Connecting.qml PROPERTIES QT_RESOURCE_ALIAS Connecting.qml)
 qt_add_resources(printdeck-desktop qml PREFIX / FILES
     Main.qml
+    Camera.qml
     Sim3D.qml
     ${plugin_qml}/DeckCanvas.qml
     ${plugin_qml}/Connecting.qml)

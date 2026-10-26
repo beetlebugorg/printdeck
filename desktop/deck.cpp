@@ -86,6 +86,11 @@ QString Deck::fontBase() const
     return m_base.isValid() ? m_base.toString() + QStringLiteral("/ui/font/") : QString();
 }
 
+QString Deck::snapshotUrl() const
+{
+    return m_base.isValid() ? m_base.toString() + QStringLiteral("/webcam/snapshot") : QString();
+}
+
 // readHello reads the first line of printdeck app: {"url": ..., "token": ...}.
 void Deck::readHello()
 {

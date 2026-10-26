@@ -76,6 +76,8 @@ int main(int argc, char *argv[])
     // The pictures of the title cards (film/film.sh): the folder cards next to OUT.mp4.
     engine.rootContext()->setContextProperty(QStringLiteral("filmCards"),
                                              QFileInfo(filmPath).absolutePath() + QStringLiteral("/cards"));
+    // PRINTDECK_CAMERA=1 opens the Camera window at the start (Ctrl+K opens it later).
+    engine.rootContext()->setContextProperty(QStringLiteral("cameraOn"), qEnvironmentVariableIntValue("PRINTDECK_CAMERA") == 1);
     engine.load(QUrl(QStringLiteral("qrc:/Main.qml")));
     if (simOn) {
         qmlRegisterType<PathGeometry>("Printdeck.Sim", 1, 0, "PathGeometry");
@@ -141,6 +143,14 @@ int main(int argc, char *argv[])
                 if (i > 0)
                     name.replace(QStringLiteral(".png"), QStringLiteral("-3d.png"));
                 win->grabWindow().save(name);
+            }
+            // The Camera window, when it is open, to FILE with "-camera" before .png.
+            for (QWindow *w : QGuiApplication::topLevelWindows()) {
+                auto *win = qobject_cast<QQuickWindow *>(w);
+                if (win && win->isVisible() && win->title() == QStringLiteral("Printdeck camera")) {
+                    QString name = shot;
+                    win->grabWindow().save(name.replace(QStringLiteral(".png"), QStringLiteral("-camera.png")));
+                }
             }
             QCoreApplication::quit();
         });

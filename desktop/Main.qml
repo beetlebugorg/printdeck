@@ -15,6 +15,16 @@ Window
 
     FontLoader { id: plexBold; source: printdeck.fontBase ? printdeck.fontBase + "bold.ttf" : "" }
 
+    // Ctrl+K (Cmd+K on a Mac) opens the camera of the deck in its own window. The window is
+    // smoother than the Camera page of the deck, which shows a few frames a second.
+    Camera { id: camera; visible: cameraOn }
+    Shortcut
+    {
+        sequence: "Ctrl+K"
+        context: Qt.ApplicationShortcut
+        onActivated: camera.visible = !camera.visible
+    }
+
     Item
     {
         id: area

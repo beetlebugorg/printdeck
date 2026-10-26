@@ -129,7 +129,9 @@ the print in Preview. See `slicer/cura-plugin/README.md`.
 
 `desktop/` is the Printdeck for a computer. It is a Qt 6 window around `printdeck app`, which runs
 the Klipper host and the deck UI for a printer on USB. Cura finds it at the same address after
-each start, as it finds a Printdeck. The keyboard of the computer types on the deck.
+each start, as it finds a Printdeck. The keyboard of the computer types on the deck. Ctrl+K
+(Cmd+K on a Mac) opens the camera of the deck in a window of its own, at up to 15 frames a
+second.
 
 `printdeck app -sim` runs the deck with a simulated printer: a TAZ Workhorse on a simulated
 printer board. The board has the endstops, the probe and the display of the printer, at the

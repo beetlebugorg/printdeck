@@ -27,6 +27,8 @@ class Deck : public QObject
     Q_PROPERTY(QString frame READ frame NOTIFY frameChanged)
     Q_PROPERTY(QString imageBase READ imageBase NOTIFY screenChanged)
     Q_PROPERTY(QString fontBase READ fontBase NOTIFY screenChanged)
+    // The address of a picture of the camera of the deck (Camera.qml), or "".
+    Q_PROPERTY(QString snapshotUrl READ snapshotUrl NOTIFY screenChanged)
     Q_PROPERTY(bool fontsReady READ fontsReady NOTIFY screenChanged)
 
 public:
@@ -52,6 +54,7 @@ public:
     QString frame() const { return m_frame; }
     QString imageBase() const;
     QString fontBase() const;
+    QString snapshotUrl() const;
     bool fontsReady() const { return m_base.isValid(); }
 
     // The address of the web server and the token, for the requests of QML (Factory).
