@@ -158,6 +158,8 @@ func (a *App) OpenPrintScreen(name string) {
 		a.pages = []page{pageMachine, pageSettings}
 	case "monitor":
 		a.pages = []page{pageMachine, pageMonitor}
+	case "camera":
+		a.pages = []page{pageMachine, pageSettings, pageCamera}
 	case "simulator":
 		a.pages = []page{pageMachine, pageSimulator}
 	case "configs":

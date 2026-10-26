@@ -141,6 +141,9 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 			fill, ink = keyOn, keyOnInk
 		}
 		a.button(c, k[1], "Turn 180°", fill, ink, a.toggleTurn)
+		// The names of the rows of the tall page, for the manual.
+		a.region("Camera", k[0])
+		a.region("Turn", k[1])
 	} else {
 		body := f.body()
 		// The picture has the shape of the camera, at the width of the page.
@@ -152,7 +155,7 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 		view, info = r[0], r[1]
 		a.menuRows(c, r[2], false, 60, 5, []menuItem{
 			{"Camera", cameraLine(s, devs), dim, a.cycleCamera},
-			{"Picture", turnLine(s.Rotate), dim, a.toggleTurn},
+			{"Turn", turnLine(s.Rotate), dim, a.toggleTurn},
 		})
 	}
 

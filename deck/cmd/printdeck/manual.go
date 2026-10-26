@@ -596,27 +596,38 @@ func manualParts() []section {
 						{"System monitor", "Graphs of the CPU, the memory and the writes to the SD card. See below."},
 					}},
 				{Name: "settings", Caption: "The Settings page",
-					Setup: func(s *manualState) {
-						page("settings")(s)
-						// The Screen row shows on the Printdeck OS, which restarts the deck.
-						s.a.Rotate, s.a.OnRotate = 90, func(int) {}
-						if s.a.Wide {
-							s.a.Rotate = 180
-						}
-						s.a.NotifyTopic, s.a.OnNotify = "printdeck-7f3a", func(string) {}
-						s.a.Phones = &notify.Phones{} // no file: no paired phone
-					},
+					Setup: settingsSetup,
 					Callouts: []callout{
 						{"Theme", "The colors of the screen: day, night, or auto (night from 20:00 to 7:00). Tap it to change them."},
 						{"Clock", "The clock of the screens and the display of the printer: 12 hours (2:24 PM) or 24 hours (14:24). Tap it to change it."},
 						{"Home in a filament change", "On: the printer homes all axes while the nozzle heats for a filament change. A change during a paused print does not home. Tap it to turn it on or off."},
 						{"Screen", "The turn of the screen: 0° or 180° for a display that is mounted wide, 90° or 270° for a display that is mounted tall. A tap asks to turn it a quarter turn more, then the deck restarts in the new turn. The touch turns with the screen. A print goes on during the restart. This setting wins over display_rotate in printdeck.txt."},
-						{"Phones", "The phones with the Printdeck app that get the push messages of the prints. The app pairs with the deck over the network, with the address and the API key. The messages are encrypted from the deck to the phone. Tap the row for the list; a tap on a phone asks to remove it."},
-						{"Notifications", "Push messages to your phone and watch: print done, print failed, a pause, the end of the first layer, and a roll that runs short. Install the ntfy app on the phone, and subscribe to a topic with a name that is hard to guess. Type the same topic here, or the address of a topic on your own ntfy server. A test message goes out when you save it. An empty topic turns the messages off."},
+						{"Camera", "The USB camera of the deck, for example a webcam on the frame of the printer. Tap the row for the Camera page. See below."},
 					},
 					Tall: []callout{
+						{"Phones", "The phones with the Printdeck app that get the push messages of the prints. The app pairs with the deck over the network, with the address and the API key. The messages are encrypted from the deck to the phone. Tap the row for the list; a tap on a phone asks to remove it."},
+						{"Notifications", "Push messages to your phone and watch: print done, print failed, a pause, the end of the first layer, and a roll that runs short. Install the ntfy app on the phone, and subscribe to a topic with a name that is hard to guess. Type the same topic here, or the address of a topic on your own ntfy server. A test message goes out when you save it. An empty topic turns the messages off."},
 						{"Text", "The size of the small text on a tall screen: auto, large, or normal. Auto is large on the Touch Display 2, which has smaller pixels. Tap it to change it."},
 					}},
+				{Name: "settings-more", Caption: "The Settings page, at the bottom", Layout: "wide",
+					Setup: func(s *manualState) { settingsSetup(s); s.a.DemoScroll(9999) },
+					Callouts: []callout{
+						{"Phones", "The phones with the Printdeck app that get the push messages of the prints. The app pairs with the deck over the network, with the address and the API key. The messages are encrypted from the deck to the phone. Tap the row for the list; a tap on a phone asks to remove it."},
+						{"Notifications", "Push messages to your phone and watch: print done, print failed, a pause, the end of the first layer, and a roll that runs short. Install the ntfy app on the phone, and subscribe to a topic with a name that is hard to guess. Type the same topic here, or the address of a topic on your own ntfy server. A test message goes out when you save it. An empty topic turns the messages off."},
+					}},
+				{Name: "camera", Caption: "The Camera page",
+					Setup: func(s *manualState) {
+						s.p.State_ = stIdle
+						s.a.Camera = ui.NewDemoCamera()
+						s.a.OpenPrintScreen("camera")
+					},
+					Callouts: []callout{
+						{"Picture", "The picture of the camera, a few times a second while the page is open. Aim the camera at the bed with it."},
+						{"State", "The camera and its format, or the state: no camera, no signal (an HDMI source that is off), or an error."},
+						{"Camera", "Auto (the first USB camera that the deck finds), one of the cameras, or Off. Tap it to change it."},
+						{"Turn", "Turns the picture 180°, for a camera that is mounted upside down."},
+					},
+					Notes: []string{"The camera is for the apps: the iPhone and the watch, the desktop window, Cura and the other OctoPrint clients show it (see Slicers). The camera runs only while somebody looks, and stops a few seconds after. The pictures stay in memory: the deck writes none to the SD card. With the camera Off, or with no camera, the webcam of the apps is the screen of the deck."}},
 				{Name: "console", Caption: "The console",
 					Setup: func(s *manualState) {
 						s.p.State_ = stIdle
@@ -697,6 +708,7 @@ func manualParts() []section {
 				"The deck answers the OctoPrint API that slicers use to send files and to start prints.",
 				"In Cura, add the deck with the OctoPrint Connection plugin. The deck asks \"Allow Cura to use the Printdeck?\". Tap Allow.",
 				"In OrcaSlicer or PrusaSlicer, add a printer of the type OctoPrint with the address http://printdeck.local, and the API key of the system page.",
+				"The webcam of the OctoPrint API is the camera of the deck (Settings, then Camera): http://printdeck.local/webcam/stream and /webcam/snapshot, with the API key. The parameter w gives smaller pictures (for example w=320), and fps fewer frames a second (for example fps=2). With no camera, the webcam is the screen of the deck.",
 			}},
 		{ID: "settings", Title: "Settings",
 			Intro: []string{"The file printdeck.txt on the PRINTDECK partition holds the settings. Put the disk in a computer to change it. The deck reads it at each start, then clears the Wi-Fi password in it."},
@@ -739,6 +751,21 @@ func manualParts() []section {
 					}},
 			}},
 	}
+}
+
+// settingsSetup shows the Settings page with each row: the Screen row of the Printdeck OS, the
+// notifications, the phones and the camera.
+func settingsSetup(s *manualState) {
+	s.p.State_ = stIdle
+	s.a.OpenPrintScreen("settings")
+	// The Screen row shows on the Printdeck OS, which restarts the deck.
+	s.a.Rotate, s.a.OnRotate = 90, func(int) {}
+	if s.a.Wide {
+		s.a.Rotate = 180
+	}
+	s.a.NotifyTopic, s.a.OnNotify = "printdeck-7f3a", func(string) {}
+	s.a.Phones = &notify.Phones{} // no file: no paired phone
+	s.a.Camera = ui.NewDemoCamera()
 }
 
 // manualSections are the guides of the manual, by chapter: the things that a user wants to do,
@@ -908,7 +935,7 @@ func manualSections() []section {
 
 		{Chapter: care, ID: "machine", Title: "Look after the printer",
 			Intro:   []string{"Machine has the information of the printer, the history of the prints, the macros, the console and the settings."},
-			Figures: fig("machine", "machine-prints", "machine-more", "settings", "stats", "console", "monitor")},
+			Figures: fig("machine", "machine-prints", "machine-more", "settings", "settings-more", "camera", "stats", "console", "monitor")},
 		{Chapter: care, ID: "update", Title: "Update the Printdeck",
 			Intro: []string{
 				"The deck checks for a new version once a day. Machine then shows Software update in orange.",
