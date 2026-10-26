@@ -38,6 +38,7 @@ const (
 	pagePhones      // the phones of the Printdeck app that get push messages
 	pageMonitor     // the graphs of the CPU, the memory and the disk writes of the deck
 	pageSimulator   // the simulated printers
+	pageCamera      // the setup of the camera
 )
 
 // open shows a page over the current one.

@@ -189,13 +189,20 @@ func (s *Server) serveKey(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// serveImage sends an image of the frames as a PNG. An image number is for one image only, so
-// the browser keeps it. The number can have ".png" at the end.
+// serveImage sends an image of the frames as a PNG, or the JPEG of a picture of a camera. An
+// image number is for one image only, so the browser keeps it. The number can have ".png" at the
+// end.
 func (s *Server) serveImage(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(strings.TrimSuffix(r.PathValue("id"), ".png"))
 	img := gfx.ImageByID(id)
 	if err != nil || img == nil {
 		http.NotFound(w, r)
+		return
+	}
+	if p, ok := img.(gfx.Photo); ok {
+		w.Header().Set("Content-Type", "image/jpeg")
+		w.Header().Set("Cache-Control", "private, max-age=86400, immutable")
+		w.Write(p.JPEG())
 		return
 	}
 	var b bytes.Buffer

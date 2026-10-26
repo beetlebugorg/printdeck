@@ -164,7 +164,12 @@ func (c *Canvas) Cover(r image.Rectangle, src image.Image) {
 	defer coverCache.Unlock()
 	if coverCache.src != src || coverCache.w != r.Dx() || coverCache.h != r.Dy() {
 		scaled := image.NewRGBA(image.Rect(0, 0, r.Dx(), r.Dy()))
-		scaleCover(scaled, scaled.Rect, src)
+		if p, ok := src.(Photo); ok {
+			// A picture of a camera changes often: a fast scale.
+			scaleCoverWith(scaled, scaled.Rect, p.Picture(), xdraw.ApproxBiLinear)
+		} else {
+			scaleCover(scaled, scaled.Rect, src)
+		}
 		coverCache.src, coverCache.w, coverCache.h, coverCache.scaled = src, r.Dx(), r.Dy(), scaled
 	}
 	draw.Draw(c.RGBA, r, coverCache.scaled, image.Point{}, draw.Over) // a picture with a clear background shows what is under it
@@ -194,8 +199,21 @@ func (c *Canvas) image(r image.Rectangle, img image.Image, pixels bool) {
 	}
 }
 
+// Photo is a picture of a camera, as a JPEG. A browser loads the JPEG, and Cover draws the
+// Picture with a fast scale.
+type Photo interface {
+	image.Image
+	JPEG() []byte
+	Picture() image.Image
+}
+
 // scaleCover scales src to fill r of dst, cropping the middle.
 func scaleCover(dst *image.RGBA, r image.Rectangle, src image.Image) {
+	scaleCoverWith(dst, r, src, xdraw.CatmullRom)
+}
+
+// scaleCoverWith is scaleCover with the scaler s.
+func scaleCoverWith(dst *image.RGBA, r image.Rectangle, src image.Image, s xdraw.Scaler) {
 	sb := src.Bounds()
 	sw, sh := float64(sb.Dx()), float64(sb.Dy())
 	dw, dh := float64(r.Dx()), float64(r.Dy())
@@ -207,7 +225,7 @@ func scaleCover(dst *image.RGBA, r image.Rectangle, src image.Image) {
 		h := int(sw * dh / dw)
 		crop = image.Rect(sb.Min.X, sb.Min.Y+(sb.Dy()-h)/2, sb.Max.X, sb.Min.Y+(sb.Dy()-h)/2+h)
 	}
-	xdraw.CatmullRom.Scale(dst, r, src, crop, xdraw.Src, nil)
+	s.Scale(dst, r, src, crop, xdraw.Src, nil)
 }
 
 // IBM Plex Mono (SIL Open Font License, fonts/OFL.txt). Go Mono fills in the few symbols that Plex lacks (♪ ▲ ▼).

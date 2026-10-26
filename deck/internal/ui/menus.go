@@ -626,6 +626,9 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 	if a.OnRotate != nil {
 		items = append(items, menuItem{"Screen", rotateLine(a.Rotate), dim, a.askRotate})
 	}
+	if a.Camera != nil {
+		items = append(items, menuItem{"Camera", cameraLine(a.Camera.Settings(), a.Camera.Devices()), dim, func() { a.open(pageCamera) }})
+	}
 	if a.Phones != nil {
 		items = append(items, menuItem{"Phones", phonesLine(len(a.Phones.List())), dim, func() { a.open(pagePhones) }})
 	}

@@ -250,6 +250,8 @@ type App struct {
 	// (Machine > System monitor).
 	Metrics      *hostmetrics.Recorder
 	monitorRange int // the time of the graphs of the System monitor page: an index of monitorRanges
+	// Camera is the camera of the deck, or nil (Settings > Camera).
+	Camera Camera
 
 	redrawPending atomic.Bool // redrawSoon asked for a frame
 
@@ -305,6 +307,7 @@ func (a *App) Session(width, height int) *App {
 	s.Material, s.OnMaterial = a.Material, a.OnMaterial
 	s.Updater = a.Updater
 	s.Metrics = a.Metrics
+	s.Camera = a.Camera
 	s.hub = a.hub
 	return s
 }

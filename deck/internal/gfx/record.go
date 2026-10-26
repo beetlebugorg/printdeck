@@ -96,16 +96,21 @@ func (c *Canvas) Clipped(r image.Rectangle, draw func(*Canvas)) {
 }
 
 // The images of the recordings. A browser loads an image by its number. The registry keeps the
-// last images only.
+// last images only. The pictures of a camera (Photo) have their own list: a new picture comes a
+// few times a second, and it does not push the other images out.
 var images struct {
 	sync.Mutex
-	ids   map[image.Image]int
-	byID  map[int]image.Image
-	order []int
-	next  int
+	ids    map[image.Image]int
+	byID   map[int]image.Image
+	order  []int
+	photos []int
+	next   int
 }
 
-const keepImages = 32
+const (
+	keepImages = 32
+	keepPhotos = 4
+)
 
 // imageID returns the number of an image, and registers it.
 func imageID(img image.Image) int {
@@ -120,10 +125,14 @@ func imageID(img image.Image) int {
 	images.next++
 	id := images.next
 	images.ids[img], images.byID[id] = id, img
-	images.order = append(images.order, id)
-	if len(images.order) > keepImages {
-		old := images.order[0]
-		images.order = images.order[1:]
+	list, keep := &images.order, keepImages
+	if _, ok := img.(Photo); ok {
+		list, keep = &images.photos, keepPhotos
+	}
+	*list = append(*list, id)
+	if len(*list) > keep {
+		old := (*list)[0]
+		*list = (*list)[1:]
 		delete(images.ids, images.byID[old])
 		delete(images.byID, old)
 	}
