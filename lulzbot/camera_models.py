@@ -2,8 +2,9 @@
 16 MP autofocus cameras: one on the arm of the C270 mount, one straight down over the middle of the
 bed. Arducam publishes no drawing of the B0561 that we have. The sizes in B0561 come from two
 product photos: a front view with two official sizes (36 mm and 44 mm), and a perspective view.
-Each value says where it comes from. Measure the camera with calipers when it arrives and replace
-the values. ELP has the ELP-USB12MP01-L281 board for comparison only (guesses, not placed).
+The comment on each value gives its source. Measure the camera with calipers when it arrives and
+replace the values. ELP has the ELP-USB12MP01-L281 board for comparison only. Its sizes are
+guesses, and the model does not place it.
 
 The B0561 is a black metal case with a raised front plate, a short lens barrel at the middle of the
 face, and the autofocus block at the right of the barrel. A U bracket of sheet metal holds the case
@@ -104,7 +105,7 @@ BRACKET_W = 40.0                        # across the bed
 TOP_LENS_UP = {"taz": 490.0, "mini2": 381.0}
 # The cable drum on the Mini 2 wall: the height of its axis.
 MINI_DRUM_Z = 404.0
-# The full print height (published LulzBot sizes, not checked on the printers) and the moving parts
+# The full print height (published LulzBot sizes, unchecked on the printers) and the moving parts
 # that go up with the tool head.
 PRINT_Z = {"taz": 285.0, "mini2": 180.0}
 GANTRY = {"taz": ("x_axis", "aerostruder", "extruder_cap"),
@@ -481,7 +482,7 @@ def overhang(shape):
 # so the two camera cables do not cross on their way to the Pi.
 CAMERA_PORTS = {"mount": ("pi_usb2", True), "top": ("pi_usb3", False)}
 # The USB-A end of the B0561 cable: the same sizes as the USB-A end of the printer cable (a common
-# cable, not measured). 30 mm out of the port.
+# cable, unmeasured). 30 mm out of the port.
 USBA_OUT = 30.0
 # Where the two camera cables share the tape clips of camera.cable_clips, they lie side by side in a
 # two-cable clip (clips.tape_clip(pair=True)): each 3.5 mm to one side of the middle of the clip.
@@ -656,7 +657,7 @@ def _routes(name, turns):
 def cable_specs(name):
     """The specs of the camera cables for cable_physics.py (printer coordinates), each at its real
     length: the turns on each drum take the cable that the route does not use. On the TAZ the camera on
-    the arm has the extension: its cable ends at the joint, and the extension (its last span takes the
+    the arm has the extension: its cable ends at the joint, and the extension (its last span gets the
     rest of its length) goes on to the Pi."""
     import numpy as np
     import cable_physics as CP
