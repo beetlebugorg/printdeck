@@ -56,9 +56,11 @@ FRAME = (72.96, 122.74)         # the metal back of the module
 FRAME_V0 = 12.8                 # the bottom of the frame over the bottom of the glass
 FRAME_W = 8.5                   # the back of the frame behind the front of the glass
 # The two raised tabs at the bottom (the ribbon end). At the top there are only two holes in the flat
-# back (v 123.55), over the ports of the Pi.
-TABS = [(u, 19.85) for u in (-25.5, 25.5)]
-HOLES = [(u, 19.85 + 103.7) for u in (-25.5, 25.5)]
+# back (v 124.8), over the ports of the Pi. On the real display, the four holes are 1 to 1.5 mm
+# farther from the ribbon end than in the drawing (19.85). They move HOLE_DV toward the Ethernet port.
+HOLE_DV = 1.25
+TABS = [(u, 19.85 + HOLE_DV) for u in (-25.5, 25.5)]
+HOLES = [(u, 19.85 + HOLE_DV + 103.7) for u in (-25.5, 25.5)]
 TAB_W = 11.5                    # the face of a tab behind the front of the glass
 TAB_SIZE = (8.0, 6.0)
 PI_HOLE_UV = [(u, v) for u in (-24.5, 24.5) for v in (33.91, 33.91 + 58.0)]   # the Pi standoffs (49 x 58)
@@ -339,8 +341,8 @@ def mount():
 
 
 # The holes for the M2.5 screws into the display: 3.3 mm across, 0.4 mm on each side of the screw.
-# The positions are the ones of the drawing of the display. On the first print, one hole was 0.5 to
-# 0.8 mm off the hole of the display, so the holes are 0.4 mm larger than before.
+# On the first print, one hole was 0.5 to 0.8 mm off the hole of the display, so the holes are 0.4 mm
+# larger than before. The holes take an error of 0.4 mm in HOLE_DV.
 DISPLAY_HOLE = 1.65
 FOOT = 0.5                      # the chamfer on the bed edge of the frame, across
 
