@@ -1,7 +1,8 @@
 # Pod print files
 
 `pod.py export` writes these files. Each part is in its print orientation and centered on the bed.
-FDM parts have their lowest point at z = 0. Resin parts are 6 mm over z = 0, for the supports.
+FDM and resin-flat parts have their lowest point at z = 0. Resin parts are 6 mm over z = 0, for
+the supports.
 Load a file and print it as it is. Do not turn it.
 
 ## FDM (`fdm/`)
@@ -24,7 +25,7 @@ less.
 
 | File | Print | On the bed | Supports |
 |---|---|---|---|
-| `pod-frame_fdm.stl` | 1 | Its back ring | Off. The tops of the two screw wells are round bridges of 4.8 mm. The insert holes end in a cone, through to the other face. |
+| `pod-frame_fdm.stl` | 1 | Its back ring | Off. The four display screws go through the back ring, so the frame has no bridges. The insert holes end in a cone, through to the other face. |
 | `pod-body_fdm.stl` | 1 | Its back | Off. The tops of the four screw wells are round bridges of 5.8 mm. The back edge is a chamfer with a round above it. The vent slots in the side have pointed tops. |
 | `pod-mount_fdm.stl` | 1 | The face that goes on the body | Off. The insert holes end in a cone, through to the other face. |
 | `pod-wedge_fdm.stl` | 1 for each bracket | Its level bottom (it stands up) | Off |
@@ -83,6 +84,37 @@ Slicer settings for the Phenom:
   wedge, or the nut pockets.
 - After the cure, sand the rim of the body flat on a sheet of sandpaper on glass. Then the body
   sits flat on the frame.
+
+## Resin, flat on the plate (`resin-flat/`)
+
+These are the resin parts in the FDM positions: each part is on the build plate, with no supports.
+The face on the plate gets the surface of the plate: the back of the body and the back ring of the
+frame come out flat and even, with no support marks. The parts are the same as in `resin/`
+(captive nuts, 0.2 mm on the dovetail slot and the key). The bed edge of the frame has a chamfer of
+0.8 mm (0.5 mm in FDM).
+
+| File | On the plate |
+|---|---|
+| `pod-body_resin-flat.stl` | Its back |
+| `pod-frame_resin-flat.stl` | Its back ring |
+| `pod-mount_resin-flat.stl` | The face that goes on the body |
+| `pod-wedge_resin-flat.stl` | Its level bottom (it stands up) |
+| `pod-bracket-taz_resin-flat.stl` | The top end of the plate (it stands up, 89 mm high) |
+| `pod-bracket-mini2_resin-flat.stl` | The side of the plate that goes on the frame |
+
+Slicer settings for the Phenom:
+
+- Supports and raft: none. Put each part directly on the plate.
+- Base layers: as few as hold the part (about 4 to 6), with the lowest base exposure that holds.
+  The base layers get a long exposure, so they grow wider. The chamfer at the bed edge of the
+  frame and of the body keeps that lip out of sight.
+- Lift: slow for the base layers and the first 2 mm. The backs of the body and the frame are
+  solid layers of about 50 cm2, and each layer pulls hard on the film.
+- Take the parts off the plate with a thin scraper. Do not push on the chamfered edge.
+- The parts do not close off a pocket of resin: the open side of each part faces the film.
+
+The folder also has the webcam parts and the cable clips in their FDM positions. The tilted files in
+`resin/` stay for a comparison.
 
 Print the cable clips in PETG on an FDM printer (`fdm/`). By an estimate, their arms stretch about 3 percent as the
 cable goes in, and standard resin cracks there. The resin clip files are for tough resin only.

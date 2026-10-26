@@ -1385,8 +1385,11 @@ def zup_m(m, zup):
 # its print orientation and centered on the bed. FDM parts have their lowest point at z = 0, resin
 # parts at z = RESIN_LIFT.
 PRINT_DIR = os.path.join(HERE, "stl", "pod")
-DOVE_CLR_BY = {"fdm": 0.35, "resin": 0.2}
+DOVE_CLR_BY = {"fdm": 0.35, "resin": 0.2, "resin-flat": 0.2}
 RESIN_LIFT = 6.0                # resin: the parts hang on supports, this far over the build plate
+# The chamfer on the bed edge of the frame. Resin parts flat on the build plate get a long exposure
+# for their first layers, so these layers grow wider: a larger chamfer keeps that lip out of sight.
+FOOT_BY = {"fdm": 0.5, "resin": 0.5, "resin-flat": 0.8}
 
 
 def on_bed(shape, rot, lift=0.0):
@@ -1401,23 +1404,27 @@ def print_parts(process):
     """(file name, shape, how many) for each printed part of the pod, in print orientation."""
     import camera
     import clips as C
-    global DOVE_CLR, RESIN
-    keep, DOVE_CLR, RESIN = DOVE_CLR, DOVE_CLR_BY[process], process == "resin"
+    global DOVE_CLR, RESIN, FOOT
+    keep, keep_foot = DOVE_CLR, FOOT
+    DOVE_CLR, RESIN, FOOT = DOVE_CLR_BY[process], process.startswith("resin"), FOOT_BY[process]
     try:
         case, fr, mt, wd = body(), pod_frame(), mount(), wedge_part()
         taz, mini = bracket(with_wedge=False), mini_bracket(with_wedge=False)
     finally:
-        DOVE_CLR, RESIN = keep, False
+        DOVE_CLR, RESIN, FOOT = keep, False, keep_foot
     one, _ = C.tape_clip()
     two, _ = C.tape_clip(True)
     cam = [part for n in ("taz", "mini2") for part in camera.printed(n)]
-    if process == "fdm":
+    if process in ("fdm", "resin-flat"):
         # The body: flat on its back. The frame: flat on its back ring. The mount: flat on the face
         # that goes on the body, the dovetail up. The wedge: standing on its level bottom, the key and
         # the slot up. The TAZ bracket: standing on the top end of its plate, so the groove of the
         # wedge and the slots of the clips run up from the bed. The Mini 2 bracket: the frame side of
         # the plate on the bed. The clips: the base on the bed. The webcam parts print in the
         # positions that camera.printed() gives. No part needs supports.
+        #
+        # resin-flat: the resin parts in these positions, on the build plate with no supports. The
+        # face on the plate gets the surface of the plate.
         rots = {"case": Rot(0, 0, 0), "frame": Rot(0, 0, 0), "mount": Rot(180, 0, 0), "wedge": Rot(90, 0, 0),
                 "taz": Rot(-90, 0, 0), "mini": Rot(-90, 0, 0), "clip": Rot(0, 0, 0), "camera": Rot(0, 0, 0)}
     else:
@@ -1452,7 +1459,7 @@ def print_parts(process):
 
 def export_prints(out=PRINT_DIR):
     from build123d import export_stl
-    for process in ("fdm", "resin"):
+    for process in ("fdm", "resin", "resin-flat"):
         d = os.path.join(out, process)
         os.makedirs(d, exist_ok=True)
         for name, shape, n in print_parts(process):
@@ -1522,11 +1529,11 @@ def overhang_report(m):
 
 
 def check_prints(out=PRINT_DIR):
-    """Print the overhang report of each FDM file."""
+    """Print the overhang report of each file that prints with no supports: FDM and resin-flat."""
     import glob
     import trimesh
     worst = 0.0
-    for p in sorted(glob.glob(os.path.join(out, "fdm", "*.stl"))):
+    for p in sorted(glob.glob(os.path.join(out, "fdm", "*.stl")) + glob.glob(os.path.join(out, "resin-flat", "*.stl"))):
         need, short, span, long_ = overhang_report(trimesh.load(p, force="mesh"))
         worst = max(worst, need)
         print(f"{os.path.basename(p):30s} needs support {need:6.1f} mm2; bridges {short:6.1f} mm2, "
