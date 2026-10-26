@@ -344,20 +344,35 @@ func ComputeRates(recs []Record) Rates {
 // prepLeft is the time that the steps of the start macro still need: the step that runs now,
 // and the steps after it. A heating step needs the degrees to its target at the rate of its
 // heater; another step its usual time, less the time that it ran.
+//
+// The target of a heating step is the target in the macro (PrepStep.Target), else the target of
+// the heater now, else the usual target. A step starts at the temperature where the steps before
+// it left its heater: a macro that heats the nozzle to wipe it, cools it to probe, and heats it
+// to print, heats it twice from different temperatures.
 func (r Rates) prepLeft(st State, t *timer, now time.Time) time.Duration {
 	left := 0.0
+	temps := map[string]float64{"heat-nozzle": st.Tool, "heat-bed": st.Bed}
 	for _, s := range st.Prep[:st.PrepN] {
 		if s.Done {
 			continue
 		}
-		if temp, target, ok := heatTemps(s.Kind, st); ok {
+		if _, live, ok := heatTemps(s.Kind, st); ok {
+			target := s.Target
+			if target == 0 {
+				target = live
+			}
 			if target == 0 {
 				target = r.Target[s.Kind]
 			}
-			if target > temp {
-				left += (target - temp) * r.Heat[s.Kind]
+			if from := temps[s.Kind]; target > from {
+				left += (target - from) * r.Heat[s.Kind]
+				temps[s.Kind] = target
 			}
 			continue
+		}
+		// A cooling step leaves its heater at its target.
+		if heater := map[string]string{"cool": "heat-nozzle", "cool-bed": "heat-bed"}[s.Kind]; heater != "" && s.Target > 0 {
+			temps[heater] = min(temps[heater], s.Target)
 		}
 		d := r.Step[s.Kind]
 		if s.Now && t.kind == s.Kind {

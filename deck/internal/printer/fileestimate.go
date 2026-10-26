@@ -66,23 +66,24 @@ type estimateInput struct {
 	bed, tool float64
 }
 
-// startSteps are the kinds of the steps of the start macro of the PRINT_START line, or nil. As
-// for a print (prepTracker.steps), a start macro has two steps or more, and at most the size of
-// State.Prep.
-func startSteps(line string, macros map[string]string) []string {
+// startSteps are the kinds and the targets of the steps of the start macro of the PRINT_START
+// line, or nil. As for a print (prepTracker.steps), a start macro has two steps or more, and at
+// most the size of State.Prep.
+func startSteps(line string, macros map[string]string) ([]string, []float64) {
 	f := strings.Fields(line)
 	if len(f) == 0 {
-		return nil
+		return nil, nil
 	}
 	text, ok := macros[strings.ToLower(f[0])]
 	if !ok {
-		return nil
+		return nil, nil
 	}
-	steps := prepPlan(text)
+	steps, targets := prepSteps(text, prepParams(line))
 	if len(steps) < 2 {
-		return nil
+		return nil, nil
 	}
-	return steps[:min(len(steps), len(State{}.Prep))]
+	n := min(len(steps), len(State{}.Prep))
+	return steps[:n], targets[:n]
 }
 
 // estimateFile returns the time of a print of the G-code data on the printer in.
@@ -96,9 +97,10 @@ func estimateFile(data []byte, in estimateInput) FileEstimate {
 	// The state at the start of the print: no step is done, and the heaters have the targets of
 	// the PRINT_START line.
 	st := State{Bed: in.bed, Tool: in.tool, BedTarget: start.BedTemp, ToolTarget: start.ExtTemp}
-	out.Steps = startSteps(start.Line, in.macros)
-	for i, kind := range out.Steps {
-		st.Prep[i] = PrepStep{Kind: kind, Name: prepNames[kind], Now: i == 0}
+	steps, targets := startSteps(start.Line, in.macros)
+	out.Steps = steps
+	for i, kind := range steps {
+		st.Prep[i] = PrepStep{Kind: kind, Name: prepNames[kind], Target: targets[i], Now: i == 0}
 	}
 	st.PrepN = len(out.Steps)
 	prep := in.rates.prepLeft(st, &timer{}, time.Time{})

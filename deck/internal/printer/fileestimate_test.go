@@ -46,10 +46,8 @@ func TestEstimateFileIsTheTimeLeftAtTheStart(t *testing.T) {
 	open := func() (io.ReadCloser, error) { return io.NopCloser(strings.NewReader(src)), nil }
 	st := State{Reachable: true, Printing: true, Preparing: true, Text: "Printing", FilePath: "a.gcode",
 		FileSize: int64(len(src)), Bed: 22, Tool: 22, BedTarget: 60, ToolTarget: 210}
-	for i, kind := range est.Steps {
-		st.Prep[i] = PrepStep{Kind: kind, Now: i == 0}
-	}
-	st.PrepN = len(est.Steps)
+	var tr prepTracker
+	st.PrepN = copy(st.Prep[:], tr.steps([]string{"PRINT_START BED=60 EXTRUDER=210"}, estimateMacros, 2))
 	v := &View{gc: gc, file: fileKey(st), view: -1, plan: planGcode(open, gc.StartEnd, printerLimits, nil)}
 	now := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
 	v.TimeLeft(&st, now, rates.prepLeft(st, &timer{}, now), rates.PlanFactor())
