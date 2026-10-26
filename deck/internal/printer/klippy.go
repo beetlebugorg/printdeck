@@ -770,7 +770,94 @@ func (k *Klippy) Resume() {
 	}
 	k.later(func() error { return k.call("pause_resume/resume", nil) })
 }
-func (k *Klippy) Cancel() { k.later(func() error { return k.call("pause_resume/cancel", nil) }) }
+
+// Cancel cancels the print. CANCEL_PRINT of Klipper only stops the file, so the heaters and the
+// part fan go off after it, also when the cancel fails. A printer with no [fan] has no M107. Then
+// the nozzle lifts off the print, and parks when the print is cool (parkWhenCool).
+func (k *Klippy) Cancel() {
+	k.later(func() error {
+		err := k.call("pause_resume/cancel", nil)
+		if e := k.script("TURN_OFF_HEATERS"); err == nil {
+			err = e
+		}
+		k.script("M107")
+		if th, ok := k.toolhead(); ok && strings.Contains(th.homed, "z") {
+			if dz := min(cancelLift, th.max[2]-th.pos[2]); dz > 0 {
+				k.script("G91", fmt.Sprintf("G1 Z%.2f F600", dz), "G90")
+			}
+		}
+		k.parkWhenCool()
+		return err
+	})
+}
+
+// cancelLift is the lift of the nozzle after a cancel, in mm. coolTool and coolBed are the
+// temperatures of a cool print, in °C: the bed is as cool as at the end of PRINT_END of the TAZ
+// Workhorse. parkWhenCool reads the state each coolPoll, for at most coolMax.
+var (
+	cancelLift = 10.0
+	coolTool   = 60.0
+	coolBed    = 46.0
+	coolPoll   = 5 * time.Second
+	coolMax    = time.Hour
+)
+
+// parkWhenCool waits until the print is cool, then parks the nozzle at the middle of X and Y,
+// 10 mm under the top of Z. A new print, a lost connection or axes that are not homed stop it.
+func (k *Klippy) parkWhenCool() {
+	for end := time.Now().Add(coolMax); ; time.Sleep(coolPoll) {
+		st := k.State()
+		if !st.Connected || st.Busy() || time.Now().After(end) {
+			return
+		}
+		if st.Tool <= coolTool && st.Bed <= coolBed {
+			break
+		}
+	}
+	th, ok := k.toolhead()
+	if !ok || !strings.Contains(th.homed, "x") || !strings.Contains(th.homed, "y") || !strings.Contains(th.homed, "z") {
+		return
+	}
+	k.script("G90", fmt.Sprintf("G1 Z%.1f F1200", th.max[2]-10),
+		fmt.Sprintf("G1 X%.1f Y%.1f F3000", (th.min[0]+th.max[0])/2, (th.min[1]+th.max[1])/2))
+}
+
+// toolheadState is the homed axes, the position and the limits of the axes, in mm.
+type toolheadState struct {
+	homed         string
+	pos, min, max [3]float64
+}
+
+// toolhead reads the toolhead of Klipper.
+func (k *Klippy) toolhead() (toolheadState, bool) {
+	q, err := k.Query(map[string][]string{"toolhead": {"homed_axes", "position", "axis_minimum", "axis_maximum"}})
+	if err != nil {
+		return toolheadState{}, false
+	}
+	th := q["toolhead"]
+	vec := func(key string) ([3]float64, bool) {
+		var v [3]float64
+		a, _ := th[key].([]any)
+		if len(a) < 3 {
+			return v, false
+		}
+		for i := range v {
+			f, ok := a[i].(float64)
+			if !ok {
+				return v, false
+			}
+			v[i] = f
+		}
+		return v, true
+	}
+	var t toolheadState
+	t.homed, _ = th["homed_axes"].(string)
+	var ok1, ok2, ok3 bool
+	t.pos, ok1 = vec("position")
+	t.min, ok2 = vec("axis_minimum")
+	t.max, ok3 = vec("axis_maximum")
+	return t, ok1 && ok2 && ok3
+}
 
 // Connect restarts the firmware after an error or an emergency stop.
 func (k *Klippy) Connect() { k.later(k.FirmwareRestart) }

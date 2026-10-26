@@ -122,6 +122,10 @@ func (f *fakeKlippy) conn(nc net.Conn) {
 		switch req.Method {
 		case "info":
 			result = map[string]any{"state": "ready", "state_message": "Printer is ready"}
+		case "objects/query":
+			result = map[string]any{"eventtime": 1.0, "status": map[string]any{"toolhead": map[string]any{
+				"homed_axes": "xyz", "position": []any{10.0, 20.0, 0.3, 0.0},
+				"axis_minimum": []any{-20.0, -10.0, 0.0, 0.0}, "axis_maximum": []any{300.0, 290.0, 290.0, 0.0}}}}
 		case "objects/subscribe":
 			result = map[string]any{"eventtime": 1.0, "status": map[string]any{
 				"print_stats": map[string]any{"state": "standby"},
@@ -235,4 +239,42 @@ func TestRunAction(t *testing.T) {
 	if scripts, _ := f.got(); scripts[len(scripts)-1] != "BED_TILT_CALIBRATE" {
 		t.Errorf("scripts %q", scripts)
 	}
+}
+
+// A cancel stops the file, then turns off the heaters and the part fan (CANCEL_PRINT of Klipper
+// leaves them on), lifts the nozzle, and parks it at the middle and the top when the print is cool.
+func TestCancelTurnsOffHeaters(t *testing.T) {
+	f := &fakeKlippy{}
+	k := NewKlippy(f.serve(t), emptyStore{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ready := make(chan struct{}, 1)
+	go k.Run(ctx, func() {
+		if k.State().Connected {
+			select {
+			case ready <- struct{}{}:
+			default:
+			}
+		}
+	})
+	<-ready
+	k.Cancel()
+	want := "pause_resume/cancel|gcode/script|gcode/script|gcode/script|gcode/script"
+	wantScripts := "TURN_OFF_HEATERS|M107|G91\nG1 Z10.00 F600\nG90|G90\nG1 Z280.0 F1200\nG1 X140.0 Y140.0 F3000"
+	var got string
+	for end := time.Now().Add(2 * time.Second); time.Now().Before(end); time.Sleep(10 * time.Millisecond) {
+		scripts, methods := f.got()
+		var tail []string
+		for _, m := range methods {
+			if m == "pause_resume/cancel" || m == "gcode/script" {
+				tail = append(tail, m)
+			}
+		}
+		got = strings.Join(tail, "|")
+		if got == want && strings.Join(scripts, "|") == wantScripts {
+			return
+		}
+	}
+	scripts, _ := f.got()
+	t.Errorf("calls %q, scripts %q; want %q, scripts %q", got, scripts, want, wantScripts)
 }
