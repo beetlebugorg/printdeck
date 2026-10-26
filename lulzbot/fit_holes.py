@@ -1,12 +1,11 @@
 """Printdeck pod: a fit test for the display holes of the pod frame. Writes stl/pod/fdm/fit_holes_fdm.stl.
 
 The test is a thin ladder with the four display holes of the frame, at the same positions and
-heights: two holes through a 2 mm bar into the raised tabs, and two holes in bosses that go down
-to the flat back. The side bars are outside the Pi, and the bottom bar has a gap for the loop of
+height: the four holes go through a 2 mm bar into the four raised tabs. The side bars are outside the Pi, and the bottom bar has a gap for the loop of
 the ribbon, so the test fits with the Pi on the display. It prints flat on its back, with
 supports off. Put the display glass down, and lay the test on the back of the display. The four
-holes must line up with the holes of the display, and the M2.5 screws must go in straight. If
-they do not, change HOLE_DV in pod.py.
+holes must line up with the holes of the display, the M2.5 screws must go in straight, and the
+ladder must lie flat on all four tabs. If the holes do not line up, change HOLE_DV in pod.py.
 Run: uv run --no-project --with build123d python fit_holes.py
 """
 
@@ -23,7 +22,7 @@ SIDE_U = (31.0, 35.0)               # the side bars: outside the Pi (28) and its
 def fit_holes():
     """The ladder, in the frame coordinates."""
     w0, w1 = -P.SPLIT_W, -P.SPLIT_W + P.FLOOR
-    (_, vb), (_, vt) = P.TABS[0], P.HOLES[0]
+    vb, vt = P.TABS[0][1], P.TABS[-1][1]
     s = None
     for side in (-1, 1):
         bar = P.uvw_box(side * SIDE_U[0], side * SIDE_U[1], vb - BAR / 2, vt + BAR / 2, w0, w1)
@@ -35,11 +34,6 @@ def fit_holes():
     # The holes, as in pod_frame().
     for u, v in P.TABS:
         s = s - Pos(u, v, w0 + P.FLOOR / 2) * Cylinder(P.DISPLAY_HOLE, P.FLOOR + 2.0)
-    for u, v in P.HOLES:
-        f0, f1 = P.FRAME_W + 0.2, P.FRAME_W + 2.2
-        s = s + Pos(u, v, -(f0 + P.SPLIT_W) / 2) * Cylinder(5.0, P.SPLIT_W - f0)
-        s = s - Pos(u, v, 0) * P.screw_well(w0 - 1.0, -f1, 3.95, P.SCREW[2.5][0] / 2 + 0.15)
-        s = s - Pos(u, v, -(f0 + f1) / 2) * Cylinder(P.DISPLAY_HOLE, f1 - f0 + 1.0)
     return s
 
 

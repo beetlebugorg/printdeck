@@ -14,8 +14,8 @@ cable plugs straight into the Pi from above.
 
 The case is three printed parts. Each prints flat on its back with no support.
 - the frame: the thin part round the display, with a flat back ring over the metal back of the
-  display and an opening for the Pi. Four M2.5 x 4 screws from the box of the display hold it: two
-  through the back ring into the raised tabs, two down wells into the holes at the top.
+  display and an opening for the Pi. Four M2.5 x 4 screws from the box of the display hold it,
+  through the back ring into the four raised tabs.
 - the body: the deep part round the Pi. Every opening in it is open to the front, or a hole in the
   back. Four M3 x 6 screws go from the back down posts at its corners into M3 heat-set inserts in the
   frame.
@@ -55,13 +55,13 @@ AA = (62.1, 110.4)              # the active area, in the middle of the glass
 FRAME = (72.96, 122.74)         # the metal back of the module
 FRAME_V0 = 12.8                 # the bottom of the frame over the bottom of the glass
 FRAME_W = 8.5                   # the back of the frame behind the front of the glass
-# The two raised tabs at the bottom (the ribbon end). At the top there are only two holes in the flat
-# back (v 122.3), over the ports of the Pi. On the real display, the four holes are about 1.25 mm
-# nearer to the ribbon end than in the drawing (19.85): a print with the holes 1.25 mm the other
-# way was further off. They move HOLE_DV toward the ribbon end.
+# The four raised tabs: two at the bottom (the ribbon end) and two at the top (the USB end), as in
+# the drawing. A frame with bosses down to the flat back at the top held the glass 2 to 3 mm off the
+# frame at that end, on the top tabs. On the real display, the four holes are about 1.25 mm nearer
+# to the ribbon end than in the drawing (19.85): a print with the holes 1.25 mm the other way was
+# further off. They move HOLE_DV toward the ribbon end.
 HOLE_DV = -1.25
-TABS = [(u, 19.85 + HOLE_DV) for u in (-25.5, 25.5)]
-HOLES = [(u, 19.85 + HOLE_DV + 103.7) for u in (-25.5, 25.5)]
+TABS = [(u, 19.85 + HOLE_DV + dv) for dv in (0.0, 103.7) for u in (-25.5, 25.5)]
 TAB_W = 11.5                    # the face of a tab behind the front of the glass
 TAB_SIZE = (8.0, 6.0)
 PI_HOLE_UV = [(u, v) for u in (-24.5, 24.5) for v in (33.91, 33.91 + 58.0)]   # the Pi standoffs (49 x 58)
@@ -361,15 +361,9 @@ def pod_frame():
     s = s - rounded_box(OPEN_U[0], OPEN_U[1], OPEN_V[0], OPEN_V[1], -SPLIT_W - 1.0, -SPLIT_W + FLOOR + 0.5, 1.5)
     s = s - uvw_box(RIBBON_LOOP_U[0] - 0.6, RIBBON_LOOP_U[1] + 0.6, v0 + WALL - 0.01, OPEN_V[0] + 1.0, -SPLIT_W - 1.0,
                     -SPLIT_W + FLOOR + 0.5)
-    # The display screws: through the back ring into the raised tabs, and down wells with a 2 mm
-    # floor into the holes at the top.
+    # The display screws: through the back ring into the four raised tabs.
     for u, v in TABS:
         s = s - Pos(u, v, -SPLIT_W + FLOOR / 2) * Cylinder(DISPLAY_HOLE, FLOOR + 2.0)
-    for u, v in HOLES:
-        f0, f1 = FRAME_W + 0.2, FRAME_W + 2.2
-        s = s + Pos(u, v, -(f0 + SPLIT_W) / 2) * Cylinder(5.0, SPLIT_W - f0)    # from the bed: no ledge over the opening
-        s = s - Pos(u, v, 0) * screw_well(-SPLIT_W - 1.0, -f1, 3.95, SCREW[2.5][0] / 2 + 0.15)
-        s = s - Pos(u, v, -(f0 + f1) / 2) * Cylinder(DISPLAY_HOLE, f1 - f0 + 1.0)
     # The bosses with the inserts for the screws of the body. In resin, each boss has a captive M3
     # nut in a pocket open toward the display: the nut goes in before the display, and the display
     # holds it in. The M3 x 6 screw ends at the far face of the nut.
@@ -640,8 +634,8 @@ def screw(size, length, origin, out_dir, frame=None):
 
 def pod_screws():
     """The screws of the pod, in pod coordinates:
-    - the frame: four M2.5 x 4 into the display (through the back ring into the raised tabs, and
-      down the wells into the top holes), from the box of the display;
+    - the frame: four M2.5 x 4 into the display, through the back ring into the raised tabs, from
+      the box of the display;
     - the body: four M3 x 6 down the posts into the inserts of the frame;
     - the mount: two M3 x 6 from inside the body, through its back into the inserts of the mount;
     - the Pi: four M2.5 x 4 through the Pi into the standoffs, from the box of the display."""
@@ -650,8 +644,7 @@ def pod_screws():
         for sc in items:
             out = sc if out is None else out + sc
         return out
-    fr = group([screw(2.5, 4.0, (u, v, -SPLIT_W), (0, 0, -1)) for u, v in TABS]
-               + [screw(2.5, 4.0, (u, v, -FRAME_W - 2.2), (0, 0, -1)) for u, v in HOLES])
+    fr = group([screw(2.5, 4.0, (u, v, -SPLIT_W), (0, 0, -1)) for u, v in TABS])
     bd = group([screw(3, 6.0, (u, v, -SPLIT_W - 0.1 - POST_FLOOR), (0, 0, -1)) for u, v in POSTS])
     mt = group([screw(3, 6.0, (u, v, -DEEP_W + FLOOR), (0, 0, 1)) for u, v in MOUNT_SCREWS])
     pi = group([screw(2.5, 4.0, (u, v, -STANDOFF_W - 1.6), (0, 0, -1)) for u, v in PI_HOLE_UV])
