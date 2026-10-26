@@ -45,9 +45,10 @@ func (v *View) TimeLeft(st *State, now time.Time, prep time.Duration, planFactor
 	// against the corrected plan: against the raw plan, k also contains the plan factor, and the
 	// correction counts twice.
 	var el, total float64
+	factor := 1.0
 	if v.plan != nil && v.plan.total > 0 {
 		el, total = v.plan.at(st.FilePos)
-		el, total = el*planFactor, total*planFactor
+		factor = planFactor
 	} else if e, t, ok := gc.TimeAt(st.FilePos); ok {
 		el, total = e, t
 	} else {
@@ -63,13 +64,14 @@ func (v *View) TimeLeft(st *State, now time.Time, prep time.Duration, planFactor
 	// moves.
 	if !e.started {
 		if st.Preparing || st.FilePos <= gc.StartEnd {
-			st.TimeLeft, st.HasTimeLeft = time.Duration(total*float64(time.Second))+prep, true
+			st.TimeLeft, st.HasTimeLeft = startTime(total, factor, prep), true
 			return
 		}
 		// The printer is assumed to have run at the speed of the slicer until now: this also
 		// covers a deck that starts during a print.
-		e.started, e.clock0 = true, d-el
+		e.started, e.clock0 = true, d-el*factor
 	}
+	el, total = el*factor, total*factor
 	// The speed of this printer against the corrected plan or the slicer: it counts more as the
 	// print goes on.
 	k := 1.0

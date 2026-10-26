@@ -11,6 +11,7 @@
 //	files.go    the file list, upload, select and print, delete, download
 //	appkeys.go  the App Keys flow: an app asks for a key, and the touch screen asks the user
 //	printdeck.go the loaded filament, for the Printdeck plugin for Cura
+//	estimate.go the time of a print of a file, for the Printdeck plugin for Cura
 //	webcam.go   the webcam: the camera of the deck, or its screen
 package octoapi
 
@@ -57,6 +58,8 @@ type Server struct {
 	Ask func(question, yes, no string, answer func(bool))
 	// The loaded filament, for the Printdeck plugin for Cura (printdeck.go).
 	printdeckFields
+	// The time of a print of a file, for the Printdeck plugin for Cura (estimate.go).
+	estimateFields
 	// The phones of the Printdeck app for push messages (push.go).
 	pushFields
 
@@ -105,6 +108,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/plugin/printdeck/materials", s.key(s.serveSlicerMaterials))
 	mux.HandleFunc("POST /api/plugin/printdeck/roll", s.key(s.serveRollMaterial))
 	mux.HandleFunc("GET /api/plugin/printdeck/model.png", s.key(s.serveModel))
+	mux.HandleFunc("POST /api/plugin/printdeck/estimate", s.key(s.serveEstimate))
 	mux.HandleFunc("POST /api/plugin/printdeck/push/pair", s.key(s.servePair))
 	mux.HandleFunc("GET /api/plugin/printdeck/push", s.key(s.servePhones))
 	mux.HandleFunc("DELETE /api/plugin/printdeck/push/{id}", s.key(s.serveUnpair))

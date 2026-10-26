@@ -294,21 +294,8 @@ func (v *View) loadModel(path, key string) {
 	limits, mm := v.limits, v.maxMode
 	v.mu.Unlock()
 	var pl *plan
-	var factors []float64
-	if gc != nil && limits.MaxVelocity > 0 && mm != nil {
-		// Max mode: the min_layer_time factors of the layers need a first read of the file.
-		if body, err := v.src.Open(path); err == nil {
-			s := *mm
-			s.MaxVelocity = limits.MaxVelocity
-			factors = maxmode.LayerFactors(body, s, gc.StartEnd)
-			body.Close()
-		}
-	}
 	if gc != nil && limits.MaxVelocity > 0 {
-		if body, err := v.src.Open(path); err == nil {
-			pl = planFile(body, gc.StartEnd, limits, mm, factors)
-			body.Close()
-		}
+		pl = planGcode(func() (io.ReadCloser, error) { return v.src.Open(path) }, gc.StartEnd, limits, mm)
 	}
 	// An STL is one object. With more on the bed, only the toolpath shows them all.
 	var mesh *stl.Mesh

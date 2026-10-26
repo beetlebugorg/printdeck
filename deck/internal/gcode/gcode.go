@@ -145,15 +145,7 @@ func Parse(r io.Reader) (*Model, error) {
 				}
 			case "PRINT_START", "START_PRINT":
 				m.StartEnd = pos
-				for _, w := range f[1:] {
-					if v, ok := strings.CutPrefix(strings.ToUpper(w), "BED="); ok {
-						m.BedTemp, _ = strconv.ParseFloat(v, 64)
-					} else if v, ok := strings.CutPrefix(strings.ToUpper(w), "EXTRUDER="); ok {
-						m.ExtTemp, _ = strconv.ParseFloat(v, 64)
-					} else if v, ok := strings.CutPrefix(strings.ToUpper(w), "WIPE="); ok {
-						m.WipeTemp, _ = strconv.ParseFloat(v, 64)
-					}
-				}
+				startParams(f, &m.BedTemp, &m.ExtTemp, &m.WipeTemp)
 			case "M106", "M107", "SET_FAN_SPEED":
 				v := float32(0)
 				switch strings.ToUpper(f[0]) {
@@ -257,6 +249,53 @@ func pick(rel bool, cur, v float64) float64 {
 		return cur + v
 	}
 	return v
+}
+
+// startParams reads the temperatures of a PRINT_START line (its fields f) into bed, ext and
+// wipe. A temperature that the line does not have keeps its value.
+func startParams(f []string, bed, ext, wipe *float64) {
+	for _, w := range f[1:] {
+		if v, ok := strings.CutPrefix(strings.ToUpper(w), "BED="); ok {
+			*bed, _ = strconv.ParseFloat(v, 64)
+		} else if v, ok := strings.CutPrefix(strings.ToUpper(w), "EXTRUDER="); ok {
+			*ext, _ = strconv.ParseFloat(v, 64)
+		} else if v, ok := strings.CutPrefix(strings.ToUpper(w), "WIPE="); ok {
+			*wipe, _ = strconv.ParseFloat(v, 64)
+		}
+	}
+}
+
+// Start is the start macro of a G-code file, as Parse reads it: End is the offset after the
+// PRINT_START line (0 when the file has none), Line the line with no comment, and the
+// temperatures of the line.
+type Start struct {
+	End                        int64
+	Line                       string
+	BedTemp, ExtTemp, WipeTemp float64
+}
+
+// ScanStart reads the start macro of a G-code file with no model of the moves. With more than one
+// PRINT_START line, the last one counts, as in Parse.
+func ScanStart(r io.Reader) Start {
+	br := bufio.NewReaderSize(r, 1<<16)
+	var s Start
+	var pos int64
+	for {
+		line, err := br.ReadString('\n')
+		pos += int64(len(line))
+		if i := strings.IndexByte(line, ';'); i >= 0 {
+			line = line[:i]
+		}
+		if f := strings.Fields(line); len(f) > 0 {
+			if c := strings.ToUpper(f[0]); c == "PRINT_START" || c == "START_PRINT" {
+				s.End, s.Line = pos, strings.TrimSpace(line)
+				startParams(f, &s.BedTemp, &s.ExtTemp, &s.WipeTemp)
+			}
+		}
+		if err != nil {
+			return s
+		}
+	}
 }
 
 func word(w string, letter byte) (float64, bool) {

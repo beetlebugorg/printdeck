@@ -41,6 +41,27 @@ func (p *plan) at(pos int64) (elapsed, total float64) {
 	return p.sec[i-1] + f*(p.sec[i]-p.sec[i-1]), p.total
 }
 
+// planGcode plans the moves of a G-code file after the offset start (the end of the start macro),
+// as planFile. With mm, a first read of the file gives the min_layer_time factors of the layers.
+// open opens the file for each read. It returns nil when the file does not open.
+func planGcode(open func() (io.ReadCloser, error), start int64, l toolhead.Limits, mm *maxmode.Settings) *plan {
+	var factors []float64
+	if mm != nil {
+		if body, err := open(); err == nil {
+			s := *mm
+			s.MaxVelocity = l.MaxVelocity
+			factors = maxmode.LayerFactors(body, s, start)
+			body.Close()
+		}
+	}
+	body, err := open()
+	if err != nil {
+		return nil
+	}
+	defer body.Close()
+	return planFile(body, start, l, mm, factors)
+}
+
 // planFile plans the moves of a G-code file after the offset start (the end of the start macro):
 // G0 to G3, G4, the absolute and relative modes, G92, M204, M220 and SET_VELOCITY_LIMIT. The
 // commands that wait for heaters or that home take a time that the file does not tell.
