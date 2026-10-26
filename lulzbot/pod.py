@@ -933,6 +933,7 @@ def main(out, stills=True, which=("taz", "mini2")):
     import trimesh
     from build123d import export_stl
     import camera as C
+    import camera_models as CM
     import render as R
     import viewer
     os.makedirs(out, exist_ok=True)
@@ -1008,8 +1009,9 @@ def main(out, stills=True, which=("taz", "mini2")):
             items.append((gname, cv, SCREW_COLOR if "screws" in gname else "#E8762B", ex(gname)))
             cm.apply_transform(frame_to_world)
             st["cables"].append((cm, "#E8762B"))
-        # The webcam on the frame (camera.py), in the frame of the printer like the clips.
-        cam = C.meshes(name, tmp)
+        # The webcam mount on the frame (camera.py) with the ELP on its arm, and the B0561 over the bed
+        # (camera_models.py), in the frame of the printer like the clips.
+        cam = CM.meshes(name, tmp, C.meshes(name, tmp))
         for n, (m, c) in cam.items():
             cv = m.copy()
             cv.apply_transform(zup @ np.linalg.inv(matrix(loc)))
@@ -1042,7 +1044,7 @@ def main(out, stills=True, which=("taz", "mini2")):
         gap = clearance([m for m, _ in pod.values()], pod_to_world, printer)
         print(f"{name}: the pod is {gap:.1f} mm from the printer at the closest point")
         note = ("no overlaps" if not bad else f"{len(bad)} overlaps") + f", {gap:.1f} mm from the printer"
-        views = C.camera_views(name, zup @ np.linalg.inv(matrix(loc)))
+        views = CM.camera_views(name, zup @ np.linalg.inv(matrix(loc)))
         viewer.publish(items, name, note, stages=[t for t, _ in STAGES], views=views)
         if not stills:
             continue

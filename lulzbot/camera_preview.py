@@ -2,13 +2,15 @@
 render from the lens, at the aspect ratio of the camera, with a caption. Each render has a 20 mm cube
 (orange) at the middle of the bed and a box of the size of a Benchy (60 x 31 x 48 mm, blue) in front
 of it, 0.3 of the print area from the middle (84 mm on the TAZ, 48 mm on the Mini 2). The orange
-line is the edge of the print area. A contact sheet for each printer has all the renders. The renders
-go in renders/camera-preview/, and table.csv there has the numbers.
+line is the edge of the print area. A contact sheet for each printer has all the renders, chosen.png
+has the cameras to buy (camera_options.CHOSEN), and mini2-places.png has other places for the camera
+on the Mini 2 frame (MINI_PLACES). The renders go in renders/camera-preview/, and table.csv there has
+the numbers.
 
 The scene is the model of the live window (pod.py live writes it to build/viewer): the printer, the
-pod, and the webcam mount, with the moving parts of the printer where the LulzBot model has them.
+pod, the camera models and their brackets (camera_models.py), with the moving parts of the printer where the LulzBot model has them.
 Each camera is a pinhole camera: the lens has no distortion. "Seen" is the part of the print area in
-the picture and not behind a part of the printer, the webcam mount, or a test part.
+the picture and not behind a part of the printer, a camera bracket, or a test part.
 
 Run pod.py live first (see pod.py), then:
 PYOPENGL_PLATFORM=egl uv run --no-project --with numpy --with scipy --with trimesh --with pyrender
@@ -139,10 +141,10 @@ def caption(img, lines):
     return out
 
 
-def sheet(title, sections, path):
-    """sections: (heading, [image]). Four renders to a row, each scaled to TILE wide and placed at the
+def sheet(title, sections, path, cols=4):
+    """sections: (heading, [image]). cols renders to a row, each scaled to TILE wide and placed at the
     top of a cell of the same height."""
-    cols, gap, head = 4, 16, 44
+    gap, head = 16, 44
     tiles = [[im.resize((TILE, int(im.height * TILE / im.width))) for im in ims] for _, ims in sections]
     cell_h = max(t.height for ts in tiles for t in ts)
     rows = [math.ceil(len(ts) / cols) for ts in tiles]
@@ -162,13 +164,52 @@ def sheet(title, sections, path):
     print(f"wrote {path}")
 
 
+# Other places for the camera on the Mini 2, in printer coordinates (x to the right, y to the back, z
+# up; the top of the frame is z 373), each aimed at the middle of the bed. The camera on the arm of the
+# C270 mount is at the front right corner, out to the right, and the right Z column hides much of the
+# bed from it. The side panels of the frame, the deck at the front left, and the stock LCD at the front
+# right hide the bed from the corners and the sides, and the tool head hides it from over the right Z
+# column (checked with renders), so the places are at the front.
+MINI_PLACES = [
+    ("front, 57 mm over the middle of the top front rail", (-200.0, -300.0, 430.0)),
+    ("front, under the top front rail, 30 mm in front of it", (-200.0, -320.0, 335.0)),
+    ("front, 57 mm over the top front rail, 80 mm left of the middle", (-280.0, -300.0, 430.0)),
+]
+
+
+def render_one(name, title, sc, view, o, bed, where, path):
+    """The render of option o from view, with its caption: (image, row of table.csv)."""
+    fp = CO.footprint(view, o, bed)
+    img, seen = shot(sc, view, o, bed)
+    h, v = CO.fov(o)
+    lines = [f"{title}, {where}: {o['model']}, {o['lens']}",
+             f"{h:.0f} x {v:.0f} deg, {o['res'][0]} x {o['res'][1]} px. Pinhole model: no lens distortion.",
+             f"Bed center: {fp['px_mm']:.1f} px/mm across ({fp['width']:.0f} mm wide picture), "
+             f"{fp['px_mm_depth']:.1f} px/mm along the bed.",
+             f"Print area: {fp['in_frame'] * 100:.0f}% in the picture, {seen * 100:.0f}% seen past the parts."]
+    img = caption(img, lines)
+    img.save(path)
+    print(f"{name} {where[:40]:40s} {o['key']:8s} {fp['width']:5.0f} mm wide  {fp['px_mm']:5.1f} px/mm across  "
+          f"{fp['px_mm_depth']:5.1f} along  in the picture {fp['in_frame'] * 100:3.0f}%  seen {seen * 100:3.0f}%")
+    return img, dict(printer=name, position=where, option=o["key"], model=o["model"], lens=o["lens"],
+                     fov_h=round(h, 1), fov_v=round(v, 1), res=f"{o['res'][0]}x{o['res'][1]}",
+                     width_mm=round(fp["width"]), px_mm=round(fp["px_mm"], 1), px_mm_depth=round(fp["px_mm_depth"], 1),
+                     in_frame=round(fp["in_frame"] * 100), seen=round(seen * 100))
+
+
+def aimed(views, lens):
+    """A view from lens (printer coordinates) at the middle of the bed, level."""
+    T = np.array(views["printer_to_view"])
+    bed = views["bed"]
+    eye = (T @ np.append(np.asarray(lens, float), 1.0))[:3]
+    return {"eye": list(eye), "focal": bed["center"], "up": bed["normal"]}
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
-    rows = []
+    rows, chosen = [], []
     for name, title in PRINTERS:
         items, views = load(name)
-        c270 = next(o for o in CO.CAMERAS if o["key"] == "c270")
-        assert abs(CO.fov(c270)[1] - views["camera"]["fov"]) < 0.01, "the C270 FOV is not the one of camera.py"
         sc = scene(items + test_parts(views))
         bed = views["bed"]
         sections = []
@@ -176,31 +217,28 @@ def main():
             view = views[vk]
             ims = []
             for o in CO.CAMERAS:
-                fp = CO.footprint(view, o, bed)
-                img, seen = shot(sc, view, o, bed)
-                h, v = CO.fov(o)
-                lines = [f"{title}, {where}: {o['model']}, {o['lens']}",
-                         f"{h:.0f} x {v:.0f} deg, {o['res'][0]} x {o['res'][1]} px. Pinhole model: no lens distortion.",
-                         f"Bed center: {fp['px_mm']:.1f} px/mm across ({fp['width']:.0f} mm wide picture), "
-                         f"{fp['px_mm_depth']:.1f} px/mm along the bed.",
-                         f"Print area: {fp['in_frame'] * 100:.0f}% in the picture, {seen * 100:.0f}% seen past the parts."]
-                img = caption(img, lines)
-                p = os.path.join(OUT, f"{name}-{tag}-{o['key']}.png")
-                img.save(p)
+                img, row = render_one(name, title, sc, view, o, bed, where, os.path.join(OUT, f"{name}-{tag}-{o['key']}.png"))
                 ims.append(img)
-                rows.append(dict(printer=name, position=tag, option=o["key"], model=o["model"], lens=o["lens"],
-                                 fov_h=round(h, 1), fov_v=round(v, 1), res=f"{o['res'][0]}x{o['res'][1]}",
-                                 width_mm=round(fp["width"]), px_mm=round(fp["px_mm"], 1),
-                                 px_mm_depth=round(fp["px_mm_depth"], 1), in_frame=round(fp["in_frame"] * 100),
-                                 seen=round(seen * 100)))
-                print(f"{name} {tag:5s} {o['key']:8s} {h:5.1f} x {v:4.1f} deg  {fp['width']:5.0f} mm wide  "
-                      f"{fp['px_mm']:5.1f} px/mm across  {fp['px_mm_depth']:5.1f} along  in the picture "
-                      f"{fp['in_frame'] * 100:3.0f}%  seen {seen * 100:3.0f}%")
-            eye, bc = np.asarray(view["eye"]), np.asarray(bed["center"])
-            dist = float(np.linalg.norm(eye - bc))
+                rows.append(row)
+                if o["key"] == CO.CHOSEN[vk]:
+                    chosen.append(img)
+            dist = float(np.linalg.norm(np.asarray(view["eye"]) - np.asarray(bed["center"])))
             sections.append((f"{where}: lens {dist:.0f} mm from the middle of the bed", ims))
         sheet(f"{title}: the view of each camera and lens (pinhole model, no lens distortion)", sections,
               os.path.join(OUT, f"{name}-sheet.png"))
+        if name == "mini2":
+            o = CO.CAMERAS[CO.index(CO.CHOSEN["camera"])]
+            ims = [chosen[-2]]
+            for i, (where, lens) in enumerate(MINI_PLACES):
+                img, row = render_one(name, title, sc, aimed(views, lens), o, bed, where,
+                                      os.path.join(OUT, f"mini2-place-{i + 1}.png"))
+                ims.append(img)
+                rows.append(row)
+            sheet("Mini 2: other places for the camera on the frame, aimed at the middle of the bed "
+                  f"({o['model']})", [("the C270 mount (first), then the other places", ims)],
+                  os.path.join(OUT, "mini2-places.png"))
+    sheet("The cameras to buy: the Arducam B0561 on the arm of the C270 mount and over the bed",
+          [("TAZ Workhorse", chosen[:2]), ("Mini 2", chosen[2:])], os.path.join(OUT, "chosen.png"), cols=2)
     with open(os.path.join(OUT, "table.csv"), "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0]))
         w.writeheader()

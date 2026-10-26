@@ -8,10 +8,12 @@ vertical, so the model stays upright: drag to turn, the wheel zooms, shift and d
 
 Keys: e explodes the pod in the order it comes apart (e again puts it together), n the next model
 (the TAZ, the Mini 2), i the isometric view from the front right, k the view of the camera (from its
-lens, with its field of view), l the next camera and lens (camera_options.py), t the next camera
-position (the webcam mount, or over the bed), p shows or hides the printer, c shows or hides the
-webcam, its mount, and the view of the camera on the bed, x makes the parts see-through, f fits the
-view, 1 to 9 hide or show the parts in the list.
+lens, with its field of view), l the next camera and lens of this position (camera_options.py), t the
+next camera position (the arm of the webcam mount, or over the bed), p shows or hides the printer, c
+shows or hides the cameras, their mounts, and the view of the camera on the bed, x makes the parts
+see-through, f fits the view, 1 to 9 hide or show the parts in the list. Each position starts with
+the camera to buy (camera_options.CHOSEN): the ELP with the 6 mm lens on the arm, the B0561 over the
+bed. The camera models are placeholders (camera_models.py).
 
 In the view of the camera, the yellow frame is the edge of the picture, and the text at the bottom
 left gives the camera, the lens, the field of view, and the pixels per mm at the middle of the bed.
@@ -41,7 +43,7 @@ CHECK_S = 0.5             # how often to look for a new version
 EXPLODE_S = 1.2           # the time of one stage of the exploded view
 TEXT = "#E6E8EE"
 FRUSTUM = "#FFD23F"
-PLACES = (("camera", "the webcam mount"), ("camera_top", "over the bed"))
+PLACES = (("camera", "the arm of the webcam mount"), ("camera_top", "over the bed"))   # the views of pod.py
 
 
 def models():
@@ -69,7 +71,7 @@ class Live:
         self.note = ""
         self.need_view = True
         self.place_i = 0          # the camera position (PLACES)
-        self.option = 0           # the camera and lens (camera_options.CAMERAS)
+        self.options = {k: CO.index(CO.CHOSEN[k]) for k, _ in PLACES}   # the camera and lens of each position
         self.in_camera = False    # the window shows the view of the camera
         self.frame2d = None       # the edge of the picture in the camera view
         self.t = 0.0              # the exploded view: 0 assembled, len(stages) apart
@@ -181,7 +183,7 @@ class Live:
         for i, n in enumerate(self.parts[:9]):
             lines.append(f"{i + 1} {'-' if n in self.hidden else '+'} {n}")
         lines += ["", "e explode   n next model   i iso   k camera view", "l next lens   t next camera position",
-                  "p printer   c webcam   x see-through   f fit"]
+                  "p printer   c cameras   x see-through   f fit"]
         self.pl.add_text("\n".join(lines), position="upper_left", font_size=9, color=TEXT, name="status")
 
     def pod_bounds(self):
@@ -199,7 +201,7 @@ class Live:
         bed = self.views.get("bed")
         if not v or not bed:
             return None
-        o = CO.CAMERAS[self.option]
+        o = CO.CAMERAS[self.options[PLACES[self.place_i][0]]]
         return v, o, CO.footprint(v, o, bed)
 
     def lens_overlay(self):
@@ -214,7 +216,7 @@ class Live:
                                  font_size=10, color=FRUSTUM, name="lens_text")
             return
         v, o, fp = got
-        lines = [f"camera position: {PLACES[self.place_i][1]}   (option {self.option + 1} of {len(CO.CAMERAS)})",
+        lines = [f"camera position: {PLACES[self.place_i][1]}   (option {self.options[PLACES[self.place_i][0]] + 1} of {len(CO.CAMERAS)})",
                  CO.label(o),
                  f"bed center: {fp['px_mm']:.1f} px/mm across ({fp['width']:.0f} mm wide picture), "
                  f"{fp['px_mm_depth']:.1f} px/mm along the bed",
@@ -292,7 +294,8 @@ class Live:
             self.frame_2d(None)
 
     def next_option(self):
-        self.option = (self.option + 1) % len(CO.CAMERAS)
+        k = PLACES[self.place_i][0]
+        self.options[k] = (self.options[k] + 1) % len(CO.CAMERAS)
         self.lens_changed()
 
     def next_place(self):

@@ -903,26 +903,6 @@ def camera_pose(name, T):
             "fov": 2 * half_fov()[1]}
 
 
-# The second camera position: straight down over the middle of the bed, near the top of the frame.
-# The height of the lens over the top face of the bed. In the models:
-# - TAZ: the top rail of the frame is 394 to 414 mm over the bed and about 80 mm behind the middle of
-#   the bed. The camera needs an arm 80 mm forward from the rail.
-# - Mini 2: the top front rail of the frame is 267 to 288 mm over the bed. Its back face is 14 mm in
-#   front of the middle of the bed, so a short bracket on the back face holds the camera.
-TOP_HEIGHT = {"taz": 400.0, "mini2": 270.0}
-
-
-def top_pose(name, T):
-    """The view of a camera at TOP_HEIGHT over the middle of the bed, down, with the back of the
-    printer at the top of the picture. The same dict as camera_pose."""
-    import numpy as np
-    up, back, _ = axes(name)
-    eye = np.array(BEDS[name][0]) + TOP_HEIGHT[name] * up
-    mv = lambda p: [float(x) for x in (T @ np.append(p, 1.0))[:3]]
-    return {"eye": mv(eye), "focal": mv(eye - 300.0 * up), "up": [float(x) for x in T[:3, :3] @ back],
-            "fov": 2 * half_fov()[1]}
-
-
 def bed_view(name, T):
     """The bed for the live window: the center of its top face, its normal, the directions of its sides,
     and the print area, moved by T."""
@@ -931,12 +911,6 @@ def bed_view(name, T):
     rot = lambda d: [float(x) for x in T[:3, :3] @ np.asarray(d, float)]
     return {"center": [float(x) for x in (T @ np.append(c, 1.0))[:3]], "normal": rot(axes(name)[0]),
             "a": rot(a), "b": rot(b), "size": size}
-
-
-def camera_views(name, T):
-    """The views of pod.py for the live window: the webcam on its mount, the camera over the bed, and
-    the bed."""
-    return {"camera": camera_pose(name, T), "camera_top": top_pose(name, T), "bed": bed_view(name, T)}
 
 
 def camera_view(name, scene, T, path, size=(1280, 720)):

@@ -216,8 +216,13 @@ the board is the space for the FPC fold; put foam tape there, so the glass stays
 - `camera_options.py` has the camera and lens options for the camera of the printer, and their
   fields of view (pinhole model, no lens distortion). In `live.py`, `l` selects the next option,
   `t` the next camera position (the C270 mount, or over the middle of the bed), and `k` shows the
-  view of the camera. `camera_preview.py` writes the view of each option from each position to
-  `renders/camera-preview/`, with a contact sheet for each printer and `table.csv`.
+  view of the camera. Each position starts with the camera to buy, the Arducam B0561.
+  `camera_preview.py` writes the view of each option from each position to
+  `renders/camera-preview/`, with a contact sheet for each printer, `chosen.png`, `mini2-places.png`
+  (other places for the camera on the Mini 2 frame), and `table.csv`.
+- `camera_models.py` has placeholder models of the B0561 (all sizes are guesses until measured), a
+  link plate for it on the arm of the C270 mount, a plate for it over the bed on the top of the
+  frame, and the cable routes to the Pi. pod.py puts them in the live window.
 - `lineart/render.mjs` writes the line-art images of the PDF (three.js in headless Chromium, from
   the Slate). `make_pdf.py` writes `printdeck-lulzbot-build.pdf` (same layout as the Slate guide).
 - `make.sh` runs all steps (about 2 to 3 minutes). It stops if a check fails.

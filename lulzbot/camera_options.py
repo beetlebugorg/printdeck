@@ -40,6 +40,14 @@ CAMERAS = [
 ]
 
 
+# The cameras to buy: the default option of each camera position in live.py (keys l and t).
+CHOSEN = {"camera": "b0561", "camera_top": "b0561"}
+
+
+def index(key):
+    return next(i for i, o in enumerate(CAMERAS) if o["key"] == key)
+
+
 def fov(o):
     """(across, up) FOV of an option in degrees."""
     if "size" in o and "fov" not in o:
