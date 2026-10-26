@@ -248,7 +248,7 @@ The image keeps only what Printdeck uses:
   libraries (for example `sqlite3`, `flac`, `systemd-nspawn`).
 - Only the Wi-Fi firmware of the Pi 5, and no Bluetooth.
 - No libraries that no program links or loads, such as `libstdc++` (`board/post-build.sh`).
-- The kernel has only the modules that the Printdeck uses: the display, the Wi-Fi, the USB serial ports of the printer boards, the fan, and the buses they use
+- The kernel has only the modules that the Printdeck uses: the display, the Wi-Fi, the USB serial ports of the printer boards, USB cameras (UVC), the fan, and the buses they use
   (`board/linux-modules.txt`). The SSD, the touch screen and the file systems are built into the
   kernel. The display driver (`vc4`) is built in too, so that the start screen has the full
   display from the first frame.

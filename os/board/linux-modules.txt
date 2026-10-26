@@ -27,6 +27,7 @@ gpu_sched 0 0 - Live 0x0
 i2c_brcmstb 0 0 - Live 0x0
 i2c_designware_core 0 0 - Live 0x0
 i2c_designware_platform 0 0 - Live 0x0
+mc 0 0 - Live 0x0
 nvmem_rmem 0 0 - Live 0x0
 pl2303 0 0 - Live 0x0
 pwm_fan 0 0 - Live 0x0
@@ -42,5 +43,12 @@ sch_fq_codel 0 0 - Live 0x0
 spi_bcm2835 0 0 - Live 0x0
 spidev 0 0 - Live 0x0
 usbserial 0 0 - Live 0x0
+uvc 0 0 - Live 0x0
+uvcvideo 0 0 - Live 0x0
 v3d 0 0 - Live 0x0
 vc4 0 0 - Live 0x0
+videobuf2_common 0 0 - Live 0x0
+videobuf2_memops 0 0 - Live 0x0
+videobuf2_v4l2 0 0 - Live 0x0
+videobuf2_vmalloc 0 0 - Live 0x0
+videodev 0 0 - Live 0x0

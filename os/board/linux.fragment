@@ -17,3 +17,16 @@ CONFIG_EXTRA_FIRMWARE_DIR="printdeck-firmware"
 # depmod reads only uncompressed modules here, so do not compress them. The EROFS root file system
 # is compressed already.
 # CONFIG_MODULE_COMPRESS is not set
+# USB cameras (UVC): webcams and HDMI capture sticks, for the camera of the deck (V4L2). Only the
+# UVC driver and the V4L2 core: no TV, no camera port, and no other media drivers.
+CONFIG_MEDIA_SUPPORT=m
+CONFIG_MEDIA_SUPPORT_FILTER=y
+CONFIG_MEDIA_CAMERA_SUPPORT=y
+CONFIG_MEDIA_USB_SUPPORT=y
+# CONFIG_MEDIA_SUBDRV_AUTOSELECT is not set
+# CONFIG_VIDEO_CAMERA_SENSOR is not set
+# CONFIG_VIDEO_CAMERA_LENS is not set
+# CONFIG_VIDEO_IR_I2C is not set
+CONFIG_VIDEO_DEV=m
+CONFIG_USB_VIDEO_CLASS=m
+# CONFIG_USB_VIDEO_CLASS_INPUT_EVDEV is not set
