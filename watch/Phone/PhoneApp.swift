@@ -104,6 +104,12 @@ struct DeckView: View {
             VStack(spacing: 12) {
                 LCDView(screen: .status(LCDModel.status(st, connected: true, error: model.error, now: Date(), hint: "",
                                                               live: model.live, notice: model.noticeNow)))
+                // The camera comes first when the deck has one on. A tap opens it larger.
+                if st?.camera?.on == true {
+                    CameraFeed()
+                        .contentShape(Rectangle())
+                        .onTapGesture { sheet = .camera }
+                }
                 if let st, st.busy {
                     if st.paused { paused(st) } else { printing(st) }
                 } else {
@@ -140,7 +146,6 @@ struct DeckView: View {
             }
             .disabled(model.sending)
             layerPlate(st, title: layerText(st))
-            cameraKey(st)
             progressWindow(st)
         }
     }
@@ -157,7 +162,6 @@ struct DeckView: View {
                 Button("Menu") { sheet = .setup }.buttonStyle(KeyStyle())
             }
             .disabled(model.sending)
-            cameraKey(st)
             progressWindow(st)
         }
     }
@@ -170,17 +174,7 @@ struct DeckView: View {
             if let roll = st?.roll {
                 Plate(label: "Roll") { rollRow(roll) }
             }
-            cameraKey(st)
             Button("Menu") { sheet = .setup }
-                .buttonStyle(KeyStyle())
-        }
-    }
-
-    /// Camera opens the picture of the camera, when the deck has a camera on.
-    @ViewBuilder
-    private func cameraKey(_ st: Status?) -> some View {
-        if st?.camera?.on == true {
-            Button("Camera") { sheet = .camera }
                 .buttonStyle(KeyStyle())
         }
     }

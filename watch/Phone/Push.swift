@@ -225,6 +225,14 @@ final class PushPairing {
 }
 
 final class AppDelegate: NSObject, UIApplicationDelegate {
+    /// The Camera page turns with the iPhone. The other pages stay upright.
+    static var landscape = false
+
+    func application(_ application: UIApplication,
+                     supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        Self.landscape ? .allButUpsideDown : .portrait
+    }
+
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // A paired iPhone registers at each start, so that a new device token pairs again.

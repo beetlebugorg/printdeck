@@ -422,6 +422,18 @@ struct DeckClient {
         return CGImageSourceCreateImageAtIndex(src, 0, nil)
     }
 
+    /// The camera of the deck when it is on, or nil.
+    func camera() async -> DeckCamera? {
+        guard let p: PluginReply = try? await get("/api/plugin/printdeck"), let c = p.camera, c.on else { return nil }
+        return c
+    }
+
+    /// A picture of the camera of the deck as a JPEG, w pixels wide, or nil. The deck sends its
+    /// newest frame. With no camera it sends a picture of its screen, so check camera() first.
+    func snapshotJPEG(width w: Int) async -> Data? {
+        try? await send("/webcam/snapshot?w=\(w)")
+    }
+
     /// A picture of the camera of the deck, w pixels wide, or nil. The deck sends its newest
     /// frame. With no camera it sends a picture of its screen, so check Status.camera first.
     func snapshot(width w: Int) async -> CGImage? {

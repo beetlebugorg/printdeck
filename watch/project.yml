@@ -33,7 +33,7 @@ targets:
         UIAppFonts: [IBMPlexMono-Regular.ttf, IBMPlexMono-SemiBold.ttf]
         UILaunchScreen:
           UIColorName: LaunchColor
-        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         NSLocalNetworkUsageDescription: Printdeck finds the deck on your network and connects to it.

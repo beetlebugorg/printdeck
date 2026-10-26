@@ -9,7 +9,9 @@ deck over the local network.
   and the model as the deck draws it, with the file, the progress and a playhead. A paused print has Resume. With no print, Print a
   file opens the files of the deck, newest first. Menu opens the setup. At the start, the app
   shows the start screen of the deck in dots until the first reading of the deck. When the deck
-  has a camera, Camera opens its stream, at most 10 pictures a second while the page is open.
+  has a camera on, its stream is under the display, 5 pictures a second while the app is open.
+  A tap opens it over the whole screen, at 10 pictures a second. That page turns with the
+  iPhone, and a pinch or a double tap zooms.
 - The watch app is a blue dot-matrix display, in the fonts and the icons of the printer display
   of the deck, over the whole watch. The first page is the progress of the print: the state, the
   percent in a large font, the bar, the layer, the time left and the end. Under it, in one scroll
@@ -32,8 +34,9 @@ deck over the local network.
   sees a print, updates it from its readings, and ends it after the print. Between the readings,
   the system timers move the time left and the bar to the end time.
 - The deck sends push messages to the iPhone: print done, print failed, paused, first layer done,
-  and a roll that runs short. The messages are encrypted from the deck to the iPhone. The watch
-  shows the notifications of the iPhone.
+  and a roll that runs short. The messages are encrypted from the deck to the iPhone. When the
+  iPhone reaches the deck and the deck has a camera on, a notification has a picture of the
+  camera. The watch shows the notifications of the iPhone.
 
 The apps read the deck every 5 seconds while they are open. The complication asks watchOS for a
 refresh every 15 minutes during a print, and watchOS chooses when it runs. Between two reads, its
