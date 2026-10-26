@@ -130,6 +130,20 @@ Klipper's virtual SD card (`/var/lib/klipper/gcodes`). Klipper then prints the f
 
 The touch screen shows the uploads in the file list of the Print tab.
 
+The webcam of the API is the USB camera of the deck (Machine > Settings > Camera), or the screen
+of the deck when it has no camera:
+
+- `/webcam/stream`: an MJPEG stream. `fps=2` sends at most 2 frames a second. The default is
+  the rate of the camera, up to 15 frames a second.
+- `/webcam/snapshot`: the newest frame as a JPEG.
+- `w=320` (both): a smaller picture, 320 pixels wide, with the same shape. The viewers of one width
+  share one JPEG for each frame.
+
+They need the API key (`X-Api-Key`, or `?apikey=`), or the login of the remote screen. The camera
+runs only while somebody looks, and stops 8 seconds after the last viewer, so the first snapshot
+takes up to a second more. `/api/plugin/printdeck` tells the camera: its name, its state, and
+the size and the rate of its frames.
+
 ## Klipper
 
 The Klipper configuration is `/var/lib/klipper/config/printer.cfg`. To bring your own, put it on
