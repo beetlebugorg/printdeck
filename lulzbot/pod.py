@@ -56,9 +56,10 @@ FRAME = (72.96, 122.74)         # the metal back of the module
 FRAME_V0 = 12.8                 # the bottom of the frame over the bottom of the glass
 FRAME_W = 8.5                   # the back of the frame behind the front of the glass
 # The two raised tabs at the bottom (the ribbon end). At the top there are only two holes in the flat
-# back (v 124.8), over the ports of the Pi. On the real display, the four holes are 1 to 1.5 mm
-# farther from the ribbon end than in the drawing (19.85). They move HOLE_DV toward the Ethernet port.
-HOLE_DV = 1.25
+# back (v 122.3), over the ports of the Pi. On the real display, the four holes are about 1.25 mm
+# nearer to the ribbon end than in the drawing (19.85): a print with the holes 1.25 mm the other
+# way was further off. They move HOLE_DV toward the ribbon end.
+HOLE_DV = -1.25
 TABS = [(u, 19.85 + HOLE_DV) for u in (-25.5, 25.5)]
 HOLES = [(u, 19.85 + HOLE_DV + 103.7) for u in (-25.5, 25.5)]
 TAB_W = 11.5                    # the face of a tab behind the front of the glass
