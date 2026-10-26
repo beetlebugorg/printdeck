@@ -1,0 +1,29 @@
+printer,position,option,model,lens,fov_h,fov_v,res,width_mm,px_mm,px_mm_depth,in_frame,seen
+taz,mount,c270,Logitech C270,stock lens,48.8,28.6,1280x720,515,2.5,2.0,97,56
+taz,mount,elp-2.7,ELP-USB12MP01-L281,2.7 mm M12 (LN069),98.7,82.2,4056x3040,1322,3.1,2.4,100,59
+taz,mount,elp-4,ELP-USB12MP01-L281,4 mm M12 low distortion (LN011),76.4,61.0,4056x3040,892,4.5,3.6,100,59
+taz,mount,elp-6,ELP-USB12MP01-L281,6 mm M12 (LN024),55.3,42.9,4056x3040,595,6.8,5.4,100,59
+taz,mount,elp-8,ELP-USB12MP01-L281,8 mm M12 (LN002),42.9,32.8,4056x3040,446,9.1,7.2,99,58
+taz,mount,b0561,Arducam B0561 16 MP autofocus,3.95 mm fixed,65.0,52.0,4656x3496,723,6.4,5.0,100,59
+taz,mount,b0587,Arducam B0587,4.9 mm,76.2,47.6,3840x2160,889,4.3,3.4,100,59
+taz,top,c270,Logitech C270,stock lens,48.8,28.6,1280x720,363,3.5,3.5,71,39
+taz,top,elp-2.7,ELP-USB12MP01-L281,2.7 mm M12 (LN069),98.7,82.2,4056x3040,932,4.4,4.4,100,66
+taz,top,elp-4,ELP-USB12MP01-L281,4 mm M12 low distortion (LN011),76.4,61.0,4056x3040,629,6.4,6.5,100,66
+taz,top,elp-6,ELP-USB12MP01-L281,6 mm M12 (LN024),55.3,42.9,4056x3040,419,9.7,9.7,100,66
+taz,top,elp-8,ELP-USB12MP01-L281,8 mm M12 (LN002),42.9,32.8,4056x3040,314,12.9,12.9,80,47
+taz,top,b0561,Arducam B0561 16 MP autofocus,3.95 mm fixed,65.0,52.0,4656x3496,510,9.1,9.0,100,66
+taz,top,b0587,Arducam B0587,4.9 mm,76.2,47.6,3840x2160,627,6.1,6.1,100,66
+mini2,mount,c270,Logitech C270,stock lens,48.8,28.6,1280x720,334,3.8,2.9,99,71
+mini2,mount,elp-2.7,ELP-USB12MP01-L281,2.7 mm M12 (LN069),98.7,82.2,4056x3040,857,4.7,3.5,100,71
+mini2,mount,elp-4,ELP-USB12MP01-L281,4 mm M12 low distortion (LN011),76.4,61.0,4056x3040,578,7.0,5.2,100,71
+mini2,mount,elp-6,ELP-USB12MP01-L281,6 mm M12 (LN024),55.3,42.9,4056x3040,386,10.5,7.9,100,71
+mini2,mount,elp-8,ELP-USB12MP01-L281,8 mm M12 (LN002),42.9,32.8,4056x3040,289,14.0,10.5,91,68
+mini2,mount,b0561,Arducam B0561 16 MP autofocus,3.95 mm fixed,65.0,52.0,4656x3496,469,9.9,7.3,100,73
+mini2,mount,b0587,Arducam B0587,4.9 mm,76.2,47.6,3840x2160,577,6.7,5.0,100,71
+mini2,top,c270,Logitech C270,stock lens,48.8,28.6,1280x720,245,5.2,5.2,85,64
+mini2,top,elp-2.7,ELP-USB12MP01-L281,2.7 mm M12 (LN069),98.7,82.2,4056x3040,629,6.4,6.5,100,74
+mini2,top,elp-4,ELP-USB12MP01-L281,4 mm M12 low distortion (LN011),76.4,61.0,4056x3040,425,9.6,9.6,100,74
+mini2,top,elp-6,ELP-USB12MP01-L281,6 mm M12 (LN024),55.3,42.9,4056x3040,283,14.3,14.3,100,74
+mini2,top,elp-8,ELP-USB12MP01-L281,8 mm M12 (LN002),42.9,32.8,4056x3040,212,19.1,19.1,95,71
+mini2,top,b0561,Arducam B0561 16 MP autofocus,3.95 mm fixed,65.0,52.0,4656x3496,344,13.5,13.3,100,73
+mini2,top,b0587,Arducam B0587,4.9 mm,76.2,47.6,3840x2160,423,9.1,9.1,100,74
