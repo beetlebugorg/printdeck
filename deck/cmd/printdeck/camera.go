@@ -14,9 +14,9 @@ import (
 // startCamera starts the camera of the deck for app: the webcam of the API and the Camera page of
 // the Settings. The settings are in the file camera of the state folder; the deck writes it only
 // when the Camera page changes them. Only Linux has the capture (V4L2), so on other systems the
-// app has no camera.
+// app has no camera, except the test camera (camera.TestCameraEnv).
 func startCamera(ctx context.Context, stateDir string, app *ui.App) {
-	if runtime.GOOS != "linux" {
+	if !cameraOn(runtime.GOOS) {
 		return
 	}
 	file := filepath.Join(stateDir, "camera")
@@ -33,3 +33,7 @@ func startCamera(ctx context.Context, stateDir string, app *ui.App) {
 	go hub.Run(ctx)
 	app.Camera = hub
 }
+
+// cameraOn reports that the app has a camera on the system goos: Linux, or any system with the
+// test camera.
+func cameraOn(goos string) bool { return goos == "linux" || os.Getenv(camera.TestCameraEnv) != "" }
