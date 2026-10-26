@@ -264,7 +264,8 @@ func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 	a.printInfo(c, r[0], st)
 }
 
-// jobCard draws the file of the print, the time left, and the time of its end, in a plate.
+// jobCard draws the file of the print, the time left, the time of its end, and the time when the
+// bed is cool enough to remove the part, in a plate.
 func (a *App) jobCard(c *gfx.Canvas, r image.Rectangle, st printer.State) {
 	plate(c, r)
 	in := kit.Inset(r, 18, 10, 18, 10)
@@ -276,6 +277,10 @@ func (a *App) jobCard(c *gfx.Canvas, r image.Rectangle, st printer.State) {
 		end := clockText(a.Now().Add(st.TimeLeft), a.Clock24)
 		c.Text(s.Next(26), duration(st.TimeLeft)+" left", gfx.Face(false, 17), dim, gfx.Left)
 		c.Text(s.Next(26), "Done at "+end, gfx.Face(false, 17), dim, gfx.Left)
+	}
+	if st.HasReleaseLeft {
+		end := clockText(a.Now().Add(st.ReleaseLeft), a.Clock24)
+		c.Text(s.Next(26), "Cooled at "+end, gfx.Face(false, 17), dim, gfx.Left)
 	}
 }
 

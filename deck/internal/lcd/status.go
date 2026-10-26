@@ -26,6 +26,9 @@ type Status struct {
 	Elapsed  string  `json:"elapsed,omitempty"`  // the time of the print, for example "0:42"
 	Left     string  `json:"left,omitempty"`     // the time left of the print, for example "1:23"
 	Done     string  `json:"done,omitempty"`     // the end of the print on the clock, for example "3:47PM"
+	// Cooled is the time on the clock when the bed after the print is cool enough to remove the
+	// part. The line of the end shows it in place of Done.
+	Cooled string `json:"cooled,omitempty"`
 	// Cooling is the end of a print that waits for the bed to cool: the bar is the cooling
 	// (Progress), to CoolTo degrees, and Left is the time that it needs, for example "4 min".
 	Cooling  bool    `json:"cooling,omitempty"`
@@ -112,7 +115,9 @@ func (s *Status) draw(c *canvas, frame int) {
 		c.smallText(small, canvasW-small.w*len(pct), line1, pct, false)
 		// The end of the print on the clock at the left, when the time left is known; else the
 		// time of the print.
-		if s.Done != "" {
+		if s.Cooled != "" {
+			c.smallText(small, 0, line2, "cooled "+s.Cooled, false)
+		} else if s.Done != "" {
 			c.smallText(small, 0, line2, "done "+s.Done, false)
 		} else {
 			c.smallText(small, 0, line2, s.Elapsed, false)

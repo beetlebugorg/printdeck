@@ -38,6 +38,10 @@ type State struct {
 	BedCoolLeft    time.Duration
 	BedCoolTo      float64
 	HasBedCoolLeft bool
+	// ReleaseLeft is the time until the part is easy to remove: the time left of the print, and
+	// the time that the bed then needs to cool to ReleaseBed.
+	ReleaseLeft    time.Duration
+	HasReleaseLeft bool
 	// BedCoolFrom is the bed temperature at the start of the cooling, for its progress.
 	BedCoolFrom   float64
 	Activity      string // what the printer does now: "Wiping nozzle", "Heating bed", "Printing"

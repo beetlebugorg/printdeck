@@ -609,8 +609,24 @@ func (k *Klippy) refresh(notify func()) {
 			st.BedCoolFrom = k.timer.fallFrom
 		}
 	}
+	// The cooling of the bed to ReleaseBed after the print: after the end macro, or after the
+	// cooling that runs now.
+	from := st.BedTarget
+	if st.HasBedCoolLeft {
+		from = st.BedCoolTo
+	} else if from == 0 && st.Preparing {
+		from = rates.Target["heat-bed"]
+	}
+	release, hasRelease := k.timer.releaseCool(rates, from)
 	k.mu.Unlock()
 	k.View.TimeLeft(&st, now, prepLeft, rates.PlanFactor())
+	switch {
+	case !st.Busy() || !hasRelease:
+	case st.Finishing && st.HasBedCoolLeft:
+		st.ReleaseLeft, st.HasReleaseLeft = st.BedCoolLeft+release, true
+	case st.HasTimeLeft:
+		st.ReleaseLeft, st.HasReleaseLeft = st.TimeLeft+release, true
+	}
 	if k.Hist != nil && st.Reachable {
 		k.mu.Lock()
 		phases, planned := append([]Phase(nil), k.timer.phases...), k.timer.planned

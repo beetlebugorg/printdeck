@@ -142,6 +142,17 @@ func (t *timer) coolLeft(r Rates, st State, to float64, now time.Time) (time.Dur
 	return time.Duration(s * float64(time.Second)), ok
 }
 
+// releaseCool is the time that the bed needs to cool from the temperature from to ReleaseBed,
+// with the time constant of the history. ok is false when the bed does not reach ReleaseBed.
+func (t *timer) releaseCool(r Rates, from float64) (time.Duration, bool) {
+	tau := r.CoolTau
+	if tau == 0 {
+		tau = defaultTau
+	}
+	s, ok := coolTime(from, ReleaseBed, t.roomTemp(), tau)
+	return time.Duration(s * float64(time.Second)), ok
+}
+
 // heatTemps returns the temperature and the target of the heater of a heating step.
 func heatTemps(kind string, st State) (temp, target float64, ok bool) {
 	switch kind {

@@ -120,3 +120,23 @@ func TestCoolModel(t *testing.T) {
 		t.Error("the fall goes on while the bed heats")
 	}
 }
+
+// The time to remove the part is the cooling of the bed from its target to ReleaseBed, with
+// the time constant of the history, or the default without one.
+func TestReleaseCool(t *testing.T) {
+	tm := &timer{room: 22}
+	for _, tc := range []struct {
+		tau, from float64
+		want      time.Duration
+	}{
+		{600, 60, time.Duration(600 * math.Log(38.0/13) * float64(time.Second))},
+		{0, 60, time.Duration(defaultTau * math.Log(38.0/13) * float64(time.Second))},
+		{600, ReleaseBed - 5, 0},
+		{600, 0, 0},
+	} {
+		got, ok := tm.releaseCool(Rates{CoolTau: tc.tau}, tc.from)
+		if !ok || (got-tc.want).Abs() > time.Millisecond {
+			t.Errorf("tau %v from %v: %v %v, want %v", tc.tau, tc.from, got, ok, tc.want)
+		}
+	}
+}

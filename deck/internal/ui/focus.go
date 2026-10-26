@@ -269,6 +269,10 @@ func (a *App) lcdStatusScreen(st printer.State, l1, l2 string) *printer.LCDStatu
 			s.Left = fmt.Sprintf("%d:%02d", m/60, m%60)
 			s.Done = lcdscreen.Clock(a.Now().Add(st.TimeLeft), a.Clock24)
 		}
+		// Every 4 seconds, the time when the bed is cool enough to remove the part.
+		if st.HasReleaseLeft && a.Now().Unix()/4%2 == 1 {
+			s.Cooled = lcdscreen.Clock(a.Now().Add(st.ReleaseLeft), a.Clock24)
+		}
 		// The end macro waits for the bed: the cooling, not the print that is done.
 		if st.Finishing && st.HasBedCoolLeft && st.BedCoolTo > 0 {
 			s.Cooling, s.CoolTo, s.Left, s.Done = true, st.BedCoolTo, shortWait(st.BedCoolLeft), ""
