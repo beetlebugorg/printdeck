@@ -110,8 +110,14 @@ Slicer settings for the Phenom:
 - Base layers: as few as hold the part (about 4 to 6), with the lowest base exposure that holds.
   The base layers get a long exposure, so they grow wider. The chamfer at the bed edge of the
   frame and of the body keeps that lip out of sight.
-- Lift: slow for the base layers and the first 2 mm. The backs of the body and the frame are
-  solid layers of about 50 cm2, and each layer pulls hard on the film.
+- Lift: slow for the base layers and the first 2 mm. The largest layers are about 63 cm2 for the
+  body (58 cm2 on the plate), 50 cm2 for the frame and 66 cm2 for the Mini 2 bracket, and each
+  layer pulls hard on the film.
+- Plates: the six pod parts fit on one plate, 5 mm apart, but their first layers then cover about
+  190 cm2, about 45 percent of the screen. To halve the pull, print the body and the frame on one
+  plate, and the other parts on a second plate. The TAZ bracket stands 89 mm high (about 1780
+  layers at 0.05 mm); the other parts are 22 mm high at most, so print the bracket on its own plate
+  to save time on the others.
 - Take the parts off the plate with a thin scraper. Do not push on the chamfered edge.
 - The parts do not close off a pocket of resin: the open side of each part faces the film.
 
