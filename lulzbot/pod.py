@@ -680,7 +680,7 @@ RIBBON_W = 11.5                                   # the 22-pin end of the standa
 RIBBON_T = 0.3
 RIBBON_L = 120.0                                  # measured on the cable in the box
 RIBBON_IN = 2.0                                   # the end of the ribbon in each connector
-RIBBON_LOOP_U = (-18.0, -2.0)                     # the loop of the slack, between the left tab tube and the wire
+RIBBON_LOOP_U = (-8.0, 8.0)                       # the loop of the slack, in the middle under the connector, as on the deck
 # The deep part goes down past the loop of the ribbon.
 _r = ribbon_route()
 DEEP_V0 = _r[2] - _r[3] - 0.8 - WALL
