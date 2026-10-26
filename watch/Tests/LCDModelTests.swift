@@ -49,5 +49,18 @@ final class LCDModelTests: XCTestCase {
         XCTAssertTrue(cam.on)
         let off = try JSONDecoder().decode(DeckCamera.self, from: Data(#"{"name":"","state":"off"}"#.utf8))
         XCTAssertFalse(off.on)
+        XCTAssertNil(off.calibrated)
+        XCTAssertNil(off.views)
+    }
+
+    func testCameraViews() throws {
+        let json = #"{"name":"C270","state":"on","width":1280,"height":720,"calibrated":true,"#
+            + #""calibratedAt":"2026-10-26T10:00:00Z","calibrationError":2.5,"views":["full","toolhead"]}"#
+        let cam = try JSONDecoder().decode(DeckCamera.self, from: Data(json.utf8))
+        XCTAssertEqual(cam.calibrated, true)
+        XCTAssertEqual(cam.views, ["full", "toolhead"])
+        XCTAssertEqual(DeckCamera.view(printing: true), "toolhead")
+        XCTAssertEqual(DeckCamera.view(printing: false), "part")
+        XCTAssertEqual(DeckCamera.viewNames.first?.id, "full")
     }
 }

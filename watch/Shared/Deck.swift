@@ -71,6 +71,19 @@ struct DeckCamera: Codable, Equatable {
     var width: Int?
     var height: Int?
     var error: String?
+    /// The camera has a calibration, so the views can follow the printer. Nil from an older deck.
+    var calibrated: Bool?
+    /// The views that show a part of the picture now, with "full" first. Nil from an older deck.
+    var views: [String]?
+
+    /// The views of the deck, in order, with the names of the app.
+    static let viewNames: [(id: String, name: String)] = [
+        ("full", "Full"), ("toolhead", "Toolhead"), ("firstlayer", "First layer"), ("part", "Part"),
+    ]
+
+    /// The view that follows the print: the toolhead while the printer prints, and the part at
+    /// other times. When the deck has no place for the view now, it sends the whole picture.
+    static func view(printing: Bool) -> String { printing ? "toolhead" : "part" }
 
     /// The width over the height of the picture: 16:9 until the deck has the size.
     var aspect: CGFloat {
@@ -430,22 +443,23 @@ struct DeckClient {
 
     /// A picture of the camera of the deck as a JPEG, w pixels wide, or nil. The deck sends its
     /// newest frame. With no camera it sends a picture of its screen, so check camera() first.
-    func snapshotJPEG(width w: Int) async -> Data? {
-        try? await send("/webcam/snapshot?w=\(w)")
+    func snapshotJPEG(width w: Int, view: String = "full") async -> Data? {
+        try? await send("/webcam/snapshot?w=\(w)&view=\(view)")
     }
 
     /// A picture of the camera of the deck, w pixels wide, or nil. The deck sends its newest
     /// frame. With no camera it sends a picture of its screen, so check Status.camera first.
-    func snapshot(width w: Int) async -> CGImage? {
-        guard let data = try? await send("/webcam/snapshot?w=\(w)"),
+    func snapshot(width w: Int, view: String = "full") async -> CGImage? {
+        guard let data = try? await send("/webcam/snapshot?w=\(w)&view=\(view)"),
               let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         return CGImageSourceCreateImageAtIndex(src, 0, nil)
     }
 
     /// The pictures of the camera stream of the deck (MJPEG), w pixels wide, at most fps a second.
-    /// The stream ends with an error when the connection ends.
-    func stream(width w: Int, fps: Double) -> AsyncThrowingStream<CGImage, Error> {
-        let req = Result { try request("/webcam/stream?w=\(w)&fps=\(fps)") }
+    /// The view is a value of DeckCamera.views. The stream ends with an error when the connection
+    /// ends.
+    func stream(width w: Int, fps: Double, view: String = "full") -> AsyncThrowingStream<CGImage, Error> {
+        let req = Result { try request("/webcam/stream?w=\(w)&fps=\(fps)&view=\(view)") }
         return AsyncThrowingStream(bufferingPolicy: .bufferingNewest(1)) { out in
             do {
                 let reader = MJPEGReader(out: out)

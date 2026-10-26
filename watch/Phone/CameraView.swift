@@ -14,10 +14,12 @@ struct CameraView: View {
     @State private var lastZoom: CGFloat = 1
     @State private var pan: CGSize = .zero
     @State private var lastPan: CGSize = .zero
+    /// The view of the picker, or nil for the view that follows the print.
+    @State private var chosen: String?
 
     var body: some View {
         GeometryReader { g in
-            CameraFeed(fps: 10, framed: false)
+            CameraFeed(fps: 10, framed: false, view: chosen)
                 .frame(width: g.size.width, height: g.size.height)
                 .scaleEffect(zoom)
                 .offset(pan)
@@ -44,6 +46,7 @@ struct CameraView: View {
         .ignoresSafeArea()
         .background(Color.black.ignoresSafeArea())
         .overlay(alignment: .topLeading) { bar }
+        .overlay(alignment: .bottom) { picker }
         .onAppear { turn(true) }
         .onDisappear { turn(false) }
     }
@@ -63,6 +66,44 @@ struct CameraView: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(Capsule().fill(.black.opacity(0.5)))
+        }
+        .foregroundStyle(.white)
+        .padding(16)
+    }
+
+    /// The views of the camera, at the bottom. A camera with no calibration shows a note in place
+    /// of the views.
+    @ViewBuilder private var picker: some View {
+        let cam = model.status?.camera
+        let views = cam?.views ?? []
+        let now = chosen ?? model.cameraView
+        Group {
+            if cam?.calibrated == false {
+                Text("CALIBRATE THE CAMERA ON THE DECK TO FOLLOW THE PRINT")
+                    .font(Theme.plex(12))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(.black.opacity(0.5)))
+            } else if views.count > 1 {
+                HStack(spacing: 6) {
+                    ForEach(DeckCamera.viewNames.filter { views.contains($0.id) }, id: \.id) { v in
+                        let on = v.id == now
+                        Button {
+                            withAnimation(.easeOut(duration: 0.2)) { reset() }
+                            chosen = v.id
+                        } label: {
+                            Text(v.name.uppercased())
+                                .font(Theme.plex(12))
+                                .foregroundStyle(on ? .black : .white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .background(Capsule().fill(on ? .white : .black.opacity(0.5)))
+                        }
+                        .accessibilityAddTraits(on ? .isSelected : [])
+                    }
+                }
+            }
         }
         .foregroundStyle(.white)
         .padding(16)
@@ -102,6 +143,8 @@ struct CameraFeed: View {
     var fps: Double = 5
     /// A display window with a frame, or the bare picture on black.
     var framed = true
+    /// The view of the camera, or nil for the view that follows the print.
+    var view: String?
 
     @State private var photo: CGImage?
     @State private var failed = false
@@ -127,9 +170,10 @@ struct CameraFeed: View {
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: framed ? 4 : 0))
-            .task(id: Feed(active: phase == .active, settings: model.settings, width: Int(r.size.width * scale))) {
+            .task(id: Feed(active: phase == .active, settings: model.settings, width: Int(r.size.width * scale),
+                           view: shown)) {
                 guard phase == .active else { return }
-                await load(width: Int(r.size.width * scale))
+                await load(width: Int(r.size.width * scale), view: shown)
             }
         }
         .aspectRatio(framed ? aspect : nil, contentMode: .fit)
@@ -142,6 +186,12 @@ struct CameraFeed: View {
         let active: Bool
         let settings: DeckSettings
         let width: Int
+        let view: String
+    }
+
+    /// The view to read: the chosen one, or the one that follows the print.
+    private var shown: String {
+        view ?? model.cameraView
     }
 
     /// The shape of the picture: the last picture, or the camera before the first one.
@@ -151,11 +201,11 @@ struct CameraFeed: View {
     }
 
     /// Reads the stream until the task ends. After a failure it waits 2 seconds and connects again.
-    private func load(width: Int) async {
+    private func load(width: Int, view: String) async {
         let client = DeckClient(settings: model.settings)
         while !Task.isCancelled {
             do {
-                for try await img in client.stream(width: max(320, width), fps: fps) {
+                for try await img in client.stream(width: max(320, width), fps: fps, view: view) {
                     photo = img
                     failed = false
                 }

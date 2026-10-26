@@ -19,6 +19,8 @@ final class DeckModel {
     /// The status came from the deck since the start of the app, and the last read worked. A
     /// status from the store, or after a failed read, is old.
     private(set) var live = false
+    /// The camera view that follows the print now (DeckCamera.view).
+    var cameraView: String { DeckCamera.view(printing: status.map { $0.busy && !$0.paused } ?? false) }
     /// A command is on its way to the deck.
     private(set) var sending = false
     /// The result of the last command, for a few seconds: "Pausing" or the error of the deck.

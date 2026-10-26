@@ -9,7 +9,8 @@ import UserNotifications
 /// printer". The watch shows the notification of the iPhone.
 ///
 /// When the iPhone reaches the deck and the deck has a camera on, the notification gets a picture
-/// of the camera. Away from the network of the deck, the notification comes with no picture.
+/// of the camera: the part when the camera has a calibration and the deck has a print, else the
+/// whole picture. Away from the network of the deck, the notification comes with no picture.
 final class NotificationService: UNNotificationServiceExtension {
     private var handler: ((UNNotificationContent) -> Void)?
     private var content: UNMutableNotificationContent?
@@ -49,7 +50,7 @@ final class NotificationService: UNNotificationServiceExtension {
     /// after 8 seconds each, inside the 30 seconds of the extension.
     private static func cameraPicture() async -> UNNotificationAttachment? {
         let client = DeckClient(settings: Store.settings)
-        guard await client.camera() != nil, let jpeg = await client.snapshotJPEG(width: 1080) else { return nil }
+        guard await client.camera() != nil, let jpeg = await client.snapshotJPEG(width: 1080, view: "part") else { return nil }
         let url = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")
         guard (try? jpeg.write(to: url)) != nil else { return nil }
         return try? UNNotificationAttachment(identifier: "camera", url: url,

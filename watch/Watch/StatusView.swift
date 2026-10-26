@@ -163,7 +163,8 @@ struct StatusView: View {
 
     /// The picture of the camera of the deck, under the status, as wide as the text of the
     /// display. It reads a small picture every 3 seconds while the app is active and the picture is
-    /// on the screen. A camera with no picture shows why.
+    /// on the screen: the toolhead during a print, and the part at other times. A camera with no
+    /// picture shows why.
     private func cameraPicture(_ grid: Grid, _ cam: DeckCamera) -> some View {
         let w = CGFloat((grid.cols - 2 * Grid.mx) * grid.dot) / scale
         let aspect = photo.map { CGFloat($0.width) / CGFloat(max(1, $0.height)) } ?? cam.aspect
@@ -187,11 +188,13 @@ struct StatusView: View {
         .frame(width: w, height: w / aspect)
         .padding(.vertical, CGFloat(2 * grid.dot) / scale)
         .onScrollVisibilityChange(threshold: 0.1) { cameraShown = $0 }
-        .task(id: CameraTask(active: phase == .active && cameraShown, settings: model.settings)) {
+        .task(id: CameraTask(active: phase == .active && cameraShown, settings: model.settings,
+                             view: model.cameraView)) {
             guard phase == .active, cameraShown else { return }
+            let view = model.cameraView
             let client = DeckClient(settings: model.settings)
             while !Task.isCancelled {
-                if let img = await client.snapshot(width: Int(w * scale)) {
+                if let img = await client.snapshot(width: Int(w * scale), view: view) {
                     photo = img
                     cameraFailed = false
                 } else if !Task.isCancelled {
@@ -202,10 +205,11 @@ struct StatusView: View {
         }
     }
 
-    /// The camera reads while this is active, from the deck of these settings.
+    /// The camera reads this view while this is active, from the deck of these settings.
     private struct CameraTask: Equatable {
         let active: Bool
         let settings: DeckSettings
+        let view: String
     }
 
     /// A part of the display, rows dots high.
