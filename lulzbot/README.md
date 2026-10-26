@@ -223,7 +223,9 @@ the board is the space for the FPC fold; put foam tape there, so the glass stays
 - `camera_models.py` has a placeholder model of the B0561 in its case on its U bracket (sizes from
   the product photos, until measured), a placeholder link for it on the arm of the C270 mount, a
   placeholder bracket for it over the bed on the top of the frame, and the cable routes to the Pi.
-  pod.py puts them in the live window.
+  Each camera cable has its real length (1 m); the cable that the route does not use wraps on a
+  printed drum on the bracket of the camera, and on the TAZ the camera on the arm has a 0.5 m USB
+  extension, joined on a zip-tie tab on the top front rail. pod.py puts them in the live window.
 - `cable_physics.py` gives the shapes of the power, printer, and camera cables: each is an elastic
   rod that does not stretch, held at its plugs and clips, with its own weight (EI 2e-5 N m2,
   30 g/m, typical values). pod.py solves them with the other parts in place and keeps the result in

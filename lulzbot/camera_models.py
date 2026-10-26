@@ -23,8 +23,10 @@ screw. The pivot of the U sets the tilt.
 The brackets are placeholders for the layout and the views: they are not a final design, and there
 are no STL files of them.
 
-Each camera has its own cable to its own USB-A port of the Pi in the pod (CAMERA_PORTS). cable_route()
-follows the route of the C270 cable, with the two camera cables side by side in the clips.
+Each camera has its own 1 m cable to its own USB-A port of the Pi in the pod (CAMERA_PORTS), along the
+route of the C270 cable, with the two camera cables side by side in the clips. The cable that the
+route does not use wraps on a printed drum on the bracket of each camera, and the camera on the arm of
+the TAZ has a 0.5 m extension (cable_specs()).
 
 Camera coordinates: the origin is the middle of the front face of the case (under the front plate),
 z out of the lens along the optical axis, y up in the picture, x = y cross z. lens_point() is the
@@ -100,6 +102,8 @@ BRACKET_W = 40.0                        # across the bed
 # pivot is 11 mm over the lens. TAZ: the X axis goes up to about 476 at the full print height, so the
 # lens is at 490 and the base 7 mm over it. Mini 2: the base must clear the top of the rail.
 TOP_LENS_UP = {"taz": 490.0, "mini2": 381.0}
+# The cable drum on the Mini 2 wall: the height of its axis.
+MINI_DRUM_Z = 404.0
 # The full print height (published LulzBot sizes, not checked on the printers) and the moving parts
 # that go up with the tool head.
 PRINT_Z = {"taz": 285.0, "mini2": 180.0}
@@ -245,6 +249,8 @@ def link_hinge():
     zc = link_base_z()
     z1 = zc + B0561["base_d"] / 2 + 2.0
     s = box(-tw / 2, tw / 2, -th / 2, th / 2, -tb, LINK_Z + 0.5)
+    z1 = max(z1, arm_drum_z() + DRUM["flange"] / 2 + 2.0)
+    pw = max(pw, DRUM["flange"] + 4.0)
     s = s + box(-pw / 2, pw / 2, 0.0, pt, LINK_Z, z1)
     s = s + box(-tw / 2, tw / 2, -th / 2, pt, LINK_Z - 0.5, LINK_Z + 4.0)
     s = s - Location(Plane.YZ) * Cylinder(C.SCREW_HOLE / 2, tw + 2)
@@ -284,7 +290,9 @@ def top_bracket(name):
         x0, zc = float(o[0]), float(o[2])
         top = float(o[1]) + B0561["base_d"] / 2 + 4.0
         s = box(x0, x0 + t, TAZ_RAILS["top"], top, zc - w / 2, zc + w / 2)
-        s = s + box(x0, TAZ_RAILS["x"][1][1], TAZ_RAILS["top"], TAZ_RAILS["top"] + t, zc - w / 2, zc + w / 2)
+        # The arm on the rail top, wide and long enough for the cable drum (drum_frame()).
+        wd = max(w, DRUM["flange"] + 4.0)
+        s = s + box(x0, TAZ_RAILS["x"][1][1] + 6.0, TAZ_RAILS["top"], TAZ_RAILS["top"] + t, zc - wd / 2, zc + wd / 2)
         s = s - Pos(x0 + t / 2, float(o[1]), zc) * (Location(Plane.YZ) * Cylinder(B0561["base_hole"] / 2 + 0.2, t + 2))
         for z in (zc - 12.0, zc + 12.0):         # M3 into a roll-in T-nut in the top slot of the front rail
             s = s - Pos(76.0, TAZ_RAILS["top"] + t / 2, z) * (Location(Plane.XZ) * Cylinder(1.7, t + 2))
@@ -292,7 +300,10 @@ def top_bracket(name):
     # Mini 2: y is to the back. The wall from y0 - t to y0 (the base), on the plate on the rail top.
     y0, xc = float(o[1]), float(o[0])
     top = float(o[2]) + B0561["base_d"] / 2 + 4.0
-    s = box(xc - w / 2, xc + w / 2, y0 - t, y0, MINI_RAIL_TOP, top)
+    # The wall, wide and tall enough for the cable drum on its front face (drum_frame()).
+    wd = max(w, DRUM["flange"] + 4.0)
+    top = max(top, MINI_DRUM_Z + DRUM["flange"] / 2 + 2.0)
+    s = box(xc - wd / 2, xc + wd / 2, y0 - t, y0, MINI_RAIL_TOP, top)
     s = s + box(xc - w / 2, xc + w / 2, -250.0, y0, MINI_RAIL_TOP, MINI_RAIL_TOP + t)
     s = s - Pos(xc, y0 - t / 2, float(o[2])) * (Location(Plane.XZ) * Cylinder(B0561["base_hole"] / 2 + 0.2, t + 2))
     for x in (xc - 12.0, xc + 12.0):             # M3 screws into the rail top
@@ -309,6 +320,155 @@ def mount_lens(name):
     import numpy as np
     cam, _ = arm_frame(name)
     return np.array(tuple((cam * Pos(*lens_point())).position))
+
+
+# ---------------------------------------------------------------- the extra cable
+# Each camera cable is 1000 mm (Arducam), measured here over the whole cable with its plugs: the JST
+# plug (6 mm out of the socket) and the USB-A plug (12 mm metal and 30 mm overmold and strain relief)
+# leave CAMERA_CABLE mm of cable between the plug ends. That is an assumption: Arducam does not say how
+# the 1 m is measured.
+CAMERA_CABLE = 1000.0 - 6.0 - 12.0 - 30.0
+# The extension for the camera on the arm of the TAZ: 0.5 m USB 2.0 A male to A female (to buy), the
+# same measure. Its female end is a socket body of about 20 x 13 x 8 mm; the USB-A plug of the camera
+# cable goes in it (its 12 mm metal inside the body). Cable between the ends: 500 - 42 - 20.
+EXTENSION = dict(total=500.0, socket=(20.0, 13.0, 8.0), d=4.0)
+EXTENSION_CABLE = EXTENSION["total"] - 12.0 - 30.0 - EXTENSION["socket"][0]
+JOINT = 30.0 + EXTENSION["socket"][0]    # the camera USB-A overmold and the socket body, end to end
+# The cable drum: the extra cable of each camera wraps on a printed drum on its bracket. One M3 screw
+# through the middle holds it. It prints on its base
+# flange; the top flange is a 45 degree cone, so it needs no support. The cable goes in through a
+# notch in the base flange and out through a notch in the top flange, which holds the end. On the arm
+# an M3 screw from under the link plate goes into a heat-set insert in the drum; on the brackets over
+# the bed, into an insert in the bracket.
+DRUM = dict(core=40.0, length=18.0, flange=52.0, base_t=2.0, top_t=1.2, notch=3.4, hole=3.4)
+PITCH = 3.3                               # each turn of the 3 mm cable on the drum
+
+
+def drum_radius():
+    """The radius of the center of the cable on the drum."""
+    return DRUM["core"] / 2 + B0561["cable"][0] / 2 + 0.2
+
+
+def drum_model():
+    """The drum in its print position: the axis along z, the base flange on z = 0."""
+    from build123d import Cone
+    d = DRUM
+    rf, rc = d["flange"] / 2, d["core"] / 2
+    s = Pos(0, 0, d["base_t"] / 2) * Cylinder(rf, d["base_t"])
+    s = s + Pos(0, 0, d["base_t"] + d["length"] / 2) * Cylinder(rc, d["length"])
+    cone = rf - rc
+    z = d["base_t"] + d["length"]
+    s = s + Pos(0, 0, z + cone / 2) * Cone(rc, rf, cone)
+    s = s + Pos(0, 0, z + cone + d["top_t"] / 2) * Cylinder(rf, d["top_t"])
+    s = s - Pos(0, 0, 20) * Cylinder(d["hole"] / 2, 60)
+    # The notches: in the base flange for the cable in, in the top flange for the end.
+    s = s - box(rc + 0.5, rf + 1.0, -d["notch"] / 2, d["notch"] / 2, -1, d["base_t"] + 0.01)
+    s = s - Pos(-(rc + (rf - rc) / 2 + 0.5), 0, 0) * box(-(rf - rc) / 2 - 1, (rf - rc) / 2 + 1,
+                                                       -d["notch"] / 2, d["notch"] / 2, z + cone - 0.5, z + cone + d["top_t"] + 1)
+    return s
+
+
+def drum_frame(name, where):
+    """The drum as a Location in printer coordinates: its z is the axis, out of the bracket face. The
+    cable goes on at drum x = -R, along drum +y.
+    - On the arm: on the top of the link plate, on the screw of the base of U. The cable comes up past
+      the side of the plate and goes on toward the arm (hinge -z).
+    - TAZ, over the bed: on the arm of the bracket on the top front rail, in front of the wall. The cable
+      comes past the side of the wall and goes on toward the front.
+    - Mini 2, over the bed: on the front face of the wall. The cable comes over the wall and goes on
+      down."""
+    if where == "mount":
+        H = C.hinge_loc(name)
+        return H * Location(Plane(origin=(0.0, LINK_PLATE[1], arm_drum_z()), x_dir=(1, 0, 0), z_dir=(0, 1, 0)))
+    _, br, _ = top_frame(name)
+    o = base_point(br)
+    if name == "taz":
+        return Location(Plane(origin=(65.0, TAZ_RAILS["top"] + BRACKET_T, float(o[2]) - 5.0), x_dir=(0, 0, 1),
+                              z_dir=(0, 1, 0)))
+    return Location(Plane(origin=(float(o[0]), float(o[1]) - BRACKET_T, MINI_DRUM_Z), x_dir=(-1, 0, 0), z_dir=(0, -1, 0)))
+
+
+def arm_drum_z():
+    """The axis of the drum on the link plate (hinge z): its flange 1 mm in front of the lugs of the arm."""
+    return LINK_Z + DRUM["flange"] / 2 + 1.0
+
+
+def drum_helix(name, where, turns):
+    """The cable on the drum: a helix from the base flange, turns turns, in printer coordinates. It
+    starts at drum x = -R (the cable going along drum +y) and turns about the drum axis."""
+    import numpy as np
+    L = drum_frame(name, where)
+    R = drum_radius()
+    h0 = DRUM["base_t"] + B0561["cable"][0] / 2 + 0.3
+    n = max(8, int(turns * 72))
+    th = np.linspace(0.0, 2 * np.pi * turns, n + 1)
+    pts = np.stack([-R * np.cos(th), R * np.sin(th), h0 + PITCH * th / (2 * np.pi)], axis=1)
+    return np.array([tuple((L * Pos(*p)).position) for p in pts])
+
+
+def joint_frame(name):
+    """The joint of the camera cable and the extension (TAZ, camera on the arm): (the end of the camera
+    cable, the start of the extension). It lies along the lower lane of the top front rail, on a tie
+    tab, before the cable of the camera over the bed joins the rail."""
+    import numpy as np
+    z1 = JOINT_Z
+    a = np.array([C.TAZ_UPRIGHT["front"] + TIE_TAB["height"] + EXTENSION["socket"][2] / 2, 476.0 - SIDE, z1 - JOINT])
+    return a, a + np.array([0.0, 0.0, JOINT])
+
+
+JOINT_Z = -315.0                          # the end of the joint on the rail (printer z); see report()
+TIE_TAB = dict(base=(12.0, 14.0), height=6.0, slot=(4.2, 1.8))
+
+
+def tie_tab():
+    """A zip-tie tab in its print position (base on z = 0, a square of foam tape under it): a block with
+    a tunnel along y for a 2.5 to 3.6 mm zip tie, the roof of the tunnel a 45 degree point."""
+    from build123d import Polygon, extrude
+    bx, by = TIE_TAB["base"]
+    h = TIE_TAB["height"]
+    sw, sh = TIE_TAB["slot"]
+    s = box(-bx / 2, bx / 2, -by / 2, by / 2, 0.0, h)
+    z0 = 1.0
+    prof = Polygon((-sw / 2, z0), (sw / 2, z0), (sw / 2, z0 + sh), (0.0, z0 + sh + sw / 2), (-sw / 2, z0 + sh), align=None)
+    tunnel = Location(Plane(origin=(0, by / 2 + 1, 0), x_dir=(1, 0, 0), z_dir=(0, -1, 0))) * extrude(prof, by + 2)
+    return s - tunnel
+
+
+def joint_meshes(name):
+    """The joint on the TAZ: the USB-A plug of the camera cable in the socket of the extension, and the
+    tie tab under it, in printer coordinates: [(part, shape, color)]."""
+    import numpy as np
+    a, b = joint_frame(name)
+    # The plug points to +x of cable_plug with the face of its overmold at 0: here along +z, the face
+    # 30 mm from the end of the camera cable.
+    plug = Location(Plane(origin=tuple(a + np.array([0.0, 0.0, 30.0])), x_dir=(0, 0, 1), z_dir=(1, 0, 0))) * \
+        P.cable_plug(*P.USBA_PLUG)
+    sl, sw, sh = EXTENSION["socket"]
+    sock = box(b[0] - sh / 2, b[0] + sh / 2, b[1] - sw / 2, b[1] + sw / 2, b[2] - sl, b[2])
+    tab = Location(Plane(origin=(C.TAZ_UPRIGHT["front"], b[1], b[2] - JOINT / 2), x_dir=(0, 0, 1), z_dir=(1, 0, 0))) * tie_tab()
+    return [("camera_joint", plug + sock, "#151515"), ("camera_joint_tab", tab, "#E8762B")]
+
+
+def drum_meshes(name):
+    """The two drums in printer coordinates: [(part, shape, color)]."""
+    return [(f"camera_{w}_drum", drum_frame(name, w) * drum_model(), "#E8762B") for w in ("mount", "top")]
+
+
+def overhang(shape):
+    """The print check of make.sh on a shape in its print position: (one closed part, flat ceilings,
+    faces under 40 degrees) in mm2."""
+    import math as m
+    import tempfile
+    import trimesh
+    from build123d import export_stl
+    f = os.path.join(tempfile.mkdtemp(), "part.stl")
+    export_stl(shape, f, tolerance=0.02, angular_tolerance=0.1)
+    t = trimesh.load(f)
+    nz, zc, area = t.face_normals[:, 2], t.triangles_center[:, 2], t.area_faces
+    above = zc > t.bounds[0][2] + 0.05
+    flat = area[above & (nz < -0.999)].sum()
+    steep = area[above & (nz < -m.cos(m.radians(40))) & (nz >= -0.999)].sum()
+    return bool(t.is_watertight and t.body_count == 1), float(flat), float(steep)
 
 
 # ---------------------------------------------------------------- the cables
@@ -378,78 +538,8 @@ def pi_tail(name, where):
     return [(T @ np.append(q, 1.0))[:3] for q in pts]
 
 
-def cable_route(name, where):
-    """The route of the cable of the camera at where ("mount" or "top") to its own USB port of the Pi,
-    in printer coordinates: out of the plug, through the bend, along the route of the C270 cable
-    (camera.cable_points) and its clips beside the other camera cable, and into its USB-A plug."""
-    import numpy as np
-    import clips as K
-    d = B0561
-    dep = d["depth"]
-    _, _, (sx, sy) = d["socket"]
-    cd, R = d["cable"]
-    z0 = -dep - d["plug"]
-    cam = arm_frame(name)[0] if where == "mount" else top_frame(name)[0]
-    p = lambda x, y, z: np.array(tuple((cam * Pos(x, y, z)).position))
-    start = [p(sx, sy, -dep), p(sx, sy, z0), p(sx, sy - R, z0 - R)]
-    c270 = [np.asarray(q, float) for q in C.cable_points(name)]
-    if where == "mount":
-        # From the camera under the link plate: out past the side of the plate (hinge x -30) and up in
-        # front of the lugs.
-        H = C.hinge_loc(name)
-        h = lambda x, y, z: np.array(tuple((H * Pos(x, y, z)).position))
-        start = start[:2] + [h(-30.0, -8.0, 30.0), h(-30.0, 25.0, 2.0)]
-        # Then over the link plate (hinge y 25) straight to the frame, past the C270 loop and post.
-        c270 = c270[:2] + c270[6:]
-    b = np.array(C.BEDS[name][0])
-    if name == "taz":
-        # The clips are on the front faces of the top front rail and the front left upright. The C270
-        # route: ..., [100, 470, -690], the rail (3 points), the upright (2 points), then the plug.
-        n = np.array([1.0, 0.0, 0.0])
-        rail = c270[-6:-3]
-        tail = pi_tail(name, where)
-        if where == "mount":
-            mid = c270[2:-7]
-            rail = c270[-7:-6] + rail
-            route = start + mid + rail + tail
-            flags = [False] * (len(start) + len(mid)) + [True] * len(rail) + [False] * len(tail)
-        else:
-            f = C.TAZ_UPRIGHT["front"] + K.TAPE_CABLE_H
-            o = base_point(top_frame(name)[1])
-            top = float(o[1]) + B0561["base_d"] / 2 + 10.0
-            mid = [np.array([float(o[0]) - 10.0, top, b[2]]), np.array([f, top, b[2]])]
-            join = [np.array([f, 476.0, b[2] + 30.0])] + rail
-            route = start + mid + join + tail
-            flags = [False] * (len(start) + len(mid)) + [True] * len(join) + [False] * len(tail)
-        # The cable over the bed comes down onto the rail from above: it is in the upper lane, and on the
-        # left on the upright.
-        off = SIDE if where == "mount" else -SIDE
-        return side_by_side(route, flags, n, off)
-    # Mini 2: the clips are on the top of the frame along its front edge. The C270 route: ..., the
-    # clip line (2 points), then the plug.
-    n = np.array([0.0, 0.0, 1.0])
-    zt = C.MINI_TOP_Z + K.TAPE_CABLE_H
-    line = c270[-5:-3]
-    tail = pi_tail(name, where)
-    if where == "mount":
-        mid = c270[2:-5]
-        route = start + mid + line + tail
-        flags = [False] * (len(start) + len(mid)) + [True] * len(line) + [False] * len(tail)
-    else:
-        o = base_point(top_frame(name)[1])
-        top = float(o[2]) + B0561["base_d"] / 2 + 10.0
-        mid = [np.array([b[0], float(o[1]) + 10.0, top]), np.array([b[0], -244.0, top])]
-        join = [np.array([b[0] - 30.0, -244.0, zt]), line[-1]]
-        # Along the back lane past the other camera cable, then forward into the tail.
-        tail = [np.array([tail[0][0], line[-1][1] + SIDE, tail[0][2]])] + tail
-        route = start + mid + join + tail
-        flags = [False] * (len(start) + len(mid)) + [True] * len(join) + [False] * len(tail)
-    # The cable over the bed comes onto the line of clips from the back: it is in the back lane.
-    return side_by_side(route, flags, n, SIDE if where == "mount" else -SIDE)
-
-
 # Dark red: the cable of the camera on the arm. Dark blue: the cable of the camera over the bed.
-CABLE_COLORS = {"camera_cable": "#8B2A2A", "camera_top_cable": "#2B4C7E"}
+CABLE_COLORS = {"camera_cable": "#8B2A2A", "camera_top_cable": "#2B4C7E", "camera_ext_cable": "#3A3A3A"}
 
 
 def clip_points(name):
@@ -466,25 +556,145 @@ def clip_points(name):
     return [np.array(p) for p in out]
 
 
-def cable_spec(name, where):
-    """The spec of the camera cable for cable_physics.py (printer coordinates): the drawn route from
-    the end of the JST plug, the direction out of the plug, the clips, and the direction into the
-    USB-A plug at the Pi."""
+def _p(L, x, y, z):
     import numpy as np
-    import cable_physics as CP
-    route = cable_route(name, where)[1:]
+    return np.array(tuple((L * Pos(x, y, z)).position))
+
+
+def _start(name, where):
+    """The end of the JST plug and the direction out of it, in printer coordinates."""
+    import numpy as np
+    d = B0561
+    _, _, (sx, sy) = d["socket"]
     cam = arm_frame(name)[0] if where == "mount" else top_frame(name)[0]
-    back = np.array(tuple((cam * Pos(0, 0, -1)).position)) - np.array(tuple(cam.position))
+    end = _p(cam, sx, sy, -d["depth"] - d["plug"])
+    return end, end - _p(cam, sx, sy, -d["depth"])
+
+
+def _off_drum(helix, end):
+    """A point past the drum flange on the tangent of the helix: before its start (end 0) or after its
+    end (end -1). From the cable radius to past the flange along a tangent is under 22 mm."""
+    import numpy as np
+    if end == 0:
+        t = helix[1] - helix[0]
+        return helix[0] - 22.0 * t / np.linalg.norm(t)
+    t = helix[-1] - helix[-2]
+    return helix[-1] + 22.0 * t / np.linalg.norm(t)
+
+
+def _routes(name, turns):
+    """The drawn routes of the camera cables with the given turns on the drums: {cable: (points,
+    flags for the lanes, lane offset, the helix, start direction, end direction, port)}."""
+    import numpy as np
+    import clips as K
+    c270 = [np.asarray(q, float) for q in C.cable_points(name)]
+    H = C.hinge_loc(name)
+    h = lambda x, y, z: _p(H, x, y, z)
+    R = drum_radius()
+    hy = LINK_PLATE[1] + DRUM["base_t"] + B0561["cable"][0] / 2 + 0.3
+    zc = link_base_z()
+    out = {}
     T = P.matrix(C.pod_loc(name))
     into = -(T[:3, :3] @ np.array([0.0, 1.0, 0.0]))
-    n = "camera_cable" if where == "mount" else "camera_top_cable"
-    return CP.make_spec(n, route, B0561["cable"][0], clip_points(name), start_dir=back, end_dir=into)
+    # The camera on the arm: up past the side of the link plate, onto the drum, off it beside its end.
+    s0, d0 = _start(name, "mount")
+    hx = drum_helix(name, "mount", turns["camera_cable"])
+    pre = [s0, h(-34.0, -8.0, zc + 20.0), h(-34.0, hy, zc + 30.0), _off_drum(hx, 0)]
+    post = [_off_drum(hx, -1)]
+    b = np.array(C.BEDS[name][0])
+    if name == "taz":
+        f = C.TAZ_UPRIGHT["front"] + K.TAPE_CABLE_H
+        a, j1 = joint_frame(name)
+        post += [h(-36.0, 34.0, zc + 18.0), h(-40.0, -10.0, zc + 18.0)]
+        lanes = [c270[-8], np.array([f, 476.0, -600.0]), np.array([f, 476.0, a[2] - 20.0])]
+        pts = pre + list(hx) + post + lanes + [a]
+        flags = [False] * (len(pre) + len(hx) + len(post) + 1) + [True, True, False]
+        out["camera_cable"] = (pts, flags, SIDE, hx, d0, np.array([0.0, 0.0, 1.0]), None)
+        tail = pi_tail(name, "mount")
+        rail = [np.array([f, 476.0, -250.0]), np.array([f, 476.0, -200.0]), np.array([f, 440.0, C.S_RAIL_SLOT_Z]),
+                np.array([f, 380.0, C.S_RAIL_SLOT_Z])]
+        pts = [j1] + rail + tail
+        out["camera_ext_cable"] = (pts, [False] + [True] * 4 + [False] * len(tail), SIDE, None,
+                                   np.array([0.0, 0.0, 1.0]), into, "mount")
+        # The camera over the bed: past the side of the wall onto the drum, off it to the front rail.
+        s1, d1 = _start(name, "top")
+        hx = drum_helix(name, "top", turns["camera_top_cable"])
+        e = hx[0]
+        pre = [s1, np.array([20.0, 500.0, e[2]]), np.array([e[0] - 22.0, e[1], e[2]])]
+        x1 = _off_drum(hx, -1)
+        post = [x1, np.array([f + 4.0, 500.0, x1[2]])]
+        join = [np.array([f, 476.0, JOINT_Z + 15.0])] + rail
+        tail = pi_tail(name, "top")
+        pts = pre + list(hx) + post + join + tail
+        flags = [False] * (len(pre) + len(hx) + len(post)) + [True] * len(join) + [False] * len(tail)
+        out["camera_top_cable"] = (pts, flags, -SIDE, hx, d1, into, "top")
+        return out
+    zt = C.MINI_TOP_Z + K.TAPE_CABLE_H
+    post += [h(34.0, 34.0, zc + 18.0)]
+    line = [np.array([-30.0, -244.0, zt]), np.array([-300.0, -244.0, zt])]
+    tail = pi_tail(name, "mount")
+    pts = pre + list(hx) + post + [c270[-6]] + line + tail
+    flags = [False] * (len(pre) + len(hx) + len(post) + 1) + [True] * 2 + [False] * len(tail)
+    out["camera_cable"] = (pts, flags, SIDE, hx, d0, into, "mount")
+    s1, d1 = _start(name, "top")
+    hx = drum_helix(name, "top", turns["camera_top_cable"])
+    e = hx[0]
+    o = base_point(top_frame(name)[1])
+    over = MINI_DRUM_Z + DRUM["flange"] / 2 + 12.0
+    pre = [s1, np.array([e[0], float(o[1]) + 10.0, over]), np.array([e[0], e[1], over]), np.array([e[0], e[1], e[2] + 20.0])]
+    x1 = _off_drum(hx, -1)
+    post = [x1]
+    join = [np.array([b[0] - 30.0, -244.0, zt]), line[-1]]
+    tail = pi_tail(name, "top")
+    tail = [np.array([tail[0][0], line[-1][1] + SIDE, tail[0][2]])] + tail
+    pts = pre + list(hx) + post + join + tail
+    flags = [False] * (len(pre) + len(hx) + len(post)) + [True] * len(join) + [False] * len(tail)
+    out["camera_top_cable"] = (pts, flags, -SIDE, hx, d1, into, "top")
+    return out
 
 
-def cable(name, where):
-    """(the mesh of the cable, its length in mm)."""
-    m, path = P.cable_mesh(cable_route(name, where), B0561["cable"][0])
-    return m, P.length(path)
+def cable_specs(name):
+    """The specs of the camera cables for cable_physics.py (printer coordinates), each at its real
+    length: the turns on each drum take the cable that the route does not use. On the TAZ the camera on
+    the arm has the extension: its cable ends at the joint, and the extension (its last span takes the
+    rest of its length) goes on to the Pi."""
+    import numpy as np
+    import cable_physics as CP
+    lane_n = np.array([1.0, 0.0, 0.0]) if name == "taz" else np.array([0.0, 0.0, 1.0])
+
+    def build(turns):
+        specs = []
+        for n, (pts, flags, off, hx, d0, d1, port) in _routes(name, turns).items():
+            pts = side_by_side([np.asarray(q, float) for q in pts], flags, lane_n, off)
+            if n == "camera_ext_cable":
+                specs.append(CP.make_spec(n, pts, EXTENSION["d"], clip_points(name), start_dir=d0, end_dir=d1,
+                                          total=EXTENSION_CABLE, remainder="last"))
+                continue
+            sp = CP.make_spec(n, pts, B0561["cable"][0], clip_points(name), start_dir=d0, end_dir=d1, coil=hx,
+                              total=CAMERA_CABLE)
+            sp["turns"] = turns[n]
+            specs.append(sp)
+        return specs
+
+    def used(n, t):
+        sp = next(x for x in build({"camera_cable": t, "camera_top_cable": t}) if x["name"] == n)
+        return sum(L for _, _, L in CP.lengths(sp)) - CAMERA_CABLE
+
+    # The turns of each drum: the root of the length used less the cable (bisection: the exit of the
+    # drum moves round it with the turns, so the length is not smooth in the turns).
+    turns = {}
+    for n in ("camera_cable", "camera_top_cable"):
+        lo, hi = 0.25, 6.0
+        flo = used(n, lo)
+        for _ in range(40):
+            mid = (lo + hi) / 2
+            fm = used(n, mid)
+            if (fm > 0) == (flo > 0):
+                lo, flo = mid, fm
+            else:
+                hi = mid
+        turns[n] = (lo + hi) / 2
+    return build(turns)
 
 
 def check_pi_end(name):
@@ -543,7 +753,8 @@ def meshes(name, tmp, cam=None):
     import trimesh
     from build123d import export_stl
     out = {k: v for k, v in (cam or {}).items() if k not in C270_PARTS}
-    for k, sh, c in arm_mount(name) + top_mount(name):
+    extra = drum_meshes(name) + (joint_meshes(name) if name == "taz" else [])
+    for k, sh, c in arm_mount(name) + top_mount(name) + extra:
         p = os.path.join(tmp, f"{name}_{k}.stl")
         export_stl(sh, p, tolerance=0.03, angular_tolerance=0.1)
         out[k] = (trimesh.load(p, force="mesh"), c)
@@ -591,6 +802,28 @@ def check_top(name):
     return bad
 
 
+def check_drums(name):
+    """The drums against the arm, the clamp, the link, the brackets, and the cameras with their
+    keepouts. Returns a list of problems."""
+    bad = []
+    s, _ = bracket_model()
+    for where in ("mount", "top"):
+        d = drum_frame(name, where) * drum_model()
+        if where == "mount":
+            cam, br = arm_frame(name)
+            others = [("arm", C.arm(name)), ("clamp", C.CLAMPS[name]()), ("hinge screw", C.hinge_screw(name)),
+                      ("link", C.hinge_loc(name) * link_hinge())]
+        else:
+            cam, br, _ = top_frame(name)
+            others = [("bracket", top_bracket(name))]
+        others += [(k, cam * v) for k, v in case_model().items()] + [("U bracket", br * s)]
+        for n, o in others:
+            v = (d & o).volume
+            if v > 0.01:
+                bad.append(f"the {where} drum and the {n}: {v:.2f} mm3")
+    return bad
+
+
 def gantry_gap(name, solids):
     """The smallest vertical gap from the top of the moving parts at the full print height to the
     shapes, where they are over each other (mm), and the rise of the tool head."""
@@ -635,6 +868,8 @@ def report():
     for name in ("taz", "mini2"):
         bad = check_arm(name)
         print(f"{name}: camera on the arm: " + ("; ".join(bad) if bad else "no touch over the tilt range"))
+        bad = check_drums(name)
+        print(f"{name}: drums: " + ("; ".join(bad) if bad else "no touch with the arm, the brackets, or the cameras"))
         bad = check_top(name)
         print(f"{name}: camera over the bed: " + ("; ".join(bad) if bad else "no touch with its brackets"))
         printer = P.setups()[name]["printer"]()
@@ -659,14 +894,15 @@ def report():
               f"{np.linalg.norm(mount_lens(name) - C.lens_point(name)):.1f} mm from the C270 lens")
         bad = check_pi_end(name)
         print(f"{name}: plugs at the Pi: " + ("; ".join(bad) if bad else "no touch with each other, the pod, or the bracket"))
-        for where in ("mount", "top"):
-            _, n = cable(name, where)
-            have = B0561["cable_length"]
-            stack, upper = CAMERA_PORTS[where]
-            print(f"{name}: {where} camera cable route {n:.0f} mm to the {'upper' if upper else 'lower'} {stack} port "
-                  f"(the cable is {have:.0f} mm: "
-                  f"{'long enough' if have >= n else f'{n - have:.0f} mm short'})")
-
+        import cable_physics as CP
+        for sp in cable_specs(name):
+            ls = CP.lengths(sp)
+            drawn = sum(dr for k, dr, _ in ls if k != "fixed")
+            coil = sum(L for k, _, L in ls if k == "fixed")
+            total = sum(L for _, _, L in ls)
+            print(f"{name}: {sp['name']}: {total:.0f} mm between the plugs, {drawn:.0f} mm of drawn route, "
+                  + (f"{coil:.0f} mm on the drum ({sp['turns']:.2f} turns, {2 * drum_radius():.1f} mm across)"
+                     if coil else "no drum"))
 
 if __name__ == "__main__":
     report()

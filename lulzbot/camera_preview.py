@@ -60,6 +60,7 @@ def load(name):
         items.append((trimesh.load(path, force="mesh"), p["color"]))
     if "bed" not in info["views"]:
         raise SystemExit(f"{name}: no camera positions in build/viewer: run pod.py live again")
+    load.names = [p["name"] for p in info["parts"]]
     return items, info["views"]
 
 
@@ -220,9 +221,8 @@ def pod_closeup(name, title, items, path):
 
 
 def sag_sheet(path):
-    """Side views of the long free spans of the camera cable on the arm (cable_physics.py): the span
-    from the camera to its first clip and the span from its last clip to the Pi, each with three
-    lengths of cable. Orthographic, looking across the span, up at the top. Thin gray: the drawn
+    """Side views of two free spans of the camera cables (cable_physics.py): from the drum of the camera
+    on the arm toward the frame, and down to the Pi, each with three lengths of cable. Orthographic, looking across the span, up at the top. Thin gray: the drawn
     route. Dark red: the solved cable. Dashed: the straight line between the fixed ends."""
     import cable_physics as CP
     rows = []
@@ -243,11 +243,11 @@ def sag_sheet(path):
             s0, _ = CP._param(old, main[0])
             s1, _ = CP._param(old, main[-1])
             old = CP._cut(old, s0, s1)
-            where = "from the camera to the first clip" if st["span"] == 0 else "from the last clip to the Pi"
+            where = st.get("label", "")
             panels = [(f"+{st['rows'][0]['extra']:.0f} mm of cable", np.array(st["rows"][0]["nodes"]), None),
                       (f"+{L - drawn:.0f} mm (the model)", main, old),
                       (f"+{st['rows'][1]['extra']:.0f} mm of cable", np.array(st["rows"][1]["nodes"]), None)]
-            rows.append((f"{title}: the cable of the camera on the arm, {where} (drawn route {drawn:.0f} mm)",
+            rows.append((f"{title}: {where} (drawn route {drawn:.0f} mm)",
                          panels, up, c["d"]))
     pw, ph, gap, head = 560, 380, 16, 40
     W = 3 * pw + 4 * gap
@@ -297,6 +297,46 @@ def sag_sheet(path):
     print(f"wrote {path}")
 
 
+def part_closeup(items, names, part, toward, dist, lines, path):
+    """A view of the part named part and the cables near it, from the direction toward (the
+    coordinates of the live window), dist mm away."""
+    m = items[names.index(part)][0]
+    target = m.bounds.mean(axis=0)
+    eye = target + np.asarray(toward, float) / np.linalg.norm(toward) * dist
+    size = (1000, 750)
+    sc = scene(items)
+    up = (0.0, 0.0, 1.0)
+    pose = R.look_at(eye, target, up)
+    sc.add(pyrender.PerspectiveCamera(yfov=math.radians(35.0), aspectRatio=size[0] / size[1], znear=5.0, zfar=3000.0),
+           pose=pose)
+    sc.add(pyrender.DirectionalLight(intensity=2.5), pose=pose)
+    rr = pyrender.OffscreenRenderer(*size)
+    rgb, _ = rr.render(sc)
+    rr.delete()
+    caption(Image.fromarray(rgb), lines + [""] * (4 - len(lines))).save(path)
+    print(f"wrote {path}")
+
+
+def wrap_closeups(name, title, items):
+    """Close views of the extra camera cable: the drum on the arm, the drum over the bed, and on the
+    TAZ the joint of the extension."""
+    import camera_models as CM
+    names = load.names
+    shots = [("camera_mount_drum", (1.0, -1.0, 1.0), "the drum on the link plate of the camera on the arm"),
+             ("camera_top_drum", (1.0, -1.0, 0.9), "the drum on the bracket of the camera over the bed")]
+    if "camera_joint" in names:
+        shots.append(("camera_joint", (1.0, -1.2, 0.5), "the joint of the camera cable and the 0.5 m extension, "
+                      "on a zip-tie tab"))
+    for part, toward, what in shots:
+        part_closeup(items, names, part, toward, 260.0,
+                     [f"{title}: {what}",
+                      f"Each camera cable is {CM.CAMERA_CABLE:.0f} mm between its plugs (1 m overall). "
+                      "The extra cable wraps on the drum.",
+                      "Dark red: the camera on the arm. Dark blue: the camera over the bed."
+                      + (" Gray: the extension." if "camera_joint" in names else "")],
+                     os.path.join(OUT, f"{name}-{part.replace('camera_', '').replace('_', '-')}.png"))
+
+
 def aimed(views, lens):
     """A view from lens (printer coordinates) at the middle of the bed, level."""
     T = np.array(views["printer_to_view"])
@@ -311,6 +351,7 @@ def main():
     for name, title in PRINTERS:
         items, views = load(name)
         pod_closeup(name, title, items, os.path.join(OUT, f"{name}-cables-at-pi.png"))
+        wrap_closeups(name, title, items)
         sc = scene(items + test_parts(views))
         bed = views["bed"]
         sections = []

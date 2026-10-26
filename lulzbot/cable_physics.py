@@ -31,14 +31,14 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 CACHE = os.path.join(HERE, "build", "cables")
 
-VERSION = 2                   # goes in the cache key: change it when the solver changes
+VERSION = 3                   # goes in the cache key: change it when the solver changes
 SEG = 3.0                     # mm, the target length of a segment
 EI = 20.0                     # N mm^2 (2e-5 N m^2)
 WEIGHT = 0.030 * 9.81 / 1000  # N per mm of cable (30 g/m)
 MIN_BEND = 5.0                # the smallest bend radius, in cable diameters
 CLEAR = 0.5                   # mm, the gap the contact penalty keeps to a solid
 K_STRETCH = 300.0             # N/mm
-K_BEND_MIN = 20000.0
+K_BEND_MIN = 200000.0
 K_CONTACT = 500.0             # N/mm
 SAMPLE = 0.5                  # mm, the spacing of the points on the surfaces of the solids
 REACH = 40.0                  # mm: the solids this near the drawn routes
@@ -122,28 +122,44 @@ def _cut(path, s0, s1):
     return np.array([at(s0)] + inner + [at(s1)])
 
 
-def make_spec(name, points, d, clips=(), start_dir=None, end_dir=None):
+def make_spec(name, points, d, clips=(), start_dir=None, end_dir=None, ties=(), coil=None, total=None,
+              remainder=None):
     """A cable spec from a drawn route (points) and the cable centers of the clips it may pass through
     (each within NEAR mm of the rounded route is an anchor, in the direction of the route there).
     start_dir: the direction out of the plug at the start; end_dir: the direction into the end (both
-    the route direction when None)."""
+    the route direction when None). ties: more anchors (point, direction). coil: the polyline of a
+    coil on the route (its ends are anchors and its shape is fixed). total: the length of the cable;
+    remainder: "last" to give the last span the rest of the total."""
     import pod as P
     path = P.rounded(points)
     t0 = np.asarray(start_dir if start_dir is not None else path[1] - path[0], float)
     t1 = np.asarray(end_dir if end_dir is not None else path[-1] - path[-2], float)
     found = []
-    seg = np.linalg.norm(np.diff(path, axis=0), axis=1)
-    total = float(seg.sum())
+    total_len = _len(path)
     for c in clips:
         c = np.asarray(c, float)
         s, dist = _param(path, c)
-        if dist > NEAR or s < 10.0 or s > total - 10.0:
+        if dist > NEAR or s < 10.0 or s > total_len - 10.0:
             continue
-        a = _cut(path, max(0.0, s - 2.0), min(total, s + 2.0))
+        a = _cut(path, max(0.0, s - 2.0), min(total_len, s + 2.0))
         found.append((s, (c.tolist(), (a[-1] - a[0]).tolist(), "clip")))
+    for p, t in ties:
+        found.append((_param(path, np.asarray(p, float))[0], (list(p), list(t), "tie")))
+    if coil is not None:
+        coil = np.asarray(coil, float)
+        found.append((_param(path, coil[0])[0], (coil[0].tolist(), (coil[1] - coil[0]).tolist(), "coil")))
+        found.append((_param(path, coil[-1])[0] + 1e-6, (coil[-1].tolist(), (coil[-1] - coil[-2]).tolist(), "coil")))
     found.sort(key=lambda f: f[0])
     anchors = [(path[0].tolist(), t0.tolist(), "plug")] + [f[1] for f in found] + [(path[-1].tolist(), t1.tolist(), "plug")]
-    return dict(name=name, path=path, anchors=anchors, d=d)
+    spec = dict(name=name, path=path, anchors=anchors, d=d)
+    if coil is not None:
+        k = next(i for i, a in enumerate(anchors) if a[2] == "coil")
+        spec["fixed"] = {k: coil}
+    if total is not None:
+        spec["total"] = total
+    if remainder == "last":
+        spec["remainder"] = len(anchors) - 2
+    return spec
 
 
 def moved(spec, T):
@@ -151,12 +167,46 @@ def moved(spec, T):
     R = T[:3, :3]
     mv = lambda p: (T @ np.append(np.asarray(p, float), 1.0))[:3].tolist()
     return dict(spec, path=np.array([mv(p) for p in spec["path"]]),
-                anchors=[(mv(p), (R @ np.asarray(t, float)).tolist(), k) for p, t, k in spec["anchors"]])
+                anchors=[(mv(p), (R @ np.asarray(t, float)).tolist(), k) for p, t, k in spec["anchors"]],
+                fixed={k: np.array([mv(p) for p in fp]) for k, fp in spec.get("fixed", {}).items()})
+
+
+HELD = ("clip", "tie")    # anchors that hold the cable snug
+
+
+def lengths(spec):
+    """For each span of spec: (kind, the drawn length, the length of cable). A span in spec["fixed"]
+    (a coil) has the length of its fixed shape. When spec has "total" and "remainder" (a span index),
+    that span has the rest of the total length."""
+    path = np.asarray(spec["path"], float)
+    anchors = spec["anchors"]
+    s_at = [_param(path, np.asarray(p, float))[0] for p, _, _ in anchors]
+    out = []
+    for k in range(len(anchors) - 1):
+        if k in spec.get("fixed", {}):
+            fp = np.asarray(spec["fixed"][k], float)
+            out.append(("fixed", _len(fp), _len(fp)))
+            continue
+        piece = _cut(path, s_at[k], s_at[k + 1])
+        piece[0], piece[-1] = anchors[k][0], anchors[k + 1][0]
+        drawn = _len(piece)
+        kind = "clip" if (anchors[k][2] in HELD and anchors[k + 1][2] in HELD) else "free"
+        a, b = SLACK[kind]
+        L = drawn * (1 + a) + b
+        if k in spec.get("exact", {}):
+            L = drawn + spec["exact"][k]          # the sag sheet: the drawn length plus a given length
+        out.append((kind, drawn, L))
+    r = spec.get("remainder")
+    if r is not None and r not in spec.get("exact", {}):
+        kind, drawn, _ = out[r]
+        out[r] = (kind, drawn, spec["total"] - sum(L for i, (_, _, L) in enumerate(out) if i != r))
+    return out
 
 
 def build(spec, seg=SEG):
-    """The rod of a cable spec, with segments of about seg mm: the start nodes, the rest length of each segment, the fixed nodes,
-    and the spans [(first node, last node, kind, rest length, drawn length)]."""
+    """The rod of a cable spec, with segments of about seg mm: the start nodes, the rest length of
+    each segment, the fixed nodes, and the spans [(first node, last node, kind, rest length, drawn
+    length)]. The nodes of a fixed span (a coil) are all fixed."""
     path = np.asarray(spec["path"], float)
     anchors = spec["anchors"]
     s_at = [_param(path, np.asarray(p, float))[0] for p, _, _ in anchors]
@@ -165,34 +215,35 @@ def build(spec, seg=SEG):
         init = np.asarray(init, float)
         i_at = [_param(init, np.asarray(p, float))[0] for p, _, _ in anchors]
     nodes, rest, fixed, spans = [], [], set(), []
-    for k in range(len(anchors) - 1):
-        s0, s1 = s_at[k], s_at[k + 1]
-        piece = _cut(path, s0, s1)
-        piece[0], piece[-1] = anchors[k][0], anchors[k + 1][0]
-        drawn = float(np.linalg.norm(np.diff(piece, axis=0), axis=1).sum())
-        kind = "clip" if (anchors[k][2] == "clip" and anchors[k + 1][2] == "clip") else "free"
-        a, b = SLACK[kind]
-        L = drawn * (1 + a) + b
-        if k in spec.get("exact", {}):
-            L = drawn + spec["exact"][k]          # the sag sheet: the drawn length plus a given length
+    for k, (kind, drawn, L) in enumerate(lengths(spec)):
+        if L < drawn * 0.98 - 1.0:
+            raise ValueError(f"{spec['name']}: span {k} is {drawn:.0f} mm on the route and has {L:.0f} mm of cable")
         n = max(6, int(math.ceil(L / seg)))
-        if init is not None:
+        if kind == "fixed":
+            piece = np.asarray(spec["fixed"][k], float)
+        elif init is not None:
             # Start from a solved shape (the drawn route only sets the lengths).
             piece = _cut(init, i_at[k], i_at[k + 1])
+        else:
+            piece = _cut(path, s_at[k], s_at[k + 1])
         pts = _resample(piece, n)
         i0 = len(nodes) - 1 if nodes else 0
         if nodes:
             pts = pts[1:]
         nodes += list(pts)
-        rest += [L / n] * n
         h = L / n
-        (pa, ta, _), (pb, tb, _) = anchors[k], anchors[k + 1]
-        ta, tb = np.asarray(ta, float), np.asarray(tb, float)
+        rest += [h] * n
         i1 = i0 + n
-        nodes[i0], nodes[i1] = np.asarray(pa, float), np.asarray(pb, float)
-        nodes[i0 + 1] = nodes[i0] + h * ta / np.linalg.norm(ta)
-        nodes[i1 - 1] = nodes[i1] - h * tb / np.linalg.norm(tb)
-        fixed |= {i0, i0 + 1, i1 - 1, i1}
+        (pa, ta, _), (pb, tb, _) = anchors[k], anchors[k + 1]
+        if kind == "fixed":
+            rest[-n:] = list(np.linalg.norm(np.diff(_resample(piece, n), axis=0), axis=1))
+            fixed |= set(range(i0, i1 + 1))
+        else:
+            ta, tb = np.asarray(ta, float), np.asarray(tb, float)
+            nodes[i0], nodes[i1] = np.asarray(pa, float), np.asarray(pb, float)
+            nodes[i0 + 1] = nodes[i0] + h * ta / np.linalg.norm(ta)
+            nodes[i1 - 1] = nodes[i1] - h * tb / np.linalg.norm(tb)
+            fixed |= {i0, i0 + 1, i1 - 1, i1}
         spans.append((i0, i1, kind, L, drawn))
     return np.array(nodes), np.array(rest), sorted(fixed), spans
 
@@ -347,7 +398,9 @@ def key(specs, up, meshes):
         h.update(np.round(np.asarray(s["path"], float), 3).tobytes())
         for p, t, k in s["anchors"]:
             h.update(np.round(np.asarray(p, float), 3).tobytes() + np.round(np.asarray(t, float), 4).tobytes() + k.encode())
-        h.update(json.dumps([s["d"], sorted(s.get("exact", {}).items())]).encode())
+        h.update(json.dumps([s["d"], sorted(s.get("exact", {}).items()), s.get("total"), s.get("remainder")]).encode())
+        for k, fp in sorted(s.get("fixed", {}).items()):
+            h.update(str(k).encode() + np.round(np.asarray(fp, float), 3).tobytes())
     for m in meshes:
         h.update(np.round(m.bounds, 2).tobytes())
         h.update(str(len(m.faces)).encode())
