@@ -101,8 +101,9 @@ type Frame struct {
 	// Time is the time of the capture.
 	Time time.Time
 
-	jpeg []byte
-	w, h int
+	jpeg  []byte
+	w, h  int
+	blank bool // the picture has one color: an HDMI capture with no signal
 
 	mu     sync.Mutex
 	pic    *image.YCbCr   // the picture, or nil until it is decoded
@@ -116,8 +117,28 @@ func newFrame(b []byte, w, h int, pic *image.YCbCr) *Frame {
 	return &Frame{jpeg: b, w: w, h: h, pic: pic, Time: time.Now()}
 }
 
-// JPEG returns the JPEG of the frame.
-func (f *Frame) JPEG() []byte { return f.jpeg }
+// Blank reports that the picture has one color, as an HDMI capture sends with no signal.
+func (f *Frame) Blank() bool { return f.blank }
+
+// picFrame makes a frame of a picture. The frame encodes its JPEG when a viewer asks for it, so
+// a frame that no viewer takes costs no encode.
+func picFrame(pic *image.YCbCr) *Frame {
+	return &Frame{w: pic.Rect.Dx(), h: pic.Rect.Dy(), pic: pic, Time: time.Now()}
+}
+
+// JPEG returns the JPEG of the frame. It encodes the picture the first time.
+func (f *Frame) JPEG() []byte {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.jpeg == nil && f.pic != nil {
+		b, err := encodeJPEG(f.pic)
+		if err != nil {
+			return nil
+		}
+		f.jpeg = b
+	}
+	return f.jpeg
+}
 
 // Size is the size of the picture in pixels.
 func (f *Frame) Size() image.Point { return image.Pt(f.w, f.h) }
@@ -193,12 +214,8 @@ func (f *Frame) Small(w int) *Frame {
 		return f
 	}
 	h := max(2, (f.h*w/f.w+1)/2*2)
-	out := scaleYCbCr(pic, w, h, false)
-	b, err := encodeJPEG(out)
-	if err != nil {
-		return f
-	}
-	s := &Frame{Seq: f.Seq, Time: f.Time, jpeg: b, w: w, h: h, pic: out}
+	s := picFrame(scaleYCbCr(pic, w, h, false))
+	s.Seq, s.Time, s.blank = f.Seq, f.Time, f.blank
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if old, ok := f.smalls[w]; ok {

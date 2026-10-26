@@ -24,7 +24,8 @@ func benchFrame(format string, w, h int) []byte {
 	return b
 }
 
-func benchRaw(b *testing.B, format string) {
+// benchRaw converts a raw frame, and encodes the JPEG when encode is true.
+func benchRaw(b *testing.B, format string, encode bool) {
 	const w, h = 1920, 1080
 	data := benchFrame(format, w, h)
 	bpl := w
@@ -35,16 +36,24 @@ func benchRaw(b *testing.B, format string) {
 	f := Format{OutW: ow, OutH: oh}
 	b.ResetTimer()
 	for range b.N {
-		if makeFrame(format, data, w, h, bpl, f, false) == nil {
+		fr := makeFrame(format, data, w, h, bpl, f, false)
+		if fr == nil {
 			b.Fatal("no frame")
+		}
+		if encode {
+			fr.JPEG()
 		}
 	}
 }
 
-// The raw pictures of an HDMI capture stick: 1920 x 1080 to a JPEG of 960 x 540.
-func BenchmarkYUYV(b *testing.B) { benchRaw(b, "YUYV") }
-func BenchmarkNV12(b *testing.B) { benchRaw(b, "NV12") }
-func BenchmarkYU12(b *testing.B) { benchRaw(b, "YU12") }
+// The raw pictures of an HDMI capture stick: 1920 x 1080 to a JPEG of 960 x 540. The capture
+// converts each frame of the rate; the JPEG is made only when a viewer takes the frame.
+func BenchmarkYUYV(b *testing.B)        { benchRaw(b, "YUYV", true) }
+func BenchmarkNV12(b *testing.B)        { benchRaw(b, "NV12", true) }
+func BenchmarkYU12(b *testing.B)        { benchRaw(b, "YU12", true) }
+func BenchmarkYUYVConvert(b *testing.B) { benchRaw(b, "YUYV", false) }
+func BenchmarkNV12Convert(b *testing.B) { benchRaw(b, "NV12", false) }
+func BenchmarkYU12Convert(b *testing.B) { benchRaw(b, "YU12", false) }
 
 // benchJPEG is a JPEG of 1280 x 720, as a webcam sends.
 func benchJPEG(b *testing.B) []byte {
@@ -70,9 +79,11 @@ func BenchmarkMJPEGTurned(b *testing.B) {
 	data := benchJPEG(b)
 	b.ResetTimer()
 	for range b.N {
-		if makeFrame("MJPG", data, 1280, 720, 0, Format{OutW: 960, OutH: 540}, true) == nil {
+		fr := makeFrame("MJPG", data, 1280, 720, 0, Format{OutW: 960, OutH: 540}, true)
+		if fr == nil {
 			b.Fatal("no frame")
 		}
+		fr.JPEG()
 	}
 }
 
@@ -81,7 +92,7 @@ func BenchmarkSmall320(b *testing.B) {
 	data, w, h, _ := fixJPEG(benchJPEG(b))
 	b.ResetTimer()
 	for range b.N {
-		newFrame(data, w, h, nil).Small(320)
+		newFrame(data, w, h, nil).Small(320).JPEG()
 	}
 }
 
@@ -90,10 +101,9 @@ func BenchmarkSmall448FromRaw(b *testing.B) {
 	data := benchFrame("YU12", 1920, 1080)
 	y, cb, cr, _ := rawPlanes("YU12", data, 1920, 1080, 1920)
 	pic := toYCbCr(960, 540, y, cb, cr, false)
-	jb, _ := encodeJPEG(pic)
 	b.ResetTimer()
 	for range b.N {
-		newFrame(jb, 960, 540, pic).Small(448)
+		picFrame(pic).Small(448).JPEG()
 	}
 
 }

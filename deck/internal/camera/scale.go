@@ -166,3 +166,17 @@ func outSize(w, h, maxW, maxH int) (int, int) {
 	}
 	return max(2, ow&^1), max(2, oh&^1)
 }
+
+// blank reports that a plane has one value, give or take 3: the picture of an HDMI capture with
+// no signal. It looks at a grid of 16 x 9 samples.
+func blank(p plane) bool {
+	lo, hi := 255, 0
+	for i := range 9 {
+		row := p.off + (p.h*(2*i+1)/18)*p.stride
+		for j := range 16 {
+			v := int(p.pix[row+(p.w*(2*j+1)/32)*p.step])
+			lo, hi = min(lo, v), max(hi, v)
+		}
+	}
+	return hi-lo <= 3
+}

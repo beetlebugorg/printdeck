@@ -39,7 +39,8 @@ type Hub struct {
 // Status tells the state of the camera, for the screen.
 type Status struct {
 	// State is "off" (the setting is Off), "none" (no camera), "idle" (no viewer), "starting",
-	// "on", or "error".
+	// "on", "nosignal" (no picture, or a blank picture: an HDMI capture with no signal), or
+	// "error".
 	State  string
 	Device Device
 	Format Format
@@ -184,6 +185,10 @@ func (h *Hub) Peek() *Frame {
 	return f
 }
 
+// errNoSignal is the error of a camera that sends no frames: an HDMI capture with no signal, or
+// a camera that is broken.
+var errNoSignal = errors.New("no signal: the camera sends no pictures")
+
 // ErrNoCamera is the error of a snapshot with no camera.
 var ErrNoCamera = errors.New("camera: no camera")
 
@@ -234,6 +239,9 @@ func (h *Hub) publish(f *Frame) {
 	close(h.changed)
 	h.changed = make(chan struct{})
 	h.status.State = "on"
+	if f.blank {
+		h.status.State = "nosignal"
+	}
 	h.mu.Unlock()
 }
 
@@ -247,7 +255,8 @@ func (h *Hub) Run(ctx context.Context) {
 		h.mu.Lock()
 		d, ok := h.deviceLocked()
 		s, gen := h.settings, h.gen
-		if ok {
+		if ok && h.status.State != "nosignal" {
+			// A camera with no signal keeps that state while it starts again.
 			h.status = Status{State: "starting", Device: d}
 		}
 		h.mu.Unlock()
@@ -267,9 +276,12 @@ func (h *Hub) Run(ctx context.Context) {
 		cancel()
 		h.mu.Lock()
 		h.latest = nil
-		if err != nil && !stopped {
+		switch {
+		case errors.Is(err, errNoSignal) && !stopped:
+			h.status = Status{State: "nosignal", Device: d, Format: h.status.Format, Err: err.Error()}
+		case err != nil && !stopped:
 			h.status = Status{State: "error", Device: d, Err: err.Error()}
-		} else {
+		default:
 			h.status = Status{}
 		}
 		h.mu.Unlock()

@@ -95,6 +95,10 @@ func TestCameraPage(t *testing.T) {
 	if f := simFrame(t, a, "camera-none"); !strings.Contains(f, "PLUG A USB CAMERA") || cam.peeks != 0 {
 		t.Errorf("no camera: peeks %d", cam.peeks)
 	}
+	cam.status = camera.Status{State: "nosignal", Device: camera.Device{Name: "Cam Link 4K"}}
+	if f := simFrame(t, a, "camera-nosignal"); !strings.Contains(f, "NO SIGNAL") {
+		t.Error("no signal: not on the page")
+	}
 	cam.status = camera.Status{State: "error", Device: camera.Device{Name: "Cam Link 4K"}, Err: "the camera sends no pictures"}
 	if f := simFrame(t, a, "camera-error"); !strings.Contains(f, "THE CAMERA SENDS NO PICTURES") {
 		t.Error("no error")

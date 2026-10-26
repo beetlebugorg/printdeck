@@ -363,7 +363,7 @@ func capture(ctx context.Context, d Device, s Settings, format func(Format), emi
 	fds := []unix.PollFd{{Fd: int32(fd), Events: unix.POLLIN}}
 	for ctx.Err() == nil {
 		if time.Since(lastFrame) > noFrameFor {
-			return errors.New("the camera sends no pictures")
+			return errNoSignal
 		}
 		n, err := unix.Poll(fds, 250)
 		if err != nil && err != unix.EINTR {
@@ -419,23 +419,15 @@ func makeFrame(name string, data []byte, w, h, bpl int, f Format, flip bool) *Fr
 		if err != nil || !ok {
 			return nil
 		}
-		out := scaleYCbCr(p, f.OutW, f.OutH, true)
-		jb, err := encodeJPEG(out)
-		if err != nil {
-			return nil
-		}
-		return newFrame(jb, f.OutW, f.OutH, out)
+		return picFrame(scaleYCbCr(p, f.OutW, f.OutH, true))
 	}
 	y, cb, cr, err := rawPlanes(name, data, w, h, bpl)
 	if err != nil {
 		return nil
 	}
-	out := toYCbCr(f.OutW, f.OutH, y, cb, cr, flip)
-	jb, err := encodeJPEG(out)
-	if err != nil {
-		return nil
-	}
-	return newFrame(jb, f.OutW, f.OutH, out)
+	fr := picFrame(toYCbCr(f.OutW, f.OutH, y, cb, cr, flip))
+	fr.blank = blank(y)
+	return fr
 }
 
 // setRate asks the camera for fps frames a second, and returns the rate that it uses, or 0 when

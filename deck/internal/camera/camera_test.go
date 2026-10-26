@@ -97,6 +97,22 @@ func TestRawFormats(t *testing.T) {
 	}
 }
 
+// A picture of one color is blank, as an HDMI capture sends with no signal.
+func TestBlank(t *testing.T) {
+	y, _, _, _ := rawPlanes("YU12", rawFrame("YU12", 64, 32, 64), 64, 32, 64)
+	if blank(y) {
+		t.Error("the test picture is blank")
+	}
+	flat := make([]byte, 64*32*3/2)
+	for i := range flat {
+		flat[i] = 7 + byte(i%3)
+	}
+	y, _, _, _ = rawPlanes("YU12", flat, 64, 32, 64)
+	if !blank(y) {
+		t.Error("a picture of one color is not blank")
+	}
+}
+
 // TestHalfMean checks that a picture at half the size has the mean of each 2 x 2 block.
 func TestHalfMean(t *testing.T) {
 	src := plane{pix: []byte{0, 100, 10, 10, 200, 100, 30, 50}, stride: 4, step: 1, w: 4, h: 2}

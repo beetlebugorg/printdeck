@@ -111,6 +111,8 @@ func cameraState(st camera.Status) (title, line string) {
 		return "Camera error", st.Err
 	case "on":
 		return st.Device.Name, st.Format.String()
+	case "nosignal":
+		return "No signal", "The picture is blank. Check the camera and its cable."
 	}
 	return st.Device.Name, "Starting the camera…"
 }
