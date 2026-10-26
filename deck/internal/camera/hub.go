@@ -59,8 +59,9 @@ const scanAge = 5 * time.Second
 
 // NewHub returns a hub with the settings s. Call Run to start it.
 func NewHub(s Settings) *Hub {
+	scan, capture := withTestCamera(listDevices, capture)
 	return &Hub{settings: s, wake: make(chan struct{}, 1), changed: make(chan struct{}),
-		capture: capture, scan: listDevices}
+		capture: capture, scan: scan}
 }
 
 // Settings returns the settings.

@@ -997,6 +997,7 @@ def desktop_page():
 <tr><td><code>PRINTDECK_ATTACH</code></td><td>A file with the first line of the output of a <code>printdeck app</code> that runs already. The window connects to that app and starts no app.</td></tr>
 <tr><td><code>PRINTDECK_FILM</code></td><td>With <code>-sim</code>: the 3D window shows the film of <code>desktop/film/</code>, and records it to this file when the file with <code>.go</code> added exists.</td></tr>
 <tr><td><code>PRINTDECK_CAMERA</code></td><td><code>1</code> opens the Camera window at the start. Ctrl+K opens and closes it.</td></tr>
+<tr><td><code>PRINTDECK_TEST_CAMERA</code></td><td>Any value: <code>printdeck app</code> finds a test camera that sends a moving test picture, 960 x 540 at 10 frames a second, also on a Mac. The Auto setting picks it. It is for tests of the camera views with no real camera.</td></tr>
 <tr><td><code>PRINTDECK_SHOT</code></td><td>A PNG file: the window writes a picture of the windows after <code>PRINTDECK_SHOT_SECONDS</code> (8), and ends. With <code>PRINTDECK_SHOT_FRAMES=N</code> and <code>-sim</code>, it first writes N pictures of the 3D window, 10 a second. An open Camera window goes to the file with <code>-camera</code> before <code>.png</code>.</td></tr>
 </table></div>
 <p>The deck UI in the window is drawn by the QML files of the Cura plugin (<code>slicer/cura-plugin/Printdeck/qml</code>), so the two stay the same.</p>
