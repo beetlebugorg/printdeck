@@ -1,30 +1,37 @@
 """Placeholder models of the cameras to buy, and placeholder brackets for them. Two Arducam B0561
 16 MP autofocus cameras: one on the arm of the C270 mount, one straight down over the middle of the
-bed. Neither vendor publishes a drawing or a STEP file, so every size in DIMS is a guess from typical
-boards of this kind. Measure each one with calipers when the cameras arrive and replace the value.
-DIMS also has the ELP-USB12MP01-L281 with a 6 mm M12 lens, for comparison only.
+bed. Arducam publishes no drawing of the B0561 that we have. The sizes in B0561 come from two
+product photos: a front view with two official sizes (36 mm and 44 mm), and a perspective view.
+Each value says where it comes from. Measure the camera with calipers when it arrives and replace
+the values. ELP has the ELP-USB12MP01-L281 board for comparison only (guesses, not placed).
 
-- On the arm (camera.py), in place of the C270: a link plate has a tongue on the hinge pin, where the
-  eyelet of the C270 is, and four bosses for the board. The connector and its cable go to the side
-  away from the post of the arm.
-- Over the bed: a plate on the top of the frame. The autofocus module goes down through a hole in
-  the plate, and its front is flush with the bottom face of the plate.
-  - TAZ: the plate spans the two top rails (2020, front and back), on their top faces. It is above
-    the X axis at the full print height (report()).
-  - Mini 2: the plate is on the top face of the top front rail and goes back past its back edge,
-    over the middle of the bed.
+The B0561 is a black metal case with a raised front plate, a short lens barrel at the middle of the
+face, and the autofocus block at the right of the barrel. A U bracket of sheet metal holds the case
+on two pivot screws at the middle of its sides. The base of the U has a round center boss with a
+hole for one screw (the thread is unknown). The JST B4B-ZR socket is on the back of the case, and the
+1 m cable plugs straight in from the back.
 
+Each placeholder bracket is a printed plate that the base of the U screws onto with one center
+screw. The pivot of the U sets the tilt.
+- On the arm (camera.py), in place of the C270: a link with a tongue on the hinge pin (where the
+  eyelet of the C270 is), held level by the hinge screw, and a level plate in front of the arm. The
+  camera hangs under the plate and tilts down on its pivot.
+- Over the bed: a plate on the top rails and a wall that stands up from it. The base of the U is on
+  the face of the wall, so the pivot is level, and the camera looks straight down at no tilt.
+  - TAZ: an arm on the top face of the top front rail, out to the wall over the middle of the bed.
+  - Mini 2: a plate on the top face of the top front rail, with the wall at its back edge.
 The brackets are placeholders for the layout and the views: they are not a final design, and there
 are no STL files of them.
 
-The B0561 has a 1 m cable from its JST B4B-ZR plug to a USB-A plug (Arducam). cable_route() is the
-route of each cable to the USB port of the Pi in the pod, along the route of the C270 cable.
+cable_route() is the route of each cable to the USB port of the Pi in the pod, along the route of the
+C270 cable.
 
-Camera coordinates (each camera): the origin is the middle of the front face of the board (the lens
-side), z out of the lens along the optical axis, y up in the picture, x = y cross z. lens_point() is
-the middle of the front of the lens: the views of live.py and camera_preview.py start there (the
+Camera coordinates: the origin is the middle of the front face of the case (under the front plate),
+z out of the lens along the optical axis, y up in the picture, x = y cross z. lens_point() is the
+middle of the front of the lens barrel: the views of live.py and camera_preview.py start there (the
 pinhole of camera_options.py). At 300 mm and more from the bed, the true optical center a few mm
-behind it changes the views very little.
+behind it changes the views very little. Bracket coordinates: the origin is the middle of the bottom
+face of the base, y from the base to the pivot, x along the pivot axis.
 
 Run: uv run --no-project --with build123d --with numpy --with scipy --with trimesh --with networkx
 --with shapely --with rtree --with pyrender --with PyOpenGL --with pillow python camera_models.py
@@ -42,61 +49,57 @@ import pod as P
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-# ---------------------------------------------------------------- the cameras (all values are guesses)
-# board: width (x), height (y), thickness. holes: spacing (square), diameter. lens: the M12 holder
-# (x, y, height over the board), and the lens (diameter, length, the length inside the holder).
-# module: the autofocus module (x, y, height over the board). connector: on the back of the board
-# (x, y, height behind the board) and its middle (x, y). plug: the space behind the connector for
-# the plug. cable: diameter and bend radius; the cable leaves the plug straight back and bends away
-# from the middle of the board, toward the nearest edge.
-DIMS = {
-    "elp": dict(
-        board=(38.0, 38.0, 1.6),          # guess: ELP lists a 38 x 38 mm board; 1.6 mm is a typical PCB
-        holes=(34.0, 2.2),                # guess: M2 holes at the corners; some ELP boards have them 32 mm apart
-        holder=(14.0, 14.0, 12.0),        # guess: a typical M12 lens holder
-        lens=(14.0, 17.0, 8.0),           # guess: a 6 mm M12 lens is 15 to 20 mm long; 8 mm in the holder thread
-        connector=(6.0, 10.0, 6.0, (15.5, 0.0)),    # guess: 4-pin 2.0 mm wire-to-board header at the middle of one side
-        plug=8.0,                         # guess: the plug and its strain relief
-        cable=(4.0, 15.0),                # guess: a round USB 2.0 cable
-    ),
-    "b0561": dict(
-        board=(32.0, 32.0, 1.6),          # guess: Arducam lists a 32 x 32 mm board
-        holes=(28.0, 2.2),                # guess: M2 holes at the corners
-        module=(10.0, 10.0, 6.0),         # guess: a typical autofocus module, 3.95 mm lens
-        connector=(3.5, 7.5, 4.6, (14.0, 0.0)),     # guess: JST B4B-ZR (1.5 mm pitch, top entry) at the middle of one side
-        plug=6.0,                         # guess: the ZHR-4 plug and its wires
-        cable=(3.0, 10.0),                # guess: the 4-wire cable of the plug
-        cable_length=1000.0,              # Arducam: the USB-A to JST B4B-ZR cable is 1 m
-    ),
-}
-CAMERA_COLORS = {"board": "#1E5C3A", "lens": "#202226", "connector": "#F2F2EE", "keepout": "#D9534F"}
-BRACKET_COLOR = "#8E6CC8"               # placeholder brackets: violet, so they read as not final
+# ---------------------------------------------------------------- the cameras
+# "official": a size on the product photo with dimensions. "front photo": measured on that photo,
+# scaled by the official 36 mm width (about 20.3 px/mm), about 0.5 mm. "perspective photo": estimated
+# from the other product photo, about 2 mm.
+B0561 = dict(
+    case=(36.0, 36.0),                # official: the width; the front face is square on the front photo
+    depth=12.0,                       # perspective photo: front face to back face, without the front plate
+    plate=(24.0, 24.0, 2.0),          # front photo: the raised plate, centered on the face; perspective photo: 2 mm proud
+    plate_holes=(3.0, 1.5),           # front photo: 4 small holes about 3 mm in from the corners; diameter a guess
+    barrel=(15.0, 3.0),               # front photo: 15 mm across, centered on the face; perspective photo: 3 mm past the plate
+    af=(4.5, 6.0, 4.0),               # front photo: the autofocus block right of the barrel, 4.5 wide, 6 tall, at the
+                                      # height of the lens; perspective photo: 4 mm past the plate
+    socket=(8.5, 4.0, (-6.0, -11.0)), # perspective photo: the JST B4B-ZR socket on the back face, width, height, middle
+                                      # (x, y in camera coordinates); the place is about 2 mm
+    plug=6.0,                         # guess: the ZHR-4 plug and its strain relief, straight back
+    cable=(3.0, 10.0),                # guess: the cable of the plug, diameter and bend radius
+    cable_length=1000.0,              # Arducam: the USB-A to JST B4B-ZR cable is 1 m
+    # The U bracket.
+    total=44.0,                       # official: the top of the case to the bottom of the base
+    sheet=1.4,                        # front photo: the legs, just outside the sides of the case
+    leg_gap=0.2,                      # front photo: the gap from the case side to the leg
+    leg_w=10.0,                       # perspective photo: the width of a leg along the depth of the case
+    screws=43.5,                      # front photo: the overall width over the pivot screw heads
+    pivot=(0.0, -6.0),                # front photo: the pivot axis is at the case mid-height (y); perspective
+                                      # photo: about the middle of the depth (z)
+    base_d=36.0,                      # perspective photo: the round base, about the width of the case
+    boss=(4.5, 2.0),                  # front photo: the center boss under the base, diameter; height a guess
+    base_hole=4.0,                    # guess: the hole of the base screw; the thread is unknown (1/4"-20, M5, or M6)
+)
+ELP = dict(board=(38.0, 38.0, 1.6), holes=(34.0, 2.2), holder=(14.0, 14.0, 12.0), lens=(14.0, 17.0, 8.0))   # guesses
 
-# The camera of each position (kind in DIMS).
-MOUNT_CAMERA = "b0561"
-TOP_CAMERA = "b0561"
+CAMERA_COLORS = {"case": "#1A1B1E", "lens": "#30343A", "bracket": "#3A3C40", "connector": "#F2F2EE",
+                 "keepout": "#D9534F"}
+BRACKET_COLOR = "#8E6CC8"               # placeholder printed brackets: violet, so they read as not final
 
-# The link on the C270 arm (hinge coordinates of camera.py: the pin along x, z forward).
+# The link on the C270 arm (hinge coordinates of camera.py: the pin along x, z forward, at no tilt).
 LINK_TONGUE = (C.EYELET[0], C.EYELET[1], C.EYELET[2])   # the width, height, and depth behind the pin of the C270 eyelet
-LINK_MARGIN = 2.0                       # the plate is this much larger than the board on each side
-LINK_T = 3.0
-LINK_PLATE_Z = C.LUG_TOP_Z + 1.0        # the back face of the plate, 1 mm in front of the lugs
-STANDOFF = (5.0, 3.0)                   # the bosses under the board: diameter, height
-# The turn of the board about its lens axis on each printer: the connector and the cable go to the
-# side away from the post of the arm. On the Mini 2 the picture is upside down: the software turns it
-# 180 degrees.
-MOUNT_ROLL = {"taz": 0.0, "mini2": 180.0}
-HINGE_HOLE = C.SCREW_HOLE
+LINK_PLATE = (44.0, 4.0)                # the plate: width (x) and thickness (y); it goes from the lugs to past the base
+LINK_Z = C.LUG_TOP_Z + 1.0              # the back edge of the plate, 1 mm in front of the lugs
 
-# The top plates. TAZ: the two top rails are 2020 at x -84 to -64 and 66 to 86, y 466 to 486
+# The top brackets. TAZ: the two top rails are 2020 at x -84 to -64 and 66 to 86, y 466 to 486
 # (measured in the model, at the middle of the bed). Mini 2: the top front rail has its top face at
-# z 373 (measured in the model).
+# z 373 and goes back to about y -180 (measured in the model).
 TAZ_RAILS = dict(top=486.0, x=((-84.0, -64.0), (66.0, 86.0)))
 MINI_RAIL_TOP = 373.0
-TOP_PLATE_T = {"taz": 4.0, "mini2": 3.0}
-TOP_PLATE_W = 40.0                      # across the bed (along the rails)
-# The module goes through the plate. Its front is flush with the bottom face: module height = plate +
-# standoff, so the standoff is the rest.
+BRACKET_T = 4.0                         # the printed plates and walls
+BRACKET_W = 40.0                        # across the bed
+# The lens over the bed. The base of the U (36 mm round, on the wall) is 18 mm under the pivot, and the
+# pivot is 11 mm over the lens. TAZ: the X axis goes up to about 476 at the full print height, so the
+# lens is at 490 and the base 7 mm over it. Mini 2: the base must clear the top of the rail.
+TOP_LENS_UP = {"taz": 490.0, "mini2": 381.0}
 # The full print height (published LulzBot sizes, not checked on the printers) and the moving parts
 # that go up with the tool head.
 PRINT_Z = {"taz": 285.0, "mini2": 180.0}
@@ -108,152 +111,204 @@ def box(x0, x1, y0, y1, z0, z1):
     return C.box(x0, x1, y0, y1, z0, z1)
 
 
-def lens_point(kind):
-    """The middle of the front of the lens, in camera coordinates."""
-    d = DIMS[kind]
-    if kind == "elp":
-        hw, hh, hz = d["holder"]
-        ld, ll, lin = d["lens"]
-        return (0.0, 0.0, hz - lin + ll)
-    return (0.0, 0.0, d["module"][2])
+def unit(v):
+    return C.unit(v)
 
 
-def model(kind):
-    """The camera in camera coordinates: {part: shape}. The keepout is the plug and the bend of the
-    cable: keep the bracket out of it."""
-    d = DIMS[kind]
-    bw, bh, bt = d["board"]
-    sp, hd = d["holes"]
-    board = box(-bw / 2, bw / 2, -bh / 2, bh / 2, -bt, 0.0)
+# ---------------------------------------------------------------- the B0561 and its U bracket
+def lens_point():
+    """The middle of the front of the lens barrel, in camera coordinates."""
+    return (0.0, 0.0, B0561["plate"][2] + B0561["barrel"][1])
+
+
+def pivot_point():
+    """The middle of the pivot axis, in camera coordinates."""
+    return (0.0, *B0561["pivot"])
+
+
+def pivot_height():
+    """The pivot over the bottom face of the base (bracket y)."""
+    return B0561["total"] - B0561["case"][1] / 2 + B0561["pivot"][0]
+
+
+def case_model():
+    """The case, the lens, the socket, and the keepout of the plug and the cable bend, in camera
+    coordinates: {part: shape}."""
+    d = B0561
+    w, h = d["case"]
+    dep = d["depth"]
+    pw, ph, pt = d["plate"]
+    case = box(-w / 2, w / 2, -h / 2, h / 2, -dep, 0.0) + box(-pw / 2, pw / 2, -ph / 2, ph / 2, 0.0, pt)
+    hi, hd = d["plate_holes"]
     for sx in (-1, 1):
         for sy in (-1, 1):
-            board = board - Pos(sx * sp / 2, sy * sp / 2, -bt / 2) * Cylinder(hd / 2, bt + 1.0)
-    if kind == "elp":
-        hw, hh, hz = d["holder"]
-        ld, ll, lin = d["lens"]
-        lens = box(-hw / 2, hw / 2, -hh / 2, hh / 2, 0.0, hz) + Pos(0, 0, hz - lin + ll / 2) * Cylinder(ld / 2, ll)
-    else:
-        mx, my, mz = d["module"]
-        lens = box(-mx / 2, mx / 2, -my / 2, my / 2, 0.0, mz)
-    cw, ch, cz, (cx, cy) = d["connector"]
-    con = box(cx - cw / 2, cx + cw / 2, cy - ch / 2, cy + ch / 2, -bt - cz, -bt)
+            case = case - Pos(sx * (pw / 2 - hi), sy * (ph / 2 - hi), pt) * Cylinder(hd / 2, 1.0)
+    bd, bl = d["barrel"]
+    lens = Pos(0, 0, pt + bl / 2) * Cylinder(bd / 2, bl)
+    aw, ah, al = d["af"]
+    # The block is right of the barrel as you look at the camera: camera -x.
+    lens = lens + box(-bd / 2 - aw + 0.5, -bd / 2 + 0.5, -ah / 2, ah / 2, pt, pt + al)
+    sw, sh, (sx, sy) = d["socket"]
+    sock = box(sx - sw / 2, sx + sw / 2, sy - sh / 2, sy + sh / 2, -dep - 0.3, -dep + 0.2)
     cd, R = d["cable"]
-    z0 = -bt - cz - d["plug"]
-    keep = box(cx - cw / 2, cx + cw / 2, cy - ch / 2, cy + ch / 2, z0, -bt - cz)
-    # The bend: the cable goes straight back, then out toward the nearest edge. The keepout is the box
-    # of the bend.
-    if abs(cx) > abs(cy):
-        sx = math.copysign(1.0, cx)
-        xa, xb = sorted((cx - sx * cd, cx + sx * (R + cd)))
-        keep = keep + box(xa, xb, cy - cd, cy + cd, z0 - R - cd, z0)
-    else:
-        sy = math.copysign(1.0, cy)
-        ya, yb = sorted((cy - sy * cd, cy + sy * (R + cd)))
-        keep = keep + box(cx - cd, cx + cd, ya, yb, z0 - R - cd, z0)
-    return {"board": board, "lens": lens, "connector": con, "keepout": keep}
+    z0 = -dep - d["plug"]
+    keep = box(sx - sw / 2, sx + sw / 2, sy - sh / 2, sy + sh / 2, z0, -dep - 0.3)
+    # The bend: the cable leaves the plug straight back, then goes down (camera -y), toward the near edge.
+    keep = keep + box(sx - cd, sx + cd, sy - R - cd, sy + cd, z0 - R - cd, z0)
+    return {"case": case, "lens": lens, "connector": sock, "keepout": keep}
 
 
-def hole_points(kind):
-    sp = DIMS[kind]["holes"][0] / 2
-    return [(sx * sp, sy * sp) for sx in (-1, 1) for sy in (-1, 1)]
+def bracket_model():
+    """The U bracket and the pivot screws, in bracket coordinates."""
+    d = B0561
+    t, g, lw = d["sheet"], d["leg_gap"], d["leg_w"]
+    yp = pivot_height()
+    xi = d["case"][0] / 2 + g
+    xo = xi + t
+    # The round base, the bottom of the U on it, and the two legs up to the pivot.
+    s = Pos(0, t / 2, 0) * (Location(Plane.XZ) * Cylinder(d["base_d"] / 2, t))
+    s = s + box(-xo, xo, t, 2 * t, -lw / 2, lw / 2)
+    for sgn in (-1, 1):
+        x0, x1 = sorted((sgn * xi, sgn * xo))
+        s = s + box(x0, x1, t, yp + lw / 2, -lw / 2, lw / 2)
+    bd, bh = d["boss"]
+    s = s + Pos(0, -bh / 2, 0) * (Location(Plane.XZ) * Cylinder(bd / 2, bh))
+    s = s - Location(Plane.XZ) * Cylinder(d["base_hole"] / 2, 20.0)
+    head = (d["screws"] / 2 - xo)
+    screws = None
+    for sgn in (-1, 1):
+        c = Pos(sgn * (xo + head / 2), yp, 0) * (Location(Plane.YZ) * Cylinder(2.5, head))
+        screws = c if screws is None else screws + c
+    return s, screws
+
+
+def placed(lens, f, u, n):
+    """The case and the bracket for a camera with its lens at lens (printer coordinates), looking
+    along f, with u up in the picture, and the base of the U toward -n from the pivot (n: from the base
+    to the pivot). Returns (the camera Location, the bracket Location)."""
+    import numpy as np
+    f, u, n = unit(f), unit(u), unit(n)
+    x = np.cross(u, f)
+    R = np.column_stack([x, u, f])
+    origin = np.asarray(lens, float) - R @ np.array(lens_point())
+    cam = Location(Plane(origin=tuple(origin), x_dir=tuple(x), z_dir=tuple(f)))
+    pivot = origin + R @ np.array(pivot_point())
+    bz = np.cross(x, n)
+    br = Location(Plane(origin=tuple(pivot - pivot_height() * n), x_dir=tuple(x), z_dir=tuple(bz)))
+    return cam, br
+
+
+def camera_parts(cam, br, tag):
+    """[(part, shape, color)] of a placed camera."""
+    m = case_model()
+    s, screws = bracket_model()
+    out = [(f"camera_{tag}_{k}", cam * v, CAMERA_COLORS[k]) for k, v in m.items()]
+    out += [(f"camera_{tag}_bracket", br * s, CAMERA_COLORS["bracket"]),
+            (f"camera_{tag}_pivot_screws", br * screws, P.SCREW_COLOR)]
+    return out
+
+
+def base_point(br):
+    import numpy as np
+    return np.array(tuple(br.position))
 
 
 # ---------------------------------------------------------------- the camera on the C270 arm
-def mount_hinge(name):
-    """The camera frame on the arm in hinge coordinates: the board on the bosses of the link."""
-    bt = DIMS[MOUNT_CAMERA]["board"][2]
-    return Pos(0, 0, LINK_PLATE_Z + LINK_T + STANDOFF[1] + bt) * Rot(0, 0, MOUNT_ROLL[name])
+def arm_frame(name, pitch=None):
+    """(camera Location, bracket Location) of the camera on the arm at the tilt pitch (the set tilt
+    when None): hinge coordinates at no tilt, the base under the link plate."""
+    import numpy as np
+    H = C.hinge_loc(name)
+    p = math.radians(C.PLACES[name]["pitch"] if pitch is None else pitch)
+    pivot = np.array([0.0, -pivot_height(), link_base_z()])
+    f = np.array([0.0, -math.sin(p), math.cos(p)])
+    u = np.array([0.0, math.cos(p), math.sin(p)])
+    lc = np.array(lens_point()) - np.array(pivot_point())
+    lens_h = pivot + lc[0] * np.cross(u, f) + lc[1] * u + lc[2] * f
+    # Hinge coordinates to printer coordinates.
+    pt = lambda v: np.array(tuple((H * Pos(*v)).position))
+    d = lambda v: pt(v) - pt((0.0, 0.0, 0.0))
+    return placed(pt(lens_h), d(f), d(u), d((0.0, -1.0, 0.0)))
 
 
-def link_hinge(name):
-    """The link plate in hinge coordinates: the tongue between the lugs of the arm, with the hole of
-    the M3 hinge screw, and the plate with four bosses for the board and a window for the plug."""
+def link_base_z():
+    """The middle of the base under the link plate (hinge z)."""
+    return LINK_Z + B0561["base_d"] / 2 + 2.0
+
+
+def link_hinge():
+    """The link in hinge coordinates: the tongue between the lugs of the arm, with the hole of the M3
+    hinge screw, and the level plate in front of the lugs with the hole of the base screw. The base of
+    the U is under the plate (hinge y = 0)."""
     tw, th, tb = LINK_TONGUE
-    bw, bh, _ = DIMS[MOUNT_CAMERA]["board"]
-    px, py, pt = bw + 2 * LINK_MARGIN, bh + 2 * LINK_MARGIN, LINK_T
-    z0 = LINK_PLATE_Z
-    s = box(-tw / 2, tw / 2, -th / 2, th / 2, -tb, z0 + 0.5)
-    s = s + box(-px / 2, px / 2, -py / 2, py / 2, z0, z0 + pt)
-    for hx, hy in hole_points(MOUNT_CAMERA):
-        s = s + Pos(hx, hy, z0 + pt + STANDOFF[1] / 2) * Cylinder(STANDOFF[0] / 2, STANDOFF[1])
-        s = s - Pos(hx, hy, z0 + pt) * Cylinder(0.8, 2 * (pt + STANDOFF[1]))      # M2 self-tapping pilot
-    s = s - Location(Plane.YZ) * Cylinder(HINGE_HOLE / 2, tw + 2)
-    m = model(MOUNT_CAMERA)
-    return s - padded_box(mount_hinge(name) * (m["connector"] + m["keepout"]), 1.0)
-
-
-def padded_box(sh, pad):
-    """The bounding box of sh, pad larger on each side, as a solid."""
-    b = sh.bounding_box()
-    return box(b.min.X - pad, b.max.X + pad, b.min.Y - pad, b.max.Y + pad, b.min.Z - pad, b.max.Z + pad)
+    pw, pt = LINK_PLATE
+    zc = link_base_z()
+    z1 = zc + B0561["base_d"] / 2 + 2.0
+    s = box(-tw / 2, tw / 2, -th / 2, th / 2, -tb, LINK_Z + 0.5)
+    s = s + box(-pw / 2, pw / 2, 0.0, pt, LINK_Z, z1)
+    s = s + box(-tw / 2, tw / 2, -th / 2, pt, LINK_Z - 0.5, LINK_Z + 4.0)
+    s = s - Location(Plane.YZ) * Cylinder(C.SCREW_HOLE / 2, tw + 2)
+    s = s - Pos(0, pt / 2, zc) * (Location(Plane.XZ) * Cylinder(B0561["base_hole"] / 2 + 0.2, pt + 2))
+    return s
 
 
 def arm_mount(name, pitch=None):
-    """The camera on the arm and its link at the tilt pitch (the set tilt when None), in printer
-    coordinates: [(part, shape, color)]."""
-    L = C.cam_loc(name, pitch)
-    E = L * mount_hinge(name)
-    return ([("camera_link", L * link_hinge(name), BRACKET_COLOR)] +
-            [(f"camera_mount_{k}", E * s, CAMERA_COLORS[k]) for k, s in model(MOUNT_CAMERA).items()])
-
-
-def mount_lens(name):
-    import numpy as np
-    return np.array(tuple((C.cam_loc(name) * mount_hinge(name) * Pos(*lens_point(MOUNT_CAMERA))).position))
+    """[(part, shape, color)] of the camera on the arm and the link, in printer coordinates."""
+    cam, br = arm_frame(name, pitch)
+    return [("camera_link", C.hinge_loc(name) * link_hinge(), BRACKET_COLOR)] + camera_parts(cam, br, "mount")
 
 
 # ---------------------------------------------------------------- the camera over the bed
 def top_frame(name):
-    """(the camera frame over the bed as a Location in printer coordinates, the lens point)."""
+    """(camera Location, bracket Location, the lens point) of the camera over the middle of the bed:
+    straight down, the back of the printer up in the picture, the base of the U on a wall in front."""
     import numpy as np
     up, back, _ = C.axes(name)
     c = np.array(C.BEDS[name][0], float)
-    bottom = TAZ_RAILS["top"] if name == "taz" else MINI_RAIL_TOP
-    # The bed center, up to the bottom face of the plate. The frame axes: z down, y to the back.
-    lens = c + (bottom - float(np.dot(c, up))) * up
-    f = -up
-    x = np.cross(back, f)
-    origin = lens - f * lens_point(TOP_CAMERA)[2]
-    return Location(Plane(origin=tuple(origin), x_dir=tuple(x), z_dir=tuple(f))), lens
+    lens = c + (TOP_LENS_UP[name] - float(np.dot(c, up))) * up
+    cam, br = placed(lens, -up, back, back)
+    return cam, br, lens
 
 
-def top_plate(name):
-    """The plate on the top of the frame, in printer coordinates. In camera coordinates (z down) the
-    bottom face of the plate is at the front of the module (the lens), and bosses hold the board over
-    the plate."""
+def top_bracket(name):
+    """The printed bracket over the bed, in printer coordinates: the wall that the base screws onto,
+    and the plate on the top front rail."""
     import numpy as np
-    L, lens = top_frame(name)
-    _, back, _ = C.axes(name)
-    t = TOP_PLATE_T[name]
-    mz = DIMS[TOP_CAMERA]["module"][2]
-    standoff = mz - t
-    to_y = lambda p: float(np.dot(np.asarray(p, float) - lens, back))      # printer point to camera y
+    up, back, right = C.axes(name)
+    cam, br, lens = top_frame(name)
+    o = base_point(br)                         # the middle of the bottom face of the base, on the wall
+    t, w = BRACKET_T, BRACKET_W
     if name == "taz":
-        # From the back rail to the front rail, two M3 screws into a roll-in T-nut in each rail top.
-        ys = [to_y((x, 0, 0)) for x in (TAZ_RAILS["x"][0][0], TAZ_RAILS["x"][1][1])]
-        feet = [to_y(((a + b) / 2, 0, 0)) for a, b in TAZ_RAILS["x"]]
-    else:
-        # From y -250 on the top of the rail to y -150, past its back edge; two M3 screws into the rail.
-        ys = [to_y((0, -250.0, 0)), to_y((0, -150.0, 0))]
-        feet = [to_y((0, -235.0, 0))]
-    ya, yb = sorted(ys)
-    zt, zb = mz - t, mz
-    s = box(-TOP_PLATE_W / 2, TOP_PLATE_W / 2, ya, yb, zt, zb)
-    for hx, hy in hole_points(TOP_CAMERA):
-        s = s + Pos(hx, hy, zt - standoff / 2) * Cylinder(STANDOFF[0] / 2, standoff)
-        s = s - Pos(hx, hy, zt) * Cylinder(0.8, 2 * (t + standoff))      # M2 self-tapping pilot
-    mx, my, _ = DIMS[TOP_CAMERA]["module"]
-    s = s - box(-mx / 2 - 1.0, mx / 2 + 1.0, -my / 2 - 1.0, my / 2 + 1.0, zt - 1.0, zb + 1.0)
-    for fy in feet:
-        for fx in (-12.0, 12.0):
-            s = s - Pos(fx, fy, (zt + zb) / 2) * Cylinder(1.7, t + 2)
-    return L * s
+        # x is to the front: the wall from x0 (the base) to x0 + t, from the rail top up; the arm on the
+        # top face of the front rail out to the wall.
+        x0, zc = float(o[0]), float(o[2])
+        top = float(o[1]) + B0561["base_d"] / 2 + 4.0
+        s = box(x0, x0 + t, TAZ_RAILS["top"], top, zc - w / 2, zc + w / 2)
+        s = s + box(x0, TAZ_RAILS["x"][1][1], TAZ_RAILS["top"], TAZ_RAILS["top"] + t, zc - w / 2, zc + w / 2)
+        s = s - Pos(x0 + t / 2, float(o[1]), zc) * (Location(Plane.YZ) * Cylinder(B0561["base_hole"] / 2 + 0.2, t + 2))
+        for z in (zc - 12.0, zc + 12.0):         # M3 into a roll-in T-nut in the top slot of the front rail
+            s = s - Pos(76.0, TAZ_RAILS["top"] + t / 2, z) * (Location(Plane.XZ) * Cylinder(1.7, t + 2))
+        return s
+    # Mini 2: y is to the back. The wall from y0 - t to y0 (the base), on the plate on the rail top.
+    y0, xc = float(o[1]), float(o[0])
+    top = float(o[2]) + B0561["base_d"] / 2 + 4.0
+    s = box(xc - w / 2, xc + w / 2, y0 - t, y0, MINI_RAIL_TOP, top)
+    s = s + box(xc - w / 2, xc + w / 2, -250.0, y0, MINI_RAIL_TOP, MINI_RAIL_TOP + t)
+    s = s - Pos(xc, y0 - t / 2, float(o[2])) * (Location(Plane.XZ) * Cylinder(B0561["base_hole"] / 2 + 0.2, t + 2))
+    for x in (xc - 12.0, xc + 12.0):             # M3 screws into the rail top
+        s = s - Pos(x, -235.0, MINI_RAIL_TOP + t / 2) * Cylinder(1.7, t + 2)
+    return s
 
 
 def top_mount(name):
-    L, _ = top_frame(name)
-    return ([("camera_top_plate", top_plate(name), BRACKET_COLOR)] +
-            [(f"camera_top_{k}", L * s, CAMERA_COLORS[k]) for k, s in model(TOP_CAMERA).items()])
+    cam, br, _ = top_frame(name)
+    return [("camera_top_plate", top_bracket(name), BRACKET_COLOR)] + camera_parts(cam, br, "top")
+
+
+def mount_lens(name):
+    import numpy as np
+    cam, _ = arm_frame(name)
+    return np.array(tuple((cam * Pos(*lens_point())).position))
 
 
 # ---------------------------------------------------------------- the cables
@@ -263,35 +318,37 @@ def cable_route(name, where):
     (camera.cable_points) and its clips."""
     import numpy as np
     import clips as K
-    kind = MOUNT_CAMERA if where == "mount" else TOP_CAMERA
-    d = DIMS[kind]
-    bt = d["board"][2]
-    _, _, cz, (cx, cy) = d["connector"]
+    d = B0561
+    dep = d["depth"]
+    _, _, (sx, sy) = d["socket"]
     cd, R = d["cable"]
-    z0 = -bt - cz - d["plug"]
-    sx = math.copysign(1.0, cx)
-    L = C.cam_loc(name) * mount_hinge(name) if where == "mount" else top_frame(name)[0]
-    p = lambda x, y, z: np.array(tuple((L * Pos(x, y, z)).position))
-    start = [p(cx, cy, -bt - cz), p(cx, cy, z0), p(cx + sx * R, cy, z0 - R)]
+    z0 = -dep - d["plug"]
+    cam = arm_frame(name)[0] if where == "mount" else top_frame(name)[0]
+    p = lambda x, y, z: np.array(tuple((cam * Pos(x, y, z)).position))
+    start = [p(sx, sy, -dep), p(sx, sy, z0), p(sx, sy - R, z0 - R)]
     c270 = C.cable_points(name)
     if where == "mount":
         return start + c270[2:]
-    if name == "taz":
-        # Up over the plate, to the front face of the top front rail, then along the C270 route.
-        f = C.TAZ_UPRIGHT["front"] + K.TAPE_CABLE_H
-        b = np.array(C.BEDS[name][0])
-        return start + [np.array([f, TAZ_RAILS["top"] + 8.0, b[2]]), np.array([f, 476.0, b[2] + 20.0])] + c270[-6:]
-    # Over the plate to the front edge of the top of the frame, then along the C270 route.
-    zt = C.MINI_TOP_Z + K.TAPE_CABLE_H
     b = np.array(C.BEDS[name][0])
-    return start + [np.array([b[0], -244.0, MINI_RAIL_TOP + TOP_PLATE_T[name] + 6.0]), np.array([b[0] - 30.0, -244.0, zt])] + \
-        c270[-4:]
+    if name == "taz":
+        # Up and forward over the wall, down to the front face of the top front rail, then along the
+        # C270 route.
+        f = C.TAZ_UPRIGHT["front"] + K.TAPE_CABLE_H
+        o = base_point(top_frame(name)[1])
+        top = float(o[1]) + B0561["base_d"] / 2 + 10.0
+        return start + [np.array([float(o[0]) - 10.0, top, b[2]]), np.array([f, top, b[2]]),
+                        np.array([f, 476.0, b[2] + 30.0])] + c270[-6:]
+    # Up and forward over the wall to the front edge of the top of the frame, then along the C270 route.
+    zt = C.MINI_TOP_Z + K.TAPE_CABLE_H
+    o = base_point(top_frame(name)[1])
+    top = float(o[2]) + B0561["base_d"] / 2 + 10.0
+    return start + [np.array([b[0], float(o[1]) + 10.0, top]), np.array([b[0], -244.0, top]),
+                    np.array([b[0] - 30.0, -244.0, zt])] + c270[-4:]
 
 
 def cable(name, where):
     """(the mesh of the cable, its length in mm)."""
-    kind = MOUNT_CAMERA if where == "mount" else TOP_CAMERA
-    m, path = P.cable_mesh(cable_route(name, where), DIMS[kind]["cable"][0])
+    m, path = P.cable_mesh(cable_route(name, where), B0561["cable"][0])
     return m, P.length(path)
 
 
@@ -307,7 +364,7 @@ def camera_views(name, T):
     up = np.cross(C.unit(np.cross(f, C.axes(name)[0])), f)
     eye = mount_lens(name)
     mount = {"eye": mv(eye), "focal": mv(eye + 300.0 * f), "up": rot(up), "fov": 2 * C.half_fov()[1]}
-    L, lens = top_frame(name)
+    _, _, lens = top_frame(name)
     _, back, _ = C.axes(name)
     down = -np.asarray(C.axes(name)[0], float)
     top = {"eye": mv(lens), "focal": mv(lens + 300.0 * down), "up": rot(back), "fov": 2 * C.half_fov()[1]}
@@ -337,24 +394,44 @@ def meshes(name, tmp, cam=None):
 
 # ---------------------------------------------------------------- the checks
 def check_arm(name):
-    """The camera on the arm, its keepout, and the link against the arm, the clamp, and the hinge screw
-    over the tilt range. Returns a list of problems."""
+    """The case and its keepout on the arm over the tilt range, against the U bracket, the link, the
+    arm, the clamp, and the hinge screw. Returns a list of problems."""
     bad = []
-    arm, clamp, screw = C.arm(name), C.CLAMPS[name](), C.hinge_screw(name)
+    fixed = [("link", C.hinge_loc(name) * link_hinge()), ("arm", C.arm(name)), ("clamp", C.CLAMPS[name]()),
+             ("hinge screw", C.hinge_screw(name))]
+    _, br = arm_frame(name)
+    u, _ = bracket_model()
+    for k, sh in fixed[1:]:
+        v = (sh & (br * u)).volume
+        if v > 0.01:
+            bad.append(f"the {k} and the U bracket: {v:.2f} mm3")
+    fixed.append(("U bracket", br * u))
     for p in C.pitches():
-        for k, sh, _ in arm_mount(name, p):
-            for n, other in (("arm", arm), ("clamp", clamp), ("hinge screw", screw)):
-                if k == "camera_link" and n == "hinge screw":
-                    continue
-                v = (sh & other).volume
+        cam, _ = arm_frame(name, p)
+        for k, sh in case_model().items():
+            for n2, other in fixed:
+                v = ((cam * sh) & other).volume
                 if v > 0.01:
-                    bad.append(f"{k} at {p:.0f} deg and the {n}: {v:.2f} mm3")
+                    bad.append(f"the {k} at {p:.0f} deg and the {n2}: {v:.2f} mm3")
+    return bad
+
+
+def check_top(name):
+    """The case and its keepout over the bed against the U bracket and the printed bracket."""
+    bad = []
+    cam, br, _ = top_frame(name)
+    s, _ = bracket_model()
+    for k, sh in case_model().items():
+        for n2, other in (("U bracket", br * s), ("printed bracket", top_bracket(name))):
+            v = ((cam * sh) & other).volume
+            if v > 0.01:
+                bad.append(f"the {k} and the {n2}: {v:.2f} mm3")
     return bad
 
 
 def gantry_gap(name, solids):
     """The smallest vertical gap from the top of the moving parts at the full print height to the
-    shapes, where they are over each other (mm)."""
+    shapes, where they are over each other (mm), and the rise of the tool head."""
     import glob
     import numpy as np
     import trimesh
@@ -381,8 +458,7 @@ def gantry_gap(name, solids):
         f = os.path.join(tmp, f"s{i}.stl")
         export_stl(s, f, tolerance=0.1, angular_tolerance=0.3)
         m = trimesh.load(f, force="mesh")
-        # Rays down from points on the shape: the first hit on the gantry.
-        pts = m.sample(4000)
+        pts = m.sample(6000)
         locs, idx, _ = g.ray.intersects_location(pts, np.tile(-up, (len(pts), 1)), multiple_hits=False)
         if len(locs):
             best = min(best, float(((pts[idx] - locs) @ up).min()))
@@ -390,17 +466,20 @@ def gantry_gap(name, solids):
 
 
 def report():
+    import tempfile
     import numpy as np
+    import trimesh
+    from build123d import export_stl
     for name in ("taz", "mini2"):
         bad = check_arm(name)
         print(f"{name}: camera on the arm: " + ("; ".join(bad) if bad else "no touch over the tilt range"))
+        bad = check_top(name)
+        print(f"{name}: camera over the bed: " + ("; ".join(bad) if bad else "no touch with its brackets"))
         printer = P.setups()[name]["printer"]()
         printer = printer + C.stock_lcd(name, printer)
-        import trimesh
-        import tempfile
-        from build123d import export_stl
         tmp = tempfile.mkdtemp()
-        for label, items in (("camera on the arm and link", arm_mount(name)), ("camera over the bed", top_mount(name)[1:])):
+        for label, items in (("camera on the arm, its bracket, and the link", arm_mount(name)),
+                             ("camera over the bed and its U bracket", top_mount(name)[1:])):
             ms = []
             for k, sh, _ in items:
                 f = os.path.join(tmp, f"{k}.stl")
@@ -409,18 +488,18 @@ def report():
             gap = P.clearance(ms, P.setups()[name]["world"], printer, n=8000)
             print(f"{name}: {label}: {gap:.1f} mm from the printer")
         gap, rise = gantry_gap(name, [sh for _, sh, _ in top_mount(name)])
-        L, lens = top_frame(name)
+        _, _, lens = top_frame(name)
         h = float(np.dot(lens - np.array(C.BEDS[name][0]), C.axes(name)[0]))
         print(f"{name}: top lens {h:.1f} mm over the bed; at the full print height ({PRINT_Z[name]:.0f} mm, "
-              f"the tool head {rise:.0f} mm up from the model) the moving parts are {gap:.1f} mm under the top plate "
-              f"and the camera")
+              f"the tool head {rise:.0f} mm up from the model) the moving parts are {gap:.1f} mm under the camera "
+              f"and its brackets")
         print(f"{name}: arm lens at {np.round(mount_lens(name), 1).tolist()} (printer coordinates), "
               f"{np.linalg.norm(mount_lens(name) - C.lens_point(name)):.1f} mm from the C270 lens")
-        for where, kind in (("mount", MOUNT_CAMERA), ("top", TOP_CAMERA)):
+        for where in ("mount", "top"):
             _, n = cable(name, where)
-            have = DIMS[kind].get("cable_length")
-            print(f"{name}: {where} camera cable route {n:.0f} mm to the Pi" +
-                  (f" (the cable is {have:.0f} mm: {'long enough' if have >= n else f'{n - have:.0f} mm short'})" if have else ""))
+            have = B0561["cable_length"]
+            print(f"{name}: {where} camera cable route {n:.0f} mm to the Pi (the cable is {have:.0f} mm: "
+                  f"{'long enough' if have >= n else f'{n - have:.0f} mm short'})")
 
 
 if __name__ == "__main__":
