@@ -393,6 +393,14 @@ def cable_route(name, where):
     p = lambda x, y, z: np.array(tuple((cam * Pos(x, y, z)).position))
     start = [p(sx, sy, -dep), p(sx, sy, z0), p(sx, sy - R, z0 - R)]
     c270 = [np.asarray(q, float) for q in C.cable_points(name)]
+    if where == "mount":
+        # From the camera under the link plate: out past the side of the plate (hinge x -30) and up in
+        # front of the lugs.
+        H = C.hinge_loc(name)
+        h = lambda x, y, z: np.array(tuple((H * Pos(x, y, z)).position))
+        start = start[:2] + [h(-30.0, -8.0, 30.0), h(-30.0, 25.0, 2.0)]
+        # Then over the link plate (hinge y 25) straight to the frame, past the C270 loop and post.
+        c270 = c270[:2] + c270[6:]
     b = np.array(C.BEDS[name][0])
     if name == "taz":
         # The clips are on the front faces of the top front rail and the front left upright. The C270
@@ -438,6 +446,39 @@ def cable_route(name, where):
         flags = [False] * (len(start) + len(mid)) + [True] * len(join) + [False] * len(tail)
     # The cable over the bed comes onto the line of clips from the back: it is in the back lane.
     return side_by_side(route, flags, n, SIDE if where == "mount" else -SIDE)
+
+
+# Dark red: the cable of the camera on the arm. Dark blue: the cable of the camera over the bed.
+CABLE_COLORS = {"camera_cable": "#8B2A2A", "camera_top_cable": "#2B4C7E"}
+
+
+def clip_points(name):
+    """The cable centers in the two-cable clips of camera.cable_clips: both lanes of each clip."""
+    import numpy as np
+    import clips as K
+    if name == "taz":
+        f = C.TAZ_UPRIGHT["front"] + K.TAPE_CABLE_H
+        out = [(f, 476.0 + s * SIDE, z) for z in (-560.0, -400.0, -240.0) for s in (-1, 1)]
+        out += [(f, 380.0, C.S_RAIL_SLOT_Z + s * SIDE) for s in (-1, 1)]
+    else:
+        zt = C.MINI_TOP_Z + K.TAPE_CABLE_H
+        out = [(x, -244.0 + s * SIDE, zt) for x in (-50.0, -165.0, -280.0) for s in (-1, 1)]
+    return [np.array(p) for p in out]
+
+
+def cable_spec(name, where):
+    """The spec of the camera cable for cable_physics.py (printer coordinates): the drawn route from
+    the end of the JST plug, the direction out of the plug, the clips, and the direction into the
+    USB-A plug at the Pi."""
+    import numpy as np
+    import cable_physics as CP
+    route = cable_route(name, where)[1:]
+    cam = arm_frame(name)[0] if where == "mount" else top_frame(name)[0]
+    back = np.array(tuple((cam * Pos(0, 0, -1)).position)) - np.array(tuple(cam.position))
+    T = P.matrix(C.pod_loc(name))
+    into = -(T[:3, :3] @ np.array([0.0, 1.0, 0.0]))
+    n = "camera_cable" if where == "mount" else "camera_top_cable"
+    return CP.make_spec(n, route, B0561["cable"][0], clip_points(name), start_dir=back, end_dir=into)
 
 
 def cable(name, where):
@@ -506,9 +547,6 @@ def meshes(name, tmp, cam=None):
         p = os.path.join(tmp, f"{name}_{k}.stl")
         export_stl(sh, p, tolerance=0.03, angular_tolerance=0.1)
         out[k] = (trimesh.load(p, force="mesh"), c)
-    # Dark red: the cable of the camera on the arm. Dark blue: the cable of the camera over the bed.
-    out["camera_cable"] = (cable(name, "mount")[0], "#8B2A2A")
-    out["camera_top_cable"] = (cable(name, "top")[0], "#2B4C7E")
     for where, k in (("mount", "camera_plug"), ("top", "camera_top_plug")):
         p = os.path.join(tmp, f"{name}_{k}.stl")
         export_stl(plug_printer(name, where)[0], p, tolerance=0.05, angular_tolerance=0.2)

@@ -5,7 +5,7 @@ of it, 0.3 of the print area from the middle (84 mm on the TAZ, 48 mm on the Min
 line is the edge of the print area. A contact sheet for each printer has all the renders, chosen.png
 has the cameras to buy (camera_options.CHOSEN), and mini2-places.png has other places for the camera
 on the Mini 2 frame (MINI_PLACES). The renders go in renders/camera-preview/, and table.csv there has
-the numbers.
+the numbers. cable-sag.png shows how the cable of the camera on the arm hangs (cable_physics.py).
 
 The scene is the model of the live window (pod.py live writes it to build/viewer): the printer, the
 pod, the camera models and their brackets (camera_models.py), with the moving parts of the printer where the LulzBot model has them.
@@ -219,6 +219,84 @@ def pod_closeup(name, title, items, path):
     print(f"wrote {path}")
 
 
+def sag_sheet(path):
+    """Side views of the long free spans of the camera cable on the arm (cable_physics.py): the span
+    from the camera to its first clip and the span from its last clip to the Pi, each with three
+    lengths of cable. Orthographic, looking across the span, up at the top. Thin gray: the drawn
+    route. Dark red: the solved cable. Dashed: the straight line between the fixed ends."""
+    import cable_physics as CP
+    rows = []
+    for name, title in PRINTERS:
+        f = os.path.join(CP.CACHE, f"{name}-latest.json")
+        if not os.path.exists(f):
+            raise SystemExit(f"{f} is missing: run pod.py live")
+        with open(f) as fh:
+            rep = json.load(fh)
+        up = np.array(rep["up"])
+        up /= np.linalg.norm(up)
+        for st in rep["study"]:
+            c = rep["cables"][st["cable"]]
+            i0, i1, kind, L, drawn = c["spans_idx"][st["span"]]
+            nodes = np.array(c["nodes"])
+            main = nodes[i0:i1 + 1]
+            old = np.array(c["path"])
+            s0, _ = CP._param(old, main[0])
+            s1, _ = CP._param(old, main[-1])
+            old = CP._cut(old, s0, s1)
+            where = "from the camera to the first clip" if st["span"] == 0 else "from the last clip to the Pi"
+            panels = [(f"+{st['rows'][0]['extra']:.0f} mm of cable", np.array(st["rows"][0]["nodes"]), None),
+                      (f"+{L - drawn:.0f} mm (the model)", main, old),
+                      (f"+{st['rows'][1]['extra']:.0f} mm of cable", np.array(st["rows"][1]["nodes"]), None)]
+            rows.append((f"{title}: the cable of the camera on the arm, {where} (drawn route {drawn:.0f} mm)",
+                         panels, up, c["d"]))
+    pw, ph, gap, head = 560, 380, 16, 40
+    W = 3 * pw + 4 * gap
+    H = 70 + len(rows) * (head + ph + gap) + 60
+    out = Image.new("RGB", (W, H), (255, 255, 255))
+    d = ImageDraw.Draw(out)
+    d.text((gap, 14), "How the cable hangs: three lengths of cable on the same span (side view, up at the top)",
+           fill=(0, 0, 0), font=font(26))
+    y = 70
+    for title, panels, up, dia in rows:
+        d.text((gap, y + 6), title, fill=(0, 0, 0), font=font(20))
+        y += head
+        a, b = panels[1][1][0], panels[1][1][-1]
+        h = (b - a) - ((b - a) @ up) * up
+        if np.linalg.norm(h) < 1e-3:
+            h = np.cross(up, [1.0, 0.0, 0.0])
+        h /= np.linalg.norm(h)
+        allp = np.vstack([p for _, p, _ in panels] + [o for _, _, o in panels if o is not None])
+        P2 = lambda q: np.stack([(q - a) @ h, (q - a) @ up], axis=1)
+        q = P2(allp)
+        lo, hi = q.min(axis=0) - 10, q.max(axis=0) + 10
+        sc = min((pw - 40) / (hi[0] - lo[0]), (ph - 60) / (hi[1] - lo[1]))
+        to = lambda v, x0: [(x0 + 20 + (u - lo[0]) * sc, y + ph - 40 - (w - lo[1]) * sc) for u, w in v]
+        for k, (label, nodes, old) in enumerate(panels):
+            x0 = gap + k * (pw + gap)
+            d.rectangle([x0, y, x0 + pw, y + ph], outline=(200, 200, 200))
+            if old is not None:
+                d.line(to(P2(old), x0), fill=(150, 150, 150), width=1)
+            ends = to(P2(np.array([nodes[0], nodes[-1]])), x0)
+            n = 40
+            for i in range(0, n, 2):
+                t0, t1 = i / n, (i + 1) / n
+                p0 = [ends[0][j] + (ends[1][j] - ends[0][j]) * t0 for j in (0, 1)]
+                p1 = [ends[0][j] + (ends[1][j] - ends[0][j]) * t1 for j in (0, 1)]
+                d.line([tuple(p0), tuple(p1)], fill=(60, 60, 60), width=1)
+            d.line(to(P2(nodes), x0), fill=(139, 42, 42), width=max(2, int(round(dia * sc))))
+            sg = CP.sag(nodes, up)
+            d.text((x0 + 10, y + ph - 32), f"{label}: largest sag {sg:.0f} mm", fill=(0, 0, 0), font=font(18))
+        # A 50 mm scale bar in the first panel.
+        x0 = gap
+        d.line([(x0 + 20, y + 20), (x0 + 20 + 50 * sc, y + 20)], fill=(0, 0, 0), width=2)
+        d.text((x0 + 26 + 50 * sc, y + 10), "50 mm", fill=(0, 0, 0), font=font(16))
+        y += ph + gap
+    d.text((gap, y + 10), "Thin gray: the drawn route. Dark red: the solved cable (EI 2e-5 N m2, 30 g/m). "
+           "Dashed: the straight line between the fixed ends.", fill=(0, 0, 0), font=font(18))
+    out.save(path)
+    print(f"wrote {path}")
+
+
 def aimed(views, lens):
     """A view from lens (printer coordinates) at the middle of the bed, level."""
     T = np.array(views["printer_to_view"])
@@ -260,6 +338,7 @@ def main():
             sheet("Mini 2: other places for the camera on the frame, aimed at the middle of the bed "
                   f"({o['model']})", [("the C270 mount (first), then the other places", ims)],
                   os.path.join(OUT, "mini2-places.png"))
+    sag_sheet(os.path.join(OUT, "cable-sag.png"))
     sheet("The cameras to buy: the Arducam B0561 on the arm of the C270 mount and over the bed",
           [("TAZ Workhorse", chosen[:2]), ("Mini 2", chosen[2:])], os.path.join(OUT, "chosen.png"), cols=2)
     with open(os.path.join(OUT, "table.csv"), "w", newline="") as fh:

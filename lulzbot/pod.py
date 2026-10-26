@@ -932,6 +932,7 @@ def main(out, stills=True, which=("taz", "mini2")):
     import numpy as np
     import trimesh
     from build123d import export_stl
+    import cable_physics as CP
     import camera as C
     import camera_models as CM
     import render as R
@@ -991,15 +992,10 @@ def main(out, stills=True, which=("taz", "mini2")):
             items.append((f"printer{i}", m, c))
         # The cables, in the frame of the printer, then in the world and in the view.
         frame_to_world = st["world"]
-        for cab, pts in routes(name, matrix(loc)).items():
-            m, path = cable_mesh(pts, CABLE_D[cab])
-            print(f"{name}: {cab} cable route {length(path) / 1000:.2f} m")
-            mv = m.copy()
-            mv.apply_transform(zup @ np.linalg.inv(matrix(loc)))
-            items.append((f"{cab}_cable", mv, CABLE_COLOR[cab], ex(f"{cab}_cable")))
-            mw = m.copy()
-            mw.apply_transform(frame_to_world)
-            st.setdefault("cables", []).append((mw, CABLE_COLOR[cab]))
+        # The shapes of the cables come from cable_physics.py, with the other parts in place: here only
+        # their drawn routes and clips.
+        specs = [cable_spec(name, cab, pts) for cab, pts in routes(name, matrix(loc)).items()]
+        st.setdefault("cables", [])
         for gname, shape, _ in clip_groups:
             p = os.path.join(tmp, f"{name}_{gname}.stl")
             export_stl(shape, p, tolerance=0.05, angular_tolerance=0.2)
@@ -1028,6 +1024,18 @@ def main(out, stills=True, which=("taz", "mini2")):
         pv_ = plug.copy()
         pv_.apply_transform(zup @ np.linalg.inv(matrix(loc)))
         items.append(("usb_b_plug", pv_, "#151515"))
+        specs += [CM.cable_spec(name, w) for w in ("mount", "top")]
+        solved = solve_cables(name, specs, items, zup @ np.linalg.inv(matrix(loc)))
+        to_world = pod_to_world @ np.linalg.inv(zup)
+        for sp in specs:
+            n = sp["name"]
+            m = CP.tube(solved[n]["nodes"], sp["d"])
+            col = CABLE_COLOR.get(n.replace("_cable", ""), CM.CABLE_COLORS.get(n, "#151515"))
+            extra = [ex(n)] if n in ("power_cable", "printer_cable") else []
+            items.append((n, m, col, *extra))
+            mw = m.copy()
+            mw.apply_transform(to_world)
+            st["cables"].append((mw, col))
         # The exploded view must not pass one part through another: the pod parts and the bracket,
         # in pod coordinates.
         check_meshes = {n: m for n, (m, c) in pod.items() if n not in FLEX}
@@ -1337,12 +1345,67 @@ def rounded(points, r=BEND_R, steps=8):
 
 
 def cable_mesh(points, d, sides=16):
-    """The cable: a tube of diameter d along the rounded path. Each ring of the tube has the frame of
-    the ring before it, turned only as much as the path turns (parallel transport), so the tube has
-    no twist."""
+    """The cable: a tube of diameter d along the rounded path (the drawn route)."""
+    path = rounded(points)
+    return tube(path, d, sides), path
+
+
+def cable_spec(name, cab, pts):
+    """The spec of the power or printer cable for cable_physics.py: its drawn route (routes()), the
+    direction out of the pod plug, and the clips of clips() on its way. The cable centers of the
+    clips are as in routes()."""
+    import numpy as np
+    import cable_physics as CP
+    import clips as K
+    if name == "taz":
+        cz = K.TAPE_CABLE_H
+        cands = [(x, TAZ_COVER_Y, cz) for x in (50.0, -10.0, -70.0)] + [(x, TAZ_USB_B[0], cz) for x in (40.0, -40.0)]
+    else:
+        uy = MINI_CASE_Y - K.TAPE_CABLE_H
+        cands = [(MINI_UPRIGHT_X + sx * K.PAIR / 2, uy, z) for sx in (-1, 1) for z in (90.0, 165.0)]
+    p0, p1 = np.array(pts[0], float), np.array(pts[1], float)
+    return CP.make_spec(f"{cab}_cable", pts, CABLE_D[cab], cands, start_dir=p1 - p0)
+
+
+def solve_cables(name, specs, items, frame_to_view):
+    """The cables of specs (frame coordinates) solved with cable_physics.py in the coordinates of the
+    live window, against the parts of items (the live window list) that are not cables, clips, or
+    plugs. Prints the length, the smallest bend radius, the sag of the long spans, and the gap to the
+    parts of each cable, and writes build/cables/NAME-latest.json for the sag sheet."""
+    import json
+    import numpy as np
+    import camera as C
+    import cable_physics as CP
+    skip = ("cable", "clips", "plug", "keepout")
+    solids = [it[1] for it in items if not any(k in it[0] for k in skip)]
+    up = frame_to_view[:3, :3] @ np.asarray(C.axes(name)[0], float)
+    vs = [CP.moved(sp, frame_to_view) for sp in specs]
+    mount = next(v for v in vs if v["name"] == "camera_cable")
+    last = len(mount["anchors"]) - 2
+    study = [("camera_cable", 0, (0.0, 60.0)), ("camera_cable", last, (0.0, 60.0))]
+    solved, res_study, dt = CP.solve_all(name, vs, up, solids, study)
+    print(f"{name}: cables solved in {dt:.0f} s" if dt else f"{name}: cables from the cache")
+    report = {"up": up.tolist(), "cables": {}, "study": res_study}
+    for v in vs:
+        c = solved[v["name"]]
+        stt = CP.stats(c, up)
+        gap = CP.penetration(c, solids)
+        long_spans = [sp for sp in stt["spans"] if sp["chord"] > 60.0]
+        sags = ", ".join(f"{sp['kind']} {sp['chord']:.0f} mm: sag {sp['sag']:.1f}" for sp in long_spans)
+        print(f"{name}: {v['name']}: {stt['length']:.0f} mm, smallest bend radius {stt['min_radius']:.0f} mm "
+              f"(limit {CP.MIN_BEND * v['d']:.0f}), nearest part {gap:.1f} mm; spans over 60 mm: {sags}")
+        report["cables"][v["name"]] = dict(stt, gap=gap, d=v["d"], path=v["path"].tolist(),
+                                           nodes=c["nodes"].tolist(), spans_idx=c["spans"])
+    with open(os.path.join(CP.CACHE, f"{name}-latest.json"), "w") as fh:
+        json.dump(report, fh)
+    return solved
+
+
+def tube(path, d, sides=16):
+    """A tube of diameter d along the polyline path. Each ring of the tube has the frame of the ring
+    before it, turned only as much as the path turns (parallel transport), so the tube has no twist."""
     import numpy as np
     import trimesh
-    path = rounded(points)
     n = len(path)
     seg = np.diff(path, axis=0)
     seg /= np.linalg.norm(seg, axis=1)[:, None]
@@ -1374,7 +1437,7 @@ def cable_mesh(points, d, sides=16):
         faces.append((c1, last + j, last + (j + 1) % sides))
     m = trimesh.Trimesh(verts, np.array(faces), process=True)
     m.fix_normals()
-    return m, path
+    return m
 
 
 def length(path):

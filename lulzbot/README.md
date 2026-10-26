@@ -224,6 +224,11 @@ the board is the space for the FPC fold; put foam tape there, so the glass stays
   the product photos, until measured), a placeholder link for it on the arm of the C270 mount, a
   placeholder bracket for it over the bed on the top of the frame, and the cable routes to the Pi.
   pod.py puts them in the live window.
+- `cable_physics.py` gives the shapes of the power, printer, and camera cables: each is an elastic
+  rod that does not stretch, held at its plugs and clips, with its own weight (EI 2e-5 N m2,
+  30 g/m, typical values). pod.py solves them with the other parts in place and keeps the result in
+  `build/cables`. `renders/camera-preview/cable-sag.png` shows how a span hangs with more or less
+  cable.
 - `lineart/render.mjs` writes the line-art images of the PDF (three.js in headless Chromium, from
   the Slate). `make_pdf.py` writes `printdeck-lulzbot-build.pdf` (same layout as the Slate guide).
 - `make.sh` runs all steps (about 2 to 3 minutes). It stops if a check fails.
