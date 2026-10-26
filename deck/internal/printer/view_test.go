@@ -4,9 +4,12 @@ import (
 	"image"
 	"io"
 	"io/fs"
+	"math"
 	"strings"
 	"testing"
 	"time"
+
+	"printdeck/internal/gcode"
 )
 
 func TestMatchPicksClosest(t *testing.T) {
@@ -80,4 +83,54 @@ func TestRecordPicture(t *testing.T) {
 		time.Sleep(5 * time.Millisecond)
 	}
 	t.Error("still loading")
+}
+
+// PrintBox has the extents of the extruding moves, the first layer, and the height up to the file
+// position.
+func TestPrintBox(t *testing.T) {
+	src := `G90
+M83
+G1 X0 Y0 Z5 F3000
+G1 X5 Y5 Z0.3
+;LAYER:0
+G1 X10 Y10 F1200
+G1 X40 Y10 E1
+G1 X40 Y30 E1
+;LAYER:1
+G1 Z0.6
+G1 X20 Y30 E1
+G1 X50 Y50 Z0.9 E1
+;LAYER:2
+G1 X60 Y60 Z1.2 E1
+`
+	gc, err := gcode.Parse(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := State{Printing: true, FilePath: "a.gcode", FileSize: int64(len(src))}
+	v := &View{gc: gc, file: fileKey(st), view: -1}
+	part, first, ok, fok := v.PrintBox(st, int64(len(src)))
+	if !ok || !fok {
+		t.Fatal("no box")
+	}
+	if part.Min[0] != 10 || part.Min[1] != 10 || math.Abs(part.Min[2]-0.3) > 1e-6 || part.Max[0] != 60 || part.Max[1] != 60 || math.Abs(part.Max[2]-1.2) > 1e-6 {
+		t.Errorf("part %+v", part)
+	}
+	if first.Min[0] != 10 || first.Max[0] != 40 || first.Max[1] != 30 || math.Abs(first.Max[2]-0.3) > 1e-6 {
+		t.Errorf("first layer %+v", first)
+	}
+	// In the middle of the print the top is the height of the move there.
+	part, _, _, _ = v.PrintBox(st, int64(strings.Index(src, ";LAYER:2")))
+	if math.Abs(part.Max[2]-0.9) > 1e-6 {
+		t.Errorf("top %v, want 0.9", part.Max[2])
+	}
+	// Another print that loads: no box.
+	st.FilePath = "b.gcode"
+	if _, _, ok, _ := v.PrintBox(st, 0); ok {
+		t.Error("a box of another print")
+	}
+	// After the print: the last print.
+	if _, _, ok, _ := v.PrintBox(State{}, math.MaxInt64); !ok {
+		t.Error("no box after the print")
+	}
 }

@@ -72,6 +72,71 @@ type View struct {
 	// Rolls are the rolls of filament, or nil. The picture of a print has the color of its roll.
 	Rolls   *Spools
 	fileRun bool // a picture of a file is drawn now
+
+	boxGC          *gcode.Model // the G-code of boxAll and boxFirst
+	boxAll         Box          // the extents of all the extruding moves of boxGC
+	boxFirst       Box          // the extents of the moves of its first layer
+	boxOK, firstOK bool
+}
+
+// Box is a box of the moves of a print, in mm, in the coordinates of the G-code.
+type Box struct {
+	Min, Max [3]float64
+}
+
+// add puts the move s in the box. ok is false for an empty box.
+func (b *Box) add(s gcode.Seg, ok bool) {
+	for _, p := range [][3]float32{{s.X0, s.Y0, s.Z0}, {s.X1, s.Y1, s.Z1}} {
+		for i := range 3 {
+			v := float64(p[i])
+			if !ok || v < b.Min[i] {
+				b.Min[i] = v
+			}
+			if !ok || v > b.Max[i] {
+				b.Max[i] = v
+			}
+		}
+		ok = true
+	}
+}
+
+// PrintBox returns the extents of the extruding moves of the G-code of the print of st: the box
+// of all the moves, with its top at the height of the move at the file position upto, and the
+// box of the moves of the first layer. With no print in st, it is the G-code of the last print.
+// ok is false with no G-code, or while the G-code of a new print loads. The camera of the deck
+// follows the part with them.
+func (v *View) PrintBox(st State, upto int64) (part, first Box, partOK, firstOK bool) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	gc := v.gc
+	if gc == nil || len(gc.Segs) == 0 || (st.Busy() && v.file != fileKey(st)) {
+		return part, first, false, false
+	}
+	if v.boxGC != gc {
+		v.boxGC, v.boxOK, v.firstOK = gc, false, false
+		v.boxAll, v.boxFirst = Box{}, Box{}
+		// The first layer: the moves up to the second layer mark, or the moves at the height of
+		// the first move for a file with no layer marks.
+		lo, hi := gc.LayerStart(1), gc.LayerEnd(1)
+		z0 := gc.Segs[0].Z1
+		for _, s := range gc.Segs {
+			v.boxAll.add(s, v.boxOK)
+			v.boxOK = true
+			inFirst := s.Pos > lo && s.Pos <= hi
+			if len(gc.LayerPos) < 2 {
+				inFirst = s.Z1 <= z0+0.01
+			}
+			if inFirst {
+				v.boxFirst.add(s, v.firstOK)
+				v.firstOK = true
+			}
+		}
+	}
+	part, first = v.boxAll, v.boxFirst
+	if top := float64(gc.ZAt(upto)); top < part.Max[2] {
+		part.Max[2] = max(top, first.Max[2])
+	}
+	return part, first, v.boxOK, v.firstOK
 }
 
 // SetLimits sets the motion limits of the printer, and the max mode settings for a printer that
