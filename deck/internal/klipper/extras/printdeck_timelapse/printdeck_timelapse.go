@@ -36,7 +36,8 @@
 //	#park_x:            # mm; the default is 5 mm inside the minimum of X
 //	#park_y:            # mm; the default is 5 mm inside the maximum of Y
 //	lift: 1             # mm over the layer
-//	min_z: 0            # mm; the lowest Z of the moves to the park position
+//	min_z: 10           # mm; the lowest Z of the moves to the park position, over the
+//	                    # clips, washers and probe points at the edges of the bed
 //	retract: 1          # mm
 //	retract_speed: 15   # mm/s, also of the push back
 //	travel_speed: 100   # mm/s
@@ -114,7 +115,7 @@ func load(config *configfile.Wrapper) any {
 	t.parkX = config.GetFloat("park_x", configfile.Default(math.NaN()))
 	t.parkY = config.GetFloat("park_y", configfile.Default(math.NaN()))
 	t.lift = config.GetFloat("lift", configfile.Default(1.), configfile.Min(0.))
-	t.minZ = config.GetFloat("min_z", configfile.Default(0.), configfile.Min(0.))
+	t.minZ = config.GetFloat("min_z", configfile.Default(10.), configfile.Min(0.))
 	t.retract = config.GetFloat("retract", configfile.Default(1.), configfile.Min(0.))
 	t.retractSpeed = config.GetFloat("retract_speed", configfile.Default(15.), configfile.Above(0.))
 	t.travelSpeed = config.GetFloat("travel_speed", configfile.Default(100.), configfile.Above(0.))

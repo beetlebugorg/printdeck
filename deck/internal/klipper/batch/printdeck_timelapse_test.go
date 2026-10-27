@@ -35,10 +35,7 @@ func runLapse(t *testing.T, settings string) string {
 		t.Fatal(err)
 	}
 	text := strings.Replace(string(cfg), "path: /opt/printer_data/gcodes", "path: "+dir, 1)
-	text = strings.Replace(text, "[printdeck_timelapse]\nmin_z: 10\n", "[printdeck_timelapse]\nmin_z: 10\nwait: 0.1\n", 1)
-	if !strings.Contains(text, "wait: 0.1") {
-		t.Fatal("printer.cfg has no [printdeck_timelapse] with min_z: 10")
-	}
+	text += "\n[printdeck_timelapse]\nwait: 0.1\n"
 	config := filepath.Join(dir, "printer.cfg")
 	os.WriteFile(config, []byte(text), 0o644)
 	os.WriteFile(filepath.Join(dir, "lapse.gcode"), []byte(lapseFile), 0o644)
