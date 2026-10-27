@@ -26,7 +26,8 @@ import (
 //
 //	w=320    the width of the pictures, from 64 to the width of the camera: smaller pictures with
 //	         the same shape. The deck makes one JPEG of each width for each frame, so the viewers
-//	         of one width share it.
+//	         of one width share it. A width of 3/4 of the camera or more gives the frames of the
+//	         camera with no change: they cost the deck no decode.
 //	fps=2    the most frames a second of the stream, from 0.1 up. The default is the rate of the
 //	         camera (up to 15 frames a second), or 1 for the screen.
 //	view=part  a part of the picture of a calibrated camera (camera/views.go): full (the default),
@@ -102,7 +103,7 @@ func cameraView(cam Camera, f *camera.Frame, r *http.Request) (*camera.Frame, st
 		return v.View(f, r.URL.Query().Get("view"), width)
 	}
 	if width > 0 {
-		f = f.Small(width)
+		f = f.ForWidth(width)
 	}
 	return f, camera.ViewFull
 }

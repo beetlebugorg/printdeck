@@ -227,6 +227,20 @@ func TestSmall(t *testing.T) {
 	}
 }
 
+// A viewer of 3/4 of the width or more gets the frame of the camera.
+func TestForWidth(t *testing.T) {
+	f, err := FrameOf(photoJPEG(t, 640, 360))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.ForWidth(f.Size().X*3/4) != f || f.ForWidth(4000) != f {
+		t.Error("a large viewer gets another frame")
+	}
+	if g := f.ForWidth(f.Size().X / 2); g == f || g != f.Small(f.Size().X/2) {
+		t.Error("a small viewer gets the whole frame")
+	}
+}
+
 func TestSettings(t *testing.T) {
 	for _, s := range []Settings{{}, {AllOff: true},
 		{Cameras: []CamSettings{{ID: "/dev/v4l/by-id/usb-x-video-index0", Rotate: 180, Name: "Top"}, {ID: "b", Off: true}},

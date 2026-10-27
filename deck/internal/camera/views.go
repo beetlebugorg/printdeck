@@ -440,7 +440,7 @@ func (c *Cam) View(f *Frame, view string, w int) (*Frame, string) {
 	h := c.h
 	full := func() (*Frame, string) {
 		if w > 0 {
-			return f.Small(w), ViewFull
+			return f.ForWidth(w), ViewFull
 		}
 		return f, ViewFull
 	}

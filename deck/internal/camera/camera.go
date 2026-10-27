@@ -215,6 +215,16 @@ func (f *Frame) Small(w int) *Frame {
 	return s
 }
 
+// ForWidth returns the frame for a viewer of width w: the frame itself when w is 3/4 of its width
+// or more, and else Small(w). The frame itself keeps the JPEG of the camera, so a large viewer
+// costs no decode and no encode. The viewer scales the picture.
+func (f *Frame) ForWidth(w int) *Frame {
+	if w*4 >= f.w*3 {
+		return f
+	}
+	return f.Small(w)
+}
+
 // FrameOf makes a frame of a JPEG, for example for a test.
 func FrameOf(b []byte) (*Frame, error) {
 	b, w, h, err := fixJPEG(b)
