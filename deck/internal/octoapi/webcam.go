@@ -278,11 +278,11 @@ type cameraJSON struct {
 	Number int      `json:"number,omitempty"`
 	Roles  []string `json:"roles,omitempty"`
 	Name   string   `json:"name"`
-	State  string `json:"state"`
-	Width  int    `json:"width,omitempty"`
-	Height int    `json:"height,omitempty"`
-	FPS    int    `json:"fps,omitempty"`
-	Error  string `json:"error,omitempty"`
+	State  string   `json:"state"`
+	Width  int      `json:"width,omitempty"`
+	Height int      `json:"height,omitempty"`
+	FPS    int      `json:"fps,omitempty"`
+	Error  string   `json:"error,omitempty"`
 	// Calibrated is true when the camera has a calibration for this camera: then the views can
 	// follow the printer. CalibratedAt is the time of the calibration (RFC 3339), and
 	// CalibrationError its RMS error in pixels of the picture.
