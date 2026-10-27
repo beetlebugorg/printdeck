@@ -844,7 +844,29 @@ def apps_page():
     root = "../"
     page("apps/", "Software", "The iPhone and Apple Watch apps",
          "The deck on the iPhone and the watch: the apps, the complications, the widgets, the Live Activity and the push messages.",
-         md("watch/README.md", root))
+         md("watch/README.md", root, after={"": apps_pictures(root)}))
+
+
+APP_SHOTS = {
+    "iPhone": [("phone-print", "A print: the display of the printer, the keys, the layer and the model"),
+               ("phone-files", "The files of the deck, newest first"),
+               ("phone-setup", "The setup: the deck, the watch and the push messages"),
+               ("phone-loading", "The start screen until the first reading of the deck")],
+    "Apple Watch": [("watch-status", "The progress of the print"),
+                    ("watch-bottom", "The file, the layers and the times of the print"),
+                    ("watch-menu", "The menu of a print: Pause and Cancel"),
+                    ("watch-cancel", "The question before a cancel")],
+}
+
+
+def apps_pictures(root):
+    """The screenshots of the apps, from the simulators of Xcode with the simulated deck."""
+    out = ""
+    for device, shots in APP_SHOTS.items():
+        figs = "".join(f'<figure><img src="{root}img/apps/{n}.png" alt="{esc(a)}" loading="lazy">'
+                       f'<figcaption>{esc(a)}</figcaption></figure>' for n, a in shots)
+        out += f'<div class="pics four screens">{figs}</div>'
+    return out
 
 
 def relay_page():
