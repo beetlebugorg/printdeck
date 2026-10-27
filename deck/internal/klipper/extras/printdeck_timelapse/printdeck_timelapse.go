@@ -34,7 +34,8 @@
 //
 //	[printdeck_timelapse]
 //	#park_x:            # mm; the default is 5 mm inside the minimum of X
-//	#park_y:            # mm; the default is 5 mm inside the maximum of Y
+//	#park_y:            # mm; the default is the Y of the print, so a bed that moves in Y
+//	                    # stays under the camera
 //	lift: 1             # mm over the layer
 //	min_z: 10           # mm; the lowest Z of the moves to the park position, over the
 //	                    # clips, washers and probe points at the edges of the bed
@@ -313,13 +314,13 @@ func (t *Timelapse) parkScript() (out, back string) {
 
 // parkMove returns the park position in X and Y, and the lift in Z, for the toolhead at pos and
 // the limits lo and hi of the axes. NaN in x or y is the default: 5 mm inside the minimum of X,
-// and 5 mm inside the maximum of Y. The park position stays inside the limits.
+// and the Y of pos. The park position stays inside the limits.
 func parkMove(pos, lo, hi [3]float64, x, y, lift, minZ float64) (px, py, dz float64) {
 	if math.IsNaN(x) {
 		x = lo[0] + 5
 	}
 	if math.IsNaN(y) {
-		y = hi[1] - 5
+		y = pos[1]
 	}
 	px = math.Max(lo[0], math.Min(hi[0], x))
 	py = math.Max(lo[1], math.Min(hi[1], y))

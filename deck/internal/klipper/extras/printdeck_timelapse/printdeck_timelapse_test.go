@@ -45,9 +45,9 @@ func TestPlan(t *testing.T) {
 
 func TestParkMove(t *testing.T) {
 	lo, hi := [3]float64{-50, -17, -2}, [3]float64{293, 308, 297}
-	// The default: back left, 1 mm over the layer, and at least min_z.
+	// The default: the left, at the Y of the print, 1 mm over the layer, and at least min_z.
 	x, y, dz := parkMove([3]float64{100, 100, 0.3}, lo, hi, math.NaN(), math.NaN(), 1, 10)
-	if x != -45 || y != 303 || math.Abs(dz-9.7) > 1e-9 {
+	if x != -45 || y != 100 || math.Abs(dz-9.7) > 1e-9 {
 		t.Errorf("park = %v %v %v", x, y, dz)
 	}
 	// High over the bed: the lift only.

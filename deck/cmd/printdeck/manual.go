@@ -902,7 +902,7 @@ func manualSections() []section {
 		{Chapter: prints, ID: "timelapse", Title: "Make a time lapse",
 			Intro: []string{
 				"The deck camera captures a picture at each layer change. At the end of the print, the deck makes a video.",
-				"For each picture, the printer retracts, lifts the nozzle and parks the head at the back left. On the TAZ Workhorse the nozzle goes to Z 10 mm or more, over the bed washers. Each picture adds a few seconds.",
+				"For each picture, the printer retracts, lifts the nozzle and moves the head to the left side. The bed stays where it is, under the camera. On the TAZ Workhorse the nozzle goes to Z 10 mm or more, over the bed washers. Each picture adds a few seconds.",
 			},
 			Steps: []string{
 				"Set up the camera: Settings, then Camera.",
