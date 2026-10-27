@@ -26,6 +26,20 @@ enum Store {
         set { write(newValue, "pairing") }
     }
 
+    /// The camera that the user chose for the deck at an address (DeckCamera.id), or nil for the
+    /// main camera. It is in the user defaults of the app, by deck.
+    static func camera(for address: String) -> String? {
+        UserDefaults.standard.string(forKey: "camera." + address)
+    }
+
+    static func setCamera(_ id: String?, for address: String) {
+        if let id {
+            UserDefaults.standard.set(id, forKey: "camera." + address)
+        } else {
+            UserDefaults.standard.removeObject(forKey: "camera." + address)
+        }
+    }
+
     private static var group: String? {
         guard let g = Bundle.main.object(forInfoDictionaryKey: "KeychainGroup") as? String,
               !g.isEmpty, !g.hasPrefix(".") else { return nil }

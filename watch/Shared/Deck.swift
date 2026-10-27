@@ -62,8 +62,14 @@ struct DeckLCD: Codable, Equatable {
     var position: String?
 }
 
-/// The camera of the deck (cameraJSON in deck/internal/octoapi/webcam.go).
+/// A camera of the deck (cameraJSON in deck/internal/octoapi/webcam.go).
 struct DeckCamera: Codable, Equatable {
+    /// The ID of the camera for the camera parameter of the webcam. Nil from an older deck.
+    var id: String?
+    /// The number of the camera in the list of the deck, from 1. Nil from an older deck.
+    var number: Int?
+    /// The roles of the camera: "main", "lapse" and "picture". Nil from an older deck.
+    var roles: [String]?
     var name: String
     /// "off", "none", "idle" (no viewer), "starting", "on", "nosignal" or "error".
     var state: String
@@ -93,6 +99,12 @@ struct DeckCamera: Codable, Equatable {
 
     /// The deck has a camera that is on.
     var on: Bool { state != "off" && state != "none" }
+
+    /// The camera to show: the camera id of the list when it is on, or else the main camera.
+    static func pick(_ cameras: [DeckCamera], id: String?, main: DeckCamera?) -> DeckCamera? {
+        if let id, let c = cameras.first(where: { $0.id == id && $0.on }) { return c }
+        return main ?? cameras.first { $0.roles?.contains("main") == true && $0.on }
+    }
 
     /// A short text for a camera with no picture, or nil.
     var problem: String? {
@@ -168,8 +180,10 @@ struct Status: Codable, Equatable {
     var roll: Roll?
     /// The status screen of the printer display as the deck draws it, or nil from an older deck.
     var lcd: DeckLCD?
-    /// The camera of the deck, or nil when the deck has no camera on.
+    /// The main camera of the deck, or nil when the deck has no camera on.
     var camera: DeckCamera?
+    /// All cameras of the deck, or nil from an older deck.
+    var cameras: [DeckCamera]?
     /// When the app read the status.
     var time: Date
 
@@ -361,6 +375,7 @@ struct DeckClient {
         }
         st.lcd = p.lcd
         st.camera = p.camera
+        st.cameras = p.cameras
         if let s = p.spool {
             st.roll = Roll(name: s.name, material: s.material, left: s.left, full: s.full,
                            color: s.color?.isEmpty == false ? s.color : nil)
@@ -435,31 +450,51 @@ struct DeckClient {
         return CGImageSourceCreateImageAtIndex(src, 0, nil)
     }
 
-    /// The camera of the deck when it is on, or nil.
+    /// The main camera of the deck when it is on, or nil.
     func camera() async -> DeckCamera? {
         guard let p: PluginReply = try? await get("/api/plugin/printdeck"), let c = p.camera, c.on else { return nil }
         return c
     }
 
-    /// A picture of the camera of the deck as a JPEG, w pixels wide, or nil. The deck sends its
-    /// newest frame. With no camera it sends a picture of its screen, so check camera() first.
-    func snapshotJPEG(width w: Int, view: String = "full") async -> Data? {
-        try? await send("/webcam/snapshot?w=\(w)&view=\(view)")
+    /// The camera of the pictures of the notifications when it is on, or else the main camera when
+    /// it is on, or nil.
+    func pictureCamera() async -> DeckCamera? {
+        guard let p: PluginReply = try? await get("/api/plugin/printdeck") else { return nil }
+        if let c = p.cameras?.first(where: { $0.roles?.contains("picture") == true && $0.on }) { return c }
+        guard let c = p.camera, c.on else { return nil }
+        return c
     }
 
-    /// A picture of the camera of the deck, w pixels wide, or nil. The deck sends its newest
-    /// frame. With no camera it sends a picture of its screen, so check Status.camera first.
-    func snapshot(width w: Int, view: String = "full") async -> CGImage? {
-        guard let data = try? await send("/webcam/snapshot?w=\(w)&view=\(view)"),
+    /// The camera parameter of the webcam for a camera ID, or "" for the main camera. An older
+    /// deck ignores the parameter and sends its camera.
+    static func cameraQuery(_ camera: String?) -> String {
+        guard let camera, !camera.isEmpty else { return "" }
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~")
+        return "&camera=" + (camera.addingPercentEncoding(withAllowedCharacters: allowed) ?? "")
+    }
+
+    /// A picture of a camera of the deck as a JPEG, w pixels wide, or nil. The camera is an ID, a
+    /// role, or nil for the main camera. The deck sends its newest frame. With no camera it sends
+    /// a picture of its screen, so check camera() first.
+    func snapshotJPEG(width w: Int, view: String = "full", camera: String? = nil) async -> Data? {
+        try? await send("/webcam/snapshot?w=\(w)&view=\(view)" + Self.cameraQuery(camera))
+    }
+
+    /// A picture of a camera of the deck, w pixels wide, or nil. The camera is an ID, a role, or
+    /// nil for the main camera. The deck sends its newest frame. With no camera it sends a picture
+    /// of its screen, so check Status.camera first.
+    func snapshot(width w: Int, view: String = "full", camera: String? = nil) async -> CGImage? {
+        guard let data = try? await send("/webcam/snapshot?w=\(w)&view=\(view)" + Self.cameraQuery(camera)),
               let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         return CGImageSourceCreateImageAtIndex(src, 0, nil)
     }
 
     /// The pictures of the camera stream of the deck (MJPEG), w pixels wide, at most fps a second.
-    /// The view is a value of DeckCamera.views. The stream ends with an error when the connection
-    /// ends.
-    func stream(width w: Int, fps: Double, view: String = "full") -> AsyncThrowingStream<CGImage, Error> {
-        let req = Result { try request("/webcam/stream?w=\(w)&fps=\(fps)&view=\(view)") }
+    /// The view is a value of DeckCamera.views, and the camera an ID, or nil for the main camera.
+    /// The stream ends with an error when the connection ends.
+    func stream(width w: Int, fps: Double, view: String = "full", camera: String? = nil) -> AsyncThrowingStream<CGImage, Error> {
+        let req = Result { try request("/webcam/stream?w=\(w)&fps=\(fps)&view=\(view)" + Self.cameraQuery(camera)) }
         return AsyncThrowingStream(bufferingPolicy: .bufferingNewest(1)) { out in
             do {
                 let reader = MJPEGReader(out: out)
@@ -569,4 +604,5 @@ private struct PluginReply: Decodable {
     var job: Job?
     var lcd: DeckLCD?
     var camera: DeckCamera?
+    var cameras: [DeckCamera]?
 }

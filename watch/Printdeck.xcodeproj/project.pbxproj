@@ -25,6 +25,7 @@
 		29674AE5CE7846046F269CD2 /* Panel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6FAFDF150EF3F44516ECD16 /* Panel.swift */; };
 		2A5520A5B41E37EBCEDFC8C5 /* ComplicationLCD.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C28F6CE43513884ED2C3B9 /* ComplicationLCD.swift */; };
 		2B3EF0FF41DF656F65D3D9D5 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A622D3ED72D7C6395B59AE5 /* Theme.swift */; };
+		2D49C4EDAFB428F775011EEE /* CameraTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A85E672A88E7657A2A2B1AE9 /* CameraTests.swift */; };
 		310E1C0F88A752F59730CC22 /* Panel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6FAFDF150EF3F44516ECD16 /* Panel.swift */; };
 		394F390367913EA450DC32FD /* PushCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E1FEB4FB0B10A9C90AD479 /* PushCrypto.swift */; };
 		39539FC720E5765ECC6717D3 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13270B2208D83B64EE4DC20E /* NotificationService.swift */; };
@@ -197,6 +198,7 @@
 		A3F141F7CE39B1948949216E /* Phone.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Phone.entitlements; sourceTree = "<group>"; };
 		A539B7B79BF37C687CDF8579 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A68F2D6FDB0283D4E2968E3F /* Watch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Watch.entitlements; sourceTree = "<group>"; };
+		A85E672A88E7657A2A2B1AE9 /* CameraTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraTests.swift; sourceTree = "<group>"; };
 		AFAED1CD6BFAF7976E400B0B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B18B3A83A2D98FA589A08D3E /* FilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesView.swift; sourceTree = "<group>"; };
 		B4F781BC71F396D5118DBEC1 /* WatchLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLink.swift; sourceTree = "<group>"; };
@@ -277,6 +279,7 @@
 		6D75E02FFD1FA8B0FDA66435 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				A85E672A88E7657A2A2B1AE9 /* CameraTests.swift */,
 				EEC0909ABD03C04458C7F7E0 /* LCDModelTests.swift */,
 				90E6942D32E2AF7FCD6D729E /* PushCryptoTests.swift */,
 			);
@@ -581,6 +584,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2D49C4EDAFB428F775011EEE /* CameraTests.swift in Sources */,
 				841EA80AD73B8CBA41F63990 /* Deck.swift in Sources */,
 				C4F387EA75B807640BEAAAF7 /* LCDFonts.swift in Sources */,
 				FE5C61BAA023AA33B7658516 /* LCDModel.swift in Sources */,

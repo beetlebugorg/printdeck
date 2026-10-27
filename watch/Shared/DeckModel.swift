@@ -21,6 +21,12 @@ final class DeckModel {
     private(set) var live = false
     /// The camera view that follows the print now (DeckCamera.view).
     var cameraView: String { DeckCamera.view(printing: status.map { $0.busy && !$0.paused } ?? false) }
+    /// The camera that the user chose for this deck (DeckCamera.id), or nil for the main camera.
+    private(set) var cameraID: String?
+    /// The camera to show: the chosen camera when the deck has it on, or the main camera.
+    var camera: DeckCamera? { DeckCamera.pick(status?.cameras ?? [], id: cameraID, main: status?.camera) }
+    /// The cameras of the deck that are on, in the order of the deck.
+    var cameras: [DeckCamera] { (status?.cameras ?? []).filter { $0.on && $0.id != nil } }
     /// A command is on its way to the deck.
     private(set) var sending = false
     /// The result of the last command, for a few seconds: "Pausing" or the error of the deck.
@@ -56,11 +62,23 @@ final class DeckModel {
             settings = DeckSettings(address: a, key: k)
         }
         #endif
+        cameraID = Store.camera(for: settings.address)
         #if os(watchOS)
-        link = PhoneLink { [weak self] settings in
-            Task { @MainActor in self?.apply(settings) }
+        link = PhoneLink { [weak self] settings, camera in
+            Task { @MainActor in
+                self?.apply(settings)
+                self?.chooseCamera(camera)
+            }
         }
         #endif
+    }
+
+    /// Shows the camera id of the deck (DeckCamera.id), or the main camera with nil, and keeps the
+    /// choice for this deck.
+    func chooseCamera(_ id: String?) {
+        guard id != cameraID else { return }
+        cameraID = id
+        Store.setCamera(id, for: settings.address)
     }
 
     /// Uses new settings: from the iPhone on the watch, from the setup on the iPhone.
@@ -68,6 +86,7 @@ final class DeckModel {
         guard new != settings else { return }
         settings = new
         Store.settings = new
+        cameraID = Store.camera(for: new.address)
         generation += 1
         status = nil
         live = false
@@ -204,11 +223,11 @@ final class DeckModel {
 }
 
 #if os(watchOS)
-/// The WatchConnectivity session that receives the settings from the iPhone.
+/// The WatchConnectivity session that receives the settings and the chosen camera from the iPhone.
 final class PhoneLink: NSObject, WCSessionDelegate {
-    private let received: (DeckSettings) -> Void
+    private let received: (DeckSettings, String?) -> Void
 
-    init(received: @escaping (DeckSettings) -> Void) {
+    init(received: @escaping (DeckSettings, String?) -> Void) {
         self.received = received
         super.init()
         guard WCSession.isSupported() else { return }
@@ -226,7 +245,7 @@ final class PhoneLink: NSObject, WCSessionDelegate {
 
     private func handle(_ context: [String: Any]) {
         guard let address = context["address"] as? String, let key = context["key"] as? String else { return }
-        received(DeckSettings(address: address, key: key))
+        received(DeckSettings(address: address, key: key), context["camera"] as? String)
     }
 }
 #endif

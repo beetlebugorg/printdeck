@@ -116,6 +116,10 @@ struct StatusView: View {
             photo = nil
             cameraFailed = false
         }
+        .onChange(of: model.cameraID) {
+            photo = nil
+            cameraFailed = false
+        }
     }
 
     // MARK: The scroll
@@ -130,7 +134,7 @@ struct StatusView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     lcd(statusScreen, grid: grid, rows: grid.window, top: 0, animated: !dimmed)
-                    if let cam = model.status?.camera, cam.on, !dimmed {
+                    if let cam = model.camera, cam.on, !dimmed {
                         cameraPicture(grid, cam)
                     }
                     ForEach(sections, id: \.self) { s in
@@ -161,7 +165,7 @@ struct StatusView: View {
         }
     }
 
-    /// The picture of the camera of the deck, under the status, as wide as the text of the
+    /// The picture of the camera that the iPhone shows, under the status, as wide as the text of the
     /// display. It reads a small picture every 3 seconds while the app is active and the picture is
     /// on the screen: the toolhead during a print, and the part at other times. A camera with no
     /// picture shows why.
@@ -189,12 +193,12 @@ struct StatusView: View {
         .padding(.vertical, CGFloat(2 * grid.dot) / scale)
         .onScrollVisibilityChange(threshold: 0.1) { cameraShown = $0 }
         .task(id: CameraTask(active: phase == .active && cameraShown, settings: model.settings,
-                             view: model.cameraView)) {
+                             view: model.cameraView, camera: cam.id)) {
             guard phase == .active, cameraShown else { return }
             let view = model.cameraView
             let client = DeckClient(settings: model.settings)
             while !Task.isCancelled {
-                if let img = await client.snapshot(width: Int(w * scale), view: view) {
+                if let img = await client.snapshot(width: Int(w * scale), view: view, camera: cam.id) {
                     photo = img
                     cameraFailed = false
                 } else if !Task.isCancelled {
@@ -205,11 +209,13 @@ struct StatusView: View {
         }
     }
 
-    /// The camera reads this view while this is active, from the deck of these settings.
+    /// The camera reads this view of this camera while this is active, from the deck of these
+    /// settings.
     private struct CameraTask: Equatable {
         let active: Bool
         let settings: DeckSettings
         let view: String
+        let camera: String?
     }
 
     /// A part of the display, rows dots high.

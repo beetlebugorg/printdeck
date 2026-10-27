@@ -5,7 +5,8 @@ import Foundation
 import Observation
 import WatchConnectivity
 
-/// The WatchConnectivity session that sends the settings to the watch as the application context.
+/// The WatchConnectivity session that sends the settings and the chosen camera to the watch as the
+/// application context.
 /// The watch gets the last context when it starts, so the watch app does not need to run.
 @Observable
 final class WatchLink: NSObject, WCSessionDelegate {
@@ -42,7 +43,9 @@ final class WatchLink: NSObject, WCSessionDelegate {
     /// The context for the watch. The time makes each context new, so that WatchConnectivity
     /// sends it again to a watch app that was installed again.
     private static func context(_ s: DeckSettings) -> [String: Any] {
-        ["address": s.address, "key": s.key, "sent": Date().timeIntervalSince1970]
+        var c: [String: Any] = ["address": s.address, "key": s.key, "sent": Date().timeIntervalSince1970]
+        if let camera = Store.camera(for: s.address) { c["camera"] = camera }
+        return c
     }
 
     /// Sends the settings when the watch app is on the watch.
