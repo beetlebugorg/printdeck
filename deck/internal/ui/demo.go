@@ -121,6 +121,7 @@ func (a *App) DemoPickColor(hex string) { a.pickColor(hex, func(string) {}) }
 func (a *App) ResetScreens() {
 	a.setup, a.pages, a.swap, a.tune, a.keypad, a.confirm, a.consoleKB, a.flash, a.form, a.colors = nil, nil, nil, false, nil, nil, nil, nil, nil, nil
 	a.doneSeen = ""
+	a.sd = sdView{}
 }
 
 // DemoAway shows the screen that is open now as it is away from the print (Menu on the screen of
@@ -144,6 +145,13 @@ func (a *App) OpenPrintScreen(name string) {
 		a.pages = []page{pageMove}
 	case "files":
 		a.pages = []page{pageFiles}
+	case "sd-card":
+		// The top folder of the card, read at once.
+		a.pages = []page{pageFiles}
+		if sp, ok := a.sdPrinter(); ok {
+			files, err := sp.SDFiles("")
+			a.sd = sdView{on: true, loaded: err == nil, files: files}
+		}
 	case "filament":
 		a.pages = []page{pageFilament}
 	case "maintenance":

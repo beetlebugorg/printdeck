@@ -50,9 +50,17 @@ func demoApp() (*ui.App, *ui.DemoPrinter) {
 	a.Metrics = hostmetrics.Demo(demoNow())
 	// What the test printer has, a short history, and the slicer data of the files.
 	p.Machine_ = printer.Machine{KlipperVersion: "v0.13.0-777-g7bc4d0946-printdeck-go",
-		Modules: []string{"probe", "bed_tilt", "extruder", "heater_bed"},
+		Modules: []string{"probe", "bed_tilt", "extruder", "heater_bed", "printdeck_sdcard"},
 		Macros:  []string{"NOZZLE_WIPE", "PRINT_START", "PRINT_END", "G29", "G12"}, FilamentDiameter: 2.85}
 	end := time.Date(2026, 10, 20, 11, 42, 0, 0, time.Local)
+	// The SD card in the display of the printer: a folder and three G-code files.
+	p.SDCard_ = map[string][]printer.SDFile{
+		"": {{Name: "parts", Dir: true},
+			{Name: "plaque.gcode", Size: 2_874_163, Modified: end.AddDate(0, -2, 0)},
+			{Name: "calibration_cube.gcode", Size: 486_204, Modified: end.AddDate(0, -2, 0)},
+			{Name: "tool_holder.gcode", Size: 5_316_802, Modified: end.AddDate(0, -5, 0)}},
+		"parts": {{Name: "clip.gcode", Size: 92_416, Modified: end.AddDate(0, -5, 0)}},
+	}
 	// The timings of a TAZ Workhorse: the bed heats at about 6 s for each degree, the nozzle at
 	// about 0.7 s, and the probe takes about a minute and a half.
 	phases := func(bed, nozzle, probe float64) []printer.Phase {

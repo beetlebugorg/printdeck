@@ -131,6 +131,15 @@ func (a *App) drawSDFiles(c *gfx.Canvas, count, area image.Rectangle) {
 		}
 		return rows[i], false
 	}
+	// The first folder and the first file name their rows, for the manual.
+	firstDir, firstFile := -1, -1
+	for i := range n {
+		if f, isUp := entry(i); !isUp && f.Dir && firstDir < 0 {
+			firstDir = i
+		} else if !isUp && !f.Dir && firstFile < 0 {
+			firstFile = i
+		}
+	}
 	l := kit.List{Area: area, N: n, RowH: sdRowH, Gap: 10, Scroll: &a.sd.scroll}
 	a.list(c, l, func(i int) string {
 		f, isUp := entry(i)
@@ -141,6 +150,12 @@ func (a *App) drawSDFiles(c *gfx.Canvas, count, area image.Rectangle) {
 	}, func(c *gfx.Canvas, i int, r image.Rectangle) {
 		f, isUp := entry(i)
 		plate(c, r)
+		switch i {
+		case firstDir:
+			a.region("Folder", r)
+		case firstFile:
+			a.region("File", r)
+		}
 		icon := image.Rect(r.Min.X+14, r.Min.Y+12, r.Min.X+14+40, r.Max.Y-12)
 		x := r.Min.X + 70
 		switch {

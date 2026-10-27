@@ -241,10 +241,12 @@ func manualParts() []section {
 					Tall: []callout{
 						{"Preheat", "Heats the nozzle and the bed for the loaded filament. Its LED is lit while the heaters hold those temperatures: tap it again to turn them off."},
 						{"Cool down", "Turns off both heaters."},
+						{"Home all, X, Y, Z", "Homes all axes, or one axis, as on the Toolhead page. The LED of a key is lit when its axes are homed. During a print, the keys are dim with a lock, and a tap shows Wait until the print ends."},
 						{"Last print", "The last print and its result. Reprint starts it again, after a question."},
 						{"Pages", "Filament, Toolhead and Machine. Each page has its own section."},
 					},
 					Wide: []callout{
+						{"Home all, X, Y, Z", "Homes all axes, or one axis, as on the Toolhead page. The LED of a key is lit when its axes are homed. During a print, the keys are dim with a lock, and a tap shows Wait until the print ends."},
 						{"Last print", "The last print, as on its page of the history: the result, the time, the filament, the roll and the cost. Reprint starts it again, after a question. Preheat and Cool down are in Filament."},
 						{"Model", "The model of the last print, in the color of its roll. Tap it to open the page of the print in the history."},
 						{"Pages", "The key panel: Main (this screen), Files, Filament, Toolhead and Machine. The LED of the page that is open is lit. Each page has its own section."},
@@ -270,8 +272,17 @@ func manualParts() []section {
 						{"Picture", "The thumbnail of the slicer, or the shape of a part."},
 						{"File", "The name, the print time, the filament and the layer height."},
 						{"Date", "When the file arrived."},
+						{"On the deck, SD card", "The files on the deck, or the files on the SD card in the display of the printer. The keys show when printer.cfg has the [printdeck_sdcard] section."},
 					},
 					Notes: []string{"Drag the list up and down. Tap a file to open it."}},
+				{Name: "sd-card", Caption: "The SD card of the printer", Setup: page("sd-card"),
+					Callouts: []callout{
+						{"On the deck, SD card", "The LED of SD card is lit: the list shows the files of the card. On the deck goes back to the files on the deck."},
+						{"Count", "The folder of the card that shows, and its number of G-code files."},
+						{"Folder", "A folder. Tap it to open it. Up goes back to the folder above."},
+						{"File", "A G-code file, with its size and date. Tap it to copy it to the deck. At the end of the copy, the deck asks to print it."},
+					},
+					Notes: []string{"During the copy, the page shows its progress and a Stop key. The copy goes to the files on the deck."}},
 				{Name: "file", Caption: "A file", Setup: page("file"),
 					Callouts: []callout{
 						{"Picture", "The thumbnail of the file."},
@@ -311,7 +322,7 @@ func manualParts() []section {
 						{"Z offset", "The height of the nozzle above its normal height. Watch the first lines while they print."},
 						{"Save", "Writes the Z offset into the config of the printer. Save config in Maintenance then writes the file."},
 						{"Step", "How far one tap moves the nozzle, in mm."},
-						{"Pause, Cancel", "Pauses the print, or stops it after a question."},
+						{"Pause, Cancel", "Pauses the print, or stops it after a question. After a cancel, the head moves up and to the middle, and the bed moves to the front."},
 						{"Help", "Opens Wi-Fi and help: the network, the address and the password of the deck."},
 						{"Layer", "The first layer of the model."},
 					},
@@ -849,7 +860,7 @@ func manualSections() []section {
 				"Tap the file. Check the print time, the filament and the temperatures.",
 				"Tap Print, then Print again.",
 			},
-			Figures: fig("files", "file")},
+			Figures: fig("files", "file", "sd-card")},
 		{Chapter: prints, ID: "watch", Title: "Watch the print", Intro: parts["printing"].Intro,
 			Steps: []string{
 				"Watch the first layer. Use − and + to set the height of the nozzle while it prints.",
