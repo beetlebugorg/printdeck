@@ -148,6 +148,7 @@ type App struct {
 	colors        *colorPicker   // the palette of the color of a roll, over everything
 	form          *rollForm      // the form of a new roll, over everything
 	fileList      fileList       // the scroll position of the Files page
+	sd            sdView         // the SD card of the printer, on the Files page
 	macroScroll   int            // the scroll position of the Macros page
 	menuScroll    map[page]*int  // the scroll positions of the menu pages with more rows than fit
 	consoleScroll int            // how far the Console page shows above its newest line
@@ -426,6 +427,9 @@ func (a *App) Draw(c *gfx.Canvas) {
 		return
 	}
 	a.collect = !a.Record
+	if a.Printer != nil {
+		a.checkSDCopy(a.Printer.State())
+	}
 	a.drawPrint(c)
 	if a.Printer != nil {
 		a.drawSimBand(c, a.Printer.State())

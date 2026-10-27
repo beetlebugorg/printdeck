@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -24,7 +25,9 @@ import (
 	"printdeck/internal/awake"
 	"printdeck/internal/config"
 	"printdeck/internal/display"
+	"printdeck/internal/fatfs"
 	"printdeck/internal/hostmetrics"
+	"printdeck/internal/klipper/simmcu"
 	"printdeck/internal/printer"
 	"printdeck/internal/remote"
 	"printdeck/internal/touch"
@@ -69,6 +72,14 @@ func desktopApp(args []string) {
 	cfg, err := appConfig(*dir, *sim)
 	if err != nil {
 		log.Fatal(err)
+	}
+	if *sim {
+		// The SD card of the simulated board: the host process reads this folder (simCard).
+		card := filepath.Join(*dir, "printer-sd")
+		if err := os.MkdirAll(card, 0o755); err != nil {
+			log.Fatal(err)
+		}
+		os.Setenv(simCardEnv, card)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -183,6 +194,40 @@ func appConfig(dir string, sim bool) (config.Config, error) {
 		}
 	}
 	return cfg, nil
+}
+
+// simCardEnv is the environment variable with the folder of the SD card of the simulated board. The
+// app sets it, and the host process that it starts (printdeck klippy) reads it.
+const simCardEnv = "PRINTDECK_SIM_CARD"
+
+// simCard puts an SD card in the slot of the simulated board: the files of the folder dir. The
+// board reads the folder again each time the host starts the card.
+func simCard(dir string) {
+	simmcu.SetCard(func() []byte {
+		var files []fatfs.BuildFile
+		filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return nil
+			}
+			data, err := os.ReadFile(p)
+			info, err2 := d.Info()
+			if err != nil || err2 != nil {
+				return nil
+			}
+			rel, _ := filepath.Rel(dir, p)
+			files = append(files, fatfs.BuildFile{Path: filepath.ToSlash(rel), Data: data, Modified: info.ModTime()})
+			return nil
+		})
+		img, err := fatfs.Build(files, false)
+		if err != nil {
+			img, err = fatfs.Build(files, true) // too large for FAT16
+		}
+		if err != nil {
+			log.Printf("sim card: %v", err)
+			return nil
+		}
+		return img
+	})
 }
 
 // socketPath is the path of the API socket of the Klipper host: in dir, or in the temporary folder

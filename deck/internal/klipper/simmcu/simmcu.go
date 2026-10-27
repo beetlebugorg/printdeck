@@ -129,6 +129,8 @@ type Board struct {
 	endstops  map[int64]*endstop
 	trsyncs   map[int64]*trsync
 	tmc       map[[2]int64]*tmcRegs // the TMC drivers on SPI, by the oid of the bus and the place in the chain
+	spiPins   map[int64]string      // the chip select pin of each SPI device, "" for none
+	card      sdCard                // the SD card on the chip select of [printdeck_sdcard]
 	adcs      []*adc
 	adcByOID  map[int64]*adc
 	outs      map[int64]*output
@@ -159,7 +161,7 @@ func newBoard(conn net.Conn) (*Board, error) {
 	}
 	return &Board{conn: conn, parser: p, identify: z.Bytes(), freq: num("CLOCK_FREQ"), adcMax: num("ADC_MAX"),
 		pwmMax: num("PWM_MAX"), statics: d.StaticStrings, steppers: map[int64]*stepper{}, lcds: map[int64]*st7920{}, endstops: map[int64]*endstop{},
-		trsyncs: map[int64]*trsync{}, tmc: map[[2]int64]*tmcRegs{}, adcByOID: map[int64]*adc{}, outs: map[int64]*output{}, closed: make(chan struct{})}, nil
+		trsyncs: map[int64]*trsync{}, tmc: map[[2]int64]*tmcRegs{}, spiPins: map[int64]string{}, adcByOID: map[int64]*adc{}, outs: map[int64]*output{}, closed: make(chan struct{})}, nil
 }
 
 // now is the clock of the board: CLOCK_FREQ ticks a second, since the start of the World.
@@ -498,13 +500,21 @@ func (b *Board) command(text string) {
 			o.value, o.max = float64(num(a, "value")), 1
 		}
 		b.mu.Unlock()
+	case "config_spi":
+		b.mu.Lock()
+		b.spiPins[oid] = a["pin"]
+		b.mu.Unlock()
+	case "config_spi_without_cs":
+		b.mu.Lock()
+		b.spiPins[oid] = ""
+		b.mu.Unlock()
 	case "spi_send":
 		b.mu.Lock()
-		b.tmcDatagrams(oid, buffer(text))
+		b.spi(oid, buffer(text))
 		b.mu.Unlock()
 	case "spi_transfer":
 		b.mu.Lock()
-		resp := b.tmcDatagrams(oid, buffer(text))
+		resp := b.spi(oid, buffer(text))
 		b.mu.Unlock()
 		b.send("spi_transfer_response", map[string]msgproto.Value{"oid": oid, "response": resp})
 	case "config_pwm_out":
@@ -710,6 +720,23 @@ const (
 type tmcRegs struct {
 	regs map[byte][4]byte
 	last byte
+}
+
+// spi sends data to the SPI device oid, and returns its reply: the SD card on its chip select, 0xff
+// bytes with no chip select, else the TMC drivers. b.mu is locked.
+func (b *Board) spi(oid int64, data []byte) []byte {
+	pin, ok := b.spiPins[oid]
+	switch {
+	case ok && pin == "":
+		out := make([]byte, len(data))
+		for i := range out {
+			out[i] = 0xff
+		}
+		return out
+	case ok && pin == sdPin():
+		return b.card.transfer(data)
+	}
+	return b.tmcDatagrams(oid, data)
 }
 
 // tmcDatagrams sends SPI data to the TMC drivers of an SPI bus, and returns their answer. Each 5

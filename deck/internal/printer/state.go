@@ -121,6 +121,8 @@ type State struct {
 	PauseDelta               float64
 	// PauseRoll is the ID of the roll of a color change of the file (PRINTDECK_PAUSE ROLL), or "".
 	PauseRoll string
+	// SDCopy is the copy of a file from the SD card of the printer ([printdeck_sdcard]).
+	SDCopy SDCopy
 
 	// Starting is true while Klipper starts: it reports "startup", or its socket is not there yet,
 	// soon after the deck or Klipper started (startGrace). After that, the error shows.

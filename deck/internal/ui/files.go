@@ -36,9 +36,19 @@ func (a *App) sortedFiles() []printer.File {
 
 func (a *App) drawFiles(c *gfx.Canvas) {
 	f := a.navPage(c, "Files")
-	files := a.sortedFiles()
-	// The count above the list.
+	// The count above the list. A printer with an SD card has two keys over it: the files on the
+	// deck and the files on the card.
 	r := kit.Rows(f.body(), 8, kit.Px(24), kit.Fr(1))
+	if _, ok := a.sdPrinter(); ok {
+		r = kit.Rows(f.body(), 8, kit.Px(60), kit.Px(24), kit.Fr(1))
+		a.sourceKeys(c, r[0])
+		r = r[1:]
+		if a.sd.on {
+			a.drawSDFiles(c, r[0], r[1])
+			return
+		}
+	}
+	files := a.sortedFiles()
 	count, area := r[0], r[1]
 	countR, countText := kit.Rows(count, 0, kit.Px(24))[0], fmt.Sprintf("Newest first · %d files", len(files))
 	label(c, countR, countText, gfx.Left)

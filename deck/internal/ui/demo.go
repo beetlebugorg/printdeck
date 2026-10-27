@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"errors"
 	"image"
+	"path"
 	"strings"
 	"time"
 
@@ -25,7 +27,22 @@ type DemoPrinter struct {
 	Console_    []printer.ConsoleLine
 	Meta_       gcodemeta.Meta  // the slicer data of every file
 	Spools_     *printer.Spools // the rolls of filament, or nil
+	// SDCard_ is the SD card of the printer: the list of each folder ("" is the top). It shows
+	// when Machine_ has printdeck_sdcard.
+	SDCard_ map[string][]printer.SDFile
 }
+
+func (d *DemoPrinter) HasSDCard() bool { return d.Machine_.Has("printdeck_sdcard") }
+func (d *DemoPrinter) SDFiles(dir string) ([]printer.SDFile, error) {
+	if d.SDCard_ == nil {
+		return nil, errors.New("no SD card in the printer")
+	}
+	return d.SDCard_[dir], nil
+}
+func (d *DemoPrinter) CopySDFile(p string, size int64) (string, int, error) {
+	return path.Base(p), 0, nil
+}
+func (d *DemoPrinter) CancelSDCopy() {}
 
 func (d *DemoPrinter) State() printer.State {
 	st := d.State_

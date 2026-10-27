@@ -318,6 +318,10 @@ func (v *VirtualSD) Progress() float64 {
 // IsActive tells if a print is in progress.
 func (v *VirtualSD) IsActive() bool { return v.workTimer != nil }
 
+// Dirname is the folder of the G-code files. It is not in Klipper: printdeck_sdcard copies the
+// files of the SD card of the printer to it.
+func (v *VirtualSD) Dirname() string { return v.sdcardDirname }
+
 // DoPause pauses the print, and waits for the work timer to stop.
 func (v *VirtualSD) DoPause() {
 	if v.workTimer != nil {

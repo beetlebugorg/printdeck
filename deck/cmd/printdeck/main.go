@@ -52,6 +52,9 @@ func main() {
 	}
 	// The Klipper host runs in its own process, as klippy does, before the deck settings load.
 	if len(os.Args) > 1 && os.Args[1] == "klippy" {
+		if dir := os.Getenv(simCardEnv); dir != "" {
+			simCard(dir)
+		}
 		os.Exit(cli.Main(os.Args[2:]))
 	}
 	cfg := config.Load()

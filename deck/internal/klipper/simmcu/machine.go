@@ -31,6 +31,7 @@ type machine struct {
 	probe    string             // the pin of the probe
 	contact  float64            // the height of the washer tops over the bed, in mm
 	washers  []washer
+	sdPin    string // the chip select pin of the SD card ([printdeck_sdcard])
 }
 
 var (
@@ -151,6 +152,9 @@ func Configure(get func(section, option string) (string, bool)) {
 	if p, ok := get("probe", "pin"); ok {
 		m.probe, _ = pin(p)
 		m.contact, _ = f("probe", "z_offset")
+	}
+	if p, ok := get("printdeck_sdcard", "cs_pin"); ok {
+		m.sdPin = cleanPin(p)
 	}
 	machineMu.Lock()
 	mech = m

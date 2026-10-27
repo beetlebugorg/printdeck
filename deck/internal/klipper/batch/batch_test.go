@@ -21,7 +21,7 @@ const (
 // same CRC (testdata/basic.txt, from tools/klipper-reference).
 func TestConfigMatchesKlipper(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "out.serial")
-	result, msg := Run(printerCfg, dictFile, gcodeFile, out)
+	result, msg := Run(klipperConfig(t), dictFile, gcodeFile, out)
 	if result != "exit" {
 		t.Fatalf("run result %q: %s", result, msg)
 	}
@@ -45,6 +45,31 @@ func TestConfigMatchesKlipper(t *testing.T) {
 	}
 }
 
+// klipperConfig writes printer/printer.cfg with no [printdeck_sdcard], and returns its path. The
+// section is not in Klipper, and it adds SPI devices to the board config of the reference.
+func klipperConfig(t *testing.T) string {
+	t.Helper()
+	cfg, err := os.ReadFile(printerCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []string
+	skip := false
+	for _, l := range strings.Split(string(cfg), "\n") {
+		if strings.HasPrefix(l, "[") {
+			skip = strings.HasPrefix(l, "[printdeck_sdcard]")
+		}
+		if !skip {
+			out = append(out, l)
+		}
+	}
+	path := filepath.Join(t.TempDir(), "printer.cfg")
+	if err := os.WriteFile(path, []byte(strings.Join(out, "\n")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
 // configLines returns the lines to finalize_config.
 func configLines(text string) []string {
 	var out []string
@@ -61,7 +86,7 @@ func configLines(text string) []string {
 // Klipper host, for each object (see reftest).
 func TestStreamMatchesKlipper(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "out.serial")
-	result, msg := Run(printerCfg, dictFile, gcodeFile, out)
+	result, msg := Run(klipperConfig(t), dictFile, gcodeFile, out)
 	if result != "exit" {
 		t.Fatalf("run result %q: %s", result, msg)
 	}

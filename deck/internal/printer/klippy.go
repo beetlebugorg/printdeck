@@ -116,6 +116,8 @@ var klippyObjects = map[string][]string{
 	"printdeck_display": {"commands"},
 	// A pause of the file with a message, and the height check on a part (PRINTDECK_PAUSE).
 	"printdeck_pause": {"active", "message", "check", "checked", "delta", "roll"},
+	// The copy of a file from the SD card of the printer.
+	"printdeck_sdcard": {"id", "copying", "copied", "size", "done", "error"},
 }
 
 // HostVersion is the Klipper version of the host. The firmware of the board must be this version.
@@ -701,6 +703,10 @@ func klippyState(s klippy.Status, down string) State {
 		st.PauseChecked, _ = s["printdeck_pause"]["checked"].(bool)
 		st.PauseDelta = num(s["printdeck_pause"]["delta"])
 		st.PauseRoll = str(s["printdeck_pause"]["roll"])
+	}
+	if sd := s["printdeck_sdcard"]; sd != nil {
+		st.SDCopy = SDCopy{ID: int(num(sd["id"])), Path: str(sd["copying"]), Copied: int64(num(sd["copied"])), Size: int64(num(sd["size"])),
+			Done: str(sd["done"]), Err: str(sd["error"])}
 	}
 	st.ManualProbe, _ = s["manual_probe"]["is_active"].(bool)
 	st.ManualZ = num(s["manual_probe"]["z_position"])
