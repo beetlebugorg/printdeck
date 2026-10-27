@@ -163,8 +163,8 @@ type manualState struct {
 	part, done image.Image // the model view of the print at 42 %, and when it is done
 }
 
-// The part of the model views: the body of the Printdeck case.
-const manualPart = "../slate/stl/slab.stl"
+// The part of the model views: the body of the Printdeck pod.
+const manualPart = "../lulzbot/stl/pod/fdm/pod-body_fdm.stl"
 
 // partPreview draws the model view of manualPart printed up to frac.
 func partPreview(frac float64) image.Image {
@@ -206,7 +206,7 @@ func manualParts() []section {
 	return []section{
 		{ID: "start", Title: "Getting started",
 			Intro: []string{
-				"Printdeck is a touch screen for a 3D printer that runs Klipper. It shows the print, and it controls the printer.",
+				"Printdeck is a touch screen for the LulzBot Mini 2 and the LulzBot TAZ Workhorse. It runs Klipper. It shows the print, and it controls the printer.",
 				"At the first start, the deck makes its password and opens the setup. Connect the deck to your Wi-Fi network there.",
 			},
 			Figures: []figure{
@@ -225,7 +225,7 @@ func manualParts() []section {
 						{"Password", "The password of the web pages. To see it again, open Machine > Wi-Fi and help."},
 						{"Finish", "Closes the setup. The deck does not open it again."},
 					},
-					Notes: []string{"You can also set the Wi-Fi before the first start: put the disk in a computer, and fill in printdeck.txt on the PRINTDECK partition."}},
+					Notes: []string{"You can also set the Wi-Fi before the first start: put the SD card in a computer, and fill in printdeck.txt on the PRINTDECK partition."}},
 			}},
 		{ID: "home", Title: "Print: the idle screen",
 			Intro: []string{"When the printer does not print, the deck shows the idle screen. The largest key is the action that you need most: Print a file."},
@@ -650,13 +650,14 @@ func manualParts() []section {
 				{Name: "simulator", Caption: "A simulated printer in use",
 					Setup: func(s *manualState) {
 						s.p.State_ = stIdle
-						s.p.State_.Simulated = "Creality CR-10 V3"
+						s.p.State_.Simulated = "LulzBot TAZ Workhorse"
 						s.a.OpenPrintScreen("simulator")
 					},
 					Callouts: []callout{
 						{"Simulated", "The orange band at the top of each screen shows that the printer is simulated. No real printer moves."},
 						{"Real printer", "Puts your printer.cfg back, and restarts Klipper."},
-						{"Simulated LulzBot TAZ Workhorse", "The TAZ Workhorse: a probe on four washers, and bed tilt."},
+						{"Simulated LulzBot TAZ Workhorse", "The TAZ Workhorse: a probe on four washers, and bed tilt. Here it is in use."},
+						{"Simulated LulzBot Mini 2", "The Mini 2: a probe on four washers, and bed tilt."},
 						{"Simulated Creality CR-10 V3", "The CR-10 V3: endstops on each axis, and no probe."},
 					}},
 				{Name: "monitor", Caption: "The System monitor", Setup: page("monitor"),
@@ -711,7 +712,7 @@ func manualParts() []section {
 				"The webcam of the OctoPrint API is the camera of the deck (Settings, then Camera): http://printdeck.local/webcam/stream and /webcam/snapshot, with the API key. The parameter w gives smaller pictures (for example w=320), and fps fewer frames a second (for example fps=2). With no camera, the webcam is the screen of the deck.",
 			}},
 		{ID: "settings", Title: "Settings",
-			Intro: []string{"The file printdeck.txt on the PRINTDECK partition holds the settings. Put the disk in a computer to change it. The deck reads it at each start, then clears the Wi-Fi password in it."},
+			Intro: []string{"The file printdeck.txt on the PRINTDECK partition holds the settings. Put the SD card in a computer to change it. The deck reads it at each start, then clears the Wi-Fi password in it."},
 			Table: [][2]string{
 				{"wifi_ssid, wifi_password, wifi_country", "The Wi-Fi network"},
 				{"hostname, timezone", "The name on the network, and the time zone"},
@@ -826,7 +827,7 @@ func manualSections() []section {
 
 		{Chapter: meet, ID: "deck", Title: "The deck",
 			Intro: []string{
-				"Printdeck is a touch screen for a 3D printer that runs Klipper. It shows the print, and it controls the printer.",
+				"Printdeck is a touch screen for the LulzBot Mini 2 and the LulzBot TAZ Workhorse. It runs Klipper. It shows the print, and it controls the printer.",
 				"When the printer does not print, the deck shows the idle screen. The largest key is the action that you need most: Print a file.",
 				"The keys are the keys of a machine. A key with an LED has two states, and its LED is lit while it is on: the page that is open, the material in the printer, Preheat. A key with no LED does an action: an orange ring shows that it took the tap.",
 			},

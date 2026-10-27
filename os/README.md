@@ -174,7 +174,8 @@ heats, homes, probes and prints in real time, and no motor moves.
 
 1. Open Machine, then Simulated printer. The setup screen of a deck with no printer has the
    same key.
-2. Tap a printer: the LulzBot TAZ Workhorse or the Creality CR-10 V3. Klipper restarts.
+2. Tap a printer: the LulzBot TAZ Workhorse, the LulzBot Mini 2, or the Creality CR-10 V3.
+   Klipper restarts.
 3. To stop, tap Real printer on the same page. Klipper restarts with your config.
 
 The deck moves your `printer.cfg` to `printer.cfg.real`, and writes the config of the simulated
