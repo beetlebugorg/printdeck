@@ -242,7 +242,8 @@ func TestRunAction(t *testing.T) {
 }
 
 // A cancel stops the file, then turns off the heaters and the part fan (CANCEL_PRINT of Klipper
-// leaves them on), lifts the nozzle, and parks it at the middle and the top when the print is cool.
+// leaves them on), lifts the nozzle, and presents the bed: X at the middle, Y at its maximum, and Z
+// at the top.
 func TestCancelTurnsOffHeaters(t *testing.T) {
 	f := &fakeKlippy{}
 	k := NewKlippy(f.serve(t), emptyStore{})
@@ -260,7 +261,7 @@ func TestCancelTurnsOffHeaters(t *testing.T) {
 	<-ready
 	k.Cancel()
 	want := "pause_resume/cancel|gcode/script|gcode/script|gcode/script|gcode/script"
-	wantScripts := "TURN_OFF_HEATERS|M107|G91\nG1 Z10.00 F600\nG90|G90\nG1 Z280.0 F1200\nG1 X140.0 Y140.0 F3000"
+	wantScripts := "TURN_OFF_HEATERS|M107|G91\nG1 Z10.00 F600\nG90|G90\nG1 X140.0 Y290.0 F3000\nG1 Z290.0 F1200"
 	var got string
 	for end := time.Now().Add(2 * time.Second); time.Now().Before(end); time.Sleep(10 * time.Millisecond) {
 		scripts, methods := f.got()
