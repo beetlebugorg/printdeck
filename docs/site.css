@@ -89,6 +89,9 @@ footer a { color: inherit; }
 .frame-img.white { background: #fff; }
 .frame-img figcaption, .pics figcaption { font: 600 12px var(--mono); text-transform: uppercase; color: var(--dim); margin-top: 8px; }
 .pics figure { margin: 0; }
+.pics.tall { max-width: 600px; }
+.pics.one { grid-template-columns: 1fr; max-width: 560px; }
+.pics img.lcd { image-rendering: pixelated; }
 .screens img { border: 3px solid var(--ink); border-radius: 10px; display: block; width: 100%; height: auto; background: #000; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; margin: 16px 0; }
 .card { border: 2px solid var(--edge); border-radius: 10px; background: var(--plate2); overflow: hidden; font-size: 14px; }

@@ -207,9 +207,9 @@ def section_body(path, title):
     sys.exit(f"{path}: no section {title!r}")
 
 
-def md(path, root, sections=None, skip=(), shift=0):
+def md(path, root, sections=None, skip=(), shift=0, after=None):
     """A Markdown file as HTML, without its level 1 heading. sections picks the level 2 sections to
-    show, in order; skip leaves some out."""
+    show, in order; skip leaves some out. after adds HTML at the end of a section, by its title."""
     src_dir = posixpath.dirname(path)
     conv = Markdown(src_dir, root, shift)
     parts = []
@@ -222,6 +222,8 @@ def md(path, root, sections=None, skip=(), shift=0):
         if t:
             parts.append(f'<h{2 + shift} id="{slug(t)}">{conv.inline(t)}</h{2 + shift}>')
         parts.append(conv.convert(body))
+        if after and t in after:
+            parts.append(after[t])
     return "\n".join(parts)
 
 
@@ -375,6 +377,9 @@ footer a { color: inherit; }
 .frame-img.white { background: #fff; }
 .frame-img figcaption, .pics figcaption { font: 600 12px var(--mono); text-transform: uppercase; color: var(--dim); margin-top: 8px; }
 .pics figure { margin: 0; }
+.pics.tall { max-width: 600px; }
+.pics.one { grid-template-columns: 1fr; max-width: 560px; }
+.pics img.lcd { image-rendering: pixelated; }
 .screens img { border: 3px solid var(--ink); border-radius: 10px; display: block; width: 100%; height: auto; background: #000; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; margin: 16px 0; }
 .card { border: 2px solid var(--edge); border-radius: 10px; background: var(--plate2); overflow: hidden; font-size: 14px; }
@@ -580,6 +585,19 @@ def screens(root, wide=False):
         f'<figure><img src="{root}{d}{n}.png" alt="{esc(a)}" loading="lazy"></figure>' for n, a in SCREENS) + "</div>"
 
 
+def pics(root, items, cls=""):
+    """A row of pictures with captions. items: (path under docs/, alt text, caption). A path that
+    starts with "lcd:" is a picture of the printer display, drawn with sharp pixels."""
+    out = []
+    for path, alt, cap in items:
+        lcd = path.startswith("lcd:")
+        path = path.removeprefix("lcd:")
+        attr = ' class="lcd"' if lcd else ""
+        out.append(f'<figure><img src="{root}{path}"{attr} alt="{esc(alt)}" loading="lazy">'
+                   f'<figcaption>{esc(cap)}</figcaption></figure>')
+    return f'<div class="pics screens {cls}">' + "".join(out) + "</div>"
+
+
 # --- The landing page ---------------------------------------------------------------------------
 
 def landing():
@@ -714,7 +732,11 @@ def ui():
 
 def os_page():
     root = "../"
-    body = md("os/README.md", root, skip=("Build",))
+    first = pics(root, [("manual/img/setup-wifi.png", "The setup screen of the deck with a list of Wi-Fi networks", "The setup: the Wi-Fi network"),
+                        ("manual/img/setup-done.png", "The summary of the setup with the address and the password of the deck", "The setup: the address and the password")], "tall")
+    update = pics(root, [("img/system-page.png", "The system page in a browser: the version, the slot, the services, and the forms for the update, the backup and the restore",
+                          "The system page, with demo values")], "one")
+    body = md("os/README.md", root, skip=("Build",), after={"The first start": first, "Update": update})
     body += f'<h2 id="build">Build</h2><p>The build of the image is on the <a href="{root}build/">Build and release</a> page.</p>'
     page("os/", "Software", "Printdeck OS", "A small, read-only Linux system for the Printdeck, with two system slots.", body)
 
@@ -725,6 +747,8 @@ def deck_page():
     body = f"""
 <h2 id="what">What the program does</h2>
 {md_text(sw, "", root)}
+{pics(root, [("manual/img/printing.png", "The print screen of the deck: the printer display, the layer, the roll and the model view", "A print on the touch screen"),
+             ("lcd:manual/img/lcd-printing.png", "The display of the printer with the temperatures, the progress and the time left", "The display of the printer during a print")], "tall")}
 <p>The screens are on <a href="{root}ui/">the deck UI</a> pages. The commands of the program are in the <a href="{root}reference/commands/">reference</a>.</p>
 {md("ARCHITECTURE.md", root)}
 <h2 id="demo">Demo mode</h2>
@@ -785,6 +809,8 @@ def remote_page():
     body = f"""
 <h2 id="remote">The remote screen</h2>
 {md_text(section_body("os/README.md", "The web pages"), "os", root)}
+{pics(root, [("img/remote-phone.png", "The deck UI in the browser of a phone, during a print, with Pause, Tune, Cancel and Menu under the printer display", "The remote screen on a phone")], "tall")}
+{pics(root, [("img/system-page.png", "The system page in a browser: the version, the slot, the services, and the forms for the update, the backup and the restore", "The system page, with demo values")], "one")}
 {go_doc("deck/internal/remote/remote.go")}
 <p>The routes of the remote screen, from <code>deck/internal/remote/remote.go</code>:</p>
 {table(routes("deck/internal/remote/remote.go"))}
@@ -852,6 +878,8 @@ def desktop_page():
     fl = "".join(f"<tr><td><code>-{f}</code></td><td>{esc(d)}</td><td>{esc(t)}</td></tr>" for f, d, t in flags("deck/cmd/printdeck/app.go", "app"))
     body = f"""
 {md_text(section_body("README.md", "Desktop app and simulator"), "", root)}
+{pics(root, [("img/sim-deck.png", "The deck window of the desktop app during a print of the simulated TAZ Workhorse", "The deck window with -sim"),
+             ("img/sim-3d.png", "The 3D window: the simulated TAZ Workhorse prints a plaque, and the pod on the printer shows the deck UI", "The 3D window of the simulated printer")])}
 <h2 id="app">printdeck app</h2>
 <p>The window starts <code>printdeck app</code> and shows its remote screen. The app runs the Klipper host in its own process, as the <code>klipper</code> service does on the deck, and serves the screen and the API for slicers on <code>127.0.0.1:7351</code>, so Cura finds it again after each start. Its flags, from <code>deck/cmd/printdeck/app.go</code>:</p>
 <div class="table-wrap"><table><tr><th>Flag</th><th>Default</th><th>What it does</th></tr>{fl}</table></div>
