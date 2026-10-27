@@ -20,9 +20,8 @@
 <div class="layout">
 <aside class="side"><nav><a href="../">Overview</a>
 <div class="group">Hardware</div>
-<a href="../hardware/">The hardware</a>
-<a href="../hardware/slate/">The Slate case</a>
-<a href="../hardware/workhorse/">The TAZ Workhorse mount</a>
+<a href="../hardware/">The pod</a>
+<a href="../hardware/print/">Print the pod</a>
 <div class="group">The deck UI</div>
 <div class="switch"><a href="../ui/setup/" aria-current="page">Tall</a><a href="../ui/wide/setup/">Wide</a></div>
 <a href="../ui/">The screens</a>
@@ -55,9 +54,8 @@
 <a href="../reference/files/">Files, paths and services</a>
 <a href="../reference/hardware/">Hardware lists</a>
 <div class="group">Manuals and booklets</div>
-<a href="../manual/">Manual, tall display</a>
+<a href="../manual/">The manual</a>
 <a href="../manual/wide/">Manual, wide display</a>
-<a href="../lulzbot/">Workhorse upgrade booklet</a>
 <a href="../cura/">Cura plugin booklet</a></nav></aside>
 <main>
 <p class="eyebrow">Software</p>
@@ -66,7 +64,7 @@
 <nav class="onpage"><b>On this page</b><ol><li><a href="#what">What the program does</a></li><li><a href="#the-goal">The goal</a></li><li><a href="#where-we-are">Where we are</a></li><li><a href="#the-klipper-port">The Klipper port</a></li><li><a href="#the-deck-program">The deck program</a></li><li><a href="#open-source-and-licenses">Open source and licenses</a></li><li><a href="#built-with-ai">Built with AI</a></li><li><a href="#demo">Demo mode</a></li><li><a href="#next">Work that remains</a></li></ol></nav>
 <h2 id="what">What the program does</h2>
 <p>The Printdeck runs Printdeck OS: a small, read-only Linux system that Buildroot makes from source. <code>os/README.md</code> tells how to build it, write it to a disk, set it up, and update it. It has:</p>
-<ul><li><code>deck/</code>, the Printdeck program (Go). It is one static binary with no cgo. It runs as the user <code>deck</code>, and does these things:<ul><li><code>printdeck klippy</code> is the Klipper host, a Go port of Klipper&#x27;s <code>klippy.py</code>. The <code>klipper</code> service runs it in its own process. It drives the printer. <code>deck/internal/klipper/PORTING.md</code> tells how the port follows Klipper.</li><li>It draws the full screen application on the 7&quot; display, without a desktop or a browser.</li><li>It serves the remote screen at <code>http://printdeck.local</code>: the touch screen in a browser, with the password of the <code>printdeck</code> user.</li><li>It serves the part of the OctoPrint API that slicers use. Cura, OrcaSlicer and PrusaSlicer see a printer named &quot;Printdeck&quot;, upload files to it, and start prints. Cura gets its key with a tap on the touch screen.</li><li>It follows the Klipper host through its API socket.</li><li>It draws the display of the printer (128 x 64) with the <code>printdeck_display</code> module of the Klipper host. The knob of the printer opens the same menus as the touch screen.</li></ul></li></ul>
+<ul><li><code>deck/</code>, the Printdeck program (Go). It is one static binary with no cgo. It runs as the user <code>deck</code>, and does these things:<ul><li><code>printdeck klippy</code> is the Klipper host, a Go port of Klipper&#x27;s <code>klippy.py</code>. The <code>klipper</code> service runs it in its own process. It drives the printer. <code>deck/internal/klipper/PORTING.md</code> tells how the port follows Klipper.</li><li>It draws the full screen application on the touch display, without a desktop or a browser.</li><li>It serves the remote screen at <code>http://printdeck.local</code>: the touch screen in a browser, with the password of the <code>printdeck</code> user.</li><li>It serves the part of the OctoPrint API that slicers use. Cura, OrcaSlicer and PrusaSlicer see a printer named &quot;Printdeck&quot;, upload files to it, and start prints. Cura gets its key with a tap on the touch screen.</li><li>It follows the Klipper host through its API socket.</li><li>It draws the display of the printer (128 x 64) with the <code>printdeck_display</code> module of the Klipper host. The knob of the printer opens the same menus as the touch screen.</li></ul></li></ul>
 <p>The screens are on <a href="../ui/">the deck UI</a> pages. The commands of the program are in the <a href="../reference/commands/">reference</a>.</p>
 
 <h2 id="the-goal">The goal</h2>

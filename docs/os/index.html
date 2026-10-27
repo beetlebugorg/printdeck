@@ -20,9 +20,8 @@
 <div class="layout">
 <aside class="side"><nav><a href="../">Overview</a>
 <div class="group">Hardware</div>
-<a href="../hardware/">The hardware</a>
-<a href="../hardware/slate/">The Slate case</a>
-<a href="../hardware/workhorse/">The TAZ Workhorse mount</a>
+<a href="../hardware/">The pod</a>
+<a href="../hardware/print/">Print the pod</a>
 <div class="group">The deck UI</div>
 <div class="switch"><a href="../ui/setup/" aria-current="page">Tall</a><a href="../ui/wide/setup/">Wide</a></div>
 <a href="../ui/">The screens</a>
@@ -55,9 +54,8 @@
 <a href="../reference/files/">Files, paths and services</a>
 <a href="../reference/hardware/">Hardware lists</a>
 <div class="group">Manuals and booklets</div>
-<a href="../manual/">Manual, tall display</a>
+<a href="../manual/">The manual</a>
 <a href="../manual/wide/">Manual, wide display</a>
-<a href="../lulzbot/">Workhorse upgrade booklet</a>
 <a href="../cura/">Cura plugin booklet</a></nav></aside>
 <main>
 <p class="eyebrow">Software</p>
@@ -99,7 +97,7 @@
 <p>The printer&#x27;s board keeps its firmware. The Klipper version in <code>deck/internal/klipper/klipper.version</code> must match the firmware on the board. The <code>klipper</code> service runs the host: <code>printdeck klippy</code>, with the options of <code>klippy.py</code>.</p>
 <h3 id="a-simulated-printer">A simulated printer</h3>
 <p>The deck can run a simulated printer with no printer and no cable. Klipper then runs the config of a real printer with <code>serial: sim</code>: the board of the printer runs in the Klipper host. It heats, homes, probes and prints in real time, and no motor moves.</p>
-<ol><li>Open Machine, then Simulated printer. The setup screen of a deck with no printer has the same key.</li><li>Tap a printer: the LulzBot TAZ Workhorse or the Creality CR-10 V3. Klipper restarts.</li><li>To stop, tap Real printer on the same page. Klipper restarts with your config.</li></ol>
+<ol><li>Open Machine, then Simulated printer. The setup screen of a deck with no printer has the same key.</li><li>Tap a printer: the LulzBot TAZ Workhorse, the LulzBot Mini 2, or the Creality CR-10 V3. Klipper restarts.</li><li>To stop, tap Real printer on the same page. Klipper restarts with your config.</li></ol>
 <p>The deck moves your <code>printer.cfg</code> to <code>printer.cfg.real</code>, and writes the config of the simulated printer as <code>printer.cfg</code>. Real printer moves <code>printer.cfg.real</code> back with no change. An orange band at the top of each screen shows the simulated printer. The configs are in the program (<code>deck/internal/printer/sim/</code>), and <code>make.sh</code> there makes them again.</p>
 <h2 id="settings">Settings</h2>
 <p>The settings of the Printdeck program are in <code>/etc/printdeck/deck.env</code>, for example the screen rotation, the touch axes and the preheat temperatures. To change one, put it in <code>printdeck.txt</code> in lower case, for example <code>display_rotate=90</code>, and start the Pi again. <code>printdeck-settings</code> writes these settings to <code>/var/lib/printdeck/settings.env</code>, which the deck reads after <code>deck.env</code>. The release image needs no SSH for any setting.</p>

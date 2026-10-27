@@ -20,9 +20,8 @@
 <div class="layout">
 <aside class="side"><nav><a href="../">Overview</a>
 <div class="group">Hardware</div>
-<a href="../hardware/">The hardware</a>
-<a href="../hardware/slate/">The Slate case</a>
-<a href="../hardware/workhorse/">The TAZ Workhorse mount</a>
+<a href="../hardware/">The pod</a>
+<a href="../hardware/print/">Print the pod</a>
 <div class="group">The deck UI</div>
 <div class="switch"><a href="../ui/setup/" aria-current="page">Tall</a><a href="../ui/wide/setup/">Wide</a></div>
 <a href="../ui/">The screens</a>
@@ -55,9 +54,8 @@
 <a href="../reference/files/">Files, paths and services</a>
 <a href="../reference/hardware/">Hardware lists</a>
 <div class="group">Manuals and booklets</div>
-<a href="../manual/">Manual, tall display</a>
+<a href="../manual/">The manual</a>
 <a href="../manual/wide/">Manual, wide display</a>
-<a href="../lulzbot/">Workhorse upgrade booklet</a>
 <a href="../cura/">Cura plugin booklet</a></nav></aside>
 <main>
 <p class="eyebrow">Build and release</p>
@@ -96,9 +94,9 @@ os/build.sh debug clean      a Buildroot target of the debug build</code></pre>
 <h3>The Cura plugin package</h3>
 <p>Builds Printdeck.curapackage: drag it onto the Cura window to install the plugin. The version is the version of plugin.json.</p>
 <h2 id="site">The documentation</h2>
-<p>The workflow <code>.github/workflows/pages.yml</code> publishes <code>docs/</code> to GitHub Pages at <a href="https://beetlebug.org/printdeck/">https://beetlebug.org/printdeck/</a>, with the STL files and the build PDFs of the two mounts under <code>files/</code>. It runs on a push to <code>main</code> that changes those files. The pages are in the repository: these scripts write them, and a commit publishes them.</p>
+<p>The workflow <code>.github/workflows/pages.yml</code> publishes <code>docs/</code> to GitHub Pages at <a href="https://beetlebug.org/printdeck/">https://beetlebug.org/printdeck/</a>, with the print files of the pod under <code>files/pod/</code>. It runs on a push to <code>main</code> that changes those files. The pages are in the repository: these scripts write them, and a commit publishes them.</p>
 <h3>The manuals</h3>
-<p>Builds the manual three times: for a display that is mounted tall (this folder), for a display that is mounted wide (wide/), and the upgrade booklet for the LulzBot TAZ Workhorse (docs/lulzbot/), which has the guides of the mount from lulzbot/guide/ before the wide manual. The deck draws the pictures and writes index.html (the web manual) and booklet.html (the instruction booklet). Then Chromium prints each booklet two times:</p>
+<p>Builds the manual two times: for a display that is mounted tall (this folder), as on the pod, and for a display that is mounted wide (wide/). The deck draws the pictures and writes index.html (the web manual) and booklet.html (the instruction booklet). Then Chromium prints each booklet two times:</p>
 <pre><code>printdeck-manual.pdf        the half-letter pages (5.5 x 8.5 in) in order. A print shop
 makes a saddle-stitched booklet from this file.
 printdeck-manual-print.pdf  two pages on each side of a letter sheet, in the order of a
@@ -112,17 +110,21 @@ printdeck-cura-print.pdf  two pages on each side of a letter sheet, in the order
 booklet. Print it on both sides (flip on the short edge), then fold
 the stack and staple it in the fold.</code></pre>
 <p>Run it after a change to the plugin or to cura.go.</p>
-<h3>The Slate</h3>
-<p>Build the Printdeck Slate: the parts in build123d (fit check, STEP, STL), the mesh check, the Cura profiles with the filament and the support check, the line-art renders, the build PDF, and the website in ../docs. Takes about 1 minute (more if CuraEngine stalls and the slice runs again).</p>
-<p><code>slate/make_site.py</code>, the last step, writes <code>slate/guide/guide.json</code> and the images of this site in <code>docs/img/</code>.</p>
-<h3>The TAZ Workhorse mount</h3>
-<p>Build the Printdeck LulzBot mount: the LulzBot reference meshes, the parts in build123d (fit check, STEP, STL), the display fit test, the roll-in check of the printed nut, the mesh and overhang check, the Cura profiles with the filament, the print time, and the support check, the renders, the line-art images, and the build PDF. It stops if a check fails. It runs in about 3 minutes.</p>
-<p><code>lulzbot/make_pdf.py</code>, the last step, also writes <code>lulzbot/guide/guide.json</code> and the images in <code>lulzbot/guide/img/</code>. The upgrade booklet (<code>docs/manual/build.sh</code>) and this site read them.</p>
+<h3>The pod</h3>
+<p><code>lulzbot/pod.py export</code> writes the print files of the pod in <code>lulzbot/stl/pod/</code>. The <a href="../hardware/print/">print page</a> has them.</p>
+<p>The deck pod: the Raspberry Pi Touch Display 2 (5 inch), with the Pi 5 and its Active Cooler on the back of the display, in a printed case that fits close around them. A bracket for each printer holds the pod: the TAZ Workhorse bracket is here.</p>
+<p>The glass of the display is the front of the pod. It is wider than the case, so the case is a smaller body behind the glass. The display hangs with its ribbon end down, and the Pi is on it as Raspberry Pi mounts it: the USB ports up, the ribbon folded around the PCIe end of the Pi. The deck turns the picture 180 degrees (Settings, or display_rotate=180 in printdeck.txt).</p>
+<p>The body has two parts: a thin part around the display frame, and a deep part close around the Pi. The ports are the Pi&#x27;s own ports, flush with the walls of the deep part: the USB-C power port and the two micro HDMI ports in the left wall, and the USB-A and Ethernet ports in the top wall. The printer cable plugs straight into the Pi from above.</p>
+<p>The case is three printed parts. Each prints flat on its back with no support. - the frame: the thin part round the display, with a flat back ring over the metal back of the display and an opening for the Pi. Four M2.5 x 4 screws from the box of the display hold it, through the back ring into the four raised tabs. - the body: the deep part round the Pi. Every opening in it is open to the front, or a hole in the back. Four M3 x 6 screws go from the back down posts at its corners into M3 heat-set inserts in the frame. - the mount: a plate with the dovetail, held to the back of the body by two M3 x 6 cap screws from inside the body into M3 heat-set inserts in the mount.</p>
+<p>The pod hangs on the bracket: the dovetail of the mount drops into a slot in the bracket from above. The bracket stands on the two rail clips and the cover screw.</p>
+<p>Pod coordinates: u across the glass to the right (seen from the front), v up from the bottom edge of the glass, w out of the glass (the front of the glass is w = 0). The Pi is on the back: w &lt; 0.</p>
+<p>Run: uv run --no-project --with build123d --with numpy --with scipy --with trimesh --with networkx --with pyrender --with PyOpenGL python pod.py [OUT_DIR | live | export]</p>
+<p>export writes the STL files for printing to stl/pod/fdm/ and stl/pod/resin/ (see stl/pod/README.md). The resin frame and mount have captive M3 hex nuts in place of the heat-set inserts.</p>
 <h3>This site</h3>
 <p>Printdeck: write the documentation site in docs/ (<a href="https://beetlebug.org/printdeck/">https://beetlebug.org/printdeck/</a>).</p>
 <p>The pages come from the files of the repository, so the site follows them:</p>
-<p>README.md, ARCHITECTURE.md, os/README.md, printer/README.md, slicer/README.md, slicer/cura-plugin/README.md, deck/internal/klipper/PORTING.md, desktop/meshes/README.md, watch/README.md, relay/README.md                              the text of the pages slate/guide/guide.json, lulzbot/guide/guide.json             the two mounts docs/manual/index.html, docs/manual/wide/index.html          the screens of the deck deck/cmd/printdeck/*.go, deck/internal/config/config.go, os/board/, .github/workflows/, the build scripts              the reference pages</p>
-<p>Run it after docs/manual/build.sh, docs/cura/build.sh, slate/make.sh or lulzbot/make.sh, and after a change to a README. It needs only Python 3. At the end it checks every link of the site, and stops with an error for a link that goes nowhere.</p>
+<p>README.md, ARCHITECTURE.md, os/README.md, printer/README.md, slicer/README.md, slicer/cura-plugin/README.md, deck/internal/klipper/PORTING.md, desktop/meshes/README.md, watch/README.md, relay/README.md, lulzbot/README.md, lulzbot/stl/pod/README.md                                    the text of the pages lulzbot/stl/pod/                                             the print files of the pod docs/manual/index.html, docs/manual/wide/index.html          the screens of the deck deck/cmd/printdeck/*.go, deck/internal/config/config.go, os/board/, .github/workflows/, the build scripts              the reference pages</p>
+<p>Run it after docs/manual/build.sh or docs/cura/build.sh, after pod.py export, and after a change to a README. It needs only Python 3. At the end it checks every link of the site, and stops with an error for a link that goes nowhere.</p>
 <p>docs/build.py</p>
 
 </main>

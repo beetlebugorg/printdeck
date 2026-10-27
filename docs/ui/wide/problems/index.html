@@ -20,9 +20,8 @@
 <div class="layout">
 <aside class="side"><nav><a href="../../../">Overview</a>
 <div class="group">Hardware</div>
-<a href="../../../hardware/">The hardware</a>
-<a href="../../../hardware/slate/">The Slate case</a>
-<a href="../../../hardware/workhorse/">The TAZ Workhorse mount</a>
+<a href="../../../hardware/">The pod</a>
+<a href="../../../hardware/print/">Print the pod</a>
 <div class="group">The deck UI</div>
 <div class="switch"><a href="../../../ui/problems/">Tall</a><a href="../../../ui/wide/problems/" aria-current="page">Wide</a></div>
 <a href="../../../ui/">The screens</a>
@@ -55,16 +54,15 @@
 <a href="../../../reference/files/">Files, paths and services</a>
 <a href="../../../reference/hardware/">Hardware lists</a>
 <div class="group">Manuals and booklets</div>
-<a href="../../../manual/">Manual, tall display</a>
+<a href="../../../manual/">The manual</a>
 <a href="../../../manual/wide/">Manual, wide display</a>
-<a href="../../../lulzbot/">Workhorse upgrade booklet</a>
 <a href="../../../cura/">Cura plugin booklet</a></nav></aside>
 <main>
 <p class="eyebrow">The deck UI · wide</p>
 <h1>When something goes wrong</h1>
 
 <div class="layout-switch"><span>Layout:</span><a href="../../../ui/problems/">Tall</a><a href="" aria-current="page">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#problems">When something goes wrong</a></li><li><a href="#settings">Settings</a></li></ol></nav><div class="manual wide"><section id="problems">
-  <h2 class="title"><span class="num">18</span>When something goes wrong</h2>
+  <h2 class="title"><span class="num">20</span>When something goes wrong</h2>
   <p>When Klipper stops with an error, the deck shows all the lines of its message.</p>
   <ol class="steps"><li>Read the message. It often names the setting in printer.cfg.</li><li>After a stop or a power cut of the printer, tap Firmware restart.</li><li>After a change to printer.cfg, tap Restart Klipper.</li></ol>
   
@@ -106,12 +104,12 @@
   
 </section>
 <section id="settings">
-  <h2 class="title"><span class="num">19</span>Settings</h2>
-  <p>The file printdeck.txt on the PRINTDECK partition holds the settings. Put the disk in a computer to change it. The deck reads it at each start, then clears the Wi-Fi password in it.</p>
+  <h2 class="title"><span class="num">21</span>Settings</h2>
+  <p>The file printdeck.txt on the PRINTDECK partition holds the settings. Put the SD card in a computer to change it. The deck reads it at each start, then clears the Wi-Fi password in it.</p>
   
   
   
-  <table><tr><td>wifi_ssid, wifi_password, wifi_country</td><td>The Wi-Fi network</td></tr><tr><td>hostname, timezone</td><td>The name on the network, and the time zone</td></tr><tr><td>display_rotate</td><td>90 or 270 for a display that is mounted tall, 0 or 180 for one that is mounted wide</td></tr><tr><td>touch_invert_x, touch_invert_y, touch_swap_xy</td><td>1 turns an axis of the touch screen</td></tr><tr><td>preheat_tool, preheat_bed</td><td>The temperatures of Preheat with no filament set</td></tr><tr><td>night_from, night_to</td><td>The hours of the night colors</td></tr><tr><td>printer.cfg (a file)</td><td>A Klipper config. The deck takes it at the next start.</td></tr></table>
+  <table><tr><td>wifi_ssid, wifi_password, wifi_country</td><td>The Wi-Fi network</td></tr><tr><td>hostname, timezone</td><td>The name on the network, and the time zone</td></tr><tr><td>display_rotate</td><td>The turn of the screen: 90 or 270 turns a wide display to tall, 0 or 180 shows the native shape. Empty is 0 for a tall display (the Touch Display 2) and 270 for a wide display</td></tr><tr><td>touch_invert_x, touch_invert_y, touch_swap_xy</td><td>1 turns an axis of the touch screen</td></tr><tr><td>preheat_tool, preheat_bed</td><td>The temperatures of Preheat with no filament set</td></tr><tr><td>night_from, night_to</td><td>The hours of the night colors</td></tr><tr><td>printer.cfg (a file)</td><td>A Klipper config. The deck takes it at the next start.</td></tr></table>
   
   
 </section></div>

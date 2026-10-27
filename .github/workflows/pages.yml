@@ -5,10 +5,8 @@ on:
     branches: [main]
     paths:
       - "docs/**"
-      - "slate/stl/**"
-      - "slate/printdeck-slate-build.pdf"
-      - "lulzbot/stl/**"
-      - "lulzbot/printdeck-lulzbot-build.pdf"
+      - "lulzbot/stl/pod/**"
+      - "lulzbot/stl/clip.stl"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -27,14 +25,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # docs/build.py writes the pages of docs/, and printdeck manual the manuals. The downloads
-      # of the two mounts come from slate/ and lulzbot/.
+      # docs/build.py writes the pages of docs/, and printdeck manual the manuals. The print
+      # files of the pod come from lulzbot/stl/pod/, and the rail clip of the TAZ Workhorse
+      # from lulzbot/stl/.
       - name: Stage the site
         run: |
-          mkdir -p _site/files/lulzbot
+          mkdir -p _site/files/pod
           cp -r docs/. _site/
-          cp slate/stl/*.stl slate/printdeck-slate-build.pdf _site/files/
-          cp lulzbot/stl/*.stl lulzbot/printdeck-lulzbot-build.pdf _site/files/lulzbot/
+          cp -r lulzbot/stl/pod/fdm lulzbot/stl/pod/resin lulzbot/stl/pod/resin-flat _site/files/pod/
+          cp lulzbot/stl/clip.stl _site/files/pod/
 
       - uses: actions/upload-pages-artifact@v4
         with:

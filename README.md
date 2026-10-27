@@ -1,12 +1,11 @@
 # Printdeck
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="slate/docs/hero-dark.png">
-  <img src="slate/docs/hero-light.png" alt="The Printdeck Slate on its foot" width="320">
-</picture>
+<img src="docs/img/pod-taz.png" alt="The Printdeck pod on the front left of a LulzBot TAZ Workhorse" width="420">
 
-A Raspberry Pi 5 with a 7" touch screen next to the 3D printer. It runs Klipper, and shows and
-controls the print on the touch screen, on the display of the printer, and in a browser.
+The LulzBot Printdeck is a touch screen for two LulzBot printers: the LulzBot Mini 2 and the
+LulzBot TAZ Workhorse. A Raspberry Pi 5 and a 5 inch touch display go on the printer in a printed
+pod. The Pi runs Klipper. The deck shows and controls the print on the touch screen, on the display
+of the printer, and in a browser.
 
 Website: https://beetlebug.org/printdeck/
 
@@ -27,11 +26,15 @@ software.
   Errors can still occur.
 - Results on your printer can be different. Use Printdeck at your own risk.
 
+The deck can also load the Klipper example config of another printer. This documentation is for
+the Mini 2 and the TAZ Workhorse.
+
 ## Install
 
 1. Download `printdeck.img.xz` from the [latest release](https://github.com/beetlebugorg/printdeck/releases/latest).
-2. Write it to a USB SSD or an SD card with Raspberry Pi Imager ("Use custom").
-3. Start the Pi. The setup on the touch screen connects the Wi-Fi and finds the printer.
+2. Write it to an SD card with Raspberry Pi Imager ("Use custom").
+3. Put the SD card in the Pi of the pod, and connect the power. The setup on the touch screen
+   connects the Wi-Fi and finds the printer.
 
 To update, open Machine > Software update on the touch screen. `os/README.md` has the details.
 
@@ -48,20 +51,18 @@ slicer integration, and the iPhone and Apple Watch apps are made to work togethe
 
 ## Manual
 
-The manual shows each screen of the deck with numbered callouts, and explains each part. It
-has two versions, one for each mount of the display:
+The manual shows each screen of the deck with numbered callouts, and explains each part. The pod
+shows the tall layout of the deck.
 
-- Tall: [the web manual](https://beetlebug.org/printdeck/manual/), or the booklet
+- The manual: [the web manual](https://beetlebug.org/printdeck/manual/), or the booklet
   [docs/manual/printdeck-manual.pdf](docs/manual/printdeck-manual.pdf).
-- Wide: [the web manual](https://beetlebug.org/printdeck/manual/wide/), or the booklet
-  [docs/manual/wide/printdeck-manual.pdf](docs/manual/wide/printdeck-manual.pdf).
-- The upgrade kit for the LulzBot TAZ Workhorse: the booklet
-  [docs/lulzbot/printdeck-manual.pdf](docs/lulzbot/printdeck-manual.pdf) has the
-  print plan, the hardware and the steps of the mount in [lulzbot/](lulzbot/), then the wide
-  manual.
 - The Cura plugin: [the booklet on the web](https://beetlebug.org/printdeck/cura/), or
   [docs/cura/printdeck-cura.pdf](docs/cura/printdeck-cura.pdf). It shows the setup, the
   Printdeck tab, and the Print on a part tool.
+
+The deck also has a wide layout, for a display that is mounted wide. Its manual is
+[on the web](https://beetlebug.org/printdeck/manual/wide/), and in the booklet
+[docs/manual/wide/printdeck-manual.pdf](docs/manual/wide/printdeck-manual.pdf).
 
 Read the booklets on screen, or print them. The booklet has half-letter pages. A print shop
 makes a saddle-stitched booklet from printdeck-manual.pdf. To print it yourself, print
@@ -70,18 +71,22 @@ stack, and staple it in the fold.
 
 The deck draws the pictures itself: after a change to the UI, run `docs/manual/build.sh`. After a
 change to the Cura plugin, run `docs/cura/build.sh`. The documentation site in `docs/` comes from
-the README files, the guides of the two mounts and the manuals: after a change to one of them,
-run `docs/build.py`.
+the README files and the manuals: after a change to one of them, run `docs/build.py`.
 
 ## Hardware
 
+The pod is a Raspberry Pi Touch Display 2 (5 inch, mounted tall) with a Raspberry Pi 5 on its
+back, in a printed case. A printed bracket holds the pod on the printer: one bracket for the Mini 2,
+and one for the TAZ Workhorse. [lulzbot/README.md](lulzbot/README.md) has the pod, the brackets and
+the parts list. [lulzbot/stl/pod/README.md](lulzbot/stl/pod/README.md) has the print files.
+
 | Part | Connection |
 |---|---|
-| Raspberry Pi 5 | USB-C power supply, 27 W |
-| 30 mm fan | Fan connector of the Pi |
-| Adafruit 7" HDMI backpack display | Micro HDMI port. Portrait position in the front. |
-| AR1100 touch controller | USB |
-| 2.5" SSD | USB 3 port, boot device |
+| Raspberry Pi 5 | Raspberry Pi 27 W USB-C power supply |
+| Raspberry Pi Active Cooler | Fan connector of the Pi |
+| Raspberry Pi Touch Display 2, 5 inch | DSI ribbon, and a power wire to the GPIO header of the Pi |
+| SD card | Boot device |
+| USB-A to USB-B cable | The board of the printer |
 
 ## Software
 
@@ -93,7 +98,7 @@ The Printdeck runs Printdeck OS: a small, read-only Linux system that Buildroot 
   - `printdeck klippy` is the Klipper host, a Go port of Klipper's `klippy.py`. The `klipper`
     service runs it in its own process. It drives the printer. `deck/internal/klipper/PORTING.md`
     tells how the port follows Klipper.
-  - It draws the full screen application on the 7" display, without a desktop or a browser.
+  - It draws the full screen application on the touch display, without a desktop or a browser.
   - It serves the remote screen at `http://printdeck.local`: the touch screen in a browser, with
     the password of the `printdeck` user.
   - It serves the part of the OctoPrint API that slicers use. Cura, OrcaSlicer and PrusaSlicer
@@ -125,8 +130,6 @@ the print in Preview. See `slicer/cura-plugin/README.md`.
 
 ## Desktop app and simulator
 
-<img src="docs/img/sim.gif" alt="The 3D window of the simulator: a TAZ Workhorse with the Printdeck prints a plaque" width="420">
-
 `desktop/` is the Printdeck for a computer. It is a Qt 6 window around `printdeck app`, which runs
 the Klipper host and the deck UI for a printer on USB. Cura finds it at the same address after
 each start, as it finds a Printdeck. The keyboard of the computer types on the deck. Ctrl+K
@@ -134,12 +137,13 @@ each start, as it finds a Printdeck. The keyboard of the computer types on the d
 second.
 
 `printdeck app -sim` runs the deck with a simulated printer: a TAZ Workhorse on a simulated
-printer board. The board has the endstops, the probe and the display of the printer, at the
-places in `printer.cfg`. With `-sim`, a second window shows the printer in 3D:
+printer board. The Simulated printer page of the deck changes it to a Mini 2. The board has the
+endstops, the probe and the display of the printer, at the places in `printer.cfg`. With `-sim`, a
+second window shows the printer in 3D:
 
-- The model of the Workhorse comes from the CAD files of LulzBot. The axes and the belts move with
-  the steps of the board, and the filament goes down where the nozzle is.
-- The Printdeck mount from `lulzbot/` is on the printer, and its screen shows the deck UI.
+- The models of the TAZ Workhorse and the Mini 2 come from the CAD files of LulzBot. The axes and
+  the belts move with the steps of the board, and the filament goes down where the nozzle is.
+- The Printdeck pod from `lulzbot/` is on the printer, and its screen shows the deck UI.
 - The display of the printer shows the dots that the Klipper host sends to it.
 - The left button turns the view, the right button pans it, and the wheel zooms. T makes the
   tool head see-through.
@@ -162,23 +166,6 @@ tells how.
 To look at the screens without the hardware, run `go run ./cmd/printdeck demo /tmp/shots` in
 `deck/`. It writes PNG files. To use the screens in a browser, run
 `go run ./cmd/printdeck remote-demo` and open `http://localhost:8080` (password `demo`).
-
-## Case
-
-The case is the Slate in `slate/`: a 35 mm slab that leans back 15 degrees on a foot, with the Pi
-on the rear. `slate/README.md` lists the parts and the files.
-`slate/printdeck-slate-build.pdf` has the parts list, the print settings, and the assembly steps.
-
-## On the LulzBot TAZ Workhorse
-
-<img src="lulzbot/renders/printer-front-left.png" alt="The Printdeck mount on the front left of a LulzBot TAZ Workhorse" width="420">
-
-A second mount puts the Printdeck on the front left of a LulzBot TAZ Workhorse, with the display
-wide. You print its seven parts on the Workhorse itself: 309 g of PLA in 14 h 58 min, with no
-supports. Two metal M3 roll-in T-nuts hold the clips in the front rail, and you drill no hole in
-the printer. The
-[upgrade booklet](docs/lulzbot/printdeck-manual.pdf) has the print plan, the hardware and the
-steps. The files are in [lulzbot/](lulzbot/).
 
 ## Work that remains
 

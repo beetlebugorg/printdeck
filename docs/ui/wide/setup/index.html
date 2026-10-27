@@ -20,9 +20,8 @@
 <div class="layout">
 <aside class="side"><nav><a href="../../../">Overview</a>
 <div class="group">Hardware</div>
-<a href="../../../hardware/">The hardware</a>
-<a href="../../../hardware/slate/">The Slate case</a>
-<a href="../../../hardware/workhorse/">The TAZ Workhorse mount</a>
+<a href="../../../hardware/">The pod</a>
+<a href="../../../hardware/print/">Print the pod</a>
 <div class="group">The deck UI</div>
 <div class="switch"><a href="../../../ui/setup/">Tall</a><a href="../../../ui/wide/setup/" aria-current="page">Wide</a></div>
 <a href="../../../ui/">The screens</a>
@@ -55,9 +54,8 @@
 <a href="../../../reference/files/">Files, paths and services</a>
 <a href="../../../reference/hardware/">Hardware lists</a>
 <div class="group">Manuals and booklets</div>
-<a href="../../../manual/">Manual, tall display</a>
+<a href="../../../manual/">The manual</a>
 <a href="../../../manual/wide/">Manual, wide display</a>
-<a href="../../../lulzbot/">Workhorse upgrade booklet</a>
 <a href="../../../cura/">Cura plugin booklet</a></nav></aside>
 <main>
 <p class="eyebrow">The deck UI · wide</p>
@@ -128,7 +126,7 @@
     <ol class="parts">
       <li><span class="badge">1</span><span><b>Address</b>The address of the deck on your network. Open it in a browser for the web pages.</span></li><li><span class="badge">2</span><span><b>Password</b>The password of the web pages. To see it again, open Machine &gt; Wi-Fi and help.</span></li><li><span class="badge">3</span><span><b>Finish</b>Closes the setup. The deck does not open it again.</span></li>
     </ol>
-    <p class="note">You can also set the Wi-Fi before the first start: put the disk in a computer, and fill in printdeck.txt on the PRINTDECK partition.</p>
+    <p class="note">You can also set the Wi-Fi before the first start: put the SD card in a computer, and fill in printdeck.txt on the PRINTDECK partition.</p>
   </figure>
   
   
@@ -160,25 +158,30 @@
         <circle cx="-40" cy="300" r="15" class="badge"/>
         <text x="-40" y="300" class="badge-n">3</text>
         
+        <line x1="825" y1="386" x2="538" y2="386" class="leader"/>
+        <circle cx="538" cy="386" r="5" class="dot"/>
+        <circle cx="840" cy="386" r="15" class="badge"/>
+        <text x="840" y="386" class="badge-n">4</text>
+        
         <line x1="825" y1="268" x2="708" y2="268" class="leader"/>
         <circle cx="708" cy="268" r="5" class="dot"/>
         <circle cx="840" cy="268" r="15" class="badge"/>
-        <text x="840" y="268" class="badge-n">4</text>
+        <text x="840" y="268" class="badge-n">5</text>
         
         <line x1="-25" y1="368" x2="16" y2="368" class="leader"/>
         <circle cx="16" cy="368" r="5" class="dot"/>
         <circle cx="-40" cy="368" r="15" class="badge"/>
-        <text x="-40" y="368" class="badge-n">5</text>
+        <text x="-40" y="368" class="badge-n">6</text>
         
         <line x1="-25" y1="436" x2="16" y2="436" class="leader"/>
         <circle cx="16" cy="436" r="5" class="dot"/>
         <circle cx="-40" cy="436" r="15" class="badge"/>
-        <text x="-40" y="436" class="badge-n">6</text>
+        <text x="-40" y="436" class="badge-n">7</text>
         
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Board</b>The board that the deck found on USB, its MCU, and its Klipper firmware.</span></li><li><span class="badge">2</span><span><b>Choose printer</b>Opens the list of Klipper&#39;s example configs. See below.</span></li><li><span class="badge">3</span><span><b>Search again</b>Looks for the board again, for example after you connect the printer.</span></li><li><span class="badge">4</span><span><b>Your own config</b>You can also copy your own printer.cfg to the PRINTDECK partition, and start the deck again.</span></li><li><span class="badge">5</span><span><b>Wi-Fi and help</b>The network, the address and the password of the deck.</span></li><li><span class="badge">6</span><span><b>Software update</b>Installs a new version of Printdeck OS. A new version can fix the problem.</span></li>
+      <li><span class="badge">1</span><span><b>Board</b>The board that the deck found on USB, its MCU, and its Klipper firmware.</span></li><li><span class="badge">2</span><span><b>Choose printer</b>Opens the list of Klipper&#39;s example configs. See below.</span></li><li><span class="badge">3</span><span><b>Search again</b>Looks for the board again, for example after you connect the printer.</span></li><li><span class="badge">4</span><span><b>Simulated printer</b>Runs a simulated printer, so you can try the deck with no printer.</span></li><li><span class="badge">5</span><span><b>Your own config</b>You can also copy your own printer.cfg to the PRINTDECK partition, and start the deck again.</span></li><li><span class="badge">6</span><span><b>Wi-Fi and help</b>The network, the address and the password of the deck.</span></li><li><span class="badge">7</span><span><b>Software update</b>Installs a new version of Printdeck OS. A new version can fix the problem.</span></li>
     </ol>
     
   </figure>

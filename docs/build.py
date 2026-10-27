@@ -6,21 +6,21 @@ The pages come from the files of the repository, so the site follows them:
   README.md, ARCHITECTURE.md, os/README.md, printer/README.md,
   slicer/README.md, slicer/cura-plugin/README.md,
   deck/internal/klipper/PORTING.md, desktop/meshes/README.md,
-  watch/README.md, relay/README.md                              the text of the pages
-  slate/guide/guide.json, lulzbot/guide/guide.json             the two mounts
+  watch/README.md, relay/README.md, lulzbot/README.md,
+  lulzbot/stl/pod/README.md                                    the text of the pages
+  lulzbot/stl/pod/                                             the print files of the pod
   docs/manual/index.html, docs/manual/wide/index.html          the screens of the deck
   deck/cmd/printdeck/*.go, deck/internal/config/config.go,
   os/board/, .github/workflows/, the build scripts              the reference pages
 
-Run it after docs/manual/build.sh, docs/cura/build.sh, slate/make.sh or lulzbot/make.sh, and after
-a change to a README. It needs only Python 3. At the end it checks every link of
+Run it after docs/manual/build.sh or docs/cura/build.sh, after pod.py export, and after a change to
+a README. It needs only Python 3. At the end it checks every link of
 the site, and stops with an error for a link that goes nowhere.
 
   docs/build.py
 """
 
 import html
-import json
 import posixpath
 import re
 import sys
@@ -47,8 +47,8 @@ def read(path):
 PAGE_OF = {
     "README.md": "", "ARCHITECTURE.md": "deck/", "os/README.md": "os/", "printer/README.md": "deck/printer/",
     "slicer/README.md": "slicer/adaptive-speed/", "slicer/cura-plugin/README.md": "slicer/cura-plugin/",
-    "deck/internal/klipper/PORTING.md": "deck/klipper/", "slate/README.md": "hardware/slate/",
-    "lulzbot/README.md": "hardware/workhorse/", "watch/README.md": "apps/", "relay/README.md": "apps/relay/",
+    "deck/internal/klipper/PORTING.md": "deck/klipper/", "lulzbot/README.md": "hardware/",
+    "lulzbot/stl/pod/README.md": "hardware/print/", "watch/README.md": "apps/", "relay/README.md": "apps/relay/",
 }
 
 
@@ -227,11 +227,6 @@ def md(path, root, sections=None, skip=(), shift=0):
 
 def md_text(text, src_dir, root, shift=0):
     return Markdown(src_dir, root, shift).convert(text)
-
-
-def without_html(body):
-    """A Markdown body without its lines of HTML (the pictures of a README)."""
-    return "\n".join(l for l in body.split("\n") if not l.lstrip().startswith("<"))
 
 
 def docstring(path):
@@ -492,8 +487,7 @@ def nav_html(current, root, wide):
     ui_base = "ui/wide/" if wide else "ui/"
     groups = [
         (None, [("Overview", "")]),
-        ("Hardware", [("The hardware", "hardware/"), ("The Slate case", "hardware/slate/"),
-                      ("The TAZ Workhorse mount", "hardware/workhorse/")]),
+        ("Hardware", [("The pod", "hardware/"), ("Print the pod", "hardware/print/")]),
         ("The deck UI", [("The screens", "ui/")] + [(t, ui_base + f + "/") for t, f, _, _ in tall]),
         ("Software", [("Printdeck OS", "os/"), ("The printdeck program", "deck/"), ("The Klipper host", "deck/klipper/"),
                       ("The reference printer", "deck/printer/"), ("Remote screen and API", "deck/remote/"),
@@ -503,8 +497,8 @@ def nav_html(current, root, wide):
         ("Build and release", [("Build and release", "build/")]),
         ("Reference", [("Commands", "reference/commands/"), ("Environment variables", "reference/environment/"),
                        ("Files, paths and services", "reference/files/"), ("Hardware lists", "reference/hardware/")]),
-        ("Manuals and booklets", [("Manual, tall display", "manual/"), ("Manual, wide display", "manual/wide/"),
-                                  ("Workhorse upgrade booklet", "lulzbot/"), ("Cura plugin booklet", "cura/")]),
+        ("Manuals and booklets", [("The manual", "manual/"), ("Manual, wide display", "manual/wide/"),
+                                  ("Cura plugin booklet", "cura/")]),
     ]
     out = []
     for name, items in groups:
@@ -574,19 +568,6 @@ def page(path, section, title, lede, body, description=None, wide=False, toc=Tru
     PAGES[path] = doc
 
 
-def pic(root, name, alt, cls="frame-img"):
-    return (f'<picture class="{cls}"><source media="(prefers-color-scheme: dark)" srcset="{root}img/{name}-dark.png">'
-            f'<img src="{root}img/{name}-light.png" alt="{esc(alt)}" loading="lazy"></picture>')
-
-
-def kv_table(rows, first="q"):
-    return '<div class="table-wrap"><table>' + "".join(
-        f'<tr><td class="{first}">{esc(str(a))}</td><td>{esc(b)}</td></tr>' for a, b in rows) + "</table></div>"
-
-
-SLATE = json.loads(read("slate/guide/guide.json"))
-LULZ = json.loads(read("lulzbot/guide/guide.json"))
-
 SCREENS = [("printing", "A print with the model up to the layer that prints now"),
            ("first-layer", "The first layer with the Z offset"),
            ("file", "A file with its print time, filament, roll and cost"),
@@ -603,20 +584,20 @@ def screens(root, wide=False):
 
 def landing():
     root = ""
-    lede = ("A Raspberry Pi 5 with a 7\" touch screen next to the 3D printer. It runs Klipper, and shows and "
-            "controls the print on the touch screen, on the display of the printer, and in a browser.")
-    t = SLATE["totals"]
+    lede = ("A touch screen for the LulzBot Mini 2 and the LulzBot TAZ Workhorse. A Raspberry Pi 5 and a 5 inch "
+            "touch display go on the printer in a printed pod. The Pi runs Klipper, and the deck shows and controls "
+            "the print on the touch screen, on the display of the printer, and in a browser.")
     body = f"""
 <p>
   <a class="btn primary" href="{REPO}/releases/latest">Download Printdeck OS</a>
   <a class="btn" href="#install">Install</a>
   <a class="btn" href="manual/">The manual</a>
-  <a class="btn" href="hardware/">Build the hardware</a>
+  <a class="btn" href="hardware/">Build the pod</a>
   <a class="btn" href="{REPO}">Source on GitHub</a>
 </p>
 <div class="pics">
-  <figure class="frame-img">{pic(root, "hero", "The Printdeck Slate on its foot", cls="")}<figcaption>The Slate: a desk slab, {t["parts"]} printed parts</figcaption></figure>
-  <figure class="frame-img white"><img src="img/lulzbot-printer.png" alt="The Printdeck mount on the front left of a LulzBot TAZ Workhorse"><figcaption>The mount on the LulzBot TAZ Workhorse</figcaption></figure>
+  <figure class="frame-img white"><img src="img/pod-taz.png" alt="The Printdeck pod on the front left of a LulzBot TAZ Workhorse"><figcaption>The pod on the LulzBot TAZ Workhorse</figcaption></figure>
+  <figure class="frame-img white"><img src="img/pod-mini2.png" alt="The Printdeck pod on the top left of a LulzBot Mini 2"><figcaption>The pod on the LulzBot Mini 2</figcaption></figure>
 </div>
 <h2 id="before">Before you use it</h2>
 {md_text(section_body("README.md", "Before you use it"), "", root)}
@@ -627,12 +608,12 @@ def landing():
 
 <h2 id="docs">The documentation</h2>
 <div class="map">
-  <a class="card" href="hardware/"><b>Hardware</b><span>The parts, the Slate case for the desk, and the mount for the LulzBot TAZ Workhorse: print plans, hardware lists and assembly steps.</span></a>
-  <a class="card" href="ui/"><b>The deck UI</b><span>Every screen of the touch screen with numbered callouts, for a display that is mounted tall or wide.</span></a>
+  <a class="card" href="hardware/"><b>The pod</b><span>The touch display and the Pi 5 in a printed case, and the brackets for the Mini 2 and the TAZ Workhorse: the parts, the print files and the hardware.</span></a>
+  <a class="card" href="ui/"><b>The deck UI</b><span>Every screen of the touch screen with numbered callouts, in the tall layout of the pod and in the wide layout.</span></a>
   <a class="card" href="os/"><b>Printdeck OS</b><span>The read-only Linux image: install, the first start, the two system slots, the update, the release and the debug image.</span></a>
   <a class="card" href="deck/"><b>The printdeck program</b><span>One Go program: the Klipper host, the touch screen, the remote screen, the API for slicers and the display of the printer.</span></a>
   <a class="card" href="slicer/cura-plugin/"><b>Slicers</b><span>The Printdeck plugin for Cura with the Print on a part tool, and the Adaptive Speed script.</span></a>
-  <a class="card" href="desktop/"><b>Desktop app and simulator</b><span>The Printdeck for a computer, the simulated TAZ Workhorse in 3D, and the tools that make the film.</span></a>
+  <a class="card" href="desktop/"><b>Desktop app and simulator</b><span>The Printdeck for a computer, the simulated TAZ Workhorse and Mini 2 in 3D, and the tools that make the film.</span></a>
   <a class="card" href="build/"><b>Build and release</b><span>The OS image, the CI, the tags of a release, the manuals and this site.</span></a>
   <a class="card" href="reference/commands/"><b>Reference</b><span>The commands and flags of printdeck, the environment variables, the files and paths, and the hardware lists.</span></a>
 </div>
@@ -643,166 +624,51 @@ def landing():
 {md_text(section_body("README.md", "License"), "", root)}
 """
     page("", "Documentation", "Printdeck", lede, body, toc=False,
-         description="The documentation of Printdeck: a touch screen and a Klipper print server for a 3D printer on a Raspberry Pi 5.")
+         description="The documentation of the LulzBot Printdeck: a touch screen and a Klipper print server on a Raspberry Pi 5 for the LulzBot Mini 2 and the LulzBot TAZ Workhorse.")
 
 
-# --- Hardware -------------------------------------------------------------------------------------
+# --- The pod --------------------------------------------------------------------------------------
+
+POD_STL = ROOT / "lulzbot" / "stl" / "pod"
+RAIL_CLIP = ROOT / "lulzbot" / "stl" / "clip.stl"
+
+
+def pod_files(root, folder):
+    """The buttons of the print files of the pod in one folder of lulzbot/stl/pod/."""
+    return "".join(f'<a class="btn" href="{root}files/pod/{folder}/{f.name}">{f.name}</a>'
+                   for f in sorted((POD_STL / folder).glob("*.stl")))
+
 
 def hardware():
     root = "../"
-    s, l = SLATE["totals"], LULZ["totals"]
     body = f"""
-<h2 id="parts">The parts</h2>
-{md_text(section_body("README.md", "Hardware"), "", root)}
-<p>Both mounts hold the same parts. The lists with the screws, the inserts and the cables are on the page of each mount, and together on the <a href="{root}reference/hardware/">hardware lists</a> page.</p>
-<h2 id="mounts">The two mounts</h2>
-<div class="pics">
-  <div class="card"><a href="slate/">{pic(root, "hero", "The Printdeck Slate on its foot")}</a><div class="text"><b>The Slate</b>
-  {md_text(without_html(section_body("README.md", "Case")), "", root)}
-  <div class="chips"><span class="chip">{s["size"]}</span><span class="chip">{s["parts"]} printed parts</span><span class="chip">{s["grams"]} g of PLA</span><span class="chip">No supports</span></div>
-  <p><a class="btn" href="slate/">The Slate case</a></p></div></div>
-  <div class="card"><a href="workhorse/"><picture class="frame-img white"><img src="{root}img/lulzbot-printer.png" alt="The Printdeck mount on the front left of a LulzBot TAZ Workhorse" loading="lazy"></picture></a><div class="text"><b>The TAZ Workhorse mount</b>
-  {md_text(without_html(section_body("README.md", "On the LulzBot TAZ Workhorse")), "", root)}
-  <div class="chips"><span class="chip">{l["parts"]} printed parts</span><span class="chip">{l["grams"]} g of PLA</span><span class="chip">{l["time"]}</span><span class="chip">No supports</span><span class="chip">No holes in the printer</span></div>
-  <p><a class="btn" href="workhorse/">The TAZ Workhorse mount</a></p></div></div>
-</div>
-"""
-    page("hardware/", "Hardware", "The hardware", "A Raspberry Pi 5, a 7 inch touch display, a drive and a fan, in one of two printed mounts.", body)
-
-
-def slate():
-    root = "../../"
-    g = SLATE
-    t = g["totals"]
-    cards = "".join(
-        f'<div class="card">{pic(root, p["image"], p["name"])}<div class="text"><b>{p["name"].capitalize()}</b> · '
-        f'<span class="sw" style="background:{p["swatch"]}"></span>{p["colour"]} PLA · {p["grams"]} g<p>{esc(p["notes"])}</p></div></div>'
-        for p in g["prints"])
-    plan = "".join(
-        f'<tr><td><code>{p["file"]}</code></td><td><span class="sw" style="background:{p["swatch"]}"></span>{p["colour"]}</td>'
-        f'<td class="n">{p["size"]}</td><td class="n">{p["grams"]} g</td><td class="n">{p["metres"]} m</td><td class="n">{p["cost"]}</td></tr>'
-        for p in g["prints"])
-    extras = "".join(f'<tr><td><code>{e["file"]}</code></td><td colspan="5">{esc(e["notes"])}</td></tr>' for e in g["extras"])
-    steps = []
-    for i, s in enumerate(g["steps"], 1):
-        chips = "".join(f'<span class="chip">{esc(x)}</span>' for x in s["need"])
-        lis = "".join(f"<li>{esc(x)}</li>" for x in s["items"])
-        note = f'<p class="note"><b>Note.</b> {esc(s["note"])}</p>' if s["note"] else ""
-        steps.append(f'<section class="step" id="step-{i}">{pic(root, s["image"], f"Step {i}: {s["title"]}")}'
-                     f'<div><div class="num">{i}</div><h3>{esc(s["title"])}</h3><div class="chips">{chips}</div><ol>{lis}</ol>{note}</div></section>')
-    files = "".join(f'<a class="btn" href="{root}files/{p["name"]}.stl">{p["name"]}.stl</a>' for p in g["prints"])
-    files += "".join(f'<a class="btn" href="{root}files/{posixpath.basename(e["file"])}">{posixpath.basename(e["file"])}</a>' for e in g["extras"])
-    body = f"""
-{md_text(without_html(section_body("slate/README.md", "")).split("\n", 1)[1], "slate", root)}
-<div class="stats">
-  <div><b>{t["size"]}</b><span>Size</span></div>
-  <div><b>{t["parts"]} parts · {t["grams"]} g</b><span>Printed</span></div>
-  <div><b>{t["cost"]}</b><span>Filament at {t["pricePerKg"]}/kg</span></div>
-  <div><b>No supports</b><span>All parts</span></div>
-</div>
-<div class="pics">{pic(root, "hero", "The Printdeck from the front")}{pic(root, "rear", "The Printdeck from the rear, with the Pi and the cables")}</div>
-<p><a class="btn primary" href="{root}files/printdeck-slate-build.pdf">Build instructions (PDF)</a> {files}</p>
-
-<h2 id="print">Print the parts</h2>
-<p>The STL files are in their print orientation. Load them, do not turn them.</p>
-<div class="cards">{cards}</div>
-<div class="table-wrap"><table><tr><th>File</th><th>Colour</th><th class="n">Size on the bed (mm)</th><th class="n">Filament</th><th class="n">Length</th><th class="n">Cost</th></tr>{plan}
-<tr><td><b>Total</b></td><td></td><td></td><td class="n"><b>{t["grams"]} g</b></td><td class="n"><b>{t["metres"]} m</b></td><td class="n"><b>{t["cost"]}</b></td></tr>{extras}</table></div>
-<p>The filament comes from slices with the Cura profiles of this case, with the skirt. The cost is at {t["pricePerKg"]} a kilogram.</p>
-<h3>Settings</h3>
-{kv_table(g["settings"], first="")}
-
-<h2 id="parts">What you need</h2>
-<div class="two"><div><h3>Hardware</h3>{kv_table([(f"{q}×", x) for q, x in g["hardware"]])}</div>
-<div><h3>Electronics</h3>{kv_table([(f"{q}×", x) for q, x in g["electronics"]])}</div></div>
-
-<h2 id="build">Build</h2>
-<p>Left and right are as seen from the front of the case.</p>
-{"".join(steps)}
-
-<h2 id="connect">Connect</h2>
-<div class="step">{pic(root, "connect", "The plugs for the printer and the power")}<div><ol class="steps">{"".join(f"<li>{esc(x)}</li>" for x in g["connect"])}</ol>
-<p>Then switch on. The <a href="{root}ui/setup/">setup</a> opens on the touch screen.</p></div></div>
-<h2 id="open">To open the case</h2>
-<ol class="steps">{"".join(f"<li>{esc(x)}</li>" for x in g["open"])}</ol>
-
+{md("lulzbot/README.md", root, skip=("Files", "Reference files", "Needs"))}
+<h2 id="files">The print files</h2>
+<p>The FDM files, in their print orientation. The <a href="{root}hardware/print/">print page</a> has the settings, the resin files and the hardware of the pod.</p>
+<p>{pod_files(root, "fdm")}<a class="btn" href="{root}files/pod/{RAIL_CLIP.name}">{RAIL_CLIP.name} (TAZ Workhorse)</a></p>
 <h2 id="design">The design</h2>
-<p>The case is a build123d model in <a href="{REPO}/tree/main/slate">slate/</a>. The CAD files, the STL files and the build PDF come from it.</p>
-{md("slate/README.md", root, sections=("Parts", "Files", "Needs"), shift=1)}
+<p>The pod is a build123d model in <a href="{REPO}/tree/main/lulzbot">lulzbot/</a>, on the CAD of the printers from LulzBot.</p>
+{md("lulzbot/README.md", root, sections=("Files", "Reference files", "Needs"), shift=1)}
 """
-    page("hardware/slate/", "Hardware", "The Slate case", "A desk slab for the Printdeck, with the Pi 5 on its rear.", body)
+    page("hardware/", "Hardware", "The pod",
+         "A Raspberry Pi Touch Display 2 with a Raspberry Pi 5 on its back, in a printed case, on a bracket for the Mini 2 or the TAZ Workhorse.",
+         body)
 
 
-def workhorse():
+def print_page():
     root = "../../"
-    g = LULZ
-    t = g["totals"]
-    img = f"{root}lulzbot/img/"
-    plan = "".join(
-        f'<tr><td><img src="{img}{p["image"]}.png" alt="" width="60" loading="lazy"></td><td><code>{p["file"]}</code></td>'
-        f'<td><span class="sw" style="background:{p["swatch"]}"></span>{p["colour"]}</td><td class="n">{p["count"]}</td>'
-        f'<td class="n">{p["grams"]} g</td><td class="n">{p["time"]}</td><td class="n">{p["cost"]}</td><td>{esc(p["notes"])}</td></tr>'
-        for p in g["prints"])
-    test = g["test"]
-    hw = "".join(f'<tr><td class="q">{x["count"]}×</td><td>{esc(x["item"])}</td><td>{esc(x["where"])}</td></tr>' for x in g["hardware"])
-    steps = []
-    for i, s in enumerate(g["steps"], 1):
-        chips = "".join(f'<span class="chip">{esc(x)}</span>' for x in s["need"])
-        lis = "".join(f"<li>{esc(x)}</li>" for x in s["items"])
-        note = f'<p class="note"><b>Note.</b> {esc(s["note"])}</p>' if s["note"] else ""
-        steps.append(f'<section class="step" id="step-{i}"><figure class="frame-img white"><img src="{img}lulzbot-{s["image"]}.png" alt="Step {i}: {esc(s["title"])}" loading="lazy"></figure>'
-                     f'<div><div class="num">{i}</div><h3>{esc(s["title"])}</h3><div class="chips">{chips}</div><ol>{lis}</ol>{note}</div></section>')
-    cables = "".join(f"<tr><td>{esc(a)}</td><td class=\"n\">{esc(b)}</td><td>{esc(c)}</td></tr>" for a, b, c in g["cables"])
-    names = [posixpath.basename(p["file"]) for p in g["prints"]] + [posixpath.basename(test["file"])]
-    files = "".join(f'<a class="btn" href="{root}files/lulzbot/{n}">{n}</a>' for n in names)
     body = f"""
-{md_text(without_html(section_body("lulzbot/README.md", "")).split("\n", 1)[1], "lulzbot", root)}
-<div class="chips"><span class="chip">{t["parts"]} printed parts</span><span class="chip">{t["grams"]} g of PLA</span><span class="chip">{t["time"]} of printing</span><span class="chip">No supports</span><span class="chip">No holes in the printer</span></div>
-<div class="pics"><figure class="frame-img white"><img src="{img}lulzbot-hero.png" alt="The mount from the front" loading="lazy"></figure><figure class="frame-img white"><img src="{img}lulzbot-side.png" alt="The mount from the side" loading="lazy"></figure></div>
-<p><a class="btn primary" href="{root}lulzbot/printdeck-manual.pdf">Upgrade booklet (PDF)</a><a class="btn" href="{root}lulzbot/">Upgrade booklet on the web</a><a class="btn" href="{root}files/lulzbot/printdeck-lulzbot-build.pdf">Build instructions (PDF)</a></p>
-<p>{files}</p>
-<p>The deck screens of the booklet are the wide screens: the display is mounted wide in the head. See <a href="{root}ui/wide/{list(CHAPTERS.values())[1]}/">the deck UI, wide</a>.</p>
-
-<h2 id="print">Print the parts</h2>
-<p>The STL files are in <code>lulzbot/stl/</code>, in their print orientation. Load them as they are. The numbers come from slices with the Cura profiles of the mount: LulzBot TAZ Workhorse, SE tool head, 0.5 mm nozzle, 2.85 mm PLA.</p>
-<div class="table-wrap"><table><tr><th></th><th>File</th><th>Colour</th><th class="n">Print</th><th class="n">Filament</th><th class="n">Time</th><th class="n">Cost</th><th>Print orientation</th></tr>{plan}
-<tr><td></td><td><b>Total</b></td><td></td><td class="n">{t["parts"]}</td><td class="n"><b>{t["grams"]} g</b></td><td class="n"><b>{t["time"]}</b></td><td class="n"><b>{t["cost"]}</b></td><td></td></tr></table></div>
-<p class="note">Total: {t["grams"]} g of PLA ({t["metres"]} m), {t["time"]} of printing, {t["cost"]} at {t["pricePerKg"]} a kilogram. The fit test of the screen opening (<code>{test["file"]}</code>, {test["grams"]} g, {test["time"]}) is optional. Print it first, and check the display in it: the display pocket has 0.3 mm of clearance at each side.</p>
-<h3>Settings</h3>
-{kv_table(g["settings"], first="")}
-
-<h2 id="need">What you need</h2>
-<h3>Hardware</h3>
-<div class="table-wrap"><table><tr><th></th><th>Item</th><th>Where</th></tr>{hw}</table></div>
-<p>All the screws are M3 socket cap screws, for a 2.5 mm hex key. A shorter or a longer heat-set insert fits, up to the length in brackets.</p>
-<h3>Electronics and cables</h3>
-{kv_table([(f"{q}×", x) for q, x in g["electronics"]])}
-<h3>Tools</h3>
-<ul>{"".join(f"<li>{esc(x)}</li>" for x in g["tools"])}</ul>
-
-<h2 id="check">Before you start</h2>
-<figure class="frame-img white"><img src="{img}lulzbot-exploded.png" alt="The parts of the mount on the printer, exploded" loading="lazy"></figure>
-<h3>Check on your printer</h3>
-<ol class="steps">{"".join(f"<li>{esc(x)}</li>" for x in g["checks"])}</ol>
-<h3>Prepare the drive</h3>
-<p>The Printdeck starts from the 2.5 inch drive. Write the Printdeck image to it before you build the mount: the drive goes into the head in step 3. See <a href="{root}os/#install">Install</a> on the Printdeck OS page.</p>
-{md_text(section_body("lulzbot/README.md", "Software"), "lulzbot", root)}
-
-<h2 id="build">Build the mount</h2>
-<p>Each step names the parts and the hardware that it needs. The parts from an earlier step have the number of that step.</p>
-{"".join(steps)}
-
-<h2 id="connect">Connect and start</h2>
-<figure class="frame-img white"><img src="{img}lulzbot-connect.png" alt="The cables of the mount" loading="lazy"></figure>
-<div class="table-wrap"><table><tr><th>Cable</th><th class="n">Length</th><th>Route</th></tr>{cables}</table></div>
-<p>Connect the power cable to the Raspberry Pi 27 W USB-C power supply behind the printer, and the printer cable to the USB socket of the printer board. Turn on the printer and the power supply. The deck starts from the drive and opens the <a href="{root}ui/wide/setup/">setup</a>.</p>
-
-<h2 id="design">The design</h2>
-<p>The mount is a build123d model in <a href="{REPO}/tree/main/lulzbot">lulzbot/</a>, on the CAD of the printer from LulzBot.</p>
-{md("lulzbot/README.md", root, sections=("Hardware", "Cover screws", "Display dimensions", "To check on the printer", "Files", "Reference files", "Needs"), shift=1)}
+{md("lulzbot/stl/pod/README.md", root)}
+<h2 id="download">Download</h2>
+<h3>FDM</h3>
+<p>{pod_files(root, "fdm")}<a class="btn" href="{root}files/pod/{RAIL_CLIP.name}">{RAIL_CLIP.name} (TAZ Workhorse)</a></p>
+<h3>Resin</h3>
+<p>{pod_files(root, "resin")}</p>
+<h3>Resin, flat on the plate</h3>
+<p>{pod_files(root, "resin-flat")}</p>
 """
-    page("hardware/workhorse/", "Hardware", "The TAZ Workhorse mount",
-         "The Printdeck on the front left of a LulzBot TAZ Workhorse, printed on the printer itself.", body)
+    page("hardware/print/", "Hardware", "Print the pod",
+         "The print files of the pod and the brackets, for FDM and for resin, with the settings and the hardware.", body)
 
 
 # --- The deck UI ----------------------------------------------------------------------------------
@@ -815,7 +681,7 @@ def ui():
     chapters = "".join(
         f'<a class="card" href="{f}/"><b>{esc(t)}</b><span>{", ".join(esc(st) for _, st in secs)}</span></a>' for t, f, secs, _ in tall)
     body = f"""
-<p>The deck is the application on the 7 inch touch screen. It has two layouts: for a display that is mounted tall, as in the Slate, and for a display that is mounted wide, as on the TAZ Workhorse. The pages of this section show every screen with numbered callouts, in the words of the manual. Each page has a switch between the tall and the wide layout.</p>
+<p>The deck is the application on the touch screen of the pod. The pod shows the tall layout. The deck also has a wide layout, for a display that is mounted wide. The pages of this section show every screen with numbered callouts, in the words of the manual. Each page has a switch between the tall and the wide layout.</p>
 {screens(root)}
 <h2 id="screens">The screens</h2>
 {md_text(screens_md, "", root)}
@@ -823,7 +689,7 @@ def ui():
 <div class="map">{chapters}</div>
 <h2 id="manuals">The manuals and the booklets</h2>
 {md_text(section_body("README.md", "Manual"), "", root)}
-<p>The booklets have the same style as the pictures of this site. The booklet of the Workhorse upgrade has the guides of the mount and then the wide manual.</p>
+<p>The booklets have the same style as the pictures of this site.</p>
 """
     page("ui/", "The deck UI", "The screens of the deck",
          "Every screen of the touch screen, for a display that is mounted tall or wide.", body)
@@ -1004,7 +870,7 @@ def desktop_page():
 <h2 id="meshes">The meshes of the 3D window</h2>
 {md("desktop/meshes/README.md", root)}
 """
-    page("desktop/", "Software", "Desktop app and simulator", "The Printdeck for a computer, and a simulated TAZ Workhorse in 3D.", body)
+    page("desktop/", "Software", "Desktop app and simulator", "The Printdeck for a computer, and a simulated TAZ Workhorse or Mini 2 in 3D.", body)
 
 
 def film_page():
@@ -1020,7 +886,6 @@ def film_page():
             files.append((f.name, " ".join(first)))
     table = "".join(f"<tr><td><code>{n}</code></td><td>{esc(d)}</td></tr>" for n, d in files)
     body = f"""
-<figure class="frame-img white"><img src="{root}img/sim.gif" alt="The 3D window of the simulator: a TAZ Workhorse with the Printdeck prints a plaque" loading="lazy"><figcaption>The 3D window of the simulator</figcaption></figure>
 <p><code>desktop/film/</code> makes a short film of the Printdeck with the 3D window of the simulator. Two scripts run it.</p>
 <h2 id="film">film.sh</h2>
 {comment_block("desktop/film/film.sh")}
@@ -1087,17 +952,14 @@ def build_page():
 <h3>The Cura plugin package</h3>
 {comment_block("slicer/cura-plugin/package.sh")}
 <h2 id="site">The documentation</h2>
-<p>The workflow <code>.github/workflows/pages.yml</code> publishes <code>docs/</code> to GitHub Pages at <a href="{SITE}">{SITE}</a>, with the STL files and the build PDFs of the two mounts under <code>files/</code>. It runs on a push to <code>main</code> that changes those files. The pages are in the repository: these scripts write them, and a commit publishes them.</p>
+<p>The workflow <code>.github/workflows/pages.yml</code> publishes <code>docs/</code> to GitHub Pages at <a href="{SITE}">{SITE}</a>, with the print files of the pod under <code>files/pod/</code>. It runs on a push to <code>main</code> that changes those files. The pages are in the repository: these scripts write them, and a commit publishes them.</p>
 <h3>The manuals</h3>
 {comment_block("docs/manual/build.sh")}
 <h3>The Cura plugin booklet</h3>
 {comment_block("docs/cura/build.sh")}
-<h3>The Slate</h3>
-{comment_block("slate/make.sh")}
-<p><code>slate/make_site.py</code>, the last step, writes <code>slate/guide/guide.json</code> and the images of this site in <code>docs/img/</code>.</p>
-<h3>The TAZ Workhorse mount</h3>
-{comment_block("lulzbot/make.sh")}
-<p><code>lulzbot/make_pdf.py</code>, the last step, also writes <code>lulzbot/guide/guide.json</code> and the images in <code>lulzbot/guide/img/</code>. The upgrade booklet (<code>docs/manual/build.sh</code>) and this site read them.</p>
+<h3>The pod</h3>
+<p><code>lulzbot/pod.py export</code> writes the print files of the pod in <code>lulzbot/stl/pod/</code>. The <a href="{root}hardware/print/">print page</a> has them.</p>
+{docstring("lulzbot/pod.py")}
 <h3>This site</h3>
 {docstring("docs/build.py")}
 """
@@ -1306,24 +1168,17 @@ def files_page():
 
 def hardware_ref_page():
     root = "../../"
-    lhw = "".join(f'<tr><td class="q">{x["count"]}×</td><td>{esc(x["item"])}</td><td>{esc(x["where"])}</td></tr>' for x in LULZ["hardware"])
     body = f"""
 <h2 id="connections">The connections</h2>
 {md_text(section_body("README.md", "Hardware"), "", root)}
-<h2 id="slate">The Slate</h2>
-<p>From <code>slate/guide/guide.json</code>. The page of the <a href="{root}hardware/slate/">Slate</a> has the steps.</p>
-<div class="two"><div><h3>Hardware</h3>{kv_table([(f"{q}×", x) for q, x in SLATE["hardware"]])}</div>
-<div><h3>Electronics</h3>{kv_table([(f"{q}×", x) for q, x in SLATE["electronics"]])}</div></div>
-<h2 id="workhorse">The TAZ Workhorse mount</h2>
-<p>From <code>lulzbot/guide/guide.json</code>. The page of the <a href="{root}hardware/workhorse/">mount</a> has the steps.</p>
-<h3>Hardware</h3>
-<div class="table-wrap"><table><tr><th></th><th>Item</th><th>Where</th></tr>{lhw}</table></div>
-<h3>Electronics and cables</h3>
-{kv_table([(f"{q}×", x) for q, x in LULZ["electronics"]])}
-<h3>Tools</h3>
-<ul>{"".join(f"<li>{esc(x)}</li>" for x in LULZ["tools"])}</ul>
+<h2 id="need">What you need</h2>
+<p>From <code>lulzbot/README.md</code>. The page of <a href="{root}hardware/">the pod</a> has the brackets and the cables on each printer.</p>
+{md_text(section_body("lulzbot/README.md", "What you need"), "lulzbot", root)}
+<h2 id="pod">The hardware of the pod</h2>
+<p>From <code>lulzbot/stl/pod/README.md</code>. The <a href="{root}hardware/print/">print page</a> has the print files.</p>
+{md_text(section_body("lulzbot/stl/pod/README.md", "Hardware for the pod"), "lulzbot/stl/pod", root)}
 """
-    page("reference/hardware/", "Reference", "Hardware lists", "The parts, the screws, the inserts and the cables of the two mounts.", body)
+    page("reference/hardware/", "Reference", "Hardware lists", "The parts, the screws and the inserts of the pod.", body)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1333,12 +1188,9 @@ def check_links():
     """Checks that every link and picture of the site goes to a file of the site, or to a file
     that the Pages workflow adds under files/."""
     published = {}
-    for f in (ROOT / "slate" / "stl").glob("*.stl"):
-        published["files/" + f.name] = f
-    published["files/printdeck-slate-build.pdf"] = ROOT / "slate" / "printdeck-slate-build.pdf"
-    for f in (ROOT / "lulzbot" / "stl").glob("*.stl"):
-        published["files/lulzbot/" + f.name] = f
-    published["files/lulzbot/printdeck-lulzbot-build.pdf"] = ROOT / "lulzbot" / "printdeck-lulzbot-build.pdf"
+    for f in POD_STL.rglob("*.stl"):
+        published["files/pod/" + f.relative_to(POD_STL).as_posix()] = f
+    published["files/pod/" + RAIL_CLIP.name] = RAIL_CLIP
     bad = []
     pages = sorted(DOCS.rglob("*.html"))
     ids = {p: set(re.findall(r'\bid="([^"]+)"', p.read_text())) for p in pages}
@@ -1375,8 +1227,7 @@ def check_links():
 def main():
     landing()
     hardware()
-    slate()
-    workhorse()
+    print_page()
     ui()
     os_page()
     deck_page()

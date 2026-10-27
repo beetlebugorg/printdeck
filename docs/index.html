@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Printdeck · Printdeck</title>
-<meta name="description" content="The documentation of Printdeck: a touch screen and a Klipper print server for a 3D printer on a Raspberry Pi 5.">
+<meta name="description" content="The documentation of the LulzBot Printdeck: a touch screen and a Klipper print server on a Raspberry Pi 5 for the LulzBot Mini 2 and the LulzBot TAZ Workhorse.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
@@ -20,9 +20,8 @@
 <div class="layout">
 <aside class="side"><nav><a href="" aria-current="page">Overview</a>
 <div class="group">Hardware</div>
-<a href="hardware/">The hardware</a>
-<a href="hardware/slate/">The Slate case</a>
-<a href="hardware/workhorse/">The TAZ Workhorse mount</a>
+<a href="hardware/">The pod</a>
+<a href="hardware/print/">Print the pod</a>
 <div class="group">The deck UI</div>
 <div class="switch"><a href="ui/setup/" aria-current="page">Tall</a><a href="ui/wide/setup/">Wide</a></div>
 <a href="ui/">The screens</a>
@@ -55,43 +54,43 @@
 <a href="reference/files/">Files, paths and services</a>
 <a href="reference/hardware/">Hardware lists</a>
 <div class="group">Manuals and booklets</div>
-<a href="manual/">Manual, tall display</a>
+<a href="manual/">The manual</a>
 <a href="manual/wide/">Manual, wide display</a>
-<a href="lulzbot/">Workhorse upgrade booklet</a>
 <a href="cura/">Cura plugin booklet</a></nav></aside>
 <main>
 <p class="eyebrow">Documentation</p>
 <h1>Printdeck</h1>
-<p class="lede">A Raspberry Pi 5 with a 7" touch screen next to the 3D printer. It runs Klipper, and shows and controls the print on the touch screen, on the display of the printer, and in a browser.</p>
+<p class="lede">A touch screen for the LulzBot Mini 2 and the LulzBot TAZ Workhorse. A Raspberry Pi 5 and a 5 inch touch display go on the printer in a printed pod. The Pi runs Klipper, and the deck shows and controls the print on the touch screen, on the display of the printer, and in a browser.</p>
 
 <p>
   <a class="btn primary" href="https://github.com/beetlebugorg/printdeck/releases/latest">Download Printdeck OS</a>
   <a class="btn" href="#install">Install</a>
   <a class="btn" href="manual/">The manual</a>
-  <a class="btn" href="hardware/">Build the hardware</a>
+  <a class="btn" href="hardware/">Build the pod</a>
   <a class="btn" href="https://github.com/beetlebugorg/printdeck">Source on GitHub</a>
 </p>
 <div class="pics">
-  <figure class="frame-img"><picture class=""><source media="(prefers-color-scheme: dark)" srcset="img/hero-dark.png"><img src="img/hero-light.png" alt="The Printdeck Slate on its foot" loading="lazy"></picture><figcaption>The Slate: a desk slab, 4 printed parts</figcaption></figure>
-  <figure class="frame-img white"><img src="img/lulzbot-printer.png" alt="The Printdeck mount on the front left of a LulzBot TAZ Workhorse"><figcaption>The mount on the LulzBot TAZ Workhorse</figcaption></figure>
+  <figure class="frame-img white"><img src="img/pod-taz.png" alt="The Printdeck pod on the front left of a LulzBot TAZ Workhorse"><figcaption>The pod on the LulzBot TAZ Workhorse</figcaption></figure>
+  <figure class="frame-img white"><img src="img/pod-mini2.png" alt="The Printdeck pod on the top left of a LulzBot Mini 2"><figcaption>The pod on the LulzBot Mini 2</figcaption></figure>
 </div>
 <h2 id="before">Before you use it</h2>
 <p>Printdeck is a personal project, for personal use. It follows the goals of one person for print software.</p>
 <ul><li>Printdeck has run on one printer only: a LulzBot TAZ Workhorse.</li><li>AI writes the code and the documentation. The code gets tests, and a person reads the documents. Errors can still occur.</li><li>Results on your printer can be different. Use Printdeck at your own risk.</li></ul>
+<p>The deck can also load the Klipper example config of another printer. This documentation is for the Mini 2 and the TAZ Workhorse.</p>
 <div class="pics four screens"><figure><img src="manual/img/printing.png" alt="A print with the model up to the layer that prints now" loading="lazy"></figure><figure><img src="manual/img/first-layer.png" alt="The first layer with the Z offset" loading="lazy"></figure><figure><img src="manual/img/file.png" alt="A file with its print time, filament, roll and cost" loading="lazy"></figure><figure><img src="manual/img/filament.png" alt="The Filament page with the roll in the printer" loading="lazy"></figure></div>
 <h2 id="install">Install</h2>
-<ol><li>Download <code>printdeck.img.xz</code> from the <a href="https://github.com/beetlebugorg/printdeck/releases/latest">latest release</a>.</li><li>Write it to a USB SSD or an SD card with Raspberry Pi Imager (&quot;Use custom&quot;).</li><li>Start the Pi. The setup on the touch screen connects the Wi-Fi and finds the printer.</li></ol>
+<ol><li>Download <code>printdeck.img.xz</code> from the <a href="https://github.com/beetlebugorg/printdeck/releases/latest">latest release</a>.</li><li>Write it to an SD card with Raspberry Pi Imager (&quot;Use custom&quot;).</li><li>Put the SD card in the Pi of the pod, and connect the power. The setup on the touch screen connects the Wi-Fi and finds the printer.</li></ol>
 <p>To update, open Machine &gt; Software update on the touch screen. <code>os/README.md</code> has the details.</p>
 <p>The <a href="os/">Printdeck OS</a> page has the first start, the login, the settings and the update in full.</p>
 
 <h2 id="docs">The documentation</h2>
 <div class="map">
-  <a class="card" href="hardware/"><b>Hardware</b><span>The parts, the Slate case for the desk, and the mount for the LulzBot TAZ Workhorse: print plans, hardware lists and assembly steps.</span></a>
-  <a class="card" href="ui/"><b>The deck UI</b><span>Every screen of the touch screen with numbered callouts, for a display that is mounted tall or wide.</span></a>
+  <a class="card" href="hardware/"><b>The pod</b><span>The touch display and the Pi 5 in a printed case, and the brackets for the Mini 2 and the TAZ Workhorse: the parts, the print files and the hardware.</span></a>
+  <a class="card" href="ui/"><b>The deck UI</b><span>Every screen of the touch screen with numbered callouts, in the tall layout of the pod and in the wide layout.</span></a>
   <a class="card" href="os/"><b>Printdeck OS</b><span>The read-only Linux image: install, the first start, the two system slots, the update, the release and the debug image.</span></a>
   <a class="card" href="deck/"><b>The printdeck program</b><span>One Go program: the Klipper host, the touch screen, the remote screen, the API for slicers and the display of the printer.</span></a>
   <a class="card" href="slicer/cura-plugin/"><b>Slicers</b><span>The Printdeck plugin for Cura with the Print on a part tool, and the Adaptive Speed script.</span></a>
-  <a class="card" href="desktop/"><b>Desktop app and simulator</b><span>The Printdeck for a computer, the simulated TAZ Workhorse in 3D, and the tools that make the film.</span></a>
+  <a class="card" href="desktop/"><b>Desktop app and simulator</b><span>The Printdeck for a computer, the simulated TAZ Workhorse and Mini 2 in 3D, and the tools that make the film.</span></a>
   <a class="card" href="build/"><b>Build and release</b><span>The OS image, the CI, the tags of a release, the manuals and this site.</span></a>
   <a class="card" href="reference/commands/"><b>Reference</b><span>The commands and flags of printdeck, the environment variables, the files and paths, and the hardware lists.</span></a>
 </div>
