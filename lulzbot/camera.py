@@ -844,15 +844,15 @@ def printer_gap(name, printer, T, n=8000):
     return min(gaps), P.clearance([m], T, printer, n=n)
 
 
-def base_touch(name, printer, T, n=30000):
-    """How far the frame goes into the clamp (mm, 0 when it does not): points on the printer near the
-    clamp, inside the clamp."""
+def base_touch(name, printer, T, n=30000, shape=None):
+    """How far the frame goes into the clamp, or into shape (printer coordinates) when it is given (mm,
+    0 when it does not): points on the printer near the part, inside the part."""
     import numpy as np
     import trimesh
     from build123d import export_stl
     import tempfile
     f = os.path.join(tempfile.mkdtemp(), "clamp.stl")
-    export_stl(CLAMPS[name](), f, tolerance=0.02, angular_tolerance=0.1)
+    export_stl(CLAMPS[name]() if shape is None else shape, f, tolerance=0.02, angular_tolerance=0.1)
     bm = trimesh.load(f)
     bm.apply_transform(T)
     lo, hi = bm.bounds[0] - 1, bm.bounds[1] + 1

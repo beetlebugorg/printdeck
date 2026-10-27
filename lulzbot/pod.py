@@ -1418,15 +1418,13 @@ def solve_cables(name, specs, items, frame_to_view):
     skip = ("cable", "clips", "plug", "keepout")
     solids = [it[1] for it in items if not any(k in it[0] for k in skip)]
     up = frame_to_view[:3, :3] @ np.asarray(C.axes(name)[0], float)
-    vs = [dict(CP.moved(sp, frame_to_view), **({"turns": sp["turns"]} if "turns" in sp else {})) for sp in specs]
-    # The sag sheet: the span of the camera cable on the arm from its drum to the frame, and the span
-    # down to the Pi (of the extension on the TAZ).
+    vs = [CP.moved(sp, frame_to_view) for sp in specs]
+    # The sag sheet: the span of the camera cable on the arm from the camera toward the frame, and the
+    # span down to the Pi.
     cam = next(v for v in vs if v["name"] == "camera_cable")
-    drop = next((v for v in vs if v["name"] == "camera_ext_cable"), cam)
-    study = [("camera_cable", next(iter(cam["fixed"])) + 1, (0.0, 60.0)),
-             (drop["name"], len(drop["anchors"]) - 2, (0.0, 60.0))]
-    labels = ["the cable of the camera on the arm, from its drum toward the frame",
-              ("the extension" if drop is not cam else "the cable of the camera on the arm") + ", down to the Pi"]
+    study = [("camera_cable", 0, (0.0, 60.0)), ("camera_cable", len(cam["anchors"]) - 2, (0.0, 60.0))]
+    labels = ["the cable of the camera on the arm, from the camera toward the frame",
+              "the cable of the camera on the arm, down to the Pi"]
     solved, res_study, dt = CP.solve_all(name, vs, up, solids, study)
     res_study = [dict(r, label=lb) for r, lb in zip(res_study, labels)]
     print(f"{name}: cables solved in {dt:.0f} s" if dt else f"{name}: cables from the cache")
@@ -1437,8 +1435,6 @@ def solve_cables(name, specs, items, frame_to_view):
         gap = CP.penetration(c, solids)
         long_spans = [sp for sp in stt["spans"] if sp["chord"] > 60.0]
         sags = ", ".join(f"{sp['kind']} {sp['chord']:.0f} mm: sag {sp['sag']:.1f}" for sp in long_spans)
-        if "turns" in v:
-            print(f"{name}: {v['name']}: {v['turns']:.2f} turns on its drum")
         print(f"{name}: {v['name']}: {stt['length']:.0f} mm, smallest bend radius {stt['min_radius']:.0f} mm "
               f"(limit {CP.MIN_BEND * v['d']:.0f}), nearest part {gap:.1f} mm; spans over 60 mm: {sags}")
         report["cables"][v["name"]] = dict(stt, gap=gap, d=v["d"], path=v["path"].tolist(),
@@ -1521,6 +1517,7 @@ def on_bed(shape, rot, lift=0.0):
 def print_parts(process):
     """(file name, shape, how many) for each printed part of the pod, in print orientation."""
     import camera
+    import camera_models as CM
     import clips as C
     global DOVE_CLR, RESIN, FOOT
     keep, keep_foot = DOVE_CLR, FOOT
@@ -1532,7 +1529,7 @@ def print_parts(process):
         DOVE_CLR, RESIN, FOOT = keep, False, keep_foot
     one, _ = C.tape_clip()
     two, _ = C.tape_clip(True)
-    cam = [part for n in ("taz", "mini2") for part in camera.printed(n)]
+    cam = [part for n in ("taz", "mini2") for part in camera.printed(n)] + CM.printed()
     if process in ("fdm", "resin-flat"):
         # The body: flat on its back. The frame: flat on its back ring. The mount: flat on the face
         # that goes on the body, the dovetail up. The wedge: standing on its level bottom, the key and

@@ -221,8 +221,8 @@ def pod_closeup(name, title, items, path):
 
 
 def sag_sheet(path):
-    """Side views of two free spans of the camera cables (cable_physics.py): from the drum of the camera
-    on the arm toward the frame, and down to the Pi, each with three lengths of cable. Orthographic, looking across the span, up at the top. Thin gray: the drawn
+    """Side views of two free spans of the camera cables (cable_physics.py): from the camera on the arm
+    toward the frame, and down to the Pi, each with three lengths of cable. Orthographic, looking across the span, up at the top. Thin gray: the drawn
     route. Dark red: the solved cable. Dashed: the straight line between the fixed ends."""
     import cable_physics as CP
     rows = []
@@ -318,23 +318,19 @@ def part_closeup(items, names, part, toward, dist, lines, path):
 
 
 def wrap_closeups(name, title, items):
-    """Close views of the extra camera cable: the drum on the arm, the drum over the bed, and on the
-    TAZ the joint of the extension."""
+    """Close views of the bracket of the camera over the bed, with the cable lengths to buy."""
     import camera_models as CM
     names = load.names
-    shots = [("camera_mount_drum", (1.0, -1.0, 1.0), "the drum on the link plate of the camera on the arm"),
-             ("camera_top_drum", (1.0, -1.0, 0.9), "the drum on the bracket of the camera over the bed")]
-    if "camera_joint" in names:
-        shots.append(("camera_joint", (1.0, -1.2, 0.5), "the joint of the camera cable and the 0.5 m extension, "
-                      "on a zip-tie tab"))
-    for part, toward, what in shots:
-        part_closeup(items, names, part, toward, 260.0,
-                     [f"{title}: {what}",
-                      f"Each camera cable is {CM.CAMERA_CABLE:.0f} mm between its plugs (1 m overall). "
-                      "The extra cable wraps on the drum.",
-                      "Dark red: the camera on the arm. Dark blue: the camera over the bed."
-                      + (" Gray: the extension." if "camera_joint" in names else "")],
-                     os.path.join(OUT, f"{name}-{part.replace('camera_', '').replace('_', '-')}.png"))
+    lines = []
+    for sp in CM.cable_specs(name):
+        route, need, buy, extra, crimp = CM.cable_plan(sp)
+        who = "arm" if sp["name"] == "camera_cable" else "over the bed"
+        lines.append(f"Camera {who}: {need:.0f} mm end to end with the plugs and {CM.SERVICE:.0f} mm of service; "
+                     + (f"buy {buy / 1000:g} m" if buy else "over 2 m") + f", or crimp to {crimp:.0f} mm.")
+    part_closeup(items, names, "camera_top_plate", (1.0, -1.0, 0.9), 260.0,
+                 [f"{title}: the bracket of the camera over the bed"] + lines
+                 + ["Dark red: the camera on the arm. Dark blue: the camera over the bed."],
+                 os.path.join(OUT, f"{name}-top-plate.png"))
 
 
 def aimed(views, lens):

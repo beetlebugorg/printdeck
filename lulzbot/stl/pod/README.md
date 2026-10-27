@@ -9,7 +9,7 @@ Each file is in its print orientation. Load a file and print it as it is.
 2. Set **Z Seam Alignment** to **Sharpest Corner** and **Seam Corner Preference** to **Hide
    Seam**. This keeps the seam off the round corners.
 3. Print the parts in the table. All parts fit on the TAZ Workhorse and the Mini 2 (0.5 mm
-   nozzle).
+   nozzle), except `camera-top-taz_fdm.stl`: it is 170 mm long and fits on the TAZ only.
 4. Print the cable clips in PETG. PLA can crack where their arms bend.
 
 To turn supports off in Cura, clear **Generate Support** (Support section) for all parts. For
@@ -29,6 +29,7 @@ Support**, click **Close**, and clear the box.
 | `camera-clamp-taz_fdm.stl` | 1, for the C270 webcam on the TAZ (option) | Its bottom. Use a brim: it is 126 mm tall. |
 | `camera-arm-mini2_fdm.stl` | 1, for the C270 webcam on the Mini 2 (option) | Its back face |
 | `camera-clamp-mini2_fdm.stl` | 1, for the C270 webcam on the Mini 2 (option) | Its bottom |
+| `camera-top-taz_fdm.stl` | 1, for the camera over the bed on the TAZ | Its feet: as it goes on the printer |
 | `cable-clip-single_fdm.stl` | 5, for the TAZ | The base |
 | `cable-clip-double_fdm.stl` | 2, for the Mini 2 | The base |
 
@@ -140,3 +141,46 @@ lower USB 3 port of the Pi. Each mount is a clamp on the frame and an arm with t
 8. Run the cable in the clips to the deck. Coil the rest of the cable and tie it.
 
 To remove the camera, unplug it and remove the two screws of the arm.
+
+## Camera over the bed (TAZ)
+
+`camera-top-taz_fdm.stl` holds an Arducam B0561 camera over the middle of the bed. The camera
+looks straight down. The part is a bridge from the back top rail to the front top rail. The camera
+hangs on its U bracket from the camera wall. The cable goes over the camera wall, along the floor,
+and out of the slot in the front end wall.
+
+Print it in PETG or PLA+:
+
+- Put it on the bed as it is in the file: the feet, the floor and the webs on the bed. The layers
+  are then along the webs, and the webs hold the camera.
+- 4 walls, 40% infill or more, 5 top and 5 bottom layers, 0.2 mm layers.
+- No supports. No brim.
+
+| Part | Count | Where |
+|---|---|---|
+| M3 x 8 cap screw | 4 | Through the tabs into the T-nuts |
+| M3 roll-in T-nut (2020, 6 mm slot) | 4 | 2 in the top slot of each top rail |
+| 1/4"-20 stud (set screw), 30 mm | 1 | In the round base of the camera, through the camera wall |
+| 1/4"-20 hex nut (7/16") | 1 | On the stud, on the front face of the camera wall |
+| USB-A to JST-ZR 4-pin cable, 1 m | 1 | The cable that comes with the camera |
+
+In place of the stud and the nut, you can use a 1/4"-20 x 7/8" cap screw from the front face of
+the camera wall into the base. A longer screw touches the camera.
+
+1. Roll 2 T-nuts into the top slot of the back top rail, and 2 into the top slot of the front top
+   rail, at the middle of the bed.
+2. Put the part on the two rails. The end with the cable slot goes on the front rail. Put the
+   middle of the part at the middle of the bed.
+3. Put in the 4 M3 x 8 screws and tighten them.
+4. Turn the stud into the round base of the camera from below, until its top is flush with the top
+   of the base inside the U. Do not turn it in more: it touches the camera.
+5. Put the base in the round seat on the camera wall, with the stud through the hole. Put the nut
+   on the stud on the front face of the wall.
+6. Hold the camera square, with its sides parallel to the webs. Tighten the nut with a 7/16"
+   wrench.
+7. Turn the camera on its pivot until it looks straight down, with the cable socket up and near
+   the wall. Tighten the pivot screws.
+8. Plug the cable into the camera. Put it through the notch over the camera wall, along the floor,
+   and out of the slot in the front end wall. Run it down the front face of the rail and along the
+   clips to the deck. Plug it into the lower USB 3 port of the Pi.
+9. Coil the rest of the cable and tie it.
