@@ -63,7 +63,7 @@
 
 <div class="layout-switch"><span>Layout:</span><a href="../../../ui/setup/">Tall</a><a href="" aria-current="page">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#wifi">Connect to Wi-Fi</a></li><li><a href="#printer">Choose your printer</a></li><li><a href="#firmware">Install the Klipper firmware</a></li></ol></nav><div class="manual wide"><section id="wifi">
   <h2 class="title"><span class="num">01</span>Connect to Wi-Fi</h2>
-  <p>At the first start, the deck makes its password and opens the setup.</p>
+  
   <ol class="steps"><li>Switch on the Printdeck. The setup opens.</li><li>Tap your Wi-Fi network, then type its password.</li><li>Wait until the deck is connected, then tap Next.</li><li>Write down the address and the password, then tap Finish.</li></ol>
   
   <figure>
@@ -95,7 +95,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Networks</b>The Wi-Fi networks near the deck, with the signal. A lock shows a network with a password. Tap a network, then type its password.</span></li><li><span class="badge">2</span><span><b>Scan</b>Looks for the networks again. The list also scans by itself.</span></li><li><span class="badge">3</span><span><b>Hidden</b>For a network that does not show its name: type the name and the password.</span></li><li><span class="badge">4</span><span><b>Next</b>Goes to the summary when the deck is connected.</span></li>
+      <li><span class="badge">1</span><span><b>Networks</b>Tap your network, then type its password.</span></li><li><span class="badge">2</span><span><b>Scan</b>Scans for the networks again.</span></li><li><span class="badge">3</span><span><b>Hidden</b>For a hidden network: type its name and its password.</span></li><li><span class="badge">4</span><span><b>Next</b>Goes to the summary when the deck is connected.</span></li>
     </ol>
     
   </figure>
@@ -124,9 +124,9 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Address</b>The address of the deck on your network. Open it in a browser for the web pages.</span></li><li><span class="badge">2</span><span><b>Password</b>The password of the web pages. To see it again, open Machine &gt; Wi-Fi and help.</span></li><li><span class="badge">3</span><span><b>Finish</b>Closes the setup. The deck does not open it again.</span></li>
+      <li><span class="badge">1</span><span><b>Address</b>The address of the deck. Open it in a browser.</span></li><li><span class="badge">2</span><span><b>Password</b>The password of the web pages. Machine &gt; Wi-Fi and help shows it again.</span></li><li><span class="badge">3</span><span><b>Finish</b>Closes the setup. The setup shows only at the first start.</span></li>
     </ol>
-    <p class="note">You can also set the Wi-Fi before the first start: put the SD card in a computer, and fill in printdeck.txt on the PRINTDECK partition.</p>
+    <p class="note">To set the Wi-Fi before the first start, put the SD card in a computer. Fill in printdeck.txt on the PRINTDECK partition.</p>
   </figure>
   
   
@@ -134,8 +134,8 @@
 </section>
 <section id="printer">
   <h2 class="title"><span class="num">02</span>Choose your printer</h2>
-  <p>A new Printdeck has no printer config. The deck then shows the printer setup.</p>
-  <ol class="steps"><li>Connect the printer to the Printdeck with a USB cable, and switch the printer on.</li><li>Wait until the deck finds the board. Tap Search again if it does not show.</li><li>Tap Choose printer. The printers of the brand of your board are at the top.</li><li>Tap your printer, then Use. Klipper restarts with its config.</li></ol>
+  <p>A new Printdeck has no printer config, so it shows the printer setup.</p>
+  <ol class="steps"><li>Connect the printer to the Printdeck with a USB cable, and switch the printer on.</li><li>Wait until the deck finds the board. If the board is missing, tap Search again.</li><li>Tap Choose printer. The printers of the brand of your board are at the top.</li><li>Tap your printer, then Use. Klipper restarts with its config.</li></ol>
   
   <figure>
     <h3>No printer yet</h3>
@@ -181,7 +181,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Board</b>The board that the deck found on USB, its MCU, and its Klipper firmware.</span></li><li><span class="badge">2</span><span><b>Choose printer</b>Opens the list of Klipper&#39;s example configs. See below.</span></li><li><span class="badge">3</span><span><b>Search again</b>Looks for the board again, for example after you connect the printer.</span></li><li><span class="badge">4</span><span><b>Simulated printer</b>Runs a simulated printer, so you can try the deck with no printer.</span></li><li><span class="badge">5</span><span><b>Your own config</b>You can also copy your own printer.cfg to the PRINTDECK partition, and start the deck again.</span></li><li><span class="badge">6</span><span><b>Wi-Fi and help</b>The network, the address and the password of the deck.</span></li><li><span class="badge">7</span><span><b>Software update</b>Installs a new version of Printdeck OS. A new version can fix the problem.</span></li>
+      <li><span class="badge">1</span><span><b>Board</b>The board on USB and its firmware.</span></li><li><span class="badge">2</span><span><b>Choose printer</b>Opens the list of Klipper example configs.</span></li><li><span class="badge">3</span><span><b>Search again</b>Looks for the board again.</span></li><li><span class="badge">4</span><span><b>Simulated printer</b>Runs a simulated printer, with no real printer.</span></li><li><span class="badge">5</span><span><b>Your own config</b>Or copy your printer.cfg to the PRINTDECK partition, and restart.</span></li><li><span class="badge">6</span><span><b>Wi-Fi and help</b>The network, the address and the password.</span></li><li><span class="badge">7</span><span><b>Software update</b>Installs a new version. It can fix the problem.</span></li>
     </ol>
     
   </figure>
@@ -210,7 +210,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Chip</b>The list shows the printers with the same chip as your board.</span></li><li><span class="badge">2</span><span><b>Printer</b>The brand, the model, the year and the chip. Tap your printer. The deck writes its config as printer.cfg, with the port of your board, and restarts Klipper. The old printer.cfg stays as printer.cfg.bak.</span></li><li><span class="badge">3</span><span><b>Show all printers</b>Shows the printers for all chips.</span></li>
+      <li><span class="badge">1</span><span><b>Chip</b>The printers with the chip of your board.</span></li><li><span class="badge">2</span><span><b>Printer</b>Tap your printer. The deck writes printer.cfg and restarts Klipper. The old file stays as printer.cfg.bak.</span></li><li><span class="badge">3</span><span><b>Show all printers</b>Shows the printers for all chips.</span></li>
     </ol>
     
   </figure>
@@ -220,8 +220,8 @@
 </section>
 <section id="firmware">
   <h2 class="title"><span class="num">03</span>Install the Klipper firmware</h2>
-  <p>The board of the printer must run the Klipper firmware of this Printdeck. The deck writes it through the USB cable.</p>
-  <ol class="steps"><li>Open Machine, then Maintenance, then tap Firmware. A new board shows Install Klipper firmware on the setup screen.</li><li>Tap Write. Do not switch off the printer until the deck shows the result.</li><li>Tap OK. Klipper restarts and connects to the board.</li></ol>
+  <p>The printer board must run the Klipper firmware of this Printdeck.</p>
+  <ol class="steps"><li>Open Machine, then Maintenance, then tap Firmware. A new board shows Install Klipper firmware on the setup screen.</li><li>Tap Write. Keep the printer on until the deck shows the result.</li><li>Tap OK. Klipper restarts and connects to the board.</li></ol>
   
   <figure>
     <h3>The firmware flash</h3>
@@ -244,7 +244,7 @@
     <ol class="parts">
       <li><span class="badge">1</span><span><b>Step</b>Starting the bootloader, Writing, then Checking.</span></li><li><span class="badge">2</span><span><b>Progress</b>The part of the firmware that is done.</span></li>
     </ol>
-    <p class="note">The deck stops Klipper, resets the board into its bootloader, writes the firmware, and reads it back to check it. Then Klipper starts again. The setup screen and the Klipper error screen also show this key when the board has no Klipper firmware or old firmware. Printdeck can flash boards with an atmega2560 and an STK500v2 bootloader now, for example the RAMBo and RAMPS boards.</p>
+    <p class="note">The deck stops Klipper, writes the firmware, checks it, and starts Klipper again. Printdeck flashes atmega2560 boards with an STK500v2 bootloader, for example RAMBo and RAMPS.</p>
   </figure>
   
   

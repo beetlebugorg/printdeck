@@ -62,8 +62,8 @@
 <h1>Level and calibrate</h1>
 
 <div class="layout-switch"><span>Layout:</span><a href="" aria-current="page">Tall</a><a href="../../ui/wide/calibrate/">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#calibrate">Level and calibrate</a></li></ol></nav><div class="manual"><section id="calibrate">
-  <h2 class="title"><span class="num">15</span>Level and calibrate</h2>
-  <p>Maintenance lists the calibrations that your printer has. The list comes from the config of the printer. Open it from Machine.</p>
+  <h2 class="title"><span class="num">16</span>Level and calibrate</h2>
+  <p>Maintenance lists the calibrations of your printer. Open it from Machine.</p>
   <ol class="steps"><li>Open Machine, then Maintenance.</li><li>Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.</li><li>Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.</li><li>Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.</li><li>Tap Save config to write the results. Klipper restarts.</li><li>Tap Pressure advance test to print the tower. Then tap Pressure advance, and type the height of its sharpest corners.</li></ol>
   
   <figure>
@@ -115,7 +115,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Bed tilt</b>Probes the bed, and corrects its tilt (BED_TILT_CALIBRATE). A printer with a bed mesh shows Bed mesh.</span></li><li><span class="badge">2</span><span><b>Probe Z offset</b>The paper test for the height of the nozzle (PROBE_CALIBRATE).</span></li><li><span class="badge">3</span><span><b>PID tune</b>Heats the nozzle to 210° and the bed to 60°, and finds the PID settings of each heater (PID_CALIBRATE). Save config then writes them.</span></li><li><span class="badge">4</span><span><b>Nozzle change</b>Heats the nozzle to 250° and raises the head, to change the nozzle.</span></li><li><span class="badge">5</span><span><b>Firmware</b>Writes the Klipper firmware of this Printdeck to the board of the printer. Orange text shows old firmware. See below.</span></li><li><span class="badge">6</span><span><b>Save config</b>Writes the results of the calibrations into printer.cfg. Klipper restarts. Orange text shows unsaved results.</span></li><li><span class="badge">7</span><span><b>Pressure advance test</b>Prints a square tower, 30 mm high, with thin walls. The pressure advance goes up with the height: 0.005 for each mm. Measure the height where the corners are sharpest.</span></li><li><span class="badge">8</span><span><b>Pressure advance</b>Type the height of the sharpest corners. The deck sets the pressure advance from it, and writes it in printer.cfg.</span></li>
+      <li><span class="badge">1</span><span><b>Bed tilt</b>Probes the bed and corrects its tilt. A printer with a bed mesh shows Bed mesh.</span></li><li><span class="badge">2</span><span><b>Probe Z offset</b>The paper test for the nozzle height.</span></li><li><span class="badge">3</span><span><b>PID tune</b>Heats the nozzle to 210° and the bed to 60°, and tunes each heater.</span></li><li><span class="badge">4</span><span><b>Nozzle change</b>Heats the nozzle to 250° and raises the head.</span></li><li><span class="badge">5</span><span><b>Firmware</b>Writes the Klipper firmware. Orange text shows old firmware.</span></li><li><span class="badge">6</span><span><b>Save config</b>Writes the results into printer.cfg. Klipper restarts. Orange text shows unsaved results.</span></li><li><span class="badge">7</span><span><b>Pressure advance test</b>Prints a 30 mm tower. The pressure advance goes up 0.005 for each mm. Measure the height of the sharpest corners.</span></li><li><span class="badge">8</span><span><b>Pressure advance</b>Type the height of the sharpest corners. The deck writes the value in printer.cfg.</span></li>
     </ol>
     
   </figure>
@@ -139,9 +139,9 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Action</b>The time since the start, a bar that moves while the action runs, and the temperatures.</span></li><li><span class="badge">2</span><span><b>Stop the printer</b>Stops the printer at once, after one question. Then use Firmware restart.</span></li>
+      <li><span class="badge">1</span><span><b>Action</b>The time since the start.</span></li><li><span class="badge">2</span><span><b>Stop the printer</b>Stops the printer at once. Then tap Firmware restart.</span></li>
     </ol>
-    <p class="note">While an action runs, the deck shows it on the deck and in each browser, and the other keys are off. The display of the printer shows the name of the action and a moving bar. When the action ends, a short message says that it is done. When it fails, the deck shows the error of Klipper until you tap OK.</p>
+    <p class="note">The other keys are locked while an action runs. If the action fails, the deck shows the Klipper error until you tap OK.</p>
   </figure>
   
   <figure>
@@ -173,9 +173,9 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Height</b>The height of the nozzle now.</span></li><li><span class="badge">2</span><span><b>Steps</b>Moves the nozzle down (−) or up (&#43;), in mm.</span></li><li><span class="badge">3</span><span><b>Accept</b>Takes the height. Save config then writes it.</span></li><li><span class="badge">4</span><span><b>Abort</b>Stops the test with no change.</span></li>
+      <li><span class="badge">1</span><span><b>Height</b>The height of the nozzle now.</span></li><li><span class="badge">2</span><span><b>Steps</b>Moves the nozzle down (−) or up (&#43;).</span></li><li><span class="badge">3</span><span><b>Accept</b>Keeps the height. Then tap Save config.</span></li><li><span class="badge">4</span><span><b>Abort</b>Stops the test with no change.</span></li>
     </ol>
-    <p class="note">This screen shows by itself while Klipper runs a paper test, also when it started from a macro.</p>
+    <p class="note">This screen opens by itself for each paper test, also from a macro.</p>
   </figure>
   
   

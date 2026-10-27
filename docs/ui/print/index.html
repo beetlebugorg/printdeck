@@ -61,9 +61,9 @@
 <p class="eyebrow">The deck UI · tall</p>
 <h1>Print a part</h1>
 
-<div class="layout-switch"><span>Layout:</span><a href="" aria-current="page">Tall</a><a href="../../ui/wide/print/">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#send">Send a file from the slicer</a></li><li><a href="#start-print">Start a print</a></li><li><a href="#watch">Watch the print</a></li><li><a href="#colors">Print in two colors</a></li><li><a href="#away">Look around during a print</a></li></ol></nav><div class="manual"><section id="send">
+<div class="layout-switch"><span>Layout:</span><a href="" aria-current="page">Tall</a><a href="../../ui/wide/print/">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#send">Send a file from the slicer</a></li><li><a href="#start-print">Start a print</a></li><li><a href="#watch">Watch the print</a></li><li><a href="#colors">Print in two colors</a></li><li><a href="#away">Look around during a print</a></li><li><a href="#timelapse">Make a time lapse</a></li></ol></nav><div class="manual"><section id="send">
   <h2 class="title"><span class="num">07</span>Send a file from the slicer</h2>
-  <p>The deck answers the OctoPrint API that slicers use to send files and to start prints.</p><p>In Cura, add the deck with the OctoPrint Connection plugin. The deck asks &#34;Allow Cura to use the Printdeck?&#34;. Tap Allow.</p><p>In OrcaSlicer or PrusaSlicer, add a printer of the type OctoPrint with the address http://printdeck.local, and the API key of the system page.</p><p>The webcam of the OctoPrint API is the camera of the deck (Settings, then Camera): http://printdeck.local/webcam/stream and /webcam/snapshot, with the API key. The parameter w gives smaller pictures (for example w=320), and fps fewer frames a second (for example fps=2). With no camera, the webcam is the screen of the deck.</p>
+  <p>The deck uses the OctoPrint API, so slicers can send files and start prints.</p><p>Cura: add the deck with the OctoPrint Connection plugin. The deck asks &#34;Allow Cura to use the Printdeck?&#34;. Tap Allow.</p><p>OrcaSlicer or PrusaSlicer: add a printer of the type OctoPrint, with the address http://printdeck.local and the API key of the system page.</p><p>The webcam is the camera of the deck: http://printdeck.local/webcam/stream and /webcam/snapshot, with the API key. Add w=320 for smaller pictures, or fps=2 for fewer frames. With no camera, the webcam shows the deck screen.</p>
   
   
   
@@ -71,7 +71,7 @@
 </section>
 <section id="start-print">
   <h2 class="title"><span class="num">08</span>Start a print</h2>
-  <p>The files are the G-code files that the slicer sent, or that you uploaded in the browser. The newest file is at the top.</p><p>Each file shows what the slicer wrote into it: the print time, the filament and the layer height. Cura, PrusaSlicer, OrcaSlicer and Bambu Studio write this data. A thumbnail shows when the slicer adds one.</p>
+  <p>The newest file is at the top. Each file shows the print time, the filament and the layer height from the slicer. Cura, PrusaSlicer, OrcaSlicer and Bambu Studio write this data.</p>
   <ol class="steps"><li>Tap Print a file on the idle screen.</li><li>Tap the file. Check the print time, the filament and the temperatures.</li><li>Tap Print, then Print again.</li></ol>
   
   <figure>
@@ -108,9 +108,9 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Count</b>The number of files.</span></li><li><span class="badge">2</span><span><b>Picture</b>The thumbnail of the slicer, or the shape of a part.</span></li><li><span class="badge">3</span><span><b>File</b>The name, the print time, the filament and the layer height.</span></li><li><span class="badge">4</span><span><b>Date</b>When the file arrived.</span></li><li><span class="badge">5</span><span><b>On the deck, SD card</b>The files on the deck, or the files on the SD card in the display of the printer. The keys show when printer.cfg has the [printdeck_sdcard] section.</span></li>
+      <li><span class="badge">1</span><span><b>Count</b>The number of files.</span></li><li><span class="badge">2</span><span><b>Picture</b>The thumbnail.</span></li><li><span class="badge">3</span><span><b>File</b>The name and the slicer data.</span></li><li><span class="badge">4</span><span><b>Date</b>When the file arrived.</span></li><li><span class="badge">5</span><span><b>On the deck, SD card</b>The files on the deck, or on the SD card of the printer display ([printdeck_sdcard]).</span></li>
     </ol>
-    <p class="note">Drag the list up and down. Tap a file to open it.</p>
+    <p class="note">Tap a file to open it.</p>
   </figure>
   
   <figure>
@@ -142,7 +142,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Picture</b>The thumbnail of the file.</span></li><li><span class="badge">2</span><span><b>Slicer data</b>The print time, the filament, the layer height, the temperatures, the slicer and the date.</span></li><li><span class="badge">3</span><span><b>Print</b>Starts the print, after a question.</span></li><li><span class="badge">4</span><span><b>Delete</b>Removes the file, after a question. The file that prints now cannot be removed.</span></li>
+      <li><span class="badge">1</span><span><b>Picture</b>The thumbnail.</span></li><li><span class="badge">2</span><span><b>Slicer data</b>The data from the slicer.</span></li><li><span class="badge">3</span><span><b>Print</b>Starts the print.</span></li><li><span class="badge">4</span><span><b>Delete</b>Removes the file.</span></li>
     </ol>
     
   </figure>
@@ -176,9 +176,9 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>On the deck, SD card</b>The LED of SD card is lit: the list shows the files of the card. On the deck goes back to the files on the deck.</span></li><li><span class="badge">2</span><span><b>Count</b>The folder of the card that shows, and its number of G-code files.</span></li><li><span class="badge">3</span><span><b>Folder</b>A folder. Tap it to open it. Up goes back to the folder above.</span></li><li><span class="badge">4</span><span><b>File</b>A G-code file, with its size and date. Tap it to copy it to the deck. At the end of the copy, the deck asks to print it.</span></li>
+      <li><span class="badge">1</span><span><b>On the deck, SD card</b>The files on the card, or on the deck.</span></li><li><span class="badge">2</span><span><b>Count</b>The open folder.</span></li><li><span class="badge">3</span><span><b>Folder</b>Tap a folder to open it.</span></li><li><span class="badge">4</span><span><b>File</b>Tap a file to copy it to the deck.</span></li>
     </ol>
-    <p class="note">During the copy, the page shows its progress and a Stop key. The copy goes to the files on the deck.</p>
+    <p class="note">Stop ends the copy.</p>
   </figure>
   
   
@@ -186,8 +186,8 @@
 </section>
 <section id="watch">
   <h2 class="title"><span class="num">09</span>Watch the print</h2>
-  <p>During a print, the deck shows the screen of the phase of the print. The deck knows the phase from the printer and from the G-code of the file.</p>
-  <ol class="steps"><li>Watch the first layer. Use − and &#43; to set the height of the nozzle while it prints.</li><li>Tap Save to keep the Z offset for the next prints.</li><li>Use Tune to change the speed, the flow or the fan while the print runs.</li><li>When the print is done, wait for the bed to cool, then take the part off.</li></ol>
+  <p>The deck shows a screen for each phase of the print.</p>
+  <ol class="steps"><li>Watch the first layer. Use − and &#43; to set the nozzle height.</li><li>Tap Save to keep the Z offset for the next prints.</li><li>Use Tune to change the speed, the flow or the fan.</li><li>When the print is done, wait for the bed to cool. Then remove the part.</li></ol>
   
   <figure>
     <h3>Preparing</h3>
@@ -223,7 +223,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Display</b>The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>Steps</b>The steps of the start macro of your printer, in its order. The deck follows the commands that the printer runs: the step that runs has a lit LED, and a done step has a dot.</span></li><li><span class="badge">3</span><span><b>Help</b>Opens Wi-Fi and help: the network, the address and the password of the deck.</span></li><li><span class="badge">4</span><span><b>Cancel print</b>Stops the print, after a question.</span></li><li><span class="badge">5</span><span><b>Menu</b>Shows the other screens while the print runs. See Look around during a print.</span></li>
+      <li><span class="badge">1</span><span><b>Display</b>The printer display. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>Steps</b>The steps of the start macro. The step that runs has a lit LED.</span></li><li><span class="badge">3</span><span><b>Help</b>The network, the address and the password.</span></li><li><span class="badge">4</span><span><b>Cancel print</b>Stops the print.</span></li><li><span class="badge">5</span><span><b>Menu</b>Opens the other screens.</span></li>
     </ol>
     
   </figure>
@@ -282,7 +282,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Display</b>The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>− and &#43;</b>− moves the nozzle closer to the bed, &#43; away from it. A line that is too round and thin needs −. A line that is flat and rough needs &#43;.</span></li><li><span class="badge">3</span><span><b>Z offset</b>The height of the nozzle above its normal height. Watch the first lines while they print.</span></li><li><span class="badge">4</span><span><b>Save</b>Writes the Z offset into the config of the printer. Save config in Maintenance then writes the file.</span></li><li><span class="badge">5</span><span><b>Step</b>How far one tap moves the nozzle, in mm.</span></li><li><span class="badge">6</span><span><b>Pause, Cancel</b>Pauses the print, or stops it after a question. After a cancel, the head moves up and to the middle, and the bed moves to the front.</span></li><li><span class="badge">7</span><span><b>Help</b>Opens Wi-Fi and help: the network, the address and the password of the deck.</span></li><li><span class="badge">8</span><span><b>Layer</b>The first layer of the model.</span></li><li><span class="badge">9</span><span><b>Menu</b>Shows the other screens while the print runs. See Look around during a print.</span></li>
+      <li><span class="badge">1</span><span><b>Display</b>The printer display. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>− and &#43;</b>A round, thin line needs − (closer). A flat, rough line needs &#43; (farther).</span></li><li><span class="badge">3</span><span><b>Z offset</b>The nozzle height above its normal height.</span></li><li><span class="badge">4</span><span><b>Save</b>Keeps the Z offset for the next prints.</span></li><li><span class="badge">5</span><span><b>Step</b>How far one tap moves the nozzle, in mm.</span></li><li><span class="badge">6</span><span><b>Pause, Cancel</b>Pauses the print, or stops it after a question.</span></li><li><span class="badge">7</span><span><b>Help</b>The network, the address and the password.</span></li><li><span class="badge">8</span><span><b>Layer</b>The first layer of the model.</span></li><li><span class="badge">9</span><span><b>Menu</b>Opens the other screens.</span></li>
     </ol>
     
   </figure>
@@ -346,7 +346,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Display</b>The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>Pause</b>Pauses the print.</span></li><li><span class="badge">3</span><span><b>Tune</b>Changes the print while it runs. See Tune.</span></li><li><span class="badge">4</span><span><b>Cancel</b>Stops the print, after a question.</span></li><li><span class="badge">5</span><span><b>Layer</b>The layer that prints now, and the kind of the move now with the live speed of the head.</span></li><li><span class="badge">6</span><span><b>Roll</b>The roll in the printer: a dot in its color, the filament that is left on it, its name, and its grams. The filament of the print counts while it prints. Cura gives a roll its color.</span></li><li><span class="badge">7</span><span><b>Layer times</b>A bar for each layer: its time. The layers that are done are dark, with the time that they took. The layer now is orange, and the layers to come are light, with the time of the slicer. At the right, the time of the layer now and its plan, and the mean time of a layer. A short layer can need more cooling.</span></li><li><span class="badge">8</span><span><b>Model</b>The model up to the layer that prints now, in the color of the roll.</span></li><li><span class="badge">9</span><span><b>Layer slider</b>Drag it to look at another layer. Live goes back to the layer that prints.</span></li><li><span class="badge">10</span><span><b>Menu</b>Shows the other screens while the print runs. See Look around during a print.</span></li>
+      <li><span class="badge">1</span><span><b>Display</b>The printer display. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>Pause</b>Pauses the print.</span></li><li><span class="badge">3</span><span><b>Tune</b>Changes the speed, the flow and the fan.</span></li><li><span class="badge">4</span><span><b>Cancel</b>Stops the print.</span></li><li><span class="badge">5</span><span><b>Layer</b>The layer now and the head speed.</span></li><li><span class="badge">6</span><span><b>Roll</b>The roll in the printer and its filament.</span></li><li><span class="badge">7</span><span><b>Layer times</b>A bar for each layer. Done layers are dark, the layer now is orange, and the next layers are light.</span></li><li><span class="badge">8</span><span><b>Model</b>The model up to the layer now.</span></li><li><span class="badge">9</span><span><b>Layer slider</b>Drag it to see another layer. Live goes back to the layer that prints.</span></li><li><span class="badge">10</span><span><b>Menu</b>Opens the other screens.</span></li>
     </ol>
     
   </figure>
@@ -390,7 +390,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Help</b>Opens Wi-Fi and help: the network, the address and the password of the deck.</span></li><li><span class="badge">2</span><span><b>Speed</b>The speed of the print, in percent of the speed of the slicer.</span></li><li><span class="badge">3</span><span><b>Flow</b>The amount of plastic, in percent.</span></li><li><span class="badge">4</span><span><b>Z offset</b>The height of the nozzle above its normal height. Save writes it into the config of the printer, as on the first layer screen.</span></li><li><span class="badge">5</span><span><b>Fan</b>The part cooling fan.</span></li><li><span class="badge">6</span><span><b>Temperatures</b>Tap a card to change its temperature.</span></li>
+      <li><span class="badge">1</span><span><b>Help</b>The network, the address and the password.</span></li><li><span class="badge">2</span><span><b>Speed</b>The print speed, in percent of the slicer speed.</span></li><li><span class="badge">3</span><span><b>Flow</b>The amount of plastic, in percent.</span></li><li><span class="badge">4</span><span><b>Z offset</b>The nozzle height above its normal height. Save keeps it.</span></li><li><span class="badge">5</span><span><b>Fan</b>The part cooling fan.</span></li><li><span class="badge">6</span><span><b>Temperatures</b>Tap a card to change its temperature.</span></li>
     </ol>
     
   </figure>
@@ -439,7 +439,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Display</b>The status screen of the printer display: the nozzle, the bed and the fan, the progress, the time left, and the time on the clock when the print ends. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>Where</b>The layer of the pause, and the message of the printer.</span></li><li><span class="badge">3</span><span><b>Resume</b>Continues the print.</span></li><li><span class="badge">4</span><span><b>Change filament</b>The guided filament change, for a new color. See Change the filament.</span></li><li><span class="badge">5</span><span><b>Move head</b>Opens Toolhead, to move the head out of the way.</span></li><li><span class="badge">6</span><span><b>Tune</b>Changes the print.</span></li><li><span class="badge">7</span><span><b>Cancel</b>Stops the print, after a question.</span></li>
+      <li><span class="badge">1</span><span><b>Display</b>The printer display. Tap the nozzle or the bed to set its temperature.</span></li><li><span class="badge">2</span><span><b>Where</b>The layer and the message.</span></li><li><span class="badge">3</span><span><b>Resume</b>Continues the print.</span></li><li><span class="badge">4</span><span><b>Change filament</b>For a new color.</span></li><li><span class="badge">5</span><span><b>Move head</b>Opens Toolhead.</span></li><li><span class="badge">6</span><span><b>Tune</b>Changes the print.</span></li><li><span class="badge">7</span><span><b>Cancel</b>Stops the print.</span></li>
     </ol>
     
   </figure>
@@ -468,7 +468,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Where</b>The message of the file, for example for a part in a pocket on the bed (Print on a part in the Cura plugin).</span></li><li><span class="badge">2</span><span><b>Check the height</b>A paper test on the part. The print goes on from the measured height.</span></li><li><span class="badge">3</span><span><b>Resume</b>Primes the nozzle and continues. With no height check, the deck asks first.</span></li>
+      <li><span class="badge">1</span><span><b>Where</b>The message of the file.</span></li><li><span class="badge">2</span><span><b>Check the height</b>A paper test on the part.</span></li><li><span class="badge">3</span><span><b>Resume</b>Primes the nozzle and continues.</span></li>
     </ol>
     
   </figure>
@@ -497,7 +497,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Steps</b>The steps of the end macro of your printer, for example the cooling of the bed before the print moves to the front.</span></li><li><span class="badge">2</span><span><b>Model</b>The finished model.</span></li><li><span class="badge">3</span><span><b>Menu</b>Shows the other screens while the end macro runs. The print bar at the bottom comes back here. The deck shows the done screen at the end of the print.</span></li>
+      <li><span class="badge">1</span><span><b>Steps</b>The steps of the end macro.</span></li><li><span class="badge">2</span><span><b>Model</b>The finished model.</span></li><li><span class="badge">3</span><span><b>Menu</b>Opens the other screens while the end macro runs.</span></li>
     </ol>
     
   </figure>
@@ -536,7 +536,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Model</b>The model of the print.</span></li><li><span class="badge">2</span><span><b>Result</b>Done, Cancelled or Failed, the file, the time and the filament of the print.</span></li><li><span class="badge">3</span><span><b>Bed</b>The temperature of the bed, and the time until the part comes off easily (35°). The deck learns the time from the cooling after each print. The bar is full at 35°.</span></li><li><span class="badge">4</span><span><b>Reprint</b>Prints the file again.</span></li><li><span class="badge">5</span><span><b>Done</b>Closes this screen.</span></li>
+      <li><span class="badge">1</span><span><b>Model</b>The model of the print.</span></li><li><span class="badge">2</span><span><b>Result</b>Done, Cancelled or Failed.</span></li><li><span class="badge">3</span><span><b>Bed</b>The time until the part comes off easily (35°).</span></li><li><span class="badge">4</span><span><b>Reprint</b>Prints the file again.</span></li><li><span class="badge">5</span><span><b>Done</b>Closes this screen.</span></li>
     </ol>
     
   </figure>
@@ -546,7 +546,7 @@
 </section>
 <section id="colors">
   <h2 class="title"><span class="num">10</span>Print in two colors</h2>
-  <p>The Colors tool of the Cura plugin gives a model the roll of another color, for example raised letters on a plate. The print pauses at the first layer of that model, and the deck asks for its roll.</p><p>On Resume the deck draws a short line at the front of the bed, behind the prime line of the start. The ooze of the new filament stays on that line. The nozzle then goes back to the part with the filament pulled back a little, and pushes it forward at the first point of the layer. Each change of a print draws its line 2 mm behind the line before it.</p>
+  <p>The Colors tool of the Cura plugin gives a model a roll of another color. The print pauses at the first layer of that model.</p>
   <ol class="steps"><li>In Cura, put the letters on the part. Select the letters, open the Colors tool, and tap their roll.</li><li>Print. At the first layer of the letters, the printer parks and the deck shows Change filament in orange.</li><li>Tap Change filament. Unload, load the roll of the letters, and tap Done.</li><li>Pull the ooze off the nozzle with tweezers, then tap Resume.</li></ol>
   
   <figure>
@@ -573,7 +573,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Where</b>The roll of the next color, from the Colors tool of the Cura plugin.</span></li><li><span class="badge">2</span><span><b>Change filament</b>Opens the filament change with that roll. Unload, load the new filament, and tap Done.</span></li><li><span class="badge">3</span><span><b>Resume</b>Draws a short prime line at the front of the bed, then goes back to the part and continues.</span></li>
+      <li><span class="badge">1</span><span><b>Where</b>The roll of the next color.</span></li><li><span class="badge">2</span><span><b>Change filament</b>Opens the filament change with that roll.</span></li><li><span class="badge">3</span><span><b>Resume</b>Primes the nozzle at the front of the bed, then continues.</span></li>
     </ol>
     
   </figure>
@@ -583,7 +583,7 @@
 </section>
 <section id="away">
   <h2 class="title"><span class="num">11</span>Look around during a print</h2>
-  <p>The other screens are read only for the printer while it prints: the files, the filament and the rolls, the history. A tap cannot change the print by mistake. The deck goes back to the print at a pause, at a new print, and after 2 minutes with no touch.</p><p>Menu on the screens of the print shows the other screens while the print runs. The print bar at the bottom of each screen shows the print. Tap it to go back.</p>
+  <p>During a print, the other screens are read only. The deck goes back to the print after 2 minutes with no touch.</p><p>Tap Menu to open the other screens. Tap the print bar at the bottom to go back to the print.</p>
   
   
   <figure>
@@ -615,13 +615,21 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Roll</b>The roll in the printer, and the filament that is left on it.</span></li><li><span class="badge">2</span><span><b>Lasts</b>The filament of the rest of the print, and what is left on the roll after it. Red text shows a roll that runs out before the end.</span></li><li><span class="badge">3</span><span><b>Change filament</b>Pauses the print, and opens the filament change. At its end, the nozzle goes back to the temperature of the print: tap Resume.</span></li><li><span class="badge">4</span><span><b>Print bar</b>The layer and the time left of the print, with Pause at its left. Tap the bar to go back to the screen of the print.</span></li>
+      <li><span class="badge">1</span><span><b>Roll</b>The roll in the printer and its filament.</span></li><li><span class="badge">2</span><span><b>Lasts</b>The filament left after the print. Red text shows a roll that runs out.</span></li><li><span class="badge">3</span><span><b>Change filament</b>Pauses the print and opens the filament change. Then tap Resume.</span></li><li><span class="badge">4</span><span><b>Print bar</b>Tap the bar to go back to the print.</span></li>
     </ol>
     
   </figure>
   
   
   
+</section>
+<section id="timelapse">
+  <h2 class="title"><span class="num">12</span>Make a time lapse</h2>
+  <p>The deck camera captures a picture at each layer change. At the end of the print, the deck makes a video.</p><p>For each picture, the printer retracts, lifts the nozzle and parks the head at the back left. On the TAZ Workhorse the nozzle goes to Z 10 mm or more, over the bed washers. Each picture adds a few seconds.</p>
+  <ol class="steps"><li>Set up the camera: Settings, then Camera.</li><li>Open Settings, then Time lapse.</li><li>Tap Time lapse to turn it on.</li><li>Tap First layer for a picture of the first layer, or a picture and a pause. At a pause, check the layer, then tap Resume.</li><li>Print. After the first layer, the deck shows its picture.</li><li>At the end of the print, open http://printdeck.local/system in a browser. The Time lapse part has the video. Click its name to download it.</li></ol>
+  
+  
+  <p>Cura, PrusaSlicer and OrcaSlicer write the layer comments that the time lapse needs.</p><p>Park for the frames is on by default. Off keeps the toolhead in the pictures, with no stops.</p><p>The video is a .mov file. The deck keeps the last 3 videos. A backup excludes the videos.</p>
 </section></div>
 <p>From the <a href="../../manual/">manual for a tall display</a>. The deck draws every picture.</p>
 </main>
