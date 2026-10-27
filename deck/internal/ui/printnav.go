@@ -38,11 +38,12 @@ const (
 	pagePhones      // the phones of the Printdeck app that get push messages
 	pageMonitor     // the graphs of the CPU, the memory and the disk writes of the deck
 	pageSimulator   // the simulated printers
-	pageCamera      // the setup of the camera
+	pageCamera      // the picture of a camera, its turn and its calibration
 	pageCalibrate   // the calibration of the camera (a.calib)
 	pageTimeLapse   // the time lapse and the picture of the first layer
 	pageFirstLayer  // the last picture of a first layer
-	pageCameraSetup // the settings of a camera that have no key on the wide Camera page, and the roles
+	pageCameras     // the list of the cameras
+	pageCameraEdit  // the settings of one camera (a.camEdit): the name, on or off, and the uses
 )
 
 // open shows a page over the current one.
@@ -455,7 +456,12 @@ func (a *App) drawMenuRow(c *gfx.Canvas, r image.Rectangle, title, sub string, s
 	}
 	rowText(c, r, title, sub, text, subCol)
 	if arrow {
-		cx, cy := r.Max.X-28, r.Min.Y+r.Dy()/2
-		c.Polygon([]image.Point{{cx - 5, cy - 10}, {cx + 5, cy}, {cx - 5, cy + 10}, {cx - 9, cy + 6}, {cx - 3, cy}, {cx - 9, cy - 6}}, dim)
+		rowArrow(c, r)
 	}
+}
+
+// rowArrow draws the arrow at the right of a menu row r.
+func rowArrow(c *gfx.Canvas, r image.Rectangle) {
+	cx, cy := r.Max.X-28, r.Min.Y+r.Dy()/2
+	c.Polygon([]image.Point{{cx - 5, cy - 10}, {cx + 5, cy}, {cx - 5, cy + 10}, {cx - 9, cy + 6}, {cx - 3, cy}, {cx - 9, cy - 6}}, dim)
 }

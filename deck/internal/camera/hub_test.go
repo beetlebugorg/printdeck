@@ -302,3 +302,51 @@ func TestCalibrations(t *testing.T) {
 		t.Error("the main camera is calibrated")
 	}
 }
+
+// GiveRole moves one role, and the other roles stay on their cameras. A camera that goes off
+// gives its roles to the main camera, and the main role to the other camera that is on.
+func TestRoleMoves(t *testing.T) {
+	c := Device{Path: "/dev/video4", ID: "/dev/v4l/by-path/usb-0:3-video-index0", Name: "C270"}
+	devs := []Device{camA, camB, c}
+	roles := func(s Settings) map[string][]string {
+		out := map[string][]string{}
+		for _, in := range List(s, devs) {
+			out[in.ID] = in.Roles
+		}
+		return out
+	}
+	var s Settings
+	s.GiveRole(List(s, devs), RoleMain, camB.ID)
+	if got := roles(s); !reflect.DeepEqual(got[camA.ID], []string{RoleLapse, RolePicture}) || !reflect.DeepEqual(got[camB.ID], []string{RoleMain}) {
+		t.Errorf("main to camera 2: %v", got)
+	}
+	s.GiveRole(List(s, devs), RoleLapse, c.ID)
+	if got := roles(s); !reflect.DeepEqual(got[c.ID], []string{RoleLapse}) || !reflect.DeepEqual(got[camA.ID], []string{RolePicture}) {
+		t.Errorf("lapse to camera 3: %v", got)
+	}
+	// Camera 3 goes off: the time lapse goes to the main camera, camera 2.
+	moved, to := s.SetOff(List(s, devs), c.ID, true)
+	if !reflect.DeepEqual(moved, []string{RoleLapse}) || to != camB.ID || s.Lapse != camB.ID {
+		t.Errorf("camera 3 off: %v %q %+v", moved, to, s)
+	}
+	// Camera 2 goes off: its roles go to camera 1, the first other camera that is on.
+	moved, to = s.SetOff(List(s, devs), camB.ID, true)
+	if !reflect.DeepEqual(moved, []string{RoleMain, RoleLapse}) || to != camA.ID {
+		t.Errorf("camera 2 off: %v %q", moved, to)
+	}
+	if got := roles(s); !reflect.DeepEqual(got[camA.ID], []string{RoleMain, RoleLapse, RolePicture}) {
+		t.Errorf("camera 2 off: %v", got)
+	}
+	// On again, camera 2 gets no role back.
+	s.SetOff(List(s, devs), camB.ID, false)
+	if got := roles(s); len(got[camB.ID]) != 0 || s.Camera(camB.ID).Off {
+		t.Errorf("camera 2 on: %v", got)
+	}
+	// The last camera that is on keeps its roles when it goes off.
+	s.SetOff(List(s, devs), c.ID, false)
+	s.SetOff(List(s, devs), c.ID, true)
+	s.SetOff(List(s, devs), camB.ID, true)
+	if moved, to := s.SetOff(List(s, devs), camA.ID, true); moved != nil || to != "" || s.Main != camA.ID {
+		t.Errorf("last camera off: %v %q %+v", moved, to, s)
+	}
+}

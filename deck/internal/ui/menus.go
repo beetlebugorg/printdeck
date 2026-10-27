@@ -10,6 +10,8 @@ import (
 
 	"image/color"
 
+	"golang.org/x/image/font"
+
 	"printdeck/internal/board"
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
@@ -90,11 +92,22 @@ func (a *App) menuRowsWait(c *gfx.Canvas, area image.Rectangle, wide bool, rowH,
 	}
 }
 
-// menuGroup is a group of rows of a menu page, under a heading.
+// menuGroup is a group of rows of a menu page, under a heading. A group with no heading has no
+// heading line.
 type menuGroup struct {
 	heading string
 	items   []menuItem
+	// checks makes each row a check row (checkRow), checked when checks[i] is true. nil is rows
+	// with an arrow.
+	checks []bool
+	// note is a line of small text under the rows, or "".
+	note string
 }
+
+// noteFace is the font of the note of a group, and noteLineH the height of each line.
+const noteLineH = 20
+
+func noteFace() font.Face { return gfx.Face(false, 14) }
 
 // groupHeadH is the height of the heading of a group of rows. groupSpace is the space over the
 // heading of each group after the first.
@@ -105,13 +118,15 @@ const groupHeadH, groupSpace = 24, 10
 // rowH on a tall screen, as in menuRows. When the rows do not fit, the headings and the rows are
 // in a list that scrolls, with rows of a size to touch.
 func (a *App) menuGroups(c *gfx.Canvas, area image.Rectangle, wide bool, rowH, gap int, groups []menuGroup) {
-	// The parts from the top of the list: the headings, and the rows.
+	// The parts from the top of the list: the headings, the rows and the notes.
 	type part struct {
 		y, h    int
 		top     int // the top of a row, or of the heading over the first row of a group
 		heading string
+		note    string
 		it      menuItem
 		row     bool
+		check   int // 0 for a row with an arrow, 1 for a check row, 2 for a checked row
 	}
 	var shown []menuGroup
 	n := 0
@@ -124,7 +139,21 @@ func (a *App) menuGroups(c *gfx.Canvas, area image.Rectangle, wide bool, rowH, g
 	if n == 0 {
 		return
 	}
-	fixed := len(shown)*(groupHeadH+gap) + (len(shown)-1)*groupSpace
+	fixed := (len(shown) - 1) * groupSpace
+	noteLines := func(g menuGroup) int {
+		if g.note == "" {
+			return 0
+		}
+		return len(wrapText(noteFace(), g.note, area.Dx()-8))
+	}
+	for _, g := range shown {
+		if g.heading != "" {
+			fixed += groupHeadH + gap
+		}
+		if n := noteLines(g); n > 0 {
+			fixed += n*noteLineH + gap
+		}
+	}
 	limit := rowH
 	if !wide {
 		limit = rowH * 16 / 10
@@ -137,17 +166,30 @@ func (a *App) menuGroups(c *gfx.Canvas, area image.Rectangle, wide bool, rowH, g
 			y += groupSpace
 		}
 		top := y
-		parts = append(parts, part{y: y, h: groupHeadH, heading: g.heading})
-		y += groupHeadH + gap
-		for _, it := range g.items {
+		if g.heading != "" {
+			parts = append(parts, part{y: y, h: groupHeadH, heading: g.heading})
+			y += groupHeadH + gap
+		}
+		for i, it := range g.items {
 			h := max(rowH, minRowH)
 			if gfx.FinePrint() {
 				// The large text: a row is high enough for the title and the lines under it.
 				h = max(h, largeRowH(len(subLines(it.sub, area.Dx()-largeRowInset))))
 			}
-			parts = append(parts, part{y: y, h: h, top: top, it: it, row: true})
+			p := part{y: y, h: h, top: top, it: it, row: true}
+			if g.checks != nil {
+				p.check = 1
+				if g.checks[i] {
+					p.check = 2
+				}
+			}
+			parts = append(parts, p)
 			y += h + gap
 			top = y
+		}
+		if n := noteLines(g); n > 0 {
+			parts = append(parts, part{y: y - gap + 6, h: n * noteLineH, note: g.note})
+			y += n*noteLineH + gap
 		}
 	}
 	total := y - gap
@@ -158,25 +200,34 @@ func (a *App) menuGroups(c *gfx.Canvas, area image.Rectangle, wide bool, rowH, g
 		y := area.Min.Y + p.y - *scroll
 		return image.Rect(area.Min.X, y, area.Max.X, y+p.h)
 	}
+	draw := func(c *gfx.Canvas, p part, r image.Rectangle) {
+		switch {
+		case p.row && p.check > 0:
+			a.drawCheckRow(c, r, p.it.title, p.it.sub, p.check == 2, p.it.tap != nil)
+		case p.row:
+			a.drawMenuRow(c, r, p.it.title, p.it.sub, p.it.col, p.it.tap != nil, false)
+		case p.note != "":
+			textLines(c, kit.Inset(r, 4, 0, 4, 0), p.note, noteFace(), dim, noteLineH)
+		default:
+			label(c, r, p.heading, gfx.Left)
+		}
+	}
 	if maxScroll == 0 {
 		// All the rows fit: rows that stay in their place.
 		for _, p := range parts {
-			if p.row {
-				a.menuRow(c, rect(p), p.it.title, p.it.sub, p.it.col, p.it.tap)
-			} else {
-				label(c, rect(p), p.heading, gfx.Left)
+			r := rect(p)
+			draw(c, p, r)
+			if p.row && p.it.tap != nil {
+				a.addHit(kit.Hit{R: r, Tap: p.it.tap})
+				a.addFocus(p.it.title, r, p.it.tap)
 			}
 		}
 		return
 	}
 	c.Clipped(area, func(c *gfx.Canvas) {
 		for _, p := range parts {
-			switch r := rect(p); {
-			case !r.Overlaps(area):
-			case p.row:
-				a.drawMenuRow(c, r, p.it.title, p.it.sub, p.it.col, p.it.tap != nil, false)
-			default:
-				label(c, r, p.heading, gfx.Left)
+			if r := rect(p); r.Overlaps(area) {
+				draw(c, p, r)
 			}
 		}
 	})
@@ -480,7 +531,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 	if a.Metrics != nil {
 		deckRows = append(deckRows, menuItem{"System monitor", monitorLine, dim, func() { a.open(pageMonitor) }})
 	}
-	a.menuGroups(c, rowsArea, f.wide, 60, 5, []menuGroup{{"Printer", printerRows}, {"History", printRows}, {"Deck", deckRows}})
+	a.menuGroups(c, rowsArea, f.wide, 60, 5, []menuGroup{{heading: "Printer", items: printerRows}, {heading: "History", items: printRows}, {heading: "Deck", items: deckRows}})
 	k := kit.Cols(restart, 12, kit.Fr(1), kit.Fr(1))
 	// The destructive action at the left.
 	a.printerKey(c, k[1], "Restart Klipper", raised, text, func() {
@@ -627,7 +678,9 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 		items = append(items, menuItem{"Screen", rotateLine(a.Rotate), dim, a.askRotate})
 	}
 	if a.Camera != nil {
-		items = append(items, menuItem{"Camera", cameraLine(a.Camera.Cameras()), dim, func() { a.open(pageCamera) }})
+		list := a.Camera.Cameras()
+		items = append(items, menuItem{"Camera", pictureLine(list), dim, func() { a.open(pageCamera) }},
+			menuItem{"Cameras", cameraLine(list), dim, func() { a.open(pageCameras) }})
 	}
 	if a.TimeLapse != nil {
 		items = append(items, menuItem{"Time lapse", timeLapseLine(a.TimeLapse.Settings()), dim, func() { a.open(pageTimeLapse) }})
