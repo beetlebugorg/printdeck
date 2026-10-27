@@ -18,6 +18,8 @@ The glass of the display is the front of the pod. The glass is wider than the ca
 a smaller body behind the glass. The display hangs with its ribbon end down. The Pi 5 with its
 Active Cooler is on the four standoffs of the display, with the USB ports up.
 
+<img src="../docs/img/pod-pi.png" alt="The back of the display with the Pi 5 and its Active Cooler on the standoffs, and the ribbon and the power wire, with no case" width="280">
+
 The case has three printed parts. Each part prints flat with no supports.
 
 - The frame is the thin part around the display. Four M2.5 x 4 screws from the box of the display
@@ -27,13 +29,19 @@ The case has three printed parts. Each part prints flat with no supports.
 - The mount is a plate with a dovetail. Two M3 x 6 screws from inside the body hold it to the back
   of the body.
 
+<img src="../docs/img/pod-exploded.png" alt="The pod apart, from the back to the front: the mount, the body, the frame, the Pi 5 and the display, with their screws" width="640">
+
 The ports of the Pi are flush with the walls of the body. The USB-C power port and the two micro
 HDMI ports are in the left wall. The USB-A and Ethernet ports are in the top wall. The printer cable
 plugs into a USB port of the Pi from above.
 
+<img src="../docs/img/pod-back.png" alt="The back of the pod: the mount with the dovetail, the vents, and the USB-A and Ethernet ports in the top wall" width="280">
+
 The bracket of each printer has a wedge. The pod leans back 15 degrees on the wedge. A key on the
 back of the wedge slides down into a groove in the bracket. The dovetail of the mount drops into a
 slot in the wedge from above. To remove the pod, lift it off the dovetail and pull it forward.
+
+<img src="../docs/img/pod-bracket.png" alt="The TAZ bracket off its two rail clips, the wedge above the groove of the bracket, and the pod above the wedge" width="300">
 
 ## On the TAZ Workhorse
 
