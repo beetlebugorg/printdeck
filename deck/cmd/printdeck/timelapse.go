@@ -13,7 +13,8 @@ import (
 )
 
 // startTimelapse starts the time lapse and the first layer picture of the prints (Settings > Time
-// lapse). It needs the camera of the deck and the Klipper host. The settings are in the file
+// lapse). It needs the camera of the deck and the Klipper host. The frames come from the camera of
+// the time lapse role, and the first layer picture from the camera of the picture role. The settings are in the file
 // timelapse of the state folder; the deck writes it only when the page changes them. The frames of
 // a print stay in memory. The deck writes one video to the folder videos at the end of a print.
 func startTimelapse(ctx context.Context, stateDir string, app *ui.App, pr printerBackend) {
@@ -27,7 +28,7 @@ func startTimelapse(ctx context.Context, stateDir string, app *ui.App, pr printe
 	if b, err := os.ReadFile(file); err == nil {
 		s = timelapse.ParseSettings(b)
 	}
-	r := timelapse.NewRunner(s, k, hub, func() timelapse.Print {
+	r := timelapse.NewRunner(s, k, hub.Role(camera.RoleLapse), func() timelapse.Print {
 		st := k.State()
 		return timelapse.Print{Busy: st.Busy(), File: st.FilePath}
 	}, videoDir(stateDir))
@@ -36,6 +37,7 @@ func startTimelapse(ctx context.Context, stateDir string, app *ui.App, pr printe
 			log.Printf("timelapse: the settings were not saved: %v", err)
 		}
 	}
+	r.Picture = hub.Role(camera.RolePicture)
 	r.OnFirstLayer = func(f *camera.Frame, file string) { app.ShowFirstLayer() }
 	app.TimeLapse = r
 	sysTimelapse = r

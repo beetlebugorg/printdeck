@@ -262,6 +262,47 @@ func TestRunner(t *testing.T) {
 	}
 }
 
+// The first layer picture comes from the Picture camera, and the frames from the camera of the
+// time lapse. Each camera is on during the print.
+func TestRunnerPictureCamera(t *testing.T) {
+	host := &fakeHost{st: HostStatus{Present: true, Park: true, Every: 1}}
+	lapse := &fakeCamera{t: t, on: true}
+	pic := &fakeCamera{t: t, on: true, seq: 1000}
+	busy := false
+	r := NewRunner(Settings{On: true, Park: true, First: FirstPicture}, host, lapse, func() Print {
+		return Print{Busy: busy, File: "clip.gcode"}
+	}, t.TempDir())
+	r.Picture = pic
+	ctx := context.Background()
+	r.step(ctx)
+	busy = true
+	r.step(ctx)
+	if lapse.watchers != 1 || pic.watchers != 1 {
+		t.Errorf("watchers %d %d", lapse.watchers, pic.watchers)
+	}
+	host.frame(true, true, 1)
+	r.step(ctx)
+	host.frame(false, true, 2)
+	r.step(ctx)
+	in := r.Info()
+	if in.First == nil || in.First.Seq < 1000 || in.Frames != 2 {
+		t.Errorf("first layer picture %+v, %d frames", in.First, in.Frames)
+	}
+	if lapse.seq >= 1000 {
+		t.Errorf("the frames came from the picture camera: %d", lapse.seq)
+	}
+	// A Picture camera that is off: no first layer picture.
+	pic.on = false
+	if s, _ := r.want(); s.First != FirstOff || !s.On {
+		t.Errorf("want %+v", s)
+	}
+	busy = false
+	r.step(ctx)
+	if lapse.watchers != 0 || pic.watchers != 0 {
+		t.Errorf("watchers after the print %d %d", lapse.watchers, pic.watchers)
+	}
+}
+
 // With no camera, the host gets no frames to take.
 func TestRunnerNoCamera(t *testing.T) {
 	host := &fakeHost{st: HostStatus{Present: true, Enable: true, First: FirstPause, Park: true, Every: 1}}
