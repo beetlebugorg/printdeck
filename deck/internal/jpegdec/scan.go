@@ -488,10 +488,8 @@ func (d *decoder) reconstructBlock(b *block, bx, by, compIndex int) error {
 	}
 	if d.shift > 0 {
 		// The reduced inverse DCT uses the lowest bs x bs frequencies only.
-		for zig := 0; zig < blockSize; zig++ {
-			if i := unzig[zig]; i%8 < bs && i/8 < bs {
-				b[i] *= qt[zig]
-			}
+		for _, zig := range lowZig[d.shift-1] {
+			b[unzig[zig]] *= qt[zig]
 		}
 		idctScaled(b, d.shift, dst, stride)
 		return nil

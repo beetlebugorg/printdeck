@@ -9,6 +9,20 @@ package jpegdec
 //
 // with C(0) = 1/√2 and C(u) = 1 for u > 0. With n = 1, p is F(0, 0)/8: the mean of the block.
 
+// lowZig are the zig-zag indexes of the lowest 4 x 4, 2 x 2 and 1 x 1 frequencies: the
+// coefficients of the reduced inverse DCT at 1/2, 1/4 and 1/8.
+var lowZig = func() (z [3][]int) {
+	for s := range 3 {
+		n := 4 >> s
+		for zig := range blockSize {
+			if i := unzig[zig]; i%8 < n && i/8 < n {
+				z[s] = append(z[s], zig)
+			}
+		}
+	}
+	return z
+}()
+
 // The factors of the butterflies: 1/2 C(u) cos(kπ/8).
 const (
 	k0 = 0.35355339 // 1/2 · 1/√2, and 1/2 cos(π/4)
