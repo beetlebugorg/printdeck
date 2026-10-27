@@ -5,68 +5,114 @@ import (
 	"errors"
 	"image"
 	"log"
+	"reflect"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 )
 
-// Hub runs the camera of the settings, and gives its frames to the viewers. The camera runs only
-// while a viewer watches: a stream (Watch), or a recent call of Snapshot or Peek. It stops linger
-// after the last viewer. One capture feeds all viewers: each viewer takes the newest frame, so a
-// slow viewer skips frames and the capture never waits for it.
+// Hub runs the cameras of the settings, and gives their frames to the viewers. Each camera (Cam)
+// has a capture of its own. A capture runs only while a viewer watches its camera: a stream
+// (Watch), or a recent call of Snapshot or Peek. It stops linger after the last viewer. One
+// capture feeds all viewers of its camera: each viewer gets the newest frame, so a slow viewer
+// skips frames and the capture never waits for it.
+//
+// The methods of the Hub with no camera (Peek, Snapshot, Status and the others) are those of the
+// main camera (RoleMain).
 type Hub struct {
-	// OnSettings is told the new settings, to save them, or is nil.
+	// OnSettings gets the new settings, to save them, or is nil.
 	OnSettings func(Settings)
-	// OnCalibration is told a new calibration, or nil for no calibration, to save it. It can be
+	// OnCalibration gets the calibrations of all cameras after a change, to save them. It can be
 	// nil.
-	OnCalibration func(*Calibration)
+	OnCalibration func([]*Calibration)
 
-	mu        sync.Mutex
-	settings  Settings
-	gen       int // goes up at each change of the settings
+	mu       sync.Mutex
+	settings Settings
+	cams     map[string]*Cam
+	none     *Cam            // the camera of a role with no usable camera
+	ctx      context.Context // the context of Run, or nil before Run
+	seq      uint64          // the number of the last frame of all cameras
+
+	devices []Device
+	scanned time.Time
+	capture captureFunc
+	scan    func() []Device
+	saveMu  sync.Mutex // one save at a time
+
+	// The views (views.go): the calibration of each camera by ID, the places of the printer, and
+	// the last format of each device.
+	cals    map[string]*Calibration
+	calGen  int // goes up at each change of a calibration
+	scene   Scene
+	formats map[string]Format
+}
+
+// Cam is one camera of the hub. It is a Source.
+type Cam struct {
+	h  *Hub
+	id string // the ID of the camera, or "" for the camera of a role with no usable camera
+
+	// The fields under h.mu.
 	viewers   int
 	wantUntil time.Time
 	wake      chan struct{}
+	latest    *Frame
+	changed   chan struct{} // closed at each new frame
+	status    Status
+	lastLog   string // the last error in the log, so that an error is in the log once
+	running   bool   // run has started
 
-	latest  *Frame
-	seq     uint64
-	changed chan struct{} // closed at each new frame
-
-	status  Status
-	devices []Device
-	scanned time.Time
-	lastLog string // the last error in the log, so that an error is in the log once
-	capture captureFunc
-	scan    func() []Device
-
-	// The views (views.go): the calibration, the places of the printer, the last format of each
-	// device, and the crop of the toolhead view with the time and the number of its frame.
-	cal     *Calibration
-	calGen  int // goes up at each change of the calibration
-	scene   Scene
-	formats map[string]Format
-	thCrop  [4]float64
-	thAt    time.Time
-	thSeq   uint64
-	thSize  image.Point
+	// The crop of the toolhead view, with the time and the number of its frame.
+	thCrop [4]float64
+	thAt   time.Time
+	thSeq  uint64
+	thSize image.Point
 }
 
-// Status tells the state of the camera, for the screen.
+// Source is a camera for the viewers: a Cam, or a role of the hub (Hub.Role).
+type Source interface {
+	// ID returns the ID of the camera now, or "".
+	ID() string
+	// On reports that the camera is on, and that the deck finds it.
+	On() bool
+	Status() Status
+	// Peek returns the newest frame, or nil, and keeps the camera on for linger.
+	Peek() *Frame
+	// Next waits for a frame after the frame with the number after, and returns it.
+	Next(ctx context.Context, after uint64) (*Frame, error)
+	// Watch counts a viewer that watches the frames until stop.
+	Watch() (stop func())
+	// Snapshot returns the newest frame, and starts the camera for it when it is not on.
+	Snapshot(ctx context.Context) (*Frame, error)
+	// View returns the view of a frame at the width w, and the name of the view that it shows.
+	View(f *Frame, view string, w int) (*Frame, string)
+	// Views returns the views that show a part of the picture now, with full first.
+	Views() []string
+	// Calibration returns the calibration, or nil, and reports that it is valid for the camera.
+	Calibration() (*Calibration, bool)
+	// SetCalibration saves a calibration, or removes it with nil.
+	SetCalibration(*Calibration)
+}
+
+// Status is the state of a camera, for the screen.
 type Status struct {
-	// State is "off" (the setting is Off), "none" (no camera), "idle" (no viewer), "starting",
+	// State is "off" (the setting is off), "none" (no camera), "idle" (no viewer), "starting",
 	// "on", "nosignal" (no picture, or a blank picture: an HDMI capture with no signal), or
 	// "error".
 	State  string
 	Device Device
+	// Name is the name of the camera on the screens (Info.Name).
+	Name   string
 	Format Format
 	Err    string
 }
 
 // captureFunc runs the capture of a device until ctx ends or the device fails. It calls format
 // once the format is set, and emit with each frame.
-type captureFunc func(ctx context.Context, d Device, s Settings, format func(Format), emit func(*Frame)) error
+type captureFunc func(ctx context.Context, d Device, s CamSettings, format func(Format), emit func(*Frame)) error
 
-// linger is how long the camera runs after the last viewer.
+// linger is how long a camera runs after its last viewer.
 var linger = 8 * time.Second
 
 // scanAge is how long the list of the devices is kept.
@@ -75,31 +121,57 @@ const scanAge = 5 * time.Second
 // NewHub returns a hub with the settings s. Call Run to start it.
 func NewHub(s Settings) *Hub {
 	scan, capture := withTestCamera(listDevices, capture)
-	return &Hub{settings: s, wake: make(chan struct{}, 1), changed: make(chan struct{}),
-		capture: capture, scan: scan}
+	h := &Hub{settings: s.clone(), cams: map[string]*Cam{}, capture: capture, scan: scan,
+		cals: map[string]*Calibration{}}
+	h.none = h.newCam("")
+	return h
+}
+
+func (h *Hub) newCam(id string) *Cam {
+	return &Cam{h: h, id: id, wake: make(chan struct{}, 1), changed: make(chan struct{})}
 }
 
 // Settings returns the settings.
 func (h *Hub) Settings() Settings {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	return h.settings
+	return h.settings.clone()
 }
 
-// SetSettings changes the settings, and starts the camera again with them.
+// SetSettings changes the settings. A camera with a new turn, or that goes off, starts again.
 func (h *Hub) SetSettings(s Settings) {
 	h.mu.Lock()
-	h.settings = s
-	h.gen++
+	s = s.clone()
+	for i, c := range s.Cameras {
+		for _, d := range h.devices {
+			if d.ID == c.ID {
+				s.Cameras[i].Model = d.Name
+			}
+		}
+	}
+	h.settings = s.clone()
 	save := h.OnSettings
+	cams := h.camsLocked()
 	h.mu.Unlock()
-	h.signal()
+	for _, c := range cams {
+		c.signal()
+	}
 	if save != nil {
-		save(s)
+		h.saveMu.Lock()
+		save(s.clone())
+		h.saveMu.Unlock()
 	}
 }
 
-// Devices returns the cameras that the deck finds, in the order of their paths.
+func (h *Hub) camsLocked() []*Cam {
+	out := []*Cam{h.none}
+	for _, c := range h.cams {
+		out = append(out, c)
+	}
+	return out
+}
+
+// Devices returns the cameras that the deck finds, in the order of their IDs.
 func (h *Hub) Devices() []Device {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -109,95 +181,343 @@ func (h *Hub) Devices() []Device {
 func (h *Hub) devicesLocked() []Device {
 	if time.Since(h.scanned) > scanAge {
 		h.devices = h.scan()
-		sort.Slice(h.devices, func(i, j int) bool { return h.devices[i].Path < h.devices[j].Path })
+		sort.Slice(h.devices, func(i, j int) bool { return h.devices[i].ID < h.devices[j].ID })
 		h.scanned = time.Now()
+		if h.normalizeLocked() {
+			s, cals, save, saveCal := h.settings.clone(), h.calsLocked(), h.OnSettings, h.OnCalibration
+			go func() {
+				h.saveMu.Lock()
+				defer h.saveMu.Unlock()
+				if save != nil {
+					save(s)
+				}
+				if saveCal != nil {
+					saveCal(cals)
+				}
+			}()
+		}
 	}
 	return h.devices
 }
 
-// device returns the camera of the settings.
-func (h *Hub) deviceLocked() (Device, bool) {
-	if h.settings.Device == Off {
-		return Device{}, false
+// normalizeLocked changes the IDs of the settings and of the calibrations to the IDs of the
+// devices: a path or an alias becomes the ID. The camera "" of an older deck becomes the camera
+// of the calibration, or the first camera, and the main camera. It reports a change.
+func (h *Hub) normalizeLocked() bool {
+	if len(h.devices) == 0 {
+		return false
 	}
-	for _, d := range h.devicesLocked() {
-		if h.settings.Device == "" || d.ID == h.settings.Device || d.Path == h.settings.Device {
-			return d, true
+	canon := func(id string) string {
+		for _, d := range h.devices {
+			if d.Is(id) {
+				return d.ID
+			}
+		}
+		return id
+	}
+	old := h.settings.clone()
+	var cams []CamSettings
+	seen := map[string]bool{}
+	for _, c := range h.settings.Cameras {
+		if c.ID == "" {
+			// Auto of an older deck: the camera of the calibration, or the first camera in the
+			// order of the paths, as the older deck chose it. It stays the main camera.
+			first := h.devices[0]
+			for _, d := range h.devices {
+				if d.Path < first.Path {
+					first = d
+				}
+			}
+			c.ID = first.ID
+			for id := range h.cals {
+				if n := canon(id); h.foundLocked(n) {
+					c.ID = n
+					break
+				}
+			}
+			if h.settings.Main == "" {
+				h.settings.Main = c.ID
+			}
+		}
+		c.ID = canon(c.ID)
+		if !seen[c.ID] {
+			seen[c.ID] = true
+			cams = append(cams, c)
 		}
 	}
-	return Device{}, false
-}
-
-// On reports that the settings choose a camera, and that the deck finds it.
-func (h *Hub) On() bool {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	_, ok := h.deviceLocked()
-	return ok
-}
-
-// Status returns the state of the camera.
-func (h *Hub) Status() Status {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	s := h.status
-	switch d, ok := h.deviceLocked(); {
-	case h.settings.Device == Off:
-		return Status{State: "off"}
-	case !ok:
-		return Status{State: "none"}
-	case s.State == "":
-		return Status{State: "idle", Device: d}
+	h.settings.Cameras = cams
+	for _, role := range Roles {
+		if id := h.settings.Role(role); id != "" {
+			h.settings.SetRole(role, canon(id))
+		}
 	}
-	return s
+	calChanged := false
+	for id, c := range h.cals {
+		if n := canon(id); n != id {
+			delete(h.cals, id)
+			c.Device = n
+			h.cals[n] = c
+			calChanged = true
+		}
+	}
+	return calChanged || !reflect.DeepEqual(old, h.settings)
 }
 
-// signal wakes Run.
-func (h *Hub) signal() {
+// foundLocked reports that the deck finds the device id.
+func (h *Hub) foundLocked(id string) bool {
+	for _, d := range h.devices {
+		if d.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// Cameras returns the cameras: the cameras of the settings, and the other cameras that the deck
+// finds. The first camera that is on is the default camera of the roles.
+func (h *Hub) Cameras() []Info {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.listLocked()
+}
+
+func (h *Hub) listLocked() []Info {
+	return List(h.settings, h.devicesLocked())
+}
+
+// infoLocked returns the camera id in the list.
+func (h *Hub) infoLocked(id string) (Info, bool) {
+	for _, in := range h.listLocked() {
+		if in.ID == id {
+			return in, true
+		}
+	}
+	return Info{}, false
+}
+
+// roleLocked returns the ID of the camera of a role now, or "".
+func (h *Hub) roleLocked(role string) string {
+	for _, in := range h.listLocked() {
+		if in.HasRole(role) {
+			return in.ID
+		}
+	}
+	return ""
+}
+
+// camLocked returns the camera id, and starts its capture loop when the hub runs.
+func (h *Hub) camLocked(id string) *Cam {
+	if id == "" {
+		return h.none
+	}
+	c := h.cams[id]
+	if c == nil {
+		c = h.newCam(id)
+		h.cams[id] = c
+	}
+	if h.ctx != nil && !c.running {
+		c.running = true
+		go c.run(h.ctx)
+	}
+	return c
+}
+
+// Source returns the camera of a selector: "" or a role (RoleMain, RoleLapse, RolePicture) for
+// the camera of the role, the number of a camera in the list (1, 2), or the ID, the path or the
+// alias of a camera. The camera of a role follows the role. It reports false for a selector
+// that is not a camera.
+func (h *Hub) Source(sel string) (Source, bool) {
+	switch sel {
+	case "":
+		return h.Role(RoleMain), true
+	case RoleMain, RoleLapse, RolePicture:
+		return h.Role(sel), true
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	list := h.listLocked()
+	if n, err := strconv.Atoi(sel); err == nil {
+		if n < 1 || n > len(list) {
+			return nil, false
+		}
+		return h.camLocked(list[n-1].ID), true
+	}
+	for _, in := range list {
+		if in.ID == sel || (in.Found && in.Device.Is(sel)) {
+			return h.camLocked(in.ID), true
+		}
+	}
+	return nil, false
+}
+
+// Cam returns the camera with the ID id.
+func (h *Hub) Cam(id string) *Cam {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.camLocked(id)
+}
+
+// Role returns the camera of a role. It finds the camera of the role at each call, so it follows a
+// change of the settings.
+func (h *Hub) Role(role string) Source { return roleSource{h, role} }
+
+// roleCam returns the camera of a role now.
+func (h *Hub) roleCam(role string) *Cam {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.camLocked(h.roleLocked(role))
+}
+
+// roleSource is the camera of a role (Hub.Role).
+type roleSource struct {
+	h    *Hub
+	role string
+}
+
+func (r roleSource) cam() *Cam                         { return r.h.roleCam(r.role) }
+func (r roleSource) ID() string                        { return r.cam().ID() }
+func (r roleSource) On() bool                          { return r.cam().On() }
+func (r roleSource) Status() Status                    { return r.cam().Status() }
+func (r roleSource) Peek() *Frame                      { return r.cam().Peek() }
+func (r roleSource) Watch() func()                     { return r.cam().Watch() }
+func (r roleSource) Views() []string                   { return r.cam().Views() }
+func (r roleSource) Calibration() (*Calibration, bool) { return r.cam().Calibration() }
+func (r roleSource) SetCalibration(c *Calibration)     { r.cam().SetCalibration(c) }
+func (r roleSource) Snapshot(ctx context.Context) (*Frame, error) {
+	return r.cam().Snapshot(ctx)
+}
+func (r roleSource) Next(ctx context.Context, after uint64) (*Frame, error) {
+	return r.cam().Next(ctx, after)
+}
+
+// View returns the view of the frame f with the camera of the frame. The role can change between
+// the frame and the view.
+func (r roleSource) View(f *Frame, view string, w int) (*Frame, string) {
+	if f != nil && f.cam != "" {
+		return r.h.Cam(f.cam).View(f, view, w)
+	}
+	return r.cam().View(f, view, w)
+}
+
+// The main camera.
+
+// On reports that the deck has a main camera: a camera that is on, and that the deck finds.
+func (h *Hub) On() bool { return h.Role(RoleMain).On() }
+
+// Status returns the state of the main camera.
+func (h *Hub) Status() Status { return h.Role(RoleMain).Status() }
+
+// Peek returns the newest frame of the main camera. See Cam.Peek.
+func (h *Hub) Peek() *Frame { return h.Role(RoleMain).Peek() }
+
+// Watch counts a viewer of the main camera. See Cam.Watch.
+func (h *Hub) Watch() (stop func()) { return h.Role(RoleMain).Watch() }
+
+// Snapshot returns a frame of the main camera. See Cam.Snapshot.
+func (h *Hub) Snapshot(ctx context.Context) (*Frame, error) { return h.Role(RoleMain).Snapshot(ctx) }
+
+// Next returns a new frame of the main camera. See Cam.Next.
+func (h *Hub) Next(ctx context.Context, after uint64) (*Frame, error) {
+	return h.Role(RoleMain).Next(ctx, after)
+}
+
+// ID returns the ID of the camera.
+func (c *Cam) ID() string { return c.id }
+
+// signal wakes the capture loop of the camera.
+func (c *Cam) signal() {
 	select {
-	case h.wake <- struct{}{}:
+	case c.wake <- struct{}{}:
 	default:
 	}
 }
 
-// want keeps the camera on for linger. The caller holds mu.
-func (h *Hub) wantLocked() {
-	if until := time.Now().Add(linger); until.After(h.wantUntil) {
-		h.wantUntil = until
+// deviceLocked returns the device and the settings of the camera, and reports that the camera is
+// on and that the deck finds it.
+func (c *Cam) deviceLocked() (Device, CamSettings, bool) {
+	cs := c.h.settings.Camera(c.id)
+	if c.id == "" || cs.Off {
+		return Device{}, cs, false
+	}
+	for _, d := range c.h.devicesLocked() {
+		if d.ID == c.id {
+			return d, cs, true
+		}
+	}
+	return Device{}, cs, false
+}
+
+// On reports that the camera is on, and that the deck finds it.
+func (c *Cam) On() bool {
+	c.h.mu.Lock()
+	defer c.h.mu.Unlock()
+	_, _, ok := c.deviceLocked()
+	return ok
+}
+
+// Status returns the state of the camera. The camera of a role with no usable camera is "off"
+// when the deck finds a camera, and "none" when it finds no camera.
+func (c *Cam) Status() Status {
+	h := c.h
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	d, cs, ok := c.deviceLocked()
+	in, _ := h.infoLocked(c.id)
+	switch {
+	case c.id == "" && len(h.devicesLocked()) > 0:
+		return Status{State: "off"}
+	case c.id == "":
+		return Status{State: "none"}
+	case cs.Off:
+		return Status{State: "off", Name: in.Name}
+	case !ok:
+		return Status{State: "none", Name: in.Name}
+	case c.status.State == "":
+		return Status{State: "idle", Device: d, Name: in.Name}
+	}
+	s := c.status
+	s.Name = in.Name
+	return s
+}
+
+// wantLocked keeps the camera on for linger.
+func (c *Cam) wantLocked() {
+	if until := time.Now().Add(linger); until.After(c.wantUntil) {
+		c.wantUntil = until
 	}
 }
 
-func (h *Hub) wanted() bool {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return h.settings.Device != Off && (h.viewers > 0 || time.Now().Before(h.wantUntil))
+func (c *Cam) wanted() bool {
+	c.h.mu.Lock()
+	defer c.h.mu.Unlock()
+	return c.id != "" && !c.h.settings.Camera(c.id).Off && (c.viewers > 0 || time.Now().Before(c.wantUntil))
 }
 
 // Watch counts a viewer that watches the frames (a stream) until stop.
-func (h *Hub) Watch() (stop func()) {
-	h.mu.Lock()
-	h.viewers++
-	h.mu.Unlock()
-	h.signal()
+func (c *Cam) Watch() (stop func()) {
+	c.h.mu.Lock()
+	c.viewers++
+	c.h.mu.Unlock()
+	c.signal()
 	var once sync.Once
 	return func() {
 		once.Do(func() {
-			h.mu.Lock()
-			h.viewers--
-			h.wantLocked()
-			h.mu.Unlock()
+			c.h.mu.Lock()
+			c.viewers--
+			c.wantLocked()
+			c.h.mu.Unlock()
 		})
 	}
 }
 
 // Peek returns the newest frame, or nil, and keeps the camera on for linger. The deck UI calls it
 // at each frame of the camera page.
-func (h *Hub) Peek() *Frame {
-	h.mu.Lock()
-	h.wantLocked()
-	f := h.latest
-	h.mu.Unlock()
-	h.signal()
+func (c *Cam) Peek() *Frame {
+	c.h.mu.Lock()
+	c.wantLocked()
+	f := c.latest
+	c.h.mu.Unlock()
+	c.signal()
 	return f
 }
 
@@ -213,28 +533,29 @@ var ErrNoFrame = errors.New("camera: no picture from the camera")
 
 // Snapshot returns the newest frame. When the camera is not on, it starts the camera and waits
 // for its first frame, for at most 5 seconds.
-func (h *Hub) Snapshot(ctx context.Context) (*Frame, error) {
-	if !h.On() {
+func (c *Cam) Snapshot(ctx context.Context) (*Frame, error) {
+	if !c.On() {
 		return nil, ErrNoCamera
 	}
-	if f := h.Peek(); f != nil {
+	if f := c.Peek(); f != nil {
 		return f, nil
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	f, err := h.Next(ctx, 0)
+	f, err := c.Next(ctx, 0)
 	if err != nil {
 		return nil, ErrNoFrame
 	}
 	return f, nil
 }
 
-// Next waits for a frame after the frame with the number after, and returns it.
-func (h *Hub) Next(ctx context.Context, after uint64) (*Frame, error) {
+// Next waits for a frame after the frame with the number after, and returns it. The numbers of
+// the frames of all cameras go up together, so a number of another camera is a valid after.
+func (c *Cam) Next(ctx context.Context, after uint64) (*Frame, error) {
 	for {
-		h.mu.Lock()
-		f, ch := h.latest, h.changed
-		h.mu.Unlock()
+		c.h.mu.Lock()
+		f, ch := c.latest, c.changed
+		c.h.mu.Unlock()
 		if f != nil && f.Seq > after {
 			return f, nil
 		}
@@ -247,74 +568,90 @@ func (h *Hub) Next(ctx context.Context, after uint64) (*Frame, error) {
 }
 
 // publish makes f the newest frame.
-func (h *Hub) publish(f *Frame) {
-	h.mu.Lock()
-	h.seq++
-	f.Seq = h.seq
-	h.latest = f
-	close(h.changed)
-	h.changed = make(chan struct{})
-	h.status.State = "on"
+func (c *Cam) publish(f *Frame) {
+	c.h.mu.Lock()
+	c.h.seq++
+	f.Seq = c.h.seq
+	f.cam = c.id
+	c.latest = f
+	close(c.changed)
+	c.changed = make(chan struct{})
+	c.status.State = "on"
 	if f.blank {
-		h.status.State = "nosignal"
+		c.status.State = "nosignal"
 	}
-	h.mu.Unlock()
+	c.h.mu.Unlock()
 }
 
-// Run runs the camera while viewers watch, until ctx ends.
+// Run starts the capture loops of the cameras, and waits until ctx ends. A capture runs only
+// while viewers watch its camera.
 func (h *Hub) Run(ctx context.Context) {
+	h.mu.Lock()
+	h.ctx = ctx
+	for _, c := range h.cams {
+		if !c.running {
+			c.running = true
+			go c.run(ctx)
+		}
+	}
+	h.mu.Unlock()
+	<-ctx.Done()
+}
+
+// run runs the capture of the camera while viewers watch, until ctx ends.
+func (c *Cam) run(ctx context.Context) {
+	h := c.h
 	for ctx.Err() == nil {
-		if !h.wanted() {
-			h.wait(ctx, time.Minute)
+		if !c.wanted() {
+			c.wait(ctx, time.Minute)
 			continue
 		}
 		h.mu.Lock()
-		d, ok := h.deviceLocked()
-		s, gen := h.settings, h.gen
-		if ok && h.status.State != "nosignal" {
+		d, cs, ok := c.deviceLocked()
+		if ok && c.status.State != "nosignal" {
 			// A camera with no signal keeps that state while it starts again.
-			h.status = Status{State: "starting", Device: d}
+			c.status = Status{State: "starting", Device: d}
 		}
 		h.mu.Unlock()
 		if !ok {
-			h.wait(ctx, 3*time.Second)
+			c.wait(ctx, 3*time.Second)
 			continue
 		}
 		cctx, cancel := context.WithCancel(ctx)
-		go h.stopWhenIdle(cctx, cancel, gen)
-		err := h.capture(cctx, d, s, func(f Format) {
+		go c.stopWhenIdle(cctx, cancel, cs)
+		err := h.capture(cctx, d, cs, func(f Format) {
 			h.mu.Lock()
-			h.status.Format = f
+			c.status.Format = f
 			if h.formats == nil {
 				h.formats = map[string]Format{}
 			}
 			h.formats[d.ID] = f
 			h.mu.Unlock()
-			h.logOnce(d.Name + " (" + d.Path + "): " + f.String())
-		}, h.publish)
+			c.logOnce(d.Name + " (" + d.Path + "): " + f.String())
+		}, c.publish)
 		stopped := cctx.Err() != nil
 		cancel()
 		h.mu.Lock()
-		h.latest = nil
+		c.latest = nil
 		switch {
 		case errors.Is(err, errNoSignal) && !stopped:
-			h.status = Status{State: "nosignal", Device: d, Format: h.status.Format, Err: err.Error()}
+			c.status = Status{State: "nosignal", Device: d, Format: c.status.Format, Err: err.Error()}
 		case err != nil && !stopped:
-			h.status = Status{State: "error", Device: d, Err: err.Error()}
+			c.status = Status{State: "error", Device: d, Err: err.Error()}
 		default:
-			h.status = Status{}
+			c.status = Status{}
 		}
 		h.mu.Unlock()
 		if err != nil && !stopped {
-			h.logOnce(d.Name + ": " + err.Error())
-			h.wait(ctx, 3*time.Second)
+			c.logOnce(d.Name + ": " + err.Error())
+			c.wait(ctx, 3*time.Second)
 		}
 	}
 }
 
-// stopWhenIdle cancels the capture when no viewer has watched for linger, or when the settings
-// change.
-func (h *Hub) stopWhenIdle(ctx context.Context, cancel func(), gen int) {
+// stopWhenIdle cancels the capture when no viewer has watched for linger, or when the camera goes
+// off or gets a new turn.
+func (c *Cam) stopWhenIdle(ctx context.Context, cancel func(), start CamSettings) {
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
 	for {
@@ -322,12 +659,12 @@ func (h *Hub) stopWhenIdle(ctx context.Context, cancel func(), gen int) {
 		case <-ctx.Done():
 			return
 		case <-tick.C:
-		case <-h.wake:
+		case <-c.wake:
 		}
-		h.mu.Lock()
-		changed := h.gen != gen
-		h.mu.Unlock()
-		if changed || !h.wanted() {
+		c.h.mu.Lock()
+		cs := c.h.settings.Camera(c.id)
+		c.h.mu.Unlock()
+		if cs.Off != start.Off || cs.Rotate != start.Rotate || !c.wanted() {
 			cancel()
 			return
 		}
@@ -335,22 +672,22 @@ func (h *Hub) stopWhenIdle(ctx context.Context, cancel func(), gen int) {
 }
 
 // wait waits for a signal, for at most d.
-func (h *Hub) wait(ctx context.Context, d time.Duration) {
+func (c *Cam) wait(ctx context.Context, d time.Duration) {
 	t := time.NewTimer(d)
 	defer t.Stop()
 	select {
 	case <-ctx.Done():
-	case <-h.wake:
+	case <-c.wake:
 	case <-t.C:
 	}
 }
 
 // logOnce logs a line of the camera when it is not the last line that it logged.
-func (h *Hub) logOnce(line string) {
-	h.mu.Lock()
-	same := line == h.lastLog
-	h.lastLog = line
-	h.mu.Unlock()
+func (c *Cam) logOnce(line string) {
+	c.h.mu.Lock()
+	same := line == c.lastLog
+	c.lastLog = line
+	c.h.mu.Unlock()
 	if !same {
 		log.Printf("camera: %s", line)
 	}

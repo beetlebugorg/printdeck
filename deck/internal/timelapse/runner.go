@@ -37,7 +37,7 @@ type Host interface {
 	SetTimelapse(enable, park bool, first, every int) error
 }
 
-// Camera is the camera of the deck (camera.Hub).
+// Camera is a camera of the deck (camera.Source).
 type Camera interface {
 	On() bool
 	Watch() (stop func())
@@ -87,6 +87,8 @@ type Runner struct {
 	OnSettings func(Settings)
 	// OnFirstLayer gets the picture of the first layer, or is nil.
 	OnFirstLayer func(f *camera.Frame, file string)
+	// Picture is the camera of the first layer picture, or nil for the camera of the frames.
+	Picture Camera
 
 	host  Host
 	cam   Camera
@@ -97,7 +99,8 @@ type Runner struct {
 	rec       *Recorder // the frames of the print now, or nil
 	file      string
 	stopCam   func()
-	handled   int // the last frame of the host with a picture
+	stopPic   func() // the watch of the Picture camera
+	handled   int    // the last frame of the host with a picture
 	sent      string
 	sentAt    time.Time
 	first     *camera.Frame
@@ -215,7 +218,10 @@ func (r *Runner) want() (s Settings, every int) {
 		every = r.rec.Every()
 	}
 	if !r.cam.On() {
-		s.On, s.First = false, FirstOff
+		s.On = false
+	}
+	if !r.picture().On() {
+		s.First = FirstOff
 	}
 	return s, every
 }
@@ -246,39 +252,56 @@ func (r *Runner) startPrint(file string) {
 	r.rec, r.file = NewRecorder(), file
 }
 
-// watch keeps the camera on during a print with the time lapse or the first layer picture, so
-// that a picture has no wait for the start of the camera.
+// picture returns the camera of the first layer picture.
+func (r *Runner) picture() Camera {
+	if r.Picture != nil {
+		return r.Picture
+	}
+	return r.cam
+}
+
+// watch keeps the cameras on during a print with the time lapse or the first layer picture, so
+// that a picture has no wait for the start of a camera.
 func (r *Runner) watch() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	need := r.rec != nil && (r.settings.On || r.settings.First != FirstOff) && r.cam.On()
-	switch {
-	case need && r.stopCam == nil:
-		r.stopCam = r.cam.Watch()
-	case !need && r.stopCam != nil:
-		r.stopCam()
-		r.stopCam = nil
+	watch := func(stop *func(), cam Camera, need bool) {
+		need = need && r.rec != nil && cam.On()
+		switch {
+		case need && *stop == nil:
+			*stop = cam.Watch()
+		case !need && *stop != nil:
+			(*stop)()
+			*stop = nil
+		}
+	}
+	watch(&r.stopCam, r.cam, r.settings.On || (r.Picture == nil && r.settings.First != FirstOff))
+	if r.Picture != nil {
+		watch(&r.stopPic, r.Picture, r.settings.First != FirstOff)
 	}
 }
 
 // endPrint ends the frames of the print. With save, it adds a last frame and writes the video.
 func (r *Runner) endPrint(ctx context.Context, save bool) {
 	r.mu.Lock()
-	rec, file, stop := r.rec, r.file, r.stopCam
-	r.rec, r.file, r.stopCam = nil, "", nil
+	rec, file, stop, stopPic := r.rec, r.file, r.stopCam, r.stopPic
+	r.rec, r.file, r.stopCam, r.stopPic = nil, "", nil, nil
 	r.mu.Unlock()
 	if rec == nil {
 		return
 	}
 	if save && rec.Len() > 0 {
 		// The last frame: the end G-code of the print moves the toolhead away.
-		if f := r.grab(ctx); f != nil {
+		if f := r.grab(ctx, r.cam); f != nil {
 			f = small(f)
 			rec.AddLast(f.JPEG(), f.Size())
 		}
 	}
 	if stop != nil {
 		stop()
+	}
+	if stopPic != nil {
+		stopPic()
 	}
 	if !save || rec.Len() < 2 {
 		return
@@ -289,8 +312,27 @@ func (r *Runner) endPrint(ctx context.Context, save bool) {
 }
 
 // takePicture captures the picture of a frame of the host, and sends the frame number to the host.
+// A frame of the time lapse comes from the camera of the frames, and the first layer picture from
+// the Picture camera. When they are two cameras, the deck gets the two pictures at the same time.
 func (r *Runner) takePicture(ctx context.Context, hs HostStatus) {
-	f := r.grab(ctx)
+	var f, pf *camera.Frame
+	pic := r.picture()
+	switch {
+	case hs.IsFirst && hs.IsLapse && pic != r.cam:
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			pf = r.grab(ctx, pic)
+		}()
+		f = r.grab(ctx, r.cam)
+		wg.Wait()
+	case hs.IsFirst && !hs.IsLapse:
+		pf = r.grab(ctx, pic)
+	default:
+		f = r.grab(ctx, r.cam)
+		pf = f
+	}
 	r.mu.Lock()
 	r.handled = hs.Frame
 	rec := r.rec
@@ -303,6 +345,9 @@ func (r *Runner) takePicture(ctx context.Context, hs HostStatus) {
 			rec.Add(f.JPEG(), f.Size(), hs.Layer)
 			r.mu.Unlock()
 		}
+	}
+	if pf != nil {
+		f := small(pf)
 		if hs.IsFirst {
 			r.mu.Lock()
 			r.first, r.firstAt, r.firstFile = f, time.Now(), file
@@ -318,22 +363,22 @@ func (r *Runner) takePicture(ctx context.Context, hs HostStatus) {
 	}
 }
 
-// grab returns a frame that the camera captures after this call, or nil. The camera sends a few
-// frames late, so grab skips one frame: the picture shows the toolhead at the park position.
-func (r *Runner) grab(ctx context.Context) *camera.Frame {
-	if !r.cam.On() {
+// grab returns a frame that the camera cam captures after this call, or nil. The camera sends a
+// few frames late, so grab skips one frame: the picture shows the toolhead at the park position.
+func (r *Runner) grab(ctx context.Context, cam Camera) *camera.Frame {
+	if !cam.On() {
 		return nil
 	}
 	ctx, cancel := context.WithTimeout(ctx, frameWait)
 	defer cancel()
 	var after uint64
-	if f := r.cam.Peek(); f != nil {
+	if f := cam.Peek(); f != nil {
 		after = f.Seq
 	}
 	var f *camera.Frame
 	for range 2 {
 		var err error
-		if f, err = r.cam.Next(ctx, after); err != nil {
+		if f, err = cam.Next(ctx, after); err != nil {
 			return nil
 		}
 		after = f.Seq

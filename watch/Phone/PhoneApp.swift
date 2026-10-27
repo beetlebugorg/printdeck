@@ -75,6 +75,8 @@ struct DeckView: View {
         }
         #endif
         .onChange(of: model.status) { _, st in PrintLiveActivity.update(st, model: model.model) }
+        // The watch shows the camera that the iPhone shows.
+        .onChange(of: model.cameraID) { if model.settings.isComplete { link.send(model.settings) } }
         .onChange(of: model.model) { _, m in PrintLiveActivity.update(model.status, model: m) }
         .onAppear {
             // The model in dots for the Live Activity, and in color for the window of the print.
@@ -105,7 +107,7 @@ struct DeckView: View {
                 LCDView(screen: .status(LCDModel.status(st, connected: true, error: model.error, now: Date(), hint: "",
                                                               live: model.live, notice: model.noticeNow)))
                 // The camera comes first when the deck has one on. A tap opens it larger.
-                if st?.camera?.on == true {
+                if model.camera?.on == true {
                     CameraFeed()
                         .contentShape(Rectangle())
                         .onTapGesture { sheet = .camera }

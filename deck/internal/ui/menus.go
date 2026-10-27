@@ -627,7 +627,7 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 		items = append(items, menuItem{"Screen", rotateLine(a.Rotate), dim, a.askRotate})
 	}
 	if a.Camera != nil {
-		items = append(items, menuItem{"Camera", cameraLine(a.Camera.Settings(), a.Camera.Devices()), dim, func() { a.open(pageCamera) }})
+		items = append(items, menuItem{"Camera", cameraLine(a.Camera.Cameras()), dim, func() { a.open(pageCamera) }})
 	}
 	if a.TimeLapse != nil {
 		items = append(items, menuItem{"Time lapse", timeLapseLine(a.TimeLapse.Settings()), dim, func() { a.open(pageTimeLapse) }})

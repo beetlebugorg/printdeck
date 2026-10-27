@@ -1,9 +1,11 @@
-// Package camera reads a USB camera (a V4L2 device, such as a webcam or an HDMI capture stick)
-// and gives its pictures as JPEG frames to the viewers: the webcam of the API, and the camera
-// page of the deck UI.
+// Package camera reads the USB cameras of the deck (V4L2 devices, such as webcams or HDMI capture
+// sticks) and gives their pictures as JPEG frames to the viewers: the webcam of the API, the
+// camera page of the deck UI, and the time lapse. Each camera has a capture of its own.
 //
-//	camera.go     the devices, the settings, and the frames
-//	hub.go        the capture runs only while a viewer watches, and one capture feeds all viewers
+//	camera.go     the devices and the frames
+//	settings.go   the settings of each camera, the names, and the roles
+//	hub.go        the capture of each camera runs only while a viewer watches it, and one
+//	              capture feeds all viewers of the camera
 //	scale.go      the conversion of raw pictures to JPEG, at a smaller size
 //	calib.go      the calibration: the projection from the places of the printer to the picture
 //	views.go      the views that follow the printer: the toolhead, the first layer, the part
@@ -22,10 +24,10 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
+
+	"printdeck/internal/jpegdec"
 )
 
 // Device is a camera that the deck found.
@@ -33,47 +35,20 @@ type Device struct {
 	// Path is the device file, for example /dev/video0.
 	Path string
 	// ID is the name of the setting: the link in /dev/v4l/by-id, which stays the same when the
-	// camera goes into another USB port, or Path when the device has no link.
+	// camera goes into another USB port, or Path when the device has no link. Two cameras of the
+	// same model often have one by-id link for both. Then the ID of each is its link in
+	// /dev/v4l/by-path, which stays the same while the camera stays in its USB port.
 	ID string
+	// Alias is the by-id link of a camera with a by-path ID, or "". A setting of an older deck
+	// can have it.
+	Alias string
 	// Name is the name of the camera, for example "C270 HD WEBCAM".
 	Name string
 }
 
-// Settings are the camera settings of the deck.
-type Settings struct {
-	// Device is "" for the first camera that the deck finds, "off" for no camera, or the ID of a
-	// camera.
-	Device string
-	// Rotate is 0, or 180 for a camera that is mounted upside down.
-	Rotate int
-}
-
-// Off is the Device of the settings for no camera.
-const Off = "off"
-
-// ParseSettings reads the settings from the camera file of the deck: the device ("auto", "off"
-// or an ID) on the first line, and the turn on the second line.
-func ParseSettings(b []byte) Settings {
-	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
-	var s Settings
-	if d := strings.TrimSpace(lines[0]); d != "auto" {
-		s.Device = d
-	}
-	if len(lines) > 1 {
-		if r, err := strconv.Atoi(strings.TrimSpace(lines[1])); err == nil && r == 180 {
-			s.Rotate = 180
-		}
-	}
-	return s
-}
-
-// Bytes is the text of the settings for the camera file.
-func (s Settings) Bytes() []byte {
-	d := s.Device
-	if d == "" {
-		d = "auto"
-	}
-	return []byte(fmt.Sprintf("%s\n%d\n", d, s.Rotate))
+// Is reports that id is the ID, the path or the alias of the device.
+func (d Device) Is(id string) bool {
+	return id != "" && (id == d.ID || id == d.Path || id == d.Alias)
 }
 
 // Format tells what the camera sends, and what the deck makes of it.
@@ -104,15 +79,18 @@ type Frame struct {
 	// Time is the time of the capture.
 	Time time.Time
 
+	cam string // the ID of the camera of the frame, or ""
+
 	jpeg  []byte
 	w, h  int
 	blank bool // the picture has one color: an HDMI capture with no signal
 
 	mu     sync.Mutex
-	pic    *image.YCbCr   // the picture, or nil until it is decoded
-	smalls map[int]*Frame // the smaller frames by width (Small)
-	order  []int          // the widths of smalls, the oldest first
-	err    error          // the decode error of the JPEG
+	pic    *image.YCbCr    // the picture, or nil until it is decoded
+	scaled [3]*image.YCbCr // the picture decoded at 1/2, 1/4 and 1/8 of its size, or nil (pictureFor)
+	smalls map[int]*Frame  // the smaller frames by width (Small)
+	order  []int           // the widths of smalls, the oldest first
+	err    error           // the decode error of the JPEG
 
 	plans     map[string]*viewPlan // the plan of each view, or nil for no plan (views.go)
 	views     map[string]*Frame    // the pictures of the views by view and width
@@ -170,11 +148,61 @@ func (f *Frame) picture() *image.YCbCr {
 		f.err = err
 		return nil
 	}
+	// A gray camera has a picture with no color.
+	if f.pic = toYCbCrPicture(img); f.pic == nil {
+		f.err = fmt.Errorf("camera: a JPEG of %T", img)
+	}
+	return f.pic
+}
+
+// pictureFor returns a picture of the frame for a smaller frame of width w: the whole picture when
+// it is decoded, or else the JPEG decoded at 1/2, 1/4 or 1/8 of its size, as small as it can be
+// with w pixels or more. The decode at a smaller size is in the DCT domain (jpegdec): it costs
+// less than the decode of the whole picture, and leaves less to scale. The frame keeps each
+// picture.
+func (f *Frame) pictureFor(w int) *image.YCbCr {
+	shift := 0
+	for s := 3; s >= 1; s-- {
+		if (f.w+1<<s-1)>>s >= w {
+			shift = s
+			break
+		}
+	}
+	f.mu.Lock()
+	if f.pic != nil || f.jpeg == nil || shift == 0 {
+		f.mu.Unlock()
+		return f.picture()
+	}
+	if p := f.scaled[shift-1]; p != nil {
+		f.mu.Unlock()
+		return p
+	}
+	b := f.jpeg
+	f.mu.Unlock()
+	img, err := jpegdec.DecodeScaled(bytes.NewReader(b), shift)
+	if err != nil {
+		return f.picture()
+	}
+	p := toYCbCrPicture(img)
+	if p == nil {
+		return f.picture()
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if old := f.scaled[shift-1]; old != nil {
+		return old // another viewer made it first
+	}
+	f.scaled[shift-1] = p
+	return p
+}
+
+// toYCbCrPicture returns a decoded JPEG as a YCbCr picture: a gray picture gets no color. It
+// returns nil for another kind of picture.
+func toYCbCrPicture(img image.Image) *image.YCbCr {
 	switch p := img.(type) {
 	case *image.YCbCr:
-		f.pic = p
+		return p
 	case *image.Gray:
-		// A gray camera: the picture with no color.
 		y := image.NewYCbCr(p.Rect, image.YCbCrSubsampleRatio420)
 		for r := 0; r < p.Rect.Dy(); r++ {
 			copy(y.Y[r*y.YStride:], p.Pix[r*p.Stride:r*p.Stride+p.Rect.Dx()])
@@ -182,11 +210,9 @@ func (f *Frame) picture() *image.YCbCr {
 		for i := range y.Cb {
 			y.Cb[i], y.Cr[i] = 128, 128
 		}
-		f.pic = y
-	default:
-		f.err = fmt.Errorf("camera: a JPEG of %T", img)
+		return y
 	}
-	return f.pic
+	return nil
 }
 
 // The image.Image of the frame. At is slow: draw the Picture.
@@ -216,13 +242,16 @@ func (f *Frame) Small(w int) *Frame {
 		return s
 	}
 	f.mu.Unlock()
-	pic := f.picture()
+	pic := f.pictureFor(w)
 	if pic == nil {
 		return f
 	}
 	h := max(2, (f.h*w/f.w+1)/2*2)
-	s := picFrame(scaleYCbCr(pic, w, h, false))
-	s.Seq, s.Time, s.blank = f.Seq, f.Time, f.blank
+	if pic.Rect.Dx() != w || pic.Rect.Dy() != h || pic.SubsampleRatio != image.YCbCrSubsampleRatio420 {
+		pic = scaleYCbCr(pic, w, h, false)
+	}
+	s := picFrame(pic)
+	s.Seq, s.Time, s.blank, s.cam = f.Seq, f.Time, f.blank, f.cam
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if old, ok := f.smalls[w]; ok {
@@ -238,6 +267,16 @@ func (f *Frame) Small(w int) *Frame {
 		f.order = f.order[1:]
 	}
 	return s
+}
+
+// ForWidth returns the frame for a viewer of width w: the frame itself when w is 3/4 of its width
+// or more, and else Small(w). The frame itself keeps the JPEG of the camera, so a large viewer
+// costs no decode and no encode. The viewer scales the picture.
+func (f *Frame) ForWidth(w int) *Frame {
+	if w*4 >= f.w*3 {
+		return f
+	}
+	return f.Small(w)
 }
 
 // FrameOf makes a frame of a JPEG, for example for a test.

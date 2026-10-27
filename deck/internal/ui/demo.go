@@ -120,6 +120,7 @@ func (a *App) DemoPickColor(hex string) { a.pickColor(hex, func(string) {}) }
 // ResetScreens closes every screen, dialog and page; for the pictures of the manual.
 func (a *App) ResetScreens() {
 	a.setup, a.pages, a.swap, a.tune, a.keypad, a.confirm, a.consoleKB, a.flash, a.form, a.colors = nil, nil, nil, false, nil, nil, nil, nil, nil, nil
+	a.camKB = nil
 	a.doneSeen = ""
 	a.sd = sdView{}
 }
@@ -185,6 +186,11 @@ func (a *App) OpenPrintScreen(name string) {
 		a.pages = []page{pageMachine, pageMonitor}
 	case "camera":
 		a.pages = []page{pageMachine, pageSettings, pageCamera}
+	case "camera-all":
+		a.pages = []page{pageMachine, pageSettings, pageCamera}
+		a.camID = camAll
+	case "camera-setup":
+		a.pages = []page{pageMachine, pageSettings, pageCamera, pageCameraSetup}
 	case "simulator":
 		a.pages = []page{pageMachine, pageSimulator}
 	case "configs":

@@ -213,57 +213,125 @@ func (h *Hub) SetScene(s Scene) {
 	h.mu.Unlock()
 }
 
-// SetCalibration sets the calibration, or clears it with nil, and calls OnCalibration.
-func (h *Hub) SetCalibration(c *Calibration) {
-	h.LoadCalibration(c)
-	h.mu.Lock()
-	save := h.OnCalibration
-	h.mu.Unlock()
-	if save != nil {
-		save(c)
-	}
-}
-
-// LoadCalibration sets the calibration from its file, and does not tell OnCalibration.
-func (h *Hub) LoadCalibration(c *Calibration) {
-	h.mu.Lock()
-	h.cal = c
-	h.calGen++
-	h.thCrop = [4]float64{}
-	h.mu.Unlock()
-}
-
-// Calibration returns the calibration, or nil, and reports that it is valid for the camera of the
-// settings: the same device, and the same size of the pictures of the camera.
-func (h *Hub) Calibration() (*Calibration, bool) {
+// LoadCalibrations sets the calibrations from their file, and does not call OnCalibration. Each
+// calibration is for the camera of its Device.
+func (h *Hub) LoadCalibrations(cs []*Calibration) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	c := h.cal
+	for _, c := range cs {
+		if c != nil {
+			h.setCalLocked(c.Device, c)
+		}
+	}
+}
+
+// LoadCalibration sets the calibration of the camera c.Device, and does not call OnCalibration.
+// nil removes the calibration of the main camera.
+func (h *Hub) LoadCalibration(c *Calibration) {
 	if c == nil {
+		h.mu.Lock()
+		h.setCalLocked(h.roleLocked(RoleMain), nil)
+		h.mu.Unlock()
+		return
+	}
+	h.LoadCalibrations([]*Calibration{c})
+}
+
+// setCalLocked sets the calibration of the camera id, or removes it with nil.
+func (h *Hub) setCalLocked(id string, c *Calibration) {
+	if c == nil {
+		delete(h.cals, id)
+	} else {
+		h.cals[id] = c
+	}
+	h.calGen++
+	if cam := h.cams[id]; cam != nil {
+		cam.thCrop = [4]float64{}
+	}
+}
+
+// calsLocked returns the calibrations, in the order of the IDs of their cameras.
+func (h *Hub) calsLocked() []*Calibration {
+	ids := make([]string, 0, len(h.cals))
+	for id := range h.cals {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	out := make([]*Calibration, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, h.cals[id])
+	}
+	return out
+}
+
+// SetCalibration sets the calibration of the main camera, or clears it with nil, and calls
+// OnCalibration.
+func (h *Hub) SetCalibration(c *Calibration) { h.Role(RoleMain).SetCalibration(c) }
+
+// Calibration returns the calibration of the main camera. See Cam.Calibration.
+func (h *Hub) Calibration() (*Calibration, bool) { return h.Role(RoleMain).Calibration() }
+
+// Views returns the views of the main camera. See Cam.Views.
+func (h *Hub) Views() []string { return h.Role(RoleMain).Views() }
+
+// View returns a view of a frame of the camera of the frame. See Cam.View.
+func (h *Hub) View(f *Frame, view string, w int) (*Frame, string) {
+	return h.Role(RoleMain).View(f, view, w)
+}
+
+// SetCalibration sets the calibration of the camera, or clears it with nil, and calls
+// OnCalibration with all calibrations. The calibration gets the ID of the camera.
+func (c *Cam) SetCalibration(cal *Calibration) {
+	if c.id == "" {
+		return
+	}
+	h := c.h
+	h.mu.Lock()
+	if cal != nil {
+		cal.Device = c.id
+	}
+	h.setCalLocked(c.id, cal)
+	save, all := h.OnCalibration, h.calsLocked()
+	h.mu.Unlock()
+	if save != nil {
+		h.saveMu.Lock()
+		save(all)
+		h.saveMu.Unlock()
+	}
+}
+
+// Calibration returns the calibration of the camera, or nil, and reports that it is valid: the
+// same device, and the same size of the pictures of the camera.
+func (c *Cam) Calibration() (*Calibration, bool) {
+	h := c.h
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	cal := h.cals[c.id]
+	if cal == nil {
 		return nil, false
 	}
-	d, ok := h.deviceLocked()
-	return c, ok && c.ValidFor(d, h.formats[d.ID])
+	d, _, ok := c.deviceLocked()
+	return cal, ok && cal.ValidFor(d, h.formats[d.ID])
 }
 
 // sceneAndProjection returns the places of the printer, and the projection to the pixels of a
 // frame of size sz, or false when the views have no calibration.
-func (h *Hub) sceneAndProjection(sz image.Point) (Scene, project, bool) {
-	c, ok := h.Calibration()
-	h.mu.Lock()
-	scene, rotate := h.scene, h.settings.Rotate
-	h.mu.Unlock()
+func (c *Cam) sceneAndProjection(sz image.Point) (Scene, project, bool) {
+	cal, ok := c.Calibration()
+	c.h.mu.Lock()
+	scene, rotate := c.h.scene, c.h.settings.Camera(c.id).Rotate
+	c.h.mu.Unlock()
 	if !ok || scene == nil || sz.X <= 0 || sz.Y <= 0 {
 		return nil, nil, false
 	}
-	return scene, func(p [3]float64) (float64, float64, bool) { return c.Project(p, sz.X, sz.Y, rotate) }, true
+	return scene, func(p [3]float64) (float64, float64, bool) { return cal.Project(p, sz.X, sz.Y, rotate) }, true
 }
 
 // Views returns the names of the views that show a part of the picture now, with full first.
 // The other views are the whole picture now.
-func (h *Hub) Views() []string {
+func (c *Cam) Views() []string {
 	out := []string{ViewFull}
-	scene, _, ok := h.sceneAndProjection(image.Pt(1, 1))
+	scene, _, ok := c.sceneAndProjection(image.Pt(1, 1))
 	if !ok {
 		return out
 	}
@@ -281,14 +349,14 @@ func (h *Hub) Views() []string {
 
 // plan returns the plan of a view for the frame f, or nil. The frame keeps it under key: the view
 // and the number of the calibration.
-func (h *Hub) plan(f *Frame, view, key string) *viewPlan {
+func (c *Cam) plan(f *Frame, view, key string) *viewPlan {
 	f.mu.Lock()
 	p, ok := f.plans[key]
 	f.mu.Unlock()
 	if ok {
 		return p
 	}
-	p = h.makePlan(f, view)
+	p = c.makePlan(f, view)
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if old, ok := f.plans[key]; ok {
@@ -303,9 +371,9 @@ func (h *Hub) plan(f *Frame, view, key string) *viewPlan {
 
 // makePlan makes the plan of a view for the frame f, or returns nil when the view has no place
 // now.
-func (h *Hub) makePlan(f *Frame, view string) *viewPlan {
+func (c *Cam) makePlan(f *Frame, view string) *viewPlan {
 	sz := f.Size()
-	scene, proj, ok := h.sceneAndProjection(sz)
+	scene, proj, ok := c.sceneAndProjection(sz)
 	if !ok {
 		return nil
 	}
@@ -319,16 +387,16 @@ func (h *Hub) makePlan(f *Frame, view string) *viewPlan {
 		if !ok {
 			return nil
 		}
-		h.mu.Lock()
-		defer h.mu.Unlock()
-		if sz != h.thSize {
-			h.thCrop, h.thSize = [4]float64{}, sz
+		c.h.mu.Lock()
+		defer c.h.mu.Unlock()
+		if sz != c.thSize {
+			c.thCrop, c.thSize = [4]float64{}, sz
 		}
-		if f.Seq > h.thSeq || h.thCrop == ([4]float64{}) {
-			h.thCrop = smoothCrop(h.thCrop, t, f.Time.Sub(h.thAt), sz)
-			h.thSeq, h.thAt = f.Seq, f.Time
+		if f.Seq > c.thSeq || c.thCrop == ([4]float64{}) {
+			c.thCrop = smoothCrop(c.thCrop, t, f.Time.Sub(c.thAt), sz)
+			c.thSeq, c.thAt = f.Seq, f.Time
 		}
-		return &viewPlan{crop: h.thCrop}
+		return &viewPlan{crop: c.thCrop}
 	case ViewFirstLayer, ViewPart:
 		var b Box
 		if view == ViewPart {
@@ -366,11 +434,13 @@ func viewSize(sz image.Point, w int) (int, int) {
 
 // View returns the view of the frame f at the width w (0 for the width of the frame), and the
 // name of the view that it shows: full when the view has no place now, or for a name that is not
-// a view. The frame keeps the picture, so the viewers of one view and width share it.
-func (h *Hub) View(f *Frame, view string, w int) (*Frame, string) {
+// a view. The frame keeps the picture, so the viewers of one view and width share it. The frame
+// is a frame of the camera.
+func (c *Cam) View(f *Frame, view string, w int) (*Frame, string) {
+	h := c.h
 	full := func() (*Frame, string) {
 		if w > 0 {
-			return f.Small(w), ViewFull
+			return f.ForWidth(w), ViewFull
 		}
 		return f, ViewFull
 	}
@@ -380,7 +450,7 @@ func (h *Hub) View(f *Frame, view string, w int) (*Frame, string) {
 	h.mu.Lock()
 	gen := strconv.Itoa(h.calGen)
 	h.mu.Unlock()
-	p := h.plan(f, view, view+"#"+gen)
+	p := c.plan(f, view, view+"#"+gen)
 	if p == nil {
 		return full()
 	}
@@ -397,7 +467,7 @@ func (h *Hub) View(f *Frame, view string, w int) (*Frame, string) {
 		return full()
 	}
 	v = picFrame(renderView(pic, *p, ow, oh))
-	v.Seq, v.Time, v.blank = f.Seq, f.Time, f.blank
+	v.Seq, v.Time, v.blank, v.cam = f.Seq, f.Time, f.blank, f.cam
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if old, ok := f.views[key]; ok {
@@ -426,6 +496,6 @@ func (f *Frame) Crop(cx, cy, cw float64, w int) (*Frame, [4]float64) {
 	}
 	ow, oh := viewSize(f.Size(), w)
 	v := picFrame(cropScale(pic, c, ow, oh))
-	v.Seq, v.Time = f.Seq, f.Time
+	v.Seq, v.Time, v.cam = f.Seq, f.Time, f.cam
 	return v, c
 }

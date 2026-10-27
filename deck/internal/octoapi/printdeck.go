@@ -20,7 +20,9 @@ import (
 //	 "spool": {"id": "3", "name": "Galaxy Black", "material": "PLA", "left": 642, "full": 1000, "price": 22},
 //	 "spools": [{"id": "3", "name": "Galaxy Black", ...}, {"id": "4", "name": "Signal Orange", ...}],
 //	 "job": {"file": "benchy.gcode", "state": "printing", "layer": 12, "layers": 27, "progress": 0.42, "left": 4980},
-//	 "camera": {"name": "C270 HD WEBCAM", "state": "idle", "width": 1280, "height": 720, "fps": 15}}
+//	 "camera": {"name": "C270 HD WEBCAM", "state": "idle", "width": 1280, "height": 720, "fps": 15},
+//	 "cameras": [{"id": "/dev/v4l/by-id/usb-...", "number": 1, "roles": ["main", "lapse", "picture"],
+//	              "name": "C270 HD WEBCAM", "state": "idle", ...}]}
 //
 // material is the loaded material, or "". spool is the roll in the printer, or null. left and full
 // are grams of filament, and price is the price of the roll, or 0. spools is the list of all rolls,
@@ -28,7 +30,11 @@ import (
 // null: its state ("printing" or "paused"), its layer, its progress from 0 to 1, and the seconds
 // left (-1 when the time left is not known). camera is the camera of the deck, or null when the
 // deck has no camera on: its name, its state ("idle" with no viewer, "starting", "on" or "error"),
-// and the size and the rate of its frames when it has run.
+// and the size and the rate of its frames when it has run. camera is the main camera. cameras is the
+// list of all cameras, with the same fields, the ID and the number of each for the camera parameter
+// of the webcam (webcam.go), and the roles of each: main, lapse (the time lapse) and picture (the
+// first layer picture and the pictures of the notifications). A camera that is off has the state
+// "off", and a camera of the settings that the deck does not find has the state "none".
 //
 // The webcam of the API (webcam.go) is the camera of the deck, or the screen of the deck for a
 // printer with no camera.
@@ -74,15 +80,17 @@ type printdeckJSON struct {
 	Spool    *spoolJSON  `json:"spool"`
 	Spools   []spoolJSON `json:"spools"`
 	Job      *jobJSON    `json:"job"`
-	// Camera is the camera of the deck, or null when the webcam is the screen of the deck.
+	// Camera is the main camera of the deck, or null when the webcam is the screen of the deck.
 	Camera *cameraJSON `json:"camera"`
+	// Cameras are all cameras of the deck.
+	Cameras []cameraJSON `json:"cameras"`
 	// LCD is the status screen of the printer display: the state, the message, the heaters, the
 	// fan (0 to 1), and the progress, for an app that draws the display.
 	LCD any `json:"lcd,omitempty"`
 }
 
 func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
-	out := printdeckJSON{Camera: s.cameraInfo()}
+	out := printdeckJSON{Camera: s.cameraInfo(), Cameras: s.camerasInfo()}
 	if s.Status != nil {
 		out.LCD = s.Status()
 	}

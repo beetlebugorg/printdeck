@@ -196,7 +196,7 @@
 <section class="sheet contents even">
   
     <h2>Contents</h2>
-    <ol><li class="ch">Set up</li><li><span>Connect to Wi-Fi</span><span class="dots"></span><span>3</span></li><li><span>Choose your printer</span><span class="dots"></span><span>6</span></li><li><span>Install the Klipper firmware</span><span class="dots"></span><span>9</span></li><li class="ch">Meet your Printdeck</li><li><span>The deck</span><span class="dots"></span><span>11</span></li><li><span>The display of the printer</span><span class="dots"></span><span>14</span></li><li><span>The deck in a browser</span><span class="dots"></span><span>15</span></li><li class="ch">Print a part</li><li><span>Send a file from the slicer</span><span class="dots"></span><span>16</span></li><li><span>Start a print</span><span class="dots"></span><span>17</span></li><li><span>Watch the print</span><span class="dots"></span><span>21</span></li><li><span>Print in two colors</span><span class="dots"></span><span>30</span></li><li><span>Look around during a print</span><span class="dots"></span><span>32</span></li><li><span>Make a time lapse</span><span class="dots"></span><span>34</span></li><li class="ch">Your iPhone and Apple Watch</li><li><span>The iPhone and Apple Watch apps</span><span class="dots"></span><span>35</span></li><li class="ch">Change the filament</li><li><span>Change the filament</span><span class="dots"></span><span>36</span></li><li class="ch">Move and heat</li><li><span>Move the head and heat</span><span class="dots"></span><span>43</span></li><li class="ch">Level and calibrate</li><li><span>Level and calibrate</span><span class="dots"></span><span>46</span></li><li class="ch">Look after the printer</li><li><span>Look after the printer</span><span class="dots"></span><span>51</span></li><li><span>Update the Printdeck</span><span class="dots"></span><span>59</span></li><li><span>Back up your data</span><span class="dots"></span><span>61</span></li><li><span>Try the deck with a simulated printer</span><span class="dots"></span><span>62</span></li><li class="ch">When something goes wrong</li><li><span>When something goes wrong</span><span class="dots"></span><span>64</span></li><li><span>Settings</span><span class="dots"></span><span>66</span></li></ol>
+    <ol><li class="ch">Set up</li><li><span>Connect to Wi-Fi</span><span class="dots"></span><span>3</span></li><li><span>Choose your printer</span><span class="dots"></span><span>6</span></li><li><span>Install the Klipper firmware</span><span class="dots"></span><span>9</span></li><li class="ch">Meet your Printdeck</li><li><span>The deck</span><span class="dots"></span><span>11</span></li><li><span>The display of the printer</span><span class="dots"></span><span>14</span></li><li><span>The deck in a browser</span><span class="dots"></span><span>15</span></li><li class="ch">Print a part</li><li><span>Send a file from the slicer</span><span class="dots"></span><span>16</span></li><li><span>Start a print</span><span class="dots"></span><span>17</span></li><li><span>Watch the print</span><span class="dots"></span><span>21</span></li><li><span>Print in two colors</span><span class="dots"></span><span>30</span></li><li><span>Look around during a print</span><span class="dots"></span><span>32</span></li><li><span>Make a time lapse</span><span class="dots"></span><span>34</span></li><li class="ch">Your iPhone and Apple Watch</li><li><span>The iPhone and Apple Watch apps</span><span class="dots"></span><span>35</span></li><li class="ch">Change the filament</li><li><span>Change the filament</span><span class="dots"></span><span>36</span></li><li class="ch">Move and heat</li><li><span>Move the head and heat</span><span class="dots"></span><span>43</span></li><li class="ch">Level and calibrate</li><li><span>Level and calibrate</span><span class="dots"></span><span>46</span></li><li class="ch">Look after the printer</li><li><span>Look after the printer</span><span class="dots"></span><span>51</span></li><li><span>Update the Printdeck</span><span class="dots"></span><span>60</span></li><li><span>Back up your data</span><span class="dots"></span><span>62</span></li><li><span>Try the deck with a simulated printer</span><span class="dots"></span><span>63</span></li><li class="ch">When something goes wrong</li><li><span>When something goes wrong</span><span class="dots"></span><span>65</span></li><li><span>Settings</span><span class="dots"></span><span>67</span></li></ol>
   
   
     
@@ -684,7 +684,7 @@
     <p>OrcaSlicer or PrusaSlicer: add a printer of the type OctoPrint, with the address http://printdeck.local and the API key of the system page.</p>
     
     
-    <p>The webcam is the camera of the deck: http://printdeck.local/webcam/stream and /webcam/snapshot, with the API key. Add w=320 for smaller pictures, or fps=2 for fewer frames. With no camera, the webcam shows the deck screen.</p>
+    <p>The webcam is the main camera of the deck: http://printdeck.local/webcam/stream and /webcam/snapshot, with the API key. Add camera=2 for the second camera, w=320 for smaller pictures, or fps=2 for fewer frames. With no camera, the webcam shows the deck screen.</p>
     
     
   
@@ -1399,13 +1399,16 @@
     <ol class="steps"><li><span class="n">3</span><span>Tap Time lapse to turn it on.</span></li></ol>
     
     
-    <ol class="steps"><li><span class="n">4</span><span>Tap First layer for a picture of the first layer, or a picture and a pause. At a pause, check the layer, then tap Resume.</span></li></ol>
+    <ol class="steps"><li><span class="n">4</span><span>With two cameras, tap Time lapse camera and Picture camera to choose the cameras.</span></li></ol>
     
     
-    <ol class="steps"><li><span class="n">5</span><span>Print. After the first layer, the deck shows its picture.</span></li></ol>
+    <ol class="steps"><li><span class="n">5</span><span>Tap First layer for a picture of the first layer, or a picture and a pause. At a pause, check the layer, then tap Resume.</span></li></ol>
     
     
-    <ol class="steps"><li><span class="n">6</span><span>At the end of the print, open http://printdeck.local/system in a browser. The Time lapse part has the video. Click its name to download it.</span></li></ol>
+    <ol class="steps"><li><span class="n">6</span><span>Print. After the first layer, the deck shows its picture.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">7</span><span>At the end of the print, open http://printdeck.local/system in a browser. The Time lapse part has the video. Click its name to download it.</span></li></ol>
     
     
   
@@ -1442,7 +1445,7 @@
     <ol class="steps"><li><span class="n">5</span><span>To add a widget, touch and hold the Home Screen or the Lock Screen, tap Edit, and choose Printdeck.</span></li></ol>
     
     
-    <table><tr><td>iPhone app</td><td>The deck screen and its keys.</td></tr></table>
+    <table><tr><td>iPhone app</td><td>The deck screen and its keys. With two cameras, tap a camera name on the camera page, or swipe, to switch. The watch shows the same camera.</td></tr></table>
     
     
     <table><tr><td>Watch app</td><td>The progress and the time left. Tap for Pause, Resume or Cancel.</td></tr></table>
@@ -2267,18 +2270,18 @@
           <circle cx="456" cy="363" r="6" class="dot"/>
           <circle cx="520" cy="363" r="16" class="bdg"/>
           <text x="520" y="363" class="bdg-n">2</text></g><g>
-          <line x1="505" y1="453" x2="456" y2="453" class="leader"/>
-          <circle cx="456" cy="453" r="6" class="dot"/>
-          <circle cx="520" cy="453" r="16" class="bdg"/>
-          <text x="520" y="453" class="bdg-n">3</text></g><g>
-          <line x1="505" y1="550" x2="456" y2="550" class="leader"/>
-          <circle cx="456" cy="550" r="6" class="dot"/>
-          <circle cx="520" cy="550" r="16" class="bdg"/>
-          <text x="520" y="550" class="bdg-n">4</text></g>
+          <line x1="505" y1="443" x2="456" y2="443" class="leader"/>
+          <circle cx="456" cy="443" r="6" class="dot"/>
+          <circle cx="520" cy="443" r="16" class="bdg"/>
+          <text x="520" y="443" class="bdg-n">3</text></g><g>
+          <line x1="505" y1="521" x2="456" y2="521" class="leader"/>
+          <circle cx="456" cy="521" r="6" class="dot"/>
+          <circle cx="520" cy="521" r="16" class="bdg"/>
+          <text x="520" y="521" class="bdg-n">4</text></g>
         </svg>
       </div>
-      <ol class="parts"><li><span class="badge">1</span><span><b>Picture.</b> Use it to aim the camera at the bed.</span></li><li><span class="badge">2</span><span><b>State.</b> The camera, or an error.</span></li><li><span class="badge">3</span><span><b>Camera.</b> Auto, one camera, or Off.</span></li><li><span class="badge">4</span><span><b>Turn.</b> Turns the picture 180°.</span></li></ol>
-      <p class="note">The apps, Cura and other OctoPrint clients show the camera. The camera runs only while somebody looks. The pictures stay in memory. With no camera, the apps show the deck screen.</p>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Picture.</b> Use it to aim the camera at the bed.</span></li><li><span class="badge">2</span><span><b>State.</b> The camera, or an error.</span></li><li><span class="badge">3</span><span><b>Camera.</b> Shows the next camera, then all cameras side by side.</span></li><li><span class="badge">4</span><span><b>Turn.</b> Turns the picture 180°.</span></li></ol>
+      <p class="note">The apps, Cura and other OctoPrint clients show the camera. A camera runs only while somebody looks at it. The pictures stay in memory. With no camera, the apps show the deck screen.</p><p class="note">If a camera shows too little USB bandwidth, move it to another USB port.</p>
     </div>
     
     
@@ -2290,6 +2293,50 @@
 </section>
 
 <section class="sheet guide even">
+  
+    
+    
+    <div class="figure">
+      <h3>Camera setup: the camera and the roles</h3>
+      <div class="frame tall">
+        <div class="shot-box"><img src="img/camera-setup.png" alt="Camera setup: the camera and the roles"></div>
+        <svg class="marks2" viewBox="-72 0 624 800" aria-hidden="true">
+          <g>
+          <line x1="505" y1="215" x2="456" y2="215" class="leader"/>
+          <circle cx="456" cy="215" r="6" class="dot"/>
+          <circle cx="520" cy="215" r="16" class="bdg"/>
+          <text x="520" y="215" class="bdg-n">1</text></g><g>
+          <line x1="505" y1="316" x2="456" y2="316" class="leader"/>
+          <circle cx="456" cy="316" r="6" class="dot"/>
+          <circle cx="520" cy="316" r="16" class="bdg"/>
+          <text x="520" y="316" class="bdg-n">2</text></g><g>
+          <line x1="505" y1="417" x2="456" y2="417" class="leader"/>
+          <circle cx="456" cy="417" r="6" class="dot"/>
+          <circle cx="520" cy="417" r="16" class="bdg"/>
+          <text x="520" y="417" class="bdg-n">3</text></g><g>
+          <line x1="505" y1="518" x2="456" y2="518" class="leader"/>
+          <circle cx="456" cy="518" r="6" class="dot"/>
+          <circle cx="520" cy="518" r="16" class="bdg"/>
+          <text x="520" y="518" class="bdg-n">4</text></g><g>
+          <line x1="505" y1="619" x2="456" y2="619" class="leader"/>
+          <circle cx="456" cy="619" r="6" class="dot"/>
+          <circle cx="520" cy="619" r="16" class="bdg"/>
+          <text x="520" y="619" class="bdg-n">5</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>On.</b> Turns the camera on or off.</span></li><li><span class="badge">2</span><span><b>Name.</b> The name in the apps.</span></li><li><span class="badge">3</span><span><b>Main camera.</b> The webcam of the apps and Cura.</span></li><li><span class="badge">4</span><span><b>Time lapse camera.</b> The camera of the time lapse.</span></li><li><span class="badge">5</span><span><b>Picture camera.</b> The first layer picture and the pictures of the notifications.</span></li></ol>
+      <p class="note">Auto is the first camera that is on.</p>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Look after the printer</div>
+    <div class="folio">56</div>
+  
+</section>
+
+<section class="sheet guide odd">
   
     
     
@@ -2325,11 +2372,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">56</div>
+    <div class="folio">57</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2361,11 +2408,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">57</div>
+    <div class="folio">58</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2401,11 +2448,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">58</div>
+    <div class="folio">59</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>Update the Printdeck</h2>
@@ -2429,11 +2476,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">59</div>
+    <div class="folio">60</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2473,11 +2520,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">60</div>
+    <div class="folio">61</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>Back up your data</h2>
@@ -2510,11 +2557,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">61</div>
+    <div class="folio">62</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     <h2>Try the deck with a simulated printer</h2>
@@ -2541,11 +2588,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">62</div>
+    <div class="folio">63</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2585,11 +2632,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">63</div>
+    <div class="folio">64</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     <h2>When something goes wrong</h2>
@@ -2610,11 +2657,11 @@
   
   
     <div class="chapter-tab">When something goes wrong</div>
-    <div class="folio">64</div>
+    <div class="folio">65</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2650,11 +2697,11 @@
   
   
     <div class="chapter-tab">When something goes wrong</div>
-    <div class="folio">65</div>
+    <div class="folio">66</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     <h2>Settings</h2>
@@ -2687,17 +2734,6 @@
   
   
     <div class="chapter-tab">When something goes wrong</div>
-    <div class="folio">66</div>
-  
-</section>
-
-<section class="sheet notes odd">
-  
-    <h2>Notes</h2>
-    <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
-  
-  
-    
     <div class="folio">67</div>
   
 </section>

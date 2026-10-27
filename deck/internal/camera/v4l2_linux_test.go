@@ -26,8 +26,9 @@ func TestStructSizes(t *testing.T) {
 			t.Errorf("%s: %d bytes, want %d", name, got, want)
 		}
 	}
-	if vidiocQueryCap != 0x80685600 || vidiocSFmt != 0xc0d05605 || vidiocDQBuf != 0xc0585611 || vidiocStreamOn != 0x40045612 {
-		t.Errorf("ioctl numbers: %x %x %x %x", vidiocQueryCap, vidiocSFmt, vidiocDQBuf, vidiocStreamOn)
+	if vidiocQueryCap != 0x80685600 || vidiocSFmt != 0xc0d05605 || vidiocDQBuf != 0xc0585611 || vidiocStreamOn != 0x40045612 ||
+		vidiocSCtrl != 0xc008561c {
+		t.Errorf("ioctl numbers: %x %x %x %x %x", vidiocQueryCap, vidiocSFmt, vidiocDQBuf, vidiocStreamOn, vidiocSCtrl)
 	}
 }
 
@@ -52,7 +53,7 @@ func TestCapture(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 		var frames []*Frame
 		var f Format
-		err := capture(ctx, dev, Settings{Rotate: rot}, func(x Format) { f = x }, func(fr *Frame) { frames = append(frames, fr) })
+		err := capture(ctx, dev, CamSettings{Rotate: rot}, func(x Format) { f = x }, func(fr *Frame) { frames = append(frames, fr) })
 		cancel()
 		if err != nil {
 			t.Fatal(err)

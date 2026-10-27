@@ -7,6 +7,8 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"math"
+	"reflect"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -226,14 +228,50 @@ func TestSmall(t *testing.T) {
 	}
 }
 
+// A viewer of 3/4 of the width or more gets the frame of the camera.
+func TestForWidth(t *testing.T) {
+	f, err := FrameOf(photoJPEG(t, 640, 360))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.ForWidth(f.Size().X*3/4) != f || f.ForWidth(4000) != f {
+		t.Error("a large viewer gets another frame")
+	}
+	if g := f.ForWidth(f.Size().X / 2); g == f || g != f.Small(f.Size().X/2) {
+		t.Error("a small viewer gets the whole frame")
+	}
+}
+
 func TestSettings(t *testing.T) {
-	for _, s := range []Settings{{}, {Device: Off}, {Device: "/dev/v4l/by-id/usb-x-video-index0", Rotate: 180}} {
-		if got := ParseSettings(s.Bytes()); got != s {
+	for _, s := range []Settings{{}, {AllOff: true},
+		{Cameras: []CamSettings{{ID: "/dev/v4l/by-id/usb-x-video-index0", Rotate: 180, Name: "Top"}, {ID: "b", Off: true}},
+			Main: "b", Lapse: "/dev/v4l/by-id/usb-x-video-index0", Picture: "b"}} {
+		if got := ParseSettings(s.Bytes()); !reflect.DeepEqual(got, s) {
 			t.Errorf("%+v: read back as %+v", s, got)
 		}
 	}
-	if s := ParseSettings([]byte("auto\n90\n")); s.Rotate != 0 {
+	if s := ParseSettings([]byte(`{"cameras":[{"id":"a","rotate":90}]}`)); s.Cameras[0].Rotate != 0 {
 		t.Errorf("a turn of 90: %+v", s)
+	}
+}
+
+// The camera file of an older deck: one line for the device, and one for the turn.
+func TestSettingsMigration(t *testing.T) {
+	for _, c := range []struct {
+		file string
+		want Settings
+	}{
+		{"auto\n0\n", Settings{Cameras: []CamSettings{{}}}},
+		{"auto\n90\n", Settings{Cameras: []CamSettings{{}}}},
+		{"auto\n180\n", Settings{Cameras: []CamSettings{{Rotate: 180}}}},
+		{"off\n0\n", Settings{AllOff: true}},
+		{"/dev/v4l/by-id/usb-x-video-index0\n180\n", Settings{Cameras: []CamSettings{{ID: "/dev/v4l/by-id/usb-x-video-index0", Rotate: 180}},
+			Main: "/dev/v4l/by-id/usb-x-video-index0"}},
+		{"", Settings{Cameras: []CamSettings{{}}}},
+	} {
+		if got := ParseSettings([]byte(c.file)); !reflect.DeepEqual(got, c.want) {
+			t.Errorf("%q: %+v, want %+v", c.file, got, c.want)
+		}
 	}
 }
 
@@ -245,7 +283,7 @@ func fakeHub(t *testing.T) (*Hub, *atomic.Int32) {
 	h := NewHub(Settings{})
 	h.scan = func() []Device { return []Device{{Path: "/dev/video9", ID: "cam", Name: "Test camera"}} }
 	jb := testJPEG(t)
-	h.capture = func(ctx context.Context, d Device, s Settings, format func(Format), emit func(*Frame)) error {
+	h.capture = func(ctx context.Context, d Device, s CamSettings, format func(Format), emit func(*Frame)) error {
 		running.Add(1)
 		defer running.Add(-1)
 		format(Format{In: "MJPEG", InW: 40, InH: 24, OutW: 40, OutH: 24, OutFPS: 100})
@@ -312,16 +350,61 @@ func TestHubOnDemand(t *testing.T) {
 	waitFor(t, "stop", func() bool { return running.Load() == 0 })
 
 	// Off stops the camera, and On is false.
-	h.SetSettings(Settings{Device: Off})
+	h.SetSettings(Settings{AllOff: true})
 	if h.On() || h.Status().State != "off" {
 		t.Error("the camera is on with the setting Off")
 	}
 	if _, err := h.Snapshot(context.Background()); err == nil {
 		t.Error("a snapshot with the setting Off")
 	}
-	// A device that is not there.
-	h.SetSettings(Settings{Device: "other"})
+	// A main camera that is not there: the main camera is the first camera that is on.
+	h.SetSettings(Settings{Main: "other"})
+	if !h.On() || h.Status().Device.ID != "cam" {
+		t.Error("no main camera with a main camera that is not there")
+	}
+	// No camera.
+	h.mu.Lock()
+	h.scan, h.scanned = func() []Device { return nil }, time.Time{}
+	h.mu.Unlock()
 	if h.On() || h.Status().State != "none" {
-		t.Error("the camera is on with a device that is not there")
+		t.Errorf("no camera: %+v", h.Status())
+	}
+}
+
+// A small frame of a frame that is not decoded comes from the decode at a smaller size. At 1/2,
+// 1/4 and 1/8, its pixels are near the means of the pixels of the whole picture.
+func TestSmallScaledDecode(t *testing.T) {
+	jb := photoJPEG(t, 1280, 720)
+	whole, _ := FrameOf(jb)
+	full := whole.Picture().(*image.YCbCr)
+	for _, w := range []int{640, 400, 320, 160} {
+		f, _ := FrameOf(jb)
+		s := f.Small(w)
+		if want := whole.Small(w).Size(); s.Size() != want {
+			t.Fatalf("%d: size %v, want %v", w, s.Size(), want)
+		}
+		if f.pic != nil {
+			t.Errorf("%d: the whole picture was decoded", w)
+		}
+		k := 1280 / w
+		if 1280%w != 0 {
+			continue
+		}
+		p := s.Picture().(*image.YCbCr)
+		var sum float64
+		for y := range p.Rect.Dy() {
+			for x := range p.Rect.Dx() {
+				var m float64
+				for dy := range k {
+					for dx := range k {
+						m += float64(full.Y[(y*k+dy)*full.YStride+x*k+dx])
+					}
+				}
+				sum += math.Abs(float64(p.Y[y*p.YStride+x]) - m/float64(k*k))
+			}
+		}
+		if mean := sum / float64(p.Rect.Dx()*p.Rect.Dy()); mean > 3 {
+			t.Errorf("%d: mean difference %.1f", w, mean)
+		}
 	}
 }

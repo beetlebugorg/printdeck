@@ -2,9 +2,12 @@ package octoapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"printdeck/internal/camera"
 )
 
 func (s *Server) serveVersion(w http.ResponseWriter, r *http.Request) {
@@ -19,16 +22,50 @@ func (s *Server) serveServer(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"version": serverVersion, "safemode": nil})
 }
 
-// serveSettings answers the few settings that the slicers read. The webcam is the camera or the
-// screen of the deck (webcam.go), with the key of the request in its address, because the slicers
-// do not send the key with the stream. The deck turns the pictures itself, so flipH, flipV and
-// rotate90 are false.
+// serveSettings returns the few settings that the slicers read. The webcam is the main camera or
+// the screen of the deck (webcam.go), with the key of the request in its address, because the
+// slicers do not send the key with the stream. The deck turns the pictures itself, so flipH, flipV
+// and rotate90 are false. webcams is the list of the cameras that are on, as OctoPrint 1.9 and
+// later have it: a client that reads it shows each camera. defaultWebcam is the main camera, and
+// snapshotWebcam the picture camera.
 func (s *Server) serveSettings(w http.ResponseWriter, r *http.Request) {
-	webcam := map[string]any{"webcamEnabled": false, "streamUrl": "", "snapshotUrl": ""}
+	webcam := map[string]any{"webcamEnabled": false, "streamUrl": "", "snapshotUrl": "", "webcams": []any{}}
 	if s.webcamOn() {
-		q := "?apikey=" + url.QueryEscape(requestKey(r))
-		webcam = map[string]any{"webcamEnabled": true, "streamUrl": "/webcam/stream" + q,
-			"snapshotUrl": "/webcam/snapshot" + q, "flipH": false, "flipV": false, "rotate90": false}
+		key := "apikey=" + url.QueryEscape(requestKey(r))
+		webcam = map[string]any{"webcamEnabled": true, "streamUrl": "/webcam/stream?" + key,
+			"snapshotUrl": "/webcam/snapshot?" + key, "flipH": false, "flipV": false, "rotate90": false}
+		var list []any
+		for _, c := range s.camerasInfo() {
+			if c.State == "off" || c.State == "none" {
+				continue
+			}
+			name := fmt.Sprintf("camera%d", c.Number)
+			q := fmt.Sprintf("?camera=%d&%s", c.Number, key)
+			ratio := "16:9"
+			if c.Width > 0 && c.Height > 0 && c.Width*3 == c.Height*4 {
+				ratio = "4:3"
+			}
+			list = append(list, map[string]any{
+				"name": name, "displayName": c.Name, "canSnapshot": true, "snapshotDisplay": "",
+				"flipH": false, "flipV": false, "rotate90": false,
+				"compat": map[string]any{"stream": "/webcam/stream" + q, "snapshot": "/webcam/snapshot" + q,
+					"streamRatio": ratio, "streamTimeout": 5, "snapshotTimeout": 5, "snapshotSslValidation": true,
+					"cacheBuster": false, "streamWebrtcIceServers": []string{}},
+				"extras": map[string]any{"streamUrl": "/webcam/stream" + q, "snapshotUrl": "/webcam/snapshot" + q},
+			})
+			for _, role := range c.Roles {
+				switch role {
+				case camera.RoleMain:
+					webcam["defaultWebcam"] = name
+				case camera.RolePicture:
+					webcam["snapshotWebcam"] = name
+				}
+			}
+		}
+		if list == nil {
+			list = []any{}
+		}
+		webcam["webcams"] = list
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"api":     map[string]any{"allowCrossOrigin": false},

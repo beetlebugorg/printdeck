@@ -120,7 +120,46 @@ var (
 	vidiocGParm         = ioc(iocRW, 21, unsafe.Sizeof(v4l2StreamParm{}))
 	vidiocSParm         = ioc(iocRW, 22, unsafe.Sizeof(v4l2StreamParm{}))
 	vidiocEnumFrameSize = ioc(iocRW, 74, unsafe.Sizeof(v4l2FrmSizeEnum{}))
+	vidiocSCtrl         = ioc(iocRW, 28, unsafe.Sizeof(v4l2Control{}))
 )
+
+// v4l2Control is struct v4l2_control: a control of the camera.
+type v4l2Control struct {
+	ID    uint32
+	Value int32
+}
+
+// The controls that flip the picture in the camera (V4L2_CID_HFLIP and V4L2_CID_VFLIP).
+const (
+	cidHFlip = 0x00980914
+	cidVFlip = 0x00980915
+)
+
+// setFlip sets the flip controls of the camera to on, and reports that the camera has both. The
+// controls stay set in the camera after the capture, so the deck clears them for a camera with no
+// turn.
+func setFlip(fd int, on bool) bool {
+	v := int32(0)
+	if on {
+		v = 1
+	}
+	ok := true
+	for _, id := range []uint32{cidHFlip, cidVFlip} {
+		c := v4l2Control{ID: id, Value: v}
+		if ioctl(fd, vidiocSCtrl, unsafe.Pointer(&c)) != nil {
+			ok = false
+		}
+	}
+	if on && !ok {
+		// A camera with one of the two controls: no flip in the camera.
+		setFlip(fd, false)
+	}
+	return ok
+}
+
+// errBandwidth is the error of a camera that gets too little USB bandwidth: the cameras on one USB
+// controller share its bandwidth.
+var errBandwidth = errors.New("too little USB bandwidth for this camera: move a camera to another USB port")
 
 func ioctl(fd int, req uintptr, arg unsafe.Pointer) error {
 	for {
@@ -169,26 +208,26 @@ func cameraName(card string) string {
 // (the codecs and the camera port of the Raspberry Pi) are not in the list.
 func listDevices() []Device {
 	paths, _ := filepath.Glob("/dev/video*")
-	ids := map[string]string{} // the links of /dev/v4l/by-id by device
-	links, _ := filepath.Glob("/dev/v4l/by-id/*")
-	for _, l := range links {
-		if t, err := filepath.EvalSymlinks(l); err == nil {
-			if _, ok := ids[t]; !ok || strings.HasSuffix(l, "-index0") {
-				ids[t] = l
-			}
-		}
-	}
 	var out []Device
 	for _, p := range paths {
-		d, ok := probe(p)
-		if !ok {
-			continue
+		if d, ok := probe(p); ok {
+			out = append(out, d)
 		}
-		d.ID = p
-		if l, ok := ids[p]; ok {
-			d.ID = l
+	}
+	return assignIDs(out, deviceLinks("/dev/v4l/by-id/*"), deviceLinks("/dev/v4l/by-path/*"))
+}
+
+// deviceLinks returns the links of a glob by their device: the link that ends in -index0 when a
+// device has more than one.
+func deviceLinks(glob string) map[string]string {
+	out := map[string]string{}
+	links, _ := filepath.Glob(glob)
+	for _, l := range links {
+		if t, err := filepath.EvalSymlinks(l); err == nil {
+			if _, ok := out[t]; !ok || strings.HasSuffix(l, "-index0") {
+				out[t] = l
+			}
 		}
-		out = append(out, d)
 	}
 	return out
 }
@@ -291,7 +330,7 @@ func pickSize(fd int, f string) (int, int) {
 }
 
 // capture runs the capture of a device: see captureFunc.
-func capture(ctx context.Context, d Device, s Settings, format func(Format), emit func(*Frame)) error {
+func capture(ctx context.Context, d Device, s CamSettings, format func(Format), emit func(*Frame)) error {
 	fd, err := unix.Open(d.Path, unix.O_RDWR|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return fmt.Errorf("open: %w", err)
@@ -314,8 +353,12 @@ func capture(ctx context.Context, d Device, s Settings, format func(Format), emi
 	pix := vf.Fmt.Pix
 	name, w, h = fourccName(pix.PixelFormat), int(pix.Width), int(pix.Height)
 	mjpeg := name == "MJPG" || name == "JPEG"
+	// A camera that flips its picture itself keeps the JPEG frames with no change. Else the deck
+	// turns each picture.
+	hwFlip := setFlip(fd, s.Rotate == 180)
+	flip := s.Rotate == 180 && !hwFlip
 	fps := rawFPS
-	if mjpeg && s.Rotate == 0 {
+	if mjpeg && !flip {
 		fps = jpegFPS
 	}
 	inFPS := setRate(fd, fps)
@@ -323,7 +366,7 @@ func capture(ctx context.Context, d Device, s Settings, format func(Format), emi
 	if mjpeg {
 		f.In = "MJPEG"
 		f.OutW, f.OutH = w, h
-		if s.Rotate != 0 {
+		if flip {
 			f.OutW, f.OutH = outSize(w, h, rawMax.X, rawMax.Y)
 		}
 	} else {
@@ -352,6 +395,9 @@ func capture(ctx context.Context, d Device, s Settings, format func(Format), emi
 	}
 	typ := int32(bufTypeVideoCapture)
 	if err := ioctl(fd, vidiocStreamOn, unsafe.Pointer(&typ)); err != nil {
+		if err == unix.ENOSPC {
+			return errBandwidth
+		}
 		return fmt.Errorf("start the stream: %w", err)
 	}
 	defer ioctl(fd, vidiocStreamOff, unsafe.Pointer(&typ))
@@ -391,7 +437,7 @@ func capture(ctx context.Context, d Device, s Settings, format func(Format), emi
 			// The first frames of a camera can be dark or broken. A frame comes when it is due.
 			if now.Sub(start) >= warmUp && now.Sub(lastEmit) >= every-every/8 {
 				data := bufs[b.Index][:min(int(b.BytesUsed), len(bufs[b.Index]))]
-				if fr := makeFrame(name, data, w, h, int(pix.BytesPerLine), f, s.Rotate == 180); fr != nil {
+				if fr := makeFrame(name, data, w, h, int(pix.BytesPerLine), f, flip); fr != nil {
 					lastEmit = now
 					emit(fr)
 				}
