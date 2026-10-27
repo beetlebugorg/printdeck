@@ -1,177 +1,106 @@
 # Printdeck for iPhone and Apple Watch
 
-An iPhone app and a watch app for the Printdeck. They read the OctoPrint-compatible API of the
-deck over the local network.
+An iPhone app and a watch app for the Printdeck. They use the API of the deck on the local
+network.
 
-- The iPhone app has the look of the touch screen of the deck, in its tall layout: the display of
-  the printer at the top, then the keys and the plates of the print. During a print it has Pause,
-  Cancel and Menu, the layer, the roll (color, a meter of what is left, the name and the grams),
-  and the model as the deck draws it, with the file, the progress and a playhead. A paused print has Resume. With no print, Print a
-  file opens the files of the deck, newest first. Menu opens the setup. At the start, the app
-  shows the start screen of the deck in dots until the first reading of the deck. When the deck
-  has a camera on, its stream is under the display, 5 pictures a second while the app is open.
-  A tap opens it over the whole screen, at 10 pictures a second. That page turns with the
-  iPhone, and a pinch or a double tap zooms.
-- The watch app is a blue dot-matrix display, in the fonts and the icons of the printer display
-  of the deck, over the whole watch. The first page is the progress of the print: the state, the
-  percent in a large font, the bar, the layer, the time left and the end. Under it, in one scroll
-  that the Digital Crown moves, are the picture of the camera of the deck (when it has one, a
-  new picture every 3 seconds while it is on the screen), the model of the print as the deck draws it, the layers and
-  the times of the print, and the filament. During a print, a tap opens a menu with
-  Pause or Resume and Cancel, each with a question first; the crown moves the selection, as the
-  knob of the printer, and a tap selects.
-- The complications are dot-matrix displays too. The rectangle has the percent in the large font,
-  the time left, the bar, and the end and the layer. The circle is a ring of dots that light with
-  the progress, around the percent; with no print, the hotend. The corner and the inline
-  complications are text. On a face with tint the lit dots take the tint; on a face in full color
-  the display has its blue light. `Shared/ComplicationLCD.swift` draws them.
-- The iPhone has widgets in the same dots. On the Home Screen, the small widget is the status
-  screen of the watch, and the medium widget is the 128 x 64 status screen of the deck. On the
-  Lock Screen are the rectangle, the circle and the inline text of the complications.
-- During a print, a Live Activity shows the print on the Lock Screen and in the Dynamic Island:
-  the model of the print in dots (the hotend before the deck has the model), the time left, the
-  bar, the end and the layer. The app starts it when it
-  sees a print, updates it from its readings, and ends it after the print. Between the readings,
-  the system timers move the time left and the bar to the end time.
-- The deck sends push messages to the iPhone: print done, print failed, paused, first layer done,
-  and a roll that runs short. The messages are encrypted from the deck to the iPhone. When the
-  iPhone reaches the deck and the deck has a camera on, a notification has a picture of the
-  camera. The watch shows the notifications of the iPhone.
+- **iPhone app**: the deck screen in its tall layout. It shows the print, the roll, the model and
+  the camera. It has Pause, Resume and Cancel, and Print a file. Tap the camera for a full screen
+  view.
+- **Watch app**: the print on a blue dot-matrix display. Turn the Digital Crown for the camera, the
+  model, the layer times and the filament. Tap for Pause, Resume or Cancel.
+- **Complications** and **widgets**: the progress and the time left, on the watch face, the Home
+  Screen and the Lock Screen.
+- **Live Activity**: the print on the Lock Screen and in the Dynamic Island.
+- **Push messages**: print done, print failed, paused, first layer done, and a short roll.
 
-The apps read the deck every 5 seconds while they are open. The complication asks watchOS for a
-refresh every 15 minutes during a print, and watchOS chooses when it runs. Between two reads, its
-progress goes up in a straight line to the end time, and the time left counts down.
-
-A deck with the `lcd` field in `/api/plugin/printdeck` gives the status screen as its touch screen
-draws it, with the fan and the message. With an older deck, the apps make the screen from the
-other fields, and the fan shows "--". The model of the print comes from
-`model.png` of the deck: in color on the iPhone, in dots on the watch and in the Live Activity.
-
-## Folders
-
-- `Shared/`: for the iPhone, the watch and the complication.
-  - `Deck.swift`: the API client and the models. `DeckModel.swift`: the state of the apps.
-  - `LCDScreen.swift`: the display of the printer, from `deck/internal/lcd`: the status screen,
-    the menus and rows of text, on a canvas of 128 x 64 pixels. `LCDFonts.swift` has its fonts and
-    icons, made from the Go source of the deck. `LCDModel.swift` makes the screens from the state.
-  - `Panel.swift`: the parts of the panel of the deck: plates, the display, windows, keys, the
-    confirmation. `Theme.swift`: the day and night palettes of the deck, and the formats.
-  - `Store.swift`: the settings, the last status and the pairing, in the keychain.
-  - `Fonts/`: IBM Plex Mono (SIL Open Font License), the same files as the deck.
-- `Phone/`: the iPhone app: the main screen (`PhoneApp.swift`), the files (`FilesView.swift`),
-  the setup (`SetupView.swift`), the search for the deck (`Finder.swift`), the pairing for push
-  messages (`Push.swift`), and the settings for the watch (`WatchLink.swift`).
-- `Watch/`: the watch app.
-- `Complication/`: the WidgetKit extension with the complications of the watch.
-- `Widget/`: the WidgetKit extension with the widgets of the iPhone. `Shared/DeckWidget.swift`
-  has the timeline and the views that both have.
-- `Notifications/`: the notification service extension that decrypts the push messages.
-- `Push/PushCrypto.swift`: the key agreement and the decryption of the push messages.
-- `Tests/`: the tests of `PushCrypto`, with vectors from the Go code of the deck.
-- `icon/render.swift`: draws the app icon, a blue dot-matrix display with "PD". Run
-  `swift icon/render.swift <folder>` and copy `AppIcon-phone.png` and `AppIcon-watch.png` to
-  `Phone/Assets.xcassets/AppIcon.appiconset/AppIcon.png` and
-  `Watch/Assets.xcassets/AppIcon.appiconset/AppIcon.png`.
-- `project.yml`: the XcodeGen file of `Printdeck.xcodeproj`. After a change to `project.yml`, run
-  `xcodegen` in this folder.
-
-The deployment targets are iOS 17 and watchOS 11. The project was built and tested with Xcode 27.
+The apps read the deck every 5 seconds while they are open.
 
 ## Install
 
-1. Set `DEVELOPMENT_TEAM` in `project.yml` to your team ID and run `xcodegen`. The project uses
-   automatic signing.
-2. The bundle IDs start with `BUNDLE_PREFIX` (`org.beetlebug.printdeck`): the iPhone app, then
-   `.notifications`, `.widget`, `.watchkitapp` and `.watchkitapp.widget`. The keychain group is
-   the team ID, the prefix and `.shared`. If your team cannot use this prefix, change
-   `BUNDLE_PREFIX` in `project.yml` and run `xcodegen`.
-3. Open `Printdeck.xcodeproj`, connect the iPhone, choose the `Printdeck` scheme and the iPhone,
-   and run. The watch app is in the iPhone app.
-4. For the watch, choose the `PrintdeckWatch` scheme and the watch, and run. Xcode adds the watch
-   to the team and its profiles. The watch needs Developer Mode, which shows on the watch after
-   Xcode pairs with it. The watch and the Mac must be on the same network. If Xcode does not find
-   the watch, turn off Bluetooth on the iPhone for a minute.
-5. Open Printdeck on the iPhone. It finds the deck on the network. Tap Connect, then tap Allow on
-   the touch screen of the deck. The app gets its own key from the deck and sends the address and
-   the key to the watch.
+Install the apps from Xcode. The deployment targets are iOS 17 and watchOS 11.
+
+1. Set `DEVELOPMENT_TEAM` in `project.yml` to your team ID. Run `xcodegen` in this folder.
+2. For a bundle prefix other than `org.beetlebug.printdeck`, change `BUNDLE_PREFIX` in
+   `project.yml` and run `xcodegen`.
+3. Open `Printdeck.xcodeproj`. Choose the `Printdeck` scheme and your iPhone, and run.
+4. For the watch, choose the `PrintdeckWatch` scheme and the watch, and run. Turn on Developer
+   Mode on the watch. The watch and the Mac must be on the same network.
+5. Open Printdeck on the iPhone. Tap Connect, then tap Allow on the touch screen of the deck.
 6. To add the complication, edit the watch face and choose Printdeck.
 
-When the deck is not in the list, open Menu > By hand. Type the address and tap Ask the deck for
-a key, or type the key from http://printdeck.local/system and tap Save.
+If Xcode fails to find the watch, turn off Bluetooth on the iPhone for a minute.
+
+If the deck is missing from the list, open Menu > By hand. Type the address, and tap Ask the
+deck for a key. Or type the key from http://printdeck.local/system and tap Save.
 
 ## Push messages
 
-The deck sends the messages through the relay (`relay/README.md`). The relay and Apple see the
-encrypted message only.
+1. On the iPhone, open Menu > Notifications, and tap Pair for notifications.
+2. Allow the notifications.
+3. The deck sends "This phone gets the messages of your prints."
 
-1. In Menu > Notifications on the iPhone, tap Pair for notifications. iOS asks to allow
-   notifications, and gives the app a device token.
-2. The app posts the token to the relay (`POST /register`). The relay sends a code in a
-   background push. The app posts the token with the code, and gets a send token.
-3. The app makes an X25519 key pair and pairs with the deck (`POST
-   /api/plugin/printdeck/push/pair`) with its public key, the device token, the send token and
-   the relay URL. The reply has the public key of the deck. Both make the message key with
-   HKDF-SHA256 (the salt is the device token, the info is `printdeck push v1`).
-4. The message key goes into the keychain group, for the notification service extension. The deck
-   sends "This phone gets the messages of your prints."
-5. The extension decrypts the key `e` of each push (AES-256-GCM) and shows its title and body.
-   When it cannot, iOS shows the alert of the push, "Printdeck: A message from your printer".
+Unpair removes the phone. Settings > Phones on the deck has the same list. Each message is
+encrypted for the paired phone. The relay and Apple see only the encrypted message
+(`relay/README.md`).
 
-The app pairs again when iOS gives it a new device token. Unpair removes the phone from the deck;
-Settings > Phones on the deck has the same list. A build that Xcode installs uses the sandbox of
-APNs, and a TestFlight or App Store build uses production. The app reads the environment from its
-provisioning profile. `PUSH_RELAY` in `project.yml` is the URL of the relay.
+How the pairing works:
 
-To test: install from Xcode, pair, and start a print. "First layer done" comes after the first
-layer. The tests of `PushCrypto` run with the `Printdeck` scheme (Product > Test).
+1. The app posts its device token to the relay (`POST /register`), and gets a send token.
+2. The app makes an X25519 key pair, and pairs with the deck (`POST
+   /api/plugin/printdeck/push/pair`). Both make the message key with HKDF-SHA256 (the salt is the
+   device token, the info is `printdeck push v1`).
+3. The notification service extension decrypts the key `e` of each push (AES-256-GCM).
+
+A build from Xcode uses the APNs sandbox. A TestFlight or App Store build uses production.
+`PUSH_RELAY` in `project.yml` is the URL of the relay.
 
 ## Network
 
-The deck serves plain HTTP on the local network. `NSAllowsLocalNetworking` in the Info.plist of
-each target allows it. The deck announces itself with Bonjour as `_octoprint._tcp`. The iPhone
-app finds it and saves its IPv4 address, because watchOS may not resolve `printdeck.local`. The
-watch reaches the deck on Wi-Fi, or through the iPhone when it is near. iOS asks once for the
-permission to use the local network.
-
-The address can have a port, as `192.168.1.50:8080`. An address with no scheme gets `http://`.
+The deck serves plain HTTP on the local network (`NSAllowsLocalNetworking`). The deck announces
+itself with Bonjour as `_octoprint._tcp`. The app saves its IPv4 address, because watchOS may
+fail to resolve `printdeck.local`. The address can have a port, as `192.168.1.50:8080`.
 
 ## API
 
-The App Keys flow of OctoPrint gives the app its key. It needs no key:
+The App Keys flow of OctoPrint gives the app its key, with no key:
 
-- `POST /plugin/appkeys/request` with `{"app": "Printdeck on iPhone"}`: the touch screen of the
-  deck asks to allow the app, and the reply has a token.
+- `POST /plugin/appkeys/request` with `{"app": "Printdeck on iPhone"}`: the deck asks to allow
+  the app, and the reply has a token.
 - `GET /plugin/appkeys/request/<token>`: 202 while the deck waits, 200 with `api_key` after
   Allow, and 404 after Deny or after 2 minutes.
 
-All other requests have the header `X-Api-Key`.
+All other requests have the header `X-Api-Key`:
 
-- `GET /api/job`: the state text, the file name and the time of the print.
-- `GET /api/printer`: the temperatures. The deck sends 409 when the printer is not connected,
-  and the app shows no temperatures then.
-- `GET /api/plugin/printdeck`: the roll in the printer, the print with its layer, progress
-  and seconds left, and the camera (its name, state and size, or null with no camera).
-- `GET /webcam/snapshot?w=..`: the newest picture of the camera, as a JPEG w pixels wide, for
-  the watch.
-- `GET /webcam/stream?w=..&fps=..`: the camera as an MJPEG stream, for the iPhone. URLSession
-  gives each part of the stream as a response of its own.
+- `GET /api/job`, `GET /api/printer`: the job and the temperatures.
+- `GET /api/plugin/printdeck`: the roll, the print, the camera and the status screen (`lcd`).
+- `GET /webcam/snapshot?w=..`, `GET /webcam/stream?w=..&fps=..`: the camera.
 - `POST /api/job`: `{"command":"pause","action":"pause"}`, `{"command":"pause","action":"resume"}`
   and `{"command":"cancel"}`.
-- `GET /api/files?recursive=true`: the files. `POST /api/files/local/<path>` with
-  `{"command":"select","print":true}` prints one. The deck asks on its touch screen when the
-  material of the file is not the material in the printer.
-- `GET /api/plugin/printdeck/model.png?w=..&h=..&mono=1`: the model of the print in 1-bit dots,
-  for the model page of the watch. The page shows when the deck answers.
+- `GET /api/files?recursive=true`, and `POST /api/files/local/<path>` with
+  `{"command":"select","print":true}`: the files, and a print.
+- `GET /api/plugin/printdeck/model.png?w=..&h=..&mono=1`: the model of the print in 1-bit dots.
 - `POST /api/plugin/printdeck/push/pair`, `DELETE /api/plugin/printdeck/push/<id>`: the pairing
   for push messages.
 
+## Folders
+
+- `Shared/`: the API client (`Deck.swift`), the state (`DeckModel.swift`), the printer display
+  (`LCDScreen.swift`, a port of `deck/internal/lcd`), the panel parts and the keychain store.
+- `Phone/`, `Watch/`: the apps.
+- `Complication/`, `Widget/`: the WidgetKit extensions.
+- `Notifications/`, `Push/PushCrypto.swift`: the decryption of the push messages.
+- `Tests/`: the tests of `PushCrypto` (Product > Test with the `Printdeck` scheme).
+- `icon/render.swift`: draws the app icon. Run `swift icon/render.swift <folder>`, and copy
+  `AppIcon-phone.png` and `AppIcon-watch.png` into the `AppIcon.appiconset` of `Phone/` and
+  `Watch/`.
+- `project.yml`: the XcodeGen file. After a change, run `xcodegen`.
+
 ## Screenshots in the simulator
 
-In a debug build, the environment variables `PRINTDECK_ADDRESS` and `PRINTDECK_KEY` set the deck,
-and `PRINTDECK_SCREEN` opens a screen: `menu` or `cancel` on the watch, `files`, `setup`,
-`camera` or `loading` on the iPhone. With `xcrun simctl launch`, give them the prefix
-`SIMCTL_CHILD_`. The simulated deck of `printdeck app -sim` reads its API key from
-`OCTOPRINT_API_KEY`.
+In a debug build, `PRINTDECK_ADDRESS` and `PRINTDECK_KEY` set the deck. `PRINTDECK_SCREEN` opens
+a screen: `menu` or `cancel` on the watch, `files`, `setup`, `camera` or `loading` on the iPhone.
+With `xcrun simctl launch`, add the prefix `SIMCTL_CHILD_`. The deck of `printdeck app -sim`
+reads its API key from `OCTOPRINT_API_KEY`.
 
 ## License
 

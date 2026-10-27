@@ -1,103 +1,71 @@
 # Printdeck plugin for Cura
 
-The booklet of the plugin has the setup and each feature, with pictures:
+The booklet has the setup and each feature, with pictures:
 [on the web](https://beetlebug.org/printdeck/cura/), or
 [docs/cura/printdeck-cura.pdf](../../docs/cura/printdeck-cura.pdf).
 
-The plugin connects Cura to the Printdeck through the printer of the OctoPrint connection plugin. It
-uses the same address and API key, so it needs no setup.
-
-The plugin works by itself, and tells you in a message what it did:
-
-- The print button says "Print to Printdeck".
-- When the roll in the Printdeck changes, Cura changes to the material of the roll.
-- Each roll on the Printdeck has a material in Cura, with the name, the color, the price and the
-  weight of the roll. The materials of the rolls are favorites, at the top of the material menu.
-  The plugin makes a material for a roll that has none, one each 10 seconds. When a roll goes,
-  its material leaves the favorites and stays in Cura.
-- After a slice, Cura warns when the model needs more filament than the roll has.
-- A card next to the slice button shows the roll in the Printdeck: its color, its name, and the
-  filament that is left on it. After a slice, the card shows the filament of the model, and the
-  filament that is left after the print.
-- After a slice, the plugin sends the G-code to the Printdeck. The Printdeck plans the moves with
-  the limits of the printer and adds the time of the start macro. Cura then shows the time of the
-  Printdeck as its print time, and the card shows "Printdeck time" with the time of Cura next to
-  it. When the Printdeck does not answer, Cura keeps its own time.
-- During a print of the file that Cura has open, the Preview shows the layer that prints.
-- When a print ends, Cura tells you.
-- The Printdeck tab, next to Monitor, shows the screen of the deck, the print and the time left,
-  the roll and its grams, and the keys Pause, Resume and Cancel, in the style of the deck.
-- Show in Preview, in the Printdeck tab, downloads the file of the print from the Printdeck and
-  opens it in the Preview. The Preview follows the layer that prints.
-- In the Preview of the G-code file that prints, Play follows the printer: the nozzle of the Preview
-  moves with the move that prints. The plugin asks the Printdeck for the position in the file each
-  second while Play runs. Without Play, the Preview shows the layer that prints.
-- Each file that Cura sends has the material of Cura in its header. Before the Printdeck prints a
-  file for another material, it asks on the touch screen.
-
-The OctoPrint connection plugin also shows the screen of the Printdeck in the Monitor tab, in
-place of a camera.
-
-## Colors
-
-The Colors tool (the left toolbar of Prepare) prints models in the filament of another roll of the
-Printdeck, with one nozzle. For example raised letters on a part:
-
-1. Put the part on the plate, and the letters on its top.
-2. Select the letters, open the Colors tool, and tap the roll of the letters.
-3. Print. The printer pauses at the first layer of the letters, and parks the nozzle. The pause
-   screen of the deck has Change filament in orange, with the roll of the letters. Change the
-   filament, then tap Resume.
-
-On Resume the deck draws a prime line of 40 mm at the front of the bed, behind the prime line of
-the start. The ooze of the new filament stays on that line. The deck then retracts, lifts straight
-up, and goes back to the part. The file has `PRINTDECK_PRIME` after the move down to the layer: the
-filament goes forward at the first point of the layer, so no ooze falls on the part. Each change
-of a print draws its line 2 mm behind the line before it. The `prime_*` options of
-`[printdeck_pause]` set the place, the length and the height of the line.
-
-When other models go on above the colored ones, the printer pauses again at the first layer over
-them, for the roll that was in the printer at the start. The panel lists the changes. A model with
-a roll that stands on the plate is no change: the print starts with the roll in the printer.
-
-## Print on a part
-
-The Print on a part tool (the left toolbar of Prepare) prints new models on a part that is printed
-already, for example a logo in another color on a lid. The part goes into a pocket on the bed, so
-its place is exact, and the deck checks its height with a paper test.
-
-1. Open the part and the new models. Lay the part on the bed with its face for the new models up,
-   away from the front and the left edge (the start of the print primes there).
-2. Select the part, and tap **Set as base**. Cura does not print it, and puts no support in it. The
-   tool adds the pocket: a low wall around the part, with open corners.
-3. Select a new model, and tap **Place on the base**. It goes to the top of the part and stays at
-   that height. Move it on the face as usual. To print into a pocket of the part, lower it with the
-   Z of the Move tool.
-   When the part and the new models come from one assembly (files in one frame), select the new
-   models and tap **Place as in the files**: they go to their exact place on the part, also after
-   you turned the part.
-   For lettering, type the text, its size and how high it stands, and tap **Add text**. The text
-   goes on the top of the part at its middle; move and turn it as usual.
-4. Print. The file prints the pocket, then lifts and pauses: put the part in the pocket, and tap
-   **Check the height** on the deck. The paper test on the part sets the height of the new models.
-5. For the next color, keep the part in its pocket and check **The pocket is on the bed**. The file
-   then has no pocket, homes Z up first, does not probe the bed, does not heat the bed, and purges
-   beside it.
-
-While a part is the base, the tool turns off Cura's "Ensure models are kept apart", which would push
-the pocket away from the new models, and turns it back on when you clear the base.
-
 ## Install
+
+The plugin needs Cura 5. Cura LulzBot Edition (Cura 4.13) shows no Printdeck tab and no Print on
+a part tool.
 
 1. Install the OctoPrint connection plugin from the Marketplace of Cura, and connect it to the
    Printdeck.
 2. Download `Printdeck.curapackage` from the latest release, and drag it onto the Cura window.
-   Restart Cura.
+3. Restart Cura.
 
-The plugin needs Cura 5. Cura LulzBot Edition (Cura 4.13) does not show the Printdeck tab and the Print on a part tool.
+The plugin uses the address and the API key of the OctoPrint connection. It needs no setup.
+
+## What it does
+
+- The print button is "Print to Printdeck".
+- Cura changes to the material of the roll in the Printdeck.
+- Each roll is a favorite material in Cura, with its name, color, price and weight.
+- After a slice, Cura warns when the roll is too short for the model.
+- A card next to the slice button shows the roll and the filament left.
+- After a slice, Cura shows the print time from the Printdeck, with the start macro.
+- The Printdeck tab, next to Monitor, shows the deck screen with Pause, Resume and Cancel.
+- Show in Preview, in the Printdeck tab, opens the file of the print in the Preview.
+- During a print, the Preview shows the layer that prints. Play moves the nozzle of the Preview
+  with the printer.
+- Before the Printdeck prints a file for another material, it asks on the touch screen.
+
+## Colors
+
+The Colors tool (the left toolbar of Prepare) prints a model in the filament of another roll,
+with one nozzle. For example, raised letters on a part:
+
+1. Put the part on the plate, and the letters on its top.
+2. Select the letters, open the Colors tool, and tap the roll of the letters.
+3. Print. At the first layer of the letters, the printer pauses and parks the nozzle.
+4. Tap Change filament on the deck, change the filament, then tap Resume.
+
+On Resume, the deck draws a 40 mm prime line at the front of the bed, then goes back to the part.
+The `prime_*` options of `[printdeck_pause]` set the place, the length and the height of the
+line.
+
+When other models continue above the colored ones, the printer pauses again for the first roll.
+
+## Print on a part
+
+The Print on a part tool (the left toolbar of Prepare) prints new models on a printed part, for
+example a logo on a lid. The part goes into a pocket on the bed. The deck checks its height with
+a paper test.
+
+1. Open the part and the new models. Lay the part face up, away from the front and the left edge.
+2. Select the part, and tap **Set as base**. The tool adds the pocket around the part.
+3. Select a new model, and tap **Place on the base**. Move it on the face as usual.
+   - For files from one assembly, tap **Place as in the files**.
+   - For lettering, type the text, its size and its height, and tap **Add text**.
+4. Print. The file prints the pocket, then pauses.
+5. Put the part in the pocket, and tap **Check the height** on the deck. Do the paper test.
+6. For the next color, keep the part in its pocket and check **The pocket is on the bed**.
+
+While a part is the base, the tool turns off "Ensure models are kept apart". Clear the base to
+turn it on again.
 
 ## Develop
 
 - `./package.sh` builds `Printdeck.curapackage`.
-- `python3 -m unittest test_logic` tests the parts that do not need Cura.
-- The Printdeck answers `GET /api/plugin/printdeck` (`deck/internal/octoapi/printdeck.go`).
+- `python3 -m unittest test_logic` tests the parts that run with no Cura.
+- The Printdeck serves `GET /api/plugin/printdeck` (`deck/internal/octoapi/printdeck.go`).

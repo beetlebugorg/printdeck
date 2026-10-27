@@ -128,6 +128,11 @@ path: /var/lib/klipper/gcodes
 # A pause with a message for the user, for a part in a pocket or an insert (PRINTDECK_PAUSE), with a
 # height check on the part. The Printdeck plugin for Cura writes it in the G-code.
 [printdeck_pause]
+
+# The park of the toolhead for the pictures of the camera of the deck: a frame of the time lapse at
+# each layer change, and the picture of the first layer (PRINTDECK_TIMELAPSE). The deck turns it on
+# in Settings, then Time lapse.
+[printdeck_timelapse]
 </code></pre>
 <h2 id="services">Services</h2>
 <p>The units of the image, in <code>os/board/rootfs/usr/lib/systemd/system/</code>:</p>
