@@ -18,10 +18,11 @@ Each bracket holds the base of the U with one screw. The pivot of the U sets the
   no STL file.
 - Over the bed: a wall that stands up, with the base of the U on its face, so the pivot is level and
   the camera looks straight down at no tilt.
-  - TAZ: a printed part (orange) on the two top rails (top_bracket_taz()). It is a bridge from the
-    back rail to the front rail: two deep side webs, a floor, end walls, and the camera wall. Four
-    M3 x 8 screws go into roll-in T-nuts in the top slots of the rails. pod.py export writes the STL
-    file, and stl/pod/README.md has the parts and the assembly.
+  - TAZ: a printed part (orange) on the top front rail only (top_bracket_taz()), so the space over
+    the back of the bed stays free for the filament tube. It grips the top face and the inside face
+    of the rail with six M3 x 8 screws into roll-in T-nuts in the two slots. The camera hangs behind
+    the rail, 27 mm in front of the middle of the bed. pod.py export writes the STL file, and
+    stl/pod/README.md has the parts and the assembly.
   - Mini 2: a placeholder plate (violet) on the top face of the top front rail, with the wall at its
     back edge. It has no STL file.
 
@@ -108,31 +109,33 @@ BRACKET_W = 40.0                        # the Mini 2 placeholder: across the bed
 # axis goes up to about 476 at the full print height, so the lens is at 490 and the bottom of the base
 # 9 mm over the X axis. Mini 2: the base must clear the top of the rail.
 TOP_LENS_UP = {"taz": 490.0, "mini2": 381.0}
-# The TAZ top bracket: a bridge on the top faces of the two top rails (printer coordinates: x to the
-# front, y up). It prints as it is on the printer: the bottom faces of the webs, the floor, and the
-# tabs are on the bed (y = 486).
-TOP = dict(web=5.0,             # the two side webs along the bridge: thickness
-           gap=50.0,            # between the inner faces of the webs; the pivot screw heads are 43.5 across
-           height=520.0,        # the top of the webs and the walls (printer y)
-           floor=5.0,           # the floor and the screw tabs
-           end=5.0,             # the end walls over the rails, and the gussets over the tabs
-           tab=12.0,            # each screw tab, out past its web
-           wall=18.0,           # the camera wall, from the floor of the seat to its front face
+# The TAZ top bracket: a block on the top front rail (printer coordinates: x to the front, y up). The
+# camera hangs behind the rail, TOP_FORWARD in front of the middle of the bed, so the back half of the
+# space over the bed stays free for the filament tube. It prints on its right end (printer z up).
+TOP = dict(wall=16.0,           # the camera wall, from the floor of the seat to its front face
+           width=60.0,          # the camera wall, along the rail
+           height=520.0,        # the top of the camera wall (printer y)
+           plate=5.0,           # the plate on the top face of the rail
+           inner=(5.0, 466.0),  # the plate on the inside face of the rail: thickness, bottom (printer y)
+           length=124.0,        # the plates and the web, along the rail
+           web=6.0,             # the web along the back of the part, from the inside plate up to the top
+           fillet=4.0,          # the 45 degree fillet between the web and the top plate
+           screws=(20.0, 50.0), # the M3 screws, each side of the middle: top slot (the first), inside slot (both)
            seat=(26.25, 1.2),   # the seat of the round base (25.75): diameter at its floor, depth
            hole=6.6,            # the clearance hole of the 1/4"-20 stud
-           relief=(11.0, 22.0), # the opening in the floor in front of the wall, for the nut and a wrench:
-                                # along the bridge, across
-           opening=-16.0,       # the back edge of the opening in the floor under the camera (printer x)
-           notch=6.5,           # the cable notch in the camera wall and the slot in the front end wall
-           notch_y=510.5,       # the bottom of the cable notch in the camera wall
-           cable_dz=-13.0,      # the cable on the floor, from the middle of the bridge (printer z)
-           fillet=4.0)          # the 45 degree fillets in the inside corners
+           notch=6.5,           # the cable notch over the camera wall
+           notch_y=510.5,       # the bottom of the cable notch
+           cable_dz=-13.0)      # the cable down the front face of the wall, from the middle (printer z)
+# The lens in front of the middle of the bed (mm, toward the front). TAZ: the back face of the camera
+# wall is flush with the back face of the inside plate, and the case is 12 mm behind the rail.
+TOP_FORWARD = {"taz": 27.2, "mini2": 0.0}
+INSIDE_SLOT_Y = 476.0                   # the slot in the inside face of the TAZ top front rail (printer y)
 # The base fixing: a 1/4"-20 stud (a set screw with no head), 30 mm long, in the thread of the base,
 # flush with its top. It goes through the camera wall, and a 1/4"-20 hex nut (7/16", 11.1 mm across the
-# flats, 5.6 mm thick) on the flat front face of the wall clamps it. The other choice: a 1/4"-20 x 7/8"
-# cap screw from the front face into the base. A 1" screw goes to 0.6 mm from the case.
+# flats, 5.6 mm thick) on the flat front face of the wall clamps it. The other choice: a 1/4"-20 x 3/4"
+# cap screw from the front face into the base.
 STUD = dict(length=30.0, nut=(11.1, 5.6))
-SCREWS_14 = (22.2,)                     # the length of the other choice
+SCREWS_14 = (19.05,)                    # the length of the other choice
 RAIL_SLOTS = (-74.0, 76.0)              # the top slots of the two TAZ top rails (printer x)
 # The full print height (published LulzBot sizes, unchecked on the printers) and the moving parts
 # that go up with the tool head.
@@ -294,12 +297,12 @@ def arm_mount(name, pitch=None):
 
 # ---------------------------------------------------------------- the camera over the bed
 def top_frame(name):
-    """(camera Location, bracket Location, the lens point) of the camera over the middle of the bed:
-    straight down, the back of the printer up in the picture, the base of the U on a wall in front."""
+    """(camera Location, bracket Location, the lens point) of the camera over the bed, TOP_FORWARD in
+    front of its middle: straight down, the back of the printer up in the picture, the base of the U on a wall in front."""
     import numpy as np
     up, back, _ = C.axes(name)
     c = np.array(C.BEDS[name][0], float)
-    lens = c + (TOP_LENS_UP[name] - float(np.dot(c, up))) * up
+    lens = c + (TOP_LENS_UP[name] - float(np.dot(c, up))) * up - TOP_FORWARD[name] * np.asarray(back, float)
     cam, br = placed(lens, -up, back, back)
     return cam, br, lens
 
@@ -331,89 +334,98 @@ def top_places():
 
 
 def top_bracket_taz():
-    """The TAZ top bracket, in printer coordinates: a bridge from the back top rail to the front top
-    rail. Two deep side webs go the full length. A floor joins them, with an opening under the camera.
-    End walls close the two ends over the rails, and a camera wall stands between the webs. The base of
-    the U is in a seat on the back face of the camera wall (toward -x). A 1/4"-20 stud in the thread of
-    the base goes through the wall, and a nut on the flat front face of the wall clamps it. The floor has
-    an opening in front of the wall for the nut and a wrench. Each end
-    has a tab out past each web, with an
-    M3 screw into a roll-in T-nut in the top slot of the rail, and a gusset on each side of the screw.
-    The cable goes over the camera wall through a notch, along the floor, and out of a slot in the
-    front end wall. Every inside corner of the webs has a 45 degree fillet."""
+    """The TAZ top bracket, in printer coordinates: a block on the top front rail only. A plate on the
+    top face of the rail and a plate on its inside face grip the rail. A deep web goes up from the
+    inside plate along the full length, and the camera wall stands on the top plate in front of the
+    web, over the rail. The base of the U is in a seat on the back face of the web and the wall
+    (toward -x), and the camera hangs behind the rail. A 1/4"-20 stud in the thread of the base goes
+    through the wall, and a nut on the flat front face of the wall clamps it. Two M3 screws go down
+    through the wall into roll-in T-nuts in the top slot, and four go through the inside plate into
+    T-nuts in the inside slot. The cable goes over the wall through a notch, down its front face, and
+    over the front edge of the top plate.
+
+    The part prints on its right end (printer z up), so the layers are in the plane of the load of
+    the camera. The right end of the wall and the side of the cable notch slope at 50 degrees, so
+    every face that faces down is 45 degrees or more from the bed."""
     from build123d import Cone
     T = TOP
     xw, yb, zc, zs = top_places()
     y0, y1 = TAZ_RAILS["top"], T["height"]
-    yf = y0 + T["floor"]
-    rails = TAZ_RAILS["x"]
-    xb0, xf1 = rails[0][0], rails[1][1]
-    zi = T["gap"] / 2
-    zo = zi + T["web"]
-    zt = zo + T["tab"]
+    yp = y0 + T["plate"]
+    (xi, xf) = TAZ_RAILS["x"][1]
+    ti, yi = T["inner"]
+    xb = xi - ti                               # the back face of the inside plate
     sd, sdep = T["seat"]
-    xr = xw - sdep                            # the back face of the camera wall (toward the camera)
-    xk = xw + T["wall"]                       # the front face of the camera wall (the screw head)
-    e, f = T["end"], T["fillet"]
-    s = box(xb0, xf1, y0, y1, zc - zo, zc - zi) + box(xb0, xf1, y0, y1, zc + zi, zc + zo)
-    s = s + box(xb0, T["opening"], y0, yf, zc - zi, zc + zi) + box(xr, xf1, y0, yf, zc - zi, zc + zi)
-    s = s + box(xb0, xb0 + e, y0, y1, zc - zi, zc + zi) + box(xf1 - e, xf1, y0, y1, zc - zi, zc + zi)
-    s = s + box(xr, xk, y0, y1, zc - zi, zc + zi)
-    for r0, r1 in rails:
-        for sg in (-1, 1):
-            a, b = sorted((zc + sg * zo, zc + sg * zt))
-            s = s + box(r0, r1, y0, yf, a, b)
-            g = [(zc + sg * zo, y0), (zc + sg * zt, y0), (zc + sg * zt, yf), (zc + sg * zo, y1)]
-            s = s + prism_x(g, r0, r0 + e) + prism_x(g, r1 - e, r1)
-    # The fillets: along the webs over the floor, and up the corners of the webs with the walls.
-    for sg in (-1, 1):
-        zw = zc + sg * zi
-        tri = [(zw, yf), (zw - sg * f, yf), (zw, yf + f)]
-        s = s + prism_x(tri, xb0 + e, T["opening"]) + prism_x(tri, xr, xf1 - e)
-        for x, dx in ((xr, -1), (xk, 1), (xb0 + e, 1), (xf1 - e, -1)):
-            s = s + prism_y([(x, zw), (x + dx * f, zw), (x, zw - sg * f)], y0, y1)
+    xr = xw - sdep                             # the back face of the web and the wall (toward the camera)
+    xk = xw + T["wall"]                        # the front face of the camera wall (the nut)
+    xe = xr + T["web"]                         # the front face of the web
+    hw, hl, f = T["width"] / 2, T["length"] / 2, T["fillet"]
+    slope = math.tan(math.radians(50.0))
+    s = box(min(xb, xr), xf, y0, yp, zc - hl, zc + hl) + box(min(xb, xr), xi, yi, y0 + 0.01, zc - hl, zc + hl)
+    s = s + box(xr, xe, y0, y1, zc - hl, zc + hl)
+    s = s + prism_y([(xe - 0.01, zc - hw - slope * (xk - xe)), (xk, zc - hw), (xk, zc + hw), (xe - 0.01, zc + hw)], y0, y1)
+    s = s + prism_z_fillet(xe, yp, f, zc - hl, zc + hl)
     # The seat of the base: a cone with its side 40 degrees from the face of the wall, so its top is 50
     # degrees from the bed and prints with no support.
     sr = sd / 2 + sdep / math.tan(math.radians(40.0))
     seat = Location(Plane(origin=(xw - sdep / 2, yb, zc), x_dir=(0, 0, 1), z_dir=(-1, 0, 0))) * \
         Cone(sd / 2, sr, sdep)
-    seat = seat + Pos(xr - 1.0, yb, zc) * (Location(Plane.YZ) * Cylinder(sr, 2.0))
+    seat = seat + Pos(xr - 2.0, yb, zc) * (Location(Plane.YZ) * Cylinder(sr, 4.0))
     s = s - seat
-    s = s - C.teardrop(T["hole"] / 2, 40.0, (xw, yb, zc), (1, 0, 0), (0, 1, 0))
-    # The opening in the floor in front of the wall.
-    rl, rw = T["relief"]
-    s = s - box(xk, xk + rl, y0 - 1.0, yf + 1.0, zc - rw / 2, zc + rw / 2)
-    # The cable: the notch over the camera wall, and the slot in the front end wall.
+    up = (0, 0, 1)                             # the print direction: the teardrops point up
+    s = s - C.teardrop(T["hole"] / 2, 60.0, (xw, yb, zc), (1, 0, 0), up)
+    # The cable notch over the camera wall: its +z side slopes at 50 degrees.
     w = T["notch"]
-    s = s - box(xr - f - 1.0, xk + f + 1.0, T["notch_y"], y1 + 1.0, zs - w / 2, zs + w / 2)
-    zcab = zc + T["cable_dz"]
-    s = s - box(xf1 - e - f - 1.0, xf1 + 1.0, yf, y1 + 1.0, zcab - w / 2, zcab + w / 2)
+    n0 = T["notch_y"]
+    notch = [(zs - w / 2, n0), (zs + w / 2, n0), (zs + w / 2 + (y1 + 1.0 - n0) * slope, y1 + 1.0), (zs - w / 2, y1 + 1.0)]
+    s = s - prism_x(notch, xr - 1.0, xk + 1.0)
+    # The screws: down through the wall into the top slot, with a long counterbore from the top of the
+    # wall, and through the inside plate into the inside slot.
     for x, z in top_screw_places():
-        s = s - C.counterbored((x, yf, z), (0, 1, 0), (1, 0, 0), T["floor"])
+        s = s - C.teardrop(1.7, 20.0, (x, y0, z), (0, 1, 0), up)
+        s = s - C.teardrop(C.COUNTERBORE[0] / 2, 60.0, (x, y0 + C.COUNTERBORE[1] + 30.0, z), (0, 1, 0), up)
+    for y, z in inner_screw_places():
+        s = s - C.counterbored((xb, y, z), (-1, 0, 0), up, ti)
     return s
 
 
+def prism_z_fillet(x, y, f, z0, z1):
+    """A 45 degree fillet along printer z from z0 to z1, in the corner of a face toward +x at x and a
+    face toward +y at y."""
+    from build123d import Polygon, extrude
+    pl = Plane(origin=(0, 0, z0), x_dir=(1, 0, 0), z_dir=(0, 0, 1))
+    s = extrude(pl * Polygon((x - 0.01, y - 0.01), (x + f, y - 0.01), (x - 0.01, y + f), align=None), amount=z1 - z0)
+    return Pos(0, 0, z0 - s.bounding_box().min.Z) * s
+
+
 def top_screw_places():
-    """(x, z) of the four M3 screws of the TAZ top bracket: two in the top slot of each rail, one on each
-    tab."""
+    """(x, z) of the two M3 screws down through the camera wall into the top slot of the front rail."""
     _, _, zc, _ = top_places()
-    d = TOP["gap"] / 2 + TOP["web"] + TOP["tab"] / 2
-    return [(x, zc + sg * d) for x in RAIL_SLOTS for sg in (-1, 1)]
+    return [(RAIL_SLOTS[1], zc + sg * TOP["screws"][0]) for sg in (-1, 1)]
+
+
+def inner_screw_places():
+    """(y, z) of the four M3 screws through the inside plate into the inside slot of the front rail."""
+    _, _, zc, _ = top_places()
+    return [(INSIDE_SLOT_Y, zc + sg * d) for d in TOP["screws"] for sg in (-1, 1)]
 
 
 def top_hardware_taz():
-    """[(part, shape, color)] of the bought parts of the TAZ top bracket: the four M3 x 8 screws, the
-    four roll-in T-nuts, and the 1/4"-20 stud with its nut."""
-    xw, yb, zc, _ = top_places()
+    """[(part, shape, color)] of the bought parts of the TAZ top bracket: the six M3 x 8 screws, the
+    six roll-in T-nuts, and the 1/4"-20 stud with its nut."""
     y0 = TAZ_RAILS["top"]
-    screws, nuts = None, None
+    xi = TAZ_RAILS["x"][1][0]
+    xb = xi - TOP["inner"][0]
+    screws, nuts = [], []
     for x, z in top_screw_places():
-        sc = P.screw(3, C.TNUT_SCREW, (x, y0 + C.COUNTERBORE[1], z), (0, 1, 0))
-        nt = box(x - 5.0, x + 5.0, y0 - 5.8, y0 - 1.8, z - 3.0, z + 3.0)
-        screws = sc if screws is None else screws + sc
-        nuts = nt if nuts is None else nuts + nt
+        screws.append(P.screw(3, C.TNUT_SCREW, (x, y0 + C.COUNTERBORE[1], z), (0, 1, 0)))
+        nuts.append(box(x - 5.0, x + 5.0, y0 - 5.8, y0 - 1.8, z - 3.0, z + 3.0))
+    for y, z in inner_screw_places():
+        screws.append(P.screw(3, C.TNUT_SCREW, (xb + TOP["inner"][0] - C.COUNTERBORE[1], y, z), (-1, 0, 0)))
+        nuts.append(box(xi + 1.8, xi + 5.8, y - 5.0, y + 5.0, z - 3.0, z + 3.0))
+    join = lambda xs: xs[0] if len(xs) == 1 else xs[0] + join(xs[1:])
     rod, nut = stud()
-    return [("camera_top_screws", screws, P.SCREW_COLOR), ("camera_top_tnuts", nuts, "#9AA0A8"),
+    return [("camera_top_screws", join(screws), P.SCREW_COLOR), ("camera_top_tnuts", join(nuts), "#9AA0A8"),
             ("camera_top_stud", rod, P.SCREW_COLOR), ("camera_top_nut", nut, "#9AA0A8")]
 
 
@@ -483,8 +495,8 @@ def top_mount(name):
 
 def printed():
     """(file name, shape in printer coordinates, the rotation to its print position) of the printed
-    camera parts with STL files: the TAZ top bracket. It prints as it is on the printer, TAZ y up."""
-    return [("camera-top-taz", top_bracket_taz(), Rot(90, 0, 0))]
+    camera parts with STL files: the TAZ top bracket. It prints on its right end: printer z up."""
+    return [("camera-top-taz", top_bracket_taz(), Rot(0, 0, 0))]
 
 
 def mount_lens(name):
@@ -649,17 +661,18 @@ def _routes(name):
         pts = pre + lanes + tail
         flags = [False] * (len(pre) + 1) + [True] * (len(lanes) - 1) + [False] * len(tail)
         out["camera_cable"] = (pts, flags, SIDE, d0, into)
-        # The camera over the bed: up out of the plug, through the notch over the camera wall, down to
-        # the floor of the bracket, along it, out of the slot in the front end wall, down the front
-        # face of the rail, and along the rail with the other camera cable.
+        # The camera over the bed: up out of the plug, through the notch over the camera wall, down its
+        # front face beside the nut, over the front edge of the top plate, down the front face of the
+        # rail, and along the rail with the other camera cable.
         s1, d1 = _start(name, "top")
         xw, _, zb, zs = top_places()
         yn = TOP["notch_y"] + B0561["cable"][0] / 2 + 0.5
-        yf = TAZ_RAILS["top"] + TOP["floor"] + B0561["cable"][0] / 2 + 0.5
+        yf = TAZ_RAILS["top"] + TOP["plate"] + B0561["cable"][0] / 2 + 0.5
         zcab = zb + TOP["cable_dz"]
         xf = TAZ_RAILS["x"][1][1]
-        pre = [s1, np.array([s1[0] + 4.0, yn + 4.0, zs]), np.array([xw + TOP["wall"] + 4.0, yn, zs]),
-               np.array([xw + TOP["wall"] + 22.0, yf, zcab]), np.array([xf - 2.0, yf, zcab]),
+        xk = xw + TOP["wall"]
+        pre = [s1, np.array([s1[0] + 4.0, yn + 4.0, zs]), np.array([xk + 3.0, yn, zs]),
+               np.array([xk + 3.0, yf + 3.0, zcab]), np.array([xf - 1.0, yf, zcab]),
                np.array([xf + 3.0, yf - 4.0, zcab]), np.array([f, 482.0, zcab + 8.0])]
         lane = [np.array([f, 476.0, zcab + 40.0])] + rail
         tail = pi_tail(name, "top")
@@ -870,23 +883,24 @@ B0561_MASS = 0.06              # kg
 
 
 def top_stiffness():
-    """A beam model of the TAZ top bracket: the two side webs as one beam on two supports (the screw
-    lines in the rail slots), with the camera at the camera wall. The floor and the end walls are out
-    of the model, so the numbers are low. Returns (span, the distance from the back support to the
-    load, the down stiffness (N/mm), the side stiffness (N/mm), the first frequency down (Hz), the sag
-    under the camera (mm))."""
-    xw, _, _, _ = top_places()
-    t, h = TOP["web"], TOP["height"] - TAZ_RAILS["top"]
-    zi = TOP["gap"] / 2
-    L = RAIL_SLOTS[1] - RAIL_SLOTS[0]
-    a = xw - RAIL_SLOTS[0]
-    b = L - a
-    I_down = 2 * t * h ** 3 / 12.0
-    I_side = 2 * (h * t ** 3 / 12.0 + h * t * (zi + t / 2) ** 2)
-    k = lambda I: 3 * C.E_PETG * I * L / (a * a * b * b)
-    kd, ks = k(I_down), k(I_side)
-    f = math.sqrt(kd * 1000.0 / B0561_MASS) / (2 * math.pi)
-    return L, a, kd, ks, f, B0561_MASS * 9.81 / kd
+    """A beam model of the camera wall of the TAZ top bracket: a cantilever from the top face of the
+    rail up to the axis of the stud, a solid section of the full wall. The rail and the screws are
+    rigid in the model. Returns (the lever from the inside face of the rail to the lens, the lever
+    from the wall to the lens, the wall section (along the rail, thick), the down stiffness at the
+    lens, the stiffness across the rail and along it at the stud (N/mm), the lowest first frequency
+    (Hz), the sag of the lens under the camera (mm))."""
+    xw, yb, _, _ = top_places()
+    _, _, lens = top_frame("taz")
+    w, t = TOP["width"], TOP["wall"] + TOP["seat"][1]
+    h = yb - TAZ_RAILS["top"]
+    a = xw - float(lens[0])
+    E = C.E_PETG
+    I_x, I_z = w * t ** 3 / 12.0, t * w ** 3 / 12.0
+    k_down = E * I_x / (a * a * h)
+    k_x, k_z = 3 * E * I_x / h ** 3, 3 * E * I_z / h ** 3
+    k = min(k_down, k_x, k_z)
+    f = math.sqrt(k * 1000.0 / B0561_MASS) / (2 * math.pi)
+    return TAZ_RAILS["x"][1][0] - float(lens[0]), a, (w, t), k_down, k_x, k_z, f, B0561_MASS * 9.81 / k_down
 
 
 def bracket_touch(name, printer, T, n=30000):
@@ -931,12 +945,11 @@ def report():
                   f"its top {top_gap:.1f} mm from the case; " + "; ".join(
                       f"a {L:.1f} mm screw from the front face has its tip {g:.1f} mm from the case, {e:.1f} mm in the base"
                       for L, (g, e) in zip(SCREWS_14, screws)))
-            L, a, kd, ks, f, sag = top_stiffness()
-            xw, _, _, _ = top_places()
-            print(f"taz: top bracket: span {L:.0f} mm between the screw lines, the camera wall {a:.0f} mm from the back "
-                  f"one; down {kd:.0f} N/mm, side {ks:.0f} N/mm, first frequency {f:.0f} Hz, sag {sag * 1000:.1f} um; "
-                  f"the lens is {RAIL_SLOTS[1] - lens[0]:.0f} mm from the front screw line and "
-                  f"{xw - lens[0]:.0f} mm from the camera wall")
+            lr, lw, (w, t), kd, kx, kz, f, sag = top_stiffness()
+            print(f"taz: top bracket: the lens is {lr:.0f} mm behind the inside face of the front rail and {lw:.0f} mm "
+                  f"from the camera wall; the wall is {w:.0f} x {t:.1f} mm; down {kd:.0f} N/mm at the lens, across "
+                  f"{kx:.0f} N/mm, along {kz:.0f} N/mm at the stud; first frequency {f:.0f} Hz with "
+                  f"{B0561_MASS * 1000:.0f} g; sag {sag * 1000:.1f} um")
             m = top_bracket_taz()
             print(f"taz: top bracket: {m.volume / 1000:.1f} cm3, about {m.volume * 1.27e-3:.0f} g of PETG solid")
         print(f"{name}: arm lens at {np.round(mount_lens(name), 1).tolist()} (printer coordinates), "
