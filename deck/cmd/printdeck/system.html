@@ -63,6 +63,17 @@
       the other slot and restarts into it. If the new system does not start, it goes back to this one.
       Do not install during a print.</div>
   </section>
+  {{if .TimeLapse}}<section>
+    <h2>TIME LAPSE</h2>
+    <table>
+      {{range .Videos}}<tr><td>{{.Time}}</td><td><a href="/system/videos/{{.Name}}" download>{{.Name}}</a> · {{.Size}}</td></tr>{{end}}
+      {{if not .Videos}}<tr><td>Videos</td><td>None</td></tr>{{end}}
+      {{if .FirstLayer}}<tr><td>First layer</td><td><a href="/system/firstlayer.jpg">{{.FirstLayer}}</a></td></tr>{{end}}
+    </table>
+    <div class="hint">Turn on the time lapse in Settings, then Time lapse, on the deck. The deck captures a
+      frame at each layer change, and saves the video at the end of the print. It keeps the last 3
+      videos. A video is a QuickTime file with JPEG frames.</div>
+  </section>{{end}}
   <section>
     <h2>BACKUP</h2>
     <form method="post" action="/system/backup">

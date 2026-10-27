@@ -892,6 +892,24 @@ func manualSections() []section {
 				"During a print, Main is the print. The key panel opens the other pages as at any time, and Main goes back to the print.",
 			},
 			Figures: fig("away")},
+		{Chapter: prints, ID: "timelapse", Title: "Make a time lapse",
+			Intro: []string{
+				"The camera of the deck captures a picture at each layer change of a print. At the end of the print, the deck makes a video of the pictures. The deck can also capture a picture of the first layer, and pause the print for a check.",
+				"For each picture, the printer pulls the filament back a little, lifts the nozzle, and moves the toolhead to the back left corner. Then it goes back to the same point, and the print continues. On the TAZ Workhorse the nozzle goes to a height of 10 mm or more, over the washers at the corners of the bed. Each picture adds a few seconds to the print.",
+			},
+			Steps: []string{
+				"Set up the camera: Settings, then Camera.",
+				"Open Settings, then Time lapse.",
+				"Tap Time lapse to turn it on.",
+				"Tap First layer for a picture after the first layer, or for a picture and a pause. At a pause, check the layer, then tap Resume.",
+				"Print. After the first layer, the deck shows the picture of the layer.",
+				"At the end of the print, open http://printdeck.local/system in a browser. The Time lapse part has the video. Click its name to download it.",
+			},
+			After: []string{
+				"The deck finds the layer changes from the comments of the slicer in the file. Cura, PrusaSlicer and OrcaSlicer write them.",
+				"Park for the frames is on at first. Off keeps the toolhead in the pictures, and the print has no stops. The picture of the first layer always has a park, so that it shows the whole layer.",
+				"The video is a QuickTime file (.mov) with a JPEG picture for each layer. The deck keeps the pictures of a print in its memory, and writes one file to its SD card at the end. A long print gets a picture at every second layer, or fewer. The deck keeps the last 3 videos. A backup does not have the videos.",
+			}},
 
 		{Chapter: "Your iPhone and Apple Watch", ID: "phone", Title: "The iPhone and Apple Watch apps",
 			Intro: []string{

@@ -140,6 +140,12 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	case pageCalibrate:
 		a.drawCalibrate(c)
 		return
+	case pageTimeLapse:
+		a.drawTimeLapse(c)
+		return
+	case pageFirstLayer:
+		a.drawFirstLayerPicture(c)
+		return
 	case pageConsole:
 		a.drawConsole(c)
 		return

@@ -250,6 +250,7 @@ func run(cfg config.Config) {
 	go lcdLoop(ctx, pr, app)
 	startNotify(ctx, cfg.StateDir, pr, app)
 	startCamera(ctx, cfg.StateDir, app, pr)
+	startTimelapse(ctx, cfg.StateDir, app, pr)
 
 	if p, ok := screen.(interface{ SetTouch(touch.Options) }); ok {
 		p.SetTouch(touch.Options{InvertX: cfg.TouchInvertX, InvertY: cfg.TouchInvertY, Swap: cfg.TouchSwapXY,

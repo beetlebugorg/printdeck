@@ -16,9 +16,11 @@ import (
 	"sync"
 	"time"
 
+	"printdeck/internal/camera"
 	"printdeck/internal/hostmetrics"
 	"printdeck/internal/remote"
 	"printdeck/internal/system"
+	"printdeck/internal/timelapse"
 )
 
 // The system page of the web server: the state of the system, its logs, the upload of an update,
@@ -49,10 +51,16 @@ type systemView struct {
 	Journal, Klippy                        string
 	Title, Message                         string // a message at the top: UPDATE, BACKUP or RESTORE
 	Failed                                 bool
+	TimeLapse                              bool // the deck has the time lapse
+	Videos                                 []struct{ Name, Size, Time string }
+	FirstLayer                             string // the file and the time of the picture of the first layer, or ""
 }
 
 // sysMetrics are the samples of the host for the system page, or nil.
 var sysMetrics *hostmetrics.Recorder
+
+// sysTimelapse is the time lapse for the system page, or nil.
+var sysTimelapse *timelapse.Runner
 
 func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend, metrics *hostmetrics.Recorder, klippyLog, apiKey string) {
 	sysMetrics = metrics
@@ -87,6 +95,7 @@ func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend
 		msg, failed := restoreUpload(w, r, pr)
 		renderMessage(w, klippyLog, apiKey, "RESTORE", msg, failed)
 	}))
+	registerTimelapse(mux, rs)
 	mux.HandleFunc("GET /system/update/progress", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
 		installing.Lock()
 		st := installing.installState
@@ -164,6 +173,20 @@ func renderMessage(w http.ResponseWriter, klippyLog, apiKey, title, msg string, 
 		v.Journal = fmt.Sprintf("journalctl: %v\n%s", err, out)
 	}
 	v.Klippy = tail(klippyLog, 64<<10)
+	if r := sysTimelapse; r != nil {
+		v.TimeLapse = true
+		in := r.Info()
+		for _, vid := range in.Videos {
+			v.Videos = append(v.Videos, struct{ Name, Size, Time string }{vid.Name,
+				fmt.Sprintf("%.1f MB", float64(vid.Size)/(1<<20)), vid.Time.Format("2006-01-02 15:04")})
+		}
+		if in.First != nil {
+			v.FirstLayer = in.FirstAt.Format("2006-01-02 15:04")
+			if in.FirstFile != "" {
+				v.FirstLayer = filepath.Base(in.FirstFile) + " · " + v.FirstLayer
+			}
+		}
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	if err := systemPage.Execute(w, v); err != nil {
@@ -457,4 +480,37 @@ func writeMetricsJSON(w http.ResponseWriter, r *http.Request, m *hostmetrics.Rec
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	json.NewEncoder(w).Encode(out)
+}
+
+// registerTimelapse adds the downloads of the time lapse: a video of the folder of the videos, and
+// the picture of the last first layer.
+func registerTimelapse(mux *http.ServeMux, rs *remote.Server) {
+	mux.HandleFunc("GET /system/videos/{name}", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
+		if sysTimelapse == nil {
+			http.NotFound(w, r)
+			return
+		}
+		name := r.PathValue("name")
+		p, ok := sysTimelapse.VideoPath(name)
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "video/quicktime")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", name))
+		http.ServeFile(w, r, p)
+	}))
+	mux.HandleFunc("GET /system/firstlayer.jpg", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
+		var f *camera.Frame
+		if sysTimelapse != nil {
+			f = sysTimelapse.Info().First
+		}
+		if f == nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "image/jpeg")
+		w.Header().Set("Cache-Control", "no-store")
+		w.Write(f.JPEG())
+	}))
 }

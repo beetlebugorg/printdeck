@@ -40,6 +40,8 @@ const (
 	pageSimulator   // the simulated printers
 	pageCamera      // the setup of the camera
 	pageCalibrate   // the calibration of the camera (a.calib)
+	pageTimeLapse   // the time lapse and the picture of the first layer
+	pageFirstLayer  // the last picture of a first layer
 )
 
 // open shows a page over the current one.

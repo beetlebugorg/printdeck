@@ -36,11 +36,11 @@ const (
 
 // backupSkip is the state that stays out of a backup: the password of this deck, the files that
 // the deck makes again (the settings from printdeck.txt, the logs, the swap of the home screen),
-// and the folders of updates and backups.
+// the folders of updates and backups, and the time lapse videos.
 func backupSkip(rel string) bool {
 	top, _, _ := strings.Cut(rel, "/")
 	switch top {
-	case "password", "settings.env", "logs", "swap-home", "update", "backup":
+	case "password", "settings.env", "logs", "swap-home", "update", "backup", "videos":
 		return true
 	}
 	return false

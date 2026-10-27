@@ -255,6 +255,8 @@ type App struct {
 	Camera  Camera
 	camView string     // the view of the picture of the Camera page ("" is full)
 	calib   *calibFlow // the calibration of the camera, while it runs (calibrate.go)
+	// TimeLapse is the time lapse and the picture of the first layer, or nil (Settings > Time lapse).
+	TimeLapse TimeLapse
 
 	redrawPending atomic.Bool // redrawSoon asked for a frame
 
@@ -311,6 +313,7 @@ func (a *App) Session(width, height int) *App {
 	s.Updater = a.Updater
 	s.Metrics = a.Metrics
 	s.Camera = a.Camera
+	s.TimeLapse = a.TimeLapse
 	s.hub = a.hub
 	return s
 }

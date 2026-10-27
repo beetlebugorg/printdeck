@@ -629,6 +629,9 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 	if a.Camera != nil {
 		items = append(items, menuItem{"Camera", cameraLine(a.Camera.Settings(), a.Camera.Devices()), dim, func() { a.open(pageCamera) }})
 	}
+	if a.TimeLapse != nil {
+		items = append(items, menuItem{"Time lapse", timeLapseLine(a.TimeLapse.Settings()), dim, func() { a.open(pageTimeLapse) }})
+	}
 	if a.Phones != nil {
 		items = append(items, menuItem{"Phones", phonesLine(len(a.Phones.List())), dim, func() { a.open(pagePhones) }})
 	}
