@@ -267,6 +267,35 @@ func TestMoveDuringPause(t *testing.T) {
 	}
 }
 
+// The home screen has the home keys of the Toolhead page. During a print they send no command.
+func TestHomeScreenHomes(t *testing.T) {
+	for _, wide := range []bool{false, true} {
+		a, pr, cv := newPrintApp(idle)
+		a.Wide = wide
+		cv = gfx.New(a.Screen().W, a.Screen().H)
+		want := map[string]string{"Home all": "home []", "X": "home [x]", "Y": "home [y]", "Z": "home [z]"}
+		for _, k := range []string{"Home all", "X", "Y", "Z"} {
+			n := len(pr.Calls())
+			tapRegion(t, a, cv, k)
+			if c := pr.wait(n + 1); len(c) != n+1 || c[n] != want[k] {
+				t.Errorf("wide %v: %s: calls %v, want %q last", wide, k, c, want[k])
+			}
+		}
+
+		a, pr, cv = newPrintApp(printing)
+		a.Wide = wide
+		cv = gfx.New(a.Screen().W, a.Screen().H)
+		a.DemoAway()
+		for _, k := range []string{"Home all", "X", "Y", "Z"} {
+			tapRegion(t, a, cv, k)
+		}
+		time.Sleep(20 * time.Millisecond)
+		if c := pr.Calls(); len(c) != 0 {
+			t.Errorf("wide %v, printing: calls %v, want none", wide, c)
+		}
+	}
+}
+
 // A swap during a pause ends at the nozzle target of the print.
 func TestSwapDuringPauseKeepsPrintTemp(t *testing.T) {
 	a, pr, cv := newPrintApp(paused)

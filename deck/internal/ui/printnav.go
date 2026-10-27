@@ -126,11 +126,12 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 		keys, rest = f.side, f.main
 	} else {
 		s := kit.NewStack(kit.Inset(f.main, 40, 2, 40, 0), 12)
-		keys, rest = s.Next(96+12+68), s.Rest()
+		keys, rest = s.Next(96+12+68+12+homeRowH), s.Rest()
 	}
 
-	k := kit.Rows(keys, 12, kit.Px(96), kit.Px(68))
+	k := kit.Rows(keys, 12, kit.Px(96), kit.Px(68), kit.Px(homeRowH))
 	a.homeKeys(c, st, k[0], k[1])
+	a.homeRow(c, st, k[2])
 
 	// The last print, and the pages in the space under it, down to the bottom.
 	if !f.wide {
@@ -168,9 +169,33 @@ func (a *App) drawHomeWide(c *gfx.Canvas, st printer.State) {
 	headingAt(c, f.head, "Main")
 	// Print a file, and the last print as on its page of the history. Preheat and Cool down are in
 	// Filament.
-	r := kit.Rows(f.main, 12, kit.Px(96), kit.Fr(1))
+	// Print a file is lower than on a tall screen, so the table of the last print keeps its rows.
+	r := kit.Rows(f.main, 12, kit.Px(72), kit.Px(homeRowH), kit.Fr(1))
 	a.mainKey(c, st, r[0])
-	a.lastPrintPanel(c, st, r[1])
+	a.homeRow(c, st, r[1])
+	a.lastPrintPanel(c, st, r[2])
+}
+
+// homeRowH is the height of the row of the home keys on the home screen.
+const homeRowH = 60
+
+// homeRow draws Home all, X, Y and Z, as on the Toolhead page. The LED of a key is lit when its
+// axes are homed. During a print the keys wait for its end.
+func (a *App) homeRow(c *gfx.Canvas, st printer.State, r image.Rectangle) {
+	pr := a.Printer
+	homed := func(axes string) color.RGBA {
+		for _, ax := range axes {
+			if !strings.ContainsRune(st.Homed, ax) {
+				return keyOff
+			}
+		}
+		return keyOn
+	}
+	h := kit.Cols(r, 8, kit.Fr(1.8), kit.Fr(1), kit.Fr(1), kit.Fr(1)) // "Home all" needs the room
+	a.printerKey(c, h[0], "Home all", homed("xyz"), text, func() { a.do(func() error { return pr.Home() }) })
+	for i, ax := range []string{"x", "y", "z"} {
+		a.printerKey(c, h[i+1], strings.ToUpper(ax), homed(ax), text, func() { a.do(func() error { return pr.Home(ax) }) })
+	}
 }
 
 // lastPrintPanel draws the last print in a plate: its file and Reprint, and under them its model
