@@ -57,29 +57,31 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # scaled by the official 36 mm width (about 20.3 px/mm), about 0.5 mm. "perspective photo": estimated
 # from the other product photo, about 2 mm.
 B0561 = dict(
-    case=(36.0, 36.0),                # official: the width; the front face is square on the front photo
-    depth=12.0,                       # perspective photo: front face to back face, without the front plate
-    plate=(24.0, 24.0, 2.0),          # front photo: the raised plate, centered on the face; perspective photo: 2 mm proud
+    case=(35.84, 35.84),              # measured: width and height
+    depth=11.15,                      # measured: front face to back face, without the front plate
+    plate=(24.74, 24.62, 2.76),       # measured: the raised plate, centered on the face; 13.91 deep over all
     plate_holes=(3.0, 1.5),           # front photo: 4 small holes about 3 mm in from the corners; diameter a guess
-    barrel=(15.0, 3.0),               # front photo: 15 mm across, centered on the face; perspective photo: 3 mm past the plate
+    barrel=(15.56, 1.0),              # measured: 15.56 mm across, centered on the face, 1 mm past the plate
     af=(4.5, 6.0, 4.0),               # front photo: the autofocus block right of the barrel, 4.5 wide, 6 tall, at the
                                       # height of the lens; perspective photo: 4 mm past the plate
-    socket=(8.5, 4.0, (-6.0, -11.0)), # perspective photo: the JST B4B-ZR socket on the back face, width, height, middle
-                                      # (x, y in camera coordinates); the place is about 2 mm
+    socket=(8.5, 4.0, (-6.67, -13.92)),  # measured: the JST B4B-ZR socket on the back face, 2 mm over the bottom
+                                      # edge and 7 mm in from the right edge (seen from the back); width and
+                                      # height from the perspective photo
     plug=6.0,                         # guess: the ZHR-4 plug and its strain relief, straight back
     cable=(3.0, 10.0),                # guess: the cable of the plug, diameter and bend radius
     cable_length=1000.0,              # Arducam: the USB-A to JST B4B-ZR cable is 1 m
     # The U bracket.
-    total=44.0,                       # official: the top of the case to the bottom of the base
+    total=44.53,                      # measured: the top of the case to the bottom of the base
+    pivot_h=26.11,                    # measured: the pivot axis to the bottom of the base
     sheet=1.4,                        # front photo: the legs, just outside the sides of the case
     leg_gap=0.2,                      # front photo: the gap from the case side to the leg
     leg_w=10.0,                       # perspective photo: the width of a leg along the depth of the case
-    screws=43.5,                      # front photo: the overall width over the pivot screw heads
-    pivot=(0.0, -6.0),                # front photo: the pivot axis is at the case mid-height (y); perspective
-                                      # photo: about the middle of the depth (z)
-    base_d=36.0,                      # perspective photo: the round base, about the width of the case
+    screws=43.52,                     # measured: the overall width over the pivot screw heads
+    pivot=(0.14, -5.6),               # measured: the pivot axis 18.06 mm over the bottom of the case (y); a
+                                      # guess: the middle of the depth (z)
+    base_d=25.75,                     # measured: the round base, with slots around the center hole
     boss=(4.5, 2.0),                  # front photo: the center boss under the base, diameter; height a guess
-    base_hole=4.0,                    # guess: the hole of the base screw; the thread is unknown (1/4"-20, M5, or M6)
+    base_hole=6.35,                   # measured: a through 1/4"-20 thread (a camera screw); an M5 is loose in it
 )
 ELP = dict(board=(38.0, 38.0, 1.6), holes=(34.0, 2.2), holder=(14.0, 14.0, 12.0), lens=(14.0, 17.0, 8.0))   # guesses
 
@@ -133,7 +135,7 @@ def pivot_point():
 
 def pivot_height():
     """The pivot over the bottom face of the base (bracket y)."""
-    return B0561["total"] - B0561["case"][1] / 2 + B0561["pivot"][0]
+    return B0561["pivot_h"]
 
 
 def case_model():
