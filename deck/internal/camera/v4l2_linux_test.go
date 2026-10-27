@@ -26,8 +26,9 @@ func TestStructSizes(t *testing.T) {
 			t.Errorf("%s: %d bytes, want %d", name, got, want)
 		}
 	}
-	if vidiocQueryCap != 0x80685600 || vidiocSFmt != 0xc0d05605 || vidiocDQBuf != 0xc0585611 || vidiocStreamOn != 0x40045612 {
-		t.Errorf("ioctl numbers: %x %x %x %x", vidiocQueryCap, vidiocSFmt, vidiocDQBuf, vidiocStreamOn)
+	if vidiocQueryCap != 0x80685600 || vidiocSFmt != 0xc0d05605 || vidiocDQBuf != 0xc0585611 || vidiocStreamOn != 0x40045612 ||
+		vidiocSCtrl != 0xc008561c {
+		t.Errorf("ioctl numbers: %x %x %x %x %x", vidiocQueryCap, vidiocSFmt, vidiocDQBuf, vidiocStreamOn, vidiocSCtrl)
 	}
 }
 
