@@ -172,6 +172,49 @@ func UseExample(path, file, serial string) error {
 	return os.Rename(tmp, path)
 }
 
+// workhorseExample is the example config of the TAZ Workhorse, the printer of the Printdeck project.
+const workhorseExample = "printer-lulzbot-taz-workhorse-2019.cfg"
+
+// sdCardSection is the SD card section of the TAZ Workhorse example (printer/printer.cfg).
+const sdCardSection = `# The SD card in the slot of the display, on the SPI bus of the RAMBo (PB3 MISO, PB2 MOSI, PB1 SCK).
+# The chip select is SDSS of pins_RAMBO.h of Marlin: pin 53, PB0. Added by Printdeck. The deck lists
+# the files of the card and copies one to print it (printdeck_sdcard).
+[printdeck_sdcard]
+cs_pin: PB0
+
+`
+
+// AddSDCard adds the SD card section to a printer.cfg from the TAZ Workhorse example of an earlier
+// version, before the include of the Printdeck sections. It returns true when it changed the file.
+// A config from another example, or with the section, stays the same.
+func AddSDCard(path string) (bool, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return false, err
+	}
+	text := string(b)
+	if !strings.HasPrefix(text, "# Klipper's example config "+workhorseExample+",") {
+		return false, nil
+	}
+	for _, l := range strings.Split(text, "\n") {
+		if strings.HasPrefix(strings.ToLower(strings.TrimSpace(l)), "[printdeck_sdcard") {
+			return false, nil
+		}
+	}
+	at := strings.Index(text, "\n# Added by Printdeck: keep this line last.")
+	if at < 0 {
+		at = len(text)
+	} else {
+		at++
+	}
+	text = text[:at] + sdCardSection + text[at:]
+	tmp := filepath.Join(filepath.Dir(path), ".printer.cfg.new")
+	if err := os.WriteFile(tmp, []byte(text), 0o664); err != nil {
+		return false, err
+	}
+	return true, os.Rename(tmp, path)
+}
+
 // boardBrands are words in the USB names of printer boards, and the brand of the printers that
 // come with the board.
 var boardBrands = []struct{ word, brand string }{

@@ -55,6 +55,14 @@ func main() {
 		if dir := os.Getenv(simCardEnv); dir != "" {
 			simCard(dir)
 		}
+		// A TAZ Workhorse config of an earlier version gets the SD card section before the start.
+		if path := cli.ConfigFile(os.Args[2:]); path != "" {
+			if changed, err := printer.AddSDCard(path); err != nil {
+				fmt.Fprintf(os.Stderr, "printdeck klippy: SD card section: %v\n", err)
+			} else if changed {
+				fmt.Fprintf(os.Stderr, "printdeck klippy: added [printdeck_sdcard] to %s\n", path)
+			}
+		}
 		os.Exit(cli.Main(os.Args[2:]))
 	}
 	cfg := config.Load()

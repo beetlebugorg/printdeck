@@ -149,6 +149,14 @@ func linuxVersion() string {
 }
 
 // Main runs the Klipper host with the command line args, and returns the exit code.
+// ConfigFile returns the config file of the arguments of Main, or "".
+func ConfigFile(args []string) string {
+	if o, err := parseArgs(args); err == nil {
+		return o.args[0]
+	}
+	return ""
+}
+
 func Main(args []string) int {
 	o, err := parseArgs(args)
 	if err != nil {

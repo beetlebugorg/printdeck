@@ -98,3 +98,37 @@ func TestSuggestedBrand(t *testing.T) {
 		t.Errorf("CH340: %q", b)
 	}
 }
+
+// A Workhorse config of an earlier version gets the SD card section one time, before the include of
+// the Printdeck sections. A config of another printer stays the same.
+func TestAddSDCard(t *testing.T) {
+	text, err := ExampleConfig(workhorseExample, "/dev/ttyACM0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := strings.Index(text, "# The SD card in the slot")
+	end := strings.Index(text, "cs_pin: PB0\n")
+	if start < 0 || end < start {
+		t.Fatal("the Workhorse example has no SD card section")
+	}
+	old := text[:start] + text[end+len("cs_pin: PB0\n\n"):]
+	path := writeTemp(t, old)
+	if changed, err := AddSDCard(path); !changed || err != nil {
+		t.Fatalf("changed %v, %v", changed, err)
+	}
+	b, _ := os.ReadFile(path)
+	got := string(b)
+	if n := strings.Count(got, "[printdeck_sdcard]"); n != 1 {
+		t.Errorf("%d SD card sections", n)
+	}
+	if !strings.HasSuffix(got, "cs_pin: PB0\n\n# Added by Printdeck: keep this line last.\n[include /usr/share/printdeck/klipper/printdeck.cfg]\n") {
+		t.Errorf("the section is not before the include:\n%s", got[len(got)-300:])
+	}
+	if changed, _ := AddSDCard(path); changed {
+		t.Error("a second section")
+	}
+	taz6, _ := ExampleConfig("printer-lulzbot-taz6-2017.cfg", "/dev/ttyACM0")
+	if changed, _ := AddSDCard(writeTemp(t, taz6)); changed {
+		t.Error("a TAZ 6 config got the section")
+	}
+}
