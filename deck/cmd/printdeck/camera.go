@@ -17,12 +17,12 @@ import (
 	"printdeck/internal/ui"
 )
 
-// startCamera starts the camera of the deck for app: the webcam of the API and the Camera page of
-// the Settings. The settings are in the file camera of the state folder; the deck writes it only
-// when the Camera page changes them. The calibration of the views is in the file
-// camera-calibration.json; the deck writes it only when the user calibrates the camera or clears
-// the calibration. Only Linux has the capture (V4L2), so on other systems the app has no camera,
-// except the test camera (camera.TestCameraEnv).
+// startCamera starts the cameras of the deck for app: the webcam of the API and the Camera page of
+// the Settings. The settings are in the file camera of the state folder; the deck writes it when
+// the Camera page changes them, and once to change the file of an older deck. The calibrations of
+// the views are in the file camera-calibration.json; the deck writes it when the user calibrates a
+// camera or clears a calibration. Only Linux has the capture (V4L2), so on other systems the app
+// has no camera, except the test cameras (camera.TestCameraEnv).
 func startCamera(ctx context.Context, stateDir string, app *ui.App, pr printerBackend) {
 	if !cameraOn(runtime.GOOS) {
 		return
@@ -40,24 +40,22 @@ func startCamera(ctx context.Context, stateDir string, app *ui.App, pr printerBa
 	}
 	calFile := filepath.Join(stateDir, "camera-calibration.json")
 	if b, err := os.ReadFile(calFile); err == nil {
-		if c, err := camera.ParseCalibration(b); err == nil {
-			hub.LoadCalibration(c)
-		} else {
+		cs, err := camera.ParseCalibrations(b)
+		if err != nil {
 			log.Printf("camera: %v", err)
 		}
+		hub.LoadCalibrations(cs)
 	}
-	hub.OnCalibration = func(c *camera.Calibration) {
-		if c == nil {
+	hub.OnCalibration = func(cs []*camera.Calibration) {
+		if len(cs) == 0 {
 			if err := os.Remove(calFile); err != nil && !errors.Is(err, fs.ErrNotExist) {
 				log.Printf("camera: the calibration was not removed: %v", err)
 			}
 			return
 		}
-		if err := os.WriteFile(calFile, c.Bytes(), 0o644); err != nil {
+		if err := os.WriteFile(calFile, camera.CalibrationsBytes(cs), 0o644); err != nil {
 			log.Printf("camera: the calibration was not saved: %v", err)
-			return
 		}
-		log.Printf("camera: calibrated, %s", c)
 	}
 	if k, ok := pr.(*printer.Klippy); ok {
 		hub.SetScene(&printScene{k: k})

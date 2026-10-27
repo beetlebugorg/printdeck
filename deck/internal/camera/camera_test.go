@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"reflect"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -227,13 +228,35 @@ func TestSmall(t *testing.T) {
 }
 
 func TestSettings(t *testing.T) {
-	for _, s := range []Settings{{}, {Device: Off}, {Device: "/dev/v4l/by-id/usb-x-video-index0", Rotate: 180}} {
-		if got := ParseSettings(s.Bytes()); got != s {
+	for _, s := range []Settings{{}, {AllOff: true},
+		{Cameras: []CamSettings{{ID: "/dev/v4l/by-id/usb-x-video-index0", Rotate: 180, Name: "Top"}, {ID: "b", Off: true}},
+			Main: "b", Lapse: "/dev/v4l/by-id/usb-x-video-index0", Picture: "b"}} {
+		if got := ParseSettings(s.Bytes()); !reflect.DeepEqual(got, s) {
 			t.Errorf("%+v: read back as %+v", s, got)
 		}
 	}
-	if s := ParseSettings([]byte("auto\n90\n")); s.Rotate != 0 {
+	if s := ParseSettings([]byte(`{"cameras":[{"id":"a","rotate":90}]}`)); s.Cameras[0].Rotate != 0 {
 		t.Errorf("a turn of 90: %+v", s)
+	}
+}
+
+// The camera file of an older deck: one line for the device, and one for the turn.
+func TestSettingsMigration(t *testing.T) {
+	for _, c := range []struct {
+		file string
+		want Settings
+	}{
+		{"auto\n0\n", Settings{Cameras: []CamSettings{{}}}},
+		{"auto\n90\n", Settings{Cameras: []CamSettings{{}}}},
+		{"auto\n180\n", Settings{Cameras: []CamSettings{{Rotate: 180}}}},
+		{"off\n0\n", Settings{AllOff: true}},
+		{"/dev/v4l/by-id/usb-x-video-index0\n180\n", Settings{Cameras: []CamSettings{{ID: "/dev/v4l/by-id/usb-x-video-index0", Rotate: 180}},
+			Main: "/dev/v4l/by-id/usb-x-video-index0"}},
+		{"", Settings{Cameras: []CamSettings{{}}}},
+	} {
+		if got := ParseSettings([]byte(c.file)); !reflect.DeepEqual(got, c.want) {
+			t.Errorf("%q: %+v, want %+v", c.file, got, c.want)
+		}
 	}
 }
 
@@ -245,7 +268,7 @@ func fakeHub(t *testing.T) (*Hub, *atomic.Int32) {
 	h := NewHub(Settings{})
 	h.scan = func() []Device { return []Device{{Path: "/dev/video9", ID: "cam", Name: "Test camera"}} }
 	jb := testJPEG(t)
-	h.capture = func(ctx context.Context, d Device, s Settings, format func(Format), emit func(*Frame)) error {
+	h.capture = func(ctx context.Context, d Device, s CamSettings, format func(Format), emit func(*Frame)) error {
 		running.Add(1)
 		defer running.Add(-1)
 		format(Format{In: "MJPEG", InW: 40, InH: 24, OutW: 40, OutH: 24, OutFPS: 100})
@@ -312,16 +335,23 @@ func TestHubOnDemand(t *testing.T) {
 	waitFor(t, "stop", func() bool { return running.Load() == 0 })
 
 	// Off stops the camera, and On is false.
-	h.SetSettings(Settings{Device: Off})
+	h.SetSettings(Settings{AllOff: true})
 	if h.On() || h.Status().State != "off" {
 		t.Error("the camera is on with the setting Off")
 	}
 	if _, err := h.Snapshot(context.Background()); err == nil {
 		t.Error("a snapshot with the setting Off")
 	}
-	// A device that is not there.
-	h.SetSettings(Settings{Device: "other"})
+	// A main camera that is not there: the main camera is the first camera that is on.
+	h.SetSettings(Settings{Main: "other"})
+	if !h.On() || h.Status().Device.ID != "cam" {
+		t.Error("no main camera with a main camera that is not there")
+	}
+	// No camera.
+	h.mu.Lock()
+	h.scan, h.scanned = func() []Device { return nil }, time.Time{}
+	h.mu.Unlock()
 	if h.On() || h.Status().State != "none" {
-		t.Error("the camera is on with a device that is not there")
+		t.Errorf("no camera: %+v", h.Status())
 	}
 }

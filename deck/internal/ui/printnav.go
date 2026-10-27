@@ -42,6 +42,7 @@ const (
 	pageCalibrate   // the calibration of the camera (a.calib)
 	pageTimeLapse   // the time lapse and the picture of the first layer
 	pageFirstLayer  // the last picture of a first layer
+	pageCameraSetup // the settings of a camera that have no key on the wide Camera page, and the roles
 )
 
 // open shows a page over the current one.

@@ -8,41 +8,55 @@ import (
 )
 
 // TestCameraEnv is the environment variable that adds a test camera: with any value, the deck
-// finds a camera that sends a moving test picture, on every system. It is for the tests of the
-// apps with no real camera, for example `printdeck app -sim` on a Mac.
+// finds a camera that sends a moving test picture, on every system. With the value 2, the deck
+// finds two test cameras of the same model. It is for the tests of the apps with no real camera,
+// for example `printdeck app -sim` on a Mac.
 const TestCameraEnv = "PRINTDECK_TEST_CAMERA"
 
-// TestCamera is the device of the test camera.
-var TestCamera = Device{Path: "test", ID: "test", Name: "Test camera"}
+// TestCamera is the device of the test camera, and TestCamera2 the device of the second test
+// camera.
+var (
+	TestCamera  = Device{Path: "test", ID: "test", Name: "Test camera"}
+	TestCamera2 = Device{Path: "test2", ID: "test2", Name: "Test camera"}
+)
 
 // testFormat is what the test camera sends: the size and the rate of the raw path of the Cam Link.
 var testFormat = Format{In: "TEST", InW: 960, InH: 540, InFPS: 10, OutW: 960, OutH: 540, OutFPS: 10}
 
-// withTestCamera adds the test camera to the scan and the capture of a hub when TestCameraEnv is
-// set. The test camera is first in the list, so Auto picks it.
+// withTestCamera adds the test cameras to the scan and the capture of a hub when TestCameraEnv is
+// set. The test cameras are first in the list.
 func withTestCamera(scan func() []Device, capture captureFunc) (func() []Device, captureFunc) {
-	if os.Getenv(TestCameraEnv) == "" {
+	env := os.Getenv(TestCameraEnv)
+	if env == "" {
 		return scan, capture
 	}
+	tests := []Device{TestCamera}
+	if env == "2" {
+		tests = append(tests, TestCamera2)
+	}
 	return func() []Device {
-			return append([]Device{TestCamera}, scan()...)
-		}, func(ctx context.Context, d Device, s Settings, format func(Format), emit func(*Frame)) error {
-			if d.ID == TestCamera.ID {
-				return testCapture(ctx, s, format, emit)
+			return append(append([]Device(nil), tests...), scan()...)
+		}, func(ctx context.Context, d Device, s CamSettings, format func(Format), emit func(*Frame)) error {
+			switch d.ID {
+			case TestCamera.ID:
+				return testCapture(ctx, s, false, format, emit)
+			case TestCamera2.ID:
+				return testCapture(ctx, s, true, format, emit)
 			}
 			return capture(ctx, d, s, format, emit)
 		}
 }
 
 // testCapture sends the test picture until ctx ends: color bars, and a white square that goes
-// across the picture in 4 seconds, so a viewer can see that the frames move.
-func testCapture(ctx context.Context, s Settings, format func(Format), emit func(*Frame)) error {
+// across the picture in 4 seconds, so a viewer can see that the frames move. The second camera
+// (second) has the bars in the other order, and its square goes down the picture.
+func testCapture(ctx context.Context, s CamSettings, second bool, format func(Format), emit func(*Frame)) error {
 	f := testFormat
 	format(f)
 	tick := time.NewTicker(time.Second / time.Duration(f.OutFPS))
 	defer tick.Stop()
 	for n := 0; ; n++ {
-		pic := testPattern(f.OutW, f.OutH, n, f.OutFPS*4)
+		pic := testPattern(f.OutW, f.OutH, n, f.OutFPS*4, second)
 		if s.Rotate == 180 {
 			pic = scaleYCbCr(pic, f.OutW, f.OutH, true)
 		}
@@ -61,10 +75,15 @@ var testBars = [][3]uint8{{180, 128, 128}, {162, 44, 142}, {131, 156, 44}, {112,
 	{84, 184, 198}, {65, 100, 212}, {35, 212, 114}}
 
 // testPattern is frame n of the test picture of w x h pixels: the square is at n/period of its way.
-func testPattern(w, h, n, period int) *image.YCbCr {
+// The second picture has the bars in the other order, and its square goes down.
+func testPattern(w, h, n, period int, second bool) *image.YCbCr {
 	p := image.NewYCbCr(image.Rect(0, 0, w, h), image.YCbCrSubsampleRatio420)
 	for x := 0; x < w; x++ {
-		c := testBars[x*len(testBars)/w]
+		i := x * len(testBars) / w
+		if second {
+			i = len(testBars) - 1 - i
+		}
+		c := testBars[i]
 		for y := 0; y < h; y++ {
 			p.Y[y*p.YStride+x] = c[0]
 		}
@@ -77,6 +96,9 @@ func testPattern(w, h, n, period int) *image.YCbCr {
 	side := h / 4
 	x0 := (w - side) * (n % period) / period
 	y0 := (h - side) / 2
+	if second {
+		x0, y0 = (w-side)/2, (h-side)*(n%period)/period
+	}
 	for y := y0; y < y0+side; y++ {
 		for x := x0; x < x0+side; x++ {
 			p.Y[y*p.YStride+x] = 235

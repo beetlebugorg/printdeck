@@ -52,7 +52,7 @@ func TestCapture(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 		var frames []*Frame
 		var f Format
-		err := capture(ctx, dev, Settings{Rotate: rot}, func(x Format) { f = x }, func(fr *Frame) { frames = append(frames, fr) })
+		err := capture(ctx, dev, CamSettings{Rotate: rot}, func(x Format) { f = x }, func(fr *Frame) { frames = append(frames, fr) })
 		cancel()
 		if err != nil {
 			t.Fatal(err)

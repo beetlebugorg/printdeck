@@ -47,3 +47,29 @@ func TestNoTestCamera(t *testing.T) {
 		}
 	}
 }
+
+// With PRINTDECK_TEST_CAMERA=2, the deck finds two test cameras of one model, with two pictures.
+func TestTwoTestCameras(t *testing.T) {
+	t.Setenv(TestCameraEnv, "2")
+	h := NewHub(Settings{})
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	go h.Run(ctx)
+	list := h.Cameras()
+	if len(list) < 2 || list[0].Name != "Test camera 1" || list[1].Name != "Test camera 2" {
+		t.Fatalf("list %+v", list)
+	}
+	a, _ := h.Source("1")
+	b, _ := h.Source("2")
+	fa, err := a.Snapshot(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fb, err := b.Snapshot(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Equal(fa.JPEG(), fb.JPEG()) {
+		t.Error("the two test cameras send the same picture")
+	}
+}

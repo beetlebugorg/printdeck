@@ -254,6 +254,8 @@ type App struct {
 	// Camera is the camera of the deck, or nil (Settings > Camera).
 	Camera  Camera
 	camView string     // the view of the picture of the Camera page ("" is full)
+	camID   string     // the camera of the Camera page: an ID, "" for the main camera, or camAll
+	camKB   *keyboard  // the keyboard of the name of a camera, while it is open
 	calib   *calibFlow // the calibration of the camera, while it runs (calibrate.go)
 	// TimeLapse is the time lapse and the picture of the first layer, or nil (Settings > Time lapse).
 	TimeLapse TimeLapse

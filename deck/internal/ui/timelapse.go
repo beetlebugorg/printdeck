@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"printdeck/internal/camera"
 	"printdeck/internal/gfx"
 	"printdeck/internal/timelapse"
 	"printdeck/kit"
@@ -112,8 +113,13 @@ func (a *App) drawTimeLapse(c *gfx.Canvas) {
 		items = append(items, menuItem{"Picture of the first layer", firstSub(in, a), dim, func() { a.open(pageFirstLayer) }})
 	}
 	items = append(items, menuItem{"Videos", videosLine(len(in.Videos)), dim, nil})
-	if st := a.Camera.Status().State; st == "off" || st == "none" {
-		items = append(items, menuItem{"Camera", "No camera: no frames and no pictures", red, func() { a.open(pageCamera) }})
+	if a.Camera != nil {
+		items = append(items, a.roleItems(camera.RoleLapse, camera.RolePicture)...)
+		if cam, ok := a.Camera.Source(""); ok {
+			if st := cam.Status().State; st == "off" || st == "none" {
+				items = append(items, menuItem{"Camera", "No camera: no frames and no pictures", red, func() { a.open(pageCamera) }})
+			}
+		}
 	}
 	a.menuRows(c, f.body(), f.wide, 60, 5, items)
 }

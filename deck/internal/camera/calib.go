@@ -1,6 +1,7 @@
 package camera
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -57,6 +58,45 @@ func ParseCalibration(b []byte) (*Calibration, error) {
 		return nil, errors.New("camera: the calibration file is not complete")
 	}
 	return &c, nil
+}
+
+// ParseCalibrations reads the calibrations of the cameras from their file: a JSON list, or the
+// one calibration of an older deck. It returns the valid calibrations, and an error for the first
+// calibration that is not valid.
+func ParseCalibrations(b []byte) ([]*Calibration, error) {
+	if t := bytes.TrimSpace(b); len(t) > 0 && t[0] == '{' {
+		c, err := ParseCalibration(b)
+		if err != nil {
+			return nil, err
+		}
+		return []*Calibration{c}, nil
+	}
+	var raw []json.RawMessage
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return nil, err
+	}
+	var out []*Calibration
+	var first error
+	for _, r := range raw {
+		c, err := ParseCalibration(r)
+		if err != nil {
+			if first == nil {
+				first = err
+			}
+			continue
+		}
+		out = append(out, c)
+	}
+	return out, first
+}
+
+// CalibrationsBytes is the text of the file of the calibrations: a JSON list.
+func CalibrationsBytes(cs []*Calibration) []byte {
+	if cs == nil {
+		cs = []*Calibration{}
+	}
+	b, _ := json.MarshalIndent(cs, "", "  ")
+	return append(b, '\n')
 }
 
 // Bytes is the text of the calibration for its file.

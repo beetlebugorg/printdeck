@@ -31,8 +31,10 @@ const (
 
 // calibFlow is a calibration that runs.
 type calibFlow struct {
-	points [][3]float64 // the places of the plan
-	i      int          // the point now
+	cam    camera.Source // the camera of the calibration
+	rotate int           // the turn of the camera at the start
+	points [][3]float64  // the places of the plan
+	i      int           // the point now
 	phase  calibPhase
 
 	frame   *camera.Frame // the still picture of the point
@@ -78,7 +80,8 @@ func calibLine(c *camera.Calibration, valid bool) string {
 // calibReady returns why the deck cannot calibrate now, or "".
 func (a *App) calibReady() string {
 	st := a.Printer.State()
-	cs := a.Camera.Status()
+	cam, _ := a.shownCam()
+	cs := cam.Status()
 	switch {
 	case cs.State == "off" || cs.State == "none" || cs.State == "error" || cs.State == "nosignal":
 		return "Calibrate needs a camera with a picture"
@@ -110,7 +113,8 @@ func (a *App) askCalibrate() {
 // startCalibration opens the calibration page, homes when home is true, and moves to the first
 // point.
 func (a *App) startCalibration(home bool) {
-	fl := &calibFlow{}
+	cam, in := a.shownCam()
+	fl := &calibFlow{cam: cam, rotate: in.Rotate}
 	a.calib = fl
 	a.open(pageCalibrate)
 	go func() {
@@ -156,14 +160,14 @@ func (a *App) calibMove(fl *calibFlow) {
 		}
 		moved := time.Now()
 		var before uint64
-		if f := a.Camera.Peek(); f != nil {
+		if f := fl.cam.Peek(); f != nil {
 			before = f.Seq
 		}
 		time.Sleep(calibSettle)
 		// A picture of the camera after the move.
 		var fr *camera.Frame
 		for end := time.Now().Add(calibFrameWait); ; {
-			f := a.Camera.Peek()
+			f := fl.cam.Peek()
 			if f != nil && (f.Seq > before && f.Time.After(moved) || time.Now().After(end)) {
 				fr = f
 				break
@@ -173,7 +177,7 @@ func (a *App) calibMove(fl *calibFlow) {
 			}
 			time.Sleep(50 * time.Millisecond)
 		}
-		cs := a.Camera.Status()
+		cs := fl.cam.Status()
 		// The place of the toolhead, when the state has it near the target: the state has the
 		// G-code offsets and the bed tilt.
 		place := target
@@ -249,7 +253,7 @@ func (a *App) calibFit(fl *calibFlow) {
 	}
 	st := fl.first
 	fl.result = &camera.Calibration{Device: st.Device.ID, InW: st.Format.InW, InH: st.Format.InH,
-		Width: fl.size.X, Height: fl.size.Y, Rotate: a.Camera.Settings().Rotate, P: m, Error: rms,
+		Width: fl.size.X, Height: fl.size.Y, Rotate: fl.rotate, P: m, Error: rms,
 		Points: len(fl.places), Time: a.Now()}
 	fl.phase = calibDone
 	a.Redraw()
@@ -266,7 +270,7 @@ func (a *App) cancelCalibration() {
 // saveCalibration keeps the calibration, and goes back to the Camera page.
 func (a *App) saveCalibration() {
 	if fl := a.calib; fl != nil && fl.result != nil {
-		a.Camera.SetCalibration(fl.result)
+		fl.cam.SetCalibration(fl.result)
 		a.Toast(fmt.Sprintf("Camera calibrated: %.1f px", fl.result.Error))
 	}
 	a.cancelCalibration()
@@ -276,7 +280,8 @@ func (a *App) saveCalibration() {
 func (a *App) askClearCalibration() {
 	a.confirm = &confirmBox{question: "Clear the calibration of the camera? The views show the whole picture until you calibrate again.",
 		yes: "Clear", danger: true, onYes: func() {
-			a.Camera.SetCalibration(nil)
+			cam, _ := a.shownCam()
+			cam.SetCalibration(nil)
 			a.camView = camera.ViewFull
 			a.Toast("Calibration cleared")
 		}}

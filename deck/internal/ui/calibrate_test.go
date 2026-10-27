@@ -141,7 +141,7 @@ func TestCameraCalibrate(t *testing.T) {
 		t.Error("no result on the page")
 	}
 	tapLabel(t, a, cv, "Save")
-	if cam.Cal == nil || a.topPage() != pageCamera {
+	if cam.Cams[0].Cal == nil || a.topPage() != pageCamera {
 		t.Fatalf("not saved: page %v", a.topPage())
 	}
 	moves := 0
@@ -167,7 +167,7 @@ func TestCameraCalibrate(t *testing.T) {
 	simFrame(t, a, "camera-view-toolhead")
 	tapLabel(t, a, cv, "Clear calibration")
 	tapLabel(t, a, cv, "Clear")
-	if cam.Cal != nil {
+	if cam.Cams[0].Cal != nil {
 		t.Error("not cleared")
 	}
 }
@@ -240,7 +240,7 @@ func TestCameraCalibrateWide(t *testing.T) {
 	}
 	tapLabel(t, a, cv, "Cancel")
 	cam := a.Camera.(*DemoCamera)
-	cam.Cal = &camera.Calibration{Error: 3.2, Points: 9, Time: time.Date(2026, 10, 25, 12, 0, 0, 0, time.Local)}
+	cam.Cams[0].Cal = &camera.Calibration{Error: 3.2, Points: 9, Time: time.Date(2026, 10, 25, 12, 0, 0, 0, time.Local)}
 	a.camView = camera.ViewPart
 	if f := simFrame(t, a, "camera-wide-calibrated"); !strings.Contains(f, `"CLEAR"`) {
 		t.Error("no Clear key")

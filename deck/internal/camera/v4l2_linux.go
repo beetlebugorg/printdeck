@@ -169,26 +169,26 @@ func cameraName(card string) string {
 // (the codecs and the camera port of the Raspberry Pi) are not in the list.
 func listDevices() []Device {
 	paths, _ := filepath.Glob("/dev/video*")
-	ids := map[string]string{} // the links of /dev/v4l/by-id by device
-	links, _ := filepath.Glob("/dev/v4l/by-id/*")
-	for _, l := range links {
-		if t, err := filepath.EvalSymlinks(l); err == nil {
-			if _, ok := ids[t]; !ok || strings.HasSuffix(l, "-index0") {
-				ids[t] = l
-			}
-		}
-	}
 	var out []Device
 	for _, p := range paths {
-		d, ok := probe(p)
-		if !ok {
-			continue
+		if d, ok := probe(p); ok {
+			out = append(out, d)
 		}
-		d.ID = p
-		if l, ok := ids[p]; ok {
-			d.ID = l
+	}
+	return assignIDs(out, deviceLinks("/dev/v4l/by-id/*"), deviceLinks("/dev/v4l/by-path/*"))
+}
+
+// deviceLinks returns the links of a glob by their device: the link that ends in -index0 when a
+// device has more than one.
+func deviceLinks(glob string) map[string]string {
+	out := map[string]string{}
+	links, _ := filepath.Glob(glob)
+	for _, l := range links {
+		if t, err := filepath.EvalSymlinks(l); err == nil {
+			if _, ok := out[t]; !ok || strings.HasSuffix(l, "-index0") {
+				out[t] = l
+			}
 		}
-		out = append(out, d)
 	}
 	return out
 }
@@ -291,7 +291,7 @@ func pickSize(fd int, f string) (int, int) {
 }
 
 // capture runs the capture of a device: see captureFunc.
-func capture(ctx context.Context, d Device, s Settings, format func(Format), emit func(*Frame)) error {
+func capture(ctx context.Context, d Device, s CamSettings, format func(Format), emit func(*Frame)) error {
 	fd, err := unix.Open(d.Path, unix.O_RDWR|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return fmt.Errorf("open: %w", err)

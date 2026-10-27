@@ -1,9 +1,11 @@
-// Package camera reads a USB camera (a V4L2 device, such as a webcam or an HDMI capture stick)
-// and gives its pictures as JPEG frames to the viewers: the webcam of the API, and the camera
-// page of the deck UI.
+// Package camera reads the USB cameras of the deck (V4L2 devices, such as webcams or HDMI capture
+// sticks) and gives their pictures as JPEG frames to the viewers: the webcam of the API, the
+// camera page of the deck UI, and the time lapse. Each camera has a capture of its own.
 //
-//	camera.go     the devices, the settings, and the frames
-//	hub.go        the capture runs only while a viewer watches, and one capture feeds all viewers
+//	camera.go     the devices and the frames
+//	settings.go   the settings of each camera, the names, and the roles
+//	hub.go        the capture of each camera runs only while a viewer watches it, and one
+//	              capture feeds all viewers of the camera
 //	scale.go      the conversion of raw pictures to JPEG, at a smaller size
 //	calib.go      the calibration: the projection from the places of the printer to the picture
 //	views.go      the views that follow the printer: the toolhead, the first layer, the part
@@ -22,8 +24,6 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -33,47 +33,20 @@ type Device struct {
 	// Path is the device file, for example /dev/video0.
 	Path string
 	// ID is the name of the setting: the link in /dev/v4l/by-id, which stays the same when the
-	// camera goes into another USB port, or Path when the device has no link.
+	// camera goes into another USB port, or Path when the device has no link. Two cameras of the
+	// same model often have one by-id link for both. Then the ID of each is its link in
+	// /dev/v4l/by-path, which stays the same while the camera stays in its USB port.
 	ID string
+	// Alias is the by-id link of a camera with a by-path ID, or "". A setting of an older deck
+	// can have it.
+	Alias string
 	// Name is the name of the camera, for example "C270 HD WEBCAM".
 	Name string
 }
 
-// Settings are the camera settings of the deck.
-type Settings struct {
-	// Device is "" for the first camera that the deck finds, "off" for no camera, or the ID of a
-	// camera.
-	Device string
-	// Rotate is 0, or 180 for a camera that is mounted upside down.
-	Rotate int
-}
-
-// Off is the Device of the settings for no camera.
-const Off = "off"
-
-// ParseSettings reads the settings from the camera file of the deck: the device ("auto", "off"
-// or an ID) on the first line, and the turn on the second line.
-func ParseSettings(b []byte) Settings {
-	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
-	var s Settings
-	if d := strings.TrimSpace(lines[0]); d != "auto" {
-		s.Device = d
-	}
-	if len(lines) > 1 {
-		if r, err := strconv.Atoi(strings.TrimSpace(lines[1])); err == nil && r == 180 {
-			s.Rotate = 180
-		}
-	}
-	return s
-}
-
-// Bytes is the text of the settings for the camera file.
-func (s Settings) Bytes() []byte {
-	d := s.Device
-	if d == "" {
-		d = "auto"
-	}
-	return []byte(fmt.Sprintf("%s\n%d\n", d, s.Rotate))
+// Is reports that id is the ID, the path or the alias of the device.
+func (d Device) Is(id string) bool {
+	return id != "" && (id == d.ID || id == d.Path || id == d.Alias)
 }
 
 // Format tells what the camera sends, and what the deck makes of it.
@@ -103,6 +76,8 @@ type Frame struct {
 	Seq uint64
 	// Time is the time of the capture.
 	Time time.Time
+
+	cam string // the ID of the camera of the frame, or ""
 
 	jpeg  []byte
 	w, h  int
@@ -222,7 +197,7 @@ func (f *Frame) Small(w int) *Frame {
 	}
 	h := max(2, (f.h*w/f.w+1)/2*2)
 	s := picFrame(scaleYCbCr(pic, w, h, false))
-	s.Seq, s.Time, s.blank = f.Seq, f.Time, f.blank
+	s.Seq, s.Time, s.blank, s.cam = f.Seq, f.Time, f.blank, f.cam
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if old, ok := f.smalls[w]; ok {
