@@ -112,7 +112,7 @@ TOP_LENS_UP = {"taz": 490.0, "mini2": 381.0}
 # The TAZ top bracket: a block on the top front rail (printer coordinates: x to the front, y up). The
 # camera hangs behind the rail, TOP_FORWARD in front of the middle of the bed, so the back half of the
 # space over the bed stays free for the filament tube. It prints on its right end (printer z up).
-TOP = dict(wall=16.0,           # the camera wall, from the floor of the seat to its front face
+TOP = dict(wall=19.0,           # the camera wall, from the floor of the seat to its front face
            width=60.0,          # the camera wall, along the rail
            height=520.0,        # the top of the camera wall (printer y)
            plate=5.0,           # the plate on the top face of the rail
@@ -132,10 +132,10 @@ TOP_FORWARD = {"taz": 27.2, "mini2": 0.0}
 INSIDE_SLOT_Y = 476.0                   # the slot in the inside face of the TAZ top front rail (printer y)
 # The base fixing: a 1/4"-20 stud (a set screw with no head), 30 mm long, in the thread of the base,
 # flush with its top. It goes through the camera wall, and a 1/4"-20 hex nut (7/16", 11.1 mm across the
-# flats, 5.6 mm thick) on the flat front face of the wall clamps it. The other choice: a 1/4"-20 x 3/4"
+# flats, 5.6 mm thick) on the flat front face of the wall clamps it. The other choice: a 1/4"-20 x 7/8"
 # cap screw from the front face into the base.
 STUD = dict(length=30.0, nut=(11.1, 5.6))
-SCREWS_14 = (19.05,)                    # the length of the other choice
+SCREWS_14 = (22.2,)                     # the length of the other choice
 RAIL_SLOTS = (-74.0, 76.0)              # the top slots of the two TAZ top rails (printer x)
 # The full print height (published LulzBot sizes, unchecked on the printers) and the moving parts
 # that go up with the tool head.

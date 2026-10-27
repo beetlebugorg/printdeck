@@ -163,7 +163,7 @@ Print it in PETG or PLA+:
 | 1/4"-20 hex nut (7/16") | 1 | On the stud, on the front face of the camera wall |
 | USB-A to JST-ZR 4-pin cable, 1 m | 1 | The cable that comes with the camera |
 
-In place of the stud and the nut, you can use a 1/4"-20 x 3/4" cap screw from the front face of
+In place of the stud and the nut, you can use a 1/4"-20 x 7/8" cap screw from the front face of
 the camera wall into the base.
 
 1. Roll 2 T-nuts into the top slot and 4 T-nuts into the inside slot of the top front rail, at the
