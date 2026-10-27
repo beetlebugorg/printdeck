@@ -77,8 +77,8 @@ B0561 = dict(
     leg_gap=0.2,                      # front photo: the gap from the case side to the leg
     leg_w=10.0,                       # perspective photo: the width of a leg along the depth of the case
     screws=43.52,                     # measured: the overall width over the pivot screw heads
-    pivot=(0.14, -5.6),               # measured: the pivot axis 18.06 mm over the bottom of the case (y); a
-                                      # guess: the middle of the depth (z)
+    pivot=(0.14, -4.22),              # measured: 18.06 mm over the bottom of the case (y), 4.22 mm behind the
+                                      # front face (z)
     base_d=25.75,                     # measured: the round base, with slots around the center hole
     boss=(4.5, 2.0),                  # front photo: the center boss under the base, diameter; height a guess
     base_hole=6.35,                   # measured: a through 1/4"-20 thread (a camera screw); an M5 is loose in it
