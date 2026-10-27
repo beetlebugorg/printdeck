@@ -390,7 +390,7 @@
 
 <section id="send">
   <h2 class="title"><span class="num">07</span>Send a file from the slicer</h2>
-  <p>The deck uses the OctoPrint API, so slicers can send files and start prints.</p><p>Cura: add the deck with the OctoPrint Connection plugin. The deck asks &#34;Allow Cura to use the Printdeck?&#34;. Tap Allow.</p><p>OrcaSlicer or PrusaSlicer: add a printer of the type OctoPrint, with the address http://printdeck.local and the API key of the system page.</p><p>The webcam is the camera of the deck: http://printdeck.local/webcam/stream and /webcam/snapshot, with the API key. Add w=320 for smaller pictures, or fps=2 for fewer frames. With no camera, the webcam shows the deck screen.</p>
+  <p>The deck uses the OctoPrint API, so slicers can send files and start prints.</p><p>Cura: add the deck with the OctoPrint Connection plugin. The deck asks &#34;Allow Cura to use the Printdeck?&#34;. Tap Allow.</p><p>OrcaSlicer or PrusaSlicer: add a printer of the type OctoPrint, with the address http://printdeck.local and the API key of the system page.</p><p>The webcam is the main camera of the deck: http://printdeck.local/webcam/stream and /webcam/snapshot, with the API key. Add camera=2 for the second camera, w=320 for smaller pictures, or fps=2 for fewer frames. With no camera, the webcam shows the deck screen.</p>
   
   
   
@@ -958,7 +958,7 @@
 <section id="timelapse">
   <h2 class="title"><span class="num">12</span>Make a time lapse</h2>
   <p>The deck camera captures a picture at each layer change. At the end of the print, the deck makes a video.</p><p>For each picture, the printer retracts, lifts the nozzle and parks the head at the back left. On the TAZ Workhorse the nozzle goes to Z 10 mm or more, over the bed washers. Each picture adds a few seconds.</p>
-  <ol class="steps"><li>Set up the camera: Settings, then Camera.</li><li>Open Settings, then Time lapse.</li><li>Tap Time lapse to turn it on.</li><li>Tap First layer for a picture of the first layer, or a picture and a pause. At a pause, check the layer, then tap Resume.</li><li>Print. After the first layer, the deck shows its picture.</li><li>At the end of the print, open http://printdeck.local/system in a browser. The Time lapse part has the video. Click its name to download it.</li></ol>
+  <ol class="steps"><li>Set up the camera: Settings, then Camera.</li><li>Open Settings, then Time lapse.</li><li>Tap Time lapse to turn it on.</li><li>With two cameras, tap Time lapse camera and Picture camera to choose the cameras.</li><li>Tap First layer for a picture of the first layer, or a picture and a pause. At a pause, check the layer, then tap Resume.</li><li>Print. After the first layer, the deck shows its picture.</li><li>At the end of the print, open http://printdeck.local/system in a browser. The Time lapse part has the video. Click its name to download it.</li></ol>
   
   
   <p>Cura, PrusaSlicer and OrcaSlicer write the layer comments that the time lapse needs.</p><p>Park for the frames is on by default. Off keeps the toolhead in the pictures, with no stops.</p><p>The video is a .mov file. The deck keeps the last 3 videos. A backup excludes the videos.</p>
@@ -970,7 +970,7 @@
   <ol class="steps"><li>Open Printdeck on the iPhone. It finds the deck on the network. Tap Connect.</li><li>Tap Allow on the deck.</li><li>For push messages, open Menu, then Notifications, and tap Pair for notifications. Allow the notifications.</li><li>To add the complication, edit the watch face and choose Printdeck.</li><li>To add a widget, touch and hold the Home Screen or the Lock Screen, tap Edit, and choose Printdeck.</li></ol>
   
   
-  <table><tr><td>iPhone app</td><td>The deck screen and its keys.</td></tr><tr><td>Watch app</td><td>The progress and the time left. Tap for Pause, Resume or Cancel.</td></tr><tr><td>Complications</td><td>The progress on the watch face.</td></tr><tr><td>Home Screen widgets</td><td>The status of the print.</td></tr><tr><td>Lock Screen widgets</td><td>The same as the complications.</td></tr><tr><td>Live Activity</td><td>The print on the Lock Screen and in the Dynamic Island.</td></tr><tr><td>Notifications</td><td>Print done, print failed, paused, first layer done, and a roll that runs short.</td></tr></table>
+  <table><tr><td>iPhone app</td><td>The deck screen and its keys. With two cameras, tap a camera name on the camera page, or swipe, to switch. The watch shows the same camera.</td></tr><tr><td>Watch app</td><td>The progress and the time left. Tap for Pause, Resume or Cancel.</td></tr><tr><td>Complications</td><td>The progress on the watch face.</td></tr><tr><td>Home Screen widgets</td><td>The status of the print.</td></tr><tr><td>Lock Screen widgets</td><td>The same as the complications.</td></tr><tr><td>Live Activity</td><td>The print on the Lock Screen and in the Dynamic Island.</td></tr><tr><td>Notifications</td><td>Print done, print failed, paused, first layer done, and a roll that runs short.</td></tr></table>
   
   <p>The deck sends a push message when a print ends or pauses, after the first layer, and when a roll runs short. Settings, then Phones, lists the paired phones.</p>
 </section>
@@ -1574,22 +1574,61 @@
         <circle cx="520" cy="363" r="15" class="badge"/>
         <text x="520" y="363" class="badge-n">2</text>
         
-        <line x1="505" y1="453" x2="456" y2="453" class="leader"/>
-        <circle cx="456" cy="453" r="5" class="dot"/>
-        <circle cx="520" cy="453" r="15" class="badge"/>
-        <text x="520" y="453" class="badge-n">3</text>
+        <line x1="505" y1="443" x2="456" y2="443" class="leader"/>
+        <circle cx="456" cy="443" r="5" class="dot"/>
+        <circle cx="520" cy="443" r="15" class="badge"/>
+        <text x="520" y="443" class="badge-n">3</text>
         
-        <line x1="505" y1="550" x2="456" y2="550" class="leader"/>
-        <circle cx="456" cy="550" r="5" class="dot"/>
-        <circle cx="520" cy="550" r="15" class="badge"/>
-        <text x="520" y="550" class="badge-n">4</text>
+        <line x1="505" y1="521" x2="456" y2="521" class="leader"/>
+        <circle cx="456" cy="521" r="5" class="dot"/>
+        <circle cx="520" cy="521" r="15" class="badge"/>
+        <text x="520" y="521" class="badge-n">4</text>
         
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Picture</b>Use it to aim the camera at the bed.</span></li><li><span class="badge">2</span><span><b>State</b>The camera, or an error.</span></li><li><span class="badge">3</span><span><b>Camera</b>Auto, one camera, or Off.</span></li><li><span class="badge">4</span><span><b>Turn</b>Turns the picture 180°.</span></li>
+      <li><span class="badge">1</span><span><b>Picture</b>Use it to aim the camera at the bed.</span></li><li><span class="badge">2</span><span><b>State</b>The camera, or an error.</span></li><li><span class="badge">3</span><span><b>Camera</b>Shows the next camera, then all cameras side by side.</span></li><li><span class="badge">4</span><span><b>Turn</b>Turns the picture 180°.</span></li>
     </ol>
-    <p class="note">The apps, Cura and other OctoPrint clients show the camera. The camera runs only while somebody looks. The pictures stay in memory. With no camera, the apps show the deck screen.</p>
+    <p class="note">The apps, Cura and other OctoPrint clients show the camera. A camera runs only while somebody looks at it. The pictures stay in memory. With no camera, the apps show the deck screen.</p><p class="note">If a camera shows too little USB bandwidth, move it to another USB port.</p>
+  </figure>
+  
+  <figure>
+    <h3>Camera setup: the camera and the roles</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/camera-setup.png" alt="Camera setup: the camera and the roles" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="215" x2="456" y2="215" class="leader"/>
+        <circle cx="456" cy="215" r="5" class="dot"/>
+        <circle cx="520" cy="215" r="15" class="badge"/>
+        <text x="520" y="215" class="badge-n">1</text>
+        
+        <line x1="505" y1="316" x2="456" y2="316" class="leader"/>
+        <circle cx="456" cy="316" r="5" class="dot"/>
+        <circle cx="520" cy="316" r="15" class="badge"/>
+        <text x="520" y="316" class="badge-n">2</text>
+        
+        <line x1="505" y1="417" x2="456" y2="417" class="leader"/>
+        <circle cx="456" cy="417" r="5" class="dot"/>
+        <circle cx="520" cy="417" r="15" class="badge"/>
+        <text x="520" y="417" class="badge-n">3</text>
+        
+        <line x1="505" y1="518" x2="456" y2="518" class="leader"/>
+        <circle cx="456" cy="518" r="5" class="dot"/>
+        <circle cx="520" cy="518" r="15" class="badge"/>
+        <text x="520" y="518" class="badge-n">4</text>
+        
+        <line x1="505" y1="619" x2="456" y2="619" class="leader"/>
+        <circle cx="456" cy="619" r="5" class="dot"/>
+        <circle cx="520" cy="619" r="15" class="badge"/>
+        <text x="520" y="619" class="badge-n">5</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>On</b>Turns the camera on or off.</span></li><li><span class="badge">2</span><span><b>Name</b>The name in the apps.</span></li><li><span class="badge">3</span><span><b>Main camera</b>The webcam of the apps and Cura.</span></li><li><span class="badge">4</span><span><b>Time lapse camera</b>The camera of the time lapse.</span></li><li><span class="badge">5</span><span><b>Picture camera</b>The first layer picture and the pictures of the notifications.</span></li>
+    </ol>
+    <p class="note">Auto is the first camera that is on.</p>
   </figure>
   
   <figure>

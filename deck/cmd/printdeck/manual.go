@@ -633,10 +633,25 @@ func manualParts() []section {
 					Callouts: []callout{
 						{"Picture", "Use it to aim the camera at the bed."},
 						{"State", "The camera, or an error."},
-						{"Camera", "Auto, one camera, or Off."},
+						{"Camera", "Shows the next camera, then all cameras side by side."},
 						{"Turn", "Turns the picture 180°."},
 					},
-					Notes: []string{"The apps, Cura and other OctoPrint clients show the camera. The camera runs only while somebody looks. The pictures stay in memory. With no camera, the apps show the deck screen."}},
+					Notes: []string{"The apps, Cura and other OctoPrint clients show the camera. A camera runs only while somebody looks at it. The pictures stay in memory. With no camera, the apps show the deck screen.",
+						"If a camera shows too little USB bandwidth, move it to another USB port."}},
+				{Name: "camera-setup", Caption: "Camera setup: the camera and the roles",
+					Setup: func(s *manualState) {
+						s.p.State_ = stIdle
+						s.a.Camera = ui.NewDemoCamera()
+						s.a.OpenPrintScreen("camera-setup")
+					},
+					Callouts: []callout{
+						{"On", "Turns the camera on or off."},
+						{"Name", "The name in the apps."},
+						{"Main camera", "The webcam of the apps and Cura."},
+						{"Time lapse camera", "The camera of the time lapse."},
+						{"Picture camera", "The first layer picture and the pictures of the notifications."},
+					},
+					Notes: []string{"Auto is the first camera that is on."}},
 				{Name: "console", Caption: "The console",
 					Setup: func(s *manualState) {
 						s.p.State_ = stIdle
@@ -716,7 +731,7 @@ func manualParts() []section {
 				"The deck uses the OctoPrint API, so slicers can send files and start prints.",
 				"Cura: add the deck with the OctoPrint Connection plugin. The deck asks \"Allow Cura to use the Printdeck?\". Tap Allow.",
 				"OrcaSlicer or PrusaSlicer: add a printer of the type OctoPrint, with the address http://printdeck.local and the API key of the system page.",
-				"The webcam is the camera of the deck: http://printdeck.local/webcam/stream and /webcam/snapshot, with the API key. Add w=320 for smaller pictures, or fps=2 for fewer frames. With no camera, the webcam shows the deck screen.",
+				"The webcam is the main camera of the deck: http://printdeck.local/webcam/stream and /webcam/snapshot, with the API key. Add camera=2 for the second camera, w=320 for smaller pictures, or fps=2 for fewer frames. With no camera, the webcam shows the deck screen.",
 			}},
 		{ID: "settings", Title: "Settings",
 			Intro: []string{"The file printdeck.txt on the PRINTDECK partition holds the settings. Put the SD card in a computer to change it. The deck reads it at each start, and clears the Wi-Fi password in it."},
@@ -893,6 +908,7 @@ func manualSections() []section {
 				"Set up the camera: Settings, then Camera.",
 				"Open Settings, then Time lapse.",
 				"Tap Time lapse to turn it on.",
+				"With two cameras, tap Time lapse camera and Picture camera to choose the cameras.",
 				"Tap First layer for a picture of the first layer, or a picture and a pause. At a pause, check the layer, then tap Resume.",
 				"Print. After the first layer, the deck shows its picture.",
 				"At the end of the print, open http://printdeck.local/system in a browser. The Time lapse part has the video. Click its name to download it.",
@@ -919,7 +935,7 @@ func manualSections() []section {
 				"The deck sends a push message when a print ends or pauses, after the first layer, and when a roll runs short. Settings, then Phones, lists the paired phones.",
 			},
 			Table: [][2]string{
-				{"iPhone app", "The deck screen and its keys."},
+				{"iPhone app", "The deck screen and its keys. With two cameras, tap a camera name on the camera page, or swipe, to switch. The watch shows the same camera."},
 				{"Watch app", "The progress and the time left. Tap for Pause, Resume or Cancel."},
 				{"Complications", "The progress on the watch face."},
 				{"Home Screen widgets", "The status of the print."},
@@ -957,7 +973,7 @@ func manualSections() []section {
 
 		{Chapter: care, ID: "machine", Title: "Look after the printer",
 			Intro:   []string{"Machine has the information of the printer, the history of the prints, the macros, the console and the settings."},
-			Figures: fig("machine", "machine-prints", "machine-more", "settings", "settings-more", "camera", "stats", "console", "monitor")},
+			Figures: fig("machine", "machine-prints", "machine-more", "settings", "settings-more", "camera", "camera-setup", "stats", "console", "monitor")},
 		{Chapter: care, ID: "update", Title: "Update the Printdeck",
 			Intro: []string{
 				"The deck checks for a new version once a day. Machine then shows Software update in orange.",

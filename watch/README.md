@@ -5,7 +5,8 @@ network.
 
 - **iPhone app**: the deck screen in its tall layout. It shows the print, the roll, the model and
   the camera. It has Pause, Resume and Cancel, and Print a file. Tap the camera for a full screen
-  view.
+  view. With two cameras, tap a camera name at the top of that view, or swipe, to switch. The app
+  keeps the choice for each deck, and the watch shows the same camera.
 - **Watch app**: the print on a blue dot-matrix display. Turn the Digital Crown for the camera, the
   model, the layer times and the filament. Tap for Pause, Resume or Cancel.
 - **Complications** and **widgets**: the progress and the time left, on the watch face, the Home
@@ -72,8 +73,10 @@ The App Keys flow of OctoPrint gives the app its key, with no key:
 All other requests have the header `X-Api-Key`:
 
 - `GET /api/job`, `GET /api/printer`: the job and the temperatures.
-- `GET /api/plugin/printdeck`: the roll, the print, the camera and the status screen (`lcd`).
-- `GET /webcam/snapshot?w=..`, `GET /webcam/stream?w=..&fps=..`: the camera.
+- `GET /api/plugin/printdeck`: the roll, the print, the main camera (`camera`), all cameras
+  (`cameras`) and the status screen (`lcd`).
+- `GET /webcam/snapshot?w=..`, `GET /webcam/stream?w=..&fps=..`: the main camera. Add
+  `camera=<id>` for another camera, or `camera=picture` for the camera of the notifications.
 - `POST /api/job`: `{"command":"pause","action":"pause"}`, `{"command":"pause","action":"resume"}`
   and `{"command":"cancel"}`.
 - `GET /api/files?recursive=true`, and `POST /api/files/local/<path>` with
