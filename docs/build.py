@@ -603,9 +603,8 @@ def pics(root, items, cls=""):
 def landing():
     root = ""
     lede = ("Printdeck is a touch screen and print server for Klipper printers. A Raspberry Pi 5 and a 5 inch "
-            "touch display go on the printer in a printed pod. The Pi runs Klipper, and the deck shows and controls "
-            "the print on the touch screen, on the display of the printer, and in a browser. I build it and test it "
-            "on a LulzBot TAZ Workhorse (the original Workhorse).")
+            "touch display go on the printer in a printed pod. I build it and test it on a LulzBot TAZ Workhorse "
+            "(the original Workhorse).")
     body = f"""
 <p>
   <a class="btn primary" href="{REPO}/releases/latest">Download Printdeck OS</a>
@@ -622,22 +621,20 @@ def landing():
 {screens(root)}
 <h2 id="install">Install</h2>
 {md_text(section_body("README.md", "Install"), "", root)}
-<p>The <a href="os/">Printdeck OS</a> page has the first start, the login, the settings and the update in full.</p>
+<p>More on the <a href="os/">Printdeck OS</a> page.</p>
 
 <h2 id="docs">The documentation</h2>
 <div class="map">
-  <a class="card" href="hardware/"><b>The pod</b><span>The touch display and the Pi 5 in a printed case, and the printer brackets: the parts, the print files and the hardware.</span></a>
-  <a class="card" href="ui/"><b>The deck UI</b><span>Every screen of the touch screen with numbered callouts, in the tall layout of the pod and in the wide layout.</span></a>
-  <a class="card" href="os/"><b>Printdeck OS</b><span>The read-only Linux image: install, the first start, the two system slots, the update, the release and the debug image.</span></a>
-  <a class="card" href="deck/"><b>The printdeck program</b><span>One Go program: the Klipper host, the touch screen, the remote screen, the API for slicers and the display of the printer.</span></a>
-  <a class="card" href="slicer/cura-plugin/"><b>Slicers</b><span>The Printdeck plugin for Cura with the Print on a part tool, and the Adaptive Speed script.</span></a>
-  <a class="card" href="desktop/"><b>Desktop app and simulator</b><span>The Printdeck for a computer, the simulated TAZ Workhorse and Mini 2 in 3D, and the tools that make the film.</span></a>
-  <a class="card" href="build/"><b>Build and release</b><span>The OS image, the CI, the tags of a release, the manuals and this site.</span></a>
-  <a class="card" href="reference/commands/"><b>Reference</b><span>The commands and flags of printdeck, the environment variables, the files and paths, and the hardware lists.</span></a>
+  <a class="card" href="hardware/"><b>The pod</b><span>Build the pod and put it on the printer.</span></a>
+  <a class="card" href="ui/"><b>The deck UI</b><span>Every screen, with numbered callouts.</span></a>
+  <a class="card" href="os/"><b>Printdeck OS</b><span>Install, first start, settings and update.</span></a>
+  <a class="card" href="deck/"><b>The printdeck program</b><span>The Klipper host, the screens and the API.</span></a>
+  <a class="card" href="slicer/cura-plugin/"><b>Slicers</b><span>The Cura plugin and the Adaptive Speed script.</span></a>
+  <a class="card" href="desktop/"><b>Desktop app and simulator</b><span>The Printdeck on a computer, with a 3D printer.</span></a>
+  <a class="card" href="build/"><b>Build and release</b><span>The OS image, the CI, the manuals and this site.</span></a>
+  <a class="card" href="reference/commands/"><b>Reference</b><span>Commands, variables, files and hardware lists.</span></a>
 </div>
 
-<h2 id="goal">Goal</h2>
-{md_text(section_body("README.md", "Goal"), "", root)}
 <h2 id="license">License</h2>
 {md_text(section_body("README.md", "License"), "", root)}
 """
@@ -699,7 +696,7 @@ def ui():
     chapters = "".join(
         f'<a class="card" href="{f}/"><b>{esc(t)}</b><span>{", ".join(esc(st) for _, st in secs)}</span></a>' for t, f, secs, _ in tall)
     body = f"""
-<p>The deck is the application on the touch screen of the pod. The pod shows the tall layout. The deck also has a wide layout, for a display that is mounted wide. The pages of this section show every screen with numbered callouts, in the words of the manual. Each page has a switch between the tall and the wide layout.</p>
+<p>Every screen of the deck, with numbered callouts. The pod uses the tall layout. Each page has a switch to the wide layout.</p>
 {screens(root)}
 <h2 id="screens">The screens</h2>
 {md_text(screens_md, "", root)}
@@ -707,7 +704,6 @@ def ui():
 <div class="map">{chapters}</div>
 <h2 id="manuals">The manuals and the booklets</h2>
 {md_text(section_body("README.md", "Manual"), "", root)}
-<p>The booklets have the same style as the pictures of this site.</p>
 """
     page("ui/", "The deck UI", "The screens of the deck",
          "Every screen of the touch screen, for a display that is mounted tall or wide.", body)
@@ -903,9 +899,9 @@ def desktop_page():
 {pics(root, [("img/sim-deck.png", "The deck window of the desktop app during a print of the simulated TAZ Workhorse", "The deck window with -sim"),
              ("img/sim-3d.png", "The 3D window: the simulated TAZ Workhorse prints a plaque, and the pod on the printer shows the deck UI", "The 3D window of the simulated printer")])}
 <h2 id="app">printdeck app</h2>
-<p>The window starts <code>printdeck app</code> and shows its remote screen. The app runs the Klipper host in its own process, as the <code>klipper</code> service does on the deck, and serves the screen and the API for slicers on <code>127.0.0.1:7351</code>, so Cura finds it again after each start. Its flags, from <code>deck/cmd/printdeck/app.go</code>:</p>
+<p>The window starts <code>printdeck app</code> and shows its remote screen. The app serves the screen and the API for slicers on <code>127.0.0.1:7351</code>. Its flags, from <code>deck/cmd/printdeck/app.go</code>:</p>
 <div class="table-wrap"><table><tr><th>Flag</th><th>Default</th><th>What it does</th></tr>{fl}</table></div>
-<p>The folder of the app has <code>gcodes/</code>, <code>models/</code>, <code>klipper/printer.cfg</code>, <code>klipper/printdeck.cfg</code> (the app writes it at each start), <code>logs/klippy.log</code> and the API socket <code>klippy.sock</code>. A new folder gets a <code>printer.cfg</code> with only the include of the Printdeck sections: put the configuration of your printer above it. With <code>-sim</code>, a new folder gets the simulated TAZ Workhorse (<code>deck/internal/printer/sim/taz-workhorse.cfg</code>).</p>
+<p>The folder of the app has <code>gcodes/</code>, <code>models/</code>, <code>klipper/printer.cfg</code>, <code>logs/klippy.log</code> and the API socket <code>klippy.sock</code>. In a new folder, put the configuration of your printer above the include line of <code>printer.cfg</code>. With <code>-sim</code>, a new folder gets the simulated TAZ Workhorse.</p>
 <h2 id="window">The window</h2>
 <p>The window program (<code>desktop/</code>) reads these environment variables:</p>
 <div class="table-wrap"><table><tr><th>Variable</th><th>What it does</th></tr>
@@ -913,7 +909,7 @@ def desktop_page():
 <tr><td><code>PRINTDECK_ATTACH</code></td><td>A file with the first line of the output of a <code>printdeck app</code> that runs already. The window connects to that app and starts no app.</td></tr>
 <tr><td><code>PRINTDECK_FILM</code></td><td>With <code>-sim</code>: the 3D window shows the film of <code>desktop/film/</code>, and records it to this file when the file with <code>.go</code> added exists.</td></tr>
 <tr><td><code>PRINTDECK_CAMERA</code></td><td><code>1</code> opens the Camera window at the start. Ctrl+K opens and closes it.</td></tr>
-<tr><td><code>PRINTDECK_TEST_CAMERA</code></td><td>Any value: <code>printdeck app</code> finds a test camera that sends a moving test picture, 960 x 540 at 10 frames a second, also on a Mac. The Auto setting picks it. It is for tests of the camera views with no real camera.</td></tr>
+<tr><td><code>PRINTDECK_TEST_CAMERA</code></td><td>Any value: <code>printdeck app</code> gets a test camera with a moving picture (960 x 540, 10 frames a second).</td></tr>
 <tr><td><code>PRINTDECK_SHOT</code></td><td>A PNG file: the window writes a picture of the windows after <code>PRINTDECK_SHOT_SECONDS</code> (8), and ends. With <code>PRINTDECK_SHOT_FRAMES=N</code> and <code>-sim</code>, it first writes N pictures of the 3D window, 10 a second. An open Camera window goes to the file with <code>-camera</code> before <code>.png</code>.</td></tr>
 </table></div>
 <p>The deck UI in the window is drawn by the QML files of the Cura plugin (<code>slicer/cura-plugin/Printdeck/qml</code>), so the two stay the same.</p>
@@ -1145,7 +1141,8 @@ def environment_page():
     other_rows = "".join(f"<tr><td><code>{n}</code></td><td>{esc(w)}</td><td>{esc(t)}</td></tr>" for n, w, t in other)
     body = f"""
 <h2 id="deck">The settings of the deck</h2>
-<p>The deck reads its settings from the environment (<code>deck/internal/config/config.go</code>). On Printdeck OS, the service <code>printdeck-deck</code> loads them from <code>/etc/printdeck/deck.env</code>, then the API key from <code>/var/lib/printdeck/api.env</code>, then <code>/var/lib/printdeck/settings.env</code>, which <code>printdeck-settings</code> writes from <code>printdeck.txt</code> on the <code>PRINTDECK</code> partition. To change a setting on a release image, put it in <code>printdeck.txt</code> in lower case, for example <code>display_rotate=90</code>. See <a href="{root}reference/files/">Files, paths and services</a>.</p>
+<p>To change a setting, put it in <code>printdeck.txt</code> on the <code>PRINTDECK</code> partition, in lower case, for example <code>display_rotate=90</code>. Then start the Pi again.</p>
+<p>The service <code>printdeck-deck</code> loads <code>/etc/printdeck/deck.env</code>, then <code>/var/lib/printdeck/api.env</code>, then <code>/var/lib/printdeck/settings.env</code> (from <code>printdeck.txt</code>). See <a href="{root}reference/files/">Files, paths and services</a>.</p>
 <div class="table-wrap"><table><tr><th>Variable</th><th>Default</th><th>What it does</th></tr>{rows}</table></div>
 <h3>deck.env of the image</h3>
 <pre><code>{esc(read("os/board/rootfs/etc/printdeck/deck.env"))}</code></pre>

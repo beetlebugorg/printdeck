@@ -210,7 +210,7 @@
     <h2>What the plugin does</h2>
     
     
-    <p>The Printdeck plugin connects Cura to the Printdeck. It uses the printer of the OctoPrint connection plugin, with the same address and API key. After the setup, the plugin works by itself. A message in Cura tells you what it did.</p>
+    <p>The Printdeck plugin connects Cura to the Printdeck. It uses the address and the API key of the OctoPrint connection plugin. A message in Cura shows each action of the plugin.</p>
     
     
     
@@ -269,13 +269,13 @@
     <h2>Connect the Printdeck</h2>
     
     
-    <p>The plugin uses the printer of the OctoPrint connection plugin. The deck answers the OctoPrint API, so Cura sees it as an OctoPrint printer named Printdeck. Install the OctoPrint connection plugin first.</p>
+    <p>Cura sees the deck as an OctoPrint printer named Printdeck. Install the OctoPrint connection plugin first.</p>
     
     
     <ol class="steps"><li><span class="n">1</span><span>In Cura, open the Marketplace. Install OctoPrint Connection, and restart Cura.</span></li><li><span class="n">2</span><span>Select Preferences &gt; Configure Cura &gt; Printers. Select your printer, and click Connect OctoPrint.</span></li><li><span class="n">3</span><span>Select Printdeck in the list. If the list does not show it, click Add, and type the address printdeck.local.</span></li><li><span class="n">4</span><span>Click Request to get the API key.</span></li><li><span class="n">5</span><span>The touch screen asks &#34;Allow Cura to use the Printdeck?&#34;. Tap Allow.</span></li><li><span class="n">6</span><span>Click Connect, and close the preferences.</span></li></ol>
     
     
-    <p>When Cura connects, a card next to the slice button shows the roll in the printer: its color, its name, and the filament that is left on it. After a slice, the card shows the filament of the model.</p>
+    <p>When Cura connects, a card next to the slice button shows the roll in the printer.</p>
     
     
     <p class="note">The system page of the deck also shows the API key for slicers: http://printdeck.local/system.</p>
@@ -306,7 +306,7 @@
     <ol class="steps"><li><span class="n">1</span><span>Slice the model as usual.</span></li><li><span class="n">2</span><span>Click Print to Printdeck. Cura sends the file to the deck.</span></li><li><span class="n">3</span><span>Cura opens the Printdeck tab. The tab shows the deck as the print starts.</span></li></ol>
     
     
-    <p>The OctoPrint connection starts the print after the upload when its option &#34;Automatically start print job after uploading&#34; is on. Each file that Cura sends has the material of Cura in its header.</p>
+    <p>The print starts after the upload when the option &#34;Automatically start print job after uploading&#34; of the OctoPrint connection is on.</p>
     
     
   
@@ -322,7 +322,7 @@
     <h2>The Printdeck tab</h2>
     
     
-    <p>The Printdeck tab is next to Monitor. It shows the screens of the deck, live. Click a key in the tab as you tap it on the touch screen.</p>
+    <p>The Printdeck tab is next to Monitor. Click a key in the tab as you tap it on the touch screen.</p>
     
     
     
@@ -353,7 +353,7 @@
     </div>
     
     
-    <p>While the tab connects to the deck, it shows the start screen of the deck with the words &#34;Connecting to printdeck.local&#34;. The dots of the word print from the bottom up, one layer at a time. The tab gets the screens only while it shows.</p>
+    <p>While the tab connects, it shows the start screen of the deck with &#34;Connecting to printdeck.local&#34;.</p>
     
     
     
@@ -365,7 +365,7 @@
     </div>
     
     
-    <p>During a print, the key Show in Preview is under the screen. It opens the file of the print in the Preview.</p>
+    <p>During a print, Show in Preview under the screen opens the file of the print in the Preview.</p>
     
     
   
@@ -400,22 +400,19 @@
     <h2>The roll and the material</h2>
     
     
-    <p>The deck keeps a list of your rolls of filament: Filament on the touch screen. The plugin reads the roll in the printer every 10 seconds.</p>
+    <p>The plugin reads the roll in the printer every 10 seconds.</p>
     
     
     <h4>Cura follows the roll</h4>
     
     
-    <p>When the roll in the deck changes, Cura changes to the material of the roll. A message tells you, for example: &#34;The Printdeck has Black (PLA). Cura now prints with Generic PLA.&#34; When Cura has no profile for that material on this printer, the message tells you, and Cura keeps its material.</p>
+    <p>When the roll in the deck changes, Cura changes to its material. A message shows the change, for example: &#34;The Printdeck has Black (PLA). Cura now prints with Generic PLA.&#34; With no Cura profile for that material, Cura keeps its material.</p>
     
     
     <h4>Your rolls in the material menu</h4>
     
     
-    <p>Each roll on the deck has a material in Cura, with the name and the color of the roll. The rolls are favorites, so they are at the top of the material menu. When a roll has no material in Cura, the plugin makes one: a copy of the Cura material of the same type, for example Generic PLA. The plugin makes one material every 10 seconds. When you change the name or the color of a roll on the deck, its material changes too. The price and the weight of the roll go to the material, so Cura shows the cost of a print.</p>
-    
-    
-    <p>When you remove a roll from the deck, its material leaves the favorites. The material stays in Cura, so that old projects still open. A material that you choose in Cura does not change the roll on the deck.</p>
+    <p>Each roll on the deck has a material in Cura, with the name, the color, the price and the weight of the roll. The rolls are favorites, at the top of the material menu. When you remove a roll from the deck, its material leaves the favorites and stays in Cura.</p>
     
     
     <h4>A short roll</h4>
@@ -427,7 +424,7 @@
     <h4>A file for another material</h4>
     
     
-    <p>Cura writes its material into the header of each file that it sends. Before the deck prints a file for another material, the touch screen asks first, for example: &#34;The file is for Black ABS. White (PLA) is in the printer.&#34; Tap Print anyway to print the file. To print with the correct material, change the roll first.</p>
+    <p>Before the deck prints a file for another material, the touch screen asks first, for example: &#34;The file is for Black ABS. White (PLA) is in the printer.&#34; Tap Print anyway, or change the roll first.</p>
     
     
   
@@ -443,7 +440,7 @@
     <h2>Follow the print</h2>
     
     
-    <p>During a print of the file that Cura has open, the Preview shows the layer that prints. The Preview goes to the next layer when the deck starts it. Between two layers, you can look at other layers.</p>
+    <p>During a print of the file that Cura has open, the Preview shows the layer that prints.</p>
     
     
     <h4>A print that Cura does not have open</h4>
@@ -455,10 +452,10 @@
     <h4>Play with the printer</h4>
     
     
-    <p>In the Preview of the file that prints, click Play. The nozzle of the Preview then moves with the nozzle of the printer, move by move. To look at other layers, click Pause, or drag a slider. The Preview follows the printer only for the G-code file of the print, from Show in Preview or from the disk.</p>
+    <p>In the Preview of the file that prints, click Play. The nozzle of the Preview then moves with the nozzle of the printer. To see other layers, click Pause, or drag a slider.</p>
     
     
-    <p>Cura shows no print time for a G-code file. The Printdeck tab shows the time left. When the print ends, Cura shows a message.</p>
+    <p>The Printdeck tab shows the time left. When the print ends, Cura shows a message.</p>
     
     
   
@@ -474,7 +471,7 @@
     <h2>Print on a part</h2>
     
     
-    <p>The Print on a part tool prints new models on a part that is printed already, for example a logo in another color on a lid. The part goes into a pocket that the deck prints on the bed, so its place is exact. The deck then checks the height of the part with a paper test.</p>
+    <p>The Print on a part tool prints new models on a part that is printed already, for example a logo on a lid. The part goes into a pocket on the bed. The deck checks the height of the part with a paper test.</p>
     
     
     
@@ -523,7 +520,7 @@
     <p>Type the text, its size, and its height over the face (Raised). Then click Add text. The text goes on the top of the part, at its middle. Move and turn it as usual.</p>
     
     
-    <p class="note">While a part is the base, the tool turns off &#34;Ensure models are kept apart&#34; in the preferences of Cura. That setting pushes the pocket away from the new models. Click Clear the base to turn it on again.</p>
+    <p class="note">While a part is the base, the tool turns off &#34;Ensure models are kept apart&#34; in Cura. Click Clear the base to turn it on again.</p>
     
     
   
@@ -542,7 +539,7 @@
     <ol class="steps"><li><span class="n">1</span><span>Click Print to Printdeck. The deck prints the pocket on the bed.</span></li><li><span class="n">2</span><span>The nozzle lifts, and the print pauses. The touch screen shows the message of the pause.</span></li><li><span class="n">3</span><span>Put the part in the pocket.</span></li><li><span class="n">4</span><span>For another color, change the filament now.</span></li><li><span class="n">5</span><span>Tap Check the height. The nozzle goes over the part.</span></li><li><span class="n">6</span><span>Put a sheet of paper under the nozzle. Lower the nozzle until the paper drags a little, then tap Accept.</span></li><li><span class="n">7</span><span>Tap Resume. The new models print on the part.</span></li></ol>
     
     
-    <p class="note">The height check sets the height of the new models on the real part. After the check, the screen shows the difference from the file, for example &#43;0.12 mm. If you tap Resume with no height check, the deck asks first.</p>
+    <p class="note">After the height check, the screen shows the difference from the file, for example &#43;0.12 mm. If you tap Resume with no height check, the deck asks first.</p>
     
     
     <h4>The next color</h4>

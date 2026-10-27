@@ -64,19 +64,16 @@
 <nav class="onpage"><b>On this page</b><ol><li><a href="#image">The OS image</a></li><li><a href="#ci">Continuous integration</a></li><li><a href="#site">The documentation</a></li></ol></nav>
 <h2 id="image">The OS image</h2>
 <p>You need Docker and about 20 GB of free disk. Then run:</p>
-<pre><code>os/build.sh</code></pre>
-<p>The first build takes about one hour. The next builds take a few minutes. For the debug image, run <code>os/build.sh debug</code>. The output is:</p>
-<div class="table-wrap"><table><thead><tr><th>File</th><th>What it is</th></tr></thead><tbody><tr><td><code>os/out/printdeck.img.xz</code></td><td>The full disk image, compressed with xz</td></tr><tr><td><code>os/out/printdeck-update.tar.xz</code></td><td>The update bundle for a Printdeck that runs this system</td></tr><tr><td><code>os/out/printdeck-debug.img.xz</code>, <code>os/out/printdeck-debug-update.tar.xz</code></td><td>The same for the debug image</td></tr></tbody></table></div>
-<p>The release image and the debug image have their own build folders. An update bundle of either image installs on a Printdeck that runs either image.</p>
-<p>Git ignores <code>os/out/</code>. The Buildroot tree, the downloads and the build files are in <code>~/.cache/printdeck-os</code>. Set <code>PRINTDECK_OS_CACHE</code> to use a different folder. Only one build can use the folder at a time (<code>build.lock</code>).</p>
-<p>Other Buildroot targets go through the same script, for example:</p>
+<pre><code>os/build.sh            # the release image
+os/build.sh debug      # the debug image</code></pre>
+<p>The first build runs for about one hour. The next builds run for a few minutes. The output is:</p>
+<div class="table-wrap"><table><thead><tr><th>File</th><th>What it is</th></tr></thead><tbody><tr><td><code>os/out/printdeck.img.xz</code></td><td>The full disk image, compressed with xz</td></tr><tr><td><code>os/out/printdeck-update.tar.xz</code></td><td>The update bundle</td></tr><tr><td><code>os/out/printdeck-debug.img.xz</code>, <code>os/out/printdeck-debug-update.tar.xz</code></td><td>The same for the debug image</td></tr></tbody></table></div>
+<p>The build files are in <code>~/.cache/printdeck-os</code>, or in <code>PRINTDECK_OS_CACHE</code>. Other Buildroot targets go through the same script:</p>
 <pre><code>os/build.sh menuconfig          # change the system configuration
 os/build.sh savedefconfig       # write it back to os/configs/printdeck_defconfig
-os/build.sh clean               # delete the build files, for a build from the start
-os/build.sh debug clean         # the same for the debug image
-
-Each build builds the Printdeck program again from `deck/`.</code></pre>
-<p>Buildroot does not delete the files of a package that you turn off. After such a change, build from the start (<code>os/build.sh clean</code>, then <code>os/build.sh</code>).</p>
+os/build.sh clean               # delete the build files
+os/build.sh debug clean         # the same for the debug image</code></pre>
+<p>After you turn off a package, build from the start (<code>os/build.sh clean</code>, then <code>os/build.sh</code>).</p>
 <p>Build the Printdeck OS image in a Docker container.</p>
 <pre><code>os/build.sh                  build the release image
 os/build.sh debug            build the debug image: the release image with SSH and tools

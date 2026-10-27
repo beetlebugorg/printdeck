@@ -60,7 +60,7 @@
 <main>
 <p class="eyebrow">Documentation</p>
 <h1>Printdeck</h1>
-<p class="lede">Printdeck is a touch screen and print server for Klipper printers. A Raspberry Pi 5 and a 5 inch touch display go on the printer in a printed pod. The Pi runs Klipper, and the deck shows and controls the print on the touch screen, on the display of the printer, and in a browser. I build it and test it on a LulzBot TAZ Workhorse (the original Workhorse).</p>
+<p class="lede">Printdeck is a touch screen and print server for Klipper printers. A Raspberry Pi 5 and a 5 inch touch display go on the printer in a printed pod. I build it and test it on a LulzBot TAZ Workhorse (the original Workhorse).</p>
 
 <p>
   <a class="btn primary" href="https://github.com/beetlebugorg/printdeck/releases/latest">Download Printdeck OS</a>
@@ -73,30 +73,26 @@
   <figure class="frame-img white"><img src="img/pod-taz.png" alt="The Printdeck pod on the front left of a LulzBot TAZ Workhorse"><figcaption>The pod on the LulzBot TAZ Workhorse</figcaption></figure>
 </div>
 <h2 id="before">Before you use it</h2>
-<p>Printdeck is a personal project, for personal use. It follows the goals of one person for print software.</p>
+<p>Printdeck is a personal project, for personal use.</p>
 <ul><li>Printdeck has run on one printer only: a LulzBot TAZ Workhorse.</li><li>AI writes the code and the documentation. The code gets tests, and a person reads the documents. Errors can still occur.</li><li>Results on your printer can be different. Use Printdeck at your own risk.</li></ul>
-<p>The deck can also load the Klipper example config of another printer.</p>
 <div class="pics four screens"><figure><img src="manual/img/printing.png" alt="A print with the model up to the layer that prints now" loading="lazy"></figure><figure><img src="manual/img/first-layer.png" alt="The first layer with the Z offset" loading="lazy"></figure><figure><img src="manual/img/file.png" alt="A file with its print time, filament, roll and cost" loading="lazy"></figure><figure><img src="manual/img/filament.png" alt="The Filament page with the roll in the printer" loading="lazy"></figure></div>
 <h2 id="install">Install</h2>
-<ol><li>Download <code>printdeck.img.xz</code> from the <a href="https://github.com/beetlebugorg/printdeck/releases/latest">latest release</a>.</li><li>Write it to an SD card with Raspberry Pi Imager (&quot;Use custom&quot;).</li><li>Put the SD card in the Pi of the pod, and connect the power. The setup on the touch screen connects the Wi-Fi and finds the printer.</li></ol>
-<p>To update, open Machine &gt; Software update on the touch screen. <code>os/README.md</code> has the details.</p>
-<p>The <a href="os/">Printdeck OS</a> page has the first start, the login, the settings and the update in full.</p>
+<ol><li>Download <code>printdeck.img.xz</code> from the <a href="https://github.com/beetlebugorg/printdeck/releases/latest">latest release</a>.</li><li>Write it to an SD card with Raspberry Pi Imager (&quot;Use custom&quot;).</li><li>Put the SD card in the Pi of the pod, and connect the power. The setup connects the Wi-Fi and finds the printer.</li></ol>
+<p>To update, open Machine &gt; Software update on the touch screen.</p>
+<p>More on the <a href="os/">Printdeck OS</a> page.</p>
 
 <h2 id="docs">The documentation</h2>
 <div class="map">
-  <a class="card" href="hardware/"><b>The pod</b><span>The touch display and the Pi 5 in a printed case, and the printer brackets: the parts, the print files and the hardware.</span></a>
-  <a class="card" href="ui/"><b>The deck UI</b><span>Every screen of the touch screen with numbered callouts, in the tall layout of the pod and in the wide layout.</span></a>
-  <a class="card" href="os/"><b>Printdeck OS</b><span>The read-only Linux image: install, the first start, the two system slots, the update, the release and the debug image.</span></a>
-  <a class="card" href="deck/"><b>The printdeck program</b><span>One Go program: the Klipper host, the touch screen, the remote screen, the API for slicers and the display of the printer.</span></a>
-  <a class="card" href="slicer/cura-plugin/"><b>Slicers</b><span>The Printdeck plugin for Cura with the Print on a part tool, and the Adaptive Speed script.</span></a>
-  <a class="card" href="desktop/"><b>Desktop app and simulator</b><span>The Printdeck for a computer, the simulated TAZ Workhorse and Mini 2 in 3D, and the tools that make the film.</span></a>
-  <a class="card" href="build/"><b>Build and release</b><span>The OS image, the CI, the tags of a release, the manuals and this site.</span></a>
-  <a class="card" href="reference/commands/"><b>Reference</b><span>The commands and flags of printdeck, the environment variables, the files and paths, and the hardware lists.</span></a>
+  <a class="card" href="hardware/"><b>The pod</b><span>Build the pod and put it on the printer.</span></a>
+  <a class="card" href="ui/"><b>The deck UI</b><span>Every screen, with numbered callouts.</span></a>
+  <a class="card" href="os/"><b>Printdeck OS</b><span>Install, first start, settings and update.</span></a>
+  <a class="card" href="deck/"><b>The printdeck program</b><span>The Klipper host, the screens and the API.</span></a>
+  <a class="card" href="slicer/cura-plugin/"><b>Slicers</b><span>The Cura plugin and the Adaptive Speed script.</span></a>
+  <a class="card" href="desktop/"><b>Desktop app and simulator</b><span>The Printdeck on a computer, with a 3D printer.</span></a>
+  <a class="card" href="build/"><b>Build and release</b><span>The OS image, the CI, the manuals and this site.</span></a>
+  <a class="card" href="reference/commands/"><b>Reference</b><span>Commands, variables, files and hardware lists.</span></a>
 </div>
 
-<h2 id="goal">Goal</h2>
-<p>Printdeck is a very small operating system with one purpose. The Printdeck program is one static Go binary with no runtime dependencies, on a minimal Linux system. We build it from open source projects, such as Klipper. We respect their licenses, give credit, and keep our license compatible. We are not here to take code. We reform it into something new and give it back, in the spirit of open source, with the help of AI. <code>ARCHITECTURE.md</code> has the plan and the rules.</p>
-<p>Printdeck is one integrated stack. The printer firmware, the touch screen, the web screen, the slicer integration, and the iPhone and Apple Watch apps are made to work together.</p>
 <h2 id="license">License</h2>
 <p>Printdeck is free software under the GNU Affero General Public License, version 3. See <code>LICENSE</code>, and the &quot;Open source and licenses&quot; section of <code>ARCHITECTURE.md</code>. The iPhone and Apple Watch apps in <code>watch/</code> are under the MIT License: see <code>watch/LICENSE</code>. The Printdeck program contains a port of Klipper&#x27;s host (GPL-3.0). The OS image contains the other packages of the image, each under its own license.</p>
 

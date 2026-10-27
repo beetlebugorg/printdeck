@@ -113,9 +113,8 @@ func (g *bookGuide) shot(img, caption string, h float64, marks []mark, cs ...cal
 func curaGuides() []bookGuide {
 	what := bookGuide{Chapter: chCuraSetup, Title: "What the plugin does"}
 	what.title()
-	what.para("The Printdeck plugin connects Cura to the Printdeck. It uses the printer of the OctoPrint connection " +
-		"plugin, with the same address and API key. After the setup, the plugin works by itself. A message in Cura " +
-		"tells you what it did.")
+	what.para("The Printdeck plugin connects Cura to the Printdeck. It uses the address and the API key of the " +
+		"OctoPrint connection plugin. A message in Cura shows each action of the plugin.")
 	what.shot("cura-tab", "The deck in the Printdeck tab of Cura", 2.45, nil)
 	what.items("list",
 		"The print button says Print to Printdeck. After a send, Cura opens the Printdeck tab.",
@@ -144,8 +143,7 @@ func curaGuides() []bookGuide {
 
 	conn := bookGuide{Chapter: chCuraSetup, Title: "Connect the Printdeck"}
 	conn.title()
-	conn.para("The plugin uses the printer of the OctoPrint connection plugin. The deck answers the OctoPrint API, " +
-		"so Cura sees it as an OctoPrint printer named Printdeck. Install the OctoPrint connection plugin first.")
+	conn.para("Cura sees the deck as an OctoPrint printer named Printdeck. Install the OctoPrint connection plugin first.")
 	conn.items("olist",
 		"In Cura, open the Marketplace. Install OctoPrint Connection, and restart Cura.",
 		"Select Preferences > Configure Cura > Printers. Select your printer, and click Connect OctoPrint.",
@@ -153,8 +151,7 @@ func curaGuides() []bookGuide {
 		"Click Request to get the API key.",
 		"The touch screen asks \"Allow Cura to use the Printdeck?\". Tap Allow.",
 		"Click Connect, and close the preferences.")
-	conn.para("When Cura connects, a card next to the slice button shows the roll in the printer: its color, its " +
-		"name, and the filament that is left on it. After a slice, the card shows the filament of the model.")
+	conn.para("When Cura connects, a card next to the slice button shows the roll in the printer.")
 	conn.note("The system page of the deck also shows the API key for slicers: http://printdeck.local/system.")
 
 	send := bookGuide{Chapter: chCuraPrint, Title: "Send a print"}
@@ -164,13 +161,12 @@ func curaGuides() []bookGuide {
 		"Slice the model as usual.",
 		"Click Print to Printdeck. Cura sends the file to the deck.",
 		"Cura opens the Printdeck tab. The tab shows the deck as the print starts.")
-	send.para("The OctoPrint connection starts the print after the upload when its option \"Automatically start print " +
-		"job after uploading\" is on. Each file that Cura sends has the material of Cura in its header.")
+	send.para("The print starts after the upload when the option \"Automatically start print job after uploading\" " +
+		"of the OctoPrint connection is on.")
 
 	tab := bookGuide{Chapter: chCuraPrint, Title: "The Printdeck tab"}
 	tab.title()
-	tab.para("The Printdeck tab is next to Monitor. It shows the screens of the deck, live. Click a key in the tab as " +
-		"you tap it on the touch screen.")
+	tab.para("The Printdeck tab is next to Monitor. Click a key in the tab as you tap it on the touch screen.")
 	tab.shot("cura-tab", "", 2.45, []mark{{1, 58.4, 2.2}, {2, 11.5, 13}, {3, 14.5, 52.5}, {4, 27.5, 52.5}, {5, 40.5, 52.5},
 		{6, 47.5, 73.5}, {7, 88, 14}},
 		callout{"Printdeck", "The tab of the plugin, next to Monitor."},
@@ -181,43 +177,34 @@ func curaGuides() []bookGuide {
 		callout{"The file", "The name of the file, the layer, and the time left."},
 		callout{"The layer", "The model up to the layer that prints now."})
 	tab.shot("cura-tune", "Tune, after a click on Tune", 2.45, nil)
-	tab.para("While the tab connects to the deck, it shows the start screen of the deck with the words \"Connecting to " +
-		"printdeck.local\". The dots of the word print from the bottom up, one layer at a time. The tab gets the " +
-		"screens only while it shows.")
+	tab.para("While the tab connects, it shows the start screen of the deck with \"Connecting to printdeck.local\".")
 	tab.shot("cura-connecting", "The start screen, while the tab connects", 2.2, nil)
-	tab.para("During a print, the key Show in Preview is under the screen. It opens the file of the print in the Preview.")
+	tab.para("During a print, Show in Preview under the screen opens the file of the print in the Preview.")
 	tab.sub("When the tab shows no deck")
 	tab.row("Cura has no connection to a Printdeck", "Connect the printer with the OctoPrint connection plugin. See Connect the Printdeck.")
 	tab.row("The Printdeck refused the screen", "Update Printdeck OS, and check the API key of the OctoPrint connection.")
 
 	roll := bookGuide{Chapter: chCuraPrint, Title: "The roll and the material"}
 	roll.title()
-	roll.para("The deck keeps a list of your rolls of filament: Filament on the touch screen. The plugin reads the roll " +
-		"in the printer every 10 seconds.")
+	roll.para("The plugin reads the roll in the printer every 10 seconds.")
 	roll.sub("Cura follows the roll")
-	roll.para("When the roll in the deck changes, Cura changes to the material of the roll. A message tells you, for " +
-		"example: \"The Printdeck has Black (PLA). Cura now prints with Generic PLA.\" When Cura has no profile for " +
-		"that material on this printer, the message tells you, and Cura keeps its material.")
+	roll.para("When the roll in the deck changes, Cura changes to its material. A message shows the change, for " +
+		"example: \"The Printdeck has Black (PLA). Cura now prints with Generic PLA.\" With no Cura profile for " +
+		"that material, Cura keeps its material.")
 	roll.sub("Your rolls in the material menu")
-	roll.para("Each roll on the deck has a material in Cura, with the name and the color of the roll. The rolls are " +
-		"favorites, so they are at the top of the material menu. When a roll has no material in Cura, the plugin " +
-		"makes one: a copy of the Cura material of the same type, for example Generic PLA. The plugin makes one " +
-		"material every 10 seconds. When you change the name or the color of a roll on the deck, its material " +
-		"changes too. The price and the weight of the roll go to the material, so Cura shows the cost of a print.")
-	roll.para("When you remove a roll from the deck, its material leaves the favorites. The material stays in Cura, " +
-		"so that old projects still open. A material that you choose in Cura does not change the roll on the deck.")
+	roll.para("Each roll on the deck has a material in Cura, with the name, the color, the price and the weight of " +
+		"the roll. The rolls are favorites, at the top of the material menu. When you remove a roll from the deck, " +
+		"its material leaves the favorites and stays in Cura.")
 	roll.sub("A short roll")
 	roll.para("After a slice, Cura compares the grams of the model with the grams left on the roll. When the roll is " +
 		"too short, a message stays until you close it: \"The model needs 120.4 g of filament. Black has 80.0 g left.\"")
 	roll.sub("A file for another material")
-	roll.para("Cura writes its material into the header of each file that it sends. Before the deck prints a file for " +
-		"another material, the touch screen asks first, for example: \"The file is for Black ABS. White (PLA) is in " +
-		"the printer.\" Tap Print anyway to print the file. To print with the correct material, change the roll first.")
+	roll.para("Before the deck prints a file for another material, the touch screen asks first, for example: " +
+		"\"The file is for Black ABS. White (PLA) is in the printer.\" Tap Print anyway, or change the roll first.")
 
 	follow := bookGuide{Chapter: chCuraPrint, Title: "Follow the print"}
 	follow.title()
-	follow.para("During a print of the file that Cura has open, the Preview shows the layer that prints. The Preview " +
-		"goes to the next layer when the deck starts it. Between two layers, you can look at other layers.")
+	follow.para("During a print of the file that Cura has open, the Preview shows the layer that prints.")
 	follow.sub("A print that Cura does not have open")
 	follow.items("olist",
 		"Open the Printdeck tab.",
@@ -226,16 +213,13 @@ func curaGuides() []bookGuide {
 		"The Preview follows the layer that prints.")
 	follow.sub("Play with the printer")
 	follow.para("In the Preview of the file that prints, click Play. The nozzle of the Preview then moves with the " +
-		"nozzle of the printer, move by move. To look at other layers, click Pause, or drag a slider. The Preview " +
-		"follows the printer only for the G-code file of the print, from Show in Preview or from the disk.")
-	follow.para("Cura shows no print time for a G-code file. The Printdeck tab shows the time left. When the print " +
-		"ends, Cura shows a message.")
+		"nozzle of the printer. To see other layers, click Pause, or drag a slider.")
+	follow.para("The Printdeck tab shows the time left. When the print ends, Cura shows a message.")
 
 	part := bookGuide{Chapter: chCuraPart, Title: "Print on a part"}
 	part.title()
-	part.para("The Print on a part tool prints new models on a part that is printed already, for example a logo in " +
-		"another color on a lid. The part goes into a pocket that the deck prints on the bed, so its place is exact. " +
-		"The deck then checks the height of the part with a paper test.")
+	part.para("The Print on a part tool prints new models on a part that is printed already, for example a logo on " +
+		"a lid. The part goes into a pocket on the bed. The deck checks the height of the part with a paper test.")
 	part.shot("cura-panel", "The tool", 2.6, []mark{{1, 5.8, 5.8}, {2, 46, 12.3}, {3, 55.8, 21.4}, {4, 58.4, 30.5},
 		{5, 67.9, 39.5}, {6, 90.8, 48.1}, {7, 74.2, 70}, {8, 50, 76.7}, {9, 51.3, 93.3}},
 		callout{"Print on a part", "The tool, at the bottom of the left toolbar of Prepare."},
@@ -263,8 +247,8 @@ func curaGuides() []bookGuide {
 	prep.sub("Lettering")
 	prep.para("Type the text, its size, and its height over the face (Raised). Then click Add text. The text goes on " +
 		"the top of the part, at its middle. Move and turn it as usual.")
-	prep.note("While a part is the base, the tool turns off \"Ensure models are kept apart\" in the preferences of " +
-		"Cura. That setting pushes the pocket away from the new models. Click Clear the base to turn it on again.")
+	prep.note("While a part is the base, the tool turns off \"Ensure models are kept apart\" in Cura. Click Clear " +
+		"the base to turn it on again.")
 
 	run := bookGuide{Chapter: chCuraPart, Title: "At the printer"}
 	run.title()
@@ -276,8 +260,8 @@ func curaGuides() []bookGuide {
 		"Tap Check the height. The nozzle goes over the part.",
 		"Put a sheet of paper under the nozzle. Lower the nozzle until the paper drags a little, then tap Accept.",
 		"Tap Resume. The new models print on the part.")
-	run.note("The height check sets the height of the new models on the real part. After the check, the screen shows " +
-		"the difference from the file, for example +0.12 mm. If you tap Resume with no height check, the deck asks first.")
+	run.note("After the height check, the screen shows the difference from the file, for example +0.12 mm. " +
+		"If you tap Resume with no height check, the deck asks first.")
 	run.sub("The next color")
 	run.para("Keep the part in its pocket. In the tool, check The pocket is on the bed, and send the next file. That " +
 		"file has no pocket. It homes Z up first, does not probe or heat the bed, and purges beside the pocket.")

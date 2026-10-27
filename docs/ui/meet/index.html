@@ -63,7 +63,7 @@
 
 <div class="layout-switch"><span>Layout:</span><a href="" aria-current="page">Tall</a><a href="../../ui/wide/meet/">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#deck">The deck</a></li><li><a href="#lcd">The display of the printer</a></li><li><a href="#web">The deck in a browser</a></li></ol></nav><div class="manual"><section id="deck">
   <h2 class="title"><span class="num">04</span>The deck</h2>
-  <p>Printdeck is a touch screen and print server for Klipper printers. It runs Klipper. It shows the print, and it controls the printer.</p><p>When the printer does not print, the deck shows the idle screen. The largest key is the action that you need most: Print a file.</p><p>The keys are the keys of a machine. A key with an LED has two states, and its LED is lit while it is on: the page that is open, the material in the printer, Preheat. A key with no LED does an action: an orange ring shows that it took the tap.</p><p>The deck shows the display of the printer at the top of each screen. The keys of the pages are at the bottom of the idle screen. Each page has its title and Back at the top, and its actions at the bottom.</p>
+  <p>The deck shows the idle screen when no print runs. A key with an LED is on while its LED is lit. A key with no LED does an action.</p><p>The printer display is at the top of each screen. The page keys are at the bottom of the idle screen. Each page has Back at the top and its actions at the bottom.</p>
   
   
   <figure>
@@ -125,7 +125,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Nozzle</b>The nozzle now, and its target under it while the heater is on. The icon is filled while the heater is on, and waves rise while it heats. Tap it to set the temperature.</span></li><li><span class="badge">2</span><span><b>Bed</b>The same for the bed.</span></li><li><span class="badge">3</span><span><b>Fan</b>The part cooling fan. Its blades turn at its speed.</span></li><li><span class="badge">4</span><span><b>Status</b>The position of the head, the state of the printer with the loaded filament, and the clock. This is the status screen of the display of the printer: the same picture on both screens.</span></li><li><span class="badge">5</span><span><b>Print a file</b>Opens the files. See Files.</span></li><li><span class="badge">6</span><span><b>Preheat</b>Heats the nozzle and the bed for the loaded filament. Its LED is lit while the heaters hold those temperatures: tap it again to turn them off.</span></li><li><span class="badge">7</span><span><b>Cool down</b>Turns off both heaters.</span></li><li><span class="badge">8</span><span><b>Home all, X, Y, Z</b>Homes all axes, or one axis, as on the Toolhead page. The LED of a key is lit when its axes are homed. During a print, the keys are dim with a lock, and a tap shows Wait until the print ends.</span></li><li><span class="badge">9</span><span><b>Last print</b>The last print and its result. Reprint starts it again, after a question.</span></li><li><span class="badge">10</span><span><b>Pages</b>Filament, Toolhead and Machine. Each page has its own section.</span></li>
+      <li><span class="badge">1</span><span><b>Nozzle</b>The nozzle temperature and its target. Tap it to set the temperature.</span></li><li><span class="badge">2</span><span><b>Bed</b>The same for the bed.</span></li><li><span class="badge">3</span><span><b>Fan</b>The part cooling fan. Its blades turn at its speed.</span></li><li><span class="badge">4</span><span><b>Status</b>The head position, the printer state, the loaded filament and the clock.</span></li><li><span class="badge">5</span><span><b>Print a file</b>Opens the files. See Files.</span></li><li><span class="badge">6</span><span><b>Preheat</b>Heats the nozzle and the bed for the loaded filament. Tap it again to turn them off.</span></li><li><span class="badge">7</span><span><b>Cool down</b>Turns off both heaters.</span></li><li><span class="badge">8</span><span><b>Home all, X, Y, Z</b>Homes all axes, or one axis. A lit LED shows a homed axis.</span></li><li><span class="badge">9</span><span><b>Last print</b>The last print and its result. Reprint starts it again.</span></li><li><span class="badge">10</span><span><b>Pages</b>Filament, Toolhead and Machine.</span></li>
     </ol>
     
   </figure>
@@ -135,7 +135,7 @@
 </section>
 <section id="lcd">
   <h2 class="title"><span class="num">05</span>The display of the printer</h2>
-  <p>When the printer has a display, the deck draws it. The display shows the status screen, the same picture as the idle screen of the deck.</p><p>Turn or click the knob to open the menu. The menu has the same pages and keys as the touch screen: the knob moves the cursor, and a click taps the key. The touch screen shows the cursor with an orange ring. The top item goes back: Status on the home menu, Back on a page. A long click also goes back. With no turn for 20 seconds, the display shows the status screen again.</p><p>While an action runs, the display shows an animation.</p>
+  <p>The deck draws the printer display. The display shows the same status as the deck.</p><p>Turn or click the knob to open the menu. The menu has the same pages and keys as the touch screen. A click taps the key. The top item goes back, and a long click also goes back. After 20 seconds with no turn, the display shows the status screen again.</p>
   
   
   
@@ -145,7 +145,7 @@
 </section>
 <section id="web">
   <h2 class="title"><span class="num">06</span>The deck in a browser</h2>
-  <p>Open http://printdeck.local in a browser on the same network, and log in with the password of the deck. The browser shows the same screens as the touch screen, sharp at the pixel density of the phone. Each browser has its own screens, so a phone can show the files while the deck shows the print.</p><p>On a phone, use Add to Home Screen: the deck then opens as an app, with no browser bars.</p><p>The page http://printdeck.local/system shows the version, the services, the logs and the API key for slicers. It also installs an update: choose the update file, then Install. The deck writes the other system slot and restarts into it. If the new system does not start, the deck goes back to the old one.</p><p>The same page makes a backup of your data and restores it. See Back up your data.</p>
+  <p>Open http://printdeck.local in a browser on the same network. Log in with the password of the deck. The browser shows the screens of the touch screen. Each browser has its own screens.</p><p>On a phone, tap Add to Home Screen. The deck then opens as an app.</p><p>The page http://printdeck.local/system shows the version, the logs and the API key for slicers. It also installs an update file, and makes a backup. See Back up your data.</p>
   
   
   
