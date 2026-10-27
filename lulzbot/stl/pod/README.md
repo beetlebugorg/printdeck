@@ -7,9 +7,21 @@ Load a file and print it as it is. Do not turn it.
 
 ## FDM (`fdm/`)
 
-All parts fit on the TAZ Workhorse and the Mini 2 (0.5 mm nozzle). The dovetail slot of the wedge,
-and the groove of the wedge in each bracket, have 0.35 mm of clearance on each side. The wedge
-slides down into the groove of its bracket from the top.
+All parts fit on the TAZ Workhorse and the Mini 2 (0.5 mm nozzle). The wedge slides down into the
+groove of its bracket from the top, and the pod slides down onto the wedge.
+
+The dovetail of the pod and its slot taper: each side is 0.08 mm narrower for each mm down. The key
+of the wedge and its groove taper 0.05 mm for each mm. Each part goes in with play and is tight
+when it is down, with no play on its sides. The taper is the stop, so a part that prints a little
+large stops higher, and a part that prints a little small goes lower. Push each part down by
+hand until it is tight. To take it off, pull it up.
+
+On the TAZ, the nub of the bracket is 2.5 mm off the cover. Shims fill the gap:
+
+1. Put the bracket on the two rail clips. Loosen the cover screw.
+2. Put shims between the nub and the cover until they fill the gap without force. The shims are
+   0.5, 1.0 and 2.0 mm thick, so they fill 0.5 to 3.5 mm.
+3. Tighten the cover screw, an M3 x 10 with a washer. The plate stays straight.
 
 No part needs supports. Turn supports off before you slice these parts. If supports are on, the
 slicer fills the screw holes, the insert holes and the groove of the TAZ bracket with supports
@@ -31,6 +43,7 @@ less.
 | `pod-wedge_fdm.stl` | 1 for each bracket | Its level bottom (it stands up) | Off |
 | `pod-bracket-taz_fdm.stl` | 1, for the TAZ | The top end of the plate (it stands up, 89 mm high) | Off. The groove for the wedge and the slots for the rail clips go up from the bed. Use a brim of 5 mm: the part is high on a narrow base. |
 | `pod-bracket-mini2_fdm.stl` | 1, for the Mini 2 | The side of the plate that goes on the frame | Off. The passages of the zip-tie anchors have pointed tops. |
+| `pod-shim-0.5mm_fdm.stl`, `pod-shim-1.0mm_fdm.stl`, `pod-shim-2.0mm_fdm.stl` | 1 each, for the TAZ | Flat | Off |
 | `camera-arm-taz_fdm.stl` | 1, for the C270 webcam on the TAZ (option) | Its back face (as the file is) | Off |
 | `camera-clamp-taz_fdm.stl` | 1, for the C270 webcam on the TAZ (option) | Its bottom: it stands as it does on the printer | Off. Use a brim: it is 126 mm tall. |
 | `camera-arm-mini2_fdm.stl` | 1, for the C270 webcam on the Mini 2 (option) | Its back face (as the file is) | Off |
@@ -62,8 +75,8 @@ The resin parts differ from the FDM parts:
   The frame has a nut pocket at the display end of each boss: put the 4 nuts in before the display.
   The display keeps them in. The mount has a nut pocket with a slot to each side edge: slide the 2
   nuts in before the mount goes on the body.
-- The dovetail slot of the wedge and the groove of the key in the TAZ bracket have 0.2 mm of
-  clearance on each side. Print the mount and the wedge first, and try the fit.
+- The dovetail slot of the wedge and the groove of the key taper as in the FDM files. They have
+  0.2 mm of clearance at the tip. Print the mount and the wedge first, and try the fit.
 - The clip slots of the bracket keep the FDM clearance (0.35 mm), because the rail clips are FDM.
 
 | File | Print | Toward the plate (supports) | Keep clean |
@@ -103,6 +116,7 @@ frame come out flat and even, with no support marks. The parts are the same as i
 | `pod-wedge_resin-flat.stl` | Its level bottom (it stands up) |
 | `pod-bracket-taz_resin-flat.stl` | The top end of the plate (it stands up, 89 mm high) |
 | `pod-bracket-mini2_resin-flat.stl` | The side of the plate that goes on the frame |
+| `pod-shim-0.5mm_resin-flat.stl`, `pod-shim-1.0mm_resin-flat.stl`, `pod-shim-2.0mm_resin-flat.stl` | Flat |
 
 Slicer settings for the Phenom:
 

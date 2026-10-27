@@ -485,8 +485,10 @@ def penetration(c, meshes):
         if np.any(b[1] < x.min(axis=0) - 20) or np.any(b[0] > x.max(axis=0) + 20):
             continue
         q = trimesh.proximity.ProximityQuery(m)
-        _, d, _ = q.on_surface(x)
-        best = min(best, float(d.min()) - r)
+        # In chunks: one query of all the nodes against a large mesh uses more than 4 GB.
+        for i in range(0, len(x), 10):
+            _, d, _ = q.on_surface(x[i:i + 10])
+            best = min(best, float(d.min()) - r)
     return best
 
 

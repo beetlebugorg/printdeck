@@ -40,7 +40,7 @@ import os
 import sys
 
 from build123d import (Axis, Box, Cone, Cylinder, Kind, Location, Plane, Polygon, Pos, Rectangle, RectangleRounded, Rot,
-                       chamfer, extrude, fillet, offset)
+                       chamfer, extrude, fillet, loft, offset)
 
 import shape as S
 
@@ -246,25 +246,42 @@ def vents():
 # The dovetail on the back: root, tip, height, v range. The pod slides down onto the bracket by
 # the length of the dovetail and a little more (DOVE_LIFT).
 DOVE_LIFT = 16.0
-DOVE_CLR = 0.35                 # the gap round the dovetail in the slot of the bracket, for FDM
+DOVE_CLR = 0.35                 # the gap at the tip and the root of the dovetail and of the key, for FDM
 DOVE = (10.0, 14.0, 3.0, (DEEP_V1 - 15.5, DEEP_V1 - 2.5))   # clear of the wedge when lifted
+# The dovetail and its slot taper: each side is DOVE_TAPER mm narrower for each mm down. The pod
+# drops in with play, and its weight pulls the dovetail tight into the slot. The slot goes on
+# through the bottom of the wedge, so the taper is the stop: a dovetail that prints small goes
+# lower until it is tight. On the first prints, the straight dovetail rocked in its slot.
+DOVE_TAPER = 0.08
+
+
+def taper_prism(pl, half, w0, w1, n0, n1, taper):
+    """A dovetail prism along the normal of the plane pl, from n0 to n1. In the plane, it goes from
+    y = w0 (half width half[0]) to y = w1 (half width half[1]). At n = 0 the half widths are half,
+    and each side is taper narrower for each mm toward -n."""
+    def face(n):
+        s = taper * n
+        p = Polygon((-half[0] - s, w0), (half[0] + s, w0), (half[1] + s, w1), (-half[1] - s, w1), align=None)
+        return pl.location * Pos(0, 0, n) * p
+    return loft([face(n0), face(n1)])
 
 
 def dovetail(clr=0.0, v_ext=0.0):
-    """The dovetail, or with clr the slot for it: the profile offset by clr on every side."""
+    """The dovetail, or with clr the slot for it. The slot is clr deeper at the tip and clr out from
+    the root. Across, it has the width of the dovetail where the pod is down, so the taper sets the
+    play."""
     r, t, h, (va, vb) = DOVE
-    # Along v: the profile is in (u, -w), on a plane across v.
-    prof = Polygon((-r / 2, BACK_W - 0.5), (r / 2, BACK_W - 0.5), (t / 2, BACK_W + h), (-t / 2, BACK_W + h), align=None)
+    # Along v: the profile is in (u, -w), on a plane across v at the top end of the dovetail.
+    pl = Plane(origin=(0, vb, 0), x_dir=(1, 0, 0), z_dir=(0, 1, 0))
     if clr:
-        prof = offset(prof, amount=clr, kind=Kind.INTERSECTION)
-    pl = Plane(origin=(0, va - clr, 0), x_dir=(1, 0, 0), z_dir=(0, 1, 0))
-    d = extrude(pl * prof, amount=vb - va + 2 * clr + v_ext)
-    if not clr:
-        # The lower end of the dovetail slopes at 55 degrees: printed standing, it needs no support.
-        tri = Polygon((va - 0.01, -BACK_W + 0.5), (va - 0.01, -BACK_W - h - 1.0), (va + 1.5 * (h + 1.5), -BACK_W - h - 1.0),
-                      align=None)
-        d = d - extrude(Plane.YZ * tri, amount=t, both=True)
-    return d
+        k = (t - r) / 2 / (h + 0.5)                  # the change of the half width for each mm of depth
+        half = (r / 2 - k * clr, t / 2 + k * clr)
+        return taper_prism(pl, half, BACK_W - 0.5 - clr, BACK_W + h + clr, -(vb - va) - 20.0, v_ext + clr, DOVE_TAPER)
+    d = taper_prism(pl, (r / 2, t / 2), BACK_W - 0.5, BACK_W + h, -(vb - va), 0.0, DOVE_TAPER)
+    # The lower end of the dovetail slopes at 55 degrees: printed standing, it needs no support.
+    tri = Polygon((va - 0.01, -BACK_W + 0.5), (va - 0.01, -BACK_W - h - 1.0), (va + 1.5 * (h + 1.5), -BACK_W - h - 1.0),
+                  align=None)
+    return d - extrude(Plane.YZ * tri, amount=t, both=True)
 
 
 def body():
@@ -421,7 +438,12 @@ def plate_y(v):
 BAR_Y = (plate_y(DOVE[3][0] - 3.0 - DOVE_CLR) - 1.0, 240.0)
 
 
-NUB_GAP = 0.35                  # from the cover to the inner face of the nub
+# The gap from the cover to the inner face of the nub. The rail clips set the place of the bracket,
+# and the cover of a printer can be out from the rail by more than in the LulzBot model: on the first
+# print, the nub was on the cover before the clips were in, and the screw bent the plate. Now the gap
+# is larger, and printed shims (nub_shim) fill it.
+NUB_GAP = 2.5
+SHIMS = (0.5, 1.0, 2.0)         # the shim thicknesses: together they fill 0.5 to 3.5 mm, in steps of 0.5
 CLIP_CLR = 0.35                 # the gap on each side of the key of a rail clip in its slot
 CLIP_TIP = 0.2                  # the gap at the tip of the key: 0.8 mm of plate stays in front of the slot
 
@@ -435,12 +457,13 @@ def bracket(with_wedge=True):
     bar = mbox(X_BACK, X_BACK + PLATE, BAR_Y[0], BAR_Y[1], zc - 10, NUB_GAP + 3.3)
     b = leg + bar
     # The nub on the cover screw: a tab along the cover, its slot open at the bottom. Its inner face is
-    # NUB_GAP off the cover, so the bracket goes over the edge of the case without force. The cover
-    # screw pulls the nub onto the cover.
+    # NUB_GAP off the cover, so the bracket goes over the edge of the case without force. Shims fill
+    # the gap, and the cover screw pulls the nub onto the shims.
     x_s, y_s = COVER_SCREW
     nub = mbox(x_s - 9.0, X_BACK + 0.01, BAR_Y[0], BAR_Y[1], NUB_GAP, NUB_GAP + 3.3)
     b = b + nub
-    b = b - mbox(x_s - 3.5, x_s + 3.5, BAR_Y[0] - 1, y_s, -1, 4.3) - Pos(x_s, y_s, 1.65) * Cylinder(1.8, 6)
+    b = b - mbox(x_s - 3.5, x_s + 3.5, BAR_Y[0] - 1, y_s, -1, NUB_GAP + 4.0)
+    b = b - Pos(x_s, y_s, NUB_GAP + 1.65) * Cylinder(1.8, 6)
     # The dovetail slots of the clips (the same as the deck case).
     # The slots are CLIP_CLR wider than the key on each side, and CLIP_TIP deeper than the key.
     kd = S.BACK_X[1] - S.BACK_X[0]
@@ -464,6 +487,15 @@ def bracket(with_wedge=True):
     return b
 
 
+def nub_shim(t):
+    """A shim of thickness t between the cover and the nub, flat on the bed. Its slot is open at the
+    bottom, so it goes in round the shank of the cover screw with the screw loose. It stays on the
+    cover, behind the front edge of the cover."""
+    x_s, y_s = COVER_SCREW
+    s = mbox(x_s - 8.0, x_s + 3.4, y_s - 12.0, y_s + 8.0, 0, t)
+    return s - mbox(x_s - 1.8, x_s + 1.8, y_s - 13.0, y_s, -1, t + 1) - Pos(x_s, y_s, t / 2) * Cylinder(1.8, t + 2)
+
+
 def tie_anchor(x0, y0, z0, axis):
     """A zip-tie anchor: a bridge on a plate, with a 4 x 2 mm passage under it for a tie up to
     3.6 mm wide. axis is the direction of the passage ("y" or "z"); the bridge stands out of the plate
@@ -481,10 +513,12 @@ def tie_anchor(x0, y0, z0, axis):
 
 
 # The wedge is a separate part. A dovetail key on its back slides down into a dovetail groove in the
-# plate of the bracket, like the rail clips. The groove is open at the top and stops at the bottom, so
-# the weight of the pod holds the wedge down. On both printers the pod has the same tilt and gap, so
-# the wedge is the same part.
-KEY = (10.0, 12.5, 2.0)                  # the key: root width, tip width, depth into the plate (1.65 mm of plate stays behind the groove)
+# plate of the bracket, like the rail clips. The groove is open at the top. The key and the groove
+# taper as the dovetail of the pod does, so the weight of the pod pulls the key tight into the
+# groove. On both printers the pod has the same tilt and gap, so the wedge is the same part.
+KEY = (10.0, 12.5, 2.0)                  # the key at its top end: root width, tip width, depth into the plate (1.65 mm of plate stays behind the groove)
+KEY_TAPER = 0.05                         # each side of the key is this much narrower for each mm down
+KEY_DROP = 6.0                           # the groove goes this much lower than the key, so the taper is the stop
 TAZ_N, TAZ_UP, TAZ_ACROSS = (1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)
 MINI_N, MINI_UP, MINI_ACROSS = (0.0, -1.0, 0.0), (0.0, 0.0, 1.0), (1.0, 0.0, 0.0)
 TAZ_FRONT = mbox(X_BACK + PLATE - 0.01, X_BACK + 400, -1000, 1000, -1000, 1000)
@@ -509,20 +543,31 @@ def wedge_bottom(name):
     return min(float(np.dot(q, up)) for q in pts)
 
 
+def wedge_top(name):
+    """The height (along up) of the top of the wedge, and of the top end of the key."""
+    import numpy as np
+    loc, n, up, across, p0, _ = wedge_frame(name)
+    pts = [np.array(to_frame(loc, u, MOUNT_V[1], w)) for u in (-13.0, 13.0) for w in np.linspace(-BACK_W - 0.3, -BACK_W - 80, 200)]
+    pts = [q for q in pts if np.dot(q - np.array(p0), n) >= 0]
+    return max(float(np.dot(q, up)) for q in pts)
+
+
 def key_prism(name, clr, v0, v1):
     """The dovetail of the key (clr 0) or of the groove (clr > 0): its root on the front of the plate,
-    widening into the plate, along up from v0 to v1."""
+    widening into the plate, along up from v0 to v1. The groove is clr deeper at the tip and clr out
+    from the root. Across, it has the width of the key where the wedge is down, so the taper sets the
+    play."""
     import numpy as np
     loc, n, up, across, p0, _ = wedge_frame(name)
     r_, t, d = KEY
+    ref = wedge_top(name)
     o = np.array(p0, float)
-    o = o - np.dot(o, up) * np.array(up) + v0 * np.array(up)
+    o = o - np.dot(o, up) * np.array(up) + ref * np.array(up)
     pl = Plane(origin=tuple(o), x_dir=across, z_dir=up)
     sgn = -1.0 if np.dot(np.array([pl.y_dir.X, pl.y_dir.Y, pl.y_dir.Z]), n) > 0 else 1.0
-    prof = Polygon((-r_ / 2, -0.5 * sgn), (r_ / 2, -0.5 * sgn), (t / 2, d * sgn), (-t / 2, d * sgn), align=None)
-    if clr:
-        prof = offset(prof, amount=clr, kind=Kind.INTERSECTION)
-    return extrude(pl * prof, amount=v1 - v0, dir=up)
+    k = (t - r_) / 2 / (d + 0.5)                     # the change of the half width for each mm of depth
+    half = (r_ / 2 - k * clr, t / 2 + k * clr)
+    return taper_prism(pl, half, (-0.5 - clr) * sgn, (d + clr) * sgn, v0 - ref, v1 - ref, KEY_TAPER)
 
 
 def key_floor(name, drop=0.0):
@@ -558,7 +603,7 @@ def wedge_groove(name, top):
     """The groove for the key in the plate: from the bottom of the wedge to above the top of the
     plate."""
     yb = wedge_bottom(name)
-    return key_prism(name, DOVE_CLR, yb - DOVE_CLR - 3.0, top + 1.0) & key_floor(name, DOVE_CLR * math.hypot(1, SLOPE))
+    return key_prism(name, DOVE_CLR, yb - KEY_DROP - 3.0, top + 1.0) & key_floor(name, KEY_DROP)
 
 
 def wedge_part():
@@ -1221,7 +1266,7 @@ def bracket_screws(name):
     printer through the nub, on the Mini 2 the two frame screws (M3 x 10) through the plate."""
     if name == "taz":
         x_s, y_s = COVER_SCREW
-        return screw(3, 8.0, (x_s, y_s, NUB_GAP + 3.3), (0, 0, 1))
+        return screw(3, 10.0, (x_s, y_s, NUB_GAP + 3.3), (0, 0, 1))
     out = None
     for x, z in MINI_SCREWS:
         sc = screw(3, 10.0, (x, MINI_PLATE_Y - PLATE, z), (0, -1, 0))
@@ -1527,6 +1572,7 @@ def print_parts(process):
             (f"pod-wedge_{process}.stl", on_bed(wd, rots["wedge"], lift), 1),
             (f"pod-bracket-taz_{process}.stl", on_bed(taz, rots["taz"], lift), 1),
             (f"pod-bracket-mini2_{process}.stl", on_bed(mini, rots["mini"], lift), 1),
+            *[(f"pod-shim-{t:.1f}mm_{process}.stl", on_bed(nub_shim(t), Rot(0, 0, 0), lift), 1) for t in SHIMS],
             *[(f"{fn}_{process}.stl", on_bed(sh, rots["camera"] * rot, lift), 1) for fn, sh, rot in cam],
             (f"cable-clip-single_{process}.stl", on_bed(one, rots["clip"], lift), 5),
             (f"cable-clip-double_{process}.stl", on_bed(two, rots["clip"], lift), 2)]
