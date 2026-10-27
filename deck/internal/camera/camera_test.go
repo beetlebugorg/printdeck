@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"math"
 	"reflect"
 	"sync/atomic"
 	"testing"
@@ -367,5 +368,43 @@ func TestHubOnDemand(t *testing.T) {
 	h.mu.Unlock()
 	if h.On() || h.Status().State != "none" {
 		t.Errorf("no camera: %+v", h.Status())
+	}
+}
+
+// A small frame of a frame that is not decoded comes from the decode at a smaller size. At 1/2,
+// 1/4 and 1/8, its pixels are near the means of the pixels of the whole picture.
+func TestSmallScaledDecode(t *testing.T) {
+	jb := photoJPEG(t, 1280, 720)
+	whole, _ := FrameOf(jb)
+	full := whole.Picture().(*image.YCbCr)
+	for _, w := range []int{640, 400, 320, 160} {
+		f, _ := FrameOf(jb)
+		s := f.Small(w)
+		if want := whole.Small(w).Size(); s.Size() != want {
+			t.Fatalf("%d: size %v, want %v", w, s.Size(), want)
+		}
+		if f.pic != nil {
+			t.Errorf("%d: the whole picture was decoded", w)
+		}
+		k := 1280 / w
+		if 1280%w != 0 {
+			continue
+		}
+		p := s.Picture().(*image.YCbCr)
+		var sum float64
+		for y := range p.Rect.Dy() {
+			for x := range p.Rect.Dx() {
+				var m float64
+				for dy := range k {
+					for dx := range k {
+						m += float64(full.Y[(y*k+dy)*full.YStride+x*k+dx])
+					}
+				}
+				sum += math.Abs(float64(p.Y[y*p.YStride+x]) - m/float64(k*k))
+			}
+		}
+		if mean := sum / float64(p.Rect.Dx()*p.Rect.Dy()); mean > 3 {
+			t.Errorf("%d: mean difference %.1f", w, mean)
+		}
 	}
 }

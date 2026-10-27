@@ -26,6 +26,8 @@ import (
 	"image/jpeg"
 	"sync"
 	"time"
+
+	"printdeck/internal/jpegdec"
 )
 
 // Device is a camera that the deck found.
@@ -84,10 +86,11 @@ type Frame struct {
 	blank bool // the picture has one color: an HDMI capture with no signal
 
 	mu     sync.Mutex
-	pic    *image.YCbCr   // the picture, or nil until it is decoded
-	smalls map[int]*Frame // the smaller frames by width (Small)
-	order  []int          // the widths of smalls, the oldest first
-	err    error          // the decode error of the JPEG
+	pic    *image.YCbCr    // the picture, or nil until it is decoded
+	scaled [3]*image.YCbCr // the picture decoded at 1/2, 1/4 and 1/8 of its size, or nil (pictureFor)
+	smalls map[int]*Frame  // the smaller frames by width (Small)
+	order  []int           // the widths of smalls, the oldest first
+	err    error           // the decode error of the JPEG
 
 	plans     map[string]*viewPlan // the plan of each view, or nil for no plan (views.go)
 	views     map[string]*Frame    // the pictures of the views by view and width
@@ -145,11 +148,61 @@ func (f *Frame) picture() *image.YCbCr {
 		f.err = err
 		return nil
 	}
+	// A gray camera has a picture with no color.
+	if f.pic = toYCbCrPicture(img); f.pic == nil {
+		f.err = fmt.Errorf("camera: a JPEG of %T", img)
+	}
+	return f.pic
+}
+
+// pictureFor returns a picture of the frame for a smaller frame of width w: the whole picture when
+// it is decoded, or else the JPEG decoded at 1/2, 1/4 or 1/8 of its size, as small as it can be
+// with w pixels or more. The decode at a smaller size is in the DCT domain (jpegdec): it costs
+// less than the decode of the whole picture, and leaves less to scale. The frame keeps each
+// picture.
+func (f *Frame) pictureFor(w int) *image.YCbCr {
+	shift := 0
+	for s := 3; s >= 1; s-- {
+		if (f.w+1<<s-1)>>s >= w {
+			shift = s
+			break
+		}
+	}
+	f.mu.Lock()
+	if f.pic != nil || f.jpeg == nil || shift == 0 {
+		f.mu.Unlock()
+		return f.picture()
+	}
+	if p := f.scaled[shift-1]; p != nil {
+		f.mu.Unlock()
+		return p
+	}
+	b := f.jpeg
+	f.mu.Unlock()
+	img, err := jpegdec.DecodeScaled(bytes.NewReader(b), shift)
+	if err != nil {
+		return f.picture()
+	}
+	p := toYCbCrPicture(img)
+	if p == nil {
+		return f.picture()
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if old := f.scaled[shift-1]; old != nil {
+		return old // another viewer made it first
+	}
+	f.scaled[shift-1] = p
+	return p
+}
+
+// toYCbCrPicture returns a decoded JPEG as a YCbCr picture: a gray picture gets no color. It
+// returns nil for another kind of picture.
+func toYCbCrPicture(img image.Image) *image.YCbCr {
 	switch p := img.(type) {
 	case *image.YCbCr:
-		f.pic = p
+		return p
 	case *image.Gray:
-		// A gray camera: the picture with no color.
 		y := image.NewYCbCr(p.Rect, image.YCbCrSubsampleRatio420)
 		for r := 0; r < p.Rect.Dy(); r++ {
 			copy(y.Y[r*y.YStride:], p.Pix[r*p.Stride:r*p.Stride+p.Rect.Dx()])
@@ -157,11 +210,9 @@ func (f *Frame) picture() *image.YCbCr {
 		for i := range y.Cb {
 			y.Cb[i], y.Cr[i] = 128, 128
 		}
-		f.pic = y
-	default:
-		f.err = fmt.Errorf("camera: a JPEG of %T", img)
+		return y
 	}
-	return f.pic
+	return nil
 }
 
 // The image.Image of the frame. At is slow: draw the Picture.
@@ -191,12 +242,15 @@ func (f *Frame) Small(w int) *Frame {
 		return s
 	}
 	f.mu.Unlock()
-	pic := f.picture()
+	pic := f.pictureFor(w)
 	if pic == nil {
 		return f
 	}
 	h := max(2, (f.h*w/f.w+1)/2*2)
-	s := picFrame(scaleYCbCr(pic, w, h, false))
+	if pic.Rect.Dx() != w || pic.Rect.Dy() != h || pic.SubsampleRatio != image.YCbCrSubsampleRatio420 {
+		pic = scaleYCbCr(pic, w, h, false)
+	}
+	s := picFrame(pic)
 	s.Seq, s.Time, s.blank, s.cam = f.Seq, f.Time, f.blank, f.cam
 	f.mu.Lock()
 	defer f.mu.Unlock()
