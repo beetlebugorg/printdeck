@@ -90,7 +90,8 @@ func (a *App) drawSDFiles(c *gfx.Canvas, count, area image.Rectangle) {
 		where = "SD card · " + a.sd.dir
 	}
 	if a.sd.loaded && a.sd.err == "" {
-		where += fmt.Sprintf(" · %d files", countFiles(a.sd.files))
+		n := countFiles(a.sd.files)
+		where += fmt.Sprintf(" · %d %s", n, plural(n, "file", "files"))
 	}
 	countR := kit.Rows(count, 0, kit.Px(24))[0]
 	label(c, countR, where, gfx.Left)
@@ -98,7 +99,7 @@ func (a *App) drawSDFiles(c *gfx.Canvas, count, area image.Rectangle) {
 
 	// The copy that runs: its file, its progress, and Stop.
 	if cp := st.SDCopy; cp.Path != "" {
-		r := kit.Rows(area, 10, kit.Px(84), kit.Fr(1))
+		r := kit.Rows(area, 10, kit.Px(100), kit.Fr(1))
 		a.drawSDCopy(c, r[0], cp)
 		area = r[1]
 	}
@@ -194,7 +195,7 @@ func (a *App) drawSDFiles(c *gfx.Canvas, count, area image.Rectangle) {
 func (a *App) drawSDCopy(c *gfx.Canvas, r image.Rectangle, cp printer.SDCopy) {
 	plate(c, r)
 	a.region("Copy", r)
-	in := kit.Inset(r, 14, 10, 14, 10)
+	in := kit.Inset(r, 14, 12, 14, 12)
 	cols := kit.Cols(in, 14, kit.Fr(1), kit.Px(110))
 	label(c, image.Rect(cols[0].Min.X, cols[0].Min.Y, cols[0].Max.X, cols[0].Min.Y+18), "Copy to the deck", gfx.Left)
 	c.Text(image.Rect(cols[0].Min.X, cols[0].Min.Y+18, cols[0].Max.X, cols[0].Min.Y+42), path.Base(cp.Path), gfx.Face(true, 18), text, gfx.Left)
@@ -202,13 +203,13 @@ func (a *App) drawSDCopy(c *gfx.Canvas, r image.Rectangle, cp printer.SDCopy) {
 	if cp.Size > 0 {
 		frac = float64(cp.Copied) / float64(cp.Size)
 	}
-	bar := image.Rect(cols[0].Min.X, cols[0].Max.Y-12, cols[0].Max.X, cols[0].Max.Y-2)
+	bar := image.Rect(cols[0].Min.X, cols[0].Max.Y-10, cols[0].Max.X, cols[0].Max.Y)
 	c.RoundRect(bar, 3, edge)
 	if w := int(float64(bar.Dx()-2) * frac); w > 0 {
 		c.RoundRect(image.Rect(bar.Min.X+1, bar.Min.Y+1, bar.Min.X+1+w, bar.Max.Y-1), 2, orange)
 	}
 	pct := fmt.Sprintf("%d%% · %s of %s", int(frac*100), sizeText(cp.Copied), sizeText(cp.Size))
-	c.Text(image.Rect(cols[0].Min.X, cols[0].Min.Y+40, cols[0].Max.X, cols[0].Max.Y-12), pct, gfx.Face(false, 14), dim, gfx.Left)
+	c.Text(image.Rect(cols[0].Min.X, cols[0].Min.Y+46, cols[0].Max.X, cols[0].Min.Y+64), pct, gfx.Face(false, 14), dim, gfx.Left)
 	sp, ok := a.sdPrinter()
 	a.button(c, cols[1], "Stop", raised, text, func() {
 		if ok {

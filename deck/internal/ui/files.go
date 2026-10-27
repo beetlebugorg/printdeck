@@ -40,7 +40,7 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 	// deck and the files on the card.
 	r := kit.Rows(f.body(), 8, kit.Px(24), kit.Fr(1))
 	if _, ok := a.sdPrinter(); ok {
-		r = kit.Rows(f.body(), 8, kit.Px(60), kit.Px(24), kit.Fr(1))
+		r = kit.Rows(kit.Inset(f.body(), 0, 10, 0, 0), 8, kit.Px(56), kit.Px(24), kit.Fr(1))
 		a.sourceKeys(c, r[0])
 		r = r[1:]
 		if a.sd.on {
@@ -50,7 +50,7 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 	}
 	files := a.sortedFiles()
 	count, area := r[0], r[1]
-	countR, countText := kit.Rows(count, 0, kit.Px(24))[0], fmt.Sprintf("Newest first · %d files", len(files))
+	countR, countText := kit.Rows(count, 0, kit.Px(24))[0], fmt.Sprintf("Newest first · %d %s", len(files), plural(len(files), "file", "files"))
 	label(c, countR, countText, gfx.Left)
 	a.textRegion("Count", countR, gfx.Face(true, 14), strings.ToUpper(countText))
 	if len(files) == 0 {
