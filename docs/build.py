@@ -584,9 +584,10 @@ def screens(root, wide=False):
 
 def landing():
     root = ""
-    lede = ("A touch screen for the LulzBot Mini 2 and the LulzBot TAZ Workhorse. A Raspberry Pi 5 and a 5 inch "
+    lede = ("Printdeck is a touch screen and print server for Klipper printers. A Raspberry Pi 5 and a 5 inch "
             "touch display go on the printer in a printed pod. The Pi runs Klipper, and the deck shows and controls "
-            "the print on the touch screen, on the display of the printer, and in a browser.")
+            "the print on the touch screen, on the display of the printer, and in a browser. I build it and test it "
+            "on a LulzBot TAZ Workhorse (the original Workhorse).")
     body = f"""
 <p>
   <a class="btn primary" href="{REPO}/releases/latest">Download Printdeck OS</a>
@@ -597,7 +598,6 @@ def landing():
 </p>
 <div class="pics">
   <figure class="frame-img white"><img src="img/pod-taz.png" alt="The Printdeck pod on the front left of a LulzBot TAZ Workhorse"><figcaption>The pod on the LulzBot TAZ Workhorse</figcaption></figure>
-  <figure class="frame-img white"><img src="img/pod-mini2.png" alt="The Printdeck pod on the top left of a LulzBot Mini 2"><figcaption>The pod on the LulzBot Mini 2</figcaption></figure>
 </div>
 <h2 id="before">Before you use it</h2>
 {md_text(section_body("README.md", "Before you use it"), "", root)}
@@ -608,7 +608,7 @@ def landing():
 
 <h2 id="docs">The documentation</h2>
 <div class="map">
-  <a class="card" href="hardware/"><b>The pod</b><span>The touch display and the Pi 5 in a printed case, and the brackets for the Mini 2 and the TAZ Workhorse: the parts, the print files and the hardware.</span></a>
+  <a class="card" href="hardware/"><b>The pod</b><span>The touch display and the Pi 5 in a printed case, and the printer brackets: the parts, the print files and the hardware.</span></a>
   <a class="card" href="ui/"><b>The deck UI</b><span>Every screen of the touch screen with numbered callouts, in the tall layout of the pod and in the wide layout.</span></a>
   <a class="card" href="os/"><b>Printdeck OS</b><span>The read-only Linux image: install, the first start, the two system slots, the update, the release and the debug image.</span></a>
   <a class="card" href="deck/"><b>The printdeck program</b><span>One Go program: the Klipper host, the touch screen, the remote screen, the API for slicers and the display of the printer.</span></a>
@@ -624,7 +624,7 @@ def landing():
 {md_text(section_body("README.md", "License"), "", root)}
 """
     page("", "Documentation", "Printdeck", lede, body, toc=False,
-         description="The documentation of the LulzBot Printdeck: a touch screen and a Klipper print server on a Raspberry Pi 5 for the LulzBot Mini 2 and the LulzBot TAZ Workhorse.")
+         description="The documentation of Printdeck, a personal project: a touch screen and a Klipper print server on a Raspberry Pi 5. I build it and test it on a LulzBot TAZ Workhorse.")
 
 
 # --- The pod --------------------------------------------------------------------------------------
@@ -651,7 +651,7 @@ def hardware():
 {md("lulzbot/README.md", root, sections=("Files", "Reference files", "Needs"), shift=1)}
 """
     page("hardware/", "Hardware", "The pod",
-         "A Raspberry Pi Touch Display 2 with a Raspberry Pi 5 on its back, in a printed case, on a bracket for the Mini 2 or the TAZ Workhorse.",
+         "A Raspberry Pi Touch Display 2 with a Raspberry Pi 5 on its back, in a printed case, on a printed bracket.",
          body)
 
 
@@ -870,7 +870,7 @@ def desktop_page():
 <h2 id="meshes">The meshes of the 3D window</h2>
 {md("desktop/meshes/README.md", root)}
 """
-    page("desktop/", "Software", "Desktop app and simulator", "The Printdeck for a computer, and a simulated TAZ Workhorse or Mini 2 in 3D.", body)
+    page("desktop/", "Software", "Desktop app and simulator", "The Printdeck for a computer, and a simulated printer in 3D.", body)
 
 
 def film_page():

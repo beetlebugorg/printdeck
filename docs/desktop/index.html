@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Desktop app and simulator · Printdeck</title>
-<meta name="description" content="The Printdeck for a computer, and a simulated TAZ Workhorse or Mini 2 in 3D.">
+<meta name="description" content="The Printdeck for a computer, and a simulated printer in 3D.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
@@ -60,7 +60,7 @@
 <main>
 <p class="eyebrow">Software</p>
 <h1>Desktop app and simulator</h1>
-<p class="lede">The Printdeck for a computer, and a simulated TAZ Workhorse or Mini 2 in 3D.</p>
+<p class="lede">The Printdeck for a computer, and a simulated printer in 3D.</p>
 <nav class="onpage"><b>On this page</b><ol><li><a href="#app">printdeck app</a></li><li><a href="#window">The window</a></li><li><a href="#meshes">The meshes of the 3D window</a></li></ol></nav>
 <p><code>desktop/</code> is the Printdeck for a computer. It is a Qt 6 window around <code>printdeck app</code>, which runs the Klipper host and the deck UI for a printer on USB. Cura finds it at the same address after each start, as it finds a Printdeck. The keyboard of the computer types on the deck. Ctrl+K (Cmd+K on a Mac) opens the camera of the deck in a window of its own, at up to 15 frames a second.</p>
 <p><code>printdeck app -sim</code> runs the deck with a simulated printer: a TAZ Workhorse on a simulated printer board. The Simulated printer page of the deck changes it to a Mini 2. The board has the endstops, the probe and the display of the printer, at the places in <code>printer.cfg</code>. With <code>-sim</code>, a second window shows the printer in 3D:</p>

@@ -1,11 +1,11 @@
-# Printdeck LulzBot
+# Printdeck pod
 
 <img src="../docs/img/pod-taz.png" alt="The Printdeck pod on the front left of a LulzBot TAZ Workhorse" width="480">
 
-The LulzBot Printdeck is a touch screen for the LulzBot Mini 2 and the LulzBot TAZ Workhorse. The
-hardware is the pod: a Raspberry Pi Touch Display 2 (5 inch), mounted tall, with a Raspberry Pi 5 on
-its back, in a printed case. A printed bracket holds the pod on the printer. Each printer has its
-own bracket, and the pod is the same on the two printers.
+The pod is the hardware of Printdeck: a Raspberry Pi Touch Display 2 (5 inch), mounted tall, with a
+Raspberry Pi 5 on its back, in a printed case. A printed bracket holds the pod on the printer. I
+build it and test it on a LulzBot TAZ Workhorse. This folder also has a bracket for the LulzBot
+Mini 2. The pod is the same on the two brackets.
 
 [stl/pod/README.md](stl/pod/README.md) has the print files, the print settings, the hardware of
 the pod and the webcam option. `pod.py` is the model of the pod and the two brackets.

@@ -1,6 +1,6 @@
 # Printdeck Slate
 
-The Slate is an earlier desk case. The LulzBot Printdeck uses the pod in
+The Slate is an earlier desk case. Printdeck uses the pod in
 [lulzbot/](../lulzbot/README.md).
 
 <picture>

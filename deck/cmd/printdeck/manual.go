@@ -206,7 +206,7 @@ func manualParts() []section {
 	return []section{
 		{ID: "start", Title: "Getting started",
 			Intro: []string{
-				"Printdeck is a touch screen for the LulzBot Mini 2 and the LulzBot TAZ Workhorse. It runs Klipper. It shows the print, and it controls the printer.",
+				"Printdeck is a touch screen and print server for Klipper printers. It runs Klipper. It shows the print, and it controls the printer.",
 				"At the first start, the deck makes its password and opens the setup. Connect the deck to your Wi-Fi network there.",
 			},
 			Figures: []figure{
@@ -827,7 +827,7 @@ func manualSections() []section {
 
 		{Chapter: meet, ID: "deck", Title: "The deck",
 			Intro: []string{
-				"Printdeck is a touch screen for the LulzBot Mini 2 and the LulzBot TAZ Workhorse. It runs Klipper. It shows the print, and it controls the printer.",
+				"Printdeck is a touch screen and print server for Klipper printers. It runs Klipper. It shows the print, and it controls the printer.",
 				"When the printer does not print, the deck shows the idle screen. The largest key is the action that you need most: Print a file.",
 				"The keys are the keys of a machine. A key with an LED has two states, and its LED is lit while it is on: the page that is open, the material in the printer, Preheat. A key with no LED does an action: an orange ring shows that it took the tap.",
 			},

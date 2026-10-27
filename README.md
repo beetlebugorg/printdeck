@@ -2,10 +2,10 @@
 
 <img src="docs/img/pod-taz.png" alt="The Printdeck pod on the front left of a LulzBot TAZ Workhorse" width="420">
 
-The LulzBot Printdeck is a touch screen for two LulzBot printers: the LulzBot Mini 2 and the
-LulzBot TAZ Workhorse. A Raspberry Pi 5 and a 5 inch touch display go on the printer in a printed
-pod. The Pi runs Klipper. The deck shows and controls the print on the touch screen, on the display
-of the printer, and in a browser.
+Printdeck is a touch screen and print server for Klipper printers. A Raspberry Pi 5 and a 5 inch
+touch display go on the printer in a printed pod. The Pi runs Klipper. The deck shows and controls
+the print on the touch screen, on the display of the printer, and in a browser. I build it and
+test it on a LulzBot TAZ Workhorse (the original Workhorse).
 
 Website: https://beetlebug.org/printdeck/
 
@@ -26,8 +26,7 @@ software.
   Errors can still occur.
 - Results on your printer can be different. Use Printdeck at your own risk.
 
-The deck can also load the Klipper example config of another printer. This documentation is for
-the Mini 2 and the TAZ Workhorse.
+The deck can also load the Klipper example config of another printer.
 
 ## Install
 
@@ -76,8 +75,8 @@ the README files and the manuals: after a change to one of them, run `docs/build
 ## Hardware
 
 The pod is a Raspberry Pi Touch Display 2 (5 inch, mounted tall) with a Raspberry Pi 5 on its
-back, in a printed case. A printed bracket holds the pod on the printer: one bracket for the Mini 2,
-and one for the TAZ Workhorse. [lulzbot/README.md](lulzbot/README.md) has the pod, the brackets and
+back, in a printed case. A printed bracket holds the pod on the printer: one bracket for the TAZ
+Workhorse, and one for the LulzBot Mini 2. [lulzbot/README.md](lulzbot/README.md) has the pod, the brackets and
 the parts list. [lulzbot/stl/pod/README.md](lulzbot/stl/pod/README.md) has the print files.
 
 | Part | Connection |
