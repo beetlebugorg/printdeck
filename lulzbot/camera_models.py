@@ -20,9 +20,9 @@ Each bracket holds the base of the U with one screw. The pivot of the U sets the
   the camera looks straight down at no tilt.
   - TAZ: a printed part (orange) on the top front rail only (top_bracket_taz()), so the space over
     the back of the bed stays free for the filament tube. It grips the top face and the inside face
-    of the rail with six M3 x 8 screws into roll-in T-nuts in the two slots. The camera hangs behind
-    the rail, 27 mm in front of the middle of the bed. pod.py export writes the STL file, and
-    stl/pod/README.md has the parts and the assembly.
+    of the rail with six M3 x 8 screws into printed roll-in nuts (or metal T-nuts) in the two slots.
+    The camera hangs behind the rail, 27 mm in front of the middle of the bed. pod.py export writes
+    the STL files, and stl/pod/README.md has the parts and the assembly.
   - Mini 2: a placeholder plate (violet) on the top face of the top front rail, with the wall at its
     back edge. It has no STL file.
 
@@ -410,23 +410,75 @@ def inner_screw_places():
     return [(INSIDE_SLOT_Y, zc + sg * d) for d in TOP["screws"] for sg in (-1, 1)]
 
 
+def roll_nut_at(origin, across):
+    """The printed roll-in nut (shape.roll_nut_section) and its M3 hex nut in a slot of a TAZ rail,
+    pulled up on the lips, in printer coordinates: (printed nut, hex nut). origin: the middle of the
+    slot on the face of the rail. across: across the slot, so that printer z cross across is out of
+    the rail. The slot is along printer z."""
+    from build123d import Polygon, RegularPolygon, extrude
+    import shape as S
+    pl = Location(Plane(origin=tuple(origin), x_dir=tuple(across), z_dir=(0, 0, 1)))
+    top = -S.ROLL_NUT_TOP
+    sec = Polygon(*[(w, top - u) for w, u in S.roll_nut_section()], align=None)
+    nut = extrude(sec, amount=S.ROLL_NUT_L / 2, both=True)
+    f, t = S.HEX_NUT
+    y1 = top - S.HEX_TOP
+    hexagon = lambda flats, y0, y1: Location(Plane(origin=(0, (y0 + y1) / 2, 0), x_dir=(0, 0, 1), z_dir=(0, 1, 0))) * \
+        extrude(RegularPolygon(flats / math.sqrt(3.0), 6), amount=(y1 - y0) / 2, both=True)
+    hole = Location(Plane(origin=(0, top, 0), x_dir=(1, 0, 0), z_dir=(0, 1, 0))) * Cylinder(1.6, 20.0)
+    nut = nut - hexagon(S.HEX_POCKET, top - S.ROLL_NUT_T - 1.0, y1) - hole
+    hx = hexagon(f, y1 - t, y1) - Location(Plane(origin=(0, top, 0), x_dir=(1, 0, 0), z_dir=(0, 1, 0))) * Cylinder(1.25, 20.0)
+    return pl * nut, pl * hx
+
+
 def top_hardware_taz():
-    """[(part, shape, color)] of the bought parts of the TAZ top bracket: the six M3 x 8 screws, the
-    six roll-in T-nuts, and the 1/4"-20 stud with its nut."""
+    """[(part, shape, color)] of the bought and small printed parts of the TAZ top bracket: the two M3
+    x 8 screws down through the camera wall and the four through the inside plate, the six printed
+    roll-in nuts with their M3 hex nuts, and the 1/4"-20 stud with its nut."""
     y0 = TAZ_RAILS["top"]
     xi = TAZ_RAILS["x"][1][0]
     xb = xi - TOP["inner"][0]
-    screws, nuts = [], []
+    top, inner, rolls, hexes = [], [], [], []
     for x, z in top_screw_places():
-        screws.append(P.screw(3, C.TNUT_SCREW, (x, y0 + C.COUNTERBORE[1], z), (0, 1, 0)))
-        nuts.append(box(x - 5.0, x + 5.0, y0 - 5.8, y0 - 1.8, z - 3.0, z + 3.0))
+        top.append(P.screw(3, C.TNUT_SCREW, (x, y0 + C.COUNTERBORE[1], z), (0, 1, 0)))
+        r, h = roll_nut_at((x, y0, z), (1, 0, 0))
+        rolls.append(r)
+        hexes.append(h)
     for y, z in inner_screw_places():
-        screws.append(P.screw(3, C.TNUT_SCREW, (xb + TOP["inner"][0] - C.COUNTERBORE[1], y, z), (-1, 0, 0)))
-        nuts.append(box(xi + 1.8, xi + 5.8, y - 5.0, y + 5.0, z - 3.0, z + 3.0))
+        inner.append(P.screw(3, C.TNUT_SCREW, (xb + TOP["inner"][0] - C.COUNTERBORE[1], y, z), (-1, 0, 0)))
+        r, h = roll_nut_at((xi, y, z), (0, 1, 0))
+        rolls.append(r)
+        hexes.append(h)
     join = lambda xs: xs[0] if len(xs) == 1 else xs[0] + join(xs[1:])
     rod, nut = stud()
-    return [("camera_top_screws", join(screws), P.SCREW_COLOR), ("camera_top_tnuts", join(nuts), "#9AA0A8"),
+    return [("camera_top_screws_top", join(top), P.SCREW_COLOR), ("camera_top_screws_inner", join(inner), P.SCREW_COLOR),
+            ("camera_top_roll_nuts", join(rolls), PRINTED_COLOR), ("camera_top_hex_nuts", join(hexes), "#9AA0A8"),
             ("camera_top_stud", rod, P.SCREW_COLOR), ("camera_top_nut", nut, "#9AA0A8")]
+
+
+# The exploded view of the TAZ top bracket in the live window: the stages after the stages of the pod,
+# and the move of each part in each stage (printer coordinates).
+TOP_STAGES = [
+    ("loosen the nut and take the camera off the top mount", {
+        ("camera_top_case", "camera_top_lens", "camera_top_connector", "camera_top_keepout", "camera_top_bracket",
+         "camera_top_pivot_screws", "camera_top_stud"): (-45.0, 0.0, 0.0),
+        ("camera_top_nut",): (25.0, 0.0, 0.0)}),
+    ("take out the six screws of the top mount", {("camera_top_screws_top",): (0.0, 45.0, 0.0),
+                                                  ("camera_top_screws_inner",): (-35.0, 0.0, 0.0)}),
+    ("lift the top mount off the rail", {("camera_top_plate",): (-15.0, 45.0, 0.0)}),
+]
+
+
+def top_explode(part):
+    """The move of a part in each stage of TOP_STAGES (printer coordinates)."""
+    out = []
+    for _, moves in TOP_STAGES:
+        d = (0.0, 0.0, 0.0)
+        for group, v in moves.items():
+            if part in group:
+                d = v
+        out.append(d)
+    return out
 
 
 def stud_places():

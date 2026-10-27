@@ -30,6 +30,7 @@ Support**, click **Close**, and clear the box.
 | `camera-arm-mini2_fdm.stl` | 1, for the C270 webcam on the Mini 2 (option) | Its back face |
 | `camera-clamp-mini2_fdm.stl` | 1, for the C270 webcam on the Mini 2 (option) | Its bottom |
 | `camera-top-taz_fdm.stl` | 1, for the camera over the bed on the TAZ | Its end (it stands up, 124 mm high). Use an 8 mm brim. |
+| `roll-nut_fdm.stl` | 7, for the camera over the bed on the TAZ (6 and a spare), in place of metal T-nuts | Its end, as in the file. Print it in a separate job: 100% infill and an 8 mm brim. |
 | `cable-clip-single_fdm.stl` | 5, for the TAZ | The base |
 | `cable-clip-double_fdm.stl` | 2, for the Mini 2 | The base |
 
@@ -155,23 +156,32 @@ Print it in PETG or PLA+:
 - 4 walls, 40% infill or more, 5 top and 5 bottom layers, 0.2 mm layers.
 - No supports. Use an 8 mm brim.
 
+The printed roll-in nuts (`roll-nut_fdm.stl`) print in a separate job, with 100% infill (the
+RollNut profile in `cura/`). The mount prints with 40% infill.
+
 | Part | Count | Where |
 |---|---|---|
-| M3 x 8 cap screw | 6 | 2 down through the camera wall, 4 through the inside plate |
-| M3 roll-in T-nut (2020, 6 mm slot) | 6 | 2 in the top slot and 4 in the inside slot of the top front rail |
+| M3 x 8 cap screw | 6 | 2 down through the camera wall, 4 through the inside plate. A longer screw touches the bottom of the slot. |
+| Printed roll-in nut and M3 hex nut (5.5 mm) | 6 each | 2 in the top slot and 4 in the inside slot of the top front rail. Press each hex nut into its pocket. |
 | 1/4"-20 stud (set screw), 30 mm | 1 | In the round base of the camera, through the camera wall |
 | 1/4"-20 hex nut (7/16") | 1 | On the stud, on the front face of the camera wall |
 | USB-A to JST-ZR 4-pin cable, 1 m | 1 | The cable that comes with the camera |
 
-In place of the stud and the nut, you can use a 1/4"-20 x 7/8" cap screw from the front face of
-the camera wall into the base.
+In place of the printed nuts, you can use 6 metal M3 roll-in T-nuts (2020, 6 mm slot). In place of
+the stud and the nut, you can use a 1/4"-20 x 7/8" cap screw from the front face of the camera wall
+into the base.
 
-1. Roll 2 T-nuts into the top slot and 4 T-nuts into the inside slot of the top front rail, at the
-   middle of the bed.
+![The mount cut through one screw of each slot](../../renders/camera-top-taz-section.png)
+
+![The mount, the camera, the screws and the nuts apart](../../renders/camera-top-taz-exploded.png)
+
+1. Roll 2 nuts into the top slot and 4 nuts into the inside slot of the top front rail, at the
+   middle of the bed. Each printed nut goes in edge first, its flat top toward the slot opening.
 2. Put the part on the rail: the top plate on the top face, the inside plate on the inside face.
    Put the middle of the part at the middle of the bed.
-3. Put in the 2 M3 x 8 screws down through the camera wall and the 4 through the inside plate.
-   Tighten them.
+3. Put the 2 M3 x 8 screws down the two long holes in the top of the camera wall. Use the long arm
+   of a 2.5 mm hex key, or a 2.5 mm driver with a shaft less than 6 mm across and 35 mm long or
+   more. Put the 4 M3 x 8 screws through the inside plate. Tighten the 6 screws.
 4. Turn the stud into the round base of the camera from below, until its top is flush with the top
    of the base inside the U. Do not turn it in more: it touches the camera.
 5. Put the base in the round seat on the back of the camera wall, with the stud through the hole.
