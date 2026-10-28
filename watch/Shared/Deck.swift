@@ -423,6 +423,46 @@ struct DeckClient {
         _ = try await send("/api/files/local/" + path, method: "POST", body: ["command": "select", "print": true])
     }
 
+    /// The time lapse videos of the deck, newest first.
+    func timelapses() async throws -> [DeckVideo] {
+        let r: TimelapseReply = try await get("/api/timelapse")
+        return r.files.map { f in
+            let pd = f.printdeck
+            return DeckVideo(name: f.name, url: f.url, bytes: f.bytes, date: pd?.time,
+                             frames: pd?.frames ?? 0, length: pd?.length ?? 0, still: pd?.still,
+                             file: pd?.print?.file, result: pd?.print?.result)
+        }
+    }
+
+    /// The JPEG of the last frame of a video, as the deck has it in the file, or nil.
+    func still(_ v: DeckVideo) async -> CGImage? {
+        guard let path = v.still, let data = try? await send(path),
+              let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        return CGImageSourceCreateImageAtIndex(src, 0, nil)
+    }
+
+    /// The configuration of the downloads of the videos: a video can be large.
+    private static let downloadSession: URLSession = {
+        let c = URLSessionConfiguration.ephemeral
+        c.timeoutIntervalForRequest = 15
+        c.timeoutIntervalForResource = 3600
+        c.waitsForConnectivity = false
+        return URLSession(configuration: c)
+    }()
+
+    /// Downloads the file of a video to the file url.
+    func download(_ v: DeckVideo, to url: URL) async throws {
+        let req = try request(v.url)
+        let (tmp, resp) = try await Self.downloadSession.download(for: req)
+        let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        guard code == 200 else {
+            try? FileManager.default.removeItem(at: tmp)
+            throw code == 403 ? DeckError.badKey : DeckError.http(code)
+        }
+        try? FileManager.default.removeItem(at: url)
+        try FileManager.default.moveItem(at: tmp, to: url)
+    }
+
     /// The model of the print as the deck draws it, in 1-bit dots of w x h: the printed part solid,
     /// the rest a checker. nil when no print runs, or on a deck without the picture.
     func model(width w: Int, height h: Int) async -> LCDPicture? {
@@ -549,6 +589,24 @@ struct DeckFile: Identifiable, Hashable {
     var id: String { path }
 }
 
+/// A time lapse video on the deck.
+struct DeckVideo: Identifiable, Hashable {
+    var name: String
+    /// The path of the download on the deck.
+    var url: String
+    var bytes: Int64
+    var date: Date?
+    var frames: Int
+    /// The play time in seconds.
+    var length: Double
+    /// The path of the last frame on the deck, or nil for an older deck.
+    var still: String?
+    /// The file and the result of the print of the video, or nil with no record.
+    var file: String?
+    var result: String?
+    var id: String { name }
+}
+
 // The replies of the deck. The fields are in deck/internal/octoapi.
 
 private struct FilesReply: Decodable {
@@ -605,4 +663,37 @@ private struct PluginReply: Decodable {
     var lcd: DeckLCD?
     var camera: DeckCamera?
     var cameras: [DeckCamera]?
+}
+
+private struct TimelapseReply: Decodable {
+    struct Print: Decodable {
+        var file: String
+        var result: String
+    }
+    struct Extra: Decodable {
+        var time: Date?
+        var frames: Int
+        var length: Double
+        var still: String?
+        var print: Print?
+
+        enum CodingKeys: String, CodingKey { case time, frames, length, still, print }
+
+        init(from d: Decoder) throws {
+            let c = try d.container(keyedBy: CodingKeys.self)
+            // The time is RFC 3339 in UTC, in whole seconds.
+            time = try c.decodeIfPresent(String.self, forKey: .time).flatMap { try? Date($0, strategy: .iso8601) }
+            frames = try c.decodeIfPresent(Int.self, forKey: .frames) ?? 0
+            length = try c.decodeIfPresent(Double.self, forKey: .length) ?? 0
+            still = try c.decodeIfPresent(String.self, forKey: .still)
+            print = try c.decodeIfPresent(Print.self, forKey: .print)
+        }
+    }
+    struct File: Decodable {
+        var name: String
+        var url: String
+        var bytes: Int64
+        var printdeck: Extra?
+    }
+    var files: [File]
 }

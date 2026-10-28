@@ -1042,7 +1042,7 @@ func manualSections() []section {
 				"The deck sends a push message when a print ends or pauses, after the first layer, and when a roll runs short. Settings, then Phones, lists the paired phones.",
 			},
 			Table: [][2]string{
-				{"iPhone app", "The deck screen and its keys. With two cameras, tap a camera name on the camera page, or swipe, to switch. The watch shows the same camera."},
+				{"iPhone app", "The deck screen and its keys. With two cameras, tap a camera name on the camera page, or swipe, to switch. The watch shows the same camera. Time lapse lists the videos of the deck: tap a video to play it, share it, or save it to Photos."},
 				{"Watch app", "The progress and the time left. Tap for Pause, Resume or Cancel."},
 				{"Complications", "The progress on the watch face."},
 				{"Home Screen widgets", "The status of the print."},

@@ -33,6 +33,8 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Printdeck finds the deck on your network and connects to it.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Printdeck saves the time lapse videos of your prints to Photos.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>PushRelay</key>
