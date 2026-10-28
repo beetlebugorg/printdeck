@@ -28,6 +28,7 @@ import (
 
 	"printdeck/cloud/api"
 	"printdeck/cloud/deploy"
+	"printdeck/internal/cloud/wire"
 )
 
 type deployOptions struct {
@@ -267,6 +268,16 @@ func refreshShares(ctx context.Context, c *s3.Client, bucket, base string, page 
 			if _, err := c.PutObject(ctx, &s3.PutObjectInput{Bucket: &bucket, Key: &key, Body: bytes.NewReader(body),
 				ContentType: &ctype, CacheControl: &cache}); err != nil {
 				return err
+			}
+			// A share from before the service wrote ready.json at the start gets one.
+			ready := key + "/ready.json"
+			if _, err := c.HeadObject(ctx, &s3.HeadObjectInput{Bucket: &bucket, Key: &ready}); err != nil {
+				data, _ := json.Marshal(wire.ShareReady{Expires: sh.Expires})
+				jtype, jcache := "application/json", "public, max-age=5"
+				if _, err := c.PutObject(ctx, &s3.PutObjectInput{Bucket: &bucket, Key: &ready, Body: bytes.NewReader(data),
+					ContentType: &jtype, CacheControl: &jcache}); err != nil {
+					return err
+				}
 			}
 			n++
 		}

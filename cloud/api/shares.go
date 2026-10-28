@@ -268,6 +268,10 @@ func (s *Server) newShare(ctx context.Context, d *Deck, body []byte) (any, error
 		CacheControl: "public, max-age=60"}); err != nil {
 		return nil, err
 	}
+	// The page polls ready.json, so it exists from the start: a missing file is a 404 at each poll.
+	if err := s.updateReady(ctx, &sh, func(*cloud.ShareReady) {}); err != nil {
+		return nil, err
+	}
 	g, err := s.Grants.Grant(ctx, "s/"+sh.ID+"/", MaxShareFile, GrantTTL)
 	if err != nil {
 		return nil, err

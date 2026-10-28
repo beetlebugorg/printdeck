@@ -96,6 +96,9 @@ func TestShareFlow(t *testing.T) {
 	if code, _ := get(t, shareURL); code != 200 {
 		t.Fatalf("page: %d", code)
 	}
+	if code, body := get(t, shareURL+"/ready.json"); code != 200 || !strings.Contains(string(body), `"ready":false`) {
+		t.Fatalf("ready.json at the start: %d %s", code, body)
+	}
 	sh.AddLapseFrame([]byte("l2"))
 	var st cloud.ShareStatus
 	waitFor(t, func() bool {
