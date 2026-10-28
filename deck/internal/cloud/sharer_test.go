@@ -91,7 +91,9 @@ func TestShareHandoff(t *testing.T) {
 	if !ok || h.ID != "s1" || h.Owner != "owner1" || h.LapseN != 2 || h.Ended {
 		t.Fatalf("Handoff = %+v, %v", h, ok)
 	}
-	// The old sharer uploads no more.
+	// The old sharer uploads no more. A request that it sent before the handoff can still be in
+	// the fake service, so the count starts after a moment.
+	time.Sleep(40 * time.Millisecond)
 	n := svc.count("status.json")
 	time.Sleep(80 * time.Millisecond)
 	if svc.count("status.json") != n {
