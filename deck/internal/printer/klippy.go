@@ -495,8 +495,8 @@ func motionLimits(ctx context.Context, conn *klippy.Conn) (l toolhead.Limits, mm
 }
 
 // machineSettings reads the settings of printer.cfg that Machine has: the nozzle, the travel of X
-// and Y, the pressure advance, and the acceleration (configfile settings, with the defaults of
-// Klipper).
+// and Y, the pressure advance, the acceleration, the kinematics, and the park of the time lapse
+// (configfile settings, with the defaults of Klipper).
 func machineSettings(ctx context.Context, conn *klippy.Conn) Machine {
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -513,7 +513,11 @@ func machineSettings(ctx context.Context, conn *klippy.Conn) Machine {
 	}
 	json.Unmarshal(res, &q)
 	s := q.Status.Configfile.Settings
+	kin, _ := s["printer"]["kinematics"].(string)
+	parkX, hasParkX := s["printdeck_timelapse"]["park_x"].(float64)
+	parkY, hasParkY := s["printdeck_timelapse"]["park_y"].(float64)
 	return Machine{
+		Kinematics: kin, ParkX: parkX, HasParkX: hasParkX, ParkY: parkY, HasParkY: hasParkY,
 		NozzleDiameter: num(s["extruder"]["nozzle_diameter"]),
 		MinX:           num(s["stepper_x"]["position_min"]), MaxX: num(s["stepper_x"]["position_max"]),
 		MinY: num(s["stepper_y"]["position_min"]), MaxY: num(s["stepper_y"]["position_max"]),

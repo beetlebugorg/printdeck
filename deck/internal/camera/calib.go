@@ -13,7 +13,15 @@ import (
 // and z in mm, the coordinates of the toolhead) to the pixels of the camera picture. The deck
 // moves the nozzle to points over the bed, and the user taps the nozzle tip on the picture at
 // each point. Fit computes the matrix from these pairs with the normalized DLT (a least squares
-// fit), and then decreases the pixel error with a few Levenberg-Marquardt steps.
+// fit), and then decreases the pixel error with a few Levenberg-Marquardt steps. A simpler pinhole
+// camera replaces the matrix when it fits as well (pinhole.go).
+//
+// A calibration with BedY is for a printer with a bed that moves in Y (a cartesian printer, such as
+// a TAZ or a Prusa i3), and a camera on the frame of the printer. Its matrix maps the places in the
+// frame of the printer: a place (x, y, z) of the toolhead coordinates, with the bed at the toolhead
+// Y bedY, is at (x, y - bedY, z). The nozzle is at y 0 for each Y. The deck fits it from the marks
+// of printed towers at two places of the bed (KindTowers). A calibration of an older deck has no
+// kind and no BedY: its matrix maps the toolhead coordinates, as a calibration of KindNozzle.
 //
 // The matrix maps to normalized coordinates of the frame: u and v go from 0 to 1 across the width
 // and the height of the picture, after the turn of the settings. A frame of another size with the
@@ -25,6 +33,12 @@ const MaxCalibrationError = 15.0
 
 // MinCalibrationPoints is the least number of points of a calibration.
 const MinCalibrationPoints = 6
+
+// The kinds of a calibration.
+const (
+	KindNozzle = "nozzle" // the user taps the nozzle tip at points over the bed
+	KindTowers = "towers" // the user taps the bottoms and the tops of printed towers
+)
 
 // Calibration is a calibration of the camera.
 type Calibration struct {
@@ -39,6 +53,11 @@ type Calibration struct {
 	Height int `json:"height"`
 	// Rotate is the turn of the settings at the calibration: 0 or 180.
 	Rotate int `json:"rotate"`
+	// Kind is KindNozzle or KindTowers. A calibration of an older deck has no kind: KindNozzle.
+	Kind string `json:"kind,omitempty"`
+	// BedY is true for a matrix of the places in the frame of a printer with a bed that moves in
+	// Y. See Frame.
+	BedY bool `json:"bedY,omitempty"`
 	// P is the matrix, row by row: (x, y, z, 1) goes to (a, b, c), and the point is at u = a/c
 	// and v = b/c in normalized coordinates of the frame.
 	P [12]float64 `json:"p"`
@@ -114,8 +133,32 @@ func (c *Calibration) ValidFor(d Device, f Format) bool {
 	return f.InW == 0 || (f.InW == c.InW && f.InH == c.InH)
 }
 
-// Project returns the place (x, y, z) of the printer in pixels of a frame of w x h with the turn
-// rotate. ok is false for a place behind the camera.
+// KindName is the kind of the calibration: KindNozzle for a calibration of an older deck.
+func (c *Calibration) KindName() string {
+	if c.Kind == "" {
+		return KindNozzle
+	}
+	return c.Kind
+}
+
+// Frame returns the place p of the toolhead coordinates, with the bed at the toolhead Y bedY, in
+// the coordinates of the matrix. With BedY, it is (x, y - bedY, z). Else it is p.
+func (c *Calibration) Frame(p [3]float64, bedY float64) [3]float64 {
+	if c.BedY {
+		p[1] -= bedY
+	}
+	return p
+}
+
+// ProjectAt returns the place p of the toolhead coordinates, with the bed at the toolhead Y bedY,
+// in pixels of a frame of w x h with the turn rotate. For the nozzle, bedY is the Y of the nozzle.
+// A calibration with no BedY ignores bedY.
+func (c *Calibration) ProjectAt(p [3]float64, bedY float64, w, h, rotate int) (px, py float64, ok bool) {
+	return c.Project(c.Frame(p, bedY), w, h, rotate)
+}
+
+// Project returns the place p in the coordinates of the matrix (see Frame) in pixels of a frame of
+// w x h with the turn rotate. ok is false for a place behind the camera.
 func (c *Calibration) Project(p [3]float64, w, h, rotate int) (px, py float64, ok bool) {
 	u, v, ok := projectNorm(&c.P, p)
 	if !ok {
@@ -240,6 +283,9 @@ func Fit(pts [][3]float64, pix [][2]float64, w, h int) (m [12]float64, rms float
 	rms, ok := reprojection(&m, pts, pix, w, h)
 	if !ok {
 		return m, 0, ErrBadPoints
+	}
+	if pm, prms, ok := fitPinhole(m, pts, pix, w, h, rms); ok {
+		m, rms = pm, prms
 	}
 	return m, rms, nil
 }
@@ -502,5 +548,9 @@ func CalibrationPoints(lo, hi [3]float64) [][3]float64 {
 
 // String is the calibration for the log.
 func (c *Calibration) String() string {
-	return fmt.Sprintf("%d points, %.1f px", c.Points, c.Error)
+	bed := ""
+	if c.BedY {
+		bed = ", bed in Y"
+	}
+	return fmt.Sprintf("%s, %d points, %.1f px%s", c.KindName(), c.Points, c.Error, bed)
 }

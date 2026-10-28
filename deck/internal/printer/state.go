@@ -166,7 +166,18 @@ type Machine struct {
 	PressureAdvance      float64
 	MaxAccel             float64
 	SquareCornerVelocity float64
+	// Kinematics is kinematics of the [printer] section, for example "cartesian" or "corexy";
+	// "" is not known.
+	Kinematics string
+	// The park_x and park_y options of [printdeck_timelapse], with HasParkX and HasParkY.
+	ParkX, ParkY       float64
+	HasParkX, HasParkY bool
 }
+
+// BedMovesY reports that the bed of the printer moves in Y, from its kinematics: a cartesian
+// printer, such as a TAZ, a Prusa i3 or an Ender 3, moves the bed in Y. It is the default of the
+// setting of the camera calibration.
+func (m Machine) BedMovesY() bool { return m.Kinematics == "cartesian" }
 
 // Has reports that the printer has a module.
 func (m Machine) Has(module string) bool {
