@@ -49,6 +49,9 @@ const (
 
 // open shows a page over the current one.
 func (a *App) open(p page) {
+	if p == pageCamera {
+		a.camFocus = false
+	}
 	a.pages = append(a.pages, p)
 	a.Redraw()
 }

@@ -41,7 +41,7 @@ func NewDemoCamera() *DemoCamera {
 		{Path: "/dev/video2", ID: "/dev/v4l/by-path/platform-xhci-hcd.1-usb-0:1:1.0-video-index0", Name: "B0561"},
 	} {
 		c.Cams = append(c.Cams, &DemoSource{Dev: dev, Frame: demoPicture(i == 1), set: c,
-			State: camera.Status{State: "on", Device: dev, Format: format}})
+			State: camera.Status{State: "on", Device: dev, Format: format, Focus: &camera.Focus{Max: 1023, Step: 1, Auto: true, Pos: 410}}})
 	}
 	return c
 }

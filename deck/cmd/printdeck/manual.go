@@ -689,10 +689,25 @@ func manualParts() []section {
 						{"Tabs", "A tab for each camera that is on. Both shows all the cameras."},
 						{"Picture", "Use it to aim the camera at the bed."},
 						{"Turn", "Turns the picture 180°."},
+						{"Focus", "Shows the focus keys. Only a camera with a focus control has this key."},
 						{"Camera settings", "The name, on or off, and the uses of this camera."},
 					},
 					Notes: []string{"A camera runs only while somebody looks at it. With no camera, the apps show the deck screen.",
 						"If a camera shows too little USB bandwidth, move it to another USB port."}},
+				{Name: "camera-focus", Caption: "The focus of the camera",
+					Setup: func(s *manualState) {
+						s.p.State_ = stIdle
+						s.a.Camera = manualCameras()
+						s.a.OpenPrintScreen("camera-focus")
+					},
+					Callouts: []callout{
+						{"Auto", "Lit when the camera focuses itself. Tap it to keep the lens where the autofocus put it."},
+						{"−", "Moves the lens one step. The autofocus goes off."},
+						{"+", "Moves the lens one step to the other side."},
+						{"Done", "Shows the other camera keys again."},
+					},
+					Notes: []string{"A fixed focus keeps the picture sharp when the toolhead and the bed move. Set it while the picture shows the nozzle.",
+						"The deck keeps the focus of each camera, and sets it each time the camera starts."}},
 				{Name: "cameras", Caption: "The Cameras page",
 					Setup: func(s *manualState) {
 						s.p.State_ = stIdle
@@ -1131,7 +1146,7 @@ func manualSections() []section {
 
 		{Chapter: care, ID: "machine", Title: "Look after the printer",
 			Intro:   []string{"Machine has the information of the printer, the history of the prints, the macros, the console and the settings."},
-			Figures: fig("machine", "machine-prints", "machine-more", "settings", "settings-more", "camera", "cameras", "camera-settings", "stats", "record", "console", "monitor")},
+			Figures: fig("machine", "machine-prints", "machine-more", "settings", "settings-more", "camera", "camera-focus", "cameras", "camera-settings", "stats", "record", "console", "monitor")},
 		{Chapter: care, ID: "update", Title: "Update the Printdeck",
 			Intro: []string{
 				"The deck checks for a new version once a day. Machine then shows Software update in orange.",

@@ -40,6 +40,8 @@ type Hub struct {
 	scan    func() []Device
 	saveMu  sync.Mutex // one save at a time
 
+	focusSave *time.Timer // the save after a change of a focus (SetFocus), or nil
+
 	// The views (views.go): the calibration of each camera by ID, the places of the printer, and
 	// the last format of each device.
 	cals    map[string]*Calibration
@@ -105,12 +107,27 @@ type Status struct {
 	// Name is the name of the camera on the screens (Info.Name).
 	Name   string
 	Format Format
-	Err    string
+	// Focus is the focus control of a camera that is on, or nil for a camera with no focus
+	// control.
+	Focus *Focus
+	Err   string
 }
 
-// captureFunc runs the capture of a device until ctx ends or the device fails. It calls format
-// once the format is set, and emit with each frame.
-type captureFunc func(ctx context.Context, d Device, s CamSettings, format func(Format), emit func(*Frame)) error
+// captureFunc runs the capture of a device until ctx ends or the device fails.
+type captureFunc func(ctx context.Context, d Device, l link) error
+
+// link connects a capture to its camera.
+type link struct {
+	// settings returns the settings of the camera now. The capture reads the turn once, and the
+	// focus a few times a second.
+	settings func() CamSettings
+	// format gets the format once it is set.
+	format func(Format)
+	// focus gets the focus control after each change, for a camera with a focus control.
+	focus func(Focus)
+	// emit gets each frame.
+	emit func(*Frame)
+}
 
 // linger is how long a camera runs after its last viewer.
 var linger = 8 * time.Second
@@ -136,6 +153,39 @@ func (h *Hub) Settings() Settings {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return h.settings.clone()
+}
+
+// focusSaveAfter is the time from the last change of a focus to the save of the settings.
+var focusSaveAfter = 3 * time.Second
+
+// SetFocus sets the focus of the camera id: fixed at the lens position pos, or auto. The capture
+// applies it in a fraction of a second. The save of the settings comes focusSaveAfter after the
+// last change, so a series of steps writes the file once.
+func (h *Hub) SetFocus(id string, fixed bool, pos int) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	s := h.settings.clone()
+	cs := s.Camera(id)
+	cs.FixedFocus, cs.Focus = fixed, pos
+	s.SetCamera(cs)
+	h.settings = s
+	if h.focusSave == nil {
+		h.focusSave = time.AfterFunc(focusSaveAfter, h.saveSettings)
+	} else {
+		h.focusSave.Reset(focusSaveAfter)
+	}
+}
+
+// saveSettings gives the settings to OnSettings.
+func (h *Hub) saveSettings() {
+	h.mu.Lock()
+	s, save := h.settings.clone(), h.OnSettings
+	h.mu.Unlock()
+	if save != nil {
+		h.saveMu.Lock()
+		save(s)
+		h.saveMu.Unlock()
+	}
 }
 
 // SetSettings changes the settings. A camera with a new turn, or that goes off, starts again.
@@ -619,16 +669,29 @@ func (c *Cam) run(ctx context.Context) {
 		}
 		cctx, cancel := context.WithCancel(ctx)
 		go c.stopWhenIdle(cctx, cancel, cs)
-		err := h.capture(cctx, d, cs, func(f Format) {
-			h.mu.Lock()
-			c.status.Format = f
-			if h.formats == nil {
-				h.formats = map[string]Format{}
-			}
-			h.formats[d.ID] = f
-			h.mu.Unlock()
-			c.logOnce(d.Name + " (" + d.Path + "): " + f.String())
-		}, c.publish)
+		err := h.capture(cctx, d, link{
+			settings: func() CamSettings {
+				h.mu.Lock()
+				defer h.mu.Unlock()
+				return h.settings.Camera(c.id)
+			},
+			format: func(f Format) {
+				h.mu.Lock()
+				c.status.Format = f
+				if h.formats == nil {
+					h.formats = map[string]Format{}
+				}
+				h.formats[d.ID] = f
+				h.mu.Unlock()
+				c.logOnce(d.Name + " (" + d.Path + "): " + f.String())
+			},
+			focus: func(f Focus) {
+				h.mu.Lock()
+				c.status.Focus = &f
+				h.mu.Unlock()
+			},
+			emit: c.publish,
+		})
 		stopped := cctx.Err() != nil
 		cancel()
 		h.mu.Lock()

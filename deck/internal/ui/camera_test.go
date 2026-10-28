@@ -283,3 +283,35 @@ func TestCameraLine(t *testing.T) {
 		}
 	}
 }
+
+// Focus shows the focus keys. A step turns off the autofocus and moves the lens from the position
+// of the autofocus. Auto turns the autofocus on again.
+func TestCameraFocus(t *testing.T) {
+	a, _, cv := newPrintApp(idle)
+	cam := NewDemoCamera()
+	a.Camera = cam
+	a.pages = []page{pageMachine, pageSettings, pageCamera}
+	id := cam.Cams[0].Dev.ID
+	tapLabel(t, a, cv, "Focus")
+	if !a.camFocus {
+		t.Fatal("no focus keys")
+	}
+	tapLabel(t, a, cv, "+")
+	tapLabel(t, a, cv, "+")
+	if cs := cam.Set.Camera(id); !cs.FixedFocus || cs.Focus != 410+2*20 {
+		t.Fatalf("after two steps: %+v", cs)
+	}
+	tapLabel(t, a, cv, "Auto")
+	if cs := cam.Set.Camera(id); cs.FixedFocus {
+		t.Fatalf("after Auto: %+v", cs)
+	}
+	tapLabel(t, a, cv, "Done")
+	if a.camFocus {
+		t.Error("focus keys after Done")
+	}
+	// A camera with no focus control has no Focus key.
+	cam.Cams[0].State.Focus = nil
+	if f := simFrame(t, a, "camera-nofocus"); strings.Contains(f, `"FOCUS"`) {
+		t.Error("Focus key with no focus control")
+	}
+}

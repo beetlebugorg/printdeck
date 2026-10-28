@@ -53,12 +53,21 @@ func TestCapture(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 		var frames []*Frame
 		var f Format
-		err := capture(ctx, dev, CamSettings{Rotate: rot}, func(x Format) { f = x }, func(fr *Frame) { frames = append(frames, fr) })
+		var focus *Focus
+		err := capture(ctx, dev, link{
+			settings: func() CamSettings { return CamSettings{Rotate: rot} },
+			format:   func(x Format) { f = x },
+			focus:    func(x Focus) { focus = &x },
+			emit:     func(fr *Frame) { frames = append(frames, fr) },
+		})
 		cancel()
 		if err != nil {
 			t.Fatal(err)
 		}
 		t.Logf("turn %d: %s: %d frames in 4 s", rot, f, len(frames))
+		if focus != nil {
+			t.Logf("focus: %+v", *focus)
+		}
 		if len(frames) < 5 {
 			t.Fatalf("only %d frames", len(frames))
 		}

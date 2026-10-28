@@ -61,6 +61,29 @@ type Format struct {
 	OutFPS     int     // the most frames a second that the deck makes
 }
 
+// Focus is the focus control of a camera.
+type Focus struct {
+	// Min and Max are the range of the lens position, and Step the smallest change.
+	Min, Max, Step int
+	// Auto reports that the camera focuses itself.
+	Auto bool
+	// Pos is the lens position now: the setting, or with Auto the position that the camera
+	// reports.
+	Pos int
+}
+
+// Clamp returns the lens position nearest to pos in the range, on a step.
+func (f Focus) Clamp(pos int) int {
+	pos = max(f.Min, min(f.Max, pos))
+	if f.Step > 1 {
+		pos = f.Min + (pos-f.Min+f.Step/2)/f.Step*f.Step
+		if pos > f.Max {
+			pos -= f.Step
+		}
+	}
+	return pos
+}
+
 // String is the format for the screen, for example "MJPEG 1280×720, 15 fps" or
 // "YUYV 1920×1080 to JPEG 960×540, 10 fps".
 func (f Format) String() string {

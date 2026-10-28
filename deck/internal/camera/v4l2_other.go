@@ -11,6 +11,6 @@ import (
 
 func listDevices() []Device { return nil }
 
-func capture(ctx context.Context, d Device, s CamSettings, format func(Format), emit func(*Frame)) error {
+func capture(ctx context.Context, d Device, l link) error {
 	return errors.New("no camera support on this system")
 }

@@ -283,10 +283,10 @@ func fakeHub(t *testing.T) (*Hub, *atomic.Int32) {
 	h := NewHub(Settings{})
 	h.scan = func() []Device { return []Device{{Path: "/dev/video9", ID: "cam", Name: "Test camera"}} }
 	jb := testJPEG(t)
-	h.capture = func(ctx context.Context, d Device, s CamSettings, format func(Format), emit func(*Frame)) error {
+	h.capture = func(ctx context.Context, d Device, l link) error {
 		running.Add(1)
 		defer running.Add(-1)
-		format(Format{In: "MJPEG", InW: 40, InH: 24, OutW: 40, OutH: 24, OutFPS: 100})
+		l.format(Format{In: "MJPEG", InW: 40, InH: 24, OutW: 40, OutH: 24, OutFPS: 100})
 		tick := time.NewTicker(10 * time.Millisecond)
 		defer tick.Stop()
 		for {
@@ -294,7 +294,7 @@ func fakeHub(t *testing.T) (*Hub, *atomic.Int32) {
 			case <-ctx.Done():
 				return nil
 			case <-tick.C:
-				emit(newFrame(jb, 40, 24, nil))
+				l.emit(newFrame(jb, 40, 24, nil))
 			}
 		}
 	}

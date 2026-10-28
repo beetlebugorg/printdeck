@@ -25,7 +25,7 @@ func twoHub(t *testing.T, s Settings) (*Hub, func(id string) int) {
 	h := NewHub(s)
 	h.scan = func() []Device { return []Device{camB, camA} }
 	jb := testJPEG(t)
-	h.capture = func(ctx context.Context, d Device, s CamSettings, format func(Format), emit func(*Frame)) error {
+	h.capture = func(ctx context.Context, d Device, l link) error {
 		mu.Lock()
 		running[d.ID]++
 		mu.Unlock()
@@ -34,7 +34,7 @@ func twoHub(t *testing.T, s Settings) (*Hub, func(id string) int) {
 			running[d.ID]--
 			mu.Unlock()
 		}()
-		format(Format{In: "MJPEG", InW: 40, InH: 24, OutW: 40, OutH: 24, OutFPS: 100})
+		l.format(Format{In: "MJPEG", InW: 40, InH: 24, OutW: 40, OutH: 24, OutFPS: 100})
 		tick := time.NewTicker(10 * time.Millisecond)
 		defer tick.Stop()
 		for {
@@ -42,7 +42,7 @@ func twoHub(t *testing.T, s Settings) (*Hub, func(id string) int) {
 			case <-ctx.Done():
 				return nil
 			case <-tick.C:
-				emit(newFrame(jb, 40, 24, nil))
+				l.emit(newFrame(jb, 40, 24, nil))
 			}
 		}
 	}
@@ -348,5 +348,40 @@ func TestRoleMoves(t *testing.T) {
 	s.SetOff(List(s, devs), camB.ID, true)
 	if moved, to := s.SetOff(List(s, devs), camA.ID, true); moved != nil || to != "" || s.Main != camA.ID {
 		t.Errorf("last camera off: %v %q %+v", moved, to, s)
+	}
+}
+
+// A series of focus steps changes the settings at once, and saves them once after the last step.
+func TestSetFocusSavesOnce(t *testing.T) {
+	focusSaveAfter = 50 * time.Millisecond
+	t.Cleanup(func() { focusSaveAfter = 3 * time.Second })
+	h := NewHub(Settings{})
+	var mu sync.Mutex
+	var saves []Settings
+	h.OnSettings = func(s Settings) {
+		mu.Lock()
+		saves = append(saves, s)
+		mu.Unlock()
+	}
+	for pos := 100; pos <= 140; pos += 20 {
+		h.SetFocus(camA.ID, true, pos)
+	}
+	if cs := h.Settings().Camera(camA.ID); !cs.FixedFocus || cs.Focus != 140 {
+		t.Fatalf("settings: %+v", cs)
+	}
+	time.Sleep(200 * time.Millisecond)
+	mu.Lock()
+	defer mu.Unlock()
+	if len(saves) != 1 || saves[0].Camera(camA.ID).Focus != 140 {
+		t.Fatalf("saves: %+v", saves)
+	}
+}
+
+func TestFocusClamp(t *testing.T) {
+	f := Focus{Min: 0, Max: 1023, Step: 8}
+	for _, c := range [][2]int{{-5, 0}, {5, 8}, {3, 0}, {2000, 1016}, {1020, 1016}, {500, 504}} {
+		if got := f.Clamp(c[0]); got != c[1] {
+			t.Errorf("Clamp(%d) = %d, want %d", c[0], got, c[1])
+		}
 	}
 }

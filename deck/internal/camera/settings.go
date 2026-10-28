@@ -22,6 +22,10 @@ type CamSettings struct {
 	// Model is the name of the device, for the screens while the deck does not find the camera.
 	// The hub sets it.
 	Model string `json:"model,omitempty"`
+	// FixedFocus turns off the autofocus: the lens stays at the position Focus. A camera with no
+	// focus control ignores both.
+	FixedFocus bool `json:"fixedFocus,omitempty"`
+	Focus      int  `json:"focus,omitempty"`
 }
 
 // Settings are the camera settings of the deck.

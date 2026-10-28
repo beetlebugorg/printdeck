@@ -120,8 +120,22 @@ var (
 	vidiocGParm         = ioc(iocRW, 21, unsafe.Sizeof(v4l2StreamParm{}))
 	vidiocSParm         = ioc(iocRW, 22, unsafe.Sizeof(v4l2StreamParm{}))
 	vidiocEnumFrameSize = ioc(iocRW, 74, unsafe.Sizeof(v4l2FrmSizeEnum{}))
+	vidiocGCtrl         = ioc(iocRW, 27, unsafe.Sizeof(v4l2Control{}))
 	vidiocSCtrl         = ioc(iocRW, 28, unsafe.Sizeof(v4l2Control{}))
+	vidiocQueryCtrl     = ioc(iocRW, 36, unsafe.Sizeof(v4l2QueryCtrl{}))
 )
+
+// v4l2QueryCtrl is struct v4l2_queryctrl: the range of a control.
+type v4l2QueryCtrl struct {
+	ID, Type                        uint32
+	Name                            [32]byte
+	Minimum, Maximum, Step, Default int32
+	Flags                           uint32
+	Reserved                        [2]uint32
+}
+
+// ctrlFlagDisabled is V4L2_CTRL_FLAG_DISABLED: the camera does not have the control.
+const ctrlFlagDisabled = 0x0001
 
 // v4l2Control is struct v4l2_control: a control of the camera.
 type v4l2Control struct {
@@ -156,6 +170,79 @@ func setFlip(fd int, on bool) bool {
 	}
 	return ok
 }
+
+// The focus controls (V4L2_CID_FOCUS_ABSOLUTE and V4L2_CID_FOCUS_AUTO).
+const (
+	cidFocusAbsolute = 0x009a090a
+	cidFocusAuto     = 0x009a090c
+)
+
+// focuser sets the focus of a camera with a focus control.
+type focuser struct {
+	fd      int
+	f       Focus
+	hasAuto bool // the camera has the autofocus control
+	def     int  // the default lens position
+	set     bool // the camera has the focus of f
+}
+
+// newFocuser returns the focuser of a camera, or nil for a camera with no lens position control.
+func newFocuser(fd int) *focuser {
+	q := v4l2QueryCtrl{ID: cidFocusAbsolute}
+	if ioctl(fd, vidiocQueryCtrl, unsafe.Pointer(&q)) != nil || q.Flags&ctrlFlagDisabled != 0 || q.Maximum <= q.Minimum {
+		return nil
+	}
+	z := &focuser{fd: fd, def: int(q.Default),
+		f: Focus{Min: int(q.Minimum), Max: int(q.Maximum), Step: max(1, int(q.Step))}}
+	a := v4l2QueryCtrl{ID: cidFocusAuto}
+	z.hasAuto = ioctl(fd, vidiocQueryCtrl, unsafe.Pointer(&a)) == nil && a.Flags&ctrlFlagDisabled == 0
+	return z
+}
+
+// apply sets the focus of the settings s in the camera, and reports that the focus changed. A
+// camera with no autofocus control goes to its default lens position for auto.
+func (z *focuser) apply(s CamSettings) bool {
+	auto := !s.FixedFocus && z.hasAuto
+	pos := z.def
+	if s.FixedFocus {
+		pos = z.f.Clamp(s.Focus)
+	}
+	if z.set && auto == z.f.Auto && (auto || pos == z.f.Pos) {
+		return false
+	}
+	if z.hasAuto {
+		v := int32(0)
+		if auto {
+			v = 1
+		}
+		c := v4l2Control{ID: cidFocusAuto, Value: v}
+		ioctl(z.fd, vidiocSCtrl, unsafe.Pointer(&c))
+	}
+	if auto {
+		z.read()
+	} else {
+		// The autofocus control is off first: a camera can refuse a lens position while it is on.
+		c := v4l2Control{ID: cidFocusAbsolute, Value: int32(pos)}
+		ioctl(z.fd, vidiocSCtrl, unsafe.Pointer(&c))
+		z.f.Pos = pos
+	}
+	z.f.Auto, z.set = auto, true
+	return true
+}
+
+// read reads the lens position of the autofocus, and reports that it changed.
+func (z *focuser) read() bool {
+	c := v4l2Control{ID: cidFocusAbsolute}
+	if ioctl(z.fd, vidiocGCtrl, unsafe.Pointer(&c)) != nil || int(c.Value) == z.f.Pos {
+		return false
+	}
+	z.f.Pos = int(c.Value)
+	return true
+}
+
+// focusEvery is the time between two checks of the focus in the capture: the settings, and
+// with autofocus the lens position.
+const focusEvery = 250 * time.Millisecond
 
 // errBandwidth is the error of a camera that gets too little USB bandwidth: the cameras on one USB
 // controller share its bandwidth.
@@ -330,7 +417,7 @@ func pickSize(fd int, f string) (int, int) {
 }
 
 // capture runs the capture of a device: see captureFunc.
-func capture(ctx context.Context, d Device, s CamSettings, format func(Format), emit func(*Frame)) error {
+func capture(ctx context.Context, d Device, l link) error {
 	fd, err := unix.Open(d.Path, unix.O_RDWR|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return fmt.Errorf("open: %w", err)
@@ -355,6 +442,7 @@ func capture(ctx context.Context, d Device, s CamSettings, format func(Format), 
 	mjpeg := name == "MJPG" || name == "JPEG"
 	// A camera that flips its picture itself keeps the JPEG frames with no change. Else the deck
 	// turns each picture.
+	s := l.settings()
 	hwFlip := setFlip(fd, s.Rotate == 180)
 	flip := s.Rotate == 180 && !hwFlip
 	fps := rawFPS
@@ -401,7 +489,13 @@ func capture(ctx context.Context, d Device, s CamSettings, format func(Format), 
 		return fmt.Errorf("start the stream: %w", err)
 	}
 	defer ioctl(fd, vidiocStreamOff, unsafe.Pointer(&typ))
-	format(f)
+	l.format(f)
+	z := newFocuser(fd)
+	if z != nil {
+		z.apply(s)
+		l.focus(z.f)
+	}
+	lastFocus := time.Now()
 
 	start := time.Now()
 	lastFrame, lastEmit := start, time.Time{}
@@ -410,6 +504,12 @@ func capture(ctx context.Context, d Device, s CamSettings, format func(Format), 
 	for ctx.Err() == nil {
 		if time.Since(lastFrame) > noFrameFor {
 			return errNoSignal
+		}
+		if z != nil && time.Since(lastFocus) >= focusEvery {
+			lastFocus = time.Now()
+			if z.apply(l.settings()) || (z.f.Auto && z.read()) {
+				l.focus(z.f)
+			}
 		}
 		n, err := unix.Poll(fds, 250)
 		if err != nil && err != unix.EINTR {
@@ -439,7 +539,7 @@ func capture(ctx context.Context, d Device, s CamSettings, format func(Format), 
 				data := bufs[b.Index][:min(int(b.BytesUsed), len(bufs[b.Index]))]
 				if fr := makeFrame(name, data, w, h, int(pix.BytesPerLine), f, flip); fr != nil {
 					lastEmit = now
-					emit(fr)
+					l.emit(fr)
 				}
 			}
 		}

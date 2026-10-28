@@ -256,12 +256,13 @@ type App struct {
 	Metrics      *hostmetrics.Recorder
 	monitorRange int // the time of the graphs of the System monitor page: an index of monitorRanges
 	// Camera is the cameras of the deck, or nil (Settings > Camera and Settings > Cameras).
-	Camera  Camera
-	camView string     // the view of the picture of the Camera page ("" is full)
-	camID   string     // the tab of the Camera page: an ID, "" for the main camera, or camAll
-	camEdit string     // the ID of the camera of the page of one camera
-	camKB   *keyboard  // the keyboard of the name of a camera, while it is open
-	calib   *calibFlow // the calibration of the camera, while it runs (calibrate.go)
+	Camera   Camera
+	camView  string     // the view of the picture of the Camera page ("" is full)
+	camID    string     // the tab of the Camera page: an ID, "" for the main camera, or camAll
+	camFocus bool       // the Camera page shows the focus keys
+	camEdit  string     // the ID of the camera of the page of one camera
+	camKB    *keyboard  // the keyboard of the name of a camera, while it is open
+	calib    *calibFlow // the calibration of the camera, while it runs (calibrate.go)
 	// TimeLapse is the time lapse and the picture of the first layer, or nil (Settings > Time lapse).
 	TimeLapse TimeLapse
 

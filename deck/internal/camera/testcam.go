@@ -36,23 +36,29 @@ func withTestCamera(scan func() []Device, capture captureFunc) (func() []Device,
 	}
 	return func() []Device {
 			return append(append([]Device(nil), tests...), scan()...)
-		}, func(ctx context.Context, d Device, s CamSettings, format func(Format), emit func(*Frame)) error {
+		}, func(ctx context.Context, d Device, l link) error {
 			switch d.ID {
 			case TestCamera.ID:
-				return testCapture(ctx, s, false, format, emit)
+				return testCapture(ctx, l, false)
 			case TestCamera2.ID:
-				return testCapture(ctx, s, true, format, emit)
+				return testCapture(ctx, l, true)
 			}
-			return capture(ctx, d, s, format, emit)
+			return capture(ctx, d, l)
 		}
 }
 
 // testCapture sends the test picture until ctx ends: color bars, and a white square that goes
 // across the picture in 4 seconds, so a viewer can see that the frames move. The second camera
-// (second) has the bars in the other order, and its square goes down the picture.
-func testCapture(ctx context.Context, s CamSettings, second bool, format func(Format), emit func(*Frame)) error {
+// (second) has the bars in the other order, and its square goes down the picture. The first
+// camera has a focus control: a fixed focus away from testFocus.Pos blurs the picture.
+func testCapture(ctx context.Context, l link, second bool) error {
+	s := l.settings()
 	f := testFormat
-	format(f)
+	l.format(f)
+	var z testFocuser
+	if !second {
+		z.apply(s, l.focus)
+	}
 	tick := time.NewTicker(time.Second / time.Duration(f.OutFPS))
 	defer tick.Stop()
 	for n := 0; ; n++ {
@@ -60,7 +66,11 @@ func testCapture(ctx context.Context, s CamSettings, second bool, format func(Fo
 		if s.Rotate == 180 {
 			pic = scaleYCbCr(pic, f.OutW, f.OutH, true)
 		}
-		emit(picFrame(pic))
+		if !second {
+			z.apply(l.settings(), l.focus)
+			pic = z.blur(pic)
+		}
+		l.emit(picFrame(pic))
 		select {
 		case <-ctx.Done():
 			return nil
@@ -103,6 +113,64 @@ func testPattern(w, h, n, period int, second bool) *image.YCbCr {
 		for x := x0; x < x0+side; x++ {
 			p.Y[y*p.YStride+x] = 235
 			p.Cb[(y/2)*p.CStride+x/2], p.Cr[(y/2)*p.CStride+x/2] = 128, 128
+		}
+	}
+	return p
+}
+
+// testFocus is the focus control of the first test camera: Pos is the sharp position.
+var testFocus = Focus{Min: 0, Max: 1023, Step: 1, Auto: true, Pos: 300}
+
+// testFocuser is the focus of the first test camera.
+type testFocuser struct {
+	f   Focus
+	set bool // f has a state
+}
+
+// apply sets the focus of the settings s, and gives a change to report.
+func (z *testFocuser) apply(s CamSettings, report func(Focus)) {
+	f := testFocus
+	if s.FixedFocus {
+		f.Auto, f.Pos = false, f.Clamp(s.Focus)
+	}
+	if !z.set || f != z.f {
+		z.f, z.set = f, true
+		report(f)
+	}
+}
+
+// blur blurs the picture by the distance of the lens from the sharp position: a box average of
+// the Y plane, one pixel of radius for each 40 steps.
+func (z *testFocuser) blur(p *image.YCbCr) *image.YCbCr {
+	r := z.f.Pos - testFocus.Pos
+	if r < 0 {
+		r = -r
+	}
+	r /= 40
+	if r == 0 {
+		return p
+	}
+	w, h := p.Rect.Dx(), p.Rect.Dy()
+	row := make([]int, w+1)
+	tmp := make([]uint8, len(p.Y))
+	for y := range h {
+		line := p.Y[y*p.YStride:]
+		for x := range w {
+			row[x+1] = row[x] + int(line[x])
+		}
+		for x := range w {
+			a, b := max(0, x-r), min(w, x+r+1)
+			tmp[y*p.YStride+x] = uint8((row[b] - row[a]) / (b - a))
+		}
+	}
+	col := make([]int, h+1)
+	for x := range w {
+		for y := range h {
+			col[y+1] = col[y] + int(tmp[y*p.YStride+x])
+		}
+		for y := range h {
+			a, b := max(0, y-r), min(h, y+r+1)
+			p.Y[y*p.YStride+x] = uint8((col[b] - col[a]) / (b - a))
 		}
 	}
 	return p

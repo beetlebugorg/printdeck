@@ -215,6 +215,9 @@ func (a *App) OpenPrintScreen(name string) {
 		a.pages = []page{pageMachine, pageMonitor}
 	case "camera":
 		a.pages = []page{pageMachine, pageSettings, pageCamera}
+	case "camera-focus":
+		a.pages = []page{pageMachine, pageSettings, pageCamera}
+		a.camFocus = true
 	case "camera-all":
 		a.pages = []page{pageMachine, pageSettings, pageCamera}
 		a.camID = camAll
