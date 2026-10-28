@@ -100,16 +100,25 @@ var helperActions = func(r HelperRequest, progress Progress) (after func(), err 
 		if !ok {
 			return nil, errors.New("No update waits for the restart.")
 		}
+		if printing() {
+			return nil, errPrinting
+		}
 		log.Printf("helper: restarting into slot %s (%s)", s.Slot, s.Version)
 		return rebootAfterAnswer, nil
 	}
 	return nil, fmt.Errorf("unknown action %q", r.Action)
 }
 
-// rebootAfterAnswer restarts into the other slot one time. The helper calls it after the answer is
-// sent, and it waits so that the deck can send its page to the browser.
+// rebootAfterAnswer restarts into the other slot one time, when no print runs. The helper calls
+// it after the answer is sent, and it waits so that the deck can send its page to the browser.
 func rebootAfterAnswer() {
 	time.Sleep(3 * time.Second)
+	// A print can start in the wait. The staged update then waits, and the deck asks again after
+	// the print.
+	if printing() {
+		log.Printf("helper: %v", errPrinting)
+		return
+	}
 	if err := RebootTryboot(); err != nil {
 		log.Printf("helper: %v", err)
 	}

@@ -70,6 +70,7 @@ func newFakeStage(t *testing.T) *fakeStage {
 	stagedFile = filepath.Join(f.dir, "run", "printdeck-update", "staged.json")
 	NextRoot = filepath.Join(f.dir, "run", "printdeck-next")
 	procMounts = filepath.Join(f.dir, "mounts")
+	KlippySocket = filepath.Join(f.dir, "no-klippy.sock")
 	os.WriteFile(procMounts, []byte("/dev/mmcblk0p4 / erofs ro 0 0\n"), 0o644)
 	mountReadOnly = func(dev, dir string) error {
 		b, err := os.ReadFile(dev)
