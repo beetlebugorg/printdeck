@@ -7,7 +7,11 @@
 //	activity.go  the "what the printer does now" text, from the state and the G-code
 package printer
 
-import "time"
+import (
+	"time"
+
+	"printdeck/internal/camera"
+)
 
 // File is a G-code file that the printer can print.
 type File struct {
@@ -166,7 +170,45 @@ type Machine struct {
 	PressureAdvance      float64
 	MaxAccel             float64
 	SquareCornerVelocity float64
+	// Kinematics is kinematics of the [printer] section, for example "cartesian" or "corexy";
+	// "" is not known.
+	Kinematics string
+	// MeshMin and MeshMax are mesh_min and mesh_max of [bed_mesh], with HasMesh: the probed
+	// area, inside the bed.
+	MeshMin, MeshMax [2]float64
+	HasMesh          bool
+	// ZHomesMax is true when the Z endstop is at the top of the travel (position_endstop of
+	// stepper_z at position_max), as on a TAZ: a homing of Z then moves the nozzle up, away from
+	// the bed.
+	ZHomesMax bool
+	// The park_x and park_y options of [printdeck_timelapse], with HasParkX and HasParkY.
+	ParkX, ParkY       float64
+	HasParkX, HasParkY bool
 }
+
+// meshMargin is how far the print area of the calibration towers goes past the area of the bed
+// mesh, in mm. The towers are camera.TowerInset inside the print area, so 5 mm inside the mesh.
+const meshMargin = camera.TowerInset - 5
+
+// TowerArea is the print area of the camera calibration towers: the area of the bed mesh with a
+// margin, or else the guess of camera.PrintArea from the travel of X and Y. ok is false when
+// printer.cfg has neither.
+func (m Machine) TowerArea() (lo, hi [2]float64, ok bool) {
+	switch {
+	case m.HasMesh && m.MeshMax[0] > m.MeshMin[0] && m.MeshMax[1] > m.MeshMin[1]:
+		return [2]float64{m.MeshMin[0] - meshMargin, m.MeshMin[1] - meshMargin},
+			[2]float64{m.MeshMax[0] + meshMargin, m.MeshMax[1] + meshMargin}, true
+	case m.MaxX > m.MinX && m.MaxY > m.MinY:
+		lo, hi = camera.PrintArea([2]float64{m.MinX, m.MinY}, [2]float64{m.MaxX, m.MaxY})
+		return lo, hi, true
+	}
+	return lo, hi, false
+}
+
+// BedMovesY reports that the bed of the printer moves in Y, from its kinematics: a cartesian
+// printer, such as a TAZ, a Prusa i3 or an Ender 3, moves the bed in Y. It is the default of the
+// setting of the camera calibration.
+func (m Machine) BedMovesY() bool { return m.Kinematics == "cartesian" }
 
 // Has reports that the printer has a module.
 func (m Machine) Has(module string) bool {

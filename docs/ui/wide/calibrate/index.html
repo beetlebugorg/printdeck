@@ -61,7 +61,7 @@
 <p class="eyebrow">The deck UI · wide</p>
 <h1>Level and calibrate</h1>
 
-<div class="layout-switch"><span>Layout:</span><a href="../../../ui/calibrate/">Tall</a><a href="" aria-current="page">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#calibrate">Level and calibrate</a></li></ol></nav><div class="manual wide"><section id="calibrate">
+<div class="layout-switch"><span>Layout:</span><a href="../../../ui/calibrate/">Tall</a><a href="" aria-current="page">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#calibrate">Level and calibrate</a></li><li><a href="#camera-calibrate">Calibrate the camera</a></li></ol></nav><div class="manual wide"><section id="calibrate">
   <h2 class="title"><span class="num">16</span>Level and calibrate</h2>
   <p>Maintenance lists the calibrations of your printer. Open it from Machine.</p>
   <ol class="steps"><li>Open Machine, then Maintenance.</li><li>Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.</li><li>Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.</li><li>Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.</li><li>Tap Save config to write the results. Klipper restarts.</li><li>Tap Pressure advance test to print the tower. Then tap Pressure advance, and type the height of its sharpest corners.</li></ol>
@@ -194,6 +194,101 @@
   
   
   
+</section>
+<section id="camera-calibrate">
+  <h2 class="title"><span class="num">17</span>Calibrate the camera</h2>
+  <p>A calibration lets the camera views and the time lapse crop follow the part.</p><p>The deck prints 5 towers and you tap them on a picture. A bed that moves front to back goes to two places, so the deck also gets the depth.</p>
+  <ol class="steps"><li>Open Settings, then Camera, then Calibrate.</li><li>Tap With a print. Clear the bed, then tap Print. The towers print in the loaded material.</li><li>After the print, leave the towers on the bed and tap Go on. The toolhead moves to the left side, and the bed moves.</li><li>For each mark, tap the bottom or the top of the tower, then tap Use mark. Tap Skip for a mark that you cannot see.</li><li>The bed moves to the front. Tap the top of each tower again.</li><li>Check that the green lines are on the towers, then tap Save. Remove the towers.</li></ol>
+  
+  <figure>
+    <h3>Calibrate the camera: the two ways</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../../manual/wide/img/calibrate-ways.png" alt="Calibrate the camera: the two ways" width="800" height="480"></div>
+      <svg class="marks" viewBox="-72 0 944 480" aria-hidden="true">
+        
+        <line x1="-25" y1="208" x2="16" y2="208" class="leader"/>
+        <circle cx="16" cy="208" r="5" class="dot"/>
+        <circle cx="-40" cy="208" r="15" class="badge"/>
+        <text x="-40" y="208" class="badge-n">1</text>
+        
+        <line x1="-25" y1="284" x2="16" y2="284" class="leader"/>
+        <circle cx="16" cy="284" r="5" class="dot"/>
+        <circle cx="-40" cy="284" r="15" class="badge"/>
+        <text x="-40" y="284" class="badge-n">2</text>
+        
+        <line x1="825" y1="360" x2="776" y2="360" class="leader"/>
+        <circle cx="776" cy="360" r="5" class="dot"/>
+        <circle cx="840" cy="360" r="15" class="badge"/>
+        <text x="840" y="360" class="badge-n">3</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>With a print</b>Prints 5 towers. Use it when the nozzle tip is hard to see.</span></li><li><span class="badge">2</span><span><b>With the nozzle</b>The nozzle goes to 9 points. Tap the tip at each point.</span></li><li><span class="badge">3</span><span><b>The bed moves front to back</b>Yes for a printer with the bed on Y, such as a TAZ. The default comes from printer.cfg.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>Tap a tower</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../../manual/wide/img/calibrate-tower.png" alt="Tap a tower" width="800" height="480"></div>
+      <svg class="marks" viewBox="-72 0 944 480" aria-hidden="true">
+        
+        <line x1="825" y1="239" x2="784" y2="239" class="leader"/>
+        <circle cx="784" cy="239" r="5" class="dot"/>
+        <circle cx="840" cy="239" r="15" class="badge"/>
+        <text x="840" y="239" class="badge-n">1</text>
+        
+        <line x1="825" y1="436" x2="784" y2="436" class="leader"/>
+        <circle cx="784" cy="436" r="5" class="dot"/>
+        <circle cx="840" cy="436" r="15" class="badge"/>
+        <text x="840" y="436" class="badge-n">2</text>
+        
+        <line x1="-25" y1="396" x2="84" y2="396" class="leader"/>
+        <circle cx="84" cy="396" r="5" class="dot"/>
+        <circle cx="-40" cy="396" r="15" class="badge"/>
+        <text x="-40" y="396" class="badge-n">3</text>
+        
+        <line x1="-25" y1="284" x2="16" y2="284" class="leader"/>
+        <circle cx="16" cy="284" r="5" class="dot"/>
+        <circle cx="-40" cy="284" r="15" class="badge"/>
+        <text x="-40" y="284" class="badge-n">4</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Picture</b>Tap the mark. The first tap zooms in. Tap or drag again to put the mark exactly.</span></li><li><span class="badge">2</span><span><b>Step</b>The tower and the end to tap: the bottom or the top.</span></li><li><span class="badge">3</span><span><b>Plan</b>The towers from the top. The tower now is orange.</span></li><li><span class="badge">4</span><span><b>Skip</b>Goes to the next mark, when the picture does not show this one.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>The result of the calibration</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../../manual/wide/img/calibrate-fit.png" alt="The result of the calibration" width="800" height="480"></div>
+      <svg class="marks" viewBox="-72 0 944 480" aria-hidden="true">
+        
+        <line x1="825" y1="239" x2="784" y2="239" class="leader"/>
+        <circle cx="784" cy="239" r="5" class="dot"/>
+        <circle cx="840" cy="239" r="15" class="badge"/>
+        <text x="840" y="239" class="badge-n">1</text>
+        
+        <line x1="-25" y1="208" x2="16" y2="208" class="leader"/>
+        <circle cx="16" cy="208" r="5" class="dot"/>
+        <circle cx="-40" cy="208" r="15" class="badge"/>
+        <text x="-40" y="208" class="badge-n">2</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Picture</b>The green lines are the towers of the calibration. They must be on the towers.</span></li><li><span class="badge">2</span><span><b>Save</b>Keeps the calibration. Then remove the towers from the bed.</span></li>
+    </ol>
+    
+  </figure>
+  
+  
+  <p>With the nozzle, the nozzle goes to 9 points and you tap the tip. Use it when the camera shows the tip.</p><p>Calibrate again after you move the camera or change the size of its picture.</p>
 </section></div>
 <p>From the <a href="../../../manual/wide/">manual for a wide display</a>. The deck draws every picture.</p>
 </main>

@@ -50,7 +50,6 @@ func PATower(m Machine, tool, bed int, material string) string {
 		cx, cy = 100, 100
 	}
 	layers := int(math.Round(PATowerHeight / layer))
-	macro := func(name string) bool { return slices.Contains(m.Macros, name) }
 
 	var b strings.Builder
 	w := func(format string, a ...any) { fmt.Fprintf(&b, format+"\n", a...) }
@@ -61,15 +60,7 @@ func PATower(m Machine, tool, bed int, material string) string {
 		w(";PRINTDECK_MATERIAL: %s", material)
 	}
 	w(";Pressure advance %.3f at the bottom, %.3f mm a layer: read the height of the best corners.", PAStart, PAFactor)
-	if macro("PRINT_START") {
-		w("PRINT_START BED=%d EXTRUDER=%d WIPE=%d LAYER=%.2f SPEED=%.0f", bed, tool, max(tool-50, 150), layer, paFirstSpeed)
-	} else {
-		w("M140 S%d", bed)
-		w("M104 S%d", tool)
-		w("G28")
-		w("M190 S%d", bed)
-		w("M109 S%d", tool)
-	}
+	printStart(&b, m, tool, bed, layer, paFirstSpeed)
 	w("G90")
 	w("M83")
 	w("TUNING_TOWER COMMAND=SET_PRESSURE_ADVANCE PARAMETER=ADVANCE START=%g FACTOR=%g", PAStart, PAFactor)
@@ -112,18 +103,29 @@ func PATower(m Machine, tool, bed int, material string) string {
 	if m.MaxAccel > 0 && m.SquareCornerVelocity > 0 {
 		w("SET_VELOCITY_LIMIT ACCEL=%g SQUARE_CORNER_VELOCITY=%g", m.MaxAccel, m.SquareCornerVelocity)
 	}
-	if macro("PRINT_END") {
-		w("PRINT_END")
-	} else {
-		w("M107")
-		w("M104 S0")
-		w("M140 S0")
-		w("G91")
-		w("G1 Z10 F600")
-		w("G90")
-		w("M84")
-	}
+	printEnd(&b, m)
 	return b.String()
+}
+
+// printStart writes the start of a print of the deck: the PRINT_START macro when the printer has
+// one, with the parameters that the Cura profile of the deck gives it, and else the heating and
+// the homing. layer is the height of the first layer and speed its speed in mm/s.
+func printStart(b *strings.Builder, m Machine, tool, bed int, layer, speed float64) {
+	if slices.Contains(m.Macros, "PRINT_START") {
+		fmt.Fprintf(b, "PRINT_START BED=%d EXTRUDER=%d WIPE=%d LAYER=%.2f SPEED=%.0f\n", bed, tool, max(tool-50, 150), layer, speed)
+		return
+	}
+	fmt.Fprintf(b, "M140 S%d\nM104 S%d\nG28\nM190 S%d\nM109 S%d\n", bed, tool, bed, tool)
+}
+
+// printEnd writes the end of a print of the deck: the PRINT_END macro when the printer has one,
+// and else the heaters and the fan off, a lift of 10 mm, and the motors off.
+func printEnd(b *strings.Builder, m Machine) {
+	if slices.Contains(m.Macros, "PRINT_END") {
+		b.WriteString("PRINT_END\n")
+		return
+	}
+	b.WriteString("M107\nM104 S0\nM140 S0\nG91\nG1 Z10 F600\nG90\nM84\n")
 }
 
 // paLine is a pressure_advance line of printer.cfg.

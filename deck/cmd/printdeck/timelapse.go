@@ -4,7 +4,6 @@ import (
 	"context"
 	"image"
 	"log"
-	"math"
 	"os"
 	"path/filepath"
 
@@ -58,8 +57,17 @@ func startTimelapse(ctx context.Context, stateDir string, app *ui.App, pr printe
 		if !ok || !hasPart {
 			return image.Rectangle{}, false
 		}
-		box := placeBox(gcodeToPlace(k), b, 0, b.Max[2])
-		return cal.PartCrop(box, sz, hub.Settings().Camera(lapse.ID()).Rotate)
+		place := gcodeToPlace(k)
+		box := placeBox(place, b, 0, b.Max[2])
+		// The bed is at the Y of the park: park_y of the config, or else the middle of the part.
+		_, bedY, _ := place((b.Min[0]+b.Max[0])/2, (b.Min[1]+b.Max[1])/2, 0)
+		if m := k.Machine(); m.HasParkY {
+			bedY = m.ParkY
+		}
+		if ax := k.State().Axis; ax[1][1] > ax[0][1] {
+			bedY = max(ax[0][1], min(ax[1][1], bedY))
+		}
+		return cal.PartCrop(box, bedY, sz, hub.Settings().Camera(lapse.ID()).Rotate)
 	}
 	r.OnFirstLayer = func(f *camera.Frame, file string) { app.ShowFirstLayer() }
 	r.OnVideo = func(name, file string) {
@@ -71,15 +79,15 @@ func startTimelapse(ctx context.Context, stateDir string, app *ui.App, pr printe
 	go r.Run(ctx)
 }
 
-// wholePart returns the box of all the moves of the print of the file, in the coordinates of the
-// G-code. It is false while the G-code of the print is not loaded.
+// wholePart returns the box of the moves of the part of the print of the file from its second
+// layer on (printer.View.PartBox), in the coordinates of the G-code: the box has no purge line,
+// skirt or brim. It is false while the G-code of the print is not loaded.
 func wholePart(k *printer.Klippy, file string) (printer.Box, bool) {
 	st := k.State()
 	if !st.Busy() || st.FilePath != file {
 		return printer.Box{}, false
 	}
-	part, _, ok, _ := k.View.PrintBox(st, math.MaxInt64)
-	return part, ok
+	return k.View.PartBox(st)
 }
 
 // videoDir is the folder of the time lapse videos in the state folder.

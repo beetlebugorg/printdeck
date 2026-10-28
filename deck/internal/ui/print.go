@@ -61,6 +61,7 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		return
 	}
 	a.followPrint(st)
+	a.followCalib(st)
 	a.closeHiddenPlayer()
 	switch {
 	case a.swapAfterPause && st.Paused:

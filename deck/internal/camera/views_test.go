@@ -14,9 +14,10 @@ type fakeScene struct {
 	nozzle      [3]float64
 	part, first Box
 	noPrint     bool
+	noNozzle    bool
 }
 
-func (s *fakeScene) Nozzle() ([3]float64, bool) { return s.nozzle, true }
+func (s *fakeScene) Nozzle() ([3]float64, bool) { return s.nozzle, !s.noNozzle }
 func (s *fakeScene) Part() (Box, bool)          { return s.part, !s.noPrint }
 func (s *fakeScene) FirstLayer() (Box, bool)    { return s.first, !s.noPrint }
 

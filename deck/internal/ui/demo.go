@@ -98,6 +98,7 @@ func (d *DemoPrinter) RestartKlipper() error                        { return nil
 func (d *DemoPrinter) FlashBoard(string, board.FlashProgress) error { return nil }
 func (d *DemoPrinter) RunAction(string, ...string) error            { return nil }
 func (d *DemoPrinter) PrintPATower(int, int, string) error          { return nil }
+func (d *DemoPrinter) PrintCalibTowers(int, int, string) error      { return nil }
 func (d *DemoPrinter) SetPressureAdvance(float64) error             { return nil }
 func (d *DemoPrinter) UseConfig(string, string) error               { return nil }
 func (d *DemoPrinter) Console() []printer.ConsoleLine               { return d.Console_ }
@@ -219,6 +220,8 @@ func (a *App) OpenPrintScreen(name string) {
 		a.camID = camAll
 	case "cameras":
 		a.pages = []page{pageMachine, pageSettings, pageCameras}
+	case "calibrate", "calibrate-tower", "calibrate-fit":
+		a.demoCalibration(name)
 	case "camera-settings":
 		// The second camera, with the name of the manual.
 		if list := a.Camera.Cameras(); len(list) > 1 {

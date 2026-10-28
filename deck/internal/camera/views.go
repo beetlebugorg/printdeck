@@ -19,7 +19,8 @@ import (
 // views come from the frames of the one capture. A frame keeps the view of each name and width
 // that a viewer asks for, so the viewers of one view and width share one picture and one JPEG.
 // With no valid calibration, or with no place for a view (no print yet), a view is the whole
-// picture.
+// picture. With a calibration of a bed that moves in Y (Calibration.BedY), the views of the print
+// project its boxes with the bed at the live Y of the toolhead, so they also need the nozzle.
 
 // The names of the views.
 const (
@@ -41,7 +42,7 @@ type Box struct {
 // they must be fast.
 type Scene interface {
 	// Nozzle returns the place of the nozzle tip, or false when it is not known, for example
-	// before the homing.
+	// before the homing. Its Y is also the place of a bed that moves in Y.
 	Nozzle() ([3]float64, bool)
 	// Part returns the box of the part of the print now, or of the last print.
 	Part() (Box, bool)
@@ -314,29 +315,39 @@ func (c *Cam) Calibration() (*Calibration, bool) {
 	return cal, ok && cal.ValidFor(d, h.formats[d.ID])
 }
 
-// sceneAndProjection returns the places of the printer, and the projection to the pixels of a
-// frame of size sz, or false when the views have no calibration.
-func (c *Cam) sceneAndProjection(sz image.Point) (Scene, project, bool) {
+// sceneAndCalibration returns the places of the printer, the calibration, and the turn of the
+// camera, or false when the views have no calibration.
+func (c *Cam) sceneAndCalibration() (Scene, *Calibration, int, bool) {
 	cal, ok := c.Calibration()
 	c.h.mu.Lock()
 	scene, rotate := c.h.scene, c.h.settings.Camera(c.id).Rotate
 	c.h.mu.Unlock()
-	if !ok || scene == nil || sz.X <= 0 || sz.Y <= 0 {
-		return nil, nil, false
+	if !ok || scene == nil {
+		return nil, nil, 0, false
 	}
-	return scene, func(p [3]float64) (float64, float64, bool) { return cal.Project(p, sz.X, sz.Y, rotate) }, true
+	return scene, cal, rotate, true
+}
+
+// projectAt is the projection of the calibration to the pixels of a frame of size sz with the turn
+// rotate, with the bed at the toolhead Y bedY.
+func projectAt(cal *Calibration, bedY float64, sz image.Point, rotate int) project {
+	return func(p [3]float64) (float64, float64, bool) { return cal.ProjectAt(p, bedY, sz.X, sz.Y, rotate) }
 }
 
 // Views returns the names of the views that show a part of the picture now, with full first.
 // The other views are the whole picture now.
 func (c *Cam) Views() []string {
 	out := []string{ViewFull}
-	scene, _, ok := c.sceneAndProjection(image.Pt(1, 1))
+	scene, cal, _, ok := c.sceneAndCalibration()
 	if !ok {
 		return out
 	}
-	if _, ok := scene.Nozzle(); ok {
+	_, nozzle := scene.Nozzle()
+	if nozzle {
 		out = append(out, ViewToolhead)
+	}
+	if cal.BedY && !nozzle {
+		return out
 	}
 	if _, ok := scene.FirstLayer(); ok {
 		out = append(out, ViewFirstLayer)
@@ -373,8 +384,8 @@ func (c *Cam) plan(f *Frame, view, key string) *viewPlan {
 // now.
 func (c *Cam) makePlan(f *Frame, view string) *viewPlan {
 	sz := f.Size()
-	scene, proj, ok := c.sceneAndProjection(sz)
-	if !ok {
+	scene, cal, rotate, ok := c.sceneAndCalibration()
+	if !ok || sz.X <= 0 || sz.Y <= 0 {
 		return nil
 	}
 	switch view {
@@ -383,7 +394,7 @@ func (c *Cam) makePlan(f *Frame, view string) *viewPlan {
 		if !ok {
 			return nil
 		}
-		t, ok := toolheadTarget(proj, n, sz)
+		t, ok := toolheadTarget(projectAt(cal, n[1], sz, rotate), n, sz)
 		if !ok {
 			return nil
 		}
@@ -407,7 +418,16 @@ func (c *Cam) makePlan(f *Frame, view string) *viewPlan {
 		if !ok {
 			return nil
 		}
-		crop, mask, ok := boxTarget(proj, b, sz)
+		// The bed is at the Y of the toolhead.
+		bedY := 0.0
+		if cal.BedY {
+			n, ok := scene.Nozzle()
+			if !ok {
+				return nil
+			}
+			bedY = n[1]
+		}
+		crop, mask, ok := boxTarget(projectAt(cal, bedY, sz, rotate), b, sz)
 		if !ok {
 			return nil
 		}

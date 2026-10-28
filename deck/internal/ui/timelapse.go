@@ -82,11 +82,14 @@ func videosLine(n int) string {
 }
 
 // cropLine is the line of the Crop to the part row. calibrated reports that the camera of the
-// time lapse has a calibration.
-func cropLine(on, calibrated bool) string {
+// time lapse has a calibration, and park that the frames have a park: the crop needs the bed at
+// the Y of the park.
+func cropLine(on, calibrated, park bool) string {
 	switch {
 	case !on:
 		return "Off · the whole picture"
+	case !park:
+		return "On · Needs the park"
 	case !calibrated:
 		return "On · Needs a calibration of the camera"
 	}
@@ -142,7 +145,7 @@ func (a *App) drawTimeLapse(c *gfx.Canvas) {
 	items := []menuItem{
 		{"Time lapse", lapseLine(in, s), dim, a.toggleLapse},
 		{"Park for the frames", parkLine(s.Park), dim, a.toggleLapsePark},
-		{"Crop to the part", cropLine(s.Crop, a.lapseCalibrated()), dim, a.toggleLapseCrop},
+		{"Crop to the part", cropLine(s.Crop, a.lapseCalibrated(), s.Park), dim, a.toggleLapseCrop},
 		{"First layer", firstLayerLine(s.First), dim, a.cycleFirstLayer},
 	}
 	if in.First != nil {

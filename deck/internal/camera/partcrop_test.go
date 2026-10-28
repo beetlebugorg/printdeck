@@ -14,26 +14,26 @@ func TestPartCrop(t *testing.T) {
 	// picture of 1280 x 720.
 	c := &Calibration{P: [12]float64{1.0 / 200, 0, 0, 0, 0, 1.0 / 100, 0, 0, 0, 0, 0, 1}}
 	sz := image.Pt(1280, 720)
-	r, ok := c.PartCrop(Box{Min: [3]float64{50, 20, 0}, Max: [3]float64{100, 40, 10}}, sz, 0)
+	r, ok := c.PartCrop(Box{Min: [3]float64{50, 20, 0}, Max: [3]float64{100, 40, 10}}, 0, sz, 0)
 	if want := image.Rect(272, 112, 688, 320); !ok || r != want {
 		t.Errorf("crop %v, want %v", r, want)
 	}
 	// A box at the edge: the crop stays in the picture.
-	r, ok = c.PartCrop(Box{Min: [3]float64{0, 0, 0}, Max: [3]float64{190, 95, 10}}, sz, 0)
+	r, ok = c.PartCrop(Box{Min: [3]float64{0, 0, 0}, Max: [3]float64{190, 95, 10}}, 0, sz, 0)
 	if want := image.Rect(0, 0, 1280, 720); !ok || r != want {
 		t.Errorf("crop at the edge %v, want %v", r, want)
 	}
 	// The turn of 180°.
-	r, _ = c.PartCrop(Box{Min: [3]float64{50, 20, 0}, Max: [3]float64{100, 40, 10}}, sz, 180)
+	r, _ = c.PartCrop(Box{Min: [3]float64{50, 20, 0}, Max: [3]float64{100, 40, 10}}, 0, sz, 180)
 	if want := image.Rect(592, 400, 1008, 608); r != want {
 		t.Errorf("turned crop %v, want %v", r, want)
 	}
 	// A box behind the camera, and a box outside the picture.
 	behind := &Calibration{P: [12]float64{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0}}
-	if _, ok := behind.PartCrop(Box{Min: [3]float64{0, 0, -5}, Max: [3]float64{1, 1, 5}}, sz, 0); ok {
+	if _, ok := behind.PartCrop(Box{Min: [3]float64{0, 0, -5}, Max: [3]float64{1, 1, 5}}, 0, sz, 0); ok {
 		t.Error("a crop of a box behind the camera")
 	}
-	if _, ok := c.PartCrop(Box{Min: [3]float64{300, 300, 0}, Max: [3]float64{400, 400, 10}}, sz, 0); ok {
+	if _, ok := c.PartCrop(Box{Min: [3]float64{300, 300, 0}, Max: [3]float64{400, 400, 10}}, 0, sz, 0); ok {
 		t.Error("a crop of a box outside the picture")
 	}
 }

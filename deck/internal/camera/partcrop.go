@@ -15,15 +15,16 @@ const partMargin = 0.15
 // cropGrid is the grid of the edges of a time lapse crop, in pixels.
 const cropGrid = 16
 
-// PartCrop is the crop of a time lapse of the part in the box b (the places of the printer), for
-// frames of size sz of the camera with the turn rotate. It is the projection of the box with a
+// PartCrop is the crop of a time lapse of the part in the box b (the toolhead coordinates), with the
+// bed at the toolhead Y bedY, for frames of size sz of the camera with the turn rotate. A time
+// lapse with a park has the bed at the Y of the park. It is the projection of the box with a
 // margin of 15 % of its size at each side, with its edges on a grid of 16 pixels, inside the
 // picture. It is false when a corner of the box is behind the camera, or for an empty crop.
-func (c *Calibration) PartCrop(b Box, sz image.Point, rotate int) (image.Rectangle, bool) {
+func (c *Calibration) PartCrop(b Box, bedY float64, sz image.Point, rotate int) (image.Rectangle, bool) {
 	if c == nil || sz.X <= 0 || sz.Y <= 0 {
 		return image.Rectangle{}, false
 	}
-	pts, ok := projectAll(func(p [3]float64) (float64, float64, bool) { return c.Project(p, sz.X, sz.Y, rotate) }, boxCorners(b))
+	pts, ok := projectAll(func(p [3]float64) (float64, float64, bool) { return c.ProjectAt(p, bedY, sz.X, sz.Y, rotate) }, boxCorners(b))
 	if !ok {
 		return image.Rectangle{}, false
 	}

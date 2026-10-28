@@ -38,6 +38,9 @@ func (r *recPrinter) FirmwareRestart() error  { return r.Gcode("FIRMWARE_RESTART
 func (r *recPrinter) MotorsOff() error        { return r.rec("motors off") }
 func (r *recPrinter) SpeedFactor(p int) error { return r.rec(fmt.Sprint("speed ", p)) }
 func (r *recPrinter) PrintFile(path string)   { r.rec("print " + path) }
+func (r *recPrinter) PrintCalibTowers(tool, bed int, material string) error {
+	return r.rec(fmt.Sprintf("towers %d %d %s", tool, bed, material))
+}
 
 func (r *recPrinter) Calls() []string {
 	r.mu.Lock()
