@@ -70,7 +70,7 @@ func (a *App) drawCloud(c *gfx.Canvas) {
 			checked = "Good at " + clockText(s.Checked, a.Clock24)
 		}
 		items = []menuItem{
-			{"Service", s.Domain + " · since " + fileDate(s.Enrolled, a.Now(), a.Clock24), dim, nil},
+			{"Service", s.Domain + " · since " + fileDate(s.Enrolled.Local(), a.Now(), a.Clock24), dim, nil},
 			{"Check the connection", checked, dim, a.Cloud.Check},
 			{"Disconnect", "Remove this deck from the service", dim, func() {
 				a.confirm = &confirmBox{question: "Disconnect from " + s.Domain + "?", yes: "Disconnect", danger: true,
