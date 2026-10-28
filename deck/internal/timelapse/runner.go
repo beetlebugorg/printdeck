@@ -52,8 +52,9 @@ type Camera interface {
 
 // Print is the state of the print for the runner.
 type Print struct {
-	Busy bool   // printing or paused
-	File string // the name of the file
+	Busy  bool   // printing or paused
+	File  string // the name of the file
+	Known bool   // the state is known: the Klipper host answers
 }
 
 // Video is a time lapse video in the folder of the videos.
@@ -128,6 +129,13 @@ type Runner struct {
 	videos    []Video
 	parkY     float64 // the park Y of the print, or NaN
 	crop      lapseCrop
+
+	// stepMu is held during a step. frozen stops the steps after SaveHandoff. restored is true
+	// after LoadHandoff, until the state of the print is known.
+	stepMu     sync.Mutex
+	frozen     bool
+	restored   bool
+	restoredAt time.Time
 }
 
 // lapseCrop is the crop of the frames of a print.
@@ -220,8 +228,25 @@ func (r *Runner) Run(ctx context.Context) {
 // step does one turn of the runner: the start and the end of a print, the settings of the host,
 // and a picture when the host waits for one.
 func (r *Runner) step(ctx context.Context) {
+	r.stepMu.Lock()
+	defer r.stepMu.Unlock()
+	r.mu.Lock()
+	frozen := r.frozen
+	r.mu.Unlock()
+	if frozen {
+		return
+	}
 	p := r.print()
 	r.mu.Lock()
+	// The frames of a handoff wait for the state of the print: until the Klipper host answers,
+	// the deck cannot tell the print continues.
+	if r.restored {
+		if !p.Known && time.Since(r.restoredAt) < HandoffWait {
+			r.mu.Unlock()
+			return
+		}
+		r.restored = false
+	}
 	active := r.rec != nil
 	file := r.file
 	r.mu.Unlock()
