@@ -217,7 +217,7 @@ func (s *share) renderReady(rd wire.ShareReady) {
 		setHidden("doneBanner", true)
 	}
 	if !rd.Expires.IsZero() {
-		setText("expires", "View only. Shared from a Printdeck. This link stops at "+localDay(rd.Expires)+".")
+		setText("expires", "View only. Shared with Printdeck. This link stops at "+localDay(rd.Expires)+".")
 	}
 	var keys []string
 	for _, p := range rd.Photos {
@@ -363,10 +363,7 @@ func (s *share) render(st wire.ShareStatus) {
 		setText("job", st.Job)
 		doc.Set("title", st.Job+" · Printdeck")
 	}
-	sub := "This page updates by itself. Leave it open."
-	if st.Printer != "" {
-		sub = "Printed on " + st.Printer + ". " + sub
-	}
+	sub := printedOn(st.Printer, st.PrinterModel) + " This page updates by itself. Leave it open."
 	setText("sub", sub)
 	label := stateText[st.State]
 	if label == "" {
@@ -460,6 +457,8 @@ func (s *share) render(st wire.ShareStatus) {
 	if st.Material != "" {
 		setText("material", st.Material)
 	}
+	// The card of the filament has the material.
+	byID("material").Get("parentElement").Set("hidden", st.Filament != nil)
 	if st.GramsTotal > 0 {
 		setText("grams", grams(st.Grams)+" of "+grams(st.GramsTotal))
 	} else if st.Grams > 0 {
@@ -476,8 +475,10 @@ func (s *share) render(st wire.ShareStatus) {
 		setText("started", localDay(st.Started))
 	}
 	if !st.Expires.IsZero() {
-		setText("expires", "View only. Shared from a Printdeck. This link stops at "+localDay(st.Expires)+".")
+		setText("expires", "View only. Shared with Printdeck. This link stops at "+localDay(st.Expires)+".")
 	}
+
+	s.renderFilament(st.Filament)
 
 	// The time lapse.
 	if st.LapseFPS > 0 {
@@ -496,6 +497,148 @@ func (s *share) render(st wire.ShareStatus) {
 		}
 		setText("lapseTag", tag)
 	}
+}
+
+// printedOn is the line of the printer, for example "Printed on a LulzBot TAZ Workhorse with
+// Printdeck.". The name "a Printdeck" is the default host name of a deck.
+func printedOn(name, model string) string {
+	if name == "a Printdeck" {
+		name = ""
+	}
+	switch {
+	case model != "" && name != "":
+		return "Printed on " + name + ", " + article(model) + " " + model + ", with Printdeck."
+	case model != "":
+		return "Printed on " + article(model) + " " + model + " with Printdeck."
+	case name != "":
+		return "Printed on " + name + " with Printdeck."
+	}
+	return "Printed with Printdeck."
+}
+
+// article is "an" for a name that starts with a vowel, else "a".
+func article(name string) string {
+	if name != "" && strings.ContainsRune("AEIOUaeiou", rune(name[0])) {
+		return "an"
+	}
+	return "a"
+}
+
+// renderFilament fills the card of the filament. A line with no value hides.
+func (s *share) renderFilament(f *wire.ShareFilament) {
+	setHidden("filCard", f == nil)
+	if f == nil {
+		return
+	}
+	fact := func(id, text string) {
+		setText(id, text)
+		if e := byID(id); !e.IsNull() {
+			e.Get("parentElement").Set("hidden", text == "")
+		}
+	}
+	color := colorName(f.Color)
+	name := f.Name
+	if name == "" {
+		name = strings.TrimSpace(color + " " + f.Type)
+	}
+	setText("filName", name)
+	var sub []string
+	for _, v := range []string{f.Brand, f.Type, color} {
+		if v != "" && !strings.Contains(strings.ToLower(name), strings.ToLower(v)) {
+			sub = append(sub, v)
+		}
+	}
+	setText("filSub", strings.Join(sub, " · "))
+	dot := byID("filDot").Get("style")
+	if f.Color != "" {
+		dot.Set("background", f.Color)
+	} else {
+		dot.Set("background", "repeating-linear-gradient(45deg, var(--cap) 0 4px, var(--seam) 4px 8px)")
+	}
+	fact("filBrand", f.Brand)
+	fact("filType", f.Type)
+	if f.Color != "" {
+		fact("filColor", strings.TrimSpace(color+" "+strings.ToLower(f.Color)))
+	} else {
+		fact("filColor", "")
+	}
+	fact("filDia", num(f.Diameter, "%.2f mm"))
+	fact("filRoll", num(f.RollSize/1000, "%g kg"))
+	fact("filLayer", num(f.LayerHeight, "%.2f mm"))
+	temps := ""
+	switch {
+	case f.NozzleTemp > 0 && f.BedTemp > 0:
+		temps = fmt.Sprintf("%d °C nozzle, %d °C bed", f.NozzleTemp, f.BedTemp)
+	case f.NozzleTemp > 0:
+		temps = fmt.Sprintf("%d °C nozzle", f.NozzleTemp)
+	}
+	fact("filTemps", temps)
+}
+
+// num is v in the format, or "" for 0.
+func num(v float64, format string) string {
+	if v <= 0 {
+		return ""
+	}
+	return fmt.Sprintf(format, v)
+}
+
+// colorName is a plain name for a color #rrggbb, for example "Orange", or "".
+func colorName(hex string) string {
+	if len(hex) != 7 || hex[0] != '#' {
+		return ""
+	}
+	c := hexColor(hex)
+	r, g, b := float64(c[0])/255, float64(c[1])/255, float64(c[2])/255
+	hi, lo := max(r, g, b), min(r, g, b)
+	l := (hi + lo) / 2
+	sat := 0.0
+	if hi != lo {
+		sat = (hi - lo) / (1 - math.Abs(2*l-1))
+	}
+	switch {
+	case sat < 0.15 || hi-lo < 0.08:
+		switch {
+		case l < 0.15:
+			return "Black"
+		case l > 0.85:
+			return "White"
+		}
+		return "Gray"
+	}
+	var hue float64
+	switch hi {
+	case r:
+		hue = math.Mod((g-b)/(hi-lo), 6)
+	case g:
+		hue = (b-r)/(hi-lo) + 2
+	default:
+		hue = (r-g)/(hi-lo) + 4
+	}
+	hue = math.Mod(hue*60+360, 360)
+	switch {
+	case hue < 15 || hue >= 345:
+		if l > 0.7 {
+			return "Pink"
+		}
+		return "Red"
+	case hue < 45:
+		if l < 0.35 {
+			return "Brown"
+		}
+		return "Orange"
+	case hue < 70:
+		return "Yellow"
+	case hue < 160:
+		return "Green"
+	case hue < 195:
+		return "Teal"
+	case hue < 255:
+		return "Blue"
+	case hue < 290:
+		return "Purple"
+	}
+	return "Pink"
 }
 
 // tick shows the clocks: the time left and the time of the layer now. Between two uploads they

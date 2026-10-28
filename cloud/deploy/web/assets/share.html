@@ -93,6 +93,20 @@
     </dl>
   </section>
 
+  <section class="card" id="filCard" aria-label="Filament" hidden>
+    <h2>Filament</h2>
+    <div class="fil-head"><i id="filDot"></i><div><strong id="filName"></strong><span id="filSub"></span></div></div>
+    <dl class="facts">
+      <div><dt>Brand</dt><dd id="filBrand">-</dd></div>
+      <div><dt>Type</dt><dd id="filType">-</dd></div>
+      <div><dt>Color</dt><dd id="filColor">-</dd></div>
+      <div><dt>Diameter</dt><dd id="filDia">-</dd></div>
+      <div><dt>Roll</dt><dd id="filRoll">-</dd></div>
+      <div><dt>Layer height</dt><dd id="filLayer">-</dd></div>
+      <div><dt>Temperatures</dt><dd id="filTemps">-</dd></div>
+    </dl>
+  </section>
+
   <section class="cam lapse-hero" aria-label="Time lapse">
     <figure>
       <canvas id="lapse" width="640" height="360"></canvas>
@@ -115,7 +129,7 @@
   </section>
 
   <footer>
-    <span id="expires">View only. Shared from a Printdeck. The link stops 24 hours after the print ends.</span>
+    <span id="expires">View only. Shared with Printdeck. The link stops 24 hours after the print ends.</span>
     <span>Printdeck is free software under the GNU AGPL, version 3. <a href="https://github.com/beetlebugorg/printdeck">The source of this service</a>.</span>
   </footer>
 </div>

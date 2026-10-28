@@ -132,3 +132,22 @@ func TestAddSDCard(t *testing.T) {
 		t.Error("a TAZ 6 config got the section")
 	}
 }
+
+// ConfigModel reads the name of the printer from the first line of a printer.cfg from an example.
+func TestConfigModel(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "printer.cfg")
+	if err := UseExample(path, workhorseExample, "/dev/serial/by-id/usb-x"); err != nil {
+		t.Fatal(err)
+	}
+	if got := ConfigModel(path); got != "LulzBot TAZ Workhorse" {
+		t.Errorf("model %q", got)
+	}
+	os.WriteFile(path, []byte("[mcu]\nserial: /dev/x\n"), 0o644)
+	if got := ConfigModel(path); got != "" {
+		t.Errorf("own config: %q", got)
+	}
+	if got := ConfigModel(filepath.Join(dir, "none.cfg")); got != "" {
+		t.Errorf("no file: %q", got)
+	}
+}

@@ -267,7 +267,7 @@ func run(cfg config.Config) {
 	startNotify(ctx, cfg.StateDir, pr, app)
 	startCamera(ctx, cfg.StateDir, app, pr)
 	startTimelapse(ctx, cfg.StateDir, app, pr)
-	startShare(cfg.StateDir, app, pr)
+	startShare(cfg.StateDir, cfg.KlipperConfig, app, pr)
 
 	if p, ok := screen.(interface{ SetTouch(touch.Options) }); ok {
 		p.SetTouch(touch.Options{InvertX: cfg.TouchInvertX, InvertY: cfg.TouchInvertY, Swap: cfg.TouchSwapXY,

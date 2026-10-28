@@ -172,6 +172,28 @@ func UseExample(path, file, serial string) error {
 	return os.Rename(tmp, path)
 }
 
+// ConfigModel is the name of the printer of a printer.cfg that came from an example config, for
+// example "LulzBot TAZ Workhorse", or "".
+func ConfigModel(path string) string {
+	f, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	b := make([]byte, 256)
+	n, _ := f.Read(b)
+	line, _, _ := strings.Cut(string(b[:n]), "\n")
+	file, ok := strings.CutPrefix(line, "# Klipper's example config ")
+	if !ok {
+		return ""
+	}
+	file, _, _ = strings.Cut(file, ",")
+	if !strings.HasPrefix(file, "printer-") || !strings.HasSuffix(file, ".cfg") {
+		return ""
+	}
+	return parseExample(file, "").Name()
+}
+
 // workhorseExample is the example config of the TAZ Workhorse, the printer of the Printdeck project.
 const workhorseExample = "printer-lulzbot-taz-workhorse-2019.cfg"
 

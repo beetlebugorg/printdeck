@@ -48,8 +48,9 @@ const HeaderShareKey = "X-Share-Key"
 
 // The types of the share that the pages use too (package wire).
 type (
-	Grant        = wire.Grant
-	ReadyRequest = wire.ReadyRequest
-	PhotoReply   = wire.PhotoReply
-	ShareRoll    = wire.ShareRoll
+	Grant         = wire.Grant
+	ReadyRequest  = wire.ReadyRequest
+	PhotoReply    = wire.PhotoReply
+	ShareRoll     = wire.ShareRoll
+	ShareFilament = wire.ShareFilament
 )

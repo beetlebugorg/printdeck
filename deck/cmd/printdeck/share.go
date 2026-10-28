@@ -31,6 +31,7 @@ type shareLink struct {
 	pr     printerBackend
 	lapse  *timelapse.Runner // or nil
 	name   string            // the name of the printer on the page: the host name
+	model  string            // the model of the printer, from printer.cfg
 
 	mu      sync.Mutex
 	started time.Time // the start of the print of the share
@@ -47,14 +48,14 @@ type shareLink struct {
 
 // newShareLink returns the share link of the deck, with the camera hub and the time lapse runner
 // of the app (or nil for none).
-func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend) *shareLink {
+func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend, configPath string) *shareLink {
 	// The name of the printer on the page: the host name, or "a Printdeck" for the default host
 	// name. A simulated printer has the name of its model (status).
 	name := hostName()
 	if strings.EqualFold(name, "printdeck") {
 		name = "a Printdeck"
 	}
-	l := &shareLink{link: link, pr: pr, name: name}
+	l := &shareLink{link: link, pr: pr, name: name, model: printer.ConfigModel(configPath)}
 	if r, ok := app.TimeLapse.(*timelapse.Runner); ok {
 		l.lapse = r
 	}
@@ -155,7 +156,7 @@ func (l *shareLink) status() cloud.ShareStatus {
 	st := l.pr.State()
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	s := cloud.ShareStatus{Printer: l.name, Activity: st.Activity, Layer: st.Layer, Layers: st.Layers,
+	s := cloud.ShareStatus{Printer: l.name, PrinterModel: l.model, Activity: st.Activity, Layer: st.Layer, Layers: st.Layers,
 		Tool: st.Tool, ToolTarget: st.ToolTarget, Bed: st.Bed, BedTarget: st.BedTarget,
 		TimeLeft: -1, ReadyLeft: -1, Started: l.started.UTC()}
 	if st.HasZ {
@@ -187,7 +188,7 @@ func (l *shareLink) status() cloud.ShareStatus {
 		}
 	}
 	if st.Simulated != "" {
-		s.Printer = "the simulated " + st.Simulated
+		s.Printer, s.PrinterModel = "the simulated "+st.Simulated, ""
 	}
 	// The file of the print: the material and the filament that the slicer wrote, and the
 	// height of the model.
@@ -197,6 +198,9 @@ func (l *shareLink) status() cloud.ShareStatus {
 	}
 	meta := l.pr.FileMeta(path)
 	density := printer.Density("")
+	f := &cloud.ShareFilament{Name: meta.MaterialName, Type: meta.Material, Color: meta.Color,
+		Diameter: l.pr.Machine().Diameter(), LayerHeight: meta.LayerHeight,
+		NozzleTemp: meta.NozzleTemp, BedTemp: meta.BedTemp}
 	// The roll in the printer: its material and name, and its density for the grams.
 	if store := l.pr.SpoolStore(); store != nil {
 		if sp, ok := store.In(); ok {
@@ -206,6 +210,20 @@ func (l *shareLink) status() cloud.ShareStatus {
 			used := printer.GramsAt(st.FilamentUsed, l.pr.Machine().Diameter(), density)
 			s.Roll = &cloud.ShareRoll{Name: strings.TrimSpace(sp.Number() + " " + sp.Label()), Color: sp.Color,
 				Left: math.Round(max(0, sp.Left()-used)), Full: math.Round(sp.Capacity())}
+			// The roll is the filament in the printer, so it comes before the file.
+			f.Name, f.RollSize = sp.Name, sp.Capacity()
+			if sp.Material != "" {
+				f.Type = sp.Material
+			}
+			if sp.Color != "" {
+				f.Color = sp.Color
+			}
+			if m, ok := store.SlicerMaterial(sp.CuraMaterial); sp.CuraMaterial != "" && ok {
+				f.Brand = m.Brand
+				if m.Name != "" {
+					f.Name = m.Name
+				}
+			}
 		}
 	}
 	if s.Material == "" {
@@ -216,6 +234,9 @@ func (l *shareLink) status() cloud.ShareStatus {
 		if meta.Material != "" {
 			density = printer.Density(meta.Material)
 		}
+	}
+	if f.Name != "" || f.Type != "" || f.Color != "" {
+		s.Filament = f
 	}
 	s.GramsTotal = meta.FilamentG
 	if s.GramsTotal == 0 && meta.FilamentMM > 0 {
@@ -314,10 +335,10 @@ func moveName(kind string) string {
 
 // startShare sets the cloud link and the share link of the app. The identity of the deck is the
 // file cloud.json of the state folder.
-func startShare(stateDir string, app *ui.App, pr printerBackend) {
+func startShare(stateDir, configPath string, app *ui.App, pr printerBackend) {
 	link := newCloudLink(stateDir, app.Redraw)
 	app.Cloud = link
-	l := newShareLink(app, link, pr)
+	l := newShareLink(app, link, pr, configPath)
 	app.Share = l
 	l.loadHandoff(filepath.Join(handoffDir, shareHandoff))
 }

@@ -10,6 +10,8 @@ type ShareStatus struct {
 	State   string `json:"state"`
 	Job     string `json:"job"`
 	Printer string `json:"printer"`
+	// PrinterModel is the brand and the model of the printer, for example "LulzBot TAZ Workhorse", or "".
+	PrinterModel string `json:"printer_model,omitempty"`
 	// Activity is what the printer does now, for example "Heating bed".
 	Activity string `json:"activity,omitempty"`
 	// Progress is 0 to 1.
@@ -54,6 +56,8 @@ type ShareStatus struct {
 	FlowPct  int `json:"flow_pct,omitempty"`
 	// Roll is the roll in the printer, or nil.
 	Roll *ShareRoll `json:"roll,omitempty"`
+	// Filament is the filament of the print, or nil.
+	Filament *ShareFilament `json:"filament,omitempty"`
 	// LayerStarted is the start of the layer now, when the deck saw it start. LayerTimes are the
 	// measured seconds of the layers that are done, from layer 1: 0 is a layer with no time (a
 	// pause, or a layer before the share). Plan goes up when plan.json has the plan of the slicer.
@@ -125,6 +129,25 @@ type ShareRoll struct {
 	Color string  `json:"color,omitempty"`
 	Left  float64 `json:"left"`
 	Full  float64 `json:"full"`
+}
+
+// ShareFilament is the filament of the print: from the roll in the printer and its material in
+// the slicer, else from the file. An empty field means that the deck does not know it.
+type ShareFilament struct {
+	// Name is the name of the filament, for example "Microcenter White PLA", and Brand its brand,
+	// for example "Microcenter".
+	Name  string `json:"name,omitempty"`
+	Brand string `json:"brand,omitempty"`
+	// Type is the type of the material, for example "PLA", and Color its color, #rrggbb.
+	Type  string `json:"type,omitempty"`
+	Color string `json:"color,omitempty"`
+	// Diameter is the diameter of the filament in mm, and RollSize the grams of a full roll.
+	Diameter float64 `json:"diameter,omitempty"`
+	RollSize float64 `json:"roll_size,omitempty"`
+	// The settings of the slicer: the layer height in mm, and the temperatures in °C.
+	LayerHeight float64 `json:"layer_height,omitempty"`
+	NozzleTemp  int     `json:"nozzle_temp,omitempty"`
+	BedTemp     int     `json:"bed_temp,omitempty"`
 }
 
 // SharePlan is plan.json of a share: the seconds of each layer from the slicer, from layer 1.
