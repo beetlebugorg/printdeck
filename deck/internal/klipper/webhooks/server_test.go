@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"printdeck/internal/hostapi"
 	_ "printdeck/internal/klipper/extras/all"
 	"printdeck/internal/klipper/fakemcu"
 	"printdeck/internal/klipper/host"
@@ -125,6 +126,10 @@ func TestServerSocket(t *testing.T) {
 	}
 	if state != "ready" {
 		t.Fatalf("state %q", state)
+	}
+	info := c.call("info", map[string]any{})["result"].(map[string]any)
+	if v, _ := info[hostapi.InfoKey].(float64); v != hostapi.Version {
+		t.Errorf("%s %v, want %d", hostapi.InfoKey, info[hostapi.InfoKey], hostapi.Version)
 	}
 
 	sub := c.call("objects/subscribe", map[string]any{

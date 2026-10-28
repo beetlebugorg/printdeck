@@ -17,6 +17,7 @@ import (
 	"os"
 	"runtime/debug"
 
+	"printdeck/internal/hostapi"
 	"printdeck/internal/klipper/configfile"
 	"printdeck/internal/klipper/gcode"
 	"printdeck/internal/klipper/host"
@@ -277,6 +278,8 @@ func (w *WebHooks) handleInfoRequest(req *WebRequest) {
 	for _, sa := range []string{"log_file", "config_file", "software_version", "cpu_info"} {
 		response[sa] = w.printer.StartArgs()[sa]
 	}
+	// Printdeck: the version of the interface for the deck program (package hostapi).
+	response[hostapi.InfoKey] = hostapi.Version
 	req.Send(response)
 }
 
