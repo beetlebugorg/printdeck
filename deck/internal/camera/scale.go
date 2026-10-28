@@ -5,6 +5,8 @@ import (
 	"errors"
 	"image"
 	"image/jpeg"
+
+	"printdeck/internal/jpegdec"
 )
 
 // The conversion of the pictures: a picture of the camera (YUYV, NV12, YU12, or a decoded JPEG)
@@ -81,13 +83,99 @@ func scalePlane(dst []byte, dstStride, dw, dh int, src plane, flip bool) {
 	}
 }
 
-// toYCbCr scales the planes of a picture to a YCbCr 4:2:0 picture of w x h (even numbers).
-func toYCbCr(w, h int, y, cb, cr plane, flip bool) *image.YCbCr {
+// toYCbCr scales the planes of a picture to a YCbCr 4:2:0 picture of w x h (even numbers), and
+// turns it clockwise by rotate degrees: 0, 90, 180 or 270. For 90 and 270, w x h is the size
+// after the turn.
+func toYCbCr(w, h int, y, cb, cr plane, rotate int) *image.YCbCr {
 	out := image.NewYCbCr(image.Rect(0, 0, w, h), image.YCbCrSubsampleRatio420)
+	if rotate == 90 || rotate == 270 {
+		turnPlane(out.Y, out.YStride, w, h, y, rotate)
+		turnPlane(out.Cb, out.CStride, w/2, h/2, cb, rotate)
+		turnPlane(out.Cr, out.CStride, w/2, h/2, cr, rotate)
+		return out
+	}
+	flip := rotate == 180
 	scalePlane(out.Y, out.YStride, w, h, y, flip)
 	scalePlane(out.Cb, out.CStride, w/2, h/2, cb, flip)
 	scalePlane(out.Cr, out.CStride, w/2, h/2, cr, flip)
 	return out
+}
+
+// turnTile is the side of the square of dst samples that turnPlane writes in one pass. The
+// samples of a tile come from turnTile rows of src, so that the reads stay in the cache.
+const turnTile = 32
+
+// turnPlane scales src and turns it 90° (rotate 90) or 270° clockwise into dst, a plane of dw x dh
+// bytes with dstStride bytes a row. Before the turn, the scaled plane is dh x dw. A turn of 90°
+// puts the sample (u, v) of the scaled plane at (dw-1-v, u), and a turn of 270° at (v, dh-1-u).
+func turnPlane(dst []byte, dstStride, dw, dh int, src plane, rotate int) {
+	// The source column of each dst row, and the source row of each dst column.
+	ua, ub := positions(dh, src.w, rotate == 270)
+	va, vb := positions(dw, src.h, rotate == 90)
+	for i := range ua {
+		ua[i] = src.off + ua[i]*src.step
+		ub[i] = src.off + ub[i]*src.step
+	}
+	for i := range va {
+		va[i] *= src.stride
+		vb[i] *= src.stride
+	}
+	p := src.pix
+	box := src.w >= 2*dh || src.h >= 2*dw
+	for ty := 0; ty < dh; ty += turnTile {
+		for tx := 0; tx < dw; tx += turnTile {
+			xs, xe := tx, min(tx+turnTile, dw)
+			for y := ty; y < min(ty+turnTile, dh); y++ {
+				row := dst[y*dstStride+xs : y*dstStride+xe]
+				c0 := ua[y]
+				if !box {
+					for i := range row {
+						row[i] = p[c0+va[xs+i]]
+					}
+					continue
+				}
+				c1 := ub[y]
+				for i := range row {
+					r0, r1 := va[xs+i], vb[xs+i]
+					s := uint(p[r0+c0]) + uint(p[r0+c1]) + uint(p[r1+c0]) + uint(p[r1+c1])
+					row[i] = byte((s + 2) >> 2)
+				}
+			}
+		}
+	}
+}
+
+// decodeTurned decodes the JPEG b of jw x jh, and returns its picture at ow x oh turned clockwise
+// by rotate degrees, or nil for a broken JPEG. ow x oh is the size after the turn. The decode is
+// at 1/2, 1/4 or 1/8 of the size (jpegdec) when that size is not smaller than the output: the
+// reduced decode costs less than the whole decode, and leaves less to scale and turn.
+func decodeTurned(b []byte, jw, jh, ow, oh, rotate int) *image.YCbCr {
+	uw, uh := TurnedSize(ow, oh, rotate) // the size before the turn
+	shift := 0
+	for s := 3; s >= 1; s-- {
+		if (jw+1<<s-1)>>s >= uw && (jh+1<<s-1)>>s >= uh {
+			shift = s
+			break
+		}
+	}
+	img, err := jpegdec.DecodeScaled(bytes.NewReader(b), shift)
+	if err != nil {
+		return nil
+	}
+	p := toYCbCrPicture(img)
+	if p == nil {
+		return nil
+	}
+	return scaleYCbCr(p, ow, oh, rotate)
+}
+
+// TurnedSize returns the size w x h after a turn of rotate degrees: the sides change places for
+// 90 and 270.
+func TurnedSize(w, h, rotate int) (int, int) {
+	if rotate == 90 || rotate == 270 {
+		return h, w
+	}
+	return w, h
 }
 
 var errShort = errors.New("camera: the frame is too short")
@@ -140,10 +228,11 @@ func ycbcrPlanes(p *image.YCbCr) (y, cb, cr plane) {
 	return y, cb, cr
 }
 
-// scaleYCbCr scales a YCbCr picture to w x h.
-func scaleYCbCr(p *image.YCbCr, w, h int, flip bool) *image.YCbCr {
+// scaleYCbCr scales a YCbCr picture to w x h, and turns it clockwise by rotate degrees (see
+// toYCbCr).
+func scaleYCbCr(p *image.YCbCr, w, h, rotate int) *image.YCbCr {
 	y, cb, cr := ycbcrPlanes(p)
-	return toYCbCr(w, h, y, cb, cr, flip)
+	return toYCbCr(w, h, y, cb, cr, rotate)
 }
 
 // encodeJPEG encodes a picture as a JPEG.

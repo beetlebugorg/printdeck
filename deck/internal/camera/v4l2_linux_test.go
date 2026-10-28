@@ -2,6 +2,7 @@ package camera
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -49,7 +50,7 @@ func TestCapture(t *testing.T) {
 	if dev.Path == "" {
 		t.Fatalf("%s is not in the list of cameras", path)
 	}
-	for _, rot := range []int{0, 180} {
+	for _, rot := range []int{0, 90, 180} {
 		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 		var frames []*Frame
 		var f Format
@@ -73,7 +74,7 @@ func TestCapture(t *testing.T) {
 		}
 		if out := os.Getenv("PRINTDECK_CAMERA_OUT"); out != "" {
 			last := frames[len(frames)-1]
-			os.WriteFile(filepath.Join(out, "capture-"+map[int]string{0: "0", 180: "180"}[rot]+".jpg"), last.JPEG(), 0o644)
+			os.WriteFile(filepath.Join(out, fmt.Sprintf("capture-%d.jpg", rot)), last.JPEG(), 0o644)
 			os.WriteFile(filepath.Join(out, "capture-small.jpg"), last.Small(320).JPEG(), 0o644)
 		}
 	}

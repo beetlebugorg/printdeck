@@ -73,3 +73,30 @@ func TestTwoTestCameras(t *testing.T) {
 		t.Error("the two test cameras send the same picture")
 	}
 }
+
+// The test camera turns its picture: a turn of 90° or 270° makes tall frames of 540 x 960.
+func TestTestCameraTurn(t *testing.T) {
+	t.Setenv(TestCameraEnv, "1")
+	for _, rot := range []int{90, 180, 270} {
+		h := NewHub(Settings{Cameras: []CamSettings{{ID: TestCamera.ID, Rotate: rot}}})
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		go h.Run(ctx)
+		stop := h.Watch()
+		f, err := h.Snapshot(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		w, ht := TurnedSize(960, 540, rot)
+		if sz := f.Size(); sz.X != w || sz.Y != ht {
+			t.Errorf("turn %d: size %v, want %dx%d", rot, sz, w, ht)
+		}
+		if st := h.Status(); st.Format.OutW != w || st.Format.OutH != ht {
+			t.Errorf("turn %d: format %+v", rot, st.Format)
+		}
+		if p := f.Picture(); p.Bounds().Dx() != w {
+			t.Errorf("turn %d: picture %v", rot, p.Bounds())
+		}
+		stop()
+		cancel()
+	}
+}

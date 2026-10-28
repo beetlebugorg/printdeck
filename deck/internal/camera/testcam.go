@@ -50,10 +50,12 @@ func withTestCamera(scan func() []Device, capture captureFunc) (func() []Device,
 // testCapture sends the test picture until ctx ends: color bars, and a white square that goes
 // across the picture in 4 seconds, so a viewer can see that the frames move. The second camera
 // (second) has the bars in the other order, and its square goes down the picture. The first
-// camera has a focus control: a fixed focus away from testFocus.Pos blurs the picture.
+// camera has a focus control: a fixed focus away from testFocus.Pos blurs the picture. The turn of
+// the settings turns the picture, and a turn of 90° or 270° makes the frames tall.
 func testCapture(ctx context.Context, l link, second bool) error {
 	s := l.settings()
 	f := testFormat
+	f.OutW, f.OutH = TurnedSize(f.OutW, f.OutH, s.Rotate)
 	l.format(f)
 	var z testFocuser
 	if !second {
@@ -62,9 +64,9 @@ func testCapture(ctx context.Context, l link, second bool) error {
 	tick := time.NewTicker(time.Second / time.Duration(f.OutFPS))
 	defer tick.Stop()
 	for n := 0; ; n++ {
-		pic := testPattern(f.OutW, f.OutH, n, f.OutFPS*4, second)
-		if s.Rotate == 180 {
-			pic = scaleYCbCr(pic, f.OutW, f.OutH, true)
+		pic := testPattern(testFormat.OutW, testFormat.OutH, n, f.OutFPS*4, second)
+		if s.Rotate != 0 {
+			pic = scaleYCbCr(pic, f.OutW, f.OutH, s.Rotate)
 		}
 		if !second {
 			z.apply(l.settings(), l.focus)

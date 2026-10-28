@@ -263,19 +263,25 @@ func (a *App) renameCamera(id string) {
 
 // turnLine is the line of the Turn row.
 func turnLine(rotate int) string {
-	if rotate == 180 {
+	switch rotate {
+	case 90:
+		return "Turned 90° right"
+	case 180:
 		return "Turned 180°, for a camera upside down"
+	case 270:
+		return "Turned 90° left"
 	}
 	return "Upright"
 }
 
-// toggleTurn turns the picture of the camera of the tab 180°, or back.
-func (a *App) toggleTurn() {
+// stepTurn turns the picture of the camera of the tab 90° more, clockwise: 0, 90, 180, 270 and
+// then 0 again.
+func (a *App) stepTurn() {
 	_, in := a.shownCam()
 	if in.ID == "" {
 		return
 	}
-	cs := a.changeCamera(in.ID, func(cs *camera.CamSettings) { cs.Rotate = 180 - cs.Rotate })
+	cs := a.changeCamera(in.ID, func(cs *camera.CamSettings) { cs.Rotate = camera.NextTurn(cs.Rotate) })
 	a.Toast("Picture: " + turnLine(cs.Rotate))
 }
 
@@ -508,10 +514,10 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 			sizes = append(sizes, kit.Fr(4))
 			k := kit.Cols(keys, 8, sizes...)
 			fill, ink := keyOff, text
-			if in.Rotate == 180 {
+			if in.Rotate != 0 {
 				fill, ink = keyOn, keyOnInk
 			}
-			a.button(c, k[0], "Turn", fill, ink, a.toggleTurn)
+			a.button(c, k[0], "Turn", fill, ink, a.stepTurn)
 			a.button(c, k[1], "View", raised, text, a.cycleView)
 			a.button(c, k[2], "Calibrate", raised, text, a.askCalibrate)
 			if calibrated {
@@ -529,7 +535,7 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 		c.Text(rows[1], strings.ToUpper(gfx.Fit(gfx.Face(true, 13), second, in2.Dx())), gfx.Face(true, 13), lcdDim, gfx.Left)
 	} else {
 		items := []menuItem{
-			{"Turn", turnLine(in.Rotate), dim, a.toggleTurn},
+			{"Turn", turnLine(in.Rotate), dim, a.stepTurn},
 			{"View", a.viewLine(cam), dim, a.cycleView},
 			{"Calibrate", calibLine(cal, calibrated), dim, a.askCalibrate},
 		}
@@ -643,27 +649,50 @@ func (a *App) drawAllCameras(c *gfx.Canvas, area image.Rectangle, tabs []camera.
 	for i := range sizes {
 		sizes[i] = kit.Fr(1)
 	}
-	n := max(1, len(tabs))
-	cw := (area.Dx() - 8*(n-1)) / n
-	colH := min(area.Dy()-26, cw*9/16)
-	rowH := (area.Dy()-8*(n-1))/n - 26
-	colW := min(area.Dx(), rowH*16/9)
-	var cells []image.Rectangle
-	if cw*colH > colW*rowH {
-		cells = kit.Cols(area, 8, sizes...)
-	} else {
-		cells = kit.Rows(area, 8, sizes...)
+	type shown struct {
+		cam   camera.Source
+		fr    *camera.Frame
+		title string
 	}
+	cams := make([]shown, len(tabs))
 	for i, in := range tabs {
 		cam, ok := a.Camera.Source(in.ID)
 		if !ok {
 			continue
 		}
 		st := cam.Status()
-		fr := a.camFrame(cam, st, cameraEvery)
 		title, _ := cameraState(st)
+		cams[i] = shown{cam, a.camFrame(cam, st, cameraEvery), title}
+	}
+	// The area of the pictures in each layout, with the shape of each frame (16:9 with no frame).
+	n := max(1, len(tabs))
+	cw, rowH := (area.Dx()-8*(n-1))/n, (area.Dy()-8*(n-1))/n
+	cols, rows := 0.0, 0.0
+	for _, s := range cams {
+		sw, sh := 16.0, 9.0
+		if s.fr != nil && s.fr.Size().X > 0 && s.fr.Size().Y > 0 {
+			sw, sh = float64(s.fr.Size().X), float64(s.fr.Size().Y)
+		}
+		fit := func(w, h int) float64 {
+			k := min(float64(w)/sw, float64(max(0, h-26))/sh)
+			return k * k * sw * sh
+		}
+		cols += fit(cw, area.Dy())
+		rows += fit(area.Dx(), rowH)
+	}
+	var cells []image.Rectangle
+	if cols > rows {
+		cells = kit.Cols(area, 8, sizes...)
+	} else {
+		cells = kit.Rows(area, 8, sizes...)
+	}
+	for i, in := range tabs {
+		s := cams[i]
+		if s.cam == nil {
+			continue
+		}
 		parts := kit.Rows(cells[i], 4, kit.Fr(1), kit.Px(22))
-		a.drawCamPicture(c, parts[0], cam, fr, camera.ViewFull, title)
+		a.drawCamPicture(c, parts[0], s.cam, s.fr, camera.ViewFull, s.title)
 		c.Text(parts[1], strings.ToUpper(gfx.Fit(gfx.Face(true, 14), in.Name, parts[1].Dx())), gfx.Face(true, 14), dim, gfx.Center)
 		id := in.ID
 		a.addHit(kit.Hit{R: cells[i], Tap: func() { a.camID = id; a.Redraw() }})

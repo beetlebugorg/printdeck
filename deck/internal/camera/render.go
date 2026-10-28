@@ -37,7 +37,7 @@ func renderView(pic *image.YCbCr, plan viewPlan, ow, oh int) *image.YCbCr {
 func cropScale(p *image.YCbCr, c [4]float64, ow, oh int) *image.YCbCr {
 	if c[2]-c[0] >= 2*float64(ow) {
 		r := image.Rect(int(c[0]+0.5), int(c[1]+0.5), int(c[2]+0.5), int(c[3]+0.5)).Intersect(p.Rect)
-		return scaleYCbCr(p.SubImage(r).(*image.YCbCr), ow, oh, false)
+		return scaleYCbCr(p.SubImage(r).(*image.YCbCr), ow, oh, 0)
 	}
 	out := image.NewYCbCr(image.Rect(0, 0, ow, oh), image.YCbCrSubsampleRatio420)
 	y, cb, cr := ycbcrPlanes(p)

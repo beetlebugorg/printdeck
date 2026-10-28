@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"image"
-	"image/jpeg"
 	"path/filepath"
 	"strings"
 	"time"
@@ -440,13 +439,15 @@ func capture(ctx context.Context, d Device, l link) error {
 	pix := vf.Fmt.Pix
 	name, w, h = fourccName(pix.PixelFormat), int(pix.Width), int(pix.Height)
 	mjpeg := name == "MJPG" || name == "JPEG"
-	// A camera that flips its picture itself keeps the JPEG frames with no change. Else the deck
-	// turns each picture.
+	// A camera that flips its picture itself keeps the JPEG frames with no change for a turn of
+	// 180°. Else the deck turns each picture. rot is the turn that the deck makes.
 	s := l.settings()
-	hwFlip := setFlip(fd, s.Rotate == 180)
-	flip := s.Rotate == 180 && !hwFlip
+	rot := s.Rotate
+	if setFlip(fd, rot == 180) {
+		rot = 0
+	}
 	fps := rawFPS
-	if mjpeg && !flip {
+	if mjpeg && rot == 0 {
 		fps = jpegFPS
 	}
 	inFPS := setRate(fd, fps)
@@ -454,12 +455,13 @@ func capture(ctx context.Context, d Device, l link) error {
 	if mjpeg {
 		f.In = "MJPEG"
 		f.OutW, f.OutH = w, h
-		if flip {
+		if rot != 0 {
 			f.OutW, f.OutH = outSize(w, h, rawMax.X, rawMax.Y)
 		}
 	} else {
 		f.OutW, f.OutH = outSize(w, h, rawMax.X, rawMax.Y)
 	}
+	f.OutW, f.OutH = TurnedSize(f.OutW, f.OutH, rot)
 	if inFPS > 0 && float64(f.OutFPS) > inFPS {
 		f.OutFPS = max(1, int(inFPS+0.5))
 	}
@@ -537,7 +539,7 @@ func capture(ctx context.Context, d Device, l link) error {
 			// The first frames of a camera can be dark or broken. A frame comes when it is due.
 			if now.Sub(start) >= warmUp && now.Sub(lastEmit) >= every-every/8 {
 				data := bufs[b.Index][:min(int(b.BytesUsed), len(bufs[b.Index]))]
-				if fr := makeFrame(name, data, w, h, int(pix.BytesPerLine), f, flip); fr != nil {
+				if fr := makeFrame(name, data, w, h, int(pix.BytesPerLine), f, rot); fr != nil {
 					lastEmit = now
 					l.emit(fr)
 				}
@@ -550,28 +552,28 @@ func capture(ctx context.Context, d Device, l link) error {
 	return nil
 }
 
-// makeFrame makes a frame of a picture of the camera, or returns nil for a broken picture.
-func makeFrame(name string, data []byte, w, h, bpl int, f Format, flip bool) *Frame {
+// makeFrame makes a frame of a picture of the camera, turned clockwise by rot degrees, or returns
+// nil for a broken picture.
+func makeFrame(name string, data []byte, w, h, bpl int, f Format, rot int) *Frame {
 	if name == "MJPG" || name == "JPEG" {
 		b, jw, jh, err := fixJPEG(data)
 		if err != nil {
 			return nil
 		}
-		if !flip {
+		if rot == 0 {
 			return newFrame(b, jw, jh, nil)
 		}
-		img, err := jpeg.Decode(bytes.NewReader(b))
-		p, ok := img.(*image.YCbCr)
-		if err != nil || !ok {
+		p := decodeTurned(b, jw, jh, f.OutW, f.OutH, rot)
+		if p == nil {
 			return nil
 		}
-		return picFrame(scaleYCbCr(p, f.OutW, f.OutH, true))
+		return picFrame(p)
 	}
 	y, cb, cr, err := rawPlanes(name, data, w, h, bpl)
 	if err != nil {
 		return nil
 	}
-	fr := picFrame(toYCbCr(f.OutW, f.OutH, y, cb, cr, flip))
+	fr := picFrame(toYCbCr(f.OutW, f.OutH, y, cb, cr, rot))
 	fr.blank = blank(y)
 	return fr
 }
