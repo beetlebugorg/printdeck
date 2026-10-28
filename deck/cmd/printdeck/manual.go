@@ -834,10 +834,25 @@ func manualParts() []section {
 					Callouts: []callout{
 						{"Versions", "This version and the newest version."},
 						{"Notes", "What the new version changes."},
-						{"Install", "Installs the new version, after a question. The deck restarts."},
+						{"Install", "Installs the new version, after a question. With no print, the deck restarts. During a print, the deck restarts after the print."},
 						{"Check now", "Checks for a new version now."},
 						{"Beta updates", "On: the deck also gets beta versions."},
 					}},
+				{Name: "update-staged", Caption: "An update installed during a print", Setup: func(s *manualState) {
+					s.p.State_ = stPrinting
+					s.a.Updater = &ui.DemoUpdater{S: ui.UpdateStatus{Current: "v0.3.0", Latest: "v0.4.0", Checked: true,
+						Newer: true, HasStaged: true, Staged: "v0.4.0", CanSwitch: true}}
+					// A first frame with the print: the start of a print closes the open pages.
+					s.a.Draw(gfx.New(s.a.Screen().W, s.a.Screen().H))
+					s.a.OpenPrintScreen("update")
+				},
+					Callouts: []callout{
+						{"Versions", "This version, and the installed version that waits for the restart."},
+						{"Notes", "The deck restarts into the update after the print, when the printer is idle and the bed is cool."},
+						{"Restart the screen now", "Runs the screen of the update now, after a question. The screen is dark for a few seconds. The print keeps running."},
+					},
+					Notes: []string{"Restart the screen now shows only when the new screen works with the running Klipper. The time lapse and the share link of the print continue.",
+						"With no print, the key is Restart now."}},
 				{Name: "stats", Caption: "Statistics", Setup: page("stats"),
 					Callouts: []callout{
 						{"Totals", "The prints, the success rate, the time and the filament."},
@@ -1184,10 +1199,11 @@ func manualSections() []section {
 			},
 			Steps: []string{
 				"Open Machine, then Software update.",
-				"Read the notes of the new version, then tap Install. The deck installs only when no print runs.",
-				"Wait for the download. The deck restarts into the new version.",
+				"Read the notes of the new version, then tap Install.",
+				"Wait for the download. With no print, the deck restarts into the new version.",
+				"During a print, the deck installs the update and the print continues. Machine shows Update ready. The deck restarts into the new version after the print, when the printer is idle and the bed is cool.",
 			},
-			Figures: fig("update")},
+			Figures: fig("update", "update-staged")},
 		{Chapter: care, ID: "backup", Title: "Back up your data",
 			Intro: []string{
 				"A backup is one file with your rolls, history, settings, API keys, paired phones and Klipper config. Make a backup before you change the SD card.",
@@ -1262,8 +1278,8 @@ func manual(args []string) {
 			{SSID: "Guest", Signal: -71}, {SSID: "NETGEAR-5G", Signal: -82, Secure: true}},
 		Status_: wifi.Status{State: "COMPLETED", SSID: "Extremely", IP: "192.168.76.119"},
 	}
-	a.Updater = &ui.DemoUpdater{S: ui.UpdateStatus{Current: "v0.3.0", Latest: "v0.4.0", Newer: true, Checked: true,
-		Notes: demoNotes}}
+	demoUpdate := ui.UpdateStatus{Current: "v0.3.0", Latest: "v0.4.0", Newer: true, Checked: true, Notes: demoNotes}
+	a.Updater = &ui.DemoUpdater{S: demoUpdate}
 	st := &manualState{a: a, p: p, part: partPreview(0.42), done: partPreview(1), lapse: manualLapse(dir)}
 	defer os.RemoveAll(st.lapse.Dir)
 	secs := manualSections()
@@ -1291,6 +1307,7 @@ func manual(args []string) {
 			p.Img = st.part
 			a.ResetScreens()
 			a.TimeLapse = nil
+			a.Updater = &ui.DemoUpdater{S: demoUpdate}
 			f.Setup(st)
 			c, rec := gfx.NewRecording(w, h)
 			a.Draw(c)
