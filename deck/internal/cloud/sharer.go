@@ -70,6 +70,7 @@ type share struct {
 	busy    bool
 	stop    context.CancelFunc
 	wake    chan struct{}
+	done    chan struct{} // closed when the uploads of the share end
 }
 
 // ShareState is the state of the share link, for the screens.
@@ -126,11 +127,13 @@ func (s *Sharer) Start(job, printer string, lapse [][]byte) {
 		return
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	c := &share{busy: true, lapse: lapse, seqs: map[string]uint64{}, stop: cancel, wake: make(chan struct{}, 1)}
+	c := &share{busy: true, lapse: lapse, seqs: map[string]uint64{}, stop: cancel, wake: make(chan struct{}, 1),
+		done: make(chan struct{})}
 	s.cur = c
 	s.mu.Unlock()
 	s.changed()
 	go func() {
+		defer close(c.done)
 		var out ShareReply
 		err := s.Link.Client.Do(ctx, id, http.MethodPost, "/api/v1/shares", ShareRequest{Job: job, Printer: printer}, &out)
 		s.mu.Lock()
@@ -149,6 +152,87 @@ func (s *Sharer) Start(job, printer string, lapse [][]byte) {
 		s.changed()
 		s.run(ctx, id, c)
 	}()
+}
+
+// ShareHandoff is the state of a share for the next deck program. After an update during a print,
+// the deck program of the new slot replaces the running one, and the share continues: Handoff
+// returns the state, and the next deck program calls Resume with it.
+type ShareHandoff struct {
+	ID      string    `json:"id"`
+	URL     string    `json:"url"`
+	Owner   string    `json:"owner"`
+	Ready   bool      `json:"ready"`
+	Grant   Grant     `json:"grant"`
+	Lapse   [][]byte  `json:"lapse,omitempty"` // the time lapse frames that wait for the upload
+	LapseN  int       `json:"lapse_n"`
+	Frame   int       `json:"frame"`
+	Plan    int       `json:"plan"`
+	LCD     int       `json:"lcd"`
+	Model   int       `json:"model"`
+	ModelV  uint64    `json:"model_v"`
+	ModelAt time.Time `json:"model_at"`
+	Ended   bool      `json:"ended"`
+	Expires time.Time `json:"expires"`
+}
+
+// Handoff stops the uploads of the share and returns its state. The share stays at the service.
+// It is false with no share, and while the service makes the link.
+func (s *Sharer) Handoff() (ShareHandoff, bool) {
+	s.mu.Lock()
+	c := s.cur
+	s.mu.Unlock()
+	if c == nil {
+		return ShareHandoff{}, false
+	}
+	s.mu.Lock()
+	ready := c.id != ""
+	s.mu.Unlock()
+	if !ready {
+		return ShareHandoff{}, false
+	}
+	c.stop()
+	select {
+	case <-c.done:
+	case <-time.After(10 * time.Second):
+		return ShareHandoff{}, false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return ShareHandoff{ID: c.id, URL: c.url, Owner: c.owner, Ready: c.ready, Grant: c.grant,
+		Lapse: append([][]byte(nil), c.lapse...), LapseN: c.lapseN, Frame: c.frame, Plan: c.plan, LCD: c.lcd,
+		Model: c.model, ModelV: c.modelV, ModelAt: c.modelAt, Ended: c.ended, Expires: c.expires}, true
+}
+
+// Resume continues the share of h, the state from Handoff of the deck program before this one. It
+// reports that the share continues: it fails with no identity of the deck, and with a share
+// already.
+func (s *Sharer) Resume(h ShareHandoff) bool {
+	id := s.Link.Identity()
+	if id == nil || h.ID == "" {
+		return false
+	}
+	s.mu.Lock()
+	if s.cur != nil {
+		s.mu.Unlock()
+		return false
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	c := &share{id: h.ID, url: h.URL, owner: h.Owner, ready: h.Ready, grant: h.Grant, lapse: h.Lapse,
+		lapseN: h.LapseN, frame: h.Frame, seqs: map[string]uint64{}, plan: h.Plan, lcd: h.LCD, model: h.Model,
+		modelV: h.ModelV, modelAt: h.ModelAt, ended: h.Ended, expires: h.Expires, stop: cancel,
+		wake: make(chan struct{}, 1), done: make(chan struct{})}
+	s.cur = c
+	s.mu.Unlock()
+	s.changed()
+	if h.Ended {
+		close(c.done)
+		return true
+	}
+	go func() {
+		defer close(c.done)
+		s.run(ctx, id, c)
+	}()
+	return true
 }
 
 // SetReady sets the flag Ready to pick up of the share, with a note, in the background.
