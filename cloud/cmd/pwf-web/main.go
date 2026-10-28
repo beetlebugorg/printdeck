@@ -176,9 +176,12 @@ func (s *share) renderReady(rd wire.ShareReady) {
 	s.ready = rd
 	setHidden("readyBanner", !rd.Ready)
 	if rd.Ready {
-		line := rd.Note
+		line := strings.TrimSpace(rd.Note)
+		if line != "" && !strings.ContainsAny(line[len(line)-1:], ".!?") {
+			line += "."
+		}
 		if !rd.At.IsZero() {
-			line = strings.TrimSpace(line + " Since " + localDay(rd.At) + ".")
+			line = strings.TrimSpace(line + " Ready since " + localDay(rd.At) + ".")
 		}
 		setText("readyText", line)
 		setHidden("doneBanner", true)
