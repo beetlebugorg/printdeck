@@ -267,6 +267,7 @@ type App struct {
 	camFocus       bool       // the Camera page shows the focus keys
 	cloudDomainSet string     // the domain of the service that the owner typed on the Cloud page, or ""
 	shareSheet     bool       // the share sheet is open
+	shareOwner     bool       // the share sheet shows the owner link
 	camEdit        string     // the ID of the camera of the page of one camera
 	camKB          *keyboard  // the keyboard of the name of a camera, while it is open
 	calib          *calibFlow // the calibration of the camera, while it runs (calibrate.go)

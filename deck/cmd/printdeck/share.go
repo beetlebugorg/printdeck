@@ -63,6 +63,7 @@ func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend) *shareLink {
 func (l *shareLink) Ready() bool             { return l.link.Identity() != nil }
 func (l *shareLink) State() cloud.ShareState { return l.sharer.State() }
 func (l *shareLink) Stop()                   { l.sharer.Stop() }
+func (l *shareLink) SetReady(ready bool)     { l.sharer.SetReady(ready, "") }
 
 // Start shares the print now, or the print that ended, with the time lapse frames so far.
 func (l *shareLink) Start() {
