@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"mime"
@@ -25,6 +26,7 @@ import (
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
+	"printdeck/cloud/api"
 	"printdeck/cloud/deploy"
 )
 
@@ -81,7 +83,7 @@ func runDeploy(ctx context.Context, cfg aws.Config, opt deployOptions) error {
 		return err
 	}
 	fmt.Println("Uploading the pages")
-	if err := uploadWeb(ctx, s3c, out["Bucket"], src); err != nil {
+	if err := uploadWeb(ctx, s3c, out["Bucket"], src, "https://"+opt.Domain); err != nil {
 		return err
 	}
 	fmt.Println("Done:", out["Url"])
@@ -217,7 +219,7 @@ func deployStack(ctx context.Context, cfg aws.Config, stack string, params map[s
 }
 
 // uploadWeb builds the pages and uploads them to the root of the data bucket.
-func uploadWeb(ctx context.Context, c *s3.Client, bucket, src string) error {
+func uploadWeb(ctx context.Context, c *s3.Client, bucket, src, base string) error {
 	files, err := buildWeb(ctx, src)
 	if err != nil {
 		return err
@@ -233,12 +235,12 @@ func uploadWeb(ctx context.Context, c *s3.Client, bucket, src string) error {
 			return fmt.Errorf("upload %s: %w", key, err)
 		}
 	}
-	return refreshShares(ctx, c, bucket, files["assets/share.html"])
+	return refreshShares(ctx, c, bucket, base, files["assets/share.html"])
 }
 
 // refreshShares writes the new share page to the page of each share that runs (s/<id>), so an
-// open share gets a new deploy too.
-func refreshShares(ctx context.Context, c *s3.Client, bucket string, page []byte) error {
+// open share gets a new deploy too. base is the address of the service.
+func refreshShares(ctx context.Context, c *s3.Client, bucket, base string, page []byte) error {
 	if page == nil {
 		return nil
 	}
@@ -253,8 +255,16 @@ func refreshShares(ctx context.Context, c *s3.Client, bucket string, page []byte
 		for _, o := range out.Contents {
 			id := strings.TrimSuffix(strings.TrimPrefix(aws.ToString(o.Key), prefix), ".json")
 			key := "s/" + id
+			// The record has the name of the print, for the preview of the link.
+			var sh api.Share
+			if rec, err := c.GetObject(ctx, &s3.GetObjectInput{Bucket: &bucket, Key: o.Key}); err == nil {
+				json.NewDecoder(rec.Body).Decode(&sh)
+				rec.Body.Close()
+			}
+			sh.ID = id
+			body := api.SharePageFor(page, base+"/s/"+id, sh)
 			ctype, cache := "text/html; charset=utf-8", "public, max-age=60"
-			if _, err := c.PutObject(ctx, &s3.PutObjectInput{Bucket: &bucket, Key: &key, Body: bytes.NewReader(page),
+			if _, err := c.PutObject(ctx, &s3.PutObjectInput{Bucket: &bucket, Key: &key, Body: bytes.NewReader(body),
 				ContentType: &ctype, CacheControl: &cache}); err != nil {
 				return err
 			}

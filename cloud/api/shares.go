@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"html"
 	"net/http"
 	"strings"
 	"time"
@@ -262,6 +263,7 @@ func (s *Server) newShare(ctx context.Context, d *Deck, body []byte) (any, error
 	if err := s.putJSON(ctx, shareKey(sh.ID), sh); err != nil {
 		return nil, err
 	}
+	page = SharePageFor(page, s.shareURL(sh.ID), sh)
 	if _, err := s.Store.Put(ctx, "s/"+sh.ID, page, PutOptions{ContentType: "text/html; charset=utf-8",
 		CacheControl: "public, max-age=60"}); err != nil {
 		return nil, err
@@ -271,6 +273,32 @@ func (s *Server) newShare(ctx context.Context, d *Deck, body []byte) (any, error
 		return nil, err
 	}
 	return cloud.ShareReply{ID: sh.ID, URL: s.shareURL(sh.ID), OwnerKey: ownerKey, Grant: g}, nil
+}
+
+// previewMark is the place of the preview tags in the share page.
+const previewMark = "<!-- preview -->"
+
+// SharePageFor is the page of the share sh at url: the share page with the name of the print, and
+// the tags of Open Graph. Message apps read the tags for the preview of a link. The picture of the
+// preview is model.jpg of the share: the model of the print.
+func SharePageFor(page []byte, url string, sh Share) []byte {
+	title := "A print"
+	if sh.Job != "" {
+		title = sh.Job
+	}
+	esc := html.EscapeString
+	tags := strings.Join([]string{
+		`<meta property="og:site_name" content="Printdeck">`,
+		`<meta property="og:type" content="website">`,
+		`<meta property="og:title" content="` + esc(title) + `">`,
+		`<meta property="og:description" content="A live print with Printdeck: the progress, the layers, and the time lapse.">`,
+		`<meta property="og:url" content="` + esc(url) + `">`,
+		`<meta property="og:image" content="` + esc(url) + `/model.jpg">`,
+		`<meta property="og:image:alt" content="The model of the print">`,
+		`<meta name="twitter:card" content="summary_large_image">`,
+	}, "\n")
+	s := strings.Replace(string(page), "<title>Print · Printdeck</title>", "<title>"+esc(title)+" · Printdeck</title>", 1)
+	return []byte(strings.Replace(s, previewMark, tags, 1))
 }
 
 // loadShare returns the record of the share id. A share that does not exist is 410.

@@ -246,3 +246,23 @@ func TestShareReadyAndPhotos(t *testing.T) {
 	sh.SetReady(false, "")
 	waitFor(t, func() bool { return !sh.State().Ready })
 }
+
+// The page of a share has the name of the print and the preview tags, with the name escaped.
+func TestSharePageFor(t *testing.T) {
+	page := []byte("<head>\n<title>Print · Printdeck</title>\n<!-- preview -->\n</head>")
+	got := string(SharePageFor(page, "https://example.org/s/abc", Share{ID: "abc", Job: `Hex "planter" <v2>`}))
+	for _, want := range []string{
+		`<title>Hex &#34;planter&#34; &lt;v2&gt; · Printdeck</title>`,
+		`<meta property="og:title" content="Hex &#34;planter&#34; &lt;v2&gt;">`,
+		`<meta property="og:image" content="https://example.org/s/abc/model.jpg">`,
+		`<meta property="og:url" content="https://example.org/s/abc">`,
+		`<meta name="twitter:card" content="summary_large_image">`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("no %s in\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, previewMark) {
+		t.Error("the mark stays")
+	}
+}
