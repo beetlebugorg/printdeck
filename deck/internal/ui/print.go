@@ -252,10 +252,18 @@ func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 		// Wide: the print is the Main page. The data and the model, and the keys at the bottom:
 		// Cancel, the destructive action, at the left, and Pause at the right.
 		view, keys := a.statePage(c, st, gfx.Fit(gfx.Face(true, 24), st.File, a.navFrame().head.Dx()-20), actH)
-		k := kit.Cols(keys, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
-		a.button(c, k[0], "Cancel", raised, red, a.askCancel)
-		a.button(c, k[1], "Tune", raised, text, func() { a.tune = true })
-		a.button(c, k[2], "Pause", orange, onAcc, pr.Pause)
+		if a.canShare() {
+			k := kit.Cols(keys, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1))
+			a.button(c, k[0], "Cancel", raised, red, a.askCancel)
+			a.button(c, k[1], "Tune", raised, text, func() { a.tune = true })
+			a.shareKey(c, k[2])
+			a.button(c, k[3], "Pause", orange, onAcc, pr.Pause)
+		} else {
+			k := kit.Cols(keys, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
+			a.button(c, k[0], "Cancel", raised, red, a.askCancel)
+			a.button(c, k[1], "Tune", raised, text, func() { a.tune = true })
+			a.button(c, k[2], "Pause", orange, onAcc, pr.Pause)
+		}
 		r := kit.Rows(view, 12, kit.Px(a.printInfoH(st)), kit.Fr(1))
 		a.modelView(c, r[1], st)
 		a.drawScrubber(c, r[1], st)
@@ -269,14 +277,25 @@ func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 		_, side, _ := a.stateAreas()
 		a.jobCard(c, kit.Rows(side, 12, kit.Px(keys.Dy()), kit.Fr(1))[1], st)
 	}
-	k := kit.Cols(keys, 8, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1))
-	if keys.Dx() < 320 {
+	n := 4
+	if a.canShare() {
+		n = 5
+	}
+	sizes := make([]kit.Size, n)
+	for i := range sizes {
+		sizes[i] = kit.Fr(1)
+	}
+	k := kit.Cols(keys, 8, sizes...)
+	if keys.Dx() < 320 && n == 4 {
 		k = kit.Grid(keys, 2, 2, 10) // two rows of two in a narrow column
 	}
 	a.button(c, k[0], "Pause", orange, onAcc, pr.Pause)
 	a.button(c, k[1], "Tune", raised, text, func() { a.tune = true })
 	a.button(c, k[2], "Cancel", raised, red, a.askCancel)
 	a.button(c, k[3], "Menu", raised, text, func() { a.leavePrint(st) })
+	if n == 5 {
+		a.shareKey(c, k[4])
+	}
 	// The data of the print in a plate, and the model under it.
 	r := kit.Rows(box, 12, kit.Px(a.printInfoH(st)), kit.Fr(1))
 	a.modelView(c, r[1], st)

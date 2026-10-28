@@ -504,6 +504,21 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 	seen := finishedKey(st)
 	path := st.FinishedPath
 	video, saving := a.doneVideo(st)
+	if a.canShare() {
+		// Share takes the place of the Reprint key's neighbor: Reprint, Share, the time lapse, Done.
+		sizes := []kit.Size{kit.Fr(1), kit.Fr(1), kit.Fr(1)}
+		if video != "" || saving {
+			sizes = append(sizes, kit.Fr(1))
+		}
+		k := kit.Cols(end, 12, sizes...)
+		a.button(c, k[0], "Reprint", raised, text, func() { a.confirmPrint(path) })
+		a.shareKey(c, k[1])
+		if len(k) == 4 {
+			a.lapseKey(c, k[2], st, video, saving)
+		}
+		a.button(c, k[len(k)-1], "Done", orange, onAcc, func() { a.doneSeen = seen })
+		return
+	}
 	if video == "" && !saving {
 		k := kit.Cols(end, 12, kit.Fr(1), kit.Fr(1))
 		a.button(c, k[0], "Reprint", raised, text, func() { a.confirmPrint(path) })
@@ -512,16 +527,21 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 	}
 	k := kit.Cols(end, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
 	a.button(c, k[0], "Reprint", raised, text, func() { a.confirmPrint(path) })
+	a.lapseKey(c, k[1], st, video, saving)
+	a.button(c, k[2], "Done", orange, onAcc, func() { a.doneSeen = seen })
+}
+
+// lapseKey draws the Time lapse key of the done page, or Saving… while the deck writes the video.
+func (a *App) lapseKey(c *gfx.Canvas, r image.Rectangle, st printer.State, video string, saving bool) {
 	if saving {
 		// The deck writes the video at the end of the print: a few seconds.
-		key(c, k[1], "Saving…", surface, dim, false)
-		a.region("Time lapse", k[1])
+		key(c, r, "Saving…", surface, dim, false)
+		a.region("Time lapse", r)
 		a.redrawSoon(500 * time.Millisecond)
-	} else {
-		file := st.FinishedFile
-		a.button(c, k[1], "Time lapse", raised, text, func() { a.openPlayer(video, file) })
+		return
 	}
-	a.button(c, k[2], "Done", orange, onAcc, func() { a.doneSeen = seen })
+	file := st.FinishedFile
+	a.button(c, r, "Time lapse", raised, text, func() { a.openPlayer(video, file) })
 }
 
 // doneVideo is the time lapse video of the print that ended: its name, or saving while the deck

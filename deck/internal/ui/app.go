@@ -212,7 +212,9 @@ type App struct {
 	// Phones are the paired phones of the Printdeck app, or nil (Settings > Phones).
 	Phones *notify.Phones
 	// Cloud is the link of the deck to its cloud service, or nil (Settings > Cloud).
-	Cloud      CloudLink
+	Cloud CloudLink
+	// Share is the share link of the print, or nil.
+	Share      ShareLink
 	OnSwapHome func(bool)
 	// Rotate is the turn of the UI on the panel in degrees: 0, 90, 180 or 270. OnRotate saves a new
 	// turn and restarts the deck in it; with no OnRotate, the Settings page has no Screen row.
@@ -263,6 +265,7 @@ type App struct {
 	camID          string     // the tab of the Camera page: an ID, "" for the main camera, or camAll
 	camFocus       bool       // the Camera page shows the focus keys
 	cloudDomainSet string     // the domain of the service that the owner typed on the Cloud page, or ""
+	shareSheet     bool       // the share sheet is open
 	camEdit        string     // the ID of the camera of the page of one camera
 	camKB          *keyboard  // the keyboard of the name of a camera, while it is open
 	calib          *calibFlow // the calibration of the camera, while it runs (calibrate.go)
@@ -326,6 +329,7 @@ func (a *App) Session(width, height int) *App {
 	s.Camera = a.Camera
 	s.TimeLapse = a.TimeLapse
 	s.Cloud = a.Cloud
+	s.Share = a.Share
 	s.hub = a.hub
 	return s
 }
@@ -454,6 +458,10 @@ func (a *App) Draw(c *gfx.Canvas) {
 	if a.keypad != nil {
 		a.collect, a.focus = !a.Record, a.focus[:0]
 		a.drawKeypad(c)
+	}
+	if a.shareSheet && a.Share != nil && a.confirm == nil {
+		a.collect, a.focus = !a.Record, a.focus[:0]
+		a.drawShareSheet(c)
 	}
 	if a.confirm != nil {
 		a.collect, a.focus = !a.Record, a.focus[:0]

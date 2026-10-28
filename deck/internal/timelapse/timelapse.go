@@ -102,6 +102,9 @@ func NewRecorder() *Recorder { return &Recorder{every: 1} }
 // Every is the count of layers between two frames: 1, 2, 4 and so on.
 func (r *Recorder) Every() int { return r.every }
 
+// Frames returns the JPEGs of the frames, in order. The JPEGs do not change.
+func (r *Recorder) Frames() [][]byte { return append([][]byte(nil), r.frames...) }
+
 // Len is the count of frames.
 func (r *Recorder) Len() int { return len(r.frames) }
 

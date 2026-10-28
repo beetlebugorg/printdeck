@@ -104,6 +104,9 @@ type Runner struct {
 	// PartCrop returns the crop of the part of the print of the file in a frame of size sz, with
 	// the bed at the park Y. It returns false with no calibration of the camera. It can be nil.
 	PartCrop func(file string, sz image.Point) (image.Rectangle, bool)
+	// OnLapseFrame gets each JPEG that the runner adds to the video of the print now, or is nil.
+	// The share link uploads it.
+	OnLapseFrame func(jpeg []byte)
 
 	host  Host
 	cam   Camera
@@ -174,6 +177,16 @@ func (r *Runner) Info() Info {
 		in.Frames = r.saving.Len()
 	}
 	return in
+}
+
+// LapseFrames returns the JPEGs of the video of the print now, or nil with no print.
+func (r *Runner) LapseFrames() [][]byte {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.rec == nil {
+		return nil
+	}
+	return r.rec.Frames()
 }
 
 // VideoPath returns the path of the video name, and false for a name that is not a video of the
@@ -433,8 +446,12 @@ func (r *Runner) takePicture(ctx context.Context, hs HostStatus) {
 		lf := r.lapseFrame(f)
 		b := lf.JPEG()
 		r.mu.Lock()
-		rec.Add(b, lf.Size(), hs.Layer)
+		added := rec.Add(b, lf.Size(), hs.Layer)
+		cb := r.OnLapseFrame
 		r.mu.Unlock()
+		if added && cb != nil {
+			cb(b)
+		}
 	}
 	if pf != nil {
 		f := small(pf)
