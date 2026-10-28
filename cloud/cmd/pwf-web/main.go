@@ -145,7 +145,17 @@ type share struct {
 	lcdFrames []byte
 	lcdShown  int
 	lcdSeq    int
+	// The last status, and the time on this computer when it came. The clocks count on from it
+	// between the uploads (tick).
+	st   wire.ShareStatus
+	seen time.Time
+	// The text of the clocks that shows, by ID.
+	clocks map[string]string
 }
+
+// maxCount is the time that the clocks count on after the last new status. After it the deck
+// sends nothing, and the clocks stop.
+const maxCount = time.Minute
 
 // runShare polls the status of the share at base and draws the page.
 func runShare(base string) {
@@ -157,6 +167,13 @@ func runShare(base string) {
 	}
 	go s.play()
 	go s.playLCD()
+	go func() {
+		for {
+			// 4 times a second, so that the clocks go on at each second and skip none.
+			time.Sleep(250 * time.Millisecond)
+			s.tick()
+		}
+	}()
 	go func() {
 		for {
 			s.poll()
@@ -338,6 +355,10 @@ var stateText = map[string]string{
 
 func (s *share) render(st wire.ShareStatus) {
 	ended := st.State == "done" || st.State == "cancelled" || st.State == "error"
+	if !st.Updated.Equal(s.st.Updated) {
+		s.seen = time.Now()
+	}
+	s.st = st
 	if st.Job != "" {
 		setText("job", st.Job)
 		doc.Set("title", st.Job+" · Printdeck")
@@ -409,17 +430,14 @@ func (s *share) render(st wire.ShareStatus) {
 
 	// The readout.
 	setText("leftLab", "Time left")
-	setText("left", clock(st.TimeLeft))
 	setText("leftSub", "")
 	if st.TimeLeft >= 0 && !ended {
 		setText("leftSub", "Done about "+localTime(st.Updated.Add(time.Duration(st.TimeLeft)*time.Second)))
 	}
 	if ended {
 		setText("leftLab", "Print time")
-		if !st.Started.IsZero() && !st.Ended.IsZero() {
-			setText("left", clock(int(st.Ended.Sub(st.Started).Seconds())))
-		}
 	}
+	s.tick()
 	if st.Layers > 0 {
 		setText("layer", fmt.Sprint(st.Layer))
 		setText("layers", fmt.Sprintf("of %d", st.Layers))
@@ -478,6 +496,52 @@ func (s *share) render(st wire.ShareStatus) {
 		}
 		setText("lapseTag", tag)
 	}
+}
+
+// tick shows the clocks: the time left and the time of the layer now. Between two uploads they
+// count on from the last status, at the rate of this computer. The time of the deck is the time
+// of the status, and the time since it came here, so the clock of this computer can be wrong.
+func (s *share) tick() {
+	st := s.st
+	if s.seen.IsZero() {
+		return
+	}
+	if s.clocks == nil {
+		s.clocks = map[string]string{}
+	}
+	setText := func(id, text string) {
+		if s.clocks[id] != text {
+			s.clocks[id] = text
+			setText(id, text)
+		}
+	}
+	ended := st.State == "done" || st.State == "cancelled" || st.State == "error"
+	if ended {
+		if !st.Started.IsZero() && !st.Ended.IsZero() {
+			setText("left", clock(int(st.Ended.Sub(st.Started).Seconds())))
+		} else {
+			setText("left", clock(st.TimeLeft))
+		}
+		setText("layerNow", "–")
+		return
+	}
+	since := min(time.Since(s.seen), maxCount)
+	if st.State != "printing" {
+		since = 0
+	}
+	left := st.TimeLeft
+	if left > 0 {
+		left = max(0, left-int(since.Seconds()))
+	}
+	setText("left", clock(left))
+	now := "–"
+	if n := len(s.plan); st.Layer >= 1 && st.Layer <= n {
+		if !st.LayerStarted.IsZero() {
+			now = mmss(max(0, st.Updated.Add(since).Sub(st.LayerStarted).Seconds()))
+		}
+		now += " / " + mmss(s.plan[st.Layer-1])
+	}
+	setText("layerNow", now)
 }
 
 // renderPrinter draws the lines of the printer under the progress: the move now and the factors
@@ -559,14 +623,6 @@ func (s *share) drawChart(st wire.ShareStatus, ended bool) {
 		count = n
 	}
 	setText("layerAvg", "AVG "+mmss(sum/float64(count))+" A LAYER")
-	now := "–"
-	if cur >= 1 && cur <= n {
-		if !st.LayerStarted.IsZero() {
-			now = mmss(time.Since(st.LayerStarted).Seconds())
-		}
-		now += " / " + mmss(plan[cur-1])
-	}
-	setText("layerNow", now)
 
 	cv := byID("chart")
 	dpr := js.Global().Get("devicePixelRatio").Float()
@@ -704,7 +760,9 @@ func drawLCD(raw []byte) {
 		cv.Set("height", h)
 	}
 	css := js.Global().Call("getComputedStyle", doc.Get("documentElement"))
-	col := func(name string) [3]byte { return hexColor(strings.TrimSpace(css.Call("getPropertyValue", name).String())) }
+	col := func(name string) [3]byte {
+		return hexColor(strings.TrimSpace(css.Call("getPropertyValue", name).String()))
+	}
 	ground, off, on := col("--glcd"), col("--glcd-cell"), col("--glcd-ink")
 	if len(lcdPix) != w*h*4 {
 		lcdPix = make([]byte, w*h*4)
