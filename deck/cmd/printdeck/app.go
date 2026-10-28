@@ -50,13 +50,14 @@ type appHello struct {
 // shows the UI with the remote screen. It sends the token of the first line in the X-Api-Key
 // header.
 //
-//	printdeck app [-dir DIR] [-addr ADDR] [-parent] [-sim]
+//	printdeck app [-dir DIR] [-addr ADDR] [-parent] [-sim [-fake-update]]
 func desktopApp(args []string) {
 	fs := flag.NewFlagSet("app", flag.ExitOnError)
 	dir := fs.String("dir", "", "the folder of the app (default: the configuration folder of the user)")
 	addr := fs.String("addr", appAddr, "the address of the web server")
 	parent := fs.Bool("parent", false, "end when the input closes (the window of the app started the program)")
 	sim := fs.Bool("sim", false, "a simulated printer: the TAZ Workhorse on the simulated board, in its own folder")
+	fakeUpdate := fs.Bool("fake-update", false, "with -sim: a simulated system update on the Software update page and /system, for tests")
 	fs.Parse(args)
 	if *dir == "" {
 		base, err := os.UserConfigDir()
@@ -106,6 +107,11 @@ func desktopApp(args []string) {
 	app.Printer = pr
 	app.PreheatTool, app.PreheatBed = cfg.PreheatTool, cfg.PreheatBed
 	app.UnloadMM, app.LoadMM, app.JogInvertY = cfg.UnloadMM, cfg.LoadMM, cfg.JogInvertY
+	if *sim && *fakeUpdate {
+		// The handoff of a switch of the deck program goes to the folder of the app.
+		handoffDir = filepath.Join(*dir, "handoff")
+		os.MkdirAll(handoffDir, 0o700)
+	}
 	go pr.Run(ctx, app.Redraw)
 	go lcdLoop(ctx, pr, app)
 	startNotify(ctx, cfg.StateDir, pr, app)
@@ -134,6 +140,9 @@ func desktopApp(args []string) {
 	}
 	if k, ok := pr.(*printer.Klippy); ok && *sim {
 		registerSim(mux, k, tokenOK) // for the 3D window of the simulated printer
+		if *fakeUpdate {
+			startSimUpdate(ctx, *dir, cfg.KlippySocket, k, app, mux, filepath.Join(*dir, "logs", "klippy.log"))
+		}
 	}
 	// The pages of the rolls (the label sheet, and the page of a roll that its QR code opens): with
 	// the simulator, open to a browser on this computer, so that you can try them.

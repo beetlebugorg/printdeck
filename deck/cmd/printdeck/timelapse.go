@@ -35,8 +35,14 @@ func startTimelapse(ctx context.Context, stateDir string, app *ui.App, pr printe
 	}
 	r := timelapse.NewRunner(s, k, hub.Role(camera.RoleLapse), func() timelapse.Print {
 		st := k.State()
-		return timelapse.Print{Busy: st.Busy(), File: st.FilePath}
+		return timelapse.Print{Busy: st.Busy(), File: st.FilePath, Known: st.Reachable}
 	}, videoDir(stateDir))
+	// The frames of the print from the deck program before this one (handoff.go).
+	if ok, err := r.LoadHandoff(filepath.Join(handoffDir, lapseHandoff)); err != nil {
+		log.Printf("timelapse: %v", err)
+	} else if ok {
+		log.Printf("timelapse: %d frames of the print from the deck program before this one", r.Info().Frames)
+	}
 	r.OnSettings = func(s timelapse.Settings) {
 		if err := os.WriteFile(file, s.Bytes(), 0o644); err != nil {
 			log.Printf("timelapse: the settings were not saved: %v", err)

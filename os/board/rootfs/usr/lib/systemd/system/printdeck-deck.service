@@ -27,6 +27,13 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE CAP_SYS_TTY_CONFIG
 # The folder also has the password of the printdeck user: only the deck can read it.
 StateDirectory=printdeck
 StateDirectoryMode=0700
+# The handoff of "Restart the screen now" after an update during a print, in RAM. It stays when
+# the deck restarts. With the marker next.json in it, /usr/bin/printdeck runs the deck program of
+# the installed update (/run/printdeck-next/usr/bin/printdeck) in its place. With no marker, it
+# runs itself.
+RuntimeDirectory=printdeck-deck
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
 ExecStart=/usr/bin/printdeck
 Restart=always
 RestartSec=2

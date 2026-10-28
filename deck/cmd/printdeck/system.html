@@ -43,6 +43,8 @@
     <h2>SYSTEM</h2>
     <table>
       <tr><td>Version</td><td>{{.Version}}</td></tr>
+      {{if .System}}<tr><td>System</td><td>{{.System}} · the screen runs the program of {{.Version}} until the restart</td></tr>{{end}}
+      {{if .HasStaged}}<tr><td>Installed update</td><td>{{.Staged}} · {{if .Printing}}restarts after this print{{else}}restarts soon{{end}}</td></tr>{{end}}
       <tr><td>Image</td><td>{{.Variant}}</td></tr>
       <tr><td>Slot</td><td>{{.Slot}}</td></tr>
       <tr><td>Running for</td><td>{{.Uptime}}</td></tr>
@@ -54,14 +56,23 @@
   </section>
   <section>
     <h2>UPDATE</h2>
-    <form id="update" method="post" action="/system/update" enctype="multipart/form-data">
+    {{if .HasStaged}}<div>{{.Staged}} is installed. {{if .System}}The screen runs it now. {{end}}The Printdeck
+      restarts into it {{if .Printing}}after this print, {{end}}when the printer is idle and the bed is cool.
+      {{if and .Printing (not .System) (not .CanSwitch) .SwitchNote}}{{.SwitchNote}}{{end}}</div>
+    {{if not .Printing}}<form method="post" action="/system/restart"
+      onsubmit="return confirm('Restart into {{.Staged}} now?')"><button type="submit">Restart now</button></form>{{end}}
+    {{if and .Printing .CanSwitch (not .System)}}<form method="post" action="/system/switch-deck"
+      onsubmit="return confirm('Restart the screen now? The screen is dark for a few seconds. The print keeps running. The Printdeck restarts into {{.Staged}} after the print.')">
+      <button type="submit">Restart the screen now</button></form>{{end}}
+    {{end}}
+    {{if not .System}}<form id="update" method="post" action="/system/update" enctype="multipart/form-data">
       <input type="file" name="bundle" accept=".xz" required>
       <button type="submit">Install</button>
-    </form>
+    </form>{{end}}
     <div id="progress" hidden><div id="step"></div><div class="bar"><div class="fill" id="fill"></div></div></div>
     <div class="hint">Choose printdeck-update.tar.xz or printdeck-debug-update.tar.xz. The Printdeck writes
       the other slot and restarts into it. If the new system does not start, it goes back to this one.
-      Do not install during a print.</div>
+      During a print, the Printdeck writes the other slot slowly, and restarts into it after the print.</div>
   </section>
   {{if .TimeLapse}}<section>
     <h2>TIME LAPSE</h2>
@@ -108,6 +119,7 @@
   const form = document.getElementById("update"), box = document.getElementById("progress"),
     stepEl = document.getElementById("step"), fill = document.getElementById("fill");
   const version = {{.Version}};
+  if (!form) return; // the screen runs the program of an installed update: no install
   function show(text, frac, bad) {
     box.hidden = false;
     stepEl.textContent = text;
@@ -127,6 +139,11 @@
   function follow() {
     fetch("/system/update/progress", {cache: "no-store"}).then(r => r.json()).then(s => {
       if (s.error) { show(s.error, 0, true); form.hidden = false; return; }
+      if (s.finished && s.staged) {
+        show("Installed. The Printdeck restarts into the update after the print.", 1);
+        setTimeout(() => location.reload(), 2000);
+        return;
+      }
       if (s.finished) { waitForRestart(); return; }
       const pct = s.total > 0 ? " " + Math.floor(s.done * 100 / s.total) + " %" : "";
       show(s.step + "…" + pct, s.total > 0 ? s.done / s.total : null);

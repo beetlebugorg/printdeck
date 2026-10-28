@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -13,9 +14,16 @@ import (
 	"printdeck/internal/ui"
 )
 
-// osVersion is PRINTDECK_VERSION from os-release, or empty.
-func osVersion() string {
-	f, err := os.Open("/usr/lib/os-release")
+// osVersion is the version of this deck program: PRINTDECK_VERSION of the os-release file of its
+// system, or "". The deck program of an installed update (runNextDeck) reads the file of its slot.
+func osVersion() string { return releaseVersion(filepath.Join(deckRoot(), "usr/lib/os-release")) }
+
+// systemVersion is the version of the running system, or "".
+func systemVersion() string { return releaseVersion("/usr/lib/os-release") }
+
+// releaseVersion returns PRINTDECK_VERSION of an os-release file, or "".
+func releaseVersion(path string) string {
+	f, err := os.Open(path)
 	if err != nil {
 		return ""
 	}
