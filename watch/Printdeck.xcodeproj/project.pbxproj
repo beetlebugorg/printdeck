@@ -857,7 +857,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PUSH_RELAY = "https://lxl6zbmykmd4w5yomcntsjkjma0xdwkk.lambda-url.us-east-1.on.aws";
+				PUSH_RELAY = "https://printdeck.beetlebug.org/api/v1/relay";
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -930,7 +930,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PUSH_RELAY = "https://lxl6zbmykmd4w5yomcntsjkjma0xdwkk.lambda-url.us-east-1.on.aws";
+				PUSH_RELAY = "https://printdeck.beetlebug.org/api/v1/relay";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
