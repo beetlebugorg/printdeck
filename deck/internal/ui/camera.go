@@ -15,13 +15,13 @@ import (
 // The camera pages. Settings has two rows for them:
 //
 //   - Camera opens the Camera page: the live picture, with a tab for each camera that is on and a
-//     tab for all of them. Turn, View, Calibrate and Focus change the camera of the tab. Camera
-//     settings opens the page of that camera.
+//     tab for all of them. Turn, View, Calibrate, Focus and PTZ (ptz.go) change the camera of the
+//     tab. Camera settings opens the page of that camera.
 //   - Cameras opens the list of the cameras, with a small picture of each and its uses. A tap on a
 //     camera opens its page.
 //
 // The page of one camera has its name, On, and with two cameras or more, the uses: Apps, Time
-// lapse and Pictures. Each use is on one camera. A check on one camera moves the use from the
+// lapse and Pictures. A camera with a zoom control also has "Zoom to the part". Each use is on one camera. A check on one camera moves the use from the
 // other camera. A camera that goes off gives its uses to another camera that is on. The pictures
 // are for the remote viewers too (the webcam of the API). The Camera page shows a few frames a
 // second, and the small pictures one frame a second, only while the page is open. The
@@ -486,8 +486,21 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 	} else {
 		a.camFocus = false
 	}
+	var ptz camera.PTZ
+	hasPTZ := st.PTZ != nil && in.ID != ""
+	if hasPTZ {
+		ptz = a.ptzNow(in.ID, *st.PTZ)
+	} else {
+		a.camPTZ = false
+	}
 	id := in.ID
 	cal, calibrated := cam.Calibration()
+	calText := calibLine(cal, calibrated)
+	if l := calibPTZLine(cal, calibrated, st); l != "" {
+		calText = l
+	}
+	openPTZ := func() { a.camPTZ, a.camFocus = true, false }
+	openFocus := func() { a.camFocus, a.camPTZ = true, false }
 	fr := a.camFrame(cam, st, cameraEvery)
 	edit := func() {
 		if in.ID != "" {
@@ -499,19 +512,32 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 	if f.wide {
 		r := kit.Rows(body, 8, kit.Fr(1), kit.Px(52))
 		view, info = r[0], r[1]
-		second := calibLine(cal, calibrated) + " · " + a.viewLine(cam)
-		if a.camFocus {
+		first, second := title+" · "+line, calText+" · "+a.viewLine(cam)
+		switch {
+		case a.camFocus:
 			a.drawFocusKeys(c, keys, id, focus)
 			second = "Focus: " + focusLine(focus)
-		} else {
-			sizes := []kit.Size{kit.Fr(2), kit.Fr(2), kit.Fr(2)}
+		case a.camPTZ:
+			a.drawPTZKeys(c, keys, id, ptz)
+			first, second = title+" · "+a.ptzLine(id, ptz), a.ptzState(id, false)
+		default:
+			// With a PTZ key, Calibrate is wider and Camera settings narrower, with a shorter label,
+			// so each label fits.
+			calKey, setKey := 2.0, 4.0
+			if hasPTZ {
+				calKey, setKey = 3, 3
+			}
+			sizes := []kit.Size{kit.Fr(2), kit.Fr(2), kit.Fr(calKey)}
 			if calibrated {
 				sizes = append(sizes, kit.Fr(2))
 			}
 			if st.Focus != nil {
 				sizes = append(sizes, kit.Fr(2))
 			}
-			sizes = append(sizes, kit.Fr(4))
+			if hasPTZ {
+				sizes = append(sizes, kit.Fr(2))
+			}
+			sizes = append(sizes, kit.Fr(setKey))
 			k := kit.Cols(keys, 8, sizes...)
 			fill, ink := keyOff, text
 			if in.Rotate != 0 {
@@ -523,27 +549,39 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 			if calibrated {
 				a.button(c, k[3], "Clear", raised, text, a.askClearCalibration)
 			}
-			if st.Focus != nil {
-				a.button(c, k[len(k)-2], "Focus", raised, text, func() { a.camFocus = true })
+			n := len(k) - 1
+			if hasPTZ {
+				n--
+				a.button(c, k[n], "PTZ", raised, text, openPTZ)
 			}
-			a.button(c, k[len(k)-1], "Camera settings", raised, text, edit)
+			if st.Focus != nil {
+				a.button(c, k[n-1], "Focus", raised, text, openFocus)
+			}
+			if hasPTZ {
+				a.namedButton(c, k[len(k)-1], "Settings", "Camera settings", raised, text, edit)
+			} else {
+				a.button(c, k[len(k)-1], "Camera settings", raised, text, edit)
+			}
 		}
 		window(c, info)
 		in2 := kit.Inset(info, 14, 4, 14, 4)
 		rows := kit.Rows(in2, 0, kit.Fr(1), kit.Fr(1))
-		c.Text(rows[0], strings.ToUpper(gfx.Fit(gfx.Face(true, 14), title+" · "+line, in2.Dx())), gfx.Face(true, 14), lcdInk, gfx.Left)
+		c.Text(rows[0], strings.ToUpper(gfx.Fit(gfx.Face(true, 14), first, in2.Dx())), gfx.Face(true, 14), lcdInk, gfx.Left)
 		c.Text(rows[1], strings.ToUpper(gfx.Fit(gfx.Face(true, 13), second, in2.Dx())), gfx.Face(true, 13), lcdDim, gfx.Left)
 	} else {
 		items := []menuItem{
 			{"Turn", turnLine(in.Rotate), dim, a.stepTurn},
 			{"View", a.viewLine(cam), dim, a.cycleView},
-			{"Calibrate", calibLine(cal, calibrated), dim, a.askCalibrate},
+			{"Calibrate", calText, dim, a.askCalibrate},
 		}
 		if calibrated {
 			items = append(items, menuItem{"Clear calibration", "The views show the whole picture", dim, a.askClearCalibration})
 		}
 		if st.Focus != nil {
-			items = append(items, menuItem{"Focus", focusLine(focus), dim, func() { a.camFocus = true }})
+			items = append(items, menuItem{"Focus", focusLine(focus), dim, openFocus})
+		}
+		if hasPTZ {
+			items = append(items, menuItem{"PTZ", a.ptzLine(id, ptz), dim, openPTZ})
 		}
 		switch {
 		case in.ID == "":
@@ -554,6 +592,8 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 				{"Auto", autoFocusLine(focus), dim, func() { a.toggleAutoFocus(id, focus) }},
 				{"Done", "Back to the camera rows", dim, func() { a.camFocus = false }},
 			}
+		case a.camPTZ:
+			items = a.ptzItems(id, ptz)
 		default:
 			items = append(items, menuItem{"Camera settings", camSettingsLine(in, len(list)), dim, edit})
 		}
@@ -568,6 +608,9 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 		if a.camFocus {
 			rowsH += focusH + gap
 		}
+		if a.camPTZ {
+			rowsH += ptzRowsHeight(ptz, gap)
+		}
 		h = min(h, max(body.Dy()/3, body.Dy()-infoH-2*gap-rowsH))
 		r := kit.Rows(body, gap, kit.Px(h), kit.Px(infoH), kit.Fr(1))
 		view, info = r[0], r[1]
@@ -579,10 +622,17 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 			a.button(c, k[1], "+", raised, text, func() { a.stepFocus(id, focus, 1) })
 			rowsR = fr[1]
 		}
+		if a.camPTZ {
+			rowsR = a.drawPTZRows(c, rowsR, id, ptz, gap)
+		}
 		a.menuRows(c, rowsR, false, 60, 5, items)
 		window(c, info)
 		in2 := kit.Inset(info, 14, 0, 14, 0)
-		c.Text(in2, strings.ToUpper(gfx.Fit(gfx.Face(true, 14), title+" · "+line, in2.Dx())), gfx.Face(true, 14), lcdInk, gfx.Left)
+		infoText := title + " · " + line
+		if a.camPTZ {
+			infoText = a.ptzLine(id, ptz)
+		}
+		c.Text(in2, strings.ToUpper(gfx.Fit(gfx.Face(true, 14), infoText, in2.Dx())), gfx.Face(true, 14), lcdInk, gfx.Left)
 	}
 	a.region("State", info)
 	a.region("Picture", view)
@@ -843,6 +893,24 @@ func (a *App) drawCameraEdit(c *gfx.Canvas) {
 		turn = menuItem{"Turn and calibrate", sub, dim, func() { a.openCamPicture(id) }}
 	}
 	groups = append(groups, menuGroup{items: []menuItem{turn}})
+	// A camera with a zoom control has the zoom to the part: in the right column of a wide page
+	// with the uses.
+	var follow []menuGroup
+	if cam, ok := a.Camera.Source(id); ok && in.Usable() {
+		if st := cam.Status(); st.PTZ != nil {
+			_, calibrated := cam.Calibration()
+			on := a.Camera.Settings().Camera(id).FollowPart
+			follow = []menuGroup{{items: []menuItem{{"Zoom to the part", followLine(st, calibrated), dim,
+				func() { a.toggleFollowPart(id) }}}, checks: []bool{on}}}
+		}
+	}
+	if f.wide && len(uses) > 0 && len(follow) > 0 {
+		// The right column has no space for the note of the uses and the zoom row.
+		uses[0].note = ""
+		uses = append(uses, follow...)
+	} else {
+		groups = append(groups, follow...)
+	}
 
 	body := f.body()
 	var pic image.Rectangle

@@ -194,27 +194,31 @@ func (m *PTZMap) PosFor(r [4]float64, c PTZ) PTZPos {
 		z = c.Zoom.Min + int(math.Floor((zf-float64(c.Zoom.Min))/float64(step)+1e-9))*step
 		z = min(z, c.Zoom.Max)
 	}
-	k = max(1, m.Factor(z))
-	half := 0.5 / k
-	du := max(half, min(1-half, (r[0]+r[2])/2)) - 0.5
-	dv := max(half, min(1-half, (r[1]+r[3])/2)) - 0.5
-	pos := PTZPos{Zoom: z, Pan: c.Pan.Clamp(m.PanZero), Tilt: c.Tilt.Clamp(m.TiltZero)}
-	dp, dt, ok := m.solve(du, dv, c.Pan.Valid(), c.Tilt.Valid())
-	if ok {
+	return m.Center(PTZPos{Zoom: z}, (r[0]+r[2])/2, (r[1]+r[3])/2, c)
+}
+
+// Center returns the position p with the pan and the tilt that put the center of the crop at
+// (u, v) of the wide frame, or as near as the crop allows, in the ranges of c.
+func (m *PTZMap) Center(p PTZPos, u, v float64, c PTZ) PTZPos {
+	half := 0.5 / max(1, m.Factor(p.Zoom))
+	du := max(half, min(1-half, u)) - 0.5
+	dv := max(half, min(1-half, v)) - 0.5
+	p.Pan, p.Tilt = 0, 0
+	if c.Pan.Valid() {
+		p.Pan = c.Pan.Clamp(m.PanZero)
+	}
+	if c.Tilt.Valid() {
+		p.Tilt = c.Tilt.Clamp(m.TiltZero)
+	}
+	if dp, dt, ok := m.solve(du, dv, c.Pan.Valid(), c.Tilt.Valid()); ok {
 		if c.Pan.Valid() {
-			pos.Pan = c.Pan.Clamp(m.PanZero + int(math.Round(dp)))
+			p.Pan = c.Pan.Clamp(m.PanZero + int(math.Round(dp)))
 		}
 		if c.Tilt.Valid() {
-			pos.Tilt = c.Tilt.Clamp(m.TiltZero + int(math.Round(dt)))
+			p.Tilt = c.Tilt.Clamp(m.TiltZero + int(math.Round(dt)))
 		}
 	}
-	if !c.Pan.Valid() {
-		pos.Pan = 0
-	}
-	if !c.Tilt.Valid() {
-		pos.Tilt = 0
-	}
-	return pos
+	return p
 }
 
 // solve returns the pan and the tilt (from PanZero and TiltZero) that move the center of the crop

@@ -16,6 +16,7 @@ import (
 	"golang.org/x/image/font"
 
 	"printdeck/internal/board"
+	"printdeck/internal/camera"
 	"printdeck/internal/gcodemeta"
 	"printdeck/internal/gfx"
 	"printdeck/internal/hostmetrics"
@@ -261,10 +262,16 @@ type App struct {
 	Metrics      *hostmetrics.Recorder
 	monitorRange int // the time of the graphs of the System monitor page: an index of monitorRanges
 	// Camera is the cameras of the deck, or nil (Settings > Camera and Settings > Cameras).
-	Camera         Camera
-	camView        string     // the view of the picture of the Camera page ("" is full)
-	camID          string     // the tab of the Camera page: an ID, "" for the main camera, or camAll
-	camFocus       bool       // the Camera page shows the focus keys
+	Camera   Camera
+	camView  string  // the view of the picture of the Camera page ("" is full)
+	camID    string  // the tab of the Camera page: an ID, "" for the main camera, or camAll
+	camFocus bool    // the Camera page shows the focus keys
+	camPTZ   bool    // the Camera page shows the PTZ keys
+	ptzRun   *ptzRun // the measurement of a PTZ map that runs, or nil
+	// The PTZ position of the last step, its camera, and its time.
+	ptzLast        camera.PTZPos
+	ptzLastID      string
+	ptzLastAt      time.Time
 	cloudDomainSet string     // the domain of the service that the owner typed on the Cloud page, or ""
 	shareSheet     bool       // the share sheet is open
 	shareOwner     bool       // the share sheet shows the owner link
