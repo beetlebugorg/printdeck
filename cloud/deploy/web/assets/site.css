@@ -1,0 +1,30 @@
+/* The pages of the Printdeck cloud service. The colors are the day and night colors of the deck. */
+:root {
+  --chassis: #d3d0c8; --plate: #e6e3dc; --cap: #f3f1ec; --seam: #a9a59c;
+  --ink: #171717; --ink-dim: #4a4742; --orange: #ff5a1f; --on-orange: #121212;
+  --lcd: #1b1c1a; --lcd-ink: #ff7a30; --lcd-dim: #c27a48; --link: #a33208;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --chassis: #121211; --plate: #1c1c1a; --cap: #292825; --seam: #34332f;
+    --ink: #eee9df; --ink-dim: #c2bcb0; --orange: #ff7a3a; --on-orange: #0e0e0d;
+    --lcd: #080808; --lcd-ink: #ff8c4a; --lcd-dim: #d98a55; --link: #ff9a66;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--chassis); color: var(--ink);
+  font: 400 16px/1.5 "Archivo", "Helvetica Neue", Arial, sans-serif;
+  padding: 24px 16px 40px;
+}
+a { color: var(--link); }
+.wrap { max-width: 640px; margin: 0 auto; display: grid; gap: 18px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; }
+.brand i { width: 22px; height: 22px; border-radius: 6px; background: var(--orange); display: inline-grid; place-items: center; }
+.brand i::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--on-orange); }
+h1 { margin: 0; font-size: clamp(30px, 8vw, 42px); line-height: 1.05; font-weight: 800; font-stretch: 85%; }
+.dim { color: var(--ink-dim); }
+.lcd { background: var(--lcd); color: var(--lcd-ink); border-radius: 14px; padding: 14px 16px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 14px; }
+footer { color: var(--ink-dim); font-size: 13px; border-top: 1px solid var(--seam); padding-top: 12px; }

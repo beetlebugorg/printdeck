@@ -58,17 +58,19 @@ This plan adds two features to Printdeck. They use one small cloud service at
 
 | Part | Where | What it does |
 |---|---|---|
-| `deck/cmd/pwf-api` | Go, AWS Lambda (arm64), function URL | Enrollment, passkeys and sessions, shares, projects, members, grants, the scheduled deletes, the checks and pictures of uploads |
-| `deck/cmd/pwf-web` | Go, compiled to WebAssembly | The logic of the share page, the project pages and the sign-in |
-| `deck/cmd/pwf` | Go, a command on the computer of the owner | Deploy the stack, make enrollment codes, list and remove decks and passkeys |
+| `cloud/cmd/pwf-api` | Go, AWS Lambda (arm64), function URL | Enrollment, passkeys and sessions, shares, projects, members, grants, the scheduled deletes, the checks and pictures of uploads |
+| `cloud/cmd/pwf-web` | Go, compiled to WebAssembly | The logic of the share page, the project pages and the sign-in |
+| `cloud/cmd/pwf` | Go, a command on the computer of the owner | Deploy the stack, make enrollment codes, list and remove decks and passkeys |
 | `deck/internal/cloud` | Go | The types, the request signature and the client, shared by the deck, the API and the pages |
 | `deck/internal/threemf` | Go | A 3MF reader and a mesh-only 3MF writer |
-| `cloud/web` | Static HTML and CSS in S3 | The page shells, the "not found" page, `wasm_exec.js`, `apple-app-site-association` |
-| `cloud/template.yaml` | CloudFormation | The bucket, CloudFront, the certificate, the function, the DNS record, the budget |
+| `cloud/deploy/web` | Static HTML and CSS in S3 | The page shells, the "not found" page, `wasm_exec.js`, `apple-app-site-association` |
+| `cloud/deploy/template.yaml` | CloudFormation | The bucket, CloudFront, the certificate, the function, the DNS record, the budget |
 | Cura plugin | Python | The Projects panel, New project from the build plate, the "new model" message, the project line in the G-code |
 | iPhone app | Swift | The Projects tab, sign-in with the passkey, Add photo from the Photos app |
 
-The Go code goes in the deck module (`deck/`), so the API and the pages share packages with
+The service is the Go module `printdeck/cloud` in `cloud/`, with a `replace` of `printdeck` to
+`../deck`. Its import paths start with `printdeck/`, so it can import the internal packages of
+the deck, and the AWS SDK stays out of the deck module. The API and the pages share packages with
 the deck: the signature, the status types, the STL reader and renderer (`internal/stl`,
 `internal/gfx`) and the 3MF reader. The deck binary does not link the API or the page code.
 The passkey code in the API uses `github.com/go-webauthn/webauthn`, a new dependency.

@@ -1,0 +1,288 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  The Printdeck cloud service: share links and Parts with Friends. CloudFront serves the pages and
+  the public files from S3, and sends /api/* to a Lambda function. pwf deploy makes this stack.
+  It must be in us-east-1, the region of the certificates of CloudFront.
+
+Parameters:
+  Domain:
+    Type: String
+    Description: The domain of the service, for example printdeck.beetlebug.org.
+  HostedZoneId:
+    Type: String
+    Description: The Route 53 hosted zone of the domain (pwf deploy finds it).
+  CodeBucket:
+    Type: String
+    Description: The S3 bucket with the code of the function (pwf deploy sets it).
+  CodeKey:
+    Type: String
+    Description: The key of the zip of the code in CodeBucket (pwf deploy sets it).
+  Concurrency:
+    Type: Number
+    Default: 0
+    MinValue: 0
+    Description: >-
+      The most instances of the function at a time, or 0 for no limit. AWS keeps 10 unreserved
+      instances in an account, so an account with a quota of 10 needs 0.
+  AlertEmail:
+    Type: String
+    Default: ""
+    Description: The address for the alarm of the budget, or "" for no budget.
+  BudgetUSD:
+    Type: Number
+    Default: 5
+    Description: The cost of the account in a month, in US dollars, for the alarm of the budget.
+
+Conditions:
+  HasConcurrency: !Not [!Equals [!Ref Concurrency, 0]]
+  HasBudget: !Not [!Equals [!Ref AlertEmail, ""]]
+
+Resources:
+  # The data of the service. Nothing in it is public: CloudFront reads the public prefixes with
+  # Origin Access Control, and the function reads and writes all of it.
+  DataBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      OwnershipControls:
+        Rules: [{ ObjectOwnership: BucketOwnerEnforced }]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+      LifecycleConfiguration:
+        Rules:
+          # A second guard for the shares: the API deletes a share 24 hours after its print ends.
+          - Id: shares
+            Status: Enabled
+            Prefix: s/
+            ExpirationInDays: 3
+          - Id: codes
+            Status: Enabled
+            Prefix: codes/
+            ExpirationInDays: 1
+          - Id: uploads
+            Status: Enabled
+            Prefix: x/
+            AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 }
+
+  OriginAccess:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-data"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # CloudFront reads only the pages, the shares and the public pages of the projects. It cannot
+  # list the bucket, so a file that does not exist gets 403, and the "not found" page.
+  DataBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DataBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: cloudfront.amazonaws.com }
+            Action: s3:GetObject
+            Resource:
+              - !Sub "${DataBucket.Arn}/index.html"
+              - !Sub "${DataBucket.Arn}/404.html"
+              - !Sub "${DataBucket.Arn}/assets/*"
+              - !Sub "${DataBucket.Arn}/.well-known/*"
+              - !Sub "${DataBucket.Arn}/s/*"
+              - !Sub "${DataBucket.Arn}/p/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref Domain
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref Domain
+          HostedZoneId: !Ref HostedZoneId
+
+  Headers:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub "${AWS::StackName}-headers"
+        SecurityHeadersConfig:
+          ContentSecurityPolicy:
+            Override: true
+            ContentSecurityPolicy: !Sub "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://${DataBucket.RegionalDomainName}; connect-src 'self' https://${DataBucket.RegionalDomainName}; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+          ReferrerPolicy: { Override: true, ReferrerPolicy: no-referrer }
+          StrictTransportSecurity: { Override: true, AccessControlMaxAgeSec: 31536000, IncludeSubdomains: false }
+          ContentTypeOptions: { Override: true }
+          FrameOptions: { Override: true, FrameOption: DENY }
+        CustomHeadersConfig:
+          Items:
+            - { Header: X-Robots-Tag, Value: noindex, Override: true }
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub "Printdeck cloud service, ${Domain}"
+        Aliases: [!Ref Domain]
+        HttpVersion: http2and3
+        PriceClass: PriceClass_100
+        DefaultRootObject: index.html
+        ViewerCertificate:
+          AcmCertificateArn: !Ref Certificate
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+        Origins:
+          - Id: data
+            DomainName: !GetAtt DataBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt OriginAccess.Id
+            S3OriginConfig: { OriginAccessIdentity: "" }
+          - Id: api
+            DomainName: !Select [2, !Split ["/", !GetAtt Url.FunctionUrl]]
+            CustomOriginConfig: { OriginProtocolPolicy: https-only, OriginSSLProtocols: [TLSv1.2] }
+        DefaultCacheBehavior:
+          TargetOriginId: data
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          # CachingOptimized. The files set their own Cache-Control.
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          ResponseHeadersPolicyId: !Ref Headers
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: api
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE]
+            # CachingDisabled, and AllViewerExceptHostHeader: the function URL needs its own Host.
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+            ResponseHeadersPolicyId: !Ref Headers
+        # These statuses come only from S3: the API never replies 403 or 404.
+        CustomErrorResponses:
+          - { ErrorCode: 403, ResponseCode: 404, ResponsePagePath: /404.html, ErrorCachingMinTTL: 10 }
+          - { ErrorCode: 404, ResponseCode: 404, ResponsePagePath: /404.html, ErrorCachingMinTTL: 10 }
+
+  DnsA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref Domain
+      Type: A
+      AliasTarget: { DNSName: !GetAtt Distribution.DomainName, HostedZoneId: Z2FDTNDATAQYW2 }
+
+  DnsAAAA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref Domain
+      Type: AAAA
+      AliasTarget: { DNSName: !GetAtt Distribution.DomainName, HostedZoneId: Z2FDTNDATAQYW2 }
+
+  Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: the-data
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject]
+                Resource: !Sub "${DataBucket.Arn}/*"
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt DataBucket.Arn
+
+  Logs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-api"
+      RetentionInDays: 14
+
+  Function:
+    Type: AWS::Lambda::Function
+    DependsOn: Logs
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-api"
+      Runtime: provided.al2023
+      Architectures: [arm64]
+      Handler: bootstrap
+      MemorySize: 256
+      Timeout: 30
+      Role: !GetAtt Role.Arn
+      ReservedConcurrentExecutions: !If [HasConcurrency, !Ref Concurrency, !Ref "AWS::NoValue"]
+      Code:
+        S3Bucket: !Ref CodeBucket
+        S3Key: !Ref CodeKey
+      Environment:
+        Variables:
+          BUCKET: !Ref DataBucket
+          DOMAIN: !Ref Domain
+
+  # The URL has no AWS auth: the API checks the signature of each deck request.
+  Url:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !GetAtt Function.Arn
+      AuthType: NONE
+
+  UrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref Function
+      Action: lambda:InvokeFunctionUrl
+      Principal: "*"
+      FunctionUrlAuthType: NONE
+
+  UrlInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref Function
+      Action: lambda:InvokeFunction
+      Principal: "*"
+      InvokedViaFunctionUrl: true
+
+  # A mail at 80 % of the budget of the month, and when the forecast passes it. The budget covers
+  # the cost of the whole account.
+  Budget:
+    Type: AWS::Budgets::Budget
+    Condition: HasBudget
+    Properties:
+      Budget:
+        BudgetName: !Sub "${AWS::StackName}"
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit: { Amount: !Ref BudgetUSD, Unit: USD }
+      NotificationsWithSubscribers:
+        - Notification: { NotificationType: ACTUAL, ComparisonOperator: GREATER_THAN, Threshold: 80 }
+          Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref AlertEmail }]
+        - Notification: { NotificationType: FORECASTED, ComparisonOperator: GREATER_THAN, Threshold: 100 }
+          Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref AlertEmail }]
+
+Outputs:
+  Url:
+    Description: The address of the service.
+    Value: !Sub "https://${Domain}"
+  Bucket:
+    Description: The data bucket, for pwf.
+    Value: !Ref DataBucket
+  DistributionId:
+    Description: The CloudFront distribution, for pwf.
+    Value: !Ref Distribution
