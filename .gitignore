@@ -14,3 +14,6 @@ os/out/
 
 # The deck program that go build makes in its folder.
 /deck/cmd/printdeck/printdeck
+
+# Local plans and notes. Specs to keep go in docs/specs/.
+/specs/
