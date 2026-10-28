@@ -595,12 +595,14 @@ func manualParts() []section {
 					Tall: []callout{
 						{"Pressure advance test", "Prints a 30 mm tower. The pressure advance goes up 0.005 for each mm. Measure the height of the sharpest corners."},
 						{"Pressure advance", "Type the height of the sharpest corners. The deck writes the value in printer.cfg."},
+						{"Simulated printer", "Runs a simulated printer. Orange text shows a simulated printer in use."},
 					}},
 				{Name: "maintenance-more", Caption: "The Maintenance page, further down", Layout: "wide",
 					Setup: func(s *manualState) { page("maintenance")(s); s.a.DemoScroll(9999) },
 					Callouts: []callout{
 						{"Pressure advance test", "Prints a 30 mm tower. The pressure advance goes up 0.005 for each mm. Measure the height of the sharpest corners."},
 						{"Pressure advance", "Type the height of the sharpest corners. The deck writes the value in printer.cfg."},
+						{"Simulated printer", "Runs a simulated printer. Orange text shows a simulated printer in use."},
 					}},
 				{Name: "flash", Caption: "The firmware flash", Setup: page("flash"),
 					Notes: []string{"The deck stops Klipper, writes the firmware, checks it, and starts Klipper again. Printdeck flashes atmega2560 boards with an STK500v2 bootloader, for example RAMBo and RAMPS."},
@@ -631,33 +633,24 @@ func manualParts() []section {
 			Figures: []figure{
 				{Name: "machine", Caption: "The Machine page", Setup: page("machine"),
 					Callouts: []callout{
-						{"Information", "The versions, the address and the totals."},
-						{"Maintenance", "The calibrations and the firmware."},
+						{"Restart…", "Restarts Klipper or the board firmware, after a choice."},
+						{"Information", "The versions, the address and the state of the firmware."},
+						{"Settings", "The theme, the clock, the screen, the cameras and the messages."},
+						{"Prints", "The totals and the history of all prints."},
+						{"Maintenance", "The calibrations, the firmware and the simulated printer. Orange text shows old firmware or results to save."},
 						{"Macros", "Tap a macro to run it."},
 						{"Console", "The G-code console."},
-						{"Restart Klipper", "Reads printer.cfg again."},
-						{"Firmware restart", "Restarts the board, for example after a stop."},
-					},
-					Tall: []callout{
-						{"Simulated printer", "Runs a simulated printer."},
-						{"Prints", "The totals and the history of all prints."},
-					},
-					Notes: []string{"Drag the list up to see more rows."}},
-				{Name: "machine-prints", Caption: "The Machine page, further down", Layout: "wide",
-					// The list scrolled to the fourth row of the printer: 24 + 5 + 3 × (60 + 5) pixels.
-					Setup: func(s *manualState) { s.p.State_ = stIdle; s.a.OpenPrintScreen("machine"); s.a.DemoScroll(224) },
-					Callouts: []callout{
-						{"Simulated printer", "Runs a simulated printer."},
-						{"Prints", "The totals and the history of all prints."},
-					}},
-				{Name: "machine-more", Caption: "The Machine page, at the bottom",
-					Setup: func(s *manualState) { s.p.State_ = stIdle; s.a.OpenPrintScreen("machine"); s.a.DemoScroll(9999) },
-					Callouts: []callout{
-						{"Settings", "The theme, the clock, the screen, the cameras and the messages."},
-						{"Software update", "Shows and installs a new version."},
+						{"Software update", "Shows and installs a new version. Orange text shows a new version."},
 						{"Wi-Fi and help", "The network, the password and the addresses."},
 						{"System monitor", "Graphs of the CPU, the memory and the SD card."},
 					}},
+				{Name: "machine-restart", Caption: "Restart…",
+					Setup: page("machine-restart"),
+					Callouts: []callout{
+						{"Restart Klipper", "Reads printer.cfg again. The firmware keeps running."},
+						{"Firmware restart", "Restarts the firmware of the board, for example after a stop."},
+					},
+					Notes: []string{"Each restart asks again before it starts. During a print, Restart… is locked."}},
 				{Name: "settings", Caption: "The Settings page",
 					Setup: settingsSetup,
 					Callouts: []callout{
@@ -1146,7 +1139,7 @@ func manualSections() []section {
 
 		{Chapter: care, ID: "machine", Title: "Look after the printer",
 			Intro:   []string{"Machine has the information of the printer, the history of the prints, the macros, the console and the settings."},
-			Figures: fig("machine", "machine-prints", "machine-more", "settings", "settings-more", "camera", "camera-focus", "cameras", "camera-settings", "stats", "record", "console", "monitor")},
+			Figures: fig("machine", "machine-restart", "settings", "settings-more", "camera", "camera-focus", "cameras", "camera-settings", "stats", "record", "console", "monitor")},
 		{Chapter: care, ID: "update", Title: "Update the Printdeck",
 			Intro: []string{
 				"The deck checks for a new version once a day. Machine then shows Software update in orange.",
@@ -1178,10 +1171,10 @@ func manualSections() []section {
 				"Your printer.cfg stays as printer.cfg.real until you tap Real printer.",
 			},
 			Steps: []string{
-				"Open Machine, then Simulated printer. The setup screen also has this key.",
+				"Open Machine, then Maintenance, then Simulated printer. The setup screen also has this key.",
 				"Tap the printer to simulate, then Simulate. Klipper restarts with the simulated printer.",
 				"Print as on a real printer: send a file from the slicer, or tap Print a file.",
-				"To stop the simulation, open Machine, then Simulated printer, and tap Real printer, then Go back. Klipper restarts with your printer.cfg.",
+				"To stop the simulation, open Machine, then Maintenance, then Simulated printer. Tap Real printer, then Go back. Klipper restarts with your printer.cfg.",
 			},
 			After:   []string{"The deck changes the printer only when no print runs."},
 			Figures: fig("simulator")},
