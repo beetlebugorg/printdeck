@@ -37,16 +37,18 @@ func TestCameraPage(t *testing.T) {
 	if a.camID != cam.Cams[0].Dev.ID {
 		t.Fatalf("tab %q", a.camID)
 	}
-	tapLabel(t, a, cv, "Turn")
-	if r := cam.Set.Camera(cam.Cams[0].Dev.ID).Rotate; r != 180 {
-		t.Errorf("turn %d, want 180", r)
-	}
-	if r := cam.Set.Camera(cam.Cams[1].Dev.ID).Rotate; r != 0 {
-		t.Errorf("turn of the other camera %d, want 0", r)
-	}
-	tapLabel(t, a, cv, "Turn")
-	if r := cam.Set.Camera(cam.Cams[0].Dev.ID).Rotate; r != 0 {
-		t.Errorf("turn %d, want 0", r)
+	// Each tap on Turn turns the picture 90° more, clockwise.
+	for _, want := range []int{90, 180, 270, 0} {
+		tapLabel(t, a, cv, "Turn")
+		if r := cam.Set.Camera(cam.Cams[0].Dev.ID).Rotate; r != want {
+			t.Errorf("turn %d, want %d", r, want)
+		}
+		if r := cam.Set.Camera(cam.Cams[1].Dev.ID).Rotate; r != 0 {
+			t.Errorf("turn of the other camera %d, want 0", r)
+		}
+		if want == 90 && !strings.Contains(simFrame(t, a, "camera-turn-90"), "Turned 90° right") {
+			t.Error("the Turn row does not show the turn of 90°")
+		}
 	}
 
 	// Both: both pictures, and a tap on a picture opens its tab.

@@ -681,7 +681,7 @@ func manualParts() []section {
 					Callouts: []callout{
 						{"Tabs", "A tab for each camera that is on. Both shows all the cameras."},
 						{"Picture", "Use it to aim the camera at the bed."},
-						{"Turn", "Turns the picture 180°."},
+						{"Turn", "Turns the picture 90° clockwise at each tap, for a camera on its side or upside down."},
 						{"Focus", "Shows the focus keys. Only a camera with a focus control has this key."},
 						{"Camera settings", "The name, on or off, and the uses of this camera."},
 					},
