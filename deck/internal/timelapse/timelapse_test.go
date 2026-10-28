@@ -207,6 +207,13 @@ func TestRunner(t *testing.T) {
 	}, dir)
 	var firsts int
 	r.OnFirstLayer = func(f *camera.Frame, file string) { firsts++ }
+	var video, videoFile string
+	r.OnVideo = func(name, file string) {
+		video, videoFile = name, file
+		if !r.Info().Saving {
+			t.Error("the save is done before OnVideo")
+		}
+	}
 	ctx := context.Background()
 
 	r.step(ctx)
@@ -241,8 +248,11 @@ func TestRunner(t *testing.T) {
 		t.Errorf("%d watchers of the camera after the print", cam.watchers)
 	}
 	in := r.Info()
-	if len(in.Videos) != 1 || in.Recording {
+	if len(in.Videos) != 1 || in.Recording || in.Saving {
 		t.Fatalf("videos %+v", in.Videos)
+	}
+	if video != in.Videos[0].Name || videoFile != "clip.gcode" {
+		t.Errorf("OnVideo got %q of %q", video, videoFile)
 	}
 	b, err := os.ReadFile(filepath.Join(dir, in.Videos[0].Name))
 	if err != nil {

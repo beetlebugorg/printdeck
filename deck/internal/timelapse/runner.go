@@ -61,7 +61,8 @@ type Video struct {
 // Info is the state of the time lapse for the screen.
 type Info struct {
 	Recording bool // a print with the time lapse runs
-	Frames    int  // the frames of the print now
+	Saving    bool // the deck writes the video of the print that ended
+	Frames    int  // the frames of the print now, or of the video that the deck writes
 	Videos    []Video
 	// First is the picture of the last first layer, or nil, with its time and its file.
 	First     *camera.Frame
@@ -87,6 +88,9 @@ type Runner struct {
 	OnSettings func(Settings)
 	// OnFirstLayer gets the picture of the first layer, or is nil.
 	OnFirstLayer func(f *camera.Frame, file string)
+	// OnVideo gets the name of a new video and the file of its print, or is nil. The runner calls
+	// it before Info shows that the save is done.
+	OnVideo func(name, file string)
 	// Picture is the camera of the first layer picture, or nil for the camera of the frames.
 	Picture Camera
 
@@ -97,6 +101,7 @@ type Runner struct {
 	mu        sync.Mutex
 	settings  Settings
 	rec       *Recorder // the frames of the print now, or nil
+	saving    *Recorder // the frames of the video that the deck writes now, or nil
 	file      string
 	stopCam   func()
 	stopPic   func() // the watch of the Picture camera
@@ -139,10 +144,13 @@ func (r *Runner) SetSettings(s Settings) {
 func (r *Runner) Info() Info {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	in := Info{Recording: r.rec != nil && r.settings.On, Videos: append([]Video(nil), r.videos...),
+	in := Info{Recording: r.rec != nil && r.settings.On, Saving: r.saving != nil, Videos: append([]Video(nil), r.videos...),
 		First: r.first, FirstAt: r.firstAt, FirstFile: r.firstFile}
-	if r.rec != nil {
+	switch {
+	case r.rec != nil:
 		in.Frames = r.rec.Len()
+	case r.saving != nil:
+		in.Frames = r.saving.Len()
 	}
 	return in
 }
@@ -286,10 +294,18 @@ func (r *Runner) endPrint(ctx context.Context, save bool) {
 	r.mu.Lock()
 	rec, file, stop, stopPic := r.rec, r.file, r.stopCam, r.stopPic
 	r.rec, r.file, r.stopCam, r.stopPic = nil, "", nil, nil
+	if rec != nil && save && rec.Len() > 0 {
+		r.saving = rec
+	}
 	r.mu.Unlock()
 	if rec == nil {
 		return
 	}
+	defer func() {
+		r.mu.Lock()
+		r.saving = nil
+		r.mu.Unlock()
+	}()
 	if save && rec.Len() > 0 {
 		// The last frame: the end G-code of the print moves the toolhead away.
 		if f := r.grab(ctx, r.cam); f != nil {
@@ -424,8 +440,12 @@ func (r *Runner) save(rec *Recorder, file string, now time.Time) error {
 	}
 	r.mu.Lock()
 	r.videos = videos
+	cb := r.OnVideo
 	r.mu.Unlock()
 	log.Printf("timelapse: %s, %d frames", name, rec.Len())
+	if cb != nil {
+		cb(name, file)
+	}
 	return nil
 }
 

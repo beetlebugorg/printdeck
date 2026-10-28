@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image"
 	"image/jpeg"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -14,13 +15,22 @@ import (
 
 // fakeTimeLapse is the time lapse of the deck.
 type fakeTimeLapse struct {
-	s  timelapse.Settings
-	in timelapse.Info
+	s   timelapse.Settings
+	in  timelapse.Info
+	dir string // the folder of the videos of in
 }
 
 func (f *fakeTimeLapse) Settings() timelapse.Settings     { return f.s }
 func (f *fakeTimeLapse) SetSettings(s timelapse.Settings) { f.s = s }
 func (f *fakeTimeLapse) Info() timelapse.Info             { return f.in }
+func (f *fakeTimeLapse) VideoPath(name string) (string, bool) {
+	for _, v := range f.in.Videos {
+		if v.Name == name {
+			return filepath.Join(f.dir, name), true
+		}
+	}
+	return "", false
+}
 
 func testFrame(t *testing.T) *camera.Frame {
 	t.Helper()

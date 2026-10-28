@@ -338,6 +338,13 @@ func (k *Klippy) History() []Record {
 	return k.Hist.Records()
 }
 
+// SetVideo gives the time lapse video name to the record of the last print of the file path.
+func (k *Klippy) SetVideo(path, name string) {
+	if k.Hist != nil {
+		k.Hist.SetVideo(path, name, time.Now())
+	}
+}
+
 // Machine returns the version, the modules and the macros of the connected Klipper.
 // Rates returns the timings of this printer, from its history.
 func (k *Klippy) Rates() Rates {

@@ -160,6 +160,17 @@ func (c *Canvas) Cover(r image.Rectangle, src image.Image) {
 	if !c.raster() {
 		return
 	}
+	if p, ok := src.(Photo); ok {
+		// A picture of a camera at about the size of r: a copy of its middle with no scale. It
+		// can be 2 pixels smaller than r, or 1/32 larger.
+		pic := p.Picture()
+		near := func(n, want int) bool { return n >= want-2 && n <= want+want/32 }
+		if pb := pic.Bounds(); near(pb.Dx(), r.Dx()) && near(pb.Dy(), r.Dy()) {
+			at := pb.Min.Add(image.Pt(max(0, pb.Dx()-r.Dx())/2, max(0, pb.Dy()-r.Dy())/2))
+			draw.Draw(c.RGBA, r, pic, at, draw.Src)
+			return
+		}
+	}
 	coverCache.Lock()
 	defer coverCache.Unlock()
 	if coverCache.src != src || coverCache.w != r.Dx() || coverCache.h != r.Dy() {

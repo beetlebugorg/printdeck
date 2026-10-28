@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
 	_ "embed"
 	"fmt"
 	"html/template"
 	"image"
+	"image/color"
+	"image/draw"
+	"image/jpeg"
 	"image/png"
 	"log"
 	"os"
@@ -19,8 +23,11 @@ import (
 	"printdeck/internal/lcd"
 	"printdeck/internal/notify"
 	"printdeck/internal/printer"
+	"printdeck/internal/timelapse"
 	"printdeck/internal/ui"
 	"printdeck/internal/wifi"
+
+	xdraw "golang.org/x/image/draw"
 )
 
 // The manual: each screen of the deck with numbered callouts, as in the booklet of an old game,
@@ -162,6 +169,49 @@ type manualState struct {
 	a          *ui.App
 	p          *ui.DemoPrinter
 	part, done image.Image // the model view of the print at 42 %, and when it is done
+	lapse      *ui.DemoTimeLapse
+}
+
+// manualVideo is the name of the time lapse video of the last print of the manual.
+const manualVideo = "benchy-20261020-1142.mov"
+
+// manualLapse writes a time lapse video of the model views of manualPart to a new folder in dir:
+// the part grows on a dark bed. It returns the time lapse with the video.
+func manualLapse(dir string) *ui.DemoTimeLapse {
+	rec := timelapse.NewRecorder()
+	for i := 1; i <= 12; i++ {
+		img := image.NewRGBA(image.Rect(0, 0, 1280, 720))
+		draw.Draw(img, img.Bounds(), image.NewUniform(color.RGBA{38, 40, 46, 255}), image.Point{}, draw.Src)
+		draw.Draw(img, image.Rect(160, 560, 1120, 720), image.NewUniform(color.RGBA{24, 24, 28, 255}), image.Point{}, draw.Src)
+		pv := partPreview(float64(i) / 12)
+		xdraw.CatmullRom.Scale(img, image.Rect(378, 60, 902, 488+60), pv, pv.Bounds(), xdraw.Over, nil)
+		var b bytes.Buffer
+		if err := jpeg.Encode(&b, img, &jpeg.Options{Quality: 80}); err != nil {
+			log.Fatal(err)
+		}
+		rec.Add(b.Bytes(), img.Bounds().Size(), i)
+	}
+	vdir, err := os.MkdirTemp(dir, "videos-")
+	if err != nil {
+		log.Fatal(err)
+	}
+	f, err := os.Create(filepath.Join(vdir, manualVideo))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	if err := rec.WriteVideo(f); err != nil {
+		log.Fatal(err)
+	}
+	return &ui.DemoTimeLapse{S: timelapse.Settings{On: true, Park: true}, Dir: vdir,
+		In: timelapse.Info{Videos: []timelapse.Video{{Name: manualVideo}}}}
+}
+
+// withVideo gives the last print of the history the time lapse video of the manual.
+func withVideo(s *manualState) {
+	s.p.History_ = append([]printer.Record(nil), s.p.History_...)
+	s.p.History_[0].Video = manualVideo
+	s.a.TimeLapse = s.lapse
 }
 
 // The part of the model views: the body of the Printdeck pod.
@@ -451,6 +501,7 @@ func manualParts() []section {
 							Finished: "complete", FinishedFile: "benchy.gcode", FinishedPath: "benchy.gcode", FinishedTime: 102 * time.Minute,
 							FinishedFilament: 4100, HasBedCoolLeft: true, BedCoolLeft: 9 * time.Minute, BedCoolTo: printer.ReleaseBed}
 						s.p.Img = s.done
+						withVideo(s)
 						s.a.OpenPrintScreen("")
 					},
 					Callouts: []callout{
@@ -458,8 +509,10 @@ func manualParts() []section {
 						{"Result", "Done, Cancelled or Failed."},
 						{"Bed", "The time until the part comes off easily (35°)."},
 						{"Reprint", "Prints the file again."},
+						{"Time lapse", "Plays the time lapse video of the print. It shows Saving… while the deck writes the video."},
 						{"Done", "Closes this screen."},
-					}},
+					},
+					Notes: []string{"Time lapse shows only for a print with a time lapse."}},
 			}},
 		{ID: "filament", Title: "Filament",
 			Intro: []string{"Set the loaded filament here, so Preheat uses its temperatures. The deck keeps a list of your rolls. Each print subtracts its filament from the roll in the printer."},
@@ -718,6 +771,35 @@ func manualParts() []section {
 						{"Details", "The filament, the average and longest print, and the recent prints."},
 						{"History", "Each print with its result. Tap a print to see it or print it again."},
 					}},
+				{Name: "record", Caption: "A print of the history",
+					Setup: func(s *manualState) {
+						s.p.State_ = stIdle
+						s.p.Img = s.done
+						withVideo(s)
+						s.a.OpenPrintScreen("record")
+					},
+					Callouts: []callout{
+						{"Model", "The model of the print."},
+						{"Details", "The result, the time, the filament and the time lapse video."},
+						{"Still", "The last frame of the time lapse video."},
+						{"Play", "Opens the player."},
+						{"Reprint", "Prints the file again."},
+					},
+					Notes: []string{"The deck keeps the last 3 videos. The record of an older print shows Removed."}},
+				{Name: "player", Caption: "The time lapse player",
+					Setup: func(s *manualState) {
+						s.p.State_ = stIdle
+						withVideo(s)
+						s.a.OpenPrintScreen("record")
+						s.a.DemoPlayer(manualVideo, "benchy.gcode", 8)
+					},
+					Callouts: []callout{
+						{"Video", "The video, as large as it fits."},
+						{"Position", "Tap or drag to go to a frame."},
+						{"Frames", "The frame, the count of frames, the time and the length."},
+						{"Play", "Plays the video, or pauses it."},
+					},
+					Notes: []string{"The video plays only while this page shows. Back returns to the page that opened it."}},
 			}},
 		{ID: "web", Title: "The deck in the browser",
 			Intro: []string{
@@ -932,8 +1014,11 @@ func manualSections() []section {
 				"With two cameras, open Settings, then Cameras. Tap a camera, and check Time lapse or Pictures.",
 				"Tap First layer for a picture of the first layer, or a picture and a pause. At a pause, check the layer, then tap Resume.",
 				"Print. After the first layer, the deck shows its picture.",
-				"At the end of the print, open http://printdeck.local/system in a browser. The Time lapse part has the video. Click its name to download it.",
+				"At the end of the print, tap Time lapse on the done screen. The video plays.",
+				"To see it later, open Machine, then Statistics, then History. Tap the print, then Play.",
+				"To download the video, open http://printdeck.local/system in a browser. The Time lapse part has the video. Click its name.",
 			},
+			Figures: fig("record", "player"),
 			After: []string{
 				"Cura, PrusaSlicer and OrcaSlicer write the layer comments that the time lapse needs.",
 				"Park for the frames is on by default. Off keeps the toolhead in the pictures, with no stops.",
@@ -994,7 +1079,7 @@ func manualSections() []section {
 
 		{Chapter: care, ID: "machine", Title: "Look after the printer",
 			Intro:   []string{"Machine has the information of the printer, the history of the prints, the macros, the console and the settings."},
-			Figures: fig("machine", "machine-prints", "machine-more", "settings", "settings-more", "camera", "cameras", "camera-settings", "stats", "console", "monitor")},
+			Figures: fig("machine", "machine-prints", "machine-more", "settings", "settings-more", "camera", "cameras", "camera-settings", "stats", "record", "console", "monitor")},
 		{Chapter: care, ID: "update", Title: "Update the Printdeck",
 			Intro: []string{
 				"The deck checks for a new version once a day. Machine then shows Software update in orange.",
@@ -1082,7 +1167,8 @@ func manual(args []string) {
 	}
 	a.Updater = &ui.DemoUpdater{S: ui.UpdateStatus{Current: "v0.3.0", Latest: "v0.4.0", Newer: true, Checked: true,
 		Notes: demoNotes}}
-	st := &manualState{a: a, p: p, part: partPreview(0.42), done: partPreview(1)}
+	st := &manualState{a: a, p: p, part: partPreview(0.42), done: partPreview(1), lapse: manualLapse(dir)}
+	defer os.RemoveAll(st.lapse.Dir)
 	secs := manualSections()
 	// The paragraphs and the figures of this layout.
 	for i := range secs {
@@ -1107,6 +1193,7 @@ func manual(args []string) {
 			*p = *demoPrinterCopy(p)
 			p.Img = st.part
 			a.ResetScreens()
+			a.TimeLapse = nil
 			f.Setup(st)
 			c, rec := gfx.NewRecording(w, h)
 			a.Draw(c)

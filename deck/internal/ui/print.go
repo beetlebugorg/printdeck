@@ -61,6 +61,7 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		return
 	}
 	a.followPrint(st)
+	a.closeHiddenPlayer()
 	switch {
 	case a.swapAfterPause && st.Paused:
 		a.swapAfterPause = false
@@ -151,6 +152,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		return
 	case pageFirstLayer:
 		a.drawFirstLayerPicture(c)
+		return
+	case pagePlayer:
+		a.drawPlayer(c)
 		return
 	case pageConsole:
 		a.drawConsole(c)

@@ -58,3 +58,45 @@ func TestOfSpool(t *testing.T) {
 		t.Errorf("prints %v, want a.gcode c.gcode", got)
 	}
 }
+
+// The video of a print goes to the record of the print. A video that comes before its record
+// goes to the record when the deck adds it. A record from before the videos has none.
+func TestHistoryVideo(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "history.json")
+	h := &History{Path: path}
+	now := time.Date(2026, 10, 20, 16, 7, 0, 0, time.UTC)
+	done := State{Finished: "complete", FinishedFile: "x.gcode", FinishedPath: "parts/x.gcode", FinishedTime: 62 * time.Minute}
+	h.add(done, now, nil, 0, 0, nil)
+	h.SetVideo("parts/x.gcode", "x-20261020-1607.mov", now.Add(5*time.Second))
+	if r := h.Records(); r[0].Video != "x-20261020-1607.mov" {
+		t.Fatalf("video %q", r[0].Video)
+	}
+	// The video stays in the file.
+	if r := (&History{Path: path}).Records(); r[0].Video != "x-20261020-1607.mov" {
+		t.Errorf("video in the file %q", r[0].Video)
+	}
+
+	// The next print of the file: the video comes first.
+	next := done
+	next.FinishedTime = 30 * time.Minute
+	h.SetVideo("parts/x.gcode", "x-20261020-1800.mov", now.Add(2*time.Hour))
+	h.add(next, now.Add(2*time.Hour+time.Second), nil, 0, 0, nil)
+	r := h.Records()
+	if len(r) != 2 || r[0].Video != "x-20261020-1800.mov" || r[1].Video != "x-20261020-1607.mov" {
+		t.Fatalf("records %+v", r)
+	}
+
+	// An old record gets no video, and the next record does not get it later.
+	h.SetVideo("parts/x.gcode", "x-late.mov", now.Add(5*time.Hour))
+	other := done
+	other.FinishedPath, other.FinishedFile = "y.gcode", "y.gcode"
+	h.add(other, now.Add(5*time.Hour), nil, 0, 0, nil)
+	for _, rec := range h.Records() {
+		if rec.Video == "x-late.mov" {
+			t.Errorf("record %s has the late video", rec.File)
+		}
+	}
+	if r := h.Records(); r[0].Video != "" {
+		t.Errorf("the record of another file has the video %q", r[0].Video)
+	}
+}
