@@ -1,7 +1,8 @@
 // Command pwf-api is the Lambda function of the Printdeck cloud service. It serves the API
 // (package api) behind a function URL. CloudFront sends it the requests of /api/*.
 //
-// The environment: BUCKET is the data bucket.
+// The environment: BUCKET is the data bucket, and DOMAIN the domain of the service. A schedule
+// sends the event {"pwf": "sweep"} every 15 minutes, which deletes the shares after their time.
 //
 // The logs go to CloudWatch. They have fixed texts only: no request body, no key, no code.
 package main
@@ -9,6 +10,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -29,8 +31,25 @@ func main() {
 	if err != nil {
 		log.Fatal("pwf-api: no AWS configuration")
 	}
-	s := &api.Server{Store: &api.S3Store{Client: s3.NewFromConfig(cfg), Bucket: os.Getenv("BUCKET")}}
-	lambda.Start(func(ctx context.Context, req events.LambdaFunctionURLRequest) (events.LambdaFunctionURLResponse, error) {
+	client := s3.NewFromConfig(cfg)
+	bucket := os.Getenv("BUCKET")
+	s := &api.Server{Store: &api.S3Store{Client: client, Bucket: bucket}, Grants: &api.S3Granter{Client: client, Bucket: bucket},
+		Domain: os.Getenv("DOMAIN")}
+	lambda.Start(func(ctx context.Context, raw json.RawMessage) (any, error) {
+		var ev struct {
+			Pwf string `json:"pwf"`
+		}
+		if json.Unmarshal(raw, &ev) == nil && ev.Pwf == "sweep" {
+			if err := s.Sweep(ctx); err != nil {
+				log.Print("pwf-api: the sweep failed")
+				return nil, err
+			}
+			return map[string]bool{"ok": true}, nil
+		}
+		var req events.LambdaFunctionURLRequest
+		if err := json.Unmarshal(raw, &req); err != nil {
+			return nil, err
+		}
 		return serve(ctx, s, req), nil
 	})
 }

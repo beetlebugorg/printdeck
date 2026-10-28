@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/fs"
 	"mime"
 	"os"
 	"os/exec"
@@ -77,7 +76,7 @@ func runDeploy(ctx context.Context, cfg aws.Config, opt deployOptions) error {
 		return err
 	}
 	fmt.Println("Uploading the pages")
-	if err := uploadWeb(ctx, s3c, out["Bucket"]); err != nil {
+	if err := uploadWeb(ctx, s3c, out["Bucket"], src); err != nil {
 		return err
 	}
 	fmt.Println("Done:", out["Url"])
@@ -212,27 +211,22 @@ func deployStack(ctx context.Context, cfg aws.Config, stack string, params map[s
 	return nil
 }
 
-// uploadWeb uploads the static pages to the root of the data bucket.
-func uploadWeb(ctx context.Context, c *s3.Client, bucket string) error {
-	return fs.WalkDir(deploy.Web, "web", func(p string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return err
-		}
-		data, err := deploy.Web.ReadFile(p)
-		if err != nil {
-			return err
-		}
-		key := strings.TrimPrefix(p, "web/")
+// uploadWeb builds the pages and uploads them to the root of the data bucket.
+func uploadWeb(ctx context.Context, c *s3.Client, bucket, src string) error {
+	files, err := buildWeb(ctx, src)
+	if err != nil {
+		return err
+	}
+	for key, data := range files {
 		ctype := mime.TypeByExtension(path.Ext(key))
 		if ctype == "" {
 			ctype = "application/octet-stream"
 		}
-		cache := "public, max-age=300"
-		if strings.HasPrefix(key, "assets/") {
-			cache = "public, max-age=3600"
+		cache := pageCache
+		if _, err := c.PutObject(ctx, &s3.PutObjectInput{Bucket: &bucket, Key: &key, Body: bytes.NewReader(data),
+			ContentType: &ctype, CacheControl: &cache}); err != nil {
+			return fmt.Errorf("upload %s: %w", key, err)
 		}
-		_, err = c.PutObject(ctx, &s3.PutObjectInput{Bucket: &bucket, Key: &key, Body: bytes.NewReader(data),
-			ContentType: &ctype, CacheControl: &cache})
-		return err
-	})
+	}
+	return nil
 }

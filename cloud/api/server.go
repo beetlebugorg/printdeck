@@ -26,7 +26,12 @@ import (
 
 // Server is the API.
 type Server struct {
-	Store Store
+	Store  Store
+	Grants Granter
+	// Domain is the domain of the service, for the links. Base is the whole base URL of the
+	// links instead, for pwf dev, or "".
+	Domain string
+	Base   string
 	// Now is the clock, or nil for time.Now.
 	Now func() time.Time
 
@@ -104,6 +109,8 @@ func (s *Server) route(ctx context.Context, r *http.Request, body []byte) (any, 
 		return map[string]bool{"ok": true}, nil
 	case p == "/api/v1/decks" && r.Method == http.MethodPost:
 		return s.enroll(ctx, body)
+	case p == "/api/v1/shares" || strings.HasPrefix(p, "/api/v1/shares/"):
+		return s.routeShares(ctx, r, body, strings.TrimPrefix(strings.TrimPrefix(p, "/api/v1/shares"), "/"))
 	case p == "/api/v1/decks/self":
 		d, err := s.deck(ctx, r, body)
 		if err != nil {

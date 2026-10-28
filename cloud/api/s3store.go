@@ -6,6 +6,9 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"time"
+
+	"printdeck/internal/cloud"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -91,4 +94,36 @@ func s3Error(err error) error {
 		return ErrNotFound
 	}
 	return err
+}
+
+// S3Granter makes upload grants of an S3 bucket: presigned POST policies, signed with the
+// credentials of the function.
+type S3Granter struct {
+	Client *s3.Client
+	Bucket string
+}
+
+// Grant returns a grant for the keys under prefix.
+func (g *S3Granter) Grant(ctx context.Context, prefix string, maxBytes int64, ttl time.Duration) (cloud.Grant, error) {
+	pc := s3.NewPresignClient(g.Client)
+	key := prefix + "${filename}"
+	out, err := pc.PresignPostObject(ctx, &s3.PutObjectInput{Bucket: &g.Bucket, Key: &key}, func(o *s3.PresignPostOptions) {
+		o.Expires = ttl
+		o.Conditions = []any{
+			[]any{"starts-with", "$key", prefix},
+			[]any{"content-length-range", 0, maxBytes},
+			[]any{"starts-with", "$Content-Type", ""},
+			[]any{"starts-with", "$Cache-Control", ""},
+		}
+	})
+	if err != nil {
+		return cloud.Grant{}, err
+	}
+	fields := map[string]string{}
+	for k, v := range out.Values {
+		if k != "key" {
+			fields[k] = v
+		}
+	}
+	return cloud.Grant{URL: out.URL, Fields: fields, Prefix: prefix, MaxBytes: maxBytes, Expires: time.Now().Add(ttl).UTC()}, nil
 }

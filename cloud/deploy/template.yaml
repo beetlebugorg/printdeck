@@ -259,6 +259,36 @@ Resources:
       Principal: "*"
       InvokedViaFunctionUrl: true
 
+  # The sweep: every 15 minutes the function deletes the shares after their time.
+  SweepRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: scheduler.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: run-the-sweep
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt Function.Arn
+
+  Sweep:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub "${AWS::StackName}-sweep"
+      ScheduleExpression: rate(15 minutes)
+      FlexibleTimeWindow: { Mode: "OFF" }
+      Target:
+        Arn: !GetAtt Function.Arn
+        RoleArn: !GetAtt SweepRole.Arn
+        Input: '{"pwf":"sweep"}'
+
   # A mail at 80 % of the budget of the month, and when the forecast passes it. The budget covers
   # the cost of the whole account.
   Budget:

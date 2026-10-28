@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Print · Printdeck</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..800&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=Share+Tech+Mono&amp;display=swap">
+<link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/share.css">
+<script src="/assets/pwf.js" defer></script>
+</head>
+<body data-page="share">
+<div class="wrap">
+  <header>
+    <div class="brand"><i></i>Printdeck</div>
+    <div class="pill" id="pill"><b></b><span id="pillText">Loading</span></div>
+  </header>
+
+  <section class="title">
+    <h1 id="job">A print</h1>
+    <p id="sub">This page updates by itself. Leave it open.</p>
+  </section>
+
+  <section class="done-banner" id="doneBanner" hidden>
+    <strong id="doneTitle">Ready to pick up</strong>
+    <span id="doneText"></span>
+  </section>
+
+  <section class="cam" id="camBox" aria-label="Camera" hidden>
+    <figure>
+      <img id="cam" alt="The newest picture of the camera">
+      <div class="tag"><b></b><span id="camTag">Live</span></div>
+    </figure>
+    <div class="views" id="views" role="group" aria-label="Camera view"></div>
+  </section>
+
+  <section class="lcd" aria-label="Progress">
+    <div class="row">
+      <div class="cell">
+        <div class="lab" id="leftLab">Time left</div>
+        <div class="big" id="left">--:--</div>
+        <div class="sub" id="leftSub"></div>
+      </div>
+      <div class="cell">
+        <div class="lab">Layer</div>
+        <div class="big" id="layer">-</div>
+        <div class="sub" id="layers"></div>
+      </div>
+      <div class="cell">
+        <div class="lab">Ready to pick up</div>
+        <div class="big" id="ready">-</div>
+        <div class="sub" id="readySub"></div>
+      </div>
+    </div>
+    <div class="bar" role="progressbar" aria-label="Print progress" aria-valuemin="0" aria-valuemax="100" id="barWrap"><i id="bar"></i></div>
+    <div class="barlab"><span id="pct">0%</span><span id="activity"></span></div>
+  </section>
+
+  <section class="card" aria-label="Details">
+    <h2>Details</h2>
+    <dl class="facts">
+      <div><dt>Material</dt><dd id="material">-</dd></div>
+      <div><dt>Filament</dt><dd id="grams">-</dd></div>
+      <div><dt>Nozzle</dt><dd id="tool">-</dd></div>
+      <div><dt>Bed</dt><dd id="bed">-</dd></div>
+      <div><dt>Height</dt><dd id="height">-</dd></div>
+      <div><dt>Started</dt><dd id="started">-</dd></div>
+    </dl>
+  </section>
+
+  <section class="card lapse-card" aria-label="Time lapse">
+    <h2>Time lapse</h2>
+    <canvas id="lapse" width="640" height="360" hidden></canvas>
+    <p id="lapseNote" class="dim">The time lapse grows here with each layer.</p>
+  </section>
+
+  <footer>
+    <span id="expires">View only. Shared from a Printdeck. The link stops 24 hours after the print ends.</span>
+    <span>Printdeck is free software under the GNU AGPL, version 3. <a href="https://github.com/beetlebugorg/printdeck">The source of this service</a>.</span>
+  </footer>
+</div>
+</body>
+</html>

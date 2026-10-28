@@ -6,6 +6,7 @@
 //	pwf enroll-code          make a single-use code to connect a deck (Settings, Cloud, Connect)
 //	pwf decks                list the connected decks
 //	pwf decks remove ID      remove a deck, for example after the loss of its SD card
+//	pwf dev [-addr A]        run the whole service on this computer, with the data in memory
 //
 // All commands take -stack (default printdeck-cloud). The stack is in us-east-1, the region of
 // the certificates of CloudFront.
@@ -44,8 +45,14 @@ func main() {
 		fs.IntVar(&opt.Concurrency, "concurrency", 0, "the most instances of the function, or 0 for no limit")
 		fs.StringVar(&opt.Src, "src", "", "the folder of the cloud module (default: found from the current folder)")
 	}
-	fs.Parse(args)
 	ctx := context.Background()
+	if cmd == "dev" {
+		if err := runDev(ctx, args); err != nil {
+			fatal(err)
+		}
+		return
+	}
+	fs.Parse(args)
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
 	if err != nil {
 		fatal(err)
@@ -56,6 +63,8 @@ func main() {
 		err = runDeploy(ctx, cfg, opt)
 	case "enroll-code":
 		err = enrollCode(ctx, cfg, *stack)
+	case "dev":
+		err = runDev(ctx, args)
 	case "decks":
 		err = decks(ctx, cfg, *stack, fs.Args())
 	default:
@@ -67,7 +76,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: pwf deploy | enroll-code | decks [remove ID]")
+	fmt.Fprintln(os.Stderr, "usage: pwf deploy | enroll-code | decks [remove ID] | dev")
 	os.Exit(2)
 }
 

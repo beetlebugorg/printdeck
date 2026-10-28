@@ -106,3 +106,10 @@ func (m *MemStore) ContentType(key string) string {
 	defer m.mu.Unlock()
 	return m.files[key].opt.ContentType
 }
+
+// CacheControl returns the Cache-Control of the file at key, for pwf dev.
+func (m *MemStore) CacheControl(key string) string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.files[key].opt.CacheControl
+}
