@@ -84,6 +84,7 @@ func (a *App) LCDKey(key string) {
 		// On the status screen, the first key only opens the menu.
 		wake := !a.lcdMenu()
 		a.knobAt = a.Now()
+		a.hub.input.Store(time.Now().UnixNano())
 		if wake {
 			a.Redraw()
 			return

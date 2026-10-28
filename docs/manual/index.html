@@ -2070,7 +2070,7 @@
 <section id="update">
   <h2 class="title"><span class="num">19</span>Update the Printdeck</h2>
   <p>The deck checks for a new version once a day. Machine then shows Software update in orange.</p><p>The deck installs only a signed version. If the new system fails to start, the deck goes back to the old one.</p>
-  <ol class="steps"><li>Open Machine, then Software update.</li><li>Read the notes of the new version, then tap Install. The deck installs only when no print runs.</li><li>Wait for the download. The deck restarts into the new version.</li></ol>
+  <ol class="steps"><li>Open Machine, then Software update.</li><li>Read the notes of the new version, then tap Install.</li><li>Wait for the download. With no print, the deck restarts into the new version.</li><li>During a print, the deck installs the update and the print continues. Machine shows Update ready. The deck restarts into the new version after the print, when the printer is idle and the bed is cool.</li></ol>
   
   <figure>
     <h3>Software update</h3>
@@ -2106,9 +2106,38 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Versions</b>This version and the newest version.</span></li><li><span class="badge">2</span><span><b>Notes</b>What the new version changes.</span></li><li><span class="badge">3</span><span><b>Install</b>Installs the new version, after a question. The deck restarts.</span></li><li><span class="badge">4</span><span><b>Check now</b>Checks for a new version now.</span></li><li><span class="badge">5</span><span><b>Beta updates</b>On: the deck also gets beta versions.</span></li>
+      <li><span class="badge">1</span><span><b>Versions</b>This version and the newest version.</span></li><li><span class="badge">2</span><span><b>Notes</b>What the new version changes.</span></li><li><span class="badge">3</span><span><b>Install</b>Installs the new version, after a question. With no print, the deck restarts. During a print, the deck restarts after the print.</span></li><li><span class="badge">4</span><span><b>Check now</b>Checks for a new version now.</span></li><li><span class="badge">5</span><span><b>Beta updates</b>On: the deck also gets beta versions.</span></li>
     </ol>
     
+  </figure>
+  
+  <figure>
+    <h3>An update installed during a print</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/update-staged.png" alt="An update installed during a print" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="140" x2="456" y2="140" class="leader"/>
+        <circle cx="456" cy="140" r="5" class="dot"/>
+        <circle cx="520" cy="140" r="15" class="badge"/>
+        <text x="520" y="140" class="badge-n">1</text>
+        
+        <line x1="505" y1="353" x2="456" y2="353" class="leader"/>
+        <circle cx="456" cy="353" r="5" class="dot"/>
+        <circle cx="520" cy="353" r="15" class="badge"/>
+        <text x="520" y="353" class="badge-n">2</text>
+        
+        <line x1="505" y1="588" x2="456" y2="588" class="leader"/>
+        <circle cx="456" cy="588" r="5" class="dot"/>
+        <circle cx="520" cy="588" r="15" class="badge"/>
+        <text x="520" y="588" class="badge-n">3</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Versions</b>This version, and the installed version that waits for the restart.</span></li><li><span class="badge">2</span><span><b>Notes</b>The deck restarts into the update after the print, when the printer is idle and the bed is cool.</span></li><li><span class="badge">3</span><span><b>Restart the screen now</b>Runs the screen of the update now, after a question. The screen is dark for a few seconds. The print keeps running.</span></li>
+    </ol>
+    <p class="note">Restart the screen now shows only when the new screen works with the running Klipper. The time lapse and the share link of the print continue.</p><p class="note">With no print, the key is Restart now.</p>
   </figure>
   
   

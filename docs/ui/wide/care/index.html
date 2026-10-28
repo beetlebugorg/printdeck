@@ -243,20 +243,25 @@
         <circle cx="-40" cy="428" r="15" class="badge"/>
         <text x="-40" y="428" class="badge-n">3</text>
         
-        <line x1="825" y1="426" x2="624" y2="428" class="leader"/>
-        <circle cx="624" cy="428" r="5" class="dot"/>
+        <line x1="825" y1="392" x2="608" y2="428" class="leader"/>
+        <circle cx="608" cy="428" r="5" class="dot"/>
+        <circle cx="840" cy="392" r="15" class="badge"/>
+        <text x="840" y="392" class="badge-n">4</text>
+        
+        <line x1="825" y1="426" x2="678" y2="428" class="leader"/>
+        <circle cx="678" cy="428" r="5" class="dot"/>
         <circle cx="840" cy="426" r="15" class="badge"/>
-        <text x="840" y="426" class="badge-n">4</text>
+        <text x="840" y="426" class="badge-n">5</text>
         
         <line x1="825" y1="460" x2="784" y2="428" class="leader"/>
         <circle cx="784" cy="428" r="5" class="dot"/>
         <circle cx="840" cy="460" r="15" class="badge"/>
-        <text x="840" y="460" class="badge-n">5</text>
+        <text x="840" y="460" class="badge-n">6</text>
         
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Tabs</b>A tab for each camera that is on. Both shows all the cameras.</span></li><li><span class="badge">2</span><span><b>Picture</b>Use it to aim the camera at the bed.</span></li><li><span class="badge">3</span><span><b>Turn</b>Turns the picture 90° clockwise at each tap, for a camera on its side or upside down.</span></li><li><span class="badge">4</span><span><b>Focus</b>Shows the focus keys. Only a camera with a focus control has this key.</span></li><li><span class="badge">5</span><span><b>Camera settings</b>The name, on or off, and the uses of this camera.</span></li>
+      <li><span class="badge">1</span><span><b>Tabs</b>A tab for each camera that is on. Both shows all the cameras.</span></li><li><span class="badge">2</span><span><b>Picture</b>Use it to aim the camera at the bed.</span></li><li><span class="badge">3</span><span><b>Turn</b>Turns the picture 90° clockwise at each tap, for a camera on its side or upside down.</span></li><li><span class="badge">4</span><span><b>Focus</b>Shows the focus keys. Only a camera with a focus control has this key.</span></li><li><span class="badge">5</span><span><b>PTZ</b>Shows the zoom keys. Only a camera with a zoom control has this key.</span></li><li><span class="badge">6</span><span><b>Camera settings</b>The name, on or off, and the uses of this camera.</span></li>
     </ol>
     <p class="note">A camera runs only while somebody looks at it. With no camera, the apps show the deck screen.</p><p class="note">If a camera shows too little USB bandwidth, move it to another USB port.</p>
   </figure>
@@ -293,6 +298,50 @@
       <li><span class="badge">1</span><span><b>Auto</b>Lit when the camera focuses itself. Tap it to keep the lens where the autofocus put it.</span></li><li><span class="badge">2</span><span><b>−</b>Moves the lens one step. The autofocus goes off.</span></li><li><span class="badge">3</span><span><b>&#43;</b>Moves the lens one step to the other side.</span></li><li><span class="badge">4</span><span><b>Done</b>Shows the other camera keys again.</span></li>
     </ol>
     <p class="note">A fixed focus keeps the picture sharp when the toolhead and the bed move. Set it while the picture shows the nozzle.</p><p class="note">The deck keeps the focus of each camera, and sets it each time the camera starts.</p>
+  </figure>
+  
+  <figure>
+    <h3>The zoom of the camera</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../../manual/wide/img/camera-ptz.png" alt="The zoom of the camera" width="800" height="480"></div>
+      <svg class="marks" viewBox="-72 0 944 480" aria-hidden="true">
+        
+        <line x1="-25" y1="392" x2="304" y2="428" class="leader"/>
+        <circle cx="304" cy="428" r="5" class="dot"/>
+        <circle cx="-40" cy="392" r="15" class="badge"/>
+        <text x="-40" y="392" class="badge-n">1</text>
+        
+        <line x1="-25" y1="426" x2="351" y2="428" class="leader"/>
+        <circle cx="351" cy="428" r="5" class="dot"/>
+        <circle cx="-40" cy="426" r="15" class="badge"/>
+        <text x="-40" y="426" class="badge-n">2</text>
+        
+        <line x1="-25" y1="460" x2="398" y2="428" class="leader"/>
+        <circle cx="398" cy="428" r="5" class="dot"/>
+        <circle cx="-40" cy="460" r="15" class="badge"/>
+        <text x="-40" y="460" class="badge-n">3</text>
+        
+        <line x1="825" y1="392" x2="645" y2="428" class="leader"/>
+        <circle cx="645" cy="428" r="5" class="dot"/>
+        <circle cx="840" cy="392" r="15" class="badge"/>
+        <text x="840" y="392" class="badge-n">4</text>
+        
+        <line x1="825" y1="426" x2="784" y2="428" class="leader"/>
+        <circle cx="784" cy="428" r="5" class="dot"/>
+        <circle cx="840" cy="426" r="15" class="badge"/>
+        <text x="840" y="426" class="badge-n">5</text>
+        
+        <line x1="825" y1="460" x2="712" y2="428" class="leader"/>
+        <circle cx="712" cy="428" r="5" class="dot"/>
+        <circle cx="840" cy="460" r="15" class="badge"/>
+        <text x="840" y="460" class="badge-n">6</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Zoom out</b>Shows more of the printer.</span></li><li><span class="badge">2</span><span><b>Zoom in</b>Shows a smaller part of the picture, larger.</span></li><li><span class="badge">3</span><span><b>Left</b>The arrows move the picture left, up, down and right.</span></li><li><span class="badge">4</span><span><b>Reset</b>Back to the whole picture.</span></li><li><span class="badge">5</span><span><b>Done</b>Shows the other camera keys again.</span></li><li><span class="badge">6</span><span><b>Measure</b>Measures the zoom of the camera, once. The camera zooms and moves for a few seconds.</span></li>
+    </ol>
+    <p class="note">A camera with a digital zoom crops its picture itself. The deck gets the picture with no extra work.</p><p class="note">The camera sends one picture, so each viewer sees the zoom: the apps, the time lapse and the phone pictures.</p><p class="note">Measure the zoom with the camera aimed at the bed and the printer still. The views and Zoom to the part then follow the zoom. Measure again after you move or turn the camera.</p><p class="note">The deck keeps the zoom of each camera, and sets it each time the camera starts.</p>
   </figure>
   
   <figure>
@@ -345,12 +394,17 @@
         <circle cx="840" cy="317" r="15" class="badge"/>
         <text x="840" y="317" class="badge-n">5</text>
         
+        <line x1="825" y1="412" x2="784" y2="412" class="leader"/>
+        <circle cx="784" cy="412" r="5" class="dot"/>
+        <circle cx="840" cy="412" r="15" class="badge"/>
+        <text x="840" y="412" class="badge-n">6</text>
+        
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Name</b>Type a name, such as Top.</span></li><li><span class="badge">2</span><span><b>On</b>Turns the camera on or off. Its uses move to another camera.</span></li><li><span class="badge">3</span><span><b>Apps</b>Cura and the apps show this camera first.</span></li><li><span class="badge">4</span><span><b>Time lapse</b>The camera of the time lapse.</span></li><li><span class="badge">5</span><span><b>Pictures</b>The first layer picture, and the pictures on the phone.</span></li>
+      <li><span class="badge">1</span><span><b>Name</b>Type a name, such as Top.</span></li><li><span class="badge">2</span><span><b>On</b>Turns the camera on or off. Its uses move to another camera.</span></li><li><span class="badge">3</span><span><b>Apps</b>Cura and the apps show this camera first.</span></li><li><span class="badge">4</span><span><b>Time lapse</b>The camera of the time lapse.</span></li><li><span class="badge">5</span><span><b>Pictures</b>The first layer picture, and the pictures on the phone.</span></li><li><span class="badge">6</span><span><b>Zoom to the part</b>During a print, the camera zooms to the part, and at the end it goes back. It needs Measure the zoom and a calibration. Only a camera with a zoom control has this row.</span></li>
     </ol>
-    <p class="note">Each use is on one camera. To move a use, check it on the other camera.</p>
+    <p class="note">Each use is on one camera. To move a use, check it on the other camera.</p><p class="note">Zoom to the part zooms the picture of each viewer. The time lapse then uses most of the picture of the camera.</p>
   </figure>
   
   <figure>
@@ -495,7 +549,7 @@
 <section id="update">
   <h2 class="title"><span class="num">19</span>Update the Printdeck</h2>
   <p>The deck checks for a new version once a day. Machine then shows Software update in orange.</p><p>The deck installs only a signed version. If the new system fails to start, the deck goes back to the old one.</p>
-  <ol class="steps"><li>Open Machine, then Software update.</li><li>Read the notes of the new version, then tap Install. The deck installs only when no print runs.</li><li>Wait for the download. The deck restarts into the new version.</li></ol>
+  <ol class="steps"><li>Open Machine, then Software update.</li><li>Read the notes of the new version, then tap Install.</li><li>Wait for the download. With no print, the deck restarts into the new version.</li><li>During a print, the deck installs the update and the print continues. Machine shows Update ready. The deck restarts into the new version after the print, when the printer is idle and the bed is cool.</li></ol>
   
   <figure>
     <h3>Software update</h3>
@@ -531,9 +585,38 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Versions</b>This version and the newest version.</span></li><li><span class="badge">2</span><span><b>Notes</b>What the new version changes.</span></li><li><span class="badge">3</span><span><b>Install</b>Installs the new version, after a question. The deck restarts.</span></li><li><span class="badge">4</span><span><b>Check now</b>Checks for a new version now.</span></li><li><span class="badge">5</span><span><b>Beta updates</b>On: the deck also gets beta versions.</span></li>
+      <li><span class="badge">1</span><span><b>Versions</b>This version and the newest version.</span></li><li><span class="badge">2</span><span><b>Notes</b>What the new version changes.</span></li><li><span class="badge">3</span><span><b>Install</b>Installs the new version, after a question. With no print, the deck restarts. During a print, the deck restarts after the print.</span></li><li><span class="badge">4</span><span><b>Check now</b>Checks for a new version now.</span></li><li><span class="badge">5</span><span><b>Beta updates</b>On: the deck also gets beta versions.</span></li>
     </ol>
     
+  </figure>
+  
+  <figure>
+    <h3>An update installed during a print</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../../manual/wide/img/update-staged.png" alt="An update installed during a print" width="800" height="480"></div>
+      <svg class="marks" viewBox="-72 0 944 480" aria-hidden="true">
+        
+        <line x1="825" y1="128" x2="784" y2="128" class="leader"/>
+        <circle cx="784" cy="128" r="5" class="dot"/>
+        <circle cx="840" cy="128" r="15" class="badge"/>
+        <text x="840" y="128" class="badge-n">1</text>
+        
+        <line x1="825" y1="232" x2="784" y2="232" class="leader"/>
+        <circle cx="784" cy="232" r="5" class="dot"/>
+        <circle cx="840" cy="232" r="15" class="badge"/>
+        <text x="840" y="232" class="badge-n">2</text>
+        
+        <line x1="825" y1="428" x2="784" y2="428" class="leader"/>
+        <circle cx="784" cy="428" r="5" class="dot"/>
+        <circle cx="840" cy="428" r="15" class="badge"/>
+        <text x="840" y="428" class="badge-n">3</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Versions</b>This version, and the installed version that waits for the restart.</span></li><li><span class="badge">2</span><span><b>Notes</b>The deck restarts into the update after the print, when the printer is idle and the bed is cool.</span></li><li><span class="badge">3</span><span><b>Restart the screen now</b>Runs the screen of the update now, after a question. The screen is dark for a few seconds. The print keeps running.</span></li>
+    </ol>
+    <p class="note">Restart the screen now shows only when the new screen works with the running Klipper. The time lapse and the share link of the print continue.</p><p class="note">With no print, the key is Restart now.</p>
   </figure>
   
   

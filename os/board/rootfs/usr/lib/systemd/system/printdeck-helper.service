@@ -3,6 +3,7 @@ Description=Printdeck system helper: the actions of the deck that need root
 Requires=printdeck-helper.socket
 
 [Service]
-# The helper sets the Wi-Fi network, restarts Klipper and installs an update. It stops after 30
-# seconds with no request, and the socket starts it again.
+# The helper sets the Wi-Fi network, restarts Klipper, installs an update and restarts into it.
+# It stops after 30 seconds with no request, and the socket starts it again. It mounts the root
+# file system of an installed update at /run/printdeck-next, for the whole system.
 ExecStart=/usr/bin/printdeck helper

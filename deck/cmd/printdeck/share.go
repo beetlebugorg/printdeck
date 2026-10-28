@@ -2,10 +2,13 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"image/jpeg"
 	"log"
 	"math"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -314,7 +317,63 @@ func moveName(kind string) string {
 func startShare(stateDir string, app *ui.App, pr printerBackend) {
 	link := newCloudLink(stateDir, app.Redraw)
 	app.Cloud = link
-	app.Share = newShareLink(app, link, pr)
+	l := newShareLink(app, link, pr)
+	app.Share = l
+	l.loadHandoff(filepath.Join(handoffDir, shareHandoff))
+}
+
+// shareHandoffFile is the handoff file of the share link (handoff.go).
+type shareHandoffFile struct {
+	Share   cloud.ShareHandoff `json:"share"`
+	Started time.Time          `json:"started"`
+	Ended   time.Time          `json:"ended"`
+}
+
+// saveHandoff stops the uploads of the share, and writes its state to path for the next deck
+// program. With no share, it removes path.
+func (l *shareLink) saveHandoff(path string) error {
+	h, ok := l.sharer.Handoff()
+	if !ok {
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		return nil
+	}
+	l.mu.Lock()
+	f := shareHandoffFile{Share: h, Started: l.started, Ended: l.ended}
+	l.mu.Unlock()
+	b, err := json.Marshal(f)
+	if err != nil {
+		return err
+	}
+	tmp := path + ".new"
+	if err := os.WriteFile(tmp, b, 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
+
+// loadHandoff continues the share of the deck program before this one, from the file path of
+// saveHandoff, and removes the file.
+func (l *shareLink) loadHandoff(path string) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	os.Remove(path)
+	var f shareHandoffFile
+	if err := json.Unmarshal(b, &f); err != nil {
+		log.Printf("share: the handoff file: %v", err)
+		return
+	}
+	l.mu.Lock()
+	l.started, l.ended = f.Started, f.Ended
+	l.mu.Unlock()
+	if l.sharer.Resume(f.Share) {
+		log.Printf("share: the share %s continues from the deck program before this one", f.Share.ID)
+	} else {
+		log.Printf("share: the share %s does not continue", f.Share.ID)
+	}
 }
 
 // hostName is the host name of the deck, or "Printdeck".

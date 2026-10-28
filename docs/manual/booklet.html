@@ -196,7 +196,7 @@
 <section class="sheet contents even">
   
     <h2>Contents</h2>
-    <ol><li class="ch">Set up</li><li><span>Connect to Wi-Fi</span><span class="dots"></span><span>3</span></li><li><span>Choose your printer</span><span class="dots"></span><span>6</span></li><li><span>Install the Klipper firmware</span><span class="dots"></span><span>9</span></li><li class="ch">Meet your Printdeck</li><li><span>The deck</span><span class="dots"></span><span>11</span></li><li><span>The display of the printer</span><span class="dots"></span><span>14</span></li><li><span>The deck in a browser</span><span class="dots"></span><span>15</span></li><li class="ch">Print a part</li><li><span>Send a file from the slicer</span><span class="dots"></span><span>16</span></li><li><span>Start a print</span><span class="dots"></span><span>17</span></li><li><span>Watch the print</span><span class="dots"></span><span>21</span></li><li><span>Print in two colors</span><span class="dots"></span><span>30</span></li><li><span>Look around during a print</span><span class="dots"></span><span>32</span></li><li><span>Make a time lapse</span><span class="dots"></span><span>34</span></li><li class="ch">Your iPhone and Apple Watch</li><li><span>The iPhone and Apple Watch apps</span><span class="dots"></span><span>37</span></li><li class="ch">Change the filament</li><li><span>Change the filament</span><span class="dots"></span><span>38</span></li><li class="ch">Move and heat</li><li><span>Move the head and heat</span><span class="dots"></span><span>45</span></li><li class="ch">Level and calibrate</li><li><span>Level and calibrate</span><span class="dots"></span><span>48</span></li><li><span>Calibrate the camera</span><span class="dots"></span><span>53</span></li><li class="ch">Look after the printer</li><li><span>Look after the printer</span><span class="dots"></span><span>57</span></li><li><span>Update the Printdeck</span><span class="dots"></span><span>72</span></li><li><span>Back up your data</span><span class="dots"></span><span>74</span></li><li><span>Try the deck with a simulated printer</span><span class="dots"></span><span>75</span></li><li class="ch">When something goes wrong</li><li><span>When something goes wrong</span><span class="dots"></span><span>77</span></li><li><span>Settings</span><span class="dots"></span><span>79</span></li></ol>
+    <ol><li class="ch">Set up</li><li><span>Connect to Wi-Fi</span><span class="dots"></span><span>3</span></li><li><span>Choose your printer</span><span class="dots"></span><span>6</span></li><li><span>Install the Klipper firmware</span><span class="dots"></span><span>9</span></li><li class="ch">Meet your Printdeck</li><li><span>The deck</span><span class="dots"></span><span>11</span></li><li><span>The display of the printer</span><span class="dots"></span><span>14</span></li><li><span>The deck in a browser</span><span class="dots"></span><span>15</span></li><li class="ch">Print a part</li><li><span>Send a file from the slicer</span><span class="dots"></span><span>16</span></li><li><span>Start a print</span><span class="dots"></span><span>17</span></li><li><span>Watch the print</span><span class="dots"></span><span>21</span></li><li><span>Print in two colors</span><span class="dots"></span><span>30</span></li><li><span>Look around during a print</span><span class="dots"></span><span>32</span></li><li><span>Make a time lapse</span><span class="dots"></span><span>34</span></li><li class="ch">Your iPhone and Apple Watch</li><li><span>The iPhone and Apple Watch apps</span><span class="dots"></span><span>37</span></li><li class="ch">Change the filament</li><li><span>Change the filament</span><span class="dots"></span><span>38</span></li><li class="ch">Move and heat</li><li><span>Move the head and heat</span><span class="dots"></span><span>45</span></li><li class="ch">Level and calibrate</li><li><span>Level and calibrate</span><span class="dots"></span><span>48</span></li><li><span>Calibrate the camera</span><span class="dots"></span><span>53</span></li><li class="ch">Look after the printer</li><li><span>Look after the printer</span><span class="dots"></span><span>57</span></li><li><span>Update the Printdeck</span><span class="dots"></span><span>72</span></li><li><span>Back up your data</span><span class="dots"></span><span>75</span></li><li><span>Try the deck with a simulated printer</span><span class="dots"></span><span>76</span></li><li class="ch">When something goes wrong</li><li><span>When something goes wrong</span><span class="dots"></span><span>78</span></li><li><span>Settings</span><span class="dots"></span><span>80</span></li></ol>
   
   
     
@@ -3017,10 +3017,13 @@
     <ol class="steps"><li><span class="n">1</span><span>Open Machine, then Software update.</span></li></ol>
     
     
-    <ol class="steps"><li><span class="n">2</span><span>Read the notes of the new version, then tap Install. The deck installs only when no print runs.</span></li></ol>
+    <ol class="steps"><li><span class="n">2</span><span>Read the notes of the new version, then tap Install.</span></li></ol>
     
     
-    <ol class="steps"><li><span class="n">3</span><span>Wait for the download. The deck restarts into the new version.</span></li></ol>
+    <ol class="steps"><li><span class="n">3</span><span>Wait for the download. With no print, the deck restarts into the new version.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">4</span><span>During a print, the deck installs the update and the print continues. Machine shows Update ready. The deck restarts into the new version after the print, when the printer is idle and the bed is cool.</span></li></ol>
     
     
   
@@ -3062,7 +3065,7 @@
           <text x="520" y="746" class="bdg-n">5</text></g>
         </svg>
       </div>
-      <ol class="parts"><li><span class="badge">1</span><span><b>Versions.</b> This version and the newest version.</span></li><li><span class="badge">2</span><span><b>Notes.</b> What the new version changes.</span></li><li><span class="badge">3</span><span><b>Install.</b> Installs the new version, after a question. The deck restarts.</span></li><li><span class="badge">4</span><span><b>Check now.</b> Checks for a new version now.</span></li><li><span class="badge">5</span><span><b>Beta updates.</b> On: the deck also gets beta versions.</span></li></ol>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Versions.</b> This version and the newest version.</span></li><li><span class="badge">2</span><span><b>Notes.</b> What the new version changes.</span></li><li><span class="badge">3</span><span><b>Install.</b> Installs the new version, after a question. With no print, the deck restarts. During a print, the deck restarts after the print.</span></li><li><span class="badge">4</span><span><b>Check now.</b> Checks for a new version now.</span></li><li><span class="badge">5</span><span><b>Beta updates.</b> On: the deck also gets beta versions.</span></li></ol>
       
     </div>
     
@@ -3075,6 +3078,42 @@
 </section>
 
 <section class="sheet guide even">
+  
+    
+    
+    <div class="figure">
+      <h3>An update installed during a print</h3>
+      <div class="frame tall">
+        <div class="shot-box"><img src="img/update-staged.png" alt="An update installed during a print"></div>
+        <svg class="marks2" viewBox="-72 0 624 800" aria-hidden="true">
+          <g>
+          <line x1="505" y1="140" x2="456" y2="140" class="leader"/>
+          <circle cx="456" cy="140" r="6" class="dot"/>
+          <circle cx="520" cy="140" r="16" class="bdg"/>
+          <text x="520" y="140" class="bdg-n">1</text></g><g>
+          <line x1="505" y1="353" x2="456" y2="353" class="leader"/>
+          <circle cx="456" cy="353" r="6" class="dot"/>
+          <circle cx="520" cy="353" r="16" class="bdg"/>
+          <text x="520" y="353" class="bdg-n">2</text></g><g>
+          <line x1="505" y1="588" x2="456" y2="588" class="leader"/>
+          <circle cx="456" cy="588" r="6" class="dot"/>
+          <circle cx="520" cy="588" r="16" class="bdg"/>
+          <text x="520" y="588" class="bdg-n">3</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Versions.</b> This version, and the installed version that waits for the restart.</span></li><li><span class="badge">2</span><span><b>Notes.</b> The deck restarts into the update after the print, when the printer is idle and the bed is cool.</span></li><li><span class="badge">3</span><span><b>Restart the screen now.</b> Runs the screen of the update now, after a question. The screen is dark for a few seconds. The print keeps running.</span></li></ol>
+      <p class="note">Restart the screen now shows only when the new screen works with the running Klipper. The time lapse and the share link of the print continue.</p><p class="note">With no print, the key is Restart now.</p>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Look after the printer</div>
+    <div class="folio">74</div>
+  
+</section>
+
+<section class="sheet guide odd">
   
     
     <h2>Back up your data</h2>
@@ -3107,11 +3146,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">74</div>
+    <div class="folio">75</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>Try the deck with a simulated printer</h2>
@@ -3138,11 +3177,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">75</div>
+    <div class="folio">76</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -3182,11 +3221,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">76</div>
+    <div class="folio">77</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>When something goes wrong</h2>
@@ -3207,11 +3246,11 @@
   
   
     <div class="chapter-tab">When something goes wrong</div>
-    <div class="folio">77</div>
+    <div class="folio">78</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -3247,11 +3286,11 @@
   
   
     <div class="chapter-tab">When something goes wrong</div>
-    <div class="folio">78</div>
+    <div class="folio">79</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>Settings</h2>
@@ -3284,7 +3323,40 @@
   
   
     <div class="chapter-tab">When something goes wrong</div>
-    <div class="folio">79</div>
+    <div class="folio">80</div>
+  
+</section>
+
+<section class="sheet notes odd">
+  
+    <h2>Notes</h2>
+    <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
+  
+  
+    
+    <div class="folio">81</div>
+  
+</section>
+
+<section class="sheet notes even">
+  
+    <h2>Notes</h2>
+    <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
+  
+  
+    
+    <div class="folio">82</div>
+  
+</section>
+
+<section class="sheet notes odd">
+  
+    <h2>Notes</h2>
+    <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
+  
+  
+    
+    <div class="folio">83</div>
   
 </section>
 

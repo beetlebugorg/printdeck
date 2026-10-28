@@ -114,10 +114,28 @@ Screen row of Settings overrides `display_rotate`.
 The disk has two system slots, A and B. An update writes the other slot.
 
 1. Open `http://printdeck.local/system`.
-2. Choose `printdeck-update.tar.xz` (or `printdeck-debug-update.tar.xz`), and click Install. The
-   page accepts an update only when no print runs.
+2. Choose `printdeck-update.tar.xz` (or `printdeck-debug-update.tar.xz`), and click Install.
 
 Machine > Software update on the touch screen downloads and installs a release.
+
+### Update during a print
+
+You can install an update while a print runs. The print continues:
+
+1. The Printdeck writes the other slot slowly, at a low priority: 4 MB a second, with nice 19
+   and the idle I/O class. Klipper reads the G-code file from the same SD card.
+2. The Printdeck does not restart. Machine shows "Update ready · restarts after this print".
+3. After the print, the Printdeck restarts into the new slot when the printer is idle: no print,
+   no heater on, no touch for 2 minutes, and the bed at 35 °C or cooler. After 30 minutes, a
+   warm bed does not stop the restart.
+
+When no print runs, Restart now on the update page restarts at once.
+
+During the print, "Restart the screen now" on the update page runs the screen program of the
+update. The screen is dark for a few seconds. Klipper keeps the print. The time lapse frames of
+the print and the share link continue. The key shows only when the screen program of the update
+works with the running Klipper: both have the same interface version. After the print, the
+Printdeck restarts into the new slot as above, and Klipper then updates too.
 
 With `curl`:
 
@@ -125,6 +143,10 @@ With `curl`:
 curl -c cookies -d password=PASSWORD http://printdeck.local/login
 curl -b cookies -F bundle=@os/out/printdeck-update.tar.xz http://printdeck.local/system/update
 ```
+
+With the header `X-Printdeck-Progress: 1`, the request returns at once with `{"error":""}`, and
+`GET /system/update/progress` gives the steps. During a print, the answer is
+`{"error":"","staged":true}`: the update waits for the end of the print.
 
 The Pi restarts into the new slot. If Klipper and the touch screen start, the new slot becomes
 the default. If they fail, the Pi starts the old slot again.
@@ -174,6 +196,12 @@ After you turn off a package, build from the start (`os/build.sh clean`, then `o
   `PRINTDECK` partition.
 - The Pi firmware selects the slot with `autoboot.txt` and `tryboot`. `printdeck-commit` changes
   `autoboot.txt` after a good start. `panic=10` restarts the Pi after a kernel panic.
+- An update that waits for the end of a print is in `/run/printdeck-update/staged.json`, and its
+  root file system is mounted read-only at `/run/printdeck-next`. `autoboot.txt` does not change.
+  After a power loss, the Pi starts the old slot, and the update must be installed again.
+- After "Restart the screen now", `/run/printdeck-deck/next.json` tells `/usr/bin/printdeck` to
+  run `/run/printdeck-next/usr/bin/printdeck` in its place. If that program stops 3 times in its
+  first minute, the old one runs again. `printdeck host-api` prints the interface version.
 - The system programs (`printdeck-init`, `-update`, `-commit`, `-credentials`, `-settings` and
   `-wifi`) are links to the Printdeck program.
 - The deck runs as the user `deck`. For actions that need root, it uses the system helper

@@ -44,16 +44,24 @@ const maxRestore = 16 << 30
 
 type systemView struct {
 	Version, Variant, Slot, Uptime, Memory string
-	Metrics                                string // the CPU and the disk writes of the last minute
-	APIKey                                 string // the key of the OctoPrint-compatible API, for slicers
-	Source                                 string // the source code of this version
-	Services                               []struct{ Name, State string }
-	Journal, Klippy                        string
-	Title, Message                         string // a message at the top: UPDATE, BACKUP or RESTORE
-	Failed                                 bool
-	TimeLapse                              bool // the deck has the time lapse
-	Videos                                 []struct{ Name, Size, Time string }
-	FirstLayer                             string // the file and the time of the picture of the first layer, or ""
+	// System is the version of the running system while the deck program of the installed update
+	// runs, else "". Staged is the version of the installed update that waits for the restart,
+	// with HasStaged.
+	System, Staged  string
+	HasStaged       bool
+	Printing        bool // a print runs or is paused
+	CanSwitch       bool // the screen can run the program of the installed update now
+	SwitchNote      string
+	Metrics         string // the CPU and the disk writes of the last minute
+	APIKey          string // the key of the OctoPrint-compatible API, for slicers
+	Source          string // the source code of this version
+	Services        []struct{ Name, State string }
+	Journal, Klippy string
+	Title, Message  string // a message at the top: UPDATE, BACKUP or RESTORE
+	Failed          bool
+	TimeLapse       bool // the deck has the time lapse
+	Videos          []struct{ Name, Size, Time string }
+	FirstLayer      string // the file and the time of the picture of the first layer, or ""
 }
 
 // sysMetrics are the samples of the host for the system page, or nil.
@@ -62,8 +70,14 @@ var sysMetrics *hostmetrics.Recorder
 // sysTimelapse is the time lapse for the system page, or nil.
 var sysTimelapse *timelapse.Runner
 
-func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend, metrics *hostmetrics.Recorder, klippyLog, apiKey string) {
-	sysMetrics = metrics
+// sysUpdater and sysPrinter are the updater and the printer of the system page, or nil.
+var (
+	sysUpdater *updater
+	sysPrinter printerBackend
+)
+
+func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend, up *updater, metrics *hostmetrics.Recorder, klippyLog, apiKey string) {
+	sysMetrics, sysUpdater, sysPrinter = metrics, up, pr
 	mux.HandleFunc("GET /system/metrics", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
 		writeMetricsJSON(w, r, metrics)
 	}))
@@ -73,18 +87,50 @@ func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend
 	mux.HandleFunc("POST /system/update", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
 		// The script of the page installs in the background, and reads the progress.
 		if r.Header.Get("X-Printdeck-Progress") == "1" {
-			msg, failed := saveUpload(w, r, pr)
+			msg, failed := saveUpload(w, r, pr, up)
+			resp := map[string]any{"error": map[bool]string{true: msg}[failed]}
 			if !failed {
 				installing.Lock()
 				installing.installState = installState{Step: system.StepUnpack, Running: true}
 				installing.Unlock()
-				go installSaved()
+				go installSaved(up)
+				// During a print, the update waits for the end of the print.
+				if pr != nil && pr.State().Busy() {
+					resp["staged"] = true
+				}
 			}
-			writeInstallJSON(w, map[string]any{"error": map[bool]string{true: msg}[failed]})
+			writeInstallJSON(w, resp)
 			return
 		}
-		msg, failed := installUpload(w, r, pr)
+		msg, failed := installUpload(w, r, pr, up)
 		renderSystem(w, klippyLog, apiKey, msg, failed)
+	}))
+	mux.HandleFunc("POST /system/restart", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case !up.Status().HasStaged:
+			renderSystem(w, klippyLog, apiKey, "No update waits for the restart.", true)
+		case pr != nil && pr.State().Busy():
+			renderSystem(w, klippyLog, apiKey, "A print runs. The Printdeck restarts into the update after the print.", true)
+		default:
+			if err := up.reboot("Restart now on the system page", time.Now()); err != nil {
+				renderSystem(w, klippyLog, apiKey, "The restart failed: "+err.Error(), true)
+				return
+			}
+			renderSystem(w, klippyLog, apiKey, "The Printdeck restarts into the update now. Load this page again in a minute.", false)
+		}
+	}))
+	mux.HandleFunc("POST /system/switch-deck", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
+		if err := up.switchReady(); err != nil {
+			renderSystem(w, klippyLog, apiKey, err.Error(), true)
+			return
+		}
+		renderSystem(w, klippyLog, apiKey, "The screen restarts with the program of the update now. The print keeps "+
+			"running. Load this page again in a few seconds.", false)
+		// After the page is sent: the switch ends this deck program.
+		go func() {
+			time.Sleep(time.Second)
+			up.SwitchDeck()
+		}()
 	}))
 	mux.HandleFunc("POST /system/backup", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
 		if msg := sendBackup(w, r); msg != "" {
@@ -101,7 +147,7 @@ func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend
 		st := installing.installState
 		installing.Unlock()
 		writeInstallJSON(w, map[string]any{"version": osVersion(), "step": st.Step, "done": st.Done, "total": st.Total,
-			"error": st.Err, "running": st.Running, "finished": st.Finished})
+			"error": st.Err, "running": st.Running, "finished": st.Finished, "staged": st.Staged})
 	}))
 }
 
@@ -112,6 +158,7 @@ type installState struct {
 	Err         string
 	Running     bool
 	Finished    bool // the slot is written, and the Printdeck restarts
+	Staged      bool // with Finished: the update waits for the end of the print
 }
 
 var installing struct {
@@ -120,9 +167,9 @@ var installing struct {
 }
 
 // installSaved installs the saved bundle with the helper, and keeps its progress for the page.
-func installSaved() {
+func installSaved(up *updater) {
 	log.Printf("system page: installing an uploaded update")
-	err := system.AskHelperProgress(system.HelperRequest{Action: "update"}, func(step string, done, total int64) {
+	waits, err := up.stage(func(step string, done, total int64) {
 		installing.Lock()
 		installing.Step, installing.Done, installing.Total = step, done, total
 		installing.Unlock()
@@ -135,7 +182,10 @@ func installSaved() {
 		installing.Err = "The update failed: " + err.Error()
 		return
 	}
-	installing.Step, installing.Finished = "Restarting", true
+	installing.Step, installing.Finished, installing.Staged = "Restarting", true, waits
+	if waits {
+		installing.Step = "Installed"
+	}
 }
 
 func writeInstallJSON(w http.ResponseWriter, v any) {
@@ -151,6 +201,16 @@ func renderSystem(w http.ResponseWriter, klippyLog, apiKey, msg string, failed b
 func renderMessage(w http.ResponseWriter, klippyLog, apiKey, title, msg string, failed bool) {
 	v := systemView{Version: osVersion(), Variant: osRelease("PRINTDECK_VARIANT"), APIKey: apiKey, Title: title, Message: msg,
 		Failed: failed, Source: sourceURL(osVersion())}
+	if up := sysUpdater; up != nil {
+		u := up.Status()
+		v.System, v.Staged, v.HasStaged, v.CanSwitch, v.SwitchNote = u.System, u.Staged, u.HasStaged, u.CanSwitch, u.SwitchNote
+		if v.Staged == "" {
+			v.Staged = "the update"
+		}
+	}
+	if pr := sysPrinter; pr != nil {
+		v.Printing = pr.State().Busy()
+	}
 	if s, err := system.Slot(); err == nil {
 		v.Slot = strings.ToUpper(s)
 	}
@@ -195,31 +255,38 @@ func renderMessage(w http.ResponseWriter, klippyLog, apiKey, title, msg string, 
 }
 
 // installUpload saves an uploaded update bundle, and asks the system helper to install it. The
-// helper writes the other slot, answers, and restarts the Printdeck.
-func installUpload(w http.ResponseWriter, r *http.Request, pr printerBackend) (string, bool) {
-	if msg, failed := saveUpload(w, r, pr); failed {
+// helper writes the other slot. With no print, the Printdeck then restarts into it. During a
+// print, the update waits for the end of the print.
+func installUpload(w http.ResponseWriter, r *http.Request, pr printerBackend, up *updater) (string, bool) {
+	if msg, failed := saveUpload(w, r, pr, up); failed {
 		return msg, true
 	}
 	log.Printf("system page: installing an uploaded update")
-	if err := system.AskHelper(system.HelperRequest{Action: "update"}); err != nil {
+	waits, err := up.stage(nil)
+	if err != nil {
 		os.Remove(system.UpdateBundle)
 		return "The update failed: " + err.Error(), true
+	}
+	if waits {
+		return "The update is written. The Printdeck restarts into it after the print, when the printer is idle.", false
 	}
 	return "The update is written. The Printdeck restarts into it now. Load this page again in a minute.", false
 }
 
-// saveUpload saves an uploaded update bundle as system.UpdateBundle. It fails during a print, or
-// while an update installs.
-func saveUpload(w http.ResponseWriter, r *http.Request, pr printerBackend) (string, bool) {
+// saveUpload saves an uploaded update bundle as system.UpdateBundle. It fails while an update
+// installs, and while the deck program of an installed update runs. During a print, it writes
+// the file with a sync after each MiB (syncWriter).
+func saveUpload(w http.ResponseWriter, r *http.Request, pr printerBackend, up *updater) (string, bool) {
 	installing.Lock()
 	running := installing.Running
 	installing.Unlock()
-	if running {
+	if running || up.Status().Busy != "" {
 		return "An update installs now.", true
 	}
-	if pr != nil && pr.State().Busy() {
-		return "A print runs. Install the update after the print.", true
+	if runsNext() {
+		return errNextRuns.Error(), true
 	}
+	printing := pr != nil && pr.State().Busy()
 	r.Body = http.MaxBytesReader(w, r.Body, maxBundle)
 	f, _, err := r.FormFile("bundle")
 	if err != nil {
@@ -235,7 +302,11 @@ func saveUpload(w http.ResponseWriter, r *http.Request, pr printerBackend) (stri
 	if err != nil {
 		return err.Error(), true
 	}
-	_, err = io.Copy(out, f)
+	var dst io.Writer = out
+	if printing {
+		dst = &syncWriter{f: out}
+	}
+	_, err = io.Copy(dst, f)
 	if cerr := out.Close(); err == nil {
 		err = cerr
 	}
@@ -247,6 +318,23 @@ func saveUpload(w http.ResponseWriter, r *http.Request, pr printerBackend) (stri
 		return err.Error(), true
 	}
 	return "", false
+}
+
+// syncWriter writes to f, with a sync after each MiB: the kernel then writes the data in short
+// bursts, and a read of the Klipper host from the same SD card waits less.
+type syncWriter struct {
+	f *os.File
+	n int64
+}
+
+func (s *syncWriter) Write(p []byte) (int, error) {
+	n, err := s.f.Write(p)
+	s.n += int64(n)
+	if err == nil && s.n >= 1<<20 {
+		s.n = 0
+		err = s.f.Sync()
+	}
+	return n, err
 }
 
 // sendBackup asks the helper for a backup with the password of the form, and sends the file to the

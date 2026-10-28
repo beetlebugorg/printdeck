@@ -17,6 +17,7 @@
 //	printdeck klipper-probe DEVICE [BAUD]  connect to a Klipper board and print what it reports
 //	printdeck klippy [options] CONFIG  run the Klipper host (the Go port of klippy.py)
 //	printdeck verify FILE  check the signature and the checksums of an update file
+//	printdeck host-api  print the interface version for the Klipper host and the helper
 //	printdeck bench SOCKET OUT.png  run the deck UI with no screen on a Klipper host (a test bench)
 package main
 
@@ -38,6 +39,7 @@ import (
 	"printdeck/internal/config"
 	"printdeck/internal/display"
 	"printdeck/internal/gfx"
+	"printdeck/internal/hostapi"
 	"printdeck/internal/hostmetrics"
 	"printdeck/internal/klipper/cli"
 	"printdeck/internal/printer"
@@ -64,6 +66,11 @@ func main() {
 			}
 		}
 		os.Exit(cli.Main(os.Args[2:]))
+	}
+	// After "Restart the screen now", the deck program of an installed update runs in place of
+	// this one (handoff.go).
+	if len(os.Args) == 1 {
+		runNextDeck()
 	}
 	cfg := config.Load()
 
@@ -116,9 +123,14 @@ func main() {
 			return
 		case "helper":
 			system.SetDataDirs(cfg.StateDir, filepath.Dir(cfg.KlipperConfig), cfg.GcodeDir)
+			system.KlippySocket = cfg.KlippySocket
 			if err := system.Helper(); err != nil {
 				log.Fatal(err)
 			}
+			return
+		case "host-api":
+			// The interface version for the deck program of another slot (package hostapi).
+			fmt.Println(hostapi.Version)
 			return
 		case "password":
 			p, err := system.NewPassword()
@@ -222,6 +234,7 @@ func run(cfg config.Config) {
 	// On the Printdeck OS image, the first start opens the setup screen, and the deck checks
 	// for updates.
 	host := newSetupHost(cfg.StateDir)
+	var up *updater
 	if host != nil {
 		// The Screen row of the Settings page: the deck saves the turn and ends; systemd starts it
 		// again in the new turn. Only the Printdeck OS restarts the deck.
@@ -233,9 +246,12 @@ func run(cfg config.Config) {
 			}
 			stop()
 		}
-		up := newUpdater(cfg.StateDir, func() bool { return pr.State().Busy() }, app.Redraw)
+		up = newUpdater(cfg.StateDir, helperSystem{socket: cfg.KlippySocket}, pr, app.Redraw)
+		up.lastInput, up.exit, up.handoff = app.LastInput, stop, deckHandoff(app)
+		up.saving = func() bool { r := sysTimelapse; return r != nil && r.Info().Saving }
 		app.Updater = up
 		go up.run(ctx)
+		go up.watch(ctx)
 		app.Setup = host
 		if host.Needed() {
 			app.OpenSetup()
@@ -261,7 +277,7 @@ func run(cfg config.Config) {
 	}
 	go screen.Run(ctx, events)
 
-	startWeb(cfg, host, pr, app)
+	startWeb(cfg, host, pr, app, up)
 	// After a boot, a soft change from the start screen to the first screen.
 	if _, ok := screen.(display.None); !ok && uptime() < 90*time.Second {
 		fadeFromStart(screen, app, events)

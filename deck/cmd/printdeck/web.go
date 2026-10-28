@@ -32,7 +32,7 @@ import (
 //     Klipper backend), and the webcam at /webcam
 //   - the state of the simulated printer at /sim, for the 3D window of the desktop app (with an
 //     API key)
-func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App) *remote.Server {
+func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App, up *updater) *remote.Server {
 	if cfg.RemoteAddr == "" {
 		return nil
 	}
@@ -49,7 +49,7 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 			api.Allow = rs.LoggedIn // the webcam in a browser with the login of the remote screen
 		}
 		mux.Handle("/", rs.Handler())
-		registerSystemPage(mux, rs, pr, app.Metrics, cfg.KlippyLog, cfg.OctoPrintKey)
+		registerSystemPage(mux, rs, pr, up, app.Metrics, cfg.KlippyLog, cfg.OctoPrintKey)
 		registerRollPages(mux, rs, pr, app)
 		// The 3D window of the desktop app shows the simulated printer of the deck, with an API key.
 		if k, ok := pr.(*printer.Klippy); ok && api != nil {
