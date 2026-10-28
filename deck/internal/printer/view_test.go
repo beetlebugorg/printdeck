@@ -134,3 +134,53 @@ G1 X60 Y60 Z1.2 E1
 		t.Error("no box after the print")
 	}
 }
+
+// PartBox has the moves from the second layer on: no purge line before the first layer, and no
+// skirt or brim of the first layer. A file of one layer has the box of its first layer, and a
+// file with no layer marks has the moves over the first height.
+func TestPartBox(t *testing.T) {
+	src := `G90
+M83
+G1 X0 Y0 Z0.3 F3000
+G1 X0 Y200 E10
+;LAYER:0
+G1 X5 Y5 F1200
+G1 X95 Y5 E3
+G1 X95 Y95 E3
+G1 X20 Y20
+G1 X80 Y20 E2
+;LAYER:1
+G1 Z0.5
+G1 X20 Y30 E1
+G1 X80 Y70 Z0.7 E1
+;LAYER:2
+G1 X70 Y60 Z0.9 E1
+`
+	box := func(src string) (Box, bool) {
+		gc, err := gcode.Parse(strings.NewReader(src))
+		if err != nil {
+			t.Fatal(err)
+		}
+		st := State{Printing: true, FilePath: "a.gcode", FileSize: int64(len(src))}
+		v := &View{gc: gc, file: fileKey(st), view: -1}
+		return v.PartBox(st)
+	}
+	b, ok := box(src)
+	if !ok || b.Min[0] != 20 || b.Min[1] != 20 || b.Max[0] != 80 || b.Max[1] != 70 || math.Abs(b.Max[2]-0.9) > 1e-6 {
+		t.Errorf("part %+v, want x 20..80, y 20..70, top 0.9", b)
+	}
+	// One layer: the first layer, with no purge line.
+	one := src[:strings.Index(src, ";LAYER:1")]
+	b, ok = box(one)
+	if !ok || b.Min[0] != 5 || b.Max[0] != 95 || b.Max[1] != 95 || b.Min[1] != 5 {
+		t.Errorf("one layer %+v, want x 5..95, y 5..95", b)
+	}
+	// No layer marks: the moves over the height of the first move.
+	b, ok = box("G90\nM83\nG1 X0 Y0 Z0.3\nG1 X100 Y0 E5\nG1 Z0.6\nG1 X10 Y10 F600\nG1 X30 Y40 E1\n")
+	if !ok || b.Min[0] != 10 || b.Max[0] != 30 || b.Max[1] != 40 {
+		t.Errorf("no marks %+v", b)
+	}
+	if _, ok := (&View{}).PartBox(State{}); ok {
+		t.Error("a box with no G-code")
+	}
+}

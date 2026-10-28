@@ -4,7 +4,6 @@ import (
 	"context"
 	"image"
 	"log"
-	"math"
 	"os"
 	"path/filepath"
 
@@ -71,15 +70,15 @@ func startTimelapse(ctx context.Context, stateDir string, app *ui.App, pr printe
 	go r.Run(ctx)
 }
 
-// wholePart returns the box of all the moves of the print of the file, in the coordinates of the
-// G-code. It is false while the G-code of the print is not loaded.
+// wholePart returns the box of the moves of the part of the print of the file from its second
+// layer on (printer.View.PartBox), in the coordinates of the G-code: the box has no purge line,
+// skirt or brim. It is false while the G-code of the print is not loaded.
 func wholePart(k *printer.Klippy, file string) (printer.Box, bool) {
 	st := k.State()
 	if !st.Busy() || st.FilePath != file {
 		return printer.Box{}, false
 	}
-	part, _, ok, _ := k.View.PrintBox(st, math.MaxInt64)
-	return part, ok
+	return k.View.PartBox(st)
 }
 
 // videoDir is the folder of the time lapse videos in the state folder.
