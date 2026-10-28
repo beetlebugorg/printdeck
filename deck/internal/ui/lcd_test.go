@@ -19,7 +19,7 @@ func TestStatusLines(t *testing.T) {
 			TimeLeft: 83 * time.Minute}, "", "PRINTING     42%", "END 3:47PM  1:23"},
 		{printer.State{Reachable: true, Printing: true, Paused: true, Completion: 42}, "", "PAUSED       42%", "RESUME ON DECK  "},
 		{printer.State{Reachable: true, Printing: true, Preparing: true, Activity: "Heating bed  52/60°"}, "", "PREPARING       ", "HEAT BED 52/60  "},
-		{printer.State{Reachable: true, Finished: "complete", FinishedFile: "benchy.gcode"}, "", "PRINT DONE      ", "BENCHY.GCODE    "},
+		{printer.State{Reachable: true, Finished: "complete", FinishedFile: "benchy.gcode"}, "", "PRINT DONE      ", "BENCHY          "},
 	} {
 		l1, l2 := StatusLines(c.st, c.mat, now, false)
 		if l1 != c.l1 || l2 != c.l2 {

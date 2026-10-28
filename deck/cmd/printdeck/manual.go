@@ -314,13 +314,14 @@ func manualParts() []section {
 		{ID: "files", Title: "Files",
 			Intro: []string{
 				"The newest file is at the top. Each file shows the print time, the filament and the layer height from the slicer. Cura, PrusaSlicer, OrcaSlicer and Bambu Studio write this data.",
+				"The deck shows the name of the print. The Printdeck plugin for Cura writes it in the file. For a file from another slicer, the deck removes the printer prefix and the version from the file name: TAZWH_hex_planter_v3.gcode shows as Hex planter.",
 			},
 			Figures: []figure{
 				{Name: "files", Caption: "The file list", Setup: page("files"),
 					Callouts: []callout{
 						{"Count", "The number of files."},
 						{"Picture", "The thumbnail."},
-						{"File", "The name and the slicer data."},
+						{"File", "The name of the print and the slicer data."},
 						{"Date", "When the file arrived."},
 						{"On the deck, SD card", "The files on the deck, or on the SD card of the printer display ([printdeck_sdcard])."},
 					},
@@ -336,7 +337,7 @@ func manualParts() []section {
 				{Name: "file", Caption: "A file", Setup: page("file"),
 					Callouts: []callout{
 						{"Picture", "The thumbnail."},
-						{"Slicer data", "The data from the slicer."},
+						{"Slicer data", "The file name and the data from the slicer."},
 						{"Print", "Starts the print."},
 						{"Delete", "Removes the file."},
 					}},
@@ -832,7 +833,7 @@ func manualParts() []section {
 						s.p.State_ = stIdle
 						withVideo(s)
 						s.a.OpenPrintScreen("record")
-						s.a.DemoPlayer(manualVideo, "benchy.gcode", 8)
+						s.a.DemoPlayer(manualVideo, "Benchy", 8)
 					},
 					Callouts: []callout{
 						{"Video", "The video, as large as it fits."},

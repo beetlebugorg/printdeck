@@ -30,10 +30,10 @@ func TestRollPrints(t *testing.T) {
 	for _, f := range a.focus {
 		seen[f.label] = true
 	}
-	if !seen[lcdText("bracket.gcode")] || !seen[lcdText("benchy.gcode")] || seen[lcdText("cube.gcode")] {
+	if !seen[lcdText("Bracket")] || !seen[lcdText("Benchy")] || seen[lcdText("Cube")] {
 		t.Fatalf("the list has %v", seen)
 	}
-	tapLabel(t, a, cv, "benchy.gcode")
+	tapLabel(t, a, cv, "Benchy")
 	if top() != pageRecord || a.record.File != "benchy.gcode" {
 		t.Errorf("page %v, record %q", top(), a.record.File)
 	}

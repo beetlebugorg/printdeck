@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 )
 
 // Meta is what the slicer wrote. A zero value means that the file does not say.
@@ -34,7 +35,10 @@ type Meta struct {
 	MaterialName string
 	// Color is the color of the filament, for example "#1f2a5a", or "". PrusaSlicer, OrcaSlicer and
 	// the Printdeck plugin for Cura write it.
-	Color     string
+	Color string
+	// Title is the name of the print from the line ";Printdeck title: Hex planter" in the first
+	// lines of the file, or "". The Printdeck plugin for Cura writes it.
+	Title     string
 	Thumbnail image.Image
 }
 
@@ -43,6 +47,8 @@ type Meta struct {
 const (
 	headSize = 512 << 10
 	tailSize = 96 << 10
+	// titleLines is the number of lines at the start of the file that can have the title.
+	titleLines = 200
 )
 
 // Read reads the comments of a G-code file.
@@ -75,10 +81,16 @@ func Parse(r io.ReaderAt, size int64) (Meta, error) {
 	var p parser
 	p.Thumbnail = thumbnail(head)
 	// The head first: in a small file the tail is in the head too, and the end wins.
-	for _, part := range [][]byte{head, tail} {
+	for i, part := range [][]byte{head, tail} {
 		s := bufio.NewScanner(bytes.NewReader(part))
 		s.Buffer(make([]byte, 64<<10), 1<<20)
-		for s.Scan() {
+		for n := 0; s.Scan(); n++ {
+			if i == 0 && n < titleLines {
+				if t, ok := title(s.Text()); ok {
+					p.Title = t
+					continue
+				}
+			}
 			p.line(s.Text())
 		}
 	}
@@ -90,6 +102,22 @@ func Parse(r io.ReaderAt, size int64) (Meta, error) {
 		p.BedTemp = p.cmdBed
 	}
 	return p.Meta, nil
+}
+
+// title reads the line ";Printdeck title: Hex planter". The case of "Printdeck title" is free.
+func title(l string) (string, bool) {
+	l = strings.TrimSpace(strings.TrimPrefix(l, ";"))
+	const key = "printdeck title:"
+	if len(l) < len(key) || !strings.EqualFold(l[:len(key)], key) {
+		return "", false
+	}
+	t := strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, l[len(key):])
+	return strings.TrimSpace(t), true
 }
 
 // parser is a Meta while it is read, with the temperatures of the first commands.

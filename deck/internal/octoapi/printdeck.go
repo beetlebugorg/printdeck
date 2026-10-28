@@ -60,7 +60,10 @@ func rollJSON(sp printer.Spool) spoolJSON {
 
 // jobJSON is the print that runs, in the API.
 type jobJSON struct {
-	File     string  `json:"file"`
+	File string `json:"file"`
+	// Title is the name of the print for the screens: the title in the file, or else the cleaned
+	// file name.
+	Title    string  `json:"title"`
 	State    string  `json:"state"`
 	Layer    int     `json:"layer"`
 	Layers   int     `json:"layers"`
@@ -112,7 +115,7 @@ func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if st := s.Printer.State(); st.Busy() {
-		j := &jobJSON{File: st.FilePath, State: "printing", Layer: st.Layer, Layers: st.Layers,
+		j := &jobJSON{File: st.FilePath, Title: st.Name(), State: "printing", Layer: st.Layer, Layers: st.Layers,
 			Progress: st.Completion / 100, Left: -1, Release: -1, Pos: st.FilePos}
 		if st.Paused {
 			j.State = "paused"

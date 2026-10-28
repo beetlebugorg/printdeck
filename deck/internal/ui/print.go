@@ -251,7 +251,7 @@ func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 	if W > H {
 		// Wide: the print is the Main page. The data and the model, and the keys at the bottom:
 		// Cancel, the destructive action, at the left, and Pause at the right.
-		view, keys := a.statePage(c, st, gfx.Fit(gfx.Face(true, 24), st.File, a.navFrame().head.Dx()-20), actH)
+		view, keys := a.statePage(c, st, gfx.Fit(gfx.Face(true, 24), st.Name(), a.navFrame().head.Dx()-20), actH)
 		if a.canShare() {
 			k := kit.Cols(keys, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1))
 			a.button(c, k[0], "Cancel", raised, red, a.askCancel)
@@ -303,13 +303,13 @@ func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 	a.printInfo(c, r[0], st)
 }
 
-// jobCard draws the file of the print, the time left, the time of its end, and the time when the
+// jobCard draws the name of the print, the time left, the time of its end, and the time when the
 // bed is cool enough to remove the part, in a plate.
 func (a *App) jobCard(c *gfx.Canvas, r image.Rectangle, st printer.State) {
 	plate(c, r)
 	in := kit.Inset(r, 18, 10, 18, 10)
 	s := kit.NewStack(in, 4)
-	c.Text(s.Next(30), st.File, gfx.Face(true, 20), text, gfx.Left)
+	c.Text(s.Next(30), st.Name(), gfx.Face(true, 20), text, gfx.Left)
 	// The model view shows the layer.
 	if st.HasTimeLeft {
 		// The time left and the end on two lines: the column is narrow.

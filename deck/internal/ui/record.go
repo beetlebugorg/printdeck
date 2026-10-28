@@ -16,7 +16,7 @@ import (
 func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 	r := a.record
 	pf := a.navFrame()
-	pg := a.navPage(c, fitTitle(r.File, pf.head.Dx()-200))
+	pg := a.navPage(c, fitTitle(r.Name(), pf.head.Dx()-200))
 	rows := a.recordRows(r)
 	video := r.Video != "" && a.TimeLapse != nil
 	if video {
@@ -58,8 +58,8 @@ func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 			key(c, k[1], "Play", surface, dim, false)
 			a.region("Play", k[1])
 		} else {
-			name, file := r.Video, r.File
-			a.button(c, k[1], "Play", raised, text, func() { a.openPlayer(name, file) })
+			name, title := r.Video, r.Name()
+			a.button(c, k[1], "Play", raised, text, func() { a.openPlayer(name, title) })
 		}
 	}
 	gone := a.recordModel(c, pic, r)

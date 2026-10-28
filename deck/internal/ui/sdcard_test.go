@@ -48,7 +48,7 @@ func TestFilesSDCard(t *testing.T) {
 		}
 		tapLabel(t, a, cv, "clip.gcode")
 		runPosted(a, 1)
-		if a.confirm == nil || !strings.Contains(a.confirm.question, "clip.gcode") {
+		if a.confirm == nil || !strings.Contains(a.confirm.question, "Print Clip?") {
 			t.Errorf("wide %v: no question to print the copy", wide)
 		}
 	}

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"printdeck/internal/camera"
+	"printdeck/internal/gcodemeta"
 )
 
 // File is a G-code file that the printer can print.
@@ -31,6 +32,7 @@ type State struct {
 	Paused      bool
 	File        string
 	FilePath    string // path of the file in the file store
+	Title       string // the title in the file, or "": Name is the name for the screens
 	FileSize    int64
 	FileDate    int64   // upload time (Unix): a file uploaded again under the same name has a new one
 	FilePos     int64   // bytes of the file that the printer has read
@@ -90,6 +92,7 @@ type State struct {
 	// print has ended since Klipper started.
 	Finished                   string
 	FinishedFile, FinishedPath string
+	FinishedTitle              string // the title in the file, or ""
 	FinishedTime               time.Duration
 	FinishedFilament           float64 // mm
 	FinishedError              string
@@ -153,6 +156,15 @@ type ActionResult struct {
 
 // Busy reports that a job is running or paused.
 func (s State) Busy() bool { return s.Printing || s.Paused }
+
+// Name is the name of the print for the screens: the title in the file, or else the cleaned file
+// name.
+func (s State) Name() string { return gcodemeta.Meta{Title: s.Title}.Name(s.File) }
+
+// FinishedName is the name of the last print for the screens.
+func (s State) FinishedName() string {
+	return gcodemeta.Meta{Title: s.FinishedTitle}.Name(s.FinishedFile)
+}
 
 // Machine is what the printer has: the Klipper version, its modules and its macros.
 type Machine struct {

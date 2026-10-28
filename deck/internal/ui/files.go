@@ -62,10 +62,11 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 		a.open(pageFile)
 	}
 	l := kit.List{Area: area, N: len(files), RowH: fileRowH, Gap: 10, Scroll: &a.fileList.scroll}
-	a.list(c, l, func(i int) string { return files[i].Name }, func(c *gfx.Canvas, i int, r image.Rectangle) {
+	a.list(c, l, func(i int) string { return a.fileName(files[i]) }, func(c *gfx.Canvas, i int, r image.Rectangle) {
 		f := files[i]
 		plate(c, r)
 		m := a.Printer.FileMeta(f.Path)
+		name := m.Name(f.Name)
 		pic := image.Rect(r.Min.X+10, r.Min.Y+9, r.Min.X+10+thumbSmall, r.Min.Y+9+thumbSmall)
 		a.thumb(c, pic, f, m)
 		if i == 0 { // the names of the first row
@@ -77,16 +78,22 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 		if gfx.FinePrint() {
 			y1, y2, y3 = 4, 34, 60
 		}
-		c.Text(image.Rect(r.Min.X+92, r.Min.Y+y1, r.Max.X-12, r.Min.Y+y1+30), f.Name, gfx.Face(true, 19), text, gfx.Left)
+		c.Text(image.Rect(r.Min.X+92, r.Min.Y+y1, r.Max.X-12, r.Min.Y+y1+30), name, gfx.Face(true, 19), text, gfx.Left)
 		c.Text(image.Rect(r.Min.X+92, r.Min.Y+y2, r.Max.X-12, r.Min.Y+y2+24), a.metaLine(m), gfx.Face(false, 16), dim, gfx.Left)
 		if i == 0 {
-			a.textRegion("File", image.Rect(r.Min.X+92, r.Min.Y+8, r.Max.X-12, r.Min.Y+60), gfx.Face(true, 19), gfx.Fit(gfx.Face(true, 19), f.Name, r.Dx()-104))
+			a.textRegion("File", image.Rect(r.Min.X+92, r.Min.Y+8, r.Max.X-12, r.Min.Y+60), gfx.Face(true, 19), gfx.Fit(gfx.Face(true, 19), name, r.Dx()-104))
 		}
 		c.Text(image.Rect(r.Min.X+92, r.Min.Y+y3, r.Max.X-12, r.Max.Y-6), fileDate(f.Date, a.Now(), a.Clock24), gfx.Face(false, 14), dim, gfx.Left)
 		if i == 0 {
 			a.textRegion("Date", image.Rect(r.Min.X+92, r.Min.Y+58, r.Max.X-12, r.Max.Y-6), gfx.Face(false, 14), fileDate(f.Date, a.Now(), a.Clock24))
 		}
 	}, open)
+}
+
+// fileName is the name of a file for the screens: the title in the file, or else the cleaned file
+// name.
+func (a *App) fileName(f printer.File) string {
+	return a.Printer.FileMeta(f.Path).Name(f.Name)
 }
 
 // fileGrams is the filament of a file in grams: the weight from the slicer, or else the weight
@@ -247,10 +254,11 @@ func (a *App) recordThumb(c *gfx.Canvas, r image.Rectangle, rec printer.Record, 
 func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 	f := a.file
 	pf := a.navFrame()
-	pg := a.navPage(c, fitTitle(f.Name, pf.head.Dx()-200))
 	m := a.Printer.FileMeta(f.Path)
+	pg := a.navPage(c, fitTitle(m.Name(f.Name), pf.head.Dx()-200))
 
-	var rows [][2]string
+	// The first row is the file name, as the browser and the slicer show it.
+	rows := [][2]string{{"File", f.Name}}
 	if m.PrintTime > 0 {
 		rows = append(rows, [2]string{"Print time", duration(m.PrintTime)})
 	}
@@ -307,6 +315,8 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 	a.region("Picture", pic)
 	plate(c, box)
 	a.region("Slicer data", box)
+	// A long file name ends in an ellipsis at the right of its label.
+	rows[0][1] = gfx.Fit(gfx.Face(true, 17), f.Name, box.Dx()-36-gfx.Width(gfx.Face(true, 14), "FILE")-16)
 	detailRows(c, kit.Inset(box, 18, 10, 18, 10), rows, 30)
 
 	pr := a.Printer

@@ -225,7 +225,7 @@ func (a *App) lastPrintPanel(c *gfx.Canvas, st printer.State, area image.Rectang
 	head, body := r[0], r[1]
 	hk := kit.Cols(head, 12, kit.Fr(1), kit.Px(140))
 	label(c, image.Rect(hk[0].Min.X, hk[0].Min.Y, hk[0].Max.X, hk[0].Min.Y+20), "Last print", gfx.Left)
-	c.Text(image.Rect(hk[0].Min.X, hk[0].Min.Y+20, hk[0].Max.X, hk[0].Max.Y), l.File, gfx.Face(true, 20), text, gfx.Left)
+	c.Text(image.Rect(hk[0].Min.X, hk[0].Min.Y+20, hk[0].Max.X, hk[0].Max.Y), l.Name(), gfx.Face(true, 20), text, gfx.Left)
 	rows := a.recordRows(l)
 	side := min(body.Dy(), body.Dx()*2/5)
 	cols := kit.Cols(body, 16, kit.Px(side), kit.Fr(1))
@@ -308,7 +308,7 @@ func (a *App) drawLastPrint(c *gfx.Canvas, st printer.State, last image.Rectangl
 	a.recordThumb(c, image.Rect(last.Min.X+11, y, last.Min.X+11+thumbSmall, y+thumbSmall), l, a.fileIndex())
 	x := last.Min.X + 92
 	label(c, image.Rect(x, last.Min.Y+8, textR, last.Min.Y+28), "Last print", gfx.Left)
-	c.Text(image.Rect(x, last.Min.Y+28, textR, last.Min.Y+58), l.File, gfx.Face(true, 20), text, gfx.Left)
+	c.Text(image.Rect(x, last.Min.Y+28, textR, last.Min.Y+58), l.Name(), gfx.Face(true, 20), text, gfx.Left)
 	c.Text(image.Rect(x, last.Min.Y+56, textR, last.Min.Y+82), l.Summary(func(mm float64) float64 { return a.grams(mm, "") }), gfx.Face(false, 16), dim, gfx.Left)
 	path := l.Path
 	a.printerKey(c, reprint, "Reprint", raised, text, func() {
@@ -319,7 +319,7 @@ func (a *App) drawLastPrint(c *gfx.Canvas, st printer.State, last image.Rectangl
 // confirmPrint asks before it starts a file. The question checks the material of the file
 // (materialCheck).
 func (a *App) confirmPrint(path string) {
-	name := path[strings.LastIndex(path, "/")+1:]
+	name := a.Printer.FileMeta(path).Name(path)
 	q, yes, danger, set := a.materialCheck(path)
 	if q == "" {
 		q, yes = "Print "+gfx.Fit(gfx.Face(true, 28), name, 300)+"?", "Print"

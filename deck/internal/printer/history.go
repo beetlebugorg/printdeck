@@ -7,11 +7,14 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"printdeck/internal/gcodemeta"
 )
 
 // Record is one finished print of the history.
 type Record struct {
 	File     string        `json:"file"`
+	Title    string        `json:"title,omitempty"` // the title in the file, or "": Name is the name for the screens
 	Path     string        `json:"path"`
 	Result   string        `json:"result"` // "complete", "cancelled" or "error"
 	Duration time.Duration `json:"duration"`
@@ -55,6 +58,10 @@ func OfSpool(recs []Record, sp Spool) []Record {
 	}
 	return out
 }
+
+// Name is the name of the print for the screens: the title in the file, or else the cleaned file
+// name.
+func (r Record) Name() string { return gcodemeta.Meta{Title: r.Title}.Name(r.File) }
 
 // Summary is a short line for the screen, for example "Done · 1:42 · 12 g". grams gives the
 // weight of a length of filament in mm.
@@ -129,7 +136,7 @@ func (h *History) add(st State, now time.Time, phases []Phase, planned float64, 
 	if st.Finished == "" {
 		return ""
 	}
-	r := Record{File: st.FinishedFile, Path: st.FinishedPath, Result: st.Finished, Duration: st.FinishedTime,
+	r := Record{File: st.FinishedFile, Title: st.FinishedTitle, Path: st.FinishedPath, Result: st.Finished, Duration: st.FinishedTime,
 		Filament: st.FinishedFilament, End: now, Phases: phases, Planned: planned, Pos: pos}
 	h.mu.Lock()
 	defer h.mu.Unlock()

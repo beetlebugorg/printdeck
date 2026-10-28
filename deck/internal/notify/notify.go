@@ -94,10 +94,10 @@ func (w *Watcher) Step(st printer.State, roll Roll) []Message {
 	case !busy && w.busy:
 		switch st.Finished {
 		case "complete":
-			body := st.FinishedFile + " · " + duration(st.FinishedTime)
+			body := st.FinishedName() + " · " + duration(st.FinishedTime)
 			out = append(out, Message{Title: "Print done", Body: body, Tags: "white_check_mark"})
 		case "error":
-			body := st.FinishedFile
+			body := st.FinishedName()
 			if st.FinishedError != "" {
 				body += "\n" + st.FinishedError
 			}
@@ -105,14 +105,14 @@ func (w *Watcher) Step(st printer.State, roll Roll) []Message {
 		}
 	}
 	if busy && st.Paused && !w.paused {
-		body := st.File
+		body := st.Name()
 		switch {
 		case st.PausePrompt != "":
 			body = st.PausePrompt
 		case st.Message != "":
 			body = st.Message
 		case st.Layers > 0:
-			body = fmt.Sprintf("%s · layer %d of %d", st.File, st.Layer, st.Layers)
+			body = fmt.Sprintf("%s · layer %d of %d", st.Name(), st.Layer, st.Layers)
 		}
 		title := "Print paused"
 		if st.PauseRoll != "" {
@@ -122,11 +122,11 @@ func (w *Watcher) Step(st printer.State, roll Roll) []Message {
 	}
 	if busy && !w.firstLayer && st.Layers > 1 && st.Layer >= 2 {
 		w.firstLayer = true
-		out = append(out, Message{Title: "First layer done", Body: st.File, Tags: "ok"})
+		out = append(out, Message{Title: "First layer done", Body: st.Name(), Tags: "ok"})
 	}
 	if busy && !w.rollMsg && roll.Known && roll.Need > roll.Left {
 		w.rollMsg = true
-		body := fmt.Sprintf("%s has %s left. The rest of %s uses %s.", roll.Name, printer.Weight(roll.Left), st.File, printer.Weight(roll.Need))
+		body := fmt.Sprintf("%s has %s left. The rest of %s uses %s.", roll.Name, printer.Weight(roll.Left), st.Name(), printer.Weight(roll.Need))
 		out = append(out, Message{Title: "The roll runs short", Body: body, Tags: "warning", Priority: 4})
 	}
 	w.busy, w.paused, w.file, w.layer = busy, st.Paused, st.File, st.Layer

@@ -740,7 +740,7 @@ func (a *App) drawHistory(c *gfx.Canvas) {
 	}
 	files := a.fileIndex()
 	l := kit.List{Area: area, N: len(recs), RowH: recordRowH(), Gap: 10, Scroll: &a.historyScroll}
-	a.list(c, l, func(i int) string { return recs[i].File }, func(c *gfx.Canvas, i int, box image.Rectangle) {
+	a.list(c, l, func(i int) string { return recs[i].Name() }, func(c *gfx.Canvas, i int, box image.Rectangle) {
 		a.recordRow(c, box, recs[i], recs[i].Summary(func(mm float64) float64 { return a.grams(mm, "") }), fileDate(recs[i].End, a.Now(), a.Clock24), files)
 	}, open)
 }
@@ -754,7 +754,7 @@ func recordRowH() int {
 }
 
 // recordRow is the row of a finished print in a list: the thumbnail of the file at the left, and
-// at its right the file, the summary and the date line in three lines, as a row of the Files page.
+// at its right the name, the summary and the date line in three lines, as a row of the Files page.
 // The summary is red for a print that did not complete.
 func (a *App) recordRow(c *gfx.Canvas, box image.Rectangle, r printer.Record, summary, date string, files map[string]printer.File) {
 	plate(c, box)
@@ -769,7 +769,7 @@ func (a *App) recordRow(c *gfx.Canvas, box image.Rectangle, r printer.Record, su
 		y1, y2, y3 = 8, 38, 66
 	}
 	x := box.Min.X + 92
-	c.Text(image.Rect(x, box.Min.Y+y1, box.Max.X-12, box.Min.Y+y1+30), r.File, gfx.Face(true, 19), text, gfx.Left)
+	c.Text(image.Rect(x, box.Min.Y+y1, box.Max.X-12, box.Min.Y+y1+30), r.Name(), gfx.Face(true, 19), text, gfx.Left)
 	c.Text(image.Rect(x, box.Min.Y+y2, box.Max.X-12, box.Min.Y+y2+24), summary, gfx.Face(false, 16), col, gfx.Left)
 	c.Text(image.Rect(x, box.Min.Y+y3, box.Max.X-12, min(box.Max.Y-6, box.Min.Y+y3+28)), date, gfx.Face(false, 14), dim, gfx.Left)
 }

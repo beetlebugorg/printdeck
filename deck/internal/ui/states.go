@@ -25,7 +25,7 @@ func (a *App) lastPrint(st printer.State) (printer.Record, bool) {
 		return h[0], true
 	}
 	if st.Finished != "" {
-		return printer.Record{File: st.FinishedFile, Path: st.FinishedPath, Result: st.Finished,
+		return printer.Record{File: st.FinishedFile, Title: st.FinishedTitle, Path: st.FinishedPath, Result: st.Finished,
 			Duration: st.FinishedTime, Filament: st.FinishedFilament}, true
 	}
 	return printer.Record{}, false
@@ -151,7 +151,7 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 	if end {
 		head = "PRINT END"
 	}
-	panel(c, box, head+"  ·  "+strings.ToUpper(gfx.Fit(gfx.Face(true, 13), st.File, 300)))
+	panel(c, box, head+"  ·  "+strings.ToUpper(gfx.Fit(gfx.Face(true, 13), st.Name(), 300)))
 	for i, s := range steps {
 		y := box.Min.Y + 22 + i*rowH
 		led(c, box.Min.X+34, y+rowH/2-4, s.now)
@@ -460,11 +460,11 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 	if st.FinishedFilament > 0 {
 		what += " · " + a.weight(st.FinishedFilament)
 	}
-	line := title + " · " + st.FinishedFile + " · " + what
+	line := title + " · " + st.FinishedName() + " · " + what
 	if gfx.FinePrint() && result.Dy() >= 60 {
 		// The large text: the result and the file, and under them the time and the filament.
 		lines := kit.Rows(result, 0, kit.Fr(1), kit.Fr(1))
-		c.Text(lines[0], title+" · "+st.FinishedFile, gfx.Face(true, 18), text, gfx.Center)
+		c.Text(lines[0], title+" · "+st.FinishedName(), gfx.Face(true, 18), text, gfx.Center)
 		c.Text(lines[1], what, gfx.Face(true, 18), text, gfx.Center)
 	} else {
 		c.Text(result, line, gfx.Face(true, 18), text, gfx.Center)
@@ -540,8 +540,8 @@ func (a *App) lapseKey(c *gfx.Canvas, r image.Rectangle, st printer.State, video
 		a.redrawSoon(500 * time.Millisecond)
 		return
 	}
-	file := st.FinishedFile
-	a.button(c, r, "Time lapse", raised, text, func() { a.openPlayer(video, file) })
+	name := st.FinishedName()
+	a.button(c, r, "Time lapse", raised, text, func() { a.openPlayer(video, name) })
 }
 
 // doneVideo is the time lapse video of the print that ended: its name, or saving while the deck

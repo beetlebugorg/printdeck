@@ -592,6 +592,10 @@ func (k *Klippy) refresh(notify func()) {
 		if fi, err := k.store.Stat(st.FilePath); err == nil {
 			st.FileDate = fi.ModTime().Unix()
 		}
+		st.Title = k.FileMeta(st.FilePath).Title
+	}
+	if st.FinishedPath != "" {
+		st.FinishedTitle = k.FileMeta(st.FinishedPath).Title
 	}
 	k.View.Activity(&st)
 	now := time.Now()

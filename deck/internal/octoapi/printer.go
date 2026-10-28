@@ -235,7 +235,7 @@ func (s *Server) serveJob(w http.ResponseWriter, r *http.Request) {
 	text, _ := s.stateFlags()
 	var file map[string]any
 	if st.Busy() {
-		file = map[string]any{"name": st.File, "display": st.File, "path": st.FilePath, "origin": "local",
+		file = map[string]any{"name": st.File, "display": st.Name(), "path": st.FilePath, "origin": "local",
 			"size": st.FileSize, "date": st.FileDate}
 	} else {
 		file = map[string]any{"name": nil, "path": nil, "origin": nil, "size": nil, "date": nil}
