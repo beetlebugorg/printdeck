@@ -535,13 +535,23 @@ func (s *share) viewButtons(views []string) {
 	}
 }
 
+// lapseHold is the pause on the last frame of the time lapse before the loop starts again.
+const lapseHold = 1500 * time.Millisecond
+
 // play shows the time lapse frames on the canvas in a loop.
 func (s *share) play() {
 	ctx := s.canvas.Call("getContext", "2d")
 	for {
-		fps := max(1, s.fps)
-		time.Sleep(time.Second / time.Duration(fps))
 		n := len(s.frames)
+		fps := max(1, s.fps)
+		if n < 12 {
+			fps = min(fps, 4) // a short loop plays slower, so it does not flicker
+		}
+		wait := time.Second / time.Duration(fps)
+		if n > 0 && s.shown == n-1 {
+			wait += lapseHold // a pause on the last frame before the loop starts again
+		}
+		time.Sleep(wait)
 		if n == 0 {
 			continue
 		}
