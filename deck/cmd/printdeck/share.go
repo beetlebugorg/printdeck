@@ -34,7 +34,13 @@ type shareLink struct {
 // newShareLink returns the share link of the deck, with the camera hub and the time lapse runner
 // of the app (or nil for none).
 func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend) *shareLink {
-	l := &shareLink{link: link, pr: pr, name: hostName()}
+	// The name of the printer on the page: the host name, or "a Printdeck" for the default host
+	// name. A simulated printer has the name of its model (status).
+	name := hostName()
+	if strings.EqualFold(name, "printdeck") {
+		name = "a Printdeck"
+	}
+	l := &shareLink{link: link, pr: pr, name: name}
 	if r, ok := app.TimeLapse.(*timelapse.Runner); ok {
 		l.lapse = r
 	}
@@ -125,6 +131,16 @@ func (l *shareLink) status() cloud.ShareStatus {
 	if st.HasZ {
 		s.Height = st.Z
 	}
+	if st.Simulated != "" {
+		s.Printer = "the simulated " + st.Simulated
+	}
+	// The file of the print: the material and the filament that the slicer wrote, and the
+	// height of the model.
+	path := st.FilePath
+	if !st.Busy() {
+		path = st.FinishedPath
+	}
+	meta := l.pr.FileMeta(path)
 	density := printer.Density("")
 	// The roll in the printer: its material and name, and its density for the grams.
 	if store := l.pr.SpoolStore(); store != nil {
@@ -133,6 +149,19 @@ func (l *shareLink) status() cloud.ShareStatus {
 			s.Material = strings.Trim(s.Material, ", ")
 			density = store.Density(sp)
 		}
+	}
+	if s.Material == "" {
+		s.Material = meta.MaterialName
+		if s.Material == "" {
+			s.Material = meta.Material
+		}
+		if meta.Material != "" {
+			density = printer.Density(meta.Material)
+		}
+	}
+	s.GramsTotal = meta.FilamentG
+	if s.GramsTotal == 0 && meta.FilamentMM > 0 {
+		s.GramsTotal = printer.GramsAt(meta.FilamentMM, l.pr.Machine().Diameter(), density)
 	}
 	grams := func(mm float64) float64 {
 		return printer.GramsAt(mm, l.pr.Machine().Diameter(), density)

@@ -422,9 +422,9 @@ func (s *share) render(st wire.ShareStatus) {
 		setText("material", st.Material)
 	}
 	if st.GramsTotal > 0 {
-		setText("grams", fmt.Sprintf("%.0f of %.0f g", st.Grams, st.GramsTotal))
+		setText("grams", grams(st.Grams)+" of "+grams(st.GramsTotal))
 	} else if st.Grams > 0 {
-		setText("grams", fmt.Sprintf("%.0f g", st.Grams))
+		setText("grams", grams(st.Grams))
 	}
 	setText("tool", temp(st.Tool, st.ToolTarget))
 	setText("bed", temp(st.Bed, st.BedTarget))
@@ -457,6 +457,14 @@ func (s *share) render(st wire.ShareStatus) {
 		}
 		setText("lapseNote", note)
 	}
+}
+
+// grams is a weight of filament: one decimal under 10 g.
+func grams(g float64) string {
+	if g < 10 {
+		return fmt.Sprintf("%.1f g", g)
+	}
+	return fmt.Sprintf("%.0f g", g)
 }
 
 // temp is a temperature and its target.
