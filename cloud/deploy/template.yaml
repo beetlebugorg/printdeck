@@ -69,6 +69,18 @@ Resources:
             Status: Enabled
             Prefix: x/
             AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 }
+          # The photos of the owner as uploaded, before the API cleans them.
+          - Id: photo-uploads
+            Status: Enabled
+            Prefix: up/
+            ExpirationInDays: 1
+      # The owner page uploads photos from the browser with a grant (an S3 POST form).
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins: [!Sub "https://${Domain}"]
+            AllowedMethods: [POST]
+            AllowedHeaders: ["*"]
+            MaxAge: 3600
 
   OriginAccess:
     Type: AWS::CloudFront::OriginAccessControl

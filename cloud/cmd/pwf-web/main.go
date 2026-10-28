@@ -40,39 +40,56 @@ func setHidden(id string, hidden bool) {
 	}
 }
 
-// fetchText returns the text of url, or an error. It waits for the promise of fetch.
+// fetchText returns the text of url, or an error.
 func fetchText(url string) (string, error) {
+	status, text, err := fetchDo("GET", url, nil, js.Undefined())
+	if err == nil && status/100 != 2 {
+		err = fmt.Errorf("status %d", status)
+	}
+	return text, err
+}
+
+// fetchDo sends a request with the headers and the body (a string, a FormData, or undefined), and
+// returns the status and the text of the reply. It waits for the promises of fetch.
+func fetchDo(method, url string, headers map[string]string, body js.Value) (int, string, error) {
 	type result struct {
-		text string
-		err  error
+		status int
+		text   string
+		err    error
 	}
 	ch := make(chan result, 1)
+	var status int
 	var then, fail, gotText js.Func
 	fail = js.FuncOf(func(_ js.Value, args []js.Value) any {
 		ch <- result{err: fmt.Errorf("fetch: %s", args[0].Call("toString").String())}
 		return nil
 	})
 	gotText = js.FuncOf(func(_ js.Value, args []js.Value) any {
-		ch <- result{text: args[0].String()}
+		ch <- result{status: status, text: args[0].String()}
 		return nil
 	})
 	then = js.FuncOf(func(_ js.Value, args []js.Value) any {
-		resp := args[0]
-		if !resp.Get("ok").Bool() {
-			ch <- result{err: fmt.Errorf("status %d", resp.Get("status").Int())}
-			return nil
-		}
-		resp.Call("text").Call("then", gotText).Call("catch", fail)
+		status = args[0].Get("status").Int()
+		args[0].Call("text").Call("then", gotText).Call("catch", fail)
 		return nil
 	})
 	defer then.Release()
 	defer fail.Release()
 	defer gotText.Release()
 	opts := js.Global().Get("Object").New()
+	opts.Set("method", method)
 	opts.Set("cache", "no-store")
+	h := js.Global().Get("Object").New()
+	for k, v := range headers {
+		h.Set(k, v)
+	}
+	opts.Set("headers", h)
+	if !body.IsUndefined() {
+		opts.Set("body", body)
+	}
 	js.Global().Call("fetch", url, opts).Call("then", then).Call("catch", fail)
 	r := <-ch
-	return r.text, r.err
+	return r.status, r.text, r.err
 }
 
 // localTime is the time t as the clock of the viewer shows it, for example "3:41 PM".
@@ -111,11 +128,21 @@ type share struct {
 	fps    int
 	shown  int
 	canvas js.Value
+	id     string
+	owner  string // the owner key from the address, or ""
+	ready  wire.ShareReady
+	photos string // the photos that show, joined
+	ended  bool
 }
 
 // runShare polls the status of the share at base and draws the page.
 func runShare(base string) {
 	s := &share{base: base, canvas: byID("lapse"), fps: 12}
+	s.id = strings.TrimSuffix(strings.TrimPrefix(base, "/s/"), "/")
+	if h := js.Global().Get("location").Get("hash").String(); strings.HasPrefix(h, "#owner=") {
+		s.owner = strings.TrimPrefix(h, "#owner=")
+		s.ownerPanel()
+	}
 	go s.play()
 	go func() {
 		for {
@@ -136,6 +163,156 @@ func (s *share) poll() {
 		return
 	}
 	s.render(st)
+	if t, err := fetchText(s.base + "ready.json?t=" + fmt.Sprint(time.Now().UnixMilli())); err == nil {
+		var rd wire.ShareReady
+		if json.Unmarshal([]byte(t), &rd) == nil {
+			s.renderReady(rd)
+		}
+	}
+}
+
+// renderReady draws the flag Ready to pick up, its note, and the photos.
+func (s *share) renderReady(rd wire.ShareReady) {
+	s.ready = rd
+	setHidden("readyBanner", !rd.Ready)
+	if rd.Ready {
+		line := rd.Note
+		if !rd.At.IsZero() {
+			line = strings.TrimSpace(line + " Since " + localDay(rd.At) + ".")
+		}
+		setText("readyText", line)
+		setHidden("doneBanner", true)
+	}
+	if !rd.Expires.IsZero() {
+		setText("expires", "View only. Shared from a Printdeck. This link stops at "+localDay(rd.Expires)+".")
+	}
+	var keys []string
+	for _, p := range rd.Photos {
+		keys = append(keys, p.File)
+	}
+	if k := strings.Join(keys, ","); k != s.photos {
+		s.photos = k
+		box := byID("photos")
+		box.Set("textContent", "")
+		for _, p := range rd.Photos {
+			a := doc.Call("createElement", "a")
+			a.Set("href", s.base+p.File)
+			img := doc.Call("createElement", "img")
+			img.Set("src", s.base+p.Small)
+			img.Set("alt", "A photo of the part")
+			img.Set("loading", "lazy")
+			a.Call("appendChild", img)
+			box.Call("appendChild", a)
+		}
+		setHidden("photosCard", len(rd.Photos) == 0)
+	}
+	if s.owner != "" {
+		btn := byID("readyBtn")
+		if rd.Ready {
+			btn.Set("textContent", "Not ready yet")
+			btn.Call("setAttribute", "aria-pressed", "true")
+		} else {
+			btn.Set("textContent", "Ready to pick up")
+			btn.Call("setAttribute", "aria-pressed", "false")
+		}
+	}
+}
+
+// ownerPanel shows the owner part of the page, and handles its photos and its Ready key.
+func (s *share) ownerPanel() {
+	setHidden("owner", false)
+	key := map[string]string{"X-Share-Key": s.owner}
+	api := "/api/v1/shares/" + s.id
+	byID("photoFile").Call("addEventListener", "change", js.FuncOf(func(this js.Value, _ []js.Value) any {
+		files := this.Get("files")
+		n := files.Get("length").Int()
+		list := make([]js.Value, n)
+		for i := range n {
+			list[i] = files.Index(i)
+		}
+		this.Set("value", "")
+		go func() {
+			for i, f := range list {
+				setText("ownerMsg", fmt.Sprintf("Sending photo %d of %d…", i+1, len(list)))
+				if err := s.sendPhoto(api, key, f); err != nil {
+					setText("ownerMsg", err.Error())
+					return
+				}
+			}
+			setText("ownerMsg", "The photos are on the page.")
+			s.poll()
+		}()
+		return nil
+	}))
+	byID("readyBtn").Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
+		ready := !s.ready.Ready
+		note := byID("note").Get("value").String()
+		go func() {
+			b, _ := json.Marshal(wire.ReadyRequest{Ready: ready, Note: note})
+			h := map[string]string{"X-Share-Key": s.owner, "Content-Type": "application/json"}
+			status, text, err := fetchDo("POST", api+"/ready", h, js.ValueOf(string(b)))
+			if err != nil || status != 200 {
+				setText("ownerMsg", "The service did not take it: "+errText(text, err))
+				return
+			}
+			var rd wire.ShareReady
+			if json.Unmarshal([]byte(text), &rd) == nil {
+				s.renderReady(rd)
+			}
+			msg := "The page shows Ready to pick up."
+			if !rd.Ready {
+				msg = "The page shows Print finished."
+			}
+			setText("ownerMsg", msg)
+		}()
+		return nil
+	}))
+}
+
+// sendPhoto uploads one photo with a grant of the service, and adds it to the share.
+func (s *share) sendPhoto(api string, key map[string]string, file js.Value) error {
+	status, text, err := fetchDo("POST", api+"/photo", key, js.Undefined())
+	var pr wire.PhotoReply
+	if err != nil || status != 200 || json.Unmarshal([]byte(text), &pr) != nil {
+		return fmt.Errorf("The service refused the photo: %s", errText(text, err))
+	}
+	if t := file.Get("type").String(); t != "image/jpeg" && t != "image/png" {
+		return fmt.Errorf("Send the photo as JPEG: %s is %s", file.Get("name").String(), t)
+	}
+	fd := js.Global().Get("FormData").New()
+	for k, v := range pr.Grant.Fields {
+		fd.Call("append", k, v)
+	}
+	fd.Call("append", "key", pr.Grant.Prefix+"photo")
+	fd.Call("append", "Content-Type", file.Get("type").String())
+	fd.Call("append", "Cache-Control", "no-store")
+	fd.Call("append", "file", file)
+	status, text, err = fetchDo("POST", pr.Grant.URL, nil, fd)
+	if err != nil || status/100 != 2 {
+		return fmt.Errorf("The upload failed: %s", errText(text, err))
+	}
+	status, text, err = fetchDo("POST", api+"/photo/"+pr.Photo+"/done", key, js.Undefined())
+	if err != nil || status != 200 {
+		return fmt.Errorf("The service refused the photo: %s", errText(text, err))
+	}
+	return nil
+}
+
+// errText is the error of a reply: its JSON error, or err.
+func errText(text string, err error) string {
+	if err != nil {
+		return err.Error()
+	}
+	var e struct {
+		Error string `json:"error"`
+	}
+	if json.Unmarshal([]byte(text), &e) == nil && e.Error != "" {
+		return e.Error
+	}
+	if len(text) > 120 {
+		text = text[:120]
+	}
+	return text
 }
 
 var stateText = map[string]string{
@@ -167,23 +344,28 @@ func (s *share) render(st wire.ShareStatus) {
 	}
 	setText("pillText", label)
 
-	// The banner at the end.
-	setHidden("doneBanner", !ended)
+	// The banner at the end. Ready to pick up is the flag of the owner (renderReady).
+	s.ended = ended
+	setHidden("doneBanner", !ended || s.ready.Ready)
 	if ended {
-		title := "Ready to pick up"
-		switch {
-		case st.State != "done":
+		title := "Print finished"
+		switch st.State {
+		case "cancelled":
+			title = "The print was cancelled"
+		case "error":
 			title = "The print stopped"
-		case st.ReadyLeft > 0:
-			title = "Done, the bed cools"
 		}
 		setText("doneTitle", title)
 		line := ""
 		if !st.Ended.IsZero() {
 			line = "Ended at " + localTime(st.Ended) + "."
 		}
-		if st.State == "done" && st.ReadyLeft > 0 {
-			line += " Ready at about " + localTime(st.Updated.Add(time.Duration(st.ReadyLeft)*time.Second)) + "."
+		if st.State == "done" {
+			if st.ReadyLeft > 0 {
+				line += " The bed cools: the part comes off easily at about " + localTime(st.Updated.Add(time.Duration(st.ReadyLeft)*time.Second)) + "."
+			} else {
+				line += " The bed is cool."
+			}
 		}
 		setText("doneText", strings.TrimSpace(line))
 	}

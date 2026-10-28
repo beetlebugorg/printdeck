@@ -41,6 +41,8 @@ type Sharer struct {
 // share is the share of the sharer.
 type share struct {
 	id, url string
+	owner   string // the owner key
+	ready   bool
 	grant   Grant
 	lapse   [][]byte // the time lapse frames that wait for the upload
 	lapseN  int      // the time lapse frames that are up
@@ -64,6 +66,10 @@ type ShareState struct {
 	Ended   bool
 	Expires time.Time
 	Err     string
+	// OwnerURL is the page of the share with the owner key, for photos and Ready, and Ready the
+	// flag of the owner.
+	OwnerURL string
+	Ready    bool
 }
 
 // State returns the state of the share.
@@ -78,7 +84,11 @@ func (s *Sharer) State() ShareState {
 		s.cur = nil
 		return ShareState{}
 	}
-	return ShareState{Active: true, Busy: c.busy, URL: c.url, Ended: c.ended, Expires: c.expires, Err: c.err}
+	st := ShareState{Active: true, Busy: c.busy, URL: c.url, Ended: c.ended, Expires: c.expires, Err: c.err, Ready: c.ready}
+	if c.url != "" && c.owner != "" {
+		st.OwnerURL = c.url + "#owner=" + c.owner
+	}
+	return st
 }
 
 func (s *Sharer) changed() {
@@ -118,10 +128,38 @@ func (s *Sharer) Start(job, printer string, lapse [][]byte) {
 			s.changed()
 			return
 		}
-		c.id, c.url, c.grant = out.ID, out.URL, out.Grant
+		c.id, c.url, c.owner, c.grant = out.ID, out.URL, out.OwnerKey, out.Grant
 		s.mu.Unlock()
 		s.changed()
 		s.run(ctx, id, c)
+	}()
+}
+
+// SetReady sets the flag Ready to pick up of the share, with a note, in the background.
+func (s *Sharer) SetReady(ready bool, note string) {
+	id := s.Link.Identity()
+	s.mu.Lock()
+	c := s.cur
+	s.mu.Unlock()
+	if id == nil || c == nil || c.id == "" {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		var out ShareReady
+		err := s.Link.Client.Do(ctx, id, http.MethodPost, "/api/v1/shares/"+c.id+"/ready", ReadyRequest{Ready: ready, Note: note}, &out)
+		s.mu.Lock()
+		if err != nil {
+			c.err = err.Error()
+		} else {
+			c.ready, c.err = out.Ready, ""
+			if !out.Expires.IsZero() {
+				c.expires = out.Expires
+			}
+		}
+		s.mu.Unlock()
+		s.changed()
 	}()
 }
 

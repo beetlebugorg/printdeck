@@ -1,9 +1,13 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"image"
+	"image/jpeg"
 	"io"
+	"strings"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -155,4 +159,90 @@ func TestShareStopAndGrant(t *testing.T) {
 	}
 	sh.Stop()
 	waitFor(t, func() bool { code, _ := get(t, u); return code == 404 })
+}
+
+// exifJPEG is a JPEG of w x h pixels with an EXIF block: the orientation o and a GPS tag.
+func exifJPEG(t *testing.T, w, h, o int) []byte {
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, img, nil); err != nil {
+		t.Fatal(err)
+	}
+	// TIFF, little endian: IFD0 with Orientation (0x0112) and GPSInfo (0x8825).
+	tiff := []byte{'I', 'I', 42, 0, 8, 0, 0, 0, 2, 0,
+		0x12, 0x01, 3, 0, 1, 0, 0, 0, byte(o), 0, 0, 0,
+		0x25, 0x88, 4, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0}
+	app1 := append([]byte("Exif\x00\x00"), tiff...)
+	seg := []byte{0xff, 0xe1, byte((len(app1) + 2) >> 8), byte(len(app1) + 2)}
+	b := buf.Bytes()
+	out := append([]byte{0xff, 0xd8}, seg...)
+	out = append(out, app1...)
+	return append(out, b[2:]...)
+}
+
+// The owner key sets Ready and adds a photo. The photo is upright from its EXIF orientation and
+// has no EXIF block. A wrong key gets 401. Ready moves the delete to 24 hours after Ready.
+func TestShareReadyAndPhotos(t *testing.T) {
+	d, url := devService(t)
+	l := connectedLink(t, d, url)
+	sh := &cloud.Sharer{Link: l, Every: 20 * time.Millisecond, Status: func() cloud.ShareStatus { return cloud.ShareStatus{State: "done"} }}
+	sh.Start("Tray", "Workhorse", nil)
+	waitFor(t, func() bool { return sh.State().Ended })
+	st := sh.State()
+	if !strings.Contains(st.OwnerURL, "#owner=") {
+		t.Fatalf("owner URL %q", st.OwnerURL)
+	}
+	id := strings.TrimPrefix(st.URL, url+"/s/")
+	key := st.OwnerURL[strings.Index(st.OwnerURL, "#owner=")+7:]
+	post := func(path, k string, body any) (int, []byte) {
+		b, _ := json.Marshal(body)
+		req, _ := http.NewRequest("POST", url+"/api/v1/shares/"+id+path, bytes.NewReader(b))
+		req.Header.Set(cloud.HeaderShareKey, k)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		out, _ := io.ReadAll(resp.Body)
+		return resp.StatusCode, out
+	}
+	if code, _ := post("/ready", "wrong", cloud.ReadyRequest{Ready: true}); code != 401 {
+		t.Fatalf("wrong key: %d", code)
+	}
+	if code, _ := post("/end", key, nil); code == 200 {
+		t.Fatal("the owner key ends a share")
+	}
+	code, b := post("/photo", key, nil)
+	var pr cloud.PhotoReply
+	if code != 200 || json.Unmarshal(b, &pr) != nil {
+		t.Fatalf("photo: %d %s", code, b)
+	}
+	if err := cloud.PostFile(context.Background(), nil, pr.Grant, "photo", "image/jpeg", "", exifJPEG(t, 40, 20, 6)); err != nil {
+		t.Fatal(err)
+	}
+	if code, b := post("/photo/"+pr.Photo+"/done", key, nil); code != 200 {
+		t.Fatalf("done: %d %s", code, b)
+	}
+	code, b = post("/ready", key, cloud.ReadyRequest{Ready: true, Note: "On the porch"})
+	var rd cloud.ShareReady
+	if code != 200 || json.Unmarshal(b, &rd) != nil || !rd.Ready || rd.Note != "On the porch" || len(rd.Photos) != 1 {
+		t.Fatalf("ready: %d %s", code, b)
+	}
+	if p := rd.Photos[0]; p.W != 20 || p.H != 40 {
+		t.Errorf("the photo is %dx%d, want 20x40 (upright)", p.W, p.H)
+	}
+	code, photo := get(t, url+"/s/"+id+"/"+rd.Photos[0].File)
+	if code != 200 || bytes.Contains(photo, []byte("Exif")) {
+		t.Errorf("photo: %d, EXIF %v", code, bytes.Contains(photo, []byte("Exif")))
+	}
+	if code, b := get(t, url+"/s/"+id+"/ready.json"); code != 200 || !bytes.Contains(b, []byte(`"ready":true`)) {
+		t.Errorf("ready.json: %d %s", code, b)
+	}
+	if time.Until(rd.Expires) < 23*time.Hour {
+		t.Errorf("expires %v", rd.Expires)
+	}
+	// The deck sets Ready too, with its signature.
+	sh.SetReady(false, "")
+	waitFor(t, func() bool { return !sh.State().Ready })
 }

@@ -22,9 +22,19 @@
     <p id="sub">This page updates by itself. Leave it open.</p>
   </section>
 
+  <section class="ready-banner" id="readyBanner" hidden>
+    <strong>Ready to pick up</strong>
+    <span id="readyText"></span>
+  </section>
+
   <section class="done-banner" id="doneBanner" hidden>
-    <strong id="doneTitle">Ready to pick up</strong>
+    <strong id="doneTitle">Print finished</strong>
     <span id="doneText"></span>
+  </section>
+
+  <section class="card photos-card" id="photosCard" aria-label="Photos" hidden>
+    <h2>Photos</h2>
+    <div class="photos" id="photos"></div>
   </section>
 
   <section class="cam" id="camBox" aria-label="Camera" hidden>
@@ -73,6 +83,19 @@
     <h2>Time lapse</h2>
     <canvas id="lapse" width="640" height="360" hidden></canvas>
     <p id="lapseNote" class="dim">The time lapse grows here with each layer.</p>
+  </section>
+
+  <section class="card owner" id="owner" aria-label="For the owner" hidden>
+    <h2>For the owner</h2>
+    <p class="dim">Only this link with the owner key shows this part. Add photos of the finished part, then mark it ready.</p>
+    <label class="file">
+      <input type="file" id="photoFile" accept="image/jpeg,image/png" multiple>
+      <span>Add photos</span>
+    </label>
+    <label for="note" class="lab">Note for the page</label>
+    <textarea id="note" rows="2" maxlength="280" placeholder="For example: On the shelf by the door"></textarea>
+    <button type="button" id="readyBtn">Ready to pick up</button>
+    <p id="ownerMsg" class="dim" role="status"></p>
   </section>
 
   <footer>

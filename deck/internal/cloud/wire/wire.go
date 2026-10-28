@@ -47,3 +47,49 @@ type ShareStatus struct {
 	// Updated is the time of this status.
 	Updated time.Time `json:"updated"`
 }
+
+// ShareReady is ready.json of a share: the flag that the owner sets when the part is ready to
+// pick up, a note, and the photos of the part. The service writes it.
+type ShareReady struct {
+	Ready  bool         `json:"ready"`
+	At     time.Time    `json:"at,omitzero"`
+	Note   string       `json:"note,omitempty"`
+	Photos []SharePhoto `json:"photos,omitempty"`
+	// Expires is the time of the delete of the share: 24 hours after the end of the print, or
+	// after Ready.
+	Expires time.Time `json:"expires,omitzero"`
+}
+
+// SharePhoto is a photo of a share: the file of the photo (at most 2048 px) and of its small
+// copy (at most 480 px), under s/<id>/, and the size of the photo.
+type SharePhoto struct {
+	File  string `json:"file"`
+	Small string `json:"small"`
+	W     int    `json:"w"`
+	H     int    `json:"h"`
+}
+
+// Grant lets the deck upload files under Prefix until Expires, with an S3 POST form: the form
+// has Fields, the field "key" with a key under Prefix, the fields "Content-Type" and
+// "Cache-Control", and the file last. A file has at most MaxBytes.
+type Grant struct {
+	URL      string            `json:"url"`
+	Fields   map[string]string `json:"fields"`
+	Prefix   string            `json:"prefix"`
+	MaxBytes int64             `json:"max_bytes"`
+	Expires  time.Time         `json:"expires"`
+}
+
+// ReadyRequest is the body of POST /api/v1/shares/<id>/ready.
+type ReadyRequest struct {
+	Ready bool   `json:"ready"`
+	Note  string `json:"note"`
+}
+
+// PhotoReply is the reply to POST /api/v1/shares/<id>/photo: the ID of the photo, and a grant for
+// its upload as the file "photo" under the prefix of the grant. POST .../photo/<id>/done then
+// adds the photo to the share.
+type PhotoReply struct {
+	Photo string `json:"photo"`
+	Grant Grant  `json:"grant"`
+}

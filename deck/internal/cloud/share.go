@@ -15,23 +15,20 @@ type ShareRequest struct {
 	Printer string `json:"printer"`
 }
 
-// ShareReply is the reply to POST /api/v1/shares.
+// ShareReply is the reply to POST /api/v1/shares. OwnerKey lets the owner add photos and set
+// Ready from a phone, with no deck: the deck shows it in the owner link, after "#".
 type ShareReply struct {
-	ID    string `json:"id"`
-	URL   string `json:"url"`
-	Grant Grant  `json:"grant"`
+	ID       string `json:"id"`
+	URL      string `json:"url"`
+	OwnerKey string `json:"owner_key"`
+	Grant    Grant  `json:"grant"`
 }
 
-// Grant lets the deck upload files under Prefix until Expires, with an S3 POST form: the form
-// has Fields, the field "key" with a key under Prefix, the fields "Content-Type" and
-// "Cache-Control", and the file last. A file has at most MaxBytes.
-type Grant struct {
-	URL      string            `json:"url"`
-	Fields   map[string]string `json:"fields"`
-	Prefix   string            `json:"prefix"`
-	MaxBytes int64             `json:"max_bytes"`
-	Expires  time.Time         `json:"expires"`
-}
+// ShareReady is ready.json of a share (wire.ShareReady).
+type ShareReady = wire.ShareReady
+
+// SharePhoto is a photo of a share (wire.SharePhoto).
+type SharePhoto = wire.SharePhoto
 
 // EndRequest is the body of POST /api/v1/shares/<id>/end.
 type EndRequest struct {
@@ -45,3 +42,13 @@ type EndReply struct {
 
 // ShareStatus is status.json of a share (wire.ShareStatus).
 type ShareStatus = wire.ShareStatus
+
+// HeaderShareKey is the header of the owner key of a share, for the requests of the owner page.
+const HeaderShareKey = "X-Share-Key"
+
+// The types of the share that the pages use too (package wire).
+type (
+	Grant        = wire.Grant
+	ReadyRequest = wire.ReadyRequest
+	PhotoReply   = wire.PhotoReply
+)

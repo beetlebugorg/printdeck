@@ -28,6 +28,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/signin v1.12.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.39.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.44.0 // indirect
+	golang.org/x/image v0.41.0 // indirect
 )
 
 replace printdeck => ../deck
