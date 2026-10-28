@@ -239,8 +239,30 @@ func (z *focuser) read() bool {
 	return true
 }
 
-// focusEvery is the time between two checks of the focus in the capture: the settings, and
-// with autofocus the lens position.
+// fdCtrl is the controls of a V4L2 device (ctrlDev).
+type fdCtrl int
+
+func (fd fdCtrl) query(id uint32) (PTZRange, bool) {
+	q := v4l2QueryCtrl{ID: id}
+	if ioctl(int(fd), vidiocQueryCtrl, unsafe.Pointer(&q)) != nil || q.Flags&ctrlFlagDisabled != 0 {
+		return PTZRange{}, false
+	}
+	return PTZRange{Min: int(q.Minimum), Max: int(q.Maximum), Step: max(1, int(q.Step)), Default: int(q.Default)}, true
+}
+
+func (fd fdCtrl) get(id uint32) (int, error) {
+	c := v4l2Control{ID: id}
+	err := ioctl(int(fd), vidiocGCtrl, unsafe.Pointer(&c))
+	return int(c.Value), err
+}
+
+func (fd fdCtrl) set(id uint32, v int) error {
+	c := v4l2Control{ID: id, Value: int32(v)}
+	return ioctl(int(fd), vidiocSCtrl, unsafe.Pointer(&c))
+}
+
+// focusEvery is the time between two checks of the focus and the PTZ position in the capture:
+// the settings, and with autofocus the lens position.
 const focusEvery = 250 * time.Millisecond
 
 // errBandwidth is the error of a camera that gets too little USB bandwidth: the cameras on one USB
@@ -497,6 +519,11 @@ func capture(ctx context.Context, d Device, l link) error {
 		z.apply(s)
 		l.focus(z.f)
 	}
+	pz := newPTZCtl(fdCtrl(fd))
+	if pz != nil {
+		pz.apply(s)
+		l.reportPTZ(pz.p)
+	}
 	lastFocus := time.Now()
 
 	start := time.Now()
@@ -507,10 +534,14 @@ func capture(ctx context.Context, d Device, l link) error {
 		if time.Since(lastFrame) > noFrameFor {
 			return errNoSignal
 		}
-		if z != nil && time.Since(lastFocus) >= focusEvery {
+		if (z != nil || pz != nil) && time.Since(lastFocus) >= focusEvery {
 			lastFocus = time.Now()
-			if z.apply(l.settings()) || (z.f.Auto && z.read()) {
+			cs := l.settings()
+			if z != nil && (z.apply(cs) || (z.f.Auto && z.read())) {
 				l.focus(z.f)
+			}
+			if pz != nil && pz.apply(cs) {
+				l.reportPTZ(pz.p)
 			}
 		}
 		n, err := unix.Poll(fds, 250)

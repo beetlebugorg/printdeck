@@ -55,10 +55,12 @@ func TestCapture(t *testing.T) {
 		var frames []*Frame
 		var f Format
 		var focus *Focus
+		var ptz *PTZ
 		err := capture(ctx, dev, link{
 			settings: func() CamSettings { return CamSettings{Rotate: rot} },
 			format:   func(x Format) { f = x },
 			focus:    func(x Focus) { focus = &x },
+			ptz:      func(x PTZ) { ptz = &x },
 			emit:     func(fr *Frame) { frames = append(frames, fr) },
 		})
 		cancel()
@@ -68,6 +70,9 @@ func TestCapture(t *testing.T) {
 		t.Logf("turn %d: %s: %d frames in 4 s", rot, f, len(frames))
 		if focus != nil {
 			t.Logf("focus: %+v", *focus)
+		}
+		if ptz != nil {
+			t.Logf("PTZ: %+v", *ptz)
 		}
 		if len(frames) < 5 {
 			t.Fatalf("only %d frames", len(frames))

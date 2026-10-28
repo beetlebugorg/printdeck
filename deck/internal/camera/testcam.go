@@ -2,8 +2,11 @@ package camera
 
 import (
 	"context"
+	"errors"
 	"image"
+	"math/rand"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -50,26 +53,40 @@ func withTestCamera(scan func() []Device, capture captureFunc) (func() []Device,
 // testCapture sends the test picture until ctx ends: color bars, and a white square that goes
 // across the picture in 4 seconds, so a viewer can see that the frames move. The second camera
 // (second) has the bars in the other order, and its square goes down the picture. The first
-// camera has a focus control: a fixed focus away from testFocus.Pos blurs the picture. The turn of
-// the settings turns the picture, and a turn of 90° or 270° makes the frames tall.
+// camera has a focus control: a fixed focus away from testFocus.Pos blurs the picture. It also has
+// a digital PTZ: its picture is the crop of a scene of twice the size (testScenePicture). The turn
+// of the settings turns the picture, and a turn of 90° or 270° makes the frames tall.
 func testCapture(ctx context.Context, l link, second bool) error {
 	s := l.settings()
 	f := testFormat
 	f.OutW, f.OutH = TurnedSize(f.OutW, f.OutH, s.Rotate)
 	l.format(f)
 	var z testFocuser
+	var pz *ptzCtl
 	if !second {
 		z.apply(s, l.focus)
+		pz = newPTZCtl(newTestPTZDev())
+		pz.apply(s)
+		l.reportPTZ(pz.p)
 	}
 	tick := time.NewTicker(time.Second / time.Duration(f.OutFPS))
 	defer tick.Stop()
 	for n := 0; ; n++ {
-		pic := testPattern(testFormat.OutW, testFormat.OutH, n, f.OutFPS*4, second)
+		var pic *image.YCbCr
+		if second {
+			pic = testPattern(testFormat.OutW, testFormat.OutH, n, f.OutFPS*4, second)
+		} else {
+			cs := l.settings()
+			z.apply(cs, l.focus)
+			if pz.apply(cs) {
+				l.reportPTZ(pz.p)
+			}
+			pic = testScenePicture(testFormat.OutW, testFormat.OutH, n, f.OutFPS*4, pz.p.Pos)
+		}
 		if s.Rotate != 0 {
 			pic = scaleYCbCr(pic, f.OutW, f.OutH, s.Rotate)
 		}
 		if !second {
-			z.apply(l.settings(), l.focus)
 			pic = z.blur(pic)
 		}
 		l.emit(picFrame(pic))
@@ -176,4 +193,126 @@ func (z *testFocuser) blur(p *image.YCbCr) *image.YCbCr {
 		}
 	}
 	return p
+}
+
+// The digital PTZ of the first test camera. The zoom factor is the zoom value / 100, and the
+// center of the crop moves by testPanShift of the width of the scene for each unit of pan, and by
+// testTiltShift of its height for each unit of tilt (up for a positive tilt). The crop stays in
+// the scene. The deck measures this map (MeasurePTZ) as on a real camera.
+var (
+	testZoom = PTZRange{Min: 100, Max: 400, Step: 1, Default: 100}
+	testPan  = PTZRange{Min: -36000, Max: 36000, Step: 100}
+	testTilt = PTZRange{Min: -36000, Max: 36000, Step: 100}
+)
+
+const (
+	testPanShift  = 1.0 / 96000
+	testTiltShift = -1.0 / 72000
+)
+
+// testWindow is the crop of the scene at the position p: its center (cu, cv) and its zoom factor
+// k, in normalized coordinates of the scene.
+func testWindow(p PTZPos) (cu, cv, k float64) {
+	k = float64(p.Zoom) / 100
+	half := 0.5 / k
+	cu = max(half, min(1-half, 0.5+float64(p.Pan)*testPanShift))
+	cv = max(half, min(1-half, 0.5+float64(p.Tilt)*testTiltShift))
+	return cu, cv, k
+}
+
+// testPTZDev is the PTZ controls of the first test camera (ctrlDev).
+type testPTZDev struct {
+	v map[uint32]int
+}
+
+func newTestPTZDev() *testPTZDev {
+	return &testPTZDev{v: map[uint32]int{cidZoomAbsolute: testZoom.Default, cidPanAbsolute: 0, cidTiltAbsolute: 0}}
+}
+
+func testRange(id uint32) (PTZRange, bool) {
+	switch id {
+	case cidZoomAbsolute:
+		return testZoom, true
+	case cidPanAbsolute:
+		return testPan, true
+	case cidTiltAbsolute:
+		return testTilt, true
+	}
+	return PTZRange{}, false
+}
+
+func (d *testPTZDev) query(id uint32) (PTZRange, bool) { return testRange(id) }
+
+func (d *testPTZDev) get(id uint32) (int, error) {
+	v, ok := d.v[id]
+	if !ok {
+		return 0, errors.New("no control")
+	}
+	return v, nil
+}
+
+func (d *testPTZDev) set(id uint32, v int) error {
+	r, ok := testRange(id)
+	if !ok {
+		return errors.New("no control")
+	}
+	d.v[id] = r.Clamp(v)
+	return nil
+}
+
+// testScene is the scene of the first test camera: color bars, with a grid and boxes of other
+// brightness, so that each part of the scene looks different. It is twice the size of the frames.
+var testScene = sync.OnceValue(func() *image.YCbCr {
+	w, h := 2*testFormat.OutW, 2*testFormat.OutH
+	p := testPattern(w, h, 0, 1, false)
+	// testPattern draws the square at the left: the bar color goes over it again.
+	for x := 0; x < w; x++ {
+		c := testBars[x*len(testBars)/w]
+		for y := 0; y < h; y++ {
+			p.Y[y*p.YStride+x] = c[0]
+		}
+	}
+	rng := rand.New(rand.NewSource(7))
+	for range 160 {
+		bw, bh := 20+rng.Intn(140), 20+rng.Intn(140)
+		x0, y0 := rng.Intn(w-bw), rng.Intn(h-bh)
+		yv := uint8(16 + rng.Intn(220))
+		for y := y0; y < y0+bh; y++ {
+			for x := x0; x < x0+bw; x++ {
+				p.Y[y*p.YStride+x] = yv
+			}
+		}
+	}
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			if x%160 < 6 || y%160 < 6 {
+				p.Y[y*p.YStride+x] = 20
+			}
+		}
+	}
+	return p
+})
+
+// testScenePicture is frame n of the first test camera at the PTZ position p, at w x h: the crop of
+// the scene, and a white square that goes across the scene in period frames.
+func testScenePicture(w, h, n, period int, p PTZPos) *image.YCbCr {
+	sc := testScene()
+	sw, sh := float64(sc.Rect.Dx()), float64(sc.Rect.Dy())
+	cu, cv, k := testWindow(p)
+	c := [4]float64{(cu - 0.5/k) * sw, (cv - 0.5/k) * sh, (cu + 0.5/k) * sw, (cv + 0.5/k) * sh}
+	out := cropScale(sc, c, w, h)
+	// The square, a tenth of the height of the scene, in pixels of the scene and then of the
+	// frame.
+	side := sh / 10
+	sx := (sw - side) * float64(n%period) / float64(period)
+	sy := (sh - side) / 2
+	fx, fy := float64(w)/(c[2]-c[0]), float64(h)/(c[3]-c[1])
+	x0, x1 := max(0, int((sx-c[0])*fx)), min(w, int((sx+side-c[0])*fx))
+	y0, y1 := max(0, int((sy-c[1])*fy)), min(h, int((sy+side-c[1])*fy))
+	for y := y0; y < y1; y++ {
+		for x := x0; x < x1; x++ {
+			out.Y[y*out.YStride+x] = 235
+		}
+	}
+	return out
 }
