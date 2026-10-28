@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ulikunitz/xz"
 )
@@ -40,6 +41,11 @@ const (
 // if the services start. If the new system does not start, the next restart returns to the current
 // slot. progress gets the steps, or it is nil.
 func Update(bundle string, progress Progress) (slot string, err error) {
+	return update(bundle, progress, false)
+}
+
+// update is Update. With gentle, it writes the partitions slowly (writeDevice).
+func update(bundle string, progress Progress, gentle bool) (slot string, err error) {
 	if progress == nil {
 		progress = func(string, int64, int64) {}
 	}
@@ -74,6 +80,9 @@ func Update(bundle string, progress Progress) (slot string, err error) {
 		"boot-" + slot + ".vfat": filepath.Join(partLabelDir, "printdeck-boot-"+slot),
 		"rootfs.erofs":           filepath.Join(partLabelDir, "printdeck-root-"+slot),
 	}
+	if err := checkUnmounted([]string{devs["boot-"+slot+".vfat"], devs["rootfs.erofs"]}); err != nil {
+		return "", err
+	}
 	progress(StepWrite, 0, 0)
 	err = readBundle(bundle, func(done, total int64) { progress(StepWrite, done, total) }, func(name string, r io.Reader) error {
 		if name == "SHA256SUMS" || name == "SHA256SUMS.sig" {
@@ -81,7 +90,7 @@ func Update(bundle string, progress Progress) (slot string, err error) {
 		}
 		h := sha256.New()
 		if dev, ok := devs[name]; ok {
-			if err := writeDevice(io.TeeReader(r, h), dev); err != nil {
+			if err := writeDevice(io.TeeReader(r, h), dev, gentle); err != nil {
 				return err
 			}
 			delete(devs, name)
@@ -284,13 +293,29 @@ func fileSum(path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
+// The pace of a gentle write: at most gentleRate bytes a second, with a sync after each
+// gentleChunk bytes. Tests change gentleRate.
+var gentleRate int64 = 4 << 20
+
+const gentleChunk = 1 << 20
+
 // writeDevice writes r to a partition and waits until the data is on the disk (dd conv=fsync).
-func writeDevice(r io.Reader, dev string) error {
+//
+// With gentle, it writes for a print that runs: the Klipper host reads the G-code file from the
+// same SD card. The kernel writes the dirty pages of a fast write in large bursts, and a read of
+// the Klipper host can then wait for the card. A gentle write syncs each gentleChunk bytes, so a
+// burst is short, and it keeps to gentleRate bytes a second.
+func writeDevice(r io.Reader, dev string, gentle bool) error {
 	out, err := os.OpenFile(dev, os.O_WRONLY, 0)
 	if err != nil {
 		return err
 	}
-	if _, err := io.CopyBuffer(out, r, make([]byte, 4<<20)); err != nil {
+	if gentle {
+		err = writePaced(out, r, gentleRate, time.Now())
+	} else {
+		_, err = io.CopyBuffer(out, r, make([]byte, 4<<20))
+	}
+	if err != nil {
 		out.Close()
 		return fmt.Errorf("writing %s: %w", dev, err)
 	}
@@ -299,6 +324,34 @@ func writeDevice(r io.Reader, dev string) error {
 		return fmt.Errorf("writing %s: %w", dev, err)
 	}
 	return out.Close()
+}
+
+// writePaced copies r to out in chunks of gentleChunk bytes, with a sync after each chunk, and
+// sleeps to keep to rate bytes a second from start.
+func writePaced(out *os.File, r io.Reader, rate int64, start time.Time) error {
+	buf := make([]byte, gentleChunk)
+	var n int64
+	for {
+		k, rerr := io.ReadFull(r, buf)
+		if k > 0 {
+			if _, err := out.Write(buf[:k]); err != nil {
+				return err
+			}
+			if err := out.Sync(); err != nil {
+				return err
+			}
+			n += int64(k)
+			if wait := time.Duration(n*int64(time.Second)/rate) - time.Since(start); wait > 0 {
+				time.Sleep(wait)
+			}
+		}
+		switch {
+		case rerr == io.EOF || rerr == io.ErrUnexpectedEOF:
+			return nil
+		case rerr != nil:
+			return rerr
+		}
+	}
 }
 
 // countReader tells progress the bytes that it read: the sum and the total, or with delta the

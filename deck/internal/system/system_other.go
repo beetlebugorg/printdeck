@@ -19,3 +19,8 @@ func peerUID(*net.UnixConn) (uint32, error) { return 0, errNoSystem }
 
 // Init is the first process of the Printdeck OS.
 func Init() { panic(errNoSystem) }
+
+var mountReadOnly = func(dev, dir string) error { return errNoSystem }
+var unmount = func(dir string) error { return errNoSystem }
+
+func lowerThreadPriority() {}

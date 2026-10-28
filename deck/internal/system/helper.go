@@ -10,15 +10,17 @@ import (
 	"net"
 	"os"
 	"os/user"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
 )
 
 // The helper does the few actions of the deck that need root: set the Wi-Fi network, restart
-// Klipper, install an update, and make and restore a backup. The deck runs as the user deck. systemd listens on the socket
-// (printdeck-helper.socket), which only the group deck can open, and starts the helper at the first
-// request. The helper stops after a time with no requests.
+// Klipper, install an update, restart into an update, and make and restore a backup. The deck runs
+// as the user deck. systemd listens on the socket (printdeck-helper.socket), which only the group
+// deck can open, and starts the helper at the first request. The helper stops after a time with no
+// requests.
 
 // Paths of the helper. Tests change them.
 var (
@@ -33,7 +35,9 @@ const helperIdle = 30 * time.Second
 
 // HelperRequest is one request to the helper.
 type HelperRequest struct {
-	Action   string `json:"action"` // "wifi", "restart-klipper", "stop-klipper", "update", "backup" or "restore"
+	// "wifi", "restart-klipper", "stop-klipper", "update", "stage", "reboot-staged", "backup" or
+	// "restore"
+	Action   string `json:"action"`
 	SSID     string `json:"ssid,omitempty"`
 	Password string `json:"password,omitempty"` // the Wi-Fi password, or the backup password
 	Country  string `json:"country,omitempty"`
@@ -66,21 +70,49 @@ var helperActions = func(r HelperRequest, progress Progress) (after func(), err 
 		}
 		return restartAfterRestore, nil
 	case "update":
-		slot, err := Update(UpdateBundle, progress)
+		s, err := Stage(UpdateBundle, progress, false)
 		os.Remove(UpdateBundle)
 		if err != nil {
 			return nil, err
 		}
-		log.Printf("helper: slot %s is written, restarting", slot)
-		// Restart after the answer is sent, and after the deck sent its page to the browser.
-		return func() {
-			time.Sleep(3 * time.Second)
-			if err := RebootTryboot(); err != nil {
-				log.Printf("helper: %v", err)
-			}
-		}, nil
+		log.Printf("helper: slot %s is written, restarting", s.Slot)
+		return rebootAfterAnswer, nil
+	case "stage":
+		// The write has a low priority, on a thread of its own: a print can run.
+		var s Staged
+		var err error
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			runtime.LockOSThread() // the thread ends with this goroutine
+			lowerThreadPriority()
+			s, err = Stage(UpdateBundle, progress, true)
+		}()
+		<-done
+		os.Remove(UpdateBundle)
+		if err != nil {
+			return nil, err
+		}
+		log.Printf("helper: slot %s (%s) is written; it waits for the restart", s.Slot, s.Version)
+		return nil, nil
+	case "reboot-staged":
+		s, ok := ReadStaged()
+		if !ok {
+			return nil, errors.New("No update waits for the restart.")
+		}
+		log.Printf("helper: restarting into slot %s (%s)", s.Slot, s.Version)
+		return rebootAfterAnswer, nil
 	}
 	return nil, fmt.Errorf("unknown action %q", r.Action)
+}
+
+// rebootAfterAnswer restarts into the other slot one time. The helper calls it after the answer is
+// sent, and it waits so that the deck can send its page to the browser.
+func rebootAfterAnswer() {
+	time.Sleep(3 * time.Second)
+	if err := RebootTryboot(); err != nil {
+		log.Printf("helper: %v", err)
+	}
 }
 
 // Helper serves the requests on the socket from systemd (LISTEN_FDS), or on HelperSocket, until it
