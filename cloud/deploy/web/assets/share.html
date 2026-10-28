@@ -22,6 +22,10 @@
     <p id="sub">This page updates by itself. Leave it open.</p>
   </section>
 
+  <section class="glcd-box" id="glcdBox" aria-label="The display of the printer" hidden>
+    <canvas id="glcd" width="768" height="384"></canvas>
+  </section>
+
   <section class="ready-banner" id="readyBanner" hidden>
     <strong>Ready to pick up</strong>
     <span id="readyText"></span>
@@ -49,10 +53,6 @@
       <canvas id="chart" aria-label="The time of each layer, layer 1 at the bottom"></canvas>
       <div class="nums"><span id="layerNow"></span><span id="layerAvg"></span></div>
     </div>
-  </section>
-
-  <section class="glcd-box" id="glcdBox" aria-label="The display of the printer" hidden>
-    <canvas id="glcd" width="768" height="384"></canvas>
   </section>
 
   <section class="lcd" aria-label="Progress">

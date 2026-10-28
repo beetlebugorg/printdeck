@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/base64"
 	"image/jpeg"
 	"log"
 	"math"
@@ -28,7 +27,6 @@ type shareLink struct {
 	sharer *cloud.Sharer
 	pr     printerBackend
 	lapse  *timelapse.Runner // or nil
-	app    *ui.App           // for the picture of the display
 	name   string            // the name of the printer on the page: the host name
 
 	mu      sync.Mutex
@@ -53,7 +51,7 @@ func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend) *shareLink {
 	if strings.EqualFold(name, "printdeck") {
 		name = "a Printdeck"
 	}
-	l := &shareLink{link: link, pr: pr, name: name, app: app}
+	l := &shareLink{link: link, pr: pr, name: name}
 	if r, ok := app.TimeLapse.(*timelapse.Runner); ok {
 		l.lapse = r
 	}
@@ -76,6 +74,20 @@ func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend) *shareLink {
 		return buf.Bytes(), uint64(pr.State().FilePos)
 	}
 	s.Plan = pr.LayerTimes
+	// The display of the deck, as the touch screen shows it: the frames of the next 5 s, 4 a
+	// second, so the page plays its animations until the next upload.
+	s.LCD = func() []byte {
+		scr := &lcd.Screen{Status: app.StatusScreen()}
+		frame := int(time.Now().UnixMilli() / 250)
+		out := make([]byte, 0, lcdFrames*1024)
+		for i := range lcdFrames {
+			bits := scr.Bits(frame + i)
+			for y := range bits {
+				out = append(out, bits[y][:]...)
+			}
+		}
+		return out
+	}
 	l.sharer = s
 	return l
 }
@@ -146,15 +158,7 @@ func (l *shareLink) status() cloud.ShareStatus {
 	if st.HasZ {
 		s.Height = st.Z
 	}
-	// The display of the deck, as the touch screen shows it.
-	if l.app != nil {
-		bits := (&lcd.Screen{Status: l.app.StatusScreen()}).Bits(0)
-		var raw [1024]byte
-		for y := range bits {
-			copy(raw[y*16:], bits[y][:])
-		}
-		s.LCD = base64.StdEncoding.EncodeToString(raw[:])
-	}
+
 	if st.Busy() {
 		l.clockLayers(st)
 		if st.HasNow {
@@ -257,6 +261,9 @@ func (l *shareLink) status() cloud.ShareStatus {
 	}
 	return s
 }
+
+// lcdFrames is the count of frames of the display in each upload: 5 s at 4 frames a second.
+const lcdFrames = 20
 
 // clockLayers follows the layer of st, and measures each layer from its start to the start of the
 // next one. A layer with a pause, and the layer that printed at the start of the share, have no

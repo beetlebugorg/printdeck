@@ -28,6 +28,9 @@ type Sharer struct {
 	Frame func(view string) ([]byte, uint64)
 	// Views are the camera views of the share.
 	Views []string
+	// LCD returns the next frames of the display of the deck, 1024 bytes each, or nil. The sharer
+	// uploads them at each step as lcd.bin.
+	LCD func() []byte
 	// Plan returns the seconds of each layer from the slicer, or nil. The sharer uploads it once
 	// as plan.json.
 	Plan func() []float64
@@ -57,6 +60,7 @@ type share struct {
 	frame   int
 	seqs    map[string]uint64
 	plan    int       // the layers of plan.json, or 0 before its upload
+	lcd     int       // the count of uploads of lcd.bin
 	model   int       // the count of uploads of model.jpg
 	modelV  uint64    // the version of the last model.jpg
 	modelAt time.Time // the time of the last model.jpg
@@ -299,6 +303,15 @@ func (s *Sharer) step(ctx context.Context, id *Identity, c *share) (bool, error)
 		}
 	}
 	st.Plan = c.plan
+	if s.LCD != nil {
+		if b := s.LCD(); len(b) >= 1024 {
+			if err := s.upload(ctx, id, c, "lcd.bin", "application/octet-stream", "public, max-age=2", b); err != nil {
+				return false, err
+			}
+			c.lcd++
+			st.LCD, st.LCDFrames = c.lcd, len(b)/1024
+		}
+	}
 	if end {
 		var out EndReply
 		if err := s.Link.Client.Do(ctx, id, http.MethodPost, "/api/v1/shares/"+c.id+"/end", EndRequest{Ended: st.Ended}, &out); err != nil {
