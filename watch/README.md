@@ -6,7 +6,9 @@ network.
 - **iPhone app**: the deck screen in its tall layout. It shows the print, the roll, the model and
   the camera. It has Pause, Resume and Cancel, and Print a file. Tap the camera for a full screen
   view. With two cameras, tap a camera name at the top of that view, or swipe, to switch. The app
-  keeps the choice for each deck, and the watch shows the same camera.
+  keeps the choice for each deck, and the watch shows the same camera. Time lapse lists the videos
+  of the deck. The app converts a video to H.264 on the iPhone, plays it, and has Share and Save to
+  Photos.
 - **Watch app**: the print on a blue dot-matrix display. Turn the Digital Crown for the camera, the
   model, the layer times and the filament. Tap for Pause, Resume or Cancel.
 - **Complications** and **widgets**: the progress and the time left, on the watch face, the Home
@@ -84,6 +86,9 @@ All other requests have the header `X-Api-Key`:
 - `GET /api/plugin/printdeck/model.png?w=..&h=..&mono=1`: the model of the print in 1-bit dots.
 - `POST /api/plugin/printdeck/push/pair`, `DELETE /api/plugin/printdeck/push/<id>`: the pairing
   for push messages.
+- `GET /api/timelapse`: the time lapse videos, with the print, the frames and the length of each
+  under `printdeck`. `GET /downloads/timelapse/<name>` sends a video (QuickTime, Motion JPEG),
+  with Range requests, and `GET /downloads/timelapse/<name>/still` its last frame.
 
 ## Folders
 

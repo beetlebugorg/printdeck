@@ -141,6 +141,8 @@ type App struct {
 	pages         []page         // the pages over the state screen, the top last
 	file          printer.File   // the file of the file page
 	record        printer.Record // the print of the record page
+	player        *lapsePlayer   // the time lapse video of the player page, or nil
+	still         lapseStill     // the still of the last video of the record page or the done page
 	spoolID       string         // the roll of the roll page
 	spoolScroll   int            // the scroll position of the Rolls page
 	printsScroll  int            // the scroll position of the prints of a roll

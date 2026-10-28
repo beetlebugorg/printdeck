@@ -523,22 +523,27 @@
         <circle cx="520" cy="661" r="15" class="badge"/>
         <text x="520" y="661" class="badge-n">3</text>
         
-        <line x1="-25" y1="756" x2="40" y2="756" class="leader"/>
+        <line x1="-25" y1="746" x2="40" y2="756" class="leader"/>
         <circle cx="40" cy="756" r="5" class="dot"/>
-        <circle cx="-40" cy="756" r="15" class="badge"/>
-        <text x="-40" y="756" class="badge-n">4</text>
+        <circle cx="-40" cy="746" r="15" class="badge"/>
+        <text x="-40" y="746" class="badge-n">4</text>
+        
+        <line x1="-25" y1="780" x2="177" y2="756" class="leader"/>
+        <circle cx="177" cy="756" r="5" class="dot"/>
+        <circle cx="-40" cy="780" r="15" class="badge"/>
+        <text x="-40" y="780" class="badge-n">5</text>
         
         <line x1="505" y1="756" x2="440" y2="756" class="leader"/>
         <circle cx="440" cy="756" r="5" class="dot"/>
         <circle cx="520" cy="756" r="15" class="badge"/>
-        <text x="520" y="756" class="badge-n">5</text>
+        <text x="520" y="756" class="badge-n">6</text>
         
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Model</b>The model of the print.</span></li><li><span class="badge">2</span><span><b>Result</b>Done, Cancelled or Failed.</span></li><li><span class="badge">3</span><span><b>Bed</b>The time until the part comes off easily (35°).</span></li><li><span class="badge">4</span><span><b>Reprint</b>Prints the file again.</span></li><li><span class="badge">5</span><span><b>Done</b>Closes this screen.</span></li>
+      <li><span class="badge">1</span><span><b>Model</b>The model of the print.</span></li><li><span class="badge">2</span><span><b>Result</b>Done, Cancelled or Failed.</span></li><li><span class="badge">3</span><span><b>Bed</b>The time until the part comes off easily (35°).</span></li><li><span class="badge">4</span><span><b>Reprint</b>Prints the file again.</span></li><li><span class="badge">5</span><span><b>Time lapse</b>Plays the time lapse video of the print. It shows Saving… while the deck writes the video.</span></li><li><span class="badge">6</span><span><b>Done</b>Closes this screen.</span></li>
     </ol>
-    
+    <p class="note">Time lapse shows only for a print with a time lapse.</p>
   </figure>
   
   
@@ -625,11 +630,84 @@
 </section>
 <section id="timelapse">
   <h2 class="title"><span class="num">12</span>Make a time lapse</h2>
-  <p>The deck camera captures a picture at each layer change. At the end of the print, the deck makes a video.</p><p>For each picture, the printer retracts, lifts the nozzle and moves the head to the left side. The bed stays where it is, under the camera. On the TAZ Workhorse the nozzle goes to Z 10 mm or more, over the bed washers. Each picture adds a few seconds.</p>
-  <ol class="steps"><li>Aim the camera: Settings, then Camera.</li><li>Open Settings, then Time lapse.</li><li>Tap Time lapse to turn it on.</li><li>With two cameras, open Settings, then Cameras. Tap a camera, and check Time lapse or Pictures.</li><li>Tap First layer for a picture of the first layer, or a picture and a pause. At a pause, check the layer, then tap Resume.</li><li>Print. After the first layer, the deck shows its picture.</li><li>At the end of the print, open http://printdeck.local/system in a browser. The Time lapse part has the video. Click its name to download it.</li></ol>
+  <p>The deck camera captures a picture at each layer change. At the end of the print, the deck makes a video.</p><p>For each picture, the printer retracts, lifts the nozzle and moves the head to the left side. A bed that moves in Y goes to the middle of the part, so the bed is at the same place in each frame. On the TAZ Workhorse the nozzle goes to Z 10 mm or more, over the bed washers. Each picture adds a few seconds.</p>
+  <ol class="steps"><li>Aim the camera: Settings, then Camera.</li><li>Open Settings, then Time lapse.</li><li>Tap Time lapse to turn it on.</li><li>With two cameras, open Settings, then Cameras. Tap a camera, and check Time lapse or Pictures.</li><li>Tap First layer for a picture of the first layer, or a picture and a pause. At a pause, check the layer, then tap Resume.</li><li>Print. After the first layer, the deck shows its picture.</li><li>At the end of the print, tap Time lapse on the done screen. The video plays.</li><li>To see it later, open Machine, then Statistics, then History. Tap the print, then Play.</li><li>To download the video, open http://printdeck.local/system in a browser. The Time lapse part has the video. Click its name.</li></ol>
+  
+  <figure>
+    <h3>A print of the history</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/record.png" alt="A print of the history" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="199" x2="456" y2="199" class="leader"/>
+        <circle cx="456" cy="199" r="5" class="dot"/>
+        <circle cx="520" cy="199" r="15" class="badge"/>
+        <text x="520" y="199" class="badge-n">1</text>
+        
+        <line x1="505" y1="462" x2="456" y2="462" class="leader"/>
+        <circle cx="456" cy="462" r="5" class="dot"/>
+        <circle cx="520" cy="462" r="15" class="badge"/>
+        <text x="520" y="462" class="badge-n">2</text>
+        
+        <line x1="-25" y1="646" x2="24" y2="646" class="leader"/>
+        <circle cx="24" cy="646" r="5" class="dot"/>
+        <circle cx="-40" cy="646" r="15" class="badge"/>
+        <text x="-40" y="646" class="badge-n">3</text>
+        
+        <line x1="505" y1="646" x2="456" y2="646" class="leader"/>
+        <circle cx="456" cy="646" r="5" class="dot"/>
+        <circle cx="520" cy="646" r="15" class="badge"/>
+        <text x="520" y="646" class="badge-n">4</text>
+        
+        <line x1="505" y1="742" x2="456" y2="742" class="leader"/>
+        <circle cx="456" cy="742" r="5" class="dot"/>
+        <circle cx="520" cy="742" r="15" class="badge"/>
+        <text x="520" y="742" class="badge-n">5</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Model</b>The model of the print.</span></li><li><span class="badge">2</span><span><b>Details</b>The result, the time, the filament and the time lapse video.</span></li><li><span class="badge">3</span><span><b>Still</b>The last frame of the time lapse video.</span></li><li><span class="badge">4</span><span><b>Play</b>Opens the player.</span></li><li><span class="badge">5</span><span><b>Reprint</b>Prints the file again.</span></li>
+    </ol>
+    <p class="note">The deck keeps the last 3 videos. The record of an older print shows Removed.</p>
+  </figure>
+  
+  <figure>
+    <h3>The time lapse player</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/player.png" alt="The time lapse player" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="337" x2="456" y2="337" class="leader"/>
+        <circle cx="456" cy="337" r="5" class="dot"/>
+        <circle cx="520" cy="337" r="15" class="badge"/>
+        <text x="520" y="337" class="badge-n">1</text>
+        
+        <line x1="505" y1="628" x2="442" y2="628" class="leader"/>
+        <circle cx="442" cy="628" r="5" class="dot"/>
+        <circle cx="520" cy="628" r="15" class="badge"/>
+        <text x="520" y="628" class="badge-n">2</text>
+        
+        <line x1="505" y1="674" x2="456" y2="674" class="leader"/>
+        <circle cx="456" cy="674" r="5" class="dot"/>
+        <circle cx="520" cy="674" r="15" class="badge"/>
+        <text x="520" y="674" class="badge-n">3</text>
+        
+        <line x1="505" y1="742" x2="456" y2="742" class="leader"/>
+        <circle cx="456" cy="742" r="5" class="dot"/>
+        <circle cx="520" cy="742" r="15" class="badge"/>
+        <text x="520" y="742" class="badge-n">4</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Video</b>The video, as large as it fits.</span></li><li><span class="badge">2</span><span><b>Position</b>Tap or drag to go to a frame.</span></li><li><span class="badge">3</span><span><b>Frames</b>The frame, the count of frames, the time and the length.</span></li><li><span class="badge">4</span><span><b>Play</b>Plays the video, or pauses it.</span></li>
+    </ol>
+    <p class="note">The video plays only while this page shows. Back returns to the page that opened it.</p>
+  </figure>
   
   
-  <p>Cura, PrusaSlicer and OrcaSlicer write the layer comments that the time lapse needs.</p><p>Park for the frames is on by default. Off keeps the toolhead in the pictures, with no stops.</p><p>The video is a .mov file. The deck keeps the last 3 videos. A backup excludes the videos.</p>
+  <p>Cura, PrusaSlicer and OrcaSlicer write the layer comments that the time lapse needs.</p><p>Park for the frames is on by default. Off keeps the toolhead in the pictures, with no stops.</p><p>Crop to the part is on by default. With a calibration of the camera (Settings, Camera, Calibrate), each frame shows the part and the space around it. With no calibration, the frames show the whole picture.</p><p>The video is a .mov file. The deck keeps the last 3 videos. A backup excludes the videos.</p>
 </section></div>
 <p>From the <a href="../../manual/">manual for a tall display</a>. The deck draws every picture.</p>
 </main>

@@ -27,7 +27,7 @@ struct DeckView: View {
     let link: WatchLink
 
     enum Sheet: Identifiable {
-        case setup, files, camera
+        case setup, files, camera, timelapse
         var id: Self { self }
     }
 
@@ -70,6 +70,7 @@ struct DeckView: View {
             case "files": sheet = .files
             case "setup": sheet = .setup
             case "camera": sheet = .camera
+            case "timelapse": sheet = .timelapse
             default: break
             }
         }
@@ -92,6 +93,7 @@ struct DeckView: View {
                 case .setup: SetupView(link: link) { sheet = nil }
                 case .files: FilesView { sheet = nil }
                 case .camera: CameraView { sheet = nil }
+                case .timelapse: TimelapseView { sheet = nil }
                 }
             }
             .environment(model)
@@ -168,7 +170,7 @@ struct DeckView: View {
         }
     }
 
-    // No print: Print a file, the roll, and Menu.
+    // No print: Print a file, the roll, the time lapse videos, and Menu.
     private func idle(_ st: Status?) -> some View {
         VStack(spacing: 12) {
             Button("Print a file") { sheet = .files }
@@ -176,8 +178,10 @@ struct DeckView: View {
             if let roll = st?.roll {
                 Plate(label: "Roll") { rollRow(roll) }
             }
-            Button("Menu") { sheet = .setup }
-                .buttonStyle(KeyStyle())
+            HStack(spacing: 10) {
+                Button("Time lapse") { sheet = .timelapse }.buttonStyle(KeyStyle())
+                Button("Menu") { sheet = .setup }.buttonStyle(KeyStyle())
+            }
         }
     }
 

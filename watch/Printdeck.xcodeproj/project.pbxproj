@@ -13,12 +13,14 @@
 		048B21374671AFF9BE5BCC1F /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AC2BBFF7CE76D76E8134DBA /* IBMPlexMono-SemiBold.ttf */; };
 		0C8A9F9A3D751A68DA0866C4 /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */; };
 		0E0DE9F95C7112EDB912F4C4 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 770B96494514D1F98C3D0ADF /* IBMPlexMono-Regular.ttf */; };
+		11A773649FFA198AF59E912B /* Timelapse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B8C219262B462085724E0BD /* Timelapse.swift */; };
 		198F4ACDF70F3734387889AC /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 58645DA084A54E4D7E787CE2 /* OFL.txt */; };
 		1B1A03158AD1EC263D260144 /* LCDScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CA29D05ABBEBA3D309E9D9C /* LCDScreen.swift */; };
 		1BE9BA2C38606EA6FFBB1520 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AC2BBFF7CE76D76E8134DBA /* IBMPlexMono-SemiBold.ttf */; };
 		1D53332689C0FD450DC4F756 /* LCDFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0354F5AD51AB7C9164C404AA /* LCDFonts.swift */; };
 		1FF2F062FDF33F52530E6E02 /* LCDFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0354F5AD51AB7C9164C404AA /* LCDFonts.swift */; };
 		20B61A975B04B39116EDF951 /* PrintdeckWatch.app in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = D2114C330830B4B5C5D4EAE7 /* PrintdeckWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		20B968F382C669F990D6B3C4 /* TimelapseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39FA1A4FEF709284823F9B6B /* TimelapseTests.swift */; };
 		22E0E3BEDCF8CDE0E4FE5EC9 /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB83763E3B47BF75CF93CE3 /* Store.swift */; };
 		254BB00BC761BD1650E29B36 /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5A9AC136FD37E5823BE3A56 /* CameraView.swift */; };
 		27FE4A77845A101C19047042 /* DeckModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B99E447765312CFD4C878FD /* DeckModel.swift */; };
@@ -65,8 +67,10 @@
 		957EF501A2E42BC3D8E20E20 /* PushCryptoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90E6942D32E2AF7FCD6D729E /* PushCryptoTests.swift */; };
 		95BBADAC28D7948E17524805 /* ComplicationLCD.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C28F6CE43513884ED2C3B9 /* ComplicationLCD.swift */; };
 		95DD68693F435C22C6F611C0 /* Complication.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AD64238EF6EF070D61FD7D4 /* Complication.swift */; };
+		99965F406CAC8B2574B10D41 /* Timelapse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B8C219262B462085724E0BD /* Timelapse.swift */; };
 		9DD868F3B27B3B450D7A3C07 /* ComplicationLCD.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C28F6CE43513884ED2C3B9 /* ComplicationLCD.swift */; };
 		A1A90A282A036D846E613BAE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6DE65B34DD84D0ADAF8829A4 /* Assets.xcassets */; };
+		A209CFE205394DE5DC9ABAE1 /* TimelapseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C991A83CDA1D1FF82A032EA0 /* TimelapseView.swift */; };
 		A3C14F3456C6052D0BB8DCB6 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AC2BBFF7CE76D76E8134DBA /* IBMPlexMono-SemiBold.ttf */; };
 		A481C7A3F1B83EEB9B65B794 /* Panel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6FAFDF150EF3F44516ECD16 /* Panel.swift */; };
 		A599C711729F502DDBEDACBE /* Panel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6FAFDF150EF3F44516ECD16 /* Panel.swift */; };
@@ -179,7 +183,9 @@
 		245C28DEF33556275FD6DCD5 /* PrintdeckWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrintdeckWidget.swift; sourceTree = "<group>"; };
 		251FEC8FBC5B7C7E2E9DBD8A /* Finder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Finder.swift; sourceTree = "<group>"; };
 		2AC2BBFF7CE76D76E8134DBA /* IBMPlexMono-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-SemiBold.ttf"; sourceTree = "<group>"; };
+		2B8C219262B462085724E0BD /* Timelapse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Timelapse.swift; sourceTree = "<group>"; };
 		34F365F110DA001F9A0DE742 /* PrintLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrintLiveActivity.swift; sourceTree = "<group>"; };
+		39FA1A4FEF709284823F9B6B /* TimelapseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelapseTests.swift; sourceTree = "<group>"; };
 		3FAD54D561DB49920D460416 /* Push.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Push.swift; sourceTree = "<group>"; };
 		439F848AD2E45E31AE08BC56 /* Notifications.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Notifications.entitlements; sourceTree = "<group>"; };
 		50B1ECB5064C50FBC6E18408 /* PrintdeckNotifications.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PrintdeckNotifications.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -205,6 +211,7 @@
 		B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Deck.swift; sourceTree = "<group>"; };
 		B670D0E6DB98D7E7C7FE51A7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C024260E6470548F3C91FC1F /* PhoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneApp.swift; sourceTree = "<group>"; };
+		C991A83CDA1D1FF82A032EA0 /* TimelapseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelapseView.swift; sourceTree = "<group>"; };
 		CB8994C1626052FC1E3F1B21 /* Printdeck.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Printdeck.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2114C330830B4B5C5D4EAE7 /* PrintdeckWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrintdeckWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D6FAFDF150EF3F44516ECD16 /* Panel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panel.swift; sourceTree = "<group>"; };
@@ -271,6 +278,8 @@
 				C024260E6470548F3C91FC1F /* PhoneApp.swift */,
 				3FAD54D561DB49920D460416 /* Push.swift */,
 				FF065E98D227459FBD8169BB /* SetupView.swift */,
+				2B8C219262B462085724E0BD /* Timelapse.swift */,
+				C991A83CDA1D1FF82A032EA0 /* TimelapseView.swift */,
 				B4F781BC71F396D5118DBEC1 /* WatchLink.swift */,
 			);
 			path = Phone;
@@ -282,6 +291,7 @@
 				A85E672A88E7657A2A2B1AE9 /* CameraTests.swift */,
 				EEC0909ABD03C04458C7F7E0 /* LCDModelTests.swift */,
 				90E6942D32E2AF7FCD6D729E /* PushCryptoTests.swift */,
+				39FA1A4FEF709284823F9B6B /* TimelapseTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -593,6 +603,8 @@
 				84703D7207E291BD66B77C57 /* PushCrypto.swift in Sources */,
 				957EF501A2E42BC3D8E20E20 /* PushCryptoTests.swift in Sources */,
 				816B466063128047E3ABA18B /* Theme.swift in Sources */,
+				11A773649FFA198AF59E912B /* Timelapse.swift in Sources */,
+				20B968F382C669F990D6B3C4 /* TimelapseTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -650,6 +662,8 @@
 				8FB1DA295B111CE8E012072D /* SetupView.swift in Sources */,
 				8F9B6078A6FA28D4B4008B63 /* Store.swift in Sources */,
 				863803E55914375D0E896E96 /* Theme.swift in Sources */,
+				99965F406CAC8B2574B10D41 /* Timelapse.swift in Sources */,
+				A209CFE205394DE5DC9ABAE1 /* TimelapseView.swift in Sources */,
 				784DBED447A3953996577B58 /* WatchLink.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -501,11 +501,46 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 		}
 		segments(c, image.Rect(info.Min.X+18, info.Min.Y+74, info.Max.X-18, info.Min.Y+88), f)
 	}
-	key := finishedKey(st)
+	seen := finishedKey(st)
 	path := st.FinishedPath
-	k := kit.Cols(end, 12, kit.Fr(1), kit.Fr(1))
+	video, saving := a.doneVideo(st)
+	if video == "" && !saving {
+		k := kit.Cols(end, 12, kit.Fr(1), kit.Fr(1))
+		a.button(c, k[0], "Reprint", raised, text, func() { a.confirmPrint(path) })
+		a.button(c, k[1], "Done", orange, onAcc, func() { a.doneSeen = seen })
+		return
+	}
+	k := kit.Cols(end, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
 	a.button(c, k[0], "Reprint", raised, text, func() { a.confirmPrint(path) })
-	a.button(c, k[1], "Done", orange, onAcc, func() { a.doneSeen = key })
+	if saving {
+		// The deck writes the video at the end of the print: a few seconds.
+		key(c, k[1], "Saving…", surface, dim, false)
+		a.region("Time lapse", k[1])
+		a.redrawSoon(500 * time.Millisecond)
+	} else {
+		file := st.FinishedFile
+		a.button(c, k[1], "Time lapse", raised, text, func() { a.openPlayer(video, file) })
+	}
+	a.button(c, k[2], "Done", orange, onAcc, func() { a.doneSeen = seen })
+}
+
+// doneVideo is the time lapse video of the print that ended: its name, or saving while the deck
+// writes the video. A print with no time lapse, or a video that the deck removed, has neither.
+func (a *App) doneVideo(st printer.State) (name string, saving bool) {
+	if a.TimeLapse == nil {
+		return "", false
+	}
+	if h := a.Printer.History(); len(h) > 0 {
+		r := h[0]
+		if r.Path == st.FinishedPath && r.Result == st.Finished && int(r.Duration.Seconds()) == int(st.FinishedTime.Seconds()) && r.Video != "" {
+			if _, ok := a.TimeLapse.VideoPath(r.Video); ok {
+				return r.Video, false
+			}
+			return "", false
+		}
+	}
+	in := a.TimeLapse.Info()
+	return "", (in.Saving || in.Recording) && in.Frames > 0
 }
 
 // drawPausePrompt is a pause of the file (PRINTDECK_PAUSE): its message, and the height check on

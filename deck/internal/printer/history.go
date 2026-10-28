@@ -39,6 +39,9 @@ type Record struct {
 	SpoolID string  `json:"spool_id,omitempty"`
 	Grams   float64 `json:"grams,omitempty"`
 	Cost    float64 `json:"cost,omitempty"`
+	// Video is the name of the time lapse video of the print, or "". The deck keeps the last
+	// videos only, so the file of an old record can be gone.
+	Video string `json:"video,omitempty"`
 }
 
 // OfSpool is the records of the prints that used the roll, in the order of recs. A record with
@@ -78,7 +81,17 @@ type History struct {
 	loaded  bool
 	last    string // the key of the last added print
 	rates   *Rates // the timings from the records; nil after a change
+	video   pendingVideo
 }
+
+// pendingVideo is a video for a print that has no record yet.
+type pendingVideo struct {
+	path, name string
+	at         time.Time
+}
+
+// videoWindow is the longest time between the end of a print and the save of its video.
+const videoWindow = 10 * time.Minute
 
 func (h *History) load() {
 	if h.loaded {
@@ -127,6 +140,10 @@ func (h *History) add(st State, now time.Time, phases []Phase, planned float64, 
 	if material != nil {
 		r.Material = material(r.Path)
 	}
+	if v := h.video; v.name != "" && v.path == r.Path && now.Sub(v.at) < videoWindow {
+		r.Video = v.name
+	}
+	h.video = pendingVideo{}
 	h.last = key(r)
 	h.records = append([]Record{r}, h.records...)
 	if len(h.records) > maxHistory {
@@ -164,6 +181,28 @@ func (h *History) setSpool(k string, sp Spool, grams, cost float64) {
 			return
 		}
 	}
+}
+
+// SetVideo gives the video name to the newest record of the file path, when the print ended in
+// the last minutes and the record has no video. A print with no record yet gets the video when
+// its record is added.
+func (h *History) SetVideo(path, name string, now time.Time) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.load()
+	for i := range h.records {
+		r := &h.records[i]
+		if r.Path != path {
+			continue
+		}
+		if r.Video == "" && now.Sub(r.End) < videoWindow {
+			r.Video = name
+			h.save()
+			return
+		}
+		break
+	}
+	h.video = pendingVideo{path, name, now}
 }
 
 // Rates returns the timings of this printer from the history.

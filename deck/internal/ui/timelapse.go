@@ -13,8 +13,9 @@ import (
 
 // The Time lapse page (Settings > Time lapse): a frame of the camera at each layer change of a
 // print, and a picture of the first layer. For each picture, the toolhead parks out of the picture
-// (printdeck_timelapse of the Klipper host). The video of a print is on the System page of the web
-// server. The First layer page shows the last picture of a first layer. The deck opens it when the
+// (printdeck_timelapse of the Klipper host). With a calibration of the camera, the frames are the
+// crop of the part. The video of a print plays from its record in the
+// print history, and the System page of the web server has the files. The First layer page shows the last picture of a first layer. The deck opens it when the
 // picture is taken.
 
 // TimeLapse is the time lapse of the deck (timelapse.Runner).
@@ -22,6 +23,8 @@ type TimeLapse interface {
 	Settings() timelapse.Settings
 	SetSettings(timelapse.Settings)
 	Info() timelapse.Info
+	// VideoPath returns the path of a video, and false for a video that the deck removed.
+	VideoPath(name string) (string, bool)
 }
 
 // timeLapseLine is the line of the Time lapse row of the Settings page.
@@ -71,11 +74,43 @@ func firstLayerLine(first int) string {
 func videosLine(n int) string {
 	switch n {
 	case 0:
-		return "None · the video of a print is on the System page"
+		return "None · a video shows with its print in the history"
 	case 1:
-		return "1 video · download it on the System page"
+		return "1 video · in the print history and on the System page"
 	}
-	return fmt.Sprintf("%d videos · download them on the System page", n)
+	return fmt.Sprintf("%d videos · in the print history and on the System page", n)
+}
+
+// cropLine is the line of the Crop to the part row. calibrated reports that the camera of the
+// time lapse has a calibration.
+func cropLine(on, calibrated bool) string {
+	switch {
+	case !on:
+		return "Off · the whole picture"
+	case !calibrated:
+		return "On · Needs a calibration of the camera"
+	}
+	return "On · the frames show the part"
+}
+
+// lapseCalibrated reports that the camera of the time lapse has a calibration.
+func (a *App) lapseCalibrated() bool {
+	if a.Camera == nil {
+		return false
+	}
+	cam, ok := a.Camera.Source(camera.RoleLapse)
+	if !ok {
+		return false
+	}
+	_, valid := cam.Calibration()
+	return valid
+}
+
+func (a *App) toggleLapseCrop() {
+	s := a.TimeLapse.Settings()
+	s.Crop = !s.Crop
+	a.TimeLapse.SetSettings(s)
+	a.Toast("Crop: " + map[bool]string{true: "on", false: "off"}[s.Crop])
 }
 
 func (a *App) toggleLapse() {
@@ -107,12 +142,13 @@ func (a *App) drawTimeLapse(c *gfx.Canvas) {
 	items := []menuItem{
 		{"Time lapse", lapseLine(in, s), dim, a.toggleLapse},
 		{"Park for the frames", parkLine(s.Park), dim, a.toggleLapsePark},
+		{"Crop to the part", cropLine(s.Crop, a.lapseCalibrated()), dim, a.toggleLapseCrop},
 		{"First layer", firstLayerLine(s.First), dim, a.cycleFirstLayer},
 	}
 	if in.First != nil {
 		items = append(items, menuItem{"Picture of the first layer", firstSub(in, a), dim, func() { a.open(pageFirstLayer) }})
 	}
-	items = append(items, menuItem{"Videos", videosLine(len(in.Videos)), dim, nil})
+	items = append(items, menuItem{"Videos", videosLine(len(in.Videos)), dim, func() { a.open(pageHistory) }})
 	if a.Camera != nil {
 		list := a.Camera.Cameras()
 		open := func() { a.open(pageCameras) }

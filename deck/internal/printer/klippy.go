@@ -120,7 +120,7 @@ var klippyObjects = map[string][]string{
 	"printdeck_sdcard": {"id", "copying", "copied", "size", "done", "error"},
 	// The park for the pictures of the time lapse and of the first layer.
 	"printdeck_timelapse": {"enable", "park", "first_layer", "every", "frame", "taken", "waiting", "first", "lapse",
-		"layer", "stopped"},
+		"layer", "stopped", "park_y"},
 }
 
 // HostVersion is the Klipper version of the host. The firmware of the board must be this version.
@@ -336,6 +336,13 @@ func (k *Klippy) History() []Record {
 		return nil
 	}
 	return k.Hist.Records()
+}
+
+// SetVideo gives the time lapse video name to the record of the last print of the file path.
+func (k *Klippy) SetVideo(path, name string) {
+	if k.Hist != nil {
+		k.Hist.SetVideo(path, name, time.Now())
+	}
 }
 
 // Machine returns the version, the modules and the macros of the connected Klipper.

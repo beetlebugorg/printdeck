@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"image"
 	"image/jpeg"
+	"math"
 	"os"
 	"path/filepath"
 	"sync"
@@ -147,11 +148,12 @@ func (h *fakeHost) TimelapseTaken(n int) error {
 	return nil
 }
 
-func (h *fakeHost) SetTimelapse(enable, park bool, first, every int) error {
+func (h *fakeHost) SetTimelapse(enable, park bool, first, every int, parkY float64) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.sets++
 	h.st.Enable, h.st.Park, h.st.First, h.st.Every = enable, park, first, every
+	h.st.ParkY, h.st.HasParkY = parkY, !math.IsNaN(parkY)
 	return nil
 }
 
@@ -207,6 +209,13 @@ func TestRunner(t *testing.T) {
 	}, dir)
 	var firsts int
 	r.OnFirstLayer = func(f *camera.Frame, file string) { firsts++ }
+	var video, videoFile string
+	r.OnVideo = func(name, file string) {
+		video, videoFile = name, file
+		if !r.Info().Saving {
+			t.Error("the save is done before OnVideo")
+		}
+	}
 	ctx := context.Background()
 
 	r.step(ctx)
@@ -241,8 +250,11 @@ func TestRunner(t *testing.T) {
 		t.Errorf("%d watchers of the camera after the print", cam.watchers)
 	}
 	in := r.Info()
-	if len(in.Videos) != 1 || in.Recording {
+	if len(in.Videos) != 1 || in.Recording || in.Saving {
 		t.Fatalf("videos %+v", in.Videos)
+	}
+	if video != in.Videos[0].Name || videoFile != "clip.gcode" {
+		t.Errorf("OnVideo got %q of %q", video, videoFile)
 	}
 	b, err := os.ReadFile(filepath.Join(dir, in.Videos[0].Name))
 	if err != nil {
@@ -293,7 +305,7 @@ func TestRunnerPictureCamera(t *testing.T) {
 	}
 	// A Picture camera that is off: no first layer picture.
 	pic.on = false
-	if s, _ := r.want(); s.First != FirstOff || !s.On {
+	if s, _, _ := r.want(); s.First != FirstOff || !s.On {
 		t.Errorf("want %+v", s)
 	}
 	busy = false
@@ -330,5 +342,90 @@ func TestKeepVideos(t *testing.T) {
 	entries, _ := os.ReadDir(dir)
 	if len(entries) != KeepVideos {
 		t.Errorf("%d files", len(entries))
+	}
+}
+
+// A print with a crop: the host gets the park Y of the print, and each frame of the video is the
+// crop of the part at one size. The first layer picture stays whole. With the crop off, the
+// frames are whole.
+func TestRunnerCrop(t *testing.T) {
+	for _, crop := range []bool{true, false} {
+		dir := t.TempDir()
+		host := &fakeHost{st: HostStatus{Present: true, Park: true, Every: 1}}
+		cam := &fakeCamera{t: t, on: true}
+		p := Print{}
+		r := NewRunner(Settings{On: true, Park: true, First: FirstPicture, Crop: crop}, host, cam, func() Print { return p }, dir)
+		asks := 0
+		r.ParkY = func(file string) (float64, bool) {
+			asks++
+			return 142.5, asks > 1 // the G-code of the print loads after the start
+		}
+		r.PartCrop = func(file string, sz image.Point) (image.Rectangle, bool) {
+			if sz != image.Pt(64, 48) {
+				t.Errorf("crop for a frame of %v", sz)
+			}
+			return image.Rect(0, 16, 48, 48), true
+		}
+		ctx := context.Background()
+		p = Print{Busy: true, File: "clip.gcode"}
+		r.step(ctx)
+		r.step(ctx)
+		if !host.st.HasParkY || host.st.ParkY != 142.5 {
+			t.Fatalf("park Y of the host %+v", host.st)
+		}
+		host.frame(true, true, 1)
+		r.step(ctx)
+		for layer := 2; layer <= 4; layer++ {
+			host.frame(false, true, layer)
+			r.step(ctx)
+		}
+		if sz := r.Info().First.Size(); sz != image.Pt(64, 48) {
+			t.Errorf("first layer picture %v, want the whole picture", sz)
+		}
+		p = Print{}
+		r.step(ctx)
+		if host.st.HasParkY {
+			t.Error("the park Y stays after the print")
+		}
+		in := r.Info()
+		if len(in.Videos) != 1 {
+			t.Fatalf("videos %+v", in.Videos)
+		}
+		m, err := OpenMovie(filepath.Join(dir, in.Videos[0].Name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := image.Pt(64, 42) // 48 x 32, 4/3 times: as wide as the frames
+		if !crop {
+			want = image.Pt(64, 48)
+		}
+		if m.W != want.X || m.H != want.Y {
+			t.Errorf("crop %v: video of %dx%d, want %v", crop, m.W, m.H, want)
+		}
+		for i := range m.Len() {
+			b, _ := m.JPEG(i)
+			c, err := jpeg.DecodeConfig(bytes.NewReader(b))
+			if err != nil || c.Width != want.X || c.Height != want.Y {
+				t.Errorf("frame %d: %dx%d, %v", i, c.Width, c.Height, err)
+			}
+		}
+		m.Close()
+	}
+}
+
+// A small crop is at most 2 times larger in the video.
+func TestCropSize(t *testing.T) {
+	for _, c := range []struct {
+		r    image.Rectangle
+		w    int
+		want image.Point
+	}{
+		{image.Rect(0, 0, 640, 368), 1280, image.Pt(1280, 736)},
+		{image.Rect(0, 0, 320, 176), 1280, image.Pt(640, 352)},
+		{image.Rect(0, 0, 960, 544), 1280, image.Pt(1280, 724)},
+	} {
+		if got := cropSize(c.r, c.w); got != c.want {
+			t.Errorf("cropSize(%v, %d) = %v, want %v", c.r, c.w, got, c.want)
+		}
 	}
 }

@@ -3,7 +3,9 @@ package timelapse
 import (
 	"context"
 	"fmt"
+	"image"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -24,7 +26,9 @@ type HostStatus struct {
 	IsLapse      bool // the frame is a frame of the time lapse
 	Layer        int  // the layers that are done at the frame
 	Stopped      bool
-	Present      bool // the host has the module
+	Present      bool    // the host has the module
+	ParkY        float64 // the Y of the park of the print, with HasParkY
+	HasParkY     bool
 }
 
 // Host is the Klipper host of the print.
@@ -33,8 +37,9 @@ type Host interface {
 	TimelapseStatus() (HostStatus, bool)
 	// TimelapseTaken sends the number n to the module: the picture of frame n is ready.
 	TimelapseTaken(n int) error
-	// SetTimelapse sends the settings to the module (PRINTDECK_TIMELAPSE).
-	SetTimelapse(enable, park bool, first, every int) error
+	// SetTimelapse sends the settings to the module (PRINTDECK_TIMELAPSE). parkY is the Y of the
+	// park of the print, or NaN for none.
+	SetTimelapse(enable, park bool, first, every int, parkY float64) error
 }
 
 // Camera is a camera of the deck (camera.Source).
@@ -61,7 +66,8 @@ type Video struct {
 // Info is the state of the time lapse for the screen.
 type Info struct {
 	Recording bool // a print with the time lapse runs
-	Frames    int  // the frames of the print now
+	Saving    bool // the deck writes the video of the print that ended
+	Frames    int  // the frames of the print now, or of the video that the deck writes
 	Videos    []Video
 	// First is the picture of the last first layer, or nil, with its time and its file.
 	First     *camera.Frame
@@ -87,8 +93,17 @@ type Runner struct {
 	OnSettings func(Settings)
 	// OnFirstLayer gets the picture of the first layer, or is nil.
 	OnFirstLayer func(f *camera.Frame, file string)
+	// OnVideo gets the name of a new video and the file of its print, or is nil. The runner calls
+	// it before Info shows that the save is done.
+	OnVideo func(name, file string)
 	// Picture is the camera of the first layer picture, or nil for the camera of the frames.
 	Picture Camera
+	// ParkY returns the Y of the park for the print of the file: the middle of the part in Y. It
+	// returns false while the deck does not know it, and for a file with no moves. It can be nil.
+	ParkY func(file string) (float64, bool)
+	// PartCrop returns the crop of the part of the print of the file in a frame of size sz, with
+	// the bed at the park Y. It returns false with no calibration of the camera. It can be nil.
+	PartCrop func(file string, sz image.Point) (image.Rectangle, bool)
 
 	host  Host
 	cam   Camera
@@ -97,6 +112,7 @@ type Runner struct {
 	mu        sync.Mutex
 	settings  Settings
 	rec       *Recorder // the frames of the print now, or nil
+	saving    *Recorder // the frames of the video that the deck writes now, or nil
 	file      string
 	stopCam   func()
 	stopPic   func() // the watch of the Picture camera
@@ -107,11 +123,21 @@ type Runner struct {
 	firstAt   time.Time
 	firstFile string
 	videos    []Video
+	parkY     float64 // the park Y of the print, or NaN
+	crop      lapseCrop
+}
+
+// lapseCrop is the crop of the frames of a print.
+type lapseCrop struct {
+	set  bool            // the crop of the print is known
+	src  image.Point     // the size of the frames of the camera
+	r    image.Rectangle // the crop, or empty for the whole picture
+	size image.Point     // the size of the frames of the video
 }
 
 // NewRunner returns a runner with the settings s. Call Run to start it.
 func NewRunner(s Settings, host Host, cam Camera, print func() Print, dir string) *Runner {
-	r := &Runner{settings: s, host: host, cam: cam, print: print, Dir: dir}
+	r := &Runner{settings: s, host: host, cam: cam, print: print, Dir: dir, parkY: math.NaN()}
 	r.videos = listVideos(dir)
 	return r
 }
@@ -139,10 +165,13 @@ func (r *Runner) SetSettings(s Settings) {
 func (r *Runner) Info() Info {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	in := Info{Recording: r.rec != nil && r.settings.On, Videos: append([]Video(nil), r.videos...),
+	in := Info{Recording: r.rec != nil && r.settings.On, Saving: r.saving != nil, Videos: append([]Video(nil), r.videos...),
 		First: r.first, FirstAt: r.firstAt, FirstFile: r.firstFile}
-	if r.rec != nil {
+	switch {
+	case r.rec != nil:
 		in.Frames = r.rec.Len()
+	case r.saving != nil:
+		in.Frames = r.saving.Len()
 	}
 	return in
 }
@@ -193,6 +222,7 @@ func (r *Runner) step(ctx context.Context) {
 		r.endPrint(ctx, true)
 	}
 	r.watch()
+	r.findParkY()
 
 	hs, ok := r.host.TimelapseStatus()
 	if !ok || !hs.Present {
@@ -210,10 +240,10 @@ func (r *Runner) step(ctx context.Context) {
 }
 
 // want returns the settings for the host: no frames with no camera.
-func (r *Runner) want() (s Settings, every int) {
+func (r *Runner) want() (s Settings, every int, parkY float64) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	s, every = r.settings, 1
+	s, every, parkY = r.settings, 1, r.parkY
 	if r.rec != nil {
 		every = r.rec.Every()
 	}
@@ -223,16 +253,17 @@ func (r *Runner) want() (s Settings, every int) {
 	if !r.picture().On() {
 		s.First = FirstOff
 	}
-	return s, every
+	return s, every, parkY
 }
 
 // sync sends the settings to the host when the host has other settings.
 func (r *Runner) sync(hs HostStatus) {
-	s, every := r.want()
-	if hs.Enable == s.On && hs.Park == s.Park && hs.First == s.First && hs.Every == every {
+	s, every, parkY := r.want()
+	sameY := hs.HasParkY == !math.IsNaN(parkY) && (!hs.HasParkY || math.Abs(hs.ParkY-parkY) < 0.01)
+	if hs.Enable == s.On && hs.Park == s.Park && hs.First == s.First && hs.Every == every && sameY {
 		return
 	}
-	key := fmt.Sprint(s, every)
+	key := fmt.Sprint(s, every, parkY)
 	r.mu.Lock()
 	if key == r.sent && time.Since(r.sentAt) < resendWait {
 		r.mu.Unlock()
@@ -240,7 +271,7 @@ func (r *Runner) sync(hs HostStatus) {
 	}
 	r.sent, r.sentAt = key, time.Now()
 	r.mu.Unlock()
-	if err := r.host.SetTimelapse(s.On, s.Park, s.First, every); err != nil {
+	if err := r.host.SetTimelapse(s.On, s.Park, s.First, every, parkY); err != nil {
 		log.Printf("timelapse: the settings were not sent: %v", err)
 	}
 }
@@ -250,6 +281,56 @@ func (r *Runner) startPrint(file string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.rec, r.file = NewRecorder(), file
+	r.parkY, r.crop = math.NaN(), lapseCrop{}
+}
+
+// findParkY asks for the park Y of the print until the deck knows it.
+func (r *Runner) findParkY() {
+	r.mu.Lock()
+	ask := r.rec != nil && math.IsNaN(r.parkY) && r.ParkY != nil
+	file := r.file
+	r.mu.Unlock()
+	if !ask {
+		return
+	}
+	if y, ok := r.ParkY(file); ok {
+		r.mu.Lock()
+		if r.file == file {
+			r.parkY = y
+		}
+		r.mu.Unlock()
+	}
+}
+
+// lapseFrame returns the frame f of the camera as a frame of the video: the crop of the part,
+// or the whole picture at MaxWidth or smaller. The first frame of a print sets the crop and the
+// size of the video.
+func (r *Runner) lapseFrame(f *camera.Frame) *camera.Frame {
+	r.mu.Lock()
+	c, file, on := r.crop, r.file, r.settings.Crop
+	r.mu.Unlock()
+	if !c.set {
+		c = lapseCrop{set: true, src: f.Size()}
+		if on && r.PartCrop != nil {
+			if cr, ok := r.PartCrop(file, f.Size()); ok && cr != image.Rect(0, 0, f.Size().X, f.Size().Y) {
+				c.r, c.size = cr, cropSize(cr, min(f.Size().X, MaxWidth))
+			}
+		}
+		r.mu.Lock()
+		r.crop = c
+		r.mu.Unlock()
+	}
+	if c.r.Empty() || f.Size() != c.src {
+		return small(f)
+	}
+	return f.CropTo(c.r, c.size.X, c.size.Y)
+}
+
+// cropSize is the size of the frames of the video of the crop c, for frames of width w: as wide
+// as the frames, and at most 2 times the crop. The sides are even.
+func cropSize(c image.Rectangle, w int) image.Point {
+	k := min(2, float64(w)/float64(c.Dx()))
+	return image.Pt(int(float64(c.Dx())*k)&^1, int(float64(c.Dy())*k)&^1)
 }
 
 // picture returns the camera of the first layer picture.
@@ -285,15 +366,23 @@ func (r *Runner) watch() {
 func (r *Runner) endPrint(ctx context.Context, save bool) {
 	r.mu.Lock()
 	rec, file, stop, stopPic := r.rec, r.file, r.stopCam, r.stopPic
-	r.rec, r.file, r.stopCam, r.stopPic = nil, "", nil, nil
+	r.rec, r.file, r.stopCam, r.stopPic, r.parkY = nil, "", nil, nil, math.NaN()
+	if rec != nil && save && rec.Len() > 0 {
+		r.saving = rec
+	}
 	r.mu.Unlock()
 	if rec == nil {
 		return
 	}
+	defer func() {
+		r.mu.Lock()
+		r.saving = nil
+		r.mu.Unlock()
+	}()
 	if save && rec.Len() > 0 {
 		// The last frame: the end G-code of the print moves the toolhead away.
 		if f := r.grab(ctx, r.cam); f != nil {
-			f = small(f)
+			f = r.lapseFrame(f)
 			rec.AddLast(f.JPEG(), f.Size())
 		}
 	}
@@ -338,13 +427,12 @@ func (r *Runner) takePicture(ctx context.Context, hs HostStatus) {
 	rec := r.rec
 	file := r.file
 	r.mu.Unlock()
-	if f != nil {
-		f = small(f)
-		if hs.IsLapse && rec != nil {
-			r.mu.Lock()
-			rec.Add(f.JPEG(), f.Size(), hs.Layer)
-			r.mu.Unlock()
-		}
+	if f != nil && hs.IsLapse && rec != nil {
+		lf := r.lapseFrame(f)
+		b := lf.JPEG()
+		r.mu.Lock()
+		rec.Add(b, lf.Size(), hs.Layer)
+		r.mu.Unlock()
 	}
 	if pf != nil {
 		f := small(pf)
@@ -424,8 +512,12 @@ func (r *Runner) save(rec *Recorder, file string, now time.Time) error {
 	}
 	r.mu.Lock()
 	r.videos = videos
+	cb := r.OnVideo
 	r.mu.Unlock()
 	log.Printf("timelapse: %s, %d frames", name, rec.Len())
+	if cb != nil {
+		cb(name, file)
+	}
 	return nil
 }
 

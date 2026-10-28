@@ -90,3 +90,35 @@ func TestHandleTaken(t *testing.T) {
 		t.Errorf("taken = %d, want 5", tl.taken)
 	}
 }
+
+// The park Y of the deck holds for the whole print, so a bed that moves in Y is at one place in
+// each frame. park_y of the config wins. With neither, the park keeps the Y of the print.
+func TestParkY(t *testing.T) {
+	lo, hi := [3]float64{-50, -17, -2}, [3]float64{293, 308, 297}
+	for _, c := range []struct {
+		config, print, posY, want float64
+	}{
+		{math.NaN(), 140, 100, 140},
+		{math.NaN(), 140, 230, 140},
+		{200, 140, 100, 200},
+		{math.NaN(), math.NaN(), 100, 100},
+	} {
+		_, y, _ := parkMove([3]float64{100, c.posY, 0.3}, lo, hi, math.NaN(), parkY(c.config, c.print), 1, 10)
+		if y != c.want {
+			t.Errorf("config %v, print %v, nozzle at %v: park Y %v, want %v", c.config, c.print, c.posY, y, c.want)
+		}
+	}
+	for v, want := range map[string]float64{"142.5": 142.5, "-3": -3} {
+		if y, err := parseParkY(v); err != nil || y != want {
+			t.Errorf("PARK_Y=%s: %v, %v", v, y, err)
+		}
+	}
+	if y, err := parseParkY("NONE"); err != nil || !math.IsNaN(y) {
+		t.Errorf("PARK_Y=NONE: %v, %v", y, err)
+	}
+	for _, bad := range []string{"", "x", "nan", "inf"} {
+		if _, err := parseParkY(bad); err == nil {
+			t.Errorf("PARK_Y=%q: no error", bad)
+		}
+	}
+}

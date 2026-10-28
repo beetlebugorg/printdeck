@@ -11,27 +11,56 @@ import (
 )
 
 // drawRecord is the page of one finished print of the history: the model, the result, the time,
-// the filament, and Reprint. The model of a print that did not complete shows the part that
-// printed in colour.
+// the filament, the time lapse, and Reprint. The model of a print that did not complete shows the
+// part that printed in colour.
 func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 	r := a.record
 	pf := a.navFrame()
 	pg := a.navPage(c, fitTitle(r.File, pf.head.Dx()-200))
 	rows := a.recordRows(r)
+	video := r.Video != "" && a.TimeLapse != nil
+	if video {
+		rows = append(rows, [2]string{"Time lapse", ""}) // the line comes with the still
+	}
 
-	// Tall: the picture, the table, and Reprint. Wide: the picture and the table side by side, as
-	// high as each other, and Reprint at the right of the row of actions.
+	// Tall: the picture, the table, the time lapse, and Reprint. Wide: the picture and the table
+	// side by side, as high as each other, and the time lapse and Reprint in the row of actions.
 	tableH := len(rows)*30 + 20
-	var pic, box, keys image.Rectangle
+	var pic, box, keys, lapse image.Rectangle
 	if pg.wide {
 		content, acts := pg.split()
 		side := min(content.Dy(), tableH, content.Dx()/2)
 		cols := kit.Cols(content, 16, kit.Px(side), kit.Fr(1))
 		pic, box = kit.Rows(cols[0], 0, kit.Px(side))[0], kit.Rows(cols[1], 0, kit.Px(min(tableH, content.Dy())))[0]
-		keys = kit.Cols(acts, 12, kit.Fr(1), kit.Fr(1))[1]
+		k := kit.Cols(acts, 12, kit.Fr(1), kit.Fr(1))
+		lapse, keys = k[0], k[1]
 	} else {
-		rr := kit.Rows(kit.Inset(pg.body(), 0, 12, 0, 8), 12, kit.Fr(1), kit.Px(tableH), kit.Px(84))
-		pic, box, keys = rr[0], rr[1], rr[2]
+		sizes := []kit.Size{kit.Fr(1), kit.Px(tableH), kit.Px(84)}
+		if video {
+			sizes = []kit.Size{kit.Fr(1), kit.Px(tableH), kit.Px(lapseRowH), kit.Px(84)}
+		}
+		rr := kit.Rows(kit.Inset(pg.body(), 0, 12, 0, 8), 12, sizes...)
+		pic, box, keys = rr[0], rr[1], rr[len(rr)-1]
+		if video {
+			lapse = rr[2]
+		}
+	}
+	if video {
+		// The still is as high as the row, 16:9.
+		k := kit.Cols(lapse, 12, kit.Px(lapse.Dy()*16/9), kit.Fr(1))
+		s := a.videoStill(r.Video, a.stillWidth(k[0]))
+		rows[len(rows)-1][1] = stillLine(s)
+		if pg.wide && !s.gone && s.still != nil {
+			rows[len(rows)-1][1] = clock(s.length) // the narrow table has the length only
+		}
+		a.drawStill(c, k[0], s)
+		if s.gone || s.still == nil {
+			key(c, k[1], "Play", surface, dim, false)
+			a.region("Play", k[1])
+		} else {
+			name, file := r.Video, r.File
+			a.button(c, k[1], "Play", raised, text, func() { a.openPlayer(name, file) })
+		}
 	}
 	gone := a.recordModel(c, pic, r)
 	plate(c, box)
@@ -39,6 +68,9 @@ func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 	detailRows(c, kit.Inset(box, 18, 10, 18, 10), rows, 30)
 	a.reprintKey(c, keys, r, gone, orange, onAcc)
 }
+
+// lapseRowH is the height of the row of the time lapse on a tall record page.
+const lapseRowH = 84
 
 // recordRows are the rows of the table of a finished print: the result, the end, the time, the
 // filament, the material, the roll and the cost.

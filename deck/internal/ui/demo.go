@@ -4,12 +4,14 @@ import (
 	"errors"
 	"image"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"printdeck/internal/board"
 	"printdeck/internal/gcodemeta"
 	"printdeck/internal/printer"
+	"printdeck/internal/timelapse"
 	"printdeck/internal/wifi"
 )
 
@@ -101,6 +103,32 @@ func (d *DemoPrinter) UseConfig(string, string) error               { return nil
 func (d *DemoPrinter) Console() []printer.ConsoleLine               { return d.Console_ }
 func (d *DemoPrinter) SendConsole(line string) {
 	d.Console_ = append(d.Console_, printer.ConsoleLine{Kind: "in", Text: line})
+}
+
+// DemoTimeLapse is a time lapse with fixed settings, and videos in the folder Dir; for the demo.
+type DemoTimeLapse struct {
+	S   timelapse.Settings
+	In  timelapse.Info
+	Dir string
+}
+
+func (d *DemoTimeLapse) Settings() timelapse.Settings     { return d.S }
+func (d *DemoTimeLapse) SetSettings(s timelapse.Settings) { d.S = s }
+func (d *DemoTimeLapse) Info() timelapse.Info             { return d.In }
+func (d *DemoTimeLapse) VideoPath(name string) (string, bool) {
+	for _, v := range d.In.Videos {
+		if v.Name == name {
+			return filepath.Join(d.Dir, name), true
+		}
+	}
+	return "", false
+}
+
+// DemoPlayer opens the player of a video over the pages, paused at frame; for the pictures of the
+// manual.
+func (a *App) DemoPlayer(name, file string, frame int) {
+	a.openPlayer(name, file)
+	a.player.autoplay, a.player.pos = false, frame
 }
 
 // UseSim sets the name of the simulated printer in the state of the demo.

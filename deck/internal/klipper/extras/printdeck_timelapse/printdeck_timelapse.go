@@ -5,11 +5,13 @@
 //
 // The deck turns the module on with
 //
-//	PRINTDECK_TIMELAPSE [ENABLE=0|1] [PARK=0|1] [FIRST_LAYER=0|1|2] [EVERY=n]
+//	PRINTDECK_TIMELAPSE [ENABLE=0|1] [PARK=0|1] [FIRST_LAYER=0|1|2] [EVERY=n] [PARK_Y=mm|NONE]
 //
 // ENABLE=1 adds a frame at each n-th layer change (EVERY). PARK=0 captures the frames of the time
 // lapse with no park. FIRST_LAYER=1 adds a picture after the first layer, always with a park.
-// FIRST_LAYER=2 also pauses the print after the picture (PRINTDECK_PAUSE), for a check.
+// FIRST_LAYER=2 also pauses the print after the picture (PRINTDECK_PAUSE), for a check. PARK_Y is
+// the Y of the park for the print: the deck sends the middle of the part in Y, so that a bed that
+// moves in Y is at the same place in each frame. NONE removes it.
 //
 // The module finds the layer changes from the comments of the slicer in the file of the print
 // (";LAYER:n" of Cura, ";LAYER_CHANGE" of PrusaSlicer and OrcaSlicer). The frame goes in order with
@@ -34,8 +36,8 @@
 //
 //	[printdeck_timelapse]
 //	#park_x:            # mm; the default is 5 mm inside the minimum of X
-//	#park_y:            # mm; the default is the Y of the print, so a bed that moves in Y
-//	                    # stays under the camera
+//	#park_y:            # mm; the default is PARK_Y of the deck, or else the Y of the
+//	                    # print, so a bed that moves in Y stays under the camera
 //	lift: 1             # mm over the layer
 //	min_z: 10           # mm; the lowest Z of the moves to the park position, over the
 //	                    # clips, washers and probe points at the edges of the bed
@@ -54,6 +56,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -97,7 +100,8 @@ type Timelapse struct {
 	park      bool
 	first     int
 	every     int
-	file      string // the file of the print of the layer count
+	printY    float64 // PARK_Y of the deck, or NaN
+	file      string  // the file of the print of the layer count
 	lastPos   int64
 	changes   int  // the layer changes of the print so far
 	misses    int  // the frames in a row with no picture
@@ -122,6 +126,7 @@ func load(config *configfile.Wrapper) any {
 	t.travelSpeed = config.GetFloat("travel_speed", configfile.Default(100.), configfile.Above(0.))
 	t.zSpeed = config.GetFloat("z_speed", configfile.Default(10.), configfile.Above(0.))
 	t.wait = config.GetFloat("wait", configfile.Default(5.), configfile.Above(0.))
+	t.printY = math.NaN()
 	t.sdLine = func() (string, int64, bool) {
 		v, _ := printer.TryLookupObject("virtual_sdcard").(sdcard)
 		if v == nil || !v.IsCmdFromSD() {
@@ -152,7 +157,15 @@ func (t *Timelapse) Status(eventtime float64) map[string]any {
 	defer t.mu.Unlock()
 	return map[string]any{"enable": t.enable, "park": t.park, "first_layer": t.first, "every": t.every,
 		"frame": t.frame, "taken": t.taken, "waiting": t.waiting, "first": t.kindFirst, "lapse": t.kindLapse,
-		"layer": t.layer, "stopped": t.stopped}
+		"layer": t.layer, "stopped": t.stopped, "park_y": parkYStatus(t.printY)}
+}
+
+// parkYStatus is PARK_Y for the status: nil for none.
+func parkYStatus(y float64) any {
+	if math.IsNaN(y) {
+		return nil
+	}
+	return y
 }
 
 func (t *Timelapse) cmdTimelapse(gcmd *gcode.Command) {
@@ -162,6 +175,25 @@ func (t *Timelapse) cmdTimelapse(gcmd *gcode.Command) {
 	t.park = gcmd.GetInt("PARK", gcode.Default(boolInt(t.park)), gcode.Min(0), gcode.Max(1)) == 1
 	t.first = gcmd.GetInt("FIRST_LAYER", gcode.Default(t.first), gcode.Min(0), gcode.Max(2))
 	t.every = gcmd.GetInt("EVERY", gcode.Default(t.every), gcode.Min(1))
+	if v, ok := gcmd.Get("PARK_Y", gcode.Default(nil)); ok {
+		y, err := parseParkY(v)
+		if err != nil {
+			panic(gcmd.Error("PARK_Y must be a number or NONE"))
+		}
+		t.printY = y
+	}
+}
+
+// parseParkY reads PARK_Y: a number, or NONE for NaN.
+func parseParkY(v string) (float64, error) {
+	if strings.EqualFold(v, "none") {
+		return math.NaN(), nil
+	}
+	y, err := strconv.ParseFloat(v, 64)
+	if err != nil || math.IsNaN(y) || math.IsInf(y, 0) {
+		return 0, fmt.Errorf("a bad PARK_Y %q", v)
+	}
+	return y, nil
 }
 
 func boolInt(b bool) int {
@@ -304,12 +336,24 @@ func (t *Timelapse) parkScript() (out, back string) {
 	th := toolhead.Of(t.printer)
 	pos := gcode_move.Of(t.printer).Status(0)["position"].(gcode.Coord)
 	lo, hi := axisLimits(th.Status(0))
-	px, py, dz := parkMove([3]float64{pos.X(), pos.Y(), pos.Z()}, lo, hi, t.parkX, t.parkY, t.lift, t.minZ)
+	t.mu.Lock()
+	y := parkY(t.parkY, t.printY)
+	t.mu.Unlock()
+	px, py, dz := parkMove([3]float64{pos.X(), pos.Y(), pos.Z()}, lo, hi, t.parkX, y, t.lift, t.minZ)
 	retract := 0.
 	if t.canExtrude() {
 		retract = t.retract
 	}
 	return moveScripts(px-pos.X(), py-pos.Y(), dz, retract, t.retractSpeed, t.travelSpeed, t.zSpeed)
+}
+
+// parkY is the Y of the park: park_y of the config, or else PARK_Y of the deck. NaN is the Y of
+// the print.
+func parkY(config, print float64) float64 {
+	if !math.IsNaN(config) {
+		return config
+	}
+	return print
 }
 
 // parkMove returns the park position in X and Y, and the lift in Z, for the toolhead at pos and

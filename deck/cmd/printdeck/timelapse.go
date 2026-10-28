@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"image"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 
@@ -14,9 +16,12 @@ import (
 
 // startTimelapse starts the time lapse and the first layer picture of the prints (Settings > Time
 // lapse). It needs the camera of the deck and the Klipper host. The frames come from the camera of
-// the time lapse role, and the first layer picture from the camera of the picture role. The settings are in the file
+// the time lapse role, and the first layer picture from the camera of the picture role. The park
+// of a print is at the middle of the part in Y, so a bed that moves in Y is at one place in each
+// frame. With a calibration of the camera, the frames are the crop of the part. The settings are in the file
 // timelapse of the state folder; the deck writes it only when the page changes them. The frames of
-// a print stay in memory. The deck writes one video to the folder videos at the end of a print.
+// a print stay in memory. The deck writes one video to the folder videos at the end of a print,
+// and the history record of the print gets its name.
 func startTimelapse(ctx context.Context, stateDir string, app *ui.App, pr printerBackend) {
 	hub, ok := app.Camera.(*camera.Hub)
 	k, isKlippy := pr.(*printer.Klippy)
@@ -38,10 +43,43 @@ func startTimelapse(ctx context.Context, stateDir string, app *ui.App, pr printe
 		}
 	}
 	r.Picture = hub.Role(camera.RolePicture)
+	r.ParkY = func(file string) (float64, bool) {
+		b, ok := wholePart(k, file)
+		if !ok {
+			return 0, false
+		}
+		_, y, _ := gcodeToPlace(k)((b.Min[0]+b.Max[0])/2, (b.Min[1]+b.Max[1])/2, 0)
+		return y, true
+	}
+	r.PartCrop = func(file string, sz image.Point) (image.Rectangle, bool) {
+		lapse := hub.Role(camera.RoleLapse)
+		cal, ok := lapse.Calibration()
+		b, hasPart := wholePart(k, file)
+		if !ok || !hasPart {
+			return image.Rectangle{}, false
+		}
+		box := placeBox(gcodeToPlace(k), b, 0, b.Max[2])
+		return cal.PartCrop(box, sz, hub.Settings().Camera(lapse.ID()).Rotate)
+	}
 	r.OnFirstLayer = func(f *camera.Frame, file string) { app.ShowFirstLayer() }
+	r.OnVideo = func(name, file string) {
+		k.SetVideo(file, name)
+		app.Redraw()
+	}
 	app.TimeLapse = r
 	sysTimelapse = r
 	go r.Run(ctx)
+}
+
+// wholePart returns the box of all the moves of the print of the file, in the coordinates of the
+// G-code. It is false while the G-code of the print is not loaded.
+func wholePart(k *printer.Klippy, file string) (printer.Box, bool) {
+	st := k.State()
+	if !st.Busy() || st.FilePath != file {
+		return printer.Box{}, false
+	}
+	part, _, ok, _ := k.View.PrintBox(st, math.MaxInt64)
+	return part, ok
 }
 
 // videoDir is the folder of the time lapse videos in the state folder.
