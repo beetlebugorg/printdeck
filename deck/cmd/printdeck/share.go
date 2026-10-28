@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -123,8 +124,17 @@ func (l *shareLink) status() cloud.ShareStatus {
 	if st.HasZ {
 		s.Height = st.Z
 	}
+	density := printer.Density("")
+	// The roll in the printer: its material and name, and its density for the grams.
+	if store := l.pr.SpoolStore(); store != nil {
+		if sp, ok := store.In(); ok {
+			s.Material = strings.TrimSpace(sp.Material + ", " + sp.Name)
+			s.Material = strings.Trim(s.Material, ", ")
+			density = store.Density(sp)
+		}
+	}
 	grams := func(mm float64) float64 {
-		return printer.GramsAt(mm, l.pr.Machine().Diameter(), printer.Density(""))
+		return printer.GramsAt(mm, l.pr.Machine().Diameter(), density)
 	}
 	switch {
 	case st.Busy():
@@ -134,7 +144,7 @@ func (l *shareLink) status() cloud.ShareStatus {
 		switch {
 		case st.Paused:
 			s.State = "paused"
-		case st.Preparing:
+		case st.Preparing, strings.HasPrefix(st.Activity, "Heating"):
 			s.State = "heating"
 		default:
 			s.State = "printing"

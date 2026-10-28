@@ -32,10 +32,10 @@ type ShareStatus struct {
 	// Grams is the filament that the print used, and GramsTotal the filament of the file.
 	Grams      float64   `json:"grams,omitempty"`
 	GramsTotal float64   `json:"grams_total,omitempty"`
-	Started    time.Time `json:"started,omitempty"`
-	Ended      time.Time `json:"ended,omitempty"`
+	Started    time.Time `json:"started,omitzero"`
+	Ended      time.Time `json:"ended,omitzero"`
 	// Expires is the time of the delete of the share, after the end.
-	Expires time.Time `json:"expires,omitempty"`
+	Expires time.Time `json:"expires,omitzero"`
 	// Views are the names of the camera views, with a file cam-<view>.jpg each. Frame goes up at
 	// each new frame.
 	Views []string `json:"views,omitempty"`

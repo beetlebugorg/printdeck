@@ -19,6 +19,7 @@ import (
 func runDev(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("dev", flag.ExitOnError)
 	addr := fs.String("addr", "127.0.0.1:8790", "the address of the service")
+	data := fs.String("data", "", "a folder for the data, so it stays at the next start (default: in memory)")
 	src := fs.String("src", "", "the folder of the cloud module (default: found from the current folder)")
 	fs.Parse(args)
 	dir, err := findSrc(*src)
@@ -29,7 +30,10 @@ func runDev(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	st := api.NewMemStore()
+	var st api.DevStore = api.NewMemStore()
+	if *data != "" {
+		st = &api.FileStore{Dir: *data}
+	}
 	for key, data := range files {
 		st.Put(ctx, key, data, api.PutOptions{ContentType: mime.TypeByExtension(path.Ext(key)), CacheControl: "no-cache"})
 	}

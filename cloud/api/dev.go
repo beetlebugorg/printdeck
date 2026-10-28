@@ -58,10 +58,17 @@ func (g *LocalGranter) check(tok, key string, size int64) bool {
 		!strings.Contains(key, "..")
 }
 
+// DevStore is the store of a DevServer: a MemStore or a FileStore.
+type DevStore interface {
+	Store
+	ContentType(key string) string
+	CacheControl(key string) string
+}
+
 // DevServer is the local service.
 type DevServer struct {
 	API    *Server
-	Store  *MemStore
+	Store  DevStore
 	Grants *LocalGranter
 }
 
