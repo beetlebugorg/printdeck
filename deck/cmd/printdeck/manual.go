@@ -612,7 +612,7 @@ func manualParts() []section {
 						{"Clock", "12 or 24 hours."},
 						{"Home in a filament change", "On: the printer homes while the nozzle heats for a filament change."},
 						{"Screen", "Tap it to turn the screen a quarter turn. The deck restarts, and a print continues. This setting overrides display_rotate."},
-						{"Camera", "Opens the live picture."},
+						{"Camera", "Opens the live picture, as the Camera key does."},
 						{"Cameras", "Names the cameras and sets their uses."},
 					},
 					Tall: []callout{

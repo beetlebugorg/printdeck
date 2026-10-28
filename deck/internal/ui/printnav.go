@@ -149,8 +149,11 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 		p    page
 	}
 	// The pages stay in their places during a print. Toolhead waits for its end; the others open,
-	// and their keys that change the printer wait. The last place is empty.
+	// and their keys that change the printer wait. A deck with a camera has Camera in the last place.
 	pages := []homePage{{"Filament", pageFilament}, {"Toolhead", pageMove}, {"Machine", pageMachine}}
+	if a.Camera != nil {
+		pages = append(pages, homePage{"Camera", pageCamera})
+	}
 	for i, cell := range kit.Grid(r[1], 2, 2, 12) {
 		if i >= len(pages) {
 			break
