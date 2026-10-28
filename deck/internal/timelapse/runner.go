@@ -307,7 +307,9 @@ func (r *Runner) findParkY() {
 // size of the video.
 func (r *Runner) lapseFrame(f *camera.Frame) *camera.Frame {
 	r.mu.Lock()
-	c, file, on := r.crop, r.file, r.settings.Crop
+	// The crop needs the park: with no park, a bed that moves in Y is at another place in each
+	// frame.
+	c, file, on := r.crop, r.file, r.settings.Crop && r.settings.Park
 	r.mu.Unlock()
 	if !c.set {
 		c = lapseCrop{set: true, src: f.Size()}

@@ -72,9 +72,14 @@ func TestTimeLapsePage(t *testing.T) {
 	if tl.s.Park {
 		t.Error("the park is on")
 	}
+	if f := simFrame(t, a, "timelapse-crop"); !strings.Contains(f, "Needs the park") {
+		t.Error("no line for the crop with no park")
+	}
+	tapLabel(t, a, cv, "Park for the frames")
 	if f := simFrame(t, a, "timelapse-crop"); !strings.Contains(f, "Needs a calibration of the camera") {
 		t.Error("no line for the crop with no calibration")
 	}
+	tapLabel(t, a, cv, "Park for the frames")
 	tapLabel(t, a, cv, "Crop to the part")
 	if tl.s.Crop {
 		t.Error("the crop is on")

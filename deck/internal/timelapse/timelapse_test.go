@@ -346,15 +346,16 @@ func TestKeepVideos(t *testing.T) {
 }
 
 // A print with a crop: the host gets the park Y of the print, and each frame of the video is the
-// crop of the part at one size. The first layer picture stays whole. With the crop off, the
-// frames are whole.
+// crop of the part at one size. The first layer picture stays whole. With the crop off, or with
+// no park, the frames are whole.
 func TestRunnerCrop(t *testing.T) {
-	for _, crop := range []bool{true, false} {
+	for _, tc := range []struct{ crop, park bool }{{true, true}, {false, true}, {true, false}} {
+		crop := tc.crop
 		dir := t.TempDir()
 		host := &fakeHost{st: HostStatus{Present: true, Park: true, Every: 1}}
 		cam := &fakeCamera{t: t, on: true}
 		p := Print{}
-		r := NewRunner(Settings{On: true, Park: true, First: FirstPicture, Crop: crop}, host, cam, func() Print { return p }, dir)
+		r := NewRunner(Settings{On: true, Park: tc.park, First: FirstPicture, Crop: crop}, host, cam, func() Print { return p }, dir)
 		asks := 0
 		r.ParkY = func(file string) (float64, bool) {
 			asks++
@@ -396,11 +397,11 @@ func TestRunnerCrop(t *testing.T) {
 			t.Fatal(err)
 		}
 		want := image.Pt(64, 42) // 48 x 32, 4/3 times: as wide as the frames
-		if !crop {
+		if !crop || !tc.park {
 			want = image.Pt(64, 48)
 		}
 		if m.W != want.X || m.H != want.Y {
-			t.Errorf("crop %v: video of %dx%d, want %v", crop, m.W, m.H, want)
+			t.Errorf("crop %v, park %v: video of %dx%d, want %v", crop, tc.park, m.W, m.H, want)
 		}
 		for i := range m.Len() {
 			b, _ := m.JPEG(i)
