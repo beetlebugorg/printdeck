@@ -691,6 +691,9 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 	if a.OnNotify != nil {
 		items = append(items, menuItem{"Notifications", notifyLine(a.NotifyTopic), dim, a.editNotify})
 	}
+	if a.Cloud != nil {
+		items = append(items, menuItem{"Cloud", cloudLine(a.Cloud.State()), dim, func() { a.open(pageCloud) }})
+	}
 	a.menuRows(c, f.body(), f.wide, 60, 5, items)
 }
 

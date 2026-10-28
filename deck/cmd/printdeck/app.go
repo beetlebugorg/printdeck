@@ -111,6 +111,7 @@ func desktopApp(args []string) {
 	startNotify(ctx, cfg.StateDir, pr, app)
 	startCamera(ctx, cfg.StateDir, app, pr)
 	startTimelapse(ctx, cfg.StateDir, app, pr)
+	app.Cloud = newCloudLink(cfg.StateDir, app.Redraw)
 	go keepAwake(ctx, pr)
 	// The samples of the computer. A computer with no /proc has none, and the page shows that.
 	app.Metrics = hostmetrics.New()

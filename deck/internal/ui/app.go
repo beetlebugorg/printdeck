@@ -210,7 +210,9 @@ type App struct {
 	NotifyTopic string
 	OnNotify    func(topic string)
 	// Phones are the paired phones of the Printdeck app, or nil (Settings > Phones).
-	Phones     *notify.Phones
+	Phones *notify.Phones
+	// Cloud is the link of the deck to its cloud service, or nil (Settings > Cloud).
+	Cloud      CloudLink
 	OnSwapHome func(bool)
 	// Rotate is the turn of the UI on the panel in degrees: 0, 90, 180 or 270. OnRotate saves a new
 	// turn and restarts the deck in it; with no OnRotate, the Settings page has no Screen row.
@@ -256,13 +258,14 @@ type App struct {
 	Metrics      *hostmetrics.Recorder
 	monitorRange int // the time of the graphs of the System monitor page: an index of monitorRanges
 	// Camera is the cameras of the deck, or nil (Settings > Camera and Settings > Cameras).
-	Camera   Camera
-	camView  string     // the view of the picture of the Camera page ("" is full)
-	camID    string     // the tab of the Camera page: an ID, "" for the main camera, or camAll
-	camFocus bool       // the Camera page shows the focus keys
-	camEdit  string     // the ID of the camera of the page of one camera
-	camKB    *keyboard  // the keyboard of the name of a camera, while it is open
-	calib    *calibFlow // the calibration of the camera, while it runs (calibrate.go)
+	Camera         Camera
+	camView        string     // the view of the picture of the Camera page ("" is full)
+	camID          string     // the tab of the Camera page: an ID, "" for the main camera, or camAll
+	camFocus       bool       // the Camera page shows the focus keys
+	cloudDomainSet string     // the domain of the service that the owner typed on the Cloud page, or ""
+	camEdit        string     // the ID of the camera of the page of one camera
+	camKB          *keyboard  // the keyboard of the name of a camera, while it is open
+	calib          *calibFlow // the calibration of the camera, while it runs (calibrate.go)
 	// TimeLapse is the time lapse and the picture of the first layer, or nil (Settings > Time lapse).
 	TimeLapse TimeLapse
 
@@ -322,6 +325,7 @@ func (a *App) Session(width, height int) *App {
 	s.Metrics = a.Metrics
 	s.Camera = a.Camera
 	s.TimeLapse = a.TimeLapse
+	s.Cloud = a.Cloud
 	s.hub = a.hub
 	return s
 }

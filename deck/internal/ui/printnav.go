@@ -45,6 +45,7 @@ const (
 	pageCameras     // the list of the cameras
 	pageCameraEdit  // the settings of one camera (a.camEdit): the name, on or off, and the uses
 	pagePlayer      // the player of a time lapse video (a.player)
+	pageCloud       // the link of the deck to its cloud service
 )
 
 // open shows a page over the current one.
