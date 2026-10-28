@@ -15,7 +15,9 @@
 //
 // A camera that sends MJPEG gives its JPEG frames with no change. The deck converts the pictures
 // of a camera that sends raw pictures (YUYV, NV12, YU12) to JPEG at a smaller size and rate, to
-// keep the CPU use low. The frames stay in memory only.
+// keep the CPU use low. A turn of 90° or 270°, and a turn of 180° on a camera with no flip
+// controls, also needs the decode, at the same smaller size and rate. The frames stay in memory
+// only.
 package camera
 
 import (
@@ -57,7 +59,7 @@ type Format struct {
 	In         string
 	InW, InH   int
 	InFPS      float64 // the rate of the camera, or 0 when it is not known
-	OutW, OutH int     // the size of the JPEG frames
+	OutW, OutH int     // the size of the JPEG frames, after the turn
 	OutFPS     int     // the most frames a second that the deck makes
 }
 
@@ -271,7 +273,7 @@ func (f *Frame) Small(w int) *Frame {
 	}
 	h := max(2, (f.h*w/f.w+1)/2*2)
 	if pic.Rect.Dx() != w || pic.Rect.Dy() != h || pic.SubsampleRatio != image.YCbCrSubsampleRatio420 {
-		pic = scaleYCbCr(pic, w, h, false)
+		pic = scaleYCbCr(pic, w, h, 0)
 	}
 	s := picFrame(pic)
 	s.Seq, s.Time, s.blank, s.cam = f.Seq, f.Time, f.blank, f.cam

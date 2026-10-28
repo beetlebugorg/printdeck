@@ -17,7 +17,8 @@ type CamSettings struct {
 	Off bool `json:"off,omitempty"`
 	// Name is the name of the camera on the screens, or "" for the name of the device.
 	Name string `json:"name,omitempty"`
-	// Rotate is 0, or 180 for a camera that is mounted upside down.
+	// Rotate is the clockwise turn of the picture in degrees: 0, 90, 180 or 270. 180 is for a
+	// camera that is mounted upside down, and 90 or 270 for a camera on its side.
 	Rotate int `json:"rotate,omitempty"`
 	// Model is the name of the device, for the screens while the deck does not find the camera.
 	// The hub sets it.
@@ -175,9 +176,7 @@ func ParseSettings(b []byte) Settings {
 		var s Settings
 		if err := json.Unmarshal(b, &s); err == nil {
 			for i := range s.Cameras {
-				if s.Cameras[i].Rotate != 180 {
-					s.Cameras[i].Rotate = 0
-				}
+				s.Cameras[i].Rotate = ValidTurn(s.Cameras[i].Rotate)
 			}
 			return s
 		}
@@ -202,6 +201,18 @@ func ParseSettings(b []byte) Settings {
 	}
 	return s
 }
+
+// ValidTurn returns the turn r when it is 0, 90, 180 or 270, and else 0.
+func ValidTurn(r int) int {
+	switch r {
+	case 90, 180, 270:
+		return r
+	}
+	return 0
+}
+
+// NextTurn returns the turn after r: 90° more, clockwise, and 0 after 270.
+func NextTurn(r int) int { return (ValidTurn(r) + 90) % 360 }
 
 // Bytes is the text of the settings for the camera file.
 func (s Settings) Bytes() []byte {

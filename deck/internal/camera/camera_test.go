@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -75,20 +76,31 @@ func TestRawFormats(t *testing.T) {
 		if err != nil {
 			t.Fatal(format, err)
 		}
-		for _, flip := range []bool{false, true} {
+		for _, rot := range []int{0, 90, 180, 270} {
 			for _, size := range []image.Point{{64, 32}, {32, 16}, {16, 8}, {48, 24}} {
-				out := toYCbCr(size.X, size.Y, y, cb, cr, flip)
-				// The four quarters at the size of the output.
+				ow, oh := TurnedSize(size.X, size.Y, rot)
+				out := toYCbCr(ow, oh, y, cb, cr, rot)
+				if out.Rect.Dx() != ow || out.Rect.Dy() != oh {
+					t.Fatalf("%s turn %d: size %v, want %dx%d", format, rot, out.Rect, ow, oh)
+				}
+				// The four quarters at the size of the output before the turn.
 				for _, q := range []image.Point{{0, 0}, {3, 0}, {0, 3}, {3, 3}} {
 					px, py := q.X*size.X/4+size.X/8, q.Y*size.Y/4+size.Y/8
 					sx, sy := px*w/size.X, py*h/size.Y
-					if flip {
-						sx, sy = w-1-sx, h-1-sy
+					// The place of (px, py) in the output after the turn.
+					ox, oy := px, py
+					switch rot {
+					case 90:
+						ox, oy = size.Y-1-py, px
+					case 180:
+						ox, oy = size.X-1-px, size.Y-1-py
+					case 270:
+						ox, oy = py, size.X-1-px
 					}
 					wy, wcb, wcr := testPicture(sx, sy)
-					c := out.YCbCrAt(px, py)
+					c := out.YCbCrAt(ox, oy)
 					if c.Y != wy || c.Cb != wcb || c.Cr != wcr {
-						t.Errorf("%s flip %v %v: at %d,%d: %v, want %d %d %d", format, flip, size, px, py, c, wy, wcb, wcr)
+						t.Errorf("%s turn %d %v: at %d,%d: %v, want %d %d %d", format, rot, size, ox, oy, c, wy, wcb, wcr)
 					}
 				}
 			}
@@ -209,7 +221,7 @@ func TestSmall(t *testing.T) {
 		t.Error("a width that is not smaller gives another frame")
 	}
 	big.w, big.h = 400, 240 // a larger frame, to have room for smaller widths
-	big.pic = scaleYCbCr(big.picture(), 400, 240, false)
+	big.pic = scaleYCbCr(big.picture(), 400, 240, 0)
 	s := big.Small(100)
 	if s.Size() != image.Pt(96, 58) {
 		t.Errorf("size %v, want 96x58", s.Size())
@@ -250,8 +262,27 @@ func TestSettings(t *testing.T) {
 			t.Errorf("%+v: read back as %+v", s, got)
 		}
 	}
-	if s := ParseSettings([]byte(`{"cameras":[{"id":"a","rotate":90}]}`)); s.Cameras[0].Rotate != 0 {
-		t.Errorf("a turn of 90: %+v", s)
+	for in, want := range map[int]int{0: 0, 90: 90, 180: 180, 270: 270, 45: 0, -90: 0, 360: 0} {
+		s := ParseSettings(fmt.Appendf(nil, `{"cameras":[{"id":"a","rotate":%d}]}`, in))
+		if s.Cameras[0].Rotate != want {
+			t.Errorf("a turn of %d: %+v, want %d", in, s, want)
+		}
+	}
+}
+
+// The Turn key goes 0, 90, 180, 270 and back to 0.
+func TestNextTurn(t *testing.T) {
+	r := 0
+	var got []int
+	for range 5 {
+		r = NextTurn(r)
+		got = append(got, r)
+	}
+	if !reflect.DeepEqual(got, []int{90, 180, 270, 0, 90}) {
+		t.Errorf("turns %v", got)
+	}
+	if NextTurn(45) != 90 {
+		t.Errorf("after a turn of 45: %d", NextTurn(45))
 	}
 }
 

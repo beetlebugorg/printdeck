@@ -142,7 +142,7 @@ func TestFitWrongTaps(t *testing.T) {
 	}
 }
 
-// The projection follows the turn and the size of the frame, and the calibration is valid only
+// The projection follows the turn and the size of the frame at each turn of 90°, and the calibration is valid only
 // for its camera.
 func TestCalibrationTurnAndSize(t *testing.T) {
 	cam := newSynthCamera()
@@ -156,6 +156,31 @@ func TestCalibrationTurnAndSize(t *testing.T) {
 	pu, pv, _ = c.Project(p, 960, 540, 180)
 	if math.Abs(pu-(960-u)) > 0.01 || math.Abs(pv-(540-v)) > 0.01 {
 		t.Errorf("turned: %.2f,%.2f, want %.2f,%.2f", pu, pv, 960-u, 540-v)
+	}
+	// A turn of 90° or 270° makes the frame tall: 540 x 960.
+	for _, tc := range []struct {
+		rot    int
+		wu, wv float64
+	}{{90, 540 - v, u}, {270, v, 960 - u}} {
+		pu, pv, _ = c.Project(p, 540, 960, tc.rot)
+		if math.Abs(pu-tc.wu) > 0.01 || math.Abs(pv-tc.wv) > 0.01 {
+			t.Errorf("turn %d: %.2f,%.2f, want %.2f,%.2f", tc.rot, pu, pv, tc.wu, tc.wv)
+		}
+	}
+	// A calibration made at a turn of 90° has the matrix of the turned frame: u' = 1 - v and
+	// v' = u. It gives the same places as c at each turn.
+	at90 := *c
+	at90.Rotate = 90
+	for i := range 4 {
+		at90.P[i], at90.P[4+i] = c.P[8+i]-c.P[4+i], c.P[i]
+	}
+	for _, rot := range []int{0, 90, 180, 270} {
+		w, h := TurnedSize(960, 540, rot)
+		wu, wv, _ := c.Project(p, w, h, rot)
+		gu, gv, _ := at90.Project(p, w, h, rot)
+		if math.Abs(gu-wu) > 0.01 || math.Abs(gv-wv) > 0.01 {
+			t.Errorf("calibration at 90, turn %d: %.2f,%.2f, want %.2f,%.2f", rot, gu, gv, wu, wv)
+		}
 	}
 	if !c.ValidFor(Device{ID: "test"}, Format{InW: 960, InH: 540}) || !c.ValidFor(Device{ID: "test"}, Format{}) {
 		t.Error("not valid for its camera")

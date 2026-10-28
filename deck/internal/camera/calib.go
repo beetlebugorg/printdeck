@@ -51,7 +51,8 @@ type Calibration struct {
 	// Width and Height are the size of the frames at the calibration, in pixels.
 	Width  int `json:"width"`
 	Height int `json:"height"`
-	// Rotate is the turn of the settings at the calibration: 0 or 180.
+	// Rotate is the turn of the settings at the calibration: 0, 90, 180 or 270. A projection at
+	// another turn turns the place in the frame (Project), so the calibration stays valid.
 	Rotate int `json:"rotate"`
 	// Kind is KindNozzle or KindTowers. A calibration of an older deck has no kind: KindNozzle.
 	Kind string `json:"kind,omitempty"`
@@ -164,10 +165,22 @@ func (c *Calibration) Project(p [3]float64, w, h, rotate int) (px, py float64, o
 	if !ok {
 		return 0, 0, false
 	}
-	if rotate != c.Rotate {
-		u, v = 1-u, 1-v
-	}
+	u, v = turnNorm(u, v, rotate-c.Rotate)
 	return u * float64(w), v * float64(h), true
+}
+
+// turnNorm returns the place (u, v) in normalized coordinates of a frame after a clockwise turn of
+// the frame by rotate degrees, a multiple of 90.
+func turnNorm(u, v float64, rotate int) (float64, float64) {
+	switch (rotate%360 + 360) % 360 {
+	case 90:
+		return 1 - v, u
+	case 180:
+		return 1 - u, 1 - v
+	case 270:
+		return v, 1 - u
+	}
+	return u, v
 }
 
 // projectNorm returns p in normalized coordinates of the frame.

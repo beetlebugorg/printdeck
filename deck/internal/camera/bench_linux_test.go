@@ -36,7 +36,7 @@ func benchRaw(b *testing.B, format string, encode bool) {
 	f := Format{OutW: ow, OutH: oh}
 	b.ResetTimer()
 	for range b.N {
-		fr := makeFrame(format, data, w, h, bpl, f, false)
+		fr := makeFrame(format, data, w, h, bpl, f, 0)
 		if fr == nil {
 			b.Fatal("no frame")
 		}
@@ -59,7 +59,7 @@ func BenchmarkYU12Convert(b *testing.B) { benchRaw(b, "YU12", false) }
 func benchJPEG(b *testing.B) []byte {
 	y, cb, cr, _ := rawPlanes("YU12", benchFrame("YU12", 1280, 720), 1280, 720, 1280)
 	var buf bytes.Buffer
-	jpeg.Encode(&buf, toYCbCr(1280, 720, y, cb, cr, false), &jpeg.Options{Quality: 80})
+	jpeg.Encode(&buf, toYCbCr(1280, 720, y, cb, cr, 0), &jpeg.Options{Quality: 80})
 	return stripDHT(buf.Bytes())
 }
 
@@ -68,7 +68,7 @@ func BenchmarkMJPEG(b *testing.B) {
 	data := benchJPEG(b)
 	b.ResetTimer()
 	for range b.N {
-		if makeFrame("MJPG", data, 1280, 720, 0, Format{OutW: 1280, OutH: 720}, false) == nil {
+		if makeFrame("MJPG", data, 1280, 720, 0, Format{OutW: 1280, OutH: 720}, 0) == nil {
 			b.Fatal("no frame")
 		}
 	}
@@ -79,13 +79,42 @@ func BenchmarkMJPEGTurned(b *testing.B) {
 	data := benchJPEG(b)
 	b.ResetTimer()
 	for range b.N {
-		fr := makeFrame("MJPG", data, 1280, 720, 0, Format{OutW: 960, OutH: 540}, true)
+		fr := makeFrame("MJPG", data, 1280, 720, 0, Format{OutW: 960, OutH: 540}, 180)
 		if fr == nil {
 			b.Fatal("no frame")
 		}
 		fr.JPEG()
 	}
 }
+
+// benchTurn makes the frames of an MJPEG camera of w x h with the turn rot in the deck: the
+// decode, the scale to rawMax at most, and the turn. With encode, it also makes the JPEG, as a
+// viewer of the whole frame does.
+func benchTurn(b *testing.B, w, h, rot int, encode bool) {
+	data := stripDHT(photoJPEG(b, w, h))
+	ow, oh := outSize(w, h, rawMax.X, rawMax.Y)
+	ow, oh = TurnedSize(ow, oh, rot)
+	f := Format{OutW: ow, OutH: oh}
+	b.ResetTimer()
+	for range b.N {
+		fr := makeFrame("MJPG", data, w, h, 0, f, rot)
+		if fr == nil {
+			b.Fatal("no frame")
+		}
+		if encode {
+			fr.JPEG()
+		}
+	}
+}
+
+// A camera on its side: 1280 x 720 and 1920 x 1080 to a frame of 540 x 960.
+func BenchmarkTurn90At720(b *testing.B)        { benchTurn(b, 1280, 720, 90, false) }
+func BenchmarkTurn90At1080(b *testing.B)       { benchTurn(b, 1920, 1080, 90, false) }
+func BenchmarkTurn270At720(b *testing.B)       { benchTurn(b, 1280, 720, 270, false) }
+func BenchmarkTurn180At720(b *testing.B)       { benchTurn(b, 1280, 720, 180, false) }
+func BenchmarkTurn180At1080(b *testing.B)      { benchTurn(b, 1920, 1080, 180, false) }
+func BenchmarkTurn90At720Encode(b *testing.B)  { benchTurn(b, 1280, 720, 90, true) }
+func BenchmarkTurn90At1080Encode(b *testing.B) { benchTurn(b, 1920, 1080, 90, true) }
 
 // A small frame for a watch, from a frame of an MJPEG webcam: decode, scale and encode.
 func BenchmarkSmall320(b *testing.B) {
@@ -100,7 +129,7 @@ func BenchmarkSmall320(b *testing.B) {
 func BenchmarkSmall448FromRaw(b *testing.B) {
 	data := benchFrame("YU12", 1920, 1080)
 	y, cb, cr, _ := rawPlanes("YU12", data, 1920, 1080, 1920)
-	pic := toYCbCr(960, 540, y, cb, cr, false)
+	pic := toYCbCr(960, 540, y, cb, cr, 0)
 	b.ResetTimer()
 	for range b.N {
 		picFrame(pic).Small(448).JPEG()
