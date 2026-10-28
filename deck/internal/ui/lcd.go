@@ -49,9 +49,9 @@ func StatusLines(st printer.State, material string, now time.Time, clock24 bool)
 	case st.Busy():
 		return lr("Printing", pct), lr(left(), "")
 	case st.Finished == "complete":
-		return lr("Print done", ""), lr(st.FinishedFile, "")
+		return lr("Print done", ""), lr(st.FinishedName(), "")
 	case st.Finished == "cancelled":
-		return lr("Cancelled", ""), lr(st.FinishedFile, "")
+		return lr("Cancelled", ""), lr(st.FinishedName(), "")
 	case st.Finished == "error":
 		return lr("Print failed", ""), lr(st.FinishedError, "")
 	}

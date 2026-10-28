@@ -384,7 +384,7 @@ func (a *App) drawSpoolPrints(c *gfx.Canvas) {
 	}
 	files := a.fileIndex()
 	l := kit.List{Area: area, N: len(recs), RowH: recordRowH(), Gap: 10, Scroll: &a.printsScroll}
-	a.list(c, l, func(i int) string { return recs[i].File }, func(c *gfx.Canvas, i int, box image.Rectangle) {
+	a.list(c, l, func(i int) string { return recs[i].Name() }, func(c *gfx.Canvas, i int, box image.Rectangle) {
 		r := recs[i]
 		// The cost goes on the line of the date, so that the summary fits at the right of the
 		// thumbnail.

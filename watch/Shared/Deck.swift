@@ -360,7 +360,7 @@ struct DeckClient {
 
         var st = Status(state: j.state ?? "Unknown", busy: p.job != nil, paused: p.job?.state == "paused", time: Date())
         if let pj = p.job {
-            st.file = j.job?.file?.name ?? pj.file.split(separator: "/").last.map(String.init)
+            st.file = pj.title ?? j.job?.file?.display ?? j.job?.file?.name ?? pj.file.split(separator: "/").last.map(String.init)
             st.progress = pj.progress
             st.left = pj.left >= 0 ? pj.left : j.progress?.printTimeLeft
             st.elapsed = j.progress?.printTime
@@ -623,7 +623,7 @@ private struct FilesReply: Decodable {
 }
 
 private struct JobReply: Decodable {
-    struct File: Decodable { var name: String? }
+    struct File: Decodable { var name: String?; var display: String? }
     struct Job: Decodable { var file: File? }
     struct Progress: Decodable {
         var printTimeLeft: Double?
@@ -652,6 +652,8 @@ private struct PluginReply: Decodable {
     }
     struct Job: Decodable {
         var file: String
+        /// The name of the print for the screens, from a deck that has it.
+        var title: String?
         var state: String
         var layer: Int
         var layers: Int

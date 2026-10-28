@@ -100,3 +100,18 @@ func TestHistoryVideo(t *testing.T) {
 		t.Errorf("the record of another file has the video %q", r[0].Video)
 	}
 }
+
+// The name of a print is the title in the file, or else the cleaned file name. A record from
+// before the title has only the file.
+func TestPrintNames(t *testing.T) {
+	st := State{File: "TAZWH_hex_planter_v3.gcode", FinishedFile: "UMS3_bracket (1).gcode", FinishedTitle: "Wall bracket"}
+	if st.Name() != "Hex planter" || st.FinishedName() != "Wall bracket" {
+		t.Errorf("%q %q", st.Name(), st.FinishedName())
+	}
+	if r := (Record{File: "benchy.gcode"}); r.Name() != "Benchy" {
+		t.Errorf("%q", r.Name())
+	}
+	if r := (Record{File: "benchy.gcode", Title: "Boat"}); r.Name() != "Boat" {
+		t.Errorf("%q", r.Name())
+	}
+}

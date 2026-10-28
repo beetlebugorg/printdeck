@@ -74,13 +74,13 @@ func (l *shareLink) SetReady(ready bool)     { l.sharer.SetReady(ready, "") }
 // Start shares the print now, or the print that ended, with the time lapse frames so far.
 func (l *shareLink) Start() {
 	st := l.pr.State()
-	job := st.File
+	job := st.Name()
 	var frames [][]byte
 	now := time.Now()
 	l.mu.Lock()
 	l.started, l.ended = now.Add(-st.Elapsed), time.Time{}
 	if !st.Busy() {
-		job = st.FinishedFile
+		job = st.FinishedName()
 		l.started, l.ended = now.Add(-st.FinishedTime), now
 		if recs := l.pr.History(); len(recs) > 0 {
 			r := recs[len(recs)-1]
@@ -168,7 +168,7 @@ func (l *shareLink) status() cloud.ShareStatus {
 	}
 	switch {
 	case st.Busy():
-		s.Job = st.File
+		s.Job = st.Name()
 		s.Progress = st.Completion / 100
 		s.Grams = grams(st.FilamentUsed)
 		switch {
@@ -186,7 +186,7 @@ func (l *shareLink) status() cloud.ShareStatus {
 			s.ReadyLeft = int(st.ReleaseLeft.Seconds())
 		}
 	default:
-		s.Job = st.FinishedFile
+		s.Job = st.FinishedName()
 		s.Grams = grams(st.FinishedFilament)
 		s.State = map[string]string{"complete": "done", "cancelled": "cancelled", "error": "error"}[st.Finished]
 		if s.State == "" {

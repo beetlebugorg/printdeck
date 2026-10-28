@@ -18,7 +18,7 @@ import (
 // lapsePlayer is the state of the player.
 type lapsePlayer struct {
 	name  string // the name of the video
-	title string // the file of the print
+	title string // the name of the print
 
 	mov    *timelapse.Movie // nil until the page draws, and after the page closes
 	err    error            // the open error of the video

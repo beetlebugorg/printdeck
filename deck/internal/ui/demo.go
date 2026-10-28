@@ -127,8 +127,8 @@ func (d *DemoTimeLapse) VideoPath(name string) (string, bool) {
 
 // DemoPlayer opens the player of a video over the pages, paused at frame; for the pictures of the
 // manual.
-func (a *App) DemoPlayer(name, file string, frame int) {
-	a.openPlayer(name, file)
+func (a *App) DemoPlayer(name, title string, frame int) {
+	a.openPlayer(name, title)
 	a.player.autoplay, a.player.pos = false, frame
 }
 

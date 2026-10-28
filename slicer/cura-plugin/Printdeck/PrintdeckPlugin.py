@@ -10,7 +10,9 @@
 # - during a print of the file that Cura has open, the Preview shows the layer that prints,
 # - it tells when a print ends,
 # - it writes the material of Cura into the header of each G-code file, so that the Printdeck asks
-#   before it prints a file for another material.
+#   before it prints a file for another material,
+# - it writes the name of the print into the header, so that the Printdeck shows "Hex planter" in
+#   place of "TAZWH_hex_planter_v3.gcode".
 #
 # It asks the Printdeck every 10 seconds, on a thread, and changes Cura on the main thread.
 
@@ -705,7 +707,8 @@ class PrintdeckPlugin(Extension):
         CuraApplication.getInstance().callLater(controller.setActiveStage, self._stage.getPluginId())
 
     def _tagMaterial(self, output_device=None):
-        """Adds the material of the first extruder to the header of the G-code that Cura writes."""
+        """Adds the material of the first extruder and the name of the print to the header of the
+        G-code that Cura writes."""
         app = CuraApplication.getInstance()
         self._sent = time.monotonic()
         _, extruder = self._extruder()
@@ -730,6 +733,8 @@ class PrintdeckPlugin(Extension):
         material = extruder.material
         lines = logic.material_lines(material.getMetaDataEntry("material") or "", material.getName(),
                                      material.getMetaDataEntry("color_code") or "")
+        if ";Printdeck title:" not in gcode_list[0]:
+            lines += self._titleLine(plate)
         if lines:
             # At the end of the header: some programs read ;FLAVOR on the first line.
             if not gcode_list[0].endswith("\n"):
@@ -737,6 +742,20 @@ class PrintdeckPlugin(Extension):
             gcode_list[0] += lines
             gcode_dict[plate] = gcode_list
             setattr(scene, "gcode_dict", gcode_dict)
+
+    def _titleLine(self, plate):
+        """The title line of the print on the build plate: the job name of Cura without the
+        machine prefix, or the name of the one model on the plate."""
+        try:
+            info = CuraApplication.getInstance().getPrintInformation()
+            root = CuraApplication.getInstance().getController().getScene().getRoot()
+            models = [n.getName() for n in root.getChildren()
+                      if n.callDecoration("isSliceable") and n.callDecoration("getBuildPlateNumber") in (None, plate)]
+            return logic.title_line(info.jobName, getattr(info, "baseName", ""), getattr(info, "_abbr_machine", ""),
+                                    models, getattr(info, "_is_user_specified_job_name", False))
+        except Exception as e:  # the private names of PrintInformation can change in a new Cura
+            Logger.log("w", "Printdeck: no title: %s", e)
+            return ""
 
     # The roll.
 

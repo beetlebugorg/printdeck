@@ -31,7 +31,7 @@ func (a *App) drawTune(c *gfx.Canvas) {
 		r := kit.Rows(kit.Inset(f.body(), 0, -4, 0, 8), 12, kit.Px(26), kit.Fr(1), kit.Px(20), kit.Px(56), kit.Px(20), kit.Px(100))
 		file, rows, zHint, fanRow, tHint, temps = r[0], r[1], r[2], r[3], r[4], kit.Inset(r[5], 16, -4, 16, 4)
 	}
-	c.Text(file, st.File, gfx.Face(false, 17), dim, gfx.Left)
+	c.Text(file, st.Name(), gfx.Face(false, 17), dim, gfx.Left)
 
 	labelW, keyW := 136, 80 // narrower in the right column of a wide screen
 	switch {

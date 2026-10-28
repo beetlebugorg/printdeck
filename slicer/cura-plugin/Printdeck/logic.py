@@ -360,3 +360,55 @@ def deck_time_line(total, cura_total):
     if cura_total > 0:
         line += " (Cura %s)" % duration_text(cura_total)
     return line
+
+
+# The words in capitals that start a file name more often than a printer abbreviation does. The
+# Printdeck keeps the same list (gcodemeta.CleanName).
+_NOT_MACHINE = {"PLA", "PETG", "PET", "ABS", "ASA", "TPU", "PC", "PA", "PP", "PVA", "HIPS", "CF", "NYLON",
+                "LED", "USB", "LCD", "PCB", "DIY", "RC"}
+
+
+def clean_name(name, abbr=""):
+    """A readable name from a Cura job name or a model file name, with the rules of the Printdeck
+    for a file name: no folder, no extension, no machine prefix ("TAZWH_" or abbr + "_"), no
+    version or copy at the end ("_v3", " (1)"), spaces for "_" and "-", and a capital first
+    letter. It returns "" for an empty name."""
+    name = (name or "").replace("\\", "/").split("/")[-1].strip()
+    stem = re.sub(r"\.(gcode|gco|g|ufp|stl|3mf|obj|ply|amf|step|stp)$", "", name, flags=re.IGNORECASE)
+    s = stem
+    if abbr and s.startswith(abbr + "_") and s[len(abbr) + 1:].strip("_- "):
+        s = s[len(abbr) + 1:]
+    else:
+        m = re.fullmatch(r"([A-Z0-9]{2,12})_(.*)", s, flags=re.DOTALL)
+        if m and m.group(1) not in _NOT_MACHINE and re.search(r"[A-Z]", m.group(1)) and m.group(2).strip("_- "):
+            s = m.group(2)
+    while True:
+        t = re.sub(r"(?:[_ -][vV]\d+|\s*\(\d+\))$", "", s)
+        if t == s or not t.strip("_- "):
+            break
+        s = t
+    s = re.sub(r"_|(?<!\d)-|-(?!\d)", " ", s)
+    s = " ".join(s.split())
+    if not s:
+        return stem or name
+    return s[0].upper() + s[1:]
+
+
+def title_line(job_name, base_name="", abbr="", models=(), user_named=False):
+    """The line that tells the Printdeck the name of the print, for the header of the G-code:
+    ";Printdeck title: Hex planter". The name is the job name that the user typed, else the
+    name of the one model on the build plate, else the job name without the machine prefix.
+    It returns "" when there is no name."""
+    if user_named:
+        names = [base_name, job_name]
+    elif len(models) == 1:
+        names = [models[0], base_name, job_name]
+    else:
+        names = [base_name, job_name]
+    for n in names:
+        t = clean_name(n, abbr)
+        # The Printdeck reads one line: no line ends in the title.
+        t = " ".join("".join(c for c in t if c.isprintable() or c.isspace()).split())
+        if t:
+            return ";Printdeck title: %s\n" % t
+    return ""
