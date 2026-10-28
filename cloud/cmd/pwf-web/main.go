@@ -26,7 +26,15 @@ func main() {
 	select {}
 }
 
-func byID(id string) js.Value { return doc.Call("getElementById", id) }
+// byID returns the element id, or a detached element when the page has none, so that a page
+// from an older deploy draws all that it has.
+func byID(id string) js.Value {
+	e := doc.Call("getElementById", id)
+	if e.IsNull() {
+		return doc.Call("createElement", "div")
+	}
+	return e
+}
 
 func setText(id, s string) {
 	if e := byID(id); !e.IsNull() {
@@ -122,8 +130,6 @@ func clock(sec int) string {
 // share is the state of a share page.
 type share struct {
 	base   string
-	view   string
-	views  string // the views of the buttons, joined
 	frames []js.Value
 	fps    int
 	shown  int
@@ -133,6 +139,7 @@ type share struct {
 	ready  wire.ShareReady
 	photos string // the photos that show, joined
 	ended  bool
+	plan   []float64 // the plan of the slicer for each layer, from plan.json
 }
 
 // runShare polls the status of the share at base and draws the page.
@@ -373,34 +380,17 @@ func (s *share) render(st wire.ShareStatus) {
 		setText("doneText", strings.TrimSpace(line))
 	}
 
-	// The camera.
-	if len(st.Views) > 0 {
-		setHidden("camBox", false)
-		if s.view == "" || !contains(st.Views, s.view) {
-			s.view = st.Views[0]
-		}
-		s.viewButtons(st.Views)
-		byID("cam").Set("src", fmt.Sprintf("%scam-%s.jpg?f=%d", s.base, s.view, st.Frame))
-		age := time.Since(st.Updated).Round(time.Second)
-		tag := "Live · updated " + fmt.Sprint(int(age.Seconds())) + " s ago"
-		if ended {
-			tag = "The last picture"
-		}
-		setText("camTag", tag)
-	}
-
-	// The picture of the model, with the part that is printed in color.
+	// The model: the whole part, with the part that is printed in color.
 	if st.Model > 0 {
 		setHidden("modelBox", false)
 		byID("model").Set("src", fmt.Sprintf("%smodel.jpg?m=%d", s.base, st.Model))
-		tag := "The model"
+		tag := "The finished part"
 		if st.Layers > 0 && !ended {
 			tag = fmt.Sprintf("Printed to layer %d of %d", st.Layer, st.Layers)
-		} else if ended && st.State == "done" {
-			tag = "The model, printed"
 		}
 		setText("modelTag", tag)
 	}
+	s.renderPrinter(st, ended)
 
 	// The readout.
 	setText("leftLab", "Time left")
@@ -466,13 +456,163 @@ func (s *share) render(st wire.ShareStatus) {
 		s.frames = append(s.frames, img)
 	}
 	if st.Lapse > 0 {
-		setHidden("lapse", false)
-		note := fmt.Sprintf("%d frames, one for each layer or more.", st.Lapse)
+		setHidden("lapseNote", true)
+		tag := fmt.Sprintf("Time lapse · %d frames", st.Lapse)
 		if !ended {
-			note = fmt.Sprintf("%d frames so far. A new frame comes with each layer.", st.Lapse)
+			tag += " · a new frame each layer"
 		}
-		setText("lapseNote", note)
+		setText("lapseTag", tag)
 	}
+}
+
+// renderPrinter draws the lines of the printer under the progress: the move now and the factors
+// of Tune, the roll in the printer, and the chart of the layer times, as the deck shows them.
+func (s *share) renderPrinter(st wire.ShareStatus, ended bool) {
+	var parts []string
+	if st.Move != "" && !ended {
+		parts = append(parts, fmt.Sprintf("%s · %.0f mm/s", st.Move, st.Speed))
+	}
+	if st.Fan > 0 && !ended {
+		parts = append(parts, fmt.Sprintf("fan %d%%", st.Fan))
+	}
+	if st.SpeedPct > 0 && st.SpeedPct != 100 {
+		parts = append(parts, fmt.Sprintf("speed %d%%", st.SpeedPct))
+	}
+	if st.FlowPct > 0 && st.FlowPct != 100 {
+		parts = append(parts, fmt.Sprintf("flow %d%%", st.FlowPct))
+	}
+	setText("moveLine", strings.Join(parts, " · "))
+	setHidden("moveLine", len(parts) == 0)
+
+	setHidden("rollLine", st.Roll == nil)
+	if r := st.Roll; r != nil {
+		dot := byID("rollDot").Get("style")
+		if r.Color != "" {
+			dot.Set("background", r.Color)
+		} else {
+			dot.Set("background", "transparent")
+		}
+		f := 0.0
+		if r.Full > 0 {
+			f = min(1, r.Left/r.Full)
+		}
+		byID("rollBar").Get("style").Set("width", fmt.Sprintf("%.0f%%", f*100))
+		setText("rollText", fmt.Sprintf("%s · %.0f g", r.Name, r.Left))
+	}
+
+	if st.Plan > 0 && len(s.plan) != st.Plan {
+		if t, err := fetchText(s.base + "plan.json"); err == nil {
+			var p wire.SharePlan
+			if json.Unmarshal([]byte(t), &p) == nil {
+				s.plan = p.Layers
+			}
+		}
+	}
+	setHidden("chartBox", len(s.plan) == 0)
+	if len(s.plan) > 0 {
+		s.drawChart(st, ended)
+	}
+}
+
+// drawChart draws a row for each layer, or for each group of layers on a short chart: the
+// measured time of a layer that is done, else the time of the slicer. Done layers are dim, the
+// layer now is bright, and the layers to come are dark. The numbers are the time of the layer now
+// and its plan, and the mean time of a layer.
+func (s *share) drawChart(st wire.ShareStatus, ended bool) {
+	plan := s.plan
+	n := len(plan)
+	cur := st.Layer
+	if ended {
+		cur = n + 1
+	}
+	at := func(layer int) float64 {
+		if layer-1 < len(st.LayerTimes) && st.LayerTimes[layer-1] > 0 {
+			return st.LayerTimes[layer-1]
+		}
+		return plan[layer-1]
+	}
+	sum, count := 0.0, 0
+	for _, t := range st.LayerTimes {
+		if t > 0 {
+			sum, count = sum+t, count+1
+		}
+	}
+	if count == 0 {
+		for _, t := range plan {
+			sum += t
+		}
+		count = n
+	}
+	setText("layerAvg", "AVG "+mmss(sum/float64(count))+" A LAYER")
+	now := "–"
+	if cur >= 1 && cur <= n {
+		if !st.LayerStarted.IsZero() {
+			now = mmss(time.Since(st.LayerStarted).Seconds())
+		}
+		now += " / " + mmss(plan[cur-1])
+	}
+	setText("layerNow", now)
+
+	cv := byID("chart")
+	dpr := js.Global().Get("devicePixelRatio").Float()
+	w := int(cv.Get("clientWidth").Float() * dpr)
+	h := int(cv.Get("clientHeight").Float() * dpr)
+	if w <= 0 || h <= 0 {
+		return
+	}
+	cv.Set("width", w)
+	cv.Set("height", h)
+	ctx := cv.Call("getContext", "2d")
+	css := js.Global().Call("getComputedStyle", doc.Get("documentElement"))
+	col := func(name string) string { return strings.TrimSpace(css.Call("getPropertyValue", name).String()) }
+	done, nowCol, later := col("--lcd-dim"), col("--lcd-ink"), col("--lcd-cell")
+	// One row for each layer when they fit, else for each group of layers: layer 1 at the bottom,
+	// as the layers of the part. The length of a row is the time of its layers.
+	gap := max(1, int(dpr))
+	per := 1
+	for n/per*(2*int(dpr)+gap) > h {
+		per++
+	}
+	rows := (n + per - 1) / per
+	rowH := min(int(8*dpr), max(int(2*dpr), h/max(1, rows)-gap))
+	vals := make([]float64, rows)
+	top := 1.0
+	for b := range vals {
+		k := 0
+		for layer := b*per + 1; layer <= min(n, (b+1)*per); layer++ {
+			vals[b] += at(layer)
+			k++
+		}
+		vals[b] /= float64(max(1, k))
+		top = max(top, vals[b])
+	}
+	ctx.Call("clearRect", 0, 0, w, h)
+	for b, v := range vals {
+		y := h - (b+1)*(rowH+gap)
+		if y < 0 {
+			break
+		}
+		first, last := b*per+1, min(n, (b+1)*per)
+		c := later
+		switch {
+		case cur >= first && cur <= last:
+			c = nowCol
+		case last < cur:
+			c = done
+		}
+		bw := max(1, int(v/top*float64(w)))
+		ctx.Set("fillStyle", c)
+		ctx.Call("fillRect", 0, y, bw, rowH)
+	}
+}
+
+// mmss is a time in seconds as m:ss, or h:mm:ss from an hour.
+func mmss(sec float64) string {
+	t := int(sec + 0.5)
+	if t >= 3600 {
+		return fmt.Sprintf("%d:%02d:%02d", t/3600, t/60%60, t%60)
+	}
+	return fmt.Sprintf("%d:%02d", t/60, t%60)
 }
 
 // grams is a weight of filament: one decimal under 10 g.
@@ -489,50 +629,6 @@ func temp(t, target float64) string {
 		return fmt.Sprintf("%.0f / %.0f °C", t, target)
 	}
 	return fmt.Sprintf("%.0f °C", t)
-}
-
-func contains(list []string, s string) bool {
-	for _, v := range list {
-		if v == s {
-			return true
-		}
-	}
-	return false
-}
-
-// viewTitles are the names of the camera views on the page.
-var viewTitles = map[string]string{"main": "Camera", "full": "Whole picture", "part": "The part", "toolhead": "Toolhead"}
-
-// viewButtons draws a button for each view when the share has more than one.
-func (s *share) viewButtons(views []string) {
-	key := strings.Join(views, ",") + "|" + s.view
-	if key == s.views {
-		return
-	}
-	s.views = key
-	box := byID("views")
-	box.Set("textContent", "")
-	if len(views) < 2 {
-		return
-	}
-	for _, v := range views {
-		b := doc.Call("createElement", "button")
-		b.Set("type", "button")
-		title := viewTitles[v]
-		if title == "" {
-			title = v
-		}
-		b.Set("textContent", title)
-		b.Call("setAttribute", "aria-pressed", fmt.Sprint(v == s.view))
-		view := v
-		b.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
-			s.view = view
-			s.views = ""
-			go s.poll()
-			return nil
-		}))
-		box.Call("appendChild", b)
-	}
 }
 
 // lapseHold is the pause on the last frame of the time lapse before the loop starts again.

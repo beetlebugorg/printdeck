@@ -44,6 +44,22 @@ type ShareStatus struct {
 	// the rate of the video.
 	Lapse    int `json:"lapse"`
 	LapseFPS int `json:"lapse_fps,omitempty"`
+	// Move is the kind of the move now, for example "Outer wall", and Speed the speed of the head
+	// in mm/s.
+	Move  string  `json:"move,omitempty"`
+	Speed float64 `json:"speed,omitempty"`
+	// Fan is the part fan in percent, and SpeedPct and FlowPct the factors of Tune.
+	Fan      int `json:"fan,omitempty"`
+	SpeedPct int `json:"speed_pct,omitempty"`
+	FlowPct  int `json:"flow_pct,omitempty"`
+	// Roll is the roll in the printer, or nil.
+	Roll *ShareRoll `json:"roll,omitempty"`
+	// LayerStarted is the start of the layer now, when the deck saw it start. LayerTimes are the
+	// measured seconds of the layers that are done, from layer 1: 0 is a layer with no time (a
+	// pause, or a layer before the share). Plan goes up when plan.json has the plan of the slicer.
+	LayerStarted time.Time `json:"layer_started,omitzero"`
+	LayerTimes   []float64 `json:"layer_times,omitempty"`
+	Plan         int       `json:"plan,omitempty"`
 	// Model goes up at each new model.jpg: the picture of the model, with the part that is
 	// printed in color.
 	Model int `json:"model,omitempty"`
@@ -95,4 +111,18 @@ type ReadyRequest struct {
 type PhotoReply struct {
 	Photo string `json:"photo"`
 	Grant Grant  `json:"grant"`
+}
+
+// ShareRoll is the roll in the printer: its name, its color (#rrggbb or ""), and the grams on it
+// now and when full.
+type ShareRoll struct {
+	Name  string  `json:"name"`
+	Color string  `json:"color,omitempty"`
+	Left  float64 `json:"left"`
+	Full  float64 `json:"full"`
+}
+
+// SharePlan is plan.json of a share: the seconds of each layer from the slicer, from layer 1.
+type SharePlan struct {
+	Layers []float64 `json:"layers"`
 }

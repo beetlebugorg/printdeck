@@ -51,4 +51,5 @@ type (
 	Grant        = wire.Grant
 	ReadyRequest = wire.ReadyRequest
 	PhotoReply   = wire.PhotoReply
+	ShareRoll    = wire.ShareRoll
 )

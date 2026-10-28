@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"printdeck/internal/cloud/wire"
 )
 
 // Sharer runs the share link of the print now: a tap on Share starts it. It uploads status.json
@@ -26,6 +28,9 @@ type Sharer struct {
 	Frame func(view string) ([]byte, uint64)
 	// Views are the camera views of the share.
 	Views []string
+	// Plan returns the seconds of each layer from the slicer, or nil. The sharer uploads it once
+	// as plan.json.
+	Plan func() []float64
 	// Model returns the picture of the model as a JPEG and its version, or nil. The sharer
 	// uploads a new version at most each ModelEvery.
 	Model func() ([]byte, uint64)
@@ -51,6 +56,7 @@ type share struct {
 	lapseN  int      // the time lapse frames that are up
 	frame   int
 	seqs    map[string]uint64
+	plan    int       // the layers of plan.json, or 0 before its upload
 	model   int       // the count of uploads of model.jpg
 	modelV  uint64    // the version of the last model.jpg
 	modelAt time.Time // the time of the last model.jpg
@@ -283,6 +289,16 @@ func (s *Sharer) step(ctx context.Context, id *Identity, c *share) (bool, error)
 	}
 	st.Views, st.Frame, st.Lapse, st.LapseFPS, st.Updated = s.Views, c.frame, c.lapseN, s.LapseFPS, time.Now().UTC()
 	st.Model = c.model
+	if s.Plan != nil && c.plan == 0 {
+		if p := s.Plan(); len(p) > 0 {
+			b, _ := json.Marshal(wire.SharePlan{Layers: p})
+			if err := s.upload(ctx, id, c, "plan.json", "application/json", "public, max-age=31536000, immutable", b); err != nil {
+				return false, err
+			}
+			c.plan = len(p)
+		}
+	}
+	st.Plan = c.plan
 	if end {
 		var out EndReply
 		if err := s.Link.Client.Do(ctx, id, http.MethodPost, "/api/v1/shares/"+c.id+"/end", EndRequest{Ended: st.Ended}, &out); err != nil {

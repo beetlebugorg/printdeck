@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"image/jpeg"
 	"log"
+	"math"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
-	"printdeck/internal/camera"
 	"printdeck/internal/cloud"
 	"printdeck/internal/printer"
 	"printdeck/internal/timelapse"
@@ -17,8 +17,8 @@ import (
 )
 
 // The share link of a print (the Share key of the print and done pages). The sharer uploads the
-// status of the print, the newest frame of the main camera, and the time lapse frames. It runs
-// only after a tap on Make the link.
+// status of the print, the plan of the layers, the picture of the model, and the time lapse
+// frames. It runs only after a tap on Make the link.
 
 // shareLink is the ui.ShareLink of the deck.
 type shareLink struct {
@@ -31,6 +31,14 @@ type shareLink struct {
 	mu      sync.Mutex
 	started time.Time // the start of the print of the share
 	ended   time.Time // the end of the print of the share, when it ended
+
+	// The clock of the layers: the layer now, its start, whether the deck saw it start, whether
+	// it had a pause, and the measured seconds of the layers that are done.
+	layer    int
+	layerAt  time.Time
+	known    bool
+	paused   bool
+	measured map[int]float64
 }
 
 // newShareLink returns the share link of the deck, with the camera hub and the time lapse runner
@@ -47,25 +55,12 @@ func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend) *shareLink {
 		l.lapse = r
 	}
 	s := &cloud.Sharer{Link: link, Status: l.status, LapseFPS: 12, OnChange: app.Redraw}
-	if hub, ok := app.Camera.(*camera.Hub); ok {
-		main := hub.Role(camera.RoleMain)
-		s.Views = []string{"main"}
-		s.Frame = func(string) ([]byte, uint64) {
-			if !main.On() {
-				return nil, 0
-			}
-			f := main.Peek() // keeps the camera on while the share runs
-			if f == nil {
-				return nil, 0
-			}
-			return f.JPEG(), f.Seq
-		}
-	}
 	if l.lapse != nil {
 		l.lapse.OnLapseFrame = s.AddLapseFrame
 	}
-	// The picture of the model, from the model view of the print page. The version is the file
-	// position of the picture, so a new layer or move gives a new upload.
+	// The picture of the model, from the model view of the print page: the whole part, with the
+	// part that is printed in color, so the page shows what the print makes. The version is the
+	// file position of the picture, so a new layer or move gives a new upload.
 	s.Model = func() ([]byte, uint64) {
 		img := pr.Preview()
 		if img == nil {
@@ -75,9 +70,9 @@ func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend) *shareLink {
 		if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 80}); err != nil {
 			return nil, 0
 		}
-		st := pr.State()
-		return buf.Bytes(), uint64(st.FilePos)
+		return buf.Bytes(), uint64(pr.State().FilePos)
 	}
+	s.Plan = pr.LayerTimes
 	l.sharer = s
 	return l
 }
@@ -95,6 +90,7 @@ func (l *shareLink) Start() {
 	now := time.Now()
 	l.mu.Lock()
 	l.started, l.ended = now.Add(-st.Elapsed), time.Time{}
+	l.measured, l.known = nil, false
 	if !st.Busy() {
 		job = st.FinishedName()
 		l.started, l.ended = now.Add(-st.FinishedTime), now
@@ -147,6 +143,30 @@ func (l *shareLink) status() cloud.ShareStatus {
 	if st.HasZ {
 		s.Height = st.Z
 	}
+	if st.Busy() {
+		l.clockLayers(st)
+		if st.HasNow {
+			s.Move, s.Speed = moveName(st.NowKind), st.NowSpeed*float64(max(1, st.SpeedPct))/100
+			if st.HasLive {
+				s.Speed = st.LiveSpeed
+			}
+		}
+		if st.HasFan {
+			s.Fan = int(st.Fan + 0.5)
+		}
+		s.SpeedPct, s.FlowPct = st.SpeedPct, st.FlowPct
+		if l.known && l.layer == st.Layer {
+			s.LayerStarted = l.layerAt.UTC()
+		}
+		if n := st.Layers; n > 0 && len(l.measured) > 0 {
+			s.LayerTimes = make([]float64, min(n, st.Layer))
+			for k, t := range l.measured {
+				if k >= 1 && k <= len(s.LayerTimes) {
+					s.LayerTimes[k-1] = math.Round(t*10) / 10
+				}
+			}
+		}
+	}
 	if st.Simulated != "" {
 		s.Printer = "the simulated " + st.Simulated
 	}
@@ -164,6 +184,9 @@ func (l *shareLink) status() cloud.ShareStatus {
 			s.Material = strings.TrimSpace(sp.Material + ", " + sp.Name)
 			s.Material = strings.Trim(s.Material, ", ")
 			density = store.Density(sp)
+			used := printer.GramsAt(st.FilamentUsed, l.pr.Machine().Diameter(), density)
+			s.Roll = &cloud.ShareRoll{Name: strings.TrimSpace(sp.Number() + " " + sp.Label()), Color: sp.Color,
+				Left: math.Round(max(0, sp.Left()-used)), Full: math.Round(sp.Capacity())}
 		}
 	}
 	if s.Material == "" {
@@ -221,6 +244,50 @@ func (l *shareLink) status() cloud.ShareStatus {
 		}
 	}
 	return s
+}
+
+// clockLayers follows the layer of st, and measures each layer from its start to the start of the
+// next one. A layer with a pause, and the layer that printed at the start of the share, have no
+// time. The caller holds l.mu.
+func (l *shareLink) clockLayers(st printer.State) {
+	now := time.Now()
+	if l.measured == nil {
+		l.measured, l.layer = map[int]float64{}, st.Layer
+		return
+	}
+	if st.Paused {
+		l.paused = true
+	}
+	if st.Layer != l.layer {
+		if st.Layer == l.layer+1 && l.known && !l.paused {
+			l.measured[l.layer] = now.Sub(l.layerAt).Seconds()
+		}
+		l.layer, l.layerAt, l.known, l.paused = st.Layer, now, true, false
+	}
+}
+
+// moveName is the kind of a move of the G-code for the page, for example "WALL-OUTER" as
+// "Outer wall".
+func moveName(kind string) string {
+	switch strings.ToUpper(kind) {
+	case "WALL-OUTER":
+		return "Outer wall"
+	case "WALL-INNER":
+		return "Inner wall"
+	case "SKIN":
+		return "Top and bottom"
+	case "FILL":
+		return "Infill"
+	case "SUPPORT", "SUPPORT-INTERFACE":
+		return "Support"
+	case "SKIRT", "BRIM":
+		return "Skirt"
+	}
+	k := strings.ToLower(strings.ReplaceAll(kind, "-", " "))
+	if k == "" {
+		return ""
+	}
+	return strings.ToUpper(k[:1]) + k[1:]
 }
 
 // startShare sets the cloud link and the share link of the app. The identity of the deck is the

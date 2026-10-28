@@ -37,19 +37,18 @@
     <div class="photos" id="photos"></div>
   </section>
 
-  <section class="cam" id="camBox" aria-label="Camera" hidden>
-    <figure>
-      <img id="cam" alt="The newest picture of the camera">
-      <div class="tag"><b></b><span id="camTag">Live</span></div>
-    </figure>
-    <div class="views" id="views" role="group" aria-label="Camera view"></div>
-  </section>
 
-  <section class="cam model-box" id="modelBox" aria-label="The model" hidden>
+
+
+  <section class="model-row" id="modelBox" aria-label="The model" hidden>
     <figure>
-      <img id="model" alt="The model, with the part that is printed in color">
-      <div class="tag"><span id="modelTag">The model</span></div>
+      <img id="model" alt="The whole part, with the part that is printed in color">
+      <figcaption id="modelTag">The model</figcaption>
     </figure>
+    <div class="vchart" id="chartBox" hidden>
+      <canvas id="chart" aria-label="The time of each layer, layer 1 at the bottom"></canvas>
+      <div class="nums"><span id="layerNow"></span><span id="layerAvg"></span></div>
+    </div>
   </section>
 
   <section class="lcd" aria-label="Progress">
@@ -72,6 +71,10 @@
     </div>
     <div class="bar" role="progressbar" aria-label="Print progress" aria-valuemin="0" aria-valuemax="100" id="barWrap"><i id="bar"></i></div>
     <div class="barlab"><span id="pct">0%</span><span id="activity"></span></div>
+    <div class="moveline" id="moveLine" hidden></div>
+    <div class="roll" id="rollLine" hidden>
+      <i id="rollDot"></i><span class="seg"><b id="rollBar"></b></span><span id="rollText"></span>
+    </div>
   </section>
 
   <section class="card" aria-label="Details">
@@ -86,10 +89,12 @@
     </dl>
   </section>
 
-  <section class="card lapse-card" aria-label="Time lapse">
-    <h2>Time lapse</h2>
-    <canvas id="lapse" width="640" height="360" hidden></canvas>
-    <p id="lapseNote" class="dim">The time lapse grows here with each layer.</p>
+  <section class="cam lapse-hero" aria-label="Time lapse">
+    <figure>
+      <canvas id="lapse" width="640" height="360"></canvas>
+      <div class="tag"><b></b><span id="lapseTag">Time lapse</span></div>
+      <p id="lapseNote" class="lapse-wait">The time lapse starts with the first layer.</p>
+    </figure>
   </section>
 
   <section class="card owner" id="owner" aria-label="For the owner" hidden>
