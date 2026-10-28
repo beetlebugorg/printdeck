@@ -290,8 +290,33 @@ func (a *App) drawFirstLayer(c *gfx.Canvas, st printer.State) {
 	}
 	a.modelView(c, box, st)
 	layer := image.Rect(box.Min.X+14, box.Min.Y+8, box.Max.X-14, box.Min.Y+30)
-	c.Text(layer, fmt.Sprintf("LAYER 1 OF %d", st.Layers), gfx.Face(true, 13), lcdDim, gfx.Left)
-	a.textRegion("Layer", layer, gfx.Face(true, 13), fmt.Sprintf("LAYER 1 OF %d", st.Layers))
+	line := fmt.Sprintf("LAYER 1 OF %d", st.Layers)
+	if left, ok := a.firstLayerLeft(st); ok {
+		line += " · DONE IN " + strings.ToUpper(shortWait(left)) + " · " + strings.ToUpper(clockText(a.Now().Add(left), a.Clock24))
+	}
+	c.Text(layer, line, gfx.Face(true, 13), lcdDim, gfx.Left)
+	a.textRegion("Layer", layer, gfx.Face(true, 13), line)
+}
+
+// firstLayerLeft is the time until the end of the first layer: the plan of the slicer from the
+// file position to the second layer, scaled by the time left of the print over its plan, so that
+// the speed of the print now counts.
+func (a *App) firstLayerLeft(st printer.State) (time.Duration, bool) {
+	lp, ok := a.Printer.(interface {
+		LayerLeft(pos int64, layer int) (toLayerEnd, toEnd float64, ok bool)
+	})
+	if !ok {
+		return 0, false
+	}
+	toLayer, toEnd, ok := lp.LayerLeft(st.FilePos, 1)
+	if !ok || toLayer <= 0 {
+		return 0, false
+	}
+	f := 1.0
+	if st.HasTimeLeft && toEnd > 0 {
+		f = max(0.5, min(3, st.TimeLeft.Seconds()/toEnd))
+	}
+	return time.Duration(toLayer * f * float64(time.Second)), true
 }
 
 // saveZOffset writes the Z offset of the first layer into the config: into the probe offset with a

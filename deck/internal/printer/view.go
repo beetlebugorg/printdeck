@@ -204,6 +204,27 @@ func (v *View) LayerTimes() []float64 {
 	return v.layerTimes
 }
 
+// LayerLeft returns the seconds of the plan of the slicer from the file position pos to the end
+// of the layer (1 is the first layer), and the seconds from pos to the end of the file. It
+// returns false when the G-code is not loaded or has no times.
+func (v *View) LayerLeft(pos int64, layer int) (toLayerEnd, toEnd float64, ok bool) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	gc := v.gc
+	if gc == nil || layer < 1 || layer > len(gc.LayerPos) {
+		return 0, 0, false
+	}
+	now, total, ok := gc.TimeAt(pos)
+	if !ok {
+		return 0, 0, false
+	}
+	end := total
+	if layer < len(gc.LayerPos) {
+		end, _, _ = gc.TimeAt(gc.LayerPos[layer])
+	}
+	return max(0, end-now), max(0, total-now), true
+}
+
 // layerTimes is the seconds of each layer of gc, or nil.
 func layerTimes(gc *gcode.Model) []float64 {
 	n := len(gc.LayerPos)
