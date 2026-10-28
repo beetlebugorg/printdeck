@@ -88,6 +88,8 @@ func (a *App) openKeyboard() *keyboard {
 		return a.consoleKB
 	case a.camKB != nil:
 		return a.camKB
+	case a.textKB != nil:
+		return a.textKB
 	}
 	return nil
 }

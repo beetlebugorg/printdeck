@@ -231,6 +231,7 @@ type App struct {
 	// Filament page during a print.
 	swapAfterPause bool
 	textKB         *keyboard // a keyboard over everything, for a setting with text
+	kbHold         kbHold    // the held key of a keyboard, for the repeat
 	notesScroll    int       // the scroll position of the release notes (drawNotes)
 
 	toast   string
@@ -394,11 +395,13 @@ func (a *App) Run(ctx context.Context, events <-chan touch.Event, present func(*
 		case <-a.wake:
 		case <-tick.C:
 		}
-		// Coalesce bursts of events into one frame.
+		// Coalesce bursts of events and changes into one frame.
 		for more := true; more; {
 			select {
 			case ev := <-events:
 				a.handle(ev)
+			case f := <-a.posted:
+				f()
 			default:
 				more = false
 			}
@@ -628,10 +631,19 @@ func (a *App) Toast(msg string) {
 }
 
 // post runs f in the UI loop, which owns the screen state.
+// A full queue waits for the UI loop for a short time, so a burst of keys from a remote keyboard
+// keeps all its keys. After that time the change is dropped.
 func (a *App) post(f func()) {
 	select {
 	case a.posted <- f:
 	default:
+		a.Redraw()
+		t := time.NewTimer(250 * time.Millisecond)
+		defer t.Stop()
+		select {
+		case a.posted <- f:
+		case <-t.C:
+		}
 	}
 	a.Redraw()
 }
