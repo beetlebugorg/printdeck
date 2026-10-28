@@ -169,8 +169,11 @@ func (s State) FinishedName() string {
 // Machine is what the printer has: the Klipper version, its modules and its macros.
 type Machine struct {
 	KlipperVersion string
-	Modules        []string // the objects of Klipper with no name, for example "probe" or "bed_tilt"
-	Macros         []string // the macros that a person can run (no name with "_" first)
+	// HostAPI is the interface version of the Klipper host (package hostapi), or 0 when it is
+	// not known.
+	HostAPI int
+	Modules []string // the objects of Klipper with no name, for example "probe" or "bed_tilt"
+	Macros  []string // the macros that a person can run (no name with "_" first)
 	// FilamentDiameter is filament_diameter of the extruder in printer.cfg, in mm; 0 is not known.
 	FilamentDiameter float64
 	// From printer.cfg, 0 when it is not known: the nozzle_diameter of the extruder, the

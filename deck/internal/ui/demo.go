@@ -322,6 +322,8 @@ func (d *DemoUpdater) Status() UpdateStatus { return d.S }
 func (d *DemoUpdater) Check()               {}
 func (d *DemoUpdater) Install()             {}
 func (d *DemoUpdater) SetChannel(beta bool) { d.S.Beta = beta }
+func (d *DemoUpdater) RestartNow()          {}
+func (d *DemoUpdater) SwitchDeck()          {}
 
 // Parts returns the places of the keys and the named parts of the last frame.
 func (a *App) Parts() []image.Rectangle {

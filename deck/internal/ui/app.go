@@ -362,6 +362,15 @@ func (a *App) Redraw() {
 	}
 }
 
+// LastInput is the time of the last touch of the touch screen or of a remote screen, or of the
+// last key of the knob of the printer display. It is zero before the first one.
+func (a *App) LastInput() time.Time {
+	if n := a.hub.input.Load(); n != 0 {
+		return time.Unix(0, n)
+	}
+	return time.Time{}
+}
+
 // Run handles input and draws frames until ctx ends.
 func (a *App) Run(ctx context.Context, events <-chan touch.Event, present func(*gfx.Canvas)) {
 	a.hub.join(a)
@@ -424,6 +433,7 @@ func (a *App) handle(ev touch.Event) {
 	setSize(a.Screen())
 	a.setFinePrint()
 	a.touchAt = a.Now()
+	a.hub.input.Store(time.Now().UnixNano())
 	p := image.Pt(int(ev.X*float64(W)+0.5), int(ev.Y*float64(H)+0.5))
 	kind := map[touch.Kind]kit.Kind{touch.Down: kit.Down, touch.Move: kit.Move, touch.Up: kit.Up}[ev.Kind]
 	a.in.Handle(kit.Event{Kind: kind, P: p, At: a.Now()})

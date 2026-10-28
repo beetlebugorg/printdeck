@@ -478,7 +478,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 	if a.Updater != nil {
 		update = a.Updater.Status()
 	}
-	a.machineInfo(c, info, st, mach, update.Current, wifiStatus.IP)
+	a.machineInfo(c, info, st, mach, update, wifiStatus.IP)
 
 	var prints int
 	var filament float64
@@ -499,7 +499,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		{"Console", "G-code", dim, func() { a.open(pageConsole) }},
 	}
 	if a.Updater != nil {
-		line, warn := updateLine(update)
+		line, warn := updateLine(update, st.Busy())
 		col := dim
 		if warn {
 			col = orange
@@ -531,12 +531,18 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 // machineInfo draws the information of the Machine page in a display window: the versions in
 // the first line; the address and the state of the firmware in the second line. Old firmware
 // makes the second line bright.
-func (a *App) machineInfo(c *gfx.Canvas, r image.Rectangle, st printer.State, mach printer.Machine, deck, ip string) {
+func (a *App) machineInfo(c *gfx.Canvas, r image.Rectangle, st printer.State, mach printer.Machine, up UpdateStatus, ip string) {
 	window(c, r)
 	a.region("Information", r)
 	var top, bottom []string
-	if deck != "" {
-		top = append(top, "PRINTDECK "+deck)
+	switch {
+	case up.System != "":
+		// The deck program of the installed update runs on the old system.
+		top = append(top, "SCREEN "+up.Current, "SYSTEM "+up.System)
+	case up.Current != "" && up.HasStaged && up.Staged != "":
+		top = append(top, "PRINTDECK "+up.Current+" · NEXT "+up.Staged)
+	case up.Current != "":
+		top = append(top, "PRINTDECK "+up.Current)
 	}
 	if v := shortVersion(mach.KlipperVersion); v != "" {
 		top = append(top, "KLIPPER "+v)

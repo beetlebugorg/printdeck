@@ -1,15 +1,20 @@
 package ui
 
-import "sync"
+import (
+	"sync"
+	"sync/atomic"
+)
 
 // hub is what the App of the deck and its sessions (the browsers, the Cura tab, the window of the
 // desktop app) share: a question from outside, such as a slicer that asks for a key or a print
 // that asks for the material. Each screen shows the question, and the first answer closes it on
-// all of them.
+// all of them. The hub also has the time of the last input of any of them.
 type hub struct {
 	mu   sync.Mutex
 	q    *confirmBox
 	apps map[*App]bool
+	// input is the time of the last touch of a screen or key of the knob, in Unix nanoseconds.
+	input atomic.Int64
 }
 
 func newHub() *hub { return &hub{apps: map[*App]bool{}} }

@@ -77,8 +77,10 @@ type Klippy struct {
 	actionStart time.Time
 	lastAction  ActionResult
 
-	// From the connection to Klipper: its version, and the names of its objects (objects/list).
+	// From the connection to Klipper: its version, its interface version, and the names of its
+	// objects (objects/list).
 	version  string
+	hostAPI  int
 	diameter float64 // filament_diameter of the extruder, in mm
 	settings Machine // the settings of printer.cfg in Machine (machineSettings)
 	timer    timer   // the timings of the running print
@@ -284,7 +286,7 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 			onKey(key)
 		}
 	})
-	version, objects, macros := klipperObjects(ctx, conn)
+	version, hostAPI, objects, macros := klipperObjects(ctx, conn)
 	l, mm, ok, diameter := motionLimits(ctx, conn)
 	settings := machineSettings(ctx, conn)
 	if ok {
@@ -294,7 +296,7 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 	k.diameter, k.settings = diameter, settings
 	k.macros = macros
 	k.conn, k.err, k.startup = conn, "", false
-	k.version, k.objects = version, objects
+	k.version, k.hostAPI, k.objects = version, hostAPI, objects
 	k.mu.Unlock()
 	k.LoadFiles()
 	k.refresh(notify)
@@ -378,7 +380,7 @@ func (k *Klippy) Machine() Machine {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	m := k.settings
-	m.KlipperVersion, m.FilamentDiameter = k.version, k.diameter
+	m.KlipperVersion, m.HostAPI, m.FilamentDiameter = k.version, k.hostAPI, k.diameter
 	if k.conn == nil {
 		return m
 	}
@@ -394,18 +396,19 @@ func (k *Klippy) Machine() Machine {
 	return m
 }
 
-// klipperObjects asks Klipper for its version and the names of its objects, for example "probe",
-// "bed_tilt" or "gcode_macro PRINT_START".
-func klipperObjects(ctx context.Context, conn *klippy.Conn) (version string, objects []string, macros map[string]string) {
+// klipperObjects asks Klipper for its version, its interface version (hostapi), and the names of
+// its objects, for example "probe", "bed_tilt" or "gcode_macro PRINT_START".
+func klipperObjects(ctx context.Context, conn *klippy.Conn) (version string, hostAPI int, objects []string, macros map[string]string) {
 	macros = map[string]string{}
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if res, err := conn.Call(cctx, "info", map[string]any{}); err == nil {
 		var i struct {
 			Version string `json:"software_version"`
+			API     int    `json:"printdeck_api"` // hostapi.InfoKey
 		}
 		json.Unmarshal(res, &i)
-		version = i.Version
+		version, hostAPI = i.Version, i.API
 	}
 	if res, err := conn.Call(cctx, "objects/list", map[string]any{}); err == nil {
 		var l struct {
@@ -447,7 +450,7 @@ func klipperObjects(ctx context.Context, conn *klippy.Conn) (version string, obj
 			}
 		}
 	}
-	return version, objects, macros
+	return version, hostAPI, objects, macros
 }
 
 // motionLimits reads the motion limits of the printer from its config, with the defaults of
