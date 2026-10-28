@@ -67,6 +67,11 @@ func runDeploy(ctx context.Context, cfg aws.Config, opt deployOptions) error {
 		"Domain": opt.Domain, "HostedZoneId": zone, "CodeBucket": codeBucket, "CodeKey": codeKey,
 		"Concurrency": strconv.Itoa(opt.Concurrency), "AlertEmail": opt.AlertEmail, "BudgetUSD": strconv.Itoa(opt.Budget),
 	}
+	// The push relay: the secret and the bundle ID of the stack printdeck-relay, when it exists.
+	if arn, bundle, ok := relayStack(ctx, cfg); ok {
+		params["RelaySecretArn"], params["BundleId"] = arn, bundle
+		fmt.Println("The push relay uses the secret of the stack printdeck-relay")
+	}
 	fmt.Println("Deploying the stack " + opt.Stack + ". The first deploy takes 5 to 30 minutes: CloudFront and the certificate.")
 	if err := deployStack(ctx, cfg, opt.Stack, params); err != nil {
 		return err
@@ -229,4 +234,26 @@ func uploadWeb(ctx context.Context, c *s3.Client, bucket, src string) error {
 		}
 	}
 	return nil
+}
+
+// relayStack returns the secret and the bundle ID of the stack printdeck-relay, the first stack of
+// the push relay, and reports that it exists. Its secret has the APNs key and the key of the send
+// tokens, so the apps keep their send tokens.
+func relayStack(ctx context.Context, cfg aws.Config) (arn, bundle string, ok bool) {
+	out, err := cloudformation.NewFromConfig(cfg).DescribeStacks(ctx, &cloudformation.DescribeStacksInput{StackName: aws.String("printdeck-relay")})
+	if err != nil || len(out.Stacks) == 0 {
+		return "", "", false
+	}
+	st := out.Stacks[0]
+	for _, o := range st.Outputs {
+		if aws.ToString(o.OutputKey) == "SecretArn" {
+			arn = aws.ToString(o.OutputValue)
+		}
+	}
+	for _, p := range st.Parameters {
+		if aws.ToString(p.ParameterKey) == "BundleId" {
+			bundle = aws.ToString(p.ParameterValue)
+		}
+	}
+	return arn, bundle, arn != "" && bundle != ""
 }

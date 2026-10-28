@@ -5,34 +5,40 @@ AWS Lambda function behind a function URL. The APNs key is in a Secrets Manager 
 deck has it. The messages are encrypted from the deck to the app. The relay and Apple see only
 the encrypted message.
 
-## Deploy
+## Where it runs
 
-You need Go, the AWS CLI, and an APNs key (a `.p8` file) from the developer account.
+The relay is part of the cloud service (`cloud/`): the function of the service serves it at
+`https://<domain>/api/v1/relay/`, for example `https://printdeck.beetlebug.org/api/v1/relay/`.
+The app posts to `<relay>/register`, and the deck posts to `<relay>/push`.
 
-1. Run `relay/deploy.sh BUNDLE_ID`. It makes the stack `printdeck-relay` and prints the URL of
-   the relay.
-2. Run `relay/set-apple-key.sh KEY_ID TEAM_ID AuthKey_KEYID.p8` on the computer with the `.p8`
-   file. It writes the key into the secret.
+The APNs key and the key of the send tokens are in the Secrets Manager secret `printdeck-relay`.
+The first stack of the relay (`printdeck-relay`) made it. `pwf deploy` of the service finds that
+stack and gives its secret and its bundle ID to the function, so the send tokens of the apps stay
+valid.
 
-Run `deploy.sh` again after a change to the code. To remove the relay, delete the stack and the
-bucket.
+To set the APNs key, run on the computer with the `.p8` file:
 
-Two settings limit the cost of a flood of requests:
+```sh
+cd cloud
+go run ./cmd/pwf relay set-apple-key KEY_ID TEAM_ID AuthKey_KEYID.p8
+```
 
-- `RELAY_CONCURRENCY` (default 5): the most instances of the function at a time. An account with
-  a concurrency quota of 10 needs `RELAY_CONCURRENCY=0` for no limit, or a higher quota.
-- `ALERT_EMAIL=you@example.com`: a budget of `BUDGET_USD` (default 5) US dollars a month. AWS
-  sends mail at 80 % of it, and when the forecast passes it.
+CloudFront shows the "not found" page of the service for 403 and 404, so the relay replies 401
+for a bad send token or code, and 410 for no such path.
+
+The first stack `printdeck-relay` still serves its function URL, for an app that has that URL.
+Before you delete that stack, set `DeletionPolicy: Retain` on its secret
+(`cloud/deploy/relay.yaml` has it) and update the stack, so that the secret stays.
 
 ## How it works
 
-1. The app posts its device token to the relay (`POST /register`). The relay sends a code to the
+1. The app posts its device token to the relay (`POST <relay>/register`). The relay sends a code to the
    device in a background push. The app posts the token again with the code, and gets a send
    token (an HMAC of the device token with `relay_secret`).
 2. The app pairs with the deck on the local network. The deck gets a message key, the device
    token and the send token.
 3. At an event of a print, the deck encrypts the message and posts it to the relay
-   (`POST /push`). The relay checks the send token and sends the push to APNs.
+   (`POST <relay>/push`). The relay checks the send token and sends the push to APNs.
 4. The notification service extension of the app decrypts the message.
 
 A new `relay_secret` makes all send tokens invalid. The relay keeps no list of devices. The
@@ -42,7 +48,7 @@ device a background push with no alert.
 
 ## Requests
 
-`POST /register`, from the app:
+`POST <relay>/register`, from the app:
 
 ```json
 {"device": "<device token in hex>", "env": "production"}
@@ -53,7 +59,7 @@ reply is 202. The relay sends a background push with `"c": "<code>"`. The app po
 with `"code": "<code>"`. The reply is `{"send_token": "..."}`, or 403 for a wrong code. A code is
 valid for 10 to 20 minutes.
 
-`POST /push`, from the deck:
+`POST <relay>/push`, from the deck:
 
 ```json
 {"device": "...", "env": "production", "send_token": "...", "payload": "<base64>", "priority": 5}

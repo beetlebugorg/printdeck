@@ -6,6 +6,8 @@
 //	pwf enroll-code          make a single-use code to connect a deck (Settings, Cloud, Connect)
 //	pwf decks                list the connected decks
 //	pwf decks remove ID      remove a deck, for example after the loss of its SD card
+//	pwf relay set-apple-key KEY_ID TEAM_ID AuthKey_KEYID.p8
+//	                         write the APNs key of the app into the secret of the push relay
 //	pwf dev [-addr A]        run the whole service on this computer, with the data in memory
 //
 // All commands take -stack (default printdeck-cloud). The stack is in us-east-1, the region of
@@ -63,8 +65,8 @@ func main() {
 		err = runDeploy(ctx, cfg, opt)
 	case "enroll-code":
 		err = enrollCode(ctx, cfg, *stack)
-	case "dev":
-		err = runDev(ctx, args)
+	case "relay":
+		err = runRelay(ctx, cfg, fs.Args())
 	case "decks":
 		err = decks(ctx, cfg, *stack, fs.Args())
 	default:
@@ -76,7 +78,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: pwf deploy | enroll-code | decks [remove ID] | dev")
+	fmt.Fprintln(os.Stderr, "usage: pwf deploy | enroll-code | decks [remove ID] | relay set-apple-key | dev")
 	os.Exit(2)
 }
 

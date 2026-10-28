@@ -39,6 +39,9 @@ Resources:
   # send tokens, and CloudFormation makes it at random.
   Secret:
     Type: AWS::SecretsManager::Secret
+    # The cloud service reads this secret too, so it stays when this stack goes.
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       Name: printdeck-relay
       Description: The APNs key of the Printdeck app, and the secret of the send tokens.

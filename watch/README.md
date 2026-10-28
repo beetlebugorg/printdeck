@@ -44,7 +44,7 @@ deck for a key. Or type the key from http://printdeck.local/system and tap Save.
 
 Unpair removes the phone. Settings > Phones on the deck has the same list. Each message is
 encrypted for the paired phone. The relay and Apple see only the encrypted message
-(`relay/README.md`).
+(`cloud/relay/README.md`).
 
 How the pairing works:
 

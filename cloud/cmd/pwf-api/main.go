@@ -1,7 +1,8 @@
 // Command pwf-api is the Lambda function of the Printdeck cloud service. It serves the API
 // (package api) behind a function URL. CloudFront sends it the requests of /api/*.
 //
-// The environment: BUCKET is the data bucket, and DOMAIN the domain of the service. A schedule
+// The environment: BUCKET is the data bucket, and DOMAIN the domain of the service.
+// RELAY_SECRET_ARN and TOPIC (the bundle ID of the app) turn on the push relay at /api/v1/relay/. A schedule
 // sends the event {"pwf": "sweep"} every 15 minutes, which deletes the shares after their time.
 //
 // The logs go to CloudWatch. They have fixed texts only: no request body, no key, no code.
@@ -21,8 +22,10 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 
 	"printdeck/cloud/api"
+	"printdeck/cloud/relay"
 )
 
 func main() {
@@ -35,6 +38,19 @@ func main() {
 	bucket := os.Getenv("BUCKET")
 	s := &api.Server{Store: &api.S3Store{Client: client, Bucket: bucket}, Grants: &api.S3Granter{Client: client, Bucket: bucket},
 		Domain: os.Getenv("DOMAIN")}
+	// The push relay of the iPhone app, with the secret of the relay: its APNs key and the key
+	// of its send tokens.
+	if arn := os.Getenv("RELAY_SECRET_ARN"); arn != "" {
+		out, err := secretsmanager.NewFromConfig(cfg).GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{SecretId: &arn})
+		if err != nil {
+			log.Fatal("pwf-api: the secret of the relay did not read")
+		}
+		var sec relay.Secret
+		if err := json.Unmarshal([]byte(*out.SecretString), &sec); err != nil {
+			log.Fatal("pwf-api: the secret of the relay is not JSON")
+		}
+		s.Relay = relay.NewRelay(sec, os.Getenv("TOPIC"))
+	}
 	lambda.Start(func(ctx context.Context, raw json.RawMessage) (any, error) {
 		var ev struct {
 			Pwf string `json:"pwf"`

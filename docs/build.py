@@ -6,7 +6,7 @@ The pages come from the files of the repository, so the site follows them:
   README.md, ARCHITECTURE.md, os/README.md, printer/README.md,
   slicer/README.md, slicer/cura-plugin/README.md,
   deck/internal/klipper/PORTING.md, desktop/meshes/README.md,
-  watch/README.md, relay/README.md, lulzbot/README.md,
+  watch/README.md, cloud/relay/README.md, lulzbot/README.md,
   lulzbot/stl/pod/README.md                                    the text of the pages
   lulzbot/stl/pod/                                             the print files of the pod
   docs/manual/index.html, docs/manual/wide/index.html          the screens of the deck
@@ -48,7 +48,7 @@ PAGE_OF = {
     "README.md": "", "ARCHITECTURE.md": "deck/", "os/README.md": "os/", "printer/README.md": "deck/printer/",
     "slicer/README.md": "slicer/adaptive-speed/", "slicer/cura-plugin/README.md": "slicer/cura-plugin/",
     "deck/internal/klipper/PORTING.md": "deck/klipper/", "lulzbot/README.md": "hardware/",
-    "lulzbot/stl/pod/README.md": "hardware/print/", "watch/README.md": "apps/", "relay/README.md": "apps/relay/",
+    "lulzbot/stl/pod/README.md": "hardware/print/", "watch/README.md": "apps/", "cloud/relay/README.md": "apps/relay/",
 }
 
 
@@ -869,7 +869,7 @@ def relay_page():
     root = "../../"
     page("apps/relay/", "Software", "The push relay",
          "An AWS Lambda function that gives the encrypted messages of a deck to the iPhone app through APNs.",
-         md("relay/README.md", root))
+         md("cloud/relay/README.md", root))
 
 
 def adaptive_page():

@@ -28,6 +28,16 @@ Parameters:
     Type: String
     Default: ""
     Description: The address for the alarm of the budget, or "" for no budget.
+  RelaySecretArn:
+    Type: String
+    Default: ""
+    Description: >-
+      The secret of the push relay (its APNs key and the key of its send tokens), or "" for no
+      relay. pwf deploy takes it from the stack printdeck-relay.
+  BundleId:
+    Type: String
+    Default: ""
+    Description: The bundle ID of the Printdeck iPhone app, the topic of the pushes of the relay.
   BudgetUSD:
     Type: Number
     Default: 5
@@ -36,6 +46,7 @@ Parameters:
 Conditions:
   HasConcurrency: !Not [!Equals [!Ref Concurrency, 0]]
   HasBudget: !Not [!Equals [!Ref AlertEmail, ""]]
+  HasRelay: !Not [!Equals [!Ref RelaySecretArn, ""]]
 
 Resources:
   # The data of the service. Nothing in it is public: CloudFront reads the public prefixes with
@@ -221,6 +232,12 @@ Resources:
               - Effect: Allow
                 Action: s3:ListBucket
                 Resource: !GetAtt DataBucket.Arn
+              - !If
+                - HasRelay
+                - Effect: Allow
+                  Action: secretsmanager:GetSecretValue
+                  Resource: !Ref RelaySecretArn
+                - !Ref "AWS::NoValue"
 
   Logs:
     Type: AWS::Logs::LogGroup
@@ -247,6 +264,8 @@ Resources:
         Variables:
           BUCKET: !Ref DataBucket
           DOMAIN: !Ref Domain
+          RELAY_SECRET_ARN: !Ref RelaySecretArn
+          TOPIC: !Ref BundleId
 
   # The URL has no AWS auth: the API checks the signature of each deck request.
   Url:

@@ -1,10 +1,10 @@
-// Package main is the push relay of the Printdeck app: an AWS Lambda function behind a function
+// Package relay is the push relay of the Printdeck app: an AWS Lambda function behind a function
 // URL. It has the APNs key of the app, so a deck does not. The iPhone app registers its device
 // token, and gets a send token after it shows that it has the device: the relay sends a code to
 // the device in a background push, and the app sends the code back. The deck posts the device token, the send token, and a message that
 // the deck and the app encrypted with their own key at the pairing. The relay checks the send token
 // and gives the message to APNs. It cannot read the message.
-package main
+package relay
 
 import (
 	"bytes"
@@ -241,7 +241,7 @@ func (r *Relay) token() (string, error) {
 func parseP8(p8 string) (*ecdsa.PrivateKey, error) {
 	block, _ := pem.Decode([]byte(p8))
 	if block == nil {
-		return nil, errors.New("the APNs key is not set: run set-apple-key.sh")
+		return nil, errors.New("the APNs key is not set: run pwf relay set-apple-key")
 	}
 	k, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {

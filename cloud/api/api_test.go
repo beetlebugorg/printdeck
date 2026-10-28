@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"printdeck/cloud/relay"
 	"printdeck/internal/cloud"
 )
 
@@ -121,4 +122,22 @@ func status(err error) int {
 		return e.Status
 	}
 	return 0
+}
+
+// The push relay answers at /api/v1/relay/. Its 403 goes out as 401, because CloudFront shows its
+// page for 403.
+func TestRelayRoutes(t *testing.T) {
+	st := NewMemStore()
+	s := &Server{Store: st, Relay: relay.NewRelay(relay.Secret{RelaySecret: "x"}, "org.example.app")}
+	srv := httptest.NewServer(s)
+	defer srv.Close()
+	body := `{"device":"` + strings.Repeat("ab", 32) + `","env":"production","send_token":"wrong","payload":"eA=="}`
+	resp, err := http.Post(srv.URL+"/api/v1/relay/push", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("bad send token: %d, want 401", resp.StatusCode)
+	}
 }

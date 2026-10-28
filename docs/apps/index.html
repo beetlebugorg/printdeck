@@ -72,7 +72,7 @@
 <p>If the deck is missing from the list, open Menu &gt; By hand. Type the address, and tap Ask the deck for a key. Or type the key from <a href="http://printdeck.local/system">http://printdeck.local/system</a> and tap Save.</p>
 <h2 id="push-messages">Push messages</h2>
 <ol><li>On the iPhone, open Menu &gt; Notifications, and tap Pair for notifications.</li><li>Allow the notifications.</li><li>The deck sends &quot;This phone gets the messages of your prints.&quot;</li></ol>
-<p>Unpair removes the phone. Settings &gt; Phones on the deck has the same list. Each message is encrypted for the paired phone. The relay and Apple see only the encrypted message (<code>relay/README.md</code>).</p>
+<p>Unpair removes the phone. Settings &gt; Phones on the deck has the same list. Each message is encrypted for the paired phone. The relay and Apple see only the encrypted message (<code>cloud/relay/README.md</code>).</p>
 <p>How the pairing works:</p>
 <ol><li>The app posts its device token to the relay (<code>POST /register</code>), and gets a send token.</li><li>The app makes an X25519 key pair, and pairs with the deck (<code>POST /api/plugin/printdeck/push/pair</code>). Both make the message key with HKDF-SHA256 (the salt is the device token, the info is <code>printdeck push v1</code>).</li><li>The notification service extension decrypts the key <code>e</code> of each push (AES-256-GCM).</li></ol>
 <p>A build from Xcode uses the APNs sandbox. A TestFlight or App Store build uses production. <code>PUSH_RELAY</code> in <code>project.yml</code> is the URL of the relay.</p>

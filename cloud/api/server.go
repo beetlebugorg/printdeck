@@ -21,6 +21,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-lambda-go/events"
+
+	"printdeck/cloud/relay"
 	"printdeck/internal/cloud"
 )
 
@@ -32,6 +35,8 @@ type Server struct {
 	// links instead, for pwf dev, or "".
 	Domain string
 	Base   string
+	// Relay is the push relay of the iPhone app at /api/v1/relay/, or nil.
+	Relay *relay.Relay
 	// Now is the clock, or nil for time.Now.
 	Now func() time.Time
 
@@ -67,6 +72,14 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out, err := s.route(r.Context(), r, body)
+	var rr *relayReply
+	if errors.As(err, &rr) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(rr.status)
+		w.Write([]byte(rr.body))
+		return
+	}
 	if err != nil {
 		var e *Error
 		if !errors.As(err, &e) {
@@ -107,6 +120,8 @@ func (s *Server) route(ctx context.Context, r *http.Request, body []byte) (any, 
 	switch {
 	case p == "/api/v1/health" && r.Method == http.MethodGet:
 		return map[string]bool{"ok": true}, nil
+	case (p == "/api/v1/relay/register" || p == "/api/v1/relay/push") && s.Relay != nil:
+		return nil, s.serveRelay(r, body, strings.TrimPrefix(p, "/api/v1/relay"))
 	case p == "/api/v1/decks" && r.Method == http.MethodPost:
 		return s.enroll(ctx, body)
 	case p == "/api/v1/shares" || strings.HasPrefix(p, "/api/v1/shares/"):
@@ -206,4 +221,27 @@ func validID(id string) bool {
 		}
 	}
 	return true
+}
+
+// relayReply is a reply of the push relay, as it is: the relay has its own JSON bodies.
+type relayReply struct {
+	status int
+	body   string
+}
+
+func (e *relayReply) Error() string { return e.body }
+
+// serveRelay runs a request of the push relay. The relay replies 403 for a bad send token or code,
+// and 404 for no such path. CloudFront shows its page for those statuses, so they go out as 401
+// and 410.
+func (s *Server) serveRelay(r *http.Request, body []byte, path string) error {
+	resp := relay.Handle(s.Relay, events.LambdaFunctionURLRequest{RawPath: path, Body: string(body),
+		RequestContext: events.LambdaFunctionURLRequestContext{HTTP: events.LambdaFunctionURLRequestContextHTTPDescription{Method: r.Method}}})
+	switch resp.StatusCode {
+	case http.StatusForbidden:
+		resp.StatusCode = http.StatusUnauthorized
+	case http.StatusNotFound:
+		resp.StatusCode = http.StatusGone
+	}
+	return &relayReply{status: resp.StatusCode, body: resp.Body}
 }

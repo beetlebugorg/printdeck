@@ -1,4 +1,4 @@
-package main
+package relay
 
 import (
 	"crypto/ecdsa"
@@ -157,18 +157,18 @@ func TestHandle(t *testing.T) {
 	r, _, _, _ := testRelay(t, http.StatusOK)
 	req := events.LambdaFunctionURLRequest{RawPath: "/register", Body: `{"device":"` + device + `","env":"sandbox"}`}
 	req.RequestContext.HTTP.Method = "POST"
-	resp := handle(r, req)
+	resp := Handle(r, req)
 	if resp.StatusCode != http.StatusAccepted || strings.Contains(resp.Body, "send_token") {
 		t.Fatalf("no code: %d %s", resp.StatusCode, resp.Body)
 	}
 	code := r.Code("sandbox", device, r.Now().Unix()/codeWindow)
 	req.Body = `{"device":"` + device + `","env":"sandbox","code":"` + code + `"}`
-	resp = handle(r, req)
+	resp = Handle(r, req)
 	if resp.StatusCode != 200 || !strings.Contains(resp.Body, r.SendToken("sandbox", device)) {
 		t.Fatalf("%d %s", resp.StatusCode, resp.Body)
 	}
 	req.RequestContext.HTTP.Method = "GET"
-	if resp := handle(r, req); resp.StatusCode != http.StatusMethodNotAllowed {
+	if resp := Handle(r, req); resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Errorf("GET: %d", resp.StatusCode)
 	}
 }
