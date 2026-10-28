@@ -716,6 +716,39 @@ func manualParts() []section {
 						{"Pictures", "The first layer picture, and the pictures on the phone."},
 					},
 					Notes: []string{"Each use is on one camera. To move a use, check it on the other camera."}},
+				{Name: "calibrate-ways", Caption: "Calibrate the camera: the two ways",
+					Setup: func(s *manualState) {
+						s.p.State_ = stIdle
+						s.a.Camera = manualCameras()
+						s.a.OpenPrintScreen("calibrate")
+					},
+					Callouts: []callout{
+						{"With a print", "Prints 5 towers. Use it when the nozzle tip is hard to see."},
+						{"With the nozzle", "The nozzle goes to 9 points. Tap the tip at each point."},
+						{"The bed moves front to back", "Yes for a printer with the bed on Y, such as a TAZ. The default comes from printer.cfg."},
+					}},
+				{Name: "calibrate-tower", Caption: "Tap a tower",
+					Setup: func(s *manualState) {
+						s.p.State_ = stIdle
+						s.a.Camera = manualCameras()
+						s.a.OpenPrintScreen("calibrate-tower")
+					},
+					Callouts: []callout{
+						{"Picture", "Tap the mark. The first tap zooms in. Tap or drag again to put the mark exactly."},
+						{"Step", "The tower and the end to tap: the bottom or the top."},
+						{"Plan", "The towers from the top. The tower now is orange."},
+						{"Skip", "Goes to the next mark, when the picture does not show this one."},
+					}},
+				{Name: "calibrate-fit", Caption: "The result of the calibration",
+					Setup: func(s *manualState) {
+						s.p.State_ = stIdle
+						s.a.Camera = manualCameras()
+						s.a.OpenPrintScreen("calibrate-fit")
+					},
+					Callouts: []callout{
+						{"Picture", "The green lines are the towers of the calibration. They must be on the towers."},
+						{"Save", "Keeps the calibration. Then remove the towers from the bed."},
+					}},
 				{Name: "console", Caption: "The console",
 					Setup: func(s *manualState) {
 						s.p.State_ = stIdle
@@ -1077,6 +1110,24 @@ func manualSections() []section {
 				"Tap Pressure advance test to print the tower. Then tap Pressure advance, and type the height of its sharpest corners.",
 			},
 			Figures: fig("maintenance", "maintenance-more", "action", "paper")},
+		{Chapter: "Level and calibrate", ID: "camera-calibrate", Title: "Calibrate the camera",
+			Intro: []string{
+				"A calibration lets the camera views and the time lapse crop follow the part.",
+				"The deck prints 5 towers and you tap them on a picture. A bed that moves front to back goes to two places, so the deck also gets the depth.",
+			},
+			Steps: []string{
+				"Open Settings, then Camera, then Calibrate.",
+				"Tap With a print. Clear the bed, then tap Print. The towers print in the loaded material.",
+				"After the print, leave the towers on the bed and tap Go on. The toolhead moves to the left side, and the bed moves.",
+				"For each mark, tap the bottom or the top of the tower, then tap Use mark. Tap Skip for a mark that you cannot see.",
+				"The bed moves to the front. Tap the top of each tower again.",
+				"Check that the green lines are on the towers, then tap Save. Remove the towers.",
+			},
+			Figures: fig("calibrate-ways", "calibrate-tower", "calibrate-fit"),
+			After: []string{
+				"With the nozzle, the nozzle goes to 9 points and you tap the tip. Use it when the camera shows the tip.",
+				"Calibrate again after you move the camera or change the size of its picture.",
+			}},
 
 		{Chapter: care, ID: "machine", Title: "Look after the printer",
 			Intro:   []string{"Machine has the information of the printer, the history of the prints, the macros, the console and the settings."},

@@ -113,6 +113,8 @@ type Printer interface {
 	RunAction(name string, lines ...string) error
 	// PrintPATower prints the pressure advance tower (printer.PATower).
 	PrintPATower(tool, bed int, material string) error
+	// PrintCalibTowers prints the towers of the camera calibration (printer.CalibTowers).
+	PrintCalibTowers(tool, bed int, material string) error
 	// SetPressureAdvance sets the pressure advance now and in printer.cfg.
 	SetPressureAdvance(v float64) error
 

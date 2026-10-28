@@ -99,7 +99,7 @@
 
 <nav class="toc">
   <h2>CONTENTS</h2>
-  <ol><li class="chapter">Set up</li><li><a href="#wifi"><span class="num">01</span>Connect to Wi-Fi</a></li><li><a href="#printer"><span class="num">02</span>Choose your printer</a></li><li><a href="#firmware"><span class="num">03</span>Install the Klipper firmware</a></li><li class="chapter">Meet your Printdeck</li><li><a href="#deck"><span class="num">04</span>The deck</a></li><li><a href="#lcd"><span class="num">05</span>The display of the printer</a></li><li><a href="#web"><span class="num">06</span>The deck in a browser</a></li><li class="chapter">Print a part</li><li><a href="#send"><span class="num">07</span>Send a file from the slicer</a></li><li><a href="#start-print"><span class="num">08</span>Start a print</a></li><li><a href="#watch"><span class="num">09</span>Watch the print</a></li><li><a href="#colors"><span class="num">10</span>Print in two colors</a></li><li><a href="#away"><span class="num">11</span>Look around during a print</a></li><li><a href="#timelapse"><span class="num">12</span>Make a time lapse</a></li><li class="chapter">Your iPhone and Apple Watch</li><li><a href="#phone"><span class="num">13</span>The iPhone and Apple Watch apps</a></li><li class="chapter">Change the filament</li><li><a href="#filament"><span class="num">14</span>Change the filament</a></li><li class="chapter">Move and heat</li><li><a href="#move"><span class="num">15</span>Move the head and heat</a></li><li class="chapter">Level and calibrate</li><li><a href="#calibrate"><span class="num">16</span>Level and calibrate</a></li><li class="chapter">Look after the printer</li><li><a href="#machine"><span class="num">17</span>Look after the printer</a></li><li><a href="#update"><span class="num">18</span>Update the Printdeck</a></li><li><a href="#backup"><span class="num">19</span>Back up your data</a></li><li><a href="#simulator"><span class="num">20</span>Try the deck with a simulated printer</a></li><li class="chapter">When something goes wrong</li><li><a href="#problems"><span class="num">21</span>When something goes wrong</a></li><li><a href="#settings"><span class="num">22</span>Settings</a></li></ol>
+  <ol><li class="chapter">Set up</li><li><a href="#wifi"><span class="num">01</span>Connect to Wi-Fi</a></li><li><a href="#printer"><span class="num">02</span>Choose your printer</a></li><li><a href="#firmware"><span class="num">03</span>Install the Klipper firmware</a></li><li class="chapter">Meet your Printdeck</li><li><a href="#deck"><span class="num">04</span>The deck</a></li><li><a href="#lcd"><span class="num">05</span>The display of the printer</a></li><li><a href="#web"><span class="num">06</span>The deck in a browser</a></li><li class="chapter">Print a part</li><li><a href="#send"><span class="num">07</span>Send a file from the slicer</a></li><li><a href="#start-print"><span class="num">08</span>Start a print</a></li><li><a href="#watch"><span class="num">09</span>Watch the print</a></li><li><a href="#colors"><span class="num">10</span>Print in two colors</a></li><li><a href="#away"><span class="num">11</span>Look around during a print</a></li><li><a href="#timelapse"><span class="num">12</span>Make a time lapse</a></li><li class="chapter">Your iPhone and Apple Watch</li><li><a href="#phone"><span class="num">13</span>The iPhone and Apple Watch apps</a></li><li class="chapter">Change the filament</li><li><a href="#filament"><span class="num">14</span>Change the filament</a></li><li class="chapter">Move and heat</li><li><a href="#move"><span class="num">15</span>Move the head and heat</a></li><li class="chapter">Level and calibrate</li><li><a href="#calibrate"><span class="num">16</span>Level and calibrate</a></li><li><a href="#camera-calibrate"><span class="num">17</span>Calibrate the camera</a></li><li class="chapter">Look after the printer</li><li><a href="#machine"><span class="num">18</span>Look after the printer</a></li><li><a href="#update"><span class="num">19</span>Update the Printdeck</a></li><li><a href="#backup"><span class="num">20</span>Back up your data</a></li><li><a href="#simulator"><span class="num">21</span>Try the deck with a simulated printer</a></li><li class="chapter">When something goes wrong</li><li><a href="#problems"><span class="num">22</span>When something goes wrong</a></li><li><a href="#settings"><span class="num">23</span>Settings</a></li></ol>
 </nav>
 
 
@@ -1489,8 +1489,104 @@
   
 </section>
 
+<section id="camera-calibrate">
+  <h2 class="title"><span class="num">17</span>Calibrate the camera</h2>
+  <p>A calibration lets the camera views and the time lapse crop follow the part.</p><p>The deck prints 5 towers and you tap them on a picture. A bed that moves front to back goes to two places, so the deck also gets the depth.</p>
+  <ol class="steps"><li>Open Settings, then Camera, then Calibrate.</li><li>Tap With a print. Clear the bed, then tap Print. The towers print in the loaded material.</li><li>After the print, leave the towers on the bed and tap Go on. The toolhead moves to the left side, and the bed moves.</li><li>For each mark, tap the bottom or the top of the tower, then tap Use mark. Tap Skip for a mark that you cannot see.</li><li>The bed moves to the front. Tap the top of each tower again.</li><li>Check that the green lines are on the towers, then tap Save. Remove the towers.</li></ol>
+  
+  <figure>
+    <h3>Calibrate the camera: the two ways</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/calibrate-ways.png" alt="Calibrate the camera: the two ways" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="-25" y1="489" x2="24" y2="489" class="leader"/>
+        <circle cx="24" cy="489" r="5" class="dot"/>
+        <circle cx="-40" cy="489" r="15" class="badge"/>
+        <text x="-40" y="489" class="badge-n">1</text>
+        
+        <line x1="505" y1="489" x2="456" y2="489" class="leader"/>
+        <circle cx="456" cy="489" r="5" class="dot"/>
+        <circle cx="520" cy="489" r="15" class="badge"/>
+        <text x="520" y="489" class="badge-n">2</text>
+        
+        <line x1="505" y1="279" x2="448" y2="279" class="leader"/>
+        <circle cx="448" cy="279" r="5" class="dot"/>
+        <circle cx="520" cy="279" r="15" class="badge"/>
+        <text x="520" y="279" class="badge-n">3</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>With a print</b>Prints 5 towers. Use it when the nozzle tip is hard to see.</span></li><li><span class="badge">2</span><span><b>With the nozzle</b>The nozzle goes to 9 points. Tap the tip at each point.</span></li><li><span class="badge">3</span><span><b>The bed moves front to back</b>Yes for a printer with the bed on Y, such as a TAZ. The default comes from printer.cfg.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>Tap a tower</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/calibrate-tower.png" alt="Tap a tower" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="197" x2="456" y2="197" class="leader"/>
+        <circle cx="456" cy="197" r="5" class="dot"/>
+        <circle cx="520" cy="197" r="15" class="badge"/>
+        <text x="520" y="197" class="badge-n">1</text>
+        
+        <line x1="505" y1="386" x2="456" y2="386" class="leader"/>
+        <circle cx="456" cy="386" r="5" class="dot"/>
+        <circle cx="520" cy="386" r="15" class="badge"/>
+        <text x="520" y="386" class="badge-n">2</text>
+        
+        <line x1="505" y1="420" x2="450" y2="386" class="leader"/>
+        <circle cx="450" cy="386" r="5" class="dot"/>
+        <circle cx="520" cy="420" r="15" class="badge"/>
+        <text x="520" y="420" class="badge-n">3</text>
+        
+        <line x1="505" y1="489" x2="456" y2="489" class="leader"/>
+        <circle cx="456" cy="489" r="5" class="dot"/>
+        <circle cx="520" cy="489" r="15" class="badge"/>
+        <text x="520" y="489" class="badge-n">4</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Picture</b>Tap the mark. The first tap zooms in. Tap or drag again to put the mark exactly.</span></li><li><span class="badge">2</span><span><b>Step</b>The tower and the end to tap: the bottom or the top.</span></li><li><span class="badge">3</span><span><b>Plan</b>The towers from the top. The tower now is orange.</span></li><li><span class="badge">4</span><span><b>Skip</b>Goes to the next mark, when the picture does not show this one.</span></li>
+    </ol>
+    
+  </figure>
+  
+  <figure>
+    <h3>The result of the calibration</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/calibrate-fit.png" alt="The result of the calibration" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="197" x2="456" y2="197" class="leader"/>
+        <circle cx="456" cy="197" r="5" class="dot"/>
+        <circle cx="520" cy="197" r="15" class="badge"/>
+        <text x="520" y="197" class="badge-n">1</text>
+        
+        <line x1="-25" y1="489" x2="24" y2="489" class="leader"/>
+        <circle cx="24" cy="489" r="5" class="dot"/>
+        <circle cx="-40" cy="489" r="15" class="badge"/>
+        <text x="-40" y="489" class="badge-n">2</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Picture</b>The green lines are the towers of the calibration. They must be on the towers.</span></li><li><span class="badge">2</span><span><b>Save</b>Keeps the calibration. Then remove the towers from the bed.</span></li>
+    </ol>
+    
+  </figure>
+  
+  
+  <p>With the nozzle, the nozzle goes to 9 points and you tap the tip. Use it when the camera shows the tip.</p><p>Calibrate again after you move the camera or change the size of its picture.</p>
+</section>
+
 <section id="machine">
-  <h2 class="title"><span class="num">17</span>Look after the printer</h2>
+  <h2 class="title"><span class="num">18</span>Look after the printer</h2>
   <p>Machine has the information of the printer, the history of the prints, the macros, the console and the settings.</p>
   
   
@@ -1874,7 +1970,7 @@
 </section>
 
 <section id="update">
-  <h2 class="title"><span class="num">18</span>Update the Printdeck</h2>
+  <h2 class="title"><span class="num">19</span>Update the Printdeck</h2>
   <p>The deck checks for a new version once a day. Machine then shows Software update in orange.</p><p>The deck installs only a signed version. If the new system fails to start, the deck goes back to the old one.</p>
   <ol class="steps"><li>Open Machine, then Software update.</li><li>Read the notes of the new version, then tap Install. The deck installs only when no print runs.</li><li>Wait for the download. The deck restarts into the new version.</li></ol>
   
@@ -1922,7 +2018,7 @@
 </section>
 
 <section id="backup">
-  <h2 class="title"><span class="num">19</span>Back up your data</h2>
+  <h2 class="title"><span class="num">20</span>Back up your data</h2>
   <p>A backup is one file with your rolls, history, settings, API keys, paired phones and Klipper config. Make a backup before you change the SD card.</p><p>Keep the backup password safe. Without it, no one can restore the backup.</p><p>The backup excludes the deck password and the Wi-Fi network.</p>
   <ol class="steps"><li>Open http://printdeck.local/system in a browser, and log in with the password of the deck.</li><li>Under Backup, type a backup password of 8 characters or more, two times. To add the G-code files, select Include the G-code files.</li><li>Click Download the backup. The browser saves a file with the name printdeck-backup-NAME-DATE.pdbk.</li><li>To restore, open the same page when no print runs. Under Restore, type the backup password, choose the file, then click Restore.</li><li>Klipper and the Printdeck restart. A wrong password or a damaged file changes no data.</li></ol>
   
@@ -1931,7 +2027,7 @@
 </section>
 
 <section id="simulator">
-  <h2 class="title"><span class="num">20</span>Try the deck with a simulated printer</h2>
+  <h2 class="title"><span class="num">21</span>Try the deck with a simulated printer</h2>
   <p>The simulated printer heats, homes, probes and prints in real time, and no motor moves. Use it to learn the deck or to test a file.</p><p>Your printer.cfg stays as printer.cfg.real until you tap Real printer.</p>
   <ol class="steps"><li>Open Machine, then Simulated printer. The setup screen also has this key.</li><li>Tap the printer to simulate, then Simulate. Klipper restarts with the simulated printer.</li><li>Print as on a real printer: send a file from the slicer, or tap Print a file.</li><li>To stop the simulation, open Machine, then Simulated printer, and tap Real printer, then Go back. Klipper restarts with your printer.cfg.</li></ol>
   
@@ -1979,7 +2075,7 @@
 </section>
 
 <section id="problems">
-  <h2 class="title"><span class="num">21</span>When something goes wrong</h2>
+  <h2 class="title"><span class="num">22</span>When something goes wrong</h2>
   <p>When Klipper stops with an error, the deck shows the message.</p>
   <ol class="steps"><li>Read the message. It often names the setting in printer.cfg.</li><li>After a stop or a power cut of the printer, tap Firmware restart.</li><li>After a change to printer.cfg, tap Restart Klipper.</li></ol>
   
@@ -2022,7 +2118,7 @@
 </section>
 
 <section id="settings">
-  <h2 class="title"><span class="num">22</span>Settings</h2>
+  <h2 class="title"><span class="num">23</span>Settings</h2>
   <p>The file printdeck.txt on the PRINTDECK partition holds the settings. Put the SD card in a computer to change it. The deck reads it at each start, and clears the Wi-Fi password in it.</p>
   
   
