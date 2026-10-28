@@ -86,6 +86,10 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 	if cam, ok := app.Camera.(octoapi.Camera); ok {
 		api.Camera = cam
 	}
+	if sysTimelapse != nil {
+		api.Timelapse = sysTimelapse
+	}
+	api.History = k.History
 	api.StartPrint = app.ConfirmFilePrint
 	api.Status = func() any { return app.StatusScreen() }
 	api.Model = k.View.ModelPicture

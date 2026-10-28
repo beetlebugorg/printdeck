@@ -13,6 +13,7 @@
 //	printdeck.go the loaded filament, for the Printdeck plugin for Cura
 //	estimate.go the time of a print of a file, for the Printdeck plugin for Cura
 //	webcam.go   the webcam: the camera of the deck, or its screen
+//	timelapse.go the time lapse videos
 package octoapi
 
 import (
@@ -62,6 +63,8 @@ type Server struct {
 	estimateFields
 	// The phones of the Printdeck app for push messages (push.go).
 	pushFields
+	// The time lapse videos (timelapse.go).
+	timelapseFields
 
 	keys *keyStore
 
@@ -112,6 +115,9 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/plugin/printdeck/push/pair", s.key(s.servePair))
 	mux.HandleFunc("GET /api/plugin/printdeck/push", s.key(s.servePhones))
 	mux.HandleFunc("DELETE /api/plugin/printdeck/push/{id}", s.key(s.serveUnpair))
+	mux.HandleFunc("GET /api/timelapse", s.key(s.serveTimelapse))
+	mux.HandleFunc("GET /downloads/timelapse/{name}", s.key(s.serveVideo))
+	mux.HandleFunc("GET /downloads/timelapse/{name}/still", s.key(s.serveStill))
 	mux.HandleFunc("GET /webcam/stream", s.webcam(s.serveStream))
 	mux.HandleFunc("GET /webcam/snapshot", s.webcam(s.serveSnapshot))
 }
