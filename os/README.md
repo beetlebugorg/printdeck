@@ -100,8 +100,8 @@ The firmware on the printer board must match the Klipper version in
 
 If your configuration has a `CANCEL_PRINT` macro, the Cancel key runs it.
 
-The deck can also run a simulated printer: open Machine, then Simulated printer. The manual has
-the steps.
+The deck can also run a simulated printer: open Machine, then Maintenance, then Simulated
+printer. The manual has the steps.
 
 ## Settings
 

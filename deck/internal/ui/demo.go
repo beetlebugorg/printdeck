@@ -188,6 +188,9 @@ func (a *App) OpenPrintScreen(name string) {
 		a.pages = []page{pageMachine, pageMaintenance}
 	case "machine":
 		a.pages = []page{pageMachine}
+	case "machine-restart":
+		a.pages = []page{pageMachine}
+		a.askRestart()
 	case "macros":
 		a.pages = []page{pageMachine, pageMacros}
 	case "history":

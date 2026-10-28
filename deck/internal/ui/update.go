@@ -33,19 +33,20 @@ type UpdateStatus struct {
 	Err      string
 }
 
-// updateLine is the line of the Software update row of Machine.
+// updateLine is the short line of the Software update key of Machine. It is true while an
+// update waits or installs.
 func updateLine(u UpdateStatus) (string, bool) {
 	switch {
 	case u.Busy != "":
 		return u.Busy + "…", true
 	case u.Newer:
-		return u.Latest + " is ready to install", true
+		return u.Latest + " ready", true
 	case u.Err != "":
-		return "The check failed", false
+		return "Check failed", false
 	case u.Checking || !u.Checked:
 		return "Checking…", false
 	}
-	return "Up to date · " + u.Current, false
+	return "Up to date", false
 }
 
 // drawUpdate is the Software update page.

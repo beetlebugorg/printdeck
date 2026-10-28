@@ -303,6 +303,9 @@ type confirmBox struct {
 	onYes         func()
 	onNo          func() // or nil
 	shared        bool   // a question of the hub, on each screen
+	// choices replaces yes with a row for each choice, over Back. A tap on a row closes the box
+	// and runs the tap of the row.
+	choices []menuItem
 }
 
 // Ask shows a question with two answers over the screen, for example when an app asks for access
@@ -478,9 +481,13 @@ func (a *App) isPressed(r image.Rectangle) bool {
 func (a *App) drawConfirm(c *gfx.Canvas) {
 	a.in.Reset() // the dialog blocks everything below it
 	c.Dim(3)
+	cf := a.confirm
+	if len(cf.choices) > 0 {
+		a.drawChoices(c, cf)
+		return
+	}
 	box := kit.Center(image.Rect(0, 0, W, contentY1), min(W-60, 560), 280) // in the middle of the screen
 	panel(c, box, "CONFIRM")
-	cf := a.confirm
 	// The question, in lines that fit the box: smaller when it has more than three lines.
 	q := image.Rect(box.Min.X+20, box.Min.Y+26, box.Max.X-20, box.Min.Y+170)
 	face, lineH := gfx.Face(true, 28), 38
@@ -510,6 +517,29 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 		yes, ink = redCap, onRed
 	}
 	a.button(c, image.Rect(box.Min.X+(box.Dx()/2)+8, box.Max.Y-100, box.Max.X-20, box.Max.Y-20), cf.yes, yes, ink, func() { a.confirm = nil; cf.onYes(); a.Redraw() })
+}
+
+// drawChoices draws a question with choices: the question, a menu row for each choice, and Back.
+func (a *App) drawChoices(c *gfx.Canvas, cf *confirmBox) {
+	const rowH, gap, backH = 76, 10, 64
+	h := 26 + 48 + len(cf.choices)*(rowH+gap) + backH + 20
+	box := kit.Center(image.Rect(0, 0, W, contentY1), min(W-60, 560), h)
+	panel(c, box, "CHOOSE")
+	in := kit.Inset(box, 20, 26, 20, 20)
+	s := kit.NewStack(in, gap)
+	face := gfx.Face(true, 26)
+	c.Text(s.Next(48-gap), gfx.Fit(face, cf.question, in.Dx()), face, text, gfx.Center)
+	for _, ch := range cf.choices {
+		a.menuRow(c, s.Next(rowH), ch.title, ch.sub, ch.col, func() {
+			a.confirm = nil
+			ch.tap()
+			a.Redraw()
+		})
+	}
+	a.button(c, image.Rect(in.Min.X, in.Max.Y-backH, in.Max.X, in.Max.Y), "Back", raised, text, func() {
+		a.confirm = nil
+		a.Redraw()
+	})
 }
 
 // button draws a key and registers it. fill is the colour of the cap.

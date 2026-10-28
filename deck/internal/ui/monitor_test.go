@@ -69,21 +69,20 @@ func TestMonitorNoData(t *testing.T) {
 	}
 }
 
-// The Machine page has the System monitor row only with a recorder.
+// The Machine page has the System monitor key only with a recorder.
 func TestMonitorRow(t *testing.T) {
 	a := monitorApp(false)
 	a.pages = []page{pageMachine}
 	c, rec := gfx.NewRecording(a.Screen().W, a.Screen().H)
 	a.Draw(c)
 	if strings.Contains(string(rec.JSON()), "SYSTEM MONITOR") {
-		t.Error("a System monitor row with no recorder")
+		t.Error("a System monitor key with no recorder")
 	}
 	a.Metrics = hostmetrics.Demo(a.Now())
-	a.DemoScroll(9999)
 	c, rec = gfx.NewRecording(a.Screen().W, a.Screen().H)
 	a.Draw(c)
 	if !strings.Contains(string(rec.JSON()), "SYSTEM MONITOR") {
-		t.Error("no System monitor row")
+		t.Error("no System monitor key")
 	}
 }
 
