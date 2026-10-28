@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"image/jpeg"
 	"log"
 	"os"
 	"strings"
@@ -61,6 +63,20 @@ func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend) *shareLink {
 	}
 	if l.lapse != nil {
 		l.lapse.OnLapseFrame = s.AddLapseFrame
+	}
+	// The picture of the model, from the model view of the print page. The version is the file
+	// position of the picture, so a new layer or move gives a new upload.
+	s.Model = func() ([]byte, uint64) {
+		img := pr.Preview()
+		if img == nil {
+			return nil, 0
+		}
+		var buf bytes.Buffer
+		if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 80}); err != nil {
+			return nil, 0
+		}
+		st := pr.State()
+		return buf.Bytes(), uint64(st.FilePos)
 	}
 	l.sharer = s
 	return l

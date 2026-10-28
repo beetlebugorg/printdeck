@@ -58,3 +58,5 @@ header { display: flex; align-items: center; justify-content: space-between; gap
 .lapse-card canvas { width: 100%; height: auto; border-radius: 8px; background: #000; display: block; }
 .lapse-card p { margin: 8px 0 0; }
 footer { display: grid; gap: 4px; }
+.model-box figure { background: #111; display: grid; place-items: center; }
+.model-box img { width: auto; max-width: 100%; max-height: 360px; margin: 0 auto; }

@@ -44,6 +44,9 @@ type ShareStatus struct {
 	// the rate of the video.
 	Lapse    int `json:"lapse"`
 	LapseFPS int `json:"lapse_fps,omitempty"`
+	// Model goes up at each new model.jpg: the picture of the model, with the part that is
+	// printed in color.
+	Model int `json:"model,omitempty"`
 	// Updated is the time of this status.
 	Updated time.Time `json:"updated"`
 }

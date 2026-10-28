@@ -389,6 +389,19 @@ func (s *share) render(st wire.ShareStatus) {
 		setText("camTag", tag)
 	}
 
+	// The picture of the model, with the part that is printed in color.
+	if st.Model > 0 {
+		setHidden("modelBox", false)
+		byID("model").Set("src", fmt.Sprintf("%smodel.jpg?m=%d", s.base, st.Model))
+		tag := "The model"
+		if st.Layers > 0 && !ended {
+			tag = fmt.Sprintf("Printed to layer %d of %d", st.Layer, st.Layers)
+		} else if ended && st.State == "done" {
+			tag = "The model, printed"
+		}
+		setText("modelTag", tag)
+	}
+
 	// The readout.
 	setText("leftLab", "Time left")
 	setText("left", clock(st.TimeLeft))

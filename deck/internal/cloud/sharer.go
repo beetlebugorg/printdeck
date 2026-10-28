@@ -26,6 +26,9 @@ type Sharer struct {
 	Frame func(view string) ([]byte, uint64)
 	// Views are the camera views of the share.
 	Views []string
+	// Model returns the picture of the model as a JPEG and its version, or nil. The sharer
+	// uploads a new version at most each ModelEvery.
+	Model func() ([]byte, uint64)
 	// LapseFPS is the rate of the time lapse on the page.
 	LapseFPS int
 	// Every is the time between two uploads of the status, or 0 for 5 s.
@@ -48,6 +51,9 @@ type share struct {
 	lapseN  int      // the time lapse frames that are up
 	frame   int
 	seqs    map[string]uint64
+	model   int       // the count of uploads of model.jpg
+	modelV  uint64    // the version of the last model.jpg
+	modelAt time.Time // the time of the last model.jpg
 	ended   bool
 	expires time.Time
 	err     string
@@ -266,8 +272,17 @@ func (s *Sharer) step(ctx context.Context, id *Identity, c *share) (bool, error)
 		c.lapseN++
 		s.mu.Unlock()
 	}
-	st.Views, st.Frame, st.Lapse, st.LapseFPS, st.Updated = s.Views, c.frame, c.lapseN, s.LapseFPS, time.Now().UTC()
 	end := st.State == "done" || st.State == "cancelled" || st.State == "error"
+	if s.Model != nil && (end || time.Since(c.modelAt) >= ModelEvery) {
+		if b, v := s.Model(); b != nil && (v != c.modelV || c.model == 0) {
+			if err := s.upload(ctx, id, c, "model.jpg", "image/jpeg", "public, max-age=5", b); err != nil {
+				return false, err
+			}
+			c.model, c.modelV, c.modelAt = c.model+1, v, time.Now()
+		}
+	}
+	st.Views, st.Frame, st.Lapse, st.LapseFPS, st.Updated = s.Views, c.frame, c.lapseN, s.LapseFPS, time.Now().UTC()
+	st.Model = c.model
 	if end {
 		var out EndReply
 		if err := s.Link.Client.Do(ctx, id, http.MethodPost, "/api/v1/shares/"+c.id+"/end", EndRequest{Ended: st.Ended}, &out); err != nil {
@@ -284,6 +299,9 @@ func (s *Sharer) step(ctx context.Context, id *Identity, c *share) (bool, error)
 	}
 	return end, nil
 }
+
+// ModelEvery is the shortest time between two uploads of the picture of the model.
+const ModelEvery = 15 * time.Second
 
 // renew gets a new grant.
 func (s *Sharer) renew(ctx context.Context, id *Identity, c *share) error {
