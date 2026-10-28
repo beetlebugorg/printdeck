@@ -4,6 +4,7 @@ import (
 	"image"
 	"printdeck/kit"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"printdeck/internal/gfx"
@@ -185,5 +186,45 @@ func (a *App) textKey(c *gfx.Canvas, r image.Rectangle, pad image.Point, label s
 		size = 16 // a word, like shift
 	}
 	c.Text(face, label, gfx.Face(false, size), ink, gfx.Center)
-	a.addHit(kit.Hit{R: hr, Tap: tap})
+	a.region("Key "+label, r)
+	if toggle {
+		a.addHit(kit.Hit{R: hr, Tap: tap})
+		return
+	}
+	// A held key repeats: after kbRepeatDelay, once each kbRepeatEvery. The lift of the finger
+	// then types nothing more.
+	h := &a.kbHold
+	if pressed {
+		now := a.Now()
+		if h.r != hr {
+			*h = kbHold{r: hr, since: now}
+		}
+		if now.Sub(h.since) >= kbRepeatDelay && now.Sub(h.last) >= kbRepeatEvery {
+			tap()
+			h.last, h.repeated = now, true
+		}
+		a.redrawSoon(kbRepeatEvery / 2)
+	} else if h.r == hr {
+		*h = kbHold{}
+	}
+	a.addHit(kit.Hit{R: hr, Tap: func() {
+		if h.r == hr && h.repeated {
+			*h = kbHold{}
+			return
+		}
+		*h = kbHold{}
+		tap()
+	}})
+}
+
+// The repeat of a held key of the keyboard: the wait before the first repeat, and the time
+// between two repeats.
+const kbRepeatDelay, kbRepeatEvery = 400 * time.Millisecond, 70 * time.Millisecond
+
+// kbHold is the key of the keyboard that a finger holds: its touch area, the time of the touch,
+// the time of the last repeat, and whether it repeated.
+type kbHold struct {
+	r           image.Rectangle
+	since, last time.Time
+	repeated    bool
 }
