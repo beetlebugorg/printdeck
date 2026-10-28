@@ -9,15 +9,15 @@ import (
 	"printdeck/internal/gcode"
 )
 
-// The calibration towers: the start and the end of the deck, the temperatures, 0.2 mm layers up
+// The calibration towers: the start and the end of the deck, the temperatures, 0.3 mm layers up
 // to the top of the caps, and each move inside a tower at its place.
 func TestCalibTowers(t *testing.T) {
-	taz := Machine{NozzleDiameter: 0.5, FilamentDiameter: 2.85, MinX: -50, MaxX: 293, MinY: -17, MaxY: 308,
+	taz := Machine{NozzleDiameter: 0.5, FilamentDiameter: 2.85, MinX: -50, MaxX: 293, MinY: -17, MaxY: 308, MaxAccel: 3000,
 		Macros: []string{"PRINT_START", "PRINT_END"}}
 	tw := CalibTowers(taz, 235, 80, "PLA")
 	g := tw.Gcode
-	for _, want := range []string{"PRINT_START BED=80 EXTRUDER=235 WIPE=185 LAYER=0.20 SPEED=15", "PRINT_END",
-		";LAYER_COUNT:105", ";PRINTDECK_MATERIAL: PLA", "M106 S255", ";TIME:", ";Filament used: "} {
+	for _, want := range []string{"PRINT_START BED=80 EXTRUDER=235 WIPE=185 LAYER=0.30 SPEED=20", "PRINT_END",
+		";LAYER_COUNT:53", ";PRINTDECK_MATERIAL: PLA", "M106 S255", ";TIME:", ";Filament used: "} {
 		if !strings.Contains(g, want) {
 			t.Errorf("no %q", want)
 		}
@@ -36,7 +36,7 @@ func TestCalibTowers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(gc.LayerPos) != 105 {
+	if len(gc.LayerPos) != 53 {
 		t.Errorf("%d layers", len(gc.LayerPos))
 	}
 	// Each extruding move is inside a tower, under the top of the cap. The caps are smaller.
@@ -61,7 +61,7 @@ func TestCalibTowers(t *testing.T) {
 		top = max(top, float64(s.Z1))
 	}
 	for i, n := range hits {
-		if n < 105*4 {
+		if n < 53*4 {
 			t.Errorf("tower %d has %d moves", i+1, n)
 		}
 	}
@@ -75,7 +75,7 @@ func TestCalibTowers(t *testing.T) {
 	if tw.Filament < 0.8*solid || tw.Filament > 1.3*solid {
 		t.Errorf("filament %.0f mm, solid %.0f mm", tw.Filament, solid)
 	}
-	if tw.Seconds < 10*60 || tw.Seconds > 60*60 {
+	if tw.Seconds < 5*60 || tw.Seconds > 15*60 {
 		t.Errorf("time %.0f s", tw.Seconds)
 	}
 
@@ -91,4 +91,21 @@ func TestCalibTowers(t *testing.T) {
 		t.Errorf("small bed places %v", p)
 	}
 	t.Logf("1.75 mm, 0.4 mm nozzle: %.0f min of moves, %.2f m of filament", tw.Seconds/60, tw.Filament/1000)
+}
+
+// With a bed mesh, the towers are 5 mm inside the mesh area. With no mesh, the area is the guess
+// from the travel of X and Y.
+func TestTowerArea(t *testing.T) {
+	m := Machine{MinX: -50, MaxX: 293, MinY: -17, MaxY: 308, HasMesh: true, MeshMin: [2]float64{20, 30}, MeshMax: [2]float64{260, 250}}
+	p := CalibTowers(m, 210, 60, "").Places
+	if p[0] != [2]float64{25, 35} || p[2] != [2]float64{255, 245} || p[4] != [2]float64{140, 140} {
+		t.Errorf("mesh: places %v", p)
+	}
+	m.HasMesh = false
+	if lo, hi, ok := m.TowerArea(); !ok || lo != [2]float64{0, 0} || hi != [2]float64{293, 293} {
+		t.Errorf("no mesh: area %v %v", lo, hi)
+	}
+	if _, _, ok := (Machine{}).TowerArea(); ok {
+		t.Error("an area with no config")
+	}
 }

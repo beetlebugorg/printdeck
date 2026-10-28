@@ -16,18 +16,19 @@ import (
 const (
 	TowersFile = "printdeck-camera-towers.gcode"
 
-	towersLayer      = 0.2   // mm, each layer
-	towersFirstSpeed = 15.0  // mm/s, the first layer
-	towersSpeed      = 30.0  // mm/s, the other layers
-	towersTravel     = 120.0 // mm/s
+	towersLayer      = 0.3   // mm, each layer, the first too
+	towersFirstSpeed = 20.0  // mm/s, the first layer
+	towersSpeed      = 60.0  // mm/s, the other layers
+	towersTravel     = 200.0 // mm/s
 	towersZSpeed     = 10.0  // mm/s
-	towersHop        = 0.4   // mm, the lift of the travel from a tower to the next
 	towersRetract    = 1.0   // mm of filament, at each travel
 	towersLift       = 30.0  // mm over the towers at the end
-	// towersMoveTime is the time of the speed changes of a move, in seconds: the moves are short,
-	// so the accelerations are a large part of the time. On the simulated TAZ Workhorse the towers
-	// take 26 s a layer, and the moves at their speeds take 16 s.
-	towersMoveTime = 0.07
+	// The accelerations of the estimate, in mm/s²: of X and Y when printer.cfg has no
+	// max_accel, and of Z.
+	towersAccel  = 1500.0
+	towersZAccel = 100.0
+	// towersRetractTime is the time of a retract or of the push back, in seconds.
+	towersRetractTime = 0.05
 )
 
 // Towers is the G-code of the calibration towers, and its estimates.
@@ -36,7 +37,7 @@ type Towers struct {
 	// Places are the axes of the towers (X and Y), in the order of the marks.
 	Places [][2]float64
 	Layers int
-	// Seconds is the time of the moves, with no heating.
+	// Seconds is the time of the moves with their accelerations, with no heating.
 	Seconds float64
 	// Filament is the length of the filament, in mm.
 	Filament float64
@@ -44,8 +45,7 @@ type Towers struct {
 
 // CalibTowers is the G-code of the calibration towers for the machine m, with the nozzle at tool
 // and the bed at bed degrees, for the material (for example "PLA"). It starts and ends as the
-// pressure advance tower does (printStart, printEnd). The towers are in the print area of the
-// travel of X and Y (camera.PrintArea).
+// pressure advance tower does (printStart, printEnd). The towers are in Machine.TowerArea.
 func CalibTowers(m Machine, tool, bed int, material string) Towers {
 	nozzle := m.NozzleDiameter
 	if nozzle <= 0 {
@@ -53,9 +53,9 @@ func CalibTowers(m Machine, tool, bed int, material string) Towers {
 	}
 	width := math.Round(nozzle*1.125*100) / 100       // the width of a line
 	area := math.Pi * m.Diameter() * m.Diameter() / 4 // of the filament
-	lo, hi := [2]float64{0, 0}, [2]float64{200, 200}
-	if m.MaxX > m.MinX && m.MaxY > m.MinY {
-		lo, hi = camera.PrintArea([2]float64{m.MinX, m.MinY}, [2]float64{m.MaxX, m.MaxY})
+	lo, hi, ok := m.TowerArea()
+	if !ok {
+		lo, hi = [2]float64{0, 0}, [2]float64{200, 200}
 	}
 	places := camera.TowerPlaces(lo, hi)
 	body := int(math.Round(camera.TowerHeight / towersLayer))
@@ -64,10 +64,23 @@ func CalibTowers(m Machine, tool, bed int, material string) Towers {
 	var b strings.Builder
 	w := func(format string, a ...any) { fmt.Fprintf(&b, format+"\n", a...) }
 	t := Towers{Places: places, Layers: layers}
+	accel := m.MaxAccel
+	if accel <= 0 {
+		accel = towersAccel
+	}
 	var pos [3]float64 // the place of the nozzle, for the estimates
+	// move counts a move to (x, y, z) at speed: a short move does not get to its speed.
 	move := func(x, y, z, e, speed float64) {
 		d := math.Sqrt((x-pos[0])*(x-pos[0]) + (y-pos[1])*(y-pos[1]) + (z-pos[2])*(z-pos[2]))
-		t.Seconds += d/speed + towersMoveTime
+		a := accel
+		if x == pos[0] && y == pos[1] {
+			a = towersZAccel
+		}
+		if d < speed*speed/a {
+			t.Seconds += 2 * math.Sqrt(d/a)
+		} else {
+			t.Seconds += d/speed + speed/a
+		}
 		t.Filament += max(0, e)
 		pos = [3]float64{x, y, z}
 	}
@@ -77,20 +90,18 @@ func CalibTowers(m Machine, tool, bed int, material string) Towers {
 		w("G1 X%.3f Y%.3f E%.5f F%.0f", x, y, e, speed*60)
 		move(x, y, z, e, speed)
 	}
-	// travel goes to (x, y) at the height z: a retract, a lift, the move, and back down.
+	// travel goes to (x, y) at the height z, with a retract. The path from a tower to the next
+	// goes around the print area, so it crosses no tower, and the nozzle does not lift.
 	travel := func(x, y, z float64) {
 		w("G1 E-%.2f F2100", towersRetract)
-		w("G1 Z%.3f F%.0f", z+towersHop, towersZSpeed*60)
-		move(pos[0], pos[1], z+towersHop, 0, towersZSpeed)
 		w("G0 X%.3f Y%.3f F%.0f", x, y, towersTravel*60)
-		move(x, y, z+towersHop, 0, towersTravel)
-		w("G1 Z%.3f F%.0f", z, towersZSpeed*60)
-		move(x, y, z, 0, towersZSpeed)
+		move(x, y, z, 0, towersTravel)
 		w("G1 E%.2f F2100", towersRetract)
+		t.Seconds += 2 * towersRetractTime
 	}
 	// square prints one layer of a solid square of the side s around (cx, cy) at the height z:
 	// two loops, from the middle of the side of the largest Y so the seam is not at a corner, and
-	// lines inside them, in X on the even layers and in Y on the odd layers.
+	// a zigzag inside them, in X on the even layers and in Y on the odd layers.
 	square := func(cx, cy, s, z float64, layer int, speed, flow float64) {
 		loops := 0
 		for k := range 2 {
@@ -128,8 +139,13 @@ func CalibTowers(m Machine, tool, bed int, material string) Towers {
 			if layer%2 == 1 {
 				a, c = [2]float64{a[1], a[0]}, [2]float64{c[1], c[0]}
 			}
-			w("G1 X%.3f Y%.3f F%.0f", cx+a[0], cy+a[1], speed*60)
-			move(cx+a[0], cy+a[1], z, 0, speed)
+			if j == 0 {
+				w("G1 X%.3f Y%.3f F%.0f", cx+a[0], cy+a[1], speed*60)
+				move(cx+a[0], cy+a[1], z, 0, speed)
+			} else {
+				// A zigzag: the step to the next line prints too.
+				extrude(cx+a[0], cy+a[1], z, speed, flow)
+			}
 			extrude(cx+c[0], cy+c[1], z, speed, flow)
 		}
 	}
@@ -148,6 +164,8 @@ func CalibTowers(m Machine, tool, bed int, material string) Towers {
 	for i := range layers {
 		z := towersLayer * float64(i+1)
 		w(";LAYER:%d", i)
+		w("G1 Z%.3f F%.0f", z, towersZSpeed*60)
+		move(pos[0], pos[1], z, 0, towersZSpeed)
 		if i == 1 {
 			w("M106 S255")
 		}
@@ -165,6 +183,7 @@ func CalibTowers(m Machine, tool, bed int, material string) Towers {
 	}
 	top := towersLayer*float64(layers) + towersLift
 	w("G1 E-%.2f F2100", towersRetract)
+	t.Seconds += towersRetractTime
 	w("G1 Z%.3f F%.0f", top, towersZSpeed*60)
 	move(pos[0], pos[1], top, 0, towersZSpeed)
 	printEnd(&b, m)

@@ -65,7 +65,7 @@ type calibFlow struct {
 	bedAt   [2]float64
 	shots   [2]*camera.Frame
 	parkX   float64 // the X of the toolhead out of the view
-	topZ    float64 // the Z of the toolhead out of the view
+	topZ    float64 // the Z of the toolhead out of the view, on a printer that homes Z down
 	started bool    // the print of the towers started
 
 	frame   *camera.Frame // the still picture of the point
@@ -253,10 +253,10 @@ func (a *App) startMarks(fl *calibFlow) {
 		return
 	}
 	m := a.Printer.Machine()
-	alo, ahi := camera.PrintArea([2]float64{lo[0], lo[1]}, [2]float64{hi[0], hi[1]})
-	if m.MaxX > m.MinX && m.MaxY > m.MinY {
-		// The places of the G-code of the towers.
-		alo, ahi = camera.PrintArea([2]float64{m.MinX, m.MinY}, [2]float64{m.MaxX, m.MaxY})
+	// The places of the G-code of the towers.
+	alo, ahi, ok := m.TowerArea()
+	if !ok {
+		alo, ahi = camera.PrintArea([2]float64{lo[0], lo[1]}, [2]float64{hi[0], hi[1]})
 	}
 	fl.towers = camera.TowerPlaces(alo, ahi)
 	fl.marks = camera.TowerMarks(fl.bedY)
@@ -269,7 +269,7 @@ func (a *App) startMarks(fl *calibFlow) {
 	if m.HasParkX {
 		fl.parkX = max(lo[0], min(hi[0], m.ParkX))
 	}
-	fl.topZ = hi[2] - 10
+	fl.topZ = min(hi[2], camera.TowerTop+40)
 	fl.i, fl.places, fl.pix, fl.pixBed, fl.shots = 0, nil, nil, nil, [2]*camera.Frame{}
 	a.calibBed(fl, 0)
 }
@@ -278,10 +278,11 @@ func (a *App) startMarks(fl *calibFlow) {
 // picture. Before the first place, the printer homes: the end of a print can turn the motors off,
 // and the state of the deck can be a moment late. With bed tilt or a bed mesh, a move in X and Y
 // also moves Z, so Z must be homed too. A printer with the Z endstop at the top (a TAZ) homes all
-// the axes: the nozzle goes up, away from the towers. Another printer homes X and Y only, because
-// a probe at the middle of the bed can hit the middle tower. The towers G-code ends with the
-// nozzle 30 mm over the towers, so the homing of X and Y is clear of them. Then the toolhead goes
-// to the top. Klipper refuses that move when Z is not homed, and the toolhead stays at its height.
+// the axes: the nozzle goes up, away from the towers, and stays at the top. Another printer homes
+// X and Y only, because a probe at the middle of the bed can hit the middle tower. The towers
+// G-code ends with the nozzle 30 mm over the towers, so the homing of X and Y is clear of them.
+// Then the toolhead goes to 40 mm over the towers: at the park X it is out of the bed area.
+// Klipper refuses that move when Z is not homed, and the toolhead stays at its height.
 func (a *App) calibBed(fl *calibFlow, bed int) {
 	fl.phase, fl.frame, fl.zoom, fl.tapped = calibMoving, nil, nil, false
 	y := fl.beds[bed]
@@ -303,10 +304,8 @@ func (a *App) calibBed(fl *calibFlow, bed int) {
 			a.post(func() { a.calibFail(fl, msg) })
 			return
 		}
-		if bed == 0 {
-			if st := a.Printer.State(); !st.HasZ || st.Z < fl.topZ {
-				a.Printer.Gcode(fmt.Sprintf("G1 Z%.2f F1200", fl.topZ), "M400")
-			}
+		if bed == 0 && !zMax {
+			a.Printer.Gcode(fmt.Sprintf("G1 Z%.2f F1200", fl.topZ), "M400")
 		}
 		a.calibShot(fl, func(fr *camera.Frame, cs camera.Status, st printer.State) {
 			at := y
@@ -566,7 +565,7 @@ func (a *App) calibLines(fl *calibFlow) []string {
 	case calibPrinting:
 		return []string{"Printing the towers", "Leave them on the bed. This page opens again after the print."}
 	case calibPrinted:
-		return []string{"The towers are printed", "Leave them on the bed. The printer homes. The toolhead moves to the left side at the top, and the bed moves."}
+		return []string{"The towers are printed", "Leave them on the bed. The printer homes. The toolhead moves to the left side, over the towers, and the bed moves."}
 	case calibRemove:
 		return []string{"Remove the towers", "Take the 5 towers off the bed."}
 	case calibMoving:

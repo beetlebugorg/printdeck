@@ -9,8 +9,8 @@ package camera
 // The size of the towers, in mm.
 const (
 	TowerSide    = 5.0  // the side of a tower
-	TowerHeight  = 20.0 // the height of a tower, under its cap
-	TowerCap     = 1.0  // the height of the cap
+	TowerHeight  = 15.0 // the height of a tower, under its cap
+	TowerCap     = 0.9  // the height of the cap: 3 layers
 	TowerCapSide = 2.6  // the side of the cap
 	TowerInset   = 25.0 // from the edges of the print area to the axis of a corner tower
 )

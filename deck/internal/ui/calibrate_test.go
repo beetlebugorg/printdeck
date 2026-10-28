@@ -340,7 +340,7 @@ func TestCameraCalibrateTowers(t *testing.T) {
 	tapLabel(t, a, cv, "Go on")
 	calibPosts(t, a)
 	c := pr.Calls()
-	if len(c) <= n+1 || c[n] != "gcode G28; G90; G1 X-45.00 Y146.50 F3000; M400" || c[n+1] != "gcode G1 Z289.00 F1200; M400" {
+	if len(c) <= n || c[n] != "gcode G28; G90; G1 X-45.00 Y146.50 F3000; M400" {
 		t.Fatalf("moves %v", c[n:])
 	}
 	fl := a.calib
@@ -375,8 +375,8 @@ func TestCameraCalibrateTowers(t *testing.T) {
 	if fl.phase != calibDone {
 		t.Fatalf("phase %v: %s", fl.phase, fl.msg)
 	}
-	if moves := len(pr.Calls()) - n; moves != 3 {
-		t.Errorf("%d moves, want 3: the first place, the top, the second place", moves)
+	if moves := len(pr.Calls()) - n; moves != 2 {
+		t.Errorf("%d moves of the bed, want 2", moves)
 	}
 	if fl.beds[1] <= fl.beds[0] {
 		t.Errorf("bed places %v", fl.beds)
@@ -450,8 +450,8 @@ func TestCameraCalibrateTowersFails(t *testing.T) {
 	pr.State_.Homed = "xyz"
 	tapLabel(t, a, cv, "Go on")
 	calibPosts(t, a)
-	if c := pr.Calls(); !strings.HasPrefix(c[len(c)-2], "gcode G28; ") || c[len(c)-1] != "gcode G1 Z289.00 F1200; M400" {
-		t.Errorf("moves %v", c[len(c)-2:])
+	if c := pr.Calls(); !strings.HasPrefix(c[len(c)-1], "gcode G28; ") {
+		t.Errorf("moves %v", c[len(c)-1:])
 	}
 	for a.calib.phase == calibTap {
 		tapLabel(t, a, cv, "Skip")
@@ -499,7 +499,7 @@ func TestCameraCalibrateTowersFails(t *testing.T) {
 	if len(a.calib.points) != 10 {
 		t.Errorf("corexy: %d marks", len(a.calib.points))
 	}
-	if c := pr.Calls(); !strings.HasPrefix(c[len(c)-2], "gcode G28 X Y; ") {
+	if c := pr.Calls(); !strings.HasPrefix(c[len(c)-2], "gcode G28 X Y; ") || c[len(c)-1] != "gcode G1 Z55.90 F1200; M400" {
 		t.Errorf("a probe on Z: moves %v", c[len(c)-2:])
 	}
 }
