@@ -340,7 +340,7 @@ func TestCameraCalibrateTowers(t *testing.T) {
 	tapLabel(t, a, cv, "Go on")
 	calibPosts(t, a)
 	c := pr.Calls()
-	if len(c) <= n || c[n] != "gcode G28 X Y; G90; G1 X-45.00 Y146.50 F3000; M400" {
+	if len(c) <= n+1 || c[n] != "gcode G28 X Y; G90; G1 X-45.00 Y146.50 F3000; M400" || c[n+1] != "gcode G1 Z289.00 F1200; M400" {
 		t.Fatalf("moves %v", c[n:])
 	}
 	fl := a.calib
@@ -375,8 +375,8 @@ func TestCameraCalibrateTowers(t *testing.T) {
 	if fl.phase != calibDone {
 		t.Fatalf("phase %v: %s", fl.phase, fl.msg)
 	}
-	if moves := len(pr.Calls()) - n; moves != 2 {
-		t.Errorf("%d moves of the bed, want 2", moves)
+	if moves := len(pr.Calls()) - n; moves != 3 {
+		t.Errorf("%d moves, want 3: the first place, the top, the second place", moves)
 	}
 	if fl.beds[1] <= fl.beds[0] {
 		t.Errorf("bed places %v", fl.beds)
@@ -450,8 +450,8 @@ func TestCameraCalibrateTowersFails(t *testing.T) {
 	pr.State_.Homed = "xyz"
 	tapLabel(t, a, cv, "Go on")
 	calibPosts(t, a)
-	if c := pr.Calls(); !strings.Contains(c[len(c)-1], "G1 Z289.00") || strings.Contains(c[len(c)-1], "G28") {
-		t.Errorf("homed: moves %v", c[len(c)-1])
+	if c := pr.Calls(); !strings.Contains(c[len(c)-2], "G28 X Y") || c[len(c)-1] != "gcode G1 Z289.00 F1200; M400" {
+		t.Errorf("moves %v", c[len(c)-2:])
 	}
 	for a.calib.phase == calibTap {
 		tapLabel(t, a, cv, "Skip")

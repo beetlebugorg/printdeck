@@ -275,25 +275,27 @@ func (a *App) startMarks(fl *calibFlow) {
 }
 
 // calibBed moves the toolhead out of the view and the bed to the place bed, and then shows the
-// picture. A printer that is not homed in X and Y (the end of a print can turn the motors off)
-// homes X and Y first. The toolhead goes to the top only when Z is homed.
+// picture. Before the first place, the printer homes X and Y: the end of a print can turn the
+// motors off, and the state of the deck can be a moment late. The towers G-code ends with the
+// nozzle 30 mm over the towers, so the homing is clear of them. Then the toolhead goes to the top.
+// Klipper refuses that move when Z is not homed, and the toolhead then stays at its height.
 func (a *App) calibBed(fl *calibFlow, bed int) {
 	fl.phase, fl.frame, fl.zoom, fl.tapped = calibMoving, nil, nil, false
 	y := fl.beds[bed]
 	go func() {
-		st := a.Printer.State()
 		var lines []string
-		if !strings.Contains(st.Homed, "x") || !strings.Contains(st.Homed, "y") {
+		if bed == 0 {
 			lines = append(lines, "G28 X Y")
 		}
-		lines = append(lines, "G90")
-		if strings.Contains(st.Homed, "z") && (!st.HasZ || st.Z < fl.topZ) {
-			lines = append(lines, fmt.Sprintf("G1 Z%.2f F1200", fl.topZ))
-		}
-		lines = append(lines, fmt.Sprintf("G1 X%.2f Y%.2f F3000", fl.parkX, y), "M400")
+		lines = append(lines, "G90", fmt.Sprintf("G1 X%.2f Y%.2f F3000", fl.parkX, y), "M400")
 		if err := a.Printer.Gcode(lines...); err != nil {
 			a.post(func() { a.calibFail(fl, "The bed did not move: "+err.Error()) })
 			return
+		}
+		if bed == 0 {
+			if st := a.Printer.State(); !st.HasZ || st.Z < fl.topZ {
+				a.Printer.Gcode(fmt.Sprintf("G1 Z%.2f F1200", fl.topZ), "M400")
+			}
 		}
 		a.calibShot(fl, func(fr *camera.Frame, cs camera.Status, st printer.State) {
 			at := y
@@ -553,7 +555,7 @@ func (a *App) calibLines(fl *calibFlow) []string {
 	case calibPrinting:
 		return []string{"Printing the towers", "Leave them on the bed. This page opens again after the print."}
 	case calibPrinted:
-		return []string{"The towers are printed", "Leave them on the bed. The toolhead moves to the left side, and the bed moves."}
+		return []string{"The towers are printed", "Leave them on the bed. The printer homes X and Y. The toolhead moves to the left side at the top, and the bed moves."}
 	case calibRemove:
 		return []string{"Remove the towers", "Take the 5 towers off the bed."}
 	case calibMoving:
