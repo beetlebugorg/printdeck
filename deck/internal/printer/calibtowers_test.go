@@ -75,7 +75,7 @@ func TestCalibTowers(t *testing.T) {
 	if tw.Filament < 0.8*solid || tw.Filament > 1.3*solid {
 		t.Errorf("filament %.0f mm, solid %.0f mm", tw.Filament, solid)
 	}
-	if tw.Seconds < 10*60 || tw.Seconds > 45*60 {
+	if tw.Seconds < 10*60 || tw.Seconds > 60*60 {
 		t.Errorf("time %.0f s", tw.Seconds)
 	}
 

@@ -24,6 +24,10 @@ const (
 	towersHop        = 0.4   // mm, the lift of the travel from a tower to the next
 	towersRetract    = 1.0   // mm of filament, at each travel
 	towersLift       = 30.0  // mm over the towers at the end
+	// towersMoveTime is the time of the speed changes of a move, in seconds: the moves are short,
+	// so the accelerations are a large part of the time. On the simulated TAZ Workhorse the towers
+	// take 26 s a layer, and the moves at their speeds take 16 s.
+	towersMoveTime = 0.07
 )
 
 // Towers is the G-code of the calibration towers, and its estimates.
@@ -32,7 +36,7 @@ type Towers struct {
 	// Places are the axes of the towers (X and Y), in the order of the marks.
 	Places [][2]float64
 	Layers int
-	// Seconds is the time of the moves, with no heating and no accelerations.
+	// Seconds is the time of the moves, with no heating.
 	Seconds float64
 	// Filament is the length of the filament, in mm.
 	Filament float64
@@ -63,7 +67,7 @@ func CalibTowers(m Machine, tool, bed int, material string) Towers {
 	var pos [3]float64 // the place of the nozzle, for the estimates
 	move := func(x, y, z, e, speed float64) {
 		d := math.Sqrt((x-pos[0])*(x-pos[0]) + (y-pos[1])*(y-pos[1]) + (z-pos[2])*(z-pos[2]))
-		t.Seconds += d / speed
+		t.Seconds += d/speed + towersMoveTime
 		t.Filament += max(0, e)
 		pos = [3]float64{x, y, z}
 	}
