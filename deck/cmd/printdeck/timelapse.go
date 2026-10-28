@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"printdeck/internal/camera"
 	"printdeck/internal/printer"
@@ -52,20 +53,12 @@ func startTimelapse(ctx context.Context, stateDir string, app *ui.App, pr printe
 	}
 	r.PartCrop = func(file string, sz image.Point) (image.Rectangle, bool) {
 		lapse := hub.Role(camera.RoleLapse)
+		// The calibration of the frames now: with a camera that zooms to the part, the crop is
+		// most of the frame.
 		cal, ok := lapse.Calibration()
-		b, hasPart := wholePart(k, file)
+		box, bedY, hasPart := partBox(k, file)
 		if !ok || !hasPart {
 			return image.Rectangle{}, false
-		}
-		place := gcodeToPlace(k)
-		box := placeBox(place, b, 0, b.Max[2])
-		// The bed is at the Y of the park: park_y of the config, or else the middle of the part.
-		_, bedY, _ := place((b.Min[0]+b.Max[0])/2, (b.Min[1]+b.Max[1])/2, 0)
-		if m := k.Machine(); m.HasParkY {
-			bedY = m.ParkY
-		}
-		if ax := k.State().Axis; ax[1][1] > ax[0][1] {
-			bedY = max(ax[0][1], min(ax[1][1], bedY))
 		}
 		return cal.PartCrop(box, bedY, sz, hub.Settings().Camera(lapse.ID()).Rotate)
 	}
@@ -77,6 +70,59 @@ func startTimelapse(ctx context.Context, stateDir string, app *ui.App, pr printe
 	app.TimeLapse = r
 	sysTimelapse = r
 	go r.Run(ctx)
+	go followPart(ctx, hub, k)
+}
+
+// partBox returns the box of the part of the print of the file in the toolhead coordinates, and
+// the toolhead Y of the bed in the frames of the time lapse: park_y of the config, or else the
+// middle of the part. It is false while the G-code of the print is not loaded.
+func partBox(k *printer.Klippy, file string) (camera.Box, float64, bool) {
+	b, ok := wholePart(k, file)
+	if !ok {
+		return camera.Box{}, 0, false
+	}
+	place := gcodeToPlace(k)
+	box := placeBox(place, b, 0, b.Max[2])
+	_, bedY, _ := place((b.Min[0]+b.Max[0])/2, (b.Min[1]+b.Max[1])/2, 0)
+	if m := k.Machine(); m.HasParkY {
+		bedY = m.ParkY
+	}
+	if ax := k.State().Axis; ax[1][1] > ax[0][1] {
+		bedY = max(ax[0][1], min(ax[1][1], bedY))
+	}
+	return box, bedY, true
+}
+
+// followEvery is the time between two checks of the print for the follow of the part.
+const followEvery = time.Second
+
+// followPart zooms the cameras with the setting "Zoom to the part" to the part of each print
+// (camera.Hub.FollowPart), from the time the deck knows the box of the part to the end of the
+// print. The time lapse sets its crop at its first frame, at the end of a layer. The zoom comes
+// before that frame when the deck knows the box of the part a second or more before it.
+func followPart(ctx context.Context, hub *camera.Hub, k *printer.Klippy) {
+	tick := time.NewTicker(followEvery)
+	defer tick.Stop()
+	following := false
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+		}
+		st := k.State()
+		if !st.Busy() {
+			if following {
+				hub.EndFollow()
+				following = false
+			}
+			continue
+		}
+		if box, bedY, ok := partBox(k, st.FilePath); ok {
+			hub.FollowPart(box, bedY)
+			following = true
+		}
+	}
 }
 
 // wholePart returns the box of the moves of the part of the print of the file from its second

@@ -27,6 +27,14 @@ type CamSettings struct {
 	// focus control ignores both.
 	FixedFocus bool `json:"fixedFocus,omitempty"`
 	Focus      int  `json:"focus,omitempty"`
+	// PTZ is the position of the digital pan, tilt and zoom, or nil for the wide frame. PTZMap is
+	// the measured crop of the camera (MeasurePTZ), or nil. A camera with no zoom control ignores
+	// both.
+	PTZ    *PTZPos `json:"ptz,omitempty"`
+	PTZMap *PTZMap `json:"ptzMap,omitempty"`
+	// FollowPart zooms the camera to the part during a print (Hub.FollowPart). It needs PTZMap and
+	// a calibration.
+	FollowPart bool `json:"followPart,omitempty"`
 }
 
 // Settings are the camera settings of the deck.

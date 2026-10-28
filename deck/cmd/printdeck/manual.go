@@ -684,6 +684,7 @@ func manualParts() []section {
 						{"Picture", "Use it to aim the camera at the bed."},
 						{"Turn", "Turns the picture 90° clockwise at each tap, for a camera on its side or upside down."},
 						{"Focus", "Shows the focus keys. Only a camera with a focus control has this key."},
+						{"PTZ", "Shows the zoom keys. Only a camera with a zoom control has this key."},
 						{"Camera settings", "The name, on or off, and the uses of this camera."},
 					},
 					Notes: []string{"A camera runs only while somebody looks at it. With no camera, the apps show the deck screen.",
@@ -702,6 +703,35 @@ func manualParts() []section {
 					},
 					Notes: []string{"A fixed focus keeps the picture sharp when the toolhead and the bed move. Set it while the picture shows the nozzle.",
 						"The deck keeps the focus of each camera, and sets it each time the camera starts."}},
+				{Name: "camera-ptz", Caption: "The zoom of the camera",
+					Setup: func(s *manualState) {
+						s.p.State_ = stIdle
+						c := manualCameras()
+						front := c.Cams[0]
+						m := ui.DemoPTZMap
+						cs := c.Set.Camera(front.Dev.ID)
+						cs.PTZ, cs.PTZMap = &camera.PTZPos{Zoom: 200, Pan: 2400, Tilt: -1800}, &m
+						c.Set.SetCamera(cs)
+						// The picture of the crop at that position.
+						sz := front.Frame.Size()
+						cu, cv, k := m.Window(*cs.PTZ)
+						front.Frame, _ = front.Frame.Crop(cu*float64(sz.X), cv*float64(sz.Y), float64(sz.X)/k, 0)
+						s.a.Camera = c
+						s.a.OpenPrintScreen("camera-ptz")
+					},
+					Callouts: []callout{
+						{"Zoom out", "Shows more of the printer."},
+						{"Zoom in", "Shows a smaller part of the picture, larger."},
+						{"Left", "The arrows move the picture left, up, down and right."},
+						{"Reset", "Back to the whole picture."},
+						{"Done", "Shows the other camera keys again."},
+					},
+					Wide: []callout{{"Measure", "Measures the zoom of the camera, once. The camera zooms and moves for a few seconds."}},
+					Tall: []callout{{"Measure the zoom", "Measures the zoom of the camera, once. The camera zooms and moves for a few seconds."}},
+					Notes: []string{"A camera with a digital zoom crops its picture itself. The deck gets the picture with no extra work.",
+						"The camera sends one picture, so each viewer sees the zoom: the apps, the time lapse and the phone pictures.",
+						"Measure the zoom with the camera aimed at the bed and the printer still. The views and Zoom to the part then follow the zoom. Measure again after you move or turn the camera.",
+						"The deck keeps the zoom of each camera, and sets it each time the camera starts."}},
 				{Name: "cameras", Caption: "The Cameras page",
 					Setup: func(s *manualState) {
 						s.p.State_ = stIdle
@@ -723,8 +753,10 @@ func manualParts() []section {
 						{"Apps", "Cura and the apps show this camera first."},
 						{"Time lapse", "The camera of the time lapse."},
 						{"Pictures", "The first layer picture, and the pictures on the phone."},
+						{"Zoom to the part", "During a print, the camera zooms to the part, and at the end it goes back. It needs Measure the zoom and a calibration. Only a camera with a zoom control has this row."},
 					},
-					Notes: []string{"Each use is on one camera. To move a use, check it on the other camera."}},
+					Notes: []string{"Each use is on one camera. To move a use, check it on the other camera.",
+						"Zoom to the part zooms the picture of each viewer. The time lapse then uses most of the picture of the camera."}},
 				{Name: "calibrate-ways", Caption: "Calibrate the camera: the two ways",
 					Setup: func(s *manualState) {
 						s.p.State_ = stIdle
@@ -933,6 +965,10 @@ func manualCameras() *ui.DemoCamera {
 	front, top := c.Cams[0].Dev.ID, c.Cams[1].Dev.ID
 	c.SetSettings(camera.Settings{Cameras: []camera.CamSettings{{ID: front, Name: "Front"}, {ID: top, Name: "Top"}},
 		Main: front, Lapse: top, Picture: top})
+	// The Top camera also has a zoom control, for the row Zoom to the part on its page.
+	p := ui.DemoPTZ
+	p.Pos = p.Wide()
+	c.Cams[1].State.PTZ = &p
 	return c
 }
 
@@ -1140,7 +1176,7 @@ func manualSections() []section {
 
 		{Chapter: care, ID: "machine", Title: "Look after the printer",
 			Intro:   []string{"Machine has the information of the printer, the history of the prints, the macros, the console and the settings."},
-			Figures: fig("machine", "machine-restart", "settings", "settings-more", "camera", "camera-focus", "cameras", "camera-settings", "stats", "record", "console", "monitor")},
+			Figures: fig("machine", "machine-restart", "settings", "settings-more", "camera", "camera-focus", "camera-ptz", "cameras", "camera-settings", "stats", "record", "console", "monitor")},
 		{Chapter: care, ID: "update", Title: "Update the Printdeck",
 			Intro: []string{
 				"The deck checks for a new version once a day. Machine then shows Software update in orange.",

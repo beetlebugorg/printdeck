@@ -4,8 +4,10 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"printdeck/internal/camera"
+	"printdeck/internal/gfx"
 )
 
 // Settings opens the Camera page: a tab for each camera, the main camera first, and Both. Turn
@@ -240,8 +242,10 @@ func TestCameraPageWide(t *testing.T) {
 	a.Camera = cam
 	a.pages = []page{pageMachine, pageSettings, pageCamera}
 	f := simFrame(t, a, "camera-wide")
-	if !strings.Contains(f, `["c",`) || !strings.Contains(f, `"TURN"`) || !strings.Contains(f, `"CAMERA SETTINGS"`) || !strings.Contains(f, `"BOTH"`) {
-		t.Error("no picture, no Turn key, no Camera settings key or no tabs")
+	// The first demo camera has a PTZ key, and the key of the camera settings is "Settings".
+	if !strings.Contains(f, `["c",`) || !strings.Contains(f, `"TURN"`) || !strings.Contains(f, `"SETTINGS"`) || !strings.Contains(f, `"BOTH"`) ||
+		!strings.Contains(f, `"PTZ"`) {
+		t.Error("no picture, no Turn key, no Camera settings key, no PTZ key or no tabs")
 	}
 	a.camID = camAll
 	if f := simFrame(t, a, "camera-all-wide"); strings.Count(f, `["c",`) < 2 {
@@ -315,5 +319,108 @@ func TestCameraFocus(t *testing.T) {
 	cam.Cams[0].State.Focus = nil
 	if f := simFrame(t, a, "camera-nofocus"); strings.Contains(f, `"FOCUS"`) {
 		t.Error("Focus key with no focus control")
+	}
+}
+
+// PTZ shows the PTZ keys of a camera with a zoom control. With no PTZ map, a zoom step is a twelfth
+// of the range and a move a fortieth. Reset goes back to the wide position, and Done to the camera
+// keys. A camera with no zoom control has no PTZ key.
+func TestCameraPTZ(t *testing.T) {
+	for _, wide := range []bool{false, true} {
+		a, _, cv := newPrintApp(idle)
+		a.Wide = wide
+		cv = gfx.New(a.Screen().W, a.Screen().H)
+		cam := NewDemoCamera()
+		a.Camera = cam
+		a.pages = []page{pageMachine, pageSettings, pageCamera}
+		id := cam.Cams[0].Dev.ID
+		tapLabel(t, a, cv, "PTZ")
+		if !a.camPTZ {
+			t.Fatalf("wide %v: no PTZ keys", wide)
+		}
+		tapLabel(t, a, cv, "Zoom in")
+		tapLabel(t, a, cv, "Zoom in")
+		tapLabel(t, a, cv, "Right")
+		tapLabel(t, a, cv, "Up")
+		if p := cam.Set.Camera(id).PTZ; p == nil || *p != (camera.PTZPos{Zoom: 150, Pan: 1800, Tilt: 1800}) {
+			t.Fatalf("wide %v: after the steps: %+v", wide, p)
+		}
+		if f := simFrame(t, a, "camera-ptz"); !strings.Contains(f, "ZOOM 150 OF 100 TO 400, PAN 1800, TILT 1800") {
+			t.Errorf("wide %v: no PTZ line", wide)
+		}
+		tapLabel(t, a, cv, "Reset")
+		if p := cam.Set.Camera(id).PTZ; p != nil {
+			t.Fatalf("wide %v: after Reset: %+v", wide, p)
+		}
+		// Measure: the map of the demo camera. A zoom step is then a factor of 1.25.
+		label := "Measure"
+		if !wide {
+			label = "Measure the zoom"
+		}
+		tapLabel(t, a, cv, label)
+		for a.ptzRun != nil {
+			(<-a.posted)()
+		}
+		if !cam.Set.Camera(id).PTZMap.ValidAt(0) {
+			t.Fatalf("wide %v: no map after Measure", wide)
+		}
+		a.ptzLastAt = time.Time{}
+		tapLabel(t, a, cv, "Zoom in")
+		if p := cam.Set.Camera(id).PTZ; p == nil || p.Zoom != 125 {
+			t.Fatalf("wide %v: zoom with the map: %+v", wide, p)
+		}
+		if f := simFrame(t, a, "camera-ptz-map"); !strings.Contains(f, "ZOOM 1.2×") {
+			t.Errorf("wide %v: no zoom factor", wide)
+		}
+		tapLabel(t, a, cv, "Done")
+		if a.camPTZ {
+			t.Errorf("wide %v: PTZ keys after Done", wide)
+		}
+		// The second camera has no zoom control: no PTZ key.
+		a.camID = cam.Cams[1].Dev.ID
+		if f := simFrame(t, a, "camera-noptz"); strings.Contains(f, `"PTZ"`) {
+			t.Errorf("wide %v: PTZ key with no zoom control", wide)
+		}
+	}
+}
+
+// The page of a camera with a zoom control has the row "Zoom to the part", which turns the setting
+// on and off.
+func TestFollowPartRow(t *testing.T) {
+	a, _, cv := newPrintApp(idle)
+	cam := NewDemoCamera()
+	a.Camera = cam
+	id := cam.Cams[0].Dev.ID
+	a.camEdit = id
+	a.pages = []page{pageMachine, pageSettings, pageCameraEdit}
+	if f := simFrame(t, a, "camera-follow"); !strings.Contains(f, "Measure the zoom on the Camera page first") {
+		t.Error("no line of the need of a measurement")
+	}
+	tapLabel(t, a, cv, "Zoom to the part")
+	if !cam.Set.Camera(id).FollowPart {
+		t.Fatal("the setting is off")
+	}
+	a.camEdit = cam.Cams[1].Dev.ID
+	if f := simFrame(t, a, "camera-nofollow"); strings.Contains(f, "ZOOM TO THE PART") {
+		t.Error("the row with no zoom control")
+	}
+}
+
+// A calibration made at another PTZ position, with no PTZ map, asks for a measurement.
+func TestCalibPTZLine(t *testing.T) {
+	cal := &camera.Calibration{}
+	p := DemoPTZ
+	p.Pos = camera.PTZPos{Zoom: 200}
+	st := camera.Status{PTZ: &p}
+	if l := calibPTZLine(cal, false, st); l == "" {
+		t.Error("no line for a calibration at the wide position, with the camera zoomed")
+	}
+	p.Mapped = true
+	if l := calibPTZLine(cal, false, st); l != "" {
+		t.Errorf("line with a map: %q", l)
+	}
+	p.Mapped, p.Pos = false, p.Wide()
+	if l := calibPTZLine(cal, false, st); l != "" {
+		t.Errorf("line at the position of the calibration: %q", l)
 	}
 }

@@ -62,6 +62,9 @@ type Calibration struct {
 	// P is the matrix, row by row: (x, y, z, 1) goes to (a, b, c), and the point is at u = a/c
 	// and v = b/c in normalized coordinates of the frame.
 	P [12]float64 `json:"p"`
+	// PTZ is the position of the digital pan, tilt and zoom of the frames of the matrix, or nil
+	// for the wide frame (see ptz.go). A camera with no PTZ control has nil.
+	PTZ *PTZPos `json:"ptz,omitempty"`
 	// Error is the RMS distance in pixels of the frame from the taps to the projected points.
 	Error  float64   `json:"error"`
 	Points int       `json:"points"`
