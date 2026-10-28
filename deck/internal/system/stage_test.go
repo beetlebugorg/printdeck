@@ -171,7 +171,7 @@ func TestStageNoMount(t *testing.T) {
 	}
 }
 
-// While the deck program of the staged slot runs, a new install changes nothing.
+// While the deck program of the staged slot runs, a new install fails, and the slot stays.
 func TestStageWhileNextRuns(t *testing.T) {
 	f := newFakeStage(t)
 	if _, err := Stage(makeBundle(t, f.dir, []byte("VERSION=v9.1.0"), false), nil, false); err != nil {

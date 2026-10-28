@@ -49,9 +49,9 @@ type handoffHeader struct {
 }
 
 // SaveHandoff stops the runner and writes the frames of the print now to path, through a
-// temporary file. After it, the runner takes no pictures. With no print, it removes path.
+// temporary file. After it, the runner captures no pictures. With no print, it removes path.
 func (r *Runner) SaveHandoff(path string) error {
-	r.stepMu.Lock() // wait for a picture that the runner takes now
+	r.stepMu.Lock() // wait for a picture that the runner captures now
 	defer r.stepMu.Unlock()
 	r.mu.Lock()
 	r.frozen = true

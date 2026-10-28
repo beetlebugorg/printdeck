@@ -63,7 +63,7 @@ func TestHandoff(t *testing.T) {
 	if err := old.SaveHandoff(file); err != nil {
 		t.Fatal(err)
 	}
-	// After the save, the old runner takes no pictures.
+	// After the save, the old runner captures no pictures.
 	host.frame(false, true, 4)
 	old.step(context.Background())
 	if len(host.taken) != 3 {
