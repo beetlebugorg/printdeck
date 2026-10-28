@@ -105,6 +105,56 @@ func (s *Settings) SetRole(role, id string) {
 	}
 }
 
+// PinRoles sets each role to the ID of the camera that has the role in list (Info.Roles). After
+// it, a change of the settings moves no other role: a role with "" follows the main camera, and a
+// pinned role stays on its camera.
+func (s *Settings) PinRoles(list []Info) {
+	for _, in := range list {
+		for _, r := range in.Roles {
+			s.SetRole(r, in.ID)
+		}
+	}
+}
+
+// GiveRole gives a role to the camera id. Each other role stays on its camera in list.
+func (s *Settings) GiveRole(list []Info, role, id string) {
+	s.PinRoles(list)
+	s.SetRole(role, id)
+}
+
+// SetOff turns the camera id off, or on again. A camera that goes off gives its roles to the
+// main camera, and the main role to the first other camera that is on. Each other role stays on
+// its camera. SetOff returns the roles that move and the ID of the camera that gets them. With no
+// other camera on, the roles stay on the camera id, and to is "".
+func (s *Settings) SetOff(list []Info, id string, off bool) (moved []string, to string) {
+	s.PinRoles(list)
+	cs := s.Camera(id)
+	cs.Off = off
+	s.SetCamera(cs)
+	if !off {
+		return nil, ""
+	}
+	var mine []string
+	for _, in := range list {
+		switch {
+		case in.ID == id:
+			mine = in.Roles
+		case in.Usable() && to == "":
+			to = in.ID
+		}
+		if in.ID != id && in.HasRole(RoleMain) {
+			to = in.ID
+		}
+	}
+	if to == "" {
+		return nil, ""
+	}
+	for _, r := range mine {
+		s.SetRole(r, to)
+	}
+	return mine, to
+}
+
 // clone returns a copy of s that shares no slice with s.
 func (s Settings) clone() Settings {
 	s.Cameras = append([]CamSettings(nil), s.Cameras...)

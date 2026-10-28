@@ -114,11 +114,13 @@ func (a *App) drawTimeLapse(c *gfx.Canvas) {
 	}
 	items = append(items, menuItem{"Videos", videosLine(len(in.Videos)), dim, nil})
 	if a.Camera != nil {
-		items = append(items, a.roleItems(camera.RoleLapse, camera.RolePicture)...)
-		if cam, ok := a.Camera.Source(""); ok {
-			if st := cam.Status().State; st == "off" || st == "none" {
-				items = append(items, menuItem{"Camera", "No camera: no frames and no pictures", red, func() { a.open(pageCamera) }})
-			}
+		list := a.Camera.Cameras()
+		open := func() { a.open(pageCameras) }
+		switch cam, ok := a.Camera.Source(""); {
+		case ok && (cam.Status().State == "off" || cam.Status().State == "none"):
+			items = append(items, menuItem{"Camera", "No camera: no frames and no pictures", red, open})
+		case len(list) > 1:
+			items = append(items, menuItem{"Cameras", lapseCamerasLine(list), dim, open})
 		}
 	}
 	a.menuRows(c, f.body(), f.wide, 60, 5, items)
@@ -165,4 +167,18 @@ func (a *App) drawFirstLayerPicture(c *gfx.Canvas) {
 		w = w * a.Scale[0] / a.Scale[1]
 	}
 	c.Cover(r, in.First.Small(w))
+}
+
+// lapseCamerasLine is the line of the Cameras row of the Time lapse page: the camera of the time
+// lapse and the camera of the pictures.
+func lapseCamerasLine(list []camera.Info) string {
+	name := func(role string) string {
+		for _, in := range list {
+			if in.HasRole(role) {
+				return in.Name
+			}
+		}
+		return "none"
+	}
+	return "Time lapse: " + name(camera.RoleLapse) + " · Pictures: " + name(camera.RolePicture)
 }

@@ -24,10 +24,18 @@ type navKey struct {
 
 // Main is the home screen (no page): not "Home", which is the homing of the axes on a printer. The
 // rolls are a part of Filament (its head key Rolls), and
-// History and Maintenance a part of Machine, so the panel has no keys for them. The last place of
-// the panel is empty.
+// History and Maintenance a part of Machine, so the panel has no keys for them. A deck with a
+// camera has Camera in the last place of the panel.
 var navKeys = []navKey{{"Main", 0}, {"Files", pageFiles}, {"Filament", pageFilament},
 	{"Toolhead", pageMove}, {"Machine", pageMachine}}
+
+// keys is the key panel of the app: navKeys, and Camera on a deck with a camera.
+func (a *App) keys() []navKey {
+	if a.Camera == nil {
+		return navKeys
+	}
+	return append(navKeys[:len(navKeys):len(navKeys)], navKey{"Camera", pageCamera})
+}
 
 // actH is the height of the row of actions at the bottom of a page.
 const actH = 72
@@ -64,19 +72,20 @@ func (a *App) drawNavKeys(c *gfx.Canvas, r image.Rectangle) {
 	a.region("Pages", r)
 	// The lit key is the deepest page of the stack that has a key: Filament for Rolls, opened from
 	// Filament; Main with no page.
+	keys := a.keys()
 	open := page(0)
 	for _, p := range a.pages {
-		for _, k := range navKeys {
+		for _, k := range keys {
 			if k.p == p {
 				open = p
 			}
 		}
 	}
 	for i, cell := range kit.Grid(r, 2, 3, 10) {
-		if i >= len(navKeys) {
+		if i >= len(keys) {
 			break
 		}
-		k := navKeys[i]
+		k := keys[i]
 		tap := func() {
 			if k.p == pageFiles {
 				go func() { a.Printer.LoadFiles(); a.Redraw() }()

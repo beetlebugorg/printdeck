@@ -189,8 +189,14 @@ func (a *App) OpenPrintScreen(name string) {
 	case "camera-all":
 		a.pages = []page{pageMachine, pageSettings, pageCamera}
 		a.camID = camAll
-	case "camera-setup":
-		a.pages = []page{pageMachine, pageSettings, pageCamera, pageCameraSetup}
+	case "cameras":
+		a.pages = []page{pageMachine, pageSettings, pageCameras}
+	case "camera-settings":
+		// The second camera, with the name of the manual.
+		if list := a.Camera.Cameras(); len(list) > 1 {
+			a.camEdit = list[1].ID
+		}
+		a.pages = []page{pageMachine, pageSettings, pageCameras, pageCameraEdit}
 	case "simulator":
 		a.pages = []page{pageMachine, pageSimulator}
 	case "configs":

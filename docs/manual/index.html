@@ -390,7 +390,7 @@
 
 <section id="send">
   <h2 class="title"><span class="num">07</span>Send a file from the slicer</h2>
-  <p>The deck uses the OctoPrint API, so slicers can send files and start prints.</p><p>Cura: add the deck with the OctoPrint Connection plugin. The deck asks &#34;Allow Cura to use the Printdeck?&#34;. Tap Allow.</p><p>OrcaSlicer or PrusaSlicer: add a printer of the type OctoPrint, with the address http://printdeck.local and the API key of the system page.</p><p>The webcam is the main camera of the deck: http://printdeck.local/webcam/stream and /webcam/snapshot, with the API key. Add camera=2 for the second camera, w=320 for smaller pictures, or fps=2 for fewer frames. With no camera, the webcam shows the deck screen.</p>
+  <p>The deck uses the OctoPrint API, so slicers can send files and start prints.</p><p>Cura: add the deck with the OctoPrint Connection plugin. The deck asks &#34;Allow Cura to use the Printdeck?&#34;. Tap Allow.</p><p>OrcaSlicer or PrusaSlicer: add a printer of the type OctoPrint, with the address http://printdeck.local and the API key of the system page.</p><p>The webcam is the camera with the use Apps: http://printdeck.local/webcam/stream and /webcam/snapshot, with the API key. Add camera=2 for the second camera, w=320 for smaller pictures, or fps=2 for fewer frames. With no camera, the webcam shows the deck screen.</p>
   
   
   
@@ -958,7 +958,7 @@
 <section id="timelapse">
   <h2 class="title"><span class="num">12</span>Make a time lapse</h2>
   <p>The deck camera captures a picture at each layer change. At the end of the print, the deck makes a video.</p><p>For each picture, the printer retracts, lifts the nozzle and parks the head at the back left. On the TAZ Workhorse the nozzle goes to Z 10 mm or more, over the bed washers. Each picture adds a few seconds.</p>
-  <ol class="steps"><li>Set up the camera: Settings, then Camera.</li><li>Open Settings, then Time lapse.</li><li>Tap Time lapse to turn it on.</li><li>With two cameras, tap Time lapse camera and Picture camera to choose the cameras.</li><li>Tap First layer for a picture of the first layer, or a picture and a pause. At a pause, check the layer, then tap Resume.</li><li>Print. After the first layer, the deck shows its picture.</li><li>At the end of the print, open http://printdeck.local/system in a browser. The Time lapse part has the video. Click its name to download it.</li></ol>
+  <ol class="steps"><li>Aim the camera: Settings, then Camera.</li><li>Open Settings, then Time lapse.</li><li>Tap Time lapse to turn it on.</li><li>With two cameras, open Settings, then Cameras. Tap a camera, and check Time lapse or Pictures.</li><li>Tap First layer for a picture of the first layer, or a picture and a pause. At a pause, check the layer, then tap Resume.</li><li>Print. After the first layer, the deck shows its picture.</li><li>At the end of the print, open http://printdeck.local/system in a browser. The Time lapse part has the video. Click its name to download it.</li></ol>
   
   
   <p>Cura, PrusaSlicer and OrcaSlicer write the layer comments that the time lapse needs.</p><p>Park for the frames is on by default. Off keeps the toolhead in the pictures, with no stops.</p><p>The video is a .mov file. The deck keeps the last 3 videos. A backup excludes the videos.</p>
@@ -1499,7 +1499,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Settings</b>The theme, the clock, the screen, the camera and the messages.</span></li><li><span class="badge">2</span><span><b>Software update</b>Shows and installs a new version.</span></li><li><span class="badge">3</span><span><b>Wi-Fi and help</b>The network, the password and the addresses.</span></li><li><span class="badge">4</span><span><b>System monitor</b>Graphs of the CPU, the memory and the SD card.</span></li>
+      <li><span class="badge">1</span><span><b>Settings</b>The theme, the clock, the screen, the cameras and the messages.</span></li><li><span class="badge">2</span><span><b>Software update</b>Shows and installs a new version.</span></li><li><span class="badge">3</span><span><b>Wi-Fi and help</b>The network, the password and the addresses.</span></li><li><span class="badge">4</span><span><b>System monitor</b>Graphs of the CPU, the memory and the SD card.</span></li>
     </ol>
     
   </figure>
@@ -1510,50 +1510,55 @@
       <div class="shot"><img src="img/settings.png" alt="The Settings page" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="109" x2="456" y2="109" class="leader"/>
-        <circle cx="456" cy="109" r="5" class="dot"/>
-        <circle cx="520" cy="109" r="15" class="badge"/>
-        <text x="520" y="109" class="badge-n">1</text>
+        <line x1="505" y1="104" x2="456" y2="104" class="leader"/>
+        <circle cx="456" cy="104" r="5" class="dot"/>
+        <circle cx="520" cy="104" r="15" class="badge"/>
+        <text x="520" y="104" class="badge-n">1</text>
         
-        <line x1="505" y1="200" x2="456" y2="200" class="leader"/>
-        <circle cx="456" cy="200" r="5" class="dot"/>
-        <circle cx="520" cy="200" r="15" class="badge"/>
-        <text x="520" y="200" class="badge-n">2</text>
+        <line x1="505" y1="185" x2="456" y2="185" class="leader"/>
+        <circle cx="456" cy="185" r="5" class="dot"/>
+        <circle cx="520" cy="185" r="15" class="badge"/>
+        <text x="520" y="185" class="badge-n">2</text>
         
-        <line x1="505" y1="382" x2="456" y2="382" class="leader"/>
-        <circle cx="456" cy="382" r="5" class="dot"/>
-        <circle cx="520" cy="382" r="15" class="badge"/>
-        <text x="520" y="382" class="badge-n">3</text>
+        <line x1="505" y1="347" x2="456" y2="347" class="leader"/>
+        <circle cx="456" cy="347" r="5" class="dot"/>
+        <circle cx="520" cy="347" r="15" class="badge"/>
+        <text x="520" y="347" class="badge-n">3</text>
         
-        <line x1="505" y1="473" x2="456" y2="473" class="leader"/>
-        <circle cx="456" cy="473" r="5" class="dot"/>
-        <circle cx="520" cy="473" r="15" class="badge"/>
-        <text x="520" y="473" class="badge-n">4</text>
+        <line x1="505" y1="428" x2="456" y2="428" class="leader"/>
+        <circle cx="456" cy="428" r="5" class="dot"/>
+        <circle cx="520" cy="428" r="15" class="badge"/>
+        <text x="520" y="428" class="badge-n">4</text>
         
-        <line x1="505" y1="564" x2="456" y2="564" class="leader"/>
-        <circle cx="456" cy="564" r="5" class="dot"/>
-        <circle cx="520" cy="564" r="15" class="badge"/>
-        <text x="520" y="564" class="badge-n">5</text>
+        <line x1="505" y1="509" x2="456" y2="509" class="leader"/>
+        <circle cx="456" cy="509" r="5" class="dot"/>
+        <circle cx="520" cy="509" r="15" class="badge"/>
+        <text x="520" y="509" class="badge-n">5</text>
         
-        <line x1="505" y1="655" x2="456" y2="655" class="leader"/>
-        <circle cx="456" cy="655" r="5" class="dot"/>
-        <circle cx="520" cy="655" r="15" class="badge"/>
-        <text x="520" y="655" class="badge-n">6</text>
+        <line x1="505" y1="590" x2="456" y2="590" class="leader"/>
+        <circle cx="456" cy="590" r="5" class="dot"/>
+        <circle cx="520" cy="590" r="15" class="badge"/>
+        <text x="520" y="590" class="badge-n">6</text>
         
-        <line x1="505" y1="746" x2="456" y2="746" class="leader"/>
-        <circle cx="456" cy="746" r="5" class="dot"/>
-        <circle cx="520" cy="746" r="15" class="badge"/>
-        <text x="520" y="746" class="badge-n">7</text>
+        <line x1="505" y1="671" x2="456" y2="671" class="leader"/>
+        <circle cx="456" cy="671" r="5" class="dot"/>
+        <circle cx="520" cy="671" r="15" class="badge"/>
+        <text x="520" y="671" class="badge-n">7</text>
         
-        <line x1="505" y1="291" x2="456" y2="291" class="leader"/>
-        <circle cx="456" cy="291" r="5" class="dot"/>
-        <circle cx="520" cy="291" r="15" class="badge"/>
-        <text x="520" y="291" class="badge-n">8</text>
+        <line x1="505" y1="752" x2="456" y2="752" class="leader"/>
+        <circle cx="456" cy="752" r="5" class="dot"/>
+        <circle cx="520" cy="752" r="15" class="badge"/>
+        <text x="520" y="752" class="badge-n">8</text>
+        
+        <line x1="505" y1="266" x2="456" y2="266" class="leader"/>
+        <circle cx="456" cy="266" r="5" class="dot"/>
+        <circle cx="520" cy="266" r="15" class="badge"/>
+        <text x="520" y="266" class="badge-n">9</text>
         
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Theme</b>Day, night, or auto.</span></li><li><span class="badge">2</span><span><b>Clock</b>12 or 24 hours.</span></li><li><span class="badge">3</span><span><b>Home in a filament change</b>On: the printer homes while the nozzle heats for a filament change.</span></li><li><span class="badge">4</span><span><b>Screen</b>Tap it to turn the screen a quarter turn. The deck restarts, and a print continues. This setting overrides display_rotate.</span></li><li><span class="badge">5</span><span><b>Camera</b>Opens the Camera page.</span></li><li><span class="badge">6</span><span><b>Phones</b>The phones that get push messages. Tap a phone in the list to remove it.</span></li><li><span class="badge">7</span><span><b>Notifications</b>Push messages through ntfy. In the ntfy app, subscribe to a topic with a name that is hard to guess. Type the same topic here. An empty topic turns the messages off.</span></li><li><span class="badge">8</span><span><b>Text</b>The size of the small text: auto, large, or normal.</span></li>
+      <li><span class="badge">1</span><span><b>Theme</b>Day, night, or auto.</span></li><li><span class="badge">2</span><span><b>Clock</b>12 or 24 hours.</span></li><li><span class="badge">3</span><span><b>Home in a filament change</b>On: the printer homes while the nozzle heats for a filament change.</span></li><li><span class="badge">4</span><span><b>Screen</b>Tap it to turn the screen a quarter turn. The deck restarts, and a print continues. This setting overrides display_rotate.</span></li><li><span class="badge">5</span><span><b>Camera</b>Opens the live picture.</span></li><li><span class="badge">6</span><span><b>Cameras</b>Names the cameras and sets their uses.</span></li><li><span class="badge">7</span><span><b>Phones</b>The phones that get push messages. Tap a phone in the list to remove it.</span></li><li><span class="badge">8</span><span><b>Notifications</b>Push messages through ntfy. In the ntfy app, subscribe to a topic with a name that is hard to guess. Type the same topic here. An empty topic turns the messages off.</span></li><li><span class="badge">9</span><span><b>Text</b>The size of the small text: auto, large, or normal.</span></li>
     </ol>
     
   </figure>
@@ -1564,71 +1569,90 @@
       <div class="shot"><img src="img/camera.png" alt="The Camera page" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="197" x2="456" y2="197" class="leader"/>
-        <circle cx="456" cy="197" r="5" class="dot"/>
-        <circle cx="520" cy="197" r="15" class="badge"/>
-        <text x="520" y="197" class="badge-n">1</text>
+        <line x1="505" y1="102" x2="456" y2="102" class="leader"/>
+        <circle cx="456" cy="102" r="5" class="dot"/>
+        <circle cx="520" cy="102" r="15" class="badge"/>
+        <text x="520" y="102" class="badge-n">1</text>
         
-        <line x1="505" y1="363" x2="456" y2="363" class="leader"/>
-        <circle cx="456" cy="363" r="5" class="dot"/>
-        <circle cx="520" cy="363" r="15" class="badge"/>
-        <text x="520" y="363" class="badge-n">2</text>
+        <line x1="505" y1="259" x2="456" y2="259" class="leader"/>
+        <circle cx="456" cy="259" r="5" class="dot"/>
+        <circle cx="520" cy="259" r="15" class="badge"/>
+        <text x="520" y="259" class="badge-n">2</text>
         
-        <line x1="505" y1="443" x2="456" y2="443" class="leader"/>
-        <circle cx="456" cy="443" r="5" class="dot"/>
-        <circle cx="520" cy="443" r="15" class="badge"/>
-        <text x="520" y="443" class="badge-n">3</text>
+        <line x1="505" y1="490" x2="456" y2="490" class="leader"/>
+        <circle cx="456" cy="490" r="5" class="dot"/>
+        <circle cx="520" cy="490" r="15" class="badge"/>
+        <text x="520" y="490" class="badge-n">3</text>
         
-        <line x1="505" y1="521" x2="456" y2="521" class="leader"/>
-        <circle cx="456" cy="521" r="5" class="dot"/>
-        <circle cx="520" cy="521" r="15" class="badge"/>
-        <text x="520" y="521" class="badge-n">4</text>
+        <line x1="505" y1="751" x2="456" y2="751" class="leader"/>
+        <circle cx="456" cy="751" r="5" class="dot"/>
+        <circle cx="520" cy="751" r="15" class="badge"/>
+        <text x="520" y="751" class="badge-n">4</text>
         
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Picture</b>Use it to aim the camera at the bed.</span></li><li><span class="badge">2</span><span><b>State</b>The camera, or an error.</span></li><li><span class="badge">3</span><span><b>Camera</b>Shows the next camera, then all cameras side by side.</span></li><li><span class="badge">4</span><span><b>Turn</b>Turns the picture 180°.</span></li>
+      <li><span class="badge">1</span><span><b>Tabs</b>A tab for each camera that is on. Both shows all the cameras.</span></li><li><span class="badge">2</span><span><b>Picture</b>Use it to aim the camera at the bed.</span></li><li><span class="badge">3</span><span><b>Turn</b>Turns the picture 180°.</span></li><li><span class="badge">4</span><span><b>Camera settings</b>The name, on or off, and the uses of this camera.</span></li>
     </ol>
-    <p class="note">The apps, Cura and other OctoPrint clients show the camera. A camera runs only while somebody looks at it. The pictures stay in memory. With no camera, the apps show the deck screen.</p><p class="note">If a camera shows too little USB bandwidth, move it to another USB port.</p>
+    <p class="note">A camera runs only while somebody looks at it. With no camera, the apps show the deck screen.</p><p class="note">If a camera shows too little USB bandwidth, move it to another USB port.</p>
   </figure>
   
   <figure>
-    <h3>Camera setup: the camera and the roles</h3>
+    <h3>The Cameras page</h3>
     <div class="frame">
-      <div class="shot"><img src="img/camera-setup.png" alt="Camera setup: the camera and the roles" width="480" height="800"></div>
+      <div class="shot"><img src="img/cameras.png" alt="The Cameras page" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="215" x2="456" y2="215" class="leader"/>
-        <circle cx="456" cy="215" r="5" class="dot"/>
-        <circle cx="520" cy="215" r="15" class="badge"/>
-        <text x="520" y="215" class="badge-n">1</text>
-        
-        <line x1="505" y1="316" x2="456" y2="316" class="leader"/>
-        <circle cx="456" cy="316" r="5" class="dot"/>
-        <circle cx="520" cy="316" r="15" class="badge"/>
-        <text x="520" y="316" class="badge-n">2</text>
-        
-        <line x1="505" y1="417" x2="456" y2="417" class="leader"/>
-        <circle cx="456" cy="417" r="5" class="dot"/>
-        <circle cx="520" cy="417" r="15" class="badge"/>
-        <text x="520" y="417" class="badge-n">3</text>
-        
-        <line x1="505" y1="518" x2="456" y2="518" class="leader"/>
-        <circle cx="456" cy="518" r="5" class="dot"/>
-        <circle cx="520" cy="518" r="15" class="badge"/>
-        <text x="520" y="518" class="badge-n">4</text>
-        
-        <line x1="505" y1="619" x2="456" y2="619" class="leader"/>
-        <circle cx="456" cy="619" r="5" class="dot"/>
-        <circle cx="520" cy="619" r="15" class="badge"/>
-        <text x="520" y="619" class="badge-n">5</text>
+        <line x1="505" y1="128" x2="456" y2="128" class="leader"/>
+        <circle cx="456" cy="128" r="5" class="dot"/>
+        <circle cx="520" cy="128" r="15" class="badge"/>
+        <text x="520" y="128" class="badge-n">1</text>
         
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>On</b>Turns the camera on or off.</span></li><li><span class="badge">2</span><span><b>Name</b>The name in the apps.</span></li><li><span class="badge">3</span><span><b>Main camera</b>The webcam of the apps and Cura.</span></li><li><span class="badge">4</span><span><b>Time lapse camera</b>The camera of the time lapse.</span></li><li><span class="badge">5</span><span><b>Picture camera</b>The first layer picture and the pictures of the notifications.</span></li>
+      <li><span class="badge">1</span><span><b>Front</b>Each camera, with its uses. Tap a camera to change it.</span></li>
     </ol>
-    <p class="note">Auto is the first camera that is on.</p>
+    
+  </figure>
+  
+  <figure>
+    <h3>The settings of one camera</h3>
+    <div class="frame">
+      <div class="shot"><img src="img/camera-settings.png" alt="The settings of one camera" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="505" y1="268" x2="456" y2="268" class="leader"/>
+        <circle cx="456" cy="268" r="5" class="dot"/>
+        <circle cx="520" cy="268" r="15" class="badge"/>
+        <text x="520" y="268" class="badge-n">1</text>
+        
+        <line x1="505" y1="354" x2="456" y2="354" class="leader"/>
+        <circle cx="456" cy="354" r="5" class="dot"/>
+        <circle cx="520" cy="354" r="15" class="badge"/>
+        <text x="520" y="354" class="badge-n">2</text>
+        
+        <line x1="505" y1="469" x2="456" y2="469" class="leader"/>
+        <circle cx="456" cy="469" r="5" class="dot"/>
+        <circle cx="520" cy="469" r="15" class="badge"/>
+        <text x="520" y="469" class="badge-n">3</text>
+        
+        <line x1="505" y1="545" x2="456" y2="545" class="leader"/>
+        <circle cx="456" cy="545" r="5" class="dot"/>
+        <circle cx="520" cy="545" r="15" class="badge"/>
+        <text x="520" y="545" class="badge-n">4</text>
+        
+        <line x1="505" y1="621" x2="456" y2="621" class="leader"/>
+        <circle cx="456" cy="621" r="5" class="dot"/>
+        <circle cx="520" cy="621" r="15" class="badge"/>
+        <text x="520" y="621" class="badge-n">5</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Name</b>Type a name, such as Top.</span></li><li><span class="badge">2</span><span><b>On</b>Turns the camera on or off. Its uses move to another camera.</span></li><li><span class="badge">3</span><span><b>Apps</b>Cura and the apps show this camera first.</span></li><li><span class="badge">4</span><span><b>Time lapse</b>The camera of the time lapse.</span></li><li><span class="badge">5</span><span><b>Pictures</b>The first layer picture, and the pictures on the phone.</span></li>
+    </ol>
+    <p class="note">Each use is on one camera. To move a use, check it on the other camera.</p>
   </figure>
   
   <figure>
