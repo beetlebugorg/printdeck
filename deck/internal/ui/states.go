@@ -193,12 +193,20 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 	if wide {
 		// Cancel print, the destructive action, at the left, and Help at the right. Main is the
 		// print, so the page needs no Menu.
-		k := kit.Cols(cancel, 12, kit.Fr(1), kit.Fr(1))
+		// Share in the middle, for a link from the start of the print.
+		sizes := []kit.Size{kit.Fr(1), kit.Fr(1)}
+		if a.canShare() {
+			sizes = append(sizes, kit.Fr(1))
+		}
+		k := kit.Cols(cancel, 12, sizes...)
 		if !end {
 			a.button(c, k[0], "Cancel print", raised, red, a.askCancel)
 		}
+		if a.canShare() {
+			a.shareKey(c, k[1])
+		}
 		if a.Setup != nil {
-			a.button(c, k[1], "Help", raised, text, a.OpenHelp)
+			a.button(c, k[len(k)-1], "Help", raised, text, a.OpenHelp)
 		}
 		return
 	}
