@@ -12,7 +12,7 @@ settings:
     BUNDLE_PREFIX: org.beetlebug.printdeck
     KEYCHAIN_GROUP: $(AppIdentifierPrefix)$(BUNDLE_PREFIX).shared
     # The push relay (relay/README.md).
-    PUSH_RELAY: https://lxl6zbmykmd4w5yomcntsjkjma0xdwkk.lambda-url.us-east-1.on.aws
+    PUSH_RELAY: https://printdeck.beetlebug.org/api/v1/relay
     CODE_SIGN_STYLE: Automatic
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
