@@ -14,6 +14,7 @@
 //	ptz.go        the digital pan, tilt and zoom, and the map of the crop of the camera
 //	ptzctl.go     the PTZ controls of a camera
 //	measure.go    the measurement of the map of the crop, by image matching
+//	follow.go     the zoom to the part during a print
 //	v4l2_linux.go the devices and the capture with the V4L2 ioctls
 //
 // A camera that sends MJPEG gives its JPEG frames with no change. The deck converts the pictures
