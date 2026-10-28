@@ -233,6 +233,37 @@ func uploadWeb(ctx context.Context, c *s3.Client, bucket, src string) error {
 			return fmt.Errorf("upload %s: %w", key, err)
 		}
 	}
+	return refreshShares(ctx, c, bucket, files["assets/share.html"])
+}
+
+// refreshShares writes the new share page to the page of each share that runs (s/<id>), so an
+// open share gets a new deploy too.
+func refreshShares(ctx context.Context, c *s3.Client, bucket string, page []byte) error {
+	if page == nil {
+		return nil
+	}
+	prefix := "shares/"
+	p := s3.NewListObjectsV2Paginator(c, &s3.ListObjectsV2Input{Bucket: &bucket, Prefix: &prefix})
+	n := 0
+	for p.HasMorePages() {
+		out, err := p.NextPage(ctx)
+		if err != nil {
+			return err
+		}
+		for _, o := range out.Contents {
+			id := strings.TrimSuffix(strings.TrimPrefix(aws.ToString(o.Key), prefix), ".json")
+			key := "s/" + id
+			ctype, cache := "text/html; charset=utf-8", "public, max-age=60"
+			if _, err := c.PutObject(ctx, &s3.PutObjectInput{Bucket: &bucket, Key: &key, Body: bytes.NewReader(page),
+				ContentType: &ctype, CacheControl: &cache}); err != nil {
+				return err
+			}
+			n++
+		}
+	}
+	if n > 0 {
+		fmt.Printf("Updated the page of %d shares\n", n)
+	}
 	return nil
 }
 
