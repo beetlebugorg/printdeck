@@ -34,8 +34,8 @@ var monitorRanges = []monitorRange{
 	{"24 h", "−24 H", 24 * time.Hour, 96},
 }
 
-// monitorLine is the line of the System monitor row of the Machine page.
-const monitorLine = "CPU, memory and card writes"
+// monitorLine is the line of the System monitor key of the Machine page.
+const monitorLine = "CPU, memory, writes"
 
 // drawMonitor is the System monitor page.
 func (a *App) drawMonitor(c *gfx.Canvas) {

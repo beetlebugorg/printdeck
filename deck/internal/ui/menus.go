@@ -15,6 +15,7 @@ import (
 	"printdeck/internal/board"
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
+	"printdeck/internal/wifi"
 )
 
 // The menu page Machine of the idle screen, and the pages that Machine opens: Maintenance and the others.
@@ -383,6 +384,8 @@ func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 			})
 		}})
 	}
+	simSub, simCol := simLine(st)
+	rows = append(rows, row{"Simulated printer", simSub, simCol == orange, func() { a.open(pageSimulator) }})
 	var items []menuItem
 	for _, r := range rows {
 		col := dim
@@ -448,129 +451,237 @@ func (a *App) drawManualProbe(c *gfx.Canvas, st printer.State) {
 	a.button(c, k[1], "Abort", raised, red, func() { a.do(func() error { return pr.Gcode("ABORT") }) })
 }
 
-// drawMachine is the Machine page: the versions and the totals, and the advanced pages.
+// drawMachine is the Machine page: two lines of information, and a grid of keys for the pages
+// of the printer and the deck, with the most used at the top. Restart… in the head asks which
+// restart to do.
 func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	f := a.navPage(c, "Machine")
 	mach := pr.Machine()
-	// The information, the rows, and the restart keys in the row of actions at the bottom.
-	var info, rowsArea, restart image.Rectangle
+	b := backRect(f.head)
+	a.printerKey(c, b.Sub(image.Pt(b.Dx()+12, 0)), "Restart…", raised, text, a.askRestart)
+
+	var info, grid image.Rectangle
 	if f.wide {
-		content, acts := f.split()
-		r := kit.Rows(content, 8, kit.Px(96), kit.Fr(1))
-		info, rowsArea, restart = r[0], r[1], acts
+		r := kit.Rows(f.body(), 12, kit.Px(64), kit.Fr(1))
+		info, grid = r[0], r[1]
 	} else {
-		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 14), 6, kit.Px(128), kit.Fr(1), kit.Px(66))
-		info, rowsArea, restart = r[0], r[1], r[2]
+		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 6), 16, kit.Px(76), kit.Fr(1))
+		info, grid = r[0], r[1]
 	}
-	window(c, info)
-	a.region("Information", info)
-	lineH := min(28, (info.Dy()-12)/4)
-	fw := "—"
-	switch {
-	case st.Firmware != "" && st.FirmwareOld:
-		fw = "OLD: FLASH IT"
-	case st.Firmware != "":
-		fw = "CURRENT"
-	}
-	ip := "—"
+
+	var wifiStatus wifi.Status
 	if a.Setup != nil {
-		if s, err := a.Setup.Status(); err == nil && s.IP != "" {
-			ip = s.IP
-		}
+		wifiStatus, _ = a.Setup.Status()
 	}
-	var prints, hours int
+	var update UpdateStatus
+	if a.Updater != nil {
+		update = a.Updater.Status()
+	}
+	a.machineInfo(c, info, st, mach, update.Current, wifiStatus.IP)
+
+	var prints int
 	var filament float64
 	for _, r := range pr.History() {
 		prints++
-		hours += int(r.Duration.Hours())
 		filament += r.Filament
 	}
-	lines := [][2]string{
-		{"KLIPPER", strings.TrimSuffix(mach.KlipperVersion, "-printdeck-go")},
-		{"FIRMWARE", fw},
-		{"NETWORK", ip},
-		{"PRINTS", fmt.Sprintf("%d · %d H · %s", prints, hours, strings.ToUpper(a.weight(filament)))},
+	printsLine := "No prints yet"
+	if prints > 0 {
+		printsLine = fmt.Sprintf("%d %s · %s", prints, plural(prints, "print", "prints"), a.weight(filament))
 	}
-	for i, l := range lines {
-		y := info.Min.Y + 10 + i*lineH
-		c.Text(image.Rect(info.Min.X+16, y, info.Max.X, y+lineH), l[0], gfx.Face(true, 14), lcdDim, gfx.Left)
-		c.Text(image.Rect(info.Min.X+130, y, info.Max.X-16, y+lineH), l[1], gfx.Face(true, 17), lcdInk, gfx.Right)
+	maint, maintCol := maintenanceLine(mach, st)
+	keys := []menuItem{
+		{"Settings", "Theme, clock, cloud", dim, func() { a.open(pageSettings) }},
+		{"Prints", printsLine, dim, func() { a.open(pageStats) }},
+		{"Maintenance", maint, maintCol, func() { a.open(pageMaintenance) }},
+		{"Macros", macrosLine(len(mach.Macros)), dim, func() { a.open(pageMacros) }},
+		{"Console", "G-code", dim, func() { a.open(pageConsole) }},
 	}
-
-	macros := "No macros"
-	if n := len(mach.Macros); n > 0 {
-		macros = strings.Join(mach.Macros[:min(2, n)], ", ")
-		if n > 2 {
-			macros += fmt.Sprintf(", %d more", n-2)
-		}
-	}
-	// The groups, with the rows that are used most at the top.
-	printerRows := []menuItem{
-		{"Maintenance", maintenanceLine(mach, st), dim, func() { a.open(pageMaintenance) }},
-		{"Macros", macros, dim, func() { a.open(pageMacros) }},
-		{"Console", "Type G-code, and read the replies", dim, func() { a.open(pageConsole) }},
-	}
-	simSub, simCol := simLine(st)
-	printerRows = append(printerRows, menuItem{"Simulated printer", simSub, simCol, func() { a.open(pageSimulator) }})
-	printRows := []menuItem{
-		{"Prints", fmt.Sprintf("%d prints · %d h · %s", prints, hours, a.weight(filament)), dim, func() { a.open(pageStats) }},
-	}
-	deckRows := []menuItem{{"Settings", "Theme, clock, notifications", dim, func() { a.open(pageSettings) }}}
 	if a.Updater != nil {
-		line, warn := updateLine(a.Updater.Status())
+		line, warn := updateLine(update)
 		col := dim
 		if warn {
 			col = orange
 		}
-		deckRows = append(deckRows, menuItem{"Software update", line, col, func() { a.open(pageUpdate) }})
+		keys = append(keys, menuItem{"Software update", line, col, func() { a.open(pageUpdate) }})
 	}
 	if a.Setup != nil {
-		deckRows = append(deckRows, menuItem{"Wi-Fi and help", "The network, the password, the addresses", dim, a.OpenHelp})
+		keys = append(keys, menuItem{"Wi-Fi and help", wifiLine(wifiStatus), dim, a.OpenHelp})
 	}
 	if a.Metrics != nil {
-		deckRows = append(deckRows, menuItem{"System monitor", monitorLine, dim, func() { a.open(pageMonitor) }})
+		keys = append(keys, menuItem{"System monitor", monitorLine, dim, func() { a.open(pageMonitor) }})
 	}
-	a.menuGroups(c, rowsArea, f.wide, 60, 5, []menuGroup{{heading: "Printer", items: printerRows}, {heading: "History", items: printRows}, {heading: "Deck", items: deckRows}})
-	k := kit.Cols(restart, 12, kit.Fr(1), kit.Fr(1))
-	// The destructive action at the left.
-	a.printerKey(c, k[1], "Restart Klipper", raised, text, func() {
-		a.confirm = &confirmBox{question: "Restart Klipper?", yes: "Restart", onYes: func() {
-			a.Toast("Restarting Klipper…")
-			a.do(pr.RestartKlipper)
-		}}
-	})
-	a.printerKey(c, k[0], "Firmware restart", raised, red, func() {
-		a.confirm = &confirmBox{question: "Restart the printer firmware?", yes: "Restart", danger: true, onYes: func() {
-			a.Toast("Restarting the firmware…")
-			a.do(pr.FirmwareRestart)
-		}}
-	})
+	// Two columns. The keys share the height of the grid, up to a height that keeps the two lines
+	// of a key together.
+	const gap = 10
+	rows := (len(keys) + 1) / 2
+	most := 84
+	if !f.wide {
+		most = 150
+	}
+	keyH := min(most, (grid.Dy()-(rows-1)*gap)/rows)
+	grid.Max.Y = grid.Min.Y + rows*keyH + (rows-1)*gap
+	for i, r := range kit.Grid(grid, 2, rows, gap)[:len(keys)] {
+		k := keys[i]
+		a.statusKey(c, r, k.title, k.sub, k.col, k.tap)
+	}
 }
 
-// maintenanceLine is the line of the Maintenance row: the calibrations that the printer has, and
-// the firmware.
-func maintenanceLine(mach printer.Machine, st printer.State) string {
-	var names []string
-	for _, m := range []struct{ module, name string }{
-		{"bed_mesh", "bed mesh"}, {"bed_tilt", "bed tilt"}, {"screws_tilt_adjust", "screws"},
-		{"probe", "Z offset"}, {"extruder", "PID"},
-	} {
-		if mach.Has(m.module) {
-			names = append(names, m.name)
-		}
+// machineInfo draws the information of the Machine page in a display window: the versions in
+// the first line; the address and the state of the firmware in the second line. Old firmware
+// makes the second line bright.
+func (a *App) machineInfo(c *gfx.Canvas, r image.Rectangle, st printer.State, mach printer.Machine, deck, ip string) {
+	window(c, r)
+	a.region("Information", r)
+	var top, bottom []string
+	if deck != "" {
+		top = append(top, "PRINTDECK "+deck)
 	}
-	if board.CanFlash("") && st.Firmware != "" {
-		names = append(names, "firmware")
+	if v := shortVersion(mach.KlipperVersion); v != "" {
+		top = append(top, "KLIPPER "+v)
+	}
+	if ip != "" {
+		bottom = append(bottom, ip)
+	}
+	ink := lcdDim
+	switch {
+	case st.Firmware != "" && st.FirmwareOld:
+		bottom = append(bottom, "FIRMWARE: FLASH IT")
+		ink = lcdInk
+	case st.Firmware != "":
+		bottom = append(bottom, "FIRMWARE OK")
+	}
+	in := kit.Inset(r, 16, 6, 16, 6)
+	l := kit.Rows(in, 0, kit.Fr(1), kit.Fr(1))
+	for i, line := range []struct {
+		parts []string
+		face  font.Face
+		ink   color.RGBA
+	}{{top, gfx.Face(true, 18), lcdInk}, {bottom, gfx.Face(true, 16), ink}} {
+		s := strings.Join(line.parts, " · ")
+		if s == "" {
+			s = "—"
+		}
+		c.Text(l[i], gfx.Fit(line.face, s, in.Dx()), line.face, line.ink, gfx.Left)
+	}
+}
+
+// shortVersion is the release of a Klipper version: "v0.13" for "v0.13.0-777-g7bc4d0946". It is
+// the version itself when it has no such form.
+func shortVersion(v string) string {
+	v, _, _ = strings.Cut(v, "-")
+	if parts := strings.Split(v, "."); len(parts) > 2 {
+		v = strings.Join(parts[:2], ".")
+	}
+	return v
+}
+
+// macrosLine is the line of the Macros key: the number of macros.
+func macrosLine(n int) string {
+	if n == 0 {
+		return "No macros"
+	}
+	return fmt.Sprintf("%d %s", n, plural(n, "macro", "macros"))
+}
+
+// wifiLine is the line of the Wi-Fi and help key: the network, or the address.
+func wifiLine(s wifi.Status) string {
+	switch {
+	case s.SSID != "":
+		return s.SSID
+	case s.IP != "":
+		return s.IP
+	}
+	return "Not connected"
+}
+
+// statusKey is a key of the Machine page: the name of a page, and a short line under it in
+// subCol. A tap opens the page. A name that is too long gets a smaller font. A line that is too
+// long goes in more lines when the key is high enough, and else loses its end.
+func (a *App) statusKey(c *gfx.Canvas, r image.Rectangle, title, sub string, subCol color.RGBA, tap func()) {
+	a.drawAck(c, r)
+	pressed := a.isPressed(r)
+	key(c, r, "", raised, text, pressed)
+	in := kit.Inset(r, 16, 8, 16, 8)
+	if pressed {
+		in = in.Add(image.Pt(0, 1))
+	}
+	w := in.Dx()
+	size, subSize := 18, 15
+	if r.Dy() >= 90 {
+		size, subSize = 20, 16
+	}
+	upper := strings.ToUpper(title)
+	for size > 14 && gfx.Width(gfx.Face(true, size), upper) > w {
+		size--
+	}
+	tf, sf := gfx.Face(true, size), gfx.Face(false, subSize)
+	th, sh := tf.Metrics().Height.Ceil()+6, sf.Metrics().Height.Ceil()+2
+	lines := wrapText(sf, sub, w)
+	n := min(2, max(1, (in.Dy()-th)/sh)) // the lines that fit, at most 2
+	if len(lines) > n {
+		lines = append(lines[:n-1], strings.Join(lines[n-1:], " "))
+	}
+	// The block of n lines in the middle of the key, so the names of a row line up.
+	y := in.Min.Y + (in.Dy()-th-n*sh)/2
+	c.Text(image.Rect(in.Min.X, y, in.Max.X, y+th), gfx.Fit(tf, upper, w), tf, text, gfx.Left)
+	for i, l := range lines {
+		ly := y + th + i*sh
+		c.Text(image.Rect(in.Min.X, ly, in.Max.X, ly+sh), gfx.Fit(sf, l, w), sf, subCol, gfx.Left)
+	}
+	acked := func() {
+		a.ackR, a.ackAt = r, a.Now()
+		tap()
+	}
+	a.addHit(kit.Hit{R: r, Tap: acked})
+	a.addFocus(title, r, acked)
+	a.region(title, r)
+}
+
+// askRestart asks which restart to do: Restart Klipper reads printer.cfg again and keeps the
+// firmware; Firmware restart restarts the firmware of the board. Each asks again before it acts.
+func (a *App) askRestart() {
+	pr := a.Printer
+	a.confirm = &confirmBox{question: "Which restart?", choices: []menuItem{
+		{"Restart Klipper", "Reads printer.cfg again", dim, func() {
+			a.confirm = &confirmBox{question: "Restart Klipper?", yes: "Restart", onYes: func() {
+				a.Toast("Restarting Klipper…")
+				a.do(pr.RestartKlipper)
+			}}
+		}},
+		{"Firmware restart", "Restarts the board firmware", red, func() {
+			a.confirm = &confirmBox{question: "Restart the printer firmware?", yes: "Restart", danger: true, onYes: func() {
+				a.Toast("Restarting the firmware…")
+				a.do(pr.FirmwareRestart)
+			}}
+		}},
+	}}
+}
+
+// maintenanceLine is the line of the Maintenance key, and its color: a task that waits in orange
+// (old firmware, results to save), or else the calibrations that the printer has.
+func maintenanceLine(mach printer.Machine, st printer.State) (string, color.RGBA) {
+	switch {
+	case board.CanFlash("") && st.Firmware != "" && st.FirmwareOld:
+		return "Old firmware", orange
+	case st.SaveConfigPending:
+		return "Results to save", orange
+	}
+	var names []string
+	if mach.Has("bed_mesh") || mach.Has("bed_tilt") || mach.Has("screws_tilt_adjust") {
+		names = append(names, "Bed")
+	}
+	if mach.Has("probe") {
+		names = append(names, "Z offset")
+	}
+	if mach.Has("extruder") {
+		names = append(names, "PID")
 	}
 	if len(names) == 0 {
-		return "Nozzle change, save config"
+		return "Nozzle change", dim
 	}
-	if len(names) > 4 {
-		names = append(names[:3], fmt.Sprintf("%d more", len(names)-3))
-	}
-	s := strings.Join(names, ", ")
-	return strings.ToUpper(s[:1]) + s[1:]
+	return strings.Join(names, ", "), dim
 }
 
 // drawMacros lists the macros of the printer. A tap runs one, after a question.

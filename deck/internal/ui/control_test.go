@@ -10,6 +10,7 @@ import (
 
 	"printdeck/internal/gcodemeta"
 	"printdeck/internal/gfx"
+	"printdeck/internal/hostmetrics"
 	"printdeck/internal/printer"
 	"printdeck/internal/touch"
 )
@@ -35,6 +36,7 @@ func (r *recPrinter) Jog(x, y, z float64, s int) error {
 	return r.rec(fmt.Sprintf("jog %.2f %.2f %.2f %d", x, y, z, s))
 }
 func (r *recPrinter) FirmwareRestart() error  { return r.Gcode("FIRMWARE_RESTART") }
+func (r *recPrinter) RestartKlipper() error   { return r.rec("restart klipper") }
 func (r *recPrinter) MotorsOff() error        { return r.rec("motors off") }
 func (r *recPrinter) SpeedFactor(p int) error { return r.rec(fmt.Sprint("speed ", p)) }
 func (r *recPrinter) PrintFile(path string)   { r.rec("print " + path) }
@@ -204,17 +206,55 @@ func TestFilamentSwapSteps(t *testing.T) {
 	}
 }
 
-// The firmware restart is on the Machine page, after a question.
-func TestFirmwareRestartOnMachinePage(t *testing.T) {
+// Restart… on the Machine page offers both restarts. Each asks again before it acts, and the
+// firmware restart has the red key.
+func TestMachineRestart(t *testing.T) {
+	for _, c := range []struct {
+		choice, call string
+		danger       bool
+	}{{"Restart Klipper", "restart klipper", false}, {"Firmware restart", "gcode FIRMWARE_RESTART", true}} {
+		a, pr, cv := newPrintApp(idle)
+		a.pages = []page{pageMachine}
+		tapLabel(t, a, cv, "Restart…")
+		if a.confirm == nil || len(a.confirm.choices) != 2 {
+			t.Fatalf("%s: no choice of the restart", c.choice)
+		}
+		a.Draw(cv)
+		for _, k := range []string{"Restart Klipper", "Firmware restart", "Back"} {
+			if _, ok := a.KeyRect(k); !ok {
+				t.Errorf("%s: no %s in the choice", c.choice, k)
+			}
+		}
+		tapLabel(t, a, cv, c.choice)
+		if a.confirm == nil || a.confirm.choices != nil || a.confirm.danger != c.danger {
+			t.Fatalf("%s: no question, or a question of the wrong kind", c.choice)
+		}
+		if len(pr.Calls()) != 0 {
+			t.Fatalf("%s: a restart before the question: %v", c.choice, pr.Calls())
+		}
+		tapLabel(t, a, cv, "Restart") // the key of the dialog
+		if calls := pr.wait(1); len(calls) != 1 || calls[0] != c.call {
+			t.Errorf("%s: calls %v", c.choice, calls)
+		}
+	}
+}
+
+// Back closes the choice of the restart with no restart. During a print, Restart… is locked.
+func TestMachineRestartBackAndPrint(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.pages = []page{pageMachine}
-	tapLabel(t, a, cv, "Firmware restart")
-	if a.confirm == nil {
-		t.Fatal("no confirmation")
+	tapLabel(t, a, cv, "Restart…")
+	tapLabel(t, a, cv, "Back")
+	if a.confirm != nil || a.topPage() != pageMachine || len(pr.Calls()) != 0 {
+		t.Errorf("after Back: confirm %v, page %v, calls %v", a.confirm != nil, a.topPage(), pr.Calls())
 	}
-	tapLabel(t, a, cv, "Restart") // the key of the dialog
-	if c := pr.wait(1); len(c) != 1 || c[0] != "gcode FIRMWARE_RESTART" {
-		t.Errorf("calls %v", c)
+	st := idle
+	st.Printing = true
+	a, _, cv = newPrintApp(st)
+	a.pages = []page{pageMachine}
+	tapRegion(t, a, cv, "Restart…")
+	if a.confirm != nil {
+		t.Error("a restart choice during a print")
 	}
 }
 
@@ -778,31 +818,65 @@ func TestMachinePrints(t *testing.T) {
 	}
 }
 
-// On a wide screen the rows of Machine do not fit, and the list scrolls with its headings. A row
-// under the list takes no tap. The knob scrolls it into view, and then a tap opens its page.
-func TestMachineGroupsScroll(t *testing.T) {
-	a, _, _ := newPrintApp(idle)
-	a.Wide = true
-	cv := gfx.New(a.Screen().W, a.Screen().H)
-	a.pages = []page{pageMachine}
-	a.Draw(cv)
-	var settings focusItem
-	for _, f := range a.focus {
-		if f.label == lcdText("Settings") {
-			settings = f
+// The information of Machine has the release of Klipper, and the state of the firmware.
+func TestMachineInfo(t *testing.T) {
+	for in, want := range map[string]string{"v0.13.0-777-g7bc4d0946-printdeck-go": "v0.13", "v0.12.0": "v0.12", "v1.2": "v1.2", "": ""} {
+		if got := shortVersion(in); got != want {
+			t.Errorf("shortVersion(%q) = %q, want %q", in, got, want)
 		}
 	}
-	if settings.reveal == nil {
-		t.Fatal("no Settings row")
+	st := idle
+	st.Firmware, st.FirmwareOld = "v0.12.0", true
+	a, pr, _ := newPrintApp(st)
+	pr.Machine_.KlipperVersion = "v0.13.0-777-g7bc4d0946"
+	a.pages = []page{pageMachine}
+	c, rec := gfx.NewRecording(a.Screen().W, a.Screen().H)
+	a.Draw(c)
+	if j := string(rec.JSON()); !strings.Contains(j, "KLIPPER v0.13") || !strings.Contains(j, "FIRMWARE: FLASH IT") {
+		t.Errorf("no Klipper release or no old firmware in the information")
 	}
-	p := settings.r.Min.Add(settings.r.Size().Div(2))
-	tapAt(a, cv, p.X, p.Y)
-	if a.topPage() != pageMachine {
-		t.Fatalf("a tap under the list opened page %v", a.topPage())
-	}
-	settings.reveal()
-	tapLabel(t, a, cv, "Settings")
-	if a.topPage() != pageSettings {
-		t.Fatalf("page %v, want Settings", a.topPage())
+}
+
+// Each key of the Machine page opens its page, on a tall and on a wide screen. The keys fit on
+// the screen with no scroll, and the menu of the printer display has each key.
+func TestMachineKeysOpenPages(t *testing.T) {
+	for _, wide := range []bool{false, true} {
+		a, pr, _ := newPrintApp(idle)
+		pr.History_ = []printer.Record{{File: "cube.gcode", Result: "complete", Filament: 2000, End: time.Unix(20, 0)}}
+		a.Wide = wide
+		a.Setup = &DemoSetup{}
+		a.Updater = &DemoUpdater{}
+		a.Metrics = hostmetrics.Demo(a.Now())
+		cv := gfx.New(a.Screen().W, a.Screen().H)
+		keys := []struct {
+			name string
+			want page
+		}{{"Settings", pageSettings}, {"Prints", pageStats}, {"Maintenance", pageMaintenance}, {"Macros", pageMacros},
+			{"Console", pageConsole}, {"Software update", pageUpdate}, {"System monitor", pageMonitor}}
+		for _, k := range keys {
+			a.pages, a.setup = []page{pageMachine}, nil
+			a.Draw(cv)
+			r, ok := a.KeyRect(k.name)
+			if !ok || !r.In(cv.Bounds()) || r.Dy() < 44 {
+				t.Errorf("wide %v: %s at %v", wide, k.name, r)
+			}
+			tapLabel(t, a, cv, k.name)
+			if a.topPage() != k.want {
+				t.Errorf("wide %v: %s opens page %v, want %v", wide, k.name, a.topPage(), k.want)
+			}
+		}
+		a.pages = []page{pageMachine}
+		tapLabel(t, a, cv, "Wi-Fi and help")
+		if a.setup == nil {
+			t.Errorf("wide %v: Wi-Fi and help opens no help", wide)
+		}
+		a.setup = nil
+		a.pages = []page{pageMachine}
+		a.Draw(cv)
+		for _, f := range a.focus {
+			if f.reveal != nil {
+				t.Errorf("wide %v: %s is in a list that scrolls", wide, f.label)
+			}
+		}
 	}
 }

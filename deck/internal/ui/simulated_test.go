@@ -77,11 +77,11 @@ func TestSimBand(t *testing.T) {
 	}
 }
 
-// The Machine page opens the simulated printers. A tap on a model switches to it after a
+// The Maintenance page opens the simulated printers. A tap on a model switches to it after a
 // question, and Real printer switches back.
 func TestSimulatorSwitch(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
-	a.pages = []page{pageMachine}
+	a.pages = []page{pageMachine, pageMaintenance}
 	tapLabel(t, a, cv, "Simulated printer")
 	if a.topPage() != pageSimulator {
 		t.Fatalf("page %v, want the simulated printers", a.topPage())
