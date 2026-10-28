@@ -120,7 +120,7 @@ var klippyObjects = map[string][]string{
 	"printdeck_sdcard": {"id", "copying", "copied", "size", "done", "error"},
 	// The park for the pictures of the time lapse and of the first layer.
 	"printdeck_timelapse": {"enable", "park", "first_layer", "every", "frame", "taken", "waiting", "first", "lapse",
-		"layer", "stopped"},
+		"layer", "stopped", "park_y"},
 }
 
 // HostVersion is the Klipper version of the host. The firmware of the board must be this version.

@@ -26,6 +26,8 @@ type Settings struct {
 	// First is FirstOff, FirstPicture or FirstPause: the picture of the first layer, with a pause
 	// for a check with FirstPause. The picture of the first layer always has a park.
 	First int
+	// Crop crops the frames to the part of the print, with a calibration of the camera.
+	Crop bool
 }
 
 // The values of Settings.First, as FIRST_LAYER of PRINTDECK_TIMELAPSE.
@@ -36,8 +38,8 @@ const (
 )
 
 // DefaultSettings are the settings with no file: no time lapse, no first layer picture, and the
-// park on for the frames.
-var DefaultSettings = Settings{Park: true}
+// park and the crop on for the frames.
+var DefaultSettings = Settings{Park: true, Crop: true}
 
 // ParseSettings reads the settings from the timelapse file of the deck: lines of key=value.
 func ParseSettings(b []byte) Settings {
@@ -49,6 +51,8 @@ func ParseSettings(b []byte) Settings {
 			s.On = v == "1"
 		case "park":
 			s.Park = v == "1"
+		case "crop":
+			s.Crop = v == "1"
 		case "first":
 			switch v {
 			case "1":
@@ -71,7 +75,7 @@ func (s Settings) Bytes() []byte {
 		}
 		return 0
 	}
-	return []byte(fmt.Sprintf("on=%d\npark=%d\nfirst=%d\n", b(s.On), b(s.Park), s.First))
+	return []byte(fmt.Sprintf("on=%d\npark=%d\nfirst=%d\ncrop=%d\n", b(s.On), b(s.Park), s.First, b(s.Crop)))
 }
 
 // The limits of the frames of one print in memory. At a limit, the recorder keeps every second

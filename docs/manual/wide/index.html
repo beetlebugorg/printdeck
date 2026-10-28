@@ -942,7 +942,7 @@
 
 <section id="timelapse">
   <h2 class="title"><span class="num">12</span>Make a time lapse</h2>
-  <p>The deck camera captures a picture at each layer change. At the end of the print, the deck makes a video.</p><p>For each picture, the printer retracts, lifts the nozzle and moves the head to the left side. The bed stays where it is, under the camera. On the TAZ Workhorse the nozzle goes to Z 10 mm or more, over the bed washers. Each picture adds a few seconds.</p>
+  <p>The deck camera captures a picture at each layer change. At the end of the print, the deck makes a video.</p><p>For each picture, the printer retracts, lifts the nozzle and moves the head to the left side. A bed that moves in Y goes to the middle of the part, so the bed is at the same place in each frame. On the TAZ Workhorse the nozzle goes to Z 10 mm or more, over the bed washers. Each picture adds a few seconds.</p>
   <ol class="steps"><li>Aim the camera: Settings, then Camera.</li><li>Open Settings, then Time lapse.</li><li>Tap Time lapse to turn it on.</li><li>With two cameras, open Settings, then Cameras. Tap a camera, and check Time lapse or Pictures.</li><li>Tap First layer for a picture of the first layer, or a picture and a pause. At a pause, check the layer, then tap Resume.</li><li>Print. After the first layer, the deck shows its picture.</li><li>At the end of the print, tap Time lapse on the done screen. The video plays.</li><li>To see it later, open Machine, then Statistics, then History. Tap the print, then Play.</li><li>To download the video, open http://printdeck.local/system in a browser. The Time lapse part has the video. Click its name.</li></ol>
   
   <figure>
@@ -1019,7 +1019,7 @@
   </figure>
   
   
-  <p>Cura, PrusaSlicer and OrcaSlicer write the layer comments that the time lapse needs.</p><p>Park for the frames is on by default. Off keeps the toolhead in the pictures, with no stops.</p><p>The video is a .mov file. The deck keeps the last 3 videos. A backup excludes the videos.</p>
+  <p>Cura, PrusaSlicer and OrcaSlicer write the layer comments that the time lapse needs.</p><p>Park for the frames is on by default. Off keeps the toolhead in the pictures, with no stops.</p><p>Crop to the part is on by default. With a calibration of the camera (Settings, Camera, Calibrate), each frame shows the part and the space around it. With no calibration, the frames show the whole picture.</p><p>The video is a .mov file. The deck keeps the last 3 videos. A backup excludes the videos.</p>
 </section>
 
 <section id="phone">

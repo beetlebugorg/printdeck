@@ -1005,7 +1005,7 @@ func manualSections() []section {
 		{Chapter: prints, ID: "timelapse", Title: "Make a time lapse",
 			Intro: []string{
 				"The deck camera captures a picture at each layer change. At the end of the print, the deck makes a video.",
-				"For each picture, the printer retracts, lifts the nozzle and moves the head to the left side. The bed stays where it is, under the camera. On the TAZ Workhorse the nozzle goes to Z 10 mm or more, over the bed washers. Each picture adds a few seconds.",
+				"For each picture, the printer retracts, lifts the nozzle and moves the head to the left side. A bed that moves in Y goes to the middle of the part, so the bed is at the same place in each frame. On the TAZ Workhorse the nozzle goes to Z 10 mm or more, over the bed washers. Each picture adds a few seconds.",
 			},
 			Steps: []string{
 				"Aim the camera: Settings, then Camera.",
@@ -1022,6 +1022,7 @@ func manualSections() []section {
 			After: []string{
 				"Cura, PrusaSlicer and OrcaSlicer write the layer comments that the time lapse needs.",
 				"Park for the frames is on by default. Off keeps the toolhead in the pictures, with no stops.",
+				"Crop to the part is on by default. With a calibration of the camera (Settings, Camera, Calibrate), each frame shows the part and the space around it. With no calibration, the frames show the whole picture.",
 				"The video is a .mov file. The deck keeps the last 3 videos. A backup excludes the videos.",
 			}},
 

@@ -2,6 +2,7 @@ package printer
 
 import (
 	"fmt"
+	"math"
 
 	"printdeck/internal/timelapse"
 )
@@ -25,7 +26,7 @@ func (k *Klippy) TimelapseStatus() (timelapse.HostStatus, bool) {
 	i := func(key string) int { return int(num(s[key])) }
 	return timelapse.HostStatus{Present: true, Enable: b("enable"), Park: b("park"), First: i("first_layer"),
 		Every: i("every"), Frame: i("frame"), Taken: i("taken"), Waiting: b("waiting"), IsFirst: b("first"),
-		IsLapse: b("lapse"), Layer: i("layer"), Stopped: b("stopped")}, true
+		IsLapse: b("lapse"), Layer: i("layer"), Stopped: b("stopped"), ParkY: num(s["park_y"]), HasParkY: s["park_y"] != nil}, true
 }
 
 // TimelapseTaken sends the number n to the module: the picture of frame n is ready, and the print
@@ -34,13 +35,18 @@ func (k *Klippy) TimelapseTaken(n int) error {
 	return k.call("printdeck/timelapse/taken", map[string]any{"frame": n})
 }
 
-// SetTimelapse sends the settings of the time lapse to the module.
-func (k *Klippy) SetTimelapse(enable, park bool, first, every int) error {
+// SetTimelapse sends the settings of the time lapse to the module. parkY is the Y of the park of
+// the print, or NaN for none.
+func (k *Klippy) SetTimelapse(enable, park bool, first, every int, parkY float64) error {
 	b := func(v bool) int {
 		if v {
 			return 1
 		}
 		return 0
 	}
-	return k.script(fmt.Sprintf("PRINTDECK_TIMELAPSE ENABLE=%d PARK=%d FIRST_LAYER=%d EVERY=%d", b(enable), b(park), first, every))
+	y := "NONE"
+	if !math.IsNaN(parkY) {
+		y = fmt.Sprintf("%.2f", parkY)
+	}
+	return k.script(fmt.Sprintf("PRINTDECK_TIMELAPSE ENABLE=%d PARK=%d FIRST_LAYER=%d EVERY=%d PARK_Y=%s", b(enable), b(park), first, every, y))
 }
