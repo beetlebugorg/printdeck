@@ -671,7 +671,7 @@ func (a *App) drawCameraEdit(c *gfx.Canvas) {
 	}
 	var uses []menuGroup
 	if len(list) > 1 {
-		g := menuGroup{heading: "Use for", note: "Each use is on one camera. Check a use to move it to this camera."}
+		g := menuGroup{heading: "Use for", note: "A use is on one camera. A check moves it here."}
 		switch {
 		case !in.Found:
 			g.note = "Connect the camera to use it."
