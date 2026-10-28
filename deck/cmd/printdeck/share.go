@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"image/jpeg"
 	"log"
 	"math"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"printdeck/internal/cloud"
+	"printdeck/internal/lcd"
 	"printdeck/internal/printer"
 	"printdeck/internal/timelapse"
 	"printdeck/internal/ui"
@@ -26,6 +28,7 @@ type shareLink struct {
 	sharer *cloud.Sharer
 	pr     printerBackend
 	lapse  *timelapse.Runner // or nil
+	app    *ui.App           // for the picture of the display
 	name   string            // the name of the printer on the page: the host name
 
 	mu      sync.Mutex
@@ -50,7 +53,7 @@ func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend) *shareLink {
 	if strings.EqualFold(name, "printdeck") {
 		name = "a Printdeck"
 	}
-	l := &shareLink{link: link, pr: pr, name: name}
+	l := &shareLink{link: link, pr: pr, name: name, app: app}
 	if r, ok := app.TimeLapse.(*timelapse.Runner); ok {
 		l.lapse = r
 	}
@@ -142,6 +145,15 @@ func (l *shareLink) status() cloud.ShareStatus {
 		TimeLeft: -1, ReadyLeft: -1, Started: l.started.UTC()}
 	if st.HasZ {
 		s.Height = st.Z
+	}
+	// The display of the deck, as the touch screen shows it.
+	if l.app != nil {
+		bits := (&lcd.Screen{Status: l.app.StatusScreen()}).Bits(0)
+		var raw [1024]byte
+		for y := range bits {
+			copy(raw[y*16:], bits[y][:])
+		}
+		s.LCD = base64.StdEncoding.EncodeToString(raw[:])
 	}
 	if st.Busy() {
 		l.clockLayers(st)

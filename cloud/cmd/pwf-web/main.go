@@ -6,6 +6,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -390,6 +391,9 @@ func (s *share) render(st wire.ShareStatus) {
 		}
 		setText("modelTag", tag)
 	}
+	if st.LCD != "" {
+		drawLCD(st.LCD)
+	}
 	s.renderPrinter(st, ended)
 
 	// The readout.
@@ -613,6 +617,40 @@ func mmss(sec float64) string {
 		return fmt.Sprintf("%d:%02d:%02d", t/3600, t/60%60, t%60)
 	}
 	return fmt.Sprintf("%d:%02d", t/60, t%60)
+}
+
+// drawLCD draws the display of the deck: 128 x 64 dots in the colors of the deck, each dot a
+// square with a gap, as on the touch screen.
+func drawLCD(b64 string) {
+	raw, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil || len(raw) != 1024 {
+		return
+	}
+	setHidden("glcdBox", false)
+	cv := byID("glcd")
+	const scale = 6
+	cv.Set("width", 128*scale)
+	cv.Set("height", 64*scale)
+	ctx := cv.Call("getContext", "2d")
+	css := js.Global().Call("getComputedStyle", doc.Get("documentElement"))
+	col := func(name string) string { return strings.TrimSpace(css.Call("getPropertyValue", name).String()) }
+	ground, off, on := col("--glcd"), col("--glcd-cell"), col("--glcd-ink")
+	ctx.Set("fillStyle", ground)
+	ctx.Call("fillRect", 0, 0, 128*scale, 64*scale)
+	for _, pass := range []struct {
+		lit bool
+		c   string
+	}{{false, off}, {true, on}} {
+		ctx.Set("fillStyle", pass.c)
+		for y := range 64 {
+			for x := range 128 {
+				lit := raw[y*16+x/8]&(0x80>>(x%8)) != 0
+				if lit == pass.lit {
+					ctx.Call("fillRect", x*scale, y*scale, scale-1, scale-1)
+				}
+			}
+		}
+	}
 }
 
 // grams is a weight of filament: one decimal under 10 g.

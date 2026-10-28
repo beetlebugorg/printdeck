@@ -60,6 +60,9 @@ type ShareStatus struct {
 	LayerStarted time.Time `json:"layer_started,omitzero"`
 	LayerTimes   []float64 `json:"layer_times,omitempty"`
 	Plan         int       `json:"plan,omitempty"`
+	// LCD is the picture of the display of the deck: 128 x 64 dots, 16 bytes for each row from the
+	// top, the left dot in the high bit, in standard base64.
+	LCD string `json:"lcd,omitempty"`
 	// Model goes up at each new model.jpg: the picture of the model, with the part that is
 	// printed in color.
 	Model int `json:"model,omitempty"`
