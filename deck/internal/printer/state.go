@@ -169,6 +169,10 @@ type Machine struct {
 	// Kinematics is kinematics of the [printer] section, for example "cartesian" or "corexy";
 	// "" is not known.
 	Kinematics string
+	// ZHomesMax is true when the Z endstop is at the top of the travel (position_endstop of
+	// stepper_z at position_max), as on a TAZ: a homing of Z then moves the nozzle up, away from
+	// the bed.
+	ZHomesMax bool
 	// The park_x and park_y options of [printdeck_timelapse], with HasParkX and HasParkY.
 	ParkX, ParkY       float64
 	HasParkX, HasParkY bool

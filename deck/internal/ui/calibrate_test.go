@@ -271,7 +271,7 @@ func lowCamera(p [3]float64) (float64, float64) {
 
 // tazMachine is a TAZ Workhorse: cartesian, with the bed on Y.
 var tazMachine = printer.Machine{Kinematics: "cartesian", NozzleDiameter: 0.5, FilamentDiameter: 2.85,
-	MinX: -50, MaxX: 293, MinY: -17, MaxY: 308, Macros: []string{"PRINT_START", "PRINT_END"}}
+	MinX: -50, MaxX: 293, MinY: -17, MaxY: 308, Macros: []string{"PRINT_START", "PRINT_END"}, ZHomesMax: true}
 
 // startTowers opens the calibration with a print, prints the towers, and ends the print, so the
 // page shows Go on.
@@ -340,7 +340,7 @@ func TestCameraCalibrateTowers(t *testing.T) {
 	tapLabel(t, a, cv, "Go on")
 	calibPosts(t, a)
 	c := pr.Calls()
-	if len(c) <= n+1 || c[n] != "gcode G28 X Y; G90; G1 X-45.00 Y146.50 F3000; M400" || c[n+1] != "gcode G1 Z289.00 F1200; M400" {
+	if len(c) <= n+1 || c[n] != "gcode G28; G90; G1 X-45.00 Y146.50 F3000; M400" || c[n+1] != "gcode G1 Z289.00 F1200; M400" {
 		t.Fatalf("moves %v", c[n:])
 	}
 	fl := a.calib
@@ -450,7 +450,7 @@ func TestCameraCalibrateTowersFails(t *testing.T) {
 	pr.State_.Homed = "xyz"
 	tapLabel(t, a, cv, "Go on")
 	calibPosts(t, a)
-	if c := pr.Calls(); !strings.Contains(c[len(c)-2], "G28 X Y") || c[len(c)-1] != "gcode G1 Z289.00 F1200; M400" {
+	if c := pr.Calls(); !strings.HasPrefix(c[len(c)-2], "gcode G28; ") || c[len(c)-1] != "gcode G1 Z289.00 F1200; M400" {
 		t.Errorf("moves %v", c[len(c)-2:])
 	}
 	for a.calib.phase == calibTap {
@@ -483,7 +483,7 @@ func TestCameraCalibrateTowersFails(t *testing.T) {
 	}
 
 	// A printer with the bed on Z: the setting is off, and the marks have one place of the bed.
-	pr.Machine_.Kinematics = "corexy"
+	pr.Machine_.Kinematics, pr.Machine_.ZHomesMax = "corexy", false
 	a.Wide = false
 	cv = gfx.New(W, BaseH)
 	startTowersNoBed := func() {
@@ -498,5 +498,8 @@ func TestCameraCalibrateTowersFails(t *testing.T) {
 	calibPosts(t, a)
 	if len(a.calib.points) != 10 {
 		t.Errorf("corexy: %d marks", len(a.calib.points))
+	}
+	if c := pr.Calls(); !strings.HasPrefix(c[len(c)-2], "gcode G28 X Y; ") {
+		t.Errorf("a probe on Z: moves %v", c[len(c)-2:])
 	}
 }

@@ -275,21 +275,32 @@ func (a *App) startMarks(fl *calibFlow) {
 }
 
 // calibBed moves the toolhead out of the view and the bed to the place bed, and then shows the
-// picture. Before the first place, the printer homes X and Y: the end of a print can turn the
-// motors off, and the state of the deck can be a moment late. The towers G-code ends with the
-// nozzle 30 mm over the towers, so the homing is clear of them. Then the toolhead goes to the top.
-// Klipper refuses that move when Z is not homed, and the toolhead then stays at its height.
+// picture. Before the first place, the printer homes: the end of a print can turn the motors off,
+// and the state of the deck can be a moment late. With bed tilt or a bed mesh, a move in X and Y
+// also moves Z, so Z must be homed too. A printer with the Z endstop at the top (a TAZ) homes all
+// the axes: the nozzle goes up, away from the towers. Another printer homes X and Y only, because
+// a probe at the middle of the bed can hit the middle tower. The towers G-code ends with the
+// nozzle 30 mm over the towers, so the homing of X and Y is clear of them. Then the toolhead goes
+// to the top. Klipper refuses that move when Z is not homed, and the toolhead stays at its height.
 func (a *App) calibBed(fl *calibFlow, bed int) {
 	fl.phase, fl.frame, fl.zoom, fl.tapped = calibMoving, nil, nil, false
 	y := fl.beds[bed]
+	zMax := a.Printer.Machine().ZHomesMax
 	go func() {
 		var lines []string
-		if bed == 0 {
+		switch {
+		case bed == 0 && zMax:
+			lines = append(lines, "G28")
+		case bed == 0:
 			lines = append(lines, "G28 X Y")
 		}
 		lines = append(lines, "G90", fmt.Sprintf("G1 X%.2f Y%.2f F3000", fl.parkX, y), "M400")
 		if err := a.Printer.Gcode(lines...); err != nil {
-			a.post(func() { a.calibFail(fl, "The bed did not move: "+err.Error()) })
+			msg := "The bed did not move: " + err.Error()
+			if !zMax {
+				msg += " Home Z with the nozzle clear of the towers, then tap Again."
+			}
+			a.post(func() { a.calibFail(fl, msg) })
 			return
 		}
 		if bed == 0 {
@@ -555,7 +566,7 @@ func (a *App) calibLines(fl *calibFlow) []string {
 	case calibPrinting:
 		return []string{"Printing the towers", "Leave them on the bed. This page opens again after the print."}
 	case calibPrinted:
-		return []string{"The towers are printed", "Leave them on the bed. The printer homes X and Y. The toolhead moves to the left side at the top, and the bed moves."}
+		return []string{"The towers are printed", "Leave them on the bed. The printer homes. The toolhead moves to the left side at the top, and the bed moves."}
 	case calibRemove:
 		return []string{"Remove the towers", "Take the 5 towers off the bed."}
 	case calibMoving:
