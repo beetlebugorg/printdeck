@@ -29,6 +29,9 @@ The plugin uses the address and the API key of the OctoPrint connection. It need
 - During a print, the Preview shows the layer that prints. Play moves the nozzle of the Preview
   with the printer.
 - Before the Printdeck prints a file for another material, it asks on the touch screen.
+- The deck shows the name of the print, for example "Hex planter" in place of
+  "TAZWH_hex_planter_v3.gcode": the job name without the printer prefix, or the name of the one
+  model on the build plate.
 
 ## Colors
 

@@ -201,5 +201,34 @@ class TestRollMaterial(unittest.TestCase):
         self.assertEqual(logic.deck_time_line(6240, 6060), "Printdeck time: 1h 44m (Cura 1h 41m)")
         self.assertEqual(logic.deck_time_line(6240, 0), "Printdeck time: 1h 44m")
 
+    def test_clean_name(self):
+        for name, abbr, want in [
+            ("TAZWH_hex_planter_v3", "", "Hex planter"),
+            ("TAZWH_hex_planter_v3", "TAZWH", "Hex planter"),
+            ("LTAZWSE05MM_tower-esun-pla-orange", "LTAZWSE05MM", "Tower esun pla orange"),
+            ("CE3E3V2_part.gcode", "", "Part"),
+            ("UMS3_bracket (1)", "", "Bracket"),
+            ("hex_planter.stl", "", "Hex planter"),
+            ("Wall Bracket.3MF", "", "Wall Bracket"),
+            ("PETG_bracket", "", "PETG bracket"),
+            ("spacer_10-20mm", "", "Spacer 10-20mm"),
+            ("Lw_box", "Lw", "Box"),
+            ("MK3S_", "MK3S", "MK3S"),
+            ("_", "", "_"),
+            ("", "", ""),
+        ]:
+            self.assertEqual(logic.clean_name(name, abbr), want, name)
+
+    def test_title_line(self):
+        self.assertEqual(logic.title_line("LTAZW_hex_planter_v3", "hex_planter_v3", "LTAZW"), ";Printdeck title: Hex planter\n")
+        # One model: its name. More models: the job name.
+        self.assertEqual(logic.title_line("LTAZW_plate", "plate", "LTAZW", ["Lid.stl"]), ";Printdeck title: Lid\n")
+        self.assertEqual(logic.title_line("LTAZW_plate", "plate", "LTAZW", ["Lid.stl", "Box.stl"]), ";Printdeck title: Plate\n")
+        # A job name that the user typed wins over the model.
+        self.assertEqual(logic.title_line("Gift box", "Gift box", "LTAZW", ["Lid.stl"], True), ";Printdeck title: Gift box\n")
+        self.assertEqual(logic.title_line("LTAZW_x", "", "LTAZW"), ";Printdeck title: X\n")
+        self.assertEqual(logic.title_line("a\nb", ""), ";Printdeck title: A b\n")
+        self.assertEqual(logic.title_line("", ""), "")
+
 if __name__ == "__main__":
     unittest.main()
