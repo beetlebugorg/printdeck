@@ -49,9 +49,6 @@ public:
     QString view() const;
     QString error() const { return m_error; }
     QString host() const { return m_remote ? m_base.host() : QStringLiteral("this computer"); }
-    // setTouchLayout asks the deck for the screens of its touch screen (the simulator), in place
-    // of the screens of a browser. It counts for the next connection.
-    void setTouchLayout(bool on) { m_touch = on; }
     int screenWidth() const { return m_screen.width(); }
     int screenHeight() const { return m_screen.height(); }
     QString frame() const { return m_frame; }
@@ -94,7 +91,6 @@ private:
     QUrl m_base;
     QByteArray m_token;
     bool m_remote = false;  // connectTo: a deck on the network
-    bool m_touch = false;   // setTouchLayout: the screens of the touch screen
     bool m_pairing = false; // the deck asks its user for a key
 
     QNetworkAccessManager m_net;

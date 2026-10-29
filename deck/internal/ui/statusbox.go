@@ -12,8 +12,7 @@ import (
 
 // The status panel of the touch screen, in the place of the printer display: a row of three small
 // readouts (the nozzle, the bed and the fan) and three lines of text over the progress bar. It is
-// lower than the display, so the screens under it get more space. The browsers and the apps show
-// the printer display (App.Remote).
+// lower than the printer display, so the screens under it get more space.
 
 // The heights of the status panel on a tall and on a wide screen, in the place of the display.
 const (

@@ -124,10 +124,9 @@ func newRemote(app *ui.App, api *octoapi.Server, password func() string, key fun
 // uiSession returns the function that starts a session of the UI for one browser: an App on the
 // same printer, with the screen shape of the browser, that records its frames. A frame that is the
 // same as the last one is not sent.
-func uiSession(app *ui.App) func(ctx context.Context, size image.Point, deck bool, frame func([]byte)) (image.Point, remote.Input) {
-	return func(ctx context.Context, size image.Point, deck bool, frame func([]byte)) (image.Point, remote.Input) {
+func uiSession(app *ui.App) func(ctx context.Context, size image.Point, frame func([]byte)) (image.Point, remote.Input) {
+	return func(ctx context.Context, size image.Point, frame func([]byte)) (image.Point, remote.Input) {
 		s := app.Session(size.X, size.Y)
-		s.Remote = !deck
 		s.Record = true
 		events := make(chan touch.Event, 64)
 		var last []byte

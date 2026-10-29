@@ -9,26 +9,21 @@ import (
 	"printdeck/internal/printer"
 )
 
-// The touch screen shows the status panel, and a browser session shows the printer display.
-func TestStatusPanelOrDisplay(t *testing.T) {
+// The touch screen and a browser session both show the status panel.
+func TestStatusPanelOnEachScreen(t *testing.T) {
 	for _, wide := range []bool{false, true} {
 		a, _, _ := newPrintApp(idle)
 		a.Wide = wide
-		cv, rec := gfx.NewRecording(a.Screen().W, a.Screen().H)
-		a.Draw(cv)
-		f := string(rec.JSON())
-		if !strings.Contains(f, `"NOZZLE"`) || !strings.Contains(f, `"Ready"`) {
-			t.Errorf("wide %v: no status panel on the touch screen", wide)
-		}
 		w, h := 480, 800
 		if wide {
 			w, h = 800, 480
 		}
-		s := a.Session(w, h)
-		cv, rec = gfx.NewRecording(s.Screen().W, s.Screen().H)
-		s.Draw(cv)
-		if f := string(rec.JSON()); strings.Contains(f, `"NOZZLE"`) || !strings.Contains(f, `["i",`) {
-			t.Errorf("wide %v: the browser has no printer display", wide)
+		for _, s := range []*App{a, a.Session(w, h)} {
+			cv, rec := gfx.NewRecording(s.Screen().W, s.Screen().H)
+			s.Draw(cv)
+			if f := string(rec.JSON()); !strings.Contains(f, `"NOZZLE"`) || !strings.Contains(f, `"Ready"`) {
+				t.Errorf("wide %v: no status panel", wide)
+			}
 		}
 	}
 }

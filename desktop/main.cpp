@@ -65,8 +65,6 @@ int main(int argc, char *argv[])
     // With -sim, a second window shows the simulated printer in 3D (Sim3D.qml), and the deck
     // window gives it the picture of the deck UI (simOn, sim.screen).
     const bool simOn = args.contains(QStringLiteral("-sim"));
-    // The simulated deck shows the screens of the touch screen of a deck.
-    deck.setTouchLayout(simOn);
     engine.rootContext()->setContextProperty(QStringLiteral("sim"), &sim);
     engine.rootContext()->setContextProperty(QStringLiteral("simOn"), simOn);
     // PRINTDECK_FILM=OUT.mp4 (with -sim): the 3D window shows the film of desktop/film/, and

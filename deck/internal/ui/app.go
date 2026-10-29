@@ -311,9 +311,6 @@ type App struct {
 	// Settings page changes it, and OnTextSize is told, to save it.
 	TextSize   string
 	OnTextSize func(string)
-	// Remote reports the App of a browser or an app (Session): it shows the printer display. The
-	// touch screen shows the status panel in its place (statusbox.go).
-	Remote bool
 }
 
 type confirmBox struct {
@@ -353,7 +350,6 @@ func (a *App) Session(width, height int) *App {
 	s.TimeLapse = a.TimeLapse
 	s.Cloud = a.Cloud
 	s.Share = a.Share
-	s.Remote = true
 	s.hub = a.hub
 	return s
 }

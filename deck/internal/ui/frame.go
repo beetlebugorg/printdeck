@@ -27,11 +27,10 @@ type frame struct {
 }
 
 const (
-	margin   = 24 // tall: the space between the content and the edges of the screen
-	headH    = 66 // tall: the top of the content of a page, under the title and Back
-	lcdTop   = 20 // tall: the top of the display
-	lcdBelow = 232
-	keyH     = 46 // the height of the head of a page: the height of Back
+	margin = 24 // tall: the space between the content and the edges of the screen
+	headH  = 66 // tall: the top of the content of a page, under the title and Back
+	lcdTop = 20 // tall: the top of the display
+	keyH   = 46 // the height of the head of a page: the height of Back
 )
 
 // The grid of a wide screen: a margin of gridM at the edges, and gridM between the zones. The left
@@ -58,25 +57,19 @@ func wideZones(scale int) (left, right image.Rectangle) {
 	return left, right
 }
 
-// displayIn is the picture of the display at the top of the left column, in the middle, and the
-// space under its bezel. The touch screen has the status panel in its place, with the same width.
+// displayIn is the status panel at the top of the left column, in the middle, and the space under
+// its bezel. It is as wide as the printer display at scale.
 func (a *App) displayIn(left image.Rectangle, scale int) (lcd, under image.Rectangle) {
-	w, h := 128*scale, 64*scale
-	if !a.Remote {
-		h = panelWideH
-	}
+	w, h := 128*scale, panelWideH
 	x := left.Min.X + (left.Dx()-w)/2
 	lcd = image.Rect(x, left.Min.Y+8, x+w, left.Min.Y+8+h)
 	return lcd, image.Rect(left.Min.X, lcd.Max.Y+8+gridM, left.Max.X, left.Max.Y)
 }
 
-// lcdRect is the display of the printer in a pane of a tall screen: at the top, in the middle. The
-// touch screen has the status panel in its place, with the same width.
+// lcdRect is the status panel in a pane of a tall screen: at the top, in the middle, as wide as
+// the printer display at lcdScale.
 func (a *App) lcdRect(pane image.Rectangle) image.Rectangle {
-	w, h := 128*lcdScale, 64*lcdScale
-	if !a.Remote {
-		h = panelTallH
-	}
+	w, h := 128*lcdScale, panelTallH
 	x := pane.Min.X + (pane.Dx()-w)/2
 	return image.Rect(x, pane.Min.Y+lcdTop, x+w, pane.Min.Y+lcdTop+h)
 }
@@ -115,11 +108,7 @@ func (a *App) stateFrame() frame {
 		lcd, under := a.displayIn(left, wideScale)
 		return frame{wide: true, lcd: lcd, side: under, main: right}
 	}
-	below := lcdBelow
-	if !a.Remote {
-		below = lcdTop + panelTallH + 12
-	}
-	top, main := scr.Split(below)
+	top, main := scr.Split(lcdTop + panelTallH + 12)
 	return frame{lcd: a.lcdRect(top), main: main}
 }
 
