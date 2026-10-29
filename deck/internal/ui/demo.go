@@ -105,6 +105,17 @@ func (d *DemoPrinter) SetNote(r printer.Record, note string) bool {
 	}
 	return false
 }
+
+// SetProject sets the project of the record of the demo history with the path and the end of r.
+func (d *DemoPrinter) SetProject(r printer.Record, project string) bool {
+	for i := range d.History_ {
+		if d.History_[i].Path == r.Path && d.History_[i].End.Equal(r.End) {
+			d.History_[i].Project = project
+			return true
+		}
+	}
+	return false
+}
 func (d *DemoPrinter) RestartKlipper() error                        { return nil }
 func (d *DemoPrinter) FlashBoard(string, board.FlashProgress) error { return nil }
 func (d *DemoPrinter) RunAction(string, ...string) error            { return nil }

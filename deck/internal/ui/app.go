@@ -98,6 +98,8 @@ type Printer interface {
 	History() []printer.Record
 	// SetNote sets the note of a finished print, and reports that the history has the print.
 	SetNote(r printer.Record, note string) bool
+	// SetProject sets the project of a finished print, and reports that the history has the print.
+	SetProject(r printer.Record, project string) bool
 	// RecordPicture is the picture of a finished print. loading is true while it is drawn.
 	RecordPicture(r printer.Record) (img image.Image, loading bool)
 	// FilePicture is a picture of the G-code of a file with no thumbnail, in the color hex of its
@@ -143,49 +145,52 @@ type App struct {
 
 	Now func() time.Time // replaced in tests
 
-	pages         []page         // the pages over the state screen, the top last
-	file          printer.File   // the file of the file page
-	record        printer.Record // the print of the record page
-	player        *lapsePlayer   // the time lapse video of the player page, or nil
-	still         lapseStill     // the still of the last video of the record page or the done page
-	spoolID       string         // the roll of the roll page
-	spoolScroll   int            // the scroll position of the Rolls page
-	printsScroll  int            // the scroll position of the prints of a roll
-	picker        *curaPicker    // the list of the materials of Cura, over everything
-	colors        *colorPicker   // the palette of the color of a roll, over everything
-	form          *rollForm      // the form of a new roll, over everything
-	fileList      fileList       // the scroll position of the Files page
-	sd            sdView         // the SD card of the printer, on the Files page
-	macroScroll   int            // the scroll position of the Macros page
-	menuScroll    map[page]*int  // the scroll positions of the menu pages with more rows than fit
-	consoleScroll int            // how far the Console page shows above its newest line
-	consoleKB     *keyboard      // the keyboard of the Console page, while it is open
-	consoleLast   string         // the last typed command, for the next one
-	configScroll  int            // the scroll position of the printer list of the setup
-	configAll     bool           // the printer list shows all printers, not only those for the board
-	configBoard   board.Info     // the board that the printer list is for
-	flash         *flashState    // the flash of the firmware, while it runs and until OK
-	created       time.Time      // the start of this App: older action results do not show
-	actionSeen    time.Time      // the end of the last action result that this screen showed
-	historyScroll int            // the scroll position of the history
-	doneSeen      string         // the done screen of this print was closed (its history key)
-	away          bool           // Menu on the screen of the print awayFile showed the other screens (away.go)
-	awayFile      string
-	touchAt       time.Time       // the last touch
-	followed      bool            // followPrint saw a frame
-	hub           *hub            // shared with the sessions of this App (hub.go)
-	ackR          image.Rectangle // the key that the finger tapped last, and when (drawAck)
-	ackAt         time.Time
-	bar           bool            // the frame has the print bar
-	wasBusy       bool            // the printer printed at the last frame
-	wasPaused     bool            // the print was paused at the last frame
-	setupProbed   bool            // the printer setup started a probe of the USB ports
-	confirm       *confirmBox     // modal question
-	in            kit.Input       // the touch areas of the frame, and the finger on them
-	names         []focusItem     // the keys and the named parts of the frame, for the manual (KeyRect)
-	joyArea       image.Rectangle // the joystick pad of the last frame of the Move page
-	wake          chan struct{}
-	posted        chan func() // changes from other goroutines, run by the UI loop
+	pages          []page         // the pages over the state screen, the top last
+	file           printer.File   // the file of the file page
+	record         printer.Record // the print of the record page
+	player         *lapsePlayer   // the time lapse video of the player page, or nil
+	still          lapseStill     // the still of the last video of the record page or the done page
+	spoolID        string         // the roll of the roll page
+	spoolScroll    int            // the scroll position of the Rolls page
+	printsScroll   int            // the scroll position of the prints of a roll
+	picker         *curaPicker    // the list of the materials of Cura, over everything
+	colors         *colorPicker   // the palette of the color of a roll, over everything
+	form           *rollForm      // the form of a new roll, over everything
+	fileList       fileList       // the scroll position of the Files page
+	sd             sdView         // the SD card of the printer, on the Files page
+	macroScroll    int            // the scroll position of the Macros page
+	menuScroll     map[page]*int  // the scroll positions of the menu pages with more rows than fit
+	consoleScroll  int            // how far the Console page shows above its newest line
+	consoleKB      *keyboard      // the keyboard of the Console page, while it is open
+	consoleLast    string         // the last typed command, for the next one
+	configScroll   int            // the scroll position of the printer list of the setup
+	configAll      bool           // the printer list shows all printers, not only those for the board
+	configBoard    board.Info     // the board that the printer list is for
+	flash          *flashState    // the flash of the firmware, while it runs and until OK
+	created        time.Time      // the start of this App: older action results do not show
+	actionSeen     time.Time      // the end of the last action result that this screen showed
+	historyScroll  int            // the scroll position of the history
+	project        string         // the project of the page of one project
+	projectsScroll int            // the scroll position of the list of the projects
+	projectScroll  int            // the scroll position of the prints of one project
+	doneSeen       string         // the done screen of this print was closed (its history key)
+	away           bool           // Menu on the screen of the print awayFile showed the other screens (away.go)
+	awayFile       string
+	touchAt        time.Time       // the last touch
+	followed       bool            // followPrint saw a frame
+	hub            *hub            // shared with the sessions of this App (hub.go)
+	ackR           image.Rectangle // the key that the finger tapped last, and when (drawAck)
+	ackAt          time.Time
+	bar            bool            // the frame has the print bar
+	wasBusy        bool            // the printer printed at the last frame
+	wasPaused      bool            // the print was paused at the last frame
+	setupProbed    bool            // the printer setup started a probe of the USB ports
+	confirm        *confirmBox     // modal question
+	in             kit.Input       // the touch areas of the frame, and the finger on them
+	names          []focusItem     // the keys and the named parts of the frame, for the manual (KeyRect)
+	joyArea        image.Rectangle // the joystick pad of the last frame of the Move page
+	wake           chan struct{}
+	posted         chan func() // changes from other goroutines, run by the UI loop
 
 	tune   bool       // the tune sheet of a running print is open
 	swap   *swapState // the filament swap is open

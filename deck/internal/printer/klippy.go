@@ -352,6 +352,11 @@ func (k *Klippy) SetNote(r Record, note string) bool {
 	return k.Hist != nil && k.Hist.SetNote(r.Path, r.End, note)
 }
 
+// SetProject sets the project of the finished print r. It reports that the history has the print.
+func (k *Klippy) SetProject(r Record, project string) bool {
+	return k.Hist != nil && k.Hist.SetProject(r.Path, r.End, project)
+}
+
 // Machine returns the version, the modules and the macros of the connected Klipper.
 // Rates returns the timings of this printer, from its history.
 func (k *Klippy) Rates() Rates {

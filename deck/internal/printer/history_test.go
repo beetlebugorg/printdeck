@@ -2,6 +2,7 @@ package printer
 
 import (
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -135,5 +136,27 @@ func TestHistoryNote(t *testing.T) {
 	h.SetNote("pod.gcode", now, "")
 	if r := (&History{Path: path}).Records(); r[0].Note != "" {
 		t.Errorf("removed note: %q", r[0].Note)
+	}
+}
+
+// The projects of the history: the totals of each project, the project with the newest print
+// first, and the prints of one project.
+func TestProjects(t *testing.T) {
+	recs := []Record{
+		{File: "a", Project: "Pots", Duration: time.Hour, Filament: 100, End: time.Unix(100, 0)},
+		{File: "b", Project: "Hooks", Duration: time.Hour, Filament: 50, End: time.Unix(300, 0)},
+		{File: "c"},
+		{File: "d", Project: "Pots", Duration: 2 * time.Hour, Filament: 200, End: time.Unix(200, 0)},
+	}
+	got := Projects(recs)
+	want := []Project{
+		{Name: "Hooks", Prints: 1, Time: time.Hour, Filament: 50, Last: time.Unix(300, 0)},
+		{Name: "Pots", Prints: 2, Time: 3 * time.Hour, Filament: 300, Last: time.Unix(200, 0)},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("projects %+v, want %+v", got, want)
+	}
+	if of := OfProject(recs, "Pots"); len(of) != 2 || of[0].File != "a" || of[1].File != "d" {
+		t.Errorf("prints of Pots %+v", of)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"time"
 
@@ -47,6 +48,8 @@ type Record struct {
 	Video string `json:"video,omitempty"`
 	// Note is the note of the user about the print, for example why it was cancelled, or "".
 	Note string `json:"note,omitempty"`
+	// Project is the name of the project of the print, for example "Garden planters", or "".
+	Project string `json:"project,omitempty"`
 }
 
 // OfSpool is the records of the prints that used the roll, in the order of recs. A record with
@@ -59,6 +62,55 @@ func OfSpool(recs []Record, sp Spool) []Record {
 		}
 	}
 	return out
+}
+
+// OfProject is the records of the prints of the project name, in the order of recs.
+func OfProject(recs []Record, name string) []Record {
+	var out []Record
+	for _, r := range recs {
+		if r.Project == name {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// Project is a project of the history: its name, and the totals of its prints.
+type Project struct {
+	Name     string
+	Prints   int
+	Time     time.Duration
+	Filament float64   // mm
+	Last     time.Time // the end of the newest print
+}
+
+// Projects returns the projects of the records, the project with the newest print first.
+func Projects(recs []Record) []Project {
+	byName := map[string]*Project{}
+	var out []*Project
+	for _, r := range recs {
+		if r.Project == "" {
+			continue
+		}
+		p := byName[r.Project]
+		if p == nil {
+			p = &Project{Name: r.Project}
+			byName[r.Project] = p
+			out = append(out, p)
+		}
+		p.Prints++
+		p.Time += r.Duration
+		p.Filament += r.Filament
+		if r.End.After(p.Last) {
+			p.Last = r.End
+		}
+	}
+	list := make([]Project, len(out))
+	for i, p := range out {
+		list[i] = *p
+	}
+	slices.SortStableFunc(list, func(a, b Project) int { return b.Last.Compare(a.Last) })
+	return list
 }
 
 // Name is the name of the print for the screens: the title in the file, or else the cleaned file
@@ -220,13 +272,28 @@ const MaxNote = 280
 // SetNote sets the note of the record of the print of the file path that ended at end. An empty
 // note removes the note. It reports that the record is there.
 func (h *History) SetNote(path string, end time.Time, note string) bool {
+	return h.edit(path, end, func(r *Record) { r.Note = note })
+}
+
+// MaxProject is the longest name of a project, in characters.
+const MaxProject = 40
+
+// SetProject sets the project of the record of the print of the file path that ended at end. An
+// empty name takes the print out of its project. It reports that the record is there.
+func (h *History) SetProject(path string, end time.Time, project string) bool {
+	return h.edit(path, end, func(r *Record) { r.Project = project })
+}
+
+// edit changes the record of the print of the file path that ended at end with f, and saves the
+// history. It reports that the record is there.
+func (h *History) edit(path string, end time.Time, f func(r *Record)) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.load()
 	for i := range h.records {
 		r := &h.records[i]
 		if r.Path == path && r.End.Equal(end) {
-			r.Note = note
+			f(r)
 			h.save()
 			return true
 		}

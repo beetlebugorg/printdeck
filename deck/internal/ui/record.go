@@ -12,7 +12,7 @@ import (
 )
 
 // drawRecord is the page of one finished print of the history: the model, the result, the time,
-// the filament, the note, the time lapse, Note and Reprint. The model of a print that did not complete shows the
+// the filament, the note, the project, the time lapse, Note, Project and Reprint. The model of a print that did not complete shows the
 // part that printed in colour.
 func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 	r := a.record
@@ -33,7 +33,7 @@ func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 		side := min(content.Dy(), tableH, content.Dx()/2)
 		cols := kit.Cols(content, 16, kit.Px(side), kit.Fr(1))
 		pic, box = kit.Rows(cols[0], 0, kit.Px(side))[0], kit.Rows(cols[1], 0, kit.Px(min(tableH, content.Dy())))[0]
-		k := kit.Cols(acts, 12, kit.Fr(1), kit.Fr(1))
+		k := kit.Cols(acts, 12, kit.Fr(1), kit.Fr(2))
 		lapse, keys = k[0], k[1]
 	} else {
 		sizes := []kit.Size{kit.Fr(1), kit.Px(tableH), kit.Px(84)}
@@ -68,17 +68,81 @@ func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 	a.region("Details", box)
 	inner := kit.Inset(box, 18, 10, 18, 10)
 	for i, kv := range rows {
-		if kv[0] == "Note" {
+		if kv[0] == "Note" || kv[0] == "Project" {
 			// The note is one line: the start of a long note, and the whole note on the keyboard.
 			w := inner.Dx() - gfx.Width(gfx.Face(true, 14), strings.ToUpper(kv[0])) - 16
 			rows[i][1] = gfx.Fit(gfx.Face(true, 17), kv[1], w)
 		}
 	}
 	detailRows(c, inner, rows, 30)
-	k := kit.Cols(keys, 12, kit.Fr(1), kit.Fr(1))
+	k := kit.Cols(keys, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
 	a.button(c, k[0], "Note", raised, text, func() { a.editNote(r) })
 	a.region("Note", k[0])
-	a.reprintKey(c, k[1], r, gone, orange, onAcc)
+	a.button(c, k[1], "Project", raised, text, func() { a.pickProject(r) })
+	a.reprintKey(c, k[2], r, gone, orange, onAcc)
+}
+
+// pickChoices is the most projects in the choice of the project of a print. New project types
+// the name of an older project too.
+const pickChoices = 4
+
+// pickProject asks for the project of the finished print r: New project, the newest projects of
+// the history, and No project for a print in a project.
+func (a *App) pickProject(r printer.Record) {
+	choices := []menuItem{{"New project…", "Type a name", dim, func() { a.newProject(r) }}}
+	n := 0
+	for _, p := range printer.Projects(a.Printer.History()) {
+		if p.Name == r.Project || n == pickChoices {
+			continue
+		}
+		n++
+		name := p.Name
+		choices = append(choices, menuItem{fitText(name, 300), projectLine(p.Prints), dim, func() { a.setProject(r, name) }})
+	}
+	if r.Project != "" {
+		choices = append(choices, menuItem{"No project", "Take the print out of " + fitText(r.Project, 220), dim, func() { a.setProject(r, "") }})
+	}
+	a.confirm = &confirmBox{question: "Project of " + fitText(r.Name(), 240) + "?", choices: choices}
+}
+
+// projectLine is the line of a project in the choice: its number of prints.
+func projectLine(n int) string {
+	if n == 1 {
+		return "1 print"
+	}
+	return fmt.Sprintf("%d prints", n)
+}
+
+// fitText is s cut to w pixels of the face of the rows of a choice.
+func fitText(s string, w int) string { return gfx.Fit(gfx.Face(true, 19), s, w) }
+
+// newProject opens the keyboard for the name of a new project of the finished print r.
+func (a *App) newProject(r printer.Record) {
+	a.textKB = &keyboard{title: "Project of " + r.Name(), value: "", max: printer.MaxProject, ok: "Save", cancel: "Back",
+		shift: true, back: func() { a.textKB = nil },
+		done: func(v string) {
+			a.textKB = nil
+			if v = strings.TrimSpace(v); v != "" {
+				a.setProject(r, v)
+			}
+		}}
+}
+
+// setProject sets the project of the finished print r to name, or takes it out of its project
+// for "".
+func (a *App) setProject(r printer.Record, name string) {
+	if !a.Printer.SetProject(r, name) {
+		a.Toast("The print is gone from the history")
+		return
+	}
+	if a.record.Path == r.Path && a.record.End.Equal(r.End) {
+		a.record.Project = name
+	}
+	if name == "" {
+		a.Toast("The print is in no project")
+	} else {
+		a.Toast("The print is in " + fitText(name, 300))
+	}
 }
 
 // editNote opens the keyboard for the note of the finished print r, for example why it was
@@ -128,6 +192,9 @@ func (a *App) recordRows(r printer.Record) [][2]string {
 	}
 	if r.Cost > 0 {
 		rows = append(rows, [2]string{"Cost", fmt.Sprintf("$%.2f", r.Cost)})
+	}
+	if r.Project != "" {
+		rows = append(rows, [2]string{"Project", r.Project})
 	}
 	if r.Note != "" {
 		rows = append(rows, [2]string{"Note", r.Note})

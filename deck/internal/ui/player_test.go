@@ -195,3 +195,62 @@ func TestRecordNote(t *testing.T) {
 		}
 	}
 }
+
+// Project on the page of a print: a new project by name, an older project from the choice, and
+// No project. The history then has the Projects page with the prints of each project.
+func TestRecordProject(t *testing.T) {
+	for _, wide := range []bool{false, true} {
+		a, pr, cv := newPrintApp(idle)
+		a.Wide = wide
+		if wide {
+			cv = gfx.New(a.Screen().W, a.Screen().H)
+		}
+		pr.History_ = []printer.Record{
+			{File: "lid.gcode", Path: "lid.gcode", Result: "complete", End: time.Unix(6000, 0), Duration: time.Hour, Filament: 3000},
+			{File: "pot.gcode", Path: "pot.gcode", Result: "complete", End: time.Unix(5000, 0), Duration: 2 * time.Hour, Filament: 5000},
+		}
+		a.record = pr.History_[1]
+		a.pages = []page{pageMachine, pageStats, pageHistory, pageRecord}
+		tapLabel(t, a, cv, "Project")
+		tapLabel(t, a, cv, "New project…")
+		if a.textKB == nil {
+			t.Fatalf("wide %v: no keyboard", wide)
+		}
+		a.textKB.done(" Garden planters ")
+		if pr.History_[1].Project != "Garden planters" || a.record.Project != "Garden planters" {
+			t.Fatalf("wide %v: project %q", wide, pr.History_[1].Project)
+		}
+		if f := simFrame(t, a, "record-project"); !strings.Contains(f, "Garden planters") {
+			t.Errorf("wide %v: the page shows no project", wide)
+		}
+
+		// The other print goes in the same project from the choice.
+		a.record = pr.History_[0]
+		tapLabel(t, a, cv, "Project")
+		tapLabel(t, a, cv, "Garden planters")
+		if pr.History_[0].Project != "Garden planters" {
+			t.Fatalf("wide %v: project of the lid %q", wide, pr.History_[0].Project)
+		}
+
+		// The Projects page, and the prints of the project.
+		a.pages = []page{pageMachine, pageStats, pageHistory}
+		tapLabel(t, a, cv, "Projects")
+		f := simFrame(t, a, "projects")
+		if !strings.Contains(f, "Garden planters") || !strings.Contains(f, "2 prints · 3:00") {
+			t.Errorf("wide %v: the Projects page: %s", wide, f)
+		}
+		tapLabel(t, a, cv, "Garden planters")
+		if a.pages[len(a.pages)-1] != pageProject || a.project != "Garden planters" {
+			t.Fatalf("wide %v: pages %v, project %q", wide, a.pages, a.project)
+		}
+
+		// No project.
+		a.record = pr.History_[0]
+		a.pages = []page{pageMachine, pageStats, pageHistory, pageRecord}
+		tapLabel(t, a, cv, "Project")
+		tapLabel(t, a, cv, "No project")
+		if pr.History_[0].Project != "" {
+			t.Errorf("wide %v: project %q after No project", wide, pr.History_[0].Project)
+		}
+	}
+}

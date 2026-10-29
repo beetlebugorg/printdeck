@@ -749,6 +749,9 @@ func (a *App) drawHistory(c *gfx.Canvas) {
 	a.list(c, l, func(i int) string { return recs[i].Name() }, func(c *gfx.Canvas, i int, box image.Rectangle) {
 		a.recordRow(c, box, recs[i], recs[i].Summary(func(mm float64) float64 { return a.grams(mm, "") }), fileDate(recs[i].End, a.Now(), a.Clock24), files)
 	}, open)
+	if len(printer.Projects(recs)) > 0 {
+		a.headKey(c, f.head, "Projects", func() { a.open(pageProjects) })
+	}
 }
 
 // recordRowH is the height of a row of recordRow, with the gap under it.
