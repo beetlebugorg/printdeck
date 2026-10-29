@@ -153,9 +153,9 @@ type share struct {
 	clocks map[string]string
 }
 
-// maxCount is the time that the clocks count on after the last new status. After it the deck
-// sends nothing, and the clocks stop.
-const maxCount = time.Minute
+// maxCount is the time that the clocks count on after the last new status: longer than the
+// longest time between two polls (maxPoll). After it the deck sends nothing, and the clocks stop.
+const maxCount = 3 * time.Minute
 
 // runShare polls the status of the share at base and draws the page.
 func runShare(base string) {
@@ -174,15 +174,101 @@ func runShare(base string) {
 			s.tick()
 		}
 	}()
+	// A tab in the background polls nothing. When it shows again, it polls at once. The wait is
+	// short sleeps: a timer of TinyGo in a select can fire seconds late.
+	woken := false
+	doc.Call("addEventListener", "visibilitychange", js.FuncOf(func(js.Value, []js.Value) any {
+		woken = !hidden()
+		return nil
+	}))
 	go func() {
+		var readyAt time.Time
 		for {
-			s.poll()
-			time.Sleep(5 * time.Second)
+			woken = false
+			s.pollStatus()
+			if time.Since(readyAt) >= readyEvery || s.ended {
+				s.pollReady()
+				readyAt = time.Now()
+			}
+			next := time.Now().Add(s.nextPoll())
+			for !woken && (hidden() || time.Now().Before(next)) {
+				time.Sleep(250 * time.Millisecond)
+			}
 		}
 	}()
 }
 
-func (s *share) poll() {
+// hidden says if the page is in a tab in the background.
+func hidden() bool { return doc.Get("hidden").Truthy() }
+
+// The times between two polls. The page polls once for each layer: just after the layer should
+// end. The clocks count between the polls (tick).
+const (
+	// readyEvery is the time between two polls of ready.json during the print. Ready changes
+	// once, at the end.
+	readyEvery = 30 * time.Second
+	// minPoll and maxPoll are the limits of the time between polls during the print. A layer
+	// that takes longer than its plan gets a poll each lateEvery.
+	minPoll   = 5 * time.Second
+	maxPoll   = 2 * time.Minute
+	lateEvery = 15 * time.Second
+	// layerMargin is the time after the end of a layer until its status is in the bucket: the
+	// deck uploads each 5 seconds.
+	layerMargin = 6 * time.Second
+)
+
+// nextPoll is the time until the next poll of the status.
+func (s *share) nextPoll() time.Duration {
+	st := s.st
+	switch {
+	case s.seen.IsZero():
+		return minPoll // no status yet
+	case st.State == "done", st.State == "cancelled", st.State == "error":
+		return time.Minute
+	case st.State == "paused":
+		return 30 * time.Second
+	case st.State != "printing":
+		return 15 * time.Second // heating
+	}
+	end, ok := s.layerEnd()
+	if !ok {
+		return 15 * time.Second
+	}
+	wait := time.Until(end) + layerMargin
+	if wait < minPoll {
+		// The layer takes longer than its plan.
+		if time.Until(end) < 0 {
+			return lateEvery
+		}
+		return minPoll
+	}
+	return min(wait, maxPoll)
+}
+
+// layerEnd is the time on this computer when the layer now should end: its start, and the time
+// of its plan, scaled by the measured times of the layers that are done.
+func (s *share) layerEnd() (time.Time, bool) {
+	st := s.st
+	if st.Layer < 1 || st.Layer > len(s.plan) || st.LayerStarted.IsZero() {
+		return time.Time{}, false
+	}
+	plan, done := 0.0, 0.0
+	for i, t := range st.LayerTimes {
+		if t > 0 && i < len(s.plan) && s.plan[i] > 0 {
+			plan, done = plan+s.plan[i], done+t
+		}
+	}
+	scale := 1.0
+	if plan > 0 {
+		scale = done / plan
+	}
+	d := time.Duration(s.plan[st.Layer-1] * scale * float64(time.Second))
+	// The clock of the deck is the time of the status, at the time it came here.
+	return s.seen.Add(st.LayerStarted.Add(d).Sub(st.Updated)), true
+}
+
+// pollStatus gets status.json and draws the page.
+func (s *share) pollStatus() {
 	text, err := fetchText(s.base + "status.json?t=" + fmt.Sprint(time.Now().UnixMilli()))
 	if err != nil {
 		setText("pillText", "Waiting for the printer")
@@ -193,6 +279,10 @@ func (s *share) poll() {
 		return
 	}
 	s.render(st)
+}
+
+// pollReady gets ready.json and draws the flag of the owner and the photos.
+func (s *share) pollReady() {
 	if t, err := fetchText(s.base + "ready.json?t=" + fmt.Sprint(time.Now().UnixMilli())); err == nil {
 		var rd wire.ShareReady
 		if json.Unmarshal([]byte(t), &rd) == nil {
@@ -273,7 +363,7 @@ func (s *share) ownerPanel() {
 				}
 			}
 			setText("ownerMsg", "The photos are on the page.")
-			s.poll()
+			s.pollReady()
 		}()
 		return nil
 	}))
@@ -437,7 +527,6 @@ func (s *share) render(st wire.ShareStatus) {
 	s.tick()
 	if st.Layers > 0 {
 		setText("layer", fmt.Sprint(st.Layer))
-		setText("layers", fmt.Sprintf("of %d", st.Layers))
 	}
 	if st.ReadyLeft >= 0 {
 		ready := st.Updated.Add(time.Duration(st.ReadyLeft) * time.Second)
@@ -447,10 +536,6 @@ func (s *share) render(st wire.ShareStatus) {
 		setText("ready", "-")
 		setText("readySub", "")
 	}
-	pct := int(math.Round(st.Progress * 100))
-	byID("bar").Get("style").Set("width", fmt.Sprintf("%d%%", pct))
-	byID("barWrap").Call("setAttribute", "aria-valuenow", pct)
-	setText("pct", fmt.Sprintf("%d%%", pct))
 	setText("activity", st.Activity)
 
 	// The details.
@@ -660,6 +745,10 @@ func (s *share) tick() {
 	}
 	ended := st.State == "done" || st.State == "cancelled" || st.State == "error"
 	if ended {
+		s.showProgress(st.Progress)
+		if st.Layers > 0 {
+			setText("layers", fmt.Sprintf("of %d", st.Layers))
+		}
 		if !st.Started.IsZero() && !st.Ended.IsZero() {
 			setText("left", clock(int(st.Ended.Sub(st.Started).Seconds())))
 		} else {
@@ -677,6 +766,24 @@ func (s *share) tick() {
 		left = max(0, left-int(since.Seconds()))
 	}
 	setText("left", clock(left))
+	// The layer, and the time until the next layer.
+	if st.Layers > 0 {
+		layers := fmt.Sprintf("of %d", st.Layers)
+		if end, ok := s.layerEnd(); ok && st.State == "printing" {
+			if u := time.Until(end); u >= time.Second {
+				layers += " · next in " + mmss(u.Seconds())
+			} else {
+				layers += " · next soon"
+			}
+		}
+		setText("layers", layers)
+	}
+	// The progress goes on at the rate of the time left.
+	p := st.Progress
+	if st.TimeLeft > 0 {
+		p += (1 - p) * min(1, since.Seconds()/float64(st.TimeLeft))
+	}
+	s.showProgress(p)
 	now := "–"
 	if n := len(s.plan); st.Layer >= 1 && st.Layer <= n {
 		if !st.LayerStarted.IsZero() {
@@ -685,6 +792,19 @@ func (s *share) tick() {
 		now += " / " + mmss(s.plan[st.Layer-1])
 	}
 	setText("layerNow", now)
+}
+
+// showProgress shows the progress p, 0 to 1, in the bar.
+func (s *share) showProgress(p float64) {
+	pct := int(math.Round(p * 100))
+	text := fmt.Sprintf("%d%%", pct)
+	if s.clocks["pct"] == text {
+		return
+	}
+	s.clocks["pct"] = text
+	byID("bar").Get("style").Set("width", text)
+	byID("barWrap").Call("setAttribute", "aria-valuenow", pct)
+	setText("pct", text)
 }
 
 // renderPrinter draws the lines of the printer under the progress: the move now and the factors
