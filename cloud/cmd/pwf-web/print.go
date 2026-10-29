@@ -149,6 +149,35 @@ func drawTiles(prints []wire.ProjectPrint, href func(wire.ProjectPrint) string) 
 	}
 }
 
+// drawLive draws a tile for each print of the project that prints now. A tile opens the share
+// page of the print.
+func drawLive(live []wire.ProjectLive) {
+	box := byID("live")
+	box.Set("textContent", "")
+	setHidden("liveHead", len(live) == 0)
+	for _, l := range live {
+		tile := el("a", "tile", "")
+		tile.Set("href", l.URL)
+		pic := el("div", "pic", "")
+		img := el("img", "", "")
+		img.Set("src", l.URL+"/model.jpg")
+		img.Set("alt", "")
+		pic.Call("appendChild", img)
+		badges := el("div", "badges", "")
+		badges.Call("appendChild", el("span", "live", "Live"))
+		pic.Call("appendChild", badges)
+		tile.Call("appendChild", pic)
+		body := el("div", "body", "")
+		body.Call("appendChild", el("strong", "", l.Name))
+		lines := el("div", "tfacts", "")
+		lines.Call("appendChild", el("div", "", strings.ReplaceAll("Started "+localTime(l.Started), " ", "\u00a0")))
+		lines.Call("appendChild", el("div", "", "Open the live page"))
+		body.Call("appendChild", lines)
+		tile.Call("appendChild", body)
+		box.Call("appendChild", tile)
+	}
+}
+
 // fact sets the value of a line of facts, and hides the line with no value.
 func fact(id, text string) {
 	setText(id, text)

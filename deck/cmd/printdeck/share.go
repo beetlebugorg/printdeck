@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"image"
@@ -34,6 +35,7 @@ type shareLink struct {
 	model  string            // the model of the printer, from printer.cfg
 
 	mu      sync.Mutex
+	path    string    // the file of the print of the share
 	started time.Time // the start of the print of the share
 	ended   time.Time // the end of the print of the share, when it ended
 	// waiting is the start of a time with no print and no finished print: the deck has no
@@ -104,14 +106,14 @@ func (l *shareLink) Start() {
 	var frames [][]byte
 	now := time.Now()
 	l.mu.Lock()
-	l.started, l.ended = now.Add(-st.Elapsed), time.Time{}
+	l.path, l.started, l.ended = st.FilePath, now.Add(-st.Elapsed), time.Time{}
 	l.measured, l.known = nil, false
 	if !st.Busy() {
 		job = st.FinishedName()
-		l.started, l.ended = now.Add(-st.FinishedTime), now
+		l.path, l.started, l.ended = st.FinishedPath, now.Add(-st.FinishedTime), now
 		if recs := l.pr.History(); len(recs) > 0 {
-			r := recs[len(recs)-1]
-			l.started, l.ended = r.End.Add(-r.Duration), r.End
+			r := recs[0] // the newest
+			l.path, l.started, l.ended = r.Path, r.End.Add(-r.Duration), r.End
 			frames = l.videoFrames(r.Video)
 		}
 	} else if l.lapse != nil {
@@ -332,15 +334,49 @@ func moveName(kind string) string {
 	return strings.ToUpper(k[:1]) + k[1:]
 }
 
+// project returns the project of the print of the share: of the print now, or of its record after
+// the end. It is "" for none.
+func (l *shareLink) project() string {
+	l.mu.Lock()
+	path, started := l.path, l.started
+	l.mu.Unlock()
+	if path == "" {
+		return ""
+	}
+	if st := l.pr.State(); st.Busy() && st.FilePath == path {
+		return l.pr.NextProject()
+	}
+	for _, r := range l.pr.History() {
+		if r.Path == path && !r.End.Before(started) {
+			return r.Project
+		}
+	}
+	return ""
+}
+
+// shareOf returns the ID of the share link of the print r, or "".
+func (l *shareLink) shareOf(r printer.Record) string {
+	st := l.sharer.State()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if st.ID == "" || r.Path != l.path || r.End.Before(l.started) {
+		return ""
+	}
+	return st.ID
+}
+
 // startShare sets the cloud link and the share link of the app. The identity of the deck is the
 // file cloud.json of the state folder.
 func startShare(stateDir, configPath string, app *ui.App, pr printerBackend) {
 	link := newCloudLink(stateDir, app.Redraw)
 	app.Cloud = link
-	if k, ok := pr.(*printer.Klippy); ok {
-		app.Cloud = &projectLink{Link: link, k: k, stateDir: stateDir, model: printer.ConfigModel(configPath)}
-	}
 	l := newShareLink(app, link, pr, configPath)
+	if k, ok := pr.(*printer.Klippy); ok {
+		pl := &projectLink{Link: link, k: k, stateDir: stateDir, model: printer.ConfigModel(configPath), shareOf: l.shareOf}
+		app.Cloud = pl
+		l.sharer.Project = func(ctx context.Context) (string, error) { return pl.ShareProjectID(ctx, l.project()) }
+		go pl.watch(context.Background())
+	}
 	app.Share = l
 	l.loadHandoff(filepath.Join(handoffDir, shareHandoff))
 }
@@ -348,6 +384,7 @@ func startShare(stateDir, configPath string, app *ui.App, pr printerBackend) {
 // shareHandoffFile is the handoff file of the share link (handoff.go).
 type shareHandoffFile struct {
 	Share   cloud.ShareHandoff `json:"share"`
+	Path    string             `json:"path,omitempty"`
 	Started time.Time          `json:"started"`
 	Ended   time.Time          `json:"ended"`
 }
@@ -363,7 +400,7 @@ func (l *shareLink) saveHandoff(path string) error {
 		return nil
 	}
 	l.mu.Lock()
-	f := shareHandoffFile{Share: h, Started: l.started, Ended: l.ended}
+	f := shareHandoffFile{Share: h, Path: l.path, Started: l.started, Ended: l.ended}
 	l.mu.Unlock()
 	b, err := json.Marshal(f)
 	if err != nil {
@@ -390,7 +427,7 @@ func (l *shareLink) loadHandoff(path string) {
 		return
 	}
 	l.mu.Lock()
-	l.started, l.ended = f.Started, f.Ended
+	l.path, l.started, l.ended = f.Path, f.Started, f.Ended
 	l.mu.Unlock()
 	if l.sharer.Resume(f.Share) {
 		log.Printf("share: the share %s continues from the deck program before this one", f.Share.ID)

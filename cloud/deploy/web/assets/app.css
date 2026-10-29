@@ -58,6 +58,8 @@ input:not([type]), input[type="text"] { font: 400 16px/1.4 "Archivo", sans-serif
 .tile .badges { position: absolute; left: 8px; top: 8px; right: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
 .tile .badges span { font: 500 11px/1 "IBM Plex Mono", monospace; color: #f3f1ec; background: rgba(0,0,0,.62); padding: 6px 8px; border-radius: 6px; }
 .tile .badges .fail { background: #b3261e; }
+.tile .badges .live { background: var(--orange); color: var(--on-orange); }
+#live:empty { display: none; }
 .tile .body { padding: 14px 14px 16px; display: grid; gap: 8px; align-content: start; border-top: 1px solid var(--seam); }
 .tile strong { font: 800 18px/1.15 "Archivo", sans-serif; font-stretch: 85%; overflow-wrap: anywhere; }
 .tile .tfacts { display: grid; gap: 2px; font: 500 12px/1.5 "IBM Plex Mono", monospace; color: var(--ink-dim); }

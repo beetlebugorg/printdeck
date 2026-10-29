@@ -581,6 +581,22 @@ The build of phase 3 made these choices:
   older format sends its prints again at the next share.
 - **The page of a project** shows the numbers of the project (the prints, the print time and the
   filament), a tile for each print, the photos, and the keys of the owner at the bottom.
+- **The share link of a print in a project.** The project of a print is the pick on the deck
+  (Add to a project on the print page), not a line in the G-code. The share has no "Add to"
+  switch. A share of a print in a project:
+  - makes the project at the service when it is not there;
+  - shows "A print of the project" with a link on the share page;
+  - shows as a "Printing now" tile on the project page, until the end of the print;
+  - follows a change of the project during the print.
+- **A print goes to its project at its end**, with no tap. The deck sends it after its time lapse
+  video, or 10 minutes after the end with no video. It sends prints of the last 6 hours only, and
+  each print once. Share on the project in the history still sends the older prints.
+- **The photos of a share** go to the print in the project: the photos before the print went up,
+  and the photos after it.
+- **The end of a share in a project.** At the end of the 24 hours, the service deletes the files
+  of the share. The page of the share stays and sends the visitor to the print page: the public
+  page when the project has a public address, else the page for the members. The delete of the
+  project deletes the page of the share too. This answers open question 3.
 
 ## Open questions
 

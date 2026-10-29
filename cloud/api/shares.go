@@ -52,6 +52,12 @@ type Share struct {
 	// OwnerKey is the SHA-256 of the owner key, in hex. ReadyAt is the time of Ready, or zero.
 	OwnerKey string    `json:"owner_key"`
 	ReadyAt  time.Time `json:"ready_at,omitzero"`
+	// Project is the project of the print, or "", and Print the print in the project, or "".
+	// Moved reports that the share ended: its page sends the visitor to the print page, and its
+	// files are gone.
+	Project string `json:"project,omitempty"`
+	Print   string `json:"print,omitempty"`
+	Moved   bool   `json:"moved,omitempty"`
 }
 
 // MaxSharePhotos is the most photos of a share, and MaxPhotoFile the largest upload of a photo.
@@ -176,6 +182,8 @@ func (s *Server) routeShares(ctx context.Context, r *http.Request, body []byte, 
 	case strings.HasPrefix(action, "photo/") && strings.HasSuffix(action, "/done") && r.Method == http.MethodPost:
 		pid := strings.TrimSuffix(strings.TrimPrefix(action, "photo/"), "/done")
 		return s.addPhoto(ctx, sh, pid)
+	case action == "project" && r.Method == http.MethodPost:
+		return s.shareProject(ctx, sh, body)
 	case action == "" && r.Method == http.MethodDelete:
 		return nil, s.deleteShare(ctx, sh.ID)
 	}
@@ -244,7 +252,14 @@ func (s *Server) addPhoto(ctx context.Context, sh *Share, pid string) (any, erro
 		rd.Photos = append(rd.Photos, cloud.SharePhoto{File: file, Small: smallFile, W: w, H: h})
 		out = *rd
 	})
-	return out, err
+	if err != nil {
+		return nil, err
+	}
+	// A photo of a print in a project goes to the print too.
+	if err := s.copySharePhoto(ctx, sh, cloud.SharePhoto{File: file, Small: smallFile, W: w, H: h}); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // newShare makes a share of the deck d.
@@ -273,6 +288,16 @@ func (s *Server) newShare(ctx context.Context, d *Deck, body []byte) (any, error
 	// The page polls ready.json, so it exists from the start: a missing file is a 404 at each poll.
 	if err := s.updateReady(ctx, &sh, func(*cloud.ShareReady) {}); err != nil {
 		return nil, err
+	}
+	if in.Project != "" {
+		// A project that is gone gives a share with no project.
+		if _, _, err := s.loadProject(ctx, in.Project); err == nil {
+			if err := s.linkShare(ctx, &sh, in.Project); err != nil {
+				return nil, err
+			}
+		} else if !isGone(err) {
+			return nil, err
+		}
 	}
 	g, err := s.Grants.Grant(ctx, "s/"+sh.ID+"/", MaxShareFile, GrantTTL)
 	if err != nil {
@@ -328,6 +353,11 @@ func (s *Server) loadShare(ctx context.Context, id string) (*Share, error) {
 
 // deleteShare deletes the page, the files and the record of a share.
 func (s *Server) deleteShare(ctx context.Context, id string) error {
+	if sh, err := s.loadShare(ctx, id); err == nil && sh.Project != "" {
+		if err := s.dropShare(ctx, sh.Project, id); err != nil {
+			return err
+		}
+	}
 	keys, err := s.Store.List(ctx, "s/"+id+"/")
 	if err != nil {
 		return err
@@ -359,10 +389,17 @@ func (s *Server) Sweep(ctx context.Context) error {
 			continue
 		}
 		var sh Share
-		if json.Unmarshal(b, &sh) != nil || sh.ID == "" {
+		if json.Unmarshal(b, &sh) != nil || sh.ID == "" || sh.Moved {
 			continue
 		}
 		if !sh.Expires.IsZero() && now.After(sh.Expires) || sh.Expires.IsZero() && now.Sub(sh.Created) > 3*24*time.Hour {
+			// The share of a print in a project sends the visitor to the print page after its end.
+			if sh.Project != "" && sh.Print != "" {
+				if err := s.moveShare(ctx, &sh); err != nil {
+					return err
+				}
+				continue
+			}
 			if err := s.deleteShare(ctx, sh.ID); err != nil {
 				return err
 			}

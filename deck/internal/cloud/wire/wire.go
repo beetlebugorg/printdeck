@@ -82,6 +82,16 @@ type ShareReady struct {
 	// Expires is the time of the delete of the share: 24 hours after the end of the print, or
 	// after Ready.
 	Expires time.Time `json:"expires,omitzero"`
+	// Project is the project of the print, or nil.
+	Project *ShareProject `json:"project,omitempty"`
+}
+
+// ShareProject is the project of a shared print: its name, and the page of the project or of the
+// print in it. The page is the public page when the project has a public address. Else it is the
+// page for the members.
+type ShareProject struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
 }
 
 // SharePhoto is a photo of a share: the file of the photo (at most 2048 px) and of its small

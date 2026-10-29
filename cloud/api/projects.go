@@ -53,6 +53,9 @@ type Project struct {
 	Public string `json:"public,omitempty"`
 	// Prints maps the key of a print on the deck to its ID, so that a second upload replaces it.
 	Prints map[string]string `json:"prints,omitempty"`
+	// Shares are the IDs of the share links of the prints of the project: live, or moved to the
+	// print page.
+	Shares []string `json:"shares,omitempty"`
 }
 
 // Member is a member of a project, or an invite that waits (no Joined).
@@ -243,10 +246,14 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 		if json.Unmarshal(body, &in) != nil || clip(in.Name, 80) == "" {
 			return nil, fail(http.StatusBadRequest, "a project needs a name")
 		}
-		if _, err := s.changeProject(ctx, id, func(p *Project) error {
+		p, err := s.changeProject(ctx, id, func(p *Project) error {
 			p.Name, p.Note = clip(in.Name, 80), clip(in.Note, 280)
 			return nil
-		}); err != nil {
+		})
+		if err != nil {
+			return nil, err
+		}
+		if err := s.refreshShares(ctx, p); err != nil {
 			return nil, err
 		}
 		return s.afterChange(ctx, id, w)
@@ -451,6 +458,7 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 		u, _ := s.Grants.FileURL(ctx, key, urlTTL)
 		return u
 	}
+	v.Live = s.liveShares(ctx, p)
 	prints, photos, err := s.projectFiles(ctx, p.ID)
 	if err != nil {
 		return nil, err
@@ -632,6 +640,8 @@ func (s *Server) newPrint(ctx context.Context, p *Project, d *Deck, in cloud.Pri
 	in.Name, in.File, in.Material, in.Roll, in.Printer, in.Note =
 		clip(in.Name, 120), clip(in.File, 200), clip(in.Material, 40), clip(in.Roll, 80), clip(in.Printer, 64), clip(in.Note, 280)
 	in.Key, in.Slicer = clip(in.Key, 200), clip(in.Slicer, 64)
+	share := in.Share
+	in.Share = ""
 	if f := in.Filament; f != nil {
 		f.Name, f.Brand, f.Type, f.Color = clip(f.Name, 80), clip(f.Brand, 40), clip(f.Type, 40), clip(f.Color, 7)
 	}
@@ -673,6 +683,11 @@ func (s *Server) newPrint(ctx context.Context, p *Project, d *Deck, in cloud.Pri
 	rec := PrintRecord{PrintRequest: in, ID: pid, Deck: d.ID, Added: s.now().UTC()}
 	if err := s.putJSON(ctx, printKey(p.ID, pid), rec); err != nil {
 		return nil, err
+	}
+	if share != "" {
+		if err := s.shareToPrint(ctx, share, p, d, pid); err != nil {
+			return nil, err
+		}
 	}
 	g, err := s.Grants.Grant(ctx, "x/"+p.ID+"/prints/"+pid+"/", MaxPrintFile, GrantTTL)
 	if err != nil {
@@ -856,6 +871,26 @@ func (s *Server) deleteProject(ctx context.Context, p *Project) error {
 	}
 	if err := s.deletePrefix(ctx, "up/x"+p.ID+"/"); err != nil {
 		return err
+	}
+	// The share links of the prints: a live share loses its project, and a moved share goes.
+	for _, id := range p.Shares {
+		sh, err := s.loadShare(ctx, id)
+		if err != nil {
+			continue
+		}
+		if sh.Moved {
+			if err := s.deleteShare(ctx, id); err != nil {
+				return err
+			}
+			continue
+		}
+		sh.Project, sh.Print = "", ""
+		if err := s.putJSON(ctx, shareKey(id), sh); err != nil {
+			return err
+		}
+		if err := s.updateReady(ctx, sh, func(rd *cloud.ShareReady) { rd.Project = nil }); err != nil {
+			return err
+		}
 	}
 	// The record last: a failure in the middle leaves a project that the owner can delete again.
 	keys, err := s.Store.List(ctx, "x/"+p.ID+"/")

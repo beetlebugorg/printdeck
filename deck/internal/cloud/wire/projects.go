@@ -85,6 +85,16 @@ type ProjectView struct {
 	Photos  []ProjectPhoto  `json:"photos"`
 	// Public is the public address of the project, or "" when it has none.
 	Public string `json:"public,omitempty"`
+	// Live are the share links of the prints of the project that print now.
+	Live []ProjectLive `json:"live,omitempty"`
+}
+
+// ProjectLive is a print of a project that prints now: its name, the share link, and the start
+// of the share.
+type ProjectLive struct {
+	Name    string    `json:"name"`
+	URL     string    `json:"url"`
+	Started time.Time `json:"started"`
 }
 
 // ProjectMember is a member of a project, or an invite that waits.
@@ -208,6 +218,10 @@ type PrintRequest struct {
 	// Key is the key of the print on the deck (the file and the end), so that a second upload of
 	// the same print replaces the first.
 	Key string `json:"key"`
+	// Share is the ID of the share link of the print, or "". The service links the share to the
+	// print: the photos of the share go to the print, and the link opens the print page after the
+	// share ends.
+	Share string `json:"share,omitempty"`
 }
 
 // PrintReply is the reply to POST /api/v1/projects/<id>/prints.

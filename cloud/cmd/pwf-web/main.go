@@ -331,8 +331,17 @@ func (s *share) renderReady(rd wire.ShareReady) {
 		setText("readyText", line)
 		setHidden("doneBanner", true)
 	}
+	if pr := rd.Project; pr != nil {
+		setText("projLink", pr.Name)
+		byID("projLink").Set("href", pr.URL)
+	}
+	setHidden("projLine", rd.Project == nil)
 	if !rd.Expires.IsZero() {
-		setText("expires", "View only. Shared with Printdeck. This link stops at "+localDay(rd.Expires)+".")
+		if rd.Project != nil {
+			setText("expires", "View only. Shared with Printdeck. From "+localDay(rd.Expires)+", this link opens the page of the print in the project.")
+		} else {
+			setText("expires", "View only. Shared with Printdeck. This link stops at "+localDay(rd.Expires)+".")
+		}
 	}
 	var keys []string
 	for _, p := range rd.Photos {

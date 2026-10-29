@@ -13,6 +13,14 @@ import (
 type ShareRequest struct {
 	Job     string `json:"job"`
 	Printer string `json:"printer"`
+	// Project is the ID of the project of the print at the service, or "".
+	Project string `json:"project,omitempty"`
+}
+
+// ShareProjectRequest is the body of POST /api/v1/shares/<id>/project: the ID of the project of
+// the print at the service, or "" for none.
+type ShareProjectRequest struct {
+	Project string `json:"project"`
 }
 
 // ShareReply is the reply to POST /api/v1/shares. OwnerKey lets the owner add photos and set
@@ -53,4 +61,5 @@ type (
 	PhotoReply    = wire.PhotoReply
 	ShareRoll     = wire.ShareRoll
 	ShareFilament = wire.ShareFilament
+	ShareProject  = wire.ShareProject
 )

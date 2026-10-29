@@ -34,6 +34,10 @@ type Sharer struct {
 	// Model returns the picture of the model as a JPEG and its version, or nil. The sharer
 	// uploads a new version at most each ModelEvery.
 	Model func() ([]byte, uint64)
+	// Project returns the ID of the project of the print at the service, or "". The sharer asks
+	// at the start and at each upload of the status, and tells the service of a change. It can
+	// make the project at the service. After an error, the share keeps its project.
+	Project func(ctx context.Context) (string, error)
 	// LapseFPS is the rate of the time lapse on the page.
 	LapseFPS int
 	// Every is the time between two uploads of the status, or 0 for 5 s.
@@ -50,6 +54,7 @@ type Sharer struct {
 type share struct {
 	id, url string
 	owner   string // the owner key
+	project string // the ID of the project at the service, or ""
 	ready   bool
 	grant   Grant
 	lapse   [][]byte // the time lapse frames that wait for the upload
@@ -73,6 +78,8 @@ type share struct {
 type ShareState struct {
 	// Active reports a share: from the tap on Share until Stop or the delete.
 	Active bool
+	// ID is the ID of the share at the service, or "" before the service made it.
+	ID string
 	// Busy reports that the deck waits for the service to make the link.
 	Busy    bool
 	URL     string
@@ -97,7 +104,7 @@ func (s *Sharer) State() ShareState {
 		s.cur = nil
 		return ShareState{}
 	}
-	st := ShareState{Active: true, Busy: c.busy, URL: c.url, Ended: c.ended, Expires: c.expires, Err: c.err, Ready: c.ready}
+	st := ShareState{Active: true, ID: c.id, Busy: c.busy, URL: c.url, Ended: c.ended, Expires: c.expires, Err: c.err, Ready: c.ready}
 	if c.url != "" && c.owner != "" {
 		st.OwnerURL = c.url + "#owner=" + c.owner
 	}
@@ -131,7 +138,11 @@ func (s *Sharer) Start(job, printer string, lapse [][]byte) {
 	go func() {
 		defer close(c.done)
 		var out ShareReply
-		err := s.Link.Client.Do(ctx, id, http.MethodPost, "/api/v1/shares", ShareRequest{Job: job, Printer: printer}, &out)
+		project := ""
+		if s.Project != nil {
+			project, _ = s.Project(ctx)
+		}
+		err := s.Link.Client.Do(ctx, id, http.MethodPost, "/api/v1/shares", ShareRequest{Job: job, Printer: printer, Project: project}, &out)
 		s.mu.Lock()
 		c.busy = false
 		if err != nil {
@@ -143,7 +154,7 @@ func (s *Sharer) Start(job, printer string, lapse [][]byte) {
 			s.changed()
 			return
 		}
-		c.id, c.url, c.owner, c.grant = out.ID, out.URL, out.OwnerKey, out.Grant
+		c.id, c.url, c.owner, c.grant, c.project = out.ID, out.URL, out.OwnerKey, out.Grant, project
 		s.mu.Unlock()
 		s.changed()
 		s.run(ctx, id, c)
@@ -157,6 +168,7 @@ type ShareHandoff struct {
 	ID      string    `json:"id"`
 	URL     string    `json:"url"`
 	Owner   string    `json:"owner"`
+	Project string    `json:"project,omitempty"`
 	Ready   bool      `json:"ready"`
 	Grant   Grant     `json:"grant"`
 	Lapse   [][]byte  `json:"lapse,omitempty"` // the time lapse frames that wait for the upload
@@ -193,7 +205,7 @@ func (s *Sharer) Handoff() (ShareHandoff, bool) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return ShareHandoff{ID: c.id, URL: c.url, Owner: c.owner, Ready: c.ready, Grant: c.grant,
+	return ShareHandoff{ID: c.id, URL: c.url, Owner: c.owner, Project: c.project, Ready: c.ready, Grant: c.grant,
 		Lapse: append([][]byte(nil), c.lapse...), LapseN: c.lapseN, Frame: c.frame, Plan: c.plan,
 		Model: c.model, ModelV: c.modelV, ModelAt: c.modelAt, Ended: c.ended, Expires: c.expires}, true
 }
@@ -212,7 +224,7 @@ func (s *Sharer) Resume(h ShareHandoff) bool {
 		return false
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	c := &share{id: h.ID, url: h.URL, owner: h.Owner, ready: h.Ready, grant: h.Grant, lapse: h.Lapse,
+	c := &share{id: h.ID, url: h.URL, owner: h.Owner, project: h.Project, ready: h.Ready, grant: h.Grant, lapse: h.Lapse,
 		lapseN: h.LapseN, frame: h.Frame, seqs: map[string]uint64{}, plan: h.Plan, model: h.Model,
 		modelV: h.ModelV, modelAt: h.ModelAt, ended: h.Ended, expires: h.Expires, stop: cancel,
 		wake: make(chan struct{}, 1), done: make(chan struct{})}
@@ -327,6 +339,14 @@ func (s *Sharer) step(ctx context.Context, id *Identity, c *share) (bool, error)
 	if time.Until(c.grant.Expires) < 10*time.Minute {
 		if err := s.renew(ctx, id, c); err != nil {
 			return false, err
+		}
+	}
+	if s.Project != nil {
+		if want, err := s.Project(ctx); err == nil && want != c.project {
+			if err := s.Link.Client.Do(ctx, id, http.MethodPost, "/api/v1/shares/"+c.id+"/project", ShareProjectRequest{Project: want}, nil); err != nil {
+				return false, err
+			}
+			c.project = want
 		}
 	}
 	st := s.Status()

@@ -44,6 +44,9 @@ func (s *Server) setPublic(ctx context.Context, id string, in cloud.PublicReques
 	if err != nil {
 		return nil, err
 	}
+	if err := s.refreshShares(ctx, p); err != nil {
+		return nil, err
+	}
 	if old != "" {
 		if err := s.deletePrefix(ctx, "p/"+old+"/"); err != nil {
 			return nil, err

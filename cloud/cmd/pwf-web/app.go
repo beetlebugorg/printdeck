@@ -436,6 +436,10 @@ func (a *app) drawProject() {
 	setText("publicLink", v.Public)
 	a.drawPhotos()
 	drawTiles(v.Prints, func(p wire.ProjectPrint) string { return "#x=" + v.ID + "&p=" + p.ID })
+	drawLive(v.Live)
+	if len(v.Live) > 0 {
+		setHidden("noPrints", true)
+	}
 }
 
 func (a *app) drawPhotos() {

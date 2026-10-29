@@ -23,6 +23,7 @@ type (
 	ProjectMember  = wire.ProjectMember
 	ProjectPrint   = wire.ProjectPrint
 	ProjectPhoto   = wire.ProjectPhoto
+	ProjectLive    = wire.ProjectLive
 	FramesReply    = wire.FramesReply
 	InviteRequest  = wire.InviteRequest
 	InviteReply    = wire.InviteReply
