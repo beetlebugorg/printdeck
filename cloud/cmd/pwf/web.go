@@ -3,11 +3,15 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"printdeck/cloud/deploy"
@@ -17,11 +21,12 @@ import (
 // cmd/pwf-web builds to WebAssembly. TinyGo makes a file about 5 times smaller than Go, so pwf
 // uses TinyGo when it finds it, and Go when it does not. Each compiler has its own wasm_exec.js.
 
-// boot starts the WebAssembly after wasm_exec.js, in assets/pwf.js.
+// boot starts the WebAssembly after wasm_exec.js, in assets/pwf.js. %s is the path of the
+// WebAssembly file.
 const boot = `
 (() => {
   const go = new Go();
-  WebAssembly.instantiateStreaming(fetch("/assets/pwf-web.wasm"), go.importObject)
+  WebAssembly.instantiateStreaming(fetch("%s"), go.importObject)
     .then((r) => go.run(r.instance));
 })();
 `
@@ -93,10 +98,55 @@ func buildWeb(ctx context.Context, src string) (map[string][]byte, error) {
 		return nil, fmt.Errorf("wasm_exec.js: %w", err)
 	}
 	files["assets/pwf-web.wasm"] = wasm
-	files["assets/pwf.js"] = append(bytes.TrimRight(js, "\n"), []byte("\n"+boot)...)
+	wasmKey := hashed("assets/pwf-web.wasm", wasm)
+	files[wasmKey] = wasm
+	files["assets/pwf.js"] = append(bytes.TrimRight(js, "\n"), []byte("\n"+fmt.Sprintf(boot, "/"+wasmKey))...)
+	hashAssets(files)
 	return files, nil
 }
 
-// pageCache is the Cache-Control of the files of the pages. The names stay the same at a new
-// deploy, so the time is short.
-const pageCache = "public, max-age=300"
+// hashAssets adds a copy of each script and style file of assets/ with a hash of its content in
+// its name, and points the pages at the copies. A browser or CloudFront can keep an old file
+// for a time (pageCache), so a page of a new deploy gets new names and never mixes old code with
+// new HTML. CloudFront does not use the query string in its cache key, so the hash is in the
+// name. The files keep their plain names too, for a page that a browser has from before.
+func hashAssets(files map[string][]byte) {
+	refs := map[string]string{}
+	for key, data := range files {
+		if dir, name := path.Split(key); dir == "assets/" && (path.Ext(name) == ".css" || path.Ext(name) == ".js") {
+			refs["/"+key] = "/" + hashed(key, data)
+		}
+	}
+	for from, to := range refs {
+		files[strings.TrimPrefix(to, "/")] = files[strings.TrimPrefix(from, "/")]
+	}
+	for key, data := range files {
+		if path.Ext(key) != ".html" {
+			continue
+		}
+		s := string(data)
+		for from, to := range refs {
+			s = strings.ReplaceAll(s, `"`+from+`"`, `"`+to+`"`)
+		}
+		files[key] = []byte(s)
+	}
+}
+
+// hashed is the key of a file with the first 10 hex digits of the SHA-256 of data before its
+// extension, for example assets/share.0a1b2c3d4e.css.
+func hashed(key string, data []byte) string {
+	sum := sha256.Sum256(data)
+	ext := path.Ext(key)
+	return strings.TrimSuffix(key, ext) + "." + hex.EncodeToString(sum[:5]) + ext
+}
+
+// hashedName matches a key from hashed.
+var hashedName = regexp.MustCompile(`\.[0-9a-f]{10}\.[a-z]+$`)
+
+// pageCache is the Cache-Control of the files of the pages with plain names. The names stay the
+// same at a new deploy, so the time is short. A file with a hash in its name never changes
+// (immutableCache).
+const (
+	pageCache      = "public, max-age=300"
+	immutableCache = "public, max-age=31536000, immutable"
+)

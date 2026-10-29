@@ -231,6 +231,9 @@ func uploadWeb(ctx context.Context, c *s3.Client, bucket, src, base string) erro
 			ctype = "application/octet-stream"
 		}
 		cache := pageCache
+		if hashedName.MatchString(key) {
+			cache = immutableCache
+		}
 		if _, err := c.PutObject(ctx, &s3.PutObjectInput{Bucket: &bucket, Key: &key, Body: bytes.NewReader(data),
 			ContentType: &ctype, CacheControl: &cache}); err != nil {
 			return fmt.Errorf("upload %s: %w", key, err)
