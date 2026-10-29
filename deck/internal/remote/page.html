@@ -24,11 +24,17 @@
     font: 13px ui-monospace, Menlo, monospace; color: #ff8c4a; background: #080808; padding: 6px 12px;
     border-radius: 4px; opacity: 0; transition: opacity .3s; pointer-events: none; }
   #status.show { opacity: .9; }
+  /* The links of the frame (["a", ...]) over the canvas: a click copies the address, and the menu
+     of the link opens or copies it. */
+  #links { position: fixed; inset: 0; pointer-events: none; }
+  #links a { position: absolute; pointer-events: auto; cursor: pointer; overflow: hidden; color: transparent;
+    font-size: 1px; -webkit-touch-callout: default; -webkit-user-select: text; user-select: text; }
 </style>
 </head>
 <body>
 <canvas id="ui" aria-label="Printdeck"></canvas>
 <div id="status" class="show">Connecting…</div>
+<div id="links"></div>
 <script>
 "use strict";
 // The deck draws its UI for this browser and sends the drawing commands of each frame (see
@@ -107,9 +113,48 @@ function imageAt(op) {
 
 const hex = (n) => "#" + n.toString(16).padStart(6, "0");
 
+// The links of the frame, at the place of their rectangles on the page.
+const linkBox = document.getElementById("links");
+let linkKey = "";
+function placeLinks() {
+  const list = (frame || []).filter((op) => op[0] === "a");
+  const r = canvas.getBoundingClientRect();
+  const key = JSON.stringify(list) + [r.left, r.top, scale].join(",");
+  if (key === linkKey) return;
+  linkKey = key;
+  linkBox.replaceChildren(...list.map((op) => {
+    const a = document.createElement("a");
+    a.href = op[5];
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.textContent = op[5];
+    a.title = "Copy the link";
+    Object.assign(a.style, { left: r.left + op[1] * scale + "px", top: r.top + op[2] * scale + "px",
+      width: (op[3] - op[1]) * scale + "px", height: (op[4] - op[2]) * scale + "px" });
+    a.addEventListener("click", (e) => { if (copyText(op[5])) { e.preventDefault(); showStatus("Link copied"); setTimeout(() => showStatus(""), 2000); } });
+    return a;
+  }));
+}
+// copyText copies text to the clipboard and returns true when it did. A page of the deck is http,
+// where the browser has no navigator.clipboard, so the copy goes through a text field.
+function copyText(text) {
+  const t = document.createElement("textarea");
+  t.value = text;
+  t.setAttribute("readonly", "");
+  t.style.position = "fixed";
+  t.style.opacity = "0";
+  document.body.append(t);
+  t.select();
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch (err) {}
+  t.remove();
+  return ok;
+}
+
 function paint() {
   if (!frame || frame === drawn) return;
   drawn = frame;
+  placeLinks();
   const k = scale * (devicePixelRatio || 1);
   ctx.setTransform(k, 0, 0, k, 0, 0);
   ctx.textBaseline = "alphabetic";
@@ -274,7 +319,7 @@ async function sendKey() {
   } catch (err) {
   } finally { keySending = false; sendKey(); }
 }
-addEventListener("contextmenu", (e) => e.preventDefault());
+addEventListener("contextmenu", (e) => { if (!(e.target instanceof Element && e.target.closest("a"))) e.preventDefault(); });
 document.addEventListener("gesturestart", (e) => e.preventDefault());
 
 // Load the fonts of the deck before the first frame, so the letters are the same.

@@ -70,6 +70,9 @@ func (a *App) drawShareSheet(c *gfx.Canvas) {
 		}
 		drawQR(c, q, url)
 		a.region("QR code", q)
+		// In a browser, the QR code and the address are links: a click opens the page, and the
+		// menu of the link copies it.
+		c.Link(q, url)
 		t := image.Rect(q.Max.X+20, body.Min.Y, body.Max.X, body.Max.Y)
 		st := kit.NewStack(t, 6)
 		c.Text(st.Next(30), title, gfx.Face(true, 20), text, gfx.Left)
@@ -78,9 +81,13 @@ func (a *App) drawShareSheet(c *gfx.Canvas) {
 				c.Text(st.Next(22), l, gfx.Face(false, 15), dim, gfx.Left)
 			}
 		} else {
+			var addr image.Rectangle
 			for _, l := range wrapText(gfx.Face(false, 15), strings.TrimPrefix(s.URL, "https://"), t.Dx()) {
-				c.Text(st.Next(22), l, gfx.Face(false, 15), dim, gfx.Left)
+				r := st.Next(22)
+				c.Text(r, l, gfx.Face(false, 15), dim, gfx.Left)
+				addr = addr.Union(r)
 			}
+			c.Link(addr, s.URL)
 			line := "The link stops 24 hours after the print ends."
 			if s.Ended && !s.Expires.IsZero() {
 				line = "The link stops at " + clockText(s.Expires, a.Clock24) + " " + dayName(s.Expires, a.Now()) + "."

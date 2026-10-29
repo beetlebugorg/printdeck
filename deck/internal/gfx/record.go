@@ -22,6 +22,7 @@ import (
 //	["d", divisor]                           make the frame darker (each color / divisor)
 //	["clip", x0, y0, x1, y1]                 draw only in the rectangle, until "unclip"
 //	["unclip"]
+//	["a", x0, y0, x1, y1, url]               a link on the rectangle; it draws no pixels
 //
 // rgb is a number 0xRRGGBB. image is the number of an image (ImageByID).
 type Recording struct {
@@ -65,6 +66,14 @@ func rgb(col color.Color) int {
 }
 
 func rect(r image.Rectangle) []any { return []any{r.Min.X, r.Min.Y, r.Max.X, r.Max.Y} }
+
+// Link records a link to url on the rectangle r. The browser puts a link over r, so that a viewer can
+// open or copy url. A canvas of pixels has no links.
+func (c *Canvas) Link(r image.Rectangle, url string) {
+	if c.rec != nil {
+		c.rec.add("a", r.Min.X, r.Min.Y, r.Max.X, r.Max.Y, url)
+	}
+}
 
 // Dim makes the whole frame darker: each color component is divided by div. A dialog draws over
 // it.
