@@ -1,6 +1,7 @@
 # Share links and Parts with Friends
 
-Status: plan, for review. No code yet.
+Status: phases 1 to 3 are built, and from phase 5 the photos and the public address. Phases 4, 6
+and 7 are open. "Changes from the plan" lists the choices of the build.
 
 This plan adds two features to Printdeck. They use one small cloud service at
 `printdeck.beetlebug.org`.
@@ -552,6 +553,25 @@ To limit the cost of misuse:
 Each phase is a set of commits on main, with tests. The API gets a test with a local S3
 stand-in, as `relay_test.go` tests the relay. `pwf deploy` builds the function and the
 WebAssembly file, uploads the pages, and deploys the stack with the AWS SDK for Go.
+
+## Changes from the plan
+
+The build of phase 3 made these choices:
+
+- **The paths of the pages.** One app page has three addresses: `/app` (sign in, the projects,
+  and a project at `/app#x=<id>`), `/owner#code=<code>`, and `/j#<code>` for an invite. The codes
+  are after `#`, so the browser does not send them, and CloudFront needs no function. The home
+  page `/` is the app page too.
+- **The session key** is a random file in the private bucket (`keys/session`), made at the first
+  use. It is not in Secrets Manager, which costs about $0.40 a month.
+- **The state of a passkey ceremony** goes to the page as a token with an HMAC, so the API keeps
+  no state between the begin and the finish.
+- **Members** have one passkey for each project (open question 5).
+- **A print of the deck** goes to a project with Share on the page of the project in the history.
+  The deck makes the project at the first share, and sends the prints that are not up yet: the
+  record, the picture of the model, and the frames of the time lapse as the video has them.
+- **The photos** of a project are in the build: the owner and the members add them on the page
+  of the project, and a member removes only their own photos.
 
 ## Open questions
 
