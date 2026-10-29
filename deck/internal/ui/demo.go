@@ -117,6 +117,7 @@ func (d *DemoPrinter) SetProject(r printer.Record, project string) bool {
 	}
 	return false
 }
+
 // SetNextProject sets the project of the demo print now.
 func (d *DemoPrinter) SetNextProject(project string) bool {
 	if !d.State_.Busy() {

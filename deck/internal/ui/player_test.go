@@ -236,7 +236,7 @@ func TestRecordProject(t *testing.T) {
 		// The Projects page, and the prints of the project.
 		a.pages = []page{pageMachine, pageStats, pageHistory}
 		tapLabel(t, a, cv, "Projects")
-		f := simFrame(t, a, "projects")
+		f := simFrame(t, a, fmt.Sprint("projects-", wide))
 		if !strings.Contains(f, "Garden planters") || !strings.Contains(f, "2 prints · 3:00") {
 			t.Errorf("wide %v: the Projects page: %s", wide, f)
 		}
@@ -244,6 +244,7 @@ func TestRecordProject(t *testing.T) {
 		if a.pages[len(a.pages)-1] != pageProject || a.project != "Garden planters" {
 			t.Fatalf("wide %v: pages %v, project %q", wide, a.pages, a.project)
 		}
+		simFrame(t, a, fmt.Sprint("project-", wide))
 
 		// No project.
 		a.record = pr.History_[0]

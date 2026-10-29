@@ -13,8 +13,8 @@ import (
 // page of a print). The Projects page lists them with their totals, and a tap opens the prints of
 // one project.
 
-// projectRowH is the height of a row of the Projects page.
-const projectRowH = 84
+// projectRowH is the height of a row of the Projects page, with the gap of 10 under the box.
+const projectRowH = 94
 
 // drawProjects lists the projects, the project with the newest print first. A tap opens the
 // prints of the project.
@@ -30,10 +30,12 @@ func (a *App) drawProjects(c *gfx.Canvas) {
 	a.list(c, l, func(i int) string { return list[i].Name }, func(c *gfx.Canvas, i int, box image.Rectangle) {
 		p := list[i]
 		plate(c, box)
-		in := kit.Inset(box, 18, 0, 18, 0)
-		c.Text(image.Rect(in.Min.X, box.Min.Y+10, in.Max.X, box.Min.Y+40), gfx.Fit(gfx.Face(true, 19), p.Name, in.Dx()),
-			gfx.Face(true, 19), text, gfx.Left)
-		c.Text(image.Rect(in.Min.X, box.Min.Y+44, in.Max.X, box.Min.Y+70), a.projectSummary(p), gfx.Face(false, 16), dim, gfx.Left)
+		// The two lines are a block in the middle of the row.
+		h1, h2 := 30, 26
+		in := kit.Inset(box, 18, (box.Dy()-h1-h2)/2, 18, 0)
+		s := kit.NewStack(in, 0)
+		c.Text(s.Next(h1), gfx.Fit(gfx.Face(true, 19), p.Name, in.Dx()), gfx.Face(true, 19), text, gfx.Left)
+		c.Text(s.Next(h2), gfx.Fit(gfx.Face(false, 16), a.projectSummary(p), in.Dx()), gfx.Face(false, 16), dim, gfx.Left)
 	}, func(i int) {
 		a.project, a.projectScroll = list[i].Name, 0
 		a.open(pageProject)

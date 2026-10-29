@@ -775,33 +775,37 @@ func (a *App) drawHistory(c *gfx.Canvas) {
 	}
 }
 
-// recordRowH is the height of a row of recordRow, with the gap under it.
+// recordRowH is the height of a row of recordRow, with the gap under it. The list takes the gap
+// of 10 from each row, so a row of 108 is a box of 98: 12 pixels above and under the three lines.
 func recordRowH() int {
 	if gfx.FinePrint() {
-		return 114
+		return 124
 	}
-	return fileRowH
+	return 108
 }
 
 // recordRow is the row of a finished print in a list: the thumbnail of the file at the left, and
 // at its right the name, the summary and the date line in three lines, as a row of the Files page.
-// The summary is red for a print that did not complete.
+// The lines are a block in the middle of the row. The summary is red for a print that did not
+// complete.
 func (a *App) recordRow(c *gfx.Canvas, box image.Rectangle, r printer.Record, summary, date string, files map[string]printer.File) {
 	plate(c, box)
+	// The thumbnail has the same space at its left as above it.
+	pad := min(16, (box.Dy()-thumbSmall)/2)
 	y := box.Min.Y + (box.Dy()-thumbSmall)/2
-	a.recordThumb(c, image.Rect(box.Min.X+10, y, box.Min.X+10+thumbSmall, y+thumbSmall), r, files)
+	a.recordThumb(c, image.Rect(box.Min.X+pad, y, box.Min.X+pad+thumbSmall, y+thumbSmall), r, files)
 	col := dim
 	if r.Result != "complete" {
 		col = red
 	}
-	y1, y2, y3 := 8, 36, 58
+	h1, h2, h3 := 28, 24, 22
 	if gfx.FinePrint() {
-		y1, y2, y3 = 8, 38, 66
+		h1, h2, h3 = 32, 30, 28
 	}
-	x := box.Min.X + 92
-	c.Text(image.Rect(x, box.Min.Y+y1, box.Max.X-12, box.Min.Y+y1+30), r.Name(), gfx.Face(true, 19), text, gfx.Left)
-	c.Text(image.Rect(x, box.Min.Y+y2, box.Max.X-12, box.Min.Y+y2+24), summary, gfx.Face(false, 16), col, gfx.Left)
-	c.Text(image.Rect(x, box.Min.Y+y3, box.Max.X-12, min(box.Max.Y-6, box.Min.Y+y3+28)), date, gfx.Face(false, 14), dim, gfx.Left)
+	s := kit.NewStack(kit.Inset(box, pad+thumbSmall+16, (box.Dy()-h1-h2-h3)/2, 14, 0), 0)
+	c.Text(s.Next(h1), r.Name(), gfx.Face(true, 19), text, gfx.Left)
+	c.Text(s.Next(h2), summary, gfx.Face(false, 16), col, gfx.Left)
+	c.Text(s.Next(h3), date, gfx.Face(false, 14), dim, gfx.Left)
 }
 
 // drawSettings is the Settings page: a row for each setting of the deck. A tap changes it.
