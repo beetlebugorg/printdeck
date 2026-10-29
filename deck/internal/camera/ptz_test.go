@@ -15,6 +15,7 @@ type fakeCtrls struct {
 	ranges     map[uint32]PTZRange
 	v          map[uint32]int
 	noPanAtMin bool
+	drop       int      // the count of the next sets that the camera ignores
 	sets       []uint32 // the controls of each set, in order
 }
 
@@ -40,6 +41,10 @@ func (d *fakeCtrls) set(id uint32, v int) error {
 	d.sets = append(d.sets, id)
 	if _, ok := d.ranges[id]; !ok {
 		return errors.New("no control")
+	}
+	if d.drop > 0 {
+		d.drop--
+		return nil
 	}
 	if d.noPanAtMin && id != cidZoomAbsolute && v != 0 && d.v[cidZoomAbsolute] == d.ranges[cidZoomAbsolute].Min {
 		return errors.New("EINVAL")
@@ -104,6 +109,34 @@ func TestPTZCtlRefusedPan(t *testing.T) {
 	}
 	if !c.apply(CamSettings{PTZ: &PTZPos{Zoom: 200, Pan: 36000}}) || c.p.Pos != (PTZPos{Zoom: 200, Pan: 36000}) {
 		t.Fatalf("pan after the zoom: %+v", c.p.Pos)
+	}
+}
+
+// A camera that ignores the position at the start of its stream gets it again a moment later.
+func TestPTZCtlIgnoredPosition(t *testing.T) {
+	d := newFakeCtrls(cidZoomAbsolute, cidPanAbsolute)
+	c := newPTZCtl(d)
+	d.drop = 2
+	s := CamSettings{PTZ: &PTZPos{Zoom: 200, Pan: 36000}}
+	c.apply(s)
+	if c.p.Pos != (PTZPos{Zoom: 100}) {
+		t.Fatalf("the ignored position: %+v", c.p.Pos)
+	}
+	for range ptzTryEvery {
+		c.apply(s)
+	}
+	if c.p.Pos != (PTZPos{Zoom: 200, Pan: 36000}) {
+		t.Fatalf("the position after a try: %+v", c.p.Pos)
+	}
+	// A camera that never takes the position gets ptzTries tries.
+	d = newFakeCtrls(cidZoomAbsolute, cidPanAbsolute)
+	d.noPanAtMin = true
+	c = newPTZCtl(d)
+	for range ptzTryEvery * (ptzTries + 3) {
+		c.apply(CamSettings{PTZ: &PTZPos{Zoom: 100, Pan: 36000}})
+	}
+	if n := len(d.sets); n != 2*ptzTries {
+		t.Fatalf("%d sets, want %d", n, 2*ptzTries)
 	}
 }
 

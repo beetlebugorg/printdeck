@@ -23,7 +23,17 @@ type ptzCtl struct {
 	p    PTZ
 	want PTZPos // the position of the last apply
 	set  bool   // apply has set want
+	// tries are the applies of want that the camera did not take, and wait the calls of apply
+	// since the last try.
+	tries, wait int
 }
+
+// A camera can ignore a position just after the start of its stream: apply sets want again, up
+// to ptzTries times, each ptzTryEvery calls (about 2 s at focusEvery).
+const (
+	ptzTries    = 5
+	ptzTryEvery = 8
+)
 
 // newPTZCtl returns the PTZ control of a camera, or nil for a camera with no zoom control. Pan and
 // tilt are optional.
@@ -46,12 +56,21 @@ func newPTZCtl(d ctrlDev) *ptzCtl {
 
 // apply sets the position of the settings s in the camera, and reports that the position changed.
 // A camera can refuse a pan or a tilt at the smallest zoom: the position is then the position that
-// the camera reports, and the next change of the setting tries again.
+// the camera reports, and the next change of the setting tries again. A position that the camera
+// did not take gets ptzTries tries.
 func (c *ptzCtl) apply(s CamSettings) bool {
 	t := c.p.Target(s.PTZ)
 	if c.set && t == c.want {
-		return false
+		if c.p.Pos == t || c.tries >= ptzTries {
+			return false
+		}
+		if c.wait++; c.wait < ptzTryEvery {
+			return false
+		}
+	} else {
+		c.tries = 0
 	}
+	c.wait = 0
 	c.want, c.set = t, true
 	old := c.p.Pos
 	zoom := func() { c.d.set(cidZoomAbsolute, t.Zoom) }
@@ -73,6 +92,9 @@ func (c *ptzCtl) apply(s CamSettings) bool {
 		pan()
 	}
 	c.read()
+	if c.p.Pos != t {
+		c.tries++
+	}
 	return c.p.Pos != old
 }
 
