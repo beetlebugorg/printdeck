@@ -97,7 +97,6 @@ func project(p [3]float32) (u, v, d float64) {
 // is drawn in the printed colour, the rest in the ghost colour. The part from zLow to zFrac, the layer that
 // is printed now, is drawn in the colour hot.
 func (m *Mesh) Render(w, h int, zLow, zFrac float64, printed, hot, ghost color.RGBA) *image.RGBA {
-	img := image.NewRGBA(image.Rect(0, 0, w, h))
 	minU, minV, maxU, maxV := math.Inf(1), math.Inf(1), math.Inf(-1), math.Inf(-1)
 	for _, t := range m.Tris {
 		for _, p := range t.V {
@@ -108,19 +107,27 @@ func (m *Mesh) Render(w, h int, zLow, zFrac float64, printed, hot, ghost color.R
 	}
 	const pad = 8.0
 	scale := math.Min((float64(w)-2*pad)/(maxU-minU), (float64(h)-2*pad)/(maxV-minV))
-	ox := (float64(w) - (maxU-minU)*scale) / 2
-	oy := (float64(h) - (maxV-minV)*scale) / 2
+	ox := (float64(w)-(maxU-minU)*scale)/2 - minU*scale
+	oy := (float64(h)-(maxV-minV)*scale)/2 - minV*scale
+	return m.RenderView(w, h, scale, ox, oy, zLow, zFrac, printed, hot, ghost)
+}
+
+// RenderView is Render with a camera: the point (u, v) of the screen of the model is at the pixel
+// (ox + u*scale, oy + v*scale). The screen is the screen of gcode.Project.
+func (m *Mesh) RenderView(w, h int, scale, ox, oy, zLow, zFrac float64, printed, hot, ghost color.RGBA) *image.RGBA {
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
 	zbuf := make([]float64, w*h)
 	for i := range zbuf {
 		zbuf[i] = math.Inf(-1)
 	}
 	zcut := float64(m.MinZ) + zFrac*float64(m.MaxZ-m.MinZ)
 	zlow := float64(m.MinZ) + zLow*float64(m.MaxZ-m.MinZ)
+	zTol := 1e-4 * max(1, float64(m.MaxZ-m.MinZ))
 	for _, t := range m.Tris {
 		var sx, sy, sd [3]float64
 		for i, p := range t.V {
 			u, v, d := project(p)
-			sx[i], sy[i], sd[i] = ox+(u-minU)*scale, oy+(v-minV)*scale, d
+			sx[i], sy[i], sd[i] = ox+u*scale, oy+v*scale, d
 		}
 		// Face normal for shading, turned to the viewer: meshes differ in winding.
 		a := [3]float64{float64(t.V[1][0] - t.V[0][0]), float64(t.V[1][1] - t.V[0][1]), float64(t.V[1][2] - t.V[0][2])}
@@ -137,10 +144,11 @@ func (m *Mesh) Render(w, h int, zLow, zFrac float64, printed, hot, ghost color.R
 		// The colour of each pixel follows its height, so the printed part ends on a straight cut.
 		cols := [3]color.RGBA{lit(ghost), lit(printed), lit(hot)}
 		colorAt := func(z float64) color.RGBA {
+			// The tolerance keeps the float noise of a face at the cut height out of the ghost.
 			switch {
-			case z > zcut:
+			case z > zcut+zTol:
 				return cols[0]
-			case z > zlow:
+			case z > zlow+zTol:
 				return cols[2]
 			}
 			return cols[1]

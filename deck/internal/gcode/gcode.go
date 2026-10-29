@@ -318,6 +318,27 @@ var (
 	viewer = [3]float64{-sinA * cosE, -cosA * cosE, sinE}
 )
 
+// Project returns the screen coordinates of a point of the model, in mm. v goes down the picture.
+func Project(x, y, z float64) (u, v float64) {
+	u, v, _ = project(float32(x), float32(y), float32(z))
+	return u, v
+}
+
+// Camera places the model in a picture: the point (u, v) of Project is at the pixel
+// (X + u*Scale, Y + v*Scale).
+type Camera struct{ Scale, X, Y float64 }
+
+// Fit returns the camera that fits the screen area from (minU, minV) to (maxU, maxV) of Project
+// into a w x h picture, with a margin of pad pixels, in the middle.
+func Fit(w, h int, pad, minU, minV, maxU, maxV float64) Camera {
+	scale := math.Min((float64(w)-2*pad)/(maxU-minU), (float64(h)-2*pad)/(maxV-minV))
+	return Camera{
+		Scale: scale,
+		X:     (float64(w)-(maxU-minU)*scale)/2 - minU*scale,
+		Y:     (float64(h)-(maxV-minV)*scale)/2 - minV*scale,
+	}
+}
+
 // project returns the screen coordinates of a point, and its depth (larger is nearer to the viewer).
 func project(x, y, z float32) (u, v, d float64) {
 	fx, fy, fz := float64(x), float64(y), float64(z)
@@ -348,10 +369,8 @@ func (m *Model) Render(w, h int, pos, curStart int64, printed, hot, ghost color.
 // first colour before the first change, the second after it, and so on. The last colour is for
 // the changes that have no colour of their own.
 func (m *Model) RenderColors(w, h int, pos, curStart int64, colors []color.RGBA, hot, ghost color.RGBA) *image.RGBA {
-	printed := colors[0]
-	out := image.NewRGBA(image.Rect(0, 0, w, h))
 	if len(m.Segs) == 0 {
-		return out
+		return image.NewRGBA(image.Rect(0, 0, w, h))
 	}
 	minU, minV, maxU, maxV := math.Inf(1), math.Inf(1), math.Inf(-1), math.Inf(-1)
 	for i := range m.Segs {
@@ -362,13 +381,21 @@ func (m *Model) RenderColors(w, h int, pos, curStart int64, colors []color.RGBA,
 			minV, maxV = math.Min(minV, v), math.Max(maxV, v)
 		}
 	}
-	const pad = 8.0
-	scale := math.Min((float64(w)-2*pad)/(maxU-minU), (float64(h)-2*pad)/(maxV-minV))
-	ox := (float64(w) - (maxU-minU)*scale) / 2
-	oy := (float64(h) - (maxV-minV)*scale) / 2
+	return m.RenderView(w, h, Fit(w, h, 8, minU, minV, maxU, maxV), pos, curStart, colors, hot, ghost)
+}
+
+// RenderView is RenderColors with the camera cam: the model has the place and the size of cam in
+// the picture, and a part of it can be out of the picture.
+func (m *Model) RenderView(w, h int, cam Camera, pos, curStart int64, colors []color.RGBA, hot, ghost color.RGBA) *image.RGBA {
+	printed := colors[0]
+	out := image.NewRGBA(image.Rect(0, 0, w, h))
+	if len(m.Segs) == 0 {
+		return out
+	}
+	scale := cam.Scale
 	pt := func(x, y, z float32) (float64, float64, float64) {
 		u, v, d := project(x, y, z)
-		return ox + (u-minU)*scale, oy + (v-minV)*scale, d
+		return cam.X + u*scale, cam.Y + v*scale, d
 	}
 	ss := supersample
 	img := image.NewRGBA(image.Rect(0, 0, w*ss, h*ss))
