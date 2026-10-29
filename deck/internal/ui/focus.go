@@ -263,6 +263,13 @@ func (a *App) lcdStatusScreen(st printer.State, l1, l2 string) *printer.LCDStatu
 		ToolPow: st.ToolPower, BedPow: st.BedPower}
 	if st.Busy() {
 		s.Printing, s.Progress = true, st.Completion/100
+		s.File, s.Z = st.Name(), fmt.Sprintf("%.2f", st.Z)
+		if st.Layers > 0 && st.Layer > 0 {
+			s.Layer = fmt.Sprintf("%d/%d", st.Layer, st.Layers)
+			if left, ok := a.layerLeft(st, st.Layer); ok {
+				s.Next = mmss(left.Seconds())
+			}
+		}
 		e := int(st.Elapsed.Minutes())
 		s.Elapsed = fmt.Sprintf("%d:%02d", e/60, e%60)
 		if st.HasTimeLeft {

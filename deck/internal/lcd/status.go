@@ -2,7 +2,6 @@ package lcd
 
 import (
 	"fmt"
-	"math"
 	"strings"
 	"time"
 )
@@ -31,15 +30,21 @@ type Status struct {
 	Cooled string `json:"cooled,omitempty"`
 	// Cooling is the end of a print that waits for the bed to cool: the bar is the cooling
 	// (Progress), to CoolTo degrees, and Left is the time that it needs, for example "4 min".
-	Cooling  bool    `json:"cooling,omitempty"`
-	CoolTo   float64 `json:"cool_to,omitempty"`
-	Position string  `json:"position,omitempty"` // for example "X110 Y110 Z5.00", when no print runs
-	Hint     string  `json:"hint,omitempty"`     // for example "Click for menu", when no print runs
+	Cooling bool    `json:"cooling,omitempty"`
+	CoolTo  float64 `json:"cool_to,omitempty"`
+	// The layer of a print and the number of layers ("17/120"), the time to the next layer
+	// ("1:32"), the height of the nozzle ("3.20"), and the name of the print.
+	Layer    string `json:"layer,omitempty"`
+	Next     string `json:"next,omitempty"`
+	Z        string `json:"z,omitempty"`
+	File     string `json:"file,omitempty"`
+	Position string `json:"position,omitempty"` // for example "X110 Y110 Z5.00", when no print runs
+	Hint     string `json:"hint,omitempty"`     // for example "Click for menu", when no print runs
 }
 
 // Moves reports that the status has a part that moves, so that the module draws its frames.
 func (s *Status) Moves() bool {
-	return heating(s.Tool, s.ToolT, s.ToolPow) || heating(s.Bed, s.BedT, s.BedPow) || s.Fan > 0 || s.Hint != ""
+	return heating(s.Tool, s.ToolT, s.ToolPow) || heating(s.Bed, s.BedT, s.BedPow) || s.Fan > 0
 }
 
 // heating is true while the heater has power, or while it is more than 2 degrees under its target.
@@ -52,104 +57,189 @@ const (
 	colFan  = canvasW/2 + 42
 )
 
-// The layout, from the top: the icons (y 0 to 15), the temperatures in the large font (16 to
-// 31), the targets in the small font (32 to 39), a dotted line (42), and two lines of small text
-// (45 and 55). It has no boxes: lit pixels are bright, so the screen lights only what it says.
+// The layout, from the top: the temperatures and the fan in the large font (y 0 to 15), a small
+// icon of each with the target in the small font (16 to 23), a dotted line (25), and four lines
+// of small text (27, 36, 45 and 54). It has no boxes: lit pixels are bright, so the screen lights
+// only what it says.
 func (s *Status) draw(c *canvas, frame int) {
 	small := &font5x8
-	centered := func(cx, y int, t string) {
-		w := small.w * len(t)
-		c.smallText(small, max(0, min(cx-w/2, canvasW-w)), y, t, false)
+	left := func(y int, t string) { c.smallText(small, 0, y, t, false) }
+	right := func(y int, t string) { c.smallText(small, canvasW-small.w*len(t), y, t, false) }
+	// leftRight draws l at the left and r at the right of the line y; l loses its end to fit.
+	leftRight := func(y int, l, r string) {
+		n := lineChars
+		if r != "" {
+			right(y, r)
+			n -= len(r) + 1
+		}
+		left(y, fit(strings.TrimSpace(l), max(0, n)))
 	}
-	// With no target, the row of the targets is empty: the icons and the numbers move down to
-	// keep the space even.
-	top := 0
-	if s.ToolT <= 0 && s.BedT <= 0 {
-		top = 4
-	}
-	big := func(cx int, t string) { c.text(max(0, min(cx-4*len(t), canvasW-8*len(t))), top+16, t) }
-
-	hotendIcon(c, colTool-8, top, s.ToolT > 0, heating(s.Tool, s.ToolT, s.ToolPow), frame)
-	bedIcon(c, colBed-8, top, s.BedT > 0, heating(s.Bed, s.BedT, s.BedPow), frame)
-	fanIcon(c, colFan-8, top, s.Fan, frame)
+	big := func(cx int, t string) { c.text(max(0, min(cx-4*len(t), canvasW-8*len(t))), 0, t) }
 	big(colTool, fmt.Sprintf("%.0f\xf8", s.Tool))
 	big(colBed, fmt.Sprintf("%.0f\xf8", s.Bed))
 	big(colFan, fmt.Sprintf("%.0f%%", s.Fan*100))
-	target := func(cx int, t float64) {
-		if t <= 0 {
-			return
+	// The small icon and the target under each number.
+	under := func(cx int, icon func(x int), t string) {
+		w := 7
+		if t != "" {
+			w += 2 + small.w*len(t)
 		}
-		v := fmt.Sprintf("%.0f\xf8", t)
-		w := small.w*len(v) + 8
-		x := max(0, cx-w/2)
-		// A small arrow: the heater goes to this temperature.
-		m := y32 + 4
-		c.line(x, m, x+5, m)
-		c.line(x+3, m-2, x+5, m)
-		c.line(x+3, m+2, x+5, m)
-		c.smallText(small, x+8, y32, v, false)
+		x := max(0, min(cx-w/2, canvasW-w))
+		icon(x)
+		c.smallText(small, x+9, 16, t, false)
 	}
-	target(colTool, s.ToolT)
-	target(colBed, s.BedT)
+	target := func(t float64) string {
+		if t <= 0 {
+			return "off"
+		}
+		return fmt.Sprintf("%.0f\xf8", t)
+	}
+	under(colTool, func(x int) { smallHotend(c, x, 17, s.ToolT > 0, heating(s.Tool, s.ToolT, s.ToolPow), frame) }, target(s.ToolT))
+	under(colBed, func(x int) { smallBed(c, x, 17, s.BedT > 0, heating(s.Bed, s.BedT, s.BedPow), frame) }, target(s.BedT))
+	under(colFan, func(x int) { smallFan(c, x, 17, s.Fan, frame) }, "")
 	for x := 0; x < canvasW; x += 2 {
-		c.set(x, 42, true)
+		c.set(x, 25, true)
 	}
 
-	const line1, line2 = 44, 54
-	if s.Printing && s.Cooling {
-		to := fmt.Sprintf("%.0f\xf8", s.CoolTo)
+	const line1, line2, line3, line4 = 27, 36, 45, 54
+	bar := func(right string) {
 		x1 := canvasW - small.w*4 - 3
 		roundBar(c, 0, line1+1, x1, line1+7, s.Progress)
-		c.smallText(small, canvasW-small.w*len(to), line1, to, false)
-		c.smallText(small, 0, line2, "cooling bed", false)
+		c.smallText(small, canvasW-small.w*len(right), line1, right, false)
+	}
+	if s.Printing && s.Cooling {
+		bar(fmt.Sprintf("%.0f\xf8", s.CoolTo))
+		l := ""
 		if s.Left != "" {
-			l := s.Left + " left"
-			c.smallText(small, canvasW-small.w*len(l), line2, l, false)
+			l = s.Left + " left"
 		}
+		leftRight(line2, "cooling bed", l)
+		leftRight(line4, s.File, s.Clock)
 		return
 	}
 	if s.Printing {
-		pct := fmt.Sprintf("%.0f%%", s.Progress*100)
-		x1 := canvasW - small.w*4 - 3
-		roundBar(c, 0, line1+1, x1, line1+7, s.Progress)
-		c.smallText(small, canvasW-small.w*len(pct), line1, pct, false)
+		bar(fmt.Sprintf("%.0f%%", s.Progress*100))
 		// The end of the print on the clock at the left, when the time left is known; else the
 		// time of the print.
+		end := s.Elapsed
 		if s.Cooled != "" {
-			c.smallText(small, 0, line2, "cooled "+s.Cooled, false)
+			end = "cooled " + s.Cooled
 		} else if s.Done != "" {
-			c.smallText(small, 0, line2, "done "+s.Done, false)
-		} else {
-			c.smallText(small, 0, line2, s.Elapsed, false)
+			end = "done " + s.Done
 		}
+		l := ""
 		if s.Left != "" {
-			l := s.Left + " left"
-			c.smallText(small, canvasW-small.w*len(l), line2, l, false)
+			l = s.Left + " left"
 		}
+		leftRight(line2, end, l)
+		// The layer, the time to the next layer, and the height.
+		layer := ""
+		if s.Layer != "" {
+			layer = "L" + s.Layer
+			if s.Next != "" {
+				layer += " next " + s.Next
+			}
+		} else if s.Done != "" && s.Elapsed != "" {
+			layer = s.Elapsed + " so far"
+		}
+		z := ""
+		if s.Z != "" {
+			z = "Z" + s.Z
+		}
+		leftRight(line3, layer, z)
+		leftRight(line4, s.File, s.Clock)
 		return
 	}
-	// The position, or the message when the position is not known. Then the state and the clock,
-	// and every 3 seconds the message or the hint in place of the state.
-	state := s.State
+	// The position, the message, the hint, and the state with the clock.
 	if s.Position != "" {
-		centered(canvasW/2, line1, fit(s.Position, 25))
-		if alt := s.alternate(frame); alt != "" {
-			state = alt
-		}
+		c.centered(small, line1, fit(s.Position, lineChars))
+		c.centered(small, line2, fit(s.Message, lineChars))
 	} else {
-		centered(canvasW/2, line1, fit(s.Message, 25))
-		if s.Hint != "" && frame/12%2 == 1 {
-			state = s.Hint
-		}
+		c.centered(small, line1, fit(s.Message, lineChars))
 	}
-	c.smallText(small, 0, line2, fit(strings.TrimSpace(state), 19), false)
-	if s.Clock != "" {
-		c.smallText(small, canvasW-small.w*len(s.Clock), line2, s.Clock, false)
+	c.centered(small, line3, fit(s.Hint, lineChars))
+	leftRight(line4, s.State, s.Clock)
+}
+
+// lineChars is the number of characters of the small font in a line.
+const lineChars = canvasW / 5
+
+// centered draws t in the font f in the middle of the line y.
+func (c *canvas) centered(f *bitmapFont, y int, t string) {
+	w := f.w * len(t)
+	c.smallText(f, max(0, (canvasW-w)/2), y, t, false)
+}
+
+// The small icons of the status screen are 7 x 7 pixels. smallHotend draws the hotend: its
+// block is lit while the heater is on, and it blinks while it heats.
+func smallHotend(c *canvas, x, y int, on, heats bool, frame int) {
+	if heats && frame%4 == 3 {
+		return
+	}
+	drawArt(c, x, y, smallHotendArt)
+	if on {
+		c.fill(x+2, y+3, x+5, y+4, true)
 	}
 }
 
-// y32 is the top of the targets.
-const y32 = 32
+// smallBed draws the bed: its plate is lit while the heater is on, and it blinks while it heats.
+func smallBed(c *canvas, x, y int, on, heats bool, frame int) {
+	if heats && frame%4 == 3 {
+		return
+	}
+	drawArt(c, x, y, smallBedArt)
+	if on {
+		c.fill(x+1, y+4, x+6, y+5, true)
+	}
+}
+
+// smallFan draws the fan. Its blades turn while it runs.
+func smallFan(c *canvas, x, y int, speed float64, frame int) {
+	art := smallFanArt[0]
+	if speed > 0 && frame%2 == 1 {
+		art = smallFanArt[1]
+	}
+	drawArt(c, x, y, art)
+}
+
+var (
+	smallHotendArt = []string{
+		".#####.",
+		".#...#.",
+		".#####.",
+		"#.....#",
+		"#######",
+		"..###..",
+		"...#...",
+	}
+	smallBedArt = []string{
+		".#.#.#.",
+		"#.#.#..",
+		".......",
+		"#######",
+		"#.....#",
+		"#######",
+		".#...#.",
+	}
+	// The fan: a frame with round corners and four straight blades, as + and as x.
+	smallFanArt = [2][]string{{
+		".#####.",
+		"#..#..#",
+		"#..#..#",
+		"#######",
+		"#..#..#",
+		"#..#..#",
+		".#####.",
+	}, {
+		".#####.",
+		"##...##",
+		"#.#.#.#",
+		"#..#..#",
+		"#.#.#.#",
+		"##...##",
+		".#####.",
+	}}
+)
 
 // roundBar draws a progress bar with round ends from x0, y0 to x1, y1, filled to v (0 to 1).
 func roundBar(c *canvas, x0, y0, x1, y1 int, v float64) {
@@ -163,18 +253,6 @@ func roundBar(c *canvas, x0, y0, x1, y1 int, v float64) {
 	c.set(x1-2, y1-2, true)
 	w := int(float64(x1-x0-4) * min(max(v, 0), 1))
 	c.fill(x0+2, y0+2, x0+2+w, y1-2, true)
-}
-
-// alternate is the text that takes the place of the state on the bottom line for 3 of each 6
-// seconds (at 4 frames a second), or "".
-func (s *Status) alternate(frame int) string {
-	if frame/12%2 == 0 {
-		return ""
-	}
-	if s.Message != "" && frame/24%2 == 0 || s.Hint == "" {
-		return s.Message
-	}
-	return s.Hint
 }
 
 // The icons are 16 x 16 pixels. '#' is a lit pixel.
@@ -262,45 +340,6 @@ func bedIcon(c *canvas, x, y int, on, heats bool, frame int) {
 		}
 		for dy := 0; dy < 7; dy++ {
 			c.set(wx+wave(1, float64(dy+frame*2+i*2)/1.5), y+6-dy, true)
-		}
-	}
-}
-
-// fanIcon draws a fan in a frame with round corners, with three filled blades that turn at the
-// speed of the fan.
-func fanIcon(c *canvas, x, y int, speed float64, frame int) {
-	// The frame.
-	c.line(x+2, y, x+13, y)
-	c.line(x+2, y+15, x+13, y+15)
-	c.line(x, y+2, x, y+13)
-	c.line(x+15, y+2, x+15, y+13)
-	c.set(x+1, y+1, true)
-	c.set(x+14, y+1, true)
-	c.set(x+1, y+14, true)
-	c.set(x+14, y+14, true)
-	// The blades: the parts of the circle in three sectors that bend with the radius.
-	// The blades turn against their curve, as the blades of a real fan.
-	turn := -float64(frame) * speed * 0.7
-	const cx, cy = 7.5, 7.5
-	for py := 1; py < 15; py++ {
-		for px := 1; px < 15; px++ {
-			dx, dy := float64(px)-cx, float64(py)-cy
-			r := math.Hypot(dx, dy)
-			if r > 6.6 {
-				continue
-			}
-			if r < 1.6 {
-				c.set(x+px, y+py, true) // the hub
-				continue
-			}
-			a := math.Atan2(dy, dx) - turn - r*0.28
-			sector := math.Mod(a, 2*math.Pi/3)
-			if sector < 0 {
-				sector += 2 * math.Pi / 3
-			}
-			if sector < 0.95 {
-				c.set(x+px, y+py, true)
-			}
 		}
 	}
 }
