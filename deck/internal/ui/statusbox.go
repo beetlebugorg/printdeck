@@ -124,8 +124,8 @@ func readout(c *gfx.Canvas, r image.Rectangle, name, value, target string, power
 // shortDetail are a shorter side and a shorter detail for a narrow panel, or "".
 type panelText struct {
 	head, side, short, msg, detail, shortDetail string
-	bar                     bool
-	progress                float64
+	bar                                         bool
+	progress                                    float64
 }
 
 // panelLines returns the text of the status panel for the state st.

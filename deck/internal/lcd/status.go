@@ -22,9 +22,13 @@ type Status struct {
 	Fan      float64 `json:"fan"`                // 0 to 1
 	Progress float64 `json:"progress"`           // 0 to 1, with Printing
 	Printing bool    `json:"printing,omitempty"` // a print runs: a progress bar
-	Elapsed  string  `json:"elapsed,omitempty"`  // the time of the print, for example "0:42"
-	Left     string  `json:"left,omitempty"`     // the time left of the print, for example "1:23"
-	Done     string  `json:"done,omitempty"`     // the end of the print on the clock, for example "3:47PM"
+	// Running is a print between its start and its end macro: the layers print. The screen then
+	// shows the progress and the time left in the large font. Paused is a paused print.
+	Running bool   `json:"running,omitempty"`
+	Paused  bool   `json:"paused,omitempty"`
+	Elapsed string `json:"elapsed,omitempty"` // the time of the print, for example "0:42"
+	Left    string `json:"left,omitempty"`    // the time left of the print, for example "1:23"
+	Done    string `json:"done,omitempty"`    // the end of the print on the clock, for example "3:47PM"
 	// Cooled is the time on the clock when the bed after the print is cool enough to remove the
 	// part. The line of the end shows it in place of Done.
 	Cooled string `json:"cooled,omitempty"`
@@ -64,16 +68,79 @@ const (
 func (s *Status) draw(c *canvas, frame int) {
 	small := &font5x8
 	left := func(y int, t string) { c.smallText(small, 0, y, t, false) }
-	right := func(y int, t string) { c.smallText(small, canvasW-small.w*len(t), y, t, false) }
-	// leftRight draws l at the left and r at the right of the line y; l loses its end to fit.
-	leftRight := func(y int, l, r string) {
-		n := lineChars
-		if r != "" {
-			right(y, r)
-			n -= len(r) + 1
-		}
-		left(y, fit(strings.TrimSpace(l), max(0, n)))
+	// item draws an icon and its text at x on the line y, and returns the x after it. The width
+	// of an item is iconW plus the text.
+	item := func(x, y int, icon []string, t string) int {
+		drawArt(c, x, y, icon)
+		return c.smallText(small, x+iconW, y, t, false)
 	}
+	itemW := func(t string) int { return iconW + small.w*len(t) }
+	// items draws l at the left and r at the right of the line y, each with its icon. A missing
+	// text has no item. The left text loses its end to fit.
+	items := func(y int, li []string, l string, ri []string, r string) {
+		x1 := canvasW
+		if r != "" {
+			x1 -= itemW(r)
+			item(x1, y, ri, r)
+			x1 -= small.w
+		}
+		if l != "" {
+			n := max(0, (x1-iconW)/small.w)
+			item(0, y, li, fit(strings.TrimSpace(l), n))
+		}
+	}
+	const line1, line2, line3, line4 = 27, 36, 45, 54
+	if s.Running {
+		// The progress and the time left in the large font, and the bar under them.
+		c.text(0, 0, fmt.Sprintf("%.0f%%", s.Progress*100))
+		if t := s.Left; t != "" {
+			x := canvasW - 8*len(t)
+			drawArt(c, x-iconW, 5, iconLeft)
+			c.text(x, 0, t)
+		}
+		roundBar(c, 0, 18, canvasW, 25, s.Progress)
+		// The end, or the end of the cooling of the bed after the print, and the time of the
+		// print.
+		switch {
+		case s.Cooled != "":
+			items(line1, iconCooled, s.Cooled, iconElapsed, s.Elapsed)
+		case s.Done != "":
+			items(line1, iconDone, s.Done, iconElapsed, s.Elapsed)
+		default:
+			items(line1, nil, "", iconElapsed, s.Elapsed)
+		}
+		// The layer and the time to the next layer, and the height.
+		if s.Layer != "" {
+			x := item(0, line2, iconLayers, s.Layer) + small.w
+			if s.Next != "" {
+				item(x, line2, iconNext, s.Next)
+			}
+		}
+		items(line2, nil, "", iconZ, s.Z)
+		// The heaters and the fan: steady during a print, so in the small font.
+		temp := func(t, target float64) string {
+			if target > 0 && (t < target-5 || t > target+5) {
+				return fmt.Sprintf("%.0f>%.0f", t, target) // away from the target
+			}
+			return fmt.Sprintf("%.0f\xf8", t)
+		}
+		tool, bed := temp(s.Tool, s.ToolT), temp(s.Bed, s.BedT)
+		// A heater that holds its temperature has power: the icon blinks only under the target.
+		smallHotend(c, 0, line3, s.ToolT > 0, heating(s.Tool, s.ToolT, 0), frame)
+		x := c.smallText(small, iconW, line3, tool, false) + small.w
+		smallBed(c, x, line3, s.BedT > 0, heating(s.Bed, s.BedT, 0), frame)
+		x = c.smallText(small, x+iconW, line3, bed, false) + small.w
+		smallFan(c, x, line3, s.Fan, frame)
+		c.smallText(small, x+iconW, line3, fmt.Sprintf("%.0f%%", s.Fan*100), false)
+		// The name of the print, or Paused, and the clock.
+		name := s.File
+		if s.Paused {
+			name = "Paused"
+		}
+		items(line4, iconFile, name, iconClock, s.Clock)
+		return
+	}
+
 	big := func(cx int, t string) { c.text(max(0, min(cx-4*len(t), canvasW-8*len(t))), 0, t) }
 	big(colTool, fmt.Sprintf("%.0f\xf8", s.Tool))
 	big(colBed, fmt.Sprintf("%.0f\xf8", s.Bed))
@@ -101,7 +168,6 @@ func (s *Status) draw(c *canvas, frame int) {
 		c.set(x, 25, true)
 	}
 
-	const line1, line2, line3, line4 = 27, 36, 45, 54
 	bar := func(right string) {
 		x1 := canvasW - small.w*4 - 3
 		roundBar(c, 0, line1+1, x1, line1+7, s.Progress)
@@ -109,45 +175,36 @@ func (s *Status) draw(c *canvas, frame int) {
 	}
 	if s.Printing && s.Cooling {
 		bar(fmt.Sprintf("%.0f\xf8", s.CoolTo))
-		l := ""
-		if s.Left != "" {
-			l = s.Left + " left"
-		}
-		leftRight(line2, "cooling bed", l)
-		leftRight(line4, s.File, s.Clock)
+		items(line2, nil, "", iconLeft, s.Left)
+		left(line2, "cooling bed")
+		items(line4, iconFile, s.File, iconClock, s.Clock)
 		return
 	}
 	if s.Printing {
 		bar(fmt.Sprintf("%.0f%%", s.Progress*100))
-		// The end of the print on the clock at the left, when the time left is known; else the
-		// time of the print.
-		end := s.Elapsed
-		if s.Cooled != "" {
-			end = "cooled " + s.Cooled
-		} else if s.Done != "" {
-			end = "done " + s.Done
+		// The end of the print on the clock at the left, when the time left is known (the bed
+		// cools enough to remove the part at Cooled), else the time of the print; and the time
+		// left at the right.
+		switch {
+		case s.Cooled != "":
+			items(line2, iconCooled, s.Cooled, iconLeft, s.Left)
+		case s.Done != "":
+			items(line2, iconDone, s.Done, iconLeft, s.Left)
+		default:
+			items(line2, iconElapsed, s.Elapsed, iconLeft, s.Left)
 		}
-		l := ""
-		if s.Left != "" {
-			l = s.Left + " left"
-		}
-		leftRight(line2, end, l)
-		// The layer, the time to the next layer, and the height.
-		layer := ""
+		// The layer and the time to the next layer, or the time of the print; the height.
+		x := 0
 		if s.Layer != "" {
-			layer = "L" + s.Layer
+			x = item(0, line3, iconLayers, s.Layer) + small.w
 			if s.Next != "" {
-				layer += " next " + s.Next
+				item(x, line3, iconNext, s.Next)
 			}
 		} else if s.Done != "" && s.Elapsed != "" {
-			layer = s.Elapsed + " so far"
+			item(0, line3, iconElapsed, s.Elapsed)
 		}
-		z := ""
-		if s.Z != "" {
-			z = "Z" + s.Z
-		}
-		leftRight(line3, layer, z)
-		leftRight(line4, s.File, s.Clock)
+		items(line3, nil, "", iconZ, s.Z)
+		items(line4, iconFile, s.File, iconClock, s.Clock)
 		return
 	}
 	// The position, the message, the hint, and the state with the clock.
@@ -158,8 +215,104 @@ func (s *Status) draw(c *canvas, frame int) {
 		c.centered(small, line1, fit(s.Message, lineChars))
 	}
 	c.centered(small, line3, fit(s.Hint, lineChars))
-	leftRight(line4, s.State, s.Clock)
+	items(line4, nil, "", iconClock, s.Clock)
+	n := lineChars
+	if s.Clock != "" {
+		n = (canvasW - itemW(s.Clock) - small.w) / small.w
+	}
+	left(line4, fit(strings.TrimSpace(s.State), n))
 }
+
+// iconW is the width of a small icon of a line of text with the gap after it.
+const iconW = 9
+
+// The small icons of the lines of text, 7 x 7 pixels: the end of the print (a flag), the time
+// left (an hourglass), the time of the print (a stopwatch), the end of the cooling (a
+// thermometer), the layer (a stack), the next layer (an arrow up), the height (an arrow up and
+// down), the name of the print (a page), and the clock.
+var (
+	iconDone = []string{
+		"#.#.#..",
+		"##.#.#.",
+		"#.#.#..",
+		"##.#.#.",
+		"#......",
+		"#......",
+		"#......",
+	}
+	iconLeft = []string{
+		"#######",
+		".#...#.",
+		"..#.#..",
+		"...#...",
+		"..#.#..",
+		".#.#.#.",
+		"#######",
+	}
+	iconElapsed = []string{
+		"..###..",
+		"...#...",
+		".#####.",
+		"#..#..#",
+		"#..##.#",
+		"#.....#",
+		".#####.",
+	}
+	iconCooled = []string{
+		"..#....",
+		".#.#...",
+		".#.#.##",
+		".#.#...",
+		".###.##",
+		"#####..",
+		".###...",
+	}
+	iconLayers = []string{
+		".......",
+		"#######",
+		".......",
+		"#######",
+		".......",
+		"#######",
+		".......",
+	}
+	iconNext = []string{
+		"...#...",
+		"..###..",
+		".#.#.#.",
+		"...#...",
+		"...#...",
+		".......",
+		"#######",
+	}
+	iconZ = []string{
+		"...#...",
+		"..###..",
+		".#.#.#.",
+		"...#...",
+		".#.#.#.",
+		"..###..",
+		"...#...",
+	}
+	iconFile = []string{
+		"####...",
+		"#..##..",
+		"#...##.",
+		"#....#.",
+		"#....#.",
+		"#....#.",
+		"######.",
+	}
+	iconClock = []string{
+		"..###..",
+		".#.#.#.",
+		"#..#..#",
+		"#..##.#",
+		"#.....#",
+		".#...#.",
+		"..###..",
+	}
+)
 
 // lineChars is the number of characters of the small font in a line.
 const lineChars = canvasW / 5

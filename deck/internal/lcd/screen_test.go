@@ -107,3 +107,26 @@ func TestHeaterMovesWithPower(t *testing.T) {
 		t.Error("a heater with no power moves")
 	}
 }
+
+// During the layers of a print, the screen shows the progress and the time left in the large
+// font, and a heater at its target does not blink.
+func TestRunningScreen(t *testing.T) {
+	s := &Status{Printing: true, Running: true, Progress: 0.42, Left: "1:23", Tool: 210, ToolT: 210, ToolPow: 0.4,
+		Bed: 60, BedT: 60, Layer: "17/120", Next: "1:32", Z: "3.20", File: "pot", Clock: "2:24PM"}
+	var c0, c3 canvas
+	s.draw(&c0, 0)
+	s.draw(&c3, 3)
+	if c0 != c3 {
+		t.Error("the screen of a print at its temperatures changes between frames")
+	}
+	if lit(&c0, 0, 0, 40, 16) == 0 || lit(&c0, canvasW-40, 0, canvasW, 16) == 0 {
+		t.Error("no progress or time left in the large font")
+	}
+	s.Tool = 180 // under the target: the hotend blinks
+	var h0, h3 canvas
+	s.draw(&h0, 0)
+	s.draw(&h3, 3)
+	if h0 == h3 {
+		t.Error("a hotend under its target does not blink")
+	}
+}
