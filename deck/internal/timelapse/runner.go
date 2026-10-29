@@ -84,6 +84,9 @@ var (
 	tick       = 100 * time.Millisecond
 	frameWait  = 4 * time.Second // the longest wait for a picture of the camera
 	resendWait = 2 * time.Second // the time between two sends of the same settings
+	// parkHold is the longest time of OnPark. The host waits 5 seconds for a picture (wait of
+	// printdeck_timelapse), and the picture comes after OnPark.
+	parkHold = 3 * time.Second
 )
 
 // Runner follows the prints and the park of the Klipper host, and captures the pictures.
@@ -108,6 +111,11 @@ type Runner struct {
 	// OnLapseFrame gets each JPEG that the runner adds to the video of the print now, or is nil.
 	// The share link uploads it.
 	OnLapseFrame func(jpeg []byte)
+	// OnPark runs at each frame of the host with the toolhead at the park, before the picture,
+	// with the layers that are done. Its context ends parkHold after the start, so the host gets
+	// the picture before the end of its wait. It can be nil. The focus search on the part runs in
+	// it.
+	OnPark func(ctx context.Context, done int)
 
 	host  Host
 	cam   Camera
@@ -129,6 +137,8 @@ type Runner struct {
 	videos    []Video
 	parkY     float64 // the park Y of the print, or NaN
 	crop      lapseCrop
+	hs        HostStatus // the last status of the host
+	firstDone bool       // the host took the first layer picture of the print
 
 	// stepMu is held during a step. frozen stops the steps after SaveHandoff. restored is true
 	// after LoadHandoff, until the state of the print is known.
@@ -264,10 +274,14 @@ func (r *Runner) step(ctx context.Context) {
 
 	hs, ok := r.host.TimelapseStatus()
 	if !ok || !hs.Present {
+		r.mu.Lock()
+		r.hs = HostStatus{}
+		r.mu.Unlock()
 		return
 	}
 	r.mu.Lock()
 	handled := r.handled
+	r.hs = hs
 	r.mu.Unlock()
 	if hs.Waiting && hs.Frame > handled {
 		// The picture first: a G-code script waits while the host waits for the picture.
@@ -319,7 +333,23 @@ func (r *Runner) startPrint(file string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.rec, r.file = NewRecorder(), file
-	r.parkY, r.crop = math.NaN(), lapseCrop{}
+	r.parkY, r.crop, r.firstDone = math.NaN(), lapseCrop{}, false
+}
+
+// Parks reports that the host parks the toolhead for a picture after the layer that is done now
+// (done layers): for the frames of the time lapse with the park, or for the first layer picture
+// before the host takes it.
+func (r *Runner) Parks(done int) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	hs := r.hs
+	if r.rec == nil || !hs.Present || hs.Stopped {
+		return false
+	}
+	if hs.Enable && hs.Park {
+		return true
+	}
+	return hs.First != FirstOff && !r.firstDone && done <= 1
 }
 
 // findParkY asks for the park Y of the print until the deck knows it.
@@ -444,6 +474,14 @@ func (r *Runner) endPrint(ctx context.Context, save bool) {
 // A frame of the time lapse comes from the camera of the frames, and the first layer picture from
 // the Picture camera. When they are two cameras, the deck gets the two pictures at the same time.
 func (r *Runner) takePicture(ctx context.Context, hs HostStatus) {
+	r.mu.Lock()
+	onPark := r.OnPark
+	r.mu.Unlock()
+	if parked := hs.IsFirst || (hs.IsLapse && hs.Park); parked && onPark != nil {
+		pctx, cancel := context.WithTimeout(ctx, parkHold)
+		onPark(pctx, hs.Layer)
+		cancel()
+	}
 	var f, pf *camera.Frame
 	pic := r.picture()
 	switch {
@@ -464,6 +502,9 @@ func (r *Runner) takePicture(ctx context.Context, hs HostStatus) {
 	}
 	r.mu.Lock()
 	r.handled = hs.Frame
+	if hs.IsFirst {
+		r.firstDone = true
+	}
 	rec := r.rec
 	file := r.file
 	r.mu.Unlock()

@@ -315,6 +315,55 @@ func TestRunnerPictureCamera(t *testing.T) {
 	}
 }
 
+// OnPark runs before the picture of each frame with the park, with the layers that are done and
+// a deadline of parkHold. Parks reports the parks to come: the frames of the time lapse with the
+// park, or the first layer picture before the host takes it.
+func TestRunnerOnPark(t *testing.T) {
+	for _, park := range []bool{true, false} {
+		host := &fakeHost{st: HostStatus{Present: true, Every: 1}}
+		cam := &fakeCamera{t: t, on: true}
+		busy := false
+		r := NewRunner(Settings{On: true, Park: park, First: FirstPicture}, host, cam, func() Print {
+			return Print{Busy: busy, File: "clip.gcode"}
+		}, t.TempDir())
+		var parks []int
+		r.OnPark = func(ctx context.Context, done int) {
+			dl, ok := ctx.Deadline()
+			if !ok || time.Until(dl) > parkHold {
+				t.Errorf("park %v: deadline %v %v", park, dl, ok)
+			}
+			if len(host.taken) != host.st.Frame-1 {
+				t.Errorf("park %v: OnPark after the picture", park)
+			}
+			parks = append(parks, done)
+		}
+		ctx := context.Background()
+		r.step(ctx)
+		if r.Parks(0) {
+			t.Errorf("park %v: parks with no print", park)
+		}
+		busy = true
+		r.step(ctx)
+		if !r.Parks(0) || !r.Parks(1) {
+			t.Errorf("park %v: no park for the first layer picture", park)
+		}
+		host.frame(true, true, 1)
+		r.step(ctx)
+		host.frame(false, true, 2)
+		r.step(ctx)
+		want := []int{1, 2}
+		if !park {
+			want = want[:1]
+		}
+		if len(parks) != len(want) || parks[0] != 1 || (park && parks[1] != 2) {
+			t.Errorf("park %v: OnPark at %v, want %v", park, parks, want)
+		}
+		if r.Parks(2) != park {
+			t.Errorf("park %v: Parks after the first layer picture is %v", park, r.Parks(2))
+		}
+	}
+}
+
 // With no camera, the host gets no frames to take.
 func TestRunnerNoCamera(t *testing.T) {
 	host := &fakeHost{st: HostStatus{Present: true, Enable: true, First: FirstPause, Park: true, Every: 1}}
