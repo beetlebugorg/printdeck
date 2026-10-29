@@ -149,33 +149,109 @@ func drawTiles(prints []wire.ProjectPrint, href func(wire.ProjectPrint) string) 
 	}
 }
 
-// drawLive draws a tile for each print of the project that prints now. A tile opens the share
-// page of the print.
+// liveSrc keeps the address of the picture of each live print. The service signs a new address
+// at each poll: the old one shows the same picture, so the page loads it once, until the address
+// expires.
+var liveSrc = map[string]struct {
+	url string
+	at  time.Time
+}{}
+
+// liveEnded is the line of a live print that ended, by its result.
+var liveEnded = map[string]string{"complete": "Finished. It comes here in a few minutes.",
+	"cancelled": "Cancelled.", "error": "The print stopped."}
+
+// drawLive draws a tile for each print of the project that prints now. A tile with a share link
+// opens the share page of the print.
 func drawLive(live []wire.ProjectLive) {
 	box := byID("live")
 	box.Set("textContent", "")
 	setHidden("liveHead", len(live) == 0)
 	for _, l := range live {
-		tile := el("a", "tile", "")
-		tile.Set("href", l.URL)
+		tile := el("div", "tile", "")
+		if l.URL != "" {
+			tile = el("a", "tile", "")
+			tile.Set("href", l.URL)
+		}
 		pic := el("div", "pic", "")
-		img := el("img", "", "")
-		img.Set("src", l.URL+"/model.jpg")
-		img.Set("alt", "")
-		pic.Call("appendChild", img)
+		src := l.Model
+		if src == "" && l.URL != "" {
+			src = l.URL + "/model.jpg"
+		}
+		key := l.Name + "@" + l.Started.String()
+		if old, ok := liveSrc[key]; ok && time.Since(old.at) < 30*time.Minute {
+			src = old.url
+		} else if src != "" {
+			liveSrc[key] = struct {
+				url string
+				at  time.Time
+			}{src, time.Now()}
+		}
+		if src != "" {
+			img := el("img", "", "")
+			img.Set("src", src)
+			img.Set("alt", "")
+			pic.Call("appendChild", img)
+		}
 		badges := el("div", "badges", "")
-		badges.Call("appendChild", el("span", "live", "Live"))
+		switch {
+		case l.Result == "complete":
+			badges.Call("appendChild", el("span", "live", "Done"))
+		case l.Result != "":
+			badges.Call("appendChild", el("span", "fail", resultText[l.Result]))
+		case l.Paused:
+			badges.Call("appendChild", el("span", "", "Paused"))
+		default:
+			badges.Call("appendChild", el("span", "live", "Live"))
+		}
 		pic.Call("appendChild", badges)
 		tile.Call("appendChild", pic)
 		body := el("div", "body", "")
 		body.Call("appendChild", el("strong", "", l.Name))
+		if l.Result == "" && l.Percent > 0 {
+			bar := el("div", "bar", "")
+			fill := el("i", "", "")
+			fill.Get("style").Set("width", fmt.Sprintf("%.1f%%", l.Percent))
+			bar.Call("appendChild", fill)
+			body.Call("appendChild", bar)
+		}
+		var facts []string
+		if text := liveEnded[l.Result]; text != "" {
+			facts = append(facts, text)
+		} else {
+			now := fmt.Sprintf("%.0f%%", l.Percent)
+			if l.Layers > 0 {
+				now += fmt.Sprintf(" · layer %d of %d", l.Layer, l.Layers)
+			}
+			facts = append(facts, now)
+			if l.Left > 0 {
+				facts = append(facts, "About "+leftText(l.Left)+" left")
+			}
+		}
+		facts = append(facts, "Started "+localTime(l.Started))
+		if l.Printer != "" {
+			facts = append(facts, "On "+article(l.Printer)+" "+l.Printer)
+		}
+		if l.URL != "" {
+			facts = append(facts, "Open the live page")
+		}
 		lines := el("div", "tfacts", "")
-		lines.Call("appendChild", el("div", "", strings.ReplaceAll("Started "+localTime(l.Started), " ", "\u00a0")))
-		lines.Call("appendChild", el("div", "", "Open the live page"))
+		for _, f := range facts {
+			lines.Call("appendChild", el("div", "", f))
+		}
 		body.Call("appendChild", lines)
 		tile.Call("appendChild", body)
 		box.Call("appendChild", tile)
 	}
+}
+
+// leftText is a time left in words, for example "45 min" or "2 h 10 min".
+func leftText(sec int) string {
+	m := (sec + 59) / 60
+	if m < 60 {
+		return fmt.Sprintf("%d min", m)
+	}
+	return fmt.Sprintf("%d h %d min", m/60, m%60)
 }
 
 // fact sets the value of a line of facts, and hides the line with no value.

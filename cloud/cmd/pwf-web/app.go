@@ -345,6 +345,64 @@ func (a *app) showProject(id, print string) {
 	}
 	a.drawProject()
 	show("vProject")
+	go a.pollProject(id, a.playing)
+}
+
+// pollProject draws the project id again each minute, or each 30 s while a print of the project
+// prints, until the page shows another view. A tab in the background polls nothing. It draws
+// again only the parts that changed: a new draw loads the pictures again.
+func (a *app) pollProject(id string, gen int) {
+	for {
+		wait := time.Minute
+		if len(a.view.Live) > 0 {
+			wait = 30 * time.Second
+		}
+		next := time.Now().Add(wait)
+		for hidden() || time.Now().Before(next) {
+			if a.playing != gen {
+				return
+			}
+			time.Sleep(250 * time.Millisecond)
+		}
+		var v wire.ProjectView
+		err := a.api("GET", "/projects/"+id, nil, &v)
+		if a.playing != gen || errors.Is(err, errUnauthorized) {
+			return
+		}
+		if err != nil {
+			continue
+		}
+		old := a.view
+		a.view = &v
+		if printIDs(old.Prints) != printIDs(v.Prints) {
+			drawStats(v.Prints)
+			drawTiles(v.Prints, func(p wire.ProjectPrint) string { return "#x=" + v.ID + "&p=" + p.ID })
+		}
+		if photoIDs(old.Photos) != photoIDs(v.Photos) {
+			a.drawPhotos()
+		}
+		drawLive(v.Live)
+		if len(v.Live) > 0 {
+			setHidden("noPrints", true)
+		}
+	}
+}
+
+// printIDs and photoIDs are the IDs of the prints and the photos, to find a change.
+func printIDs(prints []wire.ProjectPrint) string {
+	var b strings.Builder
+	for _, p := range prints {
+		b.WriteString(p.ID + p.Result + " ")
+	}
+	return b.String()
+}
+
+func photoIDs(photos []wire.ProjectPhoto) string {
+	var b strings.Builder
+	for _, p := range photos {
+		b.WriteString(p.ID + " ")
+	}
+	return b.String()
 }
 
 // drawPrint draws the page of the print p of the project.

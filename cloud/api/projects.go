@@ -302,6 +302,9 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 		if err := s.printDone(ctx, id, strings.TrimSuffix(sub, "/done"), in); err != nil {
 			return nil, err
 		}
+		if err := s.endLive(ctx, id, w.deck); err != nil {
+			return nil, err
+		}
 		return s.afterChange(ctx, id, w)
 	case part == "prints" && strings.HasSuffix(sub, "/frames") && r.Method == http.MethodGet:
 		return s.printFrames(ctx, id, strings.TrimSuffix(sub, "/frames"))
@@ -313,6 +316,20 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 			return nil, err
 		}
 		return s.afterChange(ctx, id, w)
+	case action == "live" && r.Method == http.MethodPost:
+		if w.deck == nil {
+			return nil, fail(http.StatusUnauthorized, "only a deck sends a live print")
+		}
+		var in cloud.LiveRequest
+		if json.Unmarshal(body, &in) != nil {
+			return nil, fail(http.StatusBadRequest, "bad JSON")
+		}
+		return s.postLive(ctx, p, w.deck, in)
+	case action == "live" && r.Method == http.MethodDelete:
+		if w.deck == nil {
+			return nil, fail(http.StatusUnauthorized, "only a deck ends a live print")
+		}
+		return nil, s.deleteLive(ctx, id, w.deck.ID)
 	case action == "photos" && r.Method == http.MethodPost:
 		n, err := s.Store.List(ctx, "x/"+id+"/photos/")
 		if err != nil {
@@ -458,11 +475,11 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 		u, _ := s.Grants.FileURL(ctx, key, urlTTL)
 		return u
 	}
-	v.Live = s.liveShares(ctx, p)
 	prints, photos, err := s.projectFiles(ctx, p.ID)
 	if err != nil {
 		return nil, err
 	}
+	v.Live = s.liveView(ctx, p, prints)
 	v.Prints, v.Photos = []cloud.ProjectPrint{}, []cloud.ProjectPhoto{}
 	for _, pr := range prints {
 		pp := projectPrint(pr)
@@ -501,7 +518,7 @@ func (s *Server) projectFiles(ctx context.Context, id string) ([]PrintRecord, []
 	}
 	for _, k := range keys {
 		rel := strings.TrimPrefix(k, "x/"+id+"/")
-		if !strings.HasSuffix(rel, ".json") || strings.Count(rel, "/") != 1 {
+		if !strings.HasSuffix(rel, ".json") || strings.Count(rel, "/") != 1 || strings.HasPrefix(rel, "live/") {
 			continue
 		}
 		b, _, err := s.Store.Get(ctx, k)

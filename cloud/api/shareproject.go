@@ -195,15 +195,21 @@ func (s *Server) copySharePhoto(ctx context.Context, sh *Share, ph cloud.SharePh
 		Print: sh.Print})
 }
 
+// liveShare is a share of a project that runs now, and its ID.
+type liveShare struct {
+	id string
+	cloud.ProjectLive
+}
+
 // liveShares returns the shares of the project p that run now.
-func (s *Server) liveShares(ctx context.Context, p *Project) []cloud.ProjectLive {
-	var out []cloud.ProjectLive
+func (s *Server) liveShares(ctx context.Context, p *Project) []liveShare {
+	var out []liveShare
 	for _, id := range p.Shares {
 		sh, err := s.loadShare(ctx, id)
 		if err != nil || sh.Moved || !sh.Ended.IsZero() || sh.Project != p.ID {
 			continue
 		}
-		out = append(out, cloud.ProjectLive{Name: sh.Job, URL: s.shareURL(sh.ID), Started: sh.Created})
+		out = append(out, liveShare{sh.ID, cloud.ProjectLive{Name: sh.Job, URL: s.shareURL(sh.ID), Started: sh.Created}})
 	}
 	return out
 }

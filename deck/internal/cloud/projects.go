@@ -33,6 +33,8 @@ type (
 	PrintRequest   = wire.PrintRequest
 	PrintReply     = wire.PrintReply
 	PrintDone      = wire.PrintDone
+	LiveRequest    = wire.LiveRequest
+	LiveReply      = wire.LiveReply
 )
 
 // OwnerCode asks the service for an owner code: the page that makes the passkey of the owner.
@@ -115,3 +117,16 @@ func (c *Client) SendPrint(ctx context.Context, id *Identity, project string, up
 
 // ProjectPage is the page of a project at the service of the domain.
 func ProjectPage(domain, project string) string { return baseURL(domain) + "/app#x=" + project }
+
+// SendLive sends the progress of the print now to its project. A reply with a grant asks for the
+// picture of the model.
+func (c *Client) SendLive(ctx context.Context, id *Identity, project string, in LiveRequest) (LiveReply, error) {
+	var out LiveReply
+	err := c.Do(ctx, id, http.MethodPost, "/api/v1/projects/"+project+"/live", in, &out)
+	return out, err
+}
+
+// EndLive tells the project that the deck prints nothing in it now.
+func (c *Client) EndLive(ctx context.Context, id *Identity, project string) error {
+	return c.Do(ctx, id, http.MethodDelete, "/api/v1/projects/"+project+"/live", nil, nil)
+}

@@ -85,16 +85,27 @@ type ProjectView struct {
 	Photos  []ProjectPhoto  `json:"photos"`
 	// Public is the public address of the project, or "" when it has none.
 	Public string `json:"public,omitempty"`
-	// Live are the share links of the prints of the project that print now.
+	// Live are the prints of the project that print now, or that ended and are not up yet.
 	Live []ProjectLive `json:"live,omitempty"`
 }
 
-// ProjectLive is a print of a project that prints now: its name, the share link, and the start
-// of the share.
+// ProjectLive is a print of a project that prints now: its name, the share link or "", the start,
+// and the progress that the deck sent last.
 type ProjectLive struct {
 	Name    string    `json:"name"`
-	URL     string    `json:"url"`
+	URL     string    `json:"url,omitempty"`
 	Started time.Time `json:"started"`
+	// Model is the URL of the picture of the model, or "".
+	Model   string    `json:"model,omitempty"`
+	Percent float64   `json:"percent,omitempty"`
+	Layer   int       `json:"layer,omitempty"`
+	Layers  int       `json:"layers,omitempty"`
+	Left    int       `json:"left,omitempty"` // seconds, or 0 for no estimate
+	Paused  bool      `json:"paused,omitempty"`
+	Result  string    `json:"result,omitempty"` // "" while it prints; "complete", "cancelled" or "error"
+	Updated time.Time `json:"updated,omitzero"`
+	// Printer is the name of the printer.
+	Printer string `json:"printer,omitempty"`
 }
 
 // ProjectMember is a member of a project, or an invite that waits.
@@ -237,4 +248,28 @@ type PrintDone struct {
 	FPS    int  `json:"fps"`
 	Model  bool `json:"model"`
 	Plan   bool `json:"plan,omitempty"`
+}
+
+// LiveRequest is the body of POST /api/v1/projects/<id>/live: the print of the deck that prints
+// now in the project. Key is the file and the start of the print. Model is true when the picture
+// of the model for Key is up. Share is the ID of the share link of the print, or "".
+type LiveRequest struct {
+	Key     string    `json:"key"`
+	Name    string    `json:"name"`
+	Started time.Time `json:"started"`
+	Percent float64   `json:"percent"`
+	Layer   int       `json:"layer,omitempty"`
+	Layers  int       `json:"layers,omitempty"`
+	Left    int       `json:"left,omitempty"`
+	Paused  bool      `json:"paused,omitempty"`
+	Result  string    `json:"result,omitempty"`
+	Model   bool      `json:"model,omitempty"`
+	Share   string    `json:"share,omitempty"`
+	Printer string    `json:"printer,omitempty"`
+}
+
+// LiveReply is the reply to POST /api/v1/projects/<id>/live. Grant is for the file model.jpg when
+// the service has no picture of the model for the key.
+type LiveReply struct {
+	Grant *Grant `json:"grant,omitempty"`
 }

@@ -376,6 +376,7 @@ func startShare(stateDir, configPath string, app *ui.App, pr printerBackend) {
 		app.Cloud = pl
 		l.sharer.Project = func(ctx context.Context) (string, error) { return pl.ShareProjectID(ctx, l.project()) }
 		go pl.watch(context.Background())
+		go pl.watchLive(context.Background())
 	}
 	app.Share = l
 	l.loadHandoff(filepath.Join(handoffDir, shareHandoff))
