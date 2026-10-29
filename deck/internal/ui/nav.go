@@ -46,7 +46,7 @@ func (a *App) navFrame() frame {
 		return a.pageFrame()
 	}
 	left, right := wideZones(wideScale)
-	lcd, under := displayIn(left, wideScale)
+	lcd, under := a.displayIn(left, wideScale)
 	head := image.Rect(right.Min.X, right.Min.Y, right.Max.X, right.Min.Y+keyH)
 	main := image.Rect(right.Min.X, head.Max.Y+gridM, right.Max.X, right.Max.Y)
 	return frame{wide: true, nav: true, lcd: lcd, side: under, head: head, main: main}

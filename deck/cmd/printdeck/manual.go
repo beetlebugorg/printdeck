@@ -352,7 +352,7 @@ func manualParts() []section {
 						s.a.OpenPrintScreen("")
 					},
 					Callouts: []callout{
-						{"Display", "The printer display. Tap the nozzle or the bed to set its temperature."},
+						{"Display", "The status panel: the nozzle, the bed, the fan, the state of the printer and the details of the print. Tap the nozzle or the bed to set its temperature."},
 						{"Steps", "The steps of the start macro. The step that runs has a lit LED."},
 						{"Help", "The network, the address and the password."},
 						{"Cancel print", "Stops the print."},
@@ -368,7 +368,7 @@ func manualParts() []section {
 						s.a.OpenPrintScreen("")
 					},
 					Callouts: []callout{
-						{"Display", "The printer display. Tap the nozzle or the bed to set its temperature."},
+						{"Display", "The status panel: the nozzle, the bed, the fan, the state of the printer and the details of the print. Tap the nozzle or the bed to set its temperature."},
 						{"− and +", "A round, thin line needs − (closer). A flat, rough line needs + (farther)."},
 						{"Z offset", "The nozzle height above its normal height."},
 						{"Save", "Keeps the Z offset for the next prints."},
@@ -389,7 +389,7 @@ func manualParts() []section {
 						s.a.DemoLayers()
 					},
 					Callouts: []callout{
-						{"Display", "The printer display. Tap the nozzle or the bed to set its temperature."},
+						{"Display", "The status panel: the nozzle, the bed, the fan, the state of the printer and the details of the print. Tap the nozzle or the bed to set its temperature."},
 						{"Pause", "Pauses the print."},
 						{"Tune", "Changes the speed, the flow and the fan."},
 						{"Cancel", "Stops the print."},
@@ -488,7 +488,7 @@ func manualParts() []section {
 						s.a.OpenPrintScreen("")
 					},
 					Callouts: []callout{
-						{"Display", "The printer display. Tap the nozzle or the bed to set its temperature."},
+						{"Display", "The status panel: the nozzle, the bed, the fan, the state of the printer and the details of the print. Tap the nozzle or the bed to set its temperature."},
 						{"Where", "The layer and the message."},
 						{"Resume", "Continues the print."},
 						{"Change filament", "For a new color."},
@@ -1047,10 +1047,10 @@ func manualSections() []section {
 				"The deck shows the idle screen when no print runs. A key with an LED is on while its LED is lit. A key with no LED does an action.",
 			},
 			Tall: []string{
-				"The printer display is at the top of each screen. The page keys are at the bottom of the idle screen. Each page has Back at the top and its actions at the bottom.",
+				"The status panel is at the top of each screen. The page keys are at the bottom of the idle screen. Each page has Back at the top and its actions at the bottom.",
 			},
 			Wide: []string{
-				"The printer display and the key panel are at the left. The open page is at the right, with Back at the top and its actions at the bottom.",
+				"The status panel and the key panel are at the left. The open page is at the right, with Back at the top and its actions at the bottom.",
 			},
 			Figures: fig("home")},
 		{Chapter: meet, ID: "lcd", Title: "The display of the printer",

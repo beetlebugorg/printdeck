@@ -59,17 +59,24 @@ func wideZones(scale int) (left, right image.Rectangle) {
 }
 
 // displayIn is the picture of the display at the top of the left column, in the middle, and the
-// space under its bezel.
-func displayIn(left image.Rectangle, scale int) (lcd, under image.Rectangle) {
+// space under its bezel. The touch screen has the status panel in its place, with the same width.
+func (a *App) displayIn(left image.Rectangle, scale int) (lcd, under image.Rectangle) {
 	w, h := 128*scale, 64*scale
+	if !a.Remote {
+		h = panelWideH
+	}
 	x := left.Min.X + (left.Dx()-w)/2
 	lcd = image.Rect(x, left.Min.Y+8, x+w, left.Min.Y+8+h)
 	return lcd, image.Rect(left.Min.X, lcd.Max.Y+8+gridM, left.Max.X, left.Max.Y)
 }
 
-// lcdRect is the display of the printer in a pane of a tall screen: at the top, in the middle.
-func lcdRect(pane image.Rectangle) image.Rectangle {
+// lcdRect is the display of the printer in a pane of a tall screen: at the top, in the middle. The
+// touch screen has the status panel in its place, with the same width.
+func (a *App) lcdRect(pane image.Rectangle) image.Rectangle {
 	w, h := 128*lcdScale, 64*lcdScale
+	if !a.Remote {
+		h = panelTallH
+	}
 	x := pane.Min.X + (pane.Dx()-w)/2
 	return image.Rect(x, pane.Min.Y+lcdTop, x+w, pane.Min.Y+lcdTop+h)
 }
@@ -105,11 +112,15 @@ func (a *App) stateFrame() frame {
 	scr := kit.Screen{W: W, H: contentY1}
 	if scr.Wide() {
 		left, right := wideZones(wideScale)
-		lcd, under := displayIn(left, wideScale)
+		lcd, under := a.displayIn(left, wideScale)
 		return frame{wide: true, lcd: lcd, side: under, main: right}
 	}
-	top, main := scr.Split(lcdBelow)
-	return frame{lcd: lcdRect(top), main: main}
+	below := lcdBelow
+	if !a.Remote {
+		below = lcdTop + panelTallH + 12
+	}
+	top, main := scr.Split(below)
+	return frame{lcd: a.lcdRect(top), main: main}
 }
 
 // page draws the title and the Back key of a page, and on a wide screen the display of the printer
@@ -165,7 +176,7 @@ func (a *App) pageFrame() frame {
 	scr := kit.Screen{W: W, H: contentY1}
 	if scr.Wide() {
 		left, right := wideZones(wideScale)
-		lcd, under := displayIn(left, wideScale)
+		lcd, under := a.displayIn(left, wideScale)
 		head := image.Rect(right.Min.X, right.Min.Y, right.Max.X, right.Min.Y+keyH)
 		main := image.Rect(right.Min.X, head.Max.Y+gridM, right.Max.X, right.Max.Y)
 		return frame{wide: true, lcd: lcd, head: head, side: under, main: main}

@@ -134,7 +134,7 @@ func TestNoMovesWhilePrinting(t *testing.T) {
 func TestKeypadSetsTemperature(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.Draw(cv)
-	tapAt(a, cv, 100, 74) // the nozzle gauge of the status screen on the idle screen
+	tapRegion(t, a, cv, "Nozzle") // the nozzle of the status panel on the idle screen
 	if a.keypad == nil {
 		t.Fatal("no keypad")
 	}

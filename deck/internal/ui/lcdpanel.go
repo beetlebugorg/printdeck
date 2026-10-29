@@ -119,6 +119,10 @@ func (a *App) statusPanelAt(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 		s.Message = "Firmware is old"
 	}
 	a.region("Display", r)
+	if !a.Remote {
+		a.drawStatusBox(c, st, r)
+		return
+	}
 	a.drawLCDPanel(c, st, s, r)
 }
 

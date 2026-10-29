@@ -350,14 +350,17 @@ func (a *App) drawFirstLayer(c *gfx.Canvas, st printer.State) {
 // firstLayerLeft is the time until the end of the first layer: the plan of the slicer from the
 // file position to the second layer, scaled by the time left of the print over its plan, so that
 // the speed of the print now counts.
-func (a *App) firstLayerLeft(st printer.State) (time.Duration, bool) {
+func (a *App) firstLayerLeft(st printer.State) (time.Duration, bool) { return a.layerLeft(st, 1) }
+
+// layerLeft is the time until the end of the layer of the print st, as firstLayerLeft.
+func (a *App) layerLeft(st printer.State, layer int) (time.Duration, bool) {
 	lp, ok := a.Printer.(interface {
 		LayerLeft(pos int64, layer int) (toLayerEnd, toEnd float64, ok bool)
 	})
 	if !ok {
 		return 0, false
 	}
-	toLayer, toEnd, ok := lp.LayerLeft(st.FilePos, 1)
+	toLayer, toEnd, ok := lp.LayerLeft(st.FilePos, layer)
 	if !ok || toLayer <= 0 {
 		return 0, false
 	}
