@@ -321,7 +321,11 @@ func (a *App) drawSetupDone(c *gfx.Canvas, box image.Rectangle) {
 	} else {
 		lines = append(lines, "Wi-Fi", "Not connected. Ethernet works with no setup.")
 	}
-	lines = append(lines, "Remote screen and slicers", fmt.Sprintf("http://%s.local", s.host))
+	addr := fmt.Sprintf("http://%s.local", s.host)
+	if ah, ok := a.Setup.(interface{ Address() string }); ok {
+		addr = ah.Address() // for example the simulator on this computer
+	}
+	lines = append(lines, "Remote screen and slicers", addr)
 	if user, pass := a.Setup.Login(); user != "" {
 		lines = append(lines, "User (SSH, sudo, remote screen)", user, "Password", pass,
 			"SSH", fmt.Sprintf("ssh %s@%s.local", user, s.host))

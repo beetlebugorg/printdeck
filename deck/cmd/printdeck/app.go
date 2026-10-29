@@ -130,11 +130,18 @@ func desktopApp(args []string) {
 	}
 	mux := http.NewServeMux()
 	api := newAPI(cfg, pr, app, mux)
-	// No password opens the login: the window of the app has the token.
+	// With no password, nobody can log in: the window of the app has the token.
 	tokenOK := func(r *http.Request) bool {
 		return subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Api-Key")), []byte(token)) == 1
 	}
-	rs := newRemote(app, api, func() string { return "" }, tokenOK)
+	// The simulator has a password, so a browser on this computer can show its remote screen, and
+	// Wi-Fi and help shows it.
+	password := ""
+	if *sim {
+		password = simPassword(*dir)
+		app.Setup = &simSetup{addr: "http://" + ln.Addr().String(), password: password}
+	}
+	rs := newRemote(app, api, func() string { return password }, tokenOK)
 	if api != nil {
 		api.Allow = tokenOK // the webcam, with the token of the window
 	}
