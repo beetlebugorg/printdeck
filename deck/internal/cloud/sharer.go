@@ -28,9 +28,6 @@ type Sharer struct {
 	Frame func(view string) ([]byte, uint64)
 	// Views are the camera views of the share.
 	Views []string
-	// LCD returns the next frames of the display of the deck, 1024 bytes each, or nil. The sharer
-	// uploads them at each step as lcd.bin.
-	LCD func() []byte
 	// Plan returns the seconds of each layer from the slicer, or nil. The sharer uploads it once
 	// as plan.json.
 	Plan func() []float64
@@ -60,7 +57,6 @@ type share struct {
 	frame   int
 	seqs    map[string]uint64
 	plan    int       // the layers of plan.json, or 0 before its upload
-	lcd     int       // the count of uploads of lcd.bin
 	model   int       // the count of uploads of model.jpg
 	modelV  uint64    // the version of the last model.jpg
 	modelAt time.Time // the time of the last model.jpg
@@ -167,7 +163,6 @@ type ShareHandoff struct {
 	LapseN  int       `json:"lapse_n"`
 	Frame   int       `json:"frame"`
 	Plan    int       `json:"plan"`
-	LCD     int       `json:"lcd"`
 	Model   int       `json:"model"`
 	ModelV  uint64    `json:"model_v"`
 	ModelAt time.Time `json:"model_at"`
@@ -199,7 +194,7 @@ func (s *Sharer) Handoff() (ShareHandoff, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return ShareHandoff{ID: c.id, URL: c.url, Owner: c.owner, Ready: c.ready, Grant: c.grant,
-		Lapse: append([][]byte(nil), c.lapse...), LapseN: c.lapseN, Frame: c.frame, Plan: c.plan, LCD: c.lcd,
+		Lapse: append([][]byte(nil), c.lapse...), LapseN: c.lapseN, Frame: c.frame, Plan: c.plan,
 		Model: c.model, ModelV: c.modelV, ModelAt: c.modelAt, Ended: c.ended, Expires: c.expires}, true
 }
 
@@ -218,7 +213,7 @@ func (s *Sharer) Resume(h ShareHandoff) bool {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &share{id: h.ID, url: h.URL, owner: h.Owner, ready: h.Ready, grant: h.Grant, lapse: h.Lapse,
-		lapseN: h.LapseN, frame: h.Frame, seqs: map[string]uint64{}, plan: h.Plan, lcd: h.LCD, model: h.Model,
+		lapseN: h.LapseN, frame: h.Frame, seqs: map[string]uint64{}, plan: h.Plan, model: h.Model,
 		modelV: h.ModelV, modelAt: h.ModelAt, ended: h.Ended, expires: h.Expires, stop: cancel,
 		wake: make(chan struct{}, 1), done: make(chan struct{})}
 	s.cur = c
@@ -387,15 +382,6 @@ func (s *Sharer) step(ctx context.Context, id *Identity, c *share) (bool, error)
 		}
 	}
 	st.Plan = c.plan
-	if s.LCD != nil {
-		if b := s.LCD(); len(b) >= 1024 {
-			if err := s.upload(ctx, id, c, "lcd.bin", "application/octet-stream", "public, max-age=2", b); err != nil {
-				return false, err
-			}
-			c.lcd++
-			st.LCD, st.LCDFrames = c.lcd, len(b)/1024
-		}
-	}
 	if end {
 		var out EndReply
 		if err := s.Link.Client.Do(ctx, id, http.MethodPost, "/api/v1/shares/"+c.id+"/end", EndRequest{Ended: st.Ended}, &out); err != nil {

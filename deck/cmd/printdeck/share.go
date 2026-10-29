@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"printdeck/internal/cloud"
-	"printdeck/internal/lcd"
 	"printdeck/internal/printer"
 	"printdeck/internal/timelapse"
 	"printdeck/internal/ui"
@@ -89,20 +88,6 @@ func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend, configPath s
 		return buf.Bytes(), uint64(st.FilePos)
 	}
 	s.Plan = pr.LayerTimes
-	// The display of the deck, as the touch screen shows it: the frames of the next 5 s, 4 a
-	// second, so the page plays its animations until the next upload.
-	s.LCD = func() []byte {
-		scr := &lcd.Screen{Status: app.StatusScreen()}
-		frame := int(time.Now().UnixMilli() / 250)
-		out := make([]byte, 0, lcdFrames*1024)
-		for i := range lcdFrames {
-			bits := scr.Bits(frame + i)
-			for y := range bits {
-				out = append(out, bits[y][:]...)
-			}
-		}
-		return out
-	}
 	l.sharer = s
 	return l
 }
@@ -315,9 +300,6 @@ func (l *shareLink) status() cloud.ShareStatus {
 	}
 	return s
 }
-
-// lcdFrames is the count of frames of the display in each upload: 5 s at 4 frames a second.
-const lcdFrames = 20
 
 // clockLayers follows the layer of st, and measures each layer from its start to the start of the
 // next one. A layer with a pause, and the layer that printed at the start of the share, have no

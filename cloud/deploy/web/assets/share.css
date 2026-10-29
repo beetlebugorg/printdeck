@@ -1,7 +1,7 @@
 /* The share page: one column like a job ticket. The camera first, then the amber LCD readout,
    then the details and the time lapse. */
-:root { --glcd: #1f4bd1; --glcd-cell: #2a58e0; --glcd-ink: #f2f6ff; --live: #1f9d55; --lcd-cell: #2a211a; --digits: "Share Tech Mono", "IBM Plex Mono", ui-monospace, monospace; }
-@media (prefers-color-scheme: dark) { :root { --glcd: #0f2766; --glcd-cell: #143079; --glcd-ink: #d6e2ff; --live: #3ccf7a; --lcd-cell: #1a120c; } }
+:root { --live: #1f9d55; --lcd-cell: #2a211a; --digits: "Share Tech Mono", "IBM Plex Mono", ui-monospace, monospace; }
+@media (prefers-color-scheme: dark) { :root { --live: #3ccf7a; --lcd-cell: #1a120c; } }
 body { padding-block: 20px 40px; }
 .wrap { max-width: 760px; gap: 14px; }
 header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -81,5 +81,3 @@ footer { display: grid; gap: 4px; }
 .fil-head div { display: grid; gap: 4px; min-width: 0; }
 .fil-head strong { font: 800 22px/1.1 "Archivo", sans-serif; font-stretch: 85%; }
 .fil-head span { color: var(--ink-dim); }
-.glcd-box { background: var(--seam); border-radius: 14px; padding: 6px; }
-.glcd-box canvas { width: 100%; height: auto; display: block; border-radius: 9px; background: var(--glcd); image-rendering: pixelated; }

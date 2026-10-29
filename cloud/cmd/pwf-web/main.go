@@ -140,11 +140,6 @@ type share struct {
 	photos string // the photos that show, joined
 	ended  bool
 	plan   []float64 // the plan of the slicer for each layer, from plan.json
-	// The frames of the display of the deck from lcd.bin, the frame that shows, and the number
-	// of the upload.
-	lcdFrames []byte
-	lcdShown  int
-	lcdSeq    int
 	// The last status, and the time on this computer when it came. The clocks count on from it
 	// between the uploads (tick).
 	st   wire.ShareStatus
@@ -167,7 +162,6 @@ func runShare(base string) {
 	}
 	s.copyLink()
 	go s.play()
-	go s.playLCD()
 	go func() {
 		for {
 			// 4 times a second, so that the clocks go on at each second and skip none.
@@ -537,15 +531,6 @@ func (s *share) render(st wire.ShareStatus) {
 			tag = fmt.Sprintf("Printed to layer %d of %d", st.Layer, st.Layers)
 		}
 		setText("modelTag", tag)
-	}
-	if st.LCD > 0 && st.LCD != s.lcdSeq {
-		s.lcdSeq = st.LCD
-		go func() {
-			if b, err := fetchBytes(fmt.Sprintf("%slcd.bin?v=%d", s.base, st.LCD)); err == nil && len(b) >= 1024 {
-				s.lcdFrames, s.lcdShown = b, 0
-				setHidden("glcdBox", false)
-			}
-		}()
 	}
 	s.renderPrinter(st, ended)
 
@@ -981,107 +966,6 @@ func mmss(sec float64) string {
 		return fmt.Sprintf("%d:%02d:%02d", t/3600, t/60%60, t%60)
 	}
 	return fmt.Sprintf("%d:%02d", t/60, t%60)
-}
-
-// playLCD shows the frames of the display 4 a second, as on the deck. After the last frame it
-// stays on it until the next upload.
-func (s *share) playLCD() {
-	for {
-		time.Sleep(250 * time.Millisecond)
-		n := len(s.lcdFrames) / 1024
-		if n == 0 {
-			continue
-		}
-		i := min(s.lcdShown, n-1)
-		drawLCD(s.lcdFrames[i*1024 : (i+1)*1024])
-		s.lcdShown++
-	}
-}
-
-// fetchBytes returns the bytes of url, or an error.
-func fetchBytes(url string) ([]byte, error) {
-	type result struct {
-		b   []byte
-		err error
-	}
-	ch := make(chan result, 1)
-	var then, fail, gotBuf js.Func
-	fail = js.FuncOf(func(_ js.Value, args []js.Value) any {
-		ch <- result{err: fmt.Errorf("fetch: %s", args[0].Call("toString").String())}
-		return nil
-	})
-	gotBuf = js.FuncOf(func(_ js.Value, args []js.Value) any {
-		u8 := js.Global().Get("Uint8Array").New(args[0])
-		b := make([]byte, u8.Get("length").Int())
-		js.CopyBytesToGo(b, u8)
-		ch <- result{b: b}
-		return nil
-	})
-	then = js.FuncOf(func(_ js.Value, args []js.Value) any {
-		if !args[0].Get("ok").Bool() {
-			ch <- result{err: fmt.Errorf("status %d", args[0].Get("status").Int())}
-			return nil
-		}
-		args[0].Call("arrayBuffer").Call("then", gotBuf).Call("catch", fail)
-		return nil
-	})
-	defer then.Release()
-	defer fail.Release()
-	defer gotBuf.Release()
-	js.Global().Call("fetch", url).Call("then", then).Call("catch", fail)
-	r := <-ch
-	return r.b, r.err
-}
-
-// lcdScale is the pixels of a dot of the display on the canvas: a 3 x 3 square and a gap.
-const lcdScale = 4
-
-// lcdLast is the frame of the display on the canvas, and lcdPix the pixels of the canvas.
-var (
-	lcdLast []byte
-	lcdPix  []byte
-)
-
-// drawLCD draws one frame of the display of the deck: 128 x 64 dots in the colors of the deck,
-// each dot a square with a gap, as on the touch screen. It builds the pixels in memory and puts
-// them on the canvas at once, and skips a frame that is the same as the last one.
-func drawLCD(raw []byte) {
-	if string(raw) == string(lcdLast) {
-		return
-	}
-	lcdLast = append(lcdLast[:0], raw...)
-	cv := byID("glcd")
-	const w, h = 128 * lcdScale, 64 * lcdScale
-	if cv.Get("width").Int() != w {
-		cv.Set("width", w)
-		cv.Set("height", h)
-	}
-	css := js.Global().Call("getComputedStyle", doc.Get("documentElement"))
-	col := func(name string) [3]byte {
-		return hexColor(strings.TrimSpace(css.Call("getPropertyValue", name).String()))
-	}
-	ground, off, on := col("--glcd"), col("--glcd-cell"), col("--glcd-ink")
-	if len(lcdPix) != w*h*4 {
-		lcdPix = make([]byte, w*h*4)
-	}
-	for py := 0; py < h; py++ {
-		for px := 0; px < w; px++ {
-			c := ground
-			if px%lcdScale != lcdScale-1 && py%lcdScale != lcdScale-1 {
-				x, y := px/lcdScale, py/lcdScale
-				c = off
-				if raw[y*16+x/8]&(0x80>>(x%8)) != 0 {
-					c = on
-				}
-			}
-			k := (py*w + px) * 4
-			lcdPix[k], lcdPix[k+1], lcdPix[k+2], lcdPix[k+3] = c[0], c[1], c[2], 255
-		}
-	}
-	arr := js.Global().Get("Uint8ClampedArray").New(len(lcdPix))
-	js.CopyBytesToJS(js.Global().Get("Uint8Array").New(arr.Get("buffer")), lcdPix)
-	img := js.Global().Get("ImageData").New(arr, w, h)
-	cv.Call("getContext", "2d").Call("putImageData", img, 0, 0)
 }
 
 // hexColor is the color of "#rrggbb", or black.
