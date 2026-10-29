@@ -466,10 +466,18 @@ func errText(text string, err error) string {
 
 var stateText = map[string]string{
 	"heating": "Heating", "printing": "Printing", "paused": "Paused", "cooling": "Cooling",
-	"done": "Done", "cancelled": "Cancelled", "error": "Stopped",
+	"done": "Done", "cancelled": "Cancelled", "error": "Stopped", "waiting": "Waiting for the printer",
 }
 
 func (s *share) render(st wire.ShareStatus) {
+	if st.State == "waiting" {
+		// The deck has no connection to the printer for a moment. The page keeps the last status,
+		// and the clocks stop.
+		byID("pill").Get("classList").Call("add", "still")
+		setText("pillText", stateText[st.State])
+		s.st.State = "paused"
+		return
+	}
 	ended := st.State == "done" || st.State == "cancelled" || st.State == "error"
 	if !st.Updated.Equal(s.st.Updated) {
 		s.seen = time.Now()
@@ -486,7 +494,7 @@ func (s *share) render(st wire.ShareStatus) {
 		label = st.State
 	}
 	pill := byID("pill")
-	if ended || st.State == "paused" {
+	if ended || st.State == "paused" || st.State == "waiting" {
 		pill.Get("classList").Call("add", "still")
 	} else {
 		pill.Get("classList").Call("remove", "still")

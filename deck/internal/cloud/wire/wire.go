@@ -6,7 +6,8 @@ import "time"
 
 // ShareStatus is status.json of a share: the state of the print for the share page.
 type ShareStatus struct {
-	// State is "heating", "printing", "paused", "cooling", "done", "cancelled" or "error".
+	// State is "heating", "printing", "paused", "cooling", "done", "cancelled" or "error", or
+	// "waiting" while the deck has no connection to the printer.
 	State   string `json:"state"`
 	Job     string `json:"job"`
 	Printer string `json:"printer"`

@@ -37,6 +37,9 @@ type shareLink struct {
 	mu      sync.Mutex
 	started time.Time // the start of the print of the share
 	ended   time.Time // the end of the print of the share, when it ended
+	// waiting is the start of a time with no print and no finished print: the deck has no
+	// Klipper, for example at the start of a new deck program during the print.
+	waiting time.Time
 
 	// The clock of the layers: the layer now, its start, whether the deck saw it start, whether
 	// it had a pause, and the measured seconds of the layers that are done.
@@ -159,6 +162,10 @@ func (l *shareLink) videoFrames(name string) [][]byte {
 	return out
 }
 
+// shareWaitLimit is the longest time that a share waits for the printer. After it the share ends
+// as stopped.
+const shareWaitLimit = 10 * time.Minute
+
 // status is the state of the print for the share page.
 func (l *shareLink) status() cloud.ShareStatus {
 	st := l.pr.State()
@@ -167,6 +174,21 @@ func (l *shareLink) status() cloud.ShareStatus {
 	s := cloud.ShareStatus{Printer: l.name, PrinterModel: l.model, Activity: st.Activity, Layer: st.Layer, Layers: st.Layers,
 		Tool: st.Tool, ToolTarget: st.ToolTarget, Bed: st.Bed, BedTarget: st.BedTarget,
 		TimeLeft: -1, ReadyLeft: -1, Started: l.started.UTC()}
+	// With no print and no finished print, the deck does not know the print: Klipper is not
+	// connected yet, or it has an error. The share waits and does not end, because the print can
+	// still run. A wait longer than shareWaitLimit ends the share as stopped.
+	if !st.Busy() && st.Finished == "" {
+		if l.waiting.IsZero() {
+			l.waiting = time.Now()
+		}
+		if time.Since(l.waiting) < shareWaitLimit {
+			s.State = "waiting"
+			return s
+		}
+		st.Finished = "error"
+	} else {
+		l.waiting = time.Time{}
+	}
 	if st.HasZ {
 		s.Height = st.Z
 	}
