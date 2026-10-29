@@ -76,6 +76,12 @@ Resources:
             Status: Enabled
             Prefix: codes/
             ExpirationInDays: 1
+          # The invites of the projects work for 7 days. The API deletes an invite when it is
+          # used or removed.
+          - Id: invites
+            Status: Enabled
+            Prefix: invites/
+            ExpirationInDays: 8
           - Id: uploads
             Status: Enabled
             Prefix: x/
@@ -102,8 +108,9 @@ Resources:
         SigningBehavior: always
         SigningProtocol: sigv4
 
-  # CloudFront reads only the pages, the shares and the public pages of the projects. It cannot
-  # list the bucket, so a file that does not exist gets 403, and the "not found" page.
+  # CloudFront reads only the pages (with the app page at /app, /owner and /j), the shares and the
+  # public pages of the projects. It cannot list the bucket, so a file that does not exist gets
+  # 403, and the "not found" page.
   DataBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -116,6 +123,9 @@ Resources:
             Action: s3:GetObject
             Resource:
               - !Sub "${DataBucket.Arn}/index.html"
+              - !Sub "${DataBucket.Arn}/app"
+              - !Sub "${DataBucket.Arn}/owner"
+              - !Sub "${DataBucket.Arn}/j"
               - !Sub "${DataBucket.Arn}/404.html"
               - !Sub "${DataBucket.Arn}/assets/*"
               - !Sub "${DataBucket.Arn}/.well-known/*"

@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/fs"
+	"mime"
 	"os"
 	"os/exec"
 	"path"
@@ -102,7 +103,26 @@ func buildWeb(ctx context.Context, src string) (map[string][]byte, error) {
 	files[wasmKey] = wasm
 	files["assets/pwf.js"] = append(bytes.TrimRight(js, "\n"), []byte("\n"+fmt.Sprintf(boot, "/"+wasmKey))...)
 	hashAssets(files)
+	// The app page at its addresses: the projects (/app), the passkey of the owner (/owner) and
+	// the invites (/j). The page reads the code after "#", which the browser does not send.
+	for _, k := range appKeys {
+		files[k] = files["index.html"]
+	}
 	return files, nil
+}
+
+// appKeys are the keys of the copies of the app page (index.html), with no extension.
+var appKeys = []string{"app", "owner", "j"}
+
+// contentType is the type of the file at key: the app pages are HTML.
+func contentType(key string) string {
+	if path.Ext(key) == "" {
+		return "text/html; charset=utf-8"
+	}
+	if t := mime.TypeByExtension(path.Ext(key)); t != "" {
+		return t
+	}
+	return "application/octet-stream"
 }
 
 // hashAssets adds a copy of each script and style file of assets/ with a hash of its content in

@@ -2,19 +2,121 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>Parts with Friends</title>
+<title>Parts with Friends · Printdeck</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..800&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
 <link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/app.css">
+<script src="/assets/pwf.js" defer></script>
 </head>
-<body>
-<main class="wrap">
-  <div class="brand"><i></i>Printdeck</div>
-  <h1>Parts with Friends</h1>
-  <p class="dim">The cloud service of a Printdeck: live share links of prints, and projects of parts that friends print together.</p>
-  <div class="lcd">SIGN IN COMES IN A LATER VERSION</div>
-  <footer>Printdeck is free software under the GNU AGPL, version 3. <a href="https://github.com/beetlebugorg/printdeck">The source of this service</a>.</footer>
-</main>
+<body data-page="app">
+<div class="wrap">
+  <header>
+    <a class="brand" href="/app"><i></i>Printdeck</a>
+    <span class="who" id="who" hidden><span id="whoName"></span> <button type="button" class="link" id="signOut">Sign out</button></span>
+  </header>
+
+  <p class="lcd" id="loading">LOADING</p>
+
+  <!-- Sign in -->
+  <section class="view" id="vSignIn" hidden>
+    <h1>Parts with Friends</h1>
+    <p class="dim">Projects of 3D prints that you print with friends: the prints, their time lapses, and photos. Sign in with the passkey of this service.</p>
+    <button type="button" class="primary" id="signInBtn">Sign in with a passkey</button>
+    <p class="msg" id="signInMsg" role="status"></p>
+    <p class="dim small">No passkey yet? The owner makes one on the deck: Settings, Cloud, Owner sign-in. A friend gets an invite link from the owner.</p>
+  </section>
+
+  <!-- The passkey of the owner, with a code from the deck -->
+  <section class="view" id="vOwner" hidden>
+    <h1>Your owner passkey</h1>
+    <p class="dim">This phone or computer saves a passkey for this service. Face ID, Touch ID or the PIN of the device unlocks it. The service keeps no password.</p>
+    <label class="field">Your first name, for the invites<input id="ownerName" maxlength="40" autocomplete="given-name"></label>
+    <button type="button" class="primary" id="ownerBtn">Make the passkey</button>
+    <p class="msg" id="ownerMsg" role="status"></p>
+  </section>
+
+  <!-- An invite -->
+  <section class="view" id="vJoin" hidden>
+    <h1 id="joinTitle">An invite</h1>
+    <p class="dim" id="joinText"></p>
+    <label class="field">Your first name<input id="joinName" maxlength="40" autocomplete="given-name"></label>
+    <button type="button" class="primary" id="joinBtn">Join</button>
+    <p class="msg" id="joinMsg" role="status"></p>
+    <p class="dim small">Join saves a passkey for this project on this phone or computer. Face ID, Touch ID or the PIN of the device unlocks it.</p>
+  </section>
+
+  <!-- The projects -->
+  <section class="view" id="vHome" hidden>
+    <h1>Your projects</h1>
+    <form class="card newproj" id="newForm">
+      <h2>New project</h2>
+      <label class="field">Name<input id="newName" maxlength="80" placeholder="For example: Garden planters" required></label>
+      <label class="field">A line about it (optional)<input id="newNote" maxlength="280"></label>
+      <button type="submit" class="primary">Create</button>
+      <p class="msg" id="newMsg" role="status"></p>
+    </form>
+    <div class="cards" id="projects"></div>
+    <p class="dim" id="noProjects" hidden>No projects yet.</p>
+  </section>
+
+  <!-- One project -->
+  <section class="view" id="vProject" hidden>
+    <a class="back" href="/app" id="backLink">All projects</a>
+    <h1 id="pName"></h1>
+    <p class="dim" id="pNote"></p>
+    <p class="dim small" id="pMeta"></p>
+
+    <div class="card" id="ownerTools" hidden>
+      <h2>Friends</h2>
+      <ul class="members" id="members"></ul>
+      <form class="row" id="inviteForm">
+        <input id="inviteName" maxlength="40" placeholder="First name of a friend" aria-label="First name of a friend" required>
+        <button type="submit">Make invite</button>
+      </form>
+      <div class="linkbox" id="inviteBox" hidden>
+        <p class="small">Send this link to <span id="inviteWho"></span>. It works once, for 7 days.</p>
+        <code id="inviteLink"></code>
+        <div class="row"><button type="button" id="inviteCopy">Copy link</button><button type="button" id="inviteShare" hidden>Share</button></div>
+      </div>
+      <h2>Public address</h2>
+      <p class="small dim">Anybody with the public address sees the prints, the time lapses and the photos. It has no files of the models and no names of members.</p>
+      <div class="row">
+        <button type="button" id="publicBtn" aria-pressed="false">Off</button>
+        <button type="button" id="publicNew" hidden>New address</button>
+      </div>
+      <div class="linkbox" id="publicBox" hidden>
+        <code id="publicLink"></code>
+        <div class="row"><button type="button" id="publicCopy">Copy link</button></div>
+      </div>
+      <p class="msg" id="ownerToolsMsg" role="status"></p>
+    </div>
+
+    <div class="card" id="memberList" hidden>
+      <h2>Members</h2>
+      <p class="small" id="memberNames"></p>
+    </div>
+
+    <div class="card">
+      <h2>Photos</h2>
+      <label class="file"><input type="file" id="photoFile" accept="image/jpeg,image/png" multiple><span>Add photos</span></label>
+      <p class="msg" id="photoMsg" role="status"></p>
+      <div class="photos" id="photos"></div>
+    </div>
+
+    <h2 class="section">Prints</h2>
+    <p class="dim small" id="noPrints">No prints yet. On the deck, open a print of the history, tap Project, then share the project.</p>
+    <div class="prints" id="prints"></div>
+
+    <div class="danger" id="dangerZone" hidden>
+      <button type="button" class="link" id="deleteProject">Delete this project</button>
+    </div>
+  </section>
+
+  <footer>
+    <span>Printdeck is free software under the GNU AGPL, version 3. <a href="https://github.com/beetlebugorg/printdeck">The source of this service</a>.</span>
+  </footer>
+</div>
 </body>
 </html>

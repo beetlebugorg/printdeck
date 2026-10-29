@@ -1,0 +1,60 @@
+/* The pages of the projects: the app page (sign in, the projects, one project) and the public page. */
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { color: var(--ink); text-decoration: none; }
+.who { font-size: 14px; color: var(--ink-dim); }
+h2 { margin: 0 0 10px; font: 700 12px/1 "Archivo", sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); }
+h2.section { margin: 8px 0 0; }
+.view { display: grid; gap: 14px; }
+.small { font-size: 14px; }
+.msg { margin: 0; min-height: 1.5em; color: var(--ink-dim); }
+.msg.err { color: #b3261e; }
+@media (prefers-color-scheme: dark) { .msg.err { color: #ff8a80; } }
+.card { background: var(--plate); border: 1px solid var(--seam); border-radius: 14px; padding: 16px 18px; display: grid; gap: 10px; }
+button, .file span { min-height: 44px; padding: 0 18px; border-radius: 12px; font: 700 15px/1 "Archivo", sans-serif; color: var(--ink);
+  background: var(--cap); border: 1px solid var(--seam); cursor: pointer; display: inline-grid; place-items: center; }
+button.primary { background: var(--orange); color: var(--on-orange); border: none; min-height: 52px; font-size: 17px; }
+button.link { background: none; border: none; min-height: 0; padding: 0; color: var(--link); font-weight: 600; text-decoration: underline; }
+button[aria-pressed="true"] { background: var(--orange); color: var(--on-orange); border-color: var(--orange); }
+button:disabled { opacity: .5; cursor: default; }
+button:focus-visible, input:focus-visible, .file input:focus-visible + span { outline: 2px solid var(--orange); outline-offset: 2px; }
+.field { display: grid; gap: 6px; font-size: 14px; color: var(--ink-dim); }
+input:not([type]), input[type="text"] { font: 400 16px/1.4 "Archivo", sans-serif; color: var(--ink); background: var(--cap);
+  border: 1px solid var(--seam); border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.row input { flex: 1 1 180px; width: auto; }
+.file { display: flex; }
+.file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.file span { flex: 1; }
+.linkbox { display: grid; gap: 8px; background: var(--lcd); color: var(--lcd-ink); border-radius: 10px; padding: 12px; }
+.linkbox code { font: 500 13px/1.4 "IBM Plex Mono", monospace; overflow-wrap: anywhere; }
+.linkbox button { background: var(--cap); }
+.back { font-size: 14px; }
+.cards { display: grid; gap: 12px; }
+.pcard { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 14px; align-items: center; background: var(--plate);
+  border: 1px solid var(--seam); border-radius: 14px; padding: 12px; color: var(--ink); text-decoration: none; }
+.pcard img, .pcard .ph { width: 72px; height: 72px; border-radius: 10px; object-fit: cover; background: var(--lcd); }
+.pcard strong { font: 800 20px/1.15 "Archivo", sans-serif; font-stretch: 85%; display: block; }
+.pcard span { color: var(--ink-dim); font-size: 14px; }
+.members { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.members li { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--seam); }
+.members li span { color: var(--ink-dim); font-size: 14px; }
+.photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.photos figure { margin: 0; position: relative; border-radius: 8px; overflow: hidden; background: #000; aspect-ratio: 1; }
+.photos img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photos figcaption { position: absolute; left: 6px; bottom: 6px; font: 500 11px/1 "IBM Plex Mono", monospace; color: #f3f1ec;
+  background: rgba(0,0,0,.62); padding: 4px 6px; border-radius: 5px; }
+.photos .rm { position: absolute; right: 6px; top: 6px; min-height: 30px; padding: 0 10px; font-size: 12px; background: rgba(0,0,0,.62);
+  color: #f3f1ec; border: none; }
+.prints { display: grid; gap: 14px; }
+.print { background: var(--plate); border: 1px solid var(--seam); border-radius: 14px; overflow: hidden; display: grid; }
+.print .pic { background: var(--lcd); position: relative; aspect-ratio: 16 / 10; display: grid; place-items: center; }
+.print .pic img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.print .pic button { position: absolute; right: 10px; bottom: 10px; min-height: 36px; font-size: 13px; }
+.print .body { padding: 12px 16px; display: grid; gap: 4px; }
+.print strong { font: 800 20px/1.15 "Archivo", sans-serif; font-stretch: 85%; }
+.print .facts { font: 500 13px/1.5 "IBM Plex Mono", monospace; color: var(--ink-dim); }
+.print .fail { color: #b3261e; }
+@media (prefers-color-scheme: dark) { .print .fail { color: #ff8a80; } }
+.danger { padding-top: 8px; }
+.view p, .card p { margin: 0; }
+footer { display: grid; gap: 4px; }

@@ -2,7 +2,8 @@
 
 // Command pwf-web is the logic of the pages of the cloud service, compiled to WebAssembly. The
 // page loads it with assets/pwf.js (wasm_exec.js of the Go release, and the lines that start
-// it). The body of the page names the page: data-page="share" is a share link.
+// it). The body of the page names the page: data-page="share" is a share link, "app" the app
+// page of the projects (app.go), and "public" the public page of a project.
 package main
 
 import (
@@ -22,6 +23,10 @@ func main() {
 	switch doc.Get("body").Call("getAttribute", "data-page").String() {
 	case "share":
 		runShare(strings.TrimSuffix(js.Global().Get("location").Get("pathname").String(), "/") + "/")
+	case "app":
+		runApp()
+	case "public":
+		runPublic()
 	}
 	select {}
 }

@@ -5,9 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"mime"
 	"net/http"
-	"path"
 	"strings"
 	"time"
 
@@ -36,7 +34,7 @@ func runDev(ctx context.Context, args []string) error {
 		st = &api.FileStore{Dir: *data}
 	}
 	for key, data := range files {
-		st.Put(ctx, key, data, api.PutOptions{ContentType: mime.TypeByExtension(path.Ext(key)), CacheControl: "no-cache"})
+		st.Put(ctx, key, data, api.PutOptions{ContentType: contentType(key), CacheControl: "no-cache"})
 	}
 	// A passkey needs a domain, so the links use localhost in place of 127.0.0.1.
 	base := "http://" + strings.Replace(*addr, "127.0.0.1", "localhost", 1)
@@ -53,7 +51,12 @@ func runDev(ctx context.Context, args []string) error {
 			}
 		}
 	}()
+	owner, err := api.NewCode(ctx, st, api.KindOwner, time.Now())
+	if err != nil {
+		return err
+	}
 	fmt.Printf("The service runs at %s\n\nOn the deck: Settings, Cloud, Service %s, then Connect with the code\n\n    %s\n\n",
 		base, base, code)
+	fmt.Printf("The passkey of the owner, for one hour:\n\n    %s/owner#code=%s\n\n", base, owner)
 	return http.ListenAndServe(*addr, d)
 }

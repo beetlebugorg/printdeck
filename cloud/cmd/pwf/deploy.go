@@ -9,10 +9,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"mime"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -226,10 +224,7 @@ func uploadWeb(ctx context.Context, c *s3.Client, bucket, src, base string) erro
 		return err
 	}
 	for key, data := range files {
-		ctype := mime.TypeByExtension(path.Ext(key))
-		if ctype == "" {
-			ctype = "application/octet-stream"
-		}
+		ctype := contentType(key)
 		cache := pageCache
 		if hashedName.MatchString(key) {
 			cache = immutableCache
@@ -239,7 +234,31 @@ func uploadWeb(ctx context.Context, c *s3.Client, bucket, src, base string) erro
 			return fmt.Errorf("upload %s: %w", key, err)
 		}
 	}
-	return refreshShares(ctx, c, bucket, base, files["assets/share.html"])
+	if err := refreshShares(ctx, c, bucket, base, files["assets/share.html"]); err != nil {
+		return err
+	}
+	return refreshPublic(ctx, &api.S3Store{Client: c, Bucket: bucket}, base, files["assets/public.html"])
+}
+
+// refreshPublic writes the new public page to the public address of each project that has one.
+func refreshPublic(ctx context.Context, st api.Store, base string, page []byte) error {
+	if page == nil {
+		return nil
+	}
+	projects, err := api.PublicPages(ctx, st)
+	if err != nil {
+		return err
+	}
+	for _, p := range projects {
+		body := api.PublicPageFor(page, base+"/p/"+p.Public, p.Name)
+		if _, err := st.Put(ctx, "p/"+p.Public, body, api.PutOptions{ContentType: "text/html; charset=utf-8", CacheControl: "public, max-age=60"}); err != nil {
+			return err
+		}
+	}
+	if len(projects) > 0 {
+		fmt.Printf("Updated the public page of %d projects\n", len(projects))
+	}
+	return nil
 }
 
 // refreshShares writes the new share page to the page of each share that runs (s/<id>), so an
