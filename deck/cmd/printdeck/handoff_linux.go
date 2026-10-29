@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"syscall"
+	"time"
 )
 
 // runNextDeck runs the deck program of an installed update in place of this one, when the marker
@@ -14,6 +15,7 @@ func runNextDeck() {
 		return
 	}
 	log.Printf("deck: running the deck program of %s (%s), start %d", n.Version, n.Exe, n.Starts)
-	err := syscall.Exec(n.Exe, []string{n.Exe}, append(os.Environ(), envNextRoot+"="+n.Root))
+	err := syscall.Exec(n.Exe, []string{n.Exe}, append(os.Environ(),
+		envNextRoot+"="+n.Root, envNextWritten+"="+n.Written.UTC().Format(time.RFC3339Nano)))
 	failNext(handoffDir, err.Error())
 }

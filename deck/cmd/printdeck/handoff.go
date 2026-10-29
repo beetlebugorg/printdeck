@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
 
+	"printdeck/internal/system"
 	"printdeck/internal/ui"
 )
 
@@ -21,8 +23,13 @@ import (
 //  2. writes the frames of the time lapse and the state of the share link to handoffDir (RAM),
 //  3. writes the marker nextFile, and ends the deck program.
 //
+// Before step 3, the deck program and the os-release file of the new slot go to a folder in
+// handoffDir (nextCopy). The deck program of the update runs from that copy, so the helper can
+// unmount the slot and write a new install to it during the same print. A switch to that install
+// then works the same way.
+//
 // systemd starts /usr/bin/printdeck again. runNextDeck finds the marker and runs the deck program
-// of the new slot in its place, with envNextRoot. The Klipper host of the old slot keeps the
+// of the new slot in its place, with envNextRoot and envNextWritten. The Klipper host of the old slot keeps the
 // print. The new deck program reads the handoff files. After the print, the Pi restarts into the
 // new slot, as for each update during a print.
 //
@@ -37,6 +44,10 @@ var handoffDir = "/run/printdeck-deck"
 // update. It is empty in the deck program of the running system.
 const envNextRoot = "PRINTDECK_NEXT_ROOT"
 
+// envNextWritten has the time of the install (system.Staged.Written) of the deck program of an
+// installed update, in RFC 3339 format.
+const envNextWritten = "PRINTDECK_NEXT_WRITTEN"
+
 const (
 	nextFile      = "next.json"
 	failedFile    = "next.failed"
@@ -48,10 +59,11 @@ const (
 
 // nextDeck is the marker of the switch.
 type nextDeck struct {
-	Exe     string `json:"exe"`     // the deck program of the new slot
-	Root    string `json:"root"`    // the mount point of the root file system of the new slot
-	Version string `json:"version"` // the version of the new slot
-	Starts  int    `json:"starts"`  // the starts since the last nextStable
+	Exe     string    `json:"exe"`     // the deck program of the new slot
+	Root    string    `json:"root"`    // the mount point of the root file system of the new slot
+	Version string    `json:"version"` // the version of the new slot
+	Written time.Time `json:"written"` // the time of the install of the new slot
+	Starts  int       `json:"starts"`  // the starts since the last nextStable
 }
 
 // deckRoot is the root of the system of this deck program: "/", or the mount point of the slot
@@ -65,6 +77,69 @@ func deckRoot() string {
 
 // runsNext reports that this is the deck program of an installed update.
 func runsNext() bool { return os.Getenv(envNextRoot) != "" }
+
+// stagedRuns reports that this is the deck program of the staged update s. After a new install
+// during the print, this is the deck program of an older install.
+func stagedRuns(s system.Staged) bool {
+	return runsNext() && os.Getenv(envNextWritten) == s.Written.UTC().Format(time.RFC3339Nano)
+}
+
+// nextPrefix is the start of the names of the folders of nextCopy.
+const nextPrefix = "next-"
+
+// nextCopy copies the deck program exe and the os-release file of the slot root to a new folder
+// in dir, and returns the program and the root of the copy. It removes the copies of the switches
+// before.
+func nextCopy(dir, exe, root string, written time.Time) (string, string, error) {
+	base := filepath.Join(dir, fmt.Sprintf("%s%d", nextPrefix, written.UnixNano()))
+	old, _ := filepath.Glob(filepath.Join(dir, nextPrefix+"*"))
+	for _, o := range old {
+		if o != base {
+			os.RemoveAll(o)
+		}
+	}
+	files := []struct {
+		src, dst string
+		mode     os.FileMode
+	}{
+		{exe, filepath.Join(base, "usr/bin/printdeck"), 0o700},
+		{filepath.Join(root, "usr/lib/os-release"), filepath.Join(base, "usr/lib/os-release"), 0o600},
+	}
+	for _, f := range files {
+		if err := copyFile(f.src, f.dst, f.mode); err != nil {
+			os.RemoveAll(base)
+			return "", "", err
+		}
+	}
+	return files[0].dst, base, nil
+}
+
+// copyFile copies src to dst with the mode, through a temporary file.
+func copyFile(src, dst string, mode os.FileMode) error {
+	if err := os.MkdirAll(filepath.Dir(dst), 0o700); err != nil {
+		return err
+	}
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	tmp := dst + ".new"
+	out, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		out.Close()
+		os.Remove(tmp)
+		return err
+	}
+	if err := out.Close(); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	return os.Rename(tmp, dst)
+}
 
 func readNext(dir string) (nextDeck, error) {
 	var n nextDeck

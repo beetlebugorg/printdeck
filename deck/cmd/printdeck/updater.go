@@ -221,17 +221,10 @@ func (u *updater) Install() {
 	}()
 }
 
-// errNextRuns is the error of an install while the deck program of the staged update runs.
-var errNextRuns = errors.New("The screen runs the program of the installed update. Restart the Printdeck, then install again.")
-
 // stage writes system.UpdateBundle to the other slot with the helper. With no print, the deck
 // then restarts into it. During a print, the update waits for the end of the print, and stage
 // reports that it waits. progress, or nil, gets the steps too. The status shows the steps.
 func (u *updater) stage(progress system.Progress) (waits bool, err error) {
-	if runsNext() {
-		os.Remove(system.UpdateBundle)
-		return false, errNextRuns
-	}
 	u.set(func(st *ui.UpdateStatus) { st.Busy, st.Err, st.Done, st.Total = system.StepUnpack, "", 0, 0 })
 	// The helper checks the signature and writes the other slot at a low priority. It tells its
 	// steps.
@@ -317,8 +310,6 @@ func (u *updater) switchReady() error {
 func (u *updater) switchCheckNow() (system.Staged, int, error) {
 	s := u.Status()
 	switch {
-	case runsNext() || s.System != "":
-		return system.Staged{}, 0, errors.New("The screen runs the program of the update already.")
 	case !s.HasStaged:
 		return system.Staged{}, 0, errors.New("No update waits for the restart.")
 	case s.Busy != "":
@@ -329,6 +320,9 @@ func (u *updater) switchCheckNow() (system.Staged, int, error) {
 	staged, ok := u.sys.Staged()
 	if !ok {
 		return staged, 0, errors.New("No update waits for the restart.")
+	}
+	if stagedRuns(staged) {
+		return staged, 0, errors.New("The screen runs the program of the update already.")
 	}
 	if fi, err := os.Stat(u.sys.NextExe()); err != nil || !fi.Mode().IsRegular() {
 		return staged, 0, errors.New("The program of the update is not there. The Printdeck restarts into the update after the print.")
@@ -361,7 +355,15 @@ func (u *updater) switchDeck() error {
 			log.Printf("update: the handoff: %v", err)
 		}
 	}
-	if err := writeNext(u.handoffDir, nextDeck{Exe: u.sys.NextExe(), Root: u.sys.NextRoot(), Version: staged.Version}); err != nil {
+	// The copy in RAM keeps the slot free for a new install. With no copy, the program runs
+	// from the slot.
+	exe, root := u.sys.NextExe(), u.sys.NextRoot()
+	if e, r, err := nextCopy(u.handoffDir, exe, root, staged.Written); err != nil {
+		log.Printf("update: the copy of the deck program of the update: %v", err)
+	} else {
+		exe, root = e, r
+	}
+	if err := writeNext(u.handoffDir, nextDeck{Exe: exe, Root: root, Version: staged.Version, Written: staged.Written}); err != nil {
 		log.Printf("update: the marker of the switch: %v", err)
 	}
 	u.exit()
@@ -488,7 +490,7 @@ func (u *updater) refresh(ctx context.Context) {
 	staged, ok := u.sys.Staged()
 	u.mu.Lock()
 	// The check runs once for each staged update, and again each minute after a failure.
-	needNext := ok && !runsNext() && (!staged.Written.Equal(u.nextFor) || u.nextErr != nil && time.Since(u.nextAt) > time.Minute)
+	needNext := ok && !stagedRuns(staged) && (!staged.Written.Equal(u.nextFor) || u.nextErr != nil && time.Since(u.nextAt) > time.Minute)
 	u.mu.Unlock()
 	var next int
 	var nerr error
@@ -515,7 +517,7 @@ func (u *updater) refresh(ctx context.Context) {
 	}
 	st.SwitchFailed = failed
 	st.CanSwitch, st.SwitchNote = false, ""
-	if ok && !runsNext() {
+	if ok && !stagedRuns(staged) {
 		var herr error
 		if host == 0 {
 			herr = errors.New("no interface version")

@@ -274,7 +274,7 @@ func installUpload(w http.ResponseWriter, r *http.Request, pr printerBackend, up
 }
 
 // saveUpload saves an uploaded update bundle as system.UpdateBundle. It fails while an update
-// installs, and while the deck program of an installed update runs. During a print, it writes
+// installs. During a print, it writes
 // the file with a sync after each MiB (syncWriter).
 func saveUpload(w http.ResponseWriter, r *http.Request, pr printerBackend, up *updater) (string, bool) {
 	installing.Lock()
@@ -282,9 +282,6 @@ func saveUpload(w http.ResponseWriter, r *http.Request, pr printerBackend, up *u
 	installing.Unlock()
 	if running || up.Status().Busy != "" {
 		return "An update installs now.", true
-	}
-	if runsNext() {
-		return errNextRuns.Error(), true
 	}
 	printing := pr != nil && pr.State().Busy()
 	r.Body = http.MaxBytesReader(w, r.Body, maxBundle)

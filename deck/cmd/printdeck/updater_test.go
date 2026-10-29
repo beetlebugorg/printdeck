@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -291,9 +292,14 @@ func TestSwitchCheck(t *testing.T) {
 	}
 }
 
-// The switch saves the state, writes the marker of the next deck program, and ends the deck.
+// The switch saves the state, writes the marker of the next deck program, and ends the deck. The
+// marker has a copy of the program in the handoff folder. The deck program of the update can
+// install again and switch to the new install.
 func TestSwitchDeck(t *testing.T) {
 	tu := newTestUpdater(t)
+	release := filepath.Join(tu.sys.NextRoot(), "usr/lib/os-release")
+	os.MkdirAll(filepath.Dir(release), 0o755)
+	os.WriteFile(release, []byte("PRINTDECK_VERSION=v9.1.0\n"), 0o644)
 	tu.setState(printingState())
 	tu.stage(nil)
 	if err := tu.switchDeck(); err != nil {
@@ -303,8 +309,37 @@ func TestSwitchDeck(t *testing.T) {
 		t.Errorf("%d exits, %d handoffs", tu.exits, tu.handoffs)
 	}
 	n, err := readNext(tu.handoffDir)
-	if err != nil || n.Exe != tu.sys.exe || n.Version != "v9.1.0" || n.Starts != 0 {
-		t.Errorf("marker %+v, %v", n, err)
+	if err != nil || n.Version != "v9.1.0" || n.Starts != 0 || filepath.Dir(n.Root) != tu.handoffDir {
+		t.Fatalf("marker %+v, %v", n, err)
+	}
+	want, _ := os.ReadFile(tu.sys.exe)
+	if got, _ := os.ReadFile(n.Exe); len(want) == 0 || !bytes.Equal(got, want) {
+		t.Errorf("the copy of the program has %d bytes, want %d", len(got), len(want))
+	}
+	if releaseVersion(filepath.Join(n.Root, "usr/lib/os-release")) != "v9.1.0" {
+		t.Error("no os-release in the copy")
+	}
+
+	// The deck program of the update: no switch to itself, and a switch to a new install.
+	t.Setenv(envNextRoot, n.Root)
+	t.Setenv(envNextWritten, n.Written.UTC().Format(time.RFC3339Nano))
+	tu.refresh(context.Background())
+	if err := tu.switchDeck(); err == nil {
+		t.Fatal("a switch to the program that runs")
+	}
+	time.Sleep(time.Millisecond)
+	if _, err := tu.stage(nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := tu.switchDeck(); err != nil {
+		t.Fatal(err)
+	}
+	n2, err := readNext(tu.handoffDir)
+	if err != nil || n2.Root == n.Root || !n2.Written.After(n.Written) {
+		t.Fatalf("marker %+v after %+v, %v", n2, n, err)
+	}
+	if _, err := os.Stat(n.Root); !os.IsNotExist(err) {
+		t.Error("the copy of the first switch stays")
 	}
 }
 
