@@ -350,6 +350,9 @@ func moveName(kind string) string {
 func startShare(stateDir, configPath string, app *ui.App, pr printerBackend) {
 	link := newCloudLink(stateDir, app.Redraw)
 	app.Cloud = link
+	if k, ok := pr.(*printer.Klippy); ok {
+		app.Cloud = &projectLink{Link: link, k: k, stateDir: stateDir, model: printer.ConfigModel(configPath)}
+	}
 	l := newShareLink(app, link, pr, configPath)
 	app.Share = l
 	l.loadHandoff(filepath.Join(handoffDir, shareHandoff))

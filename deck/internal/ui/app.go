@@ -282,6 +282,7 @@ type App struct {
 	ptzLastAt      time.Time
 	cloudDomainSet string     // the domain of the service that the owner typed on the Cloud page, or ""
 	shareSheet     bool       // the share sheet is open
+	qrSheet        *qrSheet   // the sheet of a link of the cloud service, or nil (qrsheet.go)
 	shareOwner     bool       // the share sheet shows the owner link
 	camEdit        string     // the ID of the camera of the page of one camera
 	camKB          *keyboard  // the keyboard of the name of a camera, while it is open
@@ -490,6 +491,10 @@ func (a *App) Draw(c *gfx.Canvas) {
 	if a.keypad != nil {
 		a.collect, a.focus = !a.Record, a.focus[:0]
 		a.drawKeypad(c)
+	}
+	if a.qrSheet != nil && a.confirm == nil {
+		a.collect, a.focus = !a.Record, a.focus[:0]
+		a.drawQRSheet(c)
 	}
 	if a.shareSheet && a.Share != nil && a.confirm == nil {
 		a.collect, a.focus = !a.Record, a.focus[:0]

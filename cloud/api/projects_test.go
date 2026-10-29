@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -364,5 +365,48 @@ func TestProjectFlow(t *testing.T) {
 	}
 	if keys, _ := d.Store.List(ctx, "x/"); len(keys) != 0 {
 		t.Errorf("files after the delete: %v", keys)
+	}
+}
+
+// The calls of the deck: the owner code, a new project, a print with its picture and frames, the
+// same print again, and a project that the owner deleted.
+func TestDeckProjectCalls(t *testing.T) {
+	d, base := devService(t)
+	ctx := context.Background()
+	l := connectedLink(t, d, base)
+	id := l.Identity()
+	var c cloud.Client
+	oc, err := c.OwnerCode(ctx, id)
+	if err != nil || oc.Code == "" {
+		t.Fatalf("owner code %+v %v", oc, err)
+	}
+	sum, err := c.NewProject(ctx, id, "Shop wall")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := c.ProjectExists(ctx, id, sum.ID); !ok || err != nil {
+		t.Fatalf("exists %v %v", ok, err)
+	}
+	up := cloud.PrintUpload{Model: []byte("model"), Frames: 3, FPS: 12,
+		Frame:   func(i int) ([]byte, error) { return []byte(fmt.Sprintf("frame %d", i)), nil },
+		Request: cloud.PrintRequest{Name: "Hook", Result: "complete", Ended: time.Now().UTC(), Seconds: 600, Key: "hook@1"}}
+	pid, err := c.SendPrint(ctx, id, sum.ID, up)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var v cloud.ProjectView
+	c.Do(ctx, id, "GET", "/api/v1/projects/"+sum.ID, nil, &v)
+	if len(v.Prints) != 1 || v.Prints[0].ID != pid || v.Prints[0].Frames != 3 || v.Prints[0].FPS != 12 || v.Prints[0].Model == "" {
+		t.Fatalf("prints %+v", v.Prints)
+	}
+	if again, err := c.SendPrint(ctx, id, sum.ID, up); err != nil || again != pid {
+		t.Errorf("the same print again: %q %v", again, err)
+	}
+	if got := cloud.ProjectPage(base, sum.ID); got != base+"/app#x="+sum.ID {
+		t.Errorf("page %q", got)
+	}
+	d.API.deleteProject(ctx, &Project{ID: sum.ID})
+	if ok, err := c.ProjectExists(ctx, id, sum.ID); ok || err != nil {
+		t.Errorf("a deleted project: %v %v", ok, err)
 	}
 }

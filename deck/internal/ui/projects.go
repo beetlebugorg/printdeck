@@ -56,6 +56,10 @@ func (a *App) projectSummary(p printer.Project) string {
 func (a *App) drawProject(c *gfx.Canvas) {
 	pf := a.navFrame()
 	f := a.navPage(c, fitTitle(a.project, pf.head.Dx()-200))
+	if cp, ok := a.cloudProjects(); ok {
+		name := a.project
+		a.headKey(c, f.head, "Share", func() { a.shareProject(cp, name) })
+	}
 	recs := printer.OfProject(a.Printer.History(), a.project)
 	area := a.listArea(f)
 	if len(recs) == 0 {

@@ -72,11 +72,17 @@ func (a *App) drawCloud(c *gfx.Canvas) {
 		items = []menuItem{
 			{"Service", s.Domain + " · since " + fileDate(s.Enrolled.Local(), a.Now(), a.Clock24), dim, nil},
 			{"Check the connection", checked, dim, a.Cloud.Check},
+		}
+		if cp, ok := a.cloudProjects(); ok {
+			items = append(items, menuItem{"Owner sign-in", "Make your passkey on a phone, for your projects", dim,
+				func() { a.ownerSignIn(cp) }})
+		}
+		items = append(items, []menuItem{
 			{"Disconnect", "Remove this deck from the service", dim, func() {
 				a.confirm = &confirmBox{question: "Disconnect from " + s.Domain + "?", yes: "Disconnect", danger: true,
 					onYes: a.Cloud.Disconnect}
 			}},
-		}
+		}...)
 	} else {
 		items = []menuItem{
 			{"Connect", "Type the code from pwf enroll-code", dim, a.askCloudCode},
