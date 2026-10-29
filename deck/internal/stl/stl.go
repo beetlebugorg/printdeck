@@ -122,6 +122,7 @@ func (m *Mesh) RenderView(w, h int, scale, ox, oy, zLow, zFrac float64, printed,
 	}
 	zcut := float64(m.MinZ) + zFrac*float64(m.MaxZ-m.MinZ)
 	zlow := float64(m.MinZ) + zLow*float64(m.MaxZ-m.MinZ)
+	zTol := 1e-4 * max(1, float64(m.MaxZ-m.MinZ))
 	for _, t := range m.Tris {
 		var sx, sy, sd [3]float64
 		for i, p := range t.V {
@@ -143,10 +144,11 @@ func (m *Mesh) RenderView(w, h int, scale, ox, oy, zLow, zFrac float64, printed,
 		// The colour of each pixel follows its height, so the printed part ends on a straight cut.
 		cols := [3]color.RGBA{lit(ghost), lit(printed), lit(hot)}
 		colorAt := func(z float64) color.RGBA {
+			// The tolerance keeps the float noise of a face at the cut height out of the ghost.
 			switch {
-			case z > zcut:
+			case z > zcut+zTol:
 				return cols[0]
-			case z > zlow:
+			case z > zlow+zTol:
 				return cols[2]
 			}
 			return cols[1]

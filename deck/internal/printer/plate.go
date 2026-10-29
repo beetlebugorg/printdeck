@@ -95,7 +95,7 @@ var (
 
 const (
 	frameMargin = 0.35 // the margin around the part, a part of its size
-	frameMinMM  = 25.0 // the smallest margin around the part, in mm
+	frameMinMM  = 10.0 // the smallest margin around the part, in mm: a small part stays large
 	// bigPart is the size of the framed part over the size of the bed from which the picture
 	// shows the whole bed.
 	bigPart = 0.7
