@@ -508,6 +508,37 @@ func (v *View) RecordPicture(r Record) (img image.Image, loading bool) {
 	return nil, true
 }
 
+// RecordLayers is the plan of the layers of a finished print, from its file.
+type RecordLayers struct {
+	// Plan is the seconds of each layer from the slicer, from layer 1, or nil. Layers is the
+	// count of the layers of the file, and Layer the last layer that printed. Height is the height
+	// of the part that printed, in mm.
+	Plan          []float64
+	Layers, Layer int
+	Height        float64
+}
+
+// RecordPlan reads the file of a finished print and returns the plan of its layers. ok is false
+// when the file is gone. It parses the whole file: call it only for an upload.
+func (v *View) RecordPlan(r Record) (RecordLayers, bool) {
+	body, err := v.src.Open(r.Path)
+	if err != nil {
+		return RecordLayers{}, false
+	}
+	gc, _ := gcode.Parse(io.LimitReader(body, maxModelSize))
+	body.Close()
+	if gc == nil {
+		return RecordLayers{}, false
+	}
+	out := RecordLayers{Plan: layerTimes(gc), Layers: len(gc.LayerPos), Height: float64(gc.MaxZ)}
+	out.Layer = out.Layers
+	if r.Result != "complete" && r.Pos > 0 {
+		out.Layer = sort.Search(len(gc.LayerPos), func(i int) bool { return gc.LayerPos[i] > r.Pos })
+		out.Height = float64(gc.ZAt(r.Pos))
+	}
+	return out, true
+}
+
 // FilePictureSize is the width and the height of the picture of a file (FilePicture).
 const FilePictureSize = 240
 

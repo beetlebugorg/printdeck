@@ -23,6 +23,7 @@ import (
 //	x/<id>/project.json                 the name, the members, the invites, the public ID
 //	x/<id>/prints/<print>.json          a print, from the history record of the deck
 //	x/<id>/prints/<print>/model.jpg     the picture of the model
+//	x/<id>/prints/<print>/plan.json     the seconds of each layer from the slicer
 //	x/<id>/prints/<print>/lapse/<n>.jpg the frames of the time lapse
 //	x/<id>/photos/<photo>.json, .jpg and -s.jpg   a photo, cleaned (CleanPhoto)
 //	invites/<sha256 of the code>.json   an invite, until it is used or it expires
@@ -96,6 +97,7 @@ type PrintRecord struct {
 	Frames int       `json:"frames"`
 	FPS    int       `json:"fps"`
 	Model  bool      `json:"model"`
+	Plan   bool      `json:"plan,omitempty"`
 	Done   bool      `json:"done"`
 }
 
@@ -459,6 +461,9 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 		if pr.Model {
 			pp.Model = link("x/" + p.ID + "/prints/" + pr.ID + "/model.jpg")
 		}
+		if pr.Plan {
+			pp.Plan = link("x/" + p.ID + "/prints/" + pr.ID + "/plan.json")
+		}
 		v.Prints = append(v.Prints, pp)
 	}
 	for _, ph := range photos {
@@ -472,7 +477,9 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 // projectPrint is the print of a page, with no URLs.
 func projectPrint(pr PrintRecord) cloud.ProjectPrint {
 	return cloud.ProjectPrint{ID: pr.ID, Name: pr.Name, File: pr.File, Result: pr.Result, Ended: pr.Ended, Seconds: pr.Seconds,
-		Material: pr.Material, Grams: pr.Grams, Roll: pr.Roll, Printer: pr.Printer, Note: pr.Note, Frames: pr.Frames, FPS: pr.FPS}
+		Material: pr.Material, Grams: pr.Grams, Roll: pr.Roll, Printer: pr.Printer, Note: pr.Note, Frames: pr.Frames, FPS: pr.FPS,
+		Started: pr.Started, Layers: pr.Layers, Layer: pr.Layer, Height: pr.Height, GramsTotal: pr.GramsTotal,
+		Estimate: pr.Estimate, Prep: pr.Prep, Slicer: pr.Slicer, Filament: pr.Filament}
 }
 
 // projectFiles returns the prints that are done, the newest first, and the photos, the newest
@@ -624,7 +631,10 @@ func (s *Server) removeMember(ctx context.Context, id, mid string) error {
 func (s *Server) newPrint(ctx context.Context, p *Project, d *Deck, in cloud.PrintRequest) (any, error) {
 	in.Name, in.File, in.Material, in.Roll, in.Printer, in.Note =
 		clip(in.Name, 120), clip(in.File, 200), clip(in.Material, 40), clip(in.Roll, 80), clip(in.Printer, 64), clip(in.Note, 280)
-	in.Key = clip(in.Key, 200)
+	in.Key, in.Slicer = clip(in.Key, 200), clip(in.Slicer, 64)
+	if f := in.Filament; f != nil {
+		f.Name, f.Brand, f.Type, f.Color = clip(f.Name, 80), clip(f.Brand, 40), clip(f.Type, 40), clip(f.Color, 7)
+	}
 	switch in.Result {
 	case "complete", "cancelled", "error":
 	default:
@@ -710,7 +720,7 @@ func (s *Server) printDone(ctx context.Context, project, print string, in cloud.
 	for n < min(in.Frames, MaxLapseFrames) && have["lapse/"+strconv.Itoa(n)+".jpg"] {
 		n++
 	}
-	pr.Frames, pr.FPS, pr.Model, pr.Done = n, max(1, min(60, in.FPS)), have["model.jpg"], true
+	pr.Frames, pr.FPS, pr.Model, pr.Plan, pr.Done = n, max(1, min(60, in.FPS)), have["model.jpg"], have["plan.json"], true
 	return s.putJSON(ctx, printKey(project, print), pr)
 }
 

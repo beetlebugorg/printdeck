@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"image/jpeg"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -39,7 +40,14 @@ type cloudProject struct {
 	ID     string            `json:"id"`
 	Domain string            `json:"domain"`
 	Prints map[string]string `json:"prints"` // the key of a print and its ID at the service
+	// Format is the printFormat of the prints that are up. A share sends the prints of an older
+	// format again.
+	Format int `json:"format,omitempty"`
 }
+
+// printFormat is the format of the prints that the deck sends: 2 adds the details of the print
+// page (the layers, the plan, the filament and the times).
+const printFormat = 2
 
 func (p *projectLink) file() string { return filepath.Join(p.stateDir, "cloud-projects.json") }
 
@@ -118,7 +126,7 @@ func (p *projectLink) ShareProject(name string, progress func(done, total int)) 
 	recs := printer.OfProject(p.k.History(), name)
 	var todo []printer.Record
 	for _, r := range recs {
-		if cp.Prints[printKey(r)] == "" {
+		if cp.Prints[printKey(r)] == "" || cp.Format < printFormat {
 			todo = append(todo, r)
 		}
 	}
@@ -134,6 +142,12 @@ func (p *projectLink) ShareProject(name string, progress func(done, total int)) 
 		}
 		progress(i+1, len(todo))
 	}
+	if cp.Format < printFormat {
+		cp.Format = printFormat
+		if err := p.save(f); err != nil {
+			return "", err
+		}
+	}
 	return cloud.ProjectPage(id.Domain, cp.ID), nil
 }
 
@@ -144,9 +158,14 @@ const maxProjectFrames = 1000
 // sendPrint uploads one print of the history to the project: the record, the picture of the
 // model, and the frames of the time lapse as the video has them (no encode).
 func (p *projectLink) sendPrint(ctx context.Context, id *cloud.Identity, project string, r printer.Record) (string, error) {
-	up := cloud.PrintUpload{FPS: 24, Model: p.recordPicture(r), Request: cloud.PrintRequest{Name: r.Name(), File: r.File,
-		Result: r.Result, Ended: r.End.UTC(), Seconds: int(r.Duration.Seconds()), Material: r.Material, Grams: r.Grams,
-		Roll: r.Spool, Printer: p.model, Note: r.Note, Key: printKey(r)}}
+	up := cloud.PrintUpload{FPS: 24, Model: p.recordPicture(r), Request: p.printRequest(r)}
+	if l, ok := p.k.View.RecordPlan(r); ok {
+		up.Plan = l.Plan
+		for i, t := range up.Plan {
+			up.Plan[i] = math.Round(t*10) / 10
+		}
+		up.Request.Layers, up.Request.Layer, up.Request.Height = l.Layers, l.Layer, math.Round(l.Height*100)/100
+	}
 	if r.Video != "" {
 		if m, err := timelapse.OpenMovie(filepath.Join(videoDir(p.stateDir), r.Video)); err == nil {
 			defer m.Close()
@@ -156,6 +175,40 @@ func (p *projectLink) sendPrint(ctx context.Context, id *cloud.Identity, project
 		}
 	}
 	return p.Client.SendPrint(ctx, id, project, up)
+}
+
+// printRequest is the record of the print r for its page: the record of the history, and the
+// facts of its file and its roll.
+func (p *projectLink) printRequest(r printer.Record) cloud.PrintRequest {
+	in := cloud.PrintRequest{Name: r.Name(), File: r.File, Result: r.Result, Ended: r.End.UTC(),
+		Seconds: int(r.Duration.Seconds()), Material: r.Material, Grams: r.Grams, Roll: r.Spool, Printer: p.model,
+		Note: r.Note, Key: printKey(r), Started: r.End.Add(-r.Duration).UTC()}
+	prep := 0.0
+	for _, ph := range r.Phases {
+		prep += ph.Seconds
+	}
+	in.Prep = int(prep)
+	meta := p.k.FileMeta(r.Path)
+	in.Slicer, in.Estimate = meta.Slicer, int(meta.PrintTime.Seconds())
+	diameter := p.k.Machine().Diameter()
+	density := printer.Density(meta.Material)
+	f := &cloud.ShareFilament{Name: meta.MaterialName, Type: meta.Material, Color: meta.Color, Diameter: diameter,
+		LayerHeight: meta.LayerHeight, NozzleTemp: meta.NozzleTemp, BedTemp: meta.BedTemp}
+	if store := p.k.SpoolStore(); store != nil && r.SpoolID != "" {
+		if sp, ok := store.Get(r.SpoolID); ok {
+			rollFilament(f, store, sp)
+			density = store.Density(sp)
+		}
+	}
+	if f.Name != "" || f.Type != "" || f.Color != "" {
+		in.Filament = f
+	}
+	in.GramsTotal = meta.FilamentG
+	if in.GramsTotal == 0 && meta.FilamentMM > 0 {
+		in.GramsTotal = printer.GramsAt(meta.FilamentMM, diameter, density)
+	}
+	in.GramsTotal = math.Round(in.GramsTotal*10) / 10
+	return in
 }
 
 // recordPicture returns the picture of the model of a finished print as a JPEG, or nil when the

@@ -6,8 +6,9 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:,">
 <title>Parts with Friends · Printdeck</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..800&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..800&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=Share+Tech+Mono&amp;display=swap">
 <link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/share.css">
 <link rel="stylesheet" href="/assets/app.css">
 <script src="/assets/pwf.js" defer></script>
 </head>
@@ -65,9 +66,29 @@
   <!-- One project -->
   <section class="view" id="vProject" hidden>
     <a class="back" href="/app" id="backLink">All projects</a>
-    <h1 id="pName"></h1>
-    <p class="dim" id="pNote"></p>
-    <p class="dim small" id="pMeta"></p>
+    <div class="phead">
+      <h1 id="pName"></h1>
+      <p class="dim" id="pNote"></p>
+      <p class="dim small" id="pMeta"></p>
+    </div>
+    <section class="lcd stats" aria-label="The project in numbers" id="pStats">
+      <div class="row">
+        <div class="cell"><div class="lab">Prints</div><div class="big" id="stPrints">0</div><div class="sub" id="stPrintsSub"></div></div>
+        <div class="cell"><div class="lab">Print time</div><div class="big" id="stTime">0:00</div><div class="sub" id="stTimeSub"></div></div>
+        <div class="cell"><div class="lab">Filament</div><div class="big" id="stGrams">0 g</div><div class="sub" id="stGramsSub"></div></div>
+      </div>
+    </section>
+
+    <h2 class="section">Prints</h2>
+    <p class="dim small" id="noPrints">No prints yet. On the deck, open a print of the history, tap Project, then share the project.</p>
+    <div class="tiles" id="prints"></div>
+
+    <div class="card">
+      <h2>Photos</h2>
+      <label class="file"><input type="file" id="photoFile" accept="image/jpeg,image/png" multiple><span>Add photos</span></label>
+      <p class="msg" id="photoMsg" role="status"></p>
+      <div class="photos" id="photos"></div>
+    </div>
 
     <div class="card" id="ownerTools" hidden>
       <h2>Friends</h2>
@@ -81,7 +102,7 @@
         <code id="inviteLink"></code>
         <div class="row"><button type="button" id="inviteCopy">Copy link</button><button type="button" id="inviteShare" hidden>Share</button></div>
       </div>
-      <h2>Public address</h2>
+      <h2 class="sub2">Public address</h2>
       <p class="small dim">Anybody with the public address sees the prints, the time lapses and the photos. It has no files of the models and no names of members.</p>
       <div class="row">
         <button type="button" id="publicBtn" aria-pressed="false">Off</button>
@@ -99,19 +120,108 @@
       <p class="small" id="memberNames"></p>
     </div>
 
-    <div class="card">
-      <h2>Photos</h2>
-      <label class="file"><input type="file" id="photoFile" accept="image/jpeg,image/png" multiple><span>Add photos</span></label>
-      <p class="msg" id="photoMsg" role="status"></p>
-      <div class="photos" id="photos"></div>
-    </div>
-
-    <h2 class="section">Prints</h2>
-    <p class="dim small" id="noPrints">No prints yet. On the deck, open a print of the history, tap Project, then share the project.</p>
-    <div class="prints" id="prints"></div>
-
     <div class="danger" id="dangerZone" hidden>
       <button type="button" class="link" id="deleteProject">Delete this project</button>
+    </div>
+  </section>
+
+  <!-- One print: the share page of a finished print -->
+  <section class="view" id="vPrint" hidden>
+    <a class="back" href="#" id="prBack">The project</a>
+    <section class="title">
+      <h1 id="prName"></h1>
+      <p id="prSub"></p>
+      <div class="linkrow"><button type="button" id="prCopy">Copy link</button><button type="button" id="prShare" hidden>Share</button><span id="prCopyMsg" role="status"></span></div>
+    </section>
+
+    <section class="done-banner" id="doneBanner">
+      <strong id="doneTitle">Print finished</strong>
+      <span id="doneText"></span>
+    </section>
+
+    <section class="cam lapse-hero" id="lapseBox" aria-label="Time lapse" hidden>
+      <figure>
+        <canvas id="lapse" width="640" height="360"></canvas>
+        <div class="tag"><b></b><span id="lapseTag">Time lapse</span></div>
+      </figure>
+      <div class="player">
+        <button type="button" id="lapsePlay">Pause</button>
+        <input type="range" id="lapseSeek" min="0" max="0" value="0" aria-label="The frame of the time lapse">
+        <span id="lapsePos"></span>
+      </div>
+    </section>
+
+    <section class="lcd" aria-label="The print">
+      <div class="row">
+        <div class="cell">
+          <div class="lab">Print time</div>
+          <div class="big" id="left">--:--</div>
+          <div class="sub" id="leftSub"></div>
+        </div>
+        <div class="cell">
+          <div class="lab">Layer</div>
+          <div class="big" id="layer">-</div>
+          <div class="sub" id="layers"></div>
+        </div>
+        <div class="cell">
+          <div class="lab">Filament</div>
+          <div class="big" id="gramsBig">-</div>
+          <div class="sub" id="gramsSub"></div>
+        </div>
+      </div>
+      <div class="bar" role="progressbar" aria-label="How much of the print printed" aria-valuemin="0" aria-valuemax="100" id="barWrap"><i id="bar"></i></div>
+      <div class="barlab"><span id="pct">0%</span><span id="activity"></span></div>
+    </section>
+
+    <section class="model-row" id="modelBox" aria-label="The model" hidden>
+      <figure>
+        <img id="model" alt="The model of the print">
+        <figcaption id="modelTag">The model</figcaption>
+      </figure>
+      <div class="vchart" id="chartBox" hidden>
+        <canvas id="chart" aria-label="The time of each layer from the slicer, layer 1 at the bottom"></canvas>
+        <div class="nums"><span id="layerNow"></span><span id="layerAvg"></span></div>
+      </div>
+    </section>
+
+    <section class="card" aria-label="Details">
+      <h2>Details</h2>
+      <dl class="facts">
+        <div><dt>Started</dt><dd id="started">-</dd></div>
+        <div><dt>Ended</dt><dd id="ended">-</dd></div>
+        <div><dt>Warm-up</dt><dd id="prep">-</dd></div>
+        <div><dt>Height</dt><dd id="height">-</dd></div>
+        <div><dt>Material</dt><dd id="material">-</dd></div>
+        <div><dt>Slicer</dt><dd id="slicer">-</dd></div>
+        <div><dt>Printer</dt><dd id="printer">-</dd></div>
+        <div><dt>File</dt><dd id="file">-</dd></div>
+      </dl>
+      <p class="note" id="prNote" hidden></p>
+    </section>
+
+    <section class="card" id="filCard" aria-label="Filament" hidden>
+      <h2>Filament</h2>
+      <div class="fil-head"><i id="filDot"></i><div><strong id="filName"></strong><span id="filSub"></span></div></div>
+      <dl class="facts">
+        <div><dt>Brand</dt><dd id="filBrand">-</dd></div>
+        <div><dt>Type</dt><dd id="filType">-</dd></div>
+        <div><dt>Color</dt><dd id="filColor">-</dd></div>
+        <div><dt>Diameter</dt><dd id="filDia">-</dd></div>
+        <div><dt>Roll</dt><dd id="filRoll">-</dd></div>
+        <div><dt>Layer height</dt><dd id="filLayer">-</dd></div>
+        <div><dt>Temperatures</dt><dd id="filTemps">-</dd></div>
+      </dl>
+    </section>
+
+    <section class="card" id="prPhotosCard" aria-label="Photos of this print">
+      <h2>Photos</h2>
+      <label class="file" id="prPhotoAdd"><input type="file" id="prPhotoFile" accept="image/jpeg,image/png" multiple><span>Add photos of this print</span></label>
+      <p class="msg" id="prPhotoMsg" role="status"></p>
+      <div class="photos" id="prPhotos"></div>
+    </section>
+
+    <div class="danger" id="prDanger" hidden>
+      <button type="button" class="link" id="prRemove">Remove this print from the project</button>
     </div>
   </section>
 

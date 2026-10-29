@@ -387,9 +387,10 @@ func TestDeckProjectCalls(t *testing.T) {
 	if ok, err := c.ProjectExists(ctx, id, sum.ID); !ok || err != nil {
 		t.Fatalf("exists %v %v", ok, err)
 	}
-	up := cloud.PrintUpload{Model: []byte("model"), Frames: 3, FPS: 12,
-		Frame:   func(i int) ([]byte, error) { return []byte(fmt.Sprintf("frame %d", i)), nil },
-		Request: cloud.PrintRequest{Name: "Hook", Result: "complete", Ended: time.Now().UTC(), Seconds: 600, Key: "hook@1"}}
+	up := cloud.PrintUpload{Model: []byte("model"), Frames: 3, FPS: 12, Plan: []float64{30, 20.5},
+		Frame: func(i int) ([]byte, error) { return []byte(fmt.Sprintf("frame %d", i)), nil },
+		Request: cloud.PrintRequest{Name: "Hook", Result: "complete", Ended: time.Now().UTC(), Seconds: 600, Key: "hook@1",
+			Layers: 2, Layer: 2, Height: 0.6, Slicer: "Cura 5.8", Filament: &cloud.ShareFilament{Type: "PLA", Color: "#ff5a1f"}}}
 	pid, err := c.SendPrint(ctx, id, sum.ID, up)
 	if err != nil {
 		t.Fatal(err)
@@ -398,6 +399,12 @@ func TestDeckProjectCalls(t *testing.T) {
 	c.Do(ctx, id, "GET", "/api/v1/projects/"+sum.ID, nil, &v)
 	if len(v.Prints) != 1 || v.Prints[0].ID != pid || v.Prints[0].Frames != 3 || v.Prints[0].FPS != 12 || v.Prints[0].Model == "" {
 		t.Fatalf("prints %+v", v.Prints)
+	}
+	if p := v.Prints[0]; p.Layers != 2 || p.Slicer != "Cura 5.8" || p.Filament == nil || p.Filament.Type != "PLA" || p.Plan == "" {
+		t.Fatalf("the details of the print %+v", p)
+	}
+	if code, body := get(t, v.Prints[0].Plan); code != 200 || string(body) != `{"layers":[30,20.5]}` {
+		t.Errorf("plan %d %s", code, body)
 	}
 	if again, err := c.SendPrint(ctx, id, sum.ID, up); err != nil || again != pid {
 		t.Errorf("the same print again: %q %v", again, err)

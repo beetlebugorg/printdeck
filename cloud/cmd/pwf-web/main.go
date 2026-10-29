@@ -587,7 +587,7 @@ func (s *share) render(st wire.ShareStatus) {
 		setText("expires", "View only. Shared with Printdeck. This link stops at "+localDay(st.Expires)+".")
 	}
 
-	s.renderFilament(st.Filament)
+	renderFilament(st.Filament)
 
 	// The time lapse.
 	if st.LapseFPS > 0 {
@@ -634,7 +634,7 @@ func article(name string) string {
 }
 
 // renderFilament fills the card of the filament. A line with no value hides.
-func (s *share) renderFilament(f *wire.ShareFilament) {
+func renderFilament(f *wire.ShareFilament) {
 	setHidden("filCard", f == nil)
 	if f == nil {
 		return
@@ -880,25 +880,29 @@ func (s *share) renderPrinter(st wire.ShareStatus, ended bool) {
 	}
 }
 
-// drawChart draws a row for each layer, or for each group of layers on a short chart: the
-// measured time of a layer that is done, else the time of the slicer. Done layers are dim, the
-// layer now is bright, and the layers to come are dark. The numbers are the time of the layer now
-// and its plan, and the mean time of a layer.
+// drawChart draws the chart of the layer times of the share.
 func (s *share) drawChart(st wire.ShareStatus, ended bool) {
-	plan := s.plan
-	n := len(plan)
 	cur := st.Layer
 	if ended {
-		cur = n + 1
+		cur = len(s.plan) + 1
 	}
+	drawLayerChart(s.plan, st.LayerTimes, cur)
+}
+
+// drawLayerChart draws a row for each layer, or for each group of layers on a short chart: the
+// measured time of a layer that is done (times), else the time of the slicer (plan). Done layers
+// are dim, the layer cur is bright, and the layers to come are dark. The numbers under the chart
+// are the time of the layer now and its plan, and the mean time of a layer.
+func drawLayerChart(plan, times []float64, cur int) {
+	n := len(plan)
 	at := func(layer int) float64 {
-		if layer-1 < len(st.LayerTimes) && st.LayerTimes[layer-1] > 0 {
-			return st.LayerTimes[layer-1]
+		if layer-1 < len(times) && times[layer-1] > 0 {
+			return times[layer-1]
 		}
 		return plan[layer-1]
 	}
 	sum, count := 0.0, 0
-	for _, t := range st.LayerTimes {
+	for _, t := range times {
 		if t > 0 {
 			sum, count = sum+t, count+1
 		}
@@ -909,7 +913,7 @@ func (s *share) drawChart(st wire.ShareStatus, ended bool) {
 		}
 		count = n
 	}
-	setText("layerAvg", "AVG "+mmss(sum/float64(count))+" A LAYER")
+	setText("layerAvg", "AVG "+mmss(sum/float64(max(1, count)))+" A LAYER")
 
 	cv := byID("chart")
 	dpr := js.Global().Get("devicePixelRatio").Float()

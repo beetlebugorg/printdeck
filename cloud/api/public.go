@@ -85,6 +85,10 @@ func (s *Server) publish(ctx context.Context, p *Project) error {
 			pp.Model = rel + "model.jpg"
 			want[dst+pp.Model] = src + "model.jpg"
 		}
+		if pr.Plan {
+			pp.Plan = rel + "plan.json"
+			want[dst+pp.Plan] = src + "plan.json"
+		}
 		for n := range pr.Frames {
 			f := "lapse/" + strconv.Itoa(n) + ".jpg"
 			want[dst+rel+f] = src + f

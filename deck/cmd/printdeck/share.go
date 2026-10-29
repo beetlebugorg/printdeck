@@ -225,20 +225,7 @@ func (l *shareLink) status() cloud.ShareStatus {
 			used := printer.GramsAt(st.FilamentUsed, l.pr.Machine().Diameter(), density)
 			s.Roll = &cloud.ShareRoll{Name: strings.TrimSpace(sp.Number() + " " + sp.Label()), Color: sp.Color,
 				Left: math.Round(max(0, sp.Left()-used)), Full: math.Round(sp.Capacity())}
-			// The roll is the filament in the printer, so it comes before the file.
-			f.Name, f.RollSize = sp.Name, sp.Capacity()
-			if sp.Material != "" {
-				f.Type = sp.Material
-			}
-			if sp.Color != "" {
-				f.Color = sp.Color
-			}
-			if m, ok := store.SlicerMaterial(sp.CuraMaterial); sp.CuraMaterial != "" && ok {
-				f.Brand = m.Brand
-				if m.Name != "" {
-					f.Name = m.Name
-				}
-			}
+			rollFilament(f, store, sp)
 		}
 	}
 	if s.Material == "" {
@@ -419,4 +406,22 @@ func hostName() string {
 		return "Printdeck"
 	}
 	return name
+}
+
+// rollFilament puts the roll sp in the filament f. The roll is the filament in the printer, so it
+// comes before the file.
+func rollFilament(f *cloud.ShareFilament, store *printer.Spools, sp printer.Spool) {
+	f.Name, f.RollSize = sp.Name, sp.Capacity()
+	if sp.Material != "" {
+		f.Type = sp.Material
+	}
+	if sp.Color != "" {
+		f.Color = sp.Color
+	}
+	if m, ok := store.SlicerMaterial(sp.CuraMaterial); sp.CuraMaterial != "" && ok {
+		f.Brand = m.Brand
+		if m.Name != "" {
+			f.Name = m.Name
+		}
+	}
 }

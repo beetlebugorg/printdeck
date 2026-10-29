@@ -7,6 +7,7 @@ h2.section { margin: 8px 0 0; }
 .view { display: grid; gap: 14px; }
 .small { font-size: 14px; }
 .msg { margin: 0; min-height: 1.5em; color: var(--ink-dim); }
+.msg:empty { display: none; }
 .msg.err { color: #b3261e; }
 @media (prefers-color-scheme: dark) { .msg.err { color: #ff8a80; } }
 .card { background: var(--plate); border: 1px solid var(--seam); border-radius: 14px; padding: 16px 18px; display: grid; gap: 10px; }
@@ -36,6 +37,7 @@ input:not([type]), input[type="text"] { font: 400 16px/1.4 "Archivo", sans-serif
 .pcard strong { font: 800 20px/1.15 "Archivo", sans-serif; font-stretch: 85%; display: block; }
 .pcard span { color: var(--ink-dim); font-size: 14px; }
 .members { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.members:empty { display: none; }
 .members li { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--seam); }
 .members li span { color: var(--ink-dim); font-size: 14px; }
 .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
@@ -45,16 +47,33 @@ input:not([type]), input[type="text"] { font: 400 16px/1.4 "Archivo", sans-serif
   background: rgba(0,0,0,.62); padding: 4px 6px; border-radius: 5px; }
 .photos .rm { position: absolute; right: 6px; top: 6px; min-height: 30px; padding: 0 10px; font-size: 12px; background: rgba(0,0,0,.62);
   color: #f3f1ec; border: none; }
-.prints { display: grid; gap: 14px; }
-.print { background: var(--plate); border: 1px solid var(--seam); border-radius: 14px; overflow: hidden; display: grid; }
-.print .pic { background: var(--lcd); position: relative; aspect-ratio: 16 / 10; display: grid; place-items: center; }
-.print .pic img { width: 100%; height: 100%; object-fit: contain; display: block; }
-.print .pic button { position: absolute; right: 10px; bottom: 10px; min-height: 36px; font-size: 13px; }
-.print .body { padding: 12px 16px; display: grid; gap: 4px; }
-.print strong { font: 800 20px/1.15 "Archivo", sans-serif; font-stretch: 85%; }
-.print .facts { font: 500 13px/1.5 "IBM Plex Mono", monospace; color: var(--ink-dim); }
-.print .fail { color: #b3261e; }
-@media (prefers-color-scheme: dark) { .print .fail { color: #ff8a80; } }
+/* The prints of a project: a tile each, which opens the page of the print. */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(160px, 40vw), 1fr)); gap: 12px; }
+.tile { display: grid; grid-template-rows: auto 1fr; background: var(--plate); border: 1px solid var(--seam); border-radius: 14px;
+  overflow: hidden; color: var(--ink); text-decoration: none; }
+.tile:hover { border-color: var(--orange); }
+.tile:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.tile .pic { background: var(--lcd); position: relative; aspect-ratio: 4 / 3; display: grid; place-items: center; }
+.tile .pic img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.tile .badges { position: absolute; left: 8px; top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+.tile .badges span { font: 500 11px/1 "IBM Plex Mono", monospace; color: #f3f1ec; background: rgba(0,0,0,.62); padding: 6px 8px; border-radius: 6px; }
+.tile .badges .fail { background: #b3261e; }
+.tile .body { padding: 10px 12px 12px; display: grid; gap: 6px; align-content: start; }
+.tile strong { font: 800 18px/1.15 "Archivo", sans-serif; font-stretch: 85%; overflow-wrap: anywhere; }
+.tile .facts { font: 500 12px/1.5 "IBM Plex Mono", monospace; color: var(--ink-dim); }
+/* The numbers of a project, in the readout of the share page. */
+.stats .big { font-size: clamp(26px, 7vw, 40px); }
+.phead { display: grid; gap: 6px; }
+/* The player of a time lapse. */
+.player { display: flex; align-items: center; gap: 12px; padding: 10px 4px 2px; }
+.player button { min-height: 44px; min-width: 88px; font: 600 14px/1 "Archivo", sans-serif; color: var(--lcd-ink); background: var(--lcd-cell);
+  border: 1px solid var(--lcd-dim); border-radius: 8px; }
+.player input { flex: 1; min-width: 0; accent-color: var(--lcd-ink); min-height: 44px; }
+.player span { font: 500 12px/1 "IBM Plex Mono", monospace; color: var(--lcd-dim); min-width: 72px; text-align: right; font-variant-numeric: tabular-nums; }
+.note { white-space: pre-wrap; padding-top: 4px; }
+.card h2 { margin: 0; }
+.card h2.sub2 { margin-top: 10px; }
+.title h1 { overflow-wrap: anywhere; }
 .danger { padding-top: 8px; }
 .view p, .card p { margin: 0; }
 footer { display: grid; gap: 4px; }

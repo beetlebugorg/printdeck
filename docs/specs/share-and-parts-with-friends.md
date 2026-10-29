@@ -572,6 +572,15 @@ The build of phase 3 made these choices:
   record, the picture of the model, and the frames of the time lapse as the video has them.
 - **The photos** of a project are in the build: the owner and the members add them on the page
   of the project, and a member removes only their own photos.
+- **The page of a print.** Each print of a project has a page with the look of the share page
+  of a finished print: the time lapse with Pause and a slider, the readout, the model with the
+  chart of the layers from the slicer, the details, the filament, and the photos of the print.
+  Its address is `/app#x=<id>&p=<print>` for the members, and `/p/<public id>#p=<print>` on the
+  public address. The deck sends the facts of the page with the print (the layers, the plan of
+  the slicer as `plan.json`, the filament, the estimate, and the warm-up time). A deck with the
+  older format sends its prints again at the next share.
+- **The page of a project** shows the numbers of the project (the prints, the print time and the
+  filament), a tile for each print, the photos, and the keys of the owner at the bottom.
 
 ## Open questions
 

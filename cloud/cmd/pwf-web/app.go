@@ -22,7 +22,8 @@ import (
 type app struct {
 	token, kind, project, name string
 	view                       *wire.ProjectView
-	playing                    int // the number of the time lapse that plays; a new play ends the old one
+	print                      string // the print of the print page, or ""
+	playing                    int    // the number of the time lapse that plays; a new play ends the old one
 }
 
 const tokenKey = "pwf-session"
@@ -47,11 +48,11 @@ func runApp() {
 	on("publicNew", "click", func() { go a.togglePublic(true) })
 	on("publicCopy", "click", func() { go copyText(byID("publicLink").Get("textContent").String(), "ownerToolsMsg") })
 	on("deleteProject", "click", func() { go a.deleteProject() })
-	byID("photoFile").Call("addEventListener", "change", js.FuncOf(func(this js.Value, _ []js.Value) any {
-		files := this.Get("files")
-		go a.addPhotos(files)
-		return nil
-	}))
+	on("prCopy", "click", func() { go copyText(a.printLink(), "prCopyMsg") })
+	on("prShare", "click", func() { shareLink(a.printLink()) })
+	on("prRemove", "click", func() { go a.removePrint() })
+	onFiles("photoFile", func(files []js.Value) { a.addPhotos(files, "", "photoMsg") })
+	onFiles("prPhotoFile", func(files []js.Value) { a.addPhotos(files, a.print, "prPhotoMsg") })
 	js.Global().Call("addEventListener", "hashchange", js.FuncOf(func(js.Value, []js.Value) any {
 		go a.route()
 		return nil
@@ -74,7 +75,8 @@ func (a *app) route() {
 	case a.token == "":
 		show("vSignIn")
 	case strings.HasPrefix(hash, "x="):
-		a.showProject(strings.TrimPrefix(hash, "x="))
+		args := hashArgs()
+		a.showProject(args["x"], args["p"])
 	case a.kind == "member":
 		js.Global().Get("location").Set("hash", "x="+a.project)
 	default:
@@ -83,7 +85,7 @@ func (a *app) route() {
 }
 
 // The views of the page.
-var views = []string{"vSignIn", "vOwner", "vJoin", "vHome", "vProject", "vPublic"}
+var views = []string{"vSignIn", "vOwner", "vJoin", "vHome", "vProject", "vPublic", "vPrint"}
 
 func show(id string) {
 	setHidden("loading", id != "")
@@ -322,15 +324,69 @@ func (a *app) newProject() {
 	js.Global().Get("location").Set("hash", "x="+p.ID)
 }
 
-func (a *app) showProject(id string) {
+// showProject shows the project id, or the page of its print when print is not "".
+func (a *app) showProject(id, print string) {
 	var v wire.ProjectView
 	if err := a.api("GET", "/projects/"+id, nil, &v); err != nil {
 		a.failed(err)
 		return
 	}
-	a.view = &v
+	a.view, a.print = &v, ""
+	doc.Set("title", v.Name+" · Printdeck")
+	if print != "" {
+		for _, p := range v.Prints {
+			if p.ID == print {
+				a.print = p.ID
+				a.drawPrint(p)
+				show("vPrint")
+				return
+			}
+		}
+	}
 	a.drawProject()
 	show("vProject")
+}
+
+// drawPrint draws the page of the print p of the project.
+func (a *app) drawPrint(p wire.ProjectPrint) {
+	v := a.view
+	byID("prBack").Set("href", "#x="+v.ID)
+	setText("prBack", v.Name)
+	setHidden("prDanger", !v.IsOwner)
+	setHidden("prShare", js.Global().Get("navigator").Get("share").IsUndefined())
+	setText("prCopy", "Copy link")
+	if v.Public != "" {
+		setText("prCopy", "Copy public link")
+	}
+	say("prCopyMsg", nil, "")
+	say("prPhotoMsg", nil, "")
+	drawPrint(p, v.Photos, func() ([]string, int, error) {
+		var fr wire.FramesReply
+		err := a.api("GET", "/projects/"+v.ID+"/prints/"+p.ID+"/frames", nil, &fr)
+		return fr.URLs, fr.FPS, err
+	}, &a.playing)
+}
+
+// printLink is the address of the print page: the public address when the project has one, else
+// the address for the members.
+func (a *app) printLink() string {
+	if a.view.Public != "" {
+		return a.view.Public + "#p=" + a.print
+	}
+	loc := js.Global().Get("location")
+	return loc.Get("origin").String() + "/app#x=" + a.view.ID + "&p=" + a.print
+}
+
+// removePrint removes the print of the print page from the project.
+func (a *app) removePrint() {
+	if !confirm("Remove this print from the project? Its time lapse and its picture go. The deck sends it again only after it leaves and joins the project again.") {
+		return
+	}
+	if err := a.api("DELETE", "/projects/"+a.view.ID+"/prints/"+a.print, nil, nil); err != nil {
+		say("prCopyMsg", err, "")
+		return
+	}
+	js.Global().Get("location").Set("hash", "x="+a.view.ID)
 }
 
 // drawProject draws the view of the project.
@@ -339,7 +395,8 @@ func (a *app) drawProject() {
 	setText("pName", v.Name)
 	setText("pNote", v.Note)
 	setHidden("pNote", v.Note == "")
-	setText("pMeta", "A project of "+v.Owner+" · "+count(len(v.Prints), "print", "prints"))
+	setText("pMeta", "A project of "+v.Owner)
+	drawStats(v.Prints)
 	setHidden("backLink", !v.IsOwner)
 	setHidden("ownerTools", !v.IsOwner)
 	setHidden("dangerZone", !v.IsOwner)
@@ -378,13 +435,7 @@ func (a *app) drawProject() {
 	setHidden("publicBox", !on)
 	setText("publicLink", v.Public)
 	a.drawPhotos()
-	a.drawPrints(func(p wire.ProjectPrint) func() ([]string, int, error) {
-		return func() ([]string, int, error) {
-			var fr wire.FramesReply
-			err := a.api("GET", "/projects/"+v.ID+"/prints/"+p.ID+"/frames", nil, &fr)
-			return fr.URLs, fr.FPS, err
-		}
-	}, &a.playing)
+	drawTiles(v.Prints, func(p wire.ProjectPrint) string { return "#x=" + v.ID + "&p=" + p.ID })
 }
 
 func (a *app) drawPhotos() {
@@ -422,89 +473,6 @@ func photoFigure(full, small, by string) js.Value {
 	fig.Call("appendChild", link)
 	fig.Call("appendChild", el("figcaption", "", by))
 	return fig
-}
-
-// drawPrints draws the prints of the view. frames returns the request for the frames of the time
-// lapse of a print; playing counts the plays.
-func (a *app) drawPrints(frames func(wire.ProjectPrint) func() ([]string, int, error), playing *int) {
-	drawPrintList(a.view.Prints, frames, playing)
-}
-
-func drawPrintList(prints []wire.ProjectPrint, frames func(wire.ProjectPrint) func() ([]string, int, error), playing *int) {
-	box := byID("prints")
-	box.Set("textContent", "")
-	setHidden("noPrints", len(prints) > 0)
-	for _, p := range prints {
-		card := el("article", "print", "")
-		pic := el("div", "pic", "")
-		img := el("img", "", "")
-		if p.Model != "" {
-			img.Set("src", p.Model)
-		}
-		img.Set("alt", "The model of "+p.Name)
-		pic.Call("appendChild", img)
-		if p.Frames > 0 {
-			btn := el("button", "", "Play the time lapse")
-			btn.Set("type", "button")
-			get := frames(p)
-			btn.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
-				*playing++
-				go playLapse(img, btn, get, *playing, playing)
-				return nil
-			}))
-			pic.Call("appendChild", btn)
-		}
-		card.Call("appendChild", pic)
-		body := el("div", "body", "")
-		body.Call("appendChild", el("strong", "", p.Name))
-		facts := []string{localDay(p.Ended), clock(p.Seconds)}
-		if p.Material != "" {
-			facts = append(facts, p.Material)
-		}
-		if p.Grams > 0 {
-			facts = append(facts, grams(p.Grams))
-		}
-		if p.Printer != "" {
-			facts = append(facts, p.Printer)
-		}
-		body.Call("appendChild", el("div", "facts", strings.Join(facts, " · ")))
-		if p.Result != "complete" {
-			body.Call("appendChild", el("div", "facts fail", map[string]string{"cancelled": "Cancelled", "error": "Failed"}[p.Result]))
-		}
-		if p.Note != "" {
-			body.Call("appendChild", el("div", "dim", p.Note))
-		}
-		card.Call("appendChild", body)
-		box.Call("appendChild", card)
-	}
-}
-
-// playLapse plays the time lapse of a print in img, once, then shows the last frame. A new play
-// (playing != n) ends it.
-func playLapse(img, btn js.Value, get func() ([]string, int, error), n int, playing *int) {
-	btn.Set("disabled", true)
-	defer btn.Set("disabled", false)
-	urls, fps, err := get()
-	if err != nil || len(urls) == 0 {
-		btn.Set("textContent", "No time lapse")
-		return
-	}
-	// The browser loads the frames ahead of the play.
-	pics := make([]js.Value, len(urls))
-	for i, u := range urls {
-		pics[i] = js.Global().Get("Image").New()
-		pics[i].Set("src", u)
-	}
-	btn.Set("textContent", "Playing")
-	step := time.Second / time.Duration(max(1, fps))
-	for i := range urls {
-		if *playing != n {
-			break
-		}
-		img.Set("src", urls[i])
-		time.Sleep(step)
-	}
-	btn.Set("textContent", "Play the time lapse")
 }
 
 // The keys of the owner.
@@ -573,23 +541,26 @@ func (a *app) reload() {
 	}
 }
 
-// addPhotos uploads the files of the input, one at a time.
-func (a *app) addPhotos(files js.Value) {
-	n := files.Get("length").Int()
-	for i := range n {
-		f := files.Index(i)
-		say("photoMsg", nil, fmt.Sprintf("Sending photo %d of %d…", i+1, n))
-		if err := a.addPhoto(f); err != nil {
-			say("photoMsg", err, "")
+// addPhotos uploads the files, one at a time, as photos of the print (or "" for the project). msg
+// is the element of the messages.
+func (a *app) addPhotos(files []js.Value, print, msg string) {
+	for i, f := range files {
+		say(msg, nil, fmt.Sprintf("Sending photo %d of %d…", i+1, len(files)))
+		if err := a.addPhoto(f, print); err != nil {
+			say(msg, err, "")
 			return
 		}
 	}
-	byID("photoFile").Set("value", "")
-	say("photoMsg", nil, "")
+	say(msg, nil, "")
+	if print != "" {
+		a.showProject(a.view.ID, print)
+		say(msg, nil, "The photos are on the page.")
+		return
+	}
 	a.reload()
 }
 
-func (a *app) addPhoto(file js.Value) error {
+func (a *app) addPhoto(file js.Value, print string) error {
 	if t := file.Get("type").String(); t != "image/jpeg" && t != "image/png" {
 		return fmt.Errorf("Share the photo as JPEG: %s is %s", file.Get("name").String(), t)
 	}
@@ -609,7 +580,9 @@ func (a *app) addPhoto(file js.Value) error {
 	if err != nil || status/100 != 2 {
 		return fmt.Errorf("The upload failed: %s", errText(text, err))
 	}
-	return a.api("POST", "/projects/"+a.view.ID+"/photos/"+pr.Photo+"/done", struct{}{}, nil)
+	return a.api("POST", "/projects/"+a.view.ID+"/photos/"+pr.Photo+"/done", struct {
+		Print string `json:"print,omitempty"`
+	}{print}, nil)
 }
 
 func (a *app) removePhoto(id string) {
@@ -626,7 +599,7 @@ func (a *app) removePhoto(id string) {
 }
 
 // The public page (data-page="public"): page.json next to the page, with the paths of the files
-// relative to it.
+// relative to it. #p=<print> shows the page of a print.
 func runPublic() {
 	base := strings.TrimSuffix(js.Global().Get("location").Get("pathname").String(), "/") + "/"
 	text, err := fetchText(base + "page.json")
@@ -635,30 +608,59 @@ func runPublic() {
 		setText("loading", "THIS PROJECT IS NOT PUBLIC NOW")
 		return
 	}
-	setText("pName", v.Name)
-	setText("pNote", v.Note)
-	setHidden("pNote", v.Note == "")
-	setText("pMeta", "A project of "+v.Owner+" · "+count(len(v.Prints), "print", "prints"))
-	box := byID("photos")
-	for _, ph := range v.Photos {
-		box.Call("appendChild", photoFigure(base+ph.URL, base+ph.Small, ph.By))
-	}
 	for i := range v.Prints {
 		if v.Prints[i].Model != "" {
 			v.Prints[i].Model = base + v.Prints[i].Model
 		}
-	}
-	playing := 0
-	drawPrintList(v.Prints, func(p wire.ProjectPrint) func() ([]string, int, error) {
-		return func() ([]string, int, error) {
-			urls := make([]string, p.Frames)
-			for n := range urls {
-				urls[n] = fmt.Sprintf("%sprints/%s/lapse/%d.jpg", base, p.ID, n)
-			}
-			return urls, p.FPS, nil
+		if v.Prints[i].Plan != "" {
+			v.Prints[i].Plan = base + v.Prints[i].Plan
 		}
-	}, &playing)
-	show("vPublic")
+	}
+	for i := range v.Photos {
+		v.Photos[i].URL, v.Photos[i].Small = base+v.Photos[i].URL, base+v.Photos[i].Small
+	}
+	setText("pName", v.Name)
+	setText("pNote", v.Note)
+	setHidden("pNote", v.Note == "")
+	setText("pMeta", "A project of "+v.Owner)
+	drawStats(v.Prints)
+	box := byID("photos")
+	for _, ph := range v.Photos {
+		box.Call("appendChild", photoFigure(ph.URL, ph.Small, ph.By))
+	}
+	setHidden("photosCard", len(v.Photos) == 0)
+	drawTiles(v.Prints, func(p wire.ProjectPrint) string { return "#p=" + p.ID })
+	byID("prBack").Set("href", "#")
+	setText("prBack", v.Name)
+	setHidden("prShare", js.Global().Get("navigator").Get("share").IsUndefined())
+	on("prCopy", "click", func() { go copyText(js.Global().Get("location").Get("href").String(), "prCopyMsg") })
+	on("prShare", "click", func() { shareLink(js.Global().Get("location").Get("href").String()) })
+	playing := 0
+	route := func() {
+		playing++
+		id := hashArgs()["p"]
+		for _, p := range v.Prints {
+			if p.ID == id {
+				say("prCopyMsg", nil, "")
+				drawPrint(p, v.Photos, func() ([]string, int, error) {
+					urls := make([]string, p.Frames)
+					for n := range urls {
+						urls[n] = fmt.Sprintf("%sprints/%s/lapse/%d.jpg", base, p.ID, n)
+					}
+					return urls, p.FPS, nil
+				}, &playing)
+				show("vPrint")
+				return
+			}
+		}
+		doc.Set("title", v.Name+" · Printdeck")
+		show("vPublic")
+	}
+	js.Global().Call("addEventListener", "hashchange", js.FuncOf(func(js.Value, []js.Value) any {
+		go route()
+		return nil
+	}))
+	route()
 }
 
 // The helpers of the DOM and the browser.
@@ -688,6 +690,21 @@ func onSubmit(id string, f func()) {
 	byID(id).Call("addEventListener", "submit", js.FuncOf(func(_ js.Value, args []js.Value) any {
 		args[0].Call("preventDefault")
 		f()
+		return nil
+	}))
+}
+
+// onFiles calls f with the files that the person picks in the file input id, and empties the
+// input, so that the same file can go again.
+func onFiles(id string, f func([]js.Value)) {
+	byID(id).Call("addEventListener", "change", js.FuncOf(func(this js.Value, _ []js.Value) any {
+		list := this.Get("files")
+		files := make([]js.Value, list.Get("length").Int())
+		for i := range files {
+			files[i] = list.Index(i)
+		}
+		this.Set("value", "")
+		go f(files)
 		return nil
 	}))
 }

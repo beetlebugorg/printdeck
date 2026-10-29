@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -59,11 +60,12 @@ func (c *Client) ProjectExists(ctx context.Context, id *Identity, project string
 }
 
 // PrintUpload is a print for a project: the record, the picture of the model as a JPEG (or nil),
-// and the frames of the time lapse. Frame returns the JPEG of frame i of Frames, as the video has
-// it.
+// the seconds of each layer from the slicer, and the frames of the time lapse. Frame returns the
+// JPEG of frame i of Frames, as the video has it.
 type PrintUpload struct {
 	Request PrintRequest
 	Model   []byte
+	Plan    []float64
 	Frames  int
 	FPS     int
 	Frame   func(i int) ([]byte, error)
@@ -83,6 +85,13 @@ func (c *Client) SendPrint(ctx context.Context, id *Identity, project string, up
 			return "", err
 		}
 		done.Model = true
+	}
+	if len(up.Plan) > 0 {
+		b, _ := json.Marshal(wire.SharePlan{Layers: up.Plan})
+		if err := PostFile(ctx, c.HTTP, out.Grant, "plan.json", "application/json", cache, b); err != nil {
+			return "", err
+		}
+		done.Plan = true
 	}
 	for i := 0; i < up.Frames && up.Frame != nil; i++ {
 		if c.now().After(out.Grant.Expires.Add(-time.Minute)) {

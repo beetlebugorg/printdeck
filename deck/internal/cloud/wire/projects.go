@@ -108,9 +108,22 @@ type ProjectPrint struct {
 	Roll     string    `json:"roll,omitempty"`
 	Printer  string    `json:"printer,omitempty"`
 	Note     string    `json:"note,omitempty"`
-	// Model is the URL of the picture of the model, and Frames the count of the frames of the
-	// time lapse, at FPS frames a second. FramesURL is the request for their URLs.
+	// The details of the print page: the start, the layers of the file and the last layer that
+	// printed, the height of the part in mm, the grams of the file, the estimate of the slicer and
+	// the seconds before the first layer, in seconds, the slicer, and the filament.
+	Started    time.Time      `json:"started,omitzero"`
+	Layers     int            `json:"layers,omitempty"`
+	Layer      int            `json:"layer,omitempty"`
+	Height     float64        `json:"height,omitempty"`
+	GramsTotal float64        `json:"grams_total,omitempty"`
+	Estimate   int            `json:"estimate,omitempty"`
+	Prep       int            `json:"prep,omitempty"`
+	Slicer     string         `json:"slicer,omitempty"`
+	Filament   *ShareFilament `json:"filament,omitempty"`
+	// Model is the URL of the picture of the model, and Plan the URL of plan.json (a SharePlan),
+	// or "". Frames is the count of the frames of the time lapse, at FPS frames a second.
 	Model  string `json:"model,omitempty"`
+	Plan   string `json:"plan,omitempty"`
 	Frames int    `json:"frames,omitempty"`
 	FPS    int    `json:"fps,omitempty"`
 }
@@ -167,7 +180,8 @@ type PublicReply struct {
 }
 
 // PrintRequest is the body of POST /api/v1/projects/<id>/prints: a print of the deck for the
-// project. The deck then uploads model.jpg and lapse/<n>.jpg with the grant, and sends done.
+// project. The deck then uploads model.jpg, plan.json and lapse/<n>.jpg with the grant, and
+// sends done.
 type PrintRequest struct {
 	Name     string    `json:"name"`
 	File     string    `json:"file,omitempty"`
@@ -179,6 +193,18 @@ type PrintRequest struct {
 	Roll     string    `json:"roll,omitempty"`
 	Printer  string    `json:"printer,omitempty"`
 	Note     string    `json:"note,omitempty"`
+	// The details of the print page: the start, the layers of the file and the last layer that
+	// printed, the height of the part in mm, the grams of the file, the estimate of the slicer and
+	// the seconds before the first layer, in seconds, the slicer, and the filament.
+	Started    time.Time      `json:"started,omitzero"`
+	Layers     int            `json:"layers,omitempty"`
+	Layer      int            `json:"layer,omitempty"`
+	Height     float64        `json:"height,omitempty"`
+	GramsTotal float64        `json:"grams_total,omitempty"`
+	Estimate   int            `json:"estimate,omitempty"`
+	Prep       int            `json:"prep,omitempty"`
+	Slicer     string         `json:"slicer,omitempty"`
+	Filament   *ShareFilament `json:"filament,omitempty"`
 	// Key is the key of the print on the deck (the file and the end), so that a second upload of
 	// the same print replaces the first.
 	Key string `json:"key"`
@@ -196,4 +222,5 @@ type PrintDone struct {
 	Frames int  `json:"frames"`
 	FPS    int  `json:"fps"`
 	Model  bool `json:"model"`
+	Plan   bool `json:"plan,omitempty"`
 }
