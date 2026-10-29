@@ -317,7 +317,7 @@ func (v *View) Update(st State) {
 		v.img, v.imgPos, v.view, v.viewImg = nil, 0, -1, nil // not the picture of another file while this one loads
 		if !v.loading && st.FileSize <= maxModelSize {
 			v.loading = true
-			go v.loadModel(st.FilePath, fileKey(st))
+			go v.loadModel(st.FilePath, st.Title, fileKey(st))
 		}
 		return
 	}
@@ -334,7 +334,7 @@ func fileKey(st State) string {
 	return fmt.Sprintf("%s|%d|%d", st.FilePath, st.FileSize, st.FileDate)
 }
 
-func (v *View) loadModel(path, key string) {
+func (v *View) loadModel(path, title, key string) {
 	var gc *gcode.Model
 	if body, err := v.src.Open(path); err == nil {
 		gc, _ = gcode.Parse(body)
@@ -351,7 +351,7 @@ func (v *View) loadModel(path, key string) {
 	// An STL is one object. With more on the bed, only the toolpath shows them all.
 	var mesh *stl.Mesh
 	if gc != nil && gc.Objects <= 1 {
-		mesh = v.findSTL(path)
+		mesh = v.findSTL(path, title)
 	}
 	v.mu.Lock()
 	defer v.mu.Unlock()
@@ -369,17 +369,29 @@ func stem(name string) string {
 // match returns how well an STL name fits a G-code name: 0 is no match, and higher is closer.
 // The names match when one contains the other. The closest is the one with the least left over,
 // so "inky_frame.gcode" matches "Inky Frame.stl" before "frame.stl".
-func match(gcodeName, stlName string) int {
-	g, s := stem(gcodeName), stem(stlName)
+func match(gcodeName, stlName string) int { return matchStems(stem(gcodeName), stem(stlName)) }
+
+func matchStems(g, s string) int {
 	if len(s) < 4 || len(g) < 4 || !(strings.Contains(g, s) || strings.Contains(s, g)) {
 		return 0
 	}
 	return 1000 - (max(len(g), len(s)) - min(len(g), len(s)))
 }
 
+// matchModel returns how well an STL name fits a print: its title first, then its file. The Cura
+// plugin titles a print of one model with the name of the model. The name of the file comes from
+// the job in Cura, and it can be the name of an earlier model.
+func matchModel(gcodePath, title, stlName string) int {
+	s := stem(stlName)
+	if n := matchStems(strings.NewReplacer(" ", "", "_", "", "-", "").Replace(strings.ToLower(title)), s); n > 0 {
+		return 1000 + n
+	}
+	return matchStems(stem(gcodePath), s)
+}
+
 // findSTL looks for the model of a G-code file in ModelDir and in the file store, and reads the closest
-// match. ModelDir wins when both have an equally good match.
-func (v *View) findSTL(gcodePath string) *stl.Mesh {
+// match. title is the title in the file, or "". ModelDir wins when both have an equally good match.
+func (v *View) findSTL(gcodePath, title string) *stl.Mesh {
 	type candidate struct {
 		open  func() (io.ReadCloser, error)
 		score int
@@ -389,14 +401,14 @@ func (v *View) findSTL(gcodePath string) *stl.Mesh {
 		files, _ := filepath.Glob(filepath.Join(v.ModelDir, "*"))
 		for _, f := range files {
 			if strings.EqualFold(filepath.Ext(f), ".stl") {
-				if n := match(gcodePath, f); n > 0 {
+				if n := matchModel(gcodePath, title, f); n > 0 {
 					cands = append(cands, candidate{func() (io.ReadCloser, error) { return os.Open(f) }, n})
 				}
 			}
 		}
 	}
 	for _, f := range v.src.Models() {
-		if n := match(gcodePath, f.Name); n > 0 {
+		if n := matchModel(gcodePath, title, f.Name); n > 0 {
 			cands = append(cands, candidate{func() (io.ReadCloser, error) { return v.src.Open(f.Path) }, n})
 		}
 	}
@@ -595,7 +607,7 @@ func (v *View) drawRecord(r Record, hex string) image.Image {
 		pos = r.Pos
 	}
 	if gc.Objects <= 1 {
-		if mesh := v.findSTL(r.Path); mesh != nil {
+		if mesh := v.findSTL(r.Path, r.Title); mesh != nil {
 			top := 1.0
 			if pos != math.MaxInt64 {
 				top = float64(gc.ZAt(pos)) / float64(max(gc.MaxZ, 0.001))

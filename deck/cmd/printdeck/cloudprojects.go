@@ -46,8 +46,9 @@ type cloudProject struct {
 }
 
 // printFormat is the format of the prints that the deck sends: 2 adds the details of the print
-// page (the layers, the plan, the filament and the times).
-const printFormat = 2
+// page (the layers, the plan, the filament and the times). 3 sends the pictures of the models
+// again: the deck found the model by the name of the file, and now by the title first.
+const printFormat = 3
 
 func (p *projectLink) file() string { return filepath.Join(p.stateDir, "cloud-projects.json") }
 

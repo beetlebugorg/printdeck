@@ -32,6 +32,27 @@ func TestMatchPicksClosest(t *testing.T) {
 	}
 }
 
+// The title of a print names its model before the file does: the job in Cura can keep the name of
+// an earlier model.
+func TestMatchModelTitle(t *testing.T) {
+	stls := []string{"pod_body.stl", "shoulder_fdm.stl"}
+	for _, c := range []struct{ file, title, want string }{
+		{"LTAZW_pod_body.gcode", "Shoulder fdm", "shoulder_fdm.stl"},
+		{"LTAZW_pod_body.gcode", "", "pod_body.stl"},
+		{"LTAZW_pod_body.gcode", "Gift box", "pod_body.stl"},
+	} {
+		best, score := "", 0
+		for _, s := range stls {
+			if n := matchModel(c.file, c.title, s); n > score {
+				best, score = s, n
+			}
+		}
+		if best != c.want {
+			t.Errorf("%s %q: got %q, want %q", c.file, c.title, best, c.want)
+		}
+	}
+}
+
 // oneFile is a Source with one G-code file.
 type oneFile struct{ path, body string }
 
