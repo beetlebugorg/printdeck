@@ -97,6 +97,9 @@ type State struct {
 	FinishedFilament           float64 // mm
 	FinishedError              string
 	SaveConfigPending          bool // a calibration changed the config, and SAVE_CONFIG writes it
+	// TiltOnlyPending reports that the only change for SAVE_CONFIG is [bed_tilt]. Klippy.State
+	// clears SaveConfigPending for it, unless the tilt came from a maintenance action.
+	TiltOnlyPending bool
 
 	// ManualProbe is true while a manual Z probe runs (PROBE_CALIBRATE, Z_ENDSTOP_CALIBRATE): the
 	// nozzle is at ManualZ, and TESTZ, ACCEPT and ABORT finish it.

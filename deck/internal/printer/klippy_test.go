@@ -279,3 +279,24 @@ func TestCancelTurnsOffHeaters(t *testing.T) {
 	scripts, _ := f.got()
 	t.Errorf("calls %q, scripts %q; want %q, scripts %q", got, scripts, want, wantScripts)
 }
+
+// A bed tilt from the start of a print has nothing to save. A bed tilt from Maintenance has, and
+// other results too.
+func TestTiltOnlyPending(t *testing.T) {
+	tilt := klippy.Status{"configfile": {"save_config_pending": true,
+		"save_config_pending_items": map[string]any{"bed_tilt": map[string]any{"x_adjust": "0.0"}}}}
+	k := &Klippy{st: klippyState(tilt, "")}
+	if !k.st.TiltOnlyPending || k.State().SaveConfigPending {
+		t.Errorf("a tilt from a print: %+v", k.State().SaveConfigPending)
+	}
+	k.tiltByAction = true
+	if !k.State().SaveConfigPending {
+		t.Error("a tilt from Maintenance has no result to save")
+	}
+	pid := klippy.Status{"configfile": {"save_config_pending": true,
+		"save_config_pending_items": map[string]any{"bed_tilt": map[string]any{}, "extruder": map[string]any{"pid_kp": "22"}}}}
+	k = &Klippy{st: klippyState(pid, "")}
+	if !k.State().SaveConfigPending {
+		t.Error("a PID result and a tilt have no result to save")
+	}
+}

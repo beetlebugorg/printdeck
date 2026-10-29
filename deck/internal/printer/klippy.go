@@ -76,6 +76,9 @@ type Klippy struct {
 	action      string
 	actionStart time.Time
 	lastAction  ActionResult
+	// tiltByAction reports that the last bed tilt calibration ran as a maintenance action
+	// (RunAction), with a result to save. A print resets it.
+	tiltByAction bool
 
 	// From the connection to Klipper: its version, its interface version, and the names of its
 	// objects (objects/list).
@@ -105,7 +108,7 @@ var klippyObjects = map[string][]string{
 	"print_stats":    {"state", "filename", "print_duration", "total_duration", "filament_used", "message"},
 	"display_status": {"message"},
 	"gcode_move":     {"homing_origin", "speed_factor", "extrude_factor"},
-	"configfile":     {"save_config_pending"},
+	"configfile":     {"save_config_pending", "save_config_pending_items"},
 	"manual_probe":   {"is_active", "z_position"},
 	"virtual_sdcard": {"file_position", "file_size", "progress"},
 	"extruder":       {"temperature", "target", "power"},
@@ -145,6 +148,10 @@ func (k *Klippy) State() State {
 	defer k.mu.Unlock()
 	st := k.st
 	st.Action, st.ActionStart, st.LastAction = k.action, k.actionStart, k.lastAction
+	// A bed tilt from the start of a print is measured again at each print: nothing to save.
+	if st.TiltOnlyPending && !k.tiltByAction {
+		st.SaveConfigPending = false
+	}
 	return st
 }
 
@@ -160,6 +167,11 @@ func (k *Klippy) RunAction(name string, lines ...string) error {
 		return ErrActionRunning
 	}
 	k.action, k.actionStart = name, time.Now()
+	for _, l := range lines {
+		if strings.Contains(strings.ToUpper(l), "BED_TILT_CALIBRATE") {
+			k.tiltByAction = true
+		}
+	}
 	notify := k.notify
 	k.mu.Unlock()
 	if notify != nil {
@@ -709,6 +721,9 @@ func (k *Klippy) refresh(notify func()) {
 	}
 	k.mu.Lock()
 	k.st = st
+	if st.Printing {
+		k.tiltByAction = false // the start of a print measures the tilt again
+	}
 	k.mu.Unlock()
 	k.View.Update(st)
 	notify()
@@ -751,6 +766,9 @@ func klippyState(s klippy.Status, down string) State {
 		st.SpeedPct, st.FlowPct = 100, 100
 	}
 	st.SaveConfigPending, _ = s["configfile"]["save_config_pending"].(bool)
+	if items, ok := s["configfile"]["save_config_pending_items"].(map[string]any); ok && len(items) == 1 {
+		_, st.TiltOnlyPending = items["bed_tilt"]
+	}
 	if active, _ := s["printdeck_pause"]["active"].(bool); active {
 		st.PauseActive = true
 		st.PausePrompt = str(s["printdeck_pause"]["message"])
