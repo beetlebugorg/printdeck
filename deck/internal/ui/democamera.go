@@ -75,6 +75,27 @@ func (c *DemoCamera) MeasurePTZ(ctx context.Context, id string, progress func(do
 	return &m, nil
 }
 
+// DemoFocus is the lens position that FocusOnPart of a DemoCamera finds.
+const DemoFocus = 380
+
+// FocusOnPart sets DemoFocus as the fixed focus of the camera id, as camera.Hub.FocusOnPart does
+// after a search.
+func (c *DemoCamera) FocusOnPart(ctx context.Context, id string, progress func(done, all int)) (int, error) {
+	cs := c.Set.Camera(id)
+	cs.FixedFocus, cs.Focus = true, DemoFocus
+	c.Set.SetCamera(cs)
+	if progress != nil {
+		progress(14, 14)
+	}
+	return DemoFocus, nil
+}
+
+// FocusSetting returns the focus of the settings of the camera id.
+func (c *DemoCamera) FocusSetting(id string) (fixed bool, pos int) {
+	cs := c.Set.Camera(id)
+	return cs.FixedFocus, cs.Focus
+}
+
 // demoPicture draws a print bed with a print on it, from the front, or from the top with top.
 func demoPicture(top bool) *camera.Frame {
 	img := image.NewRGBA(image.Rect(0, 0, 1280, 720))

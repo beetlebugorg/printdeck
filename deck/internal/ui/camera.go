@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"image"
 	"slices"
@@ -301,14 +302,83 @@ func (a *App) setFocus(id string, fixed bool, pos int) {
 	a.Redraw()
 }
 
+// partFocuser is a Camera that runs a focus search on the part (camera.Hub).
+type partFocuser interface {
+	FocusOnPart(ctx context.Context, id string, progress func(done, all int)) (int, error)
+	// FocusSetting returns the focus of the settings, or the lens position of a search.
+	FocusSetting(id string) (fixed bool, pos int)
+}
+
 // focusNow is the focus of the camera id from its settings: the state of the capture f, with the
-// setting of a fixed focus. A step follows the setting, so quick steps add up before the capture
-// applies them.
+// setting of a fixed focus, or the lens position of a search. A step follows the setting, so
+// quick steps add up before the capture applies them.
 func (a *App) focusNow(id string, f camera.Focus) camera.Focus {
-	if cs := a.Camera.Settings().Camera(id); cs.FixedFocus {
-		f.Auto, f.Pos = false, f.Clamp(cs.Focus)
+	cs := a.Camera.Settings().Camera(id)
+	fixed, pos := cs.FixedFocus, cs.Focus
+	if pf, ok := a.Camera.(partFocuser); ok {
+		fixed, pos = pf.FocusSetting(id)
+	}
+	if fixed {
+		f.Auto, f.Pos = false, f.Clamp(pos)
 	}
 	return f
+}
+
+// focusOnPart runs a focus search on the part with the camera id. The best lens position becomes
+// the fixed focus of the settings.
+func (a *App) focusOnPart(id string) {
+	pf, ok := a.Camera.(partFocuser)
+	if !ok || a.focusRun != nil {
+		return
+	}
+	run := &ptzRun{id: id}
+	a.focusRun = run
+	a.Redraw()
+	go func() {
+		pos, err := pf.FocusOnPart(context.Background(), id, func(done, all int) {
+			a.post(func() { run.done, run.all = done, all; a.Redraw() })
+		})
+		a.post(func() {
+			if a.focusRun == run {
+				a.focusRun = nil
+			}
+			if err != nil {
+				a.Toast("No focus: " + strings.TrimPrefix(err.Error(), "camera: "))
+			} else {
+				a.Toast(fmt.Sprintf("Focused on the part. The lens stays at %d.", pos))
+			}
+			a.Redraw()
+		})
+	}()
+}
+
+// partFocusLine is the line of the Focus on the part row of the camera id with the state st.
+func (a *App) partFocusLine(id string, st camera.Status) string {
+	switch {
+	case a.focusRun != nil && a.focusRun.id == id:
+		return fmt.Sprintf("Focusing: position %d of %d", a.focusRun.done, max(a.focusRun.all, 1))
+	case st.Searching:
+		return "Focusing on the part for the print"
+	}
+	return "Finds the sharpest lens position now"
+}
+
+// printFocusLine is the line of the In prints row: the setting "Focus on the part" of a camera.
+func printFocusLine(cs camera.CamSettings) string {
+	if cs.NoFocusPart {
+		return "Off. The lens stays where you set it."
+	}
+	return fmt.Sprintf("On: after the first layer and each %.0f mm", camera.PartFocusEvery)
+}
+
+// togglePrintFocus turns the focus on the part during a print of the camera id on or off.
+func (a *App) togglePrintFocus(id string) {
+	cs := a.changeCamera(id, func(cs *camera.CamSettings) { cs.NoFocusPart = !cs.NoFocusPart })
+	if cs.NoFocusPart {
+		a.Toast("The lens stays where you set it during a print")
+	} else {
+		a.Toast("The camera focuses on the part during a print")
+	}
 }
 
 // focusStep is the change of the lens position for one tap of − or +: a 50th of the range.
@@ -517,6 +587,9 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 		case a.camFocus:
 			a.drawFocusKeys(c, keys, id, focus)
 			second = "Focus: " + focusLine(focus)
+			if a.focusRun != nil && a.focusRun.id == id || st.Searching {
+				second = a.partFocusLine(id, st)
+			}
 		case a.camPTZ:
 			a.drawPTZKeys(c, keys, id, ptz)
 			first, second = title+" · "+a.ptzLine(id, ptz), a.ptzState(id, false)
@@ -588,10 +661,14 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 			// No camera: no rows.
 			items = nil
 		case a.camFocus:
-			items = []menuItem{
-				{"Auto", autoFocusLine(focus), dim, func() { a.toggleAutoFocus(id, focus) }},
-				{"Done", "Back to the camera rows", dim, func() { a.camFocus = false }},
+			items = []menuItem{{"Auto", autoFocusLine(focus), dim, func() { a.toggleAutoFocus(id, focus) }}}
+			if _, ok := a.Camera.(partFocuser); ok {
+				cs := a.Camera.Settings().Camera(id)
+				items = append(items,
+					menuItem{"Focus on the part", a.partFocusLine(id, st), dim, func() { a.focusOnPart(id) }},
+					menuItem{"In prints", printFocusLine(cs), dim, func() { a.togglePrintFocus(id) }})
 			}
+			items = append(items, menuItem{"Done", "Back to the camera rows", dim, func() { a.camFocus = false }})
 		case a.camPTZ:
 			items = a.ptzItems(id, ptz)
 		default:
@@ -639,9 +716,16 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 	a.drawCamPicture(c, view, cam, fr, a.camView, title)
 }
 
-// drawFocusKeys draws the keys of the focus of the camera id in r: Auto, −, + and Done.
+// drawFocusKeys draws the keys of the focus of the camera id in r: Auto, −, +, Focus on the part,
+// In prints and Done. In prints is on while the setting "Focus on the part" is on.
 func (a *App) drawFocusKeys(c *gfx.Canvas, r image.Rectangle, id string, f camera.Focus) {
-	k := kit.Cols(r, 8, kit.Fr(2), kit.Fr(2), kit.Fr(2), kit.Fr(4))
+	_, part := a.Camera.(partFocuser)
+	sizes := []kit.Size{kit.Fr(2), kit.Fr(2), kit.Fr(2)}
+	if part {
+		sizes = append(sizes, kit.Fr(3), kit.Fr(3))
+	}
+	sizes = append(sizes, kit.Fr(3))
+	k := kit.Cols(r, 8, sizes...)
 	fill, ink := keyOff, text
 	if f.Auto {
 		fill, ink = keyOn, keyOnInk
@@ -649,7 +733,19 @@ func (a *App) drawFocusKeys(c *gfx.Canvas, r image.Rectangle, id string, f camer
 	a.button(c, k[0], "Auto", fill, ink, func() { a.toggleAutoFocus(id, f) })
 	a.button(c, k[1], "−", raised, text, func() { a.stepFocus(id, f, -1) })
 	a.button(c, k[2], "+", raised, text, func() { a.stepFocus(id, f, 1) })
-	a.button(c, k[3], "Done", raised, text, func() { a.camFocus = false })
+	if part {
+		fill, ink = raised, text
+		if a.focusRun != nil {
+			fill, ink = keyOn, keyOnInk
+		}
+		a.namedButton(c, k[3], "Part", "Focus on the part", fill, ink, func() { a.focusOnPart(id) })
+		fill, ink = keyOff, text
+		if !a.Camera.Settings().Camera(id).NoFocusPart {
+			fill, ink = keyOn, keyOnInk
+		}
+		a.button(c, k[4], "In prints", fill, ink, func() { a.togglePrintFocus(id) })
+	}
+	a.button(c, k[len(k)-1], "Done", raised, text, func() { a.camFocus = false })
 }
 
 // autoFocusLine is the line of the Auto row.
