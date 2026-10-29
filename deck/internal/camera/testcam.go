@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"image"
+	"math"
 	"math/rand"
 	"os"
 	"sync"
@@ -42,26 +43,27 @@ func withTestCamera(scan func() []Device, capture captureFunc) (func() []Device,
 		}, func(ctx context.Context, d Device, l link) error {
 			switch d.ID {
 			case TestCamera.ID:
-				return testCapture(ctx, l, false)
+				return testCapture(ctx, l, false, testFormat, testLensSpeed)
 			case TestCamera2.ID:
-				return testCapture(ctx, l, true)
+				return testCapture(ctx, l, true, testFormat, testLensSpeed)
 			}
 			return capture(ctx, d, l)
 		}
 }
 
-// testCapture sends the test picture until ctx ends: color bars, and a white square that goes
+// testCapture sends the test picture of the format tf until ctx ends: color bars, and a white square that goes
 // across the picture in 4 seconds, so a viewer can see that the frames move. The second camera
 // (second) has the bars in the other order, and its square goes down the picture. The first
-// camera has a focus control: a fixed focus away from testFocus.Pos blurs the picture. It also has
+// camera has a focus control: a lens away from testFocus.Pos blurs the picture, and the lens
+// moves speed steps in a frame at most (testFocuser). It also has
 // a digital PTZ: its picture is the crop of a scene of twice the size (testScenePicture). The turn
 // of the settings turns the picture, and a turn of 90° or 270° makes the frames tall.
-func testCapture(ctx context.Context, l link, second bool) error {
+func testCapture(ctx context.Context, l link, second bool, tf Format, speed int) error {
 	s := l.settings()
-	f := testFormat
+	f := tf
 	f.OutW, f.OutH = TurnedSize(f.OutW, f.OutH, s.Rotate)
 	l.format(f)
-	var z testFocuser
+	z := testFocuser{speed: speed}
 	var pz *ptzCtl
 	if !second {
 		z.apply(s, l.focus)
@@ -74,14 +76,15 @@ func testCapture(ctx context.Context, l link, second bool) error {
 	for n := 0; ; n++ {
 		var pic *image.YCbCr
 		if second {
-			pic = testPattern(testFormat.OutW, testFormat.OutH, n, f.OutFPS*4, second)
+			pic = testPattern(tf.OutW, tf.OutH, n, f.OutFPS*4, second)
 		} else {
 			cs := l.settings()
 			z.apply(cs, l.focus)
+			z.move()
 			if pz.apply(cs) {
 				l.reportPTZ(pz.p)
 			}
-			pic = testScenePicture(testFormat.OutW, testFormat.OutH, n, f.OutFPS*4, pz.p.Pos)
+			pic = testScenePicture(tf.OutW, tf.OutH, n, f.OutFPS*4, pz.p.Pos)
 		}
 		if s.Rotate != 0 {
 			pic = scaleYCbCr(pic, f.OutW, f.OutH, s.Rotate)
@@ -140,35 +143,68 @@ func testPattern(w, h, n, period int, second bool) *image.YCbCr {
 // testFocus is the focus control of the first test camera: Pos is the sharp position.
 var testFocus = Focus{Min: 0, Max: 1023, Step: 1, Auto: true, Pos: 300}
 
+// The lens of the first test camera: it moves testLensSpeed steps in a frame at most, and the
+// blur has one pixel of radius for each testBlurSteps steps from the sharp position.
+const (
+	testLensSpeed = 300
+	testBlurSteps = 40.0
+)
+
 // testFocuser is the focus of the first test camera.
 type testFocuser struct {
-	f   Focus
-	set bool // f has a state
+	f     Focus
+	set   bool // f has a state
+	lens  int  // the lens position now: it moves to f.Pos
+	speed int  // the most steps of the lens in a frame
 }
 
-// apply sets the focus of the settings s, and gives a change to report.
+// apply sets the focus of the settings s, and gives a change to report. The lens moves to the new
+// position in the frames after it (move).
 func (z *testFocuser) apply(s CamSettings, report func(Focus)) {
 	f := testFocus
 	if s.FixedFocus {
 		f.Auto, f.Pos = false, f.Clamp(s.Focus)
 	}
 	if !z.set || f != z.f {
+		if !z.set {
+			z.lens = f.Pos
+		}
 		z.f, z.set = f, true
 		report(f)
 	}
 }
 
+// move moves the lens toward its position for one frame.
+func (z *testFocuser) move() {
+	z.lens += max(-z.speed, min(z.speed, z.f.Pos-z.lens))
+}
+
 // blur blurs the picture by the distance of the lens from the sharp position: a box average of
-// the Y plane, one pixel of radius for each 40 steps.
+// the Y plane. A radius between two whole pixels mixes the two box averages.
 func (z *testFocuser) blur(p *image.YCbCr) *image.YCbCr {
-	r := z.f.Pos - testFocus.Pos
-	if r < 0 {
-		r = -r
-	}
-	r /= 40
-	if r == 0 {
+	r := math.Abs(float64(z.lens-testFocus.Pos)) / testBlurSteps
+	r0 := int(r)
+	k := r - float64(r0)
+	if r0 == 0 && k < 0.05 {
 		return p
 	}
+	a := p.Y
+	if r0 > 0 {
+		a = boxBlur(p, r0)
+	}
+	if k < 0.05 {
+		copy(p.Y, a)
+		return p
+	}
+	b := boxBlur(p, r0+1)
+	for i := range p.Y {
+		p.Y[i] = uint8(float64(a[i])*(1-k) + float64(b[i])*k + 0.5)
+	}
+	return p
+}
+
+// boxBlur returns the Y plane of p with a box average of radius r.
+func boxBlur(p *image.YCbCr, r int) []uint8 {
 	w, h := p.Rect.Dx(), p.Rect.Dy()
 	row := make([]int, w+1)
 	tmp := make([]uint8, len(p.Y))
@@ -182,6 +218,7 @@ func (z *testFocuser) blur(p *image.YCbCr) *image.YCbCr {
 			tmp[y*p.YStride+x] = uint8((row[b] - row[a]) / (b - a))
 		}
 	}
+	out := make([]uint8, len(p.Y))
 	col := make([]int, h+1)
 	for x := range w {
 		for y := range h {
@@ -189,10 +226,10 @@ func (z *testFocuser) blur(p *image.YCbCr) *image.YCbCr {
 		}
 		for y := range h {
 			a, b := max(0, y-r), min(h, y+r+1)
-			p.Y[y*p.YStride+x] = uint8((col[b] - col[a]) / (b - a))
+			out[y*p.YStride+x] = uint8((col[b] - col[a]) / (b - a))
 		}
 	}
-	return p
+	return out
 }
 
 // The digital PTZ of the first test camera. The zoom factor is the zoom value / 100, and the

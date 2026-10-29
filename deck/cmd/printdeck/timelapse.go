@@ -69,6 +69,11 @@ func startTimelapse(ctx context.Context, stateDir string, app *ui.App, pr printe
 		return cal.PartCrop(box, bedY, sz, hub.Settings().Camera(lapse.ID()).Rotate)
 	}
 	r.OnFirstLayer = func(f *camera.Frame, file string) { app.ShowFirstLayer() }
+	r.OnPark = func(ctx context.Context, done int) {
+		if st := k.State(); st.Busy() {
+			hub.FocusPrint(ctx, done, printHeight(k, st))
+		}
+	}
 	r.OnVideo = func(name, file string) {
 		k.SetVideo(file, name)
 		app.Redraw()
@@ -77,6 +82,7 @@ func startTimelapse(ctx context.Context, stateDir string, app *ui.App, pr printe
 	sysTimelapse = r
 	go r.Run(ctx)
 	go followPart(ctx, hub, k)
+	go focusPart(ctx, hub, k, r)
 }
 
 // partBox returns the box of the part of the print of the file in the toolhead coordinates, and
@@ -129,6 +135,52 @@ func followPart(ctx context.Context, hub *camera.Hub, k *printer.Klippy) {
 			following = true
 		}
 	}
+}
+
+// focusAtOnce is the longest time of the focus searches of a print with no park.
+const focusAtOnce = 20 * time.Second
+
+// focusPart runs the focus searches on the part of each print (camera.Hub.FocusPrint): after the
+// first layer, and then each camera.PartFocusEvery mm of height. With a park of the time lapse,
+// the searches run at the parks (Runner.OnPark), with the toolhead out of the picture. With no
+// park, they run at once.
+func focusPart(ctx context.Context, hub *camera.Hub, k *printer.Klippy, r *timelapse.Runner) {
+	tick := time.NewTicker(followEvery)
+	defer tick.Stop()
+	printing := false
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+		}
+		st := k.State()
+		if !st.Busy() {
+			if printing {
+				hub.EndFocusPrint()
+				printing = false
+			}
+			continue
+		}
+		printing = true
+		hub.StartFocusPrint()
+		done := st.Layer - 1
+		if st.Paused || done < 1 || r.Parks(done) {
+			continue
+		}
+		fctx, cancel := context.WithTimeout(ctx, focusAtOnce)
+		hub.FocusPrint(fctx, done, printHeight(k, st))
+		cancel()
+	}
+}
+
+// printHeight returns the height of the print at the file position now: the top of the moves of
+// the G-code up to it, or the height of the head while the G-code loads.
+func printHeight(k *printer.Klippy, st printer.State) float64 {
+	if part, _, ok, _ := k.View.PrintBox(st, st.FilePos); ok {
+		return part.Max[2]
+	}
+	return st.Z
 }
 
 // wholePart returns the box of the moves of the part of the print of the file from its second

@@ -268,6 +268,7 @@ type App struct {
 	camFocus bool    // the Camera page shows the focus keys
 	camPTZ   bool    // the Camera page shows the PTZ keys
 	ptzRun   *ptzRun // the measurement of a PTZ map that runs, or nil
+	focusRun *ptzRun // the search of the Focus on the part key that runs, or nil
 	// The PTZ position of the last step, its camera, and its time.
 	ptzLast        camera.PTZPos
 	ptzLastID      string

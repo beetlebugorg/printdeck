@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -319,6 +320,41 @@ func TestCameraFocus(t *testing.T) {
 	cam.Cams[0].State.Focus = nil
 	if f := simFrame(t, a, "camera-nofocus"); strings.Contains(f, `"FOCUS"`) {
 		t.Error("Focus key with no focus control")
+	}
+}
+
+// Focus on the part sets the lens position of the search as the fixed focus, and In prints turns
+// the setting "Focus on the part" off and on again.
+func TestCameraFocusOnPart(t *testing.T) {
+	for _, wide := range []bool{false, true} {
+		a, _, _ := newPrintApp(idle)
+		a.Wide = wide
+		cv := gfx.New(a.Screen().W, a.Screen().H)
+		cam := NewDemoCamera()
+		a.Camera = cam
+		a.pages = []page{pageMachine, pageSettings, pageCamera}
+		id := cam.Cams[0].Dev.ID
+		tapLabel(t, a, cv, "Focus")
+		simFrame(t, a, fmt.Sprintf("camera-focus-wide-%v", wide))
+		tapLabel(t, a, cv, "Focus on the part")
+		for a.focusRun != nil {
+			(<-a.posted)()
+		}
+		if cs := cam.Set.Camera(id); !cs.FixedFocus || cs.Focus != DemoFocus {
+			t.Fatalf("wide %v: after the search: %+v", wide, cs)
+		}
+		f := strings.ToUpper(simFrame(t, a, fmt.Sprintf("camera-focus-part-wide-%v", wide)))
+		if !strings.Contains(f, fmt.Sprintf("FIXED AT %d", DemoFocus)) && !strings.Contains(f, fmt.Sprintf("STAYS AT %d", DemoFocus)) {
+			t.Errorf("wide %v: no lens position on the page", wide)
+		}
+		tapLabel(t, a, cv, "In prints")
+		if !cam.Set.Camera(id).NoFocusPart {
+			t.Errorf("wide %v: the setting is on after In prints", wide)
+		}
+		tapLabel(t, a, cv, "In prints")
+		if cam.Set.Camera(id).NoFocusPart {
+			t.Errorf("wide %v: the setting is off after two taps", wide)
+		}
 	}
 }
 

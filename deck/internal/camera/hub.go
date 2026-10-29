@@ -57,6 +57,19 @@ type Hub struct {
 	calGen  int // goes up at each change of a calibration
 	scene   Scene
 	formats map[string]Format
+
+	// The focus on the part (focus.go). lens are the lens positions that replace the focus of the
+	// settings, by ID: the positions of a search, and the result of a search of a print. They are
+	// not saved. runs are the searches that run or wait for the next park, and focusCtls the last
+	// focus control of each camera with one. printing is true during a print: focusDone has the
+	// height of the print at the last search of each camera, and userFocused the cameras with a
+	// focus change of the user (SetFocus).
+	lens        map[string]int
+	runs        map[string]*focusRun
+	focusCtls   map[string]Focus
+	printing    bool
+	focusDone   map[string]float64
+	userFocused map[string]bool
 }
 
 // Cam is one camera of the hub. It is a Source.
@@ -79,6 +92,13 @@ type Cam struct {
 	thAt   time.Time
 	thSeq  uint64
 	thSize image.Point
+
+	// focusNow wakes the capture to set the focus now (refocus). focusSeq is the number of the
+	// last frame of the hub at the last change of the focus, and settle the settle time of the
+	// lens in frames, or 0 before the first search.
+	focusNow chan struct{}
+	focusSeq uint64
+	settle   int
 }
 
 // Source is a camera for the viewers: a Cam, or a role of the hub (Hub.Role).
@@ -121,7 +141,9 @@ type Status struct {
 	Focus *Focus
 	// PTZ is the PTZ control of a camera that is on, or nil for a camera with no zoom control.
 	PTZ *PTZ
-	Err string
+	// Searching reports that a focus search on the part runs (Hub.FocusOnPart, Hub.FocusPrint).
+	Searching bool
+	Err       string
 }
 
 // captureFunc runs the capture of a device until ctx ends or the device fails.
@@ -136,6 +158,9 @@ type link struct {
 	format func(Format)
 	// focus gets the focus control after each change, for a camera with a focus control.
 	focus func(Focus)
+	// focusNow gets a value when the capture must set the focus of the settings before its next
+	// frame. It can be nil.
+	focusNow <-chan struct{}
 	// ptz gets the PTZ control after each change, for a camera with a zoom control. It can be nil.
 	ptz func(PTZ)
 	// emit gets each frame.
@@ -165,7 +190,7 @@ func NewHub(s Settings) *Hub {
 }
 
 func (h *Hub) newCam(id string) *Cam {
-	return &Cam{h: h, id: id, wake: make(chan struct{}, 1), changed: make(chan struct{})}
+	return &Cam{h: h, id: id, wake: make(chan struct{}, 1), changed: make(chan struct{}), focusNow: make(chan struct{}, 1)}
 }
 
 // Settings returns the settings.
@@ -180,10 +205,24 @@ var focusSaveAfter = 3 * time.Second
 
 // SetFocus sets the focus of the camera id: fixed at the lens position pos, or auto. The capture
 // applies it in a fraction of a second. The save of the settings comes focusSaveAfter after the
-// last change, so a series of steps writes the file once.
+// last change, so a series of steps writes the file once. It ends a focus search of the camera,
+// and during a print it stops the searches of the print for the camera.
 func (h *Hub) SetFocus(id string, fixed bool, pos int) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if run := h.runs[id]; run != nil {
+		if run.cancel != nil {
+			run.cancel()
+		}
+		delete(h.runs, id)
+	}
+	delete(h.lens, id)
+	if h.printing {
+		if h.userFocused == nil {
+			h.userFocused = map[string]bool{}
+		}
+		h.userFocused[id] = true
+	}
 	s := h.settings.clone()
 	cs := s.Camera(id)
 	cs.FixedFocus, cs.Focus = fixed, pos
@@ -262,12 +301,16 @@ func (h *Hub) Follow(id string, pos *PTZPos) {
 	h.calGen++
 }
 
-// camSettingsLocked returns the settings of the camera id, with the position of Follow.
+// camSettingsLocked returns the settings of the camera id, with the position of Follow and the
+// lens position of a focus search.
 func (h *Hub) camSettingsLocked(id string) CamSettings {
 	cs := h.settings.Camera(id)
 	if p, ok := h.follow[id]; ok {
 		q := p
 		cs.PTZ = &q
+	}
+	if p, ok := h.lens[id]; ok {
+		cs.FixedFocus, cs.Focus = true, p
 	}
 	return cs
 }
@@ -643,6 +686,7 @@ func (c *Cam) Status() Status {
 	}
 	s := c.status
 	s.Name = in.Name
+	s.Searching = h.runs[c.id] != nil && h.runs[c.id].cancel != nil
 	if s.PTZ != nil {
 		p := *s.PTZ
 		p.Mapped = cs.PTZMap.ValidAt(cs.Rotate)
@@ -809,8 +853,14 @@ func (c *Cam) run(ctx context.Context) {
 			focus: func(f Focus) {
 				h.mu.Lock()
 				c.status.Focus = &f
+				c.focusSeq = h.seq
+				if h.focusCtls == nil {
+					h.focusCtls = map[string]Focus{}
+				}
+				h.focusCtls[d.ID] = f
 				h.mu.Unlock()
 			},
+			focusNow: c.focusNow,
 			ptz: func(p PTZ) {
 				h.mu.Lock()
 				c.status.PTZ = &p
