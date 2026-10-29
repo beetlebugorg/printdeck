@@ -74,26 +74,37 @@ func (d *DemoPrinter) PrintFile(string)                             {}
 func (d *DemoPrinter) SetViewLayer(l int) { d.View = l }
 func (d *DemoPrinter) ViewLayer() int     { return d.View }
 
-func (d *DemoPrinter) Gcode(...string) error                        { return nil }
-func (d *DemoPrinter) Home(...string) error                         { return nil }
-func (d *DemoPrinter) Jog(x, y, z float64, s int) error             { return nil }
-func (d *DemoPrinter) SetToolTemp(int) error                        { return nil }
-func (d *DemoPrinter) SetBedTemp(int) error                         { return nil }
-func (d *DemoPrinter) Extrude(float64, int) error                   { return nil }
-func (d *DemoPrinter) Fan(int) error                                { return nil }
-func (d *DemoPrinter) MotorsOff() error                             { return nil }
-func (d *DemoPrinter) SpeedFactor(int) error                        { return nil }
-func (d *DemoPrinter) FlowFactor(int) error                         { return nil }
-func (d *DemoPrinter) BabyStep(float64) error                       { return nil }
-func (d *DemoPrinter) EmergencyStop() error                         { return nil }
-func (d *DemoPrinter) FirmwareRestart() error                       { return nil }
-func (d *DemoPrinter) Boards() ([]board.Info, bool)                 { return d.Boards_, false }
-func (d *DemoPrinter) Machine() printer.Machine                     { return d.Machine_ }
-func (d *DemoPrinter) Rates() printer.Rates                         { return printer.ComputeRates(d.History_) }
-func (d *DemoPrinter) FileMeta(string) gcodemeta.Meta               { return d.Meta_ }
-func (d *DemoPrinter) DeleteFile(string) error                      { return nil }
-func (d *DemoPrinter) History() []printer.Record                    { return d.History_ }
-func (d *DemoPrinter) ProbeBoards()                                 {}
+func (d *DemoPrinter) Gcode(...string) error            { return nil }
+func (d *DemoPrinter) Home(...string) error             { return nil }
+func (d *DemoPrinter) Jog(x, y, z float64, s int) error { return nil }
+func (d *DemoPrinter) SetToolTemp(int) error            { return nil }
+func (d *DemoPrinter) SetBedTemp(int) error             { return nil }
+func (d *DemoPrinter) Extrude(float64, int) error       { return nil }
+func (d *DemoPrinter) Fan(int) error                    { return nil }
+func (d *DemoPrinter) MotorsOff() error                 { return nil }
+func (d *DemoPrinter) SpeedFactor(int) error            { return nil }
+func (d *DemoPrinter) FlowFactor(int) error             { return nil }
+func (d *DemoPrinter) BabyStep(float64) error           { return nil }
+func (d *DemoPrinter) EmergencyStop() error             { return nil }
+func (d *DemoPrinter) FirmwareRestart() error           { return nil }
+func (d *DemoPrinter) Boards() ([]board.Info, bool)     { return d.Boards_, false }
+func (d *DemoPrinter) Machine() printer.Machine         { return d.Machine_ }
+func (d *DemoPrinter) Rates() printer.Rates             { return printer.ComputeRates(d.History_) }
+func (d *DemoPrinter) FileMeta(string) gcodemeta.Meta   { return d.Meta_ }
+func (d *DemoPrinter) DeleteFile(string) error          { return nil }
+func (d *DemoPrinter) History() []printer.Record        { return d.History_ }
+func (d *DemoPrinter) ProbeBoards()                     {}
+
+// SetNote sets the note of the record of the demo history with the path and the end of r.
+func (d *DemoPrinter) SetNote(r printer.Record, note string) bool {
+	for i := range d.History_ {
+		if d.History_[i].Path == r.Path && d.History_[i].End.Equal(r.End) {
+			d.History_[i].Note = note
+			return true
+		}
+	}
+	return false
+}
 func (d *DemoPrinter) RestartKlipper() error                        { return nil }
 func (d *DemoPrinter) FlashBoard(string, board.FlashProgress) error { return nil }
 func (d *DemoPrinter) RunAction(string, ...string) error            { return nil }

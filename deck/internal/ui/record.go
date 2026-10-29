@@ -5,13 +5,14 @@ import (
 	"image"
 	"image/color"
 	"printdeck/kit"
+	"strings"
 
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
 )
 
 // drawRecord is the page of one finished print of the history: the model, the result, the time,
-// the filament, the time lapse, and Reprint. The model of a print that did not complete shows the
+// the filament, the note, the time lapse, Note and Reprint. The model of a print that did not complete shows the
 // part that printed in colour.
 func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 	r := a.record
@@ -65,8 +66,42 @@ func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 	gone := a.recordModel(c, pic, r)
 	plate(c, box)
 	a.region("Details", box)
-	detailRows(c, kit.Inset(box, 18, 10, 18, 10), rows, 30)
-	a.reprintKey(c, keys, r, gone, orange, onAcc)
+	inner := kit.Inset(box, 18, 10, 18, 10)
+	for i, kv := range rows {
+		if kv[0] == "Note" {
+			// The note is one line: the start of a long note, and the whole note on the keyboard.
+			w := inner.Dx() - gfx.Width(gfx.Face(true, 14), strings.ToUpper(kv[0])) - 16
+			rows[i][1] = gfx.Fit(gfx.Face(true, 17), kv[1], w)
+		}
+	}
+	detailRows(c, inner, rows, 30)
+	k := kit.Cols(keys, 12, kit.Fr(1), kit.Fr(1))
+	a.button(c, k[0], "Note", raised, text, func() { a.editNote(r) })
+	a.region("Note", k[0])
+	a.reprintKey(c, k[1], r, gone, orange, onAcc)
+}
+
+// editNote opens the keyboard for the note of the finished print r, for example why it was
+// cancelled. An empty note removes it.
+func (a *App) editNote(r printer.Record) {
+	a.textKB = &keyboard{title: "A note for " + r.Name(), value: r.Note, max: printer.MaxNote, ok: "Save", cancel: "Back",
+		shift: true, back: func() { a.textKB = nil },
+		done: func(v string) {
+			a.textKB = nil
+			v = strings.TrimSpace(v)
+			if !a.Printer.SetNote(r, v) {
+				a.Toast("The print is gone from the history")
+				return
+			}
+			if a.record.Path == r.Path && a.record.End.Equal(r.End) {
+				a.record.Note = v
+			}
+			if v == "" {
+				a.Toast("The note is removed")
+			} else {
+				a.Toast("The note is saved")
+			}
+		}}
 }
 
 // lapseRowH is the height of the row of the time lapse on a tall record page.
@@ -93,6 +128,9 @@ func (a *App) recordRows(r printer.Record) [][2]string {
 	}
 	if r.Cost > 0 {
 		rows = append(rows, [2]string{"Cost", fmt.Sprintf("$%.2f", r.Cost)})
+	}
+	if r.Note != "" {
+		rows = append(rows, [2]string{"Note", r.Note})
 	}
 	return rows
 }

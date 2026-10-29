@@ -96,6 +96,8 @@ type Printer interface {
 	Machine() printer.Machine
 	Rates() printer.Rates // the timings of this printer, from its history
 	History() []printer.Record
+	// SetNote sets the note of a finished print, and reports that the history has the print.
+	SetNote(r printer.Record, note string) bool
 	// RecordPicture is the picture of a finished print. loading is true while it is drawn.
 	RecordPicture(r printer.Record) (img image.Image, loading bool)
 	// FilePicture is a picture of the G-code of a file with no thumbnail, in the color hex of its

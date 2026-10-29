@@ -347,6 +347,11 @@ func (k *Klippy) SetVideo(path, name string) {
 	}
 }
 
+// SetNote sets the note of the finished print r. It reports that the history has the print.
+func (k *Klippy) SetNote(r Record, note string) bool {
+	return k.Hist != nil && k.Hist.SetNote(r.Path, r.End, note)
+}
+
 // Machine returns the version, the modules and the macros of the connected Klipper.
 // Rates returns the timings of this printer, from its history.
 func (k *Klippy) Rates() Rates {

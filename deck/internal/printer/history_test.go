@@ -115,3 +115,25 @@ func TestPrintNames(t *testing.T) {
 		t.Errorf("%q", r.Name())
 	}
 }
+
+// A note goes on the record of the print with its path and end, stays after a new load, and an
+// empty note removes it.
+func TestHistoryNote(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "history.json")
+	h := &History{Path: path}
+	now := time.Date(2026, 10, 28, 20, 0, 0, 0, time.UTC)
+	h.add(State{Finished: "cancelled", FinishedFile: "pod.gcode", FinishedPath: "pod.gcode", FinishedTime: time.Hour}, now, nil, 0, 0, nil)
+	if h.SetNote("pod.gcode", now.Add(time.Second), "x") {
+		t.Error("a note for another end")
+	}
+	if !h.SetNote("pod.gcode", now, "The pegs are loose at 0.1 mm layers") {
+		t.Fatal("no record")
+	}
+	if r := (&History{Path: path}).Records(); r[0].Note != "The pegs are loose at 0.1 mm layers" {
+		t.Errorf("after a load: %q", r[0].Note)
+	}
+	h.SetNote("pod.gcode", now, "")
+	if r := (&History{Path: path}).Records(); r[0].Note != "" {
+		t.Errorf("removed note: %q", r[0].Note)
+	}
+}

@@ -45,6 +45,8 @@ type Record struct {
 	// Video is the name of the time lapse video of the print, or "". The deck keeps the last
 	// videos only, so the file of an old record can be gone.
 	Video string `json:"video,omitempty"`
+	// Note is the note of the user about the print, for example why it was cancelled, or "".
+	Note string `json:"note,omitempty"`
 }
 
 // OfSpool is the records of the prints that used the roll, in the order of recs. A record with
@@ -210,6 +212,26 @@ func (h *History) SetVideo(path, name string, now time.Time) {
 		break
 	}
 	h.video = pendingVideo{path, name, now}
+}
+
+// MaxNote is the longest note of a print, in characters.
+const MaxNote = 280
+
+// SetNote sets the note of the record of the print of the file path that ended at end. An empty
+// note removes the note. It reports that the record is there.
+func (h *History) SetNote(path string, end time.Time, note string) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.load()
+	for i := range h.records {
+		r := &h.records[i]
+		if r.Path == path && r.End.Equal(end) {
+			r.Note = note
+			h.save()
+			return true
+		}
+	}
+	return false
 }
 
 // Rates returns the timings of this printer from the history.

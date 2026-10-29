@@ -167,3 +167,31 @@ func TestDoneVideo(t *testing.T) {
 		t.Error("a Time lapse key with no video")
 	}
 }
+
+// The record page adds a note to a print, and the note shows in the table.
+func TestRecordNote(t *testing.T) {
+	for _, wide := range []bool{false, true} {
+		a, pr, cv := newPrintApp(idle)
+		a.Wide = wide
+		if wide {
+			cv = gfx.New(a.Screen().W, a.Screen().H)
+		}
+		end := time.Unix(5000, 0)
+		pr.History_ = []printer.Record{{File: "pod.gcode", Path: "pod.gcode", Result: "cancelled", End: end}}
+		a.record = pr.History_[0]
+		a.pages = []page{pageMachine, pageStats, pageHistory, pageRecord}
+		simFrame(t, a, "record-no-note")
+		tapLabel(t, a, cv, "Note")
+		if a.textKB == nil {
+			t.Fatalf("wide %v: no keyboard", wide)
+		}
+		a.textKB.done(" The pegs are loose ")
+		if pr.History_[0].Note != "The pegs are loose" {
+			t.Fatalf("wide %v: note %q", wide, pr.History_[0].Note)
+		}
+		f := simFrame(t, a, "record-note")
+		if !strings.Contains(f, `"NOTE",1,14`) || !strings.Contains(f, "The pegs are loose") {
+			t.Errorf("wide %v: the page shows no note", wide)
+		}
+	}
+}
