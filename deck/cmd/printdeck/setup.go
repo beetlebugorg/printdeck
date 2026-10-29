@@ -37,6 +37,12 @@ func (h *setupHost) SetWifi(ssid, pass string) error {
 }
 func (h *setupHost) Done() { os.WriteFile(h.done, []byte("done\n"), 0o644) }
 
+// Name is the name of the deck that slicers show. SetName changes it with the system helper.
+func (h *setupHost) Name() string { return system.DeckName() }
+func (h *setupHost) SetName(name string) error {
+	return system.AskHelper(system.HelperRequest{Action: "name", Name: name})
+}
+
 // Login is the password that printdeck-credentials made, and the user with this password in the
 // debug image.
 func (h *setupHost) Login() (string, string) {

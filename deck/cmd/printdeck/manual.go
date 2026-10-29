@@ -919,7 +919,8 @@ func manualParts() []section {
 			Intro: []string{"The file printdeck.txt on the PRINTDECK partition holds the settings. Put the SD card in a computer to change it. The deck reads it at each start, and clears the Wi-Fi password in it."},
 			Table: [][2]string{
 				{"wifi_ssid, wifi_password, wifi_country", "The Wi-Fi network"},
-				{"hostname, timezone", "The name on the network, and the time zone"},
+				{"name, hostname", "The name that slicers show, and the name on the network (hostname.local). Settings, Name on the deck sets both"},
+				{"timezone", "The time zone"},
 				{"display_rotate", "The screen turn: 90 or 270 turns a wide display to tall, 0 or 180 keeps the native shape. Empty is 0 for a tall display (the Touch Display 2) and 270 for a wide display"},
 				{"touch_invert_x, touch_invert_y, touch_swap_xy", "1 turns an axis of the touch screen"},
 				{"preheat_tool, preheat_bed", "The temperatures of Preheat with no filament set"},

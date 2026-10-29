@@ -13,6 +13,9 @@ wifi_country=US
 # SSH. A public SSH key here lets you log in to the debug image with the key, on one line.
 ssh_key=
 
+# The name that slicers show, and the name on the network (http://printdeck.local). Settings,
+# Name on the deck sets both. An empty name keeps "Printdeck".
+name=
 hostname=printdeck
 timezone=America/New_York
 

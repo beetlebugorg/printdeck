@@ -814,6 +814,9 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 	if a.Cloud != nil {
 		items = append(items, menuItem{"Cloud", cloudLine(a.Cloud.State()), dim, func() { a.open(pageCloud) }})
 	}
+	if nm, ok := a.Setup.(Namer); ok {
+		items = append(items, menuItem{"Name", nameLine(nm.Name()), dim, func() { a.editName(nm) }})
+	}
 	a.menuRows(c, f.body(), f.wide, 60, 5, items)
 }
 

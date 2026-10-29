@@ -16,6 +16,8 @@ func MountConfig() (func(), error)          { return nil, errNoSystem }
 func Commit(log io.Writer) error            { return errNoSystem }
 func Settings(log io.Writer) error          { return errNoSystem }
 func peerUID(*net.UnixConn) (uint32, error) { return 0, errNoSystem }
+func SetName(string) error                  { return errNoSystem }
+func DeckName() string                      { return "Printdeck" }
 
 // Init is the first process of the Printdeck OS.
 func Init() { panic(errNoSystem) }

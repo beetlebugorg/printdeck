@@ -1,0 +1,9 @@
+# Announces the Printdeck to slicers on the local network (mDNS). Cura and others find it as an
+# OctoPrint printer named "Printdeck". The deck serves the API on port 80. A new name of the deck
+# (Settings, Name) writes a copy with that name to /run/systemd/dnssd, which takes the place of
+# this file.
+[Service]
+Name=Printdeck
+Type=_octoprint._tcp
+Port=80
+TxtText=path=/ api=0.1 version=1.11.0

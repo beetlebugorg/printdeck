@@ -35,13 +35,14 @@ const helperIdle = 30 * time.Second
 
 // HelperRequest is one request to the helper.
 type HelperRequest struct {
-	// "wifi", "restart-klipper", "stop-klipper", "update", "stage", "reboot-staged", "backup" or
-	// "restore"
+	// "wifi", "name", "restart-klipper", "stop-klipper", "update", "stage", "reboot-staged",
+	// "backup" or "restore"
 	Action   string `json:"action"`
 	SSID     string `json:"ssid,omitempty"`
 	Password string `json:"password,omitempty"` // the Wi-Fi password, or the backup password
 	Country  string `json:"country,omitempty"`
 	Gcode    bool   `json:"gcode,omitempty"` // backup: with the G-code files
+	Name     string `json:"name,omitempty"`  // name: the new name of the deck
 }
 
 // helperResponse is the answer of the helper. Before the answer, an update sends lines with Step,
@@ -58,6 +59,8 @@ var helperActions = func(r HelperRequest, progress Progress) (after func(), err 
 	switch r.Action {
 	case "wifi":
 		return nil, SetWifi(r.SSID, r.Password, r.Country)
+	case "name":
+		return nil, SetName(r.Name)
 	case "restart-klipper":
 		return nil, run("systemctl", "restart", "klipper.service")
 	case "stop-klipper":

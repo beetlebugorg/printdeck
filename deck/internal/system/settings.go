@@ -102,6 +102,13 @@ func applySettings(log io.Writer) error {
 		}
 	}
 
+	// The name for the slicers. The service of the image has the name "Printdeck".
+	if name, err := CheckName(get("name")); err == nil {
+		if err := writeService(name); err != nil {
+			fmt.Fprintf(log, "name: not applied: %v\n", err)
+		}
+	}
+
 	if tz := get("timezone"); tz != "" && !strings.Contains(tz, "..") {
 		zone := filepath.Join(zoneinfoDir, tz)
 		if fi, err := os.Stat(zone); err == nil && fi.Mode().IsRegular() {
