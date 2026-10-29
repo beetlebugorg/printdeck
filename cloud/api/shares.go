@@ -33,9 +33,11 @@ const GrantTTL = time.Hour
 // SharePage is the key of the share page in the bucket. pwf deploy uploads it.
 const SharePage = "assets/share.html"
 
-// Granter makes upload grants.
+// Granter makes upload grants, and the addresses of the private files.
 type Granter interface {
 	Grant(ctx context.Context, prefix string, maxBytes int64, ttl time.Duration) (cloud.Grant, error)
+	// FileURL returns an address of the file at key that works for ttl.
+	FileURL(ctx context.Context, key string, ttl time.Duration) (string, error)
 }
 
 // Share is the record of a share, shares/<id>.json.

@@ -52,6 +52,11 @@ func codeKey(code string) string {
 // NewCode writes a new code of the kind to the store, and returns the code as three groups of
 // four characters (about 59 bits).
 func NewCode(ctx context.Context, st Store, kind string, now time.Time) (string, error) {
+	return newCodeTTL(ctx, st, kind, now, CodeTTL)
+}
+
+// newCodeTTL is NewCode with the time that the code works.
+func newCodeTTL(ctx context.Context, st Store, kind string, now time.Time, ttl time.Duration) (string, error) {
 	b := make([]byte, 12)
 	rand.Read(b)
 	var sb strings.Builder
@@ -62,7 +67,7 @@ func NewCode(ctx context.Context, st Store, kind string, now time.Time) (string,
 		sb.WriteByte(codeAlphabet[int(v)%len(codeAlphabet)])
 	}
 	code := sb.String()
-	data, _ := json.Marshal(Code{Kind: kind, Expires: now.Add(CodeTTL).UTC()})
+	data, _ := json.Marshal(Code{Kind: kind, Expires: now.Add(ttl).UTC()})
 	if _, err := st.Put(ctx, codeKey(code), data, PutOptions{ContentType: "application/json", IfNoneMatch: true}); err != nil {
 		return "", err
 	}

@@ -86,6 +86,10 @@ func (f *FileStore) Put(_ context.Context, key string, data []byte, opt PutOptio
 	return etag, os.WriteFile(p+".meta", m, 0o644)
 }
 
+func (f *FileStore) Copy(ctx context.Context, src, dst string, opt PutOptions) error {
+	return copyFile(ctx, f, src, dst, opt)
+}
+
 func (f *FileStore) Delete(_ context.Context, key string) error {
 	p, err := f.path(key)
 	if err != nil {

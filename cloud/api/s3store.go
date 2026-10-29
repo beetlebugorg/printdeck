@@ -5,13 +5,17 @@ import (
 	"context"
 	"errors"
 	"io"
+	"mime"
 	"net/http"
+	"net/url"
+	"path"
 	"time"
 
 	"printdeck/internal/cloud"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
 )
 
@@ -53,6 +57,32 @@ func (b *S3Store) Put(ctx context.Context, key string, data []byte, opt PutOptio
 		return "", s3Error(err)
 	}
 	return aws.ToString(out.ETag), nil
+}
+
+// Copy copies the file on the server, with no download.
+func (b *S3Store) Copy(ctx context.Context, src, dst string, opt PutOptions) error {
+	ct := opt.ContentType
+	if ct == "" {
+		ct = mime.TypeByExtension(path.Ext(dst))
+	}
+	in := &s3.CopyObjectInput{Bucket: &b.Bucket, Key: &dst, CopySource: aws.String(b.Bucket + "/" + url.PathEscape(src)),
+		MetadataDirective: types.MetadataDirectiveReplace, ContentType: &ct}
+	if opt.CacheControl != "" {
+		in.CacheControl = &opt.CacheControl
+	}
+	_, err := b.Client.CopyObject(ctx, in)
+	return s3Error(err)
+}
+
+// FileURL returns an address of the file at key that works for ttl, with no other auth: for the
+// private files of a project.
+func (g *S3Granter) FileURL(ctx context.Context, key string, ttl time.Duration) (string, error) {
+	out, err := s3.NewPresignClient(g.Client).PresignGetObject(ctx, &s3.GetObjectInput{Bucket: &g.Bucket, Key: &key},
+		s3.WithPresignExpires(ttl))
+	if err != nil {
+		return "", err
+	}
+	return out.URL, nil
 }
 
 func (b *S3Store) Delete(ctx context.Context, key string) error {

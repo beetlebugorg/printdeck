@@ -42,6 +42,7 @@ type Server struct {
 
 	mu   sync.Mutex
 	seen map[string]time.Time // the request IDs of the signed requests of the last 2*MaxSkew
+	key  []byte               // the session key (auth.go)
 }
 
 func (s *Server) now() time.Time {
@@ -124,6 +125,20 @@ func (s *Server) route(ctx context.Context, r *http.Request, body []byte) (any, 
 		return nil, s.serveRelay(r, body, strings.TrimPrefix(p, "/api/v1/relay"))
 	case p == "/api/v1/decks" && r.Method == http.MethodPost:
 		return s.enroll(ctx, body)
+	case strings.HasPrefix(p, "/api/v1/auth/"):
+		return s.routeAuth(ctx, r, body, strings.TrimPrefix(p, "/api/v1/auth/"))
+	case p == "/api/v1/owner/code" && r.Method == http.MethodPost:
+		return s.ownerCode(ctx, r, body)
+	case p == "/api/v1/invites/view" && r.Method == http.MethodPost:
+		return s.viewInvite(ctx, body)
+	case p == "/api/v1/me" && r.Method == http.MethodGet:
+		ss, err := s.session(ctx, r)
+		if err != nil {
+			return nil, err
+		}
+		return s.newSessionInfo(ctx, ss)
+	case p == "/api/v1/projects" || strings.HasPrefix(p, "/api/v1/projects/"):
+		return s.routeProjects(ctx, r, body, strings.TrimPrefix(strings.TrimPrefix(p, "/api/v1/projects"), "/"))
 	case p == "/api/v1/shares" || strings.HasPrefix(p, "/api/v1/shares/"):
 		return s.routeShares(ctx, r, body, strings.TrimPrefix(strings.TrimPrefix(p, "/api/v1/shares"), "/"))
 	case p == "/api/v1/decks/self":

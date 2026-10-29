@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"errors"
+	"mime"
+	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -39,6 +41,26 @@ type Store interface {
 	Delete(ctx context.Context, key string) error
 	// List returns the keys that start with prefix, in order.
 	List(ctx context.Context, prefix string) ([]string, error)
+	// Copy copies the file at src to dst, with the options of opt (an empty content type is the
+	// type of the extension of dst). It returns ErrNotFound for no file at src.
+	Copy(ctx context.Context, src, dst string, opt PutOptions) error
+}
+
+// copyFile is Copy with Get and Put, for the stores with no copy on the server.
+func copyFile(ctx context.Context, st Store, src, dst string, opt PutOptions) error {
+	b, _, err := st.Get(ctx, src)
+	if err != nil {
+		return err
+	}
+	if opt.ContentType == "" {
+		opt.ContentType = mime.TypeByExtension(path.Ext(dst))
+	}
+	_, err = st.Put(ctx, dst, b, opt)
+	return err
+}
+
+func (m *MemStore) Copy(ctx context.Context, src, dst string, opt PutOptions) error {
+	return copyFile(ctx, m, src, dst, opt)
 }
 
 // MemStore is a Store in memory.

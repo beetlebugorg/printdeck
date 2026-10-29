@@ -26,6 +26,7 @@ type LocalGranter struct {
 
 	mu     sync.Mutex
 	grants map[string]localGrant
+	reads  map[string]localGrant // the tokens of FileURL
 }
 
 type localGrant struct {
@@ -47,6 +48,28 @@ func (g *LocalGranter) Grant(_ context.Context, prefix string, maxBytes int64, t
 	g.grants[tok] = localGrant{prefix: prefix, max: maxBytes, expires: exp}
 	g.mu.Unlock()
 	return cloud.Grant{URL: g.URL, Fields: map[string]string{"policy": tok}, Prefix: prefix, MaxBytes: maxBytes, Expires: exp}, nil
+}
+
+// FileURL returns an address of a private file on the DevServer, with a token that works for ttl.
+func (g *LocalGranter) FileURL(_ context.Context, key string, ttl time.Duration) (string, error) {
+	b := make([]byte, 16)
+	rand.Read(b)
+	tok := hex.EncodeToString(b)
+	g.mu.Lock()
+	if g.reads == nil {
+		g.reads = map[string]localGrant{}
+	}
+	g.reads[tok] = localGrant{prefix: key, expires: time.Now().Add(ttl)}
+	g.mu.Unlock()
+	return strings.TrimSuffix(g.URL, "/upload") + "/private/" + key + "?t=" + tok, nil
+}
+
+// canRead reports that the token of FileURL allows the key.
+func (g *LocalGranter) canRead(tok, key string) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	lg, ok := g.reads[tok]
+	return ok && lg.prefix == key && time.Now().Before(lg.expires)
 }
 
 // check reports that the token allows the key and the size.
@@ -75,7 +98,7 @@ type DevServer struct {
 // The paths that CloudFront serves from the bucket, as the bucket policy of the template.
 func publicKey(key string) bool {
 	switch {
-	case key == "index.html", key == "404.html":
+	case key == "index.html", key == "404.html", key == "app", key == "owner", key == "j":
 		return true
 	}
 	for _, p := range []string{"assets/", ".well-known/", "s/", "p/"} {
@@ -101,6 +124,15 @@ func (d *DevServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		d.API.ServeHTTP(w, r)
 	case r.URL.Path == "/upload" && r.Method == http.MethodPost:
 		d.upload(w, r)
+	case strings.HasPrefix(r.URL.Path, "/private/") && r.Method == http.MethodGet:
+		key := strings.TrimPrefix(r.URL.Path, "/private/")
+		data, _, err := d.Store.Get(r.Context(), key)
+		if !d.Grants.canRead(r.URL.Query().Get("t"), key) || err != nil {
+			http.Error(w, "no access", http.StatusForbidden)
+			return
+		}
+		w.Header().Set("Content-Type", d.Store.ContentType(key))
+		w.Write(data)
 	case r.Method == http.MethodGet || r.Method == http.MethodHead:
 		d.file(w, r)
 	default:

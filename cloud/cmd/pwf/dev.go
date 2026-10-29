@@ -8,6 +8,7 @@ import (
 	"mime"
 	"net/http"
 	"path"
+	"strings"
 	"time"
 
 	"printdeck/cloud/api"
@@ -37,7 +38,8 @@ func runDev(ctx context.Context, args []string) error {
 	for key, data := range files {
 		st.Put(ctx, key, data, api.PutOptions{ContentType: mime.TypeByExtension(path.Ext(key)), CacheControl: "no-cache"})
 	}
-	base := "http://" + *addr
+	// A passkey needs a domain, so the links use localhost in place of 127.0.0.1.
+	base := "http://" + strings.Replace(*addr, "127.0.0.1", "localhost", 1)
 	g := &api.LocalGranter{URL: base + "/upload"}
 	d := &api.DevServer{API: &api.Server{Store: st, Grants: g, Base: base}, Store: st, Grants: g}
 	code, err := api.NewCode(ctx, st, "deck", time.Now())
