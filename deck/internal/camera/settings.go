@@ -35,6 +35,9 @@ type CamSettings struct {
 	// FollowPart zooms the camera to the part during a print (Hub.FollowPart). It needs PTZMap and
 	// a calibration.
 	FollowPart bool `json:"followPart,omitempty"`
+	// NoFocusPart turns off the focus searches on the part during a print (Hub.FocusPrint). A
+	// camera with no focus control ignores it.
+	NoFocusPart bool `json:"noFocusPart,omitempty"`
 }
 
 // Settings are the camera settings of the deck.

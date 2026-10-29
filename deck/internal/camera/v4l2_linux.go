@@ -534,7 +534,13 @@ func capture(ctx context.Context, d Device, l link) error {
 		if time.Since(lastFrame) > noFrameFor {
 			return errNoSignal
 		}
-		if (z != nil || pz != nil) && time.Since(lastFocus) >= focusEvery {
+		due := time.Since(lastFocus) >= focusEvery
+		select {
+		case <-l.focusNow:
+			due = true
+		default:
+		}
+		if (z != nil || pz != nil) && due {
 			lastFocus = time.Now()
 			cs := l.settings()
 			if z != nil && (z.apply(cs) || (z.f.Auto && z.read())) {
