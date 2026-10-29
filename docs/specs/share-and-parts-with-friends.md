@@ -597,6 +597,14 @@ The build of phase 3 made these choices:
   of the share. The page of the share stays and sends the visitor to the print page: the public
   page when the project has a public address, else the page for the members. The delete of the
   project deletes the page of the share too. This answers open question 3.
+- **The live print of a project.** While a print in a project prints, the deck sends its
+  progress to the project each minute, and at once at a pause and at the end: the name, the
+  start, the percent, the layer, the time left and the printer. At the first send, it uploads the
+  picture of the model. The send has no camera pictures. The project page shows the print as a
+  "Printing now" tile with no share link. After the end, the tile shows the result until the
+  print comes to the project. A tile with no send for 5 minutes goes away.
+- **The project page refreshes** each minute, and each 30 seconds while a print of the project
+  prints. A tab in the background does not refresh.
 
 ## Open questions
 
