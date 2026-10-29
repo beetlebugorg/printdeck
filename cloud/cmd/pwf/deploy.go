@@ -284,6 +284,9 @@ func refreshShares(ctx context.Context, c *s3.Client, bucket, base string, page 
 				json.NewDecoder(rec.Body).Decode(&sh)
 				rec.Body.Close()
 			}
+			if sh.Moved {
+				continue // the page sends the visitor to the print page of the project
+			}
 			sh.ID = id
 			body := api.SharePageFor(page, base+"/s/"+id, sh)
 			ctype, cache := "text/html; charset=utf-8", "public, max-age=60"
