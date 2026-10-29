@@ -191,14 +191,22 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 		a.modelView(c, model, st)
 	}
 	if wide {
-		// Cancel print, the destructive action, at the left, and Help at the right. Main is the
-		// print, so the page needs no Menu.
-		k := kit.Cols(cancel, 12, kit.Fr(1), kit.Fr(1))
+		// Cancel print, the destructive action, at the left, Help, and Share at the right. Main is
+		// the print, so the page needs no Menu.
+		share := !end && a.canShare()
+		sizes := []kit.Size{kit.Fr(1), kit.Fr(1)}
+		if share && a.Setup != nil {
+			sizes = append(sizes, kit.Fr(1))
+		}
+		k := kit.Cols(cancel, 12, sizes...)
 		if !end {
 			a.button(c, k[0], "Cancel print", raised, red, a.askCancel)
 		}
 		if a.Setup != nil {
 			a.button(c, k[1], "Help", raised, text, a.OpenHelp)
+		}
+		if share {
+			a.shareKey(c, k[len(k)-1])
 		}
 		return
 	}
@@ -213,15 +221,30 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 		a.button(c, k[1], "Menu", raised, text, func() { a.leavePrint(st) })
 		return
 	}
-	// Help, Menu and Cancel print. Menu leaves the start of the print; the print goes on.
-	k := keysIn(kit.Px(130), kit.Fr(1))
+	// Help, Share, Menu and Cancel print. Menu leaves the start of the print; the print goes on.
+	sizes := []kit.Size{kit.Px(130), kit.Fr(1)}
 	if a.Setup != nil {
-		k = keysIn(kit.Px(110), kit.Px(110), kit.Fr(1))
+		sizes = []kit.Size{kit.Px(110), kit.Px(110), kit.Fr(1)}
+	}
+	cancelLabel := "Cancel print"
+	if a.canShare() {
+		sizes = append([]kit.Size{kit.Px(110)}, sizes...)
+		if a.Setup != nil {
+			// Four keys of the same width: the short label of Cancel fits.
+			sizes, cancelLabel = []kit.Size{kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1)}, "Cancel"
+		}
+	}
+	k := keysIn(sizes...)
+	if a.canShare() {
+		a.shareKey(c, k[0])
+		k = k[1:]
+	}
+	if a.Setup != nil {
 		a.button(c, k[0], "Help", raised, text, a.OpenHelp)
 		k = k[1:]
 	}
 	a.button(c, k[0], "Menu", raised, text, func() { a.leavePrint(st) })
-	a.button(c, k[1], "Cancel print", raised, red, a.askCancel)
+	a.button(c, k[1], cancelLabel, raised, red, a.askCancel)
 }
 
 // zSteps are the steps of the Z offset on the first layer screen, in mm.
@@ -272,17 +295,43 @@ func (a *App) drawFirstLayer(c *gfx.Canvas, st printer.State) {
 		a.button(c, steps[i], fmt.Sprint(s), fill, fg, func() { a.zBaby = v })
 	}
 	if wide {
-		pc := kit.Cols(printRow, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
-		a.button(c, pc[0], "Cancel", raised, red, a.askCancel)
-		if a.Setup != nil {
-			a.button(c, pc[1], "Help", raised, text, a.OpenHelp)
+		// Cancel, Help, Share and Pause. Share goes in the place of Help with no Help.
+		sizes := []kit.Size{kit.Fr(1), kit.Fr(1), kit.Fr(1)}
+		if a.canShare() && a.Setup != nil {
+			sizes = append(sizes, kit.Fr(1))
 		}
-		a.button(c, pc[2], "Pause", orange, onAcc, pr.Pause)
-	} else {
-		pc := kit.Cols(printRow, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
+		pc := kit.Cols(printRow, 12, sizes...)
+		a.button(c, pc[0], "Cancel", raised, red, a.askCancel)
+		mid := pc[1 : len(pc)-1]
 		if a.Setup != nil {
-			pc = kit.Cols(printRow, 8, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1))
-			a.button(c, pc[3], "Help", raised, text, a.OpenHelp)
+			a.button(c, mid[0], "Help", raised, text, a.OpenHelp)
+			mid = mid[1:]
+		}
+		if a.canShare() {
+			a.shareKey(c, mid[0])
+		}
+		a.button(c, pc[len(pc)-1], "Pause", orange, onAcc, pr.Pause)
+	} else {
+		// Pause, Cancel, Menu, then Help and Share.
+		sizes := []kit.Size{kit.Fr(1), kit.Fr(1), kit.Fr(1)}
+		if a.Setup != nil {
+			sizes = append(sizes, kit.Fr(1))
+		}
+		if a.canShare() {
+			sizes = append(sizes, kit.Fr(1))
+		}
+		gap := 12
+		if len(sizes) > 3 {
+			gap = 8
+		}
+		pc := kit.Cols(printRow, gap, sizes...)
+		extra := pc[3:]
+		if a.Setup != nil {
+			a.button(c, extra[0], "Help", raised, text, a.OpenHelp)
+			extra = extra[1:]
+		}
+		if a.canShare() {
+			a.shareKey(c, extra[0])
 		}
 		a.button(c, pc[0], "Pause", raised, text, pr.Pause)
 		a.button(c, pc[1], "Cancel", raised, red, a.askCancel)
