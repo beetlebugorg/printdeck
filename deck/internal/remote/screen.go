@@ -74,7 +74,7 @@ func (b *frameBox) take() []byte {
 }
 
 // serveEvents starts a session and sends its frames (Server-Sent Events). ?w= and ?h= are the size that
-// the browser asks for. The first event is the number of the session, for the touches, and the
+// the browser asks for, and ?deck=1 asks for the screens of the touch screen. The first event is the number of the session, for the touches, and the
 // height of its screen. The session ends when the browser closes the stream.
 func (s *Server) serveEvents(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
@@ -97,7 +97,7 @@ func (s *Server) serveEvents(w http.ResponseWriter, r *http.Request) {
 	var size image.Point
 	size.X, _ = strconv.Atoi(r.URL.Query().Get("w"))
 	size.Y, _ = strconv.Atoi(r.URL.Query().Get("h"))
-	size, in := s.NewSession(ctx, size, box.put)
+	size, in := s.NewSession(ctx, size, r.URL.Query().Get("deck") == "1", box.put)
 	s.mu.Lock()
 	ss.input = in
 	s.mu.Unlock()

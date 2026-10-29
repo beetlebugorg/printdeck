@@ -40,8 +40,9 @@ type Server struct {
 	// NewSession starts a session of the UI for one browser, with a screen size for the shape of
 	// its window: 480 wide and a height for a tall window, or wider than high for a wide window. It
 	// gives each frame (the JSON of a gfx.Recording) to frame, until ctx ends, and returns the size
-	// that it uses and the functions that take the touches and the keys.
-	NewSession func(ctx context.Context, size image.Point, frame func([]byte)) (image.Point, Input)
+	// that it uses and the functions that take the touches and the keys. deck asks for the screens
+	// of the touch screen of the deck (?deck=1), for a simulator of the deck.
+	NewSession func(ctx context.Context, size image.Point, deck bool, frame func([]byte)) (image.Point, Input)
 	// Icon is the PNG icon of the page, for the home screen of a phone.
 	Icon []byte
 	// NoLogin lets every request through, for the demo (printdeck remote-demo).

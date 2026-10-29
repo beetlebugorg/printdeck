@@ -199,6 +199,8 @@ void Deck::connectStream()
     QUrlQuery q;
     q.addQueryItem(QStringLiteral("w"), QString::number(m_screen.width()));
     q.addQueryItem(QStringLiteral("h"), QString::number(m_screen.height()));
+    if (m_touch)
+        q.addQueryItem(QStringLiteral("deck"), QStringLiteral("1"));
     url.setQuery(q);
     QNetworkRequest req(url);
     req.setRawHeader("X-Api-Key", m_token);
