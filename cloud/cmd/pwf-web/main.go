@@ -165,6 +165,7 @@ func runShare(base string) {
 		s.owner = strings.TrimPrefix(h, "#owner=")
 		s.ownerPanel()
 	}
+	s.copyLink()
 	go s.play()
 	go s.playLCD()
 	go func() {
@@ -196,6 +197,31 @@ func runShare(base string) {
 			}
 		}
 	}()
+}
+
+// copyLink makes the key Copy link copy the address of the page for viewers: with no owner key.
+// With no clipboard (an old browser, or a page with no HTTPS), the page shows the address to copy
+// by hand.
+func (s *share) copyLink() {
+	loc := js.Global().Get("location")
+	url := loc.Get("origin").String() + loc.Get("pathname").String()
+	byID("copyBtn").Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
+		clip := js.Global().Get("navigator").Get("clipboard")
+		if clip.IsUndefined() || clip.IsNull() {
+			setText("copyMsg", url)
+			return nil
+		}
+		ok := js.FuncOf(func(js.Value, []js.Value) any {
+			setText("copyMsg", "The link is copied.")
+			return nil
+		})
+		fail := js.FuncOf(func(js.Value, []js.Value) any {
+			setText("copyMsg", url)
+			return nil
+		})
+		clip.Call("writeText", url).Call("then", ok, fail)
+		return nil
+	}))
 }
 
 // hidden says if the page is in a tab in the background.
