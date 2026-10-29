@@ -753,7 +753,7 @@ func manualParts() []section {
 						{"Apps", "Cura and the apps show this camera first."},
 						{"Time lapse", "The camera of the time lapse."},
 						{"Pictures", "The first layer picture, and the pictures on the phone."},
-						{"Zoom to the part", "During a print, the camera zooms to the part, and at the end it goes back. It needs Measure the zoom and a calibration. Only a camera with a zoom control has this row."},
+						{"Zoom to the part", "During a print, the camera zooms to the plate, and at the end it goes back. It needs Measure the zoom and a calibration. Only a camera with a zoom control has this row."},
 					},
 					Notes: []string{"Each use is on one camera. To move a use, check it on the other camera.",
 						"Zoom to the part zooms the picture of each viewer. The time lapse then uses most of the picture of the camera."}},
@@ -1115,7 +1115,7 @@ func manualSections() []section {
 			After: []string{
 				"Cura, PrusaSlicer and OrcaSlicer write the layer comments that the time lapse needs.",
 				"Park for the frames is on by default. Off keeps the toolhead in the pictures, with no stops.",
-				"Crop to the part is on by default. With a calibration of the camera (Settings, Camera, Calibrate) and the park on, each frame shows the part and the space around it. With no calibration or no park, the frames show the whole picture.",
+				"Crop to the part is on by default. With a calibration of the camera (Settings, Camera, Calibrate) and the park on, each frame shows the whole plate and the part on it. With no calibration or no park, the frames show the whole picture.",
 				"The video is a .mov file. The deck keeps the last 3 videos. A backup excludes the videos.",
 			}},
 

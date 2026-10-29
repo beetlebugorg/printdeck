@@ -18,17 +18,18 @@ import (
 // lapse). It needs the camera of the deck and the Klipper host. The frames come from the camera of
 // the time lapse role, and the first layer picture from the camera of the picture role. The park
 // of a print is at the middle of the part in Y, so a bed that moves in Y is at one place in each
-// frame. With a calibration of the camera, the frames are the crop of the part. The settings are in the file
+// frame. With a calibration of the camera, the frames are the crop of the plate. The settings are in the file
 // timelapse of the state folder; the deck writes it only when the page changes them. The frames of
 // a print stay in memory. The deck writes one video to the folder videos at the end of a print,
 // and the history record of the print gets its name.
-func startTimelapse(ctx context.Context, stateDir string, app *ui.App, pr printerBackend) {
+func startTimelapse(ctx context.Context, stateDir, configPath string, app *ui.App, pr printerBackend) {
 	hub, ok := app.Camera.(*camera.Hub)
 	k, isKlippy := pr.(*printer.Klippy)
 	if !ok || !isKlippy {
 		return
 	}
 	file := filepath.Join(stateDir, "timelapse")
+	model := printer.ConfigModel(configPath)
 	s := timelapse.DefaultSettings
 	if b, err := os.ReadFile(file); err == nil {
 		s = timelapse.ParseSettings(b)
@@ -62,7 +63,7 @@ func startTimelapse(ctx context.Context, stateDir string, app *ui.App, pr printe
 		// The calibration of the frames now: with a camera that zooms to the part, the crop is
 		// most of the frame.
 		cal, ok := lapse.Calibration()
-		box, bedY, hasPart := partBox(k, file)
+		box, bedY, hasPart := partBox(k, file, model)
 		if !ok || !hasPart {
 			return image.Rectangle{}, false
 		}
@@ -81,21 +82,26 @@ func startTimelapse(ctx context.Context, stateDir string, app *ui.App, pr printe
 	app.TimeLapse = r
 	sysTimelapse = r
 	go r.Run(ctx)
-	go followPart(ctx, hub, k)
+	go followPart(ctx, hub, k, model)
 	go focusPart(ctx, hub, k, r)
 }
 
-// partBox returns the box of the part of the print of the file in the toolhead coordinates, and
-// the toolhead Y of the bed in the frames of the time lapse: park_y of the config, or else the
-// middle of the part. It is false while the G-code of the print is not loaded.
-func partBox(k *printer.Klippy, file string) (camera.Box, float64, bool) {
+// partBox returns the box of the time lapse crop and the camera zoom of the print of the file in
+// the toolhead coordinates: the whole plate of the bed, as high as the part. With no known bed,
+// it is the box of the part. It also returns the toolhead Y of the bed in the frames of the time
+// lapse: park_y of the config, or else the middle of the part. It is false while the G-code of
+// the print is not loaded.
+func partBox(k *printer.Klippy, file, model string) (camera.Box, float64, bool) {
 	b, ok := wholePart(k, file)
 	if !ok {
 		return camera.Box{}, 0, false
 	}
 	place := gcodeToPlace(k)
-	box := placeBox(place, b, 0, b.Max[2])
 	_, bedY, _ := place((b.Min[0]+b.Max[0])/2, (b.Min[1]+b.Max[1])/2, 0)
+	if bed := printer.BedOf(k.Machine(), model); bed.Known() {
+		b.Min[0], b.Min[1], b.Max[0], b.Max[1] = bed.Min[0], bed.Min[1], bed.Max[0], bed.Max[1]
+	}
+	box := placeBox(place, b, 0, b.Max[2])
 	if m := k.Machine(); m.HasParkY {
 		bedY = m.ParkY
 	}
@@ -108,11 +114,11 @@ func partBox(k *printer.Klippy, file string) (camera.Box, float64, bool) {
 // followEvery is the time between two checks of the print for the follow of the part.
 const followEvery = time.Second
 
-// followPart zooms the cameras with the setting "Zoom to the part" to the part of each print
+// followPart zooms the cameras with the setting "Zoom to the part" to the plate of each print
 // (camera.Hub.FollowPart), from the time the deck knows the box of the part to the end of the
 // print. The time lapse sets its crop at its first frame, at the end of a layer. The zoom comes
 // before that frame when the deck knows the box of the part a second or more before it.
-func followPart(ctx context.Context, hub *camera.Hub, k *printer.Klippy) {
+func followPart(ctx context.Context, hub *camera.Hub, k *printer.Klippy, model string) {
 	tick := time.NewTicker(followEvery)
 	defer tick.Stop()
 	following := false
@@ -130,7 +136,7 @@ func followPart(ctx context.Context, hub *camera.Hub, k *printer.Klippy) {
 			}
 			continue
 		}
-		if box, bedY, ok := partBox(k, st.FilePath); ok {
+		if box, bedY, ok := partBox(k, st.FilePath, model); ok {
 			hub.FollowPart(box, bedY)
 			following = true
 		}
