@@ -143,7 +143,18 @@ type History struct {
 	last    string // the key of the last added print
 	rates   *Rates // the timings from the records; nil after a change
 	video   pendingVideo
+	next    nextProject
 }
+
+// nextProject is the project of the print now, which has no record yet: the file of the print
+// and the name of the project. The history keeps it in <Path>.project, so that it stays at a
+// restart of the deck during the print, and puts it in the record at the end of the print.
+type nextProject struct {
+	Path    string `json:"path"`
+	Project string `json:"project"`
+}
+
+func (h *History) nextFile() string { return h.Path + ".project" }
 
 // pendingVideo is a video for a print that has no record yet.
 type pendingVideo struct {
@@ -164,6 +175,9 @@ func (h *History) load() {
 	}
 	if b, err := os.ReadFile(h.Path); err == nil {
 		json.Unmarshal(b, &h.records)
+	}
+	if b, err := os.ReadFile(h.nextFile()); err == nil {
+		json.Unmarshal(b, &h.next)
 	}
 	if len(h.records) > 0 {
 		h.last = key(h.records[0])
@@ -205,6 +219,10 @@ func (h *History) add(st State, now time.Time, phases []Phase, planned float64, 
 		r.Video = v.name
 	}
 	h.video = pendingVideo{}
+	if h.next.Path == r.Path {
+		r.Project = h.next.Project
+		h.setNext(nextProject{})
+	}
 	h.last = key(r)
 	h.records = append([]Record{r}, h.records...)
 	if len(h.records) > maxHistory {
@@ -282,6 +300,51 @@ const MaxProject = 40
 // empty name takes the print out of its project. It reports that the record is there.
 func (h *History) SetProject(path string, end time.Time, project string) bool {
 	return h.edit(path, end, func(r *Record) { r.Project = project })
+}
+
+// SetNextProject sets the project of the print of the file path that prints now. The record of
+// the print gets the project at the end of the print. An empty name takes the print out of its
+// project.
+func (h *History) SetNextProject(path, project string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.load()
+	if project == "" {
+		h.setNext(nextProject{})
+		return
+	}
+	h.setNext(nextProject{Path: path, Project: project})
+}
+
+// NextProject returns the project of the print of the file path that prints now, or "".
+func (h *History) NextProject(path string) string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.load()
+	if h.next.Path != path {
+		return ""
+	}
+	return h.next.Project
+}
+
+// setNext sets the project of the print now, and writes its file, or removes it for none.
+func (h *History) setNext(n nextProject) {
+	if n == h.next {
+		return
+	}
+	h.next = n
+	if h.Path == "" {
+		return
+	}
+	if n.Path == "" {
+		os.Remove(h.nextFile())
+		return
+	}
+	b, _ := json.Marshal(n)
+	tmp := h.nextFile() + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o600); err == nil {
+		os.Rename(tmp, h.nextFile())
+	}
 }
 
 // edit changes the record of the print of the file path that ended at end with f, and saves the

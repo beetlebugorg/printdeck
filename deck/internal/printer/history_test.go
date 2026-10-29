@@ -1,6 +1,7 @@
 package printer
 
 import (
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -158,5 +159,40 @@ func TestProjects(t *testing.T) {
 	}
 	if of := OfProject(recs, "Pots"); len(of) != 2 || of[0].File != "a" || of[1].File != "d" {
 		t.Errorf("prints of Pots %+v", of)
+	}
+}
+
+func TestHistoryNextProject(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "history.json")
+	h := &History{Path: path}
+	h.SetNextProject("parts/pot.gcode", "Garden planters")
+	if p := h.NextProject("parts/pot.gcode"); p != "Garden planters" {
+		t.Fatalf("project %q", p)
+	}
+	if p := h.NextProject("parts/lid.gcode"); p != "" {
+		t.Errorf("project of another file %q", p)
+	}
+	// A new deck program during the print reads the project from its file.
+	h = &History{Path: path}
+	if p := h.NextProject("parts/pot.gcode"); p != "Garden planters" {
+		t.Fatalf("project after a restart %q", p)
+	}
+	// The record of the print gets the project, and the file goes.
+	now := time.Date(2026, 10, 29, 16, 7, 0, 0, time.UTC)
+	h.add(State{Finished: "complete", FinishedFile: "pot.gcode", FinishedPath: "parts/pot.gcode", FinishedTime: time.Hour}, now, nil, 0, 0, nil)
+	if r := h.Records(); r[0].Project != "Garden planters" {
+		t.Fatalf("record %+v", r[0])
+	}
+	if _, err := os.Stat(path + ".project"); !os.IsNotExist(err) {
+		t.Errorf("the file of the project stays: %v", err)
+	}
+	if p := h.NextProject("parts/pot.gcode"); p != "" {
+		t.Errorf("the next print of the file has the project %q", p)
+	}
+	// No project removes it.
+	h.SetNextProject("parts/lid.gcode", "Shop wall")
+	h.SetNextProject("parts/lid.gcode", "")
+	if p := (&History{Path: path}).NextProject("parts/lid.gcode"); p != "" {
+		t.Errorf("project after No project %q", p)
 	}
 }

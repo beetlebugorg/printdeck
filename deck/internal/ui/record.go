@@ -107,20 +107,26 @@ const pickChoices = 4
 // pickProject asks for the project of the finished print r: New project, the newest projects of
 // the history, and No project for a print in a project.
 func (a *App) pickProject(r printer.Record) {
-	choices := []menuItem{{"New project…", "Type a name", dim, func() { a.newProject(r) }}}
+	a.askProject(r.Name(), r.Project, func(name string) { a.setProject(r, name) })
+}
+
+// askProject asks for the project of the print with the name, which is in the project now (or
+// ""). set gets the new project, or "" for No project.
+func (a *App) askProject(print, now string, set func(string)) {
+	choices := []menuItem{{"New project…", "Type a name", dim, func() { a.newProject(print, set) }}}
 	n := 0
 	for _, p := range printer.Projects(a.Printer.History()) {
-		if p.Name == r.Project || n == pickChoices {
+		if p.Name == now || n == pickChoices {
 			continue
 		}
 		n++
 		name := p.Name
-		choices = append(choices, menuItem{fitText(name, 300), projectLine(p.Prints), dim, func() { a.setProject(r, name) }})
+		choices = append(choices, menuItem{fitText(name, 300), projectLine(p.Prints), dim, func() { set(name) }})
 	}
-	if r.Project != "" {
-		choices = append(choices, menuItem{"No project", "Take the print out of " + fitText(r.Project, 220), dim, func() { a.setProject(r, "") }})
+	if now != "" {
+		choices = append(choices, menuItem{"No project", "Take the print out of " + fitText(now, 220), dim, func() { set("") }})
 	}
-	a.confirm = &confirmBox{question: "Project of " + fitText(r.Name(), 240) + "?", choices: choices}
+	a.confirm = &confirmBox{question: "Project of " + fitText(print, 240) + "?", choices: choices}
 }
 
 // projectLine is the line of a project in the choice: its number of prints.
@@ -134,16 +140,31 @@ func projectLine(n int) string {
 // fitText is s cut to w pixels of the face of the rows of a choice.
 func fitText(s string, w int) string { return gfx.Fit(gfx.Face(true, 19), s, w) }
 
-// newProject opens the keyboard for the name of a new project of the finished print r.
-func (a *App) newProject(r printer.Record) {
-	a.textKB = &keyboard{title: "Project of " + r.Name(), value: "", max: printer.MaxProject, ok: "Save", cancel: "Back",
+// newProject opens the keyboard for the name of a new project of the print with the name. set
+// gets the name.
+func (a *App) newProject(print string, set func(string)) {
+	a.textKB = &keyboard{title: "Project of " + print, value: "", max: printer.MaxProject, ok: "Save", cancel: "Back",
 		shift: true, back: func() { a.textKB = nil },
 		done: func(v string) {
 			a.textKB = nil
 			if v = strings.TrimSpace(v); v != "" {
-				a.setProject(r, v)
+				set(v)
 			}
 		}}
+}
+
+// setNextProject sets the project of the print now to name, or takes it out of its project for
+// "". The record of the print gets the project at the end of the print.
+func (a *App) setNextProject(name string) {
+	if !a.Printer.SetNextProject(name) {
+		a.Toast("The print ended: set its project in the history")
+		return
+	}
+	if name == "" {
+		a.Toast("The print is in no project")
+	} else {
+		a.Toast("The print goes in " + fitText(name, 300))
+	}
 }
 
 // setProject sets the project of the finished print r to name, or takes it out of its project

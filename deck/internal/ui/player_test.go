@@ -2,6 +2,7 @@ package ui
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/jpeg"
 	"os"
@@ -251,6 +252,36 @@ func TestRecordProject(t *testing.T) {
 		tapLabel(t, a, cv, "No project")
 		if pr.History_[0].Project != "" {
 			t.Errorf("wide %v: project %q after No project", wide, pr.History_[0].Project)
+		}
+	}
+}
+
+// TestPrintProject puts the print now in a project from the print page. The record gets it at the
+// end of the print.
+func TestPrintProject(t *testing.T) {
+	for _, wide := range []bool{false, true} {
+		a, pr, cv := newPrintApp(printing)
+		a.Wide = wide
+		if wide {
+			cv = gfx.New(a.Screen().W, a.Screen().H)
+		}
+		pr.History_ = []printer.Record{{File: "lid.gcode", Path: "lid.gcode", Result: "complete", End: time.Unix(6000, 0),
+			Duration: time.Hour, Project: "Garden planters"}}
+		tapLabel(t, a, cv, "Add to a project")
+		tapLabel(t, a, cv, "Garden planters")
+		if pr.Next_ != "Garden planters" {
+			t.Fatalf("wide %v: project %q", wide, pr.Next_)
+		}
+		a.Draw(cv)
+		if !hasKey(a, "Project · Garden planters") {
+			t.Errorf("wide %v: the print page shows no project", wide)
+		}
+		simFrame(t, a, fmt.Sprint("print-project-", wide))
+		tapLabel(t, a, cv, "Project · Garden planters")
+		tapLabel(t, a, cv, "No project")
+		a.Draw(cv)
+		if pr.Next_ != "" || !hasKey(a, "Add to a project") {
+			t.Errorf("wide %v: No project left %q", wide, pr.Next_)
 		}
 	}
 }

@@ -369,6 +369,26 @@ func (k *Klippy) SetProject(r Record, project string) bool {
 	return k.Hist != nil && k.Hist.SetProject(r.Path, r.End, project)
 }
 
+// SetNextProject sets the project of the print now, for its record at the end. It reports that
+// a print runs.
+func (k *Klippy) SetNextProject(project string) bool {
+	st := k.State()
+	if k.Hist == nil || !st.Busy() || st.FilePath == "" {
+		return false
+	}
+	k.Hist.SetNextProject(st.FilePath, project)
+	return true
+}
+
+// NextProject returns the project of the print now, or "".
+func (k *Klippy) NextProject() string {
+	st := k.State()
+	if k.Hist == nil || !st.Busy() {
+		return ""
+	}
+	return k.Hist.NextProject(st.FilePath)
+}
+
 // Machine returns the version, the modules and the macros of the connected Klipper.
 // Rates returns the timings of this printer, from its history.
 func (k *Klippy) Rates() Rates {

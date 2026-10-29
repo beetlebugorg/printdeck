@@ -26,6 +26,7 @@ type DemoPrinter struct {
 	Boards_     []board.Info // the boards of the printer setup
 	Machine_    printer.Machine
 	History_    []printer.Record
+	Next_       string // the project of the print now
 	Console_    []printer.ConsoleLine
 	Meta_       gcodemeta.Meta  // the slicer data of every file
 	Spools_     *printer.Spools // the rolls of filament, or nil
@@ -116,6 +117,18 @@ func (d *DemoPrinter) SetProject(r printer.Record, project string) bool {
 	}
 	return false
 }
+// SetNextProject sets the project of the demo print now.
+func (d *DemoPrinter) SetNextProject(project string) bool {
+	if !d.State_.Busy() {
+		return false
+	}
+	d.Next_ = project
+	return true
+}
+
+// NextProject returns the project of the demo print now.
+func (d *DemoPrinter) NextProject() string { return d.Next_ }
+
 func (d *DemoPrinter) RestartKlipper() error                        { return nil }
 func (d *DemoPrinter) FlashBoard(string, board.FlashProgress) error { return nil }
 func (d *DemoPrinter) RunAction(string, ...string) error            { return nil }

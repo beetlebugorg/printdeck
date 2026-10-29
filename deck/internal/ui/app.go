@@ -100,6 +100,10 @@ type Printer interface {
 	SetNote(r printer.Record, note string) bool
 	// SetProject sets the project of a finished print, and reports that the history has the print.
 	SetProject(r printer.Record, project string) bool
+	// SetNextProject sets the project of the print now, for its record at the end, and reports
+	// that a print runs. NextProject is that project, or "".
+	SetNextProject(project string) bool
+	NextProject() string
 	// RecordPicture is the picture of a finished print. loading is true while it is drawn.
 	RecordPicture(r printer.Record) (img image.Image, loading bool)
 	// FilePicture is a picture of the G-code of a file with no thumbnail, in the color hex of its

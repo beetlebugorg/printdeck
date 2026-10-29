@@ -366,11 +366,26 @@ func (a *App) printInfoH(st printer.State) int {
 	if len(a.Printer.LayerTimes()) > 0 {
 		h += 54
 	}
-	return h
+	return h + projectKeyH + 8
+}
+
+// projectKeyH is the height of the key of the project of the print now.
+const projectKeyH = 44
+
+// projectKey is the key of the project of the print now: Add to a project, or the project. The
+// record of the print gets the project at the end of the print.
+func (a *App) projectKey(c *gfx.Canvas, r image.Rectangle, st printer.State) {
+	label := "Add to a project"
+	if p := a.Printer.NextProject(); p != "" {
+		label = "Project · " + p
+	}
+	a.button(c, r, label, raised, text, func() {
+		a.askProject(st.Name(), a.Printer.NextProject(), a.setNextProject)
+	})
 }
 
 // printInfo draws the data of the print in a plate above the model view: the layer and the move
-// now, the roll in the printer, and the times of the layers. While the slider shows another layer,
+// now, the roll in the printer, the times of the layers, and the key of the project. While the slider shows another layer,
 // Live goes back to the layer that prints.
 func (a *App) printInfo(c *gfx.Canvas, r image.Rectangle, st printer.State) {
 	plate(c, r)
@@ -415,6 +430,7 @@ func (a *App) printInfo(c *gfx.Canvas, r image.Rectangle, st printer.State) {
 	if times := pr.LayerTimes(); len(times) > 0 {
 		a.layerChart(c, s.Next(46), st, times)
 	}
+	a.projectKey(c, s.Next(projectKeyH), st)
 }
 
 // layerClock measures the time of each layer of a print: from the change to the layer to the
