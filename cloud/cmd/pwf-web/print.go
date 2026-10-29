@@ -132,15 +132,18 @@ func drawTiles(prints []wire.ProjectPrint, href func(wire.ProjectPrint) string) 
 		tile.Call("appendChild", pic)
 		body := el("div", "body", "")
 		body.Call("appendChild", el("strong", "", p.Name))
-		facts := []string{shortDate(p.Ended), clock(p.Seconds)}
+		// The date on one line, the time and the filament on the next. Each fact stays on one line.
+		facts := []string{clock(p.Seconds)}
 		if p.Grams > 0 {
 			facts = append(facts, grams(p.Grams))
 		}
-		// Each fact stays on one line.
 		for i, f := range facts {
 			facts[i] = strings.ReplaceAll(f, " ", "\u00a0")
 		}
-		body.Call("appendChild", el("div", "facts", strings.Join(facts, " · ")))
+		lines := el("div", "tfacts", "")
+		lines.Call("appendChild", el("div", "", shortDate(p.Ended)))
+		lines.Call("appendChild", el("div", "", strings.Join(facts, " · ")))
+		body.Call("appendChild", lines)
 		tile.Call("appendChild", body)
 		box.Call("appendChild", tile)
 	}

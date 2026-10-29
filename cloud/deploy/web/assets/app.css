@@ -31,10 +31,10 @@ input:not([type]), input[type="text"] { font: 400 16px/1.4 "Archivo", sans-serif
 .linkbox button { background: var(--cap); }
 .back { font-size: 14px; }
 .cards { display: grid; gap: 12px; }
-.pcard { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 14px; align-items: center; background: var(--plate);
-  border: 1px solid var(--seam); border-radius: 14px; padding: 12px; color: var(--ink); text-decoration: none; }
-.pcard img, .pcard .ph { width: 72px; height: 72px; border-radius: 10px; object-fit: cover; background: var(--lcd); }
-.pcard strong { font: 800 20px/1.15 "Archivo", sans-serif; font-stretch: 85%; display: block; }
+.pcard { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 18px; align-items: center; background: var(--plate);
+  border: 1px solid var(--seam); border-radius: 14px; padding: 14px 18px 14px 14px; color: var(--ink); text-decoration: none; }
+.pcard img, .pcard .ph { width: 80px; height: 80px; border-radius: 10px; object-fit: contain; background: var(--lcd); }
+.pcard strong { font: 800 20px/1.15 "Archivo", sans-serif; font-stretch: 85%; display: block; margin-bottom: 4px; overflow-wrap: anywhere; }
 .pcard span { color: var(--ink-dim); font-size: 14px; }
 .members { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .members:empty { display: none; }
@@ -48,19 +48,19 @@ input:not([type]), input[type="text"] { font: 400 16px/1.4 "Archivo", sans-serif
 .photos .rm { position: absolute; right: 6px; top: 6px; min-height: 30px; padding: 0 10px; font-size: 12px; background: rgba(0,0,0,.62);
   color: #f3f1ec; border: none; }
 /* The prints of a project: a tile each, which opens the page of the print. */
-.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(160px, 40vw), 1fr)); gap: 12px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 40vw), 1fr)); gap: 14px; }
 .tile { display: grid; grid-template-rows: auto 1fr; background: var(--plate); border: 1px solid var(--seam); border-radius: 14px;
   overflow: hidden; color: var(--ink); text-decoration: none; }
 .tile:hover { border-color: var(--orange); }
 .tile:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
 .tile .pic { background: var(--lcd); position: relative; aspect-ratio: 4 / 3; display: grid; place-items: center; }
 .tile .pic img { width: 100%; height: 100%; object-fit: contain; display: block; }
-.tile .badges { position: absolute; left: 8px; top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+.tile .badges { position: absolute; left: 8px; top: 8px; right: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
 .tile .badges span { font: 500 11px/1 "IBM Plex Mono", monospace; color: #f3f1ec; background: rgba(0,0,0,.62); padding: 6px 8px; border-radius: 6px; }
 .tile .badges .fail { background: #b3261e; }
-.tile .body { padding: 10px 12px 12px; display: grid; gap: 6px; align-content: start; }
+.tile .body { padding: 14px 14px 16px; display: grid; gap: 8px; align-content: start; border-top: 1px solid var(--seam); }
 .tile strong { font: 800 18px/1.15 "Archivo", sans-serif; font-stretch: 85%; overflow-wrap: anywhere; }
-.tile .facts { font: 500 12px/1.5 "IBM Plex Mono", monospace; color: var(--ink-dim); }
+.tile .tfacts { display: grid; gap: 2px; font: 500 12px/1.5 "IBM Plex Mono", monospace; color: var(--ink-dim); }
 /* The numbers of a project, in the readout of the share page. */
 .stats .big { font-size: clamp(26px, 7vw, 40px); }
 .phead { display: grid; gap: 6px; }

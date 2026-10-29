@@ -406,6 +406,10 @@ func TestDeckProjectCalls(t *testing.T) {
 	if code, body := get(t, v.Prints[0].Plan); code != 200 || string(body) != `{"layers":[30,20.5]}` {
 		t.Errorf("plan %d %s", code, body)
 	}
+	// The list counts the print once: plan.json is a file of the print.
+	if out, err := d.API.listProjects(ctx, &who{owner: true}); err != nil || len(out.([]cloud.ProjectSummary)) != 1 || out.([]cloud.ProjectSummary)[0].Prints != 1 {
+		t.Errorf("the list of the projects %+v %v", out, err)
+	}
 	if again, err := c.SendPrint(ctx, id, sum.ID, up); err != nil || again != pid {
 		t.Errorf("the same print again: %q %v", again, err)
 	}

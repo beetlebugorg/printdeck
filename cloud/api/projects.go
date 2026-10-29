@@ -409,7 +409,7 @@ func (s *Server) listProjects(ctx context.Context, w *who) (any, error) {
 		for _, f := range files {
 			rel := strings.TrimPrefix(f, "x/"+id+"/")
 			switch {
-			case strings.HasPrefix(rel, "prints/") && strings.HasSuffix(rel, ".json"):
+			case strings.HasPrefix(rel, "prints/") && strings.HasSuffix(rel, ".json") && strings.Count(rel, "/") == 1:
 				sum.Prints++
 			case strings.HasPrefix(rel, "photos/") && strings.HasSuffix(rel, "-s.jpg"):
 				sum.Photos++
