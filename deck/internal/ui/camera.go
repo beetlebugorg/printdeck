@@ -594,24 +594,21 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 			a.drawPTZKeys(c, keys, id, ptz)
 			first, second = title+" · "+a.ptzLine(id, ptz), a.ptzState(id, false)
 		default:
-			// With a PTZ key, Calibrate is wider and Camera settings narrower, with a shorter label,
-			// so each label fits.
-			calKey, setKey := 2.0, 4.0
-			if hasPTZ {
-				calKey, setKey = 3, 3
-			}
-			sizes := []kit.Size{kit.Fr(2), kit.Fr(2), kit.Fr(calKey)}
+			// Each key is as wide as its label needs, and the keys share the rest of the row. With
+			// a PTZ key, Camera settings has a shorter label.
+			labels := []string{"Turn", "View", "Calibrate"}
 			if calibrated {
-				sizes = append(sizes, kit.Fr(2))
+				labels = append(labels, "Clear")
 			}
 			if st.Focus != nil {
-				sizes = append(sizes, kit.Fr(2))
+				labels = append(labels, "Focus")
 			}
 			if hasPTZ {
-				sizes = append(sizes, kit.Fr(2))
+				labels = append(labels, "PTZ", "Settings")
+			} else {
+				labels = append(labels, "Camera settings")
 			}
-			sizes = append(sizes, kit.Fr(setKey))
-			k := kit.Cols(keys, 8, sizes...)
+			k := labelCols(keys, 8, labels...)
 			fill, ink := keyOff, text
 			if in.Rotate != 0 {
 				fill, ink = keyOn, keyOnInk
@@ -720,12 +717,11 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 // In prints and Done. In prints is on while the setting "Focus on the part" is on.
 func (a *App) drawFocusKeys(c *gfx.Canvas, r image.Rectangle, id string, f camera.Focus) {
 	_, part := a.Camera.(partFocuser)
-	sizes := []kit.Size{kit.Fr(2), kit.Fr(2), kit.Fr(2)}
+	labels := []string{"Auto", "−", "+"}
 	if part {
-		sizes = append(sizes, kit.Fr(3), kit.Fr(3))
+		labels = append(labels, "Part", "In prints")
 	}
-	sizes = append(sizes, kit.Fr(3))
-	k := kit.Cols(r, 8, sizes...)
+	k := labelCols(r, 8, append(labels, "Done")...)
 	fill, ink := keyOff, text
 	if f.Auto {
 		fill, ink = keyOn, keyOnInk

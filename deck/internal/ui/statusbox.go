@@ -14,11 +14,14 @@ import (
 // readouts (the nozzle, the bed and the fan) and three lines of text over the progress bar. It is
 // lower than the printer display, so the screens under it get more space.
 
-// The heights of the status panel on a tall and on a wide screen, in the place of the display.
-const (
-	panelTallH = 132
-	panelWideH = 132
-)
+// panelH is the height of the status panel, in the place of the display. The large text makes it
+// higher.
+func panelH() int {
+	if gfx.FinePrint() {
+		return 160
+	}
+	return 132
+}
 
 // drawStatusBox draws the status panel in r. A tap on the nozzle or the bed sets its
 // temperature. Away from the print, the taps wait for its end.
@@ -26,6 +29,9 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 	c.RoundRect(r.Inset(-8), 8, edge)
 	c.RoundRect(r.Inset(-6), 6, lcd)
 	rows := kit.Rows(r, 0, kit.Px(46), kit.Px(8), kit.Px(24), kit.Px(20), kit.Px(20), kit.Px(6), kit.Fr(1))
+	if gfx.FinePrint() {
+		rows = kit.Rows(r, 0, kit.Px(60), kit.Px(6), kit.Px(28), kit.Px(26), kit.Px(26), kit.Px(6), kit.Fr(1))
+	}
 	cells := kit.Cols(rows[0], 8, kit.Fr(1), kit.Fr(1), kit.Fr(1))
 	fan := "off"
 	if st.Fan > 0 {
@@ -99,8 +105,12 @@ func targetText(t float64) string {
 func readout(c *gfx.Canvas, r image.Rectangle, name, value, target string, power float64, heater bool) {
 	c.RoundRect(r, 6, lcdCell)
 	in := kit.Inset(r, 8, 4, 8, 6)
-	c.Text(image.Rect(in.Min.X, in.Min.Y, in.Max.X, in.Min.Y+14), name, gfx.Face(true, 11), lcdDim, gfx.Left)
-	vr := image.Rect(in.Min.X, in.Min.Y+14, in.Max.X, in.Max.Y)
+	nameH := 14
+	if gfx.FinePrint() {
+		nameH = 24
+	}
+	c.Text(image.Rect(in.Min.X, in.Min.Y, in.Max.X, in.Min.Y+nameH), name, gfx.Face(true, 11), lcdDim, gfx.Left)
+	vr := image.Rect(in.Min.X, in.Min.Y+nameH, in.Max.X, in.Max.Y)
 	tf := gfx.Face(false, 13)
 	tw := 0
 	if target != "" {

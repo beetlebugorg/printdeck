@@ -5,6 +5,8 @@ import (
 	"image"
 	"image/color"
 	"sync"
+
+	"golang.org/x/image/font"
 )
 
 // A Recording is the drawing commands of one frame, for a display in a browser. The browser draws
@@ -260,8 +262,16 @@ func replay(c *Canvas, list []any, img func(id int) image.Image, num, den int) {
 			// not change it again.
 			fontMu.Lock()
 			f := face(n(op, 4) == 1, sc(n(op, 5)))
+			var f1 font.Face
+			if num != den {
+				f1 = face(n(op, 4) == 1, n(op, 5))
+			}
 			fontMu.Unlock()
-			cur.textAt(sc(n(op, 1)), sc(n(op, 2)), s, f, col(n(op, 6)))
+			if f1 == nil {
+				cur.textAt(sc(n(op, 1)), sc(n(op, 2)), s, f, col(n(op, 6)))
+			} else {
+				cur.textScaled(n(op, 1), sc(n(op, 2)), s, f, f1, col(n(op, 6)), num, den)
+			}
 		case "c", "i":
 			im := img(n(op, 5))
 			if im == nil {

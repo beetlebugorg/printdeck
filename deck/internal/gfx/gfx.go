@@ -400,6 +400,24 @@ func (c *Canvas) textAt(x, y int, s string, face font.Face, col color.Color) {
 	d.DrawString(s)
 }
 
+// textScaled draws s at num/den times its size: each character with the larger face, at the place
+// that the face f1 of the layout gives it, scaled. The larger face is a little wider than f1 at
+// that scale (the advances of f1 are rounded), so the text keeps the width of the layout, and a
+// text at the right or in the middle of a key stays inside it.
+func (c *Canvas) textScaled(x, y int, s string, face, f1 font.Face, col color.Color, num, den int) {
+	if !c.raster() {
+		return
+	}
+	d := font.Drawer{Dst: c.RGBA, Src: image.NewUniform(col), Face: face}
+	at := fixed.I(x)
+	for _, r := range s {
+		d.Dot = fixed.Point26_6{X: at * fixed.Int26_6(num) / fixed.Int26_6(den), Y: fixed.I(y)}
+		d.DrawString(string(r))
+		adv, _ := f1.GlyphAdvance(r)
+		at += adv
+	}
+}
+
 // Text draws s vertically centred in r. A text that is wider than r gets a smaller size of its
 // face (Shrink); a text that is still too wide ends in an ellipsis (Fit).
 func (c *Canvas) Text(r image.Rectangle, s string, face font.Face, col color.Color, a Align) {

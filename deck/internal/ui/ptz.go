@@ -229,17 +229,16 @@ func (a *App) ptzKeys(id string, p camera.PTZ) (zoom, move []ptzKey) {
 func (a *App) drawPTZKeys(c *gfx.Canvas, r image.Rectangle, id string, p camera.PTZ) {
 	zoom, move := a.ptzKeys(id, p)
 	keys := append(zoom, move...)
-	var sizes []kit.Size
-	for range keys {
-		sizes = append(sizes, kit.Fr(2))
+	var labels []string
+	for _, kk := range keys {
+		labels = append(labels, kk.label)
 	}
 	_, measure := a.Camera.(ptzMeasurer)
-	sizes = append(sizes, kit.Fr(3))
+	labels = append(labels, "Reset")
 	if measure {
-		sizes = append(sizes, kit.Fr(3))
+		labels = append(labels, "Measure")
 	}
-	sizes = append(sizes, kit.Fr(3))
-	k := kit.Cols(r, 8, sizes...)
+	k := labelCols(r, 8, append(labels, "Done")...)
 	for i, kk := range keys {
 		a.namedButton(c, k[i], kk.label, kk.name, raised, text, kk.tap)
 	}

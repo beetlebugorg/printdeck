@@ -55,8 +55,14 @@ func (a *App) projectSummary(p printer.Project) string {
 // the print.
 func (a *App) drawProject(c *gfx.Canvas) {
 	pf := a.navFrame()
-	f := a.navPage(c, fitTitle(a.project, pf.head.Dx()-200))
-	if cp, ok := a.cloudProjects(); ok {
+	cp, share := a.cloudProjects()
+	room := pf.head.Dx() - 200
+	if share {
+		// The title starts 20 pixels in, and ends 8 pixels before Share.
+		room = pf.head.Dx() - 2*(backRect(pf.head).Dx()+12) - 20 - 8
+	}
+	f := a.navPage(c, fitTitle(a.project, room))
+	if share {
 		name := a.project
 		a.headKey(c, f.head, "Share", func() { a.shareProject(cp, name) })
 	}

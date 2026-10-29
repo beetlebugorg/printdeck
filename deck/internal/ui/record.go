@@ -33,8 +33,12 @@ func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 		side := min(content.Dy(), tableH, content.Dx()/2)
 		cols := kit.Cols(content, 16, kit.Px(side), kit.Fr(1))
 		pic, box = kit.Rows(cols[0], 0, kit.Px(side))[0], kit.Rows(cols[1], 0, kit.Px(min(tableH, content.Dy())))[0]
-		k := kit.Cols(acts, 12, kit.Fr(1), kit.Fr(2))
+		// The still of the time lapse is 16:9, and the keys get the rest of the row.
+		k := kit.Cols(acts, 12, kit.Px(min(acts.Dx()/3, acts.Dy()*16/9)), kit.Fr(1))
 		lapse, keys = k[0], k[1]
+		if !video {
+			keys = acts
+		}
 	} else {
 		sizes := []kit.Size{kit.Fr(1), kit.Px(tableH), kit.Px(84)}
 		if video {
@@ -46,14 +50,28 @@ func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 			lapse = rr[2]
 		}
 	}
-	if video {
+	if video && pg.wide {
+		// The row of actions has no room for a Play key beside the still: the still is the key.
+		s := a.videoStill(r.Video, a.stillWidth(lapse))
+		if !s.gone && s.still != nil {
+			rows[len(rows)-1][1] = clock(s.length) // the narrow table has the length only
+		} else {
+			rows[len(rows)-1][1] = stillLine(s)
+		}
+		a.drawStill(c, lapse, s)
+		if !s.gone && s.still != nil {
+			name, title := r.Video, r.Name()
+			a.playSign(c, lapse)
+			play := func() { a.openPlayer(name, title) }
+			a.addHit(kit.Hit{R: lapse, Tap: play})
+			a.addFocus("Play", lapse, play)
+			a.region("Play", lapse)
+		}
+	} else if video {
 		// The still is as high as the row, 16:9.
 		k := kit.Cols(lapse, 12, kit.Px(lapse.Dy()*16/9), kit.Fr(1))
 		s := a.videoStill(r.Video, a.stillWidth(k[0]))
 		rows[len(rows)-1][1] = stillLine(s)
-		if pg.wide && !s.gone && s.still != nil {
-			rows[len(rows)-1][1] = clock(s.length) // the narrow table has the length only
-		}
 		a.drawStill(c, k[0], s)
 		if s.gone || s.still == nil {
 			key(c, k[1], "Play", surface, dim, false)
@@ -214,7 +232,7 @@ func (a *App) recordModel(c *gfx.Canvas, pic image.Rectangle, r printer.Record) 
 	case loading:
 		c.Text(pic, "LOADING MODEL…", gfx.Face(true, 18), lcdDim, gfx.Center)
 	default:
-		c.Text(pic, "THE FILE IS GONE", gfx.Face(true, 18), lcdDim, gfx.Center)
+		c.Text(kit.Inset(pic, 10, 0, 10, 0), "THE FILE IS GONE", gfx.Face(true, 18), lcdDim, gfx.Center)
 	}
 	return img == nil && !loading
 }

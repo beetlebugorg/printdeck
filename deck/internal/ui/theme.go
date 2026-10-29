@@ -191,31 +191,66 @@ func keyBeside(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RG
 	if area.Dy() < 40 {
 		size = 16
 	}
-	// A label that is too long gets a smaller font, down to 13 pixels.
-	label = strings.ToUpper(label)
 	area.Max.X -= right
-	for size > 13 && gfx.Width(gfx.Face(true, size), label) > area.Dx()-12 {
-		size--
-	}
-	if gfx.FinePrint() {
-		keyLabel(c, area, label, gfx.Face(true, size), ink)
-		return
-	}
-	c.Text(area, label, gfx.Face(true, size), ink, gfx.Center)
+	keyLabel(c, area, strings.ToUpper(label), size, ink)
 }
 
-// keyLabel draws the label of a key with the large text. The label keeps 6 pixels from the sides
-// of the key. A label that is too long for one line goes in two lines when the key is high enough.
-func keyLabel(c *gfx.Canvas, area image.Rectangle, label string, face font.Face, ink color.RGBA) {
-	in := kit.Inset(area, 6, 0, 6, 0)
-	const lineH = 27
-	if i := splitAt(label); gfx.Width(face, label) > in.Dx() && i > 0 && area.Dy() >= 2*lineH {
-		y := area.Min.Y + area.Dy()/2 - lineH
-		c.Text(image.Rect(in.Min.X, y, in.Max.X, y+lineH), label[:i], face, ink, gfx.Center)
-		c.Text(image.Rect(in.Min.X, y+lineH, in.Max.X, y+2*lineH), label[i+1:], face, ink, gfx.Center)
-		return
+// shrinkFace is the face of size pixels, or smaller down to least, at which s fits in width.
+func shrinkFace(bold bool, size, least int, s string, width int) font.Face {
+	for size > least && gfx.Width(gfx.Face(bold, size), s) > width {
+		size--
 	}
-	c.Text(in, label, face, ink, gfx.Center)
+	return gfx.Face(bold, size)
+}
+
+// labelCols splits r into a column for each label, with gap between them: each column as wide as
+// its label needs at 16 pixels, and the rest of r shared out evenly. When r is too narrow for that,
+// the widths keep the same ratio, and the labels get a smaller font (keyLabel).
+func labelCols(r image.Rectangle, gap int, labels ...string) []image.Rectangle {
+	need := make([]int, len(labels))
+	sum := 0
+	for i, l := range labels {
+		need[i] = gfx.Width(gfx.Face(true, 16), strings.ToUpper(l)) + 2*(keyLabelPad+6)
+		sum += need[i]
+	}
+	free := r.Dx() - gap*(len(labels)-1)
+	extra := max(0, float64(free-sum)/float64(len(labels)))
+	sizes := make([]kit.Size, len(labels))
+	for i, n := range need {
+		sizes[i] = kit.Fr(float64(n) + extra)
+	}
+	return kit.Cols(r, gap, sizes...)
+}
+
+// keyLabelPad is the most room between the label of a key and its printed frame, on each side.
+const keyLabelPad = 8
+
+// keyLabel draws the label of a key in area, at size pixels or smaller. A label that is too long
+// gets a smaller font, down to 13 pixels. When that makes the font much smaller and the key is high
+// enough, the label goes in two lines at a larger font.
+func keyLabel(c *gfx.Canvas, area image.Rectangle, label string, size int, ink color.RGBA) {
+	pad := max(2, min(keyLabelPad, area.Dx()/12)) // less on a small key, such as a step of a move
+	in := kit.Inset(area, pad, 0, pad, 0)
+	fits := func(s string, px int) bool { return gfx.Width(gfx.Face(true, px), s) <= in.Dx() }
+	one := size
+	for one > 13 && !fits(label, one) {
+		one--
+	}
+	if i := splitAt(label); i > 0 && (one < size-2 || !fits(label, one)) {
+		two := size
+		for two > 13 && !(fits(label[:i], two) && fits(label[i+1:], two)) {
+			two--
+		}
+		face := gfx.Face(true, two)
+		lineH := face.Metrics().Height.Ceil()
+		if two > one && area.Dy() >= 2*lineH+4 {
+			y := area.Min.Y + area.Dy()/2 - lineH
+			c.Text(image.Rect(in.Min.X, y, in.Max.X, y+lineH), label[:i], face, ink, gfx.Center)
+			c.Text(image.Rect(in.Min.X, y+lineH, in.Max.X, y+2*lineH), label[i+1:], face, ink, gfx.Center)
+			return
+		}
+	}
+	c.Text(in, label, gfx.Face(true, one), ink, gfx.Center)
 }
 
 // splitAt returns the index of the space that splits s into two lines of about the same length,

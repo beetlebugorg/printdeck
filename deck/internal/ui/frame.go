@@ -60,7 +60,7 @@ func wideZones(scale int) (left, right image.Rectangle) {
 // displayIn is the status panel at the top of the left column, in the middle, and the space under
 // its bezel. It is as wide as the printer display at scale.
 func (a *App) displayIn(left image.Rectangle, scale int) (lcd, under image.Rectangle) {
-	w, h := 128*scale, panelWideH
+	w, h := 128*scale, panelH()
 	x := left.Min.X + (left.Dx()-w)/2
 	lcd = image.Rect(x, left.Min.Y+8, x+w, left.Min.Y+8+h)
 	return lcd, image.Rect(left.Min.X, lcd.Max.Y+8+gridM, left.Max.X, left.Max.Y)
@@ -69,7 +69,7 @@ func (a *App) displayIn(left image.Rectangle, scale int) (lcd, under image.Recta
 // lcdRect is the status panel in a pane of a tall screen: at the top, in the middle, as wide as
 // the printer display at lcdScale.
 func (a *App) lcdRect(pane image.Rectangle) image.Rectangle {
-	w, h := 128*lcdScale, panelTallH
+	w, h := 128*lcdScale, panelH()
 	x := pane.Min.X + (pane.Dx()-w)/2
 	return image.Rect(x, pane.Min.Y+lcdTop, x+w, pane.Min.Y+lcdTop+h)
 }
@@ -108,7 +108,7 @@ func (a *App) stateFrame() frame {
 		lcd, under := a.displayIn(left, wideScale)
 		return frame{wide: true, lcd: lcd, side: under, main: right}
 	}
-	top, main := scr.Split(lcdTop + panelTallH + 12)
+	top, main := scr.Split(lcdTop + panelH() + 12)
 	return frame{lcd: a.lcdRect(top), main: main}
 }
 

@@ -619,11 +619,29 @@ func (a *App) statusKey(c *gfx.Canvas, r image.Rectangle, title, sub string, sub
 		size, subSize = 20, 16
 	}
 	upper := strings.ToUpper(title)
-	for size > 14 && gfx.Width(gfx.Face(true, size), upper) > w {
-		size--
+	one := size
+	for one > 14 && gfx.Width(gfx.Face(true, one), upper) > w {
+		one--
 	}
-	tf, sf := gfx.Face(true, size), gfx.Face(false, subSize)
-	th, sh := tf.Metrics().Height.Ceil()+6, sf.Metrics().Height.Ceil()+2
+	sf := gfx.Face(false, subSize)
+	sh := sf.Metrics().Height.Ceil() + 2
+	// A name that does not fit in one line goes in two lines, when the key is high enough for
+	// them and a line of the text under them.
+	names := []string{upper}
+	tf := gfx.Face(true, one)
+	if i := splitAt(upper); i > 0 && gfx.Width(tf, upper) > w {
+		f2 := gfx.Face(true, size)
+		for s := size; s >= 14; s-- {
+			if f2 = gfx.Face(true, s); gfx.Width(f2, upper[:i]) <= w && gfx.Width(f2, upper[i+1:]) <= w {
+				break
+			}
+		}
+		if lh := f2.Metrics().Height.Ceil(); in.Dy() >= 2*lh+6+sh {
+			names, tf = []string{upper[:i], upper[i+1:]}, f2
+		}
+	}
+	lh := tf.Metrics().Height.Ceil()
+	th := len(names)*lh + 6
 	lines := wrapText(sf, sub, w)
 	n := min(2, max(1, (in.Dy()-th)/sh)) // the lines that fit, at most 2
 	if len(lines) > n {
@@ -631,7 +649,10 @@ func (a *App) statusKey(c *gfx.Canvas, r image.Rectangle, title, sub string, sub
 	}
 	// The block of n lines in the middle of the key, so the names of a row line up.
 	y := in.Min.Y + (in.Dy()-th-n*sh)/2
-	c.Text(image.Rect(in.Min.X, y, in.Max.X, y+th), gfx.Fit(tf, upper, w), tf, text, gfx.Left)
+	for i, name := range names {
+		ny := y + 3 + i*lh
+		c.Text(image.Rect(in.Min.X, ny, in.Max.X, ny+lh), gfx.Fit(tf, name, w), tf, text, gfx.Left)
+	}
 	for i, l := range lines {
 		ly := y + th + i*sh
 		c.Text(image.Rect(in.Min.X, ly, in.Max.X, ly+sh), gfx.Fit(sf, l, w), sf, subCol, gfx.Left)

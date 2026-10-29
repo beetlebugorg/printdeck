@@ -122,7 +122,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 	moving := st.Connected && (!st.Busy() || st.Paused)
 
 	// Tall: the position, Home, the joystick with the Z column, the park keys, and a hint.
-	var pos, home, zArea, pad, parks, hint image.Rectangle
+	var pos, home, zSteps, zArea, pad, parks, hint image.Rectangle
 	if f.wide {
 		// The position over all; the joystick at the left, Home and the Z row at its right; the
 		// park keys in the row of actions.
@@ -133,8 +133,9 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		cols := kit.Cols(r[1], 16, kit.Px(side), kit.Fr(1))
 		l := kit.Rows(cols[0], 6, kit.Px(side), kit.Px(20))
 		pad, hint = l[0], l[1]
-		k := kit.Rows(cols[1], 10, kit.Px(52), kit.Px(52))
-		home, zArea = k[0], k[1]
+		// The column is narrow: the Z steps have a row of their own, over Z ▼ and Z ▲.
+		k := kit.Rows(cols[1], 10, kit.Px(52), kit.Px(52), kit.Px(52))
+		home, zSteps, zArea = k[0], k[1], k[2]
 	} else {
 		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 0), 12, kit.Px(54), kit.Px(58), kit.Fr(1), kit.Px(60), kit.Px(70), kit.Px(24))
 		pos, home, zArea, parks, hint = r[0], r[1], r[3], r[4], r[5]
@@ -178,7 +179,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 	}
 
 	// Home
-	h := kit.Cols(home, 8, kit.Fr(1.8), kit.Fr(1), kit.Fr(1), kit.Fr(1)) // "Home all" needs the room
+	h := labelCols(home, 8, "Home all", "X", "Y", "Z") // "Home all" needs the room
 	notPaused(h[0], "Home all", orange, onAcc, func() error { return pr.Home() })
 	for i, ax := range []string{"X", "Y", "Z"} {
 		axis := strings.ToLower(ax)
@@ -199,6 +200,10 @@ func (a *App) drawMove(c *gfx.Canvas) {
 	// Z: a row with the steps in the middle.
 	z := kit.Cols(zArea, 6, kit.Fr(1.3), kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1.3))
 	down, up, steps := z[0], z[4], image.Rect(z[1].Min.X, zArea.Min.Y, z[3].Max.X, zArea.Max.Y)
+	if !zSteps.Empty() {
+		z = kit.Cols(zArea, 8, kit.Fr(1), kit.Fr(1))
+		down, up, steps = z[0], z[1], zSteps
+	}
 	btn(up, "Z ▲", raised, text, func() error { return pr.Jog(0, 0, a.zStep, 600) })
 	for i, r := range kit.Cols(steps, 6, kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
 		s := []float64{0.1, 1, 10}[i]

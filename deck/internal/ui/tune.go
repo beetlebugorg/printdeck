@@ -21,10 +21,11 @@ func (a *App) drawTune(c *gfx.Canvas) {
 	// Tall: the file, the speed, flow and Z rows, the fan, and the temperatures. Wide: the file and
 	// the fan in the left column, under the display, which shows the temperatures (a tap on one
 	// changes it); the rows at the right.
-	var file, rows, zHint, fanRow, tHint, temps image.Rectangle
+	var file, rows, zHint, fanName, fanRow, tHint, temps image.Rectangle
 	if f.wide {
-		l := kit.Rows(f.aside(), 10, kit.Px(22), kit.Px(52), kit.Px(40))
-		file, fanRow, tHint = l[0], l[1], l[2]
+		// The left column is narrow: the name of the fan goes above its keys.
+		l := kit.Rows(f.aside(), 10, kit.Px(22), kit.Px(16), kit.Px(52), kit.Px(40))
+		file, fanName, fanRow, tHint = l[0], l[1], l[2], l[3]
 		r := kit.Rows(f.body(), 8, kit.Fr(1), kit.Px(20))
 		rows, zHint = r[0], r[1]
 	} else {
@@ -58,11 +59,9 @@ func (a *App) drawTune(c *gfx.Canvas) {
 		a.button(c, k[0], "−", raised, text, minus)
 		ro := kit.Inset(k[1], 0, 8, 0, 8)
 		window(c, ro)
-		if gfx.FinePrint() {
-			c.Text(kit.Inset(ro, 6, 0, 6, 0), value, gfx.Face(true, 22), lcdInk, gfx.Center)
-		} else {
-			c.Text(ro, value, gfx.Face(true, 22), lcdInk, gfx.Center)
-		}
+		// The value keeps 8 pixels from the sides of the window: a long value gets a smaller font.
+		in := kit.Inset(ro, 8, 0, 8, 0)
+		c.Text(in, value, shrinkFace(true, 22, 14, value, in.Dx()), lcdInk, gfx.Center)
 		a.button(c, k[2], "+", raised, text, plus)
 	}
 	setSpeed := func(v int) {
@@ -82,9 +81,15 @@ func (a *App) drawTune(c *gfx.Canvas) {
 
 	// Fan
 	a.region("Fan", fanRow)
-	fan := kit.Cols(fanRow, 0, kit.Px(66), kit.Fr(1))
-	label(c, fan[0], "Fan", gfx.Left)
-	for i, r := range kit.Cols(kit.Inset(fan[1], 0, 2, 0, 2), 8, kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
+	fanKeys := fanRow
+	if fanName.Empty() {
+		fan := kit.Cols(fanRow, 0, kit.Px(66), kit.Fr(1))
+		label(c, fan[0], "Fan", gfx.Left)
+		fanKeys = kit.Inset(fan[1], 0, 2, 0, 2)
+	} else {
+		label(c, fanName, "Fan", gfx.Left)
+	}
+	for i, r := range kit.Cols(fanKeys, 8, kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
 		p := []int{0, 50, 100}[i]
 		fill, fg := keyOff, text
 		if st.HasFan && math.Abs(st.Fan-float64(p)) < 1 {

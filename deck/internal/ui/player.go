@@ -298,6 +298,19 @@ func (a *App) drawStill(c *gfx.Canvas, r image.Rectangle, s lapseStill) {
 	c.Cover(kit.Center(pic, int(float64(b.Dx())*k), int(float64(b.Dy())*k)), s.still)
 }
 
+// playSign draws a play triangle in a dark disc in the middle of r, for a still that plays its
+// video at a tap.
+func (a *App) playSign(c *gfx.Canvas, r image.Rectangle) {
+	d := min(36, r.Dy()-16)
+	if d < 16 {
+		return
+	}
+	m := r.Min.Add(r.Size().Div(2))
+	c.RoundRect(image.Rect(m.X-d/2, m.Y-d/2, m.X+d/2, m.Y+d/2), d/2, lcd)
+	t := d / 4
+	c.Polygon([]image.Point{{m.X - t*2/3, m.Y - t}, {m.X + t, m.Y}, {m.X - t*2/3, m.Y + t}}, orange)
+}
+
 // stillWidth is the width of a picture of r in pixels of the screen of the deck.
 func (a *App) stillWidth(r image.Rectangle) int {
 	w := r.Dx()
