@@ -503,8 +503,9 @@ func motionLimits(ctx context.Context, conn *klippy.Conn) (l toolhead.Limits, mm
 }
 
 // machineSettings reads the settings of printer.cfg that Machine has: the nozzle, the travel of X
-// and Y, the pressure advance, the acceleration, the kinematics, the Z endstop, the bed mesh, and the park of the time lapse
-// (configfile settings, with the defaults of Klipper).
+// and Y, the pressure advance, the acceleration, the kinematics, the Z endstop, the bed mesh, the
+// points of bed_tilt, and the park of the time lapse (configfile settings, with the defaults of
+// Klipper).
 func machineSettings(ctx context.Context, conn *klippy.Conn) Machine {
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -535,11 +536,19 @@ func machineSettings(ctx context.Context, conn *klippy.Conn) Machine {
 	}
 	meshMin, hasMin := pair(s["bed_mesh"]["mesh_min"])
 	meshMax, hasMax := pair(s["bed_mesh"]["mesh_max"])
+	var tilt [][2]float64
+	if pts, ok := s["bed_tilt"]["points"].([]any); ok {
+		for _, pt := range pts {
+			if xy, ok := pair(pt); ok {
+				tilt = append(tilt, xy)
+			}
+		}
+	}
 	zEnd, hasZEnd := s["stepper_z"]["position_endstop"].(float64)
 	zMax, hasZMax := s["stepper_z"]["position_max"].(float64)
 	return Machine{
 		ZHomesMax: hasZEnd && hasZMax && zEnd >= zMax-1,
-		MeshMin:   meshMin, MeshMax: meshMax, HasMesh: hasMin && hasMax,
+		MeshMin:   meshMin, MeshMax: meshMax, HasMesh: hasMin && hasMax, TiltPoints: tilt,
 		Kinematics: kin, ParkX: parkX, HasParkX: hasParkX, ParkY: parkY, HasParkY: hasParkY,
 		NozzleDiameter: num(s["extruder"]["nozzle_diameter"]),
 		MinX:           num(s["stepper_x"]["position_min"]), MaxX: num(s["stepper_x"]["position_max"]),

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"image"
 	"image/jpeg"
 	"log"
 	"math"
@@ -63,11 +64,18 @@ func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend, configPath s
 	if l.lapse != nil {
 		l.lapse.OnLapseFrame = s.AddLapseFrame
 	}
-	// The picture of the model, from the model view of the print page: the whole part, with the
-	// part that is printed in color, so the page shows what the print makes. The version is the
-	// file position of the picture, so a new layer or move gives a new upload.
+	// The picture of the model on the build plate of the printer: the whole part, with the part
+	// that is printed in color, so the page shows what the print makes. The version is the file
+	// position of the picture, so a new layer or move gives a new upload.
+	pic, _ := pr.(interface {
+		SharePicture(st printer.State, b printer.Bed) image.Image
+	})
 	s.Model = func() ([]byte, uint64) {
-		img := pr.Preview()
+		if pic == nil {
+			return nil, 0
+		}
+		st := pr.State()
+		img := pic.SharePicture(st, printer.BedOf(pr.Machine(), l.model))
 		if img == nil {
 			return nil, 0
 		}
@@ -75,7 +83,7 @@ func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend, configPath s
 		if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 80}); err != nil {
 			return nil, 0
 		}
-		return buf.Bytes(), uint64(pr.State().FilePos)
+		return buf.Bytes(), uint64(st.FilePos)
 	}
 	s.Plan = pr.LayerTimes
 	// The display of the deck, as the touch screen shows it: the frames of the next 5 s, 4 a

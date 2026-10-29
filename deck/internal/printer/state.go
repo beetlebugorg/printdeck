@@ -192,6 +192,8 @@ type Machine struct {
 	// area, inside the bed.
 	MeshMin, MeshMax [2]float64
 	HasMesh          bool
+	// TiltPoints are the points of [bed_tilt]: the probe points over the washers of a TAZ.
+	TiltPoints [][2]float64
 	// ZHomesMax is true when the Z endstop is at the top of the travel (position_endstop of
 	// stepper_z at position_max), as on a TAZ: a homing of Z then moves the nozzle up, away from
 	// the bed.
