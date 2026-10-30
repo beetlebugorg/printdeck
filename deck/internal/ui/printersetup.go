@@ -97,6 +97,12 @@ func (a *App) drawPrinterSetup(c *gfx.Canvas, st printer.State) {
 	if !wide {
 		rows = append(rows, []func(image.Rectangle){simKey})
 	}
+	// A deck for a resin printer on the network: the printer steps of the setup.
+	if _, ok := a.printerSetup(); ok {
+		rows = append(rows, []func(image.Rectangle){func(r image.Rectangle) {
+			a.button(c, r, "Resin printer on the network", raised, text, a.OpenPrinterSetup)
+		}})
+	}
 	// Wi-Fi and help, and Software update: this screen has no pages.
 	if sk := a.systemKeyList(c); len(sk) > 0 {
 		rows = append(rows, sk)

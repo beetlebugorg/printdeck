@@ -104,3 +104,15 @@ func TestSetupResinPrinter(t *testing.T) {
 		t.Error("Back did not close the printer steps")
 	}
 }
+
+// The screen of a Klipper with no printer has the key of the printer steps, so a deck for a resin
+// printer gets out of it.
+func TestKlipperSetupHasResinKey(t *testing.T) {
+	a, _, _ := newPrintApp(printer.State{Err: "Klipper is not ready", NeedsSetup: true})
+	cv := gfx.New(a.Screen().W, a.Screen().H)
+	a.Setup = &printerHost{DemoSetup: &DemoSetup{}}
+	tapPart(t, a, cv, "Resin printer on the network")
+	if a.setup == nil || a.setup.step != setupPrinter || !a.setup.printerOnly {
+		t.Fatalf("the key did not open the printer steps: %+v", a.setup)
+	}
+}
