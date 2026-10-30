@@ -284,3 +284,54 @@ func uploadStallForTest(t *testing.T) func() {
 	chitu.UploadStall = 10 * time.Millisecond
 	return func() { chitu.UploadStall = old }
 }
+
+// With no print, a move of the plate shows in the message until the plate stops.
+func TestChiTuPlateMoves(t *testing.T) {
+	c := NewChiTu("127.0.0.1:1", "Phenom", &History{})
+	now := time.Now()
+	c.update(chitu.Status{Z: 0}, now)
+	c.update(chitu.Status{Z: -20}, now.Add(10*time.Second))
+	if m := c.State().Message; m != "The plate moves · Z -20.0" {
+		t.Errorf("moving: %q", m)
+	}
+	c.update(chitu.Status{Z: -20}, now.Add(20*time.Second))
+	if m := c.State().Message; m != "" {
+		t.Errorf("stopped: %q", m)
+	}
+}
+
+// A file on the card with another size than the copy of the deck is incomplete: the list says
+// so, a print of it sends the copy again, and ChiTuBox cannot start it.
+func TestChiTuIncompleteFile(t *testing.T) {
+	b, err := chitu.NewFakeBoard("127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer b.Close()
+	b.Set(func(b *chitu.FakeBoard) { b.Files = []string{"plate.cbddlp 1000"} })
+	c := NewChiTu(b.Addr(), "Phenom", &History{})
+	c.UploadDir = t.TempDir()
+	os.WriteFile(filepath.Join(c.UploadDir, "plate.cbddlp"), bytes.Repeat([]byte("x"), 5000), 0o644)
+	c.LoadFiles()
+	if fs := c.Files(); len(fs) != 1 || fs[0].Name != "INCOMPLETE plate.cbddlp (1 KB of 5 KB)" || fs[0].Path != "plate.cbddlp" {
+		t.Fatalf("files %+v", fs)
+	}
+	if a := c.RequestStart("plate.cbddlp"); !strings.HasPrefix(a, "Error:") {
+		t.Errorf("a start of an incomplete file: %q", a)
+	}
+	c.PrintFile("plate.cbddlp")
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) && c.State().Upload.Result == "" {
+		time.Sleep(20 * time.Millisecond)
+	}
+	for _, q := range b.Log() {
+		if strings.HasPrefix(q, "M6030") {
+			t.Errorf("the board got %q", q)
+		}
+	}
+	b.Set(func(b *chitu.FakeBoard) {
+		if len(b.Uploaded["plate.cbddlp"]) != 5000 {
+			t.Errorf("the board got %d bytes of the copy", len(b.Uploaded["plate.cbddlp"]))
+		}
+	})
+}

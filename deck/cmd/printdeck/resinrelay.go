@@ -28,7 +28,8 @@ func startChiTuRelay(ctx context.Context, stateDir string, pr printerBackend, po
 		log.Printf("chitu relay: %v", err)
 		return
 	}
-	// ChituManager sends about 500 packets a second with no wait.
+	// The relay keeps the uploads, so the board gets only the queries of ChituManager: the deck
+	// goes on with its own queries (no OnActive). ChituManager sends its data packets with no wait.
 	if uc, ok := conn.(*net.UDPConn); ok {
 		uc.SetReadBuffer(4 << 20)
 	}
@@ -37,6 +38,6 @@ func startChiTuRelay(ctx context.Context, stateDir string, pr printerBackend, po
 	}
 	name, _ := os.Hostname()
 	r := &chitu.Relay{Conn: conn, Board: c.Client.Addr, Info: c.RelayInfo, Name: name,
-		Dir: c.UploadDir, OnUpload: c.SaveUpload, OnReceive: c.Received, OnActive: c.Hold, Busy: c.Busy, Start: c.RequestStart}
+		Dir: c.UploadDir, OnUpload: c.SaveUpload, OnReceive: c.Received, Busy: c.Busy, Start: c.RequestStart}
 	go r.Run(ctx)
 }

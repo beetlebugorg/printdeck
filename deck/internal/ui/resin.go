@@ -78,11 +78,16 @@ func (a *App) resinKeys(c *gfx.Canvas, keys image.Rectangle, st printer.State) {
 	}
 }
 
-// resinView draws the window of a resin print: the height of the plate and the share of the file
-// that the printer read. The deck has no copy of the file, so the window has no model.
+// resinView draws the window of a resin print: the preview of the file when the deck has a copy
+// of it, the height of the plate, and the share of the file that the printer read.
 func (a *App) resinView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 	window(c, box)
 	a.region("Print", box)
+	if img := a.Printer.FilePicture(printer.File{Path: st.Title}, ""); img != nil && box.Dy() > 260 {
+		pic, rest := kit.Rows(box, 0, kit.Fr(1), kit.Px(200))[0], kit.Rows(box, 0, kit.Fr(1), kit.Px(200))[1]
+		c.Cover(kit.Inset(pic, 16, 16, 16, 0), img)
+		box = rest
+	}
 	in := kit.Inset(box, 24, 24, 24, 24)
 	rows := kit.Rows(in, 10, kit.Fr(1), kit.Px(64), kit.Px(28), kit.Px(14), kit.Px(28), kit.Fr(1))
 	big := gfx.Face(true, 56)
@@ -94,7 +99,9 @@ func (a *App) resinView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 	if w := int(float64(bar.Dx()) * max(0, min(1, st.Completion/100))); w > 0 {
 		c.RoundRect(image.Rect(bar.Min.X, bar.Min.Y, bar.Min.X+w, bar.Max.Y), 3, lcdInk)
 	}
-	c.Text(rows[4], "No model: the deck has no copy of the file.", gfx.Face(false, 15), lcdDim, gfx.Center)
+	if a.Printer.FilePicture(printer.File{Path: st.Title}, "") == nil {
+		c.Text(rows[4], "No preview: the deck has no copy of the file.", gfx.Face(false, 15), lcdDim, gfx.Center)
+	}
 }
 
 // drawResinOffline is the screen of a resin printer that does not answer: "Connecting" at the start

@@ -42,6 +42,8 @@ type ChiTu struct {
 	listed     bool         // the deck read the files once
 	st         State
 	last       chitu.Status // the last answer to M4000
+	lastAt     time.Time    // the time of last
+	moved      bool         // the message says that the plate moves
 	misses     int          // the queries with no answer since the last answer
 	path       string       // the key of the print now in the history ("" with no print)
 	started    time.Time
@@ -67,7 +69,7 @@ var ErrNotTested = errors.New("this control of the printer is not tested yet")
 // The times between two queries of the state: during a print, with no print, and with no answer.
 const (
 	chituPrintingEvery = 5 * time.Second
-	chituIdleEvery     = time.Minute
+	chituIdleEvery     = 10 * time.Second
 	chituOfflineEvery  = 10 * time.Second
 	chituMisses        = 3 // the queries with no answer before the printer is offline
 )
@@ -150,6 +152,7 @@ func (c *ChiTu) poll(ctx context.Context, now time.Time) time.Duration {
 func (c *ChiTu) update(s chitu.Status, now time.Time) {
 	was := c.last
 	c.last = s
+	defer func() { c.lastAt = now }()
 	st := &c.st
 	st.Reachable, st.Connected, st.Err = true, true, ""
 	st.Z, st.HasZ = s.Z, true
@@ -200,6 +203,15 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 	st.FilePath, st.File, st.Title, st.FileSize, st.FilePos = "", "", "", 0, 0
 	st.Completion, st.Elapsed, st.PrintDuration, st.HasTimeLeft = 0, 0, 0, false
 	st.Text, st.Activity = "Ready", "Ready"
+	// The board reports no print, but the plate moves: a start on the screen of the printer, or a
+	// move on that screen. The panel says so, so the deck never looks idle while the plate moves.
+	moving := was.Z != s.Z && c.lastAt.After(now.Add(-time.Minute))
+	switch {
+	case moving:
+		st.Message, c.moved = fmt.Sprintf("The plate moves · Z %.1f", s.Z), true
+	case c.moved:
+		st.Message, c.moved = "", false
+	}
 }
 
 // printName is the name of the print now for the screens: the name of the file on the card with
@@ -248,9 +260,45 @@ func (c *ChiTu) Files() []File {
 	defer c.mu.Unlock()
 	out := make([]File, 0, len(c.files))
 	for _, f := range c.files {
-		out = append(out, File{Path: f.Name, Name: f.Name})
+		name := f.Name
+		if have, ok := c.copySize(f.Name); ok && have != f.Size {
+			name = fmt.Sprintf("INCOMPLETE %s (%s of %s)", f.Name, mbText(f.Size), mbText(have))
+		}
+		out = append(out, File{Path: f.Name, Name: name})
 	}
 	return out
+}
+
+// copySize returns the size of the copy of the file name in UploadDir. ok is false with no copy.
+func (c *ChiTu) copySize(name string) (int64, bool) {
+	if c.UploadDir == "" {
+		return 0, false
+	}
+	fi, err := os.Stat(filepath.Join(c.UploadDir, filepath.Base(name)))
+	if err != nil || !fi.Mode().IsRegular() {
+		return 0, false
+	}
+	return fi.Size(), true
+}
+
+// mbText is a size in MB, or in KB under 1 MB.
+func mbText(n int64) string {
+	if n < 1e6 {
+		return fmt.Sprintf("%d KB", n/1000)
+	}
+	return fmt.Sprintf("%.1f MB", float64(n)/1e6)
+}
+
+// incomplete reports that the card has the file name with another size than the copy of the deck.
+// The caller holds mu.
+func (c *ChiTu) incomplete(name string) bool {
+	for _, f := range c.files {
+		if f.Name == name {
+			have, ok := c.copySize(name)
+			return ok && have != f.Size
+		}
+	}
+	return false
 }
 
 // State returns the state of the printer.
@@ -358,6 +406,15 @@ func (c *ChiTu) EmergencyStop() error  { return ErrNotTested }
 // PrintFile starts the print of the file on the card of the board (M6030). An error shows in the
 // panel.
 func (c *ChiTu) PrintFile(path string) {
+	c.mu.Lock()
+	bad := c.incomplete(path)
+	c.mu.Unlock()
+	if bad {
+		// The card has a part of the file: the deck sends its copy again, and starts no print.
+		c.showAnswer(path + " is incomplete on the printer. The deck sends it again: print it after that.")
+		go c.SendFile(filepath.Join(c.UploadDir, filepath.Base(path)))
+		return
+	}
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -711,10 +768,13 @@ func (c *ChiTu) RequestStart(name string) string {
 		log.Printf("chitu: the print of %s starts after its upload", name)
 		return "ok"
 	}
-	busy := c.sending != ""
+	busy, bad := c.sending != "", c.incomplete(name)
 	c.mu.Unlock()
 	if busy {
 		return "Error:The deck sends a file to the printer"
+	}
+	if bad {
+		return "Error:The file on the printer is incomplete"
 	}
 	return c.startNow(name)
 }
