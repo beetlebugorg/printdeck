@@ -191,15 +191,15 @@ func TestChiTuUploadQueue(t *testing.T) {
 	c := NewChiTu(b.Addr(), "Phenom", &History{})
 	c.UploadDir = t.TempDir()
 	done := make(chan bool)
-	for _, n := range []string{"a.cbddlp", "b.cbddlp"} {
+	for i, n := range []string{"a.cbddlp", "b.cbddlp"} {
 		tmp := filepath.Join(c.UploadDir, ".upload-"+n)
-		os.WriteFile(tmp, bytes.Repeat([]byte(n), 3000), 0o644)
+		os.WriteFile(tmp, bytes.Repeat([]byte(n), 3000+i*10), 0o644)
 		go func() { c.SaveUpload(n, tmp); done <- true }()
 	}
 	<-done
 	<-done
 	b.Set(func(b *chitu.FakeBoard) {
-		if len(b.Uploaded["a.cbddlp"]) != 24000 || len(b.Uploaded["b.cbddlp"]) != 24000 {
+		if len(b.Uploaded["a.cbddlp"]) != 24000 || len(b.Uploaded["b.cbddlp"]) != 24080 {
 			t.Errorf("the board got %d and %d bytes", len(b.Uploaded["a.cbddlp"]), len(b.Uploaded["b.cbddlp"]))
 		}
 	})
