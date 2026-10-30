@@ -18,6 +18,7 @@ import (
 
 	"printdeck/internal/camera"
 	"printdeck/internal/hostmetrics"
+	"printdeck/internal/printer"
 	"printdeck/internal/remote"
 	"printdeck/internal/system"
 	"printdeck/internal/timelapse"
@@ -109,7 +110,7 @@ func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend
 		switch {
 		case !up.Status().HasStaged:
 			renderSystem(w, klippyLog, apiKey, "No update waits for the restart.", true)
-		case pr != nil && pr.State().Busy():
+		case pr != nil && pr.State().Busy() && !runsOnPrinter(pr):
 			renderSystem(w, klippyLog, apiKey, "A print runs. The Printdeck restarts into the update after the print.", true)
 		default:
 			if err := up.reboot("Restart now on the system page", time.Now()); err != nil {
@@ -598,4 +599,12 @@ func registerTimelapse(mux *http.ServeMux, rs *remote.Server) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Write(f.JPEG())
 	}))
+}
+
+// runsOnPrinter reports that a print of the printer pr runs on the printer itself, with no part
+// on the Pi: a ChiTu resin printer. The Pi can restart during such a print, and the deck finds
+// the print again (printer.ChiTu.PrintStore).
+func runsOnPrinter(pr printerBackend) bool {
+	_, ok := pr.(*printer.ChiTu)
+	return ok
 }

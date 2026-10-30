@@ -66,6 +66,7 @@ type ChiTu struct {
 	startAfter  string                   // the file to print when its upload ends, or ""
 	stopSend    context.CancelFunc       // stops the upload now (CancelSend)
 	nextProject string                   // the project of the next print (SetNextProject)
+	relisted    bool                     // the deck read the list of the card again for the print now
 	layerKey    string                   // the file and the layer of layerImg
 	layerImg    image.Image              // the last picture of LayerPicture
 	sendMu      sync.Mutex               // held for each upload to the board, so the uploads go one at a time
@@ -182,6 +183,7 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 				c.resume(s)
 			}
 			c.savePrint(s)
+			c.relisted = false
 			if c.nextProject != "" && c.Hist != nil {
 				c.Hist.SetNextProject(c.path, c.nextProject)
 				c.nextProject = ""
@@ -189,6 +191,12 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 		}
 		st.Printing, st.Paused = true, s.Flag == 1
 		st.FilePath, st.File, st.Title = c.path, c.printFile(), c.printName()
+		if st.File == c.path && !c.relisted {
+			// No file of the list has the size of the print: the list is old, for example from
+			// before a change of the drive. The next answer has the new list.
+			c.relisted = true
+			go c.LoadFiles()
+		}
 		st.FileSize, st.FilePos = s.Size, s.Read
 		st.Completion = s.Progress() * 100
 		// The layers from the header of the copy of the file: the board reads the layers in order,
