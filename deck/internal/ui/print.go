@@ -253,6 +253,10 @@ func (a *App) jobAreas() (keys, box image.Rectangle) {
 
 // drawJob is the screen of a running print: the status display, the keys, and the model view.
 func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
+	if a.resin() {
+		a.drawResinJob(c, st)
+		return
+	}
 	pr := a.Printer
 	if W > H {
 		// Wide: the print is the Main page. The data and the model, and the keys at the bottom:

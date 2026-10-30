@@ -37,7 +37,9 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 	if st.Fan > 0 {
 		fan = fmt.Sprintf("%.0f%%", st.Fan)
 	}
-	if st.Reachable {
+	if a.resin() {
+		resinReadouts(c, cells, st)
+	} else if st.Reachable {
 		readout(c, cells[0], "NOZZLE", fmt.Sprintf("%.0f°", st.Tool), targetText(st.ToolTarget), st.ToolPower, st.ToolTarget > 0)
 		readout(c, cells[1], "BED", fmt.Sprintf("%.0f°", st.Bed), targetText(st.BedTarget), st.BedPower, st.BedTarget > 0)
 		readout(c, cells[2], "FAN", fan, "", 0, false)
@@ -90,10 +92,16 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 		}
 	}
 
+	a.region("Status", image.Rect(r.Min.X, rows[2].Min.Y, r.Max.X, r.Max.Y))
+	if a.resin() {
+		a.region("Plate", cells[0])
+		a.region("Time", cells[1])
+		a.region("Left", cells[2])
+		return
+	}
 	a.region("Nozzle", cells[0])
 	a.region("Bed", cells[1])
 	a.region("Fan", cells[2])
-	a.region("Status", image.Rect(r.Min.X, rows[2].Min.Y, r.Max.X, r.Max.Y))
 	if !st.Reachable {
 		return
 	}

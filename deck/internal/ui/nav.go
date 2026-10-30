@@ -29,12 +29,20 @@ type navKey struct {
 var navKeys = []navKey{{"Main", 0}, {"Files", pageFiles}, {"Filament", pageFilament},
 	{"Toolhead", pageMove}, {"Machine", pageMachine}}
 
-// keys is the key panel of the app: navKeys, and Camera on a deck with a camera.
+// resinNavKeys are the keys of a resin printer: it has no filament and no toolhead.
+var resinNavKeys = []navKey{{"Main", 0}, {"Files", pageFiles}, {"Machine", pageMachine}}
+
+// keys is the key panel of the app: navKeys (resinNavKeys for a resin printer), and Camera on a
+// deck with a camera.
 func (a *App) keys() []navKey {
-	if a.Camera == nil {
-		return navKeys
+	keys := navKeys
+	if a.resin() {
+		keys = resinNavKeys
 	}
-	return append(navKeys[:len(navKeys):len(navKeys)], navKey{"Camera", pageCamera})
+	if a.Camera == nil {
+		return keys
+	}
+	return append(keys[:len(keys):len(keys)], navKey{"Camera", pageCamera})
 }
 
 // actH is the height of the row of actions at the bottom of a page.

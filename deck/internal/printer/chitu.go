@@ -7,6 +7,7 @@ import (
 	"image"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,6 +28,7 @@ type ChiTu struct {
 	Name   string // the name of the printer, for the screens
 
 	mu      sync.Mutex
+	info    chitu.Info // the answer to M99999, once
 	st      State
 	last    chitu.Status // the last answer to M4000
 	misses  int          // the queries with no answer since the last answer
@@ -77,8 +79,21 @@ func (c *ChiTu) Run(ctx context.Context, notify func()) {
 	}
 }
 
-// poll sends one M4000 and updates the state. It returns the time to the next query.
+// poll sends one M4000 and updates the state. It returns the time to the next query. It asks for
+// the board (M99999) until the board answers once.
 func (c *ChiTu) poll(ctx context.Context, now time.Time) time.Duration {
+	c.mu.Lock()
+	known := c.info.Name != ""
+	c.mu.Unlock()
+	if !known {
+		qctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+		if in, err := c.Client.Info(qctx); err == nil {
+			c.mu.Lock()
+			c.info = in
+			c.mu.Unlock()
+		}
+		cancel()
+	}
 	qctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	s, err := c.Client.Status(qctx)
 	cancel()
@@ -120,6 +135,7 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 		st.FileSize, st.FilePos = s.Size, s.Read
 		st.Completion = s.Progress() * 100
 		st.Elapsed = time.Duration(s.Seconds) * time.Second
+		st.PrintDuration = st.Elapsed // the board gives no time of its pauses
 		st.TimeLeft, st.HasTimeLeft = 0, false
 		if p := s.Progress(); p > 0.02 && s.Seconds > 0 {
 			st.TimeLeft, st.HasTimeLeft = time.Duration(float64(s.Seconds)*(1-p)/p)*time.Second, true
@@ -153,7 +169,7 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 	}
 	st.Printing, st.Paused = false, false
 	st.FilePath, st.File, st.Title, st.FileSize, st.FilePos = "", "", "", 0, 0
-	st.Completion, st.Elapsed, st.HasTimeLeft = 0, 0, false
+	st.Completion, st.Elapsed, st.PrintDuration, st.HasTimeLeft = 0, 0, 0, false
 	st.Text, st.Activity = "Ready", "Ready"
 }
 
@@ -170,8 +186,16 @@ func (c *ChiTu) State() State {
 	return c.st
 }
 
-// Machine returns what the printer has: a resin printer.
-func (c *ChiTu) Machine() Machine { return Machine{Process: ProcessResin} }
+// Machine returns what the printer has: a resin printer, and its board when it answered.
+func (c *ChiTu) Machine() Machine {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	m := Machine{Process: ProcessResin}
+	if c.info.Name != "" {
+		m.Board = strings.TrimSpace(c.info.Name + " " + c.info.Version)
+	}
+	return m
+}
 
 // History and projects, as the Klipper backend.
 

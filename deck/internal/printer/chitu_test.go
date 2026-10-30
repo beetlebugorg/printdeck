@@ -81,6 +81,10 @@ func TestChiTuBackend(t *testing.T) {
 		t.Error("back after an answer")
 	}
 
+	if m := c.Machine(); m.Board != "CBD V1.4.1" {
+		t.Errorf("the board %q", m.Board)
+	}
+
 	// The controls send nothing to the board.
 	c.Pause()
 	c.Cancel()
@@ -89,7 +93,7 @@ func TestChiTuBackend(t *testing.T) {
 		t.Errorf("a command: %v", err)
 	}
 	for _, q := range b.Log() {
-		if q != "M4000" {
+		if q != "M4000" && q != "M99999" {
 			t.Errorf("the backend sent %q", q)
 		}
 	}

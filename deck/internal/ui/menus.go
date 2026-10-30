@@ -459,7 +459,9 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 	f := a.navPage(c, "Machine")
 	mach := pr.Machine()
 	b := backRect(f.head)
-	a.printerKey(c, b.Sub(image.Pt(b.Dx()+12, 0)), "Restart…", raised, text, a.askRestart)
+	if !a.resin() {
+		a.printerKey(c, b.Sub(image.Pt(b.Dx()+12, 0)), "Restart…", raised, text, a.askRestart)
+	}
 
 	var info, grid image.Rectangle
 	if f.wide {
@@ -494,9 +496,13 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 	keys := []menuItem{
 		{"Settings", "Theme, clock, cloud", dim, func() { a.open(pageSettings) }},
 		{"Prints", printsLine, dim, func() { a.open(pageStats) }},
-		{"Maintenance", maint, maintCol, func() { a.open(pageMaintenance) }},
-		{"Macros", macrosLine(len(mach.Macros)), dim, func() { a.open(pageMacros) }},
-		{"Console", "G-code", dim, func() { a.open(pageConsole) }},
+	}
+	if !a.resin() {
+		// A resin printer has no maintenance of a FDM printer, no macros and no G-code console.
+		keys = append(keys,
+			menuItem{"Maintenance", maint, maintCol, func() { a.open(pageMaintenance) }},
+			menuItem{"Macros", macrosLine(len(mach.Macros)), dim, func() { a.open(pageMacros) }},
+			menuItem{"Console", "G-code", dim, func() { a.open(pageConsole) }})
 	}
 	if a.Updater != nil {
 		line, warn := updateLine(update, st.Busy())
@@ -546,6 +552,9 @@ func (a *App) machineInfo(c *gfx.Canvas, r image.Rectangle, st printer.State, ma
 	}
 	if v := shortVersion(mach.KlipperVersion); v != "" {
 		top = append(top, "KLIPPER "+v)
+	}
+	if mach.Board != "" {
+		top = append(top, "BOARD "+mach.Board)
 	}
 	if ip != "" {
 		bottom = append(bottom, ip)

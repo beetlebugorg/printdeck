@@ -54,7 +54,11 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 	label(c, countR, countText, gfx.Left)
 	a.textRegion("Count", countR, gfx.Face(true, 14), strings.ToUpper(countText))
 	if len(files) == 0 {
-		noItems(c, area, "No files yet", "Send a file from the slicer,", "or upload it in the browser.")
+		if a.resin() {
+			noItems(c, area, "No files here yet", "Print a file from the screen", "of the printer.")
+		} else {
+			noItems(c, area, "No files yet", "Send a file from the slicer,", "or upload it in the browser.")
+		}
 		return
 	}
 	open := func(i int) {

@@ -264,6 +264,11 @@ func (a *App) mainKey(c *gfx.Canvas, st printer.State, r image.Rectangle) {
 // homeKeys draws the main key of the home screen in main (Print a file, or Files during a print),
 // and Preheat and Cool down in heat.
 func (a *App) homeKeys(c *gfx.Canvas, st printer.State, main, heat image.Rectangle) {
+	if a.resin() {
+		// A resin printer has no heaters: the main key has the row of the heaters too.
+		a.mainKey(c, st, main.Union(heat))
+		return
+	}
 	pr := a.Printer
 	m := a.loaded()
 	pre := fmt.Sprintf("Preheat %d/%d", m.Tool, m.Bed)
