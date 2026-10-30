@@ -2,3 +2,6 @@
 build/
 lineart/node_modules/
 __pycache__/
+
+# The Pi 5 STEP model. ref/raspberrypi/RaspberryPi5-step.zip has the same file.
+ref/raspberrypi/rpi-5b_no_graphics.step
