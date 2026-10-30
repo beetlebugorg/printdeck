@@ -143,6 +143,9 @@ func drawTiles(prints []wire.ProjectPrint, href func(wire.ProjectPrint) string) 
 		lines := el("div", "tfacts", "")
 		lines.Call("appendChild", el("div", "", shortDate(p.Ended)))
 		lines.Call("appendChild", el("div", "", strings.Join(facts, " · ")))
+		if name := tilePrinters[p.PrinterID]; name != "" {
+			lines.Call("appendChild", el("div", "", name))
+		}
 		body.Call("appendChild", lines)
 		tile.Call("appendChild", body)
 		box.Call("appendChild", tile)

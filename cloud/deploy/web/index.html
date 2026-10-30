@@ -61,6 +61,11 @@
     </form>
     <div class="cards" id="projects"></div>
     <p class="dim" id="noProjects" hidden>No projects yet.</p>
+    <div class="card" id="printersCard" hidden>
+      <h2>Printers</h2>
+      <p class="small dim">The decks add their printers when they connect to the service. Each printer adds its prints to the projects.</p>
+      <ul class="members" id="printersList"></ul>
+    </div>
   </section>
 
   <!-- A project that is not there, or not one of the projects of the person -->
@@ -85,6 +90,7 @@
         <div class="cell"><div class="lab">Filament</div><div class="big" id="stGrams">0 g</div><div class="sub" id="stGramsSub"></div></div>
       </div>
     </section>
+    <div class="chips" id="pPrinters" role="group" aria-label="The prints of one printer" hidden></div>
 
     <h2 class="section" id="liveHead" hidden>Printing now</h2>
     <div class="tiles" id="live"></div>

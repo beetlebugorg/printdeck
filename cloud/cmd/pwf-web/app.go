@@ -311,6 +311,7 @@ func (a *app) showHome() {
 	setHidden("noProjects", len(list) > 0)
 	setHidden("newForm", a.kind != "owner")
 	show("vHome")
+	a.drawPrinterList()
 }
 
 func summaryLine(p wire.ProjectSummary) string {
@@ -426,8 +427,7 @@ func (a *app) pollProject(id string, gen int) {
 		old := a.view
 		a.view = &v
 		if printIDs(old.Prints) != printIDs(v.Prints) {
-			drawStats(v.Prints)
-			drawTiles(v.Prints, func(p wire.ProjectPrint) string { return projectPath(v.Slug, p.N) })
+			drawPrints(&v, func(p wire.ProjectPrint) string { return projectPath(v.Slug, p.N) })
 		}
 		if photoIDs(old.Photos) != photoIDs(v.Photos) {
 			a.drawPhotos()
@@ -510,7 +510,6 @@ func (a *app) drawProject() {
 	setText("pNote", v.Note)
 	setHidden("pNote", v.Note == "")
 	setText("pMeta", "A project of "+v.Owner)
-	drawStats(v.Prints)
 	setHidden("backLink", !v.IsOwner)
 	setHidden("ownerTools", !v.IsOwner)
 	setHidden("dangerZone", !v.IsOwner)
@@ -548,7 +547,7 @@ func (a *app) drawProject() {
 	setHidden("publicBox", !on)
 	setText("publicLink", v.Public)
 	a.drawPhotos()
-	drawTiles(v.Prints, func(p wire.ProjectPrint) string { return projectPath(v.Slug, p.N) })
+	drawPrints(v, func(p wire.ProjectPrint) string { return projectPath(v.Slug, p.N) })
 	drawLive(v.Live)
 	if len(v.Live) > 0 {
 		setHidden("noPrints", true)
@@ -743,14 +742,13 @@ func runPublic() {
 	setText("pNote", v.Note)
 	setHidden("pNote", v.Note == "")
 	setText("pMeta", "A project of "+v.Owner)
-	drawStats(v.Prints)
 	box := byID("photos")
 	for _, ph := range v.Photos {
 		box.Call("appendChild", photoFigure(ph.URL, ph.Small, ph.By))
 	}
 	setHidden("photosCard", len(v.Photos) == 0)
 	printPath := func(p wire.ProjectPrint) string { return base + strconv.Itoa(p.N) }
-	drawTiles(v.Prints, printPath)
+	drawPrints(&v, printPath)
 	byID("prBack").Set("href", home)
 	setText("prBack", v.Name)
 	setHidden("prShare", js.Global().Get("navigator").Get("share").IsUndefined())

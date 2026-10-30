@@ -187,17 +187,20 @@ The change:
   printer.
 - **The projects are at the service.** Each deck reads the list of the projects (`GET
   /api/v1/projects`) at its start and each 10 minutes. The project choice of the deck and the list
-  for the Cura plugin are this list. A new project on a deck goes to the service first, and the
-  deck uses its ID. A record of the history keeps the ID of its project, with the name for the
-  screens. The records of today with a name only get the ID of the project with that name.
+  for the Cura plugin show this list after the projects of the history of the deck. A record of
+  the history keeps the name of its project, and `cloud-projects.json` maps the name to the ID at
+  the service. A name that is at the service maps to that project (the same letters, in any case
+  when no name is the same), so the deck makes no second project. A rename at the service is a new
+  name for the deck: the old records keep the old name and its ID.
 - **Each print and each live tile has its printer.** A print has the ID of its printer. The live
   tile is a file for each printer (`x/<project>/live/<printer>.json`), so two printers of one deck
   show two live prints in one project.
 - **The project pages show the printers.** A project shows the printers of its prints, with a
   filter of the prints by printer, the numbers of each printer (prints, time, filament or resin),
   and a live tile for each printer that prints for the project.
-- **A page of the printers for the owner.** Each printer, its deck, its state (idle, printing,
-  offline), and the print and the project of a printer that prints.
+- **The printers for the owner.** The home page lists each printer, with its process and its
+  model. The state of each printer (idle, printing, offline) and the print that it prints come
+  later.
 
 ### 7. Printers that come later
 

@@ -104,3 +104,6 @@ footer { display: grid; gap: var(--s1); margin-top: var(--s4); padding-top: var(
   .pair:not(:has(> [hidden])) .model-row img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 }
 .model-row:has(#chartBox[hidden]) { grid-template-columns: minmax(0, 1fr); }
+/* The row of the printers of a project, over its prints. */
+.chips { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.chips button { min-height: 36px; padding: 0 var(--s4); border-radius: 999px; font-size: 14px; }
