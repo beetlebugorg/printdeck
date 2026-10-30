@@ -1,0 +1,151 @@
+package api
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"sort"
+	"strings"
+
+	"printdeck/internal/cloud"
+)
+
+// The printers of the owner: printers/<id>.json. Each deck registers the printers that it drives
+// or watches, with a key of its own for each printer. The prints and the live tiles of the
+// projects have the ID of their printer, so one project has the prints of many printers.
+
+// MaxPrinters is the most printers at the service.
+const MaxPrinters = 64
+
+func printerKey(id string) string { return "printers/" + id + ".json" }
+
+// printers returns the printers at the service, sorted by name.
+func (s *Server) printers(ctx context.Context) ([]cloud.Printer, error) {
+	keys, err := s.Store.List(ctx, "printers/")
+	if err != nil {
+		return nil, err
+	}
+	out := []cloud.Printer{}
+	for _, k := range keys {
+		if !strings.HasSuffix(k, ".json") {
+			continue
+		}
+		b, _, err := s.Store.Get(ctx, k)
+		if err != nil {
+			continue
+		}
+		var p cloud.Printer
+		if json.Unmarshal(b, &p) == nil && p.ID != "" {
+			out = append(out, p)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, nil
+}
+
+// loadPrinter returns the printer id, or ErrNotFound.
+func (s *Server) loadPrinter(ctx context.Context, id string) (*cloud.Printer, error) {
+	if !validID(id) {
+		return nil, ErrNotFound
+	}
+	b, _, err := s.Store.Get(ctx, printerKey(id))
+	if err != nil {
+		return nil, err
+	}
+	var p cloud.Printer
+	if err := json.Unmarshal(b, &p); err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
+// printerOf returns the ID of the printer id when the deck d reports it, or "".
+func (s *Server) printerOf(ctx context.Context, d *Deck, id string) string {
+	if id == "" {
+		return ""
+	}
+	p, err := s.loadPrinter(ctx, id)
+	if err != nil || p.Deck != d.ID {
+		return ""
+	}
+	return p.ID
+}
+
+// registerPrinter adds the printer of the deck d with the key of the request, or changes it.
+func (s *Server) registerPrinter(ctx context.Context, d *Deck, in cloud.PrinterRequest) (any, error) {
+	in.Key, in.Name, in.Model = clip(in.Key, 40), clip(in.Name, 64), clip(in.Model, 64)
+	if in.Key == "" || in.Name == "" {
+		return nil, fail(http.StatusBadRequest, "a printer needs a key and a name")
+	}
+	switch in.Process {
+	case "fdm", "resin":
+	default:
+		return nil, fail(http.StatusBadRequest, "the process of a printer is fdm or resin")
+	}
+	all, err := s.printers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	p := cloud.Printer{Deck: d.ID, Key: in.Key, Added: s.now().UTC()}
+	for _, o := range all {
+		if o.Deck == d.ID && o.Key == in.Key {
+			p = o
+		}
+	}
+	if p.ID == "" {
+		if len(all) >= MaxPrinters {
+			return nil, fail(http.StatusBadRequest, "the service has too many printers")
+		}
+		p.ID = newID(8)
+	}
+	p.Name, p.Process, p.Model = in.Name, in.Process, in.Model
+	if err := s.putJSON(ctx, printerKey(p.ID), p); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+// routePrinters serves /api/v1/printers: a deck registers a printer (POST), and the owner or a deck
+// lists the printers (GET).
+func (s *Server) routePrinters(ctx context.Context, r *http.Request, body []byte) (any, error) {
+	w, err := s.whoFor(ctx, r, body, "")
+	if err != nil {
+		return nil, err
+	}
+	if err := ownerOnly(w); err != nil {
+		return nil, err
+	}
+	switch r.Method {
+	case http.MethodGet:
+		return s.printers(ctx)
+	case http.MethodPost:
+		if w.deck == nil {
+			return nil, fail(http.StatusUnauthorized, "only a deck registers a printer")
+		}
+		var in cloud.PrinterRequest
+		if json.Unmarshal(body, &in) != nil {
+			return nil, fail(http.StatusBadRequest, "bad JSON")
+		}
+		return s.registerPrinter(ctx, w.deck, in)
+	}
+	return nil, fail(http.StatusMethodNotAllowed, "no such request")
+}
+
+// printersOf returns the printers with the IDs ids, for a project view. public leaves out the deck
+// and the key.
+func (s *Server) printersOf(ctx context.Context, ids map[string]bool, public bool) []cloud.Printer {
+	var out []cloud.Printer
+	for id := range ids {
+		p, err := s.loadPrinter(ctx, id)
+		if errors.Is(err, ErrNotFound) || err != nil {
+			continue
+		}
+		if public {
+			p.Deck, p.Key = "", ""
+		}
+		out = append(out, *p)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}

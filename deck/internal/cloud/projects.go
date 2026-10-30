@@ -31,6 +31,8 @@ type (
 	PublicRequest  = wire.PublicRequest
 	PublicReply    = wire.PublicReply
 	NameReply      = wire.NameReply
+	Printer        = wire.Printer
+	PrinterRequest = wire.PrinterRequest
 	PrintRequest   = wire.PrintRequest
 	PrintReply     = wire.PrintReply
 	PrintDone      = wire.PrintDone
@@ -130,4 +132,25 @@ func (c *Client) SendLive(ctx context.Context, id *Identity, project string, in 
 // EndLive tells the project that the deck has no print in it now.
 func (c *Client) EndLive(ctx context.Context, id *Identity, project string) error {
 	return c.Do(ctx, id, http.MethodDelete, "/api/v1/projects/"+project+"/live", nil, nil)
+}
+
+// EndPrinterLive tells the project that the printer (an ID of RegisterPrinter) has no print in it
+// now.
+func (c *Client) EndPrinterLive(ctx context.Context, id *Identity, project, printer string) error {
+	return c.Do(ctx, id, http.MethodDelete, "/api/v1/projects/"+project+"/live/"+printer, nil, nil)
+}
+
+// RegisterPrinter adds a printer of the deck at the service, or changes the printer with the same
+// key. The reply has the ID of the printer.
+func (c *Client) RegisterPrinter(ctx context.Context, id *Identity, in PrinterRequest) (Printer, error) {
+	var out Printer
+	err := c.Do(ctx, id, http.MethodPost, "/api/v1/printers", in, &out)
+	return out, err
+}
+
+// Projects returns the projects at the service: the projects of all the printers of the owner.
+func (c *Client) Projects(ctx context.Context, id *Identity) ([]ProjectSummary, error) {
+	var out []ProjectSummary
+	err := c.Do(ctx, id, http.MethodGet, "/api/v1/projects", nil, &out)
+	return out, err
 }

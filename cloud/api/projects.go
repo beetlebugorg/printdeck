@@ -329,10 +329,15 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 		}
 		var in cloud.PrintDone
 		json.Unmarshal(body, &in)
-		if err := s.printDone(ctx, id, strings.TrimSuffix(sub, "/done"), in); err != nil {
+		pid := strings.TrimSuffix(sub, "/done")
+		if err := s.printDone(ctx, id, pid, in); err != nil {
 			return nil, err
 		}
-		if err := s.endLive(ctx, id, w.deck); err != nil {
+		printer := ""
+		if pr, err := s.loadPrint(ctx, id, pid); err == nil {
+			printer = pr.PrinterID
+		}
+		if err := s.endLive(ctx, id, w.deck, printer); err != nil {
 			return nil, err
 		}
 		return s.afterChange(ctx, id, w)
@@ -355,11 +360,18 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 			return nil, fail(http.StatusBadRequest, "bad JSON")
 		}
 		return s.postLive(ctx, p, w.deck, in)
-	case action == "live" && r.Method == http.MethodDelete:
+	case part == "live" && r.Method == http.MethodDelete:
 		if w.deck == nil {
 			return nil, fail(http.StatusUnauthorized, "only a deck ends a live print")
 		}
-		return nil, s.deleteLive(ctx, id, w.deck.ID)
+		// live/<printer> ends the live tile of a printer of the deck, and live the tile of the deck.
+		slot := w.deck.ID
+		if sub != "" {
+			if slot = s.printerOf(ctx, w.deck, sub); slot == "" {
+				return nil, fail(http.StatusBadRequest, "no such printer of this deck")
+			}
+		}
+		return nil, s.deleteLive(ctx, id, slot)
 	case action == "photos" && r.Method == http.MethodPost:
 		n, err := s.Store.List(ctx, "x/"+id+"/photos/")
 		if err != nil {
@@ -516,6 +528,7 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 		return nil, err
 	}
 	v.Live = s.liveView(ctx, p, prints)
+	v.Printers = s.printersOf(ctx, printerIDs(prints, v.Live), false)
 	v.Prints, v.Photos = []cloud.ProjectPrint{}, []cloud.ProjectPhoto{}
 	for _, pr := range prints {
 		pp := projectPrint(pr)
@@ -537,7 +550,7 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 
 // projectPrint is the print of a page, with no URLs.
 func projectPrint(pr PrintRecord) cloud.ProjectPrint {
-	return cloud.ProjectPrint{ID: pr.ID, N: pr.N, Name: pr.Name, File: pr.File, Result: pr.Result, Ended: pr.Ended, Seconds: pr.Seconds,
+	return cloud.ProjectPrint{ID: pr.ID, N: pr.N, PrinterID: pr.PrinterID, Name: pr.Name, File: pr.File, Result: pr.Result, Ended: pr.Ended, Seconds: pr.Seconds,
 		Material: pr.Material, Grams: pr.Grams, Roll: pr.Roll, Printer: pr.Printer, Note: pr.Note, Frames: pr.Frames, FPS: pr.FPS,
 		Started: pr.Started, Layers: pr.Layers, Layer: pr.Layer, Height: pr.Height, GramsTotal: pr.GramsTotal,
 		Estimate: pr.Estimate, Prep: pr.Prep, Slicer: pr.Slicer, Filament: pr.Filament}
@@ -770,6 +783,7 @@ func (s *Server) newPrint(ctx context.Context, p *Project, d *Deck, in cloud.Pri
 			return nil, err
 		}
 	}
+	in.PrinterID = s.printerOf(ctx, d, in.PrinterID)
 	rec := PrintRecord{PrintRequest: in, ID: pid, N: n, Deck: d.ID, Added: s.now().UTC()}
 	if err := s.putJSON(ctx, printKey(p.ID, pid), rec); err != nil {
 		return nil, err

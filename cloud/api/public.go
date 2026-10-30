@@ -108,6 +108,7 @@ func (s *Server) publish(ctx context.Context, p *Project) error {
 		}
 		view.Prints = append(view.Prints, pp)
 	}
+	view.Printers = s.printersOf(ctx, printerIDs(prints, nil), true)
 	for _, ph := range photos {
 		src := "x/" + p.ID + "/photos/" + ph.ID
 		rel := "photos/" + ph.ID

@@ -16,7 +16,10 @@ import (
 // as the deck sent it last. Pic is the ID of the folder of the picture of the model.
 type LiveRecord struct {
 	cloud.LiveRequest
-	Deck    string    `json:"deck"`
+	Deck string `json:"deck"`
+	// Slot is the name of the file of the record: the ID of its printer, or the ID of the deck for
+	// a deck from before the printers. A record from before the slots has none: its slot is Deck.
+	Slot    string    `json:"slot,omitempty"`
 	Pic     string    `json:"pic"`
 	Updated time.Time `json:"updated"`
 }
@@ -29,10 +32,35 @@ const (
 	liveEnded = time.Hour
 )
 
-func liveKey(project, deck string) string { return "x/" + project + "/live/" + deck + ".json" }
+// liveKey is the file of the live tile of the slot (a printer or a deck) in the project.
+func liveKey(project, slot string) string { return "x/" + project + "/live/" + slot + ".json" }
 
-func livePicDir(project, deck, pic string) string {
-	return "x/" + project + "/live/" + deck + "-" + pic + "/"
+func livePicDir(project, slot, pic string) string {
+	return "x/" + project + "/live/" + slot + "-" + pic + "/"
+}
+
+// slot is the slot of the record.
+func (rec *LiveRecord) slot() string {
+	if rec.Slot != "" {
+		return rec.Slot
+	}
+	return rec.Deck
+}
+
+// printerIDs returns the IDs of the printers of the prints and the live tiles.
+func printerIDs(prints []PrintRecord, live []cloud.ProjectLive) map[string]bool {
+	ids := map[string]bool{}
+	for _, pr := range prints {
+		if pr.PrinterID != "" {
+			ids[pr.PrinterID] = true
+		}
+	}
+	for _, l := range live {
+		if l.PrinterID != "" {
+			ids[l.PrinterID] = true
+		}
+	}
+	return ids
 }
 
 // loadLive returns the live record of the deck in the project, or nil.
@@ -67,18 +95,23 @@ func (s *Server) postLive(ctx context.Context, p *Project, d *Deck, in cloud.Liv
 	if in.Share != "" && !validID(in.Share) {
 		in.Share = ""
 	}
-	old, err := s.loadLive(ctx, p.ID, d.ID)
+	in.PrinterID = s.printerOf(ctx, d, in.PrinterID)
+	slot := d.ID
+	if in.PrinterID != "" {
+		slot = in.PrinterID
+	}
+	old, err := s.loadLive(ctx, p.ID, slot)
 	if err != nil {
 		return nil, err
 	}
-	rec := LiveRecord{LiveRequest: in, Deck: d.ID, Updated: s.now().UTC()}
+	rec := LiveRecord{LiveRequest: in, Deck: d.ID, Slot: slot, Updated: s.now().UTC()}
 	if old != nil && old.Key == in.Key && old.Pic != "" {
 		rec.Pic = old.Pic
 		if old.Model {
 			rec.Model = true
 		} else if rec.Model {
 			// The deck says that the picture is up: check it once.
-			files, err := s.Store.List(ctx, livePicDir(p.ID, d.ID, rec.Pic))
+			files, err := s.Store.List(ctx, livePicDir(p.ID, slot, rec.Pic))
 			if err != nil {
 				return nil, err
 			}
@@ -86,18 +119,18 @@ func (s *Server) postLive(ctx context.Context, p *Project, d *Deck, in cloud.Liv
 		}
 	} else {
 		if old != nil && old.Pic != "" {
-			if err := s.deletePrefix(ctx, livePicDir(p.ID, d.ID, old.Pic)); err != nil {
+			if err := s.deletePrefix(ctx, livePicDir(p.ID, slot, old.Pic)); err != nil {
 				return nil, err
 			}
 		}
 		rec.Pic, rec.Model = newID(8), false
 	}
-	if err := s.putJSON(ctx, liveKey(p.ID, d.ID), rec); err != nil {
+	if err := s.putJSON(ctx, liveKey(p.ID, slot), rec); err != nil {
 		return nil, err
 	}
 	var out cloud.LiveReply
 	if !rec.Model {
-		g, err := s.Grants.Grant(ctx, livePicDir(p.ID, d.ID, rec.Pic), MaxPrintFile, GrantTTL)
+		g, err := s.Grants.Grant(ctx, livePicDir(p.ID, slot, rec.Pic), MaxPrintFile, GrantTTL)
 		if err != nil {
 			return nil, err
 		}
@@ -106,27 +139,32 @@ func (s *Server) postLive(ctx context.Context, p *Project, d *Deck, in cloud.Liv
 	return out, nil
 }
 
-// deleteLive removes the live record of the deck in the project, and its picture.
-func (s *Server) deleteLive(ctx context.Context, project, deck string) error {
-	old, err := s.loadLive(ctx, project, deck)
+// deleteLive removes the live record of the slot in the project, and its picture.
+func (s *Server) deleteLive(ctx context.Context, project, slot string) error {
+	old, err := s.loadLive(ctx, project, slot)
 	if err != nil || old == nil {
 		return err
 	}
 	if old.Pic != "" {
-		if err := s.deletePrefix(ctx, livePicDir(project, deck, old.Pic)); err != nil {
+		if err := s.deletePrefix(ctx, livePicDir(project, slot, old.Pic)); err != nil {
 			return err
 		}
 	}
-	return s.Store.Delete(ctx, liveKey(project, deck))
+	return s.Store.Delete(ctx, liveKey(project, slot))
 }
 
-// endLive removes the live record of the deck d after its print came to the project.
-func (s *Server) endLive(ctx context.Context, project string, d *Deck) error {
-	old, err := s.loadLive(ctx, project, d.ID)
+// endLive removes the live record of the printer (or of the deck d, for "") after its print came
+// to the project.
+func (s *Server) endLive(ctx context.Context, project string, d *Deck, printer string) error {
+	slot := d.ID
+	if printer != "" {
+		slot = printer
+	}
+	old, err := s.loadLive(ctx, project, slot)
 	if err != nil || old == nil || old.Result == "" {
 		return err
 	}
-	return s.deleteLive(ctx, project, d.ID)
+	return s.deleteLive(ctx, project, slot)
 }
 
 // liveView returns the prints of the project p that print now: the live records of the decks,
@@ -152,13 +190,13 @@ func (s *Server) liveView(ctx context.Context, p *Project, prints []PrintRecord)
 		}
 		l := cloud.ProjectLive{Name: rec.Name, Started: rec.Started, Percent: rec.Percent, Layer: rec.Layer,
 			Layers: rec.Layers, Left: rec.Left, Paused: rec.Paused, Result: rec.Result, Updated: rec.Updated,
-			Printer: rec.Printer}
+			Printer: rec.Printer, PrinterID: rec.PrinterID}
 		if rec.Share != "" {
 			l.URL = s.shareURL(rec.Share)
 			shown[rec.Share] = true
 		}
 		if rec.Model {
-			l.Model, _ = s.Grants.FileURL(ctx, livePicDir(p.ID, rec.Deck, rec.Pic)+"model.jpg", urlTTL)
+			l.Model, _ = s.Grants.FileURL(ctx, livePicDir(p.ID, rec.slot(), rec.Pic)+"model.jpg", urlTTL)
 		}
 		out = append(out, l)
 	}
@@ -171,12 +209,16 @@ func (s *Server) liveView(ctx context.Context, p *Project, prints []PrintRecord)
 	return out
 }
 
-// isUp reports that the print of the live record is in the project: a print of the same deck that
-// started at the same time, within 10 minutes.
+// isUp reports that the print of the live record is in the project: a print of the same printer
+// (or of the same deck, with no printer) that started at the same time, within 10 minutes.
 func isUp(rec *LiveRecord, prints []PrintRecord) bool {
 	for _, pr := range prints {
 		d := pr.Started.Sub(rec.Started)
-		if pr.Deck == rec.Deck && d < 10*time.Minute && d > -10*time.Minute {
+		same := pr.Deck == rec.Deck
+		if rec.PrinterID != "" {
+			same = pr.PrinterID == rec.PrinterID
+		}
+		if same && d < 10*time.Minute && d > -10*time.Minute {
 			return true
 		}
 	}

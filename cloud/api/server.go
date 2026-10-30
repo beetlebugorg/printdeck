@@ -137,6 +137,8 @@ func (s *Server) route(ctx context.Context, r *http.Request, body []byte) (any, 
 			return nil, err
 		}
 		return s.newSessionInfo(ctx, ss)
+	case p == "/api/v1/printers":
+		return s.routePrinters(ctx, r, body)
 	case strings.HasPrefix(p, "/api/v1/names/") && r.Method == http.MethodGet:
 		return s.lookupName(ctx, r, strings.TrimPrefix(p, "/api/v1/names/"))
 	case p == "/api/v1/projects" || strings.HasPrefix(p, "/api/v1/projects/"):

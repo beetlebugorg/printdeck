@@ -92,6 +92,8 @@ type ProjectView struct {
 	Public string `json:"public,omitempty"`
 	// Live are the prints of the project that print now, or that ended and are not up yet.
 	Live []ProjectLive `json:"live,omitempty"`
+	// Printers are the printers of the prints and the live tiles of the project.
+	Printers []Printer `json:"printers,omitempty"`
 }
 
 // ProjectLive is a print of a project that prints now: its name, the share link or "", the start,
@@ -109,8 +111,10 @@ type ProjectLive struct {
 	Paused  bool      `json:"paused,omitempty"`
 	Result  string    `json:"result,omitempty"` // "" while it prints; "complete", "cancelled" or "error"
 	Updated time.Time `json:"updated,omitzero"`
-	// Printer is the name of the printer.
-	Printer string `json:"printer,omitempty"`
+	// Printer is the name of the printer, and PrinterID its ID at the service, or "" for a deck
+	// from before the printers.
+	Printer   string `json:"printer,omitempty"`
+	PrinterID string `json:"printer_id,omitempty"`
 }
 
 // ProjectMember is a member of a project, or an invite that waits.
@@ -135,7 +139,9 @@ type ProjectPrint struct {
 	Grams    float64   `json:"grams,omitempty"`
 	Roll     string    `json:"roll,omitempty"`
 	Printer  string    `json:"printer,omitempty"`
-	Note     string    `json:"note,omitempty"`
+	// PrinterID is the printer at the service, or "" for a print from before the printers.
+	PrinterID string `json:"printer_id,omitempty"`
+	Note      string `json:"note,omitempty"`
 	// The details of the print page: the start, the layers of the file and the last layer that
 	// printed, the height of the part in mm, the grams of the file, the estimate of the slicer and
 	// the seconds before the first layer, in seconds, the slicer, and the filament.
@@ -246,6 +252,9 @@ type PrintRequest struct {
 	// print: the photos of the share go to the print, and the link opens the print page after the
 	// share ends.
 	Share string `json:"share,omitempty"`
+	// PrinterID is the printer of the print at the service, or "" for a deck from before the
+	// printers.
+	PrinterID string `json:"printer_id,omitempty"`
 }
 
 // PrintReply is the reply to POST /api/v1/projects/<id>/prints.
@@ -279,6 +288,9 @@ type LiveRequest struct {
 	Model   bool      `json:"model,omitempty"`
 	Share   string    `json:"share,omitempty"`
 	Printer string    `json:"printer,omitempty"`
+	// PrinterID is the printer at the service (PrinterRequest). The project has one live tile for
+	// each printer. With no ID, the deck has one live tile in the project.
+	PrinterID string `json:"printer_id,omitempty"`
 }
 
 // LiveReply is the reply to POST /api/v1/projects/<id>/live. Grant is for the file model.jpg when
