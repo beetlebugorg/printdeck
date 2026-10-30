@@ -19,7 +19,7 @@ import (
 // finished print: the time lapse, the readout, the model with the chart of the layers, the
 // details, the filament and the photos.
 
-// hashArgs is the address after # as keys and values: "x=<id>&p=<print>".
+// hashArgs is the address after # as keys and values: "x=<id>&p=<print>", the old addresses.
 func hashArgs() map[string]string {
 	out := map[string]string{}
 	h := strings.TrimPrefix(js.Global().Get("location").Get("hash").String(), "#")
@@ -362,11 +362,15 @@ func drawPrint(p wire.ProjectPrint, photos []wire.ProjectPhoto, frames func() ([
 	// The photos of the print.
 	box := byID("prPhotos")
 	box.Set("textContent", "")
+	n := 0
 	for _, ph := range photos {
 		if ph.Print == p.ID {
 			box.Call("appendChild", photoFigure(ph.URL, ph.Small, ph.By))
+			n++
 		}
 	}
+	// On the public page the key to add photos is hidden: the card shows only with photos.
+	setHidden("prPhotosCard", n == 0 && byID("prPhotoAdd").Get("hidden").Bool())
 
 	// The time lapse.
 	setHidden("lapseBox", p.Frames == 0)

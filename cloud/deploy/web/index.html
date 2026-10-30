@@ -15,7 +15,7 @@
 <body data-page="app">
 <div class="wrap">
   <header>
-    <a class="brand" href="/app"><i></i>Printdeck</a>
+    <a class="brand" href="/projects"><i></i>Printdeck</a>
     <span class="who" id="who" hidden><span id="whoName"></span> <button type="button" class="link" id="signOut">Sign out</button></span>
   </header>
 
@@ -63,9 +63,16 @@
     <p class="dim" id="noProjects" hidden>No projects yet.</p>
   </section>
 
+  <!-- A project that is not there, or not one of the projects of the person -->
+  <section class="view" id="vMissing" hidden>
+    <a class="back" href="/projects">All projects</a>
+    <h1>Project not found</h1>
+    <p class="dim">The project was deleted, or it is not one of your projects. Ask the owner for an invite.</p>
+  </section>
+
   <!-- One project -->
   <section class="view" id="vProject" hidden>
-    <a class="back" href="/app" id="backLink">All projects</a>
+    <a class="back" href="/projects" id="backLink">All projects</a>
     <div class="phead">
       <h1 id="pName"></h1>
       <p class="dim" id="pNote"></p>
@@ -93,27 +100,30 @@
       <div class="photos" id="photos"></div>
     </div>
 
-    <div class="card" id="ownerTools" hidden>
-      <h2>Friends</h2>
-      <ul class="members" id="members"></ul>
-      <form class="row" id="inviteForm">
-        <input id="inviteName" maxlength="40" placeholder="First name of a friend" aria-label="First name of a friend" required>
-        <button type="submit">Make invite</button>
-      </form>
-      <div class="linkbox" id="inviteBox" hidden>
-        <p class="small">Send this link to <span id="inviteWho"></span>. It works once, for 7 days.</p>
-        <code id="inviteLink"></code>
-        <div class="row"><button type="button" id="inviteCopy">Copy link</button><button type="button" id="inviteShare" hidden>Share</button></div>
+    <div class="cards-stack" id="ownerTools" hidden>
+      <div class="card">
+        <h2>Friends</h2>
+        <ul class="members" id="members"></ul>
+        <form class="row" id="inviteForm">
+          <input id="inviteName" maxlength="40" placeholder="First name of a friend" aria-label="First name of a friend" required>
+          <button type="submit">Make invite</button>
+        </form>
+        <div class="linkbox" id="inviteBox" hidden>
+          <p class="small">Send this link to <span id="inviteWho"></span>. It works once, for 7 days.</p>
+          <code id="inviteLink"></code>
+          <div class="row"><button type="button" id="inviteCopy">Copy link</button><button type="button" id="inviteShare" hidden>Share</button></div>
+        </div>
       </div>
-      <h2 class="sub2">Public address</h2>
-      <p class="small dim">Anybody with the public address sees the prints, the time lapses and the photos. It has no files of the models and no names of members.</p>
-      <div class="row">
-        <button type="button" id="publicBtn" aria-pressed="false">Off</button>
-        <button type="button" id="publicNew" hidden>New address</button>
-      </div>
-      <div class="linkbox" id="publicBox" hidden>
-        <code id="publicLink"></code>
-        <div class="row"><button type="button" id="publicCopy">Copy link</button></div>
+      <div class="card">
+        <h2>Public address</h2>
+        <p class="small dim">Anybody with the public address sees the prints, the time lapses and the photos. The address has the name of the project, so people can guess it. It has no files of the models and no names of members.</p>
+        <div class="row">
+          <button type="button" id="publicBtn" aria-pressed="false">Off</button>
+        </div>
+        <div class="linkbox" id="publicBox" hidden>
+          <code id="publicLink"></code>
+          <div class="row"><button type="button" id="publicCopy">Copy link</button></div>
+        </div>
       </div>
       <p class="msg" id="ownerToolsMsg" role="status"></p>
     </div>

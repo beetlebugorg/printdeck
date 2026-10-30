@@ -48,7 +48,7 @@ func TestShareInProject(t *testing.T) {
 		json.Unmarshal(b, &rd)
 		return rd
 	}
-	if rd := ready(); rd.Project == nil || rd.Project.Name != "Garden planters" || rd.Project.URL != url+"/app#x="+sum.ID {
+	if rd := ready(); rd.Project == nil || rd.Project.Name != "Garden planters" || rd.Project.URL != url+"/projects/garden-planters" {
 		t.Fatalf("the project on the share page: %+v", rd.Project)
 	}
 	live := func() []cloud.ProjectLive {
@@ -121,7 +121,7 @@ func TestShareInProject(t *testing.T) {
 	if lv := live(); len(lv) != 0 {
 		t.Errorf("live after the end %+v", lv)
 	}
-	if rd := ready(); rd.Project == nil || rd.Project.URL != url+"/app#x="+sum.ID+"&p="+pid {
+	if rd := ready(); rd.Project == nil || rd.Project.URL != url+"/projects/garden-planters/1" {
 		t.Fatalf("the print on the share page: %+v", rd.Project)
 	}
 	addPhoto() // a photo after the print is in the project goes there too
@@ -135,7 +135,7 @@ func TestShareInProject(t *testing.T) {
 	if err := d.API.Sweep(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if code, body := get(t, shareURL); code != 200 || !strings.Contains(string(body), "#x="+sum.ID+"&amp;p="+pid) {
+	if code, body := get(t, shareURL); code != 200 || !strings.Contains(string(body), "/projects/garden-planters/1") {
 		t.Fatalf("the moved page: %d %s", code, body)
 	}
 	for _, p := range []string{"/ready.json", "/photos/"} {
@@ -161,7 +161,7 @@ func TestShareInProject(t *testing.T) {
 		t.Fatal(err)
 	}
 	pubURL := pub.(cloud.PublicReply).URL
-	if _, body := get(t, shareURL); !strings.Contains(string(body), pubURL+"#p="+pid) {
+	if _, body := get(t, shareURL); !strings.Contains(string(body), pubURL+"/1") {
 		t.Fatalf("the moved page with a public address: %s", body)
 	}
 

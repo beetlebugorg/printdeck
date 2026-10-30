@@ -49,8 +49,16 @@ type Project struct {
 	Created time.Time `json:"created"`
 	Changed time.Time `json:"changed"`
 	Members []Member  `json:"members,omitempty"`
-	// Public is the ID of the public address, or "".
-	Public string `json:"public,omitempty"`
+	// Slug is the name of the project in its addresses (names.go), and OldSlugs the slugs of its
+	// old names.
+	Slug     string   `json:"slug,omitempty"`
+	OldSlugs []string `json:"old_slugs,omitempty"`
+	// Public is the slug of the public address, or "". OldPublic are the old public addresses,
+	// with a page that sends the visitor to the new one.
+	Public    string   `json:"public,omitempty"`
+	OldPublic []string `json:"old_public,omitempty"`
+	// LastPrint is the number of the newest print. Each new print has the next number.
+	LastPrint int `json:"last_print,omitempty"`
 	// Prints maps the key of a print on the deck to its ID, so that a second upload replaces it.
 	Prints map[string]string `json:"prints,omitempty"`
 	// Shares are the IDs of the share links of the prints of the project: live, or moved to the
@@ -94,7 +102,9 @@ func inviteKey(code string) string { return "invites/" + inviteHash(code) + ".js
 // PrintRecord is x/<id>/prints/<print>.json.
 type PrintRecord struct {
 	cloud.PrintRequest
-	ID     string    `json:"id"`
+	ID string `json:"id"`
+	// N is the number of the print in the project, or 0 for a print from before the numbers.
+	N      int       `json:"n,omitempty"`
 	Deck   string    `json:"deck"`
 	Added  time.Time `json:"added"`
 	Frames int       `json:"frames"`
@@ -135,8 +145,14 @@ func (s *Server) loadProject(ctx context.Context, id string) (*Project, string, 
 }
 
 // changeProject changes the project id with change, and writes it if no other write came first.
-// It tries again after a conflict.
+// It tries again after a conflict. The project gets the time of the change.
 func (s *Server) changeProject(ctx context.Context, id string, change func(p *Project) error) (*Project, error) {
+	return s.updateProject(ctx, id, true, change)
+}
+
+// updateProject is changeProject. With touch false, the time of the last change stays: for the
+// changes that the people of the project did not make.
+func (s *Server) updateProject(ctx context.Context, id string, touch bool, change func(p *Project) error) (*Project, error) {
 	for range 5 {
 		p, etag, err := s.loadProject(ctx, id)
 		if err != nil {
@@ -145,7 +161,9 @@ func (s *Server) changeProject(ctx context.Context, id string, change func(p *Pr
 		if err := change(p); err != nil {
 			return nil, err
 		}
-		p.Changed = s.now().UTC()
+		if touch {
+			p.Changed = s.now().UTC()
+		}
 		data, _ := json.Marshal(p)
 		_, err = s.Store.Put(ctx, projectKey(id), data, PutOptions{ContentType: "application/json", IfMatch: etag})
 		if errors.Is(err, ErrConflict) {
@@ -204,8 +222,14 @@ func ownerOnly(w *who) error {
 	return nil
 }
 
-// projectURL is the page of a project for the owner and the members.
-func (s *Server) projectURL(id string) string { return s.base() + "/app#x=" + id }
+// projectURL is the page of the project p for the owner and the members. A project with no
+// slug has the old address, and the page finds its slug.
+func (s *Server) projectURL(p *Project) string {
+	if p.Slug == "" {
+		return s.base() + "/app#x=" + p.ID
+	}
+	return s.base() + "/projects/" + p.Slug
+}
 
 // routeProjects serves /api/v1/projects and /api/v1/projects/<id>/...
 func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte, rest string) (any, error) {
@@ -237,6 +261,9 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 	part, sub, _ := strings.Cut(action, "/")
 	switch {
 	case action == "" && r.Method == http.MethodGet:
+		if p, err = s.ensureSlug(ctx, p); err != nil {
+			return nil, err
+		}
 		return s.viewProject(ctx, p, w)
 	case action == "" && r.Method == http.MethodPatch:
 		if err := ownerOnly(w); err != nil {
@@ -251,6 +278,9 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 			return nil
 		})
 		if err != nil {
+			return nil, err
+		}
+		if p, err = s.renameSlug(ctx, p); err != nil {
 			return nil, err
 		}
 		if err := s.refreshShares(ctx, p); err != nil {
@@ -388,11 +418,14 @@ func (s *Server) newProject(ctx context.Context, in cloud.ProjectRequest) (any, 
 	}
 	now := s.now().UTC()
 	p := Project{ID: newID(13), Name: name, Note: clip(in.Note, 280), Created: now, Changed: now}
+	if p.Slug, err = s.claimName(ctx, p.ID, slugOf(name)); err != nil {
+		return nil, err
+	}
 	data, _ := json.Marshal(p)
 	if _, err := s.Store.Put(ctx, projectKey(p.ID), data, PutOptions{ContentType: "application/json", IfNoneMatch: true}); err != nil {
 		return nil, err
 	}
-	return cloud.ProjectSummary{ID: p.ID, Name: p.Name, Note: p.Note, Changed: p.Changed, URL: s.projectURL(p.ID)}, nil
+	return cloud.ProjectSummary{ID: p.ID, Name: p.Name, Slug: p.Slug, Note: p.Note, Changed: p.Changed, URL: s.projectURL(&p)}, nil
 }
 
 func countProjects(keys []string) int {
@@ -427,8 +460,11 @@ func (s *Server) listProjects(ctx context.Context, w *who) (any, error) {
 		if err != nil {
 			continue
 		}
+		if p, err = s.ensureSlug(ctx, p); err != nil {
+			return nil, err
+		}
 		files, _ := s.Store.List(ctx, "x/"+id+"/")
-		sum := cloud.ProjectSummary{ID: p.ID, Name: p.Name, Note: p.Note, Changed: p.Changed, URL: s.projectURL(p.ID)}
+		sum := cloud.ProjectSummary{ID: p.ID, Name: p.Name, Slug: p.Slug, Note: p.Note, Changed: p.Changed, URL: s.projectURL(p)}
 		var cover string
 		for _, f := range files {
 			rel := strings.TrimPrefix(f, "x/"+id+"/")
@@ -458,7 +494,7 @@ func (s *Server) listProjects(ctx context.Context, w *who) (any, error) {
 
 // viewProject returns the project as its page shows it to the person w.
 func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.ProjectView, error) {
-	v := &cloud.ProjectView{ID: p.ID, Name: p.Name, Note: p.Note, Owner: s.ownerName(ctx), Created: p.Created,
+	v := &cloud.ProjectView{ID: p.ID, Name: p.Name, Slug: p.Slug, Note: p.Note, Owner: s.ownerName(ctx), Created: p.Created,
 		Changed: p.Changed, IsOwner: w.owner, You: w.member}
 	if w.owner {
 		v.You = KindOwner
@@ -501,16 +537,16 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 
 // projectPrint is the print of a page, with no URLs.
 func projectPrint(pr PrintRecord) cloud.ProjectPrint {
-	return cloud.ProjectPrint{ID: pr.ID, Name: pr.Name, File: pr.File, Result: pr.Result, Ended: pr.Ended, Seconds: pr.Seconds,
+	return cloud.ProjectPrint{ID: pr.ID, N: pr.N, Name: pr.Name, File: pr.File, Result: pr.Result, Ended: pr.Ended, Seconds: pr.Seconds,
 		Material: pr.Material, Grams: pr.Grams, Roll: pr.Roll, Printer: pr.Printer, Note: pr.Note, Frames: pr.Frames, FPS: pr.FPS,
 		Started: pr.Started, Layers: pr.Layers, Layer: pr.Layer, Height: pr.Height, GramsTotal: pr.GramsTotal,
 		Estimate: pr.Estimate, Prep: pr.Prep, Slicer: pr.Slicer, Filament: pr.Filament}
 }
 
 // projectFiles returns the prints that are done, the newest first, and the photos, the newest
-// first.
+// first. It gives a number to the prints from before the numbers.
 func (s *Server) projectFiles(ctx context.Context, id string) ([]PrintRecord, []PhotoRecord, error) {
-	var prints []PrintRecord
+	var all []*PrintRecord
 	var photos []PhotoRecord
 	keys, err := s.Store.List(ctx, "x/"+id+"/")
 	if err != nil {
@@ -528,14 +564,29 @@ func (s *Server) projectFiles(ctx context.Context, id string) ([]PrintRecord, []
 		switch {
 		case strings.HasPrefix(rel, "prints/"):
 			var pr PrintRecord
-			if json.Unmarshal(b, &pr) == nil && pr.Done {
-				prints = append(prints, pr)
+			if json.Unmarshal(b, &pr) == nil {
+				all = append(all, &pr)
 			}
 		case strings.HasPrefix(rel, "photos/"):
 			var ph PhotoRecord
 			if json.Unmarshal(b, &ph) == nil {
 				photos = append(photos, ph)
 			}
+		}
+	}
+	var todo []*PrintRecord
+	for _, pr := range all {
+		if pr.N == 0 {
+			todo = append(todo, pr)
+		}
+	}
+	if err := s.numberPrints(ctx, id, todo); err != nil {
+		return nil, nil, err
+	}
+	var prints []PrintRecord
+	for _, pr := range all {
+		if pr.Done {
+			prints = append(prints, *pr)
 		}
 	}
 	sort.Slice(prints, func(i, j int) bool { return prints[i].Ended.After(prints[j].Ended) })
@@ -668,7 +719,8 @@ func (s *Server) newPrint(ctx context.Context, p *Project, d *Deck, in cloud.Pri
 		return nil, fail(http.StatusBadRequest, "bad result")
 	}
 	pid := p.Prints[in.Key]
-	if pid == "" || in.Key == "" {
+	isNew := pid == "" || in.Key == ""
+	if isNew {
 		keys, _ := s.Store.List(ctx, "x/"+p.ID+"/prints/")
 		n := 0
 		for _, k := range keys {
@@ -686,7 +738,7 @@ func (s *Server) newPrint(ctx context.Context, p *Project, d *Deck, in cloud.Pri
 					p.Prints = map[string]string{}
 				}
 				if old := p.Prints[in.Key]; old != "" {
-					pid = old // another request came first
+					pid, isNew = old, false // another request came first
 				}
 				p.Prints[in.Key] = pid
 				return nil
@@ -694,10 +746,31 @@ func (s *Server) newPrint(ctx context.Context, p *Project, d *Deck, in cloud.Pri
 				return nil, err
 			}
 		}
-	} else if err := s.deletePrintFiles(ctx, p.ID, pid); err != nil {
-		return nil, err
 	}
-	rec := PrintRecord{PrintRequest: in, ID: pid, Deck: d.ID, Added: s.now().UTC()}
+	n := 0
+	if isNew {
+		// The prints from before the numbers get theirs first.
+		if _, _, err := s.projectFiles(ctx, p.ID); err != nil {
+			return nil, err
+		}
+		q, err := s.updateProject(ctx, p.ID, false, func(q *Project) error {
+			q.LastPrint++
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		n = q.LastPrint
+	} else {
+		// A print that the deck sends again keeps its number.
+		if old, err := s.loadPrint(ctx, p.ID, pid); err == nil {
+			n = old.N
+		}
+		if err := s.deletePrintFiles(ctx, p.ID, pid); err != nil {
+			return nil, err
+		}
+	}
+	rec := PrintRecord{PrintRequest: in, ID: pid, N: n, Deck: d.ID, Added: s.now().UTC()}
 	if err := s.putJSON(ctx, printKey(p.ID, pid), rec); err != nil {
 		return nil, err
 	}
@@ -870,6 +943,9 @@ func (s *Server) deletePhoto(ctx context.Context, project, pid string, w *who) e
 // deleteProject deletes a project: its files, its public address, its invites and the passkeys
 // of its members.
 func (s *Server) deleteProject(ctx context.Context, p *Project) error {
+	if err := s.deleteNames(ctx, p); err != nil {
+		return err
+	}
 	if p.Public != "" {
 		if err := s.deletePrefix(ctx, "p/"+p.Public+"/"); err != nil {
 			return err

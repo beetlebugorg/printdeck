@@ -221,8 +221,11 @@ end of the print (open question 2).
 |---|---|
 | `/` | The home page: Sign in, and the projects of the person who signed in |
 | `/s/<20 characters>` | A share |
-| `/p/<20 characters>` | The public address of a project |
-| `/x/<20 characters>` | The page of a project for the owner and the members, after sign-in |
+| `/p/<slug>` | The public address of a project, for example `/p/garden-planters` |
+| `/p/<slug>/<n>` | The public page of the print number n of a project |
+| `/projects` | The projects of the person who signed in |
+| `/projects/<slug>` | The page of a project for the owner and the members, after sign-in |
+| `/projects/<slug>/<n>` | The page of the print number n of a project |
 | `/j/<code>` | An invite |
 | `/owner` | The owner sign-in setup, with a code from the deck |
 | `/api/v1/...` | The API |
@@ -279,15 +282,15 @@ A **project** is a set of parts that the owner and friends print together, for e
 
 A new project has no public address. The owner turns it on in the project settings.
 
-- **On:** the API makes a public ID (100 random bits) and copies the public files of the
-  project to `p/<public id>/`: `page.json`, the model pictures, the print frames and the
-  photos. CloudFront serves them.
-- **Off:** the API deletes `p/<public id>/`. Old links and old picture URLs stop working.
-- **New address:** the API makes a new public ID, copies the files to it with S3 `CopyObject`
-  on the server, and deletes the old prefix. Use it when the address went to the wrong person.
+- **On:** the API copies the public files of the project to `p/<slug>/`: `page.json`, the
+  model pictures, the print frames and the photos. CloudFront serves them.
+- **Off:** the API deletes `p/<slug>/`. Old links and old picture URLs stop working.
+- **Rename:** the project gets the slug of its new name. The API copies the files to the new
+  slug and deletes the old prefix. The old address `p/<old slug>` gets a page that sends the
+  visitor to the new address.
 
-The public ID is separate from the project ID. So the public address gives no access to the
-API, and a new address does not change the project for the members.
+The address has the name of the project, so people can guess it. The public address gives no
+access to the API.
 
 The public page shows the first names that the owner typed in the invites. It shows no member
 list.
@@ -304,11 +307,13 @@ codes/<sha256 of code>.json     enrollment and owner codes, until used or expire
 s/<share id>                    the share page
 s/<share id>/...                status, frames, time lapse frames
 
-p/<public id>                   the public page of a project
-p/<public id>/page.json         what visitors see: names, times, the keys of the pictures
-p/<public id>/...               copies of the model pictures, print frames and photos
+p/<slug>                        the public page of a project
+p/<slug>/page.json              what visitors see: names, times, the keys of the pictures
+p/<slug>/...                    copies of the model pictures, print frames and photos
 
-x/<project id>/project.json     name, members with their passkeys, invites (hashes), public ID
+names/<slug>.json               the project of a slug, also for the old slugs of a project
+
+x/<project id>/project.json     name, slug, members with their passkeys, invites (hashes), public slug
 x/<project id>/page.json        what members see
 x/<project id>/models/<model id>.json  name, note, size, added by, time, pulled
 x/<project id>/models/<model id>.stl or .3mf   the clean file (see "Clean files")
@@ -446,7 +451,7 @@ The owner signs in once with Owner sign-in on the deck (see "People"). Then:
 6. **Invite a friend:** type the first name, for example "Sam". Tap Make invite. The page shows
    the link with Share (the share sheet of the phone: Messages, Mail) and Copy. The invite shows
    as "Sam, invited" in Members until Sam joins.
-7. **Public address:** a switch. On shows the address with Copy, QR code and New address.
+7. **Public address:** a switch. On shows the address with Copy and QR code.
 
 The iPhone app has the same screens in a Projects tab.
 
@@ -512,7 +517,7 @@ To limit the cost of misuse:
 - CloudFront caches `status.json` and the frames for 2 s, so many viewers make few S3 reads.
 - A person with a share link or a public address can download the frames many times. The cost
   of CloudFront traffic past the free tier is then the risk. The budget mail is the alarm, and
-  New address or Stop sharing is the fix. A rate limit with AWS WAF has a fixed cost each month,
+  Public address off or Stop sharing is the fix. A rate limit with AWS WAF has a fixed cost each month,
   so this plan does not use it.
 
 ## The work on the deck
@@ -579,6 +584,16 @@ The build of phase 3 made these choices:
   public address. The deck sends the facts of the page with the print (the layers, the plan of
   the slicer as `plan.json`, the filament, the estimate, and the warm-up time). A deck with the
   older format sends its prints again at the next share.
+- **Readable addresses.** A project has a slug from its name, for example `garden-planters`.
+  Its page is `/projects/<slug>`, and the page of a print is `/projects/<slug>/<n>`, with the
+  number of the print in the project. The public address is `/p/<slug>`, and `/p/<slug>/<n>`
+  for a print. `GET /api/v1/names/<slug>` returns the project of a slug to its owner and its
+  members, and 410 to other people. A rename gives a new slug. The old slug still finds the
+  project, and the page puts the new address in the address bar. The page also reads the old
+  addresses `/app#x=<id>&p=<print>` and changes them to the new form. The CloudFront function
+  `Paths` serves the app page at `/projects/...` and the public page at `/p/<slug>/<n>`. The
+  projects and the prints from before get a slug and numbers at their next read, and a public
+  page moves to its slug. The button New address is gone.
 - **The page of a project** shows the numbers of the project (the prints, the print time and the
   filament), a tile for each print, the photos, and the keys of the owner at the bottom.
 - **The share link of a print in a project.** The project of a print is the pick on the deck (the

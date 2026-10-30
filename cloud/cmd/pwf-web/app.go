@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"syscall/js"
 	"time"
@@ -14,9 +15,11 @@ import (
 	"printdeck/internal/cloud/wire"
 )
 
-// The app page (data-page="app"): sign in with a passkey, the projects, one project, the passkey
-// of the owner (/owner#code=<code>) and an invite (/j#<code>). The session token stays in
-// sessionStorage, so it goes away when the tab closes.
+// The app page (data-page="app"): sign in with a passkey, the projects (/projects), one project
+// (/projects/<slug>) and the page of one of its prints (/projects/<slug>/<n>), the passkey of
+// the owner (/owner#code=<code>) and an invite (/j#<code>). The page also reads the old
+// addresses, /app#x=<id>&p=<print>, and puts the new address in their place. The session token
+// stays in sessionStorage, so it goes away when the tab closes.
 
 // app is the state of the app page.
 type app struct {
@@ -44,8 +47,7 @@ func runApp() {
 	onSubmit("inviteForm", func() { go a.invite() })
 	on("inviteCopy", "click", func() { go copyText(byID("inviteLink").Get("textContent").String(), "ownerToolsMsg") })
 	on("inviteShare", "click", func() { shareLink(byID("inviteLink").Get("textContent").String()) })
-	on("publicBtn", "click", func() { go a.togglePublic(false) })
-	on("publicNew", "click", func() { go a.togglePublic(true) })
+	on("publicBtn", "click", func() { go a.togglePublic() })
 	on("publicCopy", "click", func() { go copyText(byID("publicLink").Get("textContent").String(), "ownerToolsMsg") })
 	on("deleteProject", "click", func() { go a.deleteProject() })
 	on("prCopy", "click", func() { go copyText(a.printLink(), "prCopyMsg") })
@@ -57,6 +59,7 @@ func runApp() {
 		go a.route()
 		return nil
 	}))
+	onHistory(func() { go a.route() }, "/projects")
 	a.route()
 }
 
@@ -75,17 +78,33 @@ func (a *app) route() {
 	case a.token == "":
 		show("vSignIn")
 	case strings.HasPrefix(hash, "x="):
+		// An old address.
 		args := hashArgs()
-		a.showProject(args["x"], args["p"])
+		a.showProject(args["x"], 0, args["p"])
+	case strings.HasPrefix(path, "/projects/"):
+		slug, n, _ := strings.Cut(strings.TrimPrefix(path, "/projects/"), "/")
+		a.showSlug(slug, n)
 	case a.kind == "member":
-		js.Global().Get("location").Set("hash", "x="+a.project)
+		a.showProject(a.project, 0, "")
 	default:
+		if path != "/projects" {
+			replaceAddress("/projects")
+		}
 		a.showHome()
 	}
 }
 
+// projectPath is the address of the project with the slug, or of its print number n when n is
+// not 0.
+func projectPath(slug string, n int) string {
+	if n > 0 {
+		return "/projects/" + slug + "/" + strconv.Itoa(n)
+	}
+	return "/projects/" + slug
+}
+
 // The views of the page.
-var views = []string{"vSignIn", "vOwner", "vJoin", "vHome", "vProject", "vPublic", "vPrint"}
+var views = []string{"vSignIn", "vOwner", "vJoin", "vHome", "vMissing", "vProject", "vPublic", "vPrint"}
 
 func show(id string) {
 	setHidden("loading", id != "")
@@ -110,11 +129,19 @@ func (a *app) remember(in wire.SignInReply) {
 func (a *app) signOut() {
 	a.token, a.kind, a.project, a.name = "", "", "", ""
 	sessionSet(tokenKey, "")
-	js.Global().Get("location").Set("href", "/app")
+	js.Global().Get("location").Set("href", "/projects")
 }
 
 // errUnauthorized is a reply 401: the session ended, or the person has no access.
 var errUnauthorized = errors.New("sign in again")
+
+// statusError is a reply of the API that is not 2xx, with its HTTP status.
+type statusError struct {
+	status int
+	msg    string
+}
+
+func (e *statusError) Error() string { return e.msg }
 
 // api sends a request to the API with the session, and reads the reply into out.
 func (a *app) api(method, path string, in, out any) error {
@@ -137,7 +164,7 @@ func (a *app) api(method, path string, in, out any) error {
 		return errUnauthorized
 	}
 	if status/100 != 2 {
-		return errors.New(errText(text, nil))
+		return &statusError{status, errText(text, nil)}
 	}
 	if out != nil && status == 200 {
 		return json.Unmarshal([]byte(text), out)
@@ -208,7 +235,7 @@ func (a *app) makeOwner() {
 		return
 	}
 	a.remember(in)
-	js.Global().Get("history").Call("replaceState", nil, "", "/app")
+	replaceAddress("/projects")
 	a.route()
 }
 
@@ -247,7 +274,7 @@ func (a *app) join() {
 		return
 	}
 	a.remember(in)
-	js.Global().Get("history").Call("replaceState", nil, "", "/app#x="+in.Project)
+	replaceAddress("/projects")
 	a.route()
 }
 
@@ -264,6 +291,9 @@ func (a *app) showHome() {
 	for _, p := range list {
 		card := el("a", "pcard", "")
 		card.Set("href", "/app#x="+p.ID)
+		if p.Slug != "" {
+			card.Set("href", projectPath(p.Slug, 0))
+		}
 		if p.Cover != "" {
 			img := el("img", "", "")
 			img.Set("src", p.Cover)
@@ -298,8 +328,15 @@ func count(n int, one, many string) string {
 	return fmt.Sprintf("%d %s", n, many)
 }
 
-// failed shows the error of a view: sign in again for 401.
+// failed shows the error of a view: sign in again for 401, and "not found" for a project that
+// is not there or not one of the projects of the person (410).
 func (a *app) failed(err error) {
+	var se *statusError
+	if errors.As(err, &se) && se.status == 410 {
+		doc.Set("title", "Project not found · Printdeck")
+		show("vMissing")
+		return
+	}
 	if errors.Is(err, errUnauthorized) {
 		a.showWho()
 		show("vSignIn")
@@ -321,11 +358,25 @@ func (a *app) newProject() {
 	byID("newName").Set("value", "")
 	byID("newNote").Set("value", "")
 	say("newMsg", nil, "")
-	js.Global().Get("location").Set("hash", "x="+p.ID)
+	openAddress(projectPath(p.Slug, 0))
 }
 
-// showProject shows the project id, or the page of its print when print is not "".
-func (a *app) showProject(id, print string) {
+// showSlug shows the project of the address /projects/<slug>, or the page of its print number n
+// when n is not "".
+func (a *app) showSlug(slug, n string) {
+	var nr wire.NameReply
+	if err := a.api("GET", "/names/"+slug, nil, &nr); err != nil {
+		a.failed(err)
+		return
+	}
+	num, _ := strconv.Atoi(n)
+	a.showProject(nr.ID, num, "")
+}
+
+// showProject shows the project id, or the page of its print: the print number n, or the print
+// with the ID print. The address bar gets the address of the view: an old address or an old
+// slug changes to the new address.
+func (a *app) showProject(id string, n int, print string) {
 	var v wire.ProjectView
 	if err := a.api("GET", "/projects/"+id, nil, &v); err != nil {
 		a.failed(err)
@@ -333,16 +384,16 @@ func (a *app) showProject(id, print string) {
 	}
 	a.view, a.print = &v, ""
 	doc.Set("title", v.Name+" · Printdeck")
-	if print != "" {
-		for _, p := range v.Prints {
-			if p.ID == print {
-				a.print = p.ID
-				a.drawPrint(p)
-				show("vPrint")
-				return
-			}
+	for _, p := range v.Prints {
+		if n > 0 && p.N == n || print != "" && p.ID == print {
+			a.print = p.ID
+			replaceAddress(projectPath(v.Slug, p.N))
+			a.drawPrint(p)
+			show("vPrint")
+			return
 		}
 	}
+	replaceAddress(projectPath(v.Slug, 0))
 	a.drawProject()
 	show("vProject")
 	go a.pollProject(id, a.playing)
@@ -376,7 +427,7 @@ func (a *app) pollProject(id string, gen int) {
 		a.view = &v
 		if printIDs(old.Prints) != printIDs(v.Prints) {
 			drawStats(v.Prints)
-			drawTiles(v.Prints, func(p wire.ProjectPrint) string { return "#x=" + v.ID + "&p=" + p.ID })
+			drawTiles(v.Prints, func(p wire.ProjectPrint) string { return projectPath(v.Slug, p.N) })
 		}
 		if photoIDs(old.Photos) != photoIDs(v.Photos) {
 			a.drawPhotos()
@@ -408,7 +459,7 @@ func photoIDs(photos []wire.ProjectPhoto) string {
 // drawPrint draws the page of the print p of the project.
 func (a *app) drawPrint(p wire.ProjectPrint) {
 	v := a.view
-	byID("prBack").Set("href", "#x="+v.ID)
+	byID("prBack").Set("href", projectPath(v.Slug, 0))
 	setText("prBack", v.Name)
 	setHidden("prDanger", !v.IsOwner)
 	setHidden("prShare", js.Global().Get("navigator").Get("share").IsUndefined())
@@ -428,11 +479,16 @@ func (a *app) drawPrint(p wire.ProjectPrint) {
 // printLink is the address of the print page: the public address when the project has one, else
 // the address for the members.
 func (a *app) printLink() string {
-	if a.view.Public != "" {
-		return a.view.Public + "#p=" + a.print
+	n := 0
+	for _, p := range a.view.Prints {
+		if p.ID == a.print {
+			n = p.N
+		}
 	}
-	loc := js.Global().Get("location")
-	return loc.Get("origin").String() + "/app#x=" + a.view.ID + "&p=" + a.print
+	if a.view.Public != "" {
+		return a.view.Public + "/" + strconv.Itoa(n)
+	}
+	return js.Global().Get("location").Get("origin").String() + projectPath(a.view.Slug, n)
 }
 
 // removePrint removes the print of the print page from the project.
@@ -444,7 +500,7 @@ func (a *app) removePrint() {
 		say("prCopyMsg", err, "")
 		return
 	}
-	js.Global().Get("location").Set("hash", "x="+a.view.ID)
+	openAddress(projectPath(a.view.Slug, 0))
 }
 
 // drawProject draws the view of the project.
@@ -489,11 +545,10 @@ func (a *app) drawProject() {
 	pb := byID("publicBtn")
 	pb.Set("textContent", map[bool]string{true: "On", false: "Off"}[on])
 	pb.Call("setAttribute", "aria-pressed", fmt.Sprint(on))
-	setHidden("publicNew", !on)
 	setHidden("publicBox", !on)
 	setText("publicLink", v.Public)
 	a.drawPhotos()
-	drawTiles(v.Prints, func(p wire.ProjectPrint) string { return "#x=" + v.ID + "&p=" + p.ID })
+	drawTiles(v.Prints, func(p wire.ProjectPrint) string { return projectPath(v.Slug, p.N) })
 	drawLive(v.Live)
 	if len(v.Live) > 0 {
 		setHidden("noPrints", true)
@@ -568,13 +623,9 @@ func (a *app) removeMember(id, name string) {
 	a.drawProject()
 }
 
-func (a *app) togglePublic(renew bool) {
-	on := a.view.Public == "" || renew
-	if renew && !confirm("Make a new public address? The old address stops working.") {
-		return
-	}
+func (a *app) togglePublic() {
 	var out wire.PublicReply
-	if err := a.api("POST", "/projects/"+a.view.ID+"/public", wire.PublicRequest{On: on, Renew: renew}, &out); err != nil {
+	if err := a.api("POST", "/projects/"+a.view.ID+"/public", wire.PublicRequest{On: a.view.Public == ""}, &out); err != nil {
 		say("ownerToolsMsg", err, "")
 		return
 	}
@@ -591,7 +642,7 @@ func (a *app) deleteProject() {
 		say("ownerToolsMsg", err, "")
 		return
 	}
-	js.Global().Get("location").Set("hash", "")
+	openAddress("/projects")
 }
 
 // reload reads the project again.
@@ -615,7 +666,7 @@ func (a *app) addPhotos(files []js.Value, print, msg string) {
 	}
 	say(msg, nil, "")
 	if print != "" {
-		a.showProject(a.view.ID, print)
+		a.showProject(a.view.ID, 0, print)
 		say(msg, nil, "The photos are on the page.")
 		return
 	}
@@ -660,10 +711,17 @@ func (a *app) removePhoto(id string) {
 	a.drawProject()
 }
 
-// The public page (data-page="public"): page.json next to the page, with the paths of the files
-// relative to it. #p=<print> shows the page of a print.
+// The public page (data-page="public") at /p/<slug>: page.json next to the page, with the paths
+// of the files relative to it. /p/<slug>/<n> shows the page of the print number n. The old
+// address of a print, #p=<print>, changes to the new address.
 func runPublic() {
-	base := strings.TrimSuffix(js.Global().Get("location").Get("pathname").String(), "/") + "/"
+	parts := strings.Split(strings.Trim(js.Global().Get("location").Get("pathname").String(), "/"), "/")
+	if len(parts) < 2 {
+		setText("loading", "THIS PROJECT IS NOT PUBLIC NOW")
+		return
+	}
+	home := "/p/" + parts[1]
+	base := home + "/"
 	text, err := fetchText(base + "page.json")
 	var v wire.ProjectView
 	if err != nil || json.Unmarshal([]byte(text), &v) != nil {
@@ -691,8 +749,9 @@ func runPublic() {
 		box.Call("appendChild", photoFigure(ph.URL, ph.Small, ph.By))
 	}
 	setHidden("photosCard", len(v.Photos) == 0)
-	drawTiles(v.Prints, func(p wire.ProjectPrint) string { return "#p=" + p.ID })
-	byID("prBack").Set("href", "#")
+	printPath := func(p wire.ProjectPrint) string { return base + strconv.Itoa(p.N) }
+	drawTiles(v.Prints, printPath)
+	byID("prBack").Set("href", home)
 	setText("prBack", v.Name)
 	setHidden("prShare", js.Global().Get("navigator").Get("share").IsUndefined())
 	on("prCopy", "click", func() { go copyText(js.Global().Get("location").Get("href").String(), "prCopyMsg") })
@@ -700,9 +759,15 @@ func runPublic() {
 	playing := 0
 	route := func() {
 		playing++
+		parts := strings.Split(strings.Trim(js.Global().Get("location").Get("pathname").String(), "/"), "/")
+		n := 0
+		if len(parts) > 2 {
+			n, _ = strconv.Atoi(parts[2])
+		}
 		id := hashArgs()["p"]
 		for _, p := range v.Prints {
-			if p.ID == id {
+			if n > 0 && p.N == n || id != "" && p.ID == id {
+				replaceAddress(printPath(p))
 				say("prCopyMsg", nil, "")
 				drawPrint(p, v.Photos, func() ([]string, int, error) {
 					urls := make([]string, p.Frames)
@@ -715,6 +780,7 @@ func runPublic() {
 				return
 			}
 		}
+		replaceAddress(home)
 		doc.Set("title", v.Name+" · Printdeck")
 		show("vPublic")
 	}
@@ -722,7 +788,55 @@ func runPublic() {
 		go route()
 		return nil
 	}))
+	onHistory(func() { go route() }, home)
 	route()
+}
+
+// The addresses of the pages. A link to a view of the same page opens the view with no new load
+// of the page (onHistory).
+
+// openAddress adds the address u to the history of the tab, and shows its view: the listener of
+// onHistory runs.
+func openAddress(u string) {
+	js.Global().Get("history").Call("pushState", nil, "", u)
+	js.Global().Call("dispatchEvent", js.Global().Get("PopStateEvent").New("popstate"))
+}
+
+// replaceAddress puts the address u in the address bar in place of the address of the view, with
+// no new entry in the history. The address keeps no hash.
+func replaceAddress(u string) {
+	loc := js.Global().Get("location")
+	if loc.Get("pathname").String() != u || loc.Get("hash").String() != "" {
+		js.Global().Get("history").Call("replaceState", nil, "", u)
+	}
+}
+
+// onHistory runs show when the tab goes back or forward in its history, and for a click on a
+// link to an address at prefix or under it. The click opens the address with openAddress. A
+// click with a modifier key, for a new tab or window, works as a plain link.
+func onHistory(show func(), prefix string) {
+	js.Global().Call("addEventListener", "popstate", js.FuncOf(func(js.Value, []js.Value) any {
+		show()
+		return nil
+	}))
+	doc.Call("addEventListener", "click", js.FuncOf(func(_ js.Value, args []js.Value) any {
+		e := args[0]
+		if e.Get("defaultPrevented").Bool() || e.Get("button").Int() != 0 || e.Get("metaKey").Bool() ||
+			e.Get("ctrlKey").Bool() || e.Get("shiftKey").Bool() || e.Get("altKey").Bool() {
+			return nil
+		}
+		a := e.Get("target").Call("closest", "a")
+		if a.IsNull() || a.Get("origin").String() != js.Global().Get("location").Get("origin").String() {
+			return nil
+		}
+		p := a.Get("pathname").String()
+		if p != prefix && !strings.HasPrefix(p, prefix+"/") {
+			return nil
+		}
+		e.Call("preventDefault")
+		openAddress(p)
+		return nil
+	}))
 }
 
 // The helpers of the DOM and the browser.

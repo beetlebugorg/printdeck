@@ -1,16 +1,24 @@
-/* The pages of the projects: the app page (sign in, the projects, one project) and the public page. */
+/* The pages of the projects: the app page (sign in, the projects, one project) and the public page.
+   The spaces come from one scale: 4, 8, 12, 16, 24 and 32 px. */
+:root { --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; }
+.wrap { gap: var(--s5); }
 header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .brand { color: var(--ink); text-decoration: none; }
 .who { font-size: 14px; color: var(--ink-dim); }
-h2 { margin: 0 0 10px; font: 700 12px/1 "Archivo", sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); }
-h2.section { margin: 8px 0 0; }
-.view { display: grid; gap: 14px; }
+h2 { margin: 0; font: 700 12px/1 "Archivo", sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); }
+.view { display: grid; gap: var(--s4); }
+/* A heading of a section has more space above it than below it. */
+.view > h2.section { margin: var(--s4) 0 calc(var(--s2) - var(--s4)); }
+/* The link back sits close above the title. */
+.view > .back { margin-bottom: calc(var(--s1) - var(--s4)); }
 .small { font-size: 14px; }
 .msg { margin: 0; min-height: 1.5em; color: var(--ink-dim); }
 .msg:empty { display: none; }
 .msg.err { color: #b3261e; }
 @media (prefers-color-scheme: dark) { .msg.err { color: #ff8a80; } }
-.card { background: var(--plate); border: 1px solid var(--seam); border-radius: 14px; padding: 16px 18px; display: grid; gap: 10px; }
+.card { background: var(--plate); border: 1px solid var(--seam); border-radius: 14px; padding: var(--s4); display: grid; gap: var(--s3); }
+@media (min-width: 600px) { .card { padding: var(--s5); } }
+.cards-stack { display: grid; gap: var(--s4); }
 button, .file span { min-height: 44px; padding: 0 18px; border-radius: 12px; font: 700 15px/1 "Archivo", sans-serif; color: var(--ink);
   background: var(--cap); border: 1px solid var(--seam); cursor: pointer; display: inline-grid; place-items: center; }
 button.primary { background: var(--orange); color: var(--on-orange); border: none; min-height: 52px; font-size: 17px; }
@@ -18,27 +26,28 @@ button.link { background: none; border: none; min-height: 0; padding: 0; color: 
 button[aria-pressed="true"] { background: var(--orange); color: var(--on-orange); border-color: var(--orange); }
 button:disabled { opacity: .5; cursor: default; }
 button:focus-visible, input:focus-visible, .file input:focus-visible + span { outline: 2px solid var(--orange); outline-offset: 2px; }
-.field { display: grid; gap: 6px; font-size: 14px; color: var(--ink-dim); }
+.field { display: grid; gap: var(--s2); font-size: 14px; color: var(--ink-dim); }
 input:not([type]), input[type="text"] { font: 400 16px/1.4 "Archivo", sans-serif; color: var(--ink); background: var(--cap);
   border: 1px solid var(--seam); border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%; }
-.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.row { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
 .row input { flex: 1 1 180px; width: auto; }
 .file { display: flex; }
 .file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .file span { flex: 1; }
-.linkbox { display: grid; gap: 8px; background: var(--lcd); color: var(--lcd-ink); border-radius: 10px; padding: 12px; }
+.linkbox { display: grid; gap: var(--s3); background: var(--lcd); color: var(--lcd-ink); border-radius: 10px; padding: var(--s4); }
 .linkbox code { font: 500 13px/1.4 "IBM Plex Mono", monospace; overflow-wrap: anywhere; }
 .linkbox button { background: var(--cap); }
 .back { font-size: 14px; }
-.cards { display: grid; gap: 12px; }
-.pcard { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 18px; align-items: center; background: var(--plate);
-  border: 1px solid var(--seam); border-radius: 14px; padding: 14px 18px 14px 14px; color: var(--ink); text-decoration: none; }
+.cards { display: grid; gap: var(--s3); }
+.pcard { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: var(--s4); align-items: center; background: var(--plate);
+  border: 1px solid var(--seam); border-radius: 14px; padding: var(--s3) var(--s4) var(--s3) var(--s3); color: var(--ink); text-decoration: none; }
+.pcard:hover { border-color: var(--orange); }
 .pcard img, .pcard .ph { width: 80px; height: 80px; border-radius: 10px; object-fit: contain; background: var(--lcd); }
-.pcard strong { font: 800 20px/1.15 "Archivo", sans-serif; font-stretch: 85%; display: block; margin-bottom: 4px; overflow-wrap: anywhere; }
+.pcard strong { font: 800 20px/1.15 "Archivo", sans-serif; font-stretch: 85%; display: block; margin-bottom: var(--s1); overflow-wrap: anywhere; }
 .pcard span { color: var(--ink-dim); font-size: 14px; }
-.members { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.members { list-style: none; margin: 0; padding: 0; display: grid; }
 .members:empty { display: none; }
-.members li { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--seam); }
+.members li { display: flex; justify-content: space-between; gap: var(--s3); align-items: center; padding: var(--s3) 0; border-top: 1px solid var(--seam); }
 .members li span { color: var(--ink-dim); font-size: 14px; }
 .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
 .photos figure { margin: 0; position: relative; border-radius: 8px; overflow: hidden; background: #000; aspect-ratio: 1; }
@@ -48,35 +57,39 @@ input:not([type]), input[type="text"] { font: 400 16px/1.4 "Archivo", sans-serif
 .photos .rm { position: absolute; right: 6px; top: 6px; min-height: 30px; padding: 0 10px; font-size: 12px; background: rgba(0,0,0,.62);
   color: #f3f1ec; border: none; }
 /* The prints of a project: a tile each, which opens the page of the print. */
-.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 40vw), 1fr)); gap: 14px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 40vw), 1fr)); gap: var(--s3); }
 .tile { display: grid; grid-template-rows: auto 1fr; background: var(--plate); border: 1px solid var(--seam); border-radius: 14px;
   overflow: hidden; color: var(--ink); text-decoration: none; }
 .tile:hover { border-color: var(--orange); }
 .tile:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
-.tile .pic { background: var(--lcd); position: relative; aspect-ratio: 4 / 3; display: grid; place-items: center; }
-.tile .pic img { width: 100%; height: 100%; object-fit: contain; display: block; }
-.tile .badges { position: absolute; left: 8px; top: 8px; right: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+/* The picture keeps the shape 4:3. A picture of another shape fits inside it. */
+.tile .pic { background: var(--lcd); position: relative; aspect-ratio: 4 / 3; overflow: hidden; }
+.tile .pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+.tile .badges { position: absolute; left: var(--s2); top: var(--s2); right: var(--s2); display: flex; gap: var(--s1); flex-wrap: wrap; }
 .tile .badges span { font: 500 11px/1 "IBM Plex Mono", monospace; color: #f3f1ec; background: rgba(0,0,0,.62); padding: 6px 8px; border-radius: 6px; }
 .tile .badges .fail { background: #b3261e; }
 .tile .badges .live { background: var(--orange); color: var(--on-orange); }
 #live:empty { display: none; }
 .tile .bar { height: 8px; }
-.tile .body { padding: 14px 14px 16px; display: grid; gap: 8px; align-content: start; border-top: 1px solid var(--seam); }
+.tile .body { padding: var(--s3); display: grid; gap: var(--s2); align-content: start; border-top: 1px solid var(--seam); }
 .tile strong { font: 800 18px/1.15 "Archivo", sans-serif; font-stretch: 85%; overflow-wrap: anywhere; }
 .tile .tfacts { display: grid; gap: 2px; font: 500 12px/1.5 "IBM Plex Mono", monospace; color: var(--ink-dim); }
 /* The numbers of a project, in the readout of the share page. */
 .stats .big { font-size: clamp(26px, 7vw, 40px); }
-.phead { display: grid; gap: 6px; }
+.phead { display: grid; gap: var(--s2); }
+.phead h1 { margin-bottom: var(--s1); }
 /* The player of a time lapse. */
-.player { display: flex; align-items: center; gap: 12px; padding: 10px 4px 2px; }
+.player { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s1) 0; }
 .player button { min-height: 44px; min-width: 88px; font: 600 14px/1 "Archivo", sans-serif; color: var(--lcd-ink); background: var(--lcd-cell);
   border: 1px solid var(--lcd-dim); border-radius: 8px; }
 .player input { flex: 1; min-width: 0; accent-color: var(--lcd-ink); min-height: 44px; }
 .player span { font: 500 12px/1 "IBM Plex Mono", monospace; color: var(--lcd-dim); min-width: 72px; text-align: right; font-variant-numeric: tabular-nums; }
-.note { white-space: pre-wrap; padding-top: 4px; }
+.note { white-space: pre-wrap; }
 .card h2 { margin: 0; }
-.card h2.sub2 { margin-top: 10px; }
 .title h1 { overflow-wrap: anywhere; }
-.danger { padding-top: 8px; }
+.view .title p { margin-top: var(--s2); }
+.view .title .linkrow { margin-top: var(--s4); }
+.view > .danger { margin-top: var(--s2); }
 .view p, .card p { margin: 0; }
-footer { display: grid; gap: 4px; }
+.card .fil-head { margin-bottom: 0; }
+footer { display: grid; gap: var(--s1); margin-top: var(--s4); padding-top: var(--s4); }

@@ -53,8 +53,10 @@ type ProjectRequest struct {
 
 // ProjectSummary is a project in a list.
 type ProjectSummary struct {
-	ID      string    `json:"id"`
-	Name    string    `json:"name"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Slug is the name of the project in its address: /projects/<slug>.
+	Slug    string    `json:"slug,omitempty"`
 	Note    string    `json:"note,omitempty"`
 	Prints  int       `json:"prints"`
 	Photos  int       `json:"photos"`
@@ -70,8 +72,11 @@ type ProjectSummary struct {
 // public page has the same fields, with the paths of the files relative to the page, and no
 // members.
 type ProjectView struct {
-	ID      string    `json:"id,omitempty"`
-	Name    string    `json:"name"`
+	ID   string `json:"id,omitempty"`
+	Name string `json:"name"`
+	// Slug is the name of the project in its address: /projects/<slug>, or /p/<slug> for the
+	// public page.
+	Slug    string    `json:"slug,omitempty"`
 	Note    string    `json:"note,omitempty"`
 	Owner   string    `json:"owner"` // the first name of the owner
 	Created time.Time `json:"created"`
@@ -118,7 +123,9 @@ type ProjectMember struct {
 
 // ProjectPrint is a print of a project, from the history record of the deck.
 type ProjectPrint struct {
-	ID       string    `json:"id"`
+	ID string `json:"id"`
+	// N is the number of the print in its project, from 1: the address of its page ends in /<n>.
+	N        int       `json:"n,omitempty"`
 	Name     string    `json:"name"`
 	File     string    `json:"file,omitempty"`
 	Result   string    `json:"result"` // "complete", "cancelled" or "error"
@@ -189,10 +196,16 @@ type InviteView struct {
 }
 
 // PublicRequest is the body of POST /api/v1/projects/<id>/public: On turns the public address on
-// or off, and Renew makes a new address in place of the old one.
+// or off. The address is /p/<slug> of the project.
 type PublicRequest struct {
-	On    bool `json:"on"`
-	Renew bool `json:"renew,omitempty"`
+	On bool `json:"on"`
+}
+
+// NameReply is the reply of GET /api/v1/names/<slug>: the project of the address, and the slug of
+// its address now. The slug is new after a rename of the project.
+type NameReply struct {
+	ID   string `json:"id"`
+	Slug string `json:"slug"`
 }
 
 // PublicReply is the public address of a project, or "".

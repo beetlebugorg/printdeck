@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"path"
 	"slices"
+	"strconv"
 	"strings"
 
 	"printdeck/internal/cloud"
@@ -20,17 +21,15 @@ import (
 
 // shareTarget is the page of the project p for a share: the print page, or the project page
 // before the print is in it. It is the public page when the project has a public address.
-func (s *Server) shareTarget(p *Project, print string) string {
+func (s *Server) shareTarget(ctx context.Context, p *Project, print string) string {
+	u := s.projectURL(p)
 	if p.Public != "" {
-		u := s.publicURL(p.Public)
-		if print != "" {
-			u += "#p=" + print
-		}
-		return u
+		u = s.publicURL(p.Public)
 	}
-	u := s.projectURL(p.ID)
 	if print != "" {
-		u += "&p=" + print
+		if rec, err := s.loadPrint(ctx, p.ID, print); err == nil && rec.N > 0 {
+			u += "/" + strconv.Itoa(rec.N)
+		}
 	}
 	return u
 }
@@ -92,7 +91,7 @@ func (s *Server) showShareProject(ctx context.Context, sh *Share) error {
 			return err
 		}
 		if p != nil {
-			info = &cloud.ShareProject{Name: p.Name, URL: s.shareTarget(p, sh.Print)}
+			info = &cloud.ShareProject{Name: p.Name, URL: s.shareTarget(ctx, p, sh.Print)}
 		}
 	}
 	if sh.Moved {

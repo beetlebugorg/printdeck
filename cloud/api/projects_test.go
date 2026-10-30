@@ -220,7 +220,7 @@ func TestProjectFlow(t *testing.T) {
 	if st := call(t, base, "POST", "/api/v1/projects", tok, cloud.ProjectRequest{Name: "Garden planters"}, &sum); st != 200 {
 		t.Fatalf("new project: %d", st)
 	}
-	if sum.URL != base+"/app#x="+sum.ID {
+	if sum.URL != base+"/projects/garden-planters" || sum.Slug != "garden-planters" {
 		t.Errorf("project URL %q", sum.URL)
 	}
 	if st := call(t, base, "POST", "/api/v1/projects", "", cloud.ProjectRequest{Name: "No"}, nil); st != 401 {
@@ -255,6 +255,36 @@ func TestProjectFlow(t *testing.T) {
 	}
 	if st := call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/invites", samIn.Token, cloud.InviteRequest{Name: "Max"}, nil); st != 401 {
 		t.Errorf("an invite of a member: %d", st)
+	}
+
+	// The address of the project: the owner and the member find the project by its slug. A
+	// second project with the same name gets the next number, and the member cannot see it.
+	var nr cloud.NameReply
+	if st := call(t, base, "GET", "/api/v1/names/garden-planters", tok, nil, &nr); st != 200 || nr.ID != sum.ID || nr.Slug != "garden-planters" {
+		t.Errorf("the owner finds the project: %d %+v", st, nr)
+	}
+	if st := call(t, base, "GET", "/api/v1/names/garden-planters", samIn.Token, nil, &nr); st != 200 || nr.ID != sum.ID {
+		t.Errorf("the member finds the project: %d %+v", st, nr)
+	}
+	var other cloud.ProjectSummary
+	if st := call(t, base, "POST", "/api/v1/projects", tok, cloud.ProjectRequest{Name: "Garden Planters!"}, &other); st != 200 || other.Slug != "garden-planters-2" {
+		t.Fatalf("a second project with the same name: %d %+v", st, other)
+	}
+	if st := call(t, base, "GET", "/api/v1/names/garden-planters-2", samIn.Token, nil, nil); st != 410 {
+		t.Errorf("the member finds a project of another person: %d", st)
+	}
+	if st := call(t, base, "GET", "/api/v1/names/no-such-project", tok, nil, nil); st != 410 {
+		t.Errorf("no such slug: %d", st)
+	}
+	if st := call(t, base, "GET", "/api/v1/names/garden-planters", "", nil, nil); st != 401 {
+		t.Errorf("a slug with no sign-in: %d", st)
+	}
+	p2, _, _ := d.API.loadProject(ctx, other.ID)
+	if err := d.API.deleteProject(ctx, p2); err != nil {
+		t.Fatal(err)
+	}
+	if st := call(t, base, "GET", "/api/v1/names/garden-planters-2", tok, nil, nil); st != 410 {
+		t.Errorf("the slug of a deleted project: %d", st)
 	}
 
 	// A print of the deck, with the picture of the model and two frames of the time lapse.
@@ -295,7 +325,10 @@ func TestProjectFlow(t *testing.T) {
 	for _, f := range []string{"model.jpg", "lapse/0.jpg", "lapse/1.jpg"} {
 		cloud.PostFile(ctx, nil, pr2.Grant, f, "image/jpeg", "private, max-age=31536000", []byte("jpeg "+f))
 	}
-	c.Do(ctx, id, "POST", "/api/v1/projects/"+sum.ID+"/prints/"+pr.Print+"/done", cloud.PrintDone{Frames: 2, FPS: 24}, nil)
+	c.Do(ctx, id, "POST", "/api/v1/projects/"+sum.ID+"/prints/"+pr.Print+"/done", cloud.PrintDone{Frames: 2, FPS: 24}, &view)
+	if len(view.Prints) != 1 || view.Prints[0].N != 1 {
+		t.Errorf("the print sent again keeps its number: %+v", view.Prints)
+	}
 
 	// A photo of the friend.
 	var ph cloud.PhotoReply
@@ -314,7 +347,7 @@ func TestProjectFlow(t *testing.T) {
 
 	// The public address: a page, page.json and the copies, with no file names; off deletes them.
 	var pub cloud.PublicReply
-	if st := call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/public", tok, cloud.PublicRequest{On: true}, &pub); st != 200 || !strings.HasPrefix(pub.URL, base+"/p/") {
+	if st := call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/public", tok, cloud.PublicRequest{On: true}, &pub); st != 200 || pub.URL != base+"/p/garden-planters" {
 		t.Fatalf("public on: %d %+v", st, pub)
 	}
 	if st := call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/public", samIn.Token, cloud.PublicRequest{On: false}, nil); st != 401 {

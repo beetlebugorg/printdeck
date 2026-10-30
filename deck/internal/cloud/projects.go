@@ -30,6 +30,7 @@ type (
 	InviteView     = wire.InviteView
 	PublicRequest  = wire.PublicRequest
 	PublicReply    = wire.PublicReply
+	NameReply      = wire.NameReply
 	PrintRequest   = wire.PrintRequest
 	PrintReply     = wire.PrintReply
 	PrintDone      = wire.PrintDone

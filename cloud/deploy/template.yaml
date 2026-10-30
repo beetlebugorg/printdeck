@@ -108,7 +108,8 @@ Resources:
         SigningBehavior: always
         SigningProtocol: sigv4
 
-  # CloudFront reads only the pages (with the app page at /app, /owner and /j), the shares and the
+  # CloudFront reads only the pages (with the app page at /app, /owner and /j, and at /projects with
+  # the function Paths), the shares and the
   # public pages of the projects. It cannot list the bucket, so a file that does not exist gets
   # 403, and the "not found" page.
   DataBucketPolicy:
@@ -161,6 +162,32 @@ Resources:
           Items:
             - { Header: X-Robots-Tag, Value: noindex, Override: true }
 
+  # Paths serves the app page at /projects and at the addresses under it, and the public page of
+  # a project at the page of one of its prints, /p/<slug>/<n>. api.PagePath does the same for
+  # pwf dev.
+  Paths:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub "${AWS::StackName}-paths"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: The page file of the project addresses
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var r = event.request;
+          var u = r.uri;
+          if (u === '/projects' || u.indexOf('/projects/') === 0) {
+            r.uri = '/app';
+          } else {
+            var m = u.match(/^(\/p\/[^\/]+)\/[0-9]+\/?$/);
+            if (m) {
+              r.uri = m[1];
+            }
+          }
+          return r;
+        }
+
   Distribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -190,6 +217,9 @@ Resources:
           # CachingOptimized. The files set their own Cache-Control.
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
           ResponseHeadersPolicyId: !Ref Headers
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt Paths.FunctionMetadata.FunctionARN
         CacheBehaviors:
           - PathPattern: /api/*
             TargetOriginId: api
