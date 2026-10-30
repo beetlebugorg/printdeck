@@ -7,6 +7,16 @@ resin printer on the network. The deck reads its state during a print, and at th
 print to a project, as it does for the TAZ. The project pages show the prints of each printer,
 with the facts of each kind of print: filament for a FDM print, resin for a resin print.
 
+The Phenom gets its own deck: a Pi and a touchscreen in a pod on the Phenom, with Printdeck and a
+backend for its ChiTu board in place of Klipper. The ChiTu board and its firmware stay.
+
+The service has many printers for one project. The project is the center: its prints come from
+each printer of the owner, through each deck. A deck is the way a printer reports to the service.
+Each deck connects to the service and adds its prints, its live tiles and its photos to the
+projects. The list of the projects is at the service, and each deck and the Cura plugin pick a
+project from that list. Each deck keeps its own history, rolls, settings and time lapses: only
+the list of the projects is shared.
+
 ## Why
 
 The projects show only the prints of the deck. A project often has parts from the resin printer
@@ -55,6 +65,25 @@ them was tried on the Phenom:
 
 The address of the Phenom comes from DHCP. A reservation in the router for its MAC address keeps
 the address.
+
+### The update file of Peopoly
+
+`Phenom Chitu firmware 20210715.zip` from Peopoly has four files:
+
+- `update.LCD`: the firmware of the main board, in the update format of ChiTu boards: the magic
+  `0x443D2D3F`, a key, a CRC, and blocks of 0x800 bytes with an XOR of each byte. Klipper has the
+  same format in `scripts/update_chitu.py`. The file decodes with a correct CRC. The firmware is
+  `V4.4.3-h4_LCDH`, it starts at `0x08020000` after the bootloader, and its stack is at
+  `0x2001C470` (more than 112 KB of RAM). Its touchscreen UI uses emWin, a TFT driver
+  (`ilixxxx`), and a resistive touch panel with a calibration of its 4 edges. The board answered
+  `VER:V1.4.1` to `M99999`, so it is not known if the board has this firmware.
+- `FPGA_211.CBD`: the image of the FPGA, with no encryption. It is version 2.11.
+- `Phenom-UI.bin`: the pictures of the touchscreen (480 x 272) for its SPI flash.
+- `Phenom.gcode`: the settings of the board as `M8xxx` commands: the lift of 8 mm, the Z step of
+  0.00125 mm, the Z travel of 400 mm, the speeds, and the control of the UV light.
+
+The firmware has text for `M6030` (the start of a print by file name) and a status line with the
+name of the file (`U:'%s'`).
 
 ## The parts that exist
 
@@ -126,7 +155,51 @@ The project pages:
 - The print page of a resin print shows the area chart in place of the chart of the layer times,
   and the resin card in place of the filament card.
 
-### 5. Printers that come later
+### 5. The deck on the Phenom
+
+The deck program gets a backend for a ChiTu board, next to the backend for Klipper
+(`printerBackend`). It maps the answers of the board to the state of the printer, so the status
+panel, the history, the projects and the cloud work as for the TAZ. The screens of a resin printer:
+
+- The status: the file, the progress, the layer from the Z height, the time left, and the area chart.
+- The files on the card of the board, with the layers, the resin and the time of the files that the
+  deck has. A tap starts a print, after the choice of its project.
+- Pause, resume and stop.
+- The settings of the board from `Phenom.gcode`: the lift and the speeds.
+- The upload of a sliced file from a computer to the deck, and from the deck to the board.
+
+The screens of the heaters and the filament do not show for a resin printer. The pod needs a mount
+for the Phenom: a new part, from measurements of the Phenom.
+
+### 6. Many printers for one project
+
+The service today knows decks: each deck enrolls (`decks/<id>.json`), a print has the name of its
+printer as text (`PrintRequest.Printer`), and the live tile of a project is a file for each deck
+(`x/<project>/live/<deck>.json`). A deck knows only the projects of its own history: a project is a
+name on the records of its history, and `cloud-projects.json` maps the name to the ID at the
+service. A second deck then makes a second project with the same name.
+
+The change:
+
+- **Printers at the service.** `printers/<id>.json` has the ID, the name, the process (`fdm` or
+  `resin`), the model, and the deck that reports it. A deck registers each of its printers at its
+  first connection (`POST /api/v1/printers`), and keeps the IDs. A deck can report more than one
+  printer.
+- **The projects are at the service.** Each deck reads the list of the projects (`GET
+  /api/v1/projects`) at its start and each 10 minutes. The project choice of the deck and the list
+  for the Cura plugin are this list. A new project on a deck goes to the service first, and the
+  deck uses its ID. A record of the history keeps the ID of its project, with the name for the
+  screens. The records of today with a name only get the ID of the project with that name.
+- **Each print and each live tile has its printer.** A print has the ID of its printer. The live
+  tile is a file for each printer (`x/<project>/live/<printer>.json`), so two printers of one deck
+  show two live prints in one project.
+- **The project pages show the printers.** A project shows the printers of its prints, with a
+  filter of the prints by printer, the numbers of each printer (prints, time, filament or resin),
+  and a live tile for each printer that prints for the project.
+- **A page of the printers for the owner.** Each printer, its deck, its state (idle, printing,
+  offline), and the print and the project of a printer that prints.
+
+### 7. Printers that come later
 
 A new kind is a new watcher with the same interface: for example a Klipper printer through
 Moonraker, a Bambu printer through MQTT, or a Prusa printer through PrusaLink. The record, the
@@ -134,11 +207,16 @@ upload and the pages stay the same.
 
 ## Phases
 
-1. The watcher of a ChiTu board, with the printer list and the status line on the deck. Only
-   queries that read. A test print on the Phenom checks the fields of `M4000`.
-2. The record of a resin print and its upload to a project, with the resin fields of the wire.
-3. The project pages: the badge, the resin numbers, the resin card.
-4. The sliced file: the upload through the deck, the area chart, the volume, the model picture.
+1. Many printers for one project (part 6): the printers at the service, the projects from the
+   service on each deck, and a live tile for each printer. It is useful with one deck too.
+2. The ChiTu backend with queries that only read, and the status panel. A test print on the
+   Phenom checks the fields of `M4000`.
+3. The record of a resin print and its upload to a project, with the resin fields of the wire.
+4. A test of each control on a small print: start, pause, resume, stop, and the upload. Then the
+   screens of the controls and the files.
+5. The project pages: the badge, the resin numbers, the resin card.
+6. The sliced file: the area chart, the volume, the model picture.
+7. The second deck on the Phenom: the pod mount, and the deck with the ChiTu backend.
 
 ## Tests
 
@@ -160,3 +238,7 @@ upload and the pages stay the same.
    take long, and the user can prefer a USB drive.
 5. A camera on the Phenom for a time lapse: where, and how to sync the frames with the lifts of the
    plate.
+6. The commands of pause, resume, stop and upload of this firmware. The usual ChiTu commands
+   (`M25`, `M24`, `M33`, `M28`, `M29`) are not in the text of the firmware. The firmware can
+   compare the numbers of the commands, so the test of phase 4 decides.
+7. The size and the place of the pod on the Phenom.
