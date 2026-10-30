@@ -11,9 +11,7 @@ import (
 
 // The screens of a resin printer (Machine.Process is "resin", for example the Phenom on its ChiTu
 // board). A resin printer has no heaters, no filament and no toolhead: the status panel shows the
-// height of the plate and the times, and the job screen shows the print with no model. The deck
-// sends no command to a resin printer before the test of each control, so the job screen has no
-// Pause and no Cancel: the screen of the printer has them.
+// height of the plate and the times, and the job screen shows the print with no model.
 
 // resin reports that the printer of the deck is a resin printer.
 func (a *App) resin() bool {
@@ -38,15 +36,14 @@ func resinReadouts(c *gfx.Canvas, cells []image.Rectangle, st printer.State) {
 	readout(c, cells[2], "LEFT", left, "", 0, false)
 }
 
-// drawResinJob is the screen of a running print on a resin printer: the status panel, the share
-// key, and the window of the print.
+// drawResinJob is the screen of a running print on a resin printer: the status panel, the keys,
+// and the window of the print.
 func (a *App) drawResinJob(c *gfx.Canvas, st printer.State) {
-	note := "Pause and stop on the screen of the printer."
 	if W > H {
 		a.jobPanel = true
 		view, keys := a.statePage(c, st, gfx.Fit(gfx.Face(true, 24), st.Name(), a.navFrame().head.Dx()-20), actH)
 		a.jobPanel = false
-		a.resinKeys(c, keys, note)
+		a.resinKeys(c, keys, st)
 		a.resinView(c, view, st)
 		return
 	}
@@ -54,21 +51,31 @@ func (a *App) drawResinJob(c *gfx.Canvas, st printer.State) {
 	a.statusPanel(c, st)
 	a.jobPanel = false
 	keys, box := a.jobAreas()
-	a.resinKeys(c, keys, note)
+	a.resinKeys(c, keys, st)
 	a.resinView(c, box, st)
 }
 
-// resinKeys draws the row of keys of a resin print: the note at the left, and Share at the right
-// when the deck can share.
-func (a *App) resinKeys(c *gfx.Canvas, keys image.Rectangle, note string) {
-	text := keys
+// resinKeys draws the row of keys of a resin print: Stop at the left, Share, and Pause or Resume
+// at the right.
+func (a *App) resinKeys(c *gfx.Canvas, keys image.Rectangle, st printer.State) {
+	pr := a.Printer
+	sizes := []kit.Size{kit.Fr(1), kit.Fr(1)}
 	if a.canShare() {
-		k := kit.Cols(keys, 12, kit.Fr(2), kit.Fr(1))
-		text = k[0]
+		sizes = append(sizes, kit.Fr(1))
+	}
+	k := kit.Cols(keys, 12, sizes...)
+	a.button(c, k[0], "Stop", raised, red, func() {
+		a.confirm = &confirmBox{question: "Stop this print?", yes: "Stop print", danger: true, onYes: pr.Cancel}
+	})
+	if a.canShare() {
 		a.shareKey(c, k[1])
 	}
-	face := gfx.Face(false, 17)
-	c.Text(kit.Inset(text, 8, 0, 8, 0), gfx.Fit(face, note, text.Dx()-16), face, dim, gfx.Left)
+	last := k[len(k)-1]
+	if st.Paused {
+		a.button(c, last, "Resume", orange, onAcc, pr.Resume)
+	} else {
+		a.button(c, last, "Pause", orange, onAcc, pr.Pause)
+	}
 }
 
 // resinView draws the window of a resin print: the height of the plate and the share of the file
@@ -88,4 +95,35 @@ func (a *App) resinView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 		c.RoundRect(image.Rect(bar.Min.X, bar.Min.Y, bar.Min.X+w, bar.Max.Y), 3, lcdInk)
 	}
 	c.Text(rows[4], "No model: the deck has no copy of the file.", gfx.Face(false, 15), lcdDim, gfx.Center)
+}
+
+// drawResinOffline is the screen of a resin printer that does not answer: "Connecting" at the start
+// of the deck, then "Printer not answering" with the address, a key to change the printer, and
+// Wi-Fi and help and Software update.
+func (a *App) drawResinOffline(c *gfx.Canvas, st printer.State) {
+	title, msg := "Connecting", "Connecting to the printer…"
+	if st.Err != "" {
+		title = "Printer not answering"
+		msg = st.Err + ". Check that the printer is on and on the network. The deck tries again every 10 seconds."
+	}
+	wide, textArea, info := a.plain(c, title)
+	n := len(a.systemKeyList(c))
+	sysH := max(0, n*keyH+(n-1)*12)
+	var keys, sys image.Rectangle
+	if wide {
+		r := kit.Rows(textArea, 12, kit.Fr(1), kit.Px(72), kit.Px(sysH))
+		keys, sys = r[1], r[2]
+	} else {
+		r := kit.Rows(info, 12, kit.Fr(1), kit.Px(72), kit.Px(sysH))
+		info, keys, sys = r[0], r[1], r[2]
+	}
+	a.systemKeys(c, sys)
+	face := gfx.Face(false, 20)
+	s := kit.NewStack(info, 0)
+	for _, l := range wrapText(face, msg, info.Dx()) {
+		c.Text(s.Next(30), l, face, text, gfx.Left)
+	}
+	if _, ok := a.printerSetup(); ok {
+		a.button(c, keys, "Printer", raised, text, a.OpenPrinterSetup)
+	}
 }

@@ -8,6 +8,13 @@ import (
 	"printdeck/kit"
 )
 
+// The steps of the plate: plateBigStep is the largest step up, for the space to take the part off,
+// and plateMaxDown the largest step down, so a step does not crush the vat.
+const (
+	plateBigStep = 50.0
+	plateMaxDown = 10.0
+)
+
 // drawBuildPlate is the page of the build plate of a resin printer, in the place of the toolhead:
 // the plate has only Z. The keys home Z and move the plate by a step. The backend of the printer
 // decides if a move goes to the printer: the ChiTu backend sends no move before its test.
@@ -42,8 +49,11 @@ func (a *App) drawBuildPlate(c *gfx.Canvas) {
 		a.button(c, r, label, raised, text, func() { a.do(f) })
 	}
 	move(home, "Home Z", func() error { return pr.Home("z") })
-	for i, sr := range kit.Cols(steps, 6, kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
-		s := []float64{0.1, 1, 10}[i]
+	if a.zStep == 0 {
+		a.zStep = 1
+	}
+	for i, sr := range kit.Cols(steps, 6, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
+		s := []float64{0.1, 1, 10, plateBigStep}[i]
 		fill, fg := keyOff, text
 		if a.zStep == s {
 			fill, fg = keyOn, keyOnInk
@@ -52,11 +62,16 @@ func (a *App) drawBuildPlate(c *gfx.Canvas) {
 		a.addHit(kit.Hit{R: sr, Tap: func() { a.zStep = s }})
 	}
 	zr := kit.Cols(zRow, 8, kit.Fr(1), kit.Fr(1))
-	move(zr[0], "Plate down", func() error { return pr.Jog(0, 0, -a.zStep, 600) })
+	move(zr[0], "Plate down", func() error {
+		if a.zStep > plateMaxDown {
+			return fmt.Errorf("Down moves %.0f mm at most: pick a smaller step", plateMaxDown)
+		}
+		return pr.Jog(0, 0, -a.zStep, 600)
+	})
 	move(zr[1], "Plate up", func() error { return pr.Jog(0, 0, a.zStep, 600) })
 
 	face := gfx.Face(false, 16)
-	lines := wrapText(face, "The deck moves the plate after a test of the moves on this printer. Until then, move the plate on the screen of the printer.", note.Dx())
+	lines := wrapText(face, fmt.Sprintf("Up moves %.0f mm at most, down %.0f mm. The panel shows the answer of the printer.", plateBigStep, plateMaxDown), note.Dx())
 	for i, l := range lines {
 		c.Text(image.Rect(note.Min.X, note.Min.Y+8+i*24, note.Max.X, note.Min.Y+32+i*24), l, face, dim, gfx.Left)
 	}

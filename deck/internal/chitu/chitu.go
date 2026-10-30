@@ -239,6 +239,23 @@ func (c *Client) Files(ctx context.Context) ([]File, error) {
 	}
 }
 
+// StartPrint starts the print of the file with the name on the card: M6030 ':<name>', as the
+// ChituManager app of ChiTu sends it. An answer with "Error" is an error, for example "Error:Cann't
+// start print".
+func (c *Client) StartPrint(ctx context.Context, name string) error {
+	if name == "" || strings.ContainsAny(name, "'\r\n") {
+		return fmt.Errorf("chitu: no such file name: %q", name)
+	}
+	a, err := c.Query(ctx, "M6030 ':"+name+"'")
+	if err != nil {
+		return err
+	}
+	if strings.Contains(a, "Error") {
+		return fmt.Errorf("chitu: the board did not start %s: %s", name, a)
+	}
+	return nil
+}
+
 // Info asks the board for its info (M99999).
 func (c *Client) Info(ctx context.Context) (Info, error) {
 	a, err := c.Query(ctx, "M99999")

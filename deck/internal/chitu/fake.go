@@ -99,6 +99,19 @@ func (b *FakeBoard) answer(q string) (string, bool) {
 		return "", false
 	}
 	switch q {
+	case "M6030 ':" + strings.TrimSuffix(strings.TrimPrefix(q, "M6030 ':"), "'") + "'":
+		// The start of a print of a file of the list: the board reads the file from its start.
+		name := strings.TrimSuffix(strings.TrimPrefix(q, "M6030 ':"), "'")
+		for _, l := range b.Files {
+			if i := strings.LastIndexByte(l, ' '); i > 0 && l[:i] == name {
+				fmt.Sscan(l[i+1:], &b.Size)
+				b.Read, b.Seconds, b.Z, b.Flag = 1, 0, 0, 0
+				return "ok", true
+			}
+		}
+		return "Error:Cann't open file:" + name, true
+	case "G28 Z0", "G90", "G91", "M25", "M24", "M33":
+		return "ok", true
 	case "M99999":
 		host, _, _ := net.SplitHostPort(b.Addr())
 		return "ok MAC:00:e0:4c:18:00:29 IP:" + host + " VER:V1.4.1 ID:29,00,18,00,0b,47,39,33 NAME:CBD", true
@@ -113,6 +126,9 @@ func (b *FakeBoard) answer(q string) (string, bool) {
 		}
 		return fmt.Sprintf("ok B:104/0 E1:-8/0 E2:72/0 X:0.000 Y:0.000 Z:%.3f F:256/256 D:%d/%d/%d T:%d",
 			b.Z, b.Read, b.Size, b.Flag, b.Seconds), true
+	}
+	if strings.HasPrefix(q, "G1 Z") {
+		return "ok", true
 	}
 	return "", false
 }

@@ -180,6 +180,8 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	}
 	if !st.Reachable {
 		switch {
+		case a.resin():
+			a.drawResinOffline(c, st)
 		case st.NeedsSetup:
 			a.drawPrinterSetup(c, st)
 		case st.Starting:

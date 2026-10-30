@@ -153,3 +153,32 @@ func TestFiles(t *testing.T) {
 		t.Errorf("printable %v of %+v", ok, files)
 	}
 }
+
+// StartPrint sends M6030 ':<name>'. The board starts a file of its card, and answers with an error
+// for another name.
+func TestStartPrint(t *testing.T) {
+	b, err := NewFakeBoard("127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer b.Close()
+	b.Files = []string{"shoulders-flex.cbddlp 39815689"}
+	c := &Client{Addr: b.Addr(), Timeout: 300 * time.Millisecond}
+	ctx := context.Background()
+	if err := c.StartPrint(ctx, "nope.cbddlp"); err == nil {
+		t.Error("the start of a file that is not on the card")
+	}
+	if err := c.StartPrint(ctx, "bad'name.cbddlp"); err == nil {
+		t.Error("a name with a quote")
+	}
+	if err := c.StartPrint(ctx, "shoulders-flex.cbddlp"); err != nil {
+		t.Fatal(err)
+	}
+	if st, err := c.Status(ctx); err != nil || !st.Printing() || st.Size != 39815689 {
+		t.Errorf("after the start %+v %v", st, err)
+	}
+	log := b.Log()
+	if len(log) < 1 || log[len(log)-2] != "M6030 ':shoulders-flex.cbddlp'" {
+		t.Errorf("the queries %q", log)
+	}
+}

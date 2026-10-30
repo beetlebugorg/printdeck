@@ -20,8 +20,9 @@ import (
 // the state of the board with the queries of package chitu, and keeps the prints in its history.
 // The board keeps its own firmware and its own screen.
 //
-// The controls (start, pause, resume, stop, upload) send no command until their test on a small
-// print. The controls of a FDM printer and of Klipper return ErrNotSupported.
+// The start of a print (PrintFile) sends M6030. The other controls (pause, resume, stop, upload)
+// send no command until their test on a small print. The controls of a FDM printer and of Klipper
+// return ErrNotSupported.
 type ChiTu struct {
 	Client *chitu.Client
 	Hist   *History
@@ -331,12 +332,82 @@ func (c *ChiTu) BabyStep(float64) error                       { return ErrNotSup
 
 // The controls of phase 4: no command goes to the board before the test of each control.
 
-func (c *ChiTu) Pause()                                   {}
-func (c *ChiTu) Resume()                                  {}
-func (c *ChiTu) Cancel()                                  {}
-func (c *ChiTu) PrintFile(string)                         {}
-func (c *ChiTu) Gcode(...string) error                    { return ErrNotTested }
-func (c *ChiTu) Home(...string) error                     { return ErrNotTested }
-func (c *ChiTu) Jog(float64, float64, float64, int) error { return ErrNotTested }
-func (c *ChiTu) MotorsOff() error                         { return ErrNotTested }
-func (c *ChiTu) EmergencyStop() error                     { return ErrNotTested }
+func (c *ChiTu) Gcode(...string) error { return ErrNotTested }
+func (c *ChiTu) MotorsOff() error      { return ErrNotTested }
+func (c *ChiTu) EmergencyStop() error  { return ErrNotTested }
+
+// PrintFile starts the print of the file on the card of the board (M6030). An error shows in the
+// panel.
+func (c *ChiTu) PrintFile(path string) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		err := c.Client.StartPrint(ctx, path)
+		c.mu.Lock()
+		c.st.Message = ""
+		if err != nil {
+			c.st.Message = "The print did not start: " + err.Error()
+		}
+		c.mu.Unlock()
+	}()
+}
+
+// The controls of the build plate and of the print. The commands are the ones of other programs
+// for ChiTu boards; the test on the Phenom of 2026-10-30 checks them. The panel shows the answer
+// of the board to the last control (State.Message), for the test.
+
+// chituMoveWait is the wait for the answer to a move or a homing: the board can answer at the end.
+const chituMoveWait = 60 * time.Second
+
+// chituMaxDown is the longest move of the plate down in one step, in mm: a plate that goes down
+// too far crushes the vat.
+const chituMaxDown = 10.0
+
+// send sends the lines to the board, one at a time, and shows the answer to the last line in the
+// panel. An answer with "Error" stops.
+func (c *ChiTu) send(wait time.Duration, lines ...string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), wait)
+	defer cancel()
+	cl := &chitu.Client{Addr: c.Client.Addr, Timeout: wait}
+	var answer string
+	for _, l := range lines {
+		a, err := cl.Query(ctx, l)
+		if err != nil {
+			c.showAnswer(l + ": " + err.Error())
+			return err
+		}
+		answer = l + ": " + a
+		if strings.Contains(a, "Error") {
+			c.showAnswer(answer)
+			return errors.New(a)
+		}
+	}
+	c.showAnswer(answer)
+	return nil
+}
+
+// showAnswer shows the answer of the board in the panel.
+func (c *ChiTu) showAnswer(s string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.st.Message = s
+}
+
+// Home homes the build plate (G28 Z0). A resin printer has only Z.
+func (c *ChiTu) Home(...string) error { return c.send(chituMoveWait, "G28 Z0") }
+
+// Jog moves the build plate by z mm, up for a positive z, at speed mm/min. A move down is at most
+// chituMaxDown.
+func (c *ChiTu) Jog(_, _, z float64, speed int) error {
+	if z < -chituMaxDown {
+		return fmt.Errorf("the plate moves down %.0f mm at most in one step", chituMaxDown)
+	}
+	// The Phenom moves Z at 6 mm/s at most (M8013 I6 of its settings): 300 mm/min stays under it.
+	speed = min(speed, 300)
+	return c.send(chituMoveWait, "G91", fmt.Sprintf("G1 Z%.2f F%d", z, speed), "G90")
+}
+
+// Pause pauses the print (M25), Resume resumes it (M24), and Cancel stops it (M33).
+func (c *ChiTu) Pause()  { go c.send(5*time.Second, "M25") }
+func (c *ChiTu) Resume() { go c.send(5*time.Second, "M24") }
+func (c *ChiTu) Cancel() { go c.send(5*time.Second, "M33") }

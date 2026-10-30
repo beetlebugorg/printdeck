@@ -65,14 +65,17 @@ func TestResinScreens(t *testing.T) {
 			a.back()
 		}
 
-		// A print: the window of the print, with no Pause, no Tune and no Cancel.
+		// A print: the window of the print, with Stop and Pause, and no Tune.
 		pr.State_ = printer.State{Reachable: true, Connected: true, Printing: true, Text: "Printing", FilePath: "resin-1",
 			Completion: 40, Z: 12.5, HasZ: true}
 		a.Draw(cv)
-		for _, gone := range []string{"Pause", "Tune", "Cancel"} {
+		for _, gone := range []string{"Tune", "Cancel"} {
 			if has(gone) {
 				t.Errorf("wide %v: a resin print has %q", wide, gone)
 			}
+		}
+		if !has("Stop") || !has("Pause") {
+			t.Errorf("wide %v: a resin print with no Stop or Pause", wide)
 		}
 		if !has("Print") {
 			t.Errorf("wide %v: no window of the print", wide)
@@ -86,6 +89,23 @@ func TestResinScreens(t *testing.T) {
 			if has(gone) {
 				t.Errorf("wide %v: the Machine page of a resin printer has %q", wide, gone)
 			}
+		}
+	}
+}
+
+// A resin printer that does not answer has its own screen: no Klipper.
+func TestResinOffline(t *testing.T) {
+	a, pr, _ := newPrintApp(printer.State{Text: "Offline", Err: "No answer from the printer at 192.168.76.58:3000"})
+	cv := gfx.New(a.Screen().W, a.Screen().H)
+	pr.Machine_ = printer.Machine{Process: printer.ProcessResin}
+	a.Setup = &printerHost{DemoSetup: &DemoSetup{}}
+	a.Draw(cv)
+	if _, ok := a.KeyRect("Printer"); !ok {
+		t.Error("no Printer key")
+	}
+	for _, k := range []string{"No Klipper", "Klipper error", "Simulated printer"} {
+		if _, ok := a.KeyRect(k); ok {
+			t.Errorf("the screen has %q", k)
 		}
 	}
 }

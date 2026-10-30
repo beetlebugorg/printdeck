@@ -3,6 +3,7 @@ package printer
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -94,19 +95,35 @@ func TestChiTuBackend(t *testing.T) {
 		t.Errorf("the board %q", m.Board)
 	}
 
-	// The controls send nothing to the board.
-	c.Pause()
-	c.Cancel()
-	c.PrintFile("x")
+	// G-code from the screens goes nowhere.
 	if err := c.Gcode("M6030 'x'"); err != ErrNotTested {
 		t.Errorf("a command: %v", err)
 	}
 	for _, q := range b.Log() {
-		if q != "M4000" && q != "M99999" && q != "M20" {
+		if q != "M4000" && q != "M99999" && q != "M20" && !strings.HasPrefix(q, "G") {
 			t.Errorf("the backend sent %q", q)
 		}
 	}
 	if c.Machine().Process != ProcessResin {
 		t.Error("the process")
+	}
+
+	// The plate: up by the step, at 300 mm/min at most, with relative moves; down 10 mm at most.
+	n := len(b.Log())
+	if err := c.Jog(0, 0, 50, 600); err != nil {
+		t.Fatal(err)
+	}
+	if got := b.Log()[n:]; len(got) != 3 || got[0] != "G91" || got[1] != "G1 Z50.00 F300" || got[2] != "G90" {
+		t.Errorf("the move up %q", got)
+	}
+	n = len(b.Log())
+	if err := c.Jog(0, 0, -50, 600); err == nil || len(b.Log()) != n {
+		t.Errorf("a move down of 50 mm: %v, %q", err, b.Log()[n:])
+	}
+	if err := c.Home("z"); err != nil || b.Log()[len(b.Log())-1] != "G28 Z0" {
+		t.Errorf("home %v %q", err, b.Log())
+	}
+	if !strings.Contains(c.State().Message, "G28 Z0: ok") {
+		t.Errorf("the answer in the panel %q", c.State().Message)
 	}
 }
