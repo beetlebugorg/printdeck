@@ -171,6 +171,8 @@ func (s State) FinishedName() string {
 
 // Machine is what the printer has: the Klipper version, its modules and its macros.
 type Machine struct {
+	// Process is ProcessResin for a resin printer. "" and ProcessFDM are a FDM printer.
+	Process        string
 	KlipperVersion string
 	// HostAPI is the interface version of the Klipper host (package hostapi), or 0 when it is
 	// not known.
