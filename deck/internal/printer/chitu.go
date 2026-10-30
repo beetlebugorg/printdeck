@@ -72,6 +72,8 @@ type ChiTu struct {
 	sendMu      sync.Mutex               // held for each upload to the board, so the uploads go one at a time
 	pics        map[string]image.Image   // the previews of the copies in UploadDir, by name
 	headers     map[string]*chitu.Sliced // the headers of the copies in UploadDir, by name
+	models      map[string]*chitu.Model  // the 3D models of the copies, by name; nil while the deck reads one
+	modelPics   map[string]image.Image   // the pictures of the models, by file, for the screens
 	plans       map[string]filePlan      // the plans of the layers of the copies, by name
 	moves       float64                  // the seconds of the moves of a layer, as the print now measures them
 	movesFile   string                   // the file of moves
@@ -834,12 +836,33 @@ func (c *ChiTu) picture(name string) image.Image {
 	return img
 }
 
-// FilePicture returns the preview of a file that ChiTuBox sent through the deck, or nil.
-func (c *ChiTu) FilePicture(f File, _ string) image.Image { return c.picture(f.Path) }
+// FilePicture returns the 3D model of a file that ChiTuBox sent through the deck, or its preview
+// while the deck reads the model, or nil.
+func (c *ChiTu) FilePicture(f File, _ string) image.Image {
+	if m := c.model(f.Path); m != nil {
+		c.mu.Lock()
+		img, ok := c.modelPics[f.Path]
+		c.mu.Unlock()
+		if !ok {
+			img = m.Draw(480, 360, 1<<30, resinColor)
+			c.mu.Lock()
+			if c.modelPics == nil {
+				c.modelPics = map[string]image.Image{}
+			}
+			c.modelPics[f.Path] = img
+			c.mu.Unlock()
+		}
+		return img
+	}
+	return c.picture(f.Path)
+}
 
 // RecordPicture returns the preview of the file of a print, or nil. File is the name of the file
 // on the card, or the key of the print ("resin-<start>") when the deck did not know it.
 func (c *ChiTu) RecordPicture(r Record) (image.Image, bool) {
+	if m := c.model(r.File); m != nil {
+		return m.Draw(480, 360, 1<<30, resinColor), false
+	}
 	return c.picture(r.File), false
 }
 
@@ -1110,6 +1133,14 @@ func (c *ChiTu) SharePicture(st State, _ Bed) image.Image {
 		name = st.FinishedFile
 	}
 	preview := c.picture(name)
+	if m := c.model(name); m != nil {
+		// The model of the layers, cured up to the layer now: it shows what prints and how far.
+		done := st.Layer
+		if !st.Printing {
+			done = 1 << 30
+		}
+		preview = m.Draw(480, 300, done, resinColor)
+	}
 	var layer image.Image
 	if st.Printing {
 		layer = c.LayerPicture()
@@ -1204,4 +1235,50 @@ func (c *ChiTu) Model() string {
 		return "Peopoly " + c.Name
 	}
 	return c.Name
+}
+
+// resinColor is the color of the cured part in the pictures of a resin print.
+var resinColor = color.RGBA{232, 118, 43, 255}
+
+// model returns the 3D model of the deck's copy of the file name, or nil. The deck reads the model
+// once in the background: the first calls return nil.
+func (c *ChiTu) model(name string) *chitu.Model {
+	if c.UploadDir == "" || name == "" {
+		return nil
+	}
+	name = filepath.Base(name)
+	c.mu.Lock()
+	m, ok := c.models[name]
+	if !ok {
+		if c.models == nil {
+			c.models = map[string]*chitu.Model{}
+		}
+		c.models[name] = nil // reading
+		go c.readModel(name)
+	}
+	c.mu.Unlock()
+	return m
+}
+
+// readModel reads the model of the copy of the file name.
+func (c *ChiTu) readModel(name string) {
+	h := c.header(name)
+	if h == nil {
+		return
+	}
+	f, err := os.Open(filepath.Join(c.UploadDir, name))
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	start := time.Now()
+	m, err := chitu.ReadModel(f, h)
+	if err != nil {
+		log.Printf("chitu: the model of %s: %v", name, err)
+		return
+	}
+	log.Printf("chitu: the model of %s: %d x %d x %d cells in %v", name, m.W, m.H, m.D, time.Since(start).Round(time.Millisecond))
+	c.mu.Lock()
+	c.models[name] = m
+	c.mu.Unlock()
 }
