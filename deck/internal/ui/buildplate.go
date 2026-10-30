@@ -48,7 +48,7 @@ func (a *App) drawBuildPlate(c *gfx.Canvas) {
 		}
 		a.button(c, r, label, raised, text, func() { a.do(f) })
 	}
-	move(home, "Home Z", func() error { return pr.Home("z") })
+	move(home, "Home Z", func() error { a.askHomePlate(); return nil })
 	if a.zStep == 0 {
 		a.zStep = 1
 	}
@@ -75,4 +75,12 @@ func (a *App) drawBuildPlate(c *gfx.Canvas) {
 	for i, l := range lines {
 		c.Text(image.Rect(note.Min.X, note.Min.Y+8+i*24, note.Max.X, note.Min.Y+32+i*24), l, face, dim, gfx.Left)
 	}
+}
+
+// askHomePlate asks before the plate homes: the plate goes down to its stop at the bottom, into
+// the vat when the vat is in the printer.
+func (a *App) askHomePlate() {
+	pr := a.Printer
+	a.confirm = &confirmBox{question: "Home the plate? It goes down to the bottom, into the vat.", yes: "Home Z", danger: true,
+		onYes: func() { a.do(func() error { return pr.Home("z") }) }}
 }

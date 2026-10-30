@@ -207,7 +207,7 @@ func (a *App) homeRow(c *gfx.Canvas, st printer.State, r image.Rectangle) {
 	}
 	if a.resin() {
 		// The build plate of a resin printer has only Z.
-		a.printerKey(c, r, "Home Z", homed("z"), text, func() { a.do(func() error { return pr.Home("z") }) })
+		a.printerKey(c, r, "Home Z", homed("z"), text, a.askHomePlate)
 		return
 	}
 	h := kit.Cols(r, 8, kit.Fr(1.8), kit.Fr(1), kit.Fr(1), kit.Fr(1)) // "Home all" needs the room
