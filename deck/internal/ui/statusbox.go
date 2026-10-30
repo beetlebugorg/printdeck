@@ -216,6 +216,13 @@ func (a *App) panelLines(st printer.State) panelText {
 		}
 		return p
 	}
+	// An upload to a resin printer comes before the end of the last print: it is newer.
+	if p, ok := receivePanel(st.Receive, now); ok {
+		return p
+	}
+	if p, ok := uploadPanel(st.Upload, now); ok {
+		return p
+	}
 	switch st.Finished {
 	case "complete":
 		return panelText{head: "Print done", side: clock, msg: st.FinishedName()}
@@ -223,12 +230,6 @@ func (a *App) panelLines(st printer.State) panelText {
 		return panelText{head: "Cancelled", side: clock, msg: st.FinishedName()}
 	case "error":
 		return panelText{head: "Print failed", side: clock, msg: st.FinishedName(), detail: st.FinishedError}
-	}
-	if p, ok := receivePanel(st.Receive, now); ok {
-		return p
-	}
-	if p, ok := uploadPanel(st.Upload, now); ok {
-		return p
 	}
 	p := panelText{head: "Ready", side: clock}
 	homed := "Not homed"

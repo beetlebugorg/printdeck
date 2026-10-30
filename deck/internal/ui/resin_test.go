@@ -162,3 +162,12 @@ func TestReceivePanel(t *testing.T) {
 		t.Error("a done upload")
 	}
 }
+
+// An upload shows in the panel after a print that ended: the upload is newer.
+func TestUploadPanelAfterPrint(t *testing.T) {
+	a, _, _ := newPrintApp(idle)
+	st := printer.State{Reachable: true, Finished: "cancelled", Upload: printer.Upload{Name: "plate.cbddlp", Size: 100, Done: 10, Started: a.Now()}}
+	if p := a.panelLines(st); p.head != "Sending to the printer · 10%" {
+		t.Errorf("panel %+v", p)
+	}
+}
