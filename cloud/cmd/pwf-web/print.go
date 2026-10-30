@@ -171,6 +171,13 @@ func drawLive(live []wire.ProjectLive) {
 			badges.Call("appendChild", el("span", "live", "Live"))
 		}
 		pic.Call("appendChild", badges)
+		if l.LayerPic != "" {
+			// A resin print: the layer that the printer cures now, over a corner of the model.
+			lp := el("img", "layer-pic", "")
+			lp.Set("src", l.LayerPic)
+			lp.Set("alt", fmt.Sprintf("Layer %d", l.Layer))
+			pic.Call("appendChild", lp)
+		}
 		tile.Call("appendChild", pic)
 		body := el("div", "body", "")
 		body.Call("appendChild", el("strong", "", l.Name))

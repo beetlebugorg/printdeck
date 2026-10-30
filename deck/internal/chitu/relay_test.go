@@ -242,3 +242,58 @@ func TestUpload(t *testing.T) {
 		t.Errorf("a joined answer: %v", m)
 	}
 }
+
+// A layer of a .cbddlp: a lit square in the middle of a screen of 16 x 8 pixels, read 4 pixels
+// wide.
+func TestLayerImage(t *testing.T) {
+	const resX, resY = 16, 8
+	var code []byte
+	run := func(lit bool, n int) {
+		for n > 0 {
+			k := min(n, 0x7F)
+			b := byte(k)
+			if lit {
+				b |= 0x80
+			}
+			code = append(code, b)
+			n -= k
+		}
+	}
+	// Rows 0 to 3 dark; rows 4 to 7 lit in the columns 8 to 15.
+	run(false, 4*resX)
+	for range 4 {
+		run(false, 8)
+		run(true, 8)
+	}
+	data := make([]byte, 200)
+	put := func(off int, v uint32) { binary.LittleEndian.PutUint32(data[off:], v) }
+	put(0, MagicCBDDLP)
+	put(52, resX)
+	put(56, resY)
+	put(64, 120) // the table of the layers
+	put(68, 1)
+	put(120+12, 160) // the data of layer 0
+	put(120+16, uint32(len(code)))
+	copy(data[160:], code)
+	h, err := ReadSliced(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	img, err := LayerImage(bytes.NewReader(data), h, 0, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := img.Bounds(); b.Dx() != 4 || b.Dy() != 2 {
+		t.Fatalf("size %v", b)
+	}
+	want := []uint8{0, 0, 0, 0, 0, 0, 255, 255}
+	for i, v := range want {
+		if img.Pix[i] != v {
+			t.Errorf("pixel %d: %d, want %d (%v)", i, img.Pix[i], v, img.Pix)
+			break
+		}
+	}
+	if _, err := LayerImage(bytes.NewReader(data), h, 1, 4); err == nil {
+		t.Error("a layer past the end")
+	}
+}

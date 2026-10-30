@@ -57,6 +57,8 @@ type ChiTu struct {
 	startAfter  string                   // the file to print when its upload ends, or ""
 	stopSend    context.CancelFunc       // stops the upload now (CancelSend)
 	nextProject string                   // the project of the next print (SetNextProject)
+	layerKey    string                   // the file and the layer of layerImg
+	layerImg    image.Image              // the last picture of LayerPicture
 	sendMu      sync.Mutex               // held for each upload to the board, so the uploads go one at a time
 	pics        map[string]image.Image   // the previews of the copies in UploadDir, by name
 	headers     map[string]*chitu.Sliced // the headers of the copies in UploadDir, by name
@@ -900,4 +902,46 @@ func (c *ChiTu) CancelSend() {
 		log.Printf("chitu: the upload of %s is stopped", c.sending)
 		c.stopSend()
 	}
+}
+
+// LayerPicture returns the layer that the printer cures now, from the deck's copy of the file of
+// the print (.cbddlp only), about 480 pixels wide, or nil.
+func (c *ChiTu) LayerPicture() image.Image {
+	st := c.State()
+	if !st.Printing || st.Layer <= 0 || c.UploadDir == "" {
+		return nil
+	}
+	name := filepath.Base(st.File)
+	key := fmt.Sprintf("%s@%d", name, st.Layer)
+	c.mu.Lock()
+	if c.layerKey == key {
+		img := c.layerImg
+		c.mu.Unlock()
+		return img
+	}
+	c.mu.Unlock()
+	h := c.header(name)
+	if h == nil {
+		return nil
+	}
+	f, err := os.Open(filepath.Join(c.UploadDir, name))
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	img, err := chitu.LayerImage(f, h, st.Layer-1, 480)
+	if err != nil {
+		log.Printf("chitu: layer %d of %s: %v", st.Layer, name, err)
+		img = nil
+	}
+	c.mu.Lock()
+	c.layerKey, c.layerImg = key, nil
+	if img != nil {
+		c.layerImg = img
+	}
+	c.mu.Unlock()
+	if img == nil {
+		return nil
+	}
+	return img
 }

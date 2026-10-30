@@ -83,10 +83,28 @@ func (a *App) resinKeys(c *gfx.Canvas, keys image.Rectangle, st printer.State) {
 func (a *App) resinView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 	window(c, box)
 	a.region("Print", box)
-	if img := a.Printer.FilePicture(printer.File{Path: st.File}, ""); img != nil && box.Dy() > 260 {
-		pic, rest := kit.Rows(box, 0, kit.Fr(1), kit.Px(200))[0], kit.Rows(box, 0, kit.Fr(1), kit.Px(200))[1]
-		c.Cover(kit.Inset(pic, 16, 16, 16, 0), img)
-		box = rest
+	preview := a.Printer.FilePicture(printer.File{Path: st.File}, "")
+	var layer image.Image
+	if lp, ok := a.Printer.(interface{ LayerPicture() image.Image }); ok {
+		layer = lp.LayerPicture()
+	}
+	if (preview != nil || layer != nil) && box.Dy() > 260 {
+		rows := kit.Rows(box, 0, kit.Fr(1), kit.Px(200))
+		pics := kit.Inset(rows[0], 16, 16, 16, 0)
+		switch {
+		case preview != nil && layer != nil:
+			// The model as the slicer shows it, and the layer that cures now.
+			cols := kit.Cols(pics, 12, kit.Fr(1), kit.Fr(1))
+			contain(c, cols[0], preview)
+			contain(c, cols[1], layer)
+			c.Text(image.Rect(cols[1].Min.X, cols[1].Max.Y-22, cols[1].Max.X, cols[1].Max.Y),
+				fmt.Sprintf("Layer %d of %d", st.Layer, st.Layers), gfx.Face(false, 14), lcdDim, gfx.Center)
+		case preview != nil:
+			contain(c, pics, preview)
+		default:
+			contain(c, pics, layer)
+		}
+		box = rows[1]
 	}
 	in := kit.Inset(box, 24, 24, 24, 24)
 	rows := kit.Rows(in, 10, kit.Fr(1), kit.Px(64), kit.Px(28), kit.Px(14), kit.Px(28), kit.Fr(1))
@@ -133,4 +151,18 @@ func (a *App) drawResinOffline(c *gfx.Canvas, st printer.State) {
 	if _, ok := a.printerSetup(); ok {
 		a.button(c, keys, "Printer", raised, text, a.OpenPrinterSetup)
 	}
+}
+
+// contain draws img as large as it fits in r, in the middle, with its shape.
+func contain(c *gfx.Canvas, r image.Rectangle, img image.Image) {
+	b := img.Bounds()
+	if b.Dx() <= 0 || b.Dy() <= 0 || r.Dx() <= 0 || r.Dy() <= 0 {
+		return
+	}
+	w, h := r.Dx(), r.Dx()*b.Dy()/b.Dx()
+	if h > r.Dy() {
+		w, h = r.Dy()*b.Dx()/b.Dy(), r.Dy()
+	}
+	x, y := r.Min.X+(r.Dx()-w)/2, r.Min.Y+(r.Dy()-h)/2
+	c.Cover(image.Rect(x, y, x+w, y+h), img)
 }

@@ -102,15 +102,17 @@ type ProjectLive struct {
 	Name    string    `json:"name"`
 	URL     string    `json:"url,omitempty"`
 	Started time.Time `json:"started"`
-	// Model is the URL of the picture of the model, or "".
-	Model   string    `json:"model,omitempty"`
-	Percent float64   `json:"percent,omitempty"`
-	Layer   int       `json:"layer,omitempty"`
-	Layers  int       `json:"layers,omitempty"`
-	Left    int       `json:"left,omitempty"` // seconds, or 0 for no estimate
-	Paused  bool      `json:"paused,omitempty"`
-	Result  string    `json:"result,omitempty"` // "" while it prints; "complete", "cancelled" or "error"
-	Updated time.Time `json:"updated,omitzero"`
+	// Model is the URL of the picture of the model, or "". LayerPic is the URL of the picture of
+	// the layer that a resin printer cures now, or "".
+	Model    string    `json:"model,omitempty"`
+	LayerPic string    `json:"layer_pic,omitempty"`
+	Percent  float64   `json:"percent,omitempty"`
+	Layer    int       `json:"layer,omitempty"`
+	Layers   int       `json:"layers,omitempty"`
+	Left     int       `json:"left,omitempty"` // seconds, or 0 for no estimate
+	Paused   bool      `json:"paused,omitempty"`
+	Result   string    `json:"result,omitempty"` // "" while it prints; "complete", "cancelled" or "error"
+	Updated  time.Time `json:"updated,omitzero"`
 	// Printer is the name of the printer, and PrinterID its ID at the service, or "" for a deck
 	// from before the printers.
 	Printer   string `json:"printer,omitempty"`
@@ -291,10 +293,15 @@ type LiveRequest struct {
 	// PrinterID is the printer at the service (PrinterRequest). The project has one live tile for
 	// each printer. With no ID, the deck has one live tile in the project.
 	PrinterID string `json:"printer_id,omitempty"`
+	// WantLayer asks for a grant for the file layer.jpg: the picture of the layer that a resin
+	// printer cures now. LayerPic is true when layer.jpg for Key is up.
+	WantLayer bool `json:"want_layer,omitempty"`
+	LayerPic  bool `json:"layer_pic,omitempty"`
 }
 
 // LiveReply is the reply to POST /api/v1/projects/<id>/live. Grant is for the file model.jpg when
-// the service has no picture of the model for the key.
+// the service has no picture of the model for the key, and LayerGrant for layer.jpg (WantLayer).
 type LiveReply struct {
-	Grant *Grant `json:"grant,omitempty"`
+	Grant      *Grant `json:"grant,omitempty"`
+	LayerGrant *Grant `json:"layer_grant,omitempty"`
 }

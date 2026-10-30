@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"image"
+	"image/jpeg"
 	"log"
 	"strconv"
 	"time"
@@ -31,6 +34,7 @@ type livePrint struct {
 	paused  bool
 	model   bool // the picture of the model is up
 	tries   int  // the uploads of the picture
+	layer   int  // the layer of the picture of the layer that is up (resin), or 0
 }
 
 // watchLive sends the progress of the print of a project to the project, until ctx ends.
@@ -106,12 +110,25 @@ func (p *projectLink) liveStep(ctx context.Context, l *livePrint, st printer.Sta
 	if p.shareOf != nil {
 		in.Share = p.shareOf(printer.Record{Path: st.FilePath, End: now})
 	}
+	// A resin printer: the picture of the layer that cures now, at each update with a new layer.
+	layerPic := p.layerPicture(st, l)
+	in.WantLayer, in.LayerPic = layerPic != nil, l.layer > 0
 	out, err := p.Client.SendLive(ctx, id, l.project, in)
 	if err != nil {
 		log.Printf("projects: live: %v", err)
 		return l
 	}
 	l.sent, l.paused = now, st.Paused
+	if out.LayerGrant != nil && layerPic != nil {
+		if cloud.PostFile(ctx, p.Client.HTTP, *out.LayerGrant, "layer.jpg", "image/jpeg", "no-cache", layerPic) == nil {
+			first := l.layer == 0
+			l.layer = st.Layer
+			if first {
+				in.LayerPic = true
+				p.Client.SendLive(ctx, id, l.project, in)
+			}
+		}
+	}
 	if out.Grant != nil && l.tries < liveTries {
 		l.tries++
 		r := printer.Record{Path: st.FilePath, File: st.File, Title: st.Title, Result: "complete", End: l.started}
@@ -167,4 +184,22 @@ func (l *livePrint) leave(ctx context.Context, p *projectLink, id *cloud.Identit
 		log.Printf("projects: live: %v", err)
 	}
 	return nil
+}
+
+// layerPicture returns the picture of the layer that a resin printer cures now as a JPEG, when its
+// layer is not the layer of the picture that is up, or nil.
+func (p *projectLink) layerPicture(st printer.State, l *livePrint) []byte {
+	lp, ok := p.k.(interface{ LayerPicture() image.Image })
+	if !ok || st.Layer <= 0 || st.Layer == l.layer {
+		return nil
+	}
+	img := lp.LayerPicture()
+	if img == nil {
+		return nil
+	}
+	var buf bytes.Buffer
+	if jpeg.Encode(&buf, img, &jpeg.Options{Quality: 80}) != nil {
+		return nil
+	}
+	return buf.Bytes()
 }

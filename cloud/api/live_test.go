@@ -102,3 +102,50 @@ func TestLivePrint(t *testing.T) {
 		t.Fatalf("live after the end of the live print %+v", lv)
 	}
 }
+
+// A resin print asks for a grant for layer.jpg at each update, and the live tile has the picture
+// of the layer while the print runs.
+func TestLiveLayerPicture(t *testing.T) {
+	d, url := devService(t)
+	ctx := context.Background()
+	id := connectedLink(t, d, url).Identity()
+	var c cloud.Client
+	sum, err := c.NewProject(ctx, id, "Bittle X")
+	if err != nil {
+		t.Fatal(err)
+	}
+	live := func() []cloud.ProjectLive {
+		p, _, err := d.API.loadProject(ctx, sum.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		v, err := d.API.viewProject(ctx, p, &who{owner: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return v.Live
+	}
+	in := cloud.LiveRequest{Key: "plate.cbddlp@1", Name: "Plate", Started: time.Now().UTC(), Percent: 10, Layer: 60,
+		Layers: 594, WantLayer: true}
+	out, err := c.SendLive(ctx, id, sum.ID, in)
+	if err != nil || out.LayerGrant == nil {
+		t.Fatalf("no grant for the layer: %+v %v", out, err)
+	}
+	if err := cloud.PostFile(ctx, nil, *out.LayerGrant, "layer.jpg", "image/jpeg", "no-cache", []byte("jpeg")); err != nil {
+		t.Fatal(err)
+	}
+	in.LayerPic = true
+	if _, err := c.SendLive(ctx, id, sum.ID, in); err != nil {
+		t.Fatal(err)
+	}
+	if lv := live(); len(lv) != 1 || lv[0].LayerPic == "" {
+		t.Fatalf("live %+v", lv)
+	}
+	in.Result, in.WantLayer = "complete", false
+	if _, err := c.SendLive(ctx, id, sum.ID, in); err != nil {
+		t.Fatal(err)
+	}
+	if lv := live(); len(lv) == 1 && lv[0].LayerPic != "" {
+		t.Errorf("a layer picture after the end: %+v", lv)
+	}
+}

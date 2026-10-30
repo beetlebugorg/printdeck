@@ -129,6 +129,14 @@ func (s *Server) postLive(ctx context.Context, p *Project, d *Deck, in cloud.Liv
 		return nil, err
 	}
 	var out cloud.LiveReply
+	if in.WantLayer {
+		// The picture of the layer changes during the print: a grant at each update.
+		g, err := s.Grants.Grant(ctx, livePicDir(p.ID, slot, rec.Pic), MaxPrintFile, GrantTTL)
+		if err != nil {
+			return nil, err
+		}
+		out.LayerGrant = &g
+	}
 	if !rec.Model {
 		g, err := s.Grants.Grant(ctx, livePicDir(p.ID, slot, rec.Pic), MaxPrintFile, GrantTTL)
 		if err != nil {
@@ -197,6 +205,9 @@ func (s *Server) liveView(ctx context.Context, p *Project, prints []PrintRecord)
 		}
 		if rec.Model {
 			l.Model, _ = s.Grants.FileURL(ctx, livePicDir(p.ID, rec.slot(), rec.Pic)+"model.jpg", urlTTL)
+		}
+		if rec.LayerPic && rec.Result == "" {
+			l.LayerPic, _ = s.Grants.FileURL(ctx, livePicDir(p.ID, rec.slot(), rec.Pic)+"layer.jpg", urlTTL)
 		}
 		out = append(out, l)
 	}
