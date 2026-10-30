@@ -59,9 +59,11 @@ const m4001Answer = "ok X:0.011430 Y:0.011430 Z:0.001250 E:0.001340 T:0/0/0/400/
 
 // RelayChunk is the size of the data packets that the relay asks ChituManager for (BUFSIZE in
 // the answer to M99999). With no BUFSIZE, ChituManager sends 1280 bytes in a packet, about 650
-// packets a second. The relay writes each packet at its offset, so any size works. The deck sends
-// the file to the board in packets of UploadChunk.
-const RelayChunk = 32768
+// packets a second. macOS sends no UDP packet over 9216 bytes (net.inet.udp.maxdgram), and with
+// BUFSIZE:32768 ChituManager on a Mac sent no data at all. 8192 bytes and the 6 bytes after them
+// stay under that limit. The relay writes each packet at its offset, so any size works. The deck
+// sends the file to the board in packets of UploadChunk.
+const RelayChunk = 8192
 
 // relayIdle is the time with no packet after which a client is gone.
 const relayIdle = 2 * time.Minute
