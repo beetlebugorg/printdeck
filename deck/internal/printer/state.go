@@ -261,8 +261,10 @@ type Upload struct {
 	// printer when the printer has the whole file. Started is the answer of the printer to it.
 	StartAfter  bool
 	StartAnswer string
-	Err         string
-	Ended       time.Time
+	// Held is true while the upload waits for the end of a print of the board.
+	Held  bool
+	Err   string
+	Ended time.Time
 }
 
 // Rate is the bytes a second of the upload, or 0.

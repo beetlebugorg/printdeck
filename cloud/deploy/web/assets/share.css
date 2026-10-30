@@ -82,3 +82,7 @@ footer { display: grid; gap: 4px; }
 .fil-head div { display: grid; gap: 4px; min-width: 0; }
 .fil-head strong { font: 800 22px/1.1 "Archivo", sans-serif; font-stretch: 85%; }
 .fil-head span { color: var(--ink-dim); }
+
+/* A file name with no spaces, for example of a resin slicer, breaks anywhere: the page stays as wide
+   as the screen. */
+#job, .facts dd { overflow-wrap: anywhere; }

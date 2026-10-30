@@ -122,3 +122,6 @@ footer { display: grid; gap: var(--s1); margin-top: var(--s4); padding-top: var(
 /* The layer that a resin printer cures now, over a corner of the live tile. */
 .tile .pic img.layer-pic { inset: auto var(--s2) var(--s2) auto; width: 42%; height: auto; aspect-ratio: 16 / 9; object-fit: contain;
   background: #000; border: 1px solid var(--orange); border-radius: 6px; }
+
+/* Names with no spaces break anywhere, in the tiles and the titles. */
+.tile .body strong, .phead h1 { overflow-wrap: anywhere; }

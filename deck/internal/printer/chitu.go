@@ -77,6 +77,10 @@ type ChiTu struct {
 	movesFile   string                   // the file of moves
 }
 
+// chituHoldEvery is the time between two looks at the board while an upload waits for the end of
+// a print.
+var chituHoldEvery = 30 * time.Second
+
 // chituUploadsKept is the count of the copies in UploadDir.
 const chituUploadsKept = 8
 
@@ -664,6 +668,34 @@ func (c *ChiTu) SendFile(path string) error {
 		c.waiting = slices.Delete(c.waiting, i, i+1)
 	}
 	size := fi.Size()
+	c.mu.Unlock()
+	// The deck sends no file while the board prints: a write to the drive of the board can break
+	// the print. A file that the board has already, with the same size, does not go again: the
+	// deck keeps its copy for the preview and the layers.
+	for {
+		c.LoadFiles()
+		c.mu.Lock()
+		have := false
+		for _, x := range c.files {
+			have = have || x.Name == name && x.Size == size
+		}
+		printing := c.last.Printing()
+		if have {
+			now := time.Now()
+			c.st.Upload = Upload{Name: name, Size: size, Done: size, Started: now, Ended: now, Result: "sent", Waiting: len(c.waiting)}
+			c.mu.Unlock()
+			log.Printf("chitu: the printer has %s already: the deck keeps its copy", name)
+			return nil
+		}
+		if !printing {
+			c.mu.Unlock()
+			break
+		}
+		c.st.Upload = Upload{Name: name, Size: size, Started: time.Now(), Waiting: len(c.waiting), Held: true}
+		c.mu.Unlock()
+		time.Sleep(chituHoldEvery)
+	}
+	c.mu.Lock()
 	c.sending = name
 	c.st.Upload = Upload{Name: name, Size: size, Started: time.Now(), Waiting: len(c.waiting), StartAfter: c.startAfter == name}
 	c.mu.Unlock()
@@ -967,8 +999,12 @@ func (c *ChiTu) RequestStart(name string) string {
 		log.Printf("chitu: refused a start of %s during its upload", name)
 		return "Error:The file is not on the printer yet. Press Print when the deck says the printer has it."
 	}
-	busy, bad := c.sending != "", c.incomplete(name)
+	busy, bad, printing := c.sending != "", c.incomplete(name), c.last.Printing()
 	c.mu.Unlock()
+	if printing {
+		log.Printf("chitu: refused a start of %s during a print", name)
+		return "Error:The printer prints now"
+	}
 	if busy {
 		return "Error:The deck sends a file to the printer"
 	}

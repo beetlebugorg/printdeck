@@ -317,6 +317,9 @@ func uploadPanel(u printer.Upload, now time.Time) (panelText, bool) {
 	switch {
 	case u.Name == "":
 		return panelText{}, false
+	case u.Result == "" && u.Held:
+		return panelText{head: "Waits for the end of the print", msg: u.Name,
+			detail: "The deck sends it to the printer after the print" + waiting}, true
 	case u.Result == "":
 		p := panelText{head: "Sending to the printer", msg: u.Name, bar: true}
 		if u.StartAfter {

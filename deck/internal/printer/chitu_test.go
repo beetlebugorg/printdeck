@@ -435,3 +435,57 @@ func TestChiTuMeasuredMoves(t *testing.T) {
 		t.Errorf("layer %d, left %v, want 400s", st.Layer, st.TimeLeft)
 	}
 }
+
+// An upload of a file that the board has already, with the same size, sends nothing: the deck
+// keeps its copy. During a print, a new file waits, and a start is refused.
+func TestChiTuUploadDuringPrint(t *testing.T) {
+	b, err := chitu.NewFakeBoard("127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer b.Close()
+	b.Set(func(b *chitu.FakeBoard) { b.Files = []string{"plate.cbddlp 4000"}; b.Read, b.Size = 100, 4000 })
+	c := NewChiTu(b.Addr(), "Phenom", &History{})
+	c.UploadDir = t.TempDir()
+	c.update(chitu.Status{Read: 100, Size: 4000, Seconds: 10}, time.Now())
+	tmp := filepath.Join(c.UploadDir, ".upload-1")
+	os.WriteFile(tmp, bytes.Repeat([]byte("x"), 4000), 0o644)
+	c.SaveUpload("plate.cbddlp", tmp)
+	for _, q := range b.Log() {
+		if strings.HasPrefix(q, "M28") {
+			t.Fatalf("the board got %q for a file that it has", q)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(c.UploadDir, "plate.cbddlp")); err != nil {
+		t.Error("no copy on the deck")
+	}
+	if a := c.RequestStart("plate.cbddlp"); !strings.HasPrefix(a, "Error:") {
+		t.Errorf("a start during a print: %q", a)
+	}
+
+	// A new file waits for the end of the print.
+	old := chituHoldEvery
+	chituHoldEvery = 50 * time.Millisecond
+	defer func() { chituHoldEvery = old }()
+	tmp2 := filepath.Join(c.UploadDir, ".upload-2")
+	os.WriteFile(tmp2, []byte("new file"), 0o644)
+	done := make(chan bool)
+	go func() { c.SaveUpload("new.cbddlp", tmp2); done <- true }()
+	time.Sleep(200 * time.Millisecond)
+	if u := c.State().Upload; !u.Held || u.Name != "new.cbddlp" {
+		t.Errorf("the upload during the print: %+v", u)
+	}
+	c.mu.Lock()
+	c.last = chitu.Status{}
+	c.mu.Unlock()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the upload did not go after the print")
+	}
+	b.Set(func(b *chitu.FakeBoard) {
+		if string(b.Uploaded["new.cbddlp"]) != "new file" {
+			t.Errorf("the board got %q", b.Uploaded["new.cbddlp"])
+		}
+	})
+}
