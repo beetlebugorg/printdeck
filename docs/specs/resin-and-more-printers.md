@@ -171,6 +171,46 @@ panel, the history, the projects and the cloud work as for the TAZ. The screens 
 The screens of the heaters and the filament do not show for a resin printer. The pod needs a mount
 for the Phenom: a new part, from measurements of the Phenom.
 
+**One image for both kinds.** The OS image stays the same. The file `printer.json` in the state
+folder says which printer the deck drives: `{"kind": "chitu", "addr": "192.168.76.58", "mac":
+"00:e0:4c:18:00:29", "name": "Phenom"}`. With no file the kind is `klipper`, so the decks of today
+do not change. For a ChiTu deck, the deck program starts no time lapse and no TAZ display, and the
+Klipper service of the image does not start. When the address stops answering, the deck finds the
+board again by its MAC address.
+
+**The backend.** `printer.ChiTu` implements the printer of the screens (`ui.Printer`): the state,
+the history, the files and the projects. The controls of phase 4 (start, pause, resume, stop,
+upload) return an error and send no command until their test. The controls of a FDM printer or of
+Klipper (heaters, extrusion, macros, the flash of a board) are not there for this kind.
+
+**The first setup.** The setup of a deck today has three steps: Wi-Fi, the wait for an address, and
+the end. Klipper asks for the board and the config after the setup. A ChiTu deck gets these steps
+after the wait for an address:
+
+1. The kind of printer: a printer on USB (Klipper), or a resin printer on the network (ChiTu).
+   Klipper goes on as today.
+2. Find the printer: the deck sends `M99999` to port 3000 of each address of the network (a
+   broadcast) and lists the boards that answer. "Type the address" is the other way. Nobody has
+   tried the broadcast on the Phenom yet.
+3. Check the board: the name, the firmware, the MAC and the address from `M99999`, and one `M4000`
+   with the height of the plate and the progress of a print.
+4. The name of the printer, "Phenom" by default.
+5. The service: the deck connects to the service, as on its Cloud page, and registers the printer
+   with the process `resin`. This step can wait for later.
+6. The end. The deck writes `printer.json` and starts again with the ChiTu backend.
+
+**The build order.**
+
+1. Package `chitu`: the client, the parsers and a fake board (done).
+2. `Machine.Process` and `printer.json`.
+3. `printer.ChiTu` with the watcher of part 2, tested against the fake board.
+4. The choice of the backend at the start, and a desktop deck with the fake board.
+5. The screens of a resin printer.
+6. The setup steps.
+7. The registration of the printer with the process `resin`.
+8. The image: the Klipper service starts only for the kind `klipper`.
+9. Phase 4: each control after its test on a small print.
+
 ### 6. Many printers for one project
 
 The service today knows decks: each deck enrolls (`decks/<id>.json`), a print has the name of its
