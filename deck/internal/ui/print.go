@@ -257,7 +257,9 @@ func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 	if W > H {
 		// Wide: the print is the Main page. The data and the model, and the keys at the bottom:
 		// Cancel, the destructive action, at the left, and Pause at the right.
+		a.jobPanel = true
 		view, keys := a.statePage(c, st, gfx.Fit(gfx.Face(true, 24), st.Name(), a.navFrame().head.Dx()-20), actH)
+		a.jobPanel = false
 		if a.canShare() {
 			k := kit.Cols(keys, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1))
 			a.button(c, k[0], "Cancel", raised, red, a.askCancel)
@@ -276,7 +278,9 @@ func (a *App) drawJob(c *gfx.Canvas, st printer.State) {
 		a.printInfo(c, r[0], st)
 		return
 	}
+	a.jobPanel = true
 	a.statusPanel(c, st)
+	a.jobPanel = false
 	keys, box := a.jobAreas()
 	if f, _, _ := a.stateAreas(); f.wide {
 		// Under the keys in the left column: the file, the time left and the end of the print.
@@ -366,27 +370,12 @@ func (a *App) printInfoH(st printer.State) int {
 	if len(a.Printer.LayerTimes()) > 0 {
 		h += 54
 	}
-	return h + projectKeyH + 8
-}
-
-// projectKeyH is the height of the key of the project of the print now.
-const projectKeyH = 44
-
-// projectKey is the key of the project of the print now: Add to a project, or the project. The
-// record of the print gets the project at the end of the print.
-func (a *App) projectKey(c *gfx.Canvas, r image.Rectangle, st printer.State) {
-	label := "Add to a project"
-	if p := a.Printer.NextProject(); p != "" {
-		label = "Project · " + p
-	}
-	a.button(c, r, label, raised, text, func() {
-		a.askProject(st.Name(), a.Printer.NextProject(), a.setNextProject)
-	})
+	return h
 }
 
 // printInfo draws the data of the print in a plate above the model view: the layer and the move
-// now, the roll in the printer, the times of the layers, and the key of the project. While the slider shows another layer,
-// Live goes back to the layer that prints.
+// now, the roll in the printer, and the times of the layers. While the slider shows another layer, Live
+// goes back to the layer that prints.
 func (a *App) printInfo(c *gfx.Canvas, r image.Rectangle, st printer.State) {
 	plate(c, r)
 	a.layers.sample(st, a.Now())
@@ -430,7 +419,6 @@ func (a *App) printInfo(c *gfx.Canvas, r image.Rectangle, st printer.State) {
 	if times := pr.LayerTimes(); len(times) > 0 {
 		a.layerChart(c, s.Next(46), st, times)
 	}
-	a.projectKey(c, s.Next(projectKeyH), st)
 }
 
 // layerClock measures the time of each layer of a print: from the change to the layer to the

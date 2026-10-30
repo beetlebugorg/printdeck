@@ -65,7 +65,23 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 	if p.shortDetail != "" && gfx.Width(small, p.detail) > line(rows[4]).Dx() {
 		p.detail = p.shortDetail
 	}
-	c.Text(line(rows[4]), gfx.Fit(small, p.detail, line(rows[4]).Dx()), small, lcdDim, gfx.Left)
+	if label, ok := a.panelProject(st); ok {
+		// The print page: the project of the print in place of the layer, which the plate under
+		// the panel shows. A tap picks the project.
+		pr := line(rows[4])
+		col := lcdInk
+		if a.Printer.NextProject() == "" {
+			col = lcdDim
+		}
+		aw := gfx.Width(small, "›")
+		c.Text(image.Rect(pr.Min.X, pr.Min.Y, pr.Max.X-aw-8, pr.Max.Y), gfx.Fit(small, label, pr.Dx()-aw-8), small, col, gfx.Left)
+		c.Text(pr, "›", small, lcdDim, gfx.Right)
+		hit := image.Rect(r.Min.X, rows[4].Min.Y-4, r.Max.X, rows[4].Max.Y+4)
+		a.addHit(kit.Hit{R: hit, Tap: a.pickNextProject})
+		a.addFocus(label, hit, a.pickNextProject)
+	} else {
+		c.Text(line(rows[4]), gfx.Fit(small, p.detail, line(rows[4]).Dx()), small, lcdDim, gfx.Left)
+	}
 	if p.bar {
 		bar := line(rows[6])
 		c.RoundRect(bar, 3, lcdCell)
@@ -236,4 +252,22 @@ func (a *App) layerDetail(st printer.State) (string, string) {
 		z = fmt.Sprintf(" · Z offset %+.3f", st.ZOffset)
 	}
 	return long + z, short + z
+}
+
+// panelProject returns the line of the project of the print for the status panel of the print
+// page: "Project · Garden planters", or "No project · tap to pick". ok is false on the other
+// pages, and while the print starts or ends.
+func (a *App) panelProject(st printer.State) (string, bool) {
+	if !a.jobPanel || !st.Reachable || !st.Busy() || st.Preparing || st.Finishing {
+		return "", false
+	}
+	if p := a.Printer.NextProject(); p != "" {
+		return "Project · " + p, true
+	}
+	return "No project · tap to pick", true
+}
+
+// pickNextProject opens the choice of the project of the print now.
+func (a *App) pickNextProject() {
+	a.askProject(a.Printer.State().Name(), a.Printer.NextProject(), a.setNextProject)
 }

@@ -268,7 +268,7 @@ func TestPrintProject(t *testing.T) {
 		}
 		pr.History_ = []printer.Record{{File: "lid.gcode", Path: "lid.gcode", Result: "complete", End: time.Unix(6000, 0),
 			Duration: time.Hour, Project: "Garden planters"}}
-		tapLabel(t, a, cv, "Add to a project")
+		tapLabel(t, a, cv, "No project · tap to pick")
 		tapLabel(t, a, cv, "Garden planters")
 		if pr.Next_ != "Garden planters" {
 			t.Fatalf("wide %v: project %q", wide, pr.Next_)
@@ -281,7 +281,7 @@ func TestPrintProject(t *testing.T) {
 		tapLabel(t, a, cv, "Project · Garden planters")
 		tapLabel(t, a, cv, "No project")
 		a.Draw(cv)
-		if pr.Next_ != "" || !hasKey(a, "Add to a project") {
+		if pr.Next_ != "" || !hasKey(a, "No project · tap to pick") {
 			t.Errorf("wide %v: No project left %q", wide, pr.Next_)
 		}
 	}

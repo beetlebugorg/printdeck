@@ -190,6 +190,7 @@ type App struct {
 	wasPaused      bool            // the print was paused at the last frame
 	setupProbed    bool            // the printer setup started a probe of the USB ports
 	confirm        *confirmBox     // modal question
+	jobPanel       bool            // the status panel that draws now is the one of the print page
 	in             kit.Input       // the touch areas of the frame, and the finger on them
 	names          []focusItem     // the keys and the named parts of the frame, for the manual (KeyRect)
 	joyArea        image.Rectangle // the joystick pad of the last frame of the Move page
