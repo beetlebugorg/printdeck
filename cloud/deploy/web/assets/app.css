@@ -93,3 +93,14 @@ input:not([type]), input[type="text"] { font: 400 16px/1.4 "Archivo", sans-serif
 .view p, .card p { margin: 0; }
 .card .fil-head { margin-bottom: 0; }
 footer { display: grid; gap: var(--s1); margin-top: var(--s4); padding-top: var(--s4); }
+/* The page of a print: on a wide screen the page is wider, and the time lapse and the model are
+   side by side. The time lapse sets the height of the row, and the model fits in it. One of the
+   two alone has the full width. On a phone they are the one over the other. */
+.pair { display: grid; gap: var(--s3); }
+.pair > * { min-width: 0; }
+@media (min-width: 960px) {
+  .wrap:has(#vPrint:not([hidden])) { max-width: 1120px; }
+  .pair:not(:has(> [hidden])) { grid-template-columns: 1fr 1fr; }
+  .pair:not(:has(> [hidden])) .model-row img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+}
+.model-row:has(#chartBox[hidden]) { grid-template-columns: minmax(0, 1fr); }

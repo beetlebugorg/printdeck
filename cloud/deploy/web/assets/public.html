@@ -55,17 +55,30 @@
       <span id="doneText"></span>
     </section>
 
-    <section class="cam lapse-hero" id="lapseBox" aria-label="Time lapse" hidden>
-      <figure>
-        <canvas id="lapse" width="640" height="360"></canvas>
-        <div class="tag"><b></b><span id="lapseTag">Time lapse</span></div>
-      </figure>
-      <div class="player">
-        <button type="button" id="lapsePlay">Pause</button>
-        <input type="range" id="lapseSeek" min="0" max="0" value="0" aria-label="The frame of the time lapse">
-        <span id="lapsePos"></span>
-      </div>
-    </section>
+    <!-- The time lapse and the model side by side on a wide screen, the one over the other on a phone. -->
+    <div class="pair">
+      <section class="cam lapse-hero" id="lapseBox" aria-label="Time lapse" hidden>
+        <figure>
+          <canvas id="lapse" width="640" height="360"></canvas>
+          <div class="tag"><b></b><span id="lapseTag">Time lapse</span></div>
+        </figure>
+        <div class="player">
+          <button type="button" id="lapsePlay">Pause</button>
+          <input type="range" id="lapseSeek" min="0" max="0" value="0" aria-label="The frame of the time lapse">
+          <span id="lapsePos"></span>
+        </div>
+      </section>
+      <section class="model-row" id="modelBox" aria-label="The model" hidden>
+        <figure>
+          <img id="model" alt="The model of the print">
+          <figcaption id="modelTag">The model</figcaption>
+        </figure>
+        <div class="vchart" id="chartBox" hidden>
+          <canvas id="chart" aria-label="The time of each layer from the slicer, layer 1 at the bottom"></canvas>
+          <div class="nums"><span id="layerNow"></span><span id="layerAvg"></span></div>
+        </div>
+      </section>
+    </div>
 
     <section class="lcd" aria-label="The print">
       <div class="row">
@@ -87,17 +100,6 @@
       </div>
       <div class="bar" role="progressbar" aria-label="How much of the print printed" aria-valuemin="0" aria-valuemax="100" id="barWrap"><i id="bar"></i></div>
       <div class="barlab"><span id="pct">0%</span><span id="activity"></span></div>
-    </section>
-
-    <section class="model-row" id="modelBox" aria-label="The model" hidden>
-      <figure>
-        <img id="model" alt="The model of the print">
-        <figcaption id="modelTag">The model</figcaption>
-      </figure>
-      <div class="vchart" id="chartBox" hidden>
-        <canvas id="chart" aria-label="The time of each layer from the slicer, layer 1 at the bottom"></canvas>
-        <div class="nums"><span id="layerNow"></span><span id="layerAvg"></span></div>
-      </div>
     </section>
 
     <section class="card" aria-label="Details">
