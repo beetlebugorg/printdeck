@@ -823,7 +823,12 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 	items := []menuItem{
 		{"Theme", themeLine(a.Theme, a.NightFrom, a.NightTo), dim, a.cycleTheme},
 		{"Clock", clockLine(a.Clock24), dim, a.toggleClock},
-		{"Home in a filament change", swapHomeLine(a.SwapHome), dim, a.toggleSwapHome},
+	}
+	if !a.resin() {
+		items = append(items, menuItem{"Home in a filament change", swapHomeLine(a.SwapHome), dim, a.toggleSwapHome})
+	}
+	if ps, ok := a.printerSetup(); ok {
+		items = append(items, menuItem{"Printer", settingLine(ps.Printer()), dim, a.OpenPrinterSetup})
 	}
 	if !a.Wide {
 		items = slices.Insert(items, 2, menuItem{"Text", a.textSizeLine(), dim, a.cycleTextSize})

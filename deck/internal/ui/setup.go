@@ -25,20 +25,22 @@ type SetupHost interface {
 	Done() // the setup is finished, so the deck does not open it again at the next start
 }
 
-// setupFlow is the setup screen, over everything: 1 Wi-Fi, 2 the summary with the login. The Help
-// screen is the summary alone.
+// setupFlow is the setup screen, over everything: 1 Wi-Fi, 2 the printer (with a PrinterSetup),
+// 3 the summary with the login. The Help screen is the summary alone.
 type setupFlow struct {
-	step   int
-	nets   []wifi.Network
-	status wifi.Status
-	scroll int
-	busy   bool
-	msg    string
-	ssid   string // the network that is joining
-	host   string
-	help   bool // opened as the Help screen
-	kb     *keyboard
-	scans  int // the number of the last scan; a timer for an older scan does nothing
+	printer     setupPrinterState // the printer steps (setupprinter.go)
+	printerOnly bool              // opened from Settings: the printer steps and the end
+	step        int
+	nets        []wifi.Network
+	status      wifi.Status
+	scroll      int
+	busy        bool
+	msg         string
+	ssid        string // the network that is joining
+	host        string
+	help        bool // opened as the Help screen
+	kb          *keyboard
+	scans       int // the number of the last scan; a timer for an older scan does nothing
 }
 
 const (
@@ -164,7 +166,7 @@ func (a *App) setupJoin(ssid, pass string) {
 			st, _ := h.Status()
 			if st.Connected() && st.SSID == ssid {
 				a.post(func() {
-					s.status, s.busy, s.step = st, false, setupDone
+					s.status, s.busy, s.step = st, false, a.afterWifi()
 				})
 				return
 			}
@@ -185,7 +187,7 @@ func (a *App) drawSetup(c *gfx.Canvas) {
 		return
 	}
 	box := image.Rect(12, 12, W-12, H-12)
-	title, name := []string{"1/2 Wi-Fi", "1/2 Wi-Fi", "2/2 Ready"}[s.step], "SETUP"
+	title, name := setupTitle(s.step, a.afterWifi() == setupPrinter), "SETUP"
 	if s.help && s.step == setupDone {
 		title, name = "Help", "HELP"
 	}
@@ -200,8 +202,29 @@ func (a *App) drawSetup(c *gfx.Canvas) {
 		label(c, image.Rect(24, 300, W-24, 340), "Joining "+s.ssid+"…", gfx.Center)
 	case setupDone:
 		a.drawSetupDone(c, box)
+	case setupPrinter:
+		a.drawSetupPrinter(c, box)
+	case setupFind:
+		a.drawSetupFind(c, box)
+	case setupBoard:
+		a.drawSetupBoard(c, box)
 	}
 	a.setupMessage(c, image.Rect(24, box.Max.Y-130, W-24, box.Max.Y-100))
+}
+
+// setupTitle is the title of a step: three steps with the printer, two without.
+func setupTitle(step int, withPrinter bool) string {
+	switch {
+	case step == setupDone && withPrinter:
+		return "3/3 Ready"
+	case step == setupDone:
+		return "2/2 Ready"
+	case step >= setupPrinter:
+		return "2/3 Printer"
+	case withPrinter:
+		return "1/3 Wi-Fi"
+	}
+	return "1/2 Wi-Fi"
 }
 
 func (a *App) setupMessage(c *gfx.Canvas, r image.Rectangle) {
@@ -293,7 +316,7 @@ func (a *App) drawSetupWifi(c *gfx.Canvas, box image.Rectangle) {
 	if s.status.Connected() {
 		next = "Next"
 	}
-	a.button(c, image.Rect(W-24-bw, y, W-24, y+68), next, green, onAcc, func() { s.step = setupDone })
+	a.button(c, image.Rect(W-24-bw, y, W-24, y+68), next, green, onAcc, func() { s.step = a.afterWifi() })
 }
 
 // setupPassword asks for the password of a network. An empty password is for an open network.
@@ -326,6 +349,9 @@ func (a *App) drawSetupDone(c *gfx.Canvas, box image.Rectangle) {
 		addr = ah.Address() // for example the simulator on this computer
 	}
 	lines = append(lines, "Remote screen and slicers", addr)
+	if p := a.printerLine(); p != "" && !s.help {
+		lines = append(lines, "Printer", p)
+	}
 	if user, pass := a.Setup.Login(); user != "" {
 		lines = append(lines, "User (SSH, sudo, remote screen)", user, "Password", pass,
 			"SSH", fmt.Sprintf("ssh %s@%s.local", user, s.host))
@@ -362,8 +388,19 @@ func (a *App) drawSetupDone(c *gfx.Canvas, box image.Rectangle) {
 		a.button(c, image.Rect(W-24-half, y, W-24, y+68), "Close", green, onAcc, func() { a.setup = nil })
 		return
 	}
-	a.button(c, image.Rect(24, y, 24+half, y+68), "Back", raised, text, func() { s.step = setupWifi; a.setupScan() })
+	a.button(c, image.Rect(24, y, 24+half, y+68), "Back", raised, text, func() {
+		if a.afterWifi() == setupPrinter {
+			s.step, s.msg = setupPrinter, ""
+			return
+		}
+		s.step = setupWifi
+		a.setupScan()
+	})
 	a.button(c, image.Rect(W-24-half, y, W-24, y+68), "Finish", green, onAcc, func() {
+		if err := a.savePrinter(); err != nil {
+			s.msg = "The printer was not saved: " + err.Error()
+			return
+		}
 		a.Setup.Done()
 		a.setup = nil
 	})

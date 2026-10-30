@@ -253,6 +253,7 @@ func run(cfg config.Config) {
 		go up.run(ctx)
 		go up.watch(ctx)
 		app.Setup = host
+		host.restart = stop // systemd starts the deck again
 		if host.Needed() {
 			app.OpenSetup()
 		}
