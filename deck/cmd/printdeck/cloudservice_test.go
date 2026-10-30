@@ -101,3 +101,34 @@ func TestServiceProjects(t *testing.T) {
 		t.Errorf("from the file: %q", got)
 	}
 }
+
+// A deck of a ChiTu resin printer registers its printer with the process "resin" and the name of
+// its setup.
+func TestServiceRegistersResinPrinter(t *testing.T) {
+	var reg cloud.PrinterRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		switch {
+		case r.Method == "POST" && r.URL.Path == "/api/v1/printers":
+			json.Unmarshal(body, &reg)
+			json.NewEncoder(w).Encode(cloud.Printer{ID: "printer2", Name: reg.Name, Process: reg.Process})
+		case r.Method == "GET" && r.URL.Path == "/api/v1/projects":
+			w.Write([]byte("[]"))
+		default:
+			http.Error(w, "no such request", 404)
+		}
+	}))
+	defer srv.Close()
+	dir := t.TempDir()
+	id := cloud.Identity{Domain: srv.URL, Deck: "d2", Key: make([]byte, 32), Enrolled: time.Now()}
+	b, _ := json.Marshal(id)
+	os.WriteFile(filepath.Join(dir, "cloud.json"), b, 0o600)
+	c := printer.NewChiTu("127.0.0.1:1", "Phenom", &printer.History{Path: filepath.Join(dir, "history.json")})
+	p := &projectLink{Link: &cloud.Link{Path: filepath.Join(dir, "cloud.json")}, k: c, stateDir: dir, name: c.Name}
+	if err := p.refreshService(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if reg.Name != "Phenom" || reg.Process != "resin" || p.printerID() != "printer2" {
+		t.Errorf("the registration %+v, printer %q", reg, p.printerID())
+	}
+}

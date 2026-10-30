@@ -371,8 +371,15 @@ func startShare(stateDir, configPath string, app *ui.App, pr printerBackend) {
 	link := newCloudLink(stateDir, app.Redraw)
 	app.Cloud = link
 	l := newShareLink(app, link, pr, configPath)
-	if k, ok := pr.(*printer.Klippy); ok {
-		pl := &projectLink{Link: link, k: k, stateDir: stateDir, model: printer.ConfigModel(configPath), shareOf: l.shareOf}
+	{
+		// The projects, for each kind of printer.
+		pl := &projectLink{Link: link, k: pr, stateDir: stateDir, shareOf: l.shareOf}
+		switch b := pr.(type) {
+		case *printer.Klippy:
+			pl.model = printer.ConfigModel(configPath)
+		case *printer.ChiTu:
+			pl.name = b.Name
+		}
 		app.Cloud = pl
 		l.sharer.Project = func(ctx context.Context) (string, error) { return pl.ShareProjectID(ctx, l.project()) }
 		go pl.watch(context.Background())

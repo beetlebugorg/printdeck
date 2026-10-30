@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"printdeck/internal/cloud"
+	"printdeck/internal/printer"
 )
 
 // The printer of the deck at the service, and the projects of the service. Each deck registers its
@@ -89,6 +90,9 @@ func (p *projectLink) serviceProjectID(name string) string {
 // printerName is the name of the printer of the deck at the service: the model of the printer, or
 // the name of the deck.
 func (p *projectLink) printerName() string {
+	if p.name != "" {
+		return p.name
+	}
 	if p.model != "" {
 		return p.model
 	}
@@ -102,7 +106,11 @@ func (p *projectLink) refreshService(ctx context.Context) error {
 	if id == nil {
 		return nil
 	}
-	pr, err := p.Client.RegisterPrinter(ctx, id, cloud.PrinterRequest{Key: printerKey, Name: p.printerName(), Process: "fdm", Model: p.model})
+	process := printer.ProcessFDM
+	if p.k != nil && p.k.Machine().Process == printer.ProcessResin {
+		process = printer.ProcessResin
+	}
+	pr, err := p.Client.RegisterPrinter(ctx, id, cloud.PrinterRequest{Key: printerKey, Name: p.printerName(), Process: process, Model: p.model})
 	if err != nil {
 		return err
 	}

@@ -28,9 +28,11 @@ import (
 // change at the service.
 type projectLink struct {
 	*cloud.Link
-	k        *printer.Klippy
+	k        printerBackend // the printer of the deck: Klipper, or a ChiTu resin printer
 	stateDir string
 	model    string // the brand and the model of the printer, for the prints
+	// name is the name of the printer at the service, or "" for the model (printerName).
+	name string
 	// shareOf returns the ID of the share link of the print r, or "", or nil for none.
 	shareOf func(r printer.Record) string
 
@@ -321,12 +323,15 @@ func (p *projectLink) sendPrint(ctx context.Context, id *cloud.Identity, project
 	if p.shareOf != nil {
 		up.Request.Share = p.shareOf(r)
 	}
-	if l, ok := p.k.View.RecordPlan(r); ok {
-		up.Plan = l.Plan
-		for i, t := range up.Plan {
-			up.Plan[i] = math.Round(t*10) / 10
+	// The plan of the layers is in the G-code of a Klipper printer.
+	if kl, ok := p.k.(*printer.Klippy); ok {
+		if l, ok := kl.View.RecordPlan(r); ok {
+			up.Plan = l.Plan
+			for i, t := range up.Plan {
+				up.Plan[i] = math.Round(t*10) / 10
+			}
+			up.Request.Layers, up.Request.Layer, up.Request.Height = l.Layers, l.Layer, math.Round(l.Height*100)/100
 		}
-		up.Request.Layers, up.Request.Layer, up.Request.Height = l.Layers, l.Layer, math.Round(l.Height*100)/100
 	}
 	if r.Video != "" {
 		if m, err := timelapse.OpenMovie(filepath.Join(videoDir(p.stateDir), r.Video)); err == nil {
@@ -376,8 +381,12 @@ func (p *projectLink) printRequest(r printer.Record) cloud.PrintRequest {
 // recordPicture returns the picture of the model of a finished print as a JPEG, or nil when the
 // file is gone. The view draws it in the background: the deck waits up to 30 s.
 func (p *projectLink) recordPicture(r printer.Record) []byte {
+	kl, ok := p.k.(*printer.Klippy)
+	if !ok {
+		return nil // the deck draws no picture of a print of a resin printer yet
+	}
 	for range 60 {
-		img, loading := p.k.View.CloudRecordPicture(r)
+		img, loading := kl.View.CloudRecordPicture(r)
 		if !loading {
 			if img == nil {
 				return nil
