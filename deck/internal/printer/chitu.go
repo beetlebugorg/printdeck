@@ -1160,3 +1160,12 @@ func planUntil(pl filePlan, n int, moves float64) float64 {
 	}
 	return t
 }
+
+// Model returns the brand and the model of the resin printer, for the pages of the cloud: "Peopoly
+// Phenom" for a printer with the name Phenom (the setup names it so), else its name.
+func (c *ChiTu) Model() string {
+	if strings.Contains(strings.ToLower(c.Name), "phenom") && !strings.Contains(strings.ToLower(c.Name), "peopoly") {
+		return "Peopoly " + c.Name
+	}
+	return c.Name
+}

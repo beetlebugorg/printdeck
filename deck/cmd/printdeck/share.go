@@ -62,7 +62,9 @@ func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend, configPath s
 	}
 	l := &shareLink{link: link, pr: pr, name: name, model: printer.ConfigModel(configPath)}
 	if c, ok := pr.(*printer.ChiTu); ok {
-		l.model = c.Name // the name of the resin printer, for example "Phenom"
+		// A resin printer has its own deck: the page names the printer, "Peopoly Phenom", and
+		// not the host name of the deck.
+		l.name, l.model = "", c.Model()
 	}
 	if r, ok := app.TimeLapse.(*timelapse.Runner); ok {
 		l.lapse = r
@@ -393,7 +395,7 @@ func startShare(stateDir, configPath string, app *ui.App, pr printerBackend) {
 		case *printer.Klippy:
 			pl.model = printer.ConfigModel(configPath)
 		case *printer.ChiTu:
-			pl.name = b.Name
+			pl.name, pl.model = b.Name, b.Model()
 		}
 		app.Cloud = pl
 		l.sharer.Project = func(ctx context.Context) (string, error) { return pl.ShareProjectID(ctx, l.project()) }
