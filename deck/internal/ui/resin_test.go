@@ -39,12 +39,15 @@ func TestResinScreens(t *testing.T) {
 		if has("Home all") || (wide && !has("Home Z")) {
 			t.Errorf("wide %v: the home keys of a resin printer", wide)
 		}
-		if wide {
-			for _, gone := range []string{"Filament", "Toolhead"} {
-				if has(gone) {
-					t.Errorf("a resin printer has the page key %q", gone)
-				}
+		for _, gone := range []string{"Filament", "Toolhead"} {
+			if has(gone) {
+				t.Errorf("wide %v: a resin printer has the page key %q", wide, gone)
 			}
+		}
+		if !has("Build plate") {
+			t.Errorf("wide %v: no Build plate key", wide)
+		}
+		if wide {
 			if !has("Files") || !has("Machine") || !has("Build plate") {
 				t.Error("no Files, Build plate or Machine key")
 			}
@@ -79,6 +82,18 @@ func TestResinScreens(t *testing.T) {
 		}
 		if !has("Print") {
 			t.Errorf("wide %v: no window of the print", wide)
+		}
+
+		// A pause: Resume and Stop, and none of the keys of a FDM pause.
+		pr.State_.Paused = true
+		a.Draw(cv)
+		for _, gone := range []string{"Change filament", "Move head", "Tune"} {
+			if has(gone) {
+				t.Errorf("wide %v: a paused resin print has %q", wide, gone)
+			}
+		}
+		if !has("Resume") || !has("Stop") {
+			t.Errorf("wide %v: a paused resin print with no Resume or Stop", wide)
 		}
 
 		// The Machine page: no Macros, no Console, no Maintenance.

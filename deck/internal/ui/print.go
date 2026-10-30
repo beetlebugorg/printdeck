@@ -196,6 +196,10 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		case a.away:
 			// Menu on the screen of the print: the home screen, while the print goes on.
 			a.drawHome(c, st)
+		case a.resin():
+			// A resin print has one screen: it shows Resume during a pause, and has no first
+			// layer, warm-up or cooling of a FDM print.
+			a.drawResinJob(c, st)
 		case st.Paused:
 			a.drawPaused(c, st)
 		case st.Preparing:
