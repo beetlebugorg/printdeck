@@ -86,6 +86,10 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		a.drawFile(c, st)
 		return
 	case pageMove:
+		if a.resin() {
+			a.drawBuildPlate(c)
+			return
+		}
 		a.drawMove(c)
 		return
 	case pageFilament:

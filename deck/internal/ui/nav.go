@@ -29,8 +29,9 @@ type navKey struct {
 var navKeys = []navKey{{"Main", 0}, {"Files", pageFiles}, {"Filament", pageFilament},
 	{"Toolhead", pageMove}, {"Machine", pageMachine}}
 
-// resinNavKeys are the keys of a resin printer: it has no filament and no toolhead.
-var resinNavKeys = []navKey{{"Main", 0}, {"Files", pageFiles}, {"Machine", pageMachine}}
+// resinNavKeys are the keys of a resin printer: it has no filament, and its toolhead is the build
+// plate.
+var resinNavKeys = []navKey{{"Main", 0}, {"Files", pageFiles}, {"Build plate", pageMove}, {"Machine", pageMachine}}
 
 // keys is the key panel of the app: navKeys (resinNavKeys for a resin printer), and Camera on a
 // deck with a camera.

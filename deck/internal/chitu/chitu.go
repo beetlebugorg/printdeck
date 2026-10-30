@@ -1,7 +1,8 @@
 // Package chitu talks to the main board of a ChiTu resin printer (for example the Peopoly Phenom)
-// over the network: one line of text in one UDP packet to port 3000, and one line in the answer.
-// The package has the queries that only read: M99999 (the board), M27 (the progress) and M4000
-// (the state). The answers of a Phenom of 2026-10-30 are the test data.
+// over the network: one line of text in one UDP packet to port 3000, and one line in the answer
+// (M20 answers with one packet for each line). The package has the queries that only read: M99999
+// (the board), M27 (the progress), M4000 (the state) and M20 (the files). The answers of a Phenom
+// of 2026-10-30 are the test data.
 package chitu
 
 import (
@@ -160,6 +161,82 @@ func (c *Client) Query(ctx context.Context, line string) (string, error) {
 		return "", err
 	}
 	return strings.TrimRight(string(buf[:n]), "\r\n"), nil
+}
+
+// File is a file on the card of the board.
+type File struct {
+	Name string
+	Size int64
+}
+
+// Printable reports that the file is a sliced file to print: no folder (size 0), and no file of
+// macOS ("._" first) or other hidden file.
+func (f File) Printable() bool {
+	n := strings.ToLower(f.Name)
+	return f.Size > 0 && !strings.HasPrefix(f.Name, ".") && (strings.HasSuffix(n, ".cbddlp") || strings.HasSuffix(n, ".ctb"))
+}
+
+// ParseFileLine reads a line of the answer to M20: "shoulders-flex.cbddlp 39815689". The name can
+// have spaces: the size is after the last space.
+func ParseFileLine(line string) (File, bool) {
+	line = strings.TrimSpace(line)
+	i := strings.LastIndexByte(line, ' ')
+	if i <= 0 {
+		return File{}, false
+	}
+	size, err := strconv.ParseInt(line[i+1:], 10, 64)
+	if err != nil {
+		return File{}, false
+	}
+	return File{Name: line[:i], Size: size}, true
+}
+
+// Files asks the board for the files on its card (M20). The board sends "Begin file list", one
+// packet for each file, "End file list", and "ok L:<count>".
+func (c *Client) Files(ctx context.Context) ([]File, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var d net.Dialer
+	conn, err := d.DialContext(ctx, "udp", c.Addr)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	wait := c.Timeout
+	if wait <= 0 {
+		wait = 2 * time.Second
+	}
+	if _, err := conn.Write([]byte("M20")); err != nil {
+		return nil, err
+	}
+	var out []File
+	begun := false
+	buf := make([]byte, 4096)
+	for {
+		conn.SetReadDeadline(time.Now().Add(wait))
+		n, err := conn.Read(buf)
+		var ne net.Error
+		if errors.As(err, &ne) && ne.Timeout() {
+			if begun {
+				return out, nil // the end of the list got lost
+			}
+			return nil, ErrTimeout
+		}
+		if err != nil {
+			return nil, err
+		}
+		line := strings.TrimSpace(string(buf[:n]))
+		switch {
+		case line == "Begin file list":
+			begun = true
+		case line == "End file list", strings.HasPrefix(line, "ok"):
+			return out, nil
+		case begun:
+			if f, ok := ParseFileLine(line); ok {
+				out = append(out, f)
+			}
+		}
+	}
 }
 
 // Info asks the board for its info (M99999).

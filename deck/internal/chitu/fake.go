@@ -8,8 +8,8 @@ import (
 )
 
 // FakeBoard answers the queries of a ChiTu board on UDP, for the tests and for a deck with no
-// printer. The answers have the form of the answers of a Phenom of 2026-10-30. The answers of a
-// board with no print (D:0/0/0, "Not SD printing") are a guess: no idle board answered yet.
+// printer. The answers have the form of the answers of a Phenom of 2026-10-30, during a print and
+// with no print.
 type FakeBoard struct {
 	conn net.PacketConn
 
@@ -22,6 +22,8 @@ type FakeBoard struct {
 	Seconds    int
 	drop       int      // the queries to drop: a board that does not answer
 	log        []string // the queries, in order
+	// Files are the lines of the answer to M20, for example "part.cbddlp 1234".
+	Files []string
 }
 
 // NewFakeBoard starts a fake board at addr ("127.0.0.1:0" for any port).
@@ -69,7 +71,19 @@ func (b *FakeBoard) serve() {
 		if err != nil {
 			return
 		}
-		if a, ok := b.answer(strings.TrimSpace(string(buf[:n]))); ok {
+		q := strings.TrimSpace(string(buf[:n]))
+		if q == "M20" {
+			b.mu.Lock()
+			b.log = append(b.log, q)
+			lines := append([]string{"Begin file list"}, b.Files...)
+			b.mu.Unlock()
+			lines = append(lines, "End file list", fmt.Sprintf("ok L:%d", len(lines)-1))
+			for _, l := range lines {
+				b.conn.WriteTo([]byte(l+"\r\n"), from)
+			}
+			continue
+		}
+		if a, ok := b.answer(q); ok {
 			b.conn.WriteTo([]byte(a+"\r\n"), from)
 		}
 	}
@@ -90,10 +104,13 @@ func (b *FakeBoard) answer(q string) (string, bool) {
 		return "ok MAC:00:e0:4c:18:00:29 IP:" + host + " VER:V1.4.1 ID:29,00,18,00,0b,47,39,33 NAME:CBD", true
 	case "M27":
 		if b.Size == 0 {
-			return "Not SD printing", true
+			return "Error:It's not printing now!", true
 		}
 		return fmt.Sprintf("SD printing byte %d/%d", b.Read, b.Size), true
 	case "M4000":
+		if b.Size == 0 {
+			return "ok B:103/0 E1:-7/0 E2:73/0 X:0.000 Y:0.000 Z:0.000 F:0/0 D:0/0/1 T:0", true
+		}
 		return fmt.Sprintf("ok B:104/0 E1:-8/0 E2:72/0 X:0.000 Y:0.000 Z:%.3f F:256/256 D:%d/%d/%d T:%d",
 			b.Z, b.Read, b.Size, b.Flag, b.Seconds), true
 	}

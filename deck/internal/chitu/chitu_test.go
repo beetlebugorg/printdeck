@@ -127,3 +127,29 @@ func TestDiscover(t *testing.T) {
 		t.Errorf("the address of the answer %q", got[0].IP)
 	}
 }
+
+// The file list of M20: the lines of the Phenom, with the folders and the files of macOS left out
+// by Printable.
+func TestFiles(t *testing.T) {
+	b, err := NewFakeBoard("127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer b.Close()
+	b.Files = []string{"CHITUBOX 0", "._shoulders-flex.cbddlp 4096", "shoulders-flex.cbddlp 39815689",
+		"bittlex pod cover.cbddlp 159456774", ".Trashes 0"}
+	c := &Client{Addr: b.Addr(), Timeout: 300 * time.Millisecond}
+	files, err := c.Files(context.Background())
+	if err != nil || len(files) != 5 {
+		t.Fatalf("files %+v %v", files, err)
+	}
+	var ok []string
+	for _, f := range files {
+		if f.Printable() {
+			ok = append(ok, f.Name)
+		}
+	}
+	if len(ok) != 2 || ok[0] != "shoulders-flex.cbddlp" || ok[1] != "bittlex pod cover.cbddlp" || files[2].Size != 39815689 {
+		t.Errorf("printable %v of %+v", ok, files)
+	}
+}

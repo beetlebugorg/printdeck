@@ -28,7 +28,9 @@ type ChiTu struct {
 	Name   string // the name of the printer, for the screens
 
 	mu      sync.Mutex
-	info    chitu.Info // the answer to M99999, once
+	info    chitu.Info   // the answer to M99999, once
+	files   []chitu.File // the sliced files on the card of the board (M20), by LoadFiles
+	listed  bool         // the deck read the files once
 	st      State
 	last    chitu.Status // the last answer to M4000
 	misses  int          // the queries with no answer since the last answer
@@ -110,6 +112,10 @@ func (c *ChiTu) poll(ctx context.Context, now time.Time) time.Duration {
 	}
 	c.misses = 0
 	c.update(s, now)
+	if !c.listed && !s.Printing() {
+		c.listed = true
+		go c.LoadFiles()
+	}
 	if s.Printing() {
 		return chituPrintingEvery
 	}
@@ -173,10 +179,55 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 	st.Text, st.Activity = "Ready", "Ready"
 }
 
-// printName is the name of the print now for the screens: the name of the printer and the start.
-// The caller holds mu.
+// printName is the name of the print now for the screens: the name of the file on the card with
+// the size of the file of the print, when one file has that size, else the name of the printer and
+// the start. M4000 has no name of the file. The caller holds mu.
 func (c *ChiTu) printName() string {
+	name := ""
+	for _, f := range c.files {
+		if f.Size == c.last.Size {
+			if name != "" {
+				name = ""
+				break // two files of the same size
+			}
+			name = strings.TrimSuffix(strings.TrimSuffix(f.Name, ".cbddlp"), ".ctb")
+		}
+	}
+	if name != "" {
+		return name
+	}
 	return fmt.Sprintf("%s print of %s", c.Name, c.started.Local().Format("Jan 2, 15:04"))
+}
+
+// LoadFiles reads the files on the card of the board (M20). It waits for the board.
+func (c *ChiTu) LoadFiles() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	files, err := c.Client.Files(ctx)
+	if err != nil {
+		return
+	}
+	var keep []chitu.File
+	for _, f := range files {
+		if f.Printable() {
+			keep = append(keep, f)
+		}
+	}
+	c.mu.Lock()
+	c.files = keep
+	c.mu.Unlock()
+}
+
+// Files returns the sliced files on the card of the board, from the last LoadFiles. The board
+// gives no date of a file.
+func (c *ChiTu) Files() []File {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	out := make([]File, 0, len(c.files))
+	for _, f := range c.files {
+		out = append(out, File{Path: f.Name, Name: f.Name})
+	}
+	return out
 }
 
 // State returns the state of the printer.
@@ -247,8 +298,6 @@ func (c *ChiTu) Console() []ConsoleLine {
 
 // The files, the pictures and the layers: the deck reads no sliced file of the printer yet.
 
-func (c *ChiTu) Files() []File                                { return nil }
-func (c *ChiTu) LoadFiles()                                   {}
 func (c *ChiTu) Preview() image.Image                         { return nil }
 func (c *ChiTu) LayerTimes() []float64                        { return nil }
 func (c *ChiTu) SetViewLayer(int)                             {}

@@ -27,15 +27,24 @@ func TestChiTuBackend(t *testing.T) {
 		t.Fatalf("a board with no print: %v %+v", wait, c.State())
 	}
 
-	// A print, at a quarter of its file after 10 minutes.
+	// The files of the card: the deck reads them with no print.
+	b.Set(func(b *chitu.FakeBoard) {
+		b.Files = []string{"._part.cbddlp 4096", "part.cbddlp 1000", "other.cbddlp 2000", "CHITUBOX 0"}
+	})
+	c.LoadFiles()
+	if f := c.Files(); len(f) != 2 || f[0].Name != "part.cbddlp" {
+		t.Fatalf("the files %+v", f)
+	}
+
+	// A print, at a quarter of its file after 10 minutes. Its name is the file of its size.
 	b.Set(func(b *chitu.FakeBoard) { b.Read, b.Size, b.Z, b.Seconds = 250, 1000, 5.25, 600 })
 	if wait := c.poll(ctx, now); wait != chituPrintingEvery {
 		t.Fatalf("the wait during a print: %v", wait)
 	}
 	st := c.State()
 	if !st.Printing || st.Completion != 25 || st.Z != 5.25 || st.Elapsed != 10*time.Minute || st.TimeLeft != 30*time.Minute ||
-		st.FilePath == "" {
-		t.Fatalf("the print %+v", st)
+		st.FilePath == "" || st.Name() != "part" {
+		t.Fatalf("the print %+v (name %q)", st, st.Name())
 	}
 	path := st.FilePath
 	if !c.SetNextProject("Garden planters") || c.NextProject() != "Garden planters" {
@@ -93,7 +102,7 @@ func TestChiTuBackend(t *testing.T) {
 		t.Errorf("a command: %v", err)
 	}
 	for _, q := range b.Log() {
-		if q != "M4000" && q != "M99999" {
+		if q != "M4000" && q != "M99999" && q != "M20" {
 			t.Errorf("the backend sent %q", q)
 		}
 	}

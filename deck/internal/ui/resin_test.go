@@ -42,9 +42,24 @@ func TestResinScreens(t *testing.T) {
 					t.Errorf("a resin printer has the page key %q", gone)
 				}
 			}
-			if !has("Files") || !has("Machine") {
-				t.Error("no Files or Machine key")
+			if !has("Files") || !has("Machine") || !has("Build plate") {
+				t.Error("no Files, Build plate or Machine key")
 			}
+		}
+
+		// The Build plate page: Z only.
+		if wide {
+			a.open(pageMove)
+			a.Draw(cv)
+			for _, k := range []string{"Home Z", "Plate up", "Plate down"} {
+				if !has(k) {
+					t.Errorf("the Build plate page has no %q", k)
+				}
+			}
+			if has("Home all") || has("Joystick") {
+				t.Error("the Build plate page has X and Y")
+			}
+			a.back()
 		}
 
 		// A print: the window of the print, with no Pause, no Tune and no Cancel.
