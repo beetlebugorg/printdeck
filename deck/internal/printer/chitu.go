@@ -1,0 +1,269 @@
+package printer
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"image"
+	"net"
+	"strconv"
+	"sync"
+	"time"
+
+	"printdeck/internal/board"
+	"printdeck/internal/chitu"
+	"printdeck/internal/gcodemeta"
+)
+
+// ChiTu is the backend of a ChiTu resin printer on the network (the Peopoly Phenom): the deck reads
+// the state of the board with the queries of package chitu, and keeps the prints in its history.
+// The board keeps its own firmware and its own screen.
+//
+// The controls (start, pause, resume, stop, upload) send no command until their test on a small
+// print. The controls of a FDM printer and of Klipper return ErrNotSupported.
+type ChiTu struct {
+	Client *chitu.Client
+	Hist   *History
+	Name   string // the name of the printer, for the screens
+
+	mu      sync.Mutex
+	st      State
+	last    chitu.Status // the last answer to M4000
+	misses  int          // the queries with no answer since the last answer
+	path    string       // the key of the print now in the history ("" with no print)
+	started time.Time
+	console []ConsoleLine
+}
+
+// ErrNotSupported is a control that this printer does not have.
+var ErrNotSupported = errors.New("this printer does not have this control")
+
+// ErrNotTested is a control of a ChiTu board that has no test on a print yet.
+var ErrNotTested = errors.New("this control of the printer is not tested yet")
+
+// The times between two queries of the state: during a print, with no print, and with no answer.
+const (
+	chituPrintingEvery = 5 * time.Second
+	chituIdleEvery     = time.Minute
+	chituOfflineEvery  = 10 * time.Second
+	chituMisses        = 3 // the queries with no answer before the printer is offline
+)
+
+// chituDone is the share of the file that a print with a lost end needs to count as complete. The
+// board can clear its state before the deck sees the last bytes (not checked on a Phenom).
+const chituDone = 0.99
+
+// NewChiTu returns the backend of the board at addr ("192.168.76.58" or "host:port").
+func NewChiTu(addr, name string, hist *History) *ChiTu {
+	if _, _, err := net.SplitHostPort(addr); err != nil {
+		addr += ":" + strconv.Itoa(chitu.Port)
+	}
+	return &ChiTu{Client: &chitu.Client{Addr: addr}, Hist: hist, Name: name,
+		st: State{Text: "Connecting", Activity: "Connecting to the printer"}}
+}
+
+// Run reads the state of the board until ctx ends. notify runs after each change of the state.
+func (c *ChiTu) Run(ctx context.Context, notify func()) {
+	for {
+		wait := c.poll(ctx, time.Now())
+		if notify != nil {
+			notify()
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(wait):
+		}
+	}
+}
+
+// poll sends one M4000 and updates the state. It returns the time to the next query.
+func (c *ChiTu) poll(ctx context.Context, now time.Time) time.Duration {
+	qctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	s, err := c.Client.Status(qctx)
+	cancel()
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if err != nil {
+		c.misses++
+		if c.misses >= chituMisses {
+			c.st.Reachable, c.st.Connected = false, false
+			c.st.Text, c.st.Activity = "Offline", "The printer does not answer"
+			c.st.Err = "No answer from the printer at " + c.Client.Addr
+		}
+		return chituOfflineEvery
+	}
+	c.misses = 0
+	c.update(s, now)
+	if s.Printing() {
+		return chituPrintingEvery
+	}
+	return chituIdleEvery
+}
+
+// update sets the state from the answer s at now, and adds a print to the history at its end. The
+// caller holds mu.
+func (c *ChiTu) update(s chitu.Status, now time.Time) {
+	was := c.last
+	c.last = s
+	st := &c.st
+	st.Reachable, st.Connected, st.Err = true, true, ""
+	st.Z, st.HasZ = s.Z, true
+	if s.Printing() {
+		if c.path == "" || s.Read < was.Read && was.Printing() {
+			// A new print: the board does not give the name of its file in M4000.
+			c.started = now.Add(-time.Duration(s.Seconds) * time.Second)
+			c.path = "resin-" + strconv.FormatInt(c.started.Unix(), 10)
+		}
+		st.Printing, st.Paused = true, s.Flag == 1
+		st.FilePath, st.File, st.Title = c.path, c.path, c.printName()
+		st.FileSize, st.FilePos = s.Size, s.Read
+		st.Completion = s.Progress() * 100
+		st.Elapsed = time.Duration(s.Seconds) * time.Second
+		st.TimeLeft, st.HasTimeLeft = 0, false
+		if p := s.Progress(); p > 0.02 && s.Seconds > 0 {
+			st.TimeLeft, st.HasTimeLeft = time.Duration(float64(s.Seconds)*(1-p)/p)*time.Second, true
+		}
+		st.Text, st.Activity = "Printing", "Printing"
+		if st.Paused {
+			st.Text, st.Activity = "Paused", "Paused"
+		}
+		st.Finished = ""
+		return
+	}
+	if c.path != "" {
+		// The end of the print, from the answer that still shows the file: this answer when the
+		// board read the whole file, else the answer before it. The print is complete when the
+		// board read the file, or most of it.
+		end := was
+		if s.Size > 0 {
+			end = s
+		}
+		result := "cancelled"
+		if end.Size > 0 && (end.Read >= end.Size || end.Progress() >= chituDone) {
+			result = "complete"
+		}
+		st.Finished, st.FinishedPath, st.FinishedFile = result, c.path, c.path
+		st.FinishedTitle = c.printName()
+		st.FinishedTime = time.Duration(end.Seconds) * time.Second
+		if c.Hist != nil {
+			c.Hist.add(*st, now, nil, 0, end.Read, nil)
+		}
+		c.path = ""
+	}
+	st.Printing, st.Paused = false, false
+	st.FilePath, st.File, st.Title, st.FileSize, st.FilePos = "", "", "", 0, 0
+	st.Completion, st.Elapsed, st.HasTimeLeft = 0, 0, false
+	st.Text, st.Activity = "Ready", "Ready"
+}
+
+// printName is the name of the print now for the screens: the name of the printer and the start.
+// The caller holds mu.
+func (c *ChiTu) printName() string {
+	return fmt.Sprintf("%s print of %s", c.Name, c.started.Local().Format("Jan 2, 15:04"))
+}
+
+// State returns the state of the printer.
+func (c *ChiTu) State() State {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.st
+}
+
+// Machine returns what the printer has: a resin printer.
+func (c *ChiTu) Machine() Machine { return Machine{Process: ProcessResin} }
+
+// History and projects, as the Klipper backend.
+
+func (c *ChiTu) History() []Record {
+	if c.Hist == nil {
+		return nil
+	}
+	return c.Hist.Records()
+}
+
+func (c *ChiTu) Rates() Rates {
+	if c.Hist == nil {
+		return ComputeRates(nil)
+	}
+	return c.Hist.Rates()
+}
+
+func (c *ChiTu) SetNote(r Record, note string) bool {
+	return c.Hist != nil && c.Hist.SetNote(r.Path, r.End, note)
+}
+
+func (c *ChiTu) SetProject(r Record, project string) bool {
+	return c.Hist != nil && c.Hist.SetProject(r.Path, r.End, project)
+}
+
+func (c *ChiTu) SetNextProject(project string) bool {
+	st := c.State()
+	if c.Hist == nil || !st.Printing || st.FilePath == "" {
+		return false
+	}
+	c.Hist.SetNextProject(st.FilePath, project)
+	return true
+}
+
+func (c *ChiTu) NextProject() string {
+	st := c.State()
+	if c.Hist == nil || !st.Printing {
+		return ""
+	}
+	return c.Hist.NextProject(st.FilePath)
+}
+
+// Console returns the last lines of the console. The deck shows no console for this printer yet.
+func (c *ChiTu) Console() []ConsoleLine {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]ConsoleLine(nil), c.console...)
+}
+
+// The files, the pictures and the layers: the deck reads no sliced file of the printer yet.
+
+func (c *ChiTu) Files() []File                                { return nil }
+func (c *ChiTu) LoadFiles()                                   {}
+func (c *ChiTu) Preview() image.Image                         { return nil }
+func (c *ChiTu) LayerTimes() []float64                        { return nil }
+func (c *ChiTu) SetViewLayer(int)                             {}
+func (c *ChiTu) ViewLayer() int                               { return -1 }
+func (c *ChiTu) RecordPicture(Record) (image.Image, bool)     { return nil, false }
+func (c *ChiTu) FilePicture(File, string) image.Image         { return nil }
+func (c *ChiTu) FileMeta(string) gcodemeta.Meta               { return gcodemeta.Meta{} }
+func (c *ChiTu) SpoolStore() *Spools                          { return nil }
+func (c *ChiTu) Connect()                                     {}
+func (c *ChiTu) DeleteFile(string) error                      { return ErrNotTested }
+func (c *ChiTu) SendConsole(string)                           {}
+func (c *ChiTu) Boards() ([]board.Info, bool)                 { return nil, false }
+func (c *ChiTu) ProbeBoards()                                 {}
+func (c *ChiTu) FlashBoard(string, board.FlashProgress) error { return ErrNotSupported }
+func (c *ChiTu) UseConfig(string, string) error               { return ErrNotSupported }
+func (c *ChiTu) UseSim(string) error                          { return ErrNotSupported }
+func (c *ChiTu) RestartKlipper() error                        { return ErrNotSupported }
+func (c *ChiTu) FirmwareRestart() error                       { return ErrNotSupported }
+func (c *ChiTu) RunAction(string, ...string) error            { return ErrNotSupported }
+func (c *ChiTu) PrintPATower(int, int, string) error          { return ErrNotSupported }
+func (c *ChiTu) PrintCalibTowers(int, int, string) error      { return ErrNotSupported }
+func (c *ChiTu) SetPressureAdvance(float64) error             { return ErrNotSupported }
+func (c *ChiTu) Heat(int, int)                                {}
+func (c *ChiTu) SetToolTemp(int) error                        { return ErrNotSupported }
+func (c *ChiTu) SetBedTemp(int) error                         { return ErrNotSupported }
+func (c *ChiTu) Extrude(float64, int) error                   { return ErrNotSupported }
+func (c *ChiTu) Fan(int) error                                { return ErrNotSupported }
+func (c *ChiTu) SpeedFactor(int) error                        { return ErrNotSupported }
+func (c *ChiTu) FlowFactor(int) error                         { return ErrNotSupported }
+func (c *ChiTu) BabyStep(float64) error                       { return ErrNotSupported }
+
+// The controls of phase 4: no command goes to the board before the test of each control.
+
+func (c *ChiTu) Pause()                                   {}
+func (c *ChiTu) Resume()                                  {}
+func (c *ChiTu) Cancel()                                  {}
+func (c *ChiTu) PrintFile(string)                         {}
+func (c *ChiTu) Gcode(...string) error                    { return ErrNotTested }
+func (c *ChiTu) Home(...string) error                     { return ErrNotTested }
+func (c *ChiTu) Jog(float64, float64, float64, int) error { return ErrNotTested }
+func (c *ChiTu) MotorsOff() error                         { return ErrNotTested }
+func (c *ChiTu) EmergencyStop() error                     { return ErrNotTested }

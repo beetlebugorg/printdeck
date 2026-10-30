@@ -17,6 +17,9 @@ type printerBackend interface {
 	Run(ctx context.Context, notify func())
 }
 
+// The backend of a ChiTu resin printer has each method of a backend.
+var _ printerBackend = (*printer.ChiTu)(nil)
+
 // newPrinter returns the Klipper backend: the deck follows the Klipper host on its API socket.
 func newPrinter(cfg config.Config) printerBackend {
 	k := printer.NewKlippy(cfg.KlippySocket, &gcodestore.Store{Dir: cfg.GcodeDir})
