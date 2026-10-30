@@ -103,3 +103,27 @@ func TestClientFakeBoard(t *testing.T) {
 		}
 	}
 }
+
+// Discover finds the boards that answer M99999, once each, with the address of the answer.
+func TestDiscover(t *testing.T) {
+	var addrs []string
+	for range 2 {
+		b, err := NewFakeBoard("127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer b.Close()
+		addrs = append(addrs, b.Addr())
+	}
+	// The second board twice: one answer for each MAC address.
+	got, err := Discover(context.Background(), 300*time.Millisecond, addrs[0], addrs[1], addrs[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Name != "CBD" {
+		t.Fatalf("boards %+v", got) // the fake boards have the same MAC address
+	}
+	if got[0].IP != addrs[0] && got[0].IP != addrs[1] {
+		t.Errorf("the address of the answer %q", got[0].IP)
+	}
+}
