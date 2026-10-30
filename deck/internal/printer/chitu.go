@@ -461,9 +461,10 @@ func (c *ChiTu) PrintFile(path string) {
 		return
 	}
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		err := c.Client.StartPrint(ctx, path)
+		log.Printf("chitu: M6030 ':%s' (Print on the deck): %v", path, err)
 		c.mu.Lock()
 		c.st.Message = ""
 		if err != nil {
@@ -881,13 +882,13 @@ func (c *ChiTu) CancelStart() {
 
 // startNow sends M6030 for the file name, and returns and logs the answer of the board.
 func (c *ChiTu) startNow(name string) string {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	a, err := c.Client.Query(ctx, "M6030 ':"+name+"'")
-	if err != nil {
+	a := "ok"
+	if err := c.Client.StartPrint(ctx, name); err != nil {
 		a = "Error:" + err.Error()
 	}
-	log.Printf("chitu: M6030 ':%s': %q", name, a)
+	log.Printf("chitu: M6030 ':%s' (a press in ChiTuBox): %q", name, a)
 	return a
 }
 

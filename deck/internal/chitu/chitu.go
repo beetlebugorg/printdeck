@@ -246,7 +246,17 @@ func (c *Client) StartPrint(ctx context.Context, name string) error {
 	if name == "" || strings.ContainsAny(name, "'\r\n") {
 		return fmt.Errorf("chitu: no such file name: %q", name)
 	}
-	a, err := c.Query(ctx, "M6030 ':"+name+"'")
+	// The Phenom can take seconds to open a large file before it answers: it answered after more
+	// than 2 s on 2026-10-30 and printed. The start is never sent again: with no answer, the state
+	// of the board tells whether it prints.
+	start := &Client{Addr: c.Addr, Timeout: startWait}
+	a, err := start.Query(ctx, "M6030 ':"+name+"'")
+	if errors.Is(err, ErrTimeout) {
+		if st, serr := c.Status(ctx); serr == nil && st.Printing() {
+			return nil
+		}
+		return fmt.Errorf("chitu: no answer to the start of %s, and the board does not print", name)
+	}
 	if err != nil {
 		return err
 	}
@@ -255,6 +265,9 @@ func (c *Client) StartPrint(ctx context.Context, name string) error {
 	}
 	return nil
 }
+
+// startWait is the wait for the answer to M6030.
+const startWait = 10 * time.Second
 
 // Info asks the board for its info (M99999).
 func (c *Client) Info(ctx context.Context) (Info, error) {

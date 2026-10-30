@@ -5,6 +5,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 )
 
 // FakeBoard answers the queries of a ChiTu board on UDP, for the tests and for a deck with no
@@ -32,6 +33,8 @@ type FakeBoard struct {
 	SaveNoOK bool
 	// WriteErrors is the count of the next data packets that get "Error:write dat".
 	WriteErrors int
+	// SlowStart answers M6030 after 3 s, as the Phenom did with a large file.
+	SlowStart bool
 	// LoseData is the count of the next data packets that the board loses, with no answer.
 	LoseData int
 }
@@ -99,7 +102,16 @@ func (b *FakeBoard) serve() {
 			}
 			continue
 		}
-		if a, ok := b.answer(q); ok {
+		b.mu.Lock()
+		slow := b.SlowStart && strings.HasPrefix(q, "M6030")
+		b.mu.Unlock()
+		if a, ok := b.answer(q); ok && slow {
+			go func(a string, from net.Addr) {
+				time.Sleep(3 * time.Second)
+				b.conn.WriteTo([]byte(a+"\r\n"), from)
+			}(a, from)
+			continue
+		} else if ok {
 			b.conn.WriteTo([]byte(a+"\r\n"), from)
 		}
 	}

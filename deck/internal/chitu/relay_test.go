@@ -297,3 +297,26 @@ func TestLayerImage(t *testing.T) {
 		t.Error("a layer past the end")
 	}
 }
+
+// A board that answers the start after 3 s starts the print: StartPrint waits for it.
+func TestStartPrintSlow(t *testing.T) {
+	board, err := NewFakeBoard("127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer board.Close()
+	board.Set(func(b *FakeBoard) { b.Files, b.SlowStart = []string{"plate.cbddlp 1000"}, true })
+	c := &Client{Addr: board.Addr()}
+	if err := c.StartPrint(t.Context(), "plate.cbddlp"); err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, q := range board.Log() {
+		if strings.HasPrefix(q, "M6030") {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("%d starts, want 1", n)
+	}
+}
