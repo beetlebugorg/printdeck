@@ -228,6 +228,10 @@ func (a *App) panelLines(st printer.State) panelText {
 	if st.Homed == "xyz" {
 		homed = "XYZ homed"
 	}
+	if a.resin() {
+		// A resin printer homes its plate at the start of a print: the files on its card say more.
+		homed = filesLine(len(a.Printer.Files()))
+	}
 	p.msg = or(st.Message, homed)
 	if st.FirmwareOld {
 		p.msg = "Firmware is old"
@@ -278,4 +282,15 @@ func (a *App) panelProject(st printer.State) (string, bool) {
 // pickNextProject opens the choice of the project of the print now.
 func (a *App) pickNextProject() {
 	a.askProject(a.Printer.State().Name(), a.Printer.NextProject(), a.setNextProject)
+}
+
+// filesLine is the line of the files on the card of a resin printer in the panel.
+func filesLine(n int) string {
+	switch n {
+	case 0:
+		return "No files on the card"
+	case 1:
+		return "1 file on the card"
+	}
+	return fmt.Sprintf("%d files on the card", n)
 }

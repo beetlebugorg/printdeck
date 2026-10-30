@@ -36,6 +36,9 @@ func TestResinScreens(t *testing.T) {
 		if !has("Plate") {
 			t.Errorf("wide %v: no height of the plate", wide)
 		}
+		if has("Home all") || (wide && !has("Home Z")) {
+			t.Errorf("wide %v: the home keys of a resin printer", wide)
+		}
 		if wide {
 			for _, gone := range []string{"Filament", "Toolhead"} {
 				if has(gone) {
