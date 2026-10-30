@@ -672,6 +672,10 @@ func uploadError(err error, at, size int64) error {
 	if errors.Is(err, chitu.ErrTimeout) {
 		return fmt.Errorf("No answer from the printer at %d%%", pct)
 	}
+	if strings.Contains(err.Error(), "write dat") {
+		// The answer of the Phenom when it cannot write to its card, for example a full card.
+		return fmt.Errorf("The printer could not write to its card at %d%%: delete old files", pct)
+	}
 	msg := strings.ReplaceAll(err.Error(), "chitu: ", "")
 	return fmt.Errorf("%s (at %d%%)", msg, pct)
 }
