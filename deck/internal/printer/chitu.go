@@ -24,6 +24,7 @@ import (
 	"printdeck/internal/board"
 	"printdeck/internal/chitu"
 	"printdeck/internal/gcodemeta"
+	"printdeck/internal/timelapse"
 
 	xdraw "golang.org/x/image/draw"
 )
@@ -74,6 +75,7 @@ type ChiTu struct {
 	headers     map[string]*chitu.Sliced // the headers of the copies in UploadDir, by name
 	models      map[string]*chitu.Model  // the 3D models of the copies, by name; nil while the deck reads one
 	modelPics   map[string]image.Image   // the pictures of the models, by file, for the screens
+	lapse       chituLapse               // the time lapse of the print now
 	plans       map[string]filePlan      // the plans of the layers of the copies, by name
 	moves       float64                  // the seconds of the moves of a layer, as the print now measures them
 	movesFile   string                   // the file of moves
@@ -168,6 +170,9 @@ func (c *ChiTu) poll(ctx context.Context, now time.Time) time.Duration {
 		go c.LoadFiles()
 	}
 	if s.Printing() {
+		if c.lapse.enable {
+			return time.Second // the time lapse catches the plate when it is up
+		}
 		return chituPrintingEvery
 	}
 	return chituIdleEvery
@@ -1281,4 +1286,71 @@ func (c *ChiTu) readModel(name string) {
 	c.mu.Lock()
 	c.models[name] = m
 	c.mu.Unlock()
+}
+
+// The time lapse of a resin print (timelapse.Host): the deck asks for a frame at each new layer of
+// the print, from the layer that it follows (State.Layer). The board has no module for it, and no
+// park: the camera takes the frame as it is.
+type chituLapse struct {
+	enable       bool
+	every        int
+	frame, taken int
+	layer        int // the layer of the last frame
+	path         string
+	seenLayer    int     // the layer of lowZ
+	lowZ         float64 // the lowest height of the plate in the layer seenLayer
+}
+
+// chituLapseLift is the height of the plate over its lowest point in a layer for a frame of the
+// time lapse: the plate is out of the vat (the Phenom lifts 8 mm).
+const chituLapseLift = 3.0
+
+// TimelapseStatus is the state of the time lapse of the print now.
+func (c *ChiTu) TimelapseStatus() (timelapse.HostStatus, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	l := &c.lapse
+	st := c.st
+	if !st.Reachable {
+		return timelapse.HostStatus{}, false
+	}
+	if st.FilePath != l.path {
+		l.path, l.frame, l.taken, l.layer = st.FilePath, 0, 0, 0
+	}
+	every := max(1, l.every)
+	// A frame for each new layer, when the plate is up out of the vat: at least chituLapseLift over
+	// the lowest point of the plate in the layer.
+	if st.Layer != l.seenLayer {
+		l.seenLayer, l.lowZ = st.Layer, st.Z
+	}
+	l.lowZ = math.Min(l.lowZ, st.Z)
+	if l.enable && st.Printing && !st.Paused && st.Layer > 0 && st.Layer >= l.layer+every && st.Z >= l.lowZ+chituLapseLift {
+		l.frame++
+		l.layer = st.Layer
+	}
+	return timelapse.HostStatus{Enable: l.enable, Every: every, Frame: l.frame, Taken: l.taken,
+		Waiting: l.frame > l.taken, IsLapse: l.frame > l.taken, Layer: l.layer, Present: true}, true
+}
+
+// TimelapseTaken marks the frame n as taken.
+func (c *ChiTu) TimelapseTaken(n int) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.lapse.taken = max(c.lapse.taken, n)
+	return nil
+}
+
+// SetTimelapse keeps the settings of the time lapse. A resin printer has no park.
+func (c *ChiTu) SetTimelapse(enable, _ bool, _, every int, _ float64) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.lapse.enable, c.lapse.every = enable, every
+	return nil
+}
+
+// SetVideo gives the time lapse video name to the record of the print of path.
+func (c *ChiTu) SetVideo(path, name string) {
+	if c.Hist != nil {
+		c.Hist.SetVideo(path, name, time.Now())
+	}
 }

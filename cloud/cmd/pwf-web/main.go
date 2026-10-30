@@ -551,7 +551,7 @@ func (s *share) render(st wire.ShareStatus) {
 		setText("modelTag", tag)
 	}
 	resin := st.Process == "resin"
-	setHidden("lapseSec", resin)
+	setHidden("lapseSec", resin && st.Lapse == 0)
 	for _, id := range []string{"grams", "tool", "bed"} {
 		byID(id).Get("parentElement").Set("hidden", resin)
 	}

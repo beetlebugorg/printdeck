@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"printdeck/internal/chitu"
+	"printdeck/internal/timelapse"
 )
 
 // The backend of a ChiTu board against the fake board: a print, its pause, its end in the history,
@@ -488,4 +489,34 @@ func TestChiTuUploadDuringPrint(t *testing.T) {
 			t.Errorf("the board got %q", b.Uploaded["new.cbddlp"])
 		}
 	})
+}
+
+// The time lapse of a resin print asks for a frame at each new layer, when the plate is up.
+func TestChiTuTimelapse(t *testing.T) {
+	c := NewChiTu("127.0.0.1:1", "Phenom", &History{})
+	c.files = []chitu.File{{Name: "plate.cbddlp", Size: 1000}}
+	c.headers = map[string]*chitu.Sliced{"plate.cbddlp": {Layers: 100}}
+	c.SetTimelapse(true, false, 0, 1, 0)
+	now := time.Now()
+	step := func(read int64, z float64) timelapse.HostStatus {
+		now = now.Add(time.Second)
+		c.update(chitu.Status{Read: read, Size: 1000, Seconds: 100, Z: z}, now)
+		hs, _ := c.TimelapseStatus()
+		return hs
+	}
+	if hs := step(100, 0.5); hs.Frame != 0 {
+		t.Fatalf("a frame with the plate in the vat: %+v", hs)
+	}
+	hs := step(100, 6)
+	if hs.Frame != 1 || !hs.Waiting {
+		t.Fatalf("no frame with the plate up: %+v", hs)
+	}
+	c.TimelapseTaken(1)
+	if hs := step(100, 8); hs.Frame != 1 || hs.Waiting {
+		t.Errorf("a second frame in the same layer: %+v", hs)
+	}
+	step(110, 0.55) // the next layer, in the vat
+	if hs := step(110, 7); hs.Frame != 2 {
+		t.Errorf("no frame of the next layer: %+v", hs)
+	}
 }

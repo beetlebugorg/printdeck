@@ -25,6 +25,10 @@ import (
 // and the history record of the print gets its name.
 func startTimelapse(ctx context.Context, stateDir, configPath string, app *ui.App, pr printerBackend) {
 	hub, ok := app.Camera.(*camera.Hub)
+	if c, isResin := pr.(*printer.ChiTu); ok && isResin {
+		startResinTimelapse(ctx, stateDir, app, hub, c)
+		return
+	}
 	k, isKlippy := pr.(*printer.Klippy)
 	if !ok || !isKlippy {
 		return
@@ -253,3 +257,36 @@ func wholePart(k *printer.Klippy, file string) (printer.Box, bool) {
 
 // videoDir is the folder of the time lapse videos in the state folder.
 func videoDir(stateDir string) string { return filepath.Join(stateDir, "videos") }
+
+// startResinTimelapse starts the time lapse of a resin printer: a frame at each new layer, when
+// the plate is up out of the vat (printer.ChiTu is the host). A resin printer has no park, no crop
+// of the part, and no picture of the first layer.
+func startResinTimelapse(ctx context.Context, stateDir string, app *ui.App, hub *camera.Hub, c *printer.ChiTu) {
+	file := filepath.Join(stateDir, "timelapse")
+	s := timelapse.DefaultSettings
+	if b, err := os.ReadFile(file); err == nil {
+		s = timelapse.ParseSettings(b)
+	}
+	s.Park, s.Crop, s.First = false, false, timelapse.FirstOff
+	r := timelapse.NewRunner(s, c, hub.Role(camera.RoleLapse), func() timelapse.Print {
+		st := c.State()
+		return timelapse.Print{Busy: st.Busy(), File: st.FilePath, Known: st.Reachable}
+	}, videoDir(stateDir))
+	if ok, err := r.LoadHandoff(filepath.Join(handoffDir, lapseHandoff)); err != nil {
+		log.Printf("timelapse: %v", err)
+	} else if ok {
+		log.Printf("timelapse: %d frames of the print from the deck program before this one", r.Info().Frames)
+	}
+	r.OnSettings = func(s timelapse.Settings) {
+		if err := os.WriteFile(file, s.Bytes(), 0o644); err != nil {
+			log.Printf("timelapse: the settings were not saved: %v", err)
+		}
+	}
+	r.OnVideo = func(name, file string) {
+		c.SetVideo(file, name)
+		app.Redraw()
+	}
+	app.TimeLapse = r
+	sysTimelapse = r
+	go r.Run(ctx)
+}

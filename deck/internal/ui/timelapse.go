@@ -142,11 +142,16 @@ func (a *App) drawTimeLapse(c *gfx.Canvas) {
 	f := a.navPage(c, "Time lapse")
 	s := a.TimeLapse.Settings()
 	in := a.TimeLapse.Info()
-	items := []menuItem{
-		{"Time lapse", lapseLine(in, s), dim, a.toggleLapse},
-		{"Park for the frames", parkLine(s.Park), dim, a.toggleLapsePark},
-		{"Crop to the part", cropLine(s.Crop, a.lapseCalibrated(), s.Park), dim, a.toggleLapseCrop},
-		{"First layer", firstLayerLine(s.First), dim, a.cycleFirstLayer},
+	items := []menuItem{{"Time lapse", lapseLine(in, s), dim, a.toggleLapse}}
+	if a.resin() {
+		// A resin printer has no park and no first layer to look at: a frame at each layer, when
+		// the plate is up out of the vat.
+		items = append(items, menuItem{"Frames", "One at each layer, with the plate up", dim, nil})
+	} else {
+		items = append(items,
+			menuItem{"Park for the frames", parkLine(s.Park), dim, a.toggleLapsePark},
+			menuItem{"Crop to the part", cropLine(s.Crop, a.lapseCalibrated(), s.Park), dim, a.toggleLapseCrop},
+			menuItem{"First layer", firstLayerLine(s.First), dim, a.cycleFirstLayer})
 	}
 	if in.First != nil {
 		items = append(items, menuItem{"Picture of the first layer", firstSub(in, a), dim, func() { a.open(pageFirstLayer) }})
