@@ -61,6 +61,9 @@ func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend, configPath s
 		name = "a Printdeck"
 	}
 	l := &shareLink{link: link, pr: pr, name: name, model: printer.ConfigModel(configPath)}
+	if c, ok := pr.(*printer.ChiTu); ok {
+		l.model = c.Name // the name of the resin printer, for example "Phenom"
+	}
 	if r, ok := app.TimeLapse.(*timelapse.Runner); ok {
 		l.lapse = r
 	}
@@ -207,6 +210,18 @@ func (l *shareLink) status() cloud.ShareStatus {
 	if st.Simulated != "" {
 		s.Printer, s.PrinterModel = "the simulated "+st.Simulated, ""
 	}
+	if c, ok := l.pr.(*printer.ChiTu); ok {
+		// A resin print: no temperatures and no filament. The layer height and the exposure come
+		// from the header of the deck's copy of the file.
+		s.Process, s.Material = printer.ProcessResin, "Resin"
+		s.Tool, s.ToolTarget, s.Bed, s.BedTarget = 0, 0, 0, 0
+		if h := c.ResinFile(); h != nil {
+			s.ResinLayerHeight = math.Round(float64(h.LayerHeight)*1000) / 1000
+			s.ResinExposure = math.Round(float64(h.Exposure)*10) / 10
+			s.ResinBottom = math.Round(float64(h.BottomExposure)*10) / 10
+			s.ResinBottomN = int(h.BottomLayers)
+		}
+	}
 	// The file of the print: the material and the filament that the slicer wrote, and the
 	// height of the model.
 	path := st.FilePath
@@ -230,7 +245,7 @@ func (l *shareLink) status() cloud.ShareStatus {
 			rollFilament(f, store, sp)
 		}
 	}
-	if s.Material == "" {
+	if s.Material == "" && s.Process != printer.ProcessResin {
 		s.Material = meta.MaterialName
 		if s.Material == "" {
 			s.Material = meta.Material

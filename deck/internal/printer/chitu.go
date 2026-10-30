@@ -2,9 +2,12 @@ package printer
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
+	"image/color"
+	"image/draw"
 	"io"
 	"log"
 	"math"
@@ -21,6 +24,8 @@ import (
 	"printdeck/internal/board"
 	"printdeck/internal/chitu"
 	"printdeck/internal/gcodemeta"
+
+	xdraw "golang.org/x/image/draw"
 )
 
 // ChiTu is the backend of a ChiTu resin printer on the network (the Peopoly Phenom): the deck reads
@@ -34,6 +39,10 @@ type ChiTu struct {
 	Client *chitu.Client
 	Hist   *History
 	Name   string // the name of the printer, for the screens
+	// PrintStore keeps the print now (resin-print.json), so a deck that starts again during a print
+	// goes on with the same print: the same key in the history, the same project and live tile.
+	// "" keeps nothing.
+	PrintStore string
 	// UploadDir keeps a copy of the files that ChiTuBox sent to the board through the relay of the
 	// deck (SaveUpload), for their previews. "" keeps no copy.
 	UploadDir string
@@ -168,6 +177,11 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 			// A new print: the board does not give the name of its file in M4000.
 			c.started = now.Add(-time.Duration(s.Seconds) * time.Second)
 			c.path = "resin-" + strconv.FormatInt(c.started.Unix(), 10)
+			if was.Size == 0 && c.lastAt.IsZero() {
+				// The first answer since the deck started: maybe a print from before the start.
+				c.resume(s)
+			}
+			c.savePrint(s)
 			if c.nextProject != "" && c.Hist != nil {
 				c.Hist.SetNextProject(c.path, c.nextProject)
 				c.nextProject = ""
@@ -220,6 +234,9 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 			c.Hist.add(*st, now, nil, 0, end.Read, nil)
 		}
 		c.path = ""
+		if c.PrintStore != "" {
+			os.Remove(c.PrintStore)
+		}
 	}
 	st.Printing, st.Paused = false, false
 	st.FilePath, st.File, st.Title, st.FileSize, st.FilePos = "", "", "", 0, 0
@@ -944,4 +961,100 @@ func (c *ChiTu) LayerPicture() image.Image {
 		return nil
 	}
 	return img
+}
+
+// ResinFile returns the header of the file of the print now, or of the print that ended, from the
+// deck's copy, or nil.
+func (c *ChiTu) ResinFile() *chitu.Sliced {
+	st := c.State()
+	name := st.File
+	if !st.Printing {
+		name = st.FinishedFile
+	}
+	return c.header(name)
+}
+
+// SharePicture returns the picture of the share page: the preview of the slicer at the left, and
+// the layer that cures now at the right. A print that ended has the preview only.
+func (c *ChiTu) SharePicture(st State, _ Bed) image.Image {
+	name := st.File
+	if !st.Printing {
+		name = st.FinishedFile
+	}
+	preview := c.picture(name)
+	var layer image.Image
+	if st.Printing {
+		layer = c.LayerPicture()
+	}
+	switch {
+	case preview == nil && layer == nil:
+		return nil
+	case layer == nil:
+		return preview
+	case preview == nil:
+		return layer
+	}
+	// Two cells of 480 x 300, in the colors of the page of the printer: dark around the pictures.
+	const cw, ch, gap = 480, 300, 12
+	out := image.NewRGBA(image.Rect(0, 0, 2*cw+gap, ch))
+	draw.Draw(out, out.Bounds(), image.NewUniform(color.RGBA{27, 28, 26, 255}), image.Point{}, draw.Src)
+	put := func(cell image.Rectangle, img image.Image) {
+		b := img.Bounds()
+		w, h := cell.Dx(), cell.Dx()*b.Dy()/b.Dx()
+		if h > cell.Dy() {
+			w, h = cell.Dy()*b.Dx()/b.Dy(), cell.Dy()
+		}
+		x, y := cell.Min.X+(cell.Dx()-w)/2, cell.Min.Y+(cell.Dy()-h)/2
+		xdraw.ApproxBiLinear.Scale(out, image.Rect(x, y, x+w, y+h), img, b, draw.Over, nil)
+	}
+	put(image.Rect(0, 0, cw, ch), preview)
+	put(image.Rect(cw+gap, 0, 2*cw+gap, ch), layer)
+	return out
+}
+
+// savedPrint is resin-print.json: the print now.
+type savedPrint struct {
+	Path    string    `json:"path"`
+	Started time.Time `json:"started"`
+	Size    int64     `json:"size"`
+}
+
+// resumeSlack is the most difference between the start of a saved print and the start from the
+// answer of the board, for the same print.
+const resumeSlack = 10 * time.Minute
+
+// resume takes the key and the start of the print from before a start of the deck, when the
+// board prints the same file: from resin-print.json, or from the project of the print in the
+// history (a deck that saved no resin-print.json). The caller holds mu.
+func (c *ChiTu) resume(s chitu.Status) {
+	near := func(t time.Time) bool { d := t.Sub(c.started); return d < resumeSlack && d > -resumeSlack }
+	if c.PrintStore != "" {
+		var sp savedPrint
+		if b, err := os.ReadFile(c.PrintStore); err == nil && json.Unmarshal(b, &sp) == nil &&
+			sp.Path != "" && sp.Size == s.Size && near(sp.Started) {
+			c.path, c.started = sp.Path, sp.Started
+			log.Printf("chitu: the deck goes on with the print %s", c.path)
+			return
+		}
+	}
+	if c.Hist != nil {
+		if p := c.Hist.NextPath(); strings.HasPrefix(p, "resin-") {
+			if sec, err := strconv.ParseInt(strings.TrimPrefix(p, "resin-"), 10, 64); err == nil && near(time.Unix(sec, 0)) {
+				c.path, c.started = p, time.Unix(sec, 0)
+				log.Printf("chitu: the deck goes on with the print %s, from its project", c.path)
+			}
+		}
+	}
+}
+
+// savePrint writes resin-print.json for the print now. The caller holds mu.
+func (c *ChiTu) savePrint(s chitu.Status) {
+	if c.PrintStore == "" {
+		return
+	}
+	b, _ := json.Marshal(savedPrint{Path: c.path, Started: c.started, Size: s.Size})
+	tmp := c.PrintStore + ".tmp"
+	if os.WriteFile(tmp, b, 0o644) == nil {
+		os.Rename(tmp, c.PrintStore)
+	}
 }

@@ -526,7 +526,7 @@ func (s *share) render(st wire.ShareStatus) {
 		if !st.Ended.IsZero() {
 			line = "Ended at " + localTime(st.Ended) + "."
 		}
-		if st.State == "done" {
+		if st.State == "done" && st.Process != "resin" {
 			if st.ReadyLeft > 0 {
 				line += " The bed cools: the part comes off easily at about " + localTime(st.Updated.Add(time.Duration(st.ReadyLeft)*time.Second)) + "."
 			} else {
@@ -536,15 +536,34 @@ func (s *share) render(st wire.ShareStatus) {
 		setText("doneText", strings.TrimSpace(line))
 	}
 
-	// The model: the whole part, with the part that is printed in color.
+	// The model: the whole part, with the part that is printed in color. A resin print has the
+	// preview of the slicer at the left and the layer that cures now at the right.
 	if st.Model > 0 {
 		setHidden("modelBox", false)
 		byID("model").Set("src", fmt.Sprintf("%smodel.jpg?m=%d", s.base, st.Model))
 		tag := "The finished part"
 		if st.Layers > 0 && !ended {
 			tag = fmt.Sprintf("Printed to layer %d of %d", st.Layer, st.Layers)
+			if st.Process == "resin" {
+				tag = fmt.Sprintf("The part, and layer %d of %d as it cures now", st.Layer, st.Layers)
+			}
 		}
 		setText("modelTag", tag)
+	}
+	resin := st.Process == "resin"
+	setHidden("lapseSec", resin)
+	for _, id := range []string{"grams", "tool", "bed"} {
+		byID(id).Get("parentElement").Set("hidden", resin)
+	}
+	byID("resLayer").Get("parentElement").Set("hidden", !resin || st.ResinLayerHeight == 0)
+	byID("resExposure").Get("parentElement").Set("hidden", !resin || st.ResinExposure == 0)
+	if resin {
+		setText("resLayer", fmt.Sprintf("%.3g mm", st.ResinLayerHeight))
+		exp := fmt.Sprintf("%.3g s", st.ResinExposure)
+		if st.ResinBottom > 0 && st.ResinBottomN > 0 {
+			exp += fmt.Sprintf(" · first %d layers %.3g s", st.ResinBottomN, st.ResinBottom)
+		}
+		setText("resExposure", exp)
 	}
 	s.renderPrinter(st, ended)
 
@@ -561,7 +580,12 @@ func (s *share) render(st wire.ShareStatus) {
 	if st.Layers > 0 {
 		setText("layer", fmt.Sprint(st.Layer))
 	}
-	if st.ReadyLeft >= 0 {
+	if resin {
+		// The cell of the bed: the height of the build plate.
+		setText("readyLab", "Plate")
+		setText("ready", fmt.Sprintf("%.1f", st.Height))
+		setText("readySub", "mm")
+	} else if st.ReadyLeft >= 0 {
 		ready := st.Updated.Add(time.Duration(st.ReadyLeft) * time.Second)
 		setText("ready", strings.Fields(localTime(ready))[0])
 		setText("readySub", strings.TrimPrefix(localTime(ready), strings.Fields(localTime(ready))[0]))
@@ -584,7 +608,9 @@ func (s *share) render(st wire.ShareStatus) {
 	}
 	setText("tool", temp(st.Tool, st.ToolTarget))
 	setText("bed", temp(st.Bed, st.BedTarget))
-	if st.MaxHeight > 0 {
+	if resin && st.Layers > 0 && st.ResinLayerHeight > 0 {
+		setText("height", fmt.Sprintf("%.1f of %.1f mm", float64(st.Layer)*st.ResinLayerHeight, float64(st.Layers)*st.ResinLayerHeight))
+	} else if st.MaxHeight > 0 {
 		setText("height", fmt.Sprintf("%.1f of %.1f mm", st.Height, st.MaxHeight))
 	} else if st.Height > 0 {
 		setText("height", fmt.Sprintf("%.1f mm", st.Height))

@@ -13,6 +13,14 @@ type ShareStatus struct {
 	Printer string `json:"printer"`
 	// PrinterModel is the brand and the model of the printer, for example "LulzBot TAZ Workhorse", or "".
 	PrinterModel string `json:"printer_model,omitempty"`
+	// Process is "resin" for a resin printer, or "" for a printer of filament. A resin print has
+	// no temperatures and no filament: the page shows the height of the plate, the layer height
+	// and the exposure of the file.
+	Process          string  `json:"process,omitempty"`
+	ResinLayerHeight float64 `json:"resin_layer_height,omitempty"` // mm
+	ResinExposure    float64 `json:"resin_exposure,omitempty"`     // s
+	ResinBottom      float64 `json:"resin_bottom,omitempty"`       // s, the exposure of the bottom layers
+	ResinBottomN     int     `json:"resin_bottom_n,omitempty"`     // the count of the bottom layers
 	// Activity is what the printer does now, for example "Heating bed".
 	Activity string `json:"activity,omitempty"`
 	// Progress is 0 to 1.

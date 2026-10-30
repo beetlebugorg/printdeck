@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -355,5 +356,45 @@ func TestChiTuNextProject(t *testing.T) {
 	c.mu.Unlock()
 	if next != "" {
 		t.Errorf("the next project stays: %q", next)
+	}
+}
+
+// A deck that starts again during a print goes on with the same print: from resin-print.json, or
+// from the project of the print when the deck before saved no file.
+func TestChiTuResume(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Now()
+	status := chitu.Status{Read: 5000, Size: 165072291, Seconds: 3600}
+
+	first := NewChiTu("127.0.0.1:1", "Phenom", &History{Path: filepath.Join(dir, "h.json")})
+	first.PrintStore = filepath.Join(dir, "resin-print.json")
+	first.update(status, now)
+	key := first.State().FilePath
+
+	// The deck starts again 5 minutes later: the board read more and its clock went on.
+	later := chitu.Status{Read: 9000, Size: status.Size, Seconds: 3900}
+	again := NewChiTu("127.0.0.1:1", "Phenom", &History{Path: filepath.Join(dir, "h.json")})
+	again.PrintStore = first.PrintStore
+	again.update(later, now.Add(5*time.Minute+3*time.Second))
+	if got := again.State().FilePath; got != key {
+		t.Errorf("after a start of the deck: %q, want %q", got, key)
+	}
+
+	// Another file of another size: a new print.
+	other := NewChiTu("127.0.0.1:1", "Phenom", &History{Path: filepath.Join(dir, "h.json")})
+	other.PrintStore = first.PrintStore
+	other.update(chitu.Status{Read: 10, Size: 999, Seconds: 5}, now.Add(time.Hour))
+	if other.State().FilePath == key {
+		t.Error("another print took the key")
+	}
+
+	// No resin-print.json, but the project of the print: the key of the project.
+	h := &History{Path: filepath.Join(dir, "h2.json")}
+	old := "resin-" + strconv.FormatInt(now.Add(-time.Hour).Unix(), 10)
+	h.SetNextProject(old, "Bittle X")
+	c := NewChiTu("127.0.0.1:1", "Phenom", h)
+	c.update(status, now.Add(4*time.Second))
+	if got := c.State().FilePath; got != old || c.NextProject() != "Bittle X" {
+		t.Errorf("from the project: %q %q, want %q", got, c.NextProject(), old)
 	}
 }

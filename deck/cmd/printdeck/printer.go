@@ -30,7 +30,9 @@ func newPrinter(cfg config.Config) printerBackend {
 		log.Printf("printer: %v: the deck drives Klipper", err)
 	}
 	if s.Kind == printer.KindChiTu {
-		return printer.NewChiTu(s.Addr, s.Name, hist)
+		c := printer.NewChiTu(s.Addr, s.Name, hist)
+		c.PrintStore = filepath.Join(cfg.StateDir, "resin-print.json")
+		return c
 	}
 	k := printer.NewKlippy(cfg.KlippySocket, &gcodestore.Store{Dir: cfg.GcodeDir})
 	k.ModelDir = cfg.ModelDir

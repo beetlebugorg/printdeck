@@ -327,6 +327,15 @@ func (h *History) NextProject(path string) string {
 	return h.next.Project
 }
 
+// NextPath returns the path of the print of the project of the print now (SetNextProject), or "".
+// A deck that starts again during a print finds its print with it.
+func (h *History) NextPath() string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.load()
+	return h.next.Path
+}
+
 // setNext sets the project of the print now, and writes its file, or removes it for none.
 func (h *History) setNext(n nextProject) {
 	if n == h.next {

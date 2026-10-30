@@ -67,7 +67,7 @@
         <div class="sub" id="layers"></div>
       </div>
       <div class="cell">
-        <div class="lab">Bed cool at</div>
+        <div class="lab" id="readyLab">Bed cool at</div>
         <div class="big" id="ready">-</div>
         <div class="sub" id="readySub"></div>
       </div>
@@ -87,6 +87,8 @@
       <div><dt>Filament</dt><dd id="grams">-</dd></div>
       <div><dt>Nozzle</dt><dd id="tool">-</dd></div>
       <div><dt>Bed</dt><dd id="bed">-</dd></div>
+      <div hidden><dt>Layer height</dt><dd id="resLayer">-</dd></div>
+      <div hidden><dt>Exposure</dt><dd id="resExposure">-</dd></div>
       <div><dt>Height</dt><dd id="height">-</dd></div>
       <div><dt>Started</dt><dd id="started">-</dd></div>
     </dl>
@@ -106,7 +108,7 @@
     </dl>
   </section>
 
-  <section class="cam lapse-hero" aria-label="Time lapse">
+  <section class="cam lapse-hero" aria-label="Time lapse" id="lapseSec">
     <figure>
       <canvas id="lapse" width="640" height="360"></canvas>
       <div class="tag"><b></b><span id="lapseTag">Time lapse</span></div>
