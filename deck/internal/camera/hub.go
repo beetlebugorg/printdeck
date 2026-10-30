@@ -910,8 +910,11 @@ func (c *Cam) stopWhenIdle(ctx context.Context, cancel func(), start CamSettings
 		}
 		c.h.mu.Lock()
 		cs := c.h.settings.Camera(c.id)
+		_, _, found := c.deviceLocked()
 		c.h.mu.Unlock()
-		if cs.Off != start.Off || cs.Rotate != start.Rotate || !c.wanted() {
+		// A camera whose ID changed (the other camera of its model went) stops: the camera of the
+		// new ID opens the device.
+		if cs.Off != start.Off || cs.Rotate != start.Rotate || !c.wanted() || !found {
 			cancel()
 			return
 		}

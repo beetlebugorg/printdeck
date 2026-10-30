@@ -190,13 +190,26 @@ func TestAssignIDs(t *testing.T) {
 		"/dev/video4": "/dev/v4l/by-path/usb-0:3-video-index0"}
 	got := assignIDs(devs, byID, byPath)
 	want := []Device{
-		{Path: "/dev/video0", ID: "/dev/v4l/by-path/usb-0:1-video-index0", Alias: "/dev/v4l/by-id/usb-B0561-video-index0", Name: "B0561"},
-		{Path: "/dev/video2", ID: "/dev/v4l/by-path/usb-0:2-video-index0", Alias: "/dev/v4l/by-id/usb-B0561-video-index0", Name: "B0561"},
-		{Path: "/dev/video4", ID: "/dev/v4l/by-id/usb-C270-video-index0", Name: "C270"},
+		{Path: "/dev/video0", ID: "/dev/v4l/by-path/usb-0:1-video-index0", Alias: "/dev/v4l/by-id/usb-B0561-video-index0", Name: "B0561",
+			Port: "/dev/v4l/by-path/usb-0:1-video-index0"},
+		{Path: "/dev/video2", ID: "/dev/v4l/by-path/usb-0:2-video-index0", Alias: "/dev/v4l/by-id/usb-B0561-video-index0", Name: "B0561",
+			Port: "/dev/v4l/by-path/usb-0:2-video-index0"},
+		{Path: "/dev/video4", ID: "/dev/v4l/by-id/usb-C270-video-index0", Name: "C270", Port: "/dev/v4l/by-path/usb-0:3-video-index0"},
 		{Path: "/dev/video6", ID: "/dev/video6", Name: "Cam Link 4K"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v\nwant %+v", got, want)
+	}
+
+	// The other B0561 goes: the one that stays gets its by-id link as its ID, and the time lapse
+	// role with its old by-path ID follows it (on 2026-10-30 the role lost its camera).
+	one := assignIDs(devs[1:2], byID, byPath)
+	h := NewHub(Settings{Cameras: []CamSettings{{ID: want[0].ID}, {ID: want[1].ID}}, Main: want[0].ID})
+	h.settings.SetRole(RoleLapse, want[1].ID)
+	h.devices = one
+	h.normalizeLocked()
+	if one[0].ID != "/dev/v4l/by-id/usb-B0561-video-index0" || h.settings.Role(RoleLapse) != one[0].ID {
+		t.Errorf("after the other camera went: device %+v, time lapse role %q", one[0], h.settings.Role(RoleLapse))
 	}
 	// Two cameras with two by-id links keep them.
 	byID["/dev/video0"] = "/dev/v4l/by-id/usb-B0561_SN1-video-index0"

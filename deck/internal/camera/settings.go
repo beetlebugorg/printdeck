@@ -391,7 +391,7 @@ func assignIDs(devs []Device, byID, byPath map[string]string) []Device {
 	}
 	out := make([]Device, len(devs))
 	for i, d := range devs {
-		d.ID = d.Path
+		d.ID, d.Port = d.Path, byPath[d.Path]
 		switch l, ok := byPath[d.Path]; {
 		case shared[d.Name] && ok:
 			d.ID, d.Alias = l, alias[d.Name]

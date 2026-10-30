@@ -51,11 +51,15 @@ type Device struct {
 	Alias string
 	// Name is the name of the camera, for example "C270 HD WEBCAM".
 	Name string
+	// Port is the link of the camera in /dev/v4l/by-path, or "". The ID of a camera changes from
+	// its by-path link to its by-id link when the other camera of the same model goes: a setting
+	// with the old ID finds the camera by its port.
+	Port string
 }
 
 // Is reports that id is the ID, the path or the alias of the device.
 func (d Device) Is(id string) bool {
-	return id != "" && (id == d.ID || id == d.Path || id == d.Alias)
+	return id != "" && (id == d.ID || id == d.Path || id == d.Alias || id == d.Port)
 }
 
 // Format tells what the camera sends, and what the deck makes of it.
