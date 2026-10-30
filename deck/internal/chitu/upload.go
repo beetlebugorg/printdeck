@@ -19,7 +19,7 @@ import (
 //  1. M28 <name>. The board answers "ok N:0".
 //  2. The data packets of 1280 bytes of the file (MakeDataPacket). The board answers "ok" to each
 //     packet, or "resend <offset>,offset error:<got>" to a packet at the wrong offset.
-//  3. M29. The board answers "ok", and "Done saving file!" some seconds later.
+//  3. M29. The board answers "ok", and "Done saving file!\r\n// <name>" some seconds later.
 //
 // ChituManager sends the packets with no wait for the answers and does not resend, so its
 // uploads to the Phenom broke. Upload sends one packet at a time.
@@ -141,6 +141,16 @@ func (c *Client) Upload(ctx context.Context, name string, r io.ReaderAt, size in
 	}
 	if m := resendRE.FindStringSubmatch(a); m != nil || !strings.Contains(a, "ok") {
 		return fmt.Errorf("chitu: M29: %s", strings.TrimSpace(a))
+	}
+	// The board saves the file after "ok", and then sends "Done saving file!" (3.4 s on the Phenom).
+	// A query before it can find the file short.
+	conn.SetReadDeadline(time.Now().Add(uploadSaveWait))
+	for !strings.Contains(a, "Done saving") {
+		n, err := conn.Read(buf)
+		if err != nil {
+			return nil // no message: the file is maybe saved, and the list of the card shows it
+		}
+		a = string(buf[:n])
 	}
 	return nil
 }

@@ -159,7 +159,7 @@ func (b *FakeBoard) answer(q string) (string, bool) {
 		b.Uploaded[b.upName] = b.upData
 		b.Files = append(b.Files, fmt.Sprintf("%s %d", b.upName, len(b.upData)))
 		b.upName, b.upData = "", nil
-		return "ok", true
+		return "ok\r\nDone saving file!", true
 	}
 	if strings.HasPrefix(q, "G1 Z") {
 		return "ok", true
