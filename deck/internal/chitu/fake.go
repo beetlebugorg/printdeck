@@ -24,6 +24,12 @@ type FakeBoard struct {
 	log        []string // the queries, in order
 	// Files are the lines of the answer to M20, for example "part.cbddlp 1234".
 	Files []string
+	// The upload now (M28), and the files that the board saved (M29), by name.
+	upName   string
+	upData   []byte
+	Uploaded map[string][]byte
+	// LoseData is the count of the next data packets that the board loses, with no answer.
+	LoseData int
 }
 
 // NewFakeBoard starts a fake board at addr ("127.0.0.1:0" for any port).
@@ -70,6 +76,12 @@ func (b *FakeBoard) serve() {
 		n, from, err := b.conn.ReadFrom(buf)
 		if err != nil {
 			return
+		}
+		if a, ok := b.data(buf[:n]); ok {
+			if a != "" {
+				b.conn.WriteTo([]byte(a+"\r\n"), from)
+			}
+			continue
 		}
 		q := strings.TrimSpace(string(buf[:n]))
 		if q == "M20" {
@@ -127,8 +139,53 @@ func (b *FakeBoard) answer(q string) (string, bool) {
 		return fmt.Sprintf("ok B:104/0 E1:-8/0 E2:72/0 X:0.000 Y:0.000 Z:%.3f F:256/256 D:%d/%d/%d T:%d",
 			b.Z, b.Read, b.Size, b.Flag, b.Seconds), true
 	}
+	if name, ok := strings.CutPrefix(q, "M30 "); ok {
+		for i, l := range b.Files {
+			if j := strings.LastIndexByte(l, ' '); j > 0 && l[:j] == name {
+				b.Files = append(b.Files[:i], b.Files[i+1:]...)
+				return "ok", true
+			}
+		}
+		return "Error:Cann't open file:" + name, true
+	}
+	if name, ok := strings.CutPrefix(q, "M28 "); ok {
+		b.upName, b.upData = name, []byte{}
+		return "ok N:0", true
+	}
+	if q == "M29" && b.upName != "" {
+		if b.Uploaded == nil {
+			b.Uploaded = map[string][]byte{}
+		}
+		b.Uploaded[b.upName] = b.upData
+		b.Files = append(b.Files, fmt.Sprintf("%s %d", b.upName, len(b.upData)))
+		b.upName, b.upData = "", nil
+		return "ok", true
+	}
 	if strings.HasPrefix(q, "G1 Z") {
 		return "ok", true
 	}
 	return "", false
+}
+
+// data takes a data packet of an upload. ok is false for another packet. The answer is "" for a
+// lost packet.
+func (b *FakeBoard) data(p []byte) (answer string, ok bool) {
+	d, off, ok := DataPacket(p)
+	if !ok {
+		return "", false
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.upName == "" {
+		return "Error:No file open", true
+	}
+	if b.LoseData > 0 {
+		b.LoseData--
+		return "", true
+	}
+	if off != len(b.upData) {
+		return fmt.Sprintf("resend %d,offset error:%d", len(b.upData), off), true
+	}
+	b.upData = append(b.upData, d...)
+	return "ok", true
 }

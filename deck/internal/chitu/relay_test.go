@@ -1,10 +1,13 @@
 package chitu
 
 import (
+	"bytes"
 	"encoding/binary"
 	"image/color"
 	"math"
 	"net"
+	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -36,16 +39,21 @@ func TestRelay(t *testing.T) {
 	var mu sync.Mutex
 	var got []byte
 	var gotName string
+	busy := ""
 	active := make(chan bool, 4)
 	r := &Relay{Conn: conn, Board: board.Addr(),
 		Info: func() (Info, bool) {
 			return Info{MAC: "00:e0:4c:18:00:29", Version: "V1.4.1", ID: "29", Name: "CBD"}, true
 		},
-		OnUpload: func(name string, data []byte) {
+		OnUpload: func(name, path string) {
+			data, _ := os.ReadFile(path)
+			os.Remove(path)
 			mu.Lock()
 			gotName, got = name, data
 			mu.Unlock()
 		},
+		Dir:      t.TempDir(),
+		Busy:     func() string { mu.Lock(); defer mu.Unlock(); return busy },
 		OnActive: func(a bool) { active <- a }, Name: "resin deck", AnswerLocal: true}
 	ctx := t.Context()
 	go r.Run(ctx)
@@ -69,8 +77,8 @@ func TestRelay(t *testing.T) {
 		t.Error("no OnActive")
 	}
 
-	// An upload: M28, three data packets (one sent twice), M29. The fake board answers no data
-	// packet, so the client sends with no wait for answers.
+	// An upload, as ChituManager sends it: M28, the data packets with no wait (one out of order
+	// and one sent twice), M29. The relay answers each packet, and the board gets none of them.
 	up, err := net.DialUDP("udp4", nil, conn.LocalAddr().(*net.UDPAddr))
 	if err != nil {
 		t.Fatal(err)
@@ -79,9 +87,9 @@ func TestRelay(t *testing.T) {
 	file := []byte("0123456789abcdefghij")
 	up.Write([]byte("M28 part.cbddlp"))
 	up.Write(dataPacket(file[0:8], 0))
-	up.Write(dataPacket(file[8:16], 8))
-	up.Write(dataPacket(file[8:16], 8))
 	up.Write(dataPacket(file[16:], 16))
+	up.Write(dataPacket(file[8:16], 8))
+	up.Write(dataPacket(file[8:16], 8))
 	up.Write([]byte("M29"))
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
@@ -94,9 +102,45 @@ func TestRelay(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	mu.Lock()
-	defer mu.Unlock()
 	if gotName != "part.cbddlp" || string(got) != string(file) {
 		t.Fatalf("the upload %q %q", gotName, got)
+	}
+	busy = "The deck sends a file to the printer"
+	mu.Unlock()
+	for _, q := range board.Log() {
+		if strings.HasPrefix(q, "M2") {
+			t.Errorf("the board got %q", q)
+		}
+	}
+
+	// A start while the deck is busy gets an error, and the board gets no M6030.
+	if a, err := c.Query(ctx, "M6030 ':part.cbddlp'"); err != nil || !strings.HasPrefix(a, "Error:The deck") {
+		t.Errorf("M6030 when busy: %q %v", a, err)
+	}
+	for _, q := range board.Log() {
+		if strings.HasPrefix(q, "M6030") {
+			t.Errorf("the board got %q", q)
+		}
+	}
+
+	// An upload with a gap fails.
+	got = nil
+	up.Write([]byte("M28 gap.cbddlp"))
+	up.Write(dataPacket(file[0:8], 0))
+	up.Write(dataPacket(file[16:], 16))
+	up.Write([]byte("M29"))
+	ans := make([]byte, 256)
+	var last string
+	up.SetReadDeadline(time.Now().Add(time.Second))
+	for {
+		n, err := up.Read(ans)
+		if err != nil {
+			break
+		}
+		last = string(ans[:n])
+	}
+	if !strings.HasPrefix(last, "Error:") {
+		t.Errorf("the answer to M29 with a gap: %q", last)
 	}
 }
 
@@ -164,5 +208,37 @@ func TestPreview(t *testing.T) {
 	}
 	if _, err := ReadSliced([]byte("not a sliced file at all, just some text to fill the bytes up to the header size of one hundred and twelve")); err == nil {
 		t.Error("a file with no magic")
+	}
+}
+
+// Upload sends a file one packet at a time, sends a lost packet again, and follows a resend of
+// the board.
+func TestUpload(t *testing.T) {
+	board, err := NewFakeBoard("127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer board.Close()
+	file := make([]byte, 5*UploadChunk+100)
+	for i := range file {
+		file[i] = byte(i * 7)
+	}
+	board.Set(func(b *FakeBoard) { b.LoseData = 2 })
+	c := &Client{Addr: board.Addr()}
+	var last int64
+	err = c.Upload(t.Context(), "part.ctb", bytes.NewReader(file), int64(len(file)), func(n int64) { last = n })
+	if err != nil {
+		t.Fatal(err)
+	}
+	board.Set(func(b *FakeBoard) {
+		if !bytes.Equal(b.Uploaded["part.ctb"], file) {
+			t.Errorf("the board saved %d bytes, want %d", len(b.Uploaded["part.ctb"]), len(file))
+		}
+	})
+	if last != int64(len(file)) {
+		t.Errorf("progress %d", last)
+	}
+	if m := resendRE.FindStringSubmatch("ok\rend 2560,offset error:3840"); m == nil || m[1] != "2560" {
+		t.Errorf("a joined answer: %v", m)
 	}
 }

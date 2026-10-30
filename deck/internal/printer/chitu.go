@@ -46,6 +46,7 @@ type ChiTu struct {
 	started time.Time
 	console []ConsoleLine
 	hold    bool                   // a ChiTuBox session talks to the board: no queries of the deck
+	sending string                 // the file that the deck sends to the board now, or ""
 	pics    map[string]image.Image // the previews of the copies in UploadDir, by name
 }
 
@@ -98,7 +99,7 @@ func (c *ChiTu) Run(ctx context.Context, notify func()) {
 // the board (M99999) until the board answers once.
 func (c *ChiTu) poll(ctx context.Context, now time.Time) time.Duration {
 	c.mu.Lock()
-	known, hold := c.info.Name != "", c.hold
+	known, hold := c.info.Name != "", c.hold || c.sending != ""
 	c.mu.Unlock()
 	// A query during an upload of ChiTuBox can break the upload.
 	if hold {
@@ -322,7 +323,6 @@ func (c *ChiTu) ViewLayer() int                               { return -1 }
 func (c *ChiTu) FileMeta(string) gcodemeta.Meta               { return gcodemeta.Meta{} }
 func (c *ChiTu) SpoolStore() *Spools                          { return nil }
 func (c *ChiTu) Connect()                                     {}
-func (c *ChiTu) DeleteFile(string) error                      { return ErrNotTested }
 func (c *ChiTu) SendConsole(string)                           {}
 func (c *ChiTu) Boards() ([]board.Info, bool)                 { return nil, false }
 func (c *ChiTu) ProbeBoards()                                 {}
@@ -442,28 +442,93 @@ func (c *ChiTu) Hold(on bool) {
 	c.mu.Unlock()
 }
 
-// SaveUpload keeps a copy of the file that ChiTuBox sent to the board, and reads the files on the
-// card again. It keeps the last chituUploadsKept copies.
-func (c *ChiTu) SaveUpload(name string, data []byte) {
+// SaveUpload takes the copy at path of a file that ChiTuBox sent to the deck, keeps it in
+// UploadDir, and sends it to the card of the board. It keeps the last chituUploadsKept copies.
+// The panel shows the progress.
+func (c *ChiTu) SaveUpload(name, path string) {
 	name = filepath.Base(name)
-	if c.UploadDir == "" || name == "." || name == "/" {
+	if c.UploadDir == "" || name == "." || name == "/" || strings.HasPrefix(name, ".") {
+		os.Remove(path)
 		return
 	}
 	if err := os.MkdirAll(c.UploadDir, 0o755); err != nil {
 		log.Printf("chitu: %v", err)
+		os.Remove(path)
 		return
 	}
-	tmp := filepath.Join(c.UploadDir, "."+name+".tmp")
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+	dst := filepath.Join(c.UploadDir, name)
+	if err := os.Rename(path, dst); err != nil {
 		log.Printf("chitu: %v", err)
+		os.Remove(path)
 		return
 	}
-	os.Rename(tmp, filepath.Join(c.UploadDir, name))
 	c.mu.Lock()
 	delete(c.pics, name)
 	c.mu.Unlock()
 	pruneUploads(c.UploadDir, chituUploadsKept)
+	if err := c.SendFile(dst); err != nil {
+		log.Printf("chitu: the upload of %s: %v", name, err)
+	}
+}
+
+// SendFile sends the file at path to the card of the board, one packet at a time
+// (chitu.Client.Upload), and checks its size in the list of the card.
+func (c *ChiTu) SendFile(path string) error {
+	name := filepath.Base(path)
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	c.mu.Lock()
+	if c.sending != "" {
+		c.mu.Unlock()
+		c.showAnswer("The deck already sends " + c.sending + " to the printer")
+		return errors.New("an upload is running")
+	}
+	c.sending = name
+	c.st.Message = "Sending " + name + " to the printer"
+	c.mu.Unlock()
+	defer func() {
+		c.mu.Lock()
+		c.sending = ""
+		c.mu.Unlock()
+	}()
+	size := fi.Size()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+	defer cancel()
+	err = c.Client.Upload(ctx, name, f, size, func(done int64) {
+		c.showAnswer(fmt.Sprintf("Sending %s to the printer: %d %%", name, done*100/size))
+	})
+	if err != nil {
+		c.showAnswer("The printer did not get " + name + ": " + err.Error())
+		return err
+	}
 	c.LoadFiles()
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, x := range c.files {
+		if x.Name == name && x.Size != size {
+			c.st.Message = fmt.Sprintf("The printer saved %s with %d of %d bytes", name, x.Size, size)
+			return errors.New(c.st.Message)
+		}
+	}
+	c.st.Message = "The printer has " + name
+	return nil
+}
+
+// Busy returns the reason that the board can start no print now, or "".
+func (c *ChiTu) Busy() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.sending != "" {
+		return "The deck sends " + c.sending + " to the printer"
+	}
+	return ""
 }
 
 // pruneUploads removes the oldest files of dir after the first keep.
@@ -521,3 +586,29 @@ func (c *ChiTu) FilePicture(f File, _ string) image.Image { return c.picture(f.P
 
 // RecordPicture returns the preview of the file of a print, or nil.
 func (c *ChiTu) RecordPicture(r Record) (image.Image, bool) { return c.picture(r.File), false }
+
+// DeleteFile deletes the file name from the card of the board (M30 <name>), and checks the list of
+// the card after it. It deletes no file during a print or an upload.
+func (c *ChiTu) DeleteFile(name string) error {
+	if name == "" || strings.ContainsAny(name, "\r\n") {
+		return fmt.Errorf("a bad file name %q", name)
+	}
+	c.mu.Lock()
+	busy := c.sending != "" || c.last.Printing()
+	c.mu.Unlock()
+	if busy {
+		return errors.New("the printer is busy: delete the file after the print or the upload")
+	}
+	if err := c.send(10*time.Second, "M30 "+name); err != nil {
+		return err
+	}
+	c.LoadFiles()
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, f := range c.files {
+		if f.Name == name {
+			return errors.New("the printer still lists " + name)
+		}
+	}
+	return nil
+}

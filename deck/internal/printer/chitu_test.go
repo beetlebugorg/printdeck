@@ -1,7 +1,9 @@
 package printer
 
 import (
+	"bytes"
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -125,5 +127,54 @@ func TestChiTuBackend(t *testing.T) {
 	}
 	if !strings.Contains(c.State().Message, "G28 Z0: ok") {
 		t.Errorf("the answer in the panel %q", c.State().Message)
+	}
+}
+
+// SaveUpload keeps the copy of an upload and sends it to the board, which then lists it.
+func TestChiTuSaveUpload(t *testing.T) {
+	b, err := chitu.NewFakeBoard("127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer b.Close()
+	c := NewChiTu(b.Addr(), "Phenom", &History{})
+	c.UploadDir = t.TempDir()
+	data := bytes.Repeat([]byte("layer"), 1000)
+	tmp := filepath.Join(c.UploadDir, ".upload-1")
+	os.WriteFile(tmp, data, 0o644)
+	c.SaveUpload("part.ctb", tmp)
+	b.Set(func(b *chitu.FakeBoard) {
+		if !bytes.Equal(b.Uploaded["part.ctb"], data) {
+			t.Errorf("the board got %d bytes", len(b.Uploaded["part.ctb"]))
+		}
+	})
+	if m := c.State().Message; m != "The printer has part.ctb" {
+		t.Errorf("message %q", m)
+	}
+	if _, err := os.Stat(filepath.Join(c.UploadDir, "part.ctb")); err != nil {
+		t.Error(err)
+	}
+	if c.Busy() != "" {
+		t.Error("busy after the upload")
+	}
+}
+
+// DeleteFile sends M30 and checks the list of the card.
+func TestChiTuDeleteFile(t *testing.T) {
+	b, err := chitu.NewFakeBoard("127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer b.Close()
+	b.Set(func(b *chitu.FakeBoard) { b.Files = []string{"a.ctb 100", "b.ctb 200"} })
+	c := NewChiTu(b.Addr(), "Phenom", &History{})
+	if err := c.DeleteFile("a.ctb"); err != nil {
+		t.Fatal(err)
+	}
+	if fs := c.Files(); len(fs) != 1 || fs[0].Name != "b.ctb" {
+		t.Errorf("files %+v", fs)
+	}
+	if err := c.DeleteFile("gone.ctb"); err == nil {
+		t.Error("no error for a file that is not there")
 	}
 }

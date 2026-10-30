@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"sort"
+	"os"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -15,13 +16,12 @@ import (
 // Relay lets the ChituManager app of ChiTuBox reach a board that answers no broadcast, such as the
 // board of the Phenom. ChituManager sends M99999 to the broadcast address of UDP port 3000 to find
 // boards. The relay answers it with the line of the board and the address of the relay. Each other
-// packet of a client goes to the board, and each answer of the board goes back to the client. So
-// the uploads and the starts of ChiTuBox go through the relay with no change.
+// packet of a client goes to the board, and each answer of the board goes back to the client.
 //
-// The relay also reads the upload of a file from the packets: M28 <name>, the data packets, and
-// M29. Other programs for ChiTu boards describe a data packet as the data, the offset of the data in
-// the file (4 bytes, little-endian), the XOR of the bytes before it, and the byte 0x83. A packet in
-// another form goes to the board as it is, and the relay keeps no copy of that file.
+// The relay keeps the uploads: M28 <name>, the data packets, and M29. ChituManager sends the data
+// packets with no wait for the answers and does not resend a packet, so the relay answers each
+// packet itself and writes the file to Dir. OnUpload then sends the file to the board one packet
+// at a time (Client.Upload).
 type Relay struct {
 	Conn  net.PacketConn // the socket of UDP port 3000
 	Board string         // the address of the board, "192.168.76.58:3000"
@@ -34,9 +34,14 @@ type Relay struct {
 	// AnswerLocal answers M99999 from an address of this computer too, for the tests. Else the
 	// relay is silent to the discovery of the deck itself.
 	AnswerLocal bool
-	// OnUpload gets each file that a client sent to the board through the relay, when the relay
-	// could read all its packets.
-	OnUpload func(name string, data []byte)
+	// Dir is the folder of the uploads while they come in. "" is the folder of temporary files.
+	Dir string
+	// OnUpload gets each complete upload: the name of the file and the path of the copy in Dir.
+	// OnUpload owns the copy.
+	OnUpload func(name, path string)
+	// Busy returns the reason that the board can start no print now, for example an upload to the
+	// board, or "". The relay answers M6030 with this error.
+	Busy func() string
 	// OnActive reports that a client talks to the board (true), or that no client talked to it for
 	// relayIdle (false).
 	OnActive func(active bool)
@@ -52,9 +57,10 @@ const relayIdle = 2 * time.Minute
 type relaySession struct {
 	board net.Conn
 	last  time.Time
-	file  string         // the name of M28, or "" with no upload
-	parts map[int][]byte // the data of the upload by offset
-	bad   bool           // a packet of the upload was not in the known form
+	name  string        // the name of M28
+	file  *os.File      // the copy of the upload, or nil with no upload
+	parts map[int64]int // the offsets and the sizes of the data packets of the upload
+	bad   bool          // a packet of the upload was not in the known form
 }
 
 // Run serves the clients until ctx ends.
@@ -85,7 +91,16 @@ func (r *Relay) packet(ctx context.Context, p []byte, from net.Addr) {
 		log.Printf("chitu relay: %v", err)
 		return
 	}
-	r.watch(s, p)
+	if a, ok := r.upload(s, p); ok {
+		r.Conn.WriteTo([]byte(a+"\r\n"), from)
+		return
+	}
+	if strings.HasPrefix(strings.TrimSpace(string(p)), "M6030") && r.Busy != nil {
+		if why := r.Busy(); why != "" {
+			r.Conn.WriteTo([]byte("Error:"+why+"\r\n"), from)
+			return
+		}
+	}
 	s.board.Write(p)
 }
 
@@ -193,6 +208,7 @@ func (r *Relay) sweep(ctx context.Context) {
 		for k, s := range r.sessions {
 			if time.Since(s.last) > relayIdle {
 				s.board.Close()
+				s.close(true)
 				delete(r.sessions, k)
 				if len(r.sessions) == 0 && r.OnActive != nil {
 					go r.OnActive(false)
@@ -203,26 +219,67 @@ func (r *Relay) sweep(ctx context.Context) {
 	}
 }
 
-// watch reads the upload of a file from the packet p of the session s.
-func (r *Relay) watch(s *relaySession, p []byte) {
+// upload takes a packet of an upload of the session s, and returns the answer to the client. ok is
+// false for another packet.
+func (r *Relay) upload(s *relaySession, p []byte) (answer string, ok bool) {
 	line := strings.TrimSpace(string(p))
-	switch {
-	case strings.HasPrefix(line, "M28 "):
-		s.file, s.parts, s.bad = strings.TrimSpace(strings.TrimPrefix(line, "M28 ")), map[int][]byte{}, false
-	case line == "M29" && s.file != "":
-		name, parts, bad := s.file, s.parts, s.bad
-		s.file, s.parts = "", nil
-		if data, ok := joinParts(parts); ok && !bad && r.OnUpload != nil {
-			go r.OnUpload(name, data)
+	if name, ok := strings.CutPrefix(line, "M28 "); ok {
+		s.close(true)
+		name = strings.TrimSpace(name)
+		f, err := os.CreateTemp(r.Dir, ".upload-*")
+		if err != nil {
+			log.Printf("chitu relay: %v", err)
+			return "Error:" + err.Error(), true
 		}
-	case s.file != "":
-		data, off, ok := DataPacket(p)
-		if !ok {
-			s.bad = true
-			return
-		}
-		s.parts[off] = data
+		s.name, s.file, s.parts, s.bad = name, f, map[int64]int{}, false
+		return "ok N:0", true
 	}
+	if s.file == nil {
+		return "", false
+	}
+	if line == "M29" {
+		name, path := s.name, s.file.Name()
+		size, whole := joinedSize(s.parts)
+		bad := s.bad
+		s.close(false)
+		if bad || !whole {
+			os.Remove(path)
+			log.Printf("chitu relay: the upload of %s lost packets", name)
+			return "Error:The upload lost packets", true
+		}
+		if err := os.Truncate(path, size); err != nil || r.OnUpload == nil {
+			os.Remove(path)
+			return "ok", true
+		}
+		go r.OnUpload(name, path)
+		return "ok", true
+	}
+	data, off, ok := DataPacket(p)
+	if !ok {
+		if strings.HasPrefix(line, "M") {
+			return "", false // a command during the upload, for example M4000
+		}
+		s.bad = true
+		return "Error:A bad data packet", true
+	}
+	if _, err := s.file.WriteAt(data, int64(off)); err != nil {
+		s.bad = true
+		return "Error:" + err.Error(), true
+	}
+	s.parts[int64(off)] = len(data)
+	return "ok", true
+}
+
+// close ends the upload of the session, and removes its copy when remove is true.
+func (s *relaySession) close(remove bool) {
+	if s.file == nil {
+		return
+	}
+	s.file.Close()
+	if remove {
+		os.Remove(s.file.Name())
+	}
+	s.file, s.parts = nil, nil
 }
 
 // DataPacket reads a data packet of an upload: the data, its offset in the file, the XOR of the
@@ -242,22 +299,19 @@ func DataPacket(p []byte) (data []byte, offset int, ok bool) {
 	return p[:n-6], int(binary.LittleEndian.Uint32(p[n-6 : n-2])), true
 }
 
-// joinParts puts the data of an upload together by offset. ok is false for a gap.
-func joinParts(parts map[int][]byte) ([]byte, bool) {
-	offs := make([]int, 0, len(parts))
+// joinedSize returns the size of an upload from the offsets and the sizes of its packets. whole is
+// false for a gap.
+func joinedSize(parts map[int64]int) (size int64, whole bool) {
+	offs := make([]int64, 0, len(parts))
 	for o := range parts {
 		offs = append(offs, o)
 	}
-	sort.Ints(offs)
-	var out []byte
+	slices.Sort(offs)
 	for _, o := range offs {
-		if o != len(out) {
-			if o < len(out) {
-				continue // a packet sent again
-			}
-			return nil, false
+		if o > size {
+			return size, false
 		}
-		out = append(out, parts[o]...)
+		size = max(size, o+int64(parts[o]))
 	}
-	return out, len(out) > 0
+	return size, size > 0
 }
