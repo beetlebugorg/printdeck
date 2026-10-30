@@ -28,6 +28,9 @@ type Settings struct {
 	First int
 	// Crop crops the frames to the part of the print, with a calibration of the camera.
 	Crop bool
+	// FromZ is the height of the plate of a resin printer, in mm, from which the frames start: the
+	// camera sees the part only when the plate lifts out of the vat high enough. 0 starts at once.
+	FromZ int
 }
 
 // The values of Settings.First, as FIRST_LAYER of PRINTDECK_TIMELAPSE.
@@ -53,6 +56,8 @@ func ParseSettings(b []byte) Settings {
 			s.Park = v == "1"
 		case "crop":
 			s.Crop = v == "1"
+		case "from_z":
+			fmt.Sscan(v, &s.FromZ)
 		case "first":
 			switch v {
 			case "1":
@@ -75,7 +80,7 @@ func (s Settings) Bytes() []byte {
 		}
 		return 0
 	}
-	return []byte(fmt.Sprintf("on=%d\npark=%d\nfirst=%d\ncrop=%d\n", b(s.On), b(s.Park), s.First, b(s.Crop)))
+	return []byte(fmt.Sprintf("on=%d\npark=%d\nfirst=%d\ncrop=%d\nfrom_z=%d\n", b(s.On), b(s.Park), s.First, b(s.Crop), s.FromZ))
 }
 
 // The limits of the frames of one print in memory. At a limit, the recorder keeps every second

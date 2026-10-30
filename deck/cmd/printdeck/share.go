@@ -405,6 +405,25 @@ func startShare(stateDir, configPath string, app *ui.App, pr printerBackend) {
 	}
 	app.Share = l
 	l.loadHandoff(filepath.Join(handoffDir, shareHandoff))
+	if _, ok := pr.(*printer.ChiTu); ok {
+		// A resin print goes on through a restart of the deck (printer.ChiTu.PrintStore), so its
+		// share does too: the deck saves the share in the state folder while it runs.
+		keep := filepath.Join(stateDir, "share-resume.json")
+		go func() {
+			// The cloud link connects a moment after the start.
+			for i := 0; i < 60 && !l.Ready(); i++ {
+				time.Sleep(time.Second)
+			}
+			if l.sharer.State().ID == "" {
+				l.loadHandoff(keep)
+			}
+			for range time.Tick(30 * time.Second) {
+				if err := l.saveHandoff(keep); err != nil {
+					log.Printf("share: %v", err)
+				}
+			}
+		}()
+	}
 }
 
 // shareHandoffFile is the handoff file of the share link (handoff.go).

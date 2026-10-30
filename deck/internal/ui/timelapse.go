@@ -130,6 +130,27 @@ func (a *App) toggleLapsePark() {
 	a.Toast("Park: " + parkLine(s.Park))
 }
 
+// lapseFromZ are the choices of the plate height from which a resin time lapse takes frames, in mm.
+var lapseFromZ = []int{0, 20, 30, 40, 50, 60, 80}
+
+// cycleLapseFromZ picks the next plate height from which a resin time lapse takes frames.
+func (a *App) cycleLapseFromZ() {
+	s := a.TimeLapse.Settings()
+	i := 0
+	for k, v := range lapseFromZ {
+		if v == s.FromZ {
+			i = k
+		}
+	}
+	s.FromZ = lapseFromZ[(i+1)%len(lapseFromZ)]
+	a.TimeLapse.SetSettings(s)
+	if s.FromZ == 0 {
+		a.Toast("Frames from the first layer")
+	} else {
+		a.Toast(fmt.Sprintf("Frames when the plate lifts over %d mm", s.FromZ))
+	}
+}
+
 func (a *App) cycleFirstLayer() {
 	s := a.TimeLapse.Settings()
 	s.First = (s.First + 1) % 3
@@ -146,7 +167,12 @@ func (a *App) drawTimeLapse(c *gfx.Canvas) {
 	if a.resin() {
 		// A resin printer has no park and no first layer to look at: a frame at each layer, when
 		// the plate is up out of the vat.
-		items = append(items, menuItem{"Frames", "One at each layer, with the plate up", dim, nil})
+		from := "From the first layer"
+		if s.FromZ > 0 {
+			from = fmt.Sprintf("When the plate lifts over %d mm", s.FromZ)
+		}
+		items = append(items, menuItem{"Frames", "One at each layer, with the plate up", dim, nil},
+			menuItem{"Start", from, dim, a.cycleLapseFromZ})
 	} else {
 		items = append(items,
 			menuItem{"Park for the frames", parkLine(s.Park), dim, a.toggleLapsePark},

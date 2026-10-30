@@ -286,6 +286,7 @@ func startResinTimelapse(ctx context.Context, stateDir string, app *ui.App, hub 
 		c.SetVideo(file, name)
 		app.Redraw()
 	}
+	c.LapseFromZ = func() float64 { return float64(r.Settings().FromZ) }
 	app.TimeLapse = r
 	sysTimelapse = r
 	go r.Run(ctx)

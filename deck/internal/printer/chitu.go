@@ -40,6 +40,9 @@ type ChiTu struct {
 	Client *chitu.Client
 	Hist   *History
 	Name   string // the name of the printer, for the screens
+	// LapseFromZ returns the height of the plate in mm from which the time lapse takes frames, or
+	// is nil for 0 (timelapse.Settings.FromZ). It is called with mu held.
+	LapseFromZ func() float64
 	// PrintStore keeps the print now (resin-print.json), so a deck that starts again during a print
 	// goes on with the same print: the same key in the history, the same project and live tile.
 	// "" keeps nothing.
@@ -1324,7 +1327,11 @@ func (c *ChiTu) TimelapseStatus() (timelapse.HostStatus, bool) {
 		l.seenLayer, l.lowZ = st.Layer, st.Z
 	}
 	l.lowZ = math.Min(l.lowZ, st.Z)
-	if l.enable && st.Printing && !st.Paused && st.Layer > 0 && st.Layer >= l.layer+every && st.Z >= l.lowZ+chituLapseLift {
+	fromZ := 0.0
+	if c.LapseFromZ != nil {
+		fromZ = c.LapseFromZ()
+	}
+	if l.enable && st.Printing && !st.Paused && st.Layer > 0 && st.Layer >= l.layer+every && st.Z >= l.lowZ+chituLapseLift && st.Z >= fromZ {
 		l.frame++
 		l.layer = st.Layer
 	}
