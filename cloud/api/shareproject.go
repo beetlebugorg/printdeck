@@ -196,7 +196,7 @@ func (s *Server) copySharePhoto(ctx context.Context, sh *Share, ph cloud.SharePh
 
 // liveShare is a share of a project that runs now, and its ID.
 type liveShare struct {
-	id string
+	id, deck string
 	cloud.ProjectLive
 }
 
@@ -208,7 +208,7 @@ func (s *Server) liveShares(ctx context.Context, p *Project) []liveShare {
 		if err != nil || sh.Moved || !sh.Ended.IsZero() || sh.Project != p.ID {
 			continue
 		}
-		out = append(out, liveShare{sh.ID, cloud.ProjectLive{Name: sh.Job, URL: s.shareURL(sh.ID), Started: sh.Created}})
+		out = append(out, liveShare{sh.ID, sh.Deck, cloud.ProjectLive{Name: sh.Job, URL: s.shareURL(sh.ID), Started: sh.Created}})
 	}
 	return out
 }

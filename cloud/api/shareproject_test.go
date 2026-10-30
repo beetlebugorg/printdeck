@@ -177,3 +177,38 @@ func TestShareInProject(t *testing.T) {
 		t.Errorf("share records after the delete of the project: %v", keys)
 	}
 }
+
+// A deck that lost its share at a restart sends a live tile with no share. The share and the live
+// tile of the same deck and job are one tile, with the link of the share.
+func TestShareAndLiveOfOneDeck(t *testing.T) {
+	d, url := devService(t)
+	ctx := context.Background()
+	l := connectedLink(t, d, url)
+	id := l.Identity()
+	var c cloud.Client
+	sum, err := c.NewProject(ctx, id, "Robot")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sh := &cloud.Sharer{Link: l, Every: 20 * time.Millisecond,
+		Status:  func() cloud.ShareStatus { return cloud.ShareStatus{State: "printing", Job: "Plate"} },
+		Project: func(context.Context) (string, error) { return sum.ID, nil }}
+	sh.Start("Plate", "Phenom", nil)
+	waitFor(t, func() bool { return sh.State().URL != "" })
+	defer sh.Stop()
+	in := cloud.LiveRequest{Key: "resin-1@1", Name: "Plate", Started: time.Now().UTC(), Percent: 5}
+	if _, err := c.SendLive(ctx, id, sum.ID, in); err != nil {
+		t.Fatal(err)
+	}
+	p, _, err := d.API.loadProject(ctx, sum.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, err := d.API.viewProject(ctx, p, &who{owner: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(v.Live) != 1 || v.Live[0].URL != sh.State().URL || v.Live[0].Percent != 5 {
+		t.Fatalf("live %+v", v.Live)
+	}
+}

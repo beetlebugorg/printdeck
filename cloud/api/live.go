@@ -183,6 +183,7 @@ func (s *Server) liveView(ctx context.Context, p *Project, prints []PrintRecord)
 	shown := map[string]bool{}
 	keys, _ := s.Store.List(ctx, "x/"+p.ID+"/live/")
 	now := s.now()
+	var decks []string // the deck of each tile of out
 	for _, k := range keys {
 		rel := strings.TrimPrefix(k, "x/"+p.ID+"/live/")
 		if strings.Contains(rel, "/") || !strings.HasSuffix(rel, ".json") {
@@ -210,9 +211,24 @@ func (s *Server) liveView(ctx context.Context, p *Project, prints []PrintRecord)
 			l.LayerPic, _ = s.Grants.FileURL(ctx, livePicDir(p.ID, rec.slot(), rec.Pic)+"layer.jpg", urlTTL)
 		}
 		out = append(out, l)
+		decks = append(decks, rec.Deck)
 	}
 	for _, l := range s.liveShares(ctx, p) {
-		if !shown[l.id] {
+		if shown[l.id] {
+			continue
+		}
+		// A share of a print that has a live tile from the same deck: the deck lost the share at a
+		// restart, so its live tile does not name it. The live tile links to the share.
+		dup := false
+		for i := range out {
+			if i < len(decks) && decks[i] == l.deck && out[i].Name == l.Name {
+				dup = true
+				if out[i].URL == "" {
+					out[i].URL = l.URL
+				}
+			}
+		}
+		if !dup {
 			out = append(out, l.ProjectLive)
 		}
 	}
