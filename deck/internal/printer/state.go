@@ -257,8 +257,12 @@ type Upload struct {
 	Started    time.Time
 	Waiting    int    // the files that wait for this upload
 	Result     string // "" while it runs, "sent" or "failed"
-	Err        string
-	Ended      time.Time
+	// StartAfter is a start of the print that ChiTuBox asked for during the upload: it goes to the
+	// printer when the printer has the whole file. Started is the answer of the printer to it.
+	StartAfter  bool
+	StartAnswer string
+	Err         string
+	Ended       time.Time
 }
 
 // Rate is the bytes a second of the upload, or 0.

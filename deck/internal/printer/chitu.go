@@ -36,21 +36,23 @@ type ChiTu struct {
 	// deck (SaveUpload), for their previews. "" keeps no copy.
 	UploadDir string
 
-	mu      sync.Mutex
-	info    chitu.Info   // the answer to M99999, once
-	files   []chitu.File // the sliced files on the card of the board (M20), by LoadFiles
-	listed  bool         // the deck read the files once
-	st      State
-	last    chitu.Status // the last answer to M4000
-	misses  int          // the queries with no answer since the last answer
-	path    string       // the key of the print now in the history ("" with no print)
-	started time.Time
-	console []ConsoleLine
-	hold    bool                   // a ChiTuBox session talks to the board: no queries of the deck
-	sending string                 // the file that the deck sends to the board now, or ""
-	waiting []string               // the files that wait for the end of that upload
-	sendMu  sync.Mutex             // held for each upload to the board, so the uploads go one at a time
-	pics    map[string]image.Image // the previews of the copies in UploadDir, by name
+	mu         sync.Mutex
+	info       chitu.Info   // the answer to M99999, once
+	files      []chitu.File // the sliced files on the card of the board (M20), by LoadFiles
+	listed     bool         // the deck read the files once
+	st         State
+	last       chitu.Status // the last answer to M4000
+	misses     int          // the queries with no answer since the last answer
+	path       string       // the key of the print now in the history ("" with no print)
+	started    time.Time
+	console    []ConsoleLine
+	hold       bool                   // a ChiTuBox session talks to the board: no queries of the deck
+	sending    string                 // the file that the deck sends to the board now, or ""
+	waiting    []string               // the files that wait for the end of that upload
+	incoming   string                 // the last upload from ChiTuBox, before SaveUpload takes it
+	startAfter string                 // the file to print when its upload ends, or ""
+	sendMu     sync.Mutex             // held for each upload to the board, so the uploads go one at a time
+	pics       map[string]image.Image // the previews of the copies in UploadDir, by name
 }
 
 // chituUploadsKept is the count of the copies in UploadDir.
@@ -489,6 +491,9 @@ func (c *ChiTu) SendFile(path string) error {
 	}
 	// A second upload waits for the first.
 	c.mu.Lock()
+	if c.incoming == name {
+		c.incoming = ""
+	}
 	c.waiting = append(c.waiting, name)
 	c.st.Upload.Waiting = len(c.waiting)
 	c.mu.Unlock()
@@ -500,17 +505,32 @@ func (c *ChiTu) SendFile(path string) error {
 	}
 	size := fi.Size()
 	c.sending = name
-	c.st.Upload = Upload{Name: name, Size: size, Started: time.Now(), Waiting: len(c.waiting)}
+	c.st.Upload = Upload{Name: name, Size: size, Started: time.Now(), Waiting: len(c.waiting), StartAfter: c.startAfter == name}
 	c.mu.Unlock()
 	var result error
 	defer func() {
 		c.mu.Lock()
 		c.sending = ""
 		c.st.Upload.Result, c.st.Upload.Ended, c.st.Upload.Waiting = "sent", time.Now(), len(c.waiting)
+		start := c.startAfter == name
+		if start {
+			c.startAfter = ""
+		}
 		if result != nil {
 			c.st.Upload.Result, c.st.Upload.Err = "failed", result.Error()
+			if start {
+				c.st.Upload.Err += " · print not started"
+			}
 		}
 		c.mu.Unlock()
+		if start && result == nil {
+			a := c.startNow(name)
+			c.mu.Lock()
+			if c.st.Upload.Name == name {
+				c.st.Upload.StartAnswer = a
+			}
+			c.mu.Unlock()
+		}
 	}()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
 	defer cancel()
@@ -539,12 +559,16 @@ func (c *ChiTu) SendFile(path string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, x := range c.files {
-		if x.Name == name && x.Size != size {
-			result = fmt.Errorf("the printer saved %d of %d bytes", x.Size, size)
-			return result
+		if x.Name == name {
+			if x.Size != size {
+				result = fmt.Errorf("the printer saved %d of %d bytes", x.Size, size)
+				return result
+			}
+			return nil
 		}
 	}
-	return nil
+	result = errors.New("the printer does not list the file")
+	return result
 }
 
 // Busy returns the reason that the board can start no print now, or "".
@@ -660,5 +684,56 @@ func (c *ChiTu) Received(name string, n int64, done bool) {
 	if n == 0 && !done {
 		c.st.Receive = Receive{Name: name, Started: now}
 	}
+	if done && n >= 0 {
+		c.incoming = name
+	}
 	c.st.Receive.Bytes, c.st.Receive.Updated, c.st.Receive.Done = n, now, done
+}
+
+// RequestStart is the start of a print that ChiTuBox asks for (M6030 through the relay), and it
+// returns the answer for ChiTuBox. A file that the deck still sends to the printer, or that waits
+// for it, prints when the printer has the whole file (SendFile). Another file prints now.
+func (c *ChiTu) RequestStart(name string) string {
+	if name == "" || strings.ContainsAny(name, "'\r\n") {
+		return "Error:Bad file name"
+	}
+	c.mu.Lock()
+	if name == c.sending || name == c.incoming || slices.Contains(c.waiting, name) {
+		c.startAfter = name
+		if c.st.Upload.Name == name && c.st.Upload.Result == "" {
+			c.st.Upload.StartAfter = true
+		}
+		c.mu.Unlock()
+		log.Printf("chitu: the print of %s starts after its upload", name)
+		return "ok"
+	}
+	busy := c.sending != ""
+	c.mu.Unlock()
+	if busy {
+		return "Error:The deck sends a file to the printer"
+	}
+	return c.startNow(name)
+}
+
+// CancelStart cancels the start of a print after its upload.
+func (c *ChiTu) CancelStart() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.startAfter != "" {
+		log.Printf("chitu: the start of %s is cancelled", c.startAfter)
+	}
+	c.startAfter = ""
+	c.st.Upload.StartAfter = false
+}
+
+// startNow sends M6030 for the file name, and returns and logs the answer of the board.
+func (c *ChiTu) startNow(name string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	a, err := c.Client.Query(ctx, "M6030 ':"+name+"'")
+	if err != nil {
+		a = "Error:" + err.Error()
+	}
+	log.Printf("chitu: M6030 ':%s': %q", name, a)
+	return a
 }

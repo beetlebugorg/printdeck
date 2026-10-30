@@ -37,6 +37,6 @@ func startChiTuRelay(ctx context.Context, stateDir string, pr printerBackend, po
 	}
 	name, _ := os.Hostname()
 	r := &chitu.Relay{Conn: conn, Board: c.Client.Addr, Info: c.RelayInfo, Name: name,
-		Dir: c.UploadDir, OnUpload: c.SaveUpload, OnReceive: c.Received, OnActive: c.Hold, Busy: c.Busy}
+		Dir: c.UploadDir, OnUpload: c.SaveUpload, OnReceive: c.Received, OnActive: c.Hold, Busy: c.Busy, Start: c.RequestStart}
 	go r.Run(ctx)
 }

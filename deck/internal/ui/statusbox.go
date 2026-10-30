@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image"
+	"strings"
 	"time"
 
 	"printdeck/internal/gfx"
@@ -317,6 +318,9 @@ func uploadPanel(u printer.Upload, now time.Time) (panelText, bool) {
 		return panelText{}, false
 	case u.Result == "":
 		p := panelText{head: "Sending to the printer", msg: u.Name, bar: true}
+		if u.StartAfter {
+			p.msg = "Prints after: " + u.Name
+		}
 		if u.Size > 0 {
 			p.progress = float64(u.Done) / float64(u.Size)
 			p.head += fmt.Sprintf(" · %.0f%%", p.progress*100)
@@ -334,6 +338,12 @@ func uploadPanel(u printer.Upload, now time.Time) (panelText, bool) {
 		return panelText{}, false
 	case u.Result == "failed":
 		return panelText{head: "Upload failed", msg: u.Name, detail: u.Err + waiting}, true
+	case u.StartAnswer != "":
+		head := "Print started"
+		if !strings.HasPrefix(u.StartAnswer, "ok") {
+			head = "Print did not start"
+		}
+		return panelText{head: head, msg: u.Name, detail: u.StartAnswer}, true
 	default:
 		took := u.Ended.Sub(u.Started)
 		return panelText{head: "File on the printer", msg: u.Name,

@@ -37,11 +37,14 @@ type Relay struct {
 	// Dir is the folder of the uploads while they come in. "" is the folder of temporary files.
 	Dir string
 	// OnReceive reports the bytes of an upload that came to the relay: at M28 (0), about each
-	// MB, and at M29 (done).
+	// MB, and at M29 (done). A failed upload ends with -1 bytes.
 	OnReceive func(name string, bytes int64, done bool)
 	// OnUpload gets each complete upload: the name of the file and the path of the copy in Dir.
 	// OnUpload owns the copy.
 	OnUpload func(name, path string)
+	// Start starts the print of a file for M6030 ':<name>', and returns the answer for the client.
+	// With no Start, the relay sends M6030 to the board, or answers it with the error of Busy.
+	Start func(name string) string
 	// Busy returns the reason that the board can start no print now, for example an upload to the
 	// board, or "". The relay answers M6030 with this error.
 	Busy func() string
@@ -109,6 +112,11 @@ func (r *Relay) packet(ctx context.Context, p []byte, from net.Addr) {
 		return
 	}
 	if a, ok := r.upload(s, p); ok {
+		r.Conn.WriteTo([]byte(a+"\r\n"), from)
+		return
+	}
+	if name, ok := strings.CutPrefix(strings.TrimSpace(string(p)), "M6030 ':"); ok && r.Start != nil {
+		a := r.Start(strings.TrimSuffix(name, "'"))
 		r.Conn.WriteTo([]byte(a+"\r\n"), from)
 		return
 	}
@@ -267,16 +275,18 @@ func (r *Relay) upload(s *relaySession, p []byte) (answer string, ok bool) {
 		size, whole := joinedSize(s.parts)
 		bad := s.bad
 		s.close(false)
-		r.receive(name, size, true)
 		if bad || !whole {
+			r.receive(name, -1, true)
 			os.Remove(path)
 			log.Printf("chitu relay: the upload of %s lost packets", name)
 			return "Error:The upload lost packets", true
 		}
 		if err := os.Truncate(path, size); err != nil || r.OnUpload == nil {
+			r.receive(name, -1, true)
 			os.Remove(path)
 			return "ok", true
 		}
+		r.receive(name, size, true)
 		go r.OnUpload(name, path)
 		return "ok", true
 	}

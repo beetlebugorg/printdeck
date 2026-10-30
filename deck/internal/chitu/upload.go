@@ -44,12 +44,15 @@ func MakeDataPacket(data []byte, off int64) []byte {
 // joins two answers into one ("ok\rend 2560,offset error:3840"), so only the end is sure.
 var resendRE = regexp.MustCompile(`(\d+),offset error`)
 
-// The waits of an upload.
+// The waits of an upload: the wait for the answer to a packet before it goes again, the time with
+// no answer before the upload fails, and the wait for the answer to M29. UploadStall is a variable
+// for the tests.
 const (
-	uploadAnswerWait = time.Second      // the wait for the answer to a packet, before it goes again
-	uploadStall      = time.Minute      // the time with no answer before the upload fails
-	uploadSaveWait   = 30 * time.Second // the wait for the answer to M29
+	uploadAnswerWait = time.Second
+	uploadSaveWait   = 30 * time.Second
 )
+
+var UploadStall = time.Minute
 
 // Upload sends the size bytes of r to the card of the board as the file name. progress, when not
 // nil, gets the bytes that the board took. It uses one socket for the whole upload, so the board
@@ -71,7 +74,7 @@ func (c *Client) Upload(ctx context.Context, name string, r io.ReaderAt, size in
 	// for uploadStall at most: the Phenom stopped answering for more than 10 s once, at 92 % of a
 	// file of 40 MB.
 	ask := func(p []byte, wait time.Duration) (string, error) {
-		for end := time.Now().Add(max(wait, uploadStall)); time.Now().Before(end); {
+		for end := time.Now().Add(max(wait, UploadStall)); time.Now().Before(end); {
 			if err := ctx.Err(); err != nil {
 				return "", err
 			}

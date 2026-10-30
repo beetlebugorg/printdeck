@@ -209,6 +209,13 @@ func (a *App) homeRow(c *gfx.Canvas, st printer.State, r image.Rectangle) {
 		return keyOn
 	}
 	if a.resin() {
+		// A start of a print waits for the end of an upload: Cancel print start in place of Home Z.
+		if cs, ok := pr.(interface{ CancelStart() }); ok && st.Upload.StartAfter && st.Upload.Result == "" {
+			a.button(c, r, "Cancel print start", raised, red, func() {
+				a.confirm = &confirmBox{question: "Cancel the start of " + st.Upload.Name + "?", yes: "Cancel start", danger: true, onYes: cs.CancelStart}
+			})
+			return
+		}
 		// The build plate of a resin printer has only Z.
 		a.printerKey(c, r, "Home Z", homed("z"), text, a.askHomePlate)
 		return
