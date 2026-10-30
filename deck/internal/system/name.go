@@ -10,7 +10,7 @@ import (
 // The name of a deck: the name that slicers show (the DNS-SD service of systemd-resolved), and the
 // host name for <host>.local, made from the name. printdeck.txt keeps both (name= and
 // hostname=), and Settings applies them at each boot. The image has the service with the name
-// "Printdeck" in /usr/lib/systemd/dnssd. A service file of the same name in /run takes its place.
+// "Printdeck" in /usr/lib/systemd/dnssd. A service file of the same name in /run replaces it.
 
 // MaxName is the longest name of a deck, in characters.
 const MaxName = 40

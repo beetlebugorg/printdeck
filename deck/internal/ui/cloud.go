@@ -9,7 +9,7 @@ import (
 )
 
 // The Cloud page (Settings > Cloud): the link of the deck to its cloud service, for the share
-// links and Parts with Friends. Connect takes a code from `pwf enroll-code` on the computer of
+// links and Parts with Friends. Connect uses a code from `pwf enroll-code` on the computer of
 // the owner of the service. The deck then signs its requests with its own key.
 
 // CloudLink is the link of the deck to its service (cloud.Link).

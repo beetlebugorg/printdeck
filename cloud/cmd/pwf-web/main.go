@@ -154,7 +154,7 @@ type share struct {
 }
 
 // maxCount is the time that the clocks count on after the last new status: longer than the
-// longest time between two polls (maxPoll). After it the deck sends nothing, and the clocks stop.
+// longest time between two polls (maxPoll). After it the deck sends no status, and the clocks stop.
 const maxCount = 3 * time.Minute
 
 // runShare polls the status of the share at base and draws the page.
@@ -174,7 +174,7 @@ func runShare(base string) {
 			s.tick()
 		}
 	}()
-	// A tab in the background polls nothing. When it shows again, it polls at once. The wait is
+	// A tab in the background makes no polls. When it shows again, it polls at once. The wait is
 	// short sleeps: a timer of TinyGo in a select can fire seconds late.
 	woken := false
 	doc.Call("addEventListener", "visibilitychange", js.FuncOf(func(js.Value, []js.Value) any {

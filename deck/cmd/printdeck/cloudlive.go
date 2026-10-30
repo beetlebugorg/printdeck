@@ -154,7 +154,7 @@ func (p *projectLink) endLive(ctx context.Context, id *cloud.Identity, l *livePr
 	return false
 }
 
-// leave tells the project of l that the deck prints nothing in it now. It returns nil.
+// leave tells the project of l that the deck has no print in it now. It returns nil.
 func (l *livePrint) leave(ctx context.Context, p *projectLink, id *cloud.Identity) *livePrint {
 	if l == nil {
 		return nil

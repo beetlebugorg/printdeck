@@ -582,7 +582,7 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 	path := st.FinishedPath
 	video, saving := a.doneVideo(st)
 	if a.canShare() {
-		// Share takes the place of the Reprint key's neighbor: Reprint, Share, the time lapse, Done.
+		// Share is in the place of the Reprint key's neighbor: Reprint, Share, the time lapse, Done.
 		sizes := []kit.Size{kit.Fr(1), kit.Fr(1), kit.Fr(1)}
 		if video != "" || saving {
 			sizes = append(sizes, kit.Fr(1))

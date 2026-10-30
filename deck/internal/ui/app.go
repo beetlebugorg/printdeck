@@ -168,7 +168,7 @@ type App struct {
 	consoleKB      *keyboard      // the keyboard of the Console page, while it is open
 	consoleLast    string         // the last typed command, for the next one
 	configScroll   int            // the scroll position of the printer list of the setup
-	configAll      bool           // the printer list shows all printers, not only those for the board
+	configAll      bool           // the printer list shows all printers; off, the printers of the board
 	configBoard    board.Info     // the board that the printer list is for
 	flash          *flashState    // the flash of the firmware, while it runs and until OK
 	created        time.Time      // the start of this App: older action results do not show

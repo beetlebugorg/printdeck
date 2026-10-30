@@ -192,7 +192,7 @@ func (a *App) textKey(c *gfx.Canvas, r image.Rectangle, pad image.Point, label s
 		return
 	}
 	// A held key repeats: after kbRepeatDelay, once each kbRepeatEvery. The lift of the finger
-	// then types nothing more.
+	// then types no more characters.
 	h := &a.kbHold
 	if pressed {
 		now := a.Now()

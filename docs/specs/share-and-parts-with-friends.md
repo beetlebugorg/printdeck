@@ -581,9 +581,9 @@ The build of phase 3 made these choices:
   older format sends its prints again at the next share.
 - **The page of a project** shows the numbers of the project (the prints, the print time and the
   filament), a tile for each print, the photos, and the keys of the owner at the bottom.
-- **The share link of a print in a project.** The project of a print is the pick on the deck
-  (Add to a project on the print page), not a line in the G-code. The share has no "Add to"
-  switch. A share of a print in a project:
+- **The share link of a print in a project.** The project of a print is the pick on the deck (the
+  status panel of the print page), or the line `;Printdeck project:` that the Cura plugin writes
+  into the G-code. The share has no "Add to" switch. A share of a print in a project:
   - makes the project at the service when it is not there;
   - shows "A print of the project" with a link on the share page;
   - shows as a "Printing now" tile on the project page, until the end of the print;

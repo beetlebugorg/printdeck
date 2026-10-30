@@ -349,7 +349,7 @@ func (a *app) showProject(id, print string) {
 }
 
 // pollProject draws the project id again each minute, or each 30 s while a print of the project
-// prints, until the page shows another view. A tab in the background polls nothing. It draws
+// prints, until the page shows another view. A tab in the background makes no polls. It draws
 // again only the parts that changed: a new draw loads the pictures again.
 func (a *app) pollProject(id string, gen int) {
 	for {

@@ -8,7 +8,7 @@ import (
 )
 
 // A held key of the keyboard types once at the touch, then repeats after the delay. The lift
-// types nothing more. A short tap types once.
+// types no more characters. A short tap types once.
 func TestKeyRepeat(t *testing.T) {
 	a, _, cv := newPrintApp(idle)
 	now := time.Unix(1_800_000_000, 0)

@@ -126,7 +126,7 @@ func (c *Client) SendLive(ctx context.Context, id *Identity, project string, in 
 	return out, err
 }
 
-// EndLive tells the project that the deck prints nothing in it now.
+// EndLive tells the project that the deck has no print in it now.
 func (c *Client) EndLive(ctx context.Context, id *Identity, project string) error {
 	return c.Do(ctx, id, http.MethodDelete, "/api/v1/projects/"+project+"/live", nil, nil)
 }
