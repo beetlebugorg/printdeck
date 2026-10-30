@@ -62,6 +62,13 @@ func (a *App) askUpload(u printer.Upload) {
 	}
 	var choices []menuItem
 	if u.StartAfter {
+		where := "No project yet"
+		if p := a.Printer.NextProject(); p != "" {
+			where = "Project · " + fitText(p, 260)
+		}
+		choices = append(choices, menuItem{"Pick a project", where, dim, func() {
+			a.askProject(u.Name, a.Printer.NextProject(), func(p string) { a.Printer.SetNextProject(p) })
+		}})
 		choices = append(choices, menuItem{"Cancel the print start", "The file still goes to the printer", dim, func() {
 			a.confirm = &confirmBox{question: "Cancel the print start of " + u.Name + "?", yes: "Cancel start", danger: true, onYes: pr.CancelStart}
 		}})

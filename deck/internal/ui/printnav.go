@@ -335,6 +335,10 @@ func (a *App) drawLastPrint(c *gfx.Canvas, st printer.State, last image.Rectangl
 // (materialCheck).
 func (a *App) confirmPrint(path string) {
 	name := a.Printer.FileMeta(path).Name(path)
+	if a.resin() {
+		a.confirmResinPrint(path, name)
+		return
+	}
 	q, yes, danger, set := a.materialCheck(path)
 	if q == "" {
 		q, yes = "Print "+gfx.Fit(gfx.Face(true, 28), name, 300)+"?", "Print"
@@ -345,6 +349,29 @@ func (a *App) confirmPrint(path string) {
 		}
 		a.Printer.PrintFile(path)
 		a.pages = nil
+	}}
+}
+
+// confirmResinPrint asks before it starts a resin file: Print, in the project of the next print
+// if any, or a choice of the project first. The project is optional: it gets the print its live
+// tile, its record and its share link in the cloud.
+func (a *App) confirmResinPrint(path, name string) {
+	project := a.Printer.NextProject()
+	where := "No project"
+	if project != "" {
+		where = "Project · " + fitText(project, 260)
+	}
+	a.confirm = &confirmBox{question: "Print " + gfx.Fit(gfx.Face(true, 28), name, 300) + "?", choices: []menuItem{
+		{"Print", where, dim, func() {
+			a.Printer.PrintFile(path)
+			a.pages = nil
+		}},
+		{"Pick a project first", "Then print", dim, func() {
+			a.askProject(name, project, func(p string) {
+				a.Printer.SetNextProject(p)
+				a.confirmResinPrint(path, name)
+			})
+		}},
 	}}
 }
 

@@ -38,27 +38,28 @@ type ChiTu struct {
 	// deck (SaveUpload), for their previews. "" keeps no copy.
 	UploadDir string
 
-	mu         sync.Mutex
-	info       chitu.Info   // the answer to M99999, once
-	files      []chitu.File // the sliced files on the card of the board (M20), by LoadFiles
-	listed     bool         // the deck read the files once
-	st         State
-	last       chitu.Status // the last answer to M4000
-	lastAt     time.Time    // the time of last
-	moved      bool         // the message says that the plate moves
-	misses     int          // the queries with no answer since the last answer
-	path       string       // the key of the print now in the history ("" with no print)
-	started    time.Time
-	console    []ConsoleLine
-	hold       bool                     // a ChiTuBox session talks to the board: no queries of the deck
-	sending    string                   // the file that the deck sends to the board now, or ""
-	waiting    []string                 // the files that wait for the end of that upload
-	incoming   string                   // the last upload from ChiTuBox, before SaveUpload takes it
-	startAfter string                   // the file to print when its upload ends, or ""
-	stopSend   context.CancelFunc       // stops the upload now (CancelSend)
-	sendMu     sync.Mutex               // held for each upload to the board, so the uploads go one at a time
-	pics       map[string]image.Image   // the previews of the copies in UploadDir, by name
-	headers    map[string]*chitu.Sliced // the headers of the copies in UploadDir, by name
+	mu          sync.Mutex
+	info        chitu.Info   // the answer to M99999, once
+	files       []chitu.File // the sliced files on the card of the board (M20), by LoadFiles
+	listed      bool         // the deck read the files once
+	st          State
+	last        chitu.Status // the last answer to M4000
+	lastAt      time.Time    // the time of last
+	moved       bool         // the message says that the plate moves
+	misses      int          // the queries with no answer since the last answer
+	path        string       // the key of the print now in the history ("" with no print)
+	started     time.Time
+	console     []ConsoleLine
+	hold        bool                     // a ChiTuBox session talks to the board: no queries of the deck
+	sending     string                   // the file that the deck sends to the board now, or ""
+	waiting     []string                 // the files that wait for the end of that upload
+	incoming    string                   // the last upload from ChiTuBox, before SaveUpload takes it
+	startAfter  string                   // the file to print when its upload ends, or ""
+	stopSend    context.CancelFunc       // stops the upload now (CancelSend)
+	nextProject string                   // the project of the next print (SetNextProject)
+	sendMu      sync.Mutex               // held for each upload to the board, so the uploads go one at a time
+	pics        map[string]image.Image   // the previews of the copies in UploadDir, by name
+	headers     map[string]*chitu.Sliced // the headers of the copies in UploadDir, by name
 }
 
 // chituUploadsKept is the count of the copies in UploadDir.
@@ -165,6 +166,10 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 			// A new print: the board does not give the name of its file in M4000.
 			c.started = now.Add(-time.Duration(s.Seconds) * time.Second)
 			c.path = "resin-" + strconv.FormatInt(c.started.Unix(), 10)
+			if c.nextProject != "" && c.Hist != nil {
+				c.Hist.SetNextProject(c.path, c.nextProject)
+				c.nextProject = ""
+			}
 		}
 		st.Printing, st.Paused = true, s.Flag == 1
 		st.FilePath, st.File, st.Title = c.path, c.printFile(), c.printName()
@@ -367,19 +372,33 @@ func (c *ChiTu) SetProject(r Record, project string) bool {
 	return c.Hist != nil && c.Hist.SetProject(r.Path, r.End, project)
 }
 
+// SetNextProject sets the project of the print now, or of the next print when no print runs.
+// The next print gets it at its start (update).
 func (c *ChiTu) SetNextProject(project string) bool {
 	st := c.State()
-	if c.Hist == nil || !st.Printing || st.FilePath == "" {
+	if c.Hist == nil {
 		return false
+	}
+	if !st.Printing || st.FilePath == "" {
+		c.mu.Lock()
+		c.nextProject = project
+		c.mu.Unlock()
+		return true
 	}
 	c.Hist.SetNextProject(st.FilePath, project)
 	return true
 }
 
+// NextProject returns the project of the print now, or of the next print.
 func (c *ChiTu) NextProject() string {
 	st := c.State()
-	if c.Hist == nil || !st.Printing {
+	if c.Hist == nil {
 		return ""
+	}
+	if !st.Printing {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		return c.nextProject
 	}
 	return c.Hist.NextProject(st.FilePath)
 }

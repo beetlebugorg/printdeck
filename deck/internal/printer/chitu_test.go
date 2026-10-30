@@ -383,3 +383,21 @@ func TestChiTuLayers(t *testing.T) {
 		t.Errorf("layers %q %d/%d", st.Title, st.Layer, st.Layers)
 	}
 }
+
+// The project of the next print goes to the print at its start.
+func TestChiTuNextProject(t *testing.T) {
+	c := NewChiTu("127.0.0.1:1", "Phenom", &History{Path: filepath.Join(t.TempDir(), "h.json")})
+	if !c.SetNextProject("Bittle X") || c.NextProject() != "Bittle X" {
+		t.Fatal("the project of the next print")
+	}
+	c.update(chitu.Status{Read: 10, Size: 1000, Seconds: 5}, time.Now())
+	if p := c.NextProject(); p != "Bittle X" {
+		t.Errorf("the project of the print: %q", p)
+	}
+	c.mu.Lock()
+	next := c.nextProject
+	c.mu.Unlock()
+	if next != "" {
+		t.Errorf("the next project stays: %q", next)
+	}
+}
