@@ -67,7 +67,12 @@ func startTimelapse(ctx context.Context, stateDir, configPath string, app *ui.Ap
 		if !ok || !hasPart {
 			return image.Rectangle{}, false
 		}
-		return cal.PartCrop(box, bedY, sz, hub.Settings().Camera(lapse.ID()).Rotate)
+		cs := hub.Settings().Camera(lapse.ID())
+		zoom := 1.0
+		if cal.PTZ != nil && cs.PTZMap != nil {
+			_, _, zoom = cs.PTZMap.Window(*cal.PTZ)
+		}
+		return cal.PartCropAt(box, bedY, sz, cs.Rotate, zoom)
 	}
 	r.OnFirstLayer = func(f *camera.Frame, file string) { app.ShowFirstLayer() }
 	r.OnPark = func(ctx context.Context, done int) {

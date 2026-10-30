@@ -80,8 +80,8 @@ func (h *Hub) partPosLocked(cs CamSettings, b Box, bedY float64) (PTZPos, bool) 
 
 // PartWindow returns the rectangle of the wide frame that shows the box b with the bed at bedY,
 // in normalized coordinates of the frames of the calibration wide (u0, v0, u1, v1): the projection
-// of the box with the margin of the time lapse crop at each side. It is false when a corner of the
-// box is behind the camera.
+// of the box with the margin of the time lapse crop at each side, grown as the crop (viewRect). It
+// is false when a corner of the box is behind the camera.
 func PartWindow(wide *Calibration, b Box, bedY float64) ([4]float64, bool) {
 	pts, ok := projectAll(func(p [3]float64) (float64, float64, bool) {
 		return wide.ProjectAt(p, bedY, 1, 1, wide.Rotate)
@@ -90,10 +90,12 @@ func PartWindow(wide *Calibration, b Box, bedY float64) ([4]float64, bool) {
 		return [4]float64{}, false
 	}
 	r := bounds(pts)
-	if r[2] <= 0 || r[3] <= 0 || r[0] >= 1 || r[1] >= 1 {
+	mx, my := partMargin*(r[2]-r[0]), partMargin*(r[3]-r[1])
+	// In normalized coordinates, the shape of the picture is a square.
+	v, ok := viewRect([4]float64{r[0] - mx, r[1] - my, r[2] + mx, r[3] + my}, 1, 1, minViewShare)
+	if !ok {
 		// The box is out of the picture.
 		return [4]float64{}, false
 	}
-	mx, my := partMargin*(r[2]-r[0]), partMargin*(r[3]-r[1])
-	return [4]float64{max(0, r[0]-mx), max(0, r[1]-my), min(1, r[2]+mx), min(1, r[3]+my)}, true
+	return v, true
 }

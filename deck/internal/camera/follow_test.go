@@ -32,7 +32,8 @@ func TestFollowPart(t *testing.T) {
 	if !ok {
 		t.Fatal("no calibration while the camera follows")
 	}
-	cr, ok := cal.PartCrop(box, 0, image.Pt(960, 540), 0)
+	_, _, zoom := testMap().Window(p.Pos)
+	cr, ok := cal.PartCropAt(box, 0, image.Pt(960, 540), 0, zoom)
 	if !ok || (cr.Dx() < 960*8/10 && cr.Dy() < 540*8/10) {
 		t.Errorf("time lapse crop %v at %+v", cr, p.Pos)
 	}

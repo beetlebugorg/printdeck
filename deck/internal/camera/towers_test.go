@@ -167,7 +167,7 @@ func TestPartCropBedSlinger(t *testing.T) {
 			u, v := cam.projectBed(p, tc.parkY)
 			pts = append(pts, [2]float64{u, v})
 		}
-		want, wok := gridCrop(bounds(pts), sz)
+		want, wok := gridCrop(bounds(pts), sz, minViewShare)
 		if !ok || !wok {
 			t.Fatalf("no crop: %v %v", ok, wok)
 		}

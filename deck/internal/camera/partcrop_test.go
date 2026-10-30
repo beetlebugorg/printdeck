@@ -7,15 +7,17 @@ import (
 	"testing"
 )
 
-// The crop of a time lapse: the projected box of the part, a margin of 15 % at each side, edges
-// on the grid of 16 pixels, inside the picture.
+// The crop of a time lapse: the projected box of the part, a margin of 15 % at each side, the
+// shape of the picture and half its width or more, edges on the grid of 16 pixels, inside the
+// picture.
 func TestPartCrop(t *testing.T) {
 	// u = x/200 and v = y/100: a box of x 50..100 and y 20..40 is x 320..640 and y 144..288 in a
-	// picture of 1280 x 720.
+	// picture of 1280 x 720. With the margin it is x 272..688 and y 122.4..309.6, and it grows to
+	// 640 x 360 around its middle (480, 216).
 	c := &Calibration{P: [12]float64{1.0 / 200, 0, 0, 0, 0, 1.0 / 100, 0, 0, 0, 0, 0, 1}}
 	sz := image.Pt(1280, 720)
 	r, ok := c.PartCrop(Box{Min: [3]float64{50, 20, 0}, Max: [3]float64{100, 40, 10}}, 0, sz, 0)
-	if want := image.Rect(272, 112, 688, 320); !ok || r != want {
+	if want := image.Rect(160, 32, 800, 400); !ok || r != want {
 		t.Errorf("crop %v, want %v", r, want)
 	}
 	// A box at the edge: the crop stays in the picture.
@@ -25,8 +27,15 @@ func TestPartCrop(t *testing.T) {
 	}
 	// The turn of 180°.
 	r, _ = c.PartCrop(Box{Min: [3]float64{50, 20, 0}, Max: [3]float64{100, 40, 10}}, 0, sz, 180)
-	if want := image.Rect(592, 400, 1008, 608); r != want {
+	if want := image.Rect(480, 320, 1120, 688); r != want {
 		t.Errorf("turned crop %v, want %v", r, want)
+	}
+	// The plate of a flat part is a low and wide strip, x 0..960 and y 432..448. With the margin it
+	// is 1104 pixels wide, and the crop has the shape of the picture: 1104 x 621 around the middle
+	// of the strip, moved up into the picture.
+	r, _ = c.PartCrop(Box{Min: [3]float64{0, 60, 0}, Max: [3]float64{150, 62.2, 1}}, 0, sz, 0)
+	if want := image.Rect(0, 96, 1104, 720); r != want {
+		t.Errorf("crop of a flat plate %v, want %v", r, want)
 	}
 	// A box behind the camera, and a box outside the picture.
 	behind := &Calibration{P: [12]float64{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0}}
