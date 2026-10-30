@@ -85,8 +85,10 @@ type State struct {
 	FilamentUsed  float64
 	// Message is the message of M117.
 	Message string
-	// Upload is the upload of a file from the deck to the card of a resin printer.
-	Upload Upload
+	// Upload is the upload of a file from the deck to the card of a resin printer, and Receive
+	// the upload of a file from ChiTuBox to the deck before it.
+	Upload  Upload
+	Receive Receive
 	// The Z offset of the head (SET_GCODE_OFFSET), and the speed and flow factors in percent.
 	ZOffset           float64
 	SpeedPct, FlowPct int
@@ -265,4 +267,13 @@ func (u Upload) Rate(now time.Time) float64 {
 		return float64(u.Done) / s
 	}
 	return 0
+}
+
+// Receive is the upload of a file from ChiTuBox to the deck (chitu.Relay).
+type Receive struct {
+	Name    string
+	Bytes   int64
+	Started time.Time
+	Updated time.Time
+	Done    bool
 }

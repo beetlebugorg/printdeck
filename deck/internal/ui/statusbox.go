@@ -223,6 +223,9 @@ func (a *App) panelLines(st printer.State) panelText {
 	case "error":
 		return panelText{head: "Print failed", side: clock, msg: st.FinishedName(), detail: st.FinishedError}
 	}
+	if p, ok := receivePanel(st.Receive, now); ok {
+		return p
+	}
 	if p, ok := uploadPanel(st.Upload, now); ok {
 		return p
 	}
@@ -336,4 +339,20 @@ func uploadPanel(u printer.Upload, now time.Time) (panelText, bool) {
 		return panelText{head: "File on the printer", msg: u.Name,
 			detail: mb(u.Size) + " MB in " + shortWait(took) + waiting}, true
 	}
+}
+
+// receivePanel returns the status panel of an upload from ChiTuBox to the deck, while it comes
+// in. ChiTuBox sends no size, so the panel shows the MB. An upload with no packet for 15 s is
+// over.
+func receivePanel(r printer.Receive, now time.Time) (panelText, bool) {
+	if r.Name == "" || r.Done || now.Sub(r.Updated) > 15*time.Second {
+		return panelText{}, false
+	}
+	p := panelText{head: "Receiving from ChiTuBox", msg: r.Name}
+	p.detail = fmt.Sprintf("%.1f MB", float64(r.Bytes)/1e6)
+	if s := r.Updated.Sub(r.Started).Seconds(); s > 1 && r.Bytes > 0 {
+		p.detail += fmt.Sprintf(" · %.2f MB/s", float64(r.Bytes)/1e6/s)
+	}
+	p.shortDetail = p.detail
+	return p, true
 }

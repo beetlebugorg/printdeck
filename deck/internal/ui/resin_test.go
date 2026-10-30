@@ -146,3 +146,19 @@ func TestUploadPanel(t *testing.T) {
 		t.Errorf("failed: %+v", p)
 	}
 }
+
+// The status panel shows an upload from ChiTuBox while its packets come in.
+func TestReceivePanel(t *testing.T) {
+	now := time.Date(2026, 10, 30, 14, 0, 0, 0, time.UTC)
+	r := printer.Receive{Name: "testprint.cbddlp", Bytes: 12e6, Started: now.Add(-15 * time.Second), Updated: now}
+	if p, ok := receivePanel(r, now); !ok || p.head != "Receiving from ChiTuBox" || p.detail != "12.0 MB · 0.80 MB/s" {
+		t.Errorf("receiving: %+v", p)
+	}
+	if _, ok := receivePanel(r, now.Add(20*time.Second)); ok {
+		t.Error("an upload with no packet for 20 s")
+	}
+	r.Done = true
+	if _, ok := receivePanel(r, now); ok {
+		t.Error("a done upload")
+	}
+}

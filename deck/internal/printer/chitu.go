@@ -651,3 +651,14 @@ func uploadError(err error, at, size int64) error {
 	msg := strings.ReplaceAll(err.Error(), "chitu: ", "")
 	return fmt.Errorf("%s (at %d%%)", msg, pct)
 }
+
+// Received keeps the progress of an upload from ChiTuBox to the deck, for the status panel.
+func (c *ChiTu) Received(name string, n int64, done bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	now := time.Now()
+	if n == 0 && !done {
+		c.st.Receive = Receive{Name: name, Started: now}
+	}
+	c.st.Receive.Bytes, c.st.Receive.Updated, c.st.Receive.Done = n, now, done
+}

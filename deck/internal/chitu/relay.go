@@ -36,6 +36,9 @@ type Relay struct {
 	AnswerLocal bool
 	// Dir is the folder of the uploads while they come in. "" is the folder of temporary files.
 	Dir string
+	// OnReceive reports the bytes of an upload that came to the relay: at M28 (0), about each
+	// MB, and at M29 (done).
+	OnReceive func(name string, bytes int64, done bool)
 	// OnUpload gets each complete upload: the name of the file and the path of the copy in Dir.
 	// OnUpload owns the copy.
 	OnUpload func(name, path string)
@@ -54,6 +57,12 @@ type Relay struct {
 // 2026-10-30. The relay gives it while the board is busy.
 const m4001Answer = "ok X:0.011430 Y:0.011430 Z:0.001250 E:0.001340 T:0/0/0/400/1 U:'GBK' B:1"
 
+// RelayChunk is the size of the data packets that the relay asks ChituManager for (BUFSIZE in
+// the answer to M99999). With no BUFSIZE, ChituManager sends 1280 bytes in a packet, about 650
+// packets a second. The relay writes each packet at its offset, so any size works. The deck sends
+// the file to the board in packets of UploadChunk.
+const RelayChunk = 32768
+
 // relayIdle is the time with no packet after which a client is gone.
 const relayIdle = 2 * time.Minute
 
@@ -65,6 +74,8 @@ type relaySession struct {
 	file  *os.File      // the copy of the upload, or nil with no upload
 	parts map[int64]int // the offsets and the sizes of the data packets of the upload
 	bad   bool          // a packet of the upload was not in the known form
+	got   int64         // the bytes of the data packets of the upload
+	told  int64         // got at the last OnReceive
 }
 
 // Run serves the clients until ctx ends.
@@ -133,7 +144,7 @@ func (r *Relay) answerInfo(to net.Addr) {
 	if r.Name != "" {
 		name = strings.ReplaceAll(r.Name, " ", "-")
 	}
-	line := fmt.Sprintf("ok MAC:%s IP:%s VER:%s ID:%s-relay NAME:%s\r\n", in.MAC, ip, in.Version, in.ID, name)
+	line := fmt.Sprintf("ok MAC:%s IP:%s VER:%s ID:%s-relay NAME:%s BUFSIZE:%d\r\n", in.MAC, ip, in.Version, in.ID, name, RelayChunk)
 	r.Conn.WriteTo([]byte(line), to)
 }
 
@@ -242,7 +253,8 @@ func (r *Relay) upload(s *relaySession, p []byte) (answer string, ok bool) {
 			log.Printf("chitu relay: %v", err)
 			return "Error:" + err.Error(), true
 		}
-		s.name, s.file, s.parts, s.bad = name, f, map[int64]int{}, false
+		s.name, s.file, s.parts, s.bad, s.got, s.told = name, f, map[int64]int{}, false, 0, 0
+		r.receive(name, 0, false)
 		return "ok N:0", true
 	}
 	if s.file == nil {
@@ -253,6 +265,7 @@ func (r *Relay) upload(s *relaySession, p []byte) (answer string, ok bool) {
 		size, whole := joinedSize(s.parts)
 		bad := s.bad
 		s.close(false)
+		r.receive(name, size, true)
 		if bad || !whole {
 			os.Remove(path)
 			log.Printf("chitu relay: the upload of %s lost packets", name)
@@ -277,8 +290,22 @@ func (r *Relay) upload(s *relaySession, p []byte) (answer string, ok bool) {
 		s.bad = true
 		return "Error:" + err.Error(), true
 	}
+	if _, again := s.parts[int64(off)]; !again {
+		s.got += int64(len(data))
+	}
 	s.parts[int64(off)] = len(data)
+	if s.got-s.told >= 1<<20 {
+		s.told = s.got
+		r.receive(s.name, s.got, false)
+	}
 	return "ok", true
+}
+
+// receive calls OnReceive.
+func (r *Relay) receive(name string, n int64, done bool) {
+	if r.OnReceive != nil {
+		r.OnReceive(name, n, done)
+	}
 }
 
 // close ends the upload of the session, and removes its copy when remove is true.
