@@ -372,3 +372,14 @@ func TestChiTuCancelSend(t *testing.T) {
 		t.Errorf("upload %+v", u)
 	}
 }
+
+// A print of a file with a copy on the deck has the layers of the header of the copy.
+func TestChiTuLayers(t *testing.T) {
+	c := NewChiTu("127.0.0.1:1", "Phenom", &History{})
+	c.files = []chitu.File{{Name: "plate.cbddlp", Size: 1000}}
+	c.headers = map[string]*chitu.Sliced{"plate.cbddlp": {Layers: 600}}
+	c.update(chitu.Status{Read: 500, Size: 1000, Seconds: 60}, time.Now())
+	if st := c.State(); st.File != "plate.cbddlp" || st.Layer != 300 || st.Layers != 600 {
+		t.Errorf("layers %q %d/%d", st.Title, st.Layer, st.Layers)
+	}
+}

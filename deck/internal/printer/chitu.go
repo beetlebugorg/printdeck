@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"io"
 	"log"
+	"math"
 	"net"
 	"os"
 	"path/filepath"
@@ -48,14 +50,15 @@ type ChiTu struct {
 	path       string       // the key of the print now in the history ("" with no print)
 	started    time.Time
 	console    []ConsoleLine
-	hold       bool                   // a ChiTuBox session talks to the board: no queries of the deck
-	sending    string                 // the file that the deck sends to the board now, or ""
-	waiting    []string               // the files that wait for the end of that upload
-	incoming   string                 // the last upload from ChiTuBox, before SaveUpload takes it
-	startAfter string                 // the file to print when its upload ends, or ""
-	stopSend   context.CancelFunc     // stops the upload now (CancelSend)
-	sendMu     sync.Mutex             // held for each upload to the board, so the uploads go one at a time
-	pics       map[string]image.Image // the previews of the copies in UploadDir, by name
+	hold       bool                     // a ChiTuBox session talks to the board: no queries of the deck
+	sending    string                   // the file that the deck sends to the board now, or ""
+	waiting    []string                 // the files that wait for the end of that upload
+	incoming   string                   // the last upload from ChiTuBox, before SaveUpload takes it
+	startAfter string                   // the file to print when its upload ends, or ""
+	stopSend   context.CancelFunc       // stops the upload now (CancelSend)
+	sendMu     sync.Mutex               // held for each upload to the board, so the uploads go one at a time
+	pics       map[string]image.Image   // the previews of the copies in UploadDir, by name
+	headers    map[string]*chitu.Sliced // the headers of the copies in UploadDir, by name
 }
 
 // chituUploadsKept is the count of the copies in UploadDir.
@@ -164,9 +167,20 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 			c.path = "resin-" + strconv.FormatInt(c.started.Unix(), 10)
 		}
 		st.Printing, st.Paused = true, s.Flag == 1
-		st.FilePath, st.File, st.Title = c.path, c.path, c.printName()
+		st.FilePath, st.File, st.Title = c.path, c.printFile(), c.printName()
 		st.FileSize, st.FilePos = s.Size, s.Read
 		st.Completion = s.Progress() * 100
+		// The layers from the header of the copy of the file: the board reads the layers in order,
+		// so the share of the file that it read is about the share of the layers.
+		st.Layer, st.Layers = 0, 0
+		if h, ok := c.headers[filepath.Base(st.File)]; ok {
+			if h != nil && h.Layers > 0 {
+				st.Layers = int(h.Layers)
+				st.Layer = max(1, min(st.Layers, int(math.Round(s.Progress()*float64(h.Layers)))))
+			}
+		} else if st.File != c.path {
+			go c.header(st.File) // the next answer has the layers
+		}
 		st.Elapsed = time.Duration(s.Seconds) * time.Second
 		st.PrintDuration = st.Elapsed // the board gives no time of its pauses
 		st.TimeLeft, st.HasTimeLeft = 0, false
@@ -192,7 +206,7 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 		if end.Size > 0 && (end.Read >= end.Size || end.Progress() >= chituDone) {
 			result = "complete"
 		}
-		st.Finished, st.FinishedPath, st.FinishedFile = result, c.path, c.path
+		st.Finished, st.FinishedPath, st.FinishedFile = result, c.path, c.printFile()
 		st.FinishedTitle = c.printName()
 		st.FinishedTime = time.Duration(end.Seconds) * time.Second
 		if c.Hist != nil {
@@ -219,6 +233,15 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 // the size of the file of the print, when one file has that size, else the name of the printer and
 // the start. M4000 has no name of the file. The caller holds mu.
 func (c *ChiTu) printName() string {
+	if f := c.printFile(); f != c.path {
+		return strings.TrimSuffix(strings.TrimSuffix(f, ".cbddlp"), ".ctb")
+	}
+	return fmt.Sprintf("%s print of %s", c.Name, c.started.Local().Format("Jan 2, 15:04"))
+}
+
+// printFile returns the name of the file of the print now on the card, from its size, or the key
+// of the print when no file or two files have that size. The caller holds mu.
+func (c *ChiTu) printFile() string {
 	name := ""
 	for _, f := range c.files {
 		if f.Size == c.last.Size {
@@ -226,13 +249,13 @@ func (c *ChiTu) printName() string {
 				name = ""
 				break // two files of the same size
 			}
-			name = strings.TrimSuffix(strings.TrimSuffix(f.Name, ".cbddlp"), ".ctb")
+			name = f.Name
 		}
 	}
 	if name != "" {
 		return name
 	}
-	return fmt.Sprintf("%s print of %s", c.Name, c.started.Local().Format("Jan 2, 15:04"))
+	return c.path
 }
 
 // LoadFiles reads the files on the card of the board (M20). It waits for the board.
@@ -703,8 +726,41 @@ func (c *ChiTu) picture(name string) image.Image {
 // FilePicture returns the preview of a file that ChiTuBox sent through the deck, or nil.
 func (c *ChiTu) FilePicture(f File, _ string) image.Image { return c.picture(f.Path) }
 
-// RecordPicture returns the preview of the file of a print, or nil.
-func (c *ChiTu) RecordPicture(r Record) (image.Image, bool) { return c.picture(r.File), false }
+// RecordPicture returns the preview of the file of a print, or nil. File is the name of the file
+// on the card, or the key of the print ("resin-<start>") when the deck did not know it.
+func (c *ChiTu) RecordPicture(r Record) (image.Image, bool) {
+	return c.picture(r.File), false
+}
+
+// header returns the header of the copy of the file name in UploadDir, or nil. The caller holds
+// no lock.
+func (c *ChiTu) header(name string) *chitu.Sliced {
+	if c.UploadDir == "" || name == "" {
+		return nil
+	}
+	name = filepath.Base(name)
+	c.mu.Lock()
+	h, ok := c.headers[name]
+	c.mu.Unlock()
+	if ok {
+		return h
+	}
+	f, err := os.Open(filepath.Join(c.UploadDir, name))
+	if err == nil {
+		buf := make([]byte, 112)
+		if _, err = io.ReadFull(f, buf); err == nil {
+			h, _ = chitu.ReadSliced(buf)
+		}
+		f.Close()
+	}
+	c.mu.Lock()
+	if c.headers == nil {
+		c.headers = map[string]*chitu.Sliced{}
+	}
+	c.headers[name] = h
+	c.mu.Unlock()
+	return h
+}
 
 // DeleteFile deletes the file name from the card of the board (M30 <name>), and checks the list of
 // the card after it. It deletes no file during a print or an upload.
@@ -742,8 +798,9 @@ func uploadError(err error, at, size int64) error {
 		return fmt.Errorf("No answer from the printer at %d%%", pct)
 	}
 	if strings.Contains(err.Error(), "write dat") {
-		// The answer of the Phenom when it cannot write to its card, for example a full card.
-		return fmt.Errorf("The printer could not write to its card at %d%%: delete old files", pct)
+		// The answer of the Phenom when it cannot write to its card. The card of the Phenom of
+		// 2026-10-30 had free space, so the cause is not known.
+		return fmt.Errorf("The printer could not write to its card at %d%%", pct)
 	}
 	msg := strings.ReplaceAll(err.Error(), "chitu: ", "")
 	return fmt.Errorf("%s (at %d%%)", msg, pct)

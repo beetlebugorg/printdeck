@@ -54,6 +54,13 @@ const (
 
 var UploadStall = time.Minute
 
+// uploadWriteTries is the most answers "Error:write dat" in one upload, and uploadWritePause the
+// wait after each of them.
+const (
+	uploadWriteTries = 5
+	uploadWritePause = 3 * time.Second
+)
+
 // Upload sends the size bytes of r to the card of the board as the file name. progress, when not
 // nil, gets the bytes that the board took. It uses one socket for the whole upload, so the board
 // sends each answer to it.
@@ -113,6 +120,7 @@ func (c *Client) Upload(ctx context.Context, name string, r io.ReaderAt, size in
 	}
 	chunk := make([]byte, UploadChunk)
 	var off int64
+	writeErrs := 0
 	for off < size {
 		n, err := r.ReadAt(chunk[:min(UploadChunk, size-off)], off)
 		if err != nil && err != io.EOF {
@@ -121,6 +129,14 @@ func (c *Client) Upload(ctx context.Context, name string, r io.ReaderAt, size in
 		a, err := ask(MakeDataPacket(chunk[:n], off), uploadAnswerWait)
 		if err != nil {
 			return fmt.Errorf("chitu: the packet at %d: %w", off, err)
+		}
+		if strings.Contains(a, "write dat") && writeErrs < uploadWriteTries {
+			// The board could not write the packet to its card. It stalled before on the same
+			// card, so the deck waits and sends the packet again.
+			writeErrs++
+			time.Sleep(uploadWritePause)
+			drain()
+			continue
 		}
 		if m := resendRE.FindStringSubmatch(a); m != nil {
 			to, _ := strconv.ParseInt(m[1], 10, 64)

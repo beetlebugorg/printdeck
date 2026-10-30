@@ -383,7 +383,17 @@ func (p *projectLink) printRequest(r printer.Record) cloud.PrintRequest {
 func (p *projectLink) recordPicture(r printer.Record) []byte {
 	kl, ok := p.k.(*printer.Klippy)
 	if !ok {
-		return nil // the deck draws no picture of a print of a resin printer yet
+		// A resin printer: the preview in the deck's copy of the sliced file, as the printer shows
+		// it.
+		img, _ := p.k.RecordPicture(r)
+		if img == nil {
+			return nil
+		}
+		var buf bytes.Buffer
+		if jpeg.Encode(&buf, img, &jpeg.Options{Quality: 85}) != nil {
+			return nil
+		}
+		return buf.Bytes()
 	}
 	for range 60 {
 		img, loading := kl.View.CloudRecordPicture(r)

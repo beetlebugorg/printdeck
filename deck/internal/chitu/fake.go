@@ -30,6 +30,8 @@ type FakeBoard struct {
 	Uploaded map[string][]byte
 	// SaveNoOK answers M29 with "Done saving file!" and no "ok", as the Phenom did once.
 	SaveNoOK bool
+	// WriteErrors is the count of the next data packets that get "Error:write dat".
+	WriteErrors int
 	// LoseData is the count of the next data packets that the board loses, with no answer.
 	LoseData int
 }
@@ -187,6 +189,10 @@ func (b *FakeBoard) data(p []byte) (answer string, ok bool) {
 	if b.LoseData > 0 {
 		b.LoseData--
 		return "", true
+	}
+	if b.WriteErrors > 0 {
+		b.WriteErrors--
+		return "Error:write dat", true
 	}
 	if off != len(b.upData) {
 		return fmt.Sprintf("resend %d,offset error:%d", len(b.upData), off), true

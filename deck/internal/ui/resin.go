@@ -83,7 +83,7 @@ func (a *App) resinKeys(c *gfx.Canvas, keys image.Rectangle, st printer.State) {
 func (a *App) resinView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 	window(c, box)
 	a.region("Print", box)
-	if img := a.Printer.FilePicture(printer.File{Path: st.Title}, ""); img != nil && box.Dy() > 260 {
+	if img := a.Printer.FilePicture(printer.File{Path: st.File}, ""); img != nil && box.Dy() > 260 {
 		pic, rest := kit.Rows(box, 0, kit.Fr(1), kit.Px(200))[0], kit.Rows(box, 0, kit.Fr(1), kit.Px(200))[1]
 		c.Cover(kit.Inset(pic, 16, 16, 16, 0), img)
 		box = rest
@@ -99,7 +99,7 @@ func (a *App) resinView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 	if w := int(float64(bar.Dx()) * max(0, min(1, st.Completion/100))); w > 0 {
 		c.RoundRect(image.Rect(bar.Min.X, bar.Min.Y, bar.Min.X+w, bar.Max.Y), 3, lcdInk)
 	}
-	if a.Printer.FilePicture(printer.File{Path: st.Title}, "") == nil {
+	if a.Printer.FilePicture(printer.File{Path: st.File}, "") == nil {
 		c.Text(rows[4], "No preview: the deck has no copy of the file.", gfx.Face(false, 15), lcdDim, gfx.Center)
 	}
 }
