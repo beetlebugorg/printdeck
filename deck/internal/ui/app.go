@@ -749,6 +749,21 @@ func clockText(t time.Time, clock24 bool) string {
 	return t.Format("3:04 PM")
 }
 
+// whenText is the clock time of t, with its day when t is not on the day of now: "3:04 PM",
+// "Tomorrow 3:04 PM", or "Sat 3:04 PM".
+func whenText(t, now time.Time, clock24 bool) string {
+	y, m, d := t.Date()
+	ny, nm, nd := now.Date()
+	ty, tm, td := now.AddDate(0, 0, 1).Date()
+	switch {
+	case y == ny && m == nm && d == nd:
+		return clockText(t, clock24)
+	case y == ty && m == tm && d == td:
+		return "Tomorrow " + clockText(t, clock24)
+	}
+	return t.Format("Mon") + " " + clockText(t, clock24)
+}
+
 // clockLine tells the clock of the screens.
 func clockLine(clock24 bool) string {
 	if clock24 {

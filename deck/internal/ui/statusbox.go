@@ -188,7 +188,7 @@ func (a *App) panelLines(st printer.State) panelText {
 		ends := ""
 		if st.HasTimeLeft {
 			p.side, p.short = hm(st.TimeLeft)+" left", hm(st.TimeLeft)
-			ends = "Ends " + clockText(now.Add(st.TimeLeft), a.Clock24) + " · "
+			ends = "Ends " + whenText(now.Add(st.TimeLeft), now, a.Clock24) + " · "
 		}
 		p.msg = or(st.Message, ends+hm(st.Elapsed)+" so far")
 		p.detail, p.shortDetail = a.layerDetail(st)
@@ -287,9 +287,31 @@ func (a *App) panelProject(st printer.State) (string, bool) {
 	return "No project · tap to pick", true
 }
 
-// pickNextProject opens the choice of the project of the print now.
+// pickNextProject opens the choice of the project of the print now. A resin print can also get a
+// name in place of the name of its file.
 func (a *App) pickNextProject() {
-	a.askProject(a.Printer.State().Name(), a.Printer.NextProject(), a.setNextProject)
+	name := a.Printer.State().Name()
+	project := func() { a.askProject(name, a.Printer.NextProject(), a.setNextProject) }
+	t, ok := a.Printer.(interface{ SetTitle(string) })
+	if !ok || !a.resin() {
+		project()
+		return
+	}
+	where := "No project"
+	if p := a.Printer.NextProject(); p != "" {
+		where = fitText(p, 260)
+	}
+	a.confirm = &confirmBox{question: fitText(name, 300), choices: []menuItem{
+		{"Project", where, dim, project},
+		{"Name", "A better name for the pages", dim, func() {
+			a.textKB = &keyboard{title: "Name of the print", value: name, max: 80, ok: "Save", cancel: "Back",
+				shift: true, back: func() { a.textKB = nil },
+				done: func(v string) {
+					a.textKB = nil
+					t.SetTitle(v)
+				}}
+		}},
+	}}
 }
 
 // filesLine is the line of the files on the card of a resin printer in the panel.

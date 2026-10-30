@@ -171,3 +171,16 @@ func TestUploadPanelAfterPrint(t *testing.T) {
 		t.Errorf("panel %+v", p)
 	}
 }
+
+// An end on another day has its day.
+func TestWhenText(t *testing.T) {
+	now := time.Date(2026, 10, 30, 20, 0, 0, 0, time.UTC)
+	for _, c := range []struct {
+		at   time.Duration
+		want string
+	}{{time.Hour, "9:00 PM"}, {16 * time.Hour, "Tomorrow 12:00 PM"}, {50 * time.Hour, "Sun 10:00 PM"}} {
+		if got := whenText(now.Add(c.at), now, false); got != c.want {
+			t.Errorf("%v: %q, want %q", c.at, got, c.want)
+		}
+	}
+}

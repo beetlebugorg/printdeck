@@ -6,6 +6,8 @@ import (
 	"image/color"
 	"io"
 	"math"
+
+	xdraw "golang.org/x/image/draw"
 )
 
 // Model is the part of a .cbddlp file as a grid of cells: about 1 mm across, and the same height,
@@ -17,8 +19,9 @@ type Model struct {
 	layerOf []int
 }
 
-// modelCell is the size of a cell of the model in pixels of the screen of the printer.
-const modelCell = 16
+// modelCell is the size of a cell of the model in pixels of the screen of the printer: about
+// 0.6 mm on the Phenom.
+const modelCell = 8
 
 // ReadModel reads the layers of the .cbddlp file r with the header h into a Model. It reads a
 // layer for each modelCell pixels of height.
@@ -71,98 +74,141 @@ func (m *Model) at(x, y, z int) bool {
 
 // Draw draws the model w x h pixels big, from the front and the right and over it, with the first
 // layer at the bottom as the slicer shows it. The cells of the layers up to done are in the color
-// cured, and the others in gray, so the picture shows how far the print is.
+// cured, and the others in gray, so the picture shows how far the print is. It draws at twice the
+// size and makes the picture smaller, for smooth edges, with a dark line where a surface is in
+// front of another.
 func (m *Model) Draw(w, h, done int, cured color.RGBA) *image.RGBA {
-	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	const ss = 2 // the supersampling
+	W, H := w*ss, h*ss
+	big := image.NewRGBA(image.Rect(0, 0, W, H))
 	bg := color.RGBA{27, 28, 26, 255}
-	for i := 0; i < len(img.Pix); i += 4 {
-		img.Pix[i], img.Pix[i+1], img.Pix[i+2], img.Pix[i+3] = bg.R, bg.G, bg.B, 255
+	for i := 0; i < len(big.Pix); i += 4 {
+		big.Pix[i], big.Pix[i+1], big.Pix[i+2], big.Pix[i+3] = bg.R, bg.G, bg.B, 255
 	}
+	out := image.NewRGBA(image.Rect(0, 0, w, h))
 	// The bounds of the part, so the picture shows the part and not the whole plate.
 	x0, y0, x1, y1 := m.W, m.H, -1, -1
 	for z := 0; z < m.D; z++ {
-		for y := 0; y < m.H; y++ {
-			for x := 0; x < m.W; x++ {
-				if m.at(x, y, z) {
-					x0, y0, x1, y1 = min(x0, x), min(y0, y), max(x1, x), max(y1, y)
-				}
+		row := m.cells[z*m.H*m.W : (z+1)*m.H*m.W]
+		for i, on := range row {
+			if on {
+				x, y := i%m.W, i/m.W
+				x0, y0, x1, y1 = min(x0, x), min(y0, y), max(x1, x), max(y1, y)
 			}
 		}
 	}
 	if x1 < 0 {
-		return img
+		xdraw.ApproxBiLinear.Scale(out, out.Bounds(), big, big.Bounds(), xdraw.Src, nil)
+		return out
 	}
 	// The view: a turn of 30 degrees about the vertical, and 35 degrees down.
 	yaw, pitch := 30*math.Pi/180, 35*math.Pi/180
-	cy, sy, cp, sp := math.Cos(yaw), math.Sin(yaw), math.Cos(pitch), math.Sin(pitch)
-	cx, cyy, cz := float64(x0+x1)/2, float64(y0+y1)/2, float64(m.D)/2
-	project := func(x, y, z float64) (sx, sy2, depth float64) {
+	cyw, syw, cp, sp := math.Cos(yaw), math.Sin(yaw), math.Cos(pitch), math.Sin(pitch)
+	cx, cyy, cz := float64(x0+x1+1)/2, float64(y0+y1+1)/2, float64(m.D)/2
+	project := func(x, y, z float64) (sx, sy, depth float64) {
 		// The model: X to the right, Y to the back (the rows of the screen go to the front), Z up.
-		px, py, pz := x-cx, cyy-y, z-cz
-		rx := px*cy + py*sy
-		ry := -px*sy + py*cy
 		// The camera is at the front and over the part: a cell at the back is higher in the
 		// picture, and a cell at the front or at the top is nearer.
+		px, py, pz := x-cx, cyy-y, z-cz
+		rx := px*cyw + py*syw
+		ry := -px*syw + py*cyw
 		return rx, pz*cp + ry*sp, -ry*cp + pz*sp
 	}
-	// The scale: the corners of the bounds fit in the picture.
 	minX, minY, maxX, maxY := math.Inf(1), math.Inf(1), math.Inf(-1), math.Inf(-1)
-	for _, c := range [][3]float64{{float64(x0), float64(y0), 0}, {float64(x1 + 1), float64(y0), 0}, {float64(x0), float64(y1 + 1), 0},
-		{float64(x1 + 1), float64(y1 + 1), 0}, {float64(x0), float64(y0), float64(m.D)}, {float64(x1 + 1), float64(y0), float64(m.D)},
-		{float64(x0), float64(y1 + 1), float64(m.D)}, {float64(x1 + 1), float64(y1 + 1), float64(m.D)}} {
-		sx, sy2, _ := project(c[0], c[1], c[2])
-		minX, maxX, minY, maxY = math.Min(minX, sx), math.Max(maxX, sx), math.Min(minY, sy2), math.Max(maxY, sy2)
+	for _, cx3 := range []float64{float64(x0), float64(x1 + 1)} {
+		for _, cy3 := range []float64{float64(y0), float64(y1 + 1)} {
+			for _, cz3 := range []float64{0, float64(m.D)} {
+				sx, sy, _ := project(cx3, cy3, cz3)
+				minX, maxX, minY, maxY = math.Min(minX, sx), math.Max(maxX, sx), math.Min(minY, sy), math.Max(maxY, sy)
+			}
+		}
 	}
-	scale := 0.9 * math.Min(float64(w)/(maxX-minX), float64(h)/(maxY-minY))
-	ox, oy := float64(w)/2-scale*(minX+maxX)/2, float64(h)/2+scale*(minY+maxY)/2
-	zbuf := make([]float64, w*h)
+	scale := 0.92 * math.Min(float64(W)/(maxX-minX), float64(H)/(maxY-minY))
+	ox, oy := float64(W)/2-scale*(minX+maxX)/2, float64(H)/2+scale*(minY+maxY)/2
+	zbuf := make([]float32, W*H)
 	for i := range zbuf {
-		zbuf[i] = math.Inf(-1)
+		zbuf[i] = float32(math.Inf(-1))
 	}
 	// The light comes from the front left and from over the part.
-	lx, ly, lz := -0.4, -0.6, 0.7
+	lx, ly, lz := -0.45, -0.55, 0.7
 	ln := math.Sqrt(lx*lx + ly*ly + lz*lz)
 	lx, ly, lz = lx/ln, ly/ln, lz/ln
-	size := int(math.Ceil(scale)) + 1
+	size := int(math.Ceil(scale*1.15)) + 1
+	gray := color.RGBA{158, 160, 164, 255}
 	for z := 0; z < m.D; z++ {
+		base := gray
+		if m.layerOf[z] <= done {
+			base = cured
+		}
 		for y := y0; y <= y1; y++ {
 			for x := x0; x <= x1; x++ {
 				if !m.at(x, y, z) {
 					continue
 				}
-				// The normal from the empty neighbours; a cell with none is inside.
-				nx := b2f(!m.at(x+1, y, z)) - b2f(!m.at(x-1, y, z))
-				ny := b2f(!m.at(x, y-1, z)) - b2f(!m.at(x, y+1, z))
-				nz := b2f(!m.at(x, y, z+1)) - b2f(!m.at(x, y, z-1))
-				if nx == 0 && ny == 0 && nz == 0 {
-					if m.at(x+1, y, z) && m.at(x-1, y, z) && m.at(x, y+1, z) && m.at(x, y-1, z) && m.at(x, y, z+1) && m.at(x, y, z-1) {
-						continue
+				if m.at(x+1, y, z) && m.at(x-1, y, z) && m.at(x, y+1, z) && m.at(x, y-1, z) && m.at(x, y, z+1) && m.at(x, y, z-1) {
+					continue // inside the part
+				}
+				// The normal: the slope of the cells over the 3 x 3 x 3 cells around, which is
+				// smoother than the six neighbours.
+				var nx, ny, nz float64
+				for dz := -1; dz <= 1; dz++ {
+					for dy := -1; dy <= 1; dy++ {
+						for dx := -1; dx <= 1; dx++ {
+							if (dx != 0 || dy != 0 || dz != 0) && !m.at(x+dx, y+dy, z+dz) {
+								nx += float64(dx)
+								ny -= float64(dy) // the rows go to the front: -Y
+								nz += float64(dz)
+							}
+						}
 					}
-					nz = 1
 				}
 				nl := math.Sqrt(nx*nx + ny*ny + nz*nz)
-				shade := 0.35 + 0.65*math.Max(0, (nx*lx+ny*ly+nz*lz)/nl)
-				base := color.RGBA{150, 152, 156, 255}
-				if m.layerOf[z] <= done {
-					base = cured
+				if nl == 0 {
+					nz, nl = 1, 1
 				}
-				col := color.RGBA{uint8(float64(base.R) * shade), uint8(float64(base.G) * shade), uint8(float64(base.B) * shade), 255}
-				sx, sy2, depth := project(float64(x)+0.5, float64(y)+0.5, float64(z)+0.5)
-				px, py := int(ox+sx*scale), int(oy-sy2*scale)
-				for dy := -size / 2; dy <= size/2; dy++ {
-					for dx := -size / 2; dx <= size/2; dx++ {
-						qx, qy := px+dx, py+dy
-						if qx < 0 || qy < 0 || qx >= w || qy >= h || zbuf[qy*w+qx] >= depth {
+				diffuse := math.Max(0, (nx*lx+ny*ly+nz*lz)/nl)
+				shade := 0.32 + 0.68*diffuse
+				col := color.RGBA{uint8(math.Min(255, float64(base.R)*shade)), uint8(math.Min(255, float64(base.G)*shade)),
+					uint8(math.Min(255, float64(base.B)*shade)), 255}
+				sx, sy, depth := project(float64(x)+0.5, float64(y)+0.5, float64(z)+0.5)
+				px, py := int(ox+sx*scale), int(oy-sy*scale)
+				d := float32(depth)
+				for qy := py - size/2; qy <= py+size/2; qy++ {
+					if qy < 0 || qy >= H {
+						continue
+					}
+					for qx := px - size/2; qx <= px+size/2; qx++ {
+						if qx < 0 || qx >= W || zbuf[qy*W+qx] >= d {
 							continue
 						}
-						zbuf[qy*w+qx] = depth
-						img.SetRGBA(qx, qy, col)
+						zbuf[qy*W+qx] = d
+						o := big.PixOffset(qx, qy)
+						big.Pix[o], big.Pix[o+1], big.Pix[o+2] = col.R, col.G, col.B
 					}
 				}
 			}
 		}
 	}
-	return img
+	// The outline: a dark line where the depth jumps, at the edge of the part and where one
+	// surface is in front of another.
+	edge := float32(2.5)
+	for y := 1; y < H-1; y++ {
+		for x := 1; x < W-1; x++ {
+			z := zbuf[y*W+x]
+			if math.IsInf(float64(z), -1) {
+				continue
+			}
+			for _, n := range [4]float32{zbuf[y*W+x-1], zbuf[y*W+x+1], zbuf[(y-1)*W+x], zbuf[(y+1)*W+x]} {
+				if math.IsInf(float64(n), -1) || z-n > edge {
+					o := big.PixOffset(x, y)
+					big.Pix[o], big.Pix[o+1], big.Pix[o+2] = big.Pix[o]/3, big.Pix[o+1]/3, big.Pix[o+2]/3
+					break
+				}
+			}
+		}
+	}
+	xdraw.CatmullRom.Scale(out, out.Bounds(), big, big.Bounds(), xdraw.Src, nil)
+	return out
 }
 
 func b2f(b bool) float64 {

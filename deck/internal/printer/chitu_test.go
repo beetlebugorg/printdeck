@@ -533,3 +533,24 @@ func TestChiTuCopyBySize(t *testing.T) {
 		t.Errorf("copy %q", p)
 	}
 }
+
+// A name for the print replaces the name of its file, and stays through a restart of the deck.
+func TestChiTuTitle(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Now()
+	c := NewChiTu("127.0.0.1:1", "Phenom", &History{})
+	c.PrintStore = filepath.Join(dir, "resin-print.json")
+	c.files = []chitu.File{{Name: "resin_phenom_plate.cbddlp", Size: 1000}}
+	c.update(chitu.Status{Read: 10, Size: 1000, Seconds: 60}, now)
+	c.SetTitle("Shoulder pieces")
+	if st := c.State(); st.Name() != "Shoulder pieces" {
+		t.Fatalf("name %q", st.Name())
+	}
+	again := NewChiTu("127.0.0.1:1", "Phenom", &History{})
+	again.PrintStore = c.PrintStore
+	again.files = c.files
+	again.update(chitu.Status{Read: 20, Size: 1000, Seconds: 120}, now.Add(time.Minute))
+	if st := again.State(); st.Name() != "Shoulder pieces" {
+		t.Errorf("after a restart: %q", st.Name())
+	}
+}

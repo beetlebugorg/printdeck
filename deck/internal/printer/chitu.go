@@ -70,6 +70,7 @@ type ChiTu struct {
 	startAfter  string                   // the file to print when its upload ends, or ""
 	stopSend    context.CancelFunc       // stops the upload now (CancelSend)
 	nextProject string                   // the project of the next print (SetNextProject)
+	title       string                   // the name that the user gave the print now, or ""
 	relisted    bool                     // the deck read the list of the card again for the print now
 	layerKey    string                   // the file and the layer of layerImg
 	layerImg    image.Image              // the last picture of LayerPicture
@@ -87,6 +88,9 @@ type ChiTu struct {
 // chituHoldEvery is the time between two looks at the board while an upload waits for the end of
 // a print.
 var chituHoldEvery = 30 * time.Second
+
+// chituModelsKept is the most 3D models in memory.
+const chituModelsKept = 3
 
 // chituUploadsKept is the count of the copies in UploadDir.
 const chituUploadsKept = 8
@@ -194,7 +198,7 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 		if c.path == "" || s.Read < was.Read && was.Printing() {
 			// A new print: the board does not give the name of its file in M4000.
 			c.started = now.Add(-time.Duration(s.Seconds) * time.Second)
-			c.path = "resin-" + strconv.FormatInt(c.started.Unix(), 10)
+			c.path, c.title = "resin-"+strconv.FormatInt(c.started.Unix(), 10), ""
 			if was.Size == 0 && c.lastAt.IsZero() {
 				// The first answer since the deck started: maybe a print from before the start.
 				c.resume(s)
@@ -312,6 +316,9 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 // the size of the file of the print, when one file has that size, else the name of the printer and
 // the start. M4000 has no name of the file. The caller holds mu.
 func (c *ChiTu) printName() string {
+	if c.title != "" {
+		return c.title
+	}
 	if f := c.printFile(); f != c.path {
 		return strings.TrimSuffix(strings.TrimSuffix(f, ".cbddlp"), ".ctb")
 	}
@@ -871,7 +878,7 @@ func (c *ChiTu) FilePicture(f File, _ string) image.Image {
 // on the card, or the key of the print ("resin-<start>") when the deck did not know it.
 func (c *ChiTu) RecordPicture(r Record) (image.Image, bool) {
 	if m := c.model(r.File); m != nil {
-		return m.Draw(480, 360, 1<<30, resinColor), false
+		return m.Draw(640, 480, 1<<30, resinColor), false
 	}
 	return c.picture(r.File), false
 }
@@ -1149,7 +1156,7 @@ func (c *ChiTu) SharePicture(st State, _ Bed) image.Image {
 		if !st.Printing {
 			done = 1 << 30
 		}
-		preview = m.Draw(480, 300, done, resinColor)
+		preview = m.Draw(640, 400, done, resinColor)
 	}
 	var layer image.Image
 	if st.Printing {
@@ -1163,8 +1170,8 @@ func (c *ChiTu) SharePicture(st State, _ Bed) image.Image {
 	case preview == nil:
 		return layer
 	}
-	// Two cells of 480 x 300, in the colors of the page of the printer: dark around the pictures.
-	const cw, ch, gap = 480, 300, 12
+	// Two cells of 640 x 400, in the colors of the page of the printer: dark around the pictures.
+	const cw, ch, gap = 640, 400, 12
 	out := image.NewRGBA(image.Rect(0, 0, 2*cw+gap, ch))
 	draw.Draw(out, out.Bounds(), image.NewUniform(color.RGBA{27, 28, 26, 255}), image.Point{}, draw.Src)
 	put := func(cell image.Rectangle, img image.Image) {
@@ -1186,6 +1193,7 @@ type savedPrint struct {
 	Path    string    `json:"path"`
 	Started time.Time `json:"started"`
 	Size    int64     `json:"size"`
+	Title   string    `json:"title,omitempty"` // the name that the user gave the print
 }
 
 // resumeSlack is the most difference between the start of a saved print and the start from the
@@ -1201,7 +1209,7 @@ func (c *ChiTu) resume(s chitu.Status) {
 		var sp savedPrint
 		if b, err := os.ReadFile(c.PrintStore); err == nil && json.Unmarshal(b, &sp) == nil &&
 			sp.Path != "" && sp.Size == s.Size && near(sp.Started) {
-			c.path, c.started = sp.Path, sp.Started
+			c.path, c.started, c.title = sp.Path, sp.Started, sp.Title
 			log.Printf("chitu: the deck goes on with the print %s", c.path)
 			return
 		}
@@ -1221,7 +1229,7 @@ func (c *ChiTu) savePrint(s chitu.Status) {
 	if c.PrintStore == "" {
 		return
 	}
-	b, _ := json.Marshal(savedPrint{Path: c.path, Started: c.started, Size: s.Size})
+	b, _ := json.Marshal(savedPrint{Path: c.path, Started: c.started, Size: s.Size, Title: c.title})
 	tmp := c.PrintStore + ".tmp"
 	if os.WriteFile(tmp, b, 0o644) == nil {
 		os.Rename(tmp, c.PrintStore)
@@ -1289,6 +1297,16 @@ func (c *ChiTu) readModel(name string) {
 	}
 	log.Printf("chitu: the model of %s: %d x %d x %d cells in %v", name, m.W, m.H, m.D, time.Since(start).Round(time.Millisecond))
 	c.mu.Lock()
+	// A model takes some MB: the deck keeps the models of the print now and of the last files.
+	for k, v := range c.models {
+		if len(c.models) <= chituModelsKept {
+			break
+		}
+		if v != nil && k != filepath.Base(c.st.File) {
+			delete(c.models, k)
+			delete(c.modelPics, k)
+		}
+	}
 	c.models[name] = m
 	c.mu.Unlock()
 }
@@ -1394,4 +1412,17 @@ func (c *ChiTu) copyPath(name string) string {
 		}
 	}
 	return p
+}
+
+// SetTitle gives the print now the name title in place of the name of its file, for the screens,
+// the share page, the project and the history. "" goes back to the name of the file.
+func (c *ChiTu) SetTitle(title string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.path == "" {
+		return
+	}
+	c.title = strings.TrimSpace(title)
+	c.st.Title = c.printName()
+	c.savePrint(c.last)
 }

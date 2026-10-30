@@ -114,6 +114,21 @@ func localTime(t time.Time) string {
 	return d.Call("toLocaleTimeString", js.Undefined(), o).String()
 }
 
+// localWhen is the time of t for the viewer, with its day when it is not today: "3:41 PM",
+// "tomorrow 3:41 PM", or "Sat 3:41 PM" in the next week.
+func localWhen(t time.Time) string {
+	date := js.Global().Get("Date")
+	day := func(ms float64) string { return date.New(ms).Call("toDateString").String() }
+	now := float64(time.Now().UnixMilli())
+	switch day(float64(t.UnixMilli())) {
+	case day(now):
+		return localTime(t)
+	case day(now + 86400000):
+		return "tomorrow " + localTime(t)
+	}
+	return localDay(t)
+}
+
 // localDay is the day and time of t for the viewer, for example "Wed 3:41 PM".
 func localDay(t time.Time) string {
 	d := js.Global().Get("Date").New(float64(t.UnixMilli()))
@@ -528,7 +543,7 @@ func (s *share) render(st wire.ShareStatus) {
 		}
 		if st.State == "done" && st.Process != "resin" {
 			if st.ReadyLeft > 0 {
-				line += " The bed cools: the part comes off easily at about " + localTime(st.Updated.Add(time.Duration(st.ReadyLeft)*time.Second)) + "."
+				line += " The bed cools: the part comes off easily at about " + localWhen(st.Updated.Add(time.Duration(st.ReadyLeft)*time.Second)) + "."
 			} else {
 				line += " The bed is cool."
 			}
@@ -571,7 +586,7 @@ func (s *share) render(st wire.ShareStatus) {
 	setText("leftLab", "Time left")
 	setText("leftSub", "")
 	if st.TimeLeft >= 0 && !ended {
-		setText("leftSub", "Done about "+localTime(st.Updated.Add(time.Duration(st.TimeLeft)*time.Second)))
+		setText("leftSub", "Done about "+localWhen(st.Updated.Add(time.Duration(st.TimeLeft)*time.Second)))
 	}
 	if ended {
 		setText("leftLab", "Print time")

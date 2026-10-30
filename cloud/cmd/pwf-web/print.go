@@ -198,7 +198,7 @@ func drawLive(live []wire.ProjectLive) {
 			}
 			facts = append(facts, now)
 			if l.Left > 0 {
-				facts = append(facts, "About "+leftText(l.Left)+" left")
+				facts = append(facts, "About "+leftText(l.Left)+" left · done "+localWhen(time.Now().Add(time.Duration(l.Left)*time.Second)))
 			}
 		}
 		facts = append(facts, "Started "+localTime(l.Started))
