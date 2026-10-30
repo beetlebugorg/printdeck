@@ -38,7 +38,10 @@ type Meta struct {
 	Color string
 	// Title is the name of the print from the line ";Printdeck title: Hex planter" in the first
 	// lines of the file, or "". The Printdeck plugin for Cura writes it.
-	Title     string
+	Title string
+	// Project is the project of the print from the line ";Printdeck project: Robot dog" in the
+	// first lines of the file, or "". The Printdeck plugin for Cura writes it.
+	Project   string
 	Thumbnail image.Image
 }
 
@@ -86,8 +89,12 @@ func Parse(r io.ReaderAt, size int64) (Meta, error) {
 		s.Buffer(make([]byte, 64<<10), 1<<20)
 		for n := 0; s.Scan(); n++ {
 			if i == 0 && n < titleLines {
-				if t, ok := title(s.Text()); ok {
+				if t, ok := tag(s.Text(), "printdeck title:"); ok {
 					p.Title = t
+					continue
+				}
+				if t, ok := tag(s.Text(), "printdeck project:"); ok {
+					p.Project = t
 					continue
 				}
 			}
@@ -104,10 +111,10 @@ func Parse(r io.ReaderAt, size int64) (Meta, error) {
 	return p.Meta, nil
 }
 
-// title reads the line ";Printdeck title: Hex planter". The case of "Printdeck title" is free.
-func title(l string) (string, bool) {
+// tag reads a line of the Printdeck plugin, for example ";Printdeck title: Hex planter" for the
+// key "printdeck title:". The case of the key is free.
+func tag(l, key string) (string, bool) {
 	l = strings.TrimSpace(strings.TrimPrefix(l, ";"))
-	const key = "printdeck title:"
 	if len(l) < len(key) || !strings.EqualFold(l[:len(key)], key) {
 		return "", false
 	}

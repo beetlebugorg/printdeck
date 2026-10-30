@@ -32,6 +32,9 @@ The plugin uses the address and the API key of the OctoPrint connection. It need
 - The deck shows the name of the print, for example "Hex planter" in place of
   "TAZWH_hex_planter_v3.gcode": the job name without the printer prefix, or the name of the one
   model on the build plate.
+- The Project box on the roll card puts the next prints in a project of the deck. Pick a project,
+  or type a new name and press Enter. The deck puts the print in the project at its start. A
+  project that you pick on the deck wins. The choice stays until Cura closes.
 
 ## Colors
 

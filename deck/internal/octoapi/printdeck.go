@@ -90,6 +90,9 @@ type printdeckJSON struct {
 	// LCD is the status screen of the printer display: the state, the message, the heaters, the
 	// fan (0 to 1), and the progress, for an app that draws the display.
 	LCD any `json:"lcd,omitempty"`
+	// Projects are the names of the projects of the history, the newest first, for the project
+	// pick of the plugin. Null when the deck has no history.
+	Projects []string `json:"projects"`
 }
 
 func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
@@ -112,6 +115,12 @@ func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
 		out.Spools = []spoolJSON{}
 		for _, sp := range s.Spools.List() {
 			out.Spools = append(out.Spools, rollJSON(sp))
+		}
+	}
+	if s.History != nil {
+		out.Projects = []string{}
+		for _, p := range printer.Projects(s.History()) {
+			out.Projects = append(out.Projects, p.Name)
 		}
 	}
 	if st := s.Printer.State(); st.Busy() {

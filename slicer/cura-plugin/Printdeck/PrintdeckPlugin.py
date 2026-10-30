@@ -12,7 +12,9 @@
 # - it writes the material of Cura into the header of each G-code file, so that the Printdeck asks
 #   before it prints a file for another material,
 # - it writes the name of the print into the header, so that the Printdeck shows "Hex planter" in
-#   place of "TAZWH_hex_planter_v3.gcode".
+#   place of "TAZWH_hex_planter_v3.gcode",
+# - it writes the project of the roll card into the header, so that the Printdeck puts the print
+#   in the project at its start.
 #
 # It asks the Printdeck every 10 seconds, on a thread, and changes Cura on the main thread.
 
@@ -33,9 +35,9 @@ from cura.CuraApplication import CuraApplication
 from . import deckscreen, logic, playsync
 
 try:
-    from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal
+    from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 except ImportError:  # Cura 4 (Cura LulzBot Edition)
-    from PyQt5.QtCore import QObject, pyqtProperty, pyqtSignal
+    from PyQt5.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
 
 class RollCard(QObject):
@@ -49,6 +51,8 @@ class RollCard(QObject):
         self._card = None
         self._printer = ""
         self._time = ""
+        self._projects = None
+        self._project = ""
 
     def setTime(self, line):
         """Sets the line with the print time of the Printdeck, or ""."""
@@ -104,6 +108,36 @@ class RollCard(QObject):
     @pyqtProperty(str, notify=changed)
     def warn(self):
         return self._get("warn", "")
+
+    # The project of the next prints: the deck puts each print of this Cura in it. It stays for
+    # the session of Cura.
+
+    def setProjects(self, names):
+        """Sets the projects of the deck, or None for a deck that has no projects."""
+        if names != self._projects:
+            self._projects = names
+            self.changed.emit()
+
+    @pyqtProperty("QVariantList", notify=changed)
+    def projects(self):
+        return list(self._projects or [])
+
+    @pyqtProperty(bool, notify=changed)
+    def hasProjects(self):
+        return self._projects is not None
+
+    @pyqtProperty(str, notify=changed)
+    def project(self):
+        return self._project
+
+    @pyqtSlot(str)
+    def choose(self, name):
+        """Sets the project of the next prints, or no project for ""."""
+        name = logic.project_name(name)
+        if name != self._project:
+            self._project = name
+            Logger.log("i", "Printdeck: the project of the prints is %r", name)
+            self.changed.emit()
 
 POLL_SECONDS = 10
 # The time between the answers while Play in the Preview follows the printer.
@@ -232,6 +266,7 @@ class PrintdeckPlugin(Extension):
             self._connected = True
             Logger.log("i", "Printdeck: connected")
         self._nameButton()
+        self._card.setProjects(status.get("projects"))
         self._sendMaterials()
         self._syncRolls()
         self._followRoll()
@@ -735,6 +770,8 @@ class PrintdeckPlugin(Extension):
                                      material.getMetaDataEntry("color_code") or "")
         if ";Printdeck title:" not in gcode_list[0]:
             lines += self._titleLine(plate)
+        if ";Printdeck project:" not in gcode_list[0]:
+            lines += logic.project_line(self._card.project)
         if lines:
             # At the end of the header: some programs read ;FLAVOR on the first line.
             if not gcode_list[0].endswith("\n"):

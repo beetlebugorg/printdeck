@@ -75,9 +75,9 @@ func TestMetaName(t *testing.T) {
 
 // The Printdeck plugin for Cura writes the title in the first lines of the file.
 func TestTitle(t *testing.T) {
-	g := ";Printdeck title:  Hex planter \n;FLAVOR:Marlin\n;Generated with Cura_SteamEngine 5.13.0\nG28\n"
+	g := ";Printdeck title:  Hex planter \n;Printdeck project: Garden planters\n;FLAVOR:Marlin\n;Generated with Cura_SteamEngine 5.13.0\nG28\n"
 	m, err := Parse(strings.NewReader(g), int64(len(g)))
-	if err != nil || m.Title != "Hex planter" {
+	if err != nil || m.Title != "Hex planter" || m.Project != "Garden planters" {
 		t.Errorf("%+v %v", m, err)
 	}
 	// A title line after the first lines is part of the print, for example a macro.

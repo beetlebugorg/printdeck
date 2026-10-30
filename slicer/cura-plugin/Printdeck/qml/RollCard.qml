@@ -1,11 +1,12 @@
 // The roll card next to the slice button: the roll in the Printdeck, a bar of the filament that is
-// left on it, and after a slice, the filament of the model. printdeckRoll is the RollCard of the
-// plugin, a property of the context of the card.
+// left on it, after a slice, the filament of the model, and the project of the next prints.
+// printdeckRoll is the RollCard of the plugin, a property of the context of the card.
 //
 // Cura puts the card in a row left of its action panel (ActionPanelWidget.qml): the row is centered
 // on a line two thick margins above the bottom of the panel. The card has the height, the frame and
 // the margins of the panel, and moves down so that its bottom is the bottom of the panel.
 import QtQuick 2.7
+import QtQuick.Controls 2.15
 
 import UM 1.5 as UM
 
@@ -142,6 +143,59 @@ Rectangle
             font: UM.Theme.getFont("default")
             wrapMode: Text.WordWrap
             color: UM.Theme.getColor("text")
+        }
+
+        // The project of the next prints: the Printdeck puts each print in it at its start. A
+        // name that the deck does not have makes a new project.
+        Row
+        {
+            visible: roll ? roll.hasProjects : false
+            width: parent.width
+            spacing: UM.Theme.getSize("default_margin").width
+
+            UM.Label
+            {
+                id: projectLabel
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Project"
+                font: UM.Theme.getFont("default")
+                color: UM.Theme.getColor("text_medium")
+            }
+            ComboBox
+            {
+                id: projectBox
+                width: parent.width - projectLabel.width - parent.spacing
+                editable: true
+
+                // The choices: No project, the project of the card when the deck does not have it
+                // yet, and the projects of the deck. sync leaves the box alone while the user types.
+                function sync()
+                {
+                    if (!roll || activeFocus) return
+                    var names = ["No project"]
+                    var now = roll.project
+                    if (now != "" && roll.projects.indexOf(now) < 0) names.push(now)
+                    names = names.concat(roll.projects)
+                    if (JSON.stringify(names) != JSON.stringify(model)) model = names
+                    currentIndex = now == "" ? 0 : names.indexOf(now)
+                }
+                function choose(name)
+                {
+                    roll.choose(name == "No project" ? "" : name)
+                    focus = false
+                    sync()
+                }
+
+                onActivated: function(index) { choose(model[index]) }
+                onAccepted: choose(editText)
+                onActiveFocusChanged: if (!activeFocus) sync()
+                Component.onCompleted: sync()
+                Connections
+                {
+                    target: roll
+                    function onChanged() { projectBox.sync() }
+                }
+            }
         }
     }
 }

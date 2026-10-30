@@ -219,6 +219,14 @@ class TestRollMaterial(unittest.TestCase):
         ]:
             self.assertEqual(logic.clean_name(name, abbr), want, name)
 
+    def test_projects(self):
+        s = logic.parse_status({"material": "PLA", "projects": ["Robot dog", "  Garden\nplanters ", 3, ""]})
+        self.assertEqual(s["projects"], ["Robot dog", "Garden planters"])
+        self.assertIsNone(logic.parse_status({"material": "PLA"})["projects"])
+        self.assertEqual(logic.project_line(" Robot  dog "), ";Printdeck project: Robot dog\n")
+        self.assertEqual(logic.project_line("x" * 50), ";Printdeck project: %s\n" % ("x" * 40))
+        self.assertEqual(logic.project_line("  "), "")
+
     def test_title_line(self):
         self.assertEqual(logic.title_line("LTAZW_hex_planter_v3", "hex_planter_v3", "LTAZW"), ";Printdeck title: Hex planter\n")
         # One model: its name. More models: the job name.

@@ -19,13 +19,38 @@ def parse_status(data):
         spools = [sp for sp in spools if isinstance(sp, dict) and sp.get("id")]
     else:
         spools = None
+    # projects are the names of the projects of the deck, or None from an older Printdeck.
+    projects = data.get("projects")
+    if isinstance(projects, list):
+        projects = [p for p in (project_name(x) for x in projects if isinstance(x, str)) if p]
+    else:
+        projects = None
     return {
         "material": str(data.get("material") or ""),
         "diameter": float(data.get("diameter") or 0),
         "spool": spool,
         "spools": spools,
         "job": job,
+        "projects": projects,
     }
+
+
+# The longest name of a project on the Printdeck, in characters.
+MAX_PROJECT = 40
+
+
+def project_name(name):
+    """The name of a project as the Printdeck keeps it: one line, no extra spaces, 40 characters
+    at most. It returns "" for no name."""
+    name = "".join(c for c in (name or "") if c.isprintable() or c.isspace())
+    return " ".join(name.split())[:MAX_PROJECT].strip()
+
+
+def project_line(name):
+    """The line that puts the print in a project on the Printdeck, for the header of the G-code:
+    ";Printdeck project: Robot dog". It returns "" for no project."""
+    name = project_name(name)
+    return ";Printdeck project: %s\n" % name if name else ""
 
 
 def same_material(a, b):

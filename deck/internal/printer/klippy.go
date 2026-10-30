@@ -75,6 +75,8 @@ type Klippy struct {
 	// The maintenance action that runs now, and the last one that ended (RunAction).
 	action      string
 	actionStart time.Time
+	// projectPath is the file of the print now after projectOfFile looked at it.
+	projectPath string
 	lastAction  ActionResult
 	// tiltByAction reports that the last bed tilt calibration ran as a maintenance action
 	// (RunAction), with a result to save. A print resets it.
@@ -739,6 +741,7 @@ func (k *Klippy) refresh(notify func()) {
 			k.Hist.setCool(key, seconds, from, room)
 		}
 	}
+	k.projectOfFile(st)
 	k.mu.Lock()
 	k.st = st
 	if st.Printing {
@@ -747,6 +750,28 @@ func (k *Klippy) refresh(notify func()) {
 	k.mu.Unlock()
 	k.View.Update(st)
 	notify()
+}
+
+// projectOfFile puts a print in the project of its file at its start: the line ";Printdeck
+// project:" of the Cura plugin. A project that the user picked on the deck wins.
+func (k *Klippy) projectOfFile(st State) {
+	if k.Hist == nil {
+		return
+	}
+	k.mu.Lock()
+	seen := k.projectPath
+	k.projectPath = ""
+	if st.Busy() {
+		k.projectPath = st.FilePath
+	}
+	k.mu.Unlock()
+	if !st.Busy() || st.FilePath == "" || st.FilePath == seen {
+		return
+	}
+	p := []rune(k.FileMeta(st.FilePath).Project)
+	if len(p) > 0 && k.Hist.NextProject(st.FilePath) == "" {
+		k.Hist.SetNextProject(st.FilePath, string(p[:min(len(p), MaxProject)]))
+	}
 }
 
 // klippyState makes the deck's State from the status of Klipper. down is why Klipper is not ready,
