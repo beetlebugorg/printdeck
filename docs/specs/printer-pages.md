@@ -30,7 +30,7 @@ The pages have the access rules of the project pages: passkey, members only.
 
 - three.js, an exact version from cdn.jsdelivr.net (an import map), with OrbitControls.
 - One GLB file for each printer model, in the static files of the web pages
-  (`web/models/<model>.glb`). The size target is 3 MB or less for each file.
+  (`deploy/web/assets/models/<model>.glb`). The size target is 3 MB or less for each file.
 - Each GLB has a node named `bed`. Its transform maps the coordinates of the printer (mm, X to
   the right, Y to the back, Z up, as in the G-code) to the scene. The part goes under this node.
 - A printer with no GLB of its model gets a plain model of its process: a box frame and a bed

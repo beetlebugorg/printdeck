@@ -111,44 +111,7 @@ func drawTiles(prints []wire.ProjectPrint, href func(wire.ProjectPrint) string) 
 	box.Set("textContent", "")
 	setHidden("noPrints", len(prints) > 0)
 	for _, p := range prints {
-		tile := el("a", "tile", "")
-		tile.Set("href", href(p))
-		pic := el("div", "pic", "")
-		if p.Model != "" {
-			img := el("img", "", "")
-			img.Set("src", p.Model)
-			img.Set("alt", "")
-			img.Set("loading", "lazy")
-			pic.Call("appendChild", img)
-		}
-		badges := el("div", "badges", "")
-		if t := resultText[p.Result]; t != "" {
-			badges.Call("appendChild", el("span", "fail", t))
-		}
-		if p.Frames > 0 {
-			badges.Call("appendChild", el("span", "", "Time lapse"))
-		}
-		pic.Call("appendChild", badges)
-		tile.Call("appendChild", pic)
-		body := el("div", "body", "")
-		body.Call("appendChild", el("strong", "", p.Name))
-		// The date on one line, the time and the filament on the next. Each fact stays on one line.
-		facts := []string{clock(p.Seconds)}
-		if p.Grams > 0 {
-			facts = append(facts, grams(p.Grams))
-		}
-		for i, f := range facts {
-			facts[i] = strings.ReplaceAll(f, " ", "\u00a0")
-		}
-		lines := el("div", "tfacts", "")
-		lines.Call("appendChild", el("div", "", shortDate(p.Ended)))
-		lines.Call("appendChild", el("div", "", strings.Join(facts, " · ")))
-		if name := tilePrinters[p.PrinterID]; name != "" {
-			lines.Call("appendChild", el("div", "", name))
-		}
-		body.Call("appendChild", lines)
-		tile.Call("appendChild", body)
-		box.Call("appendChild", tile)
+		box.Call("appendChild", printTile(p, href(p)))
 	}
 }
 
@@ -472,4 +435,47 @@ func playFrames(frames func() ([]string, int, error), n int, playing *int) {
 		}
 		time.Sleep(wait)
 	}
+}
+
+// printTile is the tile of the print p, a link to href: the picture, the badges, the name, and
+// the facts.
+func printTile(p wire.ProjectPrint, href string) js.Value {
+	tile := el("a", "tile", "")
+	tile.Set("href", href)
+	pic := el("div", "pic", "")
+	if p.Model != "" {
+		img := el("img", "", "")
+		img.Set("src", p.Model)
+		img.Set("alt", "")
+		img.Set("loading", "lazy")
+		pic.Call("appendChild", img)
+	}
+	badges := el("div", "badges", "")
+	if t := resultText[p.Result]; t != "" {
+		badges.Call("appendChild", el("span", "fail", t))
+	}
+	if p.Frames > 0 {
+		badges.Call("appendChild", el("span", "", "Time lapse"))
+	}
+	pic.Call("appendChild", badges)
+	tile.Call("appendChild", pic)
+	body := el("div", "body", "")
+	body.Call("appendChild", el("strong", "", p.Name))
+	// The date on one line, the time and the filament on the next. Each fact stays on one line.
+	facts := []string{clock(p.Seconds)}
+	if p.Grams > 0 {
+		facts = append(facts, grams(p.Grams))
+	}
+	for i, f := range facts {
+		facts[i] = strings.ReplaceAll(f, " ", "\u00a0")
+	}
+	lines := el("div", "tfacts", "")
+	lines.Call("appendChild", el("div", "", shortDate(p.Ended)))
+	lines.Call("appendChild", el("div", "", strings.Join(facts, " · ")))
+	if name := tilePrinters[p.PrinterID]; name != "" {
+		lines.Call("appendChild", el("div", "", name))
+	}
+	body.Call("appendChild", lines)
+	tile.Call("appendChild", body)
+	return tile
 }

@@ -83,6 +83,15 @@ func (a *app) route() {
 		a.showProject(args["x"], 0, args["p"])
 	case strings.HasPrefix(path, "/projects/"):
 		slug, n, _ := strings.Cut(strings.TrimPrefix(path, "/projects/"), "/")
+		if pr, ok := strings.CutPrefix(n, "printers/"); ok {
+			var nr wire.NameReply
+			if err := a.api("GET", "/names/"+slug, nil, &nr); err != nil {
+				a.failed(err)
+				return
+			}
+			a.showPrinterPage(nr.ID, pr)
+			return
+		}
 		a.showSlug(slug, n)
 	case a.kind == "member":
 		a.showProject(a.project, 0, "")
@@ -104,10 +113,13 @@ func projectPath(slug string, n int) string {
 }
 
 // The views of the page.
-var views = []string{"vSignIn", "vOwner", "vJoin", "vHome", "vMissing", "vProject", "vPublic", "vPrint"}
+var views = []string{"vSignIn", "vOwner", "vJoin", "vHome", "vMissing", "vProject", "vPublic", "vPrint", "vPrinter"}
 
 func show(id string) {
 	setHidden("loading", id != "")
+	if v := js.Global().Get("pwfView3d"); id != "vPrinter" && !v.IsUndefined() {
+		v.Call("hide")
+	}
 	for _, v := range views {
 		setHidden(v, v != id)
 	}
@@ -548,6 +560,7 @@ func (a *app) drawProject() {
 	setText("publicLink", v.Public)
 	a.drawPhotos()
 	drawPrints(v, func(p wire.ProjectPrint) string { return projectPath(v.Slug, p.N) })
+	drawProjectPrinters(v)
 	drawLive(v.Live)
 	if len(v.Live) > 0 {
 		setHidden("noPrints", true)

@@ -119,6 +119,9 @@ func contentType(key string) string {
 	if path.Ext(key) == "" {
 		return "text/html; charset=utf-8"
 	}
+	if path.Ext(key) == ".glb" {
+		return "model/gltf-binary"
+	}
 	if t := mime.TypeByExtension(path.Ext(key)); t != "" {
 		return t
 	}

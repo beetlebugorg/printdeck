@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="/assets/share.css">
 <link rel="stylesheet" href="/assets/app.css">
 <script src="/assets/pwf.js" defer></script>
+<script type="module" src="/assets/viewer3d.js"></script>
 </head>
 <body data-page="app">
 <div class="wrap">
@@ -99,6 +100,11 @@
     <p class="dim small" id="noPrints">No prints yet. On the deck, put a print in this project. The print comes here at its end.</p>
     <div class="tiles" id="prints"></div>
 
+    <div class="card" id="pPrinterCard" hidden>
+      <h2>Printers</h2>
+      <ul class="members printer-links" id="pPrinterList"></ul>
+    </div>
+
     <div class="card">
       <h2>Photos</h2>
       <label class="file"><input type="file" id="photoFile" accept="image/jpeg,image/png" multiple><span>Add photos</span></label>
@@ -142,6 +148,28 @@
     <div class="danger" id="dangerZone" hidden>
       <button type="button" class="link" id="deleteProject">Delete this project</button>
     </div>
+  </section>
+
+  <!-- One printer of a project: the 3D view, the numbers and the prints -->
+  <section class="view" id="vPrinter" hidden>
+    <a class="back" href="/projects" id="ptBack">Project</a>
+    <div class="phead">
+      <h1 id="ptName"></h1>
+      <p class="dim" id="ptKind"></p>
+    </div>
+    <div class="view3d" id="ptView" aria-label="A 3D model of the printer. Drag to turn it."></div>
+    <p class="dim small credit" id="ptCredit" hidden>The model of the TAZ Workhorse comes from the <a href="https://download.lulzbot.com/TAZ/TAZ_WE/v1.0.2/">LulzBot source files</a> (GPLv3 or later, CC BY-SA 4.0).</p>
+    <section class="lcd stats" aria-label="The printer in numbers">
+      <div class="row">
+        <div class="cell"><div class="lab">Prints</div><div class="big" id="ptPrints">0</div><div class="sub" id="ptPrintsSub"></div></div>
+        <div class="cell"><div class="lab">Print time</div><div class="big" id="ptTime">0:00</div><div class="sub" id="ptTimeSub"></div></div>
+        <div class="cell"><div class="lab" id="ptMatLab">Filament</div><div class="big" id="ptMat">0 g</div><div class="sub" id="ptMatSub"></div></div>
+      </div>
+    </section>
+    <h2 class="section">Prints on this printer</h2>
+    <p class="dim small" id="ptNoPrints">No prints of this project on this printer yet.</p>
+    <p class="dim small">Tap a print to put it on the bed. Tap it again to open it.</p>
+    <div class="tiles" id="ptPrints2"></div>
   </section>
 
   <!-- One print: the share page of a finished print -->
