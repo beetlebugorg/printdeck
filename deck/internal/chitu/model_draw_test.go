@@ -1,6 +1,7 @@
 package chitu
 
 import (
+	"encoding/binary"
 	"image/color"
 	"image/png"
 	"math"
@@ -12,14 +13,15 @@ import (
 // gray at the top. PWF_MODEL_PNG writes the picture, to look at it.
 func TestModelDraw(t *testing.T) {
 	m := &Model{W: 60, H: 40, D: 50}
-	m.cells = make([]bool, m.W*m.H*m.D)
 	for z := 0; z < m.D; z++ {
 		m.layerOf = append(m.layerOf, z*10+1)
 		for y := 0; y < m.H; y++ {
 			for x := 0; x < m.W; x++ {
 				box := z < 15 && x >= 10 && x < 50 && y >= 8 && y < 32
 				tower := math.Hypot(float64(x-30), float64(y-20)) < 8
-				m.cells[(z*m.H+y)*m.W+x] = box || tower
+				if box || tower {
+					m.set(x, y, z)
+				}
 			}
 		}
 	}
@@ -49,4 +51,22 @@ func absDiff(a, b uint8) uint8 {
 		return a - b
 	}
 	return b - a
+}
+
+// The mesh of a box of 2 x 1 x 1 cells: four faces along X (each a run of 2), and the two ends.
+func TestModelMesh(t *testing.T) {
+	m := &Model{W: 2, H: 1, D: 1, layerOf: []int{1}}
+	m.set(0, 0, 0)
+	m.set(1, 0, 0)
+	b := m.Mesh(0.6, 0.6)
+	if string(b[:4]) != "PDM1" {
+		t.Fatalf("magic %q", b[:4])
+	}
+	n := binary.LittleEndian.Uint32(b[20:])
+	if n != 6 {
+		t.Errorf("%d faces, want 6", n)
+	}
+	if len(b) != 24+4+6*8 {
+		t.Errorf("%d bytes", len(b))
+	}
 }

@@ -73,6 +73,8 @@ type ShareStatus struct {
 	LayerStarted time.Time `json:"layer_started,omitzero"`
 	LayerTimes   []float64 `json:"layer_times,omitempty"`
 	Plan         int       `json:"plan,omitempty"`
+	// Part is 1 when part.bin is up: the mesh of a resin part for the 3D view of the page.
+	Part int `json:"part,omitempty"`
 	// Model goes up at each new model.jpg: the picture of the model, with the part that is
 	// printed in color.
 	Model int `json:"model,omitempty"`

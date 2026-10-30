@@ -1,6 +1,7 @@
 package chitu
 
 import (
+	"encoding/binary"
 	"errors"
 	"image"
 	"image/color"
@@ -13,15 +14,17 @@ import (
 // Model is the part of a .cbddlp file as a grid of cells: about 1 mm across, and the same height,
 // from every few layers. The deck draws it as the part looks (Draw), so a page shows what prints.
 type Model struct {
-	W, H, D int    // the cells across (X), deep (Y) and high (Z)
-	cells   []bool // [z][y][x]
+	W, H, D int      // the cells across (X), deep (Y) and high (Z)
+	cells   []uint64 // a bit for each cell, [z][y][x]
 	// layerOf is the first layer of each slice of cells, from 1.
 	layerOf []int
+	// CellMM is the width of a cell, and SliceMM the height of a slice, in mm.
+	CellMM, SliceMM float64
 }
 
 // modelCell is the size of a cell of the model in pixels of the screen of the printer: about
-// 0.6 mm on the Phenom.
-const modelCell = 8
+// 0.43 mm on the Phenom.
+const modelCell = 6
 
 // ReadModel reads the layers of the .cbddlp file r with the header h into a Model. It reads a
 // layer for each modelCell pixels of height.
@@ -39,7 +42,7 @@ func ReadModel(r io.ReaderAt, h *Sliced) (*Model, error) {
 		step = max(1, int(math.Round(pixelMM*modelCell/float64(h.LayerHeight))))
 	}
 	w := (int(h.ResX) + modelCell - 1) / modelCell
-	m := &Model{W: w}
+	m := &Model{W: w, CellMM: pixelMM * modelCell, SliceMM: float64(h.LayerHeight) * float64(step)}
 	for n := 0; n < int(h.Layers); n += step {
 		img, err := LayerImage(r, h, n, w)
 		if err != nil {
@@ -49,13 +52,22 @@ func ReadModel(r io.ReaderAt, h *Sliced) (*Model, error) {
 		if m.H == 0 {
 			m.W, m.H = b.Dx(), b.Dy()
 		}
-		slice := make([]bool, m.W*m.H)
+		if m.cells == nil {
+			m.cells = make([]uint64, 0, (m.W*m.H*int(h.Layers)/step+63)/64+1)
+		}
+		base := m.D * m.W * m.H
+		need := (base + m.W*m.H + 63) / 64
+		for len(m.cells) < need {
+			m.cells = append(m.cells, 0)
+		}
 		for y := 0; y < min(m.H, b.Dy()); y++ {
 			for x := 0; x < min(m.W, b.Dx()); x++ {
-				slice[y*m.W+x] = img.Pix[y*img.Stride+x] > 0
+				if img.Pix[y*img.Stride+x] > 0 {
+					i := base + y*m.W + x
+					m.cells[i/64] |= 1 << (i % 64)
+				}
 			}
 		}
-		m.cells = append(m.cells, slice...)
 		m.layerOf = append(m.layerOf, n+1)
 		m.D++
 	}
@@ -69,7 +81,17 @@ func (m *Model) at(x, y, z int) bool {
 	if x < 0 || y < 0 || z < 0 || x >= m.W || y >= m.H || z >= m.D {
 		return false
 	}
-	return m.cells[(z*m.H+y)*m.W+x]
+	i := (z*m.H+y)*m.W + x
+	return i/64 < len(m.cells) && m.cells[i/64]&(1<<(i%64)) != 0
+}
+
+// set makes the cell (x, y, z) full.
+func (m *Model) set(x, y, z int) {
+	i := (z*m.H+y)*m.W + x
+	for len(m.cells) <= i/64 {
+		m.cells = append(m.cells, 0)
+	}
+	m.cells[i/64] |= 1 << (i % 64)
 }
 
 // Draw draws the model w x h pixels big, from the front and the right and over it, with the first
@@ -89,11 +111,11 @@ func (m *Model) Draw(w, h, done int, cured color.RGBA) *image.RGBA {
 	// The bounds of the part, so the picture shows the part and not the whole plate.
 	x0, y0, x1, y1 := m.W, m.H, -1, -1
 	for z := 0; z < m.D; z++ {
-		row := m.cells[z*m.H*m.W : (z+1)*m.H*m.W]
-		for i, on := range row {
-			if on {
-				x, y := i%m.W, i/m.W
-				x0, y0, x1, y1 = min(x0, x), min(y0, y), max(x1, x), max(y1, y)
+		for y := 0; y < m.H; y++ {
+			for x := 0; x < m.W; x++ {
+				if m.at(x, y, z) {
+					x0, y0, x1, y1 = min(x0, x), min(y0, y), max(x1, x), max(y1, y)
+				}
 			}
 		}
 	}
@@ -216,4 +238,91 @@ func b2f(b bool) float64 {
 		return 1
 	}
 	return 0
+}
+
+// The mesh of a model for the 3D view of a page (part.bin), little-endian:
+//
+//	"PDM1", float32 the cell in mm (X and Y), float32 the slice in mm (Z),
+//	uint16 W, H, D, uint16 0, uint32 the count of the faces,
+//	uint32 the first layer of each of the D slices,
+//	then each face: uint16 x, y, z, uint8 side (0 -X, 1 +X, 2 -Y, 3 +Y, 4 -Z, 5 +Z), uint8 n.
+//
+// A face is a side of the cell (x, y, z) with no cell next to it. A face of the sides 2 to 5 goes
+// on along X for n cells. Y goes to the front, as the rows of the screen.
+
+// MeshLimit is the most faces of a mesh. A larger mesh comes from a model with cells twice as big.
+const MeshLimit = 150000
+
+// Mesh returns the mesh of the model, with cells of cellMM and slices of sliceMM.
+func (m *Model) Mesh(cellMM, sliceMM float64) []byte {
+	mm := m
+	for {
+		faces := mm.faces()
+		if len(faces)/8 <= MeshLimit || mm.W < 8 {
+			return mm.encode(faces, cellMM, sliceMM)
+		}
+		mm, cellMM = mm.half(), cellMM*2
+	}
+}
+
+// half returns the model with cells twice as wide and deep, the same slices.
+func (m *Model) half() *Model {
+	h := &Model{W: (m.W + 1) / 2, H: (m.H + 1) / 2, D: m.D, layerOf: m.layerOf, CellMM: m.CellMM * 2, SliceMM: m.SliceMM}
+	h.cells = make([]uint64, (h.W*h.H*h.D+63)/64)
+	for z := 0; z < m.D; z++ {
+		for y := 0; y < m.H; y++ {
+			for x := 0; x < m.W; x++ {
+				if m.at(x, y, z) {
+					h.set(x/2, y/2, z)
+				}
+			}
+		}
+	}
+	return h
+}
+
+// faces returns the faces of the mesh, 8 bytes each.
+func (m *Model) faces() []byte {
+	var out []byte
+	put := func(x, y, z, side, n int) {
+		out = binary.LittleEndian.AppendUint16(out, uint16(x))
+		out = binary.LittleEndian.AppendUint16(out, uint16(y))
+		out = binary.LittleEndian.AppendUint16(out, uint16(z))
+		out = append(out, byte(side), byte(n))
+	}
+	dirs := [6][3]int{{-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}}
+	for z := 0; z < m.D; z++ {
+		for y := 0; y < m.H; y++ {
+			for side, d := range dirs {
+				for x := 0; x < m.W; x++ {
+					if !m.at(x, y, z) || m.at(x+d[0], y+d[1], z+d[2]) {
+						continue
+					}
+					n := 1
+					if side >= 2 {
+						for n < 255 && m.at(x+n, y, z) && !m.at(x+n+d[0], y+d[1], z+d[2]) {
+							n++
+						}
+					}
+					put(x, y, z, side, n)
+					x += n - 1
+				}
+			}
+		}
+	}
+	return out
+}
+
+func (m *Model) encode(faces []byte, cellMM, sliceMM float64) []byte {
+	out := []byte("PDM1")
+	out = binary.LittleEndian.AppendUint32(out, math.Float32bits(float32(cellMM)))
+	out = binary.LittleEndian.AppendUint32(out, math.Float32bits(float32(sliceMM)))
+	for _, v := range []int{m.W, m.H, m.D, 0} {
+		out = binary.LittleEndian.AppendUint16(out, uint16(v))
+	}
+	out = binary.LittleEndian.AppendUint32(out, uint32(len(faces)/8))
+	for _, l := range m.layerOf {
+		out = binary.LittleEndian.AppendUint32(out, uint32(l))
+	}
+	return append(out, faces...)
 }

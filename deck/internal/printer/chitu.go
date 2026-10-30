@@ -1,6 +1,8 @@
 package printer
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -1425,4 +1427,24 @@ func (c *ChiTu) SetTitle(title string) {
 	c.title = strings.TrimSpace(title)
 	c.st.Title = c.printName()
 	c.savePrint(c.last)
+}
+
+// PartMesh returns the smooth mesh of the part of the print now (chitu.Model.SmoothMesh), for the
+// 3D view of the share page, or nil while the deck has no model.
+func (c *ChiTu) PartMesh() []byte {
+	st := c.State()
+	name := st.File
+	if !st.Printing {
+		name = st.FinishedFile
+	}
+	m := c.model(name)
+	if m == nil {
+		return nil
+	}
+	// The mesh compresses well: the page unpacks it (DecompressionStream "gzip").
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	zw.Write(m.SmoothMesh())
+	zw.Close()
+	return buf.Bytes()
 }

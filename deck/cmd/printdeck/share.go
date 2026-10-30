@@ -95,6 +95,9 @@ func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend, configPath s
 		return buf.Bytes(), uint64(st.FilePos)
 	}
 	s.Plan = pr.LayerTimes
+	if c, ok := pr.(*printer.ChiTu); ok {
+		s.Part = c.PartMesh
+	}
 	l.sharer = s
 	return l
 }
