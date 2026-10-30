@@ -520,3 +520,16 @@ func TestChiTuTimelapse(t *testing.T) {
 		t.Errorf("no frame of the next layer: %+v", hs)
 	}
 }
+
+// A copy under another name than the file on the card is the copy of that file when it has its
+// size.
+func TestChiTuCopyBySize(t *testing.T) {
+	c := NewChiTu("127.0.0.1:1", "Phenom", &History{})
+	c.UploadDir = t.TempDir()
+	c.files = []chitu.File{{Name: "plate.cbddlp", Size: 7}}
+	os.WriteFile(filepath.Join(c.UploadDir, "other.cbddlp"), []byte("1234567"), 0o644)
+	os.WriteFile(filepath.Join(c.UploadDir, "small.cbddlp"), []byte("12"), 0o644)
+	if p := c.copyPath("plate.cbddlp"); filepath.Base(p) != "other.cbddlp" {
+		t.Errorf("copy %q", p)
+	}
+}

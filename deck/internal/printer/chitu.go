@@ -687,7 +687,9 @@ func (c *ChiTu) SendFile(path string) error {
 		c.mu.Lock()
 		have := false
 		for _, x := range c.files {
-			have = have || x.Name == name && x.Size == size
+			// The same file under another name (ChituManager can send a file under the name of
+			// its slice) has the same size and kind.
+			have = have || x.Size == size && filepath.Ext(x.Name) == filepath.Ext(name)
 		}
 		printing := c.last.Printing()
 		if have {
@@ -828,7 +830,7 @@ func (c *ChiTu) picture(name string) image.Image {
 	if ok {
 		return img
 	}
-	data, err := os.ReadFile(filepath.Join(c.UploadDir, name))
+	data, err := os.ReadFile(c.copyPath(name))
 	if err == nil {
 		img, err = chitu.Preview(data, true)
 	}
@@ -888,7 +890,7 @@ func (c *ChiTu) header(name string) *chitu.Sliced {
 		return h
 	}
 	var pl filePlan
-	f, err := os.Open(filepath.Join(c.UploadDir, name))
+	f, err := os.Open(c.copyPath(name))
 	if err == nil {
 		buf := make([]byte, 112)
 		if _, err = io.ReadFull(f, buf); err == nil {
@@ -1100,7 +1102,7 @@ func (c *ChiTu) LayerPicture() image.Image {
 	if h == nil {
 		return nil
 	}
-	f, err := os.Open(filepath.Join(c.UploadDir, name))
+	f, err := os.Open(c.copyPath(name))
 	if err != nil {
 		return nil
 	}
@@ -1274,7 +1276,7 @@ func (c *ChiTu) readModel(name string) {
 	if h == nil {
 		return
 	}
-	f, err := os.Open(filepath.Join(c.UploadDir, name))
+	f, err := os.Open(c.copyPath(name))
 	if err != nil {
 		return
 	}
@@ -1360,4 +1362,36 @@ func (c *ChiTu) SetVideo(path, name string) {
 	if c.Hist != nil {
 		c.Hist.SetVideo(path, name, time.Now())
 	}
+}
+
+// copyPath returns the path of the deck's copy of the file name of the card: the copy with that
+// name, or else a copy with the size of the file on the card. ChituManager can send a file under
+// another name than the name on the drive. The caller holds no lock.
+func (c *ChiTu) copyPath(name string) string {
+	name = filepath.Base(name)
+	p := filepath.Join(c.UploadDir, name)
+	if _, err := os.Stat(p); err == nil {
+		return p
+	}
+	c.mu.Lock()
+	var size int64
+	for _, f := range c.files {
+		if f.Name == name {
+			size = f.Size
+		}
+	}
+	c.mu.Unlock()
+	if size == 0 {
+		return p
+	}
+	ents, err := os.ReadDir(c.UploadDir)
+	if err != nil {
+		return p
+	}
+	for _, e := range ents {
+		if i, err := e.Info(); err == nil && i.Mode().IsRegular() && i.Size() == size && !strings.HasPrefix(e.Name(), ".") {
+			return filepath.Join(c.UploadDir, e.Name())
+		}
+	}
+	return p
 }
