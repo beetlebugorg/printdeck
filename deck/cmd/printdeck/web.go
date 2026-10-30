@@ -90,6 +90,12 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 		api.Timelapse = sysTimelapse
 	}
 	api.History = k.History
+	api.Projects = func() []string {
+		if cp, ok := app.Cloud.(ui.CloudProjects); ok && app.Cloud.State().Connected {
+			return cp.Projects()
+		}
+		return nil
+	}
 	api.StartPrint = app.ConfirmFilePrint
 	api.Status = func() any { return app.StatusScreen() }
 	api.Model = k.View.ModelPicture

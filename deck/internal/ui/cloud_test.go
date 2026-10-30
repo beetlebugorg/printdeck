@@ -63,8 +63,11 @@ func TestCloudPage(t *testing.T) {
 // projectCloud is a fakeCloud with the projects of the service.
 type projectCloud struct {
 	fakeCloud
-	shared string
+	shared   string
+	projects []string // the projects of the service
 }
+
+func (p *projectCloud) Projects() []string { return p.projects }
 
 func (p *projectCloud) OwnerCode() (string, time.Time, error) {
 	return "https://pd.example/owner#code=ABCD-EFGH-JKMN", time.Now().Add(10 * time.Minute), nil

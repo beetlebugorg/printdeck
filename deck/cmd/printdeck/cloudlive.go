@@ -99,7 +99,7 @@ func (p *projectLink) liveStep(ctx context.Context, l *livePrint, st printer.Sta
 		return l
 	}
 	in := cloud.LiveRequest{Key: l.key, Name: st.Name(), Started: l.started.UTC(), Percent: st.Completion,
-		Layer: st.Layer, Layers: st.Layers, Paused: st.Paused, Model: l.model, Printer: p.model}
+		Layer: st.Layer, Layers: st.Layers, Paused: st.Paused, Model: l.model, Printer: p.model, PrinterID: p.printerID()}
 	if st.HasTimeLeft {
 		in.Left = int(st.TimeLeft.Seconds())
 	}
@@ -159,7 +159,11 @@ func (l *livePrint) leave(ctx context.Context, p *projectLink, id *cloud.Identit
 	if l == nil {
 		return nil
 	}
-	if err := p.Client.EndLive(ctx, id, l.project); err != nil {
+	end := func() error { return p.Client.EndLive(ctx, id, l.project) }
+	if printer := p.printerID(); printer != "" {
+		end = func() error { return p.Client.EndPrinterLive(ctx, id, l.project, printer) }
+	}
+	if err := end(); err != nil {
 		log.Printf("projects: live: %v", err)
 	}
 	return nil

@@ -105,7 +105,7 @@ func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 const pickChoices = 4
 
 // pickProject asks for the project of the finished print r: New project, the newest projects of
-// the history, and No project for a print in a project.
+// the history and of the service, and No project for a print in a project.
 func (a *App) pickProject(r printer.Record) {
 	a.askProject(r.Name(), r.Project, func(name string) { a.setProject(r, name) })
 }
@@ -115,13 +115,26 @@ func (a *App) pickProject(r printer.Record) {
 func (a *App) askProject(print, now string, set func(string)) {
 	choices := []menuItem{{"New project…", "Type a name", dim, func() { a.newProject(print, set) }}}
 	n := 0
+	shown := map[string]bool{now: true}
 	for _, p := range printer.Projects(a.Printer.History()) {
-		if p.Name == now || n == pickChoices {
+		if shown[p.Name] || n == pickChoices {
 			continue
 		}
 		n++
 		name := p.Name
+		shown[name] = true
 		choices = append(choices, menuItem{fitText(name, 300), projectLine(p.Prints), dim, func() { set(name) }})
+	}
+	// The projects of the other printers, from the service.
+	if cp, ok := a.cloudProjects(); ok {
+		for _, name := range cp.Projects() {
+			if shown[name] || n == pickChoices {
+				continue
+			}
+			n++
+			shown[name] = true
+			choices = append(choices, menuItem{fitText(name, 300), "No prints of this printer", dim, func() { set(name) }})
+		}
 	}
 	if now != "" {
 		choices = append(choices, menuItem{"No project", "Take the print out of " + fitText(now, 220), dim, func() { set("") }})

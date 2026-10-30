@@ -40,6 +40,10 @@ type projectLink struct {
 	files   cloudProjectsFile // cloud-projects.json, or nil before the first read
 	checked map[string]bool   // the projects that exist at the service, from this deck program
 	tried   map[string]time.Time
+
+	smu       sync.Mutex  // the printer and the projects of the service (cloudservice.go)
+	svc       serviceFile // cloud-service.json
+	svcLoaded bool
 }
 
 // cloudProjectsFile is cloud-projects.json: the projects of the history at the service.
@@ -171,11 +175,23 @@ func (p *projectLink) serviceProject(ctx context.Context, id *cloud.Identity, na
 		}
 	}
 	if cp == nil {
-		sum, err := p.Client.NewProject(ctx, id, name)
-		if err != nil {
-			return nil, fmt.Errorf("The service did not make the project: %v", err)
+		// A project of another deck with the name: the prints of this deck go to it too.
+		pid := p.serviceProjectID(name)
+		if pid != "" {
+			if ok, err := p.Client.ProjectExists(ctx, id, pid); err != nil {
+				return nil, fmt.Errorf("The service did not answer: %v", err)
+			} else if !ok {
+				pid = ""
+			}
 		}
-		cp = &cloudProject{ID: sum.ID, Domain: id.Domain, Prints: map[string]string{}, Format: printFormat}
+		if pid == "" {
+			sum, err := p.Client.NewProject(ctx, id, name)
+			if err != nil {
+				return nil, fmt.Errorf("The service did not make the project: %v", err)
+			}
+			pid = sum.ID
+		}
+		cp = &cloudProject{ID: pid, Domain: id.Domain, Prints: map[string]string{}, Format: printFormat}
 		f[name] = cp
 		if err := p.save(f); err != nil {
 			return nil, err
@@ -328,7 +344,7 @@ func (p *projectLink) sendPrint(ctx context.Context, id *cloud.Identity, project
 func (p *projectLink) printRequest(r printer.Record) cloud.PrintRequest {
 	in := cloud.PrintRequest{Name: r.Name(), File: r.File, Result: r.Result, Ended: r.End.UTC(),
 		Seconds: int(r.Duration.Seconds()), Material: r.Material, Grams: r.Grams, Roll: r.Spool, Printer: p.model,
-		Note: r.Note, Key: printKey(r), Started: r.End.Add(-r.Duration).UTC()}
+		Note: r.Note, Key: printKey(r), PrinterID: p.printerID(), Started: r.End.Add(-r.Duration).UTC()}
 	prep := 0.0
 	for _, ph := range r.Phases {
 		prep += ph.Seconds

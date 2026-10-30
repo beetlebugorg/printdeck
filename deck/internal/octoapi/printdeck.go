@@ -123,6 +123,19 @@ func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
 			out.Projects = append(out.Projects, p.Name)
 		}
 	}
+	// The projects of the other printers, from the service.
+	if s.Projects != nil {
+		have := map[string]bool{}
+		for _, n := range out.Projects {
+			have[n] = true
+		}
+		for _, n := range s.Projects() {
+			if !have[n] {
+				out.Projects = append(out.Projects, n)
+				have[n] = true
+			}
+		}
+	}
 	if st := s.Printer.State(); st.Busy() {
 		j := &jobJSON{File: st.FilePath, Title: st.Name(), State: "printing", Layer: st.Layer, Layers: st.Layers,
 			Progress: st.Completion / 100, Left: -1, Release: -1, Pos: st.FilePos}

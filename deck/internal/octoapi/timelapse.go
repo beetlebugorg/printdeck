@@ -35,6 +35,8 @@ type timelapseFields struct {
 	// History gives the finished prints, or is nil. A video goes with the record that has its
 	// name.
 	History func() []printer.Record
+	// Projects gives the names of the projects of the service, or is nil.
+	Projects func() []string
 }
 
 // videoJSON is a video of the list. name, size, bytes, date and url are the fields of OctoPrint.

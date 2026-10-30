@@ -20,6 +20,9 @@ type CloudProjects interface {
 	// ShareProject uploads the prints of the project of the history with the name, which are not
 	// up yet, and returns the page of the project. progress gets the prints that are up.
 	ShareProject(name string, progress func(done, total int)) (url string, err error)
+	// Projects returns the names of the projects of the service, the newest first: the projects of
+	// all the printers of the owner. The list is from the last read of the service.
+	Projects() []string
 }
 
 // qrSheet is a sheet over the screen with the QR code of a link, or the step that runs, or an
