@@ -131,7 +131,7 @@ func TestUploadPanel(t *testing.T) {
 	now := time.Date(2026, 10, 30, 14, 0, 0, 0, time.UTC)
 	u := printer.Upload{Name: "plate.cbddlp", Done: 20e6, Size: 80e6, Started: now.Add(-100 * time.Second), Waiting: 1}
 	p, ok := uploadPanel(u, now)
-	if !ok || p.head != "Sending to the printer · 25%" || p.side != "5 min left" || p.detail != "20.0 of 80.0 MB · 0.20 MB/s · 1 waiting" {
+	if !ok || p.head != "Sending to the printer · 25% · tap to stop" || p.side != "5 min left" || p.detail != "20.0 of 80.0 MB · 0.20 MB/s · 1 waiting" {
 		t.Errorf("running: %+v", p)
 	}
 	u.Done, u.Result, u.Ended, u.Waiting = u.Size, "sent", now, 0
@@ -167,7 +167,7 @@ func TestReceivePanel(t *testing.T) {
 func TestUploadPanelAfterPrint(t *testing.T) {
 	a, _, _ := newPrintApp(idle)
 	st := printer.State{Reachable: true, Finished: "cancelled", Upload: printer.Upload{Name: "plate.cbddlp", Size: 100, Done: 10, Started: a.Now()}}
-	if p := a.panelLines(st); p.head != "Sending to the printer · 10%" {
+	if p := a.panelLines(st); p.head != "Sending to the printer · 10% · tap to stop" {
 		t.Errorf("panel %+v", p)
 	}
 }

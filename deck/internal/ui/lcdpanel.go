@@ -9,6 +9,7 @@ import (
 	"printdeck/internal/gfx"
 	lcdscreen "printdeck/internal/lcd"
 	"printdeck/internal/printer"
+	"printdeck/kit"
 )
 
 // The screens show the status panel (statusbox.go) at the top, as wide as the printer display at
@@ -42,6 +43,33 @@ func (a *App) StatusScreen() *printer.LCDStatus {
 func (a *App) statusPanelAt(c *gfx.Canvas, st printer.State, r image.Rectangle) {
 	a.region("Display", r)
 	a.drawStatusBox(c, st, r)
+	// During an upload to a resin printer, a tap on the panel can stop it or its print start.
+	if st.Upload.Name != "" && st.Upload.Result == "" && !st.Busy() {
+		a.addHit(kit.Hit{R: r, Tap: func() { a.askUpload(st.Upload) }})
+	}
+}
+
+// askUpload asks what to do with the upload u to the printer: cancel the print start after it, or
+// stop it. Each choice asks again.
+func (a *App) askUpload(u printer.Upload) {
+	type control interface {
+		CancelStart()
+		CancelSend()
+	}
+	pr, ok := a.Printer.(control)
+	if !ok {
+		return
+	}
+	var choices []menuItem
+	if u.StartAfter {
+		choices = append(choices, menuItem{"Cancel the print start", "The file still goes to the printer", dim, func() {
+			a.confirm = &confirmBox{question: "Cancel the print start of " + u.Name + "?", yes: "Cancel start", danger: true, onYes: pr.CancelStart}
+		}})
+	}
+	choices = append(choices, menuItem{"Stop sending", "Deletes the part on the printer", dim, func() {
+		a.confirm = &confirmBox{question: "Stop sending " + u.Name + "?", yes: "Stop sending", danger: true, onYes: pr.CancelSend}
+	}})
+	a.confirm = &confirmBox{question: u.Name, choices: choices}
 }
 
 // The places of the Print screens under the status display.

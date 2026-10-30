@@ -53,6 +53,7 @@ type ChiTu struct {
 	waiting    []string               // the files that wait for the end of that upload
 	incoming   string                 // the last upload from ChiTuBox, before SaveUpload takes it
 	startAfter string                 // the file to print when its upload ends, or ""
+	stopSend   context.CancelFunc     // stops the upload now (CancelSend)
 	sendMu     sync.Mutex             // held for each upload to the board, so the uploads go one at a time
 	pics       map[string]image.Image // the previews of the copies in UploadDir, by name
 }
@@ -596,6 +597,9 @@ func (c *ChiTu) SendFile(path string) error {
 		c.st.Upload.Done, c.st.Upload.Waiting = done, len(c.waiting)
 		c.mu.Unlock()
 	}
+	c.mu.Lock()
+	c.stopSend = cancel
+	c.mu.Unlock()
 	// A failed upload goes once more from the start: M28 starts the file again on the card.
 	for try := 0; ; try++ {
 		err = c.Client.Upload(ctx, name, f, size, progress)
@@ -605,10 +609,18 @@ func (c *ChiTu) SendFile(path string) error {
 		log.Printf("chitu: the upload of %s: %v: once more", name, err)
 		time.Sleep(5 * time.Second)
 	}
+	c.mu.Lock()
+	c.stopSend = nil
+	at := c.st.Upload.Done
+	c.mu.Unlock()
+	if err != nil && errors.Is(err, context.Canceled) {
+		// Stop sending: close the file on the card, and delete the part of it.
+		c.send(10*time.Second, "M29")
+		c.send(10*time.Second, "M30 "+name)
+		result = fmt.Errorf("Stopped at %d%%: the deck deleted the part on the printer", at*100/max(1, size))
+		return err
+	}
 	if err != nil {
-		c.mu.Lock()
-		at := c.st.Upload.Done
-		c.mu.Unlock()
 		result = uploadError(err, at, size)
 		return err
 	}
@@ -800,4 +812,16 @@ func (c *ChiTu) startNow(name string) string {
 	}
 	log.Printf("chitu: M6030 ':%s': %q", name, a)
 	return a
+}
+
+// CancelSend stops the upload to the printer now, and cancels its print start.
+func (c *ChiTu) CancelSend() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.startAfter = ""
+	c.st.Upload.StartAfter = false
+	if c.stopSend != nil {
+		log.Printf("chitu: the upload of %s is stopped", c.sending)
+		c.stopSend()
+	}
 }

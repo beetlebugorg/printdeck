@@ -335,3 +335,40 @@ func TestChiTuIncompleteFile(t *testing.T) {
 		}
 	})
 }
+
+// Stop sending ends the upload, closes the file on the card and deletes it, and starts no print.
+func TestChiTuCancelSend(t *testing.T) {
+	b, err := chitu.NewFakeBoard("127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer b.Close()
+	b.Set(func(b *chitu.FakeBoard) { b.LoseData = 1 << 30 })
+	c := NewChiTu(b.Addr(), "Phenom", &History{})
+	c.UploadDir = t.TempDir()
+	tmp := filepath.Join(c.UploadDir, ".upload-1")
+	os.WriteFile(tmp, bytes.Repeat([]byte("x"), 5000), 0o644)
+	c.Received("big.cbddlp", 5000, true)
+	c.RequestStart("big.cbddlp")
+	done := make(chan bool)
+	go func() { c.SaveUpload("big.cbddlp", tmp); done <- true }()
+	time.Sleep(300 * time.Millisecond)
+	c.CancelSend()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the upload did not stop")
+	}
+	var got []string
+	for _, q := range b.Log() {
+		if q == "M29" || strings.HasPrefix(q, "M30") || strings.HasPrefix(q, "M6030") {
+			got = append(got, q)
+		}
+	}
+	if strings.Join(got, ",") != "M29,M30 big.cbddlp" {
+		t.Errorf("the board got %q", got)
+	}
+	if u := c.State().Upload; u.Result != "failed" || !strings.HasPrefix(u.Err, "Stopped") {
+		t.Errorf("upload %+v", u)
+	}
+}

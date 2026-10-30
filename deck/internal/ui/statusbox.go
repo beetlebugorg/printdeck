@@ -326,6 +326,7 @@ func uploadPanel(u printer.Upload, now time.Time) (panelText, bool) {
 			p.progress = float64(u.Done) / float64(u.Size)
 			p.head += fmt.Sprintf(" · %.0f%%", p.progress*100)
 		}
+		p.head += " · tap to stop"
 		p.detail = mb(u.Done) + " of " + mb(u.Size) + " MB"
 		p.shortDetail = p.detail
 		if r := u.Rate(now); r > 0 {
