@@ -223,6 +223,9 @@ func (a *App) panelLines(st printer.State) panelText {
 	case "error":
 		return panelText{head: "Print failed", side: clock, msg: st.FinishedName(), detail: st.FinishedError}
 	}
+	if p, ok := uploadPanel(st.Upload, now); ok {
+		return p
+	}
 	p := panelText{head: "Ready", side: clock}
 	homed := "Not homed"
 	if st.Homed == "xyz" {
@@ -293,4 +296,44 @@ func filesLine(n int) string {
 		return "1 file on the card"
 	}
 	return fmt.Sprintf("%d files on the card", n)
+}
+
+// uploadShown is the time that the panel shows the end of an upload.
+const uploadShown = 10 * time.Minute
+
+// uploadPanel returns the status panel of an upload to the card of a resin printer: while it runs,
+// and for uploadShown after its end. ok is false with no upload to show.
+func uploadPanel(u printer.Upload, now time.Time) (panelText, bool) {
+	mb := func(n int64) string { return fmt.Sprintf("%.1f", float64(n)/1e6) }
+	waiting := ""
+	if u.Waiting > 0 {
+		waiting = fmt.Sprintf(" · %d waiting", u.Waiting)
+	}
+	switch {
+	case u.Name == "":
+		return panelText{}, false
+	case u.Result == "":
+		p := panelText{head: "Sending to the printer", msg: u.Name, bar: true}
+		if u.Size > 0 {
+			p.progress = float64(u.Done) / float64(u.Size)
+			p.head += fmt.Sprintf(" · %.0f%%", p.progress*100)
+		}
+		p.detail = mb(u.Done) + " of " + mb(u.Size) + " MB"
+		p.shortDetail = p.detail
+		if r := u.Rate(now); r > 0 {
+			p.detail += fmt.Sprintf(" · %.2f MB/s", r/1e6)
+			left := time.Duration(float64(u.Size-u.Done) / r * float64(time.Second))
+			p.side, p.short = shortWait(left)+" left", shortWait(left)
+		}
+		p.detail += waiting
+		return p, true
+	case now.Sub(u.Ended) > uploadShown && u.Waiting == 0:
+		return panelText{}, false
+	case u.Result == "failed":
+		return panelText{head: "Upload failed", msg: u.Name, detail: u.Err + waiting}, true
+	default:
+		took := u.Ended.Sub(u.Started)
+		return panelText{head: "File on the printer", msg: u.Name,
+			detail: mb(u.Size) + " MB in " + shortWait(took) + waiting}, true
+	}
 }

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"testing"
+	"time"
 
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
@@ -122,5 +123,26 @@ func TestResinOffline(t *testing.T) {
 		if _, ok := a.KeyRect(k); ok {
 			t.Errorf("the screen has %q", k)
 		}
+	}
+}
+
+// The status panel shows an upload to the printer while it runs, and its end for a time.
+func TestUploadPanel(t *testing.T) {
+	now := time.Date(2026, 10, 30, 14, 0, 0, 0, time.UTC)
+	u := printer.Upload{Name: "plate.cbddlp", Done: 20e6, Size: 80e6, Started: now.Add(-100 * time.Second), Waiting: 1}
+	p, ok := uploadPanel(u, now)
+	if !ok || p.head != "Sending to the printer · 25%" || p.side != "5 min left" || p.detail != "20.0 of 80.0 MB · 0.20 MB/s · 1 waiting" {
+		t.Errorf("running: %+v", p)
+	}
+	u.Done, u.Result, u.Ended, u.Waiting = u.Size, "sent", now, 0
+	if p, ok := uploadPanel(u, now.Add(time.Minute)); !ok || p.head != "File on the printer" {
+		t.Errorf("sent: %+v", p)
+	}
+	if _, ok := uploadPanel(u, now.Add(uploadShown+time.Second)); ok {
+		t.Error("an old upload")
+	}
+	u.Result, u.Err = "failed", "chitu: M29: Error"
+	if p, ok := uploadPanel(u, now); !ok || p.head != "Upload failed" || p.detail != u.Err {
+		t.Errorf("failed: %+v", p)
 	}
 }

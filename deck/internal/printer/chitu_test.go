@@ -148,8 +148,8 @@ func TestChiTuSaveUpload(t *testing.T) {
 			t.Errorf("the board got %d bytes", len(b.Uploaded["part.ctb"]))
 		}
 	})
-	if m := c.State().Message; m != "The printer has part.ctb" {
-		t.Errorf("message %q", m)
+	if u := c.State().Upload; u.Name != "part.ctb" || u.Result != "sent" || u.Done != u.Size || u.Size != 5000 {
+		t.Errorf("upload %+v", u)
 	}
 	if _, err := os.Stat(filepath.Join(c.UploadDir, "part.ctb")); err != nil {
 		t.Error(err)

@@ -490,9 +490,7 @@ func (c *ChiTu) SendFile(path string) error {
 	// A second upload waits for the first.
 	c.mu.Lock()
 	c.waiting = append(c.waiting, name)
-	if c.sending != "" {
-		c.st.Message = fmt.Sprintf("%s waits for the upload of %s to the printer", name, c.sending)
-	}
+	c.st.Upload.Waiting = len(c.waiting)
 	c.mu.Unlock()
 	c.sendMu.Lock()
 	defer c.sendMu.Unlock()
@@ -500,22 +498,29 @@ func (c *ChiTu) SendFile(path string) error {
 	if i := slices.Index(c.waiting, name); i >= 0 {
 		c.waiting = slices.Delete(c.waiting, i, i+1)
 	}
+	size := fi.Size()
 	c.sending = name
-	c.st.Message = "Sending " + name + " to the printer"
+	c.st.Upload = Upload{Name: name, Size: size, Started: time.Now(), Waiting: len(c.waiting)}
 	c.mu.Unlock()
+	var result error
 	defer func() {
 		c.mu.Lock()
 		c.sending = ""
+		c.st.Upload.Result, c.st.Upload.Ended, c.st.Upload.Waiting = "sent", time.Now(), len(c.waiting)
+		if result != nil {
+			c.st.Upload.Result, c.st.Upload.Err = "failed", result.Error()
+		}
 		c.mu.Unlock()
 	}()
-	size := fi.Size()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
 	defer cancel()
 	err = c.Client.Upload(ctx, name, f, size, func(done int64) {
-		c.showAnswer(fmt.Sprintf("Sending %s to the printer: %d %%", name, done*100/size))
+		c.mu.Lock()
+		c.st.Upload.Done, c.st.Upload.Waiting = done, len(c.waiting)
+		c.mu.Unlock()
 	})
 	if err != nil {
-		c.showAnswer("The printer did not get " + name + ": " + err.Error())
+		result = err
 		return err
 	}
 	c.LoadFiles()
@@ -523,11 +528,10 @@ func (c *ChiTu) SendFile(path string) error {
 	defer c.mu.Unlock()
 	for _, x := range c.files {
 		if x.Name == name && x.Size != size {
-			c.st.Message = fmt.Sprintf("The printer saved %s with %d of %d bytes", name, x.Size, size)
-			return errors.New(c.st.Message)
+			result = fmt.Errorf("the printer saved %d of %d bytes", x.Size, size)
+			return result
 		}
 	}
-	c.st.Message = "The printer has " + name
 	return nil
 }
 
