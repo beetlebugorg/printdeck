@@ -514,13 +514,25 @@ func (c *ChiTu) SendFile(path string) error {
 	}()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
 	defer cancel()
-	err = c.Client.Upload(ctx, name, f, size, func(done int64) {
+	progress := func(done int64) {
 		c.mu.Lock()
 		c.st.Upload.Done, c.st.Upload.Waiting = done, len(c.waiting)
 		c.mu.Unlock()
-	})
+	}
+	// A failed upload goes once more from the start: M28 starts the file again on the card.
+	for try := 0; ; try++ {
+		err = c.Client.Upload(ctx, name, f, size, progress)
+		if err == nil || try == 1 || ctx.Err() != nil {
+			break
+		}
+		log.Printf("chitu: the upload of %s: %v: once more", name, err)
+		time.Sleep(5 * time.Second)
+	}
 	if err != nil {
-		result = err
+		c.mu.Lock()
+		at := c.st.Upload.Done
+		c.mu.Unlock()
+		result = uploadError(err, at, size)
 		return err
 	}
 	c.LoadFiles()
@@ -625,4 +637,17 @@ func (c *ChiTu) DeleteFile(name string) error {
 		}
 	}
 	return nil
+}
+
+// uploadError is the short reason of a failed upload for the status panel: at of size bytes went.
+func uploadError(err error, at, size int64) error {
+	pct := int64(0)
+	if size > 0 {
+		pct = at * 100 / size
+	}
+	if errors.Is(err, chitu.ErrTimeout) {
+		return fmt.Errorf("No answer from the printer at %d%%", pct)
+	}
+	msg := strings.ReplaceAll(err.Error(), "chitu: ", "")
+	return fmt.Errorf("%s (at %d%%)", msg, pct)
 }

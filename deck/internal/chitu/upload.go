@@ -47,7 +47,7 @@ var resendRE = regexp.MustCompile(`(\d+),offset error`)
 // The waits of an upload.
 const (
 	uploadAnswerWait = time.Second      // the wait for the answer to a packet, before it goes again
-	uploadTries      = 10               // the sends of one packet with no answer before the upload fails
+	uploadStall      = time.Minute      // the time with no answer before the upload fails
 	uploadSaveWait   = 30 * time.Second // the wait for the answer to M29
 )
 
@@ -67,9 +67,11 @@ func (c *Client) Upload(ctx context.Context, name string, r io.ReaderAt, size in
 	}
 	defer conn.Close()
 	buf := make([]byte, 4096)
-	// ask sends p and returns the next answer, with uploadTries sends at most.
+	// ask sends p and returns the next answer. It sends p again after each wait with no answer,
+	// for uploadStall at most: the Phenom stopped answering for more than 10 s once, at 92 % of a
+	// file of 40 MB.
 	ask := func(p []byte, wait time.Duration) (string, error) {
-		for try := 0; try < uploadTries; try++ {
+		for end := time.Now().Add(max(wait, uploadStall)); time.Now().Before(end); {
 			if err := ctx.Err(); err != nil {
 				return "", err
 			}
