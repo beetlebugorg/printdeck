@@ -5,7 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"log"
 	"net"
+	"os"
+	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,6 +31,9 @@ type ChiTu struct {
 	Client *chitu.Client
 	Hist   *History
 	Name   string // the name of the printer, for the screens
+	// UploadDir keeps a copy of the files that ChiTuBox sent to the board through the relay of the
+	// deck (SaveUpload), for their previews. "" keeps no copy.
+	UploadDir string
 
 	mu      sync.Mutex
 	info    chitu.Info   // the answer to M99999, once
@@ -38,7 +45,12 @@ type ChiTu struct {
 	path    string       // the key of the print now in the history ("" with no print)
 	started time.Time
 	console []ConsoleLine
+	hold    bool                   // a ChiTuBox session talks to the board: no queries of the deck
+	pics    map[string]image.Image // the previews of the copies in UploadDir, by name
 }
+
+// chituUploadsKept is the count of the copies in UploadDir.
+const chituUploadsKept = 8
 
 // ErrNotSupported is a control that this printer does not have.
 var ErrNotSupported = errors.New("this printer does not have this control")
@@ -86,8 +98,12 @@ func (c *ChiTu) Run(ctx context.Context, notify func()) {
 // the board (M99999) until the board answers once.
 func (c *ChiTu) poll(ctx context.Context, now time.Time) time.Duration {
 	c.mu.Lock()
-	known := c.info.Name != ""
+	known, hold := c.info.Name != "", c.hold
 	c.mu.Unlock()
+	// A query during an upload of ChiTuBox can break the upload.
+	if hold {
+		return chituPrintingEvery
+	}
 	if !known {
 		qctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 		if in, err := c.Client.Info(qctx); err == nil {
@@ -303,8 +319,6 @@ func (c *ChiTu) Preview() image.Image                         { return nil }
 func (c *ChiTu) LayerTimes() []float64                        { return nil }
 func (c *ChiTu) SetViewLayer(int)                             {}
 func (c *ChiTu) ViewLayer() int                               { return -1 }
-func (c *ChiTu) RecordPicture(Record) (image.Image, bool)     { return nil, false }
-func (c *ChiTu) FilePicture(File, string) image.Image         { return nil }
 func (c *ChiTu) FileMeta(string) gcodemeta.Meta               { return gcodemeta.Meta{} }
 func (c *ChiTu) SpoolStore() *Spools                          { return nil }
 func (c *ChiTu) Connect()                                     {}
@@ -411,3 +425,99 @@ func (c *ChiTu) Jog(_, _, z float64, speed int) error {
 func (c *ChiTu) Pause()  { go c.send(5*time.Second, "M25") }
 func (c *ChiTu) Resume() { go c.send(5*time.Second, "M24") }
 func (c *ChiTu) Cancel() { go c.send(5*time.Second, "M33") }
+
+// RelayInfo returns the board (M99999) for the relay of ChiTuBox. ok is false before the board
+// answered.
+func (c *ChiTu) RelayInfo() (chitu.Info, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.info, c.info.Name != ""
+}
+
+// Hold stops the queries of the deck while a ChiTuBox session talks to the board (true), and
+// starts them again (false).
+func (c *ChiTu) Hold(on bool) {
+	c.mu.Lock()
+	c.hold = on
+	c.mu.Unlock()
+}
+
+// SaveUpload keeps a copy of the file that ChiTuBox sent to the board, and reads the files on the
+// card again. It keeps the last chituUploadsKept copies.
+func (c *ChiTu) SaveUpload(name string, data []byte) {
+	name = filepath.Base(name)
+	if c.UploadDir == "" || name == "." || name == "/" {
+		return
+	}
+	if err := os.MkdirAll(c.UploadDir, 0o755); err != nil {
+		log.Printf("chitu: %v", err)
+		return
+	}
+	tmp := filepath.Join(c.UploadDir, "."+name+".tmp")
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+		log.Printf("chitu: %v", err)
+		return
+	}
+	os.Rename(tmp, filepath.Join(c.UploadDir, name))
+	c.mu.Lock()
+	delete(c.pics, name)
+	c.mu.Unlock()
+	pruneUploads(c.UploadDir, chituUploadsKept)
+	c.LoadFiles()
+}
+
+// pruneUploads removes the oldest files of dir after the first keep.
+func pruneUploads(dir string, keep int) {
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	type f struct {
+		name string
+		mod  time.Time
+	}
+	var fs []f
+	for _, e := range ents {
+		if i, err := e.Info(); err == nil && i.Mode().IsRegular() && !strings.HasPrefix(e.Name(), ".") {
+			fs = append(fs, f{e.Name(), i.ModTime()})
+		}
+	}
+	sort.Slice(fs, func(i, j int) bool { return fs[i].mod.After(fs[j].mod) })
+	for _, x := range fs[min(keep, len(fs)):] {
+		os.Remove(filepath.Join(dir, x.name))
+	}
+}
+
+// picture returns the preview of the copy of the file name in UploadDir, or nil with no copy.
+func (c *ChiTu) picture(name string) image.Image {
+	if c.UploadDir == "" || name == "" {
+		return nil
+	}
+	name = filepath.Base(name)
+	c.mu.Lock()
+	img, ok := c.pics[name]
+	c.mu.Unlock()
+	if ok {
+		return img
+	}
+	data, err := os.ReadFile(filepath.Join(c.UploadDir, name))
+	if err == nil {
+		img, err = chitu.Preview(data, true)
+	}
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		log.Printf("chitu: the preview of %s: %v", name, err)
+	}
+	c.mu.Lock()
+	if c.pics == nil {
+		c.pics = map[string]image.Image{}
+	}
+	c.pics[name] = img
+	c.mu.Unlock()
+	return img
+}
+
+// FilePicture returns the preview of a file that ChiTuBox sent through the deck, or nil.
+func (c *ChiTu) FilePicture(f File, _ string) image.Image { return c.picture(f.Path) }
+
+// RecordPicture returns the preview of the file of a print, or nil.
+func (c *ChiTu) RecordPicture(r Record) (image.Image, bool) { return c.picture(r.File), false }

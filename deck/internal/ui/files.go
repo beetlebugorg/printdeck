@@ -55,7 +55,7 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 	a.textRegion("Count", countR, gfx.Face(true, 14), strings.ToUpper(countText))
 	if len(files) == 0 {
 		if a.resin() {
-			noItems(c, area, "No files here yet", "Print a file from the screen", "of the printer.")
+			noItems(c, area, "No files here yet", "Send a file from ChiTuBox", "to this deck.")
 		} else {
 			noItems(c, area, "No files yet", "Send a file from the slicer,", "or upload it in the browser.")
 		}

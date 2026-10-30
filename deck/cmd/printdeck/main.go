@@ -36,6 +36,7 @@ import (
 	"syscall"
 	"time"
 
+	"printdeck/internal/chitu"
 	"printdeck/internal/config"
 	"printdeck/internal/display"
 	"printdeck/internal/gfx"
@@ -265,6 +266,7 @@ func run(cfg config.Config) {
 
 	go pr.Run(ctx, app.Redraw)
 	go lcdLoop(ctx, pr, app)
+	startChiTuRelay(ctx, cfg.StateDir, pr, chitu.Port)
 	startNotify(ctx, cfg.StateDir, pr, app)
 	startCamera(ctx, cfg.StateDir, app, pr)
 	startTimelapse(ctx, cfg.StateDir, cfg.KlipperConfig, app, pr)
