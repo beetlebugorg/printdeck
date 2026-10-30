@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"printdeck/internal/awake"
+	"printdeck/internal/chitu"
 	"printdeck/internal/config"
 	"printdeck/internal/display"
 	"printdeck/internal/fatfs"
@@ -58,6 +59,7 @@ func desktopApp(args []string) {
 	parent := fs.Bool("parent", false, "end when the input closes (the window of the app started the program)")
 	sim := fs.Bool("sim", false, "a simulated printer: the TAZ Workhorse on the simulated board, in its own folder")
 	fakeUpdate := fs.Bool("fake-update", false, "with -sim: a simulated system update on the Software update page and /system, for tests")
+	simChitu := fs.Bool("sim-chitu", false, "a simulated resin printer: a fake ChiTu board (a Phenom) with a print, in its own folder")
 	fs.Parse(args)
 	if *dir == "" {
 		base, err := os.UserConfigDir()
@@ -67,6 +69,9 @@ func desktopApp(args []string) {
 		name := "Printdeck"
 		if *sim {
 			name = "Printdeck Sim"
+		}
+		if *simChitu {
+			name = "Printdeck Phenom Sim"
 		}
 		*dir = filepath.Join(base, name)
 	}
@@ -95,8 +100,20 @@ func desktopApp(args []string) {
 		}()
 	}
 
+	if *simChitu {
+		addr, err := simChituBoard(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+		s := printer.Setting{Kind: printer.KindChiTu, Addr: addr, MAC: "00:e0:4c:18:00:29", Name: "Phenom"}
+		if err := printer.SaveSetting(cfg.StateDir, s); err != nil {
+			log.Fatal(err)
+		}
+	}
 	kl := &klippyProcess{cfg: cfg}
-	go kl.run(ctx)
+	if s, _ := printer.LoadSetting(cfg.StateDir); s.Kind == printer.KindKlipper {
+		go kl.run(ctx)
+	}
 
 	pr := newPrinter(cfg)
 	if k, ok := pr.(*printer.Klippy); ok {
@@ -385,4 +402,42 @@ func (k *klippyProcess) kill() {
 	case k.wake <- struct{}{}:
 	default:
 	}
+}
+
+// simChituBoard starts a fake ChiTu board on the local host for -sim-chitu, and returns its
+// address. Its print goes from the start to the end in 10 minutes, with a pause of 30 s at its
+// middle and a minute with no print between two prints, until ctx ends.
+func simChituBoard(ctx context.Context) (string, error) {
+	b, err := chitu.NewFakeBoard("127.0.0.1:0")
+	if err != nil {
+		return "", err
+	}
+	const size, layers, height = 40_000_000, 1200, 0.05 // bytes, layers, mm per layer
+	go func() {
+		defer b.Close()
+		for {
+			for s := 0; s <= 600; s++ {
+				b.Set(func(b *chitu.FakeBoard) {
+					b.Size, b.Read, b.Seconds = size, int64(size)*int64(s)/600, s
+					b.Z = float64(layers*s/600) * height
+					b.Flag = 0
+					if s >= 300 && s < 330 {
+						b.Flag = 1
+					}
+				})
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(time.Second):
+				}
+			}
+			b.Set(func(b *chitu.FakeBoard) { b.Size, b.Read, b.Seconds, b.Flag = 0, 0, 0, 0 })
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(time.Minute):
+			}
+		}
+	}()
+	return b.Addr(), nil
 }
