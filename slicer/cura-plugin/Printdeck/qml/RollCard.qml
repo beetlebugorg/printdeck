@@ -6,7 +6,7 @@
 // on a line two thick margins above the bottom of the panel. The card has the height, the frame and
 // the margins of the panel, and moves down so that its bottom is the bottom of the panel.
 import QtQuick 2.7
-import QtQuick.Controls 2.15
+import Cura 1.0 as Cura
 
 import UM 1.5 as UM
 
@@ -145,8 +145,7 @@ Rectangle
             color: UM.Theme.getColor("text")
         }
 
-        // The project of the next prints: the Printdeck puts each print in it at its start. A
-        // name that the deck does not have makes a new project.
+        // The project of the next prints: the Printdeck puts each print in it at its start.
         Row
         {
             visible: roll ? roll.hasProjects : false
@@ -161,34 +160,32 @@ Rectangle
                 font: UM.Theme.getFont("default")
                 color: UM.Theme.getColor("text_medium")
             }
-            ComboBox
+            Cura.ComboBox
             {
                 id: projectBox
                 width: parent.width - projectLabel.width - parent.spacing
-                editable: true
+                height: UM.Theme.getSize("setting_control").height
+                textRole: "name"
 
-                // The choices: No project, the project of the card when the deck does not have it
-                // yet, and the projects of the deck. sync leaves the box alone while the user types.
+                // The choices: No project, the project of the card when the deck does not have it,
+                // and the projects of the deck. sync leaves the list alone while it is open.
                 function sync()
                 {
-                    if (!roll || activeFocus) return
+                    if (!roll || popup.visible) return
                     var names = ["No project"]
                     var now = roll.project
                     if (now != "" && roll.projects.indexOf(now) < 0) names.push(now)
                     names = names.concat(roll.projects)
-                    if (JSON.stringify(names) != JSON.stringify(model)) model = names
+                    var items = names.map(function(n) { return {name: n} })
+                    if (JSON.stringify(items) != JSON.stringify(model)) model = items
                     currentIndex = now == "" ? 0 : names.indexOf(now)
                 }
-                function choose(name)
+
+                onActivated: function(index)
                 {
-                    roll.choose(name == "No project" ? "" : name)
-                    focus = false
+                    roll.choose(index == 0 ? "" : model[index].name)
                     sync()
                 }
-
-                onActivated: function(index) { choose(model[index]) }
-                onAccepted: choose(editText)
-                onActiveFocusChanged: if (!activeFocus) sync()
                 Component.onCompleted: sync()
                 Connections
                 {
