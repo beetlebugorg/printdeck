@@ -850,13 +850,12 @@ func (c *ChiTu) RequestStart(name string) string {
 	}
 	c.mu.Lock()
 	if name == c.sending || name == c.incoming || slices.Contains(c.waiting, name) {
-		c.startAfter = name
-		if c.st.Upload.Name == name && c.st.Upload.Result == "" {
-			c.st.Upload.StartAfter = true
-		}
+		// No start waits for an upload: on 2026-10-30 a start that waited 12 minutes started the
+		// Phenom with no build plate in place. The print starts from a new press when the
+		// printer has the file.
 		c.mu.Unlock()
-		log.Printf("chitu: the print of %s starts after its upload", name)
-		return "ok"
+		log.Printf("chitu: refused a start of %s during its upload", name)
+		return "Error:The file is not on the printer yet. Press Print when the deck says the printer has it."
 	}
 	busy, bad := c.sending != "", c.incomplete(name)
 	c.mu.Unlock()

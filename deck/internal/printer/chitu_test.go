@@ -206,9 +206,9 @@ func TestChiTuUploadQueue(t *testing.T) {
 	}
 }
 
-// A start that ChiTuBox asks for during an upload waits for the whole file on the card. A failed
-// upload starts no print, and Cancel print start stops the start.
-func TestChiTuStartAfterUpload(t *testing.T) {
+// A start that ChiTuBox asks for during an upload is refused, and no print starts after the
+// upload: on 2026-10-30 such a start fired 12 minutes later with no build plate in place.
+func TestChiTuNoStartAfterUpload(t *testing.T) {
 	b, err := chitu.NewFakeBoard("127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -216,64 +216,20 @@ func TestChiTuStartAfterUpload(t *testing.T) {
 	defer b.Close()
 	c := NewChiTu(b.Addr(), "Phenom", &History{})
 	c.UploadDir = t.TempDir()
-	starts := func() (n int) {
-		for _, q := range b.Log() {
-			if strings.HasPrefix(q, "M6030") {
-				n++
-			}
+	tmp := filepath.Join(c.UploadDir, ".upload-a")
+	os.WriteFile(tmp, bytes.Repeat([]byte("x"), 4000), 0o644)
+	c.Received("a.cbddlp", 4000, true)
+	if a := c.RequestStart("a.cbddlp"); !strings.HasPrefix(a, "Error:") {
+		t.Fatalf("a start during the upload: %q", a)
+	}
+	c.SaveUpload("a.cbddlp", tmp)
+	for _, q := range b.Log() {
+		if strings.HasPrefix(q, "M6030") {
+			t.Fatalf("the board got %q", q)
 		}
-		return n
 	}
-	upload := func(name string) {
-		tmp := filepath.Join(c.UploadDir, ".upload-"+name)
-		os.WriteFile(tmp, bytes.Repeat([]byte("x"), 4000), 0o644)
-		c.Received(name, 4000, true)
-		if a := c.RequestStart(name); a != "ok" {
-			t.Fatalf("the answer to the start of %s: %q", name, a)
-		}
-		if st := c.State(); st.Upload.Name == name && st.Upload.Result == "" && !st.Upload.StartAfter {
-			t.Error("no StartAfter during the upload")
-		}
-		c.SaveUpload(name, tmp)
-	}
-
-	upload("a.cbddlp")
-	if n := starts(); n != 1 {
-		t.Fatalf("%d starts after the upload, want 1", n)
-	}
-	if u := c.State().Upload; u.StartAnswer != "ok" {
-		t.Errorf("the answer of the board: %+v", u)
-	}
-
-	// The board loses each packet: the upload fails, and no print starts.
-	b.Set(func(b *chitu.FakeBoard) { b.Size, b.Read = 0, 0 })
-	b.Set(func(b *chitu.FakeBoard) { b.LoseData = 1 << 30 })
-	c.Client.Timeout = 50 * time.Millisecond
-	saved := uploadStallForTest(t)
-	defer saved()
-	upload("b.cbddlp")
-	if n := starts(); n != 1 {
-		t.Errorf("%d starts after a failed upload, want 1", n)
-	}
-	if u := c.State().Upload; u.Result != "failed" || !strings.HasSuffix(u.Err, "print not started") {
-		t.Errorf("the failed upload: %+v", u)
-	}
-	b.Set(func(b *chitu.FakeBoard) { b.LoseData = 0 })
-
-	// Cancel print start.
-	tmp := filepath.Join(c.UploadDir, ".upload-c")
-	os.WriteFile(tmp, []byte("data"), 0o644)
-	c.Received("c.cbddlp", 4, true)
-	c.RequestStart("c.cbddlp")
-	c.CancelStart()
-	c.SaveUpload("c.cbddlp", tmp)
-	if n := starts(); n != 1 {
-		t.Errorf("%d starts after Cancel, want 1", n)
-	}
-
-	// A file on the card with no upload starts now.
-	if a := c.RequestStart("a.cbddlp"); a != "ok" || starts() != 2 {
-		t.Errorf("a direct start: %q, %d starts", a, starts())
+	if u := c.State().Upload; u.Result != "sent" || u.StartAfter {
+		t.Errorf("upload %+v", u)
 	}
 }
 
