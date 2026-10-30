@@ -72,6 +72,9 @@ type ChiTu struct {
 	sendMu      sync.Mutex               // held for each upload to the board, so the uploads go one at a time
 	pics        map[string]image.Image   // the previews of the copies in UploadDir, by name
 	headers     map[string]*chitu.Sliced // the headers of the copies in UploadDir, by name
+	plans       map[string]filePlan      // the plans of the layers of the copies, by name
+	moves       float64                  // the seconds of the moves of a layer, as the print now measures them
+	movesFile   string                   // the file of moves
 }
 
 // chituUploadsKept is the count of the copies in UploadDir.
@@ -199,6 +202,11 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 		}
 		st.FileSize, st.FilePos = s.Size, s.Read
 		st.Completion = s.Progress() * 100
+		// With no plan of the layers: the time left from the share of the file that the board read.
+		st.TimeLeft, st.HasTimeLeft = 0, false
+		if p := s.Progress(); p > 0.02 && s.Seconds > 0 {
+			st.TimeLeft, st.HasTimeLeft = time.Duration(float64(s.Seconds)*(1-p)/p)*time.Second, true
+		}
 		// The layers from the header of the copy of the file: the board reads the layers in order,
 		// so the share of the file that it read is about the share of the layers.
 		st.Layer, st.Layers = 0, 0
@@ -206,16 +214,41 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 			if h != nil && h.Layers > 0 {
 				st.Layers = int(h.Layers)
 				st.Layer = max(1, min(st.Layers, int(math.Round(s.Progress()*float64(h.Layers)))))
+				// The time left from the plan of the layers: the light of each layer from the file,
+				// and the moves of the plate for each layer as this print measures them. The
+				// print time of the slicer is often far off, and the share of the file is a poor
+				// clock while the long bottom layers print.
+				if pl, ok := c.plans[filepath.Base(st.File)]; ok && len(pl.light) == st.Layers {
+					moves := pl.moves
+					done := st.Layer - 1
+					if done >= 3 && s.Seconds > 0 {
+						lit := 0.0
+						for _, t := range pl.light[:done] {
+							lit += t
+						}
+						if m := (float64(s.Seconds) - lit) / float64(done); m > 0 && m < 600 {
+							moves = m
+						}
+					}
+					c.moves, c.movesFile = moves, filepath.Base(st.File)
+					left := 0.0
+					for _, t := range pl.light[done:] {
+						left += t + moves
+					}
+					// The part of the layer now that already went: the time since the start of
+					// the layer, from the clock of the board.
+					if spent := float64(s.Seconds) - planUntil(pl, done, moves); spent > 0 && spent < pl.light[done]+moves {
+						left -= spent
+					}
+					st.TimeLeft, st.HasTimeLeft = time.Duration(left*float64(time.Second)), true
+				}
 			}
 		} else if st.File != c.path {
 			go c.header(st.File) // the next answer has the layers
 		}
 		st.Elapsed = time.Duration(s.Seconds) * time.Second
 		st.PrintDuration = st.Elapsed // the board gives no time of its pauses
-		st.TimeLeft, st.HasTimeLeft = 0, false
-		if p := s.Progress(); p > 0.02 && s.Seconds > 0 {
-			st.TimeLeft, st.HasTimeLeft = time.Duration(float64(s.Seconds)*(1-p)/p)*time.Second, true
-		}
+
 		st.Text, st.Activity = "Printing", "Printing"
 		if st.Paused {
 			st.Text, st.Activity = "Paused", "Paused"
@@ -440,7 +473,6 @@ func (c *ChiTu) Console() []ConsoleLine {
 // The files, the pictures and the layers: the deck reads no sliced file of the printer yet.
 
 func (c *ChiTu) Preview() image.Image                         { return nil }
-func (c *ChiTu) LayerTimes() []float64                        { return nil }
 func (c *ChiTu) SetViewLayer(int)                             {}
 func (c *ChiTu) ViewLayer() int                               { return -1 }
 func (c *ChiTu) FileMeta(string) gcodemeta.Meta               { return gcodemeta.Meta{} }
@@ -782,31 +814,83 @@ func (c *ChiTu) RecordPicture(r Record) (image.Image, bool) {
 // header returns the header of the copy of the file name in UploadDir, or nil. The caller holds
 // no lock.
 func (c *ChiTu) header(name string) *chitu.Sliced {
-	if c.UploadDir == "" || name == "" {
+	if name == "" {
 		return nil
 	}
 	name = filepath.Base(name)
 	c.mu.Lock()
 	h, ok := c.headers[name]
 	c.mu.Unlock()
-	if ok {
+	if ok || c.UploadDir == "" {
 		return h
 	}
+	var pl filePlan
 	f, err := os.Open(filepath.Join(c.UploadDir, name))
 	if err == nil {
 		buf := make([]byte, 112)
 		if _, err = io.ReadFull(f, buf); err == nil {
 			h, _ = chitu.ReadSliced(buf)
 		}
+		if h != nil {
+			pl.light, pl.moves, _ = chitu.LayerPlan(f, h)
+		}
 		f.Close()
 	}
 	c.mu.Lock()
 	if c.headers == nil {
-		c.headers = map[string]*chitu.Sliced{}
+		c.headers, c.plans = map[string]*chitu.Sliced{}, map[string]filePlan{}
 	}
-	c.headers[name] = h
+	c.headers[name], c.plans[name] = h, pl
 	c.mu.Unlock()
 	return h
+}
+
+// HeaderOf returns the header of the deck's copy of the file name, or nil.
+func (c *ChiTu) HeaderOf(name string) *chitu.Sliced { return c.header(name) }
+
+// filePlan is the plan of the layers of a file: the seconds of light of each layer, and the seconds
+// of the moves of the plate for each layer from the print time of the header.
+type filePlan struct {
+	light []float64
+	moves float64
+}
+
+// times returns the seconds of each layer, with moves seconds of moves for each layer.
+func (p filePlan) times(moves float64) []float64 {
+	out := make([]float64, len(p.light))
+	for i, t := range p.light {
+		out[i] = t + moves
+	}
+	return out
+}
+
+// PlanOf returns the seconds of each layer of the file name, from the deck's copy, or nil. The
+// moves of a layer are the moves that the print now measured, or the moves of the header.
+func (c *ChiTu) PlanOf(name string) []float64 {
+	if c.header(name) == nil {
+		return nil
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	pl, ok := c.plans[filepath.Base(name)]
+	if !ok || len(pl.light) == 0 {
+		return nil
+	}
+	moves := pl.moves
+	if c.movesFile == filepath.Base(name) && c.moves > 0 {
+		moves = c.moves
+	}
+	return pl.times(moves)
+}
+
+// LayerTimes returns the seconds of each layer of the print now, from the deck's copy of its file,
+// or nil.
+func (c *ChiTu) LayerTimes() []float64 {
+	st := c.State()
+	if !st.Printing {
+		return nil
+	}
+	return c.PlanOf(st.File)
 }
 
 // DeleteFile deletes the file name from the card of the board (M30 <name>), and checks the list of
@@ -1065,4 +1149,14 @@ func (c *ChiTu) savePrint(s chitu.Status) {
 	if os.WriteFile(tmp, b, 0o644) == nil {
 		os.Rename(tmp, c.PrintStore)
 	}
+}
+
+// planUntil returns the seconds of the first n layers of the plan pl, with moves seconds of moves
+// for each layer.
+func planUntil(pl filePlan, n int, moves float64) float64 {
+	t := 0.0
+	for _, l := range pl.light[:min(n, len(pl.light))] {
+		t += l + moves
+	}
+	return t
 }

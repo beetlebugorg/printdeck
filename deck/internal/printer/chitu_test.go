@@ -398,3 +398,40 @@ func TestChiTuResume(t *testing.T) {
 		t.Errorf("from the project: %q %q, want %q", got, c.NextProject(), old)
 	}
 }
+
+// The time left of a resin print comes from the plan of the layers of the file, less the part of
+// the layer now that already went. After three layers, the moves of a layer come from the clock
+// of the board.
+func TestChiTuTimeLeftFromPlan(t *testing.T) {
+	c := NewChiTu("127.0.0.1:1", "Phenom", &History{})
+	c.files = []chitu.File{{Name: "plate.cbddlp", Size: 1000}}
+	c.headers = map[string]*chitu.Sliced{"plate.cbddlp": {Layers: 4}}
+	c.plans = map[string]filePlan{"plate.cbddlp": {light: []float64{95, 95, 25, 25}, moves: 5}}
+	// Layer 2 of 4, 110 s after the start: layer 1 took 100 s, and layer 2 runs for 10 s.
+	c.update(chitu.Status{Read: 500, Size: 1000, Seconds: 110}, time.Now())
+	st := c.State()
+	if st.Layer != 2 || !st.HasTimeLeft || st.TimeLeft != 150*time.Second {
+		t.Errorf("layer %d, left %v %v", st.Layer, st.TimeLeft, st.HasTimeLeft)
+	}
+	if lt := c.LayerTimes(); len(lt) != 4 {
+		t.Errorf("layer times %v", lt)
+	}
+}
+
+// The moves of a layer as the print measures them: 10 layers of 20 s of light took 400 s, so each
+// layer had 20 s of moves, in place of the 5 s of the header.
+func TestChiTuMeasuredMoves(t *testing.T) {
+	c := NewChiTu("127.0.0.1:1", "Phenom", &History{})
+	c.files = []chitu.File{{Name: "plate.cbddlp", Size: 2000}}
+	light := make([]float64, 20)
+	for i := range light {
+		light[i] = 20
+	}
+	c.headers = map[string]*chitu.Sliced{"plate.cbddlp": {Layers: 20}}
+	c.plans = map[string]filePlan{"plate.cbddlp": {light: light, moves: 5}}
+	// Layer 11 starts: 10 layers done in 400 s.
+	c.update(chitu.Status{Read: 1050, Size: 2000, Seconds: 400}, time.Now())
+	if st := c.State(); st.Layer != 11 || st.TimeLeft != 400*time.Second {
+		t.Errorf("layer %d, left %v, want 400s", st.Layer, st.TimeLeft)
+	}
+}

@@ -55,20 +55,21 @@ func (a *App) drawResinJob(c *gfx.Canvas, st printer.State) {
 	a.resinView(c, box, st)
 }
 
-// resinKeys draws the row of keys of a resin print: Stop at the left, Share, and Pause or Resume
-// at the right.
+// resinKeys draws the row of keys of a resin print: Stop at the left, Menu, Share, and Pause or
+// Resume at the right. Menu goes to the home screen while the print goes on.
 func (a *App) resinKeys(c *gfx.Canvas, keys image.Rectangle, st printer.State) {
 	pr := a.Printer
-	sizes := []kit.Size{kit.Fr(1), kit.Fr(1)}
+	sizes := []kit.Size{kit.Fr(1), kit.Fr(1), kit.Fr(1)}
 	if a.canShare() {
 		sizes = append(sizes, kit.Fr(1))
 	}
-	k := kit.Cols(keys, 12, sizes...)
+	k := kit.Cols(keys, 10, sizes...)
 	a.button(c, k[0], "Stop", raised, red, func() {
 		a.confirm = &confirmBox{question: "Stop this print?", yes: "Stop print", danger: true, onYes: pr.Cancel}
 	})
+	a.button(c, k[1], "Menu", raised, text, func() { a.leavePrint(st) })
 	if a.canShare() {
-		a.shareKey(c, k[1])
+		a.shareKey(c, k[2])
 	}
 	last := k[len(k)-1]
 	if st.Paused {

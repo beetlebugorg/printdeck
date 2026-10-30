@@ -69,7 +69,7 @@ func TestResinScreens(t *testing.T) {
 			a.back()
 		}
 
-		// A print: the window of the print, with Stop and Pause, and no Tune.
+		// A print: the window of the print, with Stop, Menu and Pause, and no Tune.
 		pr.State_ = printer.State{Reachable: true, Connected: true, Printing: true, Text: "Printing", FilePath: "resin-1",
 			Completion: 40, Z: 12.5, HasZ: true}
 		a.Draw(cv)
@@ -78,8 +78,8 @@ func TestResinScreens(t *testing.T) {
 				t.Errorf("wide %v: a resin print has %q", wide, gone)
 			}
 		}
-		if !has("Stop") || !has("Pause") {
-			t.Errorf("wide %v: a resin print with no Stop or Pause", wide)
+		if !has("Stop") || !has("Pause") || !has("Menu") {
+			t.Errorf("wide %v: a resin print with no Stop, Pause or Menu", wide)
 		}
 		if !has("Print") {
 			t.Errorf("wide %v: no window of the print", wide)

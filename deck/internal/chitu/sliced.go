@@ -186,3 +186,29 @@ func decodeLayer(data []byte, resX, resY, w int) *image.Gray {
 	}
 	return img
 }
+
+// LayerPlan returns the seconds of light of each layer of the file r with the header h (its
+// exposure and its time with no light, from the table of the layers), and the seconds of the moves
+// of the plate for each layer: the rest of the print time of the header, the same for each layer.
+func LayerPlan(r io.ReaderAt, h *Sliced) (light []float64, moves float64, err error) {
+	n := int(h.Layers)
+	if n <= 0 || n > 100000 {
+		return nil, 0, errors.New("chitu: no layers")
+	}
+	table := make([]byte, n*layerDefSize)
+	if _, err := r.ReadAt(table, int64(h.layerTable)); err != nil {
+		return nil, 0, err
+	}
+	f := func(off int) float64 { return float64(math.Float32frombits(binary.LittleEndian.Uint32(table[off:]))) }
+	light = make([]float64, n)
+	sum := 0.0
+	for i := range light {
+		exp, off := f(i*layerDefSize+4), f(i*layerDefSize+8)
+		if exp < 0 || exp > 600 || off < 0 || off > 600 {
+			return nil, 0, fmt.Errorf("chitu: a bad time in layer %d", i)
+		}
+		light[i] = exp + off
+		sum += light[i]
+	}
+	return light, max(0, float64(h.PrintSeconds)-sum) / float64(n), nil
+}

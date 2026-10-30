@@ -320,3 +320,26 @@ func TestStartPrintSlow(t *testing.T) {
 		t.Errorf("%d starts, want 1", n)
 	}
 }
+
+// The plan of the layers: the light of each layer, and a share of the rest of the print time for
+// the moves of each layer.
+func TestLayerPlan(t *testing.T) {
+	data := make([]byte, 120+3*36)
+	put := func(off int, v uint32) { binary.LittleEndian.PutUint32(data[off:], v) }
+	putF := func(off int, v float32) { put(off, math.Float32bits(v)) }
+	put(0, MagicCBDDLP)
+	put(64, 120)
+	put(68, 3)
+	put(76, 150) // the print time: 95 + 20 + 20 = 135 s of light, and 15 s of moves
+	putF(120+4, 95)
+	putF(120+36+4, 20)
+	putF(120+72+4, 20)
+	h, err := ReadSliced(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	light, moves, err := LayerPlan(bytes.NewReader(data), h)
+	if err != nil || len(light) != 3 || light[0] != 95 || light[1] != 20 || moves != 5 {
+		t.Fatalf("plan %v %v %v", light, moves, err)
+	}
+}

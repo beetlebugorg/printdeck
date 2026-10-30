@@ -323,6 +323,19 @@ func (p *projectLink) sendPrint(ctx context.Context, id *cloud.Identity, project
 	if p.shareOf != nil {
 		up.Request.Share = p.shareOf(r)
 	}
+	// The plan of the layers of a resin print is in the deck's copy of its sliced file.
+	if c, ok := p.k.(*printer.ChiTu); ok {
+		if plan := c.PlanOf(r.File); len(plan) > 0 {
+			up.Plan = make([]float64, len(plan))
+			for i, t := range plan {
+				up.Plan[i] = math.Round(t*10) / 10
+			}
+			up.Request.Layers = len(plan)
+			if h := c.HeaderOf(r.File); h != nil {
+				up.Request.Height = math.Round(float64(h.Height)*100) / 100
+			}
+		}
+	}
 	// The plan of the layers is in the G-code of a Klipper printer.
 	if kl, ok := p.k.(*printer.Klippy); ok {
 		if l, ok := kl.View.RecordPlan(r); ok {
