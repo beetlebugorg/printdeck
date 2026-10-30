@@ -306,22 +306,77 @@ func word(w string, letter byte) (float64, bool) {
 	return v, err == nil
 }
 
-// View angles: the model is turned 35 degrees around the vertical axis and seen from 40 degrees above.
+// View is the direction of a picture of the model: the model turns by the angle Turn around the
+// vertical axis, and the viewer looks down at it from the angle Elevation above, in degrees. The
+// lights turn with the model, so the walls that face the viewer have the same shades in each view.
+type View struct {
+	Turn, Elevation        float64
+	sinA, cosA, sinE, cosE float64
+	// The direction to the viewer (the depth axis of project), the key light, the weaker fill
+	// light, and the direction between the key light and the viewer, for the highlight.
+	viewer, keyLight, fillLight, halfway [3]float64
+}
+
+// defaultTurn is the turn of DefaultView, in degrees.
+const defaultTurn = 35
+
+// DefaultView is the view of the pictures of the deck: a turn of 35° and 40° from above.
+var DefaultView = NewView(defaultTurn, 40)
+
+// The lights of DefaultView. The key light is at the left, so that the two walls that face the
+// viewer have different shades.
 var (
-	sinA, cosA = math.Sincos(35 * math.Pi / 180)
-	sinE, cosE = math.Sincos(40 * math.Pi / 180)
-	// Directions to the key light and to the weaker fill light. The key light is at the left, so
-	// that the two walls that face the viewer have different shades.
 	keyLight  = unit([3]float64{-0.7, -0.25, 0.7})
 	fillLight = unit([3]float64{0.7, 0.3, 0.2})
-	// The direction to the viewer: the depth axis of project.
-	viewer = [3]float64{-sinA * cosE, -cosA * cosE, sinE}
 )
 
-// Project returns the screen coordinates of a point of the model, in mm. v goes down the picture.
-func Project(x, y, z float64) (u, v float64) {
-	u, v, _ = project(float32(x), float32(y), float32(z))
-	return u, v
+// NewView returns the view with the turn and the elevation, in degrees.
+func NewView(turn, elevation float64) View {
+	v := View{Turn: turn, Elevation: elevation}
+	v.sinA, v.cosA = math.Sincos(turn * math.Pi / 180)
+	v.sinE, v.cosE = math.Sincos(elevation * math.Pi / 180)
+	v.viewer = [3]float64{-v.sinA * v.cosE, -v.cosA * v.cosE, v.sinE}
+	v.keyLight, v.fillLight = v.Light(keyLight), v.Light(fillLight)
+	v.halfway = unit([3]float64{v.keyLight[0] + v.viewer[0], v.keyLight[1] + v.viewer[1], v.keyLight[2] + v.viewer[2]})
+	return v
+}
+
+// Light turns the direction l of a light of DefaultView around the vertical axis with the view.
+func (v View) Light(l [3]float64) [3]float64 {
+	s, c := math.Sincos(-(v.Turn - defaultTurn) * math.Pi / 180)
+	return [3]float64{l[0]*c - l[1]*s, l[0]*s + l[1]*c, l[2]}
+}
+
+// Viewer is the direction to the viewer, in the coordinates of the model.
+func (v View) Viewer() [3]float64 { return v.viewer }
+
+// ViewOf returns the view of a camera from the screen directions of the X, Y and Z axes of the
+// model at a point of the picture: (xu, xv) is the move on the screen for a step along X, and so
+// on. v goes down the picture. The steps have the same length. It is false for a camera that does
+// not look down at the bed, or for axes that give no view.
+func ViewOf(xu, xv, yu, yv, zv float64) (View, bool) {
+	// A view has x at (k cosA, -k sinA sinE), y at (-k sinA, -k cosA sinE) and z at (0, -k cosE).
+	turn := math.Atan2(-yu, xu)
+	sinA, cosA := math.Sincos(turn)
+	elev := math.Atan2(-(xv*sinA + yv*cosA), -zv)
+	if math.Hypot(xu, yu) == 0 || math.IsNaN(elev) {
+		return View{}, false
+	}
+	deg := elev * 180 / math.Pi
+	if deg < 5 || deg > 85 {
+		return View{}, false
+	}
+	return NewView(turn*180/math.Pi, deg), true
+}
+
+// Project returns the screen coordinates of a point of the model in DefaultView, in mm. v goes
+// down the picture.
+func Project(x, y, z float64) (u, v float64) { return DefaultView.Project(x, y, z) }
+
+// Project returns the screen coordinates of a point of the model, in mm. vv goes down the picture.
+func (v View) Project(x, y, z float64) (u, vv float64) {
+	u, vv, _ = v.project(float32(x), float32(y), float32(z))
+	return u, vv
 }
 
 // Camera places the model in a picture: the point (u, v) of Project is at the pixel
@@ -339,11 +394,17 @@ func Fit(w, h int, pad, minU, minV, maxU, maxV float64) Camera {
 	}
 }
 
+// ProjectDepth returns the screen coordinates of a point and its depth: larger is nearer to the
+// viewer.
+func (v View) ProjectDepth(x, y, z float64) (u, vv, d float64) {
+	return v.project(float32(x), float32(y), float32(z))
+}
+
 // project returns the screen coordinates of a point, and its depth (larger is nearer to the viewer).
-func project(x, y, z float32) (u, v, d float64) {
+func (v View) project(x, y, z float32) (u, vv, d float64) {
 	fx, fy, fz := float64(x), float64(y), float64(z)
-	depth := fx*sinA + fy*cosA
-	return fx*cosA - fy*sinA, -(depth*sinE + fz*cosE), -(depth * cosE) + fz*sinE
+	depth := fx*v.sinA + fy*v.cosA
+	return fx*v.cosA - fy*v.sinA, -(depth*v.sinE + fz*v.cosE), -(depth * v.cosE) + fz*v.sinE
 }
 
 // lineWidth is the width of an extruded line in mm, for the picture.
@@ -369,6 +430,11 @@ func (m *Model) Render(w, h int, pos, curStart int64, printed, hot, ghost color.
 // first colour before the first change, the second after it, and so on. The last colour is for
 // the changes that have no colour of their own.
 func (m *Model) RenderColors(w, h int, pos, curStart int64, colors []color.RGBA, hot, ghost color.RGBA) *image.RGBA {
+	return m.RenderColorsIn(DefaultView, w, h, pos, curStart, colors, hot, ghost)
+}
+
+// RenderColorsIn is RenderColors in the view view.
+func (m *Model) RenderColorsIn(view View, w, h int, pos, curStart int64, colors []color.RGBA, hot, ghost color.RGBA) *image.RGBA {
 	if len(m.Segs) == 0 {
 		return image.NewRGBA(image.Rect(0, 0, w, h))
 	}
@@ -376,17 +442,17 @@ func (m *Model) RenderColors(w, h int, pos, curStart int64, colors []color.RGBA,
 	for i := range m.Segs {
 		s := &m.Segs[i]
 		for _, p := range [2][3]float32{{s.X0, s.Y0, s.Z0}, {s.X1, s.Y1, s.Z1}} {
-			u, v, _ := project(p[0], p[1], p[2])
+			u, v, _ := view.project(p[0], p[1], p[2])
 			minU, maxU = math.Min(minU, u), math.Max(maxU, u)
 			minV, maxV = math.Min(minV, v), math.Max(maxV, v)
 		}
 	}
-	return m.RenderView(w, h, Fit(w, h, 8, minU, minV, maxU, maxV), pos, curStart, colors, hot, ghost)
+	return m.RenderView(view, w, h, Fit(w, h, 8, minU, minV, maxU, maxV), pos, curStart, colors, hot, ghost)
 }
 
-// RenderView is RenderColors with the camera cam: the model has the place and the size of cam in
+// RenderView is RenderColorsIn with the camera cam: the model has the place and the size of cam in
 // the picture, and a part of it can be out of the picture.
-func (m *Model) RenderView(w, h int, cam Camera, pos, curStart int64, colors []color.RGBA, hot, ghost color.RGBA) *image.RGBA {
+func (m *Model) RenderView(view View, w, h int, cam Camera, pos, curStart int64, colors []color.RGBA, hot, ghost color.RGBA) *image.RGBA {
 	printed := colors[0]
 	out := image.NewRGBA(image.Rect(0, 0, w, h))
 	if len(m.Segs) == 0 {
@@ -394,7 +460,7 @@ func (m *Model) RenderView(w, h int, cam Camera, pos, curStart int64, colors []c
 	}
 	scale := cam.Scale
 	pt := func(x, y, z float32) (float64, float64, float64) {
-		u, v, d := project(x, y, z)
+		u, v, d := view.project(x, y, z)
 		return cam.X + u*scale, cam.Y + v*scale, d
 	}
 	ss := supersample
@@ -447,7 +513,7 @@ func (m *Model) RenderView(w, h int, cam Camera, pos, curStart int64, colors []c
 			x0, y0, d0 := pt(s.X0, s.Y0, s.Z0)
 			x1, y1, d1 := pt(s.X1, s.Y1, s.Z1)
 			f := float64(ss)
-			tube(img, zbuf, x0*f, y0*f, d0, x1*f, y1*f, d1, half, col, s)
+			tube(view, img, zbuf, x0*f, y0*f, d0, x1*f, y1*f, d1, half, col, s)
 		}
 	}
 	shrink(out, img, ss)
@@ -467,7 +533,7 @@ const tubeSteps = 9
 // half pixels wide at each side. The surface of the line is round across its width: a wall turns
 // from its side to the top and the bottom, and a top line from the top to its sides. A pixel is
 // drawn only when it is nearer than what zbuf has.
-func tube(img *image.RGBA, zbuf []float64, x0, y0, d0, x1, y1, d1, half float64, c color.RGBA, s *Seg) {
+func tube(view View, img *image.RGBA, zbuf []float64, x0, y0, d0, x1, y1, d1, half float64, c color.RGBA, s *Seg) {
 	w, h := img.Bounds().Dx(), img.Bounds().Dy()
 	// The direction across the line on the screen, and in the model.
 	dx, dy := x1-x0, y1-y0
@@ -478,7 +544,7 @@ func tube(img *image.RGBA, zbuf []float64, x0, y0, d0, x1, y1, d1, half float64,
 	}
 	// A wall is round from its top to its bottom. A top line is flatter: the lines of a top
 	// surface touch each other.
-	n := segNormal(s)
+	n := segNormal(view, s)
 	var across [3]float64
 	curve := 0.45
 	if s.Kind == KindOuterWall || s.Kind == KindInnerWall {
@@ -487,8 +553,8 @@ func tube(img *image.RGBA, zbuf []float64, x0, y0, d0, x1, y1, d1, half float64,
 		across = unit([3]float64{float64(s.Y1 - s.Y0), float64(s.X0 - s.X1), 0})
 	}
 	// Turn across so that it goes the way of (px, py) on the screen.
-	au := across[0]*cosA - across[1]*sinA
-	av := -((across[0]*sinA+across[1]*cosA)*sinE + across[2]*cosE)
+	au := across[0]*view.cosA - across[1]*view.sinA
+	av := -((across[0]*view.sinA+across[1]*view.cosA)*view.sinE + across[2]*view.cosE)
 	if au*px+av*py < 0 {
 		across = [3]float64{-across[0], -across[1], -across[2]}
 	}
@@ -497,7 +563,7 @@ func tube(img *image.RGBA, zbuf []float64, x0, y0, d0, x1, y1, d1, half float64,
 	for i := range shades {
 		a := (float64(i)/(tubeSteps-1)*2 - 1) * curve // radians from the middle of the line
 		sa, ca := math.Sincos(a)
-		shades[i] = plastic(c, unit([3]float64{n[0]*ca + across[0]*sa, n[1]*ca + across[1]*sa, n[2]*ca + across[2]*sa}))
+		shades[i] = plastic(view, c, unit([3]float64{n[0]*ca + across[0]*sa, n[1]*ca + across[1]*sa, n[2]*ca + across[2]*sa}))
 	}
 	steps := int(math.Ceil(l)) + 1
 	for i := 0; i < steps; i++ {
@@ -522,12 +588,12 @@ func tube(img *image.RGBA, zbuf []float64, x0, y0, d0, x1, y1, d1, half float64,
 
 // segNormal is the direction that the surface of a line faces. A wall faces out at its side,
 // turned to the viewer. The other lines are the top of a layer, and face up.
-func segNormal(s *Seg) [3]float64 {
+func segNormal(view View, s *Seg) [3]float64 {
 	if s.Kind != KindOuterWall && s.Kind != KindInnerWall {
 		return [3]float64{0, 0, 1}
 	}
 	n := unit([3]float64{float64(s.Y1 - s.Y0), float64(s.X0 - s.X1), 0})
-	if n[0]*viewer[0]+n[1]*viewer[1] < 0 {
+	if n[0]*view.viewer[0]+n[1]*view.viewer[1] < 0 {
 		n[0], n[1] = -n[0], -n[1]
 	}
 	return n
@@ -535,16 +601,13 @@ func segNormal(s *Seg) [3]float64 {
 
 // plastic is the colour c of a surface that faces n: the key light and the fill light, and a
 // highlight of the key light, as on plastic.
-func plastic(c color.RGBA, n [3]float64) color.RGBA {
+func plastic(view View, c color.RGBA, n [3]float64) color.RGBA {
 	dot := func(a, b [3]float64) float64 { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2] }
-	diffuse := 0.36 + 0.6*max(0, dot(n, keyLight)) + 0.22*max(0, dot(n, fillLight))
-	spec := 0.35 * math.Pow(max(0, dot(n, halfway)), 28)
+	diffuse := 0.36 + 0.6*max(0, dot(n, view.keyLight)) + 0.22*max(0, dot(n, view.fillLight))
+	spec := 0.35 * math.Pow(max(0, dot(n, view.halfway)), 28)
 	f := func(v uint8) uint8 { return uint8(min(255, float64(v)*diffuse+255*spec)) }
 	return color.RGBA{f(c.R), f(c.G), f(c.B), 255}
 }
-
-// halfway is the direction between the key light and the viewer, for the highlight.
-var halfway = unit([3]float64{keyLight[0] + viewer[0], keyLight[1] + viewer[1], keyLight[2] + viewer[2]})
 
 func unit(v [3]float64) [3]float64 {
 	l := math.Sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2])

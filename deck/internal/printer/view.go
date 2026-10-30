@@ -39,6 +39,10 @@ type Source interface {
 type View struct {
 	src      Source
 	ModelDir string // a folder with more STL files, besides the ones in the file store
+	// CameraView returns the view of the camera of the time lapse, for the pictures that go next
+	// to the time lapse: the share page and the prints of a project. It is false with no
+	// calibration. Nil, or false, is gcode.DefaultView.
+	CameraView func() (gcode.View, bool)
 
 	mu        sync.Mutex
 	file      string // fileKey of the loaded G-code
@@ -490,17 +494,37 @@ type recordPic struct {
 	loading bool
 }
 
+// cameraView is the view of CameraView, or gcode.DefaultView.
+func (v *View) cameraView() gcode.View {
+	if v.CameraView != nil {
+		if cv, ok := v.CameraView(); ok {
+			return cv
+		}
+	}
+	return gcode.DefaultView
+}
+
+// CloudRecordPicture is RecordPicture in the view of the camera (CameraView), for the page of
+// the print in a project.
+func (v *View) CloudRecordPicture(r Record) (img image.Image, loading bool) {
+	return v.recordPicture(r, v.cameraView())
+}
+
 // RecordPicture returns the picture of a finished print: the model, and for a print that did not
 // complete, the part that printed in colour and the rest as a ghost. The first call starts the
 // drawing in the background and reports loading. img is nil when the file is gone.
 func (v *View) RecordPicture(r Record) (img image.Image, loading bool) {
+	return v.recordPicture(r, gcode.DefaultView)
+}
+
+func (v *View) recordPicture(r Record, view gcode.View) (img image.Image, loading bool) {
 	hex := ColorFromName(r.Spool)
 	if v.Rolls != nil {
 		if sp, ok := v.Rolls.Get(r.SpoolID); ok {
 			hex = rollHex(sp.Color, sp.Label())
 		}
 	}
-	k := fmt.Sprintf("%s|%d|%d|%s", r.Path, r.Pos, r.End.Unix(), hex)
+	k := fmt.Sprintf("%s|%d|%d|%s|%.1f|%.1f", r.Path, r.Pos, r.End.Unix(), hex, view.Turn, view.Elevation)
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	if p, ok := v.records[k]; ok {
@@ -512,7 +536,7 @@ func (v *View) RecordPicture(r Record) (img image.Image, loading bool) {
 	p := &recordPic{loading: true}
 	v.records[k] = p
 	go func() {
-		img := v.drawRecord(r, hex)
+		img := v.drawRecord(r, hex, view)
 		v.mu.Lock()
 		p.img, p.loading = img, false
 		v.mu.Unlock()
@@ -591,7 +615,7 @@ func (v *View) FilePicture(f File, hex string) image.Image {
 }
 
 // drawRecord draws the picture of a finished print, or returns nil.
-func (v *View) drawRecord(r Record, hex string) image.Image {
+func (v *View) drawRecord(r Record, hex string, view gcode.View) image.Image {
 	col := ModelColor(hex)
 	body, err := v.src.Open(r.Path)
 	if err != nil {
@@ -612,10 +636,10 @@ func (v *View) drawRecord(r Record, hex string) image.Image {
 			if pos != math.MaxInt64 {
 				top = float64(gc.ZAt(pos)) / float64(max(gc.MaxZ, 0.001))
 			}
-			return mesh.Render(PreviewW, PreviewH, top, top, col, hotColor, ghostColor)
+			return mesh.RenderIn(view, PreviewW, PreviewH, top, top, col, hotColor, ghostColor)
 		}
 	}
-	return gc.RenderColors(PreviewW, PreviewH, pos, math.MaxInt64, v.palette(gc, hex), hotColor, pathGhost)
+	return gc.RenderColorsIn(view, PreviewW, PreviewH, pos, math.MaxInt64, v.palette(gc, hex), hotColor, pathGhost)
 }
 
 // Toolpath gives the extruding moves of the print from move from, up to the file position upto:

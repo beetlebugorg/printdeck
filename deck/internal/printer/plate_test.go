@@ -63,7 +63,7 @@ func sharePic(t testing.TB, src string, mesh *stl.Mesh, pos int64, b Bed) image.
 // platePicture for the part box part on bed b.
 func pixelAt(b Bed, part Box, top, x, y, z float64) image.Point {
 	_, lo, hi := plateOf(b, part, true)
-	cam := plateCamera(PreviewW, PreviewH, lo, hi, part, true, top)
+	cam := plateCamera(gcode.DefaultView, PreviewW, PreviewH, lo, hi, part, true, top)
 	u, v := gcode.Project(x, y, z)
 	return image.Pt(int(cam.X+u*cam.Scale), int(cam.Y+v*cam.Scale))
 }
@@ -283,7 +283,7 @@ func BenchmarkSharePicture(b *testing.B) {
 	v.loadBoxes(gc)
 	bed := BedOf(tazMachine, "")
 	for b.Loop() {
-		platePicture(gc, nil, v.boxBody, v.bodyOK, gc.Segs[len(gc.Segs)/2].Pos, 0, []color.RGBA{printedColor}, bed)
+		platePicture(gcode.DefaultView, gc, nil, v.boxBody, v.bodyOK, gc.Segs[len(gc.Segs)/2].Pos, 0, []color.RGBA{printedColor}, bed)
 	}
 }
 
@@ -291,9 +291,9 @@ func BenchmarkSharePicture(b *testing.B) {
 func BenchmarkPlate(b *testing.B) {
 	img := image.NewRGBA(image.Rect(0, 0, PreviewW, PreviewH))
 	p, lo, hi := plateOf(BedOf(tazMachine, ""), Box{Min: [3]float64{100, 100, 0}, Max: [3]float64{150, 150, 0}}, true)
-	cam := plateCamera(PreviewW, PreviewH, lo, hi, Box{}, false, 0)
+	cam := plateCamera(gcode.DefaultView, PreviewW, PreviewH, lo, hi, Box{}, false, 0)
 	for b.Loop() {
-		gcode.DrawPlate(img, cam, p, shareTop, shareBottom)
+		gcode.DrawPlate(img, gcode.DefaultView, cam, p, shareTop, shareBottom)
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"printdeck/internal/camera"
+	"printdeck/internal/gcode"
 	"printdeck/internal/printer"
 	"printdeck/internal/timelapse"
 	"printdeck/internal/ui"
@@ -50,6 +51,7 @@ func startTimelapse(ctx context.Context, stateDir, configPath string, app *ui.Ap
 		}
 	}
 	r.Picture = hub.Role(camera.RolePicture)
+	k.View.CameraView = func() (gcode.View, bool) { return cameraView(hub, k, model) }
 	r.ParkY = func(file string) (float64, bool) {
 		b, ok := wholePart(k, file)
 		if !ok {
@@ -114,6 +116,50 @@ func partBox(k *printer.Klippy, file, model string) (camera.Box, float64, bool) 
 		bedY = max(ax[0][1], min(ax[1][1], bedY))
 	}
 	return box, bedY, true
+}
+
+// cameraView returns the view of the camera of the time lapse, for the pictures of the model that
+// go next to the time lapse: the directions of the X, Y and Z axes of the G-code at the middle of
+// the bed, in the frames of the camera. The bed is at park_y of the config, or else at the middle
+// of the bed. It is false with no calibration, with no known bed, and for a camera that does not
+// look down at the bed.
+func cameraView(hub *camera.Hub, k *printer.Klippy, model string) (gcode.View, bool) {
+	lapse := hub.Role(camera.RoleLapse)
+	cal, ok := lapse.Calibration()
+	bed := printer.BedOf(k.Machine(), model)
+	if !ok || !bed.Known() || cal.Width <= 0 || cal.Height <= 0 {
+		return gcode.View{}, false
+	}
+	place := gcodeToPlace(k)
+	cx, cy := (bed.Min[0]+bed.Max[0])/2, (bed.Min[1]+bed.Max[1])/2
+	_, bedY, _ := place(cx, cy, 0)
+	if m := k.Machine(); m.HasParkY {
+		bedY = m.ParkY
+	}
+	// The size of the frames at the turn of the settings, so that a pixel is square.
+	rotate := hub.Settings().Camera(lapse.ID()).Rotate
+	w, h := cal.Width, cal.Height
+	if (rotate-cal.Rotate+360)%180 != 0 {
+		w, h = h, w
+	}
+	pt := func(x, y, z float64) (float64, float64, bool) {
+		px, py, pz := place(x, y, z)
+		return cal.ProjectAt([3]float64{px, py, pz}, bedY, w, h, rotate)
+	}
+	// Central steps of 10 mm along each axis: the perspective of the two sides cancels.
+	const step = 10.0   // mm
+	var d [3][2]float64 // the screen moves of the X, Y and Z steps
+	for i := range 3 {
+		var a, b [3]float64
+		a[i], b[i] = -step, step
+		u0, v0, ok0 := pt(cx+a[0], cy+a[1], a[2])
+		u1, v1, ok1 := pt(cx+b[0], cy+b[1], b[2])
+		if !ok0 || !ok1 {
+			return gcode.View{}, false
+		}
+		d[i] = [2]float64{u1 - u0, v1 - v0}
+	}
+	return gcode.ViewOf(d[0][0], d[0][1], d[1][0], d[1][1], d[2][1])
 }
 
 // followEvery is the time between two checks of the print for the follow of the part.

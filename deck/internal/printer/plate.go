@@ -149,12 +149,12 @@ func plateOf(b Bed, part Box, partOK bool) (p gcode.Plate, lo, hi [2]float64) {
 	return p, lo, hi
 }
 
-// plateCamera returns the camera of a w x h picture of the area from lo to hi at z 0, and of the
-// part in the box part up to the height top.
-func plateCamera(w, h int, lo, hi [2]float64, part Box, partOK bool, top float64) gcode.Camera {
+// plateCamera returns the camera of a w x h picture in the view view of the area from lo to hi at
+// z 0, and of the part in the box part up to the height top.
+func plateCamera(view gcode.View, w, h int, lo, hi [2]float64, part Box, partOK bool, top float64) gcode.Camera {
 	minU, minV, maxU, maxV := math.Inf(1), math.Inf(1), math.Inf(-1), math.Inf(-1)
 	add := func(x, y, z float64) {
-		u, v := gcode.Project(x, y, z)
+		u, v := view.Project(x, y, z)
 		minU, maxU = min(minU, u), max(maxU, u)
 		minV, maxV = min(minV, v), max(maxV, v)
 	}
@@ -167,12 +167,13 @@ func plateCamera(w, h int, lo, hi [2]float64, part Box, partOK bool, top float64
 	return gcode.Fit(w, h, 4, minU, minV, maxU, maxV)
 }
 
-// platePicture draws the print on the plate of bed b, at the size of the preview: the G-code gc,
+// platePicture draws the print on the plate of bed b in the view view, at the size of the preview:
+// the G-code gc,
 // or the model mesh when it is not nil. body is the box of the part from its second layer on
 // (View.PartBox), with ok false for none. The part is printed up to the file offset pos, and the
 // layer that starts at curStart prints now, in the colors of palette. A mesh has the place of
 // body on the plate.
-func platePicture(gc *gcode.Model, mesh *stl.Mesh, body Box, ok bool, pos, curStart int64, colors []color.RGBA, b Bed) *image.RGBA {
+func platePicture(view gcode.View, gc *gcode.Model, mesh *stl.Mesh, body Box, ok bool, pos, curStart int64, colors []color.RGBA, b Bed) *image.RGBA {
 	w, h := PreviewW, PreviewH
 	part, top := body, float64(gc.MaxZ)
 	var dx, dy, dz float64 // the move of the mesh to its place on the plate
@@ -192,9 +193,9 @@ func platePicture(gc *gcode.Model, mesh *stl.Mesh, body Box, ok bool, pos, curSt
 		top = part.Max[2]
 	}
 	p, lo, hi := plateOf(b, part, ok)
-	cam := plateCamera(w, h, lo, hi, part, ok, top)
+	cam := plateCamera(view, w, h, lo, hi, part, ok, top)
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
-	gcode.DrawPlate(img, cam, p, shareTop, shareBottom)
+	gcode.DrawPlate(img, view, cam, p, shareTop, shareBottom)
 	if !ok {
 		return img
 	}
@@ -208,20 +209,21 @@ func platePicture(gc *gcode.Model, mesh *stl.Mesh, body Box, ok bool, pos, curSt
 		if pos < 0 {
 			zTop = -1
 		}
-		u, v := gcode.Project(dx, dy, dz)
-		model = mesh.RenderView(w, h, cam.Scale, cam.X+u*cam.Scale, cam.Y+v*cam.Scale, zLow, zTop, colors[0], hotColor, ghostColor)
+		u, v := view.Project(dx, dy, dz)
+		model = mesh.RenderView(view, w, h, cam.Scale, cam.X+u*cam.Scale, cam.Y+v*cam.Scale, zLow, zTop, colors[0], hotColor, ghostColor)
 	} else {
 		// The rest of the toolpath has the ghost color of the mesh: pathGhost is for a black
 		// background.
-		model = gc.RenderView(w, h, cam, pos, curStart, colors, hotColor, ghostColor)
+		model = gc.RenderView(view, w, h, cam, pos, curStart, colors, hotColor, ghostColor)
 	}
 	draw.Draw(img, img.Bounds(), model, image.Point{}, draw.Over)
 	return img
 }
 
 // SharePicture returns the picture of the print of st on the build plate of bed b, for the share
-// page: the part as it is at the file position of st, with a margin of the plate around it. It
-// returns nil when the G-code of the print is not loaded, and when no print runs.
+// page: the part as it is at the file position of st, with a margin of the plate around it, in the
+// view of the camera (CameraView). It returns nil when the G-code of the print is not loaded, and
+// when no print runs.
 func (v *View) SharePicture(st State, b Bed) image.Image {
 	v.mu.Lock()
 	gc, mesh, hex := v.gc, v.mesh, v.startColor
@@ -237,5 +239,5 @@ func (v *View) SharePicture(st State, b Bed) image.Image {
 	}
 	v.mu.Unlock()
 	pos := st.FilePos
-	return platePicture(gc, mesh, body, ok, pos, gc.LayerStart(gc.LayerAt(pos)), v.palette(gc, hex), b)
+	return platePicture(v.cameraView(), gc, mesh, body, ok, pos, gc.LayerStart(gc.LayerAt(pos)), v.palette(gc, hex), b)
 }

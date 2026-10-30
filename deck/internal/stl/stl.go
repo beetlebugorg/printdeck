@@ -11,6 +11,8 @@ import (
 	"math"
 	"strconv"
 	"strings"
+
+	"printdeck/internal/gcode"
 )
 
 type Tri struct{ V [3][3]float32 }
@@ -67,14 +69,11 @@ func Parse(r io.Reader) (*Mesh, error) {
 	return m, nil
 }
 
+// Directions to the key light and to the weaker fill light, in model space, for
+// gcode.DefaultView. Other views turn them (gcode.View.Light).
 var (
-	sinA, cosA = math.Sincos(35 * math.Pi / 180)
-	sinE, cosE = math.Sincos(40 * math.Pi / 180)
-	// Directions to the key light and to the weaker fill light, in model space.
 	light = norm([3]float64{-0.4, -0.5, 0.8})
 	fill  = norm([3]float64{0.7, 0.3, 0.2})
-	// The direction to the viewer, in model space: the depth axis of project.
-	viewer = [3]float64{-sinA * cosE, -cosA * cosE, sinE}
 )
 
 func norm(v [3]float64) [3]float64 {
@@ -85,22 +84,24 @@ func norm(v [3]float64) [3]float64 {
 	return [3]float64{v[0] / l, v[1] / l, v[2] / l}
 }
 
-// project returns screen coordinates and a depth (larger is nearer to the viewer).
-func project(p [3]float32) (u, v, d float64) {
-	x, y, z := float64(p[0]), float64(p[1]), float64(p[2])
-	u = x*cosA - y*sinA
-	depth := x*sinA + y*cosA
-	return u, -(depth*sinE + z*cosE), -(depth * cosE) + z*sinE
+// project returns screen coordinates of the view and a depth (larger is nearer to the viewer).
+func project(view gcode.View, p [3]float32) (u, v, d float64) {
+	return view.ProjectDepth(float64(p[0]), float64(p[1]), float64(p[2]))
 }
 
 // Render draws the mesh with flat shading, from a key light and a fill light. The part below the height zFrac (0..1 of the model height)
 // is drawn in the printed colour, the rest in the ghost colour. The part from zLow to zFrac, the layer that
 // is printed now, is drawn in the colour hot.
 func (m *Mesh) Render(w, h int, zLow, zFrac float64, printed, hot, ghost color.RGBA) *image.RGBA {
+	return m.RenderIn(gcode.DefaultView, w, h, zLow, zFrac, printed, hot, ghost)
+}
+
+// RenderIn is Render in the view view.
+func (m *Mesh) RenderIn(view gcode.View, w, h int, zLow, zFrac float64, printed, hot, ghost color.RGBA) *image.RGBA {
 	minU, minV, maxU, maxV := math.Inf(1), math.Inf(1), math.Inf(-1), math.Inf(-1)
 	for _, t := range m.Tris {
 		for _, p := range t.V {
-			u, v, _ := project(p)
+			u, v, _ := project(view, p)
 			minU, maxU = math.Min(minU, u), math.Max(maxU, u)
 			minV, maxV = math.Min(minV, v), math.Max(maxV, v)
 		}
@@ -109,12 +110,13 @@ func (m *Mesh) Render(w, h int, zLow, zFrac float64, printed, hot, ghost color.R
 	scale := math.Min((float64(w)-2*pad)/(maxU-minU), (float64(h)-2*pad)/(maxV-minV))
 	ox := (float64(w)-(maxU-minU)*scale)/2 - minU*scale
 	oy := (float64(h)-(maxV-minV)*scale)/2 - minV*scale
-	return m.RenderView(w, h, scale, ox, oy, zLow, zFrac, printed, hot, ghost)
+	return m.RenderView(view, w, h, scale, ox, oy, zLow, zFrac, printed, hot, ghost)
 }
 
-// RenderView is Render with a camera: the point (u, v) of the screen of the model is at the pixel
-// (ox + u*scale, oy + v*scale). The screen is the screen of gcode.Project.
-func (m *Mesh) RenderView(w, h int, scale, ox, oy, zLow, zFrac float64, printed, hot, ghost color.RGBA) *image.RGBA {
+// RenderView is RenderIn with a camera: the point (u, v) of the screen of the model is at the pixel
+// (ox + u*scale, oy + v*scale). The screen is the screen of view.Project.
+func (m *Mesh) RenderView(view gcode.View, w, h int, scale, ox, oy, zLow, zFrac float64, printed, hot, ghost color.RGBA) *image.RGBA {
+	viewer, light, fill := view.Viewer(), view.Light(light), view.Light(fill)
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 	zbuf := make([]float64, w*h)
 	for i := range zbuf {
@@ -126,7 +128,7 @@ func (m *Mesh) RenderView(w, h int, scale, ox, oy, zLow, zFrac float64, printed,
 	for _, t := range m.Tris {
 		var sx, sy, sd [3]float64
 		for i, p := range t.V {
-			u, v, d := project(p)
+			u, v, d := project(view, p)
 			sx[i], sy[i], sd[i] = ox+u*scale, oy+v*scale, d
 		}
 		// Face normal for shading, turned to the viewer: meshes differ in winding.

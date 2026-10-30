@@ -361,7 +361,7 @@ func (p *projectLink) printRequest(r printer.Record) cloud.PrintRequest {
 // file is gone. The view draws it in the background: the deck waits up to 30 s.
 func (p *projectLink) recordPicture(r printer.Record) []byte {
 	for range 60 {
-		img, loading := p.k.View.RecordPicture(r)
+		img, loading := p.k.View.CloudRecordPicture(r)
 		if !loading {
 			if img == nil {
 				return nil

@@ -32,26 +32,42 @@ var (
 	rimColor    = color.RGBA{0x1c, 0x1d, 0x1e, 255} // the edge of a washer
 )
 
-// DrawPlate draws the plate p into img with the camera cam, on a background that goes from the
-// color top at the top of the picture to bottom at the bottom. The top of the plate and its sides
-// at the front have the lights of the model. Each pixel is the mean of the colors at its 4
-// corners, so the edges are smooth.
-func DrawPlate(img *image.RGBA, cam Camera, p Plate, top, bottom color.RGBA) {
+// DrawPlate draws the plate p into img in the view view with the camera cam, on a background that
+// goes from the color top at the top of the picture to bottom at the bottom. The top of the plate
+// and the two sides that face the viewer have the lights of the model. Each pixel is the mean of
+// the colors at its 4 corners, so the edges are smooth.
+func DrawPlate(img *image.RGBA, view View, cam Camera, p Plate, top, bottom color.RGBA) {
 	b := img.Bounds()
-	// The shade of each face: the top, the side at the left (x is Min[0]) and the side at the
-	// front (y is Min[1]).
+	sinA, cosA, sinE, cosE := view.sinA, view.cosA, view.sinE, view.cosE
+	// The shade of each face: the top, the side x = sideX and the side y = sideY. These sides face
+	// the viewer.
 	shade := func(n [3]float64) float64 {
 		dot := func(a, b [3]float64) float64 { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2] }
-		return 0.36 + 0.6*max(0, dot(n, keyLight)) + 0.22*max(0, dot(n, fillLight))
+		return 0.36 + 0.6*max(0, dot(n, view.keyLight)) + 0.22*max(0, dot(n, view.fillLight))
+	}
+	sideX, nx := p.Min[0], -1.0
+	if view.viewer[0] > 0 {
+		sideX, nx = p.Max[0], 1
+	}
+	sideY, ny := p.Min[1], -1.0
+	if view.viewer[1] > 0 {
+		sideY, ny = p.Max[1], 1
 	}
 	topShade := shade([3]float64{0, 0, 1})
 	plate, sheet := lit(p.Color, topShade), lit(p.Sheet, topShade)
 	washer, screw, rim := lit(washerColor, topShade), lit(screwColor, topShade), lit(rimColor, topShade)
-	left, front := lit(p.Color, shade([3]float64{-1, 0, 0})*0.8), lit(p.Color, shade([3]float64{0, -1, 0})*0.8)
-	// The depth of the top of the plate, from the front corner to the back corner, for the fade.
-	d0 := p.Min[0]*sinA + p.Min[1]*cosA
+	left, front := lit(p.Color, shade([3]float64{nx, 0, 0})*0.8), lit(p.Color, shade([3]float64{0, ny, 0})*0.8)
+	// The depth of the top of the plate, from the nearest corner to the farthest corner, for the
+	// fade.
+	d0, d1 := math.Inf(1), math.Inf(-1)
+	for _, x := range [2]float64{p.Min[0], p.Max[0]} {
+		for _, y := range [2]float64{p.Min[1], p.Max[1]} {
+			d := x*sinA + y*cosA
+			d0, d1 = min(d0, d), max(d1, d)
+		}
+	}
 	fade := 0.0
-	if d1 := p.Max[0]*sinA + p.Max[1]*cosA; d1 > d0 {
+	if d1 > d0 {
 		fade = plateFade / (d1 - d0)
 	}
 	hasSheet := p.SheetMax[0] > p.SheetMin[0] && p.SheetMax[1] > p.SheetMin[1]
@@ -88,18 +104,22 @@ func DrawPlate(img *image.RGBA, cam Camera, p Plate, top, bottom color.RGBA) {
 			f := 1 - fade*(depth-d0)
 			return [3]float64{c[0] * f, c[1] * f, c[2] * f}, true
 		}
-		// The side at the left: the plane x = Min[0], from z 0 down to -plateThick.
-		sy := (p.Min[0]*cosA - u) / sinA
-		if sy >= p.Min[1] && sy <= p.Max[1] {
-			if z := (-v - (p.Min[0]*sinA+sy*cosA)*sinE) / cosE; z <= 0 && z >= -plateThick {
-				return left, true
+		// The side x = sideX, from z 0 down to -plateThick. A view along the side does not show it.
+		if math.Abs(sinA) > 1e-6 {
+			sy := (sideX*cosA - u) / sinA
+			if sy >= p.Min[1] && sy <= p.Max[1] {
+				if z := (-v - (sideX*sinA+sy*cosA)*sinE) / cosE; z <= 0 && z >= -plateThick {
+					return left, true
+				}
 			}
 		}
-		// The side at the front: the plane y = Min[1].
-		sx := (u + p.Min[1]*sinA) / cosA
-		if sx >= p.Min[0] && sx <= p.Max[0] {
-			if z := (-v - (sx*sinA+p.Min[1]*cosA)*sinE) / cosE; z <= 0 && z >= -plateThick {
-				return front, true
+		// The side y = sideY.
+		if math.Abs(cosA) > 1e-6 {
+			sx := (u + sideY*sinA) / cosA
+			if sx >= p.Min[0] && sx <= p.Max[0] {
+				if z := (-v - (sx*sinA+sideY*cosA)*sinE) / cosE; z <= 0 && z >= -plateThick {
+					return front, true
+				}
 			}
 		}
 		return c, false
