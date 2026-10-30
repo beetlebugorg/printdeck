@@ -223,7 +223,7 @@ func TestUpload(t *testing.T) {
 	for i := range file {
 		file[i] = byte(i * 7)
 	}
-	board.Set(func(b *FakeBoard) { b.LoseData = 2 })
+	board.Set(func(b *FakeBoard) { b.LoseData, b.SaveNoOK = 2, true })
 	c := &Client{Addr: board.Addr()}
 	var last int64
 	err = c.Upload(t.Context(), "part.ctb", bytes.NewReader(file), int64(len(file)), func(n int64) { last = n })

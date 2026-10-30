@@ -28,6 +28,8 @@ type FakeBoard struct {
 	upName   string
 	upData   []byte
 	Uploaded map[string][]byte
+	// SaveNoOK answers M29 with "Done saving file!" and no "ok", as the Phenom did once.
+	SaveNoOK bool
 	// LoseData is the count of the next data packets that the board loses, with no answer.
 	LoseData int
 }
@@ -159,6 +161,9 @@ func (b *FakeBoard) answer(q string) (string, bool) {
 		b.Uploaded[b.upName] = b.upData
 		b.Files = append(b.Files, fmt.Sprintf("%s %d", b.upName, len(b.upData)))
 		b.upName, b.upData = "", nil
+		if b.SaveNoOK {
+			return "Done saving file!\r\n// " + strings.TrimSpace(q[3:]), true
+		}
 		return "ok\r\nDone saving file!", true
 	}
 	if strings.HasPrefix(q, "G1 Z") {

@@ -139,7 +139,8 @@ func (c *Client) Upload(ctx context.Context, name string, r io.ReaderAt, size in
 	if err != nil {
 		return fmt.Errorf("chitu: M29: %w", err)
 	}
-	if m := resendRE.FindStringSubmatch(a); m != nil || !strings.Contains(a, "ok") {
+	// The first answer is "ok", or "Done saving file!" when the "ok" came before the drain.
+	if m := resendRE.FindStringSubmatch(a); m != nil || !strings.Contains(a, "ok") && !strings.Contains(a, "Done saving") {
 		return fmt.Errorf("chitu: M29: %s", strings.TrimSpace(a))
 	}
 	// The board saves the file after "ok", and then sends "Done saving file!" (3.4 s on the Phenom).
