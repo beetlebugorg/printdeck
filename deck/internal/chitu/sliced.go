@@ -11,12 +11,13 @@ import (
 
 // The sliced files of ChiTuBox for ChiTu boards (.cbddlp and .ctb): a header, two preview
 // pictures, and the layers. The layout comes from other programs that read these files (UVtools
-// and others); no file of the Phenom checked it yet.
+// and others). A .ctb of the Phenom of 2026-10-30 (magic 0x12FD0106, version 5) has this header.
 
 // The magic numbers at the start of a file.
 const (
 	MagicCBDDLP = 0x12FD0019
 	MagicCTB    = 0x12FD0086
+	MagicCTBv5  = 0x12FD0106 // ChiTuBox of 2026: the same header, with the layers encrypted
 )
 
 // Sliced is the header of a sliced file.
@@ -39,7 +40,7 @@ func ReadSliced(data []byte) (*Sliced, error) {
 	u := func(off int) uint32 { return binary.LittleEndian.Uint32(data[off:]) }
 	f := func(off int) float32 { return math.Float32frombits(u(off)) }
 	switch u(0) {
-	case MagicCBDDLP, MagicCTB:
+	case MagicCBDDLP, MagicCTB, MagicCTBv5:
 	default:
 		return nil, fmt.Errorf("chitu: no sliced file (magic %#x)", u(0))
 	}

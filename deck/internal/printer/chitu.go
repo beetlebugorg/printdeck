@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -47,6 +48,8 @@ type ChiTu struct {
 	console []ConsoleLine
 	hold    bool                   // a ChiTuBox session talks to the board: no queries of the deck
 	sending string                 // the file that the deck sends to the board now, or ""
+	waiting []string               // the files that wait for the end of that upload
+	sendMu  sync.Mutex             // held for each upload to the board, so the uploads go one at a time
 	pics    map[string]image.Image // the previews of the copies in UploadDir, by name
 }
 
@@ -484,11 +487,18 @@ func (c *ChiTu) SendFile(path string) error {
 	if err != nil {
 		return err
 	}
+	// A second upload waits for the first.
 	c.mu.Lock()
+	c.waiting = append(c.waiting, name)
 	if c.sending != "" {
-		c.mu.Unlock()
-		c.showAnswer("The deck already sends " + c.sending + " to the printer")
-		return errors.New("an upload is running")
+		c.st.Message = fmt.Sprintf("%s waits for the upload of %s to the printer", name, c.sending)
+	}
+	c.mu.Unlock()
+	c.sendMu.Lock()
+	defer c.sendMu.Unlock()
+	c.mu.Lock()
+	if i := slices.Index(c.waiting, name); i >= 0 {
+		c.waiting = slices.Delete(c.waiting, i, i+1)
 	}
 	c.sending = name
 	c.st.Message = "Sending " + name + " to the printer"
@@ -525,7 +535,7 @@ func (c *ChiTu) SendFile(path string) error {
 func (c *ChiTu) Busy() string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.sending != "" {
+	if c.sending != "" || len(c.waiting) > 0 {
 		return "The deck sends " + c.sending + " to the printer"
 	}
 	return ""

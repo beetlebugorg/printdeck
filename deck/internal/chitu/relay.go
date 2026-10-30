@@ -50,6 +50,10 @@ type Relay struct {
 	sessions map[string]*relaySession
 }
 
+// m4001Answer is the answer of the Phenom to M4001 (the steps of the axes), from a capture of
+// 2026-10-30. The relay gives it while the board is busy.
+const m4001Answer = "ok X:0.011430 Y:0.011430 Z:0.001250 E:0.001340 T:0/0/0/400/1 U:'GBK' B:1"
+
 // relayIdle is the time with no packet after which a client is gone.
 const relayIdle = 2 * time.Minute
 
@@ -95,10 +99,17 @@ func (r *Relay) packet(ctx context.Context, p []byte, from net.Addr) {
 		r.Conn.WriteTo([]byte(a+"\r\n"), from)
 		return
 	}
-	if strings.HasPrefix(strings.TrimSpace(string(p)), "M6030") && r.Busy != nil {
+	if r.Busy != nil {
 		if why := r.Busy(); why != "" {
-			r.Conn.WriteTo([]byte("Error:"+why+"\r\n"), from)
-			return
+			switch line := strings.TrimSpace(string(p)); {
+			case strings.HasPrefix(line, "M6030"):
+				r.Conn.WriteTo([]byte("Error:"+why+"\r\n"), from)
+				return
+			case line == "M4001":
+				// ChituManager sends M4001 before M28. The board gives no answer during an upload.
+				r.Conn.WriteTo([]byte(m4001Answer+"\r\n"), from)
+				return
+			}
 		}
 	}
 	s.board.Write(p)

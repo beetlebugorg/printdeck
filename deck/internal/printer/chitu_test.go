@@ -178,3 +178,30 @@ func TestChiTuDeleteFile(t *testing.T) {
 		t.Error("no error for a file that is not there")
 	}
 }
+
+// A second upload waits for the first, and both reach the board.
+func TestChiTuUploadQueue(t *testing.T) {
+	b, err := chitu.NewFakeBoard("127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer b.Close()
+	c := NewChiTu(b.Addr(), "Phenom", &History{})
+	c.UploadDir = t.TempDir()
+	done := make(chan bool)
+	for _, n := range []string{"a.cbddlp", "b.cbddlp"} {
+		tmp := filepath.Join(c.UploadDir, ".upload-"+n)
+		os.WriteFile(tmp, bytes.Repeat([]byte(n), 3000), 0o644)
+		go func() { c.SaveUpload(n, tmp); done <- true }()
+	}
+	<-done
+	<-done
+	b.Set(func(b *chitu.FakeBoard) {
+		if len(b.Uploaded["a.cbddlp"]) != 24000 || len(b.Uploaded["b.cbddlp"]) != 24000 {
+			t.Errorf("the board got %d and %d bytes", len(b.Uploaded["a.cbddlp"]), len(b.Uploaded["b.cbddlp"]))
+		}
+	})
+	if c.Busy() != "" {
+		t.Error("busy after the uploads")
+	}
+}
