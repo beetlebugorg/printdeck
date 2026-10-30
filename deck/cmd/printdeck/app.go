@@ -154,7 +154,7 @@ func desktopApp(args []string) {
 	// The simulator has a password, so a browser on this computer can show its remote screen, and
 	// Wi-Fi and help shows it.
 	password := ""
-	if *sim {
+	if *sim || *simChitu {
 		password = simPassword(*dir)
 		app.Setup = &simSetup{addr: "http://" + ln.Addr().String(), password: password}
 	}
