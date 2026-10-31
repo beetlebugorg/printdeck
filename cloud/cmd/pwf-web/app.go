@@ -56,10 +56,13 @@ func runApp() {
 	onFiles("photoFile", func(files []js.Value) { a.addPhotos(files, "", "photoMsg") })
 	onFiles("prPhotoFile", func(files []js.Value) { a.addPhotos(files, a.print, "prPhotoMsg") })
 	js.Global().Call("addEventListener", "hashchange", js.FuncOf(func(js.Value, []js.Value) any {
-		go a.route()
+		if newView() {
+			go a.route()
+		}
 		return nil
 	}))
 	onHistory(func() { go a.route() }, "/projects")
+	lastView = viewKey()
 	a.route()
 }
 
@@ -572,7 +575,7 @@ func (a *app) drawPhotos() {
 	box := byID("photos")
 	box.Set("textContent", "")
 	for _, ph := range v.Photos {
-		fig := photoFigure(ph.URL, ph.Small, ph.By)
+		fig := photoFigure(ph)
 		if ph.Mine {
 			rm := el("button", "rm", "Remove")
 			rm.Set("type", "button")
@@ -587,20 +590,25 @@ func (a *app) drawPhotos() {
 	}
 }
 
-// photoFigure is a photo in the grid: the small copy, a link to the photo, and its author.
-func photoFigure(full, small, by string) js.Value {
+// photoFigure is a photo in the grid: the small copy, a link to the photo, and its author. A tap
+// on the link opens the photo viewer (lightbox.js), and the address of the photo has its ID.
+func photoFigure(ph wire.ProjectPhoto) js.Value {
 	fig := el("figure", "", "")
 	link := el("a", "", "")
-	link.Set("href", full)
-	link.Set("target", "_blank")
-	link.Set("rel", "noopener")
+	link.Set("href", ph.URL)
+	link.Get("dataset").Set("photo", ph.ID)
+	caption := ph.By
+	if !ph.Added.IsZero() {
+		caption = strings.TrimPrefix(caption+" · "+ph.Added.Local().Format("Jan 2, 2006"), " · ")
+	}
+	link.Get("dataset").Set("caption", caption)
 	img := el("img", "", "")
-	img.Set("src", small)
-	img.Set("alt", "A photo of "+by)
+	img.Set("src", ph.Small)
+	img.Set("alt", "A photo of "+ph.By)
 	img.Set("loading", "lazy")
 	link.Call("appendChild", img)
 	fig.Call("appendChild", link)
-	fig.Call("appendChild", el("figcaption", "", by))
+	fig.Call("appendChild", el("figcaption", "", ph.By))
 	return fig
 }
 
@@ -757,7 +765,7 @@ func runPublic() {
 	setText("pMeta", "A project of "+v.Owner)
 	box := byID("photos")
 	for _, ph := range v.Photos {
-		box.Call("appendChild", photoFigure(ph.URL, ph.Small, ph.By))
+		box.Call("appendChild", photoFigure(ph))
 	}
 	setHidden("photosCard", len(v.Photos) == 0)
 	printPath := func(p wire.ProjectPrint) string { return base + strconv.Itoa(p.N) }
@@ -796,10 +804,13 @@ func runPublic() {
 		show("vPublic")
 	}
 	js.Global().Call("addEventListener", "hashchange", js.FuncOf(func(js.Value, []js.Value) any {
-		go route()
+		if newView() {
+			go route()
+		}
 		return nil
 	}))
 	onHistory(func() { go route() }, home)
+	lastView = viewKey()
 	route()
 }
 
@@ -814,12 +825,41 @@ func openAddress(u string) {
 }
 
 // replaceAddress puts the address u in the address bar in place of the address of the view, with
-// no new entry in the history. The address keeps no hash.
+// no new entry in the history. The address keeps only the hash of a photo (lightbox.js).
 func replaceAddress(u string) {
 	loc := js.Global().Get("location")
-	if loc.Get("pathname").String() != u || loc.Get("hash").String() != "" {
-		js.Global().Get("history").Call("replaceState", nil, "", u)
+	hash := loc.Get("hash").String()
+	if !strings.HasPrefix(hash, "#photo=") {
+		hash = ""
 	}
+	if loc.Get("pathname").String() != u || loc.Get("hash").String() != hash {
+		js.Global().Get("history").Call("replaceState", nil, "", u+hash)
+	}
+	lastView = viewKey()
+}
+
+// lastView is the address of the view that shows, with no hash of a photo.
+var lastView string
+
+// viewKey returns the address of the view now: the path and the hash, with no hash of a photo.
+func viewKey() string {
+	loc := js.Global().Get("location")
+	hash := loc.Get("hash").String()
+	if strings.HasPrefix(hash, "#photo=") {
+		hash = ""
+	}
+	return loc.Get("pathname").String() + loc.Get("search").String() + hash
+}
+
+// newView reports that the address shows another view: a change of only the photo of the
+// address (lightbox.js) shows the same view.
+func newView() bool {
+	k := viewKey()
+	if k == lastView {
+		return false
+	}
+	lastView = k
+	return true
 }
 
 // onHistory runs show when the tab goes back or forward in its history, and for a click on a
@@ -827,7 +867,9 @@ func replaceAddress(u string) {
 // click with a modifier key, for a new tab or window, works as a plain link.
 func onHistory(show func(), prefix string) {
 	js.Global().Call("addEventListener", "popstate", js.FuncOf(func(js.Value, []js.Value) any {
-		show()
+		if newView() {
+			show()
+		}
 		return nil
 	}))
 	doc.Call("addEventListener", "click", js.FuncOf(func(_ js.Value, args []js.Value) any {

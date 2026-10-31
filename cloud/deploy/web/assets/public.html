@@ -10,8 +10,10 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..800&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=Share+Tech+Mono&amp;display=swap">
 <link rel="stylesheet" href="/assets/site.css">
 <link rel="stylesheet" href="/assets/share.css">
+<link rel="stylesheet" href="/assets/lightbox.css">
 <link rel="stylesheet" href="/assets/app.css">
 <script src="/assets/pwf.js" defer></script>
+<script src="/assets/lightbox.js" defer></script>
 </head>
 <body data-page="public">
 <div class="wrap">
@@ -38,7 +40,7 @@
     <div class="tiles" id="prints"></div>
     <div class="card" id="photosCard">
       <h2>Photos</h2>
-      <div class="photos" id="photos"></div>
+      <div class="photos" id="photos" data-gallery></div>
     </div>
   </section>
 
@@ -136,7 +138,7 @@
       <h2>Photos</h2>
       <label class="file" id="prPhotoAdd" hidden><input type="file" id="prPhotoFile" accept="image/jpeg,image/png" multiple><span>Add photos of this print</span></label>
       <p class="msg" id="prPhotoMsg" role="status"></p>
-      <div class="photos" id="prPhotos"></div>
+      <div class="photos" id="prPhotos" data-gallery></div>
     </section>
 
     <div class="danger" id="prDanger" hidden>

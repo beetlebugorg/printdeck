@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"path"
 	"strings"
 	"syscall/js"
 	"time"
@@ -472,6 +473,7 @@ func (s *share) renderReady(rd wire.ShareReady) {
 		for _, p := range rd.Photos {
 			a := doc.Call("createElement", "a")
 			a.Set("href", s.base+p.File)
+			a.Get("dataset").Set("photo", path.Base(p.File))
 			img := doc.Call("createElement", "img")
 			img.Set("src", s.base+p.Small)
 			img.Set("alt", "A photo of the part")

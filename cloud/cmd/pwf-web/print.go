@@ -338,7 +338,7 @@ func drawPrint(p wire.ProjectPrint, photos []wire.ProjectPhoto, frames func() ([
 	n := 0
 	for _, ph := range photos {
 		if ph.Print == p.ID {
-			box.Call("appendChild", photoFigure(ph.URL, ph.Small, ph.By))
+			box.Call("appendChild", photoFigure(ph))
 			n++
 		}
 	}
