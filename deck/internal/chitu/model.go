@@ -131,12 +131,18 @@ func (m *Model) Draw(w, h, done int, cured color.RGBA) *image.RGBA {
 	// The view: a turn of 30 degrees about the vertical, and 35 degrees down.
 	yaw, pitch := 30*math.Pi/180, 35*math.Pi/180
 	cyw, syw, cp, sp := math.Cos(yaw), math.Sin(yaw), math.Cos(pitch), math.Sin(pitch)
+	// A slice can be thinner than a cell is wide: the heights go in cells.
+	zs := 1.0
+	if m.CellMM > 0 && m.SliceMM > 0 {
+		zs = m.SliceMM / m.CellMM
+	}
 	cx, cyy, cz := float64(x0+x1+1)/2, float64(y0+y1+1)/2, float64(m.D)/2
 	project := func(x, y, z float64) (sx, sy, depth float64) {
+		z *= zs
 		// The model: X to the right, Y to the back (the rows of the screen go to the front), Z up.
 		// The camera is at the front and over the part: a cell at the back is higher in the
 		// picture, and a cell at the front or at the top is nearer.
-		px, py, pz := x-cx, cyy-y, z-cz
+		px, py, pz := x-cx, cyy-y, z-cz*zs
 		rx := px*cyw + py*syw
 		ry := -px*syw + py*cyw
 		return rx, pz*cp + ry*sp, -ry*cp + pz*sp
@@ -160,7 +166,7 @@ func (m *Model) Draw(w, h, done int, cured color.RGBA) *image.RGBA {
 	lx, ly, lz := -0.45, -0.55, 0.7
 	ln := math.Sqrt(lx*lx + ly*ly + lz*lz)
 	lx, ly, lz = lx/ln, ly/ln, lz/ln
-	size := int(math.Ceil(scale*1.15)) + 1
+	size := int(math.Ceil(scale*math.Max(1, zs)*1.15)) + 1
 	gray := color.RGBA{158, 160, 164, 255}
 	for z := 0; z < m.D; z++ {
 		base := gray
