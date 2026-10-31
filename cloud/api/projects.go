@@ -122,6 +122,7 @@ type PrintRecord struct {
 	FPS    int       `json:"fps"`
 	Model  bool      `json:"model"`
 	Plan   bool      `json:"plan,omitempty"`
+	Gcode  bool      `json:"gcode,omitempty"` // print.gcode.gz, for the 3D view of the print page
 	Done   bool      `json:"done"`
 	// The fields of the pages, which stay when the deck sends the print again: Title is the name
 	// that the owner gave the print, or "", and it shows in place of Name. Notes are the notes of
@@ -700,6 +701,9 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 		if pr.Plan {
 			pp.Plan = link("x/" + p.ID + "/prints/" + pr.ID + "/plan.json")
 		}
+		if pr.Gcode {
+			pp.Gcode = link("x/" + p.ID + "/prints/" + pr.ID + "/print.gcode.gz")
+		}
 		v.Prints = append(v.Prints, pp)
 	}
 	for _, ph := range photos {
@@ -1118,6 +1122,7 @@ func (s *Server) printDone(ctx context.Context, project, print string, in cloud.
 		n++
 	}
 	pr.Frames, pr.FPS, pr.Model, pr.Plan, pr.Done = n, max(1, min(60, in.FPS)), have["model.jpg"], have["plan.json"], true
+	pr.Gcode = have["print.gcode.gz"]
 	return s.putJSON(ctx, printKey(project, print), pr)
 }
 

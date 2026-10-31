@@ -103,3 +103,28 @@ footer { display: grid; gap: 4px; }
 .cycle-card .row { margin-top: 10px; }
 .cycle-facts-head { margin-top: 18px; }
 .part-wait { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; font: 600 15px/1.3 "Archivo", sans-serif; color: #f3f1ec; }
+
+/* The model and the numbers of the print: side by side on a wide screen. On a narrow screen the
+   numbers come first, and the model is not taller than a part of the screen. */
+.hero { display: grid; gap: 14px; }
+.hero > * { min-width: 0; }
+@media (max-width: 899px) { .hero > #progress { order: -1; } }
+@media (min-width: 900px) {
+  .hero { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start; }
+  .hero > .cycle-card { grid-column: 1 / -1; }
+}
+.model-row figure { max-height: 440px; }
+.model-row img { max-height: 440px; width: auto; max-width: 100%; margin: 0 auto; }
+.model-row .vchart { max-height: 440px; }
+@media (max-width: 899px) { .model-row figure, .model-row img, .model-row .vchart { max-height: 300px; } }
+/* The 3D view of the G-code of an FDM print. */
+.gview { width: 100%; height: 400px; position: relative; }
+@media (max-width: 899px) { .gview { height: 300px; } }
+.gview .gv-stage { width: 100%; height: 100%; background: #15161a; }
+.gview .gv-stage canvas { display: block; width: 100%; height: 100%; touch-action: none; outline: none; cursor: grab; }
+.gview .part-wait { font-size: 13px; }
+.model-row:has(.gview:not([hidden])) figure { width: 100%; }
+@media (min-width: 900px) {
+  .hero > #progress .row { grid-template-columns: 1fr 1fr; }
+  .hero > #progress .row .cell:first-child { grid-column: 1 / -1; }
+}

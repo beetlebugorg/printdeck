@@ -174,6 +174,46 @@ type share struct {
 	// cycleKey is the numbers of the layer cycle that plays, and cycleSpeed its speed.
 	cycleKey   string
 	cycleSpeed int
+	// gview is the handle of the 3D view of the G-code of an FDM print, gviewOn reports that it
+	// loads or shows, and gviewWant is the count of printed layers that it shows.
+	gview     js.Value
+	gviewOn   bool
+	gviewWant int
+}
+
+// showGcode shows the G-code of an FDM print in 3D in place of the picture of the model: the
+// layers up to n in color, and the later layers in gray. The picture stays when the view fails.
+func (s *share) showGcode(n int) {
+	s.gviewWant = n
+	if s.gview.Truthy() {
+		s.gview.Call("setPrinted", n)
+		return
+	}
+	v := js.Global().Get("pwfView3d")
+	if s.gviewOn || v.IsUndefined() {
+		return // it loads, or the module is not ready: the next status tries again
+	}
+	s.gviewOn = true
+	setHidden("modelBox", false)
+	setHidden("gview", false)
+	opts := js.Global().Get("Object").New()
+	opts.Set("url", s.base+"print.gcode.gz")
+	opts.Set("compact", true)
+	opts.Set("printed", n)
+	var ok, fail js.Func
+	ok = js.FuncOf(func(_ js.Value, args []js.Value) any {
+		s.gview = args[0]
+		setHidden("model", true)
+		s.gview.Call("setPrinted", s.gviewWant)
+		return nil
+	})
+	fail = js.FuncOf(func(_ js.Value, args []js.Value) any {
+		js.Global().Get("console").Call("warn", "the 3D view of the G-code:", args[0])
+		setHidden("gview", true)
+		setHidden("model", false)
+		return nil
+	})
+	v.Call("showGcode", byID("gview"), opts).Call("then", ok).Call("catch", fail)
 }
 
 // maxCount is the time that the clocks count on after the last new status: longer than the
@@ -669,6 +709,13 @@ func (s *share) render(st wire.ShareStatus) {
 			}
 		}
 		setText("modelTag", tag)
+	}
+	if st.Gcode > 0 && st.Process != "resin" {
+		n := st.Layer
+		if ended || n <= 0 {
+			n = 1 << 30 // all the layers
+		}
+		s.showGcode(n)
 	}
 	resin := st.Process == "resin"
 	if resin && !s.progressUp {

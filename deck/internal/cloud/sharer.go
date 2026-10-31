@@ -35,6 +35,9 @@ type Sharer struct {
 	// Part returns the cells of the part (part.bin), or nil. The sharer uploads it once, and again
 	// when the share has an older version of the file.
 	Part func() []byte
+	// Gcode returns the G-code of an FDM print with gzip (print.gcode.gz), or nil. The sharer
+	// uploads it once, for the 3D view of the page.
+	Gcode func() []byte
 	// Model returns the picture of the model as a JPEG and its version, or nil. The sharer
 	// uploads a new version at most each ModelEvery.
 	Model func() ([]byte, uint64)
@@ -67,6 +70,9 @@ type share struct {
 	seqs    map[string]uint64
 	plan    int // the layers of plan.json, or 0 before its upload
 	part    int // the version of part.bin that is up (PartVersion), or 0
+	// gcode is 1 when print.gcode.gz is up, and gcodeTried the time of the last try.
+	gcode      int
+	gcodeTried time.Time
 	// partBytes is part.bin while it waits to go up, and partFailed the time of its last failed
 	// upload.
 	partBytes  []byte
@@ -463,6 +469,18 @@ func (s *Sharer) step(ctx context.Context, id *Identity, c *share) (bool, error)
 		}
 	}
 	st.Part = c.part
+	if s.Gcode != nil && c.gcode == 0 && time.Since(c.gcodeTried) >= partRetry {
+		// A G-code that does not go up does not stop the share: the page shows the picture.
+		c.gcodeTried = time.Now()
+		if b := s.Gcode(); len(b) > 0 {
+			if err := s.upload(ctx, id, c, "print.gcode.gz", "application/gzip", "public, max-age=31536000, immutable", b); err != nil {
+				log.Printf("share: print.gcode.gz (%d KB): %v", len(b)/1000, err)
+			} else {
+				c.gcode = 1
+			}
+		}
+	}
+	st.Gcode = c.gcode
 	if end {
 		var out EndReply
 		if err := s.Link.Client.Do(ctx, id, http.MethodPost, "/api/v1/shares/"+c.id+"/end", EndRequest{Ended: st.Ended}, &out); err != nil {

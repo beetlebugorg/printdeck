@@ -93,6 +93,7 @@ type PrintUpload struct {
 	Request PrintRequest
 	Model   []byte
 	Plan    []float64
+	Gcode   []byte // the G-code with gzip, for the 3D view of the print page, or nil
 	Frames  int
 	FPS     int
 	Frame   func(i int) ([]byte, error)
@@ -119,6 +120,12 @@ func (c *Client) SendPrint(ctx context.Context, id *Identity, project string, up
 			return "", err
 		}
 		done.Plan = true
+	}
+	if len(up.Gcode) > 0 {
+		if err := PostFile(ctx, c.HTTP, out.Grant, "print.gcode.gz", "application/gzip", cache, up.Gcode); err != nil {
+			return "", err
+		}
+		done.Gcode = true
 	}
 	for i := 0; i < up.Frames && up.Frame != nil; i++ {
 		if c.now().After(out.Grant.Expires.Add(-time.Minute)) {

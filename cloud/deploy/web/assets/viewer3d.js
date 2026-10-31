@@ -631,9 +631,24 @@ function parseGcode(text) {
   return { n, seg, kind, speed, tn, trav, layerSeg, layerTrav, layerZ, layerTime, layers: layerSeg.length - 1 };
 }
 
+// readText reads the text of the file at url. A file with a name that ends in .gz is a G-code with
+// gzip: the browser decompresses it.
+async function readText(url) {
+  const r = await fetch(url, { credentials: "same-origin" });
+  if (!r.ok) throw new Error("the G-code did not load: " + r.status);
+  if (!new URL(url, location.href).pathname.endsWith(".gz")) return r.text();
+  const plain = r.body.pipeThrough(new DecompressionStream("gzip"));
+  return new Response(plain).text();
+}
+
+// The color of the layers that did not print yet (opts.printed).
+const GHOST = "#4a4e57";
+
 // showGcode draws the G-code of a plate in box, with its controls: the layer, the moves of the
 // layer, the kinds of lines, the travels, and the colors by kind or by speed. opts: url, bed
-// ([x, y] in mm), title. The viewer turns all around the plate, also under the bed.
+// ([x, y] in mm), title; compact: no controls, for the page of a print; printed: the count of
+// the layers that printed, or null for all: the later layers are gray. The viewer turns all
+// around the plate, also under the bed. It returns a handle with setPrinted(n).
 async function showGcode(box, opts) {
   hide();
   box.textContent = "";
@@ -641,13 +656,7 @@ async function showGcode(box, opts) {
   note.className = "part-wait";
   note.textContent = "Reading the G-code…";
   box.appendChild(note);
-  const [{ T, OrbitControls, RoomEnvironment }, text] = await Promise.all([
-    load(),
-    fetch(opts.url, { credentials: "same-origin" }).then((r) => {
-      if (!r.ok) throw new Error("the G-code did not load: " + r.status);
-      return r.text();
-    }),
-  ]);
+  const [{ T, OrbitControls, RoomEnvironment }, text] = await Promise.all([load(), readText(opts.url)]);
   await new Promise((r) => setTimeout(r, 20));
   const g = parseGcode(text);
   note.remove();
@@ -662,7 +671,9 @@ async function showGcode(box, opts) {
   stage.className = "gv-stage";
   const controls = document.createElement("div");
   controls.className = "gv-controls";
-  box.append(stage, controls);
+  box.append(stage);
+  if (!opts.compact) box.append(controls);
+  else box.classList.add("gv-compact");
   const renderer = new T.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.setClearColor(0x15161a);
@@ -759,7 +770,8 @@ async function showGcode(box, opts) {
   }
   const mid = new T.Vector3((minx + maxx) / 2 - bx / 2, maxz / 2, by / 2 - (miny + maxy) / 2);
   const size = Math.max(30, maxx - minx, maxy - miny, maxz);
-  camera.position.set(mid.x + size * 0.6, mid.y + size * 0.9, mid.z + size * 1.5);
+  const far = opts.compact ? 0.8 : 1; // the view of a print page is closer
+  camera.position.set(mid.x + size * 0.6 * far, mid.y + size * 0.9 * far, mid.z + size * 1.5 * far);
   orbit.target.copy(mid);
   orbit.maxDistance = Math.max(bx, by) * 4;
 
@@ -810,12 +822,17 @@ async function showGcode(box, opts) {
   for (let i = 0; i < n; i++) { vmin = Math.min(vmin, g.speed[i]); vmax = Math.max(vmax, g.speed[i]); }
   const kindColor = KINDS.map(([, , c]) => new T.Color(c));
   const tmp = new T.Color();
+  const ghost = new T.Color(GHOST);
+  let printed = opts.printed == null ? null : opts.printed;
   // By speed, as the feed rate view of Cura: blue for the slowest moves, through green and
   // yellow, to red for the fastest.
   const paint = () => {
+    // The moves of the layers that did not print yet are gray.
+    const cut = printed == null ? n : g.layerSeg[Math.max(0, Math.min(g.layers, printed))];
     for (let i = 0; i < n; i++) {
       let c = kindColor[g.kind[i]];
       if (mode.value === "speed") c = tmp.setHSL((2 / 3) * (1 - (vmax > vmin ? (g.speed[i] - vmin) / (vmax - vmin) : 0)), 1, 0.5);
+      if (i >= cut) c = ghost;
       colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
     }
   };
@@ -893,6 +910,15 @@ async function showGcode(box, opts) {
     if (ev.key === "ArrowUp" || ev.key === "ArrowRight") { step(1); ev.preventDefault(); }
     if (ev.key === "ArrowDown" || ev.key === "ArrowLeft") { step(-1); ev.preventDefault(); }
   });
+  const handle = {
+    // setPrinted shows the layers up to k in color, and the later layers in gray.
+    setPrinted(k) {
+      if (k === printed) return;
+      printed = k;
+      paint();
+      update();
+    },
+  };
   view = {
     box,
     stop() {
@@ -904,8 +930,10 @@ async function showGcode(box, opts) {
       mat.dispose();
       travGeo.dispose();
       box.textContent = "";
+      box.classList.remove("gv-compact");
     },
   };
+  return handle;
 }
 
 window.pwfView3d = { show, showPart, showModels, showGcode, hide, modelFile };

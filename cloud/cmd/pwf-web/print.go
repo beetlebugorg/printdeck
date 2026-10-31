@@ -294,6 +294,11 @@ func drawPrint(p wire.ProjectPrint, photos []wire.ProjectPhoto, frames func() ([
 		}
 		setText("modelTag", tag)
 	}
+	setHidden("gview", true)
+	setHidden("model", false)
+	if p.Gcode != "" {
+		showPrintGcode(p)
+	}
 	if p.Plan != "" {
 		go func() {
 			t, err := fetchText(p.Plan)
@@ -566,4 +571,33 @@ func sourceText(u string) string {
 		return repo + " · pull request " + parts[3]
 	}
 	return repo
+}
+
+// showPrintGcode shows the G-code of the FDM print p in 3D in place of the picture of the model.
+// A print that stopped shows the layers that printed in color, and the others in gray.
+func showPrintGcode(p wire.ProjectPrint) {
+	v := js.Global().Get("pwfView3d")
+	if v.IsUndefined() {
+		return
+	}
+	setHidden("modelBox", false)
+	setHidden("gview", false)
+	opts := js.Global().Get("Object").New()
+	opts.Set("url", p.Gcode)
+	opts.Set("compact", true)
+	if p.Result != "complete" && p.Layer > 0 {
+		opts.Set("printed", p.Layer)
+	}
+	var ok, fail js.Func
+	ok = js.FuncOf(func(js.Value, []js.Value) any {
+		setHidden("model", true)
+		return nil
+	})
+	fail = js.FuncOf(func(_ js.Value, args []js.Value) any {
+		js.Global().Get("console").Call("warn", "the 3D view of the G-code:", args[0])
+		setHidden("gview", true)
+		setHidden("model", false)
+		return nil
+	})
+	v.Call("showGcode", byID("gview"), opts).Call("then", ok).Call("catch", fail)
 }

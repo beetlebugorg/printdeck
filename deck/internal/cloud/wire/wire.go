@@ -89,6 +89,9 @@ type ShareStatus struct {
 	// Part is the version of part.bin that is up, or 0: 2 is the cells of a resin part for the 3D
 	// view of the page.
 	Part int `json:"part,omitempty"`
+	// Gcode is 1 when print.gcode.gz is up: the G-code of an FDM print, for the 3D view of the
+	// page. The page draws the layers up to Layer.
+	Gcode int `json:"gcode,omitempty"`
 	// Model goes up at each new model.jpg: the picture of the model, with the part that is
 	// printed in color.
 	Model int `json:"model,omitempty"`

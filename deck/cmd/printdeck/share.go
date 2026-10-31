@@ -102,6 +102,9 @@ func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend, configPath s
 	if c, ok := pr.(*printer.ChiTu); ok {
 		s.Part = c.PartMesh
 	}
+	if kl, ok := pr.(*printer.Klippy); ok {
+		s.Gcode = func() []byte { return kl.View.GcodeGz(kl.State().FilePath) }
+	}
 	l.sharer = s
 	return l
 }

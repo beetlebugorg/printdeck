@@ -170,7 +170,7 @@ var views = []string{"vSignIn", "vOwner", "vJoin", "vHome", "vMissing", "vProjec
 
 func show(id string) {
 	setHidden("loading", id != "")
-	if v := js.Global().Get("pwfView3d"); id != "vPrinter" && id != "vPlan" && id != "vBuild" && !v.IsUndefined() {
+	if v := js.Global().Get("pwfView3d"); id != "vPrinter" && id != "vPlan" && id != "vBuild" && id != "vPrint" && !v.IsUndefined() {
 		v.Call("hide")
 	}
 	for _, v := range views {

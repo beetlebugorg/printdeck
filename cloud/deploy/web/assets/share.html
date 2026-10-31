@@ -52,8 +52,10 @@
     <p class="part-hint">Drag to turn · pinch or scroll to zoom · two fingers or right drag to move</p>
     <button type="button" class="part-close" id="partClose">Close</button>
   </div>
+  <div class="hero" id="hero">
   <section class="model-row" id="modelBox" aria-label="The model" hidden>
     <figure>
+      <div class="gview" id="gview" hidden></div>
       <img id="model" alt="The whole part, with the part that is printed in color">
       <figcaption id="modelTag">The model</figcaption>
       <button type="button" class="part-open" id="partOpen" hidden>View in 3D</button>
@@ -97,6 +99,7 @@
       <i id="rollDot"></i><span class="seg"><b id="rollBar"></b></span><span id="rollText"></span>
     </div>
   </section>
+  </div>
 
   <section class="card" aria-label="Details">
     <h2>Details</h2>

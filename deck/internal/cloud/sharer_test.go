@@ -161,3 +161,32 @@ func TestShareSnapshot(t *testing.T) {
 	n := svc.count("status.json")
 	waitFor(t, "status after the snapshot", func() bool { return svc.count("status.json") > n+2 })
 }
+
+// The G-code of an FDM print goes up once, and the status says so.
+func TestShareGcode(t *testing.T) {
+	svc := newFakeShares(t)
+	_, key, _ := ed25519.GenerateKey(nil)
+	path := filepath.Join(t.TempDir(), "cloud.json")
+	if err := (&Identity{Domain: svc.srv.URL, Deck: "d-1", Key: key.Seed()}).Save(path); err != nil {
+		t.Fatal(err)
+	}
+	var mu sync.Mutex
+	calls := 0
+	s := &Sharer{Link: &Link{Path: path}, Status: func() ShareStatus { return ShareStatus{State: "printing"} },
+		Every: 20 * time.Millisecond, Gcode: func() []byte {
+			mu.Lock()
+			defer mu.Unlock()
+			calls++
+			return []byte("gz")
+		}}
+	s.Start("part", "a Printdeck", nil)
+	defer s.Stop()
+	waitFor(t, "the G-code", func() bool { return svc.count("print.gcode.gz") == 1 })
+	n := svc.count("status.json")
+	waitFor(t, "more status", func() bool { return svc.count("status.json") > n+2 })
+	mu.Lock()
+	defer mu.Unlock()
+	if svc.count("print.gcode.gz") != 1 || calls != 1 {
+		t.Errorf("print.gcode.gz went up %d times, %d calls", svc.count("print.gcode.gz"), calls)
+	}
+}

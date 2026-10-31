@@ -192,8 +192,10 @@ type ProjectPrint struct {
 	Filament   *ShareFilament `json:"filament,omitempty"`
 	// Model is the URL of the picture of the model, and Plan the URL of plan.json (a SharePlan),
 	// or "". Frames is the count of the frames of the time lapse, at FPS frames a second.
-	Model  string `json:"model,omitempty"`
-	Plan   string `json:"plan,omitempty"`
+	Model string `json:"model,omitempty"`
+	Plan  string `json:"plan,omitempty"`
+	// Gcode is the URL of the G-code of an FDM print with gzip, for the 3D view, or "".
+	Gcode  string `json:"gcode,omitempty"`
 	Frames int    `json:"frames,omitempty"`
 	FPS    int    `json:"fps,omitempty"`
 }
@@ -324,6 +326,7 @@ type PrintDone struct {
 	FPS    int  `json:"fps"`
 	Model  bool `json:"model"`
 	Plan   bool `json:"plan,omitempty"`
+	Gcode  bool `json:"gcode,omitempty"` // print.gcode.gz is up
 }
 
 // LiveRequest is the body of POST /api/v1/projects/<id>/live: the print of the deck that prints

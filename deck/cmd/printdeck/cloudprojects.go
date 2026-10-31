@@ -345,6 +345,7 @@ func (p *projectLink) sendPrint(ctx context.Context, id *cloud.Identity, project
 			}
 			up.Request.Layers, up.Request.Layer, up.Request.Height = l.Layers, l.Layer, math.Round(l.Height*100)/100
 		}
+		up.Gcode = kl.View.GcodeGz(r.Path)
 	}
 	if r.Video != "" {
 		if m, err := timelapse.OpenMovie(filepath.Join(videoDir(p.stateDir), r.Video)); err == nil {
