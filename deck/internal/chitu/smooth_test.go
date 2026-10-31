@@ -1,8 +1,11 @@
 package chitu
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/binary"
 	"math"
+	"os"
 	"testing"
 )
 
@@ -53,4 +56,30 @@ func TestSmoothMeshBall(t *testing.T) {
 	if vol < 0 {
 		t.Errorf("the triangles face in: volume %.0f", vol)
 	}
+}
+
+// PWF_PART_BIN writes the gzip mesh of a test shape, for a look at the 3D view of a page.
+func TestSmoothMeshFile(t *testing.T) {
+	p := os.Getenv("PWF_PART_BIN")
+	if p == "" {
+		t.Skip()
+	}
+	m := &Model{W: 120, H: 80, D: 90, CellMM: 0.43, SliceMM: 0.45}
+	for z := 0; z < m.D; z++ {
+		m.layerOf = append(m.layerOf, z*9+1)
+		for y := 0; y < m.H; y++ {
+			for x := 0; x < m.W; x++ {
+				box := z < 25 && x >= 20 && x < 100 && y >= 15 && y < 65
+				tower := math.Hypot(float64(x-60), float64(y-40)) < 16+4*math.Sin(float64(z)/6)
+				if box || tower {
+					m.set(x, y, z)
+				}
+			}
+		}
+	}
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	zw.Write(m.SmoothMesh())
+	zw.Close()
+	os.WriteFile(p, buf.Bytes(), 0o644)
 }

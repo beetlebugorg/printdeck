@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="/assets/site.css">
 <link rel="stylesheet" href="/assets/share.css">
 <script src="/assets/pwf.js" defer></script>
+<script type="module" src="/assets/viewer3d.js"></script>
 </head>
 <body data-page="share">
 <div class="wrap">
@@ -43,10 +44,16 @@
 
 
 
+  <div class="part-modal" id="partModal" role="dialog" aria-modal="true" aria-label="The part in 3D" hidden>
+    <div class="part-view" id="partView"></div>
+    <p class="part-hint">Drag to turn · pinch or scroll to zoom · two fingers or right drag to move</p>
+    <button type="button" class="part-close" id="partClose">Close</button>
+  </div>
   <section class="model-row" id="modelBox" aria-label="The model" hidden>
     <figure>
       <img id="model" alt="The whole part, with the part that is printed in color">
       <figcaption id="modelTag">The model</figcaption>
+      <button type="button" class="part-open" id="partOpen" hidden>View in 3D</button>
     </figure>
     <div class="vchart" id="chartBox" hidden>
       <canvas id="chart" aria-label="The time of each layer, layer 1 at the bottom"></canvas>

@@ -166,6 +166,8 @@ type share struct {
 	seen time.Time
 	// The text of the clocks that shows, by ID.
 	clocks map[string]string
+	// partDone sets the height that is done in the 3D view of the part, while it shows.
+	partDone js.Value
 }
 
 // maxCount is the time that the clocks count on after the last new status: longer than the
@@ -181,6 +183,7 @@ func runShare(base string) {
 		s.ownerPanel()
 	}
 	s.copyLink()
+	s.partView()
 	go s.play()
 	go func() {
 		for {
@@ -236,6 +239,45 @@ func (s *share) copyLink() {
 		clip.Call("writeText", url).Call("then", ok, fail)
 		return nil
 	}))
+}
+
+// partView makes the key View in 3D open the 3D view of the part (part.bin), and Close close it.
+func (s *share) partView() {
+	byID("partOpen").Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
+		v := js.Global().Get("pwfView3d")
+		if v.IsUndefined() {
+			return nil
+		}
+		setHidden("partModal", false)
+		opts := js.Global().Get("Object").New()
+		opts.Set("url", s.base+"part.bin")
+		opts.Set("model", s.st.PrinterModel)
+		opts.Set("done", s.doneMM())
+		then := js.FuncOf(func(_ js.Value, args []js.Value) any {
+			if len(args) > 0 {
+				s.partDone = args[0]
+			}
+			return nil
+		})
+		v.Call("showPart", byID("partView"), opts).Call("then", then)
+		return nil
+	}))
+	byID("partClose").Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
+		setHidden("partModal", true)
+		s.partDone = js.Undefined()
+		if v := js.Global().Get("pwfView3d"); !v.IsUndefined() {
+			v.Call("hide")
+		}
+		return nil
+	}))
+}
+
+// doneMM is the height of the part that is done, in mm: all of it after the end.
+func (s *share) doneMM() float64 {
+	if s.ended {
+		return 1e9
+	}
+	return float64(s.st.Layer) * s.st.ResinLayerHeight
 }
 
 // hidden says if the page is in a tab in the background.
@@ -567,6 +609,10 @@ func (s *share) render(st wire.ShareStatus) {
 	}
 	resin := st.Process == "resin"
 	setHidden("lapseSec", resin && st.Lapse == 0)
+	setHidden("partOpen", st.Part == 0)
+	if !s.partDone.IsUndefined() && s.partDone.Truthy() {
+		s.partDone.Invoke(s.doneMM())
+	}
 	for _, id := range []string{"grams", "tool", "bed"} {
 		byID(id).Get("parentElement").Set("hidden", resin)
 	}

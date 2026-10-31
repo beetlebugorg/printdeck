@@ -157,4 +157,124 @@ function hide() {
   }
 }
 
-window.pwfView3d = { show, hide, modelFile };
+// readPart reads part.bin (gzip): the smooth mesh of a resin part (see deck/internal/chitu/smooth.go).
+// It returns the geometry in mm in the frame of the node "bed" (X to the right, Y the height from
+// the plate, Z to the front), and the heights of the vertices for the colors.
+async function readPart(T, url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("part.bin: " + res.status);
+  const buf = await new Response(res.body.pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
+  const dv = new DataView(buf);
+  const magic = String.fromCharCode(...new Uint8Array(buf, 0, 4));
+  if (magic !== "PDM2") throw new Error("part.bin: " + magic);
+  const cell = dv.getFloat32(4, true), slice = dv.getFloat32(8, true);
+  const W = dv.getUint16(12, true), H = dv.getUint16(14, true);
+  const nv = dv.getUint32(20, true), nt = dv.getUint32(24, true);
+  const pos = new Float32Array(nv * 3), height = new Float32Array(nv);
+  let o = 28;
+  for (let i = 0; i < nv; i++, o += 6) {
+    const x = dv.getUint16(o, true) / 64 - 1, y = dv.getUint16(o + 2, true) / 64 - 1, z = dv.getUint16(o + 4, true) / 64 - 1;
+    pos[i * 3] = (x + 0.5 - W / 2) * cell;
+    pos[i * 3 + 1] = (z + 0.5) * slice;
+    pos[i * 3 + 2] = (y + 0.5 - H / 2) * cell;
+    height[i] = (z + 0.5) * slice;
+  }
+  const idx = new Uint32Array(buf, o, nt * 3);
+  const g = new T.BufferGeometry();
+  g.setAttribute("position", new T.BufferAttribute(pos, 3));
+  g.setIndex(new T.BufferAttribute(new Uint32Array(idx), 1));
+  g.computeVertexNormals();
+  g.setAttribute("color", new T.BufferAttribute(new Float32Array(nv * 3), 3));
+  return { g, height };
+}
+
+// paint colors the part: the height up to done (mm) in the color of the resin, the rest gray.
+function paint(T, part, done) {
+  const col = part.g.getAttribute("color");
+  const cured = new T.Color("#e8762b"), gray = new T.Color("#a8aaae");
+  for (let i = 0; i < part.height.length; i++) {
+    const c = part.height[i] <= done ? cured : gray;
+    col.setXYZ(i, c.r, c.g, c.b);
+  }
+  col.needsUpdate = true;
+}
+
+// showPart draws the part of part.bin in box, under the build plate of the printer, as it prints
+// on a resin printer. opts: url (part.bin), model (the model name of the printer), done (the
+// height that is done, in mm). It returns a function that sets done again.
+async function showPart(box, opts) {
+  hide();
+  const { T, GLTFLoader, OrbitControls } = await load();
+  const renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.toneMapping = T.ACESFilmicToneMapping;
+  box.textContent = "";
+  box.appendChild(renderer.domElement);
+  const scene = new T.Scene();
+  scene.add(new T.HemisphereLight(0xffffff, 0x6a7080, 1.6));
+  const key = new T.DirectionalLight(0xffffff, 2.4);
+  key.position.set(-1, 1.6, 1.4);
+  scene.add(key);
+  const rim = new T.DirectionalLight(0xffe2c4, 1.2);
+  rim.position.set(1.2, 0.4, -1);
+  scene.add(rim);
+  const camera = new T.PerspectiveCamera(30, 1, 1, 20000);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+
+  let printer;
+  const file = modelFile(opts.model);
+  if (file) {
+    try { printer = (await new GLTFLoader().loadAsync(file)).scene; } catch (e) { printer = null; }
+  }
+  if (!printer) printer = plain(T, "resin");
+  scene.add(printer);
+  const part = await readPart(T, opts.url);
+  paint(T, part, opts.done || 0);
+  const mat = new T.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.38, metalness: 0, clearcoat: 0.6,
+    clearcoatRoughness: 0.25, sheen: 0.2 });
+  const mesh = new T.Mesh(part.g, mat);
+  const bed = printer.getObjectByName("bed") || printer;
+  bed.add(mesh);
+  scene.updateMatrixWorld(true);
+
+  // The camera: in front of the part, a little to the right and under it, as it hangs.
+  const bounds = new T.Box3().setFromObject(mesh);
+  const mid = bounds.getCenter(new T.Vector3());
+  const size = Math.max(40, bounds.getSize(new T.Vector3()).length());
+  camera.position.set(mid.x + size * 0.9, mid.y - size * 0.2, mid.z + size * 1.8);
+  controls.target.copy(mid);
+  controls.minDistance = size * 0.2;
+  controls.maxDistance = size * 12;
+
+  const fit = () => {
+    const w = box.clientWidth, h = box.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / Math.max(1, h);
+    camera.updateProjectionMatrix();
+  };
+  const resize = new ResizeObserver(fit);
+  resize.observe(box);
+  fit();
+  let frame = 0;
+  const tick = () => {
+    frame = requestAnimationFrame(tick);
+    controls.update();
+    renderer.render(scene, camera);
+  };
+  tick();
+  view = {
+    box,
+    stop() {
+      cancelAnimationFrame(frame);
+      resize.disconnect();
+      controls.dispose();
+      renderer.dispose();
+      part.g.dispose();
+      box.textContent = "";
+    },
+  };
+  return (done) => paint(T, part, done);
+}
+
+window.pwfView3d = { show, showPart, hide, modelFile };

@@ -86,3 +86,14 @@ footer { display: grid; gap: 4px; }
 /* A file name with no spaces, for example of a resin slicer, breaks anywhere: the page stays as wide
    as the screen. */
 #job, .facts dd { overflow-wrap: anywhere; }
+
+/* The 3D view of a resin part: a key over the picture, and a view over the whole page. */
+.part-open { position: absolute; right: 8px; bottom: 8px; font: 600 13px/1 "Archivo", sans-serif; padding: 9px 12px; border-radius: 8px;
+  border: 1px solid var(--orange); background: rgba(0,0,0,.66); color: #f3f1ec; cursor: pointer; }
+.part-modal { position: fixed; inset: 0; z-index: 50; background: radial-gradient(ellipse at 50% 30%, #2b2c2a, #0c0c0b 75%); }
+.part-modal[hidden] { display: none; }
+.part-view { position: absolute; inset: 0; touch-action: none; }
+.part-view canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.part-hint { position: absolute; left: 16px; bottom: 12px; margin: 0; font: 12px/1.3 "IBM Plex Mono", monospace; color: #c2bcb0; }
+.part-close { position: absolute; right: 16px; top: 16px; font: 600 15px/1 "Archivo", sans-serif; padding: 11px 16px; border-radius: 10px;
+  border: 0; background: #f3f1ec; color: #121212; cursor: pointer; }
