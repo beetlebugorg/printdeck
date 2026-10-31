@@ -772,6 +772,26 @@ func (a *app) drawPickup(v *wire.ProjectView) {
 		li := el("li", "", "")
 		link := el("a", "", "")
 		link.Set("href", projectPath(v.Slug, p.N))
+		// Small pictures: the photos of the print, else the picture of the model.
+		if phs := tilePhotos[p.ID]; len(phs) > 0 || p.Model != "" {
+			pics := el("span", "pthumbs", "")
+			for i, ph := range phs {
+				if i == 3 {
+					break
+				}
+				img := el("img", "photo", "")
+				img.Set("src", ph.Small)
+				img.Set("alt", "")
+				pics.Call("appendChild", img)
+			}
+			if len(phs) == 0 {
+				img := el("img", "model", "")
+				img.Set("src", p.Model)
+				img.Set("alt", "")
+				pics.Call("appendChild", img)
+			}
+			link.Call("appendChild", pics)
+		}
 		link.Call("appendChild", el("strong", "", p.Name))
 		sub := "Ready since " + localDay(p.Ready)
 		if p.ReadyNote != "" {

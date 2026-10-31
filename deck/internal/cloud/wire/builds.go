@@ -212,6 +212,11 @@ type ProjectBuildPlate struct {
 	PictureURL string    `json:"picture_url,omitempty"`
 	// FileURL is the address of the sliced file, for the 3D view of the moves of a G-code.
 	FileURL string `json:"file_url,omitempty"`
+	// SentTo is the name of the printer that the owner sent the plate to, SentAt the time, and
+	// TakenAt the time when the deck of the printer put it in its queue.
+	SentTo  string    `json:"sent_to,omitempty"`
+	SentAt  time.Time `json:"sent_at,omitzero"`
+	TakenAt time.Time `json:"taken_at,omitzero"`
 }
 
 // BuildDecision is the body of POST .../builds/<build>/plates/<n>/approve and .../reject: the
@@ -224,4 +229,33 @@ type BuildDecision struct {
 // project, "owner/name", or "" for none.
 type RepoRequest struct {
 	Repo string `json:"repo"`
+}
+
+// PlateSend is the body of POST .../builds/<build>/plates/<n>/send: the printer at the service
+// that gets the approved plate in its queue.
+type PlateSend struct {
+	Printer string `json:"printer"`
+}
+
+// SentPlate is an approved plate that the owner sent to the printer of a deck (GET
+// /api/v1/printers/<id>/plates): the deck downloads the file, adds it to its queue, and says so
+// with POST /api/v1/printers/<id>/plates/taken.
+type SentPlate struct {
+	Project     string `json:"project"`      // the ID of the project
+	ProjectName string `json:"project_name"` // its name, for the queue of the deck
+	Build       string `json:"build"`
+	Plate       int    `json:"plate"` // the index of the plate in the build
+	Name        string `json:"name"`  // the parts of the plate, for the queue
+	File        string `json:"file"`  // the name of the file, for example "plate-1.gcode"
+	URL         string `json:"url"`   // a signed address of the file
+	Size        int64  `json:"size,omitempty"`
+	SHA256      string `json:"sha256,omitempty"`
+	Seconds     int    `json:"seconds,omitempty"`
+}
+
+// PlateTaken is the body of POST /api/v1/printers/<id>/plates/taken.
+type PlateTaken struct {
+	Project string `json:"project"`
+	Build   string `json:"build"`
+	Plate   int    `json:"plate"`
 }

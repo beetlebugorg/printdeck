@@ -41,6 +41,24 @@ func (a *App) Enqueue(path, from string) error {
 	return err
 }
 
+// EnqueueAs adds the file path to the end of the queue with the name and the project, for a plate
+// of a build of the service. It is safe from any goroutine.
+func (a *App) EnqueueAs(path, from, name, project string) error {
+	if a.Queue == nil {
+		return errors.New("this deck has no queue")
+	}
+	it := a.queueItem(path, from)
+	if name != "" {
+		it.Name = name
+	}
+	if project != "" {
+		it.Project = project
+	}
+	_, err := a.Queue.Add(it)
+	a.Redraw()
+	return err
+}
+
 // queueTime is a time of print for the queue, for example "45 min" or "3 h 20 min".
 func queueTime(sec int) string {
 	m := (sec + 59) / 60

@@ -468,6 +468,21 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 			return nil, err
 		}
 		return s.projectBuild(ctx, p, rec), nil
+	case part == "builds" && r.Method == http.MethodPost && strings.HasSuffix(sub, "/send"):
+		// builds/<build>/plates/<n>/send
+		f := strings.Split(sub, "/")
+		if len(f) != 4 || f[1] != "plates" {
+			return nil, fail(http.StatusMethodNotAllowed, "no such request")
+		}
+		n, err := strconv.Atoi(f[2])
+		if err != nil {
+			return nil, fail(http.StatusBadRequest, "bad plate")
+		}
+		var in cloud.PlateSend
+		if json.Unmarshal(body, &in) != nil {
+			return nil, fail(http.StatusBadRequest, "bad JSON")
+		}
+		return s.sendPlate(ctx, p, w, f[0], n, in)
 	case part == "builds" && r.Method == http.MethodPost && (strings.HasSuffix(sub, "/approve") || strings.HasSuffix(sub, "/reject")):
 		// builds/<build>/plates/<n>/approve or reject
 		f := strings.Split(sub, "/")

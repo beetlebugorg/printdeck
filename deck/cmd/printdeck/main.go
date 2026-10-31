@@ -44,7 +44,6 @@ import (
 	"printdeck/internal/hostmetrics"
 	"printdeck/internal/klipper/cli"
 	"printdeck/internal/printer"
-	"printdeck/internal/queue"
 	"printdeck/internal/system"
 	"printdeck/internal/touch"
 	"printdeck/internal/ui"
@@ -261,16 +260,7 @@ func run(cfg config.Config) {
 		}
 	}
 
-	// The print queue, and the question of the next file at the end of each print.
-	app.Queue = &queue.Queue{Path: filepath.Join(cfg.StateDir, "queue.json"), OnChange: app.Redraw}
-	go watchQueue(ctx, pr, app)
-	if c, ok := pr.(*printer.ChiTu); ok {
-		// ChiTuBox: a start during a print goes to the queue, and a start with files in the
-		// queue asks on the deck.
-		c.Enqueue = func(name string) error { return app.Enqueue(name, "slicer") }
-		c.QueueLen = app.Queue.Len
-		c.AskSent = app.AskSentFile
-	}
+	startQueue(ctx, cfg.StateDir, pr, app)
 
 	// The samples of the CPU, the memory and the disk writes, in memory only.
 	app.Metrics = hostmetrics.New()
@@ -282,7 +272,7 @@ func run(cfg config.Config) {
 	startNotify(ctx, cfg.StateDir, pr, app)
 	startCamera(ctx, cfg.StateDir, app, pr)
 	startTimelapse(ctx, cfg.StateDir, cfg.KlipperConfig, app, pr)
-	startShare(cfg.StateDir, cfg.KlipperConfig, app, pr)
+	startShare(cfg.StateDir, cfg.KlipperConfig, cfg.GcodeDir, app, pr)
 
 	if p, ok := screen.(interface{ SetTouch(touch.Options) }); ok {
 		p.SetTouch(touch.Options{InvertX: cfg.TouchInvertX, InvertY: cfg.TouchInvertY, Swap: cfg.TouchSwapXY,

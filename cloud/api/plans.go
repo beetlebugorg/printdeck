@@ -80,6 +80,11 @@ type plateRecord struct {
 	By     string    `json:"by,omitempty"`
 	At     time.Time `json:"at,omitzero"`
 	Reason string    `json:"reason,omitempty"`
+	// Sent is the printer that the owner sent the plate to (its ID), SentAt the time, and Taken the
+	// time when its deck put the plate in its queue.
+	Sent   string    `json:"sent,omitempty"`
+	SentAt time.Time `json:"sent_at,omitzero"`
+	Taken  time.Time `json:"taken,omitzero"`
 }
 
 var hexColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
@@ -686,7 +691,13 @@ func (s *Server) projectBuild(ctx context.Context, p *Project, b *BuildRecord) c
 	}
 	dir := buildDir(p.ID, b.ID)
 	for _, pl := range b.Plates {
-		pp := cloud.ProjectBuildPlate{BuildPlate: pl.BuildPlate, State: pl.State, By: pl.By, At: pl.At, Reason: pl.Reason}
+		pp := cloud.ProjectBuildPlate{BuildPlate: pl.BuildPlate, State: pl.State, By: pl.By, At: pl.At, Reason: pl.Reason,
+			SentAt: pl.SentAt, TakenAt: pl.Taken}
+		if pl.Sent != "" {
+			if pr, err := s.loadPrinter(ctx, pl.Sent); err == nil {
+				pp.SentTo = pr.Name
+			}
+		}
 		if b.State == cloud.BuildReady {
 			if pl.Preview != "" {
 				pp.PreviewURL, _ = s.Grants.FileURL(ctx, dir+pl.Preview, urlTTL)

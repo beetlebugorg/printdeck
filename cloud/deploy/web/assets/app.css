@@ -378,3 +378,11 @@ body:has(#projHead:not([hidden])) #psBack, body:has(#projHead:not([hidden])) #pl
 .tile .tphotos img:first-child { margin-left: 0; }
 .tile .tphotos .more { margin-left: 4px; font: 600 11px/1 "IBM Plex Mono", monospace; color: #f3f1ec; background: rgba(0,0,0,.62);
   padding: 5px 6px; border-radius: 6px; }
+/* The small pictures of a print that is ready to pick up: the model and its photos. */
+.pickup li a { grid-template-columns: auto 1fr; column-gap: 10px; }
+.pickup li a strong, .pickup li a .sub { grid-column: 2; }
+.pickup .pthumbs { grid-row: 1 / span 2; display: flex; align-items: center; }
+.pickup .pthumbs img { width: 38px; height: 38px; object-fit: cover; border-radius: 7px; background: var(--lcd); margin-left: -10px;
+  border: 2px solid var(--cap); }
+.pickup .pthumbs img:first-child { margin-left: 0; }
+.pickup .pthumbs img.model { object-fit: contain; }

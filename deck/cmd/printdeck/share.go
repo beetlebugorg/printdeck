@@ -429,7 +429,7 @@ func (l *shareLink) runningShare(st printer.State) bool {
 
 // startShare sets the cloud link and the share link of the app. The identity of the deck is the
 // file cloud.json of the state folder.
-func startShare(stateDir, configPath string, app *ui.App, pr printerBackend) {
+func startShare(stateDir, configPath, gcodeDir string, app *ui.App, pr printerBackend) {
 	link := newCloudLink(stateDir, app.Redraw)
 	app.Cloud = link
 	l := newShareLink(app, link, pr, configPath)
@@ -448,6 +448,11 @@ func startShare(stateDir, configPath string, app *ui.App, pr printerBackend) {
 		go pl.watchLive(context.Background())
 		go pl.watchService(context.Background())
 		go pl.watchQueue(context.Background(), app.Queue)
+		if _, ok := pr.(*printer.Klippy); ok && gcodeDir != "" {
+			// The approved plates of the builds of the service go to the queue. A resin plate
+			// waits for a later version: its file goes to the board first.
+			go pl.watchPlates(context.Background(), app, gcodeDir)
+		}
 	}
 	app.Share = l
 	l.loadHandoff(filepath.Join(handoffDir, shareHandoff))

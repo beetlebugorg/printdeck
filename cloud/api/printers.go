@@ -132,6 +132,32 @@ func (s *Server) routePrinters(ctx context.Context, r *http.Request, body []byte
 	return nil, fail(http.StatusMethodNotAllowed, "no such request")
 }
 
+// routeSentPlates serves GET /api/v1/printers/<id>/plates (the plates that wait for the deck)
+// and POST /api/v1/printers/<id>/plates/taken.
+func (s *Server) routeSentPlates(ctx context.Context, r *http.Request, body []byte, id, what string) (any, error) {
+	w, err := s.whoFor(ctx, r, body, "")
+	if err != nil {
+		return nil, err
+	}
+	if w.deck == nil {
+		return nil, fail(http.StatusUnauthorized, "only a deck reads its plates")
+	}
+	if !validID(id) {
+		return nil, fail(http.StatusBadRequest, "bad printer")
+	}
+	switch {
+	case what == "plates" && r.Method == http.MethodGet:
+		return s.sentPlates(ctx, w.deck, id)
+	case what == "plates/taken" && r.Method == http.MethodPost:
+		var in cloud.PlateTaken
+		if json.Unmarshal(body, &in) != nil {
+			return nil, fail(http.StatusBadRequest, "bad JSON")
+		}
+		return map[string]bool{"ok": true}, s.takePlate(ctx, w.deck, id, in)
+	}
+	return nil, fail(http.StatusMethodNotAllowed, "no such request")
+}
+
 // routeQueue serves POST /api/v1/printers/<id>/queue: a deck reports the queue of its printer.
 func (s *Server) routeQueue(ctx context.Context, r *http.Request, body []byte, id string) (any, error) {
 	w, err := s.whoFor(ctx, r, body, "")

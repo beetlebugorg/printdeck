@@ -967,6 +967,10 @@ func (a *app) showBuildPage(projectID, id string) {
 		a.failed(err)
 		return
 	}
+	ownerPrinters = nil
+	if v.IsOwner {
+		a.api("GET", "/printers", nil, &ownerPrinters)
+	}
 	a.view = &v
 	a.playing++
 	playing := a.playing
@@ -999,6 +1003,9 @@ func (a *app) showBuildPage(projectID, id string) {
 }
 
 // drawBuild draws the plates of the build b, with the keys of the owner.
+// ownerPrinters are the printers of the owner, for the keys Send to of the build page.
+var ownerPrinters []wire.Printer
+
 func (a *app) drawBuild(b wire.ProjectBuild) {
 	v := a.view
 	setText("bdTitle", "A build of "+count(len(b.Plates), "plate", "plates"))
@@ -1103,7 +1110,52 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 			card.Call("appendChild", el("p", "", "Rejected by "+pl.By+": "+pl.Reason))
 		}
 		if pl.State == wire.PartApproved {
-			card.Call("appendChild", el("p", "small dim", "Approved by "+pl.By+", "+localWhen(pl.At)+". The deck of the printer shows it next (phase 2)."))
+			line := "Approved by " + pl.By + ", " + localWhen(pl.At) + "."
+			switch {
+			case !pl.TakenAt.IsZero():
+				line += " In the queue of the " + pl.SentTo + " since " + localWhen(pl.TakenAt) + ". A press on the deck starts it."
+			case pl.SentTo != "":
+				line += " Sent to the " + pl.SentTo + ": its deck puts it in its queue within a minute."
+			case pl.Process == "fdm":
+				line += " Send it to the queue of a printer."
+			default:
+				line += " Print the file from the deck of the printer."
+			}
+			card.Call("appendChild", el("p", "small dim", line))
+			// The keys Send to: the printers of the process of the plate. A resin plate waits for
+			// a later version of the deck.
+			if v.IsOwner && pl.File != "" && pl.TakenAt.IsZero() && pl.Process == "fdm" {
+				keys := el("div", "row-keys", "")
+				msg := el("p", "msg", "")
+				for _, pr := range ownerPrinters {
+					if pr.Process != pl.Process {
+						continue
+					}
+					label := "Send to the " + pr.Name
+					if pl.SentTo == pr.Name {
+						label = "Send again to the " + pr.Name
+					}
+					btn := el("button", "primary", label)
+					btn.Set("type", "button")
+					printerID := pr.ID
+					btn.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
+						go func() {
+							var nb wire.ProjectBuild
+							path := fmt.Sprintf("/projects/%s/builds/%s/plates/%d/send", v.ID, b.ID, n)
+							if err := a.api("POST", path, wire.PlateSend{Printer: printerID}, &nb); err != nil {
+								msg.Set("textContent", err.Error())
+								msg.Get("classList").Call("add", "err")
+								return
+							}
+							a.drawBuild(nb)
+						}()
+						return nil
+					}))
+					keys.Call("appendChild", btn)
+				}
+				card.Call("appendChild", keys)
+				card.Call("appendChild", msg)
+			}
 		}
 		if v.IsOwner && pl.State == wire.PartWaiting {
 			keys := el("div", "row-keys", "")

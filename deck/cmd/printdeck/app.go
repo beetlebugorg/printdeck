@@ -129,13 +129,14 @@ func desktopApp(args []string) {
 		handoffDir = filepath.Join(*dir, "handoff")
 		os.MkdirAll(handoffDir, 0o700)
 	}
+	startQueue(ctx, cfg.StateDir, pr, app)
 	go pr.Run(ctx, app.Redraw)
 	go lcdLoop(ctx, pr, app)
 	startChiTuRelay(ctx, cfg.StateDir, pr, chitu.Port+1)
 	startNotify(ctx, cfg.StateDir, pr, app)
 	startCamera(ctx, cfg.StateDir, app, pr)
 	startTimelapse(ctx, cfg.StateDir, cfg.KlipperConfig, app, pr)
-	startShare(cfg.StateDir, cfg.KlipperConfig, app, pr)
+	startShare(cfg.StateDir, cfg.KlipperConfig, cfg.GcodeDir, app, pr)
 	go keepAwake(ctx, pr)
 	// The samples of the computer. A computer with no /proc has none, and the page shows that.
 	app.Metrics = hostmetrics.New()
