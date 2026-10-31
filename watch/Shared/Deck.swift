@@ -39,6 +39,9 @@ struct SavedDeck: Codable, Equatable, Identifiable {
     var process: DeckProcess?
     /// The camera that the user chose (DeckCamera.id), or nil for the main camera.
     var camera: String?
+    /// The ID of the printer of the deck at the service, from the last status, or nil. The app
+    /// finds the live print of the deck at the service with it, away from home.
+    var printerID: String?
 
     init(id: String = UUID().uuidString, name: String = "", settings: DeckSettings = DeckSettings(),
          process: DeckProcess? = nil, camera: String? = nil) {
@@ -58,6 +61,7 @@ struct SavedDeck: Codable, Equatable, Identifiable {
         key = try c.decodeIfPresent(String.self, forKey: .key) ?? ""
         process = try? c.decodeIfPresent(DeckProcess.self, forKey: .process)
         camera = try c.decodeIfPresent(String.self, forKey: .camera)
+        printerID = try c.decodeIfPresent(String.self, forKey: .printerID)
     }
 
     var settings: DeckSettings {
@@ -245,6 +249,9 @@ struct Status: Codable, Equatable {
     /// The process of the printer. An older deck has no `process`, and only FDM decks served the
     /// API before it, so the client reads a missing process as fdm.
     var process: DeckProcess?
+    /// The ID of the printer of the deck at the service, or nil before its registration and from
+    /// an older deck.
+    var printerID: String?
     /// When the app read the status.
     var time: Date
 
@@ -454,6 +461,7 @@ struct DeckClient {
         st.camera = p.camera
         st.cameras = p.cameras
         st.process = p.process.flatMap(DeckProcess.init(rawValue:)) ?? .fdm
+        st.printerID = p.printer_id.flatMap { $0.isEmpty ? nil : $0 }
         if let s = p.spool {
             st.roll = Roll(name: s.name, material: s.material, left: s.left, full: s.full,
                            color: s.color?.isEmpty == false ? s.color : nil)
@@ -740,6 +748,8 @@ private struct PluginReply: Decodable {
     }
     /// "fdm" or "resin", or nil from an older deck.
     var process: String?
+    /// The ID of the printer at the service, "" before its registration, or nil from an older deck.
+    var printer_id: String?
     var spool: Spool?
     var job: Job?
     var lcd: DeckLCD?

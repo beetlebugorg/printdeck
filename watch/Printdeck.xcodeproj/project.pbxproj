@@ -23,6 +23,7 @@
 		1FF2F062FDF33F52530E6E02 /* LCDFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0354F5AD51AB7C9164C404AA /* LCDFonts.swift */; };
 		20B61A975B04B39116EDF951 /* PrintdeckWatch.app in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = D2114C330830B4B5C5D4EAE7 /* PrintdeckWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		20B968F382C669F990D6B3C4 /* TimelapseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39FA1A4FEF709284823F9B6B /* TimelapseTests.swift */; };
+		2178AE7477AF717AFD60BAE8 /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = C595D4EDCD3FE00FAA471B48 /* Account.swift */; };
 		22E0E3BEDCF8CDE0E4FE5EC9 /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB83763E3B47BF75CF93CE3 /* Store.swift */; };
 		254BB00BC761BD1650E29B36 /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5A9AC136FD37E5823BE3A56 /* CameraView.swift */; };
 		27FE4A77845A101C19047042 /* DeckModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B99E447765312CFD4C878FD /* DeckModel.swift */; };
@@ -38,9 +39,11 @@
 		43BB45BC6507FDA234E9D781 /* FilesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B18B3A83A2D98FA589A08D3E /* FilesView.swift */; };
 		4A202D634917F1C7D333F1E6 /* DeckModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B99E447765312CFD4C878FD /* DeckModel.swift */; };
 		4CF2E9BD661398900AEF2755 /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */; };
+		4D84DDC33A9200DB10AA3FE8 /* Service.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99EE3906D207353D79585449 /* Service.swift */; };
 		4E388A1EA57482408CE4B85F /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB83763E3B47BF75CF93CE3 /* Store.swift */; };
 		4E4BDF69F3AE2C06E9F3699E /* Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FAD54D561DB49920D460416 /* Push.swift */; };
 		50D33C4A025D28F68DDC066C /* LCDModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B022EC77AE6F9B9D53042D7 /* LCDModel.swift */; };
+		513E7080D8D597E9BDC99272 /* Service.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99EE3906D207353D79585449 /* Service.swift */; };
 		5193435EBAFE2B3E122220CC /* PrintdeckComplication.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F5F06702BFE192990D619B34 /* PrintdeckComplication.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		524BCC0CA5358650F065BE58 /* PrintActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEBF077F1F1B4F4F1ACD610 /* PrintActivity.swift */; };
 		54029B6DCB5CD62BD81AA891 /* LiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 240D695CB6D73BCD3D7CC203 /* LiveActivity.swift */; };
@@ -51,6 +54,7 @@
 		611D26B56710B4A5688DDC42 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 770B96494514D1F98C3D0ADF /* IBMPlexMono-Regular.ttf */; };
 		612BE0F1B2AB118B14D8EFF7 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C9DC52C6BE6D32656FAB1C1 /* HomeView.swift */; };
 		6149A119BB217C8B12B119EE /* DeckModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B99E447765312CFD4C878FD /* DeckModel.swift */; };
+		62B419B2D15ADCFE31F6E3AC /* Service.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99EE3906D207353D79585449 /* Service.swift */; };
 		633901ECE9336374CC08360E /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF20419EDCAAD600A119469 /* LoadingView.swift */; };
 		64F35B9FA58B132E14704F2D /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 58645DA084A54E4D7E787CE2 /* OFL.txt */; };
 		6C57FAC94467977ECB078865 /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */; };
@@ -65,6 +69,7 @@
 		841EA80AD73B8CBA41F63990 /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */; };
 		84703D7207E291BD66B77C57 /* PushCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E1FEB4FB0B10A9C90AD479 /* PushCrypto.swift */; };
 		863803E55914375D0E896E96 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A622D3ED72D7C6395B59AE5 /* Theme.swift */; };
+		8EDF72D28017E36DA643C841 /* Service.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99EE3906D207353D79585449 /* Service.swift */; };
 		8F9B6078A6FA28D4B4008B63 /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFB83763E3B47BF75CF93CE3 /* Store.swift */; };
 		8FB1DA295B111CE8E012072D /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF065E98D227459FBD8169BB /* SetupView.swift */; };
 		93AB298D9646DF79342B5057 /* FleetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B5AA65D6EF88267EE4B862 /* FleetTests.swift */; };
@@ -73,6 +78,7 @@
 		95DD68693F435C22C6F611C0 /* Complication.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AD64238EF6EF070D61FD7D4 /* Complication.swift */; };
 		99965F406CAC8B2574B10D41 /* Timelapse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B8C219262B462085724E0BD /* Timelapse.swift */; };
 		9DD868F3B27B3B450D7A3C07 /* ComplicationLCD.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C28F6CE43513884ED2C3B9 /* ComplicationLCD.swift */; };
+		9E9330B21F051DAF3A8604EC /* Service.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99EE3906D207353D79585449 /* Service.swift */; };
 		A1A90A282A036D846E613BAE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6DE65B34DD84D0ADAF8829A4 /* Assets.xcassets */; };
 		A209CFE205394DE5DC9ABAE1 /* TimelapseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C991A83CDA1D1FF82A032EA0 /* TimelapseView.swift */; };
 		A3C14F3456C6052D0BB8DCB6 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AC2BBFF7CE76D76E8134DBA /* IBMPlexMono-SemiBold.ttf */; };
@@ -81,6 +87,7 @@
 		AD075A00D621A7E48C121669 /* LCDModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B022EC77AE6F9B9D53042D7 /* LCDModel.swift */; };
 		AD53F28EF3A4645091749822 /* DeckWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = E772B35740867E17B68DB280 /* DeckWidget.swift */; };
 		B74FCE7405F964E0A628416D /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 58645DA084A54E4D7E787CE2 /* OFL.txt */; };
+		B7D95DF2C88B99499B6293D7 /* Service.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99EE3906D207353D79585449 /* Service.swift */; };
 		BDC80FB004651AC26CA7AA16 /* LCDScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CA29D05ABBEBA3D309E9D9C /* LCDScreen.swift */; };
 		C0B4A56B3FF461600052B3DC /* PrintdeckWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 245C28DEF33556275FD6DCD5 /* PrintdeckWidget.swift */; };
 		C16C235FCF4B7A5F03E585AC /* DeckModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B99E447765312CFD4C878FD /* DeckModel.swift */; };
@@ -89,6 +96,7 @@
 		C8FC801C329E392CDE365CD2 /* LCDFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0354F5AD51AB7C9164C404AA /* LCDFonts.swift */; };
 		CAC274207372161525B15BDA /* LCDScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CA29D05ABBEBA3D309E9D9C /* LCDScreen.swift */; };
 		CD2B0EFAA2A3AB9E7F6D891A /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 770B96494514D1F98C3D0ADF /* IBMPlexMono-Regular.ttf */; };
+		D297D6293D76FA0A92BA5D90 /* ServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB43252D8F4BF8498F80464B /* ServiceTests.swift */; };
 		D3F3740F466B0DEE1A88D910 /* LCDFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0354F5AD51AB7C9164C404AA /* LCDFonts.swift */; };
 		DCC888A887385E9E07CFA140 /* Fleet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BDED532FFF2F9E737C48FA5 /* Fleet.swift */; };
 		DDF48D2494A56CECB8A5DF64 /* PrintdeckApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F683BF97A6034681AF592CCA /* PrintdeckApp.swift */; };
@@ -208,6 +216,7 @@
 		8B2DE727763130438837F9CC /* StatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusView.swift; sourceTree = "<group>"; };
 		90E6942D32E2AF7FCD6D729E /* PushCryptoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushCryptoTests.swift; sourceTree = "<group>"; };
 		91B5AA65D6EF88267EE4B862 /* FleetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FleetTests.swift; sourceTree = "<group>"; };
+		99EE3906D207353D79585449 /* Service.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Service.swift; sourceTree = "<group>"; };
 		9B99E447765312CFD4C878FD /* DeckModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckModel.swift; sourceTree = "<group>"; };
 		9CA29D05ABBEBA3D309E9D9C /* LCDScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LCDScreen.swift; sourceTree = "<group>"; };
 		A3F141F7CE39B1948949216E /* Phone.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Phone.entitlements; sourceTree = "<group>"; };
@@ -220,10 +229,12 @@
 		B51E7F8E66B5AE0A4D9EE10C /* Deck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Deck.swift; sourceTree = "<group>"; };
 		B670D0E6DB98D7E7C7FE51A7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C024260E6470548F3C91FC1F /* PhoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneApp.swift; sourceTree = "<group>"; };
+		C595D4EDCD3FE00FAA471B48 /* Account.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Account.swift; sourceTree = "<group>"; };
 		C991A83CDA1D1FF82A032EA0 /* TimelapseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelapseView.swift; sourceTree = "<group>"; };
 		CB8994C1626052FC1E3F1B21 /* Printdeck.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Printdeck.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2114C330830B4B5C5D4EAE7 /* PrintdeckWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PrintdeckWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D6FAFDF150EF3F44516ECD16 /* Panel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panel.swift; sourceTree = "<group>"; };
+		DB43252D8F4BF8498F80464B /* ServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceTests.swift; sourceTree = "<group>"; };
 		E0A1F82427E1BF89AE4574A9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E5A9AC136FD37E5823BE3A56 /* CameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraView.swift; sourceTree = "<group>"; };
 		E6E1FEB4FB0B10A9C90AD479 /* PushCrypto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushCrypto.swift; sourceTree = "<group>"; };
@@ -276,6 +287,7 @@
 		61C74AF6BF53EDB17739E140 /* Phone */ = {
 			isa = PBXGroup;
 			children = (
+				C595D4EDCD3FE00FAA471B48 /* Account.swift */,
 				74DD018BBD9721DD779A3905 /* Assets.xcassets */,
 				E5A9AC136FD37E5823BE3A56 /* CameraView.swift */,
 				B18B3A83A2D98FA589A08D3E /* FilesView.swift */,
@@ -302,6 +314,7 @@
 				91B5AA65D6EF88267EE4B862 /* FleetTests.swift */,
 				EEC0909ABD03C04458C7F7E0 /* LCDModelTests.swift */,
 				90E6942D32E2AF7FCD6D729E /* PushCryptoTests.swift */,
+				DB43252D8F4BF8498F80464B /* ServiceTests.swift */,
 				39FA1A4FEF709284823F9B6B /* TimelapseTests.swift */,
 			);
 			path = Tests;
@@ -320,6 +333,7 @@
 				9CA29D05ABBEBA3D309E9D9C /* LCDScreen.swift */,
 				D6FAFDF150EF3F44516ECD16 /* Panel.swift */,
 				FEEBF077F1F1B4F4F1ACD610 /* PrintActivity.swift */,
+				99EE3906D207353D79585449 /* Service.swift */,
 				EFB83763E3B47BF75CF93CE3 /* Store.swift */,
 				7A622D3ED72D7C6395B59AE5 /* Theme.swift */,
 				2D490B5DFDA2B0C93EEAAB61 /* Fonts */,
@@ -615,6 +629,8 @@
 				CAC274207372161525B15BDA /* LCDScreen.swift in Sources */,
 				84703D7207E291BD66B77C57 /* PushCrypto.swift in Sources */,
 				957EF501A2E42BC3D8E20E20 /* PushCryptoTests.swift in Sources */,
+				62B419B2D15ADCFE31F6E3AC /* Service.swift in Sources */,
+				D297D6293D76FA0A92BA5D90 /* ServiceTests.swift in Sources */,
 				816B466063128047E3ABA18B /* Theme.swift in Sources */,
 				11A773649FFA198AF59E912B /* Timelapse.swift in Sources */,
 				20B968F382C669F990D6B3C4 /* TimelapseTests.swift in Sources */,
@@ -636,6 +652,7 @@
 				57B1BB1E2381F230F31A9B3A /* LCDScreen.swift in Sources */,
 				A481C7A3F1B83EEB9B65B794 /* Panel.swift in Sources */,
 				C778CF960734F7685132B97E /* PrintActivity.swift in Sources */,
+				513E7080D8D597E9BDC99272 /* Service.swift in Sources */,
 				4E388A1EA57482408CE4B85F /* Store.swift in Sources */,
 				F820DE4C589E62B5AA1846CE /* Theme.swift in Sources */,
 			);
@@ -648,6 +665,7 @@
 				6C57FAC94467977ECB078865 /* Deck.swift in Sources */,
 				39539FC720E5765ECC6717D3 /* NotificationService.swift in Sources */,
 				394F390367913EA450DC32FD /* PushCrypto.swift in Sources */,
+				B7D95DF2C88B99499B6293D7 /* Service.swift in Sources */,
 				22E0E3BEDCF8CDE0E4FE5EC9 /* Store.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -656,6 +674,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2178AE7477AF717AFD60BAE8 /* Account.swift in Sources */,
 				254BB00BC761BD1650E29B36 /* CameraView.swift in Sources */,
 				E4701B1E693851C9CA32094A /* ComplicationLCD.swift in Sources */,
 				FFA1A39E87C13A72B53A34DD /* Deck.swift in Sources */,
@@ -675,6 +694,7 @@
 				DE2272E2877EC52A6F5DDD07 /* PrintActivity.swift in Sources */,
 				4E4BDF69F3AE2C06E9F3699E /* Push.swift in Sources */,
 				39A8D7DAB0BC7F456F314E61 /* PushCrypto.swift in Sources */,
+				8EDF72D28017E36DA643C841 /* Service.swift in Sources */,
 				8FB1DA295B111CE8E012072D /* SetupView.swift in Sources */,
 				8F9B6078A6FA28D4B4008B63 /* Store.swift in Sources */,
 				863803E55914375D0E896E96 /* Theme.swift in Sources */,
@@ -699,6 +719,7 @@
 				A599C711729F502DDBEDACBE /* Panel.swift in Sources */,
 				524BCC0CA5358650F065BE58 /* PrintActivity.swift in Sources */,
 				DDF48D2494A56CECB8A5DF64 /* PrintdeckApp.swift in Sources */,
+				4D84DDC33A9200DB10AA3FE8 /* Service.swift in Sources */,
 				80E4866E8E9381BD84E4FD22 /* StatusView.swift in Sources */,
 				E16BE60245900C967446E65A /* Store.swift in Sources */,
 				2B3EF0FF41DF656F65D3D9D5 /* Theme.swift in Sources */,
@@ -721,6 +742,7 @@
 				6086C7A1E7EC1732407D094B /* PrintActivity.swift in Sources */,
 				3FDD229354A712308D0FE592 /* PrintLiveActivity.swift in Sources */,
 				C0B4A56B3FF461600052B3DC /* PrintdeckWidget.swift in Sources */,
+				9E9330B21F051DAF3A8604EC /* Service.swift in Sources */,
 				0378E0FE4CA3DABAA16CEB3D /* Store.swift in Sources */,
 				78789157497AABEEA5B7A2E9 /* Theme.swift in Sources */,
 			);
@@ -876,6 +898,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PUSH_RELAY = "https://printdeck.beetlebug.org/api/v1/relay";
+				SERVICE_URL = "https://printdeck.beetlebug.org";
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -949,6 +972,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PUSH_RELAY = "https://printdeck.beetlebug.org/api/v1/relay";
+				SERVICE_URL = "https://printdeck.beetlebug.org";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;

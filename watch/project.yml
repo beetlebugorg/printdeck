@@ -13,6 +13,8 @@ settings:
     KEYCHAIN_GROUP: $(AppIdentifierPrefix)$(BUNDLE_PREFIX).shared
     # The push relay (relay/README.md).
     PUSH_RELAY: https://printdeck.beetlebug.org/api/v1/relay
+    # The service of the projects, and the relying party of its passkeys.
+    SERVICE_URL: https://printdeck.beetlebug.org
     CODE_SIGN_STYLE: Automatic
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
@@ -40,6 +42,7 @@ targets:
         NSBonjourServices: [_octoprint._tcp]
         NSPhotoLibraryAddUsageDescription: Printdeck saves the time lapse videos of your prints to Photos.
         PushRelay: $(PUSH_RELAY)
+        ServiceURL: $(SERVICE_URL)
         NSSupportsLiveActivities: true
         UIBackgroundModes: [remote-notification]
     entitlements:
@@ -47,6 +50,7 @@ targets:
       properties:
         keychain-access-groups: [$(KEYCHAIN_GROUP)]
         aps-environment: development
+        com.apple.developer.associated-domains: [webcredentials:printdeck.beetlebug.org]
     settings:
       base:
         PRODUCT_NAME: Printdeck
@@ -69,6 +73,7 @@ targets:
       - Notifications
       - Push
       - Shared/Deck.swift
+      - Shared/Service.swift
       - Shared/Store.swift
     info:
       path: Notifications/Info.plist
@@ -116,6 +121,7 @@ targets:
       - Push/PushCrypto.swift
       - Phone/Timelapse.swift
       - Shared/Deck.swift
+      - Shared/Service.swift
       - Shared/LCDModel.swift
       - Shared/LCDScreen.swift
       - Shared/LCDFonts.swift

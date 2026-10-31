@@ -83,6 +83,7 @@ final class DeckModel: Identifiable {
         let settings = new.settings
         deck.name = new.name
         deck.process = new.process ?? deck.process
+        deck.printerID = new.printerID ?? deck.printerID
         chooseCamera(new.camera)
         apply(settings)
     }
@@ -130,6 +131,10 @@ final class DeckModel: Identifiable {
             error = nil
             if let p = new.process, p != deck.process {
                 deck.process = p
+                Store.save(deck)
+            }
+            if let id = new.printerID, id != deck.printerID {
+                deck.printerID = id
                 Store.save(deck)
             }
             store(new)

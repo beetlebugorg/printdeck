@@ -49,6 +49,7 @@ struct HomeView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                AccountPlate()
             }
             .padding(16)
         }
@@ -56,14 +57,26 @@ struct HomeView: View {
     }
 }
 
-/// The card of a deck: the picture, the state, the print, the progress and the time left.
+/// The card of a deck: the picture, the state, the print, the progress and the time left. When the
+/// iPhone cannot reach the deck, the card shows the live print of the deck at the service.
 struct DeckCard: View {
     @Environment(DeckModel.self) private var model
     @Environment(\.palette) private var p
+    @State private var account = Account.shared
 
     var body: some View {
+        if !model.live, model.error != nil, let l = account.live(of: model.deck) {
+            AwayCard(title: label, live: l, time: account.liveTime)
+        } else {
+            homeCard
+        }
+    }
+
+    private var label: String { model.deck.title + (model.deck.process == .resin ? " · Resin" : "") }
+
+    private var homeCard: some View {
         let st = model.status
-        Plate(label: model.deck.title + (model.deck.process == .resin ? " · Resin" : "")) {
+        return Plate(label: label) {
             CardPicture()
             HStack(alignment: .firstTextBaseline) {
                 Text(stateText.uppercased())
@@ -182,5 +195,117 @@ private struct CardPicture: View {
             }
             try? await Task.sleep(for: .seconds(10))
         }
+    }
+}
+
+/// The card of a deck away from home: the live print of the deck at the service, with the picture
+/// of the model, the progress and the time left.
+private struct AwayCard: View {
+    @Environment(\.palette) private var p
+    let title: String
+    let live: LivePrint
+    /// When the app read the service.
+    let time: Date?
+
+    var body: some View {
+        Plate(label: title) {
+            if let url = live.model {
+                AsyncImage(url: url) { img in
+                    img.resizable().aspectRatio(contentMode: .fit)
+                } placeholder: {
+                    Color.clear
+                }
+                .frame(maxWidth: .infinity, maxHeight: 160)
+                .padding(10)
+                .background(RoundedRectangle(cornerRadius: 4).fill(p.lcd))
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(p.edge, lineWidth: 2))
+            }
+            HStack(alignment: .firstTextBaseline) {
+                Text(stateText.uppercased())
+                    .font(Theme.plex(17))
+                    .foregroundStyle(p.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Spacer()
+                Text(Format.percent(live.percent / 100))
+                    .font(Theme.plex(28, bold: false))
+                    .foregroundStyle(p.text)
+            }
+            .padding(.horizontal, 4)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(live.project.isEmpty ? live.name : live.name + " · " + live.project)
+                    .font(Theme.plex(14, bold: false))
+                    .foregroundStyle(p.dim)
+                    .lineLimit(1)
+                HStack {
+                    if live.printing, live.left > 0, !live.paused {
+                        Text(Format.duration(Double(live.left)) + " left")
+                    }
+                    Spacer()
+                    Text("Away · from the service")
+                }
+                .font(Theme.plex(13))
+                .foregroundStyle(p.dim)
+                Playhead(value: live.percent / 100)
+            }
+            .padding(.horizontal, 4)
+        }
+        .contentShape(Rectangle())
+    }
+
+    private var stateText: String {
+        switch live.result {
+        case "complete": return "Done"
+        case "cancelled": return "Cancelled"
+        case "error": return "Failed"
+        default: break
+        }
+        if live.paused { return "Paused" }
+        if live.layers > 0 { return "Layer \(live.layer) of \(live.layers)" }
+        return "Printing"
+    }
+}
+
+/// The sign-in to printdeck.beetlebug.org. Away from home, the cards show the live prints of the
+/// projects of the session.
+private struct AccountPlate: View {
+    @Environment(\.palette) private var p
+    @State private var account = Account.shared
+
+    var body: some View {
+        Plate(label: "Printdeck account") {
+            DisplayWindow {
+                Text(title)
+                    .font(Theme.plex(16))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Text(line)
+                    .font(Theme.plex(13, bold: false))
+                    .opacity(0.8)
+            }
+            if account.signedIn {
+                Button("Sign out") { account.signOut() }
+                    .buttonStyle(KeyStyle(cap: .danger))
+            } else {
+                Button("Sign in with passkey") { Task { await account.signIn() } }
+                    .buttonStyle(KeyStyle(cap: .orange))
+                    .disabled(account.busy)
+            }
+            Text("Away from home, a card shows the print of its deck from the projects at \(ServiceClient.relyingParty).")
+                .font(Theme.plex(12, bold: false))
+                .foregroundStyle(p.dim)
+                .padding(.horizontal, 4)
+        }
+    }
+
+    private var title: String {
+        guard account.signedIn, let s = account.session else { return "NOT SIGNED IN" }
+        return ((s.name ?? "Signed in") + " · " + s.kind).uppercased()
+    }
+
+    private var line: String {
+        if let m = account.message { return m.uppercased() }
+        guard account.signedIn, let s = account.session else { return ServiceClient.relyingParty.uppercased() }
+        return "UNTIL " + LCDModel.clock(s.expires)
     }
 }

@@ -87,6 +87,10 @@ struct RootView: View {
         .task(id: phase == .active) {
             if phase == .active { await fleet.poll() }
         }
+        // Away from home, the live prints of the service fill the cards of the decks.
+        .task(id: phase == .active) {
+            if phase == .active { await Account.shared.poll(fleet) }
+        }
     }
 
     private var loadingLines: [String] {

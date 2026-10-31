@@ -39,6 +39,8 @@
 	<true/>
 	<key>PushRelay</key>
 	<string>$(PUSH_RELAY)</string>
+	<key>ServiceURL</key>
+	<string>$(SERVICE_URL)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>IBMPlexMono-Regular.ttf</string>

@@ -68,6 +68,27 @@ How the pairing works:
 A build from Xcode uses the APNs sandbox. A TestFlight or App Store build uses production.
 `PUSH_RELAY` in `project.yml` is the URL of the relay.
 
+## Away from home
+
+Sign in with passkey on the home screen signs in to printdeck.beetlebug.org with the passkey of
+the owner or of a member, the same passkey as the web site. The token is in the keychain group,
+and a 401 asks for the sign-in again. An owner session works for 12 hours.
+
+When a deck does not answer, its card shows the live print of the deck from the projects of the
+session: the model, the progress and the time left. The app finds the print by `printer_id` of
+the deck (from `/api/plugin/printdeck`), or by the name of the printer when the deck has sent no
+ID. A print with no project has no live print at the service, so its card keeps the last status.
+
+The sign-in needs the entitlement `webcredentials:printdeck.beetlebug.org`, so it works only in
+a build that is signed with the team of `project.yml`. The service serves
+`/.well-known/apple-app-site-association` for the app.
+
+The routes of the service:
+
+- `POST /api/v1/auth/login/begin`, then the assertion of the passkey, then
+  `POST /api/v1/auth/login/finish`: the token, the kind, the name and the expiry time.
+- `GET /api/v1/projects`, and `GET /api/v1/projects/<id>` for the live prints (`live`).
+
 ## Network
 
 The deck serves plain HTTP on the local network (`NSAllowsLocalNetworking`). The deck announces

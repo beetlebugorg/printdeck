@@ -40,6 +40,12 @@ enum Store {
         write(st, "status." + id)
     }
 
+    /// The session at the service, or nil before the sign-in.
+    static var serviceSession: ServiceSession? {
+        get { read("service") }
+        set { write(newValue, "service") }
+    }
+
     /// The pairings of the iPhone with the decks for push messages. The notification service
     /// extension reads the message keys from them.
     static var pairings: [Pairing] {
