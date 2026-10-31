@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"path"
 	"regexp"
 	"sort"
@@ -57,6 +58,8 @@ type PlanRecord struct {
 	Created time.Time        `json:"created"`
 	Ready   bool             `json:"ready"`
 	Parts   []cloud.PlanPart `json:"parts"`
+	// Docs are the PDFs of the docs of printdeck.yml, in the folder of the plan.
+	Docs []cloud.PlanDoc `json:"docs,omitempty"`
 }
 
 // BuildRecord is x/<project>/builds/<id>.json.
@@ -279,6 +282,11 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 		pp.Count = max(1, min(pp.Count, MaxPartCount))
 		rec.Parts = append(rec.Parts, pp)
 	}
+	docs, err := planDocs(in.Docs)
+	if err != nil {
+		return nil, err
+	}
+	rec.Docs = docs
 	g, err := s.Grants.Grant(ctx, planDir(p.ID, rec.ID), MaxBuildFile, buildGrantTTL)
 	if err != nil {
 		return nil, err
@@ -287,6 +295,32 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 		return nil, err
 	}
 	return cloud.UploadReply{ID: rec.ID, URL: s.projectURL(p) + "/plans/" + rec.ID, Grant: g}, nil
+}
+
+// planDocs checks the PDFs of a plan manifest, and returns them with their fields clipped.
+func planDocs(in []cloud.PlanDoc) ([]cloud.PlanDoc, error) {
+	if len(in) > MaxPlanDocs {
+		return nil, fail(http.StatusBadRequest, fmt.Sprintf("a plan has at most %d docs", MaxPlanDocs))
+	}
+	var out []cloud.PlanDoc
+	names := map[string]bool{}
+	for _, d := range in {
+		d.Name, d.File = clip(strings.TrimSpace(d.Name), 120), clip(d.File, 300)
+		switch {
+		case d.Name == "" || d.File == "":
+			return nil, fail(http.StatusBadRequest, "each doc needs a name and a file")
+		case !fileName.MatchString(d.PDF) || !strings.HasSuffix(d.PDF, ".pdf") || names[d.PDF]:
+			return nil, fail(http.StatusBadRequest, "a bad PDF name: "+d.PDF)
+		case d.Thumb != "" && (!fileName.MatchString(d.Thumb) || !strings.HasSuffix(d.Thumb, ".png") || names[d.Thumb]):
+			return nil, fail(http.StatusBadRequest, "a bad picture name: "+d.Thumb)
+		case d.Size <= 0 || d.Size > MaxDocFile || !sha256Re.MatchString(d.SHA256):
+			return nil, fail(http.StatusBadRequest, "a doc needs a size of at most 50 MB and a SHA-256")
+		}
+		names[d.PDF], names[d.Thumb] = true, true
+		d.Pages = max(0, min(d.Pages, 10000))
+		out = append(out, d)
+	}
+	return out, nil
 }
 
 // planDone checks the models of the plan id and makes it ready. The plates that wait in the
@@ -312,6 +346,15 @@ func (s *Server) planDone(ctx context.Context, p *Project, c *GitHubClaims, id s
 			if !have[m] {
 				return nil, fail(http.StatusBadRequest, "the model "+m+" is not up")
 			}
+		}
+	}
+	for i, d := range rec.Docs {
+		if !have[d.PDF] {
+			return nil, fail(http.StatusBadRequest, "the PDF "+d.PDF+" is not up")
+		}
+		// A doc with no picture shows an icon on the pages.
+		if !have[d.Thumb] {
+			rec.Docs[i].Thumb = ""
 		}
 	}
 	rec.Ready = true
@@ -649,15 +692,65 @@ func (s *Server) projectPlan(ctx context.Context, p *Project, rec *PlanRecord) c
 		}
 		out.Parts = append(out.Parts, part)
 	}
+	if rec.Ready {
+		out.Docs = s.planDocViews(ctx, p, rec)
+	}
 	return out
 }
 
+// planDocViews returns the PDFs of the ready plan rec with their addresses.
+func (s *Server) planDocViews(ctx context.Context, p *Project, rec *PlanRecord) []cloud.ProjectDoc {
+	var out []cloud.ProjectDoc
+	dir := planDir(p.ID, rec.ID)
+	for _, d := range rec.Docs {
+		v := cloud.ProjectDoc{PlanDoc: d, Plan: rec.ID, Commit: rec.Commit}
+		v.URL, _ = s.Grants.FileURL(ctx, dir+d.PDF, urlTTL)
+		if d.Thumb != "" {
+			v.ThumbURL, _ = s.Grants.FileURL(ctx, dir+d.Thumb, urlTTL)
+		}
+		repo := rec.Repo
+		if rec.Fork != "" {
+			repo = rec.Fork
+		}
+		if repo != "" && hexSHA.MatchString(rec.Commit) {
+			v.RepoURL = "https://github.com/" + repo + "/blob/" + rec.Commit + "/" + escapeRepoPath(d.File)
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
+// escapeRepoPath escapes each segment of the path of a file in a repository for a link.
+func escapeRepoPath(p string) string {
+	segs := strings.Split(p, "/")
+	for i, seg := range segs {
+		segs[i] = url.PathEscape(seg)
+	}
+	return strings.Join(segs, "/")
+}
+
+// projectDocs returns the PDFs of the newest ready plan of the default branch, else of the newest
+// ready plan of a tag. plans are the plans of the project, the newest first.
+func (s *Server) projectDocs(ctx context.Context, p *Project, plans []*PlanRecord) []cloud.ProjectDoc {
+	for _, kind := range []string{cloud.BuildMain, cloud.BuildRelease} {
+		for _, rec := range plans {
+			if rec.Ready && rec.Kind == kind && rec.Fork == "" {
+				if len(rec.Docs) == 0 {
+					return nil
+				}
+				return s.planDocViews(ctx, p, rec)
+			}
+		}
+	}
+	return nil
+}
+
 // plansView returns the newest plans of the project (at most limit, or all for 0), each with
-// its builds, and the count of all the plans.
-func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.ProjectPlan, int) {
+// its builds, the count of all the plans, and the PDFs of the project (projectDocs).
+func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.ProjectPlan, int, []cloud.ProjectDoc) {
 	plans, err := s.loadPlans(ctx, p.ID)
 	if err != nil {
-		return nil, 0
+		return nil, 0, nil
 	}
 	builds, _ := s.loadBuilds(ctx, p.ID)
 	var out []cloud.ProjectPlan
@@ -673,7 +766,7 @@ func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.
 		}
 		out = append(out, pv)
 	}
-	return out, len(plans)
+	return out, len(plans), s.projectDocs(ctx, p, plans)
 }
 
 // projectBuild is a build for the pages, with the addresses of its files.

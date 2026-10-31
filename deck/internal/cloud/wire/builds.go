@@ -18,6 +18,31 @@ type PlanManifest struct {
 	Commit string     `json:"commit,omitempty"`
 	PR     int        `json:"pr,omitempty"`
 	Parts  []PlanPart `json:"parts"`
+	Docs   []PlanDoc  `json:"docs,omitempty"`
+}
+
+// PlanDoc is a PDF of the docs of printdeck.yml: a guide or a spec of the project. The plan run
+// uploads it as PDF in the plan, and a picture of its first page as Thumb (PNG), or "" when it
+// has no picture. File is the path of the PDF in the repository.
+type PlanDoc struct {
+	Name   string `json:"name"`
+	File   string `json:"file"`
+	PDF    string `json:"pdf"`
+	Thumb  string `json:"thumb,omitempty"`
+	Size   int64  `json:"size"`
+	Pages  int    `json:"pages,omitempty"`
+	SHA256 string `json:"sha256"`
+}
+
+// ProjectDoc is a PDF of a plan on the pages, with the addresses of the PDF and of its picture,
+// and the link to the file in the repository at the commit of the plan.
+type ProjectDoc struct {
+	PlanDoc
+	URL      string `json:"url,omitempty"`
+	ThumbURL string `json:"thumb_url,omitempty"`
+	RepoURL  string `json:"repo_url,omitempty"`
+	Plan     string `json:"plan,omitempty"`
+	Commit   string `json:"commit,omitempty"`
 }
 
 // PlanPart is one part of printdeck.yml. Models are the names of its model files in the plan
@@ -87,6 +112,7 @@ type ProjectPlan struct {
 	Created time.Time         `json:"created"`
 	Ready   bool              `json:"ready"` // all its models are up
 	Parts   []ProjectPlanPart `json:"parts"`
+	Docs    []ProjectDoc      `json:"docs,omitempty"`
 	Builds  []ProjectBuild    `json:"builds,omitempty"`
 }
 

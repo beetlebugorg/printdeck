@@ -435,7 +435,7 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 		if w.deck != nil {
 			return nil, fail(http.StatusUnauthorized, "only a person sees the plans")
 		}
-		plans, _ := s.plansView(ctx, p, 0)
+		plans, _, _ := s.plansView(ctx, p, 0)
 		if plans == nil {
 			plans = []cloud.ProjectPlan{}
 		}
@@ -709,7 +709,7 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 	v.Live = s.liveView(ctx, p, prints)
 	v.Repo = p.Repo
 	if p.Repo != "" {
-		v.Plans, v.PlansTotal = s.plansView(ctx, p, PlansShown)
+		v.Plans, v.PlansTotal, v.Docs = s.plansView(ctx, p, PlansShown)
 	}
 	v.Printers = s.printersOf(ctx, printerIDs(prints, v.Live), false)
 	v.Queue = s.projectQueued(ctx, p.ID)

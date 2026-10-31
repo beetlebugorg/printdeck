@@ -26,6 +26,8 @@ type (
 	PrintEdit         = wire.PrintEdit
 	PlanManifest      = wire.PlanManifest
 	PlanPart          = wire.PlanPart
+	PlanDoc           = wire.PlanDoc
+	ProjectDoc        = wire.ProjectDoc
 	UploadReply       = wire.UploadReply
 	ProjectPlan       = wire.ProjectPlan
 	ProjectPlanPart   = wire.ProjectPlanPart

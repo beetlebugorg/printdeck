@@ -166,6 +166,7 @@ func (a *app) drawDashboard(v *wire.ProjectView, full bool) {
 	a.drawWaiting(v)
 	a.drawPickup(v)
 	drawQueued(v)
+	drawDocs(v)
 	a.drawGit(v)
 	a.drawPeople(v)
 	drawMosaic(v)
@@ -746,6 +747,74 @@ func drawQueued(v *wire.ProjectView) {
 		sum += " · " + hoursMinutes(total)
 	}
 	setText("pQueueSum", sum)
+}
+
+// drawDocs draws the card of the PDFs of the project (the docs of printdeck.yml): a tile for each
+// PDF with the picture of its first page, its pages and its size, and the links to the PDF and to
+// the file on GitHub.
+func drawDocs(v *wire.ProjectView) {
+	setHidden("pDocsCard", len(v.Docs) == 0)
+	box := byID("pDocs")
+	box.Set("textContent", "")
+	if len(v.Docs) == 0 {
+		return
+	}
+	sum := count(len(v.Docs), "PDF", "PDFs")
+	if c := v.Docs[0].Commit; len(c) >= 7 {
+		sum += " · main at " + c[:7]
+	}
+	setText("pDocsSum", sum)
+	for i, d := range v.Docs {
+		tile := el("article", "doc", "")
+		if i == 0 {
+			tile.Get("classList").Call("add", "first")
+		}
+		page := el("a", "doc-page", "")
+		page.Set("href", d.URL)
+		page.Set("target", "_blank")
+		page.Set("rel", "noopener")
+		page.Set("title", "Open "+d.Name)
+		if d.ThumbURL != "" {
+			img := el("img", "", "")
+			img.Set("src", d.ThumbURL)
+			img.Set("alt", "The first page of "+d.Name)
+			img.Set("loading", "lazy")
+			page.Call("appendChild", img)
+		} else {
+			page.Call("appendChild", el("span", "doc-icon", "PDF"))
+		}
+		tile.Call("appendChild", page)
+		tile.Call("appendChild", el("strong", "", d.Name))
+		facts := docSize(d.Size)
+		if d.Pages > 0 {
+			facts = count(d.Pages, "page", "pages") + " · " + facts
+		}
+		tile.Call("appendChild", el("span", "sub", facts))
+		links := el("span", "doc-links", "")
+		open := el("a", "", "Open PDF")
+		open.Set("href", d.URL)
+		open.Set("target", "_blank")
+		open.Set("rel", "noopener")
+		links.Call("appendChild", open)
+		if d.RepoURL != "" {
+			gh := el("a", "", "GitHub")
+			gh.Set("href", d.RepoURL)
+			gh.Set("target", "_blank")
+			gh.Set("rel", "noopener")
+			gh.Set("title", d.File)
+			links.Call("appendChild", gh)
+		}
+		tile.Call("appendChild", links)
+		box.Call("appendChild", tile)
+	}
+}
+
+// docSize is the size of a file for a person: "840 KB" or "3.4 MB".
+func docSize(n int64) string {
+	if n < 1<<20 {
+		return fmt.Sprintf("%d KB", max(1, n>>10))
+	}
+	return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
 }
 
 // drawPickup draws the card of the prints that are ready to pick up, the newest mark first, each

@@ -243,6 +243,20 @@ days after the pull request closes, and keeps main and release builds.
 - The print tiles show their build: "PR #12 · 3f2a9c1" or "Release v1.2".
 - The print page shows the pull request with its comments, and the link to the commit.
 
+### The PDFs of a project
+
+`docs` in printdeck.yml lists the PDFs of the project: a build guide or a spec. Each entry has a
+`name` and a `file`. The plan run uploads each PDF (at most 10, each at most 50 MB) into the folder
+of the plan as `doc<n>.pdf`, with a PNG of its first page (`doc<n>.png`, 600 pixels wide, made by
+`pdftoppm`). The plan record keeps the name, the path, the size, the pages and the SHA-256 of each
+PDF. `POST plans/<id>/done` needs each PDF. A PDF with no picture gets an icon on the page.
+
+The overview of the project has the card Documents: the PDFs of the newest ready plan of the
+default branch, else of the newest ready plan of a tag. A plan of a pull request or of a fork
+does not change the card. Each PDF has a tile with the picture of its first page, its pages and its
+size, Open PDF (a signed link), and a link to the file on GitHub at the commit of the plan. The
+first PDF has the largest tile.
+
 ## The deck
 
 1. The deck asks the service for print requests of its printers, each minute, and at once when

@@ -107,6 +107,9 @@ type ProjectView struct {
 	Printers []Printer `json:"printers,omitempty"`
 	// Queue are the files of the project in the queues of the printers, the next first.
 	Queue []ProjectQueued `json:"queue,omitempty"`
+	// Docs are the PDFs of the newest ready plan of the default branch, else of the newest ready
+	// plan of a tag.
+	Docs []ProjectDoc `json:"docs,omitempty"`
 }
 
 // ProjectLive is a print of a project that prints now: its name, the share link or "", the start,

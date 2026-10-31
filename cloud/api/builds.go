@@ -31,6 +31,8 @@ import (
 const (
 	MaxBuildFile = 200 << 20
 	MaxPlanParts = 50
+	MaxPlanDocs  = 10
+	MaxDocFile   = 50 << 20
 	MaxPlates    = 20
 	MaxPartCount = 100
 	// PlansShown is the count of the newest plans that the view of a project has: the project
