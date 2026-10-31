@@ -114,8 +114,9 @@ type gitHubError struct {
 
 func (e *gitHubError) Error() string { return fmt.Sprintf("GitHub %d: %s", e.status, e.msg) }
 
-// Dispatch starts the slice run of the build in the repository repo ("owner/name").
-func (g *GitHubApp) Dispatch(ctx context.Context, repo, build string) error {
+// Dispatch starts the slice run of the build in the repository repo ("owner/name"), with the
+// title of the run. A workflow from before the input title gets the build only.
+func (g *GitHubApp) Dispatch(ctx context.Context, repo, build, title string) error {
 	app, err := g.appToken()
 	if err != nil {
 		return err
@@ -147,8 +148,14 @@ func (g *GitHubApp) Dispatch(ctx context.Context, repo, build string) error {
 	if r.DefaultBranch == "" {
 		r.DefaultBranch = "main"
 	}
-	in := map[string]any{"ref": r.DefaultBranch, "inputs": map[string]string{"build": build}}
-	if err := g.call(ctx, http.MethodPost, "/repos/"+repo+"/actions/workflows/printdeck.yml/dispatches", tok.Token, in, nil); err != nil {
+	path := "/repos/" + repo + "/actions/workflows/printdeck.yml/dispatches"
+	in := map[string]any{"ref": r.DefaultBranch, "inputs": map[string]string{"build": build, "title": title}}
+	err = g.call(ctx, http.MethodPost, path, tok.Token, in, nil)
+	if ge, ok := err.(*gitHubError); ok && ge.status == http.StatusUnprocessableEntity && strings.Contains(ge.msg, "Unexpected inputs") {
+		in["inputs"] = map[string]string{"build": build}
+		err = g.call(ctx, http.MethodPost, path, tok.Token, in, nil)
+	}
+	if err != nil {
 		if ge, ok := err.(*gitHubError); ok && ge.status == http.StatusNotFound {
 			return fmt.Errorf("%s has no workflow .github/workflows/printdeck.yml on %s", repo, r.DefaultBranch)
 		}

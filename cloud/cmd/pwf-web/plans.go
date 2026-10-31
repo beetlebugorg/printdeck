@@ -988,7 +988,17 @@ func (a *app) showBuildPage(projectID, id string) {
 func (a *app) drawBuild(b wire.ProjectBuild) {
 	v := a.view
 	setText("bdTitle", "A build of "+count(len(b.Plates), "plate", "plates"))
-	setText("bdSub", "Commit "+shortSHA(b.Commit)+" · "+localWhen(b.Created)+" · "+buildStateText(b.State))
+	state := buildStateText(b.State)
+	if b.State == wire.BuildSlicing {
+		state = "Waiting for the slice run on GitHub"
+		if b.Run != "" {
+			state = "The slice run started"
+		}
+		if b.Progress != "" {
+			state = b.Progress
+		}
+	}
+	setText("bdSub", "Commit "+shortSHA(b.Commit)+" · "+localWhen(b.Created)+" · "+state)
 	setHidden("bdStartCard", b.Start == "" || !v.IsOwner)
 	setText("bdStart", b.Start)
 	setHidden("bdError", b.Error == "")

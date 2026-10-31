@@ -169,6 +169,12 @@ type BuildStarted struct {
 	RunID string `json:"run_id"`
 }
 
+// BuildProgress is the body of POST /api/v1/builds/<id>/progress: what the slice run does now,
+// for example "Slicing plate 2 of 3: Pod door (fine) x2".
+type BuildProgress struct {
+	Text string `json:"text"`
+}
+
 // BuildFailure is the body of POST /api/v1/builds/<id>/failed.
 type BuildFailure struct {
 	Error string `json:"error"`
@@ -184,6 +190,8 @@ type ProjectBuild struct {
 	Error   string    `json:"error,omitempty"`
 	// Start is the command that starts the slice run by hand, while the service cannot start it.
 	Start string `json:"start,omitempty"`
+	// Progress is what the slice run does now, while the build slices.
+	Progress string `json:"progress,omitempty"`
 	// Run is the page of the slice run on GitHub, after the run starts.
 	Run    string              `json:"run,omitempty"`
 	Plates []ProjectBuildPlate `json:"plates"`

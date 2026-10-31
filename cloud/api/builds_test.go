@@ -233,12 +233,13 @@ func TestPlanFlow(t *testing.T) {
 
 // recordDispatch is a GitHub App for the tests: it records the slice runs that it starts.
 type recordDispatch struct {
-	runs []string
-	err  error
+	runs, titles []string
+	err          error
 }
 
-func (r *recordDispatch) Dispatch(_ context.Context, repo, build string) error {
+func (r *recordDispatch) Dispatch(_ context.Context, repo, build, title string) error {
 	r.runs = append(r.runs, repo+" "+build)
+	r.titles = append(r.titles, title)
 	return r.err
 }
 
@@ -281,12 +282,17 @@ func TestBuildDispatch(t *testing.T) {
 	if pp := b.Plates[0].Parts[0]; pp.Name != "Pod door" || pp.Variant != "standard" {
 		t.Errorf("the part of the plate %+v", pp)
 	}
-	if len(app.runs) != 1 || app.runs[0] != "beetlebugorg/bittlex "+b.ID || b.Start != "" || b.State != cloud.BuildSlicing {
+	if len(app.runs) != 1 || app.runs[0] != "beetlebugorg/bittlex "+b.ID || b.Start != "" || b.State != cloud.BuildSlicing ||
+		app.titles[0] != "Pod door (standard) x2 · main" {
 		t.Fatalf("dispatch %v %+v", app.runs, b)
 	}
 	if st := call(t, base, "POST", "/api/v1/builds/"+b.ID+"/started", token, cloud.BuildStarted{RunID: "41221435684"}, &b); st != 200 ||
 		b.Run != "https://github.com/beetlebugorg/bittlex/actions/runs/41221435684" {
 		t.Fatalf("started: %d %+v", st, b)
+	}
+	if st := call(t, base, "POST", "/api/v1/builds/"+b.ID+"/progress", token, cloud.BuildProgress{Text: "Slicing plate 1 of 1: Pod door x2"}, &b); st != 200 ||
+		b.Progress != "Slicing plate 1 of 1: Pod door x2" {
+		t.Fatalf("progress: %d %+v", st, b)
 	}
 	app.err = errors.New("the Printdeck GitHub App is not installed on beetlebugorg/bittlex: install it there")
 	call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/plans/"+up.ID+"/builds", tok, req, &b)

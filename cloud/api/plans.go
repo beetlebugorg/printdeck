@@ -32,7 +32,8 @@ import (
 // Dispatcher starts the slice run of a build in the repository (workflow_dispatch of the GitHub
 // App).
 type Dispatcher interface {
-	Dispatch(ctx context.Context, repo, build string) error
+	// Dispatch starts the run of the build. title is the title of the run on GitHub.
+	Dispatch(ctx context.Context, repo, build, title string) error
 }
 
 // PlanRecord is x/<project>/plans/<id>.json.
@@ -53,15 +54,16 @@ type PlanRecord struct {
 
 // BuildRecord is x/<project>/builds/<id>.json.
 type BuildRecord struct {
-	ID      string        `json:"id"`
-	Plan    string        `json:"plan"`
-	Repo    string        `json:"repo"`
-	Commit  string        `json:"commit"`
-	Created time.Time     `json:"created"`
-	State   string        `json:"state"`
-	Error   string        `json:"error,omitempty"`
-	RunID   string        `json:"run_id,omitempty"` // the slice run on GitHub
-	Plates  []plateRecord `json:"plates"`
+	ID       string        `json:"id"`
+	Plan     string        `json:"plan"`
+	Repo     string        `json:"repo"`
+	Commit   string        `json:"commit"`
+	Created  time.Time     `json:"created"`
+	State    string        `json:"state"`
+	Error    string        `json:"error,omitempty"`
+	RunID    string        `json:"run_id,omitempty"` // the slice run on GitHub
+	Progress string        `json:"progress,omitempty"`
+	Plates   []plateRecord `json:"plates"`
 }
 
 // plateRecord is a plate of a build record, with its state.
@@ -128,6 +130,21 @@ func (s *Server) routeActions(ctx context.Context, r *http.Request, body []byte,
 		if b.State == cloud.BuildFailed {
 			b.State, b.Error = cloud.BuildSlicing, "" // a run again of a build that failed
 		}
+		if err := s.putJSON(ctx, buildKey(p.ID, b.ID), b); err != nil {
+			return nil, err
+		}
+		return s.projectBuild(ctx, p, b), nil
+	case kind == "builds" && action == "progress" && r.Method == http.MethodPost:
+		var in cloud.BuildProgress
+		json.Unmarshal(body, &in)
+		b, err := s.actionBuild(ctx, p, c, id)
+		if err != nil {
+			return nil, err
+		}
+		if b.State != cloud.BuildSlicing {
+			return nil, fail(http.StatusConflict, "the build is not slicing")
+		}
+		b.Progress = clip(strings.TrimSpace(in.Text), 200)
 		if err := s.putJSON(ctx, buildKey(p.ID, b.ID), b); err != nil {
 			return nil, err
 		}
@@ -367,7 +384,7 @@ func (s *Server) newBuild(ctx context.Context, p *Project, w *who, planID string
 		return nil, err
 	}
 	if s.GitHub != nil {
-		if err := s.GitHub.Dispatch(ctx, plan.Repo, b.ID); err != nil {
+		if err := s.GitHub.Dispatch(ctx, plan.Repo, b.ID, runTitle(plan, &b)); err != nil {
 			b.State, b.Error = cloud.BuildFailed, "GitHub did not start the slice run: "+err.Error()
 			if err := s.putJSON(ctx, buildKey(p.ID, b.ID), b); err != nil {
 				return nil, err
@@ -375,6 +392,32 @@ func (s *Server) newBuild(ctx context.Context, p *Project, w *who, planID string
 		}
 	}
 	return s.projectBuild(ctx, p, &b), nil
+}
+
+// runTitle is the title of the slice run on GitHub: the parts of the plates and the plan, for
+// example "Pod door (fine) x2 + Pod panel (fine) · PR #12".
+func runTitle(plan *PlanRecord, b *BuildRecord) string {
+	var parts []string
+	for _, pl := range b.Plates {
+		for _, pp := range pl.Parts {
+			t := pp.Name
+			if pp.Variant != "" {
+				t += " (" + pp.Variant + ")"
+			}
+			if pp.Count > 1 {
+				t += fmt.Sprintf(" x%d", pp.Count)
+			}
+			parts = append(parts, t)
+		}
+	}
+	where := plan.Branch
+	switch plan.Kind {
+	case cloud.BuildTest:
+		where = fmt.Sprintf("PR #%d", plan.PR)
+	case cloud.BuildRelease:
+		where = plan.Tag
+	}
+	return clip(strings.Join(parts, " + ")+" · "+where, 120)
 }
 
 // actionBuild returns the build id for the slice run of the token: a build of the repository of
@@ -599,6 +642,9 @@ func (s *Server) projectBuild(ctx context.Context, p *Project, b *BuildRecord) c
 	}
 	if b.RunID != "" {
 		out.Run = "https://github.com/" + b.Repo + "/actions/runs/" + b.RunID
+	}
+	if b.State == cloud.BuildSlicing {
+		out.Progress = b.Progress
 	}
 	dir := buildDir(p.ID, b.ID)
 	for _, pl := range b.Plates {
