@@ -71,6 +71,8 @@ type Project struct {
 	// Shares are the IDs of the share links of the prints of the project: live, or moved to the
 	// print page.
 	Shares []string `json:"shares,omitempty"`
+	// Repo is the GitHub repository of the project, "owner/name", or "" (builds.go).
+	Repo string `json:"repo,omitempty"`
 }
 
 // Member is a member of a project, or an invite that waits (no Joined).
@@ -385,6 +387,40 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 			return nil, err
 		}
 		return s.afterChange(ctx, id, w)
+	case action == "repo" && r.Method == http.MethodPut:
+		if err := ownerOnly(w); err != nil {
+			return nil, err
+		}
+		var in cloud.RepoRequest
+		if json.Unmarshal(body, &in) != nil {
+			return nil, fail(http.StatusBadRequest, "bad JSON")
+		}
+		if _, err := s.setRepo(ctx, p, in.Repo); err != nil {
+			return nil, err
+		}
+		return s.afterChange(ctx, id, w)
+	case part == "builds" && sub != "" && r.Method == http.MethodGet:
+		if w.deck != nil {
+			return nil, fail(http.StatusUnauthorized, "only a person sees a build")
+		}
+		rec, err := s.loadBuild(ctx, id, sub)
+		if err != nil {
+			return nil, err
+		}
+		return s.projectBuild(ctx, p, rec), nil
+	case part == "builds" && r.Method == http.MethodPost && (strings.HasSuffix(sub, "/approve") || strings.HasSuffix(sub, "/reject")):
+		// builds/<build>/parts/<n>/approve or reject
+		f := strings.Split(sub, "/")
+		if len(f) != 4 || f[1] != "parts" {
+			return nil, fail(http.StatusMethodNotAllowed, "no such request")
+		}
+		n, err := strconv.Atoi(f[2])
+		if err != nil {
+			return nil, fail(http.StatusBadRequest, "bad part")
+		}
+		var in cloud.BuildDecision
+		json.Unmarshal(body, &in)
+		return s.decideBuildPart(ctx, p, w, f[0], n, f[3] == "approve", in.Reason)
 	case action == "notes" && r.Method == http.MethodPatch:
 		if w.deck != nil {
 			return nil, fail(http.StatusUnauthorized, "only a person writes notes")
@@ -592,6 +628,15 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 		return nil, err
 	}
 	v.Live = s.liveView(ctx, p, prints)
+	v.Repo = p.Repo
+	if builds, err := s.loadBuilds(ctx, p.ID); err == nil {
+		for i, b := range builds {
+			if i >= BuildsShown {
+				break
+			}
+			v.Builds = append(v.Builds, s.projectBuild(ctx, p, b))
+		}
+	}
 	v.Printers = s.printersOf(ctx, printerIDs(prints, v.Live), false)
 	v.Prints, v.Photos = []cloud.ProjectPrint{}, []cloud.ProjectPhoto{}
 	for _, pr := range prints {
@@ -1139,6 +1184,9 @@ func (s *Server) deletePhoto(ctx context.Context, project, pid string, w *who) e
 func (s *Server) deleteProject(ctx context.Context, p *Project) error {
 	if err := s.deleteNames(ctx, p); err != nil {
 		return err
+	}
+	if p.Repo != "" {
+		s.Store.Delete(ctx, repoKey(p.Repo))
 	}
 	if p.Public != "" {
 		if err := s.deletePrefix(ctx, "p/"+p.Public+"/"); err != nil {

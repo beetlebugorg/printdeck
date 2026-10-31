@@ -93,6 +93,10 @@ type ProjectView struct {
 	Members []ProjectMember `json:"members,omitempty"`
 	Prints  []ProjectPrint  `json:"prints"`
 	Photos  []ProjectPhoto  `json:"photos"`
+	// Repo is the GitHub repository of the project, "owner/name", or "". Builds are its newest
+	// builds, the newest first.
+	Repo   string         `json:"repo,omitempty"`
+	Builds []ProjectBuild `json:"builds,omitempty"`
 	// Public is the public address of the project, or "" when it has none.
 	Public string `json:"public,omitempty"`
 	// Live are the prints of the project that print now, or that ended and are not up yet.

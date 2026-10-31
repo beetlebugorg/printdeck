@@ -13,33 +13,40 @@ import (
 
 // The types of the projects and of the sign-in with passkeys (package wire).
 type (
-	PasskeyRequest = wire.PasskeyRequest
-	PasskeyBegin   = wire.PasskeyBegin
-	SignInReply    = wire.SignInReply
-	OwnerCodeReply = wire.OwnerCodeReply
-	ProjectRequest = wire.ProjectRequest
-	ProjectSummary = wire.ProjectSummary
-	ProjectView    = wire.ProjectView
-	ProjectMember  = wire.ProjectMember
-	ProjectPrint   = wire.ProjectPrint
-	PrintEdit      = wire.PrintEdit
-	NotesEdit      = wire.NotesEdit
-	ProjectPhoto   = wire.ProjectPhoto
-	ProjectLive    = wire.ProjectLive
-	FramesReply    = wire.FramesReply
-	InviteRequest  = wire.InviteRequest
-	InviteReply    = wire.InviteReply
-	InviteView     = wire.InviteView
-	PublicRequest  = wire.PublicRequest
-	PublicReply    = wire.PublicReply
-	NameReply      = wire.NameReply
-	Printer        = wire.Printer
-	PrinterRequest = wire.PrinterRequest
-	PrintRequest   = wire.PrintRequest
-	PrintReply     = wire.PrintReply
-	PrintDone      = wire.PrintDone
-	LiveRequest    = wire.LiveRequest
-	LiveReply      = wire.LiveReply
+	PasskeyRequest   = wire.PasskeyRequest
+	PasskeyBegin     = wire.PasskeyBegin
+	SignInReply      = wire.SignInReply
+	OwnerCodeReply   = wire.OwnerCodeReply
+	ProjectRequest   = wire.ProjectRequest
+	ProjectSummary   = wire.ProjectSummary
+	ProjectView      = wire.ProjectView
+	ProjectMember    = wire.ProjectMember
+	ProjectPrint     = wire.ProjectPrint
+	PrintEdit        = wire.PrintEdit
+	BuildManifest    = wire.BuildManifest
+	BuildPart        = wire.BuildPart
+	BuildReply       = wire.BuildReply
+	ProjectBuild     = wire.ProjectBuild
+	ProjectBuildPart = wire.ProjectBuildPart
+	BuildDecision    = wire.BuildDecision
+	RepoRequest      = wire.RepoRequest
+	NotesEdit        = wire.NotesEdit
+	ProjectPhoto     = wire.ProjectPhoto
+	ProjectLive      = wire.ProjectLive
+	FramesReply      = wire.FramesReply
+	InviteRequest    = wire.InviteRequest
+	InviteReply      = wire.InviteReply
+	InviteView       = wire.InviteView
+	PublicRequest    = wire.PublicRequest
+	PublicReply      = wire.PublicReply
+	NameReply        = wire.NameReply
+	Printer          = wire.Printer
+	PrinterRequest   = wire.PrinterRequest
+	PrintRequest     = wire.PrintRequest
+	PrintReply       = wire.PrintReply
+	PrintDone        = wire.PrintDone
+	LiveRequest      = wire.LiveRequest
+	LiveReply        = wire.LiveReply
 )
 
 // OwnerCode asks the service for an owner code: the page that makes the passkey of the owner.
@@ -156,3 +163,15 @@ func (c *Client) Projects(ctx context.Context, id *Identity) ([]ProjectSummary, 
 	err := c.Do(ctx, id, http.MethodGet, "/api/v1/projects", nil, &out)
 	return out, err
 }
+
+// The kinds of builds, and the states of their parts.
+const (
+	BuildTest    = wire.BuildTest
+	BuildMain    = wire.BuildMain
+	BuildBranch  = wire.BuildBranch
+	BuildRelease = wire.BuildRelease
+	PartWaiting  = wire.PartWaiting
+	PartApproved = wire.PartApproved
+	PartRejected = wire.PartRejected
+	PartReplaced = wire.PartReplaced
+)

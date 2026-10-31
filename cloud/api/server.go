@@ -40,6 +40,8 @@ type Server struct {
 	Files *FileSigner
 	// Relay is the push relay of the iPhone app at /api/v1/relay/, or nil.
 	Relay *relay.Relay
+	// OIDC checks the tokens of GitHub Actions for the builds, or is nil for the keys of GitHub.
+	OIDC OIDCVerifier
 	// Now is the clock, or nil for time.Now.
 	Now func() time.Time
 
@@ -142,6 +144,8 @@ func (s *Server) route(ctx context.Context, r *http.Request, body []byte) (any, 
 			return nil, err
 		}
 		return s.newSessionInfo(ctx, ss)
+	case p == "/api/v1/builds" || strings.HasPrefix(p, "/api/v1/builds/"):
+		return s.routeBuilds(ctx, r, body, strings.TrimPrefix(strings.TrimPrefix(p, "/api/v1/builds"), "/"))
 	case p == "/api/v1/printers":
 		return s.routePrinters(ctx, r, body)
 	case strings.HasPrefix(p, "/api/v1/names/") && r.Method == http.MethodGet:
