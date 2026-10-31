@@ -472,7 +472,13 @@ func (s *Sharer) step(ctx context.Context, id *Identity, c *share) (bool, error)
 	if s.Gcode != nil && c.gcode == 0 && time.Since(c.gcodeTried) >= partRetry {
 		// A G-code that does not go up does not stop the share: the page shows the picture.
 		c.gcodeTried = time.Now()
-		if b := s.Gcode(); len(b) > 0 {
+		b := s.Gcode()
+		switch {
+		case len(b) == 0:
+			// No file yet: the deck program just started and has no state of the print. The
+			// sharer tries again soon.
+			c.gcodeTried = time.Now().Add(gcodeSoon - partRetry)
+		default:
 			if err := s.upload(ctx, id, c, "print.gcode.gz", "application/gzip", "public, max-age=31536000, immutable", b); err != nil {
 				log.Printf("share: print.gcode.gz (%d KB): %v", len(b)/1000, err)
 			} else {
@@ -575,6 +581,9 @@ func PostFile(ctx context.Context, hc *http.Client, g Grant, name, ctype, cache 
 
 // partRetry is the time after a failed upload of part.bin before the next try.
 const partRetry = 10 * time.Minute
+
+// gcodeSoon is the time to the next try of print.gcode.gz when the deck had no file yet.
+const gcodeSoon = 15 * time.Second
 
 // PartVersion is the version of part.bin: 1 was a mesh, 2 the full cells ("PDV1"), and 3 is the
 // share of resin in each cell ("PDC1").
