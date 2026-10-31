@@ -87,6 +87,11 @@ parts:
     profile: profiles/taz/pla-0.2.cfg
 ```
 
+A part can change settings of its profile with `settings:` (Cura setting names for FDM), for
+example `support_structure: tree` or `brim_line_count: 14`. A 3MF file keeps the per-mesh
+settings of Cura, for example a support blocker (`cura:anti_overhang_mesh`): the Action passes
+each mesh of the 3MF to CuraEngine with its settings.
+
 A part with more than one file has all of them on one plate. `count` puts that many copies of
 each file on the plate (1 when it is not there). The slicer arranges them. When the copies do not
 fit on one plate, the Action fails with the count that fits.
@@ -178,8 +183,20 @@ Secrets Manager, as the key of the signed cookies.
 
 ## Sources
 
-The Action can make the STL files first: OpenSCAD or CadQuery files in `models/`, with a
-`source:` entry in the part. The STL files then never go into the repository.
+A repository can make its STL files with a script, for example build123d in Python. The entry
+`generate:` of `printdeck.yml` names the command and the files that it writes:
+
+```yaml
+generate:
+  python: "3.12"
+  install: pip install -r requirements.txt
+  run: python bittle_pi_addon/pod.py
+  check: true    # fail when the files differ from the committed files
+```
+
+With `check: true`, the committed files stay the files that print, and the build fails when a
+person changed the source and did not commit the new files. Without `check`, the Action prints
+the files of the script.
 
 ## Security
 
@@ -200,6 +217,71 @@ The Action can make the STL files first: OpenSCAD or CadQuery files in `models/`
 4. Resin slicing in the Action with PrusaSlicer and UVtools. Until then, resin parts use
    `prebuilt:` files from ChiTuBox.
 5. The sources: OpenSCAD and CadQuery.
+
+## The first repository: bittlex
+
+`beetlebugorg/bittlex` is public, with the default branch `main`. Python scripts with build123d
+and manifold3d make the parts, and the STL, 3MF and STEP files are in the repository. The Cura
+profile is `cura/Bittle_X.curaprofile` (0.20 mm layers, no supports, a 6-line brim), for the TAZ
+Workhorse with a 0.5 mm nozzle. The repository has one workflow now: `pages.yml` builds the
+GitHub Pages site. A draft of its `printdeck.yml`:
+
+```yaml
+project: bittlex
+generate:
+  python: "3.12"
+  install: pip install build123d manifold3d
+  run: python bittle_pi_addon/pod.py && python bittle_platform/build.py
+  check: true
+parts:
+  - name: Pod body (screw, rev 0.26)
+    files: [bittle_pi_addon/stl/print/pod_body_screw.3mf]
+    printer: taz
+    material: PLA
+    profile: cura/Bittle_X.curaprofile
+    settings: {layer_height: 0.1}
+  - name: Pod panel (screw)
+    files: [bittle_pi_addon/stl/print/pod_panel_screw.stl]
+    printer: taz
+    material: PLA, second color
+    profile: cura/Bittle_X.curaprofile
+    settings: {layer_height: 0.1}
+  - name: Cover (screw)
+    files: [bittle_pi_addon/stl/print/cover_screw.stl]
+    printer: taz
+    material: PLA
+    profile: cura/Bittle_X.curaprofile
+    settings: {layer_height: 0.1}
+  - name: Pod door
+    files: [bittle_pi_addon/stl/print/pod_door.stl]
+    printer: taz
+    material: PLA, white
+    profile: cura/Bittle_X.curaprofile
+  - name: Platform cover
+    files: [bittle_platform/stl/print/cover_pegs.stl]
+    printer: taz
+    material: PLA
+    profile: cura/Bittle_X.curaprofile
+    settings: {support_enable: true, support_structure: tree, brim_line_count: 14}
+  - name: Starter plate
+    files: [bittle_platform/stl/print/starter_plate.stl]
+    printer: taz
+    material: PLA
+    profile: cura/Bittle_X.curaprofile
+  - name: Resin plate
+    files: [bittle_pi_addon/stl/plates/resin_phenom.stl]
+    printer: phenom
+    material: Grey resin
+    prebuilt: phenom/resin_plate.cbddlp   # from ChiTuBox until the resin slicing works
+```
+
+Open points for bittlex:
+
+- The file names and the plate file of `plates.json` need a check against the repository.
+- The heavy build (wire settling, STEP export) takes minutes. The Action runs only the parts
+  of the build that write the printed files, or it skips `check` on the STEP files.
+- The resin plate on the Mac is out of date. A new ChiTuBox slice of the screw version goes in
+  the repository as the `prebuilt` file.
 
 ## Decisions
 
