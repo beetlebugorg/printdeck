@@ -41,6 +41,12 @@ type ShareStatus struct {
 	// Pos is the byte in the G-code file that Klipper reads now, or 0. The 3D view of the page
 	// puts the nozzle at the move of that byte.
 	Pos int64 `json:"pos,omitempty"`
+	// View is the view of the time lapse camera: a 3 x 4 matrix, row by row, from the G-code
+	// coordinates (x, y, z, 1) to (a, b, c), with the place in the frames of the time lapse at
+	// u = a/c and v = b/c (0 to 1, v down). ViewAspect is the width of the frames over their
+	// height. The 3D view of the page draws the model as the camera sees it.
+	View       []float64 `json:"view,omitempty"`
+	ViewAspect float64   `json:"view_aspect,omitempty"`
 	Layer    int     `json:"layer,omitempty"`
 	Layers   int     `json:"layers,omitempty"`
 	// Height is the height of the nozzle, and MaxHeight the height of the model, in mm.

@@ -906,7 +906,30 @@ async function showGcode(box, opts) {
   mode.onchange = () => { paint(); update(); };
   update();
 
+  // The view of the time lapse camera (setView): a camera from the matrix of the deck, in a stage
+  // with the shape of the frames of the time lapse.
+  let matched = null, matchedAspect = 0, useMatched = false;
+  const viewKey = el("button", "gv-viewkey", "Turn freely");
+  viewKey.type = "button";
+  viewKey.hidden = true;
+  viewKey.onclick = () => {
+    useMatched = !useMatched;
+    viewKey.textContent = useMatched ? "Turn freely" : "Camera view";
+    orbit.enabled = !useMatched;
+    fit();
+  };
+  if (opts.compact) box.appendChild(viewKey);
   const fit = () => {
+    if (opts.compact) {
+      // The stage fills the box, or has the shape of the frames in the camera view.
+      let sw = box.clientWidth, sh = box.clientHeight;
+      if (matched && useMatched && matchedAspect > 0) {
+        if (sw / sh > matchedAspect) sw = Math.round(sh * matchedAspect);
+        else sh = Math.round(sw / matchedAspect);
+      }
+      stage.style.width = sw + "px";
+      stage.style.height = sh + "px";
+    }
     const w = stage.clientWidth, h = stage.clientHeight;
     renderer.setSize(w, h, false);
     camera.aspect = w / Math.max(1, h);
@@ -915,7 +938,7 @@ async function showGcode(box, opts) {
     redraw = true;
   };
   const resize = new ResizeObserver(fit);
-  resize.observe(stage);
+  resize.observe(opts.compact ? box : stage);
   fit();
   // The view draws only after a change: a large plate takes a moment for each picture, and a
   // phone keeps its battery.
@@ -925,7 +948,7 @@ async function showGcode(box, opts) {
     frame = requestAnimationFrame(tick);
     if (orbit.update() || redraw) {
       redraw = false;
-      renderer.render(scene, camera);
+      renderer.render(scene, matched && useMatched ? matched : camera);
     }
   };
   tick();
@@ -999,7 +1022,51 @@ async function showGcode(box, opts) {
     redraw = true;
   };
   let lastCut = -1;
+  // setView sets the view of the time lapse camera: q is the matrix from the G-code coordinates to
+  // the frames (12 numbers, row by row; u = a/c, v = b/c, v down), and aspect the shape of the
+  // frames. The scene has X = x - bx/2, Y = z, Z = by/2 - y.
+  const setView = (q, aspect) => {
+    if (!q || q.length !== 12 || !(aspect > 0)) return;
+    const toGcode = new T.Matrix4().set(1, 0, 0, bx / 2, 0, 0, -1, by / 2, 0, 1, 0, 0, 0, 0, 0, 1);
+    const Q = new T.Matrix4().set(q[0], q[1], q[2], q[3], q[4], q[5], q[6], q[7], q[8], q[9], q[10], q[11], 0, 0, 0, 1).multiply(toGcode);
+    const e = Q.elements; // by column
+    const row = (i) => [e[i], e[4 + i], e[8 + i], e[12 + i]];
+    let r0 = row(0), r1 = row(1), r2 = row(2);
+    // The depth of the part: c at the corners of its box. c is above 0 in front of the camera.
+    const cs = [];
+    for (const x of [minx, maxx]) for (const y of [miny, maxy]) for (const z of [0, maxz]) {
+      const X = x - bx / 2, Y = z, Z = by / 2 - y;
+      cs.push(r2[0] * X + r2[1] * Y + r2[2] * Z + r2[3]);
+    }
+    if (cs.reduce((a, b) => a + b, 0) < 0) {
+      r0 = r0.map((v) => -v); r1 = r1.map((v) => -v); r2 = r2.map((v) => -v);
+      for (let i = 0; i < cs.length; i++) cs[i] = -cs[i];
+    }
+    const cmin = Math.min(...cs), cmax = Math.max(...cs);
+    if (!(cmin > 0)) return; // a part behind the camera: no view
+    const n = cmin * 0.3, f = cmax * 3;
+    const A = (f + n) / (f - n), B = (-2 * f * n) / (f - n);
+    const P = new T.Matrix4().set(
+      2 * r0[0] - r2[0], 2 * r0[1] - r2[1], 2 * r0[2] - r2[2], 2 * r0[3] - r2[3],
+      r2[0] - 2 * r1[0], r2[1] - 2 * r1[1], r2[2] - 2 * r1[2], r2[3] - 2 * r1[3],
+      A * r2[0], A * r2[1], A * r2[2], A * r2[3] + B,
+      r2[0], r2[1], r2[2], r2[3]);
+    const first = !matched;
+    matched = new T.Camera();
+    matched.projectionMatrix.copy(P);
+    matched.projectionMatrixInverse.copy(P).invert();
+    matchedAspect = aspect;
+    viewKey.hidden = false;
+    if (first && !turned) {
+      useMatched = true;
+      orbit.enabled = false;
+      viewKey.textContent = "Turn freely";
+    }
+    fit();
+  };
+  if (opts.view) setView(opts.view, opts.aspect);
   const handle = {
+    setView,
     // setPrinted shows the layers up to k as solid, and the later layers as the ghost.
     setPrinted(k) {
       if (!opts.compact) { printed = k; paint(); update(); return; }

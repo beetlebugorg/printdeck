@@ -198,6 +198,11 @@ func (l *shareLink) status() cloud.ShareStatus {
 	if st.Busy() {
 		if _, ok := l.pr.(*printer.Klippy); ok {
 			s.Pos = st.FilePos
+			if lapseView != nil {
+				if v, aspect, ok := lapseView(st.FilePath); ok {
+					s.View, s.ViewAspect = v[:], aspect
+				}
+			}
 		}
 		l.clockLayers(st)
 		if st.HasNow {

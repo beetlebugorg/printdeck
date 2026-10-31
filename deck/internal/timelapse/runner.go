@@ -396,6 +396,15 @@ func (r *Runner) lapseFrame(f *camera.Frame) *camera.Frame {
 	return f.CropTo(c.r, c.size.X, c.size.Y)
 }
 
+// Crop returns the crop of the frames of the print now: the size of the frames of the camera,
+// and the crop in them, empty for the whole picture. It is false before the first frame of the
+// print.
+func (r *Runner) Crop() (src image.Point, crop image.Rectangle, ok bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.crop.src, r.crop.r, r.crop.set && r.rec != nil
+}
+
 // cropSize is the size of the frames of the video of the crop c, for frames of width w: as wide
 // as the frames, and at most 2 times the crop. The sides are even.
 func cropSize(c image.Rectangle, w int) image.Point {

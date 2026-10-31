@@ -179,6 +179,7 @@ type share struct {
 	gview     js.Value
 	gviewOn   bool
 	gviewWant int
+	viewSet   bool // the 3D view has the view of the time lapse camera
 }
 
 // showGcode shows the G-code of an FDM print in 3D in place of the picture of the model: the
@@ -186,6 +187,7 @@ type share struct {
 func (s *share) showGcode(n int) {
 	s.gviewWant = n
 	if s.gview.Truthy() {
+		s.setView()
 		if !s.animate() {
 			s.gview.Call("setPrinted", n)
 		}
@@ -206,6 +208,7 @@ func (s *share) showGcode(n int) {
 	ok = js.FuncOf(func(_ js.Value, args []js.Value) any {
 		s.gview = args[0]
 		setHidden("model", true)
+		s.setView()
 		if !s.animate() {
 			s.gview.Call("setPrinted", s.gviewWant)
 		}
@@ -218,6 +221,19 @@ func (s *share) showGcode(n int) {
 		return nil
 	})
 	v.Call("showGcode", byID("gview"), opts).Call("then", ok).Call("catch", fail)
+}
+
+// setView gives the 3D view the view of the time lapse camera, once it is in the status.
+func (s *share) setView() {
+	if s.viewSet || len(s.st.View) != 12 || s.st.ViewAspect <= 0 || !s.gview.Truthy() {
+		return
+	}
+	q := js.Global().Get("Array").New()
+	for _, v := range s.st.View {
+		q.Call("push", v)
+	}
+	s.gview.Call("setView", q, s.st.ViewAspect)
+	s.viewSet = true
 }
 
 // animate shows the layer that prints now in the 3D view of the G-code: the share of its time

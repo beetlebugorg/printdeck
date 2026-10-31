@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"printdeck/internal/camera"
@@ -92,6 +93,23 @@ func startTimelapse(ctx context.Context, stateDir, configPath string, app *ui.Ap
 	}
 	app.TimeLapse = r
 	sysTimelapse = r
+	// The view needs queries of Klipper: the share asks each 5 s, and the view of a file is kept
+	// for a minute.
+	var viewMu sync.Mutex
+	var viewFile string
+	var viewAt time.Time
+	var view [12]float64
+	var viewAspect float64
+	var viewOK bool
+	lapseView = func(file string) ([12]float64, float64, bool) {
+		viewMu.Lock()
+		defer viewMu.Unlock()
+		if file != viewFile || time.Since(viewAt) > time.Minute {
+			view, viewAspect, viewOK = lapseViewOf(hub, k, r, model, file)
+			viewFile, viewAt = file, time.Now()
+		}
+		return view, viewAspect, viewOK
+	}
 	go r.Run(ctx)
 	go followPart(ctx, hub, k, model)
 	go focusPart(ctx, hub, k, r)
@@ -290,4 +308,93 @@ func startResinTimelapse(ctx context.Context, stateDir string, app *ui.App, hub 
 	app.TimeLapse = r
 	sysTimelapse = r
 	go r.Run(ctx)
+}
+
+// lapseView is the view of the time lapse camera for the 3D view of a share (lapseViewOf), or nil
+// with no camera.
+var lapseView func(file string) ([12]float64, float64, bool)
+
+// lapseViewOf returns the matrix from the G-code coordinates of the print of the file to the
+// frames of its time lapse, and the width of the frames over their height. It needs the
+// calibration of the camera, and for a bed that moves in Y, the park of the frames. It is the
+// calibration, the bed at the park, the turn of the frames, and the crop to the part.
+func lapseViewOf(hub *camera.Hub, k *printer.Klippy, r *timelapse.Runner, model, file string) ([12]float64, float64, bool) {
+	var q [12]float64
+	lapse := hub.Role(camera.RoleLapse)
+	cal, ok := lapse.Calibration()
+	if !ok {
+		return q, 0, false
+	}
+	src, crop, ok := r.Crop()
+	if !ok || src.X <= 0 || src.Y <= 0 {
+		return q, 0, false
+	}
+	_, bedY, ok := partBox(k, file, model)
+	if !ok || cal.BedY && !r.Settings().Park {
+		return q, 0, false // with no park, the bed is at another place in each frame
+	}
+	// The G-code coordinates to the toolhead coordinates: an affine map, from 4 points.
+	place := gcodeToPlace(k)
+	var l [4][4]float64 // column j is the image of the unit vector j, column 3 the image of 0
+	ox, oy, oz := place(0, 0, 0)
+	l[0][3], l[1][3], l[2][3], l[3][3] = ox, oy, oz, 1
+	for j, d := range [3][3]float64{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}} {
+		x, y, z := place(d[0], d[1], d[2])
+		l[0][j], l[1][j], l[2][j] = x-ox, y-oy, z-oz
+	}
+	rot := hub.Settings().Camera(lapse.ID()).Rotate - cal.Rotate
+	q, aspect := composeView(cal, bedY, l, rot, src, crop)
+	return q, aspect, true
+}
+
+// composeView returns the matrix from the coordinates of l (an affine map to the toolhead
+// coordinates) to the frames of the time lapse: the calibration cal with the bed at bedY, the turn
+// rot of the frames since the calibration, and the crop of frames of size src (empty for none).
+// It also returns the width of the frames over their height.
+func composeView(cal *camera.Calibration, bedY float64, l [4][4]float64, rot int, src image.Point, crop image.Rectangle) ([12]float64, float64) {
+	var q [12]float64
+	p := cal.P
+	if cal.BedY {
+		// The matrix maps (x, y - bedY, z).
+		for i := 0; i < 3; i++ {
+			p[i*4+3] -= bedY * p[i*4+1]
+		}
+	}
+	var pl [3][4]float64
+	for i := 0; i < 3; i++ {
+		for j := 0; j < 4; j++ {
+			for m := 0; m < 4; m++ {
+				pl[i][j] += p[i*4+m] * l[m][j]
+			}
+		}
+	}
+	// The turn of the frames since the calibration.
+	a, b, c := pl[0], pl[1], pl[2]
+	sub := func(x, y [4]float64) (o [4]float64) {
+		for i := range o {
+			o[i] = x[i] - y[i]
+		}
+		return
+	}
+	switch (rot%360 + 360) % 360 {
+	case 90:
+		a, b = sub(c, b), a
+	case 180:
+		a, b = sub(c, a), sub(c, b)
+	case 270:
+		a, b = b, sub(c, a)
+	}
+	aspect := float64(src.X) / float64(src.Y)
+	if !crop.Empty() {
+		// u in the crop: (u * W - x0) / w.
+		for i := 0; i < 4; i++ {
+			a[i] = (float64(src.X)*a[i] - float64(crop.Min.X)*c[i]) / float64(crop.Dx())
+			b[i] = (float64(src.Y)*b[i] - float64(crop.Min.Y)*c[i]) / float64(crop.Dy())
+		}
+		aspect = float64(crop.Dx()) / float64(crop.Dy())
+	}
+	copy(q[0:4], a[:])
+	copy(q[4:8], b[:])
+	copy(q[8:12], c[:])
+	return q, aspect
 }
