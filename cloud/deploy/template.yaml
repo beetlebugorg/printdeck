@@ -91,11 +91,13 @@ Resources:
             Status: Enabled
             Prefix: up/
             ExpirationInDays: 1
-      # The owner page uploads photos from the browser with a grant (an S3 POST form).
+      # The owner page uploads photos from the browser with a grant (an S3 POST form), and the
+      # pages read the files of a print with signed links (fetch of plan.json): the links still
+      # need their signature.
       CorsConfiguration:
         CorsRules:
           - AllowedOrigins: [!Sub "https://${Domain}"]
-            AllowedMethods: [POST]
+            AllowedMethods: [GET, POST]
             AllowedHeaders: ["*"]
             MaxAge: 3600
 
