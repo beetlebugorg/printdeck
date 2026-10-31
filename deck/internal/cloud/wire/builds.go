@@ -24,7 +24,10 @@ type PlanManifest struct {
 // (STL), for the 3D views, in the order of Files. Size is the size of the part on the bed in mm:
 // all its files, one copy each.
 type PlanPart struct {
-	Name     string   `json:"name"`
+	Name string `json:"name"`
+	// Variant is the variant of the part, for example "fine", or "" for a part with no variants.
+	// Each variant of a part is a part of its own in the plan, with its own files and profile.
+	Variant  string   `json:"variant,omitempty"`
 	Files    []string `json:"files"`
 	Count    int      `json:"count"`
 	Printer  string   `json:"printer"` // the printer of printdeck.yml, for example "taz"
@@ -93,9 +96,10 @@ type PlateRequest struct {
 
 // PlatePart is a part on a plate, and its count of copies.
 type PlatePart struct {
-	Part  int    `json:"part"`
-	Count int    `json:"count"`
-	Name  string `json:"name,omitempty"`
+	Part    int    `json:"part"`
+	Count   int    `json:"count"`
+	Name    string `json:"name,omitempty"`
+	Variant string `json:"variant,omitempty"`
 }
 
 // BuildRequest is the body of POST /api/v1/projects/<id>/plans/<plan>/builds: the plates.

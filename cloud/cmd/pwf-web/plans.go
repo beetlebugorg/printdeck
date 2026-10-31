@@ -203,7 +203,7 @@ func (a *app) drawPlanParts() {
 		box.Set("type", "checkbox")
 		box.Set("checked", a.planChoices[i].on)
 		box.Set("disabled", !owner || !p.Ready)
-		box.Call("setAttribute", "aria-label", "Print "+pp.Name)
+		box.Call("setAttribute", "aria-label", "Print "+partLabel(pp.Name, pp.Variant))
 		box.Call("addEventListener", "change", js.FuncOf(func(js.Value, []js.Value) any {
 			a.planChoices[i].on = box.Get("checked").Bool()
 			a.planPlates = nil // the suggestion again, with the new parts
@@ -213,7 +213,7 @@ func (a *app) drawPlanParts() {
 		}))
 		li.Call("appendChild", box)
 		what := el("div", "what", "")
-		name := el("strong", "", pp.Name+" ")
+		name := el("strong", "", partLabel(pp.Name, pp.Variant)+" ")
 		if pp.Changed {
 			name.Call("appendChild", el("span", "tag changed", "Changed"))
 		}
@@ -245,7 +245,7 @@ func (a *app) drawPlanParts() {
 		count.Set("max", "100")
 		count.Set("value", strconv.Itoa(a.planChoices[i].count))
 		count.Set("disabled", !owner || pp.Prebuilt != "")
-		count.Call("setAttribute", "aria-label", "Copies of "+pp.Name)
+		count.Call("setAttribute", "aria-label", "Copies of "+partLabel(pp.Name, pp.Variant))
 		count.Call("addEventListener", "change", js.FuncOf(func(js.Value, []js.Value) any {
 			n, err := strconv.Atoi(count.Get("value").String())
 			if err != nil || n < 1 {
@@ -258,6 +258,14 @@ func (a *app) drawPlanParts() {
 		li.Call("appendChild", count)
 		list.Call("appendChild", li)
 	}
+}
+
+// partLabel is the name of a part with its variant: "Pod door · fine".
+func partLabel(name, variant string) string {
+	if variant == "" {
+		return name
+	}
+	return name + " · " + variant
 }
 
 // printerName is the name of a printer of printdeck.yml for the page.
@@ -278,7 +286,7 @@ func (a *app) showPlanModel(i int) {
 	}
 	a.planShown = i
 	pp := a.plan.Parts[i]
-	setText("plViewTitle", pp.Name)
+	setText("plViewTitle", partLabel(pp.Name, pp.Variant))
 	facts := strings.Join(pp.Files, ", ")
 	setText("plViewFacts", facts)
 	for _, li := range jsList(byID("plParts").Call("querySelectorAll", "li")) {
@@ -440,10 +448,10 @@ func (a *app) drawPlates() {
 			i := i
 			pp := a.plan.Parts[i]
 			li := el("li", "", "")
-			li.Call("appendChild", el("span", "", fmt.Sprintf("%s × %d", pp.Name, a.planChoices[i].count)))
+			li.Call("appendChild", el("span", "", fmt.Sprintf("%s × %d", partLabel(pp.Name, pp.Variant), a.planChoices[i].count)))
 			if a.view.IsOwner {
 				sel := el("select", "", "")
-				sel.Call("setAttribute", "aria-label", "The plate of "+pp.Name)
+				sel.Call("setAttribute", "aria-label", "The plate of "+partLabel(pp.Name, pp.Variant))
 				for m, other := range plates {
 					if m != n && plateKey(a.plan.Parts[other[0]], other[0]) != plateKey(pp, i) {
 						continue
@@ -535,7 +543,7 @@ func (a *app) drawPlateBed(c js.Value, pl []int) {
 	for _, i := range pl {
 		pp := a.plan.Parts[i]
 		for k := 0; k < a.planChoices[i].count; k++ {
-			objs = append(objs, obj{pp.SizeX, pp.SizeY, pp.Name})
+			objs = append(objs, obj{pp.SizeX, pp.SizeY, partLabel(pp.Name, pp.Variant)})
 		}
 		cw = math.Max(cw, pp.SizeX+2*pp.Margin)
 		cd = math.Max(cd, pp.SizeY+2*pp.Margin)
@@ -599,7 +607,7 @@ func (a *app) drawPlanBuilds() {
 		var parts []string
 		for _, pl := range b.Plates {
 			for _, pp := range pl.Parts {
-				parts = append(parts, fmt.Sprintf("%s × %d", pp.Name, pp.Count))
+				parts = append(parts, fmt.Sprintf("%s × %d", partLabel(pp.Name, pp.Variant), pp.Count))
 			}
 		}
 		link.Call("appendChild", el("span", "sub", strings.Join(parts, ", ")))
@@ -676,7 +684,7 @@ func (a *app) showPreview(b wire.ProjectBuild, n int) {
 	}
 	var names []string
 	for _, pp := range pl.Parts {
-		names = append(names, fmt.Sprintf("%s × %d", pp.Name, pp.Count))
+		names = append(names, fmt.Sprintf("%s × %d", partLabel(pp.Name, pp.Variant), pp.Count))
 	}
 	setText("bdViewTitle", fmt.Sprintf("Plate %d · %s", n+1, strings.Join(names, ", ")))
 	opts := js.Global().Get("Object").New()
@@ -792,7 +800,7 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 		card.Call("appendChild", h)
 		var parts []string
 		for _, pp := range pl.Parts {
-			parts = append(parts, fmt.Sprintf("%s × %d", pp.Name, pp.Count))
+			parts = append(parts, fmt.Sprintf("%s × %d", partLabel(pp.Name, pp.Variant), pp.Count))
 		}
 		card.Call("appendChild", el("p", "", strings.Join(parts, ", ")))
 		facts := el("dl", "facts", "")

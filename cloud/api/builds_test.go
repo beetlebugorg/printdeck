@@ -261,15 +261,25 @@ func TestBuildDispatch(t *testing.T) {
 	call(t, base, "PUT", "/api/v1/projects/"+sum.ID+"/repo", tok, cloud.RepoRequest{Repo: "beetlebugorg/bittlex"}, nil)
 	token := "beetlebugorg/bittlex|refs/heads/main|" + strings.Repeat("ab", 20)
 	var up cloud.UploadReply
+	dup := cloud.PlanManifest{Parts: []cloud.PlanPart{
+		{Name: "Pod door", Variant: "fine", Files: []string{"a.stl"}, Printer: "taz", Process: "fdm", Profile: "p/f@1"},
+		{Name: "Pod door", Variant: "Fine", Files: []string{"b.stl"}, Printer: "taz", Process: "fdm", Profile: "p/f@1"}}}
+	if st := call(t, base, "POST", "/api/v1/plans", token, dup, nil); st != 400 {
+		t.Errorf("a variant twice: %d", st)
+	}
 	call(t, base, "POST", "/api/v1/plans", token, cloud.PlanManifest{Parts: []cloud.PlanPart{
-		{Name: "Pod door", Files: []string{"door.stl"}, Printer: "taz", Process: "fdm", Profile: "p/q@1", Material: "roll-4"}}}, &up)
+		{Name: "Pod door", Variant: "fine", Files: []string{"door_fine.stl"}, Printer: "taz", Process: "fdm", Profile: "p/fine@1", Material: "roll-4"},
+		{Name: "Pod door", Variant: "standard", Files: []string{"door.stl"}, Printer: "taz", Process: "fdm", Profile: "p/q@1", Material: "roll-4"}}}, &up)
 	if st := call(t, base, "POST", "/api/v1/plans/"+up.ID+"/done", token, nil, nil); st != 200 {
 		t.Fatal(st)
 	}
-	req := cloud.BuildRequest{Plates: []cloud.PlateRequest{{Parts: []cloud.PlatePart{{Part: 0, Count: 2}}}}}
+	req := cloud.BuildRequest{Plates: []cloud.PlateRequest{{Parts: []cloud.PlatePart{{Part: 1, Count: 2}}}}}
 	var b cloud.ProjectBuild
 	if st := call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/plans/"+up.ID+"/builds", tok, req, &b); st != 200 {
 		t.Fatal(st)
+	}
+	if pp := b.Plates[0].Parts[0]; pp.Name != "Pod door" || pp.Variant != "standard" {
+		t.Errorf("the part of the plate %+v", pp)
 	}
 	if len(app.runs) != 1 || app.runs[0] != "beetlebugorg/bittlex "+b.ID || b.Start != "" || b.State != cloud.BuildSlicing {
 		t.Fatalf("dispatch %v %+v", app.runs, b)

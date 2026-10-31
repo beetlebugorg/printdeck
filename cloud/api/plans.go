@@ -196,12 +196,14 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 	}
 	names := map[string]bool{}
 	for _, pp := range in.Parts {
-		pp.Name, pp.Printer, pp.Material, pp.Profile, pp.Prebuilt =
-			clip(strings.TrimSpace(pp.Name), 120), clip(pp.Printer, 40), clip(pp.Material, 80), clip(pp.Profile, 200), clip(pp.Prebuilt, 300)
-		if pp.Name == "" || pp.Printer == "" || names[strings.ToLower(pp.Name)] {
-			return nil, fail(http.StatusBadRequest, "each part needs a printer and a name of its own")
+		pp.Name, pp.Variant, pp.Printer, pp.Material, pp.Profile, pp.Prebuilt =
+			clip(strings.TrimSpace(pp.Name), 120), clip(strings.TrimSpace(pp.Variant), 40), clip(pp.Printer, 40), clip(pp.Material, 80),
+			clip(pp.Profile, 200), clip(pp.Prebuilt, 300)
+		key := strings.ToLower(pp.Name) + "\x00" + strings.ToLower(pp.Variant)
+		if pp.Name == "" || pp.Printer == "" || names[key] {
+			return nil, fail(http.StatusBadRequest, "each part (and variant) needs a printer and a name of its own")
 		}
-		names[strings.ToLower(pp.Name)] = true
+		names[key] = true
 		if pp.Process != "fdm" && pp.Process != "resin" {
 			return nil, fail(http.StatusBadRequest, "the process of a part is fdm or resin")
 		}
@@ -349,7 +351,7 @@ func (s *Server) newBuild(ctx context.Context, p *Project, w *who, planID string
 			if part.Prebuilt != "" {
 				count = 1
 			}
-			plate.Parts = append(plate.Parts, cloud.PlatePart{Part: pp.Part, Count: count, Name: part.Name})
+			plate.Parts = append(plate.Parts, cloud.PlatePart{Part: pp.Part, Count: count, Name: part.Name, Variant: part.Variant})
 		}
 		b.Plates = append(b.Plates, plateRecord{BuildPlate: plate})
 	}

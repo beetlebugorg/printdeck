@@ -160,6 +160,13 @@ on the commit of the repository, and a pull request can change a profile.
 - `curaslice.py` of printdeck-action works out the settings as the Cura app does. A slice of the cover of
   bittlex matches the slice of the Cura app: the same time, filament, size and layers.
 
+A part can have `variants:`, the qualities of the part, for example a fine and a standard print.
+Each variant has a name, and can change the files, the profile, the prebuilt file, the material,
+the count and `alone`; its `settings` add to the settings of the part. The model of a part can
+change for each quality: the generate step then writes a file for each variant. Each variant is
+a part of its own in the plan, with its own mark "Changed", and the plates, the G-code and the
+prints name the variant.
+
 A part can change settings of its profile with `settings:` (Cura setting names for FDM), for
 example `support_structure: tree` or `brim_line_count: 14`. A 3MF file keeps the per-mesh
 settings of Cura, for example a support blocker (`cura:anti_overhang_mesh`): the Action passes
