@@ -7,68 +7,111 @@ results go back to the pull request.
 
 ## Words
 
-- **Build.** The sliced files of one commit, with a manifest. A build has a kind:
-  - **Test build:** from the head commit of a pull request.
-  - **Main build:** from a commit on the default branch.
-  - **Release build:** from a tag, for example `v1.2`.
-- **Part.** One file to print in a build: one plate of the FDM printer or one plate of the resin
-  printer.
-- **Print request.** A request to print one part of a build on one printer. The deck of that
+- **Plan.** The parts of one commit, before a slice: the models, and the parts that changed.
+  The Action uploads a plan at each push to a pull request, a branch or a tag. A plan has a
+  kind:
+  - **Test:** from the head commit of a pull request.
+  - **Main:** from a commit on the default branch.
+  - **Release:** from a tag, for example `v1.2`.
+- **Part.** One entry of `printdeck.yml`: one or more model files, a count, a printer, a profile
+  and a material.
+- **Plate.** The parts that print together in one print on one printer. The owner makes the
+  plates of a plan before the slice.
+- **Build.** The sliced plates of a plan, with a manifest: one G-code or resin file for each
+  plate.
+- **Print request.** A request to print one plate of a build on one printer. The deck of that
   printer shows it, and a person starts it or declines it.
 
 ## The workflow
 
 1. A friend opens a pull request with a change to a model.
-2. The Action slices the parts that changed. The project page shows the test build, and the
-   commit gets the status "printdeck/approval: pending", with a link to the preview.
-3. The owner opens the preview: the slice of each part in 3D. Approve sends the part to the deck
-   of its printer. Reject asks for a reason, and the reason goes to the pull request.
-4. The deck asks for the material, and the owner presses Start.
-5. The print ends. The service posts the result, the photos and the notes on the pull request.
-6. The friend reads the comment, and changes the model in the same pull request. Steps 2 to 5
+2. The Action uploads the plan of the commit: the models of all the parts, and the parts that
+   changed. It slices nothing yet. The commit gets the status "printdeck: choose the parts",
+   with a link to the plan page.
+3. The owner opens the plan page. It suggests the parts that changed. The owner chooses the
+   parts, and puts them on plates: each part alone, or parts together (see "The plates").
+4. The owner taps Slice. The service starts the workflow of the repository with the plates
+   (`workflow_dispatch`). The Action slices each plate and uploads the build.
+5. The owner opens the preview: the slice of each plate in 3D. Approve sends the plate to the
+   deck of its printer. Reject asks for a reason, and the reason goes to the pull request.
+6. The deck asks for the material, and the owner presses Start.
+7. The print ends. The service posts the result, the photos and the notes on the pull request.
+8. The friend reads the comment, and changes the model in the same pull request. Steps 2 to 7
    repeat. The pull request shows each try with its photos.
-7. The owner merges the pull request and adds a tag. The Action makes the release build, and it
-   waits for an approval too.
-8. The owner prints the release build and marks the prints Delivered. The page then shows which
-   release each person got.
+9. The owner merges the pull request and adds a tag. The release plan suggests all the parts.
+10. The owner prints the release build and marks the prints Delivered. The page then shows which
+    release each person got.
+
+## The plan page
+
+`/projects/<slug>/plans/<id>`, for the owner. The members see it with no keys.
+
+- Each part of `printdeck.yml` has a row: its name, its printer, its profile and material, its
+  count, a 3D view of its model, and the label "Changed" when it changed. A part changed when
+  one of these changed in the pull request against its base branch (or since the last plan of a
+  branch): its files, the files of its `generate:` source, its entry in `printdeck.yml`, or the
+  folder of its profile. A release plan marks no part, and suggests all of them.
+- A check box chooses each part. The parts that changed are checked at first.
+- The count of a part can change for this build, for example 2 feet in place of 4 for a test.
+- The plates (see "The plates") show under the parts, each with the printer and a 3D view of the
+  layout on the bed.
+- Slice starts the slice of the plates. The page then waits for the build, and opens the preview.
+- The owner can slice the same plan again with other plates: each slice makes a new build of the
+  plan.
+
+## The plates
+
+Before the slice, the owner chooses how the parts print: each part on its own plate, or parts
+together on one plate.
+
+- Only parts with the same printer, profile and material can share a plate. The page shows the
+  other parts as a separate plate.
+- The suggestion: the checked parts with the same printer, profile and material on one plate,
+  when they fit on the bed. A part that does not fit with the others gets its own plate.
+- The owner can move a part to another plate or to a new plate, and join or split plates.
+  `printdeck.yml` can ask for a part to print alone (`alone: true`), for example a tall part.
+- The page checks that each plate fits on the bed of its printer, with the room for the brim or
+  the skirt. A plate that does not fit shows how many copies fit.
+- The slice of a plate has the parts at the places of the layout. A part with one file and one
+  copy on its own plate goes to the middle of the bed, as the Cura app places it.
 
 ## The approval
 
-The Action ends after the upload. The build then waits on the service, and the workflow on
-GitHub shows the wait as the commit status `printdeck/approval`.
+The Action ends after the upload of the build. The build then waits on the service, and the
+workflow on GitHub shows the wait as the commit status `printdeck/approval`.
 
-- The preview page: `/projects/<slug>/builds/<id>`. It shows each part in a 3D view, on the plate
+- The preview page: `/projects/<slug>/builds/<id>`. It shows each plate in a 3D view, on the bed
   of its printer, with the facts of the slice: the time, the grams or the ml, the layers, the
-  layer height, the supports, and the profile.
+  layer height, the supports, and the profile with its version.
   - **FDM:** the moves of the G-code as lines (the `path.bin` form of the printer pages spec),
     colored by the kind of move: wall, infill, support, skirt. A slider shows the layers up to a
     height, to see the inside and the first layer.
   - **Resin:** the share of resin in each cell (`part.bin`, PDC1), as the share page shows a
     resin part now, with the supports. A slider cuts the part at a height, and the layer image
     of that height shows next to it.
-- **Approve** on a part sends a print request to the deck of its printer (see "The deck"). The
-  status of the commit becomes success when all the parts of the build have an approval.
-- **Reject** on a part asks for a reason. The status becomes failure, and the reason goes to the
-  pull request as a comment. The next commit makes a new build.
-- A new build of the same pull request replaces the approval: the older build shows "Replaced".
+- **Approve** on a plate sends a print request to the deck of its printer (see "The deck"). The
+  status of the commit becomes success when all the plates of the build have an approval.
+- **Reject** on a plate asks for a reason. The status becomes failure, and the reason goes to the
+  pull request as a comment.
+- A new plan of the same pull request replaces the waiting plates of the older builds: they show
+  "Replaced".
 - The Action makes `part.bin` and `path.bin` with the build, so the page needs no work on the
   service to show the preview.
 
-## The parts of a print
+## The two runs of the Action
 
-A round of tests can print only the parts that change, or all the parts. The person who sends a
-build to the printers chooses, and the page starts with a suggestion.
+The workflow of the repository has two jobs. Both use the action `printdeck/slice`.
 
-- Each build has all the parts, sliced. The Action marks each part that changed in the pull
-  request against its base branch: its files, the files of its `generate:` source, its entry in
-  `printdeck.yml`, or the folder of its profile. A build of a branch compares with the last
-  build of the branch, and a release build marks no part.
-- The build page lists all the parts with a check box each. The parts that changed are checked
-  at first, with the label "Changed". The owner checks or unchecks parts, and taps Approve
-  the checked parts. Each part keeps its own state.
-- So in a round of tests of the pod and the shell, the owner can print only the pod. A full
-  test checks all the parts.
-- Reject still works for one part, with a reason for the pull request.
+1. **plan** (on `push`, `pull_request` and tags): reads `printdeck.yml`, runs `generate:` when
+   the part needs it, finds the parts that changed, and uploads the plan with the models (STL
+   or 3MF, for the 3D views). It takes about a minute.
+2. **slice** (on `workflow_dispatch`, with the input `build`: the ID of a build with its plates):
+   checks out the commit of the plan, gets the plates from the service, slices them, and uploads
+   the files of the build.
+
+The service starts the slice run with the GitHub App (`actions: write` on the repository). The
+run uses the same OIDC token check as the plan run. The input has only the ID of the build: the
+plates come from the service, so a person who starts a run by hand cannot change them.
 
 ## The repository
 
@@ -139,26 +182,36 @@ in a container with the slicers.
   - A part can also have a `prebuilt:` file in place of `profile:`: a `.cbddlp` that a person
     made with ChiTuBox and committed. The Action then only checks its header. This keeps the
     supports of ChiTuBox for parts that need them.
-- The Action slices all the parts of `printdeck.yml`, and marks the parts that changed (see
-  "The parts of a print").
-- The Action uploads the manifest and the files to the service (see "The upload").
+- The plan run uploads the plan; the slice run slices the plates of a build and uploads the
+  files (see "The two runs of the Action" and "The upload").
 
-The manifest, `build.json`:
+The plan, `plan.json`:
 
 - The repository, the commit, the ref, the pull request number or the tag.
-- For each part: the name, the printer, the material, the file name, its size and SHA-256, the
-  estimate of the time, the grams or the ml, the layers, and the versions of the slicers.
+- For each part: the name, the files, the count, the printer, the profile with its version, the
+  material, `alone`, the size of its model on the bed, and `changed`.
+
+The manifest of a build, `build.json`:
+
+- The plan, and the plates that the owner chose.
+- For each plate: the printer, the profile with its version, the material, the parts with their
+  counts, the file name, its size and SHA-256, the estimate of the time, the grams or the ml, the
+  layers, and the version of the slicer.
 
 ### The upload
 
 The Action needs no secret. It asks GitHub for an OIDC token with the audience
 `printdeck.beetlebug.org`, and sends it with the upload.
 
-1. `POST /api/v1/builds` with the token and the manifest.
+1. The plan run sends `POST /api/v1/plans` with the token and the plan. The slice run sends
+   `GET /api/v1/builds/<id>` for the plates, and `POST /api/v1/builds/<id>/files` with the
+   manifest of the files.
 2. The API checks the token: the signature against the keys of GitHub, the audience, the expiry,
-   and the claim `repository`. The repository must be the repository of the project.
+   and the claim `repository`. The repository must be the repository of the project. For a
+   slice run, the commit of the token must be the commit of the plan.
 3. The API replies with grants for the files, as for the files of a print now.
-4. The Action uploads the files, then sends `POST /api/v1/builds/<id>/done`.
+4. The Action uploads the files, then sends `POST /api/v1/plans/<id>/done` or
+   `POST /api/v1/builds/<id>/done`.
 
 Limits: 200 MB for each file and 1 GB for each build. The service keeps test builds for 30
 days after the pull request closes, and keeps main and release builds.
@@ -166,17 +219,20 @@ days after the pull request closes, and keeps main and release builds.
 ## The service
 
 - `x/<project>/project.json` gets `repo` (`owner/name`). The owner sets it on the project page.
-- `x/<project>/builds/<id>.json` is the manifest, with the state of each part.
+- `x/<project>/plans/<id>.json` is a plan, and `x/<project>/plans/<id>/<file>` its models.
+- `x/<project>/builds/<id>.json` is a build: its plan, its plates, and the state of each plate.
 - `x/<project>/builds/<id>/<file>` are the sliced files. The decks read them with a grant.
 - `x/<project>/requests/<id>.json` is a print request: the build, the part, the printer, the
   person who asked, the time, and the state (waiting, declined, started, ended).
 
 ## The project page
 
-- A "Builds" section, grouped by pull request and by tag, newest first. Each build shows its
-  commit, its parts, and the prints of each part.
-- Each part has the key Preview, and its state: waiting for an approval, approved, rejected,
-  printed. Only the owner can approve or reject. The members see the preview and the state.
+- A "Builds" section, grouped by pull request and by tag, newest first. Each plan shows its
+  commit, the parts that changed, and its builds. Each build shows its plates and the prints of
+  each plate.
+- Each plate has the key Preview, and its state: waiting for an approval, approved, rejected,
+  printed. Only the owner can choose plates, slice, approve or reject. The members see the plans,
+  the previews and the states.
 - The print tiles show their build: "PR #12 · 3f2a9c1" or "Release v1.2".
 - The print page shows the pull request with its comments, and the link to the commit.
 
@@ -240,8 +296,8 @@ the files of the script.
 
 ## Phases
 
-1. The GitHub App, the repository link, the OIDC upload, the builds on the project page, and the
-   build of a print record (a print that starts on the deck with a file of a build).
+1. The GitHub App, the repository link, the plan run, the plan page with the plates, the slice
+   run, the builds on the project page, and the build of a print record.
 2. The preview page and the approval, the print requests, and the panel on the deck with the
    material check.
 3. The GitHub App: the comments, the commit status, and the pull request on the print page.
