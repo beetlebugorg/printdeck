@@ -493,18 +493,55 @@ async function showModels(box, opts) {
 
 // The G-code preview of a plate: the moves of the file as the printer makes them.
 
-// The colors of the kinds of lines of CuraEngine, and their names on the page.
+// The kinds of lines of CuraEngine, their names on the page, and the colors of the layer view of
+// Cura (resources/themes/cura-light/theme.json, LGPL-3.0). Support is half see-through in Cura:
+// here it is the same cyan on the dark background.
 const KINDS = [
-  ["WALL-OUTER", "Outer wall", "#e8762b"],
-  ["WALL-INNER", "Inner wall", "#3aa05a"],
-  ["SKIN", "Top and bottom", "#e3c33b"],
-  ["FILL", "Infill", "#c0392b"],
-  ["SUPPORT", "Support", "#2a9fd6"],
-  ["SUPPORT-INTERFACE", "Support interface", "#1f6fb2"],
-  ["SKIRT", "Skirt and brim", "#8b5cf6"],
-  ["PRIME-TOWER", "Prime tower", "#9aa0a8"],
-  ["OTHER", "Other", "#c2bcb0"],
+  ["WALL-OUTER", "Outer wall", "#e60000"],
+  ["WALL-INNER", "Inner wall", "#00e600"],
+  ["SKIN", "Top and bottom", "#e6e600"],
+  ["FILL", "Infill", "#e67300"],
+  ["SUPPORT", "Support", "#00a8a8"],
+  ["SUPPORT-INTERFACE", "Support interface", "#3f7fff"],
+  ["SKIRT", "Skirt and brim", "#00e6e6"],
+  ["PRIME-TOWER", "Prime tower", "#00ffff"],
+  ["OTHER", "Other", "#ffffff"],
 ];
+
+// beadGeometry is one extrusion of length 1 along X, with an oval section of the height h and
+// the width w of the line, as the plastic lies on the layer below. Each layer is a row of
+// beads, so the light shows each layer line, as on a real print.
+function beadGeometry(T, h, w) {
+  const seg = 12;
+  const pos = [], nor = [], idx = [];
+  const ring = [];
+  for (let k = 0; k < seg; k++) {
+    const t = (k / seg) * Math.PI * 2;
+    const y = (h / 2) * Math.sin(t), z = (w / 2) * Math.cos(t);
+    const ny = Math.sin(t) / (h / 2), nz = Math.cos(t) / (w / 2), nl = Math.hypot(ny, nz);
+    ring.push([y, z, ny / nl, nz / nl]);
+  }
+  for (const x of [-0.5, 0.5]) for (const [y, z, ny, nz] of ring) { pos.push(x, y, z); nor.push(0, ny, nz); }
+  for (let k = 0; k < seg; k++) {
+    const a = k, b = (k + 1) % seg, c = seg + k, d = seg + ((k + 1) % seg);
+    idx.push(a, c, b, b, c, d);
+  }
+  // The ends.
+  for (const [x, sx] of [[-0.5, -1], [0.5, 1]]) {
+    const base = pos.length / 3;
+    pos.push(x, 0, 0); nor.push(sx, 0, 0);
+    for (const [y, z] of ring) { pos.push(x, y, z); nor.push(sx, 0, 0); }
+    for (let k = 0; k < seg; k++) {
+      const a = base + 1 + k, b = base + 1 + ((k + 1) % seg);
+      if (sx > 0) idx.push(base, a, b); else idx.push(base, b, a);
+    }
+  }
+  const g = new T.BufferGeometry();
+  g.setAttribute("position", new T.Float32BufferAttribute(pos, 3));
+  g.setAttribute("normal", new T.Float32BufferAttribute(nor, 3));
+  g.setIndex(idx);
+  return g;
+}
 const KIND = Object.fromEntries(KINDS.map(([k], i) => [k, i]));
 
 // parseGcode reads the moves of a G-code. It returns the extrusions (x0, y0, x1, y1, z, h, width
@@ -634,10 +671,15 @@ async function showGcode(box, opts) {
   const pmrem = new T.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   scene.environmentIntensity = 0.25;
-  scene.add(new T.HemisphereLight(0xffffff, 0x404550, 1.1));
-  const key = new T.DirectionalLight(0xffffff, 1.2);
-  key.position.set(-0.6, 1.4, 1);
+  // The light: from above and from the front, low enough that each bead has a light top and a
+  // dark groove under it, as a print under a lamp.
+  scene.add(new T.HemisphereLight(0xffffff, 0x303540, 0.9));
+  const key = new T.DirectionalLight(0xffffff, 1.6);
+  key.position.set(-0.5, 0.9, 1.2);
   scene.add(key);
+  const fill = new T.DirectionalLight(0xffffff, 0.45);
+  fill.position.set(0.8, -0.3, -0.6);
+  scene.add(fill);
   const camera = new T.PerspectiveCamera(35, 1, 0.5, 5000);
   const orbit = new OrbitControls(camera, renderer.domElement);
   orbit.enableDamping = true;
@@ -654,33 +696,43 @@ async function showGcode(box, opts) {
   grid.position.y = 0;
   scene.add(grid);
 
-  // Each extrusion is a bar: its length along the move, the width of the line, the height of
-  // the layer. Front of the printer (Y 0) toward the viewer.
+  // Each extrusion is a bead: one geometry for each height of layer (with the height and the
+  // width in it, so the light falls true), and an instance for each move, with its length and
+  // its direction. Front of the printer (Y 0) toward the viewer.
   const n = g.n;
-  const mat4 = new Float32Array(n * 16);
+  const groups = new Map(); // the height in 1/100 mm -> the moves of that height
   for (let i = 0; i < n; i++) {
-    const o = i * 7;
-    const x0 = g.seg[o], y0 = g.seg[o + 1], x1 = g.seg[o + 2], y1 = g.seg[o + 3], z = g.seg[o + 4], h = g.seg[o + 5], w = g.seg[o + 6];
-    const dx = x1 - x0, dy = y1 - y0, l = Math.hypot(dx, dy);
-    const a = Math.atan2(dy, dx); // the scene direction is (dx, 0, -dy): Z of the scene is -Y of the printer
-    const c = Math.cos(a), s = Math.sin(a);
-    const m = i * 16;
-    // Scale (l + w overlap at the ends, h, w), turn about Y by -a, move to the middle.
-    const sx = l + w * 0.5;
-    mat4[m] = c * sx; mat4[m + 1] = 0; mat4[m + 2] = -s * sx; mat4[m + 3] = 0;
-    mat4[m + 4] = 0; mat4[m + 5] = h; mat4[m + 6] = 0; mat4[m + 7] = 0;
-    mat4[m + 8] = s * w; mat4[m + 9] = 0; mat4[m + 10] = c * w; mat4[m + 11] = 0;
-    mat4[m + 12] = (x0 + x1) / 2 - bx / 2; mat4[m + 13] = z - h / 2; mat4[m + 14] = by / 2 - (y0 + y1) / 2; mat4[m + 15] = 1;
+    const key = Math.round(g.seg[i * 7 + 5] * 100);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(i);
   }
-  const box1 = new T.BoxGeometry(1, 1, 1);
-  const mat = new T.MeshStandardMaterial({ roughness: 0.6, metalness: 0 });
-  const mesh = new T.InstancedMesh(box1, mat, n);
-  mesh.instanceMatrix.array.set(mat4);
-  mesh.instanceMatrix.needsUpdate = true;
+  const mat = new T.MeshStandardMaterial({ roughness: 0.55, metalness: 0 });
   const colors = new Float32Array(n * 3);
-  mesh.instanceColor = new T.InstancedBufferAttribute(new Float32Array(n * 3), 3);
-  mesh.frustumCulled = false;
-  scene.add(mesh);
+  const meshes = [];
+  for (const [key, list] of groups) {
+    const idx = Uint32Array.from(list);
+    const geo = beadGeometry(T, key / 100, g.seg[list[0] * 7 + 6]);
+    const mesh = new T.InstancedMesh(geo, mat, idx.length);
+    const mats = new Float32Array(idx.length * 16);
+    for (let j = 0; j < idx.length; j++) {
+      const o = idx[j] * 7;
+      const x0 = g.seg[o], y0 = g.seg[o + 1], x1 = g.seg[o + 2], y1 = g.seg[o + 3], z = g.seg[o + 4], h = g.seg[o + 5];
+      const dx = x1 - x0, dy = y1 - y0, l = Math.hypot(dx, dy);
+      const a = Math.atan2(dy, dx); // the scene direction is (dx, 0, -dy): Z of the scene is -Y of the printer
+      const c = Math.cos(a), sn = Math.sin(a), m = j * 16;
+      // Scale X only (the length), turn about Y, move to the middle of the move.
+      mats[m] = c * l; mats[m + 1] = 0; mats[m + 2] = -sn * l; mats[m + 3] = 0;
+      mats[m + 4] = 0; mats[m + 5] = 1; mats[m + 6] = 0; mats[m + 7] = 0;
+      mats[m + 8] = sn; mats[m + 9] = 0; mats[m + 10] = c; mats[m + 11] = 0;
+      mats[m + 12] = (x0 + x1) / 2 - bx / 2; mats[m + 13] = z - h / 2; mats[m + 14] = by / 2 - (y0 + y1) / 2; mats[m + 15] = 1;
+    }
+    mesh.instanceMatrix.array.set(mats);
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.instanceColor = new T.InstancedBufferAttribute(new Float32Array(idx.length * 3), 3);
+    mesh.frustumCulled = false;
+    scene.add(mesh);
+    meshes.push({ mesh, idx, mats, geo });
+  }
 
   // The travels: thin lines.
   const travGeo = new T.BufferGeometry();
@@ -691,7 +743,8 @@ async function showGcode(box, opts) {
     tpos[o + 3] = g.trav[o + 3] - bx / 2; tpos[o + 4] = g.trav[o + 5]; tpos[o + 5] = by / 2 - g.trav[o + 4];
   }
   travGeo.setAttribute("position", new T.BufferAttribute(tpos, 3));
-  const travels = new T.LineSegments(travGeo, new T.LineBasicMaterial({ color: 0x4fa3ff, transparent: true, opacity: 0.55 }));
+  // The travels in the color of the moves of Cura (layerview_move_combing).
+  const travels = new T.LineSegments(travGeo, new T.LineBasicMaterial({ color: 0x3050ff, transparent: true, opacity: 0.7 }));
   travels.visible = false;
   travels.frustumCulled = false;
   scene.add(travels);
@@ -756,42 +809,42 @@ async function showGcode(box, opts) {
   let vmin = Infinity, vmax = 0;
   for (let i = 0; i < n; i++) { vmin = Math.min(vmin, g.speed[i]); vmax = Math.max(vmax, g.speed[i]); }
   const kindColor = KINDS.map(([, , c]) => new T.Color(c));
-  const slow = new T.Color("#2a7fc0"), fast = new T.Color("#ff5a1f"), tmp = new T.Color();
+  const tmp = new T.Color();
+  // By speed, as the feed rate view of Cura: blue for the slowest moves, through green and
+  // yellow, to red for the fastest.
   const paint = () => {
     for (let i = 0; i < n; i++) {
       let c = kindColor[g.kind[i]];
-      if (mode.value === "speed") c = tmp.copy(slow).lerp(fast, vmax > vmin ? (g.speed[i] - vmin) / (vmax - vmin) : 0);
+      if (mode.value === "speed") c = tmp.setHSL((2 / 3) * (1 - (vmax > vmin ? (g.speed[i] - vmin) / (vmax - vmin) : 0)), 1, 0.5);
       colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
     }
   };
   paint();
 
   // update shows the moves up to the move slider of the layer slider, with the kinds that are on.
+  // The moves of each mesh are in the order of the file.
   const update = () => {
     const L = +layer.value; // 1 is the first layer
     const start = onlyBox.checked ? g.layerSeg[L - 1] : 0;
     const ls = g.layerSeg[L - 1], le = g.layerSeg[L];
     const end = ls + Math.round((le - ls) * (+move.value / 1000));
     const all = shown.every((v, k) => v || !present.has(k));
-    let count = 0;
-    const im = mesh.instanceMatrix.array, ic = mesh.instanceColor.array;
-    if (all && start === 0) {
-      // The fast way: the moves are in the order of the file.
-      im.set(mat4.subarray(0, end * 16));
-      ic.set(colors.subarray(0, end * 3));
-      count = end;
-    } else {
-      for (let i = start; i < end; i++) {
-        if (!shown[g.kind[i]]) continue;
-        im.set(mat4.subarray(i * 16, i * 16 + 16), count * 16);
+    for (const { mesh, idx, mats } of meshes) {
+      const im = mesh.instanceMatrix.array, ic = mesh.instanceColor.array;
+      let count = 0;
+      for (let j = 0; j < idx.length; j++) {
+        const i = idx[j];
+        if (i >= end) break;
+        if (i < start || (!all && !shown[g.kind[i]])) continue;
+        im.set(mats.subarray(j * 16, j * 16 + 16), count * 16);
         ic[count * 3] = colors[i * 3]; ic[count * 3 + 1] = colors[i * 3 + 1]; ic[count * 3 + 2] = colors[i * 3 + 2];
         count++;
       }
+      mesh.count = count;
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.instanceColor.needsUpdate = true;
     }
-    mesh.count = count;
     redraw = true;
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.instanceColor.needsUpdate = true;
     // The travels of the same moves.
     travels.visible = travBox.checked;
     const ts = onlyBox.checked ? g.layerTrav[L - 1] : 0;
@@ -847,9 +900,9 @@ async function showGcode(box, opts) {
       resize.disconnect();
       orbit.dispose();
       renderer.dispose();
-      box1.dispose();
+      for (const m of meshes) { m.geo.dispose(); m.mesh.dispose(); }
+      mat.dispose();
       travGeo.dispose();
-      mesh.dispose();
       box.textContent = "";
     },
   };
