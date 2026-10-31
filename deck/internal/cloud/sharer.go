@@ -508,5 +508,6 @@ func PostFile(ctx context.Context, hc *http.Client, g Grant, name, ctype, cache 
 	return nil
 }
 
-// PartVersion is the version of part.bin: 1 was a mesh, 2 is the cells of the part ("PDV1").
-const PartVersion = 2
+// PartVersion is the version of part.bin: 1 was a mesh, 2 the full cells ("PDV1"), and 3 is the
+// share of resin in each cell ("PDC1").
+const PartVersion = 3

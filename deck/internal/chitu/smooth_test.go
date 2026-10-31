@@ -128,3 +128,104 @@ func TestSmoothMeshFacesOut(t *testing.T) {
 	}
 	t.Logf("triangles %d, facing in by axis %v", nt, in)
 }
+
+// The share of resin in a cell: 8 x 4 pixels in two cells of 4 x 4, with the first 6 columns lit.
+func TestCoverage(t *testing.T) {
+	const resX, resY = 8, 4
+	var code []byte
+	for range resY {
+		code = append(code, 0x80|6, 2)
+	}
+	data := make([]byte, 200)
+	put := func(off int, v uint32) { binary.LittleEndian.PutUint32(data[off:], v) }
+	put(0, MagicCBDDLP)
+	put(8, math.Float32bits(float32(resX)*0.072))
+	put(32, math.Float32bits(0.288))
+	put(52, resX)
+	put(56, resY)
+	put(64, 120)
+	put(68, 1)
+	put(120+12, 160)
+	put(120+16, uint32(len(code)))
+	copy(data[160:], code)
+	h, err := ReadSliced(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := Coverage(bytes.NewReader(data), h, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	W, H, D := binary.LittleEndian.Uint16(b[12:]), binary.LittleEndian.Uint16(b[14:]), binary.LittleEndian.Uint16(b[16:])
+	if W != 2 || H != 1 || D != 1 {
+		t.Fatalf("size %d x %d x %d", W, H, D)
+	}
+	body := b[20+4*int(D)+4:]
+	if body[0] != 255 || body[1] != 1 || body[2] != 128 || body[3] != 1 {
+		t.Errorf("the cells %v, want 255 x1, 128 x1", body)
+	}
+}
+
+// PWF_PART_PDC writes part.bin of a sliced test file: a ball on a disc, 300 layers of 0.05 mm on a
+// screen of 800 x 450 pixels of 0.072 mm.
+func TestCoverageFile(t *testing.T) {
+	p := os.Getenv("PWF_PART_PDC")
+	if p == "" {
+		t.Skip()
+	}
+	const resX, resY, layers = 800, 450, 300
+	data := make([]byte, 120+layers*36)
+	put := func(off int, v uint32) { binary.LittleEndian.PutUint32(data[off:], v) }
+	put(0, MagicCBDDLP)
+	put(8, math.Float32bits(resX*0.072))
+	put(32, math.Float32bits(0.05))
+	put(52, resX)
+	put(56, resY)
+	put(64, 120)
+	put(68, layers)
+	for n := 0; n < layers; n++ {
+		z := float64(n) * 0.05
+		var code []byte
+		run := func(lit bool, k int) {
+			for k > 0 {
+				c := min(k, 125)
+				b := byte(c)
+				if lit {
+					b |= 0x80
+				}
+				code = append(code, b)
+				k -= c
+			}
+		}
+		for y := 0; y < resY; y++ {
+			lit, k := false, 0
+			for x := 0; x < resX; x++ {
+				px, py := (float64(x)-400)*0.072, (float64(y)-225)*0.072
+				on := z < 2 && math.Hypot(px, py) < 14 || math.Sqrt(px*px+py*py+(z-9)*(z-9)) < 8
+				if on != lit {
+					run(lit, k)
+					lit, k = on, 0
+				}
+				k++
+			}
+			run(lit, k)
+		}
+		put(120+n*36+12, uint32(len(data)))
+		put(120+n*36+16, uint32(len(code)))
+		data = append(data, code...)
+	}
+	h, err := ReadSliced(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cells, err := Coverage(bytes.NewReader(data), h, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	zw.Write(cells)
+	zw.Close()
+	os.WriteFile(p, buf.Bytes(), 0o644)
+	t.Logf("%d bytes, %d packed", len(cells), buf.Len())
+}

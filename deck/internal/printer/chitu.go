@@ -1432,23 +1432,36 @@ func (c *ChiTu) SetTitle(title string) {
 	c.savePrint(c.last)
 }
 
-// PartMesh returns the cells of the part of the print now (chitu.Model.Voxels), for the 3D view of
-// the share page, or nil while the deck has no model. The page builds the smooth surface.
+// PartMesh returns the share of resin in each cell of the part of the print now (chitu.Coverage),
+// for the 3D view of the share page, or nil with no copy of its file. The page builds the smooth
+// surface. It reads every layer of the copy: some seconds.
 func (c *ChiTu) PartMesh() []byte {
 	st := c.State()
 	name := st.File
 	if !st.Printing {
 		name = st.FinishedFile
 	}
-	m := c.model(name)
-	if m == nil {
+	h := c.header(name)
+	if h == nil {
 		return nil
 	}
-	// The mesh compresses well: the page unpacks it (DecompressionStream "gzip").
+	f, err := os.Open(c.copyPath(name))
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	start := time.Now()
+	cells, err := chitu.Coverage(f, h, 4)
+	if err != nil {
+		log.Printf("chitu: the cells of %s: %v", name, err)
+		return nil
+	}
+	// The cells compress well: the page unpacks them (DecompressionStream "gzip").
 	var buf bytes.Buffer
-	zw := gzip.NewWriter(&buf)
-	zw.Write(m.Voxels())
+	zw, _ := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+	zw.Write(cells)
 	zw.Close()
+	log.Printf("chitu: the cells of %s: %d KB, %d KB packed, in %v", name, len(cells)/1000, buf.Len()/1000, time.Since(start).Round(time.Millisecond))
 	return buf.Bytes()
 }
 

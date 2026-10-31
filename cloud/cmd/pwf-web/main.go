@@ -668,7 +668,7 @@ func (s *share) render(st wire.ShareStatus) {
 	}
 	resin := st.Process == "resin"
 	setHidden("lapseSec", resin && st.Lapse == 0)
-	setHidden("partOpen", st.Part < 2) // 2: the cells of the part (part.bin)
+	setHidden("partOpen", st.Part < 3) // 3: the share of resin in each cell (part.bin)
 	s.drawCycle()
 	if !s.partDone.IsUndefined() && s.partDone.Truthy() {
 		s.partDone.Invoke(s.doneMM())

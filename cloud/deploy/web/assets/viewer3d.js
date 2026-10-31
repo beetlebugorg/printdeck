@@ -157,68 +157,68 @@ function hide() {
   }
 }
 
-// readCells reads part.bin (gzip, "PDV1"): the cells of a resin part, a bit each (see
-// deck/internal/chitu/model.go, Voxels).
+// readCells reads part.bin (gzip, "PDC1"): the share of resin in each cell of a resin part, from 0
+// to 255 (see deck/internal/chitu/coverage.go). slice(z) returns the shares of the slice z.
 async function readCells(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error("part.bin: " + res.status);
   const buf = await new Response(res.body.pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
-  const dv = new DataView(buf);
-  const magic = String.fromCharCode(...new Uint8Array(buf, 0, 4));
-  if (magic !== "PDV1") throw new Error("part.bin: " + magic);
+  const dv = new DataView(buf), bytes = new Uint8Array(buf);
+  const magic = String.fromCharCode(...bytes.subarray(0, 4));
+  if (magic !== "PDC1") throw new Error("part.bin: " + magic);
   const W = dv.getUint16(12, true), H = dv.getUint16(14, true), D = dv.getUint16(16, true);
-  const off = 20 + D * 4;
-  return { cell: dv.getFloat32(4, true), slice: dv.getFloat32(8, true), W, H, D,
-    bits: new Uint32Array(buf.slice(off, off + Math.ceil((W * H * D) / 32) * 4)) };
+  const at = new Uint32Array(D);
+  let o = 20 + D * 4;
+  for (let z = 0; z < D; z++) {
+    at[z] = o;
+    o += 4 + dv.getUint32(o, true);
+  }
+  const slice = (z) => {
+    const out = new Uint8Array(W * H);
+    let p = at[z], end = p + 4 + dv.getUint32(p, true), i = 0;
+    p += 4;
+    while (p < end) {
+      const v = bytes[p++];
+      let run = 0, shift = 0, b;
+      do { b = bytes[p++]; run += (b & 0x7f) * 2 ** shift; shift += 7; } while (b & 0x80);
+      if (v) out.fill(v, i, i + run);
+      i += run;
+    }
+    return out;
+  };
+  return { cell: dv.getFloat32(4, true), slice: dv.getFloat32(8, true), W, H, D, read: slice };
 }
 
-// surfaceNet builds the smooth surface of the cells c, with f x f cells as one in X and Y (f = 1 is
-// all the detail): the cells blurred with their 3 x 3 x 3 neighbours, a vertex in each box of 8
-// cells that the surface crosses, and a quad for each edge that it crosses. It is the surface net
-// of deck/internal/chitu/smooth.go. It returns null with more than maxVerts vertices.
+// surfaceNet builds the surface of the part where the share of resin crosses one half, with f x f
+// cells as one in X and Y (f = 1 is all the detail): a vertex in each box of 8 cells that the
+// surface crosses, at the middle of the crossings on its edges, and a quad for each edge that it
+// crosses. The shares put each crossing at its place in the cell. It returns null with more than
+// maxVerts vertices.
 function surfaceNet(c, f, maxVerts) {
   const W = Math.ceil(c.W / f), H = Math.ceil(c.H / f), D = c.D;
-  const on = (x, y, z) => {
-    for (let dy = 0; dy < f; dy++) for (let dx = 0; dx < f; dx++) {
-      const xx = x * f + dx, yy = y * f + dy;
-      if (xx >= c.W || yy >= c.H) continue;
-      const i = (z * c.H + yy) * c.W + xx;
-      if (c.bits[i >>> 5] & (1 << (i & 31))) return true;
-    }
-    return false;
-  };
-  const box = (z) => {
-    const out = new Uint8Array(W * H);
-    if (z < 0 || z >= D) return out;
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      if (!on(x, y, z)) continue;
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-        const xx = x + dx, yy = y + dy;
-        if (xx >= 0 && yy >= 0 && xx < W && yy < H) out[yy * W + xx]++;
-      }
-    }
-    return out;
-  };
-  let bPrev = box(-2), bCur = box(-1), bNext = box(0);
-  const field = () => {
+  const field = (z) => {
     const out = new Float32Array(W * H);
-    for (let i = 0; i < out.length; i++) out[i] = (bPrev[i] + bCur[i] + bNext[i]) / 27;
+    if (z < 0 || z >= D) return out;
+    const s = c.read(z);
+    if (f === 1) {
+      for (let i = 0; i < out.length; i++) out[i] = s[i] / 255;
+      return out;
+    }
+    for (let y = 0; y < c.H; y++) for (let x = 0; x < c.W; x++) out[((y / f) | 0) * W + ((x / f) | 0)] += s[y * c.W + x];
+    for (let i = 0; i < out.length; i++) out[i] /= 255 * f * f;
     return out;
   };
-  const step = (z) => { bPrev = bCur; bCur = bNext; bNext = box(z); };
   const iso = 0.5;
   const at = (fl, x, y) => (x < 0 || y < 0 || x >= W || y >= H ? 0 : fl[y * W + x]);
   let verts = new Float32Array(1 << 20), nv = 0;
   let tris = new Uint32Array(1 << 21), nt = 0;
   const cw = W + 1, ch = H + 1;
   let prev = new Int32Array(cw * ch).fill(-1), cur = new Int32Array(cw * ch);
-  let f0 = field();
-  step(1);
+  let f0 = field(-1);
   const E = [[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
   const v = new Float32Array(8);
   for (let cz = -1; cz < D; cz++) {
-    const f1 = field();
-    step(cz + 3);
+    const f1 = field(cz + 1);
     cur.fill(-1);
     for (let cy = -1; cy < H; cy++) for (let cx = -1; cx < W; cx++) {
       let mask = 0;
