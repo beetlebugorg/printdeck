@@ -136,6 +136,15 @@ type ProjectMember struct {
 	Name    string    `json:"name"`
 	Joined  bool      `json:"joined"`
 	Invited time.Time `json:"invited"`
+	// GitHub is the GitHub username of the member, which the owner sets: the plans of the
+	// member's fork come in with it.
+	GitHub string `json:"github,omitempty"`
+}
+
+// MemberEdit is the body of PATCH /api/v1/projects/<id>/members/<member>: the GitHub username of
+// the member, or "" for none.
+type MemberEdit struct {
+	GitHub string `json:"github"`
 }
 
 // ProjectPrint is a print of a project, from the history record of the deck.

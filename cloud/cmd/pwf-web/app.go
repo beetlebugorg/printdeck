@@ -715,6 +715,30 @@ func (a *app) drawProject() {
 		left := el("div", "", m.Name+" ")
 		left.Call("appendChild", el("span", "", state))
 		li.Call("appendChild", left)
+		// The GitHub username of a member who joined: the plans of the member's fork need it.
+		if m.Joined {
+			gh := el("input", "github", "")
+			gh.Set("value", m.GitHub)
+			gh.Set("placeholder", "GitHub username")
+			gh.Set("maxLength", 39)
+			gh.Set("autocomplete", "off")
+			gh.Set("spellcheck", false)
+			gh.Call("setAttribute", "aria-label", "The GitHub username of "+m.Name)
+			gh.Set("title", "The pull requests of this GitHub user's fork send plans to this project")
+			gid := m.ID
+			gh.Call("addEventListener", "change", js.FuncOf(func(js.Value, []js.Value) any {
+				val := strings.TrimSpace(gh.Get("value").String())
+				go func() {
+					if err := a.api("PATCH", "/projects/"+a.view.ID+"/members/"+gid, wire.MemberEdit{GitHub: val}, nil); err != nil {
+						say("ownerToolsMsg", err, "")
+						return
+					}
+					say("ownerToolsMsg", nil, "Saved the GitHub username.")
+				}()
+				return nil
+			}))
+			li.Call("appendChild", gh)
+		}
 		rm := el("button", "link", "Remove")
 		rm.Set("type", "button")
 		mid, name := m.ID, m.Name

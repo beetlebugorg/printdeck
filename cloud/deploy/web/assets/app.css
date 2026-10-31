@@ -209,3 +209,6 @@ pre.cmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: #15161a
 .chips.process { margin-bottom: 4px; }
 .material { display: inline-flex; align-items: center; gap: 5px; }
 .material .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 1px rgba(127,127,127,.6); }
+/* The GitHub username of a member, in the list of the owner. */
+.members li input.github { min-height: 36px; width: 170px; font: 14px "IBM Plex Mono", monospace; padding: 0 8px; border-radius: 8px;
+  border: 1px solid var(--seam); background: var(--cap); color: var(--ink); }

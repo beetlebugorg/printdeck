@@ -71,15 +71,19 @@ const (
 
 // ProjectPlan is a plan on the plan page and on the project page.
 type ProjectPlan struct {
-	ID      string            `json:"id"`
-	Repo    string            `json:"repo"`
-	Commit  string            `json:"commit"`
-	Ref     string            `json:"ref"`
-	Kind    string            `json:"kind"`
-	PR      int               `json:"pr,omitempty"`
-	Tag     string            `json:"tag,omitempty"`
-	Branch  string            `json:"branch,omitempty"`
-	Run     string            `json:"run,omitempty"` // the page of the workflow run on GitHub
+	ID     string `json:"id"`
+	Repo   string `json:"repo"`
+	Commit string `json:"commit"`
+	Ref    string `json:"ref"`
+	Kind   string `json:"kind"`
+	PR     int    `json:"pr,omitempty"`
+	Tag    string `json:"tag,omitempty"`
+	Branch string `json:"branch,omitempty"`
+	Run    string `json:"run,omitempty"` // the page of the workflow run on GitHub
+	// Fork is the fork of the plan of a member's pull request, for example "sam/bittlex", and
+	// Author the GitHub username of the member; both "" for a plan of the repository.
+	Fork    string            `json:"fork,omitempty"`
+	Author  string            `json:"author,omitempty"`
 	Created time.Time         `json:"created"`
 	Ready   bool              `json:"ready"` // all its models are up
 	Parts   []ProjectPlanPart `json:"parts"`

@@ -44,7 +44,7 @@ type Server struct {
 	OIDC OIDCVerifier
 	// GitHub starts the slice runs of the builds, or is nil: the build page then shows the
 	// command that starts a run by hand.
-	GitHub Dispatcher
+	GitHub GitHubAPI
 	// Now is the clock, or nil for time.Now.
 	Now func() time.Time
 

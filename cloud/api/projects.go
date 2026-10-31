@@ -85,6 +85,8 @@ type Member struct {
 	// passkeys of the member.
 	Invite string   `json:"invite,omitempty"`
 	Keys   []string `json:"keys,omitempty"`
+	// GitHub is the GitHub username of the member, which the owner sets (builds.go).
+	GitHub string `json:"github,omitempty"`
 }
 
 func (p *Project) member(id string) *Member {
@@ -334,6 +336,30 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 		var in cloud.InviteRequest
 		json.Unmarshal(body, &in)
 		return s.newInvite(ctx, id, clip(in.Name, 40))
+	case part == "members" && sub != "" && r.Method == http.MethodPatch:
+		if err := ownerOnly(w); err != nil {
+			return nil, err
+		}
+		var in cloud.MemberEdit
+		if json.Unmarshal(body, &in) != nil {
+			return nil, fail(http.StatusBadRequest, "bad JSON")
+		}
+		login := strings.TrimPrefix(strings.TrimSpace(in.GitHub), "@")
+		if login != "" && !githubLogin.MatchString(login) {
+			return nil, fail(http.StatusBadRequest, "a GitHub username has letters, digits and hyphens")
+		}
+		if _, err := s.changeProject(ctx, id, func(p *Project) error {
+			for i := range p.Members {
+				if p.Members[i].ID == sub {
+					p.Members[i].GitHub = login
+					return nil
+				}
+			}
+			return fail(http.StatusGone, "no such member")
+		}); err != nil {
+			return nil, err
+		}
+		return s.afterChange(ctx, id, w)
 	case part == "members" && sub != "" && r.Method == http.MethodDelete:
 		if err := ownerOnly(w); err != nil {
 			return nil, err
@@ -647,7 +673,8 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 	}
 	for _, m := range p.Members {
 		if w.owner || !m.Joined.IsZero() {
-			v.Members = append(v.Members, cloud.ProjectMember{ID: m.ID, Name: m.Name, Joined: !m.Joined.IsZero(), Invited: m.Invited})
+			v.Members = append(v.Members, cloud.ProjectMember{ID: m.ID, Name: m.Name, Joined: !m.Joined.IsZero(), Invited: m.Invited,
+				GitHub: m.GitHub})
 		}
 	}
 	link := func(key string) string {

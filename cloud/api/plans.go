@@ -29,24 +29,31 @@ import (
 //     x/<project>/builds/<id>/, and sends POST /api/v1/builds/<id>/done (or .../failed).
 //   - The owner approves or rejects each plate of the build.
 
-// Dispatcher starts the slice run of a build in the repository (workflow_dispatch of the GitHub
-// App).
-type Dispatcher interface {
-	// Dispatch starts the run of the build. title is the title of the run on GitHub.
+// GitHubAPI is what the service asks GitHub, with its GitHub App (githubapp.go).
+type GitHubAPI interface {
+	// Dispatch starts the slice run of the build in the repository (workflow_dispatch). title is
+	// the title of the run on GitHub.
 	Dispatch(ctx context.Context, repo, build, title string) error
+	// OpenPull returns the number of the open pull request into base from the branch of headRepo
+	// whose head is the commit sha, or 0 for none.
+	OpenPull(ctx context.Context, base, headRepo, branch, sha string) (int, error)
 }
 
 // PlanRecord is x/<project>/plans/<id>.json.
 type PlanRecord struct {
-	ID      string           `json:"id"`
-	Repo    string           `json:"repo"`
-	Commit  string           `json:"commit"`
-	Ref     string           `json:"ref"`
-	Kind    string           `json:"kind"`
-	PR      int              `json:"pr,omitempty"`
-	Tag     string           `json:"tag,omitempty"`
-	Branch  string           `json:"branch,omitempty"`
-	RunID   string           `json:"run_id,omitempty"`
+	ID     string `json:"id"`
+	Repo   string `json:"repo"`
+	Commit string `json:"commit"`
+	Ref    string `json:"ref"`
+	Kind   string `json:"kind"`
+	PR     int    `json:"pr,omitempty"`
+	Tag    string `json:"tag,omitempty"`
+	Branch string `json:"branch,omitempty"`
+	RunID  string `json:"run_id,omitempty"`
+	// Fork is the fork of a plan of a member's pull request, and Author the member's GitHub
+	// username: the repository of the token of the plan is Fork.
+	Fork    string           `json:"fork,omitempty"`
+	Author  string           `json:"author,omitempty"`
 	Created time.Time        `json:"created"`
 	Ready   bool             `json:"ready"`
 	Parts   []cloud.PlanPart `json:"parts"`
@@ -89,6 +96,16 @@ func (s *Server) routeActions(ctx context.Context, r *http.Request, body []byte,
 		return nil, err
 	}
 	p, err := s.projectOfRepo(ctx, c.Repository)
+	var fork *forkPlan
+	if err != nil && kind == "plans" {
+		// A token of a repository with no project: maybe a member's fork with a pull request.
+		// A fork only sends plans: a build needs a token of the repository of the project.
+		var ferr error
+		if fork, ferr = s.forkProject(ctx, c); ferr != nil {
+			return nil, ferr
+		}
+		p, err = fork.project, nil
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +121,7 @@ func (s *Server) routeActions(ctx context.Context, r *http.Request, body []byte,
 		if json.Unmarshal(body, &in) != nil {
 			return nil, fail(http.StatusBadRequest, "bad JSON")
 		}
-		return s.newPlan(ctx, p, c, in)
+		return s.newPlan(ctx, p, c, in, fork)
 	case kind == "plans" && action == "done" && r.Method == http.MethodPost:
 		return s.planDone(ctx, p, c, id)
 	case kind == "builds" && action == "" && r.Method == http.MethodGet:
@@ -197,12 +214,12 @@ func refKind(rec *PlanRecord, ref string) error {
 }
 
 // newPlan makes the record of a plan of the project p, and returns the grant for its models.
-func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cloud.PlanManifest) (any, error) {
+func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cloud.PlanManifest, fork *forkPlan) (any, error) {
 	if len(in.Parts) == 0 || len(in.Parts) > MaxPlanParts {
 		return nil, fail(http.StatusBadRequest, fmt.Sprintf("a plan has 1 to %d parts", MaxPlanParts))
 	}
 	rec := PlanRecord{ID: newID(10), Repo: c.Repository, Commit: c.SHA, Ref: c.Ref, RunID: clip(c.RunID, 30), Created: s.now().UTC()}
-	if in.Commit != "" {
+	if in.Commit != "" && fork == nil {
 		rec.Commit = in.Commit
 	}
 	if !hexSHA.MatchString(rec.Commit) {
@@ -213,6 +230,18 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 	}
 	if in.PR > 0 && rec.Kind == cloud.BuildTest && in.PR != rec.PR {
 		return nil, fail(http.StatusBadRequest, "the pull request is not the pull request of the token")
+	}
+	switch {
+	case fork != nil:
+		// The plan of a member's pull request from a fork: the repository of the project, the
+		// pull request that GitHub found, and the commit of the token.
+		rec.Repo, rec.Fork, rec.Author = p.Repo, c.Repository, c.RepositoryOwner
+		rec.Kind, rec.PR, rec.Branch = cloud.BuildTest, fork.pr, fork.branch
+	case rec.Kind == cloud.BuildBranch && s.GitHub != nil:
+		// A branch of the repository with an open pull request: the plan of the pull request.
+		if n, err := s.GitHub.OpenPull(ctx, c.Repository, c.Repository, rec.Branch, rec.Commit); err == nil && n > 0 {
+			rec.Kind, rec.PR = cloud.BuildTest, n
+		}
 	}
 	names := map[string]bool{}
 	for _, pp := range in.Parts {
@@ -262,7 +291,11 @@ func (s *Server) planDone(ctx context.Context, p *Project, c *GitHubClaims, id s
 	if err != nil {
 		return nil, err
 	}
-	if !strings.EqualFold(rec.Repo, c.Repository) {
+	from := rec.Repo
+	if rec.Fork != "" {
+		from = rec.Fork
+	}
+	if !strings.EqualFold(from, c.Repository) {
 		return nil, fail(http.StatusForbidden, "the plan is of another repository")
 	}
 	have, err := s.filesIn(ctx, planDir(p.ID, id))
@@ -591,9 +624,14 @@ func (s *Server) loadBuilds(ctx context.Context, project string) ([]*BuildRecord
 // projectPlan is a plan for the pages, with the addresses of its models, and its builds.
 func (s *Server) projectPlan(ctx context.Context, p *Project, rec *PlanRecord) cloud.ProjectPlan {
 	out := cloud.ProjectPlan{ID: rec.ID, Repo: rec.Repo, Commit: rec.Commit, Ref: rec.Ref, Kind: rec.Kind, PR: rec.PR,
-		Tag: rec.Tag, Branch: rec.Branch, Created: rec.Created, Ready: rec.Ready, Parts: []cloud.ProjectPlanPart{}}
+		Tag: rec.Tag, Branch: rec.Branch, Fork: rec.Fork, Author: rec.Author, Created: rec.Created, Ready: rec.Ready,
+		Parts: []cloud.ProjectPlanPart{}}
 	if rec.RunID != "" {
-		out.Run = "https://github.com/" + rec.Repo + "/actions/runs/" + rec.RunID
+		runs := rec.Repo
+		if rec.Fork != "" {
+			runs = rec.Fork
+		}
+		out.Run = "https://github.com/" + runs + "/actions/runs/" + rec.RunID
 	}
 	dir := planDir(p.ID, rec.ID)
 	for _, pp := range rec.Parts {

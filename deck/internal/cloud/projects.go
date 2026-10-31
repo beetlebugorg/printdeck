@@ -21,6 +21,7 @@ type (
 	ProjectSummary    = wire.ProjectSummary
 	ProjectView       = wire.ProjectView
 	ProjectMember     = wire.ProjectMember
+	MemberEdit        = wire.MemberEdit
 	ProjectPrint      = wire.ProjectPrint
 	PrintEdit         = wire.PrintEdit
 	PlanManifest      = wire.PlanManifest

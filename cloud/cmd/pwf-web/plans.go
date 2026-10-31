@@ -119,7 +119,11 @@ func drawPlanList(list js.Value, slug string, plans []wire.ProjectPlan) {
 				changed++
 			}
 		}
-		title := el("strong", "", planName(p)+" · "+shortSHA(p.Commit))
+		name := planName(p) + " · " + shortSHA(p.Commit)
+		if p.Author != "" {
+			name += " · @" + p.Author
+		}
+		title := el("strong", "", name)
 		link.Call("appendChild", title)
 		sub := fmt.Sprintf("%s, %d changed · %s", count(len(p.Parts), "part", "parts"), changed, localWhen(p.Created))
 		if n := len(p.Builds); n > 0 {
@@ -203,7 +207,11 @@ func (a *app) showPlanPage(projectID, id string) {
 	byID("plBack").Set("href", projectPath(v.Slug, 0))
 	setText("plBack", v.Name)
 	setText("plTitle", planName(p)+" · "+shortSHA(p.Commit))
-	setText("plSub", fmt.Sprintf("github.com/%s · %s", p.Repo, localWhen(p.Created)))
+	sub := fmt.Sprintf("github.com/%s · %s", p.Repo, localWhen(p.Created))
+	if p.Fork != "" {
+		sub = fmt.Sprintf("by @%s, from the fork %s · %s", p.Author, p.Fork, localWhen(p.Created))
+	}
+	setText("plSub", sub)
 	links := byID("plLinks")
 	links.Set("textContent", "")
 	add := func(text, href string) {

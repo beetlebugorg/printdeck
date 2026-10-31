@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -114,31 +115,71 @@ type gitHubError struct {
 
 func (e *gitHubError) Error() string { return fmt.Sprintf("GitHub %d: %s", e.status, e.msg) }
 
-// Dispatch starts the slice run of the build in the repository repo ("owner/name"), with the
-// title of the run. A workflow from before the input title gets the build only.
-func (g *GitHubApp) Dispatch(ctx context.Context, repo, build, title string) error {
+// installationToken returns a token of the installation of the App on repo, for that one
+// repository and with only the permissions perms.
+func (g *GitHubApp) installationToken(ctx context.Context, repo string, perms map[string]string) (string, error) {
 	app, err := g.appToken()
 	if err != nil {
-		return err
+		return "", err
 	}
 	var inst struct {
 		ID int64 `json:"id"`
 	}
 	if err := g.call(ctx, http.MethodGet, "/repos/"+repo+"/installation", app, nil, &inst); err != nil {
 		if ge, ok := err.(*gitHubError); ok && ge.status == http.StatusNotFound {
-			return fmt.Errorf("the Printdeck GitHub App is not installed on %s: install it there", repo)
+			return "", fmt.Errorf("the Printdeck GitHub App is not installed on %s: install it there", repo)
 		}
-		return err
+		return "", err
 	}
 	_, name, _ := strings.Cut(repo, "/")
 	var tok struct {
 		Token string `json:"token"`
 	}
-	// A token for this one repository, with only the permission to start workflows.
-	req := map[string]any{"repositories": []string{name}, "permissions": map[string]string{"actions": "write", "metadata": "read"}}
+	req := map[string]any{"repositories": []string{name}, "permissions": perms}
 	if err := g.call(ctx, http.MethodPost, fmt.Sprintf("/app/installations/%d/access_tokens", inst.ID), app, req, &tok); err != nil {
+		return "", err
+	}
+	return tok.Token, nil
+}
+
+// OpenPull returns the number of the open pull request into base from the branch of headRepo
+// whose head is the commit sha, or 0 for none.
+func (g *GitHubApp) OpenPull(ctx context.Context, base, headRepo, branch, sha string) (int, error) {
+	token, err := g.installationToken(ctx, base, map[string]string{"pull_requests": "read", "metadata": "read"})
+	if err != nil {
+		return 0, err
+	}
+	owner, _, _ := strings.Cut(headRepo, "/")
+	var pulls []struct {
+		Number int `json:"number"`
+		Head   struct {
+			SHA  string `json:"sha"`
+			Repo struct {
+				FullName string `json:"full_name"`
+			} `json:"repo"`
+		} `json:"head"`
+	}
+	q := "/repos/" + base + "/pulls?state=open&per_page=100&head=" + url.QueryEscape(owner+":"+branch)
+	if err := g.call(ctx, http.MethodGet, q, token, nil, &pulls); err != nil {
+		return 0, err
+	}
+	for _, p := range pulls {
+		if p.Head.SHA == sha && strings.EqualFold(p.Head.Repo.FullName, headRepo) {
+			return p.Number, nil
+		}
+	}
+	return 0, nil
+}
+
+// Dispatch starts the slice run of the build in the repository repo ("owner/name"), with the
+// title of the run. A workflow from before the input title gets the build only.
+func (g *GitHubApp) Dispatch(ctx context.Context, repo, build, title string) error {
+	// A token for this one repository, with only the permission to start workflows.
+	token, err := g.installationToken(ctx, repo, map[string]string{"actions": "write", "metadata": "read"})
+	if err != nil {
 		return err
 	}
+	tok := struct{ Token string }{token}
 	var r struct {
 		DefaultBranch string `json:"default_branch"`
 	}

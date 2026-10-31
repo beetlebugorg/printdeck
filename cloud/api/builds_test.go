@@ -31,7 +31,8 @@ func (fakeOIDC) Verify(_ context.Context, token, audience string) (*GitHubClaims
 	if len(f) < 3 || len(f) > 5 || audience != "localhost" {
 		return nil, errors.New("bad token")
 	}
-	c := &GitHubClaims{Repository: f[0], Ref: f[1], SHA: f[2], RunID: "42",
+	owner, _, _ := strings.Cut(f[0], "/")
+	c := &GitHubClaims{Repository: f[0], Ref: f[1], SHA: f[2], RunID: "42", RepositoryOwner: owner,
 		JobWorkflowRef: f[0] + "/.github/workflows/printdeck.yml@refs/heads/main"}
 	c.ID = newID(10)
 	if len(f) > 3 && f[3] != "" {
@@ -235,6 +236,12 @@ func TestPlanFlow(t *testing.T) {
 type recordDispatch struct {
 	runs, titles []string
 	err          error
+	// pulls are the open pull requests: "<base> <head repo> <branch> <sha>" -> the number.
+	pulls map[string]int
+}
+
+func (r *recordDispatch) OpenPull(_ context.Context, base, headRepo, branch, sha string) (int, error) {
+	return r.pulls[base+" "+headRepo+" "+branch+" "+sha], nil
 }
 
 func (r *recordDispatch) Dispatch(_ context.Context, repo, build, title string) error {
@@ -298,6 +305,79 @@ func TestBuildDispatch(t *testing.T) {
 	call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/plans/"+up.ID+"/builds", tok, req, &b)
 	if b.State != cloud.BuildFailed || !strings.Contains(b.Error, "not installed") {
 		t.Fatalf("a refused dispatch: %+v", b)
+	}
+}
+
+// A member's fork sends the plan of the member's pull request with the token of the fork. A
+// stranger's fork, a member with no GitHub username and a branch with no pull request send no
+// plan, and a fork cannot touch a build.
+func TestForkPlan(t *testing.T) {
+	d, base := devService(t)
+	base = strings.Replace(base, "127.0.0.1", "localhost", 1)
+	d.API.Base, d.Grants.URL = base, base+"/upload"
+	d.API.OIDC = fakeOIDC{}
+	head := strings.Repeat("cd", 20)
+	gh := &recordDispatch{pulls: map[string]int{
+		"beetlebugorg/bittlex sam/bittlex door " + head:           12,
+		"beetlebugorg/bittlex beetlebugorg/bittlex feet " + head: 13,
+	}}
+	d.API.GitHub = gh
+	ctx := context.Background()
+	l := connectedLink(t, d, base)
+	var c cloud.Client
+	var oc cloud.OwnerCodeReply
+	c.Do(ctx, l.Identity(), "POST", "/api/v1/owner/code", nil, &oc)
+	tok := register(t, base, newSoftKey(t), "owner", oc.Code, "Jeremy").Token
+	sum, _ := c.NewProject(ctx, l.Identity(), "Bittlex")
+	call(t, base, "PUT", "/api/v1/projects/"+sum.ID+"/repo", tok, cloud.RepoRequest{Repo: "beetlebugorg/bittlex"}, nil)
+	var inv cloud.InviteReply
+	call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/invites", tok, cloud.InviteRequest{Name: "Sam"}, &inv)
+	sam := register(t, base, newSoftKey(t), "invite", strings.TrimPrefix(inv.URL, base+"/j#"), "Sam").Token
+	manifest := cloud.PlanManifest{Commit: strings.Repeat("ee", 20), PR: 99, Parts: []cloud.PlanPart{
+		{Name: "Pod door", Files: []string{"door.stl"}, Printer: "taz", Process: "fdm", Profile: "p/q@1"}}}
+	fork := "sam/bittlex|refs/heads/door|" + head
+	if st := call(t, base, "POST", "/api/v1/plans", fork, manifest, nil); st != 403 {
+		t.Errorf("a member with no GitHub username: %d", st)
+	}
+	// The owner sets the GitHub username of the member; a member cannot.
+	path := "/api/v1/projects/" + sum.ID + "/members/" + inv.Member
+	if st := call(t, base, "PATCH", path, sam, cloud.MemberEdit{GitHub: "sam"}, nil); st != 401 {
+		t.Errorf("a member sets a username: %d", st)
+	}
+	if st := call(t, base, "PATCH", path, tok, cloud.MemberEdit{GitHub: "bad name!"}, nil); st != 400 {
+		t.Errorf("a bad username: %d", st)
+	}
+	if st := call(t, base, "PATCH", path, tok, cloud.MemberEdit{GitHub: "@Sam"}, nil); st != 200 {
+		t.Fatalf("set the username: %d", st)
+	}
+	for _, bad := range []string{"eve/bittlex|refs/heads/door|" + head, "sam/bittlex|refs/heads/other|" + head,
+		"sam/bittlex|refs/heads/door|" + strings.Repeat("ab", 20), "sam/bittlex|refs/tags/v1|" + head} {
+		if st := call(t, base, "POST", "/api/v1/plans", bad, manifest, nil); st != 403 {
+			t.Errorf("a plan of %s: %d", bad, st)
+		}
+	}
+	var up cloud.UploadReply
+	if st := call(t, base, "POST", "/api/v1/plans", fork, manifest, &up); st != 200 {
+		t.Fatalf("the plan of the fork: %d", st)
+	}
+	var pv cloud.ProjectPlan
+	if st := call(t, base, "POST", "/api/v1/plans/"+up.ID+"/done", fork, nil, &pv); st != 200 {
+		t.Fatalf("done: %d", st)
+	}
+	if pv.Kind != cloud.BuildTest || pv.PR != 12 || pv.Commit != head || pv.Fork != "sam/bittlex" || pv.Author != "sam" ||
+		pv.Repo != "beetlebugorg/bittlex" || pv.Run != "https://github.com/sam/bittlex/actions/runs/42" {
+		t.Fatalf("the plan of the fork %+v", pv)
+	}
+	if st := call(t, base, "GET", "/api/v1/builds/x1", fork, nil, nil); st != 403 {
+		t.Errorf("a fork asks for a build: %d", st)
+	}
+	// A branch of the repository with a pull request.
+	manifest.Commit, manifest.PR = head, 0
+	call(t, base, "POST", "/api/v1/plans", "beetlebugorg/bittlex|refs/heads/feet|"+head, manifest, &up)
+	var bp cloud.ProjectPlan
+	call(t, base, "POST", "/api/v1/plans/"+up.ID+"/done", "beetlebugorg/bittlex|refs/heads/feet|"+head, nil, &bp)
+	if bp.Kind != cloud.BuildTest || bp.PR != 13 || bp.Fork != "" {
+		t.Fatalf("the plan of a branch with a pull request %+v", bp)
 	}
 }
 

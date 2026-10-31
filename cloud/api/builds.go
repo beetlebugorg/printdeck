@@ -49,6 +49,8 @@ type GitHubClaims struct {
 	SHA        string `json:"sha"`
 	EventName  string `json:"event_name"`
 	RunID      string `json:"run_id"`
+	// RepositoryOwner is the owner of the repository of the run: the member for a fork.
+	RepositoryOwner string `json:"repository_owner"`
 	// JobWorkflowRef is the workflow file of the job and its ref, for example
 	// "beetlebugorg/bittlex/.github/workflows/printdeck.yml@refs/heads/main".
 	JobWorkflowRef       string `json:"job_workflow_ref"`
@@ -171,6 +173,73 @@ var (
 	sha256Re = regexp.MustCompile(`^[0-9a-f]{64}$`)
 	pullRef  = regexp.MustCompile(`^refs/pull/([0-9]+)/`)
 )
+
+// githubLogin is a GitHub username.
+var githubLogin = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$`)
+
+// forkPlan is the project and the pull request of a plan of a member's fork.
+type forkPlan struct {
+	project *Project
+	pr      int
+	branch  string
+}
+
+// forkProject returns the project of the plan of a fork's token. The token must be of a fork of
+// the repository of a project, by a member of that project, from a branch with an open pull
+// request into that repository whose head is the commit of the token:
+//
+//  1. The owner of the fork (repository_owner) is a member of a project with a repository, with
+//     that GitHub username, which the owner of the project set. This check needs no call to
+//     GitHub, so a stranger stops here.
+//  2. GitHub has an open pull request into the repository of the project, from that branch of
+//     that fork, with that commit as its head. The pull request proves that the fork is of that
+//     repository.
+func (s *Server) forkProject(ctx context.Context, c *GitHubClaims) (*forkPlan, error) {
+	branch, ok := strings.CutPrefix(c.Ref, "refs/heads/")
+	owner := c.RepositoryOwner
+	if !ok || branch == "" || !githubLogin.MatchString(owner) || !hexSHA.MatchString(c.SHA) {
+		return nil, fail(http.StatusForbidden, "no project has the repository "+c.Repository)
+	}
+	keys, err := s.Store.List(ctx, "repos/")
+	if err != nil {
+		return nil, err
+	}
+	var candidates []*Project
+	for _, k := range keys {
+		b, _, err := s.Store.Get(ctx, k)
+		if err != nil {
+			continue
+		}
+		var rec repoRecord
+		if json.Unmarshal(b, &rec) != nil {
+			continue
+		}
+		p, _, err := s.loadProject(ctx, rec.Project)
+		if err != nil || !strings.EqualFold(p.Repo, rec.Repo) || strings.EqualFold(p.Repo, c.Repository) {
+			continue
+		}
+		for _, m := range p.Members {
+			if !m.Joined.IsZero() && m.GitHub != "" && strings.EqualFold(m.GitHub, owner) {
+				candidates = append(candidates, p)
+				break
+			}
+		}
+	}
+	if len(candidates) == 0 {
+		return nil, fail(http.StatusForbidden, "@"+owner+" is not a member of a Printdeck project with a GitHub repository")
+	}
+	if s.GitHub == nil {
+		return nil, fail(http.StatusForbidden, "the plan of a fork needs the GitHub App of the service")
+	}
+	for _, p := range candidates {
+		n, err := s.GitHub.OpenPull(ctx, p.Repo, c.Repository, branch, c.SHA)
+		if err != nil || n <= 0 {
+			continue
+		}
+		return &forkPlan{project: p, pr: n, branch: branch}, nil
+	}
+	return nil, fail(http.StatusForbidden, "no open pull request of "+c.Repository+" ("+branch+") has the commit "+c.SHA[:7])
+}
 
 // repoRecord is repos/<owner>/<name>.json.
 type repoRecord struct {
