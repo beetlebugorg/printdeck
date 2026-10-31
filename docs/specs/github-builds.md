@@ -100,7 +100,7 @@ workflow on GitHub shows the wait as the commit status `printdeck/approval`.
 
 ## The two runs of the Action
 
-The workflow of the repository has two jobs. Both use the action `printdeck/slice`.
+The workflow of the repository has two jobs. Both use `beetlebugorg/printdeck-action`.
 
 1. **plan** (on `push`, `pull_request` and tags): reads `printdeck.yml`, runs `generate:` when
    the part needs it, finds the parts that changed, and uploads the plan with the models (STL
@@ -157,7 +157,7 @@ on the commit of the repository, and a pull request can change a profile.
 - Each profile has a version: the first 12 hex digits of the SHA-256 of its folder. The manifest
   of a build has it for each part, and each G-code has it in the line `;Printdeck profile:`. The
   build page and the print page show the profile and the version of each print.
-- `slicer/curaslice.py` works out the settings as the Cura app does. A slice of the cover of
+- `curaslice.py` of printdeck-action works out the settings as the Cura app does. A slice of the cover of
   bittlex matches the slice of the Cura app: the same time, filament, size and layers.
 
 A part can change settings of its profile with `settings:` (Cura setting names for FDM), for
@@ -171,10 +171,10 @@ fit on one plate, the Action fails with the count that fits.
 
 ## The Action
 
-The repository uses the action `printdeck/slice` from this repository (`actions/slice/`). It runs
-in a container with the slicers.
+The repository uses the action `beetlebugorg/printdeck-action@v1` (https://github.com/beetlebugorg/printdeck-action). Its README has the
+workflow file.
 
-- **FDM:** CuraEngine 5.13 with `slicer/curaslice.py` and a profile of `profiles/` (see "The
+- **FDM:** CuraEngine 5.13 with `curaslice.py` and a profile of `profiles/` (see "The
   profiles"). A part can ask for `slicer/AdaptiveSpeed.py` after the slice with
   `adaptive_speed: true`. The Cura app of the owner does not run it now, so it is off by default.
 - **Resin:** PrusaSlicer in SLA mode makes an SL1 file with supports. UVtools converts it to

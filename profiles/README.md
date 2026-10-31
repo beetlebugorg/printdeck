@@ -2,7 +2,7 @@
 
 The profiles of the printers for slices outside the Cura app: in GitHub Actions for the builds
 of a project (docs/specs/github-builds.md), or on a computer with no Cura. Each folder is the
-complete Cura stack of one printer, copied from Cura. `slicer/curaslice.py` works out each
+complete Cura stack of one printer, copied from Cura. `curaslice.py` of [printdeck-action](https://github.com/beetlebugorg/printdeck-action) works out each
 setting from the stack as the Cura app does, and runs CuraEngine.
 
 ## taz-workhorse-se
@@ -49,7 +49,7 @@ made each print.
 ## Slice
 
 ```
-CURAENGINE=/path/to/CuraEngine python3 slicer/curaslice.py \
+CURAENGINE=/path/to/CuraEngine python3 ../printdeck-action/curaslice.py \
     --profile profiles/taz-workhorse-se --quality pla-0.20-standard --material roll-4 \
     --set brim_line_count=14 --set support_enable=true --count 4 \
     --meta "title=Feet" --out feet.gcode foot.stl

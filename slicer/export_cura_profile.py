@@ -4,7 +4,7 @@
     python3 slicer/export_cura_profile.py [--cura ~/.local/share/cura/5.13] [--resources DIR]
 
 The folder then has each container of the Cura stack of the printer, so a slice in GitHub
-Actions (slicer/curaslice.py) gets the same settings as Cura on this computer:
+Actions (curaslice.py of printdeck-action) gets the same settings as Cura on this computer:
 
     definitions/         fdmprinter, fdmextruder (from the Cura install), and the Workhorse
     definition_changes/  the machine settings: the start and end G-code, the acceleration
