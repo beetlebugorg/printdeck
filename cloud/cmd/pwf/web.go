@@ -130,7 +130,7 @@ func contentType(key string) string {
 
 // hashAssets adds a copy of each script and style file of assets/ with a hash of its content in
 // its name, and points the pages at the copies. A browser or CloudFront can keep an old file
-// for a time (pageCache), so a page of a new deploy gets new names and never mixes old code with
+// for a time, so a page of a new deploy gets new names and never mixes old code with
 // new HTML. CloudFront does not use the query string in its cache key, so the hash is in the
 // name. The files keep their plain names too, for a page that a browser has from before.
 func hashAssets(files map[string][]byte) {
@@ -167,9 +167,10 @@ func hashed(key string, data []byte) string {
 var hashedName = regexp.MustCompile(`\.[0-9a-f]{10}\.[a-z]+$`)
 
 // pageCache is the Cache-Control of the files of the pages with plain names. The names stay the
-// same at a new deploy, so the time is short. A file with a hash in its name never changes
+// same at a new deploy, so a browser and CloudFront ask the bucket at each load. The reply is a
+// short 304 when the file did not change. A file with a hash in its name never changes
 // (immutableCache).
 const (
-	pageCache      = "public, max-age=300"
+	pageCache      = "no-cache"
 	immutableCache = "public, max-age=31536000, immutable"
 )
