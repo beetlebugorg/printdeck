@@ -27,6 +27,11 @@
       <p class="dim" id="pNote"></p>
       <p class="dim small" id="pMeta"></p>
     </div>
+    <section class="card notes-card" id="pNotesCard" aria-label="Notes of the project" hidden>
+      <h2>Notes</h2>
+      <div class="notes-text" id="pNotesText"></div>
+      <p class="dim small" id="pNotesBy"></p>
+    </section>
     <section class="lcd stats" aria-label="The project in numbers" id="pStats">
       <div class="row">
         <div class="cell"><div class="lab">Prints</div><div class="big" id="stPrints">0</div><div class="sub" id="stPrintsSub"></div></div>
@@ -50,6 +55,7 @@
     <section class="title">
       <h1 id="prName"></h1>
       <p id="prSub"></p>
+      <p class="delivered" id="prDelivered" hidden></p>
       <div class="linkrow"><button type="button" id="prCopy">Copy link</button><button type="button" id="prShare" hidden>Share</button><span id="prCopyMsg" role="status"></span></div>
     </section>
 
@@ -118,6 +124,13 @@
         <div><dt>File</dt><dd id="file">-</dd></div>
       </dl>
       <p class="note" id="prNote" hidden></p>
+    </section>
+
+    <section class="card notes-card" id="prNotesCard" aria-label="Notes and source" hidden>
+      <h2>Notes</h2>
+      <div class="source" id="prSourceRow" hidden><span class="dim">Source</span> <a id="prSource" target="_blank" rel="noopener"></a></div>
+      <div class="notes-text" id="prNotesText"></div>
+      <p class="dim small" id="prNotesBy"></p>
     </section>
 
     <section class="card" id="filCard" aria-label="Filament" hidden>

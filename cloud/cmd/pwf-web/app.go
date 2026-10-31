@@ -45,6 +45,7 @@ func runApp() {
 	on("joinBtn", "click", func() { go a.join() })
 	on("joinKeyBtn", "click", func() { go a.joinWithPasskey() })
 	onSubmit("newForm", func() { go a.newProject() })
+	a.bindEdits()
 	onSubmit("inviteForm", func() { go a.invite() })
 	on("inviteCopy", "click", func() { go copyText(byID("inviteLink").Get("textContent").String(), "ownerToolsMsg") })
 	on("inviteShare", "click", func() { shareLink(byID("inviteLink").Get("textContent").String()) })
@@ -510,6 +511,22 @@ func (a *app) drawPrint(p wire.ProjectPrint) {
 	byID("prBack").Set("href", projectPath(v.Slug, 0))
 	setText("prBack", v.Name)
 	setHidden("prDanger", !v.IsOwner)
+	setHidden("prOwnerKeys", !v.IsOwner)
+	setHidden("prSourceEdit", !v.IsOwner)
+	setText("prSourceEdit", "Set the source")
+	if p.Source != "" {
+		setText("prSourceEdit", "Change the source")
+	}
+	setText("prNotesEdit", "Write notes")
+	if p.Notes != "" {
+		setText("prNotesEdit", "Edit the notes")
+	}
+	byID("prDeliver").Call("setAttribute", "aria-pressed", strconv.FormatBool(!p.Delivered.IsZero()))
+	for _, f := range []string{"prRenameForm", "prNotesForm", "prSourceForm"} {
+		setHidden(f, true)
+	}
+	setHidden("prName", false)
+	say("prNotesMsg", nil, "")
 	setHidden("prShare", js.Global().Get("navigator").Get("share").IsUndefined())
 	setText("prCopy", "Copy link")
 	if v.Public != "" {
@@ -551,9 +568,98 @@ func (a *app) removePrint() {
 	openAddress(projectPath(a.view.Slug, 0))
 }
 
+// The edits of the pages: the name, the mark Delivered and the source of a print (the owner),
+// and the notes of a print and of the project (the owner and the members).
+
+func (a *app) bindEdits() {
+	// open shows the form f with the value in its field, and hides the elements of hide.
+	open := func(f, field, value string, hide ...string) {
+		byID(field).Set("value", value)
+		setHidden(f, false)
+		for _, h := range hide {
+			setHidden(h, true)
+		}
+		byID(field).Call("focus")
+	}
+	on("prRename", "click", func() {
+		p := a.printNow()
+		setText("prDeckName", "")
+		if p.DeckName != "" {
+			setText("prDeckName", "The name from the deck: "+p.DeckName+". Save an empty name to use it again.")
+		}
+		open("prRenameForm", "prRenameInput", p.Name, "prName")
+	})
+	on("prRenameCancel", "click", func() { setHidden("prRenameForm", true); setHidden("prName", false) })
+	onSubmit("prRenameForm", func() {
+		t := strings.TrimSpace(byID("prRenameInput").Get("value").String())
+		go a.editPrint(wire.PrintEdit{Title: &t}, "prCopyMsg")
+	})
+	on("prDeliver", "click", func() {
+		d := a.printNow().Delivered.IsZero()
+		go a.editPrint(wire.PrintEdit{Delivered: &d}, "prCopyMsg")
+	})
+	on("prNotesEdit", "click", func() { open("prNotesForm", "prNotesInput", a.printNow().Notes, "prNotesText") })
+	on("prNotesCancel", "click", func() { setHidden("prNotesForm", true); setHidden("prNotesText", false) })
+	onSubmit("prNotesForm", func() {
+		n := byID("prNotesInput").Get("value").String()
+		go a.editPrint(wire.PrintEdit{Notes: &n}, "prNotesMsg")
+	})
+	on("prSourceEdit", "click", func() { open("prSourceForm", "prSourceInput", a.printNow().Source, "prSourceRow") })
+	on("prSourceCancel", "click", func() { setHidden("prSourceForm", true); setHidden("prSourceRow", a.printNow().Source == "") })
+	onSubmit("prSourceForm", func() {
+		src := strings.TrimSpace(byID("prSourceInput").Get("value").String())
+		go a.editPrint(wire.PrintEdit{Source: &src}, "prNotesMsg")
+	})
+	on("pNotesEdit", "click", func() { open("pNotesForm", "pNotesInput", a.view.Notes, "pNotesText") })
+	on("pNotesCancel", "click", func() { setHidden("pNotesForm", true); setHidden("pNotesText", false) })
+	onSubmit("pNotesForm", func() {
+		n := byID("pNotesInput").Get("value").String()
+		go func() {
+			say("pNotesMsg", nil, "Saving…")
+			if err := a.api("PATCH", "/projects/"+a.view.ID+"/notes", wire.NotesEdit{Notes: n}, nil); err != nil {
+				say("pNotesMsg", err, "")
+				return
+			}
+			say("pNotesMsg", nil, "")
+			a.reload()
+		}()
+	})
+}
+
+// printNow returns the print of the print page that shows.
+func (a *app) printNow() wire.ProjectPrint {
+	if a.view != nil {
+		for _, p := range a.view.Prints {
+			if p.ID == a.print {
+				return p
+			}
+		}
+	}
+	return wire.ProjectPrint{}
+}
+
+// editPrint sends the edit of the print that shows, and draws the print again. msg is the element
+// of the messages.
+func (a *app) editPrint(in wire.PrintEdit, msg string) {
+	say(msg, nil, "Saving…")
+	if err := a.api("PATCH", "/projects/"+a.view.ID+"/prints/"+a.print, in, nil); err != nil {
+		say(msg, err, "")
+		return
+	}
+	say(msg, nil, "")
+	a.showProject(a.view.ID, 0, a.print)
+}
+
 // drawProject draws the view of the project.
 func (a *app) drawProject() {
 	v := a.view
+	drawNotes("p", v.Notes, v.NotesBy, v.NotesAt)
+	setHidden("pNotesForm", true)
+	setHidden("pNotesText", false)
+	setText("pNotesEdit", "Write notes")
+	if v.Notes != "" {
+		setText("pNotesEdit", "Edit the notes")
+	}
 	setText("pName", v.Name)
 	setText("pNote", v.Note)
 	setHidden("pNote", v.Note == "")
@@ -796,6 +902,8 @@ func runPublic() {
 	setText("pNote", v.Note)
 	setHidden("pNote", v.Note == "")
 	setText("pMeta", "A project of "+v.Owner)
+	drawNotes("p", v.Notes, v.NotesBy, v.NotesAt)
+	setHidden("pNotesCard", v.Notes == "")
 	box := byID("photos")
 	for _, ph := range v.Photos {
 		box.Call("appendChild", photoFigure(ph))

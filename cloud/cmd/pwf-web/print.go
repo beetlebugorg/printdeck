@@ -330,6 +330,7 @@ func drawPrint(p wire.ProjectPrint, photos []wire.ProjectPhoto, frames func() ([
 	fact("file", p.File)
 	setText("prNote", p.Note)
 	setHidden("prNote", p.Note == "")
+	drawPrintNotes(p)
 	renderFilament(p.Filament)
 
 	// The photos of the print.
@@ -458,6 +459,9 @@ func printTile(p wire.ProjectPrint, href string) js.Value {
 		pic.Call("appendChild", img)
 	}
 	badges := el("div", "badges", "")
+	if !p.Delivered.IsZero() {
+		badges.Call("appendChild", el("span", "ok", "Delivered"))
+	}
 	if t := resultText[p.Result]; t != "" {
 		badges.Call("appendChild", el("span", "fail", t))
 	}
@@ -485,4 +489,69 @@ func printTile(p wire.ProjectPrint, href string) js.Value {
 	body.Call("appendChild", lines)
 	tile.Call("appendChild", body)
 	return tile
+}
+
+// drawPrintNotes shows the mark Delivered, the source of the model and the notes of the print p.
+// The card of the notes hides on a page with no keys to write them (data-edit) and no notes.
+func drawPrintNotes(p wire.ProjectPrint) {
+	setHidden("prDelivered", p.Delivered.IsZero())
+	if !p.Delivered.IsZero() {
+		setText("prDelivered", "Delivered "+p.Delivered.Local().Format("Mon Jan 2, 2006"))
+	}
+	setHidden("prSourceRow", p.Source == "")
+	src := byID("prSource")
+	src.Set("href", p.Source)
+	src.Set("textContent", sourceText(p.Source))
+	drawNotes("pr", p.Notes, p.NotesBy, p.NotesAt)
+	card := byID("prNotesCard")
+	if !card.Call("hasAttribute", "data-edit").Bool() {
+		card.Set("hidden", p.Notes == "" && p.Source == "")
+	}
+}
+
+// drawNotes shows the notes with the elements of the prefix: <prefix>NotesText and
+// <prefix>NotesBy.
+func drawNotes(prefix, notes, by string, at time.Time) {
+	setText(prefix+"NotesText", notes)
+	line := ""
+	if notes != "" && by != "" {
+		line = "By " + by
+		if !at.IsZero() {
+			line += ", " + at.Local().Format("Jan 2, 2006")
+		}
+	}
+	setText(prefix+"NotesBy", line)
+	setHidden(prefix+"NotesBy", line == "")
+}
+
+// sourceText is the short text of a link to a source: "owner/repo @ 3f2a9c1 · path/part.stl" for
+// a file, a tree or a commit on GitHub, and the address for other links.
+func sourceText(u string) string {
+	rest, ok := strings.CutPrefix(u, "https://github.com/")
+	if !ok {
+		return strings.TrimPrefix(strings.TrimPrefix(u, "https://"), "http://")
+	}
+	parts := strings.Split(strings.Trim(rest, "/"), "/")
+	if len(parts) < 2 {
+		return "github.com/" + rest
+	}
+	repo := parts[0] + "/" + parts[1]
+	if len(parts) < 4 {
+		return repo
+	}
+	switch parts[2] {
+	case "blob", "tree", "commit", "raw":
+		ref := parts[3]
+		if len(ref) == 40 {
+			ref = ref[:7]
+		}
+		out := repo + " @ " + ref
+		if len(parts) > 4 {
+			out += " · " + strings.Join(parts[4:], "/")
+		}
+		return out
+	case "pull":
+		return repo + " · pull request " + parts[3]
+	}
+	return repo
 }

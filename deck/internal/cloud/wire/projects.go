@@ -76,8 +76,13 @@ type ProjectView struct {
 	Name string `json:"name"`
 	// Slug is the name of the project in its address: /projects/<slug>, or /p/<slug> for the
 	// public page.
-	Slug    string    `json:"slug,omitempty"`
-	Note    string    `json:"note,omitempty"`
+	Slug string `json:"slug,omitempty"`
+	Note string `json:"note,omitempty"`
+	// Notes are the notes of the people of the project, with the name of the last person who
+	// changed them, and the time.
+	Notes   string    `json:"notes,omitempty"`
+	NotesBy string    `json:"notes_by,omitempty"`
+	NotesAt time.Time `json:"notes_at,omitzero"`
 	Owner   string    `json:"owner"` // the first name of the owner
 	Created time.Time `json:"created"`
 	Changed time.Time `json:"changed"`
@@ -131,16 +136,27 @@ type ProjectMember struct {
 type ProjectPrint struct {
 	ID string `json:"id"`
 	// N is the number of the print in its project, from 1: the address of its page ends in /<n>.
-	N        int       `json:"n,omitempty"`
-	Name     string    `json:"name"`
-	File     string    `json:"file,omitempty"`
-	Result   string    `json:"result"` // "complete", "cancelled" or "error"
-	Ended    time.Time `json:"ended"`
-	Seconds  int       `json:"seconds"`
-	Material string    `json:"material,omitempty"`
-	Grams    float64   `json:"grams,omitempty"`
-	Roll     string    `json:"roll,omitempty"`
-	Printer  string    `json:"printer,omitempty"`
+	N    int    `json:"n,omitempty"`
+	Name string `json:"name"`
+	// DeckName is the name of the print from the deck, when the owner gave it another name.
+	DeckName string `json:"deck_name,omitempty"`
+	// Notes are the notes of the people of the project about the print, with the name of the
+	// last person who changed them, and the time.
+	Notes   string    `json:"notes,omitempty"`
+	NotesBy string    `json:"notes_by,omitempty"`
+	NotesAt time.Time `json:"notes_at,omitzero"`
+	// Delivered is the time when the owner marked the print as delivered, or zero. Source is the
+	// link to the source of the model.
+	Delivered time.Time `json:"delivered,omitzero"`
+	Source    string    `json:"source,omitempty"`
+	File      string    `json:"file,omitempty"`
+	Result    string    `json:"result"` // "complete", "cancelled" or "error"
+	Ended     time.Time `json:"ended"`
+	Seconds   int       `json:"seconds"`
+	Material  string    `json:"material,omitempty"`
+	Grams     float64   `json:"grams,omitempty"`
+	Roll      string    `json:"roll,omitempty"`
+	Printer   string    `json:"printer,omitempty"`
 	// PrinterID is the printer at the service, or "" for a print from before the printers.
 	PrinterID string `json:"printer_id,omitempty"`
 	Note      string `json:"note,omitempty"`
@@ -175,6 +191,24 @@ type ProjectPhoto struct {
 	W     int       `json:"w"`
 	H     int       `json:"h"`
 	Print string    `json:"print,omitempty"` // the print of the photo, or ""
+}
+
+// PrintEdit is the body of PATCH /api/v1/projects/<id>/prints/<print>. Title is the new name of
+// the print, or "" for the name from the deck: only the owner can change it. Notes are the notes
+// of the print. A field that is nil does not change.
+// Delivered marks the print that went to the person who wanted it, and Source is the link to
+// the source of the model (for example a file of a commit on GitHub). Only the owner can change
+// them too.
+type PrintEdit struct {
+	Title     *string `json:"title,omitempty"`
+	Notes     *string `json:"notes,omitempty"`
+	Delivered *bool   `json:"delivered,omitempty"`
+	Source    *string `json:"source,omitempty"`
+}
+
+// NotesEdit is the body of PATCH /api/v1/projects/<id>/notes: the notes of the project.
+type NotesEdit struct {
+	Notes string `json:"notes"`
 }
 
 // FramesReply is the reply to GET /api/v1/projects/<id>/prints/<print>/frames: the URLs of the

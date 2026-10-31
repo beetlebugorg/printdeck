@@ -22,6 +22,8 @@ type (
 	ProjectView    = wire.ProjectView
 	ProjectMember  = wire.ProjectMember
 	ProjectPrint   = wire.ProjectPrint
+	PrintEdit      = wire.PrintEdit
+	NotesEdit      = wire.NotesEdit
 	ProjectPhoto   = wire.ProjectPhoto
 	ProjectLive    = wire.ProjectLive
 	FramesReply    = wire.FramesReply

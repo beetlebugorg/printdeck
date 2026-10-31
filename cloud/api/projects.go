@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"slices"
 	"sort"
 	"strconv"
@@ -47,6 +48,11 @@ type Project struct {
 	ID      string    `json:"id"`
 	Name    string    `json:"name"`
 	Note    string    `json:"note,omitempty"`
+	// Notes are the notes of the people of the project, with the name of the last person who
+	// changed them, and the time.
+	Notes   string    `json:"notes,omitempty"`
+	NotesBy string    `json:"notes_by,omitempty"`
+	NotesAt time.Time `json:"notes_at,omitzero"`
 	Created time.Time `json:"created"`
 	Changed time.Time `json:"changed"`
 	Members []Member  `json:"members,omitempty"`
@@ -113,6 +119,21 @@ type PrintRecord struct {
 	Model  bool      `json:"model"`
 	Plan   bool      `json:"plan,omitempty"`
 	Done   bool      `json:"done"`
+	// The fields of the pages, which stay when the deck sends the print again: Title is the name
+	// that the owner gave the print, or "", and it shows in place of Name. Notes are the notes of
+	// the people of the project. Delivered is the time when the owner marked the print as
+	// delivered, and Source the link to the source of the model.
+	Title string `json:"title,omitempty"`
+	pageFields
+}
+
+// pageFields are the fields of a print that the people change on the pages.
+type pageFields struct {
+	Notes     string    `json:"notes,omitempty"`
+	NotesBy   string    `json:"notes_by,omitempty"`
+	NotesAt   time.Time `json:"notes_at,omitzero"`
+	Delivered time.Time `json:"delivered,omitzero"`
+	Source    string    `json:"source,omitempty"`
 }
 
 // PhotoRecord is x/<id>/photos/<photo>.json.
@@ -351,6 +372,30 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 		return s.afterChange(ctx, id, w)
 	case part == "prints" && strings.HasSuffix(sub, "/frames") && r.Method == http.MethodGet:
 		return s.printFrames(ctx, id, strings.TrimSuffix(sub, "/frames"))
+	case part == "prints" && sub != "" && !strings.Contains(sub, "/") && r.Method == http.MethodPatch:
+		var in cloud.PrintEdit
+		if json.Unmarshal(body, &in) != nil {
+			return nil, fail(http.StatusBadRequest, "bad JSON")
+		}
+		if err := s.editPrint(ctx, id, sub, w, in); err != nil {
+			return nil, err
+		}
+		return s.afterChange(ctx, id, w)
+	case action == "notes" && r.Method == http.MethodPatch:
+		if w.deck != nil {
+			return nil, fail(http.StatusUnauthorized, "only a person writes notes")
+		}
+		var in cloud.NotesEdit
+		if json.Unmarshal(body, &in) != nil {
+			return nil, fail(http.StatusBadRequest, "bad JSON")
+		}
+		if _, err := s.changeProject(ctx, id, func(p *Project) error {
+			p.Notes, p.NotesBy, p.NotesAt = clipNotes(in.Notes), w.name, s.now().UTC()
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+		return s.afterChange(ctx, id, w)
 	case part == "prints" && sub != "" && r.Method == http.MethodDelete:
 		if err := ownerOnly(w); err != nil {
 			return nil, err
@@ -520,7 +565,8 @@ func (s *Server) listProjects(ctx context.Context, w *who) (any, error) {
 
 // viewProject returns the project as its page shows it to the person w.
 func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.ProjectView, error) {
-	v := &cloud.ProjectView{ID: p.ID, Name: p.Name, Slug: p.Slug, Note: p.Note, Owner: s.ownerName(ctx), Created: p.Created,
+	v := &cloud.ProjectView{ID: p.ID, Name: p.Name, Slug: p.Slug, Note: p.Note, Notes: p.Notes, NotesBy: p.NotesBy, NotesAt: p.NotesAt,
+		Owner: s.ownerName(ctx), Created: p.Created,
 		Changed: p.Changed, IsOwner: w.owner, You: w.member}
 	if w.owner {
 		v.You = KindOwner
@@ -564,7 +610,16 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 
 // projectPrint is the print of a page, with no URLs.
 func projectPrint(pr PrintRecord) cloud.ProjectPrint {
-	return cloud.ProjectPrint{ID: pr.ID, N: pr.N, PrinterID: pr.PrinterID, Name: pr.Name, File: pr.File, Result: pr.Result, Ended: pr.Ended, Seconds: pr.Seconds,
+	name := pr.Name
+	if pr.Title != "" {
+		name = pr.Title
+	}
+	deck := ""
+	if pr.Title != "" {
+		deck = pr.Name
+	}
+	return cloud.ProjectPrint{ID: pr.ID, N: pr.N, PrinterID: pr.PrinterID, Name: name, DeckName: deck,
+		Notes: pr.Notes, NotesBy: pr.NotesBy, NotesAt: pr.NotesAt, Delivered: pr.Delivered, Source: pr.Source, File: pr.File, Result: pr.Result, Ended: pr.Ended, Seconds: pr.Seconds,
 		Material: pr.Material, Grams: pr.Grams, Roll: pr.Roll, Printer: pr.Printer, Note: pr.Note, Frames: pr.Frames, FPS: pr.FPS,
 		Started: pr.Started, Layers: pr.Layers, Layer: pr.Layer, Height: pr.Height, GramsTotal: pr.GramsTotal,
 		Estimate: pr.Estimate, Prep: pr.Prep, Slicer: pr.Slicer, Filament: pr.Filament}
@@ -781,6 +836,61 @@ func (s *Server) removeMember(ctx context.Context, id, mid string) error {
 	return nil
 }
 
+// NotesLimit is the most characters of the notes of a project or a print.
+const NotesLimit = 4000
+
+// clipNotes returns the notes with no space at the ends, and at most NotesLimit characters.
+func clipNotes(notes string) string {
+	notes = strings.TrimSpace(strings.ReplaceAll(notes, "\r\n", "\n"))
+	if r := []rune(notes); len(r) > NotesLimit {
+		notes = string(r[:NotesLimit])
+	}
+	return notes
+}
+
+// editPrint changes the fields of the print pid of the project id that in has. The owner
+// changes all of them, and a member only the notes.
+func (s *Server) editPrint(ctx context.Context, id, pid string, w *who, in cloud.PrintEdit) error {
+	if w.deck != nil {
+		return fail(http.StatusUnauthorized, "only a person edits a print")
+	}
+	if (in.Title != nil || in.Delivered != nil || in.Source != nil) && !w.owner {
+		return fail(http.StatusUnauthorized, "only the owner can do this")
+	}
+	pr, err := s.loadPrint(ctx, id, pid)
+	if err != nil {
+		return err
+	}
+	if in.Title != nil {
+		pr.Title = clip(strings.TrimSpace(*in.Title), 120)
+		if pr.Title == pr.Name {
+			pr.Title = ""
+		}
+	}
+	if in.Notes != nil {
+		pr.Notes, pr.NotesBy, pr.NotesAt = clipNotes(*in.Notes), w.name, s.now().UTC()
+	}
+	if in.Delivered != nil {
+		switch {
+		case !*in.Delivered:
+			pr.Delivered = time.Time{}
+		case pr.Delivered.IsZero():
+			pr.Delivered = s.now().UTC()
+		}
+	}
+	if in.Source != nil {
+		src := strings.TrimSpace(*in.Source)
+		if src != "" {
+			u, err := url.Parse(src)
+			if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || len(src) > 500 {
+				return fail(http.StatusBadRequest, "the source needs a web address, for example a file of a commit on GitHub")
+			}
+		}
+		pr.Source = src
+	}
+	return s.putJSON(ctx, printKey(id, pid), pr)
+}
+
 // newPrint starts the upload of a print of the deck d: the record waits for done.
 func (s *Server) newPrint(ctx context.Context, p *Project, d *Deck, in cloud.PrintRequest) (any, error) {
 	in.Name, in.File, in.Material, in.Roll, in.Printer, in.Note =
@@ -825,7 +935,7 @@ func (s *Server) newPrint(ctx context.Context, p *Project, d *Deck, in cloud.Pri
 			}
 		}
 	}
-	n := 0
+	n, title, page := 0, "", pageFields{}
 	if isNew {
 		// The prints from before the numbers get theirs first.
 		if _, _, err := s.projectFiles(ctx, p.ID); err != nil {
@@ -840,16 +950,16 @@ func (s *Server) newPrint(ctx context.Context, p *Project, d *Deck, in cloud.Pri
 		}
 		n = q.LastPrint
 	} else {
-		// A print that the deck sends again keeps its number.
+		// A print that the deck sends again keeps its number and the fields of the pages.
 		if old, err := s.loadPrint(ctx, p.ID, pid); err == nil {
-			n = old.N
+			n, title, page = old.N, old.Title, old.pageFields
 		}
 		if err := s.deletePrintFiles(ctx, p.ID, pid); err != nil {
 			return nil, err
 		}
 	}
 	in.PrinterID = s.printerOf(ctx, d, in.PrinterID)
-	rec := PrintRecord{PrintRequest: in, ID: pid, N: n, Deck: d.ID, Added: s.now().UTC()}
+	rec := PrintRecord{PrintRequest: in, ID: pid, N: n, Deck: d.ID, Added: s.now().UTC(), Title: title, pageFields: page}
 	if err := s.putJSON(ctx, printKey(p.ID, pid), rec); err != nil {
 		return nil, err
 	}

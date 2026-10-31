@@ -89,6 +89,17 @@
       <p class="dim" id="pNote"></p>
       <p class="dim small" id="pMeta"></p>
     </div>
+    <section class="card notes-card" id="pNotesCard" aria-label="Notes of the project" data-edit>
+      <h2>Notes</h2>
+      <div class="notes-text" id="pNotesText"></div>
+      <p class="dim small" id="pNotesBy"></p>
+      <form class="rename" id="pNotesForm" hidden>
+        <textarea id="pNotesInput" rows="6" maxlength="4000" placeholder="For example: the plan, the parts that are left, the paint"></textarea>
+        <div class="row-keys"><button type="submit" class="primary">Save</button><button type="button" id="pNotesCancel">Cancel</button></div>
+      </form>
+      <div class="linkrow"><button type="button" id="pNotesEdit">Write notes</button></div>
+      <p class="msg" id="pNotesMsg" role="status"></p>
+    </section>
     <section class="lcd stats" aria-label="The project in numbers" id="pStats">
       <div class="row">
         <div class="cell"><div class="lab">Prints</div><div class="big" id="stPrints">0</div><div class="sub" id="stPrintsSub"></div></div>
@@ -182,7 +193,14 @@
     <a class="back" href="#" id="prBack">The project</a>
     <section class="title">
       <h1 id="prName"></h1>
+      <form class="rename" id="prRenameForm" hidden>
+        <label class="field">Name of the print<input id="prRenameInput" maxlength="120"></label>
+        <div class="row-keys"><button type="submit" class="primary">Save</button><button type="button" id="prRenameCancel">Cancel</button></div>
+        <p class="dim small" id="prDeckName"></p>
+      </form>
       <p id="prSub"></p>
+      <p class="delivered" id="prDelivered" hidden></p>
+      <div class="linkrow owner-keys" id="prOwnerKeys" hidden><button type="button" id="prRename">Rename</button><button type="button" id="prDeliver" aria-pressed="false">Delivered</button></div>
       <div class="linkrow"><button type="button" id="prCopy">Copy link</button><button type="button" id="prShare" hidden>Share</button><span id="prCopyMsg" role="status"></span></div>
     </section>
 
@@ -251,6 +269,23 @@
         <div><dt>File</dt><dd id="file">-</dd></div>
       </dl>
       <p class="note" id="prNote" hidden></p>
+    </section>
+
+    <section class="card notes-card" id="prNotesCard" aria-label="Notes and source" data-edit>
+      <h2>Notes</h2>
+      <div class="source" id="prSourceRow" hidden><span class="dim">Source</span> <a id="prSource" target="_blank" rel="noopener"></a></div>
+      <form class="rename" id="prSourceForm" hidden>
+        <label class="field">Source of the model: a web address, for example a file of a commit on GitHub<input id="prSourceInput" type="url" maxlength="500" placeholder="https://github.com/you/repo/blob/3f2a9c1/part.stl"></label>
+        <div class="row-keys"><button type="submit" class="primary">Save</button><button type="button" id="prSourceCancel">Cancel</button></div>
+      </form>
+      <div class="notes-text" id="prNotesText"></div>
+      <p class="dim small" id="prNotesBy"></p>
+      <form class="rename" id="prNotesForm" hidden>
+        <textarea id="prNotesInput" rows="6" maxlength="4000" placeholder="For example: the fit, the changes for the next print, who got it"></textarea>
+        <div class="row-keys"><button type="submit" class="primary">Save</button><button type="button" id="prNotesCancel">Cancel</button></div>
+      </form>
+      <div class="linkrow"><button type="button" id="prNotesEdit">Write notes</button><button type="button" id="prSourceEdit" hidden>Set the source</button></div>
+      <p class="msg" id="prNotesMsg" role="status"></p>
     </section>
 
     <section class="card" id="filCard" aria-label="Filament" hidden>
