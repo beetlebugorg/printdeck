@@ -322,7 +322,10 @@ func lapseViewOf(hub *camera.Hub, k *printer.Klippy, r *timelapse.Runner, model,
 	var q [12]float64
 	lapse := hub.Role(camera.RoleLapse)
 	cal, ok := lapse.Calibration()
-	if !ok {
+	if !ok || !cal.BedY {
+		// A calibration of the nozzle on a printer with a bed that moves in Y has no direction of
+		// Y in the picture: the nozzle stays at one place for each Y. The 3D view of the page then
+		// flattens the part. Only a calibration with the towers (BedY) gives the view.
 		return q, 0, false
 	}
 	src, crop, ok := r.Crop()

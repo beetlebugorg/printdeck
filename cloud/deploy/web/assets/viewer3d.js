@@ -1044,6 +1044,17 @@ async function showGcode(box, opts) {
     }
     const cmin = Math.min(...cs), cmax = Math.max(...cs);
     if (!(cmin > 0)) return; // a part behind the camera: no view
+    // A matrix with no direction of Y (a calibration of the nozzle on a printer with a bed that
+    // moves in Y) flattens the part: its edge in Y is a few pixels. No view then.
+    const uv = (x, y, z) => {
+      const X = x - bx / 2, Y = z, Z = by / 2 - y;
+      const c = r2[0] * X + r2[1] * Y + r2[2] * Z + r2[3];
+      return [(r0[0] * X + r0[1] * Y + r0[2] * Z + r0[3]) / c * aspect, (r1[0] * X + r1[1] * Y + r1[2] * Z + r1[3]) / c];
+    };
+    const len = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+    const o = uv(minx, miny, 0);
+    const ex = len(o, uv(maxx, miny, 0)), ey = len(o, uv(minx, maxy, 0)), ez = len(o, uv(minx, miny, Math.max(maxz, 1)));
+    if (ey < 0.1 * Math.max(ex, ez)) return;
     const n = cmin * 0.3, f = cmax * 3;
     const A = (f + n) / (f - n), B = (-2 * f * n) / (f - n);
     const P = new T.Matrix4().set(
