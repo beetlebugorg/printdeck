@@ -33,7 +33,8 @@ type app struct {
 	planChoices []planChoice
 	planPlates  [][]int
 	planShown   int
-	lastBuild   wire.ProjectBuild // the build of the build page
+	lastBuild    wire.ProjectBuild // the build of the build page
+	previewShown string            // the build of the preview that shows
 }
 
 const tokenKey = "pwf-session"
@@ -144,7 +145,7 @@ var views = []string{"vSignIn", "vOwner", "vJoin", "vHome", "vMissing", "vProjec
 
 func show(id string) {
 	setHidden("loading", id != "")
-	if v := js.Global().Get("pwfView3d"); id != "vPrinter" && id != "vPlan" && !v.IsUndefined() {
+	if v := js.Global().Get("pwfView3d"); id != "vPrinter" && id != "vPlan" && id != "vBuild" && !v.IsUndefined() {
 		v.Call("hide")
 	}
 	for _, v := range views {

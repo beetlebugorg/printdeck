@@ -599,6 +599,9 @@ func (s *Server) projectBuild(ctx context.Context, p *Project, b *BuildRecord) c
 			if pl.Picture != "" {
 				pp.PictureURL, _ = s.Grants.FileURL(ctx, dir+pl.Picture, urlTTL)
 			}
+			if pl.File != "" {
+				pp.FileURL, _ = s.Grants.FileURL(ctx, dir+pl.File, urlTTL)
+			}
 		}
 		out.Plates = append(out.Plates, pp)
 	}

@@ -188,6 +188,8 @@ type ProjectBuildPlate struct {
 	Reason     string    `json:"reason,omitempty"`
 	PreviewURL string    `json:"preview_url,omitempty"`
 	PictureURL string    `json:"picture_url,omitempty"`
+	// FileURL is the address of the sliced file, for the 3D view of the moves of a G-code.
+	FileURL string `json:"file_url,omitempty"`
 }
 
 // BuildDecision is the body of POST .../builds/<build>/plates/<n>/approve and .../reject: the

@@ -491,4 +491,368 @@ async function showModels(box, opts) {
   };
 }
 
-window.pwfView3d = { show, showPart, showModels, hide, modelFile };
+// The G-code preview of a plate: the moves of the file as the printer makes them.
+
+// The colors of the kinds of lines of CuraEngine, and their names on the page.
+const KINDS = [
+  ["WALL-OUTER", "Outer wall", "#e8762b"],
+  ["WALL-INNER", "Inner wall", "#3aa05a"],
+  ["SKIN", "Top and bottom", "#e3c33b"],
+  ["FILL", "Infill", "#c0392b"],
+  ["SUPPORT", "Support", "#2a9fd6"],
+  ["SUPPORT-INTERFACE", "Support interface", "#1f6fb2"],
+  ["SKIRT", "Skirt and brim", "#8b5cf6"],
+  ["PRIME-TOWER", "Prime tower", "#9aa0a8"],
+  ["OTHER", "Other", "#c2bcb0"],
+];
+const KIND = Object.fromEntries(KINDS.map(([k], i) => [k, i]));
+
+// parseGcode reads the moves of a G-code. It returns the extrusions (x0, y0, x1, y1, z, h, width
+// in mm, the kind, the feed rate in mm/s) and the travels, each in the order of the file, with
+// the first move of each layer, and the time at the end of each layer.
+function parseGcode(text) {
+  let n = 0, cap = 1 << 16;
+  let seg = new Float32Array(cap * 7), kind = new Uint8Array(cap), speed = new Float32Array(cap);
+  let tn = 0, tcap = 1 << 14, trav = new Float32Array(tcap * 6);
+  const layerSeg = [], layerTrav = [], layerZ = [], layerTime = [];
+  let x = 0, y = 0, z = 0, e = 0, f = 0, rel = false, cur = KIND.OTHER, layerH = 0.2, lastZ = 0, maxE = 0;
+  const grow = () => {
+    cap *= 2;
+    const s2 = new Float32Array(cap * 7); s2.set(seg); seg = s2;
+    const k2 = new Uint8Array(cap); k2.set(kind); kind = k2;
+    const v2 = new Float32Array(cap); v2.set(speed); speed = v2;
+  };
+  let pos = 0;
+  const len = text.length;
+  while (pos < len) {
+    let end = text.indexOf("\n", pos);
+    if (end < 0) end = len;
+    const line = text.slice(pos, end);
+    pos = end + 1;
+    const c0 = line.charCodeAt(0);
+    if (c0 === 59) { // ";"
+      if (line.startsWith(";LAYER:")) {
+        layerSeg.push(n); layerTrav.push(tn); layerZ.push(z);
+      } else if (line.startsWith(";TYPE:")) {
+        const k = KIND[line.slice(6).trim()];
+        cur = k === undefined ? KIND.OTHER : k;
+      } else if (line.startsWith(";TIME_ELAPSED:")) {
+        layerTime[layerSeg.length - 1] = parseFloat(line.slice(14));
+      } else if (line.startsWith(";Layer height:")) {
+        layerH = parseFloat(line.slice(14)) || layerH;
+      }
+      continue;
+    }
+    if (c0 !== 71 && c0 !== 77) continue; // G, M
+    const code = line.split(";", 1)[0].trim();
+    if (code === "M82") { rel = false; continue; }
+    if (code === "M83") { rel = true; continue; }
+    const parts = code.split(/\s+/);
+    const g = parts[0];
+    if (g === "G92") {
+      for (const p of parts) if (p[0] === "E") { e = parseFloat(p.slice(1)); maxE = e; }
+      continue;
+    }
+    if (g !== "G0" && g !== "G1") continue;
+    let nx = x, ny = y, nz = z, ne = null;
+    for (let i = 1; i < parts.length; i++) {
+      const p = parts[i], v = parseFloat(p.slice(1));
+      switch (p[0]) {
+        case "X": nx = v; break;
+        case "Y": ny = v; break;
+        case "Z": nz = v; break;
+        case "E": ne = v; break;
+        case "F": f = v; break;
+      }
+    }
+    let extrude = false;
+    if (ne !== null) {
+      const de = rel ? ne : ne - e;
+      // An extrusion adds filament: an E over the highest E so far (an unretract does not count).
+      if (rel) extrude = de > 0 && (nx !== x || ny !== y);
+      else { extrude = ne > maxE + 1e-5 && (nx !== x || ny !== y); if (ne > maxE) maxE = ne; }
+      e = rel ? e + ne : ne;
+    }
+    if (nz !== z) { if (nz > z) lastZ = z; z = nz; }
+    if (nx !== x || ny !== y) {
+      if (extrude) {
+        if (n >= cap) grow();
+        const o = n * 7;
+        const h = Math.max(0.05, Math.min(1, z - lastZ || layerH));
+        seg[o] = x; seg[o + 1] = y; seg[o + 2] = nx; seg[o + 3] = ny; seg[o + 4] = z; seg[o + 5] = h; seg[o + 6] = 0.5;
+        kind[n] = cur; speed[n] = f / 60; n++;
+      } else {
+        if (tn >= tcap) { tcap *= 2; const t2 = new Float32Array(tcap * 6); t2.set(trav); trav = t2; }
+        const o = tn * 6;
+        trav[o] = x; trav[o + 1] = y; trav[o + 2] = z; trav[o + 3] = nx; trav[o + 4] = ny; trav[o + 5] = z;
+        tn++;
+      }
+      x = nx; y = ny;
+    }
+  }
+  layerSeg.push(n); layerTrav.push(tn);
+  return { n, seg, kind, speed, tn, trav, layerSeg, layerTrav, layerZ, layerTime, layers: layerSeg.length - 1 };
+}
+
+// showGcode draws the G-code of a plate in box, with its controls: the layer, the moves of the
+// layer, the kinds of lines, the travels, and the colors by kind or by speed. opts: url, bed
+// ([x, y] in mm), title. The viewer turns all around the plate, also under the bed.
+async function showGcode(box, opts) {
+  hide();
+  box.textContent = "";
+  const note = document.createElement("p");
+  note.className = "part-wait";
+  note.textContent = "Reading the G-code…";
+  box.appendChild(note);
+  const [{ T, OrbitControls, RoomEnvironment }, text] = await Promise.all([
+    load(),
+    fetch(opts.url, { credentials: "same-origin" }).then((r) => {
+      if (!r.ok) throw new Error("the G-code did not load: " + r.status);
+      return r.text();
+    }),
+  ]);
+  await new Promise((r) => setTimeout(r, 20));
+  const g = parseGcode(text);
+  note.remove();
+  if (!g.n || !g.layers) {
+    box.textContent = "This file has no moves to show.";
+    return;
+  }
+  const [bx, by] = opts.bed || [280, 280];
+
+  // The page parts: the view, and the controls under it.
+  const stage = document.createElement("div");
+  stage.className = "gv-stage";
+  const controls = document.createElement("div");
+  controls.className = "gv-controls";
+  box.append(stage, controls);
+  const renderer = new T.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.setClearColor(0x15161a);
+  stage.appendChild(renderer.domElement);
+  const scene = new T.Scene();
+  const pmrem = new T.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.25;
+  scene.add(new T.HemisphereLight(0xffffff, 0x404550, 1.1));
+  const key = new T.DirectionalLight(0xffffff, 1.2);
+  key.position.set(-0.6, 1.4, 1);
+  scene.add(key);
+  const camera = new T.PerspectiveCamera(35, 1, 0.5, 5000);
+  const orbit = new OrbitControls(camera, renderer.domElement);
+  orbit.enableDamping = true;
+  orbit.minPolarAngle = 0;
+  orbit.maxPolarAngle = Math.PI; // also from under the bed
+
+  // The bed: see-through, so the first layer shows from under it.
+  const bedMat = new T.MeshStandardMaterial({ color: "#2b2d31", transparent: true, opacity: 0.55, depthWrite: false, side: T.DoubleSide });
+  const bed = new T.Mesh(new T.PlaneGeometry(bx, by), bedMat);
+  bed.rotation.x = -Math.PI / 2;
+  bed.position.y = -0.01;
+  scene.add(bed);
+  const grid = new T.GridHelper(Math.max(bx, by), Math.round(Math.max(bx, by) / 10), 0x5b5f66, 0x34373d);
+  grid.position.y = 0;
+  scene.add(grid);
+
+  // Each extrusion is a bar: its length along the move, the width of the line, the height of
+  // the layer. Front of the printer (Y 0) toward the viewer.
+  const n = g.n;
+  const mat4 = new Float32Array(n * 16);
+  for (let i = 0; i < n; i++) {
+    const o = i * 7;
+    const x0 = g.seg[o], y0 = g.seg[o + 1], x1 = g.seg[o + 2], y1 = g.seg[o + 3], z = g.seg[o + 4], h = g.seg[o + 5], w = g.seg[o + 6];
+    const dx = x1 - x0, dy = y1 - y0, l = Math.hypot(dx, dy);
+    const a = Math.atan2(dy, dx); // the scene direction is (dx, 0, -dy): Z of the scene is -Y of the printer
+    const c = Math.cos(a), s = Math.sin(a);
+    const m = i * 16;
+    // Scale (l + w overlap at the ends, h, w), turn about Y by -a, move to the middle.
+    const sx = l + w * 0.5;
+    mat4[m] = c * sx; mat4[m + 1] = 0; mat4[m + 2] = -s * sx; mat4[m + 3] = 0;
+    mat4[m + 4] = 0; mat4[m + 5] = h; mat4[m + 6] = 0; mat4[m + 7] = 0;
+    mat4[m + 8] = s * w; mat4[m + 9] = 0; mat4[m + 10] = c * w; mat4[m + 11] = 0;
+    mat4[m + 12] = (x0 + x1) / 2 - bx / 2; mat4[m + 13] = z - h / 2; mat4[m + 14] = by / 2 - (y0 + y1) / 2; mat4[m + 15] = 1;
+  }
+  const box1 = new T.BoxGeometry(1, 1, 1);
+  const mat = new T.MeshStandardMaterial({ roughness: 0.6, metalness: 0 });
+  const mesh = new T.InstancedMesh(box1, mat, n);
+  mesh.instanceMatrix.array.set(mat4);
+  mesh.instanceMatrix.needsUpdate = true;
+  const colors = new Float32Array(n * 3);
+  mesh.instanceColor = new T.InstancedBufferAttribute(new Float32Array(n * 3), 3);
+  mesh.frustumCulled = false;
+  scene.add(mesh);
+
+  // The travels: thin lines.
+  const travGeo = new T.BufferGeometry();
+  const tpos = new Float32Array(g.tn * 6);
+  for (let i = 0; i < g.tn; i++) {
+    const o = i * 6;
+    tpos[o] = g.trav[o] - bx / 2; tpos[o + 1] = g.trav[o + 2]; tpos[o + 2] = by / 2 - g.trav[o + 1];
+    tpos[o + 3] = g.trav[o + 3] - bx / 2; tpos[o + 4] = g.trav[o + 5]; tpos[o + 5] = by / 2 - g.trav[o + 4];
+  }
+  travGeo.setAttribute("position", new T.BufferAttribute(tpos, 3));
+  const travels = new T.LineSegments(travGeo, new T.LineBasicMaterial({ color: 0x4fa3ff, transparent: true, opacity: 0.55 }));
+  travels.visible = false;
+  travels.frustumCulled = false;
+  scene.add(travels);
+
+  // The camera: from the front and above, at the plate.
+  let minx = Infinity, maxx = -Infinity, miny = Infinity, maxy = -Infinity, maxz = 0;
+  for (let i = 0; i < n; i++) {
+    const o = i * 7;
+    minx = Math.min(minx, g.seg[o], g.seg[o + 2]); maxx = Math.max(maxx, g.seg[o], g.seg[o + 2]);
+    miny = Math.min(miny, g.seg[o + 1], g.seg[o + 3]); maxy = Math.max(maxy, g.seg[o + 1], g.seg[o + 3]);
+    maxz = Math.max(maxz, g.seg[o + 4]);
+  }
+  const mid = new T.Vector3((minx + maxx) / 2 - bx / 2, maxz / 2, by / 2 - (miny + maxy) / 2);
+  const size = Math.max(30, maxx - minx, maxy - miny, maxz);
+  camera.position.set(mid.x + size * 0.6, mid.y + size * 0.9, mid.z + size * 1.5);
+  orbit.target.copy(mid);
+  orbit.maxDistance = Math.max(bx, by) * 4;
+
+  let redraw = true;
+  // The controls.
+  const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt) e.textContent = txt; return e; };
+  const info = el("div", "gv-info");
+  const layerRow = el("label", "gv-row", "Layer ");
+  const layer = el("input");
+  layer.type = "range"; layer.min = 1; layer.max = g.layers; layer.value = g.layers;
+  layerRow.appendChild(layer);
+  const moveRow = el("label", "gv-row", "Moves ");
+  const move = el("input");
+  move.type = "range"; move.min = 0; move.max = 1000; move.value = 1000;
+  moveRow.appendChild(move);
+  const keys = el("div", "gv-keys");
+  const step = (d) => { layer.value = Math.max(1, Math.min(g.layers, +layer.value + d)); move.value = 1000; update(); };
+  const down = el("button", "", "‹ Layer"); down.type = "button"; down.onclick = () => step(-1);
+  const up = el("button", "", "Layer ›"); up.type = "button"; up.onclick = () => step(1);
+  const only = el("label", "gv-check");
+  const onlyBox = el("input"); onlyBox.type = "checkbox";
+  only.append(onlyBox, " This layer only");
+  const trav = el("label", "gv-check");
+  const travBox = el("input"); travBox.type = "checkbox";
+  trav.append(travBox, " Travel moves");
+  const mode = el("select");
+  for (const [v, t] of [["kind", "Color by line type"], ["speed", "Color by speed"]]) {
+    const o = el("option", "", t); o.value = v; mode.appendChild(o);
+  }
+  keys.append(down, up, only, trav, mode);
+  const legend = el("div", "gv-legend");
+  const present = new Set();
+  for (let i = 0; i < n; i++) present.add(g.kind[i]);
+  const shown = KINDS.map(() => true);
+  KINDS.forEach(([, name, color], k) => {
+    if (!present.has(k)) return;
+    const l = el("label", "gv-check");
+    const b = el("input"); b.type = "checkbox"; b.checked = true;
+    b.onchange = () => { shown[k] = b.checked; update(); };
+    const sw = el("i", "gv-swatch"); sw.style.background = color;
+    l.append(b, sw, " " + name);
+    legend.appendChild(l);
+  });
+  controls.append(info, layerRow, moveRow, keys, legend);
+
+  // The colors: by kind, or by speed from blue (slow) to orange (fast).
+  let vmin = Infinity, vmax = 0;
+  for (let i = 0; i < n; i++) { vmin = Math.min(vmin, g.speed[i]); vmax = Math.max(vmax, g.speed[i]); }
+  const kindColor = KINDS.map(([, , c]) => new T.Color(c));
+  const slow = new T.Color("#2a7fc0"), fast = new T.Color("#ff5a1f"), tmp = new T.Color();
+  const paint = () => {
+    for (let i = 0; i < n; i++) {
+      let c = kindColor[g.kind[i]];
+      if (mode.value === "speed") c = tmp.copy(slow).lerp(fast, vmax > vmin ? (g.speed[i] - vmin) / (vmax - vmin) : 0);
+      colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+    }
+  };
+  paint();
+
+  // update shows the moves up to the move slider of the layer slider, with the kinds that are on.
+  const update = () => {
+    const L = +layer.value; // 1 is the first layer
+    const start = onlyBox.checked ? g.layerSeg[L - 1] : 0;
+    const ls = g.layerSeg[L - 1], le = g.layerSeg[L];
+    const end = ls + Math.round((le - ls) * (+move.value / 1000));
+    const all = shown.every((v, k) => v || !present.has(k));
+    let count = 0;
+    const im = mesh.instanceMatrix.array, ic = mesh.instanceColor.array;
+    if (all && start === 0) {
+      // The fast way: the moves are in the order of the file.
+      im.set(mat4.subarray(0, end * 16));
+      ic.set(colors.subarray(0, end * 3));
+      count = end;
+    } else {
+      for (let i = start; i < end; i++) {
+        if (!shown[g.kind[i]]) continue;
+        im.set(mat4.subarray(i * 16, i * 16 + 16), count * 16);
+        ic[count * 3] = colors[i * 3]; ic[count * 3 + 1] = colors[i * 3 + 1]; ic[count * 3 + 2] = colors[i * 3 + 2];
+        count++;
+      }
+    }
+    mesh.count = count;
+    redraw = true;
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.instanceColor.needsUpdate = true;
+    // The travels of the same moves.
+    travels.visible = travBox.checked;
+    const ts = onlyBox.checked ? g.layerTrav[L - 1] : 0;
+    const tl = g.layerTrav[L - 1], te0 = g.layerTrav[L];
+    const te = tl + Math.round((te0 - tl) * (+move.value / 1000));
+    travGeo.setDrawRange(ts * 2, Math.max(0, te - ts) * 2);
+    // The facts of the layer.
+    const z = g.seg[Math.max(0, Math.min(n - 1, ls)) * 7 + 4];
+    const t = g.layerTime[L - 1];
+    const clock = (s) => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h ? `${h} h ${m} min` : `${m} min ${s % 60} s`; };
+    info.textContent = `Layer ${L} of ${g.layers} · Z ${z.toFixed(2)} mm` + (t ? ` · ${clock(t)} into the print` : "") +
+      ` · ${le - ls} moves in this layer`;
+  };
+  layer.oninput = () => { move.value = 1000; update(); };
+  move.oninput = update;
+  onlyBox.onchange = update;
+  travBox.onchange = update;
+  mode.onchange = () => { paint(); update(); };
+  update();
+
+  const fit = () => {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / Math.max(1, h);
+    camera.updateProjectionMatrix();
+    redraw = true;
+  };
+  const resize = new ResizeObserver(fit);
+  resize.observe(stage);
+  fit();
+  // The view draws only after a change: a large plate takes a moment for each picture, and a
+  // phone keeps its battery.
+  orbit.addEventListener("change", () => { redraw = true; });
+  let frame = 0;
+  const tick = () => {
+    frame = requestAnimationFrame(tick);
+    if (orbit.update() || redraw) {
+      redraw = false;
+      renderer.render(scene, camera);
+    }
+  };
+  tick();
+  // The arrow keys move the layer while the view has the focus.
+  renderer.domElement.tabIndex = 0;
+  renderer.domElement.addEventListener("keydown", (ev) => {
+    if (ev.key === "ArrowUp" || ev.key === "ArrowRight") { step(1); ev.preventDefault(); }
+    if (ev.key === "ArrowDown" || ev.key === "ArrowLeft") { step(-1); ev.preventDefault(); }
+  });
+  view = {
+    box,
+    stop() {
+      cancelAnimationFrame(frame);
+      resize.disconnect();
+      orbit.dispose();
+      renderer.dispose();
+      box1.dispose();
+      travGeo.dispose();
+      mesh.dispose();
+      box.textContent = "";
+    },
+  };
+}
+
+window.pwfView3d = { show, showPart, showModels, showGcode, hide, modelFile };
