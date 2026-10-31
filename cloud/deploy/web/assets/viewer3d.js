@@ -787,6 +787,7 @@ async function showGcode(box, opts) {
     const vf = (camera.fov * Math.PI) / 180;
     const hf = 2 * Math.atan(Math.tan(vf / 2) * camera.aspect);
     const d = (radius / Math.sin(Math.min(vf, hf) / 2)) * 1.08;
+    if (!Number.isFinite(d) || d <= 0) return; // the view has no size yet
     camera.position.copy(mid).addScaledVector(dir, d);
   };
   orbit.target.copy(mid);
@@ -936,7 +937,28 @@ async function showGcode(box, opts) {
   // the same moves in the reverse order: the solid mesh draws the first moves (its count), and
   // the ghost draws the last moves. A step of the print only changes the two counts.
   const lowerBound = (a, v) => { let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >> 1; if (a[m] < v) lo = m + 1; else hi = m; } return lo; };
-  const nozzle = new T.Mesh(new T.SphereGeometry(Math.max(1.2, size / 60), 18, 14), new T.MeshBasicMaterial({ color: 0xff7a1a }));
+  // The nozzle: the tip, the hex of the nozzle and the heater block, in the size of a real hot end,
+  // drawn over the part with an orange edge, so it shows also behind a wall.
+  const nozzle = new T.Group();
+  {
+    const body = new T.MeshBasicMaterial({ color: 0x2a2d33, transparent: true, opacity: 0.85, depthTest: false });
+    const edge = new T.LineBasicMaterial({ color: 0xff7a1a, depthTest: false });
+    const part = (geo, y) => {
+      const m = new T.Mesh(geo, body);
+      m.position.y = y;
+      m.renderOrder = 10;
+      const l = new T.LineSegments(new T.EdgesGeometry(geo, 20), edge);
+      l.position.y = y;
+      l.renderOrder = 11;
+      nozzle.add(m, l);
+    };
+    part(new T.ConeGeometry(2.6, 4, 6).rotateX(Math.PI), 2); // the tip, its point at y 0
+    part(new T.CylinderGeometry(4.2, 4.2, 4, 6), 6); // the hex
+    part(new T.BoxGeometry(18, 10, 14), 13); // the heater block
+    const tip = new T.Mesh(new T.SphereGeometry(0.9, 12, 8), new T.MeshBasicMaterial({ color: 0xffb070, depthTest: false }));
+    tip.renderOrder = 12;
+    nozzle.add(tip);
+  }
   nozzle.visible = false;
   scene.add(nozzle);
   const ghosts = [];
@@ -944,7 +966,7 @@ async function showGcode(box, opts) {
     printed = null;
     paint();
     update();
-    const ghostMat = new T.MeshBasicMaterial({ color: 0x9aa0aa, transparent: true, opacity: 0.1, depthWrite: false });
+    const ghostMat = new T.MeshBasicMaterial({ color: 0xd3d8e0, transparent: true, opacity: 0.2, depthWrite: false });
     for (const { mesh, idx, mats, geo } of meshes) {
       const N = idx.length;
       const g2 = new T.InstancedMesh(geo, ghostMat, N);
@@ -966,7 +988,7 @@ async function showGcode(box, opts) {
     });
     if (dot && cut > 0) {
       const o = (cut - 1) * 7;
-      nozzle.position.set(g.seg[o + 2] - bx / 2, g.seg[o + 4] + nozzle.geometry.parameters.radius * 0.6, by / 2 - g.seg[o + 3]);
+      nozzle.position.set(g.seg[o + 2] - bx / 2, g.seg[o + 4], by / 2 - g.seg[o + 3]);
       nozzle.visible = true;
     } else {
       nozzle.visible = false;
