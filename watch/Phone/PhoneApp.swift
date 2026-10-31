@@ -26,6 +26,7 @@ struct RootView: View {
     let link: WatchLink
 
     @State private var path: [String] = []
+    @State private var router = Router.shared
     /// The loading screen shows until the first reading of the decks.
     @State private var loading = true
 
@@ -81,6 +82,12 @@ struct RootView: View {
                 m.modelSize = (48, 48)
                 m.modelImageSize = (720, 480)
             }
+        }
+        // A tap on a push message opens the deck screen of its deck.
+        .onChange(of: router.deck) { _, id in
+            guard let id, fleet.model(id) != nil else { return }
+            path = [id]
+            router.deck = nil
         }
         // The watch gets each change of the list: a new deck, a name, a camera.
         .onChange(of: fleet.decks) { _, decks in link.send(decks) }
@@ -180,6 +187,7 @@ struct DeckView: View {
                 } else {
                     idle(st)
                 }
+                QueuePlate()
                 if let e = model.error ?? model.noticeNow {
                     Text(e.uppercased())
                         .font(Theme.plex(12))

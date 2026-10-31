@@ -48,6 +48,9 @@ struct LivePrint: Decodable, Equatable {
     var fromPrinter = false
     /// The printer has no print and no result: a record from the printer only.
     var idle = false
+    /// The files in the queue of the deck and their time, from the record of the printer.
+    var queue = 0
+    var queueSeconds = 0
 
     var printing: Bool { result.isEmpty && !idle }
 
@@ -85,6 +88,8 @@ struct LivePrint: Decodable, Equatable {
         self.printer = printer.name
         printerID = printer.id
         fromPrinter = true
+        queue = r.queue ?? 0
+        queueSeconds = r.queueSeconds ?? 0
     }
 
     /// The live print of a deck: a print that runs, then a print of a project (it has the picture
@@ -115,6 +120,13 @@ struct ServicePrinter: Decodable {
         var left: Int?
         var result: String?
         var updated: String?
+        var queue: Int?
+        var queueSeconds: Int?
+
+        enum CodingKeys: String, CodingKey {
+            case printing, paused, name, percent, layer, layers, left, result, updated, queue
+            case queueSeconds = "queue_seconds"
+        }
     }
     var id: String
     var name: String

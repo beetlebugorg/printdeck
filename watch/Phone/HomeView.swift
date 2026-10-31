@@ -250,6 +250,11 @@ private struct AwayCard: View {
                 .font(Theme.plex(13))
                 .foregroundStyle(p.dim)
                 if !live.idle { Playhead(value: live.percent / 100) }
+                if live.queue > 0 {
+                    Text("\(live.queue) in the queue" + (live.queueSeconds > 0 ? " · " + Format.duration(Double(live.queueSeconds)) : ""))
+                        .font(Theme.plex(13))
+                        .foregroundStyle(p.dim)
+                }
             }
             .padding(.horizontal, 4)
         }

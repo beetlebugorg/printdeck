@@ -52,4 +52,13 @@ final class FleetTests: XCTestCase {
         let back = try JSONDecoder().decode(SavedDeck.self, from: JSONEncoder().encode(d))
         XCTAssertEqual(back, d)
     }
+
+    /// The queue of a deck (GET /api/plugin/printdeck/queue).
+    func testQueueDecode() throws {
+        let json = ##"{"items":[{"id":"6972a8d74cd7","path":"cube.gcode","name":"Cube","seconds":1500,"from":"slicer","added":"2026-10-31T22:30:26.442516Z"},{"id":"b","path":"door.gcode","name":"Pod door","project":"Bittlex","material":"PLA","material_name":"Black PLA","color":"#111111","from":"build","added":"2026-10-31T22:31:00Z"}],"seconds":1500}"##
+        let q = try JSONDecoder().decode(DeckQueue.self, from: Data(json.utf8))
+        XCTAssertEqual(q.items.map(\.name), ["Cube", "Pod door"])
+        XCTAssertEqual(q.items[1].materialName, "Black PLA")
+        XCTAssertEqual(q.seconds, 1500)
+    }
 }

@@ -233,7 +233,14 @@ final class PushPairing {
     }
 }
 
-final class AppDelegate: NSObject, UIApplicationDelegate {
+/// The deck to open, from a tap on a push message.
+@MainActor @Observable
+final class Router {
+    static let shared = Router()
+    var deck: String?
+}
+
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     /// The Camera page turns with the iPhone. The other pages stay upright.
     static var landscape = false
 
@@ -244,6 +251,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
         // A paired iPhone registers at each start, so that a new device token pairs again.
         if !Store.pairings.isEmpty {
             application.registerForRemoteNotifications()
@@ -262,6 +270,18 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             Task { @MainActor in PushPairing.shared.received(code: code) }
         }
         completionHandler(.noData)
+    }
+
+    /// A tap on a push message opens its deck: the notification service extension puts the ID of
+    /// the deck in the thread of the message, "printdeck.<id>".
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+                                withCompletionHandler completionHandler: @escaping () -> Void) {
+        let thread = response.notification.request.content.threadIdentifier
+        if thread.hasPrefix("printdeck."), thread.count > 10 {
+            let id = String(thread.dropFirst(10))
+            Task { @MainActor in Router.shared.deck = id }
+        }
+        completionHandler()
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {

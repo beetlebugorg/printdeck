@@ -117,6 +117,21 @@ The routes: `GET /api/v1/projects/<id>`, `PATCH /api/v1/projects/<id>/prints/<pr
 `GET /api/v1/printers`, and `POST /api/v1/projects/<id>/photos` with the upload to its grant and
 `POST /api/v1/projects/<id>/photos/<photo>/done`.
 
+## The queue
+
+The deck screen shows the queue of the deck: the files in their order, each with its material and
+its time, and the total time. Up and Down move a file, and Remove deletes it from the queue. The app
+has no Start: only a press on the touch screen of the deck starts the next file. Away from home, a
+card shows the count of the files in the queue of its deck (owner), and a project shows its files in
+the queues.
+
+At the end of a print with files in the queue, the deck sends "Next in the queue". A tap on a push
+message opens the deck screen of its deck.
+
+The routes of the deck: `GET /api/plugin/printdeck/queue`, `POST
+/api/plugin/printdeck/queue/<id>/move` with `{"by": -1}`, and `DELETE
+/api/plugin/printdeck/queue/<id>`.
+
 ## Network
 
 The deck serves plain HTTP on the local network (`NSAllowsLocalNetworking`). The deck announces

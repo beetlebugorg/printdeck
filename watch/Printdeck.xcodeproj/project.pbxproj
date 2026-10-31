@@ -64,6 +64,7 @@
 		71037600023E3A978BA45150 /* LCDScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CA29D05ABBEBA3D309E9D9C /* LCDScreen.swift */; };
 		784DBED447A3953996577B58 /* WatchLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4F781BC71F396D5118DBEC1 /* WatchLink.swift */; };
 		78789157497AABEEA5B7A2E9 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A622D3ED72D7C6395B59AE5 /* Theme.swift */; };
+		79515D316EE6F65B52F67170 /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEB816158F839E9C71DA87D8 /* QueueView.swift */; };
 		7D1781B100F517E9BD27F30F /* LCDModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B022EC77AE6F9B9D53042D7 /* LCDModel.swift */; };
 		803DFE0F9037F2AB771472F2 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AC2BBFF7CE76D76E8134DBA /* IBMPlexMono-SemiBold.ttf */; };
 		80E4866E8E9381BD84E4FD22 /* StatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B2DE727763130438837F9CC /* StatusView.swift */; };
@@ -256,6 +257,7 @@
 		F5F06702BFE192990D619B34 /* PrintdeckComplication.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PrintdeckComplication.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F683BF97A6034681AF592CCA /* PrintdeckApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrintdeckApp.swift; sourceTree = "<group>"; };
 		FAF20419EDCAAD600A119469 /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingView.swift; sourceTree = "<group>"; };
+		FEB816158F839E9C71DA87D8 /* QueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueView.swift; sourceTree = "<group>"; };
 		FEEBF077F1F1B4F4F1ACD610 /* PrintActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrintActivity.swift; sourceTree = "<group>"; };
 		FF065E98D227459FBD8169BB /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -313,6 +315,7 @@
 				2B372C697262CCE1C86FF360 /* PhotoCamera.swift */,
 				24B8B0418A255DCC47FD7AD8 /* ProjectsView.swift */,
 				3FAD54D561DB49920D460416 /* Push.swift */,
+				FEB816158F839E9C71DA87D8 /* QueueView.swift */,
 				FF065E98D227459FBD8169BB /* SetupView.swift */,
 				2B8C219262B462085724E0BD /* Timelapse.swift */,
 				C991A83CDA1D1FF82A032EA0 /* TimelapseView.swift */,
@@ -716,6 +719,7 @@
 				AFA9CF66915D2D89D3E4DF00 /* ProjectsView.swift in Sources */,
 				4E4BDF69F3AE2C06E9F3699E /* Push.swift in Sources */,
 				39A8D7DAB0BC7F456F314E61 /* PushCrypto.swift in Sources */,
+				79515D316EE6F65B52F67170 /* QueueView.swift in Sources */,
 				8EDF72D28017E36DA643C841 /* Service.swift in Sources */,
 				8FB1DA295B111CE8E012072D /* SetupView.swift in Sources */,
 				8F9B6078A6FA28D4B4008B63 /* Store.swift in Sources */,

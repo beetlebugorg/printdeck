@@ -638,6 +638,29 @@ struct DeckClient {
         }
     }
 
+    /// The queue of the deck, or nil from a deck with no queue route.
+    func queue() async throws -> DeckQueue? {
+        do {
+            return try await get("/api/plugin/printdeck/queue")
+        } catch DeckError.http(404) {
+            return nil
+        }
+    }
+
+    /// Moves a file of the queue by places: -1 is one place nearer the front. It returns the queue.
+    func moveQueued(_ id: String, by: Int) async throws -> DeckQueue {
+        let data = try await send("/api/plugin/printdeck/queue/\(id)/move", method: "POST", body: ["by": by])
+        guard let q = try? JSONDecoder().decode(DeckQueue.self, from: data) else { throw DeckError.badReply }
+        return q
+    }
+
+    /// Removes a file from the queue. It returns the queue.
+    func removeQueued(_ id: String) async throws -> DeckQueue {
+        let data = try await send("/api/plugin/printdeck/queue/\(id)", method: "DELETE")
+        guard let q = try? JSONDecoder().decode(DeckQueue.self, from: data) else { throw DeckError.badReply }
+        return q
+    }
+
     func pause() async throws { _ = try await send("/api/job", method: "POST", body: ["command": "pause", "action": "pause"]) }
     func resume() async throws { _ = try await send("/api/job", method: "POST", body: ["command": "pause", "action": "resume"]) }
     func cancel() async throws { _ = try await send("/api/job", method: "POST", body: ["command": "cancel"]) }
@@ -664,6 +687,31 @@ extension LCDPicture {
         self.init(width: width, height: height,
                   bits: (0..<(width * height)).map { packed[$0 / 8] & (0x80 >> UInt8($0 % 8)) != 0 })
     }
+}
+
+/// The queue of a deck (queueJSON in deck/internal/octoapi/queue.go): the files in their order,
+/// and the time of all of them.
+struct DeckQueue: Decodable, Equatable {
+    struct Item: Decodable, Equatable, Identifiable {
+        var id: String
+        var name: String
+        var project: String?
+        var material: String?
+        var materialName: String?
+        /// #rrggbb, or "".
+        var color: String?
+        var seconds: Int?
+        /// "deck", "slicer" or "build".
+        var from: String?
+
+        enum CodingKeys: String, CodingKey {
+            case id, name, project, material, color, seconds, from
+            case materialName = "material_name"
+        }
+    }
+
+    var items: [Item]
+    var seconds: Int?
 }
 
 /// A G-code file on the deck.
