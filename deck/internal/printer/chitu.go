@@ -863,7 +863,7 @@ func (c *ChiTu) FilePicture(f File, _ string) image.Image {
 		img, ok := c.modelPics[f.Path]
 		c.mu.Unlock()
 		if !ok {
-			img = m.Draw(480, 360, 1<<30, resinColor)
+			img = m.Coarse().Draw(480, 360, 1<<30, resinColor)
 			c.mu.Lock()
 			if c.modelPics == nil {
 				c.modelPics = map[string]image.Image{}
@@ -880,7 +880,7 @@ func (c *ChiTu) FilePicture(f File, _ string) image.Image {
 // on the card, or the key of the print ("resin-<start>") when the deck did not know it.
 func (c *ChiTu) RecordPicture(r Record) (image.Image, bool) {
 	if m := c.model(r.File); m != nil {
-		return m.Draw(640, 480, 1<<30, resinColor), false
+		return m.Coarse().Draw(640, 480, 1<<30, resinColor), false
 	}
 	return c.picture(r.File), false
 }
@@ -907,6 +907,9 @@ func (c *ChiTu) header(name string) *chitu.Sliced {
 		}
 		if h != nil {
 			pl.light, pl.moves, _ = chitu.LayerPlan(f, h)
+			if err := chitu.ReadParams(f, h); err != nil {
+				log.Printf("chitu: %s: %v", name, err)
+			}
 		}
 		f.Close()
 	}
@@ -1158,7 +1161,7 @@ func (c *ChiTu) SharePicture(st State, _ Bed) image.Image {
 		if !st.Printing {
 			done = 1 << 30
 		}
-		preview = m.Draw(640, 400, done, resinColor)
+		preview = m.Coarse().Draw(640, 400, done, resinColor)
 	}
 	var layer image.Image
 	if st.Printing {
@@ -1429,8 +1432,8 @@ func (c *ChiTu) SetTitle(title string) {
 	c.savePrint(c.last)
 }
 
-// PartMesh returns the smooth mesh of the part of the print now (chitu.Model.SmoothMesh), for the
-// 3D view of the share page, or nil while the deck has no model.
+// PartMesh returns the cells of the part of the print now (chitu.Model.Voxels), for the 3D view of
+// the share page, or nil while the deck has no model. The page builds the smooth surface.
 func (c *ChiTu) PartMesh() []byte {
 	st := c.State()
 	name := st.File
@@ -1444,7 +1447,7 @@ func (c *ChiTu) PartMesh() []byte {
 	// The mesh compresses well: the page unpacks it (DecompressionStream "gzip").
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)
-	zw.Write(m.SmoothMesh())
+	zw.Write(m.Voxels())
 	zw.Close()
 	return buf.Bytes()
 }

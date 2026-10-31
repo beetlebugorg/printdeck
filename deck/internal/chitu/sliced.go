@@ -33,8 +33,11 @@ type Sliced struct {
 	PrintSeconds               uint32
 	previewLarge, previewSmall uint32 // the offsets of the headers of the pictures
 	Magic                      uint32
-	Mirror                     bool   // the screen shows the mirror image of the slicer (projector 1)
-	layerTable                 uint32 // the offset of the table of the layers
+	Mirror                     bool // the screen shows the mirror image of the slicer (projector 1)
+	// The print parameters (ReadParams), or zero.
+	Params               Params
+	paramsAt, paramsSize uint32 // the offset and the size of the print parameters
+	layerTable           uint32 // the offset of the table of the layers
 }
 
 // ReadSliced reads the header of the sliced file data.
@@ -52,7 +55,7 @@ func ReadSliced(data []byte) (*Sliced, error) {
 	return &Sliced{Version: u(4), BedX: f(8), BedY: f(12), BedZ: f(16), Height: f(28), LayerHeight: f(32),
 		Exposure: f(36), BottomExposure: f(40), BottomLayers: u(48), ResX: u(52), ResY: u(56),
 		previewLarge: u(60), layerTable: u(64), Layers: u(68), previewSmall: u(72), PrintSeconds: u(76),
-		Magic: u(0), Mirror: u(80) == 1}, nil
+		Magic: u(0), Mirror: u(80) == 1, paramsAt: u(84), paramsSize: u(88)}, nil
 }
 
 // Preview returns the large preview picture of the sliced file data, or the small one when large
@@ -211,4 +214,35 @@ func LayerPlan(r io.ReaderAt, h *Sliced) (light []float64, moves float64, err er
 		sum += light[i]
 	}
 	return light, max(0, float64(h.PrintSeconds)-sum) / float64(n), nil
+}
+
+// Params are the print parameters of a sliced file: the moves of the plate after each layer, the
+// time with no light, and the resin of the part.
+type Params struct {
+	BottomLiftMM, BottomLiftSpeed float64 // mm, mm/min
+	LiftMM, LiftSpeed             float64 // mm, mm/min
+	RetractSpeed                  float64 // mm/min
+	VolumeML, WeightG, Cost       float64
+	BottomLightOff, LightOff      float64 // s
+}
+
+// ReadParams reads the print parameters of the file r into h.Params. A file with no block of
+// parameters keeps zero.
+func ReadParams(r io.ReaderAt, h *Sliced) error {
+	if h.paramsAt == 0 || h.paramsSize < 40 || h.paramsSize > 4096 {
+		return nil
+	}
+	b := make([]byte, h.paramsSize)
+	if _, err := r.ReadAt(b, int64(h.paramsAt)); err != nil {
+		return err
+	}
+	f := func(off int) float64 { return float64(math.Float32frombits(binary.LittleEndian.Uint32(b[off:]))) }
+	p := Params{BottomLiftMM: f(0), BottomLiftSpeed: f(4), LiftMM: f(8), LiftSpeed: f(12), RetractSpeed: f(16),
+		VolumeML: f(20), WeightG: f(24), Cost: f(28), BottomLightOff: f(32), LightOff: f(36)}
+	// A sane block only: lift heights of 0 to 50 mm and speeds of 1 to 2000 mm/min.
+	if p.LiftMM < 0 || p.LiftMM > 50 || p.LiftSpeed < 1 || p.LiftSpeed > 2000 || p.RetractSpeed < 1 || p.RetractSpeed > 2000 {
+		return fmt.Errorf("chitu: print parameters out of range: %+v", p)
+	}
+	h.Params = p
+	return nil
 }

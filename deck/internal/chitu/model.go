@@ -7,6 +7,7 @@ import (
 	"image/color"
 	"io"
 	"math"
+	"sync"
 
 	xdraw "golang.org/x/image/draw"
 )
@@ -20,11 +21,15 @@ type Model struct {
 	layerOf []int
 	// CellMM is the width of a cell, and SliceMM the height of a slice, in mm.
 	CellMM, SliceMM float64
+
+	coarseOnce sync.Once
+	coarse     *Model
 }
 
 // modelCell is the size of a cell of the model in pixels of the screen of the printer: about
-// 0.43 mm on the Phenom.
-const modelCell = 6
+// 0.29 mm on the Phenom. The pictures of the deck come from a model with cells twice as big
+// (Coarse).
+const modelCell = 4
 
 // ReadModel reads the layers of the .cbddlp file r with the header h into a Model. It reads a
 // layer for each modelCell pixels of height.
@@ -325,4 +330,41 @@ func (m *Model) encode(faces []byte, cellMM, sliceMM float64) []byte {
 		out = binary.LittleEndian.AppendUint32(out, uint32(l))
 	}
 	return append(out, faces...)
+}
+
+// Coarse returns the model with cells twice as wide and deep, for the pictures of the deck: a
+// picture of the fine model takes too long. The model keeps it.
+func (m *Model) Coarse() *Model {
+	m.coarseOnce.Do(func() { m.coarse = m.half() })
+	return m.coarse
+}
+
+// Voxels returns the cells of the model for the 3D view of a page (part.bin, before gzip),
+// little-endian:
+//
+//	"PDV1", float32 the cell in mm (X and Y), float32 the slice in mm (Z),
+//	uint16 W, H, D, uint16 0, uint32 the first layer of each of the D slices,
+//	then the cells: a bit for each cell, in uint32 words, cell i = (z*H + y)*W + x at bit i%32 of
+//	word i/32.
+//
+// The page builds the smooth surface of the cells (the surface net of smooth.go).
+func (m *Model) Voxels() []byte {
+	out := []byte("PDV1")
+	out = binary.LittleEndian.AppendUint32(out, math.Float32bits(float32(m.CellMM)))
+	out = binary.LittleEndian.AppendUint32(out, math.Float32bits(float32(m.SliceMM)))
+	for _, v := range []int{m.W, m.H, m.D, 0} {
+		out = binary.LittleEndian.AppendUint16(out, uint16(v))
+	}
+	for _, l := range m.layerOf {
+		out = binary.LittleEndian.AppendUint32(out, uint32(l))
+	}
+	n := (m.W*m.H*m.D + 31) / 32
+	for i := 0; i < n; i++ {
+		w := m.cells[min(i/2, len(m.cells)-1)]
+		if i/2 >= len(m.cells) {
+			w = 0
+		}
+		out = binary.LittleEndian.AppendUint32(out, uint32(w>>(32*(i%2))))
+	}
+	return out
 }

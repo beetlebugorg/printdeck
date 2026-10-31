@@ -157,35 +157,134 @@ function hide() {
   }
 }
 
-// readPart reads part.bin (gzip): the smooth mesh of a resin part (see deck/internal/chitu/smooth.go).
-// It returns the geometry in mm in the frame of the node "bed" (X to the right, Y the height from
-// the plate, Z to the front), and the heights of the vertices for the colors.
-async function readPart(T, url) {
+// readCells reads part.bin (gzip, "PDV1"): the cells of a resin part, a bit each (see
+// deck/internal/chitu/model.go, Voxels).
+async function readCells(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error("part.bin: " + res.status);
   const buf = await new Response(res.body.pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
   const dv = new DataView(buf);
   const magic = String.fromCharCode(...new Uint8Array(buf, 0, 4));
-  if (magic !== "PDM2") throw new Error("part.bin: " + magic);
-  const cell = dv.getFloat32(4, true), slice = dv.getFloat32(8, true);
-  const W = dv.getUint16(12, true), H = dv.getUint16(14, true);
-  const nv = dv.getUint32(20, true), nt = dv.getUint32(24, true);
-  const pos = new Float32Array(nv * 3), height = new Float32Array(nv);
-  let o = 28;
-  for (let i = 0; i < nv; i++, o += 6) {
-    const x = dv.getUint16(o, true) / 64 - 1, y = dv.getUint16(o + 2, true) / 64 - 1, z = dv.getUint16(o + 4, true) / 64 - 1;
-    pos[i * 3] = (x + 0.5 - W / 2) * cell;
-    pos[i * 3 + 1] = (z + 0.5) * slice;
-    pos[i * 3 + 2] = (y + 0.5 - H / 2) * cell;
-    height[i] = (z + 0.5) * slice;
+  if (magic !== "PDV1") throw new Error("part.bin: " + magic);
+  const W = dv.getUint16(12, true), H = dv.getUint16(14, true), D = dv.getUint16(16, true);
+  const off = 20 + D * 4;
+  return { cell: dv.getFloat32(4, true), slice: dv.getFloat32(8, true), W, H, D,
+    bits: new Uint32Array(buf.slice(off, off + Math.ceil((W * H * D) / 32) * 4)) };
+}
+
+// surfaceNet builds the smooth surface of the cells c, with f x f cells as one in X and Y (f = 1 is
+// all the detail): the cells blurred with their 3 x 3 x 3 neighbours, a vertex in each box of 8
+// cells that the surface crosses, and a quad for each edge that it crosses. It is the surface net
+// of deck/internal/chitu/smooth.go. It returns null with more than maxVerts vertices.
+function surfaceNet(c, f, maxVerts) {
+  const W = Math.ceil(c.W / f), H = Math.ceil(c.H / f), D = c.D;
+  const on = (x, y, z) => {
+    for (let dy = 0; dy < f; dy++) for (let dx = 0; dx < f; dx++) {
+      const xx = x * f + dx, yy = y * f + dy;
+      if (xx >= c.W || yy >= c.H) continue;
+      const i = (z * c.H + yy) * c.W + xx;
+      if (c.bits[i >>> 5] & (1 << (i & 31))) return true;
+    }
+    return false;
+  };
+  const box = (z) => {
+    const out = new Uint8Array(W * H);
+    if (z < 0 || z >= D) return out;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (!on(x, y, z)) continue;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const xx = x + dx, yy = y + dy;
+        if (xx >= 0 && yy >= 0 && xx < W && yy < H) out[yy * W + xx]++;
+      }
+    }
+    return out;
+  };
+  let bPrev = box(-2), bCur = box(-1), bNext = box(0);
+  const field = () => {
+    const out = new Float32Array(W * H);
+    for (let i = 0; i < out.length; i++) out[i] = (bPrev[i] + bCur[i] + bNext[i]) / 27;
+    return out;
+  };
+  const step = (z) => { bPrev = bCur; bCur = bNext; bNext = box(z); };
+  const iso = 0.5;
+  const at = (fl, x, y) => (x < 0 || y < 0 || x >= W || y >= H ? 0 : fl[y * W + x]);
+  let verts = new Float32Array(1 << 20), nv = 0;
+  let tris = new Uint32Array(1 << 21), nt = 0;
+  const cw = W + 1, ch = H + 1;
+  let prev = new Int32Array(cw * ch).fill(-1), cur = new Int32Array(cw * ch);
+  let f0 = field();
+  step(1);
+  const E = [[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
+  const v = new Float32Array(8);
+  for (let cz = -1; cz < D; cz++) {
+    const f1 = field();
+    step(cz + 3);
+    cur.fill(-1);
+    for (let cy = -1; cy < H; cy++) for (let cx = -1; cx < W; cx++) {
+      let mask = 0;
+      for (let k = 0; k < 8; k++) {
+        v[k] = at(k & 4 ? f1 : f0, cx + (k & 1), cy + ((k >> 1) & 1));
+        if (v[k] >= iso) mask |= 1 << k;
+      }
+      if (mask === 0 || mask === 255) continue;
+      let sx = 0, sy = 0, sz = 0, n = 0;
+      for (const [a, b] of E) {
+        if (((mask >> a) & 1) === ((mask >> b) & 1)) continue;
+        const t = (iso - v[a]) / (v[b] - v[a]);
+        sx += (a & 1) + t * ((b & 1) - (a & 1));
+        sy += ((a >> 1) & 1) + t * (((b >> 1) & 1) - ((a >> 1) & 1));
+        sz += ((a >> 2) & 1) + t * (((b >> 2) & 1) - ((a >> 2) & 1));
+        n++;
+      }
+      if (nv * 3 + 3 > verts.length) { const g = new Float32Array(verts.length * 2); g.set(verts); verts = g; }
+      verts[nv * 3] = cx + sx / n; verts[nv * 3 + 1] = cy + sy / n; verts[nv * 3 + 2] = cz + sz / n;
+      const idx = nv++;
+      if (nv > maxVerts) return null;
+      const ci = (cy + 1) * cw + (cx + 1);
+      cur[ci] = idx;
+      for (let axis = 0; axis < 3; axis++) {
+        if ((mask & 1) === ((mask >> (1 << axis)) & 1)) continue;
+        let q;
+        if (axis === 0) { if (cy < 0 || cz < 0) continue; q = [cur[ci], cur[ci - cw], prev[ci - cw], prev[ci]]; }
+        else if (axis === 1) { if (cx < 0 || cz < 0) continue; q = [cur[ci], prev[ci], prev[ci - 1], cur[ci - 1]]; }
+        else { if (cx < 0 || cy < 0) continue; q = [cur[ci], cur[ci - 1], cur[ci - 1 - cw], cur[ci - cw]]; }
+        if (q[0] < 0 || q[1] < 0 || q[2] < 0 || q[3] < 0) continue;
+        if (!(mask & 1)) { const t = q[1]; q[1] = q[3]; q[3] = t; } // the quad faces out of the part
+        if (nt * 3 + 6 > tris.length) { const g = new Uint32Array(tris.length * 2); g.set(tris); tris = g; }
+        tris.set([q[0], q[1], q[2], q[0], q[2], q[3]], nt * 3);
+        nt += 2;
+      }
+    }
+    const t = prev; prev = cur; cur = t;
+    f0 = f1;
   }
-  const idx = new Uint32Array(buf, o, nt * 3);
+  return { verts: verts.subarray(0, nv * 3), tris: tris.subarray(0, nt * 3), nv, W, H, f };
+}
+
+// readPart reads part.bin and builds the geometry of the part in mm, hanging under the build plate
+// as it prints: Y down from the plate, X to the right, Z to the front. It takes as much detail as
+// the device holds.
+async function readPart(T, url) {
+  const c = await readCells(url);
+  const big = (navigator.deviceMemory || 4) >= 8 && !/Mobi/.test(navigator.userAgent);
+  const maxVerts = big ? 4000000 : 1500000;
+  let f = Math.max(1, Math.ceil(Math.sqrt((c.W * c.H * c.D) / (big ? 120e6 : 40e6))));
+  let m = null;
+  while (!(m = surfaceNet(c, f, maxVerts))) f++;
+  const cell = c.cell * f, pos = new Float32Array(m.nv * 3), height = new Float32Array(m.nv);
+  for (let i = 0; i < m.nv; i++) {
+    const x = m.verts[i * 3], y = m.verts[i * 3 + 1], z = m.verts[i * 3 + 2];
+    pos[i * 3] = (x + 0.5 - m.W / 2) * cell;
+    pos[i * 3 + 1] = -(z + 0.5) * c.slice;
+    pos[i * 3 + 2] = (y + 0.5 - m.H / 2) * cell;
+    height[i] = (z + 0.5) * c.slice;
+  }
   const g = new T.BufferGeometry();
   g.setAttribute("position", new T.BufferAttribute(pos, 3));
-  g.setIndex(new T.BufferAttribute(new Uint32Array(idx), 1));
+  g.setIndex(new T.BufferAttribute(new Uint32Array(m.tris), 1));
   g.computeVertexNormals();
-  g.setAttribute("color", new T.BufferAttribute(new Float32Array(nv * 3), 3));
-  return { g, height };
+  g.setAttribute("color", new T.BufferAttribute(new Float32Array(m.nv * 3), 3));
+  return { g, height, cellMM: cell, plateW: c.W * c.cell, plateD: c.H * c.cell };
 }
 
 // paint colors the part: the height up to done (mm) in the color of the resin, the rest gray.
@@ -222,20 +321,20 @@ async function showPart(box, opts) {
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
 
-  let printer;
-  const file = modelFile(opts.model);
-  if (file) {
-    try { printer = (await new GLTFLoader().loadAsync(file)).scene; } catch (e) { printer = null; }
-  }
-  if (!printer) printer = plain(T, "resin");
-  scene.add(printer);
+  // The build plate only, with the part under it: the case of the printer is in the way.
   const part = await readPart(T, opts.url);
   paint(T, part, opts.done || 0);
+  const plateMat = new T.MeshStandardMaterial({ color: "#b8bcc2", metalness: 0.3, roughness: 0.45 });
+  const plate = new T.Mesh(new T.BoxGeometry(part.plateW + 8, 6, part.plateD + 8), plateMat);
+  plate.position.y = 3;
+  scene.add(plate);
+  const arm = new T.Mesh(new T.BoxGeometry(60, 24, 30), plateMat);
+  arm.position.set(0, 18, -part.plateD / 2 + 10);
+  scene.add(arm);
   const mat = new T.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.38, metalness: 0, clearcoat: 0.6,
     clearcoatRoughness: 0.25, sheen: 0.2 });
   const mesh = new T.Mesh(part.g, mat);
-  const bed = printer.getObjectByName("bed") || printer;
-  bed.add(mesh);
+  scene.add(mesh);
   scene.updateMatrixWorld(true);
 
   // The camera: in front of the part, a little to the right and under it, as it hangs.

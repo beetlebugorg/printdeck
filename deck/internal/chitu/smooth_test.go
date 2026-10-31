@@ -64,14 +64,15 @@ func TestSmoothMeshFile(t *testing.T) {
 	if p == "" {
 		t.Skip()
 	}
-	m := &Model{W: 120, H: 80, D: 90, CellMM: 0.43, SliceMM: 0.45}
+	m := &Model{W: 240, H: 160, D: 180, CellMM: 0.29, SliceMM: 0.3}
 	for z := 0; z < m.D; z++ {
 		m.layerOf = append(m.layerOf, z*9+1)
 		for y := 0; y < m.H; y++ {
 			for x := 0; x < m.W; x++ {
-				box := z < 25 && x >= 20 && x < 100 && y >= 15 && y < 65
-				tower := math.Hypot(float64(x-60), float64(y-40)) < 16+4*math.Sin(float64(z)/6)
-				if box || tower {
+				box := z < 50 && x >= 40 && x < 200 && y >= 30 && y < 130
+				tower := math.Hypot(float64(x-120), float64(y-80)) < 32+8*math.Sin(float64(z)/12)
+				hole := math.Hypot(float64(x-80), float64(y-60)) < 10
+				if (box || tower) && !hole {
 					m.set(x, y, z)
 				}
 			}
@@ -79,7 +80,51 @@ func TestSmoothMeshFile(t *testing.T) {
 	}
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)
-	zw.Write(m.SmoothMesh())
+	zw.Write(m.Voxels())
 	zw.Close()
 	os.WriteFile(p, buf.Bytes(), 0o644)
+}
+
+// Each triangle of the ball faces out: its normal points away from the middle of the ball.
+func TestSmoothMeshFacesOut(t *testing.T) {
+	m := &Model{W: 30, H: 30, D: 30, CellMM: 1, SliceMM: 1}
+	for z := 0; z < m.D; z++ {
+		m.layerOf = append(m.layerOf, z+1)
+		for y := 0; y < m.H; y++ {
+			for x := 0; x < m.W; x++ {
+				if math.Hypot(math.Hypot(float64(x)-14.5, float64(y)-14.5), float64(z)-14.5) < 10 {
+					m.set(x, y, z)
+				}
+			}
+		}
+	}
+	b, _ := m.smooth(1 << 30)
+	nv, nt := int(binary.LittleEndian.Uint32(b[20:])), int(binary.LittleEndian.Uint32(b[24:]))
+	vb := b[28:]
+	tb := vb[nv*6:]
+	vert := func(i uint32) [3]float64 {
+		var p [3]float64
+		for k := range 3 {
+			p[k] = float64(binary.LittleEndian.Uint16(vb[int(i)*6+k*2:]))/64 - 1
+		}
+		return p
+	}
+	var in [3]int // the triangles that face in, by the main axis of their normal
+	for i := 0; i < nt; i++ {
+		a, bb, c := vert(binary.LittleEndian.Uint32(tb[i*12:])), vert(binary.LittleEndian.Uint32(tb[i*12+4:])), vert(binary.LittleEndian.Uint32(tb[i*12+8:]))
+		u := [3]float64{bb[0] - a[0], bb[1] - a[1], bb[2] - a[2]}
+		v := [3]float64{c[0] - a[0], c[1] - a[1], c[2] - a[2]}
+		n := [3]float64{u[1]*v[2] - u[2]*v[1], u[2]*v[0] - u[0]*v[2], u[0]*v[1] - u[1]*v[0]}
+		mid := [3]float64{(a[0]+bb[0]+c[0])/3 - 14, (a[1]+bb[1]+c[1])/3 - 14, (a[2]+bb[2]+c[2])/3 - 14}
+		axis := 0
+		for k := 1; k < 3; k++ {
+			if math.Abs(n[k]) > math.Abs(n[axis]) {
+				axis = k
+			}
+		}
+		if n[0]*mid[0]+n[1]*mid[1]+n[2]*mid[2] < 0 {
+			in[axis]++
+		}
+	}
+	t.Logf("triangles %d, facing in by axis %v", nt, in)
 }
