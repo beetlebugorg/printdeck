@@ -169,7 +169,9 @@ type ProjectPrint struct {
 	// Ready is the time of the mark Ready to pick up, or zero, and ReadyNote its note.
 	Ready     time.Time `json:"ready,omitzero"`
 	ReadyNote string    `json:"ready_note,omitempty"`
-	File      string    `json:"file,omitempty"`
+	// Test is the time when the owner marked the print as a test print, or zero.
+	Test time.Time `json:"test,omitzero"`
+	File string    `json:"file,omitempty"`
 	Result    string    `json:"result"` // "complete", "cancelled" or "error"
 	Ended     time.Time `json:"ended"`
 	Seconds   int       `json:"seconds"`
@@ -226,6 +228,7 @@ type PrintEdit struct {
 	Notes     *string `json:"notes,omitempty"`
 	Delivered *bool   `json:"delivered,omitempty"`
 	Ready     *bool   `json:"ready,omitempty"` // Ready to pick up, before Delivered
+	Test      *bool   `json:"test,omitempty"`  // a test print: to try a setting or a fit, and not to give
 	Source    *string `json:"source,omitempty"`
 }
 

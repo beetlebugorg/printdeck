@@ -102,6 +102,17 @@ func TestPrintEdit(t *testing.T) {
 		t.Fatalf("still ready: %+v", p)
 	}
 
+	// A test print: the owner only, and it clears again.
+	if st := call(t, base, "PATCH", path, sam, cloud.PrintEdit{Test: &yes}, nil); st != 401 {
+		t.Errorf("member test: %d", st)
+	}
+	if st := call(t, base, "PATCH", path, tok, cloud.PrintEdit{Test: &yes}, nil); st != 200 {
+		t.Fatal(st)
+	}
+	if p := print(tok); p.Test.IsZero() {
+		t.Fatalf("not a test print: %+v", p)
+	}
+
 	// The notes of the project.
 	if st := call(t, base, "PATCH", "/api/v1/projects/"+sum.ID+"/notes", sam, cloud.NotesEdit{Notes: "Paint: matte black"}, nil); st != 200 {
 		t.Fatalf("project notes: %d", st)

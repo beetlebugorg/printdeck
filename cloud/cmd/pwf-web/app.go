@@ -585,6 +585,7 @@ func (a *app) drawPrint(p wire.ProjectPrint) {
 	}
 	byID("prDeliver").Call("setAttribute", "aria-pressed", strconv.FormatBool(!p.Delivered.IsZero()))
 	byID("prReady").Call("setAttribute", "aria-pressed", strconv.FormatBool(!p.Ready.IsZero()))
+	byID("prTest").Call("setAttribute", "aria-pressed", strconv.FormatBool(!p.Test.IsZero()))
 	for _, f := range []string{"prRenameForm", "prNotesForm", "prSourceForm"} {
 		setHidden(f, true)
 	}
@@ -656,6 +657,10 @@ func (a *app) bindEdits() {
 	onSubmit("prRenameForm", func() {
 		t := strings.TrimSpace(byID("prRenameInput").Get("value").String())
 		go a.editPrint(wire.PrintEdit{Title: &t}, "prCopyMsg")
+	})
+	on("prTest", "click", func() {
+		x := a.printNow().Test.IsZero()
+		go a.editPrint(wire.PrintEdit{Test: &x}, "prCopyMsg")
 	})
 	on("prReady", "click", func() {
 		r := a.printNow().Ready.IsZero()

@@ -143,6 +143,8 @@ type pageFields struct {
 	// ReadyNote its note.
 	Ready     time.Time `json:"ready,omitzero"`
 	ReadyNote string    `json:"ready_note,omitempty"`
+	// Test is the time of the mark Test print, or zero.
+	Test time.Time `json:"test,omitzero"`
 }
 
 // PhotoRecord is x/<id>/photos/<photo>.json.
@@ -727,7 +729,7 @@ func projectPrint(pr PrintRecord) cloud.ProjectPrint {
 	}
 	return cloud.ProjectPrint{ID: pr.ID, N: pr.N, PrinterID: pr.PrinterID, Name: name, DeckName: deck,
 		Notes: pr.Notes, NotesBy: pr.NotesBy, NotesAt: pr.NotesAt, Delivered: pr.Delivered, Source: pr.Source,
-		Ready: pr.Ready, ReadyNote: pr.ReadyNote, File: pr.File, Result: pr.Result, Ended: pr.Ended, Seconds: pr.Seconds,
+		Ready: pr.Ready, ReadyNote: pr.ReadyNote, Test: pr.Test, File: pr.File, Result: pr.Result, Ended: pr.Ended, Seconds: pr.Seconds,
 		Material: pr.Material, Grams: pr.Grams, Roll: pr.Roll, Printer: pr.Printer, Note: pr.Note, Frames: pr.Frames, FPS: pr.FPS,
 		Started: pr.Started, Layers: pr.Layers, Layer: pr.Layer, Height: pr.Height, GramsTotal: pr.GramsTotal,
 		Estimate: pr.Estimate, Prep: pr.Prep, Slicer: pr.Slicer, Filament: pr.Filament}
@@ -962,7 +964,7 @@ func (s *Server) editPrint(ctx context.Context, id, pid string, w *who, in cloud
 	if w.deck != nil {
 		return fail(http.StatusUnauthorized, "only a person edits a print")
 	}
-	if (in.Title != nil || in.Delivered != nil || in.Ready != nil || in.Source != nil) && !w.owner {
+	if (in.Title != nil || in.Delivered != nil || in.Ready != nil || in.Test != nil || in.Source != nil) && !w.owner {
 		return fail(http.StatusUnauthorized, "only the owner can do this")
 	}
 	pr, err := s.loadPrint(ctx, id, pid)
@@ -984,6 +986,14 @@ func (s *Server) editPrint(ctx context.Context, id, pid string, w *who, in cloud
 			pr.Delivered = time.Time{}
 		case pr.Delivered.IsZero():
 			pr.Delivered = s.now().UTC()
+		}
+	}
+	if in.Test != nil {
+		switch {
+		case !*in.Test:
+			pr.Test = time.Time{}
+		case pr.Test.IsZero():
+			pr.Test = s.now().UTC()
 		}
 	}
 	if in.Ready != nil {
