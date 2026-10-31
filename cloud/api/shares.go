@@ -24,8 +24,9 @@ import (
 // ShareTTL is how long a share stays after the end of its print.
 const ShareTTL = 24 * time.Hour
 
-// MaxShareFile is the largest file of a share: a camera frame or a time lapse frame.
-const MaxShareFile = 4 << 20
+// MaxShareFile is the largest file of a share: a camera frame, a time lapse frame, or the cells of
+// a resin part for its 3D view (part.bin, about 4 MB for a full plate).
+const MaxShareFile = 16 << 20
 
 // GrantTTL is how long a grant works.
 const GrantTTL = time.Hour

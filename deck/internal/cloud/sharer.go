@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"sync"
@@ -64,18 +65,22 @@ type share struct {
 	lapseN  int      // the time lapse frames that are up
 	frame   int
 	seqs    map[string]uint64
-	plan    int       // the layers of plan.json, or 0 before its upload
-	part    int       // the version of part.bin that is up (PartVersion), or 0
-	model   int       // the count of uploads of model.jpg
-	modelV  uint64    // the version of the last model.jpg
-	modelAt time.Time // the time of the last model.jpg
-	ended   bool
-	expires time.Time
-	err     string
-	busy    bool
-	stop    context.CancelFunc
-	wake    chan struct{}
-	done    chan struct{} // closed when the uploads of the share end
+	plan    int // the layers of plan.json, or 0 before its upload
+	part    int // the version of part.bin that is up (PartVersion), or 0
+	// partBytes is part.bin while it waits to go up, and partFailed the time of its last failed
+	// upload.
+	partBytes  []byte
+	partFailed time.Time
+	model      int       // the count of uploads of model.jpg
+	modelV     uint64    // the version of the last model.jpg
+	modelAt    time.Time // the time of the last model.jpg
+	ended      bool
+	expires    time.Time
+	err        string
+	busy       bool
+	stop       context.CancelFunc
+	wake       chan struct{}
+	done       chan struct{} // closed when the uploads of the share end
 }
 
 // ShareState is the state of the share link, for the screens.
@@ -407,12 +412,19 @@ func (s *Sharer) step(ctx context.Context, id *Identity, c *share) (bool, error)
 		}
 	}
 	st.Plan = c.plan
-	if s.Part != nil && c.part != PartVersion {
-		if b := s.Part(); len(b) > 0 {
+	if s.Part != nil && c.part != PartVersion && time.Since(c.partFailed) >= partRetry {
+		if c.partBytes == nil {
+			c.partBytes = s.Part()
+		}
+		if b := c.partBytes; len(b) > 0 {
+			// A part.bin that does not go up does not stop the share: the deck tries again after
+			// partRetry, with a new grant of the service when the old one ended.
 			if err := s.upload(ctx, id, c, "part.bin", "application/octet-stream", "public, max-age=31536000, immutable", b); err != nil {
-				return false, err
+				log.Printf("share: part.bin (%d KB): %v", len(b)/1000, err)
+				c.partFailed = time.Now()
+			} else {
+				c.part, c.partBytes = PartVersion, nil
 			}
-			c.part = PartVersion
 		}
 	}
 	st.Part = c.part
@@ -507,6 +519,9 @@ func PostFile(ctx context.Context, hc *http.Client, g Grant, name, ctype, cache 
 	}
 	return nil
 }
+
+// partRetry is the time after a failed upload of part.bin before the next try.
+const partRetry = 10 * time.Minute
 
 // PartVersion is the version of part.bin: 1 was a mesh, 2 the full cells ("PDV1"), and 3 is the
 // share of resin in each cell ("PDC1").
