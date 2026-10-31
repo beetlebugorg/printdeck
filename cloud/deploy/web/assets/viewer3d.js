@@ -775,8 +775,20 @@ async function showGcode(box, opts) {
   }
   const mid = new T.Vector3((minx + maxx) / 2 - bx / 2, maxz / 2, by / 2 - (miny + maxy) / 2);
   const size = Math.max(30, maxx - minx, maxy - miny, maxz);
-  const far = opts.compact ? 0.8 : 1; // the view of a print page is closer
-  camera.position.set(mid.x + size * 0.6 * far, mid.y + size * 0.9 * far, mid.z + size * 1.5 * far);
+  camera.position.set(mid.x + size * 0.6, mid.y + size * 0.9, mid.z + size * 1.5);
+  // The view of a print page fits the whole part in the view, at each size of the view, until
+  // the person turns it.
+  const radius = 0.5 * Math.hypot(maxx - minx, maxy - miny, maxz);
+  const dir = new T.Vector3(0.6, 0.9, 1.5).normalize();
+  let turned = false;
+  orbit.addEventListener("start", () => { turned = true; });
+  const framePart = () => {
+    if (!opts.compact || turned) return;
+    const vf = (camera.fov * Math.PI) / 180;
+    const hf = 2 * Math.atan(Math.tan(vf / 2) * camera.aspect);
+    const d = (radius / Math.sin(Math.min(vf, hf) / 2)) * 1.08;
+    camera.position.copy(mid).addScaledVector(dir, d);
+  };
   orbit.target.copy(mid);
   orbit.maxDistance = Math.max(bx, by) * 4;
 
@@ -895,6 +907,7 @@ async function showGcode(box, opts) {
     renderer.setSize(w, h, false);
     camera.aspect = w / Math.max(1, h);
     camera.updateProjectionMatrix();
+    framePart();
     redraw = true;
   };
   const resize = new ResizeObserver(fit);
