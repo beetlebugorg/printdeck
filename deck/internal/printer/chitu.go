@@ -642,29 +642,38 @@ func (c *ChiTu) Hold(on bool) {
 // UploadDir, and sends it to the card of the board. It keeps the last chituUploadsKept copies.
 // The panel shows the progress.
 func (c *ChiTu) SaveUpload(name, path string) {
+	dst, err := c.AddFile(name, path)
+	if err != nil {
+		log.Printf("chitu: %v", err)
+		return
+	}
+	if err := c.SendFile(dst); err != nil {
+		log.Printf("chitu: the upload of %s: %v", filepath.Base(dst), err)
+	}
+}
+
+// AddFile moves the file at path into the copies of the deck (UploadDir) as name, and returns
+// its new path. The deck then sends it to the board with SendFile. A bad name removes the file.
+func (c *ChiTu) AddFile(name, path string) (string, error) {
 	name = filepath.Base(name)
 	if c.UploadDir == "" || name == "." || name == "/" || strings.HasPrefix(name, ".") {
 		os.Remove(path)
-		return
+		return "", fmt.Errorf("bad file name %q", name)
 	}
 	if err := os.MkdirAll(c.UploadDir, 0o755); err != nil {
-		log.Printf("chitu: %v", err)
 		os.Remove(path)
-		return
+		return "", err
 	}
 	dst := filepath.Join(c.UploadDir, name)
 	if err := os.Rename(path, dst); err != nil {
-		log.Printf("chitu: %v", err)
 		os.Remove(path)
-		return
+		return "", err
 	}
 	c.mu.Lock()
 	delete(c.pics, name)
 	c.mu.Unlock()
 	pruneUploads(c.UploadDir, chituUploadsKept)
-	if err := c.SendFile(dst); err != nil {
-		log.Printf("chitu: the upload of %s: %v", name, err)
-	}
+	return dst, nil
 }
 
 // SendFile sends the file at path to the card of the board, one packet at a time

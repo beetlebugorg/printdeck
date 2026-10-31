@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"printdeck/internal/cloud"
+	"printdeck/internal/printer"
 	"printdeck/internal/ui"
 )
 
@@ -23,7 +24,7 @@ const maxPlateFile = 400 << 20
 // queue: each minute it reads them, downloads each file into the folder of the G-code files
 // (builds/), checks its size and its SHA-256, adds it to the queue, and tells the service. The
 // queue never starts a print.
-func (p *projectLink) watchPlates(ctx context.Context, app *ui.App, gcodeDir string) {
+func (p *projectLink) watchPlates(ctx context.Context, app *ui.App, place func(context.Context, cloud.SentPlate) (string, error)) {
 	tick := time.NewTicker(time.Minute)
 	defer tick.Stop()
 	for {
@@ -43,7 +44,7 @@ func (p *projectLink) watchPlates(ctx context.Context, app *ui.App, gcodeDir str
 			continue
 		}
 		for _, pl := range plates {
-			path, err := downloadPlate(ctx, gcodeDir, pl)
+			path, err := place(ctx, pl)
 			if err != nil {
 				log.Printf("plates: %s of %s: %v", pl.File, pl.ProjectName, err)
 				continue
@@ -63,35 +64,81 @@ func (p *projectLink) watchPlates(ctx context.Context, app *ui.App, gcodeDir str
 	}
 }
 
-// downloadPlate saves the file of the plate as builds/<build>-plate-<n>.gcode in the folder of the
-// G-code files, and returns its path in the store. The size and the SHA-256 must match.
-func downloadPlate(ctx context.Context, dir string, pl cloud.SentPlate) (string, error) {
-	rel := fmt.Sprintf("builds/%s-plate-%d%s", pl.Build, pl.Plate+1, filepath.Ext(pl.File))
-	if filepath.Ext(pl.File) == "" {
-		rel += ".gcode"
+// plateName is the name of the file of a plate on the deck: <build>-plate-<n> with the extension
+// of the file.
+func plateName(pl cloud.SentPlate) string {
+	ext := filepath.Ext(pl.File)
+	if ext == "" {
+		ext = ".gcode"
 	}
-	dst := filepath.Join(dir, filepath.FromSlash(rel))
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return "", err
+	return fmt.Sprintf("%s-plate-%d%s", pl.Build, pl.Plate+1, ext)
+}
+
+// gcodePlate saves the file of an FDM plate as builds/<name> in the folder of the G-code files,
+// and returns its path in the store.
+func gcodePlate(dir string) func(context.Context, cloud.SentPlate) (string, error) {
+	return func(ctx context.Context, pl cloud.SentPlate) (string, error) {
+		rel := "builds/" + plateName(pl)
+		dst := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			return "", err
+		}
+		if err := downloadTo(ctx, dst, pl); err != nil {
+			return "", err
+		}
+		return rel, nil
 	}
+}
+
+// resinPlate saves the file of a resin plate (a .cbddlp of ChiTuBox) in the copies of the deck,
+// and sends it to the board in the background: after the print, when the board prints. The
+// queue gets the name on the board. It never starts a print: a press on the deck does.
+func resinPlate(c *printer.ChiTu) func(context.Context, cloud.SentPlate) (string, error) {
+	return func(ctx context.Context, pl cloud.SentPlate) (string, error) {
+		name := plateName(pl)
+		if c.UploadDir == "" {
+			return "", fmt.Errorf("the deck has no folder for resin files")
+		}
+		if err := os.MkdirAll(c.UploadDir, 0o755); err != nil {
+			return "", err
+		}
+		tmp := filepath.Join(c.UploadDir, ".plate-"+name)
+		if err := downloadTo(ctx, tmp, pl); err != nil {
+			return "", err
+		}
+		dst, err := c.AddFile(name, tmp)
+		if err != nil {
+			return "", err
+		}
+		go func() {
+			if err := c.SendFile(dst); err != nil {
+				log.Printf("plates: %s to the printer: %v", name, err)
+			}
+		}()
+		return name, nil
+	}
+}
+
+// downloadTo saves the file of the plate at dst. The size and the SHA-256 must match the build.
+func downloadTo(ctx context.Context, dst string, pl cloud.SentPlate) error {
 	rctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 	req, err := http.NewRequestWithContext(rctx, http.MethodGet, pl.URL, nil)
 	if err != nil {
-		return "", err
+		return err
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("the download: %s", resp.Status)
+		return fmt.Errorf("the download: %s", resp.Status)
 	}
 	tmp := dst + ".part"
 	f, err := os.Create(tmp)
 	if err != nil {
-		return "", err
+		return err
 	}
 	h := sha256.New()
 	n, err := io.Copy(io.MultiWriter(f, h), io.LimitReader(resp.Body, maxPlateFile+1))
@@ -109,7 +156,7 @@ func downloadPlate(ctx context.Context, dir string, pl cloud.SentPlate) (string,
 	}
 	if err != nil {
 		os.Remove(tmp)
-		return "", err
+		return err
 	}
-	return rel, os.Rename(tmp, dst)
+	return os.Rename(tmp, dst)
 }

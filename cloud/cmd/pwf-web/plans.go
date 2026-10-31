@@ -1116,17 +1116,16 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 			switch {
 			case !pl.TakenAt.IsZero():
 				line += " In the queue of the " + pl.SentTo + " since " + localWhen(pl.TakenAt) + ". A press on the deck starts it."
+			case pl.SentTo != "" && pl.Process == "resin":
+				line += " Sent to the " + pl.SentTo + ": its deck puts it in its queue within a minute, and sends the file to the printer when no print runs."
 			case pl.SentTo != "":
 				line += " Sent to the " + pl.SentTo + ": its deck puts it in its queue within a minute."
-			case pl.Process == "fdm":
-				line += " Send it to the queue of a printer."
 			default:
-				line += " Print the file from the deck of the printer."
+				line += " Send it to the queue of a printer."
 			}
 			card.Call("appendChild", el("p", "small dim", line))
-			// The keys Send to: the printers of the process of the plate. A resin plate waits for
-			// a later version of the deck.
-			if v.IsOwner && pl.File != "" && pl.TakenAt.IsZero() && pl.Process == "fdm" {
+			// The keys Send to: the printers of the process of the plate.
+			if v.IsOwner && pl.File != "" && pl.TakenAt.IsZero() {
 				keys := el("div", "row-keys", "")
 				msg := el("p", "msg", "")
 				for _, pr := range ownerPrinters {
