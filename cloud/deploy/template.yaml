@@ -42,11 +42,24 @@ Parameters:
     Type: Number
     Default: 5
     Description: The cost of the account in a month, in US dollars, for the alarm of the budget.
+  FilesPublicKey:
+    Type: String
+    Default: ""
+    Description: >-
+      The public key (PEM) of the signed cookies of the files of the projects, or "" for signed S3
+      links. pwf deploy makes the key pair, and keeps the private key in FilesKeySecretArn.
+  FilesKeySecretArn:
+    Type: String
+    Default: ""
+    Description: The secret with the private key (PEM) of the signed cookies of the files.
 
 Conditions:
   HasConcurrency: !Not [!Equals [!Ref Concurrency, 0]]
   HasBudget: !Not [!Equals [!Ref AlertEmail, ""]]
   HasRelay: !Not [!Equals [!Ref RelaySecretArn, ""]]
+  HasFilesKey: !And
+    - !Not [!Equals [!Ref FilesPublicKey, ""]]
+    - !Not [!Equals [!Ref FilesKeySecretArn, ""]]
 
 Resources:
   # The data of the service. Nothing in it is public: CloudFront reads the public prefixes with
@@ -134,6 +147,8 @@ Resources:
               - !Sub "${DataBucket.Arn}/.well-known/*"
               - !Sub "${DataBucket.Arn}/s/*"
               - !Sub "${DataBucket.Arn}/p/*"
+              # The files of the projects, only behind the behavior /x/* with signed cookies.
+              - !If [HasFilesKey, !Sub "${DataBucket.Arn}/x/*", !Ref "AWS::NoValue"]
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
@@ -190,6 +205,25 @@ Resources:
           return r;
         }
 
+  # The key of the signed cookies of the files of the projects: the API signs a cookie for each
+  # project that a person may see, and CloudFront checks it at each request of /x/<project>/.
+  FilesKey:
+    Type: AWS::CloudFront::PublicKey
+    Condition: HasFilesKey
+    Properties:
+      PublicKeyConfig:
+        CallerReference: !Sub "${AWS::StackName}-files"
+        Name: !Sub "${AWS::StackName}-files"
+        EncodedKey: !Ref FilesPublicKey
+
+  FilesKeyGroup:
+    Type: AWS::CloudFront::KeyGroup
+    Condition: HasFilesKey
+    Properties:
+      KeyGroupConfig:
+        Name: !Sub "${AWS::StackName}-files"
+        Items: [!Ref FilesKey]
+
   Distribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -231,6 +265,17 @@ Resources:
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
             ResponseHeadersPolicyId: !Ref Headers
+          # The files of the projects: only with a signed cookie of the project, cached at the edge.
+          - !If
+            - HasFilesKey
+            - PathPattern: /x/*
+              TargetOriginId: data
+              ViewerProtocolPolicy: https-only
+              Compress: true
+              CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+              ResponseHeadersPolicyId: !Ref Headers
+              TrustedKeyGroups: [!Ref FilesKeyGroup]
+            - !Ref "AWS::NoValue"
         # These statuses come only from S3: the API never replies 403 or 404.
         CustomErrorResponses:
           - { ErrorCode: 403, ResponseCode: 404, ResponsePagePath: /404.html, ErrorCachingMinTTL: 10 }
@@ -280,6 +325,12 @@ Resources:
                   Action: secretsmanager:GetSecretValue
                   Resource: !Ref RelaySecretArn
                 - !Ref "AWS::NoValue"
+              - !If
+                - HasFilesKey
+                - Effect: Allow
+                  Action: secretsmanager:GetSecretValue
+                  Resource: !Ref FilesKeySecretArn
+                - !Ref "AWS::NoValue"
 
   Logs:
     Type: AWS::Logs::LogGroup
@@ -308,6 +359,8 @@ Resources:
           DOMAIN: !Ref Domain
           RELAY_SECRET_ARN: !Ref RelaySecretArn
           TOPIC: !Ref BundleId
+          FILES_KEY_SECRET: !If [HasFilesKey, !Ref FilesKeySecretArn, ""]
+          FILES_KEY_ID: !If [HasFilesKey, !Ref FilesKey, ""]
 
   # The URL has no AWS auth: the API checks the signature of each deck request.
   Url:

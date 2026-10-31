@@ -38,6 +38,19 @@ func main() {
 	bucket := os.Getenv("BUCKET")
 	s := &api.Server{Store: &api.S3Store{Client: client, Bucket: bucket}, Grants: &api.S3Granter{Client: client, Bucket: bucket},
 		Domain: os.Getenv("DOMAIN")}
+	// The signed cookies of the files of the projects (filecookie.go), when the stack has the key.
+	if arn, id := os.Getenv("FILES_KEY_SECRET"), os.Getenv("FILES_KEY_ID"); arn != "" && id != "" {
+		out, err := secretsmanager.NewFromConfig(cfg).GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{SecretId: &arn})
+		if err != nil {
+			log.Fatal("pwf-api: the key of the files did not read")
+		}
+		key, err := api.ParseFileKey(*out.SecretString)
+		if err != nil {
+			log.Fatalf("pwf-api: the key of the files: %v", err)
+		}
+		s.Files = &api.FileSigner{Domain: s.Domain, KeyID: id, Key: key}
+		s.Grants.(*api.S3Granter).Paths = true
+	}
 	// The push relay of the iPhone app, with the secret of the relay: its APNs key and the key
 	// of its send tokens.
 	if arn := os.Getenv("RELAY_SECRET_ARN"); arn != "" {

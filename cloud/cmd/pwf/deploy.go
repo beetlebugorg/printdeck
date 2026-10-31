@@ -4,9 +4,13 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
@@ -22,6 +26,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	smtypes "github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"printdeck/cloud/api"
@@ -73,6 +79,12 @@ func runDeploy(ctx context.Context, cfg aws.Config, opt deployOptions) error {
 		params["RelaySecretArn"], params["BundleId"] = arn, bundle
 		fmt.Println("The push relay uses the secret of the stack printdeck-relay")
 	}
+	// The key of the signed cookies of the files of the projects (api/filecookie.go).
+	arn, pub, err := filesKey(ctx, cfg, opt.Stack)
+	if err != nil {
+		return err
+	}
+	params["FilesKeySecretArn"], params["FilesPublicKey"] = arn, pub
 	fmt.Println("Deploying the stack " + opt.Stack + ". The first deploy takes 5 to 30 minutes: CloudFront and the certificate.")
 	if err := deployStack(ctx, cfg, opt.Stack, params); err != nil {
 		return err
@@ -333,4 +345,41 @@ func relayStack(ctx context.Context, cfg aws.Config) (arn, bundle string, ok boo
 		}
 	}
 	return arn, bundle, arn != "" && bundle != ""
+}
+
+// filesKey returns the secret with the private key of the signed cookies of the files of the
+// projects, and the public key in PEM, for CloudFront. The first deploy makes the key pair; the
+// private key never leaves Secrets Manager and the function.
+func filesKey(ctx context.Context, cfg aws.Config, stack string) (arn, pub string, err error) {
+	sm := secretsmanager.NewFromConfig(cfg)
+	name := stack + "-files-key"
+	var key *rsa.PrivateKey
+	out, err := sm.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{SecretId: &name})
+	var nf *smtypes.ResourceNotFoundException
+	switch {
+	case err == nil:
+		arn = aws.ToString(out.ARN)
+		if key, err = api.ParseFileKey(aws.ToString(out.SecretString)); err != nil {
+			return "", "", fmt.Errorf("the secret %s: %w", name, err)
+		}
+	case errors.As(err, &nf):
+		if key, err = rsa.GenerateKey(rand.Reader, 2048); err != nil {
+			return "", "", err
+		}
+		text := string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)}))
+		c, err := sm.CreateSecret(ctx, &secretsmanager.CreateSecretInput{Name: &name, SecretString: &text,
+			Description: aws.String("The private key of the signed cookies of the files of the projects of " + stack)})
+		if err != nil {
+			return "", "", fmt.Errorf("make the secret %s: %w", name, err)
+		}
+		arn = aws.ToString(c.ARN)
+		fmt.Println("Made the key of the signed cookies of the files in the secret " + name)
+	default:
+		return "", "", fmt.Errorf("read the secret %s: %w", name, err)
+	}
+	der, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	if err != nil {
+		return "", "", err
+	}
+	return arn, string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der})), nil
 }

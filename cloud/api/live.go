@@ -213,8 +213,16 @@ func (s *Server) liveView(ctx context.Context, p *Project, prints []PrintRecord)
 		out = append(out, l)
 		decks = append(decks, rec.Deck)
 	}
+	// The decks whose live tiles name their share: their other open shares are old, from before a
+	// restart of the deck, and show no tile.
+	named := map[string]bool{}
+	for i, d := range decks {
+		if i < len(out) && out[i].URL != "" {
+			named[d] = true
+		}
+	}
 	for _, l := range s.liveShares(ctx, p) {
-		if shown[l.id] {
+		if shown[l.id] || named[l.deck] {
 			continue
 		}
 		// A share of a print that has a live tile from the same deck: the deck lost the share at a

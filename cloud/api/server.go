@@ -35,6 +35,9 @@ type Server struct {
 	// links instead, for pwf dev, or "".
 	Domain string
 	Base   string
+	// Files signs the cookies of the files of the projects behind CloudFront (filecookie.go), or
+	// is nil for signed S3 links.
+	Files *FileSigner
 	// Relay is the push relay of the iPhone app at /api/v1/relay/, or nil.
 	Relay *relay.Relay
 	// Now is the clock, or nil for time.Now.
@@ -72,7 +75,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		reply(w, http.StatusRequestEntityTooLarge, cloud.ErrorReply{Error: "the body is too large"})
 		return
 	}
-	out, err := s.route(r.Context(), r, body)
+	ctx, jar := withFileJar(r.Context())
+	out, err := s.route(ctx, r, body)
 	var rr *relayReply
 	if errors.As(err, &rr) {
 		w.Header().Set("Content-Type", "application/json")
@@ -90,6 +94,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		reply(w, e.Status, cloud.ErrorReply{Error: e.Msg})
 		return
 	}
+	s.setFileCookies(w, jar)
 	if out == nil {
 		w.WriteHeader(http.StatusNoContent)
 		return

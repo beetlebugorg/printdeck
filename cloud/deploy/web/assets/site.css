@@ -21,7 +21,10 @@ body {
   padding: 24px 16px 40px;
 }
 a { color: var(--link); }
-.wrap { max-width: 640px; margin: 0 auto; display: grid; gap: 18px; }
+/* One width for all the pages; the short forms (sign in, the owner passkey, an invite) are
+   narrower, so their fields stay short. */
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 18px; }
+.wrap:has(#vSignIn:not([hidden])), .wrap:has(#vOwner:not([hidden])), .wrap:has(#vJoin:not([hidden])) { max-width: 640px; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; }
 .brand i { width: 22px; height: 22px; border-radius: 6px; background: var(--orange); display: inline-grid; place-items: center; }
 .brand i::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--on-orange); }

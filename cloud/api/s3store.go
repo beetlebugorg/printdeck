@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 	"time"
 
 	"printdeck/internal/cloud"
@@ -77,6 +78,12 @@ func (b *S3Store) Copy(ctx context.Context, src, dst string, opt PutOptions) err
 // FileURL returns an address of the file at key that works for ttl, with no other auth: for the
 // private files of a project.
 func (g *S3Granter) FileURL(ctx context.Context, key string, ttl time.Duration) (string, error) {
+	// A file of a project behind CloudFront: its path on the domain, with the signed cookies of
+	// its project on the reply (filecookie.go).
+	if g.Paths && strings.HasPrefix(key, "x/") {
+		noteFile(ctx, key)
+		return "/" + key, nil
+	}
 	out, err := s3.NewPresignClient(g.Client).PresignGetObject(ctx, &s3.GetObjectInput{Bucket: &g.Bucket, Key: &key},
 		s3.WithPresignExpires(ttl))
 	if err != nil {
@@ -131,6 +138,9 @@ func s3Error(err error) error {
 type S3Granter struct {
 	Client *s3.Client
 	Bucket string
+	// Paths gives the files of the projects as their paths on the domain, behind CloudFront with
+	// signed cookies (Server.Files), in place of signed S3 links.
+	Paths bool
 }
 
 // Grant returns a grant for the keys under prefix.

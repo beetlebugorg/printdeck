@@ -3,7 +3,7 @@
 :root { --live: #1f9d55; --lcd-cell: #2a211a; --digits: "Share Tech Mono", "IBM Plex Mono", ui-monospace, monospace; }
 @media (prefers-color-scheme: dark) { :root { --live: #3ccf7a; --lcd-cell: #1a120c; } }
 body { padding-block: 20px 40px; }
-.wrap { max-width: 760px; gap: 14px; }
+.wrap { gap: 14px; }
 header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .pill { display: inline-flex; align-items: center; gap: 8px; font: 600 12px/1 "Archivo", sans-serif; letter-spacing: .1em; text-transform: uppercase; padding: 8px 12px; border-radius: 999px; background: var(--cap); border: 1px solid var(--seam); }
 .pill b { width: 8px; height: 8px; border-radius: 50%; background: var(--live); animation: pulse 2s infinite; }
