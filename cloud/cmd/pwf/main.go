@@ -47,6 +47,11 @@ func main() {
 		fs.IntVar(&opt.Concurrency, "concurrency", 0, "the most instances of the function, or 0 for no limit")
 		fs.StringVar(&opt.Src, "src", "", "the folder of the cloud module (default: found from the current folder)")
 	}
+	var appID, appKey *string
+	if cmd == "github-app" {
+		appID = fs.String("id", "", "the App ID of the GitHub App (its settings page shows it)")
+		appKey = fs.String("key", "", "the private key of the App: the .pem file from GitHub")
+	}
 	ctx := context.Background()
 	if cmd == "dev" {
 		if err := runDev(ctx, args); err != nil {
@@ -70,7 +75,7 @@ func main() {
 	case "decks":
 		err = decks(ctx, cfg, *stack, fs.Args())
 	case "github-app":
-		err = runGitHubApp(ctx, cfg, *stack, fs.Args())
+		err = runGitHubApp(ctx, cfg, *stack, *appID, *appKey)
 	default:
 		usage()
 	}

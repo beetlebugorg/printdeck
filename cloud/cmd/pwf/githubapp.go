@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"strconv"
@@ -22,16 +21,12 @@ func githubAppName(stack string) string { return stack + "-github-app" }
 // runGitHubApp serves pwf github-app --id <App ID> --key <private key .pem>: it keeps the App in
 // the secret <stack>-github-app. The next pwf deploy gives the secret to the function, which then
 // starts the slice runs of the builds.
-func runGitHubApp(ctx context.Context, cfg aws.Config, stack string, args []string) error {
-	fs := flag.NewFlagSet("github-app", flag.ExitOnError)
-	id := fs.String("id", "", "the App ID of the GitHub App (its settings page shows it)")
-	keyFile := fs.String("key", "", "the private key of the App: the .pem file from GitHub")
-	fs.Parse(args)
-	appID, err := strconv.ParseInt(*id, 10, 64)
-	if err != nil || appID <= 0 || *keyFile == "" {
+func runGitHubApp(ctx context.Context, cfg aws.Config, stack, id, keyFile string) error {
+	appID, err := strconv.ParseInt(id, 10, 64)
+	if err != nil || appID <= 0 || keyFile == "" {
 		return errors.New("usage: pwf github-app --id <App ID> --key <private key .pem>")
 	}
-	pemText, err := os.ReadFile(*keyFile)
+	pemText, err := os.ReadFile(keyFile)
 	if err != nil {
 		return err
 	}
