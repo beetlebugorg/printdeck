@@ -18,6 +18,7 @@
 		0FF3F0EE28C0FA8167BEF96E /* Fleet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BDED532FFF2F9E737C48FA5 /* Fleet.swift */; };
 		11A773649FFA198AF59E912B /* Timelapse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B8C219262B462085724E0BD /* Timelapse.swift */; };
 		198F4ACDF70F3734387889AC /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 58645DA084A54E4D7E787CE2 /* OFL.txt */; };
+		1AC2142B83CEB11AAA7D0826 /* ServiceImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65739D4F26E7ED14BB02AB8A /* ServiceImage.swift */; };
 		1B1A03158AD1EC263D260144 /* LCDScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CA29D05ABBEBA3D309E9D9C /* LCDScreen.swift */; };
 		1BE9BA2C38606EA6FFBB1520 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2AC2BBFF7CE76D76E8134DBA /* IBMPlexMono-SemiBold.ttf */; };
 		1D53332689C0FD450DC4F756 /* LCDFonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0354F5AD51AB7C9164C404AA /* LCDFonts.swift */; };
@@ -218,6 +219,7 @@
 		50B1ECB5064C50FBC6E18408 /* PrintdeckNotifications.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PrintdeckNotifications.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		58645DA084A54E4D7E787CE2 /* OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = OFL.txt; sourceTree = "<group>"; };
 		5B022EC77AE6F9B9D53042D7 /* LCDModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LCDModel.swift; sourceTree = "<group>"; };
+		65739D4F26E7ED14BB02AB8A /* ServiceImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceImage.swift; sourceTree = "<group>"; };
 		6DE65B34DD84D0ADAF8829A4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		74DD018BBD9721DD779A3905 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		770B96494514D1F98C3D0ADF /* IBMPlexMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "IBMPlexMono-Regular.ttf"; sourceTree = "<group>"; };
@@ -316,6 +318,7 @@
 				24B8B0418A255DCC47FD7AD8 /* ProjectsView.swift */,
 				3FAD54D561DB49920D460416 /* Push.swift */,
 				FEB816158F839E9C71DA87D8 /* QueueView.swift */,
+				65739D4F26E7ED14BB02AB8A /* ServiceImage.swift */,
 				FF065E98D227459FBD8169BB /* SetupView.swift */,
 				2B8C219262B462085724E0BD /* Timelapse.swift */,
 				C991A83CDA1D1FF82A032EA0 /* TimelapseView.swift */,
@@ -721,6 +724,7 @@
 				39A8D7DAB0BC7F456F314E61 /* PushCrypto.swift in Sources */,
 				79515D316EE6F65B52F67170 /* QueueView.swift in Sources */,
 				8EDF72D28017E36DA643C841 /* Service.swift in Sources */,
+				1AC2142B83CEB11AAA7D0826 /* ServiceImage.swift in Sources */,
 				8FB1DA295B111CE8E012072D /* SetupView.swift in Sources */,
 				8F9B6078A6FA28D4B4008B63 /* Store.swift in Sources */,
 				863803E55914375D0E896E96 /* Theme.swift in Sources */,

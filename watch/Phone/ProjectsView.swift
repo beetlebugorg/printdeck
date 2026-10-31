@@ -537,12 +537,9 @@ private struct Thumb: View {
     var side: CGFloat = 56
 
     var body: some View {
-        AsyncImage(url: url) { img in
-            img.resizable().aspectRatio(contentMode: .fill)
-        } placeholder: {
-            p.lcd
-        }
-        .frame(width: side, height: side)
+        ServiceImage(url: url, fill: true)
+            .frame(width: side, height: side)
+            .background(p.lcd)
         .clipShape(RoundedRectangle(cornerRadius: 4))
         .overlay(RoundedRectangle(cornerRadius: 4).stroke(p.edge, lineWidth: 1))
     }

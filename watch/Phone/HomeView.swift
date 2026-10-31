@@ -210,15 +210,11 @@ private struct AwayCard: View {
     var body: some View {
         Plate(label: title) {
             if let url = live.model {
-                AsyncImage(url: url) { img in
-                    img.resizable().aspectRatio(contentMode: .fit)
-                } placeholder: {
-                    Color.clear
-                }
-                .frame(maxWidth: .infinity, maxHeight: 160)
-                .padding(10)
-                .background(RoundedRectangle(cornerRadius: 4).fill(p.lcd))
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(p.edge, lineWidth: 2))
+                ServiceImage(url: url)
+                    .frame(maxWidth: .infinity, maxHeight: 160)
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 4).fill(p.lcd))
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(p.edge, lineWidth: 2))
             }
             HStack(alignment: .firstTextBaseline) {
                 Text(stateText.uppercased())

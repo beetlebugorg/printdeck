@@ -159,10 +159,16 @@ struct ServiceClient {
     /// The token of the session, or nil before the sign-in.
     var token: String?
 
-    private static let session: URLSession = {
+    /// The session of the requests. The files of a project are paths on the domain of the service
+    /// (/x/<project>/...) behind CloudFront, which checks signed cookies of the project. Each reply
+    /// of the API that links to the files sets the cookies. The session keeps them in the shared
+    /// cookie storage, so that the pictures (ServiceImage) send them too.
+    static let session: URLSession = {
         let c = URLSessionConfiguration.ephemeral
         c.timeoutIntervalForRequest = 10
         c.timeoutIntervalForResource = 20
+        c.httpCookieStorage = .shared
+        c.httpCookieAcceptPolicy = .always
         return URLSession(configuration: c)
     }()
 
