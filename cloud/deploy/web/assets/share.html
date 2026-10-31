@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="/assets/share.css">
 <script src="/assets/pwf.js" defer></script>
 <script type="module" src="/assets/viewer3d.js"></script>
+<script src="/assets/layercycle.js" defer></script>
 </head>
 <body data-page="share">
 <div class="wrap">
@@ -59,6 +60,12 @@
       <canvas id="chart" aria-label="The time of each layer, layer 1 at the bottom"></canvas>
       <div class="nums"><span id="layerNow"></span><span id="layerAvg"></span></div>
     </div>
+  </section>
+
+  <section class="card cycle-card" id="cycleCard" aria-label="One layer from the front" hidden>
+    <h2>One layer, from the front</h2>
+    <canvas id="cycle" aria-label="The light, the lift and the return of the plate of one layer, with their seconds"></canvas>
+    <div class="row"><button type="button" id="cycleSpeed">Play in real time</button></div>
   </section>
 
   <section class="lcd" aria-label="Progress">

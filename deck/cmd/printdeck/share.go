@@ -225,7 +225,11 @@ func (l *shareLink) status() cloud.ShareStatus {
 			s.ResinExposure = math.Round(float64(h.Exposure)*10) / 10
 			s.ResinBottom = math.Round(float64(h.BottomExposure)*10) / 10
 			s.ResinBottomN = int(h.BottomLayers)
+			p := h.Params
+			s.ResinLift, s.ResinLiftSpeed, s.ResinRetractSpeed = p.LiftMM, p.LiftSpeed, p.RetractSpeed
+			s.ResinBottomLift, s.ResinBottomSpeed, s.ResinLightOff = p.BottomLiftMM, p.BottomLiftSpeed, p.LightOff
 		}
+		s.ResinLayerSec = math.Round(c.MeasuredLayer()*10) / 10
 	}
 	// The file of the print: the material and the filament that the slicer wrote, and the
 	// height of the model.

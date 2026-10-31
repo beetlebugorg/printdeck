@@ -1451,3 +1451,16 @@ func (c *ChiTu) PartMesh() []byte {
 	zw.Close()
 	return buf.Bytes()
 }
+
+// MeasuredLayer returns the seconds of a normal layer of the print now as the print measures them
+// (the light of the layer and the moves of the plate), or 0.
+func (c *ChiTu) MeasuredLayer() float64 {
+	st := c.State()
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	pl, ok := c.plans[filepath.Base(st.File)]
+	if !ok || len(pl.light) == 0 || c.movesFile != filepath.Base(st.File) || c.moves <= 0 {
+		return 0
+	}
+	return pl.light[len(pl.light)-1] + c.moves
+}

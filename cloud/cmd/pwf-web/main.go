@@ -168,6 +168,9 @@ type share struct {
 	clocks map[string]string
 	// partDone sets the height that is done in the 3D view of the part, while it shows.
 	partDone js.Value
+	// cycleKey is the numbers of the layer cycle that plays, and cycleSpeed its speed.
+	cycleKey   string
+	cycleSpeed int
 }
 
 // maxCount is the time that the clocks count on after the last new status: longer than the
@@ -184,6 +187,19 @@ func runShare(base string) {
 	}
 	s.copyLink()
 	s.partView()
+	s.cycleSpeed = 4
+	byID("cycleSpeed").Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
+		if s.cycleSpeed == 1 {
+			s.cycleSpeed = 4
+			setText("cycleSpeed", "Play in real time")
+		} else {
+			s.cycleSpeed = 1
+			setText("cycleSpeed", "Play 4 times as fast")
+		}
+		s.cycleKey = ""
+		s.drawCycle()
+		return nil
+	}))
 	go s.play()
 	go func() {
 		for {
@@ -270,6 +286,32 @@ func (s *share) partView() {
 		}
 		return nil
 	}))
+}
+
+// drawCycle plays the cycle of one layer of a resin print (assets/layercycle.js), when the status
+// has the moves of the plate. It starts again only when the numbers change.
+func (s *share) drawCycle() {
+	st := s.st
+	show := st.Process == "resin" && st.ResinLift > 0 && st.ResinLiftSpeed > 0 && !s.ended
+	setHidden("cycleCard", !show)
+	lc := js.Global().Get("pwfLayerCycle")
+	if !show || lc.IsUndefined() {
+		return
+	}
+	key := fmt.Sprint(st.ResinExposure, st.ResinLift, st.ResinLiftSpeed, st.ResinRetractSpeed, st.ResinLightOff,
+		math.Round(st.ResinLayerSec), s.cycleSpeed)
+	if key == s.cycleKey {
+		return
+	}
+	s.cycleKey = key
+	p := js.Global().Get("Object").New()
+	p.Set("exposure", st.ResinExposure)
+	p.Set("lightOff", st.ResinLightOff)
+	p.Set("lift", st.ResinLift)
+	p.Set("liftSpeed", st.ResinLiftSpeed)
+	p.Set("retractSpeed", st.ResinRetractSpeed)
+	p.Set("measured", st.ResinLayerSec)
+	lc.Call("show", byID("cycle"), p, s.cycleSpeed)
 }
 
 // doneMM is the height of the part that is done, in mm: all of it after the end.
@@ -610,6 +652,7 @@ func (s *share) render(st wire.ShareStatus) {
 	resin := st.Process == "resin"
 	setHidden("lapseSec", resin && st.Lapse == 0)
 	setHidden("partOpen", st.Part < 2) // 2: the cells of the part (part.bin)
+	s.drawCycle()
 	if !s.partDone.IsUndefined() && s.partDone.Truthy() {
 		s.partDone.Invoke(s.doneMM())
 	}

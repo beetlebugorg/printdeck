@@ -21,6 +21,16 @@ type ShareStatus struct {
 	ResinExposure    float64 `json:"resin_exposure,omitempty"`     // s
 	ResinBottom      float64 `json:"resin_bottom,omitempty"`       // s, the exposure of the bottom layers
 	ResinBottomN     int     `json:"resin_bottom_n,omitempty"`     // the count of the bottom layers
+	// The moves of the plate after each layer, from the file: the lift in mm and its speed, and
+	// the speed of the return, in mm/min; the same for the bottom layers; and the time with no
+	// light, in s. ResinLayerSec is the time of a layer as the print measures it, in s.
+	ResinLift         float64 `json:"resin_lift,omitempty"`
+	ResinLiftSpeed    float64 `json:"resin_lift_speed,omitempty"`
+	ResinRetractSpeed float64 `json:"resin_retract_speed,omitempty"`
+	ResinBottomLift   float64 `json:"resin_bottom_lift,omitempty"`
+	ResinBottomSpeed  float64 `json:"resin_bottom_speed,omitempty"`
+	ResinLightOff     float64 `json:"resin_light_off,omitempty"`
+	ResinLayerSec     float64 `json:"resin_layer_sec,omitempty"`
 	// Activity is what the printer does now, for example "Heating bed".
 	Activity string `json:"activity,omitempty"`
 	// Progress is 0 to 1.
