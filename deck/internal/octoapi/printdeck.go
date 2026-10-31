@@ -81,6 +81,9 @@ type printdeckJSON struct {
 	// Process is the kind of printer: "fdm", or "resin". An app shows no Print and no Resume for a
 	// resin printer.
 	Process string `json:"process"`
+	// PrinterID is the ID of the printer at the service, or "": the live tiles of the projects
+	// name it (printer_id).
+	PrinterID string `json:"printer_id"`
 	Material string      `json:"material"`
 	Diameter float64     `json:"diameter"`
 	Spool    *spoolJSON  `json:"spool"`
@@ -102,6 +105,9 @@ func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
 	out := printdeckJSON{Camera: s.cameraInfo(), Cameras: s.camerasInfo(), Process: "fdm"}
 	if s.Resin {
 		out.Process = "resin"
+	}
+	if s.PrinterID != nil {
+		out.PrinterID = s.PrinterID()
 	}
 	if s.Status != nil {
 		out.LCD = s.Status()
@@ -233,6 +239,9 @@ type printdeckFields struct {
 	// each resume: the UV light goes on only after a press on the touch screen of the deck. Pause
 	// and cancel work.
 	Resin bool
+	// PrinterID returns the ID of the printer of the deck at the service, or "" before the deck
+	// registers it. It can be nil.
+	PrinterID func() string
 	// Status gives the status screen of the printer display (lcd.Status), or nil.
 	Status func() any
 	// Model draws the model of the print for an app (printer.View.ModelPicture), or nil.

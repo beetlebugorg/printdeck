@@ -100,6 +100,12 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 		return nil
 	}
 	api.StartPrint = app.ConfirmFilePrint
+	api.PrinterID = func() string {
+		if pl, ok := app.Cloud.(*projectLink); ok {
+			return pl.printerID()
+		}
+		return ""
+	}
 	api.Enqueue = func(path string) error { return app.Enqueue(path, "slicer") }
 	api.Status = func() any { return app.StatusScreen() }
 	api.Model = k.View.ModelPicture
@@ -124,6 +130,12 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 func newResinAPI(cfg config.Config, c *printer.ChiTu, app *ui.App, mux *http.ServeMux) *octoapi.Server {
 	api := octoapi.New(resinAPIPrinter{c}, &gcodestore.Store{Dir: cfg.GcodeDir}, cfg.OctoPrintKey, filepath.Join(cfg.StateDir, "apikeys.json"))
 	api.Resin = true
+	api.PrinterID = func() string {
+		if pl, ok := app.Cloud.(*projectLink); ok {
+			return pl.printerID()
+		}
+		return ""
+	}
 	api.Version, api.Ask = osVersion(), app.Ask
 	api.Frame = cameraFrame(app)
 	if cam, ok := app.Camera.(octoapi.Camera); ok {
