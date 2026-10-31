@@ -115,13 +115,18 @@ The routes are those of the web page:
 The app shows the queue of each deck: the files in their order, each with its material and its
 time, and the total time. It can move a file and remove a file. It has no Start.
 
-Deck (Go):
+Deck (Go), done:
 
-- `GET /api/plugin/printdeck/queue`: the files of the queue (`queue.Item`) and the total time.
-- `POST /api/plugin/printdeck/queue/<id>/move` with `{"by": -1}`, and
-  `DELETE /api/plugin/printdeck/queue/<id>`.
-- A push message at the end of a print when the queue has files: "Next: Pod door · Black PLA ·
-  45 min". The message opens the deck card. The deck screen has the question with Start.
+- `GET /api/plugin/printdeck/queue`: `{"items": [queue.Item], "seconds": <the time of all the
+  files>}`. An item has `id`, `path`, `name`, `project`, `material`, `material_name`, `color`,
+  `seconds`, `from` ("deck", "slicer" or "build") and `added`.
+- `POST /api/plugin/printdeck/queue/<id>/move` with `{"by": -1}` (one place nearer the front),
+  and `DELETE /api/plugin/printdeck/queue/<id>`. Both return the queue. A move past the end gets
+  409, and a file that is not in the queue gets 404.
+- A push message at the end of a print when the queue has files: the title "Next in the queue",
+  and the body "Pod door · Black PLA · 0:45. Take the part off the bed, then press Start on the
+  deck." The deck screen has the question with Start.
+- Away from home, `GET /api/v1/printers` has `queue` and `queue_seconds` in `live` (owner only).
 
 Away from home, the queue of a project comes from the service (`ProjectView.Queue`). A project
 sees only its own files.

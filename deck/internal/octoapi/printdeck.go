@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"printdeck/internal/printer"
+	"printdeck/internal/queue"
 )
 
 // The API of the Printdeck plugin for Cura, at the path of an OctoPrint plugin. It tells which
@@ -242,6 +243,8 @@ type printdeckFields struct {
 	// PrinterID returns the ID of the printer of the deck at the service, or "" before the deck
 	// registers it. It can be nil.
 	PrinterID func() string
+	// Queue is the print queue of the deck, or nil. The API lists, moves and removes its files.
+	Queue *queue.Queue
 	// Status gives the status screen of the printer display (lcd.Status), or nil.
 	Status func() any
 	// Model draws the model of the print for an app (printer.View.ModelPicture), or nil.

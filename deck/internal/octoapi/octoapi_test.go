@@ -16,6 +16,7 @@ import (
 
 	"printdeck/internal/gcodestore"
 	"printdeck/internal/printer"
+	"printdeck/internal/queue"
 )
 
 const mainKey = "main-key"
@@ -290,6 +291,36 @@ func TestResinAPIStartsNothing(t *testing.T) {
 	}
 	if r, _ := do(t, "POST", ts.URL+"/api/job", mainKey, strings.NewReader(`{"command":"cancel"}`), "application/json"); r.StatusCode != http.StatusNoContent {
 		t.Errorf("cancel: %d", r.StatusCode)
+	}
+	if len(p.printed) != 0 {
+		t.Errorf("printed %v", p.printed)
+	}
+}
+
+// The apps list, move and remove the files of the queue. The API has no start of a queued file.
+func TestQueueRoutes(t *testing.T) {
+	s, ts, p := newTest(t)
+	q := &queue.Queue{}
+	s.Queue = q
+	a, _ := q.Add(queue.Item{Name: "a", Seconds: 60})
+	b, _ := q.Add(queue.Item{Name: "b", Seconds: 120})
+	r, m := do(t, "GET", ts.URL+"/api/plugin/printdeck/queue", mainKey, nil, "")
+	if r.StatusCode != 200 || m["seconds"].(float64) != 180 || len(m["items"].([]any)) != 2 {
+		t.Fatalf("list %d %v", r.StatusCode, m)
+	}
+	if r, _ := do(t, "GET", ts.URL+"/api/plugin/printdeck/queue", "", nil, ""); r.StatusCode == 200 {
+		t.Error("the queue with no key")
+	}
+	r, m = do(t, "POST", ts.URL+"/api/plugin/printdeck/queue/"+b.ID+"/move", mainKey, strings.NewReader(`{"by":-1}`), "application/json")
+	if r.StatusCode != 200 || m["items"].([]any)[0].(map[string]any)["name"] != "b" {
+		t.Fatalf("move %d %v", r.StatusCode, m)
+	}
+	r, m = do(t, "DELETE", ts.URL+"/api/plugin/printdeck/queue/"+a.ID, mainKey, nil, "")
+	if r.StatusCode != 200 || len(m["items"].([]any)) != 1 {
+		t.Fatalf("remove %d %v", r.StatusCode, m)
+	}
+	if r, _ := do(t, "DELETE", ts.URL+"/api/plugin/printdeck/queue/"+a.ID, mainKey, nil, ""); r.StatusCode != 404 {
+		t.Errorf("remove again: %d", r.StatusCode)
 	}
 	if len(p.printed) != 0 {
 		t.Errorf("printed %v", p.printed)
