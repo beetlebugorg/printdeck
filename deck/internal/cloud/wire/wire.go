@@ -38,6 +38,9 @@ type ShareStatus struct {
 	Activity string `json:"activity,omitempty"`
 	// Progress is 0 to 1.
 	Progress float64 `json:"progress"`
+	// Pos is the byte in the G-code file that Klipper reads now, or 0. The 3D view of the page
+	// puts the nozzle at the move of that byte.
+	Pos int64 `json:"pos,omitempty"`
 	Layer    int     `json:"layer,omitempty"`
 	Layers   int     `json:"layers,omitempty"`
 	// Height is the height of the nozzle, and MaxHeight the height of the model, in mm.

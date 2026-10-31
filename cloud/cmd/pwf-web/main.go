@@ -186,7 +186,9 @@ type share struct {
 func (s *share) showGcode(n int) {
 	s.gviewWant = n
 	if s.gview.Truthy() {
-		s.gview.Call("setPrinted", n)
+		if !s.animate() {
+			s.gview.Call("setPrinted", n)
+		}
 		return
 	}
 	v := js.Global().Get("pwfView3d")
@@ -204,7 +206,9 @@ func (s *share) showGcode(n int) {
 	ok = js.FuncOf(func(_ js.Value, args []js.Value) any {
 		s.gview = args[0]
 		setHidden("model", true)
-		s.gview.Call("setPrinted", s.gviewWant)
+		if !s.animate() {
+			s.gview.Call("setPrinted", s.gviewWant)
+		}
 		return nil
 	})
 	fail = js.FuncOf(func(_ js.Value, args []js.Value) any {
@@ -214,6 +218,33 @@ func (s *share) showGcode(n int) {
 		return nil
 	})
 	v.Call("showGcode", byID("gview"), opts).Call("then", ok).Call("catch", fail)
+}
+
+// animate shows the layer that prints now in the 3D view of the G-code: the share of its time
+// that passed, as the clocks count it. It reports false when the print ended, or when the page
+// has no time for the layer.
+func (s *share) animate() bool {
+	st := s.st
+	if !s.gview.Truthy() || s.ended || st.Process == "resin" || st.Layer < 1 {
+		return false
+	}
+	if st.Pos > 0 {
+		// The byte that Klipper read at the status, and the seconds since then. Klipper reads a
+		// little ahead of the nozzle: the view starts 1.5 s behind.
+		s.gview.Call("setFilePos", float64(st.Pos), time.Since(s.seen).Seconds()-1.5)
+		return true
+	}
+	end, ok := s.layerEnd()
+	if !ok {
+		return false
+	}
+	start := s.seen.Add(st.LayerStarted.Sub(st.Updated))
+	f := 1.0
+	if d := end.Sub(start); d > 0 {
+		f = min(0.995, max(0, float64(time.Since(start))/float64(d)))
+	}
+	s.gview.Call("setProgress", st.Layer, f)
+	return true
 }
 
 // maxCount is the time that the clocks count on after the last new status: longer than the
@@ -971,6 +1002,7 @@ func (s *share) tick() {
 	if s.seen.IsZero() {
 		return
 	}
+	s.animate()
 	if s.clocks == nil {
 		s.clocks = map[string]string{}
 	}

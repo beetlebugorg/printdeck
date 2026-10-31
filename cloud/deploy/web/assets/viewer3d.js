@@ -550,6 +550,7 @@ const KIND = Object.fromEntries(KINDS.map(([k], i) => [k, i]));
 function parseGcode(text) {
   let n = 0, cap = 1 << 16;
   let seg = new Float32Array(cap * 7), kind = new Uint8Array(cap), speed = new Float32Array(cap);
+  let at = new Float64Array(cap); // the byte of the line of each move (the text is ASCII)
   let tn = 0, tcap = 1 << 14, trav = new Float32Array(tcap * 6);
   const layerSeg = [], layerTrav = [], layerZ = [], layerTime = [];
   let x = 0, y = 0, z = 0, e = 0, f = 0, rel = false, cur = KIND.OTHER, layerH = 0.2, lastZ = 0, maxE = 0;
@@ -558,13 +559,16 @@ function parseGcode(text) {
     const s2 = new Float32Array(cap * 7); s2.set(seg); seg = s2;
     const k2 = new Uint8Array(cap); k2.set(kind); kind = k2;
     const v2 = new Float32Array(cap); v2.set(speed); speed = v2;
+    const a2 = new Float64Array(cap); a2.set(at); at = a2;
   };
   let pos = 0;
   const len = text.length;
+  let lineAt = 0;
   while (pos < len) {
     let end = text.indexOf("\n", pos);
     if (end < 0) end = len;
     const line = text.slice(pos, end);
+    lineAt = pos;
     pos = end + 1;
     const c0 = line.charCodeAt(0);
     if (c0 === 59) { // ";"
@@ -617,7 +621,7 @@ function parseGcode(text) {
         const o = n * 7;
         const h = Math.max(0.05, Math.min(1, z - lastZ || layerH));
         seg[o] = x; seg[o + 1] = y; seg[o + 2] = nx; seg[o + 3] = ny; seg[o + 4] = z; seg[o + 5] = h; seg[o + 6] = 0.5;
-        kind[n] = cur; speed[n] = f / 60; n++;
+        kind[n] = cur; speed[n] = f / 60; at[n] = lineAt; n++;
       } else {
         if (tn >= tcap) { tcap *= 2; const t2 = new Float32Array(tcap * 6); t2.set(trav); trav = t2; }
         const o = tn * 6;
@@ -628,7 +632,7 @@ function parseGcode(text) {
     }
   }
   layerSeg.push(n); layerTrav.push(tn);
-  return { n, seg, kind, speed, tn, trav, layerSeg, layerTrav, layerZ, layerTime, layers: layerSeg.length - 1 };
+  return { n, seg, kind, speed, at, tn, trav, layerSeg, layerTrav, layerZ, layerTime, layers: layerSeg.length - 1 };
 }
 
 // readText reads the text of the file at url. A file with a name that ends in .gz is a G-code with
@@ -738,6 +742,7 @@ async function showGcode(box, opts) {
       mats[m + 12] = (x0 + x1) / 2 - bx / 2; mats[m + 13] = z - h / 2; mats[m + 14] = by / 2 - (y0 + y1) / 2; mats[m + 15] = 1;
     }
     mesh.instanceMatrix.array.set(mats);
+    mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
     mesh.instanceMatrix.needsUpdate = true;
     mesh.instanceColor = new T.InstancedBufferAttribute(new Float32Array(idx.length * 3), 3);
     mesh.frustumCulled = false;
@@ -858,6 +863,9 @@ async function showGcode(box, opts) {
         count++;
       }
       mesh.count = count;
+      // A full upload: the animation of a layer can leave a part range.
+      mesh.instanceMatrix.clearUpdateRanges();
+      mesh.instanceColor.clearUpdateRanges();
       mesh.instanceMatrix.needsUpdate = true;
       mesh.instanceColor.needsUpdate = true;
     }
@@ -910,15 +918,93 @@ async function showGcode(box, opts) {
     if (ev.key === "ArrowUp" || ev.key === "ArrowRight") { step(1); ev.preventDefault(); }
     if (ev.key === "ArrowDown" || ev.key === "ArrowLeft") { step(-1); ev.preventDefault(); }
   });
+  // The page of a print (compact): the moves that printed are solid, in the order of the file,
+  // and the layers that did not print yet are a faint ghost. Each mesh of moves has a twin with
+  // the same moves in the reverse order: the solid mesh draws the first moves (its count), and
+  // the ghost draws the last moves. A step of the print only changes the two counts.
+  const lowerBound = (a, v) => { let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >> 1; if (a[m] < v) lo = m + 1; else hi = m; } return lo; };
+  const nozzle = new T.Mesh(new T.SphereGeometry(Math.max(1.2, size / 60), 18, 14), new T.MeshBasicMaterial({ color: 0xff7a1a }));
+  nozzle.visible = false;
+  scene.add(nozzle);
+  const ghosts = [];
+  if (opts.compact) {
+    printed = null;
+    paint();
+    update();
+    const ghostMat = new T.MeshBasicMaterial({ color: 0x9aa0aa, transparent: true, opacity: 0.1, depthWrite: false });
+    for (const { mesh, idx, mats, geo } of meshes) {
+      const N = idx.length;
+      const g2 = new T.InstancedMesh(geo, ghostMat, N);
+      const rev = g2.instanceMatrix.array;
+      for (let j = 0; j < N; j++) rev.set(mats.subarray((N - 1 - j) * 16, (N - j) * 16), j * 16);
+      g2.instanceMatrix.needsUpdate = true;
+      g2.frustumCulled = false;
+      g2.count = 0;
+      scene.add(g2);
+      ghosts.push(g2);
+    }
+  }
+  // showTo draws the moves before the move cut as solid, and the moves from the move ghostFrom as
+  // the ghost; the dot of the nozzle is at the end of the last solid move of a layer that prints.
+  const showTo = (cut, ghostFrom, dot) => {
+    meshes.forEach(({ mesh, idx }, k) => {
+      mesh.count = lowerBound(idx, cut);
+      ghosts[k].count = idx.length - lowerBound(idx, ghostFrom);
+    });
+    if (dot && cut > 0) {
+      const o = (cut - 1) * 7;
+      nozzle.position.set(g.seg[o + 2] - bx / 2, g.seg[o + 4] + nozzle.geometry.parameters.radius * 0.6, by / 2 - g.seg[o + 3]);
+      nozzle.visible = true;
+    } else {
+      nozzle.visible = false;
+    }
+    redraw = true;
+  };
+  let lastCut = -1;
   const handle = {
-    // setPrinted shows the layers up to k in color, and the later layers in gray.
+    // setPrinted shows the layers up to k as solid, and the later layers as the ghost.
     setPrinted(k) {
-      if (k === printed) return;
-      printed = k;
-      paint();
-      update();
+      if (!opts.compact) { printed = k; paint(); update(); return; }
+      const cut = g.layerSeg[Math.max(0, Math.min(g.layers, k))];
+      lastCut = -1;
+      showTo(cut, cut, false);
+    },
+    // setFilePos shows the print at the byte pos of the file, and dt seconds later at the speeds
+    // of the G-code (dt can be below 0): the moves before it solid, with the nozzle, the rest of
+    // its layer hidden, and the later layers as the ghost.
+    setFilePos(pos, dt) {
+      if (!opts.compact) return;
+      let cut = lowerBound(g.at.subarray(0, g.n), pos);
+      dt = Math.max(-60, Math.min(60, dt || 0));
+      if (dt > 0) { while (cut < g.n && dt > 0) { dt -= moveTime(cut); cut++; } }
+      else { while (cut > 0 && dt < 0) { cut--; dt += moveTime(cut); } }
+      if (cut === lastCut) return;
+      lastCut = cut;
+      // The layer of the move: the last layer that starts at or before it.
+      let L = 1;
+      while (L < g.layers && g.layerSeg[L] <= Math.max(0, cut - 1)) L++;
+      showTo(cut, g.layerSeg[L], true);
+    },
+    // setProgress shows the layers before L as solid, the moves of layer L for the share f (0 to
+    // 1) of the time of the layer, with the nozzle, and the later layers as the ghost.
+    setProgress(L, f) {
+      if (!opts.compact) return;
+      L = Math.max(1, Math.min(g.layers, L | 0));
+      const ls = g.layerSeg[L - 1], le = g.layerSeg[L];
+      // Each move takes its length at the speed of the G-code.
+      let total = 0;
+      for (let i = ls; i < le; i++) total += moveTime(i);
+      let t = Math.max(0, Math.min(1, f)) * total, cut = ls;
+      while (cut < le && t > 0) { t -= moveTime(cut); cut++; }
+      if (cut === lastCut) return;
+      lastCut = cut;
+      showTo(cut, le, true);
     },
   };
+  function moveTime(i) {
+    const o = i * 7;
+    return Math.hypot(g.seg[o + 2] - g.seg[o], g.seg[o + 3] - g.seg[o + 1]) / Math.max(1, g.speed[i]);
+  }
   view = {
     box,
     stop() {
@@ -927,6 +1013,7 @@ async function showGcode(box, opts) {
       orbit.dispose();
       renderer.dispose();
       for (const m of meshes) { m.geo.dispose(); m.mesh.dispose(); }
+      for (const m of ghosts) m.dispose();
       mat.dispose();
       travGeo.dispose();
       box.textContent = "";

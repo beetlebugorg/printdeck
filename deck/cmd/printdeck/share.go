@@ -196,6 +196,9 @@ func (l *shareLink) status() cloud.ShareStatus {
 	}
 
 	if st.Busy() {
+		if _, ok := l.pr.(*printer.Klippy); ok {
+			s.Pos = st.FilePos
+		}
 		l.clockLayers(st)
 		if st.HasNow {
 			s.Move, s.Speed = moveName(st.NowKind), st.NowSpeed*float64(max(1, st.SpeedPct))/100

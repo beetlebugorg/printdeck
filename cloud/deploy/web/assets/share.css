@@ -108,10 +108,15 @@ footer { display: grid; gap: 4px; }
    numbers come first, and the model is not taller than a part of the screen. */
 .hero { display: grid; gap: 14px; }
 .hero > * { min-width: 0; }
-@media (max-width: 899px) { .hero > #progress { order: -1; } }
+/* On a phone: the numbers, the time lapse, then the model. On a wide screen: the model at the
+   left, and the numbers and the time lapse at the right. */
+@media (max-width: 899px) { .hero > #progress { order: -2; } .hero > #lapseSec { order: -1; } }
 @media (min-width: 900px) {
   .hero { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start; }
-  .hero > .cycle-card { grid-column: 1 / -1; }
+  .hero > #modelBox { grid-column: 1; grid-row: 1 / span 2; }
+  .hero > #progress { grid-column: 2; grid-row: 1; }
+  .hero > #lapseSec { grid-column: 2; grid-row: 2; }
+  .hero > .cycle-card { grid-column: 1 / -1; grid-row: 3; }
 }
 .model-row figure { max-height: 440px; }
 .model-row img { max-height: 440px; width: auto; max-width: 100%; margin: 0 auto; }
