@@ -330,7 +330,7 @@ func plateKey(pp wire.ProjectPlanPart, i int) string {
 }
 
 // plateFit reports whether the parts fit on the bed of their printer, and how many objects fit,
-// with the grid of slicer/curaslice.py: objects in rows, the room for the brim around each, 10 mm
+// with the grid of curaslice.py (printdeck-action): objects in rows, the room for the brim around each, 10 mm
 // from the edges. The bed and the room come from the plan; a part with no bed fits.
 func (a *app) plateFit(parts []int) (bool, int, int) {
 	var n int

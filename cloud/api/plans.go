@@ -367,8 +367,9 @@ func (s *Server) newBuild(ctx context.Context, p *Project, w *who, planID string
 	return s.projectBuild(ctx, p, &b), nil
 }
 
-// actionBuild returns the build id for the slice run of the token: a build of the repository
-// and the commit of the token.
+// actionBuild returns the build id for the slice run of the token: a build of the repository of
+// the token. The commit of a slice run is the commit of the default branch, so the check of the
+// workflow (sliceRun) guards the run, and the run checks out the commit of the plan.
 func (s *Server) actionBuild(ctx context.Context, p *Project, c *GitHubClaims, id string) (*BuildRecord, error) {
 	b, err := s.loadBuild(ctx, p.ID, id)
 	if err != nil {
