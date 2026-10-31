@@ -399,7 +399,29 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 			return nil, err
 		}
 		return s.afterChange(ctx, id, w)
-	case part == "builds" && sub != "" && r.Method == http.MethodGet:
+	case part == "plans" && sub != "" && !strings.Contains(sub, "/") && r.Method == http.MethodGet:
+		if w.deck != nil {
+			return nil, fail(http.StatusUnauthorized, "only a person sees a plan")
+		}
+		rec, err := s.loadPlan(ctx, id, sub)
+		if err != nil {
+			return nil, err
+		}
+		pv := s.projectPlan(ctx, p, rec)
+		builds, _ := s.loadBuilds(ctx, id)
+		for _, b := range builds {
+			if b.Plan == rec.ID {
+				pv.Builds = append(pv.Builds, s.projectBuild(ctx, p, b))
+			}
+		}
+		return pv, nil
+	case part == "plans" && strings.HasSuffix(sub, "/builds") && r.Method == http.MethodPost:
+		var in cloud.BuildRequest
+		if json.Unmarshal(body, &in) != nil {
+			return nil, fail(http.StatusBadRequest, "bad JSON")
+		}
+		return s.newBuild(ctx, p, w, strings.TrimSuffix(sub, "/builds"), in)
+	case part == "builds" && sub != "" && !strings.Contains(sub, "/") && r.Method == http.MethodGet:
 		if w.deck != nil {
 			return nil, fail(http.StatusUnauthorized, "only a person sees a build")
 		}
@@ -409,18 +431,18 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 		}
 		return s.projectBuild(ctx, p, rec), nil
 	case part == "builds" && r.Method == http.MethodPost && (strings.HasSuffix(sub, "/approve") || strings.HasSuffix(sub, "/reject")):
-		// builds/<build>/parts/<n>/approve or reject
+		// builds/<build>/plates/<n>/approve or reject
 		f := strings.Split(sub, "/")
-		if len(f) != 4 || f[1] != "parts" {
+		if len(f) != 4 || f[1] != "plates" {
 			return nil, fail(http.StatusMethodNotAllowed, "no such request")
 		}
 		n, err := strconv.Atoi(f[2])
 		if err != nil {
-			return nil, fail(http.StatusBadRequest, "bad part")
+			return nil, fail(http.StatusBadRequest, "bad plate")
 		}
 		var in cloud.BuildDecision
 		json.Unmarshal(body, &in)
-		return s.decideBuildPart(ctx, p, w, f[0], n, f[3] == "approve", in.Reason)
+		return s.decidePlate(ctx, p, w, f[0], n, f[3] == "approve", in.Reason)
 	case action == "notes" && r.Method == http.MethodPatch:
 		if w.deck != nil {
 			return nil, fail(http.StatusUnauthorized, "only a person writes notes")
@@ -629,13 +651,8 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 	}
 	v.Live = s.liveView(ctx, p, prints)
 	v.Repo = p.Repo
-	if builds, err := s.loadBuilds(ctx, p.ID); err == nil {
-		for i, b := range builds {
-			if i >= BuildsShown {
-				break
-			}
-			v.Builds = append(v.Builds, s.projectBuild(ctx, p, b))
-		}
+	if p.Repo != "" {
+		v.Plans = s.plansView(ctx, p)
 	}
 	v.Printers = s.printersOf(ctx, printerIDs(prints, v.Live), false)
 	v.Prints, v.Photos = []cloud.ProjectPrint{}, []cloud.ProjectPhoto{}

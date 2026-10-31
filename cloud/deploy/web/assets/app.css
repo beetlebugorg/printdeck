@@ -142,3 +142,43 @@ footer { display: grid; gap: var(--s1); margin-top: var(--s4); padding-top: var(
 .delivered[hidden] { display: none; }
 .tile .badges .ok { background: #1f7a3d; color: #fff; }
 .tile .badges .ready, .delivered.ready { background: var(--orange); color: var(--on-orange); }
+/* The builds from GitHub: the plans on the project page, the plan page and the build page. */
+.plans { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.plans a { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--seam); border-radius: 10px; background: var(--cap);
+  color: var(--ink); text-decoration: none; }
+.plans a:hover { border-color: var(--orange); }
+.plans .sub { font-size: 13px; color: var(--ink-dim); }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font: 600 12px/1.4 "IBM Plex Mono", monospace; background: var(--seam); color: var(--ink); }
+.tag.changed, .tag.waiting { background: var(--orange); color: var(--on-orange); }
+.tag.approved, .tag.ready { background: #1f7a3d; color: #fff; }
+.tag.rejected, .tag.failed { background: #b3261e; color: #fff; }
+.plan-grid { display: grid; gap: var(--s4); }
+@media (min-width: 900px) { .plan-grid { grid-template-columns: 1.1fr 1fr; align-items: start; } .plan-view { position: sticky; top: 12px; } }
+.plan-parts { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.plan-parts li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 10px 12px;
+  border: 1px solid var(--seam); border-radius: 10px; background: var(--cap); }
+.plan-parts li.on { border-color: var(--orange); }
+.plan-parts li.shown { box-shadow: 0 0 0 2px var(--orange) inset; }
+.plan-parts input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--orange); }
+.plan-parts .what { display: grid; gap: 2px; min-width: 0; }
+.plan-parts .what strong { overflow-wrap: anywhere; }
+.plan-parts .sub { font-size: 13px; color: var(--ink-dim); overflow-wrap: anywhere; }
+.plan-parts input[type=number] { width: 64px; min-height: 40px; font: 600 16px "Archivo", sans-serif; text-align: center;
+  border: 1px solid var(--seam); border-radius: 8px; background: var(--plate); color: var(--ink); }
+.model3d { height: 340px; border-radius: 10px; background: #15161a; overflow: hidden; position: relative; }
+.model3d canvas { display: block; width: 100%; height: 100%; }
+.plates { display: grid; gap: var(--s3); }
+@media (min-width: 900px) { .plates { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); } }
+.plate { border: 1px solid var(--seam); border-radius: 12px; padding: 12px; display: grid; gap: 8px; background: var(--cap); }
+.plate.bad { border-color: #b3261e; }
+.plate h3 { margin: 0; font-size: 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.plate .sub { font-size: 13px; color: var(--ink-dim); overflow-wrap: anywhere; }
+.plate canvas { width: 100%; aspect-ratio: 1; border-radius: 8px; background: #15161a; }
+.plate ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.plate li { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.plate select { min-height: 40px; font: 500 14px "Archivo", sans-serif; border-radius: 8px; border: 1px solid var(--seam);
+  background: var(--plate); color: var(--ink); padding: 0 8px; }
+.plate .warn { color: #b3261e; font-weight: 600; font-size: 14px; }
+@media (prefers-color-scheme: dark) { .plate .warn { color: #ff8a80; } }
+pre.cmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: #15161a; color: #f3f1ec; overflow-x: auto;
+  font: 13px "IBM Plex Mono", monospace; white-space: pre-wrap; overflow-wrap: anywhere; }

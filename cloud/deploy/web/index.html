@@ -116,6 +116,18 @@
     <p class="dim small" id="noPrints">No prints yet. On the deck, put a print in this project. The print comes here at its end.</p>
     <div class="tiles" id="prints"></div>
 
+    <section class="card" id="pBuildsCard" aria-label="Builds from GitHub" hidden>
+      <h2>Builds from GitHub</h2>
+      <p class="small dim" id="pRepoLine"></p>
+      <form class="rename" id="pRepoForm" hidden>
+        <label class="field">GitHub repository<input id="pRepoInput" maxlength="140" placeholder="owner/name, for example beetlebugorg/bittlex" autocomplete="off"></label>
+        <div class="row-keys"><button type="submit" class="primary">Save</button><button type="button" id="pRepoCancel">Cancel</button></div>
+      </form>
+      <ul class="plans" id="pPlans"></ul>
+      <div class="linkrow"><button type="button" id="pRepoEdit" hidden>Link a repository</button></div>
+      <p class="msg" id="pRepoMsg" role="status"></p>
+    </section>
+
     <div class="card" id="pPrinterCard" hidden>
       <h2>Printers</h2>
       <ul class="members printer-links" id="pPrinterList"></ul>
@@ -186,6 +198,57 @@
     <p class="dim small" id="ptNoPrints">No prints of this project on this printer yet.</p>
     <p class="dim small">Tap a print to put it on the bed. Tap it again to open it.</p>
     <div class="tiles" id="ptPrints2"></div>
+  </section>
+
+  <!-- A plan: the parts of a commit, and the plates of a build -->
+  <section class="view" id="vPlan" hidden>
+    <a class="back" href="#" id="plBack">The project</a>
+    <section class="title">
+      <h1 id="plTitle">A plan</h1>
+      <p id="plSub"></p>
+      <div class="linkrow" id="plLinks"></div>
+    </section>
+    <div class="plan-grid">
+      <section class="card" aria-label="Parts">
+        <h2>Parts</h2>
+        <p class="small dim" id="plHint">The parts that changed are checked. Check the parts to print, and set the copies.</p>
+        <ul class="plan-parts" id="plParts"></ul>
+      </section>
+      <section class="card plan-view" aria-label="The model">
+        <h2 id="plViewTitle">The model</h2>
+        <div class="model3d" id="plModel"></div>
+        <p class="small dim" id="plViewFacts"></p>
+      </section>
+    </div>
+    <section class="card" aria-label="Plates">
+      <h2>Plates</h2>
+      <p class="small dim">Each plate is one print. Parts with the same printer, profile and material can share a plate.</p>
+      <div class="plates" id="plPlates"></div>
+      <div class="row-keys" id="plKeys"><button type="button" class="primary" id="plSlice">Slice</button><button type="button" id="plSuggest">Suggest the plates again</button></div>
+      <p class="msg" id="plMsg" role="status"></p>
+    </section>
+    <section class="card" id="plBuildsCard" aria-label="Builds of this plan" hidden>
+      <h2>Builds of this plan</h2>
+      <ul class="plans" id="plBuilds"></ul>
+    </section>
+  </section>
+
+  <!-- A build: the sliced plates, for the approval -->
+  <section class="view" id="vBuild" hidden>
+    <a class="back" href="#" id="bdBack">The plan</a>
+    <section class="title">
+      <h1 id="bdTitle">A build</h1>
+      <p id="bdSub"></p>
+    </section>
+    <section class="card" id="bdStartCard" hidden>
+      <h2>Start the slice run</h2>
+      <p class="small">The service cannot start GitHub Actions yet. Run this command, or run the workflow "printdeck" on GitHub with this build:</p>
+      <pre class="cmd" id="bdStart"></pre>
+      <div class="row-keys"><button type="button" id="bdCopy">Copy the command</button></div>
+      <p class="msg" id="bdCopyMsg" role="status"></p>
+    </section>
+    <p class="msg err" id="bdError" hidden></p>
+    <div class="cards-stack" id="bdPlates"></div>
   </section>
 
   <!-- One print: the share page of a finished print -->

@@ -391,4 +391,104 @@ async function showPart(box, opts) {
   return (done) => paint(T, part, done);
 }
 
-window.pwfView3d = { show, showPart, hide, modelFile };
+// readSTL reads an STL file (binary or text) into a geometry in mm, with Z up as in the file.
+async function readSTL(T, url) {
+  const resp = await fetch(url, { credentials: "same-origin" });
+  if (!resp.ok) throw new Error("the model did not load: " + resp.status);
+  const buf = await resp.arrayBuffer();
+  const dv = new DataView(buf);
+  let pos;
+  const n = buf.byteLength >= 84 ? dv.getUint32(80, true) : 0;
+  if (buf.byteLength === 84 + 50 * n) {
+    pos = new Float32Array(n * 9);
+    for (let i = 0; i < n; i++) {
+      for (let k = 0; k < 9; k++) pos[i * 9 + k] = dv.getFloat32(84 + 50 * i + 12 + k * 4, true);
+    }
+  } else {
+    const text = new TextDecoder().decode(buf);
+    const vs = [...text.matchAll(/vertex\s+(\S+)\s+(\S+)\s+(\S+)/g)].map((m) => [+m[1], +m[2], +m[3]]);
+    pos = new Float32Array(vs.flat());
+  }
+  const g = new T.BufferGeometry();
+  g.setAttribute("position", new T.BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+}
+
+// showModels draws the models of a part in box, on a bed with a grid of 10 mm, as the part
+// stands on the printer. opts: urls (STL files, in place to each other), color, bed ([x, y] in
+// mm, or nothing), note (the element of a message while it loads).
+async function showModels(box, opts) {
+  hide();
+  const { T, OrbitControls, RoomEnvironment } = await load();
+  const renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.toneMapping = T.ACESFilmicToneMapping;
+  box.textContent = "";
+  box.appendChild(renderer.domElement);
+  const scene = new T.Scene();
+  const pmrem = new T.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.35;
+  scene.add(new T.HemisphereLight(0xffffff, 0x50555f, 0.6));
+  const key = new T.DirectionalLight(0xffffff, 1.4);
+  key.position.set(-1, 1.6, 1.4);
+  scene.add(key);
+  const camera = new T.PerspectiveCamera(30, 1, 1, 20000);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  const geos = await Promise.all((opts.urls || []).map((u) => readSTL(T, u)));
+  // The models stand on the bed: Z of the file is up, and the middle of all of them is at 0.
+  const group = new T.Group();
+  const mat = new T.MeshPhysicalMaterial({ color: opts.color || "#e8762b", roughness: 0.45, clearcoat: 0.3, envMapIntensity: 0.8 });
+  for (const g of geos) group.add(new T.Mesh(g, mat));
+  group.rotation.x = -Math.PI / 2;
+  scene.add(group);
+  scene.updateMatrixWorld(true);
+  const b = new T.Box3().setFromObject(group);
+  const mid = b.getCenter(new T.Vector3());
+  group.position.set(-mid.x, -b.min.y, -mid.z);
+  scene.updateMatrixWorld(true);
+  const size = b.getSize(new T.Vector3());
+  const [bx, by] = opts.bed || [Math.max(60, size.x * 1.6), Math.max(60, size.z * 1.6)];
+  const bed = new T.Mesh(new T.BoxGeometry(bx, 2, by), new T.MeshStandardMaterial({ color: "#2b2d31", roughness: 0.8 }));
+  bed.position.y = -1;
+  scene.add(bed);
+  const grid = new T.GridHelper(Math.max(bx, by), Math.round(Math.max(bx, by) / 10), 0x5b5f66, 0x3a3d42);
+  grid.position.y = 0.05;
+  scene.add(grid);
+  const len = Math.max(40, size.length());
+  camera.position.set(len * 0.9, len * 0.8, len * 1.4);
+  controls.target.set(0, size.y / 2, 0);
+  controls.minDistance = len * 0.2;
+  controls.maxDistance = len * 12;
+  const fit = () => {
+    const w = box.clientWidth, h = box.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / Math.max(1, h);
+    camera.updateProjectionMatrix();
+  };
+  const resize = new ResizeObserver(fit);
+  resize.observe(box);
+  fit();
+  let frame = 0;
+  const tick = () => {
+    frame = requestAnimationFrame(tick);
+    controls.update();
+    renderer.render(scene, camera);
+  };
+  tick();
+  view = {
+    box,
+    stop() {
+      cancelAnimationFrame(frame);
+      resize.disconnect();
+      controls.dispose();
+      renderer.dispose();
+      geos.forEach((g) => g.dispose());
+      box.textContent = "";
+    },
+  };
+}
+
+window.pwfView3d = { show, showPart, showModels, hide, modelFile };

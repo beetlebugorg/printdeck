@@ -32,16 +32,11 @@ func (fakeOIDC) Verify(_ context.Context, token, audience string) (*GitHubClaims
 	return &GitHubClaims{Repository: f[0], Ref: f[1], SHA: f[2], RunID: "42"}, nil
 }
 
-// buildCall sends a request of an Action with the token.
-func buildCall(t *testing.T, base, path, token string, in, out any) int {
-	t.Helper()
-	return call(t, base, "POST", path, token, in, out)
-}
-
-// The owner links a repository. An Action uploads a build of a pull request, the owner approves
-// one part and rejects the other, and a newer build of the same pull request replaces the
-// waiting parts of the older one.
-func TestBuildFlow(t *testing.T) {
+// The flow of a plan: the owner links a repository, the plan run uploads the parts and their
+// models, the owner makes a build with plates, the slice run uploads the files, and the owner
+// approves one plate and rejects another. A newer plan of the same pull request replaces the
+// plates that wait.
+func TestPlanFlow(t *testing.T) {
 	d, base := devService(t)
 	base = strings.Replace(base, "127.0.0.1", "localhost", 1)
 	d.API.Base, d.Grants.URL = base, base+"/upload"
@@ -58,6 +53,9 @@ func TestBuildFlow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	var inv cloud.InviteReply
+	call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/invites", tok, cloud.InviteRequest{Name: "Sam"}, &inv)
+	sam := register(t, base, newSoftKey(t), "invite", strings.TrimPrefix(inv.URL, base+"/j#"), "Sam").Token
 	other, _ := c.NewProject(ctx, l.Identity(), "Other")
 	if st := call(t, base, "PUT", "/api/v1/projects/"+sum.ID+"/repo", tok, cloud.RepoRequest{Repo: "bad repo"}, nil); st != 400 {
 		t.Errorf("a bad repository: %d", st)
@@ -70,87 +68,139 @@ func TestBuildFlow(t *testing.T) {
 	}
 
 	sha := strings.Repeat("ab", 20)
-	file := []byte("G1 X10 Y10\n")
-	sum256 := sha256.Sum256(file)
-	manifest := cloud.BuildManifest{Commit: sha, PR: 7, Parts: []cloud.BuildPart{
-		{Name: "Pod body", Printer: "taz", Process: "fdm", Material: "PLA", File: "pod_body.gcode", Size: int64(len(file)),
-			SHA256: hex.EncodeToString(sum256[:]), Preview: "pod_body.path.bin", Seconds: 3600, Grams: 30},
-		{Name: "Feet", Printer: "phenom", Process: "resin", Count: 4, File: "feet.cbddlp", Size: int64(len(file)),
-			SHA256: hex.EncodeToString(sum256[:])},
-	}}
 	token := "beetlebugorg/bittlex|refs/pull/7/merge|" + strings.Repeat("cd", 20)
-	if st := buildCall(t, base, "/api/v1/builds", "elsewhere/repo|refs/heads/main|"+sha, manifest, nil); st != 403 {
-		t.Errorf("a build of another repository: %d", st)
+	manifest := cloud.PlanManifest{Commit: sha, PR: 7, Parts: []cloud.PlanPart{
+		{Name: "Pod body", Files: []string{"stl/pod_body.3mf"}, Printer: "taz", Process: "fdm", Profile: "taz-workhorse-se/pla-0.10-fine@1",
+			Material: "roll-4", Changed: true, Models: []string{"pod_body.stl"}, SizeX: 80, SizeY: 100},
+		{Name: "Pod door", Files: []string{"stl/pod_door.stl"}, Printer: "taz", Process: "fdm", Profile: "taz-workhorse-se/pla-0.20-standard@1",
+			Material: "roll-4", Models: []string{"pod_door.stl"}},
+		{Name: "Feet", Files: []string{"stl/foot.stl"}, Count: 4, Printer: "phenom", Process: "resin", Prebuilt: "phenom/feet.cbddlp",
+			Material: "Grey resin", Models: []string{"foot.stl"}},
+	}}
+	if st := call(t, base, "POST", "/api/v1/plans", "elsewhere/repo|refs/heads/main|"+sha, manifest, nil); st != 403 {
+		t.Errorf("a plan of another repository: %d", st)
 	}
-	if st := buildCall(t, base, "/api/v1/builds", "", manifest, nil); st != 401 {
-		t.Errorf("a build with no token: %d", st)
+	if st := call(t, base, "POST", "/api/v1/plans", "", manifest, nil); st != 401 {
+		t.Errorf("a plan with no token: %d", st)
 	}
-	bad := manifest
-	bad.Parts = []cloud.BuildPart{{Name: "x", Printer: "taz", Process: "fdm", File: "../escape", Size: 1, SHA256: hex.EncodeToString(sum256[:])}}
-	if st := buildCall(t, base, "/api/v1/builds", token, bad, nil); st != 400 {
-		t.Errorf("a file name with a folder: %d", st)
-	}
-	upload := func() string {
-		var br cloud.BuildReply
-		if st := buildCall(t, base, "/api/v1/builds", token, manifest, &br); st != 200 {
-			t.Fatalf("build: %d", st)
+	model := []byte("solid x\nendsolid x\n")
+	plan := func() string {
+		var up cloud.UploadReply
+		if st := call(t, base, "POST", "/api/v1/plans", token, manifest, &up); st != 200 {
+			t.Fatalf("plan: %d", st)
 		}
-		if !strings.HasSuffix(br.URL, "/projects/bittlex/builds/"+br.ID) {
-			t.Errorf("build page %q", br.URL)
+		if st := call(t, base, "POST", "/api/v1/plans/"+up.ID+"/done", token, nil, nil); st != 400 {
+			t.Errorf("done before the models: %d", st)
 		}
-		if st := buildCall(t, base, "/api/v1/builds/"+br.ID+"/done", token, nil, nil); st != 400 {
-			t.Errorf("done before the files: %d", st)
-		}
-		for _, f := range []string{"pod_body.gcode", "pod_body.path.bin", "feet.cbddlp"} {
-			if err := cloud.PostFile(ctx, nil, br.Grant, f, "application/octet-stream", "", file); err != nil {
+		for _, f := range []string{"pod_body.stl", "pod_door.stl", "foot.stl"} {
+			if err := cloud.PostFile(ctx, nil, up.Grant, f, "model/stl", "", model); err != nil {
 				t.Fatal(err)
 			}
 		}
-		var pb cloud.ProjectBuild
-		if st := buildCall(t, base, "/api/v1/builds/"+br.ID+"/done", token, nil, &pb); st != 200 || !pb.Ready {
-			t.Fatalf("done: %d %+v", st, pb)
+		var pv cloud.ProjectPlan
+		if st := call(t, base, "POST", "/api/v1/plans/"+up.ID+"/done", token, nil, &pv); st != 200 || !pv.Ready {
+			t.Fatalf("plan done: %d %+v", st, pv)
 		}
-		if pb.Kind != cloud.BuildTest || pb.PR != 7 || pb.Commit != sha || pb.Parts[1].Count != 4 || pb.Parts[0].PreviewURL == "" ||
-			pb.Run != "https://github.com/beetlebugorg/bittlex/actions/runs/42" {
-			t.Fatalf("build %+v", pb)
+		if pv.Kind != cloud.BuildTest || pv.PR != 7 || pv.Commit != sha || len(pv.Parts[0].ModelURLs) != 1 || !pv.Parts[0].Changed {
+			t.Fatalf("plan %+v", pv)
 		}
-		return br.ID
+		return up.ID
 	}
-	first := upload()
+	first := plan()
 
-	// The owner approves the FDM part and rejects the resin part, with a reason.
-	parts := "/api/v1/projects/" + sum.ID + "/builds/" + first + "/parts/"
-	if st := call(t, base, "POST", parts+"1/reject", tok, cloud.BuildDecision{}, nil); st != 400 {
+	builds := "/api/v1/projects/" + sum.ID + "/plans/" + first + "/builds"
+	plates := func(groups ...[]cloud.PlatePart) cloud.BuildRequest {
+		var r cloud.BuildRequest
+		for _, g := range groups {
+			r.Plates = append(r.Plates, cloud.PlateRequest{Parts: g})
+		}
+		return r
+	}
+	if st := call(t, base, "POST", builds, tok, plates([]cloud.PlatePart{{Part: 0, Count: 1}, {Part: 1, Count: 1}}), nil); st != 400 {
+		t.Errorf("two profiles on one plate: %d", st)
+	}
+	if st := call(t, base, "POST", builds, sam, plates([]cloud.PlatePart{{Part: 0, Count: 1}}), nil); st != 401 {
+		t.Errorf("a build of a member: %d", st)
+	}
+	var pb cloud.ProjectBuild
+	if st := call(t, base, "POST", builds, tok, plates([]cloud.PlatePart{{Part: 0, Count: 2}}, []cloud.PlatePart{{Part: 2, Count: 4}}), &pb); st != 200 {
+		t.Fatalf("build: %d", st)
+	}
+	if pb.State != cloud.BuildSlicing || !strings.Contains(pb.Start, "-f build="+pb.ID) || pb.Plates[0].Parts[0].Count != 2 ||
+		pb.Plates[0].Parts[0].Name != "Pod body" || pb.Plates[1].Parts[0].Count != 1 {
+		t.Fatalf("build %+v", pb)
+	}
+
+	// The slice run.
+	var job cloud.BuildJob
+	if st := call(t, base, "GET", "/api/v1/builds/"+pb.ID, token, nil, &job); st != 200 || job.Commit != sha || len(job.Plates) != 2 {
+		t.Fatalf("job: %d %+v", st, job)
+	}
+	gcode := []byte("G1 X10\n")
+	h := sha256.Sum256(gcode)
+	files := cloud.BuildFiles{Plates: []cloud.BuildPlate{
+		{File: "plate-1.gcode", Size: int64(len(gcode)), SHA256: hex.EncodeToString(h[:]), Preview: "plate-1.path.bin", Seconds: 3600, Grams: 30,
+			Profile: "taz-workhorse-se/pla-0.10-fine@44606b4e58b6"},
+		{File: "plate-2.cbddlp", Size: int64(len(gcode)), SHA256: hex.EncodeToString(h[:])},
+	}}
+	if st := call(t, base, "POST", "/api/v1/builds/"+pb.ID+"/files", token, cloud.BuildFiles{Plates: files.Plates[:1]}, nil); st != 400 {
+		t.Errorf("files for one of two plates: %d", st)
+	}
+	var up cloud.UploadReply
+	if st := call(t, base, "POST", "/api/v1/builds/"+pb.ID+"/files", token, files, &up); st != 200 {
+		t.Fatalf("files: %d", st)
+	}
+	for _, f := range []string{"plate-1.gcode", "plate-1.path.bin", "plate-2.cbddlp"} {
+		if err := cloud.PostFile(ctx, nil, up.Grant, f, "application/octet-stream", "", gcode); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if st := call(t, base, "POST", "/api/v1/builds/"+pb.ID+"/done", token, nil, &pb); st != 200 || pb.State != cloud.BuildReady ||
+		pb.Plates[0].State != cloud.PartWaiting || pb.Plates[0].PreviewURL == "" || pb.Plates[0].Profile != "taz-workhorse-se/pla-0.10-fine@44606b4e58b6" {
+		t.Fatalf("done: %+v", pb)
+	}
+
+	// The owner approves the first plate and rejects the second, with a reason.
+	pl := "/api/v1/projects/" + sum.ID + "/builds/" + pb.ID + "/plates/"
+	if st := call(t, base, "POST", pl+"1/reject", tok, cloud.BuildDecision{}, nil); st != 400 {
 		t.Errorf("a rejection with no reason: %d", st)
 	}
-	if st := call(t, base, "POST", parts+"0/approve", tok, nil, nil); st != 200 {
+	if st := call(t, base, "POST", pl+"0/approve", sam, nil, nil); st != 401 {
+		t.Errorf("an approval of a member: %d", st)
+	}
+	if st := call(t, base, "POST", pl+"0/approve", tok, nil, nil); st != 200 {
 		t.Fatalf("approve: %d", st)
 	}
-	if st := call(t, base, "POST", parts+"1/reject", tok, cloud.BuildDecision{Reason: "The feet need a chamfer."}, nil); st != 200 {
+	if st := call(t, base, "POST", pl+"1/reject", tok, cloud.BuildDecision{Reason: "The feet need a chamfer."}, nil); st != 200 {
 		t.Fatalf("reject: %d", st)
 	}
 	var v cloud.ProjectView
-	call(t, base, "GET", "/api/v1/projects/"+sum.ID, tok, nil, &v)
-	if v.Repo != "beetlebugorg/bittlex" || len(v.Builds) != 1 || v.Builds[0].Parts[0].State != cloud.PartApproved ||
-		v.Builds[0].Parts[1].State != cloud.PartRejected || v.Builds[0].Parts[1].By != "Jeremy" {
-		t.Fatalf("view %+v", v.Builds)
+	call(t, base, "GET", "/api/v1/projects/"+sum.ID, sam, nil, &v)
+	if v.Repo != "beetlebugorg/bittlex" || len(v.Plans) != 1 || len(v.Plans[0].Builds) != 1 ||
+		v.Plans[0].Builds[0].Plates[0].State != cloud.PartApproved || v.Plans[0].Builds[0].Plates[1].Reason == "" {
+		t.Fatalf("view %+v", v.Plans)
 	}
 
-	// A newer build of the pull request replaces the parts that wait.
-	time.Sleep(5 * time.Millisecond)
-	second := upload()
-	if st := call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/builds/"+second+"/parts/0/approve", tok, nil, nil); st != 200 {
+	// A second build of the same plan waits; a newer plan of the pull request replaces it.
+	var second cloud.ProjectBuild
+	call(t, base, "POST", builds, tok, plates([]cloud.PlatePart{{Part: 1, Count: 1}}), &second)
+	call(t, base, "POST", "/api/v1/builds/"+second.ID+"/files", token, cloud.BuildFiles{Plates: files.Plates[:1]}, &up)
+	cloud.PostFile(ctx, nil, up.Grant, "plate-1.gcode", "application/octet-stream", "", gcode)
+	cloud.PostFile(ctx, nil, up.Grant, "plate-1.path.bin", "application/octet-stream", "", gcode)
+	if st := call(t, base, "POST", "/api/v1/builds/"+second.ID+"/done", token, nil, nil); st != 200 {
 		t.Fatal(st)
 	}
 	time.Sleep(5 * time.Millisecond)
-	upload()
-	var pb cloud.ProjectBuild
-	call(t, base, "GET", "/api/v1/projects/"+sum.ID+"/builds/"+second, tok, nil, &pb)
-	if pb.Parts[0].State != cloud.PartApproved || pb.Parts[1].State != cloud.PartReplaced {
-		t.Fatalf("the second build after the third: %+v", pb.Parts)
+	plan()
+	var b2 cloud.ProjectBuild
+	call(t, base, "GET", "/api/v1/projects/"+sum.ID+"/builds/"+second.ID, tok, nil, &b2)
+	if b2.Plates[0].State != cloud.PartReplaced {
+		t.Fatalf("the plate after a newer plan: %+v", b2.Plates)
 	}
-	if st := call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/builds/"+second+"/parts/1/approve", tok, nil, nil); st != 409 {
-		t.Errorf("approve a replaced part: %d", st)
+	var b1 cloud.ProjectBuild
+	call(t, base, "GET", "/api/v1/projects/"+sum.ID+"/builds/"+pb.ID, tok, nil, &b1)
+	if b1.Plates[0].State != cloud.PartApproved {
+		t.Fatalf("an approved plate after a newer plan: %+v", b1.Plates)
 	}
 }
 

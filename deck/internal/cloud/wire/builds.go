@@ -2,54 +2,59 @@ package wire
 
 import "time"
 
-// The builds of a project from its GitHub repository (docs/specs/github-builds.md). An Action of
-// the repository slices the parts, and uploads each build with an OIDC token of GitHub. The
-// owner checks the preview of each part on the build page, and approves it or rejects it.
+// The plans and the builds of a project from its GitHub repository (docs/specs/github-builds.md).
+//
+//   - At each push, an Action of the repository uploads a plan with an OIDC token of GitHub: the
+//     parts of printdeck.yml, their models, and the parts that changed. It slices nothing.
+//   - On the plan page, the owner chooses the parts and puts them on plates. Slice makes a build
+//     of the plan with the plates.
+//   - The slice run of the Action gets the plates of the build, slices each plate, and uploads
+//     the files. The owner checks the preview of each plate, and approves it or rejects it.
 
-// BuildManifest is the body of POST /api/v1/builds: the parts of the build. The token of GitHub
+// PlanManifest is the body of POST /api/v1/plans: the parts of the commit. The token of GitHub
 // gives the repository, the ref and the commit. Commit is the head commit of a pull request,
 // which the token does not give, or "" for the commit of the token.
-type BuildManifest struct {
-	Commit string      `json:"commit,omitempty"`
-	PR     int         `json:"pr,omitempty"`
-	Parts  []BuildPart `json:"parts"`
+type PlanManifest struct {
+	Commit string     `json:"commit,omitempty"`
+	PR     int        `json:"pr,omitempty"`
+	Parts  []PlanPart `json:"parts"`
 }
 
-// BuildPart is one part of a build: one plate of one printer. File is the name of the sliced
-// file in the build, Preview the name of the file of the 3D preview (path.bin for FDM, part.bin
-// for resin), and Picture the name of a picture of the plate, or "".
-type BuildPart struct {
-	Name        string  `json:"name"`
-	Printer     string  `json:"printer"` // the printer of printdeck.yml, for example "taz"
-	Process     string  `json:"process"` // "fdm" or "resin"
-	Material    string  `json:"material,omitempty"`
-	Count       int     `json:"count,omitempty"`
-	File        string  `json:"file"`
-	Size        int64   `json:"size"`
-	SHA256      string  `json:"sha256"`
-	Preview     string  `json:"preview,omitempty"`
-	Picture     string  `json:"picture,omitempty"`
-	Seconds     int     `json:"seconds,omitempty"`
-	Grams       float64 `json:"grams,omitempty"`
-	ML          float64 `json:"ml,omitempty"`
-	Layers      int     `json:"layers,omitempty"`
-	LayerHeight float64 `json:"layer_height,omitempty"`
-	Profile     string  `json:"profile,omitempty"` // "<folder>/<profile>@<version>"
-	Slicer      string  `json:"slicer,omitempty"`
-	// Changed marks a part that changed in the pull request (or since the last build of the
-	// branch). The build page checks these parts at first.
-	Changed bool `json:"changed,omitempty"`
+// PlanPart is one part of printdeck.yml. Models are the names of its model files in the plan
+// (STL), for the 3D views, in the order of Files. Size is the size of the part on the bed in mm:
+// all its files, one copy each.
+type PlanPart struct {
+	Name     string   `json:"name"`
+	Files    []string `json:"files"`
+	Count    int      `json:"count"`
+	Printer  string   `json:"printer"` // the printer of printdeck.yml, for example "taz"
+	Process  string   `json:"process"` // "fdm" or "resin"
+	Profile  string   `json:"profile,omitempty"`
+	Material string   `json:"material,omitempty"`
+	Prebuilt string   `json:"prebuilt,omitempty"` // a resin file of a person, in place of a slice
+	Alone    bool     `json:"alone,omitempty"`
+	Changed  bool     `json:"changed,omitempty"`
+	Models   []string `json:"models,omitempty"`
+	SizeX    float64  `json:"size_x,omitempty"`
+	SizeY    float64  `json:"size_y,omitempty"`
+	SizeZ    float64  `json:"size_z,omitempty"`
+	// Bed is the size of the bed of the printer in mm (X, Y), and Margin the room around each
+	// object for the brim or the skirt, from the profile. The plan page checks the plates with
+	// them.
+	BedX   float64 `json:"bed_x,omitempty"`
+	BedY   float64 `json:"bed_y,omitempty"`
+	Margin float64 `json:"margin,omitempty"`
 }
 
-// BuildReply is the reply to POST /api/v1/builds: the ID of the build, and the grant for its
-// files. The Action then uploads the files and sends POST /api/v1/builds/<id>/done.
-type BuildReply struct {
+// UploadReply is the reply to the upload of a plan or of the files of a build: the ID, the page,
+// and the grant for the files.
+type UploadReply struct {
 	ID    string `json:"id"`
-	URL   string `json:"url"` // the build page
+	URL   string `json:"url"`
 	Grant Grant  `json:"grant"`
 }
 
-// The kinds of builds.
+// The kinds of plans.
 const (
 	BuildTest    = "test"    // a pull request
 	BuildMain    = "main"    // the default branch
@@ -57,34 +62,120 @@ const (
 	BuildRelease = "release" // a tag
 )
 
-// The states of a part of a build.
+// ProjectPlan is a plan on the plan page and on the project page.
+type ProjectPlan struct {
+	ID      string            `json:"id"`
+	Repo    string            `json:"repo"`
+	Commit  string            `json:"commit"`
+	Ref     string            `json:"ref"`
+	Kind    string            `json:"kind"`
+	PR      int               `json:"pr,omitempty"`
+	Tag     string            `json:"tag,omitempty"`
+	Branch  string            `json:"branch,omitempty"`
+	Run     string            `json:"run,omitempty"` // the page of the workflow run on GitHub
+	Created time.Time         `json:"created"`
+	Ready   bool              `json:"ready"` // all its models are up
+	Parts   []ProjectPlanPart `json:"parts"`
+	Builds  []ProjectBuild    `json:"builds,omitempty"`
+}
+
+// ProjectPlanPart is a part of a plan, with the addresses of its models.
+type ProjectPlanPart struct {
+	PlanPart
+	ModelURLs []string `json:"model_urls,omitempty"`
+}
+
+// PlateRequest is one plate of a build request: the parts of the plan (by their index in the
+// plan) with their counts on this plate.
+type PlateRequest struct {
+	Parts []PlatePart `json:"parts"`
+}
+
+// PlatePart is a part on a plate, and its count of copies.
+type PlatePart struct {
+	Part  int    `json:"part"`
+	Count int    `json:"count"`
+	Name  string `json:"name,omitempty"`
+}
+
+// BuildRequest is the body of POST /api/v1/projects/<id>/plans/<plan>/builds: the plates.
+type BuildRequest struct {
+	Plates []PlateRequest `json:"plates"`
+}
+
+// The states of a build.
+const (
+	BuildSlicing = "slicing" // waiting for the slice run, or slicing
+	BuildReady   = "ready"   // the files of all its plates are up
+	BuildFailed  = "failed"
+)
+
+// The states of a plate of a ready build.
 const (
 	PartWaiting  = "waiting" // for the approval of the owner
 	PartApproved = "approved"
 	PartRejected = "rejected"
-	PartReplaced = "replaced" // a newer build of the same pull request or branch came
+	PartReplaced = "replaced" // a newer plan of the same pull request or branch came
 )
 
-// ProjectBuild is a build on the project page and on the build page.
-type ProjectBuild struct {
-	ID      string             `json:"id"`
-	Repo    string             `json:"repo"`
-	Commit  string             `json:"commit"`
-	Ref     string             `json:"ref"`
-	Kind    string             `json:"kind"`
-	PR      int                `json:"pr,omitempty"`
-	Tag     string             `json:"tag,omitempty"`
-	Branch  string             `json:"branch,omitempty"`
-	Run     string             `json:"run,omitempty"` // the page of the workflow run on GitHub
-	Created time.Time          `json:"created"`
-	Ready   bool               `json:"ready"` // all its files are up
-	Parts   []ProjectBuildPart `json:"parts"`
+// BuildPlate is a plate of a build: its parts, and after the slice its file and the facts of
+// the slice. File is the name of the sliced file in the build, Preview the name of the file of
+// the 3D preview (path.bin for FDM, part.bin for resin), and Picture a picture of the plate.
+type BuildPlate struct {
+	Printer     string      `json:"printer"`
+	Process     string      `json:"process"`
+	Profile     string      `json:"profile,omitempty"`
+	Material    string      `json:"material,omitempty"`
+	Parts       []PlatePart `json:"parts"`
+	File        string      `json:"file,omitempty"`
+	Size        int64       `json:"size,omitempty"`
+	SHA256      string      `json:"sha256,omitempty"`
+	Preview     string      `json:"preview,omitempty"`
+	Picture     string      `json:"picture,omitempty"`
+	Seconds     int         `json:"seconds,omitempty"`
+	Grams       float64     `json:"grams,omitempty"`
+	ML          float64     `json:"ml,omitempty"`
+	Layers      int         `json:"layers,omitempty"`
+	LayerHeight float64     `json:"layer_height,omitempty"`
+	Slicer      string      `json:"slicer,omitempty"`
 }
 
-// ProjectBuildPart is a part of a build, with its state and the addresses of its files.
-type ProjectBuildPart struct {
-	BuildPart
-	State      string    `json:"state"`
+// BuildJob is the reply to GET /api/v1/builds/<id> for the slice run: the commit of the plan, and
+// the plates with the names of their parts in printdeck.yml.
+type BuildJob struct {
+	ID     string       `json:"id"`
+	Commit string       `json:"commit"`
+	Plates []BuildPlate `json:"plates"`
+}
+
+// BuildFiles is the body of POST /api/v1/builds/<id>/files: the plates of the job, in the same
+// order, with their files and the facts of the slice.
+type BuildFiles struct {
+	Plates []BuildPlate `json:"plates"`
+}
+
+// BuildFailure is the body of POST /api/v1/builds/<id>/failed.
+type BuildFailure struct {
+	Error string `json:"error"`
+}
+
+// ProjectBuild is a build on the plan page, the build page and the project page.
+type ProjectBuild struct {
+	ID      string    `json:"id"`
+	Plan    string    `json:"plan"`
+	Commit  string    `json:"commit"`
+	Created time.Time `json:"created"`
+	State   string    `json:"state"`
+	Error   string    `json:"error,omitempty"`
+	// Start is the command that starts the slice run by hand, while the service cannot start it.
+	Start  string              `json:"start,omitempty"`
+	Plates []ProjectBuildPlate `json:"plates"`
+}
+
+// ProjectBuildPlate is a plate of a build, with its state and the addresses of its files.
+type ProjectBuildPlate struct {
+	BuildPlate
+	State      string    `json:"state,omitempty"`
 	By         string    `json:"by,omitempty"`
 	At         time.Time `json:"at,omitzero"`
 	Reason     string    `json:"reason,omitempty"`
@@ -92,8 +183,8 @@ type ProjectBuildPart struct {
 	PictureURL string    `json:"picture_url,omitempty"`
 }
 
-// BuildDecision is the body of POST /api/v1/projects/<id>/builds/<build>/parts/<n>/approve and
-// .../reject: the reason of a rejection.
+// BuildDecision is the body of POST .../builds/<build>/plates/<n>/approve and .../reject: the
+// reason of a rejection.
 type BuildDecision struct {
 	Reason string `json:"reason,omitempty"`
 }

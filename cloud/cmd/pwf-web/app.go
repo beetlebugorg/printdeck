@@ -27,6 +27,12 @@ type app struct {
 	view                       *wire.ProjectView
 	print                      string // the print of the print page, or ""
 	playing                    int    // the number of the time lapse that plays; a new play ends the old one
+	// The plan page: the plan, the choice of each part, the plates (the indexes of the parts of
+	// each plate), and the part in the 3D view.
+	plan        *wire.ProjectPlan
+	planChoices []planChoice
+	planPlates  [][]int
+	planShown   int
 }
 
 const tokenKey = "pwf-session"
@@ -46,6 +52,7 @@ func runApp() {
 	on("joinKeyBtn", "click", func() { go a.joinWithPasskey() })
 	onSubmit("newForm", func() { go a.newProject() })
 	a.bindEdits()
+	a.bindBuilds()
 	onSubmit("inviteForm", func() { go a.invite() })
 	on("inviteCopy", "click", func() { go copyText(byID("inviteLink").Get("textContent").String(), "ownerToolsMsg") })
 	on("inviteShare", "click", func() { shareLink(byID("inviteLink").Get("textContent").String()) })
@@ -88,6 +95,19 @@ func (a *app) route() {
 		a.showProject(args["x"], 0, args["p"])
 	case strings.HasPrefix(path, "/projects/"):
 		slug, n, _ := strings.Cut(strings.TrimPrefix(path, "/projects/"), "/")
+		if kind, rest, ok := strings.Cut(n, "/"); ok && (kind == "plans" || kind == "builds") && rest != "" {
+			var nr wire.NameReply
+			if err := a.api("GET", "/names/"+slug, nil, &nr); err != nil {
+				a.failed(err)
+				return
+			}
+			if kind == "plans" {
+				a.showPlanPage(nr.ID, rest)
+			} else {
+				a.showBuildPage(nr.ID, rest)
+			}
+			return
+		}
 		if pr, ok := strings.CutPrefix(n, "printers/"); ok {
 			var nr wire.NameReply
 			if err := a.api("GET", "/names/"+slug, nil, &nr); err != nil {
@@ -119,11 +139,11 @@ func projectPath(slug string, n int) string {
 }
 
 // The views of the page.
-var views = []string{"vSignIn", "vOwner", "vJoin", "vHome", "vMissing", "vProject", "vPublic", "vPrint", "vPrinter"}
+var views = []string{"vSignIn", "vOwner", "vJoin", "vHome", "vMissing", "vProject", "vPublic", "vPrint", "vPrinter", "vPlan", "vBuild"}
 
 func show(id string) {
 	setHidden("loading", id != "")
-	if v := js.Global().Get("pwfView3d"); id != "vPrinter" && !v.IsUndefined() {
+	if v := js.Global().Get("pwfView3d"); id != "vPrinter" && id != "vPlan" && !v.IsUndefined() {
 		v.Call("hide")
 	}
 	for _, v := range views {
@@ -653,6 +673,7 @@ func (a *app) editPrint(in wire.PrintEdit, msg string) {
 // drawProject draws the view of the project.
 func (a *app) drawProject() {
 	v := a.view
+	a.drawBuilds(v)
 	drawNotes("p", v.Notes, v.NotesBy, v.NotesAt)
 	setHidden("pNotesForm", true)
 	setHidden("pNotesText", false)
