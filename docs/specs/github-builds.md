@@ -54,13 +54,28 @@ GitHub shows the wait as the commit status `printdeck/approval`.
 - The Action makes `part.bin` and `path.bin` with the build, so the page needs no work on the
   service to show the preview.
 
+## The parts of a print
+
+A round of tests can print only the parts that change, or all the parts. The person who sends a
+build to the printers chooses, and the page starts with a suggestion.
+
+- Each build has all the parts, sliced. The Action marks each part that changed in the pull
+  request against its base branch: its files, the files of its `generate:` source, its entry in
+  `printdeck.yml`, or the folder of its profile. A build of a branch compares with the last
+  build of the branch, and a release build marks no part.
+- The build page lists all the parts with a check box each. The parts that changed are checked
+  at first, with the label "Changed". The owner checks or unchecks parts, and taps Approve
+  the checked parts. Each part keeps its own state.
+- So in a round of tests of the pod and the shell, the owner can print only the pod. A full
+  test checks all the parts.
+- Reject still works for one part, with a reason for the pull request.
+
 ## The repository
 
 ```
-printdeck.yml          the parts, the printers and the materials
-models/                STL or 3MF files (or the source, see "Sources")
-profiles/taz/          the Cura definition and the profile of the TAZ Workhorse
-profiles/phenom/       the slicer profile of the Peopoly Phenom
+printdeck.yml               the parts, the printers and the materials
+models/                     STL or 3MF files (or the source, see "Sources")
+profiles/taz-workhorse-se/  the Cura stack of the TAZ Workhorse (from printdeck/profiles)
 .github/workflows/printdeck.yml
 ```
 
@@ -74,18 +89,33 @@ parts:
     count: 4                # 4 copies on one plate
     printer: phenom
     material: Grey resin
-    profile: profiles/phenom/standard-0.05.ini
+    prebuilt: phenom/feet.cbddlp
   - name: Shoulder pieces
     files: [models/shoulder-left.stl, models/shoulder-right.stl]
     printer: phenom
     material: Grey resin
-    profile: profiles/phenom/standard-0.05.ini
+    prebuilt: phenom/shoulders.cbddlp
   - name: Base plate
     files: [models/base.stl]
     printer: taz
-    material: PLA, black
-    profile: profiles/taz/pla-0.2.cfg
+    material: roll-4                         # a material of the profile folder
+    profile: taz-workhorse-se/pla-0.20-standard
 ```
+
+## The profiles
+
+The profiles come from the Cura app of the owner. `slicer/export_cura_profile.py` copies them into
+`profiles/` of the printdeck repository (see `profiles/README.md`). A repository that prints
+copies the folder of each profile that it uses into its own `profiles/`. So a build depends only
+on the commit of the repository, and a pull request can change a profile.
+
+- A part names its profile as `<folder>/<profile>`, for example `taz-workhorse-se/pla-0.10-fine`,
+  and its material as a material of that folder, for example `roll-4`.
+- Each profile has a version: the first 12 hex digits of the SHA-256 of its folder. The manifest
+  of a build has it for each part, and each G-code has it in the line `;Printdeck profile:`. The
+  build page and the print page show the profile and the version of each print.
+- `slicer/curaslice.py` works out the settings as the Cura app does. A slice of the cover of
+  bittlex matches the slice of the Cura app: the same time, filament, size and layers.
 
 A part can change settings of its profile with `settings:` (Cura setting names for FDM), for
 example `support_structure: tree` or `brim_line_count: 14`. A 3MF file keeps the per-mesh
@@ -101,15 +131,16 @@ fit on one plate, the Action fails with the count that fits.
 The repository uses the action `printdeck/slice` from this repository (`actions/slice/`). It runs
 in a container with the slicers.
 
-- **FDM:** CuraEngine with the Cura definition of the TAZ Workhorse and the profile of the part.
-  The Action then runs `slicer/AdaptiveSpeed.py` on the G-code, as the deck profile does now.
+- **FDM:** CuraEngine 5.13 with `slicer/curaslice.py` and a profile of `profiles/` (see "The
+  profiles"). A part can ask for `slicer/AdaptiveSpeed.py` after the slice with
+  `adaptive_speed: true`. The Cura app of the owner does not run it now, so it is off by default.
 - **Resin:** PrusaSlicer in SLA mode makes an SL1 file with supports. UVtools converts it to
   `.cbddlp` for the Phenom (3840 x 2160, 0.072 mm pixels, the projector mirror).
   - A part can also have a `prebuilt:` file in place of `profile:`: a `.cbddlp` that a person
     made with ChiTuBox and committed. The Action then only checks its header. This keeps the
     supports of ChiTuBox for parts that need them.
-- The Action slices only the parts whose files or profiles changed since the last build of the
-  same branch. A tag slices all the parts.
+- The Action slices all the parts of `printdeck.yml`, and marks the parts that changed (see
+  "The parts of a print").
 - The Action uploads the manifest and the files to the service (see "The upload").
 
 The manifest, `build.json`:
@@ -221,9 +252,9 @@ the files of the script.
 ## The first repository: bittlex
 
 `beetlebugorg/bittlex` is public, with the default branch `main`. Python scripts with build123d
-and manifold3d make the parts, and the STL, 3MF and STEP files are in the repository. The Cura
-profile is `cura/Bittle_X.curaprofile` (0.20 mm layers, no supports, a 6-line brim), for the TAZ
-Workhorse with a 0.5 mm nozzle. The repository has one workflow now: `pages.yml` builds the
+and manifold3d make the parts, and the STL, 3MF and STEP files are in the repository. Its old Cura
+profile is `cura/Bittle_X.curaprofile` (0.20 mm layers, no supports, a 6-line brim). The builds
+use the profiles of `printdeck/profiles/taz-workhorse-se` in its place. The repository has one workflow now: `pages.yml` builds the
 GitHub Pages site. A draft of its `printdeck.yml`:
 
 ```yaml
@@ -237,37 +268,34 @@ parts:
   - name: Pod body (screw, rev 0.26)
     files: [bittle_pi_addon/stl/print/pod_body_screw.3mf]
     printer: taz
-    material: PLA
-    profile: cura/Bittle_X.curaprofile
-    settings: {layer_height: 0.1}
+    material: roll-4
+    profile: taz-workhorse-se/pla-0.10-fine
   - name: Pod panel (screw)
     files: [bittle_pi_addon/stl/print/pod_panel_screw.stl]
     printer: taz
-    material: PLA, second color
-    profile: cura/Bittle_X.curaprofile
-    settings: {layer_height: 0.1}
+    material: roll-3
+    profile: taz-workhorse-se/pla-0.10-fine
   - name: Cover (screw)
     files: [bittle_pi_addon/stl/print/cover_screw.stl]
     printer: taz
-    material: PLA
-    profile: cura/Bittle_X.curaprofile
-    settings: {layer_height: 0.1}
+    material: roll-4
+    profile: taz-workhorse-se/pla-0.10-fine
   - name: Pod door
     files: [bittle_pi_addon/stl/print/pod_door.stl]
     printer: taz
-    material: PLA, white
-    profile: cura/Bittle_X.curaprofile
+    material: roll-4
+    profile: taz-workhorse-se/pla-0.20-standard
   - name: Platform cover
     files: [bittle_platform/stl/print/cover_pegs.stl]
     printer: taz
-    material: PLA
-    profile: cura/Bittle_X.curaprofile
-    settings: {support_enable: true, support_structure: tree, brim_line_count: 14}
+    material: roll-4
+    profile: taz-workhorse-se/pla-0.20-standard
+    settings: {support_enable: true, support_structure: tree, adhesion_type: brim, brim_line_count: 14}
   - name: Starter plate
     files: [bittle_platform/stl/print/starter_plate.stl]
     printer: taz
-    material: PLA
-    profile: cura/Bittle_X.curaprofile
+    material: roll-4
+    profile: taz-workhorse-se/pla-0.20-standard
   - name: Resin plate
     files: [bittle_pi_addon/stl/plates/resin_phenom.stl]
     printer: phenom

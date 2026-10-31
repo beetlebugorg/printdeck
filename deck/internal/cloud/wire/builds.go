@@ -34,8 +34,11 @@ type BuildPart struct {
 	ML          float64 `json:"ml,omitempty"`
 	Layers      int     `json:"layers,omitempty"`
 	LayerHeight float64 `json:"layer_height,omitempty"`
-	Profile     string  `json:"profile,omitempty"`
+	Profile     string  `json:"profile,omitempty"` // "<folder>/<profile>@<version>"
 	Slicer      string  `json:"slicer,omitempty"`
+	// Changed marks a part that changed in the pull request (or since the last build of the
+	// branch). The build page checks these parts at first.
+	Changed bool `json:"changed,omitempty"`
 }
 
 // BuildReply is the reply to POST /api/v1/builds: the ID of the build, and the grant for its
