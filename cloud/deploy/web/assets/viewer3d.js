@@ -451,8 +451,11 @@ async function showModels(box, opts) {
   scene.updateMatrixWorld(true);
   const size = b.getSize(new T.Vector3());
   const [bx, by] = opts.bed || [Math.max(60, size.x * 1.6), Math.max(60, size.z * 1.6)];
-  const bed = new T.Mesh(new T.BoxGeometry(bx, 2, by), new T.MeshStandardMaterial({ color: "#2b2d31", roughness: 0.8 }));
-  bed.position.y = -1;
+  // The bed: see-through, so the bottom of a part shows from under the bed.
+  const bed = new T.Mesh(new T.PlaneGeometry(bx, by), new T.MeshStandardMaterial({ color: "#2b2d31", roughness: 0.8, transparent: true,
+    opacity: 0.55, depthWrite: false, side: T.DoubleSide }));
+  bed.rotation.x = -Math.PI / 2;
+  bed.position.y = -0.01;
   scene.add(bed);
   const grid = new T.GridHelper(Math.max(bx, by), Math.round(Math.max(bx, by) / 10), 0x5b5f66, 0x3a3d42);
   grid.position.y = 0.05;
