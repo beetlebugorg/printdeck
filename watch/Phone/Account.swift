@@ -14,12 +14,49 @@ final class Account {
     private(set) var session = Store.serviceSession
     /// The live prints of all projects of the session, from the last read.
     private(set) var live: [LivePrint] = []
+    /// The projects of the session, and the view of each, from the last read.
+    private(set) var projects: [ServiceProject] = []
+    private(set) var details: [String: ProjectDetail] = [:]
     /// When the app read the live prints, or nil.
     private(set) var liveTime: Date?
     private(set) var busy = false
     private(set) var message: String?
 
     var signedIn: Bool { session.map { !$0.expired } ?? false }
+
+    #if DEBUG
+    /// For screenshots in the simulator: PRINTDECK_SAMPLE_PROJECTS=1 shows sample projects, with
+    /// no service.
+    private var sample = false
+
+    init() {
+        guard ProcessInfo.processInfo.environment["PRINTDECK_SAMPLE_PROJECTS"] == "1",
+              let v = try? ServiceClient.decodeSample(Self.sampleJSON) else { return }
+        sample = true
+        session = ServiceSession(token: "", kind: "owner", name: "Sample", expires: .distantFuture)
+        projects = [ServiceProject(id: "pj1", name: v.name), ServiceProject(id: "pj2", name: "Pod bay")]
+        details = ["pj1": v]
+        liveTime = Date()
+    }
+
+    private static let sampleJSON = """
+    {"id": "pj1", "name": "Bittlex", "slug": "bittlex", "is_owner": true,
+     "prints": [
+       {"id": "a", "n": 1, "name": "Shoulder pair", "result": "complete", "ended": "2026-10-31T12:00:00Z",
+        "seconds": 3600, "printer": "Phenom", "ready": "2026-10-31T13:00:00Z", "ready_note": "On the shelf"},
+       {"id": "b", "n": 2, "name": "Hip", "result": "complete", "ended": "2026-10-31T14:00:00Z", "printer": "TAZ"},
+       {"id": "d", "n": 3, "name": "Elbow", "result": "complete", "ended": "2026-10-30T08:00:00Z",
+        "discarded": "2026-10-31T19:00:00Z", "discard_note": "Warped corner"}],
+     "plans": [{"id": "pl1", "commit": "abcdef1", "kind": "test", "pr": 7, "created": "2026-10-30T08:00:00Z",
+       "builds": [{"id": "bd1", "created": "2026-10-30T09:00:00Z", "state": "ready", "plates": [
+         {"printer": "Phenom", "process": "resin", "file": "plate-1.ctb", "state": "waiting", "seconds": 7200,
+          "material_name": "Grey 80/20"},
+         {"printer": "TAZ", "process": "fdm", "file": "plate-2.gcode", "state": "approved", "seconds": 2700}]}]}],
+     "live": [{"name": "Pod door", "percent": 41, "layer": 120, "layers": 300, "left": 2400, "printer": "TAZ"}],
+     "queue": [{"printer": "TAZ", "name": "Lid", "place": 1, "seconds": 2700}]
+    }
+    """
+    #endif
 
     private var client: ServiceClient { ServiceClient(token: session?.token) }
 
@@ -59,6 +96,8 @@ final class Account {
         session = nil
         Store.serviceSession = nil
         live = []
+        projects = []
+        details = [:]
         liveTime = nil
         message = nil
     }
@@ -66,6 +105,9 @@ final class Account {
     /// Reads the live prints of all projects of the session, and for the owner the live records of
     /// the printers, for a print with no project. A 401 ends the session: the user signs in again.
     func refresh() async {
+        #if DEBUG
+        if sample { return }
+        #endif
         guard signedIn else {
             if session != nil { message = ServiceError.signedOut.errorDescription }
             return
@@ -74,12 +116,23 @@ final class Account {
         do {
             let projects = try await c.projects()
             var all: [LivePrint] = []
+            var views: [String: ProjectDetail] = [:]
             let owner = session?.kind == "owner"
-            try await withThrowingTaskGroup(of: [LivePrint].self) { group in
-                for p in projects { group.addTask { try await c.live(p) } }
-                if owner { group.addTask { try await c.printers() } }
-                for try await l in group { all += l }
+            try await withThrowingTaskGroup(of: (String?, ProjectDetail?, [LivePrint]).self) { group in
+                for p in projects {
+                    group.addTask {
+                        let v = try await c.project(p.id)
+                        return (p.id, v, (v.live ?? []).map { var l = $0; l.project = p.name; return l })
+                    }
+                }
+                if owner { group.addTask { (nil, nil, try await c.printers()) } }
+                for try await (id, v, l) in group {
+                    all += l
+                    if let id, let v { views[id] = v }
+                }
             }
+            self.projects = projects
+            details = views
             live = all
             liveTime = Date()
             message = nil
@@ -87,6 +140,8 @@ final class Account {
             session = nil
             Store.serviceSession = nil
             live = []
+            projects = []
+            details = [:]
             message = ServiceError.signedOut.errorDescription
         } catch {
             message = errorText(error)

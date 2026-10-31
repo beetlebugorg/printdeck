@@ -21,6 +21,10 @@ struct ServiceSession: Codable, Equatable {
 struct ServiceProject: Decodable, Identifiable, Equatable {
     var id: String
     var name: String
+    /// A picture of the project (the newest photo or model), or nil.
+    var cover: String?
+
+    var coverURL: URL? { cover.flatMap { $0.isEmpty ? nil : URL(string: $0, relativeTo: ServiceClient.base)?.absoluteURL } }
 }
 
 /// A print of a project that prints now, or that ended a short time ago (wire.ProjectLive). The
@@ -178,7 +182,8 @@ struct ServiceClient {
         return try? Date(s, strategy: Date.ISO8601FormatStyle(includingFractionalSeconds: true))
     }
 
-    private static let decoder: JSONDecoder = {
+    /// The decoder of the replies: the times are RFC 3339.
+    static let decoder: JSONDecoder = {
         let d = JSONDecoder()
         d.dateDecodingStrategy = .custom { dec in
             let s = try dec.singleValueContainer().decode(String.self)

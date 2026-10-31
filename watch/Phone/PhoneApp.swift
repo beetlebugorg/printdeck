@@ -17,8 +17,9 @@ struct PhoneApp: App {
     }
 }
 
-/// The home screen with a card for each deck, and the deck screen of a card. The app reads all
-/// decks every 5 seconds while it is active.
+/// The two tabs of the app: Prints, with a card for each deck and the deck screen of a card, and
+/// Projects, with the projects of the service. The app reads all decks every 5 seconds while it
+/// is active.
 struct RootView: View {
     @Environment(Fleet.self) private var fleet
     @Environment(\.colorScheme) private var scheme
@@ -27,21 +28,35 @@ struct RootView: View {
 
     @State private var path: [String] = []
     @State private var router = Router.shared
+    @State private var tab = Tab.prints
+    @State private var projectPath: [ProjectRoute] = []
+
+    enum Tab { case prints, projects }
     /// The loading screen shows until the first reading of the decks.
     @State private var loading = true
 
     var body: some View {
         let p = Palette.of(scheme)
         ZStack {
-            NavigationStack(path: $path) {
-                HomeView(link: link) { path.append($0) }
-                    .navigationDestination(for: String.self) { id in
-                        if let m = fleet.model(id) {
-                            DeckView(link: link) { path.removeAll() }
-                                .environment(m)
+            TabView(selection: $tab) {
+                NavigationStack(path: $path) {
+                    HomeView(link: link) { path.append($0) }
+                        .navigationDestination(for: String.self) { id in
+                            if let m = fleet.model(id) {
+                                DeckView(link: link) { path.removeAll() }
+                                    .environment(m)
+                            }
                         }
-                    }
+                }
+                .tabItem { Label("Prints", systemImage: "printer") }
+                .tag(Tab.prints)
+                NavigationStack(path: $projectPath) {
+                    ProjectsHome()
+                }
+                .tabItem { Label("Projects", systemImage: "square.stack") }
+                .tag(Tab.projects)
             }
+            .tint(p.orange)
             if loading {
                 LoadingView(lines: loadingLines)
                     .transition(.opacity)
@@ -65,6 +80,13 @@ struct RootView: View {
         .onAppear {
             // For screenshots in the simulator: a PRINTDECK_SCREEN of the deck screen opens the
             // first deck.
+            switch ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"] {
+            case "projects": tab = .projects
+            case "project":
+                tab = .projects
+                projectPath = [ProjectRoute(id: "pj1")]
+            default: break
+            }
             let screens = ["deck", "files", "setup", "camera", "timelapse"]
             if let s = ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"], screens.contains(s),
                let m = fleet.models.first {
@@ -86,6 +108,7 @@ struct RootView: View {
         // A tap on a push message opens the deck screen of its deck.
         .onChange(of: router.deck) { _, id in
             guard let id, fleet.model(id) != nil else { return }
+            tab = .prints
             path = [id]
             router.deck = nil
         }

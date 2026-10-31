@@ -257,6 +257,13 @@ struct ServicePrinterInfo: Decodable, Identifiable {
 }
 
 extension ServiceClient {
+    #if DEBUG
+    /// Decodes a project view for the sample of the simulator.
+    static func decodeSample(_ json: String) throws -> ProjectDetail {
+        try decoder.decode(ProjectDetail.self, from: Data(json.utf8))
+    }
+    #endif
+
     func project(_ id: String) async throws -> ProjectDetail {
         try await get("projects/" + id)
     }

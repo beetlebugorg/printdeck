@@ -70,7 +70,7 @@ A build from Xcode uses the APNs sandbox. A TestFlight or App Store build uses p
 
 ## Away from home
 
-Sign in with passkey on the home screen signs in to printdeck.beetlebug.org with the passkey of
+Sign in with passkey on the Projects tab signs in to printdeck.beetlebug.org with the passkey of
 the owner or of a member, the same passkey as the web site. iOS offers the passkeys of the iPhone
 and a security key, such as a YubiKey, over USB-C, Lightning or NFC. A key with no passkey for
 Printdeck sends no user handle, and the app shows "This key has no passkey for Printdeck." The token is in the keychain group,
@@ -96,8 +96,10 @@ The routes of the service:
 
 ## Projects
 
-After the sign-in, Projects on the home screen lists the projects of the session. A project shows
-its overview, as the web page has it:
+The app has two tabs: Prints, with the cards of the decks, and Projects. The Projects tab has the
+sign-in, and after it a card for each project with what it does now: the prints that run, the
+prints ready for pickup, the plates that wait and the files in the queues. A project shows its
+overview, as the web page has it:
 
 - **Now**: the live prints, and for the owner the plates that wait for an approval, with Approve
   and Reject (with a reason), and the approved plates with Send to a printer of the same process.

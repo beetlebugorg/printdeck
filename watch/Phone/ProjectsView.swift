@@ -3,49 +3,125 @@
 
 import SwiftUI
 
-/// The projects of the session at the service. A tap opens the overview of a project.
-struct ProjectsView: View {
-    @Environment(\.palette) private var p
-    let close: () -> Void
-
-    @State private var projects: [ServiceProject] = []
-    @State private var message: String? = "Reading the projects"
+/// The Projects tab: a card for each project of the session, with what it does now: the prints
+/// that run, the prints ready for pickup, the plates that wait, and the files in the queues. A tap
+/// opens the project. With no session, the tab has the sign-in.
+struct ProjectsHome: View {
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.scenePhase) private var phase
+    @State private var account = Account.shared
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    Heading(title: "Projects") { BackKey(title: "Back", action: close) }
-                        .padding(.top, 8)
-                    if let message { Note(text: message) }
-                    ForEach(projects) { pr in
-                        NavigationLink(value: pr.id) {
-                            Plate(label: "Project") {
-                                Text(pr.name.uppercased())
-                                    .font(Theme.plex(18))
-                                    .foregroundStyle(p.text)
-                                    .padding(.horizontal, 4)
-                            }
+        let p = Palette.of(scheme)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Heading(title: "Projects")
+                    .padding(.top, 8)
+                if account.signedIn {
+                    if account.projects.isEmpty {
+                        Note(text: account.message ?? (account.liveTime == nil ? "Reading the projects" : "No projects"))
+                    }
+                    ForEach(account.projects) { pr in
+                        NavigationLink(value: ProjectRoute(id: pr.id)) {
+                            ProjectCard(project: pr, view: account.details[pr.id])
                         }
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(16)
+                if account.signedIn {
+                    SignedInLine()
+                } else {
+                    AccountPlate()
+                }
             }
-            .background(p.bg.ignoresSafeArea())
-            .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(for: String.self) { id in ProjectScreen(id: id) }
-            .task { await load() }
+            .padding(16)
+        }
+        .background(p.bg.ignoresSafeArea())
+        .environment(\.palette, p)
+        .toolbar(.hidden, for: .navigationBar)
+        .navigationDestination(for: ProjectRoute.self) { r in
+            ProjectScreen(id: r.id)
+                .environment(\.palette, p)
+        }
+        .task(id: phase == .active && account.signedIn) {
+            while phase == .active && account.signedIn && !Task.isCancelled {
+                await account.refresh()
+                try? await Task.sleep(for: .seconds(20))
+            }
         }
     }
+}
 
-    private func load() async {
-        do {
-            projects = try await ServiceClient(token: Account.shared.session?.token).projects()
-            message = projects.isEmpty ? "No projects" : nil
-        } catch {
-            message = errorText(error)
+/// The session in one line, with Sign out.
+private struct SignedInLine: View {
+    @Environment(\.palette) private var p
+    @State private var account = Account.shared
+
+    var body: some View {
+        HStack {
+            Text(((account.session?.name ?? "Signed in") + " · " + (account.session?.kind ?? "")).uppercased())
+                .font(Theme.plex(12))
+                .foregroundStyle(p.dim)
+                .lineLimit(1)
+            Spacer()
+            SmallKey(title: "Sign out", cap: .danger) { account.signOut() }
         }
+        .padding(.horizontal, 4)
+        .padding(.top, 8)
+    }
+}
+
+/// The value of a navigation to a project.
+struct ProjectRoute: Hashable {
+    var id: String
+}
+
+/// The card of a project: its picture, its name, and a line of what it does now.
+private struct ProjectCard: View {
+    @Environment(\.palette) private var p
+    let project: ServiceProject
+    let view: ProjectDetail?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Thumb(url: project.coverURL, side: 64)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(project.name)
+                    .font(Theme.plex(17))
+                    .foregroundStyle(p.text)
+                    .lineLimit(1)
+                Text(summary.isEmpty ? "Nothing waits" : summary)
+                    .font(Theme.plex(12, bold: false))
+                    .foregroundStyle(summary.isEmpty ? p.dim : p.text)
+                    .lineLimit(2)
+                if let l = view?.live?.first(where: \.printing) {
+                    Playhead(value: l.percent / 100)
+                        .padding(.top, 2)
+                }
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .foregroundStyle(p.dim)
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 5).fill(p.surface))
+        .overlay(RoundedRectangle(cornerRadius: 5).stroke(p.edge, lineWidth: 1))
+        .contentShape(Rectangle())
+    }
+
+    /// "1 printing · 2 ready · 1 plate waits · 3 queued".
+    private var summary: String {
+        guard let v = view else { return "" }
+        let printing = (v.live ?? []).filter(\.printing).count
+        let ready = v.readyForPickup.count
+        let plates = v.owner ? v.platesToDecide.filter { $0.plate.state == "waiting" }.count : 0
+        let queued = v.queue?.count ?? 0
+        var parts: [String] = []
+        if printing > 0 { parts.append("\(printing) printing") }
+        if ready > 0 { parts.append("\(ready) ready") }
+        if plates > 0 { parts.append("\(plates) plate\(plates == 1 ? "" : "s") wait\(plates == 1 ? "s" : "")") }
+        if queued > 0 { parts.append("\(queued) queued") }
+        return parts.joined(separator: " · ")
     }
 }
 
@@ -68,12 +144,15 @@ struct ProjectScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Heading(title: view?.name ?? "Project") { BackKey(title: "Back") { dismiss() } }
-                    .padding(.top, 8)
+                Heading(title: view?.name ?? "Project") {
+                    HStack(spacing: 8) {
+                        SmallKey(title: "Photos") { camera = true }
+                        SmallKey(title: "Back") { dismiss() }
+                    }
+                }
+                .padding(.top, 8)
                 if let message { Note(text: message) }
                 if let v = view {
-                    Button("Take photos") { camera = true }
-                        .buttonStyle(KeyStyle())
                     now(v)
                     pickup(v)
                     queue(v)
@@ -102,6 +181,7 @@ struct ProjectScreen: View {
     }
 
     private func load() async {
+        if view == nil { view = Account.shared.details[id] }
         do {
             view = try await client.project(id)
             message = nil
@@ -141,21 +221,20 @@ struct ProjectScreen: View {
         if !ready.isEmpty {
             Plate(label: "Ready for pickup") {
                 ForEach(ready) { pr in
-                    VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 10) {
                         NavigationLink(value: ProjectPrintRoute(print: pr.id)) {
                             HStack(spacing: 10) {
-                                Thumb(url: v.photos(of: pr.id).first?.smallURL ?? pr.modelURL)
+                                Thumb(url: v.photos(of: pr.id).first?.smallURL ?? pr.modelURL, side: 44)
                                 Row(title: pr.name, detail: pr.readyNote ?? "", value: "")
                             }
                         }
                         .buttonStyle(.plain)
                         if v.owner {
-                            Button("Delivered") {
+                            SmallKey(title: "Delivered") {
                                 Task {
                                     await act { try await client.editPrint(project: id, print: pr.id, ["delivered": true]) }
                                 }
                             }
-                            .buttonStyle(KeyStyle(cap: .orange))
                         }
                     }
                 }
@@ -188,7 +267,7 @@ struct ProjectScreen: View {
                 ForEach(prints) { pr in
                     NavigationLink(value: ProjectPrintRoute(print: pr.id)) {
                         HStack(spacing: 10) {
-                            Thumb(url: v.photos(of: pr.id).first?.smallURL ?? pr.modelURL)
+                            Thumb(url: v.photos(of: pr.id).first?.smallURL ?? pr.modelURL, side: 44)
                             Row(title: pr.name,
                                 detail: [pr.resultText, pr.ended.map { $0.formatted(.relative(presentation: .named)) } ?? "",
                                          pr.printer ?? ""].filter { !$0.isEmpty }.joined(separator: " · "),
@@ -257,45 +336,44 @@ private struct PlateDecision: View {
         let pl = ref.plate
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                Thumb(url: pl.picture)
+                Button { open() } label: { Thumb(url: pl.picture, side: 44) }
+                    .buttonStyle(.plain)
                 Row(title: "Plate \(ref.index + 1) · " + ref.plan.title,
                     detail: [pl.printer ?? "", pl.materialName ?? "",
                              pl.seconds.map { Format.duration(Double($0)) } ?? ""].filter { !$0.isEmpty }.joined(separator: " · "),
-                    value: pl.state == "waiting" ? "Waits" : "Approved")
+                    value: "")
             }
-            Button("3D preview") { open() }
-                .buttonStyle(KeyStyle())
             if pl.state == "waiting" {
                 if rejecting {
                     PanelField(label: "Reason", prompt: "Why the plate is wrong", text: $reason)
-                    HStack(spacing: 10) {
-                        Button("Reject") { Task { await decide(approve: false) } }
-                            .buttonStyle(KeyStyle(cap: .danger))
+                    HStack(spacing: 8) {
+                        SmallKey(title: "Reject", cap: .danger) { Task { await decide(approve: false) } }
                             .disabled(busy || reason.trimmingCharacters(in: .whitespaces).isEmpty)
-                        Button("Back") { rejecting = false }
-                            .buttonStyle(KeyStyle())
+                        SmallKey(title: "Back") { rejecting = false }
                     }
                 } else {
-                    HStack(spacing: 10) {
-                        Button("Approve") { Task { await decide(approve: true) } }
-                            .buttonStyle(KeyStyle(cap: .orange))
-                        Button("Reject") { rejecting = true }
-                            .buttonStyle(KeyStyle(cap: .danger))
+                    HStack(spacing: 8) {
+                        SmallKey(title: "Approve", cap: .orange) { Task { await decide(approve: true) } }
+                        SmallKey(title: "Reject", cap: .danger) { rejecting = true }
+                        SmallKey(title: "3D") { open() }
                     }
                     .disabled(busy)
                 }
             } else if let printers {
                 let same = printers.filter { $0.process == nil || $0.process == pl.process }
                 if same.isEmpty { Note(text: "No printer for \(pl.process ?? "this process")") }
-                ForEach(same) { pr in
-                    Button("Send to \(pr.name)") { Task { await send(pr) } }
-                        .buttonStyle(KeyStyle(cap: .orange))
-                        .disabled(busy)
+                HStack(spacing: 8) {
+                    ForEach(same) { pr in
+                        SmallKey(title: pr.name, cap: .orange) { Task { await send(pr) } }
+                            .disabled(busy)
+                    }
                 }
             } else {
-                Button("Send to a printer") { Task { await loadPrinters() } }
-                    .buttonStyle(KeyStyle(cap: .orange))
-                    .disabled(busy)
+                HStack(spacing: 8) {
+                    SmallKey(title: "Send", cap: .orange) { Task { await loadPrinters() } }
+                        .disabled(busy)
+                    SmallKey(title: "3D") { open() }
+                }
             }
             if let message { Note(text: message) }
         }
@@ -363,8 +441,13 @@ struct PrintScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Heading(title: print?.name ?? "Print") { BackKey(title: "Back") { dismiss() } }
-                    .padding(.top, 8)
+                Heading(title: print?.name ?? "Print") {
+                    HStack(spacing: 8) {
+                        SmallKey(title: "Photos") { camera = true }
+                        SmallKey(title: "Back") { dismiss() }
+                    }
+                }
+                .padding(.top, 8)
                 if let message { Note(text: message) }
                 if let v = view, let pr = print {
                     facts(pr)
@@ -432,24 +515,25 @@ struct PrintScreen: View {
 
     private func marks(_ pr: ProjectPrintItem) -> some View {
         Plate(label: "Marks") {
-            HStack(spacing: 10) {
+            HStack(spacing: 6) {
                 Button("Ready") { Task { await save(["ready": pr.ready == nil]) } }
                     .buttonStyle(KeyStyle(led: pr.ready != nil))
                 Button("Delivered") { Task { await save(["delivered": pr.delivered == nil]) } }
                     .buttonStyle(KeyStyle(led: pr.delivered != nil))
                 Button("Test") { Task { await save(["test": pr.test == nil]) } }
                     .buttonStyle(KeyStyle(led: pr.test != nil))
-            }
-            // Discard asks for the note of why. A tap on a discarded print clears the mark and the note.
-            Button("Discard") {
-                if pr.discarded != nil {
-                    Task { await save(["discard": false]) }
-                } else {
-                    discardNote = ""
-                    discarding.toggle()
+                // Discard asks for the note of why. A tap on a discarded print clears the mark and the note.
+                Button("Discard") {
+                    if pr.discarded != nil {
+                        Task { await save(["discard": false]) }
+                    } else {
+                        discardNote = ""
+                        discarding.toggle()
+                    }
                 }
+                .buttonStyle(KeyStyle(cap: .danger, led: pr.discarded != nil))
             }
-            .buttonStyle(KeyStyle(cap: .danger, led: pr.discarded != nil))
+            .environment(\.panelScale, 0.7)
             if discarding && pr.discarded == nil {
                 PanelField(label: "Why", prompt: "Warped corner, reprint at 0.1 mm", text: $discardNote)
                 Button("Discard the print") {
@@ -464,11 +548,10 @@ struct PrintScreen: View {
     private func photos(_ v: ProjectDetail) -> some View {
         Plate(label: "Photos") {
             let list = v.photos(of: printID)
+            if list.isEmpty { Note(text: "No photos yet. Tap Photos at the top.") }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
                 ForEach(list) { ph in Thumb(url: ph.smallURL, side: 96) }
             }
-            Button("Take photos") { camera = true }
-                .buttonStyle(KeyStyle(cap: .orange))
         }
     }
 
@@ -499,16 +582,17 @@ struct PrintScreen: View {
 
 // MARK: Parts
 
-/// A key for the heading of a page.
-struct BackKey: View {
+/// A small key in a row: an action of a list, or a key of a heading.
+struct SmallKey: View {
     let title: String
+    var cap: KeyStyle.Cap = .raised
     let action: () -> Void
 
     var body: some View {
         Button(title, action: action)
-            .buttonStyle(KeyStyle())
-            .frame(width: 100)
-            .environment(\.panelScale, 0.75)
+            .buttonStyle(KeyStyle(cap: cap))
+            .frame(width: 96)
+            .environment(\.panelScale, 0.65)
     }
 }
 
