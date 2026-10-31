@@ -4,6 +4,7 @@ package main
 
 import (
 	"path"
+	"strings"
 	"syscall/js"
 
 	"printdeck/internal/cloud/wire"
@@ -74,6 +75,9 @@ func diffPairs(plans []wire.ProjectPlan, idx int) ([]diffPair, wire.ProjectPlan)
 	return out, base
 }
 
+// sameShape is the text of describeDiff for a model with no change of its shape.
+const sameShape = "The same shape"
+
 // describeDiff returns the text of the changes of a model.
 func describeDiff(d diffPair) string {
 	v := js.Global().Get("pwfView3d")
@@ -94,10 +98,20 @@ func describePlans(plans []wire.ProjectPlan, rows []js.Value) {
 			return
 		}
 		pairs, _ := diffPairs(plans, i)
+		// The models with the same shape share one short line at the end.
+		var same []string
 		for _, d := range pairs {
 			line := el("span", "diffline", d.label+": …")
 			rows[i].Call("appendChild", line)
-			line.Set("textContent", d.label+": "+describeDiff(d))
+			if t := describeDiff(d); t == sameShape {
+				line.Call("remove")
+				same = append(same, d.label)
+			} else {
+				line.Set("textContent", d.label+": "+t)
+			}
+		}
+		if len(same) > 0 {
+			rows[i].Call("appendChild", el("span", "diffline dim", "Same shape, other settings: "+strings.Join(same, ", ")))
 		}
 	}
 }
@@ -126,6 +140,13 @@ func (a *app) drawPlanDiff(projectID, id string) {
 	setText("plDiffBase", "Since "+planName(base)+" · "+shortSHA(base.Commit)+". Green is new material, red is material that went.")
 	list := byID("plDiff")
 	list.Set("textContent", "")
+	if old := doc.Call("getElementById", "plDiffSame"); !old.IsNull() {
+		old.Call("remove")
+	}
+	sameLine := el("p", "small dim", "")
+	sameLine.Set("id", "plDiffSame")
+	sameLine.Set("hidden", true)
+	var same []string
 	for _, d := range pairs {
 		li := el("li", "", "")
 		txt := el("div", "txt", "")
@@ -146,6 +167,18 @@ func (a *app) drawPlanDiff(projectID, id string) {
 		}))
 		li.Call("appendChild", see)
 		list.Call("appendChild", li)
-		go func() { sum.Set("textContent", describeDiff(pair)) }()
+		go func() {
+			t := describeDiff(pair)
+			if t != sameShape {
+				sum.Set("textContent", t)
+				return
+			}
+			// A model with the same shape: one short line under the list, with no 3D key.
+			li.Call("remove")
+			same = append(same, pair.label)
+			sameLine.Set("textContent", "Same shape, other settings: "+strings.Join(same, ", "))
+			sameLine.Set("hidden", false)
+		}()
 	}
+	byID("plDiffCard").Call("appendChild", sameLine)
 }
