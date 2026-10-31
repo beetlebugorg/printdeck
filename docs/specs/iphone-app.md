@@ -73,7 +73,13 @@ App:
 - Send `Authorization: Bearer <token>` on each request. A 401 means: sign in again.
 - `GET /api/v1/projects` lists the projects of the session. `GET /api/v1/projects/<id>` gives the
   view of a project: the prints, the photos, the live prints, the plans, the printers and the queue.
-- A deck that does not answer on the home network uses the live prints of the projects.
+- A deck that does not answer on the home network uses the live prints of the projects. For the
+  owner, `GET /api/v1/printers` also has `live` for each printer: what it prints now, with a
+  project or not (name, percent, layer, layers, left seconds, paused, the last result and its
+  end, and the count and the time of the files of its queue), and `updated`. A member gets 401 on
+  this route: a project sees its own prints only.
+- `GET /api/plugin/printdeck` has `printer_id`: the ID of the printer at the service. It matches
+  `printer_id` of the live prints and `id` of `GET /api/v1/printers`.
 
 Service (Go):
 

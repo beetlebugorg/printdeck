@@ -157,6 +157,8 @@ func (s *Server) route(ctx context.Context, r *http.Request, body []byte) (any, 
 		rest := strings.TrimPrefix(p, "/api/v1/printers/")
 		id, what, _ := strings.Cut(rest, "/")
 		return s.routeSentPlates(ctx, r, body, id, what)
+	case strings.HasPrefix(p, "/api/v1/printers/") && strings.HasSuffix(p, "/live") && r.Method == http.MethodPost:
+		return s.routePrinterLive(ctx, r, body, strings.TrimSuffix(strings.TrimPrefix(p, "/api/v1/printers/"), "/live"))
 	case strings.HasPrefix(p, "/api/v1/printers/") && strings.HasSuffix(p, "/queue") && r.Method == http.MethodPost:
 		return s.routeQueue(ctx, r, body, strings.TrimSuffix(strings.TrimPrefix(p, "/api/v1/printers/"), "/queue"))
 	case strings.HasPrefix(p, "/api/v1/names/") && r.Method == http.MethodGet:

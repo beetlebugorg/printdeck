@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"printdeck/internal/cloud"
 )
@@ -19,6 +20,13 @@ import (
 const MaxPrinters = 64
 
 func printerKey(id string) string { return "printers/" + id + ".json" }
+
+// printerLiveKey is the file of what the printer id does now (PrinterLive). Only the list of the
+// printers of the owner has it.
+func printerLiveKey(id string) string { return "printers/" + id + "-live.json" }
+
+// printerLiveStale is the age of a live record after which the list shows it no more.
+const printerLiveStale = 24 * time.Hour
 
 // printers returns the printers at the service, sorted by name.
 func (s *Server) printers(ctx context.Context) ([]cloud.Printer, error) {
@@ -118,7 +126,22 @@ func (s *Server) routePrinters(ctx context.Context, r *http.Request, body []byte
 	}
 	switch r.Method {
 	case http.MethodGet:
-		return s.printers(ctx)
+		list, err := s.printers(ctx)
+		if err != nil {
+			return nil, err
+		}
+		// What each printer does now: for the owner and the decks only.
+		for i := range list {
+			b, _, err := s.Store.Get(ctx, printerLiveKey(list[i].ID))
+			if err != nil {
+				continue
+			}
+			var l cloud.PrinterLive
+			if json.Unmarshal(b, &l) == nil && s.now().Sub(l.Updated) < printerLiveStale {
+				list[i].Live = &l
+			}
+		}
+		return list, nil
 	case http.MethodPost:
 		if w.deck == nil {
 			return nil, fail(http.StatusUnauthorized, "only a deck registers a printer")
@@ -156,6 +179,31 @@ func (s *Server) routeSentPlates(ctx context.Context, r *http.Request, body []by
 		return map[string]bool{"ok": true}, s.takePlate(ctx, w.deck, id, in)
 	}
 	return nil, fail(http.StatusMethodNotAllowed, "no such request")
+}
+
+// routePrinterLive serves POST /api/v1/printers/<id>/live: a deck sends what its printer does now.
+func (s *Server) routePrinterLive(ctx context.Context, r *http.Request, body []byte, id string) (any, error) {
+	w, err := s.whoFor(ctx, r, body, "")
+	if err != nil {
+		return nil, err
+	}
+	if w.deck == nil {
+		return nil, fail(http.StatusUnauthorized, "only a deck sends the state of its printer")
+	}
+	if !validID(id) {
+		return nil, fail(http.StatusBadRequest, "bad printer")
+	}
+	if err := s.deckPrinter(ctx, w.deck, id); err != nil {
+		return nil, err
+	}
+	var in cloud.PrinterLive
+	if json.Unmarshal(body, &in) != nil {
+		return nil, fail(http.StatusBadRequest, "bad JSON")
+	}
+	in.Name = clip(in.Name, 120)
+	in.Percent = max(0, min(100, in.Percent))
+	in.Updated = s.now().UTC()
+	return map[string]bool{"ok": true}, s.putJSON(ctx, printerLiveKey(id), in)
 }
 
 // routeQueue serves POST /api/v1/printers/<id>/queue: a deck reports the queue of its printer.

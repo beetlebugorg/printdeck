@@ -55,6 +55,7 @@ type (
 	Printer           = wire.Printer
 	PrinterRequest    = wire.PrinterRequest
 	QueueReport       = wire.QueueReport
+	PrinterLive       = wire.PrinterLive
 	PlateSend         = wire.PlateSend
 	SentPlate         = wire.SentPlate
 	PlateTaken        = wire.PlateTaken
@@ -186,6 +187,11 @@ func (c *Client) SentPlates(ctx context.Context, id *Identity, printer string) (
 // TakePlate tells the service that a sent plate is in the queue of the deck.
 func (c *Client) TakePlate(ctx context.Context, id *Identity, printer string, in PlateTaken) error {
 	return c.Do(ctx, id, http.MethodPost, "/api/v1/printers/"+printer+"/plates/taken", in, nil)
+}
+
+// SendPrinterLive sends what the printer does now to the service.
+func (c *Client) SendPrinterLive(ctx context.Context, id *Identity, printer string, in PrinterLive) error {
+	return c.Do(ctx, id, http.MethodPost, "/api/v1/printers/"+printer+"/live", in, nil)
 }
 
 // SendQueue reports the files of the queue of the printer to the service.

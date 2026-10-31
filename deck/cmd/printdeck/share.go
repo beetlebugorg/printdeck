@@ -448,6 +448,7 @@ func startShare(stateDir, configPath, gcodeDir string, app *ui.App, pr printerBa
 		go pl.watchLive(context.Background())
 		go pl.watchService(context.Background())
 		go pl.watchQueue(context.Background(), app.Queue)
+		go pl.watchPrinterLive(context.Background(), app.Queue)
 		if _, ok := pr.(*printer.Klippy); ok && gcodeDir != "" {
 			// The approved plates of the builds of the service go to the queue. A resin plate
 			// waits for a later version: its file goes to the board first.

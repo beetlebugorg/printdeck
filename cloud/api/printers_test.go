@@ -109,3 +109,36 @@ func TestPrintersOfProject(t *testing.T) {
 		t.Error("another deck ended the live tile of a printer")
 	}
 }
+
+// A deck sends what its printer does now. The list of the printers of the owner has it, and the
+// view of a project does not.
+func TestPrinterLive(t *testing.T) {
+	d, url := devService(t)
+	ctx := context.Background()
+	id := connectedLink(t, d, url).Identity()
+	var c cloud.Client
+	taz, _ := c.RegisterPrinter(ctx, id, cloud.PrinterRequest{Key: "main", Name: "TAZ", Process: "fdm"})
+	in := cloud.PrinterLive{Printing: true, Name: "Calibration cube", Percent: 42, Layer: 10, Layers: 50, Left: 900, Queue: 2, QueueSeconds: 3600}
+	if err := c.SendPrinterLive(ctx, id, taz.ID, in); err != nil {
+		t.Fatal(err)
+	}
+	var list []cloud.Printer
+	if err := c.Do(ctx, id, "GET", "/api/v1/printers", nil, &list); err != nil || len(list) != 1 || list[0].Live == nil {
+		t.Fatalf("printers %+v %v", list, err)
+	}
+	if l := list[0].Live; l.Name != "Calibration cube" || l.Percent != 42 || l.Queue != 2 || l.Updated.IsZero() {
+		t.Fatalf("live %+v", l)
+	}
+	other := connectedLink(t, d, url).Identity()
+	if err := c.SendPrinterLive(ctx, other, taz.ID, in); err == nil {
+		t.Error("another deck sent the state of the printer")
+	}
+	sum, _ := c.NewProject(ctx, id, "Robot dog")
+	p, _, _ := d.API.loadProject(ctx, sum.ID)
+	v, _ := d.API.viewProject(ctx, p, &who{owner: true})
+	for _, pr := range v.Printers {
+		if pr.Live != nil {
+			t.Error("a project view has the state of a printer")
+		}
+	}
+}
