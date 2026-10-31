@@ -26,8 +26,8 @@ func (p *projectLink) watchPrinterLive(ctx context.Context, q *queue.Queue) {
 		case <-tick.C:
 		}
 		id, printer := p.Identity(), p.printerID()
-		if id == nil || printer == "" {
-			continue
+		if id == nil || printer == "" || !p.k.State().Reachable {
+			continue // no state yet: the deck program just started, or the printer does not answer
 		}
 		in := p.printerLive(q)
 		changed := in.Printing != last.Printing || in.Paused != last.Paused || in.Result != last.Result || in.Name != last.Name
