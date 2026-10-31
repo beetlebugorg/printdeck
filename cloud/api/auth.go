@@ -11,6 +11,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -27,8 +28,9 @@ import (
 //     page /owner#code=<code> as a QR code. The page makes a passkey with the code. The passkeys of
 //     the owner are owners/<credential id>.json.
 //   - A friend: the owner makes an invite of a project. The page /j#<code> makes a passkey with the
-//     invite. The passkey of a friend is members/<credential id>.json, and it works for that
-//     project only.
+//     invite, or adds the project to a passkey that the friend has already (a sign-in with the
+//     invite code). The passkey of a friend is members/<credential id>.json, and it works for
+//     the projects that it joined.
 //
 // A sign-in gives a session token: the claims and an HMAC of them with the session key of the
 // service (keys/session in the bucket, made at the first use). The pages send it in the header
@@ -50,10 +52,36 @@ const (
 
 // Session is the claims of a session token.
 type Session struct {
-	Kind    string `json:"k"`
-	Project string `json:"p,omitempty"` // a member: the project
-	Member  string `json:"m,omitempty"` // a member: the member in the project
-	Expires int64  `json:"e"`           // Unix seconds
+	Kind string `json:"k"`
+	// Members maps each project of a member to the member in the project. A token from before
+	// the passkeys of many projects has one project in Project and Member.
+	Members map[string]string `json:"ms,omitempty"`
+	Project string            `json:"p,omitempty"`
+	Member  string            `json:"m,omitempty"`
+	Expires int64             `json:"e"` // Unix seconds
+}
+
+// memberIn returns the member of the session in the project, or "".
+func (ss *Session) memberIn(project string) string {
+	if m, ok := ss.Members[project]; ok {
+		return m
+	}
+	if ss.Project != "" && ss.Project == project {
+		return ss.Member
+	}
+	return ""
+}
+
+// projects returns the projects of a member session, and the member in each.
+func (ss *Session) projects() map[string]string {
+	out := map[string]string{}
+	for p, m := range ss.Members {
+		out[p] = m
+	}
+	if ss.Project != "" {
+		out[ss.Project] = ss.Member
+	}
+	return out
 }
 
 // sessionKeyFile is the key of the session key in the bucket.
@@ -135,12 +163,28 @@ func (s *Server) newSession(ctx context.Context, ss Session) (cloud.SignInReply,
 	if err != nil {
 		return cloud.SignInReply{}, err
 	}
-	out := cloud.SignInReply{Token: tok, Kind: ss.Kind, Project: ss.Project, Expires: time.Unix(ss.Expires, 0).UTC()}
+	out := cloud.SignInReply{Token: tok, Kind: ss.Kind, Expires: time.Unix(ss.Expires, 0).UTC()}
 	if ss.Kind == KindOwner {
 		out.Name = s.ownerName(ctx)
-	} else if p, _, err := s.loadProject(ctx, ss.Project); err == nil {
-		if m := p.member(ss.Member); m != nil {
-			out.Name = m.Name
+		return out, nil
+	}
+	// A member of one project goes to its page. A member of more projects goes to the list.
+	ps := ss.projects()
+	ids := make([]string, 0, len(ps))
+	for id := range ps {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	if len(ids) == 1 {
+		out.Project = ids[0]
+	}
+	// The name: the name of the member in the first project that still has the member.
+	for _, id := range ids {
+		if p, _, err := s.loadProject(ctx, id); err == nil {
+			if m := p.member(ps[id]); m != nil {
+				out.Name = m.Name
+				break
+			}
 		}
 	}
 	return out, nil
@@ -163,13 +207,8 @@ func (s *Server) session(ctx context.Context, r *http.Request) (*Session, error)
 	if s.now().Unix() > ss.Expires {
 		return nil, fail(http.StatusUnauthorized, "the session ended: sign in again")
 	}
-	if ss.Kind == KindMember {
-		// A member that the owner removed has no access, even with a session.
-		p, _, err := s.loadProject(ctx, ss.Project)
-		if err != nil || p.member(ss.Member) == nil {
-			return nil, fail(http.StatusUnauthorized, "you are not a member of this project")
-		}
-	}
+	// A member that the owner removed has no access to the project, even with a session: each
+	// request on a project checks the member in the project (whoFor).
 	return &ss, nil
 }
 
@@ -230,8 +269,55 @@ type Passkey struct {
 	Credential webauthn.Credential `json:"credential"`
 	Device     string              `json:"device,omitempty"`
 	Added      time.Time           `json:"added"`
-	Project    string              `json:"project,omitempty"` // a member
-	Member     string              `json:"member,omitempty"`
+	// A member: Handle is the user handle of the passkey, from the project of its first invite,
+	// and Projects the projects that it joined. A file from before the passkeys of many projects
+	// has its one project in Project and Member.
+	Handle   string       `json:"handle,omitempty"`
+	Projects []Membership `json:"projects,omitempty"`
+	Project  string       `json:"project,omitempty"`
+	Member   string       `json:"member,omitempty"`
+}
+
+// Membership is a project of the passkey of a member, and the member in the project.
+type Membership struct {
+	Project string `json:"project"`
+	Member  string `json:"member"`
+}
+
+// normalize moves the project of an old file to Projects, and keeps its user handle.
+func (k *Passkey) normalize() {
+	if k.Project == "" {
+		return
+	}
+	if k.Handle == "" {
+		k.Handle = memberHandle(k.Project, k.Member)
+	}
+	old := k.Project
+	k.Project = ""
+	if !k.hasProject(old) {
+		k.Projects = append([]Membership{{old, k.Member}}, k.Projects...)
+	}
+	k.Member = ""
+}
+
+// hasProject reports that the passkey joined the project. The caller normalizes k first.
+func (k *Passkey) hasProject(project string) bool {
+	for _, m := range k.Projects {
+		if m.Project == project {
+			return true
+		}
+	}
+	return false
+}
+
+// session returns the claims of a session of the member of the passkey.
+func (k *Passkey) session() Session {
+	k.normalize()
+	ss := Session{Kind: KindMember, Members: map[string]string{}}
+	for _, m := range k.Projects {
+		ss.Members[m.Project] = m.Member
+	}
+	return ss
 }
 
 func ownerKeyFile(id []byte) string {
@@ -375,7 +461,7 @@ func (s *Server) routeAuth(ctx context.Context, r *http.Request, body []byte, re
 		if err := s.join(ctx, in.Code, inv, cred, clip(in.Name, 40)); err != nil {
 			return nil, err
 		}
-		return s.newSession(ctx, Session{Kind: KindMember, Project: inv.Project, Member: inv.Member})
+		return s.newSession(ctx, Session{Kind: KindMember, Members: map[string]string{inv.Project: inv.Member}})
 	case "login/begin":
 		opts, sd, err := wa.BeginDiscoverableLogin(webauthn.WithUserVerification(protocol.VerificationPreferred))
 		if err != nil {
@@ -408,8 +494,9 @@ func (s *Server) routeAuth(ctx context.Context, r *http.Request, body []byte, re
 				return nil, errors.New("bad passkey")
 			}
 			id := ownerHandle
-			if p.Project != "" {
-				id = memberHandle(p.Project, p.Member)
+			if strings.HasPrefix(file, "members/") {
+				p.normalize()
+				id = p.Handle
 			}
 			if string(handle) != id {
 				return nil, errors.New("the passkey is of another person")
@@ -426,8 +513,25 @@ func (s *Server) routeAuth(ctx context.Context, r *http.Request, body []byte, re
 		if err := s.putJSON(ctx, file, found); err != nil {
 			return nil, err
 		}
-		if found.Project != "" {
-			return s.newSession(ctx, Session{Kind: KindMember, Project: found.Project, Member: found.Member})
+		if in.Code != "" {
+			// A sign-in with an invite: the passkey joins the project of the invite.
+			if !strings.HasPrefix(file, "members/") {
+				return nil, fail(http.StatusBadRequest, "this is the passkey of the owner: the owner sees all the projects")
+			}
+			inv, err := s.loadInvite(ctx, in.Code)
+			if err != nil {
+				return nil, err
+			}
+			if err := s.joinWith(ctx, in.Code, inv, file, found, clip(in.Name, 40)); err != nil {
+				return nil, err
+			}
+		}
+		if strings.HasPrefix(file, "members/") {
+			ss := found.session()
+			if len(ss.Members) == 0 {
+				return nil, fail(http.StatusUnauthorized, "this passkey is in no project now: ask for a new invite")
+			}
+			return s.newSession(ctx, ss)
 		}
 		return s.newSession(ctx, Session{Kind: KindOwner})
 	}

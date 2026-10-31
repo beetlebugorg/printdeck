@@ -43,6 +43,7 @@ func runApp() {
 	on("signInBtn", "click", func() { go a.signIn() })
 	on("ownerBtn", "click", func() { go a.makeOwner() })
 	on("joinBtn", "click", func() { go a.join() })
+	on("joinKeyBtn", "click", func() { go a.joinWithPasskey() })
 	onSubmit("newForm", func() { go a.newProject() })
 	onSubmit("inviteForm", func() { go a.invite() })
 	on("inviteCopy", "click", func() { go copyText(byID("inviteLink").Get("textContent").String(), "ownerToolsMsg") })
@@ -96,7 +97,8 @@ func (a *app) route() {
 			return
 		}
 		a.showSlug(slug, n)
-	case a.kind == "member":
+	case a.kind == "member" && a.project != "":
+		// A member of one project goes to the project. A member of more projects sees the list.
 		a.showProject(a.project, 0, "")
 	default:
 		if path != "/projects" {
@@ -262,11 +264,16 @@ func (a *app) showJoin(code string) {
 		setText("joinTitle", "This invite does not work")
 		setText("joinText", "It is used, removed or expired. Ask for a new invite.")
 		setHidden("joinBtn", true)
+		setHidden("joinKeyBtn", true)
 		return
 	}
 	setText("joinTitle", v.Owner+" invited you to "+v.Project)
 	setText("joinText", "Join to see the prints, the time lapses and the photos, and to add your photos.")
 	byID("joinName").Set("value", v.Name)
+	// A person who is signed in as a member has a passkey: it is the first choice.
+	member := a.kind == "member"
+	byID("joinKeyBtn").Get("classList").Call("toggle", "primary", member)
+	byID("joinBtn").Get("classList").Call("toggle", "primary", !member)
 }
 
 func (a *app) join() {
@@ -285,6 +292,32 @@ func (a *app) join() {
 	var in wire.SignInReply
 	if err := a.api("POST", "/auth/invite/finish", wire.PasskeyRequest{Code: code, State: begin.State,
 		Credential: json.RawMessage(cred), Name: strings.TrimSpace(byID("joinName").Get("value").String()), Device: deviceName()}, &in); err != nil {
+		say("joinMsg", err, "")
+		return
+	}
+	a.remember(in)
+	replaceAddress("/projects")
+	a.route()
+}
+
+// joinWithPasskey joins the project of the invite with the passkey that the person has already:
+// a sign-in with the invite code adds the project to the passkey.
+func (a *app) joinWithPasskey() {
+	code := strings.TrimPrefix(js.Global().Get("location").Get("hash").String(), "#")
+	say("joinMsg", nil, "Waiting for the passkey…")
+	var begin wire.PasskeyBegin
+	if err := a.api("POST", "/auth/login/begin", struct{}{}, &begin); err != nil {
+		say("joinMsg", err, "")
+		return
+	}
+	cred, err := getPasskey(string(begin.Options))
+	if err != nil {
+		say("joinMsg", err, "")
+		return
+	}
+	var in wire.SignInReply
+	if err := a.api("POST", "/auth/login/finish", wire.PasskeyRequest{Code: code, State: begin.State, Credential: json.RawMessage(cred),
+		Name: strings.TrimSpace(byID("joinName").Get("value").String())}, &in); err != nil {
 		say("joinMsg", err, "")
 		return
 	}

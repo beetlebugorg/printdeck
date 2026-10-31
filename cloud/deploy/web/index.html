@@ -47,9 +47,12 @@
     <h1 id="joinTitle">An invite</h1>
     <p class="dim" id="joinText"></p>
     <label class="field">Your first name<input id="joinName" maxlength="40" autocomplete="given-name"></label>
-    <button type="button" class="primary" id="joinBtn">Join</button>
+    <div class="joinkeys">
+      <button type="button" class="primary" id="joinBtn">Join with a new passkey</button>
+      <button type="button" id="joinKeyBtn">Join with my passkey</button>
+    </div>
     <p class="msg" id="joinMsg" role="status"></p>
-    <p class="dim small">Join saves a passkey for this project on this phone or computer. Face ID, Touch ID or the PIN of the device unlocks it.</p>
+    <p class="dim small">A passkey works for all the projects that you join. Do you have a passkey for Printdeck from another invite? Tap Join with my passkey. Else, Join with a new passkey saves one on this phone or computer. Face ID, Touch ID or the PIN of the device unlocks it.</p>
   </section>
 
   <!-- The projects -->

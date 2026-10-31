@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -182,6 +183,9 @@ type who struct {
 	member  string
 	project string // the project of a member
 	name    string
+	// projects are the projects of a member and the member in each, for a request on no
+	// project.
+	projects map[string]string
 }
 
 // whoFor returns the person of a request on the project id: a deck, an owner session, or a
@@ -201,14 +205,18 @@ func (s *Server) whoFor(ctx context.Context, r *http.Request, body []byte, id st
 	if ss.Kind == KindOwner {
 		return &who{owner: true, name: s.ownerName(ctx)}, nil
 	}
-	if id != "" && ss.Project != id {
+	if id == "" {
+		return &who{projects: ss.projects()}, nil
+	}
+	mid := ss.memberIn(id)
+	if mid == "" {
 		return nil, fail(http.StatusUnauthorized, "you are not a member of this project")
 	}
-	p, _, err := s.loadProject(ctx, ss.Project)
+	p, _, err := s.loadProject(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	m := p.member(ss.Member)
+	m := p.member(mid)
 	if m == nil {
 		return nil, fail(http.StatusUnauthorized, "you are not a member of this project")
 	}
@@ -464,13 +472,19 @@ func (s *Server) listProjects(ctx context.Context, w *who) (any, error) {
 			}
 		}
 	} else {
-		ids = []string{w.project}
+		for id := range w.projects {
+			ids = append(ids, id)
+		}
+		sort.Strings(ids)
 	}
 	out := []cloud.ProjectSummary{}
 	for _, id := range ids {
 		p, _, err := s.loadProject(ctx, id)
 		if err != nil {
 			continue
+		}
+		if !w.owner && p.member(w.projects[id]) == nil {
+			continue // the owner removed the member
 		}
 		if p, err = s.ensureSlug(ctx, p); err != nil {
 			return nil, err
@@ -687,7 +701,60 @@ func (s *Server) join(ctx context.Context, code string, inv *Invite, cred *webau
 	}); err != nil {
 		return err
 	}
-	return s.putJSON(ctx, file, Passkey{Credential: *cred, Added: s.now().UTC(), Project: inv.Project, Member: inv.Member})
+	return s.putJSON(ctx, file, Passkey{Credential: *cred, Added: s.now().UTC(), Handle: memberHandle(inv.Project, inv.Member),
+		Projects: []Membership{{inv.Project, inv.Member}}})
+}
+
+// joinWith adds the project of the invite to the passkey k of a member, in the file of the
+// passkey, and uses the invite.
+func (s *Server) joinWith(ctx context.Context, code string, inv *Invite, file string, k *Passkey, name string) error {
+	k.normalize()
+	if k.hasProject(inv.Project) {
+		return fail(http.StatusConflict, "you are a member of this project already: sign in")
+	}
+	if err := s.Store.Delete(ctx, inviteKey(code)); err != nil {
+		return err
+	}
+	if _, err := s.changeProject(ctx, inv.Project, func(p *Project) error {
+		for i := range p.Members {
+			m := &p.Members[i]
+			if m.ID == inv.Member && m.Invite == inviteHash(code) {
+				m.Joined, m.Invite, m.Keys = s.now().UTC(), "", append(m.Keys, file)
+				if name != "" {
+					m.Name = name
+				}
+				return nil
+			}
+		}
+		return fail(http.StatusGone, "this invite does not work: it is used, removed or expired")
+	}); err != nil {
+		return err
+	}
+	k.Projects = append(k.Projects, Membership{inv.Project, inv.Member})
+	return s.putJSON(ctx, file, k)
+}
+
+// leaveKey takes the project off the passkey of a member in file. A passkey with no project
+// left goes.
+func (s *Server) leaveKey(ctx context.Context, file, project string) {
+	if !strings.HasPrefix(file, "members/") {
+		return
+	}
+	b, _, err := s.Store.Get(ctx, file)
+	if err != nil {
+		return
+	}
+	var k Passkey
+	if json.Unmarshal(b, &k) != nil {
+		return
+	}
+	k.normalize()
+	k.Projects = slices.DeleteFunc(k.Projects, func(m Membership) bool { return m.Project == project })
+	if len(k.Projects) == 0 {
+		s.Store.Delete(ctx, file)
+		return
+	}
+	s.putJSON(ctx, file, k)
 }
 
 // removeMember removes a member or an invite, and the passkeys of the member.
@@ -706,9 +773,7 @@ func (s *Server) removeMember(ctx context.Context, id, mid string) error {
 		return err
 	}
 	for _, k := range gone.Keys {
-		if strings.HasPrefix(k, "members/") {
-			s.Store.Delete(ctx, k)
-		}
+		s.leaveKey(ctx, k, id)
 	}
 	if gone.Invite != "" {
 		s.Store.Delete(ctx, "invites/"+gone.Invite+".json")
@@ -968,9 +1033,7 @@ func (s *Server) deleteProject(ctx context.Context, p *Project) error {
 	}
 	for _, m := range p.Members {
 		for _, k := range m.Keys {
-			if strings.HasPrefix(k, "members/") {
-				s.Store.Delete(ctx, k)
-			}
+			s.leaveKey(ctx, k, p.ID)
 		}
 		if m.Invite != "" {
 			s.Store.Delete(ctx, "invites/"+m.Invite+".json")

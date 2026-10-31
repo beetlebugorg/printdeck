@@ -124,3 +124,7 @@ footer { display: grid; gap: var(--s1); margin-top: var(--s4); padding-top: var(
 
 /* Names with no spaces break anywhere, in the tiles and the titles. */
 .tile .body strong, .phead h1 { overflow-wrap: anywhere; }
+/* The invite page: a new passkey, or the passkey of another invite. */
+.joinkeys { display: grid; gap: var(--s2); }
+@media (min-width: 600px) { .joinkeys { grid-template-columns: 1fr 1fr; } }
+.joinkeys button { min-height: 52px; font-size: 17px; }

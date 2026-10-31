@@ -291,14 +291,14 @@ func (s *Server) lookupName(ctx context.Context, r *http.Request, slug string) (
 	if err != nil {
 		return nil, err
 	}
-	if ss.Kind != KindOwner && ss.Project != rec.Project {
+	if ss.Kind != KindOwner && ss.memberIn(rec.Project) == "" {
 		return nil, gone
 	}
 	p, _, err := s.loadProject(ctx, rec.Project)
 	if err != nil {
 		return nil, err
 	}
-	if ss.Kind != KindOwner && p.member(ss.Member) == nil {
+	if ss.Kind != KindOwner && p.member(ss.memberIn(rec.Project)) == nil {
 		return nil, gone
 	}
 	if p, err = s.ensureSlug(ctx, p); err != nil {
