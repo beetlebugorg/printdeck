@@ -19,14 +19,40 @@ results go back to the pull request.
 ## The workflow
 
 1. A friend opens a pull request with a change to a model.
-2. The Action slices the parts that changed. The project page shows the test build.
-3. The owner taps Print on a part. The deck asks for the material, and the owner presses Start.
-4. The print ends. The service posts the result, the photos and the notes on the pull request.
-5. The friend reads the comment, and changes the model in the same pull request. Steps 2 to 4
+2. The Action slices the parts that changed. The project page shows the test build, and the
+   commit gets the status "printdeck/approval: pending", with a link to the preview.
+3. The owner opens the preview: the slice of each part in 3D. Approve sends the part to the deck
+   of its printer. Reject asks for a reason, and the reason goes to the pull request.
+4. The deck asks for the material, and the owner presses Start.
+5. The print ends. The service posts the result, the photos and the notes on the pull request.
+6. The friend reads the comment, and changes the model in the same pull request. Steps 2 to 5
    repeat. The pull request shows each try with its photos.
-6. The owner merges the pull request and adds a tag. The Action makes the release build.
-7. The owner prints the release build and marks the prints Delivered. The page then shows which
+7. The owner merges the pull request and adds a tag. The Action makes the release build, and it
+   waits for an approval too.
+8. The owner prints the release build and marks the prints Delivered. The page then shows which
    release each person got.
+
+## The approval
+
+The Action ends after the upload. The build then waits on the service, and the workflow on
+GitHub shows the wait as the commit status `printdeck/approval`.
+
+- The preview page: `/projects/<slug>/builds/<id>`. It shows each part in a 3D view, on the plate
+  of its printer, with the facts of the slice: the time, the grams or the ml, the layers, the
+  layer height, the supports, and the profile.
+  - **FDM:** the moves of the G-code as lines (the `path.bin` form of the printer pages spec),
+    colored by the kind of move: wall, infill, support, skirt. A slider shows the layers up to a
+    height, to see the inside and the first layer.
+  - **Resin:** the share of resin in each cell (`part.bin`, PDC1), as the share page shows a
+    resin part now, with the supports. A slider cuts the part at a height, and the layer image
+    of that height shows next to it.
+- **Approve** on a part sends a print request to the deck of its printer (see "The deck"). The
+  status of the commit becomes success when all the parts of the build have an approval.
+- **Reject** on a part asks for a reason. The status becomes failure, and the reason goes to the
+  pull request as a comment. The next commit makes a new build.
+- A new build of the same pull request replaces the approval: the older build shows "Replaced".
+- The Action makes `part.bin` and `path.bin` with the build, so the page needs no work on the
+  service to show the preview.
 
 ## The repository
 
@@ -105,7 +131,8 @@ days after the pull request closes, and keeps main and release builds.
 
 - A "Builds" section, grouped by pull request and by tag, newest first. Each build shows its
   commit, its parts, and the prints of each part.
-- Each part has a Print key. Only the owner sees it at first (see "Questions").
+- Each part has the key Preview, and its state: waiting for an approval, approved, rejected,
+  printed. Only the owner sees Approve and Reject at first (see "Questions").
 - The print tiles show their build: "PR #12 · 3f2a9c1" or "Release v1.2".
 - The print page shows the pull request with its comments, and the link to the commit.
 
@@ -159,7 +186,8 @@ The Action can make the STL files first: OpenSCAD or CadQuery files in `models/`
 
 1. The repository link, the OIDC upload, the builds on the project page, and the build of a print
    record (a print that starts on the deck with a file of a build).
-2. The print requests and the panel on the deck, with the material check.
+2. The preview page and the approval, the print requests, and the panel on the deck with the
+   material check.
 3. The GitHub App: the comments, the commit status, and the pull request on the print page.
 4. Resin slicing in the Action with PrusaSlicer and UVtools. Until then, resin parts use
    `prebuilt:` files from ChiTuBox.
@@ -168,7 +196,7 @@ The Action can make the STL files first: OpenSCAD or CadQuery files in `models/`
 ## Questions
 
 - Are the repositories public or private? Private repositories need the GitHub App from phase 1.
-- Who can tap Print: only the owner, or the members too?
+- Who can approve a build: only the owner, or the members too?
 - Does a part need a count, for example 4 copies on one plate?
 - Resin: are the supports of PrusaSlicer good enough for the Phenom, or do the parts stay with
   ChiTuBox files?
