@@ -147,8 +147,13 @@ Resources:
               - !Sub "${DataBucket.Arn}/.well-known/*"
               - !Sub "${DataBucket.Arn}/s/*"
               - !Sub "${DataBucket.Arn}/p/*"
-              # The files of the projects, only behind the behavior /x/* with signed cookies.
-              - !If [HasFilesKey, !Sub "${DataBucket.Arn}/x/*", !Ref "AWS::NoValue"]
+              # The files of the projects, only behind the behavior /x/* with signed cookies: the
+              # files of the prints, the pictures of the photos and of the live prints. The JSON
+              # records (project.json with the invites, and the records of the prints, photos and
+              # live prints) stay with the API.
+              - !If [HasFilesKey, !Sub "${DataBucket.Arn}/x/*/prints/*/*", !Ref "AWS::NoValue"]
+              - !If [HasFilesKey, !Sub "${DataBucket.Arn}/x/*/photos/*.jpg", !Ref "AWS::NoValue"]
+              - !If [HasFilesKey, !Sub "${DataBucket.Arn}/x/*/live/*/*", !Ref "AWS::NoValue"]
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
