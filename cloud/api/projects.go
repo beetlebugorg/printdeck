@@ -45,9 +45,9 @@ const (
 
 // Project is x/<id>/project.json.
 type Project struct {
-	ID      string    `json:"id"`
-	Name    string    `json:"name"`
-	Note    string    `json:"note,omitempty"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Note string `json:"note,omitempty"`
 	// Notes are the notes of the people of the project, with the name of the last person who
 	// changed them, and the time.
 	Notes   string    `json:"notes,omitempty"`
@@ -134,6 +134,10 @@ type pageFields struct {
 	NotesAt   time.Time `json:"notes_at,omitzero"`
 	Delivered time.Time `json:"delivered,omitzero"`
 	Source    string    `json:"source,omitempty"`
+	// Ready is the time of the mark Ready to pick up of the share of the print, or zero, and
+	// ReadyNote its note.
+	Ready     time.Time `json:"ready,omitzero"`
+	ReadyNote string    `json:"ready_note,omitempty"`
 }
 
 // PhotoRecord is x/<id>/photos/<photo>.json.
@@ -619,7 +623,8 @@ func projectPrint(pr PrintRecord) cloud.ProjectPrint {
 		deck = pr.Name
 	}
 	return cloud.ProjectPrint{ID: pr.ID, N: pr.N, PrinterID: pr.PrinterID, Name: name, DeckName: deck,
-		Notes: pr.Notes, NotesBy: pr.NotesBy, NotesAt: pr.NotesAt, Delivered: pr.Delivered, Source: pr.Source, File: pr.File, Result: pr.Result, Ended: pr.Ended, Seconds: pr.Seconds,
+		Notes: pr.Notes, NotesBy: pr.NotesBy, NotesAt: pr.NotesAt, Delivered: pr.Delivered, Source: pr.Source,
+		Ready: pr.Ready, ReadyNote: pr.ReadyNote, File: pr.File, Result: pr.Result, Ended: pr.Ended, Seconds: pr.Seconds,
 		Material: pr.Material, Grams: pr.Grams, Roll: pr.Roll, Printer: pr.Printer, Note: pr.Note, Frames: pr.Frames, FPS: pr.FPS,
 		Started: pr.Started, Layers: pr.Layers, Layer: pr.Layer, Height: pr.Height, GramsTotal: pr.GramsTotal,
 		Estimate: pr.Estimate, Prep: pr.Prep, Slicer: pr.Slicer, Filament: pr.Filament}

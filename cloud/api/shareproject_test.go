@@ -130,6 +130,17 @@ func TestShareInProject(t *testing.T) {
 		t.Fatalf("the photos of the print %+v", photos)
 	}
 
+	// Ready to pick up on the share page marks the print in the project too.
+	b, _ := json.Marshal(cloud.ReadyRequest{Ready: true, Note: "On the porch"})
+	req, _ := http.NewRequest("POST", url+"/api/v1/shares/"+sid+"/ready", bytes.NewReader(b))
+	req.Header.Set(cloud.HeaderShareKey, key)
+	if resp, err := http.DefaultClient.Do(req); err != nil || resp.StatusCode != 200 {
+		t.Fatalf("ready: %v %v", resp, err)
+	}
+	if pr, err := d.API.loadPrint(ctx, sum.ID, pid); err != nil || pr.Ready.IsZero() || pr.ReadyNote != "On the porch" {
+		t.Fatalf("the print after Ready: %+v %v", pr, err)
+	}
+
 	// After the end of the share, its page sends the visitor to the print page.
 	d.API.Now = func() time.Time { return time.Now().Add(25 * time.Hour) }
 	if err := d.API.Sweep(ctx); err != nil {

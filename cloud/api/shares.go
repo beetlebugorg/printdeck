@@ -165,7 +165,14 @@ func (s *Server) routeShares(ctx context.Context, r *http.Request, body []byte, 
 			rd.Ready, rd.At, rd.Note = in.Ready, sh.ReadyAt, clip(in.Note, 280)
 			out = *rd
 		})
-		return out, err
+		if err != nil {
+			return nil, err
+		}
+		// A share of a print in a project: the print has the mark too.
+		if err := s.readyToPrint(ctx, sh, out.Note); err != nil {
+			return nil, err
+		}
+		return out, nil
 	case action == "photo" && r.Method == http.MethodPost:
 		rd, err := s.readReady(ctx, sh.ID)
 		if err != nil {

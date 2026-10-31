@@ -141,3 +141,4 @@ footer { display: grid; gap: var(--s1); margin-top: var(--s4); padding-top: var(
 .delivered { display: inline-block; margin: 0; padding: 4px 10px; border-radius: 999px; background: #1f7a3d; color: #fff; font-weight: 700; font-size: 14px; }
 .delivered[hidden] { display: none; }
 .tile .badges .ok { background: #1f7a3d; color: #fff; }
+.tile .badges .ready, .delivered.ready { background: var(--orange); color: var(--on-orange); }

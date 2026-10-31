@@ -149,6 +149,9 @@ type ProjectPrint struct {
 	// link to the source of the model.
 	Delivered time.Time `json:"delivered,omitzero"`
 	Source    string    `json:"source,omitempty"`
+	// Ready is the time of the mark Ready to pick up, or zero, and ReadyNote its note.
+	Ready     time.Time `json:"ready,omitzero"`
+	ReadyNote string    `json:"ready_note,omitempty"`
 	File      string    `json:"file,omitempty"`
 	Result    string    `json:"result"` // "complete", "cancelled" or "error"
 	Ended     time.Time `json:"ended"`

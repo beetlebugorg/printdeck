@@ -165,8 +165,34 @@ func (s *Server) shareToPrint(ctx context.Context, id string, p *Project, d *Dec
 				return err
 			}
 		}
+		if err := s.readyToPrint(ctx, sh, rd.Note); err != nil {
+			return err
+		}
 	}
 	return s.showShareProject(ctx, sh)
+}
+
+// readyToPrint gives the print of the share sh in its project the mark Ready to pick up of the
+// share, with its note.
+func (s *Server) readyToPrint(ctx context.Context, sh *Share, note string) error {
+	if sh.Project == "" || sh.Print == "" {
+		return nil
+	}
+	pr, err := s.loadPrint(ctx, sh.Project, sh.Print)
+	if isGone(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if pr.Ready.Equal(sh.ReadyAt) && pr.ReadyNote == note {
+		return nil
+	}
+	pr.Ready, pr.ReadyNote = sh.ReadyAt, ""
+	if !sh.ReadyAt.IsZero() {
+		pr.ReadyNote = note
+	}
+	return s.putJSON(ctx, printKey(sh.Project, sh.Print), pr)
 }
 
 // copySharePhoto copies a photo of the share sh to the print of the share in its project. The

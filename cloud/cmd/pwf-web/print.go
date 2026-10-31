@@ -459,8 +459,11 @@ func printTile(p wire.ProjectPrint, href string) js.Value {
 		pic.Call("appendChild", img)
 	}
 	badges := el("div", "badges", "")
-	if !p.Delivered.IsZero() {
+	switch {
+	case !p.Delivered.IsZero():
 		badges.Call("appendChild", el("span", "ok", "Delivered"))
+	case !p.Ready.IsZero():
+		badges.Call("appendChild", el("span", "ready", "Ready to pick up"))
 	}
 	if t := resultText[p.Result]; t != "" {
 		badges.Call("appendChild", el("span", "fail", t))
@@ -494,9 +497,17 @@ func printTile(p wire.ProjectPrint, href string) js.Value {
 // drawPrintNotes shows the mark Delivered, the source of the model and the notes of the print p.
 // The card of the notes hides on a page with no keys to write them (data-edit) and no notes.
 func drawPrintNotes(p wire.ProjectPrint) {
-	setHidden("prDelivered", p.Delivered.IsZero())
-	if !p.Delivered.IsZero() {
+	setHidden("prDelivered", p.Delivered.IsZero() && p.Ready.IsZero())
+	byID("prDelivered").Get("classList").Call("toggle", "ready", p.Delivered.IsZero())
+	switch {
+	case !p.Delivered.IsZero():
 		setText("prDelivered", "Delivered "+p.Delivered.Local().Format("Mon Jan 2, 2006"))
+	case !p.Ready.IsZero():
+		line := "Ready to pick up since " + p.Ready.Local().Format("Mon Jan 2, 3:04 PM")
+		if p.ReadyNote != "" {
+			line += " · " + p.ReadyNote
+		}
+		setText("prDelivered", line)
 	}
 	setHidden("prSourceRow", p.Source == "")
 	src := byID("prSource")
