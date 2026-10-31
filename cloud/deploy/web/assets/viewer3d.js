@@ -263,8 +263,9 @@ function surfaceNet(c, f, maxVerts) {
 }
 
 // readPart reads part.bin and builds the geometry of the part in mm, hanging under the build plate
-// as it prints: Y down from the plate, X to the right, Z to the front. It takes as much detail as
-// the device holds.
+// as it prints: Y down from the plate. The cells turn a half turn about Y: the first row of the
+// screen is at the front of the printer, and its first column at the right, as a person sees the
+// part from the front. It takes as much detail as the device holds.
 async function readPart(T, url) {
   const c = await readCells(url);
   // All the detail first; cells twice as big only when the surface has too many vertices for
@@ -277,9 +278,9 @@ async function readPart(T, url) {
   const cell = c.cell * f, pos = new Float32Array(m.nv * 3), height = new Float32Array(m.nv);
   for (let i = 0; i < m.nv; i++) {
     const x = m.verts[i * 3], y = m.verts[i * 3 + 1], z = m.verts[i * 3 + 2];
-    pos[i * 3] = (x + 0.5 - m.W / 2) * cell;
+    pos[i * 3] = -(x + 0.5 - m.W / 2) * cell;
     pos[i * 3 + 1] = -(z + 0.5) * c.slice;
-    pos[i * 3 + 2] = (y + 0.5 - m.H / 2) * cell;
+    pos[i * 3 + 2] = -(y + 0.5 - m.H / 2) * cell;
     height[i] = (z + 0.5) * c.slice;
   }
   const g = new T.BufferGeometry();
