@@ -140,3 +140,15 @@ footer { display: grid; gap: 4px; }
   .hero > #modelBox img { max-height: 100%; object-fit: contain; }
   .hero > #modelBox .gview { height: 100%; min-height: 400px; }
 }
+/* A wide screen, again: the numbers across the full width, then the model and the time lapse side
+   by side, with the same height. */
+@media (min-width: 900px) {
+  .hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .hero > #progress { grid-column: 1 / -1; grid-row: 1; }
+  .hero > #progress .row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .hero > #progress .row .cell:first-child { grid-column: auto; }
+  .hero > #modelBox { grid-column: 1; grid-row: 2; }
+  .hero > #lapseSec { grid-column: 2; grid-row: 2; align-self: stretch; }
+  .hero > #modelBox .gview { min-height: 340px; }
+}
+@media (min-width: 900px) { .hero > #lapseSec figure { height: 100%; } }
