@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"sync"
@@ -81,6 +82,12 @@ func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend
 	sysMetrics, sysUpdater, sysPrinter = metrics, up, pr
 	mux.HandleFunc("GET /system/metrics", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
 		writeMetricsJSON(w, r, metrics)
+	}))
+	// The stacks of all the goroutines of the deck program, to find a part of the program that
+	// waits and does not go on.
+	mux.HandleFunc("GET /system/goroutines", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		pprof.Lookup("goroutine").WriteTo(w, 2)
 	}))
 	mux.HandleFunc("GET /system", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
 		renderSystem(w, klippyLog, apiKey, "", false)
