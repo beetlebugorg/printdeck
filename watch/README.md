@@ -71,7 +71,9 @@ A build from Xcode uses the APNs sandbox. A TestFlight or App Store build uses p
 ## Away from home
 
 Sign in with passkey on the home screen signs in to printdeck.beetlebug.org with the passkey of
-the owner or of a member, the same passkey as the web site. The token is in the keychain group,
+the owner or of a member, the same passkey as the web site. iOS offers the passkeys of the iPhone
+and a security key, such as a YubiKey, over USB-C, Lightning or NFC. A key with no passkey for
+Printdeck sends no user handle, and the app shows "This key has no passkey for Printdeck." The token is in the keychain group,
 and a 401 asks for the sign-in again. An owner session works for 12 hours.
 
 When a deck does not answer, its card shows the live print of the deck from the projects of the

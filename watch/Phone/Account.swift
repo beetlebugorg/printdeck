@@ -24,7 +24,8 @@ final class Account {
     private var client: ServiceClient { ServiceClient(token: session?.token) }
 
     /// Signs in with a passkey of printdeck.beetlebug.org: the begin, the assertion of iOS, and
-    /// the finish.
+    /// the finish. iOS offers the passkeys of the iPhone and a security key (USB, Lightning or
+    /// NFC).
     func signIn() async {
         guard !busy else { return }
         busy = true
@@ -33,9 +34,16 @@ final class Account {
         do {
             let c = ServiceClient()
             let (challenge, state) = try await c.loginBegin()
-            let credential = try await Passkey.assert(challenge: challenge, relyingParty: ServiceClient.relyingParty)
+            let a = try await Passkey.assert(challenge: challenge, relyingParty: ServiceClient.relyingParty)
             message = "Signing in"
-            let s = try await c.loginFinish(state: state, credential: credential)
+            let s: ServiceSession
+            do {
+                s = try await c.loginFinish(state: state, credential: a.json)
+            } catch ServiceError.signedOut where !a.hasUser {
+                // A security key with no discoverable credential sends no user handle, so the
+                // service finds no passkey.
+                throw ServiceError.http(401, "This key has no passkey for Printdeck.")
+            }
             session = s
             Store.serviceSession = s
             message = nil
@@ -102,21 +110,33 @@ final class Account {
     }
 }
 
-/// The assertion of a passkey with the platform authenticator, as the JSON of a
+/// The assertion of a passkey of the iPhone or of a security key, as the JSON of a
 /// PublicKeyCredential with base64url fields.
 @MainActor
 private final class Passkey: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
-    private var done: CheckedContinuation<[String: Any], Error>?
+    struct Assertion {
+        var json: [String: Any]
+        /// The assertion has a user handle. A security key with no discoverable credential has none.
+        var hasUser: Bool
+    }
+
+    private var done: CheckedContinuation<Assertion, Error>?
     private var controller: ASAuthorizationController?
     /// The ceremony that runs now. The controller holds its delegate weakly, so this holds it
     /// until the end.
     private static var current: Passkey?
 
-    static func assert(challenge: Data, relyingParty: String) async throws -> [String: Any] {
+    /// Asks for a passkey of the iPhone or a security key, with the same challenge. The login is
+    /// discoverable: the requests list no credentials.
+    static func assert(challenge: Data, relyingParty: String) async throws -> Assertion {
         let p = Passkey()
-        let provider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: relyingParty)
-        let req = provider.createCredentialAssertionRequest(challenge: challenge)
-        let ctl = ASAuthorizationController(authorizationRequests: [req])
+        let platform = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: relyingParty)
+            .createCredentialAssertionRequest(challenge: challenge)
+        let key = ASAuthorizationSecurityKeyPublicKeyCredentialProvider(relyingPartyIdentifier: relyingParty)
+            .createCredentialAssertionRequest(challenge: challenge)
+        // The service asks for user verification with "preferred".
+        key.userVerificationPreference = .preferred
+        let ctl = ASAuthorizationController(authorizationRequests: [platform, key])
         ctl.delegate = p
         ctl.presentationContextProvider = p
         current?.finish(.failure(CancellationError()))
@@ -134,7 +154,8 @@ private final class Passkey: NSObject, ASAuthorizationControllerDelegate, ASAuth
     }
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization a: ASAuthorization) {
-        guard let cred = a.credential as? ASAuthorizationPlatformPublicKeyCredentialAssertion else {
+        // The assertion of the iPhone and of a security key have the same fields.
+        guard let cred = a.credential as? ASAuthorizationPublicKeyCredentialAssertion else {
             finish(.failure(ServiceError.badReply))
             return
         }
@@ -143,20 +164,22 @@ private final class Passkey: NSObject, ASAuthorizationControllerDelegate, ASAuth
             "authenticatorData": cred.rawAuthenticatorData.base64URL,
             "signature": cred.signature.base64URL,
         ]
-        if let user = cred.userID { response["userHandle"] = user.base64URL }
-        finish(.success([
+        let user: Data? = cred.userID
+        let hasUser = !(user ?? Data()).isEmpty
+        if hasUser, let user { response["userHandle"] = user.base64URL }
+        finish(.success(Assertion(json: [
             "id": cred.credentialID.base64URL,
             "rawId": cred.credentialID.base64URL,
             "type": "public-key",
             "response": response,
-        ]))
+        ], hasUser: hasUser)))
     }
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
         finish(.failure(error))
     }
 
-    private func finish(_ r: Result<[String: Any], Error>) {
+    private func finish(_ r: Result<Assertion, Error>) {
         done?.resume(with: r)
         done = nil
         controller = nil
