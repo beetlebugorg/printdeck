@@ -168,6 +168,8 @@ type share struct {
 	clocks map[string]string
 	// partDone sets the height that is done in the 3D view of the part, while it shows.
 	partDone js.Value
+	// progressUp reports that the progress card moved above the model (a resin print).
+	progressUp bool
 	// cycleKey is the numbers of the layer cycle that plays, and cycleSpeed its speed.
 	cycleKey   string
 	cycleSpeed int
@@ -667,6 +669,12 @@ func (s *share) render(st wire.ShareStatus) {
 		setText("modelTag", tag)
 	}
 	resin := st.Process == "resin"
+	if resin && !s.progressUp {
+		// A resin print: the time left and the layer come before the model and the layer cycle.
+		box := byID("modelBox")
+		box.Get("parentNode").Call("insertBefore", byID("progress"), box)
+		s.progressUp = true
+	}
 	setHidden("lapseSec", resin && st.Lapse == 0)
 	setHidden("partOpen", st.Part < 3) // 3: the share of resin in each cell (part.bin)
 	s.drawCycle()
