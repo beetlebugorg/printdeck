@@ -187,7 +187,8 @@ func runShare(base string) {
 	}
 	s.copyLink()
 	s.partView()
-	s.cycleSpeed = 4
+	s.cycleSpeed = 1
+	setText("cycleSpeed", "Play 4 times as fast")
 	byID("cycleSpeed").Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
 		if s.cycleSpeed == 1 {
 			s.cycleSpeed = 4
@@ -299,7 +300,7 @@ func (s *share) drawCycle() {
 		return
 	}
 	key := fmt.Sprint(st.ResinExposure, st.ResinLift, st.ResinLiftSpeed, st.ResinRetractSpeed, st.ResinLightOff,
-		math.Round(st.ResinLayerSec), s.cycleSpeed)
+		math.Round(st.ResinLayerSec), s.cycleSpeed, st.LayerStarted.UnixMilli())
 	if key == s.cycleKey {
 		return
 	}
@@ -311,7 +312,12 @@ func (s *share) drawCycle() {
 	p.Set("liftSpeed", st.ResinLiftSpeed)
 	p.Set("retractSpeed", st.ResinRetractSpeed)
 	p.Set("measured", st.ResinLayerSec)
-	lc.Call("show", byID("cycle"), p, s.cycleSpeed)
+	// In real time, the cycle goes in step with the printer: from the start of the layer now.
+	start := 0.0
+	if !st.LayerStarted.IsZero() {
+		start = float64(st.LayerStarted.UnixMilli())
+	}
+	lc.Call("show", byID("cycle"), p, s.cycleSpeed, start)
 }
 
 // doneMM is the height of the part that is done, in mm: all of it after the end.

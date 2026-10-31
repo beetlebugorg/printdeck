@@ -105,7 +105,7 @@ var ErrNotTested = errors.New("this control of the printer is not tested yet")
 
 // The times between two queries of the state: during a print, with no print, and with no answer.
 const (
-	chituPrintingEvery = 5 * time.Second
+	chituPrintingEvery = 2 * time.Second
 	chituIdleEvery     = 10 * time.Second
 	chituOfflineEvery  = 10 * time.Second
 	chituMisses        = 3 // the queries with no answer before the printer is offline

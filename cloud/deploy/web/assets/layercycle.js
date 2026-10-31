@@ -18,8 +18,10 @@ function steps(p) {
   return out;
 }
 
-// show draws the cycle in the canvas, and plays it at speed times the real time.
-function show(canvas, p, speed) {
+// show draws the cycle in the canvas, and plays it at speed times the real time. In real time with
+// start (the time of the start of the layer now, in ms of the clock of the page), it plays in step
+// with the printer: the step now of the printer.
+function show(canvas, p, speed, start) {
   if (run) run.stop();
   const ctx = canvas.getContext("2d");
   const st = steps(p);
@@ -33,7 +35,8 @@ function show(canvas, p, speed) {
     if (canvas.width !== Math.round(w * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    const t = (((now - t0) / 1000) * speed) % total;
+    const sync = speed === 1 && start > 0;
+    const t = sync ? (((Date.now() - start) / 1000) % total + total) % total : (((now - t0) / 1000) * speed) % total;
     // The step now, and the time in it.
     let at = 0, i = 0;
     while (i < st.length - 1 && t >= at + st[i][1]) { at += st[i][1]; i++; }
@@ -88,7 +91,7 @@ function show(canvas, p, speed) {
     ctx.font = "12px 'IBM Plex Mono', monospace";
     ctx.fillStyle = "#c2bcb0";
     const note = p.measured > 0 ? `a layer takes ${p.measured.toFixed(0)} s (measured)` : `a layer takes about ${total.toFixed(0)} s`;
-    ctx.fillText(note + (speed > 1 ? ` · played ${speed}x` : ""), 12, 40);
+    ctx.fillText(note + (sync ? " · in step with the printer" : speed > 1 ? ` · played ${speed}x` : ""), 12, 40);
     // The bar of the steps, with the cursor.
     const barY = h - 44, barH = 14;
     let x = 12;
