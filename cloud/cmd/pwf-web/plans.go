@@ -102,13 +102,15 @@ func (a *app) showPlansPage(id string) {
 	setText("psSub", "github.com/"+v.Repo+" · "+count(len(plans), "plan", "plans")+", the newest first")
 	list := byID("psList")
 	list.Set("textContent", "")
-	drawPlanList(list, v.Slug, plans)
+	rows := drawPlanList(list, v.Slug, plans)
 	show("vPlans")
+	go describePlans(plans, rows)
 }
 
 // drawPlanList adds a row for each plan to list: its name and commit, the parts that changed,
 // and its builds.
-func drawPlanList(list js.Value, slug string, plans []wire.ProjectPlan) {
+func drawPlanList(list js.Value, slug string, plans []wire.ProjectPlan) []js.Value {
+	var rows []js.Value
 	for _, p := range plans {
 		li := el("li", "", "")
 		link := el("a", "", "")
@@ -136,7 +138,9 @@ func drawPlanList(list js.Value, slug string, plans []wire.ProjectPlan) {
 		link.Call("appendChild", el("span", "sub", sub))
 		li.Call("appendChild", link)
 		list.Call("appendChild", li)
+		rows = append(rows, link)
 	}
+	return rows
 }
 
 func (a *app) bindBuilds() {
@@ -234,6 +238,8 @@ func (a *app) showPlanPage(projectID, id string) {
 		say("plMsg", nil, "The Action is still sending the models of this plan.")
 	}
 	show("vPlan")
+	setHidden("plDiffCard", true)
+	go a.drawPlanDiff(projectID, p.ID)
 	a.drawPlanParts()
 	a.drawPlates()
 	a.drawPlanBuilds()

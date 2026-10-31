@@ -936,4 +936,264 @@ async function showGcode(box, opts) {
   return handle;
 }
 
-window.pwfView3d = { show, showPart, showModels, showGcode, hide, modelFile };
+// The changes of a model between two plans. The Action saves each model in the middle of the bed
+// at Z 0, so the old model is placed against the new one at the middle, or at the low or the high
+// side of each axis: the place with the least volume that differs. A grid of small cubes (voxels)
+// gives the added and the removed volume.
+
+// stlTris reads the triangles of an STL file: 9 numbers for each triangle. The files of one page
+// load once (the key is the path, with no signature).
+const stlCache = new Map();
+function stlTris(url) {
+  const key = new URL(url, location.href).pathname;
+  if (!stlCache.has(key)) {
+    stlCache.set(key, (async () => {
+      const resp = await fetch(url, { credentials: "same-origin" });
+      if (!resp.ok) throw new Error("the model did not load: " + resp.status);
+      const buf = await resp.arrayBuffer();
+      const dv = new DataView(buf);
+      const n = buf.byteLength >= 84 ? dv.getUint32(80, true) : 0;
+      if (buf.byteLength === 84 + 50 * n) {
+        const t = new Float32Array(n * 9);
+        for (let i = 0; i < n; i++) for (let k = 0; k < 9; k++) t[i * 9 + k] = dv.getFloat32(84 + 50 * i + 12 + k * 4, true);
+        return t;
+      }
+      const text = new TextDecoder().decode(buf);
+      return new Float32Array([...text.matchAll(/vertex\s+(\S+)\s+(\S+)\s+(\S+)/g)].flatMap((m) => [+m[1], +m[2], +m[3]]));
+    })());
+    stlCache.get(key).catch(() => stlCache.delete(key));
+  }
+  return stlCache.get(key);
+}
+
+// boxOf is the box around the triangles: [x0, y0, z0, x1, y1, z1].
+function boxOf(t) {
+  const b = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < t.length; i += 3) {
+    for (let k = 0; k < 3; k++) {
+      if (t[i + k] < b[k]) b[k] = t[i + k];
+      if (t[i + k] > b[k + 3]) b[k + 3] = t[i + k];
+    }
+  }
+  return b;
+}
+
+// volumeOf is the volume of a closed mesh in mm³.
+function volumeOf(t) {
+  let v = 0;
+  for (let i = 0; i < t.length; i += 9) {
+    const ax = t[i], ay = t[i + 1], az = t[i + 2], bx = t[i + 3], by = t[i + 4], bz = t[i + 5], cx = t[i + 6], cy = t[i + 7], cz = t[i + 8];
+    v += ax * (by * cz - bz * cy) - ay * (bx * cz - bz * cx) + az * (bx * cy - by * cx);
+  }
+  return Math.abs(v / 6);
+}
+
+// voxels fills a grid (origin o, cell size c, nx × ny × nz) with the inside of the mesh t, moved
+// by d: for each column of the grid, the crossings of the surface along Z in pairs.
+function voxels(t, d, o, c, nx, ny, nz) {
+  const cols = Array.from({ length: nx * ny }, () => null);
+  for (let i = 0; i < t.length; i += 9) {
+    const ax = t[i] + d[0], ay = t[i + 1] + d[1], az = t[i + 2] + d[2];
+    const bx = t[i + 3] + d[0], by = t[i + 4] + d[1], bz = t[i + 5] + d[2];
+    const cx = t[i + 6] + d[0], cy = t[i + 7] + d[1], cz = t[i + 8] + d[2];
+    const den = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
+    if (Math.abs(den) < 1e-12) continue; // a triangle on its edge from above
+    const i0 = Math.max(0, Math.ceil((Math.min(ax, bx, cx) - o[0]) / c - 0.5));
+    const i1 = Math.min(nx - 1, Math.floor((Math.max(ax, bx, cx) - o[0]) / c - 0.5));
+    const j0 = Math.max(0, Math.ceil((Math.min(ay, by, cy) - o[1]) / c - 0.5));
+    const j1 = Math.min(ny - 1, Math.floor((Math.max(ay, by, cy) - o[1]) / c - 0.5));
+    for (let x = i0; x <= i1; x++) {
+      const px = o[0] + (x + 0.5) * c;
+      for (let y = j0; y <= j1; y++) {
+        const py = o[1] + (y + 0.5) * c;
+        const w0 = ((by - cy) * (px - cx) + (cx - bx) * (py - cy)) / den;
+        const w1 = ((cy - ay) * (px - cx) + (ax - cx) * (py - cy)) / den;
+        const w2 = 1 - w0 - w1;
+        if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+        const z = w0 * az + w1 * bz + w2 * cz;
+        const k = x * ny + y;
+        (cols[k] || (cols[k] = [])).push(z);
+      }
+    }
+  }
+  const g = new Uint8Array(nx * ny * nz);
+  for (let k = 0; k < cols.length; k++) {
+    const zs = cols[k];
+    if (!zs) continue;
+    zs.sort((p, q) => p - q);
+    for (let m = 0; m + 1 < zs.length; m += 2) {
+      const z0 = Math.max(0, Math.ceil((zs[m] - o[2]) / c - 0.5));
+      const z1 = Math.min(nz - 1, Math.floor((zs[m + 1] - o[2]) / c - 0.5));
+      for (let z = z0; z <= z1; z++) g[k * nz + z] = 1;
+    }
+  }
+  return g;
+}
+
+// gridFor is a grid around both boxes with about n cells on the longest side.
+function gridFor(a, b, n) {
+  const lo = [0, 1, 2].map((k) => Math.min(a[k], b[k]));
+  const hi = [0, 1, 2].map((k) => Math.max(a[k + 3], b[k + 3]));
+  const c = Math.max(0.2, Math.max(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / n);
+  const o = lo.map((v) => v - c);
+  const [nx, ny, nz] = [0, 1, 2].map((k) => Math.ceil((hi[k] - lo[k]) / c) + 2);
+  return { o, c, nx, ny, nz };
+}
+
+// modelDiff compares the old and the new model: the sizes, the volumes, and the added and the
+// removed volume in mm³. It returns also the grid and the move of the old model, for the view.
+async function modelDiff(oldUrl, newUrl) {
+  const [a, b] = await Promise.all([stlTris(oldUrl), stlTris(newUrl)]);
+  const ba = boxOf(a), bb = boxOf(b);
+  const same = a.length === b.length && a.every((v, i) => v === b[i]);
+  // The places to try: the middle, the low side and the high side of X and Y, and the bottom
+  // and the top of Z.
+  const opts = (k) => [0, bb[k] - ba[k], bb[k + 3] - ba[k + 3]];
+  let best = [0, 0, 0];
+  if (!same) {
+    let bestN = Infinity;
+    for (const dx of opts(0)) for (const dy of opts(1)) for (const dz of [0, bb[5] - ba[5]]) {
+      const d = [dx, dy, dz];
+      const moved = [ba[0] + dx, ba[1] + dy, ba[2] + dz, ba[3] + dx, ba[4] + dy, ba[5] + dz];
+      const gr = gridFor(moved, bb, 48);
+      const ga = voxels(a, d, gr.o, gr.c, gr.nx, gr.ny, gr.nz), gb = voxels(b, [0, 0, 0], gr.o, gr.c, gr.nx, gr.ny, gr.nz);
+      let n = 0;
+      for (let i = 0; i < ga.length; i++) n += ga[i] !== gb[i];
+      if (n < bestN) { bestN = n; best = d; }
+    }
+  }
+  const moved = [ba[0] + best[0], ba[1] + best[1], ba[2] + best[2], ba[3] + best[0], ba[4] + best[1], ba[5] + best[2]];
+  const gr = gridFor(moved, bb, 140);
+  let added = 0, removed = 0, ga = null, gb = null;
+  if (!same) {
+    ga = voxels(a, best, gr.o, gr.c, gr.nx, gr.ny, gr.nz);
+    gb = voxels(b, [0, 0, 0], gr.o, gr.c, gr.nx, gr.ny, gr.nz);
+    for (let i = 0; i < ga.length; i++) { if (gb[i] && !ga[i]) added++; else if (ga[i] && !gb[i]) removed++; }
+  }
+  const cell = gr.c ** 3;
+  return {
+    same,
+    oldSize: [ba[3] - ba[0], ba[4] - ba[1], ba[5] - ba[2]],
+    newSize: [bb[3] - bb[0], bb[4] - bb[1], bb[5] - bb[2]],
+    oldVolume: volumeOf(a), newVolume: volumeOf(b),
+    added: added * cell, removed: removed * cell,
+    grid: gr, ga, gb, move: best, newTris: b,
+  };
+}
+
+// diffText is a short text of the changes of a model: "2.0 mm taller · +3.1 cm³ (+4%)".
+function diffText(d) {
+  if (d.same) return "The same shape";
+  const out = [];
+  const words = [["wider", "narrower"], ["deeper", "shallower"], ["taller", "lower"]];
+  for (let k = 0; k < 3; k++) {
+    const dd = d.newSize[k] - d.oldSize[k];
+    if (Math.abs(dd) >= 0.05) out.push(`${Math.abs(dd).toFixed(1)} mm ${words[k][dd > 0 ? 0 : 1]}`);
+  }
+  const dv = (d.newVolume - d.oldVolume) / 1000;
+  const pct = d.oldVolume > 0 ? (100 * (d.newVolume - d.oldVolume)) / d.oldVolume : 0;
+  if (Math.abs(dv) >= 0.01) out.push(`${dv > 0 ? "+" : "−"}${Math.abs(dv).toFixed(2)} cm³ (${pct > 0 ? "+" : "−"}${Math.abs(pct).toFixed(1)}%)`);
+  if (!out.length) {
+    const moved = (d.added + d.removed) / 1000;
+    return moved >= 0.01 ? `Same size and volume, ${moved.toFixed(2)} cm³ moved` : "Small changes of the surface";
+  }
+  return out.join(" · ");
+}
+
+// describeDiff returns the text of the changes of the model newUrl since oldUrl.
+async function describeDiff(oldUrl, newUrl) {
+  return diffText(await modelDiff(oldUrl, newUrl));
+}
+
+// showDiff draws the changes of a model in box: the new model in faint gray, the added volume in
+// green and the removed volume in red. It returns the text of the changes.
+async function showDiff(box, oldUrl, newUrl) {
+  hide();
+  box.textContent = "";
+  const note = document.createElement("p");
+  note.className = "part-wait";
+  note.textContent = "Comparing the models…";
+  box.appendChild(note);
+  const [{ T, OrbitControls, RoomEnvironment }, d] = await Promise.all([load(), modelDiff(oldUrl, newUrl)]);
+  note.remove();
+  const renderer = new T.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.setClearColor(0x15161a);
+  box.appendChild(renderer.domElement);
+  const scene = new T.Scene();
+  const pmrem = new T.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.add(new T.HemisphereLight(0xffffff, 0x303540, 0.9));
+  const key = new T.DirectionalLight(0xffffff, 1.4);
+  key.position.set(-0.5, 0.9, 1.2);
+  scene.add(key);
+  // Printer X, Y, Z to the scene X, Y (up), Z (toward the viewer).
+  const geo = new T.BufferGeometry();
+  const pos = new Float32Array(d.newTris.length);
+  for (let i = 0; i < pos.length; i += 3) { pos[i] = d.newTris[i]; pos[i + 1] = d.newTris[i + 2]; pos[i + 2] = -d.newTris[i + 1]; }
+  geo.setAttribute("position", new T.BufferAttribute(pos, 3));
+  geo.computeVertexNormals();
+  const ghost = new T.Mesh(geo, new T.MeshStandardMaterial({ color: 0xb8bcc4, transparent: true, opacity: d.same ? 0.9 : 0.22, depthWrite: false, roughness: 0.6 }));
+  scene.add(ghost);
+  const meshes = [];
+  if (!d.same) {
+    const { o, c, nx, ny, nz } = d.grid;
+    const cube = new T.BoxGeometry(c, c, c);
+    for (const [want, color] of [[1, 0x2fbf5b], [-1, 0xe0413a]]) {
+      let n = 0;
+      for (let i = 0; i < d.ga.length; i++) if ((want > 0 ? d.gb[i] && !d.ga[i] : d.ga[i] && !d.gb[i])) n++;
+      if (!n) continue;
+      const mesh = new T.InstancedMesh(cube, new T.MeshStandardMaterial({ color, roughness: 0.5 }), n);
+      const m = new T.Matrix4();
+      let j = 0;
+      for (let x = 0; x < nx; x++) for (let y = 0; y < ny; y++) for (let z = 0; z < nz; z++) {
+        const i = (x * ny + y) * nz + z;
+        if (!(want > 0 ? d.gb[i] && !d.ga[i] : d.ga[i] && !d.gb[i])) continue;
+        m.makeTranslation(o[0] + (x + 0.5) * c, o[2] + (z + 0.5) * c, -(o[1] + (y + 0.5) * c));
+        mesh.setMatrixAt(j++, m);
+      }
+      scene.add(mesh);
+      meshes.push(mesh);
+    }
+  }
+  const camera = new T.PerspectiveCamera(35, 1, 0.5, 5000);
+  const size = Math.max(20, ...d.newSize);
+  const mid = new T.Vector3(0, d.newSize[2] / 2, 0);
+  camera.position.set(size * 0.7, size * 1.0, size * 1.6);
+  const orbit = new OrbitControls(camera, renderer.domElement);
+  orbit.target.copy(mid);
+  orbit.enableDamping = true;
+  let redraw = true;
+  orbit.addEventListener("change", () => { redraw = true; });
+  const fit = () => {
+    const w = box.clientWidth, h = box.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / Math.max(1, h);
+    camera.updateProjectionMatrix();
+    redraw = true;
+  };
+  const resize = new ResizeObserver(fit);
+  resize.observe(box);
+  fit();
+  let frame = 0;
+  const tick = () => {
+    frame = requestAnimationFrame(tick);
+    if (orbit.update() || redraw) { redraw = false; renderer.render(scene, camera); }
+  };
+  tick();
+  view = {
+    box,
+    stop() {
+      cancelAnimationFrame(frame);
+      resize.disconnect();
+      orbit.dispose();
+      renderer.dispose();
+      geo.dispose();
+      for (const m of meshes) m.dispose();
+      box.textContent = "";
+    },
+  };
+  return diffText(d);
+}
+
+window.pwfView3d = { show, showPart, showModels, showGcode, hide, modelFile, describeDiff, showDiff };

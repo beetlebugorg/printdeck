@@ -352,3 +352,11 @@ pre.cmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: #15161a
 .projhead .ptabs { margin-bottom: 0; }
 body:has(#projHead:not([hidden])) #prBack, body:has(#projHead:not([hidden])) #ptBack,
 body:has(#projHead:not([hidden])) #psBack, body:has(#projHead:not([hidden])) #plBack { display: none; }
+/* What changed in the models of a plan. */
+.plans .diffline { font: 500 12.5px/1.4 "IBM Plex Mono", monospace; color: var(--ink); }
+.difflist { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.difflist li { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: 10px 12px;
+  border: 1px solid var(--seam); border-radius: 10px; background: var(--cap); }
+.difflist .txt { display: grid; gap: 2px; min-width: 0; }
+.difflist .sub { font: 500 13px/1.4 "IBM Plex Mono", monospace; color: var(--ink-dim); }
+.difflist button { min-height: 36px; flex: none; }
