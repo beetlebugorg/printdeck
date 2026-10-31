@@ -54,6 +54,9 @@ type (
 	NameReply         = wire.NameReply
 	Printer           = wire.Printer
 	PrinterRequest    = wire.PrinterRequest
+	QueueReport       = wire.QueueReport
+	QueueEntry        = wire.QueueEntry
+	ProjectQueued     = wire.ProjectQueued
 	PrintRequest      = wire.PrintRequest
 	PrintReply        = wire.PrintReply
 	PrintDone         = wire.PrintDone
@@ -170,6 +173,11 @@ func (c *Client) EndPrinterLive(ctx context.Context, id *Identity, project, prin
 
 // RegisterPrinter adds a printer of the deck at the service, or changes the printer with the same
 // key. The reply has the ID of the printer.
+// SendQueue reports the files of the queue of the printer to the service.
+func (c *Client) SendQueue(ctx context.Context, id *Identity, printer string, in QueueReport) error {
+	return c.Do(ctx, id, http.MethodPost, "/api/v1/printers/"+printer+"/queue", in, nil)
+}
+
 func (c *Client) RegisterPrinter(ctx context.Context, id *Identity, in PrinterRequest) (Printer, error) {
 	var out Printer
 	err := c.Do(ctx, id, http.MethodPost, "/api/v1/printers", in, &out)

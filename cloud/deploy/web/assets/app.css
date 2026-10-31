@@ -369,3 +369,12 @@ body:has(#projHead:not([hidden])) #psBack, body:has(#projHead:not([hidden])) #pl
 .pickup li a:hover { border-color: var(--orange); }
 .pickup .sub { font-size: 13px; color: var(--ink-dim); }
 .pickup button { min-height: 40px; flex: none; }
+.qlist .qitem { flex: 1; display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--seam); border-radius: 10px; background: var(--cap); min-width: 0; }
+.qlist .sub { font-size: 13px; color: var(--ink-dim); }
+/* The small pictures of the photos of a print, on its tile. */
+.tile .tphotos { position: absolute; right: var(--s2); bottom: var(--s2); display: flex; align-items: center; gap: 0; }
+.tile .tphotos img { position: static; inset: auto; width: 30px; height: 30px; object-fit: cover; border-radius: 6px; border: 2px solid #f3f1ec;
+  margin-left: -8px; box-shadow: 0 1px 4px rgba(0,0,0,.4); background: #333; }
+.tile .tphotos img:first-child { margin-left: 0; }
+.tile .tphotos .more { margin-left: 4px; font: 600 11px/1 "IBM Plex Mono", monospace; color: #f3f1ec; background: rgba(0,0,0,.62);
+  padding: 5px 6px; border-radius: 6px; }

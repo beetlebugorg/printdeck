@@ -451,8 +451,21 @@ func playFrames(frames func() ([]string, int, error), n int, playing *int) {
 	}
 }
 
+// tilePhotos are the photos of each print by its ID, for the small pictures on the tiles.
+var tilePhotos map[string][]wire.ProjectPhoto
+
+// setTilePhotos keeps the photos of the prints of the project v for the tiles.
+func setTilePhotos(v *wire.ProjectView) {
+	tilePhotos = map[string][]wire.ProjectPhoto{}
+	for _, ph := range v.Photos {
+		if ph.Print != "" {
+			tilePhotos[ph.Print] = append(tilePhotos[ph.Print], ph)
+		}
+	}
+}
+
 // printTile is the tile of the print p, a link to href: the picture, the badges, the name, and
-// the facts.
+// the facts. A print with photos has small pictures of up to three of them in a corner.
 func printTile(p wire.ProjectPrint, href string) js.Value {
 	tile := el("a", "tile", "")
 	tile.Set("href", href)
@@ -478,6 +491,22 @@ func printTile(p wire.ProjectPrint, href string) js.Value {
 		badges.Call("appendChild", el("span", "", "Time lapse"))
 	}
 	pic.Call("appendChild", badges)
+	if phs := tilePhotos[p.ID]; len(phs) > 0 {
+		row := el("div", "tphotos", "")
+		row.Set("title", count(len(phs), "photo", "photos"))
+		for i, ph := range phs {
+			if i == 3 {
+				row.Call("appendChild", el("span", "more", fmt.Sprintf("+%d", len(phs)-3)))
+				break
+			}
+			img := el("img", "", "")
+			img.Set("src", ph.Small)
+			img.Set("alt", "")
+			img.Set("loading", "lazy")
+			row.Call("appendChild", img)
+		}
+		pic.Call("appendChild", row)
+	}
 	tile.Call("appendChild", pic)
 	body := el("div", "body", "")
 	body.Call("appendChild", el("strong", "", p.Name))

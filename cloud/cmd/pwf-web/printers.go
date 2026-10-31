@@ -46,6 +46,7 @@ var (
 // printer of printerFilter. href is the address of the page of a print.
 func drawPrints(v *wire.ProjectView, href func(wire.ProjectPrint) string) {
 	shownView, shownHref = v, href
+	setTilePhotos(v)
 	names := map[string]string{}
 	for _, p := range v.Printers {
 		names[p.ID] = p.Name

@@ -165,6 +165,7 @@ func (a *app) drawDashboard(v *wire.ProjectView, full bool) {
 	a.drawFeed(v)
 	a.drawWaiting(v)
 	a.drawPickup(v)
+	drawQueued(v)
 	a.drawGit(v)
 	a.drawPeople(v)
 	drawMosaic(v)
@@ -310,6 +311,9 @@ func (a *app) drawPulse(v *wire.ProjectView) {
 			n += x.n
 		}
 		item("warn", count(n, "plate waits", "plates wait")+" for your approval", buildPath(v.Slug, w[0].build.ID))
+	}
+	if len(v.Queue) > 0 && !v.Queue[0].Start.IsZero() {
+		item("", count(len(v.Queue), "file", "files")+" in the queue · the next starts "+until(v.Queue[0].Start), "")
 	}
 	if pulls := pullPlans(v); len(pulls) > 0 {
 		item("", count(len(pulls), "open pull request", "open pull requests"), "/projects/"+v.Slug+"/plans")
@@ -489,6 +493,7 @@ func drawMaterials(prints []wire.ProjectPrint) {
 
 // drawRecent draws the 4 newest prints.
 func drawRecent(v *wire.ProjectView) {
+	setTilePhotos(v)
 	box := byID("pRecent")
 	box.Set("textContent", "")
 	prints := newestPrints(v.Prints)
@@ -678,6 +683,66 @@ func (a *app) drawWaiting(v *wire.ProjectView) {
 	}
 	setText("pWaitN", fmt.Sprint(n))
 	setHidden("pWaitCard", n == 0)
+}
+
+// ordinal is 1st, 2nd, 3rd, 4th…
+func ordinal(n int) string {
+	suffix := "th"
+	switch {
+	case n%100 >= 11 && n%100 <= 13:
+	case n%10 == 1:
+		suffix = "st"
+	case n%10 == 2:
+		suffix = "nd"
+	case n%10 == 3:
+		suffix = "rd"
+	}
+	return fmt.Sprintf("%d%s", n, suffix)
+}
+
+// until is the time from now to t in words: "now", "in about 25 min", "in about 3 h".
+func until(t time.Time) string {
+	d := time.Until(t)
+	switch {
+	case d < 2*time.Minute:
+		return "now"
+	case d < time.Hour:
+		return fmt.Sprintf("in about %d min", int(d.Minutes()))
+	case d < 48*time.Hour:
+		return fmt.Sprintf("in about %d h", int(math.Round(d.Hours())))
+	}
+	return "on " + shortDate(t)
+}
+
+// drawQueued draws the card of the files of the project in the queues of the printers: their
+// places and the estimates of their starts. The project sees only its own files.
+func drawQueued(v *wire.ProjectView) {
+	setHidden("pQueueCard", len(v.Queue) == 0)
+	list := byID("pQueue")
+	list.Set("textContent", "")
+	total := 0
+	for _, q := range v.Queue {
+		total += q.Seconds
+		li := el("li", "", "")
+		box := el("div", "qitem", "")
+		box.Call("appendChild", el("strong", "", q.Name))
+		where := "Next on the " + q.Printer
+		if q.Place > 1 {
+			where = ordinal(q.Place) + " on the " + q.Printer
+		}
+		line := where
+		if !q.Start.IsZero() {
+			line += " · starts " + until(q.Start)
+		}
+		box.Call("appendChild", el("span", "sub", line))
+		li.Call("appendChild", box)
+		list.Call("appendChild", li)
+	}
+	sum := count(len(v.Queue), "file", "files")
+	if total > 0 {
+		sum += " · " + hoursMinutes(total)
+	}
+	setText("pQueueSum", sum)
 }
 
 // drawPickup draws the card of the prints that are ready to pick up, the newest mark first, each

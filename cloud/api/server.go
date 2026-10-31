@@ -153,6 +153,8 @@ func (s *Server) route(ctx context.Context, r *http.Request, body []byte) (any, 
 		return s.routeActions(ctx, r, body, "builds", strings.TrimPrefix(p, "/api/v1/builds/"))
 	case p == "/api/v1/printers":
 		return s.routePrinters(ctx, r, body)
+	case strings.HasPrefix(p, "/api/v1/printers/") && strings.HasSuffix(p, "/queue") && r.Method == http.MethodPost:
+		return s.routeQueue(ctx, r, body, strings.TrimSuffix(strings.TrimPrefix(p, "/api/v1/printers/"), "/queue"))
 	case strings.HasPrefix(p, "/api/v1/names/") && r.Method == http.MethodGet:
 		return s.lookupName(ctx, r, strings.TrimPrefix(p, "/api/v1/names/"))
 	case p == "/api/v1/projects" || strings.HasPrefix(p, "/api/v1/projects/"):

@@ -105,6 +105,8 @@ type ProjectView struct {
 	Live []ProjectLive `json:"live,omitempty"`
 	// Printers are the printers of the prints and the live tiles of the project.
 	Printers []Printer `json:"printers,omitempty"`
+	// Queue are the files of the project in the queues of the printers, the next first.
+	Queue []ProjectQueued `json:"queue,omitempty"`
 }
 
 // ProjectLive is a print of a project that prints now: its name, the share link or "", the start,
@@ -360,4 +362,31 @@ type LiveRequest struct {
 type LiveReply struct {
 	Grant      *Grant `json:"grant,omitempty"`
 	LayerGrant *Grant `json:"layer_grant,omitempty"`
+}
+
+// QueueReport is the body of POST /api/v1/printers/<id>/queue: the files of the queue of the deck
+// that are in a project of the service. The service keeps the files of each project apart: a
+// project sees its own files, their places and their start times, and not the other files.
+type QueueReport struct {
+	Items []QueueEntry `json:"items"`
+}
+
+// QueueEntry is a file of the queue of a deck: its project at the service, its name, its place in
+// the queue (1 is next), its print time, and the estimate of its start.
+type QueueEntry struct {
+	Project string    `json:"project"`
+	Name    string    `json:"name"`
+	Place   int       `json:"place"`
+	Seconds int       `json:"seconds,omitempty"`
+	Start   time.Time `json:"start,omitzero"`
+}
+
+// ProjectQueued is a file of a project in the queue of a printer, for the project page.
+type ProjectQueued struct {
+	Printer string    `json:"printer"`
+	Name    string    `json:"name"`
+	Place   int       `json:"place"`
+	Seconds int       `json:"seconds,omitempty"`
+	Start   time.Time `json:"start,omitzero"`
+	Updated time.Time `json:"updated"`
 }

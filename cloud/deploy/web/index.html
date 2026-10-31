@@ -153,6 +153,10 @@
           <div class="chead"><h2>Ready for pickup</h2><a class="more" data-tab="prints" data-state="delivered" id="pDeliveredAll">Delivered →</a></div>
           <ul class="pickup" id="pPickup"></ul>
         </section>
+        <section class="card" id="pQueueCard" aria-label="In the queue" hidden>
+          <div class="chead"><h2>In the queue</h2><span class="dim small" id="pQueueSum"></span></div>
+          <ul class="pickup qlist" id="pQueue"></ul>
+        </section>
         <section class="card" id="pGitCard" aria-label="GitHub" hidden>
           <div class="chead"><h2>GitHub</h2><a class="more" data-tab="builds" id="pGitAll">All builds →</a></div>
           <a class="repo" id="pGitRepo" target="_blank" rel="noopener"></a>

@@ -692,6 +692,7 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 		v.Plans, v.PlansTotal = s.plansView(ctx, p, PlansShown)
 	}
 	v.Printers = s.printersOf(ctx, printerIDs(prints, v.Live), false)
+	v.Queue = s.projectQueued(ctx, p.ID)
 	v.Prints, v.Photos = []cloud.ProjectPrint{}, []cloud.ProjectPhoto{}
 	for _, pr := range prints {
 		pp := projectPrint(pr)

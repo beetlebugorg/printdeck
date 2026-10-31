@@ -132,6 +132,25 @@ func (s *Server) routePrinters(ctx context.Context, r *http.Request, body []byte
 	return nil, fail(http.StatusMethodNotAllowed, "no such request")
 }
 
+// routeQueue serves POST /api/v1/printers/<id>/queue: a deck reports the queue of its printer.
+func (s *Server) routeQueue(ctx context.Context, r *http.Request, body []byte, id string) (any, error) {
+	w, err := s.whoFor(ctx, r, body, "")
+	if err != nil {
+		return nil, err
+	}
+	if w.deck == nil {
+		return nil, fail(http.StatusUnauthorized, "only a deck reports a queue")
+	}
+	if !validID(id) {
+		return nil, fail(http.StatusBadRequest, "bad printer")
+	}
+	var in cloud.QueueReport
+	if json.Unmarshal(body, &in) != nil {
+		return nil, fail(http.StatusBadRequest, "bad JSON")
+	}
+	return map[string]bool{"ok": true}, s.setQueue(ctx, w.deck, id, in)
+}
+
 // printersOf returns the printers with the IDs ids, for a project view. public leaves out the deck
 // and the key.
 func (s *Server) printersOf(ctx context.Context, ids map[string]bool, public bool) []cloud.Printer {

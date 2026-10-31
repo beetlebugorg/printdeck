@@ -447,6 +447,7 @@ func startShare(stateDir, configPath string, app *ui.App, pr printerBackend) {
 		go pl.watch(context.Background())
 		go pl.watchLive(context.Background())
 		go pl.watchService(context.Background())
+		go pl.watchQueue(context.Background(), app.Queue)
 	}
 	app.Share = l
 	l.loadHandoff(filepath.Join(handoffDir, shareHandoff))
