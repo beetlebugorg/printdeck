@@ -31,7 +31,8 @@ type Sharer struct {
 	// Plan returns the seconds of each layer from the slicer, or nil. The sharer uploads it once
 	// as plan.json.
 	Plan func() []float64
-	// Part returns the mesh of the part (part.bin), or nil. The sharer uploads it once.
+	// Part returns the cells of the part (part.bin), or nil. The sharer uploads it once, and again
+	// when the share has an older version of the file.
 	Part func() []byte
 	// Model returns the picture of the model as a JPEG and its version, or nil. The sharer
 	// uploads a new version at most each ModelEvery.
@@ -64,7 +65,7 @@ type share struct {
 	frame   int
 	seqs    map[string]uint64
 	plan    int       // the layers of plan.json, or 0 before its upload
-	part    int       // 1 when part.bin is up
+	part    int       // the version of part.bin that is up (PartVersion), or 0
 	model   int       // the count of uploads of model.jpg
 	modelV  uint64    // the version of the last model.jpg
 	modelAt time.Time // the time of the last model.jpg
@@ -406,12 +407,12 @@ func (s *Sharer) step(ctx context.Context, id *Identity, c *share) (bool, error)
 		}
 	}
 	st.Plan = c.plan
-	if s.Part != nil && c.part == 0 {
+	if s.Part != nil && c.part != PartVersion {
 		if b := s.Part(); len(b) > 0 {
 			if err := s.upload(ctx, id, c, "part.bin", "application/octet-stream", "public, max-age=31536000, immutable", b); err != nil {
 				return false, err
 			}
-			c.part = 1
+			c.part = PartVersion
 		}
 	}
 	st.Part = c.part
@@ -506,3 +507,6 @@ func PostFile(ctx context.Context, hc *http.Client, g Grant, name, ctype, cache 
 	}
 	return nil
 }
+
+// PartVersion is the version of part.bin: 1 was a mesh, 2 is the cells of the part ("PDV1").
+const PartVersion = 2
