@@ -94,6 +94,29 @@ The routes of the service:
 - `GET /api/v1/projects`, and `GET /api/v1/projects/<id>` for the live prints (`live`).
 - `GET /api/v1/printers`, for the owner: the live record of each printer (`live`).
 
+## Projects
+
+After the sign-in, Projects on the home screen lists the projects of the session. A project shows
+its overview, as the web page has it:
+
+- **Now**: the live prints, and for the owner the plates that wait for an approval, with Approve
+  and Reject (with a reason), and the approved plates with Send to a printer of the same process.
+  3D preview opens the build page of the web site with the session of the app.
+- **Ready for pickup**: the prints with Ready, and with no Delivered and no Test, with Delivered for
+  the owner.
+- **In the queues**: the files of the project in the queues of the printers.
+- **Newest prints**: a tap opens the print, with its marks (owner), its notes, its title and source
+  (owner), and its photos.
+- **What happened**: the feed of the prints, the photos, the plans, the plates and the notes.
+
+Take photos keeps the camera open and sends each photo after it is taken: to the print on the page
+of a print, else to the project. A member changes only the notes of a print.
+
+The routes: `GET /api/v1/projects/<id>`, `PATCH /api/v1/projects/<id>/prints/<print>`,
+`POST /api/v1/projects/<id>/builds/<build>/plates/<n>/approve`, `reject` and `send`,
+`GET /api/v1/printers`, and `POST /api/v1/projects/<id>/photos` with the upload to its grant and
+`POST /api/v1/projects/<id>/photos/<photo>/done`.
+
 ## Network
 
 The deck serves plain HTTP on the local network (`NSAllowsLocalNetworking`). The deck announces

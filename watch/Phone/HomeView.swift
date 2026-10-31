@@ -275,6 +275,7 @@ private struct AwayCard: View {
 private struct AccountPlate: View {
     @Environment(\.palette) private var p
     @State private var account = Account.shared
+    @State private var projects = false
 
     var body: some View {
         Plate(label: "Printdeck account") {
@@ -288,8 +289,12 @@ private struct AccountPlate: View {
                     .opacity(0.8)
             }
             if account.signedIn {
-                Button("Sign out") { account.signOut() }
-                    .buttonStyle(KeyStyle(cap: .danger))
+                HStack(spacing: 10) {
+                    Button("Projects") { projects = true }
+                        .buttonStyle(KeyStyle(cap: .orange))
+                    Button("Sign out") { account.signOut() }
+                        .buttonStyle(KeyStyle(cap: .danger))
+                }
             } else {
                 Button("Sign in with passkey") { Task { await account.signIn() } }
                     .buttonStyle(KeyStyle(cap: .orange))
@@ -299,6 +304,10 @@ private struct AccountPlate: View {
                 .font(Theme.plex(12, bold: false))
                 .foregroundStyle(p.dim)
                 .padding(.horizontal, 4)
+        }
+        .fullScreenCover(isPresented: $projects) {
+            ProjectsView { projects = false }
+                .environment(\.palette, p)
         }
     }
 
@@ -313,3 +322,4 @@ private struct AccountPlate: View {
         return "UNTIL " + LCDModel.clock(s.expires)
     }
 }
+

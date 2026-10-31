@@ -31,6 +31,8 @@
 	<array>
 		<string>_octoprint._tcp</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Printdeck takes photos of your prints for your projects.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Printdeck finds the deck on your network and connects to it.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
