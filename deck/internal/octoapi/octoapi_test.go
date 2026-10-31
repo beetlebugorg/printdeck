@@ -242,3 +242,27 @@ func TestAppKeysDeny(t *testing.T) {
 		t.Errorf("poll after deny: %d, want 404", r.StatusCode)
 	}
 }
+
+// A file that a slicer sends to print during a print goes to the queue of the deck, and does not
+// start.
+func TestUploadDuringAPrintGoesToTheQueue(t *testing.T) {
+	s, ts, p := newTest(t)
+	p.st.Printing = true
+	// With no queue, the upload is refused.
+	if r, _ := upload(t, ts.URL, mainKey, "a.gcode", "G28\n", map[string]string{"print": "true"}); r.StatusCode != http.StatusConflict {
+		t.Fatalf("no queue: %d", r.StatusCode)
+	}
+	var queued []string
+	s.Enqueue = func(path string) error { queued = append(queued, path); return nil }
+	r, m := upload(t, ts.URL, mainKey, "b.gcode", "G28\n", map[string]string{"print": "true"})
+	if r.StatusCode != http.StatusCreated || m["effectivePrint"] != false {
+		t.Fatalf("upload %d %v", r.StatusCode, m)
+	}
+	r, _ = do(t, "POST", ts.URL+"/api/files/local/a.gcode", mainKey, strings.NewReader(`{"command":"select","print":true}`), "application/json")
+	if r.StatusCode != http.StatusNoContent {
+		t.Fatalf("select: %d", r.StatusCode)
+	}
+	if len(p.printed) != 0 || strings.Join(queued, ",") != "b.gcode,a.gcode" {
+		t.Errorf("printed %v, queued %v", p.printed, queued)
+	}
+}

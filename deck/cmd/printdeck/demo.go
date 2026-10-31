@@ -17,6 +17,7 @@ import (
 	"printdeck/internal/gfx"
 	"printdeck/internal/hostmetrics"
 	"printdeck/internal/printer"
+	"printdeck/internal/queue"
 	"printdeck/internal/remote"
 	"printdeck/internal/ui"
 	"printdeck/internal/wifi"
@@ -48,6 +49,15 @@ func demoApp() (*ui.App, *ui.DemoPrinter) {
 	a.Updater = &ui.DemoUpdater{S: ui.UpdateStatus{Current: "v0.3.0", Latest: "v0.4.0", Newer: true, Checked: true,
 		Notes: demoNotes}}
 	a.Metrics = hostmetrics.Demo(demoNow())
+	// The print queue: three files after the print that runs.
+	a.Queue = &queue.Queue{}
+	for _, it := range []queue.Item{
+		{Path: "pod_door.gcode", Name: "Pod door", Project: "Bittlex", Material: "PLA", MaterialName: "Black PLA", Seconds: 45 * 60, From: "build"},
+		{Path: "cover_screw.gcode", Name: "Cover (screw)", Project: "Bittlex", Material: "PETG", MaterialName: "Orange PETG", Seconds: 3*3600 + 25*60, From: "slicer"},
+		{Path: "calibration_cube.gcode", Name: "Calibration cube", Material: "PLA", Seconds: 32 * 60, From: "deck"},
+	} {
+		a.Queue.Add(it)
+	}
 	// What the test printer has, a short history, and the slicer data of the files.
 	p.Machine_ = printer.Machine{KlipperVersion: "v0.13.0-777-g7bc4d0946-printdeck-go",
 		Modules: []string{"probe", "bed_tilt", "extruder", "heater_bed", "printdeck_sdcard"},
@@ -127,7 +137,7 @@ func demoShots(dir string, wide bool) {
 	}
 	snap("print-busy")
 	// The screens away from the print (Menu), with the print bar.
-	for _, name := range []string{"", "files", "file", "filament", "rolls", "roll", "maintenance", "machine", "history", "record", "stats", "console", "macros", "update"} {
+	for _, name := range []string{"", "files", "file", "filament", "rolls", "roll", "maintenance", "machine", "queue", "history", "record", "stats", "console", "macros", "update"} {
 		a.OpenPrintScreen(name)
 		a.DemoAway()
 		snap(strings.TrimSuffix("print-away-"+name, "-"))
@@ -219,6 +229,10 @@ func demoShots(dir string, wide bool) {
 		a.OpenPrintScreen(n)
 		snap("print-" + n)
 	}
+	// The question of the next file of the queue, at the end of a print. It is the last picture:
+	// the question stays on the screens.
+	a.OpenPrintScreen("queue-next")
+	snap("queue-next")
 }
 
 // remoteDemo serves the UI of a demo deck in the browser on ADDR (default :8080), to try it with no

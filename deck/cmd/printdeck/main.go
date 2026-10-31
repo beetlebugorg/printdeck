@@ -42,6 +42,7 @@ import (
 	"printdeck/internal/gfx"
 	"printdeck/internal/hostapi"
 	"printdeck/internal/hostmetrics"
+	"printdeck/internal/queue"
 	"printdeck/internal/klipper/cli"
 	"printdeck/internal/printer"
 	"printdeck/internal/system"
@@ -259,6 +260,10 @@ func run(cfg config.Config) {
 			app.OpenSetup()
 		}
 	}
+
+	// The print queue, and the question of the next file at the end of each print.
+	app.Queue = &queue.Queue{Path: filepath.Join(cfg.StateDir, "queue.json"), OnChange: app.Redraw}
+	go watchQueue(ctx, pr, app)
 
 	// The samples of the CPU, the memory and the disk writes, in memory only.
 	app.Metrics = hostmetrics.New()

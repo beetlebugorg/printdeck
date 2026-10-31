@@ -122,6 +122,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	case pageProjects:
 		a.drawProjects(c)
 		return
+	case pageQueue:
+		a.drawQueue(c)
+		return
 	case pageProject:
 		a.drawProject(c)
 		return

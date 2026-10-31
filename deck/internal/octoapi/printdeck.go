@@ -220,6 +220,9 @@ type printdeckFields struct {
 	// StartPrint starts a print of a file in place of Printer.PrintFile, or nil. The deck first
 	// checks that the material of the file is in the printer, and asks on the touch screen.
 	StartPrint func(path string)
+	// Enqueue adds a file to the print queue of the deck, or is nil. A file that a slicer sends to
+	// print while the printer prints goes to the queue.
+	Enqueue func(path string) error
 	// Status gives the status screen of the printer display (lcd.Status), or nil.
 	Status func() any
 	// Model draws the model of the print for an app (printer.View.ModelPicture), or nil.

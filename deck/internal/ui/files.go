@@ -325,8 +325,21 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 
 	pr := a.Printer
 	path := f.Path
-	// Delete, the destructive action, at the left; Print at the right.
+	// Delete, the destructive action, at the left; Print at the right. With a queue, Queue is
+	// between them: it adds the file to the end of the queue, also during a print.
 	k := kit.Cols(keys, 12, kit.Px(144), kit.Fr(1))
+	if a.Queue != nil {
+		k = kit.Cols(keys, 12, kit.Px(130), kit.Px(130), kit.Fr(1))
+		a.button(c, k[1], "Queue", raised, text, func() {
+			if err := a.Enqueue(path, "deck"); err != nil {
+				a.confirm = &confirmBox{question: "The queue is full.", yes: "OK", onYes: func() {}}
+				return
+			}
+			n := a.Queue.Len()
+			a.confirm = &confirmBox{question: fmt.Sprintf("In the queue, place %d.", n), yes: "OK", onYes: func() {}}
+		})
+		k = []image.Rectangle{k[0], k[2]}
+	}
 	a.printerKey(c, k[1], "Print", orange, onAcc, func() { a.confirmPrint(path) })
 	if st.Busy() && path == st.FilePath {
 		// The file of the print that runs.

@@ -48,6 +48,7 @@ const (
 	pageCloud       // the link of the deck to its cloud service
 	pageProjects    // the projects of the history
 	pageProject     // the prints of one project (a.project)
+	pageQueue       // the print queue of the deck
 )
 
 // open shows a page over the current one.
@@ -379,6 +380,11 @@ func (a *App) confirmResinPrint(path, name string) {
 // be in the printer, the touch screen asks first. It is safe to call from any goroutine.
 func (a *App) ConfirmFilePrint(path string) {
 	a.post(func() {
+		// With files in the queue, the deck asks: this file now, after the queue, or the queue.
+		if a.Queue != nil && a.Queue.Len() > 0 {
+			a.askSentFile(path)
+			return
+		}
 		q, yes, danger, set := a.materialCheck(path)
 		if q == "" {
 			a.Printer.PrintFile(path)

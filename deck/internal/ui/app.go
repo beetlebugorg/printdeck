@@ -22,6 +22,7 @@ import (
 	"printdeck/internal/hostmetrics"
 	"printdeck/internal/notify"
 	"printdeck/internal/printer"
+	"printdeck/internal/queue"
 	"printdeck/internal/touch"
 )
 
@@ -176,6 +177,7 @@ type App struct {
 	historyScroll  int            // the scroll position of the history
 	project        string         // the project of the page of one project
 	projectsScroll int            // the scroll position of the list of the projects
+	queueScroll    int            // the scroll position of the queue
 	projectScroll  int            // the scroll position of the prints of one project
 	doneSeen       string         // the done screen of this print was closed (its history key)
 	away           bool           // Menu on the screen of the print awayFile showed the other screens (away.go)
@@ -269,6 +271,8 @@ type App struct {
 	lcdNotes []printer.LCDRow // rows under the heading of the page (lcdNote)
 	// Updater checks for new releases and installs them, or nil.
 	Updater Updater
+	// Queue is the print queue of the deck, or nil.
+	Queue *queue.Queue
 	// Metrics are the samples of the CPU, the memory and the disk writes of the host, or nil
 	// (Machine > System monitor).
 	Metrics      *hostmetrics.Recorder
@@ -577,6 +581,9 @@ func (a *App) drawChoices(c *gfx.Canvas, cf *confirmBox) {
 	}
 	a.button(c, image.Rect(in.Min.X, in.Max.Y-backH, in.Max.X, in.Max.Y), "Back", raised, text, func() {
 		a.confirm = nil
+		if cf.onNo != nil {
+			cf.onNo() // a shared question closes on each screen
+		}
 		a.Redraw()
 	})
 }

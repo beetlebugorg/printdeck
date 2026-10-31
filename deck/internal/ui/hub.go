@@ -77,6 +77,16 @@ func (h *hub) ask(cf *confirmBox) {
 			no()
 		}
 	}
+	// A question with choices: a choice also closes the question on each screen.
+	for i := range cf.choices {
+		tap := cf.choices[i].tap
+		cf.choices[i].tap = func() {
+			done()
+			if tap != nil {
+				tap()
+			}
+		}
+	}
 	h.mu.Lock()
 	h.q = cf
 	h.mu.Unlock()

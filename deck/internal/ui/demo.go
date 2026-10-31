@@ -224,6 +224,11 @@ func (a *App) OpenPrintScreen(name string) {
 		a.pages = []page{pageMachine, pageMaintenance}
 	case "machine":
 		a.pages = []page{pageMachine}
+	case "queue":
+		a.pages = []page{pageMachine, pageQueue}
+	case "queue-next":
+		a.pages = nil
+		a.askQueueNext()
 	case "machine-restart":
 		a.pages = []page{pageMachine}
 		a.askRestart()

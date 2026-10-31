@@ -118,12 +118,21 @@ func (s *Server) serveUpload(w http.ResponseWriter, r *http.Request) {
 	isGcode := !strings.EqualFold(path.Ext(saved), ".stl")
 	effectivePrint := false
 	if doPrint && isGcode {
-		if !s.Printer.State().Connected || s.Printer.State().Busy() {
+		st := s.Printer.State()
+		switch {
+		case st.Connected && st.Busy() && s.Enqueue != nil:
+			// A print runs: the file waits in the queue of the deck.
+			if err := s.Enqueue(saved); err != nil {
+				apiError(w, http.StatusConflict, "The file is saved, but the queue of the printer is full")
+				return
+			}
+		case !st.Connected || st.Busy():
 			apiError(w, http.StatusConflict, "The file is saved, but the printer is busy or not operational")
 			return
+		default:
+			s.startPrint(saved)
+			effectivePrint = true
 		}
-		s.startPrint(saved)
-		effectivePrint = true
 	}
 	ref := baseURL(r) + "/api/files/local/" + escapePath(saved)
 	w.Header().Set("Location", ref)
@@ -182,7 +191,11 @@ func (s *Server) serveFileCommand(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if s.Printer.State().Busy() {
-			apiError(w, http.StatusConflict, "Printer is already printing")
+			if s.Enqueue == nil || s.Enqueue(strings.TrimPrefix(p, "/")) != nil {
+				apiError(w, http.StatusConflict, "Printer is already printing")
+				return
+			}
+			w.WriteHeader(http.StatusNoContent) // in the queue
 			return
 		}
 		s.startPrint(strings.TrimPrefix(p, "/"))

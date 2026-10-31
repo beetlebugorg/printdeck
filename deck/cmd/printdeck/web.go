@@ -97,6 +97,7 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 		return nil
 	}
 	api.StartPrint = app.ConfirmFilePrint
+	api.Enqueue = func(path string) error { return app.Enqueue(path, "slicer") }
 	api.Status = func() any { return app.StatusScreen() }
 	api.Model = k.View.ModelPicture
 	api.Estimate = k.EstimateFile

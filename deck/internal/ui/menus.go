@@ -497,6 +497,9 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		{"Settings", "Theme, clock, cloud", dim, func() { a.open(pageSettings) }},
 		{"Prints", printsLine, dim, func() { a.open(pageStats) }},
 	}
+	if a.Queue != nil {
+		keys = append(keys, menuItem{"Queue", a.queueSummary(), dim, func() { a.open(pageQueue) }})
+	}
 	if !a.resin() {
 		// A resin printer has no maintenance of a FDM printer, no macros and no G-code console.
 		keys = append(keys,
