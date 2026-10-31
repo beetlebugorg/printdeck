@@ -102,3 +102,4 @@ footer { display: grid; gap: 4px; }
 .cycle-card canvas { display: block; width: 100%; height: 280px; background: #0f0f0e; border-radius: 10px; }
 .cycle-card .row { margin-top: 10px; }
 .cycle-facts-head { margin-top: 18px; }
+.part-wait { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; font: 600 15px/1.3 "Archivo", sans-serif; color: #f3f1ec; }

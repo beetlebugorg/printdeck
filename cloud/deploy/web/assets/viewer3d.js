@@ -16,12 +16,13 @@ function modelFile(model) {
 
 async function load() {
   if (!lib) {
-    const [T, G, O] = await Promise.all([
+    const [T, G, O, R] = await Promise.all([
       import(three + "three.module.min.js"),
       import(three + "GLTFLoader.js"),
       import(three + "OrbitControls.js"),
+      import(three + "RoomEnvironment.js"),
     ]);
-    lib = { T, GLTFLoader: G.GLTFLoader, OrbitControls: O.OrbitControls };
+    lib = { T, GLTFLoader: G.GLTFLoader, OrbitControls: O.OrbitControls, RoomEnvironment: R.RoomEnvironment };
   }
   return lib;
 }
@@ -266,9 +267,11 @@ function surfaceNet(c, f, maxVerts) {
 // the device holds.
 async function readPart(T, url) {
   const c = await readCells(url);
-  const big = (navigator.deviceMemory || 4) >= 8 && !/Mobi/.test(navigator.userAgent);
-  const maxVerts = big ? 4000000 : 1500000;
-  let f = Math.max(1, Math.ceil(Math.sqrt((c.W * c.H * c.D) / (big ? 120e6 : 40e6))));
+  // All the detail first; cells twice as big only when the surface has too many vertices for
+  // the device.
+  const big = !/Mobi|Android|iPhone|iPad/.test(navigator.userAgent);
+  const maxVerts = big ? 8000000 : 2500000;
+  let f = 1;
   let m = null;
   while (!(m = surfaceNet(c, f, maxVerts))) f++;
   const cell = c.cell * f, pos = new Float32Array(m.nv * 3), height = new Float32Array(m.nv);
@@ -290,7 +293,7 @@ async function readPart(T, url) {
 // paint colors the part: the height up to done (mm) in the color of the resin, the rest gray.
 function paint(T, part, done) {
   const col = part.g.getAttribute("color");
-  const cured = new T.Color("#e8762b"), gray = new T.Color("#a8aaae");
+  const cured = new T.Color("#e8762b"), gray = new T.Color("#8d9197");
   for (let i = 0; i < part.height.length; i++) {
     const c = part.height[i] <= done ? cured : gray;
     col.setXYZ(i, c.r, c.g, c.b);
@@ -303,15 +306,19 @@ function paint(T, part, done) {
 // height that is done, in mm). It returns a function that sets done again.
 async function showPart(box, opts) {
   hide();
-  const { T, GLTFLoader, OrbitControls } = await load();
+  const { T, OrbitControls, RoomEnvironment } = await load();
   const renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.toneMapping = T.ACESFilmicToneMapping;
   box.textContent = "";
   box.appendChild(renderer.domElement);
   const scene = new T.Scene();
-  scene.add(new T.HemisphereLight(0xffffff, 0x6a7080, 1.6));
-  const key = new T.DirectionalLight(0xffffff, 2.4);
+  // A studio around the part for its reflections, as a real part looks under room light.
+  const pmrem = new T.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.35;
+  scene.add(new T.HemisphereLight(0xffffff, 0x50555f, 0.5));
+  const key = new T.DirectionalLight(0xffffff, 1.4);
   key.position.set(-1, 1.6, 1.4);
   scene.add(key);
   const rim = new T.DirectionalLight(0xffe2c4, 1.2);
@@ -321,8 +328,15 @@ async function showPart(box, opts) {
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
 
-  // The build plate only, with the part under it: the case of the printer is in the way.
+  // The build plate only, with the part under it: the case of the printer is in the way. A full
+  // plate takes some seconds to build: a note says so.
+  const note = document.createElement("p");
+  note.className = "part-wait";
+  note.textContent = "Building the 3D part from the layers…";
+  box.appendChild(note);
+  await new Promise((r) => setTimeout(r, 50));
   const part = await readPart(T, opts.url);
+  note.remove();
   paint(T, part, opts.done || 0);
   const plateMat = new T.MeshStandardMaterial({ color: "#b8bcc2", metalness: 0.3, roughness: 0.45 });
   const plate = new T.Mesh(new T.BoxGeometry(part.plateW + 8, 6, part.plateD + 8), plateMat);
@@ -331,8 +345,8 @@ async function showPart(box, opts) {
   const arm = new T.Mesh(new T.BoxGeometry(60, 24, 30), plateMat);
   arm.position.set(0, 18, -part.plateD / 2 + 10);
   scene.add(arm);
-  const mat = new T.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.38, metalness: 0, clearcoat: 0.6,
-    clearcoatRoughness: 0.25, sheen: 0.2 });
+  const mat = new T.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.32, metalness: 0, clearcoat: 0.5,
+    clearcoatRoughness: 0.2, envMapIntensity: 0.9 });
   const mesh = new T.Mesh(part.g, mat);
   scene.add(mesh);
   scene.updateMatrixWorld(true);
