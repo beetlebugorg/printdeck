@@ -961,7 +961,7 @@ func (s *Server) editPrint(ctx context.Context, id, pid string, w *who, in cloud
 	if w.deck != nil {
 		return fail(http.StatusUnauthorized, "only a person edits a print")
 	}
-	if (in.Title != nil || in.Delivered != nil || in.Source != nil) && !w.owner {
+	if (in.Title != nil || in.Delivered != nil || in.Ready != nil || in.Source != nil) && !w.owner {
 		return fail(http.StatusUnauthorized, "only the owner can do this")
 	}
 	pr, err := s.loadPrint(ctx, id, pid)
@@ -983,6 +983,14 @@ func (s *Server) editPrint(ctx context.Context, id, pid string, w *who, in cloud
 			pr.Delivered = time.Time{}
 		case pr.Delivered.IsZero():
 			pr.Delivered = s.now().UTC()
+		}
+	}
+	if in.Ready != nil {
+		switch {
+		case !*in.Ready:
+			pr.Ready, pr.ReadyNote = time.Time{}, ""
+		case pr.Ready.IsZero():
+			pr.Ready = s.now().UTC()
 		}
 	}
 	if in.Source != nil {

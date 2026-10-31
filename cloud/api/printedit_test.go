@@ -85,6 +85,23 @@ func TestPrintEdit(t *testing.T) {
 		t.Fatalf("reset %+v", p)
 	}
 
+	// Ready for pickup: the owner only, and it clears again.
+	if st := call(t, base, "PATCH", path, sam, cloud.PrintEdit{Ready: &yes}, nil); st != 401 {
+		t.Errorf("member ready: %d", st)
+	}
+	if st := call(t, base, "PATCH", path, tok, cloud.PrintEdit{Ready: &yes}, nil); st != 200 {
+		t.Fatal(st)
+	}
+	if p := print(tok); p.Ready.IsZero() {
+		t.Fatalf("not ready: %+v", p)
+	}
+	if st := call(t, base, "PATCH", path, tok, cloud.PrintEdit{Ready: &no}, nil); st != 200 {
+		t.Fatal(st)
+	}
+	if p := print(tok); !p.Ready.IsZero() {
+		t.Fatalf("still ready: %+v", p)
+	}
+
 	// The notes of the project.
 	if st := call(t, base, "PATCH", "/api/v1/projects/"+sum.ID+"/notes", sam, cloud.NotesEdit{Notes: "Paint: matte black"}, nil); st != 200 {
 		t.Fatalf("project notes: %d", st)

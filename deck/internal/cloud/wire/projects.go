@@ -223,6 +223,7 @@ type PrintEdit struct {
 	Title     *string `json:"title,omitempty"`
 	Notes     *string `json:"notes,omitempty"`
 	Delivered *bool   `json:"delivered,omitempty"`
+	Ready     *bool   `json:"ready,omitempty"` // Ready to pick up, before Delivered
 	Source    *string `json:"source,omitempty"`
 }
 
