@@ -23,7 +23,9 @@ struct ServiceProject: Decodable, Identifiable, Equatable {
     var name: String
 }
 
-/// A print of a project that prints now, or that ended a short time ago (wire.ProjectLive).
+/// A print of a project that prints now, or that ended a short time ago (wire.ProjectLive). The
+/// live record of a printer (wire.PrinterLive) becomes a LivePrint too, with no project and no
+/// model.
 struct LivePrint: Decodable, Equatable {
     var name: String
     /// The picture of the model, or nil. It works for one hour.
@@ -42,8 +44,12 @@ struct LivePrint: Decodable, Equatable {
     var printerID: String
     /// The project of the print, from the view that had it.
     var project = ""
+    /// The print came from the live record of the printer, which has no model and no project.
+    var fromPrinter = false
+    /// The printer has no print and no result: a record from the printer only.
+    var idle = false
 
-    var printing: Bool { result.isEmpty }
+    var printing: Bool { result.isEmpty && !idle }
 
     enum CodingKeys: String, CodingKey {
         case name, model, percent, layer, layers, left, paused, result, updated, printer
@@ -65,8 +71,25 @@ struct LivePrint: Decodable, Equatable {
         printerID = try c.decodeIfPresent(String.self, forKey: .printerID) ?? ""
     }
 
-    /// The live print of a deck: the print that runs, else the newest. A deck matches by the ID of
-    /// its printer at the service, or by its name when the app has no ID for it.
+    /// The live record of a printer (wire.PrinterLive in GET /api/v1/printers).
+    init(printer: ServicePrinter, live r: ServicePrinter.Live) {
+        name = r.name ?? ""
+        percent = r.percent ?? 0
+        layer = r.layer ?? 0
+        layers = r.layers ?? 0
+        left = r.left ?? 0
+        paused = r.paused ?? false
+        result = r.printing ? "" : (r.result ?? "")
+        idle = !r.printing && (r.result ?? "").isEmpty
+        updated = r.updated.flatMap(ServiceClient.date)
+        self.printer = printer.name
+        printerID = printer.id
+        fromPrinter = true
+    }
+
+    /// The live print of a deck: a print that runs, then a print of a project (it has the picture
+    /// of the model), then the newest. A deck matches by the ID of its printer at the service, or
+    /// by its name when the app has no ID for it.
     static func of(_ deck: SavedDeck, in list: [LivePrint]) -> LivePrint? {
         let mine = list.filter { l in
             if let id = deck.printerID, !id.isEmpty { return l.printerID == id }
@@ -74,9 +97,28 @@ struct LivePrint: Decodable, Equatable {
         }
         return mine.max { a, b in
             if a.printing != b.printing { return !a.printing }
+            if a.fromPrinter != b.fromPrinter { return a.fromPrinter }
             return (a.updated ?? .distantPast) < (b.updated ?? .distantPast)
         }
     }
+}
+
+/// A printer at the service (wire.Printer), with what it does now for the owner.
+struct ServicePrinter: Decodable {
+    struct Live: Decodable {
+        var printing: Bool
+        var paused: Bool?
+        var name: String?
+        var percent: Double?
+        var layer: Int?
+        var layers: Int?
+        var left: Int?
+        var result: String?
+        var updated: String?
+    }
+    var id: String
+    var name: String
+    var live: Live?
 }
 
 enum ServiceError: LocalizedError {
@@ -186,6 +228,12 @@ struct ServiceClient {
 
     func projects() async throws -> [ServiceProject] {
         try await get("projects")
+    }
+
+    /// The live records of the printers, for the owner. A member gets 401.
+    func printers() async throws -> [LivePrint] {
+        let list: [ServicePrinter] = try await get("printers")
+        return list.compactMap { p in p.live.map { LivePrint(printer: p, live: $0) } }
     }
 
     /// The live prints of a project, each with the name of the project.

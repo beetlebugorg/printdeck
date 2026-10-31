@@ -227,13 +227,16 @@ private struct AwayCard: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 Spacer()
-                Text(Format.percent(live.percent / 100))
-                    .font(Theme.plex(28, bold: false))
-                    .foregroundStyle(p.text)
+                if !live.idle {
+                    Text(Format.percent(live.percent / 100))
+                        .font(Theme.plex(28, bold: false))
+                        .foregroundStyle(p.text)
+                }
             }
             .padding(.horizontal, 4)
             VStack(alignment: .leading, spacing: 8) {
                 Text(live.project.isEmpty ? live.name : live.name + " · " + live.project)
+                    .opacity(live.name.isEmpty ? 0 : 1)
                     .font(Theme.plex(14, bold: false))
                     .foregroundStyle(p.dim)
                     .lineLimit(1)
@@ -246,7 +249,7 @@ private struct AwayCard: View {
                 }
                 .font(Theme.plex(13))
                 .foregroundStyle(p.dim)
-                Playhead(value: live.percent / 100)
+                if !live.idle { Playhead(value: live.percent / 100) }
             }
             .padding(.horizontal, 4)
         }
@@ -260,6 +263,7 @@ private struct AwayCard: View {
         case "error": return "Failed"
         default: break
         }
+        if live.idle { return "Ready" }
         if live.paused { return "Paused" }
         if live.layers > 0 { return "Layer \(live.layer) of \(live.layers)" }
         return "Printing"

@@ -50,6 +50,36 @@ final class ServiceTests: XCTestCase {
         XCTAssertNil(LivePrint.of(other, in: l))
     }
 
+    /// The live record of a printer: a print with no project, and a printer with no print.
+    func testPrinters() throws {
+        let json = """
+        [{"id": "p7k2", "name": "Phenom", "process": "resin",
+          "live": {"printing": true, "name": "Plate 3", "percent": 41.5, "layer": 400, "layers": 980,
+                   "left": 3000, "updated": "2026-10-31T22:00:00Z"}},
+         {"id": "t9x1", "name": "TAZ", "process": "fdm",
+          "live": {"printing": false, "updated": "2026-10-31T22:00:00Z"}},
+         {"id": "q1", "name": "Old", "process": "fdm"}]
+        """
+        let list = try JSONDecoder().decode([ServicePrinter].self, from: Data(json.utf8))
+        let live = list.compactMap { p in p.live.map { LivePrint(printer: p, live: $0) } }
+        XCTAssertEqual(live.count, 2)
+        XCTAssertTrue(live[0].printing)
+        XCTAssertTrue(live[0].fromPrinter)
+        XCTAssertTrue(live[1].idle)
+        XCTAssertFalse(live[1].printing)
+
+        // A running print of a project comes before the record of the printer, and a running
+        // print of the printer comes before an ended print of a project.
+        var phenom = SavedDeck(name: "Phenom")
+        phenom.printerID = "p7k2"
+        let projects = try self.live()
+        XCTAssertEqual(LivePrint.of(phenom, in: projects + live)?.name, "Shoulder")
+        XCTAssertEqual(LivePrint.of(phenom, in: live)?.name, "Plate 3")
+        var taz = SavedDeck(name: "TAZ")
+        taz.printerID = "t9x1"
+        XCTAssertEqual(LivePrint.of(taz, in: [projects[1]] + live)?.name, "Bracket")
+    }
+
     func testBase64URL() {
         let d = Data([0xfb, 0xff, 0xfe, 0x01])
         XCTAssertEqual(d.base64URL, "-__-AQ")

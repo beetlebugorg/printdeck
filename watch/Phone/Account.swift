@@ -55,8 +55,8 @@ final class Account {
         message = nil
     }
 
-    /// Reads the live prints of all projects of the session. A 401 ends the session: the user signs
-    /// in again.
+    /// Reads the live prints of all projects of the session, and for the owner the live records of
+    /// the printers, for a print with no project. A 401 ends the session: the user signs in again.
     func refresh() async {
         guard signedIn else {
             if session != nil { message = ServiceError.signedOut.errorDescription }
@@ -66,8 +66,10 @@ final class Account {
         do {
             let projects = try await c.projects()
             var all: [LivePrint] = []
+            let owner = session?.kind == "owner"
             try await withThrowingTaskGroup(of: [LivePrint].self) { group in
                 for p in projects { group.addTask { try await c.live(p) } }
+                if owner { group.addTask { try await c.printers() } }
                 for try await l in group { all += l }
             }
             live = all

@@ -77,7 +77,9 @@ and a 401 asks for the sign-in again. An owner session works for 12 hours.
 When a deck does not answer, its card shows the live print of the deck from the projects of the
 session: the model, the progress and the time left. The app finds the print by `printer_id` of
 the deck (from `/api/plugin/printdeck`), or by the name of the printer when the deck has sent no
-ID. A print with no project has no live print at the service, so its card keeps the last status.
+ID. For the owner, the live record of each printer (`live` in `GET /api/v1/printers`) fills the
+card of a print with no project. A print of a project comes first, because it has the picture of
+the model. A member sees only the prints of the projects.
 
 The sign-in needs the entitlement `webcredentials:printdeck.beetlebug.org`, so it works only in
 a build that is signed with the team of `project.yml`. The service serves
@@ -88,6 +90,7 @@ The routes of the service:
 - `POST /api/v1/auth/login/begin`, then the assertion of the passkey, then
   `POST /api/v1/auth/login/finish`: the token, the kind, the name and the expiry time.
 - `GET /api/v1/projects`, and `GET /api/v1/projects/<id>` for the live prints (`live`).
+- `GET /api/v1/printers`, for the owner: the live record of each printer (`live`).
 
 ## Network
 
