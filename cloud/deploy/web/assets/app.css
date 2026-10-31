@@ -345,3 +345,10 @@ pre.cmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: #15161a
 .people .rm { font-size: 14px; margin-top: 4px; }
 .people input.github { min-height: 36px; width: 100%; max-width: 220px; font: 14px "IBM Plex Mono", monospace; padding: 0 8px; border-radius: 8px;
   border: 1px solid var(--seam); background: var(--cap); color: var(--ink); }
+/* The head of the project over each page of the project. Its tabs replace the links back to the
+   project. The link of a build back to its plan stays. */
+.projhead { display: grid; gap: var(--s3); }
+.projhead .back { margin-bottom: calc(var(--s1) - var(--s3)); }
+.projhead .ptabs { margin-bottom: 0; }
+body:has(#projHead:not([hidden])) #prBack, body:has(#projHead:not([hidden])) #ptBack,
+body:has(#projHead:not([hidden])) #psBack, body:has(#projHead:not([hidden])) #plBack { display: none; }

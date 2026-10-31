@@ -59,6 +59,7 @@ func runApp() {
 	a.bindEdits()
 	a.bindBuilds()
 	a.bindTabs()
+	onShow = a.showHead
 	onSubmit("inviteForm", func() { go a.invite() })
 	onSubmit("peopleInviteForm", func() { go a.inviteFrom("peopleInvite", "peopleMsg") })
 	on("peopleInviteCopy", "click", func() { go copyText(byID("peopleInviteLink").Get("textContent").String(), "peopleMsg") })
@@ -168,8 +169,14 @@ func projectPath(slug string, n int) string {
 // The views of the page.
 var views = []string{"vSignIn", "vOwner", "vJoin", "vHome", "vMissing", "vProject", "vPublic", "vPrint", "vPrinter", "vPlan", "vBuild", "vPlans"}
 
+// onShow runs at each show: the app draws the head of the project for the views of a project.
+var onShow func(id string)
+
 func show(id string) {
 	setHidden("loading", id != "")
+	if onShow != nil {
+		onShow(id)
+	}
 	if v := js.Global().Get("pwfView3d"); id != "vPrinter" && id != "vPlan" && id != "vBuild" && id != "vPrint" && !v.IsUndefined() {
 		v.Call("hide")
 	}
@@ -716,17 +723,6 @@ func (a *app) drawProject() {
 	if v.Notes != "" {
 		setText("pNotesEdit", "Edit the notes")
 	}
-	setText("pName", v.Name)
-	setText("pNote", v.Note)
-	setHidden("pNote", v.Note == "")
-	people := 1
-	for _, m := range v.Members {
-		if m.Joined {
-			people++
-		}
-	}
-	setText("pMeta", "Since "+shortDate(v.Created)+" · "+count(people, "person", "people"))
-	setHidden("backLink", !v.IsOwner)
 	setHidden("ownerTools", !v.IsOwner)
 	setHidden("dangerZone", !v.IsOwner)
 	setHidden("memberList", v.IsOwner || len(v.Members) == 0)

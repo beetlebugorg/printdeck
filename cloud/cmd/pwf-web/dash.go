@@ -47,7 +47,7 @@ func setTab(tab string) {
 // bindTabs makes a click on a tab, or on a link to a tab in a card, show the tab with no new load
 // of the project. The tab Builds is a plain link to the page of the plans.
 func (a *app) bindTabs() {
-	byID("vProject").Call("addEventListener", "click", js.FuncOf(func(_ js.Value, args []js.Value) any {
+	click := js.FuncOf(func(_ js.Value, args []js.Value) any {
 		e := args[0]
 		if e.Get("button").Int() != 0 || e.Get("metaKey").Bool() || e.Get("ctrlKey").Bool() ||
 			e.Get("shiftKey").Bool() || e.Get("altKey").Bool() || a.view == nil {
@@ -64,6 +64,11 @@ func (a *app) bindTabs() {
 		e.Call("preventDefault")
 		e.Call("stopPropagation")
 		a.tab = tab
+		if byID("vProject").Get("hidden").Bool() {
+			// Another page of the project: the tab opens the project page.
+			openAddress(tabPath(a.view.Slug, tab))
+			return nil
+		}
 		js.Global().Get("history").Call("pushState", nil, "", tabPath(a.view.Slug, tab))
 		lastView = viewKey()
 		if tab == "overview" {
@@ -74,20 +79,43 @@ func (a *app) bindTabs() {
 		setTab(tab)
 		js.Global().Call("scrollTo", 0, 0)
 		return nil
-	}))
+	})
+	byID("vProject").Call("addEventListener", "click", click)
+	byID("projHead").Call("addEventListener", "click", click)
 }
 
-// drawDashboard draws the tabs and the overview. With full false, it draws only the parts that
-// change with the time: the line of what happens now, and the printers. The other parts have
-// pictures, and a new draw loads them again.
-func (a *app) drawDashboard(v *wire.ProjectView, full bool) {
-	a.drawPulse(v)
-	drawRigs(v)
-	if !full {
+// headTabs are the views of a project, with the tab that each one is under.
+var headTabs = map[string]string{"vProject": "", "vPrint": "prints", "vPrinter": "overview",
+	"vPlans": "builds", "vPlan": "builds", "vBuild": "builds"}
+
+// showHead shows the head of the project over each view of a project, with the tab of the view.
+func (a *app) showHead(id string) {
+	tab, ok := headTabs[id]
+	setHidden("projHead", !ok || a.view == nil)
+	if !ok || a.view == nil {
 		return
 	}
-	// The tabs.
-	links := doc.Call("querySelectorAll", "#vProject a[data-tab]")
+	a.drawHead(a.view)
+	if tab == "" {
+		tab = a.tab
+	}
+	setTab(tab)
+}
+
+// drawHead draws the head of the project v: the name, the people, the links and the tabs.
+func (a *app) drawHead(v *wire.ProjectView) {
+	setText("pName", v.Name)
+	setText("pNote", v.Note)
+	setHidden("pNote", v.Note == "")
+	people := 1
+	for _, m := range v.Members {
+		if m.Joined {
+			people++
+		}
+	}
+	setText("pMeta", "Since "+shortDate(v.Created)+" · "+count(people, "person", "people"))
+	setHidden("backLink", !v.IsOwner)
+	links := doc.Call("querySelectorAll", "#projHead a[data-tab], #vProject a[data-tab]")
 	for i := 0; i < links.Get("length").Int(); i++ {
 		l := links.Index(i)
 		tab := l.Get("dataset").Get("tab").String()
@@ -101,14 +129,24 @@ func (a *app) drawDashboard(v *wire.ProjectView, full bool) {
 	setText("tbPhotosN", countText(len(v.Photos)))
 	setText("tbBuildsN", countText(v.PlansTotal))
 	setHidden("tbBuilds", v.Repo == "")
-	// The head: the faces of the people, the repository and the public page.
 	drawFaces(v)
 	setHidden("pRepoChip", v.Repo == "")
 	byID("pRepoChip").Set("href", "https://github.com/"+v.Repo)
 	setText("pRepoChip", v.Repo)
 	setHidden("pPublicChip", v.Public == "")
 	byID("pPublicChip").Set("href", v.Public)
+}
 
+// drawDashboard draws the tabs and the overview. With full false, it draws only the parts that
+// change with the time: the line of what happens now, and the printers. The other parts have
+// pictures, and a new draw loads them again.
+func (a *app) drawDashboard(v *wire.ProjectView, full bool) {
+	a.drawPulse(v)
+	drawRigs(v)
+	if !full {
+		return
+	}
+	a.drawHead(v)
 	drawStats(v.Prints)
 	drawRate(v.Prints)
 	drawChart(v.Prints)

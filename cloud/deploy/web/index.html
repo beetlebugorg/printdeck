@@ -25,6 +25,32 @@
   <p class="lcd" id="loading">LOADING</p>
 
   <!-- Sign in -->
+  <!-- The head of each page of a project: the name, the people, and the tabs. -->
+  <section class="projhead" id="projHead" hidden>
+    <a class="back" href="/projects" id="backLink">All projects</a>
+    <div class="phead dhead">
+      <div class="dhead-main">
+        <h1 id="pName"></h1>
+        <p class="dim" id="pNote"></p>
+        <p class="dim small" id="pMeta"></p>
+      </div>
+      <div class="dhead-side">
+        <div class="faces" id="pFaces" aria-label="The people of the project"></div>
+        <div class="hchips">
+          <a class="hchip" id="pRepoChip" hidden></a>
+          <a class="hchip" id="pPublicChip" target="_blank" rel="noopener" hidden>Public page</a>
+        </div>
+      </div>
+    </div>
+    <nav class="ptabs" id="pTabs" aria-label="The parts of the project">
+      <a data-tab="overview" id="tbOverview">Overview</a>
+      <a data-tab="prints" id="tbPrints">Prints <span class="n" id="tbPrintsN"></span></a>
+      <a data-tab="photos" id="tbPhotos">Photos <span class="n" id="tbPhotosN"></span></a>
+      <a data-tab="builds" id="tbBuilds" hidden>Builds <span class="n" id="tbBuildsN"></span></a>
+      <a data-tab="settings" id="tbSettings">Settings</a>
+    </nav>
+  </section>
+
   <section class="view" id="vSignIn" hidden>
     <h1>Parts with Friends</h1>
     <p class="dim">Projects of 3D prints that you print with friends: the prints, their time lapses, and photos. Sign in with the passkey of this service.</p>
@@ -83,29 +109,6 @@
 
   <!-- One project -->
   <section class="view" id="vProject" data-tab="overview" hidden>
-    <a class="back" href="/projects" id="backLink">All projects</a>
-    <div class="phead dhead">
-      <div class="dhead-main">
-        <h1 id="pName"></h1>
-        <p class="dim" id="pNote"></p>
-        <p class="dim small" id="pMeta"></p>
-      </div>
-      <div class="dhead-side">
-        <div class="faces" id="pFaces" aria-label="The people of the project"></div>
-        <div class="hchips">
-          <a class="hchip" id="pRepoChip" hidden></a>
-          <a class="hchip" id="pPublicChip" target="_blank" rel="noopener" hidden>Public page</a>
-        </div>
-      </div>
-    </div>
-    <nav class="ptabs" id="pTabs" aria-label="The parts of the project">
-      <a data-tab="overview" id="tbOverview">Overview</a>
-      <a data-tab="prints" id="tbPrints">Prints <span class="n" id="tbPrintsN"></span></a>
-      <a data-tab="photos" id="tbPhotos">Photos <span class="n" id="tbPhotosN"></span></a>
-      <a data-tab="builds" id="tbBuilds" hidden>Builds <span class="n" id="tbBuildsN"></span></a>
-      <a data-tab="settings" id="tbSettings">Settings</a>
-    </nav>
-
     <!-- The overview -->
     <div class="pulse" id="pPulse" data-on="overview" role="status"></div>
     <section class="lcd stats" aria-label="The project in numbers" id="pStats" data-on="overview">
