@@ -149,6 +149,10 @@
           <div class="chead"><h2>Waiting for you</h2><span class="tag waiting" id="pWaitN"></span></div>
           <ul class="plans" id="pWait"></ul>
         </section>
+        <section class="card rail-pickup" id="pPickupCard" aria-label="Ready for pickup" hidden>
+          <div class="chead"><h2>Ready for pickup</h2><a class="more" data-tab="prints" data-state="delivered" id="pDeliveredAll">Delivered →</a></div>
+          <ul class="pickup" id="pPickup"></ul>
+        </section>
         <section class="card" id="pGitCard" aria-label="GitHub" hidden>
           <div class="chead"><h2>GitHub</h2><a class="more" data-tab="builds" id="pGitAll">All builds →</a></div>
           <a class="repo" id="pGitRepo" target="_blank" rel="noopener"></a>
@@ -195,6 +199,7 @@
     <!-- The prints -->
     <section class="card" id="pPrintsCard" aria-label="Prints" data-on="prints">
       <div class="chips" id="pPrinters" role="group" aria-label="The prints of one printer" hidden></div>
+      <div class="chips" id="pStates" role="group" aria-label="The prints that are ready to pick up, or delivered" hidden></div>
       <p class="dim small" id="noPrints">No prints yet. On the deck, put a print in this project. The print comes here at its end.</p>
       <div class="tiles" id="prints"></div>
     </section>

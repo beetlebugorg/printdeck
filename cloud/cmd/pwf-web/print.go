@@ -467,7 +467,7 @@ func printTile(p wire.ProjectPrint, href string) js.Value {
 	badges := el("div", "badges", "")
 	switch {
 	case !p.Delivered.IsZero():
-		badges.Call("appendChild", el("span", "ok", "Delivered"))
+		badges.Call("appendChild", el("span", "ok", "Delivered "+shortDate(p.Delivered)))
 	case !p.Ready.IsZero():
 		badges.Call("appendChild", el("span", "ready", "Ready to pick up"))
 	}

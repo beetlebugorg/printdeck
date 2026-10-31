@@ -360,3 +360,12 @@ body:has(#projHead:not([hidden])) #psBack, body:has(#projHead:not([hidden])) #pl
 .difflist .txt { display: grid; gap: 2px; min-width: 0; }
 .difflist .sub { font: 500 13px/1.4 "IBM Plex Mono", monospace; color: var(--ink-dim); }
 .difflist button { min-height: 36px; flex: none; }
+/* The prints that are ready to pick up. */
+.rail-pickup { border-color: var(--orange); }
+.pickup { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.pickup li { display: flex; align-items: center; gap: 10px; }
+.pickup li a { flex: 1; display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--seam); border-radius: 10px;
+  background: var(--cap); color: var(--ink); text-decoration: none; min-width: 0; }
+.pickup li a:hover { border-color: var(--orange); }
+.pickup .sub { font-size: 13px; color: var(--ink-dim); }
+.pickup button { min-height: 40px; flex: none; }

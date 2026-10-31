@@ -17,6 +17,21 @@ import (
 // printerFilter is the printer of the key that is down, or "" for all the printers.
 var printerFilter string
 
+// stateFilter is the state of the prints that show: "" for all, "ready" for the prints that are
+// ready to pick up, or "delivered".
+var stateFilter string
+
+// printState is the state of a print for stateFilter: "ready", "delivered", or "".
+func printState(p wire.ProjectPrint) string {
+	switch {
+	case !p.Delivered.IsZero():
+		return "delivered"
+	case !p.Ready.IsZero():
+		return "ready"
+	}
+	return ""
+}
+
 // tilePrinters are the names of the printers for the tiles, by ID, when the prints have two
 // printers or more; else nil.
 var tilePrinters map[string]string
@@ -58,7 +73,50 @@ func drawPrints(v *wire.ProjectView, href func(wire.ProjectPrint) string) {
 		tilePrinters = names
 	}
 	drawStats(shown)
-	drawTiles(shown, href)
+	// The keys of the states: all, ready to pick up, delivered. A delivered print shows the newest
+	// delivery first.
+	states := map[string]int{}
+	for _, p := range shown {
+		states[printState(p)]++
+	}
+	if states[stateFilter] == 0 {
+		stateFilter = ""
+	}
+	byState := shown
+	if stateFilter != "" {
+		byState = nil
+		for _, p := range shown {
+			if printState(p) == stateFilter {
+				byState = append(byState, p)
+			}
+		}
+		if stateFilter == "delivered" {
+			sort.SliceStable(byState, func(i, j int) bool { return byState[i].Delivered.After(byState[j].Delivered) })
+		}
+	}
+	srow := byID("pStates")
+	srow.Set("textContent", "")
+	setHidden("pStates", states["ready"]+states["delivered"] == 0)
+	for _, k := range []struct{ id, label string }{{"", "All"}, {"ready", "Ready for pickup"}, {"delivered", "Delivered"}} {
+		n := len(shown)
+		if k.id != "" {
+			n = states[k.id]
+			if n == 0 {
+				continue
+			}
+		}
+		b := el("button", "", fmt.Sprintf("%s · %d", k.label, n))
+		b.Set("type", "button")
+		b.Call("setAttribute", "aria-pressed", fmt.Sprint(k.id == stateFilter))
+		id := k.id
+		b.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
+			stateFilter = id
+			drawPrints(shownView, shownHref)
+			return nil
+		}))
+		srow.Call("appendChild", b)
+	}
+	drawTiles(byState, href)
 
 	row := byID("pPrinters")
 	row.Set("textContent", "")

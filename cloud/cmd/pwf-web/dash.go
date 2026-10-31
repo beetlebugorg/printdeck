@@ -64,6 +64,16 @@ func (a *app) bindTabs() {
 		e.Call("preventDefault")
 		e.Call("stopPropagation")
 		a.tab = tab
+		// A link to the prints of one state: the prints that are ready, or delivered.
+		if st := link.Get("dataset").Get("state"); tab == "prints" {
+			stateFilter = ""
+			if !st.IsUndefined() {
+				stateFilter = st.String()
+			}
+			if shownView != nil {
+				drawPrints(shownView, shownHref)
+			}
+		}
 		if byID("vProject").Get("hidden").Bool() {
 			// Another page of the project: the tab opens the project page.
 			openAddress(tabPath(a.view.Slug, tab))
@@ -154,6 +164,7 @@ func (a *app) drawDashboard(v *wire.ProjectView, full bool) {
 	drawRecent(v)
 	a.drawFeed(v)
 	a.drawWaiting(v)
+	a.drawPickup(v)
 	a.drawGit(v)
 	a.drawPeople(v)
 	drawMosaic(v)
@@ -667,6 +678,62 @@ func (a *app) drawWaiting(v *wire.ProjectView) {
 	}
 	setText("pWaitN", fmt.Sprint(n))
 	setHidden("pWaitCard", n == 0)
+}
+
+// drawPickup draws the card of the prints that are ready to pick up, the newest mark first, each
+// with Delivered for the owner. The card also links to the delivered prints.
+func (a *app) drawPickup(v *wire.ProjectView) {
+	var ready []wire.ProjectPrint
+	delivered := 0
+	for _, p := range v.Prints {
+		switch printState(p) {
+		case "ready":
+			ready = append(ready, p)
+		case "delivered":
+			delivered++
+		}
+	}
+	sort.SliceStable(ready, func(i, j int) bool { return ready[i].Ready.After(ready[j].Ready) })
+	setHidden("pPickupCard", len(ready) == 0 && delivered == 0)
+	setHidden("pDeliveredAll", delivered == 0)
+	setText("pDeliveredAll", fmt.Sprintf("%d delivered →", delivered))
+	list := byID("pPickup")
+	list.Set("textContent", "")
+	if len(ready) == 0 {
+		list.Call("appendChild", el("li", "dim small", "Nothing waits for pickup."))
+		return
+	}
+	for _, p := range ready {
+		li := el("li", "", "")
+		link := el("a", "", "")
+		link.Set("href", projectPath(v.Slug, p.N))
+		link.Call("appendChild", el("strong", "", p.Name))
+		sub := "Ready since " + localDay(p.Ready)
+		if p.ReadyNote != "" {
+			sub += " · " + p.ReadyNote
+		}
+		link.Call("appendChild", el("span", "sub", sub))
+		li.Call("appendChild", link)
+		if v.IsOwner {
+			b := el("button", "", "Delivered")
+			b.Set("type", "button")
+			id := p.ID
+			b.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
+				b.Set("disabled", true)
+				go func() {
+					yes := true
+					if err := a.api("PATCH", "/projects/"+v.ID+"/prints/"+id, wire.PrintEdit{Delivered: &yes}, nil); err != nil {
+						b.Set("disabled", false)
+						return
+					}
+					a.reload()
+				}()
+				return nil
+			}))
+			li.Call("appendChild", b)
+		}
+		list.Call("appendChild", li)
+	}
 }
 
 // pullPlans returns the newest plan of each pull request, the newest first.
