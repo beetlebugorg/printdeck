@@ -218,18 +218,16 @@ the files of the script.
    `prebuilt:` files from ChiTuBox.
 5. The sources: OpenSCAD and CadQuery.
 
-## The first repository: bittlx
+## The first repository: bittlex
 
-The project is bittlx. Its repository is `beetlebugorg/bittlex` on GitHub now: a rename on
-GitHub to `bittlx` keeps the old address as a redirect, and the service stores the new name. The
-repository is public, with the default branch `main`. Python scripts with build123d
+`beetlebugorg/bittlex` is public, with the default branch `main`. Python scripts with build123d
 and manifold3d make the parts, and the STL, 3MF and STEP files are in the repository. The Cura
 profile is `cura/Bittle_X.curaprofile` (0.20 mm layers, no supports, a 6-line brim), for the TAZ
 Workhorse with a 0.5 mm nozzle. The repository has one workflow now: `pages.yml` builds the
 GitHub Pages site. A draft of its `printdeck.yml`:
 
 ```yaml
-project: bittlx
+project: bittlex
 generate:
   python: "3.12"
   install: pip install build123d manifold3d
@@ -277,7 +275,7 @@ parts:
     prebuilt: phenom/resin_plate.cbddlp   # from ChiTuBox until the resin slicing works
 ```
 
-Open points for bittlx:
+Open points for bittlex:
 
 - The file names and the plate file of `plates.json` need a check against the repository.
 - The heavy build (wire settling, STEP export) takes minutes. The Action runs only the parts
@@ -291,7 +289,7 @@ Open points for bittlx:
   reads private repositories with the token of the App installation.
 - Only the owner approves or rejects a build.
 - A part can have a count of copies on one plate.
-- The first repository is the bittlx repository.
+- The first repository is the bittlex repository.
 
 ## Questions
 
