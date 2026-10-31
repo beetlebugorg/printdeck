@@ -171,14 +171,18 @@ type ProjectPrint struct {
 	ReadyNote string    `json:"ready_note,omitempty"`
 	// Test is the time when the owner marked the print as a test print, or zero.
 	Test time.Time `json:"test,omitzero"`
-	File string    `json:"file,omitempty"`
-	Result    string    `json:"result"` // "complete", "cancelled" or "error"
-	Ended     time.Time `json:"ended"`
-	Seconds   int       `json:"seconds"`
-	Material  string    `json:"material,omitempty"`
-	Grams     float64   `json:"grams,omitempty"`
-	Roll      string    `json:"roll,omitempty"`
-	Printer   string    `json:"printer,omitempty"`
+	// Discarded is the time when the owner marked the print as not good enough, or zero, and
+	// DiscardNote the note of why.
+	Discarded   time.Time `json:"discarded,omitzero"`
+	DiscardNote string    `json:"discard_note,omitempty"`
+	File        string    `json:"file,omitempty"`
+	Result      string    `json:"result"` // "complete", "cancelled" or "error"
+	Ended       time.Time `json:"ended"`
+	Seconds     int       `json:"seconds"`
+	Material    string    `json:"material,omitempty"`
+	Grams       float64   `json:"grams,omitempty"`
+	Roll        string    `json:"roll,omitempty"`
+	Printer     string    `json:"printer,omitempty"`
 	// PrinterID is the printer at the service, or "" for a print from before the printers.
 	PrinterID string `json:"printer_id,omitempty"`
 	Note      string `json:"note,omitempty"`
@@ -229,7 +233,10 @@ type PrintEdit struct {
 	Delivered *bool   `json:"delivered,omitempty"`
 	Ready     *bool   `json:"ready,omitempty"` // Ready to pick up, before Delivered
 	Test      *bool   `json:"test,omitempty"`  // a test print: to try a setting or a fit, and not to give
-	Source    *string `json:"source,omitempty"`
+	// Discard marks a print that is not good enough, with the note DiscardNote (why).
+	Discard     *bool   `json:"discard,omitempty"`
+	DiscardNote *string `json:"discard_note,omitempty"`
+	Source      *string `json:"source,omitempty"`
 }
 
 // NotesEdit is the body of PATCH /api/v1/projects/<id>/notes: the notes of the project.

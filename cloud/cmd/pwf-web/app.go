@@ -599,6 +599,7 @@ func (a *app) drawPrint(p wire.ProjectPrint) {
 	byID("prDeliver").Call("setAttribute", "aria-pressed", strconv.FormatBool(!p.Delivered.IsZero()))
 	byID("prReady").Call("setAttribute", "aria-pressed", strconv.FormatBool(!p.Ready.IsZero()))
 	byID("prTest").Call("setAttribute", "aria-pressed", strconv.FormatBool(!p.Test.IsZero()))
+	byID("prDiscard").Call("setAttribute", "aria-pressed", strconv.FormatBool(!p.Discarded.IsZero()))
 	for _, f := range []string{"prRenameForm", "prNotesForm", "prSourceForm"} {
 		setHidden(f, true)
 	}
@@ -670,6 +671,22 @@ func (a *app) bindEdits() {
 	onSubmit("prRenameForm", func() {
 		t := strings.TrimSpace(byID("prRenameInput").Get("value").String())
 		go a.editPrint(wire.PrintEdit{Title: &t}, "prCopyMsg")
+	})
+	on("prDiscard", "click", func() {
+		// A discard asks for a note: why the print is not good enough. A second tap clears it.
+		if !a.printNow().Discarded.IsZero() {
+			if confirm("Take the mark Discarded off this print?") {
+				no := false
+				go a.editPrint(wire.PrintEdit{Discard: &no}, "prCopyMsg")
+			}
+			return
+		}
+		note := js.Global().Call("prompt", "Why is this print not good enough? For example: warped corner, reprint at 0.1 mm.")
+		if note.IsNull() {
+			return
+		}
+		yes, text := true, strings.TrimSpace(note.String())
+		go a.editPrint(wire.PrintEdit{Discard: &yes, DiscardNote: &text}, "prCopyMsg")
 	})
 	on("prTest", "click", func() {
 		x := a.printNow().Test.IsZero()

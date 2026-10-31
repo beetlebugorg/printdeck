@@ -102,6 +102,24 @@ func TestPrintEdit(t *testing.T) {
 		t.Fatalf("still ready: %+v", p)
 	}
 
+	// Discard with a note: the owner only; a clear also clears the note.
+	note := "Warped corner, reprint at 0.1 mm"
+	if st := call(t, base, "PATCH", path, sam, cloud.PrintEdit{Discard: &yes, DiscardNote: &note}, nil); st != 401 {
+		t.Errorf("member discard: %d", st)
+	}
+	if st := call(t, base, "PATCH", path, tok, cloud.PrintEdit{Discard: &yes, DiscardNote: &note}, nil); st != 200 {
+		t.Fatal(st)
+	}
+	if p := print(tok); p.Discarded.IsZero() || p.DiscardNote != note {
+		t.Fatalf("discard %+v", p)
+	}
+	if st := call(t, base, "PATCH", path, tok, cloud.PrintEdit{Discard: &no}, nil); st != 200 {
+		t.Fatal(st)
+	}
+	if p := print(tok); !p.Discarded.IsZero() || p.DiscardNote != "" {
+		t.Fatalf("after the clear %+v", p)
+	}
+
 	// A test print: the owner only, and it clears again.
 	if st := call(t, base, "PATCH", path, sam, cloud.PrintEdit{Test: &yes}, nil); st != 401 {
 		t.Errorf("member test: %d", st)

@@ -541,6 +541,9 @@ func (a *app) drawFeed(v *wire.ProjectView) {
 		if !p.Delivered.IsZero() {
 			evs = append(evs, event{p.Delivered, "ok", "Delivered " + p.Name, "", href})
 		}
+		if !p.Discarded.IsZero() {
+			evs = append(evs, event{p.Discarded, "stop", "Discarded " + p.Name, p.DiscardNote, href})
+		}
 	}
 	// The photos of one person on one day make one line.
 	photos := append([]wire.ProjectPhoto(nil), v.Photos...)
