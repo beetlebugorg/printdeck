@@ -99,6 +99,11 @@ Resources:
             Status: Enabled
             Prefix: x/
             AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 }
+          # The IDs of the OIDC tokens of GitHub that the API took: a token works for minutes.
+          - Id: oidc-tokens
+            Status: Enabled
+            Prefix: oidc/
+            ExpirationInDays: 1
           # The photos of the owner as uploaded, before the API cleans them.
           - Id: photo-uploads
             Status: Enabled

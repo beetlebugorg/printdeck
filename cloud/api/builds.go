@@ -3,7 +3,9 @@ package api
 import (
 	"context"
 	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -46,7 +48,10 @@ type GitHubClaims struct {
 	SHA        string `json:"sha"`
 	EventName  string `json:"event_name"`
 	RunID      string `json:"run_id"`
-	jwt.RegisteredClaims
+	// JobWorkflowRef is the workflow file of the job and its ref, for example
+	// "beetlebugorg/bittlex/.github/workflows/printdeck.yml@refs/heads/main".
+	JobWorkflowRef       string `json:"job_workflow_ref"`
+	jwt.RegisteredClaims        // ID is the "jti" of the token
 }
 
 // OIDCVerifier checks an OIDC token of GitHub Actions for the audience, and returns its claims.
@@ -226,7 +231,46 @@ func (s *Server) buildClaims(ctx context.Context, r *http.Request) (*GitHubClaim
 	if err != nil {
 		return nil, fail(http.StatusUnauthorized, "the token of GitHub does not check: "+err.Error())
 	}
+	if err := s.useToken(ctx, c); err != nil {
+		return nil, err
+	}
 	return c, nil
+}
+
+// tokenKey is the record of a token that the API took: oidc/<SHA-256 of its ID>. A lifecycle rule
+// of the bucket deletes the records after a day, when the tokens ended long ago.
+func tokenKey(id string) string {
+	sum := sha256.Sum256([]byte(id))
+	return "oidc/" + hex.EncodeToString(sum[:])
+}
+
+// useToken records the ID of the token, and refuses a token that the API took already: each
+// token works for one request. The Action asks GitHub for a new token for each request.
+func (s *Server) useToken(ctx context.Context, c *GitHubClaims) error {
+	if c.ID == "" {
+		return fail(http.StatusUnauthorized, "the token of GitHub has no ID")
+	}
+	_, err := s.Store.Put(ctx, tokenKey(c.ID), []byte(c.Repository), PutOptions{ContentType: "text/plain", IfNoneMatch: true})
+	if errors.Is(err, ErrConflict) {
+		return fail(http.StatusUnauthorized, "this token of GitHub was used already: send a new token")
+	}
+	return err
+}
+
+// SliceWorkflow is the workflow file that may slice the builds of a repository, on its default
+// branch. A run of another file, or of the file on another branch, gets no build.
+const SliceWorkflow = ".github/workflows/printdeck.yml"
+
+// sliceRun checks that the token is of the slice workflow of the repository on main (or master):
+// the file that the owner reviewed, and not a copy on a branch of a pull request.
+func sliceRun(c *GitHubClaims) error {
+	ref := strings.ToLower(c.JobWorkflowRef)
+	base := strings.ToLower(c.Repository + "/" + SliceWorkflow + "@refs/heads/")
+	if ref == base+"main" || ref == base+"master" {
+		return nil
+	}
+	return fail(http.StatusForbidden, "only the workflow "+SliceWorkflow+" on the default branch slices a build, and this job is of "+
+		c.JobWorkflowRef)
 }
 
 var defaultOIDC = &GitHubOIDC{}

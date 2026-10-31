@@ -87,6 +87,11 @@ func (s *Server) routeActions(ctx context.Context, r *http.Request, body []byte,
 		return nil, err
 	}
 	id, action, _ := strings.Cut(rest, "/")
+	if kind == "builds" {
+		if err := sliceRun(c); err != nil {
+			return nil, err
+		}
+	}
 	switch {
 	case kind == "plans" && id == "" && r.Method == http.MethodPost:
 		var in cloud.PlanManifest

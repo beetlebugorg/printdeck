@@ -287,9 +287,16 @@ the files of the script.
 
 ## Security
 
-- A build upload needs an OIDC token of the repository of the project. A fork has another
-  repository claim, so a fork cannot upload. Builds of pull requests from forks run in the
-  repository with `pull_request_target` only when the owner allows it.
+- A request of the Action needs an OIDC token of the repository of the project, for the
+  audience of the service. A fork has another repository claim, and a pull request from a fork
+  gets no token at all.
+- Each token works for one request: the API records the ID (`jti`) of each token in
+  `oidc/<sha256>`, with a write that fails when the record exists. The Action asks GitHub for a
+  new token for each request. A lifecycle rule deletes the records after a day.
+- Only the reviewed workflow slices: each request on a build needs a token of a job of
+  `.github/workflows/printdeck.yml` on the default branch (`job_workflow_ref`). A copy of the
+  workflow on a branch or in a pull request can send a plan, which is only a proposal, but it
+  cannot fill a build.
 - The deck checks the SHA-256 of each file before it sends it to the printer.
 - A print request never starts a print. A person on the deck starts it.
 - The comments on GitHub have no data of the passkeys, no invite links and no share keys.

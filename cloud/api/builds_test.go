@@ -21,15 +21,26 @@ import (
 	"printdeck/internal/cloud"
 )
 
-// fakeOIDC takes a token "<repository>|<ref>|<sha>" for the tests of the builds.
+// fakeOIDC takes a token "<repository>|<ref>|<sha>[|<id>[|<job workflow ref>]]" for the tests of
+// the builds. With no ID, each token gets a new one. With no workflow, the job is of the slice
+// workflow of the repository on main.
 type fakeOIDC struct{}
 
 func (fakeOIDC) Verify(_ context.Context, token, audience string) (*GitHubClaims, error) {
 	f := strings.Split(token, "|")
-	if len(f) != 3 || audience != "localhost" {
+	if len(f) < 3 || len(f) > 5 || audience != "localhost" {
 		return nil, errors.New("bad token")
 	}
-	return &GitHubClaims{Repository: f[0], Ref: f[1], SHA: f[2], RunID: "42"}, nil
+	c := &GitHubClaims{Repository: f[0], Ref: f[1], SHA: f[2], RunID: "42",
+		JobWorkflowRef: f[0] + "/.github/workflows/printdeck.yml@refs/heads/main"}
+	c.ID = newID(10)
+	if len(f) > 3 && f[3] != "" {
+		c.ID = f[3]
+	}
+	if len(f) > 4 {
+		c.JobWorkflowRef = f[4]
+	}
+	return c, nil
 }
 
 // The flow of a plan: the owner links a repository, the plan run uploads the parts and their
@@ -131,6 +142,22 @@ func TestPlanFlow(t *testing.T) {
 		t.Fatalf("build %+v", pb)
 	}
 
+	// Only the slice workflow on main gets the build, and each token works once.
+	for _, wf := range []string{"beetlebugorg/bittlex/.github/workflows/printdeck.yml@refs/heads/feature",
+		"beetlebugorg/bittlex/.github/workflows/other.yml@refs/heads/main",
+		"beetlebugorg/bittlex/.github/workflows/printdeck.yml@refs/pull/7/merge"} {
+		if st := call(t, base, "GET", "/api/v1/builds/"+pb.ID, token+"||"+wf, nil, nil); st != 403 {
+			t.Errorf("a slice request of %s: %d", wf, st)
+		}
+	}
+	once := token + "|jti-1"
+	if st := call(t, base, "GET", "/api/v1/builds/"+pb.ID, once, nil, nil); st != 200 {
+		t.Fatalf("a token: %d", st)
+	}
+	if st := call(t, base, "GET", "/api/v1/builds/"+pb.ID, once, nil, nil); st != 401 {
+		t.Errorf("the same token again: %d", st)
+	}
+
 	// The slice run.
 	var job cloud.BuildJob
 	if st := call(t, base, "GET", "/api/v1/builds/"+pb.ID, token, nil, &job); st != 200 || job.Commit != sha || len(job.Plates) != 2 {
@@ -222,7 +249,8 @@ func TestGitHubOIDC(t *testing.T) {
 	issuer = srv.URL
 	sign := func(aud string, k *rsa.PrivateKey) string {
 		tk := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{"iss": issuer, "aud": aud, "exp": time.Now().Add(5 * time.Minute).Unix(),
-			"repository": "beetlebugorg/bittlex", "ref": "refs/heads/main", "sha": strings.Repeat("ab", 20)})
+			"jti": "j1", "repository": "beetlebugorg/bittlex", "ref": "refs/heads/main", "sha": strings.Repeat("ab", 20),
+			"job_workflow_ref": "beetlebugorg/bittlex/.github/workflows/printdeck.yml@refs/heads/main"})
 		tk.Header["kid"] = "k1"
 		s, err := tk.SignedString(k)
 		if err != nil {
@@ -233,7 +261,7 @@ func TestGitHubOIDC(t *testing.T) {
 	v := &GitHubOIDC{Issuer: issuer}
 	ctx := context.Background()
 	c, err := v.Verify(ctx, sign("printdeck.beetlebug.org", key), "printdeck.beetlebug.org")
-	if err != nil || c.Repository != "beetlebugorg/bittlex" || c.Ref != "refs/heads/main" {
+	if err != nil || c.Repository != "beetlebugorg/bittlex" || c.Ref != "refs/heads/main" || c.ID != "j1" || sliceRun(c) != nil {
 		t.Fatalf("a good token: %+v %v", c, err)
 	}
 	if _, err := v.Verify(ctx, sign("elsewhere.org", key), "printdeck.beetlebug.org"); err == nil {
