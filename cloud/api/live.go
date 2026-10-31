@@ -221,8 +221,17 @@ func (s *Server) liveView(ctx context.Context, p *Project, prints []PrintRecord)
 			named[d] = true
 		}
 	}
-	for _, l := range s.liveShares(ctx, p) {
-		if shown[l.id] || named[l.deck] {
+	// A deck runs one print at a time: of its open shares, only the newest shows. The others are
+	// old, from before a restart of the deck, when the deck has no live tile now.
+	open := s.liveShares(ctx, p)
+	newest := map[string]time.Time{}
+	for _, l := range open {
+		if l.deck != "" && l.Started.After(newest[l.deck]) {
+			newest[l.deck] = l.Started
+		}
+	}
+	for _, l := range open {
+		if shown[l.id] || named[l.deck] || l.deck != "" && l.Started.Before(newest[l.deck]) {
 			continue
 		}
 		// A share of a print that has a live tile from the same deck: the deck lost the share at a

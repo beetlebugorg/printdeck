@@ -253,3 +253,41 @@ func TestOldShareOfDeck(t *testing.T) {
 		t.Fatalf("live %+v", v.Live)
 	}
 }
+
+// Two open shares of one deck and no live tile: the deck lost the older share at a restart. Only
+// the newest share shows.
+func TestNewestShareOfDeck(t *testing.T) {
+	d, url := devService(t)
+	ctx := context.Background()
+	l := connectedLink(t, d, url)
+	id := l.Identity()
+	var c cloud.Client
+	sum, err := c.NewProject(ctx, id, "Robot")
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := func() *cloud.Sharer {
+		sh := &cloud.Sharer{Link: l, Every: 20 * time.Millisecond,
+			Status:  func() cloud.ShareStatus { return cloud.ShareStatus{State: "printing", Job: "Plate"} },
+			Project: func(context.Context) (string, error) { return sum.ID, nil }}
+		sh.Start("Plate", "Phenom", nil)
+		waitFor(t, func() bool { return sh.State().URL != "" })
+		return sh
+	}
+	old := start() // the deck lost it at a restart: the share did not end
+	defer old.Stop()
+	time.Sleep(10 * time.Millisecond)
+	cur := start()
+	defer cur.Stop()
+	p, _, err := d.API.loadProject(ctx, sum.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, err := d.API.viewProject(ctx, p, &who{owner: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(v.Live) != 1 || v.Live[0].URL != cur.State().URL {
+		t.Fatalf("live %+v", v.Live)
+	}
+}
