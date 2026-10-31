@@ -69,6 +69,12 @@ profiles/phenom/       the slicer profile of the Peopoly Phenom
 ```yaml
 project: robot            # the slug of the Printdeck project
 parts:
+  - name: Feet
+    files: [models/foot.stl]
+    count: 4                # 4 copies on one plate
+    printer: phenom
+    material: Grey resin
+    profile: profiles/phenom/standard-0.05.ini
   - name: Shoulder pieces
     files: [models/shoulder-left.stl, models/shoulder-right.stl]
     printer: phenom
@@ -81,7 +87,9 @@ parts:
     profile: profiles/taz/pla-0.2.cfg
 ```
 
-A part with more than one file has all of them on one plate. The slicer arranges them.
+A part with more than one file has all of them on one plate. `count` puts that many copies of
+each file on the plate (1 when it is not there). The slicer arranges them. When the copies do not
+fit on one plate, the Action fails with the count that fits.
 
 ## The Action
 
@@ -132,7 +140,7 @@ days after the pull request closes, and keeps main and release builds.
 - A "Builds" section, grouped by pull request and by tag, newest first. Each build shows its
   commit, its parts, and the prints of each part.
 - Each part has the key Preview, and its state: waiting for an approval, approved, rejected,
-  printed. Only the owner sees Approve and Reject at first (see "Questions").
+  printed. Only the owner can approve or reject. The members see the preview and the state.
 - The print tiles show their build: "PR #12 · 3f2a9c1" or "Release v1.2".
 - The print page shows the pull request with its comments, and the link to the commit.
 
@@ -184,8 +192,8 @@ The Action can make the STL files first: OpenSCAD or CadQuery files in `models/`
 
 ## Phases
 
-1. The repository link, the OIDC upload, the builds on the project page, and the build of a print
-   record (a print that starts on the deck with a file of a build).
+1. The GitHub App, the repository link, the OIDC upload, the builds on the project page, and the
+   build of a print record (a print that starts on the deck with a file of a build).
 2. The preview page and the approval, the print requests, and the panel on the deck with the
    material check.
 3. The GitHub App: the comments, the commit status, and the pull request on the print page.
@@ -193,10 +201,15 @@ The Action can make the STL files first: OpenSCAD or CadQuery files in `models/`
    `prebuilt:` files from ChiTuBox.
 5. The sources: OpenSCAD and CadQuery.
 
+## Decisions
+
+- The repositories can be public or private. So the GitHub App comes in phase 1: the service
+  reads private repositories with the token of the App installation.
+- Only the owner approves or rejects a build.
+- A part can have a count of copies on one plate.
+- The first repository is the bittlex repository.
+
 ## Questions
 
-- Are the repositories public or private? Private repositories need the GitHub App from phase 1.
-- Who can approve a build: only the owner, or the members too?
-- Does a part need a count, for example 4 copies on one plate?
 - Resin: are the supports of PrusaSlicer good enough for the Phenom, or do the parts stay with
   ChiTuBox files?
