@@ -353,7 +353,7 @@ parts:
     material: roll-4
     profile: taz-workhorse-se/pla-0.20-standard
   - name: Resin plate
-    files: [bittle_pi_addon/stl/plates/resin_phenom.stl]
+    files: [bittle_pi_addon/stl/plates/resin_phenom_plate.stl]
     printer: phenom
     material: Grey resin
     prebuilt: phenom/resin_plate.cbddlp   # from ChiTuBox until the resin slicing works
