@@ -338,3 +338,10 @@ pre.cmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: #15161a
   .live-tiles .tile .body { border-top: none; border-left: 1px solid var(--seam); padding: var(--s4); align-content: center; }
   .live-tiles .tile strong { font-size: 24px; }
 }
+/* The card People while the owner edits it. */
+.chead button.more { background: none; border: none; min-height: 0; padding: 0; font: 600 14px "Archivo", sans-serif; color: var(--link); cursor: pointer; }
+.people.editing li { align-items: flex-start; }
+.people.editing .txt { flex: 1; gap: 6px; }
+.people .rm { font-size: 14px; margin-top: 4px; }
+.people input.github { min-height: 36px; width: 100%; max-width: 220px; font: 14px "IBM Plex Mono", monospace; padding: 0 8px; border-radius: 8px;
+  border: 1px solid var(--seam); background: var(--cap); color: var(--ink); }

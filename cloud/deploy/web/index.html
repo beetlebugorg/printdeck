@@ -158,8 +158,18 @@
           <ul class="rigs" id="pRigs"></ul>
         </section>
         <section class="card" id="pPeopleCard" aria-label="People">
-          <div class="chead"><h2>People</h2><a class="more" data-tab="settings" id="pPeopleEdit" hidden>Invite →</a></div>
+          <div class="chead"><h2>People</h2><button type="button" class="link more" id="pPeopleEdit" hidden>Edit</button></div>
           <ul class="people" id="pPeople"></ul>
+          <form class="row" id="peopleInviteForm" hidden>
+            <input id="peopleInviteName" maxlength="40" placeholder="First name of a friend" aria-label="First name of a friend" required>
+            <button type="submit">Invite</button>
+          </form>
+          <div class="linkbox" id="peopleInviteBox" hidden>
+            <p class="small">Send this link to <span id="peopleInviteWho"></span>. It works once, for 7 days.</p>
+            <code id="peopleInviteLink"></code>
+            <div class="row"><button type="button" id="peopleInviteCopy">Copy link</button><button type="button" id="peopleInviteShare" hidden>Share</button></div>
+          </div>
+          <p class="msg" id="peopleMsg" role="status"></p>
         </section>
         <section class="card notes-card" id="pNotesCard" aria-label="Notes of the project" data-edit>
           <div class="chead"><h2>Notes</h2></div>

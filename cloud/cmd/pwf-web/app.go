@@ -35,6 +35,7 @@ type app struct {
 	planShown    int
 	planProcess  string            // the kind of print of the plan page: "fdm" or "resin"
 	lastBuild    wire.ProjectBuild // the build of the build page
+	peopleEdit   bool              // the card People shows the keys to invite and remove people
 	tab          string            // the tab of the project page: "overview", "prints", "photos" or "settings"
 	previewShown string            // the build of the preview that shows
 }
@@ -59,6 +60,16 @@ func runApp() {
 	a.bindBuilds()
 	a.bindTabs()
 	onSubmit("inviteForm", func() { go a.invite() })
+	onSubmit("peopleInviteForm", func() { go a.inviteFrom("peopleInvite", "peopleMsg") })
+	on("peopleInviteCopy", "click", func() { go copyText(byID("peopleInviteLink").Get("textContent").String(), "peopleMsg") })
+	on("peopleInviteShare", "click", func() { shareLink(byID("peopleInviteLink").Get("textContent").String()) })
+	on("pPeopleEdit", "click", func() {
+		a.peopleEdit = !a.peopleEdit
+		if !a.peopleEdit {
+			setHidden("peopleInviteBox", true)
+		}
+		a.drawPeople(a.view)
+	})
 	on("inviteCopy", "click", func() { go copyText(byID("inviteLink").Get("textContent").String(), "ownerToolsMsg") })
 	on("inviteShare", "click", func() { shareLink(byID("inviteLink").Get("textContent").String()) })
 	on("publicBtn", "click", func() { go a.togglePublic() })
@@ -735,27 +746,7 @@ func (a *app) drawProject() {
 		li.Call("appendChild", left)
 		// The GitHub username of a member who joined: the plans of the member's fork need it.
 		if m.Joined {
-			gh := el("input", "github", "")
-			gh.Set("value", m.GitHub)
-			gh.Set("placeholder", "GitHub username")
-			gh.Set("maxLength", 39)
-			gh.Set("autocomplete", "off")
-			gh.Set("spellcheck", false)
-			gh.Call("setAttribute", "aria-label", "The GitHub username of "+m.Name)
-			gh.Set("title", "The pull requests of this GitHub user's fork send plans to this project")
-			gid := m.ID
-			gh.Call("addEventListener", "change", js.FuncOf(func(js.Value, []js.Value) any {
-				val := strings.TrimSpace(gh.Get("value").String())
-				go func() {
-					if err := a.api("PATCH", "/projects/"+a.view.ID+"/members/"+gid, wire.MemberEdit{GitHub: val}, nil); err != nil {
-						say("ownerToolsMsg", err, "")
-						return
-					}
-					say("ownerToolsMsg", nil, "Saved the GitHub username.")
-				}()
-				return nil
-			}))
-			li.Call("appendChild", gh)
+			li.Call("appendChild", a.githubInput(m, "ownerToolsMsg"))
 		}
 		rm := el("button", "link", "Remove")
 		rm.Set("type", "button")
@@ -829,19 +820,23 @@ func photoFigure(ph wire.ProjectPhoto) js.Value {
 
 // The keys of the owner.
 
-func (a *app) invite() {
-	name := strings.TrimSpace(byID("inviteName").Get("value").String())
+func (a *app) invite() { a.inviteFrom("invite", "ownerToolsMsg") }
+
+// inviteFrom makes an invite for the name in the field <prefix>Name, and shows its link in the
+// box <prefix>Box. msg is the line of the messages of the form.
+func (a *app) inviteFrom(prefix, msg string) {
+	name := strings.TrimSpace(byID(prefix + "Name").Get("value").String())
 	var inv wire.InviteReply
 	if err := a.api("POST", "/projects/"+a.view.ID+"/invites", wire.InviteRequest{Name: name}, &inv); err != nil {
-		say("ownerToolsMsg", err, "")
+		say(msg, err, "")
 		return
 	}
-	byID("inviteName").Set("value", "")
-	setText("inviteWho", name)
-	setText("inviteLink", inv.URL)
-	setHidden("inviteBox", false)
-	setHidden("inviteShare", js.Global().Get("navigator").Get("share").IsUndefined())
-	say("ownerToolsMsg", nil, "")
+	byID(prefix+"Name").Set("value", "")
+	setText(prefix+"Who", name)
+	setText(prefix+"Link", inv.URL)
+	setHidden(prefix+"Box", false)
+	setHidden(prefix+"Share", js.Global().Get("navigator").Get("share").IsUndefined())
+	say(msg, nil, "")
 	a.reload()
 }
 
@@ -852,6 +847,7 @@ func (a *app) removeMember(id, name string) {
 	var v wire.ProjectView
 	if err := a.api("DELETE", "/projects/"+a.view.ID+"/members/"+id, nil, &v); err != nil {
 		say("ownerToolsMsg", err, "")
+		say("peopleMsg", err, "")
 		return
 	}
 	a.view = &v

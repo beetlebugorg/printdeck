@@ -834,10 +834,16 @@ func drawFaces(v *wire.ProjectView) {
 }
 
 // drawPeople draws the card of the people: the owner, the members and the invites that wait.
+// The owner taps Edit to set the GitHub usernames, remove people and invite friends.
 func (a *app) drawPeople(v *wire.ProjectView) {
+	edit := v.IsOwner && a.peopleEdit
 	list := byID("pPeople")
 	list.Set("textContent", "")
-	add := func(name, role string) {
+	list.Get("classList").Call("toggle", "editing", edit)
+	setHidden("pPeopleEdit", !v.IsOwner)
+	setText("pPeopleEdit", map[bool]string{true: "Done", false: "Edit"}[edit])
+	setHidden("peopleInviteForm", !edit)
+	row := func(name, role string) (js.Value, js.Value) {
 		li := el("li", "", "")
 		li.Call("appendChild", face(name, "sm"))
 		txt := el("span", "txt", "")
@@ -847,24 +853,72 @@ func (a *app) drawPeople(v *wire.ProjectView) {
 		}
 		li.Call("appendChild", txt)
 		list.Call("appendChild", li)
+		return li, txt
 	}
-	add(v.Owner, "")
+	remove := func(li js.Value, m wire.ProjectMember, label string) {
+		rm := el("button", "link rm", label)
+		rm.Set("type", "button")
+		rm.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
+			go a.removeMember(m.ID, m.Name)
+			return nil
+		}))
+		li.Call("appendChild", rm)
+	}
+	row(v.Owner, map[bool]string{true: "Owner", false: ""}[edit])
 	invites := 0
 	for _, m := range v.Members {
 		if !m.Joined {
 			invites++
+			if edit {
+				li, _ := row(m.Name, "Invited "+localDay(m.Invited)+" · not joined yet")
+				remove(li, m, "Cancel")
+			}
 			continue
 		}
 		role := ""
-		if m.GitHub != "" {
+		if m.GitHub != "" && !edit {
 			role = "@" + m.GitHub
 		}
-		add(m.Name, role)
+		li, txt := row(m.Name, role)
+		if edit {
+			txt.Call("appendChild", a.githubInput(m, "peopleMsg"))
+			remove(li, m, "Remove")
+		}
 	}
-	if invites > 0 {
+	if invites > 0 && !edit {
 		list.Call("appendChild", el("li", "dim small", count(invites, "invite waits", "invites wait")))
 	}
-	setHidden("pPeopleEdit", !v.IsOwner)
+}
+
+// githubInput is the field of the GitHub username of the member m: the plans of the member's
+// fork need it. A change saves it. msg is the line of the messages.
+func (a *app) githubInput(m wire.ProjectMember, msg string) js.Value {
+	gh := el("input", "github", "")
+	gh.Set("value", m.GitHub)
+	gh.Set("placeholder", "GitHub username")
+	gh.Set("maxLength", 39)
+	gh.Set("autocomplete", "off")
+	gh.Set("spellcheck", false)
+	gh.Call("setAttribute", "aria-label", "The GitHub username of "+m.Name)
+	gh.Set("title", "The pull requests of this GitHub user's fork send plans to this project")
+	id := m.ID
+	gh.Call("addEventListener", "change", js.FuncOf(func(js.Value, []js.Value) any {
+		val := strings.TrimSpace(gh.Get("value").String())
+		go func() {
+			if err := a.api("PATCH", "/projects/"+a.view.ID+"/members/"+id, wire.MemberEdit{GitHub: val}, nil); err != nil {
+				say(msg, err, "")
+				return
+			}
+			for i := range a.view.Members {
+				if a.view.Members[i].ID == id {
+					a.view.Members[i].GitHub = val
+				}
+			}
+			say(msg, nil, "Saved the GitHub username of "+m.Name+".")
+		}()
+		return nil
+	}))
+	return gh
 }
 
 // dashRow is a row of a card of the overview: a link with a title, a line under it, and a tag.
