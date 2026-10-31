@@ -30,12 +30,13 @@ import (
 
 // shareLink is the ui.ShareLink of the deck.
 type shareLink struct {
-	link   *cloud.Link
-	sharer *cloud.Sharer
-	pr     printerBackend
-	lapse  *timelapse.Runner // or nil
-	name   string            // the name of the printer on the page: the host name
-	model  string            // the model of the printer, from printer.cfg
+	link       *cloud.Link
+	sharer     *cloud.Sharer
+	pr         printerBackend
+	lapse      *timelapse.Runner // or nil
+	name       string            // the name of the printer on the page: the host name
+	model      string            // the model of the printer, from printer.cfg
+	loggedPath bool              // the log has the key of the print of a share that went on through a restart
 
 	mu      sync.Mutex
 	path    string    // the file of the print of the share
@@ -373,7 +374,7 @@ func (l *shareLink) project() string {
 	if path == "" {
 		return ""
 	}
-	if st := l.pr.State(); st.Busy() && st.FilePath == path {
+	if st := l.pr.State(); st.Busy() && (st.FilePath == path || l.runningShare(st)) {
 		return l.pr.NextProject()
 	}
 	for _, r := range l.pr.History() {
@@ -387,12 +388,32 @@ func (l *shareLink) project() string {
 // shareOf returns the ID of the share link of the print r, or "".
 func (l *shareLink) shareOf(r printer.Record) string {
 	st := l.sharer.State()
+	if st.ID != "" {
+		if ps := l.pr.State(); ps.Busy() && r.Path == ps.FilePath && l.runningShare(ps) {
+			return st.ID
+		}
+	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if st.ID == "" || r.Path != l.path || r.End.Before(l.started) {
 		return ""
 	}
 	return st.ID
+}
+
+// runningShare reports that the share is of the print now, st: it has not ended. A share that goes
+// on through a restart of a resin deck can have a key of the print from before the restart.
+func (l *shareLink) runningShare(st printer.State) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if !l.ended.IsZero() || l.path == "" {
+		return false
+	}
+	if l.path != st.FilePath && !l.loggedPath {
+		l.loggedPath = true
+		log.Printf("share: the share has the print %s, and the printer prints %s", l.path, st.FilePath)
+	}
+	return true
 }
 
 // startShare sets the cloud link and the share link of the app. The identity of the deck is the
