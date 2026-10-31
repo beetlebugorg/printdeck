@@ -27,9 +27,9 @@ struct ProjectDetail: Decodable {
 
     var owner: Bool { isOwner ?? false }
 
-    /// The prints that are ready to pick up: Ready, and not delivered, and no test print.
+    /// The prints that are ready to pick up: Ready, with no Delivered, no Test and no Discarded.
     var readyForPickup: [ProjectPrintItem] {
-        (prints ?? []).filter { $0.ready != nil && $0.delivered == nil && $0.test == nil }
+        (prints ?? []).filter { $0.ready != nil && $0.delivered == nil && $0.test == nil && $0.discarded == nil }
     }
 
     /// The prints, the newest end first.
@@ -72,6 +72,7 @@ struct ProjectDetail: Decodable {
             }
             if let r = p.ready { evs.append(FeedEvent(at: r, text: p.name + " is ready to pick up", sub: p.readyNote ?? "")) }
             if let d = p.delivered { evs.append(FeedEvent(at: d, text: "Delivered " + p.name, sub: "")) }
+            if let d = p.discarded { evs.append(FeedEvent(at: d, text: "Discarded " + p.name, sub: p.discardNote ?? "")) }
         }
         let photos = (self.photos ?? []).sorted { ($0.added ?? .distantPast) > ($1.added ?? .distantPast) }
         var i = 0
@@ -126,6 +127,9 @@ struct ProjectPrintItem: Decodable, Identifiable {
     var ready: Date?
     var readyNote: String?
     var test: Date?
+    /// The time of the mark Discarded (not good enough), and the note of why.
+    var discarded: Date?
+    var discardNote: String?
     var file: String?
     var result: String?
     var ended: Date?
@@ -136,9 +140,9 @@ struct ProjectPrintItem: Decodable, Identifiable {
     var model: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, n, name, notes, delivered, source, ready, test, file, result, ended, seconds, material, grams,
-             printer, model
-        case notesBy = "notes_by", readyNote = "ready_note"
+        case id, n, name, notes, delivered, source, ready, test, discarded, file, result, ended, seconds, material,
+             grams, printer, model
+        case notesBy = "notes_by", readyNote = "ready_note", discardNote = "discard_note"
     }
 
     var modelURL: URL? { model.flatMap { URL(string: $0, relativeTo: ServiceClient.base)?.absoluteURL } }

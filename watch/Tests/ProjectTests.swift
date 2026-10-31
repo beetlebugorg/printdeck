@@ -14,7 +14,9 @@ final class ProjectTests: XCTestCase {
        {"id": "b", "n": 2, "name": "Hip", "result": "complete", "ended": "2026-10-31T14:00:00.5Z",
         "ready": "2026-10-31T15:00:00Z", "delivered": "2026-10-31T16:00:00Z"},
        {"id": "c", "n": 3, "name": "Fit test", "result": "cancelled", "ended": "2026-10-29T09:00:00Z",
-        "ready": "2026-10-31T15:00:00Z", "test": "2026-10-31T15:00:00Z"}
+        "ready": "2026-10-31T15:00:00Z", "test": "2026-10-31T15:00:00Z"},
+       {"id": "d", "n": 4, "name": "Elbow", "result": "complete", "ended": "2026-10-29T08:00:00Z",
+        "ready": "2026-10-31T15:00:00Z", "discarded": "2026-10-31T19:00:00Z", "discard_note": "Warped corner"}
      ],
      "photos": [
        {"id": "p1", "by": "Sam", "added": "2026-10-31T13:10:00Z", "url": "/f/1.jpg", "small": "/f/1s.jpg", "print": "a"},
@@ -48,20 +50,22 @@ final class ProjectTests: XCTestCase {
     func testDecode() throws {
         let v = try view()
         XCTAssertTrue(v.owner)
-        XCTAssertEqual(v.prints?.count, 3)
+        XCTAssertEqual(v.prints?.count, 4)
+        XCTAssertEqual(v.prints?[3].discardNote, "Warped corner")
+        XCTAssertNotNil(v.prints?[3].discarded)
         XCTAssertEqual(v.live?.first?.name, "Pod door")
         XCTAssertEqual(v.queue?.first?.place, 1)
         XCTAssertEqual(v.plans?.first?.title, "PR #7")
         XCTAssertEqual(v.photos(of: "a").first?.smallURL?.absoluteString, ServiceClient.base.absoluteString + "/f/1s.jpg")
     }
 
-    /// Ready for pickup: Ready, with no Delivered and no Test.
+    /// Ready for pickup: Ready, with no Delivered, no Test and no Discarded.
     func testPickup() throws {
         XCTAssertEqual(try view().readyForPickup.map(\.id), ["a"])
     }
 
     func testNewest() throws {
-        XCTAssertEqual(try view().newest.map(\.id), ["b", "a", "c"])
+        XCTAssertEqual(try view().newest.map(\.id), ["b", "a", "c", "d"])
     }
 
     /// The plates that wait, and the approved plates with a file that no printer has.
@@ -71,7 +75,8 @@ final class ProjectTests: XCTestCase {
 
     func testFeed() throws {
         let feed = try view().feed
-        XCTAssertEqual(feed.first?.text, "Delivered Hip")
+        XCTAssertEqual(feed.first?.text, "Discarded Elbow")
+        XCTAssertEqual(feed.first?.sub, "Warped corner")
         XCTAssertTrue(feed.contains { $0.text == "Sam added 2 photos" })
         XCTAssertTrue(feed.contains { $0.text == "Jeremy rejected plate 4 · PR #7" && $0.sub == "Too thin" })
         XCTAssertTrue(feed.contains { $0.text == "Sam changed the notes" })

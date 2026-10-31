@@ -192,7 +192,7 @@ struct ProjectScreen: View {
                             Row(title: pr.name,
                                 detail: [pr.resultText, pr.ended.map { $0.formatted(.relative(presentation: .named)) } ?? "",
                                          pr.printer ?? ""].filter { !$0.isEmpty }.joined(separator: " · "),
-                                value: "")
+                                value: pr.discarded != nil ? "Discarded" : "", alert: pr.discarded != nil)
                         }
                     }
                     .buttonStyle(.plain)
@@ -353,6 +353,9 @@ struct PrintScreen: View {
     @State private var message: String?
     @State private var camera = false
     @State private var web: URL?
+    /// The note box of Discard is open.
+    @State private var discarding = false
+    @State private var discardNote = ""
 
     private var client: ServiceClient { ServiceClient(token: Account.shared.session?.token) }
     private var print: ProjectPrintItem? { view?.prints?.first { $0.id == printID } }
@@ -417,6 +420,13 @@ struct PrintScreen: View {
                 if let m = pr.material { WindowRow(label: "Material", value: m) }
                 if let g = pr.grams, g > 0 { WindowRow(label: "Grams", value: String(format: "%.0f g", g)) }
             }
+            if let d = pr.discarded {
+                Text("Discarded " + d.formatted(date: .abbreviated, time: .omitted)
+                     + ((pr.discardNote ?? "").isEmpty ? "" : " · " + (pr.discardNote ?? "")))
+                    .font(Theme.plex(13))
+                    .foregroundStyle(p.red)
+                    .padding(.horizontal, 4)
+            }
         }
     }
 
@@ -429,6 +439,24 @@ struct PrintScreen: View {
                     .buttonStyle(KeyStyle(led: pr.delivered != nil))
                 Button("Test") { Task { await save(["test": pr.test == nil]) } }
                     .buttonStyle(KeyStyle(led: pr.test != nil))
+            }
+            // Discard asks for the note of why. A tap on a discarded print clears the mark and the note.
+            Button("Discard") {
+                if pr.discarded != nil {
+                    Task { await save(["discard": false]) }
+                } else {
+                    discardNote = ""
+                    discarding.toggle()
+                }
+            }
+            .buttonStyle(KeyStyle(cap: .danger, led: pr.discarded != nil))
+            if discarding && pr.discarded == nil {
+                PanelField(label: "Why", prompt: "Warped corner, reprint at 0.1 mm", text: $discardNote)
+                Button("Discard the print") {
+                    discarding = false
+                    Task { await save(["discard": true, "discard_note": discardNote.trimmingCharacters(in: .whitespaces)]) }
+                }
+                .buttonStyle(KeyStyle(cap: .danger))
             }
         }
     }
@@ -503,6 +531,8 @@ private struct Row: View {
     let title: String
     let detail: String
     let value: String
+    /// The value is a badge in red, as Discarded.
+    var alert = false
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
@@ -520,9 +550,9 @@ private struct Row: View {
             }
             Spacer()
             if !value.isEmpty {
-                Text(value)
+                Text(alert ? value.uppercased() : value)
                     .font(Theme.plex(13))
-                    .foregroundStyle(p.dim)
+                    .foregroundStyle(alert ? p.red : p.dim)
             }
         }
         .padding(.horizontal, 4)
