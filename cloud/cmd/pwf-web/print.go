@@ -616,6 +616,7 @@ func showPrintGcode(p wire.ProjectPrint) {
 	opts := js.Global().Get("Object").New()
 	opts.Set("url", p.Gcode)
 	opts.Set("compact", true)
+	opts.Set("printer", p.Printer)
 	if p.Result != "complete" && p.Layer > 0 {
 		opts.Set("printed", p.Layer)
 	}

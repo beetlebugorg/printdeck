@@ -415,6 +415,97 @@ async function readSTL(T, url) {
   return g;
 }
 
+
+// The real bed of a printer, under the views of the models and of the G-code, so a person sees
+// where a part goes on the bed. printer is the name or the key of the printer, for example "taz"
+// or "LulzBot TAZ Workhorse". The bed is in the scene of the views: X = x - bx/2, Y up,
+// Z = by/2 - y, with x and y the coordinates of the printer.
+//
+// The TAZ Workhorse: the meshes of the bed from the CAD of LulzBot (desktop/meshes, cad/export.py;
+// GPLv3 or later and/or CC BY-SA 4.0). A vertex is 10 bytes: the position as 3 int16 in steps of
+// 1/50 mm, the normal as 3 int8, and a byte of padding, in the scene of the CAD (Y up, Z to the
+// front). The place (x, y) of the printer is at X x + 4.03 and Z 128.15 - y of the CAD
+// (desktop/Sim3D.qml).
+//
+// The Peopoly Phenom: the vat and the area of its screen, drawn to their sizes (no CAD): the area
+// is 276.5 × 155.5 mm.
+function bedKind(printer) {
+  const m = (printer || "").toLowerCase();
+  if (m.includes("taz") || m.includes("workhorse")) return "taz";
+  if (m.includes("phenom")) return "phenom";
+  return "";
+}
+
+const bedMeshes = new Map();
+function tazMesh(T, kind) {
+  if (!bedMeshes.has(kind)) {
+    bedMeshes.set(kind, (async () => {
+      const r = await fetch("/assets/models/taz-bed/" + kind + ".bin");
+      if (!r.ok) throw new Error("the bed did not load");
+      const dv = new DataView(await r.arrayBuffer());
+      const n = dv.byteLength / 10;
+      const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        for (let k = 0; k < 3; k++) {
+          pos[i * 3 + k] = dv.getInt16(i * 10 + k * 2, true) / 50;
+          nor[i * 3 + k] = dv.getInt8(i * 10 + 6 + k) / 127;
+        }
+      }
+      const g = new T.BufferGeometry();
+      g.setAttribute("position", new T.BufferAttribute(pos, 3));
+      g.setAttribute("normal", new T.BufferAttribute(nor, 3));
+      return g;
+    })());
+    bedMeshes.get(kind).catch(() => bedMeshes.delete(kind));
+  }
+  return bedMeshes.get(kind);
+}
+
+// printerBed returns the group of the real bed of the printer for a bed of bx × by in the scene,
+// or null for a printer with no real bed.
+async function printerBed(T, printer, bx, by) {
+  const kind = bedKind(printer);
+  if (kind === "taz") {
+    const parts = [["surface", "#b8923f", 0.5, 0], ["metal", "#9aa0a8", 0.35, 0], ["printed", "#2a2b2e", 0.7, 0], ["washer", "#c9cdd2", 0.3, 0.86 - 1.78]];
+    const g = new T.Group();
+    const geos = await Promise.all(parts.map(([k]) => tazMesh(T, k)));
+    parts.forEach(([, color, rough, dy], i) => {
+      const m = new T.Mesh(geos[i], new T.MeshStandardMaterial({ color, roughness: rough, metalness: rough < 0.4 ? 0.6 : 0 }));
+      m.position.y = dy;
+      g.add(m);
+    });
+    g.position.set(-4.03 - bx / 2, -0.03, by / 2 - 128.15);
+    return g;
+  }
+  if (kind === "phenom") {
+    // The vat: a frame with walls around the area of the screen, and the screen area at Y 0.
+    const g = new T.Group();
+    const aw = 276.5, ad = 155.5, wall = 12, h = 45;
+    const frame = new T.MeshStandardMaterial({ color: "#3a3d42", roughness: 0.6, metalness: 0.3 });
+    const glass = new T.MeshStandardMaterial({ color: "#d8a520", roughness: 0.2, transparent: true, opacity: 0.18, depthWrite: false });
+    const box = (w, hh, d, x, y, z, mat) => {
+      const m = new T.Mesh(new T.BoxGeometry(w, hh, d), mat);
+      m.position.set(x, y, z);
+      g.add(m);
+    };
+    box(aw + 2 * wall, h, wall, 0, h / 2 - 2, -(ad / 2 + wall / 2), glass);
+    box(aw + 2 * wall, h, wall, 0, h / 2 - 2, ad / 2 + wall / 2, glass);
+    box(wall, h, ad, -(aw / 2 + wall / 2), h / 2 - 2, 0, glass);
+    box(wall, h, ad, aw / 2 + wall / 2, h / 2 - 2, 0, glass);
+    box(aw + 2 * wall + 30, 4, ad + 2 * wall + 30, 0, -4, 0, frame);
+    const screen = new T.Mesh(new T.PlaneGeometry(aw, ad), new T.MeshStandardMaterial({ color: "#14161a", roughness: 0.3 }));
+    screen.rotation.x = -Math.PI / 2;
+    screen.position.y = -1.9;
+    g.add(screen);
+    const edge = new T.LineSegments(new T.EdgesGeometry(new T.PlaneGeometry(aw, ad)), new T.LineBasicMaterial({ color: 0xff7a1a }));
+    edge.rotation.x = -Math.PI / 2;
+    edge.position.y = -1.8;
+    g.add(edge);
+    return g;
+  }
+  return null;
+}
+
 // showModels draws the models of a part in box, on a bed with a grid of 10 mm, as the part
 // stands on the printer. opts: urls (STL files, in place to each other), color, bed ([x, y] in
 // mm, or nothing), note (the element of a message while it loads).
@@ -460,6 +551,12 @@ async function showModels(box, opts) {
   const grid = new T.GridHelper(Math.max(bx, by), Math.round(Math.max(bx, by) / 10), 0x5b5f66, 0x3a3d42);
   grid.position.y = 0.05;
   scene.add(grid);
+  // The real bed of the printer, in place of the plain bed, when the page names the printer.
+  printerBed(T, opts.printer, bx, by).then((real) => {
+    if (!real) return;
+    scene.add(real);
+    bed.visible = grid.visible = false;
+  }).catch(() => {});
   const len = Math.max(40, size.length());
   camera.position.set(len * 0.9, len * 0.8, len * 1.4);
   controls.target.set(0, size.y / 2, 0);
@@ -713,6 +810,13 @@ async function showGcode(box, opts) {
   const grid = new T.GridHelper(Math.max(bx, by), Math.round(Math.max(bx, by) / 10), 0x5b5f66, 0x34373d);
   grid.position.y = 0;
   scene.add(grid);
+  // The real bed of the printer, when the page names the printer.
+  printerBed(T, opts.printer, bx, by).then((real) => {
+    if (!real) return;
+    scene.add(real);
+    bed.visible = grid.visible = false;
+    redraw = true;
+  }).catch(() => {});
 
   // Each extrusion is a bead: one geometry for each height of layer (with the height and the
   // width in it, so the light falls true), and an instance for each move, with its length and

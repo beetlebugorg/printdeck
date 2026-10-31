@@ -203,6 +203,7 @@ func (s *share) showGcode(n int) {
 	opts := js.Global().Get("Object").New()
 	opts.Set("url", s.base+"print.gcode.gz")
 	opts.Set("compact", true)
+	opts.Set("printer", s.st.PrinterModel+" "+s.st.Printer)
 	opts.Set("printed", n)
 	var ok, fail js.Func
 	ok = js.FuncOf(func(_ js.Value, args []js.Value) any {

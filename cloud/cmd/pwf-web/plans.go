@@ -549,6 +549,7 @@ func (a *app) showPlanModel(i int) {
 		color = "#9aa0a8"
 	}
 	opts.Set("color", color)
+	opts.Set("printer", pp.Printer) // the real bed of the TAZ, or the vat of the Phenom
 	if pp.BedX > 0 {
 		bed := js.Global().Get("Array").New()
 		bed.Call("push", pp.BedX, pp.BedY)
@@ -928,6 +929,7 @@ func (a *app) showPreview(b wire.ProjectBuild, n int) {
 	bed := js.Global().Get("Array").New()
 	bed.Call("push", bx, by)
 	opts.Set("bed", bed)
+	opts.Set("printer", pl.Printer)
 	v.Call("showGcode", byID("bdView"), opts)
 }
 
