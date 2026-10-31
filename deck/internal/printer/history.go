@@ -14,7 +14,12 @@ import (
 
 // Record is one finished print of the history.
 type Record struct {
-	File     string        `json:"file"`
+	File string `json:"file"`
+	// FileSize and FileMod are the size and the modification time (Unix) of the file at the end
+	// of the print, or 0. A slicer can send another file under the same name later: the picture of
+	// the print then does not come from the new file.
+	FileSize int64         `json:"file_size,omitempty"`
+	FileMod  int64         `json:"file_mod,omitempty"`
 	Title    string        `json:"title,omitempty"` // the title in the file, or "": Name is the name for the screens
 	Path     string        `json:"path"`
 	Result   string        `json:"result"` // "complete", "cancelled" or "error"
@@ -135,7 +140,9 @@ const maxHistory = 100
 // History is the list of the finished prints, newest first, in a JSON file. Klipper keeps only the
 // last print, so the deck records each one when it ends.
 type History struct {
-	Path string // the file; "" keeps the history in memory only
+	// Stamp returns the size and the modification time (Unix) of a file of the store, or is nil.
+	Stamp func(path string) (size, mod int64, ok bool)
+	Path  string // the file; "" keeps the history in memory only
 
 	mu      sync.Mutex
 	records []Record
@@ -214,6 +221,9 @@ func (h *History) add(st State, now time.Time, phases []Phase, planned float64, 
 	}
 	if material != nil {
 		r.Material = material(r.Path)
+	}
+	if h.Stamp != nil {
+		r.FileSize, r.FileMod, _ = h.Stamp(r.Path)
 	}
 	if v := h.video; v.name != "" && v.path == r.Path && now.Sub(v.at) < videoWindow {
 		r.Video = v.name

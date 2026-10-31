@@ -38,6 +38,7 @@ func newPrinter(cfg config.Config) printerBackend {
 	k.ModelDir = cfg.ModelDir
 	k.ConfigPath = cfg.KlipperConfig
 	k.Hist = hist
+	hist.Stamp = k.View.Stamp
 	k.Spools = &printer.Spools{Path: filepath.Join(cfg.StateDir, "spools.json")}
 	k.View.Rolls = k.Spools
 	k.RestartService = func() error { return system.AskHelper(system.HelperRequest{Action: "restart-klipper"}) }

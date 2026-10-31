@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"io"
+	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
@@ -182,6 +183,22 @@ func (v *View) SetLimits(l toolhead.Limits, mm *maxmode.Settings) {
 }
 
 func NewView(src Source) *View { return &View{src: src, view: -1} }
+
+// Stamp returns the size and the modification time (Unix) of the file path of the store. ok is
+// false for a store that cannot tell, and for a file that is gone.
+func (v *View) Stamp(path string) (size, mod int64, ok bool) {
+	st, has := v.src.(interface {
+		Stat(path string) (fs.FileInfo, error)
+	})
+	if !has {
+		return 0, 0, false
+	}
+	fi, err := st.Stat(path)
+	if err != nil {
+		return 0, 0, false
+	}
+	return fi.Size(), fi.ModTime().Unix(), true
+}
 
 // Preview returns the picture of the print, or nil. It is the layer of the scrubber when there is one,
 // and the print as it is now otherwise.
@@ -617,6 +634,12 @@ func (v *View) FilePicture(f File, hex string) image.Image {
 // drawRecord draws the picture of a finished print, or returns nil.
 func (v *View) drawRecord(r Record, hex string, view gcode.View) image.Image {
 	col := ModelColor(hex)
+	// A file that changed since the print is another file: no picture is better than the wrong one.
+	if r.FileSize > 0 {
+		if size, mod, ok := v.Stamp(r.Path); ok && (size != r.FileSize || mod != r.FileMod) {
+			return nil
+		}
+	}
 	body, err := v.src.Open(r.Path)
 	if err != nil {
 		return nil
