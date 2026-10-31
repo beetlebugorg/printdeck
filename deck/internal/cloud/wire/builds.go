@@ -35,12 +35,16 @@ type PlanPart struct {
 	Profile  string   `json:"profile,omitempty"`
 	Material string   `json:"material,omitempty"`
 	Prebuilt string   `json:"prebuilt,omitempty"` // a resin file of a person, in place of a slice
-	Alone    bool     `json:"alone,omitempty"`
-	Changed  bool     `json:"changed,omitempty"`
-	Models   []string `json:"models,omitempty"`
-	SizeX    float64  `json:"size_x,omitempty"`
-	SizeY    float64  `json:"size_y,omitempty"`
-	SizeZ    float64  `json:"size_z,omitempty"`
+	// MaterialName and MaterialColor describe the material for the pages: "MatterHackers PLA
+	// Black" and "#1a1a1a" for a roll of a profile, or the material itself.
+	MaterialName  string   `json:"material_name,omitempty"`
+	MaterialColor string   `json:"material_color,omitempty"`
+	Alone         bool     `json:"alone,omitempty"`
+	Changed       bool     `json:"changed,omitempty"`
+	Models        []string `json:"models,omitempty"`
+	SizeX         float64  `json:"size_x,omitempty"`
+	SizeY         float64  `json:"size_y,omitempty"`
+	SizeZ         float64  `json:"size_z,omitempty"`
 	// Bed is the size of the bed of the printer in mm (X, Y), and Margin the room around each
 	// object for the brim or the skirt, from the profile. The plan page checks the plates with
 	// them.
@@ -126,22 +130,24 @@ const (
 // the slice. File is the name of the sliced file in the build, Preview the name of the file of
 // the 3D preview (path.bin for FDM, part.bin for resin), and Picture a picture of the plate.
 type BuildPlate struct {
-	Printer     string      `json:"printer"`
-	Process     string      `json:"process"`
-	Profile     string      `json:"profile,omitempty"`
-	Material    string      `json:"material,omitempty"`
-	Parts       []PlatePart `json:"parts"`
-	File        string      `json:"file,omitempty"`
-	Size        int64       `json:"size,omitempty"`
-	SHA256      string      `json:"sha256,omitempty"`
-	Preview     string      `json:"preview,omitempty"`
-	Picture     string      `json:"picture,omitempty"`
-	Seconds     int         `json:"seconds,omitempty"`
-	Grams       float64     `json:"grams,omitempty"`
-	ML          float64     `json:"ml,omitempty"`
-	Layers      int         `json:"layers,omitempty"`
-	LayerHeight float64     `json:"layer_height,omitempty"`
-	Slicer      string      `json:"slicer,omitempty"`
+	Printer       string      `json:"printer"`
+	Process       string      `json:"process"`
+	Profile       string      `json:"profile,omitempty"`
+	Material      string      `json:"material,omitempty"`
+	MaterialName  string      `json:"material_name,omitempty"`
+	MaterialColor string      `json:"material_color,omitempty"`
+	Parts         []PlatePart `json:"parts"`
+	File          string      `json:"file,omitempty"`
+	Size          int64       `json:"size,omitempty"`
+	SHA256        string      `json:"sha256,omitempty"`
+	Preview       string      `json:"preview,omitempty"`
+	Picture       string      `json:"picture,omitempty"`
+	Seconds       int         `json:"seconds,omitempty"`
+	Grams         float64     `json:"grams,omitempty"`
+	ML            float64     `json:"ml,omitempty"`
+	Layers        int         `json:"layers,omitempty"`
+	LayerHeight   float64     `json:"layer_height,omitempty"`
+	Slicer        string      `json:"slicer,omitempty"`
 }
 
 // BuildJob is the reply to GET /api/v1/builds/<id> for the slice run: the commit of the plan, and

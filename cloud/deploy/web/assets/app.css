@@ -197,3 +197,15 @@ pre.cmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: #15161a
 .gv-check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
 .gv-check input { width: 18px; height: 18px; accent-color: var(--orange); }
 .gv-swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+/* The variants of a part on the plan page. */
+.chips.variants { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0; }
+.chip { min-height: 32px; padding: 0 12px; border-radius: 999px; font: 600 13px "Archivo", sans-serif; border: 1px solid var(--seam);
+  background: var(--plate); color: var(--ink); position: relative; }
+.chip[aria-pressed="true"] { background: var(--orange); color: var(--on-orange); border-color: var(--orange); }
+.chip.changed::after { content: ""; position: absolute; top: 3px; right: 4px; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--orange); box-shadow: 0 0 0 1.5px var(--plate); }
+.chip.changed[aria-pressed="true"]::after { background: #fff; box-shadow: none; }
+.plans a.more { font-weight: 700; color: var(--link); text-align: center; }
+.chips.process { margin-bottom: 4px; }
+.material { display: inline-flex; align-items: center; gap: 5px; }
+.material .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 1px rgba(127,127,127,.6); }

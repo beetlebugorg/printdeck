@@ -97,6 +97,8 @@ type ProjectView struct {
 	// plans with their builds, the newest first.
 	Repo  string        `json:"repo,omitempty"`
 	Plans []ProjectPlan `json:"plans,omitempty"`
+	// PlansTotal is the count of all the plans of the project. Plans has the newest of them.
+	PlansTotal int `json:"plans_total,omitempty"`
 	// Public is the public address of the project, or "" when it has none.
 	Public string `json:"public,omitempty"`
 	// Live are the prints of the project that print now, or that ended and are not up yet.

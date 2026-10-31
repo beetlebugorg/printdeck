@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -71,6 +72,8 @@ type plateRecord struct {
 	At     time.Time `json:"at,omitzero"`
 	Reason string    `json:"reason,omitempty"`
 }
+
+var hexColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 func planKey(project, id string) string  { return "x/" + project + "/plans/" + id + ".json" }
 func planDir(project, id string) string  { return "x/" + project + "/plans/" + id + "/" }
@@ -204,6 +207,10 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 			return nil, fail(http.StatusBadRequest, "each part (and variant) needs a printer and a name of its own")
 		}
 		names[key] = true
+		pp.MaterialName = clip(strings.TrimSpace(pp.MaterialName), 120)
+		if !hexColor.MatchString(pp.MaterialColor) {
+			pp.MaterialColor = ""
+		}
 		if pp.Process != "fdm" && pp.Process != "resin" {
 			return nil, fail(http.StatusBadRequest, "the process of a part is fdm or resin")
 		}
@@ -340,7 +347,8 @@ func (s *Server) newBuild(ctx context.Context, p *Project, w *who, planID string
 			}
 			part := plan.Parts[pp.Part]
 			if i == 0 {
-				plate = cloud.BuildPlate{Printer: part.Printer, Process: part.Process, Profile: part.Profile, Material: part.Material}
+				plate = cloud.BuildPlate{Printer: part.Printer, Process: part.Process, Profile: part.Profile, Material: part.Material,
+					MaterialName: part.MaterialName, MaterialColor: part.MaterialColor}
 			} else if part.Printer != plate.Printer || part.Profile != plate.Profile || part.Material != plate.Material {
 				return nil, fail(http.StatusBadRequest, fmt.Sprintf("plate %d: %s needs another printer, profile or material", n+1, part.Name))
 			}
@@ -558,16 +566,17 @@ func (s *Server) projectPlan(ctx context.Context, p *Project, rec *PlanRecord) c
 	return out
 }
 
-// plansView returns the newest plans of the project, each with its builds.
-func (s *Server) plansView(ctx context.Context, p *Project) []cloud.ProjectPlan {
+// plansView returns the newest plans of the project (at most limit, or all for 0), each with
+// its builds, and the count of all the plans.
+func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.ProjectPlan, int) {
 	plans, err := s.loadPlans(ctx, p.ID)
 	if err != nil {
-		return nil
+		return nil, 0
 	}
 	builds, _ := s.loadBuilds(ctx, p.ID)
 	var out []cloud.ProjectPlan
 	for i, rec := range plans {
-		if i >= PlansShown {
+		if limit > 0 && i >= limit {
 			break
 		}
 		pv := s.projectPlan(ctx, p, rec)
@@ -578,7 +587,7 @@ func (s *Server) plansView(ctx context.Context, p *Project) []cloud.ProjectPlan 
 		}
 		out = append(out, pv)
 	}
-	return out
+	return out, len(plans)
 }
 
 // projectBuild is a build for the pages, with the addresses of its files.

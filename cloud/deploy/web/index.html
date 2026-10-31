@@ -211,6 +211,7 @@
     <div class="plan-grid">
       <section class="card" aria-label="Parts">
         <h2>Parts</h2>
+        <div class="chips process" id="plProcess" role="group" aria-label="The kind of print" hidden></div>
         <p class="small dim" id="plHint">The parts that changed are checked. Check the parts to print, and set the copies.</p>
         <ul class="plan-parts" id="plParts"></ul>
       </section>
@@ -231,6 +232,16 @@
       <h2>Builds of this plan</h2>
       <ul class="plans" id="plBuilds"></ul>
     </section>
+  </section>
+
+  <!-- All the plans of a project -->
+  <section class="view" id="vPlans" hidden>
+    <a class="back" href="#" id="psBack">The project</a>
+    <section class="title">
+      <h1>Plans from GitHub</h1>
+      <p id="psSub"></p>
+    </section>
+    <ul class="plans" id="psList"></ul>
   </section>
 
   <!-- A build: the sliced plates, for the approval -->

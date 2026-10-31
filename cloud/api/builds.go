@@ -33,8 +33,9 @@ const (
 	MaxPlanParts = 50
 	MaxPlates    = 20
 	MaxPartCount = 100
-	// PlansShown is the count of the newest plans on the project page.
-	PlansShown    = 30
+	// PlansShown is the count of the newest plans that the view of a project has: the project
+	// page shows some of them, and the page of all the plans gets all of them.
+	PlansShown    = 10
 	buildGrantTTL = time.Hour
 )
 

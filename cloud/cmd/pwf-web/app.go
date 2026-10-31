@@ -33,6 +33,7 @@ type app struct {
 	planChoices []planChoice
 	planPlates  [][]int
 	planShown   int
+	planProcess string // the kind of print of the plan page: "fdm" or "resin"
 	lastBuild    wire.ProjectBuild // the build of the build page
 	previewShown string            // the build of the preview that shows
 }
@@ -97,6 +98,15 @@ func (a *app) route() {
 		a.showProject(args["x"], 0, args["p"])
 	case strings.HasPrefix(path, "/projects/"):
 		slug, n, _ := strings.Cut(strings.TrimPrefix(path, "/projects/"), "/")
+		if n == "plans" {
+			var nr wire.NameReply
+			if err := a.api("GET", "/names/"+slug, nil, &nr); err != nil {
+				a.failed(err)
+				return
+			}
+			a.showPlansPage(nr.ID)
+			return
+		}
 		if kind, rest, ok := strings.Cut(n, "/"); ok && (kind == "plans" || kind == "builds") && rest != "" {
 			var nr wire.NameReply
 			if err := a.api("GET", "/names/"+slug, nil, &nr); err != nil {
@@ -141,7 +151,7 @@ func projectPath(slug string, n int) string {
 }
 
 // The views of the page.
-var views = []string{"vSignIn", "vOwner", "vJoin", "vHome", "vMissing", "vProject", "vPublic", "vPrint", "vPrinter", "vPlan", "vBuild"}
+var views = []string{"vSignIn", "vOwner", "vJoin", "vHome", "vMissing", "vProject", "vPublic", "vPrint", "vPrinter", "vPlan", "vBuild", "vPlans"}
 
 func show(id string) {
 	setHidden("loading", id != "")

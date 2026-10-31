@@ -399,6 +399,15 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 			return nil, err
 		}
 		return s.afterChange(ctx, id, w)
+	case action == "plans" && r.Method == http.MethodGet:
+		if w.deck != nil {
+			return nil, fail(http.StatusUnauthorized, "only a person sees the plans")
+		}
+		plans, _ := s.plansView(ctx, p, 0)
+		if plans == nil {
+			plans = []cloud.ProjectPlan{}
+		}
+		return plans, nil
 	case part == "plans" && sub != "" && !strings.Contains(sub, "/") && r.Method == http.MethodGet:
 		if w.deck != nil {
 			return nil, fail(http.StatusUnauthorized, "only a person sees a plan")
@@ -652,7 +661,7 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 	v.Live = s.liveView(ctx, p, prints)
 	v.Repo = p.Repo
 	if p.Repo != "" {
-		v.Plans = s.plansView(ctx, p)
+		v.Plans, v.PlansTotal = s.plansView(ctx, p, PlansShown)
 	}
 	v.Printers = s.printersOf(ctx, printerIDs(prints, v.Live), false)
 	v.Prints, v.Photos = []cloud.ProjectPrint{}, []cloud.ProjectPhoto{}

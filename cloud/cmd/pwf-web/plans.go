@@ -62,10 +62,57 @@ func (a *app) drawBuilds(v *wire.ProjectView) {
 	}
 	list := byID("pPlans")
 	list.Set("textContent", "")
-	for _, p := range v.Plans {
+	// The newest plans, and a link to all of them.
+	shown := v.Plans
+	if len(shown) > plansOnProject {
+		shown = shown[:plansOnProject]
+	}
+	drawPlanList(list, v.Slug, shown)
+	if v.PlansTotal > len(shown) {
+		li := el("li", "", "")
+		more := el("a", "more", fmt.Sprintf("All %d plans", v.PlansTotal))
+		more.Set("href", "/projects/"+v.Slug+"/plans")
+		li.Call("appendChild", more)
+		list.Call("appendChild", li)
+	}
+	if v.Repo != "" && len(v.Plans) == 0 {
+		list.Call("appendChild", el("li", "dim small", "No plans yet. The Action sends a plan at the next push."))
+	}
+}
+
+// plansOnProject is the count of the newest plans on the project page.
+const plansOnProject = 3
+
+// showPlansPage shows all the plans of the project id.
+func (a *app) showPlansPage(id string) {
+	var v wire.ProjectView
+	if err := a.api("GET", "/projects/"+id, nil, &v); err != nil {
+		a.failed(err)
+		return
+	}
+	var plans []wire.ProjectPlan
+	if err := a.api("GET", "/projects/"+id+"/plans", nil, &plans); err != nil {
+		a.failed(err)
+		return
+	}
+	a.view = &v
+	doc.Set("title", "Plans · "+v.Name+" · Printdeck")
+	byID("psBack").Set("href", projectPath(v.Slug, 0))
+	setText("psBack", v.Name)
+	setText("psSub", "github.com/"+v.Repo+" · "+count(len(plans), "plan", "plans")+", the newest first")
+	list := byID("psList")
+	list.Set("textContent", "")
+	drawPlanList(list, v.Slug, plans)
+	show("vPlans")
+}
+
+// drawPlanList adds a row for each plan to list: its name and commit, the parts that changed,
+// and its builds.
+func drawPlanList(list js.Value, slug string, plans []wire.ProjectPlan) {
+	for _, p := range plans {
 		li := el("li", "", "")
 		link := el("a", "", "")
-		link.Set("href", planPath(v.Slug, p.ID))
+		link.Set("href", planPath(slug, p.ID))
 		changed := 0
 		for _, pp := range p.Parts {
 			if pp.Changed {
@@ -85,9 +132,6 @@ func (a *app) drawBuilds(v *wire.ProjectView) {
 		link.Call("appendChild", el("span", "sub", sub))
 		li.Call("appendChild", link)
 		list.Call("appendChild", li)
-	}
-	if v.Repo != "" && len(v.Plans) == 0 {
-		list.Call("appendChild", el("li", "dim small", "No plans yet. The Action sends a plan at the next push."))
 	}
 }
 
@@ -145,6 +189,16 @@ func (a *app) showPlanPage(projectID, id string) {
 		// A release plan suggests all the parts. Another plan suggests the parts that changed.
 		a.planChoices[i] = planChoice{on: pp.Changed || p.Kind == wire.BuildRelease, count: max(1, pp.Count)}
 	}
+	a.firstChoice()
+	// The kind of print: the kind of the first part that changed, else the kind of the first part.
+	a.planProcess = p.Parts[0].Process
+	for _, pp := range p.Parts {
+		if pp.Changed {
+			a.planProcess = pp.Process
+			break
+		}
+	}
+	a.keepProcess()
 	doc.Set("title", planName(p)+" · "+v.Name+" · Printdeck")
 	byID("plBack").Set("href", projectPath(v.Slug, 0))
 	setText("plBack", v.Name)
@@ -184,58 +238,208 @@ func (a *app) showPlanPage(projectID, id string) {
 	}
 }
 
-// drawPlanParts draws the list of the parts of the plan, with a check box and the copies each.
-func (a *app) drawPlanParts() {
-	p := a.plan
-	list := byID("plParts")
-	list.Set("textContent", "")
-	owner := a.view.IsOwner
-	for i, pp := range p.Parts {
-		i, pp := i, pp
-		li := el("li", "", "")
-		if a.planChoices[i].on {
-			li.Get("classList").Call("add", "on")
+// keepProcess turns off the parts of the other kind of print: a plate prints on one printer.
+func (a *app) keepProcess() {
+	for i, pp := range a.plan.Parts {
+		if pp.Process != a.planProcess {
+			a.planChoices[i].on = false
 		}
-		if i == a.planShown {
-			li.Get("classList").Call("add", "shown")
+	}
+}
+
+// drawProcess draws the choice of the kind of print: FDM or resin, when the plan has both.
+func (a *app) drawProcess() {
+	box := byID("plProcess")
+	box.Set("textContent", "")
+	kinds := []string{}
+	printer := map[string]string{}
+	for _, pp := range a.plan.Parts {
+		if _, ok := printer[pp.Process]; !ok {
+			kinds = append(kinds, pp.Process)
+			printer[pp.Process] = printerName(pp.Printer)
 		}
-		box := el("input", "", "")
-		box.Set("type", "checkbox")
-		box.Set("checked", a.planChoices[i].on)
-		box.Set("disabled", !owner || !p.Ready)
-		box.Call("setAttribute", "aria-label", "Print "+partLabel(pp.Name, pp.Variant))
-		box.Call("addEventListener", "change", js.FuncOf(func(js.Value, []js.Value) any {
-			a.planChoices[i].on = box.Get("checked").Bool()
-			a.planPlates = nil // the suggestion again, with the new parts
+	}
+	box.Set("hidden", len(kinds) < 2)
+	for _, k := range []string{"fdm", "resin"} {
+		k := k
+		if _, ok := printer[k]; !ok {
+			continue
+		}
+		name := map[string]string{"fdm": "FDM", "resin": "Resin"}[k]
+		b := el("button", "chip", name+" · "+printer[k])
+		b.Set("type", "button")
+		b.Call("setAttribute", "aria-pressed", strconv.FormatBool(a.planProcess == k))
+		b.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
+			if a.planProcess == k {
+				return nil
+			}
+			a.planProcess = k
+			a.keepProcess()
+			a.planPlates = nil
 			a.drawPlanParts()
 			a.drawPlates()
 			return nil
 		}))
+		box.Call("appendChild", b)
+	}
+}
+
+// partGroups returns the parts of the plan by their name: the indexes of the variants of each
+// part, in the order of printdeck.yml. A part with no variants has one index.
+func (a *app) partGroups() [][]int {
+	var out [][]int
+	at := map[string]int{}
+	for i, pp := range a.plan.Parts {
+		k := strings.ToLower(pp.Name)
+		if g, ok := at[k]; ok {
+			out[g] = append(out[g], i)
+			continue
+		}
+		at[k] = len(out)
+		out = append(out, []int{i})
+	}
+	return out
+}
+
+// firstChoice keeps one variant of each part on: a release plan or the first look of a plan has
+// all the changed variants on, and a test round tests one quality at a time. The first variant
+// that changed stays on.
+func (a *app) firstChoice() {
+	for _, g := range a.partGroups() {
+		kept := false
+		for _, i := range g {
+			if a.planChoices[i].on {
+				if kept {
+					a.planChoices[i].on = false
+				}
+				kept = true
+			}
+		}
+	}
+}
+
+// drawPlanParts draws the list of the parts of the plan: one row for each part, with a check box,
+// the chips of its variants, and the copies.
+func (a *app) drawPlanParts() {
+	p := a.plan
+	list := byID("plParts")
+	list.Set("textContent", "")
+	owner := a.view.IsOwner && p.Ready
+	changedPlates := func() {
+		a.planPlates = nil // the suggestion again, with the new parts
+		a.drawPlanParts()
+		a.drawPlates()
+	}
+	a.drawProcess()
+	for _, g := range a.partGroups() {
+		g := g
+		first := p.Parts[g[0]]
+		if first.Process != a.planProcess {
+			continue // the other kind of print
+		}
+		on, changed := false, false
+		shownHere := false
+		for _, i := range g {
+			on = on || a.planChoices[i].on
+			changed = changed || p.Parts[i].Changed
+			shownHere = shownHere || i == a.planShown
+		}
+		// The variant that the row describes: the first chosen one, else the first.
+		cur := g[0]
+		for _, i := range g {
+			if a.planChoices[i].on {
+				cur = i
+				break
+			}
+		}
+		pp := p.Parts[cur]
+		li := el("li", "", "")
+		li.Get("dataset").Set("part", strings.ToLower(first.Name))
+		if on {
+			li.Get("classList").Call("add", "on")
+		}
+		if shownHere {
+			li.Get("classList").Call("add", "shown")
+		}
+		box := el("input", "", "")
+		box.Set("type", "checkbox")
+		box.Set("checked", on)
+		box.Set("disabled", !owner)
+		box.Call("setAttribute", "aria-label", "Print "+first.Name)
+		box.Call("addEventListener", "change", js.FuncOf(func(js.Value, []js.Value) any {
+			if box.Get("checked").Bool() {
+				// The variant that changed, else the first variant.
+				pick := g[0]
+				for _, i := range g {
+					if p.Parts[i].Changed {
+						pick = i
+						break
+					}
+				}
+				a.planChoices[pick].on = true
+			} else {
+				for _, i := range g {
+					a.planChoices[i].on = false
+				}
+			}
+			changedPlates()
+			return nil
+		}))
 		li.Call("appendChild", box)
 		what := el("div", "what", "")
-		name := el("strong", "", partLabel(pp.Name, pp.Variant)+" ")
-		if pp.Changed {
+		name := el("strong", "", first.Name+" ")
+		if changed {
 			name.Call("appendChild", el("span", "tag changed", "Changed"))
 		}
 		what.Call("appendChild", name)
-		sub := printerName(pp.Printer)
+		// The chips of the variants: each one turns its variant on or off.
+		if len(g) > 1 || first.Variant != "" {
+			chips := el("div", "chips variants", "")
+			for _, i := range g {
+				i := i
+				v := p.Parts[i]
+				chip := el("button", "chip", v.Variant)
+				chip.Set("type", "button")
+				chip.Set("disabled", !owner)
+				chip.Call("setAttribute", "aria-pressed", strconv.FormatBool(a.planChoices[i].on))
+				title := profileName(v.Profile)
+				if v.Changed {
+					chip.Get("classList").Call("add", "changed")
+					title += ", changed"
+				}
+				chip.Set("title", title)
+				chip.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
+					a.planChoices[i].on = !a.planChoices[i].on
+					a.showPlanModel(i)
+					changedPlates()
+					return nil
+				}))
+				chips.Call("appendChild", chip)
+			}
+			what.Call("appendChild", chips)
+		}
+		sub := el("span", "sub", "")
+		head := printerName(pp.Printer)
 		if pp.Prebuilt != "" {
-			sub += " · a ready file: " + pp.Prebuilt
+			head += " · a ready file: " + pp.Prebuilt
 		} else if pp.Profile != "" {
-			sub += " · " + profileName(pp.Profile)
+			head += " · " + profileName(pp.Profile)
 		}
-		if pp.Material != "" {
-			sub += " · " + pp.Material
-		}
+		sub.Call("appendChild", doc.Call("createTextNode", head+" · "))
+		sub.Call("appendChild", materialEl(pp.MaterialName, pp.MaterialColor, pp.Material))
+		tail := ""
 		if pp.SizeX > 0 {
-			sub += fmt.Sprintf(" · %.0f x %.0f x %.0f mm", pp.SizeX, pp.SizeY, pp.SizeZ)
+			tail += fmt.Sprintf(" · %.0f x %.0f x %.0f mm", pp.SizeX, pp.SizeY, pp.SizeZ)
 		}
 		if pp.Alone {
-			sub += " · prints alone"
+			tail += " · prints alone"
 		}
-		what.Call("appendChild", el("span", "sub", sub))
-		what.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
-			a.showPlanModel(i)
+		sub.Call("appendChild", doc.Call("createTextNode", tail))
+		what.Call("appendChild", sub)
+		what.Call("addEventListener", "click", js.FuncOf(func(_ js.Value, args []js.Value) any {
+			if args[0].Get("target").Get("tagName").String() != "BUTTON" {
+				a.showPlanModel(cur)
+			}
 			return nil
 		}))
 		li.Call("appendChild", what)
@@ -243,21 +447,43 @@ func (a *app) drawPlanParts() {
 		count.Set("type", "number")
 		count.Set("min", "1")
 		count.Set("max", "100")
-		count.Set("value", strconv.Itoa(a.planChoices[i].count))
+		count.Set("value", strconv.Itoa(a.planChoices[cur].count))
 		count.Set("disabled", !owner || pp.Prebuilt != "")
-		count.Call("setAttribute", "aria-label", "Copies of "+partLabel(pp.Name, pp.Variant))
+		count.Call("setAttribute", "aria-label", "Copies of "+first.Name)
 		count.Call("addEventListener", "change", js.FuncOf(func(js.Value, []js.Value) any {
 			n, err := strconv.Atoi(count.Get("value").String())
 			if err != nil || n < 1 {
 				n = 1
 			}
-			a.planChoices[i].count = min(n, 100)
+			for _, i := range g {
+				a.planChoices[i].count = min(n, 100)
+			}
 			a.drawPlates()
 			return nil
 		}))
 		li.Call("appendChild", count)
 		list.Call("appendChild", li)
 	}
+}
+
+// materialEl is the material of a part or a plate: a dot of its color and its name, for example
+// "MatterHackers PLA Black". With no name, it is the material of printdeck.yml, for example roll-4.
+func materialEl(name, color, material string) js.Value {
+	span := el("span", "material", "")
+	if color != "" {
+		dot := el("i", "dot", "")
+		dot.Get("style").Set("background", color)
+		span.Call("appendChild", dot)
+	}
+	text := name
+	if text == "" {
+		text = material
+	}
+	span.Call("appendChild", doc.Call("createTextNode", text))
+	if name != "" && material != "" && material != name {
+		span.Set("title", material)
+	}
+	return span
 }
 
 // partLabel is the name of a part with its variant: "Pod door · fine".
@@ -290,10 +516,7 @@ func (a *app) showPlanModel(i int) {
 	facts := strings.Join(pp.Files, ", ")
 	setText("plViewFacts", facts)
 	for _, li := range jsList(byID("plParts").Call("querySelectorAll", "li")) {
-		li.Get("classList").Call("remove", "shown")
-	}
-	if li := byID("plParts").Get("children").Index(i); !li.IsUndefined() && !li.IsNull() {
-		li.Get("classList").Call("add", "shown")
+		li.Get("classList").Call("toggle", "shown", li.Get("dataset").Get("part").String() == strings.ToLower(pp.Name))
 	}
 	v := js.Global().Get("pwfView3d")
 	box := byID("plModel")
@@ -428,16 +651,14 @@ func (a *app) drawPlates() {
 		}
 		h := el("h3", "", fmt.Sprintf("Plate %d · %s", n+1, printerName(first.Printer)))
 		card.Call("appendChild", h)
-		sub := profileName(first.Profile)
+		head := profileName(first.Profile)
 		if first.Prebuilt != "" {
-			sub = "a ready file"
+			head = "a ready file"
 		}
-		if first.Material != "" {
-			sub += " · " + first.Material
-		}
-		sub += " · " + count(objects, "object", "objects")
-		card.Call("appendChild", el("span", "sub", sub))
-		_ = objects
+		sub := el("span", "sub", head+" · ")
+		sub.Call("appendChild", materialEl(first.MaterialName, first.MaterialColor, first.Material))
+		sub.Call("appendChild", doc.Call("createTextNode", " · "+count(objects, "object", "objects")))
+		card.Call("appendChild", sub)
 		if !ok {
 			card.Call("appendChild", el("span", "warn", fmt.Sprintf("Too much for the bed: %d objects fit. Move parts to another plate, or print fewer copies.", fit)))
 		}
@@ -814,7 +1035,14 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 			facts.Call("appendChild", d)
 		}
 		fact("Profile", pl.Profile)
-		fact("Material", pl.Material)
+		if pl.Material != "" || pl.MaterialName != "" {
+			d := el("div", "", "")
+			d.Call("appendChild", el("dt", "", "Material"))
+			dd := el("dd", "", "")
+			dd.Call("appendChild", materialEl(pl.MaterialName, pl.MaterialColor, pl.Material))
+			d.Call("appendChild", dd)
+			facts.Call("appendChild", d)
+		}
 		if pl.Seconds > 0 {
 			fact("Print time", clock(pl.Seconds))
 		}
