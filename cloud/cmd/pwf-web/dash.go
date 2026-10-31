@@ -753,8 +753,12 @@ func (a *app) drawGit(v *wire.ProjectView) {
 func drawRigs(v *wire.ProjectView) {
 	list := byID("pRigs")
 	list.Set("textContent", "")
-	setHidden("pRigCard", len(v.Printers) == 0)
 	slugs := printerSlugs(v)
+	known := map[string]bool{}
+	for _, pr := range v.Printers {
+		known[pr.ID] = true
+	}
+	rows := 0
 	last := map[string]time.Time{}
 	counts := map[string]int{}
 	for _, p := range v.Prints {
@@ -787,7 +791,44 @@ func drawRigs(v *wire.ProjectView) {
 		link.Call("appendChild", el("span", "num", count(counts[pr.ID], "print", "prints")))
 		li.Call("appendChild", link)
 		list.Call("appendChild", li)
+		rows++
 	}
+	// A deck from before the printers sends its live print with no printer ID: its row has the
+	// name of the printer from the deck, and a link to the live page.
+	for _, l := range v.Live {
+		if l.Result != "" || known[l.PrinterID] {
+			continue
+		}
+		name := l.Printer
+		if name == "" {
+			name = "A printer"
+		}
+		state, sub := "on", fmt.Sprintf("Printing %s · %.0f%%", l.Name, l.Percent)
+		if l.Paused {
+			state, sub = "warn", "Paused · "+l.Name
+		}
+		li := el("li", state, "")
+		link := el("a", "", "")
+		if l.URL != "" {
+			link.Set("href", l.URL)
+		}
+		link.Call("appendChild", el("span", "dot", ""))
+		txt := el("span", "txt", "")
+		txt.Call("appendChild", el("strong", "", name))
+		txt.Call("appendChild", el("span", "sub", sub))
+		link.Call("appendChild", txt)
+		n := 0
+		for _, p := range v.Prints {
+			if p.PrinterID == "" && p.Printer == l.Printer {
+				n++
+			}
+		}
+		link.Call("appendChild", el("span", "num", count(n, "print", "prints")))
+		li.Call("appendChild", link)
+		list.Call("appendChild", li)
+		rows++
+	}
+	setHidden("pRigCard", rows == 0)
 }
 
 // faceColors are the colors of the circles of the people.
