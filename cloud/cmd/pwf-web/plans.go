@@ -76,7 +76,8 @@ func (a *app) drawBuilds(v *wire.ProjectView) {
 		link.Call("appendChild", title)
 		sub := fmt.Sprintf("%s, %d changed · %s", count(len(p.Parts), "part", "parts"), changed, localWhen(p.Created))
 		if n := len(p.Builds); n > 0 {
-			sub += " · " + count(n, "build", "builds") + ", the last " + strings.ToLower(buildStateText(p.Builds[0].State))
+			text, _ := buildSummary(p.Builds[0])
+			sub += " · " + count(n, "build", "builds") + ", the last " + strings.ToLower(text)
 		}
 		if !p.Ready {
 			sub += " · the models are not up yet"
@@ -592,7 +593,8 @@ func (a *app) drawPlanBuilds() {
 		link := el("a", "", "")
 		link.Set("href", buildPath(a.view.Slug, b.ID))
 		title := el("strong", "", count(len(b.Plates), "plate", "plates")+" · "+localWhen(b.Created)+" ")
-		title.Call("appendChild", el("span", "tag "+b.State, buildStateText(b.State)))
+		text, class := buildSummary(b)
+		title.Call("appendChild", el("span", "tag "+class, text))
 		link.Call("appendChild", title)
 		var parts []string
 		for _, pl := range b.Plates {
@@ -604,6 +606,36 @@ func (a *app) drawPlanBuilds() {
 		li.Call("appendChild", link)
 		list.Call("appendChild", li)
 	}
+}
+
+// buildSummary is the state of a build for a list: the state of the slice, or, for a build with
+// its files, what the owner did with its plates. It returns the text and the class of the tag.
+func buildSummary(b wire.ProjectBuild) (string, string) {
+	if b.State != wire.BuildReady {
+		return buildStateText(b.State), b.State
+	}
+	n := map[string]int{}
+	for _, pl := range b.Plates {
+		n[pl.State]++
+	}
+	total := len(b.Plates)
+	switch {
+	case n[wire.PartWaiting] > 0:
+		return buildStateText(wire.PartWaiting), wire.PartWaiting
+	case n[wire.PartApproved] == total:
+		return buildStateText(wire.PartApproved), wire.PartApproved
+	case n[wire.PartRejected] == total:
+		return buildStateText(wire.PartRejected), wire.PartRejected
+	case n[wire.PartReplaced] == total:
+		return buildStateText(wire.PartReplaced), wire.PartReplaced
+	}
+	var parts []string
+	for _, st := range []string{wire.PartApproved, wire.PartRejected, wire.PartReplaced} {
+		if n[st] > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", n[st], strings.ToLower(buildStateText(st))))
+		}
+	}
+	return strings.Join(parts, ", "), "ready"
 }
 
 func buildStateText(s string) string {
