@@ -78,6 +78,9 @@ type jobJSON struct {
 }
 
 type printdeckJSON struct {
+	// Process is the kind of printer: "fdm", or "resin". An app shows no Print and no Resume for a
+	// resin printer.
+	Process string `json:"process"`
 	Material string      `json:"material"`
 	Diameter float64     `json:"diameter"`
 	Spool    *spoolJSON  `json:"spool"`
@@ -96,7 +99,10 @@ type printdeckJSON struct {
 }
 
 func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
-	out := printdeckJSON{Camera: s.cameraInfo(), Cameras: s.camerasInfo()}
+	out := printdeckJSON{Camera: s.cameraInfo(), Cameras: s.camerasInfo(), Process: "fdm"}
+	if s.Resin {
+		out.Process = "resin"
+	}
 	if s.Status != nil {
 		out.LCD = s.Status()
 	}
@@ -223,6 +229,10 @@ type printdeckFields struct {
 	// Enqueue adds a file to the print queue of the deck, or is nil. A file that a slicer sends to
 	// print while the printer prints goes to the queue.
 	Enqueue func(path string) error
+	// Resin is true on the deck of a resin printer. The API then refuses uploads, each start and
+	// each resume: the UV light goes on only after a press on the touch screen of the deck. Pause
+	// and cancel work.
+	Resin bool
 	// Status gives the status screen of the printer display (lcd.Status), or nil.
 	Status func() any
 	// Model draws the model of the print for an app (printer.View.ModelPicture), or nil.

@@ -69,6 +69,9 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 // newAPI registers the OctoPrint-compatible API for slicers on mux, and returns it. It returns nil
 // for a printer that is not a Klipper host.
 func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMux) *octoapi.Server {
+	if c, ok := pr.(*printer.ChiTu); ok {
+		return newResinAPI(cfg, c, app, mux)
+	}
 	k, ok := pr.(*printer.Klippy)
 	if !ok {
 		return nil
@@ -102,6 +105,32 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 	api.Model = k.View.ModelPicture
 	api.Estimate = k.EstimateFile
 	// The phones of the Printdeck app for push messages; a new phone gets a test message.
+	api.Phones = phonesIn(cfg.StateDir)
+	api.OnPaired = func(ph notify.Phone) {
+		go func() {
+			m := notify.Message{Title: "Printdeck", Body: "This phone gets the messages of your prints.", Tags: "printer"}
+			if err := notify.SendPhone(context.Background(), ph, m, time.Now()); err != nil {
+				log.Printf("notify: phone %s: the test message: %v", ph.ID, err)
+			}
+		}()
+	}
+	api.Register(mux)
+	return api
+}
+
+// newResinAPI registers the app API on the deck of a resin printer: the status, pause and cancel,
+// the push messages and the camera. It refuses uploads, each start and each resume (Resin): the UV
+// light goes on only after a press on the touch screen.
+func newResinAPI(cfg config.Config, c *printer.ChiTu, app *ui.App, mux *http.ServeMux) *octoapi.Server {
+	api := octoapi.New(resinAPIPrinter{c}, &gcodestore.Store{Dir: cfg.GcodeDir}, cfg.OctoPrintKey, filepath.Join(cfg.StateDir, "apikeys.json"))
+	api.Resin = true
+	api.Version, api.Ask = osVersion(), app.Ask
+	api.Frame = cameraFrame(app)
+	if cam, ok := app.Camera.(octoapi.Camera); ok {
+		api.Camera = cam
+	}
+	api.History = c.History
+	api.Status = func() any { return app.StatusScreen() }
 	api.Phones = phonesIn(cfg.StateDir)
 	api.OnPaired = func(ph notify.Phone) {
 		go func() {

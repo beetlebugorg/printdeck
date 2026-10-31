@@ -266,3 +266,32 @@ func TestUploadDuringAPrintGoesToTheQueue(t *testing.T) {
 		t.Errorf("printed %v, queued %v", p.printed, queued)
 	}
 }
+
+// On a resin deck the API refuses uploads, each start and each resume. Pause and cancel work.
+func TestResinAPIStartsNothing(t *testing.T) {
+	s, ts, p := newTest(t)
+	s.Resin = true
+	p.st.Printing, p.st.Paused = true, true
+	if r, _ := upload(t, ts.URL, mainKey, "a.gcode", "G28\n", map[string]string{"print": "true"}); r.StatusCode != http.StatusConflict {
+		t.Errorf("upload: %d", r.StatusCode)
+	}
+	r, _ := do(t, "POST", ts.URL+"/api/files/local/a.gcode", mainKey, strings.NewReader(`{"command":"select","print":true}`), "application/json")
+	if r.StatusCode != http.StatusConflict && r.StatusCode != http.StatusNotFound {
+		t.Errorf("select: %d", r.StatusCode)
+	}
+	for _, body := range []string{`{"command":"pause","action":"resume"}`, `{"command":"pause","action":"toggle"}`, `{"command":"pause"}`} {
+		if r, _ := do(t, "POST", ts.URL+"/api/job", mainKey, strings.NewReader(body), "application/json"); r.StatusCode != http.StatusConflict {
+			t.Errorf("%s: %d", body, r.StatusCode)
+		}
+	}
+	p.st.Paused = false
+	if r, _ := do(t, "POST", ts.URL+"/api/job", mainKey, strings.NewReader(`{"command":"pause","action":"pause"}`), "application/json"); r.StatusCode != http.StatusNoContent || !p.paused {
+		t.Errorf("pause: %d", r.StatusCode)
+	}
+	if r, _ := do(t, "POST", ts.URL+"/api/job", mainKey, strings.NewReader(`{"command":"cancel"}`), "application/json"); r.StatusCode != http.StatusNoContent {
+		t.Errorf("cancel: %d", r.StatusCode)
+	}
+	if len(p.printed) != 0 {
+		t.Errorf("printed %v", p.printed)
+	}
+}

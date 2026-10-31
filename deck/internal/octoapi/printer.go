@@ -277,6 +277,12 @@ func (s *Server) serveJobCommand(w http.ResponseWriter, r *http.Request) {
 			apiError(w, http.StatusConflict, "Printer is not printing")
 			return
 		}
+		// The command resumes: "resume", or a toggle of a paused print.
+		resume := strings.EqualFold(req.Action, "resume") || st.Paused && !strings.EqualFold(req.Action, "pause")
+		if s.Resin && resume {
+			apiError(w, http.StatusConflict, "Resume a resin print on the touch screen of the deck")
+			return
+		}
 		switch strings.ToLower(req.Action) {
 		case "pause":
 			s.Printer.Pause()

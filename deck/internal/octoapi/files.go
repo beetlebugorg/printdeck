@@ -71,6 +71,10 @@ func (s *Server) serveFiles(w http.ResponseWriter, r *http.Request) {
 // folder), "select" and "print". The parts can come in any order, so the file goes to the store
 // first, and select and print are done after the last part.
 func (s *Server) serveUpload(w http.ResponseWriter, r *http.Request) {
+	if s.Resin {
+		apiError(w, http.StatusConflict, "Send a resin file from ChiTuBox")
+		return
+	}
 	mr, err := r.MultipartReader()
 	if err != nil {
 		apiError(w, http.StatusBadRequest, "No file included")
@@ -187,6 +191,10 @@ func (s *Server) serveFileCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Print {
+		if s.Resin {
+			apiError(w, http.StatusConflict, "Start a resin print on the touch screen of the deck")
+			return
+		}
 		if !s.operational(w) {
 			return
 		}

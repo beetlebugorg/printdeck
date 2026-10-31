@@ -13,8 +13,9 @@ The app side is Swift in `watch/`. The deck side and the service side are Go in 
 
 - Only a press on the touch screen of a deck starts a print from the queue. The app shows the
   queue, and it can reorder and remove files. It has no Start for a queued file.
-- The app never starts a resin print. It has no Print key for a resin deck. On the Phenom, M6030
-  turns on the UV light, and a start with no build plate in place damages the printer.
+- The app never starts a resin print, and never resumes one. It has no Print key and no Resume key
+  for a resin deck. On the Phenom, M6030 and a resume turn on the UV light, and a start with no
+  build plate in place damages the printer. Pause and Cancel work.
 - A deck key stays on the iPhone, in the keychain group of the app. The service never gets it.
 - The session token of the service stays in the keychain. The app signs in again with the passkey
   when the token expires.
@@ -36,20 +37,21 @@ App:
   first. The widgets get a setting for the deck, with "the deck that prints" as the default.
 - The watch shows the deck that prints, or the first deck. The Digital Crown screens stay as they
   are.
-- A resin deck has no Print a file and no roll screen.
+- A resin deck has no Print a file, no Resume and no roll screen. `process` in
+  `GET /api/plugin/printdeck` is `fdm` or `resin`.
 
-Deck (Go):
+Deck (Go), done in commit after 298a7852:
 
-- The resin deck serves no app API today: `newAPI` in `cmd/printdeck/web.go` returns nil for a
-  ChiTu backend. Serve these routes on the resin deck, with the same API keys:
-  - `GET /api/plugin/printdeck`: the status of the print and the LCD panel.
-  - `GET /api/plugin/printdeck/model.png`: the picture of the model.
-  - `GET /api/job`, and `POST /api/job` with pause, resume and cancel.
+- The resin deck serves the app API (`newResinAPI` in `cmd/printdeck/web.go`), with the same API
+  keys and the same App Keys flow:
+  - `GET /api/plugin/printdeck`: the status of the print, the LCD panel, and `process`.
+  - `GET /api/job`, and `POST /api/job` with pause and cancel. A resume, or a toggle of a paused
+    print, gets 409.
   - The push pairing routes `/api/plugin/printdeck/push…`.
   - `GET /webcam/*` for a deck with a camera.
-  - Refuse each start of a print: `POST /api/job` start and a file select with print.
-- Advertise the resin deck with Bonjour as `_octoprint._tcp`, with a TXT record `process=resin`.
-  Add `process=fdm` on the FDM deck.
+  - An upload, and a file select with print, get 409.
+- The resin deck has no `model.png` yet.
+- Bonjour finds both decks as `_octoprint._tcp`. The process comes from the status route.
 
 ## Phase 2: sign-in to the service, at home and away
 
