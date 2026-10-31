@@ -89,17 +89,13 @@
       <p class="dim" id="pNote"></p>
       <p class="dim small" id="pMeta"></p>
     </div>
-    <section class="card notes-card" id="pNotesCard" aria-label="Notes of the project" data-edit>
-      <h2>Notes</h2>
-      <div class="notes-text" id="pNotesText"></div>
-      <p class="dim small" id="pNotesBy"></p>
-      <form class="rename" id="pNotesForm" hidden>
-        <textarea id="pNotesInput" rows="6" maxlength="4000" placeholder="For example: the plan, the parts that are left, the paint"></textarea>
-        <div class="row-keys"><button type="submit" class="primary">Save</button><button type="button" id="pNotesCancel">Cancel</button></div>
-      </form>
-      <div class="linkrow"><button type="button" id="pNotesEdit">Write notes</button></div>
-      <p class="msg" id="pNotesMsg" role="status"></p>
-    </section>
+    <nav class="dash-links" id="pLinks" aria-label="The parts of the project">
+      <a href="#pPrintsCard" id="lkPrints">Prints</a>
+      <a href="#pPullsCard" id="lkPulls" hidden>Pull requests</a>
+      <a href="#pPhotosCard" id="lkPhotos">Photos</a>
+      <a href="#pNotesCard">Notes</a>
+      <a href="#pSettings" id="lkSettings">Friends and settings</a>
+    </nav>
     <section class="lcd stats" aria-label="The project in numbers" id="pStats">
       <div class="row">
         <div class="cell"><div class="lab">Prints</div><div class="big" id="stPrints">0</div><div class="sub" id="stPrintsSub"></div></div>
@@ -107,15 +103,48 @@
         <div class="cell"><div class="lab">Filament</div><div class="big" id="stGrams">0 g</div><div class="sub" id="stGramsSub"></div></div>
       </div>
     </section>
-    <div class="chips" id="pPrinters" role="group" aria-label="The prints of one printer" hidden></div>
+    <div class="dash">
+      <section class="card dash-card" id="pLiveCard" aria-label="Printing now">
+        <h2>Printing now</h2>
+        <p class="dim small" id="liveNone">Nothing prints for this project now.</p>
+        <div class="tiles" id="live"></div>
+      </section>
+      <section class="card dash-card" id="pWaitCard" aria-label="Waiting for you" hidden>
+        <h2>Waiting for you</h2>
+        <ul class="plans" id="pWait"></ul>
+      </section>
+      <section class="card dash-card" id="pPullsCard" aria-label="Pull requests" hidden>
+        <h2>Pull requests</h2>
+        <ul class="plans" id="pPulls"></ul>
+      </section>
+      <section class="card notes-card dash-card" id="pNotesCard" aria-label="Notes of the project" data-edit>
+        <h2>Notes</h2>
+        <div class="notes-text" id="pNotesText"></div>
+        <p class="dim small" id="pNotesBy"></p>
+        <form class="rename" id="pNotesForm" hidden>
+          <textarea id="pNotesInput" rows="6" maxlength="4000" placeholder="For example: the plan, the parts that are left, the paint"></textarea>
+          <div class="row-keys"><button type="submit" class="primary">Save</button><button type="button" id="pNotesCancel">Cancel</button></div>
+        </form>
+        <div class="linkrow"><button type="button" id="pNotesEdit">Write notes</button></div>
+        <p class="msg" id="pNotesMsg" role="status"></p>
+      </section>
+      <section class="card dash-card wide" id="pPrintsCard" aria-label="Prints">
+        <h2>Prints <span class="count" id="pPrintsCount"></span></h2>
+        <div class="chips" id="pPrinters" role="group" aria-label="The prints of one printer" hidden></div>
 
-    <h2 class="section" id="liveHead" hidden>Printing now</h2>
-    <div class="tiles" id="live"></div>
-
-    <h2 class="section">Prints</h2>
-    <p class="dim small" id="noPrints">No prints yet. On the deck, put a print in this project. The print comes here at its end.</p>
-    <div class="tiles" id="prints"></div>
-
+        <p class="dim small" id="noPrints">No prints yet. On the deck, put a print in this project. The print comes here at its end.</p>
+        <div class="tiles" id="prints"></div>
+        <div class="linkrow"><button type="button" id="pPrintsMore" hidden>Show all prints</button></div>
+      </section>
+      <section class="card dash-card wide" id="pPhotosCard" aria-label="Photos">
+        <h2>Photos <span class="count" id="pPhotosCount"></span></h2>
+        <label class="file"><input type="file" id="photoFile" accept="image/jpeg,image/png" multiple><span>Add photos</span></label>
+        <p class="msg" id="photoMsg" role="status"></p>
+        <div class="photos" id="photos" data-gallery></div>
+        <div class="linkrow"><button type="button" id="pPhotosMore" hidden>Show all photos</button></div>
+      </section>
+    </div>
+    <h2 class="section" id="pSettings">Friends and settings</h2>
     <section class="card" id="pBuildsCard" aria-label="Builds from GitHub" hidden>
       <h2>Builds from GitHub</h2>
       <p class="small dim" id="pRepoLine"></p>
@@ -133,12 +162,7 @@
       <ul class="members printer-links" id="pPrinterList"></ul>
     </div>
 
-    <div class="card">
-      <h2>Photos</h2>
-      <label class="file"><input type="file" id="photoFile" accept="image/jpeg,image/png" multiple><span>Add photos</span></label>
-      <p class="msg" id="photoMsg" role="status"></p>
-      <div class="photos" id="photos" data-gallery></div>
-    </div>
+
 
     <div class="cards-stack" id="ownerTools" hidden>
       <div class="card">

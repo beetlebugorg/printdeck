@@ -133,6 +133,7 @@ func drawLive(live []wire.ProjectLive) {
 	box := byID("live")
 	box.Set("textContent", "")
 	setHidden("liveHead", len(live) == 0)
+	setHidden("liveNone", len(live) > 0) // the dashboard of the project page
 	for _, l := range live {
 		tile := el("div", "tile", "")
 		if l.URL != "" {

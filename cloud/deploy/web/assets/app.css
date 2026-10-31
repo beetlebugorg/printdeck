@@ -212,3 +212,11 @@ pre.cmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: #15161a
 /* The GitHub username of a member, in the list of the owner. */
 .members li input.github { min-height: 36px; width: 170px; font: 14px "IBM Plex Mono", monospace; padding: 0 8px; border-radius: 8px;
   border: 1px solid var(--seam); background: var(--cap); color: var(--ink); }
+/* The dashboard of the project page. */
+.dash-links { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 4px 0 2px; font-weight: 600; }
+.dash-links a { color: var(--link); }
+.dash { display: grid; gap: var(--s4); grid-template-columns: 1fr; }
+@media (min-width: 900px) { .dash { grid-template-columns: 1fr 1fr; align-items: start; } .dash-card.wide { grid-column: 1 / -1; } }
+.dash-card h2 .count { font: 600 13px "IBM Plex Mono", monospace; color: var(--ink-dim); margin-left: 4px; }
+.folded { display: none !important; }
+#pSettings { margin-top: var(--s5); }

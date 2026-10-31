@@ -35,13 +35,14 @@ type app struct {
 	planShown   int
 	planProcess string // the kind of print of the plan page: "fdm" or "resin"
 	lastBuild    wire.ProjectBuild // the build of the build page
+	foldOpen     map[string]bool   // the lists of the dashboard that show all their items
 	previewShown string            // the build of the preview that shows
 }
 
 const tokenKey = "pwf-session"
 
 func runApp() {
-	a := &app{}
+	a := &app{foldOpen: map[string]bool{}}
 	if v := sessionGet(tokenKey); v != "" {
 		var in wire.SignInReply
 		if json.Unmarshal([]byte(v), &in) == nil && time.Now().Before(in.Expires) {
@@ -56,6 +57,8 @@ func runApp() {
 	onSubmit("newForm", func() { go a.newProject() })
 	a.bindEdits()
 	a.bindBuilds()
+	on("pPrintsMore", "click", func() { a.foldOpen["prints"] = !a.foldOpen["prints"]; fold("prints", "pPrintsMore", 6, a.foldOpen["prints"], "prints") })
+	on("pPhotosMore", "click", func() { a.foldOpen["photos"] = !a.foldOpen["photos"]; fold("photos", "pPhotosMore", 8, a.foldOpen["photos"], "photos") })
 	onSubmit("inviteForm", func() { go a.invite() })
 	on("inviteCopy", "click", func() { go copyText(byID("inviteLink").Get("textContent").String(), "ownerToolsMsg") })
 	on("inviteShare", "click", func() { shareLink(byID("inviteLink").Get("textContent").String()) })
@@ -764,6 +767,7 @@ func (a *app) drawProject() {
 	if len(v.Live) > 0 {
 		setHidden("noPrints", true)
 	}
+	a.drawDashboard(v)
 }
 
 func (a *app) drawPhotos() {
