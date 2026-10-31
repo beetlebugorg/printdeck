@@ -105,6 +105,12 @@ func serve(ctx context.Context, h http.Handler, req events.LambdaFunctionURLRequ
 	h.ServeHTTP(w, r)
 	out := events.LambdaFunctionURLResponse{StatusCode: w.Code, Headers: map[string]string{}, Body: w.Body.String()}
 	for k := range w.Header() {
+		// A function URL takes the cookies in their own list: in the headers, only one of the
+		// three signed cookies of a project went to the browser.
+		if http.CanonicalHeaderKey(k) == "Set-Cookie" {
+			out.Cookies = w.Header().Values(k)
+			continue
+		}
 		out.Headers[k] = w.Header().Get(k)
 	}
 	return out
