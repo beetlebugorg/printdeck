@@ -452,7 +452,7 @@ func startShare(stateDir, configPath string, app *ui.App, pr printerBackend) {
 				l.loadHandoff(keep)
 			}
 			for range time.Tick(30 * time.Second) {
-				if err := l.saveHandoff(keep); err != nil {
+				if err := l.keepShare(keep); err != nil {
 					log.Printf("share: %v", err)
 				}
 			}
@@ -472,6 +472,18 @@ type shareHandoffFile struct {
 // program. With no share, it removes path.
 func (l *shareLink) saveHandoff(path string) error {
 	h, ok := l.sharer.Handoff()
+	return l.writeHandoff(path, h, ok)
+}
+
+// keepShare writes the state of the share to path, and the uploads go on: a restart of the deck
+// during a resin print continues the share from path. With no share, it removes path.
+func (l *shareLink) keepShare(path string) error {
+	h, ok := l.sharer.Snapshot()
+	return l.writeHandoff(path, h, ok)
+}
+
+// writeHandoff writes the state h of the share to path, or removes path when ok is false.
+func (l *shareLink) writeHandoff(path string, h cloud.ShareHandoff, ok bool) error {
 	if !ok {
 		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return err

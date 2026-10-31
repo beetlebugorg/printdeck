@@ -81,6 +81,8 @@ type share struct {
 	stop       context.CancelFunc
 	wake       chan struct{}
 	done       chan struct{} // closed when the uploads of the share end
+	// snap is the state of the share after the last step of the uploads, for Snapshot.
+	snap *ShareHandoff
 }
 
 // ShareState is the state of the share link, for the screens.
@@ -164,6 +166,8 @@ func (s *Sharer) Start(job, printer string, lapse [][]byte) {
 			return
 		}
 		c.id, c.url, c.owner, c.grant, c.project = out.ID, out.URL, out.OwnerKey, out.Grant, project
+		snap := handoffOf(c)
+		c.snap = &snap
 		s.mu.Unlock()
 		s.changed()
 		s.run(ctx, id, c)
@@ -215,9 +219,36 @@ func (s *Sharer) Handoff() (ShareHandoff, bool) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return handoffOf(c), true
+}
+
+// Snapshot returns the state of the share as Handoff does, and the uploads go on. The state is
+// from the end of the last step of the uploads. It is false with no share, and while the service
+// makes the link.
+func (s *Sharer) Snapshot() (ShareHandoff, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	c := s.cur
+	if c == nil || c.id == "" {
+		return ShareHandoff{}, false
+	}
+	if c.snap != nil {
+		return *c.snap, true
+	}
+	select {
+	case <-c.done: // no uploads: the fields do not change
+		return handoffOf(c), true
+	default:
+		return ShareHandoff{}, false
+	}
+}
+
+// handoffOf returns the state of the share c. The caller holds mu, and no step of the uploads
+// runs.
+func handoffOf(c *share) ShareHandoff {
 	return ShareHandoff{ID: c.id, URL: c.url, Owner: c.owner, Project: c.project, Ready: c.ready, Grant: c.grant,
 		Lapse: append([][]byte(nil), c.lapse...), LapseN: c.lapseN, Frame: c.frame, Plan: c.plan, Part: c.part,
-		Model: c.model, ModelV: c.modelV, ModelAt: c.modelAt, Ended: c.ended, Expires: c.expires}, true
+		Model: c.model, ModelV: c.modelV, ModelAt: c.modelAt, Ended: c.ended, Expires: c.expires}
 }
 
 // Resume continues the share of h, the state from Handoff of the deck program before this one. It
@@ -238,6 +269,8 @@ func (s *Sharer) Resume(h ShareHandoff) bool {
 		lapseN: h.LapseN, frame: h.Frame, seqs: map[string]uint64{}, plan: h.Plan, part: h.Part, model: h.Model,
 		modelV: h.ModelV, modelAt: h.ModelAt, ended: h.Ended, expires: h.Expires, stop: cancel,
 		wake: make(chan struct{}, 1), done: make(chan struct{})}
+	snap := handoffOf(c)
+	c.snap = &snap
 	s.cur = c
 	s.mu.Unlock()
 	s.changed()
@@ -329,6 +362,8 @@ func (s *Sharer) run(ctx context.Context, id *Identity, c *share) {
 		} else {
 			c.err = ""
 		}
+		snap := handoffOf(c)
+		c.snap = &snap
 		s.mu.Unlock()
 		s.changed()
 		if done || ctx.Err() != nil {

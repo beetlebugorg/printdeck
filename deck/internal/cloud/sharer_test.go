@@ -139,3 +139,25 @@ func TestShareHandoffNone(t *testing.T) {
 		t.Error("Resume with no identity")
 	}
 }
+
+// A snapshot of a share has its state, and the uploads go on. The deck of a resin printer saves
+// it every 30 s.
+func TestShareSnapshot(t *testing.T) {
+	svc := newFakeShares(t)
+	_, key, _ := ed25519.GenerateKey(nil)
+	path := filepath.Join(t.TempDir(), "cloud.json")
+	if err := (&Identity{Domain: svc.srv.URL, Deck: "d-1", Key: key.Seed()}).Save(path); err != nil {
+		t.Fatal(err)
+	}
+	status := func() ShareStatus { return ShareStatus{State: "printing"} }
+	s := &Sharer{Link: &Link{Path: path}, Status: status, Every: 20 * time.Millisecond}
+	defer s.Stop()
+	s.Start("clip", "a Printdeck", [][]byte{[]byte("frame0")})
+	waitFor(t, "first status", func() bool { return svc.count("lapse/0.jpg") == 1 })
+	h, ok := s.Snapshot()
+	if !ok || h.ID != "s1" || h.Owner != "owner1" || h.LapseN != 1 {
+		t.Fatalf("Snapshot = %+v, %v", h, ok)
+	}
+	n := svc.count("status.json")
+	waitFor(t, "status after the snapshot", func() bool { return svc.count("status.json") > n+2 })
+}
