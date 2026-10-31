@@ -57,6 +57,9 @@ func buildWeb(ctx context.Context, src string) (map[string][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// The association with the iPhone app, for the sign-in with a passkey in the app
+	// (docs/specs/iphone-app.md). An embed has no folders that start with a dot.
+	files[appSiteAssociation] = []byte(`{"webcredentials":{"apps":["` + appID + `"]}}` + "\n")
 	tmp, err := os.MkdirTemp("", "pwf-web")
 	if err != nil {
 		return nil, err
@@ -115,7 +118,17 @@ func buildWeb(ctx context.Context, src string) (map[string][]byte, error) {
 var appKeys = []string{"app", "owner", "j"}
 
 // contentType is the type of the file at key: the app pages are HTML.
+// appSiteAssociation is the key of the association file of the iPhone app, and appID the team
+// and the bundle of the app (watch/project.yml).
+const (
+	appSiteAssociation = ".well-known/apple-app-site-association"
+	appID              = "7UZF9976U3.org.beetlebug.printdeck"
+)
+
 func contentType(key string) string {
+	if key == appSiteAssociation {
+		return "application/json"
+	}
 	if path.Ext(key) == "" {
 		return "text/html; charset=utf-8"
 	}
