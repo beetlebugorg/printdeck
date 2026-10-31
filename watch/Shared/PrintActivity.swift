@@ -34,6 +34,9 @@ struct PrintActivityAttributes: ActivityAttributes {
 
     /// The file of the print.
     var file: String
+    /// The ID of the deck (SavedDeck.id), and its name for the screens.
+    var deck: String = ""
+    var deckName: String = ""
 }
 
 extension PrintActivityAttributes.ContentState {

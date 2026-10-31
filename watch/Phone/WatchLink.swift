@@ -5,9 +5,8 @@ import Foundation
 import Observation
 import WatchConnectivity
 
-/// The WatchConnectivity session that sends the settings and the chosen camera to the watch as the
-/// application context.
-/// The watch gets the last context when it starts, so the watch app does not need to run.
+/// The WatchConnectivity session that sends the list of decks to the watch as the application
+/// context. The watch gets the last context when it starts, so the watch app does not need to run.
 @Observable
 final class WatchLink: NSObject, WCSessionDelegate {
     private(set) var state = ""
@@ -22,7 +21,7 @@ final class WatchLink: NSObject, WCSessionDelegate {
         WCSession.default.activate()
     }
 
-    func send(_ settings: DeckSettings) {
+    func send(_ decks: [SavedDeck]) {
         let s = WCSession.default
         guard s.activationState == .activated else {
             state = "The watch session is not active."
@@ -33,34 +32,31 @@ final class WatchLink: NSObject, WCSessionDelegate {
             return
         }
         do {
-            try s.updateApplicationContext(Self.context(settings))
+            try s.updateApplicationContext(Self.context(decks))
             state = "Sent to the watch."
         } catch {
-            state = "The watch did not get the settings: \(error.localizedDescription)"
+            state = "The watch did not get the decks: \(error.localizedDescription)"
         }
     }
 
     /// The context for the watch. The time makes each context new, so that WatchConnectivity
     /// sends it again to a watch app that was installed again.
-    private static func context(_ s: DeckSettings) -> [String: Any] {
-        var c: [String: Any] = ["address": s.address, "key": s.key, "sent": Date().timeIntervalSince1970]
-        if let camera = Store.camera(for: s.address) { c["camera"] = camera }
-        return c
+    private static func context(_ decks: [SavedDeck]) throws -> [String: Any] {
+        ["decks": try JSONEncoder().encode(decks), "sent": Date().timeIntervalSince1970]
     }
 
-    /// Sends the settings when the watch app is on the watch.
+    /// Sends the decks when the watch app is on the watch.
     private func sendStored(_ session: WCSession) {
-        let s = Store.settings
-        guard session.activationState == .activated, s.isComplete, session.isPaired, session.isWatchAppInstalled
-        else { return }
-        try? session.updateApplicationContext(Self.context(s))
+        guard session.activationState == .activated, session.isPaired, session.isWatchAppInstalled,
+              let c = try? Self.context(Store.decks) else { return }
+        try? session.updateApplicationContext(c)
     }
 
     func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState, error: Error?) {
         sendStored(session)
     }
 
-    /// A new watch, or the watch app installed after the setup: the watch gets the settings now.
+    /// A new watch, or the watch app installed after the setup: the watch gets the decks now.
     func sessionWatchStateDidChange(_ session: WCSession) {
         sendStored(session)
     }

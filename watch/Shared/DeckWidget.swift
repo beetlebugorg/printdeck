@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 the Printdeck authors. See watch/LICENSE.
 
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -10,12 +11,58 @@ struct Entry: TimelineEntry {
     let date: Date
     /// The status of the deck, or nil when the app has none.
     let status: Status?
+    /// The app has a deck for the widget.
+    var connected = true
 
     var progress: Double? { status?.progress(at: date) }
     var left: Double? { status?.left(at: date) }
 }
 
-struct Provider: TimelineProvider {
+/// A deck in the settings of a widget. The empty ID is the deck that prints.
+struct DeckEntity: AppEntity {
+    static let printing = DeckEntity(id: "", name: "The deck that prints")
+
+    var id: String
+    var name: String
+
+    static var typeDisplayRepresentation: TypeDisplayRepresentation = "Deck"
+    static var defaultQuery = DeckQuery()
+
+    var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(name)") }
+}
+
+struct DeckQuery: EntityQuery {
+    func entities(for identifiers: [String]) async throws -> [DeckEntity] {
+        let all = Self.all()
+        return identifiers.compactMap { id in all.first { $0.id == id } }
+    }
+
+    func suggestedEntities() async throws -> [DeckEntity] { Self.all() }
+
+    func defaultResult() async -> DeckEntity? { .printing }
+
+    /// The deck that prints, then the decks of the list.
+    static func all() -> [DeckEntity] {
+        [.printing] + Store.decks.map { DeckEntity(id: $0.id, name: $0.title) }
+    }
+}
+
+/// The settings of a widget: its deck.
+struct DeckWidgetIntent: WidgetConfigurationIntent {
+    static var title: LocalizedStringResource = "Deck"
+    static var description = IntentDescription("The deck of the widget.")
+
+    @Parameter(title: "Deck", default: nil)
+    var deck: DeckEntity?
+
+    init() {}
+
+    init(deck: DeckEntity) {
+        self.deck = deck
+    }
+}
+
+struct Provider: AppIntentTimelineProvider {
     static let sample: Status = {
         var s = Status(state: "Printing", busy: true, paused: false, file: "benchy.gcode",
                        progress: 0.42, left: 4980, layer: 12, layers: 27,
@@ -26,33 +73,63 @@ struct Provider: TimelineProvider {
 
     func placeholder(in context: Context) -> Entry { Entry(date: Date(), status: Self.sample) }
 
-    func getSnapshot(in context: Context, completion: @escaping (Entry) -> Void) {
-        completion(Entry(date: Date(), status: context.isPreview ? Self.sample : Store.lastStatus))
+    func snapshot(for intent: DeckWidgetIntent, in context: Context) async -> Entry {
+        if context.isPreview { return Entry(date: Date(), status: Self.sample) }
+        let decks = Self.decks(for: intent)
+        let stored = decks.map { Store.status(of: $0.id) }
+        return Entry(date: Date(), status: Status.endsFirst(stored).map { stored[$0] } ?? stored.first ?? nil,
+                     connected: !decks.isEmpty)
     }
 
     /// Reads the deck, and makes an entry every 5 minutes for the next 30 minutes, with the
     /// progress of the print at that time. When the deck does not answer, the last status that
-    /// the app or the widget read goes in the entries, for up to 2 hours.
-    func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> Void) {
-        Task {
-            var status = Store.lastStatus
-            if let fresh = try? await DeckClient(settings: Store.settings).status() {
-                status = fresh
-                Store.lastStatus = fresh
-            }
-            let now = Date()
-            if let s = status, now.timeIntervalSince(s.time) > 2 * 3600 {
-                status = nil
-            }
-            var entries = [Entry(date: now, status: status)]
-            if status?.busy == true && status?.paused == false {
-                for m in stride(from: 5, through: 30, by: 5) {
-                    entries.append(Entry(date: now.addingTimeInterval(Double(m) * 60), status: status))
+    /// the app or the widget read goes in the entries, for up to 2 hours. For the deck that prints,
+    /// the widget reads all decks and shows the print that ends first, or else the first deck.
+    func timeline(for intent: DeckWidgetIntent, in context: Context) async -> Timeline<Entry> {
+        let decks = Self.decks(for: intent)
+        let now = Date()
+        var list = await withTaskGroup(of: (Int, Status?).self) { group in
+            for (i, d) in decks.enumerated() {
+                group.addTask {
+                    if let fresh = try? await DeckClient(settings: d.settings).status() {
+                        Store.setStatus(fresh, of: d.id)
+                        return (i, fresh)
+                    }
+                    return (i, Store.status(of: d.id))
                 }
             }
-            let next = now.addingTimeInterval(status?.busy == true ? 15 * 60 : 30 * 60)
-            completion(Timeline(entries: entries, policy: .after(next)))
+            var out = [Status?](repeating: nil, count: decks.count)
+            for await (i, st) in group { out[i] = st }
+            return out
         }
+        for i in list.indices where list[i].map({ now.timeIntervalSince($0.time) > 2 * 3600 }) == true {
+            list[i] = nil
+        }
+        let status = Status.endsFirst(list).map { list[$0] } ?? list.first ?? nil
+        var entries = [Entry(date: now, status: status, connected: !decks.isEmpty)]
+        if status?.busy == true && status?.paused == false {
+            for m in stride(from: 5, through: 30, by: 5) {
+                entries.append(Entry(date: now.addingTimeInterval(Double(m) * 60), status: status,
+                                     connected: true))
+            }
+        }
+        let next = now.addingTimeInterval(status?.busy == true ? 15 * 60 : 30 * 60)
+        return Timeline(entries: entries, policy: .after(next))
+    }
+
+    #if os(watchOS)
+    /// The settings that the watch face offers: the deck that prints, and each deck.
+    func recommendations() -> [AppIntentRecommendation<DeckWidgetIntent>] {
+        DeckQuery.all().map { AppIntentRecommendation(intent: DeckWidgetIntent(deck: $0), description: $0.name) }
+    }
+    #endif
+
+    /// The decks to read: the deck of the setting, or all decks for the deck that prints. A deck
+    /// that left the list gives the deck that prints.
+    private static func decks(for intent: DeckWidgetIntent) -> [SavedDeck] {
+        let all = Store.decks.filter { $0.settings.isComplete }
+        if let id = intent.deck?.id, !id.isEmpty, let d = all.first(where: { $0.id == id }) { return [d] }
+        return all
     }
 }
 

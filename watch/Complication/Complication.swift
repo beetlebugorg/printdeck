@@ -37,7 +37,7 @@ struct ComplicationView: View {
 @main
 struct PrintdeckComplication: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "PrintdeckProgress", provider: Provider()) { entry in
+        AppIntentConfiguration(kind: "PrintdeckProgress", intent: DeckWidgetIntent.self, provider: Provider()) { entry in
             ComplicationView(entry: entry)
                 .containerBackground(Color(rgb: 0x1f4bd1), for: .widget)
         }

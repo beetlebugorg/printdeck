@@ -4,9 +4,38 @@
 import ActivityKit
 import Foundation
 
-/// Starts, updates and ends the Live Activity of a print from the readings of the deck.
+/// Starts, updates and ends the Live Activity of a print from the readings of the decks. The
+/// activity shows the deck that prints. With two prints, it shows the print that ends first.
 @MainActor
 enum PrintLiveActivity {
+    /// A print that ends this much sooner than the print of the activity replaces it. The end
+    /// times of two prints can move past each other many times.
+    private static let switchMargin: TimeInterval = 5 * 60
+
+    /// Updates the activity after a round of reads of all decks.
+    static func update(_ fleet: Fleet) {
+        let printing = fleet.printing
+        // The deck of the activity keeps it while it prints, unless another print ends well before.
+        if let a = current, let m = fleet.model(a.attributes.deck), let st = m.status, m.live {
+            if st.busy, let p = printing, p.id != m.id, let pe = p.status?.end,
+               pe < (st.end ?? .distantFuture).addingTimeInterval(-switchMargin) {
+                update(p.status, deck: p.deck, model: p.model)
+            } else if st.busy || printing == nil {
+                update(st, deck: m.deck, model: m.model)
+            } else if let p = printing {
+                update(p.status, deck: p.deck, model: p.model)
+            }
+            return
+        }
+        if let p = printing {
+            update(p.status, deck: p.deck, model: p.model)
+        } else if let a = current, fleet.model(a.attributes.deck) == nil {
+            // The deck of the activity left the list.
+            Task { await a.end(nil, dismissalPolicy: .immediate) }
+            last = nil
+        }
+    }
+
     private static var current: Activity<PrintActivityAttributes>? {
         Activity<PrintActivityAttributes>.activities.first
     }
@@ -14,7 +43,7 @@ enum PrintLiveActivity {
     /// The state of the last update. A reading with the same state sends no update.
     private static var last: PrintActivityAttributes.ContentState?
 
-    static func update(_ st: Status?, model: LCDPicture?) {
+    static func update(_ st: Status?, deck: SavedDeck, model: LCDPicture?) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled, let st else { return }
         guard st.busy else {
             end()
@@ -24,14 +53,15 @@ enum PrintLiveActivity {
         // The stale time: a while after the end, when the app has not read the deck since.
         let stale = (state.end ?? Date().addingTimeInterval(3600)).addingTimeInterval(15 * 60)
         let content = ActivityContent(state: state, staleDate: stale)
-        if let a = current, a.attributes.file == (st.file ?? "") {
+        if let a = current, a.attributes.file == (st.file ?? ""), a.attributes.deck == deck.id {
             guard changed(state) else { return }
             last = state
             Task { await a.update(content) }
         } else {
             if let a = current { Task { await a.end(nil, dismissalPolicy: .immediate) } }
             last = state
-            _ = try? Activity.request(attributes: PrintActivityAttributes(file: st.file ?? "Print"),
+            let attrs = PrintActivityAttributes(file: st.file ?? "Print", deck: deck.id, deckName: deck.title)
+            _ = try? Activity.request(attributes: attrs,
                                       content: content, pushType: nil)
         }
     }

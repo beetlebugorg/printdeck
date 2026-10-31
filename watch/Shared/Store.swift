@@ -9,35 +9,62 @@ import Security
 enum Store {
     private static let service = "org.beetlebug.printdeck"
 
-    static var settings: DeckSettings {
-        get { read("settings") ?? DeckSettings() }
-        set { write(newValue, "settings") }
-    }
+    /// The ID of the deck of an older app, which had one deck in "settings".
+    static let firstDeckID = "1"
 
-    static var lastStatus: Status? {
-        get { read("status") }
-        set { write(newValue, "status") }
-    }
-
-    /// The pairing of the iPhone with the deck for push messages, or nil. The notification
-    /// service extension reads the message key from it.
-    static var pairing: Pairing? {
-        get { read("pairing") }
-        set { write(newValue, "pairing") }
-    }
-
-    /// The camera that the user chose for the deck at an address (DeckCamera.id), or nil for the
-    /// main camera. It is in the user defaults of the app, by deck.
-    static func camera(for address: String) -> String? {
-        UserDefaults.standard.string(forKey: "camera." + address)
-    }
-
-    static func setCamera(_ id: String?, for address: String) {
-        if let id {
-            UserDefaults.standard.set(id, forKey: "camera." + address)
-        } else {
-            UserDefaults.standard.removeObject(forKey: "camera." + address)
+    /// The decks, in the order of the home screen. On the first read after an update from the
+    /// app with one deck, the deck of "settings" becomes the first deck of the list, with its
+    /// status, its pairing and its camera.
+    static var decks: [SavedDeck] {
+        get {
+            if let d: [SavedDeck] = read("decks") { return d }
+            return moveSettings()
         }
+        set { write(newValue, "decks") }
+    }
+
+    /// Replaces the deck with the same ID in the list. A deck that is not in the list stays out.
+    static func save(_ deck: SavedDeck) {
+        var list = decks
+        guard let i = list.firstIndex(where: { $0.id == deck.id }), list[i] != deck else { return }
+        list[i] = deck
+        decks = list
+    }
+
+    /// The last status of a deck, or nil.
+    static func status(of id: String) -> Status? {
+        read("status." + id)
+    }
+
+    static func setStatus(_ st: Status?, of id: String) {
+        write(st, "status." + id)
+    }
+
+    /// The pairings of the iPhone with the decks for push messages. The notification service
+    /// extension reads the message keys from them.
+    static var pairings: [Pairing] {
+        get {
+            _ = decks
+            return read("pairings") ?? []
+        }
+        set { write(newValue, "pairings") }
+    }
+
+    /// Makes the list from the items of the app with one deck. It writes the list only when it
+    /// finds a deck: a read of the keychain fails before the first unlock, and an empty list in the
+    /// keychain stops the move. The old items stay, so that an app and a widget can both make the
+    /// same list, with the same ID, at the same time.
+    private static func moveSettings() -> [SavedDeck] {
+        guard let old: DeckSettings = read("settings"), old.isComplete else { return [] }
+        let camera = UserDefaults.standard.string(forKey: "camera." + old.address)
+        let list = [SavedDeck(id: firstDeckID, settings: old, camera: camera)]
+        if let st: Status = read("status") { setStatus(st, of: firstDeckID) }
+        if var p: Pairing = read("pairing") {
+            p.deck = firstDeckID
+            write([p], "pairings")
+        }
+        decks = list
+        return list
     }
 
     private static var group: String? {
@@ -103,4 +130,7 @@ struct Pairing: Codable, Equatable {
     var key: Data
     /// The address of the deck at the pairing.
     var address: String
+    /// The ID of the deck (SavedDeck.id). Nil only in a pairing of an older app before the move to
+    /// the list of decks.
+    var deck: String?
 }

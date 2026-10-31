@@ -22,6 +22,64 @@ struct DeckSettings: Codable, Equatable {
     var isComplete: Bool { baseURL != nil && !key.trimmingCharacters(in: .whitespaces).isEmpty }
 }
 
+/// The kind of printer of a deck, from `process` in /api/plugin/printdeck.
+enum DeckProcess: String, Codable {
+    case fdm, resin
+}
+
+/// A deck in the list of the app: its address and key, its name, its process and the camera that
+/// the user chose.
+struct SavedDeck: Codable, Equatable, Identifiable {
+    /// A UUID, or "1" for the deck of the settings of an older app.
+    var id: String
+    var name: String
+    var address: String
+    var key: String
+    /// The process from the last status of the deck, or nil before the first status.
+    var process: DeckProcess?
+    /// The camera that the user chose (DeckCamera.id), or nil for the main camera.
+    var camera: String?
+
+    init(id: String = UUID().uuidString, name: String = "", settings: DeckSettings = DeckSettings(),
+         process: DeckProcess? = nil, camera: String? = nil) {
+        self.id = id
+        self.name = name
+        address = settings.address
+        key = settings.key
+        self.process = process
+        self.camera = camera
+    }
+
+    init(from d: Decoder) throws {
+        let c = try d.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        address = try c.decodeIfPresent(String.self, forKey: .address) ?? ""
+        key = try c.decodeIfPresent(String.self, forKey: .key) ?? ""
+        process = try? c.decodeIfPresent(DeckProcess.self, forKey: .process)
+        camera = try c.decodeIfPresent(String.self, forKey: .camera)
+    }
+
+    var settings: DeckSettings {
+        get { DeckSettings(address: address, key: key) }
+        set {
+            address = newValue.address
+            key = newValue.key
+        }
+    }
+
+    /// The name for the screens: the name, or the address when the deck has no name.
+    var title: String { name.isEmpty ? address : name }
+
+    /// The app shows Print a file only for a deck that sent `process` fdm. A resin deck, and a deck
+    /// before its first status, have no Print a file.
+    var printsFromApp: Bool { process == .fdm }
+
+    /// The app shows Resume only on an FDM deck. On a resin deck a resume turns on the UV light, so
+    /// only the touch screen of the deck resumes.
+    var resumesFromApp: Bool { process == .fdm }
+}
+
 /// A temperature and its target, in °C.
 struct Temp: Codable, Equatable {
     var actual: Double
@@ -184,6 +242,9 @@ struct Status: Codable, Equatable {
     var camera: DeckCamera?
     /// All cameras of the deck, or nil from an older deck.
     var cameras: [DeckCamera]?
+    /// The process of the printer. An older deck has no `process`, and only FDM decks served the
+    /// API before it, so the client reads a missing process as fdm.
+    var process: DeckProcess?
     /// When the app read the status.
     var time: Date
 
@@ -207,6 +268,22 @@ struct Status: Codable, Equatable {
         guard let left else { return nil }
         if paused { return left }
         return max(0, left - date.timeIntervalSince(time))
+    }
+
+    /// The index of the status of the print that ends first: the running prints by their end
+    /// time (a print with no estimate after them), then the paused prints. nil when no status has
+    /// a print.
+    static func endsFirst(_ list: [Status?]) -> Int? {
+        func rank(_ s: Status) -> (Int, Date) {
+            if s.paused { return (2, .distantFuture) }
+            return s.end.map { (0, $0) } ?? (1, .distantFuture)
+        }
+        return list.indices
+            .filter { list[$0]?.busy == true }
+            .min { a, b in
+                let ra = rank(list[a]!), rb = rank(list[b]!)
+                return ra.0 != rb.0 ? ra.0 < rb.0 : ra.1 < rb.1
+            }
     }
 }
 
@@ -376,6 +453,7 @@ struct DeckClient {
         st.lcd = p.lcd
         st.camera = p.camera
         st.cameras = p.cameras
+        st.process = p.process.flatMap(DeckProcess.init(rawValue:)) ?? .fdm
         if let s = p.spool {
             st.roll = Roll(name: s.name, material: s.material, left: s.left, full: s.full,
                            color: s.color?.isEmpty == false ? s.color : nil)
@@ -660,6 +738,8 @@ private struct PluginReply: Decodable {
         var progress: Double
         var left: Double
     }
+    /// "fdm" or "resin", or nil from an older deck.
+    var process: String?
     var spool: Spool?
     var job: Job?
     var lcd: DeckLCD?

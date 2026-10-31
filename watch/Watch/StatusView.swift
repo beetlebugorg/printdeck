@@ -95,9 +95,6 @@ struct StatusView: View {
         }
         .background(p.glcd.ignoresSafeArea())
         .environment(\.palette, p)
-        .task(id: phase == .active) {
-            if phase == .active { await model.poll() }
-        }
         #if DEBUG
         .onAppear {
             // For screenshots in the simulator: PRINTDECK_SCREEN opens a screen.
@@ -298,7 +295,10 @@ struct StatusView: View {
         case .menu:
             var a = [Action(label: "Back", icon: "back") { open(.scroll) }]
             if model.status?.paused == true {
-                a.append(Action(label: "Resume", icon: "play") { open(.confirm(.resume)) })
+                // A resin deck resumes only from its touch screen.
+                if model.resumes {
+                    a.append(Action(label: "Resume", icon: "play") { open(.confirm(.resume)) })
+                }
             } else {
                 a.append(Action(label: "Pause", icon: "pause") { open(.confirm(.pause)) })
             }

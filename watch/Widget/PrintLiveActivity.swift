@@ -11,7 +11,7 @@ import WidgetKit
 struct PrintActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PrintActivityAttributes.self) { context in
-            LockScreenView(file: context.attributes.file, state: context.state)
+            LockScreenView(file: context.attributes.file, deck: context.attributes.deckName, state: context.state)
                 .activityBackgroundTint(Color(rgb: 0x1f4bd1))
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
@@ -56,6 +56,8 @@ struct PrintActivityWidget: Widget {
 /// The Lock Screen: the hotend and the file, the time left, the bar, and the end and the layer.
 private struct LockScreenView: View {
     let file: String
+    /// The name of the deck, or "".
+    let deck: String
     let state: PrintActivityAttributes.ContentState
 
     var body: some View {
@@ -80,9 +82,10 @@ private struct LockScreenView: View {
         .padding(16)
     }
 
+    /// The state, and the name of the deck: "PRINTING · TAZ".
     private var title: String {
-        if !state.finished.isEmpty { return state.finished.uppercased() }
-        return state.paused ? "PAUSED" : "PRINTING"
+        let s = !state.finished.isEmpty ? state.finished.uppercased() : state.paused ? "PAUSED" : "PRINTING"
+        return deck.isEmpty ? s : s + " · " + deck.uppercased()
     }
 }
 

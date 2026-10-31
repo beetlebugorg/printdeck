@@ -8,6 +8,9 @@ import UserNotifications
 /// and body. When it cannot, iOS shows the alert of the push: "Printdeck: A message from your
 /// printer". The watch shows the notification of the iPhone.
 ///
+/// Each deck has its own message key: the key that opens the message gives the deck. With several
+/// decks the subtitle is the name of the deck.
+///
 /// When the iPhone reaches the deck and the deck has a camera on, the notification gets a picture
 /// of the picture camera of the deck (the main camera on an older deck): the part when the camera
 /// has a calibration and the deck has a print, else the whole picture. Away from the network of
@@ -26,14 +29,21 @@ final class NotificationService: UNNotificationServiceExtension {
             return
         }
         self.content = content
-        if let e = content.userInfo["e"] as? String, let p = Store.pairing,
-           let m = try? PushCrypto.open(e, key: p.key) {
-            content.title = m.title
-            content.body = m.body
-            content.threadIdentifier = "printdeck"
+        var deck: SavedDeck?
+        if let e = content.userInfo["e"] as? String {
+            let decks = Store.decks
+            for p in Store.pairings {
+                guard let m = try? PushCrypto.open(e, key: p.key) else { continue }
+                content.title = m.title
+                content.body = m.body
+                deck = decks.first { $0.id == p.deck }
+                content.threadIdentifier = "printdeck." + (p.deck ?? "")
+                if decks.count > 1, let deck { content.subtitle = deck.title }
+                break
+            }
         }
         Task {
-            if let a = await Self.cameraPicture() { content.attachments = [a] }
+            if let deck, let a = await Self.cameraPicture(deck.settings) { content.attachments = [a] }
             finish()
         }
     }
@@ -49,8 +59,8 @@ final class NotificationService: UNNotificationServiceExtension {
 
     /// A picture of the camera of the deck as an attachment, or nil. The reads of the deck stop
     /// after 8 seconds each, inside the 30 seconds of the extension.
-    private static func cameraPicture() async -> UNNotificationAttachment? {
-        let client = DeckClient(settings: Store.settings)
+    private static func cameraPicture(_ settings: DeckSettings) async -> UNNotificationAttachment? {
+        let client = DeckClient(settings: settings)
         guard let cam = await client.pictureCamera(),
               let jpeg = await client.snapshotJPEG(width: 1080, view: "part", camera: cam.id) else { return nil }
         let url = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString + ".jpg")

@@ -1,22 +1,31 @@
 # Printdeck for iPhone and Apple Watch
 
-An iPhone app and a watch app for the Printdeck. They use the API of the deck on the local
+An iPhone app and a watch app for the Printdeck. They use the API of the decks on the local
 network.
 
-- **iPhone app**: the deck screen in its tall layout. It shows the print, the roll, the model and
+- **Home screen**: a card for each deck, with the state, the print, the time left, the progress and
+  a picture: the camera, else the model, else the status screen of the deck. A tap opens the deck
+  screen. Add connects another deck. Menu > Remove on the deck screen removes a deck.
+- **Deck screen**: the deck screen in its tall layout. It shows the print, the roll, the model and
   the camera. It has Pause, Resume and Cancel, and Print a file. Tap the camera for a full screen
   view. With two cameras, tap a camera name at the top of that view, or swipe, to switch. The app
   keeps the choice for each deck, and the watch shows the same camera. Time lapse lists the videos
   of the deck. The app converts a video to H.264 on the iPhone, plays it, and has Share and Save to
   Photos.
-- **Watch app**: the print on a blue dot-matrix display. Turn the Digital Crown for the camera, the
+- **Resin decks**: a deck with `process` resin in `/api/plugin/printdeck` has no Print a file, no
+  Resume and no roll. Only a press on the touch screen of the deck starts or resumes a resin print,
+  because both turn on the UV light. The app has Pause and Cancel.
+- **Watch app**: the print of the deck that prints, or of the first deck, on a blue dot-matrix display. Turn the Digital Crown for the camera, the
   model, the layer times and the filament. Tap for Pause, Resume or Cancel.
 - **Complications** and **widgets**: the progress and the time left, on the watch face, the Home
-  Screen and the Lock Screen.
-- **Live Activity**: the print on the Lock Screen and in the Dynamic Island.
+  Screen and the Lock Screen. Edit a widget to choose its deck. The default is the deck that
+  prints: with two prints, the print that ends first.
+- **Live Activity**: the print on the Lock Screen and in the Dynamic Island, for the deck that
+  prints. With two prints it shows the print that ends first. It moves to the other print when its
+  own print ends, or when the other print ends 5 minutes sooner.
 - **Push messages**: print done, print failed, paused, first layer done, and a short roll.
 
-The apps read the deck every 5 seconds while they are open.
+The apps read all decks every 5 seconds while they are open.
 
 ## Install
 
@@ -28,17 +37,19 @@ Install the apps from Xcode. The deployment targets are iOS 17 and watchOS 11.
 3. Open `Printdeck.xcodeproj`. Choose the `Printdeck` scheme and your iPhone, and run.
 4. For the watch, choose the `PrintdeckWatch` scheme and the watch, and run. Turn on Developer
    Mode on the watch. The watch and the Mac must be on the same network.
-5. Open Printdeck on the iPhone. Tap Connect, then tap Allow on the touch screen of the deck.
+5. Open Printdeck on the iPhone. Tap Connect, then tap Allow on the touch screen of the deck. Add
+   connects the next deck.
 6. To add the complication, edit the watch face and choose Printdeck.
 
 If Xcode fails to find the watch, turn off Bluetooth on the iPhone for a minute.
 
-If the deck is missing from the list, open Menu > By hand. Type the address, and tap Ask the
+If the deck is missing from the list, open By hand under Add. Type the address, and tap Ask the
 deck for a key. Or type the key from http://printdeck.local/system and tap Save.
 
 ## Push messages
 
-1. On the iPhone, open Menu > Notifications, and tap Pair for notifications.
+1. On the iPhone, open the deck, then Menu > Notifications, and tap Pair for notifications. Each
+   deck pairs on its own. With several decks the subtitle of a message is the name of the deck.
 2. Allow the notifications.
 3. The deck sends "This phone gets the messages of your prints."
 
@@ -75,8 +86,9 @@ The App Keys flow of OctoPrint gives the app its key, with no key:
 All other requests have the header `X-Api-Key`:
 
 - `GET /api/job`, `GET /api/printer`: the job and the temperatures.
-- `GET /api/plugin/printdeck`: the roll, the print, the main camera (`camera`), all cameras
-  (`cameras`) and the status screen (`lcd`).
+- `GET /api/plugin/printdeck`: the process (`fdm` or `resin`), the roll, the print, the main camera
+  (`camera`), all cameras (`cameras`) and the status screen (`lcd`). A deck with no `process` is
+  an FDM deck.
 - `GET /webcam/snapshot?w=..`, `GET /webcam/stream?w=..&fps=..`: the main camera. Add
   `camera=<id>` for another camera, or `camera=picture` for the camera of the notifications.
 - `POST /api/job`: `{"command":"pause","action":"pause"}`, `{"command":"pause","action":"resume"}`
@@ -92,7 +104,8 @@ All other requests have the header `X-Api-Key`:
 
 ## Folders
 
-- `Shared/`: the API client (`Deck.swift`), the state (`DeckModel.swift`), the printer display
+- `Shared/`: the API client (`Deck.swift`), the list of decks (`Fleet.swift`), the state of a deck
+  (`DeckModel.swift`), the printer display
   (`LCDScreen.swift`, a port of `deck/internal/lcd`), the panel parts and the keychain store.
 - `Phone/`, `Watch/`: the apps.
 - `Complication/`, `Widget/`: the WidgetKit extensions.
@@ -105,8 +118,10 @@ All other requests have the header `X-Api-Key`:
 
 ## Screenshots in the simulator
 
-In a debug build, `PRINTDECK_ADDRESS` and `PRINTDECK_KEY` set the deck. `PRINTDECK_SCREEN` opens
-a screen: `menu` or `cancel` on the watch, `files`, `setup`, `camera` or `loading` on the iPhone.
+In a debug build, `PRINTDECK_ADDRESS` and `PRINTDECK_KEY` set one deck, and `PRINTDECK_DECKS` sets
+several, as `TAZ|127.0.0.1:7361|key1,Phenom|127.0.0.1:7362|key2`. `PRINTDECK_SCREEN` opens a
+screen: `menu` or `cancel` on the watch, `deck`, `files`, `setup`, `camera` or `loading` on the
+iPhone. The screens of a deck open the first deck.
 With `xcrun simctl launch`, add the prefix `SIMCTL_CHILD_`. The deck of `printdeck app -sim`
 reads its API key from `OCTOPRINT_API_KEY`.
 

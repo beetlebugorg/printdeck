@@ -6,55 +6,52 @@ import SwiftUI
 @main
 struct PhoneApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-    @State private var model = DeckModel()
+    @State private var fleet = Fleet()
     @State private var link = WatchLink()
 
     var body: some Scene {
         WindowGroup {
-            DeckView(link: link)
-                .environment(model)
+            RootView(link: link)
+                .environment(fleet)
         }
     }
 }
 
-/// The main screen in the look of the touch screen of the deck (its tall layout): the display of
-/// the printer at the top, then the keys and the plates of the print, or of a printer with no
-/// print.
-struct DeckView: View {
-    @Environment(DeckModel.self) private var model
+/// The home screen with a card for each deck, and the deck screen of a card. The app reads all
+/// decks every 5 seconds while it is active.
+struct RootView: View {
+    @Environment(Fleet.self) private var fleet
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var phase
     let link: WatchLink
 
-    enum Sheet: Identifiable {
-        case setup, files, camera, timelapse
-        var id: Self { self }
-    }
-
-    @State private var sheet: Sheet?
-    @State private var confirm: DeckModel.Command?
-    /// The loading screen shows until the first reading of the deck.
+    @State private var path: [String] = []
+    /// The loading screen shows until the first reading of the decks.
     @State private var loading = true
 
     var body: some View {
         let p = Palette.of(scheme)
         ZStack {
-            if model.settings.isComplete {
-                deck
-            } else {
-                SetupView(link: link)
+            NavigationStack(path: $path) {
+                HomeView(link: link) { path.append($0) }
+                    .navigationDestination(for: String.self) { id in
+                        if let m = fleet.model(id) {
+                            DeckView(link: link) { path.removeAll() }
+                                .environment(m)
+                        }
+                    }
             }
             if loading {
-                LoadingView(lines: model.settings.isComplete ? ["Connecting", model.settings.address] : ["Setting up"])
+                LoadingView(lines: loadingLines)
                     .transition(.opacity)
             }
         }
         .environment(\.palette, p)
         .task {
-            // At least a second, so the screen does not flash, and up to 8 seconds for the deck.
+            // At least a second, so the screen does not flash, and up to 8 seconds for the decks.
             try? await Task.sleep(for: .seconds(1))
             for _ in 0..<35 {
-                if !model.settings.isComplete || model.status != nil || model.error != nil { break }
+                if fleet.models.allSatisfy({ !$0.settings.isComplete || $0.status != nil || $0.error != nil }) { break }
                 try? await Task.sleep(for: .milliseconds(200))
             }
             #if DEBUG
@@ -65,40 +62,94 @@ struct DeckView: View {
         }
         #if DEBUG
         .onAppear {
-            // For screenshots in the simulator: PRINTDECK_SCREEN opens a page.
-            switch ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"] {
-            case "files": sheet = .files
-            case "setup": sheet = .setup
-            case "camera": sheet = .camera
-            case "timelapse": sheet = .timelapse
-            default: break
+            // For screenshots in the simulator: a PRINTDECK_SCREEN of the deck screen opens the
+            // first deck.
+            let screens = ["deck", "files", "setup", "camera", "timelapse"]
+            if let s = ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"], screens.contains(s),
+               let m = fleet.models.first {
+                path = [m.id]
             }
         }
         #endif
-        .onChange(of: model.status) { _, st in PrintLiveActivity.update(st, model: model.model) }
-        // The watch shows the camera that the iPhone shows.
-        .onChange(of: model.cameraID) { if model.settings.isComplete { link.send(model.settings) } }
-        .onChange(of: model.model) { _, m in PrintLiveActivity.update(model.status, model: m) }
         .onAppear {
-            // The model in dots for the Live Activity, and in color for the window of the print.
-            model.modelSize = (48, 48)
-            model.modelImageSize = (720, 480)
+            fleet.onRound = { [fleet] in PrintLiveActivity.update(fleet) }
         }
-        .task(id: phase == .active && model.settings.isComplete) {
-            if phase == .active && model.settings.isComplete { await model.poll() }
+        .onChange(of: fleet.models.map(\.id), initial: true) {
+            // The model in dots for the Live Activity, and in color for the cards and the window
+            // of the print.
+            for m in fleet.models {
+                m.modelSize = (48, 48)
+                m.modelImageSize = (720, 480)
+            }
         }
-        .fullScreenCover(item: $sheet) { s in
-            Group {
-                switch s {
-                case .setup: SetupView(link: link) { sheet = nil }
-                case .files: FilesView { sheet = nil }
-                case .camera: CameraView { sheet = nil }
-                case .timelapse: TimelapseView { sheet = nil }
+        // The watch gets each change of the list: a new deck, a name, a camera.
+        .onChange(of: fleet.decks) { _, decks in link.send(decks) }
+        .task(id: phase == .active) {
+            if phase == .active { await fleet.poll() }
+        }
+    }
+
+    private var loadingLines: [String] {
+        switch fleet.models.count {
+        case 0: ["Setting up"]
+        case 1: ["Connecting", fleet.models[0].settings.address]
+        case let n: ["Connecting", "\(n) decks"]
+        }
+    }
+}
+
+/// The deck screen in the look of the touch screen of the deck (its tall layout): the display of
+/// the printer at the top, then the keys and the plates of the print, or of a printer with no
+/// print. A resin deck has no Print a file and no Resume: only its touch screen turns on the UV
+/// light.
+struct DeckView: View {
+    @Environment(Fleet.self) private var fleet
+    @Environment(DeckModel.self) private var model
+    @Environment(\.colorScheme) private var scheme
+    let link: WatchLink
+    /// Goes back to the home screen.
+    let close: () -> Void
+
+    enum Sheet: Identifiable {
+        case setup, files, camera, timelapse
+        var id: Self { self }
+    }
+
+    @State private var sheet: Sheet?
+    @State private var confirm: DeckModel.Command?
+
+    var body: some View {
+        let p = Palette.of(scheme)
+        deck
+            .toolbar(.hidden, for: .navigationBar)
+            #if DEBUG
+            .onAppear {
+                // For screenshots in the simulator: PRINTDECK_SCREEN opens a page.
+                switch ProcessInfo.processInfo.environment["PRINTDECK_SCREEN"] {
+                case "files": sheet = .files
+                case "setup": sheet = .setup
+                case "camera": sheet = .camera
+                case "timelapse": sheet = .timelapse
+                default: break
                 }
             }
-            .environment(model)
-            .environment(\.palette, p)
-        }
+            #endif
+            .fullScreenCover(item: $sheet) { s in
+                Group {
+                    switch s {
+                    case .setup: SetupView(link: link, model: model) { sheet = nil } removed: {
+                        sheet = nil
+                        close()
+                    }
+                    case .files: FilesView { sheet = nil }
+                    case .camera: CameraView { sheet = nil }
+                    case .timelapse: TimelapseView { sheet = nil }
+                    }
+                }
+                .environment(model)
+                .environment(fleet)
+                .environment(\.palette, p)
+            }
     }
 
     private var deck: some View {
@@ -106,6 +157,12 @@ struct DeckView: View {
         let st = model.status
         return ScrollView {
             VStack(spacing: 12) {
+                Heading(title: model.deck.title) {
+                    Button("Decks", action: close)
+                        .buttonStyle(KeyStyle())
+                        .frame(width: 100)
+                        .environment(\.panelScale, 0.75)
+                }
                 LCDView(screen: .status(LCDModel.status(st, connected: true, error: model.error, now: Date(), hint: "",
                                                               live: model.live, notice: model.noticeNow)))
                 // The camera comes first when the deck has one on. A tap opens it larger.
@@ -158,9 +215,18 @@ struct DeckView: View {
     private func paused(_ st: Status) -> some View {
         VStack(spacing: 12) {
             layerPlate(st, title: "Paused" + (st.layer.map { " at layer \($0) of \(st.layers ?? 0)" } ?? ""))
-            Button("Resume") { confirm = .resume }
-                .buttonStyle(KeyStyle(cap: .orange, height: 88))
-                .disabled(model.sending)
+            if model.resumes {
+                Button("Resume") { confirm = .resume }
+                    .buttonStyle(KeyStyle(cap: .orange, height: 88))
+                    .disabled(model.sending)
+            } else {
+                Plate(label: "Resume") {
+                    Text("Resume on the touch screen of the deck, with the build plate and the vat in place.")
+                        .font(Theme.plex(13, bold: false))
+                        .foregroundStyle(Palette.of(scheme).dim)
+                        .padding(.horizontal, 4)
+                }
+            }
             HStack(spacing: 10) {
                 Button("Cancel") { confirm = .cancel }.buttonStyle(KeyStyle(cap: .danger))
                 Button("Menu") { sheet = .setup }.buttonStyle(KeyStyle())
@@ -170,12 +236,15 @@ struct DeckView: View {
         }
     }
 
-    // No print: Print a file, the roll, the time lapse videos, and Menu.
+    // No print: Print a file, the roll, the time lapse videos, and Menu. A resin deck, and a deck
+    // before its first status, have no Print a file.
     private func idle(_ st: Status?) -> some View {
         VStack(spacing: 12) {
-            Button("Print a file") { sheet = .files }
-                .buttonStyle(KeyStyle(cap: .orange, height: 88))
-            if let roll = st?.roll {
+            if model.deck.printsFromApp {
+                Button("Print a file") { sheet = .files }
+                    .buttonStyle(KeyStyle(cap: .orange, height: 88))
+            }
+            if let roll = st?.roll, model.deck.process != .resin {
                 Plate(label: "Roll") { rollRow(roll) }
             }
             HStack(spacing: 10) {
@@ -205,7 +274,7 @@ struct DeckView: View {
                         .foregroundStyle(p.dim)
                 }
             }
-            if let roll = st.roll { rollRow(roll) }
+            if let roll = st.roll, model.deck.process != .resin { rollRow(roll) }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

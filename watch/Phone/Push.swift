@@ -14,13 +14,13 @@ import UserNotifications
 ///  3. The app and the deck agree on a message key with X25519
 ///     (POST /api/plugin/printdeck/push/pair).
 ///
-/// The key is in the keychain group, for the notification service extension. No token or key goes
-/// to a log.
+/// Each deck has its own pairing and message key. The keys are in the keychain group, for the
+/// notification service extension. No token or key goes to a log.
 @MainActor @Observable
 final class PushPairing {
     static let shared = PushPairing()
 
-    private(set) var pairing = Store.pairing
+    private(set) var pairings = Store.pairings
     private(set) var busy = false
     private(set) var message: String?
 
@@ -49,8 +49,13 @@ final class PushPairing {
         return rest.contains("development") ? "sandbox" : "production"
     }
 
-    func pair(with settings: DeckSettings) async {
-        guard settings.isComplete else {
+    /// The pairing of a deck, or nil.
+    func pairing(of deck: SavedDeck) -> Pairing? {
+        pairings.first { $0.deck == deck.id }
+    }
+
+    func pair(with deck: SavedDeck) async {
+        guard deck.settings.isComplete else {
             message = "Connect to the deck first."
             return
         }
@@ -65,7 +70,7 @@ final class PushPairing {
             }
             message = "Registering this iPhone"
             let token = try await deviceToken()
-            try await pair(settings: settings, token: token)
+            try await pair(deck, token: token)
             message = nil
         } catch {
             message = errorText(error)
@@ -73,13 +78,13 @@ final class PushPairing {
     }
 
     /// Pairs with a device token: the send token of the relay, then the key exchange with the deck.
-    private func pair(settings: DeckSettings, token: Data) async throws {
+    private func pair(_ deck: SavedDeck, token: Data) async throws {
         guard let relay else { throw DeckError.refused("The app has no relay address.") }
         let env = Self.environment
         let sendToken = try await register(relay: relay, token: token, env: env)
         message = "Pairing with the deck"
         let priv = Curve25519.KeyAgreement.PrivateKey()
-        let reply = try await DeckClient(settings: settings).pairPush([
+        let reply = try await DeckClient(settings: deck.settings).pairPush([
             "name": UIDevice.current.name,
             "device": token.hex,
             "env": env,
@@ -89,25 +94,26 @@ final class PushPairing {
         ])
         guard let deckKey = Data(base64Encoded: reply.publicKey) else { throw DeckError.badReply }
         let key = try PushCrypto.messageKey(privateKey: priv, deckPublicKey: deckKey, deviceToken: token)
-        let p = Pairing(id: reply.id, device: token.hex, env: env, key: key, address: settings.address)
-        Store.pairing = p
-        pairing = p
+        let p = Pairing(id: reply.id, device: token.hex, env: env, key: key, address: deck.address, deck: deck.id)
+        pairings.removeAll { $0.deck == deck.id }
+        pairings.append(p)
+        Store.pairings = pairings
     }
 
-    func unpair(with settings: DeckSettings) async {
-        guard let p = pairing else { return }
+    func unpair(with deck: SavedDeck) async {
+        guard let p = pairing(of: deck) else { return }
         busy = true
         defer { busy = false }
         do {
-            try await DeckClient(settings: settings).unpairPush(id: p.id)
+            try await DeckClient(settings: deck.settings).unpairPush(id: p.id)
             message = nil
         } catch {
             // The pairing goes on the iPhone in any case. The deck lists it under Settings > Phones.
             message = "The deck did not answer. Remove the phone under Settings > Phones on the deck."
         }
-        Store.pairing = nil
-        pairing = nil
-        UIApplication.shared.unregisterForRemoteNotifications()
+        pairings.removeAll { $0.deck == deck.id }
+        Store.pairings = pairings
+        if pairings.isEmpty { UIApplication.shared.unregisterForRemoteNotifications() }
     }
 
     /// The device token of iOS. It waits up to 20 seconds.
@@ -194,16 +200,19 @@ final class PushPairing {
             w.resume(returning: token)
             return
         }
-        // iOS can give a new token, for example after a restore. Pair again with it.
-        guard let p = pairing, p.device != token.hex, !busy else { return }
-        let settings = Store.settings
+        // iOS can give a new token, for example after a restore. Pair each deck again with it.
+        let decks = Store.decks
+        let old = pairings.filter { $0.device != token.hex }.compactMap { p in decks.first { $0.id == p.deck } }
+        guard !old.isEmpty, !busy else { return }
         Task {
             busy = true
             defer { busy = false }
-            do {
-                try await pair(settings: settings, token: token)
-            } catch {
-                message = "Pair again: iOS gave a new device token, and the deck did not answer."
+            for deck in old {
+                do {
+                    try await pair(deck, token: token)
+                } catch {
+                    message = "Pair \(deck.title) again: iOS gave a new device token, and the deck did not answer."
+                }
             }
         }
     }
@@ -236,7 +245,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // A paired iPhone registers at each start, so that a new device token pairs again.
-        if Store.pairing != nil {
+        if !Store.pairings.isEmpty {
             application.registerForRemoteNotifications()
         }
         return true

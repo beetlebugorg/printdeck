@@ -29,7 +29,7 @@ struct WidgetView: View {
     }
 
     private var status: LCDStatus {
-        LCDModel.status(entry.status, connected: Store.settings.isComplete, error: nil, now: entry.date, hint: "")
+        LCDModel.status(entry.status, connected: entry.connected, error: nil, now: entry.date, hint: "")
     }
 }
 
@@ -43,7 +43,7 @@ struct PrintdeckWidgets: WidgetBundle {
 
 struct PrintdeckWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "PrintdeckProgress", provider: Provider()) { entry in
+        AppIntentConfiguration(kind: "PrintdeckProgress", intent: DeckWidgetIntent.self, provider: Provider()) { entry in
             WidgetView(entry: entry)
                 .containerBackground(Color(rgb: 0x1f4bd1), for: .widget)
         }

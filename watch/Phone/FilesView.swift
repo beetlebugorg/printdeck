@@ -94,6 +94,12 @@ struct FilesView: View {
     }
 
     private func print(_ f: DeckFile) async {
+        // Only an FDM deck starts a print from the app. The deck screen has no Print a file for
+        // any other deck.
+        guard model.deck.printsFromApp else {
+            message = "Start a resin print on the touch screen of the deck."
+            return
+        }
         do {
             try await DeckClient(settings: model.settings).printFile(f.path)
             await model.refresh()

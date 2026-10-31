@@ -5,16 +5,17 @@ import CoreGraphics
 import Foundation
 import Observation
 import WidgetKit
-#if os(watchOS)
-import WatchConnectivity
-#endif
 
-/// The state of the app: the settings and the last status of the deck. The watch gets the settings
-/// from the iPhone.
+/// The state of one deck: its place in the list, and its last status. The watch gets the list
+/// from the iPhone (Fleet).
 @MainActor @Observable
-final class DeckModel {
-    private(set) var settings = Store.settings
-    private(set) var status = Store.lastStatus
+final class DeckModel: Identifiable {
+    /// The deck in the list: the address, the key, the name, the process and the camera.
+    private(set) var deck: SavedDeck
+    private(set) var status: Status?
+    /// The ID of the deck (SavedDeck.id). It stays the same for the life of the model.
+    nonisolated let id: String
+    var settings: DeckSettings { deck.settings }
     private(set) var error: String?
     /// The status came from the deck since the start of the app, and the last read worked. A
     /// status from the store, or after a failed read, is old.
@@ -50,27 +51,12 @@ final class DeckModel {
     /// Goes up at new settings and at each command, so that an older read does not overwrite a
     /// newer status.
     private var generation = 0
-    #if os(watchOS)
-    private var link: PhoneLink?
-    #endif
 
-    init() {
-        #if DEBUG
-        // For screenshots in the simulator: PRINTDECK_ADDRESS and PRINTDECK_KEY set the deck.
-        let env = ProcessInfo.processInfo.environment
-        if let a = env["PRINTDECK_ADDRESS"], let k = env["PRINTDECK_KEY"] {
-            settings = DeckSettings(address: a, key: k)
-        }
-        #endif
-        cameraID = Store.camera(for: settings.address)
-        #if os(watchOS)
-        link = PhoneLink { [weak self] settings, camera in
-            Task { @MainActor in
-                self?.apply(settings)
-                self?.chooseCamera(camera)
-            }
-        }
-        #endif
+    init(deck: SavedDeck) {
+        self.deck = deck
+        id = deck.id
+        status = Store.status(of: deck.id)
+        cameraID = deck.camera
     }
 
     /// Shows the camera id of the deck (DeckCamera.id), or the main camera with nil, and keeps the
@@ -78,15 +64,34 @@ final class DeckModel {
     func chooseCamera(_ id: String?) {
         guard id != cameraID else { return }
         cameraID = id
-        Store.setCamera(id, for: settings.address)
+        deck.camera = id
+        Store.save(deck)
     }
 
-    /// Uses new settings: from the iPhone on the watch, from the setup on the iPhone.
+    /// Changes the name of the deck.
+    func rename(_ name: String) {
+        let n = name.trimmingCharacters(in: .whitespaces)
+        guard n != deck.name else { return }
+        deck.name = n
+        Store.save(deck)
+    }
+
+    /// Uses a new list entry for this deck, from the iPhone on the watch. New settings start the
+    /// reads again.
+    func update(_ new: SavedDeck) {
+        guard new != deck else { return }
+        let settings = new.settings
+        deck.name = new.name
+        deck.process = new.process ?? deck.process
+        chooseCamera(new.camera)
+        apply(settings)
+    }
+
+    /// Uses a new address or key: from the iPhone on the watch, from the setup on the iPhone.
     func apply(_ new: DeckSettings) {
         guard new != settings else { return }
-        settings = new
-        Store.settings = new
-        cameraID = Store.camera(for: new.address)
+        deck.settings = new
+        Store.save(deck)
         generation += 1
         status = nil
         live = false
@@ -95,7 +100,7 @@ final class DeckModel {
         modelImage = nil
         modelLayer = nil
         modelTime = .distantPast
-        Store.lastStatus = nil
+        Store.setStatus(nil, of: deck.id)
         stored = nil
         WidgetCenter.shared.reloadAllTimelines()
         Task { await refresh() }
@@ -123,6 +128,10 @@ final class DeckModel {
             status = new
             live = true
             error = nil
+            if let p = new.process, p != deck.process {
+                deck.process = p
+                Store.save(deck)
+            }
             store(new)
             reloadComplication(old: old, new: new)
             await refreshModel(new)
@@ -154,7 +163,7 @@ final class DeckModel {
             return
         }
         stored = new
-        Store.lastStatus = new
+        Store.setStatus(new, of: deck.id)
     }
 
     /// Reloads the complication when the print starts, pauses or ends, and at most every 10
@@ -200,8 +209,16 @@ final class DeckModel {
         }
     }
 
+    /// The app shows Resume for this deck. A resin deck resumes only from its touch screen.
+    var resumes: Bool { deck.resumesFromApp }
+
     func send(_ command: Command) async {
         guard !sending else { return }
+        // The keys for Resume are off on a resin deck, and the deck refuses a resume there too.
+        if command == .resume && !resumes {
+            show("Resume on the touch screen of the deck", for: 8)
+            return
+        }
         sending = true
         defer { sending = false }
         // A read that started before the command has the old state.
@@ -221,31 +238,3 @@ final class DeckModel {
         await refresh()
     }
 }
-
-#if os(watchOS)
-/// The WatchConnectivity session that receives the settings and the chosen camera from the iPhone.
-final class PhoneLink: NSObject, WCSessionDelegate {
-    private let received: (DeckSettings, String?) -> Void
-
-    init(received: @escaping (DeckSettings, String?) -> Void) {
-        self.received = received
-        super.init()
-        guard WCSession.isSupported() else { return }
-        WCSession.default.delegate = self
-        WCSession.default.activate()
-    }
-
-    func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState, error: Error?) {
-        handle(session.receivedApplicationContext)
-    }
-
-    func session(_ session: WCSession, didReceiveApplicationContext context: [String: Any]) {
-        handle(context)
-    }
-
-    private func handle(_ context: [String: Any]) {
-        guard let address = context["address"] as? String, let key = context["key"] as? String else { return }
-        received(DeckSettings(address: address, key: key), context["camera"] as? String)
-    }
-}
-#endif
