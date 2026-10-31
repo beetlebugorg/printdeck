@@ -5,12 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"image"
 	"image/jpeg"
 	"log"
 	"math"
 	"os"
 	"path/filepath"
+	"printdeck/internal/chitu"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -230,6 +233,9 @@ func (l *shareLink) status() cloud.ShareStatus {
 			s.ResinBottomLift, s.ResinBottomSpeed, s.ResinLightOff = p.BottomLiftMM, p.BottomLiftSpeed, p.LightOff
 		}
 		s.ResinLayerSec = math.Round(c.MeasuredLayer()*10) / 10
+		if h := c.ResinFile(); h != nil {
+			s.ResinFacts = resinFacts(h, s.ResinLayerSec)
+		}
 	}
 	// The file of the print: the material and the filament that the slicer wrote, and the
 	// height of the model.
@@ -513,4 +519,51 @@ func rollFilament(f *cloud.ShareFilament, store *printer.Spools, sp printer.Spoo
 			f.Name = m.Name
 		}
 	}
+}
+
+// resinFacts are the facts of the sliced file of a resin print for the share page: all the
+// numbers of its header and of its print parameters.
+func resinFacts(h *chitu.Sliced, layerSec float64) [][2]string {
+	num := func(v float64) string { return strconv.FormatFloat(math.Round(v*100)/100, 'f', -1, 64) }
+	var out [][2]string
+	add := func(name, value string) {
+		if value != "" {
+			out = append(out, [2]string{name, value})
+		}
+	}
+	add("Layers", fmt.Sprintf("%d of %s mm", h.Layers, num(float64(h.LayerHeight))))
+	add("Height", num(float64(h.Layers)*float64(h.LayerHeight))+" mm")
+	add("Exposure", num(float64(h.Exposure))+" s")
+	add("Bottom layers", fmt.Sprintf("%d, %s s each", h.BottomLayers, num(float64(h.BottomExposure))))
+	p := h.Params
+	if p.LiftMM > 0 {
+		add("Lift", fmt.Sprintf("%s mm at %s mm/min (%s s)", num(p.LiftMM), num(p.LiftSpeed), num(p.LiftMM/p.LiftSpeed*60)))
+		add("Return", fmt.Sprintf("%s mm/min (%s s)", num(p.RetractSpeed), num(p.LiftMM/p.RetractSpeed*60)))
+	}
+	if p.BottomLiftMM > 0 && p.BottomLiftSpeed > 0 {
+		add("Bottom lift", fmt.Sprintf("%s mm at %s mm/min (%s s)", num(p.BottomLiftMM), num(p.BottomLiftSpeed), num(p.BottomLiftMM/p.BottomLiftSpeed*60)))
+	}
+	add("Light off", fmt.Sprintf("%s s, bottom %s s", num(p.LightOff), num(p.BottomLightOff)))
+	if layerSec > 0 {
+		add("Layer time", num(layerSec)+" s, as the print measures it")
+	}
+	if h.PrintSeconds > 0 {
+		add("Slicer estimate", fmt.Sprintf("%d h %02d min", h.PrintSeconds/3600, h.PrintSeconds/60%60))
+	}
+	if p.VolumeML > 0 {
+		add("Resin", fmt.Sprintf("%s ml, %s g", num(p.VolumeML), num(p.WeightG)))
+	}
+	if p.Cost > 0 {
+		add("Cost", num(p.Cost))
+	}
+	add("Screen", fmt.Sprintf("%d x %d pixels, %s x %s mm", h.ResX, h.ResY, num(float64(h.BedX)), num(float64(h.BedY))))
+	if h.AntiAlias > 1 {
+		add("Anti-aliasing", fmt.Sprintf("%d levels", h.AntiAlias))
+	} else {
+		add("Anti-aliasing", "off")
+	}
+	if h.PWM > 0 {
+		add("Light power", fmt.Sprintf("%d%%, bottom %d%%", h.PWM*100/255, h.BottomPWM*100/255))
+	}
+	return out
 }

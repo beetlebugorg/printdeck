@@ -35,9 +35,12 @@ type Sliced struct {
 	Magic                      uint32
 	Mirror                     bool // the screen shows the mirror image of the slicer (projector 1)
 	// The print parameters (ReadParams), or zero.
-	Params               Params
-	paramsAt, paramsSize uint32 // the offset and the size of the print parameters
-	layerTable           uint32 // the offset of the table of the layers
+	Params Params
+	// AntiAlias is the level of the anti-aliasing (1 for none), and BottomPWM and PWM the power of
+	// the light, 255 for full.
+	AntiAlias, BottomPWM, PWM int
+	paramsAt, paramsSize      uint32 // the offset and the size of the print parameters
+	layerTable                uint32 // the offset of the table of the layers
 }
 
 // ReadSliced reads the header of the sliced file data.
@@ -55,7 +58,8 @@ func ReadSliced(data []byte) (*Sliced, error) {
 	return &Sliced{Version: u(4), BedX: f(8), BedY: f(12), BedZ: f(16), Height: f(28), LayerHeight: f(32),
 		Exposure: f(36), BottomExposure: f(40), BottomLayers: u(48), ResX: u(52), ResY: u(56),
 		previewLarge: u(60), layerTable: u(64), Layers: u(68), previewSmall: u(72), PrintSeconds: u(76),
-		Magic: u(0), Mirror: u(80) == 1, paramsAt: u(84), paramsSize: u(88)}, nil
+		Magic: u(0), Mirror: u(80) == 1, paramsAt: u(84), paramsSize: u(88), AntiAlias: int(u(92)),
+		BottomPWM: int(binary.LittleEndian.Uint16(data[96:])), PWM: int(binary.LittleEndian.Uint16(data[98:]))}, nil
 }
 
 // Preview returns the large preview picture of the sliced file data, or the small one when large

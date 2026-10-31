@@ -31,6 +31,9 @@ type ShareStatus struct {
 	ResinBottomSpeed  float64 `json:"resin_bottom_speed,omitempty"`
 	ResinLightOff     float64 `json:"resin_light_off,omitempty"`
 	ResinLayerSec     float64 `json:"resin_layer_sec,omitempty"`
+	// ResinFacts are the facts of the sliced file for the page, each a name and a value, for
+	// example ["Lift", "12 mm at 30 mm/min"].
+	ResinFacts [][2]string `json:"resin_facts,omitempty"`
 	// Activity is what the printer does now, for example "Heating bed".
 	Activity string `json:"activity,omitempty"`
 	// Progress is 0 to 1.

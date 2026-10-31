@@ -294,7 +294,18 @@ func (s *share) partView() {
 func (s *share) drawCycle() {
 	st := s.st
 	show := st.Process == "resin" && st.ResinLift > 0 && st.ResinLiftSpeed > 0 && !s.ended
-	setHidden("cycleCard", !show)
+	setHidden("cycleCard", !(show || st.Process == "resin" && len(st.ResinFacts) > 0))
+	setHidden("cycle", !show)
+	setHidden("cycleSpeed", !show)
+	// The facts of the file: all the numbers that the deck reads from it.
+	facts := byID("cycleFacts")
+	facts.Set("textContent", "")
+	for _, f := range st.ResinFacts {
+		row := el("div", "", "")
+		row.Call("appendChild", el("dt", "", f[0]))
+		row.Call("appendChild", el("dd", "", f[1]))
+		facts.Call("appendChild", row)
+	}
 	lc := js.Global().Get("pwfLayerCycle")
 	if !show || lc.IsUndefined() {
 		return
