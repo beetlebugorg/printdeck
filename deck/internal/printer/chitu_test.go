@@ -554,3 +554,20 @@ func TestChiTuTitle(t *testing.T) {
 		t.Errorf("after a restart: %q", st.Name())
 	}
 }
+
+// One print keeps its key when the read position of the board goes back a little; a print that
+// starts again (its clock starts at 0) gets a new key.
+func TestChiTuOneKey(t *testing.T) {
+	c := NewChiTu("127.0.0.1:1", "Phenom", &History{})
+	now := time.Now()
+	c.update(chitu.Status{Read: 5000, Size: 9000, Seconds: 600}, now)
+	key := c.State().FilePath
+	c.update(chitu.Status{Read: 4900, Size: 9000, Seconds: 602}, now.Add(2*time.Second))
+	if got := c.State().FilePath; got != key {
+		t.Errorf("a step back of the read position gave a new key: %q, was %q", got, key)
+	}
+	c.update(chitu.Status{Read: 100, Size: 9000, Seconds: 3}, now.Add(time.Hour))
+	if c.State().FilePath == key {
+		t.Error("a new print kept the key")
+	}
+}

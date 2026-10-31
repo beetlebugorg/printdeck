@@ -197,8 +197,10 @@ func (c *ChiTu) update(s chitu.Status, now time.Time) {
 	st.Reachable, st.Connected, st.Err = true, true, ""
 	st.Z, st.HasZ = s.Z, true
 	if s.Printing() {
-		if c.path == "" || s.Read < was.Read && was.Printing() {
-			// A new print: the board does not give the name of its file in M4000.
+		// A new print: the clock of the board starts again, or the file has another size. The read
+		// position alone can go back a little during a print, and gave one print two keys.
+		if c.path == "" || was.Printing() && (s.Seconds+10 < was.Seconds || s.Size != was.Size) {
+			// The board does not give the name of its file in M4000.
 			c.started = now.Add(-time.Duration(s.Seconds) * time.Second)
 			c.path, c.title = "resin-"+strconv.FormatInt(c.started.Unix(), 10), ""
 			if was.Size == 0 && c.lastAt.IsZero() {
