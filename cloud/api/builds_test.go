@@ -231,6 +231,60 @@ func TestPlanFlow(t *testing.T) {
 	}
 }
 
+// recordDispatch is a GitHub App for the tests: it records the slice runs that it starts.
+type recordDispatch struct {
+	runs []string
+	err  error
+}
+
+func (r *recordDispatch) Dispatch(_ context.Context, repo, build string) error {
+	r.runs = append(r.runs, repo+" "+build)
+	return r.err
+}
+
+// With the GitHub App, a build starts its slice run, and the run tells its ID. A refusal of
+// GitHub fails the build with the reason.
+func TestBuildDispatch(t *testing.T) {
+	d, base := devService(t)
+	base = strings.Replace(base, "127.0.0.1", "localhost", 1)
+	d.API.Base, d.Grants.URL = base, base+"/upload"
+	d.API.OIDC = fakeOIDC{}
+	app := &recordDispatch{}
+	d.API.GitHub = app
+	ctx := context.Background()
+	l := connectedLink(t, d, base)
+	var c cloud.Client
+	var oc cloud.OwnerCodeReply
+	c.Do(ctx, l.Identity(), "POST", "/api/v1/owner/code", nil, &oc)
+	tok := register(t, base, newSoftKey(t), "owner", oc.Code, "Jeremy").Token
+	sum, _ := c.NewProject(ctx, l.Identity(), "Bittlex")
+	call(t, base, "PUT", "/api/v1/projects/"+sum.ID+"/repo", tok, cloud.RepoRequest{Repo: "beetlebugorg/bittlex"}, nil)
+	token := "beetlebugorg/bittlex|refs/heads/main|" + strings.Repeat("ab", 20)
+	var up cloud.UploadReply
+	call(t, base, "POST", "/api/v1/plans", token, cloud.PlanManifest{Parts: []cloud.PlanPart{
+		{Name: "Pod door", Files: []string{"door.stl"}, Printer: "taz", Process: "fdm", Profile: "p/q@1", Material: "roll-4"}}}, &up)
+	if st := call(t, base, "POST", "/api/v1/plans/"+up.ID+"/done", token, nil, nil); st != 200 {
+		t.Fatal(st)
+	}
+	req := cloud.BuildRequest{Plates: []cloud.PlateRequest{{Parts: []cloud.PlatePart{{Part: 0, Count: 2}}}}}
+	var b cloud.ProjectBuild
+	if st := call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/plans/"+up.ID+"/builds", tok, req, &b); st != 200 {
+		t.Fatal(st)
+	}
+	if len(app.runs) != 1 || app.runs[0] != "beetlebugorg/bittlex "+b.ID || b.Start != "" || b.State != cloud.BuildSlicing {
+		t.Fatalf("dispatch %v %+v", app.runs, b)
+	}
+	if st := call(t, base, "POST", "/api/v1/builds/"+b.ID+"/started", token, cloud.BuildStarted{RunID: "41221435684"}, &b); st != 200 ||
+		b.Run != "https://github.com/beetlebugorg/bittlex/actions/runs/41221435684" {
+		t.Fatalf("started: %d %+v", st, b)
+	}
+	app.err = errors.New("the Printdeck GitHub App is not installed on beetlebugorg/bittlex: install it there")
+	call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/plans/"+up.ID+"/builds", tok, req, &b)
+	if b.State != cloud.BuildFailed || !strings.Contains(b.Error, "not installed") {
+		t.Fatalf("a refused dispatch: %+v", b)
+	}
+}
+
 // The checker of the tokens of GitHub reads the keys of the issuer, and checks the signature,
 // the issuer and the audience.
 func TestGitHubOIDC(t *testing.T) {

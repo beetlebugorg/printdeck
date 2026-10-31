@@ -59,6 +59,7 @@ type BuildRecord struct {
 	Created time.Time     `json:"created"`
 	State   string        `json:"state"`
 	Error   string        `json:"error,omitempty"`
+	RunID   string        `json:"run_id,omitempty"` // the slice run on GitHub
 	Plates  []plateRecord `json:"plates"`
 }
 
@@ -111,6 +112,23 @@ func (s *Server) routeActions(ctx context.Context, r *http.Request, body []byte,
 			job.Plates = append(job.Plates, pl.BuildPlate)
 		}
 		return job, nil
+	case kind == "builds" && action == "started" && r.Method == http.MethodPost:
+		var in cloud.BuildStarted
+		json.Unmarshal(body, &in)
+		b, err := s.actionBuild(ctx, p, c, id)
+		if err != nil {
+			return nil, err
+		}
+		if run := strings.TrimSpace(in.RunID); run != "" && len(run) <= 30 && strings.Trim(run, "0123456789") == "" {
+			b.RunID = run
+		}
+		if b.State == cloud.BuildFailed {
+			b.State, b.Error = cloud.BuildSlicing, "" // a run again of a build that failed
+		}
+		if err := s.putJSON(ctx, buildKey(p.ID, b.ID), b); err != nil {
+			return nil, err
+		}
+		return s.projectBuild(ctx, p, b), nil
 	case kind == "builds" && action == "files" && r.Method == http.MethodPost:
 		var in cloud.BuildFiles
 		if json.Unmarshal(body, &in) != nil {
@@ -564,8 +582,11 @@ func (s *Server) plansView(ctx context.Context, p *Project) []cloud.ProjectPlan 
 func (s *Server) projectBuild(ctx context.Context, p *Project, b *BuildRecord) cloud.ProjectBuild {
 	out := cloud.ProjectBuild{ID: b.ID, Plan: b.Plan, Commit: b.Commit, Created: b.Created, State: b.State, Error: b.Error,
 		Plates: []cloud.ProjectBuildPlate{}}
-	if b.State == cloud.BuildSlicing && s.GitHub == nil {
+	if b.State == cloud.BuildSlicing && s.GitHub == nil && b.RunID == "" {
 		out.Start = "gh workflow run printdeck.yml -R " + b.Repo + " -f build=" + b.ID
+	}
+	if b.RunID != "" {
+		out.Run = "https://github.com/" + b.Repo + "/actions/runs/" + b.RunID
 	}
 	dir := buildDir(p.ID, b.ID)
 	for _, pl := range b.Plates {

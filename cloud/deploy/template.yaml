@@ -52,11 +52,18 @@ Parameters:
     Type: String
     Default: ""
     Description: The secret with the private key (PEM) of the signed cookies of the files.
+  GitHubAppSecretArn:
+    Type: String
+    Default: ""
+    Description: >-
+      The secret of the GitHub App that starts the slice runs of the builds (pwf github-app), or ""
+      for none: the build page then shows the command that starts a run by hand.
 
 Conditions:
   HasConcurrency: !Not [!Equals [!Ref Concurrency, 0]]
   HasBudget: !Not [!Equals [!Ref AlertEmail, ""]]
   HasRelay: !Not [!Equals [!Ref RelaySecretArn, ""]]
+  HasGitHubApp: !Not [!Equals [!Ref GitHubAppSecretArn, ""]]
   HasFilesKey: !And
     - !Not [!Equals [!Ref FilesPublicKey, ""]]
     - !Not [!Equals [!Ref FilesKeySecretArn, ""]]
@@ -343,6 +350,12 @@ Resources:
                   Action: secretsmanager:GetSecretValue
                   Resource: !Ref FilesKeySecretArn
                 - !Ref "AWS::NoValue"
+              - !If
+                - HasGitHubApp
+                - Effect: Allow
+                  Action: secretsmanager:GetSecretValue
+                  Resource: !Ref GitHubAppSecretArn
+                - !Ref "AWS::NoValue"
 
   Logs:
     Type: AWS::Logs::LogGroup
@@ -373,6 +386,7 @@ Resources:
           TOPIC: !Ref BundleId
           FILES_KEY_SECRET: !If [HasFilesKey, !Ref FilesKeySecretArn, ""]
           FILES_KEY_ID: !If [HasFilesKey, !Ref FilesKey, ""]
+          GITHUB_APP_SECRET: !Ref GitHubAppSecretArn
 
   # The URL has no AWS auth: the API checks the signature of each deck request.
   Url:

@@ -115,6 +115,7 @@ func (a *app) bindBuilds() {
 		a.drawPlates()
 	})
 	on("bdCopy", "click", func() { go copyText(byID("bdStart").Get("textContent").String(), "bdCopyMsg") })
+	on("bdAgain", "click", func() { go a.sliceAgain() })
 }
 
 // The plan page.
@@ -625,6 +626,27 @@ func buildStateText(s string) string {
 	return s
 }
 
+// sliceAgain makes a new build of the plan with the plates of the build that failed.
+func (a *app) sliceAgain() {
+	b := a.lastBuild
+	var req wire.BuildRequest
+	for _, pl := range b.Plates {
+		var plate wire.PlateRequest
+		for _, pp := range pl.Parts {
+			plate.Parts = append(plate.Parts, wire.PlatePart{Part: pp.Part, Count: pp.Count})
+		}
+		req.Plates = append(req.Plates, plate)
+	}
+	say("bdAgainMsg", nil, "Starting the slice…")
+	var nb wire.ProjectBuild
+	if err := a.api("POST", "/projects/"+a.view.ID+"/plans/"+b.Plan+"/builds", req, &nb); err != nil {
+		say("bdAgainMsg", err, "")
+		return
+	}
+	say("bdAgainMsg", nil, "")
+	openAddress(buildPath(a.view.Slug, nb.ID))
+}
+
 // The build page.
 
 // showBuildPage shows the build id of the project. While the build slices, the page looks
@@ -680,6 +702,10 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 	setText("bdStart", b.Start)
 	setHidden("bdError", b.Error == "")
 	setText("bdError", b.Error)
+	setHidden("bdRun", b.Run == "")
+	byID("bdRun").Set("href", b.Run)
+	setHidden("bdAgain", !v.IsOwner || b.State != wire.BuildFailed)
+	a.lastBuild = b
 	box := byID("bdPlates")
 	box.Set("textContent", "")
 	for n, pl := range b.Plates {

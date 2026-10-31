@@ -154,6 +154,11 @@ type BuildFiles struct {
 	Plates []BuildPlate `json:"plates"`
 }
 
+// BuildStarted is the body of POST /api/v1/builds/<id>/started: the run of the slice on GitHub.
+type BuildStarted struct {
+	RunID string `json:"run_id"`
+}
+
 // BuildFailure is the body of POST /api/v1/builds/<id>/failed.
 type BuildFailure struct {
 	Error string `json:"error"`
@@ -168,7 +173,9 @@ type ProjectBuild struct {
 	State   string    `json:"state"`
 	Error   string    `json:"error,omitempty"`
 	// Start is the command that starts the slice run by hand, while the service cannot start it.
-	Start  string              `json:"start,omitempty"`
+	Start string `json:"start,omitempty"`
+	// Run is the page of the slice run on GitHub, after the run starts.
+	Run    string              `json:"run,omitempty"`
 	Plates []ProjectBuildPlate `json:"plates"`
 }
 

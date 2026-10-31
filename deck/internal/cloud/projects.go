@@ -35,6 +35,7 @@ type (
 	BuildJob          = wire.BuildJob
 	BuildFiles        = wire.BuildFiles
 	BuildFailure      = wire.BuildFailure
+	BuildStarted      = wire.BuildStarted
 	ProjectBuild      = wire.ProjectBuild
 	ProjectBuildPlate = wire.ProjectBuildPlate
 	BuildDecision     = wire.BuildDecision

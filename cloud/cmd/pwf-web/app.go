@@ -33,6 +33,7 @@ type app struct {
 	planChoices []planChoice
 	planPlates  [][]int
 	planShown   int
+	lastBuild   wire.ProjectBuild // the build of the build page
 }
 
 const tokenKey = "pwf-session"

@@ -85,6 +85,15 @@ func runDeploy(ctx context.Context, cfg aws.Config, opt deployOptions) error {
 		return err
 	}
 	params["FilesKeySecretArn"], params["FilesPublicKey"] = arn, pub
+	// The GitHub App that starts the slice runs (api/githubapp.go), when pwf github-app kept it.
+	app, err := githubAppSecret(ctx, cfg, opt.Stack)
+	if err != nil {
+		return err
+	}
+	params["GitHubAppSecretArn"] = app
+	if app != "" {
+		fmt.Println("The service starts the slice runs with the GitHub App")
+	}
 	fmt.Println("Deploying the stack " + opt.Stack + ". The first deploy takes 5 to 30 minutes: CloudFront and the certificate.")
 	if err := deployStack(ctx, cfg, opt.Stack, params); err != nil {
 		return err

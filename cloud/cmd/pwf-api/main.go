@@ -51,6 +51,22 @@ func main() {
 		s.Files = &api.FileSigner{Domain: s.Domain, KeyID: id, Key: key}
 		s.Grants.(*api.S3Granter).Paths = true
 	}
+	// The GitHub App that starts the slice runs of the builds, when the stack has it.
+	if arn := os.Getenv("GITHUB_APP_SECRET"); arn != "" {
+		out, err := secretsmanager.NewFromConfig(cfg).GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{SecretId: &arn})
+		if err != nil {
+			log.Fatal("pwf-api: the secret of the GitHub App did not read")
+		}
+		var sec api.GitHubAppSecret
+		if err := json.Unmarshal([]byte(*out.SecretString), &sec); err != nil {
+			log.Fatal("pwf-api: the secret of the GitHub App is not JSON")
+		}
+		key, err := api.ParseFileKey(sec.PrivateKey)
+		if err != nil {
+			log.Fatalf("pwf-api: the key of the GitHub App: %v", err)
+		}
+		s.GitHub = &api.GitHubApp{AppID: sec.AppID, Key: key}
+	}
 	// The push relay of the iPhone app, with the secret of the relay: its APNs key and the key
 	// of its send tokens.
 	if arn := os.Getenv("RELAY_SECRET_ARN"); arn != "" {

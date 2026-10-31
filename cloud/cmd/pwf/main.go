@@ -69,6 +69,8 @@ func main() {
 		err = runRelay(ctx, cfg, fs.Args())
 	case "decks":
 		err = decks(ctx, cfg, *stack, fs.Args())
+	case "github-app":
+		err = runGitHubApp(ctx, cfg, *stack, fs.Args())
 	default:
 		usage()
 	}
@@ -78,7 +80,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: pwf deploy | enroll-code | decks [remove ID] | relay set-apple-key | dev")
+	fmt.Fprintln(os.Stderr, "usage: pwf deploy | enroll-code | decks [remove ID] | relay set-apple-key | github-app --id N --key app.pem | dev")
 	os.Exit(2)
 }
 
