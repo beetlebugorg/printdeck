@@ -571,3 +571,39 @@ func TestChiTuOneKey(t *testing.T) {
 		t.Error("a new print kept the key")
 	}
 }
+
+// With the queue of the deck, a press on Print in ChiTuBox never starts the board: during a print
+// the file goes to the queue, and with files in the queue the deck asks on its screen.
+func TestChiTuStartWithAQueue(t *testing.T) {
+	b, err := chitu.NewFakeBoard("127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer b.Close()
+	c := NewChiTu(b.Addr(), "Phenom", &History{})
+	var queued, asked []string
+	c.Enqueue = func(name string) error { queued = append(queued, name); return nil }
+	c.QueueLen = func() int { return len(queued) }
+	c.AskSent = func(name string) { asked = append(asked, name) }
+
+	c.mu.Lock()
+	c.last = chitu.Status{Size: 1000, Read: 10}
+	c.mu.Unlock()
+	if a := c.RequestStart("a.cbddlp"); !strings.Contains(a, "queue") {
+		t.Fatalf("a start during a print: %q", a)
+	}
+	c.mu.Lock()
+	c.last = chitu.Status{}
+	c.mu.Unlock()
+	if a := c.RequestStart("b.cbddlp"); !strings.Contains(a, "Choose on the deck") {
+		t.Fatalf("a start with a queue: %q", a)
+	}
+	if strings.Join(queued, ",") != "a.cbddlp" || strings.Join(asked, ",") != "b.cbddlp" {
+		t.Errorf("queued %v, asked %v", queued, asked)
+	}
+	for _, q := range b.Log() {
+		if strings.HasPrefix(q, "M6030") {
+			t.Fatalf("the board got %q", q)
+		}
+	}
+}

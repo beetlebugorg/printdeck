@@ -18,8 +18,16 @@ import (
 // queueItem is the file path as a file of the queue, with its name, material and time.
 func (a *App) queueItem(path, from string) queue.Item {
 	m := a.Printer.FileMeta(path)
-	return queue.Item{Path: path, Name: m.Name(path), Project: m.Project, Material: m.Material, MaterialName: m.MaterialName,
+	it := queue.Item{Path: path, Name: m.Name(path), Project: m.Project, Material: m.Material, MaterialName: m.MaterialName,
 		Color: m.Color, Seconds: int(m.PrintTime.Seconds()), From: from}
+	// A resin file: the time from its header, and the project of the next print.
+	if r, ok := a.Printer.(interface{ FileSeconds(string) int }); ok && it.Seconds == 0 {
+		it.Seconds = r.FileSeconds(path)
+	}
+	if it.Project == "" && a.resin() {
+		it.Project = a.Printer.NextProject()
+	}
+	return it
 }
 
 // Enqueue adds the file path to the end of the queue. from is "deck", "slicer" or "build". It is
@@ -143,6 +151,12 @@ func (a *App) askQueueNext() {
 			{"Later", "It waits in Machine, Queue", dim, func() {}},
 		}})
 	}
+}
+
+// AskSentFile asks on each screen what to do with a file that a slicer asks to print while the
+// queue has files. It is safe from any goroutine.
+func (a *App) AskSentFile(path string) {
+	a.post(func() { a.askSentFile(path) })
 }
 
 // askSentFile asks what to do with a file that a slicer sent to print while the queue has files:

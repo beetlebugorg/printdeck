@@ -39,6 +39,12 @@ import (
 // send no command until their test on a small print. The controls of a FDM printer and of Klipper
 // return ErrNotSupported.
 type ChiTu struct {
+	// The print queue of the deck: Enqueue adds a file, QueueLen counts the files, and AskSent
+	// asks on the screens of the deck about a file that ChiTuBox asks to print while the queue has
+	// files. Each can be nil. The deck never starts a queued file without a press on the deck.
+	Enqueue  func(name string) error
+	QueueLen func() int
+	AskSent  func(name string)
 	Client *chitu.Client
 	Hist   *History
 	Name   string // the name of the printer, for the screens
@@ -927,6 +933,14 @@ func (c *ChiTu) header(name string) *chitu.Sliced {
 // HeaderOf returns the header of the deck's copy of the file name, or nil.
 func (c *ChiTu) HeaderOf(name string) *chitu.Sliced { return c.header(name) }
 
+// FileSeconds is the print time of the file name from its header, or 0.
+func (c *ChiTu) FileSeconds(name string) int {
+	if h := c.header(name); h != nil {
+		return int(h.PrintSeconds)
+	}
+	return 0
+}
+
 // filePlan is the plan of the layers of a file: the seconds of light of each layer, and the seconds
 // of the moves of the plate for each layer from the print time of the header.
 type filePlan struct {
@@ -1049,6 +1063,11 @@ func (c *ChiTu) RequestStart(name string) string {
 	busy, bad, printing := c.sending != "", c.incomplete(name), c.last.Printing()
 	c.mu.Unlock()
 	if printing {
+		// The file waits in the queue of the deck. A press on the deck starts it after the print.
+		if c.Enqueue != nil && c.Enqueue(name) == nil {
+			log.Printf("chitu: %s goes to the queue: a print runs", name)
+			return "Error:The printer prints now. The file is in the queue of the deck."
+		}
 		log.Printf("chitu: refused a start of %s during a print", name)
 		return "Error:The printer prints now"
 	}
@@ -1057,6 +1076,12 @@ func (c *ChiTu) RequestStart(name string) string {
 	}
 	if bad {
 		return "Error:The file on the printer is incomplete"
+	}
+	if c.QueueLen != nil && c.AskSent != nil && c.QueueLen() > 0 {
+		// The queue has files: the deck asks on its screen, and a press there starts the print.
+		log.Printf("chitu: the deck asks about %s: the queue has files", name)
+		c.AskSent(name)
+		return "Error:The deck has a queue. Choose on the deck: this file now, or after the queue."
 	}
 	return c.startNow(name)
 }

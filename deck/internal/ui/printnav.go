@@ -336,6 +336,12 @@ func (a *App) drawLastPrint(c *gfx.Canvas, st printer.State, last image.Rectangl
 // (materialCheck).
 func (a *App) confirmPrint(path string) {
 	name := a.Printer.FileMeta(path).Name(path)
+	if a.resin() && strings.HasPrefix(path, "resin-") {
+		// The key of a print in the history, and not a file on the printer: the deck does not know
+		// the file of the print, and the board would refuse the name.
+		a.confirm = &confirmBox{question: "The deck does not know the file of this print. Print it from Files.", yes: "OK", onYes: func() {}}
+		return
+	}
 	if a.resin() {
 		a.confirmResinPrint(path, name)
 		return

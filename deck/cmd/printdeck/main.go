@@ -264,6 +264,13 @@ func run(cfg config.Config) {
 	// The print queue, and the question of the next file at the end of each print.
 	app.Queue = &queue.Queue{Path: filepath.Join(cfg.StateDir, "queue.json"), OnChange: app.Redraw}
 	go watchQueue(ctx, pr, app)
+	if c, ok := pr.(*printer.ChiTu); ok {
+		// ChiTuBox: a start during a print goes to the queue, and a start with files in the
+		// queue asks on the deck.
+		c.Enqueue = func(name string) error { return app.Enqueue(name, "slicer") }
+		c.QueueLen = app.Queue.Len
+		c.AskSent = app.AskSentFile
+	}
 
 	// The samples of the CPU, the memory and the disk writes, in memory only.
 	app.Metrics = hostmetrics.New()

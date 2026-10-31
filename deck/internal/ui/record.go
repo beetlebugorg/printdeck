@@ -279,5 +279,8 @@ func (a *App) reprintKey(c *gfx.Canvas, r image.Rectangle, rec printer.Record, g
 		return
 	}
 	path := rec.Path
+	if a.resin() && rec.File != "" {
+		path = rec.File // the file on the board; Path is the key of the history
+	}
 	a.printerKey(c, r, "Reprint", fill, fg, func() { a.confirmPrint(path) })
 }

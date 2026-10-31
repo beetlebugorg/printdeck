@@ -580,6 +580,9 @@ func (a *App) drawDone(c *gfx.Canvas, st printer.State) {
 	}
 	seen := finishedKey(st)
 	path := st.FinishedPath
+	if a.resin() && st.FinishedFile != "" {
+		path = st.FinishedFile // the file on the board; FinishedPath is the key of the history
+	}
 	video, saving := a.doneVideo(st)
 	if a.canShare() {
 		// Share is in the place of the Reprint key's neighbor: Reprint, Share, the time lapse, Done.
