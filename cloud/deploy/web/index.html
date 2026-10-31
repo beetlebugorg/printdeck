@@ -210,8 +210,12 @@
 
     <!-- The photos -->
     <section class="card" id="pPhotosCard" aria-label="Photos" data-on="photos">
-      <label class="file"><input type="file" id="photoFile" accept="image/jpeg,image/png" multiple><span>Add photos</span></label>
+      <div class="photo-keys">
+        <label class="file"><input type="file" id="photoFile" accept="image/jpeg,image/png" multiple><span>Add photos</span></label>
+        <label class="file"><input type="file" id="photoCam" accept="image/jpeg,image/png" capture="environment"><span>Take photos</span></label>
+      </div>
       <p class="msg" id="photoMsg" role="status"></p>
+      <button type="button" id="photoAgain" hidden>Take another photo</button>
       <div class="photos" id="photos" data-gallery></div>
     </section>
 
@@ -480,8 +484,12 @@
 
     <section class="card" id="prPhotosCard" aria-label="Photos of this print">
       <h2>Photos</h2>
-      <label class="file" id="prPhotoAdd"><input type="file" id="prPhotoFile" accept="image/jpeg,image/png" multiple><span>Add photos of this print</span></label>
+      <div class="photo-keys" id="prPhotoAdd">
+        <label class="file"><input type="file" id="prPhotoFile" accept="image/jpeg,image/png" multiple><span>Add photos of this print</span></label>
+        <label class="file"><input type="file" id="prPhotoCam" accept="image/jpeg,image/png" capture="environment"><span>Take photos</span></label>
+      </div>
       <p class="msg" id="prPhotoMsg" role="status"></p>
+      <button type="button" id="prPhotoAgain" hidden>Take another photo</button>
       <div class="photos" id="prPhotos" data-gallery></div>
     </section>
 

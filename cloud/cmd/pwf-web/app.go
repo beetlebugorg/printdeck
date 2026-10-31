@@ -81,6 +81,19 @@ func runApp() {
 	on("prRemove", "click", func() { go a.removePrint() })
 	onFiles("photoFile", func(files []js.Value) { a.addPhotos(files, "", "photoMsg") })
 	onFiles("prPhotoFile", func(files []js.Value) { a.addPhotos(files, a.print, "prPhotoMsg") })
+	// The camera: one photo at a time, and then Take another photo opens the camera again.
+	onFiles("photoCam", func(files []js.Value) {
+		setHidden("photoAgain", true)
+		a.addPhotos(files, "", "photoMsg")
+		setHidden("photoAgain", false)
+	})
+	onFiles("prPhotoCam", func(files []js.Value) {
+		setHidden("prPhotoAgain", true)
+		a.addPhotos(files, a.print, "prPhotoMsg")
+		setHidden("prPhotoAgain", false)
+	})
+	on("photoAgain", "click", func() { byID("photoCam").Call("click") })
+	on("prPhotoAgain", "click", func() { byID("prPhotoCam").Call("click") })
 	js.Global().Call("addEventListener", "hashchange", js.FuncOf(func(js.Value, []js.Value) any {
 		if newView() {
 			go a.route()
@@ -894,20 +907,31 @@ func (a *app) reload() {
 // addPhotos uploads the files, one at a time, as photos of the print (or "" for the project). msg
 // is the element of the messages.
 func (a *app) addPhotos(files []js.Value, print, msg string) {
+	// Each photo goes up; a photo that fails does not stop the others.
+	sent := 0
+	var last error
 	for i, f := range files {
 		say(msg, nil, fmt.Sprintf("Sending photo %d of %d…", i+1, len(files)))
 		if err := a.addPhoto(f, print); err != nil {
-			say(msg, err, "")
-			return
+			last = err
+			continue
 		}
+		sent++
 	}
-	say(msg, nil, "")
+	done := count(sent, "photo", "photos") + " added."
+	if last != nil {
+		done = fmt.Sprintf("%d of %d photos added. %s", sent, len(files), last.Error())
+	}
 	if print != "" {
 		a.showProject(a.view.ID, 0, print)
-		say(msg, nil, "The photos are on the page.")
+	} else {
+		a.reload()
+	}
+	if last != nil {
+		say(msg, errors.New(done), "")
 		return
 	}
-	a.reload()
+	say(msg, nil, done)
 }
 
 func (a *app) addPhoto(file js.Value, print string) error {

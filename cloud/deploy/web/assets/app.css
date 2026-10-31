@@ -386,3 +386,5 @@ body:has(#projHead:not([hidden])) #psBack, body:has(#projHead:not([hidden])) #pl
   border: 2px solid var(--cap); }
 .pickup .pthumbs img:first-child { margin-left: 0; }
 .pickup .pthumbs img.model { object-fit: contain; }
+.photo-keys { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
+@media (min-width: 700px) { .photo-keys { grid-template-columns: 1fr; } .photo-keys .file:nth-child(2) { display: none; } }
