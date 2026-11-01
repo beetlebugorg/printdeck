@@ -23,9 +23,26 @@ import (
 // uses TinyGo when it finds it, and Go when it does not. Each compiler has its own wasm_exec.js.
 
 // boot starts the WebAssembly after wasm_exec.js, in assets/pwf.js. %s is the path of the
-// WebAssembly file.
+// WebAssembly file. Before the WebAssembly loads, boot starts the first API request of the
+// project pages, with the session token: the page then waits for the slower of the two, not for
+// both one after the other. The page takes the reply from pwfFirst (cmd/pwf-web, takeFirst).
 const boot = `
 (() => {
+  try {
+    const t = sessionStorage.getItem("pwf-session");
+    const path = location.pathname.replace(/\/$/, "");
+    // A project, a tab or a print. The pages of the plans, the builds and the printers make
+    // other requests.
+    const m = path.match(/^\/projects\/([a-z0-9-]+)(?:\/(?!plans$|builds$|printers$)[a-z0-9-]+)?$/);
+    let url = "";
+    if (path === "/projects") url = "/api/v1/projects";
+    else if (m && !location.hash) url = "/api/v1/names/" + m[1] + "?view=1";
+    if (t && url) {
+      window.pwfFirst = {url, reply: fetch(url, {cache: "no-store",
+        headers: {"Content-Type": "application/json", "Authorization": "Bearer " + t}})
+        .then((r) => r.text().then((text) => ({status: r.status, text})))};
+    }
+  } catch (e) {}
   const go = new Go();
   WebAssembly.instantiateStreaming(fetch("%s"), go.importObject)
     .then((r) => go.run(r.instance));

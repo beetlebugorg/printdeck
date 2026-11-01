@@ -239,7 +239,14 @@ func (a *app) api(method, path string, in, out any) error {
 		b, _ := json.Marshal(in)
 		body = js.ValueOf(string(b))
 	}
-	status, text, err := fetchDo(method, "/api/v1"+path, headers, body)
+	status, text, ok := 0, "", false
+	var err error
+	if method == "GET" {
+		status, text, ok = takeFirst("/api/v1" + path)
+	}
+	if !ok {
+		status, text, err = fetchDo(method, "/api/v1"+path, headers, body)
+	}
 	if err != nil {
 		return err
 	}
@@ -255,6 +262,36 @@ func (a *app) api(method, path string, in, out any) error {
 		return json.Unmarshal([]byte(text), out)
 	}
 	return nil
+}
+
+// takeFirst returns the reply of the request that pwf.js started for the url before the
+// WebAssembly loaded (window.pwfFirst), once. ok is false when pwf.js started no such request,
+// or when it failed.
+func takeFirst(url string) (status int, text string, ok bool) {
+	first := js.Global().Get("pwfFirst")
+	if first.IsUndefined() || first.IsNull() || first.Get("url").String() != url {
+		return 0, "", false
+	}
+	js.Global().Set("pwfFirst", js.Null())
+	type result struct {
+		status int
+		text   string
+		ok     bool
+	}
+	ch := make(chan result, 1)
+	then := js.FuncOf(func(_ js.Value, args []js.Value) any {
+		ch <- result{args[0].Get("status").Int(), args[0].Get("text").String(), true}
+		return nil
+	})
+	fail := js.FuncOf(func(_ js.Value, _ []js.Value) any {
+		ch <- result{}
+		return nil
+	})
+	defer then.Release()
+	defer fail.Release()
+	first.Get("reply").Call("then", then).Call("catch", fail)
+	r := <-ch
+	return r.status, r.text, r.ok
 }
 
 // say shows a message in the element id: an error in red.
@@ -481,8 +518,9 @@ func (a *app) newProject() {
 // showSlug shows the project of the address /projects/<slug>, or the page of its print number n
 // when n is not "".
 func (a *app) showSlug(slug, n string) {
+	// One request: the project of the slug and its view.
 	var nr wire.NameReply
-	if err := a.api("GET", "/names/"+slug, nil, &nr); err != nil {
+	if err := a.api("GET", "/names/"+slug+"?view=1", nil, &nr); err != nil {
 		a.failed(err)
 		return
 	}
@@ -491,7 +529,11 @@ func (a *app) showSlug(slug, n string) {
 		a.tab, n = n, ""
 	}
 	num, _ := strconv.Atoi(n)
-	a.showProject(nr.ID, num, "")
+	if nr.View == nil {
+		a.showProject(nr.ID, num, "")
+		return
+	}
+	a.showView(nr.View, num, "")
 }
 
 // showProject shows the project id, or the page of its print: the print number n, or the print
@@ -503,7 +545,13 @@ func (a *app) showProject(id string, n int, print string) {
 		a.failed(err)
 		return
 	}
-	a.view, a.print = &v, ""
+	a.showView(&v, n, print)
+}
+
+// showView shows the project view v, as showProject does.
+func (a *app) showView(v *wire.ProjectView, n int, print string) {
+	id := v.ID
+	a.view, a.print = v, ""
 	doc.Set("title", v.Name+" · Printdeck")
 	for _, p := range v.Prints {
 		if n > 0 && p.N == n || print != "" && p.ID == print {

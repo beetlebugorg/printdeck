@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"sort"
 	"strings"
@@ -254,16 +253,22 @@ func (s *Server) routeQueue(ctx context.Context, r *http.Request, body []byte, i
 // printersOf returns the printers with the IDs ids, for a project view. public leaves out the deck
 // and the key.
 func (s *Server) printersOf(ctx context.Context, ids map[string]bool, public bool) []cloud.Printer {
-	var out []cloud.Printer
+	var keys []string
 	for id := range ids {
-		p, err := s.loadPrinter(ctx, id)
-		if errors.Is(err, ErrNotFound) || err != nil {
+		if validID(id) {
+			keys = append(keys, printerKey(id))
+		}
+	}
+	var out []cloud.Printer
+	for _, b := range s.getAll(ctx, keys) {
+		var p cloud.Printer
+		if b == nil || json.Unmarshal(b, &p) != nil {
 			continue
 		}
 		if public {
 			p.Deck, p.Key = "", ""
 		}
-		out = append(out, *p)
+		out = append(out, p)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out

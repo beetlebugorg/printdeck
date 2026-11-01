@@ -209,6 +209,20 @@ func TestPRComment(t *testing.T) {
 	if st := prState(); st != "closed" {
 		t.Fatalf("state %q after the next check", st)
 	}
+
+	// With Later, a job asks GitHub: the view shows the old state, and the next view the new one.
+	var jobs []Job
+	d.API.Later = func(_ context.Context, j Job) error { jobs = append(jobs, j); return nil }
+	defer func() { d.API.Later = nil }()
+	app.states = map[int]string{7: "merged"}
+	d.API.Now = func() time.Time { return time.Now().Add(prCheckOpen + prCheckClosed + 2*time.Minute) }
+	if st := prState(); st != "closed" || len(jobs) != 1 || jobs[0].Kind != "prstate" || jobs[0].PR != 7 {
+		t.Fatalf("state %q, jobs %+v", st, jobs)
+	}
+	d.API.RunJob(ctx, jobs[0])
+	if st := prState(); st != "merged" {
+		t.Fatalf("state %q after the job", st)
+	}
 }
 
 // With Later, the comment is a job after the request: the request writes no comment, and the

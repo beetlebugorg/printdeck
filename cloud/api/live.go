@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"printdeck/internal/cloud"
@@ -179,23 +180,50 @@ func (s *Server) endLive(ctx context.Context, project string, d *Deck, printer s
 // and the share links that no live record has. prints are the prints of the project: a live
 // record of a print that is in the project already does not show.
 func (s *Server) liveView(ctx context.Context, p *Project, prints []PrintRecord) []cloud.ProjectLive {
-	var out []cloud.ProjectLive
-	shown := map[string]bool{}
-	keys, _ := s.Store.List(ctx, "x/"+p.ID+"/live/")
-	now := s.now()
-	var decks []string // the deck of each tile of out
+	return s.liveTiles(ctx, p, s.loadLiveData(ctx, p), prints)
+}
+
+// liveData are the live records and the open shares of a project, for liveTiles.
+type liveData struct {
+	recs []*LiveRecord
+	open []liveShare
+}
+
+// loadLiveData reads the live records and the open shares of the project p, at the same time.
+// It needs no prints, so a view reads it next to the prints.
+func (s *Server) loadLiveData(ctx context.Context, p *Project) liveData {
+	var d liveData
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		d.open = s.liveShares(ctx, p)
+	}()
+	keys, _, _ := s.Store.ListDir(ctx, "x/"+p.ID+"/live/")
 	var recKeys []string
 	for _, k := range keys {
-		rel := strings.TrimPrefix(k, "x/"+p.ID+"/live/")
-		if !strings.Contains(rel, "/") && strings.HasSuffix(rel, ".json") {
+		if strings.HasSuffix(k, ".json") {
 			recKeys = append(recKeys, k)
 		}
 	}
 	for _, b := range s.getAll(ctx, recKeys) {
 		rec := &LiveRecord{}
-		if b == nil || json.Unmarshal(b, rec) != nil {
-			continue
+		if b != nil && json.Unmarshal(b, rec) == nil {
+			d.recs = append(d.recs, rec)
 		}
+	}
+	wg.Wait()
+	return d
+}
+
+// liveTiles returns the live tiles of the project p from its live data d. prints are the prints
+// of the project: a live record of a print that is in the project already does not show.
+func (s *Server) liveTiles(ctx context.Context, p *Project, d liveData, prints []PrintRecord) []cloud.ProjectLive {
+	var out []cloud.ProjectLive
+	shown := map[string]bool{}
+	now := s.now()
+	var decks []string // the deck of each tile of out
+	for _, rec := range d.recs {
 		age := now.Sub(rec.Updated)
 		if rec.Result == "" && age > liveStale || age > liveEnded || isUp(rec, prints) {
 			continue
@@ -226,7 +254,7 @@ func (s *Server) liveView(ctx context.Context, p *Project, prints []PrintRecord)
 	}
 	// A deck runs one print at a time: of its open shares, only the newest shows. The others are
 	// old, from before a restart of the deck, when the deck has no live tile now.
-	open := s.liveShares(ctx, p)
+	open := d.open
 	newest := map[string]time.Time{}
 	for _, l := range open {
 		if l.deck != "" && l.Started.After(newest[l.deck]) {

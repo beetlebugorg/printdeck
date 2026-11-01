@@ -304,7 +304,18 @@ func (s *Server) lookupName(ctx context.Context, r *http.Request, slug string) (
 	if p, err = s.ensureSlug(ctx, p); err != nil {
 		return nil, err
 	}
-	return cloud.NameReply{ID: p.ID, Slug: p.Slug}, nil
+	out := cloud.NameReply{ID: p.ID, Slug: p.Slug}
+	if r.URL.Query().Get("view") != "" {
+		w := &who{owner: true, name: s.ownerName(ctx)}
+		if ss.Kind != KindOwner {
+			m := p.member(ss.memberIn(rec.Project))
+			w = &who{member: m.ID, project: p.ID, name: m.Name}
+		}
+		if out.View, err = s.viewProject(ctx, p, w); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }
 
 // numberPrints gives a number to each print in recs, in the order of their upload, after the

@@ -41,9 +41,37 @@ type Store interface {
 	Delete(ctx context.Context, key string) error
 	// List returns the keys that start with prefix, in order.
 	List(ctx context.Context, prefix string) ([]string, error)
+	// ListDir returns one level of the folder prefix (a prefix that ends in "/"): the keys of
+	// its files, and its subfolders (each a prefix that ends in "/"), in order. A folder with many
+	// files in its subfolders, for example the time lapse frames of the prints, lists fast.
+	ListDir(ctx context.Context, prefix string) (files, dirs []string, err error)
 	// Copy copies the file at src to dst, with the options of opt (an empty content type is the
 	// type of the extension of dst). It returns ErrNotFound for no file at src.
 	Copy(ctx context.Context, src, dst string, opt PutOptions) error
+}
+
+// splitDir returns one level of the folder prefix from the keys under it, for ListDir.
+func splitDir(prefix string, keys []string) (files, dirs []string) {
+	seen := map[string]bool{}
+	for _, k := range keys {
+		rel := strings.TrimPrefix(k, prefix)
+		if i := strings.IndexByte(rel, '/'); i >= 0 {
+			d := prefix + rel[:i+1]
+			if !seen[d] {
+				seen[d] = true
+				dirs = append(dirs, d)
+			}
+			continue
+		}
+		files = append(files, k)
+	}
+	return files, dirs
+}
+
+func (m *MemStore) ListDir(ctx context.Context, prefix string) ([]string, []string, error) {
+	keys, err := m.List(ctx, prefix)
+	files, dirs := splitDir(prefix, keys)
+	return files, dirs, err
 }
 
 // copyFile is Copy with Get and Put, for the stores with no copy on the server.
@@ -138,7 +166,7 @@ func (m *MemStore) CacheControl(key string) string {
 
 // getConcurrency is the most reads of getAll at one time, and the most calls of forAll at one
 // time.
-const getConcurrency = 16
+const getConcurrency = 64
 
 // forAll calls f for each i from 0 to n-1, getConcurrency calls at one time. It returns the
 // first error.

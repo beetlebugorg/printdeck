@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"printdeck/internal/cloud"
@@ -642,7 +643,7 @@ func (s *Server) loadRecord(ctx context.Context, key, id, what string, v any) er
 // recordIDs returns the IDs of the records of a folder of the project ("plans" or "builds").
 func (s *Server) recordIDs(ctx context.Context, project, folder string) ([]string, error) {
 	prefix := "x/" + project + "/" + folder + "/"
-	keys, err := s.Store.List(ctx, prefix)
+	keys, _, err := s.Store.ListDir(ctx, prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -810,29 +811,69 @@ func (s *Server) projectDocs(ctx context.Context, p *Project, plans []*PlanRecor
 // plansView returns the newest plans of the project (at most limit, or all for 0), each with
 // its builds, the count of all the plans, and the PDFs of the project (projectDocs).
 func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.ProjectPlan, int, []cloud.ProjectDoc) {
+	// The plans and the builds at the same time.
+	var builds []*BuildRecord
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		builds, _ = s.loadBuilds(ctx, p.ID)
+	}()
 	plans, err := s.loadPlans(ctx, p.ID)
+	wg.Wait()
 	if err != nil {
 		return nil, 0, nil
 	}
-	builds, _ := s.loadBuilds(ctx, p.ID)
-	var out []cloud.ProjectPlan
-	states := map[int]string{} // the state of each pull request
-	for i, rec := range plans {
-		if limit > 0 && i >= limit {
-			break
+	shown := plans
+	if limit > 0 && len(shown) > limit {
+		shown = shown[:limit]
+	}
+	// The states of the pull requests, and the names of the printers of the plates, at the same
+	// time.
+	var prs []int
+	seen := map[int]bool{}
+	for _, rec := range shown {
+		if rec.Kind == cloud.BuildTest && rec.PR > 0 && !seen[rec.PR] {
+			seen[rec.PR] = true
+			prs = append(prs, rec.PR)
 		}
+	}
+	ids := map[string]bool{}
+	for _, b := range builds {
+		for _, pl := range b.Plates {
+			if pl.Sent != "" {
+				ids[pl.Sent] = true
+			}
+		}
+	}
+	states := make([]string, len(prs))
+	var names map[string]string
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		names = map[string]string{}
+		for _, pr := range s.printersOf(ctx, ids, false) {
+			names[pr.ID] = pr.Name
+		}
+	}()
+	forAll(len(prs), func(i int) error {
+		states[i] = s.prState(ctx, p, prs[i])
+		return nil
+	})
+	wg.Wait()
+	var out []cloud.ProjectPlan
+	for _, rec := range shown {
 		pv := s.projectPlan(ctx, p, rec)
 		if rec.Kind == cloud.BuildTest && rec.PR > 0 {
-			st, ok := states[rec.PR]
-			if !ok {
-				st = s.prState(ctx, p, rec.PR)
-				states[rec.PR] = st
+			for i, pr := range prs {
+				if pr == rec.PR {
+					pv.PRState = states[i]
+				}
 			}
-			pv.PRState = st
 		}
 		for _, b := range builds {
 			if b.Plan == rec.ID {
-				pv.Builds = append(pv.Builds, s.projectBuild(ctx, p, b))
+				pv.Builds = append(pv.Builds, s.projectBuildNamed(ctx, p, b, names))
 			}
 		}
 		out = append(out, pv)
@@ -842,6 +883,11 @@ func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.
 
 // projectBuild is a build for the pages, with the addresses of its files.
 func (s *Server) projectBuild(ctx context.Context, p *Project, b *BuildRecord) cloud.ProjectBuild {
+	return s.projectBuildNamed(ctx, p, b, nil)
+}
+
+// projectBuildNamed is projectBuild with the names of the printers by ID, or nil to read them.
+func (s *Server) projectBuildNamed(ctx context.Context, p *Project, b *BuildRecord, names map[string]string) cloud.ProjectBuild {
 	out := cloud.ProjectBuild{ID: b.ID, Plan: b.Plan, Commit: b.Commit, Created: b.Created, State: b.State, Error: b.Error,
 		Plates: []cloud.ProjectBuildPlate{}}
 	if b.State == cloud.BuildSlicing && s.GitHub == nil && b.RunID == "" {
@@ -857,7 +903,9 @@ func (s *Server) projectBuild(ctx context.Context, p *Project, b *BuildRecord) c
 	for _, pl := range b.Plates {
 		pp := cloud.ProjectBuildPlate{BuildPlate: pl.BuildPlate, State: pl.State, By: pl.By, At: pl.At, Reason: pl.Reason,
 			SentAt: pl.SentAt, TakenAt: pl.Taken}
-		if pl.Sent != "" {
+		if pl.Sent != "" && names != nil {
+			pp.SentTo = names[pl.Sent]
+		} else if pl.Sent != "" {
 			if pr, err := s.loadPrinter(ctx, pl.Sent); err == nil {
 				pp.SentTo = pr.Name
 			}
