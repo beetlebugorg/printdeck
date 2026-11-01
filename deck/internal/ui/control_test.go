@@ -645,7 +645,7 @@ func TestMaterialCheck(t *testing.T) {
 	if q, yes, danger, _ := a.materialCheck("x.gcode"); q != "The file is for Black ABS. White (PLA) is in the printer." || yes != "Print anyway" || !danger {
 		t.Errorf("another material: %q %q %v", q, yes, danger)
 	}
-	pr.Meta_.Material = "pla"
+	pr.Meta_.Material, pr.Meta_.MaterialName = "pla", "White PLA"
 	if q, _, _, _ := a.materialCheck("x.gcode"); q != "" {
 		t.Errorf("the same material: %q", q)
 	}
@@ -878,5 +878,33 @@ func TestMachineKeysOpenPages(t *testing.T) {
 				t.Errorf("wide %v: %s is in a list that scrolls", wide, f.label)
 			}
 		}
+	}
+}
+
+// A file for another color of the same type asks before the print: a plate for navy PLA, and
+// black PLA in the printer.
+func TestMaterialCheckColor(t *testing.T) {
+	a, pr, _ := newPrintApp(idle)
+	pr.Meta_ = gcodemeta.Meta{Material: "PLA", MaterialName: "Navy", Color: "#1f2a5a"}
+	pr.Spools_ = &printer.Spools{}
+	black := pr.Spools_.Add("Black", "PLA", 1200, 200, 0, time.Unix(1, 0))
+	// No color on the roll: the names differ.
+	if q, yes, danger, _ := a.materialCheck("x.gcode"); q != "The file is for Navy (PLA). Black (PLA) is in the printer." || yes != "Print anyway" || !danger {
+		t.Errorf("by name: %q %q %v", q, yes, danger)
+	}
+	// The colors differ.
+	pr.Spools_.SetColor(black.ID, "#1a1a1a")
+	if q, _, _, _ := a.materialCheck("x.gcode"); q == "" {
+		t.Error("by color: no question")
+	}
+	// The same color in another hex code: no question.
+	pr.Spools_.SetColor(black.ID, "#20295c")
+	if q, _, _, _ := a.materialCheck("x.gcode"); q != "" {
+		t.Errorf("a close color: %q", q)
+	}
+	// A roll with the color in its name, and no color: no question.
+	pr.Spools_.Add("MatterHackers PLA Navy", "PLA", 1200, 200, 0, time.Unix(2, 0))
+	if q, _, _, _ := a.materialCheck("x.gcode"); q != "" {
+		t.Errorf("the name of the color: %q", q)
 	}
 }

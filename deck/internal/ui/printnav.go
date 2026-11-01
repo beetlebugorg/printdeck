@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"printdeck/internal/gcodemeta"
 	"printdeck/kit"
+	"strconv"
 	"strings"
+	"unicode"
 
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
@@ -421,8 +424,10 @@ func (a *App) materialCheck(path string) (question, yes string, danger bool, set
 		wantName = m.MaterialName
 	}
 	have, haveName := a.Material, a.Material
+	var roll *printer.Spool
 	if s := a.Printer.SpoolStore(); s != nil {
 		if sp, ok := s.In(); ok {
+			roll = &sp
 			have, haveName = sp.Material, sp.Label()
 			if !strings.EqualFold(sp.Label(), sp.Material) {
 				haveName += " (" + sp.Material + ")"
@@ -435,8 +440,77 @@ func (a *App) materialCheck(path string) (question, yes string, danger bool, set
 		return "Is " + fit(wantName) + " in the printer?", "Yes, print", false, strings.ToUpper(want)
 	case !strings.EqualFold(have, want):
 		return "The file is for " + fit(wantName) + ". " + fit(haveName) + " is in the printer.", "Print anyway", true, ""
+	case roll != nil && otherColor(m, *roll):
+		// The same type, another color: for example a plate for navy PLA, and black PLA in the
+		// printer.
+		if !strings.Contains(strings.ToLower(wantName), strings.ToLower(want)) {
+			wantName += " (" + want + ")"
+		}
+		return "The file is for " + fit(wantName) + ". " + fit(haveName) + " is in the printer.", "Print anyway", true, ""
 	}
 	return "", "", false, ""
+}
+
+// otherColor reports that the file m is for another color than the roll in the printer. It
+// compares the colors when both have one. Else it compares the color words in the names: a file
+// for "Navy" and a roll "Black eSun" differ, a file for "Navy" and a roll "MatterHackers PLA Navy"
+// do not. A name with no color word, for example "Generic PLA", says nothing.
+func otherColor(m gcodemeta.Meta, roll printer.Spool) bool {
+	if a, ok := hexColor(m.Color); ok {
+		if b, ok := hexColor(roll.Color); ok {
+			d := 0
+			for i := range a {
+				d = max(d, abs(a[i]-b[i]))
+			}
+			return d > 32 // 1/8 of the range: the same color in two hex codes is closer
+		}
+	}
+	want, have := colorWords(m.MaterialName), colorWords(roll.Label())
+	if len(want) == 0 || len(have) == 0 {
+		return false
+	}
+	for w := range want {
+		if have[w] {
+			return false
+		}
+	}
+	return true
+}
+
+// colorWords returns the names of colors in the name of a material or a roll.
+func colorWords(name string) map[string]bool {
+	out := map[string]bool{}
+	for _, w := range strings.FieldsFunc(strings.ToLower(name), func(r rune) bool { return !unicode.IsLetter(r) }) {
+		switch w {
+		case "grey":
+			w = "gray"
+		case "transparent":
+			w = "clear"
+		}
+		switch w {
+		case "black", "white", "gray", "silver", "gold", "red", "orange", "yellow", "green", "blue", "navy",
+			"purple", "violet", "pink", "brown", "beige", "clear", "natural", "teal", "cyan", "magenta":
+			out[w] = true
+		}
+	}
+	return out
+}
+
+// hexColor reads a color "#rrggbb".
+func hexColor(s string) ([3]int, bool) {
+	var c [3]int
+	s = strings.TrimPrefix(strings.TrimSpace(s), "#")
+	if len(s) != 6 {
+		return c, false
+	}
+	for i := range c {
+		v, err := strconv.ParseUint(s[2*i:2*i+2], 16, 8)
+		if err != nil {
+			return c, false
+		}
+		c[i] = int(v)
+	}
+	return c, true
 }
 
 // rowText draws the title and the text of a menu row: in two lines, or in one line when the row is
