@@ -60,7 +60,7 @@ func (s *Server) sendPlate(ctx context.Context, p *Project, w *who, id string, n
 	if err := s.putJSON(ctx, buildKey(p.ID, id), b); err != nil {
 		return nil, err
 	}
-	s.commentBuild(ctx, p, b, false)
+	s.commentBuild(ctx, p, b)
 	return s.projectBuild(ctx, p, b), nil
 }
 
@@ -135,7 +135,7 @@ func (s *Server) takePlate(ctx context.Context, d *Deck, id string, in cloud.Pla
 		return err
 	}
 	if p, _, err := s.loadProject(ctx, in.Project); err == nil {
-		s.commentBuild(ctx, p, b, false)
+		s.commentBuild(ctx, p, b)
 	}
 	return s.Store.Delete(ctx, sentKey(id, in.Project, in.Build, in.Plate))
 }

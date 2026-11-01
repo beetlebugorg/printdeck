@@ -205,7 +205,7 @@ func (s *Server) routeActions(ctx context.Context, r *http.Request, body []byte,
 		if err := s.putJSON(ctx, buildKey(p.ID, b.ID), b); err != nil {
 			return nil, err
 		}
-		s.commentBuild(ctx, p, b, false)
+		s.commentBuild(ctx, p, b)
 		return s.projectBuild(ctx, p, b), nil
 	}
 	return nil, fail(http.StatusMethodNotAllowed, "no such request")
@@ -487,7 +487,7 @@ func (s *Server) newBuild(ctx context.Context, p *Project, w *who, planID string
 			}
 		}
 	}
-	s.commentBuild(ctx, p, &b, false)
+	s.commentBuild(ctx, p, &b)
 	return s.projectBuild(ctx, p, &b), nil
 }
 
@@ -603,7 +603,7 @@ func (s *Server) buildDone(ctx context.Context, p *Project, c *GitHubClaims, id 
 	if err := s.putJSON(ctx, buildKey(p.ID, id), b); err != nil {
 		return nil, err
 	}
-	s.commentBuild(ctx, p, b, true)
+	s.commentBuild(ctx, p, b)
 	return s.projectBuild(ctx, p, b), nil
 }
 
@@ -882,6 +882,6 @@ func (s *Server) decidePlate(ctx context.Context, p *Project, w *who, id string,
 	if err := s.putJSON(ctx, buildKey(p.ID, id), b); err != nil {
 		return nil, err
 	}
-	s.commentBuild(ctx, p, b, false)
+	s.commentBuild(ctx, p, b)
 	return s.projectBuild(ctx, p, b), nil
 }

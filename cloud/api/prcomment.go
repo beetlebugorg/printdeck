@@ -138,7 +138,7 @@ func (s *Server) commentPrint(ctx context.Context, project string, pr PrintRecor
 	if err != nil {
 		return
 	}
-	s.commentBuild(ctx, p, b, false)
+	s.commentBuild(ctx, p, b)
 }
 
 func prKey(project string, pr int) string { return fmt.Sprintf("x/%s/prs/%d.json", project, pr) }
@@ -367,7 +367,11 @@ func (s *Server) prCommentBody(ctx context.Context, p *Project, rec, base *PlanR
 			fmt.Fprintf(&b, "#### [Build `%s`](%s)%s: failed\n\n%s\n\n", bd.ID, url, of, mdCell(bd.Error))
 			continue
 		}
-		fmt.Fprintf(&b, "#### [Build `%s`](%s)%s: %d plates\n\n", bd.ID, url, of, len(bd.Plates))
+		plates := fmt.Sprintf("%d plates", len(bd.Plates))
+		if len(bd.Plates) == 1 {
+			plates = "1 plate"
+		}
+		fmt.Fprintf(&b, "#### [Build `%s`](%s)%s: %s\n\n", bd.ID, url, of, plates)
 		b.WriteString("| | Plate | Time | Material | State |\n|---|---|---|---|---|\n")
 		for i, pl := range bd.Plates {
 			var parts []string
@@ -443,8 +447,8 @@ func (s *Server) commentPlan(ctx context.Context, p *Project, rec *PlanRecord) {
 }
 
 // commentBuild writes the comment of the pull request of the build b again, when its plan is
-// of a pull request. pics draws the pictures of its FDM plates first, for a build that is ready.
-func (s *Server) commentBuild(ctx context.Context, p *Project, b *BuildRecord, pics bool) {
+// of a pull request.
+func (s *Server) commentBuild(ctx context.Context, p *Project, b *BuildRecord) {
 	if s.GitHub == nil || p.Repo == "" {
 		return
 	}
@@ -454,40 +458,52 @@ func (s *Server) commentBuild(ctx context.Context, p *Project, b *BuildRecord, p
 	if err != nil || rec.PR <= 0 || rec.Kind != cloud.BuildTest {
 		return
 	}
-	if pics && b.State == cloud.BuildReady {
-		changed := false
-		for i := range b.Plates {
-			pl := &b.Plates[i]
-			if pl.Pic != "" || pl.Process != "fdm" || !strings.HasSuffix(pl.File, ".gcode") || i >= MaxDiffPictures {
-				continue
-			}
-			data, _, err := s.Store.Get(ctx, buildDir(p.ID, b.ID)+pl.File)
-			if err != nil {
-				continue
-			}
-			c := color.RGBA{0x55, 0x5b, 0x63, 0xff}
-			if h, err := strconv.ParseUint(strings.TrimPrefix(pl.MaterialColor, "#"), 16, 32); err == nil && len(pl.MaterialColor) == 7 {
-				c = color.RGBA{uint8(h >> 16), uint8(h >> 8), uint8(h), 0xff}
-			}
-			var bx, by float64
-			if pi := pl.Parts; len(pi) > 0 && pi[0].Part < len(rec.Parts) {
-				bx, by = rec.Parts[pi[0].Part].BedX, rec.Parts[pi[0].Part].BedY
-			}
-			img := modeldiff.RenderGcode(data, c, bx, by, 640, 480)
-			if img == nil {
-				continue
-			}
-			if u := s.publicPicture(ctx, img); u != "" {
-				pl.Pic, changed = u, true
-			}
-		}
-		if changed {
-			if err := s.putJSON(ctx, buildKey(p.ID, b.ID), b); err != nil {
-				log.Printf("comment: %v", err)
-			}
+	s.updatePR(ctx, p, rec.PR)
+}
+
+// platePictures draws the pictures of the FDM plates of the ready build b that have none, and
+// keeps them in the build. plans are the plans of the project, for the beds.
+func (s *Server) platePictures(ctx context.Context, project string, b *BuildRecord, plans []*PlanRecord) {
+	if b.State != cloud.BuildReady {
+		return
+	}
+	var rec *PlanRecord
+	for _, o := range plans {
+		if o.ID == b.Plan {
+			rec = o
 		}
 	}
-	s.updatePR(ctx, p, rec.PR)
+	changed := false
+	for i := range b.Plates {
+		pl := &b.Plates[i]
+		if pl.Pic != "" || pl.Process != "fdm" || !strings.HasSuffix(pl.File, ".gcode") || i >= MaxDiffPictures {
+			continue
+		}
+		data, _, err := s.Store.Get(ctx, buildDir(project, b.ID)+pl.File)
+		if err != nil {
+			continue
+		}
+		c := color.RGBA{0x55, 0x5b, 0x63, 0xff}
+		if h, err := strconv.ParseUint(strings.TrimPrefix(pl.MaterialColor, "#"), 16, 32); err == nil && len(pl.MaterialColor) == 7 {
+			c = color.RGBA{uint8(h >> 16), uint8(h >> 8), uint8(h), 0xff}
+		}
+		var bx, by float64
+		if rec != nil && len(pl.Parts) > 0 && pl.Parts[0].Part < len(rec.Parts) {
+			bx, by = rec.Parts[pl.Parts[0].Part].BedX, rec.Parts[pl.Parts[0].Part].BedY
+		}
+		img := modeldiff.RenderGcode(data, c, bx, by, 640, 480)
+		if img == nil {
+			continue
+		}
+		if u := s.publicPicture(ctx, img); u != "" {
+			pl.Pic, changed = u, true
+		}
+	}
+	if changed {
+		if err := s.putJSON(ctx, buildKey(project, b.ID), b); err != nil {
+			log.Printf("comment: %v", err)
+		}
+	}
 }
 
 // publicPicture saves the picture as gh/<random>.png, and returns its public address, or "".
@@ -543,6 +559,11 @@ func (s *Server) updatePR(ctx context.Context, p *Project, pr int) {
 			if _, ok := ofPR[b.Plan]; ok {
 				builds = append(builds, b)
 			}
+		}
+	}
+	for n, bd := range builds {
+		if n < maxCommentBuilds {
+			s.platePictures(ctx, p.ID, bd, plans)
 		}
 	}
 	var st prRecord

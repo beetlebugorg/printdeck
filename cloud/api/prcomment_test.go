@@ -121,7 +121,7 @@ func TestPRComment(t *testing.T) {
 		t.Fatalf("build done %d", st)
 	}
 	body = app.comments[100]
-	for _, want := range []string{"[Build `" + bd.ID + "`](", "): 1 plates", "| 1: Pod door x2 | 1:30 |", "12 g", "Waits for approval", `width="160"`} {
+	for _, want := range []string{"[Build `" + bd.ID + "`](", "): 1 plate", "| 1: Pod door x2 | 1:30 |", "12 g", "Waits for approval", `width="160"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the comment of the build has no %q:\n%s", want, body)
 		}
