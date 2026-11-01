@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -712,17 +713,30 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 		u, _ := s.Grants.FileURL(ctx, key, urlTTL)
 		return u
 	}
+	// The plans and the queue do not need the prints: they load at the same time.
+	var wg sync.WaitGroup
+	v.Repo = p.Repo
+	if p.Repo != "" {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			v.Plans, v.PlansTotal, v.Docs = s.plansView(ctx, p, PlansShown)
+		}()
+	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		v.Queue = s.projectQueued(ctx, p.ID)
+	}()
 	prints, photos, err := s.projectFiles(ctx, p.ID)
+	if err == nil {
+		v.Live = s.liveView(ctx, p, prints)
+		v.Printers = s.printersOf(ctx, printerIDs(prints, v.Live), false)
+	}
+	wg.Wait()
 	if err != nil {
 		return nil, err
 	}
-	v.Live = s.liveView(ctx, p, prints)
-	v.Repo = p.Repo
-	if p.Repo != "" {
-		v.Plans, v.PlansTotal, v.Docs = s.plansView(ctx, p, PlansShown)
-	}
-	v.Printers = s.printersOf(ctx, printerIDs(prints, v.Live), false)
-	v.Queue = s.projectQueued(ctx, p.ID)
 	v.Prints, v.Photos = []cloud.ProjectPrint{}, []cloud.ProjectPhoto{}
 	for _, pr := range prints {
 		pp := projectPrint(pr)
@@ -768,19 +782,37 @@ func projectPrint(pr PrintRecord) cloud.ProjectPrint {
 func (s *Server) projectFiles(ctx context.Context, id string) ([]PrintRecord, []PhotoRecord, error) {
 	var all []*PrintRecord
 	var photos []PhotoRecord
-	keys, err := s.Store.List(ctx, "x/"+id+"/")
+	// Two lists at the same time: the folder of the project has the models and the G-code too.
+	var keys, photoKeys []string
+	var err, photoErr error
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		photoKeys, photoErr = s.Store.List(ctx, "x/"+id+"/photos/")
+	}()
+	keys, err = s.Store.List(ctx, "x/"+id+"/prints/")
+	wg.Wait()
+	if err == nil {
+		err = photoErr
+	}
 	if err != nil {
 		return nil, nil, err
 	}
+	keys = append(keys, photoKeys...)
+	var want []string
 	for _, k := range keys {
 		rel := strings.TrimPrefix(k, "x/"+id+"/")
-		if !strings.HasSuffix(rel, ".json") || strings.Count(rel, "/") != 1 || strings.HasPrefix(rel, "live/") {
+		if strings.HasSuffix(rel, ".json") && strings.Count(rel, "/") == 1 &&
+			(strings.HasPrefix(rel, "prints/") || strings.HasPrefix(rel, "photos/")) {
+			want = append(want, k)
+		}
+	}
+	for i, b := range s.getAll(ctx, want) {
+		if b == nil {
 			continue
 		}
-		b, _, err := s.Store.Get(ctx, k)
-		if err != nil {
-			continue
-		}
+		rel := strings.TrimPrefix(want[i], "x/"+id+"/")
 		switch {
 		case strings.HasPrefix(rel, "prints/"):
 			var pr PrintRecord

@@ -135,3 +135,26 @@ func (m *MemStore) CacheControl(key string) string {
 	defer m.mu.Unlock()
 	return m.files[key].opt.CacheControl
 }
+
+// getConcurrency is the most reads of getAll at one time.
+const getConcurrency = 16
+
+// getAll reads the files at keys at the same time, and returns their data in the order of keys:
+// nil for a file that did not read.
+func (s *Server) getAll(ctx context.Context, keys []string) [][]byte {
+	out := make([][]byte, len(keys))
+	sem := make(chan struct{}, getConcurrency)
+	var wg sync.WaitGroup
+	for i, k := range keys {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer func() { <-sem; wg.Done() }()
+			if b, _, err := s.Store.Get(ctx, k); err == nil {
+				out[i] = b
+			}
+		}()
+	}
+	wg.Wait()
+	return out
+}

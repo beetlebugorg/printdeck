@@ -662,10 +662,17 @@ func (s *Server) loadPlans(ctx context.Context, project string) ([]*PlanRecord, 
 	if err != nil {
 		return nil, err
 	}
-	var out []*PlanRecord
+	var keys []string
 	for _, id := range ids {
-		if rec, err := s.loadPlan(ctx, project, id); err == nil {
-			out = append(out, rec)
+		if validID(id) {
+			keys = append(keys, planKey(project, id))
+		}
+	}
+	var out []*PlanRecord
+	for _, b := range s.getAll(ctx, keys) {
+		var rec PlanRecord
+		if b != nil && json.Unmarshal(b, &rec) == nil {
+			out = append(out, &rec)
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Created.After(out[j].Created) })
@@ -678,10 +685,17 @@ func (s *Server) loadBuilds(ctx context.Context, project string) ([]*BuildRecord
 	if err != nil {
 		return nil, err
 	}
-	var out []*BuildRecord
+	var keys []string
 	for _, id := range ids {
-		if rec, err := s.loadBuild(ctx, project, id); err == nil {
-			out = append(out, rec)
+		if validID(id) {
+			keys = append(keys, buildKey(project, id))
+		}
+	}
+	var out []*BuildRecord
+	for _, b := range s.getAll(ctx, keys) {
+		var rec BuildRecord
+		if b != nil && json.Unmarshal(b, &rec) == nil {
+			out = append(out, &rec)
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Created.After(out[j].Created) })

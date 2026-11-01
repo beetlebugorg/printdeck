@@ -236,17 +236,30 @@ const shareStale = 30 * time.Minute
 func (s *Server) liveShares(ctx context.Context, p *Project) []liveShare {
 	var out []liveShare
 	now := s.now()
+	var keys []string
 	for _, id := range p.Shares {
-		sh, err := s.loadShare(ctx, id)
-		if err != nil || sh.Moved || !sh.Ended.IsZero() || sh.Project != p.ID {
+		if validID(id) {
+			keys = append(keys, shareKey(id))
+		}
+	}
+	var open []*Share
+	for _, b := range s.getAll(ctx, keys) {
+		var sh Share
+		if b == nil || json.Unmarshal(b, &sh) != nil || sh.Moved || !sh.Ended.IsZero() || sh.Project != p.ID {
 			continue
 		}
+		open = append(open, &sh)
+	}
+	keys = keys[:0]
+	for _, sh := range open {
+		keys = append(keys, "s/"+sh.ID+"/status.json")
+	}
+	statuses := s.getAll(ctx, keys)
+	for i, sh := range open {
 		last := sh.Created
-		if b, _, err := s.Store.Get(ctx, "s/"+sh.ID+"/status.json"); err == nil {
-			var st cloud.ShareStatus
-			if json.Unmarshal(b, &st) == nil && st.Updated.After(last) {
-				last = st.Updated
-			}
+		var st cloud.ShareStatus
+		if statuses[i] != nil && json.Unmarshal(statuses[i], &st) == nil && st.Updated.After(last) {
+			last = st.Updated
 		}
 		if now.Sub(last) > shareStale {
 			continue

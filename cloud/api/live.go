@@ -184,13 +184,16 @@ func (s *Server) liveView(ctx context.Context, p *Project, prints []PrintRecord)
 	keys, _ := s.Store.List(ctx, "x/"+p.ID+"/live/")
 	now := s.now()
 	var decks []string // the deck of each tile of out
+	var recKeys []string
 	for _, k := range keys {
 		rel := strings.TrimPrefix(k, "x/"+p.ID+"/live/")
-		if strings.Contains(rel, "/") || !strings.HasSuffix(rel, ".json") {
-			continue
+		if !strings.Contains(rel, "/") && strings.HasSuffix(rel, ".json") {
+			recKeys = append(recKeys, k)
 		}
-		rec, err := s.loadLive(ctx, p.ID, strings.TrimSuffix(rel, ".json"))
-		if err != nil || rec == nil {
+	}
+	for _, b := range s.getAll(ctx, recKeys) {
+		rec := &LiveRecord{}
+		if b == nil || json.Unmarshal(b, rec) != nil {
 			continue
 		}
 		age := now.Sub(rec.Updated)
