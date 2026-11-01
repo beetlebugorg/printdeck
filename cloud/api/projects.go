@@ -1090,65 +1090,64 @@ func (s *Server) editPrint(ctx context.Context, id, pid string, w *who, in cloud
 	if (in.Title != nil || in.Delivered != nil || in.Ready != nil || in.Test != nil || in.Discard != nil || in.DiscardNote != nil || in.Source != nil) && !w.owner {
 		return fail(http.StatusUnauthorized, "only the owner can do this")
 	}
-	pr, err := s.loadPrint(ctx, id, pid)
-	if err != nil {
-		return err
-	}
-	if in.Title != nil {
-		pr.Title = clip(strings.TrimSpace(*in.Title), 120)
-		if pr.Title == pr.Name {
-			pr.Title = ""
-		}
-	}
-	if in.Notes != nil {
-		pr.Notes, pr.NotesBy, pr.NotesAt = clipNotes(*in.Notes), w.name, s.now().UTC()
-	}
-	if in.Delivered != nil {
-		switch {
-		case !*in.Delivered:
-			pr.Delivered = time.Time{}
-		case pr.Delivered.IsZero():
-			pr.Delivered = s.now().UTC()
-		}
-	}
-	if in.Discard != nil {
-		switch {
-		case !*in.Discard:
-			pr.Discarded, pr.DiscardNote = time.Time{}, ""
-		case pr.Discarded.IsZero():
-			pr.Discarded = s.now().UTC()
-		}
-	}
-	if in.DiscardNote != nil && !pr.Discarded.IsZero() {
-		pr.DiscardNote = clip(strings.TrimSpace(*in.DiscardNote), 500)
-	}
-	if in.Test != nil {
-		switch {
-		case !*in.Test:
-			pr.Test = time.Time{}
-		case pr.Test.IsZero():
-			pr.Test = s.now().UTC()
-		}
-	}
-	if in.Ready != nil {
-		switch {
-		case !*in.Ready:
-			pr.Ready, pr.ReadyNote = time.Time{}, ""
-		case pr.Ready.IsZero():
-			pr.Ready = s.now().UTC()
-		}
-	}
-	if in.Source != nil {
-		src := strings.TrimSpace(*in.Source)
-		if src != "" {
-			u, err := url.Parse(src)
-			if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || len(src) > 500 {
-				return fail(http.StatusBadRequest, "the source needs a web address, for example a file of a commit on GitHub")
+	_, err := s.changePrint(ctx, id, pid, func(pr *PrintRecord) error {
+		if in.Title != nil {
+			pr.Title = clip(strings.TrimSpace(*in.Title), 120)
+			if pr.Title == pr.Name {
+				pr.Title = ""
 			}
 		}
-		pr.Source = src
-	}
-	return s.putJSON(ctx, printKey(id, pid), pr)
+		if in.Notes != nil {
+			pr.Notes, pr.NotesBy, pr.NotesAt = clipNotes(*in.Notes), w.name, s.now().UTC()
+		}
+		if in.Delivered != nil {
+			switch {
+			case !*in.Delivered:
+				pr.Delivered = time.Time{}
+			case pr.Delivered.IsZero():
+				pr.Delivered = s.now().UTC()
+			}
+		}
+		if in.Discard != nil {
+			switch {
+			case !*in.Discard:
+				pr.Discarded, pr.DiscardNote = time.Time{}, ""
+			case pr.Discarded.IsZero():
+				pr.Discarded = s.now().UTC()
+			}
+		}
+		if in.DiscardNote != nil && !pr.Discarded.IsZero() {
+			pr.DiscardNote = clip(strings.TrimSpace(*in.DiscardNote), 500)
+		}
+		if in.Test != nil {
+			switch {
+			case !*in.Test:
+				pr.Test = time.Time{}
+			case pr.Test.IsZero():
+				pr.Test = s.now().UTC()
+			}
+		}
+		if in.Ready != nil {
+			switch {
+			case !*in.Ready:
+				pr.Ready, pr.ReadyNote = time.Time{}, ""
+			case pr.Ready.IsZero():
+				pr.Ready = s.now().UTC()
+			}
+		}
+		if in.Source != nil {
+			src := strings.TrimSpace(*in.Source)
+			if src != "" {
+				u, err := url.Parse(src)
+				if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || len(src) > 500 {
+					return fail(http.StatusBadRequest, "the source needs a web address, for example a file of a commit on GitHub")
+				}
+			}
+			pr.Source = src
+		}
+		return nil
+	})
+	return err
 }
 
 // newPrint starts the upload of a print of the deck d: the record waits for done.
@@ -1195,7 +1194,7 @@ func (s *Server) newPrint(ctx context.Context, p *Project, d *Deck, in cloud.Pri
 			}
 		}
 	}
-	n, title, page := 0, "", pageFields{}
+	n := 0
 	if isNew {
 		// The prints from before the numbers get theirs first.
 		if _, _, err := s.projectFiles(ctx, p.ID); err != nil {
@@ -1209,18 +1208,18 @@ func (s *Server) newPrint(ctx context.Context, p *Project, d *Deck, in cloud.Pri
 			return nil, err
 		}
 		n = q.LastPrint
-	} else {
-		// A print that the deck sends again keeps its number and the fields of the pages.
-		if old, err := s.loadPrint(ctx, p.ID, pid); err == nil {
-			n, title, page = old.N, old.Title, old.pageFields
-		}
-		if err := s.deletePrintFiles(ctx, p.ID, pid); err != nil {
-			return nil, err
-		}
+	} else if err := s.deletePrintFiles(ctx, p.ID, pid); err != nil {
+		return nil, err
 	}
 	in.PrinterID = s.printerOf(ctx, d, in.PrinterID)
-	rec := PrintRecord{PrintRequest: in, ID: pid, N: n, Deck: d.ID, Added: s.now().UTC(), Title: title, pageFields: page}
-	if err := s.putJSON(ctx, printKey(p.ID, pid), rec); err != nil {
+	if err := s.putPrint(ctx, p.ID, pid, func(old *PrintRecord) PrintRecord {
+		rec := PrintRecord{PrintRequest: in, ID: pid, N: n, Deck: d.ID, Added: s.now().UTC()}
+		if old != nil && !isNew {
+			// A print that the deck sends again keeps its number and the fields of the pages.
+			rec.N, rec.Title, rec.pageFields = old.N, old.Title, old.pageFields
+		}
+		return rec
+	}); err != nil {
 		return nil, err
 	}
 	if share != "" {
@@ -1236,6 +1235,76 @@ func (s *Server) newPrint(ctx context.Context, p *Project, d *Deck, in cloud.Pri
 }
 
 func printKey(project, print string) string { return "x/" + project + "/prints/" + print + ".json" }
+
+// errNoChange is the error of a change of changePrint with no field to write.
+var errNoChange = errors.New("no change")
+
+// changePrint changes the record of a print with change, and writes it with IfMatch: a write
+// that came after the read fails, and the change runs again on the new record. A change that
+// returns errNoChange writes no record. It returns the record, or 410 for no record.
+func (s *Server) changePrint(ctx context.Context, project, print string, change func(pr *PrintRecord) error) (*PrintRecord, error) {
+	if !validID(print) {
+		return nil, fail(http.StatusGone, "no such print")
+	}
+	for range 5 {
+		b, etag, err := s.Store.Get(ctx, printKey(project, print))
+		if errors.Is(err, ErrNotFound) {
+			return nil, fail(http.StatusGone, "no such print")
+		}
+		if err != nil {
+			return nil, err
+		}
+		var pr PrintRecord
+		if err := json.Unmarshal(b, &pr); err != nil {
+			return nil, err
+		}
+		if err := change(&pr); errors.Is(err, errNoChange) {
+			return &pr, nil
+		} else if err != nil {
+			return nil, err
+		}
+		data, err := json.Marshal(pr)
+		if err != nil {
+			return nil, err
+		}
+		_, err = s.Store.Put(ctx, printKey(project, print), data, PutOptions{ContentType: "application/json", IfMatch: etag})
+		if errors.Is(err, ErrConflict) {
+			continue
+		}
+		return &pr, err
+	}
+	return nil, errors.New("the print changed too often: try again")
+}
+
+// putPrint writes the record that build returns from the record there (nil for none), with
+// IfMatch or IfNoneMatch, and runs build again after a conflict.
+func (s *Server) putPrint(ctx context.Context, project, print string, build func(old *PrintRecord) PrintRecord) error {
+	for range 5 {
+		b, etag, err := s.Store.Get(ctx, printKey(project, print))
+		if err != nil && !errors.Is(err, ErrNotFound) {
+			return err
+		}
+		var old *PrintRecord
+		opt := PutOptions{ContentType: "application/json", IfNoneMatch: true}
+		if err == nil {
+			opt = PutOptions{ContentType: "application/json", IfMatch: etag}
+			var pr PrintRecord
+			if json.Unmarshal(b, &pr) == nil {
+				old = &pr
+			}
+		}
+		data, err := json.Marshal(build(old))
+		if err != nil {
+			return err
+		}
+		_, err = s.Store.Put(ctx, printKey(project, print), data, opt)
+		if errors.Is(err, ErrConflict) {
+			continue
+		}
+		return err
+	}
+	return errors.New("the print changed too often: try again")
+}
 
 // loadPrint returns the record of a print, or 410.
 func (s *Server) loadPrint(ctx context.Context, project, print string) (*PrintRecord, error) {
@@ -1258,8 +1327,7 @@ func (s *Server) loadPrint(ctx context.Context, project, print string) (*PrintRe
 
 // printDone ends the upload of a print: it counts the frames that came, and shows the print.
 func (s *Server) printDone(ctx context.Context, project, print string, in cloud.PrintDone) error {
-	pr, err := s.loadPrint(ctx, project, print)
-	if err != nil {
+	if _, err := s.loadPrint(ctx, project, print); err != nil {
 		return err
 	}
 	files, err := s.Store.List(ctx, "x/"+project+"/prints/"+print+"/")
@@ -1274,12 +1342,15 @@ func (s *Server) printDone(ctx context.Context, project, print string, in cloud.
 	for n < min(in.Frames, MaxLapseFrames) && have["lapse/"+strconv.Itoa(n)+".jpg"] {
 		n++
 	}
-	if pr.Video {
-		n = pr.Frames // a second done after the video: the frames are gone
-	}
-	pr.Frames, pr.FPS, pr.Model, pr.Plan, pr.Done = n, max(1, min(60, in.FPS)), have["model.jpg"], have["plan.json"], true
-	pr.Gcode = have["print.gcode.gz"]
-	if err := s.putJSON(ctx, printKey(project, print), pr); err != nil {
+	pr, err := s.changePrint(ctx, project, print, func(pr *PrintRecord) error {
+		if !pr.Video {
+			pr.Frames = n // after the video the frames are gone, and the count stays
+		}
+		pr.FPS, pr.Model, pr.Plan, pr.Done = max(1, min(60, in.FPS)), have["model.jpg"], have["plan.json"], true
+		pr.Gcode = have["print.gcode.gz"]
+		return nil
+	})
+	if err != nil {
 		return err
 	}
 	s.commentPrint(ctx, project, *pr)

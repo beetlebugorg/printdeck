@@ -14,7 +14,7 @@ This module imports packages of the deck module (`printdeck/internal/...`), with
 | Path | What it is |
 |---|---|
 | `api/` | The API: enrollment, signed requests, the S3 store |
-| `cmd/pwf-api/` | The Lambda function |
+| `cmd/pwf-api/` | The Lambda functions: the API, and the jobs function for the videos |
 | `cmd/pwf/` | The tool of the owner: deploy, enrollment codes, the decks |
 | `deploy/template.yaml` | The CloudFormation template |
 | `deploy/web/` | The static pages |
@@ -32,20 +32,21 @@ go run ./cmd/pwf deploy -domain printdeck.example.org -alert-email you@example.o
 The first deploy takes 5 to 30 minutes, for CloudFront and the certificate. Run it again after a
 change to the code.
 
-The deploy also needs `tar` with xz. It puts ffmpeg in the package of the function, for the
+The deploy also needs `tar` with xz. It puts ffmpeg in the package of the jobs function, for the
 videos of the time lapses: the static build 7.0.2 for Linux arm64 from johnvansickle.com, under
-the GPL, version 3. The function runs it as a separate program. The download stays in the cache
-folder of your user (`printdeck/` in it), and the deploy checks its SHA-256.
+the GPL, version 3. The jobs function runs it as a separate program. The package of the API has
+no ffmpeg. The download stays in the cache folder of your user (`printdeck/` in it), and the
+deploy checks its SHA-256.
 
 ## Time lapse videos
 
-When a print with a time lapse is done, the function makes `lapse.mp4` (H.264) and `lapse.jpg`
+When a print with a time lapse is done, the jobs function makes `lapse.mp4` (H.264) and `lapse.jpg`
 (the last frame) from the frames, and deletes the frames. The prints from before this change keep
 their frames until you run the backfill once, after the deploy:
 
 ```sh
 go run ./cmd/pwf lapse-backfill -n   # count the prints with frames and no video
-go run ./cmd/pwf lapse-backfill      # the function makes the videos, 4 at a time
+go run ./cmd/pwf lapse-backfill      # the jobs function makes the videos, 4 at a time
 ```
 
 `-parallel N` sets the count at the same time. `-local` makes the videos on this computer with
