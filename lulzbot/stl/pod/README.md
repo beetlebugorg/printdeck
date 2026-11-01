@@ -1,5 +1,9 @@
 # Pod print files
 
+These are the files of the pod, the earlier design on a printer bracket. The Slate v4, a case on the
+desk, replaces it: see [the Slate v4 print files](../slate/README.md). The webcam mounts in this
+folder stay on the printer frame.
+
 Each file is in its print orientation. Load a file and print it as it is.
 
 ## FDM (`fdm/`)
@@ -31,7 +35,6 @@ Support**, click **Close**, and clear the box.
 | `camera-clamp-mini2_fdm.stl` | 1, for the C270 webcam on the Mini 2 (option) | Its bottom |
 | `cable-clip-single_fdm.stl` | 5, for the TAZ | The base |
 | `cable-clip-double_fdm.stl` | 2, for the Mini 2 | The base |
-| `slate-stand_fdm.stl` | 1, for the Slate (desk stand). Print it in orange. | The bottom of the foot (it stands up, 117 mm high) |
 
 ### The fit
 
@@ -64,7 +67,6 @@ Print the mount and the wedge first, and try the fit.
 | `pod-mount_resin.stl` | The lower end of the plate and of the dovetail | The dovetail and the face on the body |
 | `pod-wedge_resin.stl` | The level bottom | The slot and the key |
 | `pod-bracket-taz_resin.stl` | The top end and the back of the plate | The front of the plate and its edges, the groove, and the clip slots |
-| `slate-stand_resin.stl` | The bottom of the foot | The slot, the spine, and the top of the foot |
 
 Slicer settings:
 
@@ -103,44 +105,6 @@ Slicer settings:
 Print the cable clips in PETG on an FDM printer. Standard resin cracks where the arms bend. The resin clip
 files are for tough resin only.
 
-## The Slate (desk stand)
-
-The Slate puts the pod on a desk, next to the printer. It is the pod with no change, on a stand. Print
-the frame, the body and the mount in navy, and the stand in orange. The stand is one part with no
-hardware. Its spine has the tapered slot of the wedge, so the dovetail drops into it as it drops onto a
-bracket. The display leans back 15 degrees, as on the printers.
-
-![The pod on the Slate stand](../../renders/slate-front.png)
-
-FDM (`fdm/slate-stand_fdm.stl`): print it in PLA with the settings of the pod parts above. It needs no
-supports and no brim. A CuraEngine slice with the `pla-0.20-standard` profile of the TAZ Workhorse SE
-gives 37 g (4.7 m) and 3 h 19 min.
-
-Resin (`resin/slate-stand_resin.stl`): the stand is turned so the spine is vertical, and the bottom of
-the foot faces the plate at 15 degrees. It stands on supports, 6 mm over the plate. Put the supports
-under the foot only. With the spine vertical, no face of the slot faces the plate. The stand is solid
-(the foot is 4 mm thick, the spine 6 mm or more), so it needs no drain holes. Print the stand in orange
-resin and the pod parts in navy resin, or print them in any resin and paint them.
-
-1. Stick four rubber feet, 10 mm or less across, under the corners of the foot.
-2. Hold the pod over the stand, with the dovetail above the slot. Push the pod down by hand until it
-   is tight. To remove it, pull it up.
-3. Plug the power cable into the left wall. It goes down outside the foot.
-4. Plug the printer cable into the top wall. Run it back over the top of the stand and down the back
-   of the spine. Put a twist tie through each of the two holes in the spine, around the cable.
-
-`slate.py check` gives the tip check. The masses of the display (120 g), the Pi 5 (46 g) and the
-Active Cooler (22 g) are estimates, and no part was weighed. With the pod parts solid, the Slate is
-about 295 g, and its center of mass is 73 mm over the desk.
-
-- A push of 2.4 N on the top of the screen tips the stand back. A push of 5.0 N on the middle of the
-  screen tips it back.
-- On rubber feet, a push of 2.1 N slides the stand before it tips. With no feet, a push of 1.0 N
-  slides it. These use a friction factor of 0.6 for rubber and 0.3 for bare plastic on wood, also
-  estimates.
-- Tilted with no push, it falls back at 51 degrees, forward at 21 degrees, and to the side at 29
-  degrees.
-
 ## Hardware for the pod
 
 | Part | Count | Where |
@@ -154,6 +118,9 @@ about 295 g, and its center of mass is 73 mm over the desk.
 
 `camera.py` has a mount for a Logitech C270 webcam on each printer. The camera plugs into the
 lower USB 3 port of the Pi. Each mount is a clamp on the frame and an arm with the hinge.
+
+With the Slate v4, the camera stays on the printer frame. Its USB cable runs from the printer frame
+to the Slate on the desk.
 
 | Part | Count | Where |
 |---|---|---|

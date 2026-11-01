@@ -1,5 +1,26 @@
 # Printdeck pod
 
+## The Slate v4
+
+<img src="../docs/img/slate-v4.png" alt="The Slate v4 from the front left: the touch display in a navy case on an orange base" width="320">
+
+The Slate v4 replaces the pod. It is a desk case for the Raspberry Pi Touch Display 2 (5 inch,
+tall) and the Raspberry Pi 5 with its Active Cooler. The navy case has the shape of the pod, and it
+stands on an orange base on the desk, next to the printer. It leans back 15 degrees. Two M3 x 8
+screws from behind hold the case on the base.
+
+<img src="../docs/img/slate-v4-back.png" alt="The Slate v4 from the back right: the back plate of the base with the boss, the pad and the twist-tie holes, and the foot" width="320">
+
+- Resin: two parts, the case and the base.
+- FDM: three parts, the frame and the body of the case, and the base.
+- The printer cable runs from the top of the case, down the back plate, to the printer. The webcam
+  stays on the printer frame, and its cable runs to the Slate on the desk.
+
+[stl/slate/README.md](stl/slate/README.md) has the print files, the hardware, the assembly and the
+checks. `slate.py` is the model.
+
+The rest of this page is the pod, the earlier design: the case on a bracket on the printer.
+
 <img src="../docs/img/pod-taz.png" alt="The Printdeck pod on the front left of a LulzBot TAZ Workhorse" width="480">
 
 The pod is a Raspberry Pi Touch Display 2 (5 inch, mounted tall) with a Raspberry Pi 5 on its
@@ -78,6 +99,8 @@ or `display_rotate=180` in `printdeck.txt`.
 
 ## Files
 
+- `slate.py`: the model of the Slate v4, in build123d. `slate.py export` writes the print files to
+  `stl/slate/` and checks them. `slate.py check` gives the fit, tip and stiffness checks.
 - `pod.py`: the model of the pod, the brackets and the wedge, in build123d. `pod.py export`
   writes the print files. `pod.py overhangs` checks them for faces that need supports.
 - `fit_holes.py`: a fit test for the display holes of the frame.

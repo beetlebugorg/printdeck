@@ -2,14 +2,13 @@
 
 ## The Slate v4
 
-The Slate v4 is the pod on an orange desk stand: the Raspberry Pi Touch Display 2 (5 inch), a Pi 5 and
-its Active Cooler. The model is `lulzbot/slate.py`, and the print files are the `slate-stand` files in
-`lulzbot/stl/pod/`. See [the Slate in the pod print files](../lulzbot/stl/pod/README.md#the-slate-desk-stand).
+The Slate v4 is the desk case of Printdeck: a navy case on an orange base, for the Raspberry Pi Touch
+Display 2 (5 inch), a Pi 5 and its Active Cooler. The model is `lulzbot/slate.py`. See
+[the Slate v4 print files](../lulzbot/stl/slate/README.md).
 
 The files in this folder are the earlier Slate (v2), with the 7 inch display. They stay as a record.
 
-The Slate is an earlier desk case. Printdeck uses the pod in
-[lulzbot/](../lulzbot/README.md).
+The rest of this page is the Slate v2, the earlier desk case.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.png">

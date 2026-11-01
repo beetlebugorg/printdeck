@@ -351,7 +351,7 @@ def stiffness(process):
             parts += [(2 * PAD[0], wp, FACE)]
         return second_moment(parts)
     v_foot = v_at(FOOT_T, wr)
-    # If the pad did nothing: the back plate alone from the foot up to the screws.
+    # An upper bound, with no load on the pad: the back plate alone from the foot up to the screws.
     loose = bend(I_base, v_foot, P.MOUNT_SCREWS[0][1], v_push, E)
     # The screws pull the body onto the boss and the pad, so the case and the back plate bend as one
     # above the pad. The bend is that of the base from the foot to the top of the pad.
