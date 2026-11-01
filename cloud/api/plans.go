@@ -279,6 +279,9 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 				return nil, fail(http.StatusBadRequest, "a bad model name: "+f)
 			}
 		}
+		if !sha256Re.MatchString(pp.Digest) {
+			pp.Digest = ""
+		}
 		pp.Count = max(1, min(pp.Count, MaxPartCount))
 		rec.Parts = append(rec.Parts, pp)
 	}
@@ -370,16 +373,16 @@ func (s *Server) planDone(ctx context.Context, p *Project, c *GitHubClaims, id s
 }
 
 // replaceOlder marks the waiting plates of the builds of the older plans of the same pull
-// request or branch as replaced.
+// request or branch as replaced, when a part of the plate changed in rec (stillSame).
 func (s *Server) replaceOlder(ctx context.Context, p *Project, rec *PlanRecord) error {
 	plans, err := s.loadPlans(ctx, p.ID)
 	if err != nil {
 		return err
 	}
-	older := map[string]bool{}
+	older := map[string]*PlanRecord{}
 	for _, o := range plans {
 		if o.ID != rec.ID && o.Kind == rec.Kind && o.PR == rec.PR && o.Branch == rec.Branch && o.Created.Before(rec.Created) {
-			older[o.ID] = true
+			older[o.ID] = o
 		}
 	}
 	builds, err := s.loadBuilds(ctx, p.ID)
@@ -387,12 +390,13 @@ func (s *Server) replaceOlder(ctx context.Context, p *Project, rec *PlanRecord) 
 		return err
 	}
 	for _, b := range builds {
-		if !older[b.Plan] {
+		old := older[b.Plan]
+		if old == nil {
 			continue
 		}
 		changed := false
 		for i := range b.Plates {
-			if b.Plates[i].State == cloud.PartWaiting {
+			if b.Plates[i].State == cloud.PartWaiting && !stillSame(old, rec, b.Plates[i].Parts) {
 				b.Plates[i].State, changed = cloud.PartReplaced, true
 			}
 		}
@@ -718,6 +722,35 @@ func (s *Server) planDocViews(ctx context.Context, p *Project, rec *PlanRecord) 
 		out = append(out, v)
 	}
 	return out
+}
+
+// stillSame reports whether each part of a plate of the plan old is in the newer plan rec with
+// no change: the same digest, or with no digest in one of the plans, no mark Changed in rec.
+func stillSame(old, rec *PlanRecord, parts []cloud.PlatePart) bool {
+	for _, pp := range parts {
+		if pp.Part < 0 || pp.Part >= len(old.Parts) {
+			return false
+		}
+		was := old.Parts[pp.Part]
+		found := false
+		for _, now := range rec.Parts {
+			if !strings.EqualFold(now.Name, was.Name) || !strings.EqualFold(now.Variant, was.Variant) {
+				continue
+			}
+			found = true
+			if now.Digest != "" && was.Digest != "" {
+				if now.Digest != was.Digest {
+					return false
+				}
+			} else if now.Changed || now.Profile != was.Profile || now.Material != was.Material {
+				return false
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 // escapeRepoPath escapes each segment of the path of a file in a repository for a link.

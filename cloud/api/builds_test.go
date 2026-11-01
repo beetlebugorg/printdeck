@@ -218,9 +218,17 @@ func TestPlanFlow(t *testing.T) {
 	if st := call(t, base, "POST", "/api/v1/builds/"+second.ID+"/done", token, nil, nil); st != 200 {
 		t.Fatal(st)
 	}
+	// A newer plan with no change of the pod door keeps the plate.
 	time.Sleep(5 * time.Millisecond)
 	plan()
 	var b2 cloud.ProjectBuild
+	call(t, base, "GET", "/api/v1/projects/"+sum.ID+"/builds/"+second.ID, tok, nil, &b2)
+	if b2.Plates[0].State != cloud.PartWaiting {
+		t.Fatalf("the plate after a newer plan with no change: %+v", b2.Plates)
+	}
+	time.Sleep(5 * time.Millisecond)
+	manifest.Parts[1].Changed = true
+	plan()
 	call(t, base, "GET", "/api/v1/projects/"+sum.ID+"/builds/"+second.ID, tok, nil, &b2)
 	if b2.Plates[0].State != cloud.PartReplaced {
 		t.Fatalf("the plate after a newer plan: %+v", b2.Plates)

@@ -66,6 +66,10 @@ type PlanPart struct {
 	MaterialColor string   `json:"material_color,omitempty"`
 	Alone         bool     `json:"alone,omitempty"`
 	Changed       bool     `json:"changed,omitempty"`
+	// Digest is the SHA-256 of what makes the plate of the part (its entry, its files and its
+	// profile), or "" from an older Action. A waiting plate stays when a newer plan has its parts
+	// with the same digests.
+	Digest string `json:"digest,omitempty"`
 	Models        []string `json:"models,omitempty"`
 	SizeX         float64  `json:"size_x,omitempty"`
 	SizeY         float64  `json:"size_y,omitempty"`
