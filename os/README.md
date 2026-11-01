@@ -10,7 +10,7 @@ The debug image is the same system with SSH, sudo, a shell and tools such as str
 
 1. Download `printdeck.img.xz` from the
    [latest release](https://github.com/beetlebugorg/printdeck/releases/latest).
-2. Write it to an SD card or a USB SSD with Raspberry Pi Imager ("Use custom").
+2. Write it to an SD card with Raspberry Pi Imager ("Use custom").
 3. Put the card in the Pi, and connect the power.
 
 To write the image with `dd`:
@@ -19,8 +19,8 @@ To write the image with `dd`:
 xz -dc printdeck.img.xz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
 ```
 
-A Pi 5 starts from USB when no SD card is in it. To set this, run `sudo raspi-config` on
-Raspberry Pi OS: Advanced Options > Boot Order.
+The image also starts from a USB drive. A Pi 5 starts from USB when no SD card is in it. To set
+this, run `sudo raspi-config` on Raspberry Pi OS: Advanced Options > Boot Order.
 
 ## The first start
 

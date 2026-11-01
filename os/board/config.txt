@@ -5,16 +5,16 @@ disable_overscan=1
 # No rainbow square at power on. The start screen of Printdeck shows instead.
 disable_splash=1
 
-# The display: the 7" display on HDMI, or a Raspberry Pi Touch Display 2 (5" or 7") on the DSI
-# port. The firmware finds a Touch Display 2 and loads its overlay. A fixed DSI overlay with no
-# display on the port stops the HDMI output, so the image does not set one. The deck draws on the
-# framebuffer.
+# The display: a Raspberry Pi Touch Display 2 (5" or 7") on the DSI port, or a display on HDMI,
+# such as a 7" display. The firmware finds a Touch Display 2 and loads its overlay. A fixed DSI
+# overlay with no display on the port stops the HDMI output, so the image does not set one. The
+# deck draws on the framebuffer.
 dtoverlay=vc4-kms-v3d
 display_auto_detect=1
 max_framebuffers=2
 disable_fw_kms_setup=1
-# The firmware does not drive HDMI. Its framebuffer is 640x480 and the display is 800x480, so the
-# display changes mode when vc4 starts. Without the firmware output, vc4 sets the only mode.
+# The firmware does not drive HDMI. Its framebuffer is 640x480 and a 7" HDMI display is 800x480,
+# so the display changes mode when vc4 starts. Without the firmware output, vc4 sets the only mode.
 hdmi_ignore_hotplug=1
 
 # No onboard audio.
@@ -22,5 +22,5 @@ dtparam=audio=off
 
 # A supply other than the official 5 A supply gives too little current to the USB ports.
 # Without this setting, all USB ports together get only 600 mA. That is not sufficient
-# for the SSD and the display.
+# for a USB drive or a display that gets its power from USB.
 usb_max_current_enable=1

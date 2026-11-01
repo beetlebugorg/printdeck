@@ -1,4 +1,4 @@
-// Command printdeck is the Printdeck appliance: the full screen application on the 7" touch
+// Command printdeck is the Printdeck appliance: the full screen application on the touch
 // display, the remote screen, the API for slicers, and (as "printdeck klippy", in its own process)
 // the Klipper host.
 //

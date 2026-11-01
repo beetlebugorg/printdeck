@@ -131,7 +131,7 @@ func adj(x, y float64, o Options) Event {
 	if o.InvertY {
 		y = 1 - y
 	}
-	// The raw position is in panel (landscape) orientation. Turn it to the UI orientation.
+	// The raw position is in the orientation of the panel. Turn it to the UI orientation.
 	switch o.Rotate {
 	case 90:
 		x, y = y, 1-x

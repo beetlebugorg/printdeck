@@ -16,7 +16,8 @@ import (
 )
 
 // The upgrade booklet for the LulzBot TAZ Workhorse: the manual for a wide display, with the
-// guides of the mount before it (lulzbot/), and an advertisement on the inside of the cover.
+// guides of the mount before it, and an advertisement on the inside of the cover. The mount is the
+// earlier LulzBot mount with the 7 inch display, before the pod.
 //
 //	printdeck manual DIR lulzbot
 //
