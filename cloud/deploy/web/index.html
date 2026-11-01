@@ -57,6 +57,7 @@
     <button type="button" class="primary" id="signInBtn">Sign in with a passkey</button>
     <p class="msg" id="signInMsg" role="status"></p>
     <p class="dim small">No passkey yet? The owner makes one on the deck: Settings, Cloud, Owner sign-in. A friend gets an invite link from the owner.</p>
+    <p class="dim small"><a href="/privacy">What the service keeps, and how to delete it</a>.</p>
   </section>
 
   <!-- The passkey of the owner, with a code from the deck -->
@@ -97,6 +98,18 @@
       <h2>Printers</h2>
       <p class="small dim">The decks add their printers when they connect to the service. Each printer adds its prints to the projects.</p>
       <ul class="members" id="printersList"></ul>
+    </div>
+    <div class="card" id="accountCard" hidden>
+      <h2>Your account</h2>
+      <div id="ownerKeys" hidden>
+        <p class="small dim">The passkeys of the owner. Remove a passkey of a lost or old device. The last passkey stays: the service needs an owner. To delete your data, delete each project.</p>
+        <ul class="members" id="passkeyList"></ul>
+      </div>
+      <div id="memberDelete" hidden>
+        <p class="small dim">Delete your account: your passkeys and your photos go from each project. Your notes stay, with the name "A former member".</p>
+        <button type="button" class="link" id="deleteAccountBtn">Delete my account</button>
+      </div>
+      <p class="msg" id="accountMsg" role="status"></p>
     </div>
   </section>
 
@@ -503,7 +516,7 @@
   </section>
 
   <footer>
-    <span>Printdeck is free software under the GNU AGPL, version 3. <a href="https://github.com/beetlebugorg/printdeck">The source of this service</a>.</span>
+    <span>Printdeck is free software under the GNU AGPL, version 3. <a href="https://github.com/beetlebugorg/printdeck">The source of this service</a>. <a href="/privacy">Privacy</a>.</span>
   </footer>
 </div>
 </body>

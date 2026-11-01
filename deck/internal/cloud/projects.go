@@ -16,6 +16,7 @@ type (
 	PasskeyRequest    = wire.PasskeyRequest
 	PasskeyBegin      = wire.PasskeyBegin
 	SignInReply       = wire.SignInReply
+	PasskeyInfo       = wire.PasskeyInfo
 	OwnerCodeReply    = wire.OwnerCodeReply
 	ProjectRequest    = wire.ProjectRequest
 	ProjectSummary    = wire.ProjectSummary

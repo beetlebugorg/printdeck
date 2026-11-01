@@ -55,6 +55,7 @@ func runApp() {
 	on("ownerBtn", "click", func() { go a.makeOwner() })
 	on("joinBtn", "click", func() { go a.join() })
 	on("joinKeyBtn", "click", func() { go a.joinWithPasskey() })
+	on("deleteAccountBtn", "click", func() { go a.deleteAccount() })
 	onSubmit("newForm", func() { go a.newProject() })
 	a.bindEdits()
 	a.bindBuilds()
@@ -465,6 +466,84 @@ func (a *app) showHome() {
 	setHidden("newForm", a.kind != "owner")
 	show("vHome")
 	a.drawPrinterList()
+	a.drawAccount()
+}
+
+// drawAccount shows the account card of the home page: the passkeys of the owner, each with
+// Remove, or Delete my account for a member.
+func (a *app) drawAccount() {
+	owner := a.kind == "owner"
+	setHidden("accountCard", false)
+	setHidden("ownerKeys", !owner)
+	setHidden("memberDelete", owner)
+	if !owner {
+		return
+	}
+	var keys []wire.PasskeyInfo
+	if err := a.api("GET", "/me/passkeys", nil, &keys); err != nil {
+		say("accountMsg", err, "")
+		return
+	}
+	list := byID("passkeyList")
+	list.Set("textContent", "")
+	for _, k := range keys {
+		li := el("li", "", "")
+		label := k.Device
+		if label == "" {
+			label = "A passkey"
+		}
+		left := el("div", "", label+" ")
+		state := "added " + localDay(k.Added)
+		if k.This {
+			state += ", this device"
+		}
+		left.Call("appendChild", el("span", "", state))
+		li.Call("appendChild", left)
+		if len(keys) > 1 {
+			rm := el("button", "link", "Remove")
+			rm.Set("type", "button")
+			kid, this := k.ID, k.This
+			rm.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
+				go a.removePasskey(kid, label, this)
+				return nil
+			}))
+			li.Call("appendChild", rm)
+		}
+		list.Call("appendChild", li)
+	}
+}
+
+// removePasskey removes a passkey of the owner. Its sessions stop at once.
+func (a *app) removePasskey(id, label string, this bool) {
+	q := "Remove the passkey " + label + "? It stops working for this service."
+	if this {
+		q += " This device signs out."
+	}
+	if !confirm(q) {
+		return
+	}
+	if err := a.api("DELETE", "/me/passkeys/"+id, nil, nil); err != nil {
+		say("accountMsg", err, "")
+		return
+	}
+	if this {
+		a.signOut()
+		return
+	}
+	a.drawAccount()
+}
+
+// deleteAccount deletes the account of a member: the passkeys and the photos go, in each project.
+func (a *app) deleteAccount() {
+	if !confirm("Delete your account? Your passkeys stop working, and your photos go from each project. " +
+		"Your notes stay, with the name \"A former member\". This cannot be undone.") {
+		return
+	}
+	if err := a.api("DELETE", "/me", nil, nil); err != nil {
+		say("accountMsg", err, "")
+		return
+	}
+	a.signOut()
 }
 
 func summaryLine(p wire.ProjectSummary) string {
@@ -847,14 +926,16 @@ func (a *app) drawProject() {
 		if m.Joined {
 			li.Call("appendChild", a.githubInput(m, "ownerToolsMsg"))
 		}
-		rm := el("button", "link", "Remove")
-		rm.Set("type", "button")
 		mid, name := m.ID, m.Name
-		rm.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
-			go a.removeMember(mid, name)
-			return nil
-		}))
-		li.Call("appendChild", rm)
+		for _, data := range []bool{false, true} {
+			rm := el("button", "link", map[bool]string{false: "Remove", true: "Delete data"}[data])
+			rm.Set("type", "button")
+			rm.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
+				go a.removeMember(mid, name, data)
+				return nil
+			}))
+			li.Call("appendChild", rm)
+		}
 		list.Call("appendChild", li)
 	}
 	setText("memberNames", strings.Join(append([]string{v.Owner + " (owner)"}, names...), ", "))
@@ -997,12 +1078,20 @@ func (a *app) inviteFrom(prefix, msg string) {
 	a.reload()
 }
 
-func (a *app) removeMember(id, name string) {
-	if !confirm("Remove " + name + " from the project? Their passkey stops working here.") {
+// removeMember removes the member id from the project. With data, the service also deletes the
+// photos of the member and puts "A former member" in place of the name on the notes.
+func (a *app) removeMember(id, name string, data bool) {
+	q, path := "Remove "+name+" from the project? Their passkey stops working here. Their photos stay.", ""
+	if data {
+		q = "Remove " + name + " and delete their data in this project? Their passkey stops working here, " +
+			"and their photos go. Their notes stay, with the name \"A former member\". This cannot be undone."
+		path = "?data=delete"
+	}
+	if !confirm(q) {
 		return
 	}
 	var v wire.ProjectView
-	if err := a.api("DELETE", "/projects/"+a.view.ID+"/members/"+id, nil, &v); err != nil {
+	if err := a.api("DELETE", "/projects/"+a.view.ID+"/members/"+id+path, nil, &v); err != nil {
 		say("ownerToolsMsg", err, "")
 		say("peopleMsg", err, "")
 		return

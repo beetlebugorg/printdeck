@@ -1236,11 +1236,11 @@ func (a *app) drawPeople(v *wire.ProjectView) {
 		list.Call("appendChild", li)
 		return li, txt
 	}
-	remove := func(li js.Value, m wire.ProjectMember, label string) {
+	remove := func(li js.Value, m wire.ProjectMember, label string, data bool) {
 		rm := el("button", "link rm", label)
 		rm.Set("type", "button")
 		rm.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
-			go a.removeMember(m.ID, m.Name)
+			go a.removeMember(m.ID, m.Name, data)
 			return nil
 		}))
 		li.Call("appendChild", rm)
@@ -1252,7 +1252,7 @@ func (a *app) drawPeople(v *wire.ProjectView) {
 			invites++
 			if edit {
 				li, _ := row(m.Name, "Invited "+localDay(m.Invited)+" · not joined yet")
-				remove(li, m, "Cancel")
+				remove(li, m, "Cancel", false)
 			}
 			continue
 		}
@@ -1263,7 +1263,8 @@ func (a *app) drawPeople(v *wire.ProjectView) {
 		li, txt := row(m.Name, role)
 		if edit {
 			txt.Call("appendChild", a.githubInput(m, "peopleMsg"))
-			remove(li, m, "Remove")
+			remove(li, m, "Remove", false)
+			remove(li, m, "Delete data", true)
 		}
 	}
 	if invites > 0 && !edit {
