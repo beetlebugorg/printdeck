@@ -102,7 +102,9 @@ in the opposite order.
 
 A pod body that is printed already has no nut rings. It also goes on the base. Put each nut on the
 inner floor of the body, at the hole of the old mount, and hold it while you turn the M3 x 8 screw in
-from behind. Do this before the frame and the display go on the body.
+from behind. Do this before the frame and the display go on the body. Then put in the two lower M3 x 6
+screws of the frame with a short screwdriver, or with the back of the foot over the edge of a table:
+the foot is 34 mm behind their wells.
 
 ![A pod body on the base, with the frame and the display off: the two nuts on the inner floor, on the screws from behind](../../renders/slate-pod-body.png)
 
