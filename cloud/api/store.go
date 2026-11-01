@@ -136,8 +136,34 @@ func (m *MemStore) CacheControl(key string) string {
 	return m.files[key].opt.CacheControl
 }
 
-// getConcurrency is the most reads of getAll at one time.
+// getConcurrency is the most reads of getAll at one time, and the most calls of forAll at one
+// time.
 const getConcurrency = 16
+
+// forAll calls f for each i from 0 to n-1, getConcurrency calls at one time. It returns the
+// first error.
+func forAll(n int, f func(i int) error) error {
+	sem := make(chan struct{}, getConcurrency)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var first error
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer func() { <-sem; wg.Done() }()
+			if err := f(i); err != nil {
+				mu.Lock()
+				if first == nil {
+					first = err
+				}
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+	return first
+}
 
 // getAll reads the files at keys at the same time, and returns their data in the order of keys:
 // nil for a file that did not read.

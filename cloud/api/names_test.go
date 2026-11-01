@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -100,6 +101,26 @@ func TestOldProjectAddresses(t *testing.T) {
 	p.Name = "Window Boxes"
 	if p, _ = s.renameSlug(ctx, p); p.Slug != "window-boxes" || len(p.OldSlugs) != 1 {
 		t.Errorf("a name with the same slug %+v", p)
+	}
+
+	// A project with many photos: the publish copies all of them. A publish that stopped before
+	// the page: public on writes the page again.
+	for i := range 300 {
+		id := fmt.Sprintf("ph%011d", i)
+		base := "x/" + p.ID + "/photos/" + id
+		st.Put(ctx, base+".jpg", []byte("j"), PutOptions{})
+		st.Put(ctx, base+"-s.jpg", []byte("s"), PutOptions{})
+		s.putJSON(ctx, base+".json", PhotoRecord{ID: id, Added: now, W: 4, H: 3})
+	}
+	st.Delete(ctx, "p/window-boxes")
+	if _, err := s.setPublic(ctx, p.ID, cloud.PublicRequest{On: true}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := st.Get(ctx, "p/window-boxes"); err != nil {
+		t.Errorf("the page after public on again: %v", err)
+	}
+	if keys, _ := st.List(ctx, "p/window-boxes/photos/"); len(keys) != 600 {
+		t.Errorf("%d copies of the photos, not 600", len(keys))
 	}
 
 	// Public off deletes the pages at the old addresses too.

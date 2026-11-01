@@ -33,6 +33,10 @@ func (s *Server) setPublic(ctx context.Context, id string, in cloud.PublicReques
 	}
 	old := p.Public
 	if in.On && old != "" {
+		// Write the page again: an earlier publish can stop before its end.
+		if err := s.publish(ctx, p); err != nil {
+			return nil, err
+		}
 		return cloud.PublicReply{URL: s.publicURL(old)}, nil
 	}
 	if !in.On && old == "" {
@@ -121,22 +125,33 @@ func (s *Server) publish(ctx context.Context, p *Project) error {
 	if err != nil {
 		return err
 	}
+	// A project can have more than a thousand files, so the deletes and the copies run at the
+	// same time. One at a time, they took more than the time limit of the function.
 	got := map[string]bool{}
+	var gone, copies []string
 	for _, k := range have {
 		got[k] = true
 		if _, ok := want[k]; !ok && k != dst+"page.json" {
-			if err := s.Store.Delete(ctx, k); err != nil {
-				return err
-			}
+			gone = append(gone, k)
 		}
 	}
-	for to, from := range want {
-		if got[to] {
-			continue
+	for to := range want {
+		if !got[to] {
+			copies = append(copies, to)
 		}
-		if err := s.Store.Copy(ctx, from, to, PutOptions{CacheControl: "public, max-age=31536000, immutable"}); err != nil && !errors.Is(err, ErrNotFound) {
-			return err
+	}
+	if err := forAll(len(gone), func(i int) error { return s.Store.Delete(ctx, gone[i]) }); err != nil {
+		return err
+	}
+	if err := forAll(len(copies), func(i int) error {
+		to := copies[i]
+		err := s.Store.Copy(ctx, want[to], to, PutOptions{CacheControl: "public, max-age=31536000, immutable"})
+		if errors.Is(err, ErrNotFound) {
+			return nil
 		}
+		return err
+	}); err != nil {
+		return err
 	}
 	data, _ := json.Marshal(view)
 	if _, err := s.Store.Put(ctx, dst+"page.json", data, PutOptions{ContentType: "application/json", CacheControl: "public, max-age=60"}); err != nil {
@@ -149,6 +164,12 @@ func (s *Server) publish(ctx context.Context, p *Project) error {
 	_, err = s.Store.Put(ctx, "p/"+p.Public, PublicPageFor(page, s.publicURL(p.Public), p.Name),
 		PutOptions{ContentType: "text/html; charset=utf-8", CacheControl: "public, max-age=60"})
 	return err
+}
+
+// Publish writes the public page of the project p in the store st, for the service at base, as
+// a change of the project does. pwf deploy uses it to write each public page again.
+func Publish(ctx context.Context, st Store, base string, p *Project) error {
+	return (&Server{Store: st, Base: base}).publish(ctx, p)
 }
 
 // PublicPageFor is the public page of the project with the name at url: the page with the name,

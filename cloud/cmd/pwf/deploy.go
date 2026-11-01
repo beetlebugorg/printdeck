@@ -261,7 +261,7 @@ func uploadWeb(ctx context.Context, c *s3.Client, bucket, src, base string) erro
 	return refreshPublic(ctx, &api.S3Store{Client: c, Bucket: bucket}, base, files["assets/public.html"])
 }
 
-// refreshPublic writes the new public page to the public address of each project that has one.
+// refreshPublic writes the public page of each project that has one again, with the new page.
 func refreshPublic(ctx context.Context, st api.Store, base string, page []byte) error {
 	if page == nil {
 		return nil
@@ -271,9 +271,10 @@ func refreshPublic(ctx context.Context, st api.Store, base string, page []byte) 
 		return err
 	}
 	for _, p := range projects {
-		body := api.PublicPageFor(page, base+"/p/"+p.Public, p.Name)
-		if _, err := st.Put(ctx, "p/"+p.Public, body, api.PutOptions{ContentType: "text/html; charset=utf-8", CacheControl: "public, max-age=60"}); err != nil {
-			return err
+		// The whole publish, not only the page: it also repairs a publish that stopped before
+		// its end.
+		if err := api.Publish(ctx, st, base, &p); err != nil {
+			return fmt.Errorf("the public page of %s: %w", p.Name, err)
 		}
 	}
 	if len(projects) > 0 {

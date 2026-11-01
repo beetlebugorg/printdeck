@@ -1463,10 +1463,5 @@ func (s *Server) deletePrefix(ctx context.Context, prefix string) error {
 	if err != nil {
 		return err
 	}
-	for _, k := range keys {
-		if err := s.Store.Delete(ctx, k); err != nil {
-			return err
-		}
-	}
-	return nil
+	return forAll(len(keys), func(i int) error { return s.Store.Delete(ctx, keys[i]) })
 }
