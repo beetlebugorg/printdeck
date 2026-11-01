@@ -32,6 +32,58 @@ go run ./cmd/pwf deploy -domain printdeck.example.org -alert-email you@example.o
 The first deploy takes 5 to 30 minutes, for CloudFront and the certificate. Run it again after a
 change to the code.
 
+## Logs and backups
+
+The logs of the function (`/aws/lambda/<stack>-api`) and of the first relay stack
+(`/aws/lambda/printdeck-relay`) are kept 3 days. The stacks own both log groups. `pwf deploy`
+applies the retention of the service from `deploy/template.yaml`. The relay stack has its own template: update it after a
+change to `deploy/relay.yaml`.
+
+```sh
+aws cloudformation update-stack --region us-east-1 --stack-name printdeck-relay \
+  --template-body file://deploy/relay.yaml --capabilities CAPABILITY_IAM \
+  --parameters ParameterKey=BundleId,UsePreviousValue=true ParameterKey=CodeBucket,UsePreviousValue=true \
+    ParameterKey=CodeKey,UsePreviousValue=true ParameterKey=Concurrency,UsePreviousValue=true \
+    ParameterKey=AlertEmail,UsePreviousValue=true ParameterKey=BudgetUSD,UsePreviousValue=true
+```
+
+AWS Backup makes a backup of the data bucket each day at 07:00 UTC, and keeps each backup 7
+days, in the vault `<stack>-data`. The bucket has versioning, which AWS Backup needs. A lifecycle
+rule deletes an old version 1 day after a change or a delete.
+
+To restore:
+
+1. Find the recovery point:
+
+   ```sh
+   aws backup list-recovery-points-by-backup-vault --region us-east-1 --backup-vault-name printdeck-cloud-data
+   ```
+
+2. Get the restore settings of the point. The reply has the names of the settings that the
+   restore uses:
+
+   ```sh
+   aws backup get-recovery-point-restore-metadata --region us-east-1 \
+     --backup-vault-name printdeck-cloud-data --recovery-point-arn ARN
+   ```
+
+3. Restore into a new bucket, and keep the live bucket as it is. Set `NewBucket` to `true` and
+   `DestinationBucketName` to a new name. To restore some files only, set `ItemsToRestore` to
+   their keys or prefixes, for example `["x/<project>/"]`.
+
+   ```sh
+   aws backup start-restore-job --region us-east-1 --recovery-point-arn ARN \
+     --iam-role-arn ROLE_ARN --metadata file://restore.json
+   ```
+
+   `ROLE_ARN` is the role `BackupRole` of the stack.
+
+4. Copy the files that you need from the new bucket into the data bucket with `aws s3 cp` or
+   `aws s3 sync`, then delete the new bucket.
+
+A restore brings back the data of the people who deleted it after the backup. Delete their data
+again after a restore (`PRIVACY.md`).
+
 ## Connect a deck
 
 ```sh

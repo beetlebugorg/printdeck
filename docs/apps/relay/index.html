@@ -72,7 +72,7 @@ go run ./cmd/pwf relay set-apple-key KEY_ID TEAM_ID AuthKey_KEYID.p8</code></pre
 <p>The first stack <code>printdeck-relay</code> still serves its function URL, for an app that has that URL. Before you delete that stack, set <code>DeletionPolicy: Retain</code> on its secret (<code>cloud/deploy/relay.yaml</code> has it) and update the stack, so that the secret stays.</p>
 <h2 id="how-it-works">How it works</h2>
 <ol><li>The app posts its device token to the relay (<code>POST &lt;relay&gt;/register</code>). The relay sends a code to the device in a background push. The app posts the token again with the code, and gets a send token (an HMAC of the device token with <code>relay_secret</code>).</li><li>The app pairs with the deck on the local network. The deck gets a message key, the device token and the send token.</li><li>At an event of a print, the deck encrypts the message and posts it to the relay (<code>POST &lt;relay&gt;/push</code>). The relay checks the send token and sends the push to APNs.</li><li>The notification service extension of the app decrypts the message.</li></ol>
-<p>A new <code>relay_secret</code> makes all send tokens invalid. The relay keeps no list of devices. The CloudWatch logs have fixed texts only, for 14 days. The function URL has no AWS auth: the send token is the auth of each push. A caller with only a device token can make the relay send that device a background push with no alert.</p>
+<p>A new <code>relay_secret</code> makes all send tokens invalid. The relay keeps no list of devices. The CloudWatch logs have fixed texts only, for 3 days. The function URL has no AWS auth: the send token is the auth of each push. A caller with only a device token can make the relay send that device a background push with no alert.</p>
 <h2 id="requests">Requests</h2>
 <p><code>POST &lt;relay&gt;/register</code>, from the app:</p>
 <pre><code>{&quot;device&quot;: &quot;&lt;device token in hex&gt;&quot;, &quot;env&quot;: &quot;production&quot;}</code></pre>
@@ -93,6 +93,6 @@ go run ./cmd/pwf relay set-apple-key KEY_ID TEAM_ID AuthKey_KEYID.p8</code></pre
 <p><code>at</code> is the time of the event in Unix seconds. If the extension fails to decrypt the message, iOS shows &quot;Printdeck: A message from your printer&quot;.</p>
 </main>
 </div>
-<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository. <a href="../../privacy/">Privacy</a>.</footer>
 </body>
 </html>

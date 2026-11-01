@@ -42,7 +42,7 @@ Before you delete that stack, set `DeletionPolicy: Retain` on its secret
 4. The notification service extension of the app decrypts the message.
 
 A new `relay_secret` makes all send tokens invalid. The relay keeps no list of devices. The
-CloudWatch logs have fixed texts only, for 14 days. The function URL has no AWS auth: the send
+CloudWatch logs have fixed texts only, for 3 days. The function URL has no AWS auth: the send
 token is the auth of each push. A caller with only a device token can make the relay send that
 device a background push with no alert.
 
