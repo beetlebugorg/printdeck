@@ -89,15 +89,15 @@
 
 <h2 id="the-iphone-and-watch-app"><span class="n">8.2</span> The iPhone and Watch app</h2>
 <ul>
-<li><b>Several printers.</b> The app keeps a list of decks, each with its key in the keychain group of the app. The home screen has a card for each deck. The Live Activity shows the print that ends first. The widgets and the watch show the deck that prints.</li>
+<li><b>Several printers.</b> The app keeps a list of decks, each with its key in the keychain group of the app. The app has two tabs, Prints and Projects. The Prints tab has a card for each deck. The Live Activity shows the print that ends first. The widgets and the watch show the deck that prints.</li>
 <li><b>Away from home.</b> The app reads the service: the live prints of the projects, and for the owner the state of each printer. It matches them to its decks with <code>printer_id</code>.</li>
-<li><b>Projects.</b> The overview of a project, the approval of plates, Send to a printer, the marks Test, Ready and Delivered, notes, and photos from the camera. The 3D preview opens the web page in a web view, with the session.</li>
-<li><b>The queue.</b> The queue of each deck, with Up, Down and Remove, and no Start. A push message Next in the queue opens its deck.</li>
+<li><b>Projects.</b> The overview of a project, the approval of plates, Send to a printer, the marks Test, Ready, Delivered and Discarded (with a note of why), notes, and photos from the camera. The 3D preview opens the web page in a web view, with the session. The Projects tab has the sign-in, and a card for each project with its prints that run, the prints ready for pickup, the plates that wait and the files in the queues. The app loads the photos and the models with the signed cookies that the replies of the API set.</li>
+<li><b>The queue.</b> The queue of each deck, with Up, Down and Remove, and no Start. A push message Next in the queue opens its deck. The app registers with the push relay at <code>/api/v1/relay/</code> of the service, and the decks post their encrypted messages there.</li>
 <li><b>The resin deck.</b> The app has no Print and no Resume for a resin deck.</li>
 </ul>
 
 <h2 id="the-sign-in-in-the-app"><span class="n">8.3</span> The sign-in in the app</h2>
-<p>The service serves <code>/.well-known/apple-app-site-association</code> with the webcredentials of the app. iOS then lets the app use the passkeys of printdeck.beetlebug.org: the passkeys of the iPhone and of a password manager, a passkey of another device with a QR code, and a security key. The app uses the routes of the web page (<code>auth/login/begin</code> and <code>finish</code>) and keeps the session token in its keychain. A member gets the projects of the member, and no state of the printers.</p>
+<p>The service serves <code>/.well-known/apple-app-site-association</code> with the webcredentials of the app. iOS then lets the app use the passkeys of printdeck.beetlebug.org: the passkeys of the iPhone and of a password manager, a passkey of another device with a QR code, and a security key. The app uses the routes of the web page (<code>auth/login/begin</code> and <code>finish</code>) and keeps the session token in its keychain. A session works for 14 days. A member gets the projects of the member, and no state of the printers.</p>
 </div>
 <p class="arch-next"><a class="btn" href="../the-print-queue/">Back: 7 The print queue</a><a class="btn" href="../">Contents</a><a class="btn" href="../updates/">Next: 9 Updates</a></p>
 </main>

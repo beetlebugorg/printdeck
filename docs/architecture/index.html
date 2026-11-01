@@ -85,11 +85,11 @@
 </defs></svg>
 <div class="arch">
 <p>
-  <a class="btn primary" href="printdeck-architecture.pdf">Download the PDF (1.8 MB)</a>
+  <a class="btn primary" href="printdeck-architecture.pdf">Download the PDF (1.9 MB)</a>
   <a class="btn" href="overview/">Read it on the site</a>
 </p>
-<p class="note">The document describes the system as of October 31, 2026, from the code at commit
-<a href="https://github.com/beetlebugorg/printdeck/commit/77e3a70e"><code>77e3a70e</code></a>. The short version is
+<p class="note">The document describes the system as of November 1, 2026, from the code at commit
+<a href="https://github.com/beetlebugorg/printdeck/commit/c6215969"><code>c6215969</code></a>. The short version is
 <a href="https://github.com/beetlebugorg/printdeck/blob/main/ARCHITECTURE.md">ARCHITECTURE.md</a> in the repository, and the page
 <a href="../deck/">The printdeck program</a>.</p>
 <figure><svg class="d" viewBox="0 0 680 150" width="100%" xmlns="http://www.w3.org/2000/svg">
@@ -106,7 +106,7 @@
 <h2 id="chapters">The chapters</h2>
 <ol class="arch-toc"><li><a href="overview/"><span class="n">1</span>Overview</a><span class="d">the decks, the printers, the slicers, the cloud and <code>pwf</code></span></li><li><a href="identity-and-trust/"><span class="n">2</span>Identity and trust</a><span class="d">decks, the owner, members, share links, upload grants</span></li><li><a href="passkey-flows/"><span class="n">3</span>Passkey flows</a><span class="d">owner enrollment, the invite workflow, sign-in, the session token</span></li><li><a href="why-it-is-secure/"><span class="n">4</span>Why it is secure</a><span class="d">each control, where the code has it, and the limits</span></li><li><a href="the-data-of-a-print/"><span class="n">5</span>The data of a print</a><span class="d">FDM and resin: live tile, share page, project record, notes, photos, the project page, the 3D view</span></li><li><a href="builds-from-github/"><span class="n">6</span>Builds from GitHub</a><span class="d">plans, plates, the slice runs, the approval, the profiles, forks, security</span></li><li><a href="the-print-queue/"><span class="n">7</span>The print queue</a><span class="d">the queue of a deck, files from slicers, plates of builds, what a project sees</span></li><li><a href="the-apps/"><span class="n">8</span>The apps</a><span class="d">the deck API for apps, the iPhone and Watch app, the sign-in in the app</span></li><li><a href="updates/"><span class="n">9</span>Updates</a><span class="d">the A/B image, staged updates, restarts during a print</span></li><li><a href="api-routes/"><span class="n">A</span>API routes</a><span class="d">each route of <code>/api/v1/</code> and its auth</span></li></ol>
 <div class="box gray">
-<p><b>Sources.</b> The facts come from the code at commit 77e3a70e: <code>cloud/api</code>, <code>cloud/deploy/template.yaml</code>, <code>cloud/cmd/pwf</code>, <code>cloud/cmd/pwf-web</code>, <code>cloud/deploy/web/assets</code>, <code>deck/internal/cloud</code>, <code>deck/internal/chitu</code>, <code>deck/internal/printer</code>, <code>deck/cmd/printdeck</code>, <code>deck/internal/system</code>, <code>os/</code> and <code>profiles/</code>. The builds from GitHub also come from <code>docs/specs/github-builds.md</code> and from the repository <code>beetlebugorg/printdeck-action</code> at commit 270c60d. The passkey library is <code>github.com/go-webauthn/webauthn</code> v0.18.2.</p>
+<p><b>Sources.</b> The facts come from the code at commit c6215969: <code>cloud/api</code>, <code>cloud/deploy/template.yaml</code>, <code>cloud/cmd/pwf</code>, <code>cloud/cmd/pwf-web</code>, <code>cloud/deploy/web/assets</code>, <code>deck/internal/cloud</code>, <code>deck/internal/chitu</code>, <code>deck/internal/printer</code>, <code>deck/cmd/printdeck</code>, <code>deck/internal/system</code>, <code>os/</code> and <code>profiles/</code>. The builds from GitHub also come from <code>docs/specs/github-builds.md</code> and from the repository <code>beetlebugorg/printdeck-action</code> at commit 4f1e056. The passkey library is <code>github.com/go-webauthn/webauthn</code> v0.18.2.</p>
 <p><b>Words.</b> A <i>deck</i> is a Raspberry Pi 5 with a touch screen that runs Printdeck OS. The <i>owner</i> is the person who runs the service. A <i>member</i> is a friend that the owner invited to one or more projects. The <i>API</i> is the Go program on AWS Lambda. The <i>bucket</i> is the S3 bucket of the service. The <i>Action</i> is <code>beetlebugorg/printdeck-action</code> in a workflow of a project repository on GitHub.</p>
 </div>
 </div>
