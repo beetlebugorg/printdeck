@@ -334,10 +334,20 @@ func (s *Server) numberPrints(ctx context.Context, id string, recs []*PrintRecor
 		return err
 	}
 	for i, rec := range recs {
-		rec.N = first + i
-		if err := s.putJSON(ctx, printKey(id, rec.ID), rec); err != nil {
+		pr, err := s.changePrint(ctx, id, rec.ID, func(pr *PrintRecord) error {
+			if pr.N != 0 {
+				return errNoChange
+			}
+			pr.N = first + i
+			return nil
+		})
+		if isGone(err) {
+			continue
+		}
+		if err != nil {
 			return err
 		}
+		*rec = *pr
 	}
 	return nil
 }

@@ -4,8 +4,12 @@
 // The environment: BUCKET is the data bucket, and DOMAIN the domain of the service.
 // RELAY_SECRET_ARN and TOPIC (the bundle ID of the app) turn on the push relay at /api/v1/relay/. A schedule
 // sends the event {"pwf": "sweep"} every 15 minutes, which deletes the shares after their time.
-// The comments on pull requests and the videos of the time lapses run after their request, in an
-// event invoke of this function. The package of the function has ffmpeg next to bootstrap.
+// The comments on pull requests run after their request, in an event invoke of this function.
+//
+// The same program is the jobs function, which makes the videos of the time lapses
+// (api/lapse.go). Its package has ffmpeg next to bootstrap, and the package of the API has no
+// ffmpeg. The API sends each video job to the function JOBS_FUNCTION, in an event invoke. The
+// jobs function has no secrets, and its jobs start no other jobs.
 //
 // The logs go to CloudWatch. They have fixed texts only: no request body, no key, no code.
 package main
@@ -14,6 +18,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -122,19 +127,28 @@ func main() {
 		}
 		s.Relay = relay.NewRelay(sec, os.Getenv("TOPIC"))
 	}
-	// The video of the time lapse of each print: pwf deploy puts ffmpeg next to bootstrap.
+	// The jobs function: pwf deploy puts ffmpeg next to bootstrap in its package only.
 	if bin := filepath.Join(os.Getenv("LAMBDA_TASK_ROOT"), "ffmpeg"); fileExists(bin) {
 		s.Lapse = api.FFmpeg(bin)
 	}
-	// The jobs after a request run in another run of this function: an event invoke.
-	if name := os.Getenv("AWS_LAMBDA_FUNCTION_NAME"); name != "" {
+	// The jobs after a request of the API run in an event invoke: the videos in the jobs
+	// function, and the other jobs in another run of this function.
+	if name := os.Getenv("AWS_LAMBDA_FUNCTION_NAME"); name != "" && s.Lapse == nil {
 		lc := awslambda.NewFromConfig(cfg)
+		jobs := os.Getenv("JOBS_FUNCTION")
 		s.Later = func(ctx context.Context, job api.Job) error {
+			fn := name
+			if job.Kind == "lapse" {
+				if jobs == "" {
+					return errors.New("no jobs function")
+				}
+				fn = jobs
+			}
 			b, err := json.Marshal(jobEvent{Pwf: "job", Job: &job})
 			if err != nil {
 				return err
 			}
-			_, err = lc.Invoke(ctx, &awslambda.InvokeInput{FunctionName: &name, InvocationType: types.InvocationTypeEvent, Payload: b})
+			_, err = lc.Invoke(ctx, &awslambda.InvokeInput{FunctionName: &fn, InvocationType: types.InvocationTypeEvent, Payload: b})
 			return err
 		}
 	}

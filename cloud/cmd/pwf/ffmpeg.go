@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-// The ffmpeg of the function, for the videos of the time lapses (api/lapse.go): the static build
+// The ffmpeg of the jobs function, for the videos of the time lapses (api/lapse.go): the static build
 // of John Van Sickle for Linux arm64, with libx264. It is GPL v3. The function runs it as a
 // separate program, and the zip has its license next to it. pwf keeps the download in the cache
 // folder of the user, and checks its SHA-256 at each build.

@@ -33,10 +33,10 @@ const (
 	maxLapseVideo = 256 << 20
 )
 
-// lapseJobTime is the most time of a lapse job. The template gives the function 180 s. A lapse of
-// 2000 frames (MaxLapseFrames) at 1024 MB needs up to about 60 s. This is an estimate from a test
-// on x86.
-const lapseJobTime = 170 * time.Second
+// lapseJobTime is the most time of a lapse job. The template gives the jobs function 120 s, with
+// 1769 MB (one vCPU). A lapse of 2000 frames (MaxLapseFrames) needs about 30 to 40 s there. This
+// is an estimate from a test on x86.
+const lapseJobTime = 110 * time.Second
 
 // lapseCache is the Cache-Control of the video and its poster: the same as the frames.
 const lapseCache = "private, max-age=31536000, immutable"
@@ -62,13 +62,11 @@ func FFmpeg(bin string) LapseEncoder {
 	}
 }
 
-// startLapse starts the job that makes the video of the print, after the request. With no
-// s.Later, the job runs in the request. With no s.Lapse, the print keeps its frames.
+// startLapse starts the job that makes the video of the print, after the request. In the API
+// function, s.Later sends the job to the jobs function, which has ffmpeg. With no s.Later, the
+// job runs in the request when s.Lapse is set. With neither, the print keeps its frames.
 func (s *Server) startLapse(ctx context.Context, project, print string) {
-	if s.Lapse == nil {
-		return
-	}
-	if s.later(ctx, Job{Kind: "lapse", Project: project, Print: print}) {
+	if s.later(ctx, Job{Kind: "lapse", Project: project, Print: print}) || s.Lapse == nil {
 		return
 	}
 	if err := s.LapseVideo(ctx, project, print); err != nil {
@@ -187,33 +185,17 @@ func (s *Server) encodeLapse(ctx context.Context, base string, pr *PrintRecord) 
 // setVideo sets Video in the record of the print, when the record is of the upload at added.
 // It returns errLapseChanged when the deck sent the print again.
 func (s *Server) setVideo(ctx context.Context, project, print string, added time.Time) error {
-	key := printKey(project, print)
-	for range 5 {
-		b, etag, err := s.Store.Get(ctx, key)
-		if err != nil {
-			return err
-		}
-		var pr PrintRecord
-		if err := json.Unmarshal(b, &pr); err != nil {
-			return err
-		}
+	_, err := s.changePrint(ctx, project, print, func(pr *PrintRecord) error {
 		if !pr.Added.Equal(added) {
 			return errLapseChanged
 		}
 		if pr.Video {
-			return nil
+			return errNoChange
 		}
 		pr.Video = true
-		data, err := json.Marshal(pr)
-		if err != nil {
-			return err
-		}
-		_, err = s.Store.Put(ctx, key, data, PutOptions{ContentType: "application/json", IfMatch: etag})
-		if !errors.Is(err, ErrConflict) {
-			return err
-		}
-	}
-	return ErrConflict
+		return nil
+	})
+	return err
 }
 
 // LapsePrints returns the IDs of the prints of the project that are done and have frames and no
