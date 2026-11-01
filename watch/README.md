@@ -74,7 +74,7 @@ Sign in with passkey on the Projects tab signs in to printdeck.beetlebug.org wit
 the owner or of a member, the same passkey as the web site. iOS offers the passkeys of the iPhone
 and a security key, such as a YubiKey, over USB-C, Lightning or NFC. A key with no passkey for
 Printdeck sends no user handle, and the app shows "This key has no passkey for Printdeck." The token is in the keychain group,
-and a 401 asks for the sign-in again. An owner session works for 12 hours.
+and a 401 asks for the sign-in again. An owner session works for 14 days.
 
 When a deck does not answer, its card shows the live print of the deck from the projects of the
 session: the model, the progress and the time left. The app finds the print by `printer_id` of

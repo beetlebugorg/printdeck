@@ -86,8 +86,7 @@ Service (Go):
 - Serve `/.well-known/apple-app-site-association` with
   `{"webcredentials":{"apps":["7UZF9976U3.org.beetlebug.printdeck"]}}`, with the content type
   `application/json`. `pwf deploy` uploads it.
-- An owner session works for 12 hours. Phase 2 keeps that. A later change can add a longer token
-  for the app, kept in the keychain, if the sign-in each day is too often.
+- An owner session works for 14 days.
 
 ## Phase 3: projects
 

@@ -1321,22 +1321,28 @@ func onFiles(id string, f func([]js.Value)) {
 
 func confirm(q string) bool { return js.Global().Call("confirm", q).Bool() }
 
+// sessionGet returns the saved value of k. The sign-in is in localStorage, so it lasts after the
+// tab closes, for the time of the session (api.SessionTTL). An older page kept it in
+// sessionStorage: the value there still counts.
 func sessionGet(k string) string {
 	defer func() { recover() }()
-	v := js.Global().Get("sessionStorage").Call("getItem", k)
-	if v.IsNull() {
-		return ""
+	for _, store := range []string{"localStorage", "sessionStorage"} {
+		if v := js.Global().Get(store).Call("getItem", k); !v.IsNull() {
+			return v.String()
+		}
 	}
-	return v.String()
+	return ""
 }
 
+// sessionSet saves the value v of k, or removes it for "".
 func sessionSet(k, v string) {
 	defer func() { recover() }()
+	js.Global().Get("sessionStorage").Call("removeItem", k)
 	if v == "" {
-		js.Global().Get("sessionStorage").Call("removeItem", k)
+		js.Global().Get("localStorage").Call("removeItem", k)
 		return
 	}
-	js.Global().Get("sessionStorage").Call("setItem", k, v)
+	js.Global().Get("localStorage").Call("setItem", k, v)
 }
 
 // copyText copies a text to the clipboard, and says so in the element msg.
