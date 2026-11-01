@@ -617,6 +617,21 @@ func (a *app) drawPrint(p wire.ProjectPrint) {
 		err := a.api("GET", "/projects/"+v.ID+"/prints/"+p.ID+"/frames", nil, &fr)
 		return fr.URLs, fr.FPS, err
 	}, &a.playing)
+	// The photos that the person can move.
+	figs := byID("prPhotos").Get("children")
+	for i := 0; i < figs.Length(); i++ {
+		fig := figs.Index(i)
+		link := fig.Call("querySelector", "a")
+		if link.IsNull() {
+			continue
+		}
+		id := link.Get("dataset").Get("photo").String()
+		for _, ph := range v.Photos {
+			if ph.ID == id && ph.Mine {
+				fig.Call("appendChild", a.moveSelect(ph, "prPhotoMsg"))
+			}
+		}
+	}
 }
 
 // printLink is the address of the print page: the public address when the project has one, else
@@ -827,9 +842,67 @@ func (a *app) drawPhotos() {
 				return nil
 			}))
 			fig.Call("appendChild", rm)
+			fig.Call("appendChild", a.moveSelect(ph, "photoMsg"))
 		}
 		box.Call("appendChild", fig)
 	}
+}
+
+// moveSelect is the list on a photo that moves it to another print of the project, or to no
+// print. msg is the element of the messages.
+func (a *app) moveSelect(ph wire.ProjectPhoto, msg string) js.Value {
+	sel := el("select", "mv", "")
+	sel.Set("title", "Move the photo to another print")
+	add := func(value, text string) {
+		o := el("option", "", text)
+		o.Set("value", value)
+		sel.Call("appendChild", o)
+	}
+	add("", "Move to…")
+	if ph.Print != "" {
+		add("-", "No print")
+	}
+	for _, p := range a.view.Prints {
+		if p.ID == ph.Print {
+			continue
+		}
+		text := fmt.Sprintf("#%d %s", p.N, p.Name)
+		if !p.Ended.IsZero() {
+			text += " · " + p.Ended.Local().Format("Jan 2")
+		}
+		add(p.ID, text)
+	}
+	pid := ph.ID
+	sel.Call("addEventListener", "change", js.FuncOf(func(js.Value, []js.Value) any {
+		to := sel.Get("value").String()
+		if to == "" {
+			return nil
+		}
+		if to == "-" {
+			to = ""
+		}
+		go a.movePhoto(pid, to, msg)
+		return nil
+	}))
+	return sel
+}
+
+// movePhoto puts the photo on the print to, or on no print for "", and draws the page again.
+func (a *app) movePhoto(id, to, msg string) {
+	var v wire.ProjectView
+	if err := a.api("PUT", "/projects/"+a.view.ID+"/photos/"+id, struct {
+		Print string `json:"print"`
+	}{to}, &v); err != nil {
+		say(msg, err, "")
+		return
+	}
+	a.view = &v
+	if a.print != "" {
+		a.drawPrint(a.printNow())
+	} else {
+		a.drawProject()
+	}
+	say(msg, nil, "The photo moved.")
 }
 
 // photoFigure is a photo in the grid: the small copy, a link to the photo, and its author. A tap

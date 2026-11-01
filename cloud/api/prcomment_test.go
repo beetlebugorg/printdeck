@@ -163,6 +163,23 @@ func TestPRComment(t *testing.T) {
 		t.Fatalf("the public photo %s: %v", key, err)
 	}
 
+	// A photo on the wrong print moves: off the print of the plate, and back.
+	if st := call(t, base, "PUT", "/api/v1/projects/"+sum.ID+"/photos/"+ph.Photo, tok, map[string]string{"print": ""}, nil); st != 200 {
+		t.Fatalf("move: %d", st)
+	}
+	if strings.Contains(app.comments[100], `alt="The print of plate 1"`) {
+		t.Fatal("the comment has the photo that moved off the print")
+	}
+	if st := call(t, base, "PUT", "/api/v1/projects/"+sum.ID+"/photos/"+ph.Photo, tok, map[string]string{"print": "nosuchprint1"}, nil); st != 400 {
+		t.Fatalf("move to no print: %d", st)
+	}
+	if st := call(t, base, "PUT", "/api/v1/projects/"+sum.ID+"/photos/"+ph.Photo, tok, map[string]string{"print": pid}, nil); st != 200 {
+		t.Fatalf("move back: %d", st)
+	}
+	if !strings.Contains(app.comments[100], `alt="The print of plate 1"`) {
+		t.Fatal("the comment has no photo after the move back")
+	}
+
 	// The project page has the state of the pull request, and asks GitHub again after a time.
 	prState := func() string {
 		p, _, err := d.API.loadProject(ctx, sum.ID)

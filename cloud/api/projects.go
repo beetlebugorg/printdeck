@@ -577,6 +577,17 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 			return nil, err
 		}
 		return s.afterChange(ctx, id, w)
+	case part == "photos" && sub != "" && !strings.Contains(sub, "/") && r.Method == http.MethodPut:
+		var in struct {
+			Print string `json:"print"`
+		}
+		if json.Unmarshal(body, &in) != nil {
+			return nil, fail(http.StatusBadRequest, "bad JSON")
+		}
+		if err := s.movePhoto(ctx, id, sub, w, in.Print); err != nil {
+			return nil, err
+		}
+		return s.afterChange(ctx, id, w)
 	case part == "photos" && sub != "" && r.Method == http.MethodDelete:
 		if err := s.deletePhoto(ctx, id, sub, w); err != nil {
 			return nil, err
@@ -1309,6 +1320,52 @@ func (s *Server) projectPhoto(ctx context.Context, project, pid string, w *who, 
 		if pr, err := s.loadPrint(ctx, project, print); err == nil {
 			s.commentPrint(ctx, project, *pr)
 		}
+	}
+	return nil
+}
+
+// movePhoto puts the photo pid on the print, or on no print for "". The owner moves any photo,
+// a member only their own. The comments of the pull requests of the old and the new print change.
+func (s *Server) movePhoto(ctx context.Context, project, pid string, w *who, print string) error {
+	if !validID(pid) {
+		return fail(http.StatusGone, "no such photo")
+	}
+	key := "x/" + project + "/photos/" + pid + ".json"
+	b, _, err := s.Store.Get(ctx, key)
+	if errors.Is(err, ErrNotFound) {
+		return fail(http.StatusGone, "no such photo")
+	}
+	if err != nil {
+		return err
+	}
+	var ph PhotoRecord
+	if json.Unmarshal(b, &ph) != nil {
+		return fail(http.StatusGone, "no such photo")
+	}
+	if !w.owner && (ph.Member == "" || ph.Member != w.member) {
+		return fail(http.StatusUnauthorized, "only the owner and the person who added it can move a photo")
+	}
+	var to *PrintRecord
+	if print != "" {
+		if to, err = s.loadPrint(ctx, project, print); err != nil {
+			return fail(http.StatusBadRequest, "no such print")
+		}
+	}
+	old := ph.Print
+	if old == print {
+		return nil
+	}
+	ph.Print = print
+	if err := s.putJSON(ctx, key, ph); err != nil {
+		return err
+	}
+	if old != "" {
+		if pr, err := s.loadPrint(ctx, project, old); err == nil {
+			s.commentPrint(ctx, project, *pr)
+		}
+	}
+	if to != nil {
+		s.commentPrint(ctx, project, *to)
 	}
 	return nil
 }

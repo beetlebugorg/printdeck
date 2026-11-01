@@ -56,6 +56,9 @@ input:not([type]), input[type="text"] { font: 400 16px/1.4 "Archivo", sans-serif
   background: rgba(0,0,0,.62); padding: 4px 6px; border-radius: 5px; }
 .photos .rm { position: absolute; right: 6px; top: 6px; min-height: 30px; padding: 0 10px; font-size: 12px; background: rgba(0,0,0,.62);
   color: #f3f1ec; border: none; }
+.photos .mv { position: absolute; left: 6px; top: 6px; max-width: calc(100% - 90px); min-height: 30px; padding: 0 6px;
+  font-size: 12px; background: rgba(0,0,0,.62); color: #f3f1ec; border: none; border-radius: 6px; }
+.photos .mv option { color: initial; background: initial; }
 /* The prints of a project: a tile each, which opens the page of the print. */
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 40vw), 1fr)); gap: var(--s3); }
 .tile { display: grid; grid-template-rows: auto 1fr; background: var(--plate); border: 1px solid var(--seam); border-radius: 14px;
@@ -323,7 +326,7 @@ pre.cmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: #15161a
 .notes-text.clamp { display: -webkit-box; -webkit-line-clamp: 8; -webkit-box-orient: vertical; overflow: hidden; }
 .notes-text.clamp:empty { display: none; }
 .photos.mosaic { grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.photos.mosaic figcaption, .photos.mosaic .rm { display: none; }
+.photos.mosaic figcaption, .photos.mosaic .rm, .photos.mosaic .mv { display: none; }
 /* On a narrow screen the two columns make one: the cards that wait for the owner come first. */
 @media (max-width: 959px) {
   .ov-main, .ov-rail { display: contents; }
