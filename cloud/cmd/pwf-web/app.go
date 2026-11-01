@@ -29,15 +29,16 @@ type app struct {
 	playing                    int    // the number of the time lapse that plays; a new play ends the old one
 	// The plan page: the plan, the choice of each part, the plates (the indexes of the parts of
 	// each plate), and the part in the 3D view.
-	plan         *wire.ProjectPlan
-	planChoices  []planChoice
-	planPlates   [][]int
-	planShown    int
-	planProcess  string            // the kind of print of the plan page: "fdm" or "resin"
-	lastBuild    wire.ProjectBuild // the build of the build page
-	peopleEdit   bool              // the card People shows the keys to invite and remove people
-	tab          string            // the tab of the project page: "overview", "prints", "photos" or "settings"
-	previewShown string            // the build of the preview that shows
+	plan        *wire.ProjectPlan
+	planChoices []planChoice
+	planPlates  [][]int
+	planShown   int
+	planProcess string              // the kind of print of the plan page: "fdm" or "resin"
+	lastBuild   wire.ProjectBuild   // the build of the build page
+	peopleEdit  bool                // the card People shows the keys to invite and remove people
+	tab         string              // the tab of the project page: "overview", "prints", "photos" or "settings"
+	plateViews  map[string]js.Value // the 3D view of each plate of the build page (plateView)
+	plateBuild  string              // the build of plateViews
 }
 
 const tokenKey = "pwf-session"

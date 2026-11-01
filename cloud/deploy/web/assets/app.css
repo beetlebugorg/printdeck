@@ -189,7 +189,19 @@ pre.cmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: #15161a
 .gview { display: grid; gap: 10px; }
 .gv-stage { height: auto; aspect-ratio: 4 / 3; max-height: min(70vh, 620px); border-radius: 10px; overflow: hidden; background: #15161a; position: relative; }
 .gv-stage canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
-.gv-controls { display: grid; gap: 8px; }
+.gv-controls { display: grid; gap: 8px; align-content: start; }
+/* The build page: the view with the layer slider at its side, and the controls on the right. */
+.gv-split { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 14px; align-items: start; }
+.gv-main { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 8px; }
+.gv-side { display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 0;
+  font: 600 13px "IBM Plex Mono", monospace; color: var(--ink-dim); }
+.gv-side input[type=range] { writing-mode: vertical-lr; direction: rtl; flex: 1; min-height: 0; width: 32px;
+  accent-color: var(--orange); margin: 0; }
+.gv-layer-n { color: var(--ink); min-height: 1.2em; }
+.gv-layer-cap { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+.gv-split .gv-keys, .gv-split .gv-legend { flex-direction: column; align-items: stretch; gap: 8px; }
+.gv-split .gv-row { grid-template-columns: 56px 1fr; }
+@media (max-width: 760px) { .gv-split { grid-template-columns: 1fr; } .gv-split .gv-keys { flex-direction: row; flex-wrap: wrap; } }
 .gv-info { font: 600 14px "IBM Plex Mono", monospace; }
 .gv-row { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-dim); }
 .gv-row input[type=range] { width: 100%; accent-color: var(--orange); min-height: 32px; }

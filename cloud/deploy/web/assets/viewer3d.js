@@ -5,6 +5,9 @@
 const three = "./three-r170/";
 let lib; // the three.js modules, after the first show
 let view; // the view now: { box, renderer, stop }
+// The other views of the page: showGcode with opts.many keeps a view of its own in each box, for
+// example one for each plate of a build. hide() stops them too.
+const many = new Map(); // box -> { box, stop }
 
 // The model file of a printer, from its model name, or "" for the plain model of its process.
 function modelFile(model) {
@@ -156,6 +159,8 @@ function hide() {
     view.stop();
     view = null;
   }
+  for (const v of many.values()) v.stop();
+  many.clear();
 }
 
 // readCells reads part.bin (gzip, "PDC1"): the share of resin in each cell of a resin part, from 0
@@ -554,6 +559,11 @@ async function showModels(box, opts) {
   // The real bed of the printer, in place of the plain bed, when the page names the printer.
   printerBed(T, opts.printer, bx, by).then((real) => {
     if (!real) return;
+    real.traverse((o) => {
+      if (!o.isMesh) return;
+      o.material = o.material.clone();
+      Object.assign(o.material, { transparent: true, opacity: Math.min(o.material.opacity, 0.5), depthWrite: false, side: T.DoubleSide });
+    });
     scene.add(real);
     bed.visible = grid.visible = false;
   }).catch(() => {});
@@ -751,10 +761,16 @@ const GHOST = "#4a4e57";
 // showGcode draws the G-code of a plate in box, with its controls: the layer, the moves of the
 // layer, the kinds of lines, the travels, and the colors by kind or by speed. opts: url, bed
 // ([x, y] in mm), title; compact: no controls, for the page of a print; printed: the count of
-// the layers that printed, or null for all: the later layers are gray. The viewer turns all
-// around the plate, also under the bed. It returns a handle with setPrinted(n).
+// the layers that printed, or null for all: the later layers are gray; many: keep the other
+// views of the page (one view in each box). The viewer turns all around the plate, also under
+// the bed. It returns a handle with setPrinted(n).
 async function showGcode(box, opts) {
-  hide();
+  if (opts.many) {
+    many.get(box)?.stop();
+    many.delete(box);
+  } else {
+    hide();
+  }
   box.textContent = "";
   const note = document.createElement("p");
   note.className = "part-wait";
@@ -770,14 +786,24 @@ async function showGcode(box, opts) {
   }
   const [bx, by] = opts.bed || [280, 280];
 
-  // The page parts: the view, and the controls under it.
+  // The page parts: the view with the layer slider at its side, and the other controls on the
+  // right (under the view on a narrow screen).
   const stage = document.createElement("div");
   stage.className = "gv-stage";
   const controls = document.createElement("div");
   controls.className = "gv-controls";
-  box.append(stage);
-  if (!opts.compact) box.append(controls);
-  else box.classList.add("gv-compact");
+  const main = document.createElement("div");
+  main.className = "gv-main";
+  const side = document.createElement("div");
+  side.className = "gv-side";
+  if (!opts.compact) {
+    main.append(stage, side);
+    box.append(main, controls);
+    box.classList.add("gv-split");
+  } else {
+    box.append(stage);
+    box.classList.add("gv-compact");
+  }
   const renderer = new T.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.setClearColor(0x15161a);
@@ -890,10 +916,10 @@ async function showGcode(box, opts) {
   let turned = false;
   orbit.addEventListener("start", () => { turned = true; });
   const framePart = () => {
-    if (!opts.compact || turned) return;
+    if (turned) return;
     const vf = (camera.fov * Math.PI) / 180;
     const hf = 2 * Math.atan(Math.tan(vf / 2) * camera.aspect);
-    const d = (radius / Math.sin(Math.min(vf, hf) / 2)) * 1.08;
+    const d = (radius / Math.sin(Math.min(vf, hf) / 2)) * (opts.compact ? 1.08 : 1.25);
     if (!Number.isFinite(d) || d <= 0) return; // the view has no size yet
     camera.position.copy(mid).addScaledVector(dir, d);
   };
@@ -904,10 +930,11 @@ async function showGcode(box, opts) {
   // The controls.
   const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt) e.textContent = txt; return e; };
   const info = el("div", "gv-info");
-  const layerRow = el("label", "gv-row", "Layer ");
   const layer = el("input");
   layer.type = "range"; layer.min = 1; layer.max = g.layers; layer.value = g.layers;
-  layerRow.appendChild(layer);
+  layer.setAttribute("aria-label", "Layer");
+  const layerNum = el("span", "gv-layer-n");
+  side.append(layerNum, layer, el("span", "gv-layer-cap", "Layer"));
   const moveRow = el("label", "gv-row", "Moves ");
   const move = el("input");
   move.type = "range"; move.min = 0; move.max = 1000; move.value = 1000;
@@ -940,7 +967,7 @@ async function showGcode(box, opts) {
     l.append(b, sw, " " + name);
     legend.appendChild(l);
   });
-  controls.append(info, layerRow, moveRow, keys, legend);
+  controls.append(info, moveRow, keys, legend);
 
   // The colors: by kind, or by speed from blue (slow) to orange (fast).
   let vmin = Infinity, vmax = 0;
@@ -1002,6 +1029,7 @@ async function showGcode(box, opts) {
     const clock = (s) => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h ? `${h} h ${m} min` : `${m} min ${s % 60} s`; };
     info.textContent = `Layer ${L} of ${g.layers} · Z ${z.toFixed(2)} mm` + (t ? ` · ${clock(t)} into the print` : "") +
       ` · ${le - ls} moves in this layer`;
+    layerNum.textContent = L;
   };
   layer.oninput = () => { move.value = 1000; update(); };
   move.oninput = update;
@@ -1225,7 +1253,7 @@ async function showGcode(box, opts) {
     const o = i * 7;
     return Math.hypot(g.seg[o + 2] - g.seg[o], g.seg[o + 3] - g.seg[o + 1]) / Math.max(1, g.speed[i]);
   }
-  view = {
+  const done = {
     box,
     stop() {
       cancelAnimationFrame(frame);
@@ -1237,9 +1265,11 @@ async function showGcode(box, opts) {
       mat.dispose();
       travGeo.dispose();
       box.textContent = "";
-      box.classList.remove("gv-compact");
+      box.classList.remove("gv-compact", "gv-split");
     },
   };
+  if (opts.many) many.set(box, done);
+  else view = done;
   return handle;
 }
 
@@ -1488,7 +1518,7 @@ async function showDiff(box, oldUrl, newUrl) {
     if (orbit.update() || redraw) { redraw = false; renderer.render(scene, camera); }
   };
   tick();
-  view = {
+  const done = {
     box,
     stop() {
       cancelAnimationFrame(frame);

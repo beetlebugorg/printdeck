@@ -914,26 +914,58 @@ func bedOf(printer string) (float64, float64) {
 	return 280, 280
 }
 
-// showPreview shows the G-code of the plate n of the build in the 3D view.
-func (a *app) showPreview(b wire.ProjectBuild, n int) {
+// plateView returns the 3D view of the plate n of the build b: a box with the G-code viewer and its
+// controls. The viewer loads when the box comes near the screen, so a build with many plates
+// does not read all its G-code at once. A new draw of the build keeps the boxes, so a view keeps
+// its turn and its layer.
+func (a *app) plateView(b wire.ProjectBuild, n int) js.Value {
 	pl := b.Plates[n]
-	v := js.Global().Get("pwfView3d")
-	if v.IsUndefined() || pl.FileURL == "" {
-		return
+	url, _, _ := strings.Cut(pl.FileURL, "?")
+	key := fmt.Sprintf("%s/%d/%s", b.ID, n, url)
+	if box, ok := a.plateViews[key]; ok {
+		return box
 	}
-	var names []string
-	for _, pp := range pl.Parts {
-		names = append(names, fmt.Sprintf("%s × %d", partLabel(pp.Name, pp.Variant), pp.Count))
+	box := el("div", "gcode-view", "")
+	a.plateViews[key] = box
+	start := func() {
+		v := js.Global().Get("pwfView3d")
+		if v.IsUndefined() {
+			return
+		}
+		opts := js.Global().Get("Object").New()
+		opts.Set("url", pl.FileURL)
+		bx, by := bedOf(pl.Printer)
+		bed := js.Global().Get("Array").New()
+		bed.Call("push", bx, by)
+		opts.Set("bed", bed)
+		opts.Set("printer", pl.Printer)
+		opts.Set("many", true)
+		v.Call("showGcode", box, opts)
 	}
-	setText("bdViewTitle", fmt.Sprintf("Plate %d · %s", n+1, strings.Join(names, ", ")))
-	opts := js.Global().Get("Object").New()
-	opts.Set("url", pl.FileURL)
-	bx, by := bedOf(pl.Printer)
-	bed := js.Global().Get("Array").New()
-	bed.Call("push", bx, by)
-	opts.Set("bed", bed)
-	opts.Set("printer", pl.Printer)
-	v.Call("showGcode", byID("bdView"), opts)
+	io := js.Global().Get("IntersectionObserver")
+	if io.IsUndefined() {
+		start()
+		return box
+	}
+	var seen js.Func
+	var obs js.Value
+	seen = js.FuncOf(func(_ js.Value, args []js.Value) any {
+		entries := args[0]
+		for i := 0; i < entries.Length(); i++ {
+			if entries.Index(i).Get("isIntersecting").Bool() {
+				obs.Call("disconnect")
+				start()
+				seen.Release()
+				return nil
+			}
+		}
+		return nil
+	})
+	o := js.Global().Get("Object").New()
+	o.Set("rootMargin", "300px")
+	obs = io.New(seen, o)
+	obs.Call("observe", box)
+	return box
 }
 
 // sliceAgain makes a new build of the plan with the plates of the build that failed.
@@ -1035,17 +1067,10 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 	a.lastBuild = b
 	box := byID("bdPlates")
 	box.Set("textContent", "")
-	// The preview of the first plate with a G-code, when the page shows the build again.
-	first := -1
-	for n, pl := range b.Plates {
-		if pl.FileURL != "" && pl.Process == "fdm" && first < 0 {
-			first = n
-		}
-	}
-	setHidden("bdViewCard", first < 0)
-	if first >= 0 && a.previewShown != b.ID {
-		a.previewShown = b.ID
-		a.showPreview(b, first)
+	// Each plate card has a 3D view of its own (plateView). A view stays when the page draws the
+	// build again, and goes with the page.
+	if a.plateViews == nil || a.plateBuild != b.ID {
+		a.plateViews, a.plateBuild = map[string]js.Value{}, b.ID
 	}
 	for n, pl := range b.Plates {
 		n, pl := n, pl
@@ -1094,22 +1119,15 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 		fact("File", pl.File)
 		fact("Slicer", pl.Slicer)
 		card.Call("appendChild", facts)
-		if pl.PictureURL != "" {
+		if pl.FileURL != "" && pl.Process == "fdm" {
+			card.Call("appendChild", a.plateView(b, n))
+			card.Call("appendChild", el("p", "small dim", "Drag to turn the plate, also under the bed. Pinch or scroll to zoom. Click the view, then the arrow keys move the layer."))
+		} else if pl.PictureURL != "" {
 			img := el("img", "", "")
 			img.Set("src", pl.PictureURL)
 			img.Set("alt", "The plate")
 			img.Set("style", "max-width:100%;border-radius:8px")
 			card.Call("appendChild", img)
-		}
-		if pl.FileURL != "" && pl.Process == "fdm" {
-			pv := el("button", "", "Preview in 3D")
-			pv.Set("type", "button")
-			pv.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
-				a.showPreview(b, n)
-				byID("bdViewCard").Call("scrollIntoView", map[string]any{"behavior": "smooth", "block": "start"})
-				return nil
-			}))
-			card.Call("appendChild", pv)
 		}
 		if pl.State == wire.PartRejected && pl.Reason != "" {
 			card.Call("appendChild", el("p", "", "Rejected by "+pl.By+": "+pl.Reason))
