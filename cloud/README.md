@@ -32,6 +32,25 @@ go run ./cmd/pwf deploy -domain printdeck.example.org -alert-email you@example.o
 The first deploy takes 5 to 30 minutes, for CloudFront and the certificate. Run it again after a
 change to the code.
 
+The deploy also needs `tar` with xz. It puts ffmpeg in the package of the function, for the
+videos of the time lapses: the static build 7.0.2 for Linux arm64 from johnvansickle.com, under
+the GPL, version 3. The function runs it as a separate program. The download stays in the cache
+folder of your user (`printdeck/` in it), and the deploy checks its SHA-256.
+
+## Time lapse videos
+
+When a print with a time lapse is done, the function makes `lapse.mp4` (H.264) and `lapse.jpg`
+(the last frame) from the frames, and deletes the frames. The prints from before this change keep
+their frames until you run the backfill once, after the deploy:
+
+```sh
+go run ./cmd/pwf lapse-backfill -n   # count the prints with frames and no video
+go run ./cmd/pwf lapse-backfill      # the function makes the videos, 4 at a time
+```
+
+`-parallel N` sets the count at the same time. `-local` makes the videos on this computer with
+its ffmpeg. A print that fails keeps its frames, and a second run tries it again.
+
 ## Connect a deck
 
 ```sh

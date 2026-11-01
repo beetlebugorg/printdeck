@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -137,7 +138,8 @@ func (d *DevServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", d.Store.ContentType(key))
-		w.Write(data)
+		// ServeContent serves the ranges that a browser asks for a video.
+		http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(data))
 	case r.Method == http.MethodGet || r.Method == http.MethodHead:
 		d.file(w, r)
 	default:
@@ -193,5 +195,5 @@ func (d *DevServer) file(w http.ResponseWriter, r *http.Request) {
 	if cc := d.Store.CacheControl(key); cc != "" {
 		w.Header().Set("Cache-Control", cc)
 	}
-	w.Write(data)
+	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(data))
 }

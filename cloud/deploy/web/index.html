@@ -397,9 +397,10 @@
       <section class="cam lapse-hero" id="lapseBox" aria-label="Time lapse" hidden>
         <figure>
           <canvas id="lapse" width="640" height="360"></canvas>
+          <video id="lapseVideo" playsinline muted loop controls preload="metadata" aria-label="The time lapse" hidden></video>
           <div class="tag"><b></b><span id="lapseTag">Time lapse</span></div>
         </figure>
-        <div class="player">
+        <div class="player" id="lapsePlayer">
           <button type="button" id="lapsePlay">Pause</button>
           <input type="range" id="lapseSeek" min="0" max="0" value="0" aria-label="The frame of the time lapse">
           <span id="lapsePos"></span>

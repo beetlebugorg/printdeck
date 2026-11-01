@@ -660,10 +660,13 @@ func (a *app) drawPrint(p wire.ProjectPrint) {
 	}
 	say("prCopyMsg", nil, "")
 	say("prPhotoMsg", nil, "")
-	drawPrint(p, v.Photos, func() ([]string, int, error) {
+	drawPrint(p, v.Photos, func() (wire.FramesReply, error) {
+		if p.Video != "" {
+			return wire.FramesReply{FPS: p.FPS, Video: p.Video, Poster: p.Poster}, nil
+		}
 		var fr wire.FramesReply
 		err := a.api("GET", "/projects/"+v.ID+"/prints/"+p.ID+"/frames", nil, &fr)
-		return fr.URLs, fr.FPS, err
+		return fr, err
 	}, &a.playing)
 	// The photos that the person can move.
 	figs := byID("prPhotos").Get("children")
@@ -1134,6 +1137,9 @@ func runPublic() {
 		if v.Prints[i].Plan != "" {
 			v.Prints[i].Plan = base + v.Prints[i].Plan
 		}
+		if v.Prints[i].Video != "" {
+			v.Prints[i].Video, v.Prints[i].Poster = base+v.Prints[i].Video, base+v.Prints[i].Poster
+		}
 	}
 	for i := range v.Photos {
 		v.Photos[i].URL, v.Photos[i].Small = base+v.Photos[i].URL, base+v.Photos[i].Small
@@ -1169,12 +1175,15 @@ func runPublic() {
 			if n > 0 && p.N == n || id != "" && p.ID == id {
 				replaceAddress(printPath(p))
 				say("prCopyMsg", nil, "")
-				drawPrint(p, v.Photos, func() ([]string, int, error) {
+				drawPrint(p, v.Photos, func() (wire.FramesReply, error) {
+					if p.Video != "" {
+						return wire.FramesReply{FPS: p.FPS, Video: p.Video, Poster: p.Poster}, nil
+					}
 					urls := make([]string, p.Frames)
 					for n := range urls {
 						urls[n] = fmt.Sprintf("%sprints/%s/lapse/%d.jpg", base, p.ID, n)
 					}
-					return urls, p.FPS, nil
+					return wire.FramesReply{FPS: p.FPS, URLs: urls}, nil
 				}, &playing)
 				show("vPrint")
 				return

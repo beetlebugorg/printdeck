@@ -125,7 +125,8 @@ func findSrc(dir string) (string, error) {
 	return "", errors.New("run pwf in the cloud folder of the Printdeck repository, or give -src")
 }
 
-// buildFunction builds cmd/pwf-api for Lambda (linux/arm64) and returns the zip of the function.
+// buildFunction builds cmd/pwf-api for Lambda (linux/arm64) and returns the zip of the function:
+// bootstrap, and ffmpeg with its license (ffmpeg.go).
 func buildFunction(ctx context.Context, src string) ([]byte, error) {
 	tmp, err := os.MkdirTemp("", "pwf-build")
 	if err != nil {
@@ -144,16 +145,26 @@ func buildFunction(ctx context.Context, src string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var buf bytes.Buffer
-	zw := zip.NewWriter(&buf)
-	h := &zip.FileHeader{Name: "bootstrap", Method: zip.Deflate}
-	h.SetMode(0o755)
-	w, err := zw.CreateHeader(h)
+	ffmpeg, license, err := ffmpegFiles(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := w.Write(data); err != nil {
-		return nil, err
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for _, f := range []struct {
+		name string
+		mode os.FileMode
+		data []byte
+	}{{"bootstrap", 0o755, data}, {"ffmpeg", 0o755, ffmpeg}, {"ffmpeg-GPLv3.txt", 0o644, license}} {
+		h := &zip.FileHeader{Name: f.name, Method: zip.Deflate}
+		h.SetMode(f.mode)
+		w, err := zw.CreateHeader(h)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := w.Write(f.data); err != nil {
+			return nil, err
+		}
 	}
 	if err := zw.Close(); err != nil {
 		return nil, err

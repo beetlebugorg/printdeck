@@ -12,9 +12,10 @@ import (
 )
 
 // The public address of a project: p/<slug>, a copy of assets/public.html, with p/<slug>/page.json
-// and copies of the pictures, the time lapse frames and the photos. The address gives no access
-// to the API. The owner turns it on and off. A rename moves it to the new slug (movePublic). Each
-// change of the project writes the copies again (publish).
+// and copies of the pictures, the time lapse videos (or the frames of a print with no video) and
+// the photos. The address gives no access to the API. The owner turns it on and off. A rename
+// moves it to the new slug (movePublic). Each change of the project writes the copies again
+// (publish).
 
 // PublicPage is the key of the public page in the bucket. pwf deploy uploads it.
 const PublicPage = "assets/public.html"
@@ -107,9 +108,15 @@ func (s *Server) publish(ctx context.Context, p *Project) error {
 			pp.Plan = rel + "plan.json"
 			want[dst+pp.Plan] = src + "plan.json"
 		}
-		for n := range pr.Frames {
-			f := "lapse/" + strconv.Itoa(n) + ".jpg"
-			want[dst+rel+f] = src + f
+		switch {
+		case pr.Video:
+			pp.Video, pp.Poster = rel+"lapse.mp4", rel+"lapse.jpg"
+			want[dst+pp.Video], want[dst+pp.Poster] = src+"lapse.mp4", src+"lapse.jpg"
+		default:
+			for n := range pr.Frames {
+				f := "lapse/" + strconv.Itoa(n) + ".jpg"
+				want[dst+rel+f] = src + f
+			}
 		}
 		view.Prints = append(view.Prints, pp)
 	}

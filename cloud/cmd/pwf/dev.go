@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -40,6 +41,15 @@ func runDev(ctx context.Context, args []string) error {
 	base := "http://" + strings.Replace(*addr, "127.0.0.1", "localhost", 1)
 	g := &api.LocalGranter{URL: base + "/upload"}
 	d := &api.DevServer{API: &api.Server{Store: st, Grants: g, Base: base}, Store: st, Grants: g}
+	// The videos of the time lapses, with the ffmpeg of this computer. The jobs run after their
+	// request, as in the function: the deck waits 30 s for a reply.
+	if bin, err := exec.LookPath("ffmpeg"); err == nil {
+		d.API.Lapse = api.FFmpeg(bin)
+		d.API.Later = func(_ context.Context, job api.Job) error {
+			go d.API.RunJob(context.Background(), job)
+			return nil
+		}
+	}
 	code, err := api.NewCode(ctx, st, "deck", time.Now())
 	if err != nil {
 		return err

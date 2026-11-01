@@ -209,6 +209,10 @@ type ProjectPrint struct {
 	Gcode  string `json:"gcode,omitempty"`
 	Frames int    `json:"frames,omitempty"`
 	FPS    int    `json:"fps,omitempty"`
+	// Video is the URL of the MP4 video of the time lapse, and Poster the URL of its last frame,
+	// or "". A print with no video has only its frames.
+	Video  string `json:"video,omitempty"`
+	Poster string `json:"poster,omitempty"`
 }
 
 // ProjectPhoto is a photo of a project.
@@ -248,10 +252,13 @@ type NotesEdit struct {
 }
 
 // FramesReply is the reply to GET /api/v1/projects/<id>/prints/<print>/frames: the URLs of the
-// frames of the time lapse, in order.
+// frames of the time lapse, in order. A print with a video has the URL of the video and of its
+// last frame in place of the frames.
 type FramesReply struct {
-	FPS  int      `json:"fps"`
-	URLs []string `json:"urls"`
+	FPS    int      `json:"fps"`
+	URLs   []string `json:"urls"`
+	Video  string   `json:"video,omitempty"`
+	Poster string   `json:"poster,omitempty"`
 }
 
 // InviteRequest is the body of POST /api/v1/projects/<id>/invites: the first name of the friend.

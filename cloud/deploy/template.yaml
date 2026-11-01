@@ -192,7 +192,7 @@ Resources:
         SecurityHeadersConfig:
           ContentSecurityPolicy:
             Override: true
-            ContentSecurityPolicy: !Sub "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://${DataBucket.RegionalDomainName}; connect-src 'self' https://${DataBucket.RegionalDomainName}; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+            ContentSecurityPolicy: !Sub "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://${DataBucket.RegionalDomainName}; media-src 'self' https://${DataBucket.RegionalDomainName}; connect-src 'self' https://${DataBucket.RegionalDomainName}; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
           ReferrerPolicy: { Override: true, ReferrerPolicy: no-referrer }
           StrictTransportSecurity: { Override: true, AccessControlMaxAgeSec: 31536000, IncludeSubdomains: false }
           ContentTypeOptions: { Override: true }
@@ -381,7 +381,10 @@ Resources:
       # The CPU of a function goes with its memory. The comments on pull requests compare
       # models and draw G-code: with 256 MB they took all the memory and ran past 30 seconds.
       MemorySize: 1024
-      Timeout: 60
+      # The video of a time lapse of 2000 frames needs up to about 60 s, an estimate from a test
+      # on x86 (api/lapse.go). The jobs set their own limits, and CloudFront stops a request at
+      # 30 s.
+      Timeout: 180
       Role: !GetAtt Role.Arn
       ReservedConcurrentExecutions: !If [HasConcurrency, !Ref Concurrency, !Ref "AWS::NoValue"]
       Code:
@@ -397,7 +400,8 @@ Resources:
           FILES_KEY_ID: !If [HasFilesKey, !Ref FilesKey, ""]
           GITHUB_APP_SECRET: !Ref GitHubAppSecretArn
 
-  # A job that fails does not run again: the next change of the pull request writes the comment.
+  # A job that fails does not run again: the next change of the pull request writes the comment,
+  # and pwf lapse-backfill makes the videos that are missing.
   JobConfig:
     Type: AWS::Lambda::EventInvokeConfig
     Properties:
