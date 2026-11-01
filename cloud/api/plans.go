@@ -808,8 +808,9 @@ func (s *Server) projectDocs(ctx context.Context, p *Project, plans []*PlanRecor
 	return nil
 }
 
-// plansView returns the newest plans of the project (at most limit, or all for 0), each with
-// its builds, the count of all the plans, and the PDFs of the project (projectDocs).
+// plansView returns the newest plans of the project (at most limit, or all for 0, and at least
+// listedShown listed plans), each with its builds, the count of the listed plans (listedPlan), and
+// the PDFs of the project (projectDocs).
 func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.ProjectPlan, int, []cloud.ProjectDoc) {
 	// The plans and the builds at the same time.
 	var builds []*BuildRecord
@@ -824,9 +825,31 @@ func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.
 	if err != nil {
 		return nil, 0, nil
 	}
-	shown := plans
+	// The newest plans, and the newest plans that the Builds tab lists (listedPlan), so that many
+	// merges to main do not push them out.
+	shown, total := plans, 0
+	for _, rec := range plans {
+		if listedPlan(rec) {
+			total++
+		}
+	}
 	if limit > 0 && len(shown) > limit {
-		shown = shown[:limit]
+		shown = append([]*PlanRecord(nil), plans[:limit]...)
+		n := 0
+		for _, rec := range shown {
+			if listedPlan(rec) {
+				n++
+			}
+		}
+		for _, rec := range plans[limit:] {
+			if n >= listedShown {
+				break
+			}
+			if listedPlan(rec) {
+				shown = append(shown, rec)
+				n++
+			}
+		}
 	}
 	// The states of the pull requests, and the names of the printers of the plates, at the same
 	// time.
@@ -878,8 +901,19 @@ func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.
 		}
 		out = append(out, pv)
 	}
-	return out, len(plans), s.projectDocs(ctx, p, plans)
+	return out, total, s.projectDocs(ctx, p, plans)
 }
+
+// listedPlan reports that the Builds tab lists the plan: a plan of a pull request or of a release
+// (a tag, for example v1.2 or release/1.2). The plans of main and of other branches are many: the
+// Overview shows the newest plan of main.
+func listedPlan(rec *PlanRecord) bool {
+	return rec.Kind == cloud.BuildTest || rec.Kind == cloud.BuildRelease
+}
+
+// listedShown is the least count of listed plans in a view of a project: the Builds tab shows the
+// newest ones (plansOnProject in cmd/pwf-web).
+const listedShown = 3
 
 // projectBuild is a build for the pages, with the addresses of its files.
 func (s *Server) projectBuild(ctx context.Context, p *Project, b *BuildRecord) cloud.ProjectBuild {

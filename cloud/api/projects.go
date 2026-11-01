@@ -436,9 +436,12 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 		if w.deck != nil {
 			return nil, fail(http.StatusUnauthorized, "only a person sees the plans")
 		}
-		plans, _, _ := s.plansView(ctx, p, 0)
-		if plans == nil {
-			plans = []cloud.ProjectPlan{}
+		all, _, _ := s.plansView(ctx, p, 0)
+		plans := []cloud.ProjectPlan{}
+		for _, pv := range all {
+			if pv.Kind == cloud.BuildTest || pv.Kind == cloud.BuildRelease {
+				plans = append(plans, pv)
+			}
 		}
 		return plans, nil
 	case part == "plans" && sub != "" && !strings.Contains(sub, "/") && r.Method == http.MethodGet:
