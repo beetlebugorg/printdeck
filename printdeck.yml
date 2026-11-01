@@ -1,82 +1,46 @@
-# Printdeck builds: the printed parts of the Printdeck pod (lulzbot/stl/pod/README.md).
-# The profiles are in profiles/. The FDM parts print in black PLA (roll-4).
-# No generate step: lulzbot/make.sh needs build123d, Chromium and ImageMagick, and runs for about
-# 3 minutes. Run it on your computer, and commit the STL files.
+# Printdeck builds: the printed parts of the Slate v4, the desk case of Printdeck
+# (lulzbot/stl/slate/README.md), and the webcam mounts on the printer. The profiles are in
+# profiles/. The Slate prints in navy (the case) and orange (the base). The webcam mounts print
+# in black PLA (roll-4).
+# No generate step: lulzbot/slate.py export writes the Slate files, and lulzbot/make.sh and
+# pod.py export the others. Run them on your computer, and commit the STL files.
 project: printdeck
 
 parts:
-  # The pod (FDM). No part needs supports. The seam goes to the sharpest corner, on the inside.
-  - name: Pod frame
-    files: [lulzbot/stl/pod/fdm/pod-frame_fdm.stl]
+  # The Slate v4 (FDM): the case in navy PLA (roll-3), the base in orange PLA (roll-2). No part
+  # needs supports. The seam goes to the sharpest corner, on the inside.
+  - name: Slate frame
+    files: [lulzbot/stl/slate/fdm/slate-frame_fdm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
-    material: roll-4
+    material: roll-3
     settings: &pod {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner}
-  - name: Pod body
-    files: [lulzbot/stl/pod/fdm/pod-body_fdm.stl]
+  - name: Slate body
+    files: [lulzbot/stl/slate/fdm/slate-body_fdm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
-    material: roll-4
+    material: roll-3
     settings: *pod
-  - name: Pod mount
-    files: [lulzbot/stl/pod/fdm/pod-mount_fdm.stl]
+  - name: Slate base
+    files: [lulzbot/stl/slate/fdm/slate-base_fdm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
-    material: roll-4
-    settings: *pod
-  - name: Pod wedge
-    files: [lulzbot/stl/pod/fdm/pod-wedge_fdm.stl]
-    printer: taz
-    profile: taz-workhorse-se/pla-0.20-standard
-    material: roll-4
-    settings: *pod
-  - name: Pod bracket (TAZ)
-    files: [lulzbot/stl/pod/fdm/pod-bracket-taz_fdm.stl]
-    printer: taz
-    profile: taz-workhorse-se/pla-0.20-standard
-    material: roll-4
-    # It stands up, 89 mm high: a 5 mm brim (10 lines).
-    settings: {<<: *pod, adhesion_type: brim, brim_line_count: 10}
-  - name: Pod bracket (Mini 2)
-    files: [lulzbot/stl/pod/fdm/pod-bracket-mini2_fdm.stl]
-    printer: taz
-    profile: taz-workhorse-se/pla-0.20-standard
-    material: roll-4
-    settings: *pod
-  - name: Pod shims (TAZ)
-    files:
-      - lulzbot/stl/pod/fdm/pod-shim-0.5mm_fdm.stl
-      - lulzbot/stl/pod/fdm/pod-shim-1.0mm_fdm.stl
-      - lulzbot/stl/pod/fdm/pod-shim-2.0mm_fdm.stl
-    printer: taz
-    profile: taz-workhorse-se/pla-0.20-standard
-    material: roll-4
-    settings: *pod
-  - name: Rail clip (TAZ)
-    files: [lulzbot/stl/clip.stl]
-    printer: taz
-    profile: taz-workhorse-se/pla-0.20-standard
-    material: roll-4
-    count: 2
-    settings: {<<: *pod, infill_sparse_density: 100, adhesion_type: brim, brim_line_count: 8}
-  # The cable clips are better in PETG: PLA can crack where the arms bend. The profiles have no
-  # PETG material yet.
-  - name: Cable clip, single (TAZ)
-    files: [lulzbot/stl/pod/fdm/cable-clip-single_fdm.stl]
-    printer: taz
-    profile: taz-workhorse-se/pla-0.20-standard
-    material: roll-4
-    count: 5
-    settings: *pod
-  - name: Cable clip, double (Mini 2)
-    files: [lulzbot/stl/pod/fdm/cable-clip-double_fdm.stl]
-    printer: taz
-    profile: taz-workhorse-se/pla-0.20-standard
-    material: roll-4
-    count: 2
+    material: roll-2
     settings: *pod
 
-  # The webcam (option): a C270 on the frame.
+  # The Slate v4 (resin): the case is one part. Paint is an option in place of colored resin.
+  - name: Slate case (resin)
+    files: [lulzbot/stl/slate/resin/slate-case_resin.stl]
+    printer: phenom
+    profile: peopoly-phenom/abs-like-0.05
+    material: Navy resin
+  - name: Slate base (resin)
+    files: [lulzbot/stl/slate/resin/slate-base_resin.stl]
+    printer: phenom
+    profile: peopoly-phenom/abs-like-0.05
+    material: Orange resin
+
+  # The webcam (option): a C270 on the frame of the printer.
   - name: Camera arm (TAZ)
     files: [lulzbot/stl/pod/fdm/camera-arm-taz_fdm.stl]
     printer: taz
@@ -102,33 +66,22 @@ parts:
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: *pod
-
-  # Resin: the pod on supports (resin/), with captive M3 hex nuts in place of the inserts.
-  - name: Pod body (resin)
-    files: [lulzbot/stl/pod/resin/pod-body_resin.stl]
-    printer: phenom
-    profile: peopoly-phenom/abs-like-0.05
-    material: Black ABS-like resin
-  - name: Pod frame (resin)
-    files: [lulzbot/stl/pod/resin/pod-frame_resin.stl]
-    printer: phenom
-    profile: peopoly-phenom/abs-like-0.05
-    material: Black ABS-like resin
-  - name: Pod mount (resin)
-    files: [lulzbot/stl/pod/resin/pod-mount_resin.stl]
-    printer: phenom
-    profile: peopoly-phenom/abs-like-0.05
-    material: Black ABS-like resin
-  - name: Pod wedge (resin)
-    files: [lulzbot/stl/pod/resin/pod-wedge_resin.stl]
-    printer: phenom
-    profile: peopoly-phenom/abs-like-0.05
-    material: Black ABS-like resin
-  - name: Pod bracket, TAZ (resin)
-    files: [lulzbot/stl/pod/resin/pod-bracket-taz_resin.stl]
-    printer: phenom
-    profile: peopoly-phenom/abs-like-0.05
-    material: Black ABS-like resin
+  # The cable clips of the webcam cable, along the frame of the printer. They are better in PETG:
+  # PLA can crack where the arms bend. The profiles have no PETG material yet.
+  - name: Cable clip, single (webcam, TAZ)
+    files: [lulzbot/stl/pod/fdm/cable-clip-single_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    count: 4
+    settings: *pod
+  - name: Cable clip, single (webcam, Mini 2)
+    files: [lulzbot/stl/pod/fdm/cable-clip-single_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    count: 3
+    settings: *pod
 
 # The PDFs of the project. The project page shows each one with a picture of its first page.
 docs:

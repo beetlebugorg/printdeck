@@ -1,10 +1,10 @@
 # Printdeck
 
-<img src="docs/img/pod-taz.png" alt="The Printdeck pod on the front left of a LulzBot TAZ Workhorse" width="420">
+<img src="docs/img/slate-v4.png" alt="The Printdeck Slate v4: the touch display in a navy case on an orange base" width="320">
 
 Printdeck is a touch screen and print server for Klipper printers. A Raspberry Pi 5 and a 5 inch
-touch display go on the printer in a printed pod. I build it and test it on a LulzBot TAZ
-Workhorse (the original Workhorse).
+touch display stand on the desk next to the printer, in a printed case: the Slate v4. I build it and
+test it on a LulzBot TAZ Workhorse (the original Workhorse).
 
 Website: https://beetlebug.org/printdeck/
 
@@ -28,7 +28,7 @@ Printdeck is a personal project, for personal use.
 
 1. Download `printdeck.img.xz` from the [latest release](https://github.com/beetlebugorg/printdeck/releases/latest).
 2. Write it to an SD card with Raspberry Pi Imager ("Use custom").
-3. Put the SD card in the Pi of the pod, and connect the power. The setup connects the Wi-Fi and
+3. Put the SD card in the Pi of the Slate, and connect the power. The setup connects the Wi-Fi and
    finds the printer.
 
 To update, open Machine > Software update on the touch screen.
@@ -59,10 +59,11 @@ After a change to the UI, run `docs/manual/build.sh`. After a change to the Cura
 
 ## Hardware
 
-The pod is a Raspberry Pi Touch Display 2 (5 inch, mounted tall) with a Raspberry Pi 5 on its
-back, in a printed case. A printed bracket holds the pod on a TAZ Workhorse or a LulzBot Mini 2.
-[lulzbot/README.md](lulzbot/README.md) has the pod and the brackets.
-[lulzbot/stl/pod/README.md](lulzbot/stl/pod/README.md) has the print files.
+The Slate v4 is a Raspberry Pi Touch Display 2 (5 inch, tall) with a Raspberry Pi 5 on its back, in
+a printed case on the desk. The case is navy, and it stands on an orange base. Two M3 screws hold the
+case on the base. [lulzbot/stl/slate/README.md](lulzbot/stl/slate/README.md) has the print files,
+the hardware and the assembly. The Slate v4 replaces the pod on a printer bracket.
+[lulzbot/README.md](lulzbot/README.md) has the pod as an earlier design.
 
 | Part | Connection |
 |---|---|

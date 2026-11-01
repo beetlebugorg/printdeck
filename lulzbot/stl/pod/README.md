@@ -1,5 +1,9 @@
 # Pod print files
 
+These are the files of the pod, the earlier design on a printer bracket. The Slate v4, a case on the
+desk, replaces it: see [the Slate v4 print files](../slate/README.md). The webcam mounts in this
+folder stay on the printer frame.
+
 Each file is in its print orientation. Load a file and print it as it is.
 
 ## FDM (`fdm/`)
@@ -114,6 +118,9 @@ files are for tough resin only.
 
 `camera.py` has a mount for a Logitech C270 webcam on each printer. The camera plugs into the
 lower USB 3 port of the Pi. Each mount is a clamp on the frame and an arm with the hinge.
+
+With the Slate v4, the camera stays on the printer frame. Its USB cable runs from the printer frame
+to the Slate on the desk.
 
 | Part | Count | Where |
 |---|---|---|
