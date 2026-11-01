@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API routes · Printdeck</title>
+<meta name="description" content="Printdeck architecture, chapter A: each route of /api/v1/ and its auth.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The pod</a>
+<a href="../../hardware/print/">Print the pod</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/setup/" aria-current="page">Tall</a><a href="../../ui/wide/setup/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../../ui/phone/">Your iPhone and Apple Watch</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/">The film tools</a>
+<a href="../../apps/">iPhone and Apple Watch</a>
+<a href="../../apps/relay/">The push relay</a>
+<div class="group">Architecture</div>
+<a href="../../architecture/">The document</a>
+<span class="sub"><a href="../../architecture/overview/">1 Overview</a></span>
+<span class="sub"><a href="../../architecture/identity-and-trust/">2 Identity and trust</a></span>
+<span class="sub"><a href="../../architecture/passkey-flows/">3 Passkey flows</a></span>
+<span class="sub"><a href="../../architecture/why-it-is-secure/">4 Why it is secure</a></span>
+<span class="sub"><a href="../../architecture/the-data-of-a-print/">5 The data of a print</a></span>
+<span class="sub"><a href="../../architecture/builds-from-github/">6 Builds from GitHub</a></span>
+<span class="sub"><a href="../../architecture/the-print-queue/">7 The print queue</a></span>
+<span class="sub"><a href="../../architecture/the-apps/">8 The apps</a></span>
+<span class="sub"><a href="../../architecture/updates/">9 Updates</a></span>
+<span class="sub"><a href="../../architecture/api-routes/" aria-current="page">A API routes</a></span>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/">Commands</a>
+<a href="../../reference/environment/">Environment variables</a>
+<a href="../../reference/files/">Files, paths and services</a>
+<a href="../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">The manual</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Architecture · Appendix A</p>
+<h1>API routes</h1>
+<p class="lede">All routes are under <code>/api/v1/</code>. The largest body is 64 KB. A request with no valid auth gets 401, and a missing thing gets 410. A reply that links to files of a project also sets the signed cookies of that project. The routes of the Action need a new OIDC token of GitHub for each request.</p>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#3b3b3b"/></marker>
+<marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#3b3b3b"/></marker>
+<marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#e8762b"/></marker>
+<marker id="ahar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#e8762b"/></marker>
+<marker id="ahs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#9a958f"/></marker>
+<marker id="ahsr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#9a958f"/></marker>
+</defs></svg>
+<div class="arch">
+<div class="table-wrap"><table>
+<thead><tr><th style="width:36%">Route</th><th style="width:26%">Auth</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>GET health</code></td><td>none</td><td>Reports that the API runs.</td></tr>
+<tr><td><code>POST decks</code></td><td>enrollment code</td><td>Enrolls a deck with its public key.</td></tr>
+<tr><td><code>GET</code>, <code>DELETE decks/self</code></td><td>deck signature</td><td>Shows the deck, or removes it (Disconnect).</td></tr>
+<tr><td><code>POST owner/code</code></td><td>deck signature</td><td>Makes an owner code (10 minutes).</td></tr>
+<tr><td><code>POST auth/owner/begin</code>, <code>finish</code></td><td>owner code</td><td>Makes an owner passkey.</td></tr>
+<tr><td><code>POST invites/view</code></td><td>invite code</td><td>Shows the project and the owner of an invite.</td></tr>
+<tr><td><code>POST auth/invite/begin</code>, <code>finish</code></td><td>invite code</td><td>Makes a member passkey, and joins.</td></tr>
+<tr><td><code>POST auth/login/begin</code>, <code>finish</code></td><td>passkey; <code>finish</code> accepts an optional invite code</td><td>Signs in, and gives a session token. With an invite code, a member passkey also joins the project of the invite.</td></tr>
+<tr><td><code>GET me</code></td><td>session</td><td>Shows the person of the session.</td></tr>
+<tr><td><code>GET</code>, <code>POST printers</code></td><td>owner or deck</td><td>Lists the printers. A deck registers its printer.</td></tr>
+<tr><td><code>GET names/&lt;slug&gt;</code></td><td>session</td><td>Finds the project of a slug. With <code>?view=1</code>, it also gives the view of the project, so a project page needs one request.</td></tr>
+<tr><td><code>GET</code>, <code>POST projects</code></td><td>session or deck</td><td>Lists the projects, or makes one (owner). A member gets each project of the session that still has the member.</td></tr>
+<tr><td><code>projects/&lt;id&gt;</code> and below</td><td>session or deck</td><td>View, rename, delete; invites, members, public address; prints, live tiles, photos. The rows below are the routes of the notes, the prints, the photos, the queue and the builds.</td></tr>
+<tr><td><code>PATCH projects/&lt;id&gt;/notes</code></td><td>session</td><td>Changes the notes of the project.</td></tr>
+<tr><td><code>PATCH projects/&lt;id&gt;/prints/&lt;print&gt;</code></td><td>session; owner for title, marks, source</td><td>Changes the title, the notes, the marks Test, Ready, Delivered and Discarded (with a note of why), or the source of a print. A member changes the notes only.</td></tr>
+<tr><td><code>PUT projects/&lt;id&gt;/photos/&lt;photo&gt;</code></td><td>session or deck; a member moves only their own photos</td><td>Moves a photo to another print of the project, or to no print.</td></tr>
+<tr><td><code>PATCH projects/&lt;id&gt;/members/&lt;member&gt;</code></td><td>owner or deck</td><td>Sets the GitHub username of a member who joined.</td></tr>
+<tr><td><code>PUT projects/&lt;id&gt;/repo</code></td><td>owner or deck</td><td>Links a GitHub repository, or removes the link with "".</td></tr>
+<tr><td><code>GET projects/&lt;id&gt;/plans/&lt;plan&gt;</code></td><td>session</td><td>Shows a plan with the paths of its models, and its builds.</td></tr>
+<tr><td><code>GET projects/&lt;id&gt;/plans</code></td><td>session</td><td>Lists the plans of pull requests and of tags.</td></tr>
+<tr><td><code>POST projects/&lt;id&gt;/plans/&lt;plan&gt;/builds</code></td><td>owner or deck</td><td>Makes a build with the plates, and starts the slice run with the GitHub App.</td></tr>
+<tr><td><code>GET projects/&lt;id&gt;/builds/&lt;build&gt;</code></td><td>session</td><td>Shows a build with its plates, and the <code>gh</code> command when the stack has no App.</td></tr>
+<tr><td><code>POST projects/&lt;id&gt;/builds/&lt;build&gt;/plates/&lt;n&gt;/approve</code>, <code>reject</code></td><td>owner or deck</td><td>Approves a plate, or rejects it with a reason.</td></tr>
+<tr><td><code>POST plans</code></td><td>OIDC token of the linked repository, or of a member's fork with an open pull request</td><td>Makes a plan, and gives the grant of its models and its PDFs.</td></tr>
+<tr><td><code>POST plans/&lt;id&gt;/done</code></td><td>OIDC token of the repository of the plan, or of its fork</td><td>Checks the models and the PDFs, and marks the plan ready. An older waiting plate with a changed part becomes "replaced". With the GitHub App, the service then writes its comment on the pull request.</td></tr>
+<tr><td><code>GET builds/&lt;id&gt;</code></td><td>OIDC token of <code>printdeck.yml</code> on main or master</td><td>Gives the commit and the plates of the build.</td></tr>
+<tr><td><code>POST builds/&lt;id&gt;/started</code></td><td>the same</td><td>Records the run ID. A failed build goes back to "slicing".</td></tr>
+<tr><td><code>POST builds/&lt;id&gt;/progress</code></td><td>the same</td><td>Records a line of progress of the slice run. The build must be "slicing".</td></tr>
+<tr><td><code>POST builds/&lt;id&gt;/files</code></td><td>the same</td><td>Records the files of the plates, and gives the grant of the build.</td></tr>
+<tr><td><code>POST builds/&lt;id&gt;/done</code></td><td>the same</td><td>Checks the files. The build becomes "ready", and each plate "waiting".</td></tr>
+<tr><td><code>POST builds/&lt;id&gt;/failed</code></td><td>the same</td><td>Marks the build "failed", with the error.</td></tr>
+<tr><td><code>POST shares</code></td><td>deck signature</td><td>Makes a share, with its first grant.</td></tr>
+<tr><td><code>shares/&lt;id&gt;/grant</code>, <code>end</code>, <code>project</code>, <code>DELETE</code></td><td>signature of the deck of the share</td><td>A new grant, the end, the project of the share, or a delete.</td></tr>
+<tr><td><code>shares/&lt;id&gt;/ready</code>, <code>photo</code></td><td>owner key, or the deck</td><td>The Ready flag and note; photos.</td></tr>
+<tr><td><code>POST projects/&lt;id&gt;/builds/&lt;build&gt;/plates/&lt;n&gt;/send</code></td><td>owner or deck</td><td>Sends an approved plate to a printer of its process.</td></tr>
+<tr><td><code>GET printers/&lt;id&gt;/plates</code>, <code>POST printers/&lt;id&gt;/plates/taken</code></td><td>signature of the deck of the printer</td><td>The plates that wait for the printer, with presigned addresses of the bucket; the plate is in the queue.</td></tr>
+<tr><td><code>POST printers/&lt;id&gt;/queue</code></td><td>signature of the deck of the printer</td><td>The files of the queue that are in projects: their places and starts.</td></tr>
+<tr><td><code>DELETE projects/&lt;id&gt;/queue/&lt;printer&gt;/&lt;item&gt;</code></td><td>owner or deck</td><td>Asks the deck to take a file of the project out of its queue. The file must be in the last report of the queue.</td></tr>
+<tr><td><code>GET printers/&lt;id&gt;/removes</code>, <code>POST printers/&lt;id&gt;/removes/done</code></td><td>signature of the deck of the printer</td><td>The files that the owner took out on the project page; the deck took them out.</td></tr>
+<tr><td><code>POST printers/&lt;id&gt;/live</code></td><td>signature of the deck of the printer</td><td>What the printer does now. <code>GET printers</code> has it for the owner.</td></tr>
+<tr><td><code>/.well-known/apple-app-site-association</code></td><td>none (a file of the bucket)</td><td>The webcredentials of the iPhone app, for the passkey sign-in in the app.</td></tr>
+<tr><td><code>relay/register</code>, <code>relay/push</code></td><td>none for register (a code comes by push); the send token for push</td><td>The push relay of the iPhone app, when the stack has the secret of the relay. The app registers here, and the decks post their encrypted messages here.</td></tr>
+</tbody></table></div>
+</div>
+<p class="arch-next"><a class="btn" href="../updates/">Back: 9 Updates</a><a class="btn" href="../">Contents</a></p>
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository. <a href="../../privacy/">Privacy</a>.</footer>
+</body>
+</html>
