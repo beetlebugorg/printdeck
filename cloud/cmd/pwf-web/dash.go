@@ -918,7 +918,7 @@ func (a *app) drawPickup(v *wire.ProjectView) {
 	}
 }
 
-// pullPlans returns the newest plan of each pull request, the newest first.
+// pullPlans returns the newest plan of each open pull request, the newest first.
 func pullPlans(v *wire.ProjectView) []wire.ProjectPlan {
 	seen := map[int]bool{}
 	var out []wire.ProjectPlan
@@ -929,6 +929,9 @@ func pullPlans(v *wire.ProjectView) []wire.ProjectPlan {
 			continue
 		}
 		seen[p.PR] = true
+		if p.PRState == "closed" || p.PRState == "merged" {
+			continue
+		}
 		out = append(out, p)
 	}
 	return out

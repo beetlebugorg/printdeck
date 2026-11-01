@@ -106,6 +106,9 @@ type ProjectPlan struct {
 	Ref    string `json:"ref"`
 	Kind   string `json:"kind"`
 	PR     int    `json:"pr,omitempty"`
+	// PRState is the state of the pull request PR on GitHub: "open", "closed" or "merged", or ""
+	// when the service does not know it.
+	PRState string `json:"pr_state,omitempty"`
 	Tag    string `json:"tag,omitempty"`
 	Branch string `json:"branch,omitempty"`
 	Run    string `json:"run,omitempty"` // the page of the workflow run on GitHub

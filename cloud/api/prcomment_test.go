@@ -162,4 +162,34 @@ func TestPRComment(t *testing.T) {
 	if data, _, err := d.API.Store.Get(ctx, key); err != nil || len(data) < 100 {
 		t.Fatalf("the public photo %s: %v", key, err)
 	}
+
+	// The project page has the state of the pull request, and asks GitHub again after a time.
+	prState := func() string {
+		p, _, err := d.API.loadProject(ctx, sum.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		v, err := d.API.viewProject(ctx, p, &who{owner: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, pl := range v.Plans {
+			if pl.PR == 7 {
+				return pl.PRState
+			}
+		}
+		return "none"
+	}
+	if st := prState(); st != "open" {
+		t.Fatalf("state %q", st)
+	}
+	app.states = map[int]string{7: "closed"}
+	if st := prState(); st != "open" {
+		t.Fatalf("state %q before the next check", st)
+	}
+	d.API.Now = func() time.Time { return time.Now().Add(prCheckOpen + time.Minute) }
+	defer func() { d.API.Now = nil }()
+	if st := prState(); st != "closed" {
+		t.Fatalf("state %q after the next check", st)
+	}
 }

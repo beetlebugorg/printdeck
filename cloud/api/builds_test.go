@@ -248,6 +248,8 @@ type recordDispatch struct {
 	err          error
 	// pulls are the open pull requests: "<base> <head repo> <branch> <sha>" -> the number.
 	pulls map[string]int
+	// states are the states of the pull requests that are not open, by number.
+	states map[int]string
 }
 
 func (r *recordDispatch) Comment(_ context.Context, repo string, pr int, id int64, body string) (int64, error) {
@@ -259,6 +261,13 @@ func (r *recordDispatch) Comment(_ context.Context, repo string, pr int, id int6
 	}
 	r.comments[id] = fmt.Sprintf("%s#%d\n%s", repo, pr, body)
 	return id, nil
+}
+
+func (r *recordDispatch) PullState(_ context.Context, repo string, pr int) (string, error) {
+	if s, ok := r.states[pr]; ok {
+		return s, nil
+	}
+	return "open", nil
 }
 
 func (r *recordDispatch) OpenPull(_ context.Context, base, headRepo, branch, sha string) (int, error) {

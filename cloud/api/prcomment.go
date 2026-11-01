@@ -43,6 +43,44 @@ type prRecord struct {
 	Comment int64             `json:"comment"`
 	Updated time.Time         `json:"updated"`
 	Photos  map[string]string `json:"photos,omitempty"`
+	// State is the state of the pull request on GitHub at Checked: "open", "closed" or "merged".
+	State   string    `json:"state,omitempty"`
+	Checked time.Time `json:"checked,omitzero"`
+}
+
+// prCheckOpen and prCheckClosed are the ages of the state of an open and of a closed pull
+// request, after which the project page asks GitHub again. A closed pull request can open again.
+const (
+	prCheckOpen   = 10 * time.Minute
+	prCheckClosed = 6 * time.Hour
+)
+
+// prState returns the state of the pull request pr of the project p: "open", "closed", "merged",
+// or "" when the service does not know it. It asks GitHub when the state is old.
+func (s *Server) prState(ctx context.Context, p *Project, pr int) string {
+	var st prRecord
+	if b, _, err := s.Store.Get(ctx, prKey(p.ID, pr)); err == nil {
+		json.Unmarshal(b, &st)
+	}
+	age := prCheckOpen
+	if st.State != "" && st.State != "open" {
+		age = prCheckClosed
+	}
+	if s.GitHub == nil || p.Repo == "" || s.now().Sub(st.Checked) < age {
+		return st.State
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	state, err := s.GitHub.PullState(ctx, p.Repo, pr)
+	if err != nil {
+		log.Printf("pull request %d of %s: %v", pr, p.Repo, err)
+		return st.State
+	}
+	st.State, st.Checked = state, s.now().UTC()
+	if err := s.putJSON(ctx, prKey(p.ID, pr), st); err != nil {
+		log.Printf("pull request %d of %s: %v", pr, p.Repo, err)
+	}
+	return st.State
 }
 
 // platePrint is the newest print of a plate, with the public address of its first photo, or "".

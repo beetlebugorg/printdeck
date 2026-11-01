@@ -41,6 +41,8 @@ type GitHubAPI interface {
 	// Comment writes the comment of Printdeck on the pull request pr of repo: it changes the
 	// comment id, or makes a new comment for 0 or a comment that is gone. It returns the ID.
 	Comment(ctx context.Context, repo string, pr int, id int64, body string) (int64, error)
+	// PullState returns the state of the pull request pr of repo: "open", "closed" or "merged".
+	PullState(ctx context.Context, repo string, pr int) (string, error)
 }
 
 // PlanRecord is x/<project>/plans/<id>.json.
@@ -800,11 +802,20 @@ func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.
 	}
 	builds, _ := s.loadBuilds(ctx, p.ID)
 	var out []cloud.ProjectPlan
+	states := map[int]string{} // the state of each pull request
 	for i, rec := range plans {
 		if limit > 0 && i >= limit {
 			break
 		}
 		pv := s.projectPlan(ctx, p, rec)
+		if rec.Kind == cloud.BuildTest && rec.PR > 0 {
+			st, ok := states[rec.PR]
+			if !ok {
+				st = s.prState(ctx, p, rec.PR)
+				states[rec.PR] = st
+			}
+			pv.PRState = st
+		}
 		for _, b := range builds {
 			if b.Plan == rec.ID {
 				pv.Builds = append(pv.Builds, s.projectBuild(ctx, p, b))

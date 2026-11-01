@@ -205,6 +205,25 @@ func (g *GitHubApp) Dispatch(ctx context.Context, repo, build, title string) err
 	return nil
 }
 
+// PullState returns the state of the pull request pr of repo: "open", "closed" or "merged".
+func (g *GitHubApp) PullState(ctx context.Context, repo string, pr int) (string, error) {
+	token, err := g.installationToken(ctx, repo, map[string]string{"pull_requests": "read", "metadata": "read"})
+	if err != nil {
+		return "", err
+	}
+	var out struct {
+		State  string `json:"state"`
+		Merged bool   `json:"merged"`
+	}
+	if err := g.call(ctx, http.MethodGet, fmt.Sprintf("/repos/%s/pulls/%d", repo, pr), token, nil, &out); err != nil {
+		return "", err
+	}
+	if out.Merged {
+		return "merged", nil
+	}
+	return out.State, nil
+}
+
 // Comment writes the comment of Printdeck on the pull request pr of repo: it changes the comment
 // id, or makes a new comment for 0 or a comment that is gone. It returns the ID of the comment.
 func (g *GitHubApp) Comment(ctx context.Context, repo string, pr int, id int64, body string) (int64, error) {
