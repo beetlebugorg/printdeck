@@ -75,7 +75,8 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: /aws/lambda/printdeck-relay
-      RetentionInDays: 14
+      # PRIVACY.md says 3 days.
+      RetentionInDays: 3
 
   Function:
     Type: AWS::Lambda::Function

@@ -85,8 +85,17 @@ Resources:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+      # AWS Backup for S3 needs versioning (Backup below).
+      VersioningConfiguration: { Status: Enabled }
       LifecycleConfiguration:
         Rules:
+          # The old versions go after 1 day: the live records change every few seconds. The rules
+          # below with ExpirationInDays add a delete marker, and this rule deletes the old version
+          # and then the marker.
+          - Id: old-versions
+            Status: Enabled
+            NoncurrentVersionExpiration: { NoncurrentDays: 1 }
+            ExpiredObjectDeleteMarker: true
           # A second guard for the shares: the API deletes a share 24 hours after its print ends.
           - Id: shares
             Status: Enabled
@@ -135,7 +144,8 @@ Resources:
         SigningBehavior: always
         SigningProtocol: sigv4
 
-  # CloudFront reads only the pages (with the app page at /app, /owner and /j, and at /projects with
+  # CloudFront reads only the pages (with the app page at /app, /owner and /j, the privacy policy at
+  # /privacy, and at /projects with
   # the function Paths), the shares and the
   # public pages of the projects. It cannot list the bucket, so a file that does not exist gets
   # 403, and the "not found" page.
@@ -155,6 +165,7 @@ Resources:
               - !Sub "${DataBucket.Arn}/owner"
               - !Sub "${DataBucket.Arn}/j"
               - !Sub "${DataBucket.Arn}/404.html"
+              - !Sub "${DataBucket.Arn}/privacy"
               - !Sub "${DataBucket.Arn}/assets/*"
               - !Sub "${DataBucket.Arn}/.well-known/*"
               - !Sub "${DataBucket.Arn}/s/*"
@@ -368,7 +379,8 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-api"
-      RetentionInDays: 14
+      # PRIVACY.md says 3 days.
+      RetentionInDays: 3
 
   Function:
     Type: AWS::Lambda::Function
@@ -458,6 +470,49 @@ Resources:
         Arn: !GetAtt Function.Arn
         RoleArn: !GetAtt SweepRole.Arn
         Input: '{"pwf":"sweep"}'
+
+  # The backups of the data bucket: one each day, kept 7 days (PRIVACY.md). cloud/README.md has
+  # the restore.
+  BackupVault:
+    Type: AWS::Backup::BackupVault
+    DeletionPolicy: Retain
+    Properties:
+      BackupVaultName: !Sub "${AWS::StackName}-data"
+
+  BackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: !Sub "${AWS::StackName}-data"
+        BackupPlanRule:
+          - RuleName: daily
+            TargetBackupVault: !Ref BackupVault
+            ScheduleExpression: cron(0 7 * * ? *)
+            StartWindowMinutes: 60
+            CompletionWindowMinutes: 720
+            Lifecycle: { DeleteAfterDays: 7 }
+
+  BackupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: backup.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSBackupServiceRolePolicyForS3Backup
+        - arn:aws:iam::aws:policy/AWSBackupServiceRolePolicyForS3Restore
+
+  BackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref BackupPlan
+      BackupSelection:
+        SelectionName: data-bucket
+        IamRoleArn: !GetAtt BackupRole.Arn
+        Resources: [!GetAtt DataBucket.Arn]
 
   # A mail at 80 % of the budget of the month, and when the forecast passes it. The budget covers
   # the cost of the whole account.
