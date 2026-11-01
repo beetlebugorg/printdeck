@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"path"
 	"regexp"
 	"slices"
 	"strings"
@@ -174,16 +176,17 @@ func (s *Server) blankName(ctx context.Context, project, name string) error {
 		if !strings.HasSuffix(k, ".json") {
 			continue
 		}
-		b, _, err := s.Store.Get(ctx, k)
-		if err != nil {
-			continue
-		}
-		var pr PrintRecord
-		if json.Unmarshal(b, &pr) != nil || pr.NotesBy != name {
-			continue
-		}
-		pr.NotesBy = FormerMember
-		if err := s.putJSON(ctx, k, pr); err != nil {
+		// The print records change with IfMatch (changePrint): a video job can write the same
+		// record at the same time.
+		id := strings.TrimSuffix(path.Base(k), ".json")
+		_, err := s.changePrint(ctx, project, id, func(pr *PrintRecord) error {
+			if pr.NotesBy != name {
+				return errNoChange
+			}
+			pr.NotesBy = FormerMember
+			return nil
+		})
+		if err != nil && !errors.Is(err, ErrNotFound) {
 			return err
 		}
 	}

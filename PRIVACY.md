@@ -97,7 +97,8 @@ When the owner uses projects, the service keeps:
 - **The invites**: the first name that the owner gives the invite.
 - **The prints**: the name and the file of each print, the result, the times, the material, the
   grams, the roll, the printer and the filament settings. Also the picture of the model, the time
-  lapse frames, the file of the print and the notes.
+  lapse, the file of the print and the notes. The deck sends the time lapse as frames. The service
+  makes one video and one picture from them, then deletes the frames.
 - **The photos**: the photos that the owner and the members add, with the first name of the
   person who added each. The service makes a new copy of each photo and removes all of its
   metadata, for example the GPS position and the camera model. It deletes the photo as uploaded.
