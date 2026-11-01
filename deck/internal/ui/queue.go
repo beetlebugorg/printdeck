@@ -119,20 +119,24 @@ func (a *App) startQueued(it queue.Item) {
 		a.pages = nil
 	}
 	if a.resin() {
-		start()
+		// Resin: the last question is the press that starts the print.
+		a.confirm = &confirmBox{question: "Start " + it.Name + "? Check the vat and the plate first.", yes: "Start the print",
+			no: "Not yet", onYes: start}
 		return
 	}
-	q, yes, danger, set := a.materialCheck(it.Path)
-	if q == "" {
-		start()
+	// A file for another roll: the deck walks through the change of the roll, then asks to start.
+	// Else the last question names the roll: only Start the print starts the print.
+	if box := a.filamentChoices(it.Path, it.Name, start); box != nil {
+		a.confirm = box
 		return
 	}
-	a.confirm = &confirmBox{question: q, yes: yes, danger: danger, onYes: func() {
-		if set != "" {
-			a.setMaterial(set)
+	roll := ""
+	if s := a.Printer.SpoolStore(); s != nil {
+		if sp, ok := s.In(); ok {
+			roll = sp.Label() + " is in."
 		}
-		start()
-	}}
+	}
+	a.confirm = readyBox(it.Name, roll, start)
 }
 
 // AskQueueNext asks on each screen to start the next file of the queue: at the end of a print,
@@ -160,12 +164,12 @@ func (a *App) askQueueNext() {
 		if n := a.Queue.Len(); n > 1 {
 			more = fmt.Sprintf(" · %d more after it", n-1)
 		}
-		start := "Take the part off the bed first"
+		ready := "Check the roll and the bed."
 		if a.resin() {
-			start = "Check the vat and the plate first"
+			ready = "Check the vat and the plate."
 		}
-		a.hub.ask(&confirmBox{question: "Next: " + gfx.Fit(gfx.Face(true, 26), it.Name, 360), choices: []menuItem{
-			{"Start", start + " · " + queueLine(it), dim, func() { a.startQueued(it) }},
+		a.hub.ask(&confirmBox{question: "Next: " + it.Name, choices: []menuItem{
+			{"Get it ready", ready + " Nothing prints yet. · " + queueLine(it), dim, func() { a.startQueued(it) }},
 			{"Skip", "Take it out of the queue" + more, dim, func() {
 				a.Queue.Remove(it.ID)
 				a.askQueueNext()
@@ -188,17 +192,12 @@ func (a *App) askSentFile(path string) {
 	next, _ := a.Queue.Next()
 	a.hub.ask(&confirmBox{question: "Print " + gfx.Fit(gfx.Face(true, 26), it.Name, 340) + "?", choices: []menuItem{
 		{"Print it now", "The queue waits", dim, func() {
-			q, yes, danger, set := a.materialCheck(path)
-			if q == "" {
-				a.Printer.PrintFile(path)
+			start := func() { a.Printer.PrintFile(path) }
+			if box := a.filamentChoices(path, it.Name, start); box != nil {
+				a.confirm = box
 				return
 			}
-			a.confirm = &confirmBox{question: q, yes: yes, danger: danger, onYes: func() {
-				if set != "" {
-					a.setMaterial(set)
-				}
-				a.Printer.PrintFile(path)
-			}}
+			start()
 		}},
 		{"Add it to the queue", fmt.Sprintf("After %d %s", a.Queue.Len(), plural(a.Queue.Len(), "file", "files")), dim, func() {
 			a.Queue.Add(it)
@@ -235,7 +234,7 @@ func (a *App) drawQueue(c *gfx.Canvas) {
 		it := list[i]
 		var choices []menuItem
 		if !a.Printer.State().Busy() {
-			choices = append(choices, menuItem{"Start now", queueLine(it), dim, func() { a.startQueued(it) }})
+			choices = append(choices, menuItem{"Get it ready", "Nothing prints yet · " + queueLine(it), dim, func() { a.startQueued(it) }})
 		}
 		if i > 0 {
 			choices = append(choices,

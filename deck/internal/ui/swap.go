@@ -28,6 +28,10 @@ type swapState struct {
 	set         bool
 	newMaterial string
 	newRoll     string
+	// forFile is the name of the file that the swap loads the roll for, or "": each step shows it.
+	// then runs after Done, for example the question to start the file (changeRollFor).
+	forFile string
+	then    func()
 }
 
 // setAtEnd keeps the material and the roll that the swap loads, for its end.
@@ -122,6 +126,9 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 	done := func() {
 		a.finishSwap(sw)
 		end()
+		if sw.then != nil {
+			sw.then()
+		}
 	}
 	// Close before the swap heats the nozzle only closes. After it, Close is the same as Cancel.
 	closeSwap := func() {
@@ -175,6 +182,10 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 	step := func(n int, title string) {
 		if sw.mode == swapLoadOnly && n > 2 {
 			n--
+		}
+		if sw.forFile != "" {
+			// The file that the roll is for, over the step.
+			label(c, txt.Next(22), "For "+fitText(sw.forFile, f.body().Dx()-40), gfx.Left)
 		}
 		r := txt.Next(22)
 		label(c, r, fmt.Sprintf("Step %d of %d", n, total), gfx.Left)

@@ -349,17 +349,15 @@ func (a *App) confirmPrint(path string) {
 		a.confirmResinPrint(path, name)
 		return
 	}
-	q, yes, danger, set := a.materialCheck(path)
-	if q == "" {
-		q, yes = "Print "+gfx.Fit(gfx.Face(true, 28), name, 300)+"?", "Print"
-	}
-	a.confirm = &confirmBox{question: q, yes: yes, danger: danger, onYes: func() {
-		if set != "" {
-			a.setMaterial(set)
-		}
+	start := func() {
 		a.Printer.PrintFile(path)
 		a.pages = nil
-	}}
+	}
+	if box := a.filamentChoices(path, name, start); box != nil {
+		a.confirm = box
+		return
+	}
+	a.confirm = &confirmBox{question: "Print " + gfx.Fit(gfx.Face(true, 28), name, 300) + "?", yes: "Print", onYes: start}
 }
 
 // confirmResinPrint asks before it starts a resin file: Print, in the project of the next print
@@ -394,18 +392,14 @@ func (a *App) ConfirmFilePrint(path string) {
 			a.askSentFile(path)
 			return
 		}
-		q, yes, danger, set := a.materialCheck(path)
-		if q == "" {
-			a.Printer.PrintFile(path)
+		start := func() { a.Printer.PrintFile(path) }
+		box := a.filamentChoices(path, a.Printer.FileMeta(path).Name(path), start)
+		if box == nil {
+			start()
 			return
 		}
 		// A print from a slicer: the question is on each screen of the deck.
-		a.hub.ask(&confirmBox{question: q, yes: yes, danger: danger, onYes: func() {
-			if set != "" {
-				a.setMaterial(set)
-			}
-			a.Printer.PrintFile(path)
-		}})
+		a.hub.ask(box)
 	})
 }
 
@@ -429,12 +423,12 @@ func (a *App) materialCheck(path string) (question, yes string, danger bool, set
 		if sp, ok := s.In(); ok {
 			roll = &sp
 			have, haveName = sp.Material, sp.Label()
-			if !strings.EqualFold(sp.Label(), sp.Material) {
+			if !strings.Contains(strings.ToLower(sp.Label()), strings.ToLower(sp.Material)) {
 				haveName += " (" + sp.Material + ")"
 			}
 		}
 	}
-	fit := func(s string) string { return gfx.Fit(gfx.Face(true, 28), s, 400) }
+	fit := func(s string) string { return s } // the dialog wraps the question (drawConfirm)
 	switch {
 	case have == "":
 		return "Is " + fit(wantName) + " in the printer?", "Yes, print", false, strings.ToUpper(want)
@@ -449,6 +443,101 @@ func (a *App) materialCheck(path string) (question, yes string, danger bool, set
 		return "The file is for " + fit(wantName) + ". " + fit(haveName) + " is in the printer.", "Print anyway", true, ""
 	}
 	return "", "", false, ""
+}
+
+// filamentChoices is the question before a print of the file at path (name for the screen) when
+// its material is not known to be in the printer (materialCheck), or nil when it is. The question
+// offers to change the roll first (changeRollFor): the swap loads the roll, and then asks to start
+// the file. start starts the print. Each start of a print asks with it.
+func (a *App) filamentChoices(path, name string, start func()) *confirmBox {
+	q, _, danger, set := a.materialCheck(path)
+	if q == "" {
+		return nil
+	}
+	roll, ok := a.matchingRoll(path)
+	change := "Pick the roll, load it, then start the print"
+	if ok {
+		change = "Load " + roll.Number() + " " + roll.Label() + ", then start the print"
+	}
+	choices := []menuItem{{"Change the roll", change, dim, func() { a.changeRollFor(path, name, start) }}}
+	if danger {
+		choices = append(choices, menuItem{"Print anyway", "Starts the print now, with the roll that is in", red, start})
+	} else {
+		choices = append(choices, menuItem{"It is in the printer", "Starts the print now", dim, func() {
+			if set != "" {
+				a.setMaterial(set)
+			}
+			start()
+		}})
+	}
+	return &confirmBox{question: q, choices: choices}
+}
+
+// matchingRoll returns the roll for the file at path: the same material, and the same color (by
+// the colors, or the color words of the names), and not the roll in the printer.
+func (a *App) matchingRoll(path string) (printer.Spool, bool) {
+	s := a.Printer.SpoolStore()
+	if s == nil {
+		return printer.Spool{}, false
+	}
+	m := a.Printer.FileMeta(path)
+	in, _ := s.In()
+	for _, sp := range s.List() {
+		if sp.ID == in.ID || !strings.EqualFold(sp.Material, m.Material) {
+			continue
+		}
+		_, fileColor := hexColor(m.Color)
+		_, rollColor := hexColor(sp.Color)
+		if fileColor && rollColor {
+			if !otherColor(m, sp) {
+				return sp, true
+			}
+			continue
+		}
+		want, have := colorWords(m.MaterialName), colorWords(sp.Label())
+		for w := range want {
+			if have[w] {
+				return sp, true
+			}
+		}
+	}
+	return printer.Spool{}, false
+}
+
+// changeRollFor opens the filament swap for the file at path: with the matching roll chosen, or
+// the list of the rolls. After Done the deck asks again: to start the file, or about the roll
+// when it still does not fit. A cancel of the swap starts nothing.
+func (a *App) changeRollFor(path, name string, start func()) {
+	if st := a.Printer.State(); st.Busy() && !st.Paused {
+		a.confirm = &confirmBox{question: "The printer is busy. Change the roll when it is free.", yes: "OK", onYes: func() {}}
+		return
+	}
+	a.openSwap(swapChange)
+	if roll, ok := a.matchingRoll(path); ok {
+		a.swap.roll = roll.ID
+	}
+	a.swap.forFile = name
+	a.swap.then = func() {
+		if box := a.filamentChoices(path, name, start); box != nil {
+			a.confirm = box
+			return
+		}
+		loaded := "The roll"
+		if s := a.Printer.SpoolStore(); s != nil {
+			if sp, ok := s.In(); ok {
+				loaded = sp.Label()
+			}
+		}
+		a.confirm = readyBox(name, loaded+" is in.", start)
+	}
+	a.confirm = nil
+}
+
+// readyBox is the last question before a print from the queue or after a change of the roll: the
+// only key that starts the print is Start the print.
+func readyBox(name, roll string, start func()) *confirmBox {
+	q := "Start " + name + "? " + roll + " Take the last part off the bed first."
+	return &confirmBox{question: strings.TrimSpace(q), yes: "Start the print", no: "Not yet", onYes: start}
 }
 
 // otherColor reports that the file m is for another color than the roll in the printer. It
