@@ -84,6 +84,12 @@ func (g *S3Granter) FileURL(ctx context.Context, key string, ttl time.Duration) 
 		noteFile(ctx, key)
 		return "/" + key, nil
 	}
+	return g.DirectURL(ctx, key, ttl)
+}
+
+// DirectURL returns a presigned address of the file at key in the bucket, which works for ttl
+// with no cookies.
+func (g *S3Granter) DirectURL(ctx context.Context, key string, ttl time.Duration) (string, error) {
 	out, err := s3.NewPresignClient(g.Client).PresignGetObject(ctx, &s3.GetObjectInput{Bucket: &g.Bucket, Key: &key},
 		s3.WithPresignExpires(ttl))
 	if err != nil {

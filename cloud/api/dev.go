@@ -50,6 +50,11 @@ func (g *LocalGranter) Grant(_ context.Context, prefix string, maxBytes int64, t
 	return cloud.Grant{URL: g.URL, Fields: map[string]string{"policy": tok}, Prefix: prefix, MaxBytes: maxBytes, Expires: exp}, nil
 }
 
+// DirectURL is FileURL: the addresses of the DevServer need no cookies.
+func (g *LocalGranter) DirectURL(ctx context.Context, key string, ttl time.Duration) (string, error) {
+	return g.FileURL(ctx, key, ttl)
+}
+
 // FileURL returns an address of a private file on the DevServer, with a token that works for ttl.
 func (g *LocalGranter) FileURL(_ context.Context, key string, ttl time.Duration) (string, error) {
 	b := make([]byte, 16)

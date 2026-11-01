@@ -39,6 +39,9 @@ type Granter interface {
 	Grant(ctx context.Context, prefix string, maxBytes int64, ttl time.Duration) (cloud.Grant, error)
 	// FileURL returns an address of the file at key that works for ttl.
 	FileURL(ctx context.Context, key string, ttl time.Duration) (string, error)
+	// DirectURL returns a full address of the file at key that works for ttl with no cookies:
+	// for a deck, which has no cookies of the service.
+	DirectURL(ctx context.Context, key string, ttl time.Duration) (string, error)
 }
 
 // Share is the record of a share, shares/<id>.json.

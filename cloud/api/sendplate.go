@@ -102,7 +102,8 @@ func (s *Server) sentPlates(ctx context.Context, d *Deck, id string) ([]cloud.Se
 		if err != nil {
 			continue
 		}
-		u, err := s.Grants.FileURL(ctx, buildDir(e.Project, e.Build)+pl.File, urlTTL)
+		// The deck has no cookies of the service: a presigned address of the bucket.
+		u, err := s.Grants.DirectURL(ctx, buildDir(e.Project, e.Build)+pl.File, urlTTL)
 		if err != nil {
 			continue
 		}
