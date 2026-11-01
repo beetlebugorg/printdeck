@@ -28,11 +28,15 @@ func startQueue(ctx context.Context, stateDir string, pr printerBackend, app *ui
 }
 
 // watchQueue asks for the next file of the queue at the end of each print: when the printer goes
-// from a print to no print. The question is on each screen, and only a press starts the file.
+// from a print to no print. It also asks when a file from a slicer or from the service comes into
+// the queue while the printer is free. The question is on each screen, and only a press starts
+// the file.
 func watchQueue(ctx context.Context, pr printerBackend, app *ui.App, push func(notify.Message)) {
 	t := time.NewTicker(2 * time.Second)
 	defer t.Stop()
 	busy := pr.State().Busy()
+	seen := map[string]bool{}
+	arrived(seen, app.Queue.List()) // the files of the queue at the start ask nothing
 	for {
 		select {
 		case <-ctx.Done():
@@ -41,6 +45,9 @@ func watchQueue(ctx context.Context, pr printerBackend, app *ui.App, push func(n
 		}
 		st := pr.State()
 		now := st.Reachable && st.Busy()
+		if arrived(seen, app.Queue.List()) && st.Reachable && !now {
+			app.AskQueueNext()
+		}
 		if busy && !now && st.Reachable && app.Queue.Len() > 0 {
 			app.AskQueueNext()
 			if it, ok := app.Queue.Next(); ok && push != nil {
@@ -51,6 +58,26 @@ func watchQueue(ctx context.Context, pr printerBackend, app *ui.App, push func(n
 			busy = now
 		}
 	}
+}
+
+// arrived reports that items has a file from a slicer or from the service that is not in seen.
+// seen gets the IDs of items, and keeps no other IDs.
+func arrived(seen map[string]bool, items []queue.Item) bool {
+	out := false
+	ids := map[string]bool{}
+	for _, it := range items {
+		ids[it.ID] = true
+		if !seen[it.ID] && it.From != "deck" {
+			out = true
+		}
+		seen[it.ID] = true
+	}
+	for id := range seen {
+		if !ids[id] {
+			delete(seen, id)
+		}
+	}
+	return out
 }
 
 // nextMessage is the push message of the next file of the queue at the end of a print: its name,
