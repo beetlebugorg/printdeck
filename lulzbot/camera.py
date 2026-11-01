@@ -598,7 +598,7 @@ def plug(name):
 
 def cable_clips(name):
     """The cable clips (clips.py) and their places: (shape in printer coordinates, how many). Each is a
-    two-cable tape clip: the cables of the two cameras of camera_models.py lie side by side in it."""
+    two-cable tape clip, and the camera cable of camera_models.py goes in it."""
     import clips as K
     one, _ = K.tape_clip(pair=True)
     if name == "taz":
