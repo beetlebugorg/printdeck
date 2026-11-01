@@ -1044,21 +1044,13 @@ def main(out, stills=True, which=("taz", "mini2")):
             items.append((gname, cv, SCREW_COLOR if "screws" in gname else "#E8762B", ex(gname)))
             cm.apply_transform(frame_to_world)
             st["cables"].append((cm, "#E8762B"))
-        # The webcam mount on the frame (camera.py) with the ELP on its arm, and the B0561 over the bed
-        # (camera_models.py), in the frame of the printer like the clips.
+        # The webcam mount on the frame (camera.py) with the B0561 on its arm (camera_models.py), in
+        # the frame of the printer like the clips.
         cam = CM.meshes(name, tmp, C.meshes(name, tmp))
-        # The TAZ top mount comes apart in its own stages, after the stages of the pod.
-        R_view = (zup @ np.linalg.inv(matrix(loc)))[:3, :3]
-        top_stages = CM.TOP_STAGES if name == "taz" else []
         for n, (m, c) in cam.items():
             cv = m.copy()
             cv.apply_transform(zup @ np.linalg.inv(matrix(loc)))
-            moves = CM.top_explode(n) if top_stages else []
-            if any(any(v) for v in moves):
-                steps = [[0.0, 0.0, 0.0]] * len(STAGES) + [[float(x) for x in R_view @ np.array(v)] for v in moves]
-                items.append((n, cv, c, {"explode": steps}))
-            else:
-                items.append((n, cv, c))
+            items.append((n, cv, c))
         for msg in C.check(name):
             print(f"{name}: camera: {msg}")
         near = printer + C.stock_lcd(name, printer)
@@ -1100,7 +1092,7 @@ def main(out, stills=True, which=("taz", "mini2")):
         print(f"{name}: the pod is {gap:.1f} mm from the printer at the closest point")
         note = ("no overlaps" if not bad else f"{len(bad)} overlaps") + f", {gap:.1f} mm from the printer"
         views = CM.camera_views(name, zup @ np.linalg.inv(matrix(loc)))
-        viewer.publish(items, name, note, stages=[t for t, _ in STAGES] + [t for t, _ in top_stages], views=views)
+        viewer.publish(items, name, note, stages=[t for t, _ in STAGES], views=views)
         if not stills:
             continue
         allm = []
@@ -1525,9 +1517,7 @@ def on_bed(shape, rot, lift=0.0):
 def print_parts(process):
     """(file name, shape, how many) for each printed part of the pod, in print orientation."""
     import camera
-    import camera_models as CM
     import clips as C
-    import parts as PT
     global DOVE_CLR, RESIN, FOOT
     keep, keep_foot = DOVE_CLR, FOOT
     DOVE_CLR, RESIN, FOOT = DOVE_CLR_BY[process], process.startswith("resin"), FOOT_BY[process]
@@ -1538,7 +1528,7 @@ def print_parts(process):
         DOVE_CLR, RESIN, FOOT = keep, False, keep_foot
     one, _ = C.tape_clip()
     two, _ = C.tape_clip(True)
-    cam = [part for n in ("taz", "mini2") for part in camera.printed(n)] + CM.printed()
+    cam = [part for n in ("taz", "mini2") for part in camera.printed(n)]
     if process in ("fdm", "resin-flat"):
         # The body: flat on its back. The frame: flat on its back ring. The mount: flat on the face
         # that goes on the body, the dovetail up. The wedge: standing on its level bottom, the key and
@@ -1581,11 +1571,7 @@ def print_parts(process):
             *[(f"pod-shim-{t:.1f}mm_{process}.stl", on_bed(nub_shim(t), Rot(0, 0, 0), lift), 1) for t in SHIMS],
             *[(f"{fn}_{process}.stl", on_bed(sh, rots["camera"] * rot, lift), 1) for fn, sh, rot in cam],
             (f"cable-clip-single_{process}.stl", on_bed(one, rots["clip"], lift), 5),
-            (f"cable-clip-double_{process}.stl", on_bed(two, rots["clip"], lift), 2),
-            # The printed roll-in nut with an M3 hex nut, for the TAZ top camera mount (6 and a spare). It
-            # prints on its end, as stl/roll_nut.stl.
-            *([(f"roll-nut_{process}.stl", on_bed(Rot(90, 0, 0) * PT.roll_nut(S.CLIPS_Y[0]), Rot(0, 0, 0)), 7)]
-              if process == "fdm" else [])]
+            (f"cable-clip-double_{process}.stl", on_bed(two, rots["clip"], lift), 2)]
 
 
 def export_prints(out=PRINT_DIR):

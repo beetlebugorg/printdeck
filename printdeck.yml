@@ -103,25 +103,6 @@ parts:
     material: roll-4
     settings: *pod
 
-  # The camera over the bed (TAZ): 4 walls, 40% infill, 5 top and 5 bottom layers,
-  # an 8 mm brim (16 lines).
-  - name: Camera over the bed (TAZ)
-    files: [lulzbot/stl/pod/fdm/camera-top-taz_fdm.stl]
-    printer: taz
-    profile: taz-workhorse-se/pla-0.20-standard
-    material: roll-4
-    settings: {<<: *pod, wall_line_count: 4, infill_sparse_density: 40, top_layers: 5, bottom_layers: 5,
-               adhesion_type: brim, brim_line_count: 16}
-  # 6 nuts and a spare, in a separate job with 100% infill.
-  - name: Roll-in nut
-    files: [lulzbot/stl/pod/fdm/roll-nut_fdm.stl]
-    printer: taz
-    profile: taz-workhorse-se/pla-0.20-standard
-    material: roll-4
-    count: 7
-    alone: true
-    settings: {<<: *pod, infill_sparse_density: 100, adhesion_type: brim, brim_line_count: 16}
-
   # Resin: the pod on supports (resin/), with captive M3 hex nuts in place of the inserts.
   - name: Pod body (resin)
     files: [lulzbot/stl/pod/resin/pod-body_resin.stl]
