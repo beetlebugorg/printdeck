@@ -371,7 +371,12 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 		if err := ownerOnly(w); err != nil {
 			return nil, err
 		}
-		if err := s.removeMember(ctx, id, sub); err != nil {
+		// With ?data=delete, the service also deletes the data of the member (forget.go).
+		remove := s.removeMember
+		if r.URL.Query().Get("data") == "delete" {
+			remove = s.forgetMember
+		}
+		if err := remove(ctx, id, sub); err != nil {
 			return nil, err
 		}
 		return s.afterChange(ctx, id, w)
@@ -1433,7 +1438,7 @@ func (s *Server) deletePhoto(ctx context.Context, project, pid string, w *who) e
 			return err
 		}
 	}
-	return nil
+	return s.dropPhotoCopies(ctx, project, map[string]string{pid: ph.Print})
 }
 
 // deleteProject deletes a project: its files, its public address, its invites and the passkeys
@@ -1481,6 +1486,9 @@ func (s *Server) deleteProject(ctx context.Context, p *Project) error {
 		if err := s.updateReady(ctx, sh, func(rd *cloud.ShareReady) { rd.Project = nil }); err != nil {
 			return err
 		}
+	}
+	if err := s.deleteProjectExtras(ctx, p); err != nil {
+		return err
 	}
 	// The record last: a failure in the middle leaves a project that the owner can delete again.
 	keys, err := s.Store.List(ctx, "x/"+p.ID+"/")

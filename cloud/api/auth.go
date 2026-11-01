@@ -59,6 +59,8 @@ type Session struct {
 	Project string            `json:"p,omitempty"`
 	Member  string            `json:"m,omitempty"`
 	Expires int64             `json:"e"` // Unix seconds
+	// Key is the passkey file of an owner session. A deleted passkey ends its sessions.
+	Key string `json:"key,omitempty"`
 }
 
 // memberIn returns the member of the session in the project, or "".
@@ -206,6 +208,9 @@ func (s *Server) session(ctx context.Context, r *http.Request) (*Session, error)
 	}
 	if s.now().Unix() > ss.Expires {
 		return nil, fail(http.StatusUnauthorized, "the session ended: sign in again")
+	}
+	if !s.ownerKeyLive(ctx, &ss) {
+		return nil, fail(http.StatusUnauthorized, "the passkey of this session was removed: sign in again")
 	}
 	// A member that the owner removed has no access to the project, even with a session: each
 	// request on a project checks the member in the project (whoFor).
@@ -440,7 +445,7 @@ func (s *Server) routeAuth(ctx context.Context, r *http.Request, body []byte, re
 			s.ownerCache = ""
 			s.ownerMu.Unlock()
 		}
-		return s.newSession(ctx, Session{Kind: KindOwner})
+		return s.newSession(ctx, Session{Kind: KindOwner, Key: ownerKeyFile(cred.ID)})
 	case "invite/begin":
 		inv, err := s.loadInvite(ctx, in.Code)
 		if err != nil {
@@ -549,7 +554,7 @@ func (s *Server) routeAuth(ctx context.Context, r *http.Request, body []byte, re
 			}
 			return s.newSession(ctx, ss)
 		}
-		return s.newSession(ctx, Session{Kind: KindOwner})
+		return s.newSession(ctx, Session{Kind: KindOwner, Key: file})
 	}
 	return nil, fail(http.StatusMethodNotAllowed, "no such request")
 }
