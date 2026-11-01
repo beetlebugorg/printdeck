@@ -1011,7 +1011,7 @@ func (a *app) showBuildPage(projectID, id string) {
 	a.view = &v
 	a.playing++
 	playing := a.playing
-	doc.Set("title", "A build · "+v.Name+" · Printdeck")
+	doc.Set("title", buildTitle(&v, b)+" · "+v.Name+" · Printdeck")
 	byID("bdBack").Set("href", planPath(v.Slug, b.Plan))
 	setText("bdBack", "The plan")
 	show("vBuild")
@@ -1039,13 +1039,65 @@ func (a *app) showBuildPage(projectID, id string) {
 	}
 }
 
+// buildTitle is the title of the build page: the plan (the pull request, the tag or the branch)
+// and the parts of the build, for example "PR #9 · Slate frame, Slate body and 2 more".
+func buildTitle(v *wire.ProjectView, b wire.ProjectBuild) string {
+	var parts []string
+	seen := map[string]bool{}
+	for _, pl := range b.Plates {
+		for _, pp := range pl.Parts {
+			if l := partLabel(pp.Name, pp.Variant); !seen[l] {
+				seen[l] = true
+				parts = append(parts, l)
+			}
+		}
+	}
+	names := strings.Join(parts, ", ")
+	if len(parts) > 3 {
+		names = strings.Join(parts[:3], ", ") + fmt.Sprintf(" and %d more", len(parts)-3)
+	} else if len(parts) > 1 {
+		names = strings.Join(parts[:len(parts)-1], ", ") + " and " + parts[len(parts)-1]
+	}
+	if names == "" {
+		names = "A build of " + count(len(b.Plates), "plate", "plates")
+	}
+	if v != nil {
+		for _, p := range v.Plans {
+			if p.ID == b.Plan {
+				return planName(p) + " · " + names
+			}
+		}
+	}
+	return names
+}
+
+// buildFacts is the size of the build: the plates, the print time and the material of all the
+// plates, for example "3 plates · 11:02:00 · 125 g".
+func buildFacts(b wire.ProjectBuild) string {
+	sec, grams, ml := 0, 0.0, 0.0
+	for _, pl := range b.Plates {
+		sec, grams, ml = sec+pl.Seconds, grams+pl.Grams, ml+pl.ML
+	}
+	out := count(len(b.Plates), "plate", "plates")
+	if sec > 0 {
+		out += " · " + clock(sec)
+	}
+	if grams > 0 {
+		out += fmt.Sprintf(" · %.0f g", grams)
+	}
+	if ml > 0 {
+		out += fmt.Sprintf(" · %.0f ml", ml)
+	}
+	return out
+}
+
 // drawBuild draws the plates of the build b, with the keys of the owner.
 // ownerPrinters are the printers of the owner, for the keys Send to of the build page.
 var ownerPrinters []wire.Printer
 
 func (a *app) drawBuild(b wire.ProjectBuild) {
 	v := a.view
-	setText("bdTitle", "A build of "+count(len(b.Plates), "plate", "plates"))
+	setText("bdTitle", buildTitle(v, b))
 	state := buildStateText(b.State)
 	if b.State == wire.BuildSlicing {
 		state = "Waiting for the slice run on GitHub"
@@ -1056,7 +1108,7 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 			state = b.Progress
 		}
 	}
-	setText("bdSub", "Commit "+shortSHA(b.Commit)+" · "+localWhen(b.Created)+" · "+state)
+	setText("bdSub", buildFacts(b)+" · commit "+shortSHA(b.Commit)+" · "+localWhen(b.Created)+" · "+state)
 	setHidden("bdStartCard", b.Start == "" || !v.IsOwner)
 	setText("bdStart", b.Start)
 	setHidden("bdError", b.Error == "")
