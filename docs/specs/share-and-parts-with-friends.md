@@ -151,8 +151,8 @@ removes the member. The API deletes the public key of the passkey.
 
 **Sessions.** A session token is an ID, an expire time and an HMAC of both, signed with a key
 of the service. The key is in Secrets Manager, as `relay_secret` is for the relay. The deck
-does not have it. A session lasts 12 hours. The page keeps the token in `sessionStorage`, so it
-goes away when the tab closes.
+does not have it. A session lasts 14 days. The page keeps the token in `localStorage`, so it
+stays after the tab closes. Sign out removes it from the browser.
 
 **The iPhone app.** The app uses the same passkey through `ASAuthorizationController`. This
 needs the associated domain `webcredentials:printdeck.beetlebug.org` in the app, and the file

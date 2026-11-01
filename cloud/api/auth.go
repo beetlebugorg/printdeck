@@ -39,7 +39,7 @@ import (
 
 // SessionTTL is how long a session works, and OwnerCodeTTL how long an owner code works.
 const (
-	SessionTTL   = 12 * time.Hour
+	SessionTTL   = 14 * 24 * time.Hour
 	OwnerCodeTTL = 10 * time.Minute
 	stateTTL     = 5 * time.Minute
 )

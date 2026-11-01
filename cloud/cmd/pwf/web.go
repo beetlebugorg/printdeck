@@ -29,7 +29,9 @@ import (
 const boot = `
 (() => {
   try {
-    const t = sessionStorage.getItem("pwf-session");
+    // The saved sign-in (cmd/pwf-web, sessionGet): JSON with the token and the end of the session.
+    const saved = JSON.parse(localStorage.getItem("pwf-session") || sessionStorage.getItem("pwf-session") || "null");
+    const t = saved && saved.token && new Date(saved.expires) > new Date() ? saved.token : "";
     const path = location.pathname.replace(/\/$/, "");
     // A project, a tab or a print. The pages of the plans, the builds and the printers make
     // other requests.

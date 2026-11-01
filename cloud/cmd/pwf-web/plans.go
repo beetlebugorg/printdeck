@@ -62,10 +62,13 @@ func (a *app) drawBuilds(v *wire.ProjectView) {
 	}
 	list := byID("pPlans")
 	list.Set("textContent", "")
-	// The newest plans, and a link to all of them.
-	shown := v.Plans
-	if len(shown) > plansOnProject {
-		shown = shown[:plansOnProject]
+	// The newest plans of the pull requests and the releases, and a link to all of them. The
+	// Overview shows the newest plan of main.
+	var shown []wire.ProjectPlan
+	for _, p := range v.Plans {
+		if (p.Kind == wire.BuildTest || p.Kind == wire.BuildRelease) && len(shown) < plansOnProject {
+			shown = append(shown, p)
+		}
 	}
 	drawPlanList(list, v.Slug, shown)
 	if v.PlansTotal > len(shown) {
@@ -75,8 +78,8 @@ func (a *app) drawBuilds(v *wire.ProjectView) {
 		li.Call("appendChild", more)
 		list.Call("appendChild", li)
 	}
-	if v.Repo != "" && len(v.Plans) == 0 {
-		list.Call("appendChild", el("li", "dim small", "No plans yet. The Action sends a plan at the next push."))
+	if v.Repo != "" && len(shown) == 0 {
+		list.Call("appendChild", el("li", "dim small", "No plans of pull requests or releases yet. The Action sends a plan at each push."))
 	}
 }
 

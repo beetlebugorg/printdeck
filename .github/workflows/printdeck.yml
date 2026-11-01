@@ -9,7 +9,7 @@ on:
   # pull request the plan of that pull request, also for a branch of a member's fork.
   push:
     branches: ["**"]
-    tags: ["v*"]
+    tags: ["v*", "release/*"]   # the releases: the Builds tab lists their plans and the plans of the pull requests
   workflow_dispatch:
     inputs:
       build:
