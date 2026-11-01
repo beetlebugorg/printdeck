@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall/js"
 	"time"
@@ -234,9 +235,9 @@ func fact(id, text string) {
 	byID(id).Get("parentElement").Set("hidden", text == "")
 }
 
-// drawPrint fills the page of the print p. photos are the photos of its project, and frames
-// returns the URLs of the frames of its time lapse.
-func drawPrint(p wire.ProjectPrint, photos []wire.ProjectPhoto, frames func() ([]string, int, error), playing *int) {
+// drawPrint fills the page of the print p. photos are the photos of its project, and lapse
+// returns the video of its time lapse, or the URLs of its frames.
+func drawPrint(p wire.ProjectPrint, photos []wire.ProjectPhoto, lapse func() (wire.FramesReply, error), playing *int) {
 	setText("prName", p.Name)
 	doc.Set("title", p.Name+" · Printdeck")
 	setText("prSub", printedOn("", p.Printer))
@@ -352,25 +353,82 @@ func drawPrint(p wire.ProjectPrint, photos []wire.ProjectPhoto, frames func() ([
 	// On the public page the key to add photos is hidden: the card shows only with photos.
 	setHidden("prPhotosCard", n == 0 && byID("prPhotoAdd").Get("hidden").Bool())
 
-	// The time lapse.
-	setHidden("lapseBox", p.Frames == 0)
-	if p.Frames > 0 {
-		*playing++
-		go playFrames(frames, *playing, playing)
+	// The time lapse: the video, or the frames of a print from before the videos.
+	setHidden("lapseBox", p.Frames == 0 && p.Video == "")
+	*playing++
+	showVideo(false)
+	if p.Frames > 0 || p.Video != "" {
+		go playLapse(lapse, *playing, playing)
+	}
+}
+
+// showVideo shows the video element of the time lapse, or the canvas and the player of the
+// frames.
+func showVideo(on bool) {
+	setHidden("lapseVideo", !on)
+	setHidden("lapse", on)
+	setHidden("lapsePlayer", on)
+	if !on {
+		v := byID("lapseVideo")
+		v.Call("pause")
+		v.Call("removeAttribute", "src")
+		v.Call("removeAttribute", "poster")
+		v.Call("load")
+	}
+}
+
+// playLapse plays the time lapse of lapse: the video, or the frames.
+func playLapse(lapse func() (wire.FramesReply, error), n int, playing *int) {
+	fr, err := lapse()
+	if *playing != n {
+		return
+	}
+	if err == nil && fr.Video != "" {
+		playVideo(fr, n, playing)
+		return
+	}
+	if err != nil || len(fr.URLs) == 0 {
+		setText("lapseTag", "No time lapse")
+		return
+	}
+	playFrames(fr.URLs, fr.FPS, n, playing)
+}
+
+// playVideo plays the video of the time lapse in a loop with the controls of the browser. A
+// viewer who asks for less motion sees the last frame, and starts the video with the controls.
+// A new play (playing != n) stops it.
+func playVideo(fr wire.FramesReply, n int, playing *int) {
+	v := byID("lapseVideo")
+	setText("lapseTag", "Time lapse")
+	if fr.Poster != "" {
+		v.Set("poster", fr.Poster)
+	}
+	reduce := js.Global().Call("matchMedia", "(prefers-reduced-motion: reduce)").Get("matches").Bool()
+	v.Set("autoplay", !reduce)
+	v.Set("muted", true)
+	v.Set("src", fr.Video)
+	// The number of the play on the element: the end of this play pauses only its own video.
+	v.Get("dataset").Set("play", n)
+	showVideo(true)
+	if !reduce {
+		// A browser can refuse the play with no gesture: the controls stay for the viewer.
+		v.Call("play").Call("catch", js.FuncOf(func(js.Value, []js.Value) any { return nil }))
+	}
+	for *playing == n {
+		time.Sleep(250 * time.Millisecond)
+	}
+	if v.Get("dataset").Get("play").String() == strconv.Itoa(n) {
+		v.Call("pause")
 	}
 }
 
 // lapseAheadFrames is the count of frames that the browser loads ahead of the frame that shows.
 const lapseAheadFrames = 24
 
-// playFrames plays the time lapse on the canvas in a loop, with the key Pause and the slider. It
-// loads the frames a few at a time ahead of the play. A new play (playing != n) ends it.
-func playFrames(frames func() ([]string, int, error), n int, playing *int) {
-	urls, fps, err := frames()
-	if err != nil || len(urls) == 0 {
-		setText("lapseTag", "No time lapse")
-		return
-	}
+// playFrames plays the frames urls of a time lapse at fps on the canvas in a loop, with the key
+// Pause and the slider. It loads the frames a few at a time ahead of the play. A new play
+// (playing != n) ends it.
+func playFrames(urls []string, fps, n int, playing *int) {
 	cv := byID("lapse")
 	ctx := cv.Call("getContext", "2d")
 	seek, btn := byID("lapseSeek"), byID("lapsePlay")
@@ -491,7 +549,7 @@ func printTile(p wire.ProjectPrint, href string) js.Value {
 	if t := resultText[p.Result]; t != "" {
 		badges.Call("appendChild", el("span", "fail", t))
 	}
-	if p.Frames > 0 {
+	if p.Frames > 0 || p.Video != "" {
 		badges.Call("appendChild", el("span", "", "Time lapse"))
 	}
 	pic.Call("appendChild", badges)

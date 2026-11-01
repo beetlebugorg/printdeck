@@ -4,7 +4,8 @@
 // The environment: BUCKET is the data bucket, and DOMAIN the domain of the service.
 // RELAY_SECRET_ARN and TOPIC (the bundle ID of the app) turn on the push relay at /api/v1/relay/. A schedule
 // sends the event {"pwf": "sweep"} every 15 minutes, which deletes the shares after their time.
-// The comments on pull requests run after their request, in an event invoke of this function.
+// The comments on pull requests and the videos of the time lapses run after their request, in an
+// event invoke of this function. The package of the function has ffmpeg next to bootstrap.
 //
 // The logs go to CloudWatch. They have fixed texts only: no request body, no key, no code.
 package main
@@ -17,6 +18,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -120,6 +122,10 @@ func main() {
 		}
 		s.Relay = relay.NewRelay(sec, os.Getenv("TOPIC"))
 	}
+	// The video of the time lapse of each print: pwf deploy puts ffmpeg next to bootstrap.
+	if bin := filepath.Join(os.Getenv("LAMBDA_TASK_ROOT"), "ffmpeg"); fileExists(bin) {
+		s.Lapse = api.FFmpeg(bin)
+	}
 	// The jobs after a request run in another run of this function: an event invoke.
 	if name := os.Getenv("AWS_LAMBDA_FUNCTION_NAME"); name != "" {
 		lc := awslambda.NewFromConfig(cfg)
@@ -151,6 +157,12 @@ func main() {
 		}
 		return serve(ctx, s, req), nil
 	})
+}
+
+// fileExists reports that the file at name exists.
+func fileExists(name string) bool {
+	_, err := os.Stat(name)
+	return err == nil
 }
 
 // jobEvent is the event of the schedule ({"pwf": "sweep"}) and of a job after a request

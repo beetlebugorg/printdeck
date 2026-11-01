@@ -9,6 +9,8 @@
 //	pwf relay set-apple-key KEY_ID TEAM_ID AuthKey_KEYID.p8
 //	                         write the APNs key of the app into the secret of the push relay
 //	pwf dev [-addr A]        run the whole service on this computer, with the data in memory
+//	pwf lapse-backfill [-n] [-local] [-parallel N]
+//	                         make the time lapse videos of the old prints, and delete their frames
 //
 // All commands take -stack (default printdeck-cloud). The stack is in us-east-1, the region of
 // the certificates of CloudFront.
@@ -59,6 +61,12 @@ func main() {
 		}
 		return
 	}
+	var lapse lapseOptions
+	if cmd == "lapse-backfill" {
+		fs.BoolVar(&lapse.Local, "local", false, "make the videos on this computer with its ffmpeg")
+		fs.IntVar(&lapse.Parallel, "parallel", 4, "the most videos at the same time")
+		fs.BoolVar(&lapse.List, "n", false, "only count the prints")
+	}
 	fs.Parse(args)
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
 	if err != nil {
@@ -76,6 +84,8 @@ func main() {
 		err = decks(ctx, cfg, *stack, fs.Args())
 	case "github-app":
 		err = runGitHubApp(ctx, cfg, *stack, *appID, *appKey)
+	case "lapse-backfill":
+		err = runLapseBackfill(ctx, cfg, *stack, lapse)
 	default:
 		usage()
 	}
@@ -85,7 +95,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: pwf deploy | enroll-code | decks [remove ID] | relay set-apple-key | github-app --id N --key app.pem | dev")
+	fmt.Fprintln(os.Stderr, "usage: pwf deploy | enroll-code | decks [remove ID] | relay set-apple-key | github-app --id N --key app.pem | dev | lapse-backfill")
 	os.Exit(2)
 }
 
