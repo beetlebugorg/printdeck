@@ -31,6 +31,23 @@ The folder has:
 The folder has no machine instance file of Cura: that file has the API key of the deck. It has
 no user layer of Cura either: the settings of one part go in its `printdeck.yml` (`settings:`).
 
+## peopoly-phenom
+
+The Peopoly Phenom (resin, 276.48 x 155.52 mm, 3840 x 2160 pixels) with its ChiTu board. The
+slice run of printdeck-action slices a resin plate with PrusaSlicer and writes a `.cbddlp` of
+version 4, as ChiTuBox 1.4.0 writes it (`resinslice.py`). `resin.json` has the printer and the
+profiles. The settings of the profile are the settings of ChiTuBox for the resin.
+
+| Profile | Layers | Notes |
+|---|---|---|
+| `abs-like-0.05` | 0.05 mm | 12 s, bottom 95 s x 10, 8 transition layers, lift 12 mm at 30 mm/min |
+
+- `printer.prusaslicer` and `prusaslicer` of a profile set PrusaSlicer settings of the supports,
+  the pad and the hollowing. The `settings:` of a part in `printdeck.yml` add to them for the
+  whole plate. Other PrusaSlicer settings stop the run.
+- `printer.margin` is the room around each part on the plate, for the supports and the pad.
+- Open a new profile in ChiTuBox before its first print.
+
 ## Change a profile
 
 1. Change the profile in Cura, and save it.
