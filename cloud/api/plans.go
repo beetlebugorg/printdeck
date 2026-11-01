@@ -38,6 +38,9 @@ type GitHubAPI interface {
 	// OpenPull returns the number of the open pull request into base from the branch of headRepo
 	// whose head is the commit sha, or 0 for none.
 	OpenPull(ctx context.Context, base, headRepo, branch, sha string) (int, error)
+	// Comment writes the comment of Printdeck on the pull request pr of repo: it changes the
+	// comment id, or makes a new comment for 0 or a comment that is gone. It returns the ID.
+	Comment(ctx context.Context, repo string, pr int, id int64, body string) (int64, error)
 }
 
 // PlanRecord is x/<project>/plans/<id>.json.
@@ -369,6 +372,7 @@ func (s *Server) planDone(ctx context.Context, p *Project, c *GitHubClaims, id s
 			return nil, err
 		}
 	}
+	s.commentPlan(ctx, p, rec)
 	return s.projectPlan(ctx, p, rec), nil
 }
 

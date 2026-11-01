@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -243,9 +244,21 @@ func TestPlanFlow(t *testing.T) {
 // recordDispatch is a GitHub App for the tests: it records the slice runs that it starts.
 type recordDispatch struct {
 	runs, titles []string
+	comments     map[int64]string // the comments on pull requests, by ID
 	err          error
 	// pulls are the open pull requests: "<base> <head repo> <branch> <sha>" -> the number.
 	pulls map[string]int
+}
+
+func (r *recordDispatch) Comment(_ context.Context, repo string, pr int, id int64, body string) (int64, error) {
+	if r.comments == nil {
+		r.comments = map[int64]string{}
+	}
+	if _, ok := r.comments[id]; !ok {
+		id = int64(len(r.comments) + 100)
+	}
+	r.comments[id] = fmt.Sprintf("%s#%d\n%s", repo, pr, body)
+	return id, nil
 }
 
 func (r *recordDispatch) OpenPull(_ context.Context, base, headRepo, branch, sha string) (int, error) {
@@ -326,7 +339,7 @@ func TestForkPlan(t *testing.T) {
 	d.API.OIDC = fakeOIDC{}
 	head := strings.Repeat("cd", 20)
 	gh := &recordDispatch{pulls: map[string]int{
-		"beetlebugorg/bittlex sam/bittlex door " + head:           12,
+		"beetlebugorg/bittlex sam/bittlex door " + head:          12,
 		"beetlebugorg/bittlex beetlebugorg/bittlex feet " + head: 13,
 	}}
 	d.API.GitHub = gh

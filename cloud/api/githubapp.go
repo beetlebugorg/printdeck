@@ -204,3 +204,24 @@ func (g *GitHubApp) Dispatch(ctx context.Context, repo, build, title string) err
 	}
 	return nil
 }
+
+// Comment writes the comment of Printdeck on the pull request pr of repo: it changes the comment
+// id, or makes a new comment for 0 or a comment that is gone. It returns the ID of the comment.
+func (g *GitHubApp) Comment(ctx context.Context, repo string, pr int, id int64, body string) (int64, error) {
+	token, err := g.installationToken(ctx, repo, map[string]string{"pull_requests": "write", "metadata": "read"})
+	if err != nil {
+		return 0, err
+	}
+	var out struct {
+		ID int64 `json:"id"`
+	}
+	in := map[string]string{"body": body}
+	if id != 0 {
+		err := g.call(ctx, http.MethodPatch, fmt.Sprintf("/repos/%s/issues/comments/%d", repo, id), token, in, &out)
+		if ge, ok := err.(*gitHubError); !ok || ge.status != http.StatusNotFound {
+			return out.ID, err
+		}
+	}
+	err = g.call(ctx, http.MethodPost, fmt.Sprintf("/repos/%s/issues/%d/comments", repo, pr), token, in, &out)
+	return out.ID, err
+}

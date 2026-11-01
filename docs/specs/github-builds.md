@@ -257,6 +257,21 @@ does not change the card. Each PDF has a tile with the picture of its first page
 size, Open PDF (a signed link), and a link to the file on GitHub at the commit of the plan. The
 first PDF has the largest tile.
 
+### The comment on a pull request
+
+When a plan of a pull request is ready, the service writes the comment of Printdeck on the pull
+request with its GitHub App (the permission "Pull requests: write"). It keeps one comment for each
+pull request (`x/<project>/prs/<n>.json`) and changes it at each push.
+
+- The comment names the commit of the plan, the count of the changed parts, the plan that it
+  compares with (main, a tag, or an older plan), and the link to the plan page.
+- A table has each changed part and what changed in its model: the size and the volume, as the
+  plan page shows them (`cloud/modeldiff`, the comparison of `viewer3d.js` in Go).
+- A picture of each changed model, up to 8: an isometric view with the model in gray, the new
+  material in green and the material that is gone in red. The pictures are public files of the
+  bucket, `gh/<32 hex digits>.png`, so GitHub shows them for a private repository too.
+- A failure of the comment goes to the log only. The plan is ready anyway.
+
 ## The deck
 
 1. The deck asks the service for print requests of its printers, each minute, and at once when

@@ -159,6 +159,9 @@ Resources:
               - !Sub "${DataBucket.Arn}/.well-known/*"
               - !Sub "${DataBucket.Arn}/s/*"
               - !Sub "${DataBucket.Arn}/p/*"
+              # The pictures of the comments of Printdeck on the pull requests, with names that
+              # nobody can guess.
+              - !Sub "${DataBucket.Arn}/gh/*"
               # The files of the projects, only behind the behavior /x/* with signed cookies: the
               # files of the prints, the plans and the builds, the pictures of the photos and of the live
               # prints. The JSON records (project.json with the invites, and the records of the
