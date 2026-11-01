@@ -170,6 +170,18 @@ func (s *Server) route(ctx context.Context, r *http.Request, body []byte) (any, 
 			return nil, err
 		}
 		return s.newSessionInfo(ctx, ss)
+	case p == "/api/v1/me" && r.Method == http.MethodDelete:
+		ss, err := s.session(ctx, r)
+		if err != nil {
+			return nil, err
+		}
+		return nil, s.deleteMe(ctx, ss)
+	case p == "/api/v1/me/passkeys" || strings.HasPrefix(p, "/api/v1/me/passkeys/"):
+		ss, err := s.session(ctx, r)
+		if err != nil {
+			return nil, err
+		}
+		return s.routeMyPasskeys(ctx, r, ss, strings.TrimPrefix(strings.TrimPrefix(p, "/api/v1/me/passkeys"), "/"))
 	case p == "/api/v1/plans" || strings.HasPrefix(p, "/api/v1/plans/"):
 		return s.routeActions(ctx, r, body, "plans", strings.TrimPrefix(strings.TrimPrefix(p, "/api/v1/plans"), "/"))
 	case strings.HasPrefix(p, "/api/v1/builds/"):

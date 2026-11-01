@@ -27,6 +27,15 @@ type PasskeyBegin struct {
 	State   string          `json:"state"`
 }
 
+// PasskeyInfo is a passkey of the owner, in the reply to GET /api/v1/me/passkeys. ID is the
+// credential ID in base64url, and This reports the passkey of the session.
+type PasskeyInfo struct {
+	ID     string    `json:"id"`
+	Device string    `json:"device,omitempty"`
+	Added  time.Time `json:"added"`
+	This   bool      `json:"this,omitempty"`
+}
+
 // SignInReply is the reply to the finish of a ceremony: the session token, for the header
 // Authorization: Bearer <token>.
 type SignInReply struct {
