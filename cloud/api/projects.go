@@ -514,6 +514,16 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 			return nil, err
 		}
 		return s.afterChange(ctx, id, w)
+	case part == "queue" && strings.Count(sub, "/") == 1 && r.Method == http.MethodDelete:
+		// The owner takes a file of the project out of the queue of a printer.
+		if err := ownerOnly(w); err != nil {
+			return nil, err
+		}
+		printer, item, _ := strings.Cut(sub, "/")
+		if err := s.removeQueued(ctx, id, printer, item, w); err != nil {
+			return nil, err
+		}
+		return s.afterChange(ctx, id, w)
 	case part == "prints" && sub != "" && r.Method == http.MethodDelete:
 		if err := ownerOnly(w); err != nil {
 			return nil, err

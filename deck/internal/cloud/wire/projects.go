@@ -387,6 +387,8 @@ type QueueReport struct {
 // QueueEntry is a file of the queue of a deck: its project at the service, its name, its place in
 // the queue (1 is next), its print time, and the estimate of its start.
 type QueueEntry struct {
+	// ID is the ID of the file in the queue of the deck, for a removal from the project page.
+	ID      string    `json:"id,omitempty"`
 	Project string    `json:"project"`
 	Name    string    `json:"name"`
 	Place   int       `json:"place"`
@@ -394,12 +396,34 @@ type QueueEntry struct {
 	Start   time.Time `json:"start,omitzero"`
 }
 
+// QueueRemove is a removal of a file of the queue of a deck, from the project page: the ID of
+// the file in the queue, and the project of the file. GET printers/<id>/removes lists them.
+type QueueRemove struct {
+	Item    string    `json:"item"`
+	Project string    `json:"project"`
+	Name    string    `json:"name,omitempty"`
+	By      string    `json:"by,omitempty"`
+	At      time.Time `json:"at"`
+}
+
+// QueueRemoved is the body of POST printers/<id>/removes/done: the removals that the deck did, or
+// that name a file that is not in its queue.
+type QueueRemoved struct {
+	Items []string `json:"items"`
+}
+
 // ProjectQueued is a file of a project in the queue of a printer, for the project page.
 type ProjectQueued struct {
-	Printer string    `json:"printer"`
-	Name    string    `json:"name"`
-	Place   int       `json:"place"`
-	Seconds int       `json:"seconds,omitempty"`
-	Start   time.Time `json:"start,omitzero"`
-	Updated time.Time `json:"updated"`
+	// ID is the ID of the file in the queue of the deck, and PrinterID the ID of the printer: the
+	// owner removes the file with DELETE projects/<id>/queue/<printer>/<item>. Both are "" from an
+	// older deck. Removing is true when a removal waits for the deck.
+	ID        string    `json:"id,omitempty"`
+	PrinterID string    `json:"printer_id,omitempty"`
+	Removing  bool      `json:"removing,omitempty"`
+	Printer   string    `json:"printer"`
+	Name      string    `json:"name"`
+	Place     int       `json:"place"`
+	Seconds   int       `json:"seconds,omitempty"`
+	Start     time.Time `json:"start,omitzero"`
+	Updated   time.Time `json:"updated"`
 }

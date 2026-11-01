@@ -27,6 +27,8 @@ type (
 	PlanManifest      = wire.PlanManifest
 	PlanPart          = wire.PlanPart
 	PlanDoc           = wire.PlanDoc
+	QueueRemove       = wire.QueueRemove
+	QueueRemoved      = wire.QueueRemoved
 	ProjectDoc        = wire.ProjectDoc
 	UploadReply       = wire.UploadReply
 	ProjectPlan       = wire.ProjectPlan
@@ -194,6 +196,18 @@ func (c *Client) TakePlate(ctx context.Context, id *Identity, printer string, in
 // SendPrinterLive sends what the printer does now to the service.
 func (c *Client) SendPrinterLive(ctx context.Context, id *Identity, printer string, in PrinterLive) error {
 	return c.Do(ctx, id, http.MethodPost, "/api/v1/printers/"+printer+"/live", in, nil)
+}
+
+// QueueRemoves returns the removals of files of the queue of the printer that wait for the deck.
+func (c *Client) QueueRemoves(ctx context.Context, id *Identity, printer string) ([]QueueRemove, error) {
+	var out []QueueRemove
+	err := c.Do(ctx, id, http.MethodGet, "/api/v1/printers/"+printer+"/removes", nil, &out)
+	return out, err
+}
+
+// QueueRemovesDone tells the service that the deck did the removals of the items.
+func (c *Client) QueueRemovesDone(ctx context.Context, id *Identity, printer string, items []string) error {
+	return c.Do(ctx, id, http.MethodPost, "/api/v1/printers/"+printer+"/removes/done", QueueRemoved{Items: items}, nil)
 }
 
 // SendQueue reports the files of the queue of the printer to the service.

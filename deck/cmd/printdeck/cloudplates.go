@@ -37,10 +37,12 @@ func (p *projectLink) watchPlates(ctx context.Context, app *ui.App, place func(c
 		if id == nil || printer == "" || app.Queue == nil {
 			continue
 		}
+		p.applyRemoves(ctx, app.Queue)
 		rctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		plates, err := p.Client.SentPlates(rctx, id, printer)
 		cancel()
 		if err != nil {
+			log.Printf("plates: %v", err)
 			continue
 		}
 		for _, pl := range plates {

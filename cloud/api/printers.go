@@ -181,6 +181,32 @@ func (s *Server) routeSentPlates(ctx context.Context, r *http.Request, body []by
 	return nil, fail(http.StatusMethodNotAllowed, "no such request")
 }
 
+// routeRemoves serves GET /api/v1/printers/<id>/removes (the files of the queue that the owner
+// took out on the project page) and POST /api/v1/printers/<id>/removes/done.
+func (s *Server) routeRemoves(ctx context.Context, r *http.Request, body []byte, id, what string) (any, error) {
+	w, err := s.whoFor(ctx, r, body, "")
+	if err != nil {
+		return nil, err
+	}
+	if w.deck == nil {
+		return nil, fail(http.StatusUnauthorized, "only a deck reads its removals")
+	}
+	if !validID(id) {
+		return nil, fail(http.StatusBadRequest, "bad printer")
+	}
+	switch {
+	case what == "removes" && r.Method == http.MethodGet:
+		return s.queueRemoves(ctx, w.deck, id)
+	case what == "removes/done" && r.Method == http.MethodPost:
+		var in cloud.QueueRemoved
+		if json.Unmarshal(body, &in) != nil {
+			return nil, fail(http.StatusBadRequest, "bad JSON")
+		}
+		return map[string]bool{"ok": true}, s.removesDone(ctx, w.deck, id, in)
+	}
+	return nil, fail(http.StatusMethodNotAllowed, "no such request")
+}
+
 // routePrinterLive serves POST /api/v1/printers/<id>/live: a deck sends what its printer does now.
 func (s *Server) routePrinterLive(ctx context.Context, r *http.Request, body []byte, id string) (any, error) {
 	w, err := s.whoFor(ctx, r, body, "")

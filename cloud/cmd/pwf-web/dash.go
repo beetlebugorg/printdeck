@@ -165,7 +165,7 @@ func (a *app) drawDashboard(v *wire.ProjectView, full bool) {
 	a.drawFeed(v)
 	a.drawWaiting(v)
 	a.drawPickup(v)
-	drawQueued(v)
+	a.drawQueued(v)
 	drawDocs(v)
 	a.drawGit(v)
 	a.drawPeople(v)
@@ -719,8 +719,9 @@ func until(t time.Time) string {
 }
 
 // drawQueued draws the card of the files of the project in the queues of the printers: their
-// places and the estimates of their starts. The project sees only its own files.
-func drawQueued(v *wire.ProjectView) {
+// places and the estimates of their starts. The project sees only its own files. The owner can
+// take a file out: the deck of the printer does it within a minute.
+func (a *app) drawQueued(v *wire.ProjectView) {
 	setHidden("pQueueCard", len(v.Queue) == 0)
 	list := byID("pQueue")
 	list.Set("textContent", "")
@@ -738,8 +739,32 @@ func drawQueued(v *wire.ProjectView) {
 		if !q.Start.IsZero() {
 			line += " · starts " + until(q.Start)
 		}
+		if q.Removing {
+			line = "The " + q.Printer + " takes it out of its queue within a minute"
+		}
 		box.Call("appendChild", el("span", "sub", line))
 		li.Call("appendChild", box)
+		if v.IsOwner && q.ID != "" && !q.Removing {
+			b := el("button", "", "Remove")
+			b.Set("type", "button")
+			b.Set("title", "Take it out of the queue of the "+q.Printer)
+			name, printer, item := q.Name, q.Printer, q.PrinterID+"/"+q.ID
+			b.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
+				if !js.Global().Call("confirm", "Take "+name+" out of the queue of the "+printer+"? The file stays on the deck.").Bool() {
+					return nil
+				}
+				b.Set("disabled", true)
+				go func() {
+					if err := a.api("DELETE", "/projects/"+v.ID+"/queue/"+item, nil, nil); err != nil {
+						b.Set("disabled", false)
+						return
+					}
+					a.reload()
+				}()
+				return nil
+			}))
+			li.Call("appendChild", b)
+		}
 		list.Call("appendChild", li)
 	}
 	sum := count(len(v.Queue), "file", "files")

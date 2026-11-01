@@ -73,10 +73,45 @@ func (p *projectLink) queueReport(q *queue.Queue) cloud.QueueReport {
 	report := cloud.QueueReport{Items: []cloud.QueueEntry{}}
 	for i, it := range q.List() {
 		if pid := p.serviceProjectID(it.Project); pid != "" && it.Project != "" {
-			report.Items = append(report.Items, cloud.QueueEntry{Project: pid, Name: it.Name, Place: i + 1, Seconds: it.Seconds,
+			report.Items = append(report.Items, cloud.QueueEntry{ID: it.ID, Project: pid, Name: it.Name, Place: i + 1, Seconds: it.Seconds,
 				Start: at.UTC().Truncate(time.Second)})
 		}
 		at = at.Add(time.Duration(it.Seconds)*time.Second + queueTurn)
 	}
 	return report
+}
+
+// applyRemoves takes out of the queue the files that the owner took out on a project page
+// (GET printers/<id>/removes), and tells the service. A removal must name the project of the file.
+// A removal of a file that is not in the queue is done too.
+func (p *projectLink) applyRemoves(ctx context.Context, q *queue.Queue) {
+	id, printer := p.Identity(), p.printerID()
+	if q == nil || id == nil || printer == "" {
+		return
+	}
+	rctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	removes, err := p.Client.QueueRemoves(rctx, id, printer)
+	cancel()
+	if err != nil {
+		log.Printf("queue: the removals: %v", err)
+		return
+	}
+	if len(removes) == 0 {
+		return
+	}
+	var done []string
+	for _, rm := range removes {
+		for _, it := range q.List() {
+			if it.ID == rm.Item && p.serviceProjectID(it.Project) == rm.Project {
+				q.Remove(it.ID)
+				log.Printf("queue: %s took %s out of the queue on the project page", rm.By, it.Name)
+			}
+		}
+		done = append(done, rm.Item)
+	}
+	rctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	if err := p.Client.QueueRemovesDone(rctx, id, printer, done); err != nil {
+		log.Printf("queue: the removals done: %v", err)
+	}
 }
