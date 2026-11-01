@@ -1181,7 +1181,11 @@ func (s *Server) printDone(ctx context.Context, project, print string, in cloud.
 	}
 	pr.Frames, pr.FPS, pr.Model, pr.Plan, pr.Done = n, max(1, min(60, in.FPS)), have["model.jpg"], have["plan.json"], true
 	pr.Gcode = have["print.gcode.gz"]
-	return s.putJSON(ctx, printKey(project, print), pr)
+	if err := s.putJSON(ctx, printKey(project, print), pr); err != nil {
+		return err
+	}
+	s.commentPrint(ctx, project, *pr)
+	return nil
 }
 
 // printFrames serves GET .../prints/<print>/frames: the URLs of the frames of the time lapse.
@@ -1266,7 +1270,15 @@ func (s *Server) projectPhoto(ctx context.Context, project, pid string, w *who, 
 	if print != "" && !validID(print) {
 		print = ""
 	}
-	return s.putJSON(ctx, base+".json", PhotoRecord{ID: pid, By: w.name, Member: w.member, Added: s.now().UTC(), W: pw, H: ph, Print: print})
+	if err := s.putJSON(ctx, base+".json", PhotoRecord{ID: pid, By: w.name, Member: w.member, Added: s.now().UTC(), W: pw, H: ph, Print: print}); err != nil {
+		return err
+	}
+	if print != "" {
+		if pr, err := s.loadPrint(ctx, project, print); err == nil {
+			s.commentPrint(ctx, project, *pr)
+		}
+	}
+	return nil
 }
 
 // deletePhoto removes a photo: the owner removes any photo, a member only their own.

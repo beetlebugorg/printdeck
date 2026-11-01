@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"math"
 	"strings"
 	"testing"
@@ -91,5 +93,73 @@ func TestPRComment(t *testing.T) {
 	second := plan(pr+strings.Repeat("ef", 20), true, cubeSTL(12, 10, 12))
 	if len(app.comments) != 1 || !strings.Contains(app.comments[100], "/plans/"+second) {
 		t.Fatalf("comments after the next push %v", app.comments)
+	}
+	if !strings.Contains(app.comments[100], "2.0 mm wider") {
+		t.Errorf("the comment of the second plan:\n%s", app.comments[100])
+	}
+
+	// A build of the plan: the comment has its plate, with a picture of the G-code and its state.
+	var bd cloud.ProjectBuild
+	req := cloud.BuildRequest{Plates: []cloud.PlateRequest{{Parts: []cloud.PlatePart{{Part: 0, Count: 2}}}}}
+	if st := call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/plans/"+second+"/builds", tok, req, &bd); st != 200 {
+		t.Fatalf("build %d", st)
+	}
+	if !strings.Contains(app.comments[100], "): slicing") {
+		t.Errorf("no slicing build in the comment")
+	}
+	gcode := []byte("G90\nM82\nG1 X10 Y10 Z0.2 E0\nG1 X30 Y10 E1\nG1 X30 Y30 E2\nG1 X10 Y30 Z0.4 E3\n")
+	h := sha256.Sum256(gcode)
+	token := pr + strings.Repeat("ef", 20)
+	var up cloud.UploadReply
+	files := cloud.BuildFiles{Plates: []cloud.BuildPlate{{File: "plate-1.gcode", Size: int64(len(gcode)), SHA256: hex.EncodeToString(h[:]),
+		Seconds: 5400, Grams: 12}}}
+	if st := call(t, base, "POST", "/api/v1/builds/"+bd.ID+"/files", token, files, &up); st != 200 {
+		t.Fatalf("files %d", st)
+	}
+	cloud.PostFile(ctx, nil, up.Grant, "plate-1.gcode", "text/plain", "", gcode)
+	if st := call(t, base, "POST", "/api/v1/builds/"+bd.ID+"/done", token, nil, nil); st != 200 {
+		t.Fatalf("build done %d", st)
+	}
+	body = app.comments[100]
+	for _, want := range []string{"[Build `" + bd.ID + "`](", "): 1 plates", "| 1: Pod door x2 | 1:30 |", "12 g", "Waits for approval", `width="160"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the comment of the build has no %q:\n%s", want, body)
+		}
+	}
+	if st := call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/builds/"+bd.ID+"/plates/0/approve", tok, nil, nil); st != 200 {
+		t.Fatalf("approve %d", st)
+	}
+	if !strings.Contains(app.comments[100], "| Approved |") {
+		t.Errorf("the comment after the approval:\n%s", app.comments[100])
+	}
+
+	// The deck prints the plate: the comment has the result, then the first photo of the print.
+	ended := time.Date(2026, 11, 2, 15, 0, 0, 0, time.UTC)
+	up2 := cloud.PrintUpload{Request: cloud.PrintRequest{Name: "Pod door x2", File: "builds/" + bd.ID + "-plate-1.gcode",
+		Result: "complete", Ended: ended, Seconds: 5000, Key: "k@1"}}
+	pid, err := c.SendPrint(ctx, l.Identity(), sum.ID, up2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(app.comments[100], "| Printed Nov 2 |") {
+		t.Fatalf("the comment after the print:\n%s", app.comments[100])
+	}
+	var ph cloud.PhotoReply
+	if st := call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/photos", tok, nil, &ph); st != 200 {
+		t.Fatalf("photo grant: %d", st)
+	}
+	cloud.PostFile(ctx, nil, ph.Grant, "photo", "image/jpeg", "no-store", exifJPEG(t, 64, 48, 1))
+	if st := call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/photos/"+ph.Photo+"/done", tok, map[string]string{"print": pid}, nil); st != 200 {
+		t.Fatalf("photo done: %d", st)
+	}
+	body = app.comments[100]
+	if !strings.Contains(body, `alt="The print of plate 1"`) || !strings.Contains(body, base+"/gh/") {
+		t.Fatalf("no photo in the comment:\n%s", body)
+	}
+	i = strings.Index(body, `alt="The print of plate 1"`)
+	j := strings.LastIndex(body[:i], base+"/gh/")
+	key = strings.TrimPrefix(body[j:j+len(base)+40], base+"/")
+	if data, _, err := d.API.Store.Get(ctx, key); err != nil || len(data) < 100 {
+		t.Fatalf("the public photo %s: %v", key, err)
 	}
 }

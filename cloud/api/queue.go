@@ -27,14 +27,15 @@ const MaxQueue = 50
 const queueStale = 6 * time.Hour
 
 func queueKey(project, printer string) string { return "x/" + project + "/queue/" + printer + ".json" }
-func removeDir(printer string) string          { return "printers/" + printer + "-remove/" }
+func removeDir(printer string) string         { return "printers/" + printer + "-remove/" }
 
 // queueItemID is the form of the ID of a file in the queue of a deck.
 var queueItemID = regexp.MustCompile(`^[0-9a-f]{8,32}$`)
 
 // removeStale is the age of a removal after which the service drops it: the deck is off.
 const removeStale = 7 * 24 * time.Hour
-func queueProjectsKey(printer string) string  { return "printers/" + printer + "-queue.json" }
+
+func queueProjectsKey(printer string) string { return "printers/" + printer + "-queue.json" }
 
 // projectQueue is x/<project>/queue/<printer>.json.
 type projectQueue struct {

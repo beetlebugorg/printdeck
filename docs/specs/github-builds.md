@@ -270,6 +270,16 @@ pull request (`x/<project>/prs/<n>.json`) and changes it at each push.
 - A picture of each changed model, up to 8: an isometric view with the model in gray, the new
   material in green and the material that is gone in red. The pictures are public files of the
   bucket, `gh/<32 hex digits>.png`, so GitHub shows them for a private repository too.
+- The builds of the newest plan of the pull request, the newest first (at most 3). Each plate has
+  a picture, its parts, its time, its material and its state: waits for approval, approved, sent
+  to a printer, in the queue of a printer, rejected, or replaced. The picture of an FDM plate is
+  its G-code in the same view, in the color of its material. A resin plate has no picture yet.
+- A print of a plate (the deck names the file `builds/<build>-plate-<n>`) gives the plate its
+  result and the day, and the first photo of the print in place of the picture. The service keeps
+  a public copy of the photo in `gh/`, once.
+- The service writes the comment again when a plan of the pull request is ready, when a build
+  starts, fails or is ready, when the owner approves, rejects or sends a plate, when a deck takes a
+  plate, when a print of a plate ends, and when a photo of such a print is added.
 - A failure of the comment goes to the log only. The plan is ready anyway.
 
 ## The deck

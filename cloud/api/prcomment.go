@@ -8,9 +8,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"image"
+	"image/color"
 	"image/png"
 	"log"
 	"path"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,10 +37,108 @@ type planDiff struct {
 	Image string `json:"image,omitempty"` // the public address of the picture
 }
 
-// prRecord is x/<project>/prs/<n>.json: the comment of Printdeck on the pull request n.
+// prRecord is x/<project>/prs/<n>.json: the comment of Printdeck on the pull request n, and the
+// public copies of the photos in it, by the ID of the photo.
 type prRecord struct {
-	Comment int64     `json:"comment"`
-	Updated time.Time `json:"updated"`
+	Comment int64             `json:"comment"`
+	Updated time.Time         `json:"updated"`
+	Photos  map[string]string `json:"photos,omitempty"`
+}
+
+// platePrint is the newest print of a plate, with the public address of its first photo, or "".
+type platePrint struct {
+	rec   PrintRecord
+	photo string
+}
+
+// plateFile is the form of the file of a print of a plate on a deck: builds/<build>-plate-<n>.
+var plateFile = regexp.MustCompile(`(?:^|/)builds/([a-z2-7]{8,64})-plate-([0-9]{1,3})\.`)
+
+// printedPlates returns the newest print of each plate of the builds, by "<build>/<plate>" (from
+// 0). The first photo of each print gets a public copy, once: st keeps the copies.
+func (s *Server) printedPlates(ctx context.Context, project string, builds []*BuildRecord, st *prRecord) map[string]platePrint {
+	out := map[string]platePrint{}
+	if len(builds) == 0 {
+		return out
+	}
+	ids := map[string]bool{}
+	for _, b := range builds {
+		ids[b.ID] = true
+	}
+	prints, photos, err := s.projectFiles(ctx, project)
+	if err != nil {
+		return out
+	}
+	for _, pr := range prints {
+		m := plateFile.FindStringSubmatch(pr.File)
+		if m == nil || !ids[m[1]] || !pr.Done {
+			continue
+		}
+		n, _ := strconv.Atoi(m[2])
+		key := m[1] + "/" + strconv.Itoa(n-1)
+		if old, ok := out[key]; ok && old.rec.Ended.After(pr.Ended) {
+			continue
+		}
+		out[key] = platePrint{rec: pr}
+	}
+	for key, pp := range out {
+		var first *PhotoRecord
+		for i := range photos {
+			if ph := &photos[i]; ph.Print == pp.rec.ID && (first == nil || ph.Added.Before(first.Added)) {
+				first = ph
+			}
+		}
+		if first == nil {
+			continue
+		}
+		if st.Photos == nil {
+			st.Photos = map[string]string{}
+		}
+		if st.Photos[first.ID] == "" {
+			name := make([]byte, 16)
+			rand.Read(name)
+			dst := "gh/" + hex.EncodeToString(name) + ".jpg"
+			if err := s.Store.Copy(ctx, "x/"+project+"/photos/"+first.ID+"-s.jpg", dst,
+				PutOptions{ContentType: "image/jpeg", CacheControl: "public, max-age=31536000, immutable"}); err != nil {
+				continue
+			}
+			st.Photos[first.ID] = s.base() + "/" + dst
+		}
+		pp.photo = st.Photos[first.ID]
+		out[key] = pp
+	}
+	return out
+}
+
+// printState is the state of a plate with a print, for the comment.
+func printState(pr PrintRecord) string {
+	day := pr.Ended.UTC().Format("Jan 2")
+	switch {
+	case !pr.Discarded.IsZero():
+		return "Printed " + day + ", discarded: " + pr.DiscardNote
+	case pr.Result == "complete":
+		return "Printed " + day
+	case pr.Result == "cancelled":
+		return "Stopped " + day
+	}
+	return "Failed " + day
+}
+
+// commentPrint writes the comment again when the print pr is a print of a plate of a pull request.
+func (s *Server) commentPrint(ctx context.Context, project string, pr PrintRecord) {
+	m := plateFile.FindStringSubmatch(pr.File)
+	if m == nil || s.GitHub == nil {
+		return
+	}
+	p, _, err := s.loadProject(ctx, project)
+	if err != nil {
+		return
+	}
+	b, err := s.loadBuild(ctx, project, m[1])
+	if err != nil {
+		return
+	}
+	s.commentBuild(ctx, p, b, false)
 }
 
 func prKey(project string, pr int) string { return fmt.Sprintf("x/%s/prs/%d.json", project, pr) }
@@ -122,16 +224,7 @@ func (s *Server) planDiffs(ctx context.Context, project string, rec, base *PlanR
 		diff := modeldiff.Compare(ta, tb)
 		d.Text = diff.Text()
 		if !diff.Same && len(out) < MaxDiffPictures {
-			var buf bytes.Buffer
-			if png.Encode(&buf, diff.Render(800, 600)) == nil {
-				name := make([]byte, 16)
-				rand.Read(name)
-				key := "gh/" + hex.EncodeToString(name) + ".png"
-				if _, err := s.Store.Put(ctx, key, buf.Bytes(), PutOptions{ContentType: "image/png",
-					CacheControl: "public, max-age=31536000, immutable"}); err == nil {
-					d.Image = s.base() + "/" + key
-				}
-			}
+			d.Image = s.publicPicture(ctx, diff.Render(800, 600))
 		}
 		out = append(out, d)
 	}
@@ -155,10 +248,41 @@ func shortSHA(c string) string {
 	return c
 }
 
+// clockText is a time for a person: "3:45".
+func clockText(sec int) string {
+	return fmt.Sprintf("%d:%02d", sec/3600, sec/60%60)
+}
+
+// plateState is the state of a plate for the comment.
+func (s *Server) plateState(ctx context.Context, pl plateRecord) string {
+	switch pl.State {
+	case cloud.PartWaiting, "":
+		return "Waits for approval"
+	case cloud.PartRejected:
+		return "Rejected: " + pl.Reason
+	case cloud.PartReplaced:
+		return "Replaced by a newer plan"
+	case cloud.PartApproved:
+		if pl.Sent == "" {
+			return "Approved"
+		}
+		name := "the printer"
+		if pr, err := s.loadPrinter(ctx, pl.Sent); err == nil {
+			name = "the " + pr.Name
+		}
+		if pl.Taken.IsZero() {
+			return "Sent to " + name
+		}
+		return "In the queue of " + name
+	}
+	return pl.State
+}
+
 // prCommentBody is the text of the comment for the plan rec of a pull request, with the base
-// plan (or nil) and the changed models.
-func (s *Server) prCommentBody(p *Project, rec, base *PlanRecord, diffs []planDiff) string {
+// plan (or nil), its changed models, and its builds (the newest first).
+func (s *Server) prCommentBody(ctx context.Context, p *Project, rec, base *PlanRecord, builds []*BuildRecord, printed map[string]platePrint) string {
 	var b strings.Builder
+	diffs := rec.Diffs
 	planURL := s.projectURL(p) + "/plans/" + rec.ID
 	b.WriteString("<!-- printdeck -->\n")
 	fmt.Fprintf(&b, "### Printdeck · the plan of `%s`\n\n", shortSHA(rec.Commit))
@@ -224,17 +348,75 @@ func (s *Server) prCommentBody(p *Project, rec, base *PlanRecord, diffs []planDi
 		}
 		b.WriteString("</table>\n\n<sub>Gray: no change. Green: new material. Red: material that is gone.</sub>\n\n")
 	}
-	b.WriteString("<sub>Printdeck writes this comment again at each push to the pull request.</sub>\n")
+	// The builds of the plan.
+	for n, bd := range builds {
+		if n == maxCommentBuilds {
+			fmt.Fprintf(&b, "<sub>%d older builds are on the plan page.</sub>\n\n", len(builds)-n)
+			break
+		}
+		url := s.projectURL(p) + "/builds/" + bd.ID
+		switch bd.State {
+		case cloud.BuildSlicing:
+			fmt.Fprintf(&b, "#### [Build `%s`](%s): slicing\n\n", bd.ID, url)
+			continue
+		case cloud.BuildFailed:
+			fmt.Fprintf(&b, "#### [Build `%s`](%s): failed\n\n%s\n\n", bd.ID, url, mdCell(bd.Error))
+			continue
+		}
+		fmt.Fprintf(&b, "#### [Build `%s`](%s): %d plates\n\n", bd.ID, url, len(bd.Plates))
+		b.WriteString("| | Plate | Time | Material | State |\n|---|---|---|---|---|\n")
+		for i, pl := range bd.Plates {
+			var parts []string
+			for _, pp := range pl.Parts {
+				name := pp.Name
+				if pp.Variant != "" {
+					name += " (" + pp.Variant + ")"
+				}
+				if pp.Count > 1 {
+					name += fmt.Sprintf(" x%d", pp.Count)
+				}
+				parts = append(parts, name)
+			}
+			pic, state := "", s.plateState(ctx, pl)
+			if pl.Pic != "" {
+				pic = fmt.Sprintf(`<img src="%s" width="160" alt="Plate %d">`, html.EscapeString(pl.Pic), i+1)
+			}
+			// A print of the plate: its result, and its first photo in place of the picture.
+			if pp, ok := printed[bd.ID+"/"+strconv.Itoa(i)]; ok {
+				state = printState(pp.rec)
+				if pp.photo != "" {
+					pic = fmt.Sprintf(`<img src="%s" width="160" alt="The print of plate %d">`, html.EscapeString(pp.photo), i+1)
+				}
+			}
+			mat := pl.MaterialName
+			if mat == "" {
+				mat = pl.Material
+			}
+			switch {
+			case pl.ML > 0:
+				mat += fmt.Sprintf(", %.1f ml", pl.ML)
+			case pl.Grams > 0:
+				mat += fmt.Sprintf(", %.0f g", pl.Grams)
+			}
+			fmt.Fprintf(&b, "| %s | %d: %s | %s | %s | %s |\n", pic, i+1, mdCell(strings.Join(parts, ", ")),
+				clockText(pl.Seconds), mdCell(mat), mdCell(state))
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString("<sub>Printdeck writes this comment again at each push, slice and approval.</sub>\n")
 	return b.String()
 }
 
+// maxCommentBuilds is the most builds in a comment.
+const maxCommentBuilds = 3
+
 // mdCell is text for a cell of a Markdown table.
 func mdCell(s string) string {
-	return strings.NewReplacer("|", "\\|", "\n", " ").Replace(s)
+	return strings.NewReplacer("|", "\\|", "\n", " ", "\r", "").Replace(s)
 }
 
-// commentPlan writes the comment of Printdeck on the pull request of the ready plan rec. A
-// failure goes to the log only: the plan is ready anyway.
+// commentPlan compares the changed models of the ready plan rec of a pull request with its base
+// plan, keeps the result in the plan, and writes the comment.
 func (s *Server) commentPlan(ctx context.Context, p *Project, rec *PlanRecord) {
 	if s.GitHub == nil || rec.PR <= 0 || rec.Kind != cloud.BuildTest || p.Repo == "" {
 		return
@@ -246,28 +428,125 @@ func (s *Server) commentPlan(ctx context.Context, p *Project, rec *PlanRecord) {
 		log.Printf("comment: the plans of %s: %v", p.ID, err)
 		return
 	}
-	// A newer plan of the same pull request writes the comment.
-	for _, o := range plans {
-		if o.ID != rec.ID && o.PR == rec.PR && o.Ready && o.Created.After(rec.Created) {
-			return
+	if base := basePlanOf(plans, rec); base != nil {
+		rec.Base = base.ID
+		rec.Diffs = s.planDiffs(ctx, p.ID, rec, base)
+		if err := s.putJSON(ctx, planKey(p.ID, rec.ID), rec); err != nil {
+			log.Printf("comment: %v", err)
 		}
 	}
-	base := basePlanOf(plans, rec)
-	var diffs []planDiff
-	if base != nil {
-		diffs = s.planDiffs(ctx, p.ID, rec, base)
-	}
-	var pr prRecord
-	if b, _, err := s.Store.Get(ctx, prKey(p.ID, rec.PR)); err == nil {
-		json.Unmarshal(b, &pr)
-	}
-	id, err := s.GitHub.Comment(ctx, p.Repo, rec.PR, pr.Comment, s.prCommentBody(p, rec, base, diffs))
-	if err != nil {
-		log.Printf("comment: pull request %d of %s: %v", rec.PR, p.Repo, err)
+	s.updatePR(ctx, p, rec.PR)
+}
+
+// commentBuild writes the comment of the pull request of the build b again, when its plan is
+// of a pull request. pics draws the pictures of its FDM plates first, for a build that is ready.
+func (s *Server) commentBuild(ctx context.Context, p *Project, b *BuildRecord, pics bool) {
+	if s.GitHub == nil || p.Repo == "" {
 		return
 	}
-	if id != pr.Comment {
-		if err := s.putJSON(ctx, prKey(p.ID, rec.PR), prRecord{Comment: id, Updated: s.now().UTC()}); err != nil {
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	rec, err := s.loadPlan(ctx, p.ID, b.Plan)
+	if err != nil || rec.PR <= 0 || rec.Kind != cloud.BuildTest {
+		return
+	}
+	if pics && b.State == cloud.BuildReady {
+		changed := false
+		for i := range b.Plates {
+			pl := &b.Plates[i]
+			if pl.Pic != "" || pl.Process != "fdm" || !strings.HasSuffix(pl.File, ".gcode") || i >= MaxDiffPictures {
+				continue
+			}
+			data, _, err := s.Store.Get(ctx, buildDir(p.ID, b.ID)+pl.File)
+			if err != nil {
+				continue
+			}
+			c := color.RGBA{0x55, 0x5b, 0x63, 0xff}
+			if h, err := strconv.ParseUint(strings.TrimPrefix(pl.MaterialColor, "#"), 16, 32); err == nil && len(pl.MaterialColor) == 7 {
+				c = color.RGBA{uint8(h >> 16), uint8(h >> 8), uint8(h), 0xff}
+			}
+			var bx, by float64
+			if pi := pl.Parts; len(pi) > 0 && pi[0].Part < len(rec.Parts) {
+				bx, by = rec.Parts[pi[0].Part].BedX, rec.Parts[pi[0].Part].BedY
+			}
+			img := modeldiff.RenderGcode(data, c, bx, by, 640, 480)
+			if img == nil {
+				continue
+			}
+			if u := s.publicPicture(ctx, img); u != "" {
+				pl.Pic, changed = u, true
+			}
+		}
+		if changed {
+			if err := s.putJSON(ctx, buildKey(p.ID, b.ID), b); err != nil {
+				log.Printf("comment: %v", err)
+			}
+		}
+	}
+	s.updatePR(ctx, p, rec.PR)
+}
+
+// publicPicture saves the picture as gh/<random>.png, and returns its public address, or "".
+func (s *Server) publicPicture(ctx context.Context, img image.Image) string {
+	var buf bytes.Buffer
+	if png.Encode(&buf, img) != nil {
+		return ""
+	}
+	name := make([]byte, 16)
+	rand.Read(name)
+	key := "gh/" + hex.EncodeToString(name) + ".png"
+	if _, err := s.Store.Put(ctx, key, buf.Bytes(), PutOptions{ContentType: "image/png",
+		CacheControl: "public, max-age=31536000, immutable"}); err != nil {
+		return ""
+	}
+	return s.base() + "/" + key
+}
+
+// updatePR writes the comment of Printdeck on the pull request pr of the project: from its newest
+// ready plan, the base plan of that plan, and its builds. A failure goes to the log only.
+func (s *Server) updatePR(ctx context.Context, p *Project, pr int) {
+	plans, err := s.loadPlans(ctx, p.ID)
+	if err != nil {
+		log.Printf("comment: the plans of %s: %v", p.ID, err)
+		return
+	}
+	var rec, base *PlanRecord
+	for _, o := range plans {
+		if o.Ready && o.PR == pr && o.Kind == cloud.BuildTest {
+			rec = o
+			break
+		}
+	}
+	if rec == nil {
+		return
+	}
+	for _, o := range plans {
+		if o.ID == rec.Base {
+			base = o
+		}
+	}
+	var builds []*BuildRecord
+	if all, err := s.loadBuilds(ctx, p.ID); err == nil {
+		for _, b := range all {
+			if b.Plan == rec.ID {
+				builds = append(builds, b)
+			}
+		}
+	}
+	var st prRecord
+	if b, _, err := s.Store.Get(ctx, prKey(p.ID, pr)); err == nil {
+		json.Unmarshal(b, &st)
+	}
+	photos := len(st.Photos)
+	printed := s.printedPlates(ctx, p.ID, builds, &st)
+	id, err := s.GitHub.Comment(ctx, p.Repo, pr, st.Comment, s.prCommentBody(ctx, p, rec, base, builds, printed))
+	if err != nil {
+		log.Printf("comment: pull request %d of %s: %v", pr, p.Repo, err)
+		return
+	}
+	if id != st.Comment || len(st.Photos) != photos {
+		st.Comment, st.Updated = id, s.now().UTC()
+		if err := s.putJSON(ctx, prKey(p.ID, pr), st); err != nil {
 			log.Printf("comment: %v", err)
 		}
 	}

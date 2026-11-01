@@ -63,6 +63,10 @@ type PlanRecord struct {
 	Parts   []cloud.PlanPart `json:"parts"`
 	// Docs are the PDFs of the docs of printdeck.yml, in the folder of the plan.
 	Docs []cloud.PlanDoc `json:"docs,omitempty"`
+	// Base is the plan that a plan of a pull request compares with, and Diffs the changed models
+	// against it, for the comment on the pull request (prcomment.go).
+	Base  string     `json:"base,omitempty"`
+	Diffs []planDiff `json:"diffs,omitempty"`
 }
 
 // BuildRecord is x/<project>/builds/<id>.json.
@@ -91,6 +95,8 @@ type plateRecord struct {
 	Sent   string    `json:"sent,omitempty"`
 	SentAt time.Time `json:"sent_at,omitzero"`
 	Taken  time.Time `json:"taken,omitzero"`
+	// Pic is the public address of the picture of the plate, for the comment on a pull request.
+	Pic string `json:"pic,omitempty"`
 }
 
 var hexColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
@@ -199,6 +205,7 @@ func (s *Server) routeActions(ctx context.Context, r *http.Request, body []byte,
 		if err := s.putJSON(ctx, buildKey(p.ID, b.ID), b); err != nil {
 			return nil, err
 		}
+		s.commentBuild(ctx, p, b, false)
 		return s.projectBuild(ctx, p, b), nil
 	}
 	return nil, fail(http.StatusMethodNotAllowed, "no such request")
@@ -480,6 +487,7 @@ func (s *Server) newBuild(ctx context.Context, p *Project, w *who, planID string
 			}
 		}
 	}
+	s.commentBuild(ctx, p, &b, false)
 	return s.projectBuild(ctx, p, &b), nil
 }
 
@@ -595,6 +603,7 @@ func (s *Server) buildDone(ctx context.Context, p *Project, c *GitHubClaims, id 
 	if err := s.putJSON(ctx, buildKey(p.ID, id), b); err != nil {
 		return nil, err
 	}
+	s.commentBuild(ctx, p, b, true)
 	return s.projectBuild(ctx, p, b), nil
 }
 
@@ -873,5 +882,6 @@ func (s *Server) decidePlate(ctx context.Context, p *Project, w *who, id string,
 	if err := s.putJSON(ctx, buildKey(p.ID, id), b); err != nil {
 		return nil, err
 	}
+	s.commentBuild(ctx, p, b, false)
 	return s.projectBuild(ctx, p, b), nil
 }
