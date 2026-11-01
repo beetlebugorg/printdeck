@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -260,7 +261,12 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 		rec.Kind, rec.PR, rec.Branch = cloud.BuildTest, fork.pr, fork.branch
 	case rec.Kind == cloud.BuildBranch && s.GitHub != nil:
 		// A branch of the repository with an open pull request: the plan of the pull request.
-		if n, err := s.GitHub.OpenPull(ctx, c.Repository, c.Repository, rec.Branch, rec.Commit); err == nil && n > 0 {
+		// An error (for example the App is not installed on the repository) leaves a plan of the
+		// branch. The log says why: with no pull request, the Builds tab does not list the plan.
+		n, err := s.GitHub.OpenPull(ctx, c.Repository, c.Repository, rec.Branch, rec.Commit)
+		if err != nil {
+			log.Printf("plan of %s %s: the pull request: %v", c.Repository, rec.Branch, err)
+		} else if n > 0 {
 			rec.Kind, rec.PR = cloud.BuildTest, n
 		}
 	}
@@ -950,6 +956,10 @@ func (s *Server) projectBuildNamed(ctx context.Context, p *Project, b *BuildReco
 			}
 			if pl.Picture != "" {
 				pp.PictureURL, _ = s.Grants.FileURL(ctx, dir+pl.Picture, urlTTL)
+			} else if pl.Pic != "" {
+				// No picture of the slice: the picture of the plate for the comment on the pull
+				// request, so each plate card shows its plate.
+				pp.PictureURL = pl.Pic
 			}
 			if pl.File != "" {
 				pp.FileURL, _ = s.Grants.FileURL(ctx, dir+pl.File, urlTTL)
