@@ -1,4 +1,4 @@
-# Printdeck pod
+# Printdeck Slate v4
 
 ## The Slate v4
 

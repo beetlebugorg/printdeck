@@ -66,6 +66,22 @@ parts:
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: *pod
+  # The cable clips of the webcam cable, along the frame of the printer. They are better in PETG:
+  # PLA can crack where the arms bend. The profiles have no PETG material yet.
+  - name: Cable clip, single (webcam, TAZ)
+    files: [lulzbot/stl/pod/fdm/cable-clip-single_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    count: 4
+    settings: *pod
+  - name: Cable clip, single (webcam, Mini 2)
+    files: [lulzbot/stl/pod/fdm/cable-clip-single_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    count: 3
+    settings: *pod
 
 # The PDFs of the project. The project page shows each one with a picture of its first page.
 docs:
