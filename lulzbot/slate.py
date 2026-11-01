@@ -34,8 +34,8 @@ Run: uv run --no-project --with build123d --with numpy --with scipy --with trime
 --with networkx python slate.py [export | check | render]
 
 export writes the print files to stl/slate/ and checks them. check prints the overlap, the tip and the
-stiffness checks. render writes renders/slate-*.png (headless EGL: set PYOPENGL_PLATFORM=egl, and add
---with pyrender --with pillow).
+stiffness checks. render writes renders/slate-*.png, with the views of the joint (headless EGL: set
+PYOPENGL_PLATFORM=egl, and add --with pyrender --with pillow).
 """
 
 import math
@@ -476,11 +476,82 @@ def render():
     R.render(items, (1, 0, 0), (0, 0, 1), os.path.join(out, "slate-side.png"), size=(1400, 1400))
 
 
+def nut(u, v, w0):
+    """An M3 hex nut on the w axis, from w0 to w0 + its thickness, with flats along v."""
+    r = P.NUT[0] / math.sqrt(3)
+    hexa = Polygon(*[(r * math.cos(math.radians(60 * k)), r * math.sin(math.radians(60 * k))) for k in range(6)],
+                   align=None)
+    return Pos(u, v, w0) * (extrude(hexa, amount=P.NUT[1]) - Pos(0, 0, -1) * extrude(Circle(1.5), amount=P.NUT[1] + 2))
+
+
+def joint(loose=False):
+    """The two M3 x 8 screws and the two nuts, in case coordinates. The heads are on the seats of the
+    counterbores in the boss. The nuts are in the rings, or with loose on the inner floor of a pod body."""
+    floor = -P.DEEP_W + P.FLOOR
+    w_nut = floor if loose else floor + NUT_RING[1] - P.NUT[1] - 0.2
+    screws = [P.screw(3, 8.0, (u, v, FACE - CBORE_SKIN), (0, 0, -1)) for u, v in P.MOUNT_SCREWS]
+    nuts = [nut(u, v, w_nut) for u, v in P.MOUNT_SCREWS]
+    return screws, nuts
+
+
+def render_mount():
+    """The renders of the joint: an exploded view, a section through one screw, and a pod body with no
+    nut rings on the base, with the nuts on its inner floor."""
+    import tempfile
+    import trimesh
+    from build123d import export_stl
+    import render as R
+    loc = case_loc()
+    navy, orange, metal = COLORS["navy"], COLORS["orange"], P.SCREW_COLOR
+    tmp = tempfile.mkdtemp()
+
+    def meshes(items):
+        out = []
+        for i, (sh, c) in enumerate(items):
+            p = os.path.join(tmp, f"m{i}.stl")
+            export_stl(sh, p, tolerance=0.02, angular_tolerance=0.1)
+            out.append((trimesh.load(p, force="mesh"), c))
+        return out
+
+    base_w = stand("fdm")
+    fr, bd = case_fdm()
+    glass = [s for n, s, _ in P.hardware() if n == "glass"][0]
+    screws, nuts = joint()
+    out = os.path.join(HERE, "renders")
+    # 1. Exploded along the screws (w): the screws out behind the boss, the body forward, the nuts in
+    # front of the body, and the frame and the glass farther forward. Thin rods show the axes of the
+    # screws.
+    E = {"screw": -28.0, "body": 40.0, "nut": 90.0, "frame": 115.0}
+    axes = [Pos(u, v, -10.0) * extrude(Circle(0.25), amount=70.0, both=True) for u, v in P.MOUNT_SCREWS]
+    items = [(base_w, orange)]
+    items += [(loc * Pos(0, 0, E["body"]) * bd, navy), (loc * Pos(0, 0, E["frame"]) * fr, navy),
+              (loc * Pos(0, 0, E["frame"]) * glass, "#0D0E12")]
+    items += [(loc * Pos(0, 0, E["screw"]) * sc, metal) for sc in screws]
+    items += [(loc * Pos(0, 0, E["nut"]) * n, metal) for n in nuts]
+    items += [(loc * a, "#8A8F98") for a in axes]
+    R.render(meshes(items), (-0.85, -0.45, -0.3), (0, 0, 1), os.path.join(out, "slate-exploded.png"), size=(1600, 1400))
+    # 2. A section through the screw at u = 6, seen from +x.
+    u_cut = P.MOUNT_SCREWS[1][0]
+    keep = Pos(u_cut - 250, 0, 0) * Box(500, 1000, 1000)
+    cooler = P.pi_box(*P.pi_parts()["cooler"])
+    items = [(base_w & keep, orange), (loc * bd & keep, navy), (loc * fr & keep, navy), (loc * glass & keep, "#0D0E12"),
+             (loc * cooler & keep, "#30343A")]
+    items += [(loc * sc & keep, metal) for sc in screws] + [(loc * n & keep, metal) for n in nuts]
+    R.render(meshes(items), (-1, 0, 0), (0, 0, 1), os.path.join(out, "slate-section.png"), size=(1400, 1400))
+    # 3. A pod body (no nut rings) on the base, the frame and the display off, from the front and above:
+    # the two nuts lie on the inner floor, on the screws from behind.
+    screws, nuts = joint(loose=True)
+    items = [(base_w, orange), (loc * P.body(), navy)]
+    items += [(loc * sc, metal) for sc in screws] + [(loc * n, metal) for n in nuts]
+    R.render(meshes(items), (0.35, 0.75, -0.55), (0, 0, 1), os.path.join(out, "slate-pod-body.png"), size=(1400, 1400))
+
+
 if __name__ == "__main__":
     if "export" in sys.argv:
         export()
         sys.exit(0 if mesh_check() else 1)
     if "render" in sys.argv:
         render()
+        render_mount()
         sys.exit()
     sys.exit(1 if check() else 0)

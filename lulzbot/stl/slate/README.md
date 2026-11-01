@@ -79,6 +79,10 @@ TAZ Workhorse SE.
 
 ## Assembly
 
+![The joint apart along the screws: the base, the two M3 x 8 screws behind the boss, the body, the two nuts, and the frame with the glass](../../renders/slate-exploded.png)
+
+![A section through one screw: the screw in the counterbore of the boss, the back wall of the body, the nut in its ring under the Active Cooler, and the pad below](../../renders/slate-section.png)
+
 1. Press the two M3 nuts into the rings on the inner floor of the body.
 2. FDM: press the four inserts into the bosses of the frame.
 3. Put the Pi 5 with its Active Cooler on the four standoffs of the display, USB ports toward the
@@ -95,6 +99,12 @@ TAZ Workhorse SE.
 
 To take the display out, remove the two M3 x 8 screws, lift the case off the base, and do the steps
 in the opposite order.
+
+A pod body that is printed already has no nut rings. It also goes on the base. Put each nut on the
+inner floor of the body, at the hole of the old mount, and hold it while you turn the M3 x 8 screw in
+from behind. Do this before the frame and the display go on the body.
+
+![A pod body on the base, with the frame and the display off: the two nuts on the inner floor, on the screws from behind](../../renders/slate-pod-body.png)
 
 ## Cables, the SD card and the air
 
