@@ -50,6 +50,7 @@ PAGE_OF = {
     "slicer/README.md": "slicer/adaptive-speed/", "slicer/cura-plugin/README.md": "slicer/cura-plugin/",
     "deck/internal/klipper/PORTING.md": "deck/klipper/", "lulzbot/README.md": "hardware/",
     "lulzbot/stl/pod/README.md": "hardware/print/", "watch/README.md": "apps/", "cloud/relay/README.md": "apps/relay/",
+    "PRIVACY.md": "privacy/",
 }
 
 
@@ -627,7 +628,7 @@ def page(path, section, title, lede, body, description=None, wide=False, toc=Tru
 {body_html}
 </main>
 </div>
-<footer>Printdeck is free software (AGPL-3.0). <a href="{REPO}/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+<footer>Printdeck is free software (AGPL-3.0). <a href="{REPO}/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository. <a href="{root}privacy/">Privacy</a>.</footer>
 </body>
 </html>
 """
@@ -932,6 +933,41 @@ def relay_page():
     page("apps/relay/", "Software", "The push relay",
          "An AWS Lambda function that gives the encrypted messages of a deck to the iPhone app through APNs.",
          md("cloud/relay/README.md", root))
+
+
+# The privacy policy: PRIVACY.md is the source of the page of the site and of the page /privacy
+# of the cloud service (cloud/deploy/web/privacy.html, which pwf deploy uploads).
+CLOUD_PRIVACY = ROOT / "cloud" / "deploy" / "web" / "privacy.html"
+
+
+def privacy_pages():
+    text = re.sub(r"^# .*\n", "", read("PRIVACY.md"), count=1)
+    updated = re.search(r"^Last updated: .*$", text, re.M).group(0)
+    text = text.replace(updated, "", 1)
+    page("privacy/", "Project", "Privacy policy", esc(updated) + ".", md_text(text, "", "../"),
+         description="What Printdeck keeps, where, for how long, and how to delete it.")
+    body = md_text(text, "", "https://beetlebug.org/printdeck/")
+    CLOUD_PRIVACY.write_text(f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Privacy · Printdeck</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..800&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+<!-- docs/build.py writes this page from PRIVACY.md. Change PRIVACY.md, then run docs/build.py. -->
+<main class="wrap doc">
+  <a class="brand" href="/projects"><i></i>Printdeck</a>
+  <h1>Privacy policy</h1>
+  <p class="dim">{esc(updated)}.</p>
+{body}
+  <footer>Printdeck is free software under the GNU AGPL, version 3. <a href="https://github.com/beetlebugorg/printdeck">The source of this service</a>.</footer>
+</main>
+</body>
+</html>
+""")
 
 
 # --- The architecture document ------------------------------------------------------------------
@@ -1462,6 +1498,7 @@ def main():
     film_page()
     apps_page()
     relay_page()
+    privacy_pages()
     architecture_page()
     build_page()
     commands_page()

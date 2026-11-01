@@ -103,7 +103,7 @@ type DevServer struct {
 // The paths that CloudFront serves from the bucket, as the bucket policy of the template.
 func publicKey(key string) bool {
 	switch {
-	case key == "index.html", key == "404.html", key == "app", key == "owner", key == "j":
+	case key == "index.html", key == "404.html", key == "app", key == "owner", key == "j", key == "privacy":
 		return true
 	}
 	for _, p := range []string{"assets/", ".well-known/", "s/", "p/"} {
