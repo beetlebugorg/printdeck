@@ -278,8 +278,8 @@ func (s *Server) plateState(ctx context.Context, pl plateRecord) string {
 	return pl.State
 }
 
-// prCommentBody is the text of the comment for the plan rec of a pull request, with the base
-// plan (or nil), its changed models, and its builds (the newest first).
+// prCommentBody is the text of the comment for the newest plan rec of a pull request, with the
+// base plan (or nil), its changed models, and the builds of the pull request (the newest first).
 func (s *Server) prCommentBody(ctx context.Context, p *Project, rec, base *PlanRecord, builds []*BuildRecord, printed map[string]platePrint) string {
 	var b strings.Builder
 	diffs := rec.Diffs
@@ -355,15 +355,19 @@ func (s *Server) prCommentBody(ctx context.Context, p *Project, rec, base *PlanR
 			break
 		}
 		url := s.projectURL(p) + "/builds/" + bd.ID
+		of := ""
+		if bd.Commit != rec.Commit {
+			of = fmt.Sprintf(" of `%s`", shortSHA(bd.Commit))
+		}
 		switch bd.State {
 		case cloud.BuildSlicing:
-			fmt.Fprintf(&b, "#### [Build `%s`](%s): slicing\n\n", bd.ID, url)
+			fmt.Fprintf(&b, "#### [Build `%s`](%s)%s: slicing\n\n", bd.ID, url, of)
 			continue
 		case cloud.BuildFailed:
-			fmt.Fprintf(&b, "#### [Build `%s`](%s): failed\n\n%s\n\n", bd.ID, url, mdCell(bd.Error))
+			fmt.Fprintf(&b, "#### [Build `%s`](%s)%s: failed\n\n%s\n\n", bd.ID, url, of, mdCell(bd.Error))
 			continue
 		}
-		fmt.Fprintf(&b, "#### [Build `%s`](%s): %d plates\n\n", bd.ID, url, len(bd.Plates))
+		fmt.Fprintf(&b, "#### [Build `%s`](%s)%s: %d plates\n\n", bd.ID, url, of, len(bd.Plates))
 		b.WriteString("| | Plate | Time | Material | State |\n|---|---|---|---|---|\n")
 		for i, pl := range bd.Plates {
 			var parts []string
@@ -525,10 +529,18 @@ func (s *Server) updatePR(ctx context.Context, p *Project, pr int) {
 			base = o
 		}
 	}
+	// The builds of all the plans of the pull request, the newest first: an approved plate of an
+	// older plan stays.
+	ofPR := map[string]string{} // the commit of each plan of the pull request
+	for _, o := range plans {
+		if o.PR == pr && o.Kind == cloud.BuildTest {
+			ofPR[o.ID] = o.Commit
+		}
+	}
 	var builds []*BuildRecord
 	if all, err := s.loadBuilds(ctx, p.ID); err == nil {
 		for _, b := range all {
-			if b.Plan == rec.ID {
+			if _, ok := ofPR[b.Plan]; ok {
 				builds = append(builds, b)
 			}
 		}
