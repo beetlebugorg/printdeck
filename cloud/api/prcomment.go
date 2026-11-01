@@ -476,12 +476,14 @@ func mdCell(s string) string {
 
 // Job is work of the service after a request. Kind "prstate" asks GitHub for the state of the
 // pull request PR of the project. Kind "comment" writes the comment of the pull request PR, and
-// with a Plan compares the models of the plan first.
+// with a Plan compares the models of the plan first. Kind "lapse" makes the video of the time
+// lapse of the Print (lapse.go).
 type Job struct {
 	Kind    string `json:"kind"`
 	Project string `json:"project"`
 	Plan    string `json:"plan,omitempty"`
 	PR      int    `json:"pr,omitempty"`
+	Print   string `json:"print,omitempty"`
 }
 
 // jobTime is the most time of a job in its own run of the function, and inlineJobTime the most
@@ -506,6 +508,18 @@ func (s *Server) later(ctx context.Context, job Job) bool {
 
 // RunJob runs a job that s.Later started.
 func (s *Server) RunJob(ctx context.Context, job Job) {
+	if job.Kind == "lapse" {
+		if !validID(job.Project) || !validID(job.Print) {
+			log.Printf("job: a bad job")
+			return
+		}
+		ctx, cancel := context.WithTimeout(ctx, lapseJobTime)
+		defer cancel()
+		if err := s.LapseVideo(ctx, job.Project, job.Print); err != nil {
+			log.Printf("job: the lapse of %s/%s: %v", job.Project, job.Print, err)
+		}
+		return
+	}
 	ctx, cancel := context.WithTimeout(ctx, jobTime)
 	defer cancel()
 	if job.Kind != "comment" && job.Kind != "prstate" || !validID(job.Project) || job.PR <= 0 {

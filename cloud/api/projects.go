@@ -27,7 +27,8 @@ import (
 //	x/<id>/prints/<print>.json          a print, from the history record of the deck
 //	x/<id>/prints/<print>/model.jpg     the picture of the model
 //	x/<id>/prints/<print>/plan.json     the seconds of each layer from the slicer
-//	x/<id>/prints/<print>/lapse/<n>.jpg the frames of the time lapse
+//	x/<id>/prints/<print>/lapse/<n>.jpg the frames of the time lapse, until the video is made
+//	x/<id>/prints/<print>/lapse.mp4     the video of the time lapse, and lapse.jpg its poster
 //	x/<id>/photos/<photo>.json, .jpg and -s.jpg   a photo, cleaned (CleanPhoto)
 //	invites/<sha256 of the code>.json   an invite, until it is used or it expires
 //	up/x<id>/<photo>/photo              a photo as uploaded, until the API cleans it
@@ -125,6 +126,8 @@ type PrintRecord struct {
 	Plan   bool      `json:"plan,omitempty"`
 	Gcode  bool      `json:"gcode,omitempty"` // print.gcode.gz, for the 3D view of the print page
 	Done   bool      `json:"done"`
+	// Video is true when lapse.mp4 and lapse.jpg have the time lapse, and the frames are gone.
+	Video bool `json:"video,omitempty"`
 	// The fields of the pages, which stay when the deck sends the print again: Title is the name
 	// that the owner gave the print, or "", and it shows in place of Name. Notes are the notes of
 	// the people of the project. Delivered is the time when the owner marked the print as
@@ -804,6 +807,10 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 		if pr.Gcode {
 			pp.Gcode = link("x/" + p.ID + "/prints/" + pr.ID + "/print.gcode.gz")
 		}
+		if pr.Video {
+			pp.Video = link("x/" + p.ID + "/prints/" + pr.ID + "/lapse.mp4")
+			pp.Poster = link("x/" + p.ID + "/prints/" + pr.ID + "/lapse.jpg")
+		}
 		v.Prints = append(v.Prints, pp)
 	}
 	for _, ph := range photos {
@@ -1267,22 +1274,39 @@ func (s *Server) printDone(ctx context.Context, project, print string, in cloud.
 	for n < min(in.Frames, MaxLapseFrames) && have["lapse/"+strconv.Itoa(n)+".jpg"] {
 		n++
 	}
+	if pr.Video {
+		n = pr.Frames // a second done after the video: the frames are gone
+	}
 	pr.Frames, pr.FPS, pr.Model, pr.Plan, pr.Done = n, max(1, min(60, in.FPS)), have["model.jpg"], have["plan.json"], true
 	pr.Gcode = have["print.gcode.gz"]
 	if err := s.putJSON(ctx, printKey(project, print), pr); err != nil {
 		return err
 	}
 	s.commentPrint(ctx, project, *pr)
+	if pr.Frames > 0 && !pr.Video {
+		s.startLapse(ctx, project, print)
+	}
 	return nil
 }
 
-// printFrames serves GET .../prints/<print>/frames: the URLs of the frames of the time lapse.
+// printFrames serves GET .../prints/<print>/frames: the URLs of the frames of the time lapse, or
+// of its video and poster.
 func (s *Server) printFrames(ctx context.Context, project, print string) (any, error) {
 	pr, err := s.loadPrint(ctx, project, print)
 	if err != nil {
 		return nil, err
 	}
 	out := cloud.FramesReply{FPS: pr.FPS, URLs: []string{}}
+	if pr.Video {
+		base := "x/" + project + "/prints/" + print + "/"
+		if out.Video, err = s.Grants.FileURL(ctx, base+"lapse.mp4", urlTTL); err != nil {
+			return nil, err
+		}
+		if out.Poster, err = s.Grants.FileURL(ctx, base+"lapse.jpg", urlTTL); err != nil {
+			return nil, err
+		}
+		return out, nil
+	}
 	for n := range pr.Frames {
 		u, err := s.Grants.FileURL(ctx, "x/"+project+"/prints/"+print+"/lapse/"+strconv.Itoa(n)+".jpg", urlTTL)
 		if err != nil {

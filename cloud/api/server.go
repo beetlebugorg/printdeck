@@ -53,6 +53,9 @@ type Server struct {
 	// Later starts the job in another run of the function, after the request, or is nil: the job
 	// then runs in the request. The comments on pull requests are jobs.
 	Later func(ctx context.Context, job Job) error
+	// Lapse encodes the time lapse frames of a print to a video (lapse.go), or is nil: the
+	// prints then keep their frames.
+	Lapse LapseEncoder
 	// Now is the clock, or nil for time.Now.
 	Now func() time.Time
 
