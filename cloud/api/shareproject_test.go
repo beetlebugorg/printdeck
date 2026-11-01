@@ -302,3 +302,41 @@ func TestNewestShareOfDeck(t *testing.T) {
 		t.Fatalf("live %+v", v.Live)
 	}
 }
+
+// An open share with no status for a long time shows no tile: the deck lost it at a restart.
+func TestStaleShare(t *testing.T) {
+	d, url := devService(t)
+	ctx := context.Background()
+	l := connectedLink(t, d, url)
+	id := l.Identity()
+	var c cloud.Client
+	sum, err := c.NewProject(ctx, id, "Robot")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sh := &cloud.Sharer{Link: l, Every: 20 * time.Millisecond,
+		Status:  func() cloud.ShareStatus { return cloud.ShareStatus{State: "printing", Job: "Plate"} },
+		Project: func(context.Context) (string, error) { return sum.ID, nil }}
+	sh.Start("Plate", "Phenom", nil)
+	waitFor(t, func() bool { return sh.State().URL != "" })
+	sh.Stop() // the deck lost it at a restart: the share did not end
+	p, _, err := d.API.loadProject(ctx, sum.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	live := func() int {
+		v, err := d.API.viewProject(ctx, p, &who{owner: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return len(v.Live)
+	}
+	if n := live(); n != 1 {
+		t.Fatalf("%d tiles of a new share", n)
+	}
+	d.API.Now = func() time.Time { return time.Now().Add(shareStale + time.Minute) }
+	defer func() { d.API.Now = nil }()
+	if n := live(); n != 0 {
+		t.Fatalf("%d tiles of a stale share", n)
+	}
+}

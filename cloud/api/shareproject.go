@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"printdeck/internal/cloud"
 )
@@ -226,12 +227,28 @@ type liveShare struct {
 	cloud.ProjectLive
 }
 
+// shareStale is the age of the last status of an open share, after which the project shows it
+// no more: the deck writes the status each few seconds during a print. A deck that lost the share
+// at a restart never ends it.
+const shareStale = 30 * time.Minute
+
 // liveShares returns the shares of the project p that run now.
 func (s *Server) liveShares(ctx context.Context, p *Project) []liveShare {
 	var out []liveShare
+	now := s.now()
 	for _, id := range p.Shares {
 		sh, err := s.loadShare(ctx, id)
 		if err != nil || sh.Moved || !sh.Ended.IsZero() || sh.Project != p.ID {
+			continue
+		}
+		last := sh.Created
+		if b, _, err := s.Store.Get(ctx, "s/"+sh.ID+"/status.json"); err == nil {
+			var st cloud.ShareStatus
+			if json.Unmarshal(b, &st) == nil && st.Updated.After(last) {
+				last = st.Updated
+			}
+		}
+		if now.Sub(last) > shareStale {
 			continue
 		}
 		out = append(out, liveShare{sh.ID, sh.Deck, cloud.ProjectLive{Name: sh.Job, URL: s.shareURL(sh.ID), Started: sh.Created}})
