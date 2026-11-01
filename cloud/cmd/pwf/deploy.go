@@ -55,23 +55,26 @@ func runDeploy(ctx context.Context, cfg aws.Config, opt deployOptions) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Building the function")
-	zipData, err := buildFunction(ctx, src)
+	fmt.Println("Building the functions")
+	apiZip, jobsZip, err := buildFunctions(ctx, src)
 	if err != nil {
 		return err
 	}
-	sum := sha256.Sum256(zipData)
 	codeBucket := "printdeck-cloud-code-" + account + "-" + region
-	codeKey := "pwf-api-" + hex.EncodeToString(sum[:8]) + ".zip"
 	s3c := s3.NewFromConfig(cfg)
 	if err := ensureBucket(ctx, s3c, codeBucket); err != nil {
 		return err
 	}
-	if _, err := s3c.PutObject(ctx, &s3.PutObjectInput{Bucket: &codeBucket, Key: &codeKey, Body: bytes.NewReader(zipData)}); err != nil {
-		return fmt.Errorf("upload the function: %w", err)
+	codeKey, err := uploadCode(ctx, s3c, codeBucket, "pwf-api-", apiZip)
+	if err != nil {
+		return err
+	}
+	jobsKey, err := uploadCode(ctx, s3c, codeBucket, "pwf-jobs-", jobsZip)
+	if err != nil {
+		return err
 	}
 	params := map[string]string{
-		"Domain": opt.Domain, "HostedZoneId": zone, "CodeBucket": codeBucket, "CodeKey": codeKey,
+		"Domain": opt.Domain, "HostedZoneId": zone, "CodeBucket": codeBucket, "CodeKey": codeKey, "JobsCodeKey": jobsKey,
 		"Concurrency": strconv.Itoa(opt.Concurrency), "AlertEmail": opt.AlertEmail, "BudgetUSD": strconv.Itoa(opt.Budget),
 	}
 	// The push relay: the secret and the bundle ID of the stack printdeck-relay, when it exists.
@@ -125,12 +128,31 @@ func findSrc(dir string) (string, error) {
 	return "", errors.New("run pwf in the cloud folder of the Printdeck repository, or give -src")
 }
 
-// buildFunction builds cmd/pwf-api for Lambda (linux/arm64) and returns the zip of the function:
+// uploadCode uploads the zip of a function to the code bucket, at a key with the prefix and
+// the hash of the zip, and returns the key.
+func uploadCode(ctx context.Context, c *s3.Client, bucket, prefix string, data []byte) (string, error) {
+	sum := sha256.Sum256(data)
+	key := prefix + hex.EncodeToString(sum[:8]) + ".zip"
+	if _, err := c.PutObject(ctx, &s3.PutObjectInput{Bucket: &bucket, Key: &key, Body: bytes.NewReader(data)}); err != nil {
+		return "", fmt.Errorf("upload the function: %w", err)
+	}
+	return key, nil
+}
+
+// zipFile is a file of the zip of a function.
+type zipFile struct {
+	name string
+	mode os.FileMode
+	data []byte
+}
+
+// buildFunctions builds cmd/pwf-api for Lambda (linux/arm64) and returns the zips of the two
+// functions. The zip of the API has bootstrap only. The zip of the jobs function has the same
 // bootstrap, and ffmpeg with its license (ffmpeg.go).
-func buildFunction(ctx context.Context, src string) ([]byte, error) {
+func buildFunctions(ctx context.Context, src string) (apiZip, jobsZip []byte, err error) {
 	tmp, err := os.MkdirTemp("", "pwf-build")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer os.RemoveAll(tmp)
 	bin := filepath.Join(tmp, "bootstrap")
@@ -139,23 +161,29 @@ func buildFunction(ctx context.Context, src string) ([]byte, error) {
 	cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH=arm64", "CGO_ENABLED=0")
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("go build: %w", err)
+		return nil, nil, fmt.Errorf("go build: %w", err)
 	}
 	data, err := os.ReadFile(bin)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	ffmpeg, license, err := ffmpegFiles(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	boot := zipFile{"bootstrap", 0o755, data}
+	if apiZip, err = zipFiles(boot); err != nil {
+		return nil, nil, err
+	}
+	jobsZip, err = zipFiles(boot, zipFile{"ffmpeg", 0o755, ffmpeg}, zipFile{"ffmpeg-GPLv3.txt", 0o644, license})
+	return apiZip, jobsZip, err
+}
+
+// zipFiles returns a zip of the files.
+func zipFiles(files ...zipFile) ([]byte, error) {
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
-	for _, f := range []struct {
-		name string
-		mode os.FileMode
-		data []byte
-	}{{"bootstrap", 0o755, data}, {"ffmpeg", 0o755, ffmpeg}, {"ffmpeg-GPLv3.txt", 0o644, license}} {
+	for _, f := range files {
 		h := &zip.FileHeader{Name: f.name, Method: zip.Deflate}
 		h.SetMode(f.mode)
 		w, err := zw.CreateHeader(h)

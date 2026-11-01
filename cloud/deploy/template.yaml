@@ -17,6 +17,11 @@ Parameters:
   CodeKey:
     Type: String
     Description: The key of the zip of the code in CodeBucket (pwf deploy sets it).
+  JobsCodeKey:
+    Type: String
+    Description: >-
+      The key of the zip of the jobs function in CodeBucket: the same program, with ffmpeg (pwf
+      deploy sets it).
   Concurrency:
     Type: Number
     Default: 0
@@ -341,10 +346,13 @@ Resources:
               - Effect: Allow
                 Action: s3:ListBucket
                 Resource: !GetAtt DataBucket.Arn
-              # The jobs after a request: the function starts itself with an event.
+              # The jobs after a request: the function starts itself with an event, and the
+              # jobs function for the videos.
               - Effect: Allow
                 Action: lambda:InvokeFunction
-                Resource: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-api"
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-api"
+                  - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-jobs"
               - !If
                 - HasRelay
                 - Effect: Allow
@@ -381,10 +389,7 @@ Resources:
       # The CPU of a function goes with its memory. The comments on pull requests compare
       # models and draw G-code: with 256 MB they took all the memory and ran past 30 seconds.
       MemorySize: 1024
-      # The video of a time lapse of 2000 frames needs up to about 60 s, an estimate from a test
-      # on x86 (api/lapse.go). The jobs set their own limits, and CloudFront stops a request at
-      # 30 s.
-      Timeout: 180
+      Timeout: 60
       Role: !GetAtt Role.Arn
       ReservedConcurrentExecutions: !If [HasConcurrency, !Ref Concurrency, !Ref "AWS::NoValue"]
       Code:
@@ -399,13 +404,80 @@ Resources:
           FILES_KEY_SECRET: !If [HasFilesKey, !Ref FilesKeySecretArn, ""]
           FILES_KEY_ID: !If [HasFilesKey, !Ref FilesKey, ""]
           GITHUB_APP_SECRET: !Ref GitHubAppSecretArn
+          JOBS_FUNCTION: !Sub "${AWS::StackName}-jobs"
 
-  # A job that fails does not run again: the next change of the pull request writes the comment,
-  # and pwf lapse-backfill makes the videos that are missing.
+  # A job that fails does not run again: the next change of the pull request writes the comment.
   JobConfig:
     Type: AWS::Lambda::EventInvokeConfig
     Properties:
       FunctionName: !Ref Function
+      Qualifier: $LATEST
+      MaximumRetryAttempts: 0
+      MaximumEventAgeInSeconds: 600
+
+  # The jobs function makes the videos of the time lapses (api/lapse.go): the program of the API,
+  # with ffmpeg in its package. It has no URL, no secrets, and the data of the projects and the
+  # public pages only. 1769 MB is one full vCPU: a video of 2000 frames needs about 30 to 40 s,
+  # an estimate from a test on x86.
+  JobsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: the-data
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub "${DataBucket.Arn}/*"
+              - Effect: Allow
+                Action: [s3:PutObject, s3:DeleteObject]
+                Resource:
+                  - !Sub "${DataBucket.Arn}/x/*"
+                  - !Sub "${DataBucket.Arn}/p/*"
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt DataBucket.Arn
+
+  JobsLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-jobs"
+      RetentionInDays: 3
+
+  JobsFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: JobsLogs
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-jobs"
+      Runtime: provided.al2023
+      Architectures: [arm64]
+      Handler: bootstrap
+      MemorySize: 1769
+      Timeout: 120
+      Role: !GetAtt JobsRole.Arn
+      Code:
+        S3Bucket: !Ref CodeBucket
+        S3Key: !Ref JobsCodeKey
+      Environment:
+        Variables:
+          BUCKET: !Ref DataBucket
+          DOMAIN: !Ref Domain
+
+  # A video job that fails does not run again: pwf lapse-backfill makes the videos that are
+  # missing.
+  JobsConfig:
+    Type: AWS::Lambda::EventInvokeConfig
+    Properties:
+      FunctionName: !Ref JobsFunction
       Qualifier: $LATEST
       MaximumRetryAttempts: 0
       MaximumEventAgeInSeconds: 600

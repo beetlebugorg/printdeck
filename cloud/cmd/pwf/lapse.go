@@ -21,9 +21,9 @@ type lapseOptions struct {
 }
 
 // runLapseBackfill makes the video of the time lapse of each print that has frames and no video
-// (api/lapse.go), and deletes its frames. By default the function of the stack makes each video,
-// a few prints at a time. With -local, this computer makes them with its ffmpeg, and the frames
-// come down from the bucket.
+// (api/lapse.go), and deletes its frames. By default the jobs function of the stack makes each
+// video, a few prints at a time. With -local, this computer makes them with its ffmpeg, and the
+// frames come down from the bucket.
 func runLapseBackfill(ctx context.Context, cfg aws.Config, stack string, opt lapseOptions) error {
 	out, err := stackOutputs(ctx, cfg, stack)
 	if err != nil {
@@ -63,7 +63,7 @@ func runLapseBackfill(ctx context.Context, cfg aws.Config, stack string, opt lap
 		run = s.LapseVideo
 	} else {
 		lc := awslambda.NewFromConfig(cfg)
-		name := stack + "-api"
+		name := stack + "-jobs"
 		run = func(ctx context.Context, project, print string) error {
 			b, err := json.Marshal(map[string]any{"pwf": "job", "job": api.Job{Kind: "lapse", Project: project, Print: print}})
 			if err != nil {

@@ -179,21 +179,20 @@ func (s *Server) readyToPrint(ctx context.Context, sh *Share, note string) error
 	if sh.Project == "" || sh.Print == "" {
 		return nil
 	}
-	pr, err := s.loadPrint(ctx, sh.Project, sh.Print)
+	_, err := s.changePrint(ctx, sh.Project, sh.Print, func(pr *PrintRecord) error {
+		if pr.Ready.Equal(sh.ReadyAt) && pr.ReadyNote == note {
+			return errNoChange
+		}
+		pr.Ready, pr.ReadyNote = sh.ReadyAt, ""
+		if !sh.ReadyAt.IsZero() {
+			pr.ReadyNote = note
+		}
+		return nil
+	})
 	if isGone(err) {
 		return nil
 	}
-	if err != nil {
-		return err
-	}
-	if pr.Ready.Equal(sh.ReadyAt) && pr.ReadyNote == note {
-		return nil
-	}
-	pr.Ready, pr.ReadyNote = sh.ReadyAt, ""
-	if !sh.ReadyAt.IsZero() {
-		pr.ReadyNote = note
-	}
-	return s.putJSON(ctx, printKey(sh.Project, sh.Print), pr)
+	return err
 }
 
 // copySharePhoto copies a photo of the share sh to the print of the share in its project. The

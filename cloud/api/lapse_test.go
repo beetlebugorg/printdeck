@@ -196,16 +196,11 @@ func TestLapseVideoFails(t *testing.T) {
 	}
 }
 
-// With Later, the job runs after the request: the frames stay until RunJob. With no encoder, the
-// print keeps its frames.
+// With no Later and no encoder, the print keeps its frames. The API function has Later and no
+// encoder: the job goes to the jobs function, and the frames stay until its RunJob.
 func TestLapseJob(t *testing.T) {
 	d, base := devService(t)
 	ctx := context.Background()
-	var jobs []Job
-	d.API.Later = func(_ context.Context, job Job) error {
-		jobs = append(jobs, job)
-		return nil
-	}
 	l := connectedLink(t, d, base)
 	id := l.Identity()
 	var c cloud.Client
@@ -214,11 +209,11 @@ func TestLapseJob(t *testing.T) {
 		t.Fatal(err)
 	}
 	old := lapsePrint(t, &c, id, sum.ID, "old@1", 2)
-	if len(jobs) != 0 {
-		t.Fatalf("a job with no encoder: %+v", jobs)
+	var jobs []Job
+	d.API.Later = func(_ context.Context, job Job) error {
+		jobs = append(jobs, job)
+		return nil
 	}
-	enc := &fakeEncoder{}
-	d.API.Lapse = enc.encode
 	pid := lapsePrint(t, &c, id, sum.ID, "hook@1", 2)
 	if len(jobs) != 1 || jobs[0] != (Job{Kind: "lapse", Project: sum.ID, Print: pid}) {
 		t.Fatalf("jobs %+v", jobs)
@@ -227,7 +222,9 @@ func TestLapseJob(t *testing.T) {
 	if keys, _ := d.Store.List(ctx, dir+"lapse/"); len(keys) != 2 {
 		t.Errorf("the frames before the job: %v", keys)
 	}
-	d.API.RunJob(ctx, jobs[0])
+	enc := &fakeEncoder{}
+	worker := &Server{Store: d.Store, Base: base, Lapse: enc.encode}
+	worker.RunJob(ctx, jobs[0])
 	if keys, _ := d.Store.List(ctx, dir+"lapse/"); len(keys) != 0 {
 		t.Errorf("the frames after the job: %v", keys)
 	}
@@ -238,11 +235,71 @@ func TestLapseJob(t *testing.T) {
 	if prints, err := LapsePrints(ctx, d.Store, sum.ID); err != nil || len(prints) != 1 || prints[0] != old {
 		t.Errorf("the prints for the backfill: %v %v", prints, err)
 	}
-	if err := d.API.LapseVideo(ctx, sum.ID, old); err != nil {
+	if err := worker.LapseVideo(ctx, sum.ID, old); err != nil {
 		t.Fatal(err)
 	}
 	if prints, _ := LapsePrints(ctx, d.Store, sum.ID); len(prints) != 0 {
 		t.Errorf("the prints after the backfill: %v", prints)
+	}
+}
+
+// hookStore is a MemStore that runs hook once, before the first write of a print record with
+// IfMatch after the write of a video.
+type hookStore struct {
+	*MemStore
+	armed bool
+	hook  func()
+}
+
+func (h *hookStore) Put(ctx context.Context, key string, data []byte, opt PutOptions) (string, error) {
+	if strings.HasSuffix(key, "/lapse.mp4") {
+		h.armed = true
+	} else if h.armed && opt.IfMatch != "" && strings.HasSuffix(key, ".json") && strings.Contains(key, "/prints/") {
+		h.armed = false
+		h.hook()
+	}
+	return h.MemStore.Put(ctx, key, data, opt)
+}
+
+// A member writes a note between the read of the record by the job and its write of Video.
+// Both stay, and the frames go only after the record has Video.
+func TestLapseVideoRace(t *testing.T) {
+	d, base := devService(t)
+	ctx := context.Background()
+	hs := &hookStore{MemStore: d.Store.(*MemStore)}
+	d.API.Store = hs
+	l := connectedLink(t, d, base)
+	id := l.Identity()
+	var c cloud.Client
+	sum, err := c.NewProject(ctx, id, "Shop wall")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pid := lapsePrint(t, &c, id, sum.ID, "hook@1", 3)
+	dir := "x/" + sum.ID + "/prints/" + pid + "/"
+	framesAtHook := -1
+	hs.hook = func() {
+		keys, _ := d.Store.List(ctx, dir+"lapse/")
+		framesAtHook = len(keys)
+		notes := "Sand the edge"
+		if err := d.API.editPrint(ctx, sum.ID, pid, &who{owner: true, name: "Jeremy"}, cloud.PrintEdit{Notes: &notes}); err != nil {
+			t.Error(err)
+		}
+	}
+	enc := &fakeEncoder{}
+	d.API.Lapse = enc.encode
+	if err := d.API.LapseVideo(ctx, sum.ID, pid); err != nil {
+		t.Fatal(err)
+	}
+	if framesAtHook != 3 {
+		t.Errorf("the frames at the write of the note: %d", framesAtHook)
+	}
+	pr, err := d.API.loadPrint(ctx, sum.ID, pid)
+	if err != nil || !pr.Video || pr.Notes != "Sand the edge" || pr.Frames != 3 {
+		t.Fatalf("the record %+v %v", pr, err)
+	}
+	if keys, _ := d.Store.List(ctx, dir+"lapse/"); len(keys) != 0 {
+		t.Errorf("the frames after the video: %v", keys)
 	}
 }
 
