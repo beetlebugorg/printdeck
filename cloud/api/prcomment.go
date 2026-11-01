@@ -461,14 +461,79 @@ func mdCell(s string) string {
 	return strings.NewReplacer("|", "\\|", "\n", " ", "\r", "").Replace(s)
 }
 
+// Job is work of the service after a request: Kind "comment" writes the comment of the pull
+// request PR of the project, and with a Plan compares the models of the plan first.
+type Job struct {
+	Kind    string `json:"kind"`
+	Project string `json:"project"`
+	Plan    string `json:"plan,omitempty"`
+	PR      int    `json:"pr,omitempty"`
+}
+
+// jobTime is the most time of a job in its own run of the function, and inlineJobTime the most
+// time of a job in a request.
+const (
+	jobTime       = 50 * time.Second
+	inlineJobTime = 20 * time.Second
+)
+
+// later starts the job with s.Later, and reports that it started. With no s.Later, or when it
+// fails, the caller runs the job in the request.
+func (s *Server) later(ctx context.Context, job Job) bool {
+	if s.Later == nil {
+		return false
+	}
+	if err := s.Later(ctx, job); err != nil {
+		log.Printf("job %s: %v", job.Kind, err)
+		return false
+	}
+	return true
+}
+
+// RunJob runs a job that s.Later started.
+func (s *Server) RunJob(ctx context.Context, job Job) {
+	ctx, cancel := context.WithTimeout(ctx, jobTime)
+	defer cancel()
+	if job.Kind != "comment" || !validID(job.Project) || job.PR <= 0 {
+		log.Printf("job: a bad job")
+		return
+	}
+	p, _, err := s.loadProject(ctx, job.Project)
+	if err != nil {
+		log.Printf("job: the project: %v", err)
+		return
+	}
+	if job.Plan == "" {
+		s.updatePR(ctx, p, job.PR)
+		return
+	}
+	rec, err := s.loadPlan(ctx, p.ID, job.Plan)
+	if err != nil {
+		log.Printf("job: the plan: %v", err)
+		return
+	}
+	s.commentPlanNow(ctx, p, rec)
+}
+
 // commentPlan compares the changed models of the ready plan rec of a pull request with its base
 // plan, keeps the result in the plan, and writes the comment.
 func (s *Server) commentPlan(ctx context.Context, p *Project, rec *PlanRecord) {
 	if s.GitHub == nil || rec.PR <= 0 || rec.Kind != cloud.BuildTest || p.Repo == "" {
 		return
 	}
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	if s.later(ctx, Job{Kind: "comment", Project: p.ID, Plan: rec.ID, PR: rec.PR}) {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, inlineJobTime)
 	defer cancel()
+	s.commentPlanNow(ctx, p, rec)
+}
+
+// commentPlanNow is commentPlan in this run.
+func (s *Server) commentPlanNow(ctx context.Context, p *Project, rec *PlanRecord) {
+	if s.GitHub == nil || rec.PR <= 0 || rec.Kind != cloud.BuildTest || p.Repo == "" {
+		return
+	}
 	plans, err := s.loadPlans(ctx, p.ID)
 	if err != nil {
 		log.Printf("comment: the plans of %s: %v", p.ID, err)
@@ -490,12 +555,15 @@ func (s *Server) commentBuild(ctx context.Context, p *Project, b *BuildRecord) {
 	if s.GitHub == nil || p.Repo == "" {
 		return
 	}
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
-	defer cancel()
 	rec, err := s.loadPlan(ctx, p.ID, b.Plan)
 	if err != nil || rec.PR <= 0 || rec.Kind != cloud.BuildTest {
 		return
 	}
+	if s.later(ctx, Job{Kind: "comment", Project: p.ID, PR: rec.PR}) {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, inlineJobTime)
+	defer cancel()
 	s.updatePR(ctx, p, rec.PR)
 }
 

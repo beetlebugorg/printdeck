@@ -193,3 +193,47 @@ func TestPRComment(t *testing.T) {
 		t.Fatalf("state %q after the next check", st)
 	}
 }
+
+// With Later, the comment is a job after the request: the request writes no comment, and the
+// job writes it.
+func TestPRCommentJob(t *testing.T) {
+	d, base := devService(t)
+	base = strings.Replace(base, "127.0.0.1", "localhost", 1)
+	d.API.Base, d.Grants.URL = base, base+"/upload"
+	d.API.OIDC = fakeOIDC{}
+	app := &recordDispatch{}
+	d.API.GitHub = app
+	var jobs []Job
+	d.API.Later = func(_ context.Context, j Job) error { jobs = append(jobs, j); return nil }
+	ctx := context.Background()
+	l := connectedLink(t, d, base)
+	var c cloud.Client
+	var oc cloud.OwnerCodeReply
+	c.Do(ctx, l.Identity(), "POST", "/api/v1/owner/code", nil, &oc)
+	tok := register(t, base, newSoftKey(t), "owner", oc.Code, "Jeremy").Token
+	sum, _ := c.NewProject(ctx, l.Identity(), "Bittlex")
+	call(t, base, "PUT", "/api/v1/projects/"+sum.ID+"/repo", tok, cloud.RepoRequest{Repo: "beetlebugorg/bittlex"}, nil)
+	plan := func(token string, door []byte) string {
+		m := cloud.PlanManifest{Parts: []cloud.PlanPart{
+			{Name: "Pod door", Files: []string{"door.stl"}, Printer: "taz", Process: "fdm", Profile: "p/q@1", Models: []string{"part1-1.stl"}, Changed: true}}}
+		var up cloud.UploadReply
+		if st := call(t, base, "POST", "/api/v1/plans", token, m, &up); st != 200 {
+			t.Fatalf("plan %d", st)
+		}
+		cloud.PostFile(ctx, nil, up.Grant, "part1-1.stl", "model/stl", "", door)
+		if st := call(t, base, "POST", "/api/v1/plans/"+up.ID+"/done", token, nil, nil); st != 200 {
+			t.Fatalf("done %d", st)
+		}
+		time.Sleep(5 * time.Millisecond)
+		return up.ID
+	}
+	plan("beetlebugorg/bittlex|refs/heads/main|"+strings.Repeat("ab", 20), cubeSTL(10, 10, 10))
+	id := plan("beetlebugorg/bittlex|refs/pull/7/merge|"+strings.Repeat("cd", 20), cubeSTL(10, 10, 12))
+	if len(app.comments) != 0 || len(jobs) != 1 || jobs[0] != (Job{Kind: "comment", Project: sum.ID, Plan: id, PR: 7}) {
+		t.Fatalf("comments %v, jobs %+v", app.comments, jobs)
+	}
+	d.API.RunJob(ctx, jobs[0])
+	if len(app.comments) != 1 || !strings.Contains(app.comments[100], "| Pod door | 2.0 mm taller") {
+		t.Fatalf("comments %v", app.comments)
+	}
+}

@@ -45,6 +45,9 @@ type Server struct {
 	// GitHub starts the slice runs of the builds, or is nil: the build page then shows the
 	// command that starts a run by hand.
 	GitHub GitHubAPI
+	// Later starts the job in another run of the function, after the request, or is nil: the job
+	// then runs in the request. The comments on pull requests are jobs.
+	Later func(ctx context.Context, job Job) error
 	// Now is the clock, or nil for time.Now.
 	Now func() time.Time
 

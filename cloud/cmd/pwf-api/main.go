@@ -4,6 +4,7 @@
 // The environment: BUCKET is the data bucket, and DOMAIN the domain of the service.
 // RELAY_SECRET_ARN and TOPIC (the bundle ID of the app) turn on the push relay at /api/v1/relay/. A schedule
 // sends the event {"pwf": "sweep"} every 15 minutes, which deletes the shares after their time.
+// The comments on pull requests run after their request, in an event invoke of this function.
 //
 // The logs go to CloudWatch. They have fixed texts only: no request body, no key, no code.
 package main
@@ -21,6 +22,8 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
+	awslambda "github.com/aws/aws-sdk-go-v2/service/lambda"
+	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 
@@ -80,9 +83,23 @@ func main() {
 		}
 		s.Relay = relay.NewRelay(sec, os.Getenv("TOPIC"))
 	}
+	// The jobs after a request run in another run of this function: an event invoke.
+	if name := os.Getenv("AWS_LAMBDA_FUNCTION_NAME"); name != "" {
+		lc := awslambda.NewFromConfig(cfg)
+		s.Later = func(ctx context.Context, job api.Job) error {
+			b, err := json.Marshal(jobEvent{Pwf: "job", Job: &job})
+			if err != nil {
+				return err
+			}
+			_, err = lc.Invoke(ctx, &awslambda.InvokeInput{FunctionName: &name, InvocationType: types.InvocationTypeEvent, Payload: b})
+			return err
+		}
+	}
 	lambda.Start(func(ctx context.Context, raw json.RawMessage) (any, error) {
-		var ev struct {
-			Pwf string `json:"pwf"`
+		var ev jobEvent
+		if json.Unmarshal(raw, &ev) == nil && ev.Pwf == "job" && ev.Job != nil {
+			s.RunJob(ctx, *ev.Job)
+			return map[string]bool{"ok": true}, nil
 		}
 		if json.Unmarshal(raw, &ev) == nil && ev.Pwf == "sweep" {
 			if err := s.Sweep(ctx); err != nil {
@@ -97,6 +114,13 @@ func main() {
 		}
 		return serve(ctx, s, req), nil
 	})
+}
+
+// jobEvent is the event of the schedule ({"pwf": "sweep"}) and of a job after a request
+// ({"pwf": "job", "job": {...}}).
+type jobEvent struct {
+	Pwf string   `json:"pwf"`
+	Job *api.Job `json:"job,omitempty"`
 }
 
 // serve runs a request of the function URL through the http.Handler of the API.
