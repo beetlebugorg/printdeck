@@ -412,6 +412,9 @@ type QueueEntry struct {
 	Place   int       `json:"place"`
 	Seconds int       `json:"seconds,omitempty"`
 	Start   time.Time `json:"start,omitzero"`
+	// File is the path of the file on the deck, for example "builds/<build>-plate-1.gcode" for a
+	// plate of a build: the build page shows the plates that are in a queue. "" from an older deck.
+	File string `json:"file,omitempty"`
 }
 
 // QueueRemove is a removal of a file of the queue of a deck, from the project page: the ID of
@@ -444,4 +447,6 @@ type ProjectQueued struct {
 	Seconds   int       `json:"seconds,omitempty"`
 	Start     time.Time `json:"start,omitzero"`
 	Updated   time.Time `json:"updated"`
+	// File is the path of the file on the deck (QueueEntry.File), or "".
+	File string `json:"file,omitempty"`
 }

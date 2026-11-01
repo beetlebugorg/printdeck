@@ -250,6 +250,9 @@ type ProjectBuildPlate struct {
 	SentTo  string    `json:"sent_to,omitempty"`
 	SentAt  time.Time `json:"sent_at,omitzero"`
 	TakenAt time.Time `json:"taken_at,omitzero"`
+	// Queued is the file of the plate in the queue of a printer, from the last report of the
+	// deck, or nil when the plate is in no queue (for example after a removal on the deck).
+	Queued *ProjectQueued `json:"queued,omitempty"`
 }
 
 // BuildDecision is the body of POST .../builds/<build>/plates/<n>/approve and .../reject: the

@@ -74,7 +74,7 @@ func (p *projectLink) queueReport(q *queue.Queue) cloud.QueueReport {
 	for i, it := range q.List() {
 		if pid := p.serviceProjectID(it.Project); pid != "" && it.Project != "" {
 			report.Items = append(report.Items, cloud.QueueEntry{ID: it.ID, Project: pid, Name: it.Name, Place: i + 1, Seconds: it.Seconds,
-				Start: at.UTC().Truncate(time.Second)})
+				Start: at.UTC().Truncate(time.Second), File: it.Path})
 		}
 		at = at.Add(time.Duration(it.Seconds)*time.Second + queueTurn)
 	}

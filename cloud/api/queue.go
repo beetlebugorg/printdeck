@@ -7,6 +7,7 @@ import (
 	"path"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -60,6 +61,7 @@ func (s *Server) setQueue(ctx context.Context, d *Deck, id string, in cloud.Queu
 			continue
 		}
 		it.Name = clip(strings.TrimSpace(it.Name), 120)
+		it.File = clip(it.File, 300)
 		if !queueItemID.MatchString(it.ID) {
 			it.ID = ""
 		}
@@ -115,7 +117,7 @@ func (s *Server) projectQueued(ctx context.Context, project string) []cloud.Proj
 		}
 		for _, it := range q.Items {
 			pq := cloud.ProjectQueued{Printer: q.Printer, Name: it.Name, Place: it.Place, Seconds: it.Seconds,
-				Start: it.Start, Updated: q.Updated}
+				Start: it.Start, Updated: q.Updated, File: it.File}
 			if it.ID != "" {
 				pq.ID, pq.PrinterID, pq.Removing = it.ID, printer, removing[it.ID]
 			}
@@ -130,6 +132,27 @@ func (s *Server) projectQueued(ctx context.Context, project string) []cloud.Proj
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Start.Before(out[j].Start) })
 	return out
 }
+
+// queuedPlates returns the plates of builds in the queues of the printers, from the files of the
+// queue items (builds/<build>-plate-<n>.<ext>), by plateQueueKey.
+func queuedPlates(items []cloud.ProjectQueued) map[string]*cloud.ProjectQueued {
+	out := map[string]*cloud.ProjectQueued{}
+	for i := range items {
+		m := plateFile.FindStringSubmatch(items[i].File)
+		if m == nil {
+			continue
+		}
+		n, err := strconv.Atoi(m[2])
+		if err != nil || n < 1 {
+			continue
+		}
+		out[plateQueueKey(m[1], n-1)] = &items[i]
+	}
+	return out
+}
+
+// plateQueueKey is the key of the plate n (from 0) of the build in queuedPlates.
+func plateQueueKey(build string, n int) string { return build + "/" + strconv.Itoa(n) }
 
 // removeQueued asks the deck of the printer to take the file item of the project out of its
 // queue. The file must be in the last report of the queue for the project. The deck reads the

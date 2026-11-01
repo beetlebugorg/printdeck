@@ -429,6 +429,61 @@ func (s *Server) replaceOlder(ctx context.Context, p *Project, rec *PlanRecord) 
 	return nil
 }
 
+// replaceByBuild marks the waiting plates of the older builds of the same plan, pull request or
+// branch as replaced, when the new build nb has all the parts of the plate: the owner sliced them
+// again, so the old plates wait for nothing.
+func (s *Server) replaceByBuild(ctx context.Context, p *Project, plan *PlanRecord, nb *BuildRecord) error {
+	key := func(pp cloud.PlatePart) string {
+		return strings.ToLower(pp.Name) + "\x00" + strings.ToLower(pp.Variant)
+	}
+	parts := map[string]bool{}
+	for _, pl := range nb.Plates {
+		for _, pp := range pl.Parts {
+			parts[key(pp)] = true
+		}
+	}
+	plans, err := s.loadPlans(ctx, p.ID)
+	if err != nil {
+		return err
+	}
+	same := map[string]bool{}
+	for _, o := range plans {
+		if o.ID == plan.ID || o.Kind == plan.Kind && o.PR == plan.PR && o.Branch == plan.Branch && o.Tag == plan.Tag &&
+			!o.Created.After(plan.Created) {
+			same[o.ID] = true
+		}
+	}
+	builds, err := s.loadBuilds(ctx, p.ID)
+	if err != nil {
+		return err
+	}
+	for _, b := range builds {
+		if b.ID == nb.ID || !same[b.Plan] {
+			continue
+		}
+		changed := false
+		for i := range b.Plates {
+			pl := &b.Plates[i]
+			if pl.State != cloud.PartWaiting || len(pl.Parts) == 0 {
+				continue
+			}
+			all := true
+			for _, pp := range pl.Parts {
+				all = all && parts[key(pp)]
+			}
+			if all {
+				pl.State, changed = cloud.PartReplaced, true
+			}
+		}
+		if changed {
+			if err := s.putJSON(ctx, buildKey(p.ID, b.ID), b); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // filesIn returns the names of the files of a folder.
 func (s *Server) filesIn(ctx context.Context, dir string) (map[string]bool, error) {
 	keys, err := s.Store.List(ctx, dir)
@@ -486,6 +541,9 @@ func (s *Server) newBuild(ctx context.Context, p *Project, w *who, planID string
 		b.Plates = append(b.Plates, plateRecord{BuildPlate: plate})
 	}
 	if err := s.putJSON(ctx, buildKey(p.ID, b.ID), b); err != nil {
+		return nil, err
+	}
+	if err := s.replaceByBuild(ctx, p, plan, &b); err != nil {
 		return nil, err
 	}
 	if s.GitHub != nil {
@@ -877,13 +935,18 @@ func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.
 	}
 	states := make([]string, len(prs))
 	var names map[string]string
-	wg.Add(1)
+	var queued map[string]*cloud.ProjectQueued
+	wg.Add(2)
 	go func() {
 		defer wg.Done()
 		names = map[string]string{}
 		for _, pr := range s.printersOf(ctx, ids, false) {
 			names[pr.ID] = pr.Name
 		}
+	}()
+	go func() {
+		defer wg.Done()
+		queued = queuedPlates(s.projectQueued(ctx, p.ID))
 	}()
 	forAll(len(prs), func(i int) error {
 		states[i] = s.prState(ctx, p, prs[i])
@@ -902,7 +965,7 @@ func (s *Server) plansView(ctx context.Context, p *Project, limit int) ([]cloud.
 		}
 		for _, b := range builds {
 			if b.Plan == rec.ID {
-				pv.Builds = append(pv.Builds, s.projectBuildNamed(ctx, p, b, names))
+				pv.Builds = append(pv.Builds, s.projectBuildNamed(ctx, p, b, names, queued))
 			}
 		}
 		out = append(out, pv)
@@ -923,11 +986,13 @@ const listedShown = 3
 
 // projectBuild is a build for the pages, with the addresses of its files.
 func (s *Server) projectBuild(ctx context.Context, p *Project, b *BuildRecord) cloud.ProjectBuild {
-	return s.projectBuildNamed(ctx, p, b, nil)
+	return s.projectBuildNamed(ctx, p, b, nil, queuedPlates(s.projectQueued(ctx, p.ID)))
 }
 
-// projectBuildNamed is projectBuild with the names of the printers by ID, or nil to read them.
-func (s *Server) projectBuildNamed(ctx context.Context, p *Project, b *BuildRecord, names map[string]string) cloud.ProjectBuild {
+// projectBuildNamed is projectBuild with the names of the printers by ID, or nil to read them,
+// and the plates in the queues of the printers (queuedPlates).
+func (s *Server) projectBuildNamed(ctx context.Context, p *Project, b *BuildRecord, names map[string]string,
+	queued map[string]*cloud.ProjectQueued) cloud.ProjectBuild {
 	out := cloud.ProjectBuild{ID: b.ID, Plan: b.Plan, Commit: b.Commit, Created: b.Created, State: b.State, Error: b.Error,
 		Plates: []cloud.ProjectBuildPlate{}}
 	if b.State == cloud.BuildSlicing && s.GitHub == nil && b.RunID == "" {
@@ -940,9 +1005,9 @@ func (s *Server) projectBuildNamed(ctx context.Context, p *Project, b *BuildReco
 		out.Progress = b.Progress
 	}
 	dir := buildDir(p.ID, b.ID)
-	for _, pl := range b.Plates {
+	for i, pl := range b.Plates {
 		pp := cloud.ProjectBuildPlate{BuildPlate: pl.BuildPlate, State: pl.State, By: pl.By, At: pl.At, Reason: pl.Reason,
-			SentAt: pl.SentAt, TakenAt: pl.Taken}
+			SentAt: pl.SentAt, TakenAt: pl.Taken, Queued: queued[plateQueueKey(b.ID, i)]}
 		if pl.Sent != "" && names != nil {
 			pp.SentTo = names[pl.Sent]
 		} else if pl.Sent != "" {

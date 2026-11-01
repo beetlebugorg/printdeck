@@ -1016,10 +1016,14 @@ func (a *app) showBuildPage(projectID, id string) {
 	setText("bdBack", "The plan")
 	show("vBuild")
 	a.drawBuild(b)
-	if b.State == wire.BuildSlicing {
+	if watchBuild(b) {
 		go func() {
 			for {
-				time.Sleep(10 * time.Second)
+				wait := 10 * time.Second
+				if b.State != wire.BuildSlicing {
+					wait = 20 * time.Second
+				}
+				time.Sleep(wait)
 				if a.playing != playing {
 					return
 				}
@@ -1031,12 +1035,27 @@ func (a *app) showBuildPage(projectID, id string) {
 					return
 				}
 				a.drawBuild(nb)
-				if nb.State != wire.BuildSlicing {
+				b = nb
+				if !watchBuild(nb) {
 					return
 				}
 			}
 		}()
 	}
+}
+
+// watchBuild reports that the build page loads the build again: while it slices, and while a
+// plate is sent to a printer or is in its queue, so a change on the deck shows.
+func watchBuild(b wire.ProjectBuild) bool {
+	if b.State == wire.BuildSlicing {
+		return true
+	}
+	for _, pl := range b.Plates {
+		if pl.Queued != nil || pl.SentTo != "" && pl.TakenAt.IsZero() {
+			return true
+		}
+	}
+	return false
 }
 
 // buildTitle is the title of the build page: the plan (the pull request, the tag or the branch)
@@ -1186,9 +1205,14 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 		}
 		if pl.State == wire.PartApproved {
 			line := "Approved by " + pl.By + ", " + localWhen(pl.At) + "."
+			q := pl.Queued
 			switch {
+			case q != nil && q.Removing:
+				line += " In the queue of the " + q.Printer + ": its deck takes it out within a minute."
+			case q != nil:
+				line += fmt.Sprintf(" In the queue of the %s, place %d. A press on the deck starts it.", q.Printer, q.Place)
 			case !pl.TakenAt.IsZero():
-				line += " In the queue of the " + pl.SentTo + " since " + localWhen(pl.TakenAt) + ". A press on the deck starts it."
+				line += " It was in the queue of the " + pl.SentTo + ", and is not in a queue now. Send it again to print it."
 			case pl.SentTo != "" && pl.Process == "resin":
 				line += " Sent to the " + pl.SentTo + ": its deck puts it in its queue within a minute, and sends the file to the printer when no print runs."
 			case pl.SentTo != "":
@@ -1197,8 +1221,33 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 				line += " Send it to the queue of a printer."
 			}
 			card.Call("appendChild", el("p", "small dim", line))
-			// The keys Send to: the printers of the process of the plate.
-			if v.IsOwner && pl.File != "" && pl.TakenAt.IsZero() {
+			// In a queue: the key Remove from the queue. Else the keys Send to: the printers of the
+			// process of the plate. A removal on the deck shows the keys again at its next report.
+			if v.IsOwner && q != nil && q.ID != "" && q.PrinterID != "" && !q.Removing {
+				keys := el("div", "row-keys", "")
+				msg := el("p", "msg", "")
+				btn := el("button", "", "Remove from the queue")
+				btn.Set("type", "button")
+				path := "/projects/" + v.ID + "/queue/" + q.PrinterID + "/" + q.ID
+				btn.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
+					go func() {
+						if err := a.api("DELETE", path, nil, nil); err != nil {
+							msg.Set("textContent", err.Error())
+							msg.Get("classList").Call("add", "err")
+							return
+						}
+						var nb wire.ProjectBuild
+						if a.api("GET", "/projects/"+v.ID+"/builds/"+b.ID, nil, &nb) == nil {
+							a.drawBuild(nb)
+						}
+					}()
+					return nil
+				}))
+				keys.Call("appendChild", btn)
+				card.Call("appendChild", keys)
+				card.Call("appendChild", msg)
+			}
+			if v.IsOwner && pl.File != "" && q == nil {
 				keys := el("div", "row-keys", "")
 				msg := el("p", "msg", "")
 				for _, pr := range ownerPrinters {
