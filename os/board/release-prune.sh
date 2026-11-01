@@ -24,7 +24,7 @@ gone() {
 #   dbus-daemon                the system bus: systemctl for the user deck, and networkd
 #   mount, umount              systemd mounts /tmp and /boot/config with them
 #   sfdisk, partx, mke2fs, e2fsck  the data partition at the start (printdeck-init)
-#   fstrim                     the weekly trim of the SSD (fstrim.timer)
+#   fstrim                     the weekly trim of the disk (fstrim.timer)
 #   modprobe, kmod             the kernel loads modules with modprobe
 #   dmesg                      the boot log of the rescue (printdeck-init)
 #   wpa_supplicant             the Wi-Fi

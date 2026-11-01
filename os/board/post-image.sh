@@ -28,7 +28,8 @@ for o in overlay_map.dtb bcm2712d0.dtbo vc4-kms-v3d-pi5.dtbo vc4-kms-dsi-ili9881
   cp "$OVERLAYS/$o" "$BOOT/overlays/"
 done
 
-# The 7" display is 800x480. Set the mode, because the EDID of the display can select a smaller one.
+# A 7" HDMI display is 800x480. Set the HDMI mode, because the EDID of the display can select a
+# smaller one. The Touch Display 2 is on DSI, so these options do not change it.
 # "quiet" starts the start screen (see printdeck-init), and it and the other options keep the boot
 # messages and the cursor off the display. A finger on the screen at boot shows the messages.
 # fbcon=rotate:3 turns that text upright on the portrait display. fullscreen_logo shows the start

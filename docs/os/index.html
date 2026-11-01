@@ -64,10 +64,10 @@
 <nav class="onpage"><b>On this page</b><ol><li><a href="#install">Install</a></li><li><a href="#the-first-start">The first start</a></li><li><a href="#set-up-before-the-first-start">Set up before the first start</a></li><li><a href="#the-login">The login</a></li><li><a href="#the-web-pages">The web pages</a></li><li><a href="#slicers">Slicers</a></li><li><a href="#klipper">Klipper</a></li><li><a href="#settings">Settings</a></li><li><a href="#update">Update</a></li><li><a href="#how-it-works">How it works</a></li><li><a href="#build">Build</a></li></ol></nav><p>A small, read-only Linux system for the Printdeck Raspberry Pi 5. It has the Printdeck program, Wi-Fi, mDNS (<code>printdeck.local</code>) and NTP. It has no package manager, no shell and no SSH. Buildroot makes it from source.</p>
 <p>The debug image is the same system with SSH, sudo, a shell and tools such as strace and tcpdump.</p>
 <h2 id="install">Install</h2>
-<ol><li>Download <code>printdeck.img.xz</code> from the <a href="https://github.com/beetlebugorg/printdeck/releases/latest">latest release</a>.</li><li>Write it to an SD card or a USB SSD with Raspberry Pi Imager (&quot;Use custom&quot;).</li><li>Put the card in the Pi, and connect the power.</li></ol>
+<ol><li>Download <code>printdeck.img.xz</code> from the <a href="https://github.com/beetlebugorg/printdeck/releases/latest">latest release</a>.</li><li>Write it to an SD card with Raspberry Pi Imager (&quot;Use custom&quot;).</li><li>Put the card in the Pi, and connect the power.</li></ol>
 <p>To write the image with <code>dd</code>:</p>
 <pre><code>xz -dc printdeck.img.xz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress</code></pre>
-<p>A Pi 5 starts from USB when no SD card is in it. To set this, run <code>sudo raspi-config</code> on Raspberry Pi OS: Advanced Options &gt; Boot Order.</p>
+<p>The image also starts from a USB drive. A Pi 5 starts from USB when no SD card is in it. To set this, run <code>sudo raspi-config</code> on Raspberry Pi OS: Advanced Options &gt; Boot Order.</p>
 <h2 id="the-first-start">The first start</h2>
 <ol><li>Tap your Wi-Fi network and type its password. For a hidden network, tap Hidden.</li><li>Write down the address and the password of the deck, then tap Finish.</li></ol>
 <p>To see the address and the password again, open Machine &gt; Wi-Fi and help.</p>
