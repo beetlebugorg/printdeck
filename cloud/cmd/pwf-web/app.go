@@ -868,7 +868,7 @@ func (a *app) moveSelect(ph wire.ProjectPhoto, msg string) js.Value {
 		}
 		text := fmt.Sprintf("#%d %s", p.N, p.Name)
 		if !p.Ended.IsZero() {
-			text += " · " + p.Ended.Local().Format("Jan 2")
+			text += " · " + shortDate(p.Ended)
 		}
 		add(p.ID, text)
 	}

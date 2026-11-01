@@ -14,7 +14,7 @@ import (
 )
 
 // The overview of the project page, and its tabs. The overview shows what happens now, the
-// numbers, a chart of the last 12 weeks, the newest prints, a feed of what happened, and a
+// numbers, a chart of the last 7 days, the newest prints, a feed of what happened, and a
 // column with what waits for the owner, the pull requests, the printers, the people, the notes
 // and the newest photos. The tabs Prints, Photos and Settings show the full lists.
 
@@ -293,6 +293,9 @@ func (a *app) drawPulse(v *wire.ProjectView) {
 		if l.Percent > 0 {
 			text += fmt.Sprintf(" · %.0f%%", l.Percent)
 		}
+		if l.Layers > 0 && l.Layer > 0 {
+			text += fmt.Sprintf(" · layer %d of %d", l.Layer, l.Layers)
+		}
 		if l.Left > 0 {
 			text += " · done " + localWhen(time.Now().Add(time.Duration(l.Left)*time.Second))
 		}
@@ -321,7 +324,7 @@ func (a *app) drawPulse(v *wire.ProjectView) {
 	}
 }
 
-// The chart of the last 12 weeks.
+// The chart of the last 7 days.
 
 // niceMax is the top of the axis of a chart: a round number at or above m.
 func niceMax(m float64) float64 {
@@ -337,21 +340,42 @@ func niceMax(m float64) float64 {
 	return 10 * p
 }
 
-// drawChart draws the hours of print of each of the last 12 weeks: the finished prints, with
-// the stopped prints over them.
+// chartDays is the count of the days of the chart.
+const chartDays = 7
+
+// localDayNumber is the number of the day of t in the time zone of the viewer: the days since
+// January 1, 1970.
+func localDayNumber(t time.Time) int {
+	ms := float64(t.UnixMilli())
+	off := js.Global().Get("Date").New(ms).Call("getTimezoneOffset").Float() // minutes
+	return int(math.Floor((ms - off*60000) / 86400000))
+}
+
+// weekdayName is the short name of the day of t for the viewer, for example "Mon".
+func weekdayName(t time.Time) string {
+	o := js.Global().Get("Object").New()
+	o.Set("weekday", "short")
+	return js.Global().Get("Date").New(float64(t.UnixMilli())).Call("toLocaleDateString", js.Undefined(), o).String()
+}
+
+// drawChart draws the hours of print of each of the last 7 days: the finished prints, with the
+// stopped prints over them.
 func drawChart(prints []wire.ProjectPrint) {
-	const weeks = 12
-	week := 7 * 24 * time.Hour
+	const days = chartDays
 	now := time.Now()
-	var ok, stop [weeks]float64
-	var n [weeks]int
+	today := localDayNumber(now)
+	var ok, stop [days]float64
+	var n [days]int
 	total, totalN := 0.0, 0
 	for _, p := range prints {
-		age := now.Sub(p.Ended)
-		if age < 0 || age >= weeks*week {
+		if p.Ended.IsZero() || p.Ended.After(now) {
 			continue
 		}
-		i := weeks - 1 - int(age/week)
+		back := today - localDayNumber(p.Ended)
+		if back < 0 || back >= days {
+			continue
+		}
+		i := days - 1 - back
 		h := float64(p.Seconds) / 3600
 		if p.Result == "complete" {
 			ok[i] += h
@@ -369,19 +393,19 @@ func drawChart(prints []wire.ProjectPrint) {
 	top = niceMax(top)
 	const w, h, left, bottom, upper = 600.0, 170.0, 38.0, 24.0, 10.0
 	plotH := h - bottom - upper
-	slot := (w - left) / weeks
+	slot := (w - left) / days
 	bw := slot * 0.62
 	var b strings.Builder
-	fmt.Fprintf(&b, `<svg viewBox="0 0 %g %g" width="100%%" role="img" aria-label="The hours of print of each week">`, w, h)
+	fmt.Fprintf(&b, `<svg viewBox="0 0 %g %g" width="100%%" role="img" aria-label="The hours of print of each day">`, w, h)
 	for _, f := range []float64{0, 0.5, 1} {
 		y := upper + plotH*(1-f)
 		fmt.Fprintf(&b, `<line class="grid" x1="%g" x2="%g" y1="%.1f" y2="%.1f"/>`, left, w, y, y)
 		fmt.Fprintf(&b, `<text class="ax" x="%g" y="%.1f" text-anchor="end">%s h</text>`, left-6, y+4, trimFloat(top*f))
 	}
-	for i := 0; i < weeks; i++ {
+	for i := 0; i < days; i++ {
 		x := left + slot*float64(i) + (slot-bw)/2
-		start := now.Add(-time.Duration(weeks-i) * week)
-		title := fmt.Sprintf("%s to %s: %s, %s", shortDate(start.Add(24*time.Hour)), shortDate(start.Add(week)),
+		day := now.Add(-time.Duration(days-1-i) * 24 * time.Hour)
+		title := fmt.Sprintf("%s %s: %s, %s", weekdayName(day), shortDate(day),
 			count(n[i], "print", "prints"), hoursMinutes(int((ok[i]+stop[i])*3600)))
 		y := upper + plotH
 		if ok[i]+stop[i] == 0 {
@@ -398,13 +422,11 @@ func drawChart(prints []wire.ProjectPrint) {
 			y -= bh
 			fmt.Fprintf(&b, `<rect class="%s" x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="3"><title>%s</title></rect>`, part.class, x, y, bw, bh, title)
 		}
-		if i%3 == 2 || i == weeks-1 {
-			label := shortDate(start.Add(24 * time.Hour))
-			if i == weeks-1 {
-				label = "This week"
-			}
-			fmt.Fprintf(&b, `<text class="ax" x="%.1f" y="%g" text-anchor="middle">%s</text>`, x+bw/2, h-6, label)
+		label := weekdayName(day)
+		if i == days-1 {
+			label = "Today"
 		}
+		fmt.Fprintf(&b, `<text class="ax" x="%.1f" y="%g" text-anchor="middle">%s</text>`, x+bw/2, h-6, label)
 	}
 	b.WriteString(`</svg>`)
 	byID("pChart").Set("innerHTML", b.String())
@@ -1039,6 +1061,32 @@ func (a *app) drawGit(v *wire.ProjectView) {
 	}
 }
 
+// liveText is the line of a print that prints now: its name, its percent, its layer (a resin
+// print) and its end.
+func liveText(l wire.ProjectLive) string {
+	text := fmt.Sprintf("Printing %s · %.0f%%", l.Name, l.Percent)
+	if l.Layers > 0 && l.Layer > 0 {
+		text += fmt.Sprintf(" · layer %d of %d", l.Layer, l.Layers)
+	}
+	if l.Left > 0 {
+		text += " · done " + localWhen(time.Now().Add(time.Duration(l.Left)*time.Second))
+	}
+	return text
+}
+
+// addLayerPic adds the picture of the layer that a resin printer cures now to the row of the
+// printer, for a src that is not "".
+func addLayerPic(row js.Value, src string) {
+	if src == "" {
+		return
+	}
+	img := el("img", "lp", "")
+	img.Set("src", src)
+	img.Set("alt", "The layer that cures now")
+	row.Get("classList").Call("add", "has-lp")
+	row.Call("appendChild", img)
+}
+
 // drawRigs draws the printers of the project: what each one does now, and its prints.
 func drawRigs(v *wire.ProjectView) {
 	list := byID("pRigs")
@@ -1058,13 +1106,13 @@ func drawRigs(v *wire.ProjectView) {
 		}
 	}
 	for _, pr := range v.Printers {
-		state, sub := "idle", "Idle"
+		state, sub, layerPic := "idle", "Idle", ""
 		if t := last[pr.ID]; !t.IsZero() {
 			sub = "Idle · the last print " + ago(t)
 		}
 		for _, l := range v.Live {
 			if l.PrinterID == pr.ID && l.Result == "" {
-				state, sub = "on", fmt.Sprintf("Printing %s · %.0f%%", l.Name, l.Percent)
+				state, sub, layerPic = "on", liveText(l), l.LayerPic
 				if l.Paused {
 					state, sub = "warn", "Paused · "+l.Name
 				}
@@ -1078,6 +1126,7 @@ func drawRigs(v *wire.ProjectView) {
 		txt.Call("appendChild", el("strong", "", pr.Name))
 		txt.Call("appendChild", el("span", "sub", sub))
 		link.Call("appendChild", txt)
+		addLayerPic(link, layerPic)
 		link.Call("appendChild", el("span", "num", count(counts[pr.ID], "print", "prints")))
 		li.Call("appendChild", link)
 		list.Call("appendChild", li)
@@ -1093,7 +1142,7 @@ func drawRigs(v *wire.ProjectView) {
 		if name == "" {
 			name = "A printer"
 		}
-		state, sub := "on", fmt.Sprintf("Printing %s · %.0f%%", l.Name, l.Percent)
+		state, sub := "on", liveText(l)
 		if l.Paused {
 			state, sub = "warn", "Paused · "+l.Name
 		}
@@ -1107,6 +1156,7 @@ func drawRigs(v *wire.ProjectView) {
 		txt.Call("appendChild", el("strong", "", name))
 		txt.Call("appendChild", el("span", "sub", sub))
 		link.Call("appendChild", txt)
+		addLayerPic(link, l.LayerPic)
 		n := 0
 		for _, p := range v.Prints {
 			if p.PrinterID == "" && p.Printer == l.Printer {

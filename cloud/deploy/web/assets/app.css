@@ -322,6 +322,8 @@ pre.cmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: #15161a
 .rigs .warn .dot { background: #d9a520; }
 .rigs .txt, .people .txt { display: grid; gap: 1px; min-width: 0; }
 .rigs .num { font: 500 12px "IBM Plex Mono", monospace; color: var(--ink-dim); white-space: nowrap; }
+.rigs a.has-lp { grid-template-columns: auto 1fr auto auto; }
+.rigs .lp { width: 64px; aspect-ratio: 16 / 9; object-fit: contain; background: #000; border-radius: 4px; display: block; }
 .people li { display: flex; align-items: center; gap: 10px; }
 .notes-text.clamp { display: -webkit-box; -webkit-line-clamp: 8; -webkit-box-orient: vertical; overflow: hidden; }
 .notes-text.clamp:empty { display: none; }
