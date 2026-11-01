@@ -130,11 +130,16 @@ func buildWeb(ctx context.Context, src string) (map[string][]byte, error) {
 	for _, k := range appKeys {
 		files[k] = files["index.html"]
 	}
+	// The privacy policy at /privacy. docs/build.py writes privacy.html from PRIVACY.md.
+	files[privacyKey] = files["privacy.html"]
 	return files, nil
 }
 
 // appKeys are the keys of the copies of the app page (index.html), with no extension.
 var appKeys = []string{"app", "owner", "j"}
+
+// privacyKey is the key of the privacy policy, the page /privacy.
+const privacyKey = "privacy"
 
 // contentType is the type of the file at key: the app pages are HTML.
 // appSiteAssociation is the key of the association file of the iPhone app, and appID the team
