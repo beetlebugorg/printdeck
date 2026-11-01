@@ -76,7 +76,8 @@ func TestTimeLapsePage(t *testing.T) {
 		t.Error("no line for the crop with no park")
 	}
 	tapLabel(t, a, cv, "Park for the frames")
-	if f := simFrame(t, a, "timelapse-crop"); !strings.Contains(f, "Needs a calibration of the camera") {
+	// The line can wrap: its words are on the screen, in one or two lines.
+	if f := simFrame(t, a, "timelapse-crop"); !strings.Contains(f, "Needs a calibration") || !strings.Contains(f, "camera") {
 		t.Error("no line for the crop with no calibration")
 	}
 	tapLabel(t, a, cv, "Park for the frames")

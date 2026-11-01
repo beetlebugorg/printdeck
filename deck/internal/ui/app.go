@@ -532,16 +532,26 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 		a.drawChoices(c, cf)
 		return
 	}
-	box := kit.Center(image.Rect(0, 0, W, contentY1), min(W-60, 560), 280) // in the middle of the screen
-	panel(c, box, "CONFIRM")
-	// The question, in lines that fit the box: smaller when it has more than three lines.
-	q := image.Rect(box.Min.X+20, box.Min.Y+26, box.Max.X-20, box.Min.Y+170)
+	// The question, in lines that fit the box: smaller when it has more than three lines. The box
+	// grows with the question, so no line is cut.
+	boxW := min(W-24, 560)
+	qw := boxW - 48
 	face, lineH := gfx.Face(true, 28), 38
-	lines := wrapText(face, cf.question, q.Dx())
+	lines := wrapText(face, cf.question, qw)
 	if len(lines) > 3 {
 		face, lineH = gfx.Face(true, 22), 30
-		lines = wrapText(face, cf.question, q.Dx())
+		lines = wrapText(face, cf.question, qw)
 	}
+	const top, gap, keys = 40, 28, 80 // over the question, between it and the keys, the keys and the margin under them
+	boxH := max(280, top+len(lines)*lineH+gap+keys+20)
+	if boxH > contentY1-20 {
+		face, lineH = gfx.Face(true, 18), 24
+		lines = wrapText(face, cf.question, qw)
+		boxH = min(contentY1-20, max(280, top+len(lines)*lineH+gap+keys+20))
+	}
+	box := kit.Center(image.Rect(0, 0, W, contentY1), boxW, boxH) // in the middle of the screen
+	panel(c, box, "CONFIRM")
+	q := image.Rect(box.Min.X+24, box.Min.Y+top, box.Max.X-24, box.Max.Y-20-keys-gap)
 	y := q.Min.Y + (q.Dy()-len(lines)*lineH)/2
 	for _, l := range lines {
 		c.Text(image.Rect(q.Min.X, y, q.Max.X, y+lineH), l, face, text, gfx.Center)
@@ -568,15 +578,36 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 // drawChoices draws a question with choices: the question, a menu row for each choice, and Back.
 func (a *App) drawChoices(c *gfx.Canvas, cf *confirmBox) {
 	const rowH, gap, backH = 76, 10, 64
-	h := 26 + 48 + len(cf.choices)*(rowH+gap) + backH + 20
-	box := kit.Center(image.Rect(0, 0, W, contentY1), min(W-60, 560), h)
+	boxW := min(W-24, 560)
+	inW := boxW - 40
+	// The question: up to three lines, smaller when it needs more than two.
+	face, lineH := gfx.Face(true, 26), 34
+	qLines := wrapText(face, cf.question, inW)
+	if len(qLines) > 2 {
+		face, lineH = gfx.Face(true, 22), 30
+		qLines = wrapText(face, cf.question, inW)
+	}
+	if len(qLines) > 3 {
+		qLines = append(qLines[:2], gfx.Fit(face, strings.Join(qLines[2:], " "), inW))
+	}
+	// Each row is high enough for its text (rowLines).
+	heights := make([]int, len(cf.choices))
+	h := 26 + len(qLines)*lineH + 14 + backH + 20
+	for i, ch := range cf.choices {
+		heights[i] = max(rowH, rowTextH(inW, ch.sub))
+		h += heights[i] + gap
+	}
+	box := kit.Center(image.Rect(0, 0, W, contentY1), boxW, min(h, contentY1-20))
 	panel(c, box, "CHOOSE")
 	in := kit.Inset(box, 20, 26, 20, 20)
 	s := kit.NewStack(in, gap)
-	face := gfx.Face(true, 26)
-	c.Text(s.Next(48-gap), gfx.Fit(face, cf.question, in.Dx()), face, text, gfx.Center)
-	for _, ch := range cf.choices {
-		a.menuRow(c, s.Next(rowH), ch.title, ch.sub, ch.col, func() {
+	qr := s.Next(len(qLines)*lineH + 14 - gap)
+	for i, l := range qLines {
+		c.Text(image.Rect(qr.Min.X, qr.Min.Y+i*lineH, qr.Max.X, qr.Min.Y+(i+1)*lineH), l, face, text, gfx.Center)
+	}
+	for i, ch := range cf.choices {
+		ch := ch
+		a.menuRow(c, s.Next(heights[i]), ch.title, ch.sub, ch.col, func() {
 			a.confirm = nil
 			ch.tap()
 			a.Redraw()

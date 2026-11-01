@@ -522,6 +522,9 @@ func rowText(c *gfx.Canvas, r image.Rectangle, title, sub string, titleCol, subC
 		// line and the row is high enough. The lines are in the middle of the row.
 		subW := r.Dx() - largeRowInset
 		lines := subLines(sub, subW)
+		if len(lines) > 2 && r.Dy() < largeRowH(len(lines)) {
+			lines = append(lines[:1], strings.Join(lines[1:], " ")) // two lines, the second one cut
+		}
 		if r.Dy() < largeRowH(len(lines)) {
 			lines = []string{sub}
 		}
@@ -534,8 +537,20 @@ func rowText(c *gfx.Canvas, r image.Rectangle, title, sub string, titleCol, subC
 		return
 	}
 	if r.Dy() >= 58 {
+		// The text under the title in more lines when it is too long for one line and the row is
+		// high enough (rowTextH).
 		c.Text(image.Rect(r.Min.X+18, r.Min.Y+8, r.Max.X-50, r.Min.Y+40), title, gfx.Face(true, 20), titleCol, gfx.Left)
-		c.Text(image.Rect(r.Min.X+18, r.Min.Y+38, r.Max.X-50, r.Max.Y-8), sub, gfx.Face(false, 16), subCol, gfx.Left)
+		f := gfx.Face(false, 16)
+		lines := []string{sub}
+		if w := r.Dx() - 68; gfx.Width(f, sub) > w {
+			if l := wrapText(f, sub, w); r.Dy() >= normalRowH(len(l)) {
+				lines = l
+			}
+		}
+		for i, l := range lines {
+			ly := r.Min.Y + 38 + i*normalSubH
+			c.Text(image.Rect(r.Min.X+18, ly, r.Max.X-50, ly+normalSubH), l, f, subCol, gfx.Left)
+		}
 		return
 	}
 	tf, sf := gfx.Face(true, 17), gfx.Face(false, 14)
@@ -549,6 +564,21 @@ func rowText(c *gfx.Canvas, r image.Rectangle, title, sub string, titleCol, subC
 // margin at the left, and the arrow with space around it at the right.
 const largeRowPad, largeTitleH, largeSubH, largeRowInset = 8, 30, 27, 18 + 58
 
+// normalSubH is the height of a line under the title of a menu row with the normal text, and
+// normalRowH the height of a row with n lines under the title.
+const normalSubH = 22
+
+func normalRowH(n int) int { return 38 + n*normalSubH + 8 }
+
+// rowTextH is the height of a menu row of width w that shows all of the text sub under the title.
+func rowTextH(w int, sub string) int {
+	if gfx.FinePrint() {
+		lines := wrapText(gfx.Face(false, 16), sub, w-largeRowInset)
+		return largeRowH(max(1, len(lines)))
+	}
+	return normalRowH(max(1, len(wrapText(gfx.Face(false, 16), sub, w-68))))
+}
+
 // largeRowH is the height of a menu row with the large text and n lines under the title.
 func largeRowH(n int) int { return 2*largeRowPad + largeTitleH + n*largeSubH }
 
@@ -559,11 +589,7 @@ func subLines(sub string, width int) []string {
 	if gfx.Width(f, sub) <= width {
 		return []string{sub}
 	}
-	lines := wrapText(f, sub, width)
-	if len(lines) > 2 {
-		lines = append(lines[:1], strings.Join(lines[1:], " "))
-	}
-	return lines
+	return wrapText(f, sub, width)
 }
 
 // menuRow is a row of a menu page: a title, a line under it, and an arrow. tap runs when the row
