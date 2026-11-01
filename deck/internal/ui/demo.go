@@ -127,6 +127,9 @@ func (d *DemoPrinter) SetNextProject(project string) bool {
 	return true
 }
 
+// SetFileProject sets the project of the next demo print.
+func (d *DemoPrinter) SetFileProject(_, project string) { d.Next_ = project }
+
 // NextProject returns the project of the demo print now.
 func (d *DemoPrinter) NextProject() string { return d.Next_ }
 

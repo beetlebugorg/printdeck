@@ -105,6 +105,9 @@ type Printer interface {
 	// that a print runs. NextProject is that project, or "".
 	SetNextProject(project string) bool
 	NextProject() string
+	// SetFileProject sets the project of the next print of the file path, before its start: the
+	// queue starts a file of a project.
+	SetFileProject(path, project string)
 	// RecordPicture is the picture of a finished print. loading is true while it is drawn.
 	RecordPicture(r printer.Record) (img image.Image, loading bool)
 	// FilePicture is a picture of the G-code of a file with no thumbnail, in the color hex of its

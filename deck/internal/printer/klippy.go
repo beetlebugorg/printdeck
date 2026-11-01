@@ -382,6 +382,14 @@ func (k *Klippy) SetNextProject(project string) bool {
 	return true
 }
 
+// SetFileProject sets the project of the next print of the file path (a path of the G-code store,
+// as Klipper reports it), before the print starts.
+func (k *Klippy) SetFileProject(path, project string) {
+	if k.Hist != nil {
+		k.Hist.SetNextProject(path, project)
+	}
+}
+
 // NextProject returns the project of the print now, or "".
 func (k *Klippy) NextProject() string {
 	st := k.State()

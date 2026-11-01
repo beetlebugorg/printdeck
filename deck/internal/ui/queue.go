@@ -111,6 +111,10 @@ func (a *App) startQueued(it queue.Item) {
 	}
 	start := func() {
 		a.Queue.Remove(it.ID)
+		// The print goes in the project of the file: its record, and its live tile at the service.
+		if it.Project != "" {
+			a.Printer.SetFileProject(it.Path, it.Project)
+		}
 		a.Printer.PrintFile(it.Path)
 		a.pages = nil
 	}

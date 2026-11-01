@@ -480,6 +480,14 @@ func (c *ChiTu) SetNextProject(project string) bool {
 	return true
 }
 
+// SetFileProject sets the project of the next print, before it starts. The board names its
+// files in its own way, so the project goes to the next print of any file.
+func (c *ChiTu) SetFileProject(_, project string) {
+	c.mu.Lock()
+	c.nextProject = project
+	c.mu.Unlock()
+}
+
 // NextProject returns the project of the print now, or of the next print.
 func (c *ChiTu) NextProject() string {
 	st := c.State()
