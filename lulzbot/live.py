@@ -8,12 +8,11 @@ vertical, so the model stays upright: drag to turn, the wheel zooms, shift and d
 
 Keys: e explodes the pod in the order it comes apart (e again puts it together), n the next model
 (the TAZ, the Mini 2), i the isometric view from the front right, k the view of the camera (from its
-lens, with its field of view), l the next camera and lens of this position (camera_options.py), t the
-next camera position (the arm of the webcam mount, or over the bed), p shows or hides the printer, c
-shows or hides the cameras, their mounts, and the view of the camera on the bed, x makes the parts
-see-through, f fits the view, 1 to 9 hide or show the parts in the list. Each position starts with
-the camera to buy (camera_options.CHOSEN): the ELP with the 6 mm lens on the arm, the B0561 over the
-bed. The camera models are placeholders (camera_models.py).
+lens, with its field of view), l the next camera and lens on the arm (camera_options.py), p shows or
+hides the printer, c shows or hides the camera, its mount, and the view of the camera on the bed, x
+makes the parts see-through, f fits the view, 1 to 9 hide or show the parts in the list. The view
+starts with the camera to buy (camera_options.CHOSEN). The camera models are placeholders
+(camera_models.py).
 
 In the view of the camera, the yellow frame is the edge of the picture, and the text at the bottom
 left gives the camera, the lens, the field of view, and the pixels per mm at the middle of the bed.
@@ -43,7 +42,7 @@ CHECK_S = 0.5             # how often to look for a new version
 EXPLODE_S = 1.2           # the time of one stage of the exploded view
 TEXT = "#E6E8EE"
 FRUSTUM = "#FFD23F"
-PLACES = (("camera", "the arm of the webcam mount"), ("camera_top", "over the bed"))   # the views of pod.py
+PLACES = (("camera", "the arm of the webcam mount"),)   # the views of pod.py
 
 
 def models():
@@ -80,7 +79,7 @@ class Live:
         self.last_tick = time.time()
         keys = (("e", self.toggle_explode), ("n", self.next_model), ("i", self.iso), ("p", self.toggle_printer),
                 ("x", self.toggle_xray), ("f", self.fit), ("c", self.toggle_camera), ("k", self.camera_view),
-                ("l", self.next_option), ("t", self.next_place))
+                ("l", self.next_option))
         for k, f in keys:
             self.pl.add_key_event(k, f)
         for i in range(1, 10):
@@ -296,10 +295,6 @@ class Live:
     def next_option(self):
         k = PLACES[self.place_i][0]
         self.options[k] = (self.options[k] + 1) % len(CO.CAMERAS)
-        self.lens_changed()
-
-    def next_place(self):
-        self.place_i = (self.place_i + 1) % len(PLACES)
         self.lens_changed()
 
     def lens_changed(self):

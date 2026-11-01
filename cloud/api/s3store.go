@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"printdeck/internal/cloud"
@@ -24,9 +25,11 @@ import (
 type S3Store struct {
 	Client *s3.Client
 	Bucket string
+	calls  atomic.Int64 // the count of the calls of the bucket, for the logs
 }
 
 func (b *S3Store) Get(ctx context.Context, key string) ([]byte, string, error) {
+	b.calls.Add(1)
 	out, err := b.Client.GetObject(ctx, &s3.GetObjectInput{Bucket: &b.Bucket, Key: &key})
 	if err != nil {
 		return nil, "", s3Error(err)
@@ -40,6 +43,7 @@ func (b *S3Store) Get(ctx context.Context, key string) ([]byte, string, error) {
 }
 
 func (b *S3Store) Put(ctx context.Context, key string, data []byte, opt PutOptions) (string, error) {
+	b.calls.Add(1)
 	in := &s3.PutObjectInput{Bucket: &b.Bucket, Key: &key, Body: bytes.NewReader(data)}
 	if opt.ContentType != "" {
 		in.ContentType = &opt.ContentType
@@ -62,6 +66,7 @@ func (b *S3Store) Put(ctx context.Context, key string, data []byte, opt PutOptio
 
 // Copy copies the file on the server, with no download.
 func (b *S3Store) Copy(ctx context.Context, src, dst string, opt PutOptions) error {
+	b.calls.Add(1)
 	ct := opt.ContentType
 	if ct == "" {
 		ct = mime.TypeByExtension(path.Ext(dst))
@@ -99,11 +104,13 @@ func (g *S3Granter) DirectURL(ctx context.Context, key string, ttl time.Duration
 }
 
 func (b *S3Store) Delete(ctx context.Context, key string) error {
+	b.calls.Add(1)
 	_, err := b.Client.DeleteObject(ctx, &s3.DeleteObjectInput{Bucket: &b.Bucket, Key: &key})
 	return s3Error(err)
 }
 
 func (b *S3Store) List(ctx context.Context, prefix string) ([]string, error) {
+	b.calls.Add(1)
 	var out []string
 	p := s3.NewListObjectsV2Paginator(b.Client, &s3.ListObjectsV2Input{Bucket: &b.Bucket, Prefix: &prefix})
 	for p.HasMorePages() {
@@ -117,6 +124,28 @@ func (b *S3Store) List(ctx context.Context, prefix string) ([]string, error) {
 	}
 	return out, nil
 }
+
+func (b *S3Store) ListDir(ctx context.Context, prefix string) (files, dirs []string, err error) {
+	b.calls.Add(1)
+	p := s3.NewListObjectsV2Paginator(b.Client, &s3.ListObjectsV2Input{Bucket: &b.Bucket, Prefix: &prefix,
+		Delimiter: aws.String("/")})
+	for p.HasMorePages() {
+		page, err := p.NextPage(ctx)
+		if err != nil {
+			return nil, nil, s3Error(err)
+		}
+		for _, o := range page.Contents {
+			files = append(files, aws.ToString(o.Key))
+		}
+		for _, c := range page.CommonPrefixes {
+			dirs = append(dirs, aws.ToString(c.Prefix))
+		}
+	}
+	return files, dirs, nil
+}
+
+// Calls returns the count of the calls of the bucket. A list counts as one call.
+func (b *S3Store) Calls() int64 { return b.calls.Load() }
 
 // s3Error maps the errors of S3 to ErrNotFound and ErrConflict.
 func s3Error(err error) error {

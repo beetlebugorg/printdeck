@@ -123,6 +123,12 @@ func (f *FileStore) List(_ context.Context, prefix string) ([]string, error) {
 	return out, nil
 }
 
+func (f *FileStore) ListDir(ctx context.Context, prefix string) ([]string, []string, error) {
+	keys, err := f.List(ctx, prefix)
+	files, dirs := splitDir(prefix, keys)
+	return files, dirs, err
+}
+
 // ContentType returns the content type of the file at key.
 func (f *FileStore) ContentType(key string) string {
 	p, err := f.path(key)

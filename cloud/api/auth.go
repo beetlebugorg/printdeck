@@ -333,15 +333,28 @@ type Owner struct {
 }
 
 func (s *Server) ownerName(ctx context.Context) string {
+	s.ownerMu.Lock()
+	name, at := s.ownerCache, s.ownerAt
+	s.ownerMu.Unlock()
+	if name != "" && time.Since(at) < ownerCacheTime {
+		return name
+	}
 	var o Owner
 	if b, _, err := s.Store.Get(ctx, "owner.json"); err == nil {
 		json.Unmarshal(b, &o)
 	}
 	if o.Name == "" {
-		return "The owner"
+		o.Name = "The owner"
 	}
+	s.ownerMu.Lock()
+	s.ownerCache, s.ownerAt = o.Name, time.Now()
+	s.ownerMu.Unlock()
 	return o.Name
 }
+
+// ownerCacheTime is the time that a run of the function keeps the name of the owner. Each view
+// of a project needs it.
+const ownerCacheTime = 5 * time.Minute
 
 // ownerPasskeys returns the passkeys of the owner.
 func (s *Server) ownerPasskeys(ctx context.Context) ([]Passkey, error) {
@@ -423,6 +436,9 @@ func (s *Server) routeAuth(ctx context.Context, r *http.Request, body []byte, re
 			if err := s.putJSON(ctx, "owner.json", Owner{Name: name}); err != nil {
 				return nil, err
 			}
+			s.ownerMu.Lock()
+			s.ownerCache = ""
+			s.ownerMu.Unlock()
 		}
 		return s.newSession(ctx, Session{Kind: KindOwner})
 	case "invite/begin":

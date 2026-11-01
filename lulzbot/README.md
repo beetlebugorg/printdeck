@@ -85,7 +85,16 @@ or `display_rotate=180` in `printdeck.txt`.
 - `workhorse.py`, `parts.py`, `shape.py`: the TAZ Workhorse CAD, the rail clip and the rail.
 - `live.py`, `viewer.py`, `cable_physics.py`: the 3D window of the model.
 
-The other scripts in this folder are for an earlier mount with a 7 inch display.
+The other files in this folder are for earlier designs. Printdeck uses the pod now. The earlier
+designs are a mount on the TAZ Workhorse with the Adafruit 7 inch HDMI display, a 2.5 inch drive
+and a 30 mm fan, and other layouts for that display.
+
+- `model.py`, `make.sh`, `make_pdf.py`, `render.py`, `fit_display.py`: the parts of the earlier
+  mount, its checks, its renders and its build guide (`printdeck-lulzbot-build.pdf`).
+- `cad/`, `cura/`, `guide/`, `lineart/`: its STEP files, its Cura profiles, the data of its
+  guide, and its line-art images.
+- `deckcase.py`, `deckview.py`, `pibox.py`, `kitview.py`, `tall.py`: other layouts with the
+  7 inch display.
 
 ## Reference files
 
@@ -93,6 +102,8 @@ The other scripts in this folder are for an earlier mount with a 7 inch display.
   https://download.lulzbot.com/TAZ/TAZ_WE/v1.0.2/. License: GPLv3 or later and CC BY-SA 4.0
   (`COPYING`, `LICENSE-CC`, `LICENSE-GPL`).
 - `ref/raspberrypi/`: the product brief of the Raspberry Pi 27 W USB-C power supply.
+- `ref/adafruit/`: the CAD and the data of the Adafruit displays and the HDMI backpack, for the
+  earlier designs.
 
 ## Needs
 

@@ -18,9 +18,11 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	awslambda "github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
@@ -31,20 +33,55 @@ import (
 	"printdeck/cloud/relay"
 )
 
+// readSecrets reads the secrets with the ARNs arns ("" for none) at the same time. A secret that
+// did not read is nil.
+func readSecrets(ctx context.Context, sm *secretsmanager.Client, arns ...string) map[string]*secretsmanager.GetSecretValueOutput {
+	out := map[string]*secretsmanager.GetSecretValueOutput{}
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for _, arn := range arns {
+		if arn == "" {
+			continue
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			v, err := sm.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{SecretId: &arn})
+			if err != nil {
+				log.Printf("pwf-api: secret %s: %v", arn, err)
+				return
+			}
+			mu.Lock()
+			out[arn] = v
+			mu.Unlock()
+		}()
+	}
+	wg.Wait()
+	return out
+}
+
 func main() {
 	ctx := context.Background()
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		log.Fatal("pwf-api: no AWS configuration")
 	}
+	// The view of a project reads up to 64 files at the same time (api.getAll): keep as many
+	// connections open. The default keeps 10.
+	cfg.HTTPClient = awshttp.NewBuildableClient().WithTransportOptions(func(t *http.Transport) {
+		t.MaxIdleConns, t.MaxIdleConnsPerHost = 128, 64
+	})
 	client := s3.NewFromConfig(cfg)
+	// The secrets at the same time: each read takes about 100 ms of the cold start.
+	secrets := readSecrets(ctx, secretsmanager.NewFromConfig(cfg),
+		os.Getenv("FILES_KEY_SECRET"), os.Getenv("GITHUB_APP_SECRET"), os.Getenv("RELAY_SECRET_ARN"))
 	bucket := os.Getenv("BUCKET")
 	s := &api.Server{Store: &api.S3Store{Client: client, Bucket: bucket}, Grants: &api.S3Granter{Client: client, Bucket: bucket},
 		Domain: os.Getenv("DOMAIN")}
 	// The signed cookies of the files of the projects (filecookie.go), when the stack has the key.
 	if arn, id := os.Getenv("FILES_KEY_SECRET"), os.Getenv("FILES_KEY_ID"); arn != "" && id != "" {
-		out, err := secretsmanager.NewFromConfig(cfg).GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{SecretId: &arn})
-		if err != nil {
+		out := secrets[arn]
+		if out == nil {
 			log.Fatal("pwf-api: the key of the files did not read")
 		}
 		key, err := api.ParseFileKey(*out.SecretString)
@@ -56,8 +93,8 @@ func main() {
 	}
 	// The GitHub App that starts the slice runs of the builds, when the stack has it.
 	if arn := os.Getenv("GITHUB_APP_SECRET"); arn != "" {
-		out, err := secretsmanager.NewFromConfig(cfg).GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{SecretId: &arn})
-		if err != nil {
+		out := secrets[arn]
+		if out == nil {
 			log.Fatal("pwf-api: the secret of the GitHub App did not read")
 		}
 		var sec api.GitHubAppSecret
@@ -73,8 +110,8 @@ func main() {
 	// The push relay of the iPhone app, with the secret of the relay: its APNs key and the key
 	// of its send tokens.
 	if arn := os.Getenv("RELAY_SECRET_ARN"); arn != "" {
-		out, err := secretsmanager.NewFromConfig(cfg).GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{SecretId: &arn})
-		if err != nil {
+		out := secrets[arn]
+		if out == nil {
 			log.Fatal("pwf-api: the secret of the relay did not read")
 		}
 		var sec relay.Secret

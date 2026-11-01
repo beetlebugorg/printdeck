@@ -38,7 +38,7 @@ import (
 //	                                      write DIR/index.html, DIR/booklet.html and the pictures in
 //	                                      DIR/img. wide draws the screens of a display that is mounted
 //	                                      wide. lulzbot is the wide manual with the upgrade guides for
-//	                                      the TAZ Workhorse (upgrade.go). cura is the booklet of the
+//	                                      the earlier TAZ Workhorse mount (upgrade.go). cura is the booklet of the
 //	                                      Cura plugin (cura.go). large draws the tall screens with the
 //	                                      large text of the Touch Display 2.
 

@@ -40,8 +40,8 @@ CAMERAS = [
 ]
 
 
-# The cameras to buy: the default option of each camera position in live.py (keys l and t).
-CHOSEN = {"camera": "b0561", "camera_top": "b0561"}
+# The camera to buy: the default option of the camera position in live.py (key l).
+CHOSEN = {"camera": "b0561"}
 
 
 def index(key):

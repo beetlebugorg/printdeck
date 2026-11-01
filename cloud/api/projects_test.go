@@ -263,8 +263,18 @@ func TestProjectFlow(t *testing.T) {
 	if st := call(t, base, "GET", "/api/v1/names/garden-planters", tok, nil, &nr); st != 200 || nr.ID != sum.ID || nr.Slug != "garden-planters" {
 		t.Errorf("the owner finds the project: %d %+v", st, nr)
 	}
-	if st := call(t, base, "GET", "/api/v1/names/garden-planters", samIn.Token, nil, &nr); st != 200 || nr.ID != sum.ID {
+	if st := call(t, base, "GET", "/api/v1/names/garden-planters", samIn.Token, nil, &nr); st != 200 || nr.ID != sum.ID || nr.View != nil {
 		t.Errorf("the member finds the project: %d %+v", st, nr)
+	}
+	// With ?view=1 the reply has the view too, as the person sees it.
+	for _, c := range []struct {
+		tok, you string
+	}{{tok, KindOwner}, {samIn.Token, "member"}} {
+		nr = cloud.NameReply{}
+		st := call(t, base, "GET", "/api/v1/names/garden-planters?view=1", c.tok, nil, &nr)
+		if st != 200 || nr.View == nil || nr.View.ID != sum.ID || nr.View.IsOwner != (c.you == KindOwner) {
+			t.Errorf("the view with the name, for the %s: %d %+v", c.you, st, nr.View)
+		}
 	}
 	var other cloud.ProjectSummary
 	if st := call(t, base, "POST", "/api/v1/projects", tok, cloud.ProjectRequest{Name: "Garden Planters!"}, &other); st != 200 || other.Slug != "garden-planters-2" {

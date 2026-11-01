@@ -29,6 +29,11 @@ import (
 
 // Server is the API.
 type Server struct {
+	// The name of the owner, kept for ownerCacheTime (ownerName).
+	ownerMu    sync.Mutex
+	ownerCache string
+	ownerAt    time.Time
+
 	Store  Store
 	Grants Granter
 	// Domain is the domain of the service, for the links. Base is the whole base URL of the
@@ -84,7 +89,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx, jar := withFileJar(r.Context())
+	start, calls := time.Now(), storeCalls(s.Store)
 	out, err := s.route(ctx, r, body)
+	// One line for each request: the route, the time, and the calls of the bucket. A run of the
+	// function serves one request at a time, so the count is the count of this request.
+	log.Printf("api: %s %s %d ms, %d bucket calls", r.Method, routeShape(r.URL.Path), time.Since(start).Milliseconds(),
+		storeCalls(s.Store)-calls)
 	var rr *relayReply
 	if errors.As(err, &rr) {
 		w.Header().Set("Content-Type", "application/json")
@@ -96,7 +106,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var e *Error
 		if !errors.As(err, &e) {
-			log.Printf("api: %s %s: internal error", r.Method, routeName(r.URL.Path))
+			log.Printf("api: %s %s: internal error: %v", r.Method, routeShape(r.URL.Path), err)
 			e = &Error{Status: http.StatusInternalServerError, Msg: "internal error"}
 		}
 		reply(w, e.Status, cloud.ErrorReply{Error: e.Msg})
@@ -110,15 +120,25 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	reply(w, http.StatusOK, out)
 }
 
-// routeName is the path of a request with no IDs, for the logs.
-func routeName(p string) string {
+// routeShape is the path of a request with a "*" in place of each ID, for the logs:
+// "projects/*/prints/*". The paths of the API are a name and an ID, a name and an ID.
+func routeShape(p string) string {
 	if i := strings.Index(p, "/api/v1/"); i >= 0 {
 		p = p[i+len("/api/v1/"):]
 	}
-	if i := strings.IndexByte(p, '/'); i >= 0 {
-		p = p[:i]
+	parts := strings.Split(strings.Trim(p, "/"), "/")
+	for i := 1; i < len(parts); i += 2 {
+		parts[i] = "*"
 	}
-	return p
+	return strings.Join(parts, "/")
+}
+
+// storeCalls returns the count of the calls of the store st, or 0 for a store with no count.
+func storeCalls(st Store) int64 {
+	if c, ok := st.(interface{ Calls() int64 }); ok {
+		return c.Calls()
+	}
+	return 0
 }
 
 func reply(w http.ResponseWriter, status int, v any) {

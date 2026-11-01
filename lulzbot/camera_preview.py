@@ -2,13 +2,13 @@
 render from the lens, at the aspect ratio of the camera, with a caption. Each render has a 20 mm cube
 (orange) at the middle of the bed and a box of the size of a Benchy (60 x 31 x 48 mm, blue) in front
 of it, 0.3 of the print area from the middle (84 mm on the TAZ, 48 mm on the Mini 2). The orange
-line is the edge of the print area. A contact sheet for each printer has all the renders, chosen.png
-has the cameras to buy (camera_options.CHOSEN), and mini2-places.png has other places for the camera
-on the Mini 2 frame (MINI_PLACES). The renders go in renders/camera-preview/, and table.csv there has
-the numbers. cable-sag.png shows how the cable of the camera on the arm hangs (cable_physics.py).
+line is the edge of the print area. A contact sheet for each printer has all the renders, and
+chosen.png has the camera to buy (camera_options.CHOSEN). The renders go in renders/camera-preview/,
+and table.csv there has the numbers. cable-sag.png shows how the cable of the camera on the arm
+hangs (cable_physics.py).
 
 The scene is the model of the live window (pod.py live writes it to build/viewer): the printer, the
-pod, the camera models and their brackets (camera_models.py), with the moving parts of the printer where the LulzBot model has them.
+pod, the camera model and its bracket (camera_models.py), with the moving parts of the printer where the LulzBot model has them.
 Each camera is a pinhole camera: the lens has no distortion. "Seen" is the part of the print area in
 the picture and not behind a part of the printer, a camera bracket, or a test part.
 
@@ -36,7 +36,7 @@ from viewer import OUT as VIEWER
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "renders", "camera-preview")
 PRINTERS = (("taz", "TAZ Workhorse"), ("mini2", "Mini 2"))
-PLACES = (("camera", "mount", "the C270 mount"), ("camera_top", "top", "over the bed"))
+PLACES = (("camera", "mount", "the C270 mount"),)
 WIDTH = 960                    # the width of a render
 TILE = 640                     # the width of a render on the contact sheet
 CAPTION_H = 146
@@ -68,7 +68,7 @@ def test_parts(views):
     """The 20 mm cube at the middle of the bed and the Benchy box in front of it, on the bed."""
     bed = views["bed"]
     c, up = np.asarray(bed["center"], float), CO.unit(bed["normal"])
-    back = CO.unit(views["camera_top"]["up"])
+    back = CO.unit(bed["back"])
     right = np.cross(back, up)
     out = []
     for size, at, col in (((20.0, 20.0, 20.0), c, CUBE), ((31.0, 60.0, 48.0), c - 0.3 * bed["size"] * back, BENCHY)):
@@ -165,19 +165,6 @@ def sheet(title, sections, path, cols=4):
     print(f"wrote {path}")
 
 
-# Other places for the camera on the Mini 2, in printer coordinates (x to the right, y to the back, z
-# up; the top of the frame is z 373), each aimed at the middle of the bed. The camera on the arm of the
-# C270 mount is at the front right corner, out to the right, and the right Z column hides much of the
-# bed from it. The side panels of the frame, the deck at the front left, and the stock LCD at the front
-# right hide the bed from the corners and the sides, and the tool head hides it from over the right Z
-# column (checked with renders), so the places are at the front.
-MINI_PLACES = [
-    ("front, 57 mm over the middle of the top front rail", (-200.0, -300.0, 430.0)),
-    ("front, under the top front rail, 30 mm in front of it", (-200.0, -320.0, 335.0)),
-    ("front, 57 mm over the top front rail, 80 mm left of the middle", (-280.0, -300.0, 430.0)),
-]
-
-
 def render_one(name, title, sc, view, o, bed, where, path):
     """The render of option o from view, with its caption: (image, row of table.csv)."""
     fp = CO.footprint(view, o, bed)
@@ -213,8 +200,7 @@ def pod_closeup(name, title, items, path):
     rgb, _ = rr.render(sc)
     rr.delete()
     img = caption(Image.fromarray(rgb), [f"{title}: the plugs and the cables at the Pi",
-                                         "Dark red: the camera on the arm (upper USB 2 port). Dark blue: the camera "
-                                         "over the bed (lower USB 3 port).",
+                                         "Dark red: the camera on the arm (upper USB 2 port).",
                                          "Black: the printer cable (lower USB 2 port). White: the power cable.", ""])
     img.save(path)
     print(f"wrote {path}")
@@ -297,57 +283,12 @@ def sag_sheet(path):
     print(f"wrote {path}")
 
 
-def part_closeup(items, names, part, toward, dist, lines, path):
-    """A view of the part named part and the cables near it, from the direction toward (the
-    coordinates of the live window), dist mm away."""
-    m = items[names.index(part)][0]
-    target = m.bounds.mean(axis=0)
-    eye = target + np.asarray(toward, float) / np.linalg.norm(toward) * dist
-    size = (1000, 750)
-    sc = scene(items)
-    up = (0.0, 0.0, 1.0)
-    pose = R.look_at(eye, target, up)
-    sc.add(pyrender.PerspectiveCamera(yfov=math.radians(35.0), aspectRatio=size[0] / size[1], znear=5.0, zfar=3000.0),
-           pose=pose)
-    sc.add(pyrender.DirectionalLight(intensity=2.5), pose=pose)
-    rr = pyrender.OffscreenRenderer(*size)
-    rgb, _ = rr.render(sc)
-    rr.delete()
-    caption(Image.fromarray(rgb), lines + [""] * (4 - len(lines))).save(path)
-    print(f"wrote {path}")
-
-
-def wrap_closeups(name, title, items):
-    """Close views of the bracket of the camera over the bed, with the cable lengths to buy."""
-    import camera_models as CM
-    names = load.names
-    lines = []
-    for sp in CM.cable_specs(name):
-        route, need, buy, extra, crimp = CM.cable_plan(sp)
-        who = "arm" if sp["name"] == "camera_cable" else "over the bed"
-        lines.append(f"Camera {who}: {need:.0f} mm end to end with the plugs and {CM.SERVICE:.0f} mm of service; "
-                     + (f"buy {buy / 1000:g} m" if buy else "over 2 m") + f", or crimp to {crimp:.0f} mm.")
-    part_closeup(items, names, "camera_top_plate", (1.0, -1.0, 0.9), 260.0,
-                 [f"{title}: the bracket of the camera over the bed"] + lines
-                 + ["Dark red: the camera on the arm. Dark blue: the camera over the bed."],
-                 os.path.join(OUT, f"{name}-top-plate.png"))
-
-
-def aimed(views, lens):
-    """A view from lens (printer coordinates) at the middle of the bed, level."""
-    T = np.array(views["printer_to_view"])
-    bed = views["bed"]
-    eye = (T @ np.append(np.asarray(lens, float), 1.0))[:3]
-    return {"eye": list(eye), "focal": bed["center"], "up": bed["normal"]}
-
-
 def main():
     os.makedirs(OUT, exist_ok=True)
     rows, chosen = [], []
     for name, title in PRINTERS:
         items, views = load(name)
         pod_closeup(name, title, items, os.path.join(OUT, f"{name}-cables-at-pi.png"))
-        wrap_closeups(name, title, items)
         sc = scene(items + test_parts(views))
         bed = views["bed"]
         sections = []
@@ -364,20 +305,9 @@ def main():
             sections.append((f"{where}: lens {dist:.0f} mm from the middle of the bed", ims))
         sheet(f"{title}: the view of each camera and lens (pinhole model, no lens distortion)", sections,
               os.path.join(OUT, f"{name}-sheet.png"))
-        if name == "mini2":
-            o = CO.CAMERAS[CO.index(CO.CHOSEN["camera"])]
-            ims = [chosen[-2]]
-            for i, (where, lens) in enumerate(MINI_PLACES):
-                img, row = render_one(name, title, sc, aimed(views, lens), o, bed, where,
-                                      os.path.join(OUT, f"mini2-place-{i + 1}.png"))
-                ims.append(img)
-                rows.append(row)
-            sheet("Mini 2: other places for the camera on the frame, aimed at the middle of the bed "
-                  f"({o['model']})", [("the C270 mount (first), then the other places", ims)],
-                  os.path.join(OUT, "mini2-places.png"))
     sag_sheet(os.path.join(OUT, "cable-sag.png"))
-    sheet("The cameras to buy: the Arducam B0561 on the arm of the C270 mount and over the bed",
-          [("TAZ Workhorse", chosen[:2]), ("Mini 2", chosen[2:])], os.path.join(OUT, "chosen.png"), cols=2)
+    sheet("The camera to buy: the Arducam B0561 on the arm of the C270 mount",
+          [("TAZ Workhorse", chosen[:1]), ("Mini 2", chosen[1:])], os.path.join(OUT, "chosen.png"), cols=2)
     with open(os.path.join(OUT, "table.csv"), "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0]))
         w.writeheader()

@@ -69,6 +69,19 @@ func (s *Server) prState(ctx context.Context, p *Project, pr int) string {
 	if s.GitHub == nil || p.Repo == "" || s.now().Sub(st.Checked) < age {
 		return st.State
 	}
+	// A job asks GitHub, so the view does not wait for it. The next view shows the new state.
+	if s.later(ctx, Job{Kind: "prstate", Project: p.ID, PR: pr}) {
+		return st.State
+	}
+	return s.checkPRState(ctx, p, pr)
+}
+
+// checkPRState asks GitHub for the state of the pull request pr of the project p, and keeps it.
+func (s *Server) checkPRState(ctx context.Context, p *Project, pr int) string {
+	var st prRecord
+	if b, _, err := s.Store.Get(ctx, prKey(p.ID, pr)); err == nil {
+		json.Unmarshal(b, &st)
+	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	state, err := s.GitHub.PullState(ctx, p.Repo, pr)
@@ -461,8 +474,9 @@ func mdCell(s string) string {
 	return strings.NewReplacer("|", "\\|", "\n", " ", "\r", "").Replace(s)
 }
 
-// Job is work of the service after a request: Kind "comment" writes the comment of the pull
-// request PR of the project, and with a Plan compares the models of the plan first.
+// Job is work of the service after a request. Kind "prstate" asks GitHub for the state of the
+// pull request PR of the project. Kind "comment" writes the comment of the pull request PR, and
+// with a Plan compares the models of the plan first.
 type Job struct {
 	Kind    string `json:"kind"`
 	Project string `json:"project"`
@@ -494,13 +508,19 @@ func (s *Server) later(ctx context.Context, job Job) bool {
 func (s *Server) RunJob(ctx context.Context, job Job) {
 	ctx, cancel := context.WithTimeout(ctx, jobTime)
 	defer cancel()
-	if job.Kind != "comment" || !validID(job.Project) || job.PR <= 0 {
+	if job.Kind != "comment" && job.Kind != "prstate" || !validID(job.Project) || job.PR <= 0 {
 		log.Printf("job: a bad job")
 		return
 	}
 	p, _, err := s.loadProject(ctx, job.Project)
 	if err != nil {
 		log.Printf("job: the project: %v", err)
+		return
+	}
+	if job.Kind == "prstate" {
+		if s.GitHub != nil && p.Repo != "" {
+			s.checkPRState(ctx, p, job.PR)
+		}
 		return
 	}
 	if job.Plan == "" {

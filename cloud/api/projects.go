@@ -647,14 +647,12 @@ func countProjects(keys []string) int {
 func (s *Server) listProjects(ctx context.Context, w *who) (any, error) {
 	var ids []string
 	if w.owner {
-		keys, err := s.Store.List(ctx, "x/")
+		_, dirs, err := s.Store.ListDir(ctx, "x/")
 		if err != nil {
 			return nil, err
 		}
-		for _, k := range keys {
-			if strings.HasSuffix(k, "/project.json") && strings.Count(k, "/") == 2 {
-				ids = append(ids, strings.TrimSuffix(strings.TrimPrefix(k, "x/"), "/project.json"))
-			}
+		for _, d := range dirs {
+			ids = append(ids, strings.TrimSuffix(strings.TrimPrefix(d, "x/"), "/"))
 		}
 	} else {
 		for id := range w.projects {
@@ -662,31 +660,53 @@ func (s *Server) listProjects(ctx context.Context, w *who) (any, error) {
 		}
 		sort.Strings(ids)
 	}
-	out := []cloud.ProjectSummary{}
-	for _, id := range ids {
+	// The projects at the same time. Each one lists one level of its prints and its photos: the
+	// folders of the prints have thousands of files.
+	sums := make([]*cloud.ProjectSummary, len(ids))
+	err := forAll(len(ids), func(i int) error {
+		id := ids[i]
 		p, _, err := s.loadProject(ctx, id)
 		if err != nil {
-			continue
+			return nil // not a project, or gone
 		}
 		if !w.owner && p.member(w.projects[id]) == nil {
-			continue // the owner removed the member
+			return nil // the owner removed the member
 		}
 		if p, err = s.ensureSlug(ctx, p); err != nil {
-			return nil, err
+			return err
 		}
-		files, _ := s.Store.List(ctx, "x/"+id+"/")
+		var prints, photos []string
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			photos, _, _ = s.Store.ListDir(ctx, "x/"+id+"/photos/")
+		}()
+		prints, _, _ = s.Store.ListDir(ctx, "x/"+id+"/prints/")
+		wg.Wait()
 		sum := cloud.ProjectSummary{ID: p.ID, Name: p.Name, Slug: p.Slug, Note: p.Note, Changed: p.Changed, URL: s.projectURL(p)}
-		var cover string
-		for _, f := range files {
-			rel := strings.TrimPrefix(f, "x/"+id+"/")
-			switch {
-			case strings.HasPrefix(rel, "prints/") && strings.HasSuffix(rel, ".json") && strings.Count(rel, "/") == 1:
+		var records []string
+		for _, f := range prints {
+			if strings.HasSuffix(f, ".json") {
 				sum.Prints++
-			case strings.HasPrefix(rel, "photos/") && strings.HasSuffix(rel, "-s.jpg"):
+				records = append(records, f)
+			}
+		}
+		// The cover: the newest photo, else the model picture of a print.
+		var cover string
+		for _, f := range photos {
+			if strings.HasSuffix(f, "-s.jpg") {
 				sum.Photos++
 				cover = f
-			case cover == "" && strings.HasSuffix(rel, "/model.jpg"):
-				cover = f
+			}
+		}
+		if cover == "" {
+			for j, b := range s.getAll(ctx, records) {
+				var pr PrintRecord
+				if b != nil && json.Unmarshal(b, &pr) == nil && pr.Model {
+					cover = strings.TrimSuffix(records[j], ".json") + "/model.jpg"
+					break
+				}
 			}
 		}
 		for _, m := range p.Members {
@@ -697,7 +717,17 @@ func (s *Server) listProjects(ctx context.Context, w *who) (any, error) {
 		if cover != "" {
 			sum.Cover, _ = s.Grants.FileURL(ctx, cover, urlTTL)
 		}
-		out = append(out, sum)
+		sums[i] = &sum
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := []cloud.ProjectSummary{}
+	for _, sum := range sums {
+		if sum != nil {
+			out = append(out, *sum)
+		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Changed.After(out[j].Changed) })
 	return out, nil
@@ -739,12 +769,18 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 		defer wg.Done()
 		v.Queue = s.projectQueued(ctx, p.ID)
 	}()
+	var live liveData
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		live = s.loadLiveData(ctx, p)
+	}()
 	prints, photos, err := s.projectFiles(ctx, p.ID)
+	wg.Wait()
 	if err == nil {
-		v.Live = s.liveView(ctx, p, prints)
+		v.Live = s.liveTiles(ctx, p, live, prints)
 		v.Printers = s.printersOf(ctx, printerIDs(prints, v.Live), false)
 	}
-	wg.Wait()
 	if err != nil {
 		return nil, err
 	}
@@ -793,16 +829,17 @@ func projectPrint(pr PrintRecord) cloud.ProjectPrint {
 func (s *Server) projectFiles(ctx context.Context, id string) ([]PrintRecord, []PhotoRecord, error) {
 	var all []*PrintRecord
 	var photos []PhotoRecord
-	// Two lists at the same time: the folder of the project has the models and the G-code too.
+	// Two lists of one level at the same time: the folders of the prints have the models, the
+	// G-code and the time lapse frames, thousands of files.
 	var keys, photoKeys []string
 	var err, photoErr error
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		photoKeys, photoErr = s.Store.List(ctx, "x/"+id+"/photos/")
+		photoKeys, _, photoErr = s.Store.ListDir(ctx, "x/"+id+"/photos/")
 	}()
-	keys, err = s.Store.List(ctx, "x/"+id+"/prints/")
+	keys, _, err = s.Store.ListDir(ctx, "x/"+id+"/prints/")
 	wg.Wait()
 	if err == nil {
 		err = photoErr
@@ -1117,7 +1154,7 @@ func (s *Server) newPrint(ctx context.Context, p *Project, d *Deck, in cloud.Pri
 	pid := p.Prints[in.Key]
 	isNew := pid == "" || in.Key == ""
 	if isNew {
-		keys, _ := s.Store.List(ctx, "x/"+p.ID+"/prints/")
+		keys, _, _ := s.Store.ListDir(ctx, "x/"+p.ID+"/prints/")
 		n := 0
 		for _, k := range keys {
 			if strings.HasSuffix(k, ".json") && strings.Count(strings.TrimPrefix(k, "x/"+p.ID+"/prints/"), "/") == 0 {

@@ -91,21 +91,22 @@ func (s *Server) setQueue(ctx context.Context, d *Deck, id string, in cloud.Queu
 
 // projectQueued returns the files of the project in the queues of the printers, the soonest first.
 func (s *Server) projectQueued(ctx context.Context, project string) []cloud.ProjectQueued {
-	keys, err := s.Store.List(ctx, "x/"+project+"/queue/")
+	keys, _, err := s.Store.ListDir(ctx, "x/"+project+"/queue/")
 	if err != nil {
 		return nil
 	}
-	var out []cloud.ProjectQueued
-	for _, k := range keys {
-		b, _, err := s.Store.Get(ctx, k)
+	// The queue of each printer, and its removals, at the same time.
+	each := make([][]cloud.ProjectQueued, len(keys))
+	forAll(len(keys), func(i int) error {
+		b, _, err := s.Store.Get(ctx, keys[i])
 		if err != nil {
-			continue
+			return nil
 		}
 		var q projectQueue
 		if json.Unmarshal(b, &q) != nil || s.now().Sub(q.Updated) > queueStale {
-			continue
+			return nil
 		}
-		printer := strings.TrimSuffix(path.Base(k), ".json")
+		printer := strings.TrimSuffix(path.Base(keys[i]), ".json")
 		removing := map[string]bool{}
 		if rk, err := s.Store.List(ctx, removeDir(printer)); err == nil {
 			for _, r := range rk {
@@ -118,8 +119,13 @@ func (s *Server) projectQueued(ctx context.Context, project string) []cloud.Proj
 			if it.ID != "" {
 				pq.ID, pq.PrinterID, pq.Removing = it.ID, printer, removing[it.ID]
 			}
-			out = append(out, pq)
+			each[i] = append(each[i], pq)
 		}
+		return nil
+	})
+	var out []cloud.ProjectQueued
+	for _, e := range each {
+		out = append(out, e...)
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Start.Before(out[j].Start) })
 	return out

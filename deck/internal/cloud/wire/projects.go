@@ -284,6 +284,8 @@ type PublicRequest struct {
 type NameReply struct {
 	ID   string `json:"id"`
 	Slug string `json:"slug"`
+	// View is the view of the project, for GET /names/<slug>?view=1: the page needs one request.
+	View *ProjectView `json:"view,omitempty"`
 }
 
 // PublicReply is the public address of a project, or "".
