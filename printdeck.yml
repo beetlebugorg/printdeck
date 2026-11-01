@@ -1,0 +1,155 @@
+# Printdeck builds: the printed parts of the Printdeck pod (lulzbot/stl/pod/README.md).
+# The profiles are in profiles/. The FDM parts print in black PLA (roll-4).
+# No generate step: lulzbot/make.sh needs build123d, Chromium and ImageMagick, and runs for about
+# 3 minutes. Run it on your computer, and commit the STL files.
+project: printdeck
+
+parts:
+  # The pod (FDM). No part needs supports. The seam goes to the sharpest corner, on the inside.
+  - name: Pod frame
+    files: [lulzbot/stl/pod/fdm/pod-frame_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: &pod {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner}
+  - name: Pod body
+    files: [lulzbot/stl/pod/fdm/pod-body_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: *pod
+  - name: Pod mount
+    files: [lulzbot/stl/pod/fdm/pod-mount_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: *pod
+  - name: Pod wedge
+    files: [lulzbot/stl/pod/fdm/pod-wedge_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: *pod
+  - name: Pod bracket (TAZ)
+    files: [lulzbot/stl/pod/fdm/pod-bracket-taz_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    # It stands up, 89 mm high: a 5 mm brim (10 lines).
+    settings: {<<: *pod, adhesion_type: brim, brim_line_count: 10}
+  - name: Pod bracket (Mini 2)
+    files: [lulzbot/stl/pod/fdm/pod-bracket-mini2_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: *pod
+  - name: Pod shims (TAZ)
+    files:
+      - lulzbot/stl/pod/fdm/pod-shim-0.5mm_fdm.stl
+      - lulzbot/stl/pod/fdm/pod-shim-1.0mm_fdm.stl
+      - lulzbot/stl/pod/fdm/pod-shim-2.0mm_fdm.stl
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: *pod
+  - name: Rail clip (TAZ)
+    files: [lulzbot/stl/clip.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    count: 2
+    settings: {<<: *pod, infill_sparse_density: 100, adhesion_type: brim, brim_line_count: 8}
+  # The cable clips are better in PETG: PLA can crack where the arms bend. The profiles have no
+  # PETG material yet.
+  - name: Cable clip, single (TAZ)
+    files: [lulzbot/stl/pod/fdm/cable-clip-single_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    count: 5
+    settings: *pod
+  - name: Cable clip, double (Mini 2)
+    files: [lulzbot/stl/pod/fdm/cable-clip-double_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    count: 2
+    settings: *pod
+
+  # The webcam (option): a C270 on the frame.
+  - name: Camera arm (TAZ)
+    files: [lulzbot/stl/pod/fdm/camera-arm-taz_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: *pod
+  - name: Camera clamp (TAZ)
+    files: [lulzbot/stl/pod/fdm/camera-clamp-taz_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    # It is 126 mm tall: a brim.
+    settings: {<<: *pod, adhesion_type: brim}
+  - name: Camera arm (Mini 2)
+    files: [lulzbot/stl/pod/fdm/camera-arm-mini2_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: *pod
+  - name: Camera clamp (Mini 2)
+    files: [lulzbot/stl/pod/fdm/camera-clamp-mini2_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: *pod
+
+  # The camera over the bed (TAZ): 4 walls, 40% infill, 5 top and 5 bottom layers,
+  # an 8 mm brim (16 lines).
+  - name: Camera over the bed (TAZ)
+    files: [lulzbot/stl/pod/fdm/camera-top-taz_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: {<<: *pod, wall_line_count: 4, infill_sparse_density: 40, top_layers: 5, bottom_layers: 5,
+               adhesion_type: brim, brim_line_count: 16}
+  # 6 nuts and a spare, in a separate job with 100% infill.
+  - name: Roll-in nut
+    files: [lulzbot/stl/pod/fdm/roll-nut_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    count: 7
+    alone: true
+    settings: {<<: *pod, infill_sparse_density: 100, adhesion_type: brim, brim_line_count: 16}
+
+  # Resin: the pod on supports (resin/), with captive M3 hex nuts in place of the inserts.
+  - name: Pod body (resin)
+    files: [lulzbot/stl/pod/resin/pod-body_resin.stl]
+    printer: phenom
+    profile: peopoly-phenom/abs-like-0.05
+    material: Black ABS-like resin
+  - name: Pod frame (resin)
+    files: [lulzbot/stl/pod/resin/pod-frame_resin.stl]
+    printer: phenom
+    profile: peopoly-phenom/abs-like-0.05
+    material: Black ABS-like resin
+  - name: Pod mount (resin)
+    files: [lulzbot/stl/pod/resin/pod-mount_resin.stl]
+    printer: phenom
+    profile: peopoly-phenom/abs-like-0.05
+    material: Black ABS-like resin
+  - name: Pod wedge (resin)
+    files: [lulzbot/stl/pod/resin/pod-wedge_resin.stl]
+    printer: phenom
+    profile: peopoly-phenom/abs-like-0.05
+    material: Black ABS-like resin
+  - name: Pod bracket, TAZ (resin)
+    files: [lulzbot/stl/pod/resin/pod-bracket-taz_resin.stl]
+    printer: phenom
+    profile: peopoly-phenom/abs-like-0.05
+    material: Black ABS-like resin
+
+# The PDFs of the project. The project page shows each one with a picture of its first page.
+docs:
+  - name: LulzBot build guide
+    file: lulzbot/printdeck-lulzbot-build.pdf

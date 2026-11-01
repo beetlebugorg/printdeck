@@ -1,0 +1,57 @@
+name: printdeck
+# A push has no title of ours: GitHub then names the run with the first line of the commit.
+run-name: >-
+  ${{ github.event_name == 'workflow_dispatch'
+      && format('Printdeck slice · {0}', inputs.title || inputs.build)
+      || '' }}
+on:
+  # Each push of a branch or a tag sends a plan. Printdeck makes the plan of a branch with an open
+  # pull request the plan of that pull request, also for a branch of a member's fork.
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      build:
+        description: The Printdeck build to slice
+        required: true
+      title:
+        description: The plates of the build, for the title of the run
+        required: false
+
+permissions:
+  contents: read
+  id-token: write   # the OIDC token for Printdeck
+
+jobs:
+  plan:
+    name: Plan the printed parts
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the default branch, to find the parts that changed on a branch
+          persist-credentials: false   # the code of a pull request reads no token in .git/config
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: beetlebugorg/printdeck-action@v1
+        with:
+          mode: plan
+
+  slice:
+    name: Slice the plates
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the commit of the plan
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: beetlebugorg/printdeck-action@v1
+        with:
+          mode: slice
+          build: ${{ inputs.build }}
