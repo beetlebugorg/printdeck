@@ -8,25 +8,27 @@ project: printdeck
 
 parts:
   # The Slate v4 (FDM): the case in navy PLA (roll-3), the base in orange PLA (roll-2). No part
-  # needs supports. The seam goes to the sharpest corner, on the inside.
+  # needs supports. The seam goes to the sharpest corner, on the inside. Each part has a 5 mm brim
+  # (10 lines of the 0.5 mm nozzle), so its corners stay down on the bed.
   - name: Slate frame
     files: [lulzbot/stl/slate/fdm/slate-frame_fdm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-3
-    settings: &pod {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner}
+    settings: &slate {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
+                      adhesion_type: brim, brim_line_count: 10}
   - name: Slate body
     files: [lulzbot/stl/slate/fdm/slate-body_fdm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-3
-    settings: *pod
+    settings: *slate
   - name: Slate base
     files: [lulzbot/stl/slate/fdm/slate-base_fdm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-2
-    settings: *pod
+    settings: *slate
 
   # The Slate v4 (resin): the case is one part. Paint is an option in place of colored resin.
   - name: Slate case (resin)
@@ -46,7 +48,7 @@ parts:
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
-    settings: *pod
+    settings: &pod {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner}
   - name: Camera clamp (TAZ)
     files: [lulzbot/stl/pod/fdm/camera-clamp-taz_fdm.stl]
     printer: taz

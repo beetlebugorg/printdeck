@@ -64,7 +64,8 @@ TAZ Workhorse SE.
 
 1. Turn supports off. No part needs supports.
 2. Set **Z Seam Alignment** to **Sharpest Corner** and **Seam Corner Preference** to **Hide Seam**.
-3. Use no brim. The foot of the base is a large first layer.
+3. Use a brim of 5 mm (10 lines of the 0.5 mm nozzle) on each part, so that the corners stay down on
+   the bed.
 
 ## Hardware
 
