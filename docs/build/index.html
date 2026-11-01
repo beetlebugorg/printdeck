@@ -46,6 +46,18 @@
 <a href="../desktop/film/">The film tools</a>
 <a href="../apps/">iPhone and Apple Watch</a>
 <a href="../apps/relay/">The push relay</a>
+<div class="group">Architecture</div>
+<a href="../architecture/">The document</a>
+<span class="sub"><a href="../architecture/overview/">1 Overview</a></span>
+<span class="sub"><a href="../architecture/identity-and-trust/">2 Identity and trust</a></span>
+<span class="sub"><a href="../architecture/passkey-flows/">3 Passkey flows</a></span>
+<span class="sub"><a href="../architecture/why-it-is-secure/">4 Why it is secure</a></span>
+<span class="sub"><a href="../architecture/the-data-of-a-print/">5 The data of a print</a></span>
+<span class="sub"><a href="../architecture/builds-from-github/">6 Builds from GitHub</a></span>
+<span class="sub"><a href="../architecture/the-print-queue/">7 The print queue</a></span>
+<span class="sub"><a href="../architecture/the-apps/">8 The apps</a></span>
+<span class="sub"><a href="../architecture/updates/">9 Updates</a></span>
+<span class="sub"><a href="../architecture/api-routes/">A API routes</a></span>
 <div class="group">Build and release</div>
 <a href="../build/" aria-current="page">Build and release</a>
 <div class="group">Reference</div>
@@ -120,7 +132,7 @@ the stack and staple it in the fold.</code></pre>
 <h3>This site</h3>
 <p>Printdeck: write the documentation site in docs/ (<a href="https://beetlebug.org/printdeck/">https://beetlebug.org/printdeck/</a>).</p>
 <p>The pages come from the files of the repository, so the site follows them:</p>
-<p>README.md, ARCHITECTURE.md, os/README.md, printer/README.md, slicer/README.md, slicer/cura-plugin/README.md, deck/internal/klipper/PORTING.md, desktop/meshes/README.md, watch/README.md, cloud/relay/README.md, lulzbot/README.md, lulzbot/stl/pod/README.md                                    the text of the pages lulzbot/stl/pod/                                             the print files of the pod docs/manual/index.html, docs/manual/wide/index.html          the screens of the deck deck/cmd/printdeck/*.go, deck/internal/config/config.go, os/board/, .github/workflows/, the build scripts              the reference pages</p>
+<p>README.md, ARCHITECTURE.md, os/README.md, printer/README.md, slicer/README.md, slicer/cura-plugin/README.md, deck/internal/klipper/PORTING.md, desktop/meshes/README.md, watch/README.md, cloud/relay/README.md, lulzbot/README.md, lulzbot/stl/pod/README.md                                    the text of the pages docs/specs/printdeck-architecture.html                       the architecture pages lulzbot/stl/pod/                                             the print files of the pod docs/manual/index.html, docs/manual/wide/index.html          the screens of the deck deck/cmd/printdeck/*.go, deck/internal/config/config.go, os/board/, .github/workflows/, the build scripts              the reference pages</p>
 <p>Run it after docs/manual/build.sh or docs/cura/build.sh, after pod.py export, and after a change to a README. It needs only Python 3. At the end it checks every link of the site, and stops with an error for a link that goes nowhere.</p>
 <p>docs/build.py</p>
 

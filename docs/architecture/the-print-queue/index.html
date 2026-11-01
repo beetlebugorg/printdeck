@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The print queue · Printdeck</title>
+<meta name="description" content="Printdeck architecture, chapter 7: the queue of a deck, files from slicers, plates of builds, what a project sees.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The pod</a>
+<a href="../../hardware/print/">Print the pod</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/setup/" aria-current="page">Tall</a><a href="../../ui/wide/setup/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../../ui/phone/">Your iPhone and Apple Watch</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/">The film tools</a>
+<a href="../../apps/">iPhone and Apple Watch</a>
+<a href="../../apps/relay/">The push relay</a>
+<div class="group">Architecture</div>
+<a href="../../architecture/">The document</a>
+<span class="sub"><a href="../../architecture/overview/">1 Overview</a></span>
+<span class="sub"><a href="../../architecture/identity-and-trust/">2 Identity and trust</a></span>
+<span class="sub"><a href="../../architecture/passkey-flows/">3 Passkey flows</a></span>
+<span class="sub"><a href="../../architecture/why-it-is-secure/">4 Why it is secure</a></span>
+<span class="sub"><a href="../../architecture/the-data-of-a-print/">5 The data of a print</a></span>
+<span class="sub"><a href="../../architecture/builds-from-github/">6 Builds from GitHub</a></span>
+<span class="sub"><a href="../../architecture/the-print-queue/" aria-current="page">7 The print queue</a></span>
+<span class="sub"><a href="../../architecture/the-apps/">8 The apps</a></span>
+<span class="sub"><a href="../../architecture/updates/">9 Updates</a></span>
+<span class="sub"><a href="../../architecture/api-routes/">A API routes</a></span>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/">Commands</a>
+<a href="../../reference/environment/">Environment variables</a>
+<a href="../../reference/files/">Files, paths and services</a>
+<a href="../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">The manual</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Architecture · Chapter 7</p>
+<h1>The print queue</h1>
+<p class="lede">Each deck keeps a queue of files. The queue never starts a print: at the end of each print the deck asks, and a press on its touch screen starts the next file.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#the-queue-of-a-deck">7.1 The queue of a deck</a></li><li><a href="#files-from-the-slicers">7.2 Files from the slicers</a></li><li><a href="#plates-of-the-builds">7.3 Plates of the builds</a></li><li><a href="#what-a-project-sees">7.4 What a project sees</a></li></ol></nav><svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#3b3b3b"/></marker>
+<marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#3b3b3b"/></marker>
+<marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#e8762b"/></marker>
+<marker id="ahar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#e8762b"/></marker>
+<marker id="ahs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#9a958f"/></marker>
+<marker id="ahsr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#9a958f"/></marker>
+</defs></svg>
+<div class="arch">
+<h2 id="the-queue-of-a-deck"><span class="n">7.1</span> The queue of a deck</h2>
+<p>The deck keeps the queue in <code>queue.json</code> of its state folder (<code>internal/queue</code>), with at most 50 files. A file has its path, its name, its project, its material and color, the print time of the slicer, and where it came from: the deck, a slicer, or a build.</p>
+<ul>
+<li><b>At the end of a print.</b> When the printer goes from a print to no print and the queue has files, the deck asks on each screen: Next, with Start, Skip and Later. Start runs the same material check as Print. Skip takes the file out, and asks for the next one. The paired phones get the push message Next in the queue, with the name, the material, the time, and what to do before Start.</li>
+<li><b>The Queue page.</b> Machine has a Queue page: the files in their order with their material and time, and the total time. A tap on a file starts it, moves it to the front or up, or takes it out.</li>
+<li><b>The file page.</b> Queue adds the file to the end of the queue, also during a print.</li>
+</ul>
+
+<h2 id="files-from-the-slicers"><span class="n">7.2</span> Files from the slicers</h2>
+<ul>
+<li><b>Cura and the TAZ.</b> A file that Cura sends with print during a print goes to the queue, and the upload gets 201 with no start. When the queue has files and the printer is free, the deck asks on its screens: print it now, add it to the queue, or start the queue.</li>
+<li><b>ChiTuBox and the Phenom.</b> A press on Print in ChiTuBox during a print adds the file to the queue, and ChiTuBox gets an answer that names the queue. With files in the queue, the deck asks on its screen. No start from ChiTuBox reaches the board then: only a press on the deck sends M6030. A queued resin file has the print time of its header.</li>
+<li><b>Reprint on the Phenom</b> uses the file on the board. The key of the history is not a file: with it, the deck says that it does not know the file.</li>
+</ul>
+
+<h2 id="plates-of-the-builds"><span class="n">7.3</span> Plates of the builds</h2>
+<p>On the build page, an approved FDM plate has Send to for each printer of its process (<code>POST …/plates/&lt;n&gt;/send</code>). The service keeps an index entry in <code>printers/&lt;id&gt;-plates/</code>. Each minute, the deck of the printer reads its plates (<code>GET printers/&lt;id&gt;/plates</code>, signed links), downloads each file into <code>builds/</code> of its G-code folder, checks the size and the SHA-256, adds it to its queue with the names of its parts and its project, and says so (<code>POST printers/&lt;id&gt;/plates/taken</code>). The build page then says that the plate is in the queue.</p>
+
+<h2 id="what-a-project-sees"><span class="n">7.4</span> What a project sees</h2>
+<p>The deck reports its queue at each change and each 2 minutes (<code>POST printers/&lt;id&gt;/queue</code>): the files of projects of the service, each with its place and the estimate of its start after the print now and the files before it. The service keeps the files of each project in the project. A project sees its own files, their places and their starts, and not the other files. The owner also gets the state of each printer, with a project or not (<code>GET printers</code>, <code>live</code>): the print, its progress and time left, the last result, and the count and the time of the files of the queue.</p>
+</div>
+<p class="arch-next"><a class="btn" href="../builds-from-github/">Back: 6 Builds from GitHub</a><a class="btn" href="../">Contents</a><a class="btn" href="../the-apps/">Next: 8 The apps</a></p>
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

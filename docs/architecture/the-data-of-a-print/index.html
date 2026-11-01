@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The data of a print · Printdeck</title>
+<meta name="description" content="Printdeck architecture, chapter 5: FDM and resin: live tile, share page, project record, notes, photos, the project page, the 3D view.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The pod</a>
+<a href="../../hardware/print/">Print the pod</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/setup/" aria-current="page">Tall</a><a href="../../ui/wide/setup/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../../ui/phone/">Your iPhone and Apple Watch</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/">The film tools</a>
+<a href="../../apps/">iPhone and Apple Watch</a>
+<a href="../../apps/relay/">The push relay</a>
+<div class="group">Architecture</div>
+<a href="../../architecture/">The document</a>
+<span class="sub"><a href="../../architecture/overview/">1 Overview</a></span>
+<span class="sub"><a href="../../architecture/identity-and-trust/">2 Identity and trust</a></span>
+<span class="sub"><a href="../../architecture/passkey-flows/">3 Passkey flows</a></span>
+<span class="sub"><a href="../../architecture/why-it-is-secure/">4 Why it is secure</a></span>
+<span class="sub"><a href="../../architecture/the-data-of-a-print/" aria-current="page">5 The data of a print</a></span>
+<span class="sub"><a href="../../architecture/builds-from-github/">6 Builds from GitHub</a></span>
+<span class="sub"><a href="../../architecture/the-print-queue/">7 The print queue</a></span>
+<span class="sub"><a href="../../architecture/the-apps/">8 The apps</a></span>
+<span class="sub"><a href="../../architecture/updates/">9 Updates</a></span>
+<span class="sub"><a href="../../architecture/api-routes/">A API routes</a></span>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/">Commands</a>
+<a href="../../reference/environment/">Environment variables</a>
+<a href="../../reference/files/">Files, paths and services</a>
+<a href="../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">The manual</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Architecture · Chapter 5</p>
+<h1>The data of a print</h1>
+<p class="lede">A deck sends a print to up to three places: the live tile of its project, the share page, and the project record at the end.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#an-fdm-print-on-printdeck">5.1 An FDM print on printdeck</a></li><li><a href="#a-resin-print-on-resindeck">5.2 A resin print on resindeck</a></li><li><a href="#the-print-page-names-notes-and-delivery">5.3 The print page: names, notes and delivery</a></li><li><a href="#the-photo-viewer">5.4 The photo viewer</a></li><li><a href="#the-project-page">5.5 The project page</a></li><li><a href="#the-3d-view-of-a-print">5.6 The 3D view of a print</a></li></ol></nav><svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#3b3b3b"/></marker>
+<marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#3b3b3b"/></marker>
+<marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#e8762b"/></marker>
+<marker id="ahar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#e8762b"/></marker>
+<marker id="ahs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#9a958f"/></marker>
+<marker id="ahsr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#9a958f"/></marker>
+</defs></svg>
+<div class="arch">
+<h2 id="an-fdm-print-on-printdeck"><span class="n">5.1</span> An FDM print on printdeck</h2>
+<figure id="figure-16"><svg class="d" viewBox="0 0 680 294" width="100%" role="img" aria-label="The data of an FDM print" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="14" width="130" height="46" rx="6" class="bx"/><text x="71.0" y="35.5" class="b " text-anchor="middle" style="font-size:12px">Cura</text><text x="71.0" y="49.5" class="s " text-anchor="middle" style="font-size:10px">upload, Print</text><line x1="71" y1="60" x2="71" y2="108" class="ln" marker-end="url(#ah)"/><rect x="73.0" y="80.0" width="69.2" height="12" class="lbg"/><text x="76.0" y="88.0" class="s" text-anchor="start" style="font-size:9px">OctoPrint API</text><rect x="6" y="108" width="130" height="84" rx="6" class="bx acc"/><text x="71.0" y="135.5" class="b " text-anchor="middle" style="font-size:12px">printdeck</text><text x="71.0" y="149.5" class="s " text-anchor="middle" style="font-size:10px">Klipper prints</text><text x="71.0" y="162.5" class="s " text-anchor="middle" style="font-size:10px">history, time lapse,</text><text x="71.0" y="175.5" class="s " text-anchor="middle" style="font-size:10px">camera, model picture</text><rect x="188" y="14" width="214" height="60" rx="6" class="bx"/><text x="295.0" y="36.0" class="b " text-anchor="middle" style="font-size:12px">Live tile</text><text x="295.0" y="50.0" class="s " text-anchor="middle" style="font-size:10px"><tspan class="m">x/&lt;id&gt;/live/&lt;slot&gt;.json</tspan></text><text x="295.0" y="63.0" class="s " text-anchor="middle" style="font-size:10px">a print in a project: each minute</text><rect x="188" y="106" width="214" height="88" rx="6" class="bx"/><text x="295.0" y="129.0" class="b " text-anchor="middle" style="font-size:12px">Share</text><text x="295.0" y="143.0" class="s " text-anchor="middle" style="font-size:10px">after a tap on Make the link</text><text x="295.0" y="156.0" class="s " text-anchor="middle" style="font-size:10px"><tspan class="m">status.json</tspan> each 5 s, camera frames</text><text x="295.0" y="169.0" class="s " text-anchor="middle" style="font-size:10px"><tspan class="m">lapse/&lt;n&gt;.jpg</tspan>, <tspan class="m">model.jpg</tspan>, <tspan class="m">plan.json</tspan></text><text x="295.0" y="182.0" class="s " text-anchor="middle" style="font-size:10px">under <tspan class="m">s/&lt;id&gt;/</tspan></text><rect x="188" y="226" width="214" height="62" rx="6" class="bx"/><text x="295.0" y="249.0" class="b " text-anchor="middle" style="font-size:12px">Print record</text><text x="295.0" y="263.0" class="s " text-anchor="middle" style="font-size:10px"><tspan class="m">x/&lt;id&gt;/prints/&lt;print&gt;.json</tspan> + files</text><text x="295.0" y="276.0" class="s " text-anchor="middle" style="font-size:10px">at the end, after the video (≤ 10 min)</text><path d="M136,128 L162,128 L162,44 L188,44" class="ln nofill" marker-end="url(#ah)"/><line x1="136" y1="150" x2="188" y2="150" class="ln" marker-end="url(#ah)"/><path d="M136,172 L162,172 L162,257 L188,257" class="ln nofill" marker-end="url(#ah)"/><rect x="456" y="14" width="218" height="60" rx="6" class="bx"/><text x="565.0" y="36.0" class="b " text-anchor="middle" style="font-size:12px">Project page</text><text x="565.0" y="50.0" class="s " text-anchor="middle" style="font-size:10px"><tspan class="m">/projects/&lt;slug&gt;</tspan></text><text x="565.0" y="63.0" class="s " text-anchor="middle" style="font-size:10px">owner and members (passkey)</text><rect x="456" y="106" width="218" height="88" rx="6" class="bx"/><text x="565.0" y="135.5" class="b " text-anchor="middle" style="font-size:12px">Share page <tspan class="m">/s/&lt;id&gt;</tspan></text><text x="565.0" y="149.5" class="s " text-anchor="middle" style="font-size:10px">anyone with the link</text><text x="565.0" y="162.5" class="s " text-anchor="middle" style="font-size:10px">polls <tspan class="m">status.json</tspan>, <tspan class="m">ready.json</tspan></text><text x="565.0" y="175.5" class="s " text-anchor="middle" style="font-size:10px">owner key: Ready and photos</text><rect x="456" y="226" width="218" height="62" rx="6" class="bx"/><text x="565.0" y="249.0" class="b " text-anchor="middle" style="font-size:12px">Print page</text><text x="565.0" y="263.0" class="s " text-anchor="middle" style="font-size:10px"><tspan class="m">/projects/&lt;slug&gt;/&lt;n&gt;</tspan></text><text x="565.0" y="276.0" class="s " text-anchor="middle" style="font-size:10px">public copy <tspan class="m">/p/&lt;slug&gt;/&lt;n&gt;</tspan> if on</text><line x1="402" y1="44" x2="456" y2="44" class="ln" marker-end="url(#ah)"/><line x1="402" y1="150" x2="456" y2="150" class="ln" marker-end="url(#ah)"/><line x1="402" y1="257" x2="456" y2="257" class="ln" marker-end="url(#ah)"/><line x1="565" y1="194" x2="565" y2="226" class="ln acc dash" marker-end="url(#aha)"/><rect x="410.2" y="206.0" width="151.8" height="12" class="lbg"/><text x="559.0" y="214.0" class="s" text-anchor="end" style="font-size:9px">after the share ends: redirect</text></svg>
+<figcaption><b>Figure 16.</b> The data of an FDM print. Each arrow into the middle column is a signed request and uploads with a grant.</figcaption></figure>
+<ol>
+<li><b>Upload.</b> Cura sends the G-code through the OctoPrint API of the deck. The Printdeck plugin can also pick the project of the next prints.</li>
+<li><b>Live tile.</b> For a print in a project, the deck looks at the state each 15 seconds. It sends the progress each minute, and at once at the start, at a pause and at the end. The API keeps one record for each printer: <code>x/&lt;project&gt;/live/&lt;slot&gt;.json</code>. The project page hides a tile with no update for 5 minutes.</li>
+<li><b>Share page.</b> After a tap on Make the link, the deck uploads <code>status.json</code> every 5 seconds with the newest camera frames. It also uploads each new time lapse frame, the picture of the model (at most each 15 seconds), and <code>plan.json</code> once. The page polls <code>status.json</code> and <code>ready.json</code>. The status files have a cache time of 2 to 5 seconds.</li>
+<li><b>End of the share.</b> At the end of the print, the deck tells the API. The share stays for 24 hours.</li>
+<li><b>Project record.</b> The deck waits for the time lapse video, for at most 10 minutes. Then it sends the print record, the picture of the model, the plan and the time lapse frames to <code>x/&lt;project&gt;/prints/&lt;print&gt;/</code>. The print gets the next number in the project. The photos of the share go to the print.</li>
+<li><b>Move.</b> When the share ends, the sweep deletes its files. Its page then sends visitors to the print page <code>/projects/&lt;slug&gt;/&lt;n&gt;</code>, or to the public page when the project has one.</li>
+</ol>
+
+<h2 id="a-resin-print-on-resindeck"><span class="n">5.2</span> A resin print on resindeck</h2>
+<p>The flow to the cloud is the same. The source of the data is different. The ChiTu board reports the bytes of the file that it read. So the deck reads its own copy of the sliced file for the layers and the pictures.</p>
+<figure id="figure-17"><svg class="d" viewBox="0 0 680 264" width="100%" role="img" aria-label="The data of a resin print" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="14" width="112" height="52" rx="6" class="bx"/><text x="62.0" y="32.0" class="b " text-anchor="middle" style="font-size:12px">ChiTuBox</text><text x="62.0" y="46.0" class="s " text-anchor="middle" style="font-size:10px">M28, data, M29</text><text x="62.0" y="59.0" class="s " text-anchor="middle" style="font-size:10px">M6030 start</text><rect x="160" y="8" width="170" height="64" rx="6" class="bx acc"/><text x="245.0" y="25.5" class="b " text-anchor="middle" style="font-size:12px">Relay on resindeck</text><text x="245.0" y="39.5" class="s " text-anchor="middle" style="font-size:10px">answers each data packet</text><text x="245.0" y="52.5" class="s " text-anchor="middle" style="font-size:10px">keeps the whole file</text><text x="245.0" y="65.5" class="s " text-anchor="middle" style="font-size:10px"><tspan class="m">resin-files/</tspan> copy</text><rect x="372" y="8" width="150" height="64" rx="6" class="bx"/><text x="447.0" y="25.5" class="b " text-anchor="middle" style="font-size:12px">Upload to the board</text><text x="447.0" y="39.5" class="s " text-anchor="middle" style="font-size:10px">one packet at a time</text><text x="447.0" y="52.5" class="s " text-anchor="middle" style="font-size:10px">resends on error</text><text x="447.0" y="65.5" class="s " text-anchor="middle" style="font-size:10px">then M6030 starts</text><rect x="564" y="8" width="110" height="64" rx="6" class="bx tint"/><text x="619.0" y="32.0" class="b " text-anchor="middle" style="font-size:12px">Phenom board</text><text x="619.0" y="46.0" class="s " text-anchor="middle" style="font-size:10px">prints the file</text><text x="619.0" y="59.0" class="s " text-anchor="middle" style="font-size:10px">from its storage</text><line x1="118" y1="40" x2="160" y2="40" class="ln" marker-end="url(#ah)"/><rect x="128.7" y="26.0" width="20.6" height="12" class="lbg"/><text x="139.0" y="34.0" class="s" text-anchor="middle" style="font-size:9px">UDP</text><line x1="330" y1="40" x2="372" y2="40" class="ln" marker-end="url(#ah)"/><line x1="522" y1="40" x2="564" y2="40" class="ln" marker-end="url(#ah)"/><rect x="532.7" y="26.0" width="20.6" height="12" class="lbg"/><text x="543.0" y="34.0" class="s" text-anchor="middle" style="font-size:9px">UDP</text><rect x="6" y="114" width="156" height="66" rx="6" class="bx"/><text x="84.0" y="132.8" class="b " text-anchor="middle" style="font-size:11px">Header numbers</text><text x="84.0" y="146.2" class="s " text-anchor="middle" style="font-size:9.5px">exposure, lift, speeds</text><text x="84.0" y="158.8" class="s " text-anchor="middle" style="font-size:9.5px">→ share page list</text><text x="84.0" y="171.2" class="s " text-anchor="middle" style="font-size:9.5px">→ layer cycle</text><rect x="176" y="114" width="156" height="66" rx="6" class="bx"/><text x="254.0" y="132.8" class="b " text-anchor="middle" style="font-size:11px">Plan</text><text x="254.0" y="146.2" class="s " text-anchor="middle" style="font-size:9.5px">seconds of each layer</text><text x="254.0" y="158.8" class="s " text-anchor="middle" style="font-size:9.5px">→ <tspan class="m">plan.json</tspan></text><text x="254.0" y="171.2" class="s " text-anchor="middle" style="font-size:9.5px">→ print record</text><rect x="346" y="114" width="156" height="66" rx="6" class="bx"/><text x="424.0" y="132.8" class="b " text-anchor="middle" style="font-size:11px">Layer picture</text><text x="424.0" y="146.2" class="s " text-anchor="middle" style="font-size:9.5px">the layer that cures</text><text x="424.0" y="158.8" class="s " text-anchor="middle" style="font-size:9.5px">→ live tile</text><text x="424.0" y="171.2" class="s " text-anchor="middle" style="font-size:9.5px">picture</text><rect x="516" y="114" width="156" height="66" rx="6" class="bx"/><text x="594.0" y="132.8" class="b " text-anchor="middle" style="font-size:11px">Part cells</text><text x="594.0" y="146.2" class="s " text-anchor="middle" style="font-size:9.5px"><tspan class="m">chitu.Coverage</tspan></text><text x="594.0" y="158.8" class="s " text-anchor="middle" style="font-size:9.5px">→ <tspan class="m">part.bin</tspan></text><text x="594.0" y="171.2" class="s " text-anchor="middle" style="font-size:9.5px">→ 3D view</text><path d="M245,72 L245,96 L84,96 L84,114" class="ln soft nofill" marker-end="url(#ahs)"/><line x1="254" y1="96" x2="254" y2="114" class="ln soft" marker-end="url(#ahs)"/><line x1="424" y1="96" x2="424" y2="114" class="ln soft" marker-end="url(#ahs)"/><line x1="594" y1="96" x2="594" y2="114" class="ln soft" marker-end="url(#ahs)"/><path d="M245,96 L594,96" class="ln soft nofill"/><text x="6.0" y="210.0" class="cap" text-anchor="start" style="font-size:9px">Progress</text><rect x="6" y="218" width="668" height="40" rx="6" class="bx tint"/><text x="340.0" y="242.5" class="s " text-anchor="middle" style="font-size:10px">The deck asks the board M4000 and M27. Progress is the bytes that the board read, divided by the size of the file.</text></svg>
+<figcaption><b>Figure 17.</b> The data of a resin print. The relay keeps a copy of each upload, and the copy gives the numbers, the plan, the layer pictures and the cells.</figcaption></figure>
+<ul>
+<li><b>Numbers.</b> The header of the file has the exposure, the bottom layers, the lift and the speeds. The share page lists each number, and it plays the cycle of one layer in step with the printer: light, lift, return and rest.</li>
+<li><b>Live tile.</b> The picture on the tile is the layer that the printer cures now. The deck uploads a new picture when the layer changes.</li>
+<li><b>3D view.</b> The deck makes <code>part.bin</code> once for a share, and the share page draws the part in 3D.</li>
+<li><b>Restart of the deck.</b> A resin print continues through a restart of resindeck, because the board prints the file. The share continues too: the deck saves the share to <code>share-resume.json</code> in its state folder every 30 seconds, and loads it after the start when it has no share.</li>
+<li><b>One tile.</b> When the live tile of a deck names its share, an older open share of the same deck shows no tile on the project page.</li>
+</ul>
+<h3>The cells of <code>part.bin</code></h3>
+<figure id="figure-18"><svg class="d" viewBox="0 0 680 86" width="100%" role="img" aria-label="From the sliced file to the 3D view" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="6" width="100" height="74" rx="6" class="bx"/><text x="56.0" y="35.3" class="b " text-anchor="middle" style="font-size:11px">Layers</text><text x="56.0" y="48.5" class="s " text-anchor="middle" style="font-size:9.2px">of the <tspan class="m">.cbddlp</tspan></text><text x="56.0" y="60.7" class="s " text-anchor="middle" style="font-size:9.2px">copy on the deck</text><line x1="106" y1="43" x2="119" y2="43" class="ln" marker-end="url(#ah)"/><rect x="119.6" y="6" width="100" height="74" rx="6" class="bx"/><text x="169.6" y="29.2" class="b " text-anchor="middle" style="font-size:11px">Cells</text><text x="169.6" y="42.4" class="s " text-anchor="middle" style="font-size:9.2px">4 × 4 pixels, and</text><text x="169.6" y="54.6" class="s " text-anchor="middle" style="font-size:9.2px">layers of about</text><text x="169.6" y="66.8" class="s " text-anchor="middle" style="font-size:9.2px">the same height</text><line x1="219.6" y1="43" x2="232.6" y2="43" class="ln" marker-end="url(#ah)"/><rect x="233.2" y="6" width="100" height="74" rx="6" class="bx"/><text x="283.2" y="35.3" class="b " text-anchor="middle" style="font-size:11px">Value</text><text x="283.2" y="48.5" class="s " text-anchor="middle" style="font-size:9.2px">0 to 255: the share</text><text x="283.2" y="60.7" class="s " text-anchor="middle" style="font-size:9.2px">of lit pixels</text><line x1="333.2" y1="43" x2="346.2" y2="43" class="ln" marker-end="url(#ah)"/><rect x="346.79999999999995" y="6" width="100" height="74" rx="6" class="bx"/><text x="396.8" y="35.3" class="b " text-anchor="middle" style="font-size:11px">Pack</text><text x="396.8" y="48.5" class="s " text-anchor="middle" style="font-size:9.2px"><tspan class="m">PDC1</tspan> runs,</text><text x="396.8" y="60.7" class="s " text-anchor="middle" style="font-size:9.2px">then gzip</text><line x1="446.79999999999995" y1="43" x2="459.79999999999995" y2="43" class="ln" marker-end="url(#ah)"/><rect x="460.4" y="6" width="100" height="74" rx="6" class="bx"/><text x="510.4" y="29.2" class="b " text-anchor="middle" style="font-size:11px">Upload</text><text x="510.4" y="42.4" class="s " text-anchor="middle" style="font-size:9.2px"><tspan class="m">s/&lt;id&gt;/part.bin</tspan></text><text x="510.4" y="54.6" class="s " text-anchor="middle" style="font-size:9.2px">about 4 MB for a</text><text x="510.4" y="66.8" class="s " text-anchor="middle" style="font-size:9.2px">full plate, ≤ 16 MB</text><line x1="560.4" y1="43" x2="573.4" y2="43" class="ln" marker-end="url(#ah)"/><rect x="574.0" y="6" width="100" height="74" rx="6" class="bx acc"/><text x="624.0" y="29.2" class="b " text-anchor="middle" style="font-size:11px">Browser</text><text x="624.0" y="42.4" class="s " text-anchor="middle" style="font-size:9.2px">unpacks it; surface</text><text x="624.0" y="54.6" class="s " text-anchor="middle" style="font-size:9.2px">where the share</text><text x="624.0" y="66.8" class="s " text-anchor="middle" style="font-size:9.2px">crosses one half</text></svg>
+<figcaption><b>Figure 18.</b> From the sliced file to the 3D view. Format <code>PDC1</code>: the cell size in mm, the slice height, W, H and D, then for each slice the runs of a value and a count.</figcaption></figure>
+<p>A cell is 4 × 4 pixels of the screen, and a stack of layers of about the same height. Its value is the share of its pixels in all its layers that are lit, from 0 to 255. The page puts the surface where the share crosses one half. So an edge sits at its true place inside the cell, and the view is as fine as the slices. The file is the mirror of the screen for a printer with projector 1, as the slicer shows the part. A full plate gives about 4 MB. When the upload of <code>part.bin</code> fails, the share continues, and the deck tries again after 10 minutes. <code>part.bin</code> stays with the share only. The project record has no 3D cells.</p>
+
+<h2 id="the-print-page-names-notes-and-delivery"><span class="n">5.3</span> The print page: names, notes and delivery</h2>
+<p>People change some fields of a print on the pages. These fields stay when the deck sends the print again (<code>Title</code> and <code>pageFields</code> of <code>PrintRecord</code>). Each change uses <code>PATCH projects/&lt;id&gt;/prints/&lt;print&gt;</code>. A deck gets 401 on this route.</p>
+<ul>
+<li><b>Rename.</b> The owner can give a print a title of up to 120 characters. The pages show the title in place of the name from the deck, and the name from the deck under it. A title that is the same as the name clears the title.</li>
+<li><b>Notes.</b> The owner and the members write notes on a print, and on the project with <code>PATCH projects/&lt;id&gt;/notes</code>. Notes have at most 4000 characters. The record keeps the name of the last writer and the time.</li>
+<li><b>Test print.</b> The owner marks a print as a test print: a print to try a setting or a fit, and not to give. The API records the time. A test print is not in the card Ready for pickup.</li>
+<li><b>Ready for pickup.</b> The owner marks a print Ready for pickup on its page, before Delivered, and the API records the time.</li>
+<li><b>Delivered.</b> The owner marks a print Delivered, and the API records the time. The owner can also clear the mark.</li>
+<li><b>Source.</b> The owner sets a link to the source of the model, for example a file of a commit on GitHub. The link must be an <code>http</code> or <code>https</code> address with a host, of at most 500 characters.</li>
+<li><b>Ready from a share.</b> When the owner of a share marks it Ready, the API copies the time and the note to the print of the share in its project. A clear of Ready also clears the mark on the print. The API also copies the mark when a share joins a project later.</li>
+</ul>
+<p>The print page shows "Delivered" with the day. Before the delivery, it shows the Ready mark when the print has one. A tile has the badge Test, Ready to pick up, or Delivered with the date. A member can change the notes only. The other fields get 401 for a member.</p>
+<p><b>Photos from a phone.</b> The photos of a project and of a print have Take photos on a phone: the camera opens, and after each photo goes up, Take another photo opens it again. A photo that does not go up does not stop the others.</p>
+
+<h2 id="the-photo-viewer"><span class="n">5.4</span> The photo viewer</h2>
+<p><code>assets/lightbox.js</code> shows a photo at full size over the page. The app pages, the share page and the public pages use it. A link with <code>data-photo</code> in a photo grid opens the viewer.</p>
+<ul>
+<li>Previous and Next go through the photos of the same grid. The arrow keys do the same, and Escape closes the viewer.</li>
+<li>Each photo has an address: the address of the page with <code>#photo=&lt;id&gt;</code>. Copy link copies it. An open of that address shows the page with the photo over it.</li>
+<li>A tap on a photo adds its address to the history of the browser, so Back closes the viewer. Full size opens the file in a new tab.</li>
+</ul>
+<p>The fragment does not go to the server. A person with the address of a photo also needs access to the page: a passkey of the project, the share link, or a public page.</p>
+
+<h2 id="the-project-page"><span class="n">5.5</span> The project page</h2>
+<p>The page <code>/projects/&lt;slug&gt;</code> is the home of a project. Its head shows the name, the start of the project, the circles of its people, and links to the repository and the public page. Tabs lead to the other parts. Each tab has its own address. A tap changes the tab with no new load of the project.</p>
+<div class="table-wrap"><table>
+<thead><tr><th style="width:18%">Tab</th><th style="width:30%">Address</th><th>What it shows</th></tr></thead>
+<tbody>
+<tr><td>Overview</td><td><code>/projects/&lt;slug&gt;</code></td><td>What happens now, the numbers, the chart, the newest prints, the feed, and a column of cards (<a href="#figure-19">Figure 19</a>).</td></tr>
+<tr><td>Prints</td><td><code>/projects/&lt;slug&gt;/prints</code></td><td>All the prints, with a chip for each printer, and chips for the prints ready for pickup, the delivered prints (the newest delivery first) and the test prints.</td></tr>
+<tr><td>Photos</td><td><code>/projects/&lt;slug&gt;/photos</code></td><td>All the photos, and Add photos.</td></tr>
+<tr><td>Builds</td><td><code>/projects/&lt;slug&gt;/plans</code></td><td>All the plans and their builds. The tab shows only for a project with a repository.</td></tr>
+<tr><td>Settings</td><td><code>/projects/&lt;slug&gt;/settings</code></td><td>The repository, the printers, the friends with their GitHub usernames, the public address, and Delete.</td></tr>
+</tbody></table></div>
+<figure id="figure-19"><svg class="d" viewBox="0 0 680 330" width="100%" role="img" aria-label="The overview of the project page" xmlns="http://www.w3.org/2000/svg">
+<text x="6" y="20" class="b" style="font-size:15px">Bittlex</text>
+<text x="6" y="36" class="s" style="font-size:9.5px">Since Oct 2 · 3 people</text>
+<circle cx="604" cy="20" r="9" class="dot acc"/><circle cx="620" cy="20" r="9" class="dot"/><circle cx="636" cy="20" r="9" class="dot acc"/>
+<rect x="560" y="32" width="114" height="14" rx="7" class="bx"/><text x="617" y="42" class="s" text-anchor="middle" style="font-size:8px">owner/repository</text>
+<text x="6" y="64" class="b" style="font-size:10px">Overview</text><text x="70" y="64" class="s" style="font-size:10px">Prints</text><text x="120" y="64" class="s" style="font-size:10px">Photos</text><text x="174" y="64" class="s" style="font-size:10px">Builds</text><text x="226" y="64" class="s" style="font-size:10px">Settings</text>
+<line x1="6" y1="70" x2="674" y2="70" class="ln soft"/><line x1="6" y1="70" x2="56" y2="70" class="ln acc"/>
+<rect x="6" y="78" width="250" height="18" rx="9" class="bx accfill"/><text x="16" y="91" class="s" style="font-size:9px">● Printing Cover on the TAZ · 63% · done 4:32 PM</text>
+<rect x="262" y="78" width="150" height="18" rx="9" class="bx"/><text x="272" y="91" class="s" style="font-size:9px">1 plate waits for you</text>
+<rect x="6" y="102" width="668" height="34" rx="6" class="hdr"/>
+<text x="16" y="116" class="cap" style="font-size:8px">PRINTS</text><text x="184" y="116" class="cap" style="font-size:8px">PRINT TIME</text><text x="352" y="116" class="cap" style="font-size:8px">FILAMENT</text><text x="520" y="116" class="cap" style="font-size:8px">SUCCESS</text>
+<text x="16" y="130" class="b" style="font-size:10px">14</text><text x="184" y="130" class="b" style="font-size:10px">54:42</text><text x="352" y="130" class="b" style="font-size:10px">373 g</text><text x="520" y="130" class="b" style="font-size:10px">86%</text>
+<rect x="6" y="144" width="420" height="44" rx="6" class="bx"/><text x="16" y="160" class="b" style="font-size:10px">Printing now</text><text x="16" y="176" class="s" style="font-size:9px">the picture, the bar, the layer, the time left</text>
+<rect x="6" y="194" width="420" height="52" rx="6" class="bx"/><text x="16" y="210" class="b" style="font-size:10px">The last 12 weeks</text>
+<rect x="200" y="226" width="10" height="12" class="dot acc"/><rect x="230" y="220" width="10" height="18" class="dot acc"/><rect x="260" y="230" width="10" height="8" class="dot"/><rect x="290" y="214" width="10" height="24" class="dot acc"/><rect x="320" y="222" width="10" height="16" class="dot acc"/>
+<text x="16" y="226" class="s" style="font-size:9px">hours of each week;</text><text x="16" y="238" class="s" style="font-size:9px">grams of each material</text>
+<rect x="6" y="252" width="420" height="34" rx="6" class="bx"/><text x="16" y="268" class="b" style="font-size:10px">Recent prints</text><text x="16" y="280" class="s" style="font-size:9px">the 4 newest tiles · All prints →</text>
+<rect x="6" y="292" width="420" height="34" rx="6" class="bx"/><text x="16" y="308" class="b" style="font-size:10px">What happened</text><text x="16" y="320" class="s" style="font-size:9px">prints, photos, plans, slices, approvals, notes, by day</text>
+<rect x="434" y="144" width="240" height="34" rx="6" class="bx accfill"/><text x="444" y="160" class="b" style="font-size:10px">Waiting for you</text><text x="444" y="172" class="s" style="font-size:9px">plates to approve, plans to slice</text>
+<rect x="434" y="184" width="240" height="46" rx="6" class="bx"/><text x="444" y="200" class="b" style="font-size:10px">GitHub</text><text x="444" y="212" class="s" style="font-size:9px">main, and each pull request with</text><text x="444" y="223" class="s" style="font-size:9px">the steps Plan · Slice · Approve</text>
+<rect x="434" y="236" width="240" height="22" rx="6" class="bx"/><text x="444" y="251" class="b" style="font-size:10px">Printers <tspan class="s" style="font-size:9px">printing or idle</tspan></text>
+<rect x="434" y="264" width="240" height="22" rx="6" class="bx"/><text x="444" y="279" class="b" style="font-size:10px">People <tspan class="s" style="font-size:9px">Edit: invite, remove, GitHub</tspan></text>
+<rect x="434" y="292" width="116" height="34" rx="6" class="bx"/><text x="444" y="312" class="b" style="font-size:10px">Notes</text>
+<rect x="558" y="292" width="116" height="34" rx="6" class="bx"/><text x="568" y="312" class="b" style="font-size:10px">Photos</text>
+</svg>
+<figcaption><b>Figure 19.</b> The overview of the project page on a wide screen. On a narrow screen the cards make one column, and Waiting for you and Printing now come first.</figcaption></figure>
+<ul>
+<li><b>The line of what happens now</b> names the print that prints, with its share and the time of its end, or the time of the last print. It also counts the plates that wait for the owner and the open pull requests. Each item is a link.</li>
+<li><b>The numbers</b> are the prints, the print time, the filament and the share of the prints that finished.</li>
+<li><b>The chart</b> shows the hours of print of each of the last 12 weeks: the finished prints, with the stopped prints over them. A bar under it shows the grams of each material, in the color of the filament.</li>
+<li><b>The feed</b> shows the 12 newest events, with a heading for each day: the end of a print, Ready and Delivered, the photos of one person on one day, the plans, the slices, the approvals, the rejections and the notes.</li>
+<li><b>The GitHub card</b> shows the newest plan of main and each open pull request, with its author and the state of its three steps: Plan, Slice and Approve.</li>
+<li><b>The printers card</b> shows each printer of the project: printing with its share, paused, or idle with the time of its last print. A deck from before the printers sends its live print with no printer ID. Its row then has the name of the printer from the deck.</li>
+<li><b>The card Ready for pickup</b> shows each print that waits, with small pictures of its photos (else of its model), the time of the mark, and Delivered for the owner. It links to the delivered prints.</li>
+<li><b>The card In the queue</b> shows the files of the project in the queues of the printers: the printer, the place and the estimate of the start (<a href="../the-print-queue/#what-a-project-sees">section 7.4</a>). The line of what happens now gives the start of the next file.</li>
+<li><b>The tiles</b> of the prints with photos have small pictures of up to three photos in a corner.</li>
+<li><b>The People card</b> shows the owner, the members with their GitHub usernames, and the invites that wait. The owner taps Edit to set a GitHub username, remove a member, cancel an invite, or make an invite.</li>
+</ul>
+<p>The page reads the project again each minute, or each 30 seconds while a print prints. It draws the line of what happens now and the printers at each read. It draws the other cards again only when the prints, the photos, the plans or the notes change, so the pictures do not load again. The pages have the cache rule <code>no-cache</code>: after a deploy, the next load gets the new page.</p>
+<p><b>The head of the project.</b> The name, the people, the links and the tabs are over each page of a project: the overview, a print, a printer, the plans, a plan and a build. The tab of the page is marked.</p>
+
+<h2 id="the-3d-view-of-a-print"><span class="n">5.6</span> The 3D view of a print</h2>
+<p>The deck uploads the G-code of an FDM print with gzip, as <code>print.gcode.gz</code>: once for the share (up to 15 MB after gzip), and with the print at its end. The share page and the print page draw it with the G-code viewer of the build page (<code>viewer3d.js</code>, <code>showGcode</code>) in a compact mode with no controls. A print with no G-code shows the picture of the model from the deck.</p>
+<ul>
+<li><b>The layers.</b> The layers that printed have the colors of Cura. The later layers are a faint ghost. Each mesh of moves has a twin with the moves in the reverse order, so a step of the print only changes two counts.</li>
+<li><b>The nozzle.</b> A hot end (the tip, the hex and the heater block) at the move that prints now, drawn over the part with an orange edge.</li>
+<li><b>The sync with the printer.</b> The status of the share has <code>pos</code>: the byte of the file that Klipper reads. The viewer keeps the byte of each move, puts the nozzle at the move of that byte, and goes on at the speeds of the G-code until the next status. It starts 1.5 s behind, because Klipper reads ahead of the nozzle. With no byte, the viewer uses the time of the layer.</li>
+<li><b>The camera view.</b> The status can also have <code>view</code>: a 3 × 4 matrix from the G-code coordinates to the frames of the time lapse. The deck makes it from the calibration of the camera with the bed at the park, the turn of the frames, and the crop to the part (<code>composeView</code>). The view then has the shape of the frames, and Turn freely gives the view that turns. The deck sends the view only with a calibration of the towers (<code>BedY</code>): a calibration of the nozzle on a printer with a bed that moves in Y has no direction of Y. The page also ignores a matrix that makes the edge of the part in Y shorter than a tenth of its other edges.</li>
+</ul>
+<p>On a wide screen the numbers of a share are across the full width, and the model and the time lapse are side by side under them, with the same height. On a phone the numbers come first.</p>
+<p><b>The picture of a record.</b> A print record keeps the size and the modification time of its file at the end of the print. A slicer can send another file under the same name later. The deck draws no picture of a record when its file changed.</p>
+</div>
+<p class="arch-next"><a class="btn" href="../why-it-is-secure/">Back: 4 Why it is secure</a><a class="btn" href="../">Contents</a><a class="btn" href="../builds-from-github/">Next: 6 Builds from GitHub</a></p>
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why it is secure · Printdeck</title>
+<meta name="description" content="Printdeck architecture, chapter 4: each control, where the code has it, and the limits.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+<input type="checkbox" id="menu">
+<header class="top">
+  <a class="brand" href="../../"><span class="lcd">PRINTDECK</span><span class="docs">DOCS</span></a>
+  <label class="menu-btn" for="menu">Contents</label>
+  <nav class="top-links"><a href="https://beetlebug.org/projects/printdeck/">Project page</a><a href="https://github.com/beetlebugorg/printdeck">GitHub</a><a href="https://github.com/beetlebugorg/printdeck/releases/latest">Download</a></nav>
+</header>
+<div class="layout">
+<aside class="side"><nav><a href="../../">Overview</a>
+<div class="group">Hardware</div>
+<a href="../../hardware/">The pod</a>
+<a href="../../hardware/print/">Print the pod</a>
+<div class="group">The deck UI</div>
+<div class="switch"><a href="../../ui/setup/" aria-current="page">Tall</a><a href="../../ui/wide/setup/">Wide</a></div>
+<a href="../../ui/">The screens</a>
+<span class="sub"><a href="../../ui/setup/">Set up</a></span>
+<span class="sub"><a href="../../ui/meet/">Meet your Printdeck</a></span>
+<span class="sub"><a href="../../ui/print/">Print a part</a></span>
+<span class="sub"><a href="../../ui/phone/">Your iPhone and Apple Watch</a></span>
+<span class="sub"><a href="../../ui/filament/">Change the filament</a></span>
+<span class="sub"><a href="../../ui/move/">Move and heat</a></span>
+<span class="sub"><a href="../../ui/calibrate/">Level and calibrate</a></span>
+<span class="sub"><a href="../../ui/care/">Look after the printer</a></span>
+<span class="sub"><a href="../../ui/problems/">When something goes wrong</a></span>
+<div class="group">Software</div>
+<a href="../../os/">Printdeck OS</a>
+<a href="../../deck/">The printdeck program</a>
+<a href="../../deck/klipper/">The Klipper host</a>
+<a href="../../deck/printer/">The reference printer</a>
+<a href="../../deck/remote/">Remote screen and API</a>
+<a href="../../slicer/cura-plugin/">The Cura plugin</a>
+<a href="../../slicer/adaptive-speed/">Adaptive Speed</a>
+<a href="../../desktop/">Desktop app and simulator</a>
+<a href="../../desktop/film/">The film tools</a>
+<a href="../../apps/">iPhone and Apple Watch</a>
+<a href="../../apps/relay/">The push relay</a>
+<div class="group">Architecture</div>
+<a href="../../architecture/">The document</a>
+<span class="sub"><a href="../../architecture/overview/">1 Overview</a></span>
+<span class="sub"><a href="../../architecture/identity-and-trust/">2 Identity and trust</a></span>
+<span class="sub"><a href="../../architecture/passkey-flows/">3 Passkey flows</a></span>
+<span class="sub"><a href="../../architecture/why-it-is-secure/" aria-current="page">4 Why it is secure</a></span>
+<span class="sub"><a href="../../architecture/the-data-of-a-print/">5 The data of a print</a></span>
+<span class="sub"><a href="../../architecture/builds-from-github/">6 Builds from GitHub</a></span>
+<span class="sub"><a href="../../architecture/the-print-queue/">7 The print queue</a></span>
+<span class="sub"><a href="../../architecture/the-apps/">8 The apps</a></span>
+<span class="sub"><a href="../../architecture/updates/">9 Updates</a></span>
+<span class="sub"><a href="../../architecture/api-routes/">A API routes</a></span>
+<div class="group">Build and release</div>
+<a href="../../build/">Build and release</a>
+<div class="group">Reference</div>
+<a href="../../reference/commands/">Commands</a>
+<a href="../../reference/environment/">Environment variables</a>
+<a href="../../reference/files/">Files, paths and services</a>
+<a href="../../reference/hardware/">Hardware lists</a>
+<div class="group">Manuals and booklets</div>
+<a href="../../manual/">The manual</a>
+<a href="../../manual/wide/">Manual, wide display</a>
+<a href="../../cura/">Cura plugin booklet</a></nav></aside>
+<main>
+<p class="eyebrow">Architecture · Chapter 4</p>
+<h1>Why it is secure</h1>
+<p class="lede">Each row names one threat, the control that stops it, and the place in the code. Section 4.2 gives the limits.</p>
+<nav class="onpage"><b>On this page</b><ol><li><a href="#the-controls">4.1 The controls</a></li><li><a href="#the-limits">4.2 The limits</a></li></ol></nav><svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#3b3b3b"/></marker>
+<marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#3b3b3b"/></marker>
+<marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#e8762b"/></marker>
+<marker id="ahar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#e8762b"/></marker>
+<marker id="ahs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#9a958f"/></marker>
+<marker id="ahsr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 z" fill="#9a958f"/></marker>
+</defs></svg>
+<div class="arch">
+<h2 id="the-controls"><span class="n">4.1</span> The controls</h2>
+<div class="table-wrap"><table>
+<thead><tr><th style="width:21%">Threat</th><th>Control</th><th style="width:21%">Where</th></tr></thead>
+<tbody>
+<tr><td>A phishing site gets a sign-in</td><td>A passkey works only for the RP ID <code>printdeck.beetlebug.org</code>. The browser puts the true origin in the signed client data. The API refuses another origin. A site at another domain cannot get a valid assertion.</td><td><code>auth.go</code> <code>webAuthn()</code>: <code>RPID</code>, <code>RPOrigins</code></td></tr>
+<tr><td>A leak of the stored credentials</td><td>The bucket keeps public keys of passkeys and decks. It keeps no password, no email address and no private key of a person or a deck. A public key cannot sign in.</td><td><code>Passkey</code>, <code>Deck</code></td></tr>
+<tr><td>A guessed or reused code</td><td>Enrollment codes work for 1 hour, owner codes for 10 minutes, invites for 7 days. Each works once: the API deletes it at use. Codes have about 59 bits, invites 128 bits.</td><td><code>useCode</code>, <code>join</code>, <code>joinWith</code>, <code>CodeTTL</code>, <code>OwnerCodeTTL</code>, <code>InviteTTL</code></td></tr>
+<tr><td>A read of the code files</td><td>The bucket keeps only the SHA-256 of each code and invite, as the name of its file. Lifecycle rules delete <code>codes/</code> after 1 day and <code>invites/</code> after 8 days as a second guard.</td><td><code>codeKey</code>, <code>inviteHash</code>, <code>template.yaml</code></td></tr>
+<tr><td>A changed ceremony state</td><td>The state has an HMAC with the purpose "ceremony", an expiry of 5 minutes, and the purpose of the flow. The state of an invite has the hash of its code.</td><td><code>sealCeremony</code>, <code>openCeremony</code></td></tr>
+<tr><td>A forged session</td><td>The token has an HMAC with the purpose "session" and a key that only the API reads. A ceremony state does not open as a session.</td><td><code>seal</code>, <code>open</code>, <code>session</code></td></tr>
+<tr><td>A long-lived session</td><td>A session works for 12 hours. The page keeps it in <code>sessionStorage</code>. A member session fails at once on a project when the owner removes the member from it.</td><td><code>SessionTTL</code>, <code>whoFor</code></td></tr>
+<tr><td>Cross-site requests</td><td>The token goes in the <code>Authorization</code> header. The service uses no cookies, so a form on another site sends no session.</td><td><code>session</code>, <code>app.go</code></td></tr>
+<tr><td>A copied authenticator</td><td>The API stores the signature counter after each sign-in. The library marks a clone warning when the counter does not go up.</td><td><code>login/finish</code></td></tr>
+<tr><td>A member reads too much</td><td>A member session has the projects of the passkey. For each request on a project, the API finds the member in that project and checks that the project still has the member. Owner actions need an owner. A member removes only their own photos.</td><td><code>whoFor</code>, <code>ownerOnly</code>, <code>deletePhoto</code></td></tr>
+<tr><td>Script injection on the pages</td><td>The CSP allows scripts only from the site and WebAssembly. Pages cannot be framed. The headers add HSTS (1 year), <code>nosniff</code>, <code>DENY</code> frames and no referrer.</td><td><code>template.yaml</code> <code>Headers</code></td></tr>
+<tr><td>A large or wrong upload</td><td>Grants limit the key prefix, the size and the time. The API body limit is 64 KB. Photos are decoded and written again with no EXIF data.</td><td><code>S3Granter.Grant</code>, <code>maxBody</code>, <code>CleanPhoto</code></td></tr>
+<tr><td>A forged deck request</td><td>Each request has an Ed25519 signature of the method, path, time, request ID and body hash. The time must be within 5 minutes.</td><td><code>cloud.Verify</code>, <code>Server.deck</code></td></tr>
+<tr><td>A guessed address</td><td>Share and project IDs have 13 random bytes. A missing share or file shows the same "not found" page.</td><td><code>newID</code>, <code>CustomErrorResponses</code></td></tr>
+<tr><td>A person reads the files of another project</td><td>CloudFront serves <code>/x/*</code> only with a valid signed cookie. The policy of a cookie names one project, and the cookie path is that project. The API signs cookies only for projects that the session can see. The files have the same origin as the pages, so reads need no CORS, and CloudFront can keep them in its edge cache.</td><td><code>filecookie.go</code>, <code>template.yaml</code> <code>/x/*</code></td></tr>
+<tr><td>A forged token of an Action</td><td>The API checks the RS256 signature with the keys of GitHub (JWKS), the issuer <code>https://token.actions.githubusercontent.com</code>, the audience (the host name of the service) and the expiry, with 1 minute of leeway. The token must have the claim <code>repository</code>.</td><td><code>GitHubOIDC.Verify</code>, <code>buildClaims</code></td></tr>
+<tr><td>A token used twice</td><td>The API writes <code>oidc/&lt;sha256&gt;</code> of the <code>jti</code> with a conditional write. A second use gets 401. The Action asks for a new token for each request.</td><td><code>useToken</code>, <code>tokenKey</code>, <code>template.yaml</code> <code>oidc-tokens</code></td></tr>
+<tr><td>A repository writes to another project</td><td>The repository of the token selects the project through <code>repos/&lt;owner&gt;/&lt;name&gt;.json</code>, and the project must still name it. Only the owner sets the link. A plan or a build of another repository gets 403.</td><td><code>projectOfRepo</code>, <code>setRepo</code>, <code>actionBuild</code>, <code>planDone</code></td></tr>
+<tr><td>A changed workflow fills a build</td><td>Each request on <code>/api/v1/builds/</code> needs <code>job_workflow_ref</code> of <code>.github/workflows/printdeck.yml</code> on main or master. A copy on a branch or in a pull request gets 403. It can only send a plan.</td><td><code>sliceRun</code>, <code>SliceWorkflow</code></td></tr>
+<tr><td>A fork sends a plan</td><td>The token of a fork names the fork. The owner of the fork must be a member who joined, with the GitHub username that the owner set. This check needs no call to GitHub. Then the App must find an open pull request into the repository of the project, from that branch, with the commit of the token as its head. A fork never fills a build.</td><td><code>forkProject</code>, <code>OpenPull</code>, <code>planDone</code></td></tr>
+<tr><td>A profile runs code in the slice run</td><td><code>curaslice.py</code> parses each formula of a profile, and checks each node of its syntax tree against a list. A formula can use only constants, names, operators, the functions of Cura and <code>math</code>, and <code>index</code> or <code>count</code> on a list of constants. A name or a string with <code>__</code> fails. The formula then runs with no built-ins.</td><td><code>check_formula</code>, <code>safe_attribute</code></td></tr>
+<tr><td>A large upload of the Action</td><td>The grant of a plan or a build has one folder, 200 MB for each file, and 1 hour. Done checks that each named file is in the folder. Each file of a build has its size and SHA-256 in the record.</td><td><code>MaxBuildFile</code>, <code>newPlan</code>, <code>buildFiles</code>, <code>buildDone</code></td></tr>
+<tr><td>A member slices or approves</td><td>Only the owner makes a build, and approves or rejects a plate. A member sees the plans and the builds with no keys.</td><td><code>newBuild</code>, <code>decidePlate</code>, <code>ownerOnly</code></td></tr>
+<tr><td>A leak of the token of the App</td><td>Each installation token works for one repository, with only the permissions of its call: Actions (write) to start a slice run, or Pull requests (read) to find a pull request. Both also have Metadata (read). The App JWT ends after 9 minutes. The private key is in Secrets Manager.</td><td><code>installationToken</code>, <code>Dispatch</code>, <code>OpenPull</code></td></tr>
+<tr><td>A bad link to a source</td><td>The source of a print must be an <code>http</code> or <code>https</code> address with a host, of at most 500 characters. Only the owner sets it.</td><td><code>editPrint</code></td></tr>
+<tr><td>A public bucket</td><td>The bucket blocks public access and encrypts at rest. CloudFront reads only the listed keys with OAC. It reads the print files, the photo pictures, the live pictures, the plan models and the build files under <code>x/</code> only when the stack has the key of the file cookies, and never the JSON records. The function has get, put, delete and list on this bucket only.</td><td><code>template.yaml</code></td></tr>
+<tr><td>The app or the queue starts a resin print</td><td>The API of the resin deck refuses uploads, each start and each resume with 409. Its printer for the API does nothing on PrintFile and Resume. A start from ChiTuBox during a print goes to the queue, and with files in the queue the deck asks on its screen. Only a press on the touch screen sends M6030 or a resume.</td><td><code>octoapi.Server.Resin</code>, <code>resinAPIPrinter</code>, <code>ChiTu.RequestStart</code></td></tr>
+<tr><td>A project sees another project's prints</td><td>The service keeps the queued files of each project in the project (<code>x/&lt;project&gt;/queue/</code>). The state of each printer (<code>printers/&lt;id&gt;-live.json</code>) goes only to <code>GET printers</code>, which only the owner and the decks get.</td><td><code>setQueue</code>, <code>projectQueued</code>, <code>routePrinters</code></td></tr>
+<tr><td>A changed file of a plate</td><td>The deck checks the size and the SHA-256 of a plate file against the build record before it adds the file to its queue.</td><td><code>downloadPlate</code></td></tr>
+<tr><td>A deck writes for another deck</td><td>The queue, the state and the plates of a printer need a request of the deck of that printer.</td><td><code>deckPrinter</code>, <code>setQueue</code></td></tr>
+<tr><td>A changed update file</td><td>A deck installs only a bundle with an Ed25519 signature of <code>SHA256SUMS</code> by the release key. The debug image also accepts an unsigned bundle.</td><td><code>deck/internal/system/sign.go</code></td></tr>
+</tbody></table></div>
+
+<h3>The CSP of the pages</h3>
+<p><code style="font-size:7.8pt;line-height:1.6">default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://&lt;bucket&gt;; connect-src 'self' https://&lt;bucket&gt;; frame-ancestors 'none'; base-uri 'none'; form-action 'self'</code></p>
+<p>The pages have no inline scripts. <code>wasm-unsafe-eval</code> lets the page compile its own WebAssembly. <code>connect-src</code> allows the bucket, for the upload grants, and for the signed S3 links of a stack with no cookie key. The files of the projects come from <code>'self'</code>.</p>
+
+<h2 id="the-limits"><span class="n">4.2</span> The limits</h2>
+<p>These limits come from the code as it is. Each one has a reason or a way to act.</p>
+<div class="box" style="break-inside:auto;box-decoration-break:clone;-webkit-box-decoration-break:clone">
+<ul>
+<li><b>A stolen session token works until it expires.</b> The API keeps no list of sessions. An owner token works for up to 12 hours. Sign out clears the token only on the page. To end all sessions, replace <code>keys/session</code>. A running instance of the function keeps the old key in memory until it stops.</li>
+<li><b>The device of the owner holds the owner passkey.</b> A person who can unlock that device, or the account that syncs its passkeys, can sign in as the owner. User verification is "preferred", so an authenticator with no PIN or biometric can also sign in.</li>
+<li><b>An owner passkey has no remove action in the API.</b> To remove one, the operator deletes its file in <code>owners/</code>.</li>
+<li><b>A deck holds owner rights.</b> A signed deck request has the rights of the owner in the project API. A deck can also ask for an owner code. A person with the SD card of a deck has its key. A person who can use the touch screen, or the remote screen of the deck, can make an owner code. Use <code>pwf decks remove</code> after the loss of a card.</li>
+<li><b>The counter is a signal.</b> The API stores the counter and the clone warning of the library, but it does not refuse a sign-in with the warning. Synced passkeys often report a counter of 0, and then the check does not apply.</li>
+<li><b>A ceremony state can be sent again.</b> The API keeps no list of used challenges. The same state and assertion can give a second session within the 5 minutes of the state. TLS protects both.</li>
+<li><b>The replay check of deck requests is partial.</b> Each function instance keeps its own list of request IDs. The signature, the 5-minute window and TLS remain.</li>
+<li><b>Links are bearer secrets.</b> A person with a share link sees the print until the share ends. A person with an invite link can join in place of the friend, until somebody uses it or it expires. A person with an invite link and their own member passkey can join with that passkey. The owner can remove a member that joined in that way.</li>
+<li><b>A member passkey opens all its projects.</b> A person who can unlock the device of a friend sees each project that the friend joined. To end that access, the owner removes the member from each project.</li>
+<li><b>The AWS credentials of the owner are above all other keys.</b> <code>pwf</code> uses them on the computer of the owner. A person with them can make enrollment codes, read <code>keys/session</code> and change the stack. Keep that computer and its AWS profile safe.</li>
+<li><b>A file cookie works for up to one hour.</b> A member that the owner removes keeps the cookies of the project until they expire. The API refuses the member at once, but CloudFront checks only the signature and the time.</li>
+<li><b>Fixed: a file cookie opened the JSON records.</b> Before commit 71fae88, the bucket policy let CloudFront read all of <code>x/*</code>. A member with the cookie of a project could read <code>project.json</code>, with the names of the open invites and the SHA-256 of their codes. Now CloudFront reads only the print files, the photo pictures and the live pictures. The JSON records stay with the API.</li>
+<li><b>The key of the file cookies is in Secrets Manager.</b> The role of the function and the AWS credentials of the owner can read it. A person with it can sign cookies for any project.</li>
+<li><b>Share links are public.</b> <a href="../identity-and-trust/#share-links-and-the-owner-key">Section 2.5</a> explains this choice and its protections.</li>
+<li><b>The bucket is the root of trust.</b> <code>keys/session</code> is in the bucket. A person who can read the bucket can make session tokens. Only the operator and the function have access.</li>
+<li><b>The function URL has no AWS auth.</b> A request can go to the Lambda URL past CloudFront. The API checks the auth of each request in the same way. The CloudFront headers do not apply there, and the API replies only JSON.</li>
+<li><b>The remote screen of a deck uses plain HTTP.</b> Its password protects it on the home network only.</li>
+<li><b>A deck holds owner rights for the builds too.</b> A signed deck request can link a repository, slice a plan, and approve or reject a plate.</li>
+<li><b>The slice run reads the files of the plan commit.</b> A plan can come from the head commit of a pull request, also from a fork. The slice run checks out that commit and reads its <code>printdeck.yml</code> and <code>profiles/</code>. Each formula of a profile passes the check of its syntax tree (<a href="#the-controls">section 4.1</a>), and then runs with Python <code>eval</code> and no built-ins. The check is a list of the parts of Python that Cura uses. It is not a sandbox of the process. Look at the changes to <code>profiles/</code> before a slice of a pull request.</li>
+<li><b>The models of a fork come from the run of the fork.</b> The <code>generate</code> step of a fork runs in the fork, so its STL files are not proof of the CAD source. Look at each part in the 3D view of the plan page, and at each plate in the preview of the build page, before an approval.</li>
+<li><b>A member's GitHub username is the key of a fork.</b> The owner types it. A wrong username lets that GitHub user send the plans of their open pull requests. Check each username.</li>
+<li><b>A slice token works for each build of its repository.</b> The API checks the repository of a build only. The spec also asks for a check of the commit.</li>
+<li><b>The workflow rule names main and master.</b> <code>sliceRun</code> accepts only these two branches. The App starts the workflow on the default branch of the repository. A repository with another default branch gets 403 on each request of its slice run.</li>
+<li><b>Each workflow of the repository can send a plan.</b> A copy of the workflow on any branch, with <code>id-token: write</code>, can send a plan. The plan page shows its parts and models to the owner and the members. A fork can send a plan only for an open pull request of a member.</li>
+<li><b>The slice run needs the GitHub App.</b> When the stack has no secret <code>&lt;stack&gt;-github-app</code>, the service cannot start a slice run. The build page then shows the owner a <code>gh workflow run</code> command to run by hand.</li>
+<li><b>The estimates of the queue are rough.</b> A start time is the time left of the print now, the print times of the slicer of the files before it, and 10 minutes for each change of a part.</li>
+<li><b>The Apple team ID is public.</b> The association file of the app and each signed app have it. It is not a key.</li>
+<li><b>Plans and builds have no expiry.</b> They stay until the owner deletes the project. The spec gives 30 days for test builds and 1 GB for a build, and the code has neither.</li>
+</ul>
+</div>
+</div>
+<p class="arch-next"><a class="btn" href="../passkey-flows/">Back: 3 Passkey flows</a><a class="btn" href="../">Contents</a><a class="btn" href="../the-data-of-a-print/">Next: 5 The data of a print</a></p>
+</main>
+</div>
+<footer>Printdeck is free software (AGPL-3.0). <a href="https://github.com/beetlebugorg/printdeck/blob/main/docs/build.py">docs/build.py</a> writes this site from the files of the repository.</footer>
+</body>
+</html>

@@ -8,6 +8,7 @@ The pages come from the files of the repository, so the site follows them:
   deck/internal/klipper/PORTING.md, desktop/meshes/README.md,
   watch/README.md, cloud/relay/README.md, lulzbot/README.md,
   lulzbot/stl/pod/README.md                                    the text of the pages
+  docs/specs/printdeck-architecture.html                       the architecture pages
   lulzbot/stl/pod/                                             the print files of the pod
   docs/manual/index.html, docs/manual/wide/index.html          the screens of the deck
   deck/cmd/printdeck/*.go, deck/internal/config/config.go,
@@ -438,6 +439,61 @@ ol.steps li::before { content: counter(step); font: 700 15px var(--mono); color:
 .layout-switch a { padding: 3px 12px; border: 2px solid var(--ink); border-radius: 99px; color: var(--ink); text-decoration: none; }
 .layout-switch a[aria-current] { background: var(--ink); color: var(--paper); }
 
+/* The architecture document. The diagrams have the colors of the print, so they go on white. */
+.arch h2 .n, .arch-toc .n { color: var(--orange); margin-right: 4px; }
+.arch h3 { text-transform: none; letter-spacing: .02em; color: var(--ink); }
+.arch li::marker { color: var(--orange); }
+.arch table { font-size: 14px; }
+.arch td:first-child { font-size: 13px; }
+.arch td.c, .arch th.c { text-align: center; }
+.arch td ul { padding-left: 18px; }
+.arch .yes { color: var(--orange); font-weight: 700; }
+.arch .no { color: var(--edge); }
+.arch .small { font-size: 14px; color: var(--dim); }
+.arch .box { border-left: 6px solid var(--orange); padding: 8px 14px; margin: 14px 0 18px; background: var(--plate); border-radius: 0 8px 8px 0; max-width: 76ch; }
+.arch .box.gray { border-left-color: var(--edge); }
+.arch .box p:last-child, .arch .box ul:last-child { margin-bottom: 0; }
+.arch code[style] { font-size: 13px !important; }
+.arch figure { margin: 20px 0 26px; padding: 16px; background: #fff; border: 2px solid var(--edge); border-radius: 10px; overflow-x: auto; }
+.arch figcaption { font-size: 14px; color: #55524e; margin-top: 10px; max-width: 76ch; }
+.arch figcaption b { color: #2a2a2a; font-weight: 600; }
+.arch figcaption code { background: #f0ede8; color: #2a2a2a; }
+.arch-toc { list-style: none; padding: 0; margin: 8px 0 24px; max-width: 76ch; }
+.arch-toc li { display: grid; grid-template-columns: minmax(0, 15em) minmax(0, 1fr); gap: 4px 16px; padding: 8px 0; border-bottom: 2px solid var(--edge); margin: 0; max-width: none; }
+.arch-toc a { font-weight: 600; }
+.arch-toc .d { color: var(--dim); font-size: 14px; }
+.arch-next { margin-top: 40px; padding-top: 16px; border-top: 2px solid var(--edge); }
+svg.d { display: block; min-width: 560px; overflow: visible; }
+svg.d text { font-family: "Inter", var(--sans); font-size: 11px; fill: #2a2a2a; }
+svg.d text.b { font-weight: 600; }
+svg.d text.s { fill: #5d5954; }
+svg.d text.w, svg.d text.s.w { fill: #fff; }
+svg.d text.m, svg.d tspan.m { font-family: var(--mono); }
+svg.d text.cap { font-weight: 600; letter-spacing: .8px; fill: #8a857f; }
+svg.d text.acc-t, svg.d .acc-t { fill: #e8762b; }
+svg.d .bx { fill: #fff; stroke: #b9b3ac; stroke-width: 1; }
+svg.d .bx.acc { stroke: #e8762b; stroke-width: 1.5; }
+svg.d .bx.tint { fill: #f5f3f0; stroke: #cfc9c2; }
+svg.d .bx.accfill { fill: #fdf1e7; stroke: #e8762b; }
+svg.d .bx.dash { stroke-dasharray: 4 3; }
+svg.d .hdr { fill: #f5f3f0; }
+svg.d .hdr.acc { fill: #fdf1e7; }
+svg.d .zone { fill: none; stroke: #cfc9c2; stroke-width: 1; stroke-dasharray: 5 4; }
+svg.d .ln { stroke: #3b3b3b; stroke-width: 1.2; fill: none; }
+svg.d .ln.acc { stroke: #e8762b; stroke-width: 1.5; }
+svg.d .ln.soft { stroke: #9a958f; }
+svg.d .ln.dash { stroke-dasharray: 4 3; }
+svg.d .ln.dot { stroke-dasharray: 1.5 2.5; stroke-width: 1.4; }
+svg.d .life { stroke: #cfc9c2; stroke-width: 1; stroke-dasharray: 3 3; }
+svg.d .sep { stroke: #e8762b; stroke-width: .8; stroke-dasharray: 2 3; }
+svg.d .lbg { fill: #fff; }
+svg.d .note { fill: #fdf1e7; stroke: #f2c39f; stroke-width: .8; }
+svg.d .badge { fill: #e8762b; }
+svg.d .badge-t { fill: #fff; font-size: 8.5px; font-weight: 700; }
+svg.d .dot { fill: #3b3b3b; }
+svg.d .dot.acc { fill: #e8762b; }
+svg.d .nofill { fill: none; }
+
 @media (max-width: 899px) {
   .layout { grid-template-columns: 1fr; gap: 0; }
   .side { position: static; max-height: none; padding: 8px 0 0; display: none; border-bottom: 2px solid var(--edge); }
@@ -450,6 +506,9 @@ ol.steps li::before { content: counter(step); font: 700 15px var(--mono); color:
   .manual figure { grid-template-columns: minmax(0, 1fr); }
   .manual .frame { max-width: 440px; }
   .manual.wide ol.parts { columns: 1; }
+  .arch-toc li { grid-template-columns: 1fr; }
+  .arch .table-wrap table { min-width: 560px; }
+  .arch td code { overflow-wrap: anywhere; }
 }
 @media (max-width: 520px) { .stats, .pics.four { grid-template-columns: 1fr 1fr; } .stats b { font-size: 15px; } }
 """
@@ -499,6 +558,8 @@ def nav_html(current, root, wide):
                       ("The Cura plugin", "slicer/cura-plugin/"), ("Adaptive Speed", "slicer/adaptive-speed/"),
                       ("Desktop app and simulator", "desktop/"), ("The film tools", "desktop/film/"),
                       ("iPhone and Apple Watch", "apps/"), ("The push relay", "apps/relay/")]),
+        ("Architecture", [("The document", "architecture/")] +
+         [(f"{n} {t}", f"architecture/{f}/") for n, t, f, _, _, _ in arch_chapters()[3]]),
         ("Build and release", [("Build and release", "build/")]),
         ("Reference", [("Commands", "reference/commands/"), ("Environment variables", "reference/environment/"),
                        ("Files, paths and services", "reference/files/"), ("Hardware lists", "reference/hardware/")]),
@@ -520,7 +581,7 @@ def nav_html(current, root, wide):
             out.append(f'<div class="switch"><a href="{tall_href}"{cur_tall}>Tall</a><a href="{wide_href}"{cur_wide}>Wide</a></div>')
         for title, path in items:
             cur = ' aria-current="page"' if path == current else ""
-            cls = ' class="sub"' if name == "The deck UI" and path != "ui/" else ""
+            cls = ' class="sub"' if name in ("The deck UI", "Architecture") and path not in ("ui/", "architecture/") else ""
             out.append(f'<span{cls}><a href="{root}{path}"{cur}>{esc(title)}</a></span>' if cls else f'<a href="{root}{path}"{cur}>{esc(title)}</a>')
     return "\n".join(out)
 
@@ -631,6 +692,7 @@ def landing():
   <a class="card" href="deck/"><b>The printdeck program</b><span>The Klipper host, the screens and the API.</span></a>
   <a class="card" href="slicer/cura-plugin/"><b>Slicers</b><span>The Cura plugin and the Adaptive Speed script.</span></a>
   <a class="card" href="desktop/"><b>Desktop app and simulator</b><span>The Printdeck on a computer, with a 3D printer.</span></a>
+  <a class="card" href="architecture/"><b>Architecture</b><span>The decks, the cloud service, the passkeys and the builds from GitHub, with diagrams and a PDF.</span></a>
   <a class="card" href="build/"><b>Build and release</b><span>The OS image, the CI, the manuals and this site.</span></a>
   <a class="card" href="reference/commands/"><b>Reference</b><span>Commands, variables, files and hardware lists.</span></a>
 </div>
@@ -870,6 +932,119 @@ def relay_page():
     page("apps/relay/", "Software", "The push relay",
          "An AWS Lambda function that gives the encrypted messages of a deck to the iPhone app through APNs.",
          md("cloud/relay/README.md", root))
+
+
+# --- The architecture document ------------------------------------------------------------------
+# docs/specs/printdeck-architecture.html is one page for print, with a title page, a Contents page
+# and @page rules. docs/architecture/printdeck-architecture.pdf is a print of it. The site has an
+# index and one page for each chapter (<h1>), with the sections (<h2>) and the diagrams.
+
+ARCH_SRC = "docs/specs/printdeck-architecture.html"
+ARCH_PDF = "architecture/printdeck-architecture.pdf"
+
+
+def arch_chapters():
+    """The parts of the document: the hidden SVG with the arrow markers, the title page, the
+    Contents list and its box, and the chapters (number, title, folder, description, lede, HTML)."""
+    src = read(ARCH_SRC)
+    body = src[src.index("<body>") + len("<body>"):src.rindex("</body>")]
+    defs = re.search(r'<svg width="0".*?</svg>', body, re.S).group(0)
+    cover = re.search(r'<section class="cover">.*?</section>', body, re.S).group(0)
+    toc = {m.group(1): m.group(2) for m in
+           re.finditer(r'<li><span class="n">(\w+)</span><span>.*?</span><span class="d">(.*?)</span></li>', body)}
+    parts = re.split(r'<h1><span class="n">(\w+)</span>(.*?)</h1>', body)
+    front = parts[0]
+    box = re.search(r'</div>\s*(<div class="box gray".*?</div>)', front[front.index('class="toc"'):], re.S).group(1)
+    box = box.replace(' style="margin-top:18pt"', "")
+    chapters = []
+    for i in range(1, len(parts), 3):
+        num, title, text = parts[i], parts[i + 1], parts[i + 2].strip()
+        text = re.sub(r"\s*<!-- =+ \w+ -->\s*$", "", text)
+        lede = re.match(r'<p class="lede">(.*?)</p>\s*', text, re.S)
+        if lede:
+            text = text[lede.end():]
+        chapters.append([num, title, slug(re.sub("<[^>]+>", "", title)), toc.get(num, ""),
+                         lede.group(1) if lede else "", text])
+    return defs, cover, box, chapters
+
+
+def arch_screen(text, where, figure_of):
+    """The HTML of a chapter for the site: an id on each section and figure, a link for each
+    "section 5", "section 1.2" and "Figure 3" of the text, and a scroll box around each table. The diagrams
+    (<svg>) stay as they are."""
+    parts = re.split(r"(<svg.*?</svg>|<figcaption>.*?</figcaption>)", text, flags=re.S)
+    for i in range(0, len(parts), 2):
+        t = parts[i]
+        t = re.sub(r"\b([Ss]ection) (\w+(?:\.\d+)?)\b",
+                   lambda m: f'<a href="{where[m.group(2)]}">{m.group(1)} {m.group(2)}</a>' if where.get(m.group(2)) else m.group(0), t)
+        t = re.sub(r"\bFigure (\d+)\b",
+                   lambda m: f'<a href="{figure_of[m.group(1)]}">Figure {m.group(1)}</a>' if m.group(1) in figure_of else m.group(0), t)
+        t = t.replace("<table>", '<div class="table-wrap"><table>').replace("</table>", "</table></div>")
+        parts[i] = t
+    text = "".join(parts)
+    text = re.sub(r'<figure>(?=(?:(?!</figure>).)*?<figcaption><b>Figure (\d+)\.)',
+                  lambda m: f'<figure id="figure-{m.group(1)}">', text, flags=re.S)
+    return re.sub(r'<h2><span class="n">([\w.]+)</span>(.*?)</h2>',
+                  lambda m: f'<h2 id="{slug(re.sub("<[^>]+>", "", m.group(2)))}"><span class="n">{m.group(1)}</span> {m.group(2)}</h2>', text)
+
+
+def architecture_page():
+    from datetime import datetime
+    defs, cover, box, chapters = arch_chapters()
+    # The page and the id of each section and figure, for the links between the chapters.
+    where, figure_of = {}, {}
+    for num, _, folder, _, _, text in chapters:
+        where[num] = f"../{folder}/"
+        for n, t in re.findall(r'<h2><span class="n">([\w.]+)</span>(.*?)</h2>', text):
+            where[n] = f"../{folder}/#{slug(re.sub('<[^>]+>', '', t))}"
+        for n in re.findall(r"<figcaption><b>Figure (\d+)\.", text):
+            figure_of[n] = f"../{folder}/#figure-{n}"
+    for i, (num, title, folder, desc, lede, text) in enumerate(chapters):
+        # A link to the same page needs only the anchor.
+        here = {k: v.replace(f"../{folder}/", "") for k, v in where.items()}
+        figs = {k: v.replace(f"../{folder}/", "") for k, v in figure_of.items()}
+        body = defs + '\n<div class="arch">\n' + arch_screen(text, here, figs) + "\n</div>\n"
+        prev = chapters[i - 1] if i else None
+        nxt = chapters[i + 1] if i + 1 < len(chapters) else None
+        links = []
+        if prev:
+            links.append(f'<a class="btn" href="../{prev[2]}/">Back: {prev[0]} {prev[1]}</a>')
+        links.append('<a class="btn" href="../">Contents</a>')
+        if nxt:
+            links.append(f'<a class="btn" href="../{nxt[2]}/">Next: {nxt[0]} {nxt[1]}</a>')
+        body += '<p class="arch-next">' + "".join(links) + "</p>"
+        eyebrow = f"Architecture · Appendix {num}" if num.isalpha() else f"Architecture · Chapter {num}"
+        page(f"architecture/{folder}/", eyebrow, re.sub("<[^>]+>", "", title), lede, body,
+             description=f"Printdeck architecture, chapter {num}: {re.sub('<[^>]+>', '', desc)}.")
+
+    meta = re.search(r'<div class="meta"><span>(\d+ \w+ \d{4}) · code at commit (\w+)</span>', cover)
+    date = datetime.strptime(meta.group(1), "%d %B %Y")
+    when = f"{date:%B} {date.day}, {date.year}"
+    commit = meta.group(2)
+    art = re.search(r'<div class="art">(.*?)</div>\s*<div class="meta">', cover, re.S).group(1)
+    intro = re.search(r'<div class="rule"></div>\s*<p[^>]*>(.*?)</p>', cover, re.S).group(1)
+    size = (DOCS / ARCH_PDF).stat().st_size / 1e6
+    items = "".join(f'<li><a href="{c[2]}/"><span class="n">{c[0]}</span>{c[1]}</a><span class="d">{c[3]}</span></li>'
+                    for c in chapters)
+    body = f"""
+{defs}
+<div class="arch">
+<p>
+  <a class="btn primary" href="printdeck-architecture.pdf">Download the PDF ({size:.1f} MB)</a>
+  <a class="btn" href="{chapters[0][2]}/">Read it on the site</a>
+</p>
+<p class="note">The document describes the system as of {when}, from the code at commit
+<a href="{REPO}/commit/{commit}"><code>{commit}</code></a>. The short version is
+<a href="{REPO}/blob/main/ARCHITECTURE.md">ARCHITECTURE.md</a> in the repository, and the page
+<a href="../deck/">The printdeck program</a>.</p>
+<figure>{art}</figure>
+<h2 id="chapters">The chapters</h2>
+<ol class="arch-toc">{items}</ol>
+{box}
+</div>
+"""
+    page("architecture/", "Architecture", "Architecture", intro, body, toc=False,
+         description="The architecture of Printdeck: the decks, the cloud service, the passkey sign-in, the builds from GitHub and the updates.")
 
 
 def adaptive_page():
@@ -1287,6 +1462,7 @@ def main():
     film_page()
     apps_page()
     relay_page()
+    architecture_page()
     build_page()
     commands_page()
     environment_page()
