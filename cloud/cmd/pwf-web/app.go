@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall/js"
@@ -62,6 +63,11 @@ func runApp() {
 	on("joinKeyBtn", "click", func() { go a.joinWithPasskey() })
 	on("deleteAccountBtn", "click", func() { go a.deleteAccount() })
 	onSubmit("newForm", func() { go a.newProject() })
+	on("newBtn", "click", func() {
+		setHidden("newForm", false)
+		byID("newName").Call("focus")
+	})
+	on("newCancel", "click", func() { setHidden("newForm", true); say("newMsg", nil, "") })
 	a.bindEdits()
 	a.bindBuilds()
 	a.bindTabs()
@@ -451,10 +457,15 @@ func (a *app) showHome() {
 		a.failed(err)
 		return
 	}
+	// The newest change first.
+	sort.SliceStable(list, func(i, j int) bool { return list[i].Changed.After(list[j].Changed) })
 	box := byID("projects")
 	box.Set("textContent", "")
+	prints, photos := 0, 0
 	for _, p := range list {
-		card := el("a", "pcard", "")
+		prints += p.Prints
+		photos += p.Photos
+		card := el("a", "ptile", "")
 		card.Set("href", "/app#x="+p.ID)
 		if p.Slug != "" {
 			card.Set("href", projectPath(p.Slug, 0))
@@ -463,18 +474,34 @@ func (a *app) showHome() {
 			img := el("img", "", "")
 			img.Set("src", p.Cover)
 			img.Set("alt", "")
+			img.Set("loading", "lazy")
 			card.Call("appendChild", img)
 		} else {
 			card.Call("appendChild", el("div", "ph", ""))
 		}
 		text := el("div", "", "")
 		text.Call("appendChild", el("strong", "", p.Name))
+		if p.Note != "" {
+			text.Call("appendChild", el("p", "note", p.Note))
+		}
 		text.Call("appendChild", el("span", "", summaryLine(p)))
+		if !p.Changed.IsZero() {
+			text.Call("appendChild", el("span", "", "Changed "+p.Changed.Local().Format("Jan 2, 2006")))
+		}
 		card.Call("appendChild", text)
 		box.Call("appendChild", card)
 	}
+	totals := ""
+	if len(list) > 1 {
+		totals = strings.Join([]string{count(len(list), "project", "projects"), count(prints, "print", "prints"),
+			count(photos, "photo", "photos")}, " · ")
+	}
+	setText("homeTotals", totals)
 	setHidden("noProjects", len(list) > 0)
-	setHidden("newForm", a.kind != "owner")
+	owner := a.kind == "owner"
+	setHidden("newBtn", !owner)
+	// An owner with no projects sees the form at once.
+	setHidden("newForm", !owner || len(list) > 0)
 	show("vHome")
 	a.drawPrinterList()
 	a.drawAccount()

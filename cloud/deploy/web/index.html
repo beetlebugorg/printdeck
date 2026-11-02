@@ -85,16 +85,23 @@
 
   <!-- The projects -->
   <section class="view" id="vHome" hidden>
-    <h1>Your projects</h1>
-    <form class="card newproj" id="newForm">
+    <div class="homehead">
+      <div>
+        <h1>Your projects</h1>
+        <p class="dim small" id="homeTotals"></p>
+      </div>
+      <button type="button" id="newBtn" hidden>New project</button>
+    </div>
+    <form class="card newproj" id="newForm" hidden>
       <h2>New project</h2>
       <label class="field">Name<input id="newName" maxlength="80" placeholder="For example: Garden planters" required></label>
       <label class="field">A line about it (optional)<input id="newNote" maxlength="280"></label>
-      <button type="submit" class="primary">Create</button>
+      <div class="row-keys"><button type="submit" class="primary">Create</button><button type="button" id="newCancel">Cancel</button></div>
       <p class="msg" id="newMsg" role="status"></p>
     </form>
-    <div class="cards" id="projects"></div>
+    <div class="ptiles" id="projects"></div>
     <p class="dim" id="noProjects" hidden>No projects yet.</p>
+    <div class="homecards">
     <div class="card" id="printersCard" hidden>
       <h2>Printers</h2>
       <p class="small dim">The decks add their printers when they connect to the service. Each printer adds its prints to the projects.</p>
@@ -111,6 +118,7 @@
         <button type="button" class="link" id="deleteAccountBtn">Delete my account</button>
       </div>
       <p class="msg" id="accountMsg" role="status"></p>
+    </div>
     </div>
   </section>
 

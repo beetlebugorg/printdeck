@@ -38,13 +38,25 @@ input:not([type]), input[type="text"] { font: 400 16px/1.4 "Archivo", sans-serif
 .linkbox code { font: 500 13px/1.4 "IBM Plex Mono", monospace; overflow-wrap: anywhere; }
 .linkbox button { background: var(--cap); }
 .back { font-size: 14px; }
-.cards { display: grid; gap: var(--s3); }
-.pcard { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: var(--s4); align-items: center; background: var(--plate);
-  border: 1px solid var(--seam); border-radius: 14px; padding: var(--s3) var(--s4) var(--s3) var(--s3); color: var(--ink); text-decoration: none; }
-.pcard:hover { border-color: var(--orange); }
-.pcard img, .pcard .ph { width: 80px; height: 80px; border-radius: 10px; object-fit: contain; background: var(--lcd); }
-.pcard strong { font: 800 20px/1.15 "Archivo", sans-serif; font-stretch: 85%; display: block; margin-bottom: var(--s1); overflow-wrap: anywhere; }
-.pcard span { color: var(--ink-dim); font-size: 14px; }
+/* The home page: the projects as tiles, the newest first, and the printers and the account below. */
+.homehead { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s3); }
+.homehead h1 { margin: 0; }
+.homehead p { margin: var(--s1) 0 0; }
+.homehead p:empty { display: none; }
+.ptiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s3); }
+@media (min-width: 600px) { .ptiles { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--s4); } }
+.ptile { display: grid; grid-template-rows: auto 1fr; background: var(--plate); border: 1px solid var(--seam); border-radius: 14px;
+  overflow: hidden; color: var(--ink); text-decoration: none; }
+.ptile:hover { border-color: var(--orange); }
+.ptile img, .ptile .ph { width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: var(--lcd); display: block; }
+.ptile div { display: grid; gap: var(--s1); padding: var(--s3); align-content: start; }
+@media (min-width: 600px) { .ptile div { padding: var(--s3) var(--s4) var(--s4); } }
+.ptile .note { margin: 0; }
+.ptile strong { font: 800 18px/1.15 "Archivo", sans-serif; font-stretch: 85%; overflow-wrap: anywhere; }
+.ptile .note { font-size: 14px; color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ptile span { color: var(--ink-dim); font-size: 13px; }
+.homecards { display: grid; gap: var(--s4); margin-top: var(--s4); }
+@media (min-width: 760px) { .homecards { grid-template-columns: 1fr 1fr; align-items: start; } }
 .members { list-style: none; margin: 0; padding: 0; display: grid; }
 .members:empty { display: none; }
 .members li { display: flex; justify-content: space-between; gap: var(--s3); align-items: center; padding: var(--s3) 0; border-top: 1px solid var(--seam); }
