@@ -87,5 +87,5 @@ parts:
 
 # The PDFs of the project. The project page shows each one with a picture of its first page.
 docs:
-  - name: LulzBot build guide
-    file: lulzbot/printdeck-lulzbot-build.pdf
+  - name: Slate v4 build guide
+    file: lulzbot/printdeck-slate-v4-build.pdf
