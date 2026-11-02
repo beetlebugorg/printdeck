@@ -38,8 +38,6 @@ foot.
   chin, and four M3 screws hold the foot to the chin. Screws hold the chin, the foot, the
   display, the drive, and the Pi, into heat-set inserts. No part needs supports.
 
-`printdeck-slate-build.pdf` has the parts list, the print settings, and the assembly steps.
-
 ## Parts
 
 | File | Colour | Print |
@@ -72,14 +70,7 @@ Cura closed.
   cables overlap, except the pairs that mate) and writes `cad/*.step` (each part and the assembly with colours),
   `stl/*.stl`, and the meshes for the renders.
 - `cura/make_profiles.py` writes a Cura profile for each part, slices each part with CuraEngine
-  for the filament values in the PDF, and slices each part again with supports on.
-- `lineart/render.mjs` renders the line-art images in three.js in headless Chromium, in the style of the
-  beetlebug.org viewer: an orthographic view, a flat fill, and dark edge lines. Each assembly step is an
-  exploded view. The parts of the step are in the accent colour, with a dashed guide line to their
-  position. It writes a light and a dark image of each view to `build/img/` (transparent PNG).
-  `make_pdf.py` writes the PDF with the light images.
-- `make_site.py` writes the project website (`../docs/index.html` and `../docs/img/`) from the
-  same text as the PDF. The Pages workflow publishes it with the STL files and the PDF.
+  for the filament values, and slices each part again with supports on.
 - `fit_display.py` writes `stl/fit_display.stl`, a fit test for the screen opening. `make.sh`
   runs it.
 - `drill_guide.py` writes `stl/drill_guide.stl`, a guide to drill the chin screw holes in an
@@ -90,5 +81,5 @@ Cura closed.
 
 ## Needs
 
-`uv` (build123d, trimesh), Node.js (three.js and puppeteer-core, from `lineart/package.json`), ImageMagick 7, Chromium, and
+`uv` (build123d, trimesh) and
 CuraEngine from the Cura AppImage in `/opt/ultimaker-cura`.

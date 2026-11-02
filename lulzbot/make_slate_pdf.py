@@ -2,7 +2,7 @@
 """Printdeck Slate v4: write the build guide PDF (printdeck-slate-v4-build.pdf).
 
 Run after `slate.py render`, which writes the pictures in renders/. Needs Chromium. The text is the
-text of stl/slate/README.md. The page layout is the layout of the Slate v2 guide (slate/make_pdf.py).
+text of stl/slate/README.md.
 
   python3 make_slate_pdf.py
 """

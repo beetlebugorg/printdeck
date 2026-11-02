@@ -48,8 +48,7 @@ type bookBlock struct {
 	N      int        // "step": the number of the step
 	Head   []string   // "grid": the headings of the columns
 	Cells  [][]string // "grid": the rows
-	Parts  []lulzPrint
-	Marks  []mark // "shot": the badges of the callouts on the picture
+	Marks  []mark     // "shot": the badges of the callouts on the picture
 }
 
 // mark is a badge of a callout on a picture of a "shot" block, at X and Y in percent of the
@@ -148,12 +147,9 @@ func sectionGuide(s section, wide bool) bookGuide {
 }
 
 // bookPages makes the pages of the booklet from the guides. Each guide starts on a new page. Its
-// blocks then fill the pages in order. ad puts the advertisement on the inside of the cover.
-func bookPages(guides []bookGuide, ad bool) []bookPage {
+// blocks then fill the pages in order.
+func bookPages(guides []bookGuide) []bookPage {
 	pages := []bookPage{{Kind: "cover"}}
-	if ad {
-		pages = append(pages, bookPage{Kind: "ad"})
-	}
 	contents := len(pages)
 	pages = append(pages, bookPage{Kind: "contents"})
 	var entries []bookEntry
@@ -188,12 +184,11 @@ func bookPages(guides []bookGuide, ad bool) []bookPage {
 
 // writeBooklet writes DIR/booklet.html and the pictures of its cover.
 // bookEdition is the edition of a booklet: the words of its cover, and the extra guides before the
-// guides of the manual, with the advertisement. The plain manual has no extra guides.
+// guides of the manual. The plain manual has no extra guides.
 type bookEdition struct {
 	Kind, For string // the cover: "INSTRUCTION BOOKLET", "For the Printdeck touch screen and Klipper printers"
 	Code      string // the code at the top of the cover
 	Guides    []bookGuide
-	Ad        *adPage
 	Title     string      // the title of the HTML page, or "" for the title of the manual
 	Status    *lcd.Screen // the screen on the cover, or nil for the status screen
 	Back      []string    // the text of the back cover, or nil for the text of the manual
@@ -234,7 +229,7 @@ func writeBooklet(dir string, secs []section, w, h int, ed bookEdition) {
 	for _, sec := range secs {
 		guides = append(guides, sectionGuide(sec, w > h))
 	}
-	data := map[string]any{"Pages": bookPages(guides, ed.Ad != nil), "Version": osVersion(), "Wide": w > h, "Ed": ed}
+	data := map[string]any{"Pages": bookPages(guides), "Version": osVersion(), "Wide": w > h, "Ed": ed}
 	if err := tpl.Execute(out, data); err != nil {
 		log.Fatal(err)
 	}

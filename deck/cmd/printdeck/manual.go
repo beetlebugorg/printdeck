@@ -34,11 +34,10 @@ import (
 // and the text for each part. The deck draws the pictures itself, so the manual follows the UI.
 // Each callout points at the part of the screen with its name (keysRect).
 //
-//	printdeck manual DIR [wide|lulzbot|cura|large]
+//	printdeck manual DIR [wide|cura|large]
 //	                                      write DIR/index.html, DIR/booklet.html and the pictures in
 //	                                      DIR/img. wide draws the screens of a display that is mounted
-//	                                      wide. lulzbot is the wide manual with the upgrade guides for
-//	                                      the earlier TAZ Workhorse mount (upgrade.go). cura is the booklet of the
+//	                                      wide. cura is the booklet of the
 //	                                      Cura plugin (cura.go). large draws the tall screens with the
 //	                                      large text of the Touch Display 2.
 
@@ -1248,7 +1247,7 @@ func manualSections() []section {
 
 func manual(args []string) {
 	if len(args) < 1 {
-		log.Fatal("usage: printdeck manual DIR [wide|lulzbot|cura|large]")
+		log.Fatal("usage: printdeck manual DIR [wide|cura|large]")
 	}
 	dir := args[0]
 	mode := ""
@@ -1259,7 +1258,7 @@ func manual(args []string) {
 		curaBooklet(dir)
 		return
 	}
-	wide := mode == "wide" || mode == "lulzbot"
+	wide := mode == "wide"
 	os.MkdirAll(filepath.Join(dir, "img"), 0o755)
 	// The pictures show the firmware keys of the OS image.
 	fwDir, _ := os.MkdirTemp("", "printdeck-firmware")
@@ -1364,13 +1363,7 @@ func manual(args []string) {
 		"date":       func() string { return time.Now().Format("January 2006") },
 		"newChapter": func(i int) bool { return i == 0 || secs[i].Chapter != secs[i-1].Chapter },
 	}).Parse(manualHTML))
-	ed := plainEdition
-	if mode == "lulzbot" {
-		*p = *demoPrinterCopy(p)
-		p.State_ = stIdle
-		ed = lulzEdition(dir, a, w, h)
-	}
-	writeBooklet(dir, secs, w, h, ed)
+	writeBooklet(dir, secs, w, h, plainEdition)
 	f, err := os.Create(filepath.Join(dir, "index.html"))
 	if err != nil {
 		log.Fatal(err)

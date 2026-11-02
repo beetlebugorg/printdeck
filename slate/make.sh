@@ -38,13 +38,3 @@ bad = {k: v for k, v in s.items() if v > 0}
 print("  support check:", "0 g for all parts" if not bad else f"SUPPORT NEEDED {bad}")
 sys.exit(1 if bad or len(s) != 4 else 0)
 PY
-# Line-art renders in three.js (headless Chromium), in the style of the beetlebug.org viewer.
-[ -d lineart/node_modules ] || (cd lineart && npm ci --no-fund --no-audit)
-mkdir -p build/img
-node lineart/render.mjs > build/render.log
-grep -c "^wrote" build/render.log | xargs printf "  %s line-art images\n"
-for f in build/img/raw/*-light.png build/img/raw/*-dark.png; do
-  magick "$f" -trim +repage -bordercolor none -border 24 "build/img/$(basename "$f")"
-done
-python3 make_pdf.py
-python3 make_site.py

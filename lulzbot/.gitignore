@@ -1,6 +1,5 @@
 # Intermediate files. make.sh makes them again.
 build/
-lineart/node_modules/
 __pycache__/
 
 # The Pi 5 STEP model. ref/raspberrypi/RaspberryPi5-step.zip has the same file.

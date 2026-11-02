@@ -107,14 +107,13 @@ or `display_rotate=180` in `printdeck.txt`.
 - `workhorse.py`, `parts.py`, `shape.py`: the TAZ Workhorse CAD, the rail clip and the rail.
 - `live.py`, `viewer.py`, `cable_physics.py`: the 3D window of the model.
 
-The other files in this folder are for earlier designs. Printdeck uses the pod now. The earlier
+The other files in this folder are for earlier designs. Printdeck uses the Slate v4 now. The earlier
 designs are a mount on the TAZ Workhorse with the Adafruit 7 inch HDMI display, a 2.5 inch drive
 and a 30 mm fan, and other layouts for that display.
 
-- `model.py`, `make.sh`, `make_pdf.py`, `render.py`, `fit_display.py`: the parts of the earlier
-  mount, its checks, its renders and its build guide (`printdeck-lulzbot-build.pdf`).
-- `cad/`, `cura/`, `guide/`, `lineart/`: its STEP files, its Cura profiles, the data of its
-  guide, and its line-art images.
+- `model.py`, `make.sh`, `render.py`, `fit_display.py`: the parts of the earlier mount, its
+  checks and its renders. `slate.py` also uses `render.py`.
+- `cad/`, `cura/`: its STEP files and its Cura profiles.
 - `deckcase.py`, `deckview.py`, `pibox.py`, `kitview.py`, `tall.py`: other layouts with the
   7 inch display.
 
