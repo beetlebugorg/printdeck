@@ -357,30 +357,32 @@ func TestProjectFlow(t *testing.T) {
 
 	// The public address: a page, page.json and the copies, with no file names; off deletes them.
 	var pub cloud.PublicReply
-	if st := call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/public", tok, cloud.PublicRequest{On: true}, &pub); st != 200 || pub.URL != base+"/p/garden-planters" {
+	if st := call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/public", tok, cloud.PublicRequest{On: true}, &pub); st != 200 || pub.URL != base+"/projects/garden-planters" {
 		t.Fatalf("public on: %d %+v", st, pub)
 	}
 	if st := call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/public", samIn.Token, cloud.PublicRequest{On: false}, nil); st != 401 {
 		t.Errorf("a member turns the public address off: %d", st)
 	}
-	code2, page := get(t, pub.URL)
+	// The public copy, which the project page shows to a visitor.
+	copyURL := base + "/p/garden-planters"
+	code2, page := get(t, copyURL)
 	if code2 != 200 || !strings.Contains(string(page), "<title>Garden planters · Printdeck</title>") {
 		t.Errorf("public page %d %s", code2, page)
 	}
-	_, pj := get(t, pub.URL+"/page.json")
+	_, pj := get(t, copyURL+"/page.json")
 	var pv cloud.ProjectView
 	json.Unmarshal(pj, &pv)
 	if len(pv.Prints) != 1 || pv.Prints[0].File != "" || pv.Members != nil || len(pv.Photos) != 1 {
 		t.Errorf("public page.json %s", pj)
 	}
-	if code, _ := get(t, pub.URL+"/"+pv.Prints[0].Model); code != 200 {
+	if code, _ := get(t, copyURL+"/"+pv.Prints[0].Model); code != 200 {
 		t.Errorf("public model picture: %d", code)
 	}
-	if code, _ := get(t, pub.URL+"/prints/"+pv.Prints[0].ID+"/lapse/1.jpg"); code != 200 {
+	if code, _ := get(t, copyURL+"/prints/"+pv.Prints[0].ID+"/lapse/1.jpg"); code != 200 {
 		t.Errorf("public frame: %d", code)
 	}
 	call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/public", tok, cloud.PublicRequest{On: false}, nil)
-	if code, _ := get(t, pub.URL); code != 404 {
+	if code, _ := get(t, copyURL); code != 404 {
 		t.Errorf("the public page after off: %d", code)
 	}
 

@@ -20,6 +20,7 @@
   <header>
     <a class="brand" href="/projects"><i></i>Printdeck</a>
     <span class="who" id="who" hidden><span id="whoName"></span> <button type="button" class="link" id="signOut">Sign out</button></span>
+    <a class="who" id="whoIn" href="/projects" hidden>Members sign in</a>
   </header>
 
   <p class="lcd" id="loading">LOADING</p>
@@ -38,7 +39,7 @@
         <div class="faces" id="pFaces" aria-label="The people of the project"></div>
         <div class="hchips">
           <a class="hchip" id="pRepoChip" hidden></a>
-          <a class="hchip" id="pPublicChip" target="_blank" rel="noopener" hidden>Public page</a>
+          <a class="hchip" id="pPublicChip" target="_blank" rel="noopener" title="See the page as a visitor sees it" hidden>Public view</a>
         </div>
       </div>
     </div>
@@ -267,8 +268,8 @@
         </div>
       </div>
       <div class="card">
-        <h2>Public address</h2>
-        <p class="small dim">Anybody with the public address sees the prints, the time lapses and the photos. The address has the name of the project, so people can guess it. It has no files of the models and no names of members.</p>
+        <h2>Public view</h2>
+        <p class="small dim">When this is on, anybody who opens the address of the project sees the prints, the time lapses and the photos. Members who sign in see the full project at the same address. The address has the name of the project, so people can guess it. The public view has no files of the models and no names of members.</p>
         <div class="row">
           <button type="button" id="publicBtn" aria-pressed="false">Off</button>
         </div>

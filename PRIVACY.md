@@ -148,7 +148,7 @@ trackers.
   first names of the other members.
 - **A share link** (`/s/<id>`) is public: any person with the link sees the print. The link has a
   random ID. The link stops 24 hours after the print ends.
-- **A public address** (`/p/<name>`) is public: any person with the address sees the project. The
+- **A public view** of a project (`/projects/<name>`) is public: any person with the address sees the project. The
   page shows the name of the project, the notes, the first name of the owner, the prints, the
   time lapses, the photos and the first names of the people who added them. It does not show the
   names of the files or the rolls. The owner turns the public address on and off.

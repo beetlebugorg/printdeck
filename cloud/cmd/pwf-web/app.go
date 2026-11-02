@@ -39,6 +39,10 @@ type app struct {
 	tab         string              // the tab of the project page: "overview", "prints", "photos" or "settings"
 	plateViews  map[string]js.Value // the 3D view of each plate of the build page (plateView)
 	plateBuild  string              // the build of plateViews
+	// public is the folder of the public copy of the project (/p/<slug>/) when the page shows the
+	// public view, or "". A visitor with no session, and a person who is not a member, see the
+	// public view of a public project at the same address as the members.
+	public string
 }
 
 const tokenKey = "pwf-session"
@@ -114,7 +118,12 @@ func (a *app) route() {
 	hash := strings.TrimPrefix(loc.Get("hash").String(), "#")
 	a.playing++
 	a.showWho()
+	a.public = ""
+	doc.Get("body").Get("classList").Call("remove", "public")
 	switch {
+	case strings.HasPrefix(path, "/projects/") && (a.token == "" || loc.Get("search").String() == "?as=public"):
+		slug, n, _ := strings.Cut(strings.TrimPrefix(path, "/projects/"), "/")
+		a.showPublic(slug, n)
 	case path == "/owner":
 		show("vOwner")
 	case path == "/j":
@@ -203,6 +212,7 @@ func show(id string) {
 
 func (a *app) showWho() {
 	setHidden("who", a.token == "")
+	setHidden("whoIn", a.token != "")
 	setText("whoName", a.name)
 }
 
@@ -601,6 +611,11 @@ func (a *app) showSlug(slug, n string) {
 	// One request: the project of the slug and its view.
 	var nr wire.NameReply
 	if err := a.api("GET", "/names/"+slug+"?view=1", nil, &nr); err != nil {
+		// A person who is not a member sees the public view of a public project.
+		if v, base, ok := publicView(slug); ok {
+			a.showPublicView(v, base, n)
+			return
+		}
 		a.failed(err)
 		return
 	}
@@ -646,7 +661,9 @@ func (a *app) showView(v *wire.ProjectView, n int, print string) {
 	a.drawProject()
 	show("vProject")
 	setTab(a.tab)
-	go a.pollProject(id, a.playing)
+	if a.public == "" {
+		go a.pollProject(id, a.playing)
+	}
 }
 
 // pollProject draws the project id again each minute, or each 30 s while a print of the project
@@ -743,6 +760,14 @@ func (a *app) drawPrint(p wire.ProjectPrint) {
 	drawPrint(p, v.Photos, func() (wire.FramesReply, error) {
 		if p.Video != "" {
 			return wire.FramesReply{FPS: p.FPS, Video: p.Video, Poster: p.Poster}, nil
+		}
+		if a.public != "" {
+			// The public copy has the frames of a print with no video.
+			urls := make([]string, p.Frames)
+			for n := range urls {
+				urls[n] = fmt.Sprintf("%sprints/%s/lapse/%d.jpg", a.public, p.ID, n)
+			}
+			return wire.FramesReply{FPS: p.FPS, URLs: urls}, nil
 		}
 		var fr wire.FramesReply
 		err := a.api("GET", "/projects/"+v.ID+"/prints/"+p.ID+"/frames", nil, &fr)
@@ -1203,22 +1228,29 @@ func (a *app) removePhoto(id string) {
 	a.drawProject()
 }
 
-// The public page (data-page="public") at /p/<slug>: page.json next to the page, with the paths
-// of the files relative to it. /p/<slug>/<n> shows the page of the print number n. The old
-// address of a print, #p=<print>, changes to the new address.
+// The old public page (data-page="public") at /p/<slug> and /p/<slug>/<n>. The project has one
+// address now: the page goes to /projects/<slug>, which shows the public view to a visitor.
 func runPublic() {
 	parts := strings.Split(strings.Trim(js.Global().Get("location").Get("pathname").String(), "/"), "/")
 	if len(parts) < 2 {
 		setText("loading", "THIS PROJECT IS NOT PUBLIC NOW")
 		return
 	}
-	home := "/p/" + parts[1]
-	base := home + "/"
+	u := "/projects/" + parts[1]
+	if len(parts) > 2 {
+		u += "/" + parts[2]
+	}
+	js.Global().Get("location").Call("replace", u)
+}
+
+// publicView reads the public copy of the project with the slug: /p/<slug>/page.json, with the
+// paths of its files relative to it. ok is false for a project that is not public.
+func publicView(slug string) (*wire.ProjectView, string, bool) {
+	base := "/p/" + slug + "/"
 	text, err := fetchText(base + "page.json")
 	var v wire.ProjectView
 	if err != nil || json.Unmarshal([]byte(text), &v) != nil {
-		setText("loading", "THIS PROJECT IS NOT PUBLIC NOW")
-		return
+		return nil, "", false
 	}
 	for i := range v.Prints {
 		if v.Prints[i].Model != "" {
@@ -1234,64 +1266,37 @@ func runPublic() {
 	for i := range v.Photos {
 		v.Photos[i].URL, v.Photos[i].Small = base+v.Photos[i].URL, base+v.Photos[i].Small
 	}
-	setText("pName", v.Name)
-	setText("pNote", v.Note)
-	setHidden("pNote", v.Note == "")
-	setText("pMeta", "Since "+shortDate(v.Created))
-	drawNotes("p", v.Notes, v.NotesBy, v.NotesAt)
-	setHidden("pNotesCard", v.Notes == "")
-	box := byID("photos")
-	for _, ph := range v.Photos {
-		box.Call("appendChild", photoFigure(ph))
+	if v.Slug == "" {
+		v.Slug = slug
 	}
-	setHidden("photosCard", len(v.Photos) == 0)
-	printPath := func(p wire.ProjectPrint) string { return base + strconv.Itoa(p.N) }
-	drawPrints(&v, printPath)
-	byID("prBack").Set("href", home)
-	setText("prBack", v.Name)
-	setHidden("prShare", js.Global().Get("navigator").Get("share").IsUndefined())
-	on("prCopy", "click", func() { go copyText(js.Global().Get("location").Get("href").String(), "prCopyMsg") })
-	on("prShare", "click", func() { shareLink(js.Global().Get("location").Get("href").String()) })
-	playing := 0
-	route := func() {
-		playing++
-		parts := strings.Split(strings.Trim(js.Global().Get("location").Get("pathname").String(), "/"), "/")
-		n := 0
-		if len(parts) > 2 {
-			n, _ = strconv.Atoi(parts[2])
+	v.IsOwner, v.CanSlice, v.You, v.Repo = false, false, "", ""
+	return &v, base, true
+}
+
+// showPublic shows the public view of the project with the slug, or the page n of it: a print
+// number, or a tab. A private project asks a visitor to sign in.
+func (a *app) showPublic(slug, n string) {
+	v, base, ok := publicView(slug)
+	if !ok {
+		if a.token == "" {
+			show("vSignIn")
+			return
 		}
-		id := hashArgs()["p"]
-		for _, p := range v.Prints {
-			if n > 0 && p.N == n || id != "" && p.ID == id {
-				replaceAddress(printPath(p))
-				say("prCopyMsg", nil, "")
-				drawPrint(p, v.Photos, func() (wire.FramesReply, error) {
-					if p.Video != "" {
-						return wire.FramesReply{FPS: p.FPS, Video: p.Video, Poster: p.Poster}, nil
-					}
-					urls := make([]string, p.Frames)
-					for n := range urls {
-						urls[n] = fmt.Sprintf("%sprints/%s/lapse/%d.jpg", base, p.ID, n)
-					}
-					return wire.FramesReply{FPS: p.FPS, URLs: urls}, nil
-				}, &playing)
-				show("vPrint")
-				return
-			}
-		}
-		replaceAddress(home)
-		doc.Set("title", v.Name+" · Printdeck")
-		show("vPublic")
+		a.showSlug(slug, n)
+		return
 	}
-	js.Global().Call("addEventListener", "hashchange", js.FuncOf(func(js.Value, []js.Value) any {
-		if newView() {
-			go route()
-		}
-		return nil
-	}))
-	onHistory(func() { go route() }, home)
-	lastView = viewKey()
-	route()
+	a.showPublicView(v, base, n)
+}
+
+func (a *app) showPublicView(v *wire.ProjectView, base, n string) {
+	a.public = base
+	doc.Get("body").Get("classList").Call("add", "public")
+	a.tab = "overview"
+	if n == "prints" || n == "photos" {
+		a.tab, n = n, ""
+	}
+	num, _ := strconv.Atoi(n)
+	a.showView(v, num, "")
 }
 
 // The addresses of the pages. A link to a view of the same page opens the view with no new load

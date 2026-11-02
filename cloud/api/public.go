@@ -11,17 +11,19 @@ import (
 	"printdeck/internal/cloud"
 )
 
-// The public address of a project: p/<slug>, a copy of assets/public.html, with p/<slug>/page.json
-// and copies of the pictures, the time lapse videos (or the frames of a print with no video) and
-// the photos. The address gives no access to the API. The owner turns it on and off. A rename
+// The public view of a project: p/<slug>/page.json, with copies of the pictures, the time lapse
+// videos (or the frames of a print with no video) and the photos. The project page,
+// /projects/<slug>, shows it to a visitor, at the same address as for the members. p/<slug> is
+// a copy of assets/public.html, which goes to the project page: the old links work. The copy
+// gives no access to the API. The owner turns it on and off. A rename
 // moves it to the new slug (movePublic). Each change of the project writes the copies again
 // (publish).
 
 // PublicPage is the key of the public page in the bucket. pwf deploy uploads it.
 const PublicPage = "assets/public.html"
 
-// publicURL is the public address of a project.
-func (s *Server) publicURL(pub string) string { return s.base() + "/p/" + pub }
+// publicURL is the address of a public project for a visitor: the project page itself.
+func (s *Server) publicURL(pub string) string { return s.base() + "/projects/" + pub }
 
 // setPublic turns the public address of a project on or off.
 func (s *Server) setPublic(ctx context.Context, id string, in cloud.PublicRequest) (any, error) {

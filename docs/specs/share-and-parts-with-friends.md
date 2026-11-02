@@ -221,10 +221,9 @@ end of the print (open question 2).
 |---|---|
 | `/` | The home page: Sign in, and the projects of the person who signed in |
 | `/s/<20 characters>` | A share |
-| `/p/<slug>` | The public address of a project, for example `/p/garden-planters` |
-| `/p/<slug>/<n>` | The public page of the print number n of a project |
+| `/p/<slug>`, `/p/<slug>/<n>` | The old public addresses: they go to `/projects/<slug>` and `/projects/<slug>/<n>` |
 | `/projects` | The projects of the person who signed in |
-| `/projects/<slug>` | The page of a project for the owner and the members, after sign-in |
+| `/projects/<slug>` | The page of a project: the full project for the owner and the members, and the public view for a visitor when the owner turns it on. `?as=public` shows the public view to a member |
 | `/projects/<slug>/<n>` | The page of the print number n of a project |
 | `/j/<code>` | An invite |
 | `/owner` | The owner sign-in setup, with a code from the deck |

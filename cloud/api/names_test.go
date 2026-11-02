@@ -62,7 +62,7 @@ func TestOldProjectAddresses(t *testing.T) {
 	if p.Slug != "garden-planters" || p.Public != "garden-planters" || !p.Changed.Equal(now) {
 		t.Fatalf("after ensureSlug %+v", p)
 	}
-	if b, _, err := st.Get(ctx, "p/oldpublicid"); err != nil || !strings.Contains(string(b), `url=/p/garden-planters"`) {
+	if b, _, err := st.Get(ctx, "p/oldpublicid"); err != nil || !strings.Contains(string(b), `url=/projects/garden-planters"`) {
 		t.Errorf("the old public address: %s %v", b, err)
 	}
 	if _, _, err := st.Get(ctx, "p/garden-planters/page.json"); err != nil {
@@ -94,7 +94,7 @@ func TestOldProjectAddresses(t *testing.T) {
 	if rec, err := s.loadName(ctx, "garden-planters"); err != nil || rec.Project != p.ID {
 		t.Errorf("the old slug: %+v %v", rec, err)
 	}
-	if b, _, _ := st.Get(ctx, "p/garden-planters"); !strings.Contains(string(b), `url=/p/window-boxes"`) {
+	if b, _, _ := st.Get(ctx, "p/garden-planters"); !strings.Contains(string(b), `url=/projects/window-boxes"`) {
 		t.Errorf("the old public address after the rename: %s", b)
 	}
 	// A name with the same slug keeps the slug.

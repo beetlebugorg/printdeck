@@ -144,7 +144,8 @@ func (a *app) drawHead(v *wire.ProjectView) {
 	byID("pRepoChip").Set("href", "https://github.com/"+v.Repo)
 	setText("pRepoChip", v.Repo)
 	setHidden("pPublicChip", v.Public == "")
-	byID("pPublicChip").Set("href", v.Public)
+	// The page as a visitor sees it: the same address, with the public view.
+	byID("pPublicChip").Set("href", tabPath(v.Slug, "overview")+"?as=public")
 }
 
 // drawDashboard draws the tabs and the overview. With full false, it draws only the parts that

@@ -221,7 +221,7 @@ func (s *Server) movePublic(ctx context.Context, p *Project) (*Project, error) {
 	if err := s.deletePrefix(ctx, "p/"+old+"/"); err != nil {
 		return nil, err
 	}
-	_, err = s.Store.Put(ctx, "p/"+old, movedPage("/p/"+p.Public, p.Name),
+	_, err = s.Store.Put(ctx, "p/"+old, movedPage("/projects/"+p.Public, p.Name),
 		PutOptions{ContentType: "text/html; charset=utf-8", CacheControl: "public, max-age=60"})
 	return p, err
 }
