@@ -89,6 +89,9 @@ type Member struct {
 	Keys   []string `json:"keys,omitempty"`
 	// GitHub is the GitHub username of the member, which the owner sets (builds.go).
 	GitHub string `json:"github,omitempty"`
+	// Slice lets the member choose the parts of a plan and slice them, as the owner does. The
+	// owner sets it. Only the owner approves a plate and sends it to a printer.
+	Slice bool `json:"slice,omitempty"`
 }
 
 func (p *Project) member(id string) *Member {
@@ -222,6 +225,7 @@ type who struct {
 	member  string
 	project string // the project of a member
 	name    string
+	slice   bool // the member can slice (Member.Slice)
 	// projects are the projects of a member and the member in each, for a request on no
 	// project.
 	projects map[string]string
@@ -259,12 +263,20 @@ func (s *Server) whoFor(ctx context.Context, r *http.Request, body []byte, id st
 	if m == nil {
 		return nil, fail(http.StatusUnauthorized, "you are not a member of this project")
 	}
-	return &who{member: m.ID, project: p.ID, name: m.Name}, nil
+	return &who{member: m.ID, project: p.ID, name: m.Name, slice: m.Slice}, nil
 }
 
 func ownerOnly(w *who) error {
 	if !w.owner {
 		return fail(http.StatusUnauthorized, "only the owner can do this")
+	}
+	return nil
+}
+
+// canSlice allows the owner, and a member that the owner lets slice (Member.Slice).
+func canSlice(w *who) error {
+	if !w.owner && !w.slice {
+		return fail(http.StatusUnauthorized, "the owner of the project has not let you slice")
 	}
 	return nil
 }
@@ -354,14 +366,23 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 		if json.Unmarshal(body, &in) != nil {
 			return nil, fail(http.StatusBadRequest, "bad JSON")
 		}
-		login := strings.TrimPrefix(strings.TrimSpace(in.GitHub), "@")
-		if login != "" && !githubLogin.MatchString(login) {
-			return nil, fail(http.StatusBadRequest, "a GitHub username has letters, digits and hyphens")
+		// Each field changes only when the request has it.
+		var login string
+		if in.GitHub != nil {
+			login = strings.TrimPrefix(strings.TrimSpace(*in.GitHub), "@")
+			if login != "" && !githubLogin.MatchString(login) {
+				return nil, fail(http.StatusBadRequest, "a GitHub username has letters, digits and hyphens")
+			}
 		}
 		if _, err := s.changeProject(ctx, id, func(p *Project) error {
 			for i := range p.Members {
 				if p.Members[i].ID == sub {
-					p.Members[i].GitHub = login
+					if in.GitHub != nil {
+						p.Members[i].GitHub = login
+					}
+					if in.Slice != nil {
+						p.Members[i].Slice = *in.Slice
+					}
 					return nil
 				}
 			}
@@ -748,7 +769,7 @@ func (s *Server) listProjects(ctx context.Context, w *who) (any, error) {
 func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.ProjectView, error) {
 	v := &cloud.ProjectView{ID: p.ID, Name: p.Name, Slug: p.Slug, Note: p.Note, Notes: p.Notes, NotesBy: p.NotesBy, NotesAt: p.NotesAt,
 		Owner: s.ownerName(ctx), Created: p.Created,
-		Changed: p.Changed, IsOwner: w.owner, You: w.member}
+		Changed: p.Changed, IsOwner: w.owner, You: w.member, CanSlice: w.owner || w.slice}
 	if w.owner {
 		v.You = KindOwner
 		if p.Public != "" {
@@ -758,7 +779,7 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 	for _, m := range p.Members {
 		if w.owner || !m.Joined.IsZero() {
 			v.Members = append(v.Members, cloud.ProjectMember{ID: m.ID, Name: m.Name, Joined: !m.Joined.IsZero(), Invited: m.Invited,
-				GitHub: m.GitHub})
+				GitHub: m.GitHub, Slice: m.Slice})
 		}
 	}
 	link := func(key string) string {

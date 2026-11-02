@@ -44,7 +44,8 @@ results go back to the pull request.
 
 ## The plan page
 
-`/projects/<slug>/plans/<id>`, for the owner. The members see it with no keys.
+`/projects/<slug>/plans/<id>`, for the owner and for each member that the owner lets slice. The
+other members see it with no keys.
 
 - Each part of `printdeck.yml` has a row: its name, its printer, its profile and material, its
   count, a 3D view of its model, and the label "Changed" when it changed. A part changed when
@@ -238,8 +239,9 @@ days after the pull request closes, and keeps main and release builds.
   commit, the parts that changed, and its builds. Each build shows its plates and the prints of
   each plate.
 - Each plate has the key Preview, and its state: waiting for an approval, approved, rejected,
-  printed. Only the owner can choose plates, slice, approve or reject. The members see the plans,
-  the previews and the states.
+  printed. The owner can choose plates, slice, approve or reject. The owner can let a member
+  choose plates and slice: the check box Can slice of the member, on the People card. Only the
+  owner approves or rejects. The members see the plans, the previews and the states.
 - The print tiles show their build: "PR #12 · 3f2a9c1" or "Release v1.2".
 - The print page shows the pull request with its comments, and the link to the commit.
 

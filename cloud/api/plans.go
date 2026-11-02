@@ -497,9 +497,10 @@ func (s *Server) filesIn(ctx context.Context, dir string) (map[string]bool, erro
 	return have, nil
 }
 
-// newBuild makes a build of the plan with the plates of the owner, and starts the slice run.
+// newBuild makes a build of the plan with the plates of the owner or of a member who can slice,
+// and starts the slice run.
 func (s *Server) newBuild(ctx context.Context, p *Project, w *who, planID string, in cloud.BuildRequest) (any, error) {
-	if err := ownerOnly(w); err != nil {
+	if err := canSlice(w); err != nil {
 		return nil, err
 	}
 	plan, err := s.loadPlan(ctx, p.ID, planID)

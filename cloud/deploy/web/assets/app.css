@@ -362,6 +362,8 @@ pre.cmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: #15161a
 .people .rm { font-size: 14px; margin-top: 4px; }
 .people input.github { min-height: 36px; width: 100%; max-width: 220px; font: 14px "IBM Plex Mono", monospace; padding: 0 8px; border-radius: 8px;
   border: 1px solid var(--seam); background: var(--cap); color: var(--ink); }
+.people label.slice { display: flex; align-items: center; gap: 6px; min-height: 36px; font-size: 14px; cursor: pointer; }
+.people label.slice input { width: 18px; height: 18px; accent-color: var(--orange); }
 /* The head of the project over each page of the project. Its tabs replace the links back to the
    project. The link of a build back to its plan stays. */
 .projhead { display: grid; gap: var(--s3); }

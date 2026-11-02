@@ -235,8 +235,8 @@ func (a *app) showPlanPage(projectID, id string) {
 	if p.Run != "" {
 		add("The run", p.Run)
 	}
-	setHidden("plKeys", !v.IsOwner || !p.Ready)
-	byID("plHint").Set("textContent", planHint(v.IsOwner))
+	setHidden("plKeys", !v.CanSlice || !p.Ready)
+	byID("plHint").Set("textContent", planHint(v.CanSlice))
 	say("plMsg", nil, "")
 	if !p.Ready {
 		say("plMsg", nil, "The Action is still sending the models of this plan.")
@@ -336,13 +336,14 @@ func (a *app) firstChoice() {
 	}
 }
 
-// planHint is the text over the parts of a plan. Only the owner chooses the parts and the plates,
-// and slices them (the API checks it with ownerOnly). A member sees the parts in 3D.
-func planHint(owner bool) string {
-	if owner {
+// planHint is the text over the parts of a plan. The owner, and a member that the owner lets
+// slice, choose the parts and the plates, and slice them (the API checks it with canSlice).
+// Another member sees the parts in 3D.
+func planHint(slice bool) string {
+	if slice {
 		return "The parts that changed are checked. Check the parts to print, and set the copies."
 	}
-	return "Only the owner of the project chooses the parts and slices them. Tap a part to see it in 3D."
+	return "The owner of the project has not let you slice. Tap a part to see it in 3D."
 }
 
 // drawPlanParts draws the list of the parts of the plan: one row for each part, with a check box,
@@ -351,7 +352,7 @@ func (a *app) drawPlanParts() {
 	p := a.plan
 	list := byID("plParts")
 	list.Set("textContent", "")
-	owner := a.view.IsOwner && p.Ready
+	owner := a.view.CanSlice && p.Ready
 	changedPlates := func() {
 		a.planPlates = nil // the suggestion again, with the new parts
 		a.drawPlanParts()
@@ -698,7 +699,7 @@ func (a *app) drawPlates() {
 			pp := a.plan.Parts[i]
 			li := el("li", "", "")
 			li.Call("appendChild", el("span", "", fmt.Sprintf("%s × %d", partLabel(pp.Name, pp.Variant), a.planChoices[i].count)))
-			if a.view.IsOwner {
+			if a.view.CanSlice {
 				sel := el("select", "", "")
 				sel.Call("setAttribute", "aria-label", "The plate of "+partLabel(pp.Name, pp.Variant))
 				for m, other := range plates {
@@ -1144,7 +1145,7 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 	setText("bdError", b.Error)
 	setHidden("bdRun", b.Run == "")
 	byID("bdRun").Set("href", b.Run)
-	setHidden("bdAgain", !v.IsOwner || b.State != wire.BuildFailed)
+	setHidden("bdAgain", !v.CanSlice || b.State != wire.BuildFailed)
 	a.lastBuild = b
 	box := byID("bdPlates")
 	box.Set("textContent", "")

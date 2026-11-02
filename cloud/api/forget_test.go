@@ -42,7 +42,7 @@ func TestForgetMember(t *testing.T) {
 	}
 	samKey, sam, samID := join("Samantha")
 	_, max, maxID := join("Maxwell")
-	if st := call(t, base, "PATCH", "/api/v1/projects/"+id+"/members/"+samID, tok, cloud.MemberEdit{GitHub: "samgh"}, nil); st != 200 {
+	if st := call(t, base, "PATCH", "/api/v1/projects/"+id+"/members/"+samID, tok, cloud.MemberEdit{GitHub: new("samgh")}, nil); st != 200 {
 		t.Fatalf("GitHub username: %d", st)
 	}
 

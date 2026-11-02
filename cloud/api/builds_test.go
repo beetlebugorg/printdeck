@@ -132,10 +132,31 @@ func TestPlanFlow(t *testing.T) {
 	if st := call(t, base, "POST", builds, tok, plates([]cloud.PlatePart{{Part: 0, Count: 1}, {Part: 1, Count: 1}}), nil); st != 400 {
 		t.Errorf("two profiles on one plate: %d", st)
 	}
-	// Only the owner chooses the plates and slices them. A member reads the plan and its parts, for
-	// the 3D view of the plan page, but cannot make a build.
+	// A member reads the plan and its parts, for the 3D view of the plan page. The member makes a
+	// build only when the owner lets the member slice.
 	if st := call(t, base, "POST", builds, sam, plates([]cloud.PlatePart{{Part: 0, Count: 1}}), nil); st != 401 {
 		t.Errorf("a build of a member: %d", st)
+	}
+	member := "/api/v1/projects/" + sum.ID + "/members/" + inv.Member
+	if st := call(t, base, "PATCH", member, sam, cloud.MemberEdit{Slice: new(true)}, nil); st != 401 {
+		t.Errorf("a member lets itself slice: %d", st)
+	}
+	if st := call(t, base, "PATCH", member, tok, cloud.MemberEdit{Slice: new(true)}, nil); st != 200 {
+		t.Fatalf("let the member slice: %d", st)
+	}
+	var sv cloud.ProjectView
+	if st := call(t, base, "GET", "/api/v1/projects/"+sum.ID, sam, nil, &sv); st != 200 || !sv.CanSlice || sv.IsOwner {
+		t.Errorf("the view of a member who slices: %d, can slice %v", st, sv.CanSlice)
+	}
+	var mb cloud.ProjectBuild
+	if st := call(t, base, "POST", builds, sam, plates([]cloud.PlatePart{{Part: 0, Count: 1}}), &mb); st != 200 || mb.State != cloud.BuildSlicing {
+		t.Errorf("a build of a member who slices: %d %+v", st, mb)
+	}
+	if st := call(t, base, "PATCH", member, tok, cloud.MemberEdit{Slice: new(false)}, nil); st != 200 {
+		t.Fatalf("stop the member slicing: %d", st)
+	}
+	if st := call(t, base, "POST", builds, sam, plates([]cloud.PlatePart{{Part: 0, Count: 1}}), nil); st != 401 {
+		t.Errorf("a build of a member after the owner stops it: %d", st)
 	}
 	var seen cloud.ProjectPlan
 	if st := call(t, base, "GET", "/api/v1/projects/"+sum.ID+"/plans/"+first, sam, nil, &seen); st != 200 || len(seen.Parts) == 0 {
@@ -211,7 +232,8 @@ func TestPlanFlow(t *testing.T) {
 	}
 	var v cloud.ProjectView
 	call(t, base, "GET", "/api/v1/projects/"+sum.ID, sam, nil, &v)
-	if v.Repo != "beetlebugorg/bittlex" || len(v.Plans) != 1 || len(v.Plans[0].Builds) != 1 ||
+	// The newest build is first: the build of the owner, after the build of the member.
+	if v.Repo != "beetlebugorg/bittlex" || len(v.Plans) != 1 || len(v.Plans[0].Builds) != 2 || v.Plans[0].Builds[0].ID != pb.ID ||
 		v.Plans[0].Builds[0].Plates[0].State != cloud.PartApproved || v.Plans[0].Builds[0].Plates[1].Reason == "" {
 		t.Fatalf("view %+v", v.Plans)
 	}
@@ -377,13 +399,13 @@ func TestForkPlan(t *testing.T) {
 	}
 	// The owner sets the GitHub username of the member; a member cannot.
 	path := "/api/v1/projects/" + sum.ID + "/members/" + inv.Member
-	if st := call(t, base, "PATCH", path, sam, cloud.MemberEdit{GitHub: "sam"}, nil); st != 401 {
+	if st := call(t, base, "PATCH", path, sam, cloud.MemberEdit{GitHub: new("sam")}, nil); st != 401 {
 		t.Errorf("a member sets a username: %d", st)
 	}
-	if st := call(t, base, "PATCH", path, tok, cloud.MemberEdit{GitHub: "bad name!"}, nil); st != 400 {
+	if st := call(t, base, "PATCH", path, tok, cloud.MemberEdit{GitHub: new("bad name!")}, nil); st != 400 {
 		t.Errorf("a bad username: %d", st)
 	}
-	if st := call(t, base, "PATCH", path, tok, cloud.MemberEdit{GitHub: "@Sam"}, nil); st != 200 {
+	if st := call(t, base, "PATCH", path, tok, cloud.MemberEdit{GitHub: new("@Sam")}, nil); st != 200 {
 		t.Fatalf("set the username: %d", st)
 	}
 	for _, bad := range []string{"eve/bittlex|refs/heads/door|" + head, "sam/bittlex|refs/heads/other|" + head,

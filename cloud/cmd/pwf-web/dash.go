@@ -1215,7 +1215,8 @@ func drawFaces(v *wire.ProjectView) {
 }
 
 // drawPeople draws the card of the people: the owner, the members and the invites that wait.
-// The owner taps Edit to set the GitHub usernames, remove people and invite friends.
+// The owner taps Edit to set the GitHub usernames, let members slice, remove people and invite
+// friends.
 func (a *app) drawPeople(v *wire.ProjectView) {
 	edit := v.IsOwner && a.peopleEdit
 	list := byID("pPeople")
@@ -1256,13 +1257,17 @@ func (a *app) drawPeople(v *wire.ProjectView) {
 			}
 			continue
 		}
-		role := ""
+		var roles []string
 		if m.GitHub != "" && !edit {
-			role = "@" + m.GitHub
+			roles = append(roles, "@"+m.GitHub)
 		}
-		li, txt := row(m.Name, role)
+		if m.Slice && !edit {
+			roles = append(roles, "Can slice")
+		}
+		li, txt := row(m.Name, strings.Join(roles, " · "))
 		if edit {
 			txt.Call("appendChild", a.githubInput(m, "peopleMsg"))
+			txt.Call("appendChild", a.sliceInput(m, "peopleMsg"))
 			remove(li, m, "Remove", false)
 			remove(li, m, "Delete data", true)
 		}
@@ -1287,7 +1292,7 @@ func (a *app) githubInput(m wire.ProjectMember, msg string) js.Value {
 	gh.Call("addEventListener", "change", js.FuncOf(func(js.Value, []js.Value) any {
 		val := strings.TrimSpace(gh.Get("value").String())
 		go func() {
-			if err := a.api("PATCH", "/projects/"+a.view.ID+"/members/"+id, wire.MemberEdit{GitHub: val}, nil); err != nil {
+			if err := a.api("PATCH", "/projects/"+a.view.ID+"/members/"+id, wire.MemberEdit{GitHub: &val}, nil); err != nil {
 				say(msg, err, "")
 				return
 			}
@@ -1301,6 +1306,37 @@ func (a *app) githubInput(m wire.ProjectMember, msg string) js.Value {
 		return nil
 	}))
 	return gh
+}
+
+// sliceInput is the check box that lets the member m choose the parts of a plan and slice them.
+// A change saves it. msg is the line of the messages.
+func (a *app) sliceInput(m wire.ProjectMember, msg string) js.Value {
+	lbl := el("label", "slice", "")
+	box := el("input", "", "")
+	box.Set("type", "checkbox")
+	box.Set("checked", m.Slice)
+	lbl.Call("appendChild", box)
+	lbl.Call("appendChild", el("span", "", " Can slice"))
+	lbl.Set("title", "Let "+m.Name+" choose the parts of a plan and slice them. Only you approve a plate and send it to a printer.")
+	id := m.ID
+	box.Call("addEventListener", "change", js.FuncOf(func(js.Value, []js.Value) any {
+		on := box.Get("checked").Bool()
+		go func() {
+			if err := a.api("PATCH", "/projects/"+a.view.ID+"/members/"+id, wire.MemberEdit{Slice: &on}, nil); err != nil {
+				box.Set("checked", !on)
+				say(msg, err, "")
+				return
+			}
+			for i := range a.view.Members {
+				if a.view.Members[i].ID == id {
+					a.view.Members[i].Slice = on
+				}
+			}
+			say(msg, nil, map[bool]string{true: m.Name + " can slice now.", false: m.Name + " cannot slice now."}[on])
+		}()
+		return nil
+	}))
+	return lbl
 }
 
 // dashRow is a row of a card of the overview: a link with a title, a line under it, and a tag.

@@ -99,6 +99,9 @@ type ProjectView struct {
 	// the keys of the owner.
 	You     string          `json:"you,omitempty"`
 	IsOwner bool            `json:"is_owner,omitempty"`
+	// CanSlice: the person who asks can choose the parts of a plan and slice them (the owner, or
+	// a member with ProjectMember.Slice).
+	CanSlice bool `json:"can_slice,omitempty"`
 	Members []ProjectMember `json:"members,omitempty"`
 	Prints  []ProjectPrint  `json:"prints"`
 	Photos  []ProjectPhoto  `json:"photos"`
@@ -153,12 +156,15 @@ type ProjectMember struct {
 	// GitHub is the GitHub username of the member, which the owner sets: the plans of the
 	// member's fork come in with it.
 	GitHub string `json:"github,omitempty"`
+	// Slice: the member can choose the parts of a plan and slice them.
+	Slice bool `json:"slice,omitempty"`
 }
 
-// MemberEdit is the body of PATCH /api/v1/projects/<id>/members/<member>: the GitHub username of
-// the member, or "" for none.
+// MemberEdit is the body of PATCH /api/v1/projects/<id>/members/<member>. Each field that is in
+// the body changes: the GitHub username of the member ("" for none), and Slice.
 type MemberEdit struct {
-	GitHub string `json:"github"`
+	GitHub *string `json:"github,omitempty"`
+	Slice  *bool   `json:"slice,omitempty"`
 }
 
 // ProjectPrint is a print of a project, from the history record of the deck.
