@@ -1603,6 +1603,8 @@ async function inspect(box, opts) {
   // coordinates of the files).
   const middle = new T.Box3().setFromObject(group).getCenter(new T.Vector3());
   group.worldToLocal(middle);
+  // The lengths of the directions are relative: the longest moves half the size of the whole.
+  const most = Math.max(1e-9, ...items.map((it) => (it.explode && it.explode.length === 3 ? Math.hypot(...it.explode) : 1)));
   meshes.forEach((m) => {
     const it = items[m.userData.index];
     let d;
@@ -1613,11 +1615,18 @@ async function inspect(box, opts) {
       if (d.length() < len * 0.02) d.set(0, 0, 1);
       d.normalize();
     }
-    m.userData.dir = d.multiplyScalar(len * 0.45);
+    m.userData.dir = d.multiplyScalar((len * 0.5) / most);
   });
   let exploded = 0, cutAt = 1, picked = -1;
+  const groundY = group.position.y;
+  // The items move, and then the whole goes up until its lowest point is on the floor.
   const place = () => {
     for (const m of meshes) m.position.copy(m.userData.dir).multiplyScalar(exploded);
+    group.position.y = groundY;
+    scene.updateMatrixWorld(true);
+    const low = new T.Box3().setFromObject(group).min.y;
+    if (low < 0) group.position.y = groundY - low;
+    scene.updateMatrixWorld(true);
   };
   const cutPlane = () => {
     // cut 1: no cut; 0: all cut away. The plane moves across X of the view.
@@ -1641,15 +1650,22 @@ async function inspect(box, opts) {
   const home = () => {
     camera.position.copy(dirHome).multiplyScalar(reach(len / 2)).add(new T.Vector3(0, size.y / 2, 0));
     controls.target.set(0, size.y / 2, 0);
+    fitDist = reach(len / 2);
+    if (exploded > 0) fitOut();
     controls.update();
   };
-  // After an explode, the camera goes back when the items are out of the view.
+  // After an explode, the camera aims at the middle of the items, and its distance changes with
+  // the size of the items. The zoom of the person stays: zoom is the distance over the fit
+  // distance.
+  const ballNow = () => new T.Box3().setFromObject(group).getBoundingSphere(new T.Sphere());
+  let fitDist = reach(len / 2);
   const fitOut = () => {
-    const b = new T.Box3().setFromObject(group);
-    const ball = b.getBoundingSphere(new T.Sphere());
-    const need = reach(ball.radius + ball.center.distanceTo(controls.target) * 0.6);
+    const ball = ballNow();
     const off = camera.position.clone().sub(controls.target);
-    if (off.length() < need) camera.position.copy(controls.target).add(off.setLength(need));
+    const zoom = off.length() / fitDist;
+    fitDist = reach(ball.radius);
+    controls.target.copy(ball.center);
+    camera.position.copy(ball.center).add(off.setLength(fitDist * zoom));
   };
   home();
   controls.minDistance = len * 0.15;
