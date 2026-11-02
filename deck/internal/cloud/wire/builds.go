@@ -210,7 +210,19 @@ type BuildStarted struct {
 // for example "Slicing plate 2 of 3: Pod door (fine) x2".
 type BuildProgress struct {
 	Text string `json:"text"`
+	// Phase is the step of the run: "setup" (the checkout and the slicer), "slice" or "upload".
+	// An older Action sends no phase.
+	Phase string `json:"phase,omitempty"`
+	// Plate is the number of the plate that slices now, from 1, in the phase "slice".
+	Plate int `json:"plate,omitempty"`
 }
+
+// The phases of BuildProgress.
+const (
+	PhaseSetup  = "setup"
+	PhaseSlice  = "slice"
+	PhaseUpload = "upload"
+)
 
 // BuildFailure is the body of POST /api/v1/builds/<id>/failed.
 type BuildFailure struct {
@@ -229,6 +241,9 @@ type ProjectBuild struct {
 	Start string `json:"start,omitempty"`
 	// Progress is what the slice run does now, while the build slices.
 	Progress string `json:"progress,omitempty"`
+	// Phase and Plate are the step of the slice run, as BuildProgress sends them.
+	Phase string `json:"phase,omitempty"`
+	Plate int    `json:"plate,omitempty"`
 	// Run is the page of the slice run on GitHub, after the run starts.
 	Run    string              `json:"run,omitempty"`
 	Plates []ProjectBuildPlate `json:"plates"`

@@ -356,8 +356,24 @@ func TestBuildDispatch(t *testing.T) {
 		t.Fatalf("started: %d %+v", st, b)
 	}
 	if st := call(t, base, "POST", "/api/v1/builds/"+b.ID+"/progress", token, cloud.BuildProgress{Text: "Slicing plate 1 of 1: Pod door x2"}, &b); st != 200 ||
-		b.Progress != "Slicing plate 1 of 1: Pod door x2" {
+		b.Progress != "Slicing plate 1 of 1: Pod door x2" || b.Phase != "" || b.Plate != 0 {
 		t.Fatalf("progress: %d %+v", st, b)
+	}
+	// The phase and the plate. A plate that the build does not have, or an unknown phase, stays out.
+	for _, c := range []struct {
+		in    cloud.BuildProgress
+		phase string
+		plate int
+	}{
+		{cloud.BuildProgress{Text: "Slicing plate 1 of 1", Phase: "slice", Plate: 1}, "slice", 1},
+		{cloud.BuildProgress{Text: "x", Phase: "slice", Plate: 2}, "slice", 0},
+		{cloud.BuildProgress{Text: "x", Phase: "dance"}, "", 0},
+		{cloud.BuildProgress{Text: "Sending the files", Phase: "upload"}, "upload", 0},
+	} {
+		var got cloud.ProjectBuild
+		if st := call(t, base, "POST", "/api/v1/builds/"+b.ID+"/progress", token, c.in, &got); st != 200 || got.Phase != c.phase || got.Plate != c.plate {
+			t.Fatalf("progress %+v: %d %+v", c.in, st, got)
+		}
 	}
 	app.err = errors.New("the Printdeck GitHub App is not installed on beetlebugorg/bittlex: install it there")
 	call(t, base, "POST", "/api/v1/projects/"+sum.ID+"/plans/"+up.ID+"/builds", tok, req, &b)

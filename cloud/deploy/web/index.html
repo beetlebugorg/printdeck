@@ -377,6 +377,11 @@
       <div class="linkrow"><a id="bdRun" target="_blank" rel="noopener" hidden>The slice run on GitHub</a><button type="button" id="bdAgain" hidden>Slice again</button></div>
       <p class="msg" id="bdAgainMsg" role="status"></p>
     </section>
+    <section class="card slicing" id="bdSlicing" aria-label="The slice" hidden>
+      <div class="chead"><h2><span class="livedot"></span>Slicing</h2><span class="clock" id="bdClock" aria-label="Time since the slice started"></span></div>
+      <div class="sbar" role="presentation"><i id="bdBar"></i></div>
+      <ol class="ssteps" id="bdSteps" aria-live="polite"></ol>
+    </section>
     <section class="card" id="bdStartCard" hidden>
       <h2>Start the slice run</h2>
       <p class="small">The service cannot start GitHub Actions yet. Run this command, or run the workflow "printdeck" on GitHub with this build:</p>

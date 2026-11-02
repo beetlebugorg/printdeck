@@ -1003,7 +1003,7 @@ func (a *app) sliceAgain() {
 // The build page.
 
 // showBuildPage shows the build id of the project. While the build slices, the page looks
-// again each 10 seconds.
+// again each 3 seconds.
 func (a *app) showBuildPage(projectID, id string) {
 	var v wire.ProjectView
 	if err := a.api("GET", "/projects/"+projectID, nil, &v); err != nil {
@@ -1027,10 +1027,17 @@ func (a *app) showBuildPage(projectID, id string) {
 	setText("bdBack", "The plan")
 	show("vBuild")
 	a.drawBuild(b)
+	// The clock of the slice goes on each second, between the loads of the build.
+	go func() {
+		for a.playing == playing && a.lastBuild.State == wire.BuildSlicing {
+			drawSliceClock(a.lastBuild)
+			time.Sleep(time.Second)
+		}
+	}()
 	if watchBuild(b) {
 		go func() {
 			for {
-				wait := 10 * time.Second
+				wait := 3 * time.Second
 				if b.State != wire.BuildSlicing {
 					wait = 20 * time.Second
 				}
@@ -1128,17 +1135,8 @@ var ownerPrinters []wire.Printer
 func (a *app) drawBuild(b wire.ProjectBuild) {
 	v := a.view
 	setText("bdTitle", buildTitle(v, b))
-	state := buildStateText(b.State)
-	if b.State == wire.BuildSlicing {
-		state = "Waiting for the slice run on GitHub"
-		if b.Run != "" {
-			state = "The slice run started"
-		}
-		if b.Progress != "" {
-			state = b.Progress
-		}
-	}
-	setText("bdSub", buildFacts(b)+" · commit "+shortSHA(b.Commit)+" · "+localWhen(b.Created)+" · "+state)
+	setText("bdSub", buildFacts(b)+" · commit "+shortSHA(b.Commit)+" · "+localWhen(b.Created)+" · "+buildStateText(b.State))
+	drawSlicing(b)
 	setHidden("bdStartCard", b.Start == "" || !v.IsOwner)
 	setText("bdStart", b.Start)
 	setHidden("bdError", b.Error == "")
@@ -1337,4 +1335,82 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 		}
 		box.Call("appendChild", card)
 	}
+}
+
+// The steps of a slice run, for the card of the build page.
+var sliceSteps = []string{"GitHub starts the slice run", "Get the commit and the slicer", "Slice the plates", "Send the files"}
+
+// sliceStep is the step of the slice run of the build b, from 0 (GitHub starts the run) to 3
+// (send the files). An older Action sends only a text, with no phase.
+func sliceStep(b wire.ProjectBuild) int {
+	if b.Run == "" && b.Phase == "" {
+		return 0
+	}
+	switch {
+	case b.Phase == wire.PhaseSlice, b.Phase == "" && strings.HasPrefix(b.Progress, "Slicing"):
+		return 2
+	case b.Phase == wire.PhaseUpload, b.Phase == "" && strings.HasPrefix(b.Progress, "Sending"):
+		return 3
+	}
+	return 1
+}
+
+// sliceDone is the part of the slice run that is done, from 0 to 1, for the bar.
+func sliceDone(b wire.ProjectBuild) float64 {
+	switch sliceStep(b) {
+	case 0:
+		return 0.04
+	case 1:
+		return 0.2
+	case 2:
+		n := len(b.Plates)
+		if b.Plate < 1 || n == 0 {
+			return 0.35
+		}
+		return 0.35 + 0.5*float64(b.Plate-1)/float64(n)
+	}
+	return 0.9
+}
+
+// drawSlicing shows the card of the slice while the build slices: the steps, a bar and a clock.
+func drawSlicing(b wire.ProjectBuild) {
+	slicing := b.State == wire.BuildSlicing
+	setHidden("bdSlicing", !slicing)
+	if !slicing {
+		return
+	}
+	byID("bdBar").Get("style").Set("width", fmt.Sprintf("%.0f%%", 100*sliceDone(b)))
+	now := sliceStep(b)
+	list := byID("bdSteps")
+	list.Set("textContent", "")
+	for i, text := range sliceSteps {
+		if i == 2 && len(b.Plates) == 1 {
+			text = "Slice the plate"
+		}
+		if i == now && b.Progress != "" && i > 0 {
+			text = b.Progress
+		}
+		class := "todo"
+		switch {
+		case i < now:
+			class = "done"
+		case i == now:
+			class = "now"
+		}
+		li := el("li", class, text)
+		if i == now {
+			li.Set("ariaCurrent", "step")
+		}
+		list.Call("appendChild", li)
+	}
+	drawSliceClock(b)
+}
+
+// drawSliceClock shows the time since the person asked for the slice.
+func drawSliceClock(b wire.ProjectBuild) {
+	sec := int(time.Since(b.Created).Seconds())
+	if sec < 0 {
+		sec = 0
+	}
+	setText("bdClock", fmt.Sprintf("%d:%02d", sec/60, sec%60))
 }

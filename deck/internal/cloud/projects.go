@@ -242,4 +242,7 @@ const (
 	PartApproved = wire.PartApproved
 	PartRejected = wire.PartRejected
 	PartReplaced = wire.PartReplaced
+	PhaseSetup   = wire.PhaseSetup
+	PhaseSlice   = wire.PhaseSlice
+	PhaseUpload  = wire.PhaseUpload
 )

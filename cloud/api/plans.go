@@ -84,6 +84,8 @@ type BuildRecord struct {
 	Error    string        `json:"error,omitempty"`
 	RunID    string        `json:"run_id,omitempty"` // the slice run on GitHub
 	Progress string        `json:"progress,omitempty"`
+	Phase    string        `json:"phase,omitempty"`
+	Plate    int           `json:"plate,omitempty"`
 	Plates   []plateRecord `json:"plates"`
 }
 
@@ -183,6 +185,14 @@ func (s *Server) routeActions(ctx context.Context, r *http.Request, body []byte,
 			return nil, fail(http.StatusConflict, "the build is not slicing")
 		}
 		b.Progress = clip(strings.TrimSpace(in.Text), 200)
+		b.Phase, b.Plate = "", 0
+		switch in.Phase {
+		case cloud.PhaseSetup, cloud.PhaseSlice, cloud.PhaseUpload:
+			b.Phase = in.Phase
+		}
+		if b.Phase == cloud.PhaseSlice && in.Plate >= 1 && in.Plate <= len(b.Plates) {
+			b.Plate = in.Plate
+		}
 		if err := s.putJSON(ctx, buildKey(p.ID, b.ID), b); err != nil {
 			return nil, err
 		}
@@ -1003,7 +1013,7 @@ func (s *Server) projectBuildNamed(ctx context.Context, p *Project, b *BuildReco
 		out.Run = "https://github.com/" + b.Repo + "/actions/runs/" + b.RunID
 	}
 	if b.State == cloud.BuildSlicing {
-		out.Progress = b.Progress
+		out.Progress, out.Phase, out.Plate = b.Progress, b.Phase, b.Plate
 	}
 	dir := buildDir(p.ID, b.ID)
 	for i, pl := range b.Plates {

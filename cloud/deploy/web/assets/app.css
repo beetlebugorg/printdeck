@@ -445,3 +445,21 @@ body:has(#projHead:not([hidden])) #psBack, body:has(#projHead:not([hidden])) #pl
   .doc.first { grid-column: span 2; grid-row: span 2; }
   .doc.first strong { font-size: 18px; }
 }
+
+/* The card of a build that slices: a bar, the steps of the slice run and a clock. */
+.slicing .clock { font: 500 15px/1 "IBM Plex Mono", monospace; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.sbar { height: 10px; border-radius: 5px; background: var(--lcd); overflow: hidden; }
+.sbar i { display: block; height: 100%; width: 0; border-radius: 5px; transition: width .8s ease-out;
+  background: repeating-linear-gradient(-45deg, var(--orange) 0 10px, color-mix(in srgb, var(--orange) 75%, #fff) 10px 20px);
+  background-size: 28px 28px; animation: sbar 1s linear infinite; }
+@keyframes sbar { to { background-position: 28px 0; } }
+@media (prefers-reduced-motion: reduce) { .sbar i { animation: none; } }
+.ssteps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); font-size: 15px; }
+.ssteps li { display: flex; gap: var(--s2); align-items: baseline; }
+.ssteps li::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--seam); position: relative; top: 1px; }
+.ssteps li.done { color: var(--ink-dim); }
+.ssteps li.done::before { background: var(--orange); border-color: var(--orange); }
+.ssteps li.now { font-weight: 700; }
+.ssteps li.now::before { border-color: var(--orange); animation: pdpulse 1.6s ease-in-out infinite; }
+.ssteps li.todo { color: var(--ink-dim); }
+@media (prefers-reduced-motion: reduce) { .ssteps li.now::before { animation: none; } }
