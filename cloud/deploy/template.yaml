@@ -218,8 +218,9 @@ Resources:
             - { Header: X-Robots-Tag, Value: noindex, Override: true }
 
   # Paths serves the app page at /projects and at the addresses under it, and the public page of
-  # a project at the page of one of its prints, /p/<slug>/<n>. api.PagePath does the same for
-  # pwf dev.
+  # a project at the page of one of its prints, /p/<slug>/<n>. A preview bot gets the public page
+  # at /projects/<slug>, for the name of the project on the preview card. api.PagePath does the
+  # same for pwf dev.
   Paths:
     Type: AWS::CloudFront::Function
     Properties:
@@ -229,11 +230,17 @@ Resources:
         Comment: The page file of the project addresses
         Runtime: cloudfront-js-2.0
       FunctionCode: |
+        var bot = /facebookexternalhit|facebot|twitterbot|slackbot|discordbot|whatsapp|linkedinbot|telegrambot|applebot|skypeuripreview|redditbot|mastodon|bluesky|embedly|iframely|pinterest|vkshare/i;
         function handler(event) {
           var r = event.request;
           var u = r.uri;
           if (u === '/projects' || u.indexOf('/projects/') === 0) {
             r.uri = '/app';
+            var ua = r.headers['user-agent'] ? r.headers['user-agent'].value : '';
+            var slug = u.split('/')[2];
+            if (slug && bot.test(ua)) {
+              r.uri = '/p/' + slug;
+            }
           } else {
             var m = u.match(/^(\/p\/[^\/]+)\/[0-9]+\/?$/);
             if (m) {

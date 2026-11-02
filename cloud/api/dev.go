@@ -175,7 +175,7 @@ func (d *DevServer) upload(w http.ResponseWriter, r *http.Request) {
 
 // file serves a public file of the bucket, or the "not found" page.
 func (d *DevServer) file(w http.ResponseWriter, r *http.Request) {
-	key := strings.TrimPrefix(PagePath(path.Clean(r.URL.Path)), "/")
+	key := strings.TrimPrefix(PagePath(path.Clean(r.URL.Path), r.UserAgent()), "/")
 	if key == "" {
 		key = "index.html"
 	}
