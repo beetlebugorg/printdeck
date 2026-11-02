@@ -67,6 +67,8 @@ type PlanRecord struct {
 	Parts   []cloud.PlanPart `json:"parts"`
 	// Docs are the PDFs of the docs of printdeck.yml, in the folder of the plan.
 	Docs []cloud.PlanDoc `json:"docs,omitempty"`
+	// Assemblies are the assemblies of printdeck.yml, with their models in the folder of the plan.
+	Assemblies []cloud.PlanAssembly `json:"assemblies,omitempty"`
 	// Base is the plan that a plan of a pull request compares with, and Diffs the changed models
 	// against it, for the comment on the pull request (prcomment.go).
 	Base  string     `json:"base,omitempty"`
@@ -291,6 +293,7 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 		}
 		names[key] = true
 		pp.MaterialName = clip(strings.TrimSpace(pp.MaterialName), 120)
+		pp.Description, pp.Group = clip(strings.TrimSpace(pp.Description), 1000), clip(strings.TrimSpace(pp.Group), 80)
 		if !hexColor.MatchString(pp.MaterialColor) {
 			pp.MaterialColor = ""
 		}
@@ -319,6 +322,11 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 		return nil, err
 	}
 	rec.Docs = docs
+	asm, err := planAssemblies(in.Assemblies, rec.Parts)
+	if err != nil {
+		return nil, err
+	}
+	rec.Assemblies = asm
 	g, err := s.Grants.Grant(ctx, planDir(p.ID, rec.ID), MaxBuildFile, buildGrantTTL)
 	if err != nil {
 		return nil, err
@@ -327,6 +335,67 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 		return nil, err
 	}
 	return cloud.UploadReply{ID: rec.ID, URL: s.projectURL(p) + "/plans/" + rec.ID, Grant: g}, nil
+}
+
+// planAssemblies checks the assemblies of a plan manifest, and returns them with their fields
+// clipped. The part of an item is a part of the plan.
+func planAssemblies(in []cloud.PlanAssembly, parts []cloud.PlanPart) ([]cloud.PlanAssembly, error) {
+	if len(in) > MaxAssemblies {
+		return nil, fail(http.StatusBadRequest, fmt.Sprintf("a plan has at most %d assemblies", MaxAssemblies))
+	}
+	labels := map[string]string{} // the lower case label of each part, and the label
+	for _, pp := range parts {
+		labels[strings.ToLower(planPartLabel(pp))] = planPartLabel(pp)
+	}
+	var out []cloud.PlanAssembly
+	models := map[string]bool{}
+	for _, pp := range parts {
+		for _, m := range pp.Models {
+			models[m] = true
+		}
+	}
+	for _, a := range in {
+		a.Name, a.Description = clip(strings.TrimSpace(a.Name), 120), clip(strings.TrimSpace(a.Description), 1000)
+		if a.Name == "" || len(a.Items) == 0 || len(a.Items) > MaxAssemblyItems {
+			return nil, fail(http.StatusBadRequest, fmt.Sprintf("an assembly needs a name and 1 to %d items", MaxAssemblyItems))
+		}
+		for i := range a.Items {
+			it := &a.Items[i]
+			it.Name, it.Part = clip(strings.TrimSpace(it.Name), 120), clip(strings.TrimSpace(it.Part), 170)
+			label, ok := labels[strings.ToLower(it.Part)]
+			if ok {
+				it.Part = label
+			}
+			if it.Name == "" {
+				it.Name = it.Part
+			}
+			switch {
+			case it.Name == "":
+				return nil, fail(http.StatusBadRequest, "each item of an assembly needs a name or a part")
+			case it.Part != "" && !ok:
+				return nil, fail(http.StatusBadRequest, "the assembly "+a.Name+" has an item of no part of the plan: "+it.Part)
+			case !fileName.MatchString(it.Model) || models[it.Model]:
+				return nil, fail(http.StatusBadRequest, "a bad or second model name: "+it.Model)
+			}
+			models[it.Model] = true
+			if !hexColor.MatchString(it.Color) {
+				it.Color = ""
+			}
+			if len(it.Explode) != 3 || it.Explode[0] == 0 && it.Explode[1] == 0 && it.Explode[2] == 0 {
+				it.Explode = nil
+			}
+		}
+		out = append(out, a)
+	}
+	return out, nil
+}
+
+// planPartLabel is the label of a part of a plan: "Pod door (fine)", or "Pod door".
+func planPartLabel(pp cloud.PlanPart) string {
+	if pp.Variant != "" {
+		return pp.Name + " (" + pp.Variant + ")"
+	}
+	return pp.Name
 }
 
 // planDocs checks the PDFs of a plan manifest, and returns them with their fields clipped.
@@ -377,6 +446,13 @@ func (s *Server) planDone(ctx context.Context, p *Project, c *GitHubClaims, id s
 		for _, m := range pp.Models {
 			if !have[m] {
 				return nil, fail(http.StatusBadRequest, "the model "+m+" is not up")
+			}
+		}
+	}
+	for _, a := range rec.Assemblies {
+		for _, it := range a.Items {
+			if !have[it.Model] {
+				return nil, fail(http.StatusBadRequest, "the model "+it.Model+" is not up")
 			}
 		}
 	}
@@ -803,6 +879,14 @@ func (s *Server) projectPlan(ctx context.Context, p *Project, rec *PlanRecord) c
 	}
 	if rec.Ready {
 		out.Docs = s.planDocViews(ctx, p, rec)
+		for _, a := range rec.Assemblies {
+			pa := cloud.ProjectAssembly{PlanAssembly: a}
+			for _, it := range a.Items {
+				u, _ := s.Grants.FileURL(ctx, dir+it.Model, urlTTL)
+				pa.ModelURLs = append(pa.ModelURLs, u)
+			}
+			out.Assemblies = append(out.Assemblies, pa)
+		}
 	}
 	return out
 }

@@ -19,7 +19,7 @@ import (
 // and the newest photos. The tabs Prints, Photos and Settings show the full lists.
 
 // projectTabs are the tabs with an address of their own: /projects/<slug>/<tab>.
-var projectTabs = map[string]bool{"prints": true, "photos": true, "settings": true}
+var projectTabs = map[string]bool{"prints": true, "photos": true, "parts": true, "settings": true}
 
 // tabPath is the address of the tab of the project.
 func tabPath(slug, tab string) string {
@@ -87,6 +87,9 @@ func (a *app) bindTabs() {
 			drawRate(a.view.Prints)
 		}
 		setTab(tab)
+		if tab == "parts" {
+			a.drawPartsTab()
+		}
 		js.Global().Call("scrollTo", 0, 0)
 		return nil
 	})
@@ -137,6 +140,11 @@ func (a *app) drawHead(v *wire.ProjectView) {
 	}
 	setText("tbPrintsN", countText(len(v.Prints)))
 	setText("tbPhotosN", countText(len(v.Photos)))
+	pl := partsPlan(v)
+	setHidden("tbParts", pl == nil)
+	if pl != nil {
+		setText("tbPartsN", countText(len(pl.Parts)))
+	}
 	setText("tbBuildsN", countText(v.PlansTotal))
 	setHidden("tbBuilds", v.Repo == "")
 	drawFaces(v)

@@ -28,6 +28,9 @@ type (
 	PlanManifest      = wire.PlanManifest
 	PlanPart          = wire.PlanPart
 	PlanDoc           = wire.PlanDoc
+	PlanAssembly      = wire.PlanAssembly
+	PlanAssemblyItem  = wire.PlanAssemblyItem
+	ProjectAssembly   = wire.ProjectAssembly
 	QueueRemove       = wire.QueueRemove
 	QueueRemoved      = wire.QueueRemoved
 	ProjectDoc        = wire.ProjectDoc

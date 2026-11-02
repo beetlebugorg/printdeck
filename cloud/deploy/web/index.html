@@ -47,6 +47,7 @@
       <a data-tab="overview" id="tbOverview">Overview</a>
       <a data-tab="prints" id="tbPrints">Prints <span class="n" id="tbPrintsN"></span></a>
       <a data-tab="photos" id="tbPhotos">Photos <span class="n" id="tbPhotosN"></span></a>
+      <a data-tab="parts" id="tbParts" hidden>Parts <span class="n" id="tbPartsN"></span></a>
       <a data-tab="builds" id="tbBuilds" hidden>Builds <span class="n" id="tbBuildsN"></span></a>
       <a data-tab="settings" id="tbSettings">Settings</a>
     </nav>
@@ -235,6 +236,24 @@
     </section>
 
     <!-- The photos -->
+    <!-- The parts of printdeck.yml, with the 3D views (parts.go) -->
+    <section class="parts-tab" data-on="parts" aria-label="The parts">
+      <section class="card ptviewer" id="ptViewer">
+        <div class="chead"><h2 id="ptTitle">The parts</h2><span class="dim small" id="ptFrom"></span></div>
+        <div class="ptkeys" id="ptAsmKeys"></div>
+        <div class="pt3d" id="ptModel"></div>
+        <div class="ptctl">
+          <label id="ptExplodeRow">Explode<input type="range" id="ptExplode" min="0" max="100" value="0"></label>
+          <label>Cut<input type="range" id="ptCut" min="0" max="100" value="100"></label>
+          <button type="button" id="ptReset">Reset the view</button>
+        </div>
+        <p class="ptdesc" id="ptDesc" hidden></p>
+        <ul class="ptitems" id="ptItems" hidden></ul>
+      </section>
+      <p class="dim" id="ptNone" hidden>No parts yet. A push to GitHub sends the parts of printdeck.yml.</p>
+      <div id="ptGroups"></div>
+    </section>
+
     <section class="card" id="pPhotosCard" aria-label="Photos" data-on="photos">
       <div class="photo-keys">
         <label class="file"><input type="file" id="photoFile" accept="image/jpeg,image/png" multiple><span>Add photos</span></label>

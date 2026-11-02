@@ -1533,4 +1533,229 @@ async function showDiff(box, oldUrl, newUrl) {
   return diffText(d);
 }
 
-window.pwfView3d = { show, showPart, showModels, showGcode, hide, modelFile, describeDiff, showDiff };
+
+// The views of the Parts tab: a part or an assembly that a person turns, takes apart and cuts
+// open, to look at the design.
+
+// inspect draws the items in the element box. opts.items: [{ url, color, name, explode }], with
+// the models in their places (mm, Z up). explode is the direction [x, y, z] that the item moves
+// in the exploded view, or null: then the item moves away from the middle. opts.onPick(i) runs
+// when a person taps item i, or -1 for the empty space. It returns the controls of the view:
+// explode(f) and cut(f), with f from 0 to 1, highlight(i), and reset().
+async function inspect(box, opts) {
+  hide();
+  const { T, OrbitControls, RoomEnvironment } = await load();
+  const renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.toneMapping = T.ACESFilmicToneMapping;
+  renderer.localClippingEnabled = true;
+  box.textContent = "";
+  box.appendChild(renderer.domElement);
+  const scene = new T.Scene();
+  const pmrem = new T.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.35;
+  scene.add(new T.HemisphereLight(0xffffff, 0x50555f, 0.6));
+  const key = new T.DirectionalLight(0xffffff, 1.4);
+  key.position.set(-1, 1.6, 1.4);
+  scene.add(key);
+  const camera = new T.PerspectiveCamera(30, 1, 1, 50000);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+
+  const items = opts.items || [];
+  const geos = await Promise.all(items.map((it) => readSTL(T, it.url).catch(() => null)));
+  // The cut: a plane across X of the view. The back faces show where the plane cuts a wall.
+  const plane = new T.Plane(new T.Vector3(-1, 0, 0), 1e9);
+  const group = new T.Group();
+  group.rotation.x = -Math.PI / 2; // Z of the files is up
+  const meshes = [];
+  geos.forEach((g, i) => {
+    if (!g) return;
+    const it = items[i];
+    const front = new T.MeshPhysicalMaterial({ color: it.color || "#e8762b", roughness: 0.5, clearcoat: 0.2, envMapIntensity: 0.8,
+      clippingPlanes: [plane], transparent: true, opacity: 1 });
+    const back = new T.MeshBasicMaterial({ color: new T.Color(it.color || "#e8762b").multiplyScalar(0.45), side: T.BackSide,
+      clippingPlanes: [plane], transparent: true, opacity: 1 });
+    const m = new T.Mesh(g, front);
+    m.add(new T.Mesh(g, back));
+    m.userData.index = i;
+    g.computeBoundingBox();
+    m.userData.center = g.boundingBox.getCenter(new T.Vector3());
+    group.add(m);
+    meshes.push(m);
+  });
+  scene.add(group);
+  // The whole stands on the floor, in the middle.
+  scene.updateMatrixWorld(true);
+  const all = new T.Box3().setFromObject(group);
+  const mid = all.getCenter(new T.Vector3());
+  group.position.set(-mid.x, -all.min.y, -mid.z);
+  scene.updateMatrixWorld(true);
+  const size = all.getSize(new T.Vector3());
+  const len = Math.max(20, size.length());
+  const floor = new T.GridHelper(len * 2, 20, 0x5b5f66, 0x3a3d42);
+  floor.material.transparent = true;
+  floor.material.opacity = 0.5;
+  scene.add(floor);
+
+  // The explode: each item moves along its direction, or away from the middle of all (in the
+  // coordinates of the files).
+  const middle = new T.Box3().setFromObject(group).getCenter(new T.Vector3());
+  group.worldToLocal(middle);
+  meshes.forEach((m) => {
+    const it = items[m.userData.index];
+    let d;
+    if (it.explode && it.explode.length === 3) {
+      d = new T.Vector3(...it.explode);
+    } else {
+      d = m.userData.center.clone().sub(middle);
+      if (d.length() < len * 0.02) d.set(0, 0, 1);
+      d.normalize();
+    }
+    m.userData.dir = d.multiplyScalar(len * 0.45);
+  });
+  let exploded = 0, cutAt = 1, picked = -1;
+  const place = () => {
+    for (const m of meshes) m.position.copy(m.userData.dir).multiplyScalar(exploded);
+  };
+  const cutPlane = () => {
+    // cut 1: no cut; 0: all cut away. The plane moves across X of the view.
+    const b = new T.Box3().setFromObject(group);
+    plane.constant = cutAt >= 0.999 ? 1e9 : b.min.x + (b.max.x - b.min.x) * cutAt;
+  };
+  const paint = () => {
+    for (const m of meshes) {
+      const on = picked < 0 || m.userData.index === picked;
+      for (const mat of [m.material, m.children[0].material]) {
+        mat.opacity = on ? 1 : 0.15;
+        mat.depthWrite = on;
+      }
+      m.material.emissive = new T.Color(on && picked >= 0 ? 0x332211 : 0x000000);
+    }
+  };
+
+  // The distance of the camera that shows a ball of the radius r.
+  const reach = (r) => (r / Math.sin((camera.fov * Math.PI) / 360)) * 1.15;
+  const dirHome = new T.Vector3(0.55, 0.42, 0.72).normalize();
+  const home = () => {
+    camera.position.copy(dirHome).multiplyScalar(reach(len / 2)).add(new T.Vector3(0, size.y / 2, 0));
+    controls.target.set(0, size.y / 2, 0);
+    controls.update();
+  };
+  // After an explode, the camera goes back when the items are out of the view.
+  const fitOut = () => {
+    const b = new T.Box3().setFromObject(group);
+    const ball = b.getBoundingSphere(new T.Sphere());
+    const need = reach(ball.radius + ball.center.distanceTo(controls.target) * 0.6);
+    const off = camera.position.clone().sub(controls.target);
+    if (off.length() < need) camera.position.copy(controls.target).add(off.setLength(need));
+  };
+  home();
+  controls.minDistance = len * 0.15;
+  controls.maxDistance = len * 12;
+
+  // A tap (not a turn) picks an item.
+  const ray = new T.Raycaster();
+  let down = null;
+  const el = renderer.domElement;
+  const onDown = (e) => { down = [e.clientX, e.clientY]; };
+  const onUp = (e) => {
+    if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return;
+    const r = el.getBoundingClientRect();
+    ray.setFromCamera(new T.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+    // A point that the cut took away is not a hit.
+    const hits = ray.intersectObjects(meshes, false).filter((h) => plane.distanceToPoint(h.point) >= 0);
+    const i = hits.length ? hits[0].object.userData.index : -1;
+    if (opts.onPick) opts.onPick(i);
+  };
+  el.addEventListener("pointerdown", onDown);
+  el.addEventListener("pointerup", onUp);
+
+  const fit = () => {
+    const w = box.clientWidth, h = box.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / Math.max(1, h);
+    camera.updateProjectionMatrix();
+  };
+  const resize = new ResizeObserver(fit);
+  resize.observe(box);
+  fit();
+  let frame = 0;
+  const tick = () => {
+    frame = requestAnimationFrame(tick);
+    controls.update();
+    renderer.render(scene, camera);
+  };
+  tick();
+  view = {
+    box,
+    stop() {
+      cancelAnimationFrame(frame);
+      resize.disconnect();
+      el.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("pointerup", onUp);
+      controls.dispose();
+      renderer.dispose();
+      geos.forEach((g) => g && g.dispose());
+      box.textContent = "";
+    },
+  };
+  return {
+    explode(f) { exploded = Math.max(0, Math.min(1, +f)); place(); cutPlane(); fitOut(); },
+    cut(f) { cutAt = Math.max(0, Math.min(1, +f)); cutPlane(); },
+    highlight(i) { picked = i; paint(); },
+    reset() { home(); },
+  };
+}
+
+// thumbs draws a picture of each part for the cards of the Parts tab, with one renderer.
+// parts: [{ urls, color }]. It returns a promise of the PNG data URLs, "" for a part that did not
+// load.
+async function thumbs(parts, px) {
+  const { T, RoomEnvironment } = await load();
+  const size = px || 320;
+  const renderer = new T.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(1);
+  renderer.setSize(size, size, false);
+  renderer.toneMapping = T.ACESFilmicToneMapping;
+  const scene = new T.Scene();
+  const pmrem = new T.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.35;
+  scene.add(new T.HemisphereLight(0xffffff, 0x50555f, 0.7));
+  const key = new T.DirectionalLight(0xffffff, 1.5);
+  key.position.set(-1, 1.6, 1.4);
+  scene.add(key);
+  const camera = new T.PerspectiveCamera(30, 1, 1, 50000);
+  const out = [];
+  for (const p of parts) {
+    try {
+      const geos = await Promise.all((p.urls || []).map((u) => readSTL(T, u)));
+      const group = new T.Group();
+      const mat = new T.MeshPhysicalMaterial({ color: p.color || "#e8762b", roughness: 0.5, clearcoat: 0.2, envMapIntensity: 0.8 });
+      for (const g of geos) group.add(new T.Mesh(g, mat));
+      group.rotation.x = -Math.PI / 2;
+      scene.add(group);
+      scene.updateMatrixWorld(true);
+      const b = new T.Box3().setFromObject(group);
+      const mid = b.getCenter(new T.Vector3());
+      group.position.sub(mid);
+      const r = b.getSize(new T.Vector3()).length() / 2;
+      const dist = r / Math.sin((camera.fov * Math.PI) / 360) * 1.05;
+      camera.position.set(dist * 0.55, dist * 0.5, dist * 0.67);
+      camera.lookAt(0, 0, 0);
+      renderer.render(scene, camera);
+      out.push(renderer.domElement.toDataURL("image/png"));
+      scene.remove(group);
+      geos.forEach((g) => g.dispose());
+      mat.dispose();
+    } catch {
+      out.push("");
+    }
+  }
+  renderer.dispose();
+  return out;
+}
+
+window.pwfView3d = { show, showPart, showModels, showGcode, hide, modelFile, describeDiff, showDiff, inspect, thumbs };

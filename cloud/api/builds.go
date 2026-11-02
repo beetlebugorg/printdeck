@@ -32,9 +32,12 @@ const (
 	MaxBuildFile = 200 << 20
 	MaxPlanParts = 50
 	MaxPlanDocs  = 10
-	MaxDocFile   = 50 << 20
-	MaxPlates    = 20
-	MaxPartCount = 100
+	// MaxAssemblies is the most assemblies of a plan, and MaxAssemblyItems the most items of one.
+	MaxAssemblies    = 10
+	MaxAssemblyItems = 60
+	MaxDocFile       = 50 << 20
+	MaxPlates        = 20
+	MaxPartCount     = 100
 	// PlansShown is the count of the newest plans that the view of a project has: the project
 	// page shows some of them, and the page of all the plans gets all of them.
 	PlansShown    = 10

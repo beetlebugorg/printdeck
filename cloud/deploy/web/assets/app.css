@@ -243,7 +243,8 @@ pre.cmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: #15161a
 #vProject[data-tab="overview"] [data-on]:not([data-on~="overview"]),
 #vProject[data-tab="prints"] [data-on]:not([data-on~="prints"]),
 #vProject[data-tab="photos"] [data-on]:not([data-on~="photos"]),
-#vProject[data-tab="settings"] [data-on]:not([data-on~="settings"]) { display: none !important; }
+#vProject[data-tab="settings"] [data-on]:not([data-on~="settings"]),
+#vProject[data-tab="parts"] [data-on]:not([data-on~="parts"]) { display: none !important; }
 .dhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: var(--s3) var(--s5); }
 .dhead-main { display: grid; gap: var(--s1); min-width: 0; }
 .dhead-main p { margin: 0; }
@@ -463,3 +464,41 @@ body:has(#projHead:not([hidden])) #psBack, body:has(#projHead:not([hidden])) #pl
 .ssteps li.now::before { border-color: var(--orange); animation: pdpulse 1.6s ease-in-out infinite; }
 .ssteps li.todo { color: var(--ink-dim); }
 @media (prefers-reduced-motion: reduce) { .ssteps li.now::before { animation: none; } }
+
+/* The tab Parts: the 3D view of a part or an assembly, and the cards of the parts in groups. */
+.parts-tab { display: grid; gap: var(--s5); }
+.ptviewer .chead h2 { text-transform: none; letter-spacing: 0; font: 800 22px/1.15 "Archivo", sans-serif; font-stretch: 85%; color: var(--ink); }
+.ptkeys { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.ptkeys:empty { display: none; }
+.ptkeys button { min-height: 36px; font-size: 14px; }
+.pt3d { height: min(62vh, 560px); min-height: 300px; border-radius: 10px; background: var(--lcd); overflow: hidden; touch-action: none; }
+.pt3d canvas { display: block; width: 100%; height: 100%; }
+.ptctl { display: flex; flex-wrap: wrap; gap: var(--s3) var(--s5); align-items: center; }
+.ptctl label { display: flex; align-items: center; gap: var(--s2); font-size: 14px; color: var(--ink-dim); }
+.ptctl label[hidden] { display: none; }
+.ptctl input[type="range"] { width: 160px; accent-color: var(--orange); }
+.ptctl button { min-height: 36px; font-size: 14px; }
+.ptdesc { margin: 0; white-space: pre-line; }
+.ptitems { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s2); }
+.ptitems li { display: inline-flex; align-items: center; gap: var(--s2); padding: 6px 10px; border: 1px solid var(--seam); border-radius: 999px;
+  font-size: 14px; cursor: pointer; background: var(--cap); }
+.ptitems li[aria-pressed="true"] { border-color: var(--orange); box-shadow: 0 0 0 1px var(--orange) inset; }
+.ptitems .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; border: 1px solid rgba(0,0,0,.25); }
+.ptitems .hw { color: var(--ink-dim); font-size: 12px; }
+.ptgroup { display: grid; gap: var(--s3); }
+.ptgroup + .ptgroup { margin-top: var(--s5); }
+.ptcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--s4); }
+.ptcard { display: grid; grid-template-rows: auto 1fr; background: var(--plate); border: 1px solid var(--seam); border-radius: 14px; overflow: hidden; }
+.ptpic { display: block; padding: 0; min-height: 0; border: none; border-radius: 0; background: var(--lcd); aspect-ratio: 4 / 3; cursor: zoom-in; }
+.ptpic img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.ptpic img:not([src]) { visibility: hidden; }
+.ptbody { display: grid; gap: var(--s2); padding: var(--s3) var(--s4) var(--s4); align-content: start; }
+.ptbody h3 { margin: 0; font: 800 19px/1.15 "Archivo", sans-serif; font-stretch: 85%; }
+.ptbody p { margin: 0; }
+.ptbody .ptdesc { font-size: 15px; }
+.ptfacts { font-size: 13px; color: var(--ink-dim); }
+.ptvariants { display: flex; flex-wrap: wrap; gap: var(--s1); }
+.ptvariants .chip { min-height: 30px; padding: 0 10px; font-size: 13px; }
+.ptbody .linkrow { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: center; }
+.ptbody .linkrow button { min-height: 36px; font-size: 14px; }
+.ptbody .linkrow a { font-size: 14px; }

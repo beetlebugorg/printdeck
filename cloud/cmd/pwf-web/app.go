@@ -57,6 +57,7 @@ func runApp() {
 		}
 	}
 	on("signOut", "click", func() { a.signOut() })
+	bindParts()
 	on("signInBtn", "click", func() { go a.signIn() })
 	on("ownerBtn", "click", func() { go a.makeOwner() })
 	on("joinBtn", "click", func() { go a.join() })
@@ -688,6 +689,9 @@ func (a *app) showView(v *wire.ProjectView, n int, print string) {
 	a.drawProject()
 	show("vProject")
 	setTab(a.tab)
+	if a.tab == "parts" {
+		a.drawPartsTab()
+	}
 	if a.public == "" {
 		go a.pollProject(id, a.playing)
 	}

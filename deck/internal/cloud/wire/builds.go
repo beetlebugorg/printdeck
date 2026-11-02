@@ -19,6 +19,31 @@ type PlanManifest struct {
 	PR     int        `json:"pr,omitempty"`
 	Parts  []PlanPart `json:"parts"`
 	Docs   []PlanDoc  `json:"docs,omitempty"`
+	// Assemblies are the assemblies of printdeck.yml, for the 3D views of the Parts tab.
+	Assemblies []PlanAssembly `json:"assemblies,omitempty"`
+}
+
+// PlanAssembly is an assembly of printdeck.yml: the parts and the hardware in their places. The
+// Parts tab shows it in 3D, and moves its items apart for the exploded view.
+type PlanAssembly struct {
+	Name        string             `json:"name"`
+	Description string             `json:"description,omitempty"`
+	Items       []PlanAssemblyItem `json:"items"`
+}
+
+// PlanAssemblyItem is one model of an assembly: a part of the plan, or hardware (a display, a
+// board, the screws).
+type PlanAssemblyItem struct {
+	Name string `json:"name"`
+	// Part is the label of the part of the plan, "Name" or "Name (variant)", or "" for hardware.
+	Part string `json:"part,omitempty"`
+	// Model is the file name of the model in the plan, for example "asm1-2.stl": mm, Z up, in
+	// its place in the assembly.
+	Model string `json:"model"`
+	Color string `json:"color,omitempty"` // "#rrggbb", or "" for the color of the part
+	// Explode is the direction (x, y, z) that the item moves in the exploded view, or empty:
+	// then it moves away from the middle of the assembly.
+	Explode []float64 `json:"explode,omitempty"`
 }
 
 // PlanDoc is a PDF of the docs of printdeck.yml: a guide or a spec of the project. The plan run
@@ -70,6 +95,10 @@ type PlanPart struct {
 	// profile), or "" from an older Action. A waiting plate stays when a newer plan has its parts
 	// with the same digests.
 	Digest string `json:"digest,omitempty"`
+	// Description is a few sentences about the part, and Group the heading of the part on the
+	// Parts tab, from printdeck.yml. A change of them changes no plate.
+	Description   string   `json:"description,omitempty"`
+	Group         string   `json:"group,omitempty"`
 	Models        []string `json:"models,omitempty"`
 	SizeX         float64  `json:"size_x,omitempty"`
 	SizeY         float64  `json:"size_y,omitempty"`
@@ -120,7 +149,16 @@ type ProjectPlan struct {
 	Ready   bool              `json:"ready"` // all its models are up
 	Parts   []ProjectPlanPart `json:"parts"`
 	Docs    []ProjectDoc      `json:"docs,omitempty"`
+	// Assemblies are the assemblies of the plan, with the addresses of their models.
+	Assemblies []ProjectAssembly `json:"assemblies,omitempty"`
 	Builds  []ProjectBuild    `json:"builds,omitempty"`
+}
+
+// ProjectAssembly is an assembly of a plan, with the address of the model of each item, in the
+// order of the items.
+type ProjectAssembly struct {
+	PlanAssembly
+	ModelURLs []string `json:"model_urls,omitempty"`
 }
 
 // ProjectPlanPart is a part of a plan, with the addresses of its models.
