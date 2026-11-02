@@ -928,6 +928,8 @@ func (a *app) drawProject() {
 	v := a.view
 	a.drawBuilds(v)
 	drawNotes("p", v.Notes, v.NotesBy, v.NotesAt)
+	// A visitor sees no notes card when the project has no notes.
+	setHidden("pNotesCard", a.public != "" && v.Notes == "")
 	setHidden("pNotesForm", true)
 	setHidden("pNotesText", false)
 	setText("pNotesEdit", "Write notes")

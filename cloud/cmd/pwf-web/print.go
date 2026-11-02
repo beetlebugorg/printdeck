@@ -619,7 +619,8 @@ func drawPrintNotes(p wire.ProjectPrint) {
 	src.Set("textContent", sourceText(p.Source))
 	drawNotes("pr", p.Notes, p.NotesBy, p.NotesAt)
 	card := byID("prNotesCard")
-	if !card.Call("hasAttribute", "data-edit").Bool() {
+	public := doc.Get("body").Get("classList").Call("contains", "public").Bool()
+	if public || !card.Call("hasAttribute", "data-edit").Bool() {
 		card.Set("hidden", p.Notes == "" && p.Source == "")
 	}
 }
