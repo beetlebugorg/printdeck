@@ -533,16 +533,23 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 		return
 	}
 	// The question, in lines that fit the box: smaller when it has more than three lines. The box
-	// grows with the question, so no line is cut.
-	boxW := min(W-24, 560)
+	// grows with the question, so no line is cut. On the tall screen the two keys are under each
+	// other, at the full width of the box, so a long label stays on one line.
+	boxW := min(W-16, 600)
 	qw := boxW - 48
+	stacked := W < H
 	face, lineH := gfx.Face(true, 28), 38
 	lines := wrapText(face, cf.question, qw)
 	if len(lines) > 3 {
 		face, lineH = gfx.Face(true, 22), 30
 		lines = wrapText(face, cf.question, qw)
 	}
-	const top, gap, keys = 40, 28, 80 // over the question, between it and the keys, the keys and the margin under them
+	const gap, keyH = 28, 72  // between the question and the keys, and the height of a key
+	top := panelLabelH() + 22 // over the question
+	keys := keyH              // the keys and the space between them
+	if stacked {
+		keys = 2*keyH + 12
+	}
 	boxH := max(280, top+len(lines)*lineH+gap+keys+20)
 	if boxH > contentY1-20 {
 		face, lineH = gfx.Face(true, 18), 24
@@ -561,7 +568,14 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 	if no == "" {
 		no = "Back"
 	}
-	a.button(c, image.Rect(box.Min.X+20, box.Max.Y-100, box.Min.X+(box.Dx()/2)-8, box.Max.Y-20), no, raised, text, func() {
+	// The keys: No on the left and Yes on the right, or on the tall screen Yes over No.
+	k := image.Rect(box.Min.X+20, box.Max.Y-20-keyH, box.Max.X-20, box.Max.Y-20)
+	noR := image.Rect(k.Min.X, k.Min.Y, k.Min.X+k.Dx()/2-8, k.Max.Y)
+	yesR := image.Rect(k.Min.X+k.Dx()/2+8, k.Min.Y, k.Max.X, k.Max.Y)
+	if stacked {
+		noR, yesR = k, k.Sub(image.Pt(0, keyH+12))
+	}
+	a.button(c, noR, no, raised, text, func() {
 		a.confirm = nil
 		if cf.onNo != nil {
 			cf.onNo()
@@ -572,13 +586,13 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 	if cf.danger {
 		yes, ink = redCap, onRed
 	}
-	a.button(c, image.Rect(box.Min.X+(box.Dx()/2)+8, box.Max.Y-100, box.Max.X-20, box.Max.Y-20), cf.yes, yes, ink, func() { a.confirm = nil; cf.onYes(); a.Redraw() })
+	a.button(c, yesR, cf.yes, yes, ink, func() { a.confirm = nil; cf.onYes(); a.Redraw() })
 }
 
 // drawChoices draws a question with choices: the question, a menu row for each choice, and Back.
 func (a *App) drawChoices(c *gfx.Canvas, cf *confirmBox) {
-	const rowH, gap, backH = 76, 10, 64
-	boxW := min(W-24, 560)
+	const rowH, gap, backH = 76, 14, 64
+	boxW := min(W-16, 600)
 	inW := boxW - 40
 	// The question: up to three lines, smaller when it needs more than two.
 	face, lineH := gfx.Face(true, 26), 34
@@ -592,14 +606,14 @@ func (a *App) drawChoices(c *gfx.Canvas, cf *confirmBox) {
 	}
 	// Each row is high enough for its text (rowLines).
 	heights := make([]int, len(cf.choices))
-	h := 26 + len(qLines)*lineH + 14 + backH + 20
+	h := panelLabelH() + 16 + len(qLines)*lineH + 14 + backH + 20
 	for i, ch := range cf.choices {
 		heights[i] = max(rowH, rowTextH(inW, ch.sub))
 		h += heights[i] + gap
 	}
 	box := kit.Center(image.Rect(0, 0, W, contentY1), boxW, min(h, contentY1-20))
 	panel(c, box, "CHOOSE")
-	in := kit.Inset(box, 20, 26, 20, 20)
+	in := kit.Inset(box, 20, panelLabelH()+16, 20, 20)
 	s := kit.NewStack(in, gap)
 	qr := s.Next(len(qLines)*lineH + 14 - gap)
 	for i, l := range qLines {

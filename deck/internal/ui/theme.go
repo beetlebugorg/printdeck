@@ -105,8 +105,17 @@ func panel(c *gfx.Canvas, r image.Rectangle, label string) {
 		screw(c, p.X, p.Y)
 	}
 	if label != "" {
-		c.Text(image.Rect(r.Min.X+22, r.Min.Y+2, r.Max.X-22, r.Min.Y+18), label, gfx.Face(true, 13), dim, gfx.Left)
+		c.Text(image.Rect(r.Min.X+22, r.Min.Y+2, r.Max.X-22, r.Min.Y+panelLabelH()), label, gfx.Face(true, 13), dim, gfx.Left)
 	}
+}
+
+// panelLabelH is the height of the label at the top of a panel. The large text draws the label
+// larger, so it needs more height.
+func panelLabelH() int {
+	if gfx.FinePrint() {
+		return 28
+	}
+	return 18
 }
 
 // screw draws a small slotted screw head.
