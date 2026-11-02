@@ -132,8 +132,14 @@ func TestPlanFlow(t *testing.T) {
 	if st := call(t, base, "POST", builds, tok, plates([]cloud.PlatePart{{Part: 0, Count: 1}, {Part: 1, Count: 1}}), nil); st != 400 {
 		t.Errorf("two profiles on one plate: %d", st)
 	}
+	// Only the owner chooses the plates and slices them. A member reads the plan and its parts, for
+	// the 3D view of the plan page, but cannot make a build.
 	if st := call(t, base, "POST", builds, sam, plates([]cloud.PlatePart{{Part: 0, Count: 1}}), nil); st != 401 {
 		t.Errorf("a build of a member: %d", st)
+	}
+	var seen cloud.ProjectPlan
+	if st := call(t, base, "GET", "/api/v1/projects/"+sum.ID+"/plans/"+first, sam, nil, &seen); st != 200 || len(seen.Parts) == 0 {
+		t.Errorf("a member reads the plan: %d, %d parts", st, len(seen.Parts))
 	}
 	var pb cloud.ProjectBuild
 	if st := call(t, base, "POST", builds, tok, plates([]cloud.PlatePart{{Part: 0, Count: 2}}, []cloud.PlatePart{{Part: 2, Count: 4}}), &pb); st != 200 {

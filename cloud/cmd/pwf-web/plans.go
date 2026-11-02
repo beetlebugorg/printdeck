@@ -236,6 +236,7 @@ func (a *app) showPlanPage(projectID, id string) {
 		add("The run", p.Run)
 	}
 	setHidden("plKeys", !v.IsOwner || !p.Ready)
+	byID("plHint").Set("textContent", planHint(v.IsOwner))
 	say("plMsg", nil, "")
 	if !p.Ready {
 		say("plMsg", nil, "The Action is still sending the models of this plan.")
@@ -333,6 +334,15 @@ func (a *app) firstChoice() {
 			}
 		}
 	}
+}
+
+// planHint is the text over the parts of a plan. Only the owner chooses the parts and the plates,
+// and slices them (the API checks it with ownerOnly). A member sees the parts in 3D.
+func planHint(owner bool) string {
+	if owner {
+		return "The parts that changed are checked. Check the parts to print, and set the copies."
+	}
+	return "Only the owner of the project chooses the parts and slices them. Tap a part to see it in 3D."
 }
 
 // drawPlanParts draws the list of the parts of the plan: one row for each part, with a check box,
