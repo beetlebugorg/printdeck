@@ -546,12 +546,91 @@ def render_mount():
     R.render(meshes(items), (0.35, 0.75, -0.55), (0, 0, 1), os.path.join(out, "slate-pod-body.png"), size=(1400, 1400))
 
 
+# The pictures of the build guide (make_slate_pdf.py): one for each step of the assembly. The parts of
+# a step are apart along their screws, and the parts of the earlier steps are together.
+FRONT_VIEW = (0.55, 0.8, -0.45)
+BACK_VIEW = (-0.6, -0.75, -0.35)
+DISPLAY_PARTS = ("glass", "screen", "frame", "tab", "standoff")
+PI_PARTS = ("pi_", "cooler")
+
+
+def render_steps():
+    import tempfile
+    import trimesh
+    from build123d import export_stl
+    import render as R
+    loc = case_loc()
+    navy, orange, metal, brass = COLORS["navy"], COLORS["orange"], P.SCREW_COLOR, P.INSERT_COLOR
+    tmp = tempfile.mkdtemp()
+    hw = {n: (s, c) for n, s, c in P.hardware()}
+
+    def parts(prefixes):
+        return [(s, c) for n, (s, c) in hw.items() if n.startswith(prefixes) and n != "pi_dsi" and n != "pi_gpio"]
+
+    def at(items, d=(0.0, 0.0, 0.0)):
+        """Items in case coordinates, moved by d, in world coordinates."""
+        return [(loc * Pos(*d) * s, c) for s, c in items]
+
+    def axes(points, w0, w1):
+        """Thin rods along w, from w0 to w1, that show where a part goes."""
+        return [(loc * Pos(u, v, (w0 + w1) / 2) * extrude(Circle(0.25), amount=abs(w1 - w0) / 2, both=True), "#8A8F98")
+                for u, v in points]
+
+    def shot(name, items, view, size=(1400, 1400)):
+        meshes = []
+        for i, (sh, c) in enumerate(items):
+            p = os.path.join(tmp, f"{name}-{i}.stl")
+            export_stl(sh, p, tolerance=0.03, angular_tolerance=0.1)
+            meshes.append((trimesh.load(p, force="mesh"), c))
+        R.render(meshes, view, (0, 0, 1), os.path.join(HERE, "renders", f"slate-{name}.png"), size=size)
+
+    display = parts(DISPLAY_PARTS)
+    pi = parts(PI_PARTS)
+    fr, bd = case_fdm()
+    screws, nuts = joint()
+    floor = -P.DEEP_W + P.FLOOR
+    base_w = stand("fdm")
+
+    # 1. The nuts into the rings of the body, from the front.
+    shot("step-nuts", at([(bd, navy)]) + at([(n, metal) for n in nuts], (0, 0, 30)) +
+         axes(P.MOUNT_SCREWS, floor, floor + 30), (0.35, 0.75, -0.55))
+    # 2. FDM: the inserts into the bosses of the frame, from behind.
+    shot("step-inserts", at([(fr, navy)]) + at([hw["insert_frame"]], (0, 0, -25)) +
+         axes(P.POSTS, -P.SPLIT_W - 25, -P.SPLIT_W), BACK_VIEW)
+    # 3. The Pi on the standoffs of the display, with four M2.5 x 4 screws.
+    shot("step-pi", at(display) + at(pi, (0, 0, -30)) + at([hw["screw_pi"]], (0, 0, -55)) +
+         axes(P.PI_HOLE_UV, -P.STANDOFF_W - 55, -P.STANDOFF_W), BACK_VIEW)
+    # 4. Resin: the display with the Pi into the case from the front, and the four M2.5 x 4 screws.
+    shot("step-resin-case", at([(case_resin(), navy)]) + at(display + pi, (0, 0, 70)) +
+         at([hw["screw_frame"]], (0, 0, -40)), (0.95, 0.3, -0.25))
+    # 5. FDM: the frame on the display, then the body on the frame with four M3 x 6 screws.
+    shot("step-fdm-case", at(display + pi + [(fr, navy), hw["screw_frame"], hw["insert_frame"]]) +
+         at([(bd, navy)] + [(n, metal) for n in nuts], (0, 0, -45)) + at([hw["screw_body"]], (0, 0, -95)) +
+         axes(P.POSTS, -P.SPLIT_W - 95, -P.SPLIT_W), BACK_VIEW)
+    # 6. The case on the base: down between the cheeks, onto the ribs.
+    case = display + pi + [(fr, navy), (bd, navy)] + [(n, metal) for n in nuts]
+    shot("step-base", [(base_w, orange)] + at(case, (0, 45, 0)), FRONT_VIEW)
+    # 7. The two M3 x 8 screws from behind, through the boss into the nuts.
+    shot("step-screws", [(base_w, orange)] + at(case) + at([(s, metal) for s in screws], (0, 0, -30)) +
+         axes(P.MOUNT_SCREWS, FACE - 35, FACE), BACK_VIEW)
+    # 8. The rubber feet under the corners of the foot.
+    y0, _ = to_world(v_at(0.0, LIP[0]), LIP[0])
+    x, inset = SIDE - FOOT_R, FOOT_R
+    feet = [(Pos(sx * x, y, -6.0) * extrude(Circle(5.0), amount=2.5), "#2A2A2A")
+            for sx in (-1, 1) for y in (y0 + inset, FOOT_BACK - inset)]
+    shot("step-feet", [(base_w, orange)] + at(case) + feet, (0.45, 0.6, 0.65))
+
+
 if __name__ == "__main__":
     if "export" in sys.argv:
         export()
         sys.exit(0 if mesh_check() else 1)
+    if "steps" in sys.argv:
+        render_steps()
+        sys.exit()
     if "render" in sys.argv:
         render()
         render_mount()
+        render_steps()
         sys.exit()
     sys.exit(1 if check() else 0)

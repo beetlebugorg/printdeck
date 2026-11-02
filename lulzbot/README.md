@@ -89,8 +89,7 @@ The pod goes at the top of the left upright. The stock LCD stays on the right up
 - An SD card for Printdeck OS. See [Install](../README.md#install).
 - The Raspberry Pi 27 W USB-C power supply.
 - A USB cable from USB-A to USB-B, from the Pi to the printer.
-- The printed parts and the hardware in [stl/pod/README.md](stl/pod/README.md). For the TAZ
-  Workhorse, also two rail clips (`stl/clip.stl`), two M3 x 8 screws and two M3 roll-in T-nuts.
+- The printed parts and the hardware in [stl/slate/README.md](stl/slate/README.md).
 
 ## Software
 

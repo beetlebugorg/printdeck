@@ -30,6 +30,9 @@ The base is one part:
 Each file is in its print orientation. `lulzbot/slate.py` makes the files from the geometry of
 `lulzbot/pod.py`.
 
+The build guide is a PDF: [printdeck-slate-v4-build.pdf](../../printdeck-slate-v4-build.pdf). It has a
+picture for each step. `lulzbot/make_slate_pdf.py` writes it.
+
 ## Resin (`resin/`)
 
 Print in resin first. The case is one part. Print it in navy resin and the base in orange resin,
