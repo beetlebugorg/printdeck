@@ -276,7 +276,7 @@ func ownerOnly(w *who) error {
 // canSlice allows the owner, and a member that the owner lets slice (Member.Slice).
 func canSlice(w *who) error {
 	if !w.owner && !w.slice {
-		return fail(http.StatusUnauthorized, "the owner of the project has not let you slice")
+		return fail(http.StatusUnauthorized, "to slice plates, ask the owner to turn on Can slice for you")
 	}
 	return nil
 }

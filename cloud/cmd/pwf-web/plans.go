@@ -343,7 +343,7 @@ func planHint(slice bool) string {
 	if slice {
 		return "The parts that changed are checked. Check the parts to print, and set the copies."
 	}
-	return "The owner of the project has not let you slice. Tap a part to see it in 3D."
+	return "Tap a part to see it in 3D. To slice plates, ask the owner to turn on Can slice for you."
 }
 
 // drawPlanParts draws the list of the parts of the plan: one row for each part, with a check box,
