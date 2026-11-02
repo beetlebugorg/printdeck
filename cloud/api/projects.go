@@ -75,6 +75,8 @@ type Project struct {
 	Shares []string `json:"shares,omitempty"`
 	// Repo is the GitHub repository of the project, "owner/name", or "" (builds.go).
 	Repo string `json:"repo,omitempty"`
+	// Cover is the key of the cover picture of the newest plan of the default branch, or "".
+	Cover string `json:"cover,omitempty"`
 }
 
 // Member is a member of a project, or an invite that waits (no Joined).
@@ -724,13 +726,17 @@ func (s *Server) listProjects(ctx context.Context, w *who) (any, error) {
 				records = append(records, f)
 			}
 		}
-		// The cover: the newest photo, else the model picture of a print.
+		// The cover: the cover of printdeck.yml, else the newest photo, else the model picture
+		// of a print.
 		var cover string
 		for _, f := range photos {
 			if strings.HasSuffix(f, "-s.jpg") {
 				sum.Photos++
 				cover = f
 			}
+		}
+		if p.Cover != "" {
+			cover = p.Cover
 		}
 		if cover == "" {
 			for j, b := range s.getAll(ctx, records) {

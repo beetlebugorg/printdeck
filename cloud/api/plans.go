@@ -69,6 +69,8 @@ type PlanRecord struct {
 	Docs []cloud.PlanDoc `json:"docs,omitempty"`
 	// Assemblies are the assemblies of printdeck.yml, with their models in the folder of the plan.
 	Assemblies []cloud.PlanAssembly `json:"assemblies,omitempty"`
+	// Cover is the name of the cover picture in the folder of the plan, or "".
+	Cover string `json:"cover,omitempty"`
 	// Base is the plan that a plan of a pull request compares with, and Diffs the changed models
 	// against it, for the comment on the pull request (prcomment.go).
 	Base  string     `json:"base,omitempty"`
@@ -327,6 +329,12 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 		return nil, err
 	}
 	rec.Assemblies = asm
+	switch in.Cover {
+	case "", "cover.png", "cover.jpg":
+		rec.Cover = in.Cover
+	default:
+		return nil, fail(http.StatusBadRequest, "the cover is cover.png or cover.jpg")
+	}
 	g, err := s.Grants.Grant(ctx, planDir(p.ID, rec.ID), MaxBuildFile, buildGrantTTL)
 	if err != nil {
 		return nil, err
@@ -424,6 +432,23 @@ func planDocs(in []cloud.PlanDoc) ([]cloud.PlanDoc, error) {
 	return out, nil
 }
 
+// setCover makes the cover of the plan rec the picture of the project. A plan with no cover
+// removes the picture.
+func (s *Server) setCover(ctx context.Context, p *Project, rec *PlanRecord) error {
+	key := ""
+	if rec.Cover != "" {
+		key = planDir(p.ID, rec.ID) + rec.Cover
+	}
+	if p.Cover == key {
+		return nil
+	}
+	_, err := s.updateProject(ctx, p.ID, false, func(p *Project) error {
+		p.Cover = key
+		return nil
+	})
+	return err
+}
+
 // planDone checks the models of the plan id and makes it ready. The plates that wait in the
 // builds of older plans of the same pull request or branch get the state replaced.
 func (s *Server) planDone(ctx context.Context, p *Project, c *GitHubClaims, id string) (any, error) {
@@ -465,9 +490,17 @@ func (s *Server) planDone(ctx context.Context, p *Project, c *GitHubClaims, id s
 			rec.Docs[i].Thumb = ""
 		}
 	}
+	if !have[rec.Cover] {
+		rec.Cover = ""
+	}
 	rec.Ready = true
 	if err := s.putJSON(ctx, planKey(p.ID, id), rec); err != nil {
 		return nil, err
+	}
+	if rec.Kind == cloud.BuildMain {
+		if err := s.setCover(ctx, p, rec); err != nil {
+			return nil, err
+		}
 	}
 	if rec.Kind == cloud.BuildTest || rec.Kind == cloud.BuildBranch || rec.Kind == cloud.BuildMain {
 		if err := s.replaceOlder(ctx, p, rec); err != nil {

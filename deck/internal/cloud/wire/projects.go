@@ -73,7 +73,7 @@ type ProjectSummary struct {
 	Changed time.Time `json:"changed"`
 	// URL is the page of the project for the owner and the members.
 	URL string `json:"url"`
-	// Cover is the URL of a picture of the project (the newest photo or model), or "".
+	// Cover is the URL of a picture of the project (the cover of printdeck.yml, the newest photo or a model), or "".
 	Cover string `json:"cover,omitempty"`
 }
 

@@ -21,6 +21,9 @@ type PlanManifest struct {
 	Docs   []PlanDoc  `json:"docs,omitempty"`
 	// Assemblies are the assemblies of printdeck.yml, for the 3D views of the Parts tab.
 	Assemblies []PlanAssembly `json:"assemblies,omitempty"`
+	// Cover is the upload name of the cover of printdeck.yml, "cover.png" or "cover.jpg", or "".
+	// The cover of the newest plan of the default branch is the picture of the project.
+	Cover string `json:"cover,omitempty"`
 }
 
 // PlanAssembly is an assembly of printdeck.yml: the parts and the hardware in their places. The
