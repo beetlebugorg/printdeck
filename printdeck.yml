@@ -11,6 +11,11 @@ parts:
   # needs supports. The seam goes to the sharpest corner, on the inside. Each part has a 5 mm brim
   # (10 lines of the 0.5 mm nozzle), so its corners stay down on the bed.
   - name: Slate frame
+    group: Slate v4 (FDM)
+    description: >-
+      The frame goes around the Touch Display 2, behind the glass. Four M2.5 x 4 screws hold it on the
+      tabs of the display. Press four M3 heat-set inserts into its bosses before you assemble the
+      case. It prints on its back ring with no supports.
     files: [lulzbot/stl/slate/fdm/slate-frame_fdm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
@@ -18,12 +23,22 @@ parts:
     settings: &slate {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
                       adhesion_type: brim, brim_line_count: 10}
   - name: Slate body
+    group: Slate v4 (FDM)
+    description: >-
+      The body goes around the Raspberry Pi 5 and its Active Cooler. The ports of the Pi are flush
+      with its walls, and the vents in its back let air to the cooler. Press two M3 hex nuts into the
+      rings on its inner floor. Four M3 x 6 screws go down its posts into the inserts of the frame.
     files: [lulzbot/stl/slate/fdm/slate-body_fdm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-3
     settings: *slate
   - name: Slate base
+    group: Slate v4 (FDM)
+    description: >-
+      The base holds the case on the desk and leans it back 15 degrees. The case stands on five ribs
+      between the cheeks, behind the lip of the chin. Two M3 x 8 screws go from behind through the
+      boss into the nuts of the body. The base prints standing on the bottom of its foot, 113 mm high.
     files: [lulzbot/stl/slate/fdm/slate-base_fdm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
@@ -32,11 +47,21 @@ parts:
 
   # The Slate v4 (resin): the case is one part. Paint is an option in place of colored resin.
   - name: Slate case (resin)
+    group: Slate v4 (resin)
+    description: >-
+      The resin case is the frame and the body as one part. Press two M3 hex nuts into the rings on
+      its inner floor. The display with the Pi slides in from the front, and four M2.5 x 4 screws hold
+      it. Two wells in the back give access to the two lower screws.
     files: [lulzbot/stl/slate/resin/slate-case_resin.stl]
     printer: phenom
     profile: peopoly-phenom/abs-like-0.05
     material: Navy resin
   - name: Slate base (resin)
+    group: Slate v4 (resin)
+    description: >-
+      The base holds the case on the desk and leans it back 15 degrees. It has the shape of the FDM
+      base, with a closer fit to the resin case. Two M3 x 8 screws go from behind through the boss
+      into the nuts of the case. Print it with the back plate vertical, on supports under the foot.
     files: [lulzbot/stl/slate/resin/slate-base_resin.stl]
     printer: phenom
     profile: peopoly-phenom/abs-like-0.05
@@ -44,12 +69,23 @@ parts:
 
   # The webcam (option): a C270 on the frame of the printer.
   - name: Camera arm (TAZ)
+    group: Webcam mount (TAZ)
+    description: >-
+      The arm holds a Logitech C270 webcam at the front right corner of the TAZ Workhorse. An M3 x 16
+      screw through its two lugs and the eyelet of the camera is the hinge. Two M3 x 18 screws hold
+      its post in the tab of the clamp. It prints on its back face.
     files: [lulzbot/stl/pod/fdm/camera-arm-taz_fdm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: &pod {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner}
   - name: Camera clamp (TAZ)
+    group: Webcam mount (TAZ)
+    description: >-
+      The clamp holds the camera arm on the front right upright of the TAZ Workhorse. Its saddle keys
+      go into the slots of the upright, and two M3 x 8 screws go into roll-in T-nuts. Press two M3
+      heat-set inserts into its tab for the screws of the arm. It is 126 mm tall, so it prints on its
+      bottom with a brim.
     files: [lulzbot/stl/pod/fdm/camera-clamp-taz_fdm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
@@ -57,12 +93,22 @@ parts:
     # It is 126 mm tall: a brim.
     settings: {<<: *pod, adhesion_type: brim}
   - name: Camera arm (Mini 2)
+    group: Webcam mount (Mini 2)
+    description: >-
+      The arm holds a Logitech C270 webcam at the front right corner of the Mini 2. An M3 x 16 screw
+      through its two lugs and the eyelet of the camera is the hinge. Two M3 x 18 screws hold its post
+      in the tab of the clamp. It prints on its back face.
     files: [lulzbot/stl/pod/fdm/camera-arm-mini2_fdm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
     settings: *pod
   - name: Camera clamp (Mini 2)
+    group: Webcam mount (Mini 2)
+    description: >-
+      The clamp holds the camera arm on the front right corner of the Mini 2. The lip of its plate
+      goes on the top of the frame. Two frame screws, 5 mm longer than the original screws, hold it.
+      Press two M3 heat-set inserts into its tab for the screws of the arm.
     files: [lulzbot/stl/pod/fdm/camera-clamp-mini2_fdm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
@@ -71,6 +117,11 @@ parts:
   # The cable clips of the webcam cable, along the frame of the printer. They are better in PETG:
   # PLA can crack where the arms bend. The profiles have no PETG material yet.
   - name: Cable clip, single (webcam, TAZ)
+    group: Cable clips
+    description: >-
+      The clips hold the USB cable of the webcam along the frame of the TAZ Workhorse. Each clip goes
+      on the frame with 12 x 12 mm foam tape. Print them in PETG if you can, because PLA can crack
+      where the arms bend.
     files: [lulzbot/stl/pod/fdm/cable-clip-single_fdm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
@@ -78,6 +129,11 @@ parts:
     count: 4
     settings: *pod
   - name: Cable clip, single (webcam, Mini 2)
+    group: Cable clips
+    description: >-
+      The clips hold the USB cable of the webcam along the frame of the Mini 2. Each clip goes on the
+      frame with 12 x 12 mm foam tape. Print them in PETG if you can, because PLA can crack where the
+      arms bend.
     files: [lulzbot/stl/pod/fdm/cable-clip-single_fdm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
@@ -89,3 +145,54 @@ parts:
 docs:
   - name: Slate v4 build guide
     file: lulzbot/printdeck-slate-v4-build.pdf
+
+# The 3D views of the assembled Slate. lulzbot/slate.py assembly writes the files: each part in its
+# place, in mm, z up, with the origin at the middle of the foot on the desk. The case leans back 15
+# degrees, so "up the case" is (0, 0.26, 0.97) and "out of the front" is (0, -0.97, 0.26). The length
+# of an explode vector sets how far the item moves.
+assemblies:
+  - name: Slate v4 (FDM)
+    description: |
+      The FDM Slate: the navy frame and body on the orange base, with the display, the Pi 5 and the screws. The case lifts up off the base. The frame, the display and the Pi come out of the front of the body, and the screws come out of the back.
+    items:
+      - part: Slate base
+        file: lulzbot/stl/slate/assembly/base-fdm.stl
+      - part: Slate body
+        file: lulzbot/stl/slate/assembly/body.stl
+        explode: [0, 0.26, 0.97]
+      - part: Slate frame
+        file: lulzbot/stl/slate/assembly/frame.stl
+        explode: [0, -0.71, 1.22]
+      - name: Touch Display 2
+        file: lulzbot/stl/slate/assembly/display.stl
+        color: "#1b1d22"
+        explode: [0, -1.67, 1.48]
+      - name: Raspberry Pi 5 with Active Cooler
+        file: lulzbot/stl/slate/assembly/pi5.stl
+        color: "#1f6b45"
+        explode: [0, -0.22, 1.1]
+      - name: Screws, inserts and nuts
+        file: lulzbot/stl/slate/assembly/screws-fdm.stl
+        color: "#b9bec6"
+        explode: [0, 1.71, 0.58]
+  - name: Slate v4 (resin)
+    description: |
+      The resin Slate: the navy case in one part on the orange base, with the display, the Pi 5 and the screws. The case lifts up off the base. The display and the Pi come out of the front of the case, and the screws come out of the back.
+    items:
+      - part: Slate base (resin)
+        file: lulzbot/stl/slate/assembly/base-resin.stl
+      - part: Slate case (resin)
+        file: lulzbot/stl/slate/assembly/case-resin.stl
+        explode: [0, 0.26, 0.97]
+      - name: Touch Display 2
+        file: lulzbot/stl/slate/assembly/display.stl
+        color: "#1b1d22"
+        explode: [0, -1.67, 1.48]
+      - name: Raspberry Pi 5 with Active Cooler
+        file: lulzbot/stl/slate/assembly/pi5.stl
+        color: "#1f6b45"
+        explode: [0, -0.71, 1.22]
+      - name: Screws and nuts
+        file: lulzbot/stl/slate/assembly/screws-resin.stl
+        color: "#b9bec6"
+        explode: [0, 1.71, 0.58]

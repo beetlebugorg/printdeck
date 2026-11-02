@@ -31,9 +31,10 @@ World coordinates: x to the right, y to the back, z up. The desk is z = 0, and t
 of the glass is at y = 0, z = H0. Case coordinates (u, v, w) are the pod coordinates of pod.py.
 
 Run: uv run --no-project --with build123d --with numpy --with scipy --with trimesh --with shapely
---with networkx python slate.py [export | check | render]
+--with networkx python slate.py [export | check | render | steps | assembly]
 
-export writes the print files to stl/slate/ and checks them. check prints the overlap, the tip and the
+export writes the print files to stl/slate/ and checks them. assembly writes the parts in their places
+in the Slate to stl/slate/assembly/, for the 3D views of the project page. check prints the overlap, the tip and the
 stiffness checks. render writes renders/slate-*.png, with the views of the joint (headless EGL: set
 PYOPENGL_PLATFORM=egl, and add --with pyrender --with pillow).
 """
@@ -621,7 +622,54 @@ def render_steps():
     shot("step-feet", [(base_w, orange)] + at(case) + feet, (0.45, 0.6, 0.65))
 
 
+# The assembly files of the project page: each part in its place in the Slate, in world coordinates
+# moved so that the origin is the middle of the foot on the desk. x to the right, y to the back, z up,
+# in mm. The FDM and the resin bases have different fits, so each has a file. The screws of the two
+# cases are different: the FDM case has the M3 x 6 screws and the inserts of the frame.
+ASSEMBLY_DIR = os.path.join(PRINT_DIR, "assembly")
+
+
+def assembly_parts():
+    from build123d import Compound
+    loc = case_loc()
+    y0, _ = to_world(v_at(0.0, LIP[0]), LIP[0])
+    origin = Pos(0, -(y0 + FOOT_BACK) / 2, 0)
+    hw = {n: s for n, s, _ in P.hardware()}
+
+    def group(names):
+        return Compound([s for n, s in hw.items() if n.startswith(names) and n not in ("pi_dsi", "pi_gpio")])
+
+    fr, bd = case_fdm()
+    screws, nuts = joint()
+    joint_hw = screws + nuts
+    case_hw = {"fdm": [hw["screw_frame"], hw["screw_body"], hw["insert_frame"], hw["screw_pi"]],
+               "resin": [hw["screw_frame"], hw["screw_pi"]]}
+    in_case = [("frame.stl", fr), ("body.stl", bd), ("case-resin.stl", case_resin()),
+               ("display.stl", group(DISPLAY_PARTS)), ("pi5.stl", group(PI_PARTS)),
+               ("screws-fdm.stl", Compound(case_hw["fdm"] + joint_hw)),
+               ("screws-resin.stl", Compound(case_hw["resin"] + joint_hw))]
+    out = [(n, origin * loc * s) for n, s in in_case]
+    out += [("base-fdm.stl", origin * stand("fdm")), ("base-resin.stl", origin * stand("resin"))]
+    return out
+
+
+def assembly():
+    from build123d import export_stl
+    os.makedirs(ASSEMBLY_DIR, exist_ok=True)
+    for name, shape in assembly_parts():
+        hard = name.startswith(("display", "pi5", "screws"))
+        tol, ang = (0.05, 0.3) if hard else (0.03, 0.15)
+        p = os.path.join(ASSEMBLY_DIR, name)
+        export_stl(shape, p, tolerance=tol, angular_tolerance=ang)
+        bb = shape.bounding_box()
+        print(f"assembly/{name}: x {bb.min.X:.1f} to {bb.max.X:.1f}, y {bb.min.Y:.1f} to {bb.max.Y:.1f}, "
+              f"z {bb.min.Z:.1f} to {bb.max.Z:.1f} mm; {os.path.getsize(p) / 1e6:.2f} MB")
+
+
 if __name__ == "__main__":
+    if "assembly" in sys.argv:
+        assembly()
+        sys.exit()
     if "export" in sys.argv:
         export()
         sys.exit(0 if mesh_check() else 1)
