@@ -2,9 +2,14 @@
 # (lulzbot/stl/slate/README.md), and the webcam mounts on the printer. The profiles are in
 # profiles/. The Slate prints in navy (the case) and orange (the base). The webcam mounts print
 # in black PLA (roll-4).
-# No generate step: lulzbot/slate.py export writes the Slate files, and lulzbot/make.sh and
-# pod.py export the others. Run them on your computer, and commit the STL files.
+# The generate step writes the STL files again on GitHub, and fails when they differ from the
+# committed files. Run the same commands on your computer, and commit the STL files.
 project: printdeck
+
+generate:
+  install: pip install -r lulzbot/requirements.txt
+  run: cd lulzbot && python slate.py export && python slate.py assembly && python pod.py export
+  check: true
 
 parts:
   # The Slate v4 (FDM): the case in navy PLA (roll-3), the base in orange PLA (roll-2). No part

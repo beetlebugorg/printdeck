@@ -1,0 +1,9 @@
+# The libraries of the model scripts. The versions are fixed: another version of the geometry
+# kernel can write other STL files, and then the generate check of printdeck.yml fails.
+build123d==0.13.0
+cadquery-ocp-novtk==8.0.1.1.0
+numpy==2.5.4
+scipy==1.18.1
+trimesh==5.2.0
+shapely==2.2.0
+networkx==3.7
