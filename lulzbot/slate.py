@@ -431,6 +431,8 @@ def mesh_check():
     import trimesh
     ok = True
     for p in sorted(glob.glob(os.path.join(PRINT_DIR, "*", "*.stl"))):
+        if os.path.basename(os.path.dirname(p)) == "assembly":
+            continue  # the 3D views: many bodies in one file, not printed
         m = trimesh.load(p, force="mesh")
         closed = m.is_watertight and m.is_winding_consistent and m.body_count == 1
         line = f"  {os.path.relpath(p, HERE)}: {'closed, one part' if closed else 'NOT CLEAN'}"
