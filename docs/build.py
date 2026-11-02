@@ -7,14 +7,14 @@ The pages come from the files of the repository, so the site follows them:
   slicer/README.md, slicer/cura-plugin/README.md,
   deck/internal/klipper/PORTING.md, desktop/meshes/README.md,
   watch/README.md, cloud/relay/README.md, lulzbot/README.md,
-  lulzbot/stl/pod/README.md                                    the text of the pages
+  lulzbot/stl/slate/README.md, lulzbot/stl/pod/README.md       the text of the pages
   docs/specs/printdeck-architecture.html                       the architecture pages
-  lulzbot/stl/pod/                                             the print files of the pod
+  lulzbot/stl/slate/, lulzbot/stl/pod/                         the print files of the Slate v4 and the pod
   docs/manual/index.html, docs/manual/wide/index.html          the screens of the deck
   deck/cmd/printdeck/*.go, deck/internal/config/config.go,
   os/board/, .github/workflows/, the build scripts              the reference pages
 
-Run it after docs/manual/build.sh or docs/cura/build.sh, after pod.py export, and after a change to
+Run it after docs/manual/build.sh or docs/cura/build.sh, after slate.py export or pod.py export, and after a change to
 a README. It needs only Python 3. At the end it checks every link of
 the site, and stops with an error for a link that goes nowhere.
 
@@ -49,7 +49,7 @@ PAGE_OF = {
     "README.md": "", "ARCHITECTURE.md": "deck/", "os/README.md": "os/", "printer/README.md": "deck/printer/",
     "slicer/README.md": "slicer/adaptive-speed/", "slicer/cura-plugin/README.md": "slicer/cura-plugin/",
     "deck/internal/klipper/PORTING.md": "deck/klipper/", "lulzbot/README.md": "hardware/",
-    "lulzbot/stl/pod/README.md": "hardware/print/", "watch/README.md": "apps/", "cloud/relay/README.md": "apps/relay/",
+    "lulzbot/stl/slate/README.md": "hardware/print/", "lulzbot/stl/pod/README.md": "hardware/pod/", "watch/README.md": "apps/", "cloud/relay/README.md": "apps/relay/",
     "PRIVACY.md": "privacy/",
 }
 
@@ -552,7 +552,7 @@ def nav_html(current, root, wide):
     ui_base = "ui/wide/" if wide else "ui/"
     groups = [
         (None, [("Overview", "")]),
-        ("Hardware", [("The pod", "hardware/"), ("Print the pod", "hardware/print/")]),
+        ("Hardware", [("The Slate v4", "hardware/"), ("Print the Slate v4", "hardware/print/"), ("The pod (earlier)", "hardware/pod/")]),
         ("The deck UI", [("The screens", "ui/")] + [(t, ui_base + f + "/") for t, f, _, _ in tall]),
         ("Software", [("Printdeck OS", "os/"), ("The printdeck program", "deck/"), ("The Klipper host", "deck/klipper/"),
                       ("The reference printer", "deck/printer/"), ("Remote screen and API", "deck/remote/"),
@@ -665,18 +665,18 @@ def pics(root, items, cls=""):
 def landing():
     root = ""
     lede = ("Printdeck is a touch screen and print server for Klipper printers. A Raspberry Pi 5 and a 5 inch "
-            "touch display go on the printer in a printed pod. I build it and test it on a LulzBot TAZ Workhorse "
+            "touch display stand next to the printer in a printed desk case, the Slate v4. I build it and test it on a LulzBot TAZ Workhorse "
             "(the original Workhorse).")
     body = f"""
 <p>
   <a class="btn primary" href="{REPO}/releases/latest">Download Printdeck OS</a>
   <a class="btn" href="#install">Install</a>
   <a class="btn" href="manual/">The manual</a>
-  <a class="btn" href="hardware/">Build the pod</a>
+  <a class="btn" href="hardware/">Build the Slate v4</a>
   <a class="btn" href="{REPO}">Source on GitHub</a>
 </p>
 <div class="pics">
-  <figure class="frame-img white"><img src="img/pod-taz.png" alt="The Printdeck pod on the front left of a LulzBot TAZ Workhorse"><figcaption>The pod on the LulzBot TAZ Workhorse</figcaption></figure>
+  <figure class="frame-img white"><img src="img/slate-v4.png" alt="The Slate v4 from the front left: the touch display in a navy case on an orange base"><figcaption>The Slate v4: a navy case on an orange base</figcaption></figure>
 </div>
 <h2 id="before">Before you use it</h2>
 {md_text(section_body("README.md", "Before you use it"), "", root)}
@@ -687,7 +687,7 @@ def landing():
 
 <h2 id="docs">The documentation</h2>
 <div class="map">
-  <a class="card" href="hardware/"><b>The pod</b><span>Build the pod and put it on the printer.</span></a>
+  <a class="card" href="hardware/"><b>The Slate v4</b><span>Print and build the desk case of the deck.</span></a>
   <a class="card" href="ui/"><b>The deck UI</b><span>Every screen, with numbered callouts.</span></a>
   <a class="card" href="os/"><b>Printdeck OS</b><span>Install, first start, settings and update.</span></a>
   <a class="card" href="deck/"><b>The printdeck program</b><span>The Klipper host, the screens and the API.</span></a>
@@ -705,10 +705,17 @@ def landing():
          description="The documentation of Printdeck, a personal project: a touch screen and a Klipper print server on a Raspberry Pi 5. I build it and test it on a LulzBot TAZ Workhorse.")
 
 
-# --- The pod --------------------------------------------------------------------------------------
+# --- The Slate v4 and the pod --------------------------------------------------------------------
 
+SLATE_STL = ROOT / "lulzbot" / "stl" / "slate"
 POD_STL = ROOT / "lulzbot" / "stl" / "pod"
 RAIL_CLIP = ROOT / "lulzbot" / "stl" / "clip.stl"
+
+
+def slate_files(root, folder):
+    """The buttons of the print files of the Slate v4 in one folder of lulzbot/stl/slate/."""
+    return "".join(f'<a class="btn" href="{root}files/slate/{folder}/{f.name}">{f.name}</a>'
+                   for f in sorted((SLATE_STL / folder).glob("*.stl")))
 
 
 def pod_files(root, folder):
@@ -722,20 +729,39 @@ def hardware():
     body = f"""
 {md("lulzbot/README.md", root, skip=("Files", "Reference files", "Needs"))}
 <h2 id="files">The print files</h2>
-<p>The FDM files, in their print orientation. The <a href="{root}hardware/print/">print page</a> has the settings, the resin files and the hardware of the pod.</p>
-<p>{pod_files(root, "fdm")}<a class="btn" href="{root}files/pod/{RAIL_CLIP.name}">{RAIL_CLIP.name} (TAZ Workhorse)</a></p>
+<p>The files of the Slate v4, in their print orientation. The <a href="{root}hardware/print/">print page</a> has the settings, the hardware and the assembly.</p>
+<h3>Resin</h3>
+<p>{slate_files(root, "resin")}</p>
+<h3>FDM</h3>
+<p>{slate_files(root, "fdm")}</p>
+<p>The <a href="{root}hardware/pod/">pod page</a> has the files of the pod and the brackets.</p>
 <h2 id="design">The design</h2>
-<p>The pod is a build123d model in <a href="{REPO}/tree/main/lulzbot">lulzbot/</a>, on the CAD of the printers from LulzBot.</p>
+<p>The Slate v4 and the pod are build123d models in <a href="{REPO}/tree/main/lulzbot">lulzbot/</a>, on the CAD of the printers from LulzBot.</p>
 {md("lulzbot/README.md", root, sections=("Files", "Reference files", "Needs"), shift=1)}
 """
-    page("hardware/", "Hardware", "The pod",
-         "A Raspberry Pi Touch Display 2 with a Raspberry Pi 5 on its back, in a printed case, on a printed bracket.",
+    page("hardware/", "Hardware", "The Slate v4",
+         "A Raspberry Pi Touch Display 2 with a Raspberry Pi 5 on its back, in a printed desk case: a navy case on an orange base.",
          body)
 
 
 def print_page():
     root = "../../"
     body = f"""
+{md("lulzbot/stl/slate/README.md", root)}
+<h2 id="download">Download</h2>
+<h3>Resin</h3>
+<p>{slate_files(root, "resin")}</p>
+<h3>FDM</h3>
+<p>{slate_files(root, "fdm")}</p>
+"""
+    page("hardware/print/", "Hardware", "Print the Slate v4",
+         "The print files of the Slate v4, for resin and for FDM, with the settings, the hardware and the assembly.", body)
+
+
+def pod_page():
+    root = "../../"
+    body = f"""
+<p>The pod is the earlier design: the case on a bracket on the printer. The <a href="{root}hardware/">Slate v4</a> replaces it.</p>
 {md("lulzbot/stl/pod/README.md", root)}
 <h2 id="download">Download</h2>
 <h3>FDM</h3>
@@ -745,8 +771,8 @@ def print_page():
 <h3>Resin, flat on the plate</h3>
 <p>{pod_files(root, "resin-flat")}</p>
 """
-    page("hardware/print/", "Hardware", "Print the pod",
-         "The print files of the pod and the brackets, for FDM and for resin, with the settings and the hardware.", body)
+    page("hardware/pod/", "Hardware", "Print the pod",
+         "The print files of the pod and the brackets, the earlier design, for FDM and for resin.", body)
 
 
 # --- The deck UI ----------------------------------------------------------------------------------
@@ -1209,13 +1235,16 @@ def build_page():
 <h3>The Cura plugin package</h3>
 {comment_block("slicer/cura-plugin/package.sh")}
 <h2 id="site">The documentation</h2>
-<p>The workflow <code>.github/workflows/pages.yml</code> publishes <code>docs/</code> to GitHub Pages at <a href="{SITE}">{SITE}</a>, with the print files of the pod under <code>files/pod/</code>. It runs on a push to <code>main</code> that changes those files. The pages are in the repository: these scripts write them, and a commit publishes them.</p>
+<p>The workflow <code>.github/workflows/pages.yml</code> publishes <code>docs/</code> to GitHub Pages at <a href="{SITE}">{SITE}</a>, with the print files of the Slate v4 under <code>files/slate/</code> and of the pod under <code>files/pod/</code>. It runs on a push to <code>main</code> that changes those files. The pages are in the repository: these scripts write them, and a commit publishes them.</p>
 <h3>The manuals</h3>
 {comment_block("docs/manual/build.sh")}
 <h3>The Cura plugin booklet</h3>
 {comment_block("docs/cura/build.sh")}
+<h3>The Slate v4</h3>
+<p><code>lulzbot/slate.py export</code> writes the print files of the Slate v4 in <code>lulzbot/stl/slate/</code>. The <a href="{root}hardware/print/">print page</a> has them.</p>
+{docstring("lulzbot/slate.py")}
 <h3>The pod</h3>
-<p><code>lulzbot/pod.py export</code> writes the print files of the pod in <code>lulzbot/stl/pod/</code>. The <a href="{root}hardware/print/">print page</a> has them.</p>
+<p><code>lulzbot/pod.py export</code> writes the print files of the pod in <code>lulzbot/stl/pod/</code>. The <a href="{root}hardware/pod/">pod page</a> has them.</p>
 {docstring("lulzbot/pod.py")}
 <h3>This site</h3>
 {docstring("docs/build.py")}
@@ -1430,13 +1459,16 @@ def hardware_ref_page():
 <h2 id="connections">The connections</h2>
 {md_text(section_body("README.md", "Hardware"), "", root)}
 <h2 id="need">What you need</h2>
-<p>From <code>lulzbot/README.md</code>. The page of <a href="{root}hardware/">the pod</a> has the brackets and the cables on each printer.</p>
+<p>From <code>lulzbot/README.md</code>. The <a href="{root}hardware/">hardware page</a> has the Slate v4, and the pod with its brackets on each printer.</p>
 {md_text(section_body("lulzbot/README.md", "What you need"), "lulzbot", root)}
+<h2 id="slate">The hardware of the Slate v4</h2>
+<p>From <code>lulzbot/stl/slate/README.md</code>. The <a href="{root}hardware/print/">print page</a> has the print files and the assembly.</p>
+{md_text(section_body("lulzbot/stl/slate/README.md", "Hardware"), "lulzbot/stl/slate", root)}
 <h2 id="pod">The hardware of the pod</h2>
-<p>From <code>lulzbot/stl/pod/README.md</code>. The <a href="{root}hardware/print/">print page</a> has the print files.</p>
+<p>From <code>lulzbot/stl/pod/README.md</code>. The <a href="{root}hardware/pod/">pod page</a> has the print files.</p>
 {md_text(section_body("lulzbot/stl/pod/README.md", "Hardware for the pod"), "lulzbot/stl/pod", root)}
 """
-    page("reference/hardware/", "Reference", "Hardware lists", "The parts, the screws and the inserts of the pod.", body)
+    page("reference/hardware/", "Reference", "Hardware lists", "The parts, the screws and the inserts of the Slate v4 and the pod.", body)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1446,6 +1478,8 @@ def check_links():
     """Checks that every link and picture of the site goes to a file of the site, or to a file
     that the Pages workflow adds under files/."""
     published = {}
+    for f in SLATE_STL.rglob("*.stl"):
+        published["files/slate/" + f.relative_to(SLATE_STL).as_posix()] = f
     for f in POD_STL.rglob("*.stl"):
         published["files/pod/" + f.relative_to(POD_STL).as_posix()] = f
     published["files/pod/" + RAIL_CLIP.name] = RAIL_CLIP
@@ -1486,6 +1520,7 @@ def main():
     landing()
     hardware()
     print_page()
+    pod_page()
     ui()
     os_page()
     deck_page()

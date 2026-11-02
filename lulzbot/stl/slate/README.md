@@ -5,11 +5,11 @@ tall) and the Raspberry Pi 5 with its Active Cooler. It stands on the desk next 
 leans back 15 degrees. The navy case is the top, and the orange base is the bottom. Two M3 screws
 hold the case on the base. The Slate v4 replaces the pod on the printer bracket.
 
-![The Slate v4 from the front left](../../renders/slate-front.png)
+<img src="../../../docs/img/slate-v4.png" alt="The Slate v4 from the front left" width="360">
 
-![The Slate v4 from the back right: the back plate with the boss, the pad and the twist-tie holes, and the foot](../../renders/slate-back.png)
+<img src="../../../docs/img/slate-v4-back.png" alt="The Slate v4 from the back right: the back plate with the boss, the pad and the twist-tie holes, and the foot" width="360">
 
-![The Slate v4 from the left: the power plug in the left wall, and the chin and the cheeks](../../renders/slate-side.png)
+<img src="../../../docs/img/slate-side.png" alt="The Slate v4 from the left: the power plug in the left wall, and the chin and the cheeks" width="360">
 
 The case has the shape of the pod: the frame around the display and the body around the Pi. The
 ports of the Pi are flush with the walls of the body. The power port and the micro HDMI ports are in
@@ -80,9 +80,9 @@ TAZ Workhorse SE.
 
 ## Assembly
 
-![The joint apart along the screws: the base, the two M3 x 8 screws behind the boss, the body, the two nuts, and the frame with the glass](../../renders/slate-exploded.png)
+<img src="../../../docs/img/slate-exploded.png" alt="The joint apart along the screws: the base, the two M3 x 8 screws behind the boss, the body, the two nuts, and the frame with the glass" width="640">
 
-![A section through one screw: the screw in the counterbore of the boss, the back wall of the body, the nut in its ring under the Active Cooler, and the pad below](../../renders/slate-section.png)
+<img src="../../../docs/img/slate-section.png" alt="A section through one screw: the screw in the counterbore of the boss, the back wall of the body, the nut in its ring under the Active Cooler, and the pad below" width="640">
 
 1. Press the two M3 nuts into the rings on the inner floor of the body.
 2. FDM: press the four inserts into the bosses of the frame.
@@ -103,11 +103,13 @@ in the opposite order.
 
 A pod body that is printed already has no nut rings. It also goes on the base. Put each nut on the
 inner floor of the body, at the hole of the old mount, and hold it while you turn the M3 x 8 screw in
-from behind. Do this before the frame and the display go on the body. Then put in the two lower M3 x 6
-screws of the frame with a short screwdriver, or with the back of the foot over the edge of a table:
-the foot is 34 mm behind their wells.
+from behind. Do this before the frame and the display go on the body. Keep the two M3 x 8 screws
+loose: the base holds the frame at the glass, so the body must move a little to line up with the
+frame. Then put in the four M3 x 6 screws of the frame. Use a short screwdriver for the two lower
+screws, or put the back of the foot over the edge of a table: the foot is 34 mm behind their wells.
+Then tighten the two M3 x 8 screws.
 
-![A pod body on the base, with the frame and the display off: the two nuts on the inner floor, on the screws from behind](../../renders/slate-pod-body.png)
+<img src="../../../docs/img/slate-pod-body.png" alt="A pod body on the base, with the frame and the display off: the two nuts on the inner floor, on the screws from behind" width="360">
 
 ## Cables, the SD card and the air
 

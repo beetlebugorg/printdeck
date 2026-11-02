@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The pod · Printdeck</title>
-<meta name="description" content="A Raspberry Pi Touch Display 2 with a Raspberry Pi 5 on its back, in a printed case, on a printed bracket.">
+<title>The Slate v4 · Printdeck</title>
+<meta name="description" content="A Raspberry Pi Touch Display 2 with a Raspberry Pi 5 on its back, in a printed desk case: a navy case on an orange base.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;0,700;1,700&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f4bd1'/%3E%3Crect x='7' y='9' width='18' height='14' rx='2' fill='%23f2f6ff'/%3E%3Crect x='10' y='12' width='8' height='3' fill='%23ff5a1f'/%3E%3C/svg%3E">
@@ -20,8 +20,9 @@
 <div class="layout">
 <aside class="side"><nav><a href="../">Overview</a>
 <div class="group">Hardware</div>
-<a href="../hardware/" aria-current="page">The pod</a>
-<a href="../hardware/print/">Print the pod</a>
+<a href="../hardware/" aria-current="page">The Slate v4</a>
+<a href="../hardware/print/">Print the Slate v4</a>
+<a href="../hardware/pod/">The pod (earlier)</a>
 <div class="group">The deck UI</div>
 <div class="switch"><a href="../ui/setup/" aria-current="page">Tall</a><a href="../ui/wide/setup/">Wide</a></div>
 <a href="../ui/">The screens</a>
@@ -71,8 +72,8 @@
 <a href="../cura/">Cura plugin booklet</a></nav></aside>
 <main>
 <p class="eyebrow">Hardware</p>
-<h1>The pod</h1>
-<p class="lede">A Raspberry Pi Touch Display 2 with a Raspberry Pi 5 on its back, in a printed case, on a printed bracket.</p>
+<h1>The Slate v4</h1>
+<p class="lede">A Raspberry Pi Touch Display 2 with a Raspberry Pi 5 on its back, in a printed desk case: a navy case on an orange base.</p>
 <nav class="onpage"><b>On this page</b><ol><li><a href="#the-slate-v4">The Slate v4</a></li><li><a href="#the-pod">The pod</a></li><li><a href="#on-the-taz-workhorse">On the TAZ Workhorse</a></li><li><a href="#on-the-mini-2">On the Mini 2</a></li><li><a href="#what-you-need">What you need</a></li><li><a href="#software">Software</a></li><li><a href="#files">The print files</a></li><li><a href="#design">The design</a></li></ol></nav>
 
 <h2 id="the-slate-v4">The Slate v4</h2>
@@ -80,11 +81,11 @@
 <p>The Slate v4 replaces the pod. It is a desk case for the Raspberry Pi Touch Display 2 (5 inch, tall) and the Raspberry Pi 5 with its Active Cooler. The navy case has the shape of the pod, and it stands on an orange base on the desk, next to the printer. It leans back 15 degrees. Two M3 x 8 screws from behind hold the case on the base.</p>
 <img src="../img/slate-v4-back.png" alt="The Slate v4 from the back right: the back plate of the base with the boss, the pad and the twist-tie holes, and the foot" width="320">
 <ul><li>Resin: two parts, the case and the base.</li><li>FDM: three parts, the frame and the body of the case, and the base.</li><li>The printer cable runs from the top of the case, down the back plate, to the printer. The webcam stays on the printer frame, and its cable runs to the Slate on the desk.</li></ul>
-<p><a href="https://github.com/beetlebugorg/printdeck/blob/main/lulzbot/stl/slate/README.md">stl/slate/README.md</a> has the print files, the hardware, the assembly and the checks. <code>slate.py</code> is the model.</p>
+<p><a href="../hardware/print/">stl/slate/README.md</a> has the print files, the hardware, the assembly and the checks. <code>slate.py</code> is the model.</p>
 <p>The rest of this page is the pod, the earlier design: the case on a bracket on the printer.</p>
 <img src="../img/pod-taz.png" alt="The Printdeck pod on the front left of a LulzBot TAZ Workhorse" width="480">
 <p>The pod is a Raspberry Pi Touch Display 2 (5 inch, mounted tall) with a Raspberry Pi 5 on its back, in a printed case. A printed bracket holds the pod on a TAZ Workhorse or a Mini 2.</p>
-<p><a href="../hardware/print/">stl/pod/README.md</a> has the print files, the print settings, the hardware and the webcam option.</p>
+<p><a href="../hardware/pod/">stl/pod/README.md</a> has the print files, the print settings, the hardware and the webcam option.</p>
 <h2 id="the-pod">The pod</h2>
 <img src="../img/pod.png" alt="The pod on its bracket" width="320">
 <ul><li>The Pi 5 with its Active Cooler goes on the four standoffs of the display, USB ports up.</li><li>Four M2.5 x 4 screws from the display box hold the frame to the four tabs of the display.</li><li>Four M3 x 6 screws go from the back of the body into heat-set inserts in the frame.</li><li>Two M3 x 6 screws from inside the body hold the mount to the body.</li><li>The wedge slides down into the groove of the bracket. The dovetail of the mount drops into the slot of the wedge.</li></ul>
@@ -96,20 +97,24 @@
 <img src="../img/pod-bracket.png" alt="The TAZ bracket off its two rail clips, the wedge above the groove of the bracket, and the pod above the wedge" width="300">
 <h2 id="on-the-taz-workhorse">On the TAZ Workhorse</h2>
 <p>The pod goes at the front left, on the electronics chassis, below the logo. You drill no hole.</p>
-<ol><li>Put two metal M3 roll-in T-nuts (2020) in the front slot of the rail.</li><li>Hold each rail clip (<code>stl/clip.stl</code>) to a T-nut with an M3 x 8 screw. Print each clip on its end, with a brim.</li><li>Put the bracket on the two rail clips. Its nub goes over the edge of the side cover.</li><li>Fill the gap under the nub with shims, and tighten the upper front cover screw. See <a href="../hardware/print/">stl/pod/README.md</a>.</li><li>Connect the printer cable to the USB-B port on the rear of the chassis.</li><li>Hold the printer cable and the power cable on the side cover with five single cable clips, on foam tape.</li></ol>
+<ol><li>Put two metal M3 roll-in T-nuts (2020) in the front slot of the rail.</li><li>Hold each rail clip (<code>stl/clip.stl</code>) to a T-nut with an M3 x 8 screw. Print each clip on its end, with a brim.</li><li>Put the bracket on the two rail clips. Its nub goes over the edge of the side cover.</li><li>Fill the gap under the nub with shims, and tighten the upper front cover screw. See <a href="../hardware/pod/">stl/pod/README.md</a>.</li><li>Connect the printer cable to the USB-B port on the rear of the chassis.</li><li>Hold the printer cable and the power cable on the side cover with five single cable clips, on foam tape.</li></ol>
 <h2 id="on-the-mini-2">On the Mini 2</h2>
 <img src="../img/pod-mini2.png" alt="The Printdeck pod on the top left of a LulzBot Mini 2" width="360">
 <p>The pod goes at the top of the left upright. The stock LCD stays on the right upright.</p>
 <ol><li>Remove the two frame screws of the top left corner. Hold the bracket there with two longer screws (M3 x 10 in the model).</li><li>Connect the printer cable to the USB-B port in the front of the electronics case.</li><li>Hold the printer cable with the two zip-tie anchors of the bracket.</li><li>Hold the power cable and the printer cable on the electronics case with two double cable clips.</li></ol>
 <h2 id="what-you-need">What you need</h2>
-<ul><li>A Raspberry Pi Touch Display 2, 5 inch. Its box has the DSI ribbon, the power wire and the M2.5 screws.</li><li>A Raspberry Pi 5 with the Raspberry Pi Active Cooler.</li><li>An SD card for Printdeck OS. See <a href="../#install">Install</a>.</li><li>The Raspberry Pi 27 W USB-C power supply.</li><li>A USB cable from USB-A to USB-B, from the Pi to the printer.</li><li>The printed parts and the hardware in <a href="../hardware/print/">stl/pod/README.md</a>. For the TAZ Workhorse, also two rail clips (<code>stl/clip.stl</code>), two M3 x 8 screws and two M3 roll-in T-nuts.</li></ul>
+<ul><li>A Raspberry Pi Touch Display 2, 5 inch. Its box has the DSI ribbon, the power wire and the M2.5 screws.</li><li>A Raspberry Pi 5 with the Raspberry Pi Active Cooler.</li><li>An SD card for Printdeck OS. See <a href="../#install">Install</a>.</li><li>The Raspberry Pi 27 W USB-C power supply.</li><li>A USB cable from USB-A to USB-B, from the Pi to the printer.</li><li>The printed parts and the hardware in <a href="../hardware/pod/">stl/pod/README.md</a>. For the TAZ Workhorse, also two rail clips (<code>stl/clip.stl</code>), two M3 x 8 screws and two M3 roll-in T-nuts.</li></ul>
 <h2 id="software">Software</h2>
 <p>The display hangs upside down, so turn the picture 180 degrees. Use the Screen row of Settings, or <code>display_rotate=180</code> in <code>printdeck.txt</code>.</p>
 <h2 id="files">The print files</h2>
-<p>The FDM files, in their print orientation. The <a href="../hardware/print/">print page</a> has the settings, the resin files and the hardware of the pod.</p>
-<p><a class="btn" href="../files/pod/fdm/cable-clip-double_fdm.stl">cable-clip-double_fdm.stl</a><a class="btn" href="../files/pod/fdm/cable-clip-single_fdm.stl">cable-clip-single_fdm.stl</a><a class="btn" href="../files/pod/fdm/camera-arm-mini2_fdm.stl">camera-arm-mini2_fdm.stl</a><a class="btn" href="../files/pod/fdm/camera-arm-taz_fdm.stl">camera-arm-taz_fdm.stl</a><a class="btn" href="../files/pod/fdm/camera-clamp-mini2_fdm.stl">camera-clamp-mini2_fdm.stl</a><a class="btn" href="../files/pod/fdm/camera-clamp-taz_fdm.stl">camera-clamp-taz_fdm.stl</a><a class="btn" href="../files/pod/fdm/fit_holes_fdm.stl">fit_holes_fdm.stl</a><a class="btn" href="../files/pod/fdm/pod-body_fdm.stl">pod-body_fdm.stl</a><a class="btn" href="../files/pod/fdm/pod-bracket-mini2_fdm.stl">pod-bracket-mini2_fdm.stl</a><a class="btn" href="../files/pod/fdm/pod-bracket-taz_fdm.stl">pod-bracket-taz_fdm.stl</a><a class="btn" href="../files/pod/fdm/pod-frame_fdm.stl">pod-frame_fdm.stl</a><a class="btn" href="../files/pod/fdm/pod-mount_fdm.stl">pod-mount_fdm.stl</a><a class="btn" href="../files/pod/fdm/pod-shim-0.5mm_fdm.stl">pod-shim-0.5mm_fdm.stl</a><a class="btn" href="../files/pod/fdm/pod-shim-1.0mm_fdm.stl">pod-shim-1.0mm_fdm.stl</a><a class="btn" href="../files/pod/fdm/pod-shim-2.0mm_fdm.stl">pod-shim-2.0mm_fdm.stl</a><a class="btn" href="../files/pod/fdm/pod-wedge_fdm.stl">pod-wedge_fdm.stl</a><a class="btn" href="../files/pod/clip.stl">clip.stl (TAZ Workhorse)</a></p>
+<p>The files of the Slate v4, in their print orientation. The <a href="../hardware/print/">print page</a> has the settings, the hardware and the assembly.</p>
+<h3>Resin</h3>
+<p><a class="btn" href="../files/slate/resin/slate-base_resin.stl">slate-base_resin.stl</a><a class="btn" href="../files/slate/resin/slate-case_resin.stl">slate-case_resin.stl</a></p>
+<h3>FDM</h3>
+<p><a class="btn" href="../files/slate/fdm/slate-base_fdm.stl">slate-base_fdm.stl</a><a class="btn" href="../files/slate/fdm/slate-body_fdm.stl">slate-body_fdm.stl</a><a class="btn" href="../files/slate/fdm/slate-frame_fdm.stl">slate-frame_fdm.stl</a></p>
+<p>The <a href="../hardware/pod/">pod page</a> has the files of the pod and the brackets.</p>
 <h2 id="design">The design</h2>
-<p>The pod is a build123d model in <a href="https://github.com/beetlebugorg/printdeck/tree/main/lulzbot">lulzbot/</a>, on the CAD of the printers from LulzBot.</p>
+<p>The Slate v4 and the pod are build123d models in <a href="https://github.com/beetlebugorg/printdeck/tree/main/lulzbot">lulzbot/</a>, on the CAD of the printers from LulzBot.</p>
 <h3 id="files">Files</h3>
 <ul><li><code>slate.py</code>: the model of the Slate v4, in build123d. <code>slate.py export</code> writes the print files to <code>stl/slate/</code> and checks them. <code>slate.py check</code> gives the fit, tip and stiffness checks.</li><li><code>pod.py</code>: the model of the pod, the brackets and the wedge, in build123d. <code>pod.py export</code> writes the print files. <code>pod.py overhangs</code> checks them for faces that need supports.</li><li><code>fit_holes.py</code>: a fit test for the display holes of the frame.</li><li><code>clips.py</code>: the cable clips. <code>camera.py</code>: the webcam mounts.</li><li><code>workhorse.py</code>, <code>parts.py</code>, <code>shape.py</code>: the TAZ Workhorse CAD, the rail clip and the rail.</li><li><code>live.py</code>, <code>viewer.py</code>, <code>cable_physics.py</code>: the 3D window of the model.</li></ul>
 <p>The other files in this folder are for earlier designs. Printdeck uses the pod now. The earlier designs are a mount on the TAZ Workhorse with the Adafruit 7 inch HDMI display, a 2.5 inch drive and a 30 mm fan, and other layouts for that display.</p>

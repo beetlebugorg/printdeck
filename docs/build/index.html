@@ -20,8 +20,9 @@
 <div class="layout">
 <aside class="side"><nav><a href="../">Overview</a>
 <div class="group">Hardware</div>
-<a href="../hardware/">The pod</a>
-<a href="../hardware/print/">Print the pod</a>
+<a href="../hardware/">The Slate v4</a>
+<a href="../hardware/print/">Print the Slate v4</a>
+<a href="../hardware/pod/">The pod (earlier)</a>
 <div class="group">The deck UI</div>
 <div class="switch"><a href="../ui/setup/" aria-current="page">Tall</a><a href="../ui/wide/setup/">Wide</a></div>
 <a href="../ui/">The screens</a>
@@ -103,7 +104,7 @@ os/build.sh debug clean      a Buildroot target of the debug build</code></pre>
 <h3>The Cura plugin package</h3>
 <p>Builds Printdeck.curapackage: drag it onto the Cura window to install the plugin. The version is the version of plugin.json.</p>
 <h2 id="site">The documentation</h2>
-<p>The workflow <code>.github/workflows/pages.yml</code> publishes <code>docs/</code> to GitHub Pages at <a href="https://beetlebug.org/printdeck/">https://beetlebug.org/printdeck/</a>, with the print files of the pod under <code>files/pod/</code>. It runs on a push to <code>main</code> that changes those files. The pages are in the repository: these scripts write them, and a commit publishes them.</p>
+<p>The workflow <code>.github/workflows/pages.yml</code> publishes <code>docs/</code> to GitHub Pages at <a href="https://beetlebug.org/printdeck/">https://beetlebug.org/printdeck/</a>, with the print files of the Slate v4 under <code>files/slate/</code> and of the pod under <code>files/pod/</code>. It runs on a push to <code>main</code> that changes those files. The pages are in the repository: these scripts write them, and a commit publishes them.</p>
 <h3>The manuals</h3>
 <p>Builds the manual two times: for a display that is mounted tall (this folder), as on the pod, and for a display that is mounted wide (wide/). The deck draws the pictures and writes index.html (the web manual) and booklet.html (the instruction booklet). Then Chromium prints each booklet two times:</p>
 <pre><code>printdeck-manual.pdf        the half-letter pages (5.5 x 8.5 in) in order. A print shop
@@ -119,8 +120,17 @@ printdeck-cura-print.pdf  two pages on each side of a letter sheet, in the order
 booklet. Print it on both sides (flip on the short edge), then fold
 the stack and staple it in the fold.</code></pre>
 <p>Run it after a change to the plugin or to cura.go.</p>
+<h3>The Slate v4</h3>
+<p><code>lulzbot/slate.py export</code> writes the print files of the Slate v4 in <code>lulzbot/stl/slate/</code>. The <a href="../hardware/print/">print page</a> has them.</p>
+<p>The Slate v4: the desk case of Printdeck. It holds the Raspberry Pi Touch Display 2 (5 inch, tall) and the Raspberry Pi 5 with its Active Cooler. The navy case is the top, and the orange base is the bottom. Two M3 screws hold the case on the base.</p>
+<p>The case has the shape of the pod (pod.py): the frame around the display, and the body around the Pi, with the ports of the Pi flush with its walls. pod.py makes the geometry, and this file uses it with no change. The body has two rings on its inner floor, at the holes of the pod mount, with a pocket for an M3 hex nut in each. - Resin: the frame and the body are one part, slate-case_resin.stl. The display goes in from the front with the Pi on its back, and four M2.5 screws from the box of the display hold it. Two wells through the back give access to the two lower screws. - FDM: one part needs supports, so the case is two parts, slate-frame_fdm.stl and slate-body_fdm.stl, with four M3 x 6 screws into heat-set inserts, as the frame and the body of the pod.</p>
+<p>The base is one part, after the chin and the back plate of the earlier Slate: - the chin: a band across the full width of the glass, under its bottom edge, with a lip in front of the glass; - the cheeks: the two sides of the chin go up beside the frame, under the edges of the glass, to below the ports in the left wall; - the ribs under the bottom of the case; - the back plate behind the body, GAP behind it, so the air goes to the vents in the back of the body; - the boss at the top of the back plate and the pad at its bottom, on the back of the body. Two M3 x 8 screws from behind go through the boss and the back of the body into the nuts, and pull the back of the body onto the boss and the pad. The case is complete before it goes on the base; - the foot: a flat plate on the desk, back to FOOT_BACK.</p>
+<p>The case leans back by pod.TILT (15 degrees), as the earlier Slate.</p>
+<p>World coordinates: x to the right, y to the back, z up. The desk is z = 0, and the bottom front edge of the glass is at y = 0, z = H0. Case coordinates (u, v, w) are the pod coordinates of pod.py.</p>
+<p>Run: uv run --no-project --with build123d --with numpy --with scipy --with trimesh --with shapely --with networkx python slate.py [export | check | render]</p>
+<p>export writes the print files to stl/slate/ and checks them. check prints the overlap, the tip and the stiffness checks. render writes renders/slate-*.png, with the views of the joint (headless EGL: set PYOPENGL_PLATFORM=egl, and add --with pyrender --with pillow).</p>
 <h3>The pod</h3>
-<p><code>lulzbot/pod.py export</code> writes the print files of the pod in <code>lulzbot/stl/pod/</code>. The <a href="../hardware/print/">print page</a> has them.</p>
+<p><code>lulzbot/pod.py export</code> writes the print files of the pod in <code>lulzbot/stl/pod/</code>. The <a href="../hardware/pod/">pod page</a> has them.</p>
 <p>The deck pod: the Raspberry Pi Touch Display 2 (5 inch), with the Pi 5 and its Active Cooler on the back of the display, in a printed case that fits close around them. A bracket for each printer holds the pod: the TAZ Workhorse bracket is here.</p>
 <p>The glass of the display is the front of the pod. It is wider than the case, so the case is a smaller body behind the glass. The display hangs with its ribbon end down, and the Pi is on it as Raspberry Pi mounts it: the USB ports up, the ribbon folded around the PCIe end of the Pi. The deck turns the picture 180 degrees (Settings, or display_rotate=180 in printdeck.txt).</p>
 <p>The body has two parts: a thin part around the display frame, and a deep part close around the Pi. The ports are the Pi&#x27;s own ports, flush with the walls of the deep part: the USB-C power port and the two micro HDMI ports in the left wall, and the USB-A and Ethernet ports in the top wall. The printer cable plugs straight into the Pi from above.</p>
@@ -132,8 +142,8 @@ the stack and staple it in the fold.</code></pre>
 <h3>This site</h3>
 <p>Printdeck: write the documentation site in docs/ (<a href="https://beetlebug.org/printdeck/">https://beetlebug.org/printdeck/</a>).</p>
 <p>The pages come from the files of the repository, so the site follows them:</p>
-<p>README.md, ARCHITECTURE.md, os/README.md, printer/README.md, slicer/README.md, slicer/cura-plugin/README.md, deck/internal/klipper/PORTING.md, desktop/meshes/README.md, watch/README.md, cloud/relay/README.md, lulzbot/README.md, lulzbot/stl/pod/README.md                                    the text of the pages docs/specs/printdeck-architecture.html                       the architecture pages lulzbot/stl/pod/                                             the print files of the pod docs/manual/index.html, docs/manual/wide/index.html          the screens of the deck deck/cmd/printdeck/*.go, deck/internal/config/config.go, os/board/, .github/workflows/, the build scripts              the reference pages</p>
-<p>Run it after docs/manual/build.sh or docs/cura/build.sh, after pod.py export, and after a change to a README. It needs only Python 3. At the end it checks every link of the site, and stops with an error for a link that goes nowhere.</p>
+<p>README.md, ARCHITECTURE.md, os/README.md, printer/README.md, slicer/README.md, slicer/cura-plugin/README.md, deck/internal/klipper/PORTING.md, desktop/meshes/README.md, watch/README.md, cloud/relay/README.md, lulzbot/README.md, lulzbot/stl/slate/README.md, lulzbot/stl/pod/README.md       the text of the pages docs/specs/printdeck-architecture.html                       the architecture pages lulzbot/stl/slate/, lulzbot/stl/pod/                         the print files of the Slate v4 and the pod docs/manual/index.html, docs/manual/wide/index.html          the screens of the deck deck/cmd/printdeck/*.go, deck/internal/config/config.go, os/board/, .github/workflows/, the build scripts              the reference pages</p>
+<p>Run it after docs/manual/build.sh or docs/cura/build.sh, after slate.py export or pod.py export, and after a change to a README. It needs only Python 3. At the end it checks every link of the site, and stops with an error for a link that goes nowhere.</p>
 <p>docs/build.py</p>
 
 </main>
