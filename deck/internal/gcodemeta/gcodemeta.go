@@ -41,7 +41,11 @@ type Meta struct {
 	Title string
 	// Project is the project of the print from the line ";Printdeck project: Robot dog" in the
 	// first lines of the file, or "". The Printdeck plugin for Cura writes it.
-	Project   string
+	Project string
+	// Build and Commit are the Printdeck build and the commit of the plan of a file that the slice
+	// run of GitHub made: ";Printdeck build: k7m2q9x4tz8w3fhn" and ";Printdeck commit: <SHA>".
+	Build     string
+	Commit    string
 	Thumbnail image.Image
 }
 
@@ -97,6 +101,14 @@ func Parse(r io.ReaderAt, size int64) (Meta, error) {
 					p.Project = t
 					continue
 				}
+				if t, ok := tag(s.Text(), "printdeck build:"); ok && buildID.MatchString(t) {
+					p.Build = t
+					continue
+				}
+				if t, ok := tag(s.Text(), "printdeck commit:"); ok && commitSHA.MatchString(t) {
+					p.Commit = strings.ToLower(t)
+					continue
+				}
 			}
 			p.line(s.Text())
 		}
@@ -110,6 +122,12 @@ func Parse(r io.ReaderAt, size int64) (Meta, error) {
 	}
 	return p.Meta, nil
 }
+
+// buildID and commitSHA are the forms of the build and the commit of a file of a slice run.
+var (
+	buildID   = regexp.MustCompile(`^[a-z0-9]{1,40}$`)
+	commitSHA = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
+)
 
 // tag reads a line of the Printdeck plugin, for example ";Printdeck title: Hex planter" for the
 // key "printdeck title:". The case of the key is free.

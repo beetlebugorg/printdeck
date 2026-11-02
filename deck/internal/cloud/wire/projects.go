@@ -216,6 +216,9 @@ type ProjectPrint struct {
 	Prep       int            `json:"prep,omitempty"`
 	Slicer     string         `json:"slicer,omitempty"`
 	Filament   *ShareFilament `json:"filament,omitempty"`
+	// Build and Commit are the Printdeck build and the commit of the file, or "".
+	Build  string `json:"build,omitempty"`
+	Commit string `json:"commit,omitempty"`
 	// Model is the URL of the picture of the model, and Plan the URL of plan.json (a SharePlan),
 	// or "". Frames is the count of the frames of the time lapse, at FPS frames a second.
 	Model string `json:"model,omitempty"`
@@ -351,6 +354,10 @@ type PrintRequest struct {
 	// PrinterID is the printer of the print at the service, or "" for a deck from before the
 	// printers.
 	PrinterID string `json:"printer_id,omitempty"`
+	// Build and Commit are the Printdeck build and the commit of the plan of a file of the slice
+	// run of GitHub, from the first lines of the G-code, or "".
+	Build  string `json:"build,omitempty"`
+	Commit string `json:"commit,omitempty"`
 }
 
 // PrintReply is the reply to POST /api/v1/projects/<id>/prints.

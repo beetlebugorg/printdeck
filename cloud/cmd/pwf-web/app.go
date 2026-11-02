@@ -784,6 +784,7 @@ func (a *app) drawPrint(p wire.ProjectPrint) {
 	}
 	say("prCopyMsg", nil, "")
 	say("prPhotoMsg", nil, "")
+	a.drawPrintCommit(p)
 	drawPrint(p, v.Photos, func() (wire.FramesReply, error) {
 		if p.Video != "" {
 			return wire.FramesReply{FPS: p.FPS, Video: p.Video, Poster: p.Poster}, nil
@@ -1638,4 +1639,31 @@ func credentialJSON(c js.Value, resp map[string]any) string {
 	}
 	b, _ := json.Marshal(out)
 	return string(b)
+}
+
+// drawPrintCommit shows the commit of the print p, from the slice run of GitHub: a link to the
+// commit on GitHub, and a link to its build for the members.
+func (a *app) drawPrintCommit(p wire.ProjectPrint) {
+	dd := byID("prCommit")
+	dd.Set("textContent", "")
+	dd.Get("parentElement").Set("hidden", p.Commit == "")
+	if p.Commit == "" {
+		return
+	}
+	v := a.view
+	if v.Repo != "" {
+		link := el("a", "", shortSHA(p.Commit))
+		link.Set("href", "https://github.com/"+v.Repo+"/commit/"+p.Commit)
+		link.Set("target", "_blank")
+		link.Set("rel", "noopener")
+		dd.Call("appendChild", link)
+	} else {
+		dd.Call("appendChild", el("span", "", shortSHA(p.Commit)))
+	}
+	if p.Build != "" && a.public == "" {
+		dd.Call("appendChild", doc.Call("createTextNode", " · "))
+		b := el("a", "", "the build")
+		b.Set("href", buildPath(v.Slug, p.Build))
+		dd.Call("appendChild", b)
+	}
 }

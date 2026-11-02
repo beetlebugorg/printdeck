@@ -393,6 +393,7 @@ func (p *projectLink) printRequest(r printer.Record) cloud.PrintRequest {
 	in.Prep = int(prep)
 	meta := p.k.FileMeta(r.Path)
 	in.Slicer, in.Estimate = meta.Slicer, int(meta.PrintTime.Seconds())
+	in.Build, in.Commit = meta.Build, meta.Commit
 	diameter := p.k.Machine().Diameter()
 	density := printer.Density(meta.Material)
 	f := &cloud.ShareFilament{Name: meta.MaterialName, Type: meta.Material, Color: meta.Color, Diameter: diameter,

@@ -857,7 +857,7 @@ func projectPrint(pr PrintRecord) cloud.ProjectPrint {
 		Ready: pr.Ready, ReadyNote: pr.ReadyNote, Test: pr.Test, Discarded: pr.Discarded, DiscardNote: pr.DiscardNote, File: pr.File, Result: pr.Result, Ended: pr.Ended, Seconds: pr.Seconds,
 		Material: pr.Material, Grams: pr.Grams, Roll: pr.Roll, Printer: pr.Printer, Note: pr.Note, Frames: pr.Frames, FPS: pr.FPS,
 		Started: pr.Started, Layers: pr.Layers, Layer: pr.Layer, Height: pr.Height, GramsTotal: pr.GramsTotal,
-		Estimate: pr.Estimate, Prep: pr.Prep, Slicer: pr.Slicer, Filament: pr.Filament}
+		Estimate: pr.Estimate, Prep: pr.Prep, Slicer: pr.Slicer, Filament: pr.Filament, Build: pr.Build, Commit: pr.Commit}
 }
 
 // projectFiles returns the prints that are done, the newest first, and the photos, the newest
@@ -1176,6 +1176,12 @@ func (s *Server) newPrint(ctx context.Context, p *Project, d *Deck, in cloud.Pri
 	in.Name, in.File, in.Material, in.Roll, in.Printer, in.Note =
 		clip(in.Name, 120), clip(in.File, 200), clip(in.Material, 40), clip(in.Roll, 80), clip(in.Printer, 64), clip(in.Note, 280)
 	in.Key, in.Slicer = clip(in.Key, 200), clip(in.Slicer, 64)
+	if !validID(in.Build) {
+		in.Build = ""
+	}
+	if in.Commit = strings.ToLower(in.Commit); !hexSHA.MatchString(in.Commit) {
+		in.Commit = ""
+	}
 	share := in.Share
 	in.Share = ""
 	if f := in.Filament; f != nil {

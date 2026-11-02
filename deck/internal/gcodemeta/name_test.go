@@ -97,3 +97,18 @@ func TestTitle(t *testing.T) {
 		t.Errorf("title %q", m.Title)
 	}
 }
+
+// The slice run of GitHub writes the build and the commit of the plan in the first lines.
+func TestBuildAndCommit(t *testing.T) {
+	sha := strings.Repeat("9a", 20)
+	g := ";Printdeck title: Camera arm\n;Printdeck build: rk5szgqcq5t53wfw\n;Printdeck commit: " + strings.ToUpper(sha) + "\nG28\n"
+	m, err := Parse(strings.NewReader(g), int64(len(g)))
+	if err != nil || m.Build != "rk5szgqcq5t53wfw" || m.Commit != sha {
+		t.Errorf("%+v %v", m, err)
+	}
+	// A bad build or commit stays out.
+	g = ";Printdeck build: ../x\n;Printdeck commit: 9abfdf5\n"
+	if m, _ = Parse(strings.NewReader(g), int64(len(g))); m.Build != "" || m.Commit != "" {
+		t.Errorf("build %q commit %q", m.Build, m.Commit)
+	}
+}
