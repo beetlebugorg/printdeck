@@ -11,6 +11,9 @@ generate:
   run: cd lulzbot && python slate.py export && python slate.py assembly && python pod.py export
   check: true
 
+# The picture of the project in the project lists: lulzbot/cover.py makes it from the render.
+cover: docs/img/cover.png
+
 parts:
   # The Slate v4 (FDM): the case in navy PLA (roll-3), the base in orange PLA (roll-2). No part
   # needs supports. The seam goes to the sharpest corner, on the inside. Each part has a 5 mm brim
