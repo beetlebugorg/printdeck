@@ -168,3 +168,7 @@ footer { display: grid; gap: 4px; }
 .gview .gv-stage { width: 100%; height: 100%; }
 .gv-viewkey { position: absolute; right: 8px; bottom: 8px; z-index: 2; font: 600 12px/1 "Archivo", sans-serif; padding: 8px 10px;
   border-radius: 8px; border: 1px solid #ff7a1a; background: rgba(0,0,0,.66); color: #f3f1ec; cursor: pointer; min-height: 0; }
+
+/* The header links to the project, as on the pages of the projects. */
+a.brand { color: var(--ink); text-decoration: none; }
+.back { display: inline-block; font-size: 14px; margin-bottom: 8px; }

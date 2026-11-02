@@ -541,8 +541,13 @@ func (s *share) renderReady(rd wire.ShareReady) {
 	if pr := rd.Project; pr != nil {
 		setText("projLink", pr.Name)
 		byID("projLink").Set("href", pr.URL)
+		// The header goes to the project, as on the pages of the project.
+		setText("projBack", pr.Name)
+		byID("projBack").Set("href", pr.URL)
+		byID("brandLink").Set("href", pr.URL)
 	}
 	setHidden("projLine", rd.Project == nil)
+	setHidden("projBack", rd.Project == nil)
 	if !rd.Expires.IsZero() {
 		if rd.Project != nil {
 			setText("expires", "View only. Shared with Printdeck. From "+localDay(rd.Expires)+", this link opens the page of the print in the project.")
