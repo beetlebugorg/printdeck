@@ -122,9 +122,20 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		}
 		a.do(func() error { return pr.SetToolTemp(t) })
 	}
-	// done is Done: the new filament is loaded. It closes the swap as end does.
+	// done is Done: the new filament is loaded. It closes the swap as end does. For a print that
+	// waits (then), the nozzle stays hot for the print, and the deck goes back to the print.
 	done := func() {
 		a.finishSwap(sw)
+		if sw.then != nil {
+			a.swap = nil
+			sw.then()
+			return
+		}
+		end()
+	}
+	// cancel is Cancel: it closes the swap as end does. For a print that waits, the deck goes
+	// back to the print, and asks again about the roll.
+	cancel := func() {
 		end()
 		if sw.then != nil {
 			sw.then()
@@ -133,10 +144,13 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 	// Close before the swap heats the nozzle only closes. After it, Close is the same as Cancel.
 	closeSwap := func() {
 		if sw.paused || sw.temp > 0 {
-			end()
+			cancel()
 			return
 		}
 		a.swap = nil
+		if sw.then != nil {
+			sw.then()
+		}
 	}
 	f := a.pageBack(c, []string{"Filament swap", "Load filament", "Unload filament"}[sw.mode], "Close", closeSwap)
 	// The step, its text and its keys under each other, with the keys at the bottom. A wide
@@ -204,6 +218,9 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 	cancelLabel, doneLabel := "Cancel and cool down", "Done, cool down"
 	if sw.paused {
 		cancelLabel, doneLabel = "Cancel", "Done"
+	}
+	if sw.then != nil {
+		cancelLabel, doneLabel = "Cancel", "Done, go to the print"
 	}
 
 	// heatFor heats the nozzle for a material and goes on to the heating step.
@@ -277,7 +294,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		a.materialKeys(c, sw, keys(size{172, 2}, size{80, 1}))
 	case swapHeat:
 		step(2, "Heating the nozzle")
-		var temp, bar, cancel image.Rectangle
+		var temp, bar, cancelKey image.Rectangle
 		heatText := "The next step starts when the nozzle is hot."
 		if a.SwapHome && !sw.paused {
 			heatText = "The printer homes while the nozzle heats. The next step starts when the nozzle is hot."
@@ -286,7 +303,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 			para(heatText)
 			// The temperature and its bar under the text, Cancel at the bottom.
 			r := kit.Rows(kit.Inset(txt.Rest(), 0, 16, 0, 8), 12, kit.Fr(1), kit.Px(56), kit.Px(20), kit.Fr(1), kit.Px(actH))
-			temp, bar, cancel = r[1], kit.Inset(r[2], 16, 0, 16, 0), r[4]
+			temp, bar, cancelKey = r[1], kit.Inset(r[2], 16, 0, 16, 0), r[4]
 		} else {
 			// The temperature over the text.
 			temp = txt.Next(64)
@@ -294,7 +311,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 			bar = kit.Inset(txt.Next(20), 16, 0, 16, 0)
 			txt.Skip(30)
 			para(heatText)
-			cancel = keys(size{80, 1})[0]
+			cancelKey = keys(size{80, 1})[0]
 		}
 		c.Text(temp, fmt.Sprintf("%.0f° / %d°", st.Tool, sw.temp), gfx.Face(true, 44), text, gfx.Center)
 		segments(c, bar, max(0, min(1, st.Tool/float64(max(sw.temp, 1)))))
@@ -306,7 +323,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 			}
 			a.Redraw()
 		}
-		a.button(c, cancel, cancelLabel, raised, text, end)
+		a.button(c, cancelKey, cancelLabel, raised, text, cancel)
 
 	case swapUnload:
 		step(3, "Unload the old filament")
@@ -351,7 +368,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 				a.do(func() error { return pr.Extrude(10, 150) })
 			})
 		}
-		if sw.paused {
+		if sw.paused || sw.then != nil {
 			k := keys(size{80, 1}, size{84, 1.4})
 			purge(k[0])
 			a.button(c, k[1], doneLabel, orange, onAcc, done)

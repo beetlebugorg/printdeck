@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"printdeck/internal/gcodemeta"
+	"printdeck/internal/gfx"
 
 	"printdeck/internal/printer"
 	"printdeck/internal/queue"
@@ -76,4 +77,51 @@ func TestQueueGuidedRollChange(t *testing.T) {
 	if c := strings.Join(pr.Calls(), " "); !strings.Contains(c, "print builds/b1-plate-1.gcode") {
 		t.Errorf("calls %v", pr.Calls())
 	}
+}
+
+// The keys of the swap for a print from the queue go back to the print. Done keeps the nozzle hot
+// and asks to start. Close asks again about the roll. Neither goes to the home screen.
+func TestQueueRollChangeKeys(t *testing.T) {
+	setup := func(t *testing.T) (*App, *recPrinter, *gfx.Canvas, string) {
+		a, pr, cv := newPrintApp(idle)
+		pr.Meta_ = gcodemeta.Meta{Material: "PLA", MaterialName: "Navy", Color: "#1f2a5a"}
+		pr.Spools_ = &printer.Spools{}
+		navy := pr.Spools_.AddOut("MatterHackers PLA Navy", "PLA", 1200, 200, 0, time.Unix(1, 0))
+		pr.Spools_.SetColor(navy.ID, "#1f2a5a")
+		black := pr.Spools_.Add("MatterHackers PLA Black", "PLA", 1200, 200, 0, time.Unix(2, 0))
+		pr.Spools_.SetColor(black.ID, "#1a1a1a")
+		a.Queue = &queue.Queue{Path: filepath.Join(t.TempDir(), "queue.json")}
+		it, err := a.Queue.Add(queue.Item{Path: "builds/b1-plate-1.gcode", Name: "Slate frame"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		a.startQueued(it)
+		tapLabel(t, a, cv, "Change the roll")
+		if a.swap == nil || a.swap.then == nil {
+			t.Fatalf("no swap for the print: %+v", a.swap)
+		}
+		return a, pr, cv, navy.ID
+	}
+	t.Run("done", func(t *testing.T) {
+		a, pr, cv, navy := setup(t)
+		a.swap.setAtEnd("PLA", navy)
+		a.swap.temp, a.swap.step = 210, swapCheck
+		pr.State_.Tool = 210
+		tapLabel(t, a, cv, "Done, go to the print")
+		if a.swap != nil || a.confirm == nil || a.confirm.yes != "Start the print" {
+			t.Fatalf("after Done: swap %v, question %+v", a.swap != nil, a.confirm)
+		}
+		for _, c := range pr.Calls() {
+			if c == "tool 0" {
+				t.Errorf("Done cooled the nozzle before the print: %v", pr.Calls())
+			}
+		}
+	})
+	t.Run("close", func(t *testing.T) {
+		a, _, cv, _ := setup(t)
+		tapLabel(t, a, cv, "Close")
+		if a.swap != nil || a.confirm == nil || len(a.confirm.choices) != 2 || a.confirm.choices[0].title != "Change the roll" {
+			t.Fatalf("after Close: swap %v, question %+v", a.swap != nil, a.confirm)
+		}
+	})
 }
