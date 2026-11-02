@@ -103,3 +103,59 @@ func TestSendNewPrints(t *testing.T) {
 		t.Fatalf("cloud-projects.json %s", b)
 	}
 }
+
+// A plate of a build binds its project to the name on the deck. A print of the plate then goes
+// to the project of the build, and not to an older project with the same name or to a new one.
+func TestPlateBindsProject(t *testing.T) {
+	var mu sync.Mutex
+	made := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		switch {
+		case r.Method == "POST" && r.URL.Path == "/api/v1/projects":
+			made++
+			json.NewEncoder(w).Encode(cloud.ProjectSummary{ID: "made"})
+		case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/api/v1/projects/"):
+			w.Write([]byte("{}"))
+		default:
+			http.Error(w, "no such request", 404)
+		}
+	}))
+	defer srv.Close()
+	dir := t.TempDir()
+	id := cloud.Identity{Domain: srv.URL, Deck: "d1", Key: make([]byte, 32), Enrolled: time.Now()}
+	b, _ := json.Marshal(id)
+	os.WriteFile(filepath.Join(dir, "cloud.json"), b, 0o600)
+	// An older project with the name, from a print before the build.
+	b, _ = json.Marshal(cloudProjectsFile{"Robot": {ID: "old", Domain: srv.URL, Prints: map[string]string{"k": "p1"}}})
+	os.WriteFile(filepath.Join(dir, "cloud-projects.json"), b, 0o600)
+	k := printer.NewKlippy(filepath.Join(dir, "none.sock"), &gcodestore.Store{Dir: dir})
+	p := &projectLink{Link: &cloud.Link{Path: filepath.Join(dir, "cloud.json")}, k: k, stateDir: dir}
+	ctx := context.Background()
+	if got, err := p.ShareProjectID(ctx, "Robot"); err != nil || got != "old" {
+		t.Fatalf("before the plate: %q, %v", got, err)
+	}
+	if err := p.bindProject(p.Identity(), "Robot", "build"); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := p.ShareProjectID(ctx, "Robot"); err != nil || got != "build" {
+		t.Fatalf("after the plate: %q, %v", got, err)
+	}
+	// A name with no project on the deck: the plate binds it, and the deck makes no project.
+	if err := p.bindProject(p.Identity(), "Garden", "g1"); err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	n := made
+	mu.Unlock()
+	if got, err := p.ShareProjectID(ctx, "Garden"); err != nil || got != "g1" || n != 0 {
+		t.Fatalf("Garden: %q, %v, %d made", got, err, n)
+	}
+	var f cloudProjectsFile
+	b, _ = os.ReadFile(filepath.Join(dir, "cloud-projects.json"))
+	json.Unmarshal(b, &f)
+	if f["Robot"] == nil || f["Robot"].ID != "build" || f["Garden"] == nil || f["Garden"].ID != "g1" {
+		t.Fatalf("cloud-projects.json %s", b)
+	}
+}

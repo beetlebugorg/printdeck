@@ -51,6 +51,9 @@ func (p *projectLink) watchPlates(ctx context.Context, app *ui.App, place func(c
 				log.Printf("plates: %s of %s: %v", pl.File, pl.ProjectName, err)
 				continue
 			}
+			if err := p.bindProject(id, pl.ProjectName, pl.Project); err != nil {
+				log.Printf("plates: the project of %s: %v", pl.File, err)
+			}
 			if err := app.EnqueueAs(path, "build", pl.Name, pl.ProjectName); err != nil {
 				log.Printf("plates: the queue: %v", err)
 				continue

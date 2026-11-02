@@ -156,6 +156,28 @@ func (p *projectLink) ShareProject(name string, progress func(done, total int)) 
 	return cloud.ProjectPage(id.Domain, cp.ID), nil
 }
 
+// bindProject makes the project with the ID pid at the service the project of the name on the
+// deck. A plate of a build has the ID of its project. The deck finds the projects of its prints by
+// the name, and without the binding a print of the plate goes to an older project with the same
+// name, or to a new one.
+func (p *projectLink) bindProject(id *cloud.Identity, name, pid string) error {
+	if name == "" || pid == "" {
+		return nil
+	}
+	p.fmu.Lock()
+	defer p.fmu.Unlock()
+	f := p.load()
+	if cp := f[name]; cp != nil && cp.ID == pid && cp.Domain == id.Domain {
+		return nil
+	}
+	f[name] = &cloudProject{ID: pid, Domain: id.Domain, Prints: map[string]string{}, Format: printFormat}
+	if p.checked == nil {
+		p.checked = map[string]bool{}
+	}
+	p.checked[name] = true
+	return p.save(f)
+}
+
 // serviceProject returns the project with the name at the service, and makes it when it is not
 // there. check asks the service if the project still exists: the owner can delete it on the web.
 // Without check, the deck asks once for each deck program.
