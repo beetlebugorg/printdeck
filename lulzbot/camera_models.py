@@ -1,5 +1,5 @@
-"""Models of the camera to buy, and its bracket. An Arducam B0561 16 MP autofocus camera on the arm
-of the C270 mount, at the front right corner of the printer, aimed at the bed from above. The sizes in
+"""Models of the camera to buy, and its bracket. The camera is an Arducam B0561 16 MP autofocus camera
+on the arm of camera.py, at the front right corner of the printer, aimed at the bed from above. The sizes in
 B0561 are caliper measurements where the comment says "measured". The other sizes come from two
 product photos: a front view with two official sizes (36 mm and 44 mm), and a perspective view. ELP
 has the ELP-USB12MP01-L281 board for comparison only. Its sizes are guesses, and the model does not
@@ -11,10 +11,12 @@ on two pivot screws at its sides. The round base of the U has a through 1/4"-20 
 center. The JST B4B-ZR socket is on the back of the case, and the cable plugs straight in from the
 back.
 
-The bracket holds the base of the U with one screw. The pivot of the U sets the tilt. On the arm
-(camera.py), in place of the C270: a link with a tongue on the hinge pin (where the eyelet of the C270
-is), held level by the hinge screw, and a level plate in front of the arm. The camera hangs under the
-plate and tilts down on its pivot. The link is a placeholder (violet), with no STL file.
+The link holds the base of the U with one 1/4"-20 x 1/4" screw. The pivot of the U sets the tilt.
+The link is a printed part (camera-link_fdm.stl), the same for the TAZ and the Mini 2. Its tongue goes
+between the lugs of the arm, where the eyelet of the C270 was in the first design of the arm. The M3 x
+16 hinge screw goes through the lugs and the tongue, and holds the link level. The level plate of the
+link is in front of the arm. The camera hangs under the plate and tilts down on its pivot. The link
+prints on the top face of its plate, with no supports.
 
 The camera has its own cable to a USB-A port of the Pi in the pod (CAMERA_PORTS), along the route of
 the C270 cable. report() prints the length of the route and the cable length to buy (cable_plan()).
@@ -77,12 +79,18 @@ ELP = dict(board=(38.0, 38.0, 1.6), holes=(34.0, 2.2), holder=(14.0, 14.0, 12.0)
 
 CAMERA_COLORS = {"case": "#1A1B1E", "lens": "#30343A", "bracket": "#3A3C40", "connector": "#F2F2EE",
                  "keepout": "#D9534F"}
-BRACKET_COLOR = "#8E6CC8"               # placeholder printed brackets: violet, so they read as not final
 
-# The link on the C270 arm (hinge coordinates of camera.py: the pin along x, z forward, at no tilt).
-LINK_TONGUE = (C.EYELET[0], C.EYELET[1], C.EYELET[2])   # the width, height, and depth behind the pin of the C270 eyelet
+# The link on the arm (hinge coordinates of camera.py: the pin along x, z forward, at no tilt). The
+# tongue has the width of the C270 eyelet, so it fits between the lugs with the same gaps. It goes
+# from under the pin axis up to the top face of the plate, so it stands on the bed with the plate.
+LINK_TONGUE = (C.EYELET[0], C.EYELET[1], C.EYELET[2])   # the width, the height under the plate top, the depth behind the pin
 LINK_PLATE = (44.0, 4.0)                # the plate: width (x) and thickness (y); it goes from the lugs to past the base
 LINK_Z = C.LUG_TOP_Z + 1.0              # the back edge of the plate, 1 mm in front of the lugs
+# The 1/4"-20 x 1/4" screw from the top of the plate into the thread of the base: a socket cap head,
+# 3/8" across and 1/4" high. It goes through the 4 mm plate and the 2 mm boss, and through the
+# 1.4 mm base, 0.95 mm into the U.
+BASE_SCREW = dict(d=6.35, length=6.35, head=(9.53, 6.35))
+LINK_PRINT = Rot(-90, 0, 0)             # the print position: the top face of the plate on the bed
 
 def box(x0, x1, y0, y1, z0, z1):
     return C.box(x0, x1, y0, y1, z0, z1)
@@ -211,23 +219,45 @@ def link_base_z():
 def link_hinge():
     """The link in hinge coordinates: the tongue between the lugs of the arm, with the hole of the M3
     hinge screw, and the level plate in front of the lugs with the hole of the base screw. The base of
-    the U is under the plate (hinge y = 0)."""
+    the U is under the plate (hinge y = 0). The hinge hole has a teardrop point toward hinge -y: that
+    is up in the print position."""
     tw, th, tb = LINK_TONGUE
     pw, pt = LINK_PLATE
     zc = link_base_z()
     z1 = zc + B0561["base_d"] / 2 + 2.0
-    s = box(-tw / 2, tw / 2, -th / 2, th / 2, -tb, LINK_Z + 0.5)
+    # The tongue stops 0.5 mm short of the base of the U, under the plate.
+    s = box(-tw / 2, tw / 2, -th / 2, pt, -tb, zc - B0561["base_d"] / 2 - 0.5)
     s = s + box(-pw / 2, pw / 2, 0.0, pt, LINK_Z, z1)
-    s = s + box(-tw / 2, tw / 2, -th / 2, pt, LINK_Z - 0.5, LINK_Z + 4.0)
-    s = s - Location(Plane.YZ) * Cylinder(C.SCREW_HOLE / 2, tw + 2)
+    s = s - C.teardrop(C.SCREW_HOLE / 2, tw + 2, (0, 0, 0), (1, 0, 0), (0, -1, 0))
     s = s - Pos(0, pt / 2, zc) * (Location(Plane.XZ) * Cylinder(B0561["base_hole"] / 2 + 0.2, pt + 2))
     return s
+
+
+def link(name):
+    """The link on the arm, in printer coordinates."""
+    return C.hinge_loc(name) * link_hinge()
+
+
+def base_screw_hinge():
+    """The 1/4"-20 x 1/4" screw of the base, in hinge coordinates: the head on the top of the plate."""
+    b = BASE_SCREW
+    hd, hh = b["head"]
+    top = LINK_PLATE[1]
+    z = link_base_z()
+    s = Pos(0, top + hh / 2, z) * (Location(Plane.XZ) * Cylinder(hd / 2, hh))
+    s = s + Pos(0, top - b["length"] / 2, z) * (Location(Plane.XZ) * Cylinder(b["d"] / 2 - 0.05, b["length"]))
+    return s - Pos(0, top + hh, z) * (Location(Plane.XZ) * Cylinder(hd * 0.22, hh * 1.2))
+
+
+def base_screw(name):
+    return C.hinge_loc(name) * base_screw_hinge()
 
 
 def arm_mount(name, pitch=None):
     """[(part, shape, color)] of the camera on the arm and the link, in printer coordinates."""
     cam, br = arm_frame(name, pitch)
-    return [("camera_link", C.hinge_loc(name) * link_hinge(), BRACKET_COLOR)] + camera_parts(cam, br, "mount")
+    return ([("camera_link", link(name), C.ORANGE), ("camera_base_screw", base_screw(name), P.SCREW_COLOR)]
+            + camera_parts(cam, br, "mount"))
 
 
 def mount_lens(name):
@@ -485,14 +515,19 @@ def meshes(name, tmp, cam=None):
 
 # ---------------------------------------------------------------- the checks
 def check_arm(name):
-    """The case and its keepout on the arm over the tilt range, against the U bracket, the link, the
-    arm, the clamp, and the hinge screw. Returns a list of problems."""
+    """The link against the arm, the clamp, and the two screws. The case and its keepout on the arm
+    over the tilt range, against the U bracket, the link, the arm, the clamp, and the screws. Returns
+    a list of problems."""
     bad = []
-    fixed = [("link", C.hinge_loc(name) * link_hinge()), ("arm", C.arm(name)), ("clamp", C.CLAMPS[name]()),
-             ("hinge screw", C.hinge_screw(name))]
+    fixed = [("link", link(name)), ("arm", C.arm(name)), ("clamp", C.CLAMPS[name]()),
+             ("hinge screw", C.hinge_screw(name)), ("base screw", base_screw(name))]
+    for k, sh in fixed[1:]:
+        v = (sh & fixed[0][1]).volume
+        if v > 0.01:
+            bad.append(f"the {k} and the link: {v:.2f} mm3")
     _, br = arm_frame(name)
     u, _ = bracket_model()
-    for k, sh in fixed[1:]:
+    for k, sh in fixed:
         v = (sh & (br * u)).volume
         if v > 0.01:
             bad.append(f"the {k} and the U bracket: {v:.2f} mm3")

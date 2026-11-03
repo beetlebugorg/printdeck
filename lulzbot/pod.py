@@ -1517,6 +1517,7 @@ def on_bed(shape, rot, lift=0.0):
 def print_parts(process):
     """(file name, shape, how many) for each printed part of the pod, in print orientation."""
     import camera
+    import camera_models as CM
     import clips as C
     global DOVE_CLR, RESIN, FOOT
     keep, keep_foot = DOVE_CLR, FOOT
@@ -1529,13 +1530,16 @@ def print_parts(process):
     one, _ = C.tape_clip()
     two, _ = C.tape_clip(True)
     cam = [part for n in ("taz", "mini2") for part in camera.printed(n)]
+    # The link of the B0561 camera: the same part on the two arms.
+    cam.append(("camera-link", CM.link_hinge(), CM.LINK_PRINT))
     if process in ("fdm", "resin-flat"):
         # The body: flat on its back. The frame: flat on its back ring. The mount: flat on the face
         # that goes on the body, the dovetail up. The wedge: standing on its level bottom, the key and
         # the slot up. The TAZ bracket: standing on the top end of its plate, so the groove of the
         # wedge and the slots of the clips run up from the bed. The Mini 2 bracket: the frame side of
         # the plate on the bed. The clips: the base on the bed. The webcam parts print in the
-        # positions that camera.printed() gives. No part needs supports.
+        # positions that camera.printed() gives, and the link on the top face of its plate. No part
+        # needs supports.
         #
         # resin-flat: the resin parts in these positions, on the build plate with no supports. The
         # face on the plate gets the surface of the plate.
