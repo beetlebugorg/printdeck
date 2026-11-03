@@ -351,3 +351,36 @@ func (s *Server) numberPrints(ctx context.Context, id string, recs []*PrintRecor
 	}
 	return nil
 }
+
+// RenameProject gives the project of the slug the name, as a rename on the project page does: the
+// slug follows the name, and the old slug still finds the project. It returns the new slug.
+// pwf rename-project calls it.
+func (s *Server) RenameProject(ctx context.Context, slug, name string) (string, error) {
+	name = clip(strings.TrimSpace(name), 80)
+	if name == "" {
+		return "", errors.New("a project needs a name")
+	}
+	n, err := s.loadName(ctx, slug)
+	if err != nil {
+		return "", err
+	}
+	p, err := s.changeProject(ctx, n.Project, func(p *Project) error {
+		p.Name = name
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	if p, err = s.renameSlug(ctx, p); err != nil {
+		return "", err
+	}
+	if err := s.refreshShares(ctx, p); err != nil {
+		return "", err
+	}
+	if p.Public != "" {
+		if err := s.publish(ctx, p); err != nil {
+			return "", err
+		}
+	}
+	return p.Slug, nil
+}

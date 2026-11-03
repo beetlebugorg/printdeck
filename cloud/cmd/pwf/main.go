@@ -86,6 +86,8 @@ func main() {
 		err = runGitHubApp(ctx, cfg, *stack, *appID, *appKey)
 	case "lapse-backfill":
 		err = runLapseBackfill(ctx, cfg, *stack, lapse)
+	case "rename-project":
+		err = renameProject(ctx, cfg, *stack, fs.Args())
 	default:
 		usage()
 	}
@@ -95,7 +97,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: pwf deploy | enroll-code | decks [remove ID] | relay set-apple-key | github-app --id N --key app.pem | dev | lapse-backfill")
+	fmt.Fprintln(os.Stderr, "usage: pwf deploy | enroll-code | decks [remove ID] | relay set-apple-key | github-app --id N --key app.pem | dev | lapse-backfill | rename-project SLUG NAME")
 	os.Exit(2)
 }
 
@@ -177,5 +179,27 @@ func decks(ctx context.Context, cfg aws.Config, stack string, args []string) err
 	for _, d := range list {
 		fmt.Printf("%-18s %-24s connected %s\n", d.ID, d.Name, d.Enrolled.Local().Format("2006-01-02 15:04"))
 	}
+	return nil
+}
+
+// renameProject gives the project of a slug a new name (api.Server.RenameProject).
+func renameProject(ctx context.Context, cfg aws.Config, stack string, args []string) error {
+	if len(args) != 2 {
+		return fmt.Errorf("usage: pwf rename-project SLUG NAME")
+	}
+	out, err := stackOutputs(ctx, cfg, stack)
+	if err != nil {
+		return err
+	}
+	st, err := dataStore(ctx, cfg, stack)
+	if err != nil {
+		return err
+	}
+	s := &api.Server{Store: st, Base: out["Url"]}
+	slug, err := s.RenameProject(ctx, args[0], args[1])
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s is now %q at /projects/%s\n", args[0], args[1], slug)
 	return nil
 }
