@@ -250,6 +250,37 @@ Resources:
           return r;
         }
 
+  # FileTypes sets the type of each file of the projects from the end of its name, for a short list
+  # of types. A GitHub Action (of a fork too) uploads files with a type that it chooses, so a file
+  # could have the type text/html and run a script at this domain. A file with another end gets
+  # application/octet-stream and downloads.
+  FileTypes:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub "${AWS::StackName}-file-types"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: The types of the files of the projects
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        var types = {
+          stl: 'model/stl', '3mf': 'model/3mf', pdf: 'application/pdf', png: 'image/png',
+          jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', mp4: 'video/mp4',
+          json: 'application/json', gcode: 'text/plain; charset=utf-8'
+        };
+        function handler(event) {
+          var r = event.response;
+          var m = event.request.uri.match(/\.([A-Za-z0-9]+)$/);
+          var t = m ? types[m[1].toLowerCase()] : undefined;
+          if (t) {
+            r.headers['content-type'] = { value: t };
+          } else {
+            r.headers['content-type'] = { value: 'application/octet-stream' };
+            r.headers['content-disposition'] = { value: 'attachment' };
+          }
+          return r;
+        }
+
   # The key of the signed cookies of the files of the projects: the API signs a cookie for each
   # project that a person may see, and CloudFront checks it at each request of /x/<project>/.
   FilesKey:
@@ -320,6 +351,9 @@ Resources:
               CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
               ResponseHeadersPolicyId: !Ref Headers
               TrustedKeyGroups: [!Ref FilesKeyGroup]
+              FunctionAssociations:
+                - EventType: viewer-response
+                  FunctionARN: !GetAtt FileTypes.FunctionMetadata.FunctionARN
             - !Ref "AWS::NoValue"
         # These statuses come only from S3: the API never replies 403 or 404.
         CustomErrorResponses:
