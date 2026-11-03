@@ -101,7 +101,7 @@
 <tr><td><code>GET</code>, <code>POST projects</code></td><td>session or deck</td><td>Lists the projects, or makes one (owner). A member gets each project of the session that still has the member.</td></tr>
 <tr><td><code>projects/&lt;id&gt;</code> and below</td><td>session or deck</td><td>View, rename, delete; invites, members, public address; prints, live tiles, photos. The rows below are the routes of the notes, the prints, the photos, the queue and the builds.</td></tr>
 <tr><td><code>PATCH projects/&lt;id&gt;/notes</code></td><td>session</td><td>Changes the notes of the project.</td></tr>
-<tr><td><code>PATCH projects/&lt;id&gt;/prints/&lt;print&gt;</code></td><td>session; owner for title, marks, source</td><td>Changes the title, the notes, the marks Test, Ready, Delivered and Discarded (with a note of why), or the source of a print. A member changes the notes only.</td></tr>
+<tr><td><code>PATCH projects/&lt;id&gt;/prints/&lt;print&gt;</code></td><td>session; owner for title, marks, source</td><td>Changes the title, the notes, the marks Test, Ready, Delivered and Rejected (with a note of why), or the source of a print. A member changes the notes only.</td></tr>
 <tr><td><code>PUT projects/&lt;id&gt;/photos/&lt;photo&gt;</code></td><td>session or deck; a member moves only their own photos</td><td>Moves a photo to another print of the project, or to no print.</td></tr>
 <tr><td><code>PATCH projects/&lt;id&gt;/members/&lt;member&gt;</code></td><td>owner or deck</td><td>Sets the GitHub username of a member who joined.</td></tr>
 <tr><td><code>PUT projects/&lt;id&gt;/repo</code></td><td>owner or deck</td><td>Links a GitHub repository, or removes the link with "".</td></tr>

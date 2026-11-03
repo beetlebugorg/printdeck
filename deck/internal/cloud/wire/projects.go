@@ -199,8 +199,8 @@ type ProjectPrint struct {
 	ReadyNote string    `json:"ready_note,omitempty"`
 	// Test is the time when the owner marked the print as a test print, or zero.
 	Test time.Time `json:"test,omitzero"`
-	// Discarded is the time when the owner marked the print as not good enough, or zero, and
-	// DiscardNote the note of why.
+	// Discarded is the time when the owner marked the print Rejected, or zero, and DiscardNote the
+	// note of why the print is not used. The names are from the earlier mark Discard.
 	Discarded   time.Time `json:"discarded,omitzero"`
 	DiscardNote string    `json:"discard_note,omitempty"`
 	File        string    `json:"file,omitempty"`
@@ -268,7 +268,7 @@ type PrintEdit struct {
 	Delivered *bool   `json:"delivered,omitempty"`
 	Ready     *bool   `json:"ready,omitempty"` // Ready to pick up, before Delivered
 	Test      *bool   `json:"test,omitempty"`  // a test print: to try a setting or a fit, and not to give
-	// Discard marks a print that is not good enough, with the note DiscardNote (why).
+	// Discard sets the mark Rejected on a print, with the note DiscardNote (why).
 	Discard     *bool   `json:"discard,omitempty"`
 	DiscardNote *string `json:"discard_note,omitempty"`
 	Source      *string `json:"source,omitempty"`

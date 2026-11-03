@@ -164,7 +164,8 @@ type pageFields struct {
 	ReadyNote string    `json:"ready_note,omitempty"`
 	// Test is the time of the mark Test print, or zero.
 	Test time.Time `json:"test,omitzero"`
-	// Discarded is the time of the mark Discard (not good enough), or zero, and DiscardNote why.
+	// Discarded is the time of the mark Reject, or zero, and DiscardNote why the print is not used.
+	// The names are from the earlier mark Discard, and the stored prints and the apps use them.
 	Discarded   time.Time `json:"discarded,omitzero"`
 	DiscardNote string    `json:"discard_note,omitempty"`
 }

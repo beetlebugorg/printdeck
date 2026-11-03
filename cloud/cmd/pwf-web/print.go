@@ -538,7 +538,7 @@ func printTile(p wire.ProjectPrint, href string) js.Value {
 	badges := el("div", "badges", "")
 	switch {
 	case !p.Discarded.IsZero():
-		badges.Call("appendChild", el("span", "fail", "Discarded"))
+		badges.Call("appendChild", el("span", "fail", "Rejected"))
 	case !p.Test.IsZero():
 		badges.Call("appendChild", el("span", "", "Test"))
 	case !p.Delivered.IsZero():
@@ -599,7 +599,7 @@ func drawPrintNotes(p wire.ProjectPrint) {
 	byID("prDelivered").Get("classList").Call("toggle", "discarded", !p.Discarded.IsZero())
 	switch {
 	case !p.Discarded.IsZero():
-		line := "Discarded " + p.Discarded.Local().Format("Mon Jan 2, 2006")
+		line := "Rejected " + p.Discarded.Local().Format("Mon Jan 2, 2006")
 		if p.DiscardNote != "" {
 			line += " · " + p.DiscardNote
 		}

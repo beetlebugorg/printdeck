@@ -102,7 +102,7 @@ func drawPrints(v *wire.ProjectView, href func(wire.ProjectPrint) string) {
 	srow := byID("pStates")
 	srow.Set("textContent", "")
 	setHidden("pStates", states["ready"]+states["delivered"]+states["test"]+states["discarded"] == 0)
-	for _, k := range []struct{ id, label string }{{"", "All"}, {"ready", "Ready for pickup"}, {"delivered", "Delivered"}, {"test", "Test prints"}, {"discarded", "Discarded"}} {
+	for _, k := range []struct{ id, label string }{{"", "All"}, {"ready", "Ready for pickup"}, {"delivered", "Delivered"}, {"test", "Test prints"}, {"discarded", "Rejected"}} {
 		n := len(shown)
 		if k.id != "" {
 			n = states[k.id]

@@ -166,7 +166,7 @@ func printState(pr PrintRecord) string {
 	day := pr.Ended.UTC().Format("Jan 2")
 	switch {
 	case !pr.Discarded.IsZero():
-		return "Printed " + day + ", discarded: " + pr.DiscardNote
+		return "Printed " + day + ", rejected: " + pr.DiscardNote
 	case pr.Result == "complete":
 		return "Printed " + day
 	case pr.Result == "cancelled":

@@ -876,15 +876,16 @@ func (a *app) bindEdits() {
 		go a.editPrint(wire.PrintEdit{Title: &t}, "prCopyMsg")
 	})
 	on("prDiscard", "click", func() {
-		// A discard asks for a note: why the print is not good enough. A second tap clears it.
+		// Reject asks for a note: why the print is not used. A second tap clears it. The API field
+		// names are still the names of the earlier mark Discard.
 		if !a.printNow().Discarded.IsZero() {
-			if confirm("Take the mark Discarded off this print?") {
+			if confirm("Take the mark Rejected off this print?") {
 				no := false
 				go a.editPrint(wire.PrintEdit{Discard: &no}, "prCopyMsg")
 			}
 			return
 		}
-		note := js.Global().Call("prompt", "Why is this print not good enough? For example: warped corner, reprint at 0.1 mm.")
+		note := js.Global().Call("prompt", "Why is this print rejected? For example: warped corner, or the clip does not fit the slot.")
 		if note.IsNull() {
 			return
 		}

@@ -271,7 +271,7 @@ struct ProjectScreen: View {
                             Row(title: pr.name,
                                 detail: [pr.resultText, pr.ended.map { $0.formatted(.relative(presentation: .named)) } ?? "",
                                          pr.printer ?? ""].filter { !$0.isEmpty }.joined(separator: " · "),
-                                value: pr.discarded != nil ? "Discarded" : "", alert: pr.discarded != nil)
+                                value: pr.discarded != nil ? "Rejected" : "", alert: pr.discarded != nil)
                         }
                     }
                     .buttonStyle(.plain)
@@ -431,7 +431,7 @@ struct PrintScreen: View {
     @State private var message: String?
     @State private var camera = false
     @State private var web: URL?
-    /// The note box of Discard is open.
+    /// The note box of Reject is open.
     @State private var discarding = false
     @State private var discardNote = ""
 
@@ -504,7 +504,7 @@ struct PrintScreen: View {
                 if let g = pr.grams, g > 0 { WindowRow(label: "Grams", value: String(format: "%.0f g", g)) }
             }
             if let d = pr.discarded {
-                Text("Discarded " + d.formatted(date: .abbreviated, time: .omitted)
+                Text("Rejected " + d.formatted(date: .abbreviated, time: .omitted)
                      + ((pr.discardNote ?? "").isEmpty ? "" : " · " + (pr.discardNote ?? "")))
                     .font(Theme.plex(13))
                     .foregroundStyle(p.red)
@@ -522,8 +522,9 @@ struct PrintScreen: View {
                     .buttonStyle(KeyStyle(led: pr.delivered != nil))
                 Button("Test") { Task { await save(["test": pr.test == nil]) } }
                     .buttonStyle(KeyStyle(led: pr.test != nil))
-                // Discard asks for the note of why. A tap on a discarded print clears the mark and the note.
-                Button("Discard") {
+                // Reject asks for the note of why. A tap on a rejected print clears the mark and the note.
+                // The API field names are from the earlier mark Discard.
+                Button("Reject") {
                     if pr.discarded != nil {
                         Task { await save(["discard": false]) }
                     } else {
@@ -535,8 +536,8 @@ struct PrintScreen: View {
             }
             .environment(\.panelScale, 0.7)
             if discarding && pr.discarded == nil {
-                PanelField(label: "Why", prompt: "Warped corner, reprint at 0.1 mm", text: $discardNote)
-                Button("Discard the print") {
+                PanelField(label: "Why", prompt: "Warped corner, or it does not fit", text: $discardNote)
+                Button("Reject the print") {
                     discarding = false
                     Task { await save(["discard": true, "discard_note": discardNote.trimmingCharacters(in: .whitespaces)]) }
                 }

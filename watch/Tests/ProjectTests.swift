@@ -59,7 +59,7 @@ final class ProjectTests: XCTestCase {
         XCTAssertEqual(v.photos(of: "a").first?.smallURL?.absoluteString, ServiceClient.base.absoluteString + "/f/1s.jpg")
     }
 
-    /// Ready for pickup: Ready, with no Delivered, no Test and no Discarded.
+    /// Ready for pickup: Ready, with no Delivered, no Test and no Rejected.
     func testPickup() throws {
         XCTAssertEqual(try view().readyForPickup.map(\.id), ["a"])
     }
@@ -75,7 +75,7 @@ final class ProjectTests: XCTestCase {
 
     func testFeed() throws {
         let feed = try view().feed
-        XCTAssertEqual(feed.first?.text, "Discarded Elbow")
+        XCTAssertEqual(feed.first?.text, "Rejected Elbow")
         XCTAssertEqual(feed.first?.sub, "Warped corner")
         XCTAssertTrue(feed.contains { $0.text == "Sam added 2 photos" })
         XCTAssertTrue(feed.contains { $0.text == "Jeremy rejected plate 4 · PR #7" && $0.sub == "Too thin" })

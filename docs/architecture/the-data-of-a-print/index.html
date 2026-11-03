@@ -120,11 +120,11 @@
 <li><b>Test print.</b> The owner marks a print as a test print: a print to try a setting or a fit, and not to give. The API records the time. A test print is not in the card Ready for pickup.</li>
 <li><b>Ready for pickup.</b> The owner marks a print Ready for pickup on its page, before Delivered, and the API records the time.</li>
 <li><b>Delivered.</b> The owner marks a print Delivered, and the API records the time. The owner can also clear the mark.</li>
-<li><b>Discarded.</b> The owner marks a print Discarded when it is not good enough, with a note of why, of up to 500 characters. The API records the time. A second tap clears the mark and the note. A discarded print is not in the card Ready for pickup. The iPhone app can also set the mark.</li>
+<li><b>Rejected.</b> The owner marks a print Rejected when the print is not used: a failed print, or a good print that is wrong for some reason, such as a part that does not fit. The note of why has up to 500 characters. The API records the time. A second tap clears the mark and the note. A rejected print is not in the card Ready for pickup. The iPhone app can also set the mark. The API fields are <code>discarded</code> and <code>discard_note</code>, from the earlier name of the mark, Discard.</li>
 <li><b>Source.</b> The owner sets a link to the source of the model, for example a file of a commit on GitHub. The link must be an <code>http</code> or <code>https</code> address with a host, of at most 500 characters.</li>
 <li><b>Ready from a share.</b> When the owner of a share marks it Ready, the API copies the time and the note to the print of the share in its project. A clear of Ready also clears the mark on the print. The API also copies the mark when a share joins a project later.</li>
 </ul>
-<p>The print page shows "Discarded" with the day and the note, else "Delivered" with the day. Before the delivery, it shows the Ready mark when the print has one. A tile has the badge Discarded, Test, Ready to pick up, or Delivered with the date. A member can change the notes only. The other fields get 401 for a member.</p>
+<p>The print page shows "Rejected" with the day and the note, else "Delivered" with the day. Before the delivery, it shows the Ready mark when the print has one. A tile has the badge Rejected, Test, Ready to pick up, or Delivered with the date. A member can change the notes only. The other fields get 401 for a member.</p>
 <p><b>Photos from a phone.</b> The photos of a project and of a print have Take photos on a phone: the camera opens, and after each photo goes up, Take another photo opens it again. A photo that does not go up does not stop the others.</p>
 <p><b>Move a photo.</b> A photo can move to another print of the project, or to no print, with <code>PUT projects/&lt;id&gt;/photos/&lt;photo&gt;</code>. The owner moves any photo, and a member moves only their own.</p>
 
@@ -143,7 +143,7 @@
 <thead><tr><th style="width:18%">Tab</th><th style="width:30%">Address</th><th>What it shows</th></tr></thead>
 <tbody>
 <tr><td>Overview</td><td><code>/projects/&lt;slug&gt;</code></td><td>What happens now, the numbers, the chart, the newest prints, the feed, and a column of cards (<a href="#figure-20">Figure 20</a>).</td></tr>
-<tr><td>Prints</td><td><code>/projects/&lt;slug&gt;/prints</code></td><td>All the prints, with a chip for each printer, and chips for the prints ready for pickup, the delivered prints (the newest delivery first), the test prints and the discarded prints.</td></tr>
+<tr><td>Prints</td><td><code>/projects/&lt;slug&gt;/prints</code></td><td>All the prints, with a chip for each printer, and chips for the prints ready for pickup, the delivered prints (the newest delivery first), the test prints and the rejected prints.</td></tr>
 <tr><td>Photos</td><td><code>/projects/&lt;slug&gt;/photos</code></td><td>All the photos, and Add photos. Each photo has Move to, which puts it on another print or on no print.</td></tr>
 <tr><td>Builds</td><td><code>/projects/&lt;slug&gt;/plans</code></td><td>The plans of the pull requests and of the tags (releases), and their builds. The Overview shows the newest plan of main. The tab shows only for a project with a repository.</td></tr>
 <tr><td>Settings</td><td><code>/projects/&lt;slug&gt;/settings</code></td><td>The repository, the printers, the friends with their GitHub usernames, the public address, and Delete.</td></tr>
@@ -178,7 +178,7 @@
 <li><b>The line of what happens now</b> names the print that prints, with its share and the time of its end, or the time of the last print. It also counts the plates that wait for the owner and the open pull requests. Each item is a link.</li>
 <li><b>The numbers</b> are the prints, the print time, the filament and the share of the prints that finished.</li>
 <li><b>The chart</b> shows the hours of print of each of the last 7 days: the finished prints, with the stopped prints over them. Each bar has the short name of its day, and the last bar is Today. A bar under it shows the grams of each material, in the color of the filament.</li>
-<li><b>The feed</b> shows the 12 newest events, with a heading for each day: the end of a print, Ready, Delivered and Discarded, the photos of one person on one day, the plans, the slices, the approvals, the rejections and the notes.</li>
+<li><b>The feed</b> shows the 12 newest events, with a heading for each day: the end of a print, Ready, Delivered and Rejected, the photos of one person on one day, the plans, the slices, the approvals, the rejections and the notes.</li>
 <li><b>The GitHub card</b> shows the newest plan of main and each open pull request, with its author and the state of its three steps: Plan, Slice and Approve.</li>
 <li><b>The printers card</b> shows each printer of the project: printing with its share, paused, or idle with the time of its last print. A deck from before the printers sends its live print with no printer ID. Its row then has the name of the printer from the deck. A printing row shows the percent and the time of the end. A resin printer also shows its layer, for example layer 120 of 800, and a picture of the layer that cures now.</li>
 <li><b>The card Ready for pickup</b> shows each print that waits, with small pictures of its photos (else of its model), the time of the mark, and Delivered for the owner. It links to the delivered prints.</li>

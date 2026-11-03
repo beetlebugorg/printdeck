@@ -72,7 +72,7 @@ struct ProjectDetail: Decodable {
             }
             if let r = p.ready { evs.append(FeedEvent(at: r, text: p.name + " is ready to pick up", sub: p.readyNote ?? "")) }
             if let d = p.delivered { evs.append(FeedEvent(at: d, text: "Delivered " + p.name, sub: "")) }
-            if let d = p.discarded { evs.append(FeedEvent(at: d, text: "Discarded " + p.name, sub: p.discardNote ?? "")) }
+            if let d = p.discarded { evs.append(FeedEvent(at: d, text: "Rejected " + p.name, sub: p.discardNote ?? "")) }
         }
         let photos = (self.photos ?? []).sorted { ($0.added ?? .distantPast) > ($1.added ?? .distantPast) }
         var i = 0
