@@ -398,6 +398,15 @@ Resources:
               - Effect: Allow
                 Action: s3:ListBucket
                 Resource: !GetAtt DataBucket.Arn
+              # A delete of a public file removes it from the edge (api/cdn.go). The function
+              # finds the distribution by its alias: a reference to the distribution here makes
+              # a cycle, because the distribution names the URL of the function.
+              - Effect: Allow
+                Action: cloudfront:ListDistributions
+                Resource: "*"
+              - Effect: Allow
+                Action: cloudfront:CreateInvalidation
+                Resource: !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/*"
               # The jobs after a request: the function starts itself with an event, and the
               # jobs function for the videos.
               - Effect: Allow

@@ -31,6 +31,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	awslambda "github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -83,8 +84,10 @@ func main() {
 	secrets := readSecrets(ctx, secretsmanager.NewFromConfig(cfg),
 		os.Getenv("FILES_KEY_SECRET"), os.Getenv("GITHUB_APP_SECRET"), os.Getenv("RELAY_SECRET_ARN"))
 	bucket := os.Getenv("BUCKET")
-	s := &api.Server{Store: &api.S3Store{Client: client, Bucket: bucket}, Grants: &api.S3Granter{Client: client, Bucket: bucket},
-		Domain: os.Getenv("DOMAIN")}
+	s := &api.Server{Store: &api.CDNStore{Store: &api.S3Store{Client: client, Bucket: bucket}},
+		Grants: &api.S3Granter{Client: client, Bucket: bucket}, Domain: os.Getenv("DOMAIN")}
+	// A delete of a public file also removes it from the edge of CloudFront (api/cdn.go).
+	s.CDN = &api.CloudFront{Client: cloudfront.NewFromConfig(cfg), Domain: s.Domain}
 	// The signed cookies of the files of the projects (filecookie.go), when the stack has the key.
 	if arn, id := os.Getenv("FILES_KEY_SECRET"), os.Getenv("FILES_KEY_ID"); arn != "" && id != "" {
 		out := secrets[arn]
