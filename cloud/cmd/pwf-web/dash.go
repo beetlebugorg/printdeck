@@ -336,7 +336,7 @@ func (a *app) drawPulse(v *wire.ProjectView) {
 		item("", count(len(v.Queue), "file", "files")+" in the queue · the next starts "+until(v.Queue[0].Start), "")
 	}
 	if pulls := pullPlans(v); len(pulls) > 0 {
-		item("", count(len(pulls), "open pull request", "open pull requests"), "/projects/"+v.Slug+"/plans")
+		item("", count(len(pulls), "open pull request", "open pull requests")+" with part changes", "/projects/"+v.Slug+"/plans")
 	}
 }
 
@@ -610,14 +610,12 @@ func (a *app) drawFeed(v *wire.ProjectView) {
 		if p.Author != "" {
 			who = " of @" + p.Author
 		}
-		changed := 0
-		for _, pp := range p.Parts {
-			if pp.Changed {
-				changed++
-			}
+		// A plan of a pull request with no changed part has no line in the feed. The Builds tab
+		// lists it.
+		if changed := partsChanged(p); p.Kind != wire.BuildTest || changed > 0 {
+			evs = append(evs, event{p.Created, "git", "New plan" + who + " · " + planName(p),
+				shortSHA(p.Commit) + " · " + count(changed, "part", "parts") + " changed", planPath(v.Slug, p.ID)})
 		}
-		evs = append(evs, event{p.Created, "git", "New plan" + who + " · " + planName(p),
-			shortSHA(p.Commit) + " · " + count(changed, "part", "parts") + " changed", planPath(v.Slug, p.ID)})
 		for _, b := range p.Builds {
 			evs = append(evs, event{b.Created, "slice", "Slice of " + count(len(b.Plates), "plate", "plates") + " · " + planName(p),
 				strings.ToLower(buildStateText(b.State)), buildPath(v.Slug, b.ID)})
@@ -984,7 +982,9 @@ func (a *app) drawPickup(v *wire.ProjectView) {
 	}
 }
 
-// pullPlans returns the newest plan of each open pull request, the newest first.
+// pullPlans returns the newest plan of each open pull request with a changed part, the newest
+// first. A pull request that changes no part (a change to the code or the docs) is only on the
+// Builds tab.
 func pullPlans(v *wire.ProjectView) []wire.ProjectPlan {
 	seen := map[int]bool{}
 	var out []wire.ProjectPlan
@@ -995,12 +995,23 @@ func pullPlans(v *wire.ProjectView) []wire.ProjectPlan {
 			continue
 		}
 		seen[p.PR] = true
-		if p.PRState == "closed" || p.PRState == "merged" {
+		if p.PRState == "closed" || p.PRState == "merged" || partsChanged(p) == 0 {
 			continue
 		}
 		out = append(out, p)
 	}
 	return out
+}
+
+// partsChanged is the count of the parts of plan p that changed from its base.
+func partsChanged(p wire.ProjectPlan) int {
+	n := 0
+	for _, pp := range p.Parts {
+		if pp.Changed {
+			n++
+		}
+	}
+	return n
 }
 
 // steps are the states of the three steps of a plan: the plan, the slice and the approval. Each
@@ -1087,13 +1098,7 @@ func (a *app) drawGit(v *wire.ProjectView) {
 		head.Call("appendChild", el("strong", "", title))
 		head.Call("appendChild", el("span", "sub", ago(p.Created)))
 		link.Call("appendChild", head)
-		changed := 0
-		for _, pp := range p.Parts {
-			if pp.Changed {
-				changed++
-			}
-		}
-		link.Call("appendChild", el("span", "sub", shortSHA(p.Commit)+" · "+count(changed, "part", "parts")+" changed"))
+		link.Call("appendChild", el("span", "sub", shortSHA(p.Commit)+" · "+count(partsChanged(p), "part", "parts")+" changed"))
 		row := el("div", "steps", "")
 		for i, st := range steps(p) {
 			s := el("span", "step "+st, []string{"Plan", "Slice", "Approve"}[i])
