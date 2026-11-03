@@ -352,6 +352,20 @@ func (s *Sharer) Stop() {
 	}
 }
 
+// Forget drops a share that ended from the deck, so the deck can share the next print. The page
+// of the share stays at the service until it expires. A share that runs stays.
+func (s *Sharer) Forget() {
+	s.mu.Lock()
+	c := s.cur
+	if c == nil || !c.ended {
+		s.mu.Unlock()
+		return
+	}
+	s.cur = nil
+	s.mu.Unlock()
+	s.changed()
+}
+
 // run uploads the files of the share until the end of the print, or Stop.
 func (s *Sharer) run(ctx context.Context, id *Identity, c *share) {
 	every := s.Every

@@ -30,3 +30,27 @@ func TestShareStatusWaits(t *testing.T) {
 		t.Errorf("finished: %q, want done", s.State)
 	}
 }
+
+// A share of a print that ended goes at the start of another print: another file, or the same
+// file again. The print of the share and a printer with no print keep it.
+func TestShareNewPrint(t *testing.T) {
+	now := time.Date(2026, 11, 3, 16, 0, 0, 0, time.UTC)
+	started := now.Add(-3 * time.Hour)
+	busy := func(path string, elapsed time.Duration) printer.State {
+		return printer.State{Connected: true, Printing: true, File: path, FilePath: path, Elapsed: elapsed}
+	}
+	for _, c := range []struct {
+		name string
+		st   printer.State
+		want bool
+	}{
+		{"no print", printer.State{Connected: true, Finished: "complete", FinishedPath: "a.gcode"}, false},
+		{"the print of the share", busy("a.gcode", 3*time.Hour), false},
+		{"another file", busy("b.gcode", time.Minute), true},
+		{"the same file again", busy("a.gcode", time.Minute), true},
+	} {
+		if got := newPrint(c.st, "a.gcode", started, now); got != c.want {
+			t.Errorf("%s: %v, want %v", c.name, got, c.want)
+		}
+	}
+}

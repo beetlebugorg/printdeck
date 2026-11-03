@@ -109,10 +109,36 @@ func newShareLink(app *ui.App, link *cloud.Link, pr printerBackend, configPath s
 	return l
 }
 
-func (l *shareLink) Ready() bool             { return l.link.Identity() != nil }
-func (l *shareLink) State() cloud.ShareState { return l.sharer.State() }
-func (l *shareLink) Stop()                   { l.sharer.Stop() }
-func (l *shareLink) SetReady(ready bool)     { l.sharer.SetReady(ready, "") }
+func (l *shareLink) Ready() bool         { return l.link.Identity() != nil }
+func (l *shareLink) Stop()               { l.sharer.Stop() }
+func (l *shareLink) SetReady(ready bool) { l.sharer.SetReady(ready, "") }
+
+// State is the state of the share. A share of a print that ended goes when the next print
+// starts: the Share key then makes a link of the new print, and the live tile of the project
+// links to it.
+func (l *shareLink) State() cloud.ShareState {
+	st := l.sharer.State()
+	if !st.Ended {
+		return st
+	}
+	l.mu.Lock()
+	path, started := l.path, l.started
+	l.mu.Unlock()
+	if newPrint(l.pr.State(), path, started, time.Now()) {
+		l.sharer.Forget()
+		return l.sharer.State()
+	}
+	return st
+}
+
+// newPrint reports that the printer prints another print than the print of the file path that
+// started at started: another file, or the same file at a later start.
+func newPrint(st printer.State, path string, started, now time.Time) bool {
+	if !st.Busy() || st.FilePath == "" {
+		return false
+	}
+	return st.FilePath != path || now.Add(-st.Elapsed).Sub(started) > time.Minute
+}
 
 // Start shares the print now, or the print that ended, with the time lapse frames so far.
 func (l *shareLink) Start() {

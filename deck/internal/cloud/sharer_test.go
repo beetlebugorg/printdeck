@@ -190,3 +190,46 @@ func TestShareGcode(t *testing.T) {
 		t.Errorf("print.gcode.gz went up %d times, %d calls", svc.count("print.gcode.gz"), calls)
 	}
 }
+
+// Forget keeps a share that runs, and drops a share that ended with no request to the service.
+// Then Start makes a new share.
+func TestShareForget(t *testing.T) {
+	svc := newFakeShares(t)
+	_, key, _ := ed25519.GenerateKey(nil)
+	path := filepath.Join(t.TempDir(), "cloud.json")
+	if err := (&Identity{Domain: svc.srv.URL, Deck: "d-1", Key: key.Seed()}).Save(path); err != nil {
+		t.Fatal(err)
+	}
+	var mu sync.Mutex
+	state := "printing"
+	status := func() ShareStatus {
+		mu.Lock()
+		defer mu.Unlock()
+		return ShareStatus{State: state}
+	}
+	s := &Sharer{Link: &Link{Path: path}, Status: status, Every: 20 * time.Millisecond}
+	s.Start("clip", "a Printdeck", nil)
+	waitFor(t, "the link", func() bool { return s.State().URL != "" })
+	s.Forget()
+	if !s.State().Active {
+		t.Fatal("Forget dropped a share that runs")
+	}
+	mu.Lock()
+	state = "done"
+	mu.Unlock()
+	waitFor(t, "end", func() bool { return s.State().Ended })
+	s.Forget()
+	if st := s.State(); st.Active {
+		t.Fatalf("after Forget: %+v", st)
+	}
+	mu.Lock()
+	state = "printing"
+	mu.Unlock()
+	s.Start("clip 2", "a Printdeck", nil)
+	waitFor(t, "the next link", func() bool { return s.State().URL != "" })
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+	if svc.created != 2 || svc.ended != 1 {
+		t.Errorf("%d shares made, %d ended; want 2 and 1", svc.created, svc.ended)
+	}
+}
