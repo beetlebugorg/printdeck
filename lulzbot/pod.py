@@ -1630,13 +1630,17 @@ def camera_assembly_parts():
     """(file name, shape) of each item of the webcam assembly, in assembly coordinates."""
     from build123d import Compound
     import camera as C
+    import camera_models as CM
     import clips as K
     x0, y0, z0 = C.BEDS["taz"][0]
     T = Location(Plane(origin=(0, 0, 0), x_dir=(0, -1, 0), z_dir=(-1, 0, 0))) * Pos(-x0, -y0, -z0)
     # The two T-nuts and the two saddle screws: the front one has the larger x.
     nuts = sorted(C.taz_tnuts().solids(), key=lambda s: -s.center().X)
     screws = sorted(C.taz_screws().solids(), key=lambda s: -s.center().X)
-    body, lens, stub = C.c270()
+    # The B0561 camera in its U bracket, under the link (camera_models.arm_mount).
+    cam, br = CM.arm_frame("taz")
+    case = CM.case_model()
+    u, pivots = CM.bracket_model()
     clip, _ = K.tape_clip()
     # The first tape clip on the front face of the top front rail (camera.cable_clips).
     clip = Location(Plane(origin=(C.TAZ_UPRIGHT["front"] + K.TAPE, 476.0, -560.0), x_dir=(0, 1, 0), z_dir=(1, 0, 0))) * clip
@@ -1646,9 +1650,12 @@ def camera_assembly_parts():
              ("screw-front.stl", screws[0]), ("screw-right.stl", screws[1]),
              ("inserts.stl", C.joint_inserts("taz")),
              ("arm-taz.stl", C.arm("taz")),
-             ("joint-screws.stl", C.joint_screws("taz")),
-             ("c270.stl", C.cam_loc("taz") * Compound([body, lens, stub])),
+             ("link.stl", CM.link("taz")),
              ("hinge-screw.stl", C.hinge_screw("taz")),
+             ("b0561.stl", cam * Compound([case["case"], case["lens"], case["connector"]])),
+             ("b0561-bracket.stl", br * Compound([u, pivots])),
+             ("base-screw.stl", CM.base_screw("taz")),
+             ("joint-screws.stl", C.joint_screws("taz")),
              ("cable-clip.stl", clip)]
     return [(n, T * s) for n, s in items]
 
@@ -1657,7 +1664,7 @@ def camera_assembly():
     from build123d import export_stl
     os.makedirs(CAMERA_ASSEMBLY_DIR, exist_ok=True)
     for name, shape in camera_assembly_parts():
-        printed = name.startswith(("clamp", "arm", "cable"))
+        printed = name.startswith(("clamp", "arm", "cable", "link"))
         tol, ang = (0.03, 0.15) if printed else (0.05, 0.3)
         p = os.path.join(CAMERA_ASSEMBLY_DIR, name)
         export_stl(shape, p, tolerance=tol, angular_tolerance=ang)
