@@ -106,6 +106,8 @@ type PublicProject struct {
 	Prints   int       `json:"prints,omitempty"`
 	Changed  time.Time `json:"changed,omitzero"`
 	RepoOnly bool      `json:"repo_only,omitempty"`
+	// Bed is the smallest bed for all the parts of the project.
+	Bed Bed `json:"bed,omitzero"`
 }
 
 // ProjectView is a project as its page shows it. The URLs of the files work for one hour. A
@@ -128,14 +130,14 @@ type ProjectView struct {
 	Changed time.Time `json:"changed"`
 	// You is the person who asks: "owner", or the ID of the member. IsOwner lets the page show
 	// the keys of the owner.
-	You     string          `json:"you,omitempty"`
-	IsOwner bool            `json:"is_owner,omitempty"`
+	You     string `json:"you,omitempty"`
+	IsOwner bool   `json:"is_owner,omitempty"`
 	// CanSlice: the person who asks can choose the parts of a plan and slice them (the owner, or
 	// a member with ProjectMember.Slice).
-	CanSlice bool `json:"can_slice,omitempty"`
-	Members []ProjectMember `json:"members,omitempty"`
-	Prints  []ProjectPrint  `json:"prints"`
-	Photos  []ProjectPhoto  `json:"photos"`
+	CanSlice bool            `json:"can_slice,omitempty"`
+	Members  []ProjectMember `json:"members,omitempty"`
+	Prints   []ProjectPrint  `json:"prints"`
+	Photos   []ProjectPhoto  `json:"photos"`
 	// Repo is the GitHub repository of the project, "owner/name", or "". Plans are its newest
 	// plans with their builds, the newest first.
 	Repo  string        `json:"repo,omitempty"`
@@ -300,8 +302,8 @@ type PrintEdit struct {
 	Title     *string `json:"title,omitempty"`
 	Notes     *string `json:"notes,omitempty"`
 	Delivered *bool   `json:"delivered,omitempty"`
-	Ready     *bool   `json:"ready,omitempty"` // Ready to pick up, before Delivered
-	Test      *bool   `json:"test,omitempty"`  // a test print: to try a setting or a fit, and not to give
+	Ready     *bool   `json:"ready,omitempty"`  // Ready to pick up, before Delivered
+	Test      *bool   `json:"test,omitempty"`   // a test print: to try a setting or a fit, and not to give
 	InUse     *bool   `json:"in_use,omitempty"` // in use: delivered and in use, or kept by the owner
 	// Discard sets the mark Rejected on a print, with the note DiscardNote (why).
 	Discard     *bool   `json:"discard,omitempty"`

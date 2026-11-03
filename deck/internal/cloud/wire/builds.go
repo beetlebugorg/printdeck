@@ -1,6 +1,10 @@
 package wire
 
-import "time"
+import (
+	"fmt"
+	"math"
+	"time"
+)
 
 // The plans and the builds of a project from its GitHub repository (docs/specs/github-builds.md).
 //
@@ -387,4 +391,27 @@ type PlateTaken struct {
 	Project string `json:"project"`
 	Build   string `json:"build"`
 	Plate   int    `json:"plate"`
+}
+
+// Bed is the smallest bed for a set of parts, in mm: the long side, the short side and the
+// height. A part can turn on the bed, so the long side of each part goes on the long side of
+// the bed. All zero means that the parts have no size.
+type Bed struct {
+	Long  float64 `json:"long,omitempty"`
+	Short float64 `json:"short,omitempty"`
+	High  float64 `json:"high,omitempty"`
+}
+
+// Add makes the bed large enough for the part. A part with no size has no effect.
+func (b *Bed) Add(p PlanPart) {
+	long, short := max(p.SizeX, p.SizeY), min(p.SizeX, p.SizeY)
+	b.Long, b.Short, b.High = max(b.Long, long), max(b.Short, short), max(b.High, p.SizeZ)
+}
+
+// String is the bed as the pages show it, for example "200 × 150 × 80 mm", or "" for no size.
+func (b Bed) String() string {
+	if b.Long == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%.0f × %.0f × %.0f mm", math.Ceil(b.Long), math.Ceil(b.Short), math.Ceil(b.High))
 }

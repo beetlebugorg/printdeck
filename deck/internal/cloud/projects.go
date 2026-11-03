@@ -21,6 +21,7 @@ type (
 	ProjectRequest    = wire.ProjectRequest
 	ProjectSummary    = wire.ProjectSummary
 	PublicProject     = wire.PublicProject
+	Bed               = wire.Bed
 	KnownPerson       = wire.KnownPerson
 	MemberAdd         = wire.MemberAdd
 	ProjectView       = wire.ProjectView

@@ -72,3 +72,20 @@ func TestPublicIndex(t *testing.T) {
 		t.Fatalf("a list with no public projects: %v", err)
 	}
 }
+
+// The entry of a page has the smallest bed for the parts of its plans.
+func TestPublicEntryBed(t *testing.T) {
+	part := func(x, y, z float64) cloud.ProjectPlanPart {
+		return cloud.ProjectPlanPart{PlanPart: cloud.PlanPart{Name: "a", SizeX: x, SizeY: y, SizeZ: z}}
+	}
+	v := cloud.ProjectView{Name: "Robot", Plans: []cloud.ProjectPlan{{Parts: []cloud.ProjectPlanPart{
+		part(200, 50, 10), part(60, 150, 80), part(0, 0, 0)}}}}
+	e := publicEntry("robot", v)
+	if e.Parts != 3 || e.Bed != (cloud.Bed{Long: 200, Short: 60, High: 80}) {
+		t.Fatalf("entry %+v", e)
+	}
+	b, _ := json.Marshal(publicEntry("empty", cloud.ProjectView{Name: "Empty"}))
+	if strings.Contains(string(b), "bed") {
+		t.Errorf("a page with no parts has a bed: %s", b)
+	}
+}

@@ -34,16 +34,16 @@ type app struct {
 	planChoices []planChoice
 	planPlates  [][]int
 	planShown   int
-	planProcess string              // the kind of print of the plan page: "fdm" or "resin"
-	lastBuild   wire.ProjectBuild   // the build of the build page
-	peopleEdit  bool                // the card People shows the keys to invite and remove people
+	planProcess string            // the kind of print of the plan page: "fdm" or "resin"
+	lastBuild   wire.ProjectBuild // the build of the build page
+	peopleEdit  bool              // the card People shows the keys to invite and remove people
 	// The members of the other projects of the owner, for the project knownFor: the owner adds
 	// them with no invite.
-	known    []wire.KnownPerson
-	knownFor string
-	tab         string              // the tab of the project page: "overview", "prints", "photos" or "settings"
-	plateViews  map[string]js.Value // the 3D view of each plate of the build page (plateView)
-	plateBuild  string              // the build of plateViews
+	known      []wire.KnownPerson
+	knownFor   string
+	tab        string              // the tab of the project page: "overview", "prints", "photos" or "settings"
+	plateViews map[string]js.Value // the 3D view of each plate of the build page (plateView)
+	plateBuild string              // the build of plateViews
 	// public is the folder of the public copy of the project (/p/<slug>/) when the page shows the
 	// public view, or "". A visitor with no session, and a person who is not a member, see the
 	// public view of a public project at the same address as the members.
@@ -577,8 +577,12 @@ func drawPublicProjects(section, list string) {
 		if p.Prints > 0 {
 			facts = append(facts, count(p.Prints, "print", "prints"))
 		}
+		bed := ""
+		if b := p.Bed.String(); b != "" {
+			bed = "Min. bed " + b
+		}
 		box.Call("appendChild", projectTile(projectPath(p.Slug, 0), cover, p.Name, p.Note,
-			strings.Join(facts, " · "), changedLine(p.Changed)))
+			strings.Join(facts, " · "), bed, changedLine(p.Changed)))
 	}
 	setHidden(section, box.Get("children").Get("length").Int() == 0)
 }

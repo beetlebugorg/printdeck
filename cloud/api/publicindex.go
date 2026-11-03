@@ -71,6 +71,9 @@ func publicEntry(slug string, v cloud.ProjectView) cloud.PublicProject {
 		if len(pl.Parts) > e.Parts {
 			e.Parts = len(pl.Parts)
 		}
+		for _, pp := range pl.Parts {
+			e.Bed.Add(pp.PlanPart)
+		}
 		if pl.Created.After(e.Changed) {
 			e.Changed = pl.Created
 		}

@@ -75,6 +75,12 @@ func (a *app) drawPartsTab() {
 	}
 	line += ", " + localWhen(pl.Created)
 	setText("ptFrom", line)
+	var bed wire.Bed
+	for _, pp := range pl.Parts {
+		bed.Add(pp.PlanPart)
+	}
+	setText("ptBed", "Min. bed for all the parts: "+bed.String()+". A part can turn on the bed.")
+	setHidden("ptBed", bed.Long == 0)
 
 	// The keys of the assemblies, over the view.
 	keys := byID("ptAsmKeys")
@@ -205,8 +211,8 @@ func materialWord(pp wire.ProjectPlanPart) string {
 	return "filament"
 }
 
-// partFacts is the line of facts of a part: the printer, the material, the size, the count, and
-// the print time and the filament of one copy.
+// partFacts is the line of facts of a part: the printer, the material, the smallest bed, the
+// count, and the print time and the filament of one copy.
 func partFacts(pl *wire.ProjectPlan, pp wire.ProjectPlanPart) string {
 	var f []string
 	f = append(f, printerName(pp.Printer))
@@ -215,8 +221,10 @@ func partFacts(pl *wire.ProjectPlan, pp wire.ProjectPlanPart) string {
 	} else if pp.Material != "" {
 		f = append(f, pp.Material)
 	}
-	if pp.SizeX > 0 {
-		f = append(f, fmt.Sprintf("%.0f × %.0f × %.0f mm", pp.SizeX, pp.SizeY, pp.SizeZ))
+	var bed wire.Bed
+	bed.Add(pp.PlanPart)
+	if b := bed.String(); b != "" {
+		f = append(f, "Min. bed "+b)
 	}
 	if pp.Count > 1 {
 		f = append(f, fmt.Sprintf("%d copies", pp.Count))
