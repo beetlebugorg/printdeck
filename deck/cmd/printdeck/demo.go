@@ -53,7 +53,7 @@ func demoApp() (*ui.App, *ui.DemoPrinter) {
 	a.Queue = &queue.Queue{}
 	for _, it := range []queue.Item{
 		{Path: "pod_door.gcode", Name: "Pod door", Project: "Bittlex", Material: "PLA", MaterialName: "Black PLA", Seconds: 45 * 60, From: "build"},
-		{Path: "cover_screw.gcode", Name: "Cover (screw)", Project: "Bittlex", Material: "PETG", MaterialName: "Orange PETG", Seconds: 3*3600 + 25*60, From: "slicer"},
+		{Path: "cover_screw.gcode", Name: "Screw cover", Project: "Bittlex", Material: "PETG", MaterialName: "Orange PETG", Seconds: 3*3600 + 25*60, From: "slicer"},
 		{Path: "calibration_cube.gcode", Name: "Calibration cube", Material: "PLA", Seconds: 32 * 60, From: "deck"},
 	} {
 		a.Queue.Add(it)

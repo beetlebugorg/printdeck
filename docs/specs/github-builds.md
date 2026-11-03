@@ -386,7 +386,7 @@ parts:
     printer: taz
     material: roll-3
     profile: taz-workhorse-se/pla-0.10-fine
-  - name: Cover (screw)
+  - name: Screw cover
     files: [bittle_pi_addon/stl/print/cover_screw.stl]
     printer: taz
     material: roll-4
@@ -396,7 +396,7 @@ parts:
     printer: taz
     material: roll-4
     profile: taz-workhorse-se/pla-0.20-standard
-  - name: Platform cover
+  - name: Peg cover
     files: [bittle_platform/stl/print/cover_pegs.stl]
     printer: taz
     material: roll-4
