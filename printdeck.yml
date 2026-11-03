@@ -8,7 +8,7 @@ project: printdeck
 
 generate:
   install: pip install -r lulzbot/requirements.txt
-  run: cd lulzbot && python slate.py export && python slate.py assembly && python pod.py export
+  run: cd lulzbot && python slate.py export && python slate.py assembly && python pod.py export && python pod.py assembly
   check: true
 
 # The picture of the project in the project lists: lulzbot/cover.py makes it from the render.
@@ -204,3 +204,56 @@ assemblies:
         file: lulzbot/stl/slate/assembly/screws-resin.stl
         color: "#b9bec6"
         explode: [0, 1.71, 0.58]
+
+  # The webcam mount on the TAZ. lulzbot/pod.py assembly writes the files: each part in its place on
+  # the front right corner of the frame, in mm, z up, with the origin at the middle of the top face of
+  # the bed. x is to the right of the printer, and y is to the back. The frame is only the corner
+  # around the mount. The camera looks along (-0.87, 0.5, 0).
+  - name: Camera mount on the TAZ
+    description: |
+      The C270 webcam on its arm at the front right corner of the TAZ Workhorse. The clamp goes on the front right upright, with a key in the front slot and a key in the right slot. Two M3 x 8 screws go into roll-in T-nuts in the slots. The arm goes on the tab of the clamp with two M3 x 18 screws into heat-set inserts. An M3 x 16 screw through the lugs of the arm holds the camera. A tape clip on the top front rail holds the cable.
+    items:
+      - name: TAZ Workhorse frame (front right corner)
+        file: lulzbot/stl/camera/assembly/taz-corner.stl
+        color: "#2b2d31"
+      - name: T-nut (front slot)
+        file: lulzbot/stl/camera/assembly/tnut-front.stl
+        color: "#9aa0a8"
+        explode: [0, -1, 0]
+      - name: T-nut (right slot)
+        file: lulzbot/stl/camera/assembly/tnut-right.stl
+        color: "#9aa0a8"
+        explode: [1, 0, 0]
+      - part: Camera clamp (TAZ)
+        file: lulzbot/stl/camera/assembly/clamp-taz.stl
+        explode: [0.71, -0.71, 0]
+      - name: Heat-set inserts
+        file: lulzbot/stl/camera/assembly/inserts.stl
+        color: "#c9a227"
+        explode: [0.87, -0.5, 0]
+      - name: M3 x 8 screw (front slot)
+        file: lulzbot/stl/camera/assembly/screw-front.stl
+        color: "#b9bec6"
+        explode: [0, -1, 0]
+      - name: M3 x 8 screw (right slot)
+        file: lulzbot/stl/camera/assembly/screw-right.stl
+        color: "#b9bec6"
+        explode: [1, 0, 0]
+      - part: Camera arm (TAZ)
+        file: lulzbot/stl/camera/assembly/arm-taz.stl
+        explode: [0.87, -0.5, 0]
+      - name: Logitech C270
+        file: lulzbot/stl/camera/assembly/c270.stl
+        color: "#16171a"
+        explode: [-0.87, 0.5, 0]
+      - name: M3 x 16 hinge screw
+        file: lulzbot/stl/camera/assembly/hinge-screw.stl
+        color: "#b9bec6"
+        explode: [0.5, 0.87, 0]
+      - name: M3 x 18 screws (arm)
+        file: lulzbot/stl/camera/assembly/joint-screws.stl
+        color: "#b9bec6"
+        explode: [0.87, -0.5, 0]
+      - part: Cable clip, single (webcam, TAZ)
+        file: lulzbot/stl/camera/assembly/cable-clip.stl
+        explode: [0, -1, 0]

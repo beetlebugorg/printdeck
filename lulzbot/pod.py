@@ -1586,6 +1586,82 @@ def export_prints(out=PRINT_DIR):
                   f"{bb.max.Z - bb.min.Z:.1f} mm, print {n}")
 
 
+# ---------------------------------------------------------------- the webcam assembly
+# The assembly files of the project page: the webcam mount of camera.py on the front right corner of
+# the TAZ Workhorse, each part in its place. The printer coordinates of camera.py (x to the front, y
+# up, z to the left) turn to x to the right, y to the back, z up, in mm. The origin is the middle of
+# the top face of the bed. The printer is only the frame around the mount, as boxes: the upright and
+# the two top rails (2020 extrusion with T-slots, cut short), the corner plate on the front, the wall
+# on the right of the top rail, and the top plate. The sizes come from the LulzBot model (workhorse.py).
+CAMERA_ASSEMBLY_DIR = os.path.join(HERE, "stl", "camera", "assembly")
+TAZ_CORNER_CUT = dict(y=300.0, x=-40.0, z=-500.0)   # the ends of the cut upright and rails
+
+
+def extrusion_2020(origin, x_dir, axis, length):
+    """A 2020 T-slot extrusion: a 6.2 mm slot opening with 1.8 mm lips, and an 11 mm wide slot under
+    them, 6.1 mm deep, in each face. origin is the middle of its first end."""
+    p = Rectangle(20, 20)
+    for a in (0, 90, 180, 270):
+        p = p - Rot(0, 0, a) * (Pos(0, 10 - 0.9, 0) * Rectangle(6.2, 1.8 + 0.02)
+                                + Pos(0, 10 - 1.8 - 2.15, 0) * Rectangle(11.0, 4.3))
+    return Location(Plane(origin=origin, x_dir=x_dir, z_dir=axis)) * extrude(p, amount=length)
+
+
+def taz_corner():
+    """The frame around the webcam mount, in printer coordinates."""
+    import camera as C
+    u, c = C.TAZ_UPRIGHT, TAZ_CORNER_CUT
+    xm, zm = (u["front"] + u["back"]) / 2, (u["right"] + u["left"]) / 2
+    top = 486.0                                     # the top of the upright and the rails
+    s = extrusion_2020((xm, c["y"], zm), (1, 0, 0), (0, 1, 0), top - c["y"])
+    s = s + extrusion_2020((xm, top - 10.0, u["left"]), (1, 0, 0), (0, 0, 1), c["z"] - u["left"])
+    s = s + extrusion_2020((u["back"], top - 10.0, zm), (0, 0, 1), (-1, 0, 0), u["back"] - c["x"])
+    s = s + C.box(u["front"], u["front"] + 3.2, C.TAZ_CORNER_PLATE_Y, top, u["right"], u["right"] + 70.0)
+    s = s + C.box(c["x"], u["front"] + 3.0, 470.0, top, u["right"] - 4.0, u["right"])
+    s = s + C.box(c["x"], u["front"] + 3.0, top, top + 5.0, u["right"] - 4.0, u["right"] + 51.0)
+    return s
+
+
+def camera_assembly_parts():
+    """(file name, shape) of each item of the webcam assembly, in assembly coordinates."""
+    from build123d import Compound
+    import camera as C
+    import clips as K
+    x0, y0, z0 = C.BEDS["taz"][0]
+    T = Location(Plane(origin=(0, 0, 0), x_dir=(0, -1, 0), z_dir=(-1, 0, 0))) * Pos(-x0, -y0, -z0)
+    # The two T-nuts and the two saddle screws: the front one has the larger x.
+    nuts = sorted(C.taz_tnuts().solids(), key=lambda s: -s.center().X)
+    screws = sorted(C.taz_screws().solids(), key=lambda s: -s.center().X)
+    body, lens, stub = C.c270()
+    clip, _ = K.tape_clip()
+    # The first tape clip on the front face of the top front rail (camera.cable_clips).
+    clip = Location(Plane(origin=(C.TAZ_UPRIGHT["front"] + K.TAPE, 476.0, -560.0), x_dir=(0, 1, 0), z_dir=(1, 0, 0))) * clip
+    items = [("taz-corner.stl", taz_corner()),
+             ("tnut-front.stl", nuts[0]), ("tnut-right.stl", nuts[1]),
+             ("clamp-taz.stl", C.taz_clamp()),
+             ("screw-front.stl", screws[0]), ("screw-right.stl", screws[1]),
+             ("inserts.stl", C.joint_inserts("taz")),
+             ("arm-taz.stl", C.arm("taz")),
+             ("joint-screws.stl", C.joint_screws("taz")),
+             ("c270.stl", C.cam_loc("taz") * Compound([body, lens, stub])),
+             ("hinge-screw.stl", C.hinge_screw("taz")),
+             ("cable-clip.stl", clip)]
+    return [(n, T * s) for n, s in items]
+
+
+def camera_assembly():
+    from build123d import export_stl
+    os.makedirs(CAMERA_ASSEMBLY_DIR, exist_ok=True)
+    for name, shape in camera_assembly_parts():
+        printed = name.startswith(("clamp", "arm", "cable"))
+        tol, ang = (0.03, 0.15) if printed else (0.05, 0.3)
+        p = os.path.join(CAMERA_ASSEMBLY_DIR, name)
+        export_stl(shape, p, tolerance=tol, angular_tolerance=ang)
+        bb = shape.bounding_box()
+        print(f"camera/assembly/{name}: x {bb.min.X:.1f} to {bb.max.X:.1f}, y {bb.min.Y:.1f} to {bb.max.Y:.1f}, "
+              f"z {bb.min.Z:.1f} to {bb.max.Z:.1f} mm; {os.path.getsize(p) / 1e6:.2f} MB")
+
+
 # ---------------------------------------------------------------- the overhang check
 # A face needs support when it faces down at less than 45 degrees above the bed (the faces on the bed
 # are out). A flat roof is a bridge, and it needs no support if the opening under it is BRIDGE mm
@@ -1665,6 +1741,9 @@ if __name__ == "__main__":
         sys.exit(1 if check_prints() > 1.0 else 0)
     if "export" in sys.argv:
         export_prints()
+        sys.exit()
+    if "assembly" in sys.argv:
+        camera_assembly()
         sys.exit()
     args = [a for a in sys.argv[1:] if a != "live"]
     main(args[0] if args else os.path.join(HERE, "build", "pod"), stills="live" not in sys.argv)
