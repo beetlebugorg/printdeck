@@ -510,3 +510,8 @@ body:has(#projHead:not([hidden])) #psBack, body:has(#projHead:not([hidden])) #pl
 .ptbody .linkrow { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: center; }
 .ptbody .linkrow button { min-height: 36px; font-size: 14px; }
 .ptbody .linkrow a { font-size: 14px; }
+/* The public view: a line with the state, and a button with the action. */
+.pubrow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); justify-content: space-between; }
+.pubstate { margin: 0; display: flex; align-items: center; gap: var(--s2); font-weight: 500; flex: 1 1 16rem; }
+.pubstate .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ink-dim); flex: none; }
+.pubstate.on .dot { background: var(--live); box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 25%, transparent); }

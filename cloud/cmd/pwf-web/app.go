@@ -1004,9 +1004,12 @@ func (a *app) drawProject() {
 	setText("memberNames", strings.Join(append([]string{v.Owner + " (owner)"}, names...), ", "))
 	// The public address.
 	on := v.Public != ""
-	pb := byID("publicBtn")
-	pb.Set("textContent", map[bool]string{true: "On", false: "Off"}[on])
-	pb.Call("setAttribute", "aria-pressed", fmt.Sprint(on))
+	// A line says the state, and the button says what a click does.
+	byID("publicState").Get("classList").Call("toggle", "on", on)
+	setText("publicStateText", map[bool]string{
+		true:  "The public view is on. Anybody with the address sees the prints and the photos.",
+		false: "The public view is off. Only members see the prints and the photos."}[on])
+	setText("publicBtn", map[bool]string{true: "Turn off", false: "Turn on"}[on])
 	setHidden("publicBox", !on)
 	setText("publicLink", v.Public)
 	setHidden("repoPageNote", v.RepoPage == "")
@@ -1172,8 +1175,8 @@ func (a *app) togglePublic() {
 		say("ownerToolsMsg", err, "")
 		return
 	}
-	a.view.Public = out.URL
-	a.drawProject()
+	// The view again: a public repository keeps its page (RepoPage) with the switch off.
+	a.reload()
 	say("ownerToolsMsg", nil, "")
 }
 

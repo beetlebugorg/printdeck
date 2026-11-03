@@ -302,8 +302,9 @@
       <div class="card">
         <h2>Public view</h2>
         <p class="small dim">When this is on, anybody who opens the address of the project sees the prints, the time lapses and the photos. Members who sign in see the full project at the same address. The address has the name of the project, so people can guess it. The public view has no names of members. When the GitHub repository is public, the address also shows the parts, their 3D models and the docs of the repository, with this switch on or off.</p>
-        <div class="row">
-          <button type="button" id="publicBtn" aria-pressed="false">Off</button>
+        <div class="pubrow">
+          <p class="pubstate" id="publicState"><span class="dot"></span><span id="publicStateText">The public view is off. Only members see this project.</span></p>
+          <button type="button" id="publicBtn">Turn on</button>
         </div>
         <p class="small" id="repoPageNote" hidden>The repository is public, so the parts, their 3D models and the docs are public now at <a id="repoPageLink" target="_blank" rel="noopener"></a>. The prints, the photos and the notes stay private.</p>
         <div class="linkbox" id="publicBox" hidden>
