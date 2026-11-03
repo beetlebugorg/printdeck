@@ -394,11 +394,17 @@ func (c *ChiTu) copySize(name string) (int64, bool) {
 	if c.UploadDir == "" {
 		return 0, false
 	}
-	fi, err := os.Stat(filepath.Join(c.UploadDir, filepath.Base(name)))
+	fi, err := os.Stat(inDir(c.UploadDir, filepath.Base(name)))
 	if err != nil || !fi.Mode().IsRegular() {
 		return 0, false
 	}
 	return fi.Size(), true
+}
+
+// inDir joins dir and name. filepath.Clean of "/" + name has no ".." at its start, so the path
+// stays in dir.
+func inDir(dir, name string) string {
+	return filepath.Join(dir, filepath.Clean("/"+name))
 }
 
 // mbText is a size in MB, or in KB under 1 MB.
@@ -672,7 +678,7 @@ func (c *ChiTu) AddFile(name, path string) (string, error) {
 		os.Remove(path)
 		return "", err
 	}
-	dst := filepath.Join(c.UploadDir, name)
+	dst := inDir(c.UploadDir, name)
 	if err := os.Rename(path, dst); err != nil {
 		os.Remove(path)
 		return "", err

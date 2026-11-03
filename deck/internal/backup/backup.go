@@ -203,8 +203,8 @@ func Restore(r io.Reader, password string, sources []Source, work string, progre
 	}
 	var done int64
 	for _, f := range files {
-		src := filepath.Join(stage, filepath.FromSlash(f.src.Prefix+"/"+f.rel))
-		dst := filepath.Join(f.src.Dir, filepath.FromSlash(f.rel))
+		src := filepath.Join(stage, filepath.Clean("/"+f.src.Prefix+"/"+f.rel))
+		dst := filepath.Join(f.src.Dir, filepath.Clean("/"+f.rel))
 		if err := install(src, dst, f.mode, f.modTime); err != nil {
 			return fmt.Errorf("%s/%s: %w", f.src.Prefix, f.rel, err)
 		}
@@ -260,7 +260,8 @@ func extract(r io.Reader, password string, sources []Source, stage string) ([]st
 		if src.Skip != nil && src.Skip(rel) {
 			continue
 		}
-		out := filepath.Join(stage, src.Prefix, filepath.FromSlash(rel))
+		// place refuses ".." already. filepath.Clean of "/" + the path keeps it in the folder too.
+		out := filepath.Join(stage, filepath.Clean("/"+src.Prefix+"/"+rel))
 		switch h.Typeflag {
 		case tar.TypeDir:
 			if err := os.MkdirAll(out, 0o700); err != nil {

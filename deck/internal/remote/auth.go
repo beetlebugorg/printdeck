@@ -95,22 +95,34 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	s.mu.Unlock()
 	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: token, Path: "/", MaxAge: int(sessionAge.Seconds()),
 		HttpOnly: true, SameSite: http.SameSiteStrictMode, Secure: r.TLS != nil})
-	http.Redirect(w, r, localPath(r.FormValue("next")), http.StatusSeeOther)
+	next := r.FormValue("next")
+	if !isLocalRedirect(next) {
+		next = "/"
+	}
+	http.Redirect(w, r, next, http.StatusSeeOther)
 }
 
-// localPath is next when it is a path of this server, and else "/": a login never sends the
-// browser to another site. A browser removes tabs and line breaks from a URL and reads a backslash as "/",
-// so next must have none of them.
+// localPath is next when it is a path of this server, and else "/".
 func localPath(next string) string {
-	if len(next) == 0 || next[0] != '/' || (len(next) > 1 && (next[1] == '/' || next[1] == '\\')) {
+	if !isLocalRedirect(next) {
 		return "/"
+	}
+	return next
+}
+
+// isLocalRedirect is true when next is a path of this server: a login never sends the browser to
+// another site. A browser removes tabs and line breaks from a URL and reads a backslash as "/",
+// so next must have none of them.
+func isLocalRedirect(next string) bool {
+	if len(next) == 0 || next[0] != '/' || (len(next) > 1 && (next[1] == '/' || next[1] == '\\')) {
+		return false
 	}
 	for _, c := range next {
 		if c < 0x20 || c == 0x7f || c == '\\' {
-			return "/"
+			return false
 		}
 	}
-	return next
+	return true
 }
 
 // logout ends the session.

@@ -70,12 +70,15 @@
     try {
       const r = await fetch("/login", { method: "POST", body: new URLSearchParams({ password: pw.value, next }),
         signal: stop.signal });
-      if (new URL(r.url).pathname === "/login") {
+      // The deck sends the browser on to next after it checks next (auth.go, isLocalRedirect). The
+      // page opens the address of that answer, on this deck only.
+      const to = new URL(r.url);
+      if (to.pathname === "/login") {
         say("The password is not correct.");
         pw.select();
       } else {
         go.textContent = next === "/" ? "Opening the screen" : "Opening the page";
-        location.href = next;
+        location.assign(to.origin === location.origin ? to.pathname + to.search + to.hash : "/");
         return;
       }
     } catch (err) {
