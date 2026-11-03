@@ -54,12 +54,12 @@ func newStepper(pin string) *stepper {
 // queue adds a queue_step. The firmware adds the interval to the time of the last step in 32 bits,
 // so an interval after "reset_step_clock clock=0" wraps to the right time: the first step is that
 // sum, on the 64-bit clock near now (clock64).
-func (s *stepper) queue(interval, count, add int64, clock64 func(int64) uint64) {
+func (s *stepper) queue(interval uint32, count, add int64, clock64 func(uint32) uint64) {
 	if s.needReset || count <= 0 {
 		return
 	}
-	first := clock64(int64(uint32(s.last) + uint32(interval)))
-	g := segment{first: first, interval: interval, count: count, add: add, dir: s.nextDir}
+	first := clock64(uint32(s.last) + interval)
+	g := segment{first: first, interval: int64(interval), count: count, add: add, dir: s.nextDir}
 	s.segs = append(s.segs, g)
 	s.last = g.time(count)
 }

@@ -136,7 +136,7 @@ func Helper() error {
 	}
 	allowed := map[uint32]bool{0: true}
 	if u, err := user.Lookup("deck"); err == nil {
-		if uid, err := strconv.Atoi(u.Uid); err == nil {
+		if uid, err := strconv.ParseUint(u.Uid, 10, 32); err == nil {
 			allowed[uint32(uid)] = true
 		}
 	}

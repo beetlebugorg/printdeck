@@ -44,11 +44,15 @@ func ParseHex(s string) (color.RGBA, bool) {
 	if len(s) != 6 {
 		return color.RGBA{}, false
 	}
-	v, err := strconv.ParseUint(s, 16, 32)
-	if err != nil {
-		return color.RGBA{}, false
+	var c [3]uint8
+	for i := range c {
+		v, err := strconv.ParseUint(s[2*i:2*i+2], 16, 8)
+		if err != nil {
+			return color.RGBA{}, false
+		}
+		c[i] = uint8(v)
 	}
-	return color.RGBA{uint8(v >> 16), uint8(v >> 8), uint8(v), 255}, true
+	return color.RGBA{c[0], c[1], c[2], 255}, true
 }
 
 // ModelColor is the color of a model of the filament hex, or the orange of the deck for no color.

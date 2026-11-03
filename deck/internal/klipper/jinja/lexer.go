@@ -268,7 +268,7 @@ func lexString(src string, pos, line int) (string, int) {
 				b.WriteString(`\x`)
 			case 'u':
 				if i+4 < len(src) {
-					if n, err := strconv.ParseUint(src[i+1:i+5], 16, 32); err == nil {
+					if n, err := strconv.ParseUint(src[i+1:i+5], 16, 16); err == nil {
 						b.WriteRune(rune(n))
 						i += 4
 						break

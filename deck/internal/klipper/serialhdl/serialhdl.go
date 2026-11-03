@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -223,7 +224,7 @@ func (s *SerialReader) startSession(port Port) bool {
 	if wireFreq, err := msgparser.ConstantFloat("SERIAL_BAUD"); err == nil {
 		s.sq.SetWireFrequency(wireFreq)
 	}
-	if receiveWindow, err := msgparser.ConstantInt("RECEIVE_WINDOW"); err == nil {
+	if receiveWindow, err := msgparser.ConstantInt("RECEIVE_WINDOW"); err == nil && receiveWindow <= math.MaxInt32 {
 		s.sq.SetReceiveWindow(int(receiveWindow))
 	}
 	return true

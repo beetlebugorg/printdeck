@@ -33,17 +33,36 @@ func stripUnderscores(s string) (string, error) {
 
 // ParseInt reads an integer as Python's int() of a string.
 func ParseInt(s string) (int64, error) {
-	s, err := stripUnderscores(strings.TrimSpace(s))
+	s, err := intText(s)
 	if err != nil {
 		return 0, err
+	}
+	return strconv.ParseInt(s, 10, 64)
+}
+
+// Atoi reads an integer as ParseInt does, into an int. A value outside the range of an int is an
+// error.
+func Atoi(s string) (int, error) {
+	s, err := intText(s)
+	if err != nil {
+		return 0, err
+	}
+	return strconv.Atoi(s)
+}
+
+// intText returns the text of an integer for strconv: with no spaces, underscores or "+" sign.
+func intText(s string) (string, error) {
+	s, err := stripUnderscores(strings.TrimSpace(s))
+	if err != nil {
+		return "", err
 	}
 	if strings.HasPrefix(s, "+") {
 		s = s[1:]
 		if strings.HasPrefix(s, "-") || strings.HasPrefix(s, "+") {
-			return 0, errSyntax
+			return "", errSyntax
 		}
 	}
-	return strconv.ParseInt(s, 10, 64)
+	return s, nil
 }
 
 // ParseFloat reads a number as Python's float() of a string.

@@ -168,9 +168,9 @@ func newBoard(conn net.Conn) (*Board, error) {
 func (b *Board) now() uint64 { return uint64(time.Since(world.start).Seconds() * b.freq) }
 
 // clock64 turns a 32-bit clock of a command into the 64-bit clock that is nearest to now.
-func (b *Board) clock64(c32 int64) uint64 {
+func (b *Board) clock64(c32 uint32) uint64 {
 	n := b.now()
-	return uint64(int64(n) - int64(int32(uint32(n)-uint32(c32))))
+	return uint64(int64(n) - int64(int32(uint32(n)-c32)))
 }
 
 func (b *Board) close() {
@@ -308,6 +308,12 @@ func num(m map[string]string, k string) int64 {
 	return v
 }
 
+// num32 reads an unsigned 32-bit parameter (%u), such as a clock.
+func num32(m map[string]string, k string) uint32 {
+	v, _ := strconv.ParseUint(m[k], 10, 32)
+	return uint32(v)
+}
+
 // command runs one command of the host.
 func (b *Board) command(text string) {
 	name, a := args(text)
@@ -317,7 +323,7 @@ func (b *Board) command(text string) {
 		off, count := num(a, "offset"), num(a, "count")
 		end := min(int(off+count), len(b.identify))
 		data := []byte{}
-		if int(off) < end {
+		if off < int64(end) {
 			data = b.identify[off:end]
 		}
 		b.send("identify_response", map[string]msgproto.Value{"offset": off, "data": data})
@@ -377,7 +383,7 @@ func (b *Board) command(text string) {
 	case "queue_step":
 		b.mu.Lock()
 		if s := b.steppers[oid]; s != nil {
-			s.queue(num(a, "interval"), num(a, "count"), num(a, "add"), b.clock64)
+			s.queue(num32(a, "interval"), num(a, "count"), num(a, "add"), b.clock64)
 		}
 		b.mu.Unlock()
 	case "set_next_step_dir":
@@ -390,7 +396,7 @@ func (b *Board) command(text string) {
 		b.mu.Lock()
 		if s := b.steppers[oid]; s != nil {
 			s.advance(b.now())
-			s.last, s.needReset = b.clock64(num(a, "clock")), false
+			s.last, s.needReset = b.clock64(num32(a, "clock")), false
 		}
 		b.mu.Unlock()
 	case "stepper_get_position":
@@ -414,7 +420,7 @@ func (b *Board) command(text string) {
 	case "endstop_home":
 		b.mu.Lock()
 		if e := b.endstops[oid]; e != nil {
-			e.home(b, num(a, "sample_count") != 0, num(a, "pin_value"), num(a, "trsync_oid"), num(a, "trigger_reason"), b.clock64(num(a, "clock")), uint64(num(a, "rest_ticks")))
+			e.home(b, num(a, "sample_count") != 0, num(a, "pin_value"), num(a, "trsync_oid"), num(a, "trigger_reason"), b.clock64(num32(a, "clock")), uint64(num(a, "rest_ticks")))
 		}
 		b.mu.Unlock()
 	case "endstop_query_state":
@@ -438,14 +444,14 @@ func (b *Board) command(text string) {
 	case "trsync_start":
 		b.mu.Lock()
 		if t := b.trsyncs[oid]; t != nil {
-			*t = trsync{active: true, reportAt: b.clock64(num(a, "report_clock")), reportTicks: uint64(num(a, "report_ticks")),
+			*t = trsync{active: true, reportAt: b.clock64(num32(a, "report_clock")), reportTicks: uint64(num(a, "report_ticks")),
 				expireReason: num(a, "expire_reason")}
 		}
 		b.mu.Unlock()
 	case "trsync_set_timeout":
 		b.mu.Lock()
 		if t := b.trsyncs[oid]; t != nil && t.active {
-			t.expireAt = b.clock64(num(a, "clock"))
+			t.expireAt = b.clock64(num32(a, "clock"))
 		}
 		b.mu.Unlock()
 	case "trsync_trigger":
@@ -469,7 +475,7 @@ func (b *Board) command(text string) {
 	case "query_analog_in":
 		b.mu.Lock()
 		if ad := b.adcByOID[oid]; ad != nil {
-			ad.oid, ad.next, ad.count, ad.rest = oid, b.clock64(num(a, "clock")), num(a, "sample_count"), uint64(num(a, "rest_ticks"))
+			ad.oid, ad.next, ad.count, ad.rest = oid, b.clock64(num32(a, "clock")), num(a, "sample_count"), uint64(num(a, "rest_ticks"))
 			ad.minV, ad.maxV, ad.checks = num(a, "min_value"), num(a, "max_value"), num(a, "range_check_count")
 			ad.bytes = max(2, num(a, "bytes_per_report"))
 		}
@@ -491,7 +497,7 @@ func (b *Board) command(text string) {
 	case "queue_digital_out":
 		b.mu.Lock()
 		if o := b.outs[oid]; o != nil {
-			o.pending = append(o.pending, change{b.clock64(num(a, "clock")), float64(num(a, "on_ticks"))})
+			o.pending = append(o.pending, change{b.clock64(num32(a, "clock")), float64(num(a, "on_ticks"))})
 		}
 		b.mu.Unlock()
 	case "update_digital_out":
@@ -528,7 +534,7 @@ func (b *Board) command(text string) {
 	case "queue_pwm_out":
 		b.mu.Lock()
 		if o := b.outs[oid]; o != nil {
-			o.pending = append(o.pending, change{b.clock64(num(a, "clock")), float64(num(a, "value"))})
+			o.pending = append(o.pending, change{b.clock64(num32(a, "clock")), float64(num(a, "value"))})
 		}
 		b.mu.Unlock()
 	}

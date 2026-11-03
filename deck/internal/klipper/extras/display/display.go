@@ -158,11 +158,11 @@ func newDisplayGroup(config *configfile.Wrapper, name string, dataConfigs []*con
 		parts := strings.Split(pos, ",")
 		var vals []int
 		for _, v := range parts {
-			n, err := pyfmt.ParseInt(strings.TrimSpace(v))
+			n, err := pyfmt.Atoi(strings.TrimSpace(v))
 			if err != nil {
 				break
 			}
-			vals = append(vals, int(n))
+			vals = append(vals, n)
 		}
 		if len(vals) != 2 || len(parts) != 2 {
 			configfile.Raise("Unable to parse 'position' in section '%s'", c.Name())

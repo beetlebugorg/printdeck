@@ -2,6 +2,7 @@ package serialport
 
 import (
 	"errors"
+	"math"
 	"os"
 	"syscall"
 	"time"
@@ -59,7 +60,9 @@ func Open(path string, baud int, rts bool) (*Port, error) {
 		t.Cflag &^= syscall.CSIZE | syscall.PARENB | syscall.CSTOPB | crtscts
 		t.Cflag |= syscall.CS8 | syscall.CREAD | syscall.CLOCAL
 		t.Cc[syscall.VMIN], t.Cc[syscall.VTIME] = 1, 0
-		setBaud(t, baud)
+		if err := setBaud(t, baud); err != nil {
+			return err
+		}
 		return setTermios(fd, t)
 	})
 	if err == nil {
@@ -91,10 +94,16 @@ func setTermios(fd uintptr, t *termios2) error {
 	return ioctl(fd, tcsets2, uintptr(unsafe.Pointer(t)))
 }
 
-func setBaud(t *termios2, baud int) {
+// setBaud sets the baud rate in t. A baud rate outside the range of a uint32 is EINVAL.
+func setBaud(t *termios2, baud int) error {
+	b := int64(baud)
+	if b < 0 || b > math.MaxUint32 {
+		return syscall.EINVAL
+	}
 	t.Cflag &^= cbaud
 	t.Cflag |= bother
-	t.Ispeed, t.Ospeed = uint32(baud), uint32(baud)
+	t.Ispeed, t.Ospeed = uint32(b), uint32(b)
+	return nil
 }
 
 // control runs f with the file descriptor, and keeps the file in the runtime poller.
@@ -121,7 +130,9 @@ func (p *Port) SetBaud(baud int) error {
 		if err != nil {
 			return err
 		}
-		setBaud(t, baud)
+		if err := setBaud(t, baud); err != nil {
+			return err
+		}
 		return setTermios(fd, t)
 	})
 }

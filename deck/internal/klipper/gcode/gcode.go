@@ -222,8 +222,7 @@ func (c *Command) GetString(name string, opts ...Opt) string {
 // GetInt returns an integer parameter.
 func (c *Command) GetInt(name string, opts ...Opt) int {
 	v := c.get(name, func(s string) (any, error) {
-		n, err := pyfmt.ParseInt(s)
-		return int(n), err
+		return pyfmt.Atoi(s)
 	}, readOpts(opts), intLimit)
 	n, _ := v.(int)
 	return n

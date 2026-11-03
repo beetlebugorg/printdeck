@@ -154,8 +154,7 @@ func parseStr(s string) (any, error) { return s, nil }
 
 // parseInt reads an integer as Python's int().
 func parseInt(s string) (any, error) {
-	n, err := pyfmt.ParseInt(s)
-	return int(n), err
+	return pyfmt.Atoi(s)
 }
 
 // parseFloat reads a number as Python's float().

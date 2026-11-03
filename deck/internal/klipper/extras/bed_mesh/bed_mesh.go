@@ -102,11 +102,11 @@ func parseConfigPair(config *configfile.Wrapper, option string, def int, minval,
 func parseGcmdPair(gcmd *gcode.Command, name string, minval *int) [2]int {
 	var pair []int
 	for _, v := range strings.Split(gcmd.GetString(name), ",") {
-		n, err := pyfmt.ParseInt(strings.TrimSpace(v))
+		n, err := pyfmt.Atoi(strings.TrimSpace(v))
 		if err != nil {
 			panic(gcmd.Error("Unable to parse parameter '%s'", name))
 		}
-		pair = append(pair, int(n))
+		pair = append(pair, n)
 	}
 	if len(pair) != 2 {
 		if len(pair) != 1 {

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"regexp"
 	"strconv"
@@ -140,7 +141,7 @@ func (c *Client) Upload(ctx context.Context, name string, r io.ReaderAt, size in
 		}
 		if m := resendRE.FindStringSubmatch(a); m != nil {
 			to, _ := strconv.ParseInt(m[1], 10, 64)
-			if to > size || to%UploadChunk != 0 {
+			if to < 0 || to > size || to > math.MaxUint32 || to%UploadChunk != 0 {
 				return fmt.Errorf("chitu: the board asked for offset %d", to)
 			}
 			drain()
