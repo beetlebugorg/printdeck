@@ -117,6 +117,17 @@ parts:
     material: roll-4
     # It is 126 mm tall: a brim.
     settings: {<<: *pod, adhesion_type: brim}
+  - name: Camera clamp fit test (TAZ)
+    group: Webcam mount (TAZ)
+    description: >-
+      The bottom 12 mm of the TAZ clamp, with its two keys. Print it before the clamp, and push it onto
+      the front right upright under the corner plate. It must go on by hand with no play, and both legs
+      must lie flat on the faces of the upright. It prints in a few minutes.
+    files: [lulzbot/stl/pod/fdm/camera-clamp-fit-taz_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: *pod
   - name: Camera link (TAZ)
     group: Webcam mount (TAZ)
     description: >-
