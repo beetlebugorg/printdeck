@@ -274,7 +274,7 @@ func (s *Server) setRepo(ctx context.Context, p *Project, repo string) (*Project
 	}
 	old := p.Repo
 	np, err := s.changeProject(ctx, p.ID, func(q *Project) error {
-		q.Repo = repo
+		q.Repo, q.DefaultBranch = repo, ""
 		return nil
 	})
 	if err != nil {
@@ -336,12 +336,13 @@ func (s *Server) useToken(ctx context.Context, c *GitHubClaims) error {
 // branch. A run of another file, or of the file on another branch, gets no build.
 const SliceWorkflow = ".github/workflows/printdeck.yml"
 
-// sliceRun checks that the token is of the slice workflow of the repository on main (or master):
-// the file that the owner reviewed, and not a copy on a branch of a pull request.
-func sliceRun(c *GitHubClaims) error {
+// sliceRun checks that the token is of the slice workflow of the repository on its default branch
+// (main or master when the service has no GitHub App): the file that the owner reviewed, and not
+// a copy on another branch.
+func sliceRun(c *GitHubClaims, branch string) error {
 	ref := strings.ToLower(c.JobWorkflowRef)
 	base := strings.ToLower(c.Repository + "/" + SliceWorkflow + "@refs/heads/")
-	if ref == base+"main" || ref == base+"master" {
+	if branch != "" && ref == base+strings.ToLower(branch) || branch == "" && (ref == base+"main" || ref == base+"master") {
 		return nil
 	}
 	return fail(http.StatusForbidden, "only the workflow "+SliceWorkflow+" on the default branch slices a build, and this job is of "+
@@ -349,6 +350,26 @@ func sliceRun(c *GitHubClaims) error {
 }
 
 var defaultOIDC = &GitHubOIDC{}
+
+// defaultBranch returns the default branch of the repository of p. The service asks GitHub once
+// and keeps the name on the project. With no GitHub App (pwf dev, the tests), it returns "".
+func (s *Server) defaultBranch(ctx context.Context, p *Project) (string, error) {
+	if p.DefaultBranch != "" || s.GitHub == nil || p.Repo == "" {
+		return p.DefaultBranch, nil
+	}
+	b, err := s.GitHub.DefaultBranch(ctx, p.Repo)
+	if err != nil {
+		return "", fail(http.StatusServiceUnavailable, "the default branch of "+p.Repo+": "+err.Error())
+	}
+	if _, err := s.updateProject(ctx, p.ID, false, func(q *Project) error {
+		q.DefaultBranch = b
+		return nil
+	}); err != nil {
+		return "", err
+	}
+	p.DefaultBranch = b
+	return b, nil
+}
 
 // projectOfRepo returns the project of the repository.
 func (s *Server) projectOfRepo(ctx context.Context, repo string) (*Project, error) {

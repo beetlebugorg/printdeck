@@ -189,16 +189,39 @@ func (g *GitHubApp) Dispatch(ctx context.Context, repo, build, title string) err
 	if r.DefaultBranch == "" {
 		r.DefaultBranch = "main"
 	}
+	return g.dispatch(ctx, repo, build, title, tok.Token, r.DefaultBranch)
+}
+
+// DefaultBranch returns the name of the default branch of repo.
+func (g *GitHubApp) DefaultBranch(ctx context.Context, repo string) (string, error) {
+	token, err := g.installationToken(ctx, repo, map[string]string{"metadata": "read"})
+	if err != nil {
+		return "", err
+	}
+	var r struct {
+		DefaultBranch string `json:"default_branch"`
+	}
+	if err := g.call(ctx, http.MethodGet, "/repos/"+repo, token, nil, &r); err != nil {
+		return "", err
+	}
+	if r.DefaultBranch == "" {
+		return "", fmt.Errorf("%s has no default branch", repo)
+	}
+	return r.DefaultBranch, nil
+}
+
+// dispatch starts the workflow on the branch.
+func (g *GitHubApp) dispatch(ctx context.Context, repo, build, title, token, branch string) error {
 	path := "/repos/" + repo + "/actions/workflows/printdeck.yml/dispatches"
-	in := map[string]any{"ref": r.DefaultBranch, "inputs": map[string]string{"build": build, "title": title}}
-	err = g.call(ctx, http.MethodPost, path, tok.Token, in, nil)
+	in := map[string]any{"ref": branch, "inputs": map[string]string{"build": build, "title": title}}
+	err := g.call(ctx, http.MethodPost, path, token, in, nil)
 	if ge, ok := err.(*gitHubError); ok && ge.status == http.StatusUnprocessableEntity && strings.Contains(ge.msg, "Unexpected inputs") {
 		in["inputs"] = map[string]string{"build": build}
-		err = g.call(ctx, http.MethodPost, path, tok.Token, in, nil)
+		err = g.call(ctx, http.MethodPost, path, token, in, nil)
 	}
 	if err != nil {
 		if ge, ok := err.(*gitHubError); ok && ge.status == http.StatusNotFound {
-			return fmt.Errorf("%s has no workflow .github/workflows/printdeck.yml on %s", repo, r.DefaultBranch)
+			return fmt.Errorf("%s has no workflow .github/workflows/printdeck.yml on %s", repo, branch)
 		}
 		return err
 	}

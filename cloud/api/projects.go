@@ -75,6 +75,9 @@ type Project struct {
 	Shares []string `json:"shares,omitempty"`
 	// Repo is the GitHub repository of the project, "owner/name", or "" (builds.go).
 	Repo string `json:"repo,omitempty"`
+	// DefaultBranch is the default branch of Repo on GitHub, or "" before the service asks
+	// GitHub (defaultBranch).
+	DefaultBranch string `json:"default_branch,omitempty"`
 	// Cover is the key of the cover picture of the newest plan of the default branch, or "".
 	Cover string `json:"cover,omitempty"`
 }
