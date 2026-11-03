@@ -91,12 +91,13 @@ parts:
     profile: peopoly-phenom/abs-like-0.05
     material: Orange resin
 
-  # The webcam (option): a C270 on the frame of the printer.
+  # The webcam (option): an Arducam B0561 on the frame of the printer. The camera hangs in its U
+  # bracket under the link, and the link is on the hinge of the arm.
   - name: Camera arm (TAZ)
     group: Webcam mount (TAZ)
     description: >-
-      The arm holds a Logitech C270 webcam at the front right corner of the TAZ Workhorse. An M3 x 16
-      screw through its two lugs and the eyelet of the camera is the hinge. Two M3 x 18 screws hold
+      The arm holds the Arducam B0561 camera at the front right corner of the TAZ Workhorse. An M3 x
+      16 screw through its two lugs and the tongue of the link is the hinge. Two M3 x 18 screws hold
       its post in the tab of the clamp. It prints on its back face.
     files: [lulzbot/stl/pod/fdm/camera-arm-taz_fdm.stl]
     printer: taz
@@ -116,11 +117,23 @@ parts:
     material: roll-4
     # It is 126 mm tall: a brim.
     settings: {<<: *pod, adhesion_type: brim}
+  - name: Camera link (TAZ)
+    group: Webcam mount (TAZ)
+    description: >-
+      The link holds the Arducam B0561 under the arm. Its tongue goes between the lugs of the arm, and
+      the M3 x 16 hinge screw holds it level. A 1/4"-20 x 1/4" screw goes down through its plate into
+      the thread in the base of the U bracket of the camera. The pivot of the U sets the tilt. It is
+      the same part for the TAZ and the Mini 2. It prints on the top face of its plate.
+    files: [lulzbot/stl/pod/fdm/camera-link_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: *pod
   - name: Camera arm (Mini 2)
     group: Webcam mount (Mini 2)
     description: >-
-      The arm holds a Logitech C270 webcam at the front right corner of the Mini 2. An M3 x 16 screw
-      through its two lugs and the eyelet of the camera is the hinge. Two M3 x 18 screws hold its post
+      The arm holds the Arducam B0561 camera at the front right corner of the Mini 2. An M3 x 16 screw
+      through its two lugs and the tongue of the link is the hinge. Two M3 x 18 screws hold its post
       in the tab of the clamp. It prints on its back face.
     files: [lulzbot/stl/pod/fdm/camera-arm-mini2_fdm.stl]
     printer: taz
@@ -134,6 +147,18 @@ parts:
       goes on the top of the frame. Two frame screws, 5 mm longer than the original screws, hold it.
       Press two M3 heat-set inserts into its tab for the screws of the arm.
     files: [lulzbot/stl/pod/fdm/camera-clamp-mini2_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: *pod
+  - name: Camera link (Mini 2)
+    group: Webcam mount (Mini 2)
+    description: >-
+      The link holds the Arducam B0561 under the arm. Its tongue goes between the lugs of the arm, and
+      the M3 x 16 hinge screw holds it level. A 1/4"-20 x 1/4" screw goes down through its plate into
+      the thread in the base of the U bracket of the camera. The pivot of the U sets the tilt. It is
+      the same part for the TAZ and the Mini 2. It prints on the top face of its plate.
+    files: [lulzbot/stl/pod/fdm/camera-link_fdm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
@@ -260,10 +285,10 @@ assemblies:
   # The webcam mount on the TAZ. lulzbot/pod.py assembly writes the files: each part in its place on
   # the front right corner of the frame, in mm, z up, with the origin at the middle of the top face of
   # the bed. x is to the right of the printer, and y is to the back. The frame is only the corner
-  # around the mount. The camera looks along (-0.87, 0.5, 0).
+  # around the mount. The camera faces the bed along (-0.87, 0.5, 0) and tilts down 52 degrees.
   - name: Camera mount on the TAZ
     description: |
-      The C270 webcam on its arm at the front right corner of the TAZ Workhorse. The clamp goes on the front right upright, with a key in the front slot and a key in the right slot. Two M3 x 8 screws go into roll-in T-nuts in the slots. The arm goes on the tab of the clamp with two M3 x 18 screws into heat-set inserts. An M3 x 16 screw through the lugs of the arm holds the camera. A tape clip on the top front rail holds the cable.
+      The Arducam B0561 camera on its arm at the front right corner of the TAZ Workhorse. The clamp goes on the front right upright, with a key in the front slot and a key in the right slot. Two M3 x 8 screws go into roll-in T-nuts in the slots. The arm goes on the tab of the clamp with two M3 x 18 screws into heat-set inserts. An M3 x 16 screw through the lugs of the arm holds the link. The camera hangs in its U bracket under the link, on a 1/4"-20 x 1/4" screw. A tape clip on the top front rail holds the cable.
     items:
       - name: TAZ Workhorse frame (front right corner)
         file: lulzbot/stl/camera/assembly/taz-corner.stl
@@ -294,14 +319,25 @@ assemblies:
       - part: Camera arm (TAZ)
         file: lulzbot/stl/camera/assembly/arm-taz.stl
         explode: [0.87, -0.5, 0]
-      - name: Logitech C270
-        file: lulzbot/stl/camera/assembly/c270.stl
-        color: "#16171a"
+      - part: Camera link (TAZ)
+        file: lulzbot/stl/camera/assembly/link.stl
         explode: [-0.87, 0.5, 0]
       - name: M3 x 16 hinge screw
         file: lulzbot/stl/camera/assembly/hinge-screw.stl
         color: "#b9bec6"
         explode: [0.5, 0.87, 0]
+      - name: Arducam B0561
+        file: lulzbot/stl/camera/assembly/b0561.stl
+        color: "#1a1b1e"
+        explode: [0, 0, -1]
+      - name: U bracket of the B0561
+        file: lulzbot/stl/camera/assembly/b0561-bracket.stl
+        color: "#3a3c40"
+        explode: [0, 0, -1]
+      - name: 1/4"-20 x 1/4" screw
+        file: lulzbot/stl/camera/assembly/base-screw.stl
+        color: "#b9bec6"
+        explode: [0, 0, 1]
       - name: M3 x 18 screws (arm)
         file: lulzbot/stl/camera/assembly/joint-screws.stl
         color: "#b9bec6"
