@@ -1529,6 +1529,7 @@ def print_parts(process):
         DOVE_CLR, RESIN, FOOT = keep, False, keep_foot
     one, _ = C.tape_clip()
     two, _ = C.tape_clip(True)
+    slot = C.slot_clip()
     cam = [part for n in ("taz", "mini2") for part in camera.printed(n)]
     # The link of the B0561 camera: the same part on the two arms.
     cam.append(("camera-link", CM.link_hinge(), CM.LINK_PRINT))
@@ -1537,14 +1538,16 @@ def print_parts(process):
         # that goes on the body, the dovetail up. The wedge: standing on its level bottom, the key and
         # the slot up. The TAZ bracket: standing on the top end of its plate, so the groove of the
         # wedge and the slots of the clips run up from the bed. The Mini 2 bracket: the frame side of
-        # the plate on the bed. The clips: the base on the bed. The webcam parts print in the
+        # the plate on the bed. The clips: the base on the bed. The slot clip: standing on its root
+        # end, so its arms bend in the plane of the layers. The webcam parts print in the
         # positions that camera.printed() gives, and the link on the top face of its plate. No part
         # needs supports.
         #
         # resin-flat: the resin parts in these positions, on the build plate with no supports. The
         # face on the plate gets the surface of the plate.
         rots = {"case": Rot(0, 0, 0), "frame": Rot(0, 0, 0), "mount": Rot(180, 0, 0), "wedge": Rot(90, 0, 0),
-                "taz": Rot(-90, 0, 0), "mini": Rot(-90, 0, 0), "clip": Rot(0, 0, 0), "camera": Rot(0, 0, 0)}
+                "taz": Rot(-90, 0, 0), "mini": Rot(-90, 0, 0), "clip": Rot(0, 0, 0), "camera": Rot(0, 0, 0),
+                "slot": Rot(90, 0, 0)}
     else:
         # Resin: z = 0 is the build plate, and the slicer adds supports under each face that faces
         # it. The faces that show on the pod face away from the plate. The angles come from a search
@@ -1560,11 +1563,13 @@ def print_parts(process):
         # - TAZ bracket: on the top end of the plate as in FDM, the back of the plate toward the
         #   plate 20 degrees, and 10 degrees across.
         # - clips: the base toward the plate, 30 and 15 degrees.
+        # - slot clip: on its root end as in FDM, 30 degrees.
         rots = {"case": Rot(0, 0, 90) * Rot(-195, 0, 0) * Rot(0, -15, 0),
                 "frame": Rot(110, 0, 0) * Rot(0, 15, 0), "mount": Rot(75, 0, 0),
                 "wedge": Rot(15, 0, 0) * Rot(0, 15, 0) * Rot(90, 0, 0),
                 "taz": Rot(0, 0, 90) * Rot(10, 0, 0) * Rot(0, -20, 0) * Rot(-90, 0, 0),
-                "mini": Rot(30, 0, 0) * Rot(-90, 0, 0), "clip": Rot(30, 0, 0) * Rot(0, 15, 0), "camera": Rot(30, 0, 0)}
+                "mini": Rot(30, 0, 0) * Rot(-90, 0, 0), "clip": Rot(30, 0, 0) * Rot(0, 15, 0), "camera": Rot(30, 0, 0),
+                "slot": Rot(30, 0, 0) * Rot(90, 0, 0)}
     lift = RESIN_LIFT if process == "resin" else 0.0
     return [(f"pod-body_{process}.stl", on_bed(case, rots["case"], lift), 1),
             (f"pod-frame_{process}.stl", on_bed(fr, rots["frame"], lift), 1),
@@ -1575,7 +1580,8 @@ def print_parts(process):
             *[(f"pod-shim-{t:.1f}mm_{process}.stl", on_bed(nub_shim(t), Rot(0, 0, 0), lift), 1) for t in SHIMS],
             *[(f"{fn}_{process}.stl", on_bed(sh, rots["camera"] * rot, lift), 1) for fn, sh, rot in cam],
             (f"cable-clip-single_{process}.stl", on_bed(one, rots["clip"], lift), 5),
-            (f"cable-clip-double_{process}.stl", on_bed(two, rots["clip"], lift), 2)]
+            (f"cable-clip-double_{process}.stl", on_bed(two, rots["clip"], lift), 2),
+            (f"cable-slot-clip_{process}.stl", on_bed(slot, rots["slot"], lift), 6)]
 
 
 def export_prints(out=PRINT_DIR):

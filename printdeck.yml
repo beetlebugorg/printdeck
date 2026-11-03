@@ -189,6 +189,19 @@ parts:
     material: roll-4
     count: 3
     settings: *pod
+  - name: Cable slot clip (TAZ)
+    group: Cable clips
+    description: >-
+      The clips hold the USB cable of the webcam in a slot of the TAZ frame. Put the cable in the slot,
+      then push a clip in over it until it clicks. The flat face closes the slot like a short channel
+      cover. A cable of up to 3.6 mm fits under the clip. The clip can slide along the slot. To remove a
+      clip, lift it out with a small flat screwdriver. Each clip prints standing on its end, with a brim.
+    files: [lulzbot/stl/pod/fdm/cable-slot-clip_fdm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    count: 6
+    settings: {<<: *pod, adhesion_type: brim}
 
 # The PDFs of the project. The project page shows each one with a picture of its first page.
 docs:

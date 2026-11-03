@@ -8,13 +8,17 @@ The cable presses in through the mouth. Two kinds of base:
 - the tape clip: a flat base for a square of double-sided tape (12 x 12 mm, 1 mm thick foam tape),
   for places off the rail. The two-cable tape clip holds the power and printer cables side by side.
 
+The slot clip has no cradle. The cable lies in the slot of a 2020 extrusion, and the clip pushes in
+over it and closes the slot like a short channel cover.
+
 Clip coordinates: the mounting face is z = 0, the clip stands toward +z, and the cable runs along y.
+The slot clip goes into the slot, toward -z.
 """
 
 import math
 import os
 
-from build123d import Box, Cylinder, Pos, Rot
+from build123d import Box, Cylinder, Plane, Polyline, Pos, Rot, extrude, make_face
 
 CABLE_HOLE = 4.6            # fits the power cable (4.0) and the USB cable (4.5)
 MOUTH = 3.6
@@ -67,6 +71,53 @@ def tape_clip(pair=False):
     return b, zc
 
 
+# The slot clip. The slot of the TAZ frame, from the rail of the LulzBot model (model.py): the
+# lips are 1.75 mm thick and round, behind them the slot is 13 mm wide, and 45 degree walls go down
+# to a flat bottom 5 mm wide, 6.4 mm behind the face. The mesh gives 5.2 mm at the narrowest part of
+# the opening, but on the printer it is less: keys 4.8 mm wide did not go in, and the keys of the TAZ
+# camera clamp are now 4.2 mm (camera.SLOT_KEY). The back of each lip is flat only from 3.4 mm off
+# the middle of the slot. Nearer the middle it is the round of the lip, and a barb there slips out.
+#
+# A flat cap lies on the rail face. Under it, two arms go into the opening. Each arm is fixed to the
+# root at one end only and runs along the slot, so it is long enough to bend. A barb at the free end
+# of each arm presses on the lips as the clip goes in, the arms bend in, and the barbs spring out
+# onto the flat backs of the lips. The clip prints standing on the root end, so the arms bend in the
+# plane of the layers. A cable of up to 3.6 mm lies on the bottom of the slot, under the arms.
+SLOT_LIP = 1.85             # the top of the barbs behind the face: 0.1 mm behind the lips
+SLOT_ARMS = 4.2             # across the two arms: the same as the keys of the TAZ clamp
+SLOT_ARM_GAP = 1.9          # between the arms: each arm can bend 0.95 mm in
+SLOT_BARB_TIP = 3.4         # each barb tip off the middle: on the flat back of the lip
+SLOT_BARB_FOOT = 2.45       # the ramp of the barb at the bottom of the arm: in the opening
+SLOT_DEPTH = 2.8            # the bottom of the arms behind the face
+SLOT_CAP_GAP = 0.6          # between the arms and the cap: open with a 0.5 mm nozzle
+SLOT_CAP = (7.0, 0.8)       # the cap: across, thick
+SLOT_LEN, SLOT_ROOT, SLOT_BARB_L = 18.0, 2.5, 5.0   # along the slot: the clip, the root, the barbs
+
+
+def _box(x0, x1, y0, y1, z0, z1):
+    return Pos((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2) * Box(x1 - x0, y1 - y0, z1 - z0)
+
+
+def slot_clip():
+    """The slot clip: the cap on the face at z = 0, the root at y = 0, the arms along +y."""
+    h, g, d = SLOT_ARMS / 2, SLOT_ARM_GAP / 2, SLOT_DEPTH
+    tip, foot = SLOT_BARB_TIP, SLOT_BARB_FOOT
+    cw, ct = SLOT_CAP
+    y0 = SLOT_LEN - SLOT_BARB_L
+    s = _box(-h, h, 0, SLOT_ROOT, -d, 0) + _box(-cw / 2, cw / 2, 0, SLOT_LEN, 0, ct)
+    for k in (1, -1):
+        s = s + _box(*sorted((k * g, k * h)), SLOT_ROOT, SLOT_LEN, -d, -SLOT_CAP_GAP)
+        # The barb across the slot: a flat top on the back of the lip and a ramp down to the bottom
+        # of the arm. Along the slot it starts at 56 degrees, so it prints with no overhang.
+        across = [(k * x, z) for x, z in ((h - 0.01, -SLOT_LIP), (tip, -SLOT_LIP), (tip, -SLOT_LIP - 0.2),
+                                          (foot, -d), (h - 0.01, -d))]
+        across = extrude(Plane.XZ * make_face(Polyline(*across, close=True)), -SLOT_LEN)
+        along = [(k * x, y) for x, y in ((h - 0.01, y0 - 1.5 * (tip - h)), (tip, y0), (tip, SLOT_LEN), (h - 0.01, SLOT_LEN))]
+        along = Pos(0, 0, -d - 1) * extrude(make_face(Polyline(*along, close=True)), d + 1)
+        s = s + (across & along)
+    return s
+
+
 # The cable center over the mounting face, for the routes: a tape clip sits on its tape.
 RAIL_CABLE_H = rail_clip()[1]
 TAPE_CABLE_H = tape_clip()[1] + TAPE
@@ -74,7 +125,8 @@ TAPE_CABLE_H = tape_clip()[1] + TAPE
 
 def export(out_stl):
     from build123d import export_stl
-    for name, (s, _) in (("clip_rail", rail_clip()), ("clip_tape", tape_clip()), ("clip_tape_pair", tape_clip(True))):
+    for name, (s, _) in (("clip_rail", rail_clip()), ("clip_tape", tape_clip()), ("clip_tape_pair", tape_clip(True)),
+                         ("clip_slot", (slot_clip(), 0.0))):
         export_stl(s, os.path.join(out_stl, f"{name}.stl"), tolerance=0.01, angular_tolerance=0.1)
         bb = s.bounding_box()
         print(f"{name}.stl: {bb.max.X - bb.min.X:.1f} x {bb.max.Y - bb.min.Y:.1f} x {bb.max.Z - bb.min.Z:.1f} mm")
