@@ -285,7 +285,10 @@ func (s *Server) liveTiles(ctx context.Context, p *Project, d liveData, prints [
 }
 
 // isUp reports that the print of the live record is in the project: a print of the same printer
-// (or of the same deck, with no printer) that started at the same time, within 10 minutes.
+// (or of the same deck, with no printer) that started at the same time, within a minute. The deck
+// sends the same start time with the live record and with the print. A wider window matched a
+// print that failed a few minutes before the next print on the same printer, and hid the live
+// tile of the next print.
 func isUp(rec *LiveRecord, prints []PrintRecord) bool {
 	for _, pr := range prints {
 		d := pr.Started.Sub(rec.Started)
@@ -293,7 +296,7 @@ func isUp(rec *LiveRecord, prints []PrintRecord) bool {
 		if rec.PrinterID != "" {
 			same = pr.PrinterID == rec.PrinterID
 		}
-		if same && d < 10*time.Minute && d > -10*time.Minute {
+		if same && d < time.Minute && d > -time.Minute {
 			return true
 		}
 	}

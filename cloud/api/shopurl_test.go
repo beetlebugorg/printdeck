@@ -48,3 +48,20 @@ func TestPlanNewer(t *testing.T) {
 		t.Error("plans with no run number do not go by time")
 	}
 }
+
+// A print that failed 5 minutes before the next print on the same printer is not the next print.
+func TestIsUpSameStart(t *testing.T) {
+	start := time.Date(2026, 11, 2, 21, 31, 7, 0, time.UTC)
+	failed := PrintRecord{}
+	failed.PrinterID, failed.Started = "taz", start.Add(-4*time.Minute-46*time.Second)
+	rec := &LiveRecord{}
+	rec.PrinterID, rec.Started = "taz", start
+	if isUp(rec, []PrintRecord{failed}) {
+		t.Error("the failed print hid the live tile of the next print")
+	}
+	done := PrintRecord{}
+	done.PrinterID, done.Started = "taz", start.Add(400*time.Millisecond)
+	if !isUp(rec, []PrintRecord{done}) {
+		t.Error("the print of the live record is not up")
+	}
+}
