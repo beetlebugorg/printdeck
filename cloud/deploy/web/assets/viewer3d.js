@@ -1549,14 +1549,16 @@ async function showDiff(box, oldUrl, newUrl) {
 // explode(f) and cut(f), with f from 0 to 1, highlight(i), and reset().
 // explodePlan finds how the items of an assembly come off, with no item through the wall of
 // another. geos are the models in the coordinates of the files (mm, Z up). An item with a
-// direction (explode) comes off along it, or, when a wall is in the way, along the same direction
-// turned up; an item with no direction stays. Items next to each
+// direction (explode) comes off along it. When a wall is in the way, it tries the same direction
+// turned up, and then a slide along the direction as far as it is free and a lift. An item with no
+// direction stays. Items next to each
 // other in the list with the same direction are one unit: they move together, for example the
 // parts of one board. The units come off one by one: of the units with a free path, the last in
 // the list goes first. A path is free when the unit touches no wall of another unit on its way,
 // and stays over the floor. The unit stops when its box is clear of the boxes of the units that it
 // touched, with a gap. A unit with no free path stays. It returns the stages in order:
-// [{ indexes: [i, ...], move: [x, y, z] }].
+// [{ indexes: [i, ...], path: [[x, y, z], ...], move: [x, y, z] }]. path starts at the place of the
+// unit before its stage, and move is the end.
 //
 // The test of the walls: the surfaces of the items as cells of a grid (cubes of c mm). Each step of
 // the path moves the cells of the unit, and counts the cells that another unit fills. Cells that
@@ -1673,10 +1675,10 @@ function explodePlan(geos, items, len) {
     for (const [lo, hi] of spans) if (lo <= t && hi > t) t = hi;
     return Math.min(t, len * 3);
   };
-  // free is true when the path of u along v for the distance d meets no wall of another unit and
-  // stays over the floor. The unit is out of filled during the test.
-  const free = (u, v, d) => {
-    if (u.box[2] + u.move[2] + Math.min(0, v[2] * d) < floor - c) return false;
+  // freeFor is the distance that u goes along v (at most d) before it meets a wall of another
+  // unit or the floor. The unit is out of filled during the test.
+  const freeFor = (u, v, d) => {
+    if (v[2] < 0) d = Math.min(d, (u.box[2] + u.move[2] - floor + c) / -v[2]);
     const own = u.cells, step = Math.max(1, Math.ceil(own.length / 8000));
     const hits = (sh) => {
       let hit = 0;
@@ -1685,15 +1687,17 @@ function explodePlan(geos, items, len) {
     };
     const start = hits(cellsAt(u));
     const tol = Math.max(2, Math.ceil(own.length / step / 100));
-    let last = "";
+    let last = "", ok = 0;
     for (let t = c * 0.5; t <= d + c * 0.5; t += c * 0.5) {
       const sh = [0, 1, 2].map((x) => Math.round((u.move[x] + v[x] * Math.min(t, d)) / c));
       const k = sh.join();
-      if (k === last) continue;
-      last = k;
-      if (hits(sh) > start + tol) return false;
+      if (k !== last) {
+        last = k;
+        if (hits(sh) > start + tol) return ok;
+      }
+      ok = Math.min(t, d);
     }
-    return true;
+    return d;
   };
   const left = units.filter((u) => u.dir).reverse();
   const stages = [];
@@ -1703,21 +1707,33 @@ function explodePlan(geos, items, len) {
       const l = Math.hypot(...u.dir), v0 = u.dir.map((x) => x / l);
       add(u, false);
       const near = touching(u);
-      let ok = false;
+      const from = u.move.slice();
+      let path = null;
       // The direction of the unit, and then the same direction turned more and more up.
       for (const up of [0, 0.5, 1, 2, 4]) {
         const w = [v0[0], v0[1], v0[2] + up], wl = Math.hypot(...w), v = w.map((x) => x / wl);
         // A unit that is clear already moves out by two gaps.
         const d = Math.max(travel(u, v, near), gap * 2);
-        if (free(u, v, d)) {
-          u.move = u.move.map((x, k) => x + v[k] * d);
-          ok = true;
+        if (freeFor(u, v, d) >= d) {
+          path = [from.map((x, k) => x + v[k] * d)];
           break;
         }
       }
+      // Else a slide along the direction as far as it is free, and then up: for example a panel
+      // with hooks under lugs.
+      if (!path && v0[2] < 0.9) {
+        const s1 = freeFor(u, v0, Math.max(travel(u, v0, near), gap * 2)) - c * 0.5;
+        if (s1 > c) {
+          u.move = from.map((x, k) => x + v0[k] * s1);
+          const upv = [0, 0, 1], d2 = Math.max(travel(u, upv, near), gap * 2);
+          if (freeFor(u, upv, d2) >= d2) path = [u.move.slice(), u.move.map((x, k) => x + upv[k] * d2)];
+          u.move = from;
+        }
+      }
+      if (path) u.move = path[path.length - 1];
       add(u, true);
-      if (!ok) continue;
-      stages.push({ indexes: u.indexes, move: u.move.slice() });
+      if (!path) continue;
+      stages.push({ indexes: u.indexes, path: [from, ...path], move: u.move.slice() });
       left.splice(left.indexOf(u), 1);
       done = true;
       break;
@@ -1797,15 +1813,29 @@ async function inspect(box, opts) {
   const planMs = Math.round(performance.now() - t0);
   const byIndex = new Map(meshes.map((m) => [m.userData.index, m]));
   let exploded = 0, cutAt = 1, picked = -1;
+  // along is the point at the part f (0 to 1) of the length of a path of points.
+  const along = (pts, f) => {
+    const lens = pts.slice(1).map((q, i) => Math.hypot(q[0] - pts[i][0], q[1] - pts[i][1], q[2] - pts[i][2]));
+    let left = f * lens.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < lens.length; i++) {
+      if (left <= lens[i] || i === lens.length - 1) {
+        const t = lens[i] ? Math.min(1, left / lens[i]) : 1;
+        return pts[i].map((x, k) => x + (pts[i + 1][k] - x) * t);
+      }
+      left -= lens[i];
+    }
+    return pts[0];
+  };
   const place = () => {
     for (const m of meshes) m.position.set(0, 0, 0);
     const x = exploded * stages.length;
     stages.forEach((st, k) => {
       const f = Math.max(0, Math.min(1, x - k));
       const e = f * f * (3 - 2 * f); // a soft start and stop
+      const p = along(st.path, e);
       for (const n of st.indexes) {
         const m = byIndex.get(n);
-        if (m) m.position.set(st.move[0] * e, st.move[1] * e, st.move[2] * e);
+        if (m) m.position.set(p[0], p[1], p[2]);
       }
     });
     scene.updateMatrixWorld(true);
