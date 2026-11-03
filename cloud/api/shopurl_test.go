@@ -2,6 +2,7 @@ package api
 
 import (
 	"testing"
+	"time"
 
 	"printdeck/internal/cloud"
 )
@@ -31,5 +32,19 @@ func TestShopLinks(t *testing.T) {
 	got := shopLinks(in)
 	if len(got) != 2 || got[0].Label != "2.85 mm" || got[1].URL != "https://shop.example/c" {
 		t.Errorf("shopLinks = %+v", got)
+	}
+}
+
+// Two runs can end in another order than their pushes: the run number decides.
+func TestPlanNewer(t *testing.T) {
+	now := time.Now()
+	old := &PlanRecord{Repo: "o/r", RunID: "100", Created: now.Add(time.Minute)} // ended last
+	newer := &PlanRecord{Repo: "o/r", RunID: "101", Created: now}
+	if !planNewer(newer, old) || planNewer(old, newer) {
+		t.Error("the plan of the later run is not newer")
+	}
+	a, b := &PlanRecord{Repo: "o/r", Created: now}, &PlanRecord{Repo: "o/r", Created: now.Add(-time.Minute)}
+	if !planNewer(a, b) {
+		t.Error("plans with no run number do not go by time")
 	}
 }

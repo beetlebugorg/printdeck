@@ -34,8 +34,9 @@ func partsPlan(v *wire.ProjectView) *wire.ProjectPlan {
 		if !p.Ready || len(p.Parts) == 0 {
 			continue
 		}
-		if best == nil || (p.Kind == wire.BuildMain) != (best.Kind == wire.BuildMain) && p.Kind == wire.BuildMain ||
-			(p.Kind == wire.BuildMain) == (best.Kind == wire.BuildMain) && p.Created.After(best.Created) {
+		// The plans come newest first (the order of the pushes), so the first plan of the
+		// default branch wins.
+		if best == nil || p.Kind == wire.BuildMain && best.Kind != wire.BuildMain {
 			best = p
 		}
 	}

@@ -566,7 +566,7 @@ func (s *Server) planDone(ctx context.Context, p *Project, c *GitHubClaims, id s
 	if err := s.putJSON(ctx, planKey(p.ID, id), rec); err != nil {
 		return nil, err
 	}
-	if rec.Kind == cloud.BuildMain {
+	if rec.Kind == cloud.BuildMain && s.newestMain(ctx, p, rec) {
 		if err := s.setCover(ctx, p, rec); err != nil {
 			return nil, err
 		}
@@ -594,7 +594,7 @@ func (s *Server) replaceOlder(ctx context.Context, p *Project, rec *PlanRecord) 
 	}
 	older := map[string]*PlanRecord{}
 	for _, o := range plans {
-		if o.ID != rec.ID && o.Kind == rec.Kind && o.PR == rec.PR && o.Branch == rec.Branch && o.Created.Before(rec.Created) {
+		if o.ID != rec.ID && o.Kind == rec.Kind && o.PR == rec.PR && o.Branch == rec.Branch && planNewer(rec, o) {
 			older[o.ID] = o
 		}
 	}
@@ -642,7 +642,7 @@ func (s *Server) replaceByBuild(ctx context.Context, p *Project, plan *PlanRecor
 	same := map[string]bool{}
 	for _, o := range plans {
 		if o.ID == plan.ID || o.Kind == plan.Kind && o.PR == plan.PR && o.Branch == plan.Branch && o.Tag == plan.Tag &&
-			!o.Created.After(plan.Created) {
+			!planNewer(o, plan) {
 			same[o.ID] = true
 		}
 	}
@@ -940,8 +940,35 @@ func (s *Server) loadPlans(ctx context.Context, project string) ([]*PlanRecord, 
 			out = append(out, &rec)
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Created.After(out[j].Created) })
+	sort.SliceStable(out, func(i, j int) bool { return planNewer(out[i], out[j]) })
 	return out, nil
+}
+
+// planNewer is true when the plan a is of a newer push than b. Two runs of the Action can end in
+// another order than their pushes, so the plans go by the number of the run on GitHub: a later
+// run has a larger number, and a run again of an old run keeps its number. Plans with no number
+// go by their time.
+func planNewer(a, b *PlanRecord) bool {
+	ra, ea := strconv.ParseInt(a.RunID, 10, 64)
+	rb, eb := strconv.ParseInt(b.RunID, 10, 64)
+	if ea == nil && eb == nil && ra != rb && strings.EqualFold(a.Repo, b.Repo) && a.Fork == b.Fork {
+		return ra > rb
+	}
+	return a.Created.After(b.Created)
+}
+
+// newestMain is true when rec is the newest ready plan of the default branch of the project.
+func (s *Server) newestMain(ctx context.Context, p *Project, rec *PlanRecord) bool {
+	plans, err := s.loadPlans(ctx, p.ID)
+	if err != nil {
+		return true
+	}
+	for _, o := range plans {
+		if o.ID != rec.ID && o.Ready && o.Kind == cloud.BuildMain && planNewer(o, rec) {
+			return false
+		}
+	}
+	return true
 }
 
 // loadBuilds returns the builds of the project, the newest first.
