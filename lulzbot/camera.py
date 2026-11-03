@@ -1,8 +1,12 @@
-"""A Logitech C270 webcam on the printer frame, aimed at the bed from the front right and above, near
-the isometric view of live.py (key i). There is one mount for each printer. Each mount holds to the
-frame with no drilling, and holds the camera on a short arm. Each mount is two printed parts, and
-each part prints with no supports: the clamp on the frame, and the arm with the hinge (see "the
-mount" below).
+"""The webcam mount on the printer frame, aimed at the bed from the front right and above, near the
+isometric view of live.py (key i). The camera is an Arducam B0561 (camera_models.py). It hangs in its U
+bracket under a printed link, and the tongue of the link is on the hinge of the arm. The arm was made
+first for a Logitech C270 webcam, so this module keeps the C270 model: the hinge, the lugs, and the
+cuts of the arm come from it. The text below tells how the C270 goes on the arm.
+
+There is one mount for each printer. Each mount holds to the frame with no drilling, and holds the
+camera on a short arm. Each mount is three printed parts, and each part prints with no supports: the
+clamp on the frame, the arm with the hinge (see "the mount" below), and the link of camera_models.py.
 
 - TAZ Workhorse: the clamp is a saddle on the front right upright (2020 extrusion), under the corner
   plate. A key goes into the front slot and a key goes into the right slot, so the saddle fits only
