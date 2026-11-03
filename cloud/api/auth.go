@@ -59,7 +59,9 @@ type Session struct {
 	Project string            `json:"p,omitempty"`
 	Member  string            `json:"m,omitempty"`
 	Expires int64             `json:"e"` // Unix seconds
-	// Key is the passkey file of an owner session. A deleted passkey ends its sessions.
+	// Key is the passkey file of the session. A deleted passkey of the owner ends its sessions.
+	// For a member, the service reads the projects from the file at each request, so a project
+	// that the owner adds the member to shows with no new sign-in (knownpeople.go).
 	Key string `json:"key,omitempty"`
 }
 
@@ -212,9 +214,28 @@ func (s *Server) session(ctx context.Context, r *http.Request) (*Session, error)
 	if !s.ownerKeyLive(ctx, &ss) {
 		return nil, fail(http.StatusUnauthorized, "the passkey of this session was removed: sign in again")
 	}
+	s.memberProjects(ctx, &ss)
 	// A member that the owner removed has no access to the project, even with a session: each
 	// request on a project checks the member in the project (whoFor).
 	return &ss, nil
+}
+
+// memberProjects sets the projects of the member session ss from its passkey file. A passkey
+// file that is gone, or a session from before Session.Key, keeps the projects of the session.
+// Each request on a project still checks the member in the project (whoFor).
+func (s *Server) memberProjects(ctx context.Context, ss *Session) {
+	if ss.Kind != KindMember || !strings.HasPrefix(ss.Key, "members/") {
+		return
+	}
+	b, _, err := s.Store.Get(ctx, ss.Key)
+	if err != nil {
+		return
+	}
+	var k Passkey
+	if json.Unmarshal(b, &k) != nil {
+		return
+	}
+	ss.Members, ss.Project, ss.Member = k.session().Members, "", ""
 }
 
 // webAuthn returns the WebAuthn settings of the service: the domain of the links is the ID of the
@@ -482,7 +503,8 @@ func (s *Server) routeAuth(ctx context.Context, r *http.Request, body []byte, re
 		if err := s.join(ctx, in.Code, inv, cred, clip(in.Name, 40)); err != nil {
 			return nil, err
 		}
-		return s.newSession(ctx, Session{Kind: KindMember, Members: map[string]string{inv.Project: inv.Member}})
+		return s.newSession(ctx, Session{Kind: KindMember, Members: map[string]string{inv.Project: inv.Member},
+			Key: memberKeyFile(cred.ID)})
 	case "login/begin":
 		opts, sd, err := wa.BeginDiscoverableLogin(webauthn.WithUserVerification(protocol.VerificationPreferred))
 		if err != nil {
@@ -549,6 +571,7 @@ func (s *Server) routeAuth(ctx context.Context, r *http.Request, body []byte, re
 		}
 		if strings.HasPrefix(file, "members/") {
 			ss := found.session()
+			ss.Key = file
 			if len(ss.Members) == 0 {
 				return nil, fail(http.StatusUnauthorized, "this passkey is in no project now: ask for a new invite")
 			}

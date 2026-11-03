@@ -1280,6 +1280,9 @@ func (a *app) drawPeople(v *wire.ProjectView) {
 	setHidden("pPeopleEdit", !v.IsOwner)
 	setText("pPeopleEdit", map[bool]string{true: "Done", false: "Edit"}[edit])
 	setHidden("peopleInviteForm", !edit)
+	if v.IsOwner {
+		go a.loadKnown(v.ID, false)
+	}
 	row := func(name, role string) (js.Value, js.Value) {
 		li := el("li", "", "")
 		li.Call("appendChild", face(name, "sm"))

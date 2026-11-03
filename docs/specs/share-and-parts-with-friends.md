@@ -149,6 +149,13 @@ The owner adds a passkey for each device in the same way. `pwf owners list` and
 A passkey of a friend works for the projects of that friend only. To remove a friend, the owner
 removes the member. The API deletes the public key of the passkey.
 
+**A friend from another project.** Under the invite form, the owner sees a key for each member
+of the other projects, for example "+ Sam". The key adds Sam to the project with no invite:
+the API adds the project to the passkey files of Sam, and adds Sam as a member with the same
+passkeys. A member session has its passkey file, and the API reads the projects of the member
+from the file at each request. So Sam sees the new project with no new sign-in. A session from
+before this change sees it after the next sign-in.
+
 **Sessions.** A session token is an ID, an expire time and an HMAC of both, signed with a key
 of the service. The key is in Secrets Manager, as `relay_secret` is for the relay. The deck
 does not have it. A session lasts 14 days. The page keeps the token in `localStorage`, so it

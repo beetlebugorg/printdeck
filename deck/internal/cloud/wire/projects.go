@@ -77,6 +77,23 @@ type ProjectSummary struct {
 	Cover string `json:"cover,omitempty"`
 }
 
+// KnownPerson is a member of another project of the owner. The owner adds the person to a
+// project with no invite (MemberAdd). Project and Member are a project of the person and the
+// member in it. Projects are the names of the projects of the person.
+type KnownPerson struct {
+	Project  string   `json:"project"`
+	Member   string   `json:"member"`
+	Name     string   `json:"name"`
+	Projects []string `json:"projects"`
+}
+
+// MemberAdd is the request POST /api/v1/projects/<id>/members: the member Member of the project
+// Project joins the project id with the same passkeys.
+type MemberAdd struct {
+	Project string `json:"project"`
+	Member  string `json:"member"`
+}
+
 // PublicProject is a public project in the list of the public projects, p/index.json. The home
 // page shows the list to each visitor. Cover is the path of the cover picture relative to
 // /p/<slug>/, or "".

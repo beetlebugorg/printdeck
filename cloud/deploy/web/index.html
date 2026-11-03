@@ -226,6 +226,10 @@
             <input id="peopleInviteName" maxlength="40" placeholder="First name of a friend" aria-label="First name of a friend" required>
             <button type="submit">Invite</button>
           </form>
+          <div class="known" id="peopleKnown" hidden>
+            <p class="small dim">Or add a friend from your other projects. They need no invite.</p>
+            <div class="knownlist" id="peopleKnownList"></div>
+          </div>
           <div class="linkbox" id="peopleInviteBox" hidden>
             <p class="small">Send this link to <span id="peopleInviteWho"></span>. It works once, for 7 days.</p>
             <code id="peopleInviteLink"></code>
@@ -312,6 +316,10 @@
           <input id="inviteName" maxlength="40" placeholder="First name of a friend" aria-label="First name of a friend" required>
           <button type="submit">Make invite</button>
         </form>
+        <div class="known" id="inviteKnown" hidden>
+          <p class="small dim">Or add a friend from your other projects. They need no invite.</p>
+          <div class="knownlist" id="inviteKnownList"></div>
+        </div>
         <div class="linkbox" id="inviteBox" hidden>
           <p class="small">Send this link to <span id="inviteWho"></span>. It works once, for 7 days.</p>
           <code id="inviteLink"></code>

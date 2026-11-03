@@ -37,6 +37,10 @@ type app struct {
 	planProcess string              // the kind of print of the plan page: "fdm" or "resin"
 	lastBuild   wire.ProjectBuild   // the build of the build page
 	peopleEdit  bool                // the card People shows the keys to invite and remove people
+	// The members of the other projects of the owner, for the project knownFor: the owner adds
+	// them with no invite.
+	known    []wire.KnownPerson
+	knownFor string
 	tab         string              // the tab of the project page: "overview", "prints", "photos" or "settings"
 	plateViews  map[string]js.Value // the 3D view of each plate of the build page (plateView)
 	plateBuild  string              // the build of plateViews
@@ -1047,6 +1051,9 @@ func (a *app) drawProject() {
 		setText("pNotesEdit", "Edit the notes")
 	}
 	setHidden("ownerTools", !v.IsOwner)
+	if v.IsOwner {
+		go a.loadKnown(v.ID, false)
+	}
 	setHidden("dangerZone", !v.IsOwner)
 	setHidden("memberList", v.IsOwner || len(v.Members) == 0)
 	// The members: the owner sees each with Remove; a member sees the names.
@@ -1225,6 +1232,63 @@ func (a *app) inviteFrom(prefix, msg string) {
 	a.reload()
 }
 
+// loadKnown reads the members of the other projects of the owner for the project id, once for
+// each project or again with again, and shows them under the invite forms.
+func (a *app) loadKnown(id string, again bool) {
+	if a.knownFor == id && !again {
+		a.drawKnown()
+		return
+	}
+	a.knownFor, a.known = id, nil
+	var list []wire.KnownPerson
+	if err := a.api("GET", "/projects/"+id+"/people", nil, &list); err != nil {
+		list = nil
+	}
+	if a.knownFor != id {
+		return // another project opened
+	}
+	a.known = list
+	a.drawKnown()
+}
+
+// drawKnown shows a key for each member of the other projects of the owner: under the invite
+// form of the card People while it edits, and under the invite form of Settings.
+func (a *app) drawKnown() {
+	for _, f := range []struct{ prefix, msg string }{{"people", "peopleMsg"}, {"invite", "ownerToolsMsg"}} {
+		box := byID(f.prefix + "KnownList")
+		box.Set("textContent", "")
+		for _, p := range a.known {
+			b := el("button", "", "+ "+p.Name)
+			b.Set("type", "button")
+			b.Set("title", "A member of "+strings.Join(p.Projects, ", "))
+			person, msg := p, f.msg
+			b.Call("addEventListener", "click", js.FuncOf(func(js.Value, []js.Value) any {
+				go a.addKnown(person, msg)
+				return nil
+			}))
+			box.Call("appendChild", b)
+		}
+	}
+	none := len(a.known) == 0 || a.view == nil || !a.view.IsOwner
+	setHidden("peopleKnown", none || !a.peopleEdit)
+	setHidden("inviteKnown", none)
+}
+
+// addKnown adds the member p of another project to the project, with no invite. msg is the line
+// of the messages.
+func (a *app) addKnown(p wire.KnownPerson, msg string) {
+	id := a.view.ID
+	var v wire.ProjectView
+	if err := a.api("POST", "/projects/"+id+"/members", wire.MemberAdd{Project: p.Project, Member: p.Member}, &v); err != nil {
+		say(msg, err, "")
+		return
+	}
+	a.view = &v
+	a.drawProject()
+	a.loadKnown(id, true)
+	say(msg, nil, p.Name+" is a member of this project now.")
+}
+
 // removeMember removes the member id from the project. With data, the service also deletes the
 // photos of the member and puts "A former member" in place of the name on the notes.
 func (a *app) removeMember(id, name string, data bool) {
@@ -1245,6 +1309,7 @@ func (a *app) removeMember(id, name string, data bool) {
 	}
 	a.view = &v
 	a.drawProject()
+	a.loadKnown(v.ID, true)
 }
 
 func (a *app) togglePublic() {

@@ -34,6 +34,11 @@ input:not([type]), input[type="text"] { font: 400 16px/1.4 "Archivo", sans-serif
 .file { display: flex; }
 .file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .file span { flex: 1; }
+.known { display: grid; gap: var(--s2); }
+.known[hidden] { display: none; }
+.known p { margin: 0; }
+.knownlist { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.knownlist button { min-height: 36px; padding: 0 14px; border-radius: 999px; font-size: 14px; }
 .linkbox { display: grid; gap: var(--s3); background: var(--lcd); color: var(--lcd-ink); border-radius: 10px; padding: var(--s4); }
 .linkbox code { font: 500 13px/1.4 "IBM Plex Mono", monospace; overflow-wrap: anywhere; }
 .linkbox button { background: var(--cap); }

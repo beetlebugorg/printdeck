@@ -373,6 +373,23 @@ func (s *Server) routeProjects(ctx context.Context, r *http.Request, body []byte
 		var in cloud.InviteRequest
 		json.Unmarshal(body, &in)
 		return s.newInvite(ctx, id, clip(in.Name, 40))
+	case action == "people" && r.Method == http.MethodGet:
+		if err := ownerOnly(w); err != nil {
+			return nil, err
+		}
+		return s.knownPeople(ctx, p)
+	case action == "members" && r.Method == http.MethodPost:
+		if err := ownerOnly(w); err != nil {
+			return nil, err
+		}
+		var in cloud.MemberAdd
+		if json.Unmarshal(body, &in) != nil {
+			return nil, fail(http.StatusBadRequest, "bad JSON")
+		}
+		if err := s.addKnown(ctx, id, in); err != nil {
+			return nil, err
+		}
+		return s.afterChange(ctx, id, w)
 	case part == "members" && sub != "" && r.Method == http.MethodPatch:
 		if err := ownerOnly(w); err != nil {
 			return nil, err
