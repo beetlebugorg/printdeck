@@ -205,7 +205,8 @@ func materialWord(pp wire.ProjectPlanPart) string {
 	return "filament"
 }
 
-// partFacts is the line of facts of a part: the printer, the material, the size and the count.
+// partFacts is the line of facts of a part: the printer, the material, the size, the count, and
+// the print time and the filament of one copy.
 func partFacts(pl *wire.ProjectPlan, pp wire.ProjectPlanPart) string {
 	var f []string
 	f = append(f, printerName(pp.Printer))
@@ -219,6 +220,9 @@ func partFacts(pl *wire.ProjectPlan, pp wire.ProjectPlanPart) string {
 	}
 	if pp.Count > 1 {
 		f = append(f, fmt.Sprintf("%d copies", pp.Count))
+	}
+	if t := sliceFacts(pp.Seconds, pp.Grams, pp.ML); t != "" {
+		f = append(f, strings.Split(t[3:], " · ")...)
 	}
 	return strings.Join(f, " · ")
 }

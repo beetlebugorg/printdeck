@@ -200,8 +200,9 @@ footer { display: grid; gap: var(--s1); margin-top: var(--s4); padding-top: var(
 .plate li { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .plate select { min-height: 40px; font: 500 14px "Archivo", sans-serif; border-radius: 8px; border: 1px solid var(--seam);
   background: var(--plate); color: var(--ink); padding: 0 8px; }
-.plate .warn { color: #b3261e; font-weight: 600; font-size: 14px; }
-@media (prefers-color-scheme: dark) { .plate .warn { color: #ff8a80; } }
+.plate .warn, #plParts .warn { color: #b3261e; font-weight: 600; font-size: 14px; }
+#plParts .warn { display: block; }
+@media (prefers-color-scheme: dark) { .plate .warn, #plParts .warn { color: #ff8a80; } }
 pre.cmd { margin: 0; padding: 10px 12px; border-radius: 8px; background: #15161a; color: #f3f1ec; overflow-x: auto;
   font: 13px "IBM Plex Mono", monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 /* The G-code preview of a plate (viewer3d.js showGcode). */

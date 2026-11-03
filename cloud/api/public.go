@@ -324,7 +324,9 @@ func (s *Server) publishRepo(ctx context.Context, p *Project, dst string, view *
 		part := cloud.ProjectPlanPart{PlanPart: cloud.PlanPart{Name: pp.Name, Variant: pp.Variant, Files: pp.Files,
 			Count: pp.Count, Printer: pp.Printer, Process: pp.Process, MaterialName: pp.MaterialName,
 			MaterialColor: pp.MaterialColor, MaterialURL: pp.MaterialURL, MaterialLinks: pp.MaterialLinks, Description: pp.Description, Group: pp.Group, Models: pp.Models,
-			SizeX: pp.SizeX, SizeY: pp.SizeY, SizeZ: pp.SizeZ}}
+			SizeX: pp.SizeX, SizeY: pp.SizeY, SizeZ: pp.SizeZ,
+			// The facts of the slice of the plan. The slice file stays private.
+			Seconds: pp.Seconds, Grams: pp.Grams, ML: pp.ML, Layers: pp.Layers, LayerHeight: pp.LayerHeight}}
 		for _, m := range pp.Models {
 			part.ModelURLs = append(part.ModelURLs, add(m))
 		}

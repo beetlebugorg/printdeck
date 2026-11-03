@@ -5,11 +5,14 @@ import "time"
 // The plans and the builds of a project from its GitHub repository (docs/specs/github-builds.md).
 //
 //   - At each push, an Action of the repository uploads a plan with an OIDC token of GitHub: the
-//     parts of printdeck.yml, their models, and the parts that changed. It slices nothing.
+//     parts of printdeck.yml, their models, the parts that changed, and the slice of each part
+//     alone.
 //   - On the plan page, the owner chooses the parts and puts them on plates. Slice makes a build
-//     of the plan with the plates.
-//   - The slice run of the Action gets the plates of the build, slices each plate, and uploads
-//     the files. The owner checks the preview of each plate, and approves it or rejects it.
+//     of the plan with the plates. A plate with one part and a count of 1 gets the slice of the
+//     plan.
+//   - The slice run of the Action gets the other plates of the build, slices each plate, and
+//     uploads the files. The owner checks the preview of each plate, and approves it or rejects
+//     it.
 
 // PlanManifest is the body of POST /api/v1/plans: the parts of the commit. The token of GitHub
 // gives the repository, the ref and the commit. Commit is the head commit of a pull request,
@@ -124,6 +127,21 @@ type PlanPart struct {
 	BedX   float64 `json:"bed_x,omitempty"`
 	BedY   float64 `json:"bed_y,omitempty"`
 	Margin float64 `json:"margin,omitempty"`
+	// The plan run slices each part alone, with a count of 1. Seconds, Grams (or ML for resin),
+	// Layers, LayerHeight and Slicer are the facts of that slice. SliceFile is the name of its
+	// file in the plan, with its size and SHA-256. A plate with this part alone and a count of 1
+	// gets a copy of the file, and needs no slice run. SliceError is the error of a part that
+	// does not slice: it cannot go on a plate. An older Action sends none of them.
+	Seconds     int     `json:"seconds,omitempty"`
+	Grams       float64 `json:"grams,omitempty"`
+	ML          float64 `json:"ml,omitempty"`
+	Layers      int     `json:"layers,omitempty"`
+	LayerHeight float64 `json:"layer_height,omitempty"`
+	Slicer      string  `json:"slicer,omitempty"`
+	SliceFile   string  `json:"slice_file,omitempty"`
+	SliceSize   int64   `json:"slice_size,omitempty"`
+	SliceSHA256 string  `json:"slice_sha256,omitempty"`
+	SliceError  string  `json:"slice_error,omitempty"`
 }
 
 // UploadReply is the reply to the upload of a plan or of the files of a build: the ID, the page,
@@ -240,18 +258,23 @@ type BuildPlate struct {
 	Layers        int            `json:"layers,omitempty"`
 	LayerHeight   float64        `json:"layer_height,omitempty"`
 	Slicer        string         `json:"slicer,omitempty"`
+	// Number is the number of the plate in the build, from 1, in a BuildJob. Reused is true for a
+	// plate with the file of the plan (see PlanPart.SliceFile): the slice run does not slice it.
+	Number int  `json:"number,omitempty"`
+	Reused bool `json:"reused,omitempty"`
 }
 
 // BuildJob is the reply to GET /api/v1/builds/<id> for the slice run: the commit of the plan, and
-// the plates with the names of their parts in printdeck.yml.
+// the plates with the names of their parts in printdeck.yml. It has only the plates to slice: a
+// plate with the file of the plan is not in it.
 type BuildJob struct {
 	ID     string       `json:"id"`
 	Commit string       `json:"commit"`
 	Plates []BuildPlate `json:"plates"`
 }
 
-// BuildFiles is the body of POST /api/v1/builds/<id>/files: the plates of the job, in the same
-// order, with their files and the facts of the slice.
+// BuildFiles is the body of POST /api/v1/builds/<id>/files: the plates of the job (the plates to
+// slice), in the same order, with their files and the facts of the slice.
 type BuildFiles struct {
 	Plates []BuildPlate `json:"plates"`
 }

@@ -68,6 +68,9 @@ func planFiles(rec *PlanRecord) map[string]bool {
 		for _, m := range pp.Models {
 			want[m] = true
 		}
+		if pp.SliceFile != "" {
+			want[pp.SliceFile] = true
+		}
 	}
 	for _, a := range rec.Assemblies {
 		for _, it := range a.Items {
