@@ -230,6 +230,12 @@ func TestPlanFlow(t *testing.T) {
 	if st := call(t, base, "POST", pl+"1/reject", tok, cloud.BuildDecision{Reason: "The feet need a chamfer."}, nil); st != 200 {
 		t.Fatalf("reject: %d", st)
 	}
+	// A slice run cannot change a ready build: the owner approved its files.
+	for _, a := range []string{"failed", "started", "done", "files"} {
+		if st := call(t, base, "POST", "/api/v1/builds/"+pb.ID+"/"+a, token, files, nil); st != 409 {
+			t.Errorf("%s on a ready build: %d", a, st)
+		}
+	}
 	var v cloud.ProjectView
 	call(t, base, "GET", "/api/v1/projects/"+sum.ID, sam, nil, &v)
 	// The newest build is first: the build of the owner, after the build of the member.
@@ -289,6 +295,10 @@ func (r *recordDispatch) Comment(_ context.Context, repo string, pr int, id int6
 	}
 	r.comments[id] = fmt.Sprintf("%s#%d\n%s", repo, pr, body)
 	return id, nil
+}
+
+func (r *recordDispatch) DefaultBranch(_ context.Context, repo string) (string, error) {
+	return "main", nil
 }
 
 func (r *recordDispatch) PullState(_ context.Context, repo string, pr int) (string, error) {
@@ -485,7 +495,7 @@ func TestGitHubOIDC(t *testing.T) {
 	v := &GitHubOIDC{Issuer: issuer}
 	ctx := context.Background()
 	c, err := v.Verify(ctx, sign("printdeck.beetlebug.org", key), "printdeck.beetlebug.org")
-	if err != nil || c.Repository != "beetlebugorg/bittlex" || c.Ref != "refs/heads/main" || c.ID != "j1" || sliceRun(c) != nil {
+	if err != nil || c.Repository != "beetlebugorg/bittlex" || c.Ref != "refs/heads/main" || c.ID != "j1" || sliceRun(c, "") != nil {
 		t.Fatalf("a good token: %+v %v", c, err)
 	}
 	if _, err := v.Verify(ctx, sign("elsewhere.org", key), "printdeck.beetlebug.org"); err == nil {
@@ -494,5 +504,30 @@ func TestGitHubOIDC(t *testing.T) {
 	other, _ := rsa.GenerateKey(rand.Reader, 2048)
 	if _, err := v.Verify(ctx, sign("printdeck.beetlebug.org", other), "printdeck.beetlebug.org"); err == nil {
 		t.Error("a token of another key")
+	}
+}
+
+// Only the default branch of the repository makes plans of the default branch and slices builds.
+// A branch named master in a repository with the default branch main is a plain branch.
+func TestDefaultBranchOnly(t *testing.T) {
+	c := &GitHubClaims{Repository: "o/r", JobWorkflowRef: "o/r/" + SliceWorkflow + "@refs/heads/master"}
+	if sliceRun(c, "main") == nil {
+		t.Error("the workflow on master sliced in a repository with the default branch main")
+	}
+	if sliceRun(c, "master") != nil || sliceRun(c, "") != nil {
+		t.Error("the workflow on the default branch master did not slice")
+	}
+	for _, tc := range []struct {
+		ref, main, kind string
+	}{
+		{"refs/heads/master", "main", cloud.BuildBranch},
+		{"refs/heads/main", "main", cloud.BuildMain},
+		{"refs/heads/trunk", "trunk", cloud.BuildMain},
+		{"refs/heads/master", "", cloud.BuildMain},
+	} {
+		var rec PlanRecord
+		if err := refKind(&rec, tc.ref, tc.main); err != nil || rec.Kind != tc.kind {
+			t.Errorf("refKind(%s, %s) = %s %v, want %s", tc.ref, tc.main, rec.Kind, err, tc.kind)
+		}
 	}
 }

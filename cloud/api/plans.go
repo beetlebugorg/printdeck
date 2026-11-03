@@ -45,6 +45,8 @@ type GitHubAPI interface {
 	Comment(ctx context.Context, repo string, pr int, id int64, body string) (int64, error)
 	// PullState returns the state of the pull request pr of repo: "open", "closed" or "merged".
 	PullState(ctx context.Context, repo string, pr int) (string, error)
+	// DefaultBranch returns the name of the default branch of repo.
+	DefaultBranch(ctx context.Context, repo string) (string, error)
 }
 
 // PlanRecord is x/<project>/plans/<id>.json.
@@ -137,8 +139,12 @@ func (s *Server) routeActions(ctx context.Context, r *http.Request, body []byte,
 		return nil, err
 	}
 	id, action, _ := strings.Cut(rest, "/")
+	branch, err := s.defaultBranch(ctx, p)
+	if err != nil {
+		return nil, err
+	}
 	if kind == "builds" {
-		if err := sliceRun(c); err != nil {
+		if err := sliceRun(c, branch); err != nil {
 			return nil, err
 		}
 	}
@@ -167,6 +173,10 @@ func (s *Server) routeActions(ctx context.Context, r *http.Request, body []byte,
 		b, err := s.actionBuild(ctx, p, c, id)
 		if err != nil {
 			return nil, err
+		}
+		// A ready build keeps its files: the owner may have approved them.
+		if b.State == cloud.BuildReady {
+			return nil, fail(http.StatusConflict, "the build is ready")
 		}
 		if run := strings.TrimSpace(in.RunID); run != "" && len(run) <= 30 && strings.Trim(run, "0123456789") == "" {
 			b.RunID = run
@@ -216,6 +226,9 @@ func (s *Server) routeActions(ctx context.Context, r *http.Request, body []byte,
 		if err != nil {
 			return nil, err
 		}
+		if b.State == cloud.BuildReady {
+			return nil, fail(http.StatusConflict, "the build is ready")
+		}
 		b.State, b.Error = cloud.BuildFailed, clip(strings.TrimSpace(in.Error), 2000)
 		if b.Error == "" {
 			b.Error = "the slice run failed"
@@ -230,7 +243,7 @@ func (s *Server) routeActions(ctx context.Context, r *http.Request, body []byte,
 }
 
 // refKind sets the kind of the plan from the ref of the token.
-func refKind(rec *PlanRecord, ref string) error {
+func refKind(rec *PlanRecord, ref, main string) error {
 	switch {
 	case strings.HasPrefix(ref, "refs/tags/"):
 		rec.Kind, rec.Tag = cloud.BuildRelease, clip(strings.TrimPrefix(ref, "refs/tags/"), 100)
@@ -240,7 +253,7 @@ func refKind(rec *PlanRecord, ref string) error {
 	case strings.HasPrefix(ref, "refs/heads/"):
 		rec.Branch = clip(strings.TrimPrefix(ref, "refs/heads/"), 100)
 		rec.Kind = cloud.BuildBranch
-		if rec.Branch == "main" || rec.Branch == "master" {
+		if main != "" && rec.Branch == main || main == "" && (rec.Branch == "main" || rec.Branch == "master") {
 			rec.Kind = cloud.BuildMain
 		}
 	default:
@@ -261,7 +274,11 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 	if !hexSHA.MatchString(rec.Commit) {
 		return nil, fail(http.StatusBadRequest, "the commit needs 40 hex digits")
 	}
-	if err := refKind(&rec, c.Ref); err != nil {
+	branch, err := s.defaultBranch(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	if err := refKind(&rec, c.Ref, branch); err != nil {
 		return nil, err
 	}
 	if in.PR > 0 && rec.Kind == cloud.BuildTest && in.PR != rec.PR {
@@ -766,6 +783,9 @@ func (s *Server) buildDone(ctx context.Context, p *Project, c *GitHubClaims, id 
 	b, err := s.actionBuild(ctx, p, c, id)
 	if err != nil {
 		return nil, err
+	}
+	if b.State != cloud.BuildSlicing {
+		return nil, fail(http.StatusConflict, "the build is not slicing")
 	}
 	have, err := s.filesIn(ctx, buildDir(p.ID, id))
 	if err != nil {
