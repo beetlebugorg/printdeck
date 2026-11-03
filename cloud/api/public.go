@@ -93,13 +93,15 @@ func (s *Server) publish(ctx context.Context, p *Project) error {
 	if err != nil {
 		return err
 	}
-	view := cloud.ProjectView{Name: p.Name, Note: p.Note, Notes: p.Notes, NotesBy: p.NotesBy, NotesAt: p.NotesAt,
+	// The page has the notes, which the owner chose to publish, and no names of members.
+	view := cloud.ProjectView{Name: p.Name, Note: p.Note, Notes: p.Notes, NotesAt: p.NotesAt,
 		Owner: s.ownerName(ctx), Created: p.Created, Changed: p.Changed,
 		Prints: []cloud.ProjectPrint{}, Photos: []cloud.ProjectPhoto{}}
 	want := map[string]string{} // the copy and its source
 	for _, pr := range prints {
 		pp := projectPrint(pr)
 		pp.File, pp.Roll = "", "" // the names of the files and the rolls stay private
+		pp.NotesBy = ""
 		src := "x/" + p.ID + "/prints/" + pr.ID + "/"
 		rel := "prints/" + pr.ID + "/"
 		if pr.Model {
@@ -127,7 +129,7 @@ func (s *Server) publish(ctx context.Context, p *Project) error {
 		src := "x/" + p.ID + "/photos/" + ph.ID
 		rel := "photos/" + ph.ID
 		want[dst+rel+".jpg"], want[dst+rel+"-s.jpg"] = src+".jpg", src+"-s.jpg"
-		view.Photos = append(view.Photos, cloud.ProjectPhoto{ID: ph.ID, By: ph.By, Added: ph.Added, URL: rel + ".jpg",
+		view.Photos = append(view.Photos, cloud.ProjectPhoto{ID: ph.ID, Added: ph.Added, URL: rel + ".jpg",
 			Small: rel + "-s.jpg", W: ph.W, H: ph.H, Print: ph.Print})
 	}
 	have, err := s.Store.List(ctx, dst)
