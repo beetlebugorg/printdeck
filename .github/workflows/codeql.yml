@@ -1,0 +1,91 @@
+name: CodeQL
+# A pull request or a push to main scans only the languages of the files it changes. The weekly run
+# and a manual run scan all the languages. A change to this file also scans all of them.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Find the languages to scan
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          all="actions c-cpp go javascript-typescript python swift"
+          # A new branch has no "before" commit: scan all the languages.
+          if [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            langs=$all
+          else
+            files=$(git diff --name-only "$BASE...$HEAD")
+            echo "$files"
+            if echo "$files" | grep -qx '.github/workflows/codeql.yml'; then
+              langs=$all
+            else
+              langs=""
+              has() { echo "$files" | grep -qE "$2" && langs="$langs $1"; true; }
+              has actions '^\.github/'
+              has c-cpp '\.(c|cc|cpp|cxx|h|hh|hpp)$'
+              has go '\.go$|(^|/)go\.(mod|sum)$'
+              has javascript-typescript '\.(js|mjs|cjs|jsx|ts|tsx|html|vue)$'
+              has python '\.py$'
+              has swift '\.swift$|^watch/'
+            fi
+          fi
+          # Go and Swift build with autobuild, and Swift builds on macOS. The others need no build.
+          matrix=$(for l in $langs; do
+            case $l in
+              go) echo '{"language":"go","build-mode":"autobuild","os":"ubuntu-latest"}' ;;
+              swift) echo '{"language":"swift","build-mode":"autobuild","os":"macos-latest"}' ;;
+              *) echo "{\"language\":\"$l\",\"build-mode\":\"none\",\"os\":\"ubuntu-latest\"}" ;;
+            esac
+          done | jq -sc .)
+          echo "languages:$langs"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    needs: changes
+    if: needs.changes.outputs.matrix != '[]'
+    runs-on: ${{ matrix.os }}
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.changes.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v5
+      - if: matrix.language == 'go'
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: cloud/go.mod
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+      - if: matrix.build-mode == 'autobuild'
+        uses: github/codeql-action/autobuild@v4
+      - uses: github/codeql-action/analyze@v4
+        with:
+          # The same category as the default setup, so the open alerts stay the same alerts.
+          category: /language:${{ matrix.language }}
