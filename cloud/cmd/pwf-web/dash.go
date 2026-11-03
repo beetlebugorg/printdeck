@@ -126,7 +126,12 @@ func (a *app) drawHead(v *wire.ProjectView) {
 			people++
 		}
 	}
-	setText("pMeta", "Since "+shortDate(v.Created)+" · "+count(people, "person", "people"))
+	meta := "Since " + shortDate(v.Created) + " · " + count(people, "person", "people")
+	if v.RepoOnly {
+		// A page of a public repository has no people.
+		meta = "Since " + shortDate(v.Created)
+	}
+	setText("pMeta", meta)
 	setHidden("backLink", !v.IsOwner)
 	links := doc.Call("querySelectorAll", "#projHead a[data-tab], #vProject a[data-tab]")
 	for i := 0; i < links.Get("length").Int(); i++ {
@@ -138,6 +143,7 @@ func (a *app) drawHead(v *wire.ProjectView) {
 			l.Set("href", tabPath(v.Slug, tab))
 		}
 	}
+	doc.Get("body").Get("classList").Call("toggle", "repo-only", v.RepoOnly)
 	setText("tbPrintsN", countText(len(v.Prints)))
 	setText("tbPhotosN", countText(len(v.Photos)))
 	pl := partsPlan(v)
@@ -176,6 +182,7 @@ func (a *app) drawDashboard(v *wire.ProjectView, full bool) {
 	a.drawPickup(v)
 	a.drawQueued(v)
 	drawDocs(v)
+	drawCover(v)
 	a.drawGit(v)
 	a.drawPeople(v)
 	drawMosaic(v)
@@ -585,10 +592,20 @@ func (a *app) drawFeed(v *wire.ProjectView) {
 		for j < len(photos) && photos[j].By == photos[i].By && dayKey(photos[j].Added) == dayKey(photos[i].Added) {
 			j++
 		}
-		evs = append(evs, event{photos[i].Added, "photo", photos[i].By + " added " + count(j-i, "photo", "photos"), "", tabPath(v.Slug, "photos")})
+		text := photos[i].By + " added " + count(j-i, "photo", "photos")
+		if photos[i].By == "" {
+			// The public page has no names.
+			text = "New " + count(j-i, "photo", "photos")
+		}
+		evs = append(evs, event{photos[i].Added, "photo", text, "", tabPath(v.Slug, "photos")})
 		i = j
 	}
-	for _, p := range v.Plans {
+	// The plan pages are for the members.
+	plans := v.Plans
+	if a.public != "" {
+		plans = nil
+	}
+	for _, p := range plans {
 		who := ""
 		if p.Author != "" {
 			who = " of @" + p.Author
@@ -615,7 +632,11 @@ func (a *app) drawFeed(v *wire.ProjectView) {
 		}
 	}
 	if !v.NotesAt.IsZero() {
-		evs = append(evs, event{v.NotesAt, "note", v.NotesBy + " changed the notes", "", ""})
+		text := v.NotesBy + " changed the notes"
+		if v.NotesBy == "" {
+			text = "New notes"
+		}
+		evs = append(evs, event{v.NotesAt, "note", text, "", ""})
 	}
 	sort.SliceStable(evs, func(i, j int) bool { return evs[i].at.After(evs[j].at) })
 	if len(evs) > 12 {
@@ -808,6 +829,20 @@ func (a *app) drawQueued(v *wire.ProjectView) {
 // drawDocs draws the card of the PDFs of the project (the docs of printdeck.yml): a tile for each
 // PDF with the picture of its first page, its pages and its size, and the links to the PDF and to
 // the file on GitHub.
+// drawCover shows the cover picture of a public page, from the repository of the project.
+func drawCover(v *wire.ProjectView) {
+	setHidden("pCoverCard", v.Cover == "")
+	img := byID("pCover")
+	if v.Cover == "" {
+		img.Call("removeAttribute", "src")
+		return
+	}
+	if img.Get("src").String() != v.Cover {
+		img.Set("src", v.Cover)
+	}
+	img.Set("alt", "The cover picture of "+v.Name)
+}
+
 func drawDocs(v *wire.ProjectView) {
 	setHidden("pDocsCard", len(v.Docs) == 0)
 	box := byID("pDocs")

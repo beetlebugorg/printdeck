@@ -290,6 +290,10 @@ type recordDispatch struct {
 	pulls map[string]int
 	// states are the states of the pull requests that are not open, by number.
 	states map[int]string
+	// public is the visibility of each repository that Repo returns, and repoErr its error.
+	public  bool
+	repoErr error
+	repos   int // the count of the calls of Repo
 }
 
 func (r *recordDispatch) Comment(_ context.Context, repo string, pr int, id int64, body string) (int64, error) {
@@ -304,7 +308,11 @@ func (r *recordDispatch) Comment(_ context.Context, repo string, pr int, id int6
 }
 
 func (r *recordDispatch) Repo(_ context.Context, repo string) (RepoInfo, error) {
-	return RepoInfo{ID: "42", DefaultBranch: "main"}, nil
+	r.repos++
+	if r.repoErr != nil {
+		return RepoInfo{}, r.repoErr
+	}
+	return RepoInfo{ID: "42", DefaultBranch: "main", Public: r.public}, nil
 }
 
 func (r *recordDispatch) PullState(_ context.Context, repo string, pr int) (string, error) {

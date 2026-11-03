@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"net/http"
 	"net/url"
@@ -277,7 +278,7 @@ func (s *Server) setRepo(ctx context.Context, p *Project, repo string) (*Project
 	}
 	old := p.Repo
 	np, err := s.changeProject(ctx, p.ID, func(q *Project) error {
-		q.Repo, q.RepoID, q.DefaultBranch = repo, "", ""
+		q.Repo, q.RepoID, q.DefaultBranch, q.RepoPublic = repo, "", "", false
 		return nil
 	})
 	if err != nil {
@@ -290,6 +291,10 @@ func (s *Server) setRepo(ctx context.Context, p *Project, repo string) (*Project
 		if err := s.putJSON(ctx, repoKey(repo), repoRecord{Project: p.ID, Repo: repo}); err != nil {
 			return nil, err
 		}
+	}
+	// The public page follows the new link: the content of a public repository, or none.
+	if err := s.refreshPublic(ctx, p.ID); err != nil {
+		return nil, err
 	}
 	return np, nil
 }
@@ -374,6 +379,32 @@ func (s *Server) repoInfo(ctx context.Context, p *Project) (RepoInfo, error) {
 	}
 	p.RepoID, p.DefaultBranch = ri.ID, ri.DefaultBranch
 	return ri, nil
+}
+
+// refreshRepoPublic asks GitHub for the visibility of the repository of p, and keeps it on the
+// project in RepoPublic. A repository with another number than RepoID is not public. An error
+// of GitHub leaves RepoPublic as it was, and goes to the log. With no GitHub App (pwf dev, the
+// tests), RepoPublic stays as it is.
+func (s *Server) refreshRepoPublic(ctx context.Context, p *Project) (*Project, error) {
+	if s.GitHub == nil || p.Repo == "" {
+		return p, nil
+	}
+	repo := p.Repo
+	ri, err := s.GitHub.Repo(ctx, repo)
+	if err != nil {
+		log.Printf("the visibility of %s: %v", repo, err)
+		return p, nil
+	}
+	return s.updateProject(ctx, p.ID, false, func(q *Project) error {
+		if !strings.EqualFold(q.Repo, repo) {
+			return nil
+		}
+		if q.RepoID == "" && q.DefaultBranch == "" {
+			q.RepoID, q.DefaultBranch = ri.ID, ri.DefaultBranch
+		}
+		q.RepoPublic = ri.Public && q.RepoID == ri.ID
+		return nil
+	})
 }
 
 // projectOfRepo returns the project of the repository.

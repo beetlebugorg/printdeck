@@ -192,7 +192,8 @@ func (g *GitHubApp) Dispatch(ctx context.Context, repo, build, title string) err
 	return g.dispatch(ctx, repo, build, title, tok.Token, r.DefaultBranch)
 }
 
-// Repo returns the number and the default branch of repo.
+// Repo returns the number, the default branch and the visibility of repo. A reply with no
+// field "private" or with another visibility than "public" gives a repository that is not public.
 func (g *GitHubApp) Repo(ctx context.Context, repo string) (RepoInfo, error) {
 	token, err := g.installationToken(ctx, repo, map[string]string{"metadata": "read"})
 	if err != nil {
@@ -201,6 +202,8 @@ func (g *GitHubApp) Repo(ctx context.Context, repo string) (RepoInfo, error) {
 	var r struct {
 		ID            int64  `json:"id"`
 		DefaultBranch string `json:"default_branch"`
+		Private       *bool  `json:"private"`
+		Visibility    string `json:"visibility"`
 	}
 	if err := g.call(ctx, http.MethodGet, "/repos/"+repo, token, nil, &r); err != nil {
 		return RepoInfo{}, err
@@ -208,7 +211,8 @@ func (g *GitHubApp) Repo(ctx context.Context, repo string) (RepoInfo, error) {
 	if r.ID == 0 || r.DefaultBranch == "" {
 		return RepoInfo{}, fmt.Errorf("%s has no number or no default branch", repo)
 	}
-	return RepoInfo{ID: strconv.FormatInt(r.ID, 10), DefaultBranch: r.DefaultBranch}, nil
+	return RepoInfo{ID: strconv.FormatInt(r.ID, 10), DefaultBranch: r.DefaultBranch,
+		Public: r.Private != nil && !*r.Private && r.Visibility == "public"}, nil
 }
 
 // dispatch starts the workflow on the branch.

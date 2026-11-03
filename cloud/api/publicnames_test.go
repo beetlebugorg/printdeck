@@ -56,7 +56,7 @@ func TestPublicPageNoNames(t *testing.T) {
 	}
 	var v cloud.ProjectView
 	json.Unmarshal(b, &v)
-	if v.Notes != "Paint it red." || len(v.Prints) != 1 || v.Prints[0].Notes != notes || len(v.Photos) != 1 || v.Repo != "" {
+	if v.Notes != "Paint it red." || len(v.Prints) != 1 || v.Prints[0].Notes != notes || len(v.Photos) != 1 || v.RepoOnly || v.Repo != "" {
 		t.Errorf("the owner's public page: %s", b)
 	}
 	// With no GitHub App, a linked repository is not public: the page has no plans.

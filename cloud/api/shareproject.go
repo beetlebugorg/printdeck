@@ -21,10 +21,10 @@ import (
 // page sends the visitor to the print page of the project.
 
 // shareTarget is the page of the project p for a share: the print page, or the project page
-// before the print is in it. It is the public page when the project has a public address.
+// before the print is in it. It is the public page when the owner's public page is on.
 func (s *Server) shareTarget(ctx context.Context, p *Project, print string) string {
 	u := s.projectURL(p)
-	if p.Public != "" {
+	if ownerPublic(p) {
 		u = s.publicURL(p.Public)
 	}
 	if print != "" {

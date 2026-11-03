@@ -73,3 +73,38 @@ func TestGitHubAppDispatch(t *testing.T) {
 		t.Errorf("a repository with no App: %v", err)
 	}
 }
+
+// Repo gives a public repository only when GitHub says that it is not private and has the
+// visibility "public".
+func TestGitHubAppRepoVisibility(t *testing.T) {
+	key, _ := rsa.GenerateKey(rand.Reader, 2048)
+	reply := ""
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repos/beetlebugorg/bittlex/installation":
+			w.Write([]byte(`{"id": 77}`))
+		case "/app/installations/77/access_tokens":
+			w.Write([]byte(`{"token": "inst-token"}`))
+		case "/repos/beetlebugorg/bittlex":
+			w.Write([]byte(reply))
+		default:
+			http.Error(w, `{"message":"unexpected"}`, 500)
+		}
+	}))
+	defer srv.Close()
+	g := &GitHubApp{AppID: 123, Key: key, API: srv.URL}
+	for in, want := range map[string]bool{
+		`{"id": 9, "default_branch": "main", "private": false, "visibility": "public"}`:   true,
+		`{"id": 9, "default_branch": "main", "private": true, "visibility": "private"}`:   false,
+		`{"id": 9, "default_branch": "main", "private": true, "visibility": "internal"}`:  false,
+		`{"id": 9, "default_branch": "main", "private": false, "visibility": "internal"}`: false,
+		`{"id": 9, "default_branch": "main", "visibility": "public"}`:                     false,
+		`{"id": 9, "default_branch": "main", "private": false}`:                           false,
+	} {
+		reply = in
+		ri, err := g.Repo(context.Background(), "beetlebugorg/bittlex")
+		if err != nil || ri.Public != want || ri.ID != "9" || ri.DefaultBranch != "main" {
+			t.Errorf("%s: %+v %v", in, ri, err)
+		}
+	}
+}

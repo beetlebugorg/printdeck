@@ -32,10 +32,12 @@ import (
 //     x/<project>/builds/<id>/, and sends POST /api/v1/builds/<id>/done (or .../failed).
 //   - The owner approves or rejects each plate of the build.
 
-// RepoInfo is what the service keeps of a repository on GitHub.
+// RepoInfo is what the service keeps of a repository on GitHub. Public is true only when GitHub
+// says that the repository is not private and has the visibility "public".
 type RepoInfo struct {
 	ID            string
 	DefaultBranch string
+	Public        bool
 }
 
 // GitHubAPI is what the service asks GitHub, with its GitHub App (githubapp.go).
@@ -51,7 +53,7 @@ type GitHubAPI interface {
 	Comment(ctx context.Context, repo string, pr int, id int64, body string) (int64, error)
 	// PullState returns the state of the pull request pr of repo: "open", "closed" or "merged".
 	PullState(ctx context.Context, repo string, pr int) (string, error)
-	// Repo returns the number and the default branch of repo.
+	// Repo returns the number, the default branch and the visibility of repo.
 	Repo(ctx context.Context, repo string) (RepoInfo, error)
 }
 
@@ -536,6 +538,11 @@ func (s *Server) planDone(ctx context.Context, p *Project, c *GitHubClaims, id s
 	if rec.Kind == cloud.BuildMain {
 		if err := s.setCover(ctx, p, rec); err != nil {
 			return nil, err
+		}
+		// The public page follows the repository: its visibility and its newest plan. An error
+		// goes to the log. The plan stays ready.
+		if err := s.refreshPublic(ctx, p.ID); err != nil {
+			log.Printf("the public page of %s after the plan %s: %v", p.ID, rec.ID, err)
 		}
 	}
 	if rec.Kind == cloud.BuildTest || rec.Kind == cloud.BuildBranch || rec.Kind == cloud.BuildMain {

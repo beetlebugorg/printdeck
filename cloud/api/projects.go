@@ -62,9 +62,12 @@ type Project struct {
 	// old names.
 	Slug     string   `json:"slug,omitempty"`
 	OldSlugs []string `json:"old_slugs,omitempty"`
-	// Public is the slug of the public address, or "". OldPublic are the old public addresses,
+	// Public is the slug of the public address, or "". The project has a public page when the
+	// owner turns it on, or when Repo is public (RepoPublic). RepoOnly marks a page of the public
+	// repository only: the owner's public page is off. OldPublic are the old public addresses,
 	// with a page that sends the visitor to the new one.
 	Public    string   `json:"public,omitempty"`
+	RepoOnly  bool     `json:"repo_only,omitempty"`
 	OldPublic []string `json:"old_public,omitempty"`
 	// LastPrint is the number of the newest print. Each new print has the next number.
 	LastPrint int `json:"last_print,omitempty"`
@@ -79,6 +82,9 @@ type Project struct {
 	// before the service asks GitHub (repoInfo).
 	RepoID        string `json:"repo_id,omitempty"`
 	DefaultBranch string `json:"default_branch,omitempty"`
+	// RepoPublic is true when GitHub said that Repo is public. The service asks GitHub again at
+	// each ready plan of the default branch and at each change of Repo (refreshRepoPublic).
+	RepoPublic bool `json:"repo_public,omitempty"`
 	// Cover is the key of the cover picture of the newest plan of the default branch, or "".
 	Cover string `json:"cover,omitempty"`
 }
@@ -782,7 +788,7 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 		Changed: p.Changed, IsOwner: w.owner, You: w.member, CanSlice: w.owner || w.slice}
 	if w.owner {
 		v.You = KindOwner
-		if p.Public != "" {
+		if ownerPublic(p) {
 			v.Public = s.publicURL(p.Public)
 		}
 	}

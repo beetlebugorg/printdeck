@@ -149,6 +149,11 @@
           <p class="dim small" id="liveNone" hidden></p>
           <div class="tiles live-tiles" id="live"></div>
         </section>
+        <!-- The cover of printdeck.yml, on a public page of a public repository -->
+        <section class="card cover-card" id="pCoverCard" aria-label="Cover" hidden>
+          <img id="pCover" alt="">
+          <div class="chead"><span class="dim small">The parts, their 3D models and the docs come from the GitHub repository.</span><a class="more" data-tab="parts">The parts →</a></div>
+        </section>
         <section class="card" id="pDocsCard" aria-label="Documents" hidden>
           <div class="chead"><h2>Documents</h2><span class="dim small" id="pDocsSum"></span></div>
           <div class="docs" id="pDocs"></div>
@@ -296,7 +301,7 @@
       </div>
       <div class="card">
         <h2>Public view</h2>
-        <p class="small dim">When this is on, anybody who opens the address of the project sees the prints, the time lapses and the photos. Members who sign in see the full project at the same address. The address has the name of the project, so people can guess it. The public view has no files of the models and no names of members.</p>
+        <p class="small dim">When this is on, anybody who opens the address of the project sees the prints, the time lapses and the photos. Members who sign in see the full project at the same address. The address has the name of the project, so people can guess it. The public view has no names of members. When the GitHub repository is public, the address also shows the parts, their 3D models and the docs of the repository, with this switch on or off.</p>
         <div class="row">
           <button type="button" id="publicBtn" aria-pressed="false">Off</button>
         </div>

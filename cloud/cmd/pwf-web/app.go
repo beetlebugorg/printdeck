@@ -126,7 +126,7 @@ func (a *app) route() {
 	a.playing++
 	a.showWho()
 	a.public = ""
-	doc.Get("body").Get("classList").Call("remove", "public")
+	doc.Get("body").Get("classList").Call("remove", "public", "repo-only")
 	switch {
 	case strings.HasPrefix(path, "/projects/") && (a.token == "" || loc.Get("search").String() == "?as=public"):
 		slug, n, _ := strings.Cut(strings.TrimPrefix(path, "/projects/"), "/")
@@ -1300,10 +1300,35 @@ func publicView(slug string) (*wire.ProjectView, string, bool) {
 	for i := range v.Photos {
 		v.Photos[i].URL, v.Photos[i].Small = base+v.Photos[i].URL, base+v.Photos[i].Small
 	}
+	// The content of a public repository: the plan of the Parts tab, the docs and the cover.
+	at := func(u string) string {
+		if u == "" {
+			return ""
+		}
+		return base + u
+	}
+	for i := range v.Plans {
+		pl := &v.Plans[i]
+		for j := range pl.Parts {
+			for k, u := range pl.Parts[j].ModelURLs {
+				pl.Parts[j].ModelURLs[k] = at(u)
+			}
+		}
+		for j := range pl.Assemblies {
+			for k, u := range pl.Assemblies[j].ModelURLs {
+				pl.Assemblies[j].ModelURLs[k] = at(u)
+			}
+		}
+		pl.Builds, pl.Docs = nil, nil
+	}
+	for i := range v.Docs {
+		v.Docs[i].URL, v.Docs[i].ThumbURL = at(v.Docs[i].URL), at(v.Docs[i].ThumbURL)
+	}
+	v.Cover = at(v.Cover)
 	if v.Slug == "" {
 		v.Slug = slug
 	}
-	v.IsOwner, v.CanSlice, v.You, v.Repo = false, false, "", ""
+	v.IsOwner, v.CanSlice, v.You, v.PlansTotal, v.Members = false, false, "", 0, nil
 	return &v, base, true
 }
 
@@ -1326,8 +1351,12 @@ func (a *app) showPublicView(v *wire.ProjectView, base, n string) {
 	a.public = base
 	doc.Get("body").Get("classList").Call("add", "public")
 	a.tab = "overview"
-	if n == "prints" || n == "photos" {
+	if n == "prints" || n == "photos" || n == "parts" {
 		a.tab, n = n, ""
+	}
+	if v.RepoOnly && (a.tab == "prints" || a.tab == "photos" || n != "") {
+		// A page of a public repository has no prints and no photos.
+		a.tab, n = "overview", ""
 	}
 	num, _ := strconv.Atoi(n)
 	a.showView(v, num, "")
