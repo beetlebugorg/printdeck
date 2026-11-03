@@ -154,6 +154,9 @@ func (a *app) drawPartsTab() {
 			view := el("button", "", "View in 3D")
 			view.Set("type", "button")
 			links.Call("appendChild", view)
+			if a := reorderLink(pp.MaterialURL, "Buy the "+materialWord(pp)); !a.IsNull() {
+				links.Call("appendChild", a)
+			}
 			if pl.Repo != "" && len(pp.Files) > 0 {
 				f := el("a", "", "The file on GitHub")
 				f.Set("href", "https://github.com/"+pl.Repo+"/blob/"+pl.Commit+"/"+pp.Files[0])
@@ -184,6 +187,14 @@ func (a *app) drawPartsTab() {
 		first = "a0"
 	}
 	go a.showPartsView(pl, first)
+}
+
+// materialWord is "filament" or "resin" for the link to the shop of the material of a part.
+func materialWord(pp wire.ProjectPlanPart) string {
+	if pp.Process == "resin" {
+		return "resin"
+	}
+	return "filament"
 }
 
 // partFacts is the line of facts of a part: the printer, the material, the size and the count.

@@ -455,6 +455,7 @@ func (a *app) drawPlanParts() {
 		}
 		sub.Call("appendChild", doc.Call("createTextNode", head+" · "))
 		sub.Call("appendChild", materialEl(pp.MaterialName, pp.MaterialColor, pp.Material))
+		withReorder(sub, pp.MaterialURL)
 		tail := ""
 		if pp.SizeX > 0 {
 			tail += fmt.Sprintf(" · %.0f x %.0f x %.0f mm", pp.SizeX, pp.SizeY, pp.SizeZ)
@@ -512,6 +513,27 @@ func materialEl(name, color, material string) js.Value {
 		span.Set("title", material)
 	}
 	return span
+}
+
+// reorderLink is a link to the shop page of a material, or null for an address that is not
+// https. It opens in a new tab, where a phone can pay with its wallet.
+func reorderLink(url, text string) js.Value {
+	if !strings.HasPrefix(url, "https://") {
+		return js.Null()
+	}
+	a := el("a", "reorder", text)
+	a.Set("href", url)
+	a.Set("target", "_blank")
+	a.Set("rel", "noopener noreferrer")
+	return a
+}
+
+// withReorder adds the Reorder link of a material to box.
+func withReorder(box js.Value, url string) {
+	if a := reorderLink(url, "Reorder"); !a.IsNull() {
+		box.Call("appendChild", doc.Call("createTextNode", " "))
+		box.Call("appendChild", a)
+	}
 }
 
 // partLabel is the name of a part with its variant: "Pod door · fine".
@@ -1181,6 +1203,7 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 			d.Call("appendChild", el("dt", "", "Material"))
 			dd := el("dd", "", "")
 			dd.Call("appendChild", materialEl(pl.MaterialName, pl.MaterialColor, pl.Material))
+			withReorder(dd, pl.MaterialURL)
 			d.Call("appendChild", dd)
 			facts.Call("appendChild", d)
 		}

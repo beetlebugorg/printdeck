@@ -90,22 +90,25 @@ type PlanPart struct {
 	Prebuilt string   `json:"prebuilt,omitempty"` // a resin file of a person, in place of a slice
 	// MaterialName and MaterialColor describe the material for the pages: "MatterHackers PLA
 	// Black" and "#1a1a1a" for a roll of a profile, or the material itself.
-	MaterialName  string   `json:"material_name,omitempty"`
-	MaterialColor string   `json:"material_color,omitempty"`
-	Alone         bool     `json:"alone,omitempty"`
-	Changed       bool     `json:"changed,omitempty"`
+	MaterialName  string `json:"material_name,omitempty"`
+	MaterialColor string `json:"material_color,omitempty"`
+	// MaterialURL is the https address of a shop page of the material (materials of
+	// printdeck.yml), or "". The pages show a Reorder link.
+	MaterialURL string `json:"material_url,omitempty"`
+	Alone       bool   `json:"alone,omitempty"`
+	Changed     bool   `json:"changed,omitempty"`
 	// Digest is the SHA-256 of what makes the plate of the part (its entry, its files and its
 	// profile), or "" from an older Action. A waiting plate stays when a newer plan has its parts
 	// with the same digests.
 	Digest string `json:"digest,omitempty"`
 	// Description is a few sentences about the part, and Group the heading of the part on the
 	// Parts tab, from printdeck.yml. A change of them changes no plate.
-	Description   string   `json:"description,omitempty"`
-	Group         string   `json:"group,omitempty"`
-	Models        []string `json:"models,omitempty"`
-	SizeX         float64  `json:"size_x,omitempty"`
-	SizeY         float64  `json:"size_y,omitempty"`
-	SizeZ         float64  `json:"size_z,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Group       string   `json:"group,omitempty"`
+	Models      []string `json:"models,omitempty"`
+	SizeX       float64  `json:"size_x,omitempty"`
+	SizeY       float64  `json:"size_y,omitempty"`
+	SizeZ       float64  `json:"size_z,omitempty"`
 	// Bed is the size of the bed of the printer in mm (X, Y), and Margin the room around each
 	// object for the brim or the skirt, from the profile. The plan page checks the plates with
 	// them.
@@ -141,9 +144,9 @@ type ProjectPlan struct {
 	// PRState is the state of the pull request PR on GitHub: "open", "closed" or "merged", or ""
 	// when the service does not know it.
 	PRState string `json:"pr_state,omitempty"`
-	Tag    string `json:"tag,omitempty"`
-	Branch string `json:"branch,omitempty"`
-	Run    string `json:"run,omitempty"` // the page of the workflow run on GitHub
+	Tag     string `json:"tag,omitempty"`
+	Branch  string `json:"branch,omitempty"`
+	Run     string `json:"run,omitempty"` // the page of the workflow run on GitHub
 	// Fork is the fork of the plan of a member's pull request, for example "sam/bittlex", and
 	// Author the GitHub username of the member; both "" for a plan of the repository.
 	Fork    string            `json:"fork,omitempty"`
@@ -154,7 +157,7 @@ type ProjectPlan struct {
 	Docs    []ProjectDoc      `json:"docs,omitempty"`
 	// Assemblies are the assemblies of the plan, with the addresses of their models.
 	Assemblies []ProjectAssembly `json:"assemblies,omitempty"`
-	Builds  []ProjectBuild    `json:"builds,omitempty"`
+	Builds     []ProjectBuild    `json:"builds,omitempty"`
 }
 
 // ProjectAssembly is an assembly of a plan, with the address of the model of each item, in the
@@ -214,6 +217,7 @@ type BuildPlate struct {
 	Material      string      `json:"material,omitempty"`
 	MaterialName  string      `json:"material_name,omitempty"`
 	MaterialColor string      `json:"material_color,omitempty"`
+	MaterialURL   string      `json:"material_url,omitempty"`
 	Parts         []PlatePart `json:"parts"`
 	File          string      `json:"file,omitempty"`
 	Size          int64       `json:"size,omitempty"`

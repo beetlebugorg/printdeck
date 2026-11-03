@@ -515,3 +515,5 @@ body:has(#projHead:not([hidden])) #psBack, body:has(#projHead:not([hidden])) #pl
 .pubstate { margin: 0; display: flex; align-items: center; gap: var(--s2); font-weight: 500; flex: 1 1 16rem; }
 .pubstate .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ink-dim); flex: none; }
 .pubstate.on .dot { background: var(--live); box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 25%, transparent); }
+/* The link to the shop page of a material. */
+a.reorder { font-weight: 600; white-space: nowrap; }

@@ -121,6 +121,18 @@ type plateRecord struct {
 
 var hexColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
+// shopURL is u when it is an https address of a shop page, with a host name and at most 500
+// characters, and else "". The pages put it in a link.
+func shopURL(u string) string {
+	u = strings.TrimSpace(u)
+	p, err := url.Parse(u)
+	if err != nil || len(u) > 500 || p.Scheme != "https" || p.User != nil || !strings.Contains(p.Hostname(), ".") ||
+		strings.ContainsFunc(u, func(r rune) bool { return r < 0x20 || r == 0x7f }) {
+		return ""
+	}
+	return p.String()
+}
+
 func planKey(project, id string) string  { return "x/" + project + "/plans/" + id + ".json" }
 func planDir(project, id string) string  { return "x/" + project + "/plans/" + id + "/" }
 func buildKey(project, id string) string { return "x/" + project + "/builds/" + id + ".json" }
@@ -326,6 +338,7 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 		}
 		names[key] = true
 		pp.MaterialName = clip(strings.TrimSpace(pp.MaterialName), 120)
+		pp.MaterialURL = shopURL(pp.MaterialURL)
 		pp.Description, pp.Group = clip(strings.TrimSpace(pp.Description), 1000), clip(strings.TrimSpace(pp.Group), 80)
 		if !hexColor.MatchString(pp.MaterialColor) {
 			pp.MaterialColor = ""
@@ -688,7 +701,7 @@ func (s *Server) newBuild(ctx context.Context, p *Project, w *who, planID string
 			part := plan.Parts[pp.Part]
 			if i == 0 {
 				plate = cloud.BuildPlate{Printer: part.Printer, Process: part.Process, Profile: part.Profile, Material: part.Material,
-					MaterialName: part.MaterialName, MaterialColor: part.MaterialColor}
+					MaterialName: part.MaterialName, MaterialColor: part.MaterialColor, MaterialURL: part.MaterialURL}
 			} else if part.Printer != plate.Printer || part.Profile != plate.Profile || part.Material != plate.Material {
 				return nil, fail(http.StatusBadRequest, fmt.Sprintf("plate %d: %s needs another printer, profile or material", n+1, part.Name))
 			}
