@@ -14,6 +14,22 @@ generate:
 # The picture of the project in the project lists: lulzbot/cover.py makes it from the render.
 cover: docs/img/cover.png
 
+# The shop pages of the filament of the parts, for the Reorder links of the project pages. The
+# TAZ takes 2.85 mm filament, so that link is first. The 1.75 mm link is for other printers.
+materials:
+  roll-4:
+    buy:
+      2.85 mm: https://www.matterhackers.com/store/l/300mm-pla-filament-black-1-kg/sk/MSEWRUAW
+      1.75 mm: https://www.matterhackers.com/store/l/black-mh-build-series-pla-filament-175mm-1kg-cardboard/sk/MNCJPEK5
+  roll-3:
+    buy:
+      2.85 mm: https://www.matterhackers.com/store/l/navy-blue-mh-build-pla-filament-285mm-1kg/sk/MJXAU8A8
+      1.75 mm: https://www.matterhackers.com/store/l/navy-blue-mh-build-pla-filament-175mm-1kg/sk/MW59CY2X
+  roll-2:
+    buy:
+      2.85 mm: https://www.matterhackers.com/store/l/esun-pla-filament-175mm-1kg/sk/MN7PRDDD
+      1.75 mm: https://www.matterhackers.com/store/l/esun-pla-filament-175mm-1kg/sk/MWUQC9GP
+
 parts:
   # The Slate v4 (FDM): the case in navy PLA (roll-3), the base in orange PLA (roll-2). No part
   # needs supports. The seam goes to the sharpest corner, on the inside. Each part has a 5 mm brim
