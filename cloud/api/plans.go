@@ -364,6 +364,10 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 	default:
 		return nil, fail(http.StatusBadRequest, "the cover is cover.png or cover.jpg")
 	}
+	if err := s.countPlan(ctx, p, rec.ID, rec.Author); err != nil {
+		return nil, err
+	}
+	s.sweepPlans(ctx, p)
 	g, err := s.Grants.Grant(ctx, planDir(p.ID, rec.ID), MaxBuildFile, buildGrantTTL)
 	if err != nil {
 		return nil, err
@@ -521,6 +525,9 @@ func (s *Server) planDone(ctx context.Context, p *Project, c *GitHubClaims, id s
 	}
 	if !have[rec.Cover] {
 		rec.Cover = ""
+	}
+	if err := s.keepOnly(ctx, planDir(p.ID, id), planFiles(rec), MaxPlanBytes); err != nil {
+		return nil, err
 	}
 	rec.Ready = true
 	if err := s.putJSON(ctx, planKey(p.ID, id), rec); err != nil {
@@ -812,6 +819,9 @@ func (s *Server) buildDone(ctx context.Context, p *Project, c *GitHubClaims, id 
 				return nil, fail(http.StatusBadRequest, "the file "+f+" is not up")
 			}
 		}
+	}
+	if err := s.keepOnly(ctx, buildDir(p.ID, id), buildFileNames(b), MaxBuildBytes); err != nil {
+		return nil, err
 	}
 	b.State, b.Error = cloud.BuildReady, ""
 	for i := range b.Plates {

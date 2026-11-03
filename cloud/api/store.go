@@ -41,6 +41,8 @@ type Store interface {
 	Delete(ctx context.Context, key string) error
 	// List returns the keys that start with prefix, in order.
 	List(ctx context.Context, prefix string) ([]string, error)
+	// Sizes returns the size in bytes of each file under prefix, by key.
+	Sizes(ctx context.Context, prefix string) (map[string]int64, error)
 	// ListDir returns one level of the folder prefix (a prefix that ends in "/"): the keys of
 	// its files, and its subfolders (each a prefix that ends in "/"), in order. A folder with many
 	// files in its subfolders, for example the time lapse frames of the prints, lists fast.
@@ -147,6 +149,18 @@ func (m *MemStore) List(_ context.Context, prefix string) ([]string, error) {
 		}
 	}
 	sort.Strings(out)
+	return out, nil
+}
+
+func (m *MemStore) Sizes(_ context.Context, prefix string) (map[string]int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := map[string]int64{}
+	for k, f := range m.files {
+		if strings.HasPrefix(k, prefix) {
+			out[k] = int64(len(f.data))
+		}
+	}
 	return out, nil
 }
 

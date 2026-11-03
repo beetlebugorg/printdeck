@@ -123,6 +123,20 @@ func (f *FileStore) List(_ context.Context, prefix string) ([]string, error) {
 	return out, nil
 }
 
+func (f *FileStore) Sizes(ctx context.Context, prefix string) (map[string]int64, error) {
+	keys, err := f.List(ctx, prefix)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]int64{}
+	for _, k := range keys {
+		if fi, err := os.Stat(filepath.Join(f.Dir, filepath.FromSlash(k))); err == nil {
+			out[k] = fi.Size()
+		}
+	}
+	return out, nil
+}
+
 func (f *FileStore) ListDir(ctx context.Context, prefix string) ([]string, []string, error) {
 	keys, err := f.List(ctx, prefix)
 	files, dirs := splitDir(prefix, keys)

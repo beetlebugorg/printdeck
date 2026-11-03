@@ -125,6 +125,22 @@ func (b *S3Store) List(ctx context.Context, prefix string) ([]string, error) {
 	return out, nil
 }
 
+func (b *S3Store) Sizes(ctx context.Context, prefix string) (map[string]int64, error) {
+	b.calls.Add(1)
+	out := map[string]int64{}
+	p := s3.NewListObjectsV2Paginator(b.Client, &s3.ListObjectsV2Input{Bucket: &b.Bucket, Prefix: &prefix})
+	for p.HasMorePages() {
+		page, err := p.NextPage(ctx)
+		if err != nil {
+			return nil, s3Error(err)
+		}
+		for _, o := range page.Contents {
+			out[aws.ToString(o.Key)] = aws.ToInt64(o.Size)
+		}
+	}
+	return out, nil
+}
+
 func (b *S3Store) ListDir(ctx context.Context, prefix string) (files, dirs []string, err error) {
 	b.calls.Add(1)
 	p := s3.NewListObjectsV2Paginator(b.Client, &s3.ListObjectsV2Input{Bucket: &b.Bucket, Prefix: &prefix,

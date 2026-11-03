@@ -263,6 +263,11 @@ func (s *Server) planDiffs(ctx context.Context, project string, rec, base *PlanR
 	var out []planDiff
 	for _, pr := range diffPairs(project, rec, base) {
 		d := planDiff{Label: pr.label}
+		if !s.smallFile(ctx, pr.oldKey) || !s.smallFile(ctx, pr.newKey) {
+			d.Text = "The models are too large to compare"
+			out = append(out, d)
+			continue
+		}
 		a, _, err1 := s.Store.Get(ctx, pr.oldKey)
 		b, _, err2 := s.Store.Get(ctx, pr.newKey)
 		ta, err3 := modeldiff.ReadSTL(a)
@@ -616,7 +621,7 @@ func (s *Server) platePictures(ctx context.Context, project string, b *BuildReco
 	changed := false
 	for i := range b.Plates {
 		pl := &b.Plates[i]
-		if pl.Pic != "" || pl.Process != "fdm" || !strings.HasSuffix(pl.File, ".gcode") || i >= MaxDiffPictures {
+		if pl.Pic != "" || pl.Process != "fdm" || !strings.HasSuffix(pl.File, ".gcode") || i >= MaxDiffPictures || pl.Size > MaxPictureFile {
 			continue
 		}
 		data, _, err := s.Store.Get(ctx, buildDir(project, b.ID)+pl.File)
