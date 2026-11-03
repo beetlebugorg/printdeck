@@ -643,13 +643,13 @@ def assembly_parts():
 
     fr, bd = case_fdm()
     screws, nuts = joint()
-    joint_hw = screws + nuts
-    case_hw = {"fdm": [hw["screw_frame"], hw["screw_body"], hw["insert_frame"], hw["screw_pi"]],
-               "resin": [hw["screw_frame"], hw["screw_pi"]]}
+    # The hardware: one file for each kind, so that each comes out along its own axis in the
+    # exploded view. The inserts and the nuts stay in their parts.
     in_case = [("frame.stl", fr), ("body.stl", bd), ("case-resin.stl", case_resin()),
                ("display.stl", group(DISPLAY_PARTS)), ("pi5.stl", group(PI_PARTS)),
-               ("screws-fdm.stl", Compound(case_hw["fdm"] + joint_hw)),
-               ("screws-resin.stl", Compound(case_hw["resin"] + joint_hw))]
+               ("screws-frame.stl", hw["screw_frame"]), ("screws-body.stl", hw["screw_body"]),
+               ("inserts-frame.stl", hw["insert_frame"]), ("screws-pi.stl", hw["screw_pi"]),
+               ("screws-joint.stl", Compound(screws)), ("nuts-joint.stl", Compound(nuts))]
     out = [(n, origin * loc * s) for n, s in in_case]
     out += [("base-fdm.stl", origin * stand("fdm")), ("base-resin.stl", origin * stand("resin"))]
     return out
@@ -659,7 +659,7 @@ def assembly():
     from build123d import export_stl
     os.makedirs(ASSEMBLY_DIR, exist_ok=True)
     for name, shape in assembly_parts():
-        hard = name.startswith(("display", "pi5", "screws"))
+        hard = name.startswith(("display", "pi5", "screws", "inserts", "nuts"))
         tol, ang = (0.05, 0.3) if hard else (0.03, 0.15)
         p = os.path.join(ASSEMBLY_DIR, name)
         export_stl(shape, p, tolerance=tol, angular_tolerance=ang)

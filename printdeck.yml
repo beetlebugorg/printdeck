@@ -159,51 +159,87 @@ docs:
 # degrees, so "up the case" is (0, 0.26, 0.97) and "out of the front" is (0, -0.97, 0.26). The length
 # of an explode vector sets how far the item moves.
 assemblies:
+  # The items are in the order of the assembly, and the exploded view takes them off from the last.
+  # Items next to each other with the same explode move together (the inserts with the frame, the
+  # nuts with the body). Each kind of screw has its own file and comes out along its axis, so the
+  # screws have small changes of the direction to stay apart.
   - name: Slate v4 (FDM)
     description: |
-      The FDM Slate: the navy frame and body on the orange base, with the display, the Pi 5 and the screws. The case lifts up off the base. The frame, the display and the Pi come out of the front of the body, and the screws come out of the back.
+      The FDM Slate: the navy frame and body on the orange base, with the display, the Pi 5 and the screws. The screws come out of the back. The body lifts off, and then the frame and the Pi come off the back of the display.
     items:
       - part: Slate base
         file: lulzbot/stl/slate/assembly/base-fdm.stl
+      - name: Touch Display 2
+        file: lulzbot/stl/slate/assembly/display.stl
+        color: "#1b1d22"
+        explode: [0, -0.97, 0.26]
+      - name: Raspberry Pi 5 with Active Cooler
+        file: lulzbot/stl/slate/assembly/pi5.stl
+        color: "#1f6b45"
+        explode: [0, 0.97, -0.26]
+      - name: M2.5 screws (Pi)
+        file: lulzbot/stl/slate/assembly/screws-pi.stl
+        color: "#b9bec6"
+        explode: [0, 1, -0.3]
+      - part: Slate frame
+        file: lulzbot/stl/slate/assembly/frame.stl
+        explode: [0, 0.97, -0.26]
+      - name: M3 heat-set inserts
+        file: lulzbot/stl/slate/assembly/inserts-frame.stl
+        color: "#c9a14a"
+        explode: [0, 0.97, -0.26]
+      - name: M2.5 x 4 screws (display)
+        file: lulzbot/stl/slate/assembly/screws-frame.stl
+        color: "#b9bec6"
+        explode: [0, 1, -0.27]
       - part: Slate body
         file: lulzbot/stl/slate/assembly/body.stl
         explode: [0, 0.26, 0.97]
-      - part: Slate frame
-        file: lulzbot/stl/slate/assembly/frame.stl
-        explode: [0, -0.71, 1.22]
-      - name: Touch Display 2
-        file: lulzbot/stl/slate/assembly/display.stl
-        color: "#1b1d22"
-        explode: [0, -1.67, 1.48]
-      - name: Raspberry Pi 5 with Active Cooler
-        file: lulzbot/stl/slate/assembly/pi5.stl
-        color: "#1f6b45"
-        explode: [0, -0.22, 1.1]
-      - name: Screws, inserts and nuts
-        file: lulzbot/stl/slate/assembly/screws-fdm.stl
+      - name: M3 hex nuts
+        file: lulzbot/stl/slate/assembly/nuts-joint.stl
         color: "#b9bec6"
-        explode: [0, 1.71, 0.58]
+        explode: [0, 0.26, 0.97]
+      - name: M3 x 6 screws (body)
+        file: lulzbot/stl/slate/assembly/screws-body.stl
+        color: "#b9bec6"
+        explode: [0, 1, -0.25]
+      - name: M3 x 8 screws (base)
+        file: lulzbot/stl/slate/assembly/screws-joint.stl
+        color: "#b9bec6"
+        explode: [0, 1, -0.28]
   - name: Slate v4 (resin)
     description: |
-      The resin Slate: the navy case in one part on the orange base, with the display, the Pi 5 and the screws. The case lifts up off the base. The display and the Pi come out of the front of the case, and the screws come out of the back.
+      The resin Slate: the navy case in one part on the orange base, with the display, the Pi 5 and the screws. The screws come out of the back. The case lifts off, and then the Pi comes off the back of the display.
     items:
       - part: Slate base (resin)
         file: lulzbot/stl/slate/assembly/base-resin.stl
-      - part: Slate case (resin)
-        file: lulzbot/stl/slate/assembly/case-resin.stl
-        explode: [0, 0.26, 0.97]
       - name: Touch Display 2
         file: lulzbot/stl/slate/assembly/display.stl
         color: "#1b1d22"
-        explode: [0, -1.67, 1.48]
+        explode: [0, -0.97, 0.26]
       - name: Raspberry Pi 5 with Active Cooler
         file: lulzbot/stl/slate/assembly/pi5.stl
         color: "#1f6b45"
-        explode: [0, -0.71, 1.22]
-      - name: Screws and nuts
-        file: lulzbot/stl/slate/assembly/screws-resin.stl
+        explode: [0, 0.97, -0.26]
+      - name: M2.5 screws (Pi)
+        file: lulzbot/stl/slate/assembly/screws-pi.stl
         color: "#b9bec6"
-        explode: [0, 1.71, 0.58]
+        explode: [0, 1, -0.3]
+      - part: Slate case (resin)
+        file: lulzbot/stl/slate/assembly/case-resin.stl
+        explode: [0, 0.26, 0.97]
+      - name: M3 hex nuts
+        file: lulzbot/stl/slate/assembly/nuts-joint.stl
+        color: "#b9bec6"
+        explode: [0, 0.26, 0.97]
+      - name: M2.5 x 4 screws (display)
+        file: lulzbot/stl/slate/assembly/screws-frame.stl
+        color: "#b9bec6"
+        explode: [0, 1, -0.27]
+      - name: M3 x 8 screws (base)
+        file: lulzbot/stl/slate/assembly/screws-joint.stl
+        color: "#b9bec6"
+        explode: [0, 1, -0.28]
 
   # The webcam mount on the TAZ. lulzbot/pod.py assembly writes the files: each part in its place on
   # the front right corner of the frame, in mm, z up, with the origin at the middle of the top face of
