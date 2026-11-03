@@ -5,11 +5,19 @@ run-name: >-
       && format('Printdeck slice · {0}', inputs.title || inputs.build)
       || '' }}
 on:
-  # Each push of a branch or a tag sends a plan. Printdeck makes the plan of a branch with an open
-  # pull request the plan of that pull request, also for a branch of a member's fork.
+  # A push of a branch sends a plan when it changes a file of printdeck.yml: the models, the
+  # profiles, the cover, or the workflow. A push of a tag always sends a plan, because GitHub does
+  # not apply the paths to tags. Printdeck makes the plan of a branch with an open pull request the
+  # plan of that pull request, also for a branch of a member's fork.
   push:
     branches: ["**"]
     tags: ["v*", "release/*"]   # the releases: the Builds tab lists their plans and the plans of the pull requests
+    paths:
+      - printdeck.yml
+      - lulzbot/**
+      - profiles/**
+      - docs/img/cover.png
+      - .github/workflows/printdeck.yml
   workflow_dispatch:
     inputs:
       build:
