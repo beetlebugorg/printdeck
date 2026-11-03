@@ -29,10 +29,11 @@ Support**, click **Close**, and clear the box.
 | `pod-bracket-taz_fdm.stl` | 1, for the TAZ | The top end of the plate (it stands up, 89 mm high). Use a 5 mm brim. |
 | `pod-bracket-mini2_fdm.stl` | 1, for the Mini 2 | The side of the plate that goes on the frame |
 | `pod-shim-0.5mm_fdm.stl`, `pod-shim-1.0mm_fdm.stl`, `pod-shim-2.0mm_fdm.stl` | 1 each, for the TAZ | Flat |
-| `camera-arm-taz_fdm.stl` | 1, for the C270 webcam on the TAZ (option) | Its back face |
-| `camera-clamp-taz_fdm.stl` | 1, for the C270 webcam on the TAZ (option) | Its bottom. Use a brim: it is 126 mm tall. |
-| `camera-arm-mini2_fdm.stl` | 1, for the C270 webcam on the Mini 2 (option) | Its back face |
-| `camera-clamp-mini2_fdm.stl` | 1, for the C270 webcam on the Mini 2 (option) | Its bottom |
+| `camera-arm-taz_fdm.stl` | 1, for the webcam on the TAZ (option) | Its back face |
+| `camera-clamp-taz_fdm.stl` | 1, for the webcam on the TAZ (option) | Its bottom. Use a brim: it is 126 mm tall. |
+| `camera-arm-mini2_fdm.stl` | 1, for the webcam on the Mini 2 (option) | Its back face |
+| `camera-clamp-mini2_fdm.stl` | 1, for the webcam on the Mini 2 (option) | Its bottom |
+| `camera-link_fdm.stl` | 1, for the webcam on either printer (option) | The top face of its plate |
 | `cable-clip-single_fdm.stl` | 5, for the TAZ | The base |
 | `cable-clip-double_fdm.stl` | 2, for the Mini 2 | The base |
 
@@ -116,15 +117,19 @@ files are for tough resin only.
 
 ## Webcam (option)
 
-`camera.py` has a mount for a Logitech C270 webcam on each printer. The camera plugs into the
-lower USB 3 port of the Pi. Each mount is a clamp on the frame and an arm with the hinge.
+`camera.py` has a mount for an Arducam B0561 camera on each printer. Each mount is a clamp on the
+frame, an arm with the hinge, and a link on the hinge. The camera comes in a U bracket. The base of
+the U hangs under the plate of the link, and the pivot of the U sets the tilt. `camera_models.py`
+has the models of the camera and the link.
 
-With the Slate v4, the camera stays on the printer frame. Its USB cable runs from the printer frame
-to the Slate on the desk.
+The camera has its own 1 m cable, USB-A to JST. With the Slate v4, the camera stays on the printer
+frame. Its cable runs from the printer frame to the Slate on the desk. Measure the route before you
+buy a cable: `camera_models.py` prints the length of the route to the pod.
 
 | Part | Count | Where |
 |---|---|---|
-| M3 x 16 cap screw | 1 | The hinge of the camera |
+| M3 x 16 cap screw | 1 | The hinge: through the lugs of the arm and the tongue of the link |
+| 1/4"-20 x 1/4" cap screw | 1 | Down through the plate of the link into the thread of the U bracket |
 | M3 heat-set insert, 4 mm long | 2 | In the tab of the clamp |
 | M3 x 18 cap screw | 2 | Through the post of the arm into the inserts |
 | M3 x 8 cap screw and M3 roll-in T-nut (2020, 6 mm slot) | 2 each | TAZ: the saddle on the front right upright |
@@ -132,19 +137,21 @@ to the Slate on the desk.
 | `cable-clip-single` | 4 (TAZ) or 3 (Mini 2) | Along the frame to the deck, on 12 x 12 mm foam tape |
 
 1. Press the two inserts into the tab of the clamp.
-2. Remove the clip from the camera. Remove the small screw at the end of the clip pin, and push
-   the pin out of the eyelet.
-3. Put the eyelet between the two lugs of the arm. Put the M3 x 16 screw through the thin lug and
-   the eyelet, into the thick lug.
+2. Put the tongue of the link between the two lugs of the arm, with the plate to the front. Put
+   the M3 x 16 screw through the thin lug and the tongue, into the thick lug. Set the plate level,
+   and tighten the screw until the link stays.
+3. Put the base of the U bracket under the plate of the link. Put the 1/4"-20 x 1/4" screw down
+   through the plate into the base, and tighten it.
 4. Put the post of the arm in the channel of the tab. Put in the two M3 x 18 screws.
 5. TAZ Workhorse: roll the two T-nuts into the front slot and the right slot of the front right
    upright, under the corner plate. Put the saddle keys into the slots, and tighten the two M3 x 8
    screws.
 6. Mini 2: remove the two frame screws on the right face of the front right corner. Put the lip of
    the plate on the top of the frame, and put in the two longer screws.
-7. Tilt the camera: about 52 degrees down on the TAZ, 46 degrees on the Mini 2. Tighten the hinge
-   screw until the camera stays.
-8. Run the cable in the clips to the deck. Coil the rest of the cable and tie it.
+7. Turn the camera on the pivot of the U: about 52 degrees down on the TAZ, 46 degrees on the Mini
+   2. Tighten the two pivot screws.
+8. Plug the cable into the back of the camera. Run the cable in the clips to the deck. Coil the
+   rest of the cable and tie it.
 
 To remove the camera, unplug it and remove the two screws of the arm.
 
