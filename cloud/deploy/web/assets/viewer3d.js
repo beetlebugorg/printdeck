@@ -1636,6 +1636,10 @@ function explodePlan(geos, items, len) {
     }
   };
   units.forEach((u) => add(u, true));
+  // ignore are the units that came off already in about the direction of the unit under test. They
+  // are no wall for it: at the end they go out further, past it (stack).
+  let ignore = new Set();
+  const other = (ids) => ids && ids.some((x) => !ignore.has(x));
   // touching returns the units with a cell in a cell of u or next to it. The unit is out of
   // filled.
   const touching = (u) => {
@@ -1644,7 +1648,7 @@ function explodePlan(geos, items, len) {
       const sh = [at[0] + dx, at[1] + dy, at[2] + dz];
       for (let i = 0; i < u.cells.length; i += step) {
         const ids = filled.get(shiftKey(u.cells[i], sh));
-        if (ids) for (const x of ids) out.add(x);
+        if (ids) for (const x of ids) if (!ignore.has(x)) out.add(x);
       }
     }
     return [...out].map((x) => units[x]);
@@ -1682,7 +1686,7 @@ function explodePlan(geos, items, len) {
     const own = u.cells, step = Math.max(1, Math.ceil(own.length / 8000));
     const hits = (sh) => {
       let hit = 0;
-      for (let i = 0; i < own.length; i += step) if (filled.has(shiftKey(own[i], sh))) hit++;
+      for (let i = 0; i < own.length; i += step) if (other(filled.get(shiftKey(own[i], sh)))) hit++;
       return hit;
     };
     const start = hits(cellsAt(u));
@@ -1705,6 +1709,7 @@ function explodePlan(geos, items, len) {
     let done = false;
     for (const u of left) {
       const l = Math.hypot(...u.dir), v0 = u.dir.map((x) => x / l);
+      ignore = new Set(stages.filter((st) => st.v && st.v.reduce((a, x, k) => a + x * v0[k], 0) > 0.9).map((st) => st.unit.id));
       add(u, false);
       const near = touching(u);
       const from = u.move.slice();
@@ -1716,6 +1721,7 @@ function explodePlan(geos, items, len) {
         const d = Math.max(travel(u, v, near), gap * 2);
         if (freeFor(u, v, d) >= d) {
           path = [from.map((x, k) => x + v[k] * d)];
+          u.v = v;
           break;
         }
       }
@@ -1732,15 +1738,46 @@ function explodePlan(geos, items, len) {
       }
       if (path) u.move = path[path.length - 1];
       add(u, true);
+      ignore = new Set();
       if (!path) continue;
-      stages.push({ indexes: u.indexes, path: [from, ...path], move: u.move.slice() });
+      // v is the direction of a path of one move, for the stack at the end.
+      stages.push({ indexes: u.indexes, path: [from, ...path], move: u.move.slice(), unit: u, v: path.length === 1 ? u.v : null });
       left.splice(left.indexOf(u), 1);
       done = true;
       break;
     }
     if (!done) break;
   }
-  return stages;
+  // The stack: a unit that came off before another unit in about the same direction goes out
+  // further, until the path of the other unit is clear of it. The last units go first, so a push
+  // passes on along the stack.
+  for (let j = stages.length - 1; j > 0; j--) {
+    const b = stages[j];
+    if (!b.v) continue;
+    const from = b.unit.box.map((x, k) => x + b.path[0][k % 3]), to = boxAt(b.unit);
+    const swept = from.map((x, k) => (k < 3 ? Math.min(x, to[k]) - gap : Math.max(x, to[k]) + gap));
+    for (let i = 0; i < j; i++) {
+      const a = stages[i];
+      if (!a.v || a.v.reduce((s, x, k) => s + x * b.v[k], 0) <= 0.9) continue;
+      const box = boxAt(a.unit);
+      let lo = -Infinity, hi = Infinity;
+      for (let x = 0; x < 3; x++) {
+        if (Math.abs(a.v[x]) < 1e-9) {
+          if (box[x + 3] <= swept[x] || box[x] >= swept[x + 3]) { lo = Infinity; break; }
+        } else {
+          let t1 = (swept[x] - box[x + 3]) / a.v[x], t2 = (swept[x + 3] - box[x]) / a.v[x];
+          if (t1 > t2) [t1, t2] = [t2, t1];
+          lo = Math.max(lo, t1); hi = Math.min(hi, t2);
+        }
+      }
+      if (lo < 0 && hi > 0) {
+        a.unit.move = a.unit.move.map((x, k) => x + a.v[k] * hi);
+        a.move = a.unit.move.slice();
+        a.path[a.path.length - 1] = a.move.slice();
+      }
+    }
+  }
+  return stages.map(({ indexes, path, move }) => ({ indexes, path, move }));
 }
 
 // holdWheel keeps the wheel and the pinch of a trackpad on a 3D view: they zoom the view and
