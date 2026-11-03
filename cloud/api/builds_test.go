@@ -32,8 +32,14 @@ func (fakeOIDC) Verify(_ context.Context, token, audience string) (*GitHubClaims
 	if len(f) < 3 || len(f) > 5 || audience != "localhost" {
 		return nil, errors.New("bad token")
 	}
+	// "owner/name#7" is a repository with the number 7. The number is 42 by default.
+	repo, id, ok := strings.Cut(f[0], "#")
+	if !ok {
+		id = "42"
+	}
+	f[0] = repo
 	owner, _, _ := strings.Cut(f[0], "/")
-	c := &GitHubClaims{Repository: f[0], Ref: f[1], SHA: f[2], RunID: "42", RepositoryOwner: owner,
+	c := &GitHubClaims{Repository: f[0], RepositoryID: id, Ref: f[1], SHA: f[2], RunID: "42", RepositoryOwner: owner,
 		JobWorkflowRef: f[0] + "/.github/workflows/printdeck.yml@refs/heads/main"}
 	c.ID = newID(10)
 	if len(f) > 3 && f[3] != "" {
@@ -297,8 +303,8 @@ func (r *recordDispatch) Comment(_ context.Context, repo string, pr int, id int6
 	return id, nil
 }
 
-func (r *recordDispatch) DefaultBranch(_ context.Context, repo string) (string, error) {
-	return "main", nil
+func (r *recordDispatch) Repo(_ context.Context, repo string) (RepoInfo, error) {
+	return RepoInfo{ID: "42", DefaultBranch: "main"}, nil
 }
 
 func (r *recordDispatch) PullState(_ context.Context, repo string, pr int) (string, error) {
@@ -336,6 +342,11 @@ func TestBuildDispatch(t *testing.T) {
 	sum, _ := c.NewProject(ctx, l.Identity(), "Bittlex")
 	call(t, base, "PUT", "/api/v1/projects/"+sum.ID+"/repo", tok, cloud.RepoRequest{Repo: "beetlebugorg/bittlex"}, nil)
 	token := "beetlebugorg/bittlex|refs/heads/main|" + strings.Repeat("ab", 20)
+	// A new repository with the name of the linked one has another number.
+	if st := call(t, base, "POST", "/api/v1/plans", "beetlebugorg/bittlex#7|refs/heads/main|"+strings.Repeat("ab", 20),
+		cloud.PlanManifest{Parts: []cloud.PlanPart{{Name: "A", Files: []string{"a.stl"}, Printer: "taz", Process: "fdm", Profile: "p/f@1"}}}, nil); st != 403 {
+		t.Errorf("a token of another repository with the same name: %d", st)
+	}
 	var up cloud.UploadReply
 	dup := cloud.PlanManifest{Parts: []cloud.PlanPart{
 		{Name: "Pod door", Variant: "fine", Files: []string{"a.stl"}, Printer: "taz", Process: "fdm", Profile: "p/f@1"},

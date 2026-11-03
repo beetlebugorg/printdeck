@@ -192,22 +192,23 @@ func (g *GitHubApp) Dispatch(ctx context.Context, repo, build, title string) err
 	return g.dispatch(ctx, repo, build, title, tok.Token, r.DefaultBranch)
 }
 
-// DefaultBranch returns the name of the default branch of repo.
-func (g *GitHubApp) DefaultBranch(ctx context.Context, repo string) (string, error) {
+// Repo returns the number and the default branch of repo.
+func (g *GitHubApp) Repo(ctx context.Context, repo string) (RepoInfo, error) {
 	token, err := g.installationToken(ctx, repo, map[string]string{"metadata": "read"})
 	if err != nil {
-		return "", err
+		return RepoInfo{}, err
 	}
 	var r struct {
+		ID            int64  `json:"id"`
 		DefaultBranch string `json:"default_branch"`
 	}
 	if err := g.call(ctx, http.MethodGet, "/repos/"+repo, token, nil, &r); err != nil {
-		return "", err
+		return RepoInfo{}, err
 	}
-	if r.DefaultBranch == "" {
-		return "", fmt.Errorf("%s has no default branch", repo)
+	if r.ID == 0 || r.DefaultBranch == "" {
+		return RepoInfo{}, fmt.Errorf("%s has no number or no default branch", repo)
 	}
-	return r.DefaultBranch, nil
+	return RepoInfo{ID: strconv.FormatInt(r.ID, 10), DefaultBranch: r.DefaultBranch}, nil
 }
 
 // dispatch starts the workflow on the branch.

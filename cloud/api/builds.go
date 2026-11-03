@@ -50,10 +50,13 @@ const GitHubIssuer = "https://token.actions.githubusercontent.com"
 // GitHubClaims are the claims of an OIDC token of GitHub Actions that the API uses.
 type GitHubClaims struct {
 	Repository string `json:"repository"`
-	Ref        string `json:"ref"`
-	SHA        string `json:"sha"`
-	EventName  string `json:"event_name"`
-	RunID      string `json:"run_id"`
+	// RepositoryID is the number of the repository on GitHub. It stays when the repository
+	// changes its name, and a new repository with an old name gets a new number.
+	RepositoryID string `json:"repository_id"`
+	Ref          string `json:"ref"`
+	SHA          string `json:"sha"`
+	EventName    string `json:"event_name"`
+	RunID        string `json:"run_id"`
 	// RepositoryOwner is the owner of the repository of the run: the member for a fork.
 	RepositoryOwner string `json:"repository_owner"`
 	// JobWorkflowRef is the workflow file of the job and its ref, for example
@@ -274,7 +277,7 @@ func (s *Server) setRepo(ctx context.Context, p *Project, repo string) (*Project
 	}
 	old := p.Repo
 	np, err := s.changeProject(ctx, p.ID, func(q *Project) error {
-		q.Repo, q.DefaultBranch = repo, ""
+		q.Repo, q.RepoID, q.DefaultBranch = repo, "", ""
 		return nil
 	})
 	if err != nil {
@@ -351,24 +354,26 @@ func sliceRun(c *GitHubClaims, branch string) error {
 
 var defaultOIDC = &GitHubOIDC{}
 
-// defaultBranch returns the default branch of the repository of p. The service asks GitHub once
-// and keeps the name on the project. With no GitHub App (pwf dev, the tests), it returns "".
-func (s *Server) defaultBranch(ctx context.Context, p *Project) (string, error) {
-	if p.DefaultBranch != "" || s.GitHub == nil || p.Repo == "" {
-		return p.DefaultBranch, nil
+// repoInfo returns the number and the default branch of the repository of p. The service asks
+// GitHub once and keeps them on the project. With no GitHub App (pwf dev, the tests), it returns
+// the empty RepoInfo.
+func (s *Server) repoInfo(ctx context.Context, p *Project) (RepoInfo, error) {
+	have := RepoInfo{ID: p.RepoID, DefaultBranch: p.DefaultBranch}
+	if have.ID != "" && have.DefaultBranch != "" || s.GitHub == nil || p.Repo == "" {
+		return have, nil
 	}
-	b, err := s.GitHub.DefaultBranch(ctx, p.Repo)
+	ri, err := s.GitHub.Repo(ctx, p.Repo)
 	if err != nil {
-		return "", fail(http.StatusServiceUnavailable, "the default branch of "+p.Repo+": "+err.Error())
+		return RepoInfo{}, fail(http.StatusServiceUnavailable, "the repository "+p.Repo+" on GitHub: "+err.Error())
 	}
 	if _, err := s.updateProject(ctx, p.ID, false, func(q *Project) error {
-		q.DefaultBranch = b
+		q.RepoID, q.DefaultBranch = ri.ID, ri.DefaultBranch
 		return nil
 	}); err != nil {
-		return "", err
+		return RepoInfo{}, err
 	}
-	p.DefaultBranch = b
-	return b, nil
+	p.RepoID, p.DefaultBranch = ri.ID, ri.DefaultBranch
+	return ri, nil
 }
 
 // projectOfRepo returns the project of the repository.

@@ -32,6 +32,12 @@ import (
 //     x/<project>/builds/<id>/, and sends POST /api/v1/builds/<id>/done (or .../failed).
 //   - The owner approves or rejects each plate of the build.
 
+// RepoInfo is what the service keeps of a repository on GitHub.
+type RepoInfo struct {
+	ID            string
+	DefaultBranch string
+}
+
 // GitHubAPI is what the service asks GitHub, with its GitHub App (githubapp.go).
 type GitHubAPI interface {
 	// Dispatch starts the slice run of the build in the repository (workflow_dispatch). title is
@@ -45,8 +51,8 @@ type GitHubAPI interface {
 	Comment(ctx context.Context, repo string, pr int, id int64, body string) (int64, error)
 	// PullState returns the state of the pull request pr of repo: "open", "closed" or "merged".
 	PullState(ctx context.Context, repo string, pr int) (string, error)
-	// DefaultBranch returns the name of the default branch of repo.
-	DefaultBranch(ctx context.Context, repo string) (string, error)
+	// Repo returns the number and the default branch of repo.
+	Repo(ctx context.Context, repo string) (RepoInfo, error)
 }
 
 // PlanRecord is x/<project>/plans/<id>.json.
@@ -139,10 +145,16 @@ func (s *Server) routeActions(ctx context.Context, r *http.Request, body []byte,
 		return nil, err
 	}
 	id, action, _ := strings.Cut(rest, "/")
-	branch, err := s.defaultBranch(ctx, p)
+	ri, err := s.repoInfo(ctx, p)
 	if err != nil {
 		return nil, err
 	}
+	// The token must be of the repository that the owner linked, and not of a new repository
+	// with its old name.
+	if fork == nil && ri.ID != "" && c.RepositoryID != ri.ID {
+		return nil, fail(http.StatusForbidden, "the token is of another repository with the name "+c.Repository)
+	}
+	branch := ri.DefaultBranch
 	if kind == "builds" {
 		if err := sliceRun(c, branch); err != nil {
 			return nil, err
@@ -274,11 +286,11 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 	if !hexSHA.MatchString(rec.Commit) {
 		return nil, fail(http.StatusBadRequest, "the commit needs 40 hex digits")
 	}
-	branch, err := s.defaultBranch(ctx, p)
+	ri, err := s.repoInfo(ctx, p)
 	if err != nil {
 		return nil, err
 	}
-	if err := refKind(&rec, c.Ref, branch); err != nil {
+	if err := refKind(&rec, c.Ref, ri.DefaultBranch); err != nil {
 		return nil, err
 	}
 	if in.PR > 0 && rec.Kind == cloud.BuildTest && in.PR != rec.PR {
