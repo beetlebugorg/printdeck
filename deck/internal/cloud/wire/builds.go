@@ -26,6 +26,12 @@ type PlanManifest struct {
 	Cover string `json:"cover,omitempty"`
 }
 
+// MaterialLink is a shop link of a material with its label, for example "2.85 mm".
+type MaterialLink struct {
+	Label string `json:"label,omitempty"`
+	URL   string `json:"url"`
+}
+
 // PlanAssembly is an assembly of printdeck.yml: the parts and the hardware in their places. The
 // Parts tab shows it in 3D, and moves its items apart for the exploded view.
 type PlanAssembly struct {
@@ -94,9 +100,12 @@ type PlanPart struct {
 	MaterialColor string `json:"material_color,omitempty"`
 	// MaterialURL is the https address of a shop page of the material (materials of
 	// printdeck.yml), or "". The pages show a Reorder link.
-	MaterialURL string `json:"material_url,omitempty"`
-	Alone       bool   `json:"alone,omitempty"`
-	Changed     bool   `json:"changed,omitempty"`
+	// MaterialLinks are the shop links of the material with their labels, for example the
+	// diameters, the material of the project first, or none.
+	MaterialLinks []MaterialLink `json:"material_links,omitempty"`
+	MaterialURL   string         `json:"material_url,omitempty"`
+	Alone         bool           `json:"alone,omitempty"`
+	Changed       bool           `json:"changed,omitempty"`
 	// Digest is the SHA-256 of what makes the plate of the part (its entry, its files and its
 	// profile), or "" from an older Action. A waiting plate stays when a newer plan has its parts
 	// with the same digests.
@@ -211,25 +220,26 @@ const (
 // the slice. File is the name of the sliced file in the build, Preview the name of the file of
 // the 3D preview (path.bin for FDM, part.bin for resin), and Picture a picture of the plate.
 type BuildPlate struct {
-	Printer       string      `json:"printer"`
-	Process       string      `json:"process"`
-	Profile       string      `json:"profile,omitempty"`
-	Material      string      `json:"material,omitempty"`
-	MaterialName  string      `json:"material_name,omitempty"`
-	MaterialColor string      `json:"material_color,omitempty"`
-	MaterialURL   string      `json:"material_url,omitempty"`
-	Parts         []PlatePart `json:"parts"`
-	File          string      `json:"file,omitempty"`
-	Size          int64       `json:"size,omitempty"`
-	SHA256        string      `json:"sha256,omitempty"`
-	Preview       string      `json:"preview,omitempty"`
-	Picture       string      `json:"picture,omitempty"`
-	Seconds       int         `json:"seconds,omitempty"`
-	Grams         float64     `json:"grams,omitempty"`
-	ML            float64     `json:"ml,omitempty"`
-	Layers        int         `json:"layers,omitempty"`
-	LayerHeight   float64     `json:"layer_height,omitempty"`
-	Slicer        string      `json:"slicer,omitempty"`
+	Printer       string         `json:"printer"`
+	Process       string         `json:"process"`
+	Profile       string         `json:"profile,omitempty"`
+	Material      string         `json:"material,omitempty"`
+	MaterialName  string         `json:"material_name,omitempty"`
+	MaterialColor string         `json:"material_color,omitempty"`
+	MaterialURL   string         `json:"material_url,omitempty"`
+	MaterialLinks []MaterialLink `json:"material_links,omitempty"`
+	Parts         []PlatePart    `json:"parts"`
+	File          string         `json:"file,omitempty"`
+	Size          int64          `json:"size,omitempty"`
+	SHA256        string         `json:"sha256,omitempty"`
+	Preview       string         `json:"preview,omitempty"`
+	Picture       string         `json:"picture,omitempty"`
+	Seconds       int            `json:"seconds,omitempty"`
+	Grams         float64        `json:"grams,omitempty"`
+	ML            float64        `json:"ml,omitempty"`
+	Layers        int            `json:"layers,omitempty"`
+	LayerHeight   float64        `json:"layer_height,omitempty"`
+	Slicer        string         `json:"slicer,omitempty"`
 }
 
 // BuildJob is the reply to GET /api/v1/builds/<id> for the slice run: the commit of the plan, and

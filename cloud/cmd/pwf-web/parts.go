@@ -154,8 +154,15 @@ func (a *app) drawPartsTab() {
 			view := el("button", "", "View in 3D")
 			view.Set("type", "button")
 			links.Call("appendChild", view)
-			if a := reorderLink(pp.MaterialURL, "Buy the "+materialWord(pp)); !a.IsNull() {
-				links.Call("appendChild", a)
+			if pp.MaterialURL != "" || len(pp.MaterialLinks) > 0 {
+				buy := el("span", "buy", "Buy the "+materialWord(pp)+":")
+				withReorder(buy, pp.MaterialURL, pp.MaterialLinks)
+				if len(pp.MaterialLinks) <= 1 {
+					buy = reorderLink(pp.MaterialURL, "Buy the "+materialWord(pp))
+				}
+				if !buy.IsNull() {
+					links.Call("appendChild", buy)
+				}
 			}
 			if pl.Repo != "" && len(pp.Files) > 0 {
 				f := el("a", "", "The file on GitHub")

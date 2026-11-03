@@ -455,7 +455,7 @@ func (a *app) drawPlanParts() {
 		}
 		sub.Call("appendChild", doc.Call("createTextNode", head+" · "))
 		sub.Call("appendChild", materialEl(pp.MaterialName, pp.MaterialColor, pp.Material))
-		withReorder(sub, pp.MaterialURL)
+		withReorder(sub, pp.MaterialURL, pp.MaterialLinks)
 		tail := ""
 		if pp.SizeX > 0 {
 			tail += fmt.Sprintf(" · %.0f x %.0f x %.0f mm", pp.SizeX, pp.SizeY, pp.SizeZ)
@@ -528,10 +528,31 @@ func reorderLink(url, text string) js.Value {
 	return a
 }
 
-// withReorder adds the Reorder link of a material to box.
-func withReorder(box js.Value, url string) {
-	if a := reorderLink(url, "Reorder"); !a.IsNull() {
-		box.Call("appendChild", doc.Call("createTextNode", " "))
+// withReorder adds the Reorder links of a material to box: "Reorder", or "Reorder: 2.85 mm ·
+// 1.75 mm" with labels.
+func withReorder(box js.Value, url string, links []wire.MaterialLink) {
+	if len(links) == 0 && url != "" {
+		links = []wire.MaterialLink{{URL: url}}
+	}
+	first := true
+	for _, l := range links {
+		text := l.Label
+		if text == "" {
+			text = "Reorder"
+		}
+		a := reorderLink(l.URL, text)
+		if a.IsNull() {
+			continue
+		}
+		sep := " · "
+		if first {
+			sep = " "
+			if l.Label != "" {
+				sep = " Reorder: "
+			}
+			first = false
+		}
+		box.Call("appendChild", doc.Call("createTextNode", sep))
 		box.Call("appendChild", a)
 	}
 }
@@ -1203,7 +1224,7 @@ func (a *app) drawBuild(b wire.ProjectBuild) {
 			d.Call("appendChild", el("dt", "", "Material"))
 			dd := el("dd", "", "")
 			dd.Call("appendChild", materialEl(pl.MaterialName, pl.MaterialColor, pl.Material))
-			withReorder(dd, pl.MaterialURL)
+			withReorder(dd, pl.MaterialURL, pl.MaterialLinks)
 			d.Call("appendChild", dd)
 			facts.Call("appendChild", d)
 		}

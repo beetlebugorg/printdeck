@@ -133,6 +133,23 @@ func shopURL(u string) string {
 	return p.String()
 }
 
+// shopLinks keeps the links with an https address (shopURL) and a label of at most 20
+// characters, at most 4.
+func shopLinks(in []cloud.MaterialLink) []cloud.MaterialLink {
+	var out []cloud.MaterialLink
+	for _, l := range in {
+		u := shopURL(l.URL)
+		label := strings.TrimSpace(l.Label)
+		if u == "" || len(label) > 20 || strings.ContainsFunc(label, func(r rune) bool { return r < 0x20 || r == 0x7f }) {
+			continue
+		}
+		if out = append(out, cloud.MaterialLink{Label: label, URL: u}); len(out) == 4 {
+			break
+		}
+	}
+	return out
+}
+
 func planKey(project, id string) string  { return "x/" + project + "/plans/" + id + ".json" }
 func planDir(project, id string) string  { return "x/" + project + "/plans/" + id + "/" }
 func buildKey(project, id string) string { return "x/" + project + "/builds/" + id + ".json" }
@@ -339,6 +356,7 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 		names[key] = true
 		pp.MaterialName = clip(strings.TrimSpace(pp.MaterialName), 120)
 		pp.MaterialURL = shopURL(pp.MaterialURL)
+		pp.MaterialLinks = shopLinks(pp.MaterialLinks)
 		pp.Description, pp.Group = clip(strings.TrimSpace(pp.Description), 1000), clip(strings.TrimSpace(pp.Group), 80)
 		if !hexColor.MatchString(pp.MaterialColor) {
 			pp.MaterialColor = ""
@@ -701,7 +719,7 @@ func (s *Server) newBuild(ctx context.Context, p *Project, w *who, planID string
 			part := plan.Parts[pp.Part]
 			if i == 0 {
 				plate = cloud.BuildPlate{Printer: part.Printer, Process: part.Process, Profile: part.Profile, Material: part.Material,
-					MaterialName: part.MaterialName, MaterialColor: part.MaterialColor, MaterialURL: part.MaterialURL}
+					MaterialName: part.MaterialName, MaterialColor: part.MaterialColor, MaterialURL: part.MaterialURL, MaterialLinks: part.MaterialLinks}
 			} else if part.Printer != plate.Printer || part.Profile != plate.Profile || part.Material != plate.Material {
 				return nil, fail(http.StatusBadRequest, fmt.Sprintf("plate %d: %s needs another printer, profile or material", n+1, part.Name))
 			}

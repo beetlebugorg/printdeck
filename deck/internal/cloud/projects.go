@@ -30,6 +30,7 @@ type (
 	PlanDoc           = wire.PlanDoc
 	PlanAssembly      = wire.PlanAssembly
 	PlanAssemblyItem  = wire.PlanAssemblyItem
+	MaterialLink      = wire.MaterialLink
 	ProjectAssembly   = wire.ProjectAssembly
 	QueueRemove       = wire.QueueRemove
 	QueueRemoved      = wire.QueueRemoved

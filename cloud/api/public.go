@@ -323,7 +323,7 @@ func (s *Server) publishRepo(ctx context.Context, p *Project, dst string, view *
 	for _, pp := range rec.Parts {
 		part := cloud.ProjectPlanPart{PlanPart: cloud.PlanPart{Name: pp.Name, Variant: pp.Variant, Files: pp.Files,
 			Count: pp.Count, Printer: pp.Printer, Process: pp.Process, MaterialName: pp.MaterialName,
-			MaterialColor: pp.MaterialColor, MaterialURL: pp.MaterialURL, Description: pp.Description, Group: pp.Group, Models: pp.Models,
+			MaterialColor: pp.MaterialColor, MaterialURL: pp.MaterialURL, MaterialLinks: pp.MaterialLinks, Description: pp.Description, Group: pp.Group, Models: pp.Models,
 			SizeX: pp.SizeX, SizeY: pp.SizeY, SizeZ: pp.SizeZ}}
 		for _, m := range pp.Models {
 			part.ModelURLs = append(part.ModelURLs, add(m))
