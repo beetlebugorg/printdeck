@@ -77,6 +77,7 @@ async function show(box, opts) {
   scene.add(sun);
   const camera = new T.PerspectiveCamera(32, 1, 10, 20000);
   const controls = new OrbitControls(camera, renderer.domElement);
+  holdWheel(renderer.domElement);
   controls.enableDamping = true;
   controls.autoRotate = true;
   controls.autoRotateSpeed = 0.6;
@@ -332,6 +333,7 @@ async function showPart(box, opts) {
   scene.add(rim);
   const camera = new T.PerspectiveCamera(30, 1, 1, 20000);
   const controls = new OrbitControls(camera, renderer.domElement);
+  holdWheel(renderer.domElement);
   controls.enableDamping = true;
 
   // The build plate only, with the part under it: the case of the printer is in the way. A full
@@ -532,6 +534,7 @@ async function showModels(box, opts) {
   scene.add(key);
   const camera = new T.PerspectiveCamera(30, 1, 1, 20000);
   const controls = new OrbitControls(camera, renderer.domElement);
+  holdWheel(renderer.domElement);
   controls.enableDamping = true;
   const geos = await Promise.all((opts.urls || []).map((u) => readSTL(T, u)));
   // The models stand on the bed: Z of the file is up, and the middle of all of them is at 0.
@@ -823,6 +826,7 @@ async function showGcode(box, opts) {
   scene.add(fill);
   const camera = new T.PerspectiveCamera(35, 1, 0.5, 5000);
   const orbit = new OrbitControls(camera, renderer.domElement);
+  holdWheel(renderer.domElement);
   orbit.enableDamping = true;
   orbit.minPolarAngle = 0;
   orbit.maxPolarAngle = Math.PI; // also from under the bed
@@ -1498,6 +1502,7 @@ async function showDiff(box, oldUrl, newUrl) {
   const mid = new T.Vector3(0, d.newSize[2] / 2, 0);
   camera.position.set(size * 0.7, size * 1.0, size * 1.6);
   const orbit = new OrbitControls(camera, renderer.domElement);
+  holdWheel(renderer.domElement);
   orbit.target.copy(mid);
   orbit.enableDamping = true;
   let redraw = true;
@@ -1538,10 +1543,196 @@ async function showDiff(box, oldUrl, newUrl) {
 // open, to look at the design.
 
 // inspect draws the items in the element box. opts.items: [{ url, color, name, explode }], with
-// the models in their places (mm, Z up). explode is the direction [x, y, z] that the item moves
-// in the exploded view, or null: then the item moves away from the middle. opts.onPick(i) runs
+// the models in their places (mm, Z up). explode is the direction [x, y, z] that the item comes
+// off in the exploded view, or null: then the item stays (explodePlan). opts.onPick(i) runs
 // when a person taps item i, or -1 for the empty space. It returns the controls of the view:
 // explode(f) and cut(f), with f from 0 to 1, highlight(i), and reset().
+// explodePlan finds how the items of an assembly come off, with no item through the wall of
+// another. geos are the models in the coordinates of the files (mm, Z up). An item with a
+// direction (explode) comes off along it, or, when a wall is in the way, along the same direction
+// turned up; an item with no direction stays. Items next to each
+// other in the list with the same direction are one unit: they move together, for example the
+// parts of one board. The units come off one by one: of the units with a free path, the last in
+// the list goes first. A path is free when the unit touches no wall of another unit on its way,
+// and stays over the floor. The unit stops when its box is clear of the boxes of the units that it
+// touched, with a gap. A unit with no free path stays. It returns the stages in order:
+// [{ indexes: [i, ...], move: [x, y, z] }].
+//
+// The test of the walls: the surfaces of the items as cells of a grid (cubes of c mm). Each step of
+// the path moves the cells of the unit, and counts the cells that another unit fills. Cells that
+// the unit shares with others at the start (faces that touch) do not count.
+function explodePlan(geos, items, len) {
+  const c = Math.max(0.4, len / 220);
+  const B = 16384, H = B / 2;
+  const key = (i, j, k) => ((i + H) * B + (j + H)) * B + (k + H);
+  const shiftKey = (k0, sh) => k0 + (sh[0] * B + sh[1]) * B + sh[2];
+  const dirOf = (it) => {
+    const e = it.explode;
+    return e && e.length === 3 && Math.hypot(...e) > 1e-9 ? e : null;
+  };
+  // The units.
+  const units = [];
+  items.forEach((it, n) => {
+    if (!geos[n]) return;
+    const d = dirOf(it), last = units[units.length - 1];
+    if (d && last && last.dir && last.end === n - 1 && last.dir.every((x, k) => x === d[k])) {
+      last.indexes.push(n);
+      last.end = n;
+    } else {
+      units.push({ indexes: [n], dir: d, end: n });
+    }
+  });
+  let floor = Infinity;
+  for (const u of units) {
+    const set = new Set();
+    const box = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+    for (const n of u.indexes) {
+      const g = geos[n];
+      g.computeBoundingBox();
+      const bb = g.boundingBox;
+      [bb.min.x, bb.min.y, bb.min.z].forEach((x, k) => { box[k] = Math.min(box[k], x); });
+      [bb.max.x, bb.max.y, bb.max.z].forEach((x, k) => { box[k + 3] = Math.max(box[k + 3], x); });
+      // The cells of the surface: points on each triangle, at most c/2 apart.
+      const pos = g.attributes.position.array, idx = g.index ? g.index.array : null;
+      const tris = (idx ? idx.length : pos.length / 3) / 3;
+      const v = (t, k) => (idx ? idx[t * 3 + k] : t * 3 + k) * 3;
+      for (let t = 0; t < tris; t++) {
+        const a = v(t, 0), b = v(t, 1), d = v(t, 2);
+        const ax = pos[a], ay = pos[a + 1], az = pos[a + 2];
+        const ux = pos[b] - ax, uy = pos[b + 1] - ay, uz = pos[b + 2] - az;
+        const wx = pos[d] - ax, wy = pos[d + 1] - ay, wz = pos[d + 2] - az;
+        const edge = Math.max(Math.hypot(ux, uy, uz), Math.hypot(wx, wy, wz), Math.hypot(ux - wx, uy - wy, uz - wz));
+        const m = Math.min(400, Math.ceil(edge / (c * 0.5)));
+        for (let p = 0; p <= m; p++) {
+          for (let q = 0; q <= m - p; q++) {
+            const s = p / m || 0, r = q / m || 0;
+            set.add(key(Math.floor((ax + ux * s + wx * r) / c), Math.floor((ay + uy * s + wy * r) / c), Math.floor((az + uz * s + wz * r) / c)));
+          }
+        }
+      }
+    }
+    u.cells = Array.from(set);
+    u.box = box;
+    u.move = [0, 0, 0];
+    floor = Math.min(floor, box[2]);
+  }
+  // The filled cells of all units in their places now: cell -> the numbers of the units.
+  const filled = new Map();
+  const cellsAt = (u) => u.move.map((x) => Math.round(x / c));
+  units.forEach((u, i) => { u.id = i; });
+  const add = (u, on) => {
+    const sh = cellsAt(u);
+    for (const k0 of u.cells) {
+      const k = shiftKey(k0, sh);
+      const ids = filled.get(k);
+      if (on) {
+        if (ids) ids.push(u.id); else filled.set(k, [u.id]);
+      } else if (ids) {
+        const rest = ids.filter((x) => x !== u.id);
+        if (rest.length) filled.set(k, rest); else filled.delete(k);
+      }
+    }
+  };
+  units.forEach((u) => add(u, true));
+  // touching returns the units with a cell in a cell of u or next to it. The unit is out of
+  // filled.
+  const touching = (u) => {
+    const out = new Set(), at = cellsAt(u), step = Math.max(1, Math.ceil(u.cells.length / 4000));
+    for (const [dx, dy, dz] of [[0, 0, 0], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+      const sh = [at[0] + dx, at[1] + dy, at[2] + dz];
+      for (let i = 0; i < u.cells.length; i += step) {
+        const ids = filled.get(shiftKey(u.cells[i], sh));
+        if (ids) for (const x of ids) out.add(x);
+      }
+    }
+    return [...out].map((x) => units[x]);
+  };
+  const gap = len * 0.04;
+  const boxAt = (u) => u.box.map((x, k) => x + u.move[k % 3]);
+  // travel is the distance along v where the box of u is clear of the boxes of the units near
+  // (with the gap): the first t >= 0 out of the intervals of t where the boxes meet.
+  const travel = (u, v, near) => {
+    const a = boxAt(u), spans = [];
+    for (const o of near) {
+      const b = boxAt(o);
+      let lo = -Infinity, hi = Infinity;
+      for (let x = 0; x < 3; x++) {
+        const bmin = b[x] - gap, bmax = b[x + 3] + gap;
+        if (Math.abs(v[x]) < 1e-9) {
+          if (a[x + 3] <= bmin || a[x] >= bmax) { lo = Infinity; break; }
+        } else {
+          let t1 = (bmin - a[x + 3]) / v[x], t2 = (bmax - a[x]) / v[x];
+          if (t1 > t2) [t1, t2] = [t2, t1];
+          lo = Math.max(lo, t1); hi = Math.min(hi, t2);
+        }
+      }
+      if (lo < hi) spans.push([lo, hi]);
+    }
+    spans.sort((p, q) => p[0] - q[0]);
+    let t = 0;
+    for (const [lo, hi] of spans) if (lo <= t && hi > t) t = hi;
+    return Math.min(t, len * 3);
+  };
+  // free is true when the path of u along v for the distance d meets no wall of another unit and
+  // stays over the floor. The unit is out of filled during the test.
+  const free = (u, v, d) => {
+    if (u.box[2] + u.move[2] + Math.min(0, v[2] * d) < floor - c) return false;
+    const own = u.cells, step = Math.max(1, Math.ceil(own.length / 8000));
+    const hits = (sh) => {
+      let hit = 0;
+      for (let i = 0; i < own.length; i += step) if (filled.has(shiftKey(own[i], sh))) hit++;
+      return hit;
+    };
+    const start = hits(cellsAt(u));
+    const tol = Math.max(2, Math.ceil(own.length / step / 100));
+    let last = "";
+    for (let t = c * 0.5; t <= d + c * 0.5; t += c * 0.5) {
+      const sh = [0, 1, 2].map((x) => Math.round((u.move[x] + v[x] * Math.min(t, d)) / c));
+      const k = sh.join();
+      if (k === last) continue;
+      last = k;
+      if (hits(sh) > start + tol) return false;
+    }
+    return true;
+  };
+  const left = units.filter((u) => u.dir).reverse();
+  const stages = [];
+  for (;;) {
+    let done = false;
+    for (const u of left) {
+      const l = Math.hypot(...u.dir), v0 = u.dir.map((x) => x / l);
+      add(u, false);
+      const near = touching(u);
+      let ok = false;
+      // The direction of the unit, and then the same direction turned more and more up.
+      for (const up of [0, 0.5, 1, 2, 4]) {
+        const w = [v0[0], v0[1], v0[2] + up], wl = Math.hypot(...w), v = w.map((x) => x / wl);
+        // A unit that is clear already moves out by two gaps.
+        const d = Math.max(travel(u, v, near), gap * 2);
+        if (free(u, v, d)) {
+          u.move = u.move.map((x, k) => x + v[k] * d);
+          ok = true;
+          break;
+        }
+      }
+      add(u, true);
+      if (!ok) continue;
+      stages.push({ indexes: u.indexes, move: u.move.slice() });
+      left.splice(left.indexOf(u), 1);
+      done = true;
+      break;
+    }
+    if (!done) break;
+  }
+  return stages;
+}
+
+// holdWheel keeps the wheel and the pinch of a trackpad on a 3D view: they zoom the view and
+// do not scroll the page.
+function holdWheel(el) {
+  el.addEventListener("wheel", (e) => e.preventDefault(), { passive: false });
+}
+
 async function inspect(box, opts) {
   hide();
   const { T, OrbitControls, RoomEnvironment } = await load();
@@ -1561,6 +1752,7 @@ async function inspect(box, opts) {
   scene.add(key);
   const camera = new T.PerspectiveCamera(30, 1, 1, 50000);
   const controls = new OrbitControls(camera, renderer.domElement);
+  holdWheel(renderer.domElement);
   controls.enableDamping = true;
 
   const items = opts.items || [];
@@ -1599,33 +1791,23 @@ async function inspect(box, opts) {
   floor.material.opacity = 0.5;
   scene.add(floor);
 
-  // The explode: each item moves along its direction, or away from the middle of all (in the
-  // coordinates of the files).
-  const middle = new T.Box3().setFromObject(group).getCenter(new T.Vector3());
-  group.worldToLocal(middle);
-  // The lengths of the directions are relative: the longest moves half the size of the whole.
-  const most = Math.max(1e-9, ...items.map((it) => (it.explode && it.explode.length === 3 ? Math.hypot(...it.explode) : 1)));
-  meshes.forEach((m) => {
-    const it = items[m.userData.index];
-    let d;
-    if (it.explode && it.explode.length === 3) {
-      d = new T.Vector3(...it.explode);
-    } else {
-      d = m.userData.center.clone().sub(middle);
-      if (d.length() < len * 0.02) d.set(0, 0, 1);
-      d.normalize();
-    }
-    m.userData.dir = d.multiplyScalar((len * 0.5) / most);
-  });
+  // The explode: the items come off one by one, in the order of explodePlan.
+  const t0 = performance.now();
+  const stages = explodePlan(geos, items, len);
+  const planMs = Math.round(performance.now() - t0);
+  const byIndex = new Map(meshes.map((m) => [m.userData.index, m]));
   let exploded = 0, cutAt = 1, picked = -1;
-  const groundY = group.position.y;
-  // The items move, and then the whole goes up until its lowest point is on the floor.
   const place = () => {
-    for (const m of meshes) m.position.copy(m.userData.dir).multiplyScalar(exploded);
-    group.position.y = groundY;
-    scene.updateMatrixWorld(true);
-    const low = new T.Box3().setFromObject(group).min.y;
-    if (low < 0) group.position.y = groundY - low;
+    for (const m of meshes) m.position.set(0, 0, 0);
+    const x = exploded * stages.length;
+    stages.forEach((st, k) => {
+      const f = Math.max(0, Math.min(1, x - k));
+      const e = f * f * (3 - 2 * f); // a soft start and stop
+      for (const n of st.indexes) {
+        const m = byIndex.get(n);
+        if (m) m.position.set(st.move[0] * e, st.move[1] * e, st.move[2] * e);
+      }
+    });
     scene.updateMatrixWorld(true);
   };
   const cutPlane = () => {
@@ -1650,22 +1832,7 @@ async function inspect(box, opts) {
   const home = () => {
     camera.position.copy(dirHome).multiplyScalar(reach(len / 2)).add(new T.Vector3(0, size.y / 2, 0));
     controls.target.set(0, size.y / 2, 0);
-    fitDist = reach(len / 2);
-    if (exploded > 0) fitOut();
     controls.update();
-  };
-  // After an explode, the camera aims at the middle of the items, and its distance changes with
-  // the size of the items. The zoom of the person stays: zoom is the distance over the fit
-  // distance.
-  const ballNow = () => new T.Box3().setFromObject(group).getBoundingSphere(new T.Sphere());
-  let fitDist = reach(len / 2);
-  const fitOut = () => {
-    const ball = ballNow();
-    const off = camera.position.clone().sub(controls.target);
-    const zoom = off.length() / fitDist;
-    fitDist = reach(ball.radius);
-    controls.target.copy(ball.center);
-    camera.position.copy(ball.center).add(off.setLength(fitDist * zoom));
   };
   home();
   controls.minDistance = len * 0.15;
@@ -1718,10 +1885,12 @@ async function inspect(box, opts) {
     },
   };
   return {
-    explode(f) { exploded = Math.max(0, Math.min(1, +f)); place(); cutPlane(); fitOut(); },
+    explode(f) { exploded = Math.max(0, Math.min(1, +f)); place(); cutPlane(); },
     cut(f) { cutAt = Math.max(0, Math.min(1, +f)); cutPlane(); },
     highlight(i) { picked = i; paint(); },
     reset() { home(); },
+    stages,
+    planMs,
   };
 }
 

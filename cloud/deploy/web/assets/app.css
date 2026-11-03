@@ -471,7 +471,7 @@ body:has(#projHead:not([hidden])) #psBack, body:has(#projHead:not([hidden])) #pl
 .ptkeys { display: flex; flex-wrap: wrap; gap: var(--s2); }
 .ptkeys:empty { display: none; }
 .ptkeys button { min-height: 36px; font-size: 14px; }
-.pt3d { height: min(62vh, 560px); min-height: 300px; border-radius: 10px; background: var(--lcd); overflow: hidden; touch-action: none; }
+.pt3d { height: min(62vh, 560px); min-height: 300px; border-radius: 10px; background: var(--lcd); overflow: hidden; touch-action: none; overscroll-behavior: contain; }
 .pt3d canvas { display: block; width: 100%; height: 100%; }
 .ptctl { display: flex; flex-wrap: wrap; gap: var(--s3) var(--s5); align-items: center; }
 .ptctl label { display: flex; align-items: center; gap: var(--s2); font-size: 14px; color: var(--ink-dim); }
