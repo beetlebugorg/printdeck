@@ -1243,7 +1243,10 @@ func face(name, class string) js.Value {
 func drawFaces(v *wire.ProjectView) {
 	box := byID("pFaces")
 	box.Set("textContent", "")
-	box.Call("appendChild", face(v.Owner, ""))
+	// The public page has no names: it has no face of the owner.
+	if v.Owner != "" {
+		box.Call("appendChild", face(v.Owner, ""))
+	}
 	n := 0
 	for _, m := range v.Members {
 		if !m.Joined {

@@ -790,6 +790,8 @@ func (s *Server) viewProject(ctx context.Context, p *Project, w *who) (*cloud.Pr
 		v.You = KindOwner
 		if ownerPublic(p) {
 			v.Public = s.publicURL(p.Public)
+		} else if p.Public != "" && p.RepoOnly {
+			v.RepoPage = s.publicURL(p.Public)
 		}
 	}
 	for _, m := range p.Members {

@@ -129,6 +129,9 @@ type ProjectView struct {
 	// public page with Repo has the content of the public repository: Plans has the newest
 	// ready plan of the default branch.
 	RepoOnly bool `json:"repo_only,omitempty"`
+	// RepoPage is the address of the public page of the public repository, for the owner, when
+	// the owner's public page is off. The settings say that the page is there.
+	RepoPage string `json:"repo_page,omitempty"`
 }
 
 // ProjectLive is a print of a project that prints now: its name, the share link or "", the start,

@@ -185,6 +185,12 @@ func TestPublicRepo(t *testing.T) {
 	if v.Cover != rel+"cover.png" || v.Owner != "" || v.Notes != "" || v.NotesBy != "" || len(v.Members) != 0 {
 		t.Errorf("the page of a repository: %s", raw)
 	}
+	// The settings of the owner say that the page of the repository is there.
+	var ov cloud.ProjectView
+	if st := call(t, base, "GET", "/api/v1/projects/"+id, tok, nil, &ov); st != 200 || ov.Public != "" ||
+		ov.RepoPage != base+"/projects/bittlex" {
+		t.Errorf("the view of the owner with a page of the repository: %d public %q repo page %q", st, ov.Public, ov.RepoPage)
+	}
 	for f, want := range map[string]string{"part1-1.stl": "model/stl", "asm1-1.stl": "model/stl", "asm1-2.stl": "model/stl",
 		"doc1.pdf": "application/pdf", "doc1.png": "image/png", "cover.png": "image/png"} {
 		k := "p/bittlex/" + rel + f
@@ -244,7 +250,7 @@ func TestPublicRepo(t *testing.T) {
 	}
 	v, raw, _ = page()
 	if v.RepoOnly || len(v.Prints) != 1 || len(v.Photos) != 1 || len(v.Plans) != 1 || len(v.Docs) != 1 || v.Cover == "" ||
-		v.Notes != projectNotes || v.Prints[0].Notes != printNotes || v.Owner != "Jeremy" {
+		v.Notes != projectNotes || v.Prints[0].Notes != printNotes || v.Owner != "" {
 		t.Errorf("the owner's page with a public repository: %s", raw)
 	}
 	if v.NotesBy != "" || v.Prints[0].NotesBy != "" || v.Photos[0].By != "" {

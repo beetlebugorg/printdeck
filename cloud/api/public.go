@@ -241,14 +241,13 @@ func (s *Server) publish(ctx context.Context, p *Project) error {
 }
 
 // publishOwner adds the content of the owner's public page to the view of the page at dst: the
-// owner's first name, the notes, the prints and the photos, with no names of members. want gets
-// the copies.
+// notes, the prints and the photos, with no names of people. want gets the copies.
 func (s *Server) publishOwner(ctx context.Context, p *Project, dst string, view *cloud.ProjectView, want map[string]string) error {
 	prints, photos, err := s.projectFiles(ctx, p.ID)
 	if err != nil {
 		return err
 	}
-	view.Owner, view.Changed = s.ownerName(ctx), p.Changed
+	view.Changed = p.Changed
 	view.Notes, view.NotesAt = p.Notes, p.NotesAt
 	for _, pr := range prints {
 		pp := projectPrint(pr)
