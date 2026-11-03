@@ -26,12 +26,15 @@ results go back to the pull request.
 
 1. A friend opens a pull request with a change to a model.
 2. The Action uploads the plan of the commit: the models of all the parts, and the parts that
-   changed. It slices nothing yet. The commit gets the status "printdeck: choose the parts",
-   with a link to the plan page.
+   changed. It slices each part alone, with a count of 1, and uploads the file and the print time
+   of each part. The commit gets the status "printdeck: choose the parts", with a link to the
+   plan page.
 3. The owner opens the plan page. It suggests the parts that changed. The owner chooses the
    parts, and puts them on plates: each part alone, or parts together (see "The plates").
-4. The owner taps Slice. The service starts the workflow of the repository with the plates
-   (`workflow_dispatch`). The Action slices each plate and uploads the build.
+4. The owner taps Slice. A plate with one part and a count of 1 gets a copy of the file of the
+   plan. For the other plates, the service starts the workflow of the repository
+   (`workflow_dispatch`). The Action slices those plates and uploads the build. A build of only
+   plates from the plan is ready at once, with no run.
 5. The owner opens the preview: the slice of each plate in 3D. Approve sends the plate to the
    deck of its printer. Reject asks for a reason, and the reason goes to the pull request.
 6. The deck asks for the material, and the owner presses Start.
@@ -104,11 +107,15 @@ workflow on GitHub shows the wait as the commit status `printdeck/approval`.
 The workflow of the repository has two jobs. Both use `beetlebugorg/printdeck-action`.
 
 1. **plan** (on `push`, `pull_request` and tags): reads `printdeck.yml`, runs `generate:` when
-   the part needs it, finds the parts that changed, and uploads the plan with the models (STL
-   or 3MF, for the 3D views). It takes about a minute.
+   the part needs it, finds the parts that changed, slices each part alone, and uploads the plan
+   with the models (STL, for the 3D views) and the file of each slice. The Action keeps the
+   slices in the cache of GitHub Actions by the digest of the part, so a part that did not change
+   is not sliced again. A part that does not slice has its error in the plan, cannot go on a
+   plate, and fails the run. A 3MF part with an infill mesh, a cutting mesh or a support mesh
+   gets a 3D model from its G-code, because its mesh does not show the print.
 2. **slice** (on `workflow_dispatch`, with the input `build`: the ID of a build with its plates):
-   checks out the commit of the plan, gets the plates from the service, slices them, and uploads
-   the files of the build.
+   checks out the commit of the plan, gets the plates to slice from the service (each with its
+   `number` in the build), slices them, and uploads the files of the build.
 
 The service starts the slice run with the GitHub App (`actions: write` on the repository). The
 run uses the same OIDC token check as the plan run. The input has only the ID of the build: the
@@ -198,13 +205,15 @@ The plan, `plan.json`:
 - The repository, the commit, the ref, the pull request number or the tag.
 - For each part: the name, the files, the count, the printer, the profile with its version, the
   material, `alone`, the size of its model on the bed, and `changed`.
+- For each part, from its slice: the time, the grams or the ml, the layers, the layer height,
+  the slicer, the name of the file with its size and SHA-256 (`slice_file`), or `slice_error`.
 
 The manifest of a build, `build.json`:
 
 - The plan, and the plates that the owner chose.
 - For each plate: the printer, the profile with its version, the material, the parts with their
   counts, the file name, its size and SHA-256, the estimate of the time, the grams or the ml, the
-  layers, and the version of the slicer.
+  layers, and the version of the slicer. `reused` is true for a plate with the file of the plan.
 
 ### The upload
 
@@ -217,6 +226,8 @@ The Action needs no secret. It asks GitHub for an OIDC token with the audience
 2. The API checks the token: the signature against the keys of GitHub, the audience, the expiry,
    and the claim `repository`. The repository must be the repository of the project. For a
    slice run, the commit of the token must be the commit of the plan.
+   `POST /api/v1/builds/<id>/files` has one entry for each plate of the job, in order. The
+   reused plates are not in the job.
 3. The API replies with grants for the files, as for the files of a print now.
 4. The Action uploads the files, then sends `POST /api/v1/plans/<id>/done` or
    `POST /api/v1/builds/<id>/done`.

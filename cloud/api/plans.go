@@ -205,9 +205,14 @@ func (s *Server) routeActions(ctx context.Context, r *http.Request, body []byte,
 		if err != nil {
 			return nil, err
 		}
-		job := cloud.BuildJob{ID: b.ID, Commit: b.Commit}
-		for _, pl := range b.Plates {
-			job.Plates = append(job.Plates, pl.BuildPlate)
+		job := cloud.BuildJob{ID: b.ID, Commit: b.Commit, Plates: []cloud.BuildPlate{}}
+		for n, pl := range b.Plates {
+			if pl.Reused {
+				continue
+			}
+			jp := pl.BuildPlate
+			jp.Number = n + 1
+			job.Plates = append(job.Plates, jp)
 		}
 		return job, nil
 	case kind == "builds" && action == "started" && r.Method == http.MethodPost:
@@ -305,6 +310,22 @@ func refKind(rec *PlanRecord, ref, main string) error {
 	return nil
 }
 
+// sliceExt are the extensions of the slice file of a part.
+var sliceExt = map[string]bool{".gcode": true, ".cbddlp": true}
+
+// planSlice clips the facts of the slice of the part pp. A bad file name, size or SHA-256 clears
+// the file: the part then slices with the plate, as from an older Action.
+func planSlice(pp *cloud.PlanPart) {
+	pp.Seconds, pp.Layers = max(0, pp.Seconds), max(0, pp.Layers)
+	pp.Grams, pp.ML, pp.LayerHeight = max(0, pp.Grams), max(0, pp.ML), max(0, pp.LayerHeight)
+	pp.Slicer = clip(pp.Slicer, 80)
+	pp.SliceError = clip(strings.TrimSpace(pp.SliceError), 1000)
+	if pp.SliceError != "" || pp.Prebuilt != "" || !fileName.MatchString(pp.SliceFile) || !sliceExt[strings.ToLower(path.Ext(pp.SliceFile))] ||
+		pp.SliceSize <= 0 || pp.SliceSize > MaxBuildFile || !sha256Re.MatchString(pp.SliceSHA256) {
+		pp.SliceFile, pp.SliceSize, pp.SliceSHA256 = "", 0, ""
+	}
+}
+
 // newPlan makes the record of a plan of the project p, and returns the grant for its models.
 func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cloud.PlanManifest, fork *forkPlan) (any, error) {
 	if len(in.Parts) == 0 || len(in.Parts) > MaxPlanParts {
@@ -379,7 +400,24 @@ func (s *Server) newPlan(ctx context.Context, p *Project, c *GitHubClaims, in cl
 			pp.Digest = ""
 		}
 		pp.Count = max(1, min(pp.Count, MaxPartCount))
+		planSlice(&pp)
 		rec.Parts = append(rec.Parts, pp)
+	}
+	models := map[string]bool{}
+	for _, pp := range rec.Parts {
+		for _, m := range pp.Models {
+			models[m] = true
+		}
+	}
+	for i, pp := range rec.Parts {
+		if pp.SliceFile != "" && models[pp.SliceFile] {
+			return nil, fail(http.StatusBadRequest, "the slice file of a part has the name of a model: "+pp.SliceFile)
+		}
+		for _, q := range rec.Parts[:i] {
+			if pp.SliceFile != "" && q.SliceFile == pp.SliceFile {
+				return nil, fail(http.StatusBadRequest, "two parts have the slice file "+pp.SliceFile)
+			}
+		}
 	}
 	docs, err := planDocs(in.Docs)
 	if err != nil {
@@ -559,6 +597,12 @@ func (s *Server) planDone(ctx context.Context, p *Project, c *GitHubClaims, id s
 	if !have[rec.Cover] {
 		rec.Cover = ""
 	}
+	// A part with no slice file slices with its plate.
+	for i, pp := range rec.Parts {
+		if pp.SliceFile != "" && !have[pp.SliceFile] {
+			rec.Parts[i].SliceFile, rec.Parts[i].SliceSize, rec.Parts[i].SliceSHA256 = "", 0, ""
+		}
+	}
 	if err := s.keepOnly(ctx, planDir(p.ID, id), planFiles(rec), MaxPlanBytes); err != nil {
 		return nil, err
 	}
@@ -717,6 +761,9 @@ func (s *Server) newBuild(ctx context.Context, p *Project, w *who, planID string
 				return nil, fail(http.StatusBadRequest, "no such part")
 			}
 			part := plan.Parts[pp.Part]
+			if part.SliceError != "" {
+				return nil, fail(http.StatusBadRequest, fmt.Sprintf("plate %d: %s does not slice: %s", n+1, part.Name, part.SliceError))
+			}
 			if i == 0 {
 				plate = cloud.BuildPlate{Printer: part.Printer, Process: part.Process, Profile: part.Profile, Material: part.Material,
 					MaterialName: part.MaterialName, MaterialColor: part.MaterialColor, MaterialURL: part.MaterialURL, MaterialLinks: part.MaterialLinks}
@@ -734,13 +781,29 @@ func (s *Server) newBuild(ctx context.Context, p *Project, w *who, planID string
 		}
 		b.Plates = append(b.Plates, plateRecord{BuildPlate: plate})
 	}
+	if err := s.reusePlates(ctx, p, plan, &b); err != nil {
+		return nil, err
+	}
+	toSlice := 0
+	for _, pl := range b.Plates {
+		if !pl.Reused {
+			toSlice++
+		}
+	}
+	if toSlice == 0 {
+		// Each plate has the file of the plan: the build is ready, with no slice run.
+		b.State = cloud.BuildReady
+		for i := range b.Plates {
+			b.Plates[i].State = cloud.PartWaiting
+		}
+	}
 	if err := s.putJSON(ctx, buildKey(p.ID, b.ID), b); err != nil {
 		return nil, err
 	}
 	if err := s.replaceByBuild(ctx, p, plan, &b); err != nil {
 		return nil, err
 	}
-	if s.GitHub != nil {
+	if s.GitHub != nil && toSlice > 0 {
 		if err := s.GitHub.Dispatch(ctx, plan.Repo, b.ID, runTitle(plan, &b)); err != nil {
 			b.State, b.Error = cloud.BuildFailed, "GitHub did not start the slice run: "+err.Error()
 			if err := s.putJSON(ctx, buildKey(p.ID, b.ID), b); err != nil {
@@ -752,11 +815,40 @@ func (s *Server) newBuild(ctx context.Context, p *Project, w *who, planID string
 	return s.projectBuild(ctx, p, &b), nil
 }
 
+// reusePlates gives each plate of b with one part, a count of 1, and the slice file of the plan
+// a copy of that file, with the facts of the slice. The slice run does not slice these plates.
+func (s *Server) reusePlates(ctx context.Context, p *Project, plan *PlanRecord, b *BuildRecord) error {
+	for n := range b.Plates {
+		pl := &b.Plates[n]
+		if len(pl.Parts) != 1 || pl.Parts[0].Count != 1 {
+			continue
+		}
+		part := plan.Parts[pl.Parts[0].Part]
+		if part.SliceFile == "" || part.Prebuilt != "" || part.Profile != pl.Profile || part.Material != pl.Material {
+			continue
+		}
+		name := fmt.Sprintf("plate-%d%s", n+1, path.Ext(part.SliceFile))
+		err := s.Store.Copy(ctx, planDir(p.ID, plan.ID)+part.SliceFile, buildDir(p.ID, b.ID)+name, PutOptions{ContentType: "application/octet-stream"})
+		if errors.Is(err, ErrNotFound) {
+			continue // the plate slices in the slice run
+		}
+		if err != nil {
+			return err
+		}
+		pl.File, pl.Size, pl.SHA256, pl.Reused = name, part.SliceSize, part.SliceSHA256, true
+		pl.Seconds, pl.Grams, pl.ML, pl.Layers, pl.LayerHeight, pl.Slicer = part.Seconds, part.Grams, part.ML, part.Layers, part.LayerHeight, part.Slicer
+	}
+	return nil
+}
+
 // runTitle is the title of the slice run on GitHub: the parts of the plates and the plan, for
 // example "Pod door (fine) x2 + Pod panel (fine) · PR #12".
 func runTitle(plan *PlanRecord, b *BuildRecord) string {
 	var parts []string
 	for _, pl := range b.Plates {
+		if pl.Reused {
+			continue
+		}
 		for _, pp := range pl.Parts {
 			t := pp.Name
 			if pp.Variant != "" {
@@ -801,10 +893,19 @@ func (s *Server) buildFiles(ctx context.Context, p *Project, c *GitHubClaims, id
 	if b.State != cloud.BuildSlicing {
 		return nil, fail(http.StatusConflict, "the build is not waiting for its files")
 	}
-	if len(in.Plates) != len(b.Plates) {
-		return nil, fail(http.StatusBadRequest, "the files need one entry for each plate")
-	}
+	// The entries are for the plates to slice, in order. A reused plate has its file already.
+	var slice []int
 	seen := map[string]bool{}
+	for n, pl := range b.Plates {
+		if pl.Reused {
+			seen[pl.File] = true
+		} else {
+			slice = append(slice, n)
+		}
+	}
+	if len(in.Plates) != len(slice) {
+		return nil, fail(http.StatusBadRequest, "the files need one entry for each plate of the job")
+	}
 	for i, f := range in.Plates {
 		for _, n := range []string{f.File, f.Preview, f.Picture} {
 			if n == "" {
@@ -818,7 +919,7 @@ func (s *Server) buildFiles(ctx context.Context, p *Project, c *GitHubClaims, id
 		if f.File == "" || f.Size <= 0 || f.Size > MaxBuildFile || !sha256Re.MatchString(f.SHA256) {
 			return nil, fail(http.StatusBadRequest, "each plate needs its file, with its size (up to 200 MB) and its SHA-256")
 		}
-		pl := &b.Plates[i]
+		pl := &b.Plates[slice[i]]
 		pl.File, pl.Size, pl.SHA256, pl.Preview, pl.Picture = f.File, f.Size, f.SHA256, f.Preview, f.Picture
 		pl.Seconds, pl.Grams, pl.ML, pl.Layers, pl.LayerHeight, pl.Slicer = f.Seconds, f.Grams, f.ML, f.Layers, f.LayerHeight, clip(f.Slicer, 80)
 		if f.Profile != "" && strings.HasPrefix(f.Profile, strings.SplitN(pl.Profile, "@", 2)[0]) {

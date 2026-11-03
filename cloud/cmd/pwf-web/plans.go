@@ -198,7 +198,8 @@ func (a *app) showPlanPage(projectID, id string) {
 	a.planChoices = make([]planChoice, len(p.Parts))
 	for i, pp := range p.Parts {
 		// A release plan suggests all the parts. Another plan suggests the parts that changed.
-		a.planChoices[i] = planChoice{on: pp.Changed || p.Kind == wire.BuildRelease, count: max(1, pp.Count)}
+		// A part that does not slice is not checked: it cannot go on a plate.
+		a.planChoices[i] = planChoice{on: (pp.Changed || p.Kind == wire.BuildRelease) && pp.SliceError == "", count: max(1, pp.Count)}
 	}
 	a.firstChoice()
 	// The kind of print: the kind of the first part that changed, else the kind of the first part.
@@ -392,7 +393,11 @@ func (a *app) drawPlanParts() {
 		box := el("input", "", "")
 		box.Set("type", "checkbox")
 		box.Set("checked", on)
-		box.Set("disabled", !owner)
+		broken := true
+		for _, i := range g {
+			broken = broken && p.Parts[i].SliceError != ""
+		}
+		box.Set("disabled", !owner || broken)
 		box.Call("setAttribute", "aria-label", "Print "+first.Name)
 		box.Call("addEventListener", "change", js.FuncOf(func(js.Value, []js.Value) any {
 			if box.Get("checked").Bool() {
@@ -402,6 +407,14 @@ func (a *app) drawPlanParts() {
 					if p.Parts[i].Changed {
 						pick = i
 						break
+					}
+				}
+				if p.Parts[pick].SliceError != "" {
+					for _, i := range g {
+						if p.Parts[i].SliceError == "" {
+							pick = i // a variant that slices
+							break
+						}
 					}
 				}
 				a.planChoices[pick].on = true
@@ -428,9 +441,12 @@ func (a *app) drawPlanParts() {
 				v := p.Parts[i]
 				chip := el("button", "chip", v.Variant)
 				chip.Set("type", "button")
-				chip.Set("disabled", !owner)
+				chip.Set("disabled", !owner || v.SliceError != "")
 				chip.Call("setAttribute", "aria-pressed", strconv.FormatBool(a.planChoices[i].on))
 				title := profileName(v.Profile)
+				if v.SliceError != "" {
+					title += ", does not slice"
+				}
 				if v.Changed {
 					chip.Get("classList").Call("add", "changed")
 					title += ", changed"
@@ -463,8 +479,12 @@ func (a *app) drawPlanParts() {
 		if pp.Alone {
 			tail += " · prints alone"
 		}
+		tail += sliceFacts(pp.Seconds, pp.Grams, pp.ML)
 		sub.Call("appendChild", doc.Call("createTextNode", tail))
 		what.Call("appendChild", sub)
+		if pp.SliceError != "" {
+			what.Call("appendChild", el("span", "warn", "Does not slice: "+pp.SliceError))
+		}
 		what.Call("addEventListener", "click", js.FuncOf(func(_ js.Value, args []js.Value) any {
 			if args[0].Get("target").Get("tagName").String() != "BUTTON" {
 				a.showPlanModel(cur)
@@ -661,6 +681,37 @@ func (a *app) plateFit(parts []int) (bool, int, int) {
 	return rows*cd <= by-20, n, fit
 }
 
+// sliceFacts is the print time and the filament of the slice of a part in the plan, for example
+// " · 0:43:49 · 8.5 g", or "" for a part with no slice.
+func sliceFacts(sec int, grams, ml float64) string {
+	out := ""
+	if sec > 0 {
+		out += " · " + clock(sec)
+	}
+	if ml > 0 {
+		out += fmt.Sprintf(" · %.1f ml", ml)
+	} else if grams > 0 {
+		out += fmt.Sprintf(" · %.1f g", grams)
+	}
+	return out
+}
+
+// plateEstimate is the print time and the filament of the plate pl from the slices of its parts
+// in the plan: the sum of each part times its count. The slice of the plate can differ, so the
+// text says "about". It is "" when a part has no slice.
+func (a *app) plateEstimate(pl []int) string {
+	sec, grams, ml := 0, 0.0, 0.0
+	for _, i := range pl {
+		pp := a.plan.Parts[i]
+		if pp.Seconds <= 0 {
+			return ""
+		}
+		c := a.planChoices[i].count
+		sec, grams, ml = sec+pp.Seconds*c, grams+pp.Grams*float64(c), ml+pp.ML*float64(c)
+	}
+	return " · about" + sliceFacts(sec, grams, ml)[2:]
+}
+
 // suggestPlates puts the checked parts on plates: the parts with the same key on one plate while
 // they fit, and a new plate for a part that does not fit.
 func (a *app) suggestPlates() [][]int {
@@ -729,7 +780,7 @@ func (a *app) drawPlates() {
 		}
 		sub := el("span", "sub", head+" · ")
 		sub.Call("appendChild", materialEl(first.MaterialName, first.MaterialColor, first.Material))
-		sub.Call("appendChild", doc.Call("createTextNode", " · "+count(objects, "object", "objects")))
+		sub.Call("appendChild", doc.Call("createTextNode", " · "+count(objects, "object", "objects")+a.plateEstimate(pl)))
 		card.Call("appendChild", sub)
 		if !ok {
 			card.Call("appendChild", el("span", "warn", fmt.Sprintf("Too much for the bed: %d objects fit. Move parts to another plate, or print fewer copies.", fit)))
