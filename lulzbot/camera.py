@@ -142,11 +142,16 @@ CONNECTOR_T = 7.0
 # plate of the frame covers the front face from y 416 up, and the top of the frame covers the right
 # face from y 470 up. The front leg of the saddle stops under the corner plate, and the right leg goes
 # on up to the top.
-TAZ_UPRIGHT = dict(front=86.0, right=-673.0, front_slot=-662.6, right_slot=76.0, back=66.0, left=-653.0)   # measured in the model
+# The slots are at the middle of each 20 mm face. The model gave the front slot at -662.6, 0.4 mm off
+# the middle: with the round lips of the TAZ slot (5.1 mm at the narrowest), that key did not go in.
+TAZ_UPRIGHT = dict(front=86.0, right=-673.0, front_slot=-663.0, right_slot=76.0, back=66.0, left=-653.0)
 TAZ_SADDLE_Y = (340.0, 412.0, 466.0)            # the bottom, the top of the front leg, the top of the right leg
 TAZ_SADDLE_T = 5.0
 TAZ_CORNER_PLATE_Y = 416.0     # the bottom of the corner plate on the front of the upright (3 mm thick)
-SLOT_KEY = (4.8, 1.5)          # the key in the slot: width, depth. The slot is 5.1 mm at the round lips (shape.py).
+# The key in the slot: width, depth. The TAZ slot is 6.15 mm at the face and 5.1 mm at its round lips
+# (shape.py). A key of 4.8 x 1.5 did not go into the slots of a real TAZ. 4.2 x 1.2 leaves 0.45 mm on
+# each side at the lips, for the widening of a printed part.
+SLOT_KEY = (4.2, 1.2)
 TNUT_SCREW = 8.0               # M3 x 8 into a roll-in T-nut: 2.3 mm of plastic, the nut 1.8 mm behind the face
 
 # ---------------------------------------------------------------- the Mini 2 plate
@@ -421,6 +426,16 @@ def taz_clamp():
     return s
 
 
+def taz_clamp_fit():
+    """A short test piece of the TAZ saddle: the bottom 12 mm of its two legs with their keys. Print
+    it first, and push it onto the upright under the corner plate: it must go on by hand, with no
+    play, and the two legs must lie flat on the faces."""
+    u = TAZ_UPRIGHT
+    y0 = TAZ_SADDLE_Y[0]
+    t = TAZ_SADDLE_T
+    return taz_clamp() & box(u["back"], u["front"] + t, y0, y0 + 12.0, u["right"] - t, u["left"])
+
+
 def taz_screw_places():
     """(head face point, direction out of the part) of the two saddle screws."""
     u = TAZ_UPRIGHT
@@ -500,7 +515,10 @@ def printed(name):
     H = hinge_loc(name)
     # The arm prints as it is in hinge coordinates. The clamp stands on its bottom: the TAZ y is up.
     clamp_rot = Rot(90, 0, 0) if name == "taz" else Rot(0, 0, 0)
-    return [(f"camera-arm-{name}", arm(name), H.inverse()), (f"camera-clamp-{name}", CLAMPS[name](), clamp_rot)]
+    out = [(f"camera-arm-{name}", arm(name), H.inverse()), (f"camera-clamp-{name}", CLAMPS[name](), clamp_rot)]
+    if name == "taz":
+        out.append(("camera-clamp-fit-taz", taz_clamp_fit(), clamp_rot))
+    return out
 
 
 def parts(name):
