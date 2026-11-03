@@ -102,6 +102,30 @@ func TestPrintEdit(t *testing.T) {
 		t.Fatalf("still ready: %+v", p)
 	}
 
+	// In use: the owner only. A second mark keeps the first time, and a clear removes it.
+	if st := call(t, base, "PATCH", path, sam, cloud.PrintEdit{InUse: &yes}, nil); st != 401 {
+		t.Errorf("member in use: %d", st)
+	}
+	if st := call(t, base, "PATCH", path, tok, cloud.PrintEdit{InUse: &yes}, nil); st != 200 {
+		t.Fatal(st)
+	}
+	first := print(tok).InUse
+	if first.IsZero() {
+		t.Fatal("not in use")
+	}
+	if st := call(t, base, "PATCH", path, tok, cloud.PrintEdit{InUse: &yes}, nil); st != 200 {
+		t.Fatal(st)
+	}
+	if p := print(tok); !p.InUse.Equal(first) {
+		t.Fatalf("in use again: %v, was %v", p.InUse, first)
+	}
+	if st := call(t, base, "PATCH", path, tok, cloud.PrintEdit{InUse: &no}, nil); st != 200 {
+		t.Fatal(st)
+	}
+	if p := print(tok); !p.InUse.IsZero() {
+		t.Fatalf("still in use: %+v", p)
+	}
+
 	// Discard with a note: the owner only; a clear also clears the note.
 	note := "Warped corner, reprint at 0.1 mm"
 	if st := call(t, base, "PATCH", path, sam, cloud.PrintEdit{Discard: &yes, DiscardNote: &note}, nil); st != 401 {

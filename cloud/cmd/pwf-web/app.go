@@ -763,6 +763,7 @@ func (a *app) drawPrint(p wire.ProjectPrint) {
 	setText("prBack", v.Name)
 	setHidden("prDanger", !v.IsOwner)
 	setHidden("prOwnerKeys", !v.IsOwner)
+	setHidden("prRename", !v.IsOwner)
 	setHidden("prSourceEdit", !v.IsOwner)
 	setText("prSourceEdit", "Set the source")
 	if p.Source != "" {
@@ -776,10 +777,11 @@ func (a *app) drawPrint(p wire.ProjectPrint) {
 	byID("prReady").Call("setAttribute", "aria-pressed", strconv.FormatBool(!p.Ready.IsZero()))
 	byID("prTest").Call("setAttribute", "aria-pressed", strconv.FormatBool(!p.Test.IsZero()))
 	byID("prDiscard").Call("setAttribute", "aria-pressed", strconv.FormatBool(!p.Discarded.IsZero()))
+	byID("prInUse").Call("setAttribute", "aria-pressed", strconv.FormatBool(!p.InUse.IsZero()))
 	for _, f := range []string{"prRenameForm", "prNotesForm", "prSourceForm"} {
 		setHidden(f, true)
 	}
-	setHidden("prName", false)
+	setHidden("prNameRow", false)
 	say("prNotesMsg", nil, "")
 	setHidden("prShare", js.Global().Get("navigator").Get("share").IsUndefined())
 	setText("prCopy", "Copy link")
@@ -868,9 +870,9 @@ func (a *app) bindEdits() {
 		if p.DeckName != "" {
 			setText("prDeckName", "The name from the deck: "+p.DeckName+". Save an empty name to use it again.")
 		}
-		open("prRenameForm", "prRenameInput", p.Name, "prName")
+		open("prRenameForm", "prRenameInput", p.Name, "prNameRow")
 	})
-	on("prRenameCancel", "click", func() { setHidden("prRenameForm", true); setHidden("prName", false) })
+	on("prRenameCancel", "click", func() { setHidden("prRenameForm", true); setHidden("prNameRow", false) })
 	onSubmit("prRenameForm", func() {
 		t := strings.TrimSpace(byID("prRenameInput").Get("value").String())
 		go a.editPrint(wire.PrintEdit{Title: &t}, "prCopyMsg")
@@ -903,6 +905,10 @@ func (a *app) bindEdits() {
 	on("prDeliver", "click", func() {
 		d := a.printNow().Delivered.IsZero()
 		go a.editPrint(wire.PrintEdit{Delivered: &d}, "prCopyMsg")
+	})
+	on("prInUse", "click", func() {
+		u := a.printNow().InUse.IsZero()
+		go a.editPrint(wire.PrintEdit{InUse: &u}, "prCopyMsg")
 	})
 	on("prNotesEdit", "click", func() { open("prNotesForm", "prNotesInput", a.printNow().Notes, "prNotesText") })
 	on("prNotesCancel", "click", func() { setHidden("prNotesForm", true); setHidden("prNotesText", false) })

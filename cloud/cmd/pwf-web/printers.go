@@ -21,13 +21,16 @@ var printerFilter string
 // ready to pick up, or "delivered".
 var stateFilter string
 
-// printState is the state of a print for stateFilter: "test", "ready", "delivered", or "".
+// printState is the state of a print for stateFilter: "discarded", "test", "inuse", "delivered",
+// "ready", or "". A print in use is not ready to pick up.
 func printState(p wire.ProjectPrint) string {
 	switch {
 	case !p.Discarded.IsZero():
 		return "discarded"
 	case !p.Test.IsZero():
 		return "test"
+	case !p.InUse.IsZero():
+		return "inuse"
 	case !p.Delivered.IsZero():
 		return "delivered"
 	case !p.Ready.IsZero():
@@ -101,8 +104,8 @@ func drawPrints(v *wire.ProjectView, href func(wire.ProjectPrint) string) {
 	}
 	srow := byID("pStates")
 	srow.Set("textContent", "")
-	setHidden("pStates", states["ready"]+states["delivered"]+states["test"]+states["discarded"] == 0)
-	for _, k := range []struct{ id, label string }{{"", "All"}, {"ready", "Ready for pickup"}, {"delivered", "Delivered"}, {"test", "Test prints"}, {"discarded", "Rejected"}} {
+	setHidden("pStates", states["ready"]+states["delivered"]+states["inuse"]+states["test"]+states["discarded"] == 0)
+	for _, k := range []struct{ id, label string }{{"", "All"}, {"ready", "Ready for pickup"}, {"delivered", "Delivered"}, {"inuse", "In use"}, {"test", "Test prints"}, {"discarded", "Rejected"}} {
 		n := len(shown)
 		if k.id != "" {
 			n = states[k.id]

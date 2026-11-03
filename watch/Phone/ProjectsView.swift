@@ -520,6 +520,8 @@ struct PrintScreen: View {
                     .buttonStyle(KeyStyle(led: pr.ready != nil))
                 Button("Delivered") { Task { await save(["delivered": pr.delivered == nil]) } }
                     .buttonStyle(KeyStyle(led: pr.delivered != nil))
+                Button("In use") { Task { await save(["in_use": pr.inUse == nil]) } }
+                    .buttonStyle(KeyStyle(led: pr.inUse != nil))
                 Button("Test") { Task { await save(["test": pr.test == nil]) } }
                     .buttonStyle(KeyStyle(led: pr.test != nil))
                 // Reject asks for the note of why. A tap on a rejected print clears the mark and the note.

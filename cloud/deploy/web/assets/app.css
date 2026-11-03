@@ -153,10 +153,17 @@ footer { display: grid; gap: var(--s1); margin-top: var(--s4); padding-top: var(
 .row-keys { display: flex; flex-wrap: wrap; gap: var(--s2); }
 .source { overflow-wrap: anywhere; }
 .source a { font-family: "IBM Plex Mono", monospace; font-size: 14px; }
-.delivered { display: inline-block; margin: 0; padding: 4px 10px; border-radius: 999px; background: #1f7a3d; color: #fff; font-weight: 700; font-size: 14px; }
+.delivered { display: inline-block; margin: 0; padding: 2px 8px; border-radius: 999px; background: #1f7a3d; color: #fff; font-weight: 700; font-size: 12px; }
 .delivered[hidden] { display: none; }
 .tile .badges .ok { background: #1f7a3d; color: #fff; }
 .tile .badges .ready, .delivered.ready { background: var(--orange); color: var(--on-orange); }
+.tile .badges .inuse, .delivered.inuse { background: #1d5fa8; color: #fff; }
+/* The name of a print with its Rename link, and the small mark keys of the owner under it. */
+.namerow { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2) var(--s3); }
+.namerow button.link { font-size: 14px; }
+.namerow[hidden], .owner-keys[hidden] { display: none; }
+.view .title .owner-keys { gap: var(--s2); }
+.view .title .owner-keys button { min-height: 30px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 600; }
 /* The builds from GitHub: the plans on the project page, the plan page and the build page. */
 .plans { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
 .plans a { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--seam); border-radius: 10px; background: var(--cap);

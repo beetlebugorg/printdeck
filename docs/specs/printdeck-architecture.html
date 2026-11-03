@@ -365,7 +365,7 @@ svg.d .nofill { fill:none; }
 <tr><td>Take a file out of the queue of a printer</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td></tr>
 <tr><td>Add a print or a live tile</td><td class="c yes">✓</td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td></tr>
 <tr><td>Remove a print</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td></tr>
-<tr><td>Rename a print, mark it Delivered or Rejected, set its source</td><td class="c no">·</td><td class="c yes">✓</td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td></tr>
+<tr><td>Rename a print, mark it Delivered, In use or Rejected, set its source</td><td class="c no">·</td><td class="c yes">✓</td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td></tr>
 <tr><td>Write the notes of a project or a print</td><td class="c no">·</td><td class="c yes">✓</td><td class="c">own projects</td><td class="c no">·</td><td class="c no">·</td></tr>
 <tr><td>See the plans and the builds</td><td class="c no">·</td><td class="c yes">✓</td><td class="c">own projects</td><td class="c no">·</td><td class="c no">·</td></tr>
 <tr><td>Set the GitHub username of a member</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c no">·</td><td class="c no">·</td><td class="c no">·</td></tr>
@@ -446,7 +446,7 @@ svg.d .nofill { fill:none; }
 <li>Rename or delete the project, or change its public address.</li>
 <li>Invite friends or remove members.</li>
 <li>Remove prints, the photos of other people, or a file from the queue of a printer.</li>
-<li>Rename a print, mark it Test, Ready, Delivered or Rejected, or set the link to its source.</li>
+<li>Rename a print, mark it Test, Ready, Delivered, In use or Rejected, or set the link to its source.</li>
 <li>Link a repository, slice a plan, or approve or reject a plate.</li>
 </ul></td></tr></tbody></table>
 <p class="small">The API reads the session into a <code>who</code> value: owner, or member. <code>whoFor</code> finds the member ID of the session in the project of the request. Then it loads the project and checks that the project still has that member. <code>ownerOnly</code> guards each owner action. <code>viewProject</code> gives a member only the members that joined.</p>
@@ -590,11 +590,12 @@ svg.d .nofill { fill:none; }
 <li><b>Test print.</b> The owner marks a print as a test print: a print to try a setting or a fit, and not to give. The API records the time. A test print is not in the card Ready for pickup.</li>
 <li><b>Ready for pickup.</b> The owner marks a print Ready for pickup on its page, before Delivered, and the API records the time.</li>
 <li><b>Delivered.</b> The owner marks a print Delivered, and the API records the time. The owner can also clear the mark.</li>
+<li><b>In use.</b> The owner marks a print In use when the print is in use: after a delivery, or with no delivery for a print that the owner keeps. The API records the time, and a second tap clears it. A print in use is not in the card Ready for pickup.</li>
 <li><b>Rejected.</b> The owner marks a print Rejected when the print is not used: a failed print, or a good print that is wrong for some reason, such as a part that does not fit. The note of why has up to 500 characters. The API records the time. A second tap clears the mark and the note. A rejected print is not in the card Ready for pickup. The iPhone app can also set the mark. The API fields are <code>discarded</code> and <code>discard_note</code>, from the earlier name of the mark, Discard.</li>
 <li><b>Source.</b> The owner sets a link to the source of the model, for example a file of a commit on GitHub. The link must be an <code>http</code> or <code>https</code> address with a host, of at most 500 characters.</li>
 <li><b>Ready from a share.</b> When the owner of a share marks it Ready, the API copies the time and the note to the print of the share in its project. A clear of Ready also clears the mark on the print. The API also copies the mark when a share joins a project later.</li>
 </ul>
-<p>The print page shows "Rejected" with the day and the note, else "Delivered" with the day. Before the delivery, it shows the Ready mark when the print has one. A tile has the badge Rejected, Test, Ready to pick up, or Delivered with the date. A member can change the notes only. The other fields get 401 for a member.</p>
+<p>The print page shows "Rejected" with the day and the note, else "In use since" with the day, else "Delivered" with the day. Before the delivery, it shows the Ready mark when the print has one. A tile has the badge Rejected, Test, In use, Delivered with the date, or Ready to pick up. A member can change the notes only. The other fields get 401 for a member.</p>
 <p><b>Photos from a phone.</b> The photos of a project and of a print have Take photos on a phone: the camera opens, and after each photo goes up, Take another photo opens it again. A photo that does not go up does not stop the others.</p>
 <p><b>Move a photo.</b> A photo can move to another print of the project, or to no print, with <code>PUT projects/&lt;id&gt;/photos/&lt;photo&gt;</code>. The owner moves any photo, and a member moves only their own.</p>
 
@@ -648,7 +649,7 @@ svg.d .nofill { fill:none; }
 <li><b>The line of what happens now</b> names the print that prints, with its share and the time of its end, or the time of the last print. It also counts the plates that wait for the owner and the open pull requests that change parts. Each item is a link.</li>
 <li><b>The numbers</b> are the prints, the print time, the filament and the share of the prints that finished.</li>
 <li><b>The chart</b> shows the hours of print of each of the last 7 days: the finished prints, with the stopped prints over them. Each bar has the short name of its day, and the last bar is Today. A bar under it shows the grams of each material, in the color of the filament.</li>
-<li><b>The feed</b> shows the 12 newest events, with a heading for each day: the end of a print, Ready, Delivered and Rejected, the photos of one person on one day, the plans, the slices, the approvals, the rejections and the notes.</li>
+<li><b>The feed</b> shows the 12 newest events, with a heading for each day: the end of a print, Ready, Delivered, In use and Rejected, the photos of one person on one day, the plans, the slices, the approvals, the rejections and the notes.</li>
 <li><b>The GitHub card</b> shows the newest plan of main and each open pull request that changes parts, with its author and the state of its three steps: Plan, Slice and Approve. A pull request that changes no part is only on the Builds tab, and the feed has no line for its plans.</li>
 <li><b>The printers card</b> shows each printer of the project: printing with its share, paused, or idle with the time of its last print. A deck from before the printers sends its live print with no printer ID. Its row then has the name of the printer from the deck. A printing row shows the percent and the time of the end. A resin printer also shows its layer, for example layer 120 of 800, and a picture of the layer that cures now.</li>
 <li><b>The card Ready for pickup</b> shows each print that waits, with small pictures of its photos (else of its model), the time of the mark, and Delivered for the owner. It links to the delivered prints.</li>
@@ -885,7 +886,7 @@ svg.d .nofill { fill:none; }
 <ul>
 <li><b>Several printers.</b> The app keeps a list of decks, each with its key in the keychain group of the app. The app has two tabs, Prints and Projects. The Prints tab has a card for each deck. The Live Activity shows the print that ends first. The widgets and the watch show the deck that prints.</li>
 <li><b>Away from home.</b> The app reads the service: the live prints of the projects, and for the owner the state of each printer. It matches them to its decks with <code>printer_id</code>.</li>
-<li><b>Projects.</b> The overview of a project, the approval of plates, Send to a printer, the marks Test, Ready, Delivered and Rejected (with a note of why), notes, and photos from the camera. The 3D preview opens the web page in a web view, with the session. The Projects tab has the sign-in, and a card for each project with its prints that run, the prints ready for pickup, the plates that wait and the files in the queues. The app loads the photos and the models with the signed cookies that the replies of the API set.</li>
+<li><b>Projects.</b> The overview of a project, the approval of plates, Send to a printer, the marks Test, Ready, Delivered, In use and Rejected (with a note of why), notes, and photos from the camera. The 3D preview opens the web page in a web view, with the session. The Projects tab has the sign-in, and a card for each project with its prints that run, the prints ready for pickup, the plates that wait and the files in the queues. The app loads the photos and the models with the signed cookies that the replies of the API set.</li>
 <li><b>The queue.</b> The queue of each deck, with Up, Down and Remove, and no Start. A push message Next in the queue opens its deck. The app registers with the push relay at <code>/api/v1/relay/</code> of the service, and the decks post their encrypted messages there.</li>
 <li><b>The resin deck.</b> The app has no Print and no Resume for a resin deck.</li>
 </ul>
@@ -939,7 +940,7 @@ svg.d .nofill { fill:none; }
 <tr><td><code>GET</code>, <code>POST projects</code></td><td>session or deck</td><td>Lists the projects, or makes one (owner). A member gets each project of the session that still has the member.</td></tr>
 <tr><td><code>projects/&lt;id&gt;</code> and below</td><td>session or deck</td><td>View, rename, delete; invites, members, public address; prints, live tiles, photos. The rows below are the routes of the notes, the prints, the photos, the queue and the builds.</td></tr>
 <tr><td><code>PATCH projects/&lt;id&gt;/notes</code></td><td>session</td><td>Changes the notes of the project.</td></tr>
-<tr><td><code>PATCH projects/&lt;id&gt;/prints/&lt;print&gt;</code></td><td>session; owner for title, marks, source</td><td>Changes the title, the notes, the marks Test, Ready, Delivered and Rejected (with a note of why), or the source of a print. A member changes the notes only.</td></tr>
+<tr><td><code>PATCH projects/&lt;id&gt;/prints/&lt;print&gt;</code></td><td>session; owner for title, marks, source</td><td>Changes the title, the notes, the marks Test, Ready, Delivered, In use and Rejected (with a note of why), or the source of a print. A member changes the notes only.</td></tr>
 <tr><td><code>PUT projects/&lt;id&gt;/photos/&lt;photo&gt;</code></td><td>session or deck; a member moves only their own photos</td><td>Moves a photo to another print of the project, or to no print.</td></tr>
 <tr><td><code>PATCH projects/&lt;id&gt;/members/&lt;member&gt;</code></td><td>owner or deck</td><td>Sets the GitHub username of a member who joined.</td></tr>
 <tr><td><code>PUT projects/&lt;id&gt;/repo</code></td><td>owner or deck</td><td>Links a GitHub repository, or removes the link with "".</td></tr>

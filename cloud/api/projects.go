@@ -164,6 +164,8 @@ type pageFields struct {
 	ReadyNote string    `json:"ready_note,omitempty"`
 	// Test is the time of the mark Test print, or zero.
 	Test time.Time `json:"test,omitzero"`
+	// InUse is the time of the mark In use: the print is in use, with or without a delivery.
+	InUse time.Time `json:"in_use,omitzero"`
 	// Discarded is the time of the mark Reject, or zero, and DiscardNote why the print is not used.
 	// The names are from the earlier mark Discard, and the stored prints and the apps use them.
 	Discarded   time.Time `json:"discarded,omitzero"`
@@ -873,7 +875,7 @@ func projectPrint(pr PrintRecord) cloud.ProjectPrint {
 	}
 	return cloud.ProjectPrint{ID: pr.ID, N: pr.N, PrinterID: pr.PrinterID, Name: name, DeckName: deck,
 		Notes: pr.Notes, NotesBy: pr.NotesBy, NotesAt: pr.NotesAt, Delivered: pr.Delivered, Source: pr.Source,
-		Ready: pr.Ready, ReadyNote: pr.ReadyNote, Test: pr.Test, Discarded: pr.Discarded, DiscardNote: pr.DiscardNote, File: pr.File, Result: pr.Result, Ended: pr.Ended, Seconds: pr.Seconds,
+		Ready: pr.Ready, ReadyNote: pr.ReadyNote, Test: pr.Test, InUse: pr.InUse, Discarded: pr.Discarded, DiscardNote: pr.DiscardNote, File: pr.File, Result: pr.Result, Ended: pr.Ended, Seconds: pr.Seconds,
 		Material: pr.Material, Grams: pr.Grams, Roll: pr.Roll, Printer: pr.Printer, Note: pr.Note, Frames: pr.Frames, FPS: pr.FPS,
 		Started: pr.Started, Layers: pr.Layers, Layer: pr.Layer, Height: pr.Height, GramsTotal: pr.GramsTotal,
 		Estimate: pr.Estimate, Prep: pr.Prep, Slicer: pr.Slicer, Filament: pr.Filament, Build: pr.Build, Commit: pr.Commit}
@@ -1127,7 +1129,7 @@ func (s *Server) editPrint(ctx context.Context, id, pid string, w *who, in cloud
 	if w.deck != nil {
 		return fail(http.StatusUnauthorized, "only a person edits a print")
 	}
-	if (in.Title != nil || in.Delivered != nil || in.Ready != nil || in.Test != nil || in.Discard != nil || in.DiscardNote != nil || in.Source != nil) && !w.owner {
+	if (in.Title != nil || in.Delivered != nil || in.Ready != nil || in.Test != nil || in.InUse != nil || in.Discard != nil || in.DiscardNote != nil || in.Source != nil) && !w.owner {
 		return fail(http.StatusUnauthorized, "only the owner can do this")
 	}
 	_, err := s.changePrint(ctx, id, pid, func(pr *PrintRecord) error {
@@ -1146,6 +1148,14 @@ func (s *Server) editPrint(ctx context.Context, id, pid string, w *who, in cloud
 				pr.Delivered = time.Time{}
 			case pr.Delivered.IsZero():
 				pr.Delivered = s.now().UTC()
+			}
+		}
+		if in.InUse != nil {
+			switch {
+			case !*in.InUse:
+				pr.InUse = time.Time{}
+			case pr.InUse.IsZero():
+				pr.InUse = s.now().UTC()
 			}
 		}
 		if in.Discard != nil {

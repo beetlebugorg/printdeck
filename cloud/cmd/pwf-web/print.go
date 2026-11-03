@@ -541,6 +541,8 @@ func printTile(p wire.ProjectPrint, href string) js.Value {
 		badges.Call("appendChild", el("span", "fail", "Rejected"))
 	case !p.Test.IsZero():
 		badges.Call("appendChild", el("span", "", "Test"))
+	case !p.InUse.IsZero():
+		badges.Call("appendChild", el("span", "inuse", "In use"))
 	case !p.Delivered.IsZero():
 		badges.Call("appendChild", el("span", "ok", "Delivered "+shortDate(p.Delivered)))
 	case !p.Ready.IsZero():
@@ -591,17 +593,24 @@ func printTile(p wire.ProjectPrint, href string) js.Value {
 	return tile
 }
 
-// drawPrintNotes shows the mark Delivered, the source of the model and the notes of the print p.
+// drawPrintNotes shows the mark Rejected, In use, Delivered or Ready, the source of the model and the notes of the print p.
 // The card of the notes hides on a page with no keys to write them (data-edit) and no notes.
 func drawPrintNotes(p wire.ProjectPrint) {
-	setHidden("prDelivered", p.Delivered.IsZero() && p.Ready.IsZero() && p.Discarded.IsZero())
-	byID("prDelivered").Get("classList").Call("toggle", "ready", p.Delivered.IsZero() && p.Discarded.IsZero())
+	setHidden("prDelivered", p.Delivered.IsZero() && p.Ready.IsZero() && p.Discarded.IsZero() && p.InUse.IsZero())
+	byID("prDelivered").Get("classList").Call("toggle", "ready", p.Delivered.IsZero() && p.Discarded.IsZero() && p.InUse.IsZero())
 	byID("prDelivered").Get("classList").Call("toggle", "discarded", !p.Discarded.IsZero())
+	byID("prDelivered").Get("classList").Call("toggle", "inuse", p.Discarded.IsZero() && !p.InUse.IsZero())
 	switch {
 	case !p.Discarded.IsZero():
 		line := "Rejected " + p.Discarded.Local().Format("Mon Jan 2, 2006")
 		if p.DiscardNote != "" {
 			line += " · " + p.DiscardNote
+		}
+		setText("prDelivered", line)
+	case !p.InUse.IsZero():
+		line := "In use since " + p.InUse.Local().Format("Mon Jan 2, 2006")
+		if !p.Delivered.IsZero() {
+			line += " · delivered " + p.Delivered.Local().Format("Mon Jan 2")
 		}
 		setText("prDelivered", line)
 	case !p.Delivered.IsZero():

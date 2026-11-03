@@ -580,6 +580,9 @@ func (a *app) drawFeed(v *wire.ProjectView) {
 		if !p.Delivered.IsZero() {
 			evs = append(evs, event{p.Delivered, "ok", "Delivered " + p.Name, "", href})
 		}
+		if !p.InUse.IsZero() {
+			evs = append(evs, event{p.InUse, "ok", p.Name + " is in use", "", href})
+		}
 		if !p.Discarded.IsZero() {
 			evs = append(evs, event{p.Discarded, "stop", "Rejected " + p.Name, p.DiscardNote, href})
 		}

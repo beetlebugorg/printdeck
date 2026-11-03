@@ -27,9 +27,9 @@ struct ProjectDetail: Decodable {
 
     var owner: Bool { isOwner ?? false }
 
-    /// The prints that are ready to pick up: Ready, with no Delivered, no Test and no Discarded.
+    /// The prints that are ready to pick up: Ready, with no Delivered, no In use, no Test and no Rejected.
     var readyForPickup: [ProjectPrintItem] {
-        (prints ?? []).filter { $0.ready != nil && $0.delivered == nil && $0.test == nil && $0.discarded == nil }
+        (prints ?? []).filter { $0.ready != nil && $0.delivered == nil && $0.inUse == nil && $0.test == nil && $0.discarded == nil }
     }
 
     /// The prints, the newest end first.
@@ -72,6 +72,7 @@ struct ProjectDetail: Decodable {
             }
             if let r = p.ready { evs.append(FeedEvent(at: r, text: p.name + " is ready to pick up", sub: p.readyNote ?? "")) }
             if let d = p.delivered { evs.append(FeedEvent(at: d, text: "Delivered " + p.name, sub: "")) }
+            if let u = p.inUse { evs.append(FeedEvent(at: u, text: p.name + " is in use", sub: "")) }
             if let d = p.discarded { evs.append(FeedEvent(at: d, text: "Rejected " + p.name, sub: p.discardNote ?? "")) }
         }
         let photos = (self.photos ?? []).sorted { ($0.added ?? .distantPast) > ($1.added ?? .distantPast) }
@@ -127,7 +128,10 @@ struct ProjectPrintItem: Decodable, Identifiable {
     var ready: Date?
     var readyNote: String?
     var test: Date?
-    /// The time of the mark Discarded (not good enough), and the note of why.
+    /// The time of the mark In use: a delivered print in use, or a print that the owner keeps.
+    var inUse: Date?
+    /// The time of the mark Rejected, and the note of why. The JSON names are from the earlier
+    /// mark Discard.
     var discarded: Date?
     var discardNote: String?
     var file: String?
@@ -142,7 +146,7 @@ struct ProjectPrintItem: Decodable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, n, name, notes, delivered, source, ready, test, discarded, file, result, ended, seconds, material,
              grams, printer, model
-        case notesBy = "notes_by", readyNote = "ready_note", discardNote = "discard_note"
+        case notesBy = "notes_by", readyNote = "ready_note", discardNote = "discard_note", inUse = "in_use"
     }
 
     var modelURL: URL? { model.flatMap { URL(string: $0, relativeTo: ServiceClient.base)?.absoluteURL } }
@@ -268,7 +272,7 @@ extension ServiceClient {
         try await get("projects/" + id)
     }
 
-    /// Changes a print: ready, delivered, test, title, notes or source. A member changes only the
+    /// Changes a print: ready, delivered, in use, test, title, notes or source. A member changes only the
     /// notes.
     func editPrint(project: String, print: String, _ fields: [String: Any]) async throws {
         _ = try await send("projects/\(project)/prints/\(print)", method: "PATCH",
