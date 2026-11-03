@@ -20,6 +20,7 @@ type (
 	OwnerCodeReply    = wire.OwnerCodeReply
 	ProjectRequest    = wire.ProjectRequest
 	ProjectSummary    = wire.ProjectSummary
+	PublicProject     = wire.PublicProject
 	ProjectView       = wire.ProjectView
 	ProjectMember     = wire.ProjectMember
 	MemberEdit        = wire.MemberEdit

@@ -55,11 +55,26 @@
 
   <section class="view" id="vSignIn" hidden>
     <h1>Parts with Friends</h1>
-    <p class="dim">Projects of 3D prints that you print with friends: the prints, their time lapses, and photos. Sign in with the passkey of this service.</p>
-    <button type="button" class="primary" id="signInBtn">Sign in with a passkey</button>
-    <p class="msg" id="signInMsg" role="status"></p>
-    <p class="dim small">No passkey yet? The owner makes one on the deck: Settings, Cloud, Owner sign-in. A friend gets an invite link from the owner.</p>
-    <p class="dim small"><a href="/privacy">What the service keeps, and how to delete it</a>.</p>
+    <div class="intro">
+      <p>Printdeck keeps the 3D-printed parts of a project in one place. Each project has a page with its prints, their time lapses, and photos from friends.</p>
+      <ul>
+        <li><strong>Prints, live.</strong> A Printdeck at the printer sends each print to its project, with the camera and the progress. Friends watch the print and see when it is ready to pick up.</li>
+        <li><strong>Parts from GitHub.</strong> Add a printdeck.yml file to the repository of the project. At each push, Printdeck slices the parts and shows the parts list, the 3D models, the materials, and the docs.</li>
+        <li><strong>Test prints for pull requests.</strong> A pull request gets its own plan of the changed parts. Print a test from the plan on the deck, then merge when the part fits.</li>
+        <li><strong>Public pages.</strong> The owner can make a project public. Anybody can then see its parts and prints.</li>
+      </ul>
+    </div>
+    <div class="card signincard">
+      <p class="small dim">Sign in with the passkey of this service.</p>
+      <button type="button" class="primary" id="signInBtn">Sign in with a passkey</button>
+      <p class="msg" id="signInMsg" role="status"></p>
+      <p class="dim small">No passkey yet? The owner makes one on the deck: Settings, Cloud, Owner sign-in. A friend gets an invite link from the owner.</p>
+      <p class="dim small"><a href="/privacy">What the service keeps, and how to delete it</a>.</p>
+    </div>
+    <div class="publicprojects" id="signInPublic" hidden>
+      <h2>Public projects</h2>
+      <div class="ptiles" id="signInPublicList"></div>
+    </div>
   </section>
 
   <!-- The passkey of the owner, with a code from the deck -->
@@ -102,6 +117,10 @@
     </form>
     <div class="ptiles" id="projects"></div>
     <p class="dim" id="noProjects" hidden>No projects yet.</p>
+    <div class="publicprojects" id="homePublic" hidden>
+      <h2>Public projects</h2>
+      <div class="ptiles" id="homePublicList"></div>
+    </div>
     <div class="homecards">
     <div class="card" id="printersCard" hidden>
       <h2>Printers</h2>

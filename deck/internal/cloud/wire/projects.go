@@ -77,6 +77,20 @@ type ProjectSummary struct {
 	Cover string `json:"cover,omitempty"`
 }
 
+// PublicProject is a public project in the list of the public projects, p/index.json. The home
+// page shows the list to each visitor. Cover is the path of the cover picture relative to
+// /p/<slug>/, or "".
+type PublicProject struct {
+	Slug     string    `json:"slug"`
+	Name     string    `json:"name"`
+	Note     string    `json:"note,omitempty"`
+	Cover    string    `json:"cover,omitempty"`
+	Parts    int       `json:"parts,omitempty"`
+	Prints   int       `json:"prints,omitempty"`
+	Changed  time.Time `json:"changed,omitzero"`
+	RepoOnly bool      `json:"repo_only,omitempty"`
+}
+
 // ProjectView is a project as its page shows it. The URLs of the files work for one hour. A
 // public page has the same fields, with the paths of the files relative to the page, and no
 // members.

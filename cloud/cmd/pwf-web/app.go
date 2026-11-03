@@ -136,7 +136,7 @@ func (a *app) route() {
 	case path == "/j":
 		a.showJoin(hash)
 	case a.token == "":
-		show("vSignIn")
+		a.showSignIn()
 	case strings.HasPrefix(hash, "x="):
 		// An old address.
 		args := hashArgs()
@@ -466,31 +466,11 @@ func (a *app) showHome() {
 	for _, p := range list {
 		prints += p.Prints
 		photos += p.Photos
-		card := el("a", "ptile", "")
-		card.Set("href", "/app#x="+p.ID)
+		href := "/app#x=" + p.ID
 		if p.Slug != "" {
-			card.Set("href", projectPath(p.Slug, 0))
+			href = projectPath(p.Slug, 0)
 		}
-		if p.Cover != "" {
-			img := el("img", "", "")
-			img.Set("src", p.Cover)
-			img.Set("alt", "")
-			img.Set("loading", "lazy")
-			card.Call("appendChild", img)
-		} else {
-			card.Call("appendChild", el("div", "ph", ""))
-		}
-		text := el("div", "", "")
-		text.Call("appendChild", el("strong", "", p.Name))
-		if p.Note != "" {
-			text.Call("appendChild", el("p", "note", p.Note))
-		}
-		text.Call("appendChild", el("span", "", summaryLine(p)))
-		if !p.Changed.IsZero() {
-			text.Call("appendChild", el("span", "", "Changed "+p.Changed.Local().Format("Jan 2, 2006")))
-		}
-		card.Call("appendChild", text)
-		box.Call("appendChild", card)
+		box.Call("appendChild", projectTile(href, p.Cover, p.Name, p.Note, summaryLine(p), changedLine(p.Changed)))
 	}
 	totals := ""
 	if len(list) > 1 {
@@ -504,8 +484,99 @@ func (a *app) showHome() {
 	// An owner with no projects sees the form at once.
 	setHidden("newForm", !owner || len(list) > 0)
 	show("vHome")
+	drawPublicProjects("homePublic", "homePublicList")
 	a.drawPrinterList()
 	a.drawAccount()
+}
+
+// showSignIn shows the sign-in page: the text about Printdeck, the passkey sign-in and the
+// public projects.
+func (a *app) showSignIn() {
+	show("vSignIn")
+	drawPublicProjects("signInPublic", "signInPublicList")
+}
+
+// validSlug reports that the slug has only the characters of a project address: a to z, 0 to
+// 9 and "-".
+func validSlug(slug string) bool {
+	if slug == "" || len(slug) > 80 {
+		return false
+	}
+	for _, r := range slug {
+		if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-') {
+			return false
+		}
+	}
+	return true
+}
+
+// projectTile is the tile of a project on the home page, with a link to href, the cover picture
+// at cover ("" for none), and the lines of text under the name and the note. An empty line does
+// not show.
+func projectTile(href, cover, name, note string, lines ...string) js.Value {
+	card := el("a", "ptile", "")
+	card.Set("href", href)
+	if cover != "" {
+		img := el("img", "", "")
+		img.Set("src", cover)
+		img.Set("alt", "")
+		img.Set("loading", "lazy")
+		card.Call("appendChild", img)
+	} else {
+		card.Call("appendChild", el("div", "ph", ""))
+	}
+	text := el("div", "", "")
+	text.Call("appendChild", el("strong", "", name))
+	if note != "" {
+		text.Call("appendChild", el("p", "note", note))
+	}
+	for _, l := range lines {
+		if l != "" {
+			text.Call("appendChild", el("span", "", l))
+		}
+	}
+	card.Call("appendChild", text)
+	return card
+}
+
+// changedLine is the date of the last change of a project, or "" for none.
+func changedLine(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return "Changed " + t.Local().Format("Jan 2, 2006")
+}
+
+// drawPublicProjects shows the public projects from /p/index.json in the list with the ID list.
+// The section with the ID section shows only with one or more public projects.
+func drawPublicProjects(section, list string) {
+	var projects []wire.PublicProject
+	text, err := fetchText("/p/index.json")
+	if err != nil || json.Unmarshal([]byte(text), &projects) != nil {
+		setHidden(section, true)
+		return
+	}
+	box := byID(list)
+	box.Set("textContent", "")
+	for _, p := range projects {
+		if !validSlug(p.Slug) {
+			continue
+		}
+		cover := ""
+		if p.Cover != "" {
+			cover = "/p/" + p.Slug + "/" + p.Cover
+		}
+		var facts []string
+		if p.Parts > 0 {
+			facts = append(facts, count(p.Parts, "part", "parts"))
+		}
+		if p.Prints > 0 {
+			facts = append(facts, count(p.Prints, "print", "prints"))
+		}
+		box.Call("appendChild", projectTile(projectPath(p.Slug, 0), cover, p.Name, p.Note,
+			strings.Join(facts, " · "), changedLine(p.Changed)))
+	}
+	setHidden(section, box.Get("children").Get("length").Int() == 0)
 }
 
 // drawAccount shows the account card of the home page: the passkeys of the owner, each with
@@ -611,11 +682,11 @@ func (a *app) failed(err error) {
 	}
 	if errors.Is(err, errUnauthorized) {
 		a.showWho()
-		show("vSignIn")
+		a.showSignIn()
 		say("signInMsg", err, "")
 		return
 	}
-	show("vSignIn")
+	a.showSignIn()
 	say("signInMsg", err, "")
 }
 
@@ -1351,7 +1422,7 @@ func (a *app) showPublic(slug, n string) {
 	v, base, ok := publicView(slug)
 	if !ok {
 		if a.token == "" {
-			show("vSignIn")
+			a.showSignIn()
 			return
 		}
 		a.showSlug(slug, n)

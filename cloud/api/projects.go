@@ -1606,6 +1606,7 @@ func (s *Server) deleteProject(ctx context.Context, p *Project) error {
 			return err
 		}
 		s.Store.Delete(ctx, "p/"+p.Public)
+		s.writeIndex(ctx)
 	}
 	for _, m := range p.Members {
 		for _, k := range m.Keys {

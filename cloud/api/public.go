@@ -114,7 +114,11 @@ func (s *Server) deletePage(ctx context.Context, slug string) error {
 	if err := s.deletePrefix(ctx, "p/"+slug+"/"); err != nil {
 		return err
 	}
-	return s.Store.Delete(ctx, "p/"+slug)
+	if err := s.Store.Delete(ctx, "p/"+slug); err != nil {
+		return err
+	}
+	s.writeIndex(ctx)
+	return nil
 }
 
 // refreshPublic asks GitHub for the visibility of the repository of the project id, and then
@@ -237,7 +241,11 @@ func (s *Server) publish(ctx context.Context, p *Project) error {
 	}
 	_, err = s.Store.Put(ctx, "p/"+p.Public, PublicPageFor(page, s.publicURL(p.Public), p.Name, desc, image),
 		PutOptions{ContentType: "text/html; charset=utf-8", CacheControl: "public, max-age=60"})
-	return err
+	if err != nil {
+		return err
+	}
+	s.writeIndex(ctx)
+	return nil
 }
 
 // publishOwner adds the content of the owner's public page to the view of the page at dst: the
