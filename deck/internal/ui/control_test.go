@@ -182,8 +182,8 @@ func TestKeypadDigits(t *testing.T) {
 	}
 }
 
-// In the filament change for a file of the queue, the head goes to the top after the home. A
-// swap during a paused print stays in place.
+// In a filament change, the head goes to the top after the home. A swap during a paused print,
+// and Load, do not move it: the pause parked the head beside the print.
 func TestQueueSwapPresents(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.swap = &swapState{then: func() {}}
@@ -205,14 +205,24 @@ func TestQueueSwapPresents(t *testing.T) {
 	if c := pr.Calls(); len(c) != 1 || c[0] != "tool 240" {
 		t.Fatalf("paused swap: %v", c)
 	}
+	a, pr, cv = newPrintApp(idle)
+	a.swap = &swapState{mode: swapLoadOnly}
+	tapLabel(t, a, cv, "PETG  240°")
+	if c := pr.wait(2); len(c) != 2 || c[0] != "tool 240" || c[1] != "home []" {
+		t.Fatalf("load: %v", c)
+	}
+	time.Sleep(50 * time.Millisecond)
+	if c := pr.Calls(); len(c) != 2 {
+		t.Fatalf("load: %v", c)
+	}
 }
 
 func TestFilamentSwapSteps(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.swap = &swapState{}
 	tapLabel(t, a, cv, "PETG  240°")
-	// The printer homes while the nozzle heats.
-	if c := pr.wait(2); len(c) != 2 || c[0] != "tool 240" || c[1] != "home []" || a.swap.step != swapHeat {
+	// The printer homes while the nozzle heats, and the head goes to the top.
+	if c := pr.wait(3); len(c) != 3 || c[0] != "tool 240" || c[1] != "home []" || c[2] != "present" || a.swap.step != swapHeat {
 		t.Fatalf("after PETG: %v, step %d", c, a.swap.step)
 	}
 	pr.State_.Tool = 239 // hot enough: the next draw goes on to unloading
@@ -223,8 +233,8 @@ func TestFilamentSwapSteps(t *testing.T) {
 	}
 	tapLabel(t, a, cv, "Unload")
 	tapLabel(t, a, cv, "Load")
-	c := pr.wait(4)
-	if len(c) != 4 || c[2] != "gcode M83; G1 E10 F300; G1 E-80 F1500; M82" || c[3] != "gcode M83; G1 E70 F600; G1 E20 F150; M82" {
+	c := pr.wait(5)
+	if len(c) != 5 || c[3] != "gcode M83; G1 E10 F300; G1 E-80 F1500; M82" || c[4] != "gcode M83; G1 E70 F600; G1 E20 F150; M82" {
 		t.Errorf("calls %q", c)
 	}
 	if a.swap.step != swapCheck {
@@ -386,10 +396,10 @@ func TestSwapCloseCoolsNozzle(t *testing.T) {
 	a.SwapHome = false
 	a.openSwap(swapChange)
 	tapLabel(t, a, cv, "PETG  240°")
-	pr.wait(1)
+	pr.wait(2)
 	tapLabel(t, a, cv, "Close")
-	if c := pr.wait(2); len(c) != 2 || c[1] != "tool 0" {
-		t.Errorf("calls %v, want tool 240, tool 0", c)
+	if c := pr.wait(3); len(c) != 3 || c[1] != "present" || c[2] != "tool 0" {
+		t.Errorf("calls %v, want tool 240, present, tool 0", c)
 	}
 	if a.swap != nil {
 		t.Error("swap still open")
@@ -461,7 +471,7 @@ func TestSwapNewRoll(t *testing.T) {
 	tapLabel(t, a, cv, "PETG")
 	a.form.name, a.form.scale, a.form.reel, a.form.price = "Clear", 1200, 200, 25
 	tapLabel(t, a, cv, "Save")
-	if c := pr.wait(1); len(c) != 1 || c[0] != "tool 240" || a.swap.step != swapHeat {
+	if c := pr.wait(2); len(c) != 2 || c[0] != "tool 240" || c[1] != "present" || a.swap.step != swapHeat {
 		t.Errorf("calls %v, step %d", c, a.swap.step)
 	}
 	if in, ok := pr.Spools_.In(); ok || a.Material != "" {
@@ -537,7 +547,7 @@ func TestSwapSavedRoll(t *testing.T) {
 	a.OnMaterial = func(string) { saved++ }
 	a.openSwap(swapChange)
 	tapRegion(t, a, cv, "#1 Black")
-	if c := pr.wait(1); len(c) != 1 || c[0] != "tool 210" {
+	if c := pr.wait(2); len(c) != 2 || c[0] != "tool 210" || c[1] != "present" {
 		t.Errorf("calls %v", c)
 	}
 	if in, ok := pr.Spools_.In(); ok || saved != 0 {

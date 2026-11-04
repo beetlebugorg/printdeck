@@ -935,7 +935,7 @@ func (k *Klippy) Cancel() {
 }
 
 // Present lifts the nozzle and moves the head to the top, at the middle of X, as after a cancel
-// (present). The filament change of the queue uses it, for easy access to the extruder. An axis
+// (present). A filament change uses it, for easy access to the extruder. An axis
 // that is not homed does not move.
 func (k *Klippy) Present() error {
 	k.present()
