@@ -38,6 +38,7 @@ func (r *recPrinter) Jog(x, y, z float64, s int) error {
 func (r *recPrinter) FirmwareRestart() error  { return r.Gcode("FIRMWARE_RESTART") }
 func (r *recPrinter) RestartKlipper() error   { return r.rec("restart klipper") }
 func (r *recPrinter) MotorsOff() error        { return r.rec("motors off") }
+func (r *recPrinter) Present() error          { return r.rec("present") }
 func (r *recPrinter) SpeedFactor(p int) error { return r.rec(fmt.Sprint("speed ", p)) }
 func (r *recPrinter) PrintFile(path string)   { r.rec("print " + path) }
 func (r *recPrinter) PrintCalibTowers(tool, bed int, material string) error {
@@ -178,6 +179,31 @@ func TestKeypadDigits(t *testing.T) {
 	}
 	if a.keypad.digits != "210" {
 		t.Errorf("digits %q, want 210", a.keypad.digits)
+	}
+}
+
+// In the filament change for a file of the queue, the head goes to the top after the home. A
+// swap during a paused print stays in place.
+func TestQueueSwapPresents(t *testing.T) {
+	a, pr, cv := newPrintApp(idle)
+	a.swap = &swapState{then: func() {}}
+	tapLabel(t, a, cv, "PETG  240°")
+	if c := pr.wait(3); len(c) != 3 || c[0] != "tool 240" || c[1] != "home []" || c[2] != "present" {
+		t.Fatalf("queue swap: %v", c)
+	}
+	a, pr, cv = newPrintApp(idle)
+	a.SwapHome = false
+	a.swap = &swapState{then: func() {}}
+	tapLabel(t, a, cv, "PETG  240°")
+	if c := pr.wait(2); len(c) != 2 || c[0] != "tool 240" || c[1] != "present" {
+		t.Fatalf("queue swap with no home: %v", c)
+	}
+	a, pr, cv = newPrintApp(idle)
+	a.swap = &swapState{then: func() {}, paused: true}
+	tapLabel(t, a, cv, "PETG  240°")
+	time.Sleep(50 * time.Millisecond)
+	if c := pr.Calls(); len(c) != 1 || c[0] != "tool 240" {
+		t.Fatalf("paused swap: %v", c)
 	}
 }
 

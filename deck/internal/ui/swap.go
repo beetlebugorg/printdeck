@@ -299,6 +299,12 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		if a.SwapHome && !sw.paused {
 			heatText = "The printer homes while the nozzle heats. The next step starts when the nozzle is hot."
 		}
+		if !sw.paused && sw.then != nil {
+			heatText = "The head goes to the top while the nozzle heats. The next step starts when the nozzle is hot."
+			if a.SwapHome {
+				heatText = "The printer homes, and the head goes to the top, while the nozzle heats. The next step starts when the nozzle is hot."
+			}
+		}
 		if f.wide {
 			para(heatText)
 			// The temperature and its bar under the text, Cancel at the bottom.
@@ -386,12 +392,22 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 
 // swapHeat heats the nozzle to t for the swap. With SwapHome, the printer then homes while the
 // nozzle heats. A swap during a paused print does not home: the print goes on from its position.
+// In a swap for a file of the queue (changeRollFor), the head then goes to the top, at the middle
+// of X, for easy access to the extruder.
 func (a *App) swapHeat(sw *swapState, t int) error {
 	if err := a.Printer.SetToolTemp(t); err != nil {
 		return err
 	}
-	if a.SwapHome && !sw.paused {
-		return a.Printer.Home()
+	if sw.paused {
+		return nil
+	}
+	if a.SwapHome {
+		if err := a.Printer.Home(); err != nil {
+			return err
+		}
+	}
+	if p, ok := a.Printer.(interface{ Present() error }); ok && sw.then != nil {
+		return p.Present()
 	}
 	return nil
 }
