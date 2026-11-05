@@ -30,6 +30,7 @@ import (
 //   - the remote screen at /, with the password of the Printdeck user (when the system has one)
 //   - the OctoPrint-compatible API for slicers at /api, /plugin/appkeys and /downloads (with the
 //     Klipper backend), and the webcam at /webcam
+//   - printer.cfg at /system/printer.cfg, with the login or an API key
 //   - the state of the simulated printer at /sim, for the 3D window of the desktop app (with an
 //     API key)
 func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App, up *updater) *remote.Server {
@@ -54,6 +55,14 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 		// The 3D window of the desktop app shows the simulated printer of the deck, with an API key.
 		if k, ok := pr.(*printer.Klippy); ok && api != nil {
 			registerSim(mux, k, api.ValidKey)
+		}
+		// printer.cfg, for the editor of the system page and for scripts with an API key.
+		if k, ok := pr.(*printer.Klippy); ok && k.ConfigPath != "" {
+			allow := rs.LoggedIn
+			if api != nil {
+				allow = func(r *http.Request) bool { return rs.LoggedIn(r) || api.ValidKey(r) }
+			}
+			registerPrinterCfg(mux, k.ConfigPath, k, allow)
 		}
 	}
 	srv := &http.Server{Addr: cfg.RemoteAddr, Handler: remote.SecurityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}

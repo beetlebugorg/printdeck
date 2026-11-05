@@ -33,6 +33,8 @@
   .bar { margin-top: 10px; height: 16px; background: var(--lcd); border-radius: 4px; padding: 3px; }
   .fill { height: 100%; width: 0; background: var(--amber); border-radius: 2px; transition: width .3s; }
   a { color: var(--dim); }
+  textarea { width: 100%; height: 480px; font: 12px/1.4 ui-monospace, Menlo, monospace; padding: 12px;
+    background: var(--lcd); color: var(--amber); border: 1px solid var(--edge); border-radius: 4px; }
 </style>
 </head>
 <body>
@@ -85,6 +87,16 @@
       frame at each layer change, and saves the video at the end of the print. It keeps the last 3
       videos. A video is a QuickTime file with JPEG frames.</div>
   </section>{{end}}
+  <section id="cfg" hidden>
+    <h2>PRINTER.CFG</h2>
+    <textarea id="cfgText" spellcheck="false" autocomplete="off"></textarea>
+    <button type="button" id="cfgSave">Save and restart Klipper</button>
+    <button type="button" id="cfgUndo">Load the backup</button>
+    <div id="cfgMsg" class="hint"></div>
+    <div class="hint">Save checks the file, keeps the old file as printer.cfg.bak, and restarts
+      Klipper. Load the backup puts printer.cfg.bak in the box: Save it to go back. Scripts can use
+      GET and PUT on /system/printer.cfg with the slicer API key in X-Api-Key. Not during a print.</div>
+  </section>
   <section>
     <h2>BACKUP</h2>
     <form method="post" action="/system/backup">
@@ -113,6 +125,27 @@
   <section><h2>KLIPPER LOG</h2><pre>{{.Klippy}}</pre></section>
 </main>
 <script>
+// The editor of printer.cfg: it loads the file, and Save sends it with PUT.
+(function () {
+  const box = document.getElementById("cfg"), text = document.getElementById("cfgText"),
+    msg = document.getElementById("cfgMsg");
+  function say(t, bad) { msg.textContent = t; msg.className = bad ? "hint bad" : "hint"; }
+  function load(url) {
+    return fetch(url, {cache: "no-store"}).then(r => r.ok ? r.text() : Promise.reject(r.status));
+  }
+  load("/system/printer.cfg").then(t => { text.value = t; box.hidden = false; }).catch(() => {});
+  document.getElementById("cfgUndo").onclick = () => load("/system/printer.cfg?backup=1")
+    .then(t => { text.value = t; say("The backup is in the box. Save it to go back."); })
+    .catch(() => say("There is no backup.", true));
+  document.getElementById("cfgSave").onclick = () => {
+    if (!confirm("Save printer.cfg and restart Klipper?")) return;
+    say("Saving…");
+    fetch("/system/printer.cfg", {method: "PUT", body: text.value, headers: {"Content-Type": "text/plain"}})
+      .then(r => r.ok ? r.json() : r.text().then(t => Promise.reject(t)))
+      .then(j => say(j.error ? "Saved. " + j.error : "Saved. Klipper restarts.", !!j.error))
+      .catch(e => say(String(e), true));
+  };
+})();
 // The update: the upload, then the steps of the install, then the restart. The page loads again
 // when the Printdeck answers with another version.
 (function () {
