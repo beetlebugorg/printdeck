@@ -14,93 +14,84 @@ import (
 	"printdeck/internal/printer"
 )
 
-// The Toolhead page: home, move the head with a joystick, Z, park and center, motors.
+// The Toolhead page: home, arrow keys for X, Y and Z with one step for all axes, park and
+// center, motors.
 
+const minExtrudeTemp = 170 // Klipper blocks extrusion below this temperature
+
+// jogSteps are the steps of the arrow keys of the Toolhead page, in mm.
+var jogSteps = []float64{0.1, 0.5, 1, 10}
+
+// The feeds of the arrow keys, in mm/min, and the repeat of a held arrow key: the wait before
+// the first repeat, and the shortest time between two repeats.
 const (
-	joyR           = 128  // the radius of the joystick pad of the Toolhead page
-	joyDead        = 0.15 // the middle part that does not move
-	joyTick        = 150 * time.Millisecond
-	joyMinSpeed    = 2.0  // mm/s just outside the middle
-	joyMaxSpeed    = 50.0 // mm/s at the edge
-	minExtrudeTemp = 170  // Klipper blocks extrusion below this temperature
+	jogFeedXY, jogFeedZ       = 6000, 600
+	jogRepeatDelay, jogRepeat = 400 * time.Millisecond, 150 * time.Millisecond
 )
 
-// joystick moves the head while a finger is on the pad. A goroutine sends one short move per tick; the next
-// move is sent when the last one is accepted, so moves cannot pile up behind a slow connection.
-type joystick struct {
+// jogHold is the arrow key that a finger holds. A tap sends one step. A held key sends one step
+// more after jogRepeatDelay, then one step each jogRepeat, or each time that one step needs at
+// its feed, if longer. A goroutine sends the steps one at a time, so the moves cannot pile up.
+type jogHold struct {
 	mu      sync.Mutex
-	vx, vy  float64 // -1..1, up is +1
-	held    bool    // a finger is on the pad
-	running bool    // the goroutine runs
+	d       [3]float64 // the step in X, Y and Z
+	feed    int
+	since   time.Time
+	pending bool // a step of the press waits
+	held    bool
+	running bool
 }
 
-func (j *joystick) get() (vx, vy float64, held bool) {
-	j.mu.Lock()
-	defer j.mu.Unlock()
-	return j.vx, j.vy, j.held
-}
-
-// joySpeed is the speed in mm/s for a deflection of 0..1; 0 in the middle.
-func joySpeed(mag float64) float64 {
-	if mag < joyDead {
-		return 0
-	}
-	f := (min(mag, 1) - joyDead) / (1 - joyDead)
-	return joyMinSpeed + f*f*(joyMaxSpeed-joyMinSpeed)
-}
-
-// joyPad follows the finger on the pad.
-func (a *App) joyPad(p image.Point, phase kit.Phase) {
-	j := a.joy
-	pad := a.joyArea // the pad of the last frame
-	cx, cy, r := pad.Min.X+pad.Dx()/2, pad.Min.Y+pad.Dy()/2, float64(pad.Dx()/2)
-	vx := float64(p.X-cx) / r
-	vy := float64(cy-p.Y) / r
-	if m := math.Hypot(vx, vy); m > 1 {
-		vx, vy = vx/m, vy/m
-	}
-	j.mu.Lock()
-	defer j.mu.Unlock()
-	if phase == kit.PadUp {
-		j.vx, j.vy, j.held = 0, 0, false
-		return
-	}
-	j.vx, j.vy, j.held = vx, vy, true
-	if !j.running {
-		j.running = true
-		go a.joyLoop()
-	}
-}
-
-func (a *App) joyLoop() {
-	j := a.joy
-	for {
-		start := time.Now()
-		j.mu.Lock()
-		vx, vy, held := j.vx, j.vy, j.held
-		if !held {
-			j.running = false
-			j.mu.Unlock()
+// jogPad is the touch of an arrow key with the step d.
+func (a *App) jogPad(d [3]float64, feed int) func(image.Point, kit.Phase) {
+	return func(_ image.Point, phase kit.Phase) {
+		h := a.jog
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		switch phase {
+		case kit.PadUp:
+			h.held = false
+			return
+		case kit.PadMove:
 			return
 		}
-		j.mu.Unlock()
+		h.d, h.feed, h.since, h.pending, h.held = d, feed, time.Now(), true, true
+		if !h.running {
+			h.running = true
+			go a.jogLoop()
+		}
+	}
+}
 
-		mag := math.Hypot(vx, vy)
-		if v := joySpeed(mag); v > 0 {
-			d := v * joyTick.Seconds()
-			dy := vy / mag * d
-			if a.JogInvertY {
-				dy = -dy
-			}
-			if err := a.Printer.Jog(vx/mag*d, dy, 0, int(v*60)); err != nil {
-				a.Toast(err.Error())
-				j.mu.Lock()
-				j.vx, j.vy, j.held, j.running = 0, 0, false, false
-				j.mu.Unlock()
+func (a *App) jogLoop() {
+	h := a.jog
+	for {
+		h.mu.Lock()
+		d, feed, since := h.d, h.feed, h.since
+		send := h.pending
+		h.pending = false
+		if !send {
+			if !h.held {
+				h.running = false
+				h.mu.Unlock()
 				return
 			}
+			send = time.Since(since) >= jogRepeatDelay
 		}
-		time.Sleep(joyTick - time.Since(start))
+		h.mu.Unlock()
+		wait := jogRepeat
+		if send {
+			if err := a.Printer.Jog(d[0], d[1], d[2], feed); err != nil {
+				a.Toast(err.Error())
+				h.mu.Lock()
+				h.held, h.pending, h.running = false, false, false
+				h.mu.Unlock()
+				return
+			}
+			dist := math.Abs(d[0]) + math.Abs(d[1]) + math.Abs(d[2])
+			wait = max(wait, time.Duration(dist/float64(feed)*float64(time.Minute)))
+		}
+		time.Sleep(wait)
 	}
 }
 
@@ -113,35 +104,35 @@ func (a *App) do(f func() error) {
 	}()
 }
 
-// drawMove is the Toolhead page: the position and the homed axes, homing, the joystick for X and Y,
-// Z, park and center, and the motors.
+// drawMove is the Toolhead page: the position and the homed axes, homing, the arrow keys for X, Y
+// and Z with their step, park and center, and the motors.
 func (a *App) drawMove(c *gfx.Canvas) {
 	pr := a.Printer
 	st := pr.State()
 	f := a.navPage(c, "Toolhead")
 	moving := st.Connected && (!st.Busy() || st.Paused)
 
-	// Tall: the position, Home, the joystick with the Z column, the park keys, and a hint.
-	var pos, home, zSteps, zArea, pad, parks, hint image.Rectangle
+	// Tall: the position, Home, the arrow keys with the Z column, the steps, the park keys, and a
+	// hint. Wide: the arrow keys at the left; Home, the steps and Z at their right.
+	var pos, home, steps, cross, zUp, zDown, parks, hint image.Rectangle
 	if f.wide {
-		// The position over all; the joystick at the left, Home and the Z row at its right; the
-		// park keys in the row of actions.
 		content, acts := f.split()
-		r := kit.Rows(content, 10, kit.Px(44), kit.Fr(1))
-		pos, parks = r[0], acts
-		side := min(r[1].Dy()-26, r[1].Dx()/2)
+		r := kit.Rows(content, 10, kit.Px(44), kit.Fr(1), kit.Px(20))
+		pos, parks, hint = r[0], acts, r[2]
+		side := min(r[1].Dy(), r[1].Dx()/2)
 		cols := kit.Cols(r[1], 16, kit.Px(side), kit.Fr(1))
-		l := kit.Rows(cols[0], 6, kit.Px(side), kit.Px(20))
-		pad, hint = l[0], l[1]
-		// The column is narrow: the Z steps have a row of their own, over Z ▼ and Z ▲.
+		cross = cols[0]
 		k := kit.Rows(cols[1], 10, kit.Px(52), kit.Px(52), kit.Px(52))
-		home, zSteps, zArea = k[0], k[1], k[2]
+		home, steps = k[0], k[1]
+		z := kit.Cols(k[2], 8, kit.Fr(1), kit.Fr(1))
+		zDown, zUp = z[0], z[1]
 	} else {
 		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 0), 12, kit.Px(54), kit.Px(58), kit.Fr(1), kit.Px(60), kit.Px(70), kit.Px(24))
-		pos, home, zArea, parks, hint = r[0], r[1], r[3], r[4], r[5]
-		// The joystick as large as the space allows, in the middle; the Z row under it.
-		side := min(r[2].Dx(), r[2].Dy()-26)
-		pad = kit.Center(kit.Rows(r[2], 0, kit.Px(side))[0], side, side)
+		pos, home, steps, parks, hint = r[0], r[1], r[3], r[4], r[5]
+		cols := kit.Cols(r[2], 16, kit.Fr(3), kit.Fr(1))
+		cross = cols[0]
+		z := kit.Rows(cols[1], 12, kit.Fr(1), kit.Fr(1))
+		zUp, zDown = z[0], z[1]
 	}
 
 	// The position, with an LED for each homed axis.
@@ -205,35 +196,21 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		notPaused(h[i+1], ax, raised, text, func() error { return pr.Home(axis) })
 	}
 
-	// The joystick for X and Y.
-	a.drawJoystick(c, pad, moving)
-	a.region("Joystick", pad)
-	if !f.wide {
-		hint := "XY  hold to move · Z mm per tap below"
-		if gfx.FinePrint() {
-			hint = "XY hold to move · Z mm a tap" // shorter for the large text
-		}
-		label(c, image.Rect(pad.Min.X, pad.Max.Y+6, pad.Max.X, pad.Max.Y+26), hint, gfx.Center)
-	}
+	// The arrow keys: X and Y in a cross, Z in a column, all with the step of the step row.
+	a.drawArrows(c, cross, zUp, zDown, moving)
 
-	// Z: a row with the steps in the middle.
-	z := kit.Cols(zArea, 6, kit.Fr(1.3), kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1.3))
-	down, up, steps := z[0], z[4], image.Rect(z[1].Min.X, zArea.Min.Y, z[3].Max.X, zArea.Max.Y)
-	if !zSteps.Empty() {
-		z = kit.Cols(zArea, 8, kit.Fr(1), kit.Fr(1))
-		down, up, steps = z[0], z[1], zSteps
-	}
-	btn(up, "Z ▲", raised, text, func() error { return pr.Jog(0, 0, a.zStep, 600) })
-	for i, r := range kit.Cols(steps, 6, kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
-		s := []float64{0.1, 1, 10}[i]
+	// The step of the arrow keys.
+	a.region("Steps", steps)
+	for i, r := range kit.Cols(steps, 6, kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1)) {
+		s := jogSteps[i]
 		fill, fg := keyOff, text
-		if a.zStep == s {
+		if a.jogStep == s {
 			fill, fg = keyOn, keyOnInk
 		}
 		key(c, r, fmt.Sprint(s), fill, fg, a.isPressed(r))
-		a.addHit(kit.Hit{R: r, Tap: func() { a.zStep = s }})
+		a.region(fmt.Sprint(s), r)
+		a.addHit(kit.Hit{R: r, Tap: func() { a.jogStep = s }})
 	}
-	btn(down, "Z ▼", raised, text, func() error { return pr.Jog(0, 0, -a.zStep, 600) })
 
 	// Park and center need the homed axes. Motors off lets the head move by hand.
 	homed := strings.Contains(st.Homed, "x") && strings.Contains(st.Homed, "y")
@@ -252,7 +229,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		park(p[1], "Center", func() []string { return CenterGcode(st) })
 	}
 	notPaused(p[2], "Motors off", raised, text, pr.MotorsOff)
-	msg := "Motors off: move the head by hand."
+	msg := "Tap X, Y or Z above to type a position."
 	switch {
 	case !st.Connected:
 		msg = "The printer is not connected."
@@ -264,51 +241,41 @@ func (a *App) drawMove(c *gfx.Canvas) {
 	label(c, hint, msg, gfx.Center)
 }
 
-// drawJoystick draws the XY pad in a display window, with the cross at the finger, and takes the
-// touches of the pad while the head can move.
-func (a *App) drawJoystick(c *gfx.Canvas, pad image.Rectangle, moving bool) {
-	a.joyArea = pad
-	vx, vy, _ := a.joy.get()
-	window(c, pad)
-	grid := color.RGBA{0x34, 0x30, 0x2c, 255}
-	for i := 1; i < 8; i++ {
-		g := pad.Min.X + i*pad.Dx()/8
-		c.Fill(image.Rect(g, pad.Min.Y+6, g+1, pad.Max.Y-6), grid)
-		g = pad.Min.Y + i*pad.Dy()/8
-		c.Fill(image.Rect(pad.Min.X+6, g, pad.Max.X-6, g+1), grid)
+// drawArrows draws the arrow keys of X and Y in a cross in the square in the middle of cross,
+// and the keys Z up and Z down. The step is in the middle of the cross. A key takes touches
+// only while the head can move. Up on the screen is Y+, or Y- with JogInvertY.
+func (a *App) drawArrows(c *gfx.Canvas, cross, zUp, zDown image.Rectangle, moving bool) {
+	side := min(cross.Dx(), cross.Dy())
+	sq := kit.Center(cross, side, side)
+	g := kit.Grid(sq, 3, 3, 8)
+	up, down := "Y+", "Y−"
+	dy := a.jogStep
+	if a.JogInvertY {
+		up, down, dy = down, up, -dy
 	}
-	cx, cy := pad.Min.X+pad.Dx()/2, pad.Min.Y+pad.Dy()/2
-	r := float64(pad.Dx() / 2)
-	R := pad.Dx() / 2
-	dead := int(r * joyDead)
-	c.RoundRect(image.Rect(cx-dead, cy-dead, cx+dead, cy+dead), dead, color.RGBA{0x2a, 0x26, 0x22, 255})
-	for _, l := range []struct {
-		s      string
-		dx, dy int
-	}{{"Y+", 0, -R + 16}, {"Y-", 0, R - 16}, {"X-", -R + 20, 0}, {"X+", R - 20, 0}} {
-		c.Text(image.Rect(cx+l.dx-20, cy+l.dy-10, cx+l.dx+20, cy+l.dy+10), l.s, gfx.Face(true, 14), lcdDim, gfx.Center)
-	}
-	kx, ky := cx+int(vx*r*0.85), cy-int(vy*r*0.85)
-	cross := lcdInk
-	if !moving {
-		cross = lcdDim
-	}
-	if vx != 0 || vy != 0 { // a line from the middle to the finger
-		for t := 0.0; t < 1; t += 0.02 {
-			x, y := cx+int(float64(kx-cx)*t), cy+int(float64(ky-cy)*t)
-			c.Fill(image.Rect(x, y, x+2, y+2), lcdDim)
+	s := a.jogStep
+	for _, k := range []struct {
+		r           image.Rectangle
+		label, name string
+		d           [3]float64
+		feed        int
+	}{
+		{g[1], up, up, [3]float64{0, dy, 0}, jogFeedXY},
+		{g[3], "X−", "X−", [3]float64{-s, 0, 0}, jogFeedXY},
+		{g[5], "X+", "X+", [3]float64{s, 0, 0}, jogFeedXY},
+		{g[7], down, down, [3]float64{0, -dy, 0}, jogFeedXY},
+		{zUp, "Z ▲", "Z up", [3]float64{0, 0, s}, jogFeedZ},
+		{zDown, "Z ▼", "Z down", [3]float64{0, 0, -s}, jogFeedZ},
+	} {
+		if !moving {
+			key(c, k.r, k.label, surface, dim, false)
+			continue
 		}
+		key(c, k.r, k.label, raised, text, a.isPressed(k.r))
+		a.region(k.name, k.r)
+		a.addHit(kit.Hit{R: k.r, Pad: a.jogPad(k.d, k.feed)})
 	}
-	c.Fill(image.Rect(kx-18, ky-1, kx+18, ky+1), cross)
-	c.Fill(image.Rect(kx-1, ky-18, kx+1, ky+18), cross)
-	c.RoundRect(image.Rect(kx-9, ky-9, kx+9, ky+9), 9, cross)
-	c.RoundRect(image.Rect(kx-5, ky-5, kx+5, ky+5), 5, lcd)
-	if moving {
-		if speed := joySpeed(math.Hypot(vx, vy)); speed > 0 {
-			c.Text(image.Rect(pad.Min.X, pad.Max.Y-24, pad.Max.X-8, pad.Max.Y-4), fmt.Sprintf("%.0f MM/S", speed), gfx.Face(true, 14), lcdInk, gfx.Right)
-		}
-		a.addHit(kit.Hit{R: pad, Pad: a.joyPad})
-	}
+	label(c, g[4], fmt.Sprint(s)+" mm", gfx.Center)
 }
 
 // ParkGcode moves the head to the back left, 10 mm up, out of the way of the part.

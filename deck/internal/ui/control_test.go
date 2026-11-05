@@ -74,57 +74,76 @@ func tapAt(a *App, cv *gfx.Canvas, x, y int) {
 
 var idle = printer.State{Reachable: true, Text: "Operational", Connected: true, Tool: 25, Bed: 25}
 
-func TestJoySpeed(t *testing.T) {
-	if joySpeed(0.1) != 0 || joySpeed(joyDead) != joyMinSpeed || math.Abs(joySpeed(1)-joyMaxSpeed) > 1e-9 || joySpeed(0.6) >= joySpeed(0.9) {
-		t.Errorf("speeds %v %v %v", joySpeed(0.1), joySpeed(0.6), joySpeed(1))
-	}
-}
-
-func TestJoystickMovesWhileHeld(t *testing.T) {
+// A tap on an arrow key moves one step of the step row. A held key repeats, and stops when the
+// finger lifts.
+func TestArrowKeys(t *testing.T) {
 	a, pr, cv := newPrintApp(idle)
 	a.pages = []page{pageMove}
 	a.Draw(cv)
-	jr := a.joyArea.Dx() / 2
-	jx, jy := a.joyArea.Min.X+jr, a.joyArea.Min.Y+jr
-	// Hold the pad at the right edge: X+ at full speed, then let go.
-	ev(a, touch.Down, jx+jr-2, jy)
-	time.Sleep(3*joyTick + joyTick/2)
-	ev(a, touch.Up, jx+jr-2, jy)
-	n := len(pr.Calls())
-	time.Sleep(2 * joyTick)
-	calls := pr.Calls()
-	if n < 3 || len(calls) > n+1 {
-		t.Fatalf("%d moves while held, %d after; %v", n, len(calls), calls)
+	tapRegion(t, a, cv, "0.5")
+	for _, c := range []struct{ key, want string }{
+		{"X+", "jog 0.50 0.00 0.00 6000"},
+		{"X−", "jog -0.50 0.00 0.00 6000"},
+		{"Y+", "jog 0.00 0.50 0.00 6000"},
+		{"Y−", "jog 0.00 -0.50 0.00 6000"},
+		{"Z up", "jog 0.00 0.00 0.50 600"},
+		{"Z down", "jog 0.00 0.00 -0.50 600"},
+	} {
+		n := len(pr.Calls())
+		tapRegion(t, a, cv, c.key)
+		calls := pr.wait(n + 1)
+		time.Sleep(jogRepeat)
+		if calls = pr.Calls(); len(calls) != n+1 || calls[n] != c.want {
+			t.Errorf("%s: calls %v, want one %q", c.key, calls[n:], c.want)
+		}
 	}
-	var x, y, z float64
-	var s int
-	fmt.Sscanf(calls[0], "jog %f %f %f %d", &x, &y, &z, &s)
-	if x < 5 || math.Abs(y) > 0.2 || z != 0 || s < 2500 {
-		t.Errorf("first move %q: want about 7.5 mm in X at 3000 mm/min", calls[0])
-	}
-	// Up on the pad is Y+.
+
+	// Hold X+ at 10 mm: one step, then repeats; none after the lift.
+	tapRegion(t, a, cv, "10")
 	a.Draw(cv)
-	ev(a, touch.Down, jx, jy-jr+2)
-	time.Sleep(joyTick + joyTick/2)
-	ev(a, touch.Up, jx, jy-jr+2)
-	calls = pr.wait(len(calls) + 1)
-	fmt.Sscanf(calls[len(calls)-1], "jog %f %f", &x, &y)
-	if y <= 0 || math.Abs(x) > 0.2 {
-		t.Errorf("up gave %q, want +Y", calls[len(calls)-1])
+	r, _ := a.KeyRect("X+")
+	n := len(pr.Calls())
+	ev(a, touch.Down, r.Min.X+r.Dx()/2, r.Min.Y+r.Dy()/2)
+	time.Sleep(jogRepeatDelay + 3*jogRepeat)
+	ev(a, touch.Up, r.Min.X+r.Dx()/2, r.Min.Y+r.Dy()/2)
+	time.Sleep(jogRepeat)
+	held := len(pr.Calls()) - n
+	time.Sleep(3 * jogRepeat)
+	if held < 3 || len(pr.Calls())-n != held {
+		t.Errorf("%d steps while held, %d after the lift", held, len(pr.Calls())-n-held)
+	}
+	if c := pr.Calls()[n]; c != "jog 10.00 0.00 0.00 6000" {
+		t.Errorf("held step %q", c)
+	}
+
+	// With JogInvertY, the up arrow is Y−.
+	a.JogInvertY = true
+	tapRegion(t, a, cv, "1")
+	n = len(pr.Calls())
+	tapRegion(t, a, cv, "Y−")
+	if c := pr.wait(n + 1); c[n] != "jog 0.00 -1.00 0.00 6000" {
+		t.Errorf("Y− with the inverted Y: %q", c[n])
 	}
 }
 
 func TestNoMovesWhilePrinting(t *testing.T) {
 	st := idle
 	st.Printing, st.Text = true, "Printing"
+	// The place of X+ on the page of an idle printer.
+	ia, _, icv := newPrintApp(idle)
+	ia.pages = []page{pageMove}
+	ia.Draw(icv)
+	r, ok := ia.KeyRect("X+")
+	if !ok {
+		t.Fatal("no X+")
+	}
 	a, pr, cv := newPrintApp(st)
 	a.pages = []page{pageMove}
 	a.Draw(cv)
-	jr := a.joyArea.Dx() / 2
-	jx, jy := a.joyArea.Min.X+jr, a.joyArea.Min.Y+jr
-	ev(a, touch.Down, jx+jr-2, jy)
-	time.Sleep(2 * joyTick)
-	ev(a, touch.Up, jx+jr-2, jy)
+	p := r.Min.Add(r.Size().Div(2))
+	ev(a, touch.Down, p.X, p.Y)
+	time.Sleep(jogRepeatDelay + jogRepeat)
+	ev(a, touch.Up, p.X, p.Y)
 	tapAt(a, cv, 60, 169) // Home all
 	time.Sleep(50 * time.Millisecond)
 	if c := pr.Calls(); len(c) != 0 {

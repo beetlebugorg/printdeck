@@ -190,15 +190,14 @@ type App struct {
 	hub            *hub            // shared with the sessions of this App (hub.go)
 	ackR           image.Rectangle // the key that the finger tapped last, and when (drawAck)
 	ackAt          time.Time
-	bar            bool            // the frame has the print bar
-	wasBusy        bool            // the printer printed at the last frame
-	wasPaused      bool            // the print was paused at the last frame
-	setupProbed    bool            // the printer setup started a probe of the USB ports
-	confirm        *confirmBox     // modal question
-	jobPanel       bool            // the status panel that draws now is the one of the print page
-	in             kit.Input       // the touch areas of the frame, and the finger on them
-	names          []focusItem     // the keys and the named parts of the frame, for the manual (KeyRect)
-	joyArea        image.Rectangle // the joystick pad of the last frame of the Move page
+	bar            bool        // the frame has the print bar
+	wasBusy        bool        // the printer printed at the last frame
+	wasPaused      bool        // the print was paused at the last frame
+	setupProbed    bool        // the printer setup started a probe of the USB ports
+	confirm        *confirmBox // modal question
+	jobPanel       bool        // the status panel that draws now is the one of the print page
+	in             kit.Input   // the touch areas of the frame, and the finger on them
+	names          []focusItem // the keys and the named parts of the frame, for the manual (KeyRect)
 	wake           chan struct{}
 	posted         chan func() // changes from other goroutines, run by the UI loop
 
@@ -219,7 +218,7 @@ type App struct {
 	// Settings page changes it, and OnClock is told, to save it.
 	Clock24    bool
 	OnClock    func(bool)
-	JogInvertY bool // up on the joystick moves Y back instead of forward
+	JogInvertY bool // the up arrow of the Toolhead page moves Y back instead of forward
 	// SwapHome is true when a filament change homes the printer while the nozzle heats. The
 	// Settings page changes it, and OnSwapHome is told, to save it.
 	SwapHome bool
@@ -239,9 +238,10 @@ type App struct {
 	Rotate   int
 	OnRotate func(int)
 
-	joy   *joystick
-	zStep float64 // mm per tap of the Z buttons
-	zBaby float64 // mm per tap of the Z offset on the first layer screen
+	jog     *jogHold
+	jogStep float64 // mm per tap of the arrow keys of the Toolhead page
+	zStep   float64 // mm per tap of the plate keys of the Build plate page
+	zBaby   float64 // mm per tap of the Z offset on the first layer screen
 
 	layers     layerClock // the measured times of the layers of the print (layerChart)
 	scrubLayer int        // the layer under the finger on the layer slider, or -1
@@ -372,7 +372,7 @@ var drawMu sync.Mutex
 
 func New() *App {
 	return &App{hub: newHub(), Now: time.Now, created: time.Now(), LCDFont: "5x8", wake: make(chan struct{}, 1), posted: make(chan func(), 16),
-		joy: &joystick{}, zStep: 1, UnloadMM: 80, LoadMM: 70, SwapHome: true, Theme: "auto", NightFrom: 20, NightTo: 7}
+		jog: &jogHold{}, jogStep: 1, zStep: 1, UnloadMM: 80, LoadMM: 70, SwapHome: true, Theme: "auto", NightFrom: 20, NightTo: 7}
 }
 
 // Redraw asks for a new frame. It is safe to call from any goroutine.
