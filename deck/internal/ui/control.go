@@ -242,7 +242,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 }
 
 // drawArrows draws the arrow keys of X and Y in a cross in the square in the middle of cross,
-// and the keys Z up and Z down. The step is in the middle of the cross. A key takes touches
+// and the keys Z up and Z down. The step is in the middle of the cross. A key gets touches
 // only while the head can move. Up on the screen is Y+, or Y- with JogInvertY.
 func (a *App) drawArrows(c *gfx.Canvas, cross, zUp, zDown image.Rectangle, moving bool) {
 	side := min(cross.Dx(), cross.Dy())
