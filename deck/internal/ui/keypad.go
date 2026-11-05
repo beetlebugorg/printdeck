@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image"
+	"math"
 	"printdeck/kit"
 	"strconv"
 	"strings"
@@ -9,7 +10,9 @@ import (
 	"printdeck/internal/gfx"
 )
 
-// keypad enters a number, over everything else. It is used for the temperatures.
+// keypad enters a number, over everything else. It is used for the temperatures, and for a
+// position of the head. A decimal keypad has a minus key and a point key in place of the
+// presets, and gives a float64 from lo to hi to setF.
 type keypad struct {
 	title   string
 	digits  string // what was typed
@@ -17,6 +20,96 @@ type keypad struct {
 	unit    string
 	presets []keypadPreset
 	set     func(v int)
+
+	decimal bool
+	lo, hi  float64
+	setF    func(v float64)
+}
+
+// keypadDecimals is the number of digits after the point on a decimal keypad.
+const keypadDecimals = 2
+
+// value is the typed number, and false when it is out of the range.
+func (kp *keypad) value() (float64, bool) {
+	if !kp.decimal {
+		v, _ := strconv.Atoi(kp.digits)
+		return float64(v), v <= kp.max
+	}
+	v, _ := strconv.ParseFloat(strings.TrimSuffix(kp.digits, "."), 64) // "", "-" and "-." are 0
+	return v, v >= kp.lo && v <= kp.hi
+}
+
+// add adds a typed key: a digit, or "-" and "." on a decimal keypad. "-" changes the sign.
+func (kp *keypad) add(k string) {
+	if !kp.decimal {
+		// As many digits as the maximum has: 3 for a temperature, 4 for grams.
+		if k != "-" && k != "." && len(kp.digits) < len(strconv.Itoa(kp.max)) {
+			kp.digits = trimZero(kp.digits + k)
+		}
+		return
+	}
+	sign, num := "", kp.digits
+	if strings.HasPrefix(num, "-") {
+		sign, num = "-", num[1:]
+	}
+	switch k {
+	case "-":
+		if sign == "" {
+			sign = "-"
+		} else {
+			sign = ""
+		}
+	case ".":
+		if strings.Contains(num, ".") {
+			return
+		}
+		if num == "" {
+			num = "0"
+		}
+		num += "."
+	default:
+		if i := strings.Index(num, "."); i >= 0 && len(num)-1-i >= keypadDecimals {
+			return
+		}
+		if len(num) >= 7 {
+			return
+		}
+		num += k
+		if !strings.Contains(num, ".") {
+			num = trimZero(num)
+		}
+	}
+	kp.digits = sign + num
+}
+
+// done closes the keypad and gives the value to set or setF. An out-of-range value does not
+// close it.
+func (a *App) keypadDone() {
+	kp := a.keypad
+	v, ok := kp.value()
+	if !ok {
+		return
+	}
+	a.keypad = nil
+	if kp.decimal {
+		kp.setF(v)
+		return
+	}
+	kp.set(int(v))
+}
+
+// editPosition opens a decimal keypad for a position from lo to hi mm. set is called with the
+// new position.
+func (a *App) editPosition(title string, current, lo, hi float64, set func(float64) error) {
+	cur := strconv.FormatFloat(math.Round(current*100)/100, 'f', -1, 64)
+	a.keypad = &keypad{title: title, digits: cur, unit: " mm", decimal: true, lo: lo, hi: hi,
+		setF: func(v float64) {
+			go func() {
+				if err := set(v); err != nil {
+					a.Toast(err.Error())
+				}
+			}()
+		}}
 }
 
 type keypadPreset struct {
@@ -65,9 +158,9 @@ func (a *App) drawKeypad(c *gfx.Canvas) {
 	c.Text(kit.Inset(title, 18, 0, 0, 0), strings.ToUpper(kp.title), gfx.Face(true, 20), text, gfx.Left)
 	s.Skip(8)
 
-	// The number. Too high a number is shown in red, and Set does not take it.
-	v, _ := strconv.Atoi(kp.digits)
-	tooHigh := v > kp.max
+	// The number. A number out of the range is shown in red, and Set does not use it.
+	_, ok := kp.value()
+	tooHigh := !ok
 	disp := s.Next(72)
 	window(c, disp)
 	a.region("Value", disp)
@@ -89,7 +182,17 @@ func (a *App) drawKeypad(c *gfx.Canvas) {
 	}
 	presets := s.Next(44)
 	a.region("Presets", presets)
+	if kp.decimal {
+		// The minus key and the point key.
+		for i, r := range kit.Cols(presets, 8, kit.Fr(1), kit.Fr(1)) {
+			k := []string{"-", "."}[i]
+			a.button(c, r, []string{"−", "."}[i], raised, text, func() { kp.add(k) })
+		}
+	}
 	for i, r := range kit.Cols(presets, 8, sizes...) {
+		if kp.decimal {
+			break
+		}
 		val := kp.presets[i].v
 		a.button(c, r, kp.presets[i].label, raised, text, func() { kp.digits = strconv.Itoa(val) })
 	}
@@ -108,10 +211,7 @@ func (a *App) drawKeypad(c *gfx.Canvas) {
 					kp.digits = kp.digits[:len(kp.digits)-1]
 				}
 			default:
-				// As many digits as the maximum has: 3 for a temperature, 4 for grams.
-				if len(kp.digits) < len(strconv.Itoa(kp.max)) {
-					kp.digits = trimZero(kp.digits + key)
-				}
+				kp.add(key)
 			}
 		})
 	}
@@ -123,13 +223,7 @@ func (a *App) drawKeypad(c *gfx.Canvas) {
 	if tooHigh {
 		setFill = raised
 	}
-	a.button(c, end[1], "Set", setFill, onAcc, func() {
-		if tooHigh {
-			return
-		}
-		a.keypad = nil
-		kp.set(v)
-	})
+	a.button(c, end[1], "Set", setFill, onAcc, a.keypadDone)
 }
 
 func trimZero(s string) string {

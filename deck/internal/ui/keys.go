@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"strconv"
 	"unicode"
 )
 
@@ -53,15 +52,13 @@ func (a *App) key(text, name string) {
 	}
 }
 
-// keypadKey is a key on the keypad: a digit, Backspace, Enter (Set) or Escape (Cancel).
+// keypadKey is a key on the keypad: a digit, minus, the point, Backspace, Enter (Set) or Escape
+// (Cancel).
 func (a *App) keypadKey(text, name string) {
 	kp := a.keypad
 	switch name {
 	case "Enter":
-		if v, _ := strconv.Atoi(kp.digits); v <= kp.max {
-			a.keypad = nil
-			kp.set(v)
-		}
+		a.keypadDone()
 	case "Escape":
 		a.keypad = nil
 	case "Backspace":
@@ -70,8 +67,8 @@ func (a *App) keypadKey(text, name string) {
 		}
 	case "":
 		for _, r := range text {
-			if unicode.IsDigit(r) && len(kp.digits) < len(strconv.Itoa(kp.max)) {
-				kp.digits = trimZero(kp.digits + string(r))
+			if unicode.IsDigit(r) || r == '-' || r == '.' {
+				kp.add(string(r))
 			}
 		}
 	}

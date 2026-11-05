@@ -148,14 +148,33 @@ func (a *App) drawMove(c *gfx.Canvas) {
 	window(c, pos)
 	a.region("Position", pos)
 	axes := kit.Cols(kit.Inset(pos, 14, 0, 0, 0), 0, kit.Fr(1), kit.Fr(1), kit.Fr(1))
+	paused := st.Busy() && st.Paused
 	for i, ax := range []struct {
 		n string
 		v float64
 		f string
 	}{{"X", st.X, "%.1f"}, {"Y", st.Y, "%.1f"}, {"Z", st.Z, "%.2f"}} {
 		r := axes[i]
-		led(c, r.Min.X+8, r.Min.Y+r.Dy()/2, strings.Contains(st.Homed, strings.ToLower(ax.n)))
+		homedAx := strings.Contains(st.Homed, strings.ToLower(ax.n))
+		led(c, r.Min.X+8, r.Min.Y+r.Dy()/2, homedAx)
 		c.Text(kit.Inset(r, 22, 0, 0, 0), ax.n+" "+fmt.Sprintf(ax.f, ax.v), gfx.Face(true, 22), lcdInk, gfx.Left)
+		// A tap on the axis opens a keypad for a new position of that axis.
+		if !moving {
+			continue
+		}
+		a.region("Position "+ax.n, r)
+		a.addHit(kit.Hit{R: r, Tap: func() {
+			switch {
+			case paused:
+				a.Toast("Not during a pause")
+			case !homedAx:
+				a.Toast("Home " + ax.n + " first")
+			default:
+				a.editPosition("Move "+ax.n+" to", ax.v, st.Axis[0][i], st.Axis[1][i], func(v float64) error {
+					return pr.Gcode(MoveGcode(i, v)...)
+				})
+			}
+		}})
 	}
 
 	btn := func(r image.Rectangle, label string, fill, fg color.RGBA, f func() error) {
@@ -165,9 +184,9 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		}
 		a.button(c, r, label, fill, fg, func() { a.do(f) })
 	}
-	// During a pause, Home, Center and Motors off are off: homing Z and Center move the nozzle
-	// into the part, and Motors off loses the position that Resume goes back to.
-	paused := st.Busy() && st.Paused
+	// During a pause, Home, Center, Motors off and a typed position are off: homing Z, Center
+	// and a typed position can move the nozzle into the part, and Motors off loses the position
+	// that Resume goes back to.
 	notPaused := func(r image.Rectangle, label string, fill, fg color.RGBA, f func() error) {
 		if !paused {
 			btn(r, label, fill, fg, f)
@@ -296,6 +315,12 @@ func (a *App) drawJoystick(c *gfx.Canvas, pad image.Rectangle, moving bool) {
 func ParkGcode(st printer.State) []string {
 	z := min(st.Z+10, st.Axis[1][2])
 	return []string{"G90", fmt.Sprintf("G1 Z%.2f F600", z), fmt.Sprintf("G1 X%.1f Y%.1f F6000", st.Axis[0][0]+5, st.Axis[1][1]-5)}
+}
+
+// MoveGcode moves one axis (0 X, 1 Y, 2 Z) to the position v in mm.
+func MoveGcode(axis int, v float64) []string {
+	feed := []int{6000, 6000, 600}[axis]
+	return []string{"G90", fmt.Sprintf("G1 %s%.2f F%d", []string{"X", "Y", "Z"}[axis], v, feed)}
 }
 
 // CenterGcode moves the head to the middle of the bed.

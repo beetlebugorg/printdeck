@@ -944,3 +944,49 @@ func TestMaterialCheckColor(t *testing.T) {
 		t.Errorf("the name of the color: %q", q)
 	}
 }
+
+// A tap on Z of the position opens a decimal keypad. A negative position with a point moves Z,
+// a position out of the travel does not, and an axis that is not homed does not open it.
+func TestTypedPosition(t *testing.T) {
+	st := idle
+	st.Homed = "xyz"
+	st.Z = 10
+	st.Axis = [2][3]float64{{-50, -17, -2}, {293, 308, 297}}
+	a, pr, cv := newPrintApp(st)
+	a.Draw(cv)
+	a.pages = []page{pageMove}
+	tapRegion(t, a, cv, "Position Z")
+	if a.keypad == nil || !a.keypad.decimal || a.keypad.digits != "10" {
+		t.Fatalf("keypad %+v", a.keypad)
+	}
+	a.Draw(cv)
+	for _, k := range []string{"C", "1", ".", "2", "5", "7", "−"} {
+		tapLabel(t, a, cv, k)
+	}
+	if a.keypad.digits != "-1.25" {
+		t.Fatalf("digits %q, want -1.25", a.keypad.digits)
+	}
+	tapLabel(t, a, cv, "Set")
+	if c := pr.wait(1); len(c) != 1 || c[0] != "gcode G90; G1 Z-1.25 F600" {
+		t.Errorf("calls %v", c)
+	}
+
+	a.Draw(cv)
+	tapRegion(t, a, cv, "Position X")
+	a.Draw(cv)
+	for _, k := range []string{"C", "3", "0", "0"} {
+		tapLabel(t, a, cv, k)
+	}
+	tapLabel(t, a, cv, "Set") // X300 is past position_max 293
+	if a.keypad == nil {
+		t.Error("the keypad closed on X300")
+	}
+	a.keypad = nil
+
+	pr.State_.Homed = "xy"
+	a.Draw(cv)
+	tapRegion(t, a, cv, "Position Z")
+	if a.keypad != nil {
+		t.Error("a keypad for Z that is not homed")
+	}
+}
