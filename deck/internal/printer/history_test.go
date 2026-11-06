@@ -196,3 +196,15 @@ func TestHistoryNextProject(t *testing.T) {
 		t.Errorf("project after No project %q", p)
 	}
 }
+
+// A reprint gets the project of the newest print of its file. A print that left its project
+// gives no project.
+func TestLastProject(t *testing.T) {
+	recs := []Record{{Path: "a.gcode", Project: ""}, {Path: "b.gcode", Project: "Basket"},
+		{Path: "a.gcode", Project: "Garden"}, {Path: "b.gcode", Project: "Old"}}
+	for path, want := range map[string]string{"a.gcode": "", "b.gcode": "Basket", "c.gcode": ""} {
+		if got := LastProject(recs, path); got != want {
+			t.Errorf("LastProject(%s) = %q, want %q", path, got, want)
+		}
+	}
+}

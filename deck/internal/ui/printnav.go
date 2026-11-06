@@ -366,6 +366,12 @@ func (a *App) confirmPrint(path string) {
 // tile, its record and its share link in the cloud.
 func (a *App) confirmResinPrint(path, name string) {
 	project := a.Printer.NextProject()
+	if project == "" {
+		// A reprint goes in the project of the last print of the file.
+		if project = printer.LastProject(a.Printer.History(), path); project != "" {
+			a.Printer.SetFileProject(path, project)
+		}
+	}
 	where := "No project"
 	if project != "" {
 		where = "Project · " + fitText(project, 260)

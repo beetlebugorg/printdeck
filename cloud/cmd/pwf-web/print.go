@@ -512,8 +512,46 @@ func playFrames(urls []string, fps, n int, playing *int) {
 // tilePhotos are the photos of each print by its ID, for the small pictures on the tiles.
 var tilePhotos map[string][]wire.ProjectPhoto
 
-// setTilePhotos keeps the photos of the prints of the project v for the tiles.
+// tileCopies is the place of each print among the prints of its file, for the badge
+// "Print 2 of 3" on the tiles (fileCopies).
+var tileCopies map[string]fileCopy
+
+// fileCopy is the place of a print among the prints of its file: N of Of, oldest first, and the
+// prints of the file.
+type fileCopy struct {
+	N, Of  int
+	Prints []wire.ProjectPrint
+}
+
+// fileCopies returns the place of each print of a file that printed two times or more, by the ID
+// of the print. Prints with no file have no place.
+func fileCopies(prints []wire.ProjectPrint) map[string]fileCopy {
+	byFile := map[string][]wire.ProjectPrint{}
+	for _, p := range prints {
+		if p.File != "" {
+			byFile[p.File] = append(byFile[p.File], p)
+		}
+	}
+	out := map[string]fileCopy{}
+	for _, ps := range byFile {
+		if len(ps) < 2 {
+			continue
+		}
+		sort.SliceStable(ps, func(i, j int) bool { return ps[i].Ended.Before(ps[j].Ended) })
+		for i, p := range ps {
+			out[p.ID] = fileCopy{N: i + 1, Of: len(ps), Prints: ps}
+		}
+	}
+	return out
+}
+
+// copyBadge is the text of the badge of a print of a file that printed more than once.
+func copyBadge(c fileCopy) string { return fmt.Sprintf("Print %d of %d", c.N, c.Of) }
+
+// setTilePhotos keeps the photos of the prints of the project v for the tiles, and the place of
+// each print among the prints of its file.
 func setTilePhotos(v *wire.ProjectView) {
+	tileCopies = fileCopies(v.Prints)
 	tilePhotos = map[string][]wire.ProjectPhoto{}
 	for _, ph := range v.Photos {
 		if ph.Print != "" {
@@ -550,6 +588,9 @@ func printTile(p wire.ProjectPrint, href string) js.Value {
 	}
 	if t := resultText[p.Result]; t != "" {
 		badges.Call("appendChild", el("span", "fail", t))
+	}
+	if c, ok := tileCopies[p.ID]; ok {
+		badges.Call("appendChild", el("span", "copy", copyBadge(c)))
 	}
 	if p.Frames > 0 || p.Video != "" {
 		badges.Call("appendChild", el("span", "", "Time lapse"))

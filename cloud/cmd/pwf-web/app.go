@@ -900,6 +900,7 @@ func (a *app) drawPrint(p wire.ProjectPrint) {
 	say("prCopyMsg", nil, "")
 	say("prPhotoMsg", nil, "")
 	a.drawPrintCommit(p)
+	a.drawCopies(p)
 	drawPrint(p, v.Photos, func() (wire.FramesReply, error) {
 		if p.Video != "" {
 			return wire.FramesReply{FPS: p.FPS, Video: p.Video, Poster: p.Poster}, nil
@@ -1063,6 +1064,33 @@ func (a *app) bindEdits() {
 			a.reload()
 		}()
 	})
+}
+
+// drawCopies shows the other prints of the file of the print p, with links, when the file
+// printed more than once.
+func (a *app) drawCopies(p wire.ProjectPrint) {
+	dd := byID("prCopies")
+	dd.Set("textContent", "")
+	c, ok := fileCopies(a.view.Prints)[p.ID]
+	dd.Get("parentElement").Set("hidden", !ok)
+	if !ok {
+		return
+	}
+	dd.Call("appendChild", el("span", "", copyBadge(c)+" · "))
+	for i, q := range c.Prints {
+		if i > 0 {
+			dd.Call("appendChild", el("span", "", " "))
+		}
+		label := fmt.Sprintf("#%d", q.N)
+		if q.ID == p.ID {
+			dd.Call("appendChild", el("strong", "", label))
+			continue
+		}
+		link := el("a", "", label)
+		link.Set("href", projectPath(a.view.Slug, q.N))
+		link.Set("title", shortDate(q.Ended))
+		dd.Call("appendChild", link)
+	}
 }
 
 // drawAbout shows the name and the description of the project v in the Settings tab, with the

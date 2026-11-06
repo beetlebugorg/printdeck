@@ -337,6 +337,26 @@ func (h *History) NextProject(path string) string {
 	return h.next.Project
 }
 
+// LastProject returns the project of the newest print of the file path, or "". A reprint of the
+// file goes in this project.
+func (h *History) LastProject(path string) string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.load()
+	return LastProject(h.records, path)
+}
+
+// LastProject returns the project of the newest record of the file path in recs (newest first),
+// or "".
+func LastProject(recs []Record, path string) string {
+	for _, r := range recs {
+		if r.Path == path {
+			return r.Project
+		}
+	}
+	return ""
+}
+
 // NextPath returns the path of the print of the project of the print now (SetNextProject), or "".
 // A deck that starts again during a print finds its print with it.
 func (h *History) NextPath() string {

@@ -766,8 +766,9 @@ func (k *Klippy) refresh(notify func()) {
 	notify()
 }
 
-// projectOfFile puts a print in the project of its file at its start: the line ";Printdeck
-// project:" of the Cura plugin. A project that the user picked on the deck wins.
+// projectOfFile puts a print in a project at its start: the project of the last print of the
+// file, or else the line ";Printdeck project:" of the Cura plugin. A project that the user picked
+// on the deck wins.
 func (k *Klippy) projectOfFile(st State) {
 	if k.Hist == nil {
 		return
@@ -782,7 +783,11 @@ func (k *Klippy) projectOfFile(st State) {
 	if !st.Busy() || st.FilePath == "" || st.FilePath == seen {
 		return
 	}
-	p := []rune(k.FileMeta(st.FilePath).Project)
+	// A reprint goes in the project of the last print of the file.
+	p := []rune(k.Hist.LastProject(st.FilePath))
+	if len(p) == 0 {
+		p = []rune(k.FileMeta(st.FilePath).Project)
+	}
 	if len(p) > 0 && k.Hist.NextProject(st.FilePath) == "" {
 		k.Hist.SetNextProject(st.FilePath, string(p[:min(len(p), MaxProject)]))
 	}
