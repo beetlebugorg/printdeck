@@ -75,6 +75,12 @@ type ProjectSummary struct {
 	URL string `json:"url"`
 	// Cover is the URL of a picture of the project (the cover of printdeck.yml, the newest photo or a model), or "".
 	Cover string `json:"cover,omitempty"`
+	// The numbers of the prints, for the totals of the home page: the prints that finished, the
+	// print time, the filament, and the end of the first print.
+	Finished int       `json:"finished,omitempty"`
+	Seconds  int       `json:"seconds,omitempty"`
+	Grams    float64   `json:"grams,omitempty"`
+	First    time.Time `json:"first,omitzero"`
 }
 
 // KnownPerson is a member of another project of the owner. The owner adds the person to a

@@ -315,8 +315,10 @@ body.repo-only .ov { grid-template-columns: minmax(0, 1fr); }
 @keyframes pdpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,90,31,.6); } 50% { box-shadow: 0 0 0 6px rgba(255,90,31,0); } }
 @media (prefers-reduced-motion: reduce) { .pulse .pi.on i, .livedot { animation: none; } }
 .livedot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
-#pStats .row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-@media (max-width: 700px) { #pStats .row { grid-template-columns: 1fr 1fr; } #pStats .row .cell:first-child { grid-column: auto; } }
+#pStats .row, #homeStats .row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 700px) { #pStats .row, #homeStats .row { grid-template-columns: 1fr 1fr; }
+  #pStats .row .cell:first-child, #homeStats .row .cell:first-child { grid-column: auto; } }
+#homeStats { margin-bottom: var(--s4); }
 /* The overview: a main column and a side column. */
 .ov { display: grid; gap: var(--s4); }
 .ov-main, .ov-rail { display: grid; gap: var(--s4); align-content: start; min-width: 0; }

@@ -768,14 +768,27 @@ func (s *Server) listProjects(ctx context.Context, w *who) (any, error) {
 		if p.Cover != "" {
 			cover = p.Cover
 		}
-		if cover == "" {
-			for j, b := range s.getAll(ctx, records) {
-				var pr PrintRecord
-				if b != nil && json.Unmarshal(b, &pr) == nil && pr.Model {
-					cover = strings.TrimSuffix(records[j], ".json") + "/model.jpg"
-					break
-				}
+		// The numbers of the prints, and the model picture of the first print with one.
+		model := ""
+		for j, b := range s.getAll(ctx, records) {
+			var pr PrintRecord
+			if b == nil || json.Unmarshal(b, &pr) != nil {
+				continue
 			}
+			sum.Seconds += pr.Seconds
+			sum.Grams += pr.Grams
+			if pr.Result == "complete" {
+				sum.Finished++
+			}
+			if !pr.Ended.IsZero() && (sum.First.IsZero() || pr.Ended.Before(sum.First)) {
+				sum.First = pr.Ended
+			}
+			if model == "" && pr.Model {
+				model = strings.TrimSuffix(records[j], ".json") + "/model.jpg"
+			}
+		}
+		if cover == "" {
+			cover = model
 		}
 		for _, m := range p.Members {
 			if !m.Joined.IsZero() {

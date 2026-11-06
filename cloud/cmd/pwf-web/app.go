@@ -466,9 +466,8 @@ func (a *app) showHome() {
 	sort.SliceStable(list, func(i, j int) bool { return list[i].Changed.After(list[j].Changed) })
 	box := byID("projects")
 	box.Set("textContent", "")
-	prints, photos := 0, 0
+	photos := 0
 	for _, p := range list {
-		prints += p.Prints
 		photos += p.Photos
 		href := "/app#x=" + p.ID
 		if p.Slug != "" {
@@ -476,12 +475,7 @@ func (a *app) showHome() {
 		}
 		box.Call("appendChild", projectTile(href, p.Cover, p.Name, p.Note, summaryLine(p), changedLine(p.Changed)))
 	}
-	totals := ""
-	if len(list) > 1 {
-		totals = strings.Join([]string{count(len(list), "project", "projects"), count(prints, "print", "prints"),
-			count(photos, "photo", "photos")}, " · ")
-	}
-	setText("homeTotals", totals)
+	drawHomeStats(list, photos)
 	setHidden("noProjects", len(list) > 0)
 	owner := a.kind == "owner"
 	setHidden("newBtn", !owner)
@@ -491,6 +485,41 @@ func (a *app) showHome() {
 	drawPublicProjects("homePublic", "homePublicList")
 	a.drawPrinterList()
 	a.drawAccount()
+}
+
+// drawHomeStats fills the numbers of all the projects on the home page: the projects with their
+// photos, the prints, the print time, and the filament. With no prints, the numbers do not show.
+func drawHomeStats(list []wire.ProjectSummary, photos int) {
+	prints, done, secs, grams := 0, 0, 0, 0.0
+	var first time.Time
+	for _, p := range list {
+		prints += p.Prints
+		done += p.Finished
+		secs += p.Seconds
+		grams += p.Grams
+		if !p.First.IsZero() && (first.IsZero() || p.First.Before(first)) {
+			first = p.First
+		}
+	}
+	setHidden("homeStats", prints == 0)
+	setText("hsProjects", fmt.Sprint(len(list)))
+	setText("hsProjectsSub", count(photos, "photo", "photos"))
+	setText("hsPrints", fmt.Sprint(prints))
+	sub := fmt.Sprintf("%d finished", done)
+	if n := prints - done; n > 0 {
+		sub += fmt.Sprintf(" · %d stopped", n)
+	}
+	setText("hsPrintsSub", sub)
+	setText("hsTime", hoursMinutes(secs))
+	setText("hsTimeSub", "")
+	if !first.IsZero() {
+		setText("hsTimeSub", "since "+shortDate(first))
+	}
+	setText("hsGrams", grams0(grams))
+	setText("hsGramsSub", "")
+	if prints > 0 && grams > 0 {
+		setText("hsGramsSub", grams0(grams/float64(prints))+" a print")
+	}
 }
 
 // showSignIn shows the sign-in page: the text about Printdeck, the passkey sign-in and the

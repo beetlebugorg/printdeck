@@ -104,7 +104,6 @@
     <div class="homehead">
       <div>
         <h1>Your projects</h1>
-        <p class="dim small" id="homeTotals"></p>
       </div>
       <button type="button" id="newBtn" hidden>New project</button>
     </div>
@@ -115,6 +114,14 @@
       <div class="row-keys"><button type="submit" class="primary">Create</button><button type="button" id="newCancel">Cancel</button></div>
       <p class="msg" id="newMsg" role="status"></p>
     </form>
+    <section class="lcd stats" aria-label="All your projects in numbers" id="homeStats" hidden>
+      <div class="row">
+        <div class="cell"><div class="lab">Projects</div><div class="big" id="hsProjects">0</div><div class="sub" id="hsProjectsSub"></div></div>
+        <div class="cell"><div class="lab">Prints</div><div class="big" id="hsPrints">0</div><div class="sub" id="hsPrintsSub"></div></div>
+        <div class="cell"><div class="lab">Print time</div><div class="big" id="hsTime">0:00</div><div class="sub" id="hsTimeSub"></div></div>
+        <div class="cell"><div class="lab">Filament</div><div class="big" id="hsGrams">0 g</div><div class="sub" id="hsGramsSub"></div></div>
+      </div>
+    </section>
     <div class="ptiles" id="projects"></div>
     <p class="dim" id="noProjects" hidden>No projects yet.</p>
     <div class="publicprojects" id="homePublic" hidden>

@@ -434,7 +434,7 @@ func TestDeckProjectCalls(t *testing.T) {
 	}
 	up := cloud.PrintUpload{Model: []byte("model"), Frames: 3, FPS: 12, Plan: []float64{30, 20.5},
 		Frame: func(i int) ([]byte, error) { return []byte(fmt.Sprintf("frame %d", i)), nil },
-		Request: cloud.PrintRequest{Name: "Hook", Result: "complete", Ended: time.Now().UTC(), Seconds: 600, Key: "hook@1",
+		Request: cloud.PrintRequest{Name: "Hook", Result: "complete", Ended: time.Now().UTC(), Seconds: 600, Grams: 12.5, Key: "hook@1",
 			Layers: 2, Layer: 2, Height: 0.6, Slicer: "Cura 5.8", Filament: &cloud.ShareFilament{Type: "PLA", Color: "#ff5a1f"}}}
 	pid, err := c.SendPrint(ctx, id, sum.ID, up)
 	if err != nil {
@@ -454,6 +454,12 @@ func TestDeckProjectCalls(t *testing.T) {
 	// The list counts the print once: plan.json is a file of the print.
 	if out, err := d.API.listProjects(ctx, &who{owner: true}); err != nil || len(out.([]cloud.ProjectSummary)) != 1 || out.([]cloud.ProjectSummary)[0].Prints != 1 {
 		t.Errorf("the list of the projects %+v %v", out, err)
+	}
+	// The list has the numbers of the prints for the totals of the home page.
+	if out, _ := d.API.listProjects(ctx, &who{owner: true}); len(out.([]cloud.ProjectSummary)) == 1 {
+		if p := out.([]cloud.ProjectSummary)[0]; p.Seconds != 600 || p.Grams != 12.5 || p.Finished != 1 || p.First.IsZero() {
+			t.Errorf("the numbers of the prints %+v", p)
+		}
 	}
 	if again, err := c.SendPrint(ctx, id, sum.ID, up); err != nil || again != pid {
 		t.Errorf("the same print again: %q %v", again, err)
