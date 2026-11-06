@@ -131,6 +131,9 @@ type PlanPart struct {
 	BedX   float64 `json:"bed_x,omitempty"`
 	BedY   float64 `json:"bed_y,omitempty"`
 	Margin float64 `json:"margin,omitempty"`
+	// Outline is the outline of the part for the layout of a plate (platepack): 64 values in
+	// mm. An older Action sends none, and the plan page uses the box of the part.
+	Outline []float64 `json:"outline,omitempty"`
 	// The plan run slices each part alone, with a count of 1. Seconds, Grams (or ML for resin),
 	// Layers, LayerHeight and Slicer are the facts of that slice. SliceFile is the name of its
 	// file in the plan, with its size and SHA-256. A plate with this part alone and a count of 1

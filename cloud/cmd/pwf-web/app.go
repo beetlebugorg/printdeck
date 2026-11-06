@@ -33,6 +33,7 @@ type app struct {
 	plan        *wire.ProjectPlan
 	planChoices []planChoice
 	planPlates  [][]int
+	layouts     map[string]*plateLayout // the layouts of the plates of the plan page, by parts and counts
 	planShown   int
 	planProcess string            // the kind of print of the plan page: "fdm" or "resin"
 	lastBuild   wire.ProjectBuild // the build of the build page

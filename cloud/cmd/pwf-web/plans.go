@@ -10,6 +10,7 @@ import (
 	"syscall/js"
 	"time"
 
+	"printdeck/internal/cloud/platepack"
 	"printdeck/internal/cloud/wire"
 )
 
@@ -195,6 +196,7 @@ func (a *app) showPlanPage(projectID, id string) {
 		return
 	}
 	a.view, a.plan, a.planPlates = &v, &p, nil
+	a.layouts = nil
 	a.planChoices = make([]planChoice, len(p.Parts))
 	for i, pp := range p.Parts {
 		// A release plan suggests all the parts. Another plan suggests the parts that changed.
@@ -653,32 +655,62 @@ func plateKey(pp wire.ProjectPlanPart, i int) string {
 	return pp.Printer + "|" + prof + "|" + pp.Material
 }
 
-// plateFit reports whether the parts fit on the bed of their printer, and how many objects fit,
-// with the grid of curaslice.py (printdeck-action): objects in rows, the room for the brim around each, 10 mm
-// from the edges. The bed and the room come from the plan; a part with no bed fits.
-func (a *app) plateFit(parts []int) (bool, int, int) {
-	var n int
-	var cw, cd, bx, by float64
+// plateLayout is the layout of the plate of the parts, as the slice makes it (platepack, a copy
+// of platepack.py of printdeck-action): an outline for each object, its place, the number of
+// objects that fit, and the bed. The places are nil when the objects do not fit. A part with no
+// bed fits. The result stays in a cache, by the parts and their counts.
+type plateLayout struct {
+	outlines []platepack.Outline
+	names    []string
+	places   []platepack.Place
+	fit      int
+	bx, by   float64
+}
+
+func (a *app) plateLayout(parts []int) *plateLayout {
+	key := fmt.Sprint(a.plan.ID)
+	for _, i := range parts {
+		key += fmt.Sprintf(" %d:%d", i, a.planChoices[i].count)
+	}
+	if l, ok := a.layouts[key]; ok {
+		return l
+	}
+	l := &plateLayout{}
+	var margin float64
 	for _, i := range parts {
 		pp := a.plan.Parts[i]
-		n += a.planChoices[i].count
-		m := pp.Margin
-		cw = math.Max(cw, pp.SizeX+2*m)
-		cd = math.Max(cd, pp.SizeY+2*m)
+		h := platepack.Outline(pp.Outline)
+		if len(h) != platepack.N {
+			h = platepack.RectOutline(pp.SizeX, pp.SizeY)
+		}
+		for k := 0; k < a.planChoices[i].count; k++ {
+			l.outlines = append(l.outlines, h)
+			l.names = append(l.names, partLabel(pp.Name, pp.Variant))
+		}
+		margin = math.Max(margin, pp.Margin)
 		if pp.BedX > 0 {
-			bx, by = pp.BedX, pp.BedY
+			l.bx, l.by = pp.BedX, pp.BedY
 		}
 	}
-	if bx == 0 || cw == 0 {
+	if l.bx > 0 {
+		l.places, l.fit = platepack.Plate(l.outlines, l.bx, l.by, margin)
+	}
+	if a.layouts == nil {
+		a.layouts = map[string]*plateLayout{}
+	}
+	a.layouts[key] = l
+	return l
+}
+
+// plateFit reports whether the parts fit on the bed of their printer, the number of objects,
+// and how many objects fit.
+func (a *app) plateFit(parts []int) (bool, int, int) {
+	l := a.plateLayout(parts)
+	n := len(l.outlines)
+	if l.bx == 0 || n == 0 {
 		return true, n, n
 	}
-	if n == 1 {
-		return cw-2*a.plan.Parts[parts[0]].Margin <= bx && cd-2*a.plan.Parts[parts[0]].Margin <= by, 1, 1
-	}
-	cols := math.Max(1, math.Floor((bx-20)/cw))
-	rows := math.Ceil(float64(n) / cols)
-	fit := int(cols * math.Max(1, math.Floor((by-20)/cd)))
-	return rows*cd <= by-20, n, fit
+	return l.places != nil, n, l.fit
 }
 
 // sliceFacts is the print time and the filament of the slice of a part in the plan, for example
@@ -848,8 +880,7 @@ func (a *app) movePart(i, from int, to string) {
 	a.drawPlates()
 }
 
-// drawPlateBed draws the bed of a plate from above, with the objects at the places of the grid
-// of the slicer.
+// drawPlateBed draws the bed of a plate from above, with the objects at the places of the slice.
 func (a *app) drawPlateBed(c js.Value, pl []int) {
 	first := a.plan.Parts[pl[0]]
 	bx, by := first.BedX, first.BedY
@@ -877,41 +908,30 @@ func (a *app) drawPlateBed(c js.Value, pl []int) {
 		ctx.Call("lineTo", bx*scale, y*scale)
 		ctx.Call("stroke")
 	}
-	// The objects, in the order of the slicer, in a grid at the middle.
-	type obj struct {
-		w, d float64
-		name string
-	}
-	var objs []obj
-	var cw, cd float64
-	for _, i := range pl {
-		pp := a.plan.Parts[i]
-		for k := 0; k < a.planChoices[i].count; k++ {
-			objs = append(objs, obj{pp.SizeX, pp.SizeY, partLabel(pp.Name, pp.Variant)})
-		}
-		cw = math.Max(cw, pp.SizeX+2*pp.Margin)
-		cd = math.Max(cd, pp.SizeY+2*pp.Margin)
-	}
-	if cw == 0 {
+	// The objects at the places of the slice, with their turns. The back of the bed is at the
+	// top. With no places (the parts do not fit), the drawing has only the bed.
+	l := a.plateLayout(pl)
+	if l.places == nil {
 		return
 	}
-	cols := math.Max(1, math.Floor((bx-20)/cw))
-	if len(objs) == 1 {
-		cols = 1
-	}
-	cols = math.Min(cols, float64(len(objs)))
-	rows := math.Ceil(float64(len(objs)) / cols)
 	colors := []string{"#e8762b", "#f2a65a", "#8b5cf6", "#3aa05a", "#2a7fc0"}
 	names := map[string]int{}
-	for k, o := range objs {
-		r, cl := k/int(cols), k%int(cols)
-		cx := bx/2 + (float64(cl)-(cols-1)/2)*cw
-		cy := by/2 + (float64(r)-(rows-1)/2)*cd
-		if _, ok := names[o.name]; !ok {
-			names[o.name] = len(names)
+	for k, p := range l.places {
+		if _, ok := names[l.names[k]]; !ok {
+			names[l.names[k]] = len(names)
 		}
-		ctx.Set("fillStyle", colors[names[o.name]%len(colors)])
-		ctx.Call("fillRect", (cx-o.w/2)*scale, (cy-o.d/2)*scale, math.Max(2, o.w*scale), math.Max(2, o.d*scale))
+		ctx.Set("fillStyle", colors[names[l.names[k]]%len(colors)])
+		ctx.Call("beginPath")
+		for j, c := range platepack.Corners(platepack.Turned(l.outlines[k], p.K), p.X, p.Y) {
+			x, y := (bx/2+c[0])*scale, (by/2-c[1])*scale
+			if j == 0 {
+				ctx.Call("moveTo", x, y)
+			} else {
+				ctx.Call("lineTo", x, y)
+			}
+		}
+		ctx.Call("closePath")
+		ctx.Call("fill")
 	}
 }
 
