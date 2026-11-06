@@ -20,6 +20,7 @@ import (
 	"printdeck/internal/gcodemeta"
 	"printdeck/internal/gfx"
 	"printdeck/internal/hostmetrics"
+	"printdeck/internal/maxmode"
 	"printdeck/internal/notify"
 	"printdeck/internal/printer"
 	"printdeck/internal/queue"
@@ -204,7 +205,9 @@ type App struct {
 	tune   bool       // the tune sheet of a running print is open
 	swap   *swapState // the filament swap is open
 	keypad *keypad    // number entry, over everything
-	setup  *setupFlow // the setup screen, over everything
+
+	mmSaved, mmDraft maxmode.Settings // the Max mode page: the settings of the printer, and the copy that the page changes
+	setup            *setupFlow       // the setup screen, over everything
 
 	// Settings of the control screens.
 	UnloadMM, LoadMM float64 // filament lengths of the swap

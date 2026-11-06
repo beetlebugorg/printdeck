@@ -830,6 +830,10 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 	if !a.resin() {
 		items = append(items, menuItem{"Home in a filament change", swapHomeLine(a.SwapHome), dim, a.toggleSwapHome})
 	}
+	if m, ok := a.maxModer(); ok && a.Printer.State().Reachable {
+		s, section := m.MaxMode()
+		items = append(items, menuItem{"Max mode", maxModeLine(s, section), dim, a.openMaxMode})
+	}
 	if ps, ok := a.printerSetup(); ok {
 		items = append(items, menuItem{"Printer", settingLine(ps.Printer()), dim, a.OpenPrinterSetup})
 	}

@@ -86,9 +86,10 @@ type Klippy struct {
 	// objects (objects/list).
 	version  string
 	hostAPI  int
-	diameter float64 // filament_diameter of the extruder, in mm
-	settings Machine // the settings of printer.cfg in Machine (machineSettings)
-	timer    timer   // the timings of the running print
+	diameter float64           // filament_diameter of the extruder, in mm
+	maxMode  *maxmode.Settings // the [max_mode] section of printer.cfg, or nil
+	settings Machine           // the settings of printer.cfg in Machine (machineSettings)
+	timer    timer             // the timings of the running print
 	objects  []string
 	lastPos  int64     // the file position of the last busy state, for the history
 	startup  bool      // Klipper reports "startup"
@@ -304,10 +305,15 @@ func (k *Klippy) follow(ctx context.Context, notify func()) {
 	l, mm, ok, diameter := motionLimits(ctx, conn)
 	settings := machineSettings(ctx, conn)
 	if ok {
-		k.View.SetLimits(l, mm)
+		// The plan of a print uses max mode only when it is on.
+		on := mm
+		if on != nil && !on.Enable {
+			on = nil
+		}
+		k.View.SetLimits(l, on)
 	}
 	k.mu.Lock()
-	k.diameter, k.settings = diameter, settings
+	k.diameter, k.settings, k.maxMode = diameter, settings, mm
 	k.macros = macros
 	k.conn, k.err, k.startup = conn, "", false
 	k.version, k.hostAPI, k.objects = version, hostAPI, objects
@@ -507,8 +513,8 @@ func klipperObjects(ctx context.Context, conn *klippy.Conn) (version string, hos
 
 // motionLimits reads the motion limits of the printer from its config, with the defaults of
 // Klipper (configfile settings), for the plan of a print, and the filament diameter. It also
-// returns the settings of max mode when the config has a [max_mode] section with enable: True,
-// and nil otherwise.
+// returns the settings of the [max_mode] section of the config, or nil for a config with no
+// section.
 func motionLimits(ctx context.Context, conn *klippy.Conn) (l toolhead.Limits, mm *maxmode.Settings, ok bool, filamentDiameter float64) {
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -530,9 +536,9 @@ func motionLimits(ctx context.Context, conn *klippy.Conn) (l toolhead.Limits, mm
 		MaxZVelocity: num(pr["max_z_velocity"]), MaxZAccel: num(pr["max_z_accel"]),
 		InstantCornerVelocity:  num(ex["instantaneous_corner_velocity"]),
 		MaxExtrudeOnlyVelocity: num(ex["max_extrude_only_velocity"]), MaxExtrudeAcc: num(ex["max_extrude_only_accel"])}
-	if sec, ok := q.Status.Configfile.Settings["max_mode"]; ok && sec["enable"] == true {
+	if sec, ok := q.Status.Configfile.Settings["max_mode"]; ok {
 		s := maxmode.Defaults()
-		s.Enable = true
+		s.Enable = sec["enable"] == true
 		s.Load(func(option string, def float64) float64 {
 			if v, ok := sec[option].(float64); ok {
 				return v

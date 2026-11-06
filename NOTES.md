@@ -85,5 +85,6 @@ on the bittlx Pi addon panel (`~/Projects/3d/bittlx/bittle_pi_addon/stl/print/po
 - The deck manual has no figure of the Paused screen with a message.
 - The Printdeck tab: the time and the filament of a loaded G-code do not show in Cura's panel (a
   limit of Cura).
-- Max mode is on main and in `v0.2.0-beta.1`. It is off until `[max_mode]` is in printer.cfg.
-  Run a flow test before you turn it on.
+- Max mode is on main and in `v0.2.0-beta.1`. It is off until `[max_mode]` in printer.cfg has
+  `enable: True`. Machine > Settings > Max mode sets the section. Run a flow test before you turn
+  it on.

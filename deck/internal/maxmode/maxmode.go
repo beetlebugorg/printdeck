@@ -28,6 +28,7 @@ package maxmode
 
 import (
 	"math"
+	"strconv"
 	"strings"
 )
 
@@ -54,6 +55,9 @@ var featureNames = [numFeatures]string{"other", "outer_wall", "inner_wall", "ove
 	"top_surface", "solid_infill", "infill", "support", "skirt"}
 
 func (f Feature) String() string { return featureNames[f] }
+
+// NumFeatures is the number of features. The features are 0 to NumFeatures-1.
+const NumFeatures = int(numFeatures)
 
 // ClassifyFeature returns the feature of a type name of Cura (;TYPE:WALL-OUTER), PrusaSlicer
 // (;TYPE:External perimeter) or OrcaSlicer (;FEATURE: Outer wall).
@@ -126,6 +130,21 @@ func (s *Settings) Load(get func(option string, def float64) float64) {
 	for f := range numFeatures {
 		s.FeatureSpeed[f] = get(featureNames[f]+"_speed", s.FeatureSpeed[f])
 	}
+}
+
+// Options are the number options of the settings, as the name and the value of each option of
+// the config section, in the order of Load. FilamentDiameter is not in the list: its default comes
+// from [extruder].
+func (s Settings) Options() [][2]string {
+	opt := func(name string, v float64) [2]string {
+		return [2]string{name, strconv.FormatFloat(v, 'f', -1, 64)}
+	}
+	out := [][2]string{opt("max_flow", s.MaxFlow), opt("first_layer_speed", s.FirstLayerSpeed),
+		opt("travel_speed", s.TravelSpeed), opt("min_layer_time", s.MinLayerTime), opt("min_speed", s.MinSpeed)}
+	for f := range numFeatures {
+		out = append(out, opt(featureNames[f]+"_speed", s.FeatureSpeed[f]))
+	}
+	return out
 }
 
 // Shaper follows the feature and layer comments of a G-code stream, and returns the speed of each

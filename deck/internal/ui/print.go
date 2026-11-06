@@ -167,6 +167,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	case pageTimeLapse:
 		a.drawTimeLapse(c)
 		return
+	case pageMaxMode:
+		a.drawMaxMode(c)
+		return
 	case pageFirstLayer:
 		a.drawFirstLayerPicture(c)
 		return

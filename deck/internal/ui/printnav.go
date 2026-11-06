@@ -52,6 +52,7 @@ const (
 	pageProjects    // the projects of the history
 	pageProject     // the prints of one project (a.project)
 	pageQueue       // the print queue of the deck
+	pageMaxMode     // the [max_mode] section of printer.cfg
 )
 
 // open shows a page over the current one.
