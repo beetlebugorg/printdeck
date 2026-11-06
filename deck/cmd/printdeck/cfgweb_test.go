@@ -19,15 +19,16 @@ type cfgFake struct {
 func (f *cfgFake) State() printer.State  { return f.st }
 func (f *cfgFake) RestartKlipper() error { f.restarts++; return nil }
 
-// The endpoint reads printer.cfg, and a PUT keeps the old file as printer.cfg.bak and restarts
+// The endpoint reads printer.cfg, and a PUT keeps the old file as the backup and restarts
 // Klipper. It refuses a request with no access, a file with no [printer], and a PUT during a print.
 func TestPrinterCfg(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "printer.cfg")
+	dir := t.TempDir()
+	path := filepath.Join(dir, "printer.cfg")
 	old := "[printer]\nkinematics: cartesian\n"
 	os.WriteFile(path, []byte(old), 0o664)
 	pr := &cfgFake{}
 	mux := http.NewServeMux()
-	registerPrinterCfg(mux, path, pr, func(r *http.Request) bool { return r.Header.Get("X-Api-Key") == "k" })
+	registerPrinterCfg(mux, path, filepath.Join(dir, "state.bak"), pr, func(r *http.Request) bool { return r.Header.Get("X-Api-Key") == "k" })
 	do := func(method, url, body, key string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(method, url, strings.NewReader(body))
 		if key != "" {

@@ -62,7 +62,7 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 			if api != nil {
 				allow = func(r *http.Request) bool { return rs.LoggedIn(r) || api.ValidKey(r) }
 			}
-			registerPrinterCfg(mux, k.ConfigPath, k, allow)
+			registerPrinterCfg(mux, k.ConfigPath, filepath.Join(cfg.StateDir, "printer.cfg.bak"), k, allow)
 		}
 	}
 	srv := &http.Server{Addr: cfg.RemoteAddr, Handler: remote.SecurityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}
