@@ -1031,6 +1031,24 @@ func (a *app) bindEdits() {
 		src := strings.TrimSpace(byID("prSourceInput").Get("value").String())
 		go a.editPrint(wire.PrintEdit{Source: &src}, "prNotesMsg")
 	})
+	on("pAboutEdit", "click", func() {
+		byID("pAboutNoteInput").Set("value", a.view.Note)
+		open("pAboutForm", "pAboutNameInput", a.view.Name, "pAboutText", "pAboutEdit")
+	})
+	on("pAboutCancel", "click", func() { a.drawAbout(a.view) })
+	onSubmit("pAboutForm", func() {
+		in := wire.ProjectRequest{Name: strings.TrimSpace(byID("pAboutNameInput").Get("value").String()),
+			Note: strings.TrimSpace(byID("pAboutNoteInput").Get("value").String())}
+		go func() {
+			say("pAboutMsg", nil, "Saving…")
+			if err := a.api("PATCH", "/projects/"+a.view.ID, in, nil); err != nil {
+				say("pAboutMsg", err, "")
+				return
+			}
+			say("pAboutMsg", nil, "")
+			a.reload()
+		}()
+	})
 	on("pNotesEdit", "click", func() { open("pNotesForm", "pNotesInput", a.view.Notes, "pNotesText") })
 	on("pNotesCancel", "click", func() { setHidden("pNotesForm", true); setHidden("pNotesText", false) })
 	onSubmit("pNotesForm", func() {
@@ -1045,6 +1063,20 @@ func (a *app) bindEdits() {
 			a.reload()
 		}()
 	})
+}
+
+// drawAbout shows the name and the description of the project v in the Settings tab, with the
+// form closed.
+func (a *app) drawAbout(v *wire.ProjectView) {
+	setText("pAboutName", v.Name)
+	note := v.Note
+	if note == "" {
+		note = "No description"
+	}
+	setText("pAboutNote", note)
+	setHidden("pAboutForm", true)
+	setHidden("pAboutText", false)
+	setHidden("pAboutEdit", false)
 }
 
 // printNow returns the print of the print page that shows.
@@ -1086,6 +1118,7 @@ func (a *app) drawProject() {
 	}
 	setHidden("ownerTools", !v.IsOwner)
 	if v.IsOwner {
+		a.drawAbout(v)
 		go a.loadKnown(v.ID, false)
 	}
 	setHidden("dangerZone", !v.IsOwner)

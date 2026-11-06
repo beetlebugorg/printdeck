@@ -318,6 +318,20 @@
     </div>
     <div class="cards-stack" id="ownerTools" data-on="settings" hidden>
       <div class="card">
+        <h2>Name and description</h2>
+        <div id="pAboutText">
+          <p id="pAboutName"></p>
+          <p class="small dim" id="pAboutNote"></p>
+        </div>
+        <form class="rename" id="pAboutForm" hidden>
+          <label class="field">Name<input id="pAboutNameInput" maxlength="80" required autocomplete="off"></label>
+          <label class="field">Description<textarea id="pAboutNoteInput" rows="3" maxlength="280" placeholder="For example: what the parts are for"></textarea></label>
+          <div class="row-keys"><button type="submit" class="primary">Save</button><button type="button" id="pAboutCancel">Cancel</button></div>
+        </form>
+        <div class="linkrow"><button type="button" id="pAboutEdit">Edit</button></div>
+        <p class="msg" id="pAboutMsg" role="status"></p>
+      </div>
+      <div class="card">
         <h2>Friends</h2>
         <ul class="members" id="members"></ul>
         <form class="row" id="inviteForm">
