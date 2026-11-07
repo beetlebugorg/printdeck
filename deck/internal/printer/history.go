@@ -134,8 +134,9 @@ func (r Record) Summary(grams func(mm float64) float64) string {
 	return s
 }
 
-// maxHistory is the number of prints that the history keeps.
-const maxHistory = 100
+// maxHistory is the number of prints that the history keeps: some years of prints. A record is
+// about 500 bytes in the file.
+const maxHistory = 5000
 
 // History is the list of the finished prints, newest first, in a JSON file. Klipper keeps only the
 // last print, so the deck records each one when it ends.
@@ -196,11 +197,14 @@ func key(r Record) string {
 }
 
 // Records returns the history, newest first.
+//
+// The callers share the list: they must not change it. A change of a record makes a new list
+// (edit), so a list that a caller has stays the same.
 func (h *History) Records() []Record {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.load()
-	return append([]Record(nil), h.records...)
+	return h.records[:len(h.records):len(h.records)]
 }
 
 // add records the end of a print once: the state of Klipper shows the last print until the next
@@ -250,6 +254,7 @@ func (h *History) setCool(k string, seconds, from, room float64) {
 	defer h.mu.Unlock()
 	for i := range h.records {
 		if key(h.records[i]) == k {
+			h.records = slices.Clone(h.records)
 			h.records[i].CoolBed, h.records[i].CoolFrom, h.records[i].CoolRoom = seconds, from, room
 			h.rates = nil
 			h.save()
@@ -264,6 +269,7 @@ func (h *History) setSpool(k string, sp Spool, grams, cost float64) {
 	defer h.mu.Unlock()
 	for i := range h.records {
 		if key(h.records[i]) == k {
+			h.records = slices.Clone(h.records)
 			r := &h.records[i]
 			r.Spool, r.SpoolID, r.Grams, r.Cost = sp.Label(), sp.ID, grams, cost
 			h.save()
@@ -285,7 +291,8 @@ func (h *History) SetVideo(path, name string, now time.Time) {
 			continue
 		}
 		if r.Video == "" && now.Sub(r.End) < videoWindow {
-			r.Video = name
+			h.records = slices.Clone(h.records)
+			h.records[i].Video = name
 			h.save()
 			return
 		}
@@ -393,9 +400,9 @@ func (h *History) edit(path string, end time.Time, f func(r *Record)) bool {
 	defer h.mu.Unlock()
 	h.load()
 	for i := range h.records {
-		r := &h.records[i]
-		if r.Path == path && r.End.Equal(end) {
-			f(r)
+		if r := h.records[i]; r.Path == path && r.End.Equal(end) {
+			h.records = slices.Clone(h.records)
+			f(&h.records[i])
 			h.save()
 			return true
 		}

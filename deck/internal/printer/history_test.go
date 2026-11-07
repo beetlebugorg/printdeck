@@ -208,3 +208,16 @@ func TestLastProject(t *testing.T) {
 		}
 	}
 }
+
+// A list from Records stays the same when a record changes later.
+func TestHistoryRecordsShared(t *testing.T) {
+	end := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
+	h := &History{records: []Record{{Path: "a.gcode", End: end}}, loaded: true}
+	before := h.Records()
+	if !h.SetNote("a.gcode", end, "loose") {
+		t.Fatal("no record")
+	}
+	if before[0].Note != "" || h.Records()[0].Note != "loose" {
+		t.Errorf("before %q, after %q", before[0].Note, h.Records()[0].Note)
+	}
+}
