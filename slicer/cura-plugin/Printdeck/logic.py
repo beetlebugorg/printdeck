@@ -90,6 +90,17 @@ def spool_name(spool):
     return spool.get("name") or spool.get("material") or "The roll"
 
 
+def material_name(spool, spools=None):
+    """The name of the material of Cura for a roll: the name of the roll. When another roll of
+    spools has the same name, the name gets the number of the roll, for example "White #6". The
+    Printdeck then knows the roll of a file."""
+    name = spool_name(spool)
+    for other in spools or []:
+        if other.get("id") != spool.get("id") and spool_name(other).strip().lower() == name.strip().lower():
+            return "%s #%s" % (name.strip(), spool.get("id"))
+    return name
+
+
 def _stem(name):
     name = re.sub(r"\.(gcode|g|gco|ufp)$", "", name.strip().lower())
     return re.sub(r"[ _\-]", "", name.split("/")[-1])
@@ -309,15 +320,16 @@ def roll_favorites(favorites, added, wanted):
     return keep, sorted(set(mine))
 
 
-def roll_material_changes(meta, spool):
+def roll_material_changes(meta, spool, spools=None):
     """What changes to keep a material that the plugin made in step with its roll. Returns a pair:
     the metadata of the material that must change (a dict with name, color_code, color_name and
     printdeck_color, or an empty dict), and the color for the roll in the Printdeck, or None.
 
     meta is the metadata of the material. Its printdeck_color is the color of the last sync. A new
     color on the Printdeck goes to Cura, and a new color in Cura goes to the Printdeck. When both
-    are new, the Printdeck wins. A roll with no color keeps the color of the material."""
-    name = spool_name(spool)
+    are new, the Printdeck wins. A roll with no color keeps the color of the material. spools are
+    all the rolls: the name gets the number of the roll when two rolls have one name."""
+    name = material_name(spool, spools)
     changes, to_deck = {}, None
     if meta.get("name") != name:
         changes["name"] = name

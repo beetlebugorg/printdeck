@@ -541,7 +541,7 @@ class PrintdeckPlugin(Extension):
         app = CuraApplication.getInstance()
         registry = CuraContainerRegistry.getInstance()
         rid = spool["id"]
-        name = logic.spool_name(spool)
+        name = logic.material_name(spool, (self._status or {}).get("spools"))
         material = spool.get("material") or ""
         _, extruder = self._extruder()
         if not extruder:
@@ -555,7 +555,7 @@ class PrintdeckPlugin(Extension):
             Logger.log("w", "Printdeck: no %s material of Cura for the roll %s", material, name)
             return None
         meta = {"name": name, "brand": logic.roll_brand(node.brand), "GUID": str(uuid.uuid4()), "printdeck_roll": rid}
-        color = spool.get("color") or logic.color_from_name(name)
+        color = spool.get("color") or logic.color_from_name(logic.spool_name(spool))
         if color:
             meta["color_code"], meta["color_name"] = color, name
         meta["printdeck_color"] = (spool.get("color") or "").lower()
@@ -608,7 +608,7 @@ class PrintdeckPlugin(Extension):
         roll and of the material the same (logic.roll_material_changes)."""
         from cura.Settings.CuraContainerRegistry import CuraContainerRegistry
 
-        changes, to_deck = logic.roll_material_changes(meta, spool)
+        changes, to_deck = logic.roll_material_changes(meta, spool, (self._status or {}).get("spools"))
         if to_deck:
             self._linkRoll(spool["id"], base_id, to_deck)
         if not changes:
@@ -643,7 +643,7 @@ class PrintdeckPlugin(Extension):
         app = CuraApplication.getInstance()
         registry = CuraContainerRegistry.getInstance()
         rid = spool["id"]
-        name = logic.spool_name(spool)
+        name = logic.material_name(spool, (self._status or {}).get("spools"))
         material = spool.get("material") or ""
         made = self._madeMaterials().get(rid)
         if made:
