@@ -145,6 +145,16 @@ class TestRollMaterial(unittest.TestCase):
         # The roll goes: its material leaves the favorites, the favorite of the user stays.
         self.assertEqual(logic.roll_favorites(favs, added, []), (["generic_abs"], []))
 
+    def test_material_name(self):
+        rolls = [{"id": "1", "name": "White"}, {"id": "6", "name": "white "}, {"id": "2", "name": "Orange"}]
+        self.assertEqual(logic.material_name(rolls[0], rolls), "White #1")
+        self.assertEqual(logic.material_name(rolls[1], rolls), "white #6")
+        self.assertEqual(logic.material_name(rolls[2], rolls), "Orange")
+        self.assertEqual(logic.material_name(rolls[2]), "Orange")
+        meta = {"name": "White", "color_code": "#ffffff", "printdeck_color": "#ffffff", "color_name": "White"}
+        self.assertEqual(logic.roll_material_changes(meta, {"id": "1", "name": "White", "color": "#ffffff"}, rolls),
+                         ({"name": "White #1", "color_name": "White #1"}, None))
+
     def test_roll_material_changes(self):
         # A material from before the sync: its color is the color of the last sync.
         meta = {"name": "White", "color_code": "#f5f5f5", "color_name": "White"}

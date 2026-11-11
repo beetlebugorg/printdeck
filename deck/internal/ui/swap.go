@@ -22,6 +22,11 @@ type swapState struct {
 	resume int
 	// roll is the ID of the roll that goes in, chosen before the swap opened (LoadRoll), or "".
 	roll string
+	// choices are the IDs of the rolls that fit the file, when two or more fit (changeRollFor).
+	// The first step shows only them, and All rolls shows all the rolls again. need is the grams
+	// of filament of the file, or 0.
+	choices []string
+	need    float64
 	// When set is true, the swap changes the loaded filament at its end: newMaterial is the
 	// material, and newRoll is the ID of the roll, or "" for no roll. Only Done changes them. A
 	// cancel keeps the filament that was loaded before the swap.
@@ -253,9 +258,20 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		}
 		if sw.mode != swapUnloadOnly {
 			step(1, "Which roll goes in?")
-			para("The nozzle heats for the material of the roll.")
-			k := keys(size{240, 3}, size{80, 1})
 			list := rolls.List()
+			if len(sw.choices) > 0 {
+				var fit []printer.Spool
+				for _, id := range sw.choices {
+					if sp, ok := rolls.Get(id); ok {
+						fit = append(fit, sp)
+					}
+				}
+				list = fit
+				para(fmt.Sprintf("%d rolls fit the file. Pick the roll that you put in: its number is on its label.", len(list)))
+			} else {
+				para("The nozzle heats for the material of the roll.")
+			}
+			k := keys(size{240, 3}, size{80, 1})
 			a.region("Rolls", k[0])
 			if len(list) == 0 {
 				noItems(c, k[0], "", "No rolls yet")
@@ -267,7 +283,11 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 					if list[i].ID == in.ID {
 						title += " · loaded"
 					}
-					a.menuRow(c, r, title, rollLine(list[i]), dim, nil)
+					line, col := rollLine(list[i]), dim
+					if sw.need > 0 && list[i].Left() < sw.need {
+						line, col = "Too little for the file · "+line, red
+					}
+					a.menuRow(c, r, title, line, col, nil)
 				}, func(i int) {
 					sp := list[i]
 					sw.setAtEnd(sp.Material, sp.ID)
@@ -275,6 +295,13 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 				})
 			}
 			b := kit.Cols(k[1], 12, kit.Fr(1), kit.Fr(1))
+			if len(sw.choices) > 0 {
+				b = kit.Cols(k[1], 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
+				a.button(c, b[2], "All rolls", raised, text, func() {
+					sw.choices = nil
+					a.spoolScroll = 0
+				})
+			}
 			a.button(c, b[0], "New roll", orange, onAcc, func() {
 				a.openRollForm(func(sp printer.Spool) {
 					sw.setAtEnd(sp.Material, sp.ID)
