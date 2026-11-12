@@ -72,6 +72,29 @@ func TestBrokenUploadKeepsTheOldFile(t *testing.T) {
 	}
 }
 
+// A Cura file gets the object data of Klipper's [exclude_object]. Other files stay the same.
+func TestSaveAddsObjects(t *testing.T) {
+	s := &Store{Dir: t.TempDir()}
+	cura := ";Generated with Cura\nG28\n;MESH:cup.stl\nG0 X1 Y1\nG1 X2 Y1 E1\n;TIME_ELAPSED:1\n"
+	if _, err := s.Save("parts/cup.gcode", strings.NewReader(cura)); err != nil {
+		t.Fatal(err)
+	}
+	want := ";Generated with Cura\n" +
+		"EXCLUDE_OBJECT_DEFINE NAME=cup_stl CENTER=1.500,1.000 POLYGON=[[1.000,1.000],[2.000,1.000]]\n" +
+		"G28\n;MESH:cup.stl\nEXCLUDE_OBJECT_START NAME=cup_stl\nG0 X1 Y1\nG1 X2 Y1 E1\n" +
+		"EXCLUDE_OBJECT_END NAME=cup_stl\n;TIME_ELAPSED:1\n"
+	if b, _ := os.ReadFile(filepath.Join(s.Dir, "parts", "cup.gcode")); string(b) != want {
+		t.Errorf("got:\n%s", b)
+	}
+	if entries, _ := os.ReadDir(filepath.Join(s.Dir, "parts")); len(entries) != 1 {
+		t.Errorf("the folder has %d files", len(entries))
+	}
+	s.Save("cup.stl", strings.NewReader(cura))
+	if b, _ := os.ReadFile(filepath.Join(s.Dir, "cup.stl")); string(b) != cura {
+		t.Errorf("the model changed:\n%s", b)
+	}
+}
+
 type errReader struct{}
 
 func (errReader) Read([]byte) (int, error) { return 0, errors.New("connection lost") }
