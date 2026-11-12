@@ -300,3 +300,19 @@ func TestTiltOnlyPending(t *testing.T) {
 		t.Error("a PID result and a tilt have no result to save")
 	}
 }
+
+// A shutdown after Klipper was ready shows as an error with the message of webhooks. Only a lost
+// board gets the firmware restart of the deck.
+func TestKlippyShutdownState(t *testing.T) {
+	msg := "Lost communication with MCU 'mcu'\nOnce the underlying issue is corrected, use the \"FIRMWARE_RESTART\" command.\nPrinter is shutdown"
+	st := klippyState(klippy.Status{"webhooks": {"state": "shutdown", "state_message": msg}}, "")
+	if st.Reachable || st.Err != "Lost communication with MCU 'mcu'" || st.ErrDetail != msg {
+		t.Errorf("state %+v", st)
+	}
+	if st := klippyState(klippy.Status{"webhooks": {"state": "ready"}}, ""); !st.Reachable {
+		t.Error("ready is not reachable")
+	}
+	if !lostBoard(msg) || lostBoard("Shutdown due to webhooks request") || lostBoard("Heater extruder not heating at expected rate") {
+		t.Error("lostBoard")
+	}
+}
