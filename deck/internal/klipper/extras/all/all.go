@@ -80,6 +80,7 @@ import (
 	_ "printdeck/internal/klipper/extras/tuning_tower"
 	_ "printdeck/internal/klipper/extras/verify_heater"
 	_ "printdeck/internal/klipper/extras/virtual_sdcard"
+	_ "printdeck/internal/klipper/extras/z_tilt"
 	_ "printdeck/internal/klipper/gcode"
 	_ "printdeck/internal/klipper/kinematics/cartesian"
 	_ "printdeck/internal/klipper/kinematics/corexy"

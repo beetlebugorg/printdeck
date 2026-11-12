@@ -335,6 +335,10 @@ func (a *App) drawBedMesh(c *gfx.Canvas, st printer.State) {
 				return
 			}
 			lines := []string{"BED_MESH_CALIBRATE"}
+			if mach.Has("z_tilt") {
+				// Level the gantry first: the map is then of the bed, with no tilt of the gantry in it.
+				lines = append([]string{"Z_TILT_ADJUST"}, lines...)
+			}
 			if st.Homed != "xyz" {
 				lines = append([]string{"G28"}, lines...)
 			}
