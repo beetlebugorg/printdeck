@@ -81,6 +81,10 @@ func TestServerSocket(t *testing.T) {
 	}
 	cfg = regexp.MustCompile(`(?m)^serial: .*$`).ReplaceAll(cfg, []byte("serial: "+ptyPath))
 	cfg = regexp.MustCompile(`(?m)^restart_method: .*$`).ReplaceAll(cfg, nil)
+	// The fake board answers no homing commands, and the check of the BLTouch at the start of the
+	// host waits for one. The test is for the API socket, so the copy of the config has no
+	// [bltouch].
+	cfg = regexp.MustCompile(`(?ms)^\[bltouch\]\n.*?\n\n`).ReplaceAll(cfg, nil)
 	cfgPath := filepath.Join(dir, "printer.cfg")
 	os.WriteFile(cfgPath, cfg, 0o644)
 	sock := filepath.Join(dir, "klippy.sock")

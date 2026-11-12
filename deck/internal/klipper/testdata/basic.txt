@@ -1,4 +1,4 @@
-allocate_oids count=26
+allocate_oids count=27
 config_spi oid=0 pin=PD7 cs_active_high=0
 set_digital_out pin=PG1 value=1
 set_digital_out pin=PG0 value=1
@@ -21,28 +21,30 @@ set_digital_out_pwm_cycle oid=17 cycle_ticks=160000
 config_digital_out oid=18 pin=PE4 value=0 default_value=0 max_duration=0
 set_digital_out_pwm_cycle oid=18 cycle_ticks=160000
 spi_set_bus oid=0 spi_bus=spi mode=0 rate=25000000
+config_digital_out oid=19 pin=PA0 value=0 default_value=0 max_duration=0
+set_digital_out_pwm_cycle oid=19 cycle_ticks=320000
 config_endstop oid=1 pin=PB4 pull_up=1
 config_trsync oid=2
 config_st7920 oid=3 cs_pin=PG4 sclk_pin=PJ2 sid_pin=PG3 sync_delay_ticks=720 cmd_delay_ticks=320
-config_buttons oid=19 button_count=3
+config_buttons oid=20 button_count=3
 config_endstop oid=4 pin=PB6 pull_up=1
 config_trsync oid=5
 config_stepper oid=6 step_pin=PC0 dir_pin=PL1 invert_step=0 step_pulse_ticks=32
-config_digital_out oid=20 pin=PA7 value=1 default_value=1 max_duration=0
+config_digital_out oid=21 pin=PA7 value=1 default_value=1 max_duration=0
 config_endstop oid=7 pin=PB5 pull_up=1
 config_trsync oid=8
 config_stepper oid=9 step_pin=PC1 dir_pin=PL0 invert_step=0 step_pulse_ticks=32
-config_digital_out oid=21 pin=PA6 value=1 default_value=1 max_duration=0
+config_digital_out oid=22 pin=PA6 value=1 default_value=1 max_duration=0
 config_endstop oid=10 pin=PC7 pull_up=1
 config_trsync oid=11
 config_stepper oid=12 step_pin=PC2 dir_pin=PL2 invert_step=0 step_pulse_ticks=32
-config_digital_out oid=22 pin=PA5 value=1 default_value=1 max_duration=0
-config_analog_in oid=23 pin=PF0
-config_digital_out oid=24 pin=PH6 value=0 default_value=0 max_duration=48000000
-set_digital_out_pwm_cycle oid=24 cycle_ticks=1600000
+config_digital_out oid=23 pin=PA5 value=1 default_value=1 max_duration=0
+config_analog_in oid=24 pin=PF0
+config_digital_out oid=25 pin=PH6 value=0 default_value=0 max_duration=48000000
+set_digital_out_pwm_cycle oid=25 cycle_ticks=1600000
 config_stepper oid=13 step_pin=PC3 dir_pin=PL6 invert_step=0 step_pulse_ticks=32
-config_digital_out oid=25 pin=PA4 value=1 default_value=1 max_duration=0
-finalize_config crc=2774802263
+config_digital_out oid=26 pin=PA4 value=1 default_value=1 max_duration=0
+finalize_config crc=3458655862
 spi_send oid=0 data=b'\x00\xb2'
 spi_send oid=0 data=b'\x01\x88'
 spi_send oid=0 data=b'\x03\xb5'
@@ -53,12 +55,20 @@ queue_digital_out oid=15 clock=3200000 on_ticks=0
 queue_digital_out oid=16 clock=3200000 on_ticks=0
 queue_digital_out oid=17 clock=3200000 on_ticks=0
 queue_digital_out oid=18 clock=3200000 on_ticks=0
-buttons_add oid=19 pos=0 pin=PJ6 pull_up=1
-buttons_add oid=19 pos=1 pin=PJ5 pull_up=1
-buttons_add oid=19 pos=2 pin=PE2 pull_up=1
-buttons_query oid=19 clock=19040000 rest_ticks=32000 retransmit_count=50 invert=4
-query_analog_in oid=23 clock=19680000 sample_ticks=16000 sample_count=8 rest_ticks=4800000 bytes_per_report=2 min_value=138 max_value=8077 range_check_count=4
-queue_digital_out oid=24 clock=3200000 on_ticks=0
+queue_digital_out oid=19 clock=3200000 on_ticks=0
+buttons_add oid=20 pos=0 pin=PJ6 pull_up=1
+buttons_add oid=20 pos=1 pin=PJ5 pull_up=1
+buttons_add oid=20 pos=2 pin=PE2 pull_up=1
+buttons_query oid=20 clock=19200000 rest_ticks=32000 retransmit_count=50 invert=4
+query_analog_in oid=24 clock=19840000 sample_ticks=16000 sample_count=8 rest_ticks=4800000 bytes_per_report=2 min_value=138 max_value=8077 range_check_count=4
+queue_digital_out oid=25 clock=3200000 on_ticks=0
+queue_digital_out oid=19 clock=4800000 on_ticks=23600
+queue_digital_out oid=19 clock=14080000 on_ticks=0
+trsync_start oid=2 report_clock=15680000 report_ticks=1200000 expire_reason=4
+stepper_stop_on_trigger oid=12 trsync_oid=2
+trsync_set_timeout oid=2 clock=19680000
+endstop_home oid=1 clock=15680000 sample_ticks=240 sample_count=4 rest_ticks=16000 pin_value=0 trsync_oid=2 trigger_reason=1
+endstop_home oid=1 clock=0 sample_ticks=0 sample_count=0 rest_ticks=0 pin_value=0 trsync_oid=0 trigger_reason=0
 st7920_send_cmds oid=3 cmds=b'$@\x02&"\x02\x06\x0c'
 st7920_send_cmds oid=3 cmds=b'\x80'
 st7920_send_data oid=3 data=b'                '
@@ -216,7 +226,7 @@ trsync_start oid=5 report_clock=4000000 report_ticks=1200000 expire_reason=4
 stepper_stop_on_trigger oid=6 trsync_oid=5
 trsync_set_timeout oid=5 clock=8000000
 endstop_home oid=4 clock=4000000 sample_ticks=240 sample_count=4 rest_ticks=3199 pin_value=1 trsync_oid=5 trigger_reason=1
-queue_digital_out oid=20 clock=4336000 on_ticks=0
+queue_digital_out oid=21 clock=4336000 on_ticks=0
 set_next_step_dir oid=6 dir=1
 queue_step oid=6 interval=4365212 count=1 add=0
 queue_step oid=6 interval=21134 count=2 add=-6160
@@ -475,7 +485,7 @@ trsync_start oid=8 report_clock=179898666 report_ticks=1200000 expire_reason=4
 stepper_stop_on_trigger oid=9 trsync_oid=8
 trsync_set_timeout oid=8 clock=183898666
 endstop_home oid=7 clock=179898666 sample_ticks=240 sample_count=4 rest_ticks=3200 pin_value=1 trsync_oid=8 trigger_reason=1
-queue_digital_out oid=21 clock=180234666 on_ticks=0
+queue_digital_out oid=22 clock=180234666 on_ticks=0
 set_next_step_dir oid=9 dir=1
 queue_step oid=9 interval=180263879 count=1 add=0
 queue_step oid=9 interval=21134 count=2 add=-6161
@@ -722,7 +732,7 @@ trsync_start oid=11 report_clock=347157333 report_ticks=1200000 expire_reason=4
 stepper_stop_on_trigger oid=12 trsync_oid=11
 trsync_set_timeout oid=11 clock=351157333
 endstop_home oid=10 clock=347157333 sample_ticks=240 sample_count=4 rest_ticks=1280 pin_value=1 trsync_oid=11 trigger_reason=1
-queue_digital_out oid=22 clock=347493333 on_ticks=0
+queue_digital_out oid=23 clock=347493333 on_ticks=0
 set_next_step_dir oid=12 dir=1
 queue_step oid=12 interval=347564888 count=1 add=0
 queue_step oid=12 interval=52131 count=2 add=-15817
@@ -1108,40 +1118,41 @@ queue_step oid=12 interval=1280 count=625 add=0
 queue_step oid=12 interval=1280 count=625 add=0
 queue_step oid=12 interval=1280 count=625 add=0
 queue_step oid=12 interval=1280 count=625 add=0
-queue_step oid=12 interval=1280 count=543 add=0
-queue_step oid=12 interval=1315 count=79 add=0
-queue_step oid=12 interval=1351 count=78 add=0
-queue_step oid=12 interval=1390 count=77 add=0
-queue_step oid=12 interval=1431 count=72 add=0
-queue_step oid=12 interval=1473 count=69 add=0
-queue_step oid=12 interval=1517 count=65 add=0
-queue_step oid=12 interval=1562 count=62 add=0
-queue_step oid=12 interval=1584 count=73 add=1
-queue_step oid=12 interval=1623 count=42 add=2
-queue_step oid=12 interval=1682 count=142 add=1
-queue_step oid=12 interval=1848 count=97 add=1
-queue_step oid=12 interval=1983 count=70 add=1
-queue_step oid=12 interval=2075 count=103 add=2
-queue_step oid=12 interval=2264 count=98 add=3
-queue_step oid=12 interval=2537 count=107 add=4
-queue_step oid=12 interval=2993 count=74 add=6
-queue_step oid=12 interval=3551 count=9 add=0
-queue_step oid=12 interval=3526 count=61 add=11
-queue_step oid=12 interval=4239 count=42 add=18
-queue_step oid=12 interval=5048 count=32 add=31
-queue_step oid=12 interval=6122 count=23 add=56
-queue_step oid=12 interval=7740 count=4 add=0
-queue_step oid=12 interval=7767 count=17 add=138
-queue_step oid=12 interval=10230 count=10 add=295
-queue_step oid=12 interval=13383 count=6 add=676
-queue_step oid=12 interval=17647 count=4 add=1626
-queue_step oid=12 interval=25230 count=2 add=4334
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=12 interval=1259 count=73 add=1
+queue_step oid=12 interval=1291 count=73 add=1
+queue_step oid=12 interval=1325 count=76 add=1
+queue_step oid=12 interval=1363 count=80 add=1
+queue_step oid=12 interval=1407 count=87 add=1
+queue_step oid=12 interval=1461 count=92 add=1
+queue_step oid=12 interval=1527 count=81 add=1
+queue_step oid=12 interval=1589 count=170 add=1
+queue_step oid=12 interval=1755 count=83 add=1
+queue_step oid=12 interval=1864 count=89 add=1
+queue_step oid=12 interval=1991 count=70 add=1
+queue_step oid=12 interval=2121 count=26 add=0
+queue_step oid=12 interval=2132 count=95 add=2
+queue_step oid=12 interval=2359 count=61 add=2
+queue_step oid=12 interval=2522 count=73 add=3
+queue_step oid=12 interval=2786 count=62 add=4
+queue_step oid=12 interval=3132 count=21 add=0
+queue_step oid=12 interval=3176 count=77 add=8
+queue_step oid=12 interval=3834 count=50 add=13
+queue_step oid=12 interval=4539 count=38 add=22
+queue_step oid=12 interval=5464 count=23 add=37
+queue_step oid=12 interval=6289 count=25 add=70
+queue_step oid=12 interval=8207 count=13 add=133
+queue_step oid=12 interval=10003 count=11 add=281
+queue_step oid=12 interval=13530 count=6 add=618
+queue_step oid=12 interval=17838 count=4 add=1483
+queue_step oid=12 interval=25467 count=2 add=4097
 queue_step oid=12 interval=35815 count=2 add=16816
 endstop_home oid=10 clock=0 sample_ticks=0 sample_count=0 rest_ticks=0 pin_value=0 trsync_oid=0 trigger_reason=0
 set_next_step_dir oid=6 dir=0
-queue_step oid=6 interval=460214936 count=1 add=0
+queue_step oid=6 interval=461174936 count=1 add=0
 set_next_step_dir oid=9 dir=0
-queue_step oid=9 interval=293016361 count=1 add=0
+queue_step oid=9 interval=293976361 count=1 add=0
 set_next_step_dir oid=12 dir=0
 queue_step oid=12 interval=783109 count=1 add=0
 queue_step oid=12 interval=52131 count=2 add=-15817
@@ -1456,7 +1467,7 @@ st7920_send_data oid=3 data=b'\x1f\xf0'
 st7920_send_cmds oid=3 cmds=b'\x9b\x85'
 st7920_send_data oid=3 data=b'\xaaH'
 st7920_send_cmds oid=3 cmds=b'\x9c\x80'
-queue_digital_out oid=25 clock=845571336 on_ticks=0
+queue_digital_out oid=26 clock=846531336 on_ticks=0
 st7920_send_data oid=3 data=b' \x08'
 st7920_send_cmds oid=3 cmds=b'\x9c\x85'
 st7920_send_data oid=3 data=b'\xaaN'
@@ -1532,7 +1543,7 @@ queue_step oid=6 interval=3731 count=495 add=0
 queue_step oid=6 interval=3733 count=272 add=0
 queue_step oid=9 interval=6335 count=10 add=239
 queue_step oid=6 interval=3912 count=15 add=87
-queue_step oid=13 interval=845371035 count=1 add=0
+queue_step oid=13 interval=846331035 count=1 add=0
 queue_step oid=13 interval=54131 count=2 add=-20152
 queue_step oid=9 interval=8972 count=5 add=692
 queue_step oid=6 interval=5291 count=9 add=250
@@ -1589,7 +1600,7 @@ queue_step oid=13 interval=15719 count=4 add=467
 queue_step oid=13 interval=17722 count=4 add=1986
 queue_step oid=13 interval=28194 count=2 add=7315
 queue_step oid=13 interval=56210 count=1 add=0
-queue_digital_out oid=20 clock=908776404 on_ticks=1
-queue_digital_out oid=21 clock=908776404 on_ticks=1
-queue_digital_out oid=22 clock=908776404 on_ticks=1
-queue_digital_out oid=25 clock=908776404 on_ticks=1
+queue_digital_out oid=21 clock=909736404 on_ticks=1
+queue_digital_out oid=22 clock=909736404 on_ticks=1
+queue_digital_out oid=23 clock=909736404 on_ticks=1
+queue_digital_out oid=26 clock=909736404 on_ticks=1
