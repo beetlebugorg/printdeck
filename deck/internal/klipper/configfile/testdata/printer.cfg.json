@@ -168,7 +168,7 @@
    ],
    [
     "position_min",
-    "-2"
+    "-3"
    ],
    [
     "homing_speed",
@@ -401,19 +401,31 @@
   ]
  ],
  [
-  "probe",
+  "bltouch",
   [
    [
-    "pin",
-    "^!PB4"
+    "sensor_pin",
+    "^PB4"
+   ],
+   [
+    "control_pin",
+    "PA0"
+   ],
+   [
+    "x_offset",
+    "-50"
+   ],
+   [
+    "y_offset",
+    "10"
    ],
    [
     "z_offset",
-    "0.86"
+    "4.800"
    ],
    [
     "speed",
-    "3.0"
+    "5.0"
    ],
    [
     "lift_speed",
@@ -425,7 +437,7 @@
    ],
    [
     "sample_retract_dist",
-    "1.0"
+    "3.0"
    ],
    [
     "samples_result",
@@ -433,21 +445,21 @@
    ],
    [
     "samples_tolerance",
-    "0.1"
+    "0.05"
    ],
    [
     "samples_tolerance_retries",
     "2"
+   ],
+   [
+    "stow_on_each_sample",
+    "False"
    ]
   ]
  ],
  [
-  "bed_tilt",
+  "bed_mesh",
   [
-   [
-    "points",
-    "\n-10, -10\n290, -10\n290, 290\n-10, 290"
-   ],
    [
     "speed",
     "150"
@@ -455,6 +467,22 @@
    [
     "horizontal_move_z",
     "10"
+   ],
+   [
+    "mesh_min",
+    "15, 15"
+   ],
+   [
+    "mesh_max",
+    "235, 265"
+   ],
+   [
+    "probe_count",
+    "7, 7"
+   ],
+   [
+    "algorithm",
+    "bicubic"
    ]
   ]
  ],
@@ -488,6 +516,15 @@
    [
     "menu_timeout",
     "5"
+   ]
+  ]
+ ],
+ [
+  "printdeck_sdcard",
+  [
+   [
+    "cs_pin",
+    "PB0"
    ]
   ]
  ],
@@ -539,11 +576,20 @@
   ]
  ],
  [
+  "printdeck_pause",
+  [
+   [
+    "wipe_gcode",
+    "NOZZLE_WIPE"
+   ]
+  ]
+ ],
+ [
   "gcode_macro NOZZLE_WIPE",
   [
    [
     "gcode",
-    "\nSAVE_GCODE_STATE NAME=wipe\nG90\nG1 Z10 F1200\nG1 X-15 Y95 F6000\nG1 Z1 F600\n{% for i in range(12) %}\nG1 X-17 Y25 F3000\nG1 X-15 Y95 F3000\n{% endfor %}\nG1 Z10 F1200\nRESTORE_GCODE_STATE NAME=wipe"
+    "\n{% set x = params.X|default(-17.5)|float %}\n{% set z = params.Z|default(0.8)|float %}\n{% set count = params.COUNT|default(12)|int %}\nSAVE_GCODE_STATE NAME=wipe\nG90\nG1 Z10 F1200\nG1 X{x} Y95 F6000\nG1 Z{z} F600\n{% for i in range(count) %}\nG1 Y25 F3000\nG1 Y95 F3000\n{% endfor %}\nG1 Z10 F1200\nRESTORE_GCODE_STATE NAME=wipe"
    ]
   ]
  ],
@@ -552,7 +598,7 @@
   [
    [
     "gcode",
-    "\n{% set bed = params.BED|default(80)|float %}\n{% set extruder = params.EXTRUDER|default(235)|float %}\n{% set wipe = params.WIPE|default(170)|float %}\n{% set layer = params.LAYER|default(0.4)|float %}\n{% set probe = params.PROBE|default(120)|float %}\n{% set speed = params.SPEED|default(15)|float %}\n{% set prime_lines = 2 %}\n{% set prime_x0, prime_x1, prime_y0, prime_w = 20.0, 260.0, 2.0, 0.6 %}\n\n\n{% set prime_e = prime_w * layer / 6.379 %}\n{% set prime_speed = [speed, 15.0 / (prime_w * layer)]|min %}\nM107\nG90\nM82\nG92 E0\nM104 S{wipe}\nM140 S{bed}\nG28\nM117 Heating...\n\n\nTEMPERATURE_WAIT SENSOR=extruder MINIMUM={wipe - 2}\nM83\nG1 E-3 F500\nM106 S255\nM117 Wiping nozzle...\nNOZZLE_WIPE\n\nM104 S0\nM117 Cooling nozzle...\nTEMPERATURE_WAIT SENSOR=extruder MAXIMUM={probe}\nM107\nM117 Probing...\nBED_TILT_CALIBRATE\nM104 S{extruder}\nG1 X{prime_x0} Y{prime_y0} Z10 F5000\nM117 Heating...\nTEMPERATURE_WAIT SENSOR=heater_bed MINIMUM={bed - 1}\nTEMPERATURE_WAIT SENSOR=extruder MINIMUM={extruder - 2}\n\nM117 Priming {prime_lines} lines...\nG0 Z{layer} F1500\nG1 E4 F300\n{% for i in range(prime_lines) %}\n{% set x = prime_x1 if i % 2 == 0 else prime_x0 %}\nG1 X{x} E{(prime_x1 - prime_x0) * prime_e} F{prime_speed * 60}\nG1 Y{prime_y0 + (i + 1) * prime_w} E{prime_w * prime_e} F{prime_speed * 60}\n{% endfor %}\n{% set x_end = prime_x1 if prime_lines % 2 == 1 else prime_x0 %}\nG1 X{x_end - 20 if x_end > prime_x0 else x_end + 20} Z{layer + 0.3} F3000\nM82\nG92 E1\nG1 E0 F1800\nM117 Printing..."
+    "\n{% set bed = params.BED|default(80)|float %}\n{% set extruder = params.EXTRUDER|default(235)|float %}\n{% set layer = params.LAYER|default(0.4)|float %}\n{% set probe = params.PROBE|default(120)|float %}\n{% set speed = params.SPEED|default(15)|float %}\n{% set prime_lines = 2 %}\n{% set prime_x0, prime_x1, prime_y0, prime_w = 20.0, 260.0, 2.0, 0.6 %}\n\n\n{% set prime_e = prime_w * layer / 6.379 %}\n{% set prime_speed = [speed, 15.0 / (prime_w * layer)]|min %}\n\n\n\n\n\n{% set run_x, run_z, purge_e = 15.0, 4.0, 5.0 %}\n\n\n{% set pad_x, pad_z = -17.5, 0.8 %}\n{% set run_len = (run_x ** 2 + (run_z - layer) ** 2) ** 0.5 %}\n{% set run_e = run_len * 0.12 %}\n{% set run_f = run_len / (run_e * 6.379 / 10.0) * 60 %}\nM107\nG90\nM82\nG92 E0\nM104 S{probe}\nM140 S{bed}\nG28\nM83\n\nM117 Heating bed...\nTEMPERATURE_WAIT SENSOR=heater_bed MINIMUM={bed - 1}\nM117 Probing...\n\nBED_MESH_CALIBRATE PROBE_COUNT=3,3 ALGORITHM=lagrange\nM104 S{extruder}\nG1 X{prime_x0 - run_x} Y{prime_y0} Z10 F5000\nM117 Heating...\nTEMPERATURE_WAIT SENSOR=heater_bed MINIMUM={bed - 1}\nTEMPERATURE_WAIT SENSOR=extruder MINIMUM={extruder - 2}\n\nM117 Priming {prime_lines} lines...\nG1 Z{run_z} F1500\nG1 E{purge_e} F{10.0 / 6.379 * 60}\nG1 X{prime_x0} Z{layer} E{run_e} F{run_f}\n{% for i in range(prime_lines) %}\n{% set x = prime_x1 if i % 2 == 0 else prime_x0 %}\nG1 X{x} E{(prime_x1 - prime_x0) * prime_e} F{prime_speed * 60}\nG1 Y{prime_y0 + (i + 1) * prime_w} E{prime_w * prime_e} F{prime_speed * 60}\n{% endfor %}\n{% set x_end = prime_x1 if prime_lines % 2 == 1 else prime_x0 %}\nG1 X{x_end - 20 if x_end > prime_x0 else x_end + 20} Z{layer + 0.3} F3000\nM82\nG92 E1\nG1 E0 F1800\n\nM117 Wiping nozzle...\nNOZZLE_WIPE X={pad_x} Z={pad_z} COUNT=1\nM117 Printing..."
    ]
   ]
  ],
@@ -609,7 +655,7 @@
   [
    [
     "gcode",
-    "\nBED_TILT_CALIBRATE"
+    "\nBED_MESH_CALIBRATE"
    ]
   ]
  ],
