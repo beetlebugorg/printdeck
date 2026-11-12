@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"path"
 	"printdeck/internal/klipper/toolhead"
 	"printdeck/internal/maxmode"
@@ -83,6 +84,8 @@ type Klippy struct {
 	// tiltByAction reports that the last bed tilt calibration ran as a maintenance action
 	// (RunAction), with a result to save. A print resets it.
 	tiltByAction bool
+	// autoRestart is the time of the last firmware restart after Klipper lost the board.
+	autoRestart time.Time
 
 	// From the connection to Klipper: its version, its interface version, and the names of its
 	// objects (objects/list).
@@ -653,11 +656,23 @@ func (k *Klippy) refresh(notify func()) {
 	k.mu.Lock()
 	st := klippyState(k.status, k.err)
 	if !st.Reachable {
-		st.ErrDetail = k.errDetail
+		if st.ErrDetail == "" {
+			st.ErrDetail = k.errDetail
+		}
 		st.Starting = (k.startup || k.err == "Klipper is not running") && time.Since(k.since) < startGrace
 	}
 	mesh, hasMesh := meshFromStatus(k.status["bed_mesh"])
+	restart := lostBoard(st.ErrDetail) && time.Since(k.autoRestart) > autoRestartWait
+	if restart {
+		k.autoRestart = time.Now()
+	}
 	k.mu.Unlock()
+	if restart {
+		// The board lost power or its USB connection. A firmware restart makes Klipper wait for
+		// the board, and connect to it again when it is back.
+		log.Printf("klippy: %s: firmware restart", firstLine(st.ErrDetail))
+		go k.FirmwareRestart()
+	}
 	if hasMesh {
 		k.Mesh.see(mesh, time.Now())
 	}
@@ -806,6 +821,12 @@ func (k *Klippy) projectOfFile(st State) {
 func klippyState(s klippy.Status, down string) State {
 	if down != "" {
 		return State{Err: down, Text: "Offline"}
+	}
+	// A shutdown or an error after Klipper was ready: the connection stays, and the state of
+	// webhooks has the reason.
+	if ws := str(s["webhooks"]["state"]); ws == "shutdown" || ws == "error" {
+		msg := strings.TrimSpace(str(s["webhooks"]["state_message"]))
+		return State{Err: firstLine(msg), ErrDetail: msg, Text: "Offline"}
 	}
 	st := State{Reachable: true, Connected: true}
 	st.Firmware = str(s["mcu"]["mcu_version"])
@@ -1208,6 +1229,16 @@ func num(v any) float64 {
 func str(v any) string {
 	s, _ := v.(string)
 	return s
+}
+
+// autoRestartWait is the shortest time between two firmware restarts of lostBoard.
+const autoRestartWait = 30 * time.Second
+
+// lostBoard reports that a Klipper message is a shutdown for a lost connection to a board. The
+// deck then restarts the firmware by itself. A shutdown for another cause, for example a heater
+// fault or an emergency stop, waits for the user.
+func lostBoard(msg string) bool {
+	return strings.HasPrefix(strings.TrimSpace(msg), "Lost communication with MCU")
 }
 
 func firstLine(s string) string {
