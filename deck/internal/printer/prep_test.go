@@ -171,3 +171,10 @@ func TestPrepLeftHeatsEachStepFromTheStepBefore(t *testing.T) {
 		t.Errorf("after the wipe: prep left %.1f s, want %.1f s", got, want)
 	}
 }
+
+// PRINTDECK_MESH of the Printdeck module is the probe step.
+func TestPrepPlanPrintdeckMesh(t *testing.T) {
+	if got := strings.Join(prepPlan("G28\nPRINTDECK_MESH\n"), " "); got != "home probe" {
+		t.Errorf("plan %q", got)
+	}
+}

@@ -833,6 +833,9 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 		s, section := m.MaxMode()
 		items = append(items, menuItem{"Max mode", maxModeLine(s, section), dim, a.openMaxMode})
 	}
+	if st := a.Printer.State(); st.ProbeMethod != "" {
+		items = append(items, menuItem{"Probe method", probeMethodLine(st), dim, func() { a.cycleProbeMethod(st.ProbeMethod) }})
+	}
 	if ps, ok := a.printerSetup(); ok {
 		items = append(items, menuItem{"Printer", settingLine(ps.Printer()), dim, a.OpenPrinterSetup})
 	}
@@ -951,6 +954,48 @@ func swapHomeLine(on bool) string {
 }
 
 // toggleSwapHome turns the homing in a filament change on or off.
+// probeMethods are the methods of the bed mesh at the start of a print, in the order of the taps.
+var probeMethods = []struct{ id, name, line string }{
+	{"map", "Saved map + check", "fast: 5 points or more against the saved map"},
+	{"adaptive", "Grid under the print", "probes only the area of the objects"},
+	{"grid", "Full grid", "3 × 3 points on all the bed"},
+}
+
+// probeMethodLine is the line of the Probe method row: the method, and the last result or the
+// missing map.
+func probeMethodLine(st printer.State) string {
+	for _, m := range probeMethods {
+		if m.id != st.ProbeMethod {
+			continue
+		}
+		switch {
+		case m.id == "map" && st.ProbeMapPoints == 0:
+			return m.name + " · probe the full bed on the Bed mesh page first"
+		case st.ProbeLast.Method == m.id && st.ProbeLast.Seconds > 0:
+			l := st.ProbeLast
+			if l.Used == "map" {
+				return fmt.Sprintf("%s · last: %d points, %.0f s, %.3f mm", m.name, l.Points, l.Seconds, l.Error)
+			}
+			return fmt.Sprintf("%s · last: %s, %.0f s", m.name, l.Used, l.Seconds)
+		}
+		return m.name + " · " + m.line
+	}
+	return st.ProbeMethod
+}
+
+// cycleProbeMethod sets the next probe method. Klipper keeps it (PRINTDECK_MESH_METHOD).
+func (a *App) cycleProbeMethod(cur string) {
+	next := probeMethods[0]
+	for i, m := range probeMethods {
+		if m.id == cur {
+			next = probeMethods[(i+1)%len(probeMethods)]
+		}
+	}
+	pr := a.Printer
+	a.do(func() error { return pr.Gcode("PRINTDECK_MESH_METHOD METHOD=" + next.id) })
+	a.Toast(next.name)
+}
+
 func (a *App) toggleSwapHome() {
 	a.SwapHome = !a.SwapHome
 	a.Toast(swapHomeLine(a.SwapHome))

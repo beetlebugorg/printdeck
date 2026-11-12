@@ -59,7 +59,7 @@ func prepKind(line string) string {
 		return heater
 	case strings.Contains(cmd, "WIPE") || strings.Contains(cmd, "CLEAN_NOZZLE"):
 		return "wipe"
-	case cmd == "BED_TILT_CALIBRATE" || cmd == "BED_MESH_CALIBRATE" || cmd == "G29" || cmd == "Z_TILT_ADJUST" ||
+	case cmd == "BED_TILT_CALIBRATE" || cmd == "BED_MESH_CALIBRATE" || cmd == "PRINTDECK_MESH" || cmd == "G29" || cmd == "Z_TILT_ADJUST" ||
 		cmd == "QUAD_GANTRY_LEVEL" || cmd == "PROBE" || cmd == "SCREWS_TILT_CALCULATE":
 		return "probe"
 	case strings.Contains(cmd, "PRIME") || strings.Contains(cmd, "PURGE"):
