@@ -35,6 +35,7 @@ import (
 	"sync"
 
 	"printdeck/internal/fatfs"
+	pgcode "printdeck/internal/gcode"
 	"printdeck/internal/klipper/configfile"
 	"printdeck/internal/klipper/extras/bus"
 	"printdeck/internal/klipper/gcode"
@@ -321,13 +322,7 @@ func (s *SDCard) handleCopy(req *webhooks.WebRequest) {
 	s.set("id", id, "copying", path, "copied", 0, "size", f.Size, "error", "")
 	var copied int64
 	buf := make([]byte, fatfs.BlockSize)
-	finish := func(err error) float64 {
-		if err == nil {
-			err = w.Flush()
-		}
-		if e := tmp.Close(); err == nil {
-			err = e
-		}
+	done := func(err error) {
 		if err == nil {
 			err = os.Rename(tmp.Name(), dest)
 		}
@@ -340,6 +335,21 @@ func (s *SDCard) handleCopy(req *webhooks.WebRequest) {
 		s.mu.Lock()
 		s.status["copying"], s.timer, s.cancel = "", nil, false
 		s.mu.Unlock()
+	}
+	finish := func(err error) float64 {
+		if err == nil {
+			err = w.Flush()
+		}
+		if e := tmp.Close(); err == nil {
+			err = e
+		}
+		if err != nil || !pgcode.IsFile(name) {
+			done(err)
+			return reactor.Never
+		}
+		// The object data of a Cura file reads the whole file two times. It runs outside the
+		// reactor, so the timers of the host do not wait for it. The copy stays active until it ends.
+		go func() { done(pgcode.AddObjects(tmp.Name())) }()
 		return reactor.Never
 	}
 	s.mu.Lock()

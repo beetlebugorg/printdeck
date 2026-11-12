@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 
+	"printdeck/internal/gcode"
 	"printdeck/internal/printer"
 )
 
@@ -101,6 +102,7 @@ func (s *Store) Stat(path string) (fs.FileInfo, error) {
 // Save writes a file into the store, and returns its clean path. It writes to a temporary file first,
 // so a broken upload never replaces a good file, and Klipper never reads a half-written file.
 // All file operations go through an os.Root, so a symlink in the folder can not point a write outside it.
+// A Cura G-code file gets the object data of Klipper's [exclude_object] (gcode.ReadObjects).
 func (s *Store) Save(path string, r io.Reader) (string, error) {
 	p, err := clean(path)
 	if err != nil {
@@ -131,7 +133,47 @@ func (s *Store) Save(path string, r io.Reader) (string, error) {
 	if err := tmp.Close(); err != nil {
 		return "", err
 	}
+	if isGcode(p) {
+		done, err := addObjects(root, tmpName, p)
+		if err != nil {
+			return "", fmt.Errorf("gcodestore: objects of %s: %w", p, err)
+		}
+		if done {
+			return p, nil
+		}
+	}
 	return p, root.Rename(tmpName, p)
+}
+
+// addObjects reads the file tmpName of root. If it is a Cura file with no object data, it writes
+// the file with the object data of Klipper's [exclude_object] as p, and returns true.
+func addObjects(root *os.Root, tmpName, p string) (bool, error) {
+	f, err := root.Open(tmpName)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+	o, err := gcode.ReadObjects(f)
+	if err != nil || o == nil {
+		return false, err
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return false, err
+	}
+	outName := tmpName + "-objects"
+	out, err := root.OpenFile(outName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return false, err
+	}
+	defer root.Remove(outName) // after the rename this does nothing
+	err = o.Write(f, out)
+	if cerr := out.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, root.Rename(outName, p)
 }
 
 // FullPath returns the path in the file system of a file of the store.
