@@ -104,6 +104,8 @@ type State struct {
 	// TiltOnlyPending reports that the only change for SAVE_CONFIG is [bed_tilt]. Klippy.State
 	// clears SaveConfigPending for it, unless the tilt came from a maintenance action.
 	TiltOnlyPending bool
+	// Mesh is the last bed mesh of Klipper, or nil.
+	Mesh *BedMesh
 
 	// ManualProbe is true while a manual Z probe runs (PROBE_CALIBRATE, Z_ENDSTOP_CALIBRATE): the
 	// nozzle is at ManualZ, and TESTZ, ACCEPT and ABORT finish it.

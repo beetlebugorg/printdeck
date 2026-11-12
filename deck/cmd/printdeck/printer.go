@@ -41,6 +41,7 @@ func newPrinter(cfg config.Config) printerBackend {
 	hist.Stamp = k.View.Stamp
 	k.Spools = &printer.Spools{Path: filepath.Join(cfg.StateDir, "spools.json")}
 	k.View.Rolls = k.Spools
+	k.Mesh = printer.NewMeshStore(filepath.Join(cfg.StateDir, "bed-mesh.json"))
 	k.RestartService = func() error { return system.AskHelper(system.HelperRequest{Action: "restart-klipper"}) }
 	k.StopService = func() error { return system.AskHelper(system.HelperRequest{Action: "stop-klipper"}) }
 	return k
