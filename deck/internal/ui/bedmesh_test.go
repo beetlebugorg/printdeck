@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"image"
+	"image/color"
 	"strings"
 	"testing"
 	"time"
@@ -22,8 +24,8 @@ func testMesh() *printer.BedMesh {
 	return m
 }
 
-// The Bed mesh key of Maintenance opens the page. The page shows the range, the heights of the
-// probed points, and the Probe key.
+// The Bed mesh key of Maintenance opens the page. The page shows the 3D picture, the range, the
+// scale of the heights, and the Probe key.
 func TestBedMeshPage(t *testing.T) {
 	m := testMesh()
 	mach := printer.Machine{Modules: []string{"bed_mesh", "probe"}, MeshMin: m.Min, MeshMax: m.Max, HasMesh: true}
@@ -44,14 +46,10 @@ func TestBedMeshPage(t *testing.T) {
 			name += "-wide"
 		}
 		f := simFrame(t, a, name)
-		lo, hi := m.Range()
-		for _, s := range []string{"RANGE", "BACK", "FRONT", "7 × 7 POINTS"} {
+		for _, s := range []string{"RANGE", "FRONT", "7 × 7 POINTS", "HEIGHT × "} {
 			if !strings.Contains(f, s) {
 				t.Errorf("%s: no %q on the page", name, s)
 			}
-		}
-		if mid := (lo + hi) / 2; !strings.Contains(f, `"`+heightText(m.Z[0][0]-mid)+`"`) {
-			t.Errorf("%s: no height of the front left point", name)
 		}
 		tapLabel(t, a, cv, "Probe")
 		if a.confirm == nil || a.confirm.question != "Probe the full bed now?" {
@@ -81,5 +79,33 @@ func TestMeshArea(t *testing.T) {
 	mach.MeshMax = [2]float64{200, 200}
 	if lo, hi := meshArea(mach, *m); lo != m.Min || hi != m.Max {
 		t.Errorf("area %v %v, want the mesh", lo, hi)
+	}
+}
+
+// The picture has the colors of the mesh: blue at the low front left, orange at the high middle.
+func TestRenderMesh(t *testing.T) {
+	m := testMesh()
+	img, front, exag := renderMesh(*m, image.Pt(400, 300), m.Min, m.Max, color.RGBA{0, 0, 0, 255})
+	if img == nil || img.Bounds().Size() != image.Pt(400, 300) {
+		t.Fatalf("picture %v", img)
+	}
+	if !front.In(img.Bounds()) {
+		t.Errorf("front label at %v", front)
+	}
+	if lo, hi := m.Range(); exag < 100 || exag > 1000 || hi-lo < 0.2 {
+		t.Errorf("exaggeration %v", exag)
+	}
+	var blue, orange int
+	for i := 0; i < len(img.Pix); i += 4 {
+		r, g, b := img.Pix[i], img.Pix[i+1], img.Pix[i+2]
+		if b > r+40 && b > g {
+			blue++
+		}
+		if r > b+80 && r > g {
+			orange++
+		}
+	}
+	if blue == 0 || orange == 0 {
+		t.Errorf("blue %d, orange %d pixels", blue, orange)
 	}
 }
