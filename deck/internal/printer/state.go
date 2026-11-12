@@ -137,6 +137,16 @@ type State struct {
 	PauseDelta               float64
 	// PauseRoll is the ID of the roll of a color change of the file (PRINTDECK_PAUSE ROLL), or "".
 	PauseRoll string
+
+	// ProbeMethod is the method of the bed mesh at the start of a print (PRINTDECK_MESH): "map",
+	// "adaptive" or "grid". "" when Klipper has no [printdeck_mesh].
+	ProbeMethod string
+	// ProbeMapPoints and ProbeMapTime are the saved map of the last full probe: its points and its
+	// time. 0 points is no map.
+	ProbeMapPoints int
+	ProbeMapTime   time.Time
+	// ProbeLast is the result of the last PRINTDECK_MESH.
+	ProbeLast ProbeResult
 	// SDCopy is the copy of a file from the SD card of the printer ([printdeck_sdcard]).
 	SDCopy SDCopy
 
@@ -284,4 +294,13 @@ type Receive struct {
 	Started time.Time
 	Updated time.Time
 	Done    bool
+}
+
+// ProbeResult is the result of a PRINTDECK_MESH: the method of the setting, the method that made
+// the mesh (a fallback can differ), the probe points of the map method, its largest error in mm,
+// and the time of the probe.
+type ProbeResult struct {
+	Method, Used   string
+	Points         int
+	Error, Seconds float64
 }
