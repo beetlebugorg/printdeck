@@ -43,6 +43,8 @@ type Klippy struct {
 	// Spools are the rolls of filament. Each finished print uses filament of the roll in the
 	// printer.
 	Spools *Spools
+	// Mesh keeps the last bed mesh of Klipper.
+	Mesh *MeshStore
 	// RestartService restarts the Klipper service, which reads printer.cfg again. The API of
 	// Klipper has no restart while the config has an error.
 	RestartService func() error
@@ -120,6 +122,7 @@ var klippyObjects = map[string][]string{
 	"toolhead":       {"position", "homed_axes", "axis_minimum", "axis_maximum"},
 	"mcu":            {"mcu_version"},
 	"motion_report":  {"live_velocity", "live_extruder_velocity"},
+	"bed_mesh":       {"probed_matrix", "mesh_min", "mesh_max"},
 	// The command stack of the Printdeck module of the Klipper host, for the steps of PRINT_START.
 	"printdeck_display": {"commands"},
 	// A pause of the file with a message, and the height check on a part (PRINTDECK_PAUSE).
@@ -653,7 +656,12 @@ func (k *Klippy) refresh(notify func()) {
 		st.ErrDetail = k.errDetail
 		st.Starting = (k.startup || k.err == "Klipper is not running") && time.Since(k.since) < startGrace
 	}
+	mesh, hasMesh := meshFromStatus(k.status["bed_mesh"])
 	k.mu.Unlock()
+	if hasMesh {
+		k.Mesh.see(mesh, time.Now())
+	}
+	st.Mesh = k.Mesh.Last()
 	if !st.Reachable && k.ConfigPath != "" {
 		st.NeedsSetup = NeedsSetup(k.ConfigPath)
 	}
@@ -830,8 +838,19 @@ func klippyState(s klippy.Status, down string) State {
 		st.SpeedPct, st.FlowPct = 100, 100
 	}
 	st.SaveConfigPending, _ = s["configfile"]["save_config_pending"].(bool)
-	if items, ok := s["configfile"]["save_config_pending_items"].(map[string]any); ok && len(items) == 1 {
-		_, st.TiltOnlyPending = items["bed_tilt"]
+	if items, ok := s["configfile"]["save_config_pending_items"].(map[string]any); ok {
+		if len(items) == 1 {
+			_, st.TiltOnlyPending = items["bed_tilt"]
+		}
+		// BED_MESH_CALIBRATE makes the profile "default" for SAVE_CONFIG. The deck keeps the
+		// mesh (MeshStore), and PRINT_START probes again, so the profile is not a result to save.
+		meshOnly := len(items) > 0
+		for name := range items {
+			meshOnly = meshOnly && strings.HasPrefix(name, "bed_mesh ")
+		}
+		if meshOnly {
+			st.SaveConfigPending = false
+		}
 	}
 	if active, _ := s["printdeck_pause"]["active"].(bool); active {
 		st.PauseActive = true

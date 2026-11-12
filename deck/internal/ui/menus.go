@@ -289,9 +289,8 @@ func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 		}
 		return []string{"G28"}
 	}
-	if mach.Has("bed_mesh") {
-		rows = append(rows, row{"Bed mesh", "Probe the bed and map its height", false,
-			run("Bed mesh", "Probe the bed now?", "Probe", append(home(), "BED_MESH_CALIBRATE")...)})
+	if mach.Has("bed_mesh") || st.Mesh != nil {
+		rows = append(rows, row{"Bed mesh", a.meshSub(st.Mesh), false, func() { a.open(pageBedMesh) }})
 	}
 	if mach.Has("bed_tilt") {
 		rows = append(rows, row{"Bed tilt", "Probe the bed and correct its tilt", false,

@@ -171,6 +171,7 @@ type App struct {
 	menuScroll     map[page]*int  // the scroll positions of the menu pages with more rows than fit
 	consoleScroll  int            // how far the Console page shows above its newest line
 	consoleKB      *keyboard      // the keyboard of the Console page, while it is open
+	meshImg        meshImage      // the map of the Bed mesh page
 	consoleLast    string         // the last typed command, for the next one
 	configScroll   int            // the scroll position of the printer list of the setup
 	configAll      bool           // the printer list shows all printers; off, the printers of the board
