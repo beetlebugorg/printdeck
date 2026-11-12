@@ -109,3 +109,29 @@ func TestRenderMesh(t *testing.T) {
 		t.Errorf("blue %d, orange %d pixels", blue, orange)
 	}
 }
+
+// With [z_tilt], the full probe levels the gantry first.
+func TestBedMeshProbeZTilt(t *testing.T) {
+	st := idle
+	st.Homed = "xyz"
+	a, pr, cv := newPrintApp(st)
+	pr.Machine_ = printer.Machine{Modules: []string{"bed_mesh", "probe", "z_tilt"}}
+	a.pages = []page{pageBedMesh}
+	simFrame(t, a, "bed-mesh-ztilt")
+	tapLabel(t, a, cv, "Probe")
+	if a.confirm == nil {
+		t.Fatal("no confirm")
+	}
+	a.confirm.onYes()
+	want := "action Bed mesh: Z_TILT_ADJUST; BED_MESH_CALIBRATE"
+	for i := 0; i < 100; i++ {
+		pr.mu.Lock()
+		calls := strings.Join(pr.calls, "\n")
+		pr.mu.Unlock()
+		if strings.Contains(calls, want) {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Errorf("no %q", want)
+}

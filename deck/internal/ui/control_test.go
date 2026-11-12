@@ -30,6 +30,9 @@ func (r *recPrinter) rec(s string) error {
 	return nil
 }
 func (r *recPrinter) Gcode(l ...string) error { return r.rec("gcode " + strings.Join(l, "; ")) }
+func (r *recPrinter) RunAction(n string, l ...string) error {
+	return r.rec("action " + n + ": " + strings.Join(l, "; "))
+}
 func (r *recPrinter) Home(ax ...string) error { return r.rec(fmt.Sprint("home ", ax)) }
 func (r *recPrinter) SetToolTemp(t int) error { return r.rec(fmt.Sprint("tool ", t)) }
 func (r *recPrinter) SetBedTemp(t int) error  { return r.rec(fmt.Sprint("bed ", t)) }
