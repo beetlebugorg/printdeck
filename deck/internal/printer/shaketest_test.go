@@ -11,7 +11,7 @@ import (
 func TestShakeTest(t *testing.T) {
 	m := Machine{HasMesh: true, MeshMin: [2]float64{20, 15}, MeshMax: [2]float64{265, 265}, HasShaper: true,
 		ShaperType: "mzv", ShaperFreqX: 28, ShaperFreqY: 33.9, MaxAccel: 1500}
-	g := ShakeTest(m)
+	g := ShakeTest(m, "XY")
 	for _, want := range []string{"G28\n", "SET_INPUT_SHAPER SHAPER_FREQ_X=0 SHAPER_FREQ_Y=0\n", "G4 P5000\n", "G4 P3000\n",
 		"SET_VELOCITY_LIMIT ACCEL=960 MINIMUM_CRUISE_RATIO=0\n", "SET_VELOCITY_LIMIT ACCEL=5400 MINIMUM_CRUISE_RATIO=0\n",
 		"SET_INPUT_SHAPER SHAPER_TYPE=mzv SHAPER_FREQ_X=28 SHAPER_FREQ_Y=33.9\n", "SET_VELOCITY_LIMIT ACCEL=1500 MINIMUM_CRUISE_RATIO=0\n"} {
@@ -46,5 +46,14 @@ func TestShakeTest(t *testing.T) {
 	// 16 Hz: 960 mm/s², out 3.75 / 16 = 0.234 mm from the middle (142.5, 140).
 	if !strings.Contains(g, "G1 X142.7344 F1800\nG1 X142.5000 F1800\n") {
 		t.Error("no 16 Hz move of 0.234 mm")
+	}
+}
+
+// A run of one axis shakes only that axis, with no quiet gap.
+func TestShakeTestOneAxis(t *testing.T) {
+	m := Machine{HasShaper: true, ShaperType: "mzv", ShaperFreqX: 28, ShaperFreqY: 33.9, MaxAccel: 1500}
+	g := ShakeTest(m, "Y")
+	if strings.Contains(g, "G1 X100.2344") || strings.Contains(g, "G4 P3000") || !strings.Contains(g, "G1 Y100.2344 F1800") {
+		t.Fatal("not a Y run")
 	}
 }
