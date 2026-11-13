@@ -1,5 +1,5 @@
 # Printdeck builds: the printed parts of the Slate v4, the desk case of Printdeck
-# (lulzbot/stl/slate/README.md), and the webcam mounts on the printer. The profiles are in
+# (lulzbot/stl/slate/README.md), the webcam mounts on the printer, and the BLTouch mount of the TAZ. The profiles are in
 # profiles/. The Slate prints in navy (the case) and orange (the base). The webcam mounts print
 # in black PLA (roll-4).
 # The generate step writes the STL files again on GitHub, and fails when they differ from the
@@ -201,10 +201,30 @@ parts:
     count: 3
     settings: *pod
 
+  # The BLTouch mount of the TAZ: lulzbot/bltouch/mount (make.sh writes the STL file). It is solid,
+  # so it does not creep under the motor screws. PETG is better next to the warm motor, but the
+  # profiles have no PETG material yet: PLA is good for the fit test.
+  - name: BLTouch mount (TAZ)
+    group: BLTouch mount (TAZ)
+    description: >-
+      The mount holds the BLTouch beside the front of the extruder motor of the SE tool head. It goes
+      under the heads of the two front motor screws, which get 4 mm longer. The BLTouch hangs under its
+      shelf on two M3 x 10 screws, with M3 nuts in the pockets on top. The pin is 54.7 mm right of the
+      nozzle and 17.1 mm in front of it, so it reaches the full bed. It prints on its back face with
+      no supports.
+    files: [lulzbot/bltouch/mount/stl/bltouch_mount.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
+               wall_thickness: 2.0, infill_sparse_density: 100, cool_min_layer_time: 12}
+
 # The PDFs of the project. The project page shows each one with a picture of its first page.
 docs:
   - name: Slate v4 build guide
     file: lulzbot/printdeck-slate-v4-build.pdf
+  - name: BLTouch mount build guide
+    file: lulzbot/bltouch/mount/bltouch-mount-build.pdf
 
 # The 3D views of the assembled Slate. lulzbot/slate.py assembly writes the files: each part in its
 # place, in mm, z up, with the origin at the middle of the foot on the desk. The case leans back 15
