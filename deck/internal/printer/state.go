@@ -145,6 +145,8 @@ type State struct {
 	// time. 0 points is no map.
 	ProbeMapPoints int
 	ProbeMapTime   time.Time
+	// ProbeMapTemp is the temperature of the bed of the saved map, in °C. 0 is not known.
+	ProbeMapTemp float64
 	// ProbeLast is the result of the last PRINTDECK_MESH.
 	ProbeLast ProbeResult
 	// SDCopy is the copy of a file from the SD card of the printer ([printdeck_sdcard]).

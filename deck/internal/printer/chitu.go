@@ -45,9 +45,9 @@ type ChiTu struct {
 	Enqueue  func(name string) error
 	QueueLen func() int
 	AskSent  func(name string)
-	Client *chitu.Client
-	Hist   *History
-	Name   string // the name of the printer, for the screens
+	Client   *chitu.Client
+	Hist     *History
+	Name     string // the name of the printer, for the screens
 	// LapseFromZ returns the height of the plate in mm from which the time lapse takes frames, or
 	// is nil for 0 (timelapse.Settings.FromZ). It is called with mu held.
 	LapseFromZ func() float64

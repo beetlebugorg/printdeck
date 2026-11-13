@@ -971,10 +971,13 @@ func probeMethodLine(st printer.State) string {
 		switch {
 		case m.id == "map" && st.ProbeMapPoints == 0:
 			return m.name + " · probe the full bed on the Bed mesh page first"
+		case m.id == "map" && st.ProbeMapTemp == 0:
+			return m.name + " · probe the full bed again, hot, on the Bed mesh page"
 		case st.ProbeLast.Method == m.id && st.ProbeLast.Seconds > 0:
 			l := st.ProbeLast
 			if l.Used == "map" {
-				return fmt.Sprintf("%s · last: %d points, %.0f s, %.3f mm", m.name, l.Points, l.Seconds, l.Error)
+				return fmt.Sprintf("%s · map at %.0f °C · last: %d points, %.0f s, %.3f mm", m.name, st.ProbeMapTemp,
+					l.Points, l.Seconds, l.Error)
 			}
 			return fmt.Sprintf("%s · last: %s, %.0f s", m.name, l.Used, l.Seconds)
 		}
