@@ -98,12 +98,12 @@ type Klippy struct {
 	settings Machine           // the settings of printer.cfg in Machine (machineSettings)
 	timer    timer             // the timings of the running print
 	objects  []string
-	lastPos  int64     // the file position of the last busy state, for the history
+	lastPos  int64 // the file position of the last busy state, for the history
 	// inStart is true while the print runs its start macro (heating, probing, priming), as of the
 	// last state that printed. A print that ends there goes in no history (startEnded).
 	inStart bool
-	startup  bool      // Klipper reports "startup"
-	since    time.Time // the start of the deck, or the last restart of Klipper, for startGrace
+	startup bool      // Klipper reports "startup"
+	since   time.Time // the start of the deck, or the last restart of Klipper, for startGrace
 
 	// sim is the name of the simulated printer of printer.cfg, or "" (SimulatedName). simRead is
 	// false until the deck reads printer.cfg, and again after a change to printer.cfg.
