@@ -133,7 +133,7 @@ var klippyObjects = map[string][]string{
 	// A pause of the file with a message, and the height check on a part (PRINTDECK_PAUSE).
 	"printdeck_pause": {"active", "message", "check", "checked", "delta", "roll"},
 	// The method of the bed mesh at the start of a print, and the saved map (PRINTDECK_MESH).
-	"printdeck_mesh": {"method", "base_points", "base_time", "last"},
+	"printdeck_mesh": {"method", "base_points", "base_time", "base_temp", "last"},
 	// The copy of a file from the SD card of the printer.
 	"printdeck_sdcard": {"id", "copying", "copied", "size", "done", "error"},
 	// The park for the pictures of the time lapse and of the first layer.
@@ -900,6 +900,7 @@ func klippyState(s klippy.Status, down string) State {
 		if t := num(pm["base_time"]); t > 0 {
 			st.ProbeMapTime = time.Unix(int64(t), 0)
 		}
+		st.ProbeMapTemp = num(pm["base_temp"])
 		if last, ok := pm["last"].(map[string]any); ok {
 			st.ProbeLast = ProbeResult{Method: str(last["method"]), Used: str(last["used"]), Points: int(num(last["points"])),
 				Error: num(last["error"]), Seconds: num(last["seconds"])}

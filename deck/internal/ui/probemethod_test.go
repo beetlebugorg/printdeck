@@ -14,6 +14,7 @@ func TestSettingsProbeMethod(t *testing.T) {
 	st := idle
 	st.ProbeMethod = "map"
 	st.ProbeMapPoints = 49
+	st.ProbeMapTemp = 60
 	st.ProbeLast = printer.ProbeResult{Method: "map", Used: "map", Points: 5, Error: 0.012, Seconds: 6.4}
 	a, pr, cv := newPrintApp(st)
 	a.pages = []page{pageMachine, pageSettings}

@@ -11,7 +11,9 @@
 //     the point that is the farthest from the probed points, and checks it against the fit. It stops
 //     when the last checks check points and all the points are within tolerance of the fit. Else it probes the
 //     next point, up to max_points, and then it falls back to the grid. The new mesh is the saved
-//     map plus the plane: it has the points of the full probe.
+//     map plus the plane: it has the points of the full probe. A bed changes shape when it heats,
+//     so the module uses the map only when the bed is within max_temp_diff (10 °C) of the bed of
+//     the map. Else it falls back.
 //   - adaptive: BED_MESH_CALIBRATE ADAPTIVE=1, a grid under the objects of the print only.
 //   - grid: BED_MESH_CALIBRATE with grid_count points, on all the bed.
 //
@@ -58,9 +60,12 @@ var Methods = []string{"map", "adaptive", "grid"}
 
 // Base is the saved map: the parameters and the probed points of a full probe.
 type Base struct {
-	Time   time.Time        `json:"time"`
-	Params []bed_mesh.Param `json:"params"`
-	Probed [][]float64      `json:"probed"`
+	Time time.Time `json:"time"`
+	// BedTemp is the temperature of the bed at the probe, in °C. A bed changes shape when it heats,
+	// so the map is good only near this temperature. 0 is not known (a map of an older version).
+	BedTemp float64          `json:"bed_temp,omitempty"`
+	Params  []bed_mesh.Param `json:"params"`
+	Probed  [][]float64      `json:"probed"`
 }
 
 type state struct {
@@ -78,13 +83,14 @@ type PrintdeckMesh struct {
 	gridCount     [2]int
 	gridAlgorithm string
 	tolerance     float64 // mm
-	checks        int // check points in a row that must fit
+	checks        int     // check points in a row that must fit
 	maxPoints     int
 	minBase       int     // the points of a mesh that becomes the saved map
 	margin        float64 // mm around the objects
 	minSide       float64 // mm: the smallest side of the probed area
 	moveZ, speed  float64
-	extendEdges   bool // extend the mesh past the probed area (see extend)
+	maxTempDiff   float64 // °C between the bed now and the bed of the saved map
+	extendEdges   bool    // extend the mesh past the probed area (see extend)
 
 	last map[string]any // the result of the last PRINTDECK_MESH
 }
@@ -109,6 +115,7 @@ func load(config *configfile.Wrapper) any {
 	p.moveZ = config.GetFloat("horizontal_move_z", configfile.Default(bm.GetFloat("horizontal_move_z", configfile.Default(5.))))
 	p.speed = config.GetFloat("speed", configfile.Default(bm.GetFloat("speed", configfile.Default(50.))), configfile.Above(0.))
 	p.extendEdges = config.GetBool("extend", configfile.Default(false))
+	p.maxTempDiff = config.GetFloat("max_temp_diff", configfile.Default(10.), configfile.Above(0.))
 	p.path = config.Get("state_file", configfile.Default(""))
 	if p.path == "" {
 		if cfg, ok := printer.StartArgs().Get("config_file"); ok {
@@ -135,6 +142,7 @@ func (p *PrintdeckMesh) Status(eventtime float64) map[string]any {
 	if b := p.st.Base; b != nil && len(b.Probed) > 0 {
 		s["base_points"] = len(b.Probed) * len(b.Probed[0])
 		s["base_time"] = b.Time.Unix()
+		s["base_temp"] = b.BedTemp
 	}
 	return s
 }
@@ -179,9 +187,11 @@ func (p *PrintdeckMesh) seeMesh(m *bed_mesh.ZMesh) {
 	if len(probed) == 0 || len(probed)*len(probed[0]) < p.minBase || strings.HasPrefix(m.ProfileName(), "adaptive-") {
 		return
 	}
-	p.st.Base = &Base{Time: time.Now(), Params: m.Params(), Probed: probed}
+	t := p.bedTemp()
+	p.st.Base = &Base{Time: time.Now(), BedTemp: t, Params: m.Params(), Probed: probed}
 	p.write()
-	p.gcode.RespondInfo(fmt.Sprintf("printdeck_mesh: the %d x %d mesh is the saved map", len(probed[0]), len(probed)), true)
+	p.gcode.RespondInfo(fmt.Sprintf("printdeck_mesh: the %d x %d mesh at bed %.0f °C is the saved map", len(probed[0]),
+		len(probed), t), true)
 }
 
 func (p *PrintdeckMesh) cmdMethod(gcmd *gcode.Command) {
@@ -286,6 +296,11 @@ func (p *PrintdeckMesh) fromMap(gcmd *gcode.Command) (points int, worst float64,
 	b := p.st.Base
 	if b == nil {
 		gcmd.RespondInfo("printdeck_mesh: no saved map. Probe the full bed on the Bed mesh page of the deck.", true)
+		return 0, math.NaN(), false
+	}
+	if t := p.bedTemp(); b.BedTemp == 0 || math.Abs(t-b.BedTemp) > p.maxTempDiff {
+		gcmd.RespondInfo(fmt.Sprintf("printdeck_mesh: the saved map is of a bed at %.0f °C, and the bed is at %.0f °C. "+
+			"Probe the full bed at the print temperature on the Bed mesh page of the deck.", b.BedTemp, t), true)
 		return 0, math.NaN(), false
 	}
 	base, err := bed_mesh.NewMesh(b.Params, b.Probed, "printdeck-base")
@@ -429,4 +444,15 @@ func extended(m *bed_mesh.ZMesh) (*bed_mesh.ZMesh, error) {
 		}
 	}
 	return bed_mesh.NewMesh(params, out, m.ProfileName())
+}
+
+// bedTemp is the temperature of the bed now, or 0 with no heated bed.
+func (p *PrintdeckMesh) bedTemp() float64 {
+	h, ok := p.printer.TryLookupObject("heater_bed").(interface {
+		Status(float64) map[string]any
+	})
+	if !ok {
+		return 0
+	}
+	return num(h.Status(p.printer.Reactor().Monotonic())["temperature"])
 }
