@@ -630,6 +630,12 @@ func machineSettings(ctx context.Context, conn *klippy.Conn) Machine {
 	_, hasTwX1 := tw["calibrate_end_x"].(float64)
 	_, hasTwY0 := tw["calibrate_start_y"].(float64)
 	_, hasTwY1 := tw["calibrate_end_y"].(float64)
+	minCruise, ok := s["printer"]["minimum_cruise_ratio"].(float64)
+	if !ok {
+		minCruise = 0.5
+	}
+	sh, hasShaper := s["input_shaper"]
+	shType, _ := sh["shaper_type"].(string)
 	zEnd, hasZEnd := s["stepper_z"]["position_endstop"].(float64)
 	zMax, hasZMax := s["stepper_z"]["position_max"].(float64)
 	return Machine{
@@ -646,6 +652,8 @@ func machineSettings(ctx context.Context, conn *klippy.Conn) Machine {
 		HasProbe:             hasProbe,
 		HasTwist:             hasTwX0 && hasTwX1, HasTwistY: hasTwX0 && hasTwX1 && hasTwY0 && hasTwY1,
 		TwistX: floats(tw["z_compensations"]), TwistY: floats(tw["zy_compensations"]),
+		MinCruiseRatio: minCruise, HasShaper: hasShaper,
+		ShaperFreqX: num(sh["shaper_freq_x"]), ShaperFreqY: num(sh["shaper_freq_y"]), ShaperType: shType,
 	}
 }
 
