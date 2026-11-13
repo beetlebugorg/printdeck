@@ -15,9 +15,11 @@ import (
 //
 //	frequency = RingSpeed × ripples / distance
 //
-// The X axis rings after a corner into the left and the right walls (they run along Y), and the Y
-// axis after a corner into the front and the back walls. The layers start in the middle of the
-// back wall, so the front wall is the clean one for Y.
+// Each wall but the back one has a V notch, as the ringing tower of Klipper
+// (docs/prints/ringing_tower.stl): the head jogs in and out, and the ripples start at the notch.
+// Count them from the notch. A notch in a wall along Y jogs the head in X, so X rings on the left
+// and the right walls; a notch in a wall along X jogs it in Y, so Y rings on the front wall. The
+// layers start in the middle of the back wall, so it has no notch.
 const (
 	RingTowerFile   = "printdeck-ringing-tower.gcode"
 	RingSpeed       = 80.0   // mm/s, the speed of the wall
@@ -27,6 +29,9 @@ const (
 	RingTowerHeight = 40.0   // mm: 8 bands, up to 4500 mm/s²
 
 	ringSide       = 60.0  // mm, the outer side of the tower
+	ringNotchAt    = 12.0  // mm from the corner where the wall starts to the notch
+	ringNotchWidth = 6.0   // mm, the V notch along the wall
+	ringNotchDepth = 3.0   // mm, into the tower
 	ringFirstSpeed = 20.0  // mm/s, the first layer
 	ringTravel     = 150.0 // mm/s
 	ringRetract    = 1.0   // mm, at each layer change
@@ -80,10 +85,26 @@ func RingTower(m Machine, tool, bed int, material string) string {
 	w("M83")
 
 	// A square loop at an inset from the outer side, from the middle of its back side, so that the
-	// seam is not at a corner.
+	// seam is not at a corner. The right, the front and the left walls have a V notch.
 	loop := func(inset, speed, flow float64) {
 		h := ringSide/2 - inset - width/2
-		pts := [][2]float64{{cx, cy + h}, {cx + h, cy + h}, {cx + h, cy - h}, {cx - h, cy - h}, {cx - h, cy + h}, {cx, cy + h}}
+		corners := [][2]float64{{cx, cy + h}, {cx + h, cy + h}, {cx + h, cy - h}, {cx - h, cy - h}, {cx - h, cy + h}, {cx, cy + h}}
+		pts := [][2]float64{corners[0], corners[1]}
+		for i := 1; i < len(corners)-1; i++ {
+			p, q := corners[i], corners[i+1]
+			if i < 4 {
+				// The notch: in toward the middle of the tower, and out again.
+				l := math.Hypot(q[0]-p[0], q[1]-p[1])
+				u := [2]float64{(q[0] - p[0]) / l, (q[1] - p[1]) / l}
+				n := [2]float64{-u[1], u[0]} // the loop goes clockwise: the left of the way is out
+				n = [2]float64{-n[0], -n[1]}
+				at := func(along, in float64) [2]float64 {
+					return [2]float64{p[0] + u[0]*along + n[0]*in, p[1] + u[1]*along + n[1]*in}
+				}
+				pts = append(pts, at(ringNotchAt, 0), at(ringNotchAt+ringNotchWidth/2, ringNotchDepth), at(ringNotchAt+ringNotchWidth, 0))
+			}
+			pts = append(pts, q)
+		}
 		w("G1 X%.3f Y%.3f F%.0f", pts[0][0], pts[0][1], ringTravel*60)
 		w("G1 E%.3f F2100", ringRetract)
 		for i := 1; i < len(pts); i++ {

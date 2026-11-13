@@ -36,6 +36,12 @@ func TestRingTower(t *testing.T) {
 	if !strings.Contains(g, "G1 X172.225") {
 		t.Errorf("not in the middle of the mesh area")
 	}
+	// The V notch of the right wall: 12 mm under the back corner, 3 mm in, 6 mm wide.
+	for _, want := range []string{"G1 X172.225 Y157.725", "G1 X169.225 Y154.725", "G1 X172.225 Y151.725"} {
+		if !strings.Contains(g, want) {
+			t.Errorf("no notch point %q", want)
+		}
+	}
 	m := ringMachine()
 	m.HasShaper = false
 	if g := RingTower(m, 210, 60, "PLA"); strings.Contains(g, "SET_INPUT_SHAPER") {
