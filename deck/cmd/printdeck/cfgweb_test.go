@@ -72,3 +72,33 @@ func TestPrinterCfg(t *testing.T) {
 		t.Error("no change")
 	}
 }
+
+// After SAVE_CONFIG, Klipper (another user) owns printer.cfg and the backup, with no write access for
+// the deck. A PUT still replaces both, because the deck can write the folder. The new file is 0664.
+func TestPrinterCfgReadOnlyFile(t *testing.T) {
+	dir := t.TempDir()
+	path, backup := filepath.Join(dir, "printer.cfg"), filepath.Join(dir, "printer.cfg.bak")
+	old := "[printer]\nkinematics: cartesian\n"
+	os.WriteFile(path, []byte(old), 0o444)
+	os.WriteFile(backup, []byte("older"), 0o444)
+	mux := http.NewServeMux()
+	registerPrinterCfg(mux, path, backup, &cfgFake{}, func(*http.Request) bool { return true })
+	neu := "[printer]\nkinematics: cartesian\nmax_velocity: 300\n"
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, httptest.NewRequest("PUT", "/system/printer.cfg", strings.NewReader(neu)))
+	if w.Code != 200 {
+		t.Fatalf("PUT: %d %s", w.Code, w.Body.String())
+	}
+	if b, _ := os.ReadFile(path); string(b) != neu {
+		t.Errorf("printer.cfg %q", b)
+	}
+	if b, _ := os.ReadFile(backup); string(b) != old {
+		t.Errorf("backup %q", b)
+	}
+	if fi, err := os.Stat(path); err != nil || fi.Mode().Perm() != 0o664 {
+		t.Errorf("mode %v %v", fi.Mode().Perm(), err)
+	}
+	if m, _ := filepath.Glob(filepath.Join(dir, ".printer.cfg-*")); len(m) != 0 {
+		t.Errorf("temporary files left: %v", m)
+	}
+}
