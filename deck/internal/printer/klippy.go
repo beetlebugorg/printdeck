@@ -99,6 +99,9 @@ type Klippy struct {
 	timer    timer             // the timings of the running print
 	objects  []string
 	lastPos  int64     // the file position of the last busy state, for the history
+	// inStart is true while the print runs its start macro (heating, probing, priming), as of the
+	// last state that printed. A print that ends there goes in no history (startEnded).
+	inStart bool
 	startup  bool      // Klipper reports "startup"
 	since    time.Time // the start of the deck, or the last restart of Klipper, for startGrace
 
@@ -775,9 +778,12 @@ func (k *Klippy) refresh(notify func()) {
 			k.lastPos = st.FilePos
 		}
 		pos := k.lastPos
+		skip := k.startEnded(st)
 		k.mu.Unlock()
 		material := func(path string) string { return k.FileMeta(path).Material }
-		if key := k.Hist.add(st, now, phases, planned, pos, material); key != "" {
+		if skip {
+			// A print that was cancelled or failed before the end of its start macro: no record.
+		} else if key := k.Hist.add(st, now, phases, planned, pos, material); key != "" {
 			k.useSpool(key, st.FinishedFilament)
 			k.mu.Lock()
 			k.timer.coolStart, k.timer.coolKey, k.timer.coolFrom = now, key, st.Bed
@@ -800,6 +806,17 @@ func (k *Klippy) refresh(notify func()) {
 	k.mu.Unlock()
 	k.View.Update(st)
 	notify()
+}
+
+// startEnded follows the start macro of the print, and reports a print that was cancelled or
+// failed before the start macro ended: before the model, so it goes in no history and uses no
+// filament of the roll. A print that completes always counts. The state of a print in its end
+// macro or paused does not change it. k.mu is locked.
+func (k *Klippy) startEnded(st State) bool {
+	if st.Printing && !st.Finishing && !st.Paused {
+		k.inStart = st.Preparing
+	}
+	return !st.Busy() && st.Finished != "" && st.Finished != "complete" && k.inStart
 }
 
 // projectOfFile puts a print in a project at its start: the project of the last print of the
