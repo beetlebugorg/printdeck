@@ -142,6 +142,7 @@ func (d *DemoPrinter) PrintCalibTowers(int, int, string) error      { return nil
 func (d *DemoPrinter) SetPressureAdvance(float64) error             { return nil }
 func (d *DemoPrinter) PrintRingTower(int, int, string, bool) error  { return nil }
 func (d *DemoPrinter) SetMaxAccel(float64) error                    { return nil }
+func (d *DemoPrinter) PrintShakeTest() error                        { return nil }
 func (d *DemoPrinter) PrintSweepTower(int, int, string, bool) error { return nil }
 func (d *DemoPrinter) PrintPairTowers(int, int, string, [2]float64, [2]float64) error {
 	return nil
