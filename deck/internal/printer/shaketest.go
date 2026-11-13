@@ -41,17 +41,18 @@ func ShakeFreqs() []float64 {
 	return out
 }
 
-// ShakeTest is the G-code of the shake test for the machine m: home, go to the middle of the bed,
-// wait ShakeLead seconds, shake X, wait ShakeGap seconds, shake Y. At the end it sets the
-// acceleration and the input shaper of printer.cfg again.
-func ShakeTest(m Machine) string {
+// ShakeTest is the G-code of the shake test for the machine m and the axes ("X", "Y" or "XY"):
+// home, go to the middle of the bed, wait ShakeLead seconds, and shake each axis, with ShakeGap
+// seconds between them. A separate run for each axis lets the phone move between the runs. At
+// the end it sets the acceleration and the input shaper of printer.cfg again.
+func ShakeTest(m Machine, axes string) string {
 	cx, cy := towerCenter(m)
 	var b strings.Builder
 	w := func(format string, a ...any) { fmt.Fprintf(&b, format+"\n", a...) }
 	w(";FLAVOR:Klipper")
 	w(";Generated with Printdeck: the shake test")
-	w(";%.0f s quiet, X %.0f to %.0f Hz in %.0f Hz steps of %.0f s, %.0f s quiet, Y the same.",
-		ShakeLead, ShakeStart, ShakeEnd, ShakeStep, ShakeHold, ShakeGap)
+	w(";Axes %s. %.0f s quiet, then %.0f to %.0f Hz in %.0f Hz steps of %.0f s, %.0f s quiet between axes.",
+		axes, ShakeLead, ShakeStart, ShakeEnd, ShakeStep, ShakeHold, ShakeGap)
 	w("M107")
 	w("G90")
 	w("G28")
@@ -63,12 +64,15 @@ func ShakeTest(m Machine) string {
 	w("M400")
 	w("M117 Shake test: start the recording")
 	w("G4 P%.0f", ShakeLead*1000)
-	for _, axis := range []string{"X", "Y"} {
+	for i, r := range axes {
+		axis := string(r)
 		c := cx
 		if axis == "Y" {
 			c = cy
+		}
+		if i > 0 {
 			w("M400")
-			w("M117 Shake test: Y next")
+			w("M117 Shake test: %s next", axis)
 			w("G4 P%.0f", ShakeGap*1000)
 		}
 		for _, f := range ShakeFreqs() {
@@ -99,7 +103,7 @@ func ShakeTest(m Machine) string {
 	return b.String()
 }
 
-// PrintShakeTest runs the shake test.
-func (k *Klippy) PrintShakeTest() error {
-	return k.printTest(ShakeFile, ShakeTest(k.Machine()))
+// PrintShakeTest runs the shake test of the axes ("X", "Y" or "XY").
+func (k *Klippy) PrintShakeTest(axes string) error {
+	return k.printTest(ShakeFile, ShakeTest(k.Machine(), axes))
 }

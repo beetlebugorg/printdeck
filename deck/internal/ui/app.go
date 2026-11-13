@@ -136,8 +136,9 @@ type Printer interface {
 	// PrintRingTower prints the ringing tower of the input shaper (printer.RingTower). With check,
 	// the input shaper stays on.
 	PrintRingTower(tool, bed int, material string, check bool) error
-	// PrintShakeTest shakes X and Y through a range of frequencies (printer.ShakeTest).
-	PrintShakeTest() error
+	// PrintShakeTest shakes the axes ("X", "Y" or "XY") through a range of frequencies
+	// (printer.ShakeTest).
+	PrintShakeTest(axes string) error
 	// SetMaxAccel sets the largest acceleration now and in printer.cfg.
 	SetMaxAccel(v float64) error
 	// PrintSweepTower prints the sweep of the shaper frequency, on 1 tower or with five on 5.
