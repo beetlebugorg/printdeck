@@ -610,6 +610,26 @@ func machineSettings(ctx context.Context, conn *klippy.Conn) Machine {
 			}
 		}
 	}
+	probeSec := "probe"
+	if _, ok := s["bltouch"]; ok {
+		probeSec = "bltouch"
+	}
+	_, hasProbe := s[probeSec]
+	floats := func(v any) []float64 {
+		a, _ := v.([]any)
+		var out []float64
+		for _, x := range a {
+			if f, ok := x.(float64); ok {
+				out = append(out, f)
+			}
+		}
+		return out
+	}
+	tw := s["axis_twist_compensation"]
+	_, hasTwX0 := tw["calibrate_start_x"].(float64)
+	_, hasTwX1 := tw["calibrate_end_x"].(float64)
+	_, hasTwY0 := tw["calibrate_start_y"].(float64)
+	_, hasTwY1 := tw["calibrate_end_y"].(float64)
 	zEnd, hasZEnd := s["stepper_z"]["position_endstop"].(float64)
 	zMax, hasZMax := s["stepper_z"]["position_max"].(float64)
 	return Machine{
@@ -622,6 +642,10 @@ func machineSettings(ctx context.Context, conn *klippy.Conn) Machine {
 		PressureAdvance:      num(s["extruder"]["pressure_advance"]),
 		MaxAccel:             num(s["printer"]["max_accel"]),
 		SquareCornerVelocity: num(s["printer"]["square_corner_velocity"]),
+		ProbeOffset:          [3]float64{num(s[probeSec]["x_offset"]), num(s[probeSec]["y_offset"]), num(s[probeSec]["z_offset"])},
+		HasProbe:             hasProbe,
+		HasTwist:             hasTwX0 && hasTwX1, HasTwistY: hasTwX0 && hasTwX1 && hasTwY0 && hasTwY1,
+		TwistX: floats(tw["z_compensations"]), TwistY: floats(tw["zy_compensations"]),
 	}
 }
 
