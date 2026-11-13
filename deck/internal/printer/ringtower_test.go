@@ -21,7 +21,7 @@ func ringMachine() Machine {
 // The tower turns off the pressure advance and the shaper, raises the acceleration with the
 // height, and sets the values of printer.cfg again at the end.
 func TestRingTower(t *testing.T) {
-	g := RingTower(ringMachine(), 210, 60, "PLA")
+	g := RingTower(ringMachine(), 210, 60, "PLA", false)
 	for _, want := range []string{"PRINT_START BED=60 EXTRUDER=210", "SET_PRESSURE_ADVANCE ADVANCE=0\n",
 		"SET_INPUT_SHAPER SHAPER_FREQ_X=0 SHAPER_FREQ_Y=0", "SET_VELOCITY_LIMIT MINIMUM_CRUISE_RATIO=0",
 		"TUNING_TOWER COMMAND=SET_VELOCITY_LIMIT PARAMETER=ACCEL START=1000 STEP_DELTA=500 STEP_HEIGHT=5",
@@ -44,8 +44,18 @@ func TestRingTower(t *testing.T) {
 	}
 	m := ringMachine()
 	m.HasShaper = false
-	if g := RingTower(m, 210, 60, "PLA"); strings.Contains(g, "SET_INPUT_SHAPER") {
+	if g := RingTower(m, 210, 60, "PLA", false); strings.Contains(g, "SET_INPUT_SHAPER") {
 		t.Error("SET_INPUT_SHAPER with no [input_shaper] section")
+	}
+	// The check tower keeps the shaper on, and turns off the pressure advance.
+	c := RingTower(ringMachine(), 210, 60, "PLA", true)
+	if strings.Contains(c, "SET_INPUT_SHAPER") || !strings.Contains(c, "SET_PRESSURE_ADVANCE ADVANCE=0\n") ||
+		!strings.Contains(c, "with the input shaper on") || !strings.Contains(c, "TUNING_TOWER COMMAND=SET_VELOCITY_LIMIT") {
+		t.Error("the check tower changes the shaper, or does not test")
+	}
+	// Ringing from 22 mm (the band of 5000): max_accel is the band under it.
+	if RingMaxAccel(22) != 2500 || RingMaxAccel(3) != 0 {
+		t.Errorf("max accel %g %g", RingMaxAccel(22), RingMaxAccel(3))
 	}
 	if RingAccel(0) != 1000 || RingAccel(12.4) != 2000 || RingAccel(39.8) != 4500 {
 		t.Errorf("accelerations %g %g %g", RingAccel(0), RingAccel(12.4), RingAccel(39.8))
@@ -76,7 +86,7 @@ func TestRingTowerRuns(t *testing.T) {
 	m := ringMachine()
 	m.Macros = nil
 	gcode := filepath.Join(dir, "tower.gcode")
-	if err := os.WriteFile(gcode, []byte(RingTower(m, 210, 60, "PLA")), 0o644); err != nil {
+	if err := os.WriteFile(gcode, []byte(RingTower(m, 210, 60, "PLA", false)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	result, msg := batch.Run(path, "../klipper/testdata/klipper.dict", gcode, filepath.Join(dir, "out.serial"))

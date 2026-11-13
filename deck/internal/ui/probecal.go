@@ -416,7 +416,7 @@ func (a *App) drawProbeCal(c *gfx.Canvas, st printer.State) {
 			}
 			q := fmt.Sprintf("Print the ringing tower at %d°?", m.Tool)
 			a.confirm = &confirmBox{question: q, yes: "Print", onYes: func() {
-				a.do(func() error { return pr.PrintRingTower(m.Tool, m.Bed, m.Name) })
+				a.do(func() error { return pr.PrintRingTower(m.Tool, m.Bed, m.Name, false) })
 			}}
 		}})
 		sub := "Off · print the ringing tower, then set it"
@@ -430,8 +430,56 @@ func (a *App) drawProbeCal(c *gfx.Canvas, st printer.State) {
 			}
 			a.askShaper()
 		}})
+		if mach.HasShaper && (mach.ShaperFreqX > 0 || mach.ShaperFreqY > 0) {
+			items = append(items, menuItem{"Check tower", "The ringing tower with the shaper on: about 15 minutes", dim, func() {
+				if a.probeCal != nil {
+					a.Toast("A calibration runs. Stop it first.")
+					return
+				}
+				if !idle {
+					a.Toast("Wait until the print ends")
+					return
+				}
+				q := fmt.Sprintf("Print the check tower at %d°, with the input shaper on?", m.Tool)
+				a.confirm = &confirmBox{question: q, yes: "Print", onYes: func() {
+					a.do(func() error { return pr.PrintRingTower(m.Tool, m.Bed, m.Name, true) })
+				}}
+			}})
+		}
+		items = append(items, menuItem{"Max acceleration", fmt.Sprintf("Now %.0f mm/s² · set it from the check tower", mach.MaxAccel), dim, func() {
+			if !idle {
+				a.Toast("Wait until the print ends")
+				return
+			}
+			a.askMaxAccel()
+		}})
 	}
 	a.menuRowsWait(c, a.listArea(f), f.wide, 86, 12, items, st.Busy())
+}
+
+// askMaxAccel asks for the height on the check tower where ringing or round corners start, and
+// sets the acceleration of the band under it (printer.RingMaxAccel).
+func (a *App) askMaxAccel() {
+	pr := a.Printer
+	a.editPosition("Height where ringing or round corners start", 20, 0, printer.RingTowerHeight, func(h float64) error {
+		v := printer.RingMaxAccel(h)
+		if v <= 0 {
+			return fmt.Errorf("The first band is the lowest acceleration of the tower. Keep max_accel.")
+		}
+		a.post(func() {
+			a.confirm = &confirmBox{question: fmt.Sprintf("Set max_accel to %.0f mm/s²?", v), yes: "Set", onYes: func() {
+				a.do(func() error {
+					if err := pr.SetMaxAccel(v); err != nil {
+						return err
+					}
+					a.Toast(fmt.Sprintf("max_accel %.0f, in printer.cfg", v))
+					return nil
+				})
+			}}
+			a.Redraw()
+		})
+		return nil
+	})
 }
 
 // askShaper asks for the ripples of the ringing tower: for each axis, a count of ripples after the

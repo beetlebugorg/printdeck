@@ -133,8 +133,11 @@ type Printer interface {
 	PrintCalibTowers(tool, bed int, material string) error
 	// SetPressureAdvance sets the pressure advance now and in printer.cfg.
 	SetPressureAdvance(v float64) error
-	// PrintRingTower prints the ringing tower of the input shaper (printer.RingTower).
-	PrintRingTower(tool, bed int, material string) error
+	// PrintRingTower prints the ringing tower of the input shaper (printer.RingTower). With check,
+	// the input shaper stays on.
+	PrintRingTower(tool, bed int, material string, check bool) error
+	// SetMaxAccel sets the largest acceleration now and in printer.cfg.
+	SetMaxAccel(v float64) error
 	// SetInputShaper sets the MZV input shaper at the frequencies in Hz, now and in printer.cfg.
 	SetInputShaper(freqX, freqY float64) error
 
