@@ -227,6 +227,29 @@ type Machine struct {
 	// The park_x and park_y options of [printdeck_timelapse], with HasParkX and HasParkY.
 	ParkX, ParkY       float64
 	HasParkX, HasParkY bool
+	// ProbeOffset is x_offset, y_offset and z_offset of [probe] or [bltouch], with HasProbe: the
+	// pin of the probe is at the nozzle plus the offset.
+	ProbeOffset [3]float64
+	HasProbe    bool
+	// The [axis_twist_compensation] section: HasTwist when it has calibrate_start_x and
+	// calibrate_end_x (AXIS=X), HasTwistY when it also has calibrate_start_y and calibrate_end_y
+	// (AXIS=Y). TwistX and TwistY are z_compensations and zy_compensations: nil when not
+	// calibrated.
+	HasTwist, HasTwistY bool
+	TwistX, TwistY      []float64
+}
+
+// TwistRange returns the range of a list of twist corrections, in mm: the largest less the
+// smallest. It is 0 for no corrections.
+func TwistRange(v []float64) float64 {
+	if len(v) == 0 {
+		return 0
+	}
+	lo, hi := v[0], v[0]
+	for _, x := range v {
+		lo, hi = min(lo, x), max(hi, x)
+	}
+	return hi - lo
 }
 
 // meshMargin is how far the print area of the calibration towers goes past the area of the bed
