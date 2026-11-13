@@ -441,13 +441,18 @@ func (a *App) drawManualProbe(c *gfx.Canvas, st printer.State) {
 			}
 			if st.PauseCheck {
 				a.Toast("Accepted. The print goes on from this height.")
+			} else if a.probeCal != nil {
+				a.Toast("Accepted")
 			} else {
 				a.Toast("Accepted. Save config in Maintenance writes it.")
 			}
 			return nil
 		})
 	})
-	a.button(c, k[1], "Abort", raised, red, func() { a.do(func() error { return pr.Gcode("ABORT") }) })
+	a.button(c, k[1], "Abort", raised, red, func() {
+		a.stopProbeCal("Stopped with Abort on the paper test.")
+		a.do(func() error { return pr.Gcode("ABORT") })
+	})
 }
 
 // drawMachine is the Machine page: two lines of information, and a grid of keys for the pages
@@ -503,6 +508,16 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		// A resin printer has no maintenance of a FDM printer, no macros and no G-code console.
 		keys = append(keys,
 			menuItem{"Maintenance", maint, maintCol, func() { a.open(pageMaintenance) }},
+		)
+		if mach.HasProbe {
+			line, warn := a.calibrationLine(mach)
+			col := dim
+			if warn {
+				col = orange
+			}
+			keys = append(keys, menuItem{"Calibration", line, col, func() { a.open(pageProbeCal) }})
+		}
+		keys = append(keys,
 			menuItem{"Macros", macrosLine(len(mach.Macros)), dim, func() { a.open(pageMacros) }},
 			menuItem{"Console", "G-code", dim, func() { a.open(pageConsole) }})
 	}

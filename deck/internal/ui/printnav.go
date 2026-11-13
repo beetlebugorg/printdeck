@@ -56,6 +56,7 @@ const (
 	pageQueue       // the print queue of the deck
 	pageMaxMode     // the [max_mode] section of printer.cfg
 	pageBedMesh     // the map of the last bed mesh
+	pageProbeCal    // the calibration of the probe: Z offset, twist and map (probecal.go)
 )
 
 // open shows a page over the current one.
