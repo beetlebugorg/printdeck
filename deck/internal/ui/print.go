@@ -23,6 +23,8 @@ func duration(d time.Duration) string {
 }
 
 func (a *App) drawPrint(c *gfx.Canvas) {
+	// The calibration of the probe goes on under every screen, also the action and the paper test.
+	a.followProbeCal(a.Printer.State())
 	if W > H {
 		// Under the content: the zones leave the gap free, and a full-screen keyboard covers it.
 		divider(c)
@@ -100,6 +102,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		return
 	case pageBedMesh:
 		a.drawBedMesh(c, st)
+		return
+	case pageProbeCal:
+		a.drawProbeCal(c, st)
 		return
 	case pageMachine:
 		a.drawMachine(c, st)
