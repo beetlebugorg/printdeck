@@ -133,6 +133,10 @@ type Printer interface {
 	PrintCalibTowers(tool, bed int, material string) error
 	// SetPressureAdvance sets the pressure advance now and in printer.cfg.
 	SetPressureAdvance(v float64) error
+	// PrintRingTower prints the ringing tower of the input shaper (printer.RingTower).
+	PrintRingTower(tool, bed int, material string) error
+	// SetInputShaper sets the MZV input shaper at the frequencies in Hz, now and in printer.cfg.
+	SetInputShaper(freqX, freqY float64) error
 
 	// The setup of a new printer: the boards on the USB ports, and a restart of the Klipper service.
 	Boards() (boards []board.Info, probing bool)
