@@ -543,6 +543,7 @@ func (c *ChiTu) Fan(int) error                                { return ErrNotSup
 func (c *ChiTu) SpeedFactor(int) error                        { return ErrNotSupported }
 func (c *ChiTu) FlowFactor(int) error                         { return ErrNotSupported }
 func (c *ChiTu) BabyStep(float64) error                       { return ErrNotSupported }
+func (c *ChiTu) SaveZOffset() (bool, error)                   { return false, ErrNotSupported }
 
 // The controls of phase 4: no command goes to the board before the test of each control.
 

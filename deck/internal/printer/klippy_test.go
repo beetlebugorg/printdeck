@@ -316,3 +316,59 @@ func TestKlippyShutdownState(t *testing.T) {
 		t.Error("lostBoard")
 	}
 }
+
+// Save of the Z offset: when idle, the deck applies it and saves the config at once. During a print
+// it waits: when the print is over, it applies the offset as it is then, once, and saves.
+func TestSaveZOffset(t *testing.T) {
+	f := &fakeKlippy{}
+	k := NewKlippy(f.serve(t), emptyStore{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ready := make(chan struct{}, 1)
+	go k.Run(ctx, func() {
+		if k.State().Connected {
+			select {
+			case ready <- struct{}{}:
+			default:
+			}
+		}
+	})
+	<-ready
+	if later, err := k.SaveZOffset(); later || err != nil {
+		t.Fatalf("idle save: later %v, %v", later, err)
+	}
+	if s, _ := f.got(); len(s) == 0 || s[len(s)-1] != "Z_OFFSET_APPLY_ENDSTOP\nSAVE_CONFIG" {
+		t.Fatalf("scripts %q", s)
+	}
+
+	// A save during a print waits for the end of the print.
+	k.mu.Lock()
+	k.status["print_stats"] = map[string]any{"state": "printing", "filename": "cap.gcode"}
+	k.status["gcode_move"] = map[string]any{"homing_origin": []any{0.0, 0.0, -0.05, 0.0}}
+	k.mu.Unlock()
+	k.refresh(func() {})
+	n := len(func() []string { s, _ := f.got(); return s }())
+	if later, err := k.SaveZOffset(); !later || err != nil {
+		t.Fatalf("save in a print: later %v, %v", later, err)
+	}
+	k.SaveZOffset() // a second Save in the same print adds nothing
+	k.refresh(func() {})
+	if s, _ := f.got(); len(s) != n {
+		t.Fatalf("saved during the print: %q", s[n:])
+	}
+	k.mu.Lock()
+	k.status["print_stats"] = map[string]any{"state": "complete", "filename": "cap.gcode"}
+	k.mu.Unlock()
+	k.refresh(func() {})
+	k.refresh(func() {})
+	for i := 0; i < 100; i++ {
+		if s, _ := f.got(); len(s) > n {
+			if len(s) != n+1 || s[n] != "Z_OFFSET_APPLY_ENDSTOP\nSAVE_CONFIG" {
+				t.Fatalf("scripts after the print %q", s[n:])
+			}
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("no save after the print")
+}
