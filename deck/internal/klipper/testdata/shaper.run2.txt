@@ -1,0 +1,2753 @@
+allocate_oids count=31
+config_spi oid=0 pin=PD7 cs_active_high=0
+set_digital_out pin=PG1 value=1
+set_digital_out pin=PG0 value=1
+set_digital_out pin=PK7 value=1
+set_digital_out pin=PG2 value=1
+set_digital_out pin=PK6 value=1
+set_digital_out pin=PK5 value=1
+set_digital_out pin=PK3 value=1
+set_digital_out pin=PK4 value=1
+set_digital_out pin=PK1 value=1
+set_digital_out pin=PK2 value=1
+set_digital_out pin=PB7 value=0
+config_analog_in oid=17 pin=PF2
+config_digital_out oid=18 pin=PE5 value=0 default_value=0 max_duration=48000000
+set_digital_out_pwm_cycle oid=18 cycle_ticks=1600000
+config_digital_out oid=19 pin=PH5 value=0 default_value=0 max_duration=0
+set_digital_out_pwm_cycle oid=19 cycle_ticks=160000
+config_digital_out oid=20 pin=PH3 value=0 default_value=1 max_duration=0
+set_digital_out_pwm_cycle oid=20 cycle_ticks=160000
+config_digital_out oid=21 pin=PE4 value=0 default_value=0 max_duration=0
+set_digital_out_pwm_cycle oid=21 cycle_ticks=160000
+spi_set_bus oid=0 spi_bus=spi mode=0 rate=25000000
+config_digital_out oid=22 pin=PA0 value=0 default_value=0 max_duration=0
+set_digital_out_pwm_cycle oid=22 cycle_ticks=320000
+config_endstop oid=1 pin=PB4 pull_up=1
+config_trsync oid=2
+config_st7920 oid=3 cs_pin=PG4 sclk_pin=PJ2 sid_pin=PG3 sync_delay_ticks=720 cmd_delay_ticks=320
+config_buttons oid=23 button_count=3
+config_endstop oid=4 pin=PB6 pull_up=1
+config_trsync oid=5
+config_stepper oid=6 step_pin=PC0 dir_pin=PL1 invert_step=0 step_pulse_ticks=32
+config_digital_out oid=24 pin=PA7 value=1 default_value=1 max_duration=0
+config_endstop oid=7 pin=PB5 pull_up=1
+config_trsync oid=8
+config_stepper oid=9 step_pin=PC1 dir_pin=PL0 invert_step=0 step_pulse_ticks=32
+config_digital_out oid=25 pin=PA6 value=1 default_value=1 max_duration=0
+config_endstop oid=10 pin=PC7 pull_up=1
+config_trsync oid=11
+config_stepper oid=12 step_pin=PC2 dir_pin=PL2 invert_step=0 step_pulse_ticks=32
+config_digital_out oid=26 pin=PA5 value=1 default_value=1 max_duration=0
+config_stepper oid=13 step_pin=PC4 dir_pin=PL7 invert_step=0 step_pulse_ticks=32
+config_digital_out oid=27 pin=PA3 value=1 default_value=1 max_duration=0
+config_endstop oid=14 pin=PA2 pull_up=1
+config_trsync oid=15
+config_analog_in oid=28 pin=PF0
+config_digital_out oid=29 pin=PH6 value=0 default_value=0 max_duration=48000000
+set_digital_out_pwm_cycle oid=29 cycle_ticks=1600000
+config_stepper oid=16 step_pin=PC3 dir_pin=PL6 invert_step=0 step_pulse_ticks=32
+config_digital_out oid=30 pin=PA4 value=1 default_value=1 max_duration=0
+finalize_config crc=604285060
+spi_send oid=0 data=b'\x00\xb2'
+spi_send oid=0 data=b'\x01Z'
+spi_send oid=0 data=b'\x03Z'
+spi_send oid=0 data=b'\x04\xb0'
+spi_send oid=0 data=b'\x05\xb0'
+query_analog_in oid=17 clock=18720000 sample_ticks=16000 sample_count=8 rest_ticks=4800000 bytes_per_report=2 min_value=3758 max_value=8072 range_check_count=4
+queue_digital_out oid=18 clock=3200000 on_ticks=0
+queue_digital_out oid=19 clock=3200000 on_ticks=0
+queue_digital_out oid=20 clock=3200000 on_ticks=0
+queue_digital_out oid=21 clock=3200000 on_ticks=0
+queue_digital_out oid=22 clock=3200000 on_ticks=0
+buttons_add oid=23 pos=0 pin=PJ6 pull_up=1
+buttons_add oid=23 pos=1 pin=PJ5 pull_up=1
+buttons_add oid=23 pos=2 pin=PE2 pull_up=1
+buttons_query oid=23 clock=19680000 rest_ticks=32000 retransmit_count=50 invert=4
+query_analog_in oid=28 clock=20480000 sample_ticks=16000 sample_count=8 rest_ticks=4800000 bytes_per_report=2 min_value=138 max_value=8077 range_check_count=4
+queue_digital_out oid=29 clock=3200000 on_ticks=0
+queue_digital_out oid=22 clock=4800000 on_ticks=23600
+queue_digital_out oid=22 clock=14080000 on_ticks=0
+trsync_start oid=2 report_clock=15680000 report_ticks=1200000 expire_reason=4
+stepper_stop_on_trigger oid=12 trsync_oid=2
+stepper_stop_on_trigger oid=13 trsync_oid=2
+trsync_set_timeout oid=2 clock=19680000
+endstop_home oid=1 clock=15680000 sample_ticks=240 sample_count=4 rest_ticks=16000 pin_value=0 trsync_oid=2 trigger_reason=1
+endstop_home oid=1 clock=0 sample_ticks=0 sample_count=0 rest_ticks=0 pin_value=0 trsync_oid=0 trigger_reason=0
+st7920_send_cmds oid=3 cmds=b'$@\x02&"\x02\x06\x0c'
+st7920_send_cmds oid=3 cmds=b'\x80'
+st7920_send_data oid=3 data=b'                '
+st7920_send_cmds oid=3 cmds=b'\x88'
+st7920_send_data oid=3 data=b'                '
+st7920_send_cmds oid=3 cmds=b'\x90'
+st7920_send_data oid=3 data=b'                '
+st7920_send_cmds oid=3 cmds=b'\x98'
+st7920_send_data oid=3 data=b'                '
+st7920_send_cmds oid=3 cmds=b'@'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x0f\xe0\x1f\xf8\x1f\xfc?\xfc<<<<'
+st7920_send_cmds oid=3 cmds=b'H'
+st7920_send_data oid=3 data=b'<<<<?\xfc?\xf8\x1f\xf8\x07\xf0\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'P'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00R\x94\x00\x00R\x94\x00\x00R\x94'
+st7920_send_cmds oid=3 cmds=b'X'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'`'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'h'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'p'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'x'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'&\x80\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x80\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x81\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x81\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x82\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x82\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x83\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x83\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x84\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x84\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x85\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x85\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x86\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x86\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x87\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x87\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x88\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x88\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x89\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x89\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x8a\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x8a\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x8b\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x8b\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x8c\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x8c\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x8d\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x8d\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x8e\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x8e\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x8f\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x8f\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x90\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x90\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x91\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x91\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x92\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x92\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x93\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x93\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x94\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x94\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x95\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x95\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x96\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x96\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x97\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x97\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x98\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x98\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x99\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x99\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x9a\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x9a\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x9b\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x9b\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x9c\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x9c\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x9d\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x9d\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x9e\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x9e\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x9f\x80'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+st7920_send_cmds oid=3 cmds=b'\x9f\x88'
+st7920_send_data oid=3 data=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+trsync_start oid=5 report_clock=4000000 report_ticks=1200000 expire_reason=4
+stepper_stop_on_trigger oid=6 trsync_oid=5
+trsync_set_timeout oid=5 clock=8000000
+endstop_home oid=4 clock=4000000 sample_ticks=240 sample_count=4 rest_ticks=3199 pin_value=1 trsync_oid=5 trigger_reason=1
+queue_digital_out oid=24 clock=4336000 on_ticks=0
+set_next_step_dir oid=6 dir=1
+queue_step oid=6 interval=4277135 count=1 add=0
+queue_step oid=6 interval=35390 count=1 add=0
+queue_step oid=6 interval=24069 count=3 add=-4115
+queue_step oid=6 interval=12664 count=4 add=-1086
+queue_step oid=6 interval=8419 count=9 add=-323
+queue_step oid=6 interval=5642 count=14 add=-105
+queue_step oid=6 interval=4337 count=22 add=-45
+queue_step oid=6 interval=3523 count=41 add=-10
+queue_step oid=6 interval=3203 count=113 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=250 add=0
+queue_step oid=6 interval=3200 count=174 add=0
+queue_step oid=6 interval=3288 count=33 add=20
+queue_step oid=6 interval=4071 count=16 add=92
+queue_step oid=6 interval=5815 count=7 add=223
+queue_step oid=6 interval=7788 count=6 add=578
+queue_step oid=6 interval=11966 count=3 add=1833
+queue_step oid=6 interval=20273 count=2 add=9948
+queue_step oid=6 interval=44846 count=1 add=0
+endstop_home oid=4 clock=0 sample_ticks=0 sample_count=0 rest_ticks=0 pin_value=0 trsync_oid=0 trigger_reason=0
+set_next_step_dir oid=6 dir=0
+queue_step oid=6 interval=500935 count=1 add=0
+queue_step oid=6 interval=35140 count=2 add=-10524
+queue_step oid=6 interval=19381 count=3 add=-3266
+queue_step oid=6 interval=11226 count=5 add=-814
+queue_step oid=6 interval=7568 count=11 add=-253
+queue_step oid=6 interval=5091 count=20 add=-69
+queue_step oid=6 interval=3811 count=21 add=-23
+queue_step oid=6 interval=3410 count=36 add=-8
+queue_step oid=6 interval=3201 count=333 add=0
+queue_step oid=6 interval=3288 count=33 add=20
+queue_step oid=6 interval=4064 count=16 add=93
+queue_step oid=6 interval=5698 count=8 add=270
+queue_step oid=6 interval=8351 count=5 add=589
+queue_step oid=6 interval=11936 count=3 add=1863
+queue_step oid=6 interval=20243 count=2 add=9978
+queue_step oid=6 interval=44846 count=1 add=0
+trsync_start oid=5 report_clock=172389333 report_ticks=1200000 expire_reason=4
+stepper_stop_on_trigger oid=6 trsync_oid=5
+trsync_set_timeout oid=5 clock=176389333
+endstop_home oid=4 clock=172389333 sample_ticks=240 sample_count=4 rest_ticks=6400 pin_value=1 trsync_oid=5 trigger_reason=1
+set_next_step_dir oid=6 dir=1
+queue_step oid=6 interval=836935 count=1 add=0
+queue_step oid=6 interval=35389 count=1 add=0
+queue_step oid=6 interval=24116 count=3 add=-4114
+queue_step oid=6 interval=14163 count=5 add=-924
+queue_step oid=6 interval=10038 count=8 add=-338
+queue_step oid=6 interval=7650 count=18 add=-86
+queue_step oid=6 interval=6404 count=78 add=0
+queue_step oid=6 interval=6400 count=125 add=0
+queue_step oid=6 interval=6400 count=125 add=0
+queue_step oid=6 interval=6400 count=125 add=0
+queue_step oid=6 interval=6400 count=125 add=0
+queue_step oid=6 interval=6400 count=125 add=0
+queue_step oid=6 interval=6400 count=125 add=0
+queue_step oid=6 interval=6400 count=111 add=0
+queue_step oid=6 interval=6550 count=12 add=185
+queue_step oid=6 interval=8818 count=6 add=613
+queue_step oid=6 interval=12728 count=3 add=1553
+queue_step oid=6 interval=17940 count=1 add=0
+queue_step oid=6 interval=21347 count=2 add=8898
+queue_step oid=6 interval=44846 count=1 add=0
+endstop_home oid=4 clock=0 sample_ticks=0 sample_count=0 rest_ticks=0 pin_value=0 trsync_oid=0 trigger_reason=0
+trsync_start oid=8 report_clock=179898666 report_ticks=1200000 expire_reason=4
+stepper_stop_on_trigger oid=9 trsync_oid=8
+trsync_set_timeout oid=8 clock=183898666
+endstop_home oid=7 clock=179898666 sample_ticks=240 sample_count=4 rest_ticks=3200 pin_value=1 trsync_oid=8 trigger_reason=1
+set_next_step_dir oid=9 dir=1
+queue_step oid=9 interval=180139375 count=1 add=0
+queue_step oid=9 interval=35140 count=2 add=-10524
+queue_step oid=9 interval=19805 count=1 add=0
+queue_digital_out oid=25 clock=180234666 on_ticks=0
+queue_step oid=9 interval=16842 count=5 add=-1536
+queue_step oid=9 interval=9364 count=8 add=-441
+queue_step oid=9 interval=6296 count=14 add=-101
+queue_step oid=9 interval=4987 count=19 add=-68
+queue_step oid=9 interval=3795 count=38 add=-14
+queue_step oid=9 interval=3317 count=31 add=-6
+queue_step oid=9 interval=3204 count=89 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=250 add=0
+queue_step oid=9 interval=3200 count=213 add=0
+queue_step oid=9 interval=3309 count=32 add=19
+queue_step oid=9 interval=3848 count=17 add=58
+queue_step oid=9 interval=5026 count=12 add=161
+queue_step oid=9 interval=7074 count=8 add=221
+queue_step oid=9 interval=9209 count=4 add=975
+queue_step oid=9 interval=13647 count=1 add=0
+queue_step oid=9 interval=15801 count=3 add=4739
+queue_step oid=9 interval=30628 count=2 add=14467
+endstop_home oid=7 clock=0 sample_ticks=0 sample_count=0 rest_ticks=0 pin_value=0 trsync_oid=0 trigger_reason=0
+set_next_step_dir oid=9 dir=0
+queue_step oid=9 interval=416443 count=1 add=0
+queue_step oid=9 interval=35139 count=2 add=-10523
+queue_step oid=9 interval=19411 count=4 add=-1999
+queue_step oid=9 interval=11962 count=4 add=-1056
+queue_step oid=9 interval=8183 count=8 add=-311
+queue_step oid=9 interval=5940 count=28 add=-76
+queue_step oid=9 interval=3947 count=19 add=-26
+queue_step oid=9 interval=3553 count=44 add=-10
+queue_step oid=9 interval=3201 count=311 add=0
+queue_step oid=9 interval=3310 count=36 add=19
+queue_step oid=9 interval=4020 count=15 add=71
+queue_step oid=9 interval=5247 count=17 add=187
+queue_step oid=9 interval=8647 count=5 add=811
+queue_step oid=9 interval=13574 count=2 add=2744
+queue_step oid=9 interval=20206 count=3 add=5142
+queue_step oid=9 interval=45232 count=1 add=0
+trsync_start oid=8 report_clock=339647999 report_ticks=1200000 expire_reason=4
+stepper_stop_on_trigger oid=9 trsync_oid=8
+trsync_set_timeout oid=8 clock=343647999
+endstop_home oid=7 clock=339647999 sample_ticks=240 sample_count=4 rest_ticks=6400 pin_value=1 trsync_oid=8 trigger_reason=1
+set_next_step_dir oid=9 dir=1
+queue_step oid=9 interval=752442 count=1 add=0
+queue_step oid=9 interval=35140 count=2 add=-10524
+queue_step oid=9 interval=19805 count=1 add=0
+queue_step oid=9 interval=17481 count=3 add=-162
+queue_step oid=9 interval=14550 count=5 add=-924
+queue_step oid=9 interval=10162 count=7 add=-324
+queue_step oid=9 interval=8344 count=11 add=-87
+queue_step oid=9 interval=7091 count=15 add=-59
+queue_step oid=9 interval=6403 count=69 add=0
+queue_step oid=9 interval=6400 count=125 add=0
+queue_step oid=9 interval=6400 count=125 add=0
+queue_step oid=9 interval=6400 count=125 add=0
+queue_step oid=9 interval=6400 count=125 add=0
+queue_step oid=9 interval=6400 count=125 add=0
+queue_step oid=9 interval=6400 count=125 add=0
+queue_step oid=9 interval=6400 count=106 add=0
+queue_step oid=9 interval=6702 count=11 add=180
+queue_step oid=9 interval=8783 count=4 add=471
+queue_step oid=9 interval=9749 count=5 add=267
+queue_step oid=9 interval=11340 count=4 add=1187
+queue_step oid=9 interval=16700 count=1 add=0
+queue_step oid=9 interval=19265 count=2 add=5532
+queue_step oid=9 interval=27896 count=2 add=3281
+queue_step oid=9 interval=44845 count=1 add=0
+endstop_home oid=7 clock=0 sample_ticks=0 sample_count=0 rest_ticks=0 pin_value=0 trsync_oid=0 trigger_reason=0
+trsync_start oid=11 report_clock=347157333 report_ticks=1200000 expire_reason=4
+stepper_stop_on_trigger oid=12 trsync_oid=11
+trsync_set_timeout oid=11 clock=351157333
+endstop_home oid=10 clock=347157333 sample_ticks=240 sample_count=4 rest_ticks=1280 pin_value=1 trsync_oid=11 trigger_reason=1
+trsync_start oid=15 report_clock=347157333 report_ticks=1200000 expire_reason=4
+stepper_stop_on_trigger oid=13 trsync_oid=15
+trsync_set_timeout oid=15 clock=351157333
+endstop_home oid=14 clock=347157333 sample_ticks=240 sample_count=4 rest_ticks=1280 pin_value=1 trsync_oid=15 trigger_reason=1
+queue_digital_out oid=26 clock=347493333 on_ticks=0
+queue_digital_out oid=27 clock=347493333 on_ticks=0
+set_next_step_dir oid=12 dir=1
+queue_step oid=12 interval=347564888 count=1 add=0
+set_next_step_dir oid=13 dir=1
+queue_step oid=13 interval=347564888 count=1 add=0
+queue_step oid=12 interval=52131 count=2 add=-15817
+queue_step oid=13 interval=52131 count=2 add=-15817
+queue_step oid=12 interval=28947 count=3 add=-3231
+queue_step oid=13 interval=28947 count=3 add=-3231
+queue_step oid=12 interval=20502 count=5 add=-1210
+queue_step oid=13 interval=20502 count=5 add=-1210
+queue_step oid=12 interval=15213 count=7 add=-523
+queue_step oid=13 interval=15213 count=7 add=-523
+queue_step oid=12 interval=11821 count=12 add=-237
+queue_step oid=13 interval=11821 count=12 add=-237
+queue_step oid=12 interval=9194 count=17 add=-117
+queue_step oid=13 interval=9194 count=17 add=-117
+queue_step oid=12 interval=7394 count=15 add=-67
+queue_step oid=13 interval=7394 count=15 add=-67
+queue_step oid=12 interval=6348 count=35 add=-37
+queue_step oid=13 interval=6348 count=35 add=-37
+queue_step oid=12 interval=5132 count=39 add=-22
+queue_step oid=13 interval=5132 count=39 add=-22
+queue_step oid=12 interval=4345 count=46 add=-14
+queue_step oid=13 interval=4345 count=46 add=-14
+queue_step oid=12 interval=3753 count=60 add=-9
+queue_step oid=13 interval=3753 count=60 add=-9
+queue_step oid=12 interval=3287 count=7 add=0
+queue_step oid=13 interval=3287 count=7 add=0
+queue_step oid=12 interval=3183 count=102 add=-5
+queue_step oid=13 interval=3183 count=102 add=-5
+queue_step oid=12 interval=2717 count=68 add=-4
+queue_step oid=13 interval=2717 count=68 add=-4
+queue_step oid=12 interval=2484 count=81 add=-3
+queue_step oid=13 interval=2484 count=81 add=-3
+queue_step oid=12 interval=2264 count=62 add=-2
+queue_step oid=13 interval=2264 count=62 add=-2
+queue_step oid=12 interval=2138 count=76 add=-2
+queue_step oid=13 interval=2138 count=76 add=-2
+queue_step oid=12 interval=2022 count=74 add=-2
+queue_step oid=13 interval=2022 count=74 add=-2
+queue_step oid=12 interval=1919 count=64 add=-2
+queue_step oid=13 interval=1919 count=64 add=-2
+queue_step oid=12 interval=1815 count=103 add=-1
+queue_step oid=13 interval=1815 count=103 add=-1
+queue_step oid=12 interval=1707 count=103 add=-1
+queue_step oid=13 interval=1707 count=103 add=-1
+queue_step oid=12 interval=1631 count=17 add=0
+queue_step oid=13 interval=1631 count=17 add=0
+queue_step oid=12 interval=1577 count=62 add=0
+queue_step oid=13 interval=1577 count=62 add=0
+queue_step oid=12 interval=1530 count=67 add=0
+queue_step oid=13 interval=1530 count=67 add=0
+queue_step oid=12 interval=1484 count=70 add=0
+queue_step oid=13 interval=1484 count=70 add=0
+queue_step oid=12 interval=1441 count=71 add=0
+queue_step oid=13 interval=1441 count=71 add=0
+queue_step oid=12 interval=1400 count=76 add=0
+queue_step oid=13 interval=1400 count=76 add=0
+queue_step oid=12 interval=1361 count=76 add=0
+queue_step oid=13 interval=1361 count=76 add=0
+queue_step oid=12 interval=1324 count=80 add=0
+queue_step oid=13 interval=1324 count=80 add=0
+queue_step oid=12 interval=1293 count=61 add=0
+queue_step oid=13 interval=1293 count=61 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1280 count=625 add=0
+queue_step oid=13 interval=1280 count=625 add=0
+queue_step oid=12 interval=1259 count=73 add=1
+queue_step oid=13 interval=1259 count=73 add=1
+queue_step oid=12 interval=1291 count=73 add=1
+queue_step oid=13 interval=1291 count=73 add=1
+queue_step oid=12 interval=1325 count=76 add=1
+queue_step oid=13 interval=1325 count=76 add=1
+queue_step oid=12 interval=1363 count=80 add=1
+queue_step oid=13 interval=1363 count=80 add=1
+queue_step oid=12 interval=1407 count=87 add=1
+queue_step oid=13 interval=1407 count=87 add=1
+queue_step oid=12 interval=1461 count=92 add=1
+queue_step oid=13 interval=1461 count=92 add=1
+queue_step oid=12 interval=1527 count=81 add=1
+queue_step oid=13 interval=1527 count=81 add=1
+queue_step oid=12 interval=1589 count=170 add=1
+queue_step oid=13 interval=1589 count=170 add=1
+queue_step oid=12 interval=1755 count=83 add=1
+queue_step oid=13 interval=1755 count=83 add=1
+queue_step oid=12 interval=1864 count=89 add=1
+queue_step oid=13 interval=1864 count=89 add=1
+queue_step oid=12 interval=1991 count=70 add=1
+queue_step oid=13 interval=1991 count=70 add=1
+queue_step oid=12 interval=2121 count=26 add=0
+queue_step oid=13 interval=2121 count=26 add=0
+queue_step oid=12 interval=2132 count=95 add=2
+queue_step oid=13 interval=2132 count=95 add=2
+queue_step oid=12 interval=2359 count=61 add=2
+queue_step oid=13 interval=2359 count=61 add=2
+queue_step oid=12 interval=2522 count=73 add=3
+queue_step oid=13 interval=2522 count=73 add=3
+queue_step oid=12 interval=2786 count=62 add=4
+queue_step oid=13 interval=2786 count=62 add=4
+queue_step oid=12 interval=3132 count=21 add=0
+queue_step oid=13 interval=3132 count=21 add=0
+queue_step oid=12 interval=3176 count=77 add=8
+queue_step oid=13 interval=3176 count=77 add=8
+queue_step oid=12 interval=3834 count=50 add=13
+queue_step oid=13 interval=3834 count=50 add=13
+queue_step oid=12 interval=4539 count=38 add=22
+queue_step oid=13 interval=4539 count=38 add=22
+queue_step oid=12 interval=5464 count=23 add=37
+queue_step oid=13 interval=5464 count=23 add=37
+queue_step oid=12 interval=6289 count=25 add=70
+queue_step oid=13 interval=6289 count=25 add=70
+queue_step oid=12 interval=8207 count=13 add=133
+queue_step oid=13 interval=8207 count=13 add=133
+queue_step oid=12 interval=10003 count=11 add=281
+queue_step oid=13 interval=10003 count=11 add=281
+queue_step oid=12 interval=13530 count=6 add=618
+queue_step oid=13 interval=13530 count=6 add=618
+queue_step oid=12 interval=17838 count=4 add=1483
+queue_step oid=13 interval=17838 count=4 add=1483
+queue_step oid=12 interval=25467 count=2 add=4097
+queue_step oid=13 interval=25467 count=2 add=4097
+queue_step oid=12 interval=35815 count=2 add=16816
+queue_step oid=13 interval=35815 count=2 add=16816
+endstop_home oid=10 clock=0 sample_ticks=0 sample_count=0 rest_ticks=0 pin_value=0 trsync_oid=0 trigger_reason=0
+endstop_home oid=14 clock=0 sample_ticks=0 sample_count=0 rest_ticks=0 pin_value=0 trsync_oid=0 trigger_reason=0
+set_next_step_dir oid=12 dir=0
+queue_step oid=12 interval=783109 count=1 add=0
+set_next_step_dir oid=13 dir=0
+queue_step oid=13 interval=783109 count=1 add=0
+queue_step oid=12 interval=52131 count=2 add=-15817
+queue_step oid=13 interval=52131 count=2 add=-15817
+queue_step oid=12 interval=28947 count=3 add=-3231
+queue_step oid=13 interval=28947 count=3 add=-3231
+queue_step oid=12 interval=20502 count=5 add=-1210
+queue_step oid=13 interval=20502 count=5 add=-1210
+queue_step oid=12 interval=15213 count=7 add=-523
+queue_step oid=13 interval=15213 count=7 add=-523
+queue_step oid=12 interval=11821 count=12 add=-237
+queue_step oid=13 interval=11821 count=12 add=-237
+queue_step oid=12 interval=9194 count=17 add=-117
+queue_step oid=13 interval=9194 count=17 add=-117
+queue_step oid=12 interval=7368 count=22 add=-63
+queue_step oid=13 interval=7368 count=22 add=-63
+queue_step oid=12 interval=6059 count=34 add=-34
+queue_step oid=13 interval=6059 count=34 add=-34
+queue_step oid=12 interval=4979 count=42 add=-20
+queue_step oid=13 interval=4979 count=42 add=-20
+queue_step oid=12 interval=4195 count=56 add=-12
+queue_step oid=13 interval=4195 count=56 add=-12
+queue_step oid=12 interval=3576 count=60 add=-8
+queue_step oid=13 interval=3576 count=60 add=-8
+queue_step oid=12 interval=3148 count=57 add=-6
+queue_step oid=13 interval=3148 count=57 add=-6
+queue_step oid=12 interval=2840 count=88 add=-4
+queue_step oid=13 interval=2840 count=88 add=-4
+queue_step oid=12 interval=2520 count=89 add=-3
+queue_step oid=13 interval=2520 count=89 add=-3
+queue_step oid=12 interval=2273 count=143 add=-2
+queue_step oid=13 interval=2273 count=143 add=-2
+queue_step oid=12 interval=2022 count=74 add=-2
+queue_step oid=13 interval=2022 count=74 add=-2
+queue_step oid=12 interval=1893 count=66 add=-1
+queue_step oid=13 interval=1893 count=66 add=-1
+queue_step oid=12 interval=1808 count=192 add=-1
+queue_step oid=13 interval=1808 count=192 add=-1
+queue_step oid=12 interval=1636 count=111 add=-1
+queue_step oid=13 interval=1636 count=111 add=-1
+queue_step oid=12 interval=1554 count=96 add=-1
+queue_step oid=13 interval=1554 count=96 add=-1
+queue_step oid=12 interval=1491 count=81 add=-1
+queue_step oid=13 interval=1491 count=81 add=-1
+queue_step oid=12 interval=1456 count=70 add=0
+queue_step oid=13 interval=1456 count=70 add=0
+queue_step oid=12 interval=1500 count=68 add=0
+queue_step oid=13 interval=1500 count=68 add=0
+queue_step oid=12 interval=1545 count=64 add=0
+queue_step oid=13 interval=1545 count=64 add=0
+queue_step oid=12 interval=1567 count=69 add=1
+queue_step oid=13 interval=1567 count=69 add=1
+queue_step oid=12 interval=1616 count=218 add=1
+queue_step oid=13 interval=1616 count=218 add=1
+queue_step oid=12 interval=1858 count=93 add=1
+queue_step oid=13 interval=1858 count=93 add=1
+queue_step oid=12 interval=1989 count=69 add=1
+queue_step oid=13 interval=1989 count=69 add=1
+queue_step oid=12 interval=2081 count=136 add=2
+queue_step oid=13 interval=2081 count=136 add=2
+queue_step oid=12 interval=2371 count=111 add=3
+queue_step oid=13 interval=2371 count=111 add=3
+queue_step oid=12 interval=2741 count=66 add=4
+queue_step oid=13 interval=2741 count=66 add=4
+queue_step oid=12 interval=3041 count=65 add=6
+queue_step oid=13 interval=3041 count=65 add=6
+queue_step oid=12 interval=3475 count=53 add=9
+queue_step oid=13 interval=3475 count=53 add=9
+queue_step oid=12 interval=4010 count=42 add=14
+queue_step oid=13 interval=4010 count=42 add=14
+queue_step oid=12 interval=4649 count=37 add=24
+queue_step oid=13 interval=4649 count=37 add=24
+queue_step oid=12 interval=5609 count=27 add=43
+queue_step oid=13 interval=5609 count=27 add=43
+queue_step oid=12 interval=6852 count=20 add=82
+queue_step oid=13 interval=6852 count=20 add=82
+queue_step oid=12 interval=8675 count=12 add=158
+queue_step oid=13 interval=8675 count=12 add=158
+queue_step oid=12 interval=10666 count=9 add=342
+queue_step oid=13 interval=10666 count=9 add=342
+queue_step oid=12 interval=13821 count=6 add=780
+queue_step oid=13 interval=13821 count=6 add=780
+queue_step oid=12 interval=19025 count=3 add=1857
+queue_step oid=13 interval=19025 count=3 add=1857
+queue_step oid=12 interval=25098 count=2 add=4467
+queue_step oid=13 interval=25098 count=2 add=4467
+queue_step oid=12 interval=35814 count=2 add=16818
+queue_step oid=13 interval=35814 count=2 add=16818
+trsync_start oid=11 report_clock=647928750 report_ticks=1200000 expire_reason=4
+stepper_stop_on_trigger oid=12 trsync_oid=11
+trsync_set_timeout oid=11 clock=651928750
+endstop_home oid=10 clock=647928750 sample_ticks=240 sample_count=4 rest_ticks=10667 pin_value=1 trsync_oid=11 trigger_reason=1
+trsync_start oid=15 report_clock=647928750 report_ticks=1200000 expire_reason=4
+stepper_stop_on_trigger oid=13 trsync_oid=15
+trsync_set_timeout oid=15 clock=651928750
+endstop_home oid=14 clock=647928750 sample_ticks=240 sample_count=4 rest_ticks=10667 pin_value=1 trsync_oid=15 trigger_reason=1
+set_next_step_dir oid=12 dir=1
+queue_step oid=12 interval=1119108 count=1 add=0
+set_next_step_dir oid=13 dir=1
+queue_step oid=13 interval=1119108 count=1 add=0
+queue_step oid=12 interval=52131 count=2 add=-15816
+queue_step oid=13 interval=52131 count=2 add=-15816
+queue_step oid=12 interval=28946 count=3 add=-3230
+queue_step oid=13 interval=28946 count=3 add=-3230
+queue_step oid=12 interval=20499 count=5 add=-1208
+queue_step oid=13 interval=20499 count=5 add=-1208
+queue_step oid=12 interval=15210 count=7 add=-522
+queue_step oid=13 interval=15210 count=7 add=-522
+queue_step oid=12 interval=11813 count=7 add=-219
+queue_step oid=13 interval=11813 count=7 add=-219
+queue_step oid=12 interval=10672 count=27 add=0
+queue_step oid=13 interval=10672 count=27 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10667 count=75 add=0
+queue_step oid=13 interval=10667 count=75 add=0
+queue_step oid=12 interval=10666 count=75 add=0
+queue_step oid=13 interval=10666 count=75 add=0
+queue_step oid=12 interval=10667 count=52 add=0
+queue_step oid=13 interval=10667 count=52 add=0
+queue_step oid=12 interval=10874 count=9 add=377
+queue_step oid=13 interval=10874 count=9 add=377
+queue_step oid=12 interval=14390 count=6 add=885
+queue_step oid=13 interval=14390 count=6 add=885
+queue_step oid=12 interval=20996 count=1 add=0
+queue_step oid=13 interval=20996 count=1 add=0
+queue_step oid=12 interval=22288 count=3 add=3428
+queue_step oid=13 interval=22288 count=3 add=3428
+queue_step oid=12 interval=35985 count=2 add=16646
+queue_step oid=13 interval=35985 count=2 add=16646
+endstop_home oid=10 clock=0 sample_ticks=0 sample_count=0 rest_ticks=0 pin_value=0 trsync_oid=0 trigger_reason=0
+endstop_home oid=14 clock=0 sample_ticks=0 sample_count=0 rest_ticks=0 pin_value=0 trsync_oid=0 trigger_reason=0
+set_next_step_dir oid=6 dir=0
+set_next_step_dir oid=9 dir=0
+set_next_step_dir oid=12 dir=0
+queue_step oid=12 interval=783108 count=1 add=0
+set_next_step_dir oid=13 dir=0
+queue_step oid=13 interval=783108 count=1 add=0
+queue_step oid=12 interval=52132 count=2 add=-15818
+queue_step oid=13 interval=52132 count=2 add=-15818
+queue_step oid=12 interval=28947 count=3 add=-3231
+queue_step oid=13 interval=28947 count=3 add=-3231
+queue_step oid=12 interval=20499 count=5 add=-1208
+queue_step oid=13 interval=20499 count=5 add=-1208
+queue_step oid=12 interval=15210 count=7 add=-522
+queue_step oid=13 interval=15210 count=7 add=-522
+queue_step oid=12 interval=11816 count=12 add=-236
+queue_step oid=13 interval=11816 count=12 add=-236
+queue_step oid=12 interval=9188 count=17 add=-116
+queue_step oid=13 interval=9188 count=17 add=-116
+queue_step oid=12 interval=7350 count=24 add=-61
+queue_step oid=13 interval=7350 count=24 add=-61
+queue_step oid=12 interval=6002 count=30 add=-35
+queue_step oid=13 interval=6002 count=30 add=-35
+queue_step oid=12 interval=5019 count=44 add=-20
+queue_step oid=13 interval=5019 count=44 add=-20
+queue_step oid=12 interval=4212 count=46 add=-13
+queue_step oid=13 interval=4212 count=46 add=-13
+queue_step oid=12 interval=3655 count=65 add=-8
+queue_step oid=13 interval=3655 count=65 add=-8
+queue_step oid=12 interval=3200 count=65535 add=0
+queue_step oid=13 interval=3200 count=65535 add=0
+queue_step oid=12 interval=3200 count=65535 add=0
+queue_step oid=13 interval=3200 count=65535 add=0
+queue_step oid=12 interval=3200 count=11930 add=0
+queue_step oid=13 interval=3200 count=11930 add=0
+queue_step oid=12 interval=3237 count=56 add=7
+queue_step oid=13 interval=3237 count=56 add=7
+queue_step oid=12 interval=3674 count=50 add=11
+queue_step oid=13 interval=3674 count=50 add=11
+queue_step oid=12 interval=4274 count=41 add=18
+queue_step oid=13 interval=4274 count=41 add=18
+queue_step oid=12 interval=5077 count=31 add=31
+queue_step oid=13 interval=5077 count=31 add=31
+queue_step oid=12 interval=6109 count=24 add=57
+queue_step oid=13 interval=6109 count=24 add=57
+queue_step oid=12 interval=7596 count=16 add=110
+queue_step oid=13 interval=7596 count=16 add=110
+queue_step oid=12 interval=9468 count=11 add=230
+queue_step oid=13 interval=9468 count=11 add=230
+queue_step oid=12 interval=12083 count=8 add=507
+queue_step oid=13 interval=12083 count=8 add=507
+queue_step oid=12 interval=16780 count=4 add=1222
+queue_step oid=13 interval=16780 count=4 add=1222
+queue_step oid=12 interval=22186 count=3 add=3268
+queue_step oid=13 interval=22186 count=3 add=3268
+queue_step oid=9 interval=816646424 count=1 add=0
+queue_step oid=9 interval=44796 count=2 add=-13502
+queue_step oid=6 interval=983982407 count=1 add=0
+queue_step oid=6 interval=39513 count=2 add=-11852
+queue_step oid=9 interval=24884 count=3 add=-3772
+queue_step oid=6 interval=20795 count=2 add=-4162
+queue_step oid=6 interval=13529 count=5 add=-1074
+queue_step oid=9 interval=14483 count=5 add=-1055
+queue_step oid=6 interval=8969 count=9 add=-373
+queue_step oid=9 interval=9838 count=8 add=-364
+queue_step oid=6 interval=6008 count=12 add=-145
+queue_step oid=9 interval=7126 count=12 add=-176
+queue_step oid=6 interval=4440 count=21 add=-57
+queue_step oid=9 interval=5177 count=20 add=-70
+queue_step oid=6 interval=3333 count=33 add=-25
+queue_step oid=9 interval=3887 count=24 add=-29
+queue_step oid=6 interval=2565 count=60 add=-8
+queue_step oid=9 interval=3301 count=42 add=-14
+queue_step oid=6 interval=2143 count=76 add=-2
+queue_step oid=9 interval=2809 count=60 add=-4
+queue_step oid=6 interval=2030 count=449 add=0
+queue_step oid=9 interval=2602 count=750 add=0
+queue_step oid=6 interval=2029 count=2453 add=0
+queue_step oid=9 interval=2601 count=815 add=0
+queue_step oid=9 interval=2602 count=788 add=0
+queue_step oid=6 interval=2030 count=479 add=0
+queue_step oid=9 interval=2601 count=815 add=0
+queue_step oid=6 interval=2029 count=2453 add=0
+queue_step oid=9 interval=2602 count=787 add=0
+queue_step oid=9 interval=2601 count=815 add=0
+queue_step oid=6 interval=2030 count=479 add=0
+queue_step oid=9 interval=2602 count=788 add=0
+queue_step oid=6 interval=2029 count=2453 add=0
+queue_step oid=9 interval=2601 count=815 add=0
+queue_step oid=9 interval=2602 count=788 add=0
+queue_step oid=6 interval=2030 count=479 add=0
+queue_step oid=9 interval=2601 count=815 add=0
+queue_step oid=6 interval=2029 count=2453 add=0
+queue_step oid=9 interval=2602 count=788 add=0
+queue_step oid=9 interval=2601 count=815 add=0
+queue_step oid=6 interval=2030 count=479 add=0
+queue_step oid=6 interval=2029 count=2422 add=0
+queue_step oid=9 interval=2602 count=787 add=0
+queue_step oid=9 interval=2601 count=814 add=0
+queue_step oid=9 interval=2603 count=198 add=0
+queue_step oid=9 interval=2646 count=60 add=6
+queue_step oid=6 interval=2043 count=67 add=3
+queue_step oid=6 interval=2296 count=47 add=11
+queue_step oid=9 interval=3101 count=33 add=20
+queue_step oid=6 interval=2900 count=26 add=29
+queue_step oid=9 interval=3824 count=19 add=48
+queue_step oid=6 interval=3712 count=18 add=71
+queue_step oid=9 interval=4840 count=13 add=117
+queue_step oid=9 interval=7349 count=9 add=274
+queue_step oid=6 interval=5291 count=10 add=92
+queue_step oid=6 interval=5954 count=17 add=37
+queue_step oid=9 interval=9905 count=6 add=719
+queue_step oid=9 interval=15344 count=2 add=8806
+queue_step oid=6 interval=5882 count=19 add=-90
+queue_step oid=9 interval=29699 count=2 add=6251
+queue_step oid=9 interval=47114 count=1 add=0
+queue_step oid=6 interval=4312 count=22 add=-60
+queue_step oid=9 interval=5768476 count=1 add=0
+queue_step oid=6 interval=3095 count=32 add=-25
+queue_step oid=6 interval=2350 count=53 add=-11
+queue_step oid=6 interval=1826 count=60 add=-6
+queue_step oid=6 interval=1520 count=61 add=-4
+queue_step oid=6 interval=1307 count=82 add=-2
+queue_step oid=6 interval=1169 count=101 add=-1
+queue_step oid=6 interval=1112 count=67 add=-1
+queue_step oid=6 interval=1067 count=1147 add=0
+queue_step oid=6 interval=1066 count=601 add=0
+queue_step oid=6 interval=1067 count=1202 add=0
+queue_step oid=6 interval=1066 count=601 add=0
+queue_step oid=6 interval=1067 count=497 add=0
+queue_step oid=6 interval=1100 count=73 add=0
+queue_step oid=6 interval=1128 count=83 add=1
+queue_step oid=6 interval=1236 count=79 add=2
+queue_step oid=6 interval=1428 count=70 add=4
+queue_step oid=6 interval=1757 count=47 add=7
+queue_step oid=6 interval=2133 count=38 add=15
+queue_step oid=6 interval=2757 count=25 add=35
+queue_step oid=6 interval=3700 count=15 add=93
+queue_step oid=6 interval=5148 count=6 add=301
+queue_step oid=9 interval=32417 count=2 add=-8704
+queue_step oid=6 interval=7041 count=7 add=439
+queue_step oid=9 interval=18938 count=3 add=-1872
+queue_step oid=6 interval=10497 count=3 add=1361
+queue_step oid=6 interval=14918 count=2 add=6612
+queue_step oid=9 interval=13782 count=4 add=-1373
+queue_step oid=6 interval=29899 count=2 add=12944
+queue_step oid=9 interval=8457 count=9 add=-327
+set_next_step_dir oid=6 dir=1
+queue_step oid=6 interval=5900909 count=1 add=0
+queue_step oid=9 interval=5742 count=15 add=-114
+queue_step oid=9 interval=4173 count=16 add=-68
+queue_step oid=9 interval=3189 count=31 add=-27
+queue_step oid=9 interval=2427 count=42 add=-13
+queue_step oid=9 interval=1937 count=57 add=-7
+queue_step oid=9 interval=1585 count=73 add=-4
+queue_step oid=9 interval=1332 count=77 add=-2
+queue_step oid=9 interval=1199 count=71 add=-1
+queue_step oid=9 interval=1103 count=90 add=0
+queue_step oid=9 interval=1072 count=120 add=0
+queue_step oid=9 interval=1066 count=598 add=0
+queue_step oid=9 interval=1067 count=1202 add=0
+queue_step oid=9 interval=1066 count=601 add=0
+queue_step oid=9 interval=1067 count=1202 add=0
+queue_step oid=9 interval=1066 count=304 add=0
+queue_step oid=9 interval=1101 count=72 add=0
+queue_step oid=9 interval=1143 count=64 add=0
+queue_step oid=9 interval=1193 count=68 add=1
+queue_step oid=9 interval=1297 count=75 add=2
+queue_step oid=9 interval=1496 count=56 add=4
+queue_step oid=9 interval=1756 count=52 add=8
+queue_step oid=9 interval=2219 count=36 add=17
+queue_step oid=9 interval=2902 count=23 add=40
+queue_step oid=9 interval=3926 count=11 add=107
+queue_step oid=9 interval=5264 count=12 add=189
+queue_step oid=6 interval=32417 count=2 add=-8704
+queue_step oid=9 interval=7710 count=6 add=561
+queue_step oid=6 interval=19065 count=2 add=-2009
+queue_step oid=9 interval=11663 count=2 add=1755
+queue_step oid=6 interval=12644 count=3 add=-1317
+queue_step oid=9 interval=16448 count=2 add=5249
+queue_step oid=6 interval=8844 count=8 add=-373
+queue_step oid=9 interval=24455 count=2 add=5943
+queue_step oid=9 interval=42593 count=1 add=0
+queue_step oid=6 interval=6062 count=14 add=-158
+set_next_step_dir oid=9 dir=1
+queue_step oid=9 interval=5816417 count=1 add=0
+queue_step oid=6 interval=4093 count=20 add=-58
+queue_step oid=6 interval=3071 count=29 add=-26
+queue_step oid=6 interval=2385 count=46 add=-12
+queue_step oid=6 interval=1877 count=68 add=-6
+queue_step oid=6 interval=1522 count=62 add=-4
+queue_step oid=6 interval=1307 count=84 add=-2
+queue_step oid=6 interval=1167 count=100 add=-1
+queue_step oid=6 interval=1112 count=69 add=-1
+queue_step oid=6 interval=1067 count=1191 add=0
+queue_step oid=6 interval=1066 count=601 add=0
+queue_step oid=6 interval=1067 count=1202 add=0
+queue_step oid=6 interval=1066 count=601 add=0
+queue_step oid=6 interval=1067 count=446 add=0
+queue_step oid=6 interval=1100 count=74 add=0
+queue_step oid=6 interval=1128 count=84 add=1
+queue_step oid=6 interval=1238 count=78 add=2
+queue_step oid=6 interval=1429 count=71 add=4
+queue_step oid=6 interval=1747 count=53 add=8
+queue_step oid=6 interval=2216 count=36 add=17
+queue_step oid=6 interval=2897 count=23 add=40
+queue_step oid=6 interval=3905 count=14 add=108
+queue_step oid=6 interval=5593 count=10 add=389
+queue_step oid=9 interval=32417 count=2 add=-8705
+queue_step oid=9 interval=18938 count=3 add=-1872
+queue_step oid=6 interval=9564 count=4 add=1184
+queue_step oid=6 interval=14920 count=2 add=6611
+queue_step oid=9 interval=13783 count=4 add=-1374
+queue_step oid=6 interval=29898 count=2 add=12945
+queue_step oid=9 interval=8457 count=9 add=-327
+queue_step oid=9 interval=5743 count=15 add=-114
+queue_step oid=9 interval=4167 count=17 add=-67
+queue_step oid=9 interval=3184 count=27 add=-29
+queue_step oid=9 interval=2467 count=46 add=-13
+queue_step oid=9 interval=1931 count=56 add=-7
+queue_step oid=9 interval=1585 count=73 add=-4
+queue_step oid=9 interval=1331 count=75 add=-2
+queue_step oid=9 interval=1203 count=61 add=-1
+queue_step oid=9 interval=1108 count=89 add=0
+queue_step oid=9 interval=1076 count=100 add=0
+queue_step oid=9 interval=1066 count=591 add=0
+queue_step oid=9 interval=1067 count=1202 add=0
+queue_step oid=9 interval=1066 count=601 add=0
+queue_step oid=9 interval=1067 count=1202 add=0
+queue_step oid=9 interval=1066 count=342 add=0
+queue_step oid=9 interval=1100 count=71 add=0
+queue_step oid=9 interval=1142 count=67 add=0
+queue_step oid=9 interval=1194 count=68 add=1
+queue_step oid=9 interval=1297 count=73 add=2
+queue_step oid=9 interval=1490 count=58 add=4
+queue_step oid=9 interval=1759 count=52 add=8
+queue_step oid=9 interval=2238 count=33 add=16
+queue_step oid=9 interval=2820 count=24 add=38
+queue_step oid=9 interval=3800 count=15 add=100
+queue_step oid=9 interval=5597 count=11 add=211
+queue_step oid=9 interval=8346 count=5 add=607
+queue_step oid=9 interval=11984 count=3 add=1911
+queue_step oid=9 interval=20345 count=3 add=5126
+queue_step oid=9 interval=45125 count=1 add=0
+set_next_step_dir oid=6 dir=0
+queue_step oid=6 interval=6566050 count=1 add=0
+set_next_step_dir oid=9 dir=0
+queue_step oid=9 interval=453682 count=1 add=0
+queue_step oid=6 interval=35894 count=2 add=-10759
+queue_step oid=9 interval=88142 count=2 add=-32715
+queue_step oid=6 interval=19842 count=5 add=-2236
+queue_step oid=6 interval=10086 count=5 add=-655
+queue_step oid=9 interval=38990 count=2 add=-6528
+queue_step oid=6 interval=7047 count=11 add=-205
+queue_step oid=9 interval=27736 count=3 add=-2399
+queue_step oid=6 interval=4939 count=17 add=-89
+queue_step oid=9 interval=20853 count=5 add=-1154
+queue_step oid=6 interval=3524 count=28 add=-35
+queue_step oid=6 interval=2635 count=40 add=-16
+queue_step oid=9 interval=15313 count=8 add=-478
+queue_step oid=6 interval=2059 count=56 add=-8
+queue_step oid=9 interval=11611 count=13 add=-214
+queue_step oid=6 interval=1670 count=57 add=-5
+queue_step oid=9 interval=8970 count=19 add=-104
+queue_step oid=6 interval=1427 count=81 add=-3
+queue_step oid=6 interval=1219 count=92 add=-2
+queue_step oid=9 interval=7126 count=25 add=-55
+queue_step oid=6 interval=1054 count=63 add=-1
+queue_step oid=6 interval=978 count=93 add=-1
+queue_step oid=9 interval=5845 count=42 add=-21
+queue_step oid=6 interval=921 count=79 add=-1
+queue_step oid=6 interval=882 count=74 add=-1
+queue_step oid=6 interval=831 count=90 add=0
+queue_step oid=9 interval=5065 count=52 add=-5
+queue_step oid=6 interval=812 count=432 add=0
+queue_step oid=9 interval=4867 count=452 add=0
+queue_step oid=6 interval=811 count=4006 add=0
+queue_step oid=9 interval=4866 count=239 add=0
+queue_step oid=9 interval=4948 count=41 add=9
+queue_step oid=6 interval=835 count=112 add=0
+queue_step oid=6 interval=864 count=76 add=0
+queue_step oid=6 interval=908 count=65 add=0
+queue_step oid=9 interval=5403 count=33 add=31
+queue_step oid=6 interval=931 count=71 add=1
+queue_step oid=6 interval=970 count=65 add=2
+queue_step oid=6 interval=1062 count=138 add=2
+queue_step oid=9 interval=6486 count=22 add=71
+queue_step oid=9 interval=8113 count=15 add=142
+queue_step oid=6 interval=1372 count=65 add=3
+queue_step oid=6 interval=1596 count=63 add=6
+queue_step oid=9 interval=10345 count=10 add=304
+queue_step oid=6 interval=2019 count=41 add=12
+queue_step oid=9 interval=13602 count=6 add=698
+queue_step oid=6 interval=2563 count=29 add=27
+queue_step oid=9 interval=18053 count=5 add=1726
+queue_step oid=6 interval=3443 count=17 add=67
+queue_step oid=9 interval=22162 count=5 add=-1300
+queue_step oid=6 interval=4684 count=8 add=194
+queue_step oid=6 interval=6532 count=6 add=519
+queue_step oid=6 interval=10011 count=3 add=1716
+queue_step oid=9 interval=16383 count=8 add=-562
+queue_step oid=6 interval=16971 count=2 add=12706
+set_next_step_dir oid=6 dir=1
+queue_step oid=6 interval=29355 count=2 add=-2220
+queue_step oid=9 interval=10696 count=8 add=-474
+queue_step oid=6 interval=17167 count=3 add=-2724
+queue_step oid=6 interval=10752 count=5 add=-764
+queue_step oid=9 interval=7372 count=11 add=-187
+queue_step oid=6 interval=7443 count=9 add=-273
+queue_step oid=9 interval=5533 count=22 add=-80
+queue_step oid=6 interval=5314 count=17 add=-88
+queue_step oid=6 interval=3962 count=26 add=-38
+queue_step oid=9 interval=3883 count=28 add=-35
+queue_step oid=6 interval=3056 count=39 add=-18
+queue_step oid=9 interval=2970 count=44 add=-16
+queue_step oid=6 interval=2411 count=57 add=-9
+queue_step oid=9 interval=2336 count=48 add=-9
+queue_step oid=9 interval=1945 count=73 add=-5
+queue_step oid=6 interval=1942 count=73 add=-5
+queue_step oid=9 interval=1615 count=91 add=-3
+queue_step oid=6 interval=1613 count=90 add=-3
+queue_step oid=6 interval=1375 count=76 add=-2
+queue_step oid=9 interval=1386 count=62 add=-2
+queue_step oid=9 interval=1288 count=145 add=-1
+queue_step oid=6 interval=1254 count=119 add=-1
+queue_step oid=6 interval=1154 count=67 add=0
+queue_step oid=9 interval=1166 count=62 add=0
+queue_step oid=6 interval=1131 count=580 add=0
+queue_step oid=9 interval=1139 count=119 add=0
+queue_step oid=9 interval=1131 count=1078 add=0
+queue_step oid=6 interval=1132 count=636 add=0
+queue_step oid=9 interval=1132 count=637 add=0
+queue_step oid=6 interval=1131 count=1079 add=0
+queue_step oid=9 interval=1131 count=1080 add=0
+queue_step oid=6 interval=1132 count=636 add=0
+queue_step oid=9 interval=1132 count=636 add=0
+queue_step oid=6 interval=1131 count=911 add=0
+queue_step oid=9 interval=1131 count=256 add=0
+queue_step oid=9 interval=1166 count=81 add=0
+queue_step oid=6 interval=1157 count=81 add=0
+queue_step oid=9 interval=1205 count=75 add=0
+queue_step oid=6 interval=1195 count=63 add=0
+queue_step oid=9 interval=1246 count=82 add=1
+queue_step oid=6 interval=1241 count=85 add=1
+queue_step oid=9 interval=1372 count=60 add=1
+queue_step oid=6 interval=1356 count=80 add=2
+queue_step oid=9 interval=1459 count=87 add=3
+queue_step oid=6 interval=1556 count=62 add=3
+queue_step oid=9 interval=1757 count=60 add=5
+queue_step oid=6 interval=1785 count=56 add=5
+queue_step oid=9 interval=2103 count=46 add=9
+queue_step oid=6 interval=2116 count=46 add=9
+queue_step oid=9 interval=2567 count=36 add=18
+queue_step oid=6 interval=2591 count=34 add=18
+queue_step oid=6 interval=3262 count=24 add=40
+queue_step oid=9 interval=3300 count=23 add=39
+queue_step oid=9 interval=4274 count=15 add=97
+queue_step oid=6 interval=4285 count=16 add=100
+queue_step oid=9 interval=5776 count=10 add=290
+queue_step oid=6 interval=6147 count=8 add=266
+queue_step oid=6 interval=8659 count=4 add=1111
+queue_step oid=9 interval=9059 count=4 add=884
+queue_step oid=6 interval=13500 count=2 add=3627
+queue_step oid=9 interval=12874 count=2 add=2685
+queue_step oid=6 interval=24325 count=1 add=0
+queue_step oid=9 interval=18935 count=2 add=11356
+set_next_step_dir oid=6 dir=0
+queue_step oid=6 interval=68726 count=1 add=0
+set_next_step_dir oid=9 dir=1
+queue_step oid=9 interval=55331 count=2 add=-25616
+queue_step oid=6 interval=21808 count=2 add=-5751
+queue_step oid=6 interval=12610 count=4 add=-1124
+queue_step oid=9 interval=19577 count=3 add=-2218
+queue_step oid=6 interval=8289 count=8 add=-276
+queue_step oid=9 interval=13370 count=6 add=-676
+queue_step oid=6 interval=6243 count=15 add=-110
+queue_step oid=9 interval=9442 count=11 add=-257
+queue_step oid=6 interval=4698 count=17 add=-39
+queue_step oid=9 interval=6913 count=19 add=-43
+queue_step oid=6 interval=4173 count=38 add=-11
+queue_step oid=9 interval=6164 count=24 add=-22
+queue_step oid=6 interval=3846 count=2846 add=0
+queue_step oid=9 interval=5769 count=1875 add=0
+queue_step oid=9 interval=5868 count=23 add=63
+queue_step oid=6 interval=3940 count=32 add=27
+queue_step oid=9 interval=7400 count=9 add=140
+queue_step oid=6 interval=4890 count=13 add=138
+queue_step oid=9 interval=9162 count=10 add=450
+queue_step oid=6 interval=6998 count=10 add=350
+queue_step oid=9 interval=14388 count=4 add=1066
+queue_step oid=6 interval=10917 count=4 add=1300
+queue_step oid=9 interval=20056 count=2 add=4475
+queue_step oid=6 interval=18080 count=2 add=5689
+queue_step oid=9 interval=33686 count=2 add=11666
+queue_step oid=6 interval=35767 count=2 add=17969
+queue_step oid=9 interval=65506 count=1 add=0
+set_next_step_dir oid=6 dir=1
+queue_step oid=6 interval=413504 count=1 add=0
+queue_step oid=9 interval=375378 count=1 add=0
+queue_step oid=6 interval=49765 count=2 add=-15080
+queue_step oid=9 interval=40969 count=2 add=-12339
+queue_step oid=9 interval=22678 count=3 add=-2397
+queue_step oid=6 interval=25959 count=2 add=-5660
+queue_step oid=6 interval=16453 count=4 add=-1431
+queue_step oid=9 interval=16098 count=5 add=-1312
+queue_step oid=6 interval=11214 count=9 add=-476
+queue_step oid=9 interval=9744 count=8 add=-400
+queue_step oid=6 interval=7141 count=12 add=-177
+queue_step oid=9 interval=6737 count=14 add=-143
+queue_step oid=6 interval=5150 count=22 add=-71
+queue_step oid=9 interval=4897 count=22 add=-64
+queue_step oid=6 interval=3729 count=27 add=-33
+queue_step oid=9 interval=3603 count=30 add=-29
+queue_step oid=6 interval=2922 count=41 add=-16
+queue_step oid=9 interval=2805 count=45 add=-14
+queue_step oid=6 interval=2338 count=50 add=-9
+queue_step oid=9 interval=2241 count=52 add=-8
+queue_step oid=6 interval=1936 count=71 add=-5
+queue_step oid=9 interval=1880 count=63 add=-5
+queue_step oid=6 interval=1615 count=90 add=-3
+queue_step oid=9 interval=1604 count=87 add=-3
+queue_step oid=6 interval=1389 count=71 add=-2
+queue_step oid=9 interval=1382 count=65 add=-2
+queue_step oid=9 interval=1283 count=145 add=-1
+queue_step oid=6 interval=1271 count=107 add=-1
+queue_step oid=6 interval=1201 count=76 add=-1
+queue_step oid=9 interval=1160 count=72 add=0
+queue_step oid=6 interval=1147 count=80 add=0
+queue_step oid=9 interval=1136 count=161 add=0
+queue_step oid=6 interval=1131 count=784 add=0
+queue_step oid=9 interval=1131 count=1079 add=0
+queue_step oid=6 interval=1132 count=636 add=0
+queue_step oid=9 interval=1132 count=637 add=0
+queue_step oid=6 interval=1131 count=1079 add=0
+queue_step oid=9 interval=1131 count=909 add=0
+queue_step oid=6 interval=1133 count=247 add=0
+queue_step oid=9 interval=1157 count=76 add=0
+queue_step oid=6 interval=1163 count=94 add=0
+queue_step oid=9 interval=1195 count=73 add=0
+queue_step oid=6 interval=1181 count=146 add=1
+queue_step oid=9 interval=1221 count=89 add=1
+queue_step oid=9 interval=1330 count=112 add=2
+queue_step oid=6 interval=1352 count=95 add=2
+queue_step oid=6 interval=1587 count=58 add=3
+queue_step oid=9 interval=1581 count=80 add=4
+queue_step oid=6 interval=1791 count=67 add=6
+queue_step oid=9 interval=1941 count=52 add=7
+queue_step oid=6 interval=2247 count=41 add=11
+queue_step oid=9 interval=2343 count=43 add=14
+queue_step oid=6 interval=2745 count=32 add=23
+queue_step oid=9 interval=3022 count=26 add=29
+queue_step oid=6 interval=3536 count=21 add=53
+queue_step oid=9 interval=3837 count=19 add=69
+queue_step oid=6 interval=4711 count=11 add=136
+queue_step oid=9 interval=5318 count=10 add=179
+queue_step oid=6 interval=6382 count=7 add=404
+queue_step oid=9 interval=7500 count=7 add=359
+queue_step oid=6 interval=9437 count=4 add=1355
+queue_step oid=9 interval=10430 count=4 add=1066
+queue_step oid=6 interval=17346 count=2 add=8980
+queue_step oid=9 interval=15620 count=2 add=3588
+set_next_step_dir oid=6 dir=0
+queue_step oid=6 interval=42477 count=2 add=-15242
+queue_step oid=9 interval=25733 count=1 add=0
+set_next_step_dir oid=9 dir=0
+queue_step oid=9 interval=106064 count=1 add=0
+queue_step oid=6 interval=16459 count=3 add=-2710
+queue_step oid=6 interval=10183 count=5 add=-746
+queue_step oid=6 interval=6911 count=7 add=-282
+queue_step oid=9 interval=33909 count=2 add=-8684
+queue_step oid=6 interval=5084 count=17 add=-93
+queue_step oid=9 interval=20304 count=3 add=-1986
+queue_step oid=6 interval=3624 count=27 add=-38
+queue_step oid=9 interval=14498 count=5 add=-739
+queue_step oid=9 interval=11040 count=11 add=-261
+queue_step oid=6 interval=2699 count=38 add=-17
+queue_step oid=6 interval=2106 count=61 add=-8
+queue_step oid=9 interval=8296 count=17 add=-116
+queue_step oid=6 interval=1678 count=57 add=-5
+queue_step oid=9 interval=6420 count=25 add=-56
+queue_step oid=6 interval=1435 count=82 add=-3
+queue_step oid=9 interval=5096 count=35 add=-29
+queue_step oid=6 interval=1225 count=92 add=-2
+queue_step oid=6 interval=1059 count=85 add=-1
+queue_step oid=9 interval=4141 count=33 add=-15
+queue_step oid=6 interval=949 count=64 add=0
+queue_step oid=9 interval=3716 count=50 add=-8
+queue_step oid=6 interval=904 count=71 add=0
+queue_step oid=6 interval=869 count=103 add=0
+queue_step oid=6 interval=841 count=121 add=0
+queue_step oid=9 interval=3398 count=68 add=-2
+queue_step oid=6 interval=826 count=378 add=0
+queue_step oid=9 interval=3299 count=746 add=0
+queue_step oid=6 interval=824 count=644 add=0
+queue_step oid=6 interval=825 count=1057 add=0
+queue_step oid=6 interval=824 count=645 add=0
+queue_step oid=6 interval=825 count=1058 add=0
+queue_step oid=9 interval=3298 count=790 add=0
+queue_step oid=6 interval=824 count=645 add=0
+queue_step oid=6 interval=825 count=1057 add=0
+queue_step oid=6 interval=824 count=645 add=0
+queue_step oid=6 interval=827 count=228 add=0
+queue_step oid=9 interval=3324 count=67 add=4
+queue_step oid=6 interval=849 count=121 add=0
+queue_step oid=6 interval=882 count=79 add=0
+queue_step oid=6 interval=921 count=72 add=0
+queue_step oid=9 interval=3663 count=45 add=14
+queue_step oid=6 interval=940 count=159 add=1
+queue_step oid=9 interval=4364 count=29 add=27
+queue_step oid=6 interval=1112 count=66 add=2
+queue_step oid=6 interval=1216 count=113 add=3
+queue_step oid=9 interval=5239 count=23 add=51
+queue_step oid=6 interval=1596 count=55 add=5
+queue_step oid=9 interval=6554 count=15 add=100
+queue_step oid=6 interval=1915 count=46 add=10
+queue_step oid=9 interval=8153 count=11 add=221
+queue_step oid=6 interval=2426 count=31 add=22
+queue_step oid=9 interval=10711 count=7 add=525
+queue_step oid=6 interval=3157 count=21 add=54
+queue_step oid=9 interval=14748 count=4 add=1352
+queue_step oid=6 interval=4451 count=14 add=113
+queue_step oid=9 interval=20959 count=3 add=2484
+queue_step oid=6 interval=6126 count=8 add=322
+queue_step oid=9 interval=29305 count=2 add=6529
+queue_step oid=6 interval=8873 count=7 add=1005
+queue_step oid=9 interval=48258 count=1 add=0
+queue_step oid=9 interval=102084 count=1 add=0
+queue_step oid=6 interval=16885 count=2 add=2880
+queue_step oid=6 interval=23658 count=2 add=10816
+queue_step oid=6 interval=65263 count=1 add=0
+queue_step oid=9 interval=423036 count=1 add=0
+set_next_step_dir oid=6 dir=1
+queue_step oid=6 interval=500152 count=1 add=0
+queue_step oid=9 interval=40970 count=2 add=-12340
+queue_step oid=9 interval=22677 count=3 add=-2396
+queue_step oid=9 interval=16098 count=5 add=-1312
+queue_step oid=6 interval=25180 count=2 add=-7421
+queue_step oid=6 interval=13832 count=4 add=-1320
+queue_step oid=9 interval=9744 count=8 add=-400
+queue_step oid=6 interval=9078 count=8 add=-391
+queue_step oid=9 interval=6737 count=14 add=-143
+queue_step oid=6 interval=6270 count=13 add=-140
+queue_step oid=9 interval=4890 count=23 add=-63
+queue_step oid=6 interval=4579 count=23 add=-55
+queue_step oid=9 interval=3575 count=29 add=-29
+queue_step oid=6 interval=3424 count=33 add=-25
+queue_step oid=9 interval=2804 count=44 add=-14
+queue_step oid=6 interval=2683 count=43 add=-13
+queue_step oid=9 interval=2249 count=53 add=-8
+queue_step oid=6 interval=2180 count=61 add=-7
+queue_step oid=9 interval=1879 count=62 add=-5
+queue_step oid=6 interval=1793 count=81 add=-4
+queue_step oid=9 interval=1607 count=88 add=-3
+queue_step oid=6 interval=1515 count=67 add=-3
+queue_step oid=9 interval=1382 count=65 add=-2
+queue_step oid=6 interval=1351 count=93 add=-2
+queue_step oid=9 interval=1283 count=145 add=-1
+queue_step oid=6 interval=1186 count=82 add=-1
+queue_step oid=6 interval=1132 count=618 add=0
+queue_step oid=9 interval=1161 count=66 add=0
+queue_step oid=9 interval=1137 count=151 add=0
+queue_step oid=9 interval=1131 count=1072 add=0
+queue_step oid=6 interval=1131 count=1080 add=0
+queue_step oid=9 interval=1132 count=637 add=0
+queue_step oid=6 interval=1132 count=637 add=0
+queue_step oid=9 interval=1131 count=1081 add=0
+queue_step oid=6 interval=1131 count=1080 add=0
+queue_step oid=9 interval=1132 count=637 add=0
+queue_step oid=6 interval=1132 count=636 add=0
+queue_step oid=9 interval=1131 count=1080 add=0
+queue_step oid=6 interval=1131 count=975 add=0
+queue_step oid=9 interval=1134 count=160 add=0
+queue_step oid=9 interval=1170 count=77 add=0
+queue_step oid=9 interval=1210 count=71 add=0
+queue_step oid=6 interval=1156 count=82 add=1
+queue_step oid=9 interval=1253 count=76 add=1
+queue_step oid=6 interval=1258 count=69 add=2
+queue_step oid=9 interval=1354 count=100 add=2
+queue_step oid=6 interval=1373 count=111 add=3
+queue_step oid=9 interval=1581 count=80 add=4
+queue_step oid=6 interval=1738 count=64 add=5
+queue_step oid=9 interval=1943 count=53 add=7
+queue_step oid=6 interval=2088 count=53 add=10
+queue_step oid=9 interval=2357 count=41 add=14
+queue_step oid=6 interval=2681 count=32 add=20
+queue_step oid=9 interval=2982 count=28 add=30
+queue_step oid=6 interval=3371 count=23 add=46
+queue_step oid=9 interval=3895 count=18 add=71
+queue_step oid=6 interval=4493 count=14 add=116
+queue_step oid=9 interval=5278 count=11 add=190
+queue_step oid=6 interval=6217 count=8 add=329
+queue_step oid=9 interval=7508 count=8 add=328
+queue_step oid=6 interval=9088 count=4 add=1075
+queue_step oid=6 interval=13985 count=2 add=3774
+queue_step oid=9 interval=10214 count=5 add=948
+queue_step oid=6 interval=25430 count=1 add=0
+queue_step oid=9 interval=15791 count=2 add=2940
+queue_step oid=9 interval=22641 count=3 add=11466
+queue_step oid=9 interval=66529 count=1 add=0
+queue_step oid=6 interval=628857 count=1 add=0
+set_next_step_dir oid=9 dir=1
+queue_step oid=9 interval=359767 count=1 add=0
+queue_step oid=9 interval=35347 count=2 add=-10588
+queue_step oid=9 interval=19539 count=3 add=-2025
+queue_step oid=6 interval=52670 count=2 add=-17788
+queue_step oid=9 interval=13859 count=7 add=-921
+queue_step oid=6 interval=24467 count=2 add=-4034
+queue_step oid=9 interval=8053 count=9 add=-296
+queue_step oid=6 interval=17090 count=4 add=-1280
+queue_step oid=9 interval=5730 count=14 add=-115
+queue_step oid=6 interval=12051 count=7 add=-565
+queue_step oid=9 interval=4288 count=23 add=-54
+queue_step oid=6 interval=8366 count=12 add=-206
+queue_step oid=9 interval=3128 count=35 add=-23
+queue_step oid=6 interval=6110 count=18 add=-87
+queue_step oid=9 interval=2392 count=49 add=-11
+queue_step oid=6 interval=4681 count=26 add=-41
+queue_step oid=9 interval=1905 count=62 add=-6
+queue_step oid=6 interval=3704 count=37 add=-21
+queue_step oid=9 interval=1585 count=64 add=-4
+queue_step oid=6 interval=3004 count=46 add=-12
+queue_step oid=9 interval=1380 count=63 add=-3
+queue_step oid=6 interval=2507 count=61 add=-7
+queue_step oid=9 interval=1233 count=86 add=-2
+queue_step oid=9 interval=1081 count=67 add=-1
+queue_step oid=6 interval=2110 count=92 add=-4
+queue_step oid=9 interval=1003 count=115 add=-1
+queue_step oid=9 interval=914 count=96 add=-1
+queue_step oid=6 interval=1783 count=74 add=-3
+queue_step oid=9 interval=852 count=76 add=-1
+queue_step oid=6 interval=1604 count=63 add=-2
+queue_step oid=9 interval=822 count=67 add=-1
+queue_step oid=9 interval=801 count=64 add=-1
+queue_step oid=6 interval=1510 count=85 add=-1
+queue_step oid=9 interval=783 count=63 add=-1
+queue_step oid=9 interval=743 count=64 add=0
+queue_step oid=9 interval=727 count=171 add=0
+queue_step oid=6 interval=1469 count=66 add=-1
+queue_step oid=6 interval=1432 count=432 add=0
+queue_step oid=9 interval=715 count=395 add=0
+queue_step oid=9 interval=716 count=782 add=0
+queue_step oid=6 interval=1431 count=1077 add=0
+queue_step oid=9 interval=715 count=661 add=0
+queue_step oid=9 interval=716 count=781 add=0
+st7920_send_cmds oid=3 cmds=b'"\x82'
+st7920_send_data oid=3 data=b'0 '
+st7920_send_cmds oid=3 cmds=b'\x87'
+st7920_send_data oid=3 data=b'0%    0%'
+st7920_send_cmds oid=3 cmds=b'\x8d'
+st7920_send_data oid=3 data=b' -1:59    0 '
+st7920_send_cmds oid=3 cmds=b'\x96'
+st7920_send_data oid=3 data=b'100%'
+st7920_send_cmds oid=3 cmds=b'\x98'
+st7920_send_data oid=3 data=b'X200 Y200 Z10.00'
+st7920_send_cmds oid=3 cmds=b'&\x80\x88'
+st7920_send_data oid=3 data=b'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+st7920_send_cmds oid=3 cmds=b'\x81\x88'
+st7920_send_data oid=3 data=b'\x80\x00'
+st7920_send_cmds oid=3 cmds=b'\x81\x8c'
+st7920_send_data oid=3 data=b'\x00\x01'
+st7920_send_cmds oid=3 cmds=b'\x82\x80'
+st7920_send_data oid=3 data=b'?\xfc\x00\x00\x008\x00\x00\x00\x00\x0e\x00'
+st7920_send_cmds oid=3 cmds=b'\x82\x88'
+st7920_send_data oid=3 data=b'\x80\x00'
+st7920_send_cmds oid=3 cmds=b'\x82\x8c'
+st7920_send_data oid=3 data=b'\x00\x01'
+st7920_send_cmds oid=3 cmds=b'\x83\x80'
+st7920_send_data oid=3 data=b'\x07\xe0'
+st7920_send_cmds oid=3 cmds=b'\x83\x80'
+st7920_send_data oid=3 data=b'\x07\xe0\x00\x00\x00l\x00\x00\x00\x00\x1e\x18\x00\x00\x00\x00\x80\x00'
+st7920_send_cmds oid=3 cmds=b'\x83\x8c'
+st7920_send_data oid=3 data=b'\x00\x01'
+st7920_send_cmds oid=3 cmds=b'\x84\x80'
+st7920_send_data oid=3 data=b'?\xfc'
+st7920_send_cmds oid=3 cmds=b'\x84\x80'
+st7920_send_data oid=3 data=b'?\xfc\x00\x00\x00l\x00\x00\x00\x00\x1e<\x00\x00\x00\x00\x80\x00'
+st7920_send_cmds oid=3 cmds=b'\x84\x8c'
+st7920_send_data oid=3 data=b'\x00\x01'
+st7920_send_cmds oid=3 cmds=b'\x85\x80'
+st7920_send_data oid=3 data=b'\x07\xe0'
+st7920_send_cmds oid=3 cmds=b'\x85\x80'
+st7920_send_data oid=3 data=b'\x07\xe0\x00\x00\x008\x00\x00\x00\x00\x0e|\x00\x00\x00\x00\x80\x00'
+st7920_send_cmds oid=3 cmds=b'\x85\x8c'
+st7920_send_data oid=3 data=b'\x00\x01'
+st7920_send_cmds oid=3 cmds=b'\x86\x80'
+st7920_send_data oid=3 data=b'?\xfc'
+st7920_send_cmds oid=3 cmds=b'\x86\x85'
+st7920_send_data oid=3 data=b'\x04<\x00\x00\x00\x00\x80\x00'
+st7920_send_cmds oid=3 cmds=b'\x86\x8c'
+st7920_send_data oid=3 data=b'\x00\x01'
+st7920_send_cmds oid=3 cmds=b'\x87\x85'
+st7920_send_data oid=3 data=b'\x01\x80\x00\x00\x00\x00\x80\x00'
+st7920_send_cmds oid=3 cmds=b'\x87\x8c'
+st7920_send_data oid=3 data=b'\x00\x01'
+st7920_send_cmds oid=3 cmds=b'\x88\x80'
+st7920_send_data oid=3 data=b'\x0f\xf0'
+st7920_send_cmds oid=3 cmds=b'\x88\x85'
+st7920_send_data oid=3 data=b'\x01\x80\x00\x00\x00\x00\x80\x00'
+st7920_send_cmds oid=3 cmds=b'\x88\x8c'
+st7920_send_data oid=3 data=b'\x00\x01'
+st7920_send_cmds oid=3 cmds=b'\x89\x80'
+st7920_send_data oid=3 data=b'\x0f\xd0'
+st7920_send_cmds oid=3 cmds=b'\x89\x85'
+st7920_send_data oid=3 data=b'< \x00\x00\x00\x00\x80\x00'
+st7920_send_cmds oid=3 cmds=b'\x89\x8c'
+st7920_send_data oid=3 data=b'\x00\x01'
+st7920_send_cmds oid=3 cmds=b'\x8a\x80'
+st7920_send_data oid=3 data=b'\x0f\xf0'
+st7920_send_cmds oid=3 cmds=b'\x8a\x85'
+st7920_send_data oid=3 data=b'>p\x00\x00\x00\x00\x80\x00'
+st7920_send_cmds oid=3 cmds=b'\x8a\x8c'
+st7920_send_data oid=3 data=b'\x00\x01'
+st7920_send_cmds oid=3 cmds=b'\x8b\x85'
+st7920_send_data oid=3 data=b'<x\x00\x00\x00\x00\x80\x00'
+st7920_send_cmds oid=3 cmds=b'\x8b\x8c'
+st7920_send_data oid=3 data=b'\x00\x01'
+st7920_send_cmds oid=3 cmds=b'\x8c\x80'
+st7920_send_data oid=3 data=b'\x03\xc0'
+st7920_send_cmds oid=3 cmds=b'\x8c\x85'
+st7920_send_data oid=3 data=b'\x18x\x00\x00\x00\x00\x80\x00'
+st7920_send_cmds oid=3 cmds=b'\x8c\x8c'
+st7920_send_data oid=3 data=b'\x00\x01'
+st7920_send_cmds oid=3 cmds=b'\x8d\x80'
+st7920_send_data oid=3 data=b'\x01\x80'
+st7920_send_cmds oid=3 cmds=b'\x8d\x85'
+st7920_send_data oid=3 data=b'\x00p\x00\x00\x00\x00\x80\x00'
+st7920_send_cmds oid=3 cmds=b'\x8d\x8c'
+st7920_send_data oid=3 data=b'\x00\x01'
+st7920_send_cmds oid=3 cmds=b'\x8e\x88'
+st7920_send_data oid=3 data=b'\x80\x00'
+st7920_send_cmds oid=3 cmds=b'\x8e\x8c'
+st7920_send_data oid=3 data=b'\x00\x01'
+st7920_send_cmds oid=3 cmds=b'\x8f\x88'
+st7920_send_data oid=3 data=b'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+st7920_send_cmds oid=3 cmds=b'\x92\x82'
+st7920_send_data oid=3 data=b'\x008\x00\x00\x00\x00\xee\xec'
+st7920_send_cmds oid=3 cmds=b'\x93\x82'
+st7920_send_data oid=3 data=b'\x00l\x00\x00\x00\x00\x88\x8a'
+st7920_send_cmds oid=3 cmds=b'\x94\x82'
+st7920_send_data oid=3 data=b'\x00l\x00\x00\x00\x00\xcc\xca'
+st7920_send_cmds oid=3 cmds=b'\x95\x82'
+st7920_send_data oid=3 data=b'\x008\x00\x00\x00\x00\x88\x8a'
+st7920_send_cmds oid=3 cmds=b'\x96\x85'
+st7920_send_data oid=3 data=b'\x8e\xec'
+st7920_send_cmds oid=3 cmds=b'\x98\x85'
+st7920_send_data oid=3 data=b'\xc4\xee'
+st7920_send_cmds oid=3 cmds=b'\x99\x85'
+st7920_send_data oid=3 data=b'\xaaH'
+st7920_send_cmds oid=3 cmds=b'\x9a\x85'
+st7920_send_data oid=3 data=b'\xceL'
+st7920_send_cmds oid=3 cmds=b'\x9b\x80'
+queue_step oid=9 interval=715 count=661 add=0
+queue_step oid=6 interval=1431 count=3357 add=0
+queue_step oid=9 interval=716 count=782 add=0
+queue_step oid=9 interval=715 count=661 add=0
+queue_step oid=9 interval=716 count=781 add=0
+queue_step oid=9 interval=715 count=661 add=0
+queue_step oid=9 interval=716 count=782 add=0
+queue_step oid=9 interval=715 count=661 add=0
+queue_step oid=9 interval=716 count=781 add=0
+queue_step oid=9 interval=715 count=661 add=0
+queue_step oid=9 interval=716 count=663 add=0
+queue_step oid=9 interval=736 count=128 add=0
+queue_step oid=6 interval=1458 count=73 add=0
+queue_step oid=9 interval=758 count=111 add=0
+queue_step oid=6 interval=1490 count=83 add=1
+queue_step oid=9 interval=791 count=83 add=0
+queue_step oid=6 interval=1601 count=81 add=2
+queue_step oid=9 interval=827 count=78 add=0
+queue_step oid=9 interval=866 count=72 add=0
+queue_step oid=9 interval=887 count=73 add=1
+queue_step oid=6 interval=1802 count=68 add=3
+queue_step oid=9 interval=947 count=125 add=1
+queue_step oid=6 interval=2042 count=66 add=5
+queue_step oid=9 interval=1103 count=74 add=1
+queue_step oid=9 interval=1207 count=95 add=2
+queue_step oid=6 interval=2408 count=55 add=9
+queue_step oid=9 interval=1437 count=61 add=3
+queue_step oid=6 interval=2949 count=39 add=17
+queue_step oid=9 interval=1647 count=64 add=6
+queue_step oid=6 interval=3663 count=28 add=35
+queue_step oid=9 interval=2070 count=43 add=12
+queue_step oid=6 interval=4711 count=18 add=78
+queue_step oid=9 interval=2641 count=29 add=26
+queue_step oid=6 interval=6181 count=12 add=191
+queue_step oid=9 interval=3481 count=18 add=63
+queue_step oid=6 interval=8825 count=6 add=499
+queue_step oid=9 interval=4710 count=9 add=177
+queue_step oid=6 interval=12378 count=3 add=1444
+queue_step oid=9 interval=6458 count=7 add=413
+queue_step oid=6 interval=19619 count=2 add=8220
+queue_step oid=9 interval=10225 count=3 add=1313
+set_next_step_dir oid=6 dir=0
+queue_step oid=6 interval=85965 count=1 add=0
+queue_step oid=9 interval=15744 count=2 add=6836
+set_next_step_dir oid=9 dir=0
+queue_step oid=9 interval=69424 count=1 add=0
+queue_step oid=6 interval=24161 count=2 add=-6337
+queue_step oid=9 interval=21199 count=2 add=-5052
+queue_step oid=6 interval=14079 count=4 add=-1284
+queue_step oid=9 interval=12828 count=4 add=-1091
+queue_step oid=6 interval=9350 count=9 add=-399
+queue_step oid=9 interval=8557 count=9 add=-327
+queue_step oid=6 interval=6229 count=12 add=-149
+queue_step oid=9 interval=5832 count=15 add=-119
+queue_step oid=6 interval=4674 count=19 add=-64
+queue_step oid=9 interval=4247 count=23 add=-47
+queue_step oid=6 interval=3598 count=28 add=-30
+queue_step oid=9 interval=3265 count=34 add=-22
+queue_step oid=6 interval=2841 count=41 add=-15
+queue_step oid=9 interval=2578 count=51 add=-11
+queue_step oid=6 interval=2284 count=57 add=-8
+queue_step oid=9 interval=2067 count=65 add=-6
+queue_step oid=6 interval=1882 count=63 add=-5
+queue_step oid=9 interval=1724 count=66 add=-4
+queue_step oid=6 interval=1606 count=90 add=-3
+queue_step oid=9 interval=1506 count=64 add=-3
+queue_step oid=6 interval=1370 count=99 add=-2
+queue_step oid=9 interval=1350 count=90 add=-2
+queue_step oid=6 interval=1214 count=64 add=-2
+queue_step oid=9 interval=1212 count=64 add=-2
+queue_step oid=6 interval=1113 count=153 add=-1
+queue_step oid=9 interval=1112 count=130 add=-1
+queue_step oid=9 interval=1020 count=73 add=-1
+queue_step oid=6 interval=998 count=76 add=-1
+queue_step oid=9 interval=987 count=72 add=-1
+queue_step oid=6 interval=963 count=66 add=-1
+queue_step oid=9 interval=934 count=75 add=0
+queue_step oid=6 interval=921 count=83 add=0
+queue_step oid=9 interval=914 count=154 add=0
+queue_step oid=6 interval=905 count=3031 add=0
+queue_step oid=9 interval=905 count=4120 add=0
+queue_step oid=6 interval=906 count=443 add=0
+queue_step oid=6 interval=905 count=4139 add=0
+queue_step oid=9 interval=906 count=443 add=0
+queue_step oid=9 interval=905 count=4139 add=0
+queue_step oid=6 interval=906 count=443 add=0
+queue_step oid=6 interval=905 count=4139 add=0
+queue_step oid=9 interval=906 count=443 add=0
+queue_step oid=9 interval=905 count=2974 add=0
+queue_step oid=6 interval=910 count=146 add=0
+queue_step oid=9 interval=926 count=102 add=0
+queue_step oid=6 interval=937 count=101 add=0
+queue_step oid=9 interval=954 count=97 add=0
+queue_step oid=6 interval=978 count=70 add=0
+queue_step oid=9 interval=995 count=67 add=0
+queue_step oid=6 interval=1021 count=63 add=0
+queue_step oid=9 interval=1041 count=64 add=0
+queue_step oid=6 interval=1054 count=134 add=1
+queue_step oid=9 interval=1067 count=131 add=1
+queue_step oid=6 interval=1224 count=67 add=1
+queue_step oid=9 interval=1236 count=65 add=1
+queue_step oid=6 interval=1324 count=91 add=2
+queue_step oid=9 interval=1335 count=85 add=2
+queue_step oid=9 interval=1542 count=65 add=3
+queue_step oid=6 interval=1544 count=65 add=3
+queue_step oid=9 interval=1778 count=56 add=5
+queue_step oid=6 interval=1782 count=57 add=5
+queue_step oid=9 interval=2104 count=46 add=9
+queue_step oid=6 interval=2119 count=45 add=9
+queue_step oid=9 interval=2568 count=35 add=18
+queue_step oid=6 interval=2580 count=35 add=18
+queue_step oid=9 interval=3253 count=24 add=40
+queue_step oid=6 interval=3278 count=24 add=40
+queue_step oid=9 interval=4270 count=16 add=99
+queue_step oid=6 interval=4336 count=15 add=98
+queue_step oid=6 interval=5968 count=9 add=270
+queue_step oid=9 interval=6088 count=12 add=267
+queue_step oid=6 interval=8940 count=6 add=737
+queue_step oid=9 interval=9637 count=5 add=594
+queue_step oid=6 interval=13867 count=3 add=2099
+queue_step oid=9 interval=12897 count=3 add=1676
+queue_step oid=6 interval=22760 count=2 add=11290
+queue_step oid=9 interval=18488 count=2 add=5023
+queue_step oid=6 interval=53331 count=1 add=0
+queue_step oid=9 interval=31238 count=2 add=8421
+queue_step oid=9 interval=57238 count=1 add=0
+queue_digital_out oid=24 clock=1292803359 on_ticks=1
+queue_digital_out oid=25 clock=1292803359 on_ticks=1
+queue_digital_out oid=26 clock=1292803359 on_ticks=1
+queue_digital_out oid=27 clock=1292803359 on_ticks=1
+st7920_send_data oid=3 data=b'\x1f\xf0'
+st7920_send_cmds oid=3 cmds=b'\x9b\x85'
+st7920_send_data oid=3 data=b'\xaaH'
+st7920_send_cmds oid=3 cmds=b'\x9c\x80'
+st7920_send_data oid=3 data=b' \x08'
+st7920_send_cmds oid=3 cmds=b'\x9c\x85'
+st7920_send_data oid=3 data=b'\xaaN'

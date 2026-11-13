@@ -74,9 +74,14 @@ docker run --rm --user "$(id -u):$(id -g)" \
     # The sections of the Printdeck modules ([printdeck_sdcard], ...) are not in Klipper, and
     # Klipper refuses a config with them. They make no commands at the config of the board.
     awk "/^\\[/ { skip = /^\\[printdeck_/ } !skip" /printer/printer.cfg > /tmp/printer.cfg
+    # shaper*.gcode runs with an input shaper: the config with [input_shaper] at the end.
+    cp /tmp/printer.cfg /tmp/printer-shaper.cfg
+    printf "\n[input_shaper]\nshaper_freq_x: 48.5\nshaper_freq_y: 36.2\nshaper_type: mzv\n" >> /tmp/printer-shaper.cfg
     for g in /out/*.gcode; do
       name=${g%.gcode}
-      python3 klippy/klippy.py /tmp/printer.cfg -i "$g" -o "$name.serial" -d out/klipper.dict \
+      cfg=/tmp/printer.cfg
+      case "$(basename "$g")" in shaper*) cfg=/tmp/printer-shaper.cfg ;; esac
+      python3 klippy/klippy.py $cfg -i "$g" -o "$name.serial" -d out/klipper.dict \
         > "$name.log" 2>&1 || { cat "$name.log"; exit 1; }
       python3 klippy/parsedump.py out/klipper.dict "$name.serial" > "$name.txt"
       # Two more runs: their commands can be in another order between objects. The tests of
@@ -85,7 +90,7 @@ docker run --rm --user "$(id -u):$(id -g)" \
       # the Klipper commit changes.
       for run in 2 3; do
         [ -e "$name.run$run.txt" ] && continue
-        python3 klippy/klippy.py /tmp/printer.cfg -i "$g" -o "$name.tmp" -d out/klipper.dict \
+        python3 klippy/klippy.py $cfg -i "$g" -o "$name.tmp" -d out/klipper.dict \
           > "$name.log" 2>&1 || { cat "$name.log"; exit 1; }
         python3 klippy/parsedump.py out/klipper.dict "$name.tmp" > "$name.run$run.txt"
       done

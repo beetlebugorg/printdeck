@@ -148,6 +148,13 @@ func GaussianSolve(a, rhs [][]float64, allowUnderdetermined bool) [][]float64 {
 	return MatTransp(rest)
 }
 
+// PseudoInverse returns the pseudo inverse of a matrix (pseudo_inverse), or nil.
+func PseudoInverse(m [][]float64) [][]float64 {
+	mt := MatTransp(m)
+	mtm := MatMulTransp(mt)
+	return GaussianSolve(mtm, mt, false)
+}
+
 // SolveLinearEquations returns the least squares solution of a set of linear equations, or nil.
 func SolveLinearEquations(eqs, ans [][]float64, allowUnderdetermined bool) [][]float64 {
 	eqst := MatTransp(eqs)
