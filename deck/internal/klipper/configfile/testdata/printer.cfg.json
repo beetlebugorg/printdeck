@@ -214,6 +214,15 @@
   ]
  ],
  [
+  "printdeck_homing",
+  [
+   [
+    "max_skew",
+    "10"
+   ]
+  ]
+ ],
+ [
   "z_tilt",
   [
    [
@@ -222,7 +231,7 @@
    ],
    [
     "points",
-    "\n3, 196\n253, 196"
+    "\n-48, 137\n197, 137"
    ],
    [
     "speed",
@@ -475,15 +484,15 @@
    ],
    [
     "x_offset",
-    "12"
+    "68"
    ],
    [
     "y_offset",
-    "-76"
+    "-17"
    ],
    [
     "z_offset",
-    "3.569"
+    "3.600"
    ],
    [
     "speed",
@@ -520,6 +529,67 @@
   ]
  ],
  [
+  "axis_twist_compensation",
+  [
+   [
+    "speed",
+    "100"
+   ],
+   [
+    "horizontal_move_z",
+    "8"
+   ],
+   [
+    "calibrate_start_x",
+    "20"
+   ],
+   [
+    "calibrate_end_x",
+    "260"
+   ],
+   [
+    "calibrate_y",
+    "120"
+   ],
+   [
+    "calibrate_start_y",
+    "20"
+   ],
+   [
+    "calibrate_end_y",
+    "220"
+   ],
+   [
+    "calibrate_x",
+    "140"
+   ],
+   [
+    "z_compensations",
+    "0.048, 0.030, 0.044, -0.034, -0.088"
+   ],
+   [
+    "compensation_start_x",
+    "20"
+   ],
+   [
+    "compensation_end_x",
+    "260"
+   ],
+   [
+    "zy_compensations",
+    "-0.007, 0.001, 0.007"
+   ],
+   [
+    "compensation_start_y",
+    "20"
+   ],
+   [
+    "compensation_end_y",
+    "220"
+   ]
+  ]
+ ],
+ [
   "bed_mesh",
   [
    [
@@ -532,11 +602,11 @@
    ],
    [
     "mesh_min",
-    "15, 15"
+    "20, 15"
    ],
    [
     "mesh_max",
-    "265, 230"
+    "265, 265"
    ],
    [
     "probe_count",
@@ -701,7 +771,7 @@
   [
    [
     "gcode",
-    "\n{% set bed = params.BED|default(80)|float %}\n{% set extruder = params.EXTRUDER|default(235)|float %}\n{% set layer = params.LAYER|default(0.4)|float %}\n{% set probe = params.PROBE|default(150)|float %}\n{% set speed = params.SPEED|default(15)|float %}\n{% set prime_lines = 2 %}\n{% set prime_x0, prime_x1, prime_y0, prime_w = 20.0, 260.0, 2.0, 0.6 %}\n\n\n{% set prime_e = prime_w * layer / 6.379 %}\n{% set prime_speed = [speed, 15.0 / (prime_w * layer)]|min %}\n\n\n\n\n\n{% set run_x, run_z, purge_e = 15.0, 4.0, 5.0 %}\n\n\n{% set pad_x, pad_z = -17.5, 0.8 %}\n{% set run_len = (run_x ** 2 + (run_z - layer) ** 2) ** 0.5 %}\n{% set run_e = run_len * 0.12 %}\n{% set run_f = run_len / (run_e * 6.379 / 10.0) * 60 %}\nM107\nG90\nM82\nG92 E0\nM104 S{probe}\nM140 S{bed}\nG28\nM83\n\nM117 Heating bed...\nTEMPERATURE_WAIT SENSOR=heater_bed MINIMUM={bed - 1}\nM117 Probing...\nZ_TILT_ADJUST\nPRINTDECK_MESH\nM104 S{extruder}\nG1 X{prime_x0 - run_x} Y{prime_y0} Z10 F5000\nM117 Heating...\nTEMPERATURE_WAIT SENSOR=heater_bed MINIMUM={bed - 1}\nTEMPERATURE_WAIT SENSOR=extruder MINIMUM={extruder - 2}\n\nM117 Priming {prime_lines} lines...\nG1 Z{run_z} F1500\nG1 E{purge_e} F{10.0 / 6.379 * 60}\nG1 X{prime_x0} Z{layer} E{run_e} F{run_f}\n{% for i in range(prime_lines) %}\n{% set x = prime_x1 if i % 2 == 0 else prime_x0 %}\nG1 X{x} E{(prime_x1 - prime_x0) * prime_e} F{prime_speed * 60}\nG1 Y{prime_y0 + (i + 1) * prime_w} E{prime_w * prime_e} F{prime_speed * 60}\n{% endfor %}\n{% set x_end = prime_x1 if prime_lines % 2 == 1 else prime_x0 %}\nG1 X{x_end - 20 if x_end > prime_x0 else x_end + 20} Z{layer + 0.3} F3000\nM82\nG92 E1\nG1 E0 F1800\n\nM117 Wiping nozzle...\nNOZZLE_WIPE X={pad_x} Z={pad_z} COUNT=1\nM117 Printing..."
+    "\n{% set bed = params.BED|default(80)|float %}\n{% set extruder = params.EXTRUDER|default(235)|float %}\n{% set layer = params.LAYER|default(0.4)|float %}\n{% set probe = params.PROBE|default(150)|float %}\n{% set speed = params.SPEED|default(15)|float %}\n{% set prime_lines = 2 %}\n{% set prime_x0, prime_x1, prime_y0, prime_w = 20.0, 260.0, 2.0, 0.6 %}\n\n\n{% set prime_e = prime_w * layer / 6.379 %}\n{% set prime_speed = [speed, 15.0 / (prime_w * layer)]|min %}\n\n\n\n\n\n{% set run_x, run_z, purge_e = 15.0, 4.0, 5.0 %}\n{% set run_len = (run_x ** 2 + (run_z - layer) ** 2) ** 0.5 %}\n{% set run_e = run_len * 0.12 %}\n{% set run_f = run_len / (run_e * 6.379 / 10.0) * 60 %}\nM107\nG90\nM82\nG92 E0\nM104 S{probe}\nM140 S{bed}\nG28\nM83\n\nM117 Heating bed...\nTEMPERATURE_WAIT SENSOR=heater_bed MINIMUM={bed - 1}\nM117 Probing...\nZ_TILT_ADJUST\nPRINTDECK_MESH\nM104 S{extruder}\nG1 X{prime_x0 - run_x} Y{prime_y0} Z10 F5000\nM117 Heating...\nTEMPERATURE_WAIT SENSOR=heater_bed MINIMUM={bed - 1}\nTEMPERATURE_WAIT SENSOR=extruder MINIMUM={extruder - 2}\n\nM117 Priming {prime_lines} lines...\nG1 Z{run_z} F1500\nG1 E{purge_e} F{10.0 / 6.379 * 60}\nG1 X{prime_x0} Z{layer} E{run_e} F{run_f}\n{% for i in range(prime_lines) %}\n{% set x = prime_x1 if i % 2 == 0 else prime_x0 %}\nG1 X{x} E{(prime_x1 - prime_x0) * prime_e} F{prime_speed * 60}\nG1 Y{prime_y0 + (i + 1) * prime_w} E{prime_w * prime_e} F{prime_speed * 60}\n{% endfor %}\n{% set x_end = prime_x1 if prime_lines % 2 == 1 else prime_x0 %}\nG1 X{x_end - 20 if x_end > prime_x0 else x_end + 20} Z{layer + 0.3} F3000\nM82\nG92 E1\nG1 E0 F1800\nM117 Printing..."
    ]
   ]
  ],

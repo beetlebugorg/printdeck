@@ -40,6 +40,7 @@ import (
 	_ "printdeck/internal/klipper/extras/homing_heaters"
 	_ "printdeck/internal/klipper/extras/homing_override"
 	_ "printdeck/internal/klipper/extras/idle_timeout"
+	_ "printdeck/internal/klipper/extras/input_shaper"
 	_ "printdeck/internal/klipper/extras/led"
 	_ "printdeck/internal/klipper/extras/manual_probe"
 	_ "printdeck/internal/klipper/extras/max_mode"

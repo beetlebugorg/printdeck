@@ -35,6 +35,8 @@ type StepperKinematics struct {
 	Post                                  func(sk *StepperKinematics)
 	// extruder is the pressure advance state of an extruder stepper (struct extruder_stepper).
 	extruder *extruderStepper
+	// shaper is the input shaper of the stepper (struct input_shaper, kin_shaper.go).
+	shaper *inputShaper
 }
 
 type timepos struct{ time, position float64 }
