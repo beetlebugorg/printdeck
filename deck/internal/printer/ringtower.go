@@ -70,7 +70,7 @@ const (
 	SweepStep       = 3.0   // Hz more for each band
 	SweepBands      = 10    // 20 to 47 Hz: 25 mm
 	PairHeight      = 8.0   // mm
-	ShaperTestAccel = 3000. // mm/s², the acceleration of the sweep and the pair
+	ShaperTestAccel = 4500. // mm/s², the acceleration of the sweep and the pair: the top of the ringing tower
 
 	pairGap = 10.0 // mm between the two towers
 )

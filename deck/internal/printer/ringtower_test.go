@@ -118,7 +118,7 @@ func TestSetConfigOption(t *testing.T) {
 // Hz at the top, and sets the shaper of printer.cfg again at the end.
 func TestSweepTower(t *testing.T) {
 	g := SweepTower(ringMachine(), 210, 60, "PLA", false)
-	for _, want := range []string{"SET_INPUT_SHAPER SHAPER_TYPE=mzv\n", "SET_VELOCITY_LIMIT ACCEL=3000 MINIMUM_CRUISE_RATIO=0",
+	for _, want := range []string{"SET_INPUT_SHAPER SHAPER_TYPE=mzv\n", "SET_VELOCITY_LIMIT ACCEL=4500 MINIMUM_CRUISE_RATIO=0\n",
 		";0.0-2.5 mm: 20 Hz", ";22.5-25.0 mm: 47 Hz", "SET_INPUT_SHAPER SHAPER_FREQ_X=20 SHAPER_FREQ_Y=20",
 		"SET_INPUT_SHAPER SHAPER_FREQ_X=47 SHAPER_FREQ_Y=47", "SET_INPUT_SHAPER SHAPER_TYPE=mzv SHAPER_FREQ_X=44 SHAPER_FREQ_Y=31",
 		";LAYER_COUNT:125", "G1 Z25.000"} {
