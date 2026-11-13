@@ -2,6 +2,7 @@ package printer
 
 import (
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -59,7 +60,7 @@ func prepKind(line string) string {
 		return heater
 	case strings.Contains(cmd, "WIPE") || strings.Contains(cmd, "CLEAN_NOZZLE"):
 		return "wipe"
-	case cmd == "BED_TILT_CALIBRATE" || cmd == "BED_MESH_CALIBRATE" || cmd == "G29" || cmd == "Z_TILT_ADJUST" ||
+	case cmd == "BED_TILT_CALIBRATE" || cmd == "BED_MESH_CALIBRATE" || cmd == "PRINTDECK_MESH" || cmd == "G29" || cmd == "Z_TILT_ADJUST" ||
 		cmd == "QUAD_GANTRY_LEVEL" || cmd == "PROBE" || cmd == "SCREWS_TILT_CALCULATE":
 		return "probe"
 	case strings.Contains(cmd, "PRIME") || strings.Contains(cmd, "PURGE"):
@@ -94,11 +95,14 @@ func prepSteps(text string, params map[string]string) (kinds []string, targets [
 		}
 		k := prepKind(t)
 		if k == "" {
-			u := strings.ToUpper(t)
-			if (strings.HasPrefix(u, "G1 ") || strings.HasPrefix(u, "G0 ")) && strings.Contains(u, " E") && len(kinds) > 0 {
+			if pushes(t) && len(kinds) > 0 {
 				extrudes = true
 			}
 			continue
+		}
+		// Extrusion between two steps is the prime, for example a prime strip before a last wipe.
+		if extrudes && kinds[len(kinds)-1] != "prime" {
+			kinds, targets = append(kinds, "prime"), append(targets, 0)
 		}
 		extrudes = false
 		if len(kinds) == 0 || kinds[len(kinds)-1] != k {
@@ -112,6 +116,27 @@ func prepSteps(text string, params map[string]string) (kinds []string, targets [
 		kinds, targets = append(kinds, "prime"), append(targets, 0)
 	}
 	return kinds, targets
+}
+
+// pushes reports that a line is a G0 or G1 move that pushes filament: its E is not negative and not
+// zero. A retract (E-3) or a move back to E0 is not a prime.
+func pushes(line string) bool {
+	f := strings.Fields(strings.ToUpper(line))
+	if len(f) == 0 || (f[0] != "G1" && f[0] != "G0") {
+		return false
+	}
+	for _, w := range f[1:] {
+		if v, ok := strings.CutPrefix(w, "E"); ok {
+			if strings.HasPrefix(v, "-") || strings.HasPrefix(v, "{-") {
+				return false
+			}
+			if x, err := strconv.ParseFloat(v, 64); err == nil {
+				return x > 0
+			}
+			return true // an expression, for example E{purge_e}
+		}
+	}
+	return false
 }
 
 var (
@@ -290,9 +315,7 @@ func (t *prepTracker) steps(stack []string, macros map[string]string, min int) [
 	for i := len(stack) - 1; i > 0; i-- {
 		k := prepKind(stack[i])
 		if k == "" {
-			u := strings.ToUpper(stack[i])
-			if t.at > 0 && (strings.HasPrefix(u, "G1 ") || strings.HasPrefix(u, "G0 ")) && strings.Contains(u, " E") &&
-				t.plan[len(t.plan)-1] == "prime" {
+			if t.at > 0 && pushes(stack[i]) && slices.Contains(t.plan[t.at:], "prime") {
 				k = "prime"
 			} else {
 				continue

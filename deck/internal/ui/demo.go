@@ -86,6 +86,7 @@ func (d *DemoPrinter) MotorsOff() error                 { return nil }
 func (d *DemoPrinter) SpeedFactor(int) error            { return nil }
 func (d *DemoPrinter) FlowFactor(int) error             { return nil }
 func (d *DemoPrinter) BabyStep(float64) error           { return nil }
+func (d *DemoPrinter) SaveZOffset() (bool, error)       { return d.State().Busy(), nil }
 func (d *DemoPrinter) EmergencyStop() error             { return nil }
 func (d *DemoPrinter) FirmwareRestart() error           { return nil }
 func (d *DemoPrinter) Boards() ([]board.Info, bool)     { return d.Boards_, false }

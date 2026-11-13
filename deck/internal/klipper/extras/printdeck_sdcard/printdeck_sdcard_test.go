@@ -50,7 +50,11 @@ func (c *apiClient) call(method string, params map[string]any) map[string]any {
 // The host reads the SD card of the simulated board through the board: it lists the root folder
 // and a subfolder with the long names, and copies a file of many blocks to the G-code folder.
 func TestListAndCopy(t *testing.T) {
-	big := bytes.Repeat([]byte("G1 X10 Y10 E0.5\n"), 2000)
+	// A Cura file: the copy gets the object data of Klipper's [exclude_object].
+	big := append([]byte(";MESH:plaque.stl\nG0 X0 Y0\n"), bytes.Repeat([]byte("G1 X10 Y10 E0.5\nG1 X0 Y0 E0.5\n"), 1000)...)
+	wantCopy := "EXCLUDE_OBJECT_DEFINE NAME=plaque_stl CENTER=5.000,5.000 POLYGON=[[0.000,0.000],[10.000,10.000]]\n" +
+		";MESH:plaque.stl\nEXCLUDE_OBJECT_START NAME=plaque_stl\n" + string(big[len(";MESH:plaque.stl\n"):]) +
+		"EXCLUDE_OBJECT_END NAME=plaque_stl\n"
 	img, err := fatfs.Build([]fatfs.BuildFile{
 		{Path: "Printdeck plaque.gcode", Data: big},
 		{Path: "parts/hex planter.gcode", Data: []byte("G28\n")},
@@ -141,8 +145,8 @@ func TestListAndCopy(t *testing.T) {
 		t.Fatalf("status %v", st)
 	}
 	got, err := os.ReadFile(filepath.Join(gcodes, "plaque.gcode"))
-	if err != nil || !bytes.Equal(got, big) {
-		t.Errorf("the copy has %d bytes, want %d (%v)", len(got), len(big), err)
+	if err != nil || string(got) != wantCopy {
+		t.Errorf("the copy has %d bytes, want %d (%v)", len(got), len(wantCopy), err)
 	}
 
 	// An empty slot.

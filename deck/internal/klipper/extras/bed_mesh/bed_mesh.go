@@ -167,6 +167,7 @@ type BedMesh struct {
 	splitter        *MoveSplitter
 	pmgr            *ProfileManager
 	status          map[string]any
+	onCalibrate     []func(*ZMesh) // Printdeck: see OnCalibrate
 }
 
 func load(config *configfile.Wrapper) any {
@@ -1083,6 +1084,9 @@ func (c *BedMeshCalibrate) probeFinalize(results [][3]float64) {
 		zMesh.setZeroReference(zeroRefPos[0], zeroRefPos[1])
 	}
 	c.bedmesh.SetMesh(zMesh)
+	for _, fn := range c.bedmesh.onCalibrate {
+		fn(zMesh)
+	}
 	c.gcode.RespondInfo("Mesh Bed Leveling Complete", true)
 	if c.profileName != nil {
 		c.bedmesh.pmgr.saveProfile(*c.profileName)

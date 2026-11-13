@@ -107,7 +107,9 @@ func (pc *PrinterConfig) SaveConfig(cfgname string) (bool, error) {
 	}
 	// Create new config file with temporary name and swap with main config
 	log.Printf("SAVE_CONFIG to '%s' (backup in '%s')", cfgname, backupName)
-	if err := os.WriteFile(tempName, []byte(data), 0o644); err == nil {
+	// 0666 less the umask, as the open() of Python in Klipper: the service of Klipper has UMask 0002,
+	// so the deck (in the group printer) can replace the file later.
+	if err := os.WriteFile(tempName, []byte(data), 0o666); err == nil {
 		if err = os.Rename(cfgname, backupName); err == nil {
 			err = os.Rename(tempName, cfgname)
 		}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"path"
 	"printdeck/internal/klipper/toolhead"
 	"printdeck/internal/maxmode"
@@ -43,6 +44,8 @@ type Klippy struct {
 	// Spools are the rolls of filament. Each finished print uses filament of the roll in the
 	// printer.
 	Spools *Spools
+	// Mesh keeps the last bed mesh of Klipper.
+	Mesh *MeshStore
 	// RestartService restarts the Klipper service, which reads printer.cfg again. The API of
 	// Klipper has no restart while the config has an error.
 	RestartService func() error
@@ -81,6 +84,10 @@ type Klippy struct {
 	// tiltByAction reports that the last bed tilt calibration ran as a maintenance action
 	// (RunAction), with a result to save. A print resets it.
 	tiltByAction bool
+	// saveZ is a Save of the Z offset during a print: the deck saves it when the print ends.
+	saveZ bool
+	// autoRestart is the time of the last firmware restart after Klipper lost the board.
+	autoRestart time.Time
 
 	// From the connection to Klipper: its version, its interface version, and the names of its
 	// objects (objects/list).
@@ -120,10 +127,13 @@ var klippyObjects = map[string][]string{
 	"toolhead":       {"position", "homed_axes", "axis_minimum", "axis_maximum"},
 	"mcu":            {"mcu_version"},
 	"motion_report":  {"live_velocity", "live_extruder_velocity"},
+	"bed_mesh":       {"probed_matrix", "mesh_min", "mesh_max"},
 	// The command stack of the Printdeck module of the Klipper host, for the steps of PRINT_START.
 	"printdeck_display": {"commands"},
 	// A pause of the file with a message, and the height check on a part (PRINTDECK_PAUSE).
 	"printdeck_pause": {"active", "message", "check", "checked", "delta", "roll"},
+	// The method of the bed mesh at the start of a print, and the saved map (PRINTDECK_MESH).
+	"printdeck_mesh": {"method", "base_points", "base_time", "base_temp", "last"},
 	// The copy of a file from the SD card of the printer.
 	"printdeck_sdcard": {"id", "copying", "copied", "size", "done", "error"},
 	// The park for the pictures of the time lapse and of the first layer.
@@ -650,10 +660,36 @@ func (k *Klippy) refresh(notify func()) {
 	k.mu.Lock()
 	st := klippyState(k.status, k.err)
 	if !st.Reachable {
-		st.ErrDetail = k.errDetail
+		if st.ErrDetail == "" {
+			st.ErrDetail = k.errDetail
+		}
 		st.Starting = (k.startup || k.err == "Klipper is not running") && time.Since(k.since) < startGrace
 	}
+	mesh, hasMesh := meshFromStatus(k.status["bed_mesh"])
+	restart := lostBoard(st.ErrDetail) && time.Since(k.autoRestart) > autoRestartWait
+	if restart {
+		k.autoRestart = time.Now()
+	}
+	saveZ := k.saveZ && st.Reachable && !st.Busy()
+	if saveZ {
+		k.saveZ = false
+	}
 	k.mu.Unlock()
+	if saveZ && st.ZOffset != 0 {
+		// The print ended: save the Z offset of the Save key of the print.
+		log.Printf("klippy: save the Z offset %+.3f after the print", st.ZOffset)
+		go k.applyZOffset()
+	}
+	if restart {
+		// The board lost power or its USB connection. A firmware restart makes Klipper wait for
+		// the board, and connect to it again when it is back.
+		log.Printf("klippy: %s: firmware restart", firstLine(st.ErrDetail))
+		go k.FirmwareRestart()
+	}
+	if hasMesh {
+		k.Mesh.see(mesh, time.Now())
+	}
+	st.Mesh = k.Mesh.Last()
 	if !st.Reachable && k.ConfigPath != "" {
 		st.NeedsSetup = NeedsSetup(k.ConfigPath)
 	}
@@ -799,6 +835,12 @@ func klippyState(s klippy.Status, down string) State {
 	if down != "" {
 		return State{Err: down, Text: "Offline"}
 	}
+	// A shutdown or an error after Klipper was ready: the connection stays, and the state of
+	// webhooks has the reason.
+	if ws := str(s["webhooks"]["state"]); ws == "shutdown" || ws == "error" {
+		msg := strings.TrimSpace(str(s["webhooks"]["state_message"]))
+		return State{Err: firstLine(msg), ErrDetail: msg, Text: "Offline"}
+	}
 	st := State{Reachable: true, Connected: true}
 	st.Firmware = str(s["mcu"]["mcu_version"])
 	st.FirmwareOld = st.Firmware != "" && !board.SameVersion(st.Firmware, HostVersion)
@@ -830,8 +872,19 @@ func klippyState(s klippy.Status, down string) State {
 		st.SpeedPct, st.FlowPct = 100, 100
 	}
 	st.SaveConfigPending, _ = s["configfile"]["save_config_pending"].(bool)
-	if items, ok := s["configfile"]["save_config_pending_items"].(map[string]any); ok && len(items) == 1 {
-		_, st.TiltOnlyPending = items["bed_tilt"]
+	if items, ok := s["configfile"]["save_config_pending_items"].(map[string]any); ok {
+		if len(items) == 1 {
+			_, st.TiltOnlyPending = items["bed_tilt"]
+		}
+		// BED_MESH_CALIBRATE makes the profile "default" for SAVE_CONFIG. The deck keeps the
+		// mesh (MeshStore), and PRINT_START probes again, so the profile is not a result to save.
+		meshOnly := len(items) > 0
+		for name := range items {
+			meshOnly = meshOnly && strings.HasPrefix(name, "bed_mesh ")
+		}
+		if meshOnly {
+			st.SaveConfigPending = false
+		}
 	}
 	if active, _ := s["printdeck_pause"]["active"].(bool); active {
 		st.PauseActive = true
@@ -840,6 +893,18 @@ func klippyState(s klippy.Status, down string) State {
 		st.PauseChecked, _ = s["printdeck_pause"]["checked"].(bool)
 		st.PauseDelta = num(s["printdeck_pause"]["delta"])
 		st.PauseRoll = str(s["printdeck_pause"]["roll"])
+	}
+	if pm := s["printdeck_mesh"]; pm != nil {
+		st.ProbeMethod = str(pm["method"])
+		st.ProbeMapPoints = int(num(pm["base_points"]))
+		if t := num(pm["base_time"]); t > 0 {
+			st.ProbeMapTime = time.Unix(int64(t), 0)
+		}
+		st.ProbeMapTemp = num(pm["base_temp"])
+		if last, ok := pm["last"].(map[string]any); ok {
+			st.ProbeLast = ProbeResult{Method: str(last["method"]), Used: str(last["used"]), Points: int(num(last["points"])),
+				Error: num(last["error"]), Seconds: num(last["seconds"])}
+		}
 	}
 	if sd := s["printdeck_sdcard"]; sd != nil {
 		st.SDCopy = SDCopy{ID: int(num(sd["id"])), Path: str(sd["copying"]), Copied: int64(num(sd["copied"])), Size: int64(num(sd["size"])),
@@ -1145,6 +1210,29 @@ func (k *Klippy) MotorsOff() error          { return k.script("M84") }
 func (k *Klippy) SpeedFactor(p int) error   { return k.script(SpeedGcode(p)) }
 func (k *Klippy) FlowFactor(p int) error    { return k.script(FlowGcode(p)) }
 func (k *Klippy) BabyStep(mm float64) error { return k.script(BabyStepGcode(mm)) }
+
+// SaveZOffset writes the Z offset of the head (the baby steps) into the config: into the probe
+// offset with a probe, else into the Z endstop, then SAVE_CONFIG. SAVE_CONFIG restarts Klipper, so
+// during a print the deck saves when the print ends (later is true). It then saves the offset as it
+// is at that time: Z_OFFSET_APPLY_PROBE adds the whole offset each time it runs, so the deck runs it
+// once.
+func (k *Klippy) SaveZOffset() (later bool, err error) {
+	if k.State().Busy() {
+		k.mu.Lock()
+		k.saveZ = true
+		k.mu.Unlock()
+		return true, nil
+	}
+	return false, k.applyZOffset()
+}
+
+func (k *Klippy) applyZOffset() error {
+	cmd := "Z_OFFSET_APPLY_ENDSTOP"
+	if k.Machine().Has("probe") {
+		cmd = "Z_OFFSET_APPLY_PROBE"
+	}
+	return k.script(cmd, "SAVE_CONFIG")
+}
 func (k *Klippy) Extrude(mm float64, speed int) error {
 	return k.script(ExtrudeGcode(mm, speed)...)
 }
@@ -1189,6 +1277,16 @@ func num(v any) float64 {
 func str(v any) string {
 	s, _ := v.(string)
 	return s
+}
+
+// autoRestartWait is the shortest time between two firmware restarts of lostBoard.
+const autoRestartWait = 30 * time.Second
+
+// lostBoard reports that a Klipper message is a shutdown for a lost connection to a board. The
+// deck then restarts the firmware by itself. A shutdown for another cause, for example a heater
+// fault or an emergency stop, waits for the user.
+func lostBoard(msg string) bool {
+	return strings.HasPrefix(strings.TrimSpace(msg), "Lost communication with MCU")
 }
 
 func firstLine(s string) string {

@@ -98,6 +98,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	case pageMaintenance:
 		a.drawMaintenance(c, st)
 		return
+	case pageBedMesh:
+		a.drawBedMesh(c, st)
+		return
 	case pageMachine:
 		a.drawMachine(c, st)
 		return

@@ -45,9 +45,9 @@ type ChiTu struct {
 	Enqueue  func(name string) error
 	QueueLen func() int
 	AskSent  func(name string)
-	Client *chitu.Client
-	Hist   *History
-	Name   string // the name of the printer, for the screens
+	Client   *chitu.Client
+	Hist     *History
+	Name     string // the name of the printer, for the screens
 	// LapseFromZ returns the height of the plate in mm from which the time lapse takes frames, or
 	// is nil for 0 (timelapse.Settings.FromZ). It is called with mu held.
 	LapseFromZ func() float64
@@ -543,6 +543,7 @@ func (c *ChiTu) Fan(int) error                                { return ErrNotSup
 func (c *ChiTu) SpeedFactor(int) error                        { return ErrNotSupported }
 func (c *ChiTu) FlowFactor(int) error                         { return ErrNotSupported }
 func (c *ChiTu) BabyStep(float64) error                       { return ErrNotSupported }
+func (c *ChiTu) SaveZOffset() (bool, error)                   { return false, ErrNotSupported }
 
 // The controls of phase 4: no command goes to the board before the test of each control.
 

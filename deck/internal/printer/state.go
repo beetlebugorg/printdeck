@@ -104,6 +104,8 @@ type State struct {
 	// TiltOnlyPending reports that the only change for SAVE_CONFIG is [bed_tilt]. Klippy.State
 	// clears SaveConfigPending for it, unless the tilt came from a maintenance action.
 	TiltOnlyPending bool
+	// Mesh is the last bed mesh of Klipper, or nil.
+	Mesh *BedMesh
 
 	// ManualProbe is true while a manual Z probe runs (PROBE_CALIBRATE, Z_ENDSTOP_CALIBRATE): the
 	// nozzle is at ManualZ, and TESTZ, ACCEPT and ABORT finish it.
@@ -135,6 +137,18 @@ type State struct {
 	PauseDelta               float64
 	// PauseRoll is the ID of the roll of a color change of the file (PRINTDECK_PAUSE ROLL), or "".
 	PauseRoll string
+
+	// ProbeMethod is the method of the bed mesh at the start of a print (PRINTDECK_MESH): "map",
+	// "adaptive" or "grid". "" when Klipper has no [printdeck_mesh].
+	ProbeMethod string
+	// ProbeMapPoints and ProbeMapTime are the saved map of the last full probe: its points and its
+	// time. 0 points is no map.
+	ProbeMapPoints int
+	ProbeMapTime   time.Time
+	// ProbeMapTemp is the temperature of the bed of the saved map, in °C. 0 is not known.
+	ProbeMapTemp float64
+	// ProbeLast is the result of the last PRINTDECK_MESH.
+	ProbeLast ProbeResult
 	// SDCopy is the copy of a file from the SD card of the printer ([printdeck_sdcard]).
 	SDCopy SDCopy
 
@@ -282,4 +296,13 @@ type Receive struct {
 	Started time.Time
 	Updated time.Time
 	Done    bool
+}
+
+// ProbeResult is the result of a PRINTDECK_MESH: the method of the setting, the method that made
+// the mesh (a fallback can differ), the probe points of the map method, its largest error in mm,
+// and the time of the probe.
+type ProbeResult struct {
+	Method, Used   string
+	Points         int
+	Error, Seconds float64
 }

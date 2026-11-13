@@ -171,3 +171,65 @@ func TestPrepLeftHeatsEachStepFromTheStepBefore(t *testing.T) {
 		t.Errorf("after the wipe: prep left %.1f s, want %.1f s", got, want)
 	}
 }
+
+// PRINTDECK_MESH of the Printdeck module is the probe step.
+func TestPrepPlanPrintdeckMesh(t *testing.T) {
+	if got := strings.Join(prepPlan("G28\nPRINTDECK_MESH\n"), " "); got != "home probe" {
+		t.Errorf("plan %q", got)
+	}
+}
+
+// The PRINT_START of the TAZ since the BLTouch: the prime strip, then one stroke of the wipe. The
+// prime is a step between the nozzle heat and the wipe.
+const workhorseStartBLTouch = `
+{% set bed = params.BED|default(80)|float %}
+M104 S{probe}
+M140 S{bed}
+G28
+TEMPERATURE_WAIT SENSOR=heater_bed MINIMUM={bed - 1}
+Z_TILT_ADJUST
+PRINTDECK_MESH
+M104 S{extruder}
+G1 X{prime_x0 - run_x} Y{prime_y0} Z10 F5000
+TEMPERATURE_WAIT SENSOR=heater_bed MINIMUM={bed - 1}
+TEMPERATURE_WAIT SENSOR=extruder MINIMUM={extruder - 2}
+G1 Z{run_z} F1500
+G1 E{purge_e} F600
+G1 X{x} E{(prime_x1 - prime_x0) * prime_e} F{prime_speed * 60}
+G1 E0 F1800                 ; retract 1 mm
+NOZZLE_WIPE X={pad_x} Z={pad_z} COUNT=1
+`
+
+func TestPrepPlanPrimeBeforeWipe(t *testing.T) {
+	got := strings.Join(prepPlan(workhorseStartBLTouch), " ")
+	want := "home heat-bed probe heat-bed heat-nozzle prime wipe"
+	if got != want {
+		t.Errorf("plan\n got %s\nwant %s", got, want)
+	}
+	var tr prepTracker
+	macros := map[string]string{"print_start": workhorseStartBLTouch}
+	steps := tr.steps([]string{"PRINT_START", "G1 E5.0 F94.06"}, macros, 3)
+	if steps == nil {
+		t.Fatal("no steps")
+	}
+	// The tracker moves forward only: before the prime, it must be past the first step.
+	tr.at = 4
+	steps = tr.steps([]string{"PRINT_START", "G1 X260 E2.5 F900"}, macros, 3)
+	if !steps[5].Now {
+		t.Errorf("the prime is not the step now: %+v", steps)
+	}
+	steps = tr.steps([]string{"PRINT_START", "NOZZLE_WIPE X=-17.5 Z=0.8 COUNT=1"}, macros, 3)
+	if !steps[6].Now || !steps[5].Done {
+		t.Errorf("the wipe is not the step now after the prime: %+v", steps)
+	}
+}
+
+// A retract is not a prime.
+func TestPushes(t *testing.T) {
+	for line, want := range map[string]bool{"G1 E5 F600": true, "G1 X10 E{run_e} F900": true, "G1 E-3 F500": false,
+		"G1 E0 F1800": false, "G1 X10 Y10": false, "M83": false} {
+		if got := pushes(line); got != want {
+			t.Errorf("pushes(%q) = %v", line, got)
+		}
+	}
+}

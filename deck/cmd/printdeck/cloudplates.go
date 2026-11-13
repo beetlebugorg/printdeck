@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"printdeck/internal/cloud"
+	"printdeck/internal/gcode"
 	"printdeck/internal/printer"
 	"printdeck/internal/ui"
 )
@@ -90,6 +91,11 @@ func gcodePlate(dir string) func(context.Context, cloud.SentPlate) (string, erro
 		}
 		if err := downloadTo(ctx, dst, pl); err != nil {
 			return "", err
+		}
+		if gcode.IsFile(dst) {
+			if err := gcode.AddObjects(dst); err != nil {
+				return "", fmt.Errorf("the objects of %s: %w", rel, err)
+			}
 		}
 		return rel, nil
 	}

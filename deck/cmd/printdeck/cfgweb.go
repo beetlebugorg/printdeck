@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"printdeck/internal/klipper/configfile"
@@ -78,11 +79,11 @@ func registerPrinterCfg(mux *http.ServeMux, path, backup string, pr cfgPrinter, 
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if err := os.WriteFile(backup, old, 0o644); err != nil {
+		if err := replaceFile(backup, old); err != nil {
 			http.Error(w, "The backup failed: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if err := os.WriteFile(path, b, 0o664); err != nil {
+		if err := replaceFile(path, b); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -93,6 +94,33 @@ func registerPrinterCfg(mux *http.ServeMux, path, backup string, pr cfgPrinter, 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
 	})
+}
+
+// replaceFile writes data to a new file in the folder of path, and renames it over path. The rename
+// needs only write access to the folder: Klipper (the user printer) can own the old file, for example
+// after SAVE_CONFIG, and the deck (in the group printer) can still replace it. The new file is 0664,
+// so that Klipper can replace it too.
+func replaceFile(path string, data []byte) error {
+	dir, name := filepath.Split(path)
+	f, err := os.CreateTemp(dir, "."+name+"-*")
+	if err != nil {
+		return err
+	}
+	tmp := f.Name()
+	_, err = f.Write(data)
+	if err == nil {
+		err = f.Chmod(0o664)
+	}
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err == nil {
+		err = os.Rename(tmp, path)
+	}
+	if err != nil {
+		os.Remove(tmp)
+	}
+	return err
 }
 
 // checkPrinterCfg returns an error for a file that the config parser of Klipper cannot read, or

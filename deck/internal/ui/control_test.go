@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -29,6 +30,9 @@ func (r *recPrinter) rec(s string) error {
 	return nil
 }
 func (r *recPrinter) Gcode(l ...string) error { return r.rec("gcode " + strings.Join(l, "; ")) }
+func (r *recPrinter) RunAction(n string, l ...string) error {
+	return r.rec("action " + n + ": " + strings.Join(l, "; "))
+}
 func (r *recPrinter) Home(ax ...string) error { return r.rec(fmt.Sprint("home ", ax)) }
 func (r *recPrinter) SetToolTemp(t int) error { return r.rec(fmt.Sprint("tool ", t)) }
 func (r *recPrinter) SetBedTemp(t int) error  { return r.rec(fmt.Sprint("bed ", t)) }
@@ -1007,5 +1011,66 @@ func TestTypedPosition(t *testing.T) {
 	tapRegion(t, a, cv, "Position Z")
 	if a.keypad != nil {
 		t.Error("a keypad for Z that is not homed")
+	}
+}
+
+// A file for the material of the roll in the printer, by its name, needs no question: the Cura
+// plugin names the material after the roll, and the colors can differ.
+func TestMaterialCheckRollName(t *testing.T) {
+	a, pr, _ := newPrintApp(idle)
+	pr.Spools_ = &printer.Spools{}
+	blue := pr.Spools_.Add("Light Blue", "PLA", 1200, 200, 0, time.Unix(1, 0))
+	pr.Spools_.SetColor(blue.ID, "#2a62d0")
+	pr.Meta_ = gcodemeta.Meta{Material: "PLA", MaterialName: "Light Blue", Color: "#8ec5ff"}
+	if q, _, _, _ := a.materialCheck("x.gcode"); q != "" {
+		t.Errorf("the name of the roll: %q", q)
+	}
+	for _, c := range []struct {
+		name string
+		want bool
+	}{
+		{"Light Blue", true}, {"light blue ", true}, {"Light Blue #" + blue.ID, true}, {"Light Blue #99", false},
+		{"Blue", false}, {"", false},
+	} {
+		if got := sameRollName(c.name, blue); got != c.want {
+			t.Errorf("sameRollName(%q) = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+// Two or more rolls fit the file: the question names them, and the swap shows only them. The roll
+// with enough filament comes first, the open roll before the new roll, and the roll with too
+// little filament last.
+func TestMatchingRolls(t *testing.T) {
+	a, pr, cv := newPrintApp(idle)
+	pr.Spools_ = &printer.Spools{}
+	pr.Spools_.Add("Black", "PLA", 1200, 200, 0, time.Unix(1, 0))
+	full := pr.Spools_.AddOut("White", "PLA", 1200, 200, 0, time.Unix(2, 0))
+	open := pr.Spools_.AddOut("White", "PLA", 600, 200, 0, time.Unix(3, 0))
+	low := pr.Spools_.AddOut("White", "PLA", 250, 200, 0, time.Unix(4, 0))
+	pr.Meta_ = gcodemeta.Meta{Material: "PLA", MaterialName: "White", FilamentG: 100}
+	var ids []string
+	for _, sp := range a.matchingRolls("x.gcode") {
+		ids = append(ids, sp.ID)
+	}
+	if want := []string{open.ID, full.ID, low.ID}; !slices.Equal(ids, want) {
+		t.Fatalf("rolls %v, want %v", ids, want)
+	}
+	box := a.filamentChoices("x.gcode", "x", func() {})
+	if box == nil || box.choices[0].sub != "Pick one of the 3 White rolls, load it, then start the print" {
+		t.Fatalf("question %+v", box)
+	}
+	a.confirm = box
+	simFrame(t, a, "rolls-question")
+	a.confirm = nil
+	a.changeRollFor("x.gcode", "x", func() {})
+	if a.swap == nil || !slices.Equal(a.swap.choices, ids) || a.swap.need != 100 || a.swap.roll != "" {
+		t.Fatalf("swap %+v", a.swap)
+	}
+	simFrame(t, a, "rolls-swap")
+	a.Draw(cv)
+	tapLabel(t, a, cv, "All rolls")
+	if a.swap.choices != nil {
+		t.Error("All rolls kept the short list")
 	}
 }

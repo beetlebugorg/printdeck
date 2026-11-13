@@ -246,6 +246,7 @@ func (hm *HomingMove) HomingMove(movepos []float64, speed float64, probePos, tri
 		endstopTriggers = append(endstopTriggers, wait)
 	}
 	allEndstopTrigger := multiComplete(hm.printer, endstopTriggers)
+	allEndstopTrigger, skewStop := hm.skewGuard(allEndstopTrigger, endstopTriggers, speed) // Printdeck
 	hm.toolhead.Dwell(homingStartDelay)
 	// Issue move
 	errMsg := ""
@@ -268,6 +269,9 @@ func (hm *HomingMove) HomingMove(movepos []float64, speed float64, probePos, tri
 		} else if checkTriggered && errMsg == "" {
 			errMsg = fmt.Sprintf("No trigger on %s after full movement", es.Name)
 		}
+	}
+	if *skewStop != "" { // Printdeck: the skew guard stopped the move
+		errMsg = *skewStop
 	}
 	// Determine stepper halt positions
 	hm.toolhead.FlushStepGeneration()
@@ -559,7 +563,10 @@ func (h *Homing) HomeRails(rails []*stepper.Rail, forcepos, movepos []float64) {
 }
 
 // PrinterHoming has the G28 command and the homing moves of other modules.
-type PrinterHoming struct{ printer *host.Printer }
+type PrinterHoming struct {
+	printer *host.Printer
+	maxSkew float64 // Printdeck: see SetMaxSkew
+}
 
 func load(config *configfile.Wrapper) any {
 	ph := &PrinterHoming{printer: host.Of(config)}

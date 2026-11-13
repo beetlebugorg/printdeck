@@ -91,6 +91,8 @@ type Printer interface {
 	SpeedFactor(p int) error
 	FlowFactor(p int) error
 	BabyStep(mm float64) error
+	// SaveZOffset writes the Z offset into the config, now or when the print ends (later).
+	SaveZOffset() (later bool, err error)
 	EmergencyStop() error
 	FirmwareRestart() error
 
@@ -171,6 +173,7 @@ type App struct {
 	menuScroll     map[page]*int  // the scroll positions of the menu pages with more rows than fit
 	consoleScroll  int            // how far the Console page shows above its newest line
 	consoleKB      *keyboard      // the keyboard of the Console page, while it is open
+	meshPic        meshPic        // the 3D picture of the Bed mesh page
 	consoleLast    string         // the last typed command, for the next one
 	configScroll   int            // the scroll position of the printer list of the setup
 	configAll      bool           // the printer list shows all printers; off, the printers of the board

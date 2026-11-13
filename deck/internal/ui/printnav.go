@@ -1,11 +1,13 @@
 package ui
 
 import (
+	"cmp"
 	"fmt"
 	"image"
 	"image/color"
 	"printdeck/internal/gcodemeta"
 	"printdeck/kit"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -53,6 +55,7 @@ const (
 	pageProject     // the prints of one project (a.project)
 	pageQueue       // the print queue of the deck
 	pageMaxMode     // the [max_mode] section of printer.cfg
+	pageBedMesh     // the map of the last bed mesh
 )
 
 // open shows a page over the current one.
@@ -461,10 +464,13 @@ func (a *App) filamentChoices(path, name string, start func()) *confirmBox {
 	if q == "" {
 		return nil
 	}
-	roll, ok := a.matchingRoll(path)
 	change := "Pick the roll, load it, then start the print"
-	if ok {
-		change = "Load " + roll.Number() + " " + roll.Label() + ", then start the print"
+	switch rolls := a.matchingRolls(path); len(rolls) {
+	case 0:
+	case 1:
+		change = "Load " + rolls[0].Number() + " " + rolls[0].Label() + ", then start the print"
+	default:
+		change = fmt.Sprintf("Pick one of the %d %s rolls, load it, then start the print", len(rolls), rolls[0].Label())
 	}
 	choices := []menuItem{{"Change the roll", change, dim, func() { a.changeRollFor(path, name, start) }}}
 	if danger {
@@ -480,35 +486,81 @@ func (a *App) filamentChoices(path, name string, start func()) *confirmBox {
 	return &confirmBox{question: q, choices: choices}
 }
 
-// matchingRoll returns the roll for the file at path: the same material, and the same color (by
-// the colors, or the color words of the names), and not the roll in the printer.
-func (a *App) matchingRoll(path string) (printer.Spool, bool) {
+// matchingRolls returns the rolls for the file at path: the same material, and the same color (by
+// the colors, or the color words of the names), and not the roll in the printer. The rolls with
+// enough filament for the file come first, then the open rolls, then the rolls with less filament.
+// So the deck uses up an open roll before it starts a new one.
+func (a *App) matchingRolls(path string) []printer.Spool {
 	s := a.Printer.SpoolStore()
 	if s == nil {
-		return printer.Spool{}, false
+		return nil
 	}
 	m := a.Printer.FileMeta(path)
 	in, _ := s.In()
+	var out []printer.Spool
 	for _, sp := range s.List() {
 		if sp.ID == in.ID || !strings.EqualFold(sp.Material, m.Material) {
+			continue
+		}
+		if sameRollName(m.MaterialName, sp) {
+			out = append(out, sp)
 			continue
 		}
 		_, fileColor := hexColor(m.Color)
 		_, rollColor := hexColor(sp.Color)
 		if fileColor && rollColor {
 			if !otherColor(m, sp) {
-				return sp, true
+				out = append(out, sp)
 			}
 			continue
 		}
 		want, have := colorWords(m.MaterialName), colorWords(sp.Label())
 		for w := range want {
 			if have[w] {
-				return sp, true
+				out = append(out, sp)
+				break
 			}
 		}
 	}
-	return printer.Spool{}, false
+	need := a.fileGrams(m)
+	enough := func(sp printer.Spool) bool { return need <= 0 || sp.Left() >= need }
+	slices.SortStableFunc(out, func(x, y printer.Spool) int {
+		if ex, ey := enough(x), enough(y); ex != ey {
+			if ex {
+				return -1
+			}
+			return 1
+		}
+		if ox, oy := openRoll(x), openRoll(y); ox != oy {
+			if ox {
+				return -1
+			}
+			return 1
+		}
+		return cmp.Compare(x.Left(), y.Left())
+	})
+	return out
+}
+
+// openRoll reports that a roll is used: it has less filament than a full roll.
+func openRoll(sp printer.Spool) bool { return sp.Left() < sp.Capacity()*0.99 }
+
+// sameRollName reports that the material name of a file is the name of the roll, for example
+// "Light Blue" for the roll "Light Blue". The Cura plugin names the material of a roll after the
+// roll, and adds the number of the roll when two rolls have the same name: "White #6" is the roll
+// #6. The colors of the file and of the roll do not matter then.
+func sameRollName(name string, sp printer.Spool) bool {
+	name = strings.TrimSpace(name)
+	if name == "" || sp.Name == "" {
+		return false
+	}
+	if base, num, ok := strings.Cut(name, " #"); ok && num != "" && !strings.ContainsAny(num, " #") {
+		if num != sp.ID {
+			return false
+		}
+		name = base
+	}
+	return strings.EqualFold(strings.TrimSpace(name), strings.TrimSpace(sp.Name))
 }
 
 // changeRollFor opens the filament swap for the file at path: with the matching roll chosen, or
@@ -520,8 +572,16 @@ func (a *App) changeRollFor(path, name string, start func()) {
 		return
 	}
 	a.openSwap(swapChange)
-	if roll, ok := a.matchingRoll(path); ok {
-		a.swap.roll = roll.ID
+	switch rolls := a.matchingRolls(path); len(rolls) {
+	case 0:
+	case 1:
+		a.swap.roll = rolls[0].ID
+	default:
+		// Two or more rolls fit: the swap shows only them, and the user picks the roll that goes in.
+		for _, sp := range rolls {
+			a.swap.choices = append(a.swap.choices, sp.ID)
+		}
+		a.swap.need = a.fileGrams(a.Printer.FileMeta(path))
 	}
 	a.swap.forFile = name
 	a.swap.then = func() {
@@ -547,11 +607,15 @@ func readyBox(name, roll string, start func()) *confirmBox {
 	return &confirmBox{question: strings.TrimSpace(q), yes: "Start the print", no: "Not yet", onYes: start}
 }
 
-// otherColor reports that the file m is for another color than the roll in the printer. It
-// compares the colors when both have one. Else it compares the color words in the names: a file
+// otherColor reports that the file m is for another color than the roll in the printer. A file
+// with the name of the roll fits (sameRollName). Else otherColor compares the colors when both
+// have one. Else it compares the color words in the names: a file
 // for "Navy" and a roll "Black eSun" differ, a file for "Navy" and a roll "MatterHackers PLA Navy"
 // do not. A name with no color word, for example "Generic PLA", says nothing.
 func otherColor(m gcodemeta.Meta, roll printer.Spool) bool {
+	if sameRollName(m.MaterialName, roll) {
+		return false
+	}
 	if a, ok := hexColor(m.Color); ok {
 		if b, ok := hexColor(roll.Color); ok {
 			d := 0
