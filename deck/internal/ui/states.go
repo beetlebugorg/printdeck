@@ -372,19 +372,24 @@ func (a *App) layerLeft(st printer.State, layer int) (time.Duration, bool) {
 }
 
 // saveZOffset writes the Z offset of the first layer into the config: into the probe offset with a
-// probe, else into the Z endstop. SAVE_CONFIG then writes the file (Maintenance).
+// probe, else into the Z endstop. During a print the deck writes it when the print ends.
 func (a *App) saveZOffset(st printer.State) {
 	pr := a.Printer
-	cmd := "Z_OFFSET_APPLY_ENDSTOP"
-	if pr.Machine().Has("probe") {
-		cmd = "Z_OFFSET_APPLY_PROBE"
+	q := fmt.Sprintf("Save the Z offset %+.3f mm? Klipper restarts.", st.ZOffset)
+	if st.Busy() {
+		q = fmt.Sprintf("Save the Z offset %+.3f mm when the print ends?", st.ZOffset)
 	}
-	a.confirm = &confirmBox{question: fmt.Sprintf("Save the Z offset %+.3f mm?", st.ZOffset), yes: "Save", onYes: func() {
+	a.confirm = &confirmBox{question: q, yes: "Save", onYes: func() {
 		a.do(func() error {
-			if err := pr.Gcode(cmd); err != nil {
+			later, err := pr.SaveZOffset()
+			if err != nil {
 				return err
 			}
-			a.Toast("Saved. Save config in Maintenance writes it.")
+			if later {
+				a.Toast("The deck saves it when the print ends")
+			} else {
+				a.Toast("Saved in the config")
+			}
 			return nil
 		})
 	}}

@@ -84,6 +84,8 @@ type Klippy struct {
 	// tiltByAction reports that the last bed tilt calibration ran as a maintenance action
 	// (RunAction), with a result to save. A print resets it.
 	tiltByAction bool
+	// saveZ is a Save of the Z offset during a print: the deck saves it when the print ends.
+	saveZ bool
 	// autoRestart is the time of the last firmware restart after Klipper lost the board.
 	autoRestart time.Time
 
@@ -668,7 +670,16 @@ func (k *Klippy) refresh(notify func()) {
 	if restart {
 		k.autoRestart = time.Now()
 	}
+	saveZ := k.saveZ && st.Reachable && !st.Busy()
+	if saveZ {
+		k.saveZ = false
+	}
 	k.mu.Unlock()
+	if saveZ && st.ZOffset != 0 {
+		// The print ended: save the Z offset of the Save key of the print.
+		log.Printf("klippy: save the Z offset %+.3f after the print", st.ZOffset)
+		go k.applyZOffset()
+	}
 	if restart {
 		// The board lost power or its USB connection. A firmware restart makes Klipper wait for
 		// the board, and connect to it again when it is back.
@@ -1198,6 +1209,29 @@ func (k *Klippy) MotorsOff() error          { return k.script("M84") }
 func (k *Klippy) SpeedFactor(p int) error   { return k.script(SpeedGcode(p)) }
 func (k *Klippy) FlowFactor(p int) error    { return k.script(FlowGcode(p)) }
 func (k *Klippy) BabyStep(mm float64) error { return k.script(BabyStepGcode(mm)) }
+
+// SaveZOffset writes the Z offset of the head (the baby steps) into the config: into the probe
+// offset with a probe, else into the Z endstop, then SAVE_CONFIG. SAVE_CONFIG restarts Klipper, so
+// during a print the deck saves when the print ends (later is true). It then saves the offset as it
+// is at that time: Z_OFFSET_APPLY_PROBE adds the whole offset each time it runs, so the deck runs it
+// once.
+func (k *Klippy) SaveZOffset() (later bool, err error) {
+	if k.State().Busy() {
+		k.mu.Lock()
+		k.saveZ = true
+		k.mu.Unlock()
+		return true, nil
+	}
+	return false, k.applyZOffset()
+}
+
+func (k *Klippy) applyZOffset() error {
+	cmd := "Z_OFFSET_APPLY_ENDSTOP"
+	if k.Machine().Has("probe") {
+		cmd = "Z_OFFSET_APPLY_PROBE"
+	}
+	return k.script(cmd, "SAVE_CONFIG")
+}
 func (k *Klippy) Extrude(mm float64, speed int) error {
 	return k.script(ExtrudeGcode(mm, speed)...)
 }

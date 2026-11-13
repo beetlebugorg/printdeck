@@ -91,6 +91,8 @@ type Printer interface {
 	SpeedFactor(p int) error
 	FlowFactor(p int) error
 	BabyStep(mm float64) error
+	// SaveZOffset writes the Z offset into the config, now or when the print ends (later).
+	SaveZOffset() (later bool, err error)
 	EmergencyStop() error
 	FirmwareRestart() error
 
