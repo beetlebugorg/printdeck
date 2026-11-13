@@ -535,6 +535,8 @@ func (c *ChiTu) RunAction(string, ...string) error            { return ErrNotSup
 func (c *ChiTu) PrintPATower(int, int, string) error          { return ErrNotSupported }
 func (c *ChiTu) PrintCalibTowers(int, int, string) error      { return ErrNotSupported }
 func (c *ChiTu) SetPressureAdvance(float64) error             { return ErrNotSupported }
+func (c *ChiTu) PrintRingTower(int, int, string) error        { return ErrNotSupported }
+func (c *ChiTu) SetInputShaper(float64, float64) error        { return ErrNotSupported }
 func (c *ChiTu) Heat(int, int)                                {}
 func (c *ChiTu) SetToolTemp(int) error                        { return ErrNotSupported }
 func (c *ChiTu) SetBedTemp(int) error                         { return ErrNotSupported }

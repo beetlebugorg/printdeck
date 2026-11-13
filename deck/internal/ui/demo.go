@@ -140,6 +140,8 @@ func (d *DemoPrinter) RunAction(string, ...string) error            { return nil
 func (d *DemoPrinter) PrintPATower(int, int, string) error          { return nil }
 func (d *DemoPrinter) PrintCalibTowers(int, int, string) error      { return nil }
 func (d *DemoPrinter) SetPressureAdvance(float64) error             { return nil }
+func (d *DemoPrinter) PrintRingTower(int, int, string) error        { return nil }
+func (d *DemoPrinter) SetInputShaper(float64, float64) error        { return nil }
 func (d *DemoPrinter) UseConfig(string, string) error               { return nil }
 func (d *DemoPrinter) Console() []printer.ConsoleLine               { return d.Console_ }
 func (d *DemoPrinter) SendConsole(line string) {

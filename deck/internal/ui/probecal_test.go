@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -12,7 +13,7 @@ import (
 // calMachine is the TAZ with the BLTouch on the printed mount: a probe, z_tilt, the bed mesh, and
 // the twist calibration along X and Y.
 func calMachine() printer.Machine {
-	return printer.Machine{Modules: []string{"probe", "z_tilt", "bed_mesh", "axis_twist_compensation"},
+	return printer.Machine{Modules: []string{"probe", "z_tilt", "bed_mesh", "axis_twist_compensation", "extruder"},
 		HasProbe: true, ProbeOffset: [3]float64{68, -17, 3.6}, HasMesh: true,
 		MeshMin: [2]float64{20, 15}, MeshMax: [2]float64{265, 265}, MinX: -50, MaxX: 293, MinY: -17, MaxY: 308,
 		HasTwist: true, HasTwistY: true, TwistX: []float64{0.048, 0.030, 0.044, -0.034, -0.088},
@@ -208,5 +209,68 @@ func TestProbeCalPage(t *testing.T) {
 	a.pages = []page{pageMachine}
 	if f := simFrame(t, a, "machine-no-probe"); strings.Contains(strings.ToUpper(f), "CALIBRATION") {
 		t.Error("Calibration key with no probe")
+	}
+}
+
+func (r *recPrinter) PrintRingTower(tool, bed int, material string) error {
+	return r.rec(fmt.Sprintf("ring tower %d %d %s", tool, bed, material))
+}
+func (r *recPrinter) SetInputShaper(x, y float64) error {
+	return r.rec(fmt.Sprintf("input shaper %.1f %.1f", x, y))
+}
+
+// The page has the ringing tower and the input shaping. Input shaping asks for the ripples and
+// the distance of each axis, and sets the shaper at the frequencies.
+func TestShaperRows(t *testing.T) {
+	a, pr, cv := newPrintApp(idle)
+	m := calMachine()
+	pr.Machine_ = m
+	a.pages = []page{pageMachine, pageProbeCal}
+	f := strings.ToUpper(simFrame(t, a, "probecal-shaper"))
+	for _, s := range []string{"RINGING TOWER", "INPUT SHAPING", "OFF · PRINT THE RINGING TOWER"} {
+		if !strings.Contains(f, s) {
+			t.Errorf("no %q", s)
+		}
+	}
+	tapLabel(t, a, cv, "Ringing tower")
+	if a.confirm == nil || !strings.Contains(a.confirm.question, "ringing tower") {
+		t.Fatalf("Ringing tower asks %+v", a.confirm)
+	}
+	a.confirm.onYes()
+	waitCall(t, pr, "ring tower ")
+	a.confirm = nil
+
+	a.askShaper()
+	a.keypad.set(6) // X: 6 ripples
+	a.keypad.setF(10.8)
+	(<-a.posted)()
+	a.keypad.set(5) // Y: 5 ripples
+	a.keypad.setF(12.9)
+	(<-a.posted)()
+	if a.confirm == nil || a.confirm.question != "Set the input shaper to MZV, X 44.4 Hz, Y 31.0 Hz?" {
+		t.Fatalf("question %+v", a.confirm)
+	}
+	a.confirm.onYes()
+	waitCall(t, pr, "input shaper 44.4 31.0")
+	(<-a.posted)() // the toast of the new shaper
+	if !strings.Contains(a.toast, "in printer.cfg") {
+		t.Errorf("toast %q after the shaper", a.toast)
+	}
+
+	// A distance that gives no ringing frequency: a message, and no shaper.
+	a.confirm = nil
+	a.askShaper()
+	a.keypad.set(6)
+	a.keypad.setF(1)
+	(<-a.posted)()
+	if a.toast == "" || !strings.Contains(a.toast, "Measure again") || a.confirm != nil {
+		t.Errorf("toast %q, confirm %+v", a.toast, a.confirm)
+	}
+
+	// With a shaper in printer.cfg, the row shows it.
+	m.HasShaper, m.ShaperFreqX, m.ShaperFreqY, m.ShaperType = true, 44.4, 31, "mzv"
+	pr.Machine_ = m
+	if f := strings.ToUpper(simFrame(t, a, "probecal-shaper-set")); !strings.Contains(f, "MZV · X 44.4 HZ, Y 31.0 HZ") {
+		t.Error("the row does not show the shaper")
 	}
 }
