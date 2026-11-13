@@ -138,6 +138,11 @@ type Printer interface {
 	PrintRingTower(tool, bed int, material string, check bool) error
 	// SetMaxAccel sets the largest acceleration now and in printer.cfg.
 	SetMaxAccel(v float64) error
+	// PrintSweepTower prints the sweep of the shaper frequency, on 1 tower or with five on 5.
+	PrintSweepTower(tool, bed int, material string, five bool) error
+	// PrintPairTowers prints the A/B pair: the shaper at left (X, Y) on the left tower, at right
+	// on the right tower.
+	PrintPairTowers(tool, bed int, material string, left, right [2]float64) error
 	// SetInputShaper sets the MZV input shaper at the frequencies in Hz, now and in printer.cfg.
 	SetInputShaper(freqX, freqY float64) error
 
@@ -314,6 +319,7 @@ type App struct {
 	calib          *calibFlow // the calibration of the camera, while it runs (calibrate.go)
 	probeCal       *probeCal  // the calibration of the probe, while it runs (probecal.go)
 	calMsg         string     // why the last calibration of the probe stopped, or ""
+	pair           *pairRound // the last A/B pair of the input shaping (shaper.go)
 	// TimeLapse is the time lapse and the picture of the first layer, or nil (Settings > Time lapse).
 	TimeLapse TimeLapse
 

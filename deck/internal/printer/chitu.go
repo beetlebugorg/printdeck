@@ -537,16 +537,20 @@ func (c *ChiTu) PrintCalibTowers(int, int, string) error      { return ErrNotSup
 func (c *ChiTu) SetPressureAdvance(float64) error             { return ErrNotSupported }
 func (c *ChiTu) PrintRingTower(int, int, string, bool) error  { return ErrNotSupported }
 func (c *ChiTu) SetMaxAccel(float64) error                    { return ErrNotSupported }
-func (c *ChiTu) SetInputShaper(float64, float64) error        { return ErrNotSupported }
-func (c *ChiTu) Heat(int, int)                                {}
-func (c *ChiTu) SetToolTemp(int) error                        { return ErrNotSupported }
-func (c *ChiTu) SetBedTemp(int) error                         { return ErrNotSupported }
-func (c *ChiTu) Extrude(float64, int) error                   { return ErrNotSupported }
-func (c *ChiTu) Fan(int) error                                { return ErrNotSupported }
-func (c *ChiTu) SpeedFactor(int) error                        { return ErrNotSupported }
-func (c *ChiTu) FlowFactor(int) error                         { return ErrNotSupported }
-func (c *ChiTu) BabyStep(float64) error                       { return ErrNotSupported }
-func (c *ChiTu) SaveZOffset() (bool, error)                   { return false, ErrNotSupported }
+func (c *ChiTu) PrintSweepTower(int, int, string, bool) error { return ErrNotSupported }
+func (c *ChiTu) PrintPairTowers(int, int, string, [2]float64, [2]float64) error {
+	return ErrNotSupported
+}
+func (c *ChiTu) SetInputShaper(float64, float64) error { return ErrNotSupported }
+func (c *ChiTu) Heat(int, int)                         {}
+func (c *ChiTu) SetToolTemp(int) error                 { return ErrNotSupported }
+func (c *ChiTu) SetBedTemp(int) error                  { return ErrNotSupported }
+func (c *ChiTu) Extrude(float64, int) error            { return ErrNotSupported }
+func (c *ChiTu) Fan(int) error                         { return ErrNotSupported }
+func (c *ChiTu) SpeedFactor(int) error                 { return ErrNotSupported }
+func (c *ChiTu) FlowFactor(int) error                  { return ErrNotSupported }
+func (c *ChiTu) BabyStep(float64) error                { return ErrNotSupported }
+func (c *ChiTu) SaveZOffset() (bool, error)            { return false, ErrNotSupported }
 
 // The controls of phase 4: no command goes to the board before the test of each control.
 
