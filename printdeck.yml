@@ -1,7 +1,7 @@
 # Printdeck builds: the printed parts of the Slate v4, the desk case of Printdeck
-# (lulzbot/stl/slate/README.md), the webcam mounts on the printer, and the BLTouch mount of the TAZ. The profiles are in
-# profiles/. The Slate prints in navy (the case) and orange (the base). The webcam mounts print
-# in black PLA (roll-4).
+# (lulzbot/stl/slate/README.md), the webcam mounts on the printer, and the BLTouch mount of the
+# TAZ. The profiles are in profiles/. The Slate prints in navy (the case) and orange (the base).
+# The webcam mounts print in black PLA (roll-4).
 # The generate step writes the STL files again on GitHub, and fails when they differ from the
 # committed files. Run the same commands on your computer, and commit the STL files.
 project: printdeck
