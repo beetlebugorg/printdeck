@@ -154,7 +154,11 @@ PROFILES = [
     profile("Mount", "Mount", "bltouch_mount.stl", MOUNT),
 ]
 
-SUPPORT_CHECK = {"support_enable": True, "support_angle": 60, "support_type": "everywhere"}
+# CuraEngine takes the support settings of the extruder from the -s values only: it does not
+# read their defaults. Without support_extruder_nr and support_z_seam_away_from_model, the engine
+# stops at the first support line and leaves an empty G-code file.
+SUPPORT_CHECK = {"support_enable": True, "support_angle": 60, "support_type": "everywhere",
+                 "support_extruder_nr": 0, "support_z_seam_away_from_model": True}
 
 ENGINE = Path("/opt/ultimaker-cura/CuraEngine")
 DEFS = DEFINITIONS
