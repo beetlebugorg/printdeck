@@ -142,9 +142,13 @@ func (d *DemoPrinter) PrintCalibTowers(int, int, string) error      { return nil
 func (d *DemoPrinter) SetPressureAdvance(float64) error             { return nil }
 func (d *DemoPrinter) PrintRingTower(int, int, string, bool) error  { return nil }
 func (d *DemoPrinter) SetMaxAccel(float64) error                    { return nil }
-func (d *DemoPrinter) SetInputShaper(float64, float64) error        { return nil }
-func (d *DemoPrinter) UseConfig(string, string) error               { return nil }
-func (d *DemoPrinter) Console() []printer.ConsoleLine               { return d.Console_ }
+func (d *DemoPrinter) PrintSweepTower(int, int, string, bool) error { return nil }
+func (d *DemoPrinter) PrintPairTowers(int, int, string, [2]float64, [2]float64) error {
+	return nil
+}
+func (d *DemoPrinter) SetInputShaper(float64, float64) error { return nil }
+func (d *DemoPrinter) UseConfig(string, string) error        { return nil }
+func (d *DemoPrinter) Console() []printer.ConsoleLine        { return d.Console_ }
 func (d *DemoPrinter) SendConsole(line string) {
 	d.Console_ = append(d.Console_, printer.ConsoleLine{Kind: "in", Text: line})
 }

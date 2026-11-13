@@ -52,14 +52,74 @@ func RingFrequency(ripples int, distance float64) float64 {
 	return RingSpeed * float64(ripples) / distance
 }
 
-// RingTower is the G-code of the ringing tower for the machine m, with the nozzle at tool and the
-// bed at bed degrees, for the material (for example "PLA"). It starts with the PRINT_START macro
-// when the printer has one, and else heats and homes. At the end it sets the acceleration, the
-// pressure advance and the input shaper of printer.cfg again.
+// The tests of the shaper frequency, with the input shaper on at a fixed acceleration:
 //
-// With check, the input shaper stays on: the tower checks the shaper, and the band where ringing or
-// round corners start gives the largest acceleration (RingMaxAccel).
-func RingTower(m Machine, tool, bed int, material string, check bool) string {
+//	SweepTower  one tower in bands of SweepBand, a frequency of SweepFreqs in each band. The
+//	            smoothest band of an axis gives its frequency (SweepFreqAt).
+//	PairTowers  two towers next to each other, each with its own frequencies: the left tower a
+//	            lower pair, the right tower a higher pair. The smoother tower of an axis moves its
+//	            frequency, and the next pair is closer.
+//
+// The deck sets the shaper with SET_INPUT_SHAPER in the G-code: before a band, or before each
+// tower in each layer.
+const (
+	SweepFile       = "printdeck-shaper-sweep.gcode"
+	PairFile        = "printdeck-shaper-pair.gcode"
+	SweepBand       = 2.5   // mm
+	SweepStart      = 20.0  // Hz, the bottom band
+	SweepStep       = 3.0   // Hz more for each band
+	SweepBands      = 10    // 20 to 47 Hz: 25 mm
+	PairHeight      = 8.0   // mm
+	ShaperTestAccel = 3000. // mm/s², the acceleration of the sweep and the pair
+
+	pairGap = 10.0 // mm between the two towers
+)
+
+// SweepFreqs are the frequencies of the bands of the sweep tower, from the bottom.
+func SweepFreqs() []float64 {
+	out := make([]float64, SweepBands)
+	for i := range out {
+		out[i] = SweepStart + SweepStep*float64(i)
+	}
+	return out
+}
+
+// SweepFreqAt is the frequency of the sweep tower at a height in mm.
+func SweepFreqAt(height float64) float64 {
+	i := int(math.Floor(height / SweepBand))
+	i = min(max(i, 0), SweepBands-1)
+	return SweepStart + SweepStep*float64(i)
+}
+
+// towerPlan is a test print of one or more notched towers with one wall.
+type towerPlan struct {
+	title   string
+	notes   []string     // comment lines at the top
+	centers [][2]float64 // the middle of each tower
+	height  float64      // mm
+	setup   []string     // after the first layer: the test settings
+	// before returns the commands before a tower in a layer (from the second layer), or nil.
+	before func(layer int, z float64, tower int) []string
+	// shaper is true when the test changes the input shaper: the end sets it again.
+	shaper bool
+}
+
+// towerCenter is the middle of the bed: the middle of the mesh area, or of the travel.
+func towerCenter(m Machine) (float64, float64) {
+	switch {
+	case m.HasMesh:
+		return (m.MeshMin[0] + m.MeshMax[0]) / 2, (m.MeshMin[1] + m.MeshMax[1]) / 2
+	case m.MaxX > m.MinX && m.MaxY > m.MinY:
+		return (m.MinX + m.MaxX) / 2, (m.MinY + m.MaxY) / 2
+	}
+	return 100, 100
+}
+
+// towerGcode is the G-code of a tower plan for the machine m, with the nozzle at tool and the bed
+// at bed degrees, for the material (for example "PLA"). It starts with the PRINT_START macro when
+// the printer has one, and else heats and homes. At the end it sets the acceleration, the
+// pressure advance and the input shaper of printer.cfg again.
+func towerGcode(m Machine, tool, bed int, material string, p towerPlan) string {
 	nozzle := m.NozzleDiameter
 	if nozzle <= 0 {
 		nozzle = 0.4
@@ -67,34 +127,26 @@ func RingTower(m Machine, tool, bed int, material string, check bool) string {
 	width := math.Round(nozzle*1.1*100) / 100         // one wall: about 0.55 mm for a 0.5 mm nozzle
 	layer := math.Round(nozzle*0.4/0.05) * 0.05       // 0.2 mm for a 0.5 mm nozzle: the flow stays low at 80 mm/s
 	area := math.Pi * m.Diameter() * m.Diameter() / 4 // of the filament
-	cx, cy := (m.MinX+m.MaxX)/2, (m.MinY+m.MaxY)/2    // the middle of the bed
-	if m.HasMesh {
-		cx, cy = (m.MeshMin[0]+m.MeshMax[0])/2, (m.MeshMin[1]+m.MeshMax[1])/2
-	} else if m.MaxX <= m.MinX || m.MaxY <= m.MinY {
-		cx, cy = 100, 100
-	}
-	layers := int(math.Round(RingTowerHeight / layer))
+	layers := int(math.Round(p.height / layer))
 
 	var b strings.Builder
 	w := func(format string, a ...any) { fmt.Fprintf(&b, format+"\n", a...) }
 	w(";FLAVOR:Klipper")
-	if check {
-		w(";Generated with Printdeck: the ringing tower, with the input shaper on")
-	} else {
-		w(";Generated with Printdeck: the ringing tower")
-	}
+	w(";Generated with Printdeck: %s", p.title)
 	w(";LAYER_COUNT:%d", layers)
 	if material != "" {
 		w(";PRINTDECK_MATERIAL: %s", material)
 	}
-	w(";Acceleration %.0f at the bottom, %.0f more each %.0f mm. Walls at %.0f mm/s.", RingAccelStart, RingAccelStep, RingBand, RingSpeed)
+	for _, n := range p.notes {
+		w(";%s", n)
+	}
 	printStart(&b, m, tool, bed, layer, ringFirstSpeed)
 	w("G90")
 	w("M83")
 
 	// A square loop at an inset from the outer side, from the middle of its back side, so that the
 	// seam is not at a corner. The right, the front and the left walls have a V notch.
-	loop := func(inset, speed, flow float64) {
+	loop := func(cx, cy, inset, speed, flow float64, hop bool, z float64) {
 		h := ringSide/2 - inset - width/2
 		corners := [][2]float64{{cx, cy + h}, {cx + h, cy + h}, {cx + h, cy - h}, {cx - h, cy - h}, {cx - h, cy + h}, {cx, cy + h}}
 		pts := [][2]float64{corners[0], corners[1]}
@@ -104,8 +156,7 @@ func RingTower(m Machine, tool, bed int, material string, check bool) string {
 				// The notch: in toward the middle of the tower, and out again.
 				l := math.Hypot(q[0]-p[0], q[1]-p[1])
 				u := [2]float64{(q[0] - p[0]) / l, (q[1] - p[1]) / l}
-				n := [2]float64{-u[1], u[0]} // the loop goes clockwise: the left of the way is out
-				n = [2]float64{-n[0], -n[1]}
+				n := [2]float64{u[1], -u[0]} // the loop goes clockwise: the right of the way is in
 				at := func(along, in float64) [2]float64 {
 					return [2]float64{p[0] + u[0]*along + n[0]*in, p[1] + u[1]*along + n[1]*in}
 				}
@@ -113,7 +164,14 @@ func RingTower(m Machine, tool, bed int, material string, check bool) string {
 			}
 			pts = append(pts, q)
 		}
+		if hop {
+			// To the next tower: up over the walls.
+			w("G1 Z%.3f F600", z+1)
+		}
 		w("G1 X%.3f Y%.3f F%.0f", pts[0][0], pts[0][1], ringTravel*60)
+		if hop {
+			w("G1 Z%.3f F600", z)
+		}
 		w("G1 E%.3f F2100", ringRetract)
 		for i := 1; i < len(pts); i++ {
 			d := math.Hypot(pts[i][0]-pts[i-1][0], pts[i][1]-pts[i-1][1])
@@ -126,39 +184,145 @@ func RingTower(m Machine, tool, bed int, material string, check bool) string {
 		w(";LAYER:%d", i)
 		w("G1 Z%.3f F600", z)
 		if i == 1 {
-			// After the first layer: the fan, and the test. No pressure advance and no input
-			// shaper, the full acceleration up to the end of each wall, and the acceleration of
-			// each band.
+			// After the first layer: the fan, and the test.
 			w("M106 S255")
-			w("SET_PRESSURE_ADVANCE ADVANCE=0")
-			if m.HasShaper && !check {
-				w("SET_INPUT_SHAPER SHAPER_FREQ_X=0 SHAPER_FREQ_Y=0")
+			for _, l := range p.setup {
+				w("%s", l)
 			}
-			w("SET_VELOCITY_LIMIT MINIMUM_CRUISE_RATIO=0")
-			w("TUNING_TOWER COMMAND=SET_VELOCITY_LIMIT PARAMETER=ACCEL START=%g STEP_DELTA=%g STEP_HEIGHT=%g",
-				RingAccelStart, RingAccelStep, RingBand)
 		}
-		if i == 0 {
-			// Three walls at the bottom, so that the tower stays on the bed.
-			for k := 0; k < 3; k++ {
-				w(";TYPE:WALL-OUTER")
-				loop(float64(k)*width, ringFirstSpeed, 1.1)
+		for t, c := range p.centers {
+			if i > 0 && p.before != nil {
+				for _, l := range p.before(i, z, t) {
+					w("%s", l)
+				}
 			}
-			continue
+			if i == 0 {
+				// Three walls at the bottom, so that the tower stays on the bed.
+				for k := 0; k < 3; k++ {
+					w(";TYPE:WALL-OUTER")
+					loop(c[0], c[1], float64(k)*width, ringFirstSpeed, 1.1, t > 0 && k == 0, z)
+				}
+				continue
+			}
+			w(";TYPE:WALL-OUTER")
+			loop(c[0], c[1], 0, RingSpeed, 1.0, t > 0, z)
 		}
-		w(";TYPE:WALL-OUTER")
-		loop(0, RingSpeed, 1.0)
 	}
 	// The settings of printer.cfg again.
 	w("SET_PRESSURE_ADVANCE ADVANCE=%g", m.PressureAdvance)
-	if m.HasShaper && !check {
-		w("SET_INPUT_SHAPER SHAPER_FREQ_X=%g SHAPER_FREQ_Y=%g", m.ShaperFreqX, m.ShaperFreqY)
+	if m.HasShaper && p.shaper {
+		w("SET_INPUT_SHAPER SHAPER_TYPE=%s SHAPER_FREQ_X=%g SHAPER_FREQ_Y=%g", shaperType(m), m.ShaperFreqX, m.ShaperFreqY)
 	}
 	if m.MaxAccel > 0 {
 		w("SET_VELOCITY_LIMIT ACCEL=%g MINIMUM_CRUISE_RATIO=%g", m.MaxAccel, m.MinCruiseRatio)
 	}
 	printEnd(&b, m)
 	return b.String()
+}
+
+func shaperType(m Machine) string {
+	if m.ShaperType == "" {
+		return "mzv"
+	}
+	return m.ShaperType
+}
+
+// RingTower is the G-code of the ringing tower: the shaper off and no pressure advance, while
+// TUNING_TOWER raises the acceleration with the height.
+//
+// With check, the input shaper stays on: the tower checks the shaper, and the band where ringing or
+// round corners start gives the largest acceleration (RingMaxAccel).
+func RingTower(m Machine, tool, bed int, material string, check bool) string {
+	cx, cy := towerCenter(m)
+	p := towerPlan{title: "the ringing tower", centers: [][2]float64{{cx, cy}}, height: RingTowerHeight,
+		notes: []string{fmt.Sprintf("Acceleration %.0f at the bottom, %.0f more each %.0f mm. Walls at %.0f mm/s.",
+			RingAccelStart, RingAccelStep, RingBand, RingSpeed)}}
+	if check {
+		p.title = "the ringing tower, with the input shaper on"
+	}
+	// No pressure advance and no input shaper, the full acceleration up to the end of each wall,
+	// and the acceleration of each band.
+	p.setup = append(p.setup, "SET_PRESSURE_ADVANCE ADVANCE=0")
+	if m.HasShaper && !check {
+		p.setup = append(p.setup, "SET_INPUT_SHAPER SHAPER_FREQ_X=0 SHAPER_FREQ_Y=0")
+		p.shaper = true
+	}
+	p.setup = append(p.setup, "SET_VELOCITY_LIMIT MINIMUM_CRUISE_RATIO=0",
+		fmt.Sprintf("TUNING_TOWER COMMAND=SET_VELOCITY_LIMIT PARAMETER=ACCEL START=%g STEP_DELTA=%g STEP_HEIGHT=%g",
+			RingAccelStart, RingAccelStep, RingBand))
+	return towerGcode(m, tool, bed, material, p)
+}
+
+// testSetup is the setup of the sweep and the pair: no pressure advance, the MZV shaper, and the
+// fixed acceleration to the end of each wall.
+func testSetup() []string {
+	return []string{"SET_PRESSURE_ADVANCE ADVANCE=0", "SET_INPUT_SHAPER SHAPER_TYPE=mzv",
+		fmt.Sprintf("SET_VELOCITY_LIMIT ACCEL=%g MINIMUM_CRUISE_RATIO=0", ShaperTestAccel)}
+}
+
+// SweepCenters are the places of the towers of the sweep: the middle of the bed, or with five the
+// middle and the four corners of the area of the bed level test (250 mm on the TAZ), as the bed
+// level test. The shaper uses the middle tower; the corners show if the frequency changes over
+// the bed.
+func SweepCenters(m Machine, five bool) [][2]float64 {
+	cx, cy := towerCenter(m)
+	if !five {
+		return [][2]float64{{cx, cy}}
+	}
+	// Corners of the mesh area, 5 mm inside, less half a tower.
+	dx, dy := 95., 95.
+	if m.HasMesh {
+		dx = (m.MeshMax[0]-m.MeshMin[0])/2 - ringSide/2 + 5
+		dy = (m.MeshMax[1]-m.MeshMin[1])/2 - ringSide/2 + 5
+	}
+	return [][2]float64{{cx, cy}, {cx - dx, cy - dy}, {cx + dx, cy - dy}, {cx + dx, cy + dy}, {cx - dx, cy + dy}}
+}
+
+// SweepTower is the G-code of the sweep tower: the MZV shaper at the frequency of each band
+// (SweepFreqs), the same on X and Y. With five, five towers over the bed (SweepCenters). The
+// printer needs an [input_shaper] section.
+func SweepTower(m Machine, tool, bed int, material string, five bool) string {
+	var bands []string
+	for i, f := range SweepFreqs() {
+		bands = append(bands, fmt.Sprintf("%.1f-%.1f mm: %.0f Hz", float64(i)*SweepBand, float64(i+1)*SweepBand, f))
+	}
+	last := -1
+	p := towerPlan{title: "the input shaper sweep", centers: SweepCenters(m, five), height: SweepBand * SweepBands,
+		notes: append([]string{fmt.Sprintf("MZV at %.0f mm/s², walls at %.0f mm/s. The bands:", ShaperTestAccel, RingSpeed)}, bands...),
+		setup: testSetup(), shaper: true,
+		before: func(layer int, z float64, tower int) []string {
+			// The band of the layer: the height of its bottom.
+			i := int(math.Floor((z - 0.001) / SweepBand))
+			i = min(max(i, 0), SweepBands-1)
+			if tower > 0 || i == last {
+				return nil
+			}
+			last = i
+			f := SweepStart + SweepStep*float64(i)
+			return []string{fmt.Sprintf("SET_INPUT_SHAPER SHAPER_FREQ_X=%g SHAPER_FREQ_Y=%g", f, f)}
+		}}
+	return towerGcode(m, tool, bed, material, p)
+}
+
+// PairTowers is the G-code of the pair: two towers next to each other, the left one with the
+// shaper at left (X, Y), the right one at right (X, Y). The printer needs an [input_shaper]
+// section. The deck swaps the side of the higher frequency each round: the place on the bed
+// changes the frequency a little (about 0.7 % 35 mm off the middle).
+func PairTowers(m Machine, tool, bed int, material string, low, high [2]float64) string {
+	cx, cy := towerCenter(m)
+	d := (ringSide + pairGap) / 2
+	p := towerPlan{title: "the input shaper pair", centers: [][2]float64{{cx - d, cy}, {cx + d, cy}}, height: PairHeight,
+		notes: []string{fmt.Sprintf("MZV at %.0f mm/s², walls at %.0f mm/s.", ShaperTestAccel, RingSpeed),
+			fmt.Sprintf("Left tower: X %.2f Hz, Y %.2f Hz. Right tower: X %.2f Hz, Y %.2f Hz.", low[0], low[1], high[0], high[1])},
+		setup: testSetup(), shaper: true,
+		before: func(layer int, z float64, tower int) []string {
+			f := low
+			if tower == 1 {
+				f = high
+			}
+			return []string{fmt.Sprintf("SET_INPUT_SHAPER SHAPER_FREQ_X=%.2f SHAPER_FREQ_Y=%.2f", f[0], f[1])}
+		}}
+	return towerGcode(m, tool, bed, material, p)
 }
 
 // RingMaxAccel is the largest acceleration from the check tower: the acceleration of the band under
@@ -170,22 +334,37 @@ func RingMaxAccel(height float64) float64 {
 	return RingAccel(height) - RingAccelStep
 }
 
-// PrintRingTower writes the ringing tower to the file store and prints it. With check, the input
-// shaper stays on (RingTower).
+// printTest writes the G-code of a test to the file store and prints it.
+func (k *Klippy) printTest(file, gcode string) error {
+	path, err := k.store.FullPath(file)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(path, []byte(gcode), 0o644); err != nil {
+		return err
+	}
+	k.LoadFiles()
+	return k.script(fmt.Sprintf("SDCARD_PRINT_FILE FILENAME=%q", file))
+}
+
+// PrintRingTower prints the ringing tower. With check, the input shaper stays on (RingTower).
 func (k *Klippy) PrintRingTower(tool, bed int, material string, check bool) error {
 	file := RingTowerFile
 	if check {
 		file = RingCheckFile
 	}
-	path, err := k.store.FullPath(file)
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(path, []byte(RingTower(k.Machine(), tool, bed, material, check)), 0o644); err != nil {
-		return err
-	}
-	k.LoadFiles()
-	return k.script(fmt.Sprintf("SDCARD_PRINT_FILE FILENAME=%q", file))
+	return k.printTest(file, RingTower(k.Machine(), tool, bed, material, check))
+}
+
+// PrintSweepTower prints the sweep tower of the shaper frequency, or with five the five towers.
+func (k *Klippy) PrintSweepTower(tool, bed int, material string, five bool) error {
+	return k.printTest(SweepFile, SweepTower(k.Machine(), tool, bed, material, five))
+}
+
+// PrintPairTowers prints the two towers of the shaper frequency: left at the left, right at the
+// right.
+func (k *Klippy) PrintPairTowers(tool, bed int, material string, low, high [2]float64) error {
+	return k.printTest(PairFile, PairTowers(k.Machine(), tool, bed, material, low, high))
 }
 
 // SetMaxAccel sets the largest acceleration now, and writes max_accel of [printer] into printer.cfg.

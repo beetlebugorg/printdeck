@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"printdeck/internal/gfx"
@@ -404,124 +403,7 @@ func (a *App) drawProbeCal(c *gfx.Canvas, st printer.State) {
 		items = append(items, menuItem{"Bed map", sub, dim, ask("map", "Bed map", "Heat, then probe the full bed? About 10 minutes.")})
 	}
 	if mach.Has("extruder") {
-		m := a.loaded()
-		items = append(items, menuItem{"Ringing tower", "Print it for the input shaping: about 15 minutes", dim, func() {
-			if a.probeCal != nil {
-				a.Toast("A calibration runs. Stop it first.")
-				return
-			}
-			if !idle {
-				a.Toast("Wait until the print ends")
-				return
-			}
-			q := fmt.Sprintf("Print the ringing tower at %d°?", m.Tool)
-			a.confirm = &confirmBox{question: q, yes: "Print", onYes: func() {
-				a.do(func() error { return pr.PrintRingTower(m.Tool, m.Bed, m.Name, false) })
-			}}
-		}})
-		sub := "Off · print the ringing tower, then set it"
-		if mach.HasShaper && (mach.ShaperFreqX > 0 || mach.ShaperFreqY > 0) {
-			sub = fmt.Sprintf("%s · X %.1f Hz, Y %.1f Hz", strings.ToUpper(mach.ShaperType), mach.ShaperFreqX, mach.ShaperFreqY)
-		}
-		items = append(items, menuItem{"Input shaping", sub, dim, func() {
-			if !idle {
-				a.Toast("Wait until the print ends")
-				return
-			}
-			a.askShaper()
-		}})
-		if mach.HasShaper && (mach.ShaperFreqX > 0 || mach.ShaperFreqY > 0) {
-			items = append(items, menuItem{"Check tower", "The ringing tower with the shaper on: about 15 minutes", dim, func() {
-				if a.probeCal != nil {
-					a.Toast("A calibration runs. Stop it first.")
-					return
-				}
-				if !idle {
-					a.Toast("Wait until the print ends")
-					return
-				}
-				q := fmt.Sprintf("Print the check tower at %d°, with the input shaper on?", m.Tool)
-				a.confirm = &confirmBox{question: q, yes: "Print", onYes: func() {
-					a.do(func() error { return pr.PrintRingTower(m.Tool, m.Bed, m.Name, true) })
-				}}
-			}})
-		}
-		items = append(items, menuItem{"Max acceleration", fmt.Sprintf("Now %.0f mm/s² · set it from the check tower", mach.MaxAccel), dim, func() {
-			if !idle {
-				a.Toast("Wait until the print ends")
-				return
-			}
-			a.askMaxAccel()
-		}})
+		items = append(items, menuItem{"Input shaping", shaperLine(mach), dim, func() { a.open(pageShaper) }})
 	}
 	a.menuRowsWait(c, a.listArea(f), f.wide, 86, 12, items, st.Busy())
-}
-
-// askMaxAccel asks for the height on the check tower where ringing or round corners start, and
-// sets the acceleration of the band under it (printer.RingMaxAccel).
-func (a *App) askMaxAccel() {
-	pr := a.Printer
-	a.editPosition("Height where ringing or round corners start", 20, 0, printer.RingTowerHeight, func(h float64) error {
-		v := printer.RingMaxAccel(h)
-		if v <= 0 {
-			return fmt.Errorf("The first band is the lowest acceleration of the tower. Keep max_accel.")
-		}
-		a.post(func() {
-			a.confirm = &confirmBox{question: fmt.Sprintf("Set max_accel to %.0f mm/s²?", v), yes: "Set", onYes: func() {
-				a.do(func() error {
-					if err := pr.SetMaxAccel(v); err != nil {
-						return err
-					}
-					a.Toast(fmt.Sprintf("max_accel %.0f, in printer.cfg", v))
-					return nil
-				})
-			}}
-			a.Redraw()
-		})
-		return nil
-	})
-}
-
-// askShaper asks for the ripples of the ringing tower: for each axis, a count of ripples after the
-// notch and the distance over them, in mm. X rings on the left and the right walls, Y on the front
-// wall. The
-// deck then sets the MZV shaper at the frequencies (printer.RingFrequency).
-func (a *App) askShaper() {
-	pr := a.Printer
-	var f [2]float64
-	var ask func(axis int)
-	ask = func(axis int) {
-		name, wall := "X", "left or right wall"
-		if axis == 1 {
-			name, wall = "Y", "front wall"
-		}
-		a.editNumber(fmt.Sprintf("%s: ripples after the notch, %s", name, wall), 6, 40, " ripples", func(n int) {
-			a.editPosition(fmt.Sprintf("%s: distance over the %d ripples", name, n), 10, 1, 100, func(d float64) error {
-				hz := printer.RingFrequency(n, d)
-				if hz < 10 || hz > 150 {
-					return fmt.Errorf("%.1f Hz is not a ringing frequency. Measure again.", hz)
-				}
-				f[axis] = hz
-				a.post(func() {
-					if axis == 0 {
-						ask(1)
-						return
-					}
-					q := fmt.Sprintf("Set the input shaper to MZV, X %.1f Hz, Y %.1f Hz?", f[0], f[1])
-					a.confirm = &confirmBox{question: q, yes: "Set", onYes: func() {
-						a.do(func() error {
-							if err := pr.SetInputShaper(f[0], f[1]); err != nil {
-								return err
-							}
-							a.Toast(fmt.Sprintf("Input shaper X %.1f Hz, Y %.1f Hz, in printer.cfg", f[0], f[1]))
-							return nil
-						})
-					}}
-					a.Redraw()
-				})
-				return nil
-			})
-		})
-	}
-	ask(0)
 }
