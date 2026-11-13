@@ -212,9 +212,10 @@ func TestProbeCalPage(t *testing.T) {
 	}
 }
 
-func (r *recPrinter) PrintRingTower(tool, bed int, material string) error {
-	return r.rec(fmt.Sprintf("ring tower %d %d %s", tool, bed, material))
+func (r *recPrinter) PrintRingTower(tool, bed int, material string, check bool) error {
+	return r.rec(fmt.Sprintf("ring tower %d %d %s check %v", tool, bed, material, check))
 }
+func (r *recPrinter) SetMaxAccel(v float64) error { return r.rec(fmt.Sprintf("max accel %.0f", v)) }
 func (r *recPrinter) SetInputShaper(x, y float64) error {
 	return r.rec(fmt.Sprintf("input shaper %.1f %.1f", x, y))
 }
@@ -237,7 +238,7 @@ func TestShaperRows(t *testing.T) {
 		t.Fatalf("Ringing tower asks %+v", a.confirm)
 	}
 	a.confirm.onYes()
-	waitCall(t, pr, "ring tower ")
+	waitCall(t, pr, "check false")
 	a.confirm = nil
 
 	a.askShaper()
@@ -267,10 +268,31 @@ func TestShaperRows(t *testing.T) {
 		t.Errorf("toast %q, confirm %+v", a.toast, a.confirm)
 	}
 
-	// With a shaper in printer.cfg, the row shows it.
-	m.HasShaper, m.ShaperFreqX, m.ShaperFreqY, m.ShaperType = true, 44.4, 31, "mzv"
+	// With a shaper in printer.cfg, the row shows it, and the check tower keeps it on.
+	a.keypad = nil
+	m.HasShaper, m.ShaperFreqX, m.ShaperFreqY, m.ShaperType, m.MaxAccel = true, 44.4, 31, "mzv", 3000
 	pr.Machine_ = m
-	if f := strings.ToUpper(simFrame(t, a, "probecal-shaper-set")); !strings.Contains(f, "MZV · X 44.4 HZ, Y 31.0 HZ") {
-		t.Error("the row does not show the shaper")
+	f = strings.ToUpper(simFrame(t, a, "probecal-shaper-set"))
+	for _, s := range []string{"MZV · X 44.4 HZ, Y 31.0 HZ", "CHECK TOWER", "NOW 3000 MM/S²"} {
+		if !strings.Contains(f, s) {
+			t.Errorf("no %q with a shaper", s)
+		}
 	}
+	tapLabel(t, a, cv, "Check tower")
+	if a.confirm == nil || !strings.Contains(a.confirm.question, "input shaper on") {
+		t.Fatalf("Check tower asks %+v", a.confirm)
+	}
+	a.confirm.onYes()
+	waitCall(t, pr, "check true")
+	a.confirm = nil
+
+	// Max acceleration: ringing from 22 mm gives the band under it, 2500.
+	a.askMaxAccel()
+	a.keypad.setF(22)
+	(<-a.posted)()
+	if a.confirm == nil || a.confirm.question != "Set max_accel to 2500 mm/s²?" {
+		t.Fatalf("question %+v", a.confirm)
+	}
+	a.confirm.onYes()
+	waitCall(t, pr, "max accel 2500")
 }

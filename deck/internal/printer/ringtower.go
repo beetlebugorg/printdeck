@@ -22,6 +22,7 @@ import (
 // layers start in the middle of the back wall, so it has no notch.
 const (
 	RingTowerFile   = "printdeck-ringing-tower.gcode"
+	RingCheckFile   = "printdeck-ringing-check.gcode"
 	RingSpeed       = 80.0   // mm/s, the speed of the wall
 	RingAccelStart  = 1000.0 // mm/s², at the bottom of the tower
 	RingAccelStep   = 500.0  // mm/s² more for each band
@@ -55,7 +56,10 @@ func RingFrequency(ripples int, distance float64) float64 {
 // bed at bed degrees, for the material (for example "PLA"). It starts with the PRINT_START macro
 // when the printer has one, and else heats and homes. At the end it sets the acceleration, the
 // pressure advance and the input shaper of printer.cfg again.
-func RingTower(m Machine, tool, bed int, material string) string {
+//
+// With check, the input shaper stays on: the tower checks the shaper, and the band where ringing or
+// round corners start gives the largest acceleration (RingMaxAccel).
+func RingTower(m Machine, tool, bed int, material string, check bool) string {
 	nozzle := m.NozzleDiameter
 	if nozzle <= 0 {
 		nozzle = 0.4
@@ -74,7 +78,11 @@ func RingTower(m Machine, tool, bed int, material string) string {
 	var b strings.Builder
 	w := func(format string, a ...any) { fmt.Fprintf(&b, format+"\n", a...) }
 	w(";FLAVOR:Klipper")
-	w(";Generated with Printdeck: the ringing tower")
+	if check {
+		w(";Generated with Printdeck: the ringing tower, with the input shaper on")
+	} else {
+		w(";Generated with Printdeck: the ringing tower")
+	}
 	w(";LAYER_COUNT:%d", layers)
 	if material != "" {
 		w(";PRINTDECK_MATERIAL: %s", material)
@@ -123,7 +131,7 @@ func RingTower(m Machine, tool, bed int, material string) string {
 			// each band.
 			w("M106 S255")
 			w("SET_PRESSURE_ADVANCE ADVANCE=0")
-			if m.HasShaper {
+			if m.HasShaper && !check {
 				w("SET_INPUT_SHAPER SHAPER_FREQ_X=0 SHAPER_FREQ_Y=0")
 			}
 			w("SET_VELOCITY_LIMIT MINIMUM_CRUISE_RATIO=0")
@@ -143,7 +151,7 @@ func RingTower(m Machine, tool, bed int, material string) string {
 	}
 	// The settings of printer.cfg again.
 	w("SET_PRESSURE_ADVANCE ADVANCE=%g", m.PressureAdvance)
-	if m.HasShaper {
+	if m.HasShaper && !check {
 		w("SET_INPUT_SHAPER SHAPER_FREQ_X=%g SHAPER_FREQ_Y=%g", m.ShaperFreqX, m.ShaperFreqY)
 	}
 	if m.MaxAccel > 0 {
@@ -153,17 +161,52 @@ func RingTower(m Machine, tool, bed int, material string) string {
 	return b.String()
 }
 
-// PrintRingTower writes the ringing tower to the file store and prints it.
-func (k *Klippy) PrintRingTower(tool, bed int, material string) error {
-	path, err := k.store.FullPath(RingTowerFile)
+// RingMaxAccel is the largest acceleration from the check tower: the acceleration of the band under
+// the height in mm where ringing or round corners start. It is 0 in the first band.
+func RingMaxAccel(height float64) float64 {
+	if height < RingBand {
+		return 0
+	}
+	return RingAccel(height) - RingAccelStep
+}
+
+// PrintRingTower writes the ringing tower to the file store and prints it. With check, the input
+// shaper stays on (RingTower).
+func (k *Klippy) PrintRingTower(tool, bed int, material string, check bool) error {
+	file := RingTowerFile
+	if check {
+		file = RingCheckFile
+	}
+	path, err := k.store.FullPath(file)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(path, []byte(RingTower(k.Machine(), tool, bed, material)), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(RingTower(k.Machine(), tool, bed, material, check)), 0o644); err != nil {
 		return err
 	}
 	k.LoadFiles()
-	return k.script(fmt.Sprintf("SDCARD_PRINT_FILE FILENAME=%q", RingTowerFile))
+	return k.script(fmt.Sprintf("SDCARD_PRINT_FILE FILENAME=%q", file))
+}
+
+// SetMaxAccel sets the largest acceleration now, and writes max_accel of [printer] into printer.cfg.
+func (k *Klippy) SetMaxAccel(v float64) error {
+	if err := k.script(fmt.Sprintf("SET_VELOCITY_LIMIT ACCEL=%g", v)); err != nil {
+		return err
+	}
+	if k.ConfigPath == "" {
+		return nil
+	}
+	b, err := os.ReadFile(k.ConfigPath)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(k.ConfigPath, []byte(setConfigOption(string(b), "printer", "max_accel", fmt.Sprintf("%g", v))), 0o644); err != nil {
+		return err
+	}
+	k.mu.Lock()
+	k.settings.MaxAccel = v
+	k.mu.Unlock()
+	return nil
 }
 
 // setConfigOption sets an option of a section in the config text cfg. It changes the line of the
