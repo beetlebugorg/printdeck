@@ -537,6 +537,7 @@ func (c *ChiTu) PrintCalibTowers(int, int, string) error      { return ErrNotSup
 func (c *ChiTu) SetPressureAdvance(float64) error             { return ErrNotSupported }
 func (c *ChiTu) PrintRingTower(int, int, string, bool) error  { return ErrNotSupported }
 func (c *ChiTu) SetMaxAccel(float64) error                    { return ErrNotSupported }
+func (c *ChiTu) PrintShakeTest() error                        { return ErrNotSupported }
 func (c *ChiTu) PrintSweepTower(int, int, string, bool) error { return ErrNotSupported }
 func (c *ChiTu) PrintPairTowers(int, int, string, [2]float64, [2]float64) error {
 	return ErrNotSupported

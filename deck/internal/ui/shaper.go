@@ -11,6 +11,8 @@ import (
 // The Input shaping page (Calibration > Input shaping): the tests of the input shaper, in order.
 //
 //	Ringing tower   the shaper off: count the ripples after a notch (Ripples).
+//	Shake test      the shaper off: X and Y shake through a range of frequencies, and a phone
+//	                records the sound. The loudest step of an axis gives its frequency.
 //	Sweep           the shaper on at a frequency in each band, on 1 tower or on 5 over the bed:
 //	                the smoothest band of each axis gives its frequency (Sweep result).
 //	A/B pair        two towers, the lower and the higher frequency of each axis around the shaper
@@ -85,7 +87,12 @@ func (a *App) drawShaper(c *gfx.Canvas, st printer.State) {
 			askPrint(fmt.Sprintf("Print the ringing tower at %d°?", m.Tool), func() error {
 				return pr.PrintRingTower(m.Tool, m.Bed, m.Name, false)
 			})},
-		menuItem{"Ripples", "Enter the ripples of the ringing tower", dim, when(a.askShaper)})
+		menuItem{"Ripples", "Enter the ripples of the ringing tower", dim, when(a.askShaper)},
+		menuItem{"Shake test", fmt.Sprintf("X, then Y, %.0f to %.0f Hz · record it with a phone · 3 min",
+			printer.ShakeStart, printer.ShakeEnd), dim, when(func() {
+			a.confirm = &confirmBox{question: "Home, then shake X and Y? Start the recording when the screen says so.",
+				yes: "Shake", onYes: func() { a.do(pr.PrintShakeTest) }}
+		})})
 	if mach.HasShaper {
 		items = append(items,
 			menuItem{"Sweep", fmt.Sprintf("%.0f to %.0f Hz in %.1f mm bands · 1 or 5 towers", printer.SweepStart,
