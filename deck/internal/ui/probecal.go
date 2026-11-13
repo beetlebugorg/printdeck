@@ -434,8 +434,9 @@ func (a *App) drawProbeCal(c *gfx.Canvas, st printer.State) {
 	a.menuRowsWait(c, a.listArea(f), f.wide, 86, 12, items, st.Busy())
 }
 
-// askShaper asks for the ripples of the ringing tower: for each axis, a count of ripples and the
-// distance over them, in mm. X rings on the left and the right walls, Y on the front wall. The
+// askShaper asks for the ripples of the ringing tower: for each axis, a count of ripples after the
+// notch and the distance over them, in mm. X rings on the left and the right walls, Y on the front
+// wall. The
 // deck then sets the MZV shaper at the frequencies (printer.RingFrequency).
 func (a *App) askShaper() {
 	pr := a.Printer
@@ -446,7 +447,7 @@ func (a *App) askShaper() {
 		if axis == 1 {
 			name, wall = "Y", "front wall"
 		}
-		a.editNumber(fmt.Sprintf("%s: ripples on the %s", name, wall), 6, 40, " ripples", func(n int) {
+		a.editNumber(fmt.Sprintf("%s: ripples after the notch, %s", name, wall), 6, 40, " ripples", func(n int) {
 			a.editPosition(fmt.Sprintf("%s: distance over the %d ripples", name, n), 10, 1, 100, func(d float64) error {
 				hz := printer.RingFrequency(n, d)
 				if hz < 10 || hz > 150 {
