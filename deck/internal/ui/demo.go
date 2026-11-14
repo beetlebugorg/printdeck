@@ -238,6 +238,8 @@ func (a *App) OpenPrintScreen(name string) {
 		a.pages = []page{pageFilament}
 	case "maintenance":
 		a.pages = []page{pageMachine, pageMaintenance}
+	case "calibration":
+		a.pages = []page{pageMachine, pageProbeCal}
 	case "machine":
 		a.pages = []page{pageMachine}
 	case "queue":
