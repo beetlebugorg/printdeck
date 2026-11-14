@@ -575,8 +575,9 @@ func manualParts() []section {
 					Callouts: []callout{
 						{"Position", "A lit LED shows a homed axis."},
 						{"Home", "Home after each start of the printer."},
-						{"Joystick", "Hold a finger on the pad to move the head in X and Y."},
-						{"Z", "Moves Z by the step: 0.1, 1 or 10 mm."},
+						{"X+", "The arrow keys move the head in X and Y by the step. Hold a key to keep moving."},
+						{"Z up", "Z ▲ and Z ▼ move Z by the step."},
+						{"Steps", "The step of the arrow keys: 0.1, 0.5, 1 or 10 mm."},
 						{"Park, Center, Motors off", "Park lifts the nozzle 10 mm and moves the head to the back left. Center moves it to the bed center. Motors off frees the head."},
 					}},
 			}},
