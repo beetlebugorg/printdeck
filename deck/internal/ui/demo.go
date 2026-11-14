@@ -134,20 +134,18 @@ func (d *DemoPrinter) SetFileProject(_, project string) { d.Next_ = project }
 // NextProject returns the project of the demo print now.
 func (d *DemoPrinter) NextProject() string { return d.Next_ }
 
-func (d *DemoPrinter) RestartKlipper() error                        { return nil }
-func (d *DemoPrinter) FlashBoard(string, board.FlashProgress) error { return nil }
-func (d *DemoPrinter) RunAction(string, ...string) error            { return nil }
-func (d *DemoPrinter) PrintPATower(int, int, string) error          { return nil }
-func (d *DemoPrinter) PrintCalibTowers(int, int, string) error      { return nil }
-func (d *DemoPrinter) SetPressureAdvance(float64) error             { return nil }
-func (d *DemoPrinter) PrintRingTower(int, int, string, bool) error  { return nil }
-func (d *DemoPrinter) SetMaxAccel(float64) error                    { return nil }
-func (d *DemoPrinter) PrintShakeTest(string) error                  { return nil }
-func (d *DemoPrinter) MeasureBacklash() (float64, float64, error)   { return 0.3, 0.2, nil }
-func (d *DemoPrinter) SetBacklash(float64, float64) error           { return nil }
-func (d *DemoPrinter) MeasureProbeOffset(int, int) (float64, error) { return 3.142, nil }
-func (d *DemoPrinter) SaveProbeOffset() error                       { return nil }
-func (d *DemoPrinter) PrintSweepTower(int, int, string, bool) error { return nil }
+func (d *DemoPrinter) RestartKlipper() error                          { return nil }
+func (d *DemoPrinter) FlashBoard(string, board.FlashProgress) error   { return nil }
+func (d *DemoPrinter) RunAction(string, ...string) error              { return nil }
+func (d *DemoPrinter) PrintPATower(int, int, string) error            { return nil }
+func (d *DemoPrinter) PrintCalibTowers(int, int, string) error        { return nil }
+func (d *DemoPrinter) SetPressureAdvance(float64) error               { return nil }
+func (d *DemoPrinter) PrintRingTower(int, int, string, bool) error    { return nil }
+func (d *DemoPrinter) SetMaxAccel(float64) error                      { return nil }
+func (d *DemoPrinter) PrintShakeTest(string) error                    { return nil }
+func (d *DemoPrinter) SetBacklash(float64, float64) error             { return nil }
+func (d *DemoPrinter) CubeResult() (float64, float64, float64, error) { return 0.3, 0.2, 3.142, nil }
+func (d *DemoPrinter) PrintSweepTower(int, int, string, bool) error   { return nil }
 func (d *DemoPrinter) PrintPairTowers(int, int, string, [2]float64, [2]float64) error {
 	return nil
 }

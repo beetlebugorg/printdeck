@@ -31,13 +31,15 @@ import (
 type calStep int
 
 const (
-	calHeat    calStep = iota // heat, home, and level the gantry (Z_TILT_ADJUST)
-	calZOffset                // the paper test of the probe (PROBE_CALIBRATE)
-	calSave                   // SAVE_CONFIG: Klipper restarts
-	calTwistX                 // the paper test at each point along X (AXIS_TWIST_COMPENSATION_CALIBRATE)
-	calTwistY                 // the paper test at each point along Y
-	calMap                    // BED_MESH_CALIBRATE
-	calCool                   // the heaters off
+	calHeat         calStep = iota // heat, home, and level the gantry (Z_TILT_ADJUST)
+	calZOffset                     // the paper test of the probe (PROBE_CALIBRATE)
+	calSave                        // SAVE_CONFIG: Klipper restarts
+	calTwistX                      // the paper test at each point along X (AXIS_TWIST_COMPENSATION_CALIBRATE)
+	calTwistY                      // the paper test at each point along Y
+	calMap                         // BED_MESH_CALIBRATE
+	calCool                        // the heaters off
+	calCube                        // the nozzle and the probe touch the cube (CUBE_PROBE_OFFSET)
+	calCubeBacklash                // home, then the backlash on the cube (CUBE_MEASURE)
 )
 
 // The temperatures of the calibration: PRINT_START probes with the bed at 60 and the nozzle at the
@@ -79,6 +81,7 @@ type probeCal struct {
 	open    bool      // the paper screen is open
 	closed  time.Time // when the last paper screen closed
 	fresh   bool      // a new z_offset was saved in this calibration
+	asked   bool      // the result of a cube step is on the screen
 }
 
 // calSteps returns the steps of a calibration: "all", "zoffset", "twist" or "map".
@@ -95,6 +98,10 @@ func calSteps(kind string, mach printer.Machine) []calStep {
 		return append(twist, calCool)
 	case "map":
 		return []calStep{calHeat, calMap, calCool}
+	case "cube":
+		return []calStep{calHeat, calCube, calSave, calCool}
+	case "backlash":
+		return []calStep{calCubeBacklash, calCool}
 	}
 	s := []calStep{calHeat, calZOffset, calSave}
 	if mach.HasTwist {
@@ -126,6 +133,10 @@ func (fl *probeCal) stepText() string {
 		return fmt.Sprintf("Twist along Y: point %d of %d", max(fl.probes, 1), calTwistYPoints)
 	case calMap:
 		return "Probing the map of the bed"
+	case calCube:
+		return "Nozzle and probe on the cube"
+	case calCubeBacklash:
+		return "Home, then touch the cube"
 	}
 	return "Cooling down"
 }
@@ -173,6 +184,14 @@ func (a *App) calStart(fl *probeCal, st printer.State) {
 		a.runAction(action, "BED_MESH_CLEAR", fmt.Sprintf("AXIS_TWIST_COMPENSATION_CALIBRATE AXIS=Y SAMPLE_COUNT=%d", calTwistYPoints))
 	case calMap:
 		a.runAction(action, "BED_MESH_CALIBRATE")
+	case calCube:
+		a.runAction(action, "CUBE_PROBE_OFFSET")
+	case calCubeBacklash:
+		if st.Homed != "xyz" {
+			a.runAction(action, "G28", "CUBE_MEASURE")
+		} else {
+			a.runAction(action, "CUBE_MEASURE")
+		}
 	case calSave:
 		// SAVE_CONFIG ends with a restart of Klipper, so its call can fail: the next state shows the end.
 		go pr.Gcode("SAVE_CONFIG")
@@ -187,7 +206,7 @@ func (a *App) calNext(fl *probeCal) {
 		fl.fresh = true
 	}
 	fl.at++
-	fl.sent = false
+	fl.sent, fl.asked = false, false
 	if fl.at >= len(fl.steps) {
 		a.probeCal = nil
 		a.Toast(fl.name + " is done")
@@ -316,6 +335,18 @@ func (a *App) followProbeCal(st printer.State) {
 				a.calFail(fl, "The paper test did not start.")
 			}
 		}
+	case calCube, calCubeBacklash:
+		if fl.asked {
+			return
+		}
+		if ended, err := a.calActionEnd(fl, st); ended {
+			if err != "" {
+				a.calFail(fl, err)
+				return
+			}
+			fl.asked = true
+			a.askCubeResult(fl)
+		}
 	case calSave:
 		if st.Connected && !st.SaveConfigPending && now.Sub(fl.started) > 3*time.Second {
 			a.calNext(fl)
@@ -385,7 +416,9 @@ func (a *App) drawProbeCal(c *gfx.Canvas, st printer.State) {
 				return
 			}
 			a.confirm = &confirmBox{question: fmt.Sprintf("Z offset: now %.3f mm. How?", mach.ProbeOffset[2]), choices: []menuItem{
-				{"On the cube", "Heat, then the nozzle and the probe touch the cube · about 8 minutes", dim, a.measureProbeOffset},
+				{"On the cube", "Heat, then the nozzle and the probe touch the cube · about 8 minutes", dim, func() {
+					a.startProbeCal("cube", "Z offset")
+				}},
 				{"Paper test", "Heat, then a paper test at the middle of the bed · about 5 minutes", dim, func() {
 					a.startProbeCal("zoffset", "Z offset")
 				}},
