@@ -27,6 +27,9 @@
 // depth, the TAZ Workhorse cube of LulzBot: 10 by 4 mm). The descent of the probe stops 0.5 mm
 // over the top: a pin that misses the cube gives an error, and the nozzle stays over the bed.
 //
+// CUBE_SAVE_PROBE_OFFSET puts the last z_offset of CUBE_PROBE_OFFSET in the probe section for
+// SAVE_CONFIG, as PROBE_CALIBRATE does.
+//
 //	Copyright (C) 2026  the Printdeck authors
 //
 // This file may be distributed under the terms of the GNU GPLv3 license.
@@ -60,12 +63,17 @@ type Cube struct {
 	sideDepth, lift        float64
 	step, maxBacklash      float64
 	width, depth           float64
+	probeSection           string  // "bltouch" or "probe"
+	probeZ                 float64 // the last result of CUBE_PROBE_OFFSET, NaN for none
 	result                 map[string]any
 }
 
 func load(config *configfile.Wrapper) any {
 	printer := host.Of(config)
-	c := &Cube{printer: printer, result: map[string]any{}}
+	c := &Cube{printer: printer, result: map[string]any{}, probeZ: math.NaN(), probeSection: "probe"}
+	if config.HasSection("bltouch") {
+		c.probeSection = "bltouch"
+	}
 	ppins := printer.LookupObject("pins").(*pins.Pins)
 	c.endstop = ppins.SetupPin("endstop", config.Get("pin")).(*mcu.Endstop)
 	c.left = config.GetFloat("left")
@@ -96,6 +104,8 @@ func load(config *configfile.Wrapper) any {
 	g.RegisterCommand("CUBE_QUERY", c.cmdQuery, false, "Report the contact of the nozzle and the cube")
 	g.RegisterCommand("CUBE_MEASURE", c.cmdMeasure, false, "Measure the backlash of X, Y and Z on the cube")
 	g.RegisterCommand("CUBE_PROBE_OFFSET", c.cmdProbeOffset, false, "Measure the z_offset of the probe on the cube")
+	g.RegisterCommand("CUBE_SAVE_PROBE_OFFSET", c.cmdSaveProbeOffset, false,
+		"Put the z_offset of CUBE_PROBE_OFFSET in the config for SAVE_CONFIG")
 	return c
 }
 
@@ -311,9 +321,20 @@ func (c *Cube) cmdProbeOffset(gcmd *gcode.Command) {
 			"of the cube: check x_offset and y_offset of the probe.", zoff, off[2]))
 	}
 	c.result["probe_z_offset"] = round3(zoff)
+	c.probeZ = zoff
 	gcmd.RespondInfo(fmt.Sprintf("Probe z_offset: %.3f mm (printer.cfg has %.3f)\n"+
 		"The nozzle touched the top at Z %.3f. The probe triggered at Z %.3f, range %.3f in %d samples.",
 		zoff, off[2], topZ, pz, sorted[len(sorted)-1]-sorted[0], len(zs)), true)
+}
+
+func (c *Cube) cmdSaveProbeOffset(gcmd *gcode.Command) {
+	if math.IsNaN(c.probeZ) {
+		panic(gcode.Errorf("Run CUBE_PROBE_OFFSET first"))
+	}
+	pconfig := c.printer.LookupObject("configfile").(*configfile.PrinterConfig)
+	pconfig.Set(c.probeSection, "z_offset", fmt.Sprintf("%.3f", c.probeZ))
+	gcmd.RespondInfo(fmt.Sprintf("%s: z_offset: %.3f\nThe SAVE_CONFIG command will update the printer config file\n"+
+		"with the above and restart the printer.", c.probeSection, c.probeZ), true)
 }
 
 func round3(v float64) float64 { return math.Round(v*1000) / 1000 }
