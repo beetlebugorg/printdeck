@@ -180,4 +180,14 @@ func TestProbeOffset(t *testing.T) {
 	if v, _ := c.cube()["probe_z_offset"].(float64); math.Abs(v-0.86) > 0.015 {
 		t.Errorf("probe_z_offset %.3f, want 0.86", v)
 	}
+	if msg := c.script("CUBE_SAVE_PROBE_OFFSET"); msg != "" {
+		t.Fatal(msg)
+	}
+	res := c.call("objects/query", map[string]any{"objects": map[string]any{"configfile": []string{"save_config_pending_items"}}})
+	st := res["result"].(map[string]any)["status"].(map[string]any)["configfile"].(map[string]any)
+	items, _ := st["save_config_pending_items"].(map[string]any)
+	probe, _ := items["probe"].(map[string]any)
+	if z, _ := probe["z_offset"].(string); z < "0.845" || z > "0.875" {
+		t.Errorf("pending items %v", items)
+	}
 }
