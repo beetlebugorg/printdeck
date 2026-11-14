@@ -246,6 +246,8 @@ type Machine struct {
 	ShaperType               string
 	// BacklashX and BacklashY are x and y of [printdeck_backlash]: the backlash correction in mm.
 	BacklashX, BacklashY float64
+	// RetractLength is retract_length of [firmware_retraction] in mm.
+	RetractLength float64
 }
 
 // TwistRange returns the range of a list of twist corrections, in mm: the largest less the
