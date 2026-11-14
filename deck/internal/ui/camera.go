@@ -275,17 +275,6 @@ func turnLine(rotate int) string {
 	return "Upright"
 }
 
-// stepTurn turns the picture of the camera of the tab 90° more, clockwise: 0, 90, 180, 270 and
-// then 0 again.
-func (a *App) stepTurn() {
-	_, in := a.shownCam()
-	if in.ID == "" {
-		return
-	}
-	cs := a.changeCamera(in.ID, func(cs *camera.CamSettings) { cs.Rotate = camera.NextTurn(cs.Rotate) })
-	a.Toast("Picture: " + turnLine(cs.Rotate))
-}
-
 // focusSetter is a Camera that sets a focus with no save of the settings for each step
 // (camera.Hub).
 type focusSetter interface {
@@ -425,25 +414,6 @@ func (a *App) viewLine(cam camera.Source) string {
 		}
 	}
 	return line + ": no place now, whole picture"
-}
-
-// cycleView shows the next view in the picture of the page. With no calibration, the picture is
-// the whole picture.
-func (a *App) cycleView() {
-	cam, _ := a.shownCam()
-	if _, ok := cam.Calibration(); !ok {
-		a.camView = camera.ViewFull
-		a.Toast("Calibrate the camera for the other views")
-		return
-	}
-	next := camera.ViewNames[0]
-	for i, n := range camera.ViewNames {
-		if n == a.camView || (a.camView == "" && n == camera.ViewFull) {
-			next = camera.ViewNames[(i+1)%len(camera.ViewNames)]
-		}
-	}
-	a.camView = next
-	a.Toast("View: " + viewTitles[next])
 }
 
 // turns are the choices of the Turn row, in degrees.
@@ -694,8 +664,8 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 			if in.Rotate != 0 {
 				fill, ink = keyOn, keyOnInk
 			}
-			a.button(c, k[0], "Turn", fill, ink, a.stepTurn)
-			a.button(c, k[1], "View", raised, text, a.cycleView)
+			a.button(c, k[0], "Turn", fill, ink, a.openTurn)
+			a.button(c, k[1], "View", raised, text, a.openView)
 			a.button(c, k[2], "Calibrate", raised, text, a.askCalibrate)
 			if calibrated {
 				a.button(c, k[3], "Clear", raised, text, a.askClearCalibration)

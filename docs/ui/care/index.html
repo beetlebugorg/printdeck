@@ -135,10 +135,15 @@
         <circle cx="-40" cy="725" r="15" class="badge"/>
         <text x="-40" y="725" class="badge-n">10</text>
         
+        <line x1="505" y1="725" x2="456" y2="725" class="leader"/>
+        <circle cx="456" cy="725" r="5" class="dot"/>
+        <circle cx="520" cy="725" r="15" class="badge"/>
+        <text x="520" y="725" class="badge-n">11</text>
+        
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Restart…</b>Restarts Klipper or the board firmware, after a choice.</span></li><li><span class="badge">2</span><span><b>Information</b>The versions, the address and the state of the firmware.</span></li><li><span class="badge">3</span><span><b>Settings</b>The theme, the clock, the screen, the cameras and the messages.</span></li><li><span class="badge">4</span><span><b>Prints</b>The totals and the history of all prints.</span></li><li><span class="badge">5</span><span><b>Maintenance</b>The calibrations, the firmware and the simulated printer. Orange text shows old firmware or results to save.</span></li><li><span class="badge">6</span><span><b>Macros</b>Tap a macro to run it.</span></li><li><span class="badge">7</span><span><b>Console</b>The G-code console.</span></li><li><span class="badge">8</span><span><b>Software update</b>Shows and installs a new version. Orange text shows a new version.</span></li><li><span class="badge">9</span><span><b>Wi-Fi and help</b>The network, the password and the addresses.</span></li><li><span class="badge">10</span><span><b>System monitor</b>Graphs of the CPU, the memory and the SD card.</span></li>
+      <li><span class="badge">1</span><span><b>Restart…</b>Restarts Klipper or the board firmware, after a choice.</span></li><li><span class="badge">2</span><span><b>Information</b>The versions, the address and the state of the firmware.</span></li><li><span class="badge">3</span><span><b>Settings</b>The theme, the clock, the screen, the cameras and the messages.</span></li><li><span class="badge">4</span><span><b>Prints</b>The totals and the history of all prints.</span></li><li><span class="badge">5</span><span><b>Maintenance</b>The bed, the heaters, the firmware and the simulated printer. Orange text shows old firmware or results to save.</span></li><li><span class="badge">6</span><span><b>Calibration</b>The nozzle height, the pressure advance and the retraction.</span></li><li><span class="badge">7</span><span><b>Macros</b>Tap a macro to run it.</span></li><li><span class="badge">8</span><span><b>Console</b>The G-code console.</span></li><li><span class="badge">9</span><span><b>Software update</b>Shows and installs a new version. Orange text shows a new version.</span></li><li><span class="badge">10</span><span><b>Wi-Fi and help</b>The network, the password and the addresses.</span></li><li><span class="badge">11</span><span><b>System monitor</b>Graphs of the CPU, the memory and the SD card.</span></li>
     </ol>
     
   </figure>
@@ -149,15 +154,15 @@
       <div class="shot"><img src="../../manual/img/machine-restart.png" alt="Restart…" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="347" x2="448" y2="347" class="leader"/>
-        <circle cx="448" cy="347" r="5" class="dot"/>
+        <line x1="505" y1="347" x2="452" y2="347" class="leader"/>
+        <circle cx="452" cy="347" r="5" class="dot"/>
         <circle cx="520" cy="347" r="15" class="badge"/>
         <text x="520" y="347" class="badge-n">1</text>
         
-        <line x1="505" y1="433" x2="448" y2="433" class="leader"/>
-        <circle cx="448" cy="433" r="5" class="dot"/>
-        <circle cx="520" cy="433" r="15" class="badge"/>
-        <text x="520" y="433" class="badge-n">2</text>
+        <line x1="505" y1="437" x2="452" y2="437" class="leader"/>
+        <circle cx="452" cy="437" r="5" class="dot"/>
+        <circle cx="520" cy="437" r="15" class="badge"/>
+        <text x="520" y="437" class="badge-n">2</text>
         
       </svg>
     </div>
@@ -223,7 +228,7 @@
     <ol class="parts">
       <li><span class="badge">1</span><span><b>Theme</b>Day, night, or auto.</span></li><li><span class="badge">2</span><span><b>Clock</b>12 or 24 hours.</span></li><li><span class="badge">3</span><span><b>Home in a filament change</b>On: the printer homes while the nozzle heats for a filament change.</span></li><li><span class="badge">4</span><span><b>Screen</b>Tap it to turn the screen a quarter turn. The deck restarts, and a print continues. This setting overrides display_rotate.</span></li><li><span class="badge">5</span><span><b>Camera</b>Opens the live picture, as the Camera key does.</span></li><li><span class="badge">6</span><span><b>Cameras</b>Names the cameras and sets their uses.</span></li><li><span class="badge">7</span><span><b>Phones</b>The phones that get push messages. Tap a phone in the list to remove it.</span></li><li><span class="badge">8</span><span><b>Notifications</b>Push messages through ntfy. In the ntfy app, subscribe to a topic with a name that is hard to guess. Type the same topic here. An empty topic turns the messages off.</span></li><li><span class="badge">9</span><span><b>Text</b>The size of the small text: auto, large, or normal.</span></li>
     </ol>
-    
+    <p class="note">Each row opens its setting. A setting that is on or off has a check box. A setting with choices has a check at the choice now.</p>
   </figure>
   
   <figure>
@@ -265,7 +270,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Tabs</b>A tab for each camera that is on. Both shows all the cameras.</span></li><li><span class="badge">2</span><span><b>Picture</b>Use it to aim the camera at the bed.</span></li><li><span class="badge">3</span><span><b>Turn</b>Turns the picture 90° clockwise at each tap, for a camera on its side or upside down.</span></li><li><span class="badge">4</span><span><b>Focus</b>Shows the focus keys. Only a camera with a focus control has this key.</span></li><li><span class="badge">5</span><span><b>PTZ</b>Shows the zoom keys. Only a camera with a zoom control has this key.</span></li><li><span class="badge">6</span><span><b>Camera settings</b>The name, on or off, and the uses of this camera.</span></li>
+      <li><span class="badge">1</span><span><b>Tabs</b>A tab for each camera that is on. Both shows all the cameras.</span></li><li><span class="badge">2</span><span><b>Picture</b>Use it to aim the camera at the bed.</span></li><li><span class="badge">3</span><span><b>Turn</b>Opens the turn of the picture: upright, 90° right, 180° or 90° left. Use it for a camera on its side or upside down.</span></li><li><span class="badge">4</span><span><b>Focus</b>Shows the focus keys. Only a camera with a focus control has this key.</span></li><li><span class="badge">5</span><span><b>PTZ</b>Shows the zoom keys. Only a camera with a zoom control has this key.</span></li><li><span class="badge">6</span><span><b>Camera settings</b>The name, on or off, and the uses of this camera.</span></li>
     </ol>
     <p class="note">A camera runs only while somebody looks at it. With no camera, the apps show the deck screen.</p><p class="note">If a camera shows too little USB bandwidth, move it to another USB port.</p>
   </figure>
@@ -299,7 +304,7 @@
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Auto</b>Lit when the camera focuses itself. Tap it to keep the lens where the autofocus put it.</span></li><li><span class="badge">2</span><span><b>−</b>Moves the lens one step. The autofocus goes off.</span></li><li><span class="badge">3</span><span><b>&#43;</b>Moves the lens one step to the other side.</span></li><li><span class="badge">4</span><span><b>Done</b>Shows the other camera keys again.</span></li>
+      <li><span class="badge">1</span><span><b>Auto</b>Lit when the camera focuses itself. Turn the autofocus off to keep the lens where the autofocus put it.</span></li><li><span class="badge">2</span><span><b>−</b>Moves the lens one step. The autofocus goes off.</span></li><li><span class="badge">3</span><span><b>&#43;</b>Moves the lens one step to the other side.</span></li><li><span class="badge">4</span><span><b>Done</b>Shows the other camera keys again.</span></li>
     </ol>
     <p class="note">A fixed focus keeps the picture sharp when the toolhead and the bed move. Set it while the picture shows the nozzle.</p><p class="note">The deck keeps the focus of each camera, and sets it each time the camera starts.</p>
   </figure>
