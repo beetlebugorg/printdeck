@@ -17,12 +17,15 @@
 # antclabs BLTouch data. Values marked ESTIMATE are not measured. MEASURE.md lists the checks.
 
 # --- The motor (LDO-42STH34, NEMA 17, 34 mm long)
-MOTOR_X0 = 8.29                  # the face of the Titan extruder, right of the nozzle centre. Measured.
+MOTOR_X0 = 21.6                  # the face of the Titan extruder, right of the nozzle centre. From the
+                                 # pin of the printed mount: 68 mm right of the nozzle (measured 2026-11-13).
 MOTOR_LEN = 34.0                 # LDO-42STH34 body length (data sheet)
 MOTOR_X1 = MOTOR_X0 + MOTOR_LEN  # the right face of the motor (the end cap)
 MOTOR_SIDE = 42.3                # NEMA 17 square
 MOTOR_Y0 = -27.0                 # the front face of the motor, in front of the nozzle. Measured.
-MOTOR_Z0 = 20.94                 # the bottom of the motor, above the nozzle tip. Measured.
+MOTOR_Z0 = 20.94 + 2.29          # the bottom of the motor, above the nozzle tip. The first printed mount
+                                 # held the BLTouch 2.29 mm too high, and nuts of 2.29 mm under the shelf
+                                 # fixed it. So the motor is 2.29 mm higher than the first measurement.
 MOTOR_YC = MOTOR_Y0 + MOTOR_SIDE / 2
 MOTOR_ZC = MOTOR_Z0 + MOTOR_SIDE / 2
 HOLE_PITCH = 31.0                # NEMA 17 screw square

@@ -209,8 +209,8 @@ parts:
     description: >-
       The mount holds the BLTouch beside the front of the extruder motor of the SE tool head. It goes
       under the heads of the two front motor screws, which get 4 mm longer. The BLTouch hangs under its
-      shelf on two M3 x 10 screws, with M3 nuts in the pockets on top. The pin is 54.7 mm right of the
-      nozzle and 17.1 mm in front of it, so it reaches the full bed. It prints on its back face with
+      shelf on two M3 x 10 screws, with M3 nuts in the pockets on top. The pin is 68 mm right of the
+      nozzle and 17 mm in front of it, so it reaches the full bed. It prints on its back face with
       no supports.
     files: [lulzbot/bltouch/mount/stl/bltouch_mount.stl]
     printer: taz

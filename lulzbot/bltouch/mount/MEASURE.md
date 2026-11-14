@@ -6,8 +6,8 @@ All values are in `shape.py`. The origin is the nozzle tip: x to the right, y to
 
 | Value | In `shape.py` | How |
 |---|---|---|
-| 8.29 mm | `MOTOR_X0` | Nozzle centre to the face of the Titan extruder, left to right |
-| 20.94 mm | `MOTOR_Z0` | Nozzle tip up to the bottom of the motor |
+| 21.6 mm | `MOTOR_X0` | Nozzle centre to the face of the Titan extruder, left to right. From the measured pin offset of the printed mount (68 mm); the first value, 8.29 mm, was wrong |
+| 23.23 mm | `MOTOR_Z0` | Nozzle tip up to the bottom of the motor. The first value, 20.94 mm, held the BLTouch 2.29 mm too high: nuts of 2.29 mm under the shelf fixed it |
 | 27 mm | `MOTOR_Y0` | Nozzle centre forward to the front face of the motor |
 | 7.35 mm | `X_END_GAP` | Motor end cap to the X end, at X 293 |
 | about 25 mm | `X_END_Y0` | The open part of the motor side, from the front, at X 293 |
