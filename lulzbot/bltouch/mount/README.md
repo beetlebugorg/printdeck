@@ -8,9 +8,10 @@ pancake). A shelf sticks out from the plate. The BLTouch hangs under the shelf o
 screws with nuts. The BLTouch sits beside the front 25 mm of the motor. At the right end of X
 (X 293), the X end passes behind it.
 
-- The pin is about 54.7 mm right of the nozzle and 17.1 mm in front of it. The old bracket put
-  it 12 mm right and 76 mm in front, so the pin could not go behind Y 232.
-- The pin now reaches X 4.7 to 347.7 and Y −34.1 to 290.9: the full bed.
+- The pin is 68 mm right of the nozzle and 17 mm in front of it (measured on the printer). The
+  old bracket put it 12 mm right and 76 mm in front, so the pin could not go behind Y 232.
+- The pin now reaches X 18 to 361 and Y −34.1 to 290.9: the full bed in Y. In X the pin covers the
+  bed from X 18.
 - The mount holds on two metal screws into the motor, away from the heater block.
 
 ## Files
