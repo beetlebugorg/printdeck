@@ -244,6 +244,8 @@ type Machine struct {
 	HasShaper                bool
 	ShaperFreqX, ShaperFreqY float64
 	ShaperType               string
+	// BacklashX and BacklashY are x and y of [printdeck_backlash]: the backlash correction in mm.
+	BacklashX, BacklashY float64
 }
 
 // TwistRange returns the range of a list of twist corrections, in mm: the largest less the

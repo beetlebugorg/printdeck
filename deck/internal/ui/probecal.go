@@ -405,5 +405,18 @@ func (a *App) drawProbeCal(c *gfx.Canvas, st printer.State) {
 	if mach.Has("extruder") {
 		items = append(items, menuItem{"Input shaping", shaperLine(mach), dim, func() { a.open(pageShaper) }})
 	}
+	if mach.Has("printdeck_backlash") || mach.Has("printdeck_cube") {
+		items = append(items, menuItem{"Backlash", backlashLine(mach), dim, func() {
+			if a.probeCal != nil {
+				a.Toast("A calibration runs. Stop it first.")
+				return
+			}
+			if !idle {
+				a.Toast("Wait until the print ends")
+				return
+			}
+			a.askBacklash()
+		}})
+	}
 	a.menuRowsWait(c, a.listArea(f), f.wide, 86, 12, items, st.Busy())
 }
