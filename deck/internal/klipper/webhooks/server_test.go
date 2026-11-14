@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -83,8 +84,8 @@ func TestServerSocket(t *testing.T) {
 	cfg = regexp.MustCompile(`(?m)^restart_method: .*$`).ReplaceAll(cfg, nil)
 	// The fake board answers no homing commands, and the check of the BLTouch at the start of the
 	// host waits for one. The test is for the API socket, so the copy of the config has no
-	// [bltouch].
-	cfg = regexp.MustCompile(`(?ms)^\[bltouch\]\n.*?\n\n`).ReplaceAll(cfg, nil)
+	// [bltouch], and no sections that need a probe.
+	cfg = dropSections(cfg, "bltouch", "axis_twist_compensation", "z_tilt", "bed_mesh", "printdeck_mesh")
 	cfgPath := filepath.Join(dir, "printer.cfg")
 	os.WriteFile(cfgPath, cfg, 0o644)
 	sock := filepath.Join(dir, "klippy.sock")
@@ -162,4 +163,28 @@ func TestServerSocket(t *testing.T) {
 	if e == nil || e["message"] != "Must home axis first: 10.000 0.000 0.000 [0.000]" {
 		t.Errorf("G1 before G28: %v", res)
 	}
+}
+
+// dropSections removes the sections of a config text, each up to the next section. The block of
+// SAVE_CONFIG stays.
+func dropSections(cfg []byte, names ...string) []byte {
+	drop := map[string]bool{}
+	for _, n := range names {
+		drop["["+n+"]"] = true
+	}
+	var out []string
+	skip := false
+	for _, l := range strings.Split(string(cfg), "\n") {
+		t := strings.TrimSpace(l)
+		switch {
+		case strings.HasPrefix(t, "#*#"):
+			skip = false
+		case strings.HasPrefix(t, "["):
+			skip = drop[strings.Fields(t)[0]]
+		}
+		if !skip {
+			out = append(out, l)
+		}
+	}
+	return []byte(strings.Join(out, "\n"))
 }

@@ -57,7 +57,7 @@ func TestPlanMatchesKlipper(t *testing.T) {
 	}
 	klipper := klipperPrintTime(t, cfg, planSetup+string(body)) - klipperPrintTime(t, cfg, planSetup)
 
-	l := toolhead.Limits{MaxVelocity: 300, MaxAccel: 3000, MinCruiseRatio: 0.5, SquareCornerVelocity: 5,
+	l := toolhead.Limits{MaxVelocity: 300, MaxAccel: 1500, MinCruiseRatio: 0.5, SquareCornerVelocity: 5,
 		MaxZVelocity: 25, MaxZAccel: 100, InstantCornerVelocity: 1}
 	p := planFile(strings.NewReader(planSetup[len("SET_KINEMATIC_POSITION X=0 Y=0 Z=0\n"):]+string(body)), 0, l, nil, nil)
 	t.Logf("Klipper %.3f s, plan %.3f s", klipper, p.total)
@@ -67,7 +67,7 @@ func TestPlanMatchesKlipper(t *testing.T) {
 }
 
 // printerLimits are the motion limits of printer/printer.cfg.
-var printerLimits = toolhead.Limits{MaxVelocity: 300, MaxAccel: 3000, MinCruiseRatio: 0.5, SquareCornerVelocity: 5,
+var printerLimits = toolhead.Limits{MaxVelocity: 300, MaxAccel: 1500, MinCruiseRatio: 0.5, SquareCornerVelocity: 5,
 	MaxZVelocity: 25, MaxZAccel: 100, InstantCornerVelocity: 1}
 
 // maxModeSettings are the default max mode settings with the filament of printer/printer.cfg.
