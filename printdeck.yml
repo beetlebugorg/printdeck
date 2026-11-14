@@ -205,6 +205,8 @@ parts:
 docs:
   - name: Slate v4 build guide
     file: lulzbot/printdeck-slate-v4-build.pdf
+  - name: The cube wire on Y-MAX (TAZ)
+    file: lulzbot/backlash/taz-cube-ymax.pdf
 
 # The 3D views of the assembled Slate. lulzbot/slate.py assembly writes the files: each part in its
 # place, in mm, z up, with the origin at the middle of the foot on the desk. The case leans back 15
