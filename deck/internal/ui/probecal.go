@@ -137,7 +137,7 @@ func wipe(mach printer.Machine) []calStep {
 func (a *App) startProbeCal(kind, name string) {
 	mach := a.Printer.Machine()
 	a.probeCal = &probeCal{name: name, steps: calSteps(kind, mach)}
-	a.calMsg = ""
+	a.calMsg, a.calEnded = "", nil
 	a.Redraw()
 }
 
@@ -244,7 +244,8 @@ func (a *App) calNext(fl *probeCal) {
 	fl.sent, fl.asked = false, false
 	if fl.at >= len(fl.steps) {
 		a.probeCal = nil
-		a.Toast(fl.name + " is done")
+		fl.at = len(fl.steps) - 1
+		a.calEnded = &calEnd{fl: fl}
 	}
 	a.Redraw()
 }
@@ -256,6 +257,7 @@ func (a *App) calFail(fl *probeCal, msg string) {
 	}
 	a.probeCal = nil
 	a.calMsg = msg
+	a.calEnded = &calEnd{fl: fl, err: msg}
 	pr := a.Printer
 	a.do(func() error { return pr.Gcode("M104 S0", "M140 S0") })
 	if a.topPage() != pageProbeCal {

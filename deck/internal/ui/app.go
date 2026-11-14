@@ -327,6 +327,7 @@ type App struct {
 	calib          *calibFlow // the calibration of the camera, while it runs (calibrate.go)
 	probeCal       *probeCal  // the calibration of the probe, while it runs (probecal.go)
 	calMsg         string     // why the last calibration of the probe stopped, or ""
+	calEnded       *calEnd    // the end of the last calibration on the step screen, until OK (calsteps.go)
 	pair           *pairRound // the last A/B pair of the input shaping (shaper.go)
 	// TimeLapse is the time lapse and the picture of the first layer, or nil (Settings > Time lapse).
 	TimeLapse TimeLapse

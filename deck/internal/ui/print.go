@@ -53,6 +53,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 		a.drawFlash(c)
 		return
 	}
+	if a.calScreen(c, a.Printer.State()) {
+		return
+	}
 	if a.actionScreen(c, a.Printer.State()) {
 		return
 	}
