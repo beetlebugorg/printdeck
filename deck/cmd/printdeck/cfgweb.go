@@ -111,6 +111,11 @@ func replaceFile(path string, data []byte) error {
 	if err == nil {
 		err = f.Chmod(0o664)
 	}
+	// Sync the data and the rename to the card. Without it, a power cut soon after a save can give
+	// the old file back.
+	if err == nil {
+		err = f.Sync()
+	}
 	if cerr := f.Close(); err == nil {
 		err = cerr
 	}
@@ -119,8 +124,13 @@ func replaceFile(path string, data []byte) error {
 	}
 	if err != nil {
 		os.Remove(tmp)
+		return err
 	}
-	return err
+	if d, derr := os.Open(dir); derr == nil {
+		d.Sync()
+		d.Close()
+	}
+	return nil
 }
 
 // checkPrinterCfg returns an error for a file that the config parser of Klipper cannot read, or
