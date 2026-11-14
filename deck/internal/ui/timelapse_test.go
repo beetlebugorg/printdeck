@@ -49,7 +49,7 @@ func testFrame(t *testing.T) *camera.Frame {
 	return f
 }
 
-// Settings opens the Time lapse page. Its rows change the settings.
+// Settings opens the Time lapse page: the toggle at the top, and the settings under it.
 func TestTimeLapsePage(t *testing.T) {
 	a, _, cv := newPrintApp(idle)
 	a.Camera = NewDemoCamera()
@@ -68,25 +68,25 @@ func TestTimeLapsePage(t *testing.T) {
 	if !tl.s.On {
 		t.Error("the time lapse is not on")
 	}
-	tapLabel(t, a, cv, "Park for the frames")
+	tapOption(t, a, cv, "Park for the frames", "Park for the frames")
 	if tl.s.Park {
 		t.Error("the park is on")
 	}
 	if f := simFrame(t, a, "timelapse-crop"); !strings.Contains(f, "Needs the park") {
 		t.Error("no line for the crop with no park")
 	}
-	tapLabel(t, a, cv, "Park for the frames")
+	tapOption(t, a, cv, "Park for the frames", "Park for the frames")
 	// The line can wrap: its words are on the screen, in one or two lines.
 	if f := simFrame(t, a, "timelapse-crop"); !strings.Contains(f, "Needs a calibration") || !strings.Contains(f, "camera") {
 		t.Error("no line for the crop with no calibration")
 	}
-	tapLabel(t, a, cv, "Park for the frames")
-	tapLabel(t, a, cv, "Crop to the part")
+	tapOption(t, a, cv, "Park for the frames", "Park for the frames")
+	tapOption(t, a, cv, "Crop to the part", "Crop to the part")
 	if tl.s.Crop {
 		t.Error("the crop is on")
 	}
 	for _, want := range []int{timelapse.FirstPicture, timelapse.FirstPause, timelapse.FirstOff} {
-		tapLabel(t, a, cv, "First layer")
+		tapOption(t, a, cv, "First layer", firstLayerLine(want))
 		if tl.s.First != want {
 			t.Errorf("first layer %d, want %d", tl.s.First, want)
 		}

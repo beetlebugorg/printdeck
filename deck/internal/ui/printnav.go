@@ -58,6 +58,7 @@ const (
 	pageBedMesh     // the map of the last bed mesh
 	pageProbeCal    // the calibration of the probe: Z offset, twist and map (probecal.go)
 	pageShaper      // the tests of the input shaper (shaper.go)
+	pageOption      // one setting: a toggle, or a list of choices (a.option, option.go)
 )
 
 // open shows a page over the current one.
