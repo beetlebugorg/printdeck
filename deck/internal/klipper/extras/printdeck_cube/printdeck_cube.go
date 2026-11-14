@@ -9,10 +9,15 @@
 //	back: -14      # Y of the back face
 //	top: 3         # Z of the top face
 //
-// The places are nozzle positions in mm. Each touch starts approach mm out from the face and stops
-// overtravel mm past it (z_overtravel on the top). So a face can be up to approach mm nearer than
-// its value, and up to overtravel mm farther: a wire with no contact presses the nozzle into the
-// cube no more than that. The top touch comes first, so a broken wire stops the measure there. The nozzle touches the top, then
+// The places are nozzle positions in mm. With a probe, the pin first probes the middle of the top,
+// and the nozzle touch of the top starts from that height: a cube that moved in Z, for example
+// after the bed came off, is found. Without a probe, the touch starts from top.
+//
+// Each touch starts approach mm out from the face and stops overtravel mm past it (z_overtravel on
+// the top). So a face can be up to approach mm nearer than its value, and up to overtravel mm
+// farther: a wire with no contact presses the nozzle into the cube no more than that. The top touch
+// comes first, so a broken wire stops the measure there. After the top touch the wire is good, so
+// the side touches go at least sideSearch mm past the face. The nozzle touches the top, then
 // the right, the left and the back faces at side_depth under the top. After each touch the nozzle
 // backs away in steps of step mm, and the deck reads the pin after each step. The distance to the
 // open contact, less the travel after the trigger, is the backlash of the axis: the motor turns
@@ -135,6 +140,19 @@ func (c *Cube) cmdQuery(gcmd *gcode.Command) {
 }
 
 // move goes to the place of the coordinates that are not NaN, and waits.
+// sideSearch is the least travel of a side touch past its face. The top touch before it shows that
+// the wire works, so the nozzle stops at the contact.
+const sideSearch = 2.0
+
+// The probe of the top before the nozzle touch: the nozzle stops topFloor mm under top, or
+// minFloorZ over the bed, when the pin misses the cube. The probe height must be within topFind mm
+// of top.
+const (
+	topFloor  = 1.0
+	minFloorZ = 0.5
+	topFind   = 3.0
+)
+
 func (c *Cube) move(x, y, z, speed float64) {
 	th := toolhead.Of(c.printer)
 	th.ManualMove([]float64{x, y, z}, speed)
@@ -191,7 +209,7 @@ func (c *Cube) release(axis int, dir float64, face string) float64 {
 // side measures one face: touch it along the axis in the direction dir, then back away. It
 // returns the trigger place and the backlash.
 func (c *Cube) side(axis int, face float64, dir float64, name string) (float64, float64) {
-	at, over := c.touch(axis, face+dir*c.overtravel, name)
+	at, over := c.touch(axis, face+dir*math.Max(c.overtravel, sideSearch), name)
 	r := c.release(axis, -dir, name)
 	return at, math.Max(0, r-over)
 }
@@ -208,15 +226,80 @@ func (c *Cube) start(name string) {
 	}
 }
 
-// touchTop touches the top of the cube with the nozzle at (midX, y), and returns the trigger place
-// and the backlash of Z.
-func (c *Cube) touchTop(midX, y float64) (float64, float64) {
+// touchTop touches the top of the cube with the nozzle at (midX, y), from the height top, and
+// returns the trigger place and the backlash of Z.
+func (c *Cube) touchTop(midX, y, top float64) (float64, float64) {
 	nan := math.NaN()
-	c.move(nan, nan, c.top+c.lift, c.travelSpeed/5)
+	th := toolhead.Of(c.printer)
+	c.move(nan, nan, math.Max(th.Position()[2], top+c.lift), c.travelSpeed/5)
 	c.move(midX, y, nan, c.travelSpeed)
-	c.move(nan, nan, c.top+c.approach, c.travelSpeed/5)
-	topZ, overZ := c.touch(2, c.top-c.zOvertravel, "top")
+	c.move(nan, nan, top+c.approach, c.travelSpeed/5)
+	topZ, overZ := c.touch(2, top-c.zOvertravel, "top")
 	return topZ, math.Max(0, c.release(2, 1, "top")-overZ)
+}
+
+// pinPlace is the place of the probe pin over the middle of the top. The faces are nozzle places,
+// so the cube edge is a nozzle radius past the face.
+func (c *Cube) pinPlace() (x, y float64) {
+	r := math.Max(0, (c.right-c.left-c.width)/2)
+	return (c.left + c.right) / 2, c.back - r - c.depth/2
+}
+
+// probeTop probes the middle of the top with the pin, samples times, from the top height top. The
+// descent stops when the nozzle gets to floor. It returns the heights of the top (nozzle Z).
+func (c *Cube) probeTop(gcmd *gcode.Command, pr probe.Probe, top, floor float64, samples int) []float64 {
+	off := pr.Offsets(nil)
+	nan := math.NaN()
+	th := toolhead.Of(c.printer)
+	pinX, pinY := c.pinPlace()
+	start := top + off[2] + topFind
+	c.move(nan, nan, math.Max(th.Position()[2], top+off[2]+c.lift), c.travelSpeed/5)
+	c.move(pinX-off[0], pinY-off[1], nan, c.travelSpeed)
+	c.move(nan, nan, start, c.travelSpeed/5)
+	var zs []float64
+	session := pr.StartProbeSession(gcmd)
+	func() {
+		defer session.EndProbeSession()
+		probe.WithFloor(c.printer, floor, func() {
+			for i := 0; i < samples; i++ {
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							if e, ok := r.(*gcode.CommandError); ok && strings.Contains(e.Msg, "No trigger") {
+								panic(gcode.Errorf("The probe did not trigger over the cube: the pin missed the top. " +
+									"Check x_offset and y_offset of the probe, and the places in [printdeck_cube]."))
+							}
+							panic(r)
+						}
+					}()
+					session.RunProbe(gcmd)
+				}()
+				for _, res := range session.PullProbedResults() {
+					zs = append(zs, res.BedZ())
+				}
+				c.move(nan, nan, start, c.travelSpeed/5)
+			}
+		})
+	}()
+	c.move(nan, nan, top+off[2]+c.lift, c.travelSpeed/5)
+	return zs
+}
+
+// findTop returns the height of the top for the nozzle touch: one probe of the top with the pin,
+// or top with no probe.
+func (c *Cube) findTop(gcmd *gcode.Command) float64 {
+	pr, ok := c.printer.TryLookupObject("probe").(probe.Probe)
+	if !ok {
+		return c.top
+	}
+	zs := c.probeTop(gcmd, pr, c.top, math.Max(c.top-topFloor, minFloorZ), 1)
+	z := zs[0]
+	if math.Abs(z-c.top) > topFind {
+		panic(gcode.Errorf("The probe found the top of the cube at Z %.2f, and [printdeck_cube] has top %.2f. "+
+			"Check the cube, and z_offset of the probe.", z, c.top))
+	}
+	gcmd.RespondInfo(fmt.Sprintf("The probe found the top of the cube at Z %.2f (top in printer.cfg: %.2f)", z, c.top), true)
+	return z
 }
 
 func (c *Cube) cmdMeasure(gcmd *gcode.Command) {
@@ -227,7 +310,7 @@ func (c *Cube) cmdMeasure(gcmd *gcode.Command) {
 	y := c.back - 2 // 2 mm in from the back edge: the front of the cube is out of the travel
 
 	// The top: down onto the middle of the top face.
-	topZ, bz := c.touchTop(midX, y)
+	topZ, bz := c.touchTop(midX, y, c.findTop(gcmd))
 	sideZ := topZ - c.sideDepth
 	safe := topZ + c.lift
 
@@ -271,44 +354,12 @@ func (c *Cube) cmdProbeOffset(gcmd *gcode.Command) {
 	}
 	c.start("CUBE_PROBE_OFFSET")
 	off := pr.Offsets(nil)
-	nan := math.NaN()
 	midX := (c.left + c.right) / 2
-	topZ, _ := c.touchTop(midX, c.back-2)
-
-	// The middle of the top: the faces are nozzle places, so the cube edge is a nozzle radius past
-	// the face.
-	r := math.Max(0, (c.right-c.left-c.width)/2)
-	pinX, pinY := midX, c.back-r-c.depth/2
-	start := topZ + off[2] + 2
-	c.move(nan, nan, topZ+off[2]+c.lift, c.travelSpeed/5)
-	c.move(pinX-off[0], pinY-off[1], nan, c.travelSpeed)
-	c.move(nan, nan, start, c.travelSpeed/5)
+	topZ, _ := c.touchTop(midX, c.back-2, c.findTop(gcmd))
 	var zs []float64
-	session := pr.StartProbeSession(gcmd)
-	func() {
-		defer session.EndProbeSession()
-		probe.WithFloor(c.printer, topZ+0.5, func() {
-			for i := 0; i < samples; i++ {
-				func() {
-					defer func() {
-						if r := recover(); r != nil {
-							if e, ok := r.(*gcode.CommandError); ok && strings.Contains(e.Msg, "No trigger") {
-								panic(gcode.Errorf("The probe did not trigger over the cube: the pin missed the top. " +
-									"Check x_offset and y_offset of the probe, and the places in [printdeck_cube]."))
-							}
-							panic(r)
-						}
-					}()
-					session.RunProbe(gcmd)
-				}()
-				for _, res := range session.PullProbedResults() {
-					zs = append(zs, res.BedZ()+off[2])
-				}
-				c.move(nan, nan, start, c.travelSpeed/5)
-			}
-		})
-	}()
-	c.move(nan, nan, topZ+off[2]+c.lift, c.travelSpeed/5)
+	for _, z := range c.probeTop(gcmd, pr, topZ, topZ+0.5, samples) {
+		zs = append(zs, z+off[2])
+	}
 	th := toolhead.Of(c.printer)
 	th.WaitMoves()
 
