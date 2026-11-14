@@ -73,7 +73,9 @@ docker run --rm --user "$(id -u):$(id -g)" \
     cp out/klipper.dict /out/klipper.dict
     # The sections of the Printdeck modules ([printdeck_sdcard], ...) are not in Klipper, and
     # Klipper refuses a config with them. They make no commands at the config of the board.
-    awk "/^\\[/ { skip = /^\\[printdeck_/ } !skip" /printer/printer.cfg > /tmp/printer.cfg
+    # [input_shaper] goes too: the shaper tests add their own, and the other tests run with no
+    # shaper, as the Go tests do (internal/klipper/batch).
+    awk "/^\\[/ { skip = /^\\[printdeck_/ || /^\\[input_shaper\\]/ } !skip" /printer/printer.cfg > /tmp/printer.cfg
     # shaper*.gcode runs with an input shaper: the config with [input_shaper] at the end.
     cp /tmp/printer.cfg /tmp/printer-shaper.cfg
     printf "\n[input_shaper]\nshaper_freq_x: 48.5\nshaper_freq_y: 36.2\nshaper_type: mzv\n" >> /tmp/printer-shaper.cfg
