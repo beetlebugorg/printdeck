@@ -433,6 +433,16 @@ func (b *Board) command(text string) {
 			}
 			pin = 1 - e.pinValue // the switch is open
 			next = e.nextClock(next)
+			if m := theMachine(); m != nil && m.cube != nil && e.pin == m.cube.pin && !e.homing {
+				// The cube: the level of the pin at the nozzle place now. With the slack, the
+				// contact stays closed while the nozzle backs away through the backlash.
+				p, ok := m.place(b, b.now())
+				touch := ok && m.cube.inside(p, m.cube.slack)
+				pin = 0
+				if touch != m.cube.inverted {
+					pin = 1
+				}
+			}
 		}
 		b.mu.Unlock()
 		b.send("endstop_state", map[string]msgproto.Value{"oid": oid, "homing": homing,

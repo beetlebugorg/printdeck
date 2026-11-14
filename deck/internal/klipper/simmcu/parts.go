@@ -232,6 +232,12 @@ func (e *endstop) trip(b *Board, now uint64, crossed func(uint64) bool) {
 // contact is the test of the switch in the mechanics: an endstop at its place in mm, the probe on
 // a washer. It is nil for a switch that is not in the mechanics.
 func (e *endstop) contact(b *Board, m *machine, s *stepper) func(uint64) bool {
+	if m.cube != nil && e.pin == m.cube.pin {
+		return func(clock uint64) bool {
+			p, ok := m.place(b, clock)
+			return ok && m.cube.inside(p, 0)
+		}
+	}
 	if e.pin == m.probe {
 		return func(clock uint64) bool {
 			p, ok := m.place(b, clock)
