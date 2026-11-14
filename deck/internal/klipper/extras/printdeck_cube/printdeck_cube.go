@@ -18,8 +18,8 @@
 // open contact, less the travel after the trigger, is the backlash of the axis: the motor turns
 // back through the play before the nozzle moves.
 //
-// CUBE_QUERY reports the pin. CUBE_MEASURE measures and reports the backlash. The module does not
-// correct the backlash.
+// CUBE_QUERY reports the pin. CUBE_MEASURE measures and reports the backlash. The moves of the
+// measure go to the toolhead directly, so [printdeck_backlash] does not correct them.
 //
 //	Copyright (C) 2026  the Printdeck authors
 //
@@ -66,7 +66,7 @@ func load(config *configfile.Wrapper) any {
 	c.speed = config.GetFloat("speed", configfile.Default(1.), configfile.Above(0.), configfile.Max(5.))
 	c.travelSpeed = config.GetFloat("travel_speed", configfile.Default(50.), configfile.Above(0.))
 	c.approach = config.GetFloat("approach", configfile.Default(4.), configfile.Above(0.))
-	c.overtravel = config.GetFloat("overtravel", configfile.Default(1.), configfile.Above(0.), configfile.Max(2.))
+	c.overtravel = config.GetFloat("overtravel", configfile.Default(0.5), configfile.Above(0.), configfile.Max(2.))
 	c.zOvertravel = config.GetFloat("z_overtravel", configfile.Default(0.5), configfile.Above(0.), configfile.Max(1.))
 	c.sideDepth = config.GetFloat("side_depth", configfile.Default(1.), configfile.Above(0.))
 	c.lift = config.GetFloat("lift", configfile.Default(5.), configfile.Above(0.))
@@ -224,8 +224,9 @@ func (c *Cube) cmdMeasure(gcmd *gcode.Command) {
 		"top": round3(topZ), "left": round3(leftX), "right": round3(rightX), "back": round3(backY),
 	}
 	gcmd.RespondInfo(fmt.Sprintf("Cube: top Z %.3f, left X %.3f, right X %.3f, back Y %.3f (nozzle positions)\n"+
-		"Backlash: X %.3f mm (right %.3f, left %.3f), Y %.3f mm, Z %.3f mm",
-		topZ, leftX, rightX, backY, bx, bxRight, bxLeft, by, bz), true)
+		"Backlash: X %.3f mm (right %.3f, left %.3f), Y %.3f mm, Z %.3f mm\n"+
+		"SET_BACKLASH X=%.2f Y=%.2f sets the correction. Put the values in [printdeck_backlash] to keep them.",
+		topZ, leftX, rightX, backY, bx, bxRight, bxLeft, by, bz, bx, by), true)
 }
 
 func round3(v float64) float64 { return math.Round(v*1000) / 1000 }
