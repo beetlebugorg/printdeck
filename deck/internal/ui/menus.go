@@ -802,28 +802,28 @@ func (a *App) recordRow(c *gfx.Canvas, box image.Rectangle, r printer.Record, su
 	c.Text(s.Next(h3), date, gfx.Face(false, 14), dim, gfx.Left)
 }
 
-// drawSettings is the Settings page: a row for each setting of the deck. A tap changes it.
+// drawSettings is the Settings page: a row for each setting of the deck. A tap opens the setting.
 func (a *App) drawSettings(c *gfx.Canvas) {
 	f := a.navPage(c, "Settings")
 	items := []menuItem{
-		{"Theme", themeLine(a.Theme, a.NightFrom, a.NightTo), dim, a.cycleTheme},
-		{"Clock", clockLine(a.Clock24), dim, a.toggleClock},
+		{"Theme", themeLine(a.Theme, a.NightFrom, a.NightTo), dim, a.openTheme},
+		{"Clock", clockLine(a.Clock24), dim, a.openClock},
 	}
 	if !a.resin() {
-		items = append(items, menuItem{"Home in a filament change", swapHomeLine(a.SwapHome), dim, a.toggleSwapHome})
+		items = append(items, menuItem{"Home in a filament change", swapHomeLine(a.SwapHome), dim, a.openSwapHome})
 	}
 	if m, ok := a.maxModer(); ok && a.Printer.State().Reachable {
 		s, section := m.MaxMode()
 		items = append(items, menuItem{"Max mode", maxModeLine(s, section), dim, a.openMaxMode})
 	}
 	if st := a.Printer.State(); st.ProbeMethod != "" {
-		items = append(items, menuItem{"Probe method", probeMethodLine(st), dim, func() { a.cycleProbeMethod(st.ProbeMethod) }})
+		items = append(items, menuItem{"Probe method", probeMethodLine(st), dim, a.openProbeMethod})
 	}
 	if ps, ok := a.printerSetup(); ok {
 		items = append(items, menuItem{"Printer", settingLine(ps.Printer()), dim, a.OpenPrinterSetup})
 	}
 	if !a.Wide {
-		items = slices.Insert(items, 2, menuItem{"Text", a.textSizeLine(), dim, a.cycleTextSize})
+		items = slices.Insert(items, 2, menuItem{"Text", a.textSizeLine(), dim, a.openTextSize})
 	}
 	if a.OnRotate != nil {
 		items = append(items, menuItem{"Screen", rotateLine(a.Rotate), dim, a.askRotate})
@@ -937,7 +937,7 @@ func swapHomeLine(on bool) string {
 }
 
 // toggleSwapHome turns the homing in a filament change on or off.
-// probeMethods are the methods of the bed mesh at the start of a print, in the order of the taps.
+// probeMethods are the methods of the bed mesh at the start of a print.
 var probeMethods = []struct{ id, name, line string }{
 	{"map", "Saved map + check", "fast: 5 points or more against the saved map"},
 	{"adaptive", "Grid under the print", "probes only the area of the objects"},
@@ -969,25 +969,40 @@ func probeMethodLine(st printer.State) string {
 	return st.ProbeMethod
 }
 
-// cycleProbeMethod sets the next probe method. Klipper keeps it (PRINTDECK_MESH_METHOD).
-func (a *App) cycleProbeMethod(cur string) {
-	next := probeMethods[0]
-	for i, m := range probeMethods {
-		if m.id == cur {
-			next = probeMethods[(i+1)%len(probeMethods)]
-		}
-	}
+// openProbeMethod opens the choices of the probe method. Klipper keeps it (PRINTDECK_MESH_METHOD).
+func (a *App) openProbeMethod() {
 	pr := a.Printer
-	a.do(func() error { return pr.Gcode("PRINTDECK_MESH_METHOD METHOD=" + next.id) })
-	a.Toast(next.name)
+	var choices []menuItem
+	for _, m := range probeMethods {
+		choices = append(choices, menuItem{title: m.name, sub: m.line})
+	}
+	a.openOption(&option{title: "Probe method", choices: choices,
+		current: func() int {
+			cur := pr.State().ProbeMethod
+			for i, m := range probeMethods {
+				if m.id == cur {
+					return i
+				}
+			}
+			return -1
+		},
+		pick: func(i int) {
+			id := probeMethods[i].id
+			a.do(func() error { return pr.Gcode("PRINTDECK_MESH_METHOD METHOD=" + id) })
+		}})
 }
 
-func (a *App) toggleSwapHome() {
-	a.SwapHome = !a.SwapHome
-	a.Toast(swapHomeLine(a.SwapHome))
-	if a.OnSwapHome != nil {
-		a.OnSwapHome(a.SwapHome)
-	}
+// openSwapHome opens the toggle of the homing in a filament change.
+func (a *App) openSwapHome() {
+	a.openOption(&option{title: "Home in a filament change", toggle: "Home in a filament change",
+		toggleSub: func() string { return swapHomeLine(a.SwapHome) },
+		get:       func() bool { return a.SwapHome },
+		set: func(on bool) {
+			a.SwapHome = on
+			if a.OnSwapHome != nil {
+				a.OnSwapHome(on)
+			}
+		}})
 }
 
 // drawStats is the Statistics page: the totals of the print history. A wide screen has the four

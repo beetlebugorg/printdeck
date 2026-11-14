@@ -313,6 +313,7 @@ type App struct {
 	// Camera is the cameras of the deck, or nil (Settings > Camera and Settings > Cameras).
 	Camera   Camera
 	camView  string  // the view of the picture of the Camera page ("" is full)
+	option   *option // the setting of the option page
 	camID    string  // the tab of the Camera page: an ID, "" for the main camera, or camAll
 	camFocus bool    // the Camera page shows the focus keys
 	camPTZ   bool    // the Camera page shows the PTZ keys
@@ -860,13 +861,22 @@ func clockLine(clock24 bool) string {
 	return "12 hours: 2:24 PM"
 }
 
-// toggleClock changes between the 12-hour and the 24-hour clock.
-func (a *App) toggleClock() {
-	a.Clock24 = !a.Clock24
-	a.Toast(clockLine(a.Clock24))
-	if a.OnClock != nil {
-		a.OnClock(a.Clock24)
-	}
+// openClock opens the choices of the clock.
+func (a *App) openClock() {
+	a.openOption(&option{title: "Clock",
+		choices: []menuItem{{title: "12 hours", sub: clockLine(false)}, {title: "24 hours", sub: clockLine(true)}},
+		current: func() int {
+			if a.Clock24 {
+				return 1
+			}
+			return 0
+		},
+		pick: func(i int) {
+			a.Clock24 = i == 1
+			if a.OnClock != nil {
+				a.OnClock(a.Clock24)
+			}
+		}})
 }
 
 // The sizes of the large text: size 12 becomes fineMin, and the sizes up to fineTop go up in
@@ -917,26 +927,49 @@ func (a *App) textSizeLine() string {
 	return "Auto: " + size + " on this screen"
 }
 
-// cycleTextSize goes auto, large, normal, auto. An unknown value goes to large.
-func (a *App) cycleTextSize() {
-	a.TextSize = map[string]string{"large": "normal", "normal": "auto"}[a.TextSize]
-	if a.TextSize == "" {
-		a.TextSize = "large"
-	}
-	a.Toast("Text: " + a.textSizeLine())
-	if a.OnTextSize != nil {
-		a.OnTextSize(a.TextSize)
-	}
+// textSizes are the choices of the Text row.
+var textSizes = []string{"auto", "large", "normal"}
+
+// openTextSize opens the choices of the text size.
+func (a *App) openTextSize() {
+	a.openOption(&option{title: "Text",
+		choices: []menuItem{{title: "Auto", sub: "Large on a small screen"}, {title: "Large"}, {title: "Normal"}},
+		current: func() int {
+			for i, v := range textSizes {
+				if v == a.TextSize {
+					return i
+				}
+			}
+			return 0
+		},
+		pick: func(i int) {
+			a.TextSize = textSizes[i]
+			if a.OnTextSize != nil {
+				a.OnTextSize(a.TextSize)
+			}
+		}})
 }
 
-// cycleTheme goes day, night, auto, day.
-func (a *App) cycleTheme() {
-	a.Theme = map[string]string{"day": "night", "night": "auto", "auto": "day"}[a.Theme]
-	if a.Theme == "" {
-		a.Theme = "auto"
-	}
-	a.Toast(themeLine(a.Theme, a.NightFrom, a.NightTo))
-	if a.OnTheme != nil {
-		a.OnTheme(a.Theme)
-	}
+// themes are the choices of the Theme row.
+var themes = []string{"day", "night", "auto"}
+
+// openTheme opens the choices of the theme.
+func (a *App) openTheme() {
+	a.openOption(&option{title: "Theme",
+		choices: []menuItem{{title: "Day", sub: "Light colors"}, {title: "Night", sub: "Dark colors"},
+			{title: "Auto", sub: themeLine("auto", a.NightFrom, a.NightTo)}},
+		current: func() int {
+			for i, v := range themes {
+				if v == a.Theme {
+					return i
+				}
+			}
+			return 2
+		},
+		pick: func(i int) {
+			a.Theme = themes[i]
+			if a.OnTheme != nil {
+				a.OnTheme(a.Theme)
+			}
+		}})
 }

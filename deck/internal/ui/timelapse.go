@@ -109,53 +109,72 @@ func (a *App) lapseCalibrated() bool {
 	return valid
 }
 
-func (a *App) toggleLapseCrop() {
+// changeLapse changes the settings of the time lapse.
+func (a *App) changeLapse(change func(s *timelapse.Settings)) {
 	s := a.TimeLapse.Settings()
-	s.Crop = !s.Crop
+	change(&s)
 	a.TimeLapse.SetSettings(s)
-	a.Toast("Crop: " + map[bool]string{true: "on", false: "off"}[s.Crop])
 }
 
+// toggleLapse is the toggle at the top of the Time lapse page.
 func (a *App) toggleLapse() {
-	s := a.TimeLapse.Settings()
-	s.On = !s.On
-	a.TimeLapse.SetSettings(s)
-	a.Toast("Time lapse: " + map[bool]string{true: "on", false: "off"}[s.On])
+	a.changeLapse(func(s *timelapse.Settings) { s.On = !s.On })
 }
 
-func (a *App) toggleLapsePark() {
-	s := a.TimeLapse.Settings()
-	s.Park = !s.Park
-	a.TimeLapse.SetSettings(s)
-	a.Toast("Park: " + parkLine(s.Park))
+// openLapsePark opens the toggle of the park for the frames.
+func (a *App) openLapsePark() {
+	a.openOption(&option{title: "Park for the frames", toggle: "Park for the frames",
+		toggleSub: func() string { return parkLine(a.TimeLapse.Settings().Park) },
+		get:       func() bool { return a.TimeLapse.Settings().Park },
+		set:       func(on bool) { a.changeLapse(func(s *timelapse.Settings) { s.Park = on }) }})
+}
+
+// openLapseCrop opens the toggle of the crop to the part.
+func (a *App) openLapseCrop() {
+	a.openOption(&option{title: "Crop to the part", toggle: "Crop to the part",
+		toggleSub: func() string {
+			s := a.TimeLapse.Settings()
+			return cropLine(s.Crop, a.lapseCalibrated(), s.Park)
+		},
+		get: func() bool { return a.TimeLapse.Settings().Crop },
+		set: func(on bool) { a.changeLapse(func(s *timelapse.Settings) { s.Crop = on }) },
+		note: "The crop needs the park and a calibration of the camera."})
 }
 
 // lapseFromZ are the choices of the plate height from which a resin time lapse takes frames, in mm.
 var lapseFromZ = []int{0, 20, 30, 40, 50, 60, 80}
 
-// cycleLapseFromZ picks the next plate height from which a resin time lapse takes frames.
-func (a *App) cycleLapseFromZ() {
-	s := a.TimeLapse.Settings()
-	i := 0
-	for k, v := range lapseFromZ {
-		if v == s.FromZ {
-			i = k
+// openLapseFromZ opens the choices of the plate height from which a resin time lapse takes frames.
+func (a *App) openLapseFromZ() {
+	var choices []menuItem
+	for _, v := range lapseFromZ {
+		if v == 0 {
+			choices = append(choices, menuItem{title: "From the first layer"})
+		} else {
+			choices = append(choices, menuItem{title: fmt.Sprintf("When the plate lifts over %d mm", v)})
 		}
 	}
-	s.FromZ = lapseFromZ[(i+1)%len(lapseFromZ)]
-	a.TimeLapse.SetSettings(s)
-	if s.FromZ == 0 {
-		a.Toast("Frames from the first layer")
-	} else {
-		a.Toast(fmt.Sprintf("Frames when the plate lifts over %d mm", s.FromZ))
-	}
+	a.openOption(&option{title: "Start", choices: choices,
+		current: func() int {
+			for i, v := range lapseFromZ {
+				if v == a.TimeLapse.Settings().FromZ {
+					return i
+				}
+			}
+			return -1
+		},
+		pick: func(i int) { a.changeLapse(func(s *timelapse.Settings) { s.FromZ = lapseFromZ[i] }) }})
 }
 
-func (a *App) cycleFirstLayer() {
-	s := a.TimeLapse.Settings()
-	s.First = (s.First + 1) % 3
-	a.TimeLapse.SetSettings(s)
-	a.Toast("First layer: " + firstLayerLine(s.First))
+// openFirstLayer opens the choices of the picture of the first layer.
+func (a *App) openFirstLayer() {
+	var choices []menuItem
+	for _, v := range []int{timelapse.FirstOff, timelapse.FirstPicture, timelapse.FirstPause} {
+		choices = append(choices, menuItem{title: firstLayerLine(v)})
+	}
+	a.openOption(&option{title: "First layer", choices: choices,
+		current: func() int { return a.TimeLapse.Settings().First },
+		pick:    func(i int) { a.changeLapse(func(s *timelapse.Settings) { s.First = i }) }})
 }
 
 // drawTimeLapse is the Time lapse page.
@@ -163,7 +182,9 @@ func (a *App) drawTimeLapse(c *gfx.Canvas) {
 	f := a.navPage(c, "Time lapse")
 	s := a.TimeLapse.Settings()
 	in := a.TimeLapse.Info()
-	items := []menuItem{{"Time lapse", lapseLine(in, s), dim, a.toggleLapse}}
+	// The toggle at the top, and the settings under it.
+	toggle := menuGroup{items: []menuItem{{"Time lapse", lapseLine(in, s), dim, a.toggleLapse}}, checks: []bool{s.On}}
+	var items []menuItem
 	if a.resin() {
 		// A resin printer has no park and no first layer to look at: a frame at each layer, when
 		// the plate is up out of the vat.
@@ -172,12 +193,12 @@ func (a *App) drawTimeLapse(c *gfx.Canvas) {
 			from = fmt.Sprintf("When the plate lifts over %d mm", s.FromZ)
 		}
 		items = append(items, menuItem{"Frames", "One at each layer, with the plate up", dim, nil},
-			menuItem{"Start", from, dim, a.cycleLapseFromZ})
+			menuItem{"Start", from, dim, a.openLapseFromZ})
 	} else {
 		items = append(items,
-			menuItem{"Park for the frames", parkLine(s.Park), dim, a.toggleLapsePark},
-			menuItem{"Crop to the part", cropLine(s.Crop, a.lapseCalibrated(), s.Park), dim, a.toggleLapseCrop},
-			menuItem{"First layer", firstLayerLine(s.First), dim, a.cycleFirstLayer})
+			menuItem{"Park for the frames", parkLine(s.Park), dim, a.openLapsePark},
+			menuItem{"Crop to the part", cropLine(s.Crop, a.lapseCalibrated(), s.Park), dim, a.openLapseCrop},
+			menuItem{"First layer", firstLayerLine(s.First), dim, a.openFirstLayer})
 	}
 	if in.First != nil {
 		items = append(items, menuItem{"Picture of the first layer", firstSub(in, a), dim, func() { a.open(pageFirstLayer) }})
@@ -193,7 +214,7 @@ func (a *App) drawTimeLapse(c *gfx.Canvas) {
 			items = append(items, menuItem{"Cameras", lapseCamerasLine(list), dim, open})
 		}
 	}
-	a.menuRows(c, f.body(), f.wide, 60, 5, items)
+	a.menuGroups(c, f.body(), f.wide, 60, 5, []menuGroup{toggle, {items: items}})
 }
 
 // firstSub is the file and the time of the picture of the first layer.

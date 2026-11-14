@@ -446,6 +446,87 @@ func (a *App) cycleView() {
 	a.Toast("View: " + viewTitles[next])
 }
 
+// turns are the choices of the Turn row, in degrees.
+var turns = []int{0, 90, 180, 270}
+
+// openTurn opens the choices of the turn of the picture of the camera of the tab.
+func (a *App) openTurn() {
+	_, in := a.shownCam()
+	if in.ID == "" {
+		return
+	}
+	id := in.ID
+	var choices []menuItem
+	for _, r := range turns {
+		choices = append(choices, menuItem{title: turnLine(r)})
+	}
+	a.openOption(&option{title: "Turn", choices: choices,
+		current: func() int {
+			r := camera.ValidTurn(a.Camera.Settings().Camera(id).Rotate)
+			for i, v := range turns {
+				if v == r {
+					return i
+				}
+			}
+			return 0
+		},
+		pick: func(i int) { a.changeCamera(id, func(cs *camera.CamSettings) { cs.Rotate = turns[i] }) }})
+}
+
+// openView opens the choices of the view of the picture of the page. With no calibration, the
+// picture is the whole picture.
+func (a *App) openView() {
+	var choices []menuItem
+	for _, n := range camera.ViewNames {
+		choices = append(choices, menuItem{title: viewTitles[n]})
+	}
+	a.openOption(&option{title: "View", choices: choices, note: "The views other than the whole picture need a calibration of the camera.",
+		current: func() int {
+			for i, n := range camera.ViewNames {
+				if n == a.camView || (a.camView == "" && n == camera.ViewFull) {
+					return i
+				}
+			}
+			return 0
+		},
+		pick: func(i int) {
+			cam, _ := a.shownCam()
+			if _, ok := cam.Calibration(); !ok && camera.ViewNames[i] != camera.ViewFull {
+				a.Toast("Calibrate the camera for the other views")
+				return
+			}
+			a.camView = camera.ViewNames[i]
+		}})
+}
+
+// openAutoFocus opens the toggle of the autofocus of the camera id. Off keeps the lens at the
+// position of the autofocus.
+func (a *App) openAutoFocus(id string) {
+	now := func() camera.Focus {
+		if cam, ok := a.Camera.Source(id); ok {
+			if f := cam.Status().Focus; f != nil {
+				return a.focusNow(id, *f)
+			}
+		}
+		return camera.Focus{}
+	}
+	a.openOption(&option{title: "Autofocus", toggle: "Autofocus",
+		toggleSub: func() string { return autoFocusLine(now()) },
+		get:       func() bool { return now().Auto },
+		set: func(on bool) {
+			f := now()
+			a.setFocus(id, !on, f.Pos)
+		}})
+}
+
+// openPrintFocus opens the toggle of the focus on the part during a print of the camera id.
+func (a *App) openPrintFocus(id string) {
+	a.openOption(&option{title: "Focus in prints", toggle: "Focus on the part in prints",
+		toggleSub: func() string { return printFocusLine(a.Camera.Settings().Camera(id)) },
+		get:       func() bool { return !a.Camera.Settings().Camera(id).NoFocusPart },
+		set:       func(on bool) { a.changeCamera(id, func(cs *camera.CamSettings) { cs.NoFocusPart = !on }) }})
+}
+
 // cameraState is the state of the camera in words: a title, and a line under it.
 func cameraState(st camera.Status) (title, line string) {
 	name := st.Name
@@ -640,8 +721,8 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 		c.Text(rows[1], strings.ToUpper(gfx.Fit(gfx.Face(true, 13), second, in2.Dx())), gfx.Face(true, 13), lcdDim, gfx.Left)
 	} else {
 		items := []menuItem{
-			{"Turn", turnLine(in.Rotate), dim, a.stepTurn},
-			{"View", a.viewLine(cam), dim, a.cycleView},
+			{"Turn", turnLine(in.Rotate), dim, a.openTurn},
+			{"View", a.viewLine(cam), dim, a.openView},
 			{"Calibrate", calText, dim, a.askCalibrate},
 		}
 		if calibrated {
@@ -658,12 +739,12 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 			// No camera: no rows.
 			items = nil
 		case a.camFocus:
-			items = []menuItem{{"Auto", autoFocusLine(focus), dim, func() { a.toggleAutoFocus(id, focus) }}}
+			items = []menuItem{{"Auto", autoFocusLine(focus), dim, func() { a.openAutoFocus(id) }}}
 			if _, ok := a.Camera.(partFocuser); ok {
 				cs := a.Camera.Settings().Camera(id)
 				items = append(items,
 					menuItem{"Focus on the part", a.partFocusLine(id, st), dim, func() { a.focusOnPart(id) }},
-					menuItem{"In prints", printFocusLine(cs), dim, func() { a.togglePrintFocus(id) }})
+					menuItem{"In prints", printFocusLine(cs), dim, func() { a.openPrintFocus(id) }})
 			}
 			items = append(items, menuItem{"Done", "Back to the camera rows", dim, func() { a.camFocus = false }})
 		case a.camPTZ:
@@ -747,7 +828,7 @@ func (a *App) drawFocusKeys(c *gfx.Canvas, r image.Rectangle, id string, f camer
 // autoFocusLine is the line of the Auto row.
 func autoFocusLine(f camera.Focus) string {
 	if f.Auto {
-		return fmt.Sprintf("Autofocus on, at %d. Tap to keep the lens there.", f.Pos)
+		return fmt.Sprintf("Autofocus on, at %d. Off keeps the lens there.", f.Pos)
 	}
 	return fmt.Sprintf("Autofocus off. The lens stays at %d.", f.Pos)
 }
