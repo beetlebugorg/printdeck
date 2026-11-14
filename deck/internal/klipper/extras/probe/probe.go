@@ -363,6 +363,9 @@ func (d *DescendToEndstopHelper) DescendUntilTrigger(gcmd *gcode.Command) {
 	th := toolhead.Of(d.printer)
 	pos := th.Position()
 	pos[2] = d.zMinPosition
+	if f, ok := floors[d.printer]; ok && f > pos[2] { // Printdeck: floor.go
+		pos[2] = f
+	}
 	speed := d.paramHelper.ProbeParams(gcmd).ProbeSpeed
 	phoming := d.printer.LookupObject("homing").(*homing.PrinterHoming)
 	checkMovement := d.alwaysCheckMovement || !phoming.CheckProbeFirstHome(gcmd)

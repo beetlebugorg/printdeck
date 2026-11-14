@@ -120,8 +120,8 @@ top: 3
 travel_speed: 250
 `
 
-// The simulator starts each axis in the middle of its travel.
-const homeHere = "SET_KINEMATIC_POSITION X=121.5 Y=145.5 Z=147.5"
+// The simulated board keeps the nozzle place of the test before, so each test homes.
+const homeHere = "G28"
 
 func TestMeasure(t *testing.T) {
 	if testing.Short() {
@@ -159,9 +159,25 @@ func TestNoContact(t *testing.T) {
 	if testing.Short() {
 		t.Skip("the simulator runs in real time")
 	}
-	c := start(t, strings.Replace(cubeSection, "top: 3", "top: 9", 1))
+	simmcu.SetCubeDrop(6)
+	defer simmcu.SetCubeDrop(0)
+	c := start(t, cubeSection)
 	msg := c.script(homeHere + "\nCUBE_MEASURE")
 	if !strings.Contains(msg, "No contact on the top face") {
 		t.Fatalf("got %q", msg)
+	}
+}
+
+// The pin of the simulated probe triggers z_offset (0.86) over the top of the cube.
+func TestProbeOffset(t *testing.T) {
+	if testing.Short() {
+		t.Skip("the simulator runs in real time")
+	}
+	c := start(t, cubeSection)
+	if msg := c.script(homeHere + "\nCUBE_PROBE_OFFSET"); msg != "" {
+		t.Fatal(msg)
+	}
+	if v, _ := c.cube()["probe_z_offset"].(float64); math.Abs(v-0.86) > 0.015 {
+		t.Errorf("probe_z_offset %.3f, want 0.86", v)
 	}
 }
