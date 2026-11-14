@@ -136,8 +136,8 @@ func (a *App) openLapseCrop() {
 			s := a.TimeLapse.Settings()
 			return cropLine(s.Crop, a.lapseCalibrated(), s.Park)
 		},
-		get: func() bool { return a.TimeLapse.Settings().Crop },
-		set: func(on bool) { a.changeLapse(func(s *timelapse.Settings) { s.Crop = on }) },
+		get:  func() bool { return a.TimeLapse.Settings().Crop },
+		set:  func(on bool) { a.changeLapse(func(s *timelapse.Settings) { s.Crop = on }) },
 		note: "The crop needs the park and a calibration of the camera."})
 }
 
