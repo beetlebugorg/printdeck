@@ -241,7 +241,17 @@ func (e *endstop) contact(b *Board, m *machine, s *stepper) func(uint64) bool {
 	if e.pin == m.probe {
 		return func(clock uint64) bool {
 			p, ok := m.place(b, clock)
-			return ok && m.touches(p)
+			if !ok {
+				return false
+			}
+			// The pin of the probe on the top of the cube.
+			if c := m.cube; c != nil {
+				pin := [3]float64{p[0] + m.probeX, p[1] + m.probeY, p[2] - m.contact}
+				if c.inside(pin, 0) {
+					return true
+				}
+			}
+			return m.touches(p)
 		}
 	}
 	at, ok := m.switches[e.pin]

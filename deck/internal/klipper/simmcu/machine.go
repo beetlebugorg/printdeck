@@ -29,7 +29,9 @@ type machine struct {
 	axes     map[string]axis    // by step pin
 	switches map[string]float64 // the place in mm of each endstop on its axis, by pin
 	probe    string             // the pin of the probe
-	contact  float64            // the height of the washer tops over the bed, in mm
+	probeX   float64            // x_offset and y_offset of the probe: the pin is at the nozzle plus them
+	probeY   float64
+	contact  float64 // the height of the washer tops over the bed, in mm
 	washers  []washer
 	sdPin    string // the chip select pin of the SD card ([printdeck_sdcard])
 	cube     *cube  // the calibration cube of [printdeck_cube], or nil
@@ -50,7 +52,7 @@ func (c *cube) inside(p [3]float64, g float64) bool {
 	return p[0] >= c.left-g && p[0] <= c.right+g && p[1] >= c.front-g && p[1] <= c.back+g && p[2] <= c.top+g
 }
 
-var cubeSlack float64
+var cubeSlack, cubeDrop float64
 
 // SetCubeSlack gives the cube of the next Configure a backlash: after a touch, the contact stays
 // closed until the nozzle backs away by slack mm. The steps of the board have no play, so this is
@@ -58,6 +60,14 @@ var cubeSlack float64
 func SetCubeSlack(slack float64) {
 	machineMu.Lock()
 	cubeSlack = slack
+	machineMu.Unlock()
+}
+
+// SetCubeDrop puts the top of the cube of the next Configure drop mm under its place in the
+// config. For tests.
+func SetCubeDrop(drop float64) {
+	machineMu.Lock()
+	cubeDrop = drop
 	machineMu.Unlock()
 }
 
@@ -179,6 +189,8 @@ func Configure(get func(section, option string) (string, bool)) {
 	if p, ok := get("probe", "pin"); ok {
 		m.probe, _ = pin(p)
 		m.contact, _ = f("probe", "z_offset")
+		m.probeX, _ = f("probe", "x_offset")
+		m.probeY, _ = f("probe", "y_offset")
 	}
 	if p, ok := get("printdeck_cube", "pin"); ok {
 		c := &cube{}
@@ -190,6 +202,7 @@ func Configure(get func(section, option string) (string, bool)) {
 		c.front = c.back - 10
 		machineMu.Lock()
 		c.slack = cubeSlack
+		c.top -= cubeDrop
 		machineMu.Unlock()
 		m.cube = c
 	}

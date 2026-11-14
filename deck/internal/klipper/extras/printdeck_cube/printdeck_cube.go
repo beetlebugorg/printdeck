@@ -21,6 +21,12 @@
 // CUBE_QUERY reports the pin. CUBE_MEASURE measures and reports the backlash. The moves of the
 // measure go to the toolhead directly, so [printdeck_backlash] does not correct them.
 //
+// CUBE_PROBE_OFFSET [SAMPLES=3] measures the z_offset of the probe: the nozzle touches the top of
+// the cube, then the probe pin probes the middle of the top. The difference of the two heights is
+// the z_offset. The middle of the top comes from the faces, and the size of the cube (width and
+// depth, the TAZ Workhorse cube of LulzBot: 10 by 4 mm). The descent of the probe stops 0.5 mm
+// over the top: a pin that misses the cube gives an error, and the nozzle stays over the bed.
+//
 //	Copyright (C) 2026  the Printdeck authors
 //
 // This file may be distributed under the terms of the GNU GPLv3 license.
@@ -29,10 +35,12 @@ package printdeck_cube
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 
 	"printdeck/internal/klipper/configfile"
 	"printdeck/internal/klipper/extras/homing"
+	"printdeck/internal/klipper/extras/probe"
 	"printdeck/internal/klipper/gcode"
 	"printdeck/internal/klipper/host"
 	"printdeck/internal/klipper/mcu"
@@ -51,6 +59,7 @@ type Cube struct {
 	zOvertravel            float64
 	sideDepth, lift        float64
 	step, maxBacklash      float64
+	width, depth           float64
 	result                 map[string]any
 }
 
@@ -72,6 +81,8 @@ func load(config *configfile.Wrapper) any {
 	c.lift = config.GetFloat("lift", configfile.Default(5.), configfile.Above(0.))
 	c.step = config.GetFloat("step", configfile.Default(0.01), configfile.Above(0.), configfile.Max(0.1))
 	c.maxBacklash = config.GetFloat("max_backlash", configfile.Default(0.8), configfile.Above(0.))
+	c.width = config.GetFloat("width", configfile.Default(10.), configfile.Above(0.))
+	c.depth = config.GetFloat("depth", configfile.Default(4.), configfile.Above(0.))
 	// The cube stops all the steppers of X, Y and Z: a touch can come in any direction.
 	printer.RegisterEventHandler("klippy:mcu_identify", func(...any) {
 		for _, s := range toolhead.Of(printer).Kin().Steppers() {
@@ -84,6 +95,7 @@ func load(config *configfile.Wrapper) any {
 	g := gcode.Of(printer)
 	g.RegisterCommand("CUBE_QUERY", c.cmdQuery, false, "Report the contact of the nozzle and the cube")
 	g.RegisterCommand("CUBE_MEASURE", c.cmdMeasure, false, "Measure the backlash of X, Y and Z on the cube")
+	g.RegisterCommand("CUBE_PROBE_OFFSET", c.cmdProbeOffset, false, "Measure the z_offset of the probe on the cube")
 	return c
 }
 
@@ -174,28 +186,40 @@ func (c *Cube) side(axis int, face float64, dir float64, name string) (float64, 
 	return at, math.Max(0, r-over)
 }
 
-func (c *Cube) cmdMeasure(gcmd *gcode.Command) {
+// start checks the homing and the contact before a command.
+func (c *Cube) start(name string) {
 	th := toolhead.Of(c.printer)
 	homed, _ := th.Kin().Status(c.printer.Reactor().Monotonic())["homed_axes"].(string)
 	if !strings.Contains(homed, "x") || !strings.Contains(homed, "y") || !strings.Contains(homed, "z") {
-		panic(gcode.Errorf("Home X, Y and Z before CUBE_MEASURE"))
+		panic(gcode.Errorf("Home X, Y and Z before %s", name))
 	}
 	if c.triggered() {
 		panic(gcode.Errorf("The cube contact is closed before the measure. Check the cube wire for a short to ground."))
 	}
-	nan := math.NaN()
-	midX := (c.left + c.right) / 2
-	y := c.back - 2 // 2 mm in from the back edge: the front of the cube is out of the travel
-	safe := c.top + c.lift
+}
 
-	// The top: down onto the middle of the top face.
-	c.move(nan, nan, safe, c.travelSpeed/5)
+// touchTop touches the top of the cube with the nozzle at (midX, y), and returns the trigger place
+// and the backlash of Z.
+func (c *Cube) touchTop(midX, y float64) (float64, float64) {
+	nan := math.NaN()
+	c.move(nan, nan, c.top+c.lift, c.travelSpeed/5)
 	c.move(midX, y, nan, c.travelSpeed)
 	c.move(nan, nan, c.top+c.approach, c.travelSpeed/5)
 	topZ, overZ := c.touch(2, c.top-c.zOvertravel, "top")
-	bz := math.Max(0, c.release(2, 1, "top")-overZ)
+	return topZ, math.Max(0, c.release(2, 1, "top")-overZ)
+}
+
+func (c *Cube) cmdMeasure(gcmd *gcode.Command) {
+	c.start("CUBE_MEASURE")
+	th := toolhead.Of(c.printer)
+	nan := math.NaN()
+	midX := (c.left + c.right) / 2
+	y := c.back - 2 // 2 mm in from the back edge: the front of the cube is out of the travel
+
+	// The top: down onto the middle of the top face.
+	topZ, bz := c.touchTop(midX, y)
 	sideZ := topZ - c.sideDepth
-	safe = topZ + c.lift
+	safe := topZ + c.lift
 
 	// The right face, from the right: the nozzle moves to -X.
 	c.move(nan, nan, safe, c.travelSpeed/5)
@@ -227,6 +251,69 @@ func (c *Cube) cmdMeasure(gcmd *gcode.Command) {
 		"Backlash: X %.3f mm (right %.3f, left %.3f), Y %.3f mm, Z %.3f mm\n"+
 		"SET_BACKLASH X=%.2f Y=%.2f sets the correction. Put the values in [printdeck_backlash] to keep them.",
 		topZ, leftX, rightX, backY, bx, bxRight, bxLeft, by, bz, bx, by), true)
+}
+
+func (c *Cube) cmdProbeOffset(gcmd *gcode.Command) {
+	samples := gcmd.GetInt("SAMPLES", gcode.Default(3), gcode.Min(1), gcode.Max(10))
+	pr, ok := c.printer.TryLookupObject("probe").(probe.Probe)
+	if !ok {
+		panic(gcode.Errorf("printer.cfg has no probe"))
+	}
+	c.start("CUBE_PROBE_OFFSET")
+	off := pr.Offsets(nil)
+	nan := math.NaN()
+	midX := (c.left + c.right) / 2
+	topZ, _ := c.touchTop(midX, c.back-2)
+
+	// The middle of the top: the faces are nozzle places, so the cube edge is a nozzle radius past
+	// the face.
+	r := math.Max(0, (c.right-c.left-c.width)/2)
+	pinX, pinY := midX, c.back-r-c.depth/2
+	start := topZ + off[2] + 2
+	c.move(nan, nan, topZ+off[2]+c.lift, c.travelSpeed/5)
+	c.move(pinX-off[0], pinY-off[1], nan, c.travelSpeed)
+	c.move(nan, nan, start, c.travelSpeed/5)
+	var zs []float64
+	session := pr.StartProbeSession(gcmd)
+	func() {
+		defer session.EndProbeSession()
+		probe.WithFloor(c.printer, topZ+0.5, func() {
+			for i := 0; i < samples; i++ {
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							if e, ok := r.(*gcode.CommandError); ok && strings.Contains(e.Msg, "No trigger") {
+								panic(gcode.Errorf("The probe did not trigger over the cube: the pin missed the top. " +
+									"Check x_offset and y_offset of the probe, and the places in [printdeck_cube]."))
+							}
+							panic(r)
+						}
+					}()
+					session.RunProbe(gcmd)
+				}()
+				for _, res := range session.PullProbedResults() {
+					zs = append(zs, res.BedZ()+off[2])
+				}
+				c.move(nan, nan, start, c.travelSpeed/5)
+			}
+		})
+	}()
+	c.move(nan, nan, topZ+off[2]+c.lift, c.travelSpeed/5)
+	th := toolhead.Of(c.printer)
+	th.WaitMoves()
+
+	sorted := append([]float64(nil), zs...)
+	sort.Float64s(sorted)
+	pz := sorted[len(sorted)/2]
+	zoff := pz - topZ
+	if math.Abs(zoff-off[2]) > 0.8 {
+		panic(gcode.Errorf("The probe gave z_offset %.3f, and printer.cfg has %.3f. The pin can be off the top "+
+			"of the cube: check x_offset and y_offset of the probe.", zoff, off[2]))
+	}
+	c.result["probe_z_offset"] = round3(zoff)
+	gcmd.RespondInfo(fmt.Sprintf("Probe z_offset: %.3f mm (printer.cfg has %.3f)\n"+
+		"The nozzle touched the top at Z %.3f. The probe triggered at Z %.3f, range %.3f in %d samples.",
+		zoff, off[2], topZ, pz, sorted[len(sorted)-1]-sorted[0], len(zs)), true)
 }
 
 func round3(v float64) float64 { return math.Round(v*1000) / 1000 }
