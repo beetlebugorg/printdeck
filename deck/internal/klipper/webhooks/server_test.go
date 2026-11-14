@@ -84,8 +84,10 @@ func TestServerSocket(t *testing.T) {
 	cfg = regexp.MustCompile(`(?m)^restart_method: .*$`).ReplaceAll(cfg, nil)
 	// The fake board answers no homing commands, and the check of the BLTouch at the start of the
 	// host waits for one. The test is for the API socket, so the copy of the config has no
-	// [bltouch], and no sections that need a probe.
-	cfg = dropSections(cfg, "bltouch", "axis_twist_compensation", "z_tilt", "bed_mesh", "printdeck_mesh")
+	// [bltouch], and no sections that need a probe. With no backlash correction, the error of a
+	// move before a home has the position of the G-code.
+	cfg = dropSections(cfg, "bltouch", "axis_twist_compensation", "z_tilt", "bed_mesh", "printdeck_mesh",
+		"printdeck_backlash")
 	cfgPath := filepath.Join(dir, "printer.cfg")
 	os.WriteFile(cfgPath, cfg, 0o644)
 	sock := filepath.Join(dir, "klippy.sock")
