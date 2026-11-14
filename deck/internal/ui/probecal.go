@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"printdeck/internal/gfx"
@@ -40,6 +41,7 @@ const (
 	calCool                        // the heaters off
 	calCube                        // the nozzle and the probe touch the cube (CUBE_PROBE_OFFSET)
 	calCubeBacklash                // home, then the backlash on the cube (CUBE_MEASURE)
+	calWipe                        // heat, wipe the nozzle (NOZZLE_WIPE), and cool to calToolTemp
 )
 
 // The temperatures of the calibration: PRINT_START probes with the bed at 60 and the nozzle at the
@@ -48,6 +50,18 @@ const (
 	calBedTemp  = 60
 	calToolTemp = 150
 )
+
+// The wipe before a touch of the cube: plastic on the nozzle stops the contact. The wipe
+// temperature is the temperature of the filament less calWipeBelow, and at least calWipeMin.
+const (
+	calWipeBelow = 40
+	calWipeMin   = 170
+)
+
+// calWipeTemp is the wipe temperature for a filament that prints at tool degrees.
+func calWipeTemp(tool int) int {
+	return max(tool-calWipeBelow, calWipeMin)
+}
 
 // The points of the twist calibration along each axis.
 const (
@@ -99,15 +113,23 @@ func calSteps(kind string, mach printer.Machine) []calStep {
 	case "map":
 		return []calStep{calHeat, calMap, calCool}
 	case "cube":
-		return []calStep{calHeat, calCube, calSave, calCool}
+		return append(wipe(mach), calHeat, calCube, calSave, calCool)
 	case "backlash":
-		return []calStep{calCubeBacklash, calCool}
+		return append(wipe(mach), calCubeBacklash, calCool)
 	}
 	s := []calStep{calHeat, calZOffset, calSave}
 	if mach.HasTwist {
 		s = append(s, twist...)
 	}
 	return append(s, calHeat, calMap, calCool)
+}
+
+// wipe is the wipe step before a touch of the cube, when the printer has a NOZZLE_WIPE macro.
+func wipe(mach printer.Machine) []calStep {
+	if slices.Contains(mach.Macros, "NOZZLE_WIPE") {
+		return []calStep{calWipe}
+	}
+	return nil
 }
 
 // startProbeCal starts a calibration, after the question.
@@ -137,6 +159,8 @@ func (fl *probeCal) stepText() string {
 		return "Nozzle and probe on the cube"
 	case calCubeBacklash:
 		return "Home, then touch the cube"
+	case calWipe:
+		return "Heating and wiping the nozzle"
 	}
 	return "Cooling down"
 }
@@ -184,6 +208,16 @@ func (a *App) calStart(fl *probeCal, st printer.State) {
 		a.runAction(action, "BED_MESH_CLEAR", fmt.Sprintf("AXIS_TWIST_COMPENSATION_CALIBRATE AXIS=Y SAMPLE_COUNT=%d", calTwistYPoints))
 	case calMap:
 		a.runAction(action, "BED_MESH_CALIBRATE")
+	case calWipe:
+		w := calWipeTemp(a.loaded().Tool)
+		lines := []string{fmt.Sprintf("M104 S%d", w)}
+		if st.Homed != "xyz" {
+			lines = append(lines, "G28")
+		}
+		lines = append(lines, fmt.Sprintf("TEMPERATURE_WAIT SENSOR=extruder MINIMUM=%d", w-2), "NOZZLE_WIPE",
+			fmt.Sprintf("M104 S%d", calToolTemp), "M106 S255",
+			fmt.Sprintf("TEMPERATURE_WAIT SENSOR=extruder MAXIMUM=%d", calToolTemp+5), "M107")
+		a.runAction(action, lines...)
 	case calCube:
 		a.runAction(action, "CUBE_PROBE_OFFSET")
 	case calCubeBacklash:

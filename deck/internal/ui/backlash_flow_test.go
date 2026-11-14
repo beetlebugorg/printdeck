@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -77,5 +78,33 @@ func TestStatusLinesAction(t *testing.T) {
 	l1, l2 := StatusLines(st, "PLA", now, true)
 	if l1 != "Z OFFSET    1:23" || l2 != "NOZZLE AND PROBE" {
 		t.Errorf("%q %q", l1, l2)
+	}
+}
+
+// With a NOZZLE_WIPE macro, both cube flows heat, wipe the nozzle, and cool to calToolTemp before
+// the touch.
+func TestProbeCalCubeWipe(t *testing.T) {
+	now := time.Unix(1800000000, 0)
+	a, pr, _ := newPrintApp(idle)
+	a.Now = func() time.Time { return now }
+	m := calMachine()
+	m.Modules = append(m.Modules, "printdeck_cube", "printdeck_backlash")
+	m.Macros = append(m.Macros, "NOZZLE_WIPE")
+	pr.Machine_ = m
+	for _, kind := range []string{"cube", "backlash"} {
+		if s := calSteps(kind, m); s[0] != calWipe {
+			t.Errorf("%s: steps %v", kind, s)
+		}
+	}
+	m.Macros = nil
+	if s := calSteps("backlash", m); s[0] != calCubeBacklash {
+		t.Errorf("no macro: steps %v", s)
+	}
+	a.startProbeCal("backlash", "Backlash")
+	a.followProbeCal(pr.State_)
+	w := calWipeTemp(a.loaded().Tool)
+	waitCall(t, pr, fmt.Sprintf("action Backlash: Heating and wiping the nozzle: M104 S%d; G28; TEMPERATURE_WAIT SENSOR=extruder MINIMUM=%d; NOZZLE_WIPE; M104 S150; M106 S255; TEMPERATURE_WAIT SENSOR=extruder MAXIMUM=155; M107", w, w-2))
+	if calWipeTemp(210) != 170 || calWipeTemp(240) != 200 {
+		t.Errorf("wipe temperatures %d %d", calWipeTemp(210), calWipeTemp(240))
 	}
 }
