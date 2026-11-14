@@ -654,6 +654,7 @@ func machineSettings(ctx context.Context, conn *klippy.Conn) Machine {
 		TwistX: floats(tw["z_compensations"]), TwistY: floats(tw["zy_compensations"]),
 		MinCruiseRatio: minCruise, HasShaper: hasShaper,
 		ShaperFreqX: num(sh["shaper_freq_x"]), ShaperFreqY: num(sh["shaper_freq_y"]), ShaperType: shType,
+		BacklashX: num(s["printdeck_backlash"]["x"]), BacklashY: num(s["printdeck_backlash"]["y"]),
 	}
 }
 
