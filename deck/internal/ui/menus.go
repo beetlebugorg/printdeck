@@ -382,6 +382,33 @@ func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 				}}
 			})
 		}})
+		// The retraction test: print the tower, then type the height of the lowest band with no
+		// strings. It needs [firmware_retraction]: the Retraction row adds it.
+		retSub := "Add firmware retraction first: tap Retraction"
+		if mach.Has("firmware_retraction") {
+			retSub = "Print two 30 mm towers: about 20 minutes"
+		}
+		rows = append(rows, row{"Retraction test", retSub, false, func() {
+			if !idle {
+				a.Toast("Wait until the print ends")
+				return
+			}
+			if !mach.Has("firmware_retraction") {
+				a.Toast("Set the retraction first: then the test can change it")
+				return
+			}
+			q := fmt.Sprintf("Print the retraction tower at %d°?", m.Tool)
+			a.confirm = &confirmBox{question: q, yes: "Print", onYes: func() {
+				a.do(func() error { return pr.PrintRetractTower(m.Tool, m.Bed, m.Name) })
+			}}
+		}})
+		rows = append(rows, row{"Retraction", retractLine(mach), false, func() {
+			if !idle {
+				a.Toast("Wait until the print ends")
+				return
+			}
+			a.askRetraction(mach)
+		}})
 	}
 	simSub, simCol := simLine(st)
 	rows = append(rows, row{"Simulated printer", simSub, simCol == orange, func() { a.open(pageSimulator) }})

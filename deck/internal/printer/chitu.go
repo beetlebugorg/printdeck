@@ -538,6 +538,8 @@ func (c *ChiTu) SetPressureAdvance(float64) error               { return ErrNotS
 func (c *ChiTu) PrintRingTower(int, int, string, bool) error    { return ErrNotSupported }
 func (c *ChiTu) SetMaxAccel(float64) error                      { return ErrNotSupported }
 func (c *ChiTu) PrintShakeTest(string) error                    { return ErrNotSupported }
+func (c *ChiTu) PrintRetractTower(int, int, string) error       { return ErrNotSupported }
+func (c *ChiTu) SetRetraction(float64) error                    { return ErrNotSupported }
 func (c *ChiTu) SetBacklash(float64, float64) error             { return ErrNotSupported }
 func (c *ChiTu) CubeResult() (float64, float64, float64, error) { return 0, 0, 0, ErrNotSupported }
 func (c *ChiTu) PrintSweepTower(int, int, string, bool) error   { return ErrNotSupported }

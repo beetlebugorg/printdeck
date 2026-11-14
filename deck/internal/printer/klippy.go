@@ -655,6 +655,7 @@ func machineSettings(ctx context.Context, conn *klippy.Conn) Machine {
 		MinCruiseRatio: minCruise, HasShaper: hasShaper,
 		ShaperFreqX: num(sh["shaper_freq_x"]), ShaperFreqY: num(sh["shaper_freq_y"]), ShaperType: shType,
 		BacklashX: num(s["printdeck_backlash"]["x"]), BacklashY: num(s["printdeck_backlash"]["y"]),
+		RetractLength: num(s["firmware_retraction"]["retract_length"]),
 	}
 }
 

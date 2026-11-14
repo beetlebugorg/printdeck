@@ -139,6 +139,10 @@ type Printer interface {
 	// PrintShakeTest shakes the axes ("X", "Y" or "XY") through a range of frequencies
 	// (printer.ShakeTest).
 	PrintShakeTest(axes string) error
+	// PrintRetractTower prints the retraction tower (printer.RetractTower).
+	PrintRetractTower(tool, bed int, material string) error
+	// SetRetraction sets the firmware retraction length in mm, now and in printer.cfg.
+	SetRetraction(length float64) error
 	// SetBacklash sets the backlash correction of X and Y in mm, now and in printer.cfg.
 	SetBacklash(x, y float64) error
 	// CubeResult reads the last results of the calibration cube: the backlash of X and Y
