@@ -32,6 +32,33 @@ type machine struct {
 	contact  float64            // the height of the washer tops over the bed, in mm
 	washers  []washer
 	sdPin    string // the chip select pin of the SD card ([printdeck_sdcard])
+	cube     *cube  // the calibration cube of [printdeck_cube], or nil
+}
+
+// cube is the conductive cube of [printdeck_cube]: the nozzle grounds its pin at a touch. The
+// front of the cube is 10 mm in front of the back face, and the cube goes down to the bed.
+type cube struct {
+	pin                string
+	inverted           bool    // the pin has "!": a touch pulls it low
+	left, right, front float64 // X of the faces, and Y of the front face
+	back, top          float64
+	slack              float64 // the backlash of each axis that a query of the pin shows (SetCubeSlack)
+}
+
+// inside is true when the nozzle at p touches the cube grown by g mm on each side.
+func (c *cube) inside(p [3]float64, g float64) bool {
+	return p[0] >= c.left-g && p[0] <= c.right+g && p[1] >= c.front-g && p[1] <= c.back+g && p[2] <= c.top+g
+}
+
+var cubeSlack float64
+
+// SetCubeSlack gives the cube of the next Configure a backlash: after a touch, the contact stays
+// closed until the nozzle backs away by slack mm. The steps of the board have no play, so this is
+// the backlash that CUBE_MEASURE sees. For tests.
+func SetCubeSlack(slack float64) {
+	machineMu.Lock()
+	cubeSlack = slack
+	machineMu.Unlock()
 }
 
 var (
@@ -152,6 +179,19 @@ func Configure(get func(section, option string) (string, bool)) {
 	if p, ok := get("probe", "pin"); ok {
 		m.probe, _ = pin(p)
 		m.contact, _ = f("probe", "z_offset")
+	}
+	if p, ok := get("printdeck_cube", "pin"); ok {
+		c := &cube{}
+		c.pin, c.inverted = pin(p)
+		c.left, _ = f("printdeck_cube", "left")
+		c.right, _ = f("printdeck_cube", "right")
+		c.back, _ = f("printdeck_cube", "back")
+		c.top, _ = f("printdeck_cube", "top")
+		c.front = c.back - 10
+		machineMu.Lock()
+		c.slack = cubeSlack
+		machineMu.Unlock()
+		m.cube = c
 	}
 	if p, ok := get("printdeck_sdcard", "cs_pin"); ok {
 		m.sdPin = cleanPin(p)

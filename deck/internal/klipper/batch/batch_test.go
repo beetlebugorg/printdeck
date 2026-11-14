@@ -45,10 +45,10 @@ func TestConfigMatchesKlipper(t *testing.T) {
 	}
 }
 
-// klipperConfig writes printer/printer.cfg with no [printdeck_sdcard] and no [input_shaper], and
-// returns its path. [printdeck_sdcard] is not in Klipper, and it adds SPI devices to the board
-// config of the reference. The reference streams have no shaper: the shaper has its own reference
-// test (input_shaper_test.go).
+// klipperConfig writes printer/printer.cfg with no [printdeck_sdcard], [printdeck_cube] or
+// [input_shaper], and returns its path. The printdeck sections are not in Klipper, and they add SPI
+// devices and an endstop to the board config of the reference. The reference streams have no
+// shaper: the shaper has its own reference test (input_shaper_test.go).
 func klipperConfig(t *testing.T) string {
 	t.Helper()
 	cfg, err := os.ReadFile(printerCfg)
@@ -59,7 +59,8 @@ func klipperConfig(t *testing.T) string {
 	skip := false
 	for _, l := range strings.Split(string(cfg), "\n") {
 		if strings.HasPrefix(l, "[") {
-			skip = strings.HasPrefix(l, "[printdeck_sdcard]") || strings.HasPrefix(l, "[input_shaper]")
+			skip = strings.HasPrefix(l, "[printdeck_sdcard]") || strings.HasPrefix(l, "[input_shaper]") ||
+				strings.HasPrefix(l, "[printdeck_cube]")
 		}
 		if !skip {
 			out = append(out, l)
