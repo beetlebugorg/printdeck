@@ -214,6 +214,19 @@
   ]
  ],
  [
+  "homing_override",
+  [
+   [
+    "axes",
+    "xy"
+   ],
+   [
+    "gcode",
+    "\n{% set all = 'X' not in params and 'Y' not in params and 'Z' not in params %}\n{% if all or 'Z' in params %}\nG28 Z\n{% elif 'z' in printer.toolhead.homed_axes and printer.toolhead.position.z < 10 %}\nSAVE_GCODE_STATE NAME=home_lift\nG90\nG1 Z10 F1200\nRESTORE_GCODE_STATE NAME=home_lift\n{% endif %}\n{% if all or 'X' in params %}\nG28 X\n{% endif %}\n{% if all or 'Y' in params %}\nG28 Y\n{% endif %}"
+   ]
+  ]
+ ],
+ [
   "printdeck_homing",
   [
    [
