@@ -366,6 +366,9 @@ func (a *App) calibrationLine(mach printer.Machine) (string, bool) {
 	if a.calMsg != "" {
 		return "Stopped: " + a.calMsg, true
 	}
+	if !mach.HasProbe {
+		return "Pressure advance, retraction", false
+	}
 	return fmt.Sprintf("Z offset %.3f, twist, map", mach.ProbeOffset[2]), false
 }
 
@@ -398,7 +401,7 @@ func (a *App) drawProbeCal(c *gfx.Canvas, st printer.State) {
 				a.stopProbeCal("Stopped with the Stop key.")
 			}}
 		})
-	} else {
+	} else if mach.HasProbe {
 		a.headKey(c, f.head, "Run all", ask("all", "Calibration",
 			"Heat, then the Z offset, the twist and the map? About 25 minutes, with paper tests."))
 	}
@@ -409,7 +412,9 @@ func (a *App) drawProbeCal(c *gfx.Canvas, st printer.State) {
 		items = append(items, menuItem{"Stopped", a.calMsg, orange, nil})
 	}
 	paper := ask("zoffset", "Z offset", "Heat, then the paper test? About 5 minutes.")
-	if mach.Has("printdeck_cube") {
+	switch {
+	case !mach.HasProbe:
+	case mach.Has("printdeck_cube"):
 		items = append(items, menuItem{"Z offset", fmt.Sprintf("%.3f mm · paper test or the cube", mach.ProbeOffset[2]), dim, func() {
 			if a.probeCal != nil || !idle {
 				paper() // it tells why it cannot start
@@ -424,7 +429,7 @@ func (a *App) drawProbeCal(c *gfx.Canvas, st printer.State) {
 				}},
 			}}
 		}})
-	} else {
+	default:
 		items = append(items, menuItem{"Z offset", fmt.Sprintf("%.3f mm · paper test at the middle of the bed", mach.ProbeOffset[2]), dim, paper})
 	}
 	if mach.HasTwist {
@@ -452,6 +457,22 @@ func (a *App) drawProbeCal(c *gfx.Canvas, st printer.State) {
 	}
 	if mach.Has("extruder") {
 		items = append(items, menuItem{"Input shaping", shaperLine(mach), dim, func() { a.open(pageShaper) }})
+	}
+	if mach.Has("extruder") {
+		items = append(items, menuItem{"Pressure advance", fmt.Sprintf("%.3f · test tower", mach.PressureAdvance), dim, func() {
+			if !idle {
+				a.Toast("Wait until the print ends")
+				return
+			}
+			a.askPressureAdvance(mach)
+		}})
+		items = append(items, menuItem{"Retraction", retractLine(mach), dim, func() {
+			if !idle {
+				a.Toast("Wait until the print ends")
+				return
+			}
+			a.askRetraction(mach)
+		}})
 	}
 	if mach.Has("printdeck_backlash") || mach.Has("printdeck_cube") {
 		items = append(items, menuItem{"Backlash", backlashLine(mach), dim, func() {

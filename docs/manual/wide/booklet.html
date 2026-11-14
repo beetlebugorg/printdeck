@@ -94,14 +94,9 @@
   .chips span { border: 1.2px solid var(--ink); border-radius: 99px; padding: .015in .1in; font: 600 7.4pt "IBM Plex Mono", monospace; }
   ul.list { margin: .02in 0 .08in; padding-left: .2in; }
   ul.list li { margin-bottom: .04in; }
-  table.grid th, table.parts-plan th { text-align: left; font: 700 7pt "IBM Plex Mono", monospace; text-transform: uppercase;
+  table.grid th { text-align: left; font: 700 7pt "IBM Plex Mono", monospace; text-transform: uppercase;
     letter-spacing: .06em; color: var(--dim); padding: .03in .06in; border-bottom: 1.5px solid var(--ink); }
   table.grid td:first-child { width: auto; white-space: nowrap; }
-  table.parts-plan td { vertical-align: middle; }
-  table.parts-plan td:first-child { width: .55in; padding: .02in; }
-  table.parts-plan img { width: .5in; height: .38in; object-fit: contain; display: block; }
-  table.parts-plan .file { font: 6.8pt "IBM Plex Mono", monospace; color: var(--dim); }
-  table.parts-plan td.n, table.parts-plan th.n { text-align: right; white-space: nowrap; }
   .sw { display: inline-block; width: .11in; height: .11in; border-radius: 2px; border: 1px solid #888; vertical-align: -1px; margin-right: .04in; }
   .step { margin-top: .12in; break-inside: avoid; }
   h2 + .para + .step, h2 + p + .step { margin-top: .08in; }
@@ -112,36 +107,6 @@
   .step-body ol.steps { margin-top: 0; }
   .step-t { font: italic 700 13pt "IBM Plex Sans", "Noto Sans", Arial, sans-serif; color: var(--blue); }
 
-   
-  .sheet.ad { padding: .25in; }
-  .adv { height: 100%; border: 3px solid #111; padding: .22in .26in .16in; display: flex; flex-direction: column; background: #fffdf6;
-    font-family: "URW Bookman", "Bookman Old Style", "Bookman", serif; color: #111; }
-  .ad-kicker { font: 700 7.6pt "URW Gothic", "Century Gothic", sans-serif; letter-spacing: .2em; text-transform: uppercase;
-    color: #c8102e; border-bottom: 1.5px solid #111; padding-bottom: .05in; }
-  .ad-head { font: italic 700 25pt/1.02 "URW Bookman", "Bookman Old Style", serif; margin: .1in 0 .06in; letter-spacing: -.02em; }
-  .ad-head span { display: block; }
-  .ad-hero { position: relative; height: 2.15in; display: flex; justify-content: center; }
-  .ad-hero img { height: 100%; }
-  .ad-burst { position: absolute; right: .05in; top: 0; width: 1.15in; height: 1.15in; display: flex; align-items: center; justify-content: center;
-    background: #ffd400; transform: rotate(-12deg); text-align: center;
-    clip-path: polygon(50% 0, 61% 14%, 79% 9%, 79% 27%, 96% 32%, 86% 47%, 99% 61%, 82% 69%, 85% 87%, 67% 85%, 57% 100%, 45% 87%, 28% 96%, 24% 78%, 6% 75%, 13% 58%, 0 44%, 15% 34%, 11% 16%, 30% 16%, 38% 2%); }
-  .ad-burst span { font: 700 10.5pt/1.05 "URW Gothic", "Century Gothic", sans-serif; text-transform: uppercase; width: .8in; color: #c8102e; }
-  .ad-body { display: grid; grid-template-columns: 1fr 1.45in; gap: .16in; margin-top: .08in; }
-  .ad-copy { columns: 2; column-gap: .14in; font-size: 7.4pt; line-height: 1.32; text-align: left; hyphens: auto; }
-  .ad-copy p { margin: 0 0 .05in; text-align: left; }
-  .ad-copy p:first-child::first-letter { float: left; font: 700 24pt/.8 "URW Bookman", serif; margin: .02in .04in 0 0; color: #c8102e; }
-  .ad-checks { list-style: none; margin: 0; padding: .08in .1in; border: 2px solid #111; background: #111; color: #fffdf6;
-    font: 700 7.4pt/1.3 "URW Gothic", "Century Gothic", sans-serif; align-self: start; }
-  .ad-checks li { margin-bottom: .07in; padding-left: .16in; position: relative; }
-  .ad-checks li::before { content: "✔"; position: absolute; left: 0; color: #ffd400; }
-  .ad-coupon { position: relative; margin-top: .14in; border: 1.6px dashed #111; padding: .09in .12in; font: 7.6pt "URW Gothic", "Century Gothic", sans-serif; }
-  .ad-coupon b { font: italic 700 10pt "URW Bookman", serif; }
-  .ad-scissors { position: absolute; top: -.11in; left: .15in; background: #fffdf6; padding: 0 .04in; font-size: 11pt; }
-  .ad-boxes { display: flex; gap: .2in; margin: .05in 0; }
-  .ad-lines { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: .06in; align-items: end; margin: .08in 0 .04in; }
-  .ad-lines i { border-bottom: 1px solid #111; height: .14in; }
-  .ad-mail { font-size: 6.6pt; color: #444; }
-  .ad-fine { font: 5.6pt/1.3 "URW Gothic", "Century Gothic", sans-serif; color: #555; margin-top: .07in; }
 
    
   .shot { text-align: center; }
@@ -196,7 +161,7 @@
 <section class="sheet contents even">
   
     <h2>Contents</h2>
-    <ol><li class="ch">Set up</li><li><span>Connect to Wi-Fi</span><span class="dots"></span><span>3</span></li><li><span>Choose your printer</span><span class="dots"></span><span>5</span></li><li><span>Install the Klipper firmware</span><span class="dots"></span><span>7</span></li><li class="ch">Meet your Printdeck</li><li><span>The deck</span><span class="dots"></span><span>8</span></li><li><span>The display of the printer</span><span class="dots"></span><span>9</span></li><li><span>The deck in a browser</span><span class="dots"></span><span>10</span></li><li class="ch">Print a part</li><li><span>Send a file from the slicer</span><span class="dots"></span><span>11</span></li><li><span>Start a print</span><span class="dots"></span><span>12</span></li><li><span>Watch the print</span><span class="dots"></span><span>14</span></li><li><span>Print in two colors</span><span class="dots"></span><span>21</span></li><li><span>Look around during a print</span><span class="dots"></span><span>22</span></li><li><span>Make a time lapse</span><span class="dots"></span><span>23</span></li><li class="ch">Your iPhone and Apple Watch</li><li><span>The iPhone and Apple Watch apps</span><span class="dots"></span><span>26</span></li><li class="ch">Change the filament</li><li><span>Change the filament</span><span class="dots"></span><span>27</span></li><li class="ch">Move and heat</li><li><span>Move the head and heat</span><span class="dots"></span><span>32</span></li><li class="ch">Level and calibrate</li><li><span>Level and calibrate</span><span class="dots"></span><span>34</span></li><li><span>Calibrate the camera</span><span class="dots"></span><span>39</span></li><li class="ch">Look after the printer</li><li><span>Look after the printer</span><span class="dots"></span><span>42</span></li><li><span>Update the Printdeck</span><span class="dots"></span><span>54</span></li><li><span>Back up your data</span><span class="dots"></span><span>56</span></li><li><span>Try the deck with a simulated printer</span><span class="dots"></span><span>57</span></li><li class="ch">When something goes wrong</li><li><span>When something goes wrong</span><span class="dots"></span><span>59</span></li><li><span>Settings</span><span class="dots"></span><span>60</span></li></ol>
+    <ol><li class="ch">Set up</li><li><span>Connect to Wi-Fi</span><span class="dots"></span><span>3</span></li><li><span>Choose your printer</span><span class="dots"></span><span>5</span></li><li><span>Install the Klipper firmware</span><span class="dots"></span><span>7</span></li><li class="ch">Meet your Printdeck</li><li><span>The deck</span><span class="dots"></span><span>8</span></li><li><span>The display of the printer</span><span class="dots"></span><span>9</span></li><li><span>The deck in a browser</span><span class="dots"></span><span>10</span></li><li class="ch">Print a part</li><li><span>Send a file from the slicer</span><span class="dots"></span><span>11</span></li><li><span>Start a print</span><span class="dots"></span><span>12</span></li><li><span>Watch the print</span><span class="dots"></span><span>14</span></li><li><span>Print in two colors</span><span class="dots"></span><span>21</span></li><li><span>Look around during a print</span><span class="dots"></span><span>22</span></li><li><span>Make a time lapse</span><span class="dots"></span><span>23</span></li><li class="ch">Your iPhone and Apple Watch</li><li><span>The iPhone and Apple Watch apps</span><span class="dots"></span><span>26</span></li><li class="ch">Change the filament</li><li><span>Change the filament</span><span class="dots"></span><span>27</span></li><li class="ch">Move and heat</li><li><span>Move the head and heat</span><span class="dots"></span><span>32</span></li><li class="ch">Level and calibrate</li><li><span>Level and calibrate</span><span class="dots"></span><span>34</span></li><li><span>Calibrate the camera</span><span class="dots"></span><span>40</span></li><li class="ch">Look after the printer</li><li><span>Look after the printer</span><span class="dots"></span><span>43</span></li><li><span>Update the Printdeck</span><span class="dots"></span><span>55</span></li><li><span>Back up your data</span><span class="dots"></span><span>57</span></li><li><span>Try the deck with a simulated printer</span><span class="dots"></span><span>58</span></li><li class="ch">When something goes wrong</li><li><span>When something goes wrong</span><span class="dots"></span><span>60</span></li><li><span>Settings</span><span class="dots"></span><span>61</span></li></ol>
   
   
     
@@ -1223,13 +1188,13 @@
     <ol class="steps"><li><span class="n">2</span><span>Open Settings, then Time lapse.</span></li></ol>
     
     
-    <ol class="steps"><li><span class="n">3</span><span>Tap Time lapse to turn it on.</span></li></ol>
+    <ol class="steps"><li><span class="n">3</span><span>Check Time lapse at the top of the page to turn it on.</span></li></ol>
     
     
     <ol class="steps"><li><span class="n">4</span><span>With two cameras, open Settings, then Cameras. Tap a camera, and check Time lapse or Pictures.</span></li></ol>
     
     
-    <ol class="steps"><li><span class="n">5</span><span>Tap First layer for a picture of the first layer, or a picture and a pause. At a pause, check the layer, then tap Resume.</span></li></ol>
+    <ol class="steps"><li><span class="n">5</span><span>Tap First layer, and choose a picture of the first layer, or a picture and a pause. At a pause, check the layer, then tap Resume.</span></li></ol>
     
     
     <ol class="steps"><li><span class="n">6</span><span>Print. After the first layer, the deck shows its picture.</span></li></ol>
@@ -1683,25 +1648,29 @@
           <circle cx="784" cy="100" r="6" class="dot"/>
           <circle cx="840" cy="100" r="16" class="bdg"/>
           <text x="840" y="100" class="bdg-n">1</text></g><g>
-          <line x1="-25" y1="158" x2="542" y2="158" class="leader"/>
-          <circle cx="542" cy="158" r="6" class="dot"/>
+          <line x1="-25" y1="158" x2="538" y2="158" class="leader"/>
+          <circle cx="538" cy="158" r="6" class="dot"/>
           <circle cx="-40" cy="158" r="16" class="bdg"/>
           <text x="-40" y="158" class="bdg-n">2</text></g><g>
-          <line x1="825" y1="243" x2="526" y2="243" class="leader"/>
-          <circle cx="526" cy="243" r="6" class="dot"/>
-          <circle cx="840" cy="243" r="16" class="bdg"/>
-          <text x="840" y="243" class="bdg-n">3</text></g><g>
-          <line x1="825" y1="158" x2="784" y2="158" class="leader"/>
-          <circle cx="784" cy="158" r="6" class="dot"/>
-          <circle cx="840" cy="158" r="16" class="bdg"/>
-          <text x="840" y="158" class="bdg-n">4</text></g><g>
+          <line x1="-25" y1="240" x2="454" y2="240" class="leader"/>
+          <circle cx="454" cy="240" r="6" class="dot"/>
+          <circle cx="-40" cy="240" r="16" class="bdg"/>
+          <text x="-40" y="240" class="bdg-n">3</text></g><g>
+          <line x1="825" y1="282" x2="784" y2="282" class="leader"/>
+          <circle cx="784" cy="282" r="6" class="dot"/>
+          <circle cx="840" cy="282" r="16" class="bdg"/>
+          <text x="840" y="282" class="bdg-n">4</text></g><g>
+          <line x1="825" y1="220" x2="784" y2="220" class="leader"/>
+          <circle cx="784" cy="220" r="6" class="dot"/>
+          <circle cx="840" cy="220" r="16" class="bdg"/>
+          <text x="840" y="220" class="bdg-n">5</text></g><g>
           <line x1="825" y1="428" x2="784" y2="428" class="leader"/>
           <circle cx="784" cy="428" r="6" class="dot"/>
           <circle cx="840" cy="428" r="16" class="bdg"/>
-          <text x="840" y="428" class="bdg-n">5</text></g>
+          <text x="840" y="428" class="bdg-n">6</text></g>
         </svg>
       </div>
-      <ol class="parts"><li><span class="badge">1</span><span><b>Position.</b> A lit LED shows a homed axis.</span></li><li><span class="badge">2</span><span><b>Home.</b> Home after each start of the printer.</span></li><li><span class="badge">3</span><span><b>Joystick.</b> Hold a finger on the pad to move the head in X and Y.</span></li><li><span class="badge">4</span><span><b>Z.</b> Moves Z by the step: 0.1, 1 or 10 mm.</span></li><li><span class="badge">5</span><span><b>Park, Center, Motors off.</b> Park lifts the nozzle 10 mm and moves the head to the back left. Center moves it to the bed center. Motors off frees the head.</span></li></ol>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Position.</b> A lit LED shows a homed axis.</span></li><li><span class="badge">2</span><span><b>Home.</b> Home after each start of the printer.</span></li><li><span class="badge">3</span><span><b>X&#43;.</b> The arrow keys move the head in X and Y by the step. Hold a key to keep moving.</span></li><li><span class="badge">4</span><span><b>Z up.</b> Z ▲ and Z ▼ move Z by the step.</span></li><li><span class="badge">5</span><span><b>Steps.</b> The step of the arrow keys: 0.1, 0.5, 1 or 10 mm.</span></li><li><span class="badge">6</span><span><b>Park, Center, Motors off.</b> Park lifts the nozzle 10 mm and moves the head to the back left. Center moves it to the bed center. Motors off frees the head.</span></li></ol>
       
     </div>
     
@@ -1777,7 +1746,10 @@
     <ol class="steps"><li><span class="n">5</span><span>Tap Save config to write the results. Klipper restarts.</span></li></ol>
     
     
-    <ol class="steps"><li><span class="n">6</span><span>Tap Pressure advance test to print the tower. Then tap Pressure advance, and type the height of its sharpest corners.</span></li></ol>
+    <ol class="steps"><li><span class="n">6</span><span>Open Machine, then Calibration. Tap Pressure advance, then Print the tower. After the print, tap Pressure advance, then From the tower, and type the height of the sharpest corners.</span></li></ol>
+    
+    
+    <ol class="steps"><li><span class="n">7</span><span>Tap Retraction, then Print the tower. After the print, tap Retraction, then From the tower, and type the height of the lowest band with no strings.</span></li></ol>
     
     
   
@@ -1845,21 +1817,13 @@
         <div class="shot-box"><img src="img/maintenance-more.png" alt="The Maintenance page, further down"></div>
         <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
           <g>
-          <line x1="825" y1="278" x2="784" y2="278" class="leader"/>
-          <circle cx="784" cy="278" r="6" class="dot"/>
-          <circle cx="840" cy="278" r="16" class="bdg"/>
-          <text x="840" y="278" class="bdg-n">1</text></g><g>
-          <line x1="825" y1="350" x2="784" y2="350" class="leader"/>
-          <circle cx="784" cy="350" r="6" class="dot"/>
-          <circle cx="840" cy="350" r="16" class="bdg"/>
-          <text x="840" y="350" class="bdg-n">2</text></g><g>
           <line x1="825" y1="422" x2="784" y2="422" class="leader"/>
           <circle cx="784" cy="422" r="6" class="dot"/>
           <circle cx="840" cy="422" r="16" class="bdg"/>
-          <text x="840" y="422" class="bdg-n">3</text></g>
+          <text x="840" y="422" class="bdg-n">1</text></g>
         </svg>
       </div>
-      <ol class="parts"><li><span class="badge">1</span><span><b>Pressure advance test.</b> Prints a 30 mm tower. The pressure advance goes up 0.005 for each mm. Measure the height of the sharpest corners.</span></li><li><span class="badge">2</span><span><b>Pressure advance.</b> Type the height of the sharpest corners. The deck writes the value in printer.cfg.</span></li><li><span class="badge">3</span><span><b>Simulated printer.</b> Runs a simulated printer. Orange text shows a simulated printer in use.</span></li></ol>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Simulated printer.</b> Runs a simulated printer. Orange text shows a simulated printer in use.</span></li></ol>
       
     </div>
     
@@ -1872,6 +1836,50 @@
 </section>
 
 <section class="sheet guide odd">
+  
+    
+    
+    <div class="figure">
+      <h3>The Calibration page</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/calibration.png" alt="The Calibration page"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="825" y1="39" x2="666" y2="39" class="leader"/>
+          <circle cx="666" cy="39" r="6" class="dot"/>
+          <circle cx="840" cy="39" r="16" class="bdg"/>
+          <text x="840" y="39" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="121" x2="784" y2="121" class="leader"/>
+          <circle cx="784" cy="121" r="6" class="dot"/>
+          <circle cx="840" cy="121" r="16" class="bdg"/>
+          <text x="840" y="121" class="bdg-n">2</text></g><g>
+          <line x1="825" y1="219" x2="784" y2="219" class="leader"/>
+          <circle cx="784" cy="219" r="6" class="dot"/>
+          <circle cx="840" cy="219" r="16" class="bdg"/>
+          <text x="840" y="219" class="bdg-n">3</text></g><g>
+          <line x1="825" y1="317" x2="784" y2="317" class="leader"/>
+          <circle cx="784" cy="317" r="6" class="dot"/>
+          <circle cx="840" cy="317" r="16" class="bdg"/>
+          <text x="840" y="317" class="bdg-n">4</text></g><g>
+          <line x1="825" y1="415" x2="784" y2="415" class="leader"/>
+          <circle cx="784" cy="415" r="6" class="dot"/>
+          <circle cx="840" cy="415" r="16" class="bdg"/>
+          <text x="840" y="415" class="bdg-n">5</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Run all.</b> Heats, then runs the Z offset, the twist and the bed map, one after the other.</span></li><li><span class="badge">2</span><span><b>Z offset.</b> The paper test for the nozzle height, hot.</span></li><li><span class="badge">3</span><span><b>Input shaping.</b> Opens the tests of the input shaper: the ringing tower and the check tower.</span></li><li><span class="badge">4</span><span><b>Pressure advance.</b> Prints the test tower, or sets the value from it. The pressure advance goes up 0.005 for each mm of the tower. Type the height of the sharpest corners.</span></li><li><span class="badge">5</span><span><b>Retraction.</b> Prints the test tower, or sets the length from it or by hand. The length goes up 0.25 mm each 3 mm band. Type the height of the lowest band with no strings.</span></li></ol>
+      <p class="note">Each row opens its choices. A printer with no probe shows only Pressure advance and Retraction.</p><p class="note">The retraction is the length of [firmware_retraction]. Turn on Firmware Retraction in the printer settings of the slicer, so the G-code has G10 and G11.</p>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Level and calibrate</div>
+    <div class="folio">37</div>
+  
+</section>
+
+<section class="sheet guide even">
   
     
     
@@ -1899,11 +1907,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">37</div>
+    <div class="folio">38</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -1939,11 +1947,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">38</div>
+    <div class="folio">39</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>Calibrate the camera</h2>
@@ -1976,11 +1984,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">39</div>
+    <div class="folio">40</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2042,11 +2050,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">40</div>
+    <div class="folio">41</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2074,11 +2082,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">41</div>
+    <div class="folio">42</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     <h2>Look after the printer</h2>
@@ -2114,62 +2122,34 @@
           <circle cx="784" cy="245" r="6" class="dot"/>
           <circle cx="840" cy="249" r="16" class="bdg"/>
           <text x="840" y="249" class="bdg-n">5</text></g><g>
-          <line x1="825" y1="309" x2="539" y2="309" class="leader"/>
+          <line x1="825" y1="290" x2="539" y2="309" class="leader"/>
           <circle cx="539" cy="309" r="6" class="dot"/>
-          <circle cx="840" cy="309" r="16" class="bdg"/>
-          <text x="840" y="309" class="bdg-n">6</text></g><g>
-          <line x1="825" y1="343" x2="784" y2="309" class="leader"/>
+          <circle cx="840" cy="290" r="16" class="bdg"/>
+          <text x="840" y="290" class="bdg-n">6</text></g><g>
+          <line x1="825" y1="324" x2="784" y2="309" class="leader"/>
           <circle cx="784" cy="309" r="6" class="dot"/>
-          <circle cx="840" cy="343" r="16" class="bdg"/>
-          <text x="840" y="343" class="bdg-n">7</text></g><g>
-          <line x1="825" y1="377" x2="539" y2="373" class="leader"/>
+          <circle cx="840" cy="324" r="16" class="bdg"/>
+          <text x="840" y="324" class="bdg-n">7</text></g><g>
+          <line x1="825" y1="358" x2="539" y2="373" class="leader"/>
           <circle cx="539" cy="373" r="6" class="dot"/>
-          <circle cx="840" cy="377" r="16" class="bdg"/>
-          <text x="840" y="377" class="bdg-n">8</text></g><g>
-          <line x1="825" y1="411" x2="784" y2="373" class="leader"/>
+          <circle cx="840" cy="358" r="16" class="bdg"/>
+          <text x="840" y="358" class="bdg-n">8</text></g><g>
+          <line x1="825" y1="392" x2="784" y2="373" class="leader"/>
           <circle cx="784" cy="373" r="6" class="dot"/>
-          <circle cx="840" cy="411" r="16" class="bdg"/>
-          <text x="840" y="411" class="bdg-n">9</text></g><g>
-          <line x1="825" y1="445" x2="539" y2="437" class="leader"/>
+          <circle cx="840" cy="392" r="16" class="bdg"/>
+          <text x="840" y="392" class="bdg-n">9</text></g><g>
+          <line x1="825" y1="426" x2="539" y2="437" class="leader"/>
           <circle cx="539" cy="437" r="6" class="dot"/>
-          <circle cx="840" cy="445" r="16" class="bdg"/>
-          <text x="840" y="445" class="bdg-n">10</text></g>
+          <circle cx="840" cy="426" r="16" class="bdg"/>
+          <text x="840" y="426" class="bdg-n">10</text></g><g>
+          <line x1="825" y1="460" x2="784" y2="437" class="leader"/>
+          <circle cx="784" cy="437" r="6" class="dot"/>
+          <circle cx="840" cy="460" r="16" class="bdg"/>
+          <text x="840" y="460" class="bdg-n">11</text></g>
         </svg>
       </div>
-      <ol class="parts"><li><span class="badge">1</span><span><b>Restart….</b> Restarts Klipper or the board firmware, after a choice.</span></li><li><span class="badge">2</span><span><b>Information.</b> The versions, the address and the state of the firmware.</span></li><li><span class="badge">3</span><span><b>Settings.</b> The theme, the clock, the screen, the cameras and the messages.</span></li><li><span class="badge">4</span><span><b>Prints.</b> The totals and the history of all prints.</span></li><li><span class="badge">5</span><span><b>Maintenance.</b> The calibrations, the firmware and the simulated printer. Orange text shows old firmware or results to save.</span></li><li><span class="badge">6</span><span><b>Macros.</b> Tap a macro to run it.</span></li><li><span class="badge">7</span><span><b>Console.</b> The G-code console.</span></li><li><span class="badge">8</span><span><b>Software update.</b> Shows and installs a new version. Orange text shows a new version.</span></li><li><span class="badge">9</span><span><b>Wi-Fi and help.</b> The network, the password and the addresses.</span></li><li><span class="badge">10</span><span><b>System monitor.</b> Graphs of the CPU, the memory and the SD card.</span></li></ol>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Restart….</b> Restarts Klipper or the board firmware, after a choice.</span></li><li><span class="badge">2</span><span><b>Information.</b> The versions, the address and the state of the firmware.</span></li><li><span class="badge">3</span><span><b>Settings.</b> The theme, the clock, the screen, the cameras and the messages.</span></li><li><span class="badge">4</span><span><b>Prints.</b> The totals and the history of all prints.</span></li><li><span class="badge">5</span><span><b>Maintenance.</b> The bed, the heaters, the firmware and the simulated printer. Orange text shows old firmware or results to save.</span></li><li><span class="badge">6</span><span><b>Calibration.</b> The nozzle height, the pressure advance and the retraction.</span></li><li><span class="badge">7</span><span><b>Macros.</b> Tap a macro to run it.</span></li><li><span class="badge">8</span><span><b>Console.</b> The G-code console.</span></li><li><span class="badge">9</span><span><b>Software update.</b> Shows and installs a new version. Orange text shows a new version.</span></li><li><span class="badge">10</span><span><b>Wi-Fi and help.</b> The network, the password and the addresses.</span></li><li><span class="badge">11</span><span><b>System monitor.</b> Graphs of the CPU, the memory and the SD card.</span></li></ol>
       
-    </div>
-    
-    
-  
-  
-    <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">42</div>
-  
-</section>
-
-<section class="sheet guide odd">
-  
-    
-    
-    <div class="figure">
-      <h3>Restart…</h3>
-      <div class="frame wide">
-        <div class="shot-box"><img src="img/machine-restart.png" alt="Restart…"></div>
-        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
-          <g>
-          <line x1="825" y1="187" x2="660" y2="187" class="leader"/>
-          <circle cx="660" cy="187" r="6" class="dot"/>
-          <circle cx="840" cy="187" r="16" class="bdg"/>
-          <text x="840" y="187" class="bdg-n">1</text></g><g>
-          <line x1="825" y1="273" x2="660" y2="273" class="leader"/>
-          <circle cx="660" cy="273" r="6" class="dot"/>
-          <circle cx="840" cy="273" r="16" class="bdg"/>
-          <text x="840" y="273" class="bdg-n">2</text></g>
-        </svg>
-      </div>
-      <ol class="parts"><li><span class="badge">1</span><span><b>Restart Klipper.</b> Reads printer.cfg again. The firmware keeps running.</span></li><li><span class="badge">2</span><span><b>Firmware restart.</b> Restarts the firmware of the board, for example after a stop.</span></li></ol>
-      <p class="note">Each restart asks again before it starts. During a print, Restart… is locked.</p>
     </div>
     
     
@@ -2181,6 +2161,38 @@
 </section>
 
 <section class="sheet guide even">
+  
+    
+    
+    <div class="figure">
+      <h3>Restart…</h3>
+      <div class="frame wide">
+        <div class="shot-box"><img src="img/machine-restart.png" alt="Restart…"></div>
+        <svg class="marks2" viewBox="-72 0 944 480" aria-hidden="true">
+          <g>
+          <line x1="825" y1="187" x2="680" y2="187" class="leader"/>
+          <circle cx="680" cy="187" r="6" class="dot"/>
+          <circle cx="840" cy="187" r="16" class="bdg"/>
+          <text x="840" y="187" class="bdg-n">1</text></g><g>
+          <line x1="825" y1="277" x2="680" y2="277" class="leader"/>
+          <circle cx="680" cy="277" r="6" class="dot"/>
+          <circle cx="840" cy="277" r="16" class="bdg"/>
+          <text x="840" y="277" class="bdg-n">2</text></g>
+        </svg>
+      </div>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Restart Klipper.</b> Reads printer.cfg again. The firmware keeps running.</span></li><li><span class="badge">2</span><span><b>Firmware restart.</b> Restarts the firmware of the board, for example after a stop.</span></li></ol>
+      <p class="note">Each restart asks again before it starts. During a print, Restart… is locked.</p>
+    </div>
+    
+    
+  
+  
+    <div class="chapter-tab">Look after the printer</div>
+    <div class="folio">44</div>
+  
+</section>
+
+<section class="sheet guide odd">
   
     
     
@@ -2217,18 +2229,18 @@
         </svg>
       </div>
       <ol class="parts"><li><span class="badge">1</span><span><b>Theme.</b> Day, night, or auto.</span></li><li><span class="badge">2</span><span><b>Clock.</b> 12 or 24 hours.</span></li><li><span class="badge">3</span><span><b>Home in a filament change.</b> On: the printer homes while the nozzle heats for a filament change.</span></li><li><span class="badge">4</span><span><b>Screen.</b> Tap it to turn the screen a quarter turn. The deck restarts, and a print continues. This setting overrides display_rotate.</span></li><li><span class="badge">5</span><span><b>Camera.</b> Opens the live picture, as the Camera key does.</span></li><li><span class="badge">6</span><span><b>Cameras.</b> Names the cameras and sets their uses.</span></li></ol>
-      
+      <p class="note">Each row opens its setting. A setting that is on or off has a check box. A setting with choices has a check at the choice now.</p>
     </div>
     
     
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">44</div>
+    <div class="folio">45</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2256,11 +2268,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">45</div>
+    <div class="folio">46</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2296,7 +2308,7 @@
           <text x="840" y="460" class="bdg-n">6</text></g>
         </svg>
       </div>
-      <ol class="parts"><li><span class="badge">1</span><span><b>Tabs.</b> A tab for each camera that is on. Both shows all the cameras.</span></li><li><span class="badge">2</span><span><b>Picture.</b> Use it to aim the camera at the bed.</span></li><li><span class="badge">3</span><span><b>Turn.</b> Turns the picture 90° clockwise at each tap, for a camera on its side or upside down.</span></li><li><span class="badge">4</span><span><b>Focus.</b> Shows the focus keys. Only a camera with a focus control has this key.</span></li><li><span class="badge">5</span><span><b>PTZ.</b> Shows the zoom keys. Only a camera with a zoom control has this key.</span></li><li><span class="badge">6</span><span><b>Camera settings.</b> The name, on or off, and the uses of this camera.</span></li></ol>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Tabs.</b> A tab for each camera that is on. Both shows all the cameras.</span></li><li><span class="badge">2</span><span><b>Picture.</b> Use it to aim the camera at the bed.</span></li><li><span class="badge">3</span><span><b>Turn.</b> Opens the turn of the picture: upright, 90° right, 180° or 90° left. Use it for a camera on its side or upside down.</span></li><li><span class="badge">4</span><span><b>Focus.</b> Shows the focus keys. Only a camera with a focus control has this key.</span></li><li><span class="badge">5</span><span><b>PTZ.</b> Shows the zoom keys. Only a camera with a zoom control has this key.</span></li><li><span class="badge">6</span><span><b>Camera settings.</b> The name, on or off, and the uses of this camera.</span></li></ol>
       <p class="note">A camera runs only while somebody looks at it. With no camera, the apps show the deck screen.</p><p class="note">If a camera shows too little USB bandwidth, move it to another USB port.</p>
     </div>
     
@@ -2304,11 +2316,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">46</div>
+    <div class="folio">47</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2336,7 +2348,7 @@
           <text x="840" y="460" class="bdg-n">4</text></g>
         </svg>
       </div>
-      <ol class="parts"><li><span class="badge">1</span><span><b>Auto.</b> Lit when the camera focuses itself. Tap it to keep the lens where the autofocus put it.</span></li><li><span class="badge">2</span><span><b>−.</b> Moves the lens one step. The autofocus goes off.</span></li><li><span class="badge">3</span><span><b>&#43;.</b> Moves the lens one step to the other side.</span></li><li><span class="badge">4</span><span><b>Done.</b> Shows the other camera keys again.</span></li></ol>
+      <ol class="parts"><li><span class="badge">1</span><span><b>Auto.</b> Lit when the camera focuses itself. Turn the autofocus off to keep the lens where the autofocus put it.</span></li><li><span class="badge">2</span><span><b>−.</b> Moves the lens one step. The autofocus goes off.</span></li><li><span class="badge">3</span><span><b>&#43;.</b> Moves the lens one step to the other side.</span></li><li><span class="badge">4</span><span><b>Done.</b> Shows the other camera keys again.</span></li></ol>
       <p class="note">A fixed focus keeps the picture sharp when the toolhead and the bed move. Set it while the picture shows the nozzle.</p><p class="note">The deck keeps the focus of each camera, and sets it each time the camera starts.</p>
     </div>
     
@@ -2344,11 +2356,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">47</div>
+    <div class="folio">48</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2392,11 +2404,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">48</div>
+    <div class="folio">49</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2420,11 +2432,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">49</div>
+    <div class="folio">50</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2468,11 +2480,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">50</div>
+    <div class="folio">51</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2508,11 +2520,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">51</div>
+    <div class="folio">52</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2578,11 +2590,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">52</div>
+    <div class="folio">53</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2618,11 +2630,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">53</div>
+    <div class="folio">54</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     <h2>Update the Printdeck</h2>
@@ -2683,11 +2695,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">54</div>
+    <div class="folio">55</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2719,11 +2731,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">55</div>
+    <div class="folio">56</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     <h2>Back up your data</h2>
@@ -2756,11 +2768,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">56</div>
+    <div class="folio">57</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>Try the deck with a simulated printer</h2>
@@ -2787,11 +2799,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">57</div>
+    <div class="folio">58</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2831,11 +2843,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">58</div>
+    <div class="folio">59</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>When something goes wrong</h2>
@@ -2886,11 +2898,11 @@
   
   
     <div class="chapter-tab">When something goes wrong</div>
-    <div class="folio">59</div>
+    <div class="folio">60</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     <h2>Settings</h2>
@@ -2926,17 +2938,6 @@
   
   
     <div class="chapter-tab">When something goes wrong</div>
-    <div class="folio">60</div>
-  
-</section>
-
-<section class="sheet notes odd">
-  
-    <h2>Notes</h2>
-    <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
-  
-  
-    
     <div class="folio">61</div>
   
 </section>

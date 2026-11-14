@@ -109,6 +109,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	case pageShaper:
 		a.drawShaper(c, st)
 		return
+	case pageOption:
+		a.drawOption(c)
+		return
 	case pageMachine:
 		a.drawMachine(c, st)
 		return

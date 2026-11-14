@@ -77,7 +77,7 @@
 <div class="layout-switch"><span>Layout:</span><a href="" aria-current="page">Tall</a><a href="../../ui/wide/calibrate/">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#calibrate">Level and calibrate</a></li><li><a href="#camera-calibrate">Calibrate the camera</a></li></ol></nav><div class="manual"><section id="calibrate">
   <h2 class="title"><span class="num">16</span>Level and calibrate</h2>
   <p>Maintenance lists the calibrations of your printer. Open it from Machine.</p>
-  <ol class="steps"><li>Open Machine, then Maintenance.</li><li>Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.</li><li>Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.</li><li>Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.</li><li>Tap Save config to write the results. Klipper restarts.</li><li>Tap Pressure advance test to print the tower. Then tap Pressure advance, and type the height of its sharpest corners.</li></ol>
+  <ol class="steps"><li>Open Machine, then Maintenance.</li><li>Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.</li><li>Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.</li><li>Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.</li><li>Tap Save config to write the results. Klipper restarts.</li><li>Open Machine, then Calibration. Tap Pressure advance, then Print the tower. After the print, tap Pressure advance, then From the tower, and type the height of the sharpest corners.</li><li>Tap Retraction, then Print the tower. After the print, tap Retraction, then From the tower, and type the height of the lowest band with no strings.</li></ol>
   
   <figure>
     <h3>The Maintenance page</h3>
@@ -85,57 +85,86 @@
       <div class="shot"><img src="../../manual/img/maintenance.png" alt="The Maintenance page" width="480" height="800"></div>
       <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
         
-        <line x1="505" y1="112" x2="456" y2="112" class="leader"/>
-        <circle cx="456" cy="112" r="5" class="dot"/>
-        <circle cx="520" cy="112" r="15" class="badge"/>
-        <text x="520" y="112" class="badge-n">1</text>
+        <line x1="505" y1="123" x2="456" y2="123" class="leader"/>
+        <circle cx="456" cy="123" r="5" class="dot"/>
+        <circle cx="520" cy="123" r="15" class="badge"/>
+        <text x="520" y="123" class="badge-n">1</text>
         
-        <line x1="505" y1="192" x2="456" y2="192" class="leader"/>
-        <circle cx="456" cy="192" r="5" class="dot"/>
-        <circle cx="520" cy="192" r="15" class="badge"/>
-        <text x="520" y="192" class="badge-n">2</text>
+        <line x1="505" y1="226" x2="456" y2="226" class="leader"/>
+        <circle cx="456" cy="226" r="5" class="dot"/>
+        <circle cx="520" cy="226" r="15" class="badge"/>
+        <text x="520" y="226" class="badge-n">2</text>
         
-        <line x1="505" y1="272" x2="456" y2="272" class="leader"/>
-        <circle cx="456" cy="272" r="5" class="dot"/>
-        <circle cx="520" cy="272" r="15" class="badge"/>
-        <text x="520" y="272" class="badge-n">3</text>
-        
-        <line x1="505" y1="352" x2="456" y2="352" class="leader"/>
-        <circle cx="456" cy="352" r="5" class="dot"/>
-        <circle cx="520" cy="352" r="15" class="badge"/>
-        <text x="520" y="352" class="badge-n">4</text>
+        <line x1="505" y1="329" x2="456" y2="329" class="leader"/>
+        <circle cx="456" cy="329" r="5" class="dot"/>
+        <circle cx="520" cy="329" r="15" class="badge"/>
+        <text x="520" y="329" class="badge-n">3</text>
         
         <line x1="505" y1="432" x2="456" y2="432" class="leader"/>
         <circle cx="456" cy="432" r="5" class="dot"/>
         <circle cx="520" cy="432" r="15" class="badge"/>
-        <text x="520" y="432" class="badge-n">5</text>
+        <text x="520" y="432" class="badge-n">4</text>
         
-        <line x1="505" y1="512" x2="456" y2="512" class="leader"/>
-        <circle cx="456" cy="512" r="5" class="dot"/>
-        <circle cx="520" cy="512" r="15" class="badge"/>
-        <text x="520" y="512" class="badge-n">6</text>
+        <line x1="505" y1="535" x2="456" y2="535" class="leader"/>
+        <circle cx="456" cy="535" r="5" class="dot"/>
+        <circle cx="520" cy="535" r="15" class="badge"/>
+        <text x="520" y="535" class="badge-n">5</text>
         
-        <line x1="505" y1="592" x2="456" y2="592" class="leader"/>
-        <circle cx="456" cy="592" r="5" class="dot"/>
-        <circle cx="520" cy="592" r="15" class="badge"/>
-        <text x="520" y="592" class="badge-n">7</text>
+        <line x1="505" y1="638" x2="456" y2="638" class="leader"/>
+        <circle cx="456" cy="638" r="5" class="dot"/>
+        <circle cx="520" cy="638" r="15" class="badge"/>
+        <text x="520" y="638" class="badge-n">6</text>
         
-        <line x1="505" y1="672" x2="456" y2="672" class="leader"/>
-        <circle cx="456" cy="672" r="5" class="dot"/>
-        <circle cx="520" cy="672" r="15" class="badge"/>
-        <text x="520" y="672" class="badge-n">8</text>
-        
-        <line x1="505" y1="752" x2="456" y2="752" class="leader"/>
-        <circle cx="456" cy="752" r="5" class="dot"/>
-        <circle cx="520" cy="752" r="15" class="badge"/>
-        <text x="520" y="752" class="badge-n">9</text>
+        <line x1="505" y1="741" x2="456" y2="741" class="leader"/>
+        <circle cx="456" cy="741" r="5" class="dot"/>
+        <circle cx="520" cy="741" r="15" class="badge"/>
+        <text x="520" y="741" class="badge-n">7</text>
         
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Bed tilt</b>Probes the bed and corrects its tilt. A printer with a bed mesh shows Bed mesh.</span></li><li><span class="badge">2</span><span><b>Probe Z offset</b>The paper test for the nozzle height.</span></li><li><span class="badge">3</span><span><b>PID tune</b>Heats the nozzle to 210° and the bed to 60°, and tunes each heater.</span></li><li><span class="badge">4</span><span><b>Nozzle change</b>Heats the nozzle to 250° and raises the head.</span></li><li><span class="badge">5</span><span><b>Firmware</b>Writes the Klipper firmware. Orange text shows old firmware.</span></li><li><span class="badge">6</span><span><b>Save config</b>Writes the results into printer.cfg. Klipper restarts. Orange text shows unsaved results.</span></li><li><span class="badge">7</span><span><b>Pressure advance test</b>Prints a 30 mm tower. The pressure advance goes up 0.005 for each mm. Measure the height of the sharpest corners.</span></li><li><span class="badge">8</span><span><b>Pressure advance</b>Type the height of the sharpest corners. The deck writes the value in printer.cfg.</span></li><li><span class="badge">9</span><span><b>Simulated printer</b>Runs a simulated printer. Orange text shows a simulated printer in use.</span></li>
+      <li><span class="badge">1</span><span><b>Bed tilt</b>Probes the bed and corrects its tilt. A printer with a bed mesh shows Bed mesh.</span></li><li><span class="badge">2</span><span><b>Probe Z offset</b>The paper test for the nozzle height.</span></li><li><span class="badge">3</span><span><b>PID tune</b>Heats the nozzle to 210° and the bed to 60°, and tunes each heater.</span></li><li><span class="badge">4</span><span><b>Nozzle change</b>Heats the nozzle to 250° and raises the head.</span></li><li><span class="badge">5</span><span><b>Firmware</b>Writes the Klipper firmware. Orange text shows old firmware.</span></li><li><span class="badge">6</span><span><b>Save config</b>Writes the results into printer.cfg. Klipper restarts. Orange text shows unsaved results.</span></li><li><span class="badge">7</span><span><b>Simulated printer</b>Runs a simulated printer. Orange text shows a simulated printer in use.</span></li>
     </ol>
     
+  </figure>
+  
+  <figure>
+    <h3>The Calibration page</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../manual/img/calibration.png" alt="The Calibration page" width="480" height="800"></div>
+      <svg class="marks" viewBox="-72 0 624 800" aria-hidden="true">
+        
+        <line x1="-25" y1="43" x2="232" y2="43" class="leader"/>
+        <circle cx="232" cy="43" r="5" class="dot"/>
+        <circle cx="-40" cy="43" r="15" class="badge"/>
+        <text x="-40" y="43" class="badge-n">1</text>
+        
+        <line x1="505" y1="146" x2="456" y2="146" class="leader"/>
+        <circle cx="456" cy="146" r="5" class="dot"/>
+        <circle cx="520" cy="146" r="15" class="badge"/>
+        <text x="520" y="146" class="badge-n">2</text>
+        
+        <line x1="505" y1="295" x2="456" y2="295" class="leader"/>
+        <circle cx="456" cy="295" r="5" class="dot"/>
+        <circle cx="520" cy="295" r="15" class="badge"/>
+        <text x="520" y="295" class="badge-n">3</text>
+        
+        <line x1="505" y1="444" x2="456" y2="444" class="leader"/>
+        <circle cx="456" cy="444" r="5" class="dot"/>
+        <circle cx="520" cy="444" r="15" class="badge"/>
+        <text x="520" y="444" class="badge-n">4</text>
+        
+        <line x1="505" y1="593" x2="456" y2="593" class="leader"/>
+        <circle cx="456" cy="593" r="5" class="dot"/>
+        <circle cx="520" cy="593" r="15" class="badge"/>
+        <text x="520" y="593" class="badge-n">5</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Run all</b>Heats, then runs the Z offset, the twist and the bed map, one after the other.</span></li><li><span class="badge">2</span><span><b>Z offset</b>The paper test for the nozzle height, hot.</span></li><li><span class="badge">3</span><span><b>Input shaping</b>Opens the tests of the input shaper: the ringing tower and the check tower.</span></li><li><span class="badge">4</span><span><b>Pressure advance</b>Prints the test tower, or sets the value from it. The pressure advance goes up 0.005 for each mm of the tower. Type the height of the sharpest corners.</span></li><li><span class="badge">5</span><span><b>Retraction</b>Prints the test tower, or sets the length from it or by hand. The length goes up 0.25 mm each 3 mm band. Type the height of the lowest band with no strings.</span></li>
+    </ol>
+    <p class="note">Each row opens its choices. A printer with no probe shows only Pressure advance and Retraction.</p><p class="note">The retraction is the length of [firmware_retraction]. Turn on Firmware Retraction in the printer settings of the slicer, so the G-code has G10 and G11.</p>
   </figure>
   
   <figure>

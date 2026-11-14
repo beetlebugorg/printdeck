@@ -26,8 +26,8 @@ func TestNightHours(t *testing.T) {
 	}
 }
 
-// The Theme row of the Settings page goes day, night, auto.
-func TestThemeRowCyclesTheme(t *testing.T) {
+// The Theme row of the Settings page opens the choices: day, night and auto.
+func TestThemeRowSetsTheme(t *testing.T) {
 	a := New()
 	a.Theme = "day"
 	var saved []string
@@ -35,9 +35,8 @@ func TestThemeRowCyclesTheme(t *testing.T) {
 	a.Printer = &DemoPrinter{View: -1}
 	cv := gfx.New(W, BaseH)
 	a.pages = []page{pageMachine, pageSettings}
-	for i := 0; i < 3; i++ {
-		a.Draw(cv)
-		tapLabel(t, a, cv, "Theme")
+	for _, ch := range []string{"Night", "Auto", "Day"} {
+		tapOption(t, a, cv, "Theme", ch)
 	}
 	if len(saved) != 3 || saved[0] != "night" || saved[1] != "auto" || saved[2] != "day" {
 		t.Errorf("themes %v", saved)
@@ -54,17 +53,16 @@ func TestThemeRowCyclesTheme(t *testing.T) {
 	}
 }
 
-// The Clock row of the Settings page changes between the 12-hour and the 24-hour clock.
-func TestClockRowTogglesClock(t *testing.T) {
+// The Clock row of the Settings page opens the choices: the 12-hour and the 24-hour clock.
+func TestClockRowSetsClock(t *testing.T) {
 	a := New()
 	var saved []bool
 	a.OnClock = func(h24 bool) { saved = append(saved, h24) }
 	a.Printer = &DemoPrinter{View: -1}
 	cv := gfx.New(W, BaseH)
 	a.pages = []page{pageMachine, pageSettings}
-	for i := 0; i < 2; i++ {
-		a.Draw(cv)
-		tapLabel(t, a, cv, "Clock")
+	for _, ch := range []string{"24 hours", "12 hours"} {
+		tapOption(t, a, cv, "Clock", ch)
 	}
 	if len(saved) != 2 || !saved[0] || saved[1] {
 		t.Errorf("clocks %v", saved)

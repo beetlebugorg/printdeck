@@ -166,7 +166,7 @@ func TestCameraCalibrate(t *testing.T) {
 	if f := simFrame(t, a, "camera-calibrated"); !strings.Contains(f, "Calibrated: ") {
 		t.Error("no calibration on the page")
 	}
-	tapLabel(t, a, cv, "View")
+	tapOption(t, a, cv, "View", "Toolhead")
 	if a.camView != camera.ViewToolhead {
 		t.Errorf("view %q", a.camView)
 	}
