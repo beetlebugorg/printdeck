@@ -775,7 +775,7 @@
   [
    [
     "gcode",
-    "\n{% set x = params.X|default(-17.5)|float %}\n{% set z = params.Z|default(0.8)|float %}\n{% set count = params.COUNT|default(12)|int %}\nSAVE_GCODE_STATE NAME=wipe\nG90\nG1 Z10 F1200\nG1 X{x} Y95 F6000\nG1 Z{z} F600\n{% for i in range(count) %}\nG1 Y25 F3000\nG1 Y95 F3000\n{% endfor %}\nG1 Z10 F1200\nRESTORE_GCODE_STATE NAME=wipe"
+    "\n{% set x = params.X|default(-17.5)|float %}\n{% set z = params.Z|default(1.3)|float %}\n{% set count = params.COUNT|default(12)|int %}\nSAVE_GCODE_STATE NAME=wipe\nG90\nG1 Z10 F1200\nG1 X{x} Y95 F6000\nG1 Z{z} F600\n{% for i in range(count) %}\nG1 Y25 F3000\nG1 Y95 F3000\n{% endfor %}\nG1 Z10 F1200\nRESTORE_GCODE_STATE NAME=wipe"
    ]
   ]
  ],
@@ -793,7 +793,7 @@
   [
    [
     "gcode",
-    "\nM400\nM140 S45\nM104 S0\nM107\nG91\nG1 Z10 F1200\nG90\nG1 X145 Y0 F3000\nM83\nG1 E-14 F1800\nM82\nM117 Cooling, please wait\nTEMPERATURE_WAIT SENSOR=heater_bed MAXIMUM=46\nG1 Y260 F1000\nM140 S0\nM84\nM117 Print complete"
+    "\nM400\nM140 S45\nM104 S0\nM107\nG91\nG1 Z10 F1200\nG90\nM83\nG1 E-14 F1800\nM82\n\n\nG28\nM117 Cooling, please wait\nTEMPERATURE_WAIT SENSOR=heater_bed MAXIMUM=46\nG1 Y260 F1000\nM140 S0\nM84\nM117 Print complete"
    ]
   ]
  ],
@@ -887,6 +887,23 @@
    [
     "gcode",
     ""
+   ]
+  ]
+ ],
+ [
+  "input_shaper",
+  [
+   [
+    "shaper_freq_x",
+    "28.0"
+   ],
+   [
+    "shaper_freq_y",
+    "33.9"
+   ],
+   [
+    "shaper_type",
+    "mzv"
    ]
   ]
  ]
