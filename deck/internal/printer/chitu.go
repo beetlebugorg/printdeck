@@ -517,32 +517,30 @@ func (c *ChiTu) Console() []ConsoleLine {
 
 // The files, the pictures and the layers: the deck reads no sliced file of the printer yet.
 
-func (c *ChiTu) Preview() image.Image                         { return nil }
-func (c *ChiTu) SetViewLayer(int)                             {}
-func (c *ChiTu) ViewLayer() int                               { return -1 }
-func (c *ChiTu) FileMeta(string) gcodemeta.Meta               { return gcodemeta.Meta{} }
-func (c *ChiTu) SpoolStore() *Spools                          { return nil }
-func (c *ChiTu) Connect()                                     {}
-func (c *ChiTu) SendConsole(string)                           {}
-func (c *ChiTu) Boards() ([]board.Info, bool)                 { return nil, false }
-func (c *ChiTu) ProbeBoards()                                 {}
-func (c *ChiTu) FlashBoard(string, board.FlashProgress) error { return ErrNotSupported }
-func (c *ChiTu) UseConfig(string, string) error               { return ErrNotSupported }
-func (c *ChiTu) UseSim(string) error                          { return ErrNotSupported }
-func (c *ChiTu) RestartKlipper() error                        { return ErrNotSupported }
-func (c *ChiTu) FirmwareRestart() error                       { return ErrNotSupported }
-func (c *ChiTu) RunAction(string, ...string) error            { return ErrNotSupported }
-func (c *ChiTu) PrintPATower(int, int, string) error          { return ErrNotSupported }
-func (c *ChiTu) PrintCalibTowers(int, int, string) error      { return ErrNotSupported }
-func (c *ChiTu) SetPressureAdvance(float64) error             { return ErrNotSupported }
-func (c *ChiTu) PrintRingTower(int, int, string, bool) error  { return ErrNotSupported }
-func (c *ChiTu) SetMaxAccel(float64) error                    { return ErrNotSupported }
-func (c *ChiTu) PrintShakeTest(string) error                  { return ErrNotSupported }
-func (c *ChiTu) MeasureBacklash() (float64, float64, error)   { return 0, 0, ErrNotSupported }
-func (c *ChiTu) SetBacklash(float64, float64) error           { return ErrNotSupported }
-func (c *ChiTu) MeasureProbeOffset(int, int) (float64, error) { return 0, ErrNotSupported }
-func (c *ChiTu) SaveProbeOffset() error                       { return ErrNotSupported }
-func (c *ChiTu) PrintSweepTower(int, int, string, bool) error { return ErrNotSupported }
+func (c *ChiTu) Preview() image.Image                           { return nil }
+func (c *ChiTu) SetViewLayer(int)                               {}
+func (c *ChiTu) ViewLayer() int                                 { return -1 }
+func (c *ChiTu) FileMeta(string) gcodemeta.Meta                 { return gcodemeta.Meta{} }
+func (c *ChiTu) SpoolStore() *Spools                            { return nil }
+func (c *ChiTu) Connect()                                       {}
+func (c *ChiTu) SendConsole(string)                             {}
+func (c *ChiTu) Boards() ([]board.Info, bool)                   { return nil, false }
+func (c *ChiTu) ProbeBoards()                                   {}
+func (c *ChiTu) FlashBoard(string, board.FlashProgress) error   { return ErrNotSupported }
+func (c *ChiTu) UseConfig(string, string) error                 { return ErrNotSupported }
+func (c *ChiTu) UseSim(string) error                            { return ErrNotSupported }
+func (c *ChiTu) RestartKlipper() error                          { return ErrNotSupported }
+func (c *ChiTu) FirmwareRestart() error                         { return ErrNotSupported }
+func (c *ChiTu) RunAction(string, ...string) error              { return ErrNotSupported }
+func (c *ChiTu) PrintPATower(int, int, string) error            { return ErrNotSupported }
+func (c *ChiTu) PrintCalibTowers(int, int, string) error        { return ErrNotSupported }
+func (c *ChiTu) SetPressureAdvance(float64) error               { return ErrNotSupported }
+func (c *ChiTu) PrintRingTower(int, int, string, bool) error    { return ErrNotSupported }
+func (c *ChiTu) SetMaxAccel(float64) error                      { return ErrNotSupported }
+func (c *ChiTu) PrintShakeTest(string) error                    { return ErrNotSupported }
+func (c *ChiTu) SetBacklash(float64, float64) error             { return ErrNotSupported }
+func (c *ChiTu) CubeResult() (float64, float64, float64, error) { return 0, 0, 0, ErrNotSupported }
+func (c *ChiTu) PrintSweepTower(int, int, string, bool) error   { return ErrNotSupported }
 func (c *ChiTu) PrintPairTowers(int, int, string, [2]float64, [2]float64) error {
 	return ErrNotSupported
 }
