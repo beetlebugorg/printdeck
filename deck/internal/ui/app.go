@@ -133,6 +133,26 @@ type Printer interface {
 	PrintCalibTowers(tool, bed int, material string) error
 	// SetPressureAdvance sets the pressure advance now and in printer.cfg.
 	SetPressureAdvance(v float64) error
+	// PrintRingTower prints the ringing tower of the input shaper (printer.RingTower). With check,
+	// the input shaper stays on.
+	PrintRingTower(tool, bed int, material string, check bool) error
+	// PrintShakeTest shakes the axes ("X", "Y" or "XY") through a range of frequencies
+	// (printer.ShakeTest).
+	PrintShakeTest(axes string) error
+	// SetBacklash sets the backlash correction of X and Y in mm, now and in printer.cfg.
+	SetBacklash(x, y float64) error
+	// CubeResult reads the last results of the calibration cube: the backlash of X and Y
+	// (CUBE_MEASURE) and the z_offset of the probe (CUBE_PROBE_OFFSET), in mm.
+	CubeResult() (x, y, zOffset float64, err error)
+	// SetMaxAccel sets the largest acceleration now and in printer.cfg.
+	SetMaxAccel(v float64) error
+	// PrintSweepTower prints the sweep of the shaper frequency, on 1 tower or with five on 5.
+	PrintSweepTower(tool, bed int, material string, five bool) error
+	// PrintPairTowers prints the A/B pair: the shaper at left (X, Y) on the left tower, at right
+	// on the right tower.
+	PrintPairTowers(tool, bed int, material string, left, right [2]float64) error
+	// SetInputShaper sets the MZV input shaper at the frequencies in Hz, now and in printer.cfg.
+	SetInputShaper(freqX, freqY float64) error
 
 	// The setup of a new printer: the boards on the USB ports, and a restart of the Klipper service.
 	Boards() (boards []board.Info, probing bool)
@@ -307,6 +327,7 @@ type App struct {
 	calib          *calibFlow // the calibration of the camera, while it runs (calibrate.go)
 	probeCal       *probeCal  // the calibration of the probe, while it runs (probecal.go)
 	calMsg         string     // why the last calibration of the probe stopped, or ""
+	pair           *pairRound // the last A/B pair of the input shaping (shaper.go)
 	// TimeLapse is the time lapse and the picture of the first layer, or nil (Settings > Time lapse).
 	TimeLapse TimeLapse
 

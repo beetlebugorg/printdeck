@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -12,7 +13,7 @@ import (
 // calMachine is the TAZ with the BLTouch on the printed mount: a probe, z_tilt, the bed mesh, and
 // the twist calibration along X and Y.
 func calMachine() printer.Machine {
-	return printer.Machine{Modules: []string{"probe", "z_tilt", "bed_mesh", "axis_twist_compensation"},
+	return printer.Machine{Modules: []string{"probe", "z_tilt", "bed_mesh", "axis_twist_compensation", "extruder"},
 		HasProbe: true, ProbeOffset: [3]float64{68, -17, 3.6}, HasMesh: true,
 		MeshMin: [2]float64{20, 15}, MeshMax: [2]float64{265, 265}, MinX: -50, MaxX: 293, MinY: -17, MaxY: 308,
 		HasTwist: true, HasTwistY: true, TwistX: []float64{0.048, 0.030, 0.044, -0.034, -0.088},
@@ -208,5 +209,182 @@ func TestProbeCalPage(t *testing.T) {
 	a.pages = []page{pageMachine}
 	if f := simFrame(t, a, "machine-no-probe"); strings.Contains(strings.ToUpper(f), "CALIBRATION") {
 		t.Error("Calibration key with no probe")
+	}
+}
+
+func (r *recPrinter) PrintRingTower(tool, bed int, material string, check bool) error {
+	return r.rec(fmt.Sprintf("ring tower %d %d %s check %v", tool, bed, material, check))
+}
+func (r *recPrinter) SetMaxAccel(v float64) error { return r.rec(fmt.Sprintf("max accel %.0f", v)) }
+func (r *recPrinter) PrintSweepTower(tool, bed int, material string, five bool) error {
+	return r.rec(fmt.Sprintf("sweep %d %d %s five %v", tool, bed, material, five))
+}
+func (r *recPrinter) PrintPairTowers(tool, bed int, material string, left, right [2]float64) error {
+	return r.rec(fmt.Sprintf("pair left %.2f %.2f right %.2f %.2f", left[0], left[1], right[0], right[1]))
+}
+func (r *recPrinter) SetInputShaper(x, y float64) error {
+	return r.rec(fmt.Sprintf("input shaper %.1f %.1f", x, y))
+}
+
+// The page has the ringing tower and the input shaping. Input shaping asks for the ripples and
+// the distance of each axis, and sets the shaper at the frequencies.
+func TestShaperRows(t *testing.T) {
+	a, pr, cv := newPrintApp(idle)
+	m := calMachine()
+	pr.Machine_ = m
+	a.pages = []page{pageMachine, pageProbeCal}
+	if f := strings.ToUpper(simFrame(t, a, "probecal-shaper-row")); !strings.Contains(f, "OFF · PRINT THE RINGING TOWER FIRST") {
+		t.Error("the Calibration page has no Input shaping row")
+	}
+	tapLabel(t, a, cv, "Input shaping")
+	if a.topPage() != pageShaper {
+		t.Fatalf("page %v after Input shaping", a.topPage())
+	}
+	f := strings.ToUpper(simFrame(t, a, "probecal-shaper"))
+	for _, s := range []string{"RINGING TOWER", "RIPPLES", "MAX ACCELERATION"} {
+		if !strings.Contains(f, s) {
+			t.Errorf("no %q", s)
+		}
+	}
+	tapLabel(t, a, cv, "Ringing tower")
+	if a.confirm == nil || !strings.Contains(a.confirm.question, "ringing tower") {
+		t.Fatalf("Ringing tower asks %+v", a.confirm)
+	}
+	a.confirm.onYes()
+	waitCall(t, pr, "check false")
+	a.confirm = nil
+
+	a.askShaper()
+	a.keypad.set(6) // X: 6 ripples
+	a.keypad.setF(10.8)
+	(<-a.posted)()
+	a.keypad.set(5) // Y: 5 ripples
+	a.keypad.setF(12.9)
+	(<-a.posted)()
+	if a.confirm == nil || a.confirm.question != "Set the input shaper to MZV, X 44.4 Hz, Y 31.0 Hz?" {
+		t.Fatalf("question %+v", a.confirm)
+	}
+	a.confirm.onYes()
+	waitCall(t, pr, "input shaper 44.4 31.0")
+	(<-a.posted)() // the toast of the new shaper
+	if !strings.Contains(a.toast, "in printer.cfg") {
+		t.Errorf("toast %q after the shaper", a.toast)
+	}
+
+	// A distance that gives no ringing frequency: a message, and no shaper.
+	a.confirm = nil
+	a.askShaper()
+	a.keypad.set(6)
+	a.keypad.setF(1)
+	(<-a.posted)()
+	if a.toast == "" || !strings.Contains(a.toast, "Measure again") || a.confirm != nil {
+		t.Errorf("toast %q, confirm %+v", a.toast, a.confirm)
+	}
+
+	// With a shaper in printer.cfg, the row shows it, and the check tower keeps it on.
+	a.keypad = nil
+	m.HasShaper, m.ShaperFreqX, m.ShaperFreqY, m.ShaperType, m.MaxAccel = true, 44.4, 31, "mzv", 3000
+	pr.Machine_ = m
+	f = strings.ToUpper(simFrame(t, a, "probecal-shaper-set"))
+	for _, s := range []string{"MZV · X 44.4 HZ, Y 31.0 HZ", "CHECK TOWER", "NOW 3000 MM/S²"} {
+		if !strings.Contains(f, s) {
+			t.Errorf("no %q with a shaper", s)
+		}
+	}
+	tapLabel(t, a, cv, "Check tower")
+	if a.confirm == nil || !strings.Contains(a.confirm.question, "input shaper on") {
+		t.Fatalf("Check tower asks %+v", a.confirm)
+	}
+	a.confirm.onYes()
+	waitCall(t, pr, "check true")
+	a.confirm = nil
+
+	// Max acceleration: ringing from 22 mm gives the band under it, 2500.
+	a.askMaxAccel()
+	a.keypad.setF(22)
+	(<-a.posted)()
+	if a.confirm == nil || a.confirm.question != "Set max_accel to 2500 mm/s²?" {
+		t.Fatalf("question %+v", a.confirm)
+	}
+	a.confirm.onYes()
+	waitCall(t, pr, "max accel 2500")
+}
+
+// The sweep prints 1 or 5 towers. Its result takes the band of each axis, and sets the shaper.
+// The A/B pair prints the shaper ± the step, with the higher side changing each round; the result
+// moves each axis to the smoother tower and halves the step. "The same" on both axes keeps the
+// shaper.
+func TestShaperSweepAndPair(t *testing.T) {
+	a, pr, cv := newPrintApp(idle)
+	m := calMachine()
+	m.HasShaper, m.ShaperFreqX, m.ShaperFreqY, m.ShaperType, m.MaxAccel = true, 28, 32, "mzv", 3000
+	pr.Machine_ = m
+	a.pages = []page{pageMachine, pageProbeCal, pageShaper}
+	f := strings.ToUpper(simFrame(t, a, "shaper-page"))
+	for _, s := range []string{"SHAPER NOW", "MZV · X 28.0 HZ, Y 32.0 HZ", "SWEEP", "SWEEP RESULT", "A/B PAIR",
+		"± 1.50 HZ", "PAIR RESULT", "CHECK TOWER"} {
+		if !strings.Contains(f, s) {
+			t.Errorf("no %q", s)
+		}
+	}
+	tapLabel(t, a, cv, "Sweep")
+	if a.confirm == nil || len(a.confirm.choices) != 2 {
+		t.Fatalf("Sweep asks %+v", a.confirm)
+	}
+	a.confirm.choices[1].tap()
+	waitCall(t, pr, "sweep ")
+	waitCall(t, pr, "five true")
+	a.confirm = nil
+
+	// Sweep result: X smoothest at 6 mm (26 Hz), Y at 11 mm (32 Hz).
+	a.askSweep()
+	a.keypad.setF(6)
+	(<-a.posted)()
+	a.keypad.setF(11)
+	(<-a.posted)()
+	if a.confirm == nil || a.confirm.question != "Set the input shaper to MZV, X 26 Hz, Y 32 Hz?" {
+		t.Fatalf("question %+v", a.confirm)
+	}
+	a.confirm.onYes()
+	waitCall(t, pr, "input shaper 26.0 32.0")
+	(<-a.posted)() // the toast
+	a.confirm = nil
+	m.ShaperFreqX, m.ShaperFreqY = 26, 32
+	pr.Machine_ = m
+
+	// Round 1: the higher frequencies at the right.
+	if err := a.printPair(a.loaded()); err != nil {
+		t.Fatal(err)
+	}
+	waitCall(t, pr, "pair left 24.50 30.50 right 27.50 33.50")
+	(<-a.posted)()
+	// X smoother at the left, Y the same: X 24.5, Y 32, the next step 0.75.
+	a.askPair()
+	a.confirm.choices[0].tap()
+	(<-a.posted)()
+	a.confirm.choices[2].tap()
+	waitCall(t, pr, "input shaper 24.5 32.0")
+	(<-a.posted)()
+	if a.pair == nil || a.pair.step != 0.75 {
+		t.Fatalf("next round %+v", a.pair)
+	}
+	m.ShaperFreqX = 24.5
+	pr.Machine_ = m
+
+	// Round 2: the higher frequencies at the left now.
+	if err := a.printPair(a.loaded()); err != nil {
+		t.Fatal(err)
+	}
+	waitCall(t, pr, "pair left 25.25 32.75 right 23.75 31.25")
+	(<-a.posted)()
+	// The same on both axes: no change, and a message.
+	n := len(pr.Calls())
+	a.askPair()
+	a.confirm.choices[2].tap()
+	(<-a.posted)()
+	a.confirm.choices[2].tap()
+	(<-a.posted)()
+	if !strings.Contains(a.toast, "Same on both axes") || len(pr.Calls()) != n {
+		t.Errorf("toast %q, calls %q", a.toast, pr.Calls()[n:])
 	}
 }

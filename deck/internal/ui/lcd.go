@@ -34,6 +34,15 @@ func StatusLines(st printer.State, material string, now time.Time, clock24 bool)
 		return lr("Klipper error", ""), ""
 	case st.ManualProbe:
 		return lr("Paper test", ""), lr("Z", fmt.Sprintf("%.3f", st.ManualZ))
+	case st.Action != "":
+		// A deck action, for example "Z offset: Nozzle and probe on the cube": the part before the
+		// colon, the time, and the rest.
+		head, rest, ok := strings.Cut(st.Action, ": ")
+		if !ok {
+			head, rest = "Running", st.Action
+		}
+		sec := int(max(0, now.Sub(st.ActionStart)) / time.Second)
+		return lr(head, fmt.Sprintf("%d:%02d", sec/60, sec%60)), lr(rest, "")
 	case st.Paused:
 		msg := st.Message
 		if msg == "" {

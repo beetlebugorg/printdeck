@@ -237,6 +237,15 @@ type Machine struct {
 	// calibrated.
 	HasTwist, HasTwistY bool
 	TwistX, TwistY      []float64
+	// MinCruiseRatio is minimum_cruise_ratio of [printer] (Klipper's default 0.5).
+	MinCruiseRatio float64
+	// The [input_shaper] section, with HasShaper: shaper_freq_x and shaper_freq_y in Hz (0 is
+	// off), and shaper_type.
+	HasShaper                bool
+	ShaperFreqX, ShaperFreqY float64
+	ShaperType               string
+	// BacklashX and BacklashY are x and y of [printdeck_backlash]: the backlash correction in mm.
+	BacklashX, BacklashY float64
 }
 
 // TwistRange returns the range of a list of twist corrections, in mm: the largest less the
