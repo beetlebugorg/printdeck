@@ -77,7 +77,7 @@
 <div class="layout-switch"><span>Layout:</span><a href="../../../ui/calibrate/">Tall</a><a href="" aria-current="page">Wide</a></div><nav class="onpage"><b>In this chapter</b><ol><li><a href="#calibrate">Level and calibrate</a></li><li><a href="#camera-calibrate">Calibrate the camera</a></li></ol></nav><div class="manual wide"><section id="calibrate">
   <h2 class="title"><span class="num">16</span>Level and calibrate</h2>
   <p>Maintenance lists the calibrations of your printer. Open it from Machine.</p>
-  <ol class="steps"><li>Open Machine, then Maintenance.</li><li>Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.</li><li>Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.</li><li>Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.</li><li>Tap Save config to write the results. Klipper restarts.</li><li>Tap Pressure advance test to print the tower. Then tap Pressure advance, and type the height of its sharpest corners.</li></ol>
+  <ol class="steps"><li>Open Machine, then Maintenance.</li><li>Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.</li><li>Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.</li><li>Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.</li><li>Tap Save config to write the results. Klipper restarts.</li><li>Open Machine, then Calibration. Tap Pressure advance, then Print the tower. After the print, tap Pressure advance, then From the tower, and type the height of the sharpest corners.</li><li>Tap Retraction, then Print the tower. After the print, tap Retraction, then From the tower, and type the height of the lowest band with no strings.</li></ol>
   
   <figure>
     <h3>The Maintenance page</h3>
@@ -129,27 +129,56 @@
       <div class="shot"><img src="../../../manual/wide/img/maintenance-more.png" alt="The Maintenance page, further down" width="800" height="480"></div>
       <svg class="marks" viewBox="-72 0 944 480" aria-hidden="true">
         
-        <line x1="825" y1="278" x2="784" y2="278" class="leader"/>
-        <circle cx="784" cy="278" r="5" class="dot"/>
-        <circle cx="840" cy="278" r="15" class="badge"/>
-        <text x="840" y="278" class="badge-n">1</text>
-        
-        <line x1="825" y1="350" x2="784" y2="350" class="leader"/>
-        <circle cx="784" cy="350" r="5" class="dot"/>
-        <circle cx="840" cy="350" r="15" class="badge"/>
-        <text x="840" y="350" class="badge-n">2</text>
-        
         <line x1="825" y1="422" x2="784" y2="422" class="leader"/>
         <circle cx="784" cy="422" r="5" class="dot"/>
         <circle cx="840" cy="422" r="15" class="badge"/>
-        <text x="840" y="422" class="badge-n">3</text>
+        <text x="840" y="422" class="badge-n">1</text>
         
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Pressure advance test</b>Prints a 30 mm tower. The pressure advance goes up 0.005 for each mm. Measure the height of the sharpest corners.</span></li><li><span class="badge">2</span><span><b>Pressure advance</b>Type the height of the sharpest corners. The deck writes the value in printer.cfg.</span></li><li><span class="badge">3</span><span><b>Simulated printer</b>Runs a simulated printer. Orange text shows a simulated printer in use.</span></li>
+      <li><span class="badge">1</span><span><b>Simulated printer</b>Runs a simulated printer. Orange text shows a simulated printer in use.</span></li>
     </ol>
     
+  </figure>
+  
+  <figure>
+    <h3>The Calibration page</h3>
+    <div class="frame">
+      <div class="shot"><img src="../../../manual/wide/img/calibration.png" alt="The Calibration page" width="800" height="480"></div>
+      <svg class="marks" viewBox="-72 0 944 480" aria-hidden="true">
+        
+        <line x1="825" y1="39" x2="666" y2="39" class="leader"/>
+        <circle cx="666" cy="39" r="5" class="dot"/>
+        <circle cx="840" cy="39" r="15" class="badge"/>
+        <text x="840" y="39" class="badge-n">1</text>
+        
+        <line x1="825" y1="121" x2="784" y2="121" class="leader"/>
+        <circle cx="784" cy="121" r="5" class="dot"/>
+        <circle cx="840" cy="121" r="15" class="badge"/>
+        <text x="840" y="121" class="badge-n">2</text>
+        
+        <line x1="825" y1="219" x2="784" y2="219" class="leader"/>
+        <circle cx="784" cy="219" r="5" class="dot"/>
+        <circle cx="840" cy="219" r="15" class="badge"/>
+        <text x="840" y="219" class="badge-n">3</text>
+        
+        <line x1="825" y1="317" x2="784" y2="317" class="leader"/>
+        <circle cx="784" cy="317" r="5" class="dot"/>
+        <circle cx="840" cy="317" r="15" class="badge"/>
+        <text x="840" y="317" class="badge-n">4</text>
+        
+        <line x1="825" y1="415" x2="784" y2="415" class="leader"/>
+        <circle cx="784" cy="415" r="5" class="dot"/>
+        <circle cx="840" cy="415" r="15" class="badge"/>
+        <text x="840" y="415" class="badge-n">5</text>
+        
+      </svg>
+    </div>
+    <ol class="parts">
+      <li><span class="badge">1</span><span><b>Run all</b>Heats, then runs the Z offset, the twist and the bed map, one after the other.</span></li><li><span class="badge">2</span><span><b>Z offset</b>The paper test for the nozzle height, hot.</span></li><li><span class="badge">3</span><span><b>Input shaping</b>Opens the tests of the input shaper: the ringing tower and the check tower.</span></li><li><span class="badge">4</span><span><b>Pressure advance</b>Prints the test tower, or sets the value from it. The pressure advance goes up 0.005 for each mm of the tower. Type the height of the sharpest corners.</span></li><li><span class="badge">5</span><span><b>Retraction</b>Prints the test tower, or sets the length from it or by hand. The length goes up 0.25 mm each 3 mm band. Type the height of the lowest band with no strings.</span></li>
+    </ol>
+    <p class="note">Each row opens its choices. A printer with no probe shows only Pressure advance and Retraction.</p><p class="note">The retraction is the length of [firmware_retraction]. Turn on Firmware Retraction in the printer settings of the slicer, so the G-code has G10 and G11.</p>
   </figure>
   
   <figure>
