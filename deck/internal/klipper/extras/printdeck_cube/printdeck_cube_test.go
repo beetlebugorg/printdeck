@@ -153,8 +153,8 @@ func TestMeasure(t *testing.T) {
 	simmcu.SetCubeSlack(0)
 }
 
-// A cube far from its place in the config gives an error at the end of the travel, with no crash
-// into it.
+// A cube far under its place in the config: the pin of the probe misses it, and the nozzle stops
+// over the bed.
 func TestNoContact(t *testing.T) {
 	if testing.Short() {
 		t.Skip("the simulator runs in real time")
@@ -163,8 +163,30 @@ func TestNoContact(t *testing.T) {
 	defer simmcu.SetCubeDrop(0)
 	c := start(t, cubeSection)
 	msg := c.script(homeHere + "\nCUBE_MEASURE")
-	if !strings.Contains(msg, "No contact on the top face") {
+	if !strings.Contains(msg, "the pin missed the top") {
 		t.Fatalf("got %q", msg)
+	}
+}
+
+// A cube that moved, as after the bed came off: 1.5 mm down and 1.5 mm to +X. The probe finds the
+// top, and the side touches find the faces.
+func TestMovedCube(t *testing.T) {
+	if testing.Short() {
+		t.Skip("the simulator runs in real time")
+	}
+	simmcu.SetCubeDrop(1.5)
+	simmcu.SetCubeShift(1.5)
+	defer simmcu.SetCubeDrop(0)
+	defer simmcu.SetCubeShift(0)
+	c := start(t, cubeSection)
+	if msg := c.script(homeHere + "\nCUBE_MEASURE"); msg != "" {
+		t.Fatal(msg)
+	}
+	got := c.cube()
+	for k, want := range map[string]float64{"top": 1.5, "left": 262.5, "right": 272.5, "back": -14} {
+		if v, _ := got[k].(float64); math.Abs(v-want) > 0.02 {
+			t.Errorf("%s %.3f, want %.1f", k, v, want)
+		}
 	}
 }
 

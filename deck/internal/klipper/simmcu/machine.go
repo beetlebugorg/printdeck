@@ -52,7 +52,7 @@ func (c *cube) inside(p [3]float64, g float64) bool {
 	return p[0] >= c.left-g && p[0] <= c.right+g && p[1] >= c.front-g && p[1] <= c.back+g && p[2] <= c.top+g
 }
 
-var cubeSlack, cubeDrop float64
+var cubeSlack, cubeDrop, cubeShift float64
 
 // SetCubeSlack gives the cube of the next Configure a backlash: after a touch, the contact stays
 // closed until the nozzle backs away by slack mm. The steps of the board have no play, so this is
@@ -68,6 +68,14 @@ func SetCubeSlack(slack float64) {
 func SetCubeDrop(drop float64) {
 	machineMu.Lock()
 	cubeDrop = drop
+	machineMu.Unlock()
+}
+
+// SetCubeShift puts the cube of the next Configure shift mm to +X of its place in the config. For
+// tests.
+func SetCubeShift(shift float64) {
+	machineMu.Lock()
+	cubeShift = shift
 	machineMu.Unlock()
 }
 
@@ -203,6 +211,7 @@ func Configure(get func(section, option string) (string, bool)) {
 		machineMu.Lock()
 		c.slack = cubeSlack
 		c.top -= cubeDrop
+		c.left, c.right = c.left+cubeShift, c.right+cubeShift
 		machineMu.Unlock()
 		m.cube = c
 	}
