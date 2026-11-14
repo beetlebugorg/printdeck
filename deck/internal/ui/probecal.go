@@ -377,8 +377,23 @@ func (a *App) drawProbeCal(c *gfx.Canvas, st printer.State) {
 	} else if a.calMsg != "" {
 		items = append(items, menuItem{"Stopped", a.calMsg, orange, nil})
 	}
-	items = append(items, menuItem{"Z offset", fmt.Sprintf("%.3f mm · paper test at the middle of the bed", mach.ProbeOffset[2]), dim,
-		ask("zoffset", "Z offset", "Heat, then the paper test? About 5 minutes.")})
+	paper := ask("zoffset", "Z offset", "Heat, then the paper test? About 5 minutes.")
+	if mach.Has("printdeck_cube") {
+		items = append(items, menuItem{"Z offset", fmt.Sprintf("%.3f mm · paper test or the cube", mach.ProbeOffset[2]), dim, func() {
+			if a.probeCal != nil || !idle {
+				paper() // it tells why it cannot start
+				return
+			}
+			a.confirm = &confirmBox{question: fmt.Sprintf("Z offset: now %.3f mm. How?", mach.ProbeOffset[2]), choices: []menuItem{
+				{"On the cube", "Heat, then the nozzle and the probe touch the cube · about 8 minutes", dim, a.measureProbeOffset},
+				{"Paper test", "Heat, then a paper test at the middle of the bed · about 5 minutes", dim, func() {
+					a.startProbeCal("zoffset", "Z offset")
+				}},
+			}}
+		}})
+	} else {
+		items = append(items, menuItem{"Z offset", fmt.Sprintf("%.3f mm · paper test at the middle of the bed", mach.ProbeOffset[2]), dim, paper})
+	}
 	if mach.HasTwist {
 		sub := "Not calibrated · a paper test at each point"
 		if len(mach.TwistX) > 0 {
