@@ -24,7 +24,7 @@ func TestSettingsProbeMethod(t *testing.T) {
 			t.Errorf("no %q in Settings", s)
 		}
 	}
-	tapLabel(t, a, cv, "Probe method")
+	tapOption(t, a, cv, "Probe method", "Grid under the print")
 	want := "gcode PRINTDECK_MESH_METHOD METHOD=adaptive"
 	for i := 0; i < 100; i++ {
 		pr.mu.Lock()

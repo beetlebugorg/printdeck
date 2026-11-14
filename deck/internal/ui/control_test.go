@@ -337,6 +337,18 @@ func tapLabel(t *testing.T, a *App, cv *gfx.Canvas, label string) {
 	t.Fatalf("no key %q", label)
 }
 
+// tapOption taps the row of a menu page, then a row of the option page that it opens, and goes
+// back to the menu page.
+func tapOption(t *testing.T, a *App, cv *gfx.Canvas, row, choice string) {
+	t.Helper()
+	tapLabel(t, a, cv, row)
+	if a.topPage() != pageOption {
+		t.Fatalf("%s: page %v, want the option page", row, a.topPage())
+	}
+	tapLabel(t, a, cv, choice)
+	a.back()
+}
+
 var paused = printer.State{Reachable: true, Text: "Printing", Connected: true, Printing: true, Paused: true,
 	File: "benchy.gcode", Layer: 12, Layers: 27, Tool: 210, ToolTarget: 210, Bed: 60, BedTarget: 60}
 

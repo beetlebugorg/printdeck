@@ -40,9 +40,9 @@ func TestCameraPage(t *testing.T) {
 	if a.camID != cam.Cams[0].Dev.ID {
 		t.Fatalf("tab %q", a.camID)
 	}
-	// Each tap on Turn turns the picture 90° more, clockwise.
+	// The Turn page sets the turn of the picture.
 	for _, want := range []int{90, 180, 270, 0} {
-		tapLabel(t, a, cv, "Turn")
+		tapOption(t, a, cv, "Turn", turnLine(want))
 		if r := cam.Set.Camera(cam.Cams[0].Dev.ID).Rotate; r != want {
 			t.Errorf("turn %d, want %d", r, want)
 		}
@@ -308,7 +308,7 @@ func TestCameraFocus(t *testing.T) {
 	if cs := cam.Set.Camera(id); !cs.FixedFocus || cs.Focus != 410+2*20 {
 		t.Fatalf("after two steps: %+v", cs)
 	}
-	tapLabel(t, a, cv, "Auto")
+	tapOption(t, a, cv, "Auto", "Autofocus")
 	if cs := cam.Set.Camera(id); cs.FixedFocus {
 		t.Fatalf("after Auto: %+v", cs)
 	}
@@ -347,11 +347,19 @@ func TestCameraFocusOnPart(t *testing.T) {
 		if !strings.Contains(f, fmt.Sprintf("FIXED AT %d", DemoFocus)) && !strings.Contains(f, fmt.Sprintf("STAYS AT %d", DemoFocus)) {
 			t.Errorf("wide %v: no lens position on the page", wide)
 		}
-		tapLabel(t, a, cv, "In prints")
+		// The wide page has a toggle key. The rows open the toggle on the option page.
+		inPrints := func() {
+			if wide {
+				tapLabel(t, a, cv, "In prints")
+			} else {
+				tapOption(t, a, cv, "In prints", "Focus on the part in prints")
+			}
+		}
+		inPrints()
 		if !cam.Set.Camera(id).NoFocusPart {
 			t.Errorf("wide %v: the setting is on after In prints", wide)
 		}
-		tapLabel(t, a, cv, "In prints")
+		inPrints()
 		if cam.Set.Camera(id).NoFocusPart {
 			t.Errorf("wide %v: the setting is off after two taps", wide)
 		}
