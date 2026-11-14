@@ -54,6 +54,7 @@ import (
 	_ "printdeck/internal/klipper/extras/pca9533"
 	_ "printdeck/internal/klipper/extras/pid_calibrate"
 	_ "printdeck/internal/klipper/extras/print_stats"
+	_ "printdeck/internal/klipper/extras/printdeck_backlash"
 	_ "printdeck/internal/klipper/extras/printdeck_cube"
 	_ "printdeck/internal/klipper/extras/printdeck_display"
 	_ "printdeck/internal/klipper/extras/printdeck_homing"

@@ -35,7 +35,8 @@ func runLapse(t *testing.T, settings string) string {
 		t.Fatal(err)
 	}
 	text := strings.Replace(string(cfg), "path: /opt/printer_data/gcodes", "path: "+dir, 1)
-	text += "\n[printdeck_timelapse]\nwait: 0.1\n"
+	// No backlash correction: the test compares the toolhead position with the file.
+	text += "\n[printdeck_timelapse]\nwait: 0.1\n\n[printdeck_backlash]\nx: 0\ny: 0\n"
 	config := filepath.Join(dir, "printer.cfg")
 	os.WriteFile(config, []byte(text), 0o644)
 	os.WriteFile(filepath.Join(dir, "lapse.gcode"), []byte(lapseFile), 0o644)
