@@ -75,3 +75,23 @@ func (a *App) setBacklash(x, y float64) error {
 	a.Toast(fmt.Sprintf("Backlash correction X %.2f mm, Y %.2f mm, in printer.cfg", x, y))
 	return nil
 }
+
+// measureProbeOffset measures the z_offset on the cube at the temperatures of the paper test, then
+// asks to save it.
+func (a *App) measureProbeOffset() {
+	pr := a.Printer
+	a.Toast(fmt.Sprintf("Heating to %d° and %d°, then the cube", calBedTemp, calToolTemp))
+	a.do(func() error {
+		z, err := pr.MeasureProbeOffset(calBedTemp, calToolTemp)
+		if err != nil {
+			return err
+		}
+		now := pr.Machine().ProbeOffset[2]
+		a.post(func() {
+			a.confirm = &confirmBox{question: fmt.Sprintf("The cube gave z_offset %.3f mm (now %.3f, %+.3f). Save it? Klipper restarts.", z, now, z-now),
+				yes: "Save", onYes: func() { a.do(pr.SaveProbeOffset) }}
+			a.Redraw()
+		})
+		return nil
+	})
+}

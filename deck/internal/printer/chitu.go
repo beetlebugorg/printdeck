@@ -540,6 +540,8 @@ func (c *ChiTu) SetMaxAccel(float64) error                    { return ErrNotSup
 func (c *ChiTu) PrintShakeTest(string) error                  { return ErrNotSupported }
 func (c *ChiTu) MeasureBacklash() (float64, float64, error)   { return 0, 0, ErrNotSupported }
 func (c *ChiTu) SetBacklash(float64, float64) error           { return ErrNotSupported }
+func (c *ChiTu) MeasureProbeOffset(int, int) (float64, error) { return 0, ErrNotSupported }
+func (c *ChiTu) SaveProbeOffset() error                       { return ErrNotSupported }
 func (c *ChiTu) PrintSweepTower(int, int, string, bool) error { return ErrNotSupported }
 func (c *ChiTu) PrintPairTowers(int, int, string, [2]float64, [2]float64) error {
 	return ErrNotSupported
