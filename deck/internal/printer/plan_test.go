@@ -50,7 +50,7 @@ func TestPlanMatchesKlipper(t *testing.T) {
 	}
 	// The batch mode has no heaters, so the test printer extrudes cold.
 	cfg := filepath.Join(t.TempDir(), "printer.cfg")
-	os.WriteFile(cfg, regexp.MustCompile(`(?m)^min_extrude_temp:.*$`).ReplaceAll(src, []byte("min_extrude_temp: 0")), 0o644)
+	os.WriteFile(cfg, regexp.MustCompile(`(?m)^min_extrude_temp:.*$`).ReplaceAll(noBacklash(src), []byte("min_extrude_temp: 0")), 0o644)
 	body, err := os.ReadFile("testdata/two-layers.gcode")
 	if err != nil {
 		t.Fatal(err)
@@ -111,7 +111,7 @@ func TestPlanMaxModeMatchesKlipper(t *testing.T) {
 		t.Skip("no printer.cfg")
 	}
 	cfg := filepath.Join(t.TempDir(), "printer.cfg")
-	src = regexp.MustCompile(`(?m)^min_extrude_temp:.*$`).ReplaceAll(src, []byte("min_extrude_temp: 0"))
+	src = regexp.MustCompile(`(?m)^min_extrude_temp:.*$`).ReplaceAll(noBacklash(src), []byte("min_extrude_temp: 0"))
 	src = append(src, "\n[max_mode]\nenable: True\nmin_layer_time: 0\n"...)
 	os.WriteFile(cfg, src, 0o644)
 	body, err := os.ReadFile("testdata/two-layers.gcode")
@@ -128,4 +128,19 @@ func TestPlanMaxModeMatchesKlipper(t *testing.T) {
 	if math.Abs(p.total-klipper) > 0.002*klipper {
 		t.Errorf("plan %.3f s, Klipper %.3f s", p.total, klipper)
 	}
+}
+
+// noBacklash removes [printdeck_backlash] from a config text: the plan has no backlash correction.
+func noBacklash(cfg []byte) []byte {
+	var out []string
+	skip := false
+	for _, l := range strings.Split(string(cfg), "\n") {
+		if strings.HasPrefix(l, "[") || strings.HasPrefix(l, "#*#") {
+			skip = strings.HasPrefix(l, "[printdeck_backlash]")
+		}
+		if !skip {
+			out = append(out, l)
+		}
+	}
+	return []byte(strings.Join(out, "\n"))
 }
