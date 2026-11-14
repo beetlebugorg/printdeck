@@ -351,65 +351,6 @@ func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 	} else {
 		rows = append(rows, row{"Save config", "No unsaved changes", false, nil})
 	}
-	if mach.Has("extruder") {
-		// The pressure advance test: print the tower, then type the height of its best corners.
-		m := a.loaded()
-		rows = append(rows, row{"Pressure advance test", "Print a 30 mm tower: about 15 minutes", false, func() {
-			if !idle {
-				a.Toast("Wait until the print ends")
-				return
-			}
-			q := fmt.Sprintf("Print the pressure advance tower at %d°?", m.Tool)
-			a.confirm = &confirmBox{question: q, yes: "Print", onYes: func() {
-				a.do(func() error { return pr.PrintPATower(m.Tool, m.Bed, m.Name) })
-			}}
-		}})
-		rows = append(rows, row{"Pressure advance", fmt.Sprintf("Now %.3f · set it from the tower", mach.PressureAdvance), false, func() {
-			if !idle {
-				a.Toast("Wait until the print ends")
-				return
-			}
-			a.editNumber("Height of the best corners", 0, int(printer.PATowerHeight), " mm", func(h int) {
-				v := printer.PATowerValue(float64(h))
-				a.confirm = &confirmBox{question: fmt.Sprintf("Set the pressure advance to %.3f?", v), yes: "Set", onYes: func() {
-					a.do(func() error {
-						if err := pr.SetPressureAdvance(v); err != nil {
-							return err
-						}
-						a.Toast(fmt.Sprintf("Pressure advance %.3f, in printer.cfg", v))
-						return nil
-					})
-				}}
-			})
-		}})
-		// The retraction test: print the tower, then type the height of the lowest band with no
-		// strings. It needs [firmware_retraction]: the Retraction row adds it.
-		retSub := "Add firmware retraction first: tap Retraction"
-		if mach.Has("firmware_retraction") {
-			retSub = "Print two 30 mm towers: about 20 minutes"
-		}
-		rows = append(rows, row{"Retraction test", retSub, false, func() {
-			if !idle {
-				a.Toast("Wait until the print ends")
-				return
-			}
-			if !mach.Has("firmware_retraction") {
-				a.Toast("Set the retraction first: then the test can change it")
-				return
-			}
-			q := fmt.Sprintf("Print the retraction tower at %d°?", m.Tool)
-			a.confirm = &confirmBox{question: q, yes: "Print", onYes: func() {
-				a.do(func() error { return pr.PrintRetractTower(m.Tool, m.Bed, m.Name) })
-			}}
-		}})
-		rows = append(rows, row{"Retraction", retractLine(mach), false, func() {
-			if !idle {
-				a.Toast("Wait until the print ends")
-				return
-			}
-			a.askRetraction(mach)
-		}})
-	}
 	simSub, simCol := simLine(st)
 	rows = append(rows, row{"Simulated printer", simSub, simCol == orange, func() { a.open(pageSimulator) }})
 	var items []menuItem
@@ -536,7 +477,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 		keys = append(keys,
 			menuItem{"Maintenance", maint, maintCol, func() { a.open(pageMaintenance) }},
 		)
-		if mach.HasProbe {
+		if mach.HasProbe || mach.Has("extruder") {
 			line, warn := a.calibrationLine(mach)
 			col := dim
 			if warn {
