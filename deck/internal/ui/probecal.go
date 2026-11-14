@@ -56,6 +56,7 @@ const (
 const (
 	calWipeBelow = 40
 	calWipeMin   = 170
+	calWipes     = 3 // the strokes of NOZZLE_WIPE (COUNT)
 )
 
 // calWipeTemp is the wipe temperature for a filament that prints at tool degrees.
@@ -214,7 +215,7 @@ func (a *App) calStart(fl *probeCal, st printer.State) {
 		if st.Homed != "xyz" {
 			lines = append(lines, "G28")
 		}
-		lines = append(lines, fmt.Sprintf("TEMPERATURE_WAIT SENSOR=extruder MINIMUM=%d", w-2), "NOZZLE_WIPE",
+		lines = append(lines, fmt.Sprintf("TEMPERATURE_WAIT SENSOR=extruder MINIMUM=%d", w-2), fmt.Sprintf("NOZZLE_WIPE COUNT=%d", calWipes),
 			fmt.Sprintf("M104 S%d", calToolTemp), "M106 S255",
 			fmt.Sprintf("TEMPERATURE_WAIT SENSOR=extruder MAXIMUM=%d", calToolTemp+5), "M107")
 		a.runAction(action, lines...)
@@ -319,7 +320,7 @@ func (a *App) followProbeCal(st printer.State) {
 		return
 	}
 	switch step {
-	case calHeat, calMap:
+	case calHeat, calMap, calWipe:
 		if ended, err := a.calActionEnd(fl, st); ended {
 			if err != "" {
 				a.calFail(fl, err)

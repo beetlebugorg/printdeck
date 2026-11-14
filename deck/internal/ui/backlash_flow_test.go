@@ -103,7 +103,14 @@ func TestProbeCalCubeWipe(t *testing.T) {
 	a.startProbeCal("backlash", "Backlash")
 	a.followProbeCal(pr.State_)
 	w := calWipeTemp(a.loaded().Tool)
-	waitCall(t, pr, fmt.Sprintf("action Backlash: Heating and wiping the nozzle: M104 S%d; G28; TEMPERATURE_WAIT SENSOR=extruder MINIMUM=%d; NOZZLE_WIPE; M104 S150; M106 S255; TEMPERATURE_WAIT SENSOR=extruder MAXIMUM=155; M107", w, w-2))
+	waitCall(t, pr, fmt.Sprintf("action Backlash: Heating and wiping the nozzle: M104 S%d; G28; TEMPERATURE_WAIT SENSOR=extruder MINIMUM=%d; NOZZLE_WIPE COUNT=3; M104 S150; M106 S255; TEMPERATURE_WAIT SENSOR=extruder MAXIMUM=155; M107", w, w-2))
+	// The end of the wipe starts the measure.
+	now = now.Add(time.Minute)
+	pr.State_.LastAction = printer.ActionResult{Name: "Backlash", End: now}
+	pr.State_.Homed = "xyz"
+	a.followProbeCal(pr.State_)
+	a.followProbeCal(pr.State_)
+	waitCall(t, pr, "action Backlash: Home, then touch the cube: CUBE_MEASURE")
 	if calWipeTemp(210) != 170 || calWipeTemp(240) != 200 {
 		t.Errorf("wipe temperatures %d %d", calWipeTemp(210), calWipeTemp(240))
 	}
