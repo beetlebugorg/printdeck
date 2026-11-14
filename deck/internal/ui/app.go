@@ -139,6 +139,11 @@ type Printer interface {
 	// PrintShakeTest shakes the axes ("X", "Y" or "XY") through a range of frequencies
 	// (printer.ShakeTest).
 	PrintShakeTest(axes string) error
+	// MeasureBacklash homes and measures the backlash of X and Y on the calibration cube, in mm
+	// (CUBE_MEASURE).
+	MeasureBacklash() (x, y float64, err error)
+	// SetBacklash sets the backlash correction of X and Y in mm, now and in printer.cfg.
+	SetBacklash(x, y float64) error
 	// SetMaxAccel sets the largest acceleration now and in printer.cfg.
 	SetMaxAccel(v float64) error
 	// PrintSweepTower prints the sweep of the shaper frequency, on 1 tower or with five on 5.
