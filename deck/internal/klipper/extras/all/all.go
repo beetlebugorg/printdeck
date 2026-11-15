@@ -63,6 +63,7 @@ import (
 	_ "printdeck/internal/klipper/extras/printdeck_pad"
 	_ "printdeck/internal/klipper/extras/printdeck_pause"
 	_ "printdeck/internal/klipper/extras/printdeck_sdcard"
+	_ "printdeck/internal/klipper/extras/printdeck_settle"
 	_ "printdeck/internal/klipper/extras/printdeck_timelapse"
 	_ "printdeck/internal/klipper/extras/probe"
 	_ "printdeck/internal/klipper/extras/pwm_cycle_time"

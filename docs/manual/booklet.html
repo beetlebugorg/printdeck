@@ -161,7 +161,7 @@
 <section class="sheet contents even">
   
     <h2>Contents</h2>
-    <ol><li class="ch">Set up</li><li><span>Connect to Wi-Fi</span><span class="dots"></span><span>3</span></li><li><span>Choose your printer</span><span class="dots"></span><span>6</span></li><li><span>Install the Klipper firmware</span><span class="dots"></span><span>9</span></li><li class="ch">Meet your Printdeck</li><li><span>The deck</span><span class="dots"></span><span>11</span></li><li><span>The display of the printer</span><span class="dots"></span><span>14</span></li><li><span>The deck in a browser</span><span class="dots"></span><span>15</span></li><li class="ch">Print a part</li><li><span>Send a file from the slicer</span><span class="dots"></span><span>16</span></li><li><span>Start a print</span><span class="dots"></span><span>17</span></li><li><span>Watch the print</span><span class="dots"></span><span>21</span></li><li><span>Print in two colors</span><span class="dots"></span><span>31</span></li><li><span>Look around during a print</span><span class="dots"></span><span>33</span></li><li><span>Make a time lapse</span><span class="dots"></span><span>35</span></li><li class="ch">Your iPhone and Apple Watch</li><li><span>The iPhone and Apple Watch apps</span><span class="dots"></span><span>38</span></li><li class="ch">Change the filament</li><li><span>Change the filament</span><span class="dots"></span><span>39</span></li><li class="ch">Move and heat</li><li><span>Move the head and heat</span><span class="dots"></span><span>46</span></li><li class="ch">Level and calibrate</li><li><span>Level and calibrate</span><span class="dots"></span><span>49</span></li><li><span>Calibrate the camera</span><span class="dots"></span><span>55</span></li><li class="ch">Look after the printer</li><li><span>Look after the printer</span><span class="dots"></span><span>59</span></li><li><span>Update the Printdeck</span><span class="dots"></span><span>74</span></li><li><span>Back up your data</span><span class="dots"></span><span>77</span></li><li><span>Try the deck with a simulated printer</span><span class="dots"></span><span>78</span></li><li class="ch">When something goes wrong</li><li><span>When something goes wrong</span><span class="dots"></span><span>80</span></li><li><span>Settings</span><span class="dots"></span><span>82</span></li></ol>
+    <ol><li class="ch">Set up</li><li><span>Connect to Wi-Fi</span><span class="dots"></span><span>3</span></li><li><span>Choose your printer</span><span class="dots"></span><span>6</span></li><li><span>Install the Klipper firmware</span><span class="dots"></span><span>9</span></li><li class="ch">Meet your Printdeck</li><li><span>The deck</span><span class="dots"></span><span>11</span></li><li><span>The display of the printer</span><span class="dots"></span><span>14</span></li><li><span>The deck in a browser</span><span class="dots"></span><span>15</span></li><li class="ch">Print a part</li><li><span>Send a file from the slicer</span><span class="dots"></span><span>16</span></li><li><span>Start a print</span><span class="dots"></span><span>17</span></li><li><span>Watch the print</span><span class="dots"></span><span>21</span></li><li><span>Print in two colors</span><span class="dots"></span><span>31</span></li><li><span>Look around during a print</span><span class="dots"></span><span>33</span></li><li><span>Make a time lapse</span><span class="dots"></span><span>35</span></li><li class="ch">Your iPhone and Apple Watch</li><li><span>The iPhone and Apple Watch apps</span><span class="dots"></span><span>38</span></li><li class="ch">Change the filament</li><li><span>Change the filament</span><span class="dots"></span><span>39</span></li><li class="ch">Move and heat</li><li><span>Move the head and heat</span><span class="dots"></span><span>46</span></li><li class="ch">Level and calibrate</li><li><span>Level and calibrate</span><span class="dots"></span><span>49</span></li><li><span>Calibrate the camera</span><span class="dots"></span><span>56</span></li><li class="ch">Look after the printer</li><li><span>Look after the printer</span><span class="dots"></span><span>60</span></li><li><span>Update the Printdeck</span><span class="dots"></span><span>75</span></li><li><span>Back up your data</span><span class="dots"></span><span>78</span></li><li><span>Try the deck with a simulated printer</span><span class="dots"></span><span>79</span></li><li class="ch">When something goes wrong</li><li><span>When something goes wrong</span><span class="dots"></span><span>81</span></li><li><span>Settings</span><span class="dots"></span><span>83</span></li></ol>
   
   
     
@@ -2029,10 +2029,10 @@
     <ol class="steps"><li><span class="n">8</span><span>After a change to the probe mount, tap Probe offset, then Print the pad and find it. After the print, tap Probe offset, then Set from the last pad. Then do the twist and the bed map again.</span></li></ol>
     
     
-    <ol class="steps"><li><span class="n">9</span><span>To see how the bed changes when it heats, open Maintenance, then Heat change, and tap Sweep. The deck prints a G-code file that maps the bed at room temperature, then each 5 °C from 35 to 60 °C, and shows each map less the cold map. The sweep runs for about 75 minutes, after the bed cools.</span></li></ol>
+    <ol class="steps"><li><span class="n">9</span><span>To see how the bed changes when it heats, open Maintenance, then Heat change, tap Test, and then Heat sweep. The deck prints a G-code file that maps the bed at room temperature, then each 5 °C from 35 to 60 °C, and shows each map less the cold map. The sweep runs for about 75 minutes, after the bed cools.</span></li></ol>
     
     
-    <ol class="steps"><li><span class="n">10</span><span>Tap Height check, then Print, measure only. After the print, tap Height check, then Last results. Then print it again with Print, measure and correct, and compare the results and the heights of the two towers.</span></li></ol>
+    <ol class="steps"><li><span class="n">10</span><span>The bed changes its shape for many minutes after it gets hot. To measure this, tap Test, and then Drift test. The bed cools to 30 °C, heats to 60 °C, and the probe measures the middle of the bed each minute for 20 minutes. Last drift results shows how far the bed moved, and the time to 90 % of the movement. BED_SETTLE in PRINT_START uses this: it probes the middle of the bed every 30 s, and the print starts when the bed stops moving.</span></li></ol>
     
     
   
@@ -2043,6 +2043,19 @@
 </section>
 
 <section class="sheet guide even">
+  
+    
+    <ol class="steps"><li><span class="n">11</span><span>Tap Height check, then Print, measure only. After the print, tap Height check, then Last results. Then print it again with Print, measure and correct, and compare the results and the heights of the two towers.</span></li></ol>
+    
+    
+  
+  
+    <div class="chapter-tab">Level and calibrate</div>
+    <div class="folio">50</div>
+  
+</section>
+
+<section class="sheet guide odd">
   
     
     
@@ -2090,11 +2103,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">50</div>
+    <div class="folio">51</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2142,11 +2155,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">51</div>
+    <div class="folio">52</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2194,11 +2207,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">52</div>
+    <div class="folio">53</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2226,11 +2239,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">53</div>
+    <div class="folio">54</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2266,11 +2279,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">54</div>
+    <div class="folio">55</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>Calibrate the camera</h2>
@@ -2303,11 +2316,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">55</div>
+    <div class="folio">56</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2339,11 +2352,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">56</div>
+    <div class="folio">57</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2379,11 +2392,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">57</div>
+    <div class="folio">58</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2411,11 +2424,11 @@
   
   
     <div class="chapter-tab">Level and calibrate</div>
-    <div class="folio">58</div>
+    <div class="folio">59</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>Look after the printer</h2>
@@ -2427,11 +2440,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">59</div>
+    <div class="folio">60</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2495,11 +2508,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">60</div>
+    <div class="folio">61</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2563,11 +2576,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">61</div>
+    <div class="folio">62</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2595,11 +2608,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">62</div>
+    <div class="folio">63</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2655,11 +2668,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">63</div>
+    <div class="folio">64</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2715,11 +2728,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">64</div>
+    <div class="folio">65</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2763,11 +2776,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">65</div>
+    <div class="folio">66</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2803,11 +2816,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">66</div>
+    <div class="folio">67</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2851,11 +2864,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">67</div>
+    <div class="folio">68</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2879,11 +2892,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">68</div>
+    <div class="folio">69</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -2927,11 +2940,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">69</div>
+    <div class="folio">70</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -2967,11 +2980,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">70</div>
+    <div class="folio">71</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -3011,11 +3024,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">71</div>
+    <div class="folio">72</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -3047,11 +3060,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">72</div>
+    <div class="folio">73</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -3087,11 +3100,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">73</div>
+    <div class="folio">74</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     <h2>Update the Printdeck</h2>
@@ -3118,11 +3131,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">74</div>
+    <div class="folio">75</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -3162,11 +3175,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">75</div>
+    <div class="folio">76</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     
@@ -3198,11 +3211,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">76</div>
+    <div class="folio">77</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     <h2>Back up your data</h2>
@@ -3235,11 +3248,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">77</div>
+    <div class="folio">78</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     <h2>Try the deck with a simulated printer</h2>
@@ -3266,11 +3279,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">78</div>
+    <div class="folio">79</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -3310,11 +3323,11 @@
   
   
     <div class="chapter-tab">Look after the printer</div>
-    <div class="folio">79</div>
+    <div class="folio">80</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     <h2>When something goes wrong</h2>
@@ -3335,11 +3348,11 @@
   
   
     <div class="chapter-tab">When something goes wrong</div>
-    <div class="folio">80</div>
+    <div class="folio">81</div>
   
 </section>
 
-<section class="sheet guide odd">
+<section class="sheet guide even">
   
     
     
@@ -3375,11 +3388,11 @@
   
   
     <div class="chapter-tab">When something goes wrong</div>
-    <div class="folio">81</div>
+    <div class="folio">82</div>
   
 </section>
 
-<section class="sheet guide even">
+<section class="sheet guide odd">
   
     
     <h2>Settings</h2>
@@ -3415,17 +3428,6 @@
   
   
     <div class="chapter-tab">When something goes wrong</div>
-    <div class="folio">82</div>
-  
-</section>
-
-<section class="sheet notes odd">
-  
-    <h2>Notes</h2>
-    <div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div>
-  
-  
-    
     <div class="folio">83</div>
   
 </section>

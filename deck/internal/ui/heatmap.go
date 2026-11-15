@@ -11,8 +11,9 @@ import (
 
 // The Heat change page: how the bed changes when it heats. The deck keeps the last full map at
 // each bed temperature (printer.MeshStore). The page shows a hot map less the coldest map: the
-// plate and the gantry are in both maps, so only the change from the heat stays. Sweep probes the
-// map at room temperature and at each step of 10 °C up to 60 °C.
+// plate and the gantry are in both maps, so only the change from the heat stays. The Test key
+// has the heat sweep (the map at room temperature and at each step of 5 °C up to 60 °C) and the
+// drift test (one place of the bed each minute after the bed gets hot).
 
 // heatSweepTop is the top bed temperature of the sweep of the page, in °C.
 const heatSweepTop = 60
@@ -25,6 +26,43 @@ func heatSub(maps []printer.BedMesh) string {
 	return fmt.Sprintf("%d maps, %.0f° to %.0f°", len(maps), maps[0].BedTemp, maps[len(maps)-1].BedTemp)
 }
 
+// driftBed is the bed temperature of the drift test, in °C.
+const driftBed = 60
+
+// askHeatTest shows the tests of the Heat change page.
+func (a *App) askHeatTest() {
+	pr := a.Printer
+	temps := printer.HeatTemps(heatSweepTop)
+	sweep := func() {
+		a.confirm = &confirmBox{question: fmt.Sprintf("Map the bed at room temperature, then each %d° from %d° to %d°? "+
+			"The bed cools to %d° first. About %d minutes.", printer.HeatStep, temps[0], temps[len(temps)-1], printer.HeatCold,
+			printer.HeatMinutes(heatSweepTop)),
+			yes: "Sweep", onYes: func() { a.do(func() error { return pr.HeatSweep(heatSweepTop) }) }}
+	}
+	items := []menuItem{{"Heat sweep", fmt.Sprintf("A map at each %d° · about %d minutes", printer.HeatStep,
+		printer.HeatMinutes(heatSweepTop)), dim, sweep}}
+	if pr.Machine().Has("printdeck_settle") {
+		items = append(items,
+			menuItem{"Drift test", fmt.Sprintf("The bed cools to %d°, heats to %d°, and the probe measures the middle each minute for %d minutes",
+				printer.HeatCold, driftBed, printer.DriftMinutes), dim, func() { a.do(func() error { return pr.DriftTest(driftBed) }) }},
+			menuItem{"Last drift results", "How far the bed moved, and how fast", dim, a.showDrift})
+	}
+	a.confirm = &confirmBox{question: "Heat tests of the bed", choices: items}
+}
+
+// showDrift shows the results of the last drift test.
+func (a *App) showDrift() {
+	pr := a.Printer
+	a.do(func() error {
+		rs, err := pr.DriftReadings()
+		if err != nil {
+			return err
+		}
+		a.post(func() { a.confirm = &confirmBox{question: printer.DriftSummary(rs), choices: []menuItem{}} })
+		return nil
+	})
+}
+
 // drawHeatMap is the Heat change page.
 func (a *App) drawHeatMap(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
@@ -32,22 +70,18 @@ func (a *App) drawHeatMap(c *gfx.Canvas, st printer.State) {
 	mach := pr.Machine()
 	idle := st.Connected && !st.Busy()
 	if mach.Has("bed_mesh") {
-		a.headKey(c, f.head, "Sweep", func() {
+		a.headKey(c, f.head, "Test", func() {
 			if !idle {
 				a.Toast("Wait until the print ends")
 				return
 			}
-			temps := printer.HeatTemps(heatSweepTop)
-			a.confirm = &confirmBox{question: fmt.Sprintf("Map the bed at room temperature, then each %d° from %d° to %d°? "+
-				"The bed cools to %d° first. About %d minutes.", printer.HeatStep, temps[0], temps[len(temps)-1], printer.HeatCold,
-				printer.HeatMinutes(heatSweepTop)),
-				yes: "Sweep", onYes: func() { a.do(func() error { return pr.HeatSweep(heatSweepTop) }) }}
+			a.askHeatTest()
 		})
 	}
 	body := f.body()
 	maps := pr.HeatMaps()
 	if len(maps) < 2 {
-		noItems(c, body, "No change yet", "Tap Sweep to map the bed at each temperature",
+		noItems(c, body, "No change yet", "Tap Test, then Heat sweep, to map the bed at each temperature",
 			"from the room to 60 °C")
 		return
 	}
@@ -66,7 +100,7 @@ func (a *App) drawHeatMap(c *gfx.Canvas, st printer.State) {
 	d := a.heatMesh
 	if d == nil {
 		noItems(c, body, "The maps do not match", fmt.Sprintf("The maps at %.0f° and %.0f° have other points.",
-			hot.BedTemp, cold.BedTemp), "Tap Sweep to map the bed again")
+			hot.BedTemp, cold.BedTemp), "Tap Test, then Heat sweep, to map the bed again")
 		return
 	}
 	lo, hi := d.Range()

@@ -43,10 +43,15 @@ func TestHeatMapPage(t *testing.T) {
 	if f := simFrame(t, a, "heat-change-40"); !strings.Contains(f, "40° LESS 23°") {
 		t.Error("the 40° key does not show the map at 40°")
 	}
-	tapLabel(t, a, cv, "Sweep")
-	if a.confirm == nil || !strings.Contains(a.confirm.question, "each 5° from 35° to 60°") {
-		t.Fatalf("Sweep asks %+v", a.confirm)
+	tapLabel(t, a, cv, "Test")
+	if a.confirm == nil || len(a.confirm.choices) == 0 || a.confirm.choices[0].title != "Heat sweep" {
+		t.Fatalf("Test asks %+v", a.confirm)
 	}
+	a.confirm.choices[0].tap()
+	if a.confirm == nil || !strings.Contains(a.confirm.question, "each 5° from 35° to 60°") {
+		t.Fatalf("Heat sweep asks %+v", a.confirm)
+	}
+	a.confirm = nil
 	pr.HeatMaps_ = pr.HeatMaps_[:1]
 	if f := simFrame(t, a, "heat-change-empty"); !strings.Contains(f, "No change yet") {
 		t.Error("no text with one map")
