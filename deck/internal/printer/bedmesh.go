@@ -2,10 +2,12 @@ package printer
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 )
@@ -18,6 +20,30 @@ type BedMesh struct {
 	Max [2]float64 `json:"max"`
 	// Z has one row for each Y, from Min[1] to Max[1]. Each row goes from Min[0] to Max[0].
 	Z [][]float64 `json:"z"`
+	// BedTemp is the temperature of the bed at the probe, in °C. 0 is not known.
+	BedTemp float64 `json:"bed_temp,omitempty"`
+	// ColdTemp is the bed temperature of the cold map of a difference (HeatChange), or 0.
+	ColdTemp float64 `json:"-"`
+}
+
+// HeatChange is the change of the bed from the cold map to the hot map: hot less cold at each
+// point. The plate and the gantry are in both maps, so only the change from the heat stays. ok is
+// false when the two maps do not have the same area and points.
+func HeatChange(hot, cold BedMesh) (BedMesh, bool) {
+	hx, hy := hot.Size()
+	cx, cy := cold.Size()
+	if hx == 0 || hx != cx || hy != cy || hot.Min != cold.Min || hot.Max != cold.Max {
+		return BedMesh{}, false
+	}
+	d := BedMesh{Time: hot.Time, Min: hot.Min, Max: hot.Max, BedTemp: hot.BedTemp, ColdTemp: cold.BedTemp}
+	for j := range hot.Z {
+		row := make([]float64, hx)
+		for i := range row {
+			row[i] = hot.Z[j][i] - cold.Z[j][i]
+		}
+		d.Z = append(d.Z, row)
+	}
+	return d, true
 }
 
 // Size is the number of points in X and in Y.
@@ -115,14 +141,20 @@ func meshFromStatus(s map[string]any) (BedMesh, bool) {
 
 // MeshStore keeps the map of the bed in a file, so that the deck shows it after a restart of
 // Klipper, and after BED_MESH_CLEAR. The map is the last mesh with the most points: the 3 x 3 mesh
-// of the start of a print does not replace the 7 x 7 map of the full probe.
+// of the start of a print does not replace the 7 x 7 map of the full probe. The store also keeps
+// the last full map at each bed temperature, to TempStep °C, in a second file, for HeatChange.
 type MeshStore struct {
-	path string
-	mu   sync.Mutex
-	last *BedMesh
+	path  string
+	mu    sync.Mutex
+	last  *BedMesh
+	temps []BedMesh // by temperature, low to high
 }
 
-// NewMeshStore reads the mesh of the file at path. A missing file is no mesh.
+// TempStep is the step of the bed temperatures of the maps of MeshStore, in °C.
+const TempStep = 5.0
+
+// NewMeshStore reads the meshes of the file at path, and of the file of the maps at each
+// temperature next to it. A missing file is no mesh.
 func NewMeshStore(path string) *MeshStore {
 	s := &MeshStore{path: path}
 	if b, err := os.ReadFile(path); err == nil {
@@ -131,7 +163,39 @@ func NewMeshStore(path string) *MeshStore {
 			s.last = &m
 		}
 	}
+	if b, err := os.ReadFile(s.tempsPath()); err == nil {
+		json.Unmarshal(b, &s.temps)
+	}
 	return s
+}
+
+// tempsPath is the path of the file of the maps at each temperature: bed-mesh-temps.json next to
+// bed-mesh.json.
+func (s *MeshStore) tempsPath() string {
+	ext := filepath.Ext(s.path)
+	return strings.TrimSuffix(s.path, ext) + "-temps" + ext
+}
+
+// HeatMaps is the last full map at each bed temperature, low to high (MeshStore.Temps).
+func (k *Klippy) HeatMaps() []BedMesh { return k.Mesh.Temps() }
+
+// Temps is the last full map at each bed temperature, low to high.
+func (s *MeshStore) Temps() []BedMesh {
+	if s == nil {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.temps)
+}
+
+func writeJSON(path string, v any) {
+	b, _ := json.Marshal(v)
+	os.MkdirAll(filepath.Dir(path), 0o700)
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o600); err == nil {
+		os.Rename(tmp, path)
+	}
 }
 
 // Last is the last mesh, or nil.
@@ -144,9 +208,9 @@ func (s *MeshStore) Last() *BedMesh {
 	return s.last
 }
 
-// see keeps m when it is a new mesh with as many points as the map or more, with the time now, and
-// writes it to the file.
-func (s *MeshStore) see(m BedMesh, now time.Time) {
+// see keeps m when it is a new mesh with as many points as the map or more, with the time now and
+// the bed at bed °C, and writes it to the file. It also replaces the map of its temperature step.
+func (s *MeshStore) see(m BedMesh, now time.Time, bed float64) {
 	if s == nil {
 		return
 	}
@@ -155,13 +219,57 @@ func (s *MeshStore) see(m BedMesh, now time.Time) {
 		s.mu.Unlock()
 		return
 	}
-	m.Time = now
+	m.Time, m.BedTemp = now, bed
 	s.last = &m
+	step := math.Round(bed / TempStep)
+	s.temps = slices.DeleteFunc(s.temps, func(o BedMesh) bool { return math.Round(o.BedTemp/TempStep) == step })
+	s.temps = append(s.temps, m)
+	slices.SortFunc(s.temps, func(x, y BedMesh) int { return int(math.Round(x.BedTemp - y.BedTemp)) })
+	temps := slices.Clone(s.temps)
 	s.mu.Unlock()
-	b, _ := json.Marshal(m)
-	os.MkdirAll(filepath.Dir(s.path), 0o700)
-	tmp := s.path + ".tmp"
-	if err := os.WriteFile(tmp, b, 0o600); err == nil {
-		os.Rename(tmp, s.path)
+	writeJSON(s.path, m)
+	writeJSON(s.tempsPath(), temps)
+}
+
+// The heat sweep: the full bed map at room temperature, and then at each step of 10 °C. The bed
+// soaks at each step before the probe, so the plate is even. The gantry is leveled once, at the
+// start: the changes between the maps are then of the bed and the frame only.
+const (
+	HeatCold = 30 // °C: the sweep waits for the bed to cool to this first
+	HeatStep = 10 // °C
+	HeatSoak = 5  // minutes at each step before the probe
+)
+
+// HeatTemps are the bed temperatures of a heat sweep up to top, after the map at room
+// temperature.
+func HeatTemps(top int) []int {
+	var ts []int
+	for t := HeatCold + HeatStep; t <= top; t += HeatStep {
+		ts = append(ts, t)
 	}
+	if len(ts) == 0 || ts[len(ts)-1] != top {
+		ts = append(ts, top)
+	}
+	return ts
+}
+
+// sweepLines are the commands of a heat sweep up to top.
+func sweepLines(m Machine, top int) []string {
+	lines := []string{"G28"}
+	if m.Has("z_tilt") {
+		lines = append(lines, "Z_TILT_ADJUST")
+	}
+	lines = append(lines, "M104 S0", "M140 S0",
+		fmt.Sprintf("TEMPERATURE_WAIT SENSOR=heater_bed MAXIMUM=%d", HeatCold),
+		"BED_MESH_CALIBRATE")
+	for _, t := range HeatTemps(top) {
+		lines = append(lines, fmt.Sprintf("M190 S%d", t), fmt.Sprintf("G4 P%d", HeatSoak*60000), "BED_MESH_CALIBRATE")
+	}
+	return append(lines, "M140 S0")
+}
+
+// HeatSweep probes the bed map at room temperature, then at each step of 10 °C up to top. It waits
+// for the bed to cool first. Each map is kept for HeatMaps.
+func (k *Klippy) HeatSweep(top int) error {
+	return k.RunAction("Heat sweep", sweepLines(k.Machine(), top)...)
 }

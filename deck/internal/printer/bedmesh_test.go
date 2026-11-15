@@ -1,7 +1,10 @@
 package printer
 
 import (
+	"math"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -49,18 +52,64 @@ func TestMeshStore(t *testing.T) {
 	full, _ := meshFromStatus(meshStatus(7, 7, -1))
 	quick, _ := meshFromStatus(meshStatus(3, 3, -2))
 	t0 := time.Unix(1000, 0)
-	s.see(full, t0)
-	s.see(quick, t0.Add(time.Hour))
+	s.see(full, t0, 22)
+	s.see(quick, t0.Add(time.Hour), 22)
 	if got := s.Last(); got == nil || got.points() != 49 || !got.Time.Equal(t0) {
 		t.Fatalf("map %+v, want the 7 × 7 mesh", got)
 	}
-	s.see(full, t0.Add(2*time.Hour))
+	s.see(full, t0.Add(2*time.Hour), 22)
 	if !s.Last().Time.Equal(t0) {
 		t.Error("the same mesh again changed the time")
 	}
 	again, _ := meshFromStatus(meshStatus(7, 7, -1.5))
-	s.see(again, t0.Add(3*time.Hour))
+	s.see(again, t0.Add(3*time.Hour), 60)
 	if got := NewMeshStore(path).Last(); got == nil || got.Z[0][0] != -1.5 {
 		t.Errorf("map from the file %+v, want the new 7 × 7 mesh", got)
+	}
+}
+
+// The store keeps the last map at each temperature step, and the difference of two maps is the
+// change from the heat.
+func TestHeatMaps(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bed-mesh.json")
+	s := NewMeshStore(path)
+	t0 := time.Unix(1000, 0)
+	cold, _ := meshFromStatus(meshStatus(7, 7, -1))
+	hot, _ := meshFromStatus(meshStatus(7, 7, -0.9))
+	hot.Z[3][3] = -0.85
+	hot2, _ := meshFromStatus(meshStatus(7, 7, -0.8))
+	s.see(cold, t0, 24.2)
+	s.see(hot, t0.Add(time.Hour), 60.1)
+	s.see(hot2, t0.Add(2*time.Hour), 59.6) // the same step: it replaces the map at 60
+	maps := NewMeshStore(path).Temps()
+	if len(maps) != 2 || maps[0].BedTemp != 24.2 || maps[1].BedTemp != 59.6 {
+		t.Fatalf("maps at %v, want 24.2 and 59.6", maps)
+	}
+	s.see(hot, t0.Add(3*time.Hour), 60) // the map at 60 again, with the bump
+	maps = s.Temps()
+	d, ok := HeatChange(maps[1], maps[0])
+	bump := -0.85 - cold.Z[3][3]
+	if !ok || math.Abs(d.Z[0][0]-0.1) > 1e-9 || math.Abs(d.Z[3][3]-bump) > 1e-9 || d.BedTemp != 60 || d.ColdTemp != 24.2 {
+		t.Errorf("change %v %v, want 0.1 and %.3f at the bump, 60 less 24.2", ok, d, bump)
+	}
+	small, _ := meshFromStatus(meshStatus(5, 5, -1))
+	if _, ok := HeatChange(small, cold); ok {
+		t.Error("maps of other sizes have a change")
+	}
+}
+
+func TestHeatSweep(t *testing.T) {
+	if got := HeatTemps(60); !slices.Equal(got, []int{40, 50, 60}) {
+		t.Errorf("temps to 60: %v", got)
+	}
+	if got := HeatTemps(65); !slices.Equal(got, []int{40, 50, 60, 65}) {
+		t.Errorf("temps to 65: %v", got)
+	}
+	got := strings.Join(sweepLines(Machine{Modules: []string{"z_tilt"}}, 60), "\n")
+	want := "G28\nZ_TILT_ADJUST\nM104 S0\nM140 S0\nTEMPERATURE_WAIT SENSOR=heater_bed MAXIMUM=30\nBED_MESH_CALIBRATE\n" +
+		"M190 S40\nG4 P300000\nBED_MESH_CALIBRATE\nM190 S50\nG4 P300000\nBED_MESH_CALIBRATE\n" +
+		"M190 S60\nG4 P300000\nBED_MESH_CALIBRATE\nM140 S0"
+	if got != want {
+		t.Errorf("lines:\n%s\nwant:\n%s", got, want)
 	}
 }

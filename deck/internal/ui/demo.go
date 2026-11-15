@@ -18,9 +18,10 @@ import (
 // Demo sources give the UI fixed data, to look at it without a printer.
 
 type DemoPrinter struct {
-	State_ printer.State
-	Img    image.Image
-	View   int // layer of the scrubber, -1 for live
+	HeatMaps_ []printer.BedMesh // the maps of HeatMaps
+	State_    printer.State
+	Img       image.Image
+	View      int // layer of the scrubber, -1 for live
 	// LayerTimes_ is the seconds of each layer of the print, from the slicer.
 	LayerTimes_ []float64
 	Boards_     []board.Info // the boards of the printer setup
@@ -150,6 +151,8 @@ func (d *DemoPrinter) PrintProbePad(int, int, string) error         { return nil
 func (d *DemoPrinter) FoundProbeOffset() (float64, float64, bool, error) {
 	return 0, 0, false, nil
 }
+func (d *DemoPrinter) HeatMaps() []printer.BedMesh                    { return d.HeatMaps_ }
+func (d *DemoPrinter) HeatSweep(int) error                            { return nil }
 func (d *DemoPrinter) FindProbeOffsetOnPad() error                    { return nil }
 func (d *DemoPrinter) SetProbeXYOffset(float64, float64) error        { return nil }
 func (d *DemoPrinter) SetRetraction(float64) error                    { return nil }
