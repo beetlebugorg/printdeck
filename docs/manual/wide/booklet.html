@@ -1755,10 +1755,10 @@
     <ol class="steps"><li><span class="n">8</span><span>After a change to the probe mount, tap Probe offset, then Print the pad and find it. After the print, tap Probe offset, then Set from the last pad. Then do the twist and the bed map again.</span></li></ol>
     
     
-    <ol class="steps"><li><span class="n">9</span><span>To see how the bed changes when it heats, open Maintenance, then Heat change, and tap Sweep. The deck prints a G-code file that maps the bed at room temperature, then each 5 °C from 35 to 60 °C, and shows each map less the cold map. The sweep runs for about 75 minutes, after the bed cools.</span></li></ol>
+    <ol class="steps"><li><span class="n">9</span><span>To see how the bed changes when it heats, open Maintenance, then Heat change, tap Test, and then Heat sweep. The deck prints a G-code file that maps the bed at room temperature, then each 5 °C from 35 to 60 °C, and shows each map less the cold map. The sweep runs for about 75 minutes, after the bed cools.</span></li></ol>
     
     
-    <ol class="steps"><li><span class="n">10</span><span>Tap Height check, then Print, measure only. After the print, tap Height check, then Last results. Then print it again with Print, measure and correct, and compare the results and the heights of the two towers.</span></li></ol>
+    <ol class="steps"><li><span class="n">10</span><span>The bed changes its shape for many minutes after it gets hot. To measure this, tap Test, and then Drift test. The bed cools to 30 °C, heats to 60 °C, and the probe measures the middle of the bed each minute for 20 minutes. Last drift results shows how far the bed moved, and the time to 90 % of the movement. BED_SETTLE in PRINT_START uses this: it probes the middle of the bed every 30 s, and the print starts when the bed stops moving.</span></li></ol>
     
     
   
@@ -1770,6 +1770,9 @@
 
 <section class="sheet guide odd">
   
+    
+    <ol class="steps"><li><span class="n">11</span><span>Tap Height check, then Print, measure only. After the print, tap Height check, then Last results. Then print it again with Print, measure and correct, and compare the results and the heights of the two towers.</span></li></ol>
+    
     
     
     <div class="figure">

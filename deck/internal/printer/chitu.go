@@ -547,6 +547,8 @@ func (c *ChiTu) FoundProbeOffset() (float64, float64, bool, error) {
 }
 func (c *ChiTu) HeatMaps() []BedMesh                            { return nil }
 func (c *ChiTu) HeatSweep(int) error                            { return ErrNotSupported }
+func (c *ChiTu) DriftTest(int) error                            { return ErrNotSupported }
+func (c *ChiTu) DriftReadings() ([][2]float64, error)           { return nil, ErrNotSupported }
 func (c *ChiTu) FindProbeOffsetOnPad() error                    { return ErrNotSupported }
 func (c *ChiTu) SetProbeXYOffset(float64, float64) error        { return ErrNotSupported }
 func (c *ChiTu) SetRetraction(float64) error                    { return ErrNotSupported }

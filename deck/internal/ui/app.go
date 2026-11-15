@@ -152,8 +152,12 @@ type Printer interface {
 	FoundProbeOffset() (x, y float64, ok bool, err error)
 	// HeatMaps is the last full bed map at each bed temperature, low to high.
 	HeatMaps() []printer.BedMesh
-	// HeatSweep probes the bed map at room temperature, then at each step of 10 °C up to top.
+	// HeatSweep probes the bed map at room temperature, then at each step of 5 °C up to top.
 	HeatSweep(top int) error
+	// DriftTest probes one place of the bed each minute after the bed heats to bed °C.
+	DriftTest(bed int) error
+	// DriftReadings are the readings of the last drift test: [t, z] with t in seconds.
+	DriftReadings() ([][2]float64, error)
 	// FindProbeOffsetOnPad homes, and finds the offsets on the pad that is still on the bed.
 	FindProbeOffsetOnPad() error
 	// SetProbeXYOffset writes x_offset and y_offset of the probe to printer.cfg. Klipper restarts.
