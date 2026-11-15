@@ -23,10 +23,9 @@ func ProbePad(m Machine, tool, bed int, material string) string {
 		nozzle = 0.4
 	}
 	width := math.Round(nozzle*1.125*100) / 100
-	layer := math.Round(nozzle*0.5/0.05) * 0.05
+	layer, layers := probePadLayers(m)
 	area := math.Pi * m.Diameter() * m.Diameter() / 4
 	cx, cy := towerCenter(m)
-	layers := int(math.Round(ProbePadHeight / layer))
 	retract := padRetract
 	if m.Has("firmware_retraction") && m.RetractLength > 0 {
 		retract = m.RetractLength
@@ -95,10 +94,33 @@ func ProbePad(m Machine, tool, bed int, material string) string {
 		w("G1 E-%.3f F1800", retract)
 	}
 	w("M107")
-	w("PAD_FIND_OFFSET X=%.3f Y=%.3f SIDE=%g HEIGHT=%.3f", cx, cy, ProbePadSide, layer*float64(layers))
+	w("%s", findOffsetCmd(m))
 	w("G1 E%.3f F1800", retract)
 	printEnd(&b, m)
 	return b.String()
+}
+
+// probePadLayers is the layer height and the count of layers of the probe offset pad.
+func probePadLayers(m Machine) (float64, int) {
+	nozzle := m.NozzleDiameter
+	if nozzle <= 0 {
+		nozzle = 0.4
+	}
+	layer := math.Round(nozzle*0.5/0.05) * 0.05
+	return layer, int(math.Round(ProbePadHeight / layer))
+}
+
+// findOffsetCmd is the PAD_FIND_OFFSET command for the pad of ProbePad.
+func findOffsetCmd(m Machine) string {
+	cx, cy := towerCenter(m)
+	layer, layers := probePadLayers(m)
+	return fmt.Sprintf("PAD_FIND_OFFSET X=%.3f Y=%.3f SIDE=%g HEIGHT=%.3f", cx, cy, ProbePadSide, layer*float64(layers))
+}
+
+// FindProbeOffsetOnPad homes, and finds the offsets on a pad of ProbePad that is still on the
+// bed.
+func (k *Klippy) FindProbeOffsetOnPad() error {
+	return k.script("G28", findOffsetCmd(k.Machine()))
 }
 
 // PrintProbePad prints the probe offset pad, and finds the offsets on it.

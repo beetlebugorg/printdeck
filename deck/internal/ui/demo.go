@@ -150,6 +150,7 @@ func (d *DemoPrinter) PrintProbePad(int, int, string) error         { return nil
 func (d *DemoPrinter) FoundProbeOffset() (float64, float64, bool, error) {
 	return 0, 0, false, nil
 }
+func (d *DemoPrinter) FindProbeOffsetOnPad() error                    { return nil }
 func (d *DemoPrinter) SetProbeXYOffset(float64, float64) error        { return nil }
 func (d *DemoPrinter) SetRetraction(float64) error                    { return nil }
 func (d *DemoPrinter) SetBacklash(float64, float64) error             { return nil }
