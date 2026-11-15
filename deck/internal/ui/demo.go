@@ -144,6 +144,8 @@ func (d *DemoPrinter) PrintRingTower(int, int, string, bool) error    { return n
 func (d *DemoPrinter) SetMaxAccel(float64) error                      { return nil }
 func (d *DemoPrinter) PrintShakeTest(string) error                    { return nil }
 func (d *DemoPrinter) PrintRetractTower(int, int, string) error       { return nil }
+func (d *DemoPrinter) PrintPadTower(int, int, string, bool) error     { return nil }
+func (d *DemoPrinter) PadChecks() ([][3]float64, error)               { return nil, nil }
 func (d *DemoPrinter) SetRetraction(float64) error                    { return nil }
 func (d *DemoPrinter) SetBacklash(float64, float64) error             { return nil }
 func (d *DemoPrinter) CubeResult() (float64, float64, float64, error) { return 0.3, 0.2, 3.142, nil }
