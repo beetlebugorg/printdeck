@@ -90,7 +90,7 @@ func PadTower(m Machine, tool, bed int, material string, correct bool) string {
 		}
 		speed, flow := padSpeed, 1.0
 		if i == 0 {
-			speed, flow = padFirst, 1.1
+			speed = padFirst // full flow: the pad is solid, and more plastic has no room
 		}
 		// squares prints loops around c, each with the half side of hs, from the first. The travel
 		// to the first loop has the unretract after it, and the loops next to each other go on
