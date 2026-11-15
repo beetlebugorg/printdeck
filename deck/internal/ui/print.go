@@ -106,6 +106,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	case pageBedMesh:
 		a.drawBedMesh(c, st)
 		return
+	case pageHeatMap:
+		a.drawHeatMap(c, st)
+		return
 	case pageProbeCal:
 		a.drawProbeCal(c, st)
 		return

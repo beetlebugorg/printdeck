@@ -59,6 +59,7 @@ const (
 	pageProbeCal    // the calibration of the probe: Z offset, twist and map (probecal.go)
 	pageShaper      // the tests of the input shaper (shaper.go)
 	pageOption      // one setting: a toggle, or a list of choices (a.option, option.go)
+	pageHeatMap     // the change of the bed from the coldest map to a hot map (heatmap.go)
 )
 
 // open shows a page over the current one.

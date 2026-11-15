@@ -1181,6 +1181,7 @@ func manualSections() []section {
 				"Open Machine, then Calibration. Tap Pressure advance, then Print the tower. After the print, tap Pressure advance, then From the tower, and type the height of the sharpest corners.",
 				"Tap Retraction, then Print the tower. After the print, tap Retraction, then From the tower, and type the height of the lowest band with no strings.",
 				"After a change to the probe mount, tap Probe offset, then Print the pad and find it. After the print, tap Probe offset, then Set from the last pad. Then do the twist and the bed map again.",
+				"To see how the bed changes when it heats, open Maintenance, then Heat change, and tap Sweep. The deck maps the bed at room temperature, then at 40, 50 and 60 °C, and shows each map less the cold map. The sweep runs for about an hour, after the bed cools.",
 				"Tap Height check, then Print, measure only. After the print, tap Height check, then Last results. Then print it again with Print, measure and correct, and compare the results and the heights of the two towers.",
 			},
 			Figures: fig("maintenance", "maintenance-more", "calibration", "action", "paper")},

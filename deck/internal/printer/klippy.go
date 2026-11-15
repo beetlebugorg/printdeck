@@ -724,7 +724,7 @@ func (k *Klippy) refresh(notify func()) {
 		go k.FirmwareRestart()
 	}
 	if hasMesh {
-		k.Mesh.see(mesh, time.Now())
+		k.Mesh.see(mesh, time.Now(), st.Bed)
 	}
 	st.Mesh = k.Mesh.Last()
 	if !st.Reachable && k.ConfigPath != "" {

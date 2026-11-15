@@ -150,6 +150,10 @@ type Printer interface {
 	PrintProbePad(tool, bed int, material string) error
 	// FoundProbeOffset reads the offsets of the last pad. ok is false with no result.
 	FoundProbeOffset() (x, y float64, ok bool, err error)
+	// HeatMaps is the last full bed map at each bed temperature, low to high.
+	HeatMaps() []printer.BedMesh
+	// HeatSweep probes the bed map at room temperature, then at each step of 10 °C up to top.
+	HeatSweep(top int) error
 	// FindProbeOffsetOnPad homes, and finds the offsets on the pad that is still on the bed.
 	FindProbeOffsetOnPad() error
 	// SetProbeXYOffset writes x_offset and y_offset of the probe to printer.cfg. Klipper restarts.
@@ -193,38 +197,41 @@ type App struct {
 
 	Now func() time.Time // replaced in tests
 
-	pages          []page         // the pages over the state screen, the top last
-	file           printer.File   // the file of the file page
-	record         printer.Record // the print of the record page
-	player         *lapsePlayer   // the time lapse video of the player page, or nil
-	still          lapseStill     // the still of the last video of the record page or the done page
-	spoolID        string         // the roll of the roll page
-	spoolScroll    int            // the scroll position of the Rolls page
-	printsScroll   int            // the scroll position of the prints of a roll
-	picker         *curaPicker    // the list of the materials of Cura, over everything
-	colors         *colorPicker   // the palette of the color of a roll, over everything
-	form           *rollForm      // the form of a new roll, over everything
-	fileList       fileList       // the scroll position of the Files page
-	sd             sdView         // the SD card of the printer, on the Files page
-	macroScroll    int            // the scroll position of the Macros page
-	menuScroll     map[page]*int  // the scroll positions of the menu pages with more rows than fit
-	consoleScroll  int            // how far the Console page shows above its newest line
-	consoleKB      *keyboard      // the keyboard of the Console page, while it is open
-	meshPic        meshPic        // the 3D picture of the Bed mesh page
-	consoleLast    string         // the last typed command, for the next one
-	configScroll   int            // the scroll position of the printer list of the setup
-	configAll      bool           // the printer list shows all printers; off, the printers of the board
-	configBoard    board.Info     // the board that the printer list is for
-	flash          *flashState    // the flash of the firmware, while it runs and until OK
-	created        time.Time      // the start of this App: older action results do not show
-	actionSeen     time.Time      // the end of the last action result that this screen showed
-	historyScroll  int            // the scroll position of the history
-	project        string         // the project of the page of one project
-	projectsScroll int            // the scroll position of the list of the projects
-	queueScroll    int            // the scroll position of the queue
-	projectScroll  int            // the scroll position of the prints of one project
-	doneSeen       string         // the done screen of this print was closed (its history key)
-	away           bool           // Menu on the screen of the print awayFile showed the other screens (away.go)
+	pages          []page           // the pages over the state screen, the top last
+	file           printer.File     // the file of the file page
+	record         printer.Record   // the print of the record page
+	player         *lapsePlayer     // the time lapse video of the player page, or nil
+	still          lapseStill       // the still of the last video of the record page or the done page
+	spoolID        string           // the roll of the roll page
+	spoolScroll    int              // the scroll position of the Rolls page
+	printsScroll   int              // the scroll position of the prints of a roll
+	picker         *curaPicker      // the list of the materials of Cura, over everything
+	colors         *colorPicker     // the palette of the color of a roll, over everything
+	form           *rollForm        // the form of a new roll, over everything
+	fileList       fileList         // the scroll position of the Files page
+	sd             sdView           // the SD card of the printer, on the Files page
+	macroScroll    int              // the scroll position of the Macros page
+	menuScroll     map[page]*int    // the scroll positions of the menu pages with more rows than fit
+	consoleScroll  int              // how far the Console page shows above its newest line
+	consoleKB      *keyboard        // the keyboard of the Console page, while it is open
+	meshPic        meshPic          // the 3D picture of the Bed mesh page
+	heatAt         int              // the hot map of the Heat change page: its index in HeatMaps
+	heatKey        string           // the times of the two maps of heatMesh
+	heatMesh       *printer.BedMesh // the change of the Heat change page, or nil
+	consoleLast    string           // the last typed command, for the next one
+	configScroll   int              // the scroll position of the printer list of the setup
+	configAll      bool             // the printer list shows all printers; off, the printers of the board
+	configBoard    board.Info       // the board that the printer list is for
+	flash          *flashState      // the flash of the firmware, while it runs and until OK
+	created        time.Time        // the start of this App: older action results do not show
+	actionSeen     time.Time        // the end of the last action result that this screen showed
+	historyScroll  int              // the scroll position of the history
+	project        string           // the project of the page of one project
+	projectsScroll int              // the scroll position of the list of the projects
+	queueScroll    int              // the scroll position of the queue
+	projectScroll  int              // the scroll position of the prints of one project
+	doneSeen       string           // the done screen of this print was closed (its history key)
+	away           bool             // Menu on the screen of the print awayFile showed the other screens (away.go)
 	awayFile       string
 	touchAt        time.Time       // the last touch
 	followed       bool            // followPrint saw a frame
