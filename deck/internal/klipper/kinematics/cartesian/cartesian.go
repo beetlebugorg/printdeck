@@ -12,6 +12,7 @@ package cartesian
 
 import (
 	"math"
+	"slices"
 	"strings"
 
 	"printdeck/internal/klipper/configfile"
@@ -138,10 +139,35 @@ func (k *CartKinematics) homeAxis(hs stepper.HomingState, axis int, rail *steppe
 
 // Home homes each axis of the homing state, in order.
 func (k *CartKinematics) Home(hs stepper.HomingState) {
+	axes := hs.Axes()
+	// Printdeck: X and Y in one move
+	if xy, ok := hs.(stepper.XYHomer); ok && xy.HomeXYTogether() && slices.Contains(axes, 0) && slices.Contains(axes, 1) {
+		k.homeXY(hs)
+		axes = slices.DeleteFunc(slices.Clone(axes), func(a int) bool { return a < 2 })
+	}
 	// Each axis is homed independently and in order
-	for _, axis := range hs.Axes() {
+	for _, axis := range axes {
 		k.homeAxis(hs, axis, k.rails[axis])
 	}
+}
+
+// homeXY homes X and Y in one move to the corner of their endstops (Printdeck). Each stepper
+// stops at its own endstop. The positions are the same as of homeAxis for each axis.
+func (k *CartKinematics) homeXY(hs stepper.HomingState) {
+	homepos := []float64{math.NaN(), math.NaN(), math.NaN(), math.NaN()}
+	forcepos := append([]float64(nil), homepos...)
+	for axis := 0; axis < 2; axis++ {
+		positionMin, positionMax := k.rails[axis].Range()
+		hi := k.rails[axis].HomingInfo()
+		homepos[axis] = hi.PositionEndstop
+		forcepos[axis] = hi.PositionEndstop
+		if hi.PositiveDir {
+			forcepos[axis] -= 1.5 * (hi.PositionEndstop - positionMin)
+		} else {
+			forcepos[axis] += 1.5 * (positionMax - hi.PositionEndstop)
+		}
+	}
+	hs.HomeRails([]*stepper.Rail{k.rails[0], k.rails[1]}, forcepos, homepos)
 }
 
 func (k *CartKinematics) checkEndstops(move *toolhead.Move) {

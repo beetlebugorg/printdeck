@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"math"
 	"net"
 	"os"
 	"path/filepath"
@@ -47,9 +48,9 @@ func (c *apiClient) call(method string, params map[string]any) map[string]any {
 	}
 }
 
-// run starts a host on the simulated TAZ with extra config, homes Z, and returns the error message of
-// the home ("" when it homes).
-func run(t *testing.T, extra string) string {
+// start starts a host on the simulated TAZ with extra config, and returns a client of it. The host
+// stops at the end of the test.
+func start(t *testing.T, extra string) *apiClient {
 	dir := t.TempDir()
 	base, err := os.ReadFile("../../../printer/sim/taz-workhorse.cfg")
 	if err != nil {
@@ -62,14 +63,14 @@ func run(t *testing.T, extra string) string {
 	p := host.New(r, host.StartArgs{"config_file": cfgPath, "apiserver": sock, "start_reason": "startup"})
 	done := make(chan string)
 	go func() { done <- p.Run() }()
-	defer func() {
+	t.Cleanup(func() {
 		r.RegisterAsyncCallback(func(float64) any { p.RequestExit("exit"); return nil }, reactor.Now)
 		select {
 		case <-done:
 		case <-time.After(10 * time.Second):
 			t.Error("the host did not exit")
 		}
-	}()
+	})
 	var conn net.Conn
 	for i := 0; i < 500; i++ {
 		if conn, err = net.Dial("unix", sock); err == nil {
@@ -80,7 +81,7 @@ func run(t *testing.T, extra string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	t.Cleanup(func() { conn.Close() })
 	c := &apiClient{t: t, conn: conn, rd: bufio.NewReader(conn)}
 	for i := 0; ; i++ {
 		res, _ := c.call("info", map[string]any{})["result"].(map[string]any)
@@ -92,11 +93,30 @@ func run(t *testing.T, extra string) string {
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	res := c.call("gcode/script", map[string]any{"script": "G28 Z"})
+	return c
+}
+
+// script runs G-code, and returns its error message ("" when it runs).
+func (c *apiClient) script(gcode string) string {
+	res := c.call("gcode/script", map[string]any{"script": gcode})
 	if e, ok := res["error"].(map[string]any); ok {
 		return e["message"].(string)
 	}
 	return ""
+}
+
+// toolhead returns the status of the toolhead.
+func (c *apiClient) toolhead() map[string]any {
+	res := c.call("objects/query", map[string]any{"objects": map[string]any{"toolhead": nil}})
+	st, _ := res["result"].(map[string]any)["status"].(map[string]any)
+	th, _ := st["toolhead"].(map[string]any)
+	return th
+}
+
+// run starts a host on the simulated TAZ with extra config, homes Z, and returns the error message of
+// the home ("" when it homes).
+func run(t *testing.T, extra string) string {
+	return start(t, extra).script("G28 Z")
 }
 
 // The second Z motor has a switch at another place than the first: in the simulated mechanics its
@@ -123,5 +143,39 @@ func TestSkewStopsHome(t *testing.T) {
 	// moved on to its switch, about 150 mm. On the printer, that twists the gantry.
 	if msg = run(t, z1); msg != "" {
 		t.Errorf("home error without the guard %q", msg)
+	}
+}
+
+// homeXY homes Z, moves the toolhead to X 200 Y 250, and homes X and Y. It returns the position
+// after the home, and the time of the XY home on the printer (the print time of the toolhead).
+func homeXY(t *testing.T, extra string) ([]any, float64) {
+	c := start(t, extra)
+	if msg := c.script("G28\nG90\nG1 X200 Y250 F6000\nM400"); msg != "" {
+		t.Fatal(msg)
+	}
+	before := c.toolhead()["print_time"].(float64)
+	if msg := c.script("G28 X Y\nM400"); msg != "" {
+		t.Fatal(msg)
+	}
+	th := c.toolhead()
+	if th["homed_axes"] != "xyz" {
+		t.Errorf("homed axes %v", th["homed_axes"])
+	}
+	return th["position"].([]any), th["print_time"].(float64) - before
+}
+
+// X and Y in one move end at the same position as the home of each axis, in less time.
+func TestHomeXYTogether(t *testing.T) {
+	pos, one := homeXY(t, "\n[printdeck_homing]\nhome_xy_together: True\n")
+	want, two := homeXY(t, "\n[printdeck_homing]\n")
+	for i := 0; i < 3; i++ {
+		if math.Abs(pos[i].(float64)-want[i].(float64)) > 1e-6 {
+			t.Errorf("position %v, want %v", pos, want)
+			break
+		}
+	}
+	t.Logf("X and Y home in %.1f s together, %.1f s one after the other", one, two)
+	if one >= two*0.8 {
+		t.Errorf("the home in one move lasts %.1f s, the home of each axis %.1f s", one, two)
 	}
 }

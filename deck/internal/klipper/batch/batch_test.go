@@ -46,9 +46,9 @@ func TestConfigMatchesKlipper(t *testing.T) {
 }
 
 // klipperConfig writes printer/printer.cfg with no [printdeck_sdcard], [printdeck_cube],
-// [printdeck_backlash] or [input_shaper], and returns its path. The printdeck sections are not in
-// Klipper. They add SPI devices and an endstop to the board config of the reference, and they
-// change the moves. The reference streams have no shaper: the shaper has its own reference test
+// [printdeck_backlash], [printdeck_homing] or [input_shaper], and returns its path. The printdeck
+// sections are not in Klipper. They add SPI devices and an endstop to the board config of the
+// reference, and they change the moves (home_xy_together homes X and Y in one move). The reference streams have no shaper: the shaper has its own reference test
 // (input_shaper_test.go).
 func klipperConfig(t *testing.T) string {
 	t.Helper()
@@ -61,7 +61,8 @@ func klipperConfig(t *testing.T) string {
 	for _, l := range strings.Split(string(cfg), "\n") {
 		if strings.HasPrefix(l, "[") {
 			skip = strings.HasPrefix(l, "[printdeck_sdcard]") || strings.HasPrefix(l, "[printdeck_cube]") ||
-				strings.HasPrefix(l, "[printdeck_backlash]") || strings.HasPrefix(l, "[input_shaper]")
+				strings.HasPrefix(l, "[printdeck_backlash]") || strings.HasPrefix(l, "[printdeck_homing]") ||
+				strings.HasPrefix(l, "[input_shaper]")
 		}
 		if !skip {
 			out = append(out, l)

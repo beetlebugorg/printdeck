@@ -253,3 +253,9 @@ type HomingState interface {
 	Axes() []int
 	HomeRails(rails []*Rail, forcepos, homepos []float64)
 }
+
+// XYHomer is a homing state that can home X and Y in one move (Printdeck: home_xy_together of
+// [printdeck_homing]).
+type XYHomer interface {
+	HomeXYTogether() bool
+}

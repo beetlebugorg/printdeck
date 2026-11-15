@@ -127,6 +127,7 @@ type HomingMove struct {
 	endstops         []NamedEndstop
 	toolhead         *toolhead.ToolHead
 	StepperPositions []*StepperPosition
+	groups           map[string]int // Printdeck: the rail of each endstop name, for the skew guard
 }
 
 // NewHomingMove makes a homing move with endstops. The endstops with no steppers are left out. A
@@ -439,13 +440,15 @@ func (h *Homing) doHomeRails(rails []*stepper.Rail, forcepos, movepos []float64)
 	endstops := railEndstops(rails)
 	hi := rails[0].HomingInfo()
 	hmove := NewHomingMove(h.printer, endstops, nil)
-	hmove.HomingMove(homepos, hi.Speed, false, true, true)
+	hmove.groups = railGroups(rails) // Printdeck
+	hmove.HomingMove(homepos, railsSpeed(rails, forcepos, movepos, false), false, true, true)
 	// Perform second home
 	if hi.RetractDist != 0 {
 		homepos = h.retractMove(hi, forcepos, movepos)
 		// Home again
 		hmove = NewHomingMove(h.printer, endstops, nil)
-		hmove.HomingMove(homepos, hi.SecondHomingSpeed, false, true, true)
+		hmove.groups = railGroups(rails) // Printdeck
+		hmove.HomingMove(homepos, railsSpeed(rails, forcepos, movepos, true), false, true, true)
 		if name := hmove.CheckNoMovement(); name != "" {
 			panic(gcode.Errorf("Endstop %s still triggered after retract", name))
 		}
@@ -566,6 +569,7 @@ func (h *Homing) HomeRails(rails []*stepper.Rail, forcepos, movepos []float64) {
 type PrinterHoming struct {
 	printer *host.Printer
 	maxSkew float64 // Printdeck: see SetMaxSkew
+	homeXY  bool    // Printdeck: see SetHomeXY
 }
 
 func load(config *configfile.Wrapper) any {
