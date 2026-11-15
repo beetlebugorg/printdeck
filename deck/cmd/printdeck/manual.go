@@ -605,6 +605,7 @@ func manualParts() []section {
 					Callouts: []callout{
 						{"Run all", "Heats, then runs the Z offset, the twist and the bed map, one after the other."},
 						{"Z offset", "The paper test for the nozzle height, hot."},
+						{"Probe offset", "Prints a 20 mm pad. The pin then finds the edges of the pad, and the deck finds x_offset and y_offset of the probe."},
 						{"Input shaping", "Opens the tests of the input shaper: the ringing tower and the check tower."},
 						{"Pressure advance", "Prints the test tower, or sets the value from it. The pressure advance goes up 0.005 for each mm of the tower. Type the height of the sharpest corners."},
 						{"Retraction", "Prints the test tower, or sets the length from it or by hand. The length goes up 0.25 mm each 3 mm band. Type the height of the lowest band with no strings."},
@@ -1179,6 +1180,7 @@ func manualSections() []section {
 				"Tap Save config to write the results. Klipper restarts.",
 				"Open Machine, then Calibration. Tap Pressure advance, then Print the tower. After the print, tap Pressure advance, then From the tower, and type the height of the sharpest corners.",
 				"Tap Retraction, then Print the tower. After the print, tap Retraction, then From the tower, and type the height of the lowest band with no strings.",
+				"After a change to the probe mount, tap Probe offset, then Print the pad and find it. After the print, tap Probe offset, then Set from the last pad. Then do the twist and the bed map again.",
 				"Tap Height check, then Print, measure only. After the print, tap Height check, then Last results. Then print it again with Print, measure and correct, and compare the results and the heights of the two towers.",
 			},
 			Figures: fig("maintenance", "maintenance-more", "calibration", "action", "paper")},

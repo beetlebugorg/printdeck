@@ -469,6 +469,19 @@ func (a *App) drawProbeCal(c *gfx.Canvas, st printer.State) {
 	default:
 		items = append(items, menuItem{"Z offset", fmt.Sprintf("%.3f mm · paper test at the middle of the bed", mach.ProbeOffset[2]), dim, paper})
 	}
+	if mach.HasProbe && mach.Has("printdeck_pad") {
+		items = append(items, menuItem{"Probe offset", probeOffsetLine(mach), dim, func() {
+			if a.probeCal != nil {
+				a.Toast("A calibration runs. Stop it first.")
+				return
+			}
+			if !idle {
+				a.Toast("Wait until the print ends")
+				return
+			}
+			a.askProbeOffset(mach)
+		}})
+	}
 	if mach.HasTwist {
 		sub := "Not calibrated · a paper test at each point"
 		if len(mach.TwistX) > 0 {

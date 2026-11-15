@@ -24,6 +24,14 @@
 // height of the layer, that is z_offset less clearance over the top. A pin that misses the pad
 // then gives an error, and the nozzle stays over the print. clearance must be less than z_offset.
 //
+// PAD_FIND_OFFSET X=<x> Y=<y> SIDE=<side> HEIGHT=<height> finds x_offset and y_offset of the
+// probe on a square pad that the print made: the middle at X and Y, the side and the height in
+// mm. The pin probes the middle, then bisects each edge to 0.1 mm: on the pad the probe reads
+// about the height, off the pad about 0. The middle of the edges that the pin finds, less the
+// middle that the nozzle printed, is the error of the offsets. The width of the pin moves the two
+// edges of a side by the same amount, so the middle stays. If the pin misses the middle, it tries
+// 8 places around it. The status has "found_x_offset" and "found_y_offset".
+//
 // PAD_RESET [RESULTS=0] removes the correction, and clears the results. With RESULTS=0 the
 // results stay. The status has the results of the checks:
 // "checks", a list of [z, error, correction] with z the height of the nozzle and the correction
@@ -57,6 +65,7 @@ type Pad struct {
 	travelSpeed, lift float64
 	adjust            float64      // the correction now, in mm
 	checks            [][3]float64 // z, error, correction
+	found             []float64    // x_offset and y_offset of PAD_FIND_OFFSET, or nil
 }
 
 func load(config *configfile.Wrapper) any {
@@ -69,6 +78,7 @@ func load(config *configfile.Wrapper) any {
 	p.lift = config.GetFloat("lift_speed", configfile.Default(15.), configfile.Above(0.))
 	g := gcode.Of(p.printer)
 	g.RegisterCommand("PAD_CHECK", p.cmdCheck, false, "Probe the check pad, and correct the Z of the print")
+	g.RegisterCommand("PAD_FIND_OFFSET", p.cmdFindOffset, false, "Find x_offset and y_offset of the probe on a printed pad")
 	g.RegisterCommand("PAD_RESET", p.cmdReset, false, "Clear the results and the correction of the pad checks")
 	return p
 }
@@ -81,7 +91,11 @@ func (p *Pad) Status(eventtime float64) map[string]any {
 	for i, c := range p.checks {
 		checks[i] = []any{c[0], c[1], c[2]}
 	}
-	return map[string]any{"checks": checks, "adjust": p.adjust}
+	st := map[string]any{"checks": checks, "adjust": p.adjust}
+	if p.found != nil {
+		st["found_x_offset"], st["found_y_offset"] = p.found[0], p.found[1]
+	}
+	return st
 }
 
 func (p *Pad) cmdReset(gcmd *gcode.Command) {
@@ -158,4 +172,110 @@ func (p *Pad) cmdCheck(gcmd *gcode.Command) {
 		msg += fmt.Sprintf(", correction now %+.3f mm", p.adjust)
 	}
 	gcmd.RespondInfo(msg, true)
+}
+
+// findAbove is the height of the probe start over the trigger height on the pad, in mm, for
+// PAD_FIND_OFFSET. The pin stays down from place to place, so it is more than above.
+const findAbove = 4.0
+
+// Bisect returns the place of an edge between in (on the pad) and out (off the pad), to tol mm.
+// on probes a place, and returns true when it is on the pad.
+func Bisect(in, out, tol float64, on func(v float64) bool) float64 {
+	for math.Abs(out-in) > tol {
+		mid := (in + out) / 2
+		if on(mid) {
+			in = mid
+		} else {
+			out = mid
+		}
+	}
+	return (in + out) / 2
+}
+
+func (p *Pad) cmdFindOffset(gcmd *gcode.Command) {
+	pr, ok := p.printer.TryLookupObject("probe").(probe.Probe)
+	if !ok {
+		panic(gcode.Errorf("PAD_FIND_OFFSET needs a probe"))
+	}
+	cx, cy := gcmd.GetFloat("X"), gcmd.GetFloat("Y")
+	side := gcmd.GetFloat("SIDE", gcode.Above(0))
+	height := gcmd.GetFloat("HEIGHT", gcode.Above(0))
+	off := pr.Offsets(nil)
+	th := toolhead.Of(p.printer)
+	nan := math.NaN()
+	top := height + off[2] + findAbove
+	th.ManualMove([]float64{nan, nan, math.Max(th.Position()[2], top)}, p.lift)
+	session := pr.StartProbeSession(gcmd)
+	n := 0
+	// on probes the pin place (x, y): true on the pad.
+	on := func(x, y float64) bool {
+		th.ManualMove([]float64{x - off[0], y - off[1], nan}, p.travelSpeed)
+		session.RunProbe(gcmd)
+		rs := session.PullProbedResults()
+		z := rs[len(rs)-1].BedZ()
+		th.ManualMove([]float64{nan, nan, top}, p.lift)
+		n++
+		return z > height/2
+	}
+	var fx, fy float64
+	func() {
+		defer session.EndProbeSession()
+		var w, h float64
+		var err error
+		fx, fy, w, h, err = FindCenter(cx, cy, side, on)
+		if err != nil {
+			panic(gcode.Errorf("%s", err.Error()))
+		}
+		gcmd.RespondInfo(fmt.Sprintf("The pad measures %.2f by %.2f mm (%d probes)", w, h, n), true)
+	}()
+	// The pin found the middle at (fx, fy) with the offsets off. The nozzle printed it at (cx, cy).
+	p.found = []float64{off[0] - (fx - cx), off[1] - (fy - cy)}
+	gcmd.RespondInfo(fmt.Sprintf("x_offset %.2f (now %.2f), y_offset %.2f (now %.2f)",
+		p.found[0], off[0], p.found[1], off[1]), true)
+}
+
+// FindCenter finds the middle of a square pad of side side, near (cx, cy), with on: true when
+// the pin at a place is on the pad. It returns the middle, and the width along X and Y.
+func FindCenter(cx, cy, side float64, on func(x, y float64) bool) (fx, fy, w, h float64, err error) {
+	// A place on the pad: the middle, or one of 8 places around it.
+	d := side * 0.3
+	ix, iy, found := cx, cy, false
+	for _, o := range [][2]float64{{0, 0}, {0, -d}, {0, d}, {-d, 0}, {d, 0}, {-d, -d}, {d, -d}, {-d, d}, {d, d}} {
+		if on(cx+o[0], cy+o[1]) {
+			ix, iy, found = cx+o[0], cy+o[1], true
+			break
+		}
+	}
+	if !found {
+		return 0, 0, 0, 0, fmt.Errorf("The probe did not find the pad at 9 places around X %.1f Y %.1f. "+
+			"Check x_offset and y_offset of the probe: they are more than %.0f mm wrong.", cx, cy, side*0.8)
+	}
+	edge := func(name string, in, out float64, at func(v float64) bool) float64 {
+		if err != nil {
+			return 0
+		}
+		if at(out) {
+			err = fmt.Errorf("The probe found the pad at the %s side, %.1f mm from the place on the pad. "+
+				"Check SIDE and the pad.", name, math.Abs(out-in))
+			return 0
+		}
+		return Bisect(in, out, 0.1, at)
+	}
+	onX := func(v float64) bool { return on(v, iy) }
+	left := edge("left", ix, ix-side, onX)
+	right := edge("right", ix, ix+side, onX)
+	fx = (left + right) / 2
+	onY := func(v float64) bool { return on(fx, v) }
+	front := edge("front", iy, iy-side, onY)
+	back := edge("back", iy, iy+side, onY)
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	fy = (front + back) / 2
+	w, h = right-left, back-front
+	if math.Abs(w-h) > 2 || math.Abs(w-side) > 3 {
+		return 0, 0, 0, 0, fmt.Errorf("The pad measures %.1f by %.1f mm, and SIDE is %.1f. The edges are not clear: "+
+			"check the pad.", w, h, side)
+	}
+	return fx, fy, w, h, nil
 }
