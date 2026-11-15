@@ -4,7 +4,6 @@ import (
 	"math"
 	"path/filepath"
 	"slices"
-	"strings"
 	"testing"
 	"time"
 )
@@ -86,6 +85,13 @@ func TestHeatMaps(t *testing.T) {
 		t.Fatalf("maps at %v, want 24.2 and 59.6", maps)
 	}
 	s.see(hot, t0.Add(3*time.Hour), 60) // the map at 60 again, with the bump
+	big, _ := meshFromStatus(meshStatus(9, 9, -1))
+	s2 := NewMeshStore(filepath.Join(t.TempDir(), "bed-mesh.json"))
+	s2.see(big, t0, 22)
+	s2.see(cold, t0.Add(time.Hour), 22)
+	if got := s2.Last(); got == nil || got.points() != 49 {
+		t.Errorf("a 7 x 7 map after a 9 x 9 map: %v", got)
+	}
 	maps = s.Temps()
 	d, ok := HeatChange(maps[1], maps[0])
 	bump := -0.85 - cold.Z[3][3]
@@ -99,17 +105,20 @@ func TestHeatMaps(t *testing.T) {
 }
 
 func TestHeatSweep(t *testing.T) {
-	if got := HeatTemps(60); !slices.Equal(got, []int{40, 50, 60}) {
+	if got := HeatTemps(60); !slices.Equal(got, []int{35, 40, 45, 50, 55, 60}) {
 		t.Errorf("temps to 60: %v", got)
 	}
-	if got := HeatTemps(65); !slices.Equal(got, []int{40, 50, 60, 65}) {
-		t.Errorf("temps to 65: %v", got)
+	if got := HeatTemps(62); !slices.Equal(got, []int{35, 40, 45, 50, 55, 60, 62}) {
+		t.Errorf("temps to 62: %v", got)
 	}
-	got := strings.Join(sweepLines(Machine{Modules: []string{"z_tilt"}}, 60), "\n")
-	want := "G28\nZ_TILT_ADJUST\nM104 S0\nM140 S0\nTEMPERATURE_WAIT SENSOR=heater_bed MAXIMUM=30\nBED_MESH_CALIBRATE\n" +
-		"M190 S40\nG4 P300000\nBED_MESH_CALIBRATE\nM190 S50\nG4 P300000\nBED_MESH_CALIBRATE\n" +
-		"M190 S60\nG4 P300000\nBED_MESH_CALIBRATE\nM140 S0"
+	got := HeatSweepGcode(Machine{Modules: []string{"z_tilt"}}, 40)
+	want := ";FLAVOR:Klipper\n;Generated with Printdeck: the heat sweep of the bed map\n" +
+		"G28\nZ_TILT_ADJUST\nM104 S0\nM140 S0\nTEMPERATURE_WAIT SENSOR=heater_bed MAXIMUM=30\nBED_MESH_CALIBRATE\n" +
+		"M190 S35\nG4 P240000\nBED_MESH_CALIBRATE\nM190 S40\nG4 P240000\nBED_MESH_CALIBRATE\nM140 S0\n"
 	if got != want {
-		t.Errorf("lines:\n%s\nwant:\n%s", got, want)
+		t.Errorf("file:\n%s\nwant:\n%s", got, want)
+	}
+	if m := HeatMinutes(60); m < 60 || m > 90 {
+		t.Errorf("%d minutes to 60", m)
 	}
 }

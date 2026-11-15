@@ -38,9 +38,9 @@ func (a *App) drawHeatMap(c *gfx.Canvas, st printer.State) {
 				return
 			}
 			temps := printer.HeatTemps(heatSweepTop)
-			a.confirm = &confirmBox{question: fmt.Sprintf("Map the bed at room temperature, then at %d° to %d°? "+
-				"The bed cools to %d° first. About %d minutes.", temps[0], temps[len(temps)-1], printer.HeatCold,
-				10+(len(temps)+1)*8+len(temps)*printer.HeatSoak),
+			a.confirm = &confirmBox{question: fmt.Sprintf("Map the bed at room temperature, then each %d° from %d° to %d°? "+
+				"The bed cools to %d° first. About %d minutes.", printer.HeatStep, temps[0], temps[len(temps)-1], printer.HeatCold,
+				printer.HeatMinutes(heatSweepTop)),
 				yes: "Sweep", onYes: func() { a.do(func() error { return pr.HeatSweep(heatSweepTop) }) }}
 		})
 	}

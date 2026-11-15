@@ -150,6 +150,10 @@ type MeshStore struct {
 	temps []BedMesh // by temperature, low to high
 }
 
+// fullMap is the least points of a full map. A full map replaces the map of the store, also when
+// the map has more points: a mesh with extend on has more points than one with extend off.
+const fullMap = 25
+
 // TempStep is the step of the bed temperatures of the maps of MeshStore, in °C.
 const TempStep = 5.0
 
@@ -215,7 +219,7 @@ func (s *MeshStore) see(m BedMesh, now time.Time, bed float64) {
 		return
 	}
 	s.mu.Lock()
-	if s.last != nil && (s.last.same(m) || m.points() < s.last.points()) {
+	if s.last != nil && (s.last.same(m) || m.points() < min(s.last.points(), fullMap)) {
 		s.mu.Unlock()
 		return
 	}
@@ -231,13 +235,15 @@ func (s *MeshStore) see(m BedMesh, now time.Time, bed float64) {
 	writeJSON(s.tempsPath(), temps)
 }
 
-// The heat sweep: the full bed map at room temperature, and then at each step of 10 °C. The bed
+// The heat sweep: the full bed map at room temperature, and then at each step of 5 °C. The bed
 // soaks at each step before the probe, so the plate is even. The gantry is leveled once, at the
-// start: the changes between the maps are then of the bed and the frame only.
+// start: the changes between the maps are then of the bed and the frame only. The sweep is a
+// G-code file that the deck prints: it runs for more than an hour, and a print has no time limit.
 const (
-	HeatCold = 30 // °C: the sweep waits for the bed to cool to this first
-	HeatStep = 10 // °C
-	HeatSoak = 5  // minutes at each step before the probe
+	HeatCold      = 30 // °C: the sweep waits for the bed to cool to this first
+	HeatStep      = 5  // °C, the same as TempStep of the store
+	HeatSoak      = 4  // minutes at each step before the probe
+	HeatSweepFile = "printdeck-heat-sweep.gcode"
 )
 
 // HeatTemps are the bed temperatures of a heat sweep up to top, after the map at room
@@ -251,6 +257,13 @@ func HeatTemps(top int) []int {
 		ts = append(ts, top)
 	}
 	return ts
+}
+
+// HeatMinutes is about the time of a heat sweep up to top, in minutes, after the bed cools: 6
+// minutes for each map, and the soak and the heating of each step.
+func HeatMinutes(top int) int {
+	n := len(HeatTemps(top))
+	return 5 + 6*(n+1) + (HeatSoak+1)*n
 }
 
 // sweepLines are the commands of a heat sweep up to top.
@@ -268,8 +281,18 @@ func sweepLines(m Machine, top int) []string {
 	return append(lines, "M140 S0")
 }
 
-// HeatSweep probes the bed map at room temperature, then at each step of 10 °C up to top. It waits
-// for the bed to cool first. Each map is kept for HeatMaps.
+// HeatSweepGcode is the G-code file of a heat sweep up to top.
+func HeatSweepGcode(m Machine, top int) string {
+	var b strings.Builder
+	b.WriteString(";FLAVOR:Klipper\n;Generated with Printdeck: the heat sweep of the bed map\n")
+	for _, l := range sweepLines(m, top) {
+		b.WriteString(l + "\n")
+	}
+	return b.String()
+}
+
+// HeatSweep prints the heat sweep: the bed map at room temperature, then at each step of 5 °C up
+// to top. It waits for the bed to cool first. Each map is kept for HeatMaps.
 func (k *Klippy) HeatSweep(top int) error {
-	return k.RunAction("Heat sweep", sweepLines(k.Machine(), top)...)
+	return k.printTest(HeatSweepFile, HeatSweepGcode(k.Machine(), top))
 }
