@@ -60,6 +60,7 @@ const (
 	pageShaper      // the tests of the input shaper (shaper.go)
 	pageOption      // one setting: a toggle, or a list of choices (a.option, option.go)
 	pageHeatMap     // the change of the bed from the coldest map to a hot map (heatmap.go)
+	pageBedCool     // the cool of the bed before the end of a print (bedcool.go)
 )
 
 // open shows a page over the current one.

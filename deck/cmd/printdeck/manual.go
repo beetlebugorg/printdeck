@@ -587,11 +587,11 @@ func manualParts() []section {
 				{Name: "maintenance", Caption: "The Maintenance page", Setup: page("maintenance"),
 					Callouts: []callout{
 						{"Bed tilt", "Probes the bed and corrects its tilt. A printer with a bed mesh shows Bed mesh."},
+						{"Bed cool", "Sets the bed to a hold temperature a little before the end of a print, so the part can come off sooner."},
 						{"Probe Z offset", "The paper test for the nozzle height."},
 						{"PID tune", "Heats the nozzle to 210° and the bed to 60°, and tunes each heater."},
 						{"Nozzle change", "Heats the nozzle to 250° and raises the head."},
 						{"Firmware", "Writes the Klipper firmware. Orange text shows old firmware."},
-						{"Save config", "Writes the results into printer.cfg. Klipper restarts. Orange text shows unsaved results."},
 					},
 					Tall: []callout{
 						{"Simulated printer", "Runs a simulated printer. Orange text shows a simulated printer in use."},
@@ -599,6 +599,7 @@ func manualParts() []section {
 				{Name: "maintenance-more", Caption: "The Maintenance page, further down", Layout: "wide",
 					Setup: func(s *manualState) { page("maintenance")(s); s.a.DemoScroll(9999) },
 					Callouts: []callout{
+						{"Save config", "Writes the results into printer.cfg. Klipper restarts. Orange text shows unsaved results."},
 						{"Simulated printer", "Runs a simulated printer. Orange text shows a simulated printer in use."},
 					}},
 				{Name: "calibration", Caption: "The Calibration page", Setup: page("calibration"),
@@ -1184,6 +1185,7 @@ func manualSections() []section {
 				"To see how the bed changes when it heats, open Maintenance, then Heat change, tap Test, and then Heat sweep. The deck prints a G-code file that maps the bed at room temperature, then each 5 °C from 35 to 60 °C, and shows each map less the cold map. The sweep runs for about 75 minutes, after the bed cools.",
 				"The bed changes its shape for many minutes after it gets hot. To measure this, tap Test, and then Drift test. The bed cools to 30 °C, heats to 60 °C, and the probe measures the middle of the bed each minute for 20 minutes. Drift test, boost does the same test, but the bed first heats to 65 °C for 3 or 6 minutes, then goes back to 60 °C. Compare it with the drift test: a boost can make the bed settle sooner. Last drift results shows how far the bed moved, the time to 90 % of the movement, and the time after which the bed stays within 0.03 mm. BED_SETTLE in PRINT_START uses this: it probes the middle of the bed every 30 s, and the print starts when the bed stops moving.",
 				"Tap Height check, then Print, measure only. After the print, tap Height check, then Last results. Then print it again with Print, measure and correct, and compare the results and the heights of the two towers.",
+				"To cool the bed before the end of a print, open Maintenance, then Bed cool. Set a hold temperature for each material. The deck sets the bed to the hold when the time left is the time that the bed needs to cool. It learns that time from each cool of the bed. It does not cool the bed before half of the print, or for a part that is tall on a small base.",
 			},
 			Figures: fig("maintenance", "maintenance-more", "calibration", "action", "paper")},
 		{Chapter: "Level and calibrate", ID: "camera-calibrate", Title: "Calibrate the camera",

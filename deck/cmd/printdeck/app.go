@@ -136,6 +136,7 @@ func desktopApp(args []string) {
 	startNotify(ctx, cfg.StateDir, pr, app)
 	startCamera(ctx, cfg.StateDir, app, pr)
 	startTimelapse(ctx, cfg.StateDir, cfg.KlipperConfig, app, pr)
+	startBedCool(ctx, cfg.StateDir, app, pr)
 	startShare(cfg.StateDir, cfg.KlipperConfig, cfg.GcodeDir, app, pr)
 	go keepAwake(ctx, pr)
 	// The samples of the computer. A computer with no /proc has none, and the page shows that.
