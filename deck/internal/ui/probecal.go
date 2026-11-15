@@ -524,5 +524,18 @@ func (a *App) drawProbeCal(c *gfx.Canvas, st printer.State) {
 			a.askBacklash()
 		}})
 	}
+	if mach.HasProbe && mach.Has("printdeck_pad") {
+		items = append(items, menuItem{"Height check", "The probe taps a pad after each layer · test tower", dim, func() {
+			if a.probeCal != nil {
+				a.Toast("A calibration runs. Stop it first.")
+				return
+			}
+			if !idle {
+				a.showPadChecks() // the results so far
+				return
+			}
+			a.askHeightCheck()
+		}})
+	}
 	a.menuRowsWait(c, a.listArea(f), f.wide, 86, 12, items, st.Busy())
 }

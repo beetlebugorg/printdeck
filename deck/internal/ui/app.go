@@ -141,6 +141,11 @@ type Printer interface {
 	PrintShakeTest(axes string) error
 	// PrintRetractTower prints the retraction tower (printer.RetractTower).
 	PrintRetractTower(tool, bed int, material string) error
+	// PrintPadTower prints the height check (printer.PadTower). With correct, the deck corrects
+	// the Z offset during the print.
+	PrintPadTower(tool, bed int, material string, correct bool) error
+	// PadChecks reads the results of the last height check: z, the error and the correction.
+	PadChecks() ([][3]float64, error)
 	// SetRetraction sets the firmware retraction length in mm, now and in printer.cfg.
 	SetRetraction(length float64) error
 	// SetBacklash sets the backlash correction of X and Y in mm, now and in printer.cfg.

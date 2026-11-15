@@ -60,6 +60,7 @@ import (
 	_ "printdeck/internal/klipper/extras/printdeck_homing"
 	_ "printdeck/internal/klipper/extras/printdeck_jog"
 	_ "printdeck/internal/klipper/extras/printdeck_mesh"
+	_ "printdeck/internal/klipper/extras/printdeck_pad"
 	_ "printdeck/internal/klipper/extras/printdeck_pause"
 	_ "printdeck/internal/klipper/extras/printdeck_sdcard"
 	_ "printdeck/internal/klipper/extras/printdeck_timelapse"

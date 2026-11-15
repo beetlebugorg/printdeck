@@ -1356,7 +1356,7 @@
 <section id="calibrate">
   <h2 class="title"><span class="num">16</span>Level and calibrate</h2>
   <p>Maintenance lists the calibrations of your printer. Open it from Machine.</p>
-  <ol class="steps"><li>Open Machine, then Maintenance.</li><li>Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.</li><li>Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.</li><li>Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.</li><li>Tap Save config to write the results. Klipper restarts.</li><li>Open Machine, then Calibration. Tap Pressure advance, then Print the tower. After the print, tap Pressure advance, then From the tower, and type the height of the sharpest corners.</li><li>Tap Retraction, then Print the tower. After the print, tap Retraction, then From the tower, and type the height of the lowest band with no strings.</li></ol>
+  <ol class="steps"><li>Open Machine, then Maintenance.</li><li>Tap Bed tilt or Bed mesh to probe the bed. The deck shows the action until it ends.</li><li>Tap Probe Z offset for the paper test. Move the nozzle down until a sheet of paper drags a little, then tap Accept.</li><li>Tap PID tune after you change a heater or a fan. A PID tune runs for about 10 minutes.</li><li>Tap Save config to write the results. Klipper restarts.</li><li>Open Machine, then Calibration. Tap Pressure advance, then Print the tower. After the print, tap Pressure advance, then From the tower, and type the height of the sharpest corners.</li><li>Tap Retraction, then Print the tower. After the print, tap Retraction, then From the tower, and type the height of the lowest band with no strings.</li><li>Tap Height check, then Print, measure only. After the print, tap Height check, then Last results. Then print it again with Print, measure and correct, and compare the results and the heights of the two towers.</li></ol>
   
   <figure>
     <h3>The Maintenance page</h3>
@@ -1432,30 +1432,35 @@
         <circle cx="840" cy="39" r="15" class="badge"/>
         <text x="840" y="39" class="badge-n">1</text>
         
-        <line x1="825" y1="121" x2="784" y2="121" class="leader"/>
-        <circle cx="784" cy="121" r="5" class="dot"/>
-        <circle cx="840" cy="121" r="15" class="badge"/>
-        <text x="840" y="121" class="badge-n">2</text>
+        <line x1="825" y1="111" x2="784" y2="111" class="leader"/>
+        <circle cx="784" cy="111" r="5" class="dot"/>
+        <circle cx="840" cy="111" r="15" class="badge"/>
+        <text x="840" y="111" class="badge-n">2</text>
         
-        <line x1="825" y1="219" x2="784" y2="219" class="leader"/>
-        <circle cx="784" cy="219" r="5" class="dot"/>
-        <circle cx="840" cy="219" r="15" class="badge"/>
-        <text x="840" y="219" class="badge-n">3</text>
+        <line x1="825" y1="190" x2="784" y2="190" class="leader"/>
+        <circle cx="784" cy="190" r="5" class="dot"/>
+        <circle cx="840" cy="190" r="15" class="badge"/>
+        <text x="840" y="190" class="badge-n">3</text>
         
-        <line x1="825" y1="317" x2="784" y2="317" class="leader"/>
-        <circle cx="784" cy="317" r="5" class="dot"/>
-        <circle cx="840" cy="317" r="15" class="badge"/>
-        <text x="840" y="317" class="badge-n">4</text>
+        <line x1="825" y1="269" x2="784" y2="269" class="leader"/>
+        <circle cx="784" cy="269" r="5" class="dot"/>
+        <circle cx="840" cy="269" r="15" class="badge"/>
+        <text x="840" y="269" class="badge-n">4</text>
         
-        <line x1="825" y1="415" x2="784" y2="415" class="leader"/>
-        <circle cx="784" cy="415" r="5" class="dot"/>
-        <circle cx="840" cy="415" r="15" class="badge"/>
-        <text x="840" y="415" class="badge-n">5</text>
+        <line x1="825" y1="348" x2="784" y2="348" class="leader"/>
+        <circle cx="784" cy="348" r="5" class="dot"/>
+        <circle cx="840" cy="348" r="15" class="badge"/>
+        <text x="840" y="348" class="badge-n">5</text>
+        
+        <line x1="825" y1="427" x2="784" y2="427" class="leader"/>
+        <circle cx="784" cy="427" r="5" class="dot"/>
+        <circle cx="840" cy="427" r="15" class="badge"/>
+        <text x="840" y="427" class="badge-n">6</text>
         
       </svg>
     </div>
     <ol class="parts">
-      <li><span class="badge">1</span><span><b>Run all</b>Heats, then runs the Z offset, the twist and the bed map, one after the other.</span></li><li><span class="badge">2</span><span><b>Z offset</b>The paper test for the nozzle height, hot.</span></li><li><span class="badge">3</span><span><b>Input shaping</b>Opens the tests of the input shaper: the ringing tower and the check tower.</span></li><li><span class="badge">4</span><span><b>Pressure advance</b>Prints the test tower, or sets the value from it. The pressure advance goes up 0.005 for each mm of the tower. Type the height of the sharpest corners.</span></li><li><span class="badge">5</span><span><b>Retraction</b>Prints the test tower, or sets the length from it or by hand. The length goes up 0.25 mm each 3 mm band. Type the height of the lowest band with no strings.</span></li>
+      <li><span class="badge">1</span><span><b>Run all</b>Heats, then runs the Z offset, the twist and the bed map, one after the other.</span></li><li><span class="badge">2</span><span><b>Z offset</b>The paper test for the nozzle height, hot.</span></li><li><span class="badge">3</span><span><b>Input shaping</b>Opens the tests of the input shaper: the ringing tower and the check tower.</span></li><li><span class="badge">4</span><span><b>Pressure advance</b>Prints the test tower, or sets the value from it. The pressure advance goes up 0.005 for each mm of the tower. Type the height of the sharpest corners.</span></li><li><span class="badge">5</span><span><b>Retraction</b>Prints the test tower, or sets the length from it or by hand. The length goes up 0.25 mm each 3 mm band. Type the height of the lowest band with no strings.</span></li><li><span class="badge">6</span><span><b>Height check</b>Prints a 20 mm tower with a small pad. After each layer the probe taps the pad. Print it once to measure only, and once with the correction of the Z offset. Last results shows the errors.</span></li>
     </ol>
     <p class="note">Each row opens its choices. A printer with no probe shows only Pressure advance and Retraction.</p><p class="note">The retraction is the length of [firmware_retraction]. Turn on Firmware Retraction in the printer settings of the slicer, so the G-code has G10 and G11.</p>
   </figure>
