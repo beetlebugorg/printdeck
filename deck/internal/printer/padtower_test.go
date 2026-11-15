@@ -15,16 +15,16 @@ func TestPadTower(t *testing.T) {
 			flag = "CORRECT=1"
 		}
 		for _, want := range []string{"PRINT_START BED=60 EXTRUDER=210", "PAD_RESET\n", ";LAYER_COUNT:80",
-			"G1 Z20.000", "PAD_RESET RESULTS=0\nPRINT_END", "PAD_CHECK X=155.000 Y=140.000 " + flag} {
+			"G1 Z20.000", "PAD_RESET RESULTS=0\nPRINT_END", "PAD_CHECK X=157.000 Y=140.000 " + flag} {
 			if !strings.Contains(g, want) {
 				t.Errorf("correct %v: no %q", correct, want)
 			}
 		}
-		// The brim of the pad on the first layer: 10 loops, the outer one 5.6 mm out from the pad.
+		// The brim of the pad on the first layer: 10 loops, the outer one 5.6 mm out from the 16 mm pad.
 		if n := strings.Count(g, ";TYPE:SKIRT"); n != 1 {
 			t.Errorf("%d brims of the pad, want 1", n)
 		}
-		if !strings.Contains(g, "G1 X144.680 Y129.680 F9000") {
+		if !strings.Contains(g, "G1 X143.680 Y126.680 F9000") {
 			t.Error("no outer loop of the brim of the pad")
 		}
 		if n := strings.Count(g, "PAD_CHECK"); n != 80 {

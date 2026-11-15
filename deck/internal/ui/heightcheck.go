@@ -16,7 +16,7 @@ func (a *App) askHeightCheck() {
 	start := func(correct bool) func() {
 		return func() { a.do(func() error { return pr.PrintPadTower(m.Tool, m.Bed, m.Name, correct) }) }
 	}
-	a.confirm = &confirmBox{question: "Height check: a 20 mm tower and a pad. The probe taps the pad after each layer.",
+	a.confirm = &confirmBox{question: "Height check: a 20 mm tower and a 16 mm pad. The probe taps the pad after each layer.",
 		choices: []menuItem{
 			{"Print, measure only", fmt.Sprintf("At %d° · about 40 minutes · the Z offset stays", m.Tool), dim, start(false)},
 			{"Print, measure and correct", "The deck corrects the Z offset after each layer", dim, start(true)},
