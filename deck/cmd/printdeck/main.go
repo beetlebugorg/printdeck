@@ -272,6 +272,7 @@ func run(cfg config.Config) {
 	startNotify(ctx, cfg.StateDir, pr, app)
 	startCamera(ctx, cfg.StateDir, app, pr)
 	startTimelapse(ctx, cfg.StateDir, cfg.KlipperConfig, app, pr)
+	startBedCool(ctx, cfg.StateDir, app, pr)
 	startShare(cfg.StateDir, cfg.KlipperConfig, cfg.GcodeDir, app, pr)
 
 	if p, ok := screen.(interface{ SetTouch(touch.Options) }); ok {

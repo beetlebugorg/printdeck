@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"printdeck/internal/bedcool"
 	"printdeck/internal/board"
 	"printdeck/internal/gcodemeta"
 	"printdeck/internal/gfx"
@@ -49,6 +50,7 @@ func demoApp() (*ui.App, *ui.DemoPrinter) {
 	a.Updater = &ui.DemoUpdater{S: ui.UpdateStatus{Current: "v0.3.0", Latest: "v0.4.0", Newer: true, Checked: true,
 		Notes: demoNotes}}
 	a.Metrics = hostmetrics.Demo(demoNow())
+	a.BedCool = bedcool.NewRunner(bedcool.DefaultSettings)
 	// The print queue: three files after the print that runs.
 	a.Queue = &queue.Queue{}
 	for _, it := range []queue.Item{

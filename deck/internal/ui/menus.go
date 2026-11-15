@@ -295,6 +295,9 @@ func (a *App) drawMaintenance(c *gfx.Canvas, st printer.State) {
 	if mach.Has("bed_mesh") && mach.HasProbe {
 		rows = append(rows, row{"Heat change", heatSub(a.Printer.HeatMaps()), false, func() { a.open(pageHeatMap) }})
 	}
+	if a.BedCool != nil && mach.Has("heater_bed") {
+		rows = append(rows, row{"Bed cool", bedCoolLine(a.BedCool.Settings()), false, func() { a.open(pageBedCool) }})
+	}
 	if mach.Has("bed_tilt") {
 		rows = append(rows, row{"Bed tilt", "Probe the bed and correct its tilt", false,
 			run("Bed tilt", "Probe the bed now?", "Probe", append(home(), "BED_TILT_CALIBRATE")...)})

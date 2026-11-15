@@ -361,6 +361,8 @@ type App struct {
 	pair           *pairRound // the last A/B pair of the input shaping (shaper.go)
 	// TimeLapse is the time lapse and the picture of the first layer, or nil (Settings > Time lapse).
 	TimeLapse TimeLapse
+	// BedCool is the early cool of the bed, or nil (Maintenance > Bed cool).
+	BedCool BedCool
 
 	redrawPending atomic.Bool // redrawSoon asked for a frame
 
@@ -427,6 +429,7 @@ func (a *App) Session(width, height int) *App {
 	s.Metrics = a.Metrics
 	s.Camera = a.Camera
 	s.TimeLapse = a.TimeLapse
+	s.BedCool = a.BedCool
 	s.Cloud = a.Cloud
 	s.Share = a.Share
 	s.hub = a.hub
