@@ -8,10 +8,12 @@ pancake). A shelf sticks out from the plate. The BLTouch hangs under the shelf o
 screws with nuts. The BLTouch sits beside the front 25 mm of the motor. At the right end of X
 (X 293), the X end passes behind it.
 
-- The pin is 68 mm right of the nozzle and 17 mm in front of it (measured on the printer). The
-  old bracket put it 12 mm right and 76 mm in front, so the pin could not go behind Y 232.
-- The pin now reaches X 18 to 361 and Y −34.1 to 290.9: the full bed in Y. In X the pin covers the
-  bed from X 18.
+- The pin is 65.34 mm right of the nozzle and 22.78 mm in front of it. The Probe offset row of the
+  Calibration page of the deck found these values on a printed pad. A measure by hand gave 68 and
+  17, and the model of shape.py has these hand values. The old bracket put the pin 12 mm right and
+  76 mm in front, so the pin could not go behind Y 232.
+- The pin now reaches X 15.3 to 358.3 and Y −39.8 to 285.2: the full bed in Y. In X the pin covers
+  the bed from X 15.3.
 - The mount holds on two metal screws into the motor, away from the heater block.
 
 ## Files
