@@ -44,7 +44,7 @@ func TestHeatMapPage(t *testing.T) {
 		t.Error("the 40° key does not show the map at 40°")
 	}
 	tapLabel(t, a, cv, "Sweep")
-	if a.confirm == nil || !strings.Contains(a.confirm.question, "40° to 60°") {
+	if a.confirm == nil || !strings.Contains(a.confirm.question, "each 5° from 35° to 60°") {
 		t.Fatalf("Sweep asks %+v", a.confirm)
 	}
 	pr.HeatMaps_ = pr.HeatMaps_[:1]
