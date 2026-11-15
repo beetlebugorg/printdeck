@@ -16,8 +16,8 @@ const (
 	PadTowerHeight      = 20.0 // mm
 
 	padTowerSide = 20.0  // mm, the outer side of the tower
-	padSide      = 10.0  // mm, the side of the pad
-	padApart     = 30.0  // mm between the middles of the tower and the pad
+	padSide      = 16.0  // mm, the side of the pad: the pin can be some mm from its place
+	padApart     = 34.0  // mm between the middles of the tower and the pad: 7 mm between the brims
 	padWalls     = 3     // the walls of the tower
 	padSpeed     = 40.0  // mm/s
 	padFirst     = 20.0  // mm/s, the first layer
