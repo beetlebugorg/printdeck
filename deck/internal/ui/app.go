@@ -150,6 +150,8 @@ type Printer interface {
 	PrintProbePad(tool, bed int, material string) error
 	// FoundProbeOffset reads the offsets of the last pad. ok is false with no result.
 	FoundProbeOffset() (x, y float64, ok bool, err error)
+	// FindProbeOffsetOnPad homes, and finds the offsets on the pad that is still on the bed.
+	FindProbeOffsetOnPad() error
 	// SetProbeXYOffset writes x_offset and y_offset of the probe to printer.cfg. Klipper restarts.
 	SetProbeXYOffset(x, y float64) error
 	// SetRetraction sets the firmware retraction length in mm, now and in printer.cfg.

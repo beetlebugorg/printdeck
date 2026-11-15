@@ -28,6 +28,9 @@ func (a *App) askProbeOffset(mach printer.Machine) {
 			choices := []menuItem{{"Print the pad and find it",
 				fmt.Sprintf("A 20 mm pad at %d°, then the pin finds its edges · about 15 minutes", m.Tool), dim, func() {
 					a.do(func() error { return pr.PrintProbePad(m.Tool, m.Bed, m.Name) })
+				}},
+				{"Find on the pad on the bed", "The pad of the last print, still at the middle · home, then about 3 minutes", dim, func() {
+					a.do(pr.FindProbeOffsetOnPad)
 				}}}
 			if ok {
 				choices = append(choices, menuItem{"Set from the last pad",

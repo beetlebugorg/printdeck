@@ -175,7 +175,7 @@ func (p *Pad) cmdCheck(gcmd *gcode.Command) {
 }
 
 // findAbove is the height of the probe start over the trigger height on the pad, in mm, for
-// PAD_FIND_OFFSET. The pin stays down from place to place, so it is more than above.
+// PAD_FIND_OFFSET.
 const findAbove = 4.0
 
 // Bisect returns the place of an edge between in (on the pad) and out (off the pad), to tol mm.
@@ -205,21 +205,26 @@ func (p *Pad) cmdFindOffset(gcmd *gcode.Command) {
 	nan := math.NaN()
 	top := height + off[2] + findAbove
 	th.ManualMove([]float64{nan, nan, math.Max(th.Position()[2], top)}, p.lift)
-	session := pr.StartProbeSession(gcmd)
 	n := 0
-	// on probes the pin place (x, y): true on the pad.
+	// on probes the pin place (x, y): true on the pad. Each probe deploys and stows the pin. With
+	// the pin down from probe to probe, the short moves of the bisection start the next probe
+	// before the BLTouch is ready after its trigger: "Probe triggered prior to movement".
 	on := func(x, y float64) bool {
 		th.ManualMove([]float64{x - off[0], y - off[1], nan}, p.travelSpeed)
-		session.RunProbe(gcmd)
-		rs := session.PullProbedResults()
-		z := rs[len(rs)-1].BedZ()
+		session := pr.StartProbeSession(gcmd)
+		var z float64
+		func() {
+			defer session.EndProbeSession()
+			session.RunProbe(gcmd)
+			rs := session.PullProbedResults()
+			z = rs[len(rs)-1].BedZ()
+		}()
 		th.ManualMove([]float64{nan, nan, top}, p.lift)
 		n++
 		return z > height/2
 	}
 	var fx, fy float64
 	func() {
-		defer session.EndProbeSession()
 		var w, h float64
 		var err error
 		fx, fy, w, h, err = FindCenter(cx, cy, side, on)

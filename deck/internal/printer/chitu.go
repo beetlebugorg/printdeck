@@ -545,6 +545,7 @@ func (c *ChiTu) PrintProbePad(int, int, string) error         { return ErrNotSup
 func (c *ChiTu) FoundProbeOffset() (float64, float64, bool, error) {
 	return 0, 0, false, ErrNotSupported
 }
+func (c *ChiTu) FindProbeOffsetOnPad() error                    { return ErrNotSupported }
 func (c *ChiTu) SetProbeXYOffset(float64, float64) error        { return ErrNotSupported }
 func (c *ChiTu) SetRetraction(float64) error                    { return ErrNotSupported }
 func (c *ChiTu) SetBacklash(float64, float64) error             { return ErrNotSupported }
