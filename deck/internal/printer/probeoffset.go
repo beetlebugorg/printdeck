@@ -58,7 +58,7 @@ func ProbePad(m Machine, tool, bed int, material string) string {
 		}
 		speed, flow := padSpeed, 1.0
 		if i == 0 {
-			speed, flow = padFirst, 1.1
+			speed = padFirst // full flow: the pad is solid, and more plastic has no room
 		}
 		// Two walls, for sharp edges, then solid lines along X or Y.
 		w(";TYPE:WALL-OUTER")
