@@ -11,6 +11,7 @@ import os
 
 from build123d import Compound, Pos, Rot, export_step, export_stl
 
+import cad as C
 import parts as P
 import shape as S
 
@@ -18,7 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BUILD = os.path.join(HERE, "build")
 
 PRINTED = {
-    "clamp_plate": (P.clamp_plate, "back"),
+    "clamp_plate": (P.clamp_plate, "right"),
     "upper_arm": (P.upper_arm, "top"),
     "camera_bracket": (P.camera_bracket, "bottom"),
     "fit_arm_slice": (P.fit_arm_slice, "top"),
@@ -27,6 +28,10 @@ PRINTED = {
 
 
 def overlap(a, b):
+    ba, bb = a.bounding_box(), b.bounding_box()
+    if (ba.max.X < bb.min.X or bb.max.X < ba.min.X or ba.max.Y < bb.min.Y or bb.max.Y < ba.min.Y
+            or ba.max.Z < bb.min.Z or bb.max.Z < ba.min.Z):
+        return 0.0
     i = a & b
     return 0.0 if i is None else sum(s.volume for s in i.solids())
 
@@ -36,13 +41,11 @@ def stiffness():
     drop (from the beam down to the bracket joint) and the bracket front wall (from the tongue to
     the camera screw). PETG E = 2000 MPa; the camera and its U bracket about 45 g."""
     e, m = 2000.0, 0.045
-    # Bending in x (the camera swings left and right): the drop section 9 (x) by 11.9 (y).
     bx = S.DROP_X[1] - S.DROP_X[0]
-    by = S.BEAM_Y1 - S.BEAM_Y0
+    by = S.DROP_Y[1] - S.DROP_Y[0]
     l1 = S.BEAM_Z0 - sum(S.JOINT_Z) / 2
     k1x = 3 * e * (by * bx ** 3 / 12) / l1 ** 3
     k1y = 3 * e * (bx * by ** 3 / 12) / l1 ** 3
-    # The front wall: 8 (y) by 44 (z), from the tongue to the camera screw, bending in y.
     l2 = S.SLOT_X - S.DROP_X[1]
     h = S.CAM_Z[1] - S.CAM_Z[0]
     k2y = 3 * e * (h * S.WALL ** 3 / 12) / l2 ** 3
@@ -61,10 +64,10 @@ def check(problems):
     heads = P.screws()
     ours = [("clamp plate", plate), ("upper arm", arm), ("camera bracket", bracket), ("camera", cam_case),
             ("U bracket", cam_bracket)] + [(f"screw head {i}", h) for i, h in enumerate(heads)]
-    xend = P.x_end()
-    # 1. Nothing overlaps the X end, except the plate on its face.
+    xend = C.x_end()
+    # 1. Nothing overlaps the X end of the CAD. The plate touches its left face.
     for n, s in ours:
-        v = overlap(s, xend)
+        v = sum(overlap(s, x) for x in xend)
         if v > 0.01:
             problems.append(f"{n} overlaps the X end: {v:.2f} mm3")
     # 2. The parts do not overlap each other (the plate sits in the pocket of the arm).
@@ -75,52 +78,49 @@ def check(problems):
         v = overlap(a, b)
         if v > 0.01:
             problems.append(f"{an} overlaps {bn}: {v:.2f} mm3")
-    # 3. The tool head passes the arm at each X, and at the right end (dx = 0) with a margin.
-    gap_parts = [(n, s) for n, s in ours]
+    # 3. The tool head passes the arm at each X.
     for dx in [0.0, -10.0, -30.0, -60.0, -100.0, -150.0, -200.0, -260.0, -343.0]:
         for hn, hs in P.head(dx):
-            for n, s in gap_parts:
+            for n, s in ours:
                 v = overlap(s, hs)
                 if v > 0.01:
                     problems.append(f"head at X {293 + dx:.0f}: {hn} hits the {n} ({v:.2f} mm3)")
-    margins = {}
-    # 4. The frame: the upright and the corner plates, for Z from 0 to Z max.
+    # 4. The frame of the CAD: the upright, its corner plates and brackets, the Z rods and the top
+    #    of the Z tower, for Z from 0 to Z max.
     zs = list(range(0, int(S.Z_MAX) + 1, 11)) + [S.Z_MAX]
     for z in zs:
-        up, top, bottom = P.upright(z)
-        for n, s in ours:
-            for fn, f in (("the upright", up), ("the top corner plate", top), ("the bottom corner plate", bottom)):
+        for fn, f in C.frame(z):
+            for n, s in ours:
                 v = overlap(s, f)
                 if v > 0.01:
-                    problems.append(f"Z {z:.0f}: the {n} hits {fn} ({v:.2f} mm3)")
-                    break
-    # 5. The install path: the arm (with the plate) comes in from the front, and the bracket too.
-    up, top, bottom = P.upright(150.0)
-    for step in range(2, 41, 2):
-        for n, s in (("upper arm", arm), ("camera bracket", bracket)):
-            moved = Pos(0, -step, 0) * s
-            v = overlap(moved, up)
-            if v > 0.01:
-                problems.append(f"install path: the {n} hits the upright {step} mm in front of its place")
-    # 6. The lower screw head: room to the motor at the right end of X.
-    head_front = S.FACE_Y - S.PLATE_T          # the head is flush with the plate
-    motor_front = S.FACE_Y - S.M3_HEAD_H - S.LOWER_CLEAR   # 9 mm in front of the original head
-    space = {"lower plate to motor": round(head_front - motor_front, 1),
-             "beam to the head at the upper screw": round(S.BEAM_Y0 - (S.FACE_Y - S.M3_HEAD_H - S.UPPER_CLEAR), 1),
+                    problems.append(f"Z {z:.0f}: the {n} hits the {fn} ({v:.2f} mm3)")
+    # 5. The install path: the arm slides onto the plate from the left, the bracket comes from the front.
+    fr = C.frame(150.0)
+    for step in range(2, 31, 2):
+        for n, s, d in (("upper arm", arm, (-step, 0, 0)), ("camera bracket", bracket, (0, -step, 0))):
+            moved = Pos(*d) * s
+            for fn, f in fr:
+                if overlap(moved, f) > 0.01:
+                    problems.append(f"install path: the {n} hits the {fn} {step} mm from its place")
+    # 6. The space to the parts near the arm.
+    corner = dict(C.frame(S.Z_MAX))["top inner corner bracket"].bounding_box()
+    space = {"lower plate to motor": round(S.LOWER_CLEAR + S.M3_HEAD_H - S.PLATE_T, 1),
+             "arm to the head at the upper screw": round(S.UPPER_CLEAR + S.M3_HEAD_H - (S.FACE_X - S.ARM_X0), 1),
              "beam over the motor top": round(S.BEAM_Z0 - S.HEAD_SPLIT_Z, 1),
              "drop to the BLTouch tab": round(S.DROP_X[0] - S.TAB_X1, 1),
              "drop to the upright": round(S.UP_X0 - S.DROP_X[1], 1),
+             "beam behind the inner corner bracket": round(S.BEAM_Y0 - corner.max.Y, 1),
+             "drop under the inner corner bracket at Z max": round(corner.min.Z - S.DROP_Z1, 1),
              "bracket top under the top plate at Z max": round(S.TOP_PLATE_Z - S.Z_MAX - S.CAM_Z[1], 1),
-             "bracket to the upright face": S.FRONT_GAP,
-             "beam front behind the upright face": round(S.BEAM_Y0 - S.UP_Y0, 1)}
+             "bracket to the upright face": S.FRONT_GAP}
     if space["lower plate to motor"] < 2.0:
         problems.append(f"only {space['lower plate to motor']} mm from the lower plate to the motor")
-    return plate, arm, bracket, space, margins
+    return plate, arm, bracket, space, {}
 
 
 def print_pose(shape, face):
-    if face == "back":       # the back (y max) on the bed
-        s = Rot(-90, 0, 0) * shape
+    if face == "right":      # the right face (x max) on the bed
+        s = Rot(0, 90, 0) * shape
     elif face == "top":      # upside down: the top (z max) on the bed
         s = Rot(180, 0, 0) * shape
     else:
@@ -179,15 +179,14 @@ def main():
     mesh("camera_ubracket", cam_bracket, "steel", "camera")
     for i, h in enumerate(P.screws()):
         mesh(f"screw_{i}", h, "steel", "screws")
-    mesh("x_end", P.x_end(), "frame", "x_end")
-    up, top, bottom = P.upright(150.0)
-    mesh("upright", P.box((S.UP_X0, S.UP_X0 + S.UP_W), (S.UP_Y0, S.UP_Y0 + S.UP_W), (-20, 140)) & P.upright(0.0)[0],
-         "frame", "upright")
+    mesh("x_end", Compound(children=C.x_end()), "frame", "x_end", tol=0.2)
+    near = P.box((S.UP_X0 - 60, S.UP_X0 + 40), (-80, 60), (-20, 140))
+    fr = dict(C.frame(0.0))
+    mesh("upright", Compound(children=[fr["upright"] & near, fr["front Z rod"] & near]), "frame", "upright", tol=0.2)
     for hn, hs in P.head(0.0):
-        if hn != "nozzle":
-            mesh("head_" + hn.replace(" ", "_"), P.box((S.UP_X0 - 140, S.UP_X0 + 40), (-130, 40), (-10, 130)) & hs,
-                 "keepout" if hn != "BLTouch tab" else "bltouch", "head")
-    assembly = [plate, arm, bracket, cam_case, cam_bracket] + P.screws() + [P.x_end()]
+        if hn not in ("nozzle", "head under the lower screw", "head at the upper screw"):
+            mesh("head_" + hn.replace(" ", "_"), hs, "bltouch" if hn == "BLTouch tab" else "keepout", "head")
+    assembly = [plate, arm, bracket, cam_case, cam_bracket] + P.screws() + list(C.x_end())
     export_step(Compound(children=assembly), os.path.join(HERE, "cad", "gantry-camera-arm-assembly.step"))
 
     with open(os.path.join(BUILD, "parts.json"), "w") as fh:

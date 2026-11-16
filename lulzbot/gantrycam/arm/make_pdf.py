@@ -41,7 +41,7 @@ STIFF = SUMMARY["stiffness"]
 PARTS = [
     ("fit_arm_slice", 1, "Fit test. The top 8 mm of the upper arm. Top face on the bed. Print it first."),
     ("fit_bracket_slice", 1, "Fit test. The top 10 mm of the camera bracket. Print it first."),
-    ("clamp_plate", 1, "Back face on the bed. Solid. It is also a fit test for the two screws."),
+    ("clamp_plate", 1, "Right face on the bed. Solid. It is also a fit test for the two screws."),
     ("upper_arm", 1, "Upside down: the top face on the bed. No supports."),
     ("camera_bracket", 1, "Bottom face on the bed. No supports."),
 ]
@@ -52,7 +52,7 @@ HARDWARE = [
     ("1", "M3 socket screw, 9 mm longer than the upper X end screw",
      "The upper screw. It goes through the arm (3 mm under the head) and the plate (6 mm)."),
     ("2", "M3 × 30 screws and 2 M3 nuts", "They hold the camera bracket to the drop of the arm. The nuts go in the "
-     "pockets at the back of the drop."),
+     "slots on the left side of the drop."),
     ("1", "1/4\"-20 × 1/4\" screw", "Holds the U bracket of the camera in the slot. The screw of the old corner mount fits."),
 ]
 
@@ -82,8 +82,9 @@ P1 = f"""
   </div>
   <div>
     <h3>Estimates</h3>
-    <p>The X end face, the screws and the upright are measured. The height of the belt strip, the top of the motor,
-    and the corner plates are estimates. MEASURE.md lists them. Print the two fit tests and the clamp plate first, and do steps 1 to 3.</p>
+    <p>The Z tower and the X end come from the LulzBot CAD of the TAZ Workhorse, put in place with the
+    measurements. The CAD and the measurements agree to 0.2 mm, except the X end face (2.4 mm). The top of the
+    motor is an estimate. Print the two fit tests and the clamp plate first, and do steps 1 to 3.</p>
   </div>
 </div>
 """
@@ -133,22 +134,22 @@ STEPS = [
         "tests in steps 2 and 3 pass.",
         "Turn off the printer. Remove the old corner camera mount from the upright. Keep the camera and its screw.",
         "Move the gantry up to a height that is easy to reach. Push the head to the left.",
-        "Remove the lower screw of the X end face. Put the clamp plate in the pocket of the face, the counterbore to "
-        "the front. It must go in with a little play. If it does not go in, see FACE_W on the last page.",
-        "Look through the upper hole of the plate. The upper screw must be in the middle of it. If it is not, see "
-        "SCREW_Z on the last page.",
+        "Find the two M3 screws on the left side of the right X end: the side toward the bed, about 50 mm behind "
+        "the front right upright.",
+        "Remove the lower screw. Put the clamp plate on the face, between the front edge of the X end and the raised "
+        "part behind the face. The counterbore is on the left. If the plate does not fit, see the last page.",
+        "Look through the upper hole of the plate. The upper screw must be in the middle of it.",
         "Put in the new lower screw (3 mm longer) and tighten it. Its head is flush with the plate. Leave the upper "
         "screw in the X end for now.",
     ]),
     ("fitarm", "Test the arm slice", [
         "The arm slice is the top 8 mm of the upper arm. Its top is level with the top of the clamp plate.",
-        "Put the slice on the top of the clamp plate: the plate goes into the pocket at the back of the slice. The "
-        "long side goes to the right, toward the upright. Hold the slice level.",
-        "Look at the right end of the slice, the top of the drop. It must stop about 2 mm from the inner face of the "
-        "upright. If it touches, or the gap is more than 4 mm, see SCREW_X on the last page.",
-        "Look at the back of the slice, left of the plate. It must not touch the raised belt strip of the X end. If "
-        "it touches, see STRIP_PROUD on the last page.",
-        "Look at the front of the slice. It must be a little behind the front face of the upright.",
+        "Put the slice on the top of the plate from the left: the plate goes into the pocket on the right side of "
+        "the slice. The long part points forward, to the upright. Hold the slice level.",
+        "Look at the front end of the slice. It must be level with the back face of the upright, about 2 mm left of "
+        "the upright. If it touches the upright, or the gap front to back is more than 3 mm, see SCREW_Y on the "
+        "last page.",
+        "Look at the right side of the slice, in front of the X end. It must not touch the X end.",
         "Remove the slice. It does not stay on the printer.",
     ]),
     ("fitbracket", "Test the bracket slice", [
@@ -164,11 +165,11 @@ STEPS = [
         "Remove the slice. If steps 2 and 3 pass, print the upper arm and the camera bracket.",
     ]),
     ("arm", "Fit the upper arm", [
-        "Remove the upper screw of the X end face.",
-        "Push the arm back onto the plate: the plate goes into the pocket at the back of the beam. The drop goes down "
-        "beside the inner face of the upright.",
+        "Remove the upper screw of the X end.",
+        "Slide the arm onto the plate from the left: the plate goes into the pocket of the arm. The drop goes down "
+        "beside the inner face of the upright, 2 mm from it.",
         "Put in the new upper screw (9 mm longer) through the arm and the plate. Tighten it.",
-        "Put an M3 nut in each pocket at the back of the drop.",
+        "Push an M3 nut into each slot on the left side of the drop.",
     ]),
     ("bracket", "Fit the camera bracket", [
         "Hold the bracket around the front of the upright. Its tongue goes back to the front of the drop.",
@@ -182,9 +183,10 @@ STEPS = [
         "Route the USB cable along the old cable path, with a loop for the full Z travel.",
     ]),
     ("top", "Check the travel", [
-        "With the motors off, move the head by hand to the right end of X. The motor passes in front of the plate, "
+        "With the motors off, move the head by hand to the right end of X. The motor passes left of the plate, "
         "and the BLTouch tab passes left of the drop.",
-        "Home the printer. Move Z slowly to 297, then to 0, and watch the bracket and the corner plates.",
+        "Home the printer. Move Z slowly to 297, then to 0. At the top, the drop passes under the corner bracket "
+        "inside the top of the upright, and the bracket passes under the top corner plate.",
         "On the deck, set the rotation of this camera: the U bracket stands on its side, so the picture turns 90°.",
     ]),
 ]
@@ -201,22 +203,22 @@ def step_pages():
 ADJUST = """
 <h2>Adjust the fit</h2>
 <p>All the values are in <code>shape.py</code>. Change a value, then run <code>./make.sh</code>. The fit check stops
-the build if a part touches the X end, the tool head at any X, the upright, or a corner plate at any Z.</p>
+the build if a part touches the X end, the tool head at any X, or the Z tower of the LulzBot CAD at any Z.</p>
 <table class="parts">
-  <tr><td></td><td><b>The plate does not go into the pocket.</b> Measure the face between the belt strip and the step.
-  Set <code>FACE_W</code>.</td></tr>
+  <tr><td></td><td><b>The plate does not fit on the face.</b> Measure the face front to back, from the front edge of
+  the X end to the raised part. Set the width in <code>FACE_Y</code>.</td></tr>
   <tr><td></td><td><b>The holes do not line up.</b> Measure the screws, top edge to top edge. Set the spacing in
   <code>SCREW_Z</code>.</td></tr>
-  <tr><td></td><td><b>The arm touches the upright.</b> Measure from the screws to the inner face of the upright. Set
-  <code>UP_X0</code> through <code>SCREW_X</code>.</td></tr>
-  <tr><td></td><td><b>The beam touches the belt strip.</b> Measure how far the strip stands in front of the face. Set
-  <code>STRIP_PROUD</code>.</td></tr>
+  <tr><td></td><td><b>The front of the arm slice is not at the back of the upright.</b> Measure from the screws to the
+  back face of the upright. Set <code>SCREW_Y</code>.</td></tr>
+  <tr><td></td><td><b>The arm touches the upright or the X end.</b> Measure from the screw face to the inner face of
+  the upright. Set <code>FACE_X</code>.</td></tr>
   <tr><td></td><td><b>A corner plate touches the bracket.</b> Measure how far the plate and its screw heads stand
   out from the front face of the upright. Set <code>PLATE_PROUD</code>, and set <code>FRONT_GAP</code> 3 mm more
   than it.</td></tr>
   <tr><td></td><td><b>The head touches the beam at X 293.</b> Measure the top of the motor over the nozzle tip. Set
   <code>HEAD_SPLIT_Z</code>; the beam starts 6 mm over it.</td></tr>
-  <tr><td></td><td><b>The nuts are loose in the pockets.</b> Set <code>NUT_AF</code> 0.2 mm smaller.</td></tr>
+  <tr><td></td><td><b>The nuts are loose in the slots.</b> Set <code>NUT_AF</code> 0.2 mm smaller.</td></tr>
 </table>
 """
 

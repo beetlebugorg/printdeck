@@ -156,7 +156,7 @@ ARM = {**FLAT, "layer_height": 0.2, "wall_thickness": 2.0, "infill_sparse_densit
 # The fit tests: the same settings as their parts, so the fit is the same.
 PROFILES = [
     profile("Plate", "Clamp plate", "clamp_plate.stl", PLATE),
-    # The arm stands 94 mm tall on its 12 mm wide top face: a brim holds it.
+    # The arm stands 88 mm tall on its top face (27 x 56 mm, the drop 7 mm wide): a brim holds it.
     profile("Arm", "Upper arm", "upper_arm.stl", {**ARM, "adhesion_type": "brim", "brim_width": 8}),
     profile("Bracket", "Camera bracket", "camera_bracket.stl", ARM),
     profile("FitArm", "Fit test arm slice", "fit_arm_slice.stl", ARM),

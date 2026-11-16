@@ -3,7 +3,7 @@ frame of shape.py (origin at the nozzle tip with the head at X 293, x right, y b
 
 import math
 
-from build123d import Align, Box, Circle, Cylinder, Polygon, Pos, RegularPolygon, Rot, extrude
+from build123d import Align, Box, Circle, Cylinder, Plane, Polygon, Pos, Rot, extrude
 
 import shape as S
 
@@ -24,42 +24,64 @@ def teardrop_y(x, z, r, y0, y1, up=1):
 
 # --- The printed parts -------------------------------------------------------------------------
 
+def teardrop_x(y, z, r, x0, x1):
+    """A hole along x with its point to -z: up in the print of the upper arm (upside down).
+    The plane has local x = world y, local y = world z, and the normal along world +x."""
+    a = r / math.sqrt(2)
+    prof = Circle(r) + Polygon((0, 0), (-a, -a), (0, -2 * a), (a, -a), align=None)   # counterclockwise
+    pl = Plane(origin=(x0, y, z), x_dir=(0, 1, 0), z_dir=(1, 0, 0))
+    return extrude(pl * prof, x1 - x0)
+
+
+def nut_slot(y, z, x0, x1):
+    """A slot along x for an M3 nut on a bolt along y: NUT_T wide in y, NUT_AF high in z, with a
+    45 degree roof at -z (up in the print of the upper arm)."""
+    t, h = S.NUT_T / 2, S.NUT_AF / 2
+    prof = Polygon((-t, h), (-t, -h), (0, -h - t), (t, -h), (t, h), align=None)
+    pl = Plane(origin=(x0, y, z), x_dir=(0, 1, 0), z_dir=(1, 0, 0))
+    return extrude(pl * prof, x1 - x0)
+
+
 def clamp_plate():
-    """The plate in the pocket of the X end face. It prints flat on its back face (y = FACE_Y)."""
-    x0 = S.SCREW_X - S.PLATE_W / 2
-    part = box((x0, x0 + S.PLATE_W), (S.FACE_Y - S.PLATE_T, S.FACE_Y), S.PLATE_Z)
-    for i, z in enumerate(S.SCREW_Z):
-        part -= Pos(S.SCREW_X, S.FACE_Y + 1, z) * Rot(90, 0, 0) * Cylinder(S.HOLE / 2, S.PLATE_T + 2, align=(Align.CENTER, Align.CENTER, Align.MIN))
-    # The lower head sinks in: the motor passes 9 mm in front of the screw at the right end of X.
-    z = S.SCREW_Z[0]
-    part -= Pos(S.SCREW_X, S.FACE_Y - S.PLATE_T - 1, z) * Rot(-90, 0, 0) * Cylinder(S.CB_D / 2, S.CB_DEPTH + 1, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    """The plate on the left face of the X end, between its front edge and the raised part behind.
+    It prints on its right face (x = FACE_X)."""
+    part = box((S.FACE_X - S.PLATE_T, S.FACE_X), S.PLATE_Y, S.PLATE_Z)
+    for z in S.SCREW_Z:
+        part -= Pos(S.FACE_X - S.PLATE_T - 1, S.SCREW_Y, z) * Rot(0, 90, 0) * Cylinder(
+            S.HOLE / 2, S.PLATE_T + 2, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    # The lower head sinks in: the motor passes 9 mm left of the original head at the right end of X.
+    part -= Pos(S.FACE_X - S.PLATE_T - 1, S.SCREW_Y, S.SCREW_Z[0]) * Rot(0, 90, 0) * Cylinder(
+        S.CB_D / 2, S.CB_DEPTH + 1, align=(Align.CENTER, Align.CENTER, Align.MIN))
     return part
 
 
 def upper_arm():
-    """The beam above the motor and the drop beside the upright. It prints upside down: the top face
-    (z = ARM_TOP) on the bed. All the walls are then vertical."""
-    beam = box((S.BEAM_X0, S.DROP_X[1]), (S.BEAM_Y0, S.BEAM_Y1), (S.BEAM_Z0, S.ARM_TOP))
-    drop = box(S.DROP_X, (S.BEAM_Y0, S.BEAM_Y1), (S.DROP_Z0, S.ARM_TOP))
-    part = beam + drop
+    """The beam from the plate forward to the back of the upright, and the drop beside the inner face
+    of the upright. It prints upside down: the top face (z = ARM_TOP) on the bed."""
+    beam = box((S.ARM_X0, S.DROP_X[1]), (S.BEAM_Y0, S.BEAM_Y1), (S.BEAM_Z0, S.ARM_TOP))
+    back = box((S.ARM_X0, S.FACE_X), (S.BEAM_Y1 - 1, S.PLATE_Y[1] + 0.2), (S.BEAM_Z0, S.ARM_TOP))
+    drop = box(S.DROP_X, (S.BEAM_Y0, S.DROP_Y[1]), (S.DROP_Z0, S.ARM_TOP))
+    front = box(S.DROP_X, (S.DROP_Y[0], S.BEAM_Y0 + 1), (S.DROP_Z0, S.DROP_Z1))
+    part = beam + back + drop + front
+    # The top of the front part slopes 45 degrees down to the front: no flat ceiling in the print,
+    # and it stays under the inner corner bracket at Z max.
+    run = S.BEAM_Y0 - S.DROP_Y[0]
+    wedge = Polygon((S.DROP_Y[0] - 1, S.DROP_Z1 - run - 1), (S.BEAM_Y0, S.DROP_Z1),
+                    (S.BEAM_Y0, S.DROP_Z1 + 1), (S.DROP_Y[0] - 1, S.DROP_Z1 + 1), align=None)  # counterclockwise
+    pl = Plane(origin=(S.DROP_X[0] - 1, 0, 0), x_dir=(0, 1, 0), z_dir=(1, 0, 0))
+    part -= extrude(pl * wedge, S.DROP_X[1] - S.DROP_X[0] + 2)
     # The pocket for the clamp plate (anti-turn), 0.2 mm play on each side.
-    x0 = S.SCREW_X - S.PLATE_W / 2 - 0.2
-    part -= box((x0, x0 + S.PLATE_W + 0.4), (S.POCKET, S.BEAM_Y1 + 1), (S.PLATE_Z[0], S.ARM_TOP + 1))
-    # The upper screw: a hole through, and a counterbore from the front down to ARM_UNDER_HEAD.
+    part -= box((S.FACE_X - S.PLATE_T - 0.2, S.FACE_X + 1), (S.PLATE_Y[0] - 0.2, S.PLATE_Y[1] + 1),
+                (S.PLATE_Z[0], S.ARM_TOP + 1))
+    # The upper screw: a hole through, and a counterbore from the left face.
     z = S.SCREW_Z[1]
-    part -= teardrop_y(S.SCREW_X, z, S.HOLE / 2, S.BEAM_Y0 - 1, S.BEAM_Y1 + 1, up=-1)
-    part -= teardrop_y(S.SCREW_X, z, S.CB_ARM / 2, S.BEAM_Y0 - 1, S.POCKET - S.ARM_UNDER_HEAD, up=-1)
-    # The two joint bolts of the camera bracket: holes along y, nut pockets at the back.
+    part -= teardrop_x(S.SCREW_Y, z, S.HOLE / 2, S.ARM_X0 - 1, S.FACE_X)
+    part -= teardrop_x(S.SCREW_Y, z, S.CB_ARM / 2, S.ARM_X0 - 1, S.ARM_X0 + S.M3_HEAD_H)
+    # The two joint bolts of the camera bracket: holes along y, nut slots from the left face.
+    xc = sum(S.DROP_X) / 2
     for z in S.JOINT_Z:
-        xc = sum(S.DROP_X) / 2
-        part -= teardrop_y(xc, z, S.JOINT_HOLE / 2, S.BEAM_Y0 - 1, S.BEAM_Y1 + 1, up=-1)
-        side = S.NUT_AF / math.sqrt(3)
-        # A hexagon with flats left and right, and a 45 degree roof over the vertex at local -y.
-        # Rot(90, 0, 0) turns local -y to world -z: up in the print (the arm prints upside down).
-        nut = Rot(0, 0, 30) * RegularPolygon(side, 6)
-        c, h2 = S.NUT_AF / 2, side / 2
-        nut += Polygon((-c, -h2), (0, -h2 - c), (c, -h2), align=None)   # counterclockwise
-        part -= Pos(xc, S.BEAM_Y1 + 0.01, z) * Rot(90, 0, 0) * extrude(nut, S.NUT_DEPTH)
+        part -= teardrop_y(xc, z, S.JOINT_HOLE / 2, S.DROP_Y[0] - 1, S.NUT_Y + 6, up=-1)
+        part -= nut_slot(S.NUT_Y, z, S.DROP_X[0] - 1, xc + S.NUT_AF / 2 + 0.4)
     return part
 
 
@@ -92,9 +114,9 @@ def _stadium(w, h):
 
 
 def fit_arm_slice():
-    """Fit test: the top 8 mm of the upper arm (the beam with the plate pocket, and the top of the
-    drop). It sits on the top of the clamp plate. It checks the beam length to the upright and the
-    space to the belt strip. The screw hole is lower: the clamp plate checks the screws."""
+    """Fit test: the top 8 mm of the upper arm (the beam, the plate pocket, and the top of the
+    drop). It sits on the top of the clamp plate. It checks the place of the screws front to back:
+    the front of the beam is 0.5 mm behind the back face of the upright."""
     cut = box((-500, 500), (-500, 500), (S.ARM_TOP - 8, S.ARM_TOP + 1))
     return upper_arm() & cut
 
@@ -108,14 +130,11 @@ def fit_bracket_slice():
 # --- The context -------------------------------------------------------------------------------
 
 def screws():
-    """The two M3 socket heads: the lower one sunk in the plate, the upper one in the beam."""
-    out = []
-    z0 = S.SCREW_Z[0]
-    out.append(Pos(S.SCREW_X, S.FACE_Y - S.PLATE_T + S.CB_DEPTH, z0) * Rot(90, 0, 0) * Cylinder(S.M3_HEAD_D / 2, S.M3_HEAD_H, align=(Align.CENTER, Align.CENTER, Align.MIN)))
-    z1 = S.SCREW_Z[1]
-    y = S.POCKET - S.ARM_UNDER_HEAD
-    out.append(Pos(S.SCREW_X, y, z1) * Rot(90, 0, 0) * Cylinder(S.M3_HEAD_D / 2, S.M3_HEAD_H, align=(Align.CENTER, Align.CENTER, Align.MIN)))
-    return out
+    """The two M3 socket heads: the lower one sunk in the plate, the upper one in the arm."""
+    def head(x0, z):
+        return Pos(x0, S.SCREW_Y, z) * Rot(0, 90, 0) * Cylinder(
+            S.M3_HEAD_D / 2, S.M3_HEAD_H, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    return [head(S.FACE_X - S.PLATE_T, S.SCREW_Z[0]), head(S.ARM_X0, S.SCREW_Z[1])]
 
 
 def pivot_point():
@@ -155,45 +174,26 @@ def lens_point(target=None):
 
 def head(dx=0.0):
     """(name, shape) of the space that the tool head fills near the arm, with the head dx from the
-    right end. From the measured clearances at the right end of X: in front of the X end face the
-    head comes to 9 mm from the lower screw head (under HEAD_SPLIT_Z) and to 25 mm from the upper
-    screw head (over it). Its right side (the BLTouch mount tab) comes to 11 mm from the upright."""
-    x1 = S.UP_X0 - 11.0 + dx
-    x0 = x1 - 120.0
-    low = box((x0, x1), (-250.0, S.FACE_Y - S.M3_HEAD_H - S.LOWER_CLEAR), (0.0, S.HEAD_SPLIT_Z))
-    high = box((x0, x1), (-250.0, S.FACE_Y - S.M3_HEAD_H - S.UPPER_CLEAR), (S.HEAD_SPLIT_Z, 140.0))
-    tab = box((x1 - 12.0, x1), (S.UP_Y0 + 8.0, S.FACE_Y), S.TAB_Z)
-    hot = Pos(x1 - 77.0, S.NOZZLE_Y_EST, 0) * Cylinder(2.5, 6, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    right end. From the measured clearances at the right end of X: the head comes to 9 mm left of
+    the lower screw head (under HEAD_SPLIT_Z) and to 25 mm left of the upper screw head (over it).
+    Its right side (the BLTouch mount tab) comes to 11 mm from the upright. Only the part of the
+    head in front of the back of the X end face matters here."""
+    y0, y1 = -250.0, S.FACE_Y[1] + 2.0
+    low_x1 = S.FACE_X - S.M3_HEAD_H - S.LOWER_CLEAR + dx
+    high_x1 = S.FACE_X - S.M3_HEAD_H - S.UPPER_CLEAR + dx
+    low = box((low_x1 - 120.0, low_x1), (y0, y1), (0.0, S.HEAD_SPLIT_Z))
+    high = box((high_x1 - 120.0, high_x1), (y0, y1), (S.HEAD_SPLIT_Z, 140.0))
+    x1 = S.TAB_X1 + dx
+    tab = box((x1 - 12.0, x1), (S.TAB_Y0, S.TAB_Y0 + 26.21), S.TAB_Z)
+    mp = S.MOUNT_PLATE
+    mount = box((mp[0][0] + dx, mp[0][1] + dx), mp[1], mp[2])
+    bl = S.BLTOUCH
+    bltouch = box((bl[0][0] + dx, bl[0][1] + dx), bl[1], bl[2])
+    hot = Pos(dx, S.NOZZLE_Y_EST, 0) * Cylinder(2.5, 6, align=(Align.CENTER, Align.CENTER, Align.MIN))
     return [("head under the lower screw", low), ("head at the upper screw", high), ("BLTouch tab", tab),
-            ("nozzle", hot)]
+            ("BLTouch mount plate", mount), ("BLTouch", bltouch), ("nozzle", hot)]
 
 
 def nozzle(dx=0.0):
     """The estimated nozzle tip, with the head dx from the right end."""
-    return (S.UP_X0 - 11.0 - 77.0 + dx, S.NOZZLE_Y_EST, 0.0)
-
-
-def x_end():
-    """The X end front: the face with the two screws, the raised belt strip left of it, the step
-    right of it, and the body behind. Only the face and the strip are measured."""
-    f0 = S.SCREW_X - S.FACE_W / 2
-    f1 = f0 + S.FACE_W
-    body = box((f0 - S.STRIP_W, f1 + 8), (S.FACE_Y, S.FACE_Y + 40), S.FACE_Z)
-    strip = box((f0 - S.STRIP_W, f0), (S.FACE_Y - S.STRIP_PROUD, S.FACE_Y), S.FACE_Z)
-    return body + strip
-
-
-def upright(z_shift=0.0):
-    """The front right upright (2020, with a slot in each face), and the corner plates as no-go
-    boxes on its front face, for the gantry at Z = z_shift. The frame moves by -Z in the gantry
-    frame."""
-    zr = (-200 - z_shift, 600 - z_shift)
-    up = box((S.UP_X0, S.UP_X0 + S.UP_W), (S.UP_Y0, S.UP_Y0 + S.UP_W), zr)
-    for cx, cy, w, d in ((S.UP_X0 + 10, S.UP_Y0, 6.2, 6), (S.UP_X0 + 10, S.UP_Y0 + 20, 6.2, 6),
-                         (S.UP_X0, S.UP_Y0 + 10, 6, 6.2), (S.UP_X0 + 20, S.UP_Y0 + 10, 6, 6.2)):
-        up -= box((cx - w / 2, cx + w / 2), (cy - d / 2, cy + d / 2), (zr[0] - 1, zr[1] + 1))
-    px = (S.UP_X0 - S.PLATE_REACH, S.UP_X0 + S.UP_W)
-    py = (S.UP_Y0 - S.PLATE_PROUD, S.UP_Y0)
-    top = box(px, py, (S.TOP_PLATE_Z - z_shift, 600 - z_shift))
-    bottom = box(px, py, (-200 - z_shift, S.BOTTOM_PLATE_Z - z_shift))
-    return up, top, bottom
+    return (dx, S.NOZZLE_Y_EST, 0.0)

@@ -32,8 +32,8 @@ const ALL = [...FRAME, "plate", "arm", "bracket", "camera", "screws"];
 // name: { show, focus, explode {group: offset}, camera, labels {group: label} }.
 const SHOTS = {
   hero: { show: ALL, focus: ["plate", "arm", "bracket", "camera"], explode: {}, camera: FRONT_LEFT },
-  plate: { show: [...FRAME, "plate", "screws"], focus: ["plate"], explode: { plate: [0, -25, 0], screws: [0, -55, 0] }, camera: FRONT_LEFT },
-  arm: { show: [...FRAME, "plate", "arm", "screws"], focus: ["arm"], explode: { arm: [0, -40, 0], screws: [0, -70, 0] }, camera: FRONT_LEFT },
+  plate: { show: [...FRAME, "plate", "screws"], focus: ["plate"], explode: { plate: [-25, 0, 0], screws: [-55, 0, 0] }, camera: FRONT_LEFT },
+  arm: { show: [...FRAME, "plate", "arm", "screws"], focus: ["arm"], explode: { arm: [-40, 0, 0], screws: [-70, 0, 0] }, camera: FRONT_LEFT },
   bracket: { show: [...FRAME, "plate", "arm", "bracket", "screws"], focus: ["bracket"], explode: { bracket: [0, -35, 0] }, camera: FRONT_RIGHT },
   camera: { show: [...FRAME, "plate", "arm", "bracket", "camera", "screws"], focus: ["camera", "bracket"], explode: { camera: [0, -30, 0] }, camera: FRONT_RIGHT },
   fitarm: { show: [...FRAME, "plate", "fitarm"], focus: ["fitarm", "plate"], explode: {}, camera: FRONT_LEFT },
