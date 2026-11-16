@@ -395,6 +395,12 @@ type confirmBox struct {
 	// choices replaces yes with a row for each choice, over Back. A tap on a row closes the box
 	// and runs the tap of the row.
 	choices []menuItem
+	title   string // the title of the box; "" is "CONFIRM"
+}
+
+// infoBox is a box with a text and one Close key, for example the results of a test.
+func infoBox(title, text string) *confirmBox {
+	return &confirmBox{title: title, question: text, no: "Close"}
 }
 
 // Ask shows a question with two answers over the screen, for example when an app asks for access
@@ -616,7 +622,11 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 		boxH = min(contentY1-20, max(280, top+len(lines)*lineH+gap+keys+20))
 	}
 	box := kit.Center(image.Rect(0, 0, W, contentY1), boxW, boxH) // in the middle of the screen
-	panel(c, box, "CONFIRM")
+	title := cf.title
+	if title == "" {
+		title = "CONFIRM"
+	}
+	panel(c, box, title)
 	q := image.Rect(box.Min.X+24, box.Min.Y+top, box.Max.X-24, box.Max.Y-20-keys-gap)
 	y := q.Min.Y + (q.Dy()-len(lines)*lineH)/2
 	for _, l := range lines {
@@ -634,6 +644,9 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 	if stacked {
 		noR, yesR = k, k.Sub(image.Pt(0, keyH+12))
 	}
+	if cf.yes == "" && cf.onYes == nil {
+		noR = k // an info box: one key
+	}
 	a.button(c, noR, no, raised, text, func() {
 		a.confirm = nil
 		if cf.onNo != nil {
@@ -644,6 +657,9 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 	yes, ink := green, onAcc
 	if cf.danger {
 		yes, ink = redCap, onRed
+	}
+	if cf.yes == "" && cf.onYes == nil {
+		return
 	}
 	a.button(c, yesR, cf.yes, yes, ink, func() { a.confirm = nil; cf.onYes(); a.Redraw() })
 }

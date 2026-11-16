@@ -122,7 +122,9 @@ func (s *Settle) probe(gcmd *gcode.Command) float64 {
 	off := pr.Offsets(nil)
 	th := toolhead.Of(s.printer)
 	nan := math.NaN()
-	top := math.Max(th.Position()[2], off[2]+above)
+	// Each probe starts 3 mm over the trigger height. After G28 the nozzle is at the top of Z (the
+	// TAZ homes Z up), and a probe from there drops 290 mm at the probe speed: about 100 s.
+	top := off[2] + above
 	th.ManualMove([]float64{nan, nan, top}, s.lift)
 	th.ManualMove([]float64{s.x - off[0], s.y - off[1], nan}, s.travelSpeed)
 	session := pr.StartProbeSession(gcmd)

@@ -32,7 +32,7 @@ func (a *App) showPadChecks() {
 		if err != nil {
 			return err
 		}
-		a.post(func() { a.confirm = &confirmBox{question: padSummary(checks), choices: []menuItem{}} })
+		a.post(func() { a.confirm = infoBox("HEIGHT CHECK", padSummary(checks)) })
 		return nil
 	})
 }
