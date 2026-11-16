@@ -219,6 +219,62 @@ parts:
     settings: {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
                wall_thickness: 2.0, infill_sparse_density: 100, cool_min_layer_time: 12}
 
+  # The gantry camera arm of the TAZ: lulzbot/gantrycam/arm (make.sh writes the STL files). It holds
+  # the B0561 camera in front of the front right upright and rides with Z. PETG is better (the
+  # cura/ profiles of the project use it), but the profiles here have no PETG material yet: PLA is
+  # good for the fit tests. The plate is solid, so it does not creep under the screws. The arm and
+  # the bracket use 4 walls and 40 % gyroid for stiffness.
+  - name: Gantry camera fit tests (TAZ)
+    group: Gantry camera arm (TAZ)
+    description: >-
+      Two quick fit tests: the top 8 mm of the upper arm (it checks the beam to the upright and the
+      pocket for the clamp plate) and the top 10 mm of the camera bracket (it checks the gap around
+      the front of the upright). Print them first. The arm slice prints on its top face, the bracket
+      slice on its bottom face, with no supports.
+    files: [lulzbot/gantrycam/arm/stl/fit_arm_slice.stl, lulzbot/gantrycam/arm/stl/fit_bracket_slice.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: &gantrycam {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
+               wall_thickness: 2.0, infill_sparse_density: 40, infill_pattern: gyroid}
+  - name: Gantry camera clamp plate (TAZ)
+    group: Gantry camera arm (TAZ)
+    description: >-
+      The plate sits in the pocket of the right X end face, under its two M3 screws. The lower screw
+      gets 3 mm longer and its head sinks into the plate; the upper screw gets 9 mm longer and goes
+      through the arm too. It prints flat on its back face with no supports, and it is also a fit
+      test for the screw spacing.
+    files: [lulzbot/gantrycam/arm/stl/clamp_plate.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
+               wall_thickness: 2.0, infill_sparse_density: 100, cool_min_layer_time: 12}
+  - name: Gantry camera upper arm (TAZ)
+    group: Gantry camera arm (TAZ)
+    description: >-
+      A beam above the tool head motor from the clamp plate to the upright, and a drop down beside
+      the inner face of the upright. Two M3 nuts go in the pockets at the back of the drop. It prints
+      upside down on its top face, with a brim and no supports.
+    files: [lulzbot/gantrycam/arm/stl/upper_arm.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
+               wall_thickness: 2.0, infill_sparse_density: 40, infill_pattern: gyroid, adhesion_type: brim,
+               brim_width: 8}
+  - name: Gantry camera bracket (TAZ)
+    group: Gantry camera arm (TAZ)
+    description: >-
+      Goes around the front of the front right upright and bolts to the drop with two M3 x 30 screws.
+      A vertical slot holds the 1/4"-20 screw of the camera U bracket, so the camera height is
+      adjustable. It prints on its bottom face with no supports.
+    files: [lulzbot/gantrycam/arm/stl/camera_bracket.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: *gantrycam
+
 # The PDFs of the project. The project page shows each one with a picture of its first page.
 docs:
   - name: Slate v4 build guide
@@ -227,6 +283,8 @@ docs:
     file: lulzbot/backlash/taz-cube-ymax.pdf
   - name: BLTouch mount build guide
     file: lulzbot/bltouch/mount/bltouch-mount-build.pdf
+  - name: Gantry camera arm build guide
+    file: lulzbot/gantrycam/arm/gantry-camera-arm-build.pdf
 
 # The 3D views of the assembled Slate. lulzbot/slate.py assembly writes the files: each part in its
 # place, in mm, z up, with the origin at the middle of the foot on the desk. The case leans back 15
