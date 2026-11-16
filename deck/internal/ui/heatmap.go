@@ -58,7 +58,7 @@ func (a *App) showDrift() {
 		if err != nil {
 			return err
 		}
-		a.post(func() { a.confirm = &confirmBox{question: printer.DriftSummary(rs), choices: []menuItem{}} })
+		a.post(func() { a.confirm = infoBox("DRIFT TEST", printer.DriftSummary(rs)) })
 		return nil
 	})
 }
