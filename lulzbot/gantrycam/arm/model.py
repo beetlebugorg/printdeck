@@ -179,6 +179,12 @@ def main():
     mesh("camera_ubracket", cam_bracket, "steel", "camera")
     for i, h in enumerate(P.screws()):
         mesh(f"screw_{i}", h, "steel", "screws")
+    bolts, nuts = P.joint_hardware()
+    for i, b in enumerate(bolts):
+        mesh(f"joint_screw_{i}", b, "steel", "bolts")
+    for i, n in enumerate(nuts):
+        mesh(f"joint_nut_{i}", n, "steel", "nuts")
+    mesh("camera_screw", P.camera_screw(), "steel", "camscrew")
     mesh("x_end", Compound(children=C.x_end()), "frame", "x_end", tol=0.2)
     near = P.box((S.UP_X0 - 60, S.UP_X0 + 40), (-80, 60), (-20, 140))
     fr = dict(C.frame(0.0))

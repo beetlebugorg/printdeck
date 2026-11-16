@@ -17,7 +17,8 @@ const MANIFEST = JSON.parse(fs.readFileSync(path.join(HERE, "build", "manifest.j
 const FINISH = { petg: "print", steel: "buy", camera: "dark", dark: "dark", frame: "dark", keepout: "dark", bltouch: "buy" };
 const LABEL = { plate: "Clamp plate", arm: "Upper arm", bracket: "Camera bracket", camera: "B0561 camera",
   x_end: "Right X end", upright: "Front right upright", screws: "M3 screws",
-  fitarm: "Arm slice", fitbracket: "Bracket slice" };
+  fitarm: "Arm slice", fitbracket: "Bracket slice", bolts: "2 × M3 × 30", nuts: "2 × M3 nut",
+  camscrew: "1/4\"-20 screw" };
 
 const PRINTED = ["clamp_plate", "upper_arm", "camera_bracket", "fit_arm_slice", "fit_bracket_slice"];
 // The frame of the meshes: x to the right of the printer, y to the back, z up. A camera is the
@@ -33,9 +34,9 @@ const ALL = [...FRAME, "plate", "arm", "bracket", "camera", "screws"];
 const SHOTS = {
   hero: { show: ALL, focus: ["plate", "arm", "bracket", "camera"], explode: {}, camera: FRONT_LEFT },
   plate: { show: [...FRAME, "plate", "screws"], focus: ["plate"], explode: { plate: [-25, 0, 0], screws: [-55, 0, 0] }, camera: FRONT_LEFT },
-  arm: { show: [...FRAME, "plate", "arm", "screws"], focus: ["arm"], explode: { arm: [-40, 0, 0], screws: [-70, 0, 0] }, camera: FRONT_LEFT },
-  bracket: { show: [...FRAME, "plate", "arm", "bracket", "screws"], focus: ["bracket"], explode: { bracket: [0, -35, 0] }, camera: FRONT_RIGHT },
-  camera: { show: [...FRAME, "plate", "arm", "bracket", "camera", "screws"], focus: ["camera", "bracket"], explode: { camera: [0, -30, 0] }, camera: FRONT_RIGHT },
+  arm: { show: [...FRAME, "plate", "arm", "screws", "nuts"], focus: ["arm", "nuts"], explode: { arm: [-40, 0, 0], screws: [-70, 0, 0], nuts: [-75, 0, 0] }, camera: FRONT_LEFT },
+  bracket: { show: [...FRAME, "plate", "arm", "bracket", "screws", "nuts", "bolts"], focus: ["bracket", "bolts", "nuts"], explode: { bracket: [0, -40, 0], bolts: [0, -80, 0] }, camera: FRONT_LEFT },
+  camera: { show: [...FRAME, "plate", "arm", "bracket", "camera", "screws", "bolts", "camscrew"], focus: ["camera", "camscrew"], explode: { camera: [0, -30, 0] }, camera: FRONT_RIGHT },
   fitarm: { show: [...FRAME, "plate", "fitarm"], focus: ["fitarm", "plate"], explode: {}, camera: FRONT_LEFT },
   fitbracket: { show: [...FRAME, "fitbracket"], focus: ["fitbracket"], explode: {}, camera: FRONT_RIGHT },
   top: { show: ALL, focus: ["plate", "arm", "bracket", "camera"], explode: {}, camera: TOP },

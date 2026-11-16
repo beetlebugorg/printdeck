@@ -73,6 +73,7 @@ NOZZLE_Y_EST = -20.0             # ESTIMATE: the nozzle, for the aim of the came
 PLATE_T = 6.0                    # x thickness. With the lower head sunk in, 6 mm stays to the motor.
 PLATE_Y = (FACE_Y[0] + 0.2, FACE_Y[1] - 0.2)
 PLATE_Z = (48.0, 98.0)
+POCKET_PLAY = 0.4                # play between the plate and the pocket of the arm, each side. 0.2 printed tight.
 CB_D = 6.0                       # counterbore for an M3 socket head (5.5 nominal, 5.26 measured)
 CB_DEPTH = M3_HEAD_H             # the lower head is flush with the plate
 HOLE = 3.4                       # M3 clearance
