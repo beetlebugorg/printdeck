@@ -300,6 +300,8 @@ path: %s
 [printdeck_pause]
 
 [printdeck_timelapse]
+
+[printdeck_jog]
 `, filepath.ToSlash(gcodeDir))
 }
 

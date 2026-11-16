@@ -1086,3 +1086,55 @@ func TestMatchingRolls(t *testing.T) {
 		t.Error("All rolls kept the short list")
 	}
 }
+
+// holdPrinter is a printer with continuous moves. HoldJog runs until the release.
+type holdPrinter struct {
+	*recPrinter
+	release chan struct{}
+	keeps   int
+}
+
+func (h *holdPrinter) CanHoldJog() bool { return true }
+func (h *holdPrinter) HoldJog(id int64, axis string, dir int, speed float64) error {
+	h.rec(fmt.Sprintf("hold %s %d %.1f", axis, dir, speed))
+	<-h.release
+	return nil
+}
+func (h *holdPrinter) KeepJog(id int64, hold bool) error {
+	if hold {
+		h.mu.Lock()
+		h.keeps++
+		h.mu.Unlock()
+		return nil
+	}
+	h.rec("release")
+	close(h.release)
+	return nil
+}
+
+// With a printer that has continuous moves, a held key sends one step, then one continuous move
+// at the speed of the step row. The move gets holds while the finger stays, and a release when it
+// lifts. No steps follow.
+func TestArrowKeyHold(t *testing.T) {
+	a, rp, cv := newPrintApp(idle)
+	pr := &holdPrinter{recPrinter: rp, release: make(chan struct{})}
+	a.Printer = pr
+	a.pages = []page{pageMove}
+	a.Draw(cv)
+	tapRegion(t, a, cv, "1")
+	a.Draw(cv)
+	r, _ := a.KeyRect("Y−")
+	ev(a, touch.Down, r.Min.X+r.Dx()/2, r.Min.Y+r.Dy()/2)
+	time.Sleep(jogRepeatDelay + 4*holdKeep)
+	ev(a, touch.Up, r.Min.X+r.Dx()/2, r.Min.Y+r.Dy()/2)
+	time.Sleep(3 * jogRepeat)
+	want := []string{"jog 0.00 -1.00 0.00 6000", "hold Y -1 15.0", "release"}
+	if c := pr.Calls(); !slices.Equal(c, want) {
+		t.Errorf("calls %q, want %q", c, want)
+	}
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+	if pr.keeps < 2 {
+		t.Errorf("%d holds while the finger stayed", pr.keeps)
+	}
+}

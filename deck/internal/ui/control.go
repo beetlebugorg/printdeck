@@ -6,8 +6,10 @@ import (
 	"image/color"
 	"math"
 	"printdeck/kit"
+	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"printdeck/internal/gfx"
@@ -29,9 +31,34 @@ const (
 	jogRepeatDelay, jogRepeat = 400 * time.Millisecond, 150 * time.Millisecond
 )
 
+// The speeds of a held arrow key in mm/s, for each step of jogSteps. A small step gives a slow
+// move for a fine position. The toolhead stops about 0.2 s after the finger lifts.
+var (
+	holdSpeedXY = []float64{2, 5, 15, 50}
+	holdSpeedZ  = []float64{0.5, 1, 3, 10}
+)
+
+// holdKeep is the time between two holds of a continuous move. The printer stops the move after
+// 0.5 s with no hold.
+const holdKeep = 150 * time.Millisecond
+
+// lastHoldID is the id of the last continuous move. The ids are times in ms, so they also grow
+// over a restart of the deck. JSON keeps them exact.
+var lastHoldID atomic.Int64
+
+// HoldJogger is a printer that moves an axis while the deck holds an arrow key. HoldJog starts the
+// move with an id that is larger than the ids before it, and returns when the move ends. KeepJog
+// holds the move (hold true) or releases it (hold false).
+type HoldJogger interface {
+	CanHoldJog() bool
+	HoldJog(id int64, axis string, dir int, speed float64) error
+	KeepJog(id int64, hold bool) error
+}
+
 // jogHold is the arrow key that a finger holds. A tap sends one step. A held key sends one step
 // more after jogRepeatDelay, then one step each jogRepeat, or each time that one step needs at
 // its feed, if longer. A goroutine sends the steps one at a time, so the moves cannot pile up.
+// A printer with HoldJogger gets one continuous move after jogRepeatDelay in place of the steps.
 type jogHold struct {
 	mu      sync.Mutex
 	d       [3]float64 // the step in X, Y and Z
@@ -40,6 +67,7 @@ type jogHold struct {
 	pending bool // a step of the press waits
 	held    bool
 	running bool
+	lift    chan struct{} // closed when the finger lifts
 }
 
 // jogPad is the touch of an arrow key with the step d.
@@ -51,6 +79,10 @@ func (a *App) jogPad(d [3]float64, feed int) func(image.Point, kit.Phase) {
 		switch phase {
 		case kit.PadUp:
 			h.held = false
+			if h.lift != nil {
+				close(h.lift)
+				h.lift = nil
+			}
 			return
 		case kit.PadMove:
 			return
@@ -77,6 +109,13 @@ func (a *App) jogLoop() {
 				return
 			}
 			send = time.Since(since) >= jogRepeatDelay
+			if hj, ok := a.Printer.(HoldJogger); send && ok && hj.CanHoldJog() {
+				lift := make(chan struct{})
+				h.lift = lift
+				h.mu.Unlock()
+				a.holdJog(hj, d, lift)
+				continue
+			}
 		}
 		h.mu.Unlock()
 		wait := jogRepeat
@@ -92,6 +131,56 @@ func (a *App) jogLoop() {
 			wait = max(wait, time.Duration(dist/float64(feed)*float64(time.Minute)))
 		}
 		time.Sleep(wait)
+	}
+}
+
+// holdJog moves the axis of the step d continuously until the finger lifts (lift closes) or the
+// axis gets to its limit. The speed comes from the step row.
+func (a *App) holdJog(hj HoldJogger, d [3]float64, lift chan struct{}) {
+	i := slices.IndexFunc(d[:], func(v float64) bool { return v != 0 })
+	if i < 0 {
+		return
+	}
+	dir := 1
+	if d[i] < 0 {
+		dir = -1
+	}
+	speeds := holdSpeedXY
+	if i == 2 {
+		speeds = holdSpeedZ
+	}
+	speed := speeds[max(0, slices.Index(jogSteps, a.jogStep))]
+	id := max(lastHoldID.Add(1), time.Now().UnixMilli())
+	lastHoldID.Store(id)
+	done := make(chan error, 1)
+	go func() { done <- hj.HoldJog(id, string("XYZ"[i]), dir, speed) }()
+	tick := time.NewTicker(holdKeep)
+	defer tick.Stop()
+	for {
+		select {
+		case err := <-done:
+			if err != nil {
+				a.Toast(err.Error())
+			}
+			if lift != nil {
+				// The move ended before the lift, at the limit or with an error. A new move
+				// starts only with a new press.
+				h := a.jog
+				h.mu.Lock()
+				if h.lift == lift {
+					h.lift, h.held = nil, false
+				}
+				h.mu.Unlock()
+			}
+			return
+		case <-lift:
+			hj.KeepJog(id, false)
+			lift = nil // the move ends a short time later: wait for done
+		case <-tick.C:
+			if lift != nil {
+				hj.KeepJog(id, true)
+			}
+		}
 	}
 }
 

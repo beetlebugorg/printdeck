@@ -374,6 +374,14 @@ type DripCompletion interface {
 
 // DripUpdateTime sends the steps of a homing move in small parts, until the completion.
 func (mq *PrinterMotionQueuing) DripUpdateTime(startTime, endTime float64, dripCompletion DripCompletion) {
+	mq.DripStream(startTime, func(float64) float64 { return endTime }, dripCompletion)
+}
+
+// DripStream is DripUpdateTime for a move that grows while it runs (a Printdeck addition). Before
+// each part, endTime gets the print time of the steps that are sent, and returns the end of the
+// moves in the trapq. It can add moves to the trapq. The stream stops at that end.
+func (mq *PrinterMotionQueuing) DripStream(startTime float64, endTime func(flushTime float64) float64,
+	dripCompletion DripCompletion) {
 	mq.dripStartTimes = append(mq.dripStartTimes, startTime)
 	mq.awaitFlushTime(startTime)
 	// Disable background flushing from timer
@@ -382,8 +390,9 @@ func (mq *PrinterMotionQueuing) DripUpdateTime(startTime, endTime float64, dripC
 	mq.advanceFlushTime(startTime-sdsCheckTime, startTime)
 	// Flush in segments until drip_completion signal
 	flushTime := startTime
-	for flushTime < endTime {
-		if dripCompletion.Test() {
+	for {
+		end := endTime(flushTime)
+		if flushTime >= end || dripCompletion.Test() {
 			break
 		}
 		curtime := mq.reactor.Monotonic()
@@ -394,7 +403,7 @@ func (mq *PrinterMotionQueuing) DripUpdateTime(startTime, endTime float64, dripC
 			dripCompletion.Wait(curtime+waitTime, nil)
 			continue
 		}
-		flushTime = math.Min(flushTime+dripSegmentTime, endTime)
+		flushTime = math.Min(flushTime+dripSegmentTime, end)
 		mq.NoteMCUMovequeueActivity(flushTime, true)
 		mq.advanceFlushTime(flushTime-sdsCheckTime, flushTime)
 	}
@@ -413,3 +422,6 @@ func (mq *PrinterMotionQueuing) CheckDripTiming() (float64, bool) {
 	}
 	return slices.Min(mq.dripStartTimes), true
 }
+
+// DripSegment is the time of the steps that one part of a drip move sends.
+const DripSegment = dripSegmentTime

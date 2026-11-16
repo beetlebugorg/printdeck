@@ -1296,6 +1296,20 @@ func (k *Klippy) Jog(x, y, z float64, speed int) error {
 	return k.script(g...)
 }
 
+// CanHoldJog reports that Klipper has [printdeck_jog] (printdeck.cfg), for the held arrow keys.
+func (k *Klippy) CanHoldJog() bool { return k.Machine().Has("printdeck_jog") }
+
+// HoldJog moves an axis (X, Y or Z) in the direction dir (1 or -1) at speed mm/s, until KeepJog
+// releases the move, the holds stop, or the axis gets to its limit. It returns when the move ends.
+func (k *Klippy) HoldJog(id int64, axis string, dir int, speed float64) error {
+	return k.script(fmt.Sprintf("PRINTDECK_JOG ID=%d AXIS=%s DIR=%d SPEED=%.2f", id, axis, dir, speed))
+}
+
+// KeepJog holds the move of HoldJog, or releases it.
+func (k *Klippy) KeepJog(id int64, hold bool) error {
+	return k.call("printdeck/jog", map[string]any{"id": id, "hold": hold})
+}
+
 // EmergencyStop stops the printer at once. Klipper must be restarted afterwards (FirmwareRestart).
 func (k *Klippy) EmergencyStop() error { return k.call("emergency_stop", nil) }
 
