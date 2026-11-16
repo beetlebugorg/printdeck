@@ -1,0 +1,4 @@
+# The measure pictures come from photos of the printer: they stay out of the repository.
+*
+!.gitignore
+!measured.json

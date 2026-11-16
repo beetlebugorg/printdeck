@@ -1,0 +1,62 @@
+{
+ "1": {
+  "value": 35.44,
+  "what": "screw spacing on the front of the right X end, top edge of the upper head to top edge of the lower head (= center spacing)",
+  "date": "2026-11-15"
+ },
+ "2": {
+  "value": 5.26,
+  "what": "head diameter of the upper X end front screw; it takes a 2.5 mm hex key, so it is an M3 socket head (nominal head 5.5)",
+  "date": "2026-11-15"
+ },
+ "3": {
+  "value": 13.63,
+  "what": "width of the flat face with the two screws, from the raised belt strip to the first step, halfway between the screws",
+  "date": "2026-11-15"
+ },
+ "4": {
+  "value": 50.18,
+  "what": "re-measured: left to right, from the center of the X end front screws to the inner face of the FRONT right upright (first try 50.96)",
+  "date": "2026-11-15"
+ },
+ "5": {
+  "value": 16.87,
+  "what": "front to back, from the X end face with the two screws to the front face of the front right upright (the screw face is behind it)",
+  "date": "2026-11-15"
+ },
+ "6": {
+  "value": 103.0,
+  "what": "at Z 50: from the bed surface up to the center of the lower X end front screw; the lower screw is 53 mm over the nozzle tip",
+  "date": "2026-11-15"
+ },
+ "7": {
+  "value": 345.0,
+  "what": "from the bed surface up to the bottom edge of the top corner plate on the front of the right upright; at Z 297 the plate starts 48 mm over the tip",
+  "date": "2026-11-15"
+ },
+ "8": {
+  "value": -10.0,
+  "what": "ESTIMATE (hard to reach): the top edge of the bottom corner plate is about 10 mm under the bed surface",
+  "date": "2026-11-15"
+ },
+ "9": {
+  "value": 11.0,
+  "what": "head fully right: from the right face of the BLTouch mount tab to the inner face of the front right upright",
+  "date": "2026-11-15"
+ },
+ "9b": {
+  "value": 8.0,
+  "what": "head fully right: the BLTouch mount tab is 8 mm behind the front face of the front right upright",
+  "date": "2026-11-15"
+ },
+ "10": {
+  "value": 9.0,
+  "what": "head fully right: clearance from the lower X end screw to the tool head motor in front of it",
+  "date": "2026-11-15"
+ },
+ "10b": {
+  "value": 25.0,
+  "what": "head fully right: clearance in front of the upper screw, 25 mm or more (almost clear)",
+  "date": "2026-11-15"
+ }
+}
