@@ -29,6 +29,9 @@ func heatSub(maps []printer.BedMesh) string {
 // driftBed is the bed temperature of the drift test, in °C.
 const driftBed = 60
 
+// driftBoosts are the boost times of the drift test keys, in minutes.
+var driftBoosts = []int{3, 6}
+
 // askHeatTest shows the tests of the Heat change page.
 func (a *App) askHeatTest() {
 	pr := a.Printer
@@ -44,7 +47,18 @@ func (a *App) askHeatTest() {
 	if pr.Machine().Has("printdeck_settle") {
 		items = append(items,
 			menuItem{"Drift test", fmt.Sprintf("The bed cools to %d°, heats to %d°, and the probe measures the middle each minute for %d minutes",
-				printer.HeatCold, driftBed, printer.DriftMinutes), dim, func() { a.do(func() error { return pr.DriftTest(driftBed) }) }},
+				printer.HeatCold, driftBed, printer.DriftMinutes), dim, func() { a.do(func() error { return pr.DriftTest(driftBed, 0) }) }})
+		boost := func() {
+			var bs []menuItem
+			for _, m := range driftBoosts {
+				m := m
+				bs = append(bs, menuItem{fmt.Sprintf("Boost %d minutes", m), fmt.Sprintf("%d° for %d minutes after the bed gets to %d°",
+					driftBed+printer.DriftBoost, m, driftBed), dim, func() { a.do(func() error { return pr.DriftTest(driftBed, m) }) }})
+			}
+			a.confirm = &confirmBox{question: "Drift test with a boost of the bed", choices: bs}
+		}
+		items = append(items,
+			menuItem{"Drift test, boost", fmt.Sprintf("The bed heats to %d° first, then goes back to %d°", driftBed+printer.DriftBoost, driftBed), dim, boost},
 			menuItem{"Last drift results", "How far the bed moved, and how fast", dim, a.showDrift})
 	}
 	a.confirm = &confirmBox{question: "Heat tests of the bed", choices: items}

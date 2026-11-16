@@ -2032,9 +2032,6 @@
     <ol class="steps"><li><span class="n">9</span><span>To see how the bed changes when it heats, open Maintenance, then Heat change, tap Test, and then Heat sweep. The deck prints a G-code file that maps the bed at room temperature, then each 5 °C from 35 to 60 °C, and shows each map less the cold map. The sweep runs for about 75 minutes, after the bed cools.</span></li></ol>
     
     
-    <ol class="steps"><li><span class="n">10</span><span>The bed changes its shape for many minutes after it gets hot. To measure this, tap Test, and then Drift test. The bed cools to 30 °C, heats to 60 °C, and the probe measures the middle of the bed each minute for 20 minutes. Last drift results shows how far the bed moved, and the time to 90 % of the movement. BED_SETTLE in PRINT_START uses this: it probes the middle of the bed every 30 s, and the print starts when the bed stops moving.</span></li></ol>
-    
-    
   
   
     <div class="chapter-tab">Level and calibrate</div>
@@ -2044,6 +2041,9 @@
 
 <section class="sheet guide even">
   
+    
+    <ol class="steps"><li><span class="n">10</span><span>The bed changes its shape for many minutes after it gets hot. To measure this, tap Test, and then Drift test. The bed cools to 30 °C, heats to 60 °C, and the probe measures the middle of the bed each minute for 20 minutes. Drift test, boost does the same test, but the bed first heats to 65 °C for 3 or 6 minutes, then goes back to 60 °C. Compare it with the drift test: a boost can make the bed settle sooner. Last drift results shows how far the bed moved, the time to 90 % of the movement, and the time after which the bed stays within 0.03 mm. BED_SETTLE in PRINT_START uses this: it probes the middle of the bed every 30 s, and the print starts when the bed stops moving.</span></li></ol>
+    
     
     <ol class="steps"><li><span class="n">11</span><span>Tap Height check, then Print, measure only. After the print, tap Height check, then Last results. Then print it again with Print, measure and correct, and compare the results and the heights of the two towers.</span></li></ol>
     
