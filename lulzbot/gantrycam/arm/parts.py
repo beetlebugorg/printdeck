@@ -3,7 +3,7 @@ frame of shape.py (origin at the nozzle tip with the head at X 293, x right, y b
 
 import math
 
-from build123d import Align, Box, Circle, Cylinder, Plane, Polygon, Pos, Rot, extrude
+from build123d import Align, Box, Circle, Cylinder, Plane, Polygon, Pos, RegularPolygon, Rot, extrude
 
 import shape as S
 
@@ -70,8 +70,8 @@ def upper_arm():
                     (S.BEAM_Y0, S.DROP_Z1 + 1), (S.DROP_Y[0] - 1, S.DROP_Z1 + 1), align=None)  # counterclockwise
     pl = Plane(origin=(S.DROP_X[0] - 1, 0, 0), x_dir=(0, 1, 0), z_dir=(1, 0, 0))
     part -= extrude(pl * wedge, S.DROP_X[1] - S.DROP_X[0] + 2)
-    # The pocket for the clamp plate (anti-turn), 0.2 mm play on each side.
-    part -= box((S.FACE_X - S.PLATE_T - 0.2, S.FACE_X + 1), (S.PLATE_Y[0] - 0.2, S.PLATE_Y[1] + 1),
+    # The pocket for the clamp plate (anti-turn), with POCKET_PLAY on each side.
+    part -= box((S.FACE_X - S.PLATE_T - S.POCKET_PLAY, S.FACE_X + 1), (S.PLATE_Y[0] - S.POCKET_PLAY, S.PLATE_Y[1] + 1),
                 (S.PLATE_Z[0], S.ARM_TOP + 1))
     # The upper screw: a hole through, and a counterbore from the left face.
     z = S.SCREW_Z[1]
@@ -135,6 +135,34 @@ def screws():
         return Pos(x0, S.SCREW_Y, z) * Rot(0, 90, 0) * Cylinder(
             S.M3_HEAD_D / 2, S.M3_HEAD_H, align=(Align.CENTER, Align.CENTER, Align.MIN))
     return [head(S.FACE_X - S.PLATE_T, S.SCREW_Z[0]), head(S.ARM_X0, S.SCREW_Z[1])]
+
+
+def joint_hardware():
+    """The two M3 x 30 socket screws from the front of the bracket into the drop, and their nuts in
+    the slots of the drop. The screws go along y."""
+    xc = sum(S.DROP_X) / 2
+    screws_, nuts = [], []
+    for z in S.JOINT_Z:
+        head = Pos(xc, S.FRONT_Y[0], z) * Rot(90, 0, 0) * Cylinder(
+            5.5 / 2, 3.0, align=(Align.CENTER, Align.CENTER, Align.MIN))
+        shank = Pos(xc, S.FRONT_Y[0], z) * Rot(-90, 0, 0) * Cylinder(
+            1.5, 30.0, align=(Align.CENTER, Align.CENTER, Align.MIN))
+        screws_.append(head + shank)
+        nut = Pos(xc, S.NUT_Y - 1.2, z) * Rot(-90, 0, 0) * extrude(RegularPolygon(5.5 / math.sqrt(3), 6), 2.4)
+        nuts.append(nut - Pos(xc, S.NUT_Y - 2, z) * Rot(-90, 0, 0) * Cylinder(
+            1.5, 4.0, align=(Align.CENTER, Align.CENTER, Align.MIN)))
+    return screws_, nuts
+
+
+def camera_screw():
+    """The 1/4"-20 x 1/4" screw: the head in the counterbore on the back of the bracket wall, the
+    thread through the slot into the base of the U bracket."""
+    zc = S.LENS_Z
+    head = Pos(S.SLOT_X, S.FRONT_Y[1] - S.SLOT_CB_DEPTH, zc) * Rot(-90, 0, 0) * Cylinder(
+        9.5 / 2, S.SLOT_CB_DEPTH, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    shank = Pos(S.SLOT_X, S.FRONT_Y[1] - S.SLOT_CB_DEPTH, zc) * Rot(90, 0, 0) * Cylinder(
+        6.35 / 2, S.WALL - S.SLOT_CB_DEPTH + 6.35, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    return head + shank
 
 
 def pivot_point():
