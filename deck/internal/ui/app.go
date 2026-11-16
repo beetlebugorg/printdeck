@@ -154,8 +154,9 @@ type Printer interface {
 	HeatMaps() []printer.BedMesh
 	// HeatSweep probes the bed map at room temperature, then at each step of 5 °C up to top.
 	HeatSweep(top int) error
-	// DriftTest probes one place of the bed each minute after the bed heats to bed °C.
-	DriftTest(bed int) error
+	// DriftTest probes one place of the bed each minute after the bed heats to bed °C, with a
+	// boost of printer.DriftBoost °C for boost minutes (0: no boost).
+	DriftTest(bed, boost int) error
 	// DriftReadings are the readings of the last drift test: [t, z] with t in seconds.
 	DriftReadings() ([][2]float64, error)
 	// FindProbeOffsetOnPad homes, and finds the offsets on the pad that is still on the bed.

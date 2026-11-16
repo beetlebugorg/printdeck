@@ -7,7 +7,7 @@ import (
 )
 
 func TestDriftGcode(t *testing.T) {
-	g := DriftGcode(60, 150)
+	g := DriftGcode(60, 150, 0)
 	for _, want := range []string{"G28\n", "TEMPERATURE_WAIT SENSOR=heater_bed MAXIMUM=30\n", "M140 S60\n",
 		"TEMPERATURE_WAIT SENSOR=heater_bed MINIMUM=59\n", "BED_SETTLE SAMPLE=1 RESET=1\n", "G4 P60000\n", "M140 S0\n"} {
 		if !strings.Contains(g, want) {
@@ -29,5 +29,20 @@ func TestDriftSummary(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("no %q in %q", want, got)
 		}
+	}
+}
+
+func TestDriftGcodeBoost(t *testing.T) {
+	g := DriftGcode(60, 150, 3)
+	heat, back := strings.Index(g, "M140 S65\n"), strings.Index(g, "M140 S60\n")
+	if heat < 0 || back < heat {
+		t.Fatalf("want M140 S65, then M140 S60:\n%s", g)
+	}
+	// The target goes back after three probe intervals.
+	if n := strings.Count(g[heat:back], "BED_SETTLE SAMPLE=1"); n != 4 {
+		t.Errorf("%d probes during the boost, want 4 (the start and 3 minutes)", n)
+	}
+	if !strings.Contains(g, "TEMPERATURE_WAIT SENSOR=heater_bed MINIMUM=59") {
+		t.Error("the clock must start when the bed gets to 59 °C")
 	}
 }

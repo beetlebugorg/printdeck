@@ -153,7 +153,7 @@ func (d *DemoPrinter) FoundProbeOffset() (float64, float64, bool, error) {
 }
 func (d *DemoPrinter) HeatMaps() []printer.BedMesh                    { return d.HeatMaps_ }
 func (d *DemoPrinter) HeatSweep(int) error                            { return nil }
-func (d *DemoPrinter) DriftTest(int) error                            { return nil }
+func (d *DemoPrinter) DriftTest(int, int) error                       { return nil }
 func (d *DemoPrinter) DriftReadings() ([][2]float64, error)           { return nil, nil }
 func (d *DemoPrinter) FindProbeOffsetOnPad() error                    { return nil }
 func (d *DemoPrinter) SetProbeXYOffset(float64, float64) error        { return nil }
