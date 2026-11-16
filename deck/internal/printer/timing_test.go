@@ -140,3 +140,42 @@ func TestReleaseCool(t *testing.T) {
 		}
 	}
 }
+
+// TestFitHeat checks that the fit finds the settle time and the rate of heatings with
+// seconds = 90 + 5 × degrees, also with one odd heating, and that it needs a spread of degrees.
+func TestFitHeat(t *testing.T) {
+	var spans [][2]float64
+	for _, deg := range []float64{3, 10, 25, 40, 55, 60} {
+		spans = append(spans, [2]float64{deg, 90 + 5*deg})
+	}
+	spans = append(spans, [2]float64{40, 900}) // a print that waited at the door
+	rate, settle, ok := fitHeat(spans)
+	if !ok || math.Abs(rate-5) > 0.01 || math.Abs(settle-90) > 0.5 {
+		t.Errorf("fit %.2f s/°, %.1f s settle, ok %v", rate, settle, ok)
+	}
+	if _, _, ok := fitHeat(spans[:3]); ok {
+		t.Error("three heatings are too few")
+	}
+	same := [][2]float64{{40, 290}, {41, 295}, {42, 300}, {40, 289}}
+	if _, _, ok := fitHeat(same); ok {
+		t.Error("heatings of the same size cannot give a settle time")
+	}
+
+	// The rates of a history with these heatings of the bed, and the time left of a heating
+	// from 30° to 60°: the settle time and 30 × 5 s.
+	var recs []Record
+	for _, s := range spans[:6] {
+		recs = append(recs, Record{Result: "complete", Phases: []Phase{{Kind: "heat-bed", Seconds: s[1], From: 60 - s[0], To: 60}}})
+	}
+	r := ComputeRates(recs)
+	if math.Abs(r.Heat["heat-bed"]-5) > 0.01 || math.Abs(r.Settle["heat-bed"]-90) > 0.5 {
+		t.Errorf("rates %.2f s/°, %.1f s settle", r.Heat["heat-bed"], r.Settle["heat-bed"])
+	}
+	var tm timer
+	st := State{Bed: 30, BedTarget: 60, PrepN: 1}
+	st.Prep[0] = PrepStep{Kind: "heat-bed", Target: 60, Now: true}
+	tm.update(st, time.Unix(0, 0))
+	if got := r.prepLeft(st, &tm, time.Unix(0, 0)).Seconds(); math.Abs(got-(90+30*5)) > 0.5 {
+		t.Errorf("prep left %.1f s, want %.1f s", got, 90+30*5.0)
+	}
+}
