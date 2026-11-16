@@ -110,6 +110,14 @@ func estimateFile(data []byte, in estimateInput) FileEstimate {
 	return out
 }
 
+// Limits returns the motion limits of the printer, and false before the deck has read them from
+// the printer.
+func (k *Klippy) Limits() (toolhead.Limits, bool) {
+	k.View.mu.Lock()
+	defer k.View.mu.Unlock()
+	return k.View.limits, k.View.limits.MaxVelocity > 0
+}
+
 // planSlot lets one plan of a file run at a time.
 var planSlot = make(chan struct{}, 1)
 

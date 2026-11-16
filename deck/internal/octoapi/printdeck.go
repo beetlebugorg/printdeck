@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"printdeck/internal/klipper/toolhead"
 	"printdeck/internal/printer"
 	"printdeck/internal/queue"
 )
@@ -84,12 +85,12 @@ type printdeckJSON struct {
 	Process string `json:"process"`
 	// PrinterID is the ID of the printer at the service, or "": the live tiles of the projects
 	// name it (printer_id).
-	PrinterID string `json:"printer_id"`
-	Material string      `json:"material"`
-	Diameter float64     `json:"diameter"`
-	Spool    *spoolJSON  `json:"spool"`
-	Spools   []spoolJSON `json:"spools"`
-	Job      *jobJSON    `json:"job"`
+	PrinterID string      `json:"printer_id"`
+	Material  string      `json:"material"`
+	Diameter  float64     `json:"diameter"`
+	Spool     *spoolJSON  `json:"spool"`
+	Spools    []spoolJSON `json:"spools"`
+	Job       *jobJSON    `json:"job"`
 	// Camera is the main camera of the deck, or null when the webcam is the screen of the deck.
 	Camera *cameraJSON `json:"camera"`
 	// Cameras are all cameras of the deck.
@@ -100,6 +101,20 @@ type printdeckJSON struct {
 	// Projects are the names of the projects of the history, the newest first, for the project
 	// pick of the plugin. Null when the deck has no history.
 	Projects []string `json:"projects"`
+	// Limits are the motion limits of the printer, for a slicer that plans the time of the moves
+	// as the printer does. Null before the deck has read them.
+	Limits *limitsJSON `json:"limits"`
+}
+
+// limitsJSON is the [printer] section of printer.cfg: velocities in mm/s, accelerations in
+// mm/s². A Z value of 0 is the value of the XY moves.
+type limitsJSON struct {
+	MaxVelocity          float64 `json:"max_velocity"`
+	MaxAccel             float64 `json:"max_accel"`
+	SquareCornerVelocity float64 `json:"square_corner_velocity"`
+	MinimumCruiseRatio   float64 `json:"minimum_cruise_ratio"`
+	MaxZVelocity         float64 `json:"max_z_velocity"`
+	MaxZAccel            float64 `json:"max_z_accel"`
 }
 
 func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
@@ -112,6 +127,12 @@ func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.Status != nil {
 		out.LCD = s.Status()
+	}
+	if s.Limits != nil {
+		if l, ok := s.Limits(); ok {
+			out.Limits = &limitsJSON{MaxVelocity: l.MaxVelocity, MaxAccel: l.MaxAccel, SquareCornerVelocity: l.SquareCornerVelocity,
+				MinimumCruiseRatio: l.MinCruiseRatio, MaxZVelocity: l.MaxZVelocity, MaxZAccel: l.MaxZAccel}
+		}
 	}
 	if s.Material != nil {
 		out.Material = s.Material()
@@ -247,6 +268,9 @@ type printdeckFields struct {
 	Queue *queue.Queue
 	// Status gives the status screen of the printer display (lcd.Status), or nil.
 	Status func() any
+	// Limits gives the motion limits of the printer ([printer] of printer.cfg), and false before
+	// the deck has read them. It can be nil.
+	Limits func() (toolhead.Limits, bool)
 	// Model draws the model of the print for an app (printer.View.ModelPicture), or nil.
 	Model func(st printer.State, w, h int, mono bool) image.Image
 }

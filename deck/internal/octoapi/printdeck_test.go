@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"printdeck/internal/klipper/toolhead"
 	"printdeck/internal/printer"
 )
 
@@ -128,5 +129,29 @@ func TestModelPicture(t *testing.T) {
 	img, err := png.Decode(r.Body)
 	if err != nil || r.StatusCode != 200 || img.Bounds().Dx() != 96 || img.Bounds().Dy() != 512 || asked[2] != true {
 		t.Errorf("%d %v %v %v", r.StatusCode, err, img.Bounds(), asked)
+	}
+}
+
+// The status of the plugin has the motion limits of the printer, for a slicer that plans the
+// time of the moves as the printer does, and null before the deck has read them.
+func TestPrintdeckLimits(t *testing.T) {
+	s, ts, _ := newTest(t)
+	url := ts.URL + "/api/plugin/printdeck"
+	if _, m := do(t, "GET", url, mainKey, nil, ""); m["limits"] != nil {
+		t.Errorf("no limits hook: %v", m["limits"])
+	}
+	known := false
+	s.Limits = func() (toolhead.Limits, bool) {
+		return toolhead.Limits{MaxVelocity: 300, MaxAccel: 1500, SquareCornerVelocity: 5, MinCruiseRatio: 0.5, MaxZVelocity: 25, MaxZAccel: 100}, known
+	}
+	if _, m := do(t, "GET", url, mainKey, nil, ""); m["limits"] != nil {
+		t.Errorf("limits not read yet: %v", m["limits"])
+	}
+	known = true
+	_, m := do(t, "GET", url, mainKey, nil, "")
+	l, _ := m["limits"].(map[string]any)
+	if l["max_velocity"] != 300.0 || l["max_accel"] != 1500.0 || l["square_corner_velocity"] != 5.0 ||
+		l["minimum_cruise_ratio"] != 0.5 || l["max_z_velocity"] != 25.0 || l["max_z_accel"] != 100.0 {
+		t.Errorf("limits %v", m["limits"])
 	}
 }
