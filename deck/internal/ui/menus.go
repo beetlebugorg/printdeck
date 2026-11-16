@@ -1080,6 +1080,9 @@ func (a *App) drawStats(c *gfx.Canvas) {
 		if rt.Samples[kind] == 0 {
 			return "Not known yet"
 		}
+		if settle := rt.Settle[kind]; settle >= 1 {
+			return fmt.Sprintf("%.1f s/° + %.0f s settle", rt.Heat[kind], settle)
+		}
 		return fmt.Sprintf("%.1f s/°", rt.Heat[kind])
 	}
 	mmss := func(sec float64) string { return fmt.Sprintf("%d:%02d", int(sec)/60, int(sec)%60) }

@@ -229,7 +229,11 @@ func (t *timer) cooling(st State, now time.Time) (seconds float64, key string, d
 // Rates are the timings of this printer, from its history: the seconds for each degree of each
 // heater, the seconds of each other kind of step, and the minutes that the bed takes to cool.
 type Rates struct {
-	Heat    map[string]float64 // heat-bed, heat-nozzle: seconds for each degree
+	Heat map[string]float64 // heat-bed, heat-nozzle: seconds for each degree
+	// Settle is, for heat-bed and heat-nozzle, the seconds of a heating step on top of the
+	// seconds for each degree: the wait of the macro until the temperature is stable at its
+	// target. 0 when the history has too few heatings to measure it (see fitHeat).
+	Settle  map[string]float64
 	Step    map[string]float64 // the other kinds: seconds
 	Target  map[string]float64 // heat-bed, heat-nozzle: the usual target, for a step whose target is not set yet
 	CoolBed float64            // seconds from the end of a print to ReleaseBed; 0 is not known
@@ -277,8 +281,9 @@ func median(v []float64) float64 {
 // ComputeRates makes the rates from the history. A kind with no step in the history keeps its
 // default.
 func ComputeRates(recs []Record) Rates {
-	r := Rates{Heat: map[string]float64{}, Step: map[string]float64{}, Target: map[string]float64{}, Samples: map[string]int{}}
+	r := Rates{Heat: map[string]float64{}, Settle: map[string]float64{}, Step: map[string]float64{}, Target: map[string]float64{}, Samples: map[string]int{}}
 	heat, step, target := map[string][]float64{}, map[string][]float64{}, map[string][]float64{}
+	spans := map[string][][2]float64{} // each heating: degrees, seconds
 	var cool, taus, plan []float64
 	for _, rec := range recs {
 		if rec.Result == "complete" && rec.Planned > 0 {
@@ -294,6 +299,10 @@ func ComputeRates(recs []Record) Rates {
 				// A short heating says little about the rate.
 				if p.To-p.From >= 10 {
 					heat[p.Kind] = append(heat[p.Kind], p.Seconds/(p.To-p.From))
+				}
+				// For the settle time, short heatings help: they are mostly settle time.
+				if p.To-p.From >= 2 {
+					spans[p.Kind] = append(spans[p.Kind], [2]float64{p.To - p.From, p.Seconds})
 				}
 				if p.To > 0 {
 					target[p.Kind] = append(target[p.Kind], p.To)
@@ -327,6 +336,9 @@ func ComputeRates(recs []Record) Rates {
 		if m := median(heat[k]); m > 0 {
 			r.Heat[k] = m
 		}
+		if rate, settle, ok := fitHeat(spans[k]); ok {
+			r.Heat[k], r.Settle[k] = rate, settle
+		}
 		r.Target[k] = median(target[k])
 	}
 	for k, d := range defaultTimes {
@@ -339,6 +351,50 @@ func ComputeRates(recs []Record) Rates {
 	r.CoolTau = median(taus)
 	r.PlanError, r.PlanSamples = median(plan), len(plan)
 	return r
+}
+
+// The heatings that fitHeat needs: their number, and the spread of their degrees, so that the
+// fit can tell the settle time from the time for each degree.
+const (
+	settleMinSamples = 4
+	settleMinSpread  = 20.0 // degrees
+	settleMax        = 900.0
+)
+
+// fitHeat fits seconds = settle + rate × degrees to the heatings of one heater (each one
+// degrees, seconds). It uses the Theil-Sen method: rate is the median of the slopes between
+// all pairs, and settle the median of seconds - rate × degrees, so that one odd print changes
+// little. ok is false with fewer than settleMinSamples heatings, with a spread of degrees under
+// settleMinSpread, or with a rate that is not above 0.
+func fitHeat(spans [][2]float64) (rate, settle float64, ok bool) {
+	if len(spans) < settleMinSamples {
+		return 0, 0, false
+	}
+	lo, hi := spans[0][0], spans[0][0]
+	for _, s := range spans {
+		lo, hi = min(lo, s[0]), max(hi, s[0])
+	}
+	if hi-lo < settleMinSpread {
+		return 0, 0, false
+	}
+	var slopes []float64
+	for i := range spans {
+		for j := i + 1; j < len(spans); j++ {
+			if d := spans[j][0] - spans[i][0]; math.Abs(d) >= 1 {
+				slopes = append(slopes, (spans[j][1]-spans[i][1])/d)
+			}
+		}
+	}
+	rate = median(slopes)
+	if rate <= 0 {
+		return 0, 0, false
+	}
+	rest := make([]float64, len(spans))
+	for i, s := range spans {
+		rest[i] = s[1] - rate*s[0]
+	}
+	settle = max(0, min(settleMax, median(rest)))
+	return rate, settle, true
 }
 
 // prepLeft is the time that the steps of the start macro still need: the step that runs now,
@@ -365,7 +421,7 @@ func (r Rates) prepLeft(st State, t *timer, now time.Time) time.Duration {
 				target = r.Target[s.Kind]
 			}
 			if from := temps[s.Kind]; target > from {
-				left += (target - from) * r.Heat[s.Kind]
+				left += r.Settle[s.Kind] + (target-from)*r.Heat[s.Kind]
 				temps[s.Kind] = target
 			}
 			continue
