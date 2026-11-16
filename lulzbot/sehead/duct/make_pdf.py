@@ -42,7 +42,8 @@ PARTS = [
     ("fit_lip", 1, "Fit test. The lip that goes into the blower outlet. Print it first."),
     ("duct", 1, "Bottom face on the bed. Solid. No supports."),
     ("blower_bracket", 1, "Blower side on the bed. Solid. No supports."),
-    ("bltouch_bracket", 1, "Back face on the bed. Solid. No supports."),
+    ("bltouch_bracket", 1, "Outer face on the bed. Solid. No supports."),
+    ("motor_spacer", 1, "Flat. It goes where the tab of the stock duct was, between the Aero and the motor."),
 ]
 
 HARDWARE = [
@@ -52,10 +53,12 @@ HARDWARE = [
     ("1", "M3 × 18 socket screw and 1 M3 square nut (DIN 562, 1.8 mm)",
      "The top ear of the blower. The square nut goes into the pocket in the back of the bracket. Not longer than "
      "18 mm: the end of the screw stops at the motor."),
-    ("1", "M3 × 25 socket screw and 1 M3 nut", "The low ear of the blower, through the boss of the bracket."),
+    ("1", "M3 × 25 socket screw and 1 M3 nut", "The low ear of the blower, through the lobe of the bracket."),
+    ("1", "M3 × 16 socket screw", "Up from under the foot of the duct into the boss of the blower bracket. It cuts "
+     "its thread in the boss."),
     ("2", "M3 × 16 button head screws", "Two screws of the heat sink fan (now M3 × 12). They go through the pads "
      "of the BLTouch bracket."),
-    ("2", "M3 × 12 socket screws and 2 M3 nuts", "The BLTouch, from the top of the shelf. The nuts go under the ears."),
+    ("2", "M3 × 6 socket screws", "Up through the ears of the BLTouch into the shelf. They cut their thread."),
 ]
 
 
@@ -64,16 +67,16 @@ P1 = f"""
   <div class="kicker">LulzBot TAZ Workhorse · SE tool head · BLTouch Smart</div>
   <h1>SE tool head duct</h1>
   <p class="lede">A new part cooling duct for the SE tool head, a bracket that puts the blower on the right end
-  of the motor, and a bracket that puts the BLTouch behind and to the left of the nozzle. The duct goes round
-  the hot end on the right, the back and the left. The front is open, so you and the cameras see the nozzle.</p>
+  of the motor, and a bracket that hides the BLTouch behind the heat sink fan. The duct blows from the right,
+  the back and the left. The front and the front right are open, so you and the cameras see the nozzle.</p>
 </header>
 {img("hero", "hero")}
 <div class="two">
   <div>
     <h3>The space</h3>
     <table class="parts">
-      <tr><td></td><td>The BLTouch pin is {-PIN[0]:.0f} mm left of the nozzle and {PIN[1]:.0f} mm behind it. Its body is
-      {SPACE['BLTouch body to the duct']} mm from the duct and {SPACE['BLTouch to the mount']} mm from the extruder mount.</td></tr>
+      <tr><td></td><td>The BLTouch pin is {-PIN[0]:.0f} mm left of the nozzle and {PIN[1]:.1f} mm behind it. It is
+      {SPACE['BLTouch to the heat sink fan']} mm from the fan and {SPACE['BLTouch to the carriage']} mm from the X carriage.</td></tr>
       <tr><td></td><td>At X home the BLTouch bracket is {SPACE['BLTouch bracket to the left X end at X home']} mm from
       the X motor. At X max the blower is {SPACE['blower to the right X end at X max']} mm from the right X end.</td></tr>
       <tr><td></td><td>The duct is {SPACE['duct bottom over the nozzle tip']} mm over the nozzle tip (the stock duct:
@@ -136,40 +139,40 @@ STEPS = [
     ]),
     ("stock", "Remove the stock duct and the BLTouch mount", [
         "Turn off the printer and let the hot end cool.",
-        "Remove the BLTouch and its mount from the right end of the motor. Keep the two front motor screws: the "
-        "new countersunk screws must be 1 mm shorter.",
+        "Remove the BLTouch and its mount from the right end of the motor. Keep the screws of the mount: the new "
+        "countersunk screws must be 1 mm shorter.",
         "Remove the blower from the stock duct. Keep its cable connected.",
-        "Remove the two screws that hold the stock duct: the front bottom motor screw, and the long screw at the "
-        "back left of the Aero (from the left, behind the heat sink fan). The motor stays on its other screws.",
-        "Take the stock duct off from below.",
+        "Remove the long screw at the back left of the Aero (from the left, behind the heat sink fan).",
+        "Take the stock duct off from below. Its front tab comes out from between the Aero and the motor.",
     ]),
-    ("duct", "Fit the duct", [
-        "Put the duct up from below. The front tab goes between the Aero and the motor, at the front bottom motor "
-        "screw. The post goes against the back left of the Aero.",
-        "Put in the long screw at the back left through the post. Tighten it.",
-        "Look under the head: the duct must not touch the heater block or the sock.",
-    ]),
-    ("bracket", "Fit the blower bracket", [
+    ("bracket", "Fit the spacer and the blower bracket", [
+        "Put the spacer between the Aero and the motor, where the front tab of the stock duct was.",
         "Put the M3 square nut into the pocket in the back of the bracket.",
-        "Put the bracket on the end cap of the motor. The flange goes to the front of the motor, and the boss is "
-        "under the front of the motor.",
-        "Put in the two countersunk screws through the bracket into the front motor holes. The bottom screw also "
-        "holds the front tab of the duct. Tighten them. The heads must be flush or under the face.",
+        "Put the bracket on the end cap of the motor. The lobe goes in front of the motor, the boss under it.",
+        "Put in the two countersunk screws through the bracket into the front motor holes. The bottom screw goes "
+        "through the spacer. Tighten them. The heads must be flush or under the face.",
     ]),
     ("blower", "Fit the blower", [
-        "Put the blower on the bracket, the intake out to the right. The outlet goes down onto the lip of the duct.",
+        "Put the blower on the bracket, the intake out to the right, the outlet down at the back.",
         "Put the M3 × 18 screw through the top ear into the square nut. Put the M3 × 25 screw through the low ear "
-        "and the boss, with the nut on the back of the boss. Tighten both.",
+        "and the lobe, with the nut on the back of the lobe. Tighten both.",
         "Route the blower cable up along the motor. Tie it clear of the X end.",
+    ]),
+    ("duct", "Fit the duct", [
+        "Put the duct up from below. The lip goes up into the blower outlet. The post goes against the back left "
+        "of the Aero.",
+        "Put in the long screw at the back left through the post. Tighten it.",
+        "Put the M3 × 16 screw up through the foot into the boss of the blower bracket. Tighten it.",
+        "Look under the head: the duct must not touch the heater block or the sock.",
     ]),
     ("bltbracket", "Fit the BLTouch bracket", [
         "Remove the back screw and the bottom screw of the heat sink fan (the two at the back bottom edge).",
-        "Put the bracket on the fan: the pads on the screw holes, the shelf behind the fan.",
+        "Put the bracket on the fan: the plate on the fan face, the cover behind the fan.",
         "Put in the two M3 × 16 button head screws. Tighten them until the fan is firm. Do not crush the fan frame.",
     ]),
     ("bltouch", "Fit the BLTouch", [
-        "Put the BLTouch under the shelf, the ears left and right, the wires up through the diamond hole.",
-        "Put the two M3 × 12 screws down through the shelf and the ears, into the nuts under the ears. Tighten them.",
+        "Push the BLTouch up into the cover from below, the ears front and back, the wires up through the diamond hole.",
+        "Put the two M3 × 6 screws up through the ears into the shelf. Tighten them a little: they cut their thread.",
         "Route the BLTouch cable up behind the fan to the head cables. Tie it clear of the carriage.",
     ]),
     ("front", "Check, then set the printer", [

@@ -17,9 +17,9 @@ const MANIFEST = JSON.parse(fs.readFileSync(path.join(HERE, "build", "manifest.j
 const FINISH = { petg: "print", steel: "buy", dark: "dark", bltouch: "buy" };
 const LABEL = { duct: "Duct", bracket: "Blower bracket", bltmount: "BLTouch bracket", fitlip: "Lip test",
   blower: "Blower", bltouch: "BLTouch", stockduct: "Stock duct", cskscrews: "2 × M3 countersunk",
-  blowerscrews: "M3 × 18 and M3 × 25", fanscrews: "2 × M3 × 16 button head", bltscrews: "2 × M3 × 12, 2 nuts" };
+  blowerscrews: "M3 × 18 and M3 × 25", spacer: "Spacer", footscrew: "M3 × 16", fanscrews: "2 × M3 × 16 button head", bltscrews: "2 × M3 × 6" };
 
-const PRINTED = ["duct", "blower_bracket", "bltouch_bracket", "fit_lip"];
+const PRINTED = ["duct", "blower_bracket", "bltouch_bracket", "motor_spacer", "fit_lip"];
 // The frame of the meshes: x to the right of the printer, y to the back, z up. A camera is the
 // direction from the part to the eye.
 const FRONT_RIGHT = [1, -1.1, 0.55];   // from the front right, a little above
@@ -27,8 +27,8 @@ const FRONT = [0.05, -1, 0.12];        // from the front
 const BACK_LEFT = [-1, 0.9, 0.45];     // from the back left: the BLTouch side
 const BELOW = [0.35, -0.6, -1];        // from below, in front
 const PRINT_VIEW = [1, -1.2, 0.9];
-const HEAD = ["head"];
-const NEW = ["duct", "bracket", "bltmount", "blower", "bltouch", "cskscrews", "blowerscrews", "fanscrews", "bltscrews"];
+const HEAD = ["head", "nozzle"];
+const NEW = ["duct", "bracket", "bltmount", "blower", "bltouch", "cskscrews", "blowerscrews", "fanscrews", "bltscrews", "spacer", "footscrew"];
 
 // name: { show, focus, explode {group: offset}, camera, labels {group: label} }.
 const SHOTS = {
@@ -36,12 +36,15 @@ const SHOTS = {
   front: { show: [...HEAD, ...NEW], focus: ["duct"], explode: {}, camera: FRONT },
   stock: { show: [...HEAD, "stockduct"], focus: ["stockduct"], explode: { stockduct: [0, 0, -30] }, camera: FRONT_RIGHT },
   fitlip: { show: ["blower", "fitlip"], focus: ["fitlip"], explode: { fitlip: [0, 0, -25] }, camera: FRONT_RIGHT },
-  duct: { show: [...HEAD, "duct"], focus: ["duct"], explode: { duct: [0, 0, -35] }, camera: FRONT_RIGHT },
-  bracket: { show: [...HEAD, "duct", "bracket", "cskscrews"], focus: ["bracket", "cskscrews"], explode: { bracket: [30, 0, 0], cskscrews: [60, 0, 0] }, camera: FRONT_RIGHT },
-  blower: { show: [...HEAD, "duct", "bracket", "cskscrews", "blower", "blowerscrews"], focus: ["blower", "blowerscrews"], explode: { blower: [35, 0, 0], blowerscrews: [70, 0, 0] }, camera: FRONT_RIGHT },
+  bracket: { show: [...HEAD, "spacer", "bracket", "cskscrews"], focus: ["bracket", "cskscrews", "spacer"], explode: { bracket: [30, 0, 0], cskscrews: [60, 0, 0], spacer: [0, -25, 0] }, camera: FRONT_RIGHT },
+  blower: { show: [...HEAD, "spacer", "bracket", "cskscrews", "blower", "blowerscrews"], focus: ["blower", "blowerscrews"], explode: { blower: [35, 0, 0], blowerscrews: [70, 0, 0] }, camera: FRONT_RIGHT },
+  duct: { show: [...HEAD, "spacer", "bracket", "cskscrews", "blower", "blowerscrews", "duct", "footscrew"], focus: ["duct", "footscrew"], explode: { duct: [0, 0, -35], footscrew: [0, 0, -60] }, camera: FRONT_RIGHT },
   bltbracket: { show: [...HEAD, "duct", "bltmount", "fanscrews"], focus: ["bltmount", "fanscrews"], explode: { bltmount: [-30, 0, 0], fanscrews: [-55, 0, 0] }, camera: BACK_LEFT },
   bltouch: { show: [...HEAD, "duct", "bltmount", "fanscrews", "bltouch", "bltscrews"], focus: ["bltouch", "bltscrews"], explode: { bltouch: [0, 0, -30], bltscrews: [0, 0, 25] }, camera: BACK_LEFT },
   below: { show: [...HEAD, ...NEW], focus: ["duct"], explode: {}, camera: BELOW },
+  left: { show: [...HEAD, ...NEW], focus: ["bltmount"], explode: {}, camera: [-1, -0.08, 0.12] },
+  gantrycam: { show: [...HEAD, ...NEW], focus: ["duct"], explode: {}, camera: [0.82, -0.57, 0.12] },
+  corner: { show: [...HEAD, ...NEW], focus: ["duct"], explode: {}, camera: [0.55, -0.75, 0.55] },
 };
 
 const SIZE = 2800;                    // pixels; the images are about 170 mm wide in the PDF (400 dpi)

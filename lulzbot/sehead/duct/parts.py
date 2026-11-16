@@ -55,14 +55,16 @@ def rect(w, z0, z1):
 # --- The duct ---------------------------------------------------------------------------------
 
 def ring_path():
-    """The centre line of the ring: the right arm from the front, the back arm, the 45 degree turn
-    round the BLTouch, the left arm to the front."""
+    """The centre line of the channel: from the plenum under the blower outlet, left under the motor,
+    45 degrees back to the short right arm, the back arm, the 45 degree turn round the BLTouch, and
+    the left arm to the front."""
     h = S.CH_W / 2 + S.WALL
     cx, cy = S.BLT_X[1], S.BLT_Y[0]           # the corner of the BLTouch body nearest the duct
     y_lc = cy - cx + S.RING_L - (h + S.CORNER_GAP) * math.sqrt(2)
     x_bc = S.RING_L + (S.RING_B - y_lc)
-    return [(S.RING_R, S.LINK_Y[0] + S.CH_W / 2), (S.RING_R, S.RING_B), (x_bc, S.RING_B),
-            (S.RING_L, y_lc), (S.RING_L, S.RING_FRONT + S.WALL + S.CH_W / 2)]
+    y_r0 = S.LINK_Y + (S.LINK_TURN_X - S.RING_R)
+    return [(sum(S.OUTLET_IN_X) / 2, S.LINK_Y), (S.LINK_TURN_X, S.LINK_Y), (S.RING_R, y_r0),
+            (S.RING_R, S.RING_B), (x_bc, S.RING_B), (S.RING_L, y_lc), (S.RING_L, S.RING_FRONT + S.WALL + S.CH_W / 2)]
 
 
 def path_prisms(pts, profile, h):
@@ -105,43 +107,77 @@ def mitred_prisms(pts, profile, e_end):
     return out
 
 
-def link_channels():
-    """The y ranges of the two channels under the motor."""
-    w = (S.OUTLET_IN_Y[1] - S.LINK_Y[0] - S.WALL) / 2
-    return w, [(S.LINK_Y[0], S.LINK_Y[0] + w), (S.OUTLET_IN_Y[1] - w, S.OUTLET_IN_Y[1])]
-
-
 def plenum_box():
     return ((S.MOTOR_X1 + 0.6, S.BLOWER_BOX[0][1]), (S.OUTLET_IN_Y[0] - 2.5, S.XEND_FRONT_Y - 1.0))
 
 
-def duct_shell():
+def band(pts, h):
+    """The outline of a band h each side of an open path, with mitred corners and ends h longer."""
+    import numpy as np
+    p = [np.array(q, float) for q in pts]
+    d0 = (p[1] - p[0]) / np.linalg.norm(p[1] - p[0])
+    d1 = (p[-1] - p[-2]) / np.linalg.norm(p[-1] - p[-2])
+    p[0] = p[0] - d0 * h
+    p[-1] = p[-1] + d1 * h
+    left, right = [], []
+    for i in range(len(p)):
+        dirs = []
+        if i > 0:
+            dirs.append((p[i] - p[i - 1]) / np.linalg.norm(p[i] - p[i - 1]))
+        if i < len(p) - 1:
+            dirs.append((p[i + 1] - p[i]) / np.linalg.norm(p[i + 1] - p[i]))
+        n = [np.array((-d[1], d[0])) for d in dirs]
+        m = sum(n) / np.linalg.norm(sum(n))
+        k = h / float(np.dot(m, n[0]))
+        left.append(tuple(p[i] + m * k))
+        right.append(tuple(p[i] - m * k))
+    return _ccw(left + right[::-1])
+
+
+def rect2d(xr, yr):
+    return [(xr[0], yr[0]), (xr[1], yr[0]), (xr[1], yr[1]), (xr[0], yr[1])]
+
+
+def duct_outline():
+    """The plan of the duct: the channel, the plenum under the outlet, and the foot. One face, the
+    corners rounded."""
+    from build123d import Polygon as Poly
     h = S.CH_W / 2 + S.WALL
-    pts = ring_path()
-    prof = rect(2 * h, S.DUCT_Z0, S.DUCT_Z1)
-    shell = path_prisms(pts, prof, h)
-    # The link under the motor, the plenum under the outlet, the block at the front right.
     px, py = plenum_box()
-    shell += box((S.RING_R, px[0] + 1), (S.LINK_Y[0] - S.WALL, S.OUTLET_IN_Y[1] + S.WALL), (S.DUCT_Z0, S.DUCT_Z1))
-    shell += box(px, py, (S.DUCT_Z0, S.DUCT_Z1))
-    # The front of the right arm goes on to the front of the strut: the strut stands on it.
-    shell += box((S.OPEN_X[1], S.RING_R + S.CH_W / 2 + S.WALL), (S.FRONT_TAB_Y[0], S.LINK_Y[0]), (S.DUCT_Z0, S.DUCT_Z1))
-    return shell
+    face = Poly(*band(ring_path(), h), align=None)
+    face = face + Poly(*_ccw(rect2d(px, py)), align=None)
+    return _round2d(face, S.CORNER_R)
+
+
+def duct_shell():
+    face = duct_outline()
+    shell = extrude(face, S.DUCT_Z1 - S.DUCT_Z0, dir=(0, 0, 1))
+    return soften(Pos(0, 0, S.DUCT_Z0) * shell, S.TOP_CHAMFER)
+
+
+def soften(part, c):
+    """Chamfer the edges of the top face with c. In the print the chamfer faces up."""
+    from build123d import Axis, chamfer
+    try:
+        top = part.faces().group_by(Axis.Z)[-1]
+        t = chamfer([e for f in top for e in f.edges()], c)
+        if t.is_valid and len(t.solids()) == 1:
+            part = t
+    except Exception:
+        pass
+    return part
 
 
 def duct_cavity():
     pts = ring_path()
     prof = gable(S.CH_W, S.CH_Z0, S.DUCT_Z1 - S.WALL - S.CH_W / 2)
     cav = mitred_prisms(pts, prof, S.CH_W / 2)
-    w, ys = link_channels()
-    lprof = gable(w, S.CH_Z0, S.DUCT_Z1 - S.WALL - w / 2)
-    for y0, y1 in ys:
-        yc = (y0 + y1) / 2
-        cav += prism((S.RING_R, yc), (sum(S.OUTLET_IN_X) / 2, yc), lprof)
     # The plenum: the inside of the lip, open to the blower outlet at the top.
     lx, ly = lip_inside()
     cav += box(lx, ly, (S.CH_Z0, S.DUCT_Z1 + S.INLET_LIP + 1))
-    return cav
+    # The floor of the plenum: parallel to the slope under it, a wall of WALL between them.
+    px, _ = plenum_box()
+    return cav - _front_slope(S.SLOPE_Y0 + S.WALL * math.sqrt(2), px[0], px[1] + 5)
 
 
 def lip_outside():
@@ -161,7 +197,7 @@ def outlets():
     z = S.CH_Z0 + 2.0
     out = []
     xr = S.OPEN_X[1] + S.WALL + 2.0
-    for y in (-12.0, -5.0, 2.0, 9.0):
+    for y in (3.0, 10.0):
         out.append(Vector(xr, y, z))
     yb = S.OPEN_Y[1] + S.WALL + 2.0
     for x in (14.0, 7.0, 0.0, -6.0):
@@ -169,6 +205,12 @@ def outlets():
     xl = S.OPEN_X[0] - S.WALL - 2.0
     for y in (-10.0, -3.0, 4.0):
         out.append(Vector(xl, y, z))
+    # The 45 degree part of the link: two outlets from the right front.
+    p0 = Vector(S.LINK_TURN_X, S.LINK_Y, z)
+    p1 = Vector(S.RING_R, S.LINK_Y + S.LINK_TURN_X - S.RING_R, z)
+    for f in ():
+        c = p0 + (p1 - p0) * f
+        out.append(c + _unit(((t - c).X, (t - c).Y, 0)) * 2.0)   # 2 mm in from the centre line
     return [(p, _unit(t - p)) for p in out]
 
 
@@ -183,30 +225,57 @@ def outlet_cut(p, d):
 
 
 def duct():
-    """The U round the hot end, the link under the motor, the plenum under the blower outlet, the
-    lip into the outlet, the front tab and the post. It prints on its bottom face (z = DUCT_Z0)."""
+    """The channel round the hot end (open at the front and the front right), the plenum under the
+    blower outlet, the lip into the outlet, the foot under the blower bracket and the post at the
+    back left. It prints on its bottom face (z = DUCT_Z0)."""
     part = duct_shell()
-    # The front tab between the Aero and the motor, on the front bottom motor screw, and the strut
-    # under the motor to the right arm. Left of the right arm the underside slopes at 45 degrees up
-    # from the top of the duct: no overhang, and the hot end stays in view from the front.
-    tab = box(S.FRONT_TAB_X, S.FRONT_TAB_Y, (S.DUCT_Z0, S.FRONT_TAB_LOW[1]))
-    tab += box(S.FRONT_TAB_X, (S.FRONT_TAB_Y[0], S.FRONT_TAB_LOW[0]), (S.DUCT_Z0, S.FRONT_TAB_Z[1]))
-    tab += box((S.FRONT_TAB_X[0], S.RING_R + S.CH_W / 2 + S.WALL), S.FRONT_TAB_Y, (S.DUCT_Z0, S.STRUT_Z1))
-    tab -= _wedge_x(S.OPEN_X[1])                          # left of the right arm: a 45 degree slope
-    part += tab
     # The post at the back left, under the head of the long screw of the Aero.
     part += box(S.POST_X, S.POST_Y, (S.DUCT_Z0, S.POST_Z[1]))
+    # The foot: a short pillar from the bed up under the boss of the blower bracket.
+    px, _ = plenum_box()
+    foot = box((S.FOOT_X0, px[0] + 1), (S.FOOT_Y[0], S.LINK_Y - S.CH_W / 2), (S.DUCT_Z0, S.BLOWER_Z0 - 0.3))   # back to the link
+    part += foot
+    # The underside of the plenum and the foot rises at 45 degrees to the front: the gantry camera
+    # sees the bed under them, and the air in the plenum slides back into the link.
+    part -= _front_slope(S.FOOT_SLOPE_Y0, S.SLOPE_X0, px[0])
+    part -= _front_slope(S.SLOPE_Y0, px[0], px[1] + 5)
     # The lip into the blower outlet (the cavity makes it hollow).
     part += box(*lip_outside(), (S.DUCT_Z1 - 1, S.DUCT_Z1 + S.INLET_LIP))
     part -= duct_cavity()
     for p, d in outlets():
         part -= outlet_cut(p, d)
-    # The screw holes, with the point up.
-    y, z = S.FRONT_BOLTS[0]
-    part -= hole((S.FRONT_TAB_X[0] - 1, y, z), (1, 0, 0), S.HOLE / 2, S.FRONT_TAB_X[1] - S.FRONT_TAB_X[0] + 2, (0, 0, 1))
+    # The screw holes: the post (along x, the point up), the foot (up through it).
     y, z = S.POST_SCREW
     part -= hole((S.POST_X[0] - 1, y, z), (1, 0, 0), S.HOLE / 2, S.POST_X[1] - S.POST_X[0] + 2, (0, 0, 1))
+    fx, fy = S.FOOT_SCREW
+    part -= Pos(fx, fy, 0) * Cylinder(S.HOLE / 2, 40, align=(Align.CENTER, Align.CENTER, Align.MIN))
     return part
+
+
+def _front_slope(y0, x0, x1):
+    """The space under a 45 degree plane that meets the bed at y0 and rises toward -y, from x0 to x1."""
+    z0, big = S.DUCT_Z0, 60.0
+    pl = Plane(origin=(x0, 0, 0), x_dir=(0, 1, 0), z_dir=(1, 0, 0))
+    poly = Polygon(*_ccw([(y0, z0 - 1), (y0, z0), (y0 - big, z0 + big), (y0 - big, z0 - 1)]), align=None)
+    return extrude(pl * poly, x1 - x0, dir=(1, 0, 0))
+
+
+def spacer_placed():
+    """The spacer at its place: on the front bottom motor screw, between the Aero and the motor."""
+    y, z = S.FRONT_BOLTS[0]
+    return Pos(S.MOTOR_X0 - S.SPACER_T, y, z) * Rot(0, 90, 0) * motor_spacer()
+
+
+def foot_screw():
+    fx, fy = S.FOOT_SCREW
+    return _screw((fx, fy, S.DUCT_Z0), (0, 0, 1), S.FOOT_SCREW_L)   # the head under the foot
+
+
+def motor_spacer():
+    """The spacer between the Aero and the motor, on the front bottom motor screw (in place of the
+    tab of the stock duct). It prints flat."""
+    return (Cylinder(S.SPACER_D / 2, S.SPACER_T, align=(Align.CENTER, Align.CENTER, Align.MIN))
+            - Cylinder(S.HOLE / 2, S.SPACER_T, align=(Align.CENTER, Align.CENTER, Align.MIN)))
 
 
 def _wedge_x(x1):
@@ -228,16 +297,53 @@ def fit_lip():
 
 # --- The blower bracket ------------------------------------------------------------------------
 
+def _round2d(face, r):
+    """Round each corner of a 2D face with r, or with a smaller radius where r does not fit."""
+    from build123d import fillet
+    f = _face_of(face)
+    i = 0
+    while i < len(f.vertices()):
+        v = f.vertices()[i]
+        done = False
+        for rr in (r, r * 0.5, r * 0.25):
+            try:
+                g = _face_of(fillet([v], rr))
+                if g.is_valid and abs(g.area - f.area) < 0.5 * rr * rr + 1e-6 + f.area * 0.01:
+                    f, done = g, True
+                    break
+            except Exception:
+                pass
+        i += 2 if done else 1
+    return f
+
+
+def bracket_outline():
+    """The outline of the blower bracket in (y, z): round round the blower, square over the end cap."""
+    from build123d import Rectangle, Circle as C2, Pos as P2
+    cy, cz = S.blower_point(38.9, 0, 44.8)[1:]              # the centre of the blower wheel
+    (_, _), (y0, y1), (bz0, _) = S.BLOWER_BOX
+    shape = P2(cy, cz) * C2(26.5)
+    shape += P2((S.FRONT_BOLTS[0][0] - 6 + y1) / 2, (bz0 + S.BRK_Z[1]) / 2) * Rectangle(y1 - S.FRONT_BOLTS[0][0] + 6, S.BRK_Z[1] - bz0)
+    for y, z in (S.EAR_TOP, S.EAR_LOW):
+        shape += P2(y, z) * C2(S.BOSS_D / 2)
+    clip = P2((y0 - 2 + y1) / 2, (bz0 + S.BRK_Z[1]) / 2) * Rectangle(y1 - y0 + 2, S.BRK_Z[1] - bz0)
+    return _round2d(shape & clip, 3.0)
+
+
 def blower_bracket():
-    """The plate on the end cap and the stiff front flange. It prints on its outer face
-    (x = BLOWER_X0): the countersinks and the low ear nut open at the bed and at the top."""
+    """The plate on the end cap, round round the blower, and a thick lobe in front of the motor that
+    holds the low ear. It prints on its outer face (x = BLOWER_X0): the countersinks open at the bed,
+    the nut pockets at the top."""
     x0, x1 = S.MOTOR_X1, S.BLOWER_X0
-    part = box((x0, x1), S.BRK_Y, (S.BLOWER_Z0, S.BRK_Z[1]))
-    part += box((S.FLANGE_X0, x1), (S.BRK_Y[0], S.BRK_Y[0] + S.FLANGE_T), (S.BLOWER_Z0, S.BRK_Z[1]))
-    # The boss of the low ear, on the back of the plate, and a rib from it to the flange.
-    y, z = S.EAR_LOW
-    part += Pos(S.BOSS_X0, y, z) * Rot(0, 90, 0) * Cylinder(S.BOSS_D / 2, x1 - S.BOSS_X0, align=(Align.CENTER, Align.CENTER, Align.MIN))
-    part += box((S.BOSS_X0, x0), (S.BRK_Y[0], y), (z - 2.0, z + 2.0))
+    out = bracket_outline()
+    pl = Plane(origin=(x0, 0, 0), x_dir=(0, 1, 0), z_dir=(1, 0, 0))
+    part = extrude(pl * out, x1 - x0, dir=(1, 0, 0))
+    # The lobe in front of the motor: the plate is thicker there, back to BOSS_X0.
+    front = out & Pos((S.BLOWER_BOX[1][0] - 5 + S.MOTOR_Y[0] - 0.6) / 2, 50, 0) * Box(
+        S.MOTOR_Y[0] - 0.6 - S.BLOWER_BOX[1][0] + 5, 200, 1)
+    pl2 = Plane(origin=(S.BOSS_X0, 0, 0), x_dir=(0, 1, 0), z_dir=(1, 0, 0))
+    lobe = extrude(pl2 * _round2d(_face_of(front), 2.0), x0 - S.BOSS_X0 + 0.01, dir=(1, 0, 0))
+    part += lobe
     # The two front motor screws: countersunk from the outer face.
     for y, z in S.FRONT_BOLTS:
         part -= Pos(x0 - 1, y, z) * Rot(0, 90, 0) * Cylinder(S.HOLE / 2, S.BRACKET_T + 2, align=(Align.CENTER, Align.CENTER, Align.MIN))
@@ -246,11 +352,22 @@ def blower_bracket():
     y, z = S.EAR_TOP
     part -= Pos(x0 - 1, y, z) * Rot(0, 90, 0) * Cylinder(S.HOLE / 2, S.BRACKET_T + 2, align=(Align.CENTER, Align.CENTER, Align.MIN))
     part -= box((x0 - 1, x0 + S.SQ_NUT_T), (y - S.SQ_NUT / 2, y + S.SQ_NUT / 2), (z - S.SQ_NUT / 2, z + S.SQ_NUT / 2))
-    # The low ear: through the boss, a hex nut in the back face of the boss.
+    # The boss for the foot screw of the duct, under the motor in front of the connector: a hole
+    # for the thread of the screw, the point up in the print (-x).
+    part += box((S.FOOT_X0, x1), S.FOOT_Y, (S.BLOWER_Z0, S.FOOT_BOSS_Z1))
+    fx, fy = S.FOOT_SCREW
+    part -= hole((fx, fy, S.BLOWER_Z0 - 1), (0, 0, 1), S.SCREW_HOLE / 2, S.FOOT_BOSS_Z1 - S.BLOWER_Z0, (-1, 0, 0))
+    # The low ear: through the lobe, a hex nut in the back face of the lobe.
     y, z = S.EAR_LOW
     part -= Pos(S.BOSS_X0 - 1, y, z) * Rot(0, 90, 0) * Cylinder(S.HOLE / 2, x1 - S.BOSS_X0 + 2, align=(Align.CENTER, Align.CENTER, Align.MIN))
     part -= Pos(S.BOSS_X0 - 1, y, z) * Rot(0, 90, 0) * extrude(RegularPolygon(S.NUT_AF / math.sqrt(3), 6), S.NUT_DEPTH + 1)
     return part
+
+
+def _face_of(shape):
+    """The 2D face of a sketch result (the largest face)."""
+    fs = shape.faces() if hasattr(shape, "faces") else [shape]
+    return max(fs, key=lambda f: f.area)
 
 
 def _cone(r):
@@ -272,6 +389,14 @@ def _fan_frame():
     return (cy, cz), along, out
 
 
+def _yz_extrude(face, x0, x1):
+    """Extrude a face drawn in (y, z) from x0 to x1."""
+    from build123d import Location
+    f = _face_of(face)
+    pl = Plane(origin=(x0, 0, 0), x_dir=(0, 1, 0), z_dir=(1, 0, 0))
+    return extrude(pl * f, x1 - x0, dir=(1, 0, 0))
+
+
 def _yz_plate(points, x0, x1):
     """A plate from x0 to x1 with the outline points (y, z)."""
     pl = Plane(origin=(x0, 0, 0), x_dir=(0, 1, 0), z_dir=(1, 0, 0))
@@ -280,13 +405,11 @@ def _yz_plate(points, x0, x1):
 
 
 def bltouch_bracket():
-    """The pads under two heat sink fan screws, the strip between them outside the fan, the block
-    to the shelf, and the shelf over the BLTouch ears. It prints on its back face (y = SHELF_Y1)."""
+    """The plate on the heat sink fan (two pads under the fan screws and a strip outside the fan
+    edge), the body behind the fan with the shelf over the BLTouch ears, and the cover round the
+    BLTouch. It prints on its outer face (x = FAN_X0 - PAD_T): every wall stands up from the bed."""
     x0, x1 = S.FAN_X0 - S.PAD_T, S.FAN_X0
     (cy, cz), along, out = _fan_frame()
-    # The strip outside the back bottom edge of the fan, from pad to pad, and the bottom pad. The
-    # outlines have their sides along the edge and across it: in the print every face toward the
-    # bed slopes at 45 degrees, and no corner points down.
     by, bz = S.FAN_BACK
     ly, lz = S.FAN_BOTTOM
     edge = math.hypot(by - cy, lz - cz) / math.sqrt(2)     # the screw line: 16.25 from the centre
@@ -296,25 +419,38 @@ def bltouch_bracket():
         return (ly + along.X * t + out.X * s, lz + along.Y * t + out.Y * s)
     s0 = 20.0 - edge                                       # the edge of the fan frame (40 mm fan)
     r = S.PAD_D / 2
+    from build123d import Polygon as Poly
     strip = [at(-r, s0), at(length, s0), at(length, s0 + S.STRIP_W), at(-r, s0 + S.STRIP_W)]
     pad = [at(-r, -r), at(r, -r), at(r, s0 + S.STRIP_W), at(-r, s0 + S.STRIP_W)]
-    part = _yz_plate(_ccw(strip), x0, x1) + _yz_plate(_ccw(pad), x0, x1)
-    # The block from the back pad to the shelf, and the shelf.
-    part += box((S.BLOCK_X0, x1), (S.FAN_BACK[0] - S.PAD_D / 2, S.SHELF_Y[1]), (S.EARS_Z, S.FAN_BACK[1] + S.PAD_D / 2))
-    part += box(S.SHELF_X, S.SHELF_Y, (S.EARS_Z, S.SHELF_Z1))
-    # The fan screws: holes along x, the point to -y (up in the print); a counterbore through the
-    # block for the head of the back screw.
+    back = rect2d((by - r, 22.0), (bz - r, bz + r))                   # the back pad, out to the body
+    arm = Poly(*_ccw(strip), align=None) + Poly(*_ccw(pad), align=None) + Poly(*_ccw(back), align=None)
+    part = _yz_extrude(_round2d(arm, 2.5), x0, x1)
+    # The side plate: the arm and the left wall of the cover in one outline, 1.5 mm thick.
+    gp, t = S.COVER_GAP, S.COVER_T
+    yf, yb = S.BLT_Y[0] - gp - t, S.BLT_Y[1] + gp + t
+    wall = Poly(*_ccw(rect2d((yf, yb), (S.COVER_Z0, S.EARS_Z + 1.0))), align=None)
+    side = _round2d(arm + wall + Poly(*_ccw(rect2d((yf, 22.0), (S.EARS_Z - 2, bz))), align=None), 2.5)
+    part += _yz_extrude(side, x0, x0 + t)
+    # The body: behind the two back edges of the fan, from the outer face to BODY_X1.
+    g = S.EDGE_GAP
+    z0, zc = S.EARS_Z, (S.FAN_EDGE_TOP - S.FAN_EDGE) / 2
+    ztop = S.SHELF_Z1 + 11.0
+    prof = [(z0 + S.FAN_EDGE + g, z0), (S.EAR_BACK_Y, z0), (S.EAR_BACK_Y, z0 + 4.5), (S.BACK_Y, z0 + 4.5),
+            (S.BACK_Y, ztop), (S.FAN_EDGE_TOP - ztop + g, ztop), (zc + S.FAN_EDGE + g, zc)]
+    part += _yz_plate(_ccw(prof), x0, S.BODY_X1)
+    # The cover: the back wall, and the front wall over the duct (the side plate is the left wall).
+    xr = S.BLT_X[1] + 0.8
+    part += box((x0, xr), (yb - t, yb), (S.COVER_Z0, S.COVER_Z1))
+    part += box((x0, xr), (yf, yf + t), (S.COVER_FRONT_Z0, S.COVER_Z1))
+    # The holes. The fan screws go through the plate (vertical in the print). The BLTouch screws come
+    # up from under the ears and cut their thread; the point of the hole is up in the print (+x).
     for y, z in (S.FAN_BACK, S.FAN_BOTTOM):
-        part -= hole((S.BLOCK_X0 - 1, y, z), (1, 0, 0), S.HOLE / 2, x1 - S.BLOCK_X0 + 2, (0, -1, 0))
-    y, z = S.FAN_BACK
-    part -= hole((S.BLOCK_X0 - 1, y, z), (1, 0, 0), 3.4, x0 - S.BLOCK_X0 + 1, (0, -1, 0))
-    # The BLTouch: two screws down through the shelf and the ears (nuts under the ears), and the
-    # diamond hole for the wires.
-    for x in S.BLT_HOLES:
-        part -= hole((x, S.PIN_Y, S.EARS_Z - 1), (0, 0, 1), S.HOLE / 2, S.SHELF_Z1 - S.EARS_Z + 2, (0, -1, 0))
+        part -= Pos(x0 - 1, y, z) * Rot(0, 90, 0) * Cylinder(S.HOLE / 2, S.PAD_T + 2, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    for y in S.BLT_HOLES:
+        part -= hole((S.PIN_X, y, z0 - 1), (0, 0, 1), S.SCREW_HOLE / 2, S.BLT_SCREW - S.BLT_EAR_T + 2, (1, 0, 0))
     c = S.CABLE_DIAG / 2
-    pl = Plane(origin=(S.PIN_X, S.PIN_Y, S.EARS_Z - 1), x_dir=(1, 0, 0), z_dir=(0, 0, 1))
-    part -= extrude(pl * Polygon((c, 0), (0, c), (-c, 0), (0, -c), align=None), S.SHELF_Z1 - S.EARS_Z + 2)
+    pl = Plane(origin=(S.PIN_X, S.PIN_Y, z0 - 1), x_dir=(1, 0, 0), z_dir=(0, 0, 1))
+    part -= extrude(pl * Polygon((c, 0), (0, c), (-c, 0), (0, -c), align=None), ztop - z0 + 2, dir=(0, 0, 1))
     return part
 
 
@@ -326,16 +462,16 @@ def _ccw(pts):
 # --- The hardware and the BLTouch --------------------------------------------------------------
 
 def bltouch():
-    """The BLTouch Smart, pin up: the body, the ears with round ends."""
+    """The BLTouch Smart, pin up: the body, the ears (front to back) with round ends."""
     body = box(S.BLT_X, S.BLT_Y, (S.BLT_GAP, S.EARS_Z - S.BLT_EAR_T))
     r = S.BLT_EAR_W / 2
     half = S.BLT_FLANGE_L / 2 - r
-    ears = box((S.PIN_X - half, S.PIN_X + half), (S.PIN_Y - r, S.PIN_Y + r), (S.EARS_Z - S.BLT_EAR_T, S.EARS_Z))
-    for x in (S.PIN_X - half, S.PIN_X + half):
-        ears += Pos(x, S.PIN_Y, S.EARS_Z - S.BLT_EAR_T) * Cylinder(r, S.BLT_EAR_T, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    ears = box((S.PIN_X - r, S.PIN_X + r), (S.PIN_Y - half, S.PIN_Y + half), (S.EARS_Z - S.BLT_EAR_T, S.EARS_Z))
+    for y in (S.PIN_Y - half, S.PIN_Y + half):
+        ears += Pos(S.PIN_X, y, S.EARS_Z - S.BLT_EAR_T) * Cylinder(r, S.BLT_EAR_T, align=(Align.CENTER, Align.CENTER, Align.MIN))
     part = body + ears
-    for x in S.BLT_HOLES:
-        part -= Pos(x, S.PIN_Y, S.EARS_Z - S.BLT_EAR_T - 1) * Cylinder(1.6, S.BLT_EAR_T + 2, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    for y in S.BLT_HOLES:
+        part -= Pos(S.PIN_X, y, S.EARS_Z - S.BLT_EAR_T - 1) * Cylinder(1.6, S.BLT_EAR_T + 2, align=(Align.CENTER, Align.CENTER, Align.MIN))
     return part
 
 
@@ -370,14 +506,12 @@ def bracket_screws():
 
 
 def bltouch_hardware():
-    """The two fan screws (button heads, longer), and the two BLTouch screws and nuts."""
+    """The two fan screws (button heads, longer), and the two BLTouch screws from under the ears."""
     x0 = S.FAN_X0 - S.PAD_T
     out = [_screw((x0, y, z), (1, 0, 0), S.FAN_SCREW, 5.7, 1.65) for y, z in (S.FAN_BACK, S.FAN_BOTTOM)]
-    for x in S.BLT_HOLES:
-        out.append(_screw((x, S.PIN_Y, S.SHELF_Z1), (0, 0, -1), S.BLT_SCREW))
-    nuts = [Pos(x, S.PIN_Y, S.EARS_Z - S.BLT_EAR_T - 2.4) * extrude(RegularPolygon(5.5 / math.sqrt(3), 6), 2.4)
-            for x in S.BLT_HOLES]
-    return out, nuts
+    for y in S.BLT_HOLES:
+        out.append(_screw((S.PIN_X, y, S.EARS_Z - S.BLT_EAR_T), (0, 0, 1), S.BLT_SCREW))
+    return out, []
 
 
 # --- The context from the CAD ------------------------------------------------------------------
