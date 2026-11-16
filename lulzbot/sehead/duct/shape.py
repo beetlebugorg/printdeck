@@ -102,6 +102,8 @@ OPEN_Y = (-16.2, 16.3)
 # --- The duct (prints on its bottom face)
 DUCT_Z0 = 5.0                     # the bottom, over the nozzle tip (the stock duct: 5.93)
 WALL = 1.5
+CORNER_R = 2.0                    # the round of the vertical corners of the duct (a 1.3 mm wall stays)
+TOP_CHAMFER = 0.8                 # the chamfer of the top edges
 CH_W = 8.0                        # the channel of the ring: width
 CH_Z0 = DUCT_Z0 + WALL            # the floor of the channels
 CH_WALL_TOP = 12.0                # the side walls of the channel; then a 45 degree roof
@@ -109,11 +111,13 @@ DUCT_Z1 = CH_WALL_TOP + CH_W / 2 + WALL   # the top of the ring
 RING_R = OPEN_X[1] + WALL + CH_W / 2      # the centre line of the right arm
 RING_L = OPEN_X[0] - WALL - CH_W / 2      # the left arm
 RING_B = OPEN_Y[1] + WALL + CH_W / 2      # the back arm
-RING_FRONT = OPEN_Y[0]                    # the front ends of the side arms
+RING_FRONT = OPEN_Y[0]                    # the front end of the left arm
 CORNER_GAP = 0.5                  # the back left corner turns at 45 degrees round the BLTouch
-# The link under the motor: two channels side by side, from the right arm to the outlet. It passes
-# under the motor connector. In front of the connector it is in the view of the cameras.
-LINK_Y = (-24.0, -3.0)
+# The front and the front right stay open: the cameras look from the front right. The channel comes
+# from the plenum under the blower outlet, goes left under the motor connector (LINK_Y), turns 45
+# degrees back to the short right arm behind the nozzle, then goes round the back and down the left.
+LINK_Y = -14.0                    # the centre line under the motor: y -18..-10, under the connector
+LINK_TURN_X = 40.0                # where the link turns back at 45 degrees
 INLET_LIP = 3.0                   # the lip that goes up into the blower outlet
 LIP_PLAY = 0.3
 LIP_T = 1.0
@@ -121,17 +125,26 @@ TARGET = (0.0, 0.0, -0.5)         # the outlets point at this point, under the n
 OUTLET_W = 3.0                    # each outlet: width, and the height of its walls (then a 45 degree roof)
 OUTLET_H = 2.0
 
-# The two tabs of the stock duct (CAD): the front tab between the Aero and the motor, on the front
-# bottom motor screw; the post at the back left, under the head of the long screw of the Aero.
-FRONT_TAB_X = (13.65, MOTOR_X0)
-FRONT_TAB_Y = (-31.5, -21.5)
-FRONT_TAB_Z = (DUCT_Z1, 38.0)
-FRONT_TAB_LOW = (-25.3, 34.2)     # behind y -25.3 the mount comes down to z 34.4: the tab stops at 34.2
+# The post of the stock duct (CAD): at the back left, under the head of the long screw of the Aero.
 POST_X = (-16.0, -12.6)           # the stock post: x -16..-12
 POST_Y = (5.0, 16.5)
 POST_Z = (DUCT_Z1, 38.5)
 POST_SCREW = (10.75, 33.65)       # (y, z) of the long screw (M3 x 35, from the left)
-STRUT_Z1 = 27.0                   # the strut from the front tab to the link: under the motor (28.13)
+# The foot: the second hold of the duct. A screw comes up from under the foot into a boss under the
+# blower bracket (it cuts its thread). The foot and the boss are behind the line from the gantry
+# camera to the nozzle (y -33 at x 48), and in front of the motor connector (y -19).
+SLOPE_Y0 = -22.5                  # the underside of the plenum and the foot rises at 45 degrees to the
+SLOPE_X0 = 44.0                   # front from y SLOPE_Y0, right of x SLOPE_X0
+FOOT_SLOPE_Y0 = -24.5             # the slope under the foot (x < the plenum) starts 2 mm further forward
+FOOT_Y = (-31.0, -19.5)            # the boss: back to the front of the motor connector (y -19.2)
+FOOT_X0 = MOTOR_X1 - 6.0
+FOOT_SCREW = (51.0, -22.6)        # (x, y): behind the slope of the foot, so the hole has no overhang
+FOOT_BOSS_Z1 = MOTOR_Z[0] - 0.6         # the boss stops under the motor
+FOOT_SCREW_L = 16                 # M3 x 16 from under the foot
+# The stock duct had a tab between the Aero and the motor, on the front bottom motor screw. The
+# spacer goes there now.
+SPACER_T = MOTOR_X0 - 13.65       # the gap between the Aero and the motor (CAD)
+SPACER_D = 8.0
 
 # --- The BLTouch Smart (measured on the printer, lulzbot/bltouch/mount)
 BLT_FLANGE_L = 26.21              # across the two ears
@@ -141,7 +154,8 @@ BLT_BODY_D = 10.88                # across the short side of the ears
 BLT_BODY_W = 13.0                 # along the ears. ESTIMATE
 BLT_HOLE_PITCH = 18.0
 BLT_LEN = 36.15                   # from the top of the ears to the bottom of the body, pin up
-BLT_GAP = 3.3                     # the bottom of the body over the nozzle tip (antclabs: 2.3 to 4.3)
+BLT_GAP = 3.0                     # the bottom of the body over the nozzle tip (antclabs: 2.3 to 4.3).
+                                  # 3.0 leaves 4.5 mm of shelf over the front ear, under the fan edge.
 EARS_Z = BLT_GAP + BLT_LEN        # the top face of the ears = the bottom face of the shelf
 
 # --- The heat sink fan (CAD): its outer face, and two of its four screws (M3 x 12 button heads)
@@ -151,24 +165,33 @@ FAN_BOTTOM = (-8.47, 29.25)
 FAN_Y1 = 18.21                    # the back corner of the fan, at z 52. The fan is turned 45 degrees:
                                   # at the height of the BLTouch (z 37 and lower) it reaches only y 4.
 
-# --- The BLTouch place: behind the fan, the ears along x
+# --- The BLTouch place: behind the fan, inside its width. The ears go front to back.
 PIN_X = -25.0
-PIN_Y = 23.0                      # the ears end at y 27, in front of the mount (y 27.4 at x -16)
-BLT_X = (PIN_X - BLT_BODY_W / 2, PIN_X + BLT_BODY_W / 2)
-BLT_Y = (PIN_Y - BLT_BODY_D / 2, PIN_Y + BLT_BODY_D / 2)
-BLT_HOLES = [PIN_X - BLT_HOLE_PITCH / 2, PIN_X + BLT_HOLE_PITCH / 2]
+PIN_Y = 21.5                      # the back ear is 0.9 mm from the X carriage, the front ear 1.3 mm from
+                                  # the fan
+BLT_X = (PIN_X - BLT_BODY_D / 2, PIN_X + BLT_BODY_D / 2)
+BLT_Y = (PIN_Y - BLT_BODY_W / 2, PIN_Y + BLT_BODY_W / 2)
+BLT_HOLES = [PIN_Y - BLT_HOLE_PITCH / 2, PIN_Y + BLT_HOLE_PITCH / 2]   # y, at x = PIN_X
+BLT_SCREW = 6                     # M3 x 6 from under the ears: it cuts its thread in the shelf
+SCREW_HOLE = 2.8                  # for the thread of the M3 screw in PETG
 
-# --- The BLTouch bracket (prints on its back face, y = SHELF_Y1)
-PAD_T = 3.0                       # the pads under the fan screws: x FAN_X0 - PAD_T .. FAN_X0
+# --- The BLTouch bracket (prints on its outer face, x = FAN_X0 - PAD_T)
+PAD_T = 3.0                       # the plate on the fan face: x FAN_X0 - PAD_T .. FAN_X0
 PAD_D = 9.0
 FAN_SCREW = 16                    # M3 x 16 button heads in place of the M3 x 12
 STRIP_W = 5.0                     # the strip between the pads, outside the edge of the fan
-SHELF_Y = (17.5, 27.2)            # behind the fan and the Aero, in front of the mount (y 27.4)
-SHELF_Z1 = EARS_Z + 5.5
-SHELF_X = (PIN_X - BLT_FLANGE_L / 2 - 0.5, -12.0)
-BLOCK_X0 = FAN_X0 - PAD_T - 2.5   # the block from the back pad to the shelf. The X motor of the left
-                                  # X end is 1.5 mm to the left of x -37.5 at X home.
-BLT_SCREW = 10                    # M3 x 10 from under the ears into nuts in the shelf
+FAN_EDGE = -32.42                 # the back bottom edge of the fan frame: y = z + FAN_EDGE (CAD)
+FAN_EDGE_TOP = 72.04              # the back top edge of the fan frame: y = FAN_EDGE_TOP - z
+EDGE_GAP = 0.7                    # the bracket stays this far behind the fan edges (along y)
+BODY_X1 = -21.5                   # the right end of the shelf: the mount is at x -20 from z 44
+SHELF_Z1 = EARS_Z + 6.0
+BACK_Y = 27.2                     # over the shelf the bracket stays in front of the mount (y 27.4)
+EAR_BACK_Y = PIN_Y + BLT_FLANGE_L / 2 + 0.5
+COVER_T = 1.5                     # the cover round the BLTouch body: the left, back and front walls
+COVER_GAP = 0.6
+COVER_Z0 = 5.0                    # the bottom of the cover: level with the bottom of the duct
+COVER_FRONT_Z0 = 18.5             # the front wall stops over the duct
+COVER_Z1 = EARS_Z - BLT_EAR_T - 3.5   # the walls stop under the screw heads of the ears
 CABLE_DIAG = 9.0                  # the diamond hole for the BLTouch wires
 
 # --- The printer limits

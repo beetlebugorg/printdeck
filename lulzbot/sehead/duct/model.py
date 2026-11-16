@@ -21,7 +21,8 @@ BUILD = os.path.join(HERE, "build")
 PRINTED = {
     "duct": (P.duct, "bottom"),
     "blower_bracket": (P.blower_bracket, "right"),
-    "bltouch_bracket": (P.bltouch_bracket, "back"),
+    "bltouch_bracket": (P.bltouch_bracket, "left"),
+    "motor_spacer": (P.motor_spacer, "bottom"),
     "fit_lip": (P.fit_lip, "bottom"),
 }
 
@@ -94,8 +95,8 @@ def check(problems):
 def print_pose(shape, face):
     if face == "right":      # the right face (x max) on the bed
         s = Rot(0, 90, 0) * shape
-    elif face == "back":     # the back face (y max) on the bed
-        s = Rot(-90, 0, 0) * shape
+    elif face == "left":     # the left face (x min) on the bed
+        s = Rot(0, -90, 0) * shape
     else:
         s = shape
     bb = s.bounding_box()
@@ -125,7 +126,8 @@ def main():
         export_stl(shape, os.path.join(mesh_dir, name + ".stl"), tolerance=tol, angular_tolerance=0.1)
         manifest.append({"name": name, "file": name + ".stl", "material": mat, "group": group})
 
-    parts = {"duct": duct, "blower_bracket": brk, "bltouch_bracket": blt_brk, "fit_lip": P.fit_lip()}
+    parts = {"duct": duct, "blower_bracket": brk, "bltouch_bracket": blt_brk, "fit_lip": P.fit_lip(),
+             "motor_spacer": P.motor_spacer()}
     for name, (fn, face) in PRINTED.items():
         part = parts[name]
         if not name.startswith("fit_"):
@@ -153,6 +155,9 @@ def main():
         mesh(f"blt_nut_{i}", n, "steel", "bltscrews")
     for n, s in P.head_parts():
         mesh("head_" + n, s, "dark", "head", tol=0.15)
+    mesh("motor_spacer", P.spacer_placed(), "petg", "spacer")
+    mesh("foot_screw", P.foot_screw(), "steel", "footscrew")
+    mesh("nozzle_tip", P.box((-2.5, 2.5), (-2.5, 2.5), (0, 3.0)), "bltouch", "nozzle")
     mesh("stock_duct", C.se("duct"), "dark", "stockduct", tol=0.15)
     assembly = [duct, brk, blt_brk, P.blower(), P.bltouch()]
     export_step(Compound(children=assembly), os.path.join(HERE, "cad", "se-duct-assembly.step"))

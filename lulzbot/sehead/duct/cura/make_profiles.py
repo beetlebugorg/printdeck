@@ -157,6 +157,7 @@ PROFILES = [
     profile("Duct", "Duct", "duct.stl", DUCT),
     profile("Blower", "Blower bracket", "blower_bracket.stl", BRACKET),
     profile("BLTouch", "BLTouch bracket", "bltouch_bracket.stl", BRACKET),
+    profile("Spacer", "Motor spacer", "motor_spacer.stl", BRACKET),
     profile("FitLip", "Fit test lip", "fit_lip.stl", DUCT),
 ]
 

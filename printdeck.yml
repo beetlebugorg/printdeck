@@ -304,10 +304,10 @@ parts:
   - name: SE duct (TAZ)
     group: SE tool head duct (TAZ)
     description: >-
-      A U round the hot end, open at the front: the air leaves through outlets on the right, the back
-      and the left, and you and the cameras see the nozzle from the front. The air comes from the blower
-      on the right end of the motor, under the motor. The two screws of the stock duct hold it. Print
-      it in PETG. It prints on its bottom face with no supports.
+      The channel goes from the blower outlet under the motor, round the back and down the left side
+      of the hot end. The front and the front right are open: you and the cameras see the nozzle. The
+      long screw at the back left of the Aero holds the post, and an M3 x 16 screw goes up through the
+      foot into the blower bracket. Print it in PETG. It prints on its bottom face with no supports.
     files: [lulzbot/sehead/duct/stl/duct.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
@@ -317,28 +317,36 @@ parts:
     group: SE tool head duct (TAZ)
     description: >-
       A plate on the end cap of the extruder motor, under the two front motor screws (M3 countersunk,
-      1 mm shorter than the screws of the BLTouch mount). The blower lies flat on it with an M3 x 18
-      screw into a square nut and an M3 x 25 screw into a nut. It prints on its blower side with no
-      supports.
+      1 mm shorter than the screws of the BLTouch mount), with a lobe in front of the motor. The blower
+      lies flat on it with an M3 x 18 screw into a square nut and an M3 x 25 screw into a nut. It prints
+      on its blower side with no supports.
     files: [lulzbot/sehead/duct/stl/blower_bracket.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
-    settings: {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
+    settings: &sebracket {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
                wall_thickness: 2.0, infill_sparse_density: 100, cool_min_layer_time: 12}
   - name: SE duct BLTouch bracket (TAZ)
     group: SE tool head duct (TAZ)
     description: >-
-      Holds the BLTouch behind the heat sink fan: the pin is 25 mm left of the nozzle and 23 mm behind it.
-      It goes on two screws of the fan (M3 x 16 button heads in place of the M3 x 12). Two M3 x 12
-      screws go down through the shelf and the ears into nuts. It prints on its back face with no
-      supports.
+      Hides the BLTouch behind the heat sink fan: the pin is 25 mm left of the nozzle and 21.5 mm behind
+      it. It goes on two screws of the fan (M3 x 16 button heads in place of the M3 x 12). Two M3 x 6
+      screws go up through the ears into the shelf. It prints on its outer face with no supports.
     files: [lulzbot/sehead/duct/stl/bltouch_bracket.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
     material: roll-4
-    settings: {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
-               wall_thickness: 2.0, infill_sparse_density: 100, cool_min_layer_time: 12}
+    settings: *sebracket
+  - name: SE duct motor spacer (TAZ)
+    group: SE tool head duct (TAZ)
+    description: >-
+      Goes between the Aero and the motor on the front bottom motor screw, in place of the tab of the
+      stock duct. It prints flat.
+    files: [lulzbot/sehead/duct/stl/motor_spacer.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: *sebracket
 
 # The PDFs of the project. The project page shows each one with a picture of its first page.
 docs:
