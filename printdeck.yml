@@ -285,6 +285,61 @@ parts:
     material: roll-4
     settings: *gantrycam
 
+  # The SE tool head duct of the TAZ: lulzbot/sehead/duct (make.sh writes the STL files). It replaces
+  # the stock duct and the BLTouch mount. The duct is 5 mm from the heater block: print it in PETG
+  # (the cura/ profiles of the project use PETG). The profiles here have no PETG material yet, and
+  # PLA gets soft near the hot end, so PLA is good for the lip test and the brackets only. All the
+  # parts are solid: the walls of the duct are 1.5 mm, and the brackets hold screw loads.
+  - name: SE duct lip test (TAZ)
+    group: SE tool head duct (TAZ)
+    description: >-
+      A quick fit test: the lip of the duct on a thin frame. Push it into the outlet of the 50 x 15 mm
+      blower. It must go in by hand and stay in. Print it first. It prints flat with no supports.
+    files: [lulzbot/sehead/duct/stl/fit_lip.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: &seduct {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
+               wall_thickness: 1.5, infill_sparse_density: 100, cool_min_layer_time: 12}
+  - name: SE duct (TAZ)
+    group: SE tool head duct (TAZ)
+    description: >-
+      A U round the hot end, open at the front: the air leaves through outlets on the right, the back
+      and the left, and you and the cameras see the nozzle from the front. The air comes from the blower
+      on the right end of the motor, under the motor. The two screws of the stock duct hold it. Print
+      it in PETG. It prints on its bottom face with no supports.
+    files: [lulzbot/sehead/duct/stl/duct.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: *seduct
+  - name: SE duct blower bracket (TAZ)
+    group: SE tool head duct (TAZ)
+    description: >-
+      A plate on the end cap of the extruder motor, under the two front motor screws (M3 countersunk,
+      1 mm shorter than the screws of the BLTouch mount). The blower lies flat on it with an M3 x 18
+      screw into a square nut and an M3 x 25 screw into a nut. It prints on its blower side with no
+      supports.
+    files: [lulzbot/sehead/duct/stl/blower_bracket.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
+               wall_thickness: 2.0, infill_sparse_density: 100, cool_min_layer_time: 12}
+  - name: SE duct BLTouch bracket (TAZ)
+    group: SE tool head duct (TAZ)
+    description: >-
+      Holds the BLTouch behind the heat sink fan: the pin is 25 mm left of the nozzle and 23 mm behind it.
+      It goes on two screws of the fan (M3 x 16 button heads in place of the M3 x 12). Two M3 x 12
+      screws go down through the shelf and the ears into nuts. It prints on its back face with no
+      supports.
+    files: [lulzbot/sehead/duct/stl/bltouch_bracket.stl]
+    printer: taz
+    profile: taz-workhorse-se/pla-0.20-standard
+    material: roll-4
+    settings: {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
+               wall_thickness: 2.0, infill_sparse_density: 100, cool_min_layer_time: 12}
+
 # The PDFs of the project. The project page shows each one with a picture of its first page.
 docs:
   - name: Slate v4 build guide
@@ -295,6 +350,8 @@ docs:
     file: lulzbot/bltouch/mount/bltouch-mount-build.pdf
   - name: Gantry camera arm build guide
     file: lulzbot/gantrycam/arm/gantry-camera-arm-build.pdf
+  - name: SE tool head duct build guide
+    file: lulzbot/sehead/duct/se-duct-build.pdf
 
 # The 3D views of the assembled Slate. lulzbot/slate.py assembly writes the files: each part in its
 # place, in mm, z up, with the origin at the middle of the foot on the desk. The case leans back 15
