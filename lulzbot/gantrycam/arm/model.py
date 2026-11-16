@@ -173,6 +173,8 @@ def main():
     mesh("clamp_plate", plate, "petg", "plate")
     mesh("upper_arm", arm, "petg", "arm")
     mesh("camera_bracket", bracket, "petg", "bracket")
+    mesh("fit_arm_slice", P.fit_arm_slice(), "petg", "fitarm")
+    mesh("fit_bracket_slice", P.fit_bracket_slice(), "petg", "fitbracket")
     mesh("camera", cam_case, "camera", "camera")
     mesh("camera_ubracket", cam_bracket, "steel", "camera")
     for i, h in enumerate(P.screws()):

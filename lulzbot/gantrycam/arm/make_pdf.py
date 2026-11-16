@@ -83,7 +83,7 @@ P1 = f"""
   <div>
     <h3>Estimates</h3>
     <p>The X end face, the screws and the upright are measured. The height of the belt strip, the top of the motor,
-    and the corner plates are estimates. MEASURE.md lists them. Print the two fit tests and the clamp plate first.</p>
+    and the corner plates are estimates. MEASURE.md lists them. Print the two fit tests and the clamp plate first, and do steps 1 to 3.</p>
   </div>
 </div>
 """
@@ -129,12 +129,39 @@ def parts_page():
 
 STEPS = [
     ("plate", "Fit the clamp plate", [
+        "Print the clamp plate and the two fit tests first. Print the upper arm and the bracket only after the "
+        "tests in steps 2 and 3 pass.",
         "Turn off the printer. Remove the old corner camera mount from the upright. Keep the camera and its screw.",
         "Move the gantry up to a height that is easy to reach. Push the head to the left.",
-        "Hold the two fit tests in place: the arm slice on the X end at the height of the top screw, and the bracket "
-        "slice around the front of the upright. The arm slice must clear the upright by about 2 mm.",
-        "Remove the lower screw of the X end face. Put the clamp plate in the pocket of the face, the counterbore to the "
-        "front. Put in the new lower screw (3 mm longer) and tighten it. Its head is flush with the plate.",
+        "Remove the lower screw of the X end face. Put the clamp plate in the pocket of the face, the counterbore to "
+        "the front. It must go in with a little play. If it does not go in, see FACE_W on the last page.",
+        "Look through the upper hole of the plate. The upper screw must be in the middle of it. If it is not, see "
+        "SCREW_Z on the last page.",
+        "Put in the new lower screw (3 mm longer) and tighten it. Its head is flush with the plate. Leave the upper "
+        "screw in the X end for now.",
+    ]),
+    ("fitarm", "Test the arm slice", [
+        "The arm slice is the top 8 mm of the upper arm. Its top is level with the top of the clamp plate.",
+        "Put the slice on the top of the clamp plate: the plate goes into the pocket at the back of the slice. The "
+        "long side goes to the right, toward the upright. Hold the slice level.",
+        "Look at the right end of the slice, the top of the drop. It must stop about 2 mm from the inner face of the "
+        "upright. If it touches, or the gap is more than 4 mm, see SCREW_X on the last page.",
+        "Look at the back of the slice, left of the plate. It must not touch the raised belt strip of the X end. If "
+        "it touches, see STRIP_PROUD on the last page.",
+        "Look at the front of the slice. It must be a little behind the front face of the upright.",
+        "Remove the slice. It does not stay on the printer.",
+    ]),
+    ("fitbracket", "Test the bracket slice", [
+        "The bracket slice is the top 10 mm of the camera bracket. It goes around the front of the upright, 10 mm "
+        "in front of it.",
+        "Hold the slice around the front of the upright. The front wall is in front of the upright, the short rib "
+        "is on the right, and the tongue goes back on the left side of the upright.",
+        "Keep about 2 mm between the tongue and the upright. The back end of the tongue is then where the drop of "
+        "the arm comes down.",
+        "Slide the slice down the upright to the bottom corner plate, then up to the top corner plate. The plates "
+        "and their screw heads must pass inside the front wall with a gap.",
+        "If a screw head touches the front wall, see the corner plates on the last page.",
+        "Remove the slice. If steps 2 and 3 pass, print the upper arm and the camera bracket.",
     ]),
     ("arm", "Fit the upper arm", [
         "Remove the upper screw of the X end face.",
@@ -184,6 +211,9 @@ the build if a part touches the X end, the tool head at any X, the upright, or a
   <code>UP_X0</code> through <code>SCREW_X</code>.</td></tr>
   <tr><td></td><td><b>The beam touches the belt strip.</b> Measure how far the strip stands in front of the face. Set
   <code>STRIP_PROUD</code>.</td></tr>
+  <tr><td></td><td><b>A corner plate touches the bracket.</b> Measure how far the plate and its screw heads stand
+  out from the front face of the upright. Set <code>PLATE_PROUD</code>, and set <code>FRONT_GAP</code> 3 mm more
+  than it.</td></tr>
   <tr><td></td><td><b>The head touches the beam at X 293.</b> Measure the top of the motor over the nozzle tip. Set
   <code>HEAD_SPLIT_Z</code>; the beam starts 6 mm over it.</td></tr>
   <tr><td></td><td><b>The nuts are loose in the pockets.</b> Set <code>NUT_AF</code> 0.2 mm smaller.</td></tr>

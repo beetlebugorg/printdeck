@@ -16,7 +16,8 @@ const MANIFEST = JSON.parse(fs.readFileSync(path.join(HERE, "build", "manifest.j
 // Fill type for each material: printed, bought, dark, or clear.
 const FINISH = { petg: "print", steel: "buy", camera: "dark", dark: "dark", frame: "dark", keepout: "dark", bltouch: "buy" };
 const LABEL = { plate: "Clamp plate", arm: "Upper arm", bracket: "Camera bracket", camera: "B0561 camera",
-  x_end: "Right X end", upright: "Front right upright", screws: "M3 screws" };
+  x_end: "Right X end", upright: "Front right upright", screws: "M3 screws",
+  fitarm: "Arm slice", fitbracket: "Bracket slice" };
 
 const PRINTED = ["clamp_plate", "upper_arm", "camera_bracket", "fit_arm_slice", "fit_bracket_slice"];
 // The frame of the meshes: x to the right of the printer, y to the back, z up. A camera is the
@@ -35,6 +36,8 @@ const SHOTS = {
   arm: { show: [...FRAME, "plate", "arm", "screws"], focus: ["arm"], explode: { arm: [0, -40, 0], screws: [0, -70, 0] }, camera: FRONT_LEFT },
   bracket: { show: [...FRAME, "plate", "arm", "bracket", "screws"], focus: ["bracket"], explode: { bracket: [0, -35, 0] }, camera: FRONT_RIGHT },
   camera: { show: [...FRAME, "plate", "arm", "bracket", "camera", "screws"], focus: ["camera", "bracket"], explode: { camera: [0, -30, 0] }, camera: FRONT_RIGHT },
+  fitarm: { show: [...FRAME, "plate", "fitarm"], focus: ["fitarm", "plate"], explode: {}, camera: FRONT_LEFT },
+  fitbracket: { show: [...FRAME, "fitbracket"], focus: ["fitbracket"], explode: {}, camera: FRONT_RIGHT },
   top: { show: ALL, focus: ["plate", "arm", "bracket", "camera"], explode: {}, camera: TOP },
 };
 

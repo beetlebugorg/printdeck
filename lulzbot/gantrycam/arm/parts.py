@@ -92,8 +92,9 @@ def _stadium(w, h):
 
 
 def fit_arm_slice():
-    """Fit test: the top 8 mm of the upper arm (the beam with the screw hole and the plate pocket,
-    and the top of the drop). It checks the length of the beam to the upright and the screw."""
+    """Fit test: the top 8 mm of the upper arm (the beam with the plate pocket, and the top of the
+    drop). It sits on the top of the clamp plate. It checks the beam length to the upright and the
+    space to the belt strip. The screw hole is lower: the clamp plate checks the screws."""
     cut = box((-500, 500), (-500, 500), (S.ARM_TOP - 8, S.ARM_TOP + 1))
     return upper_arm() & cut
 
