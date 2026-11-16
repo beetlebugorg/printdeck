@@ -11,17 +11,17 @@
  },
  "3": {
   "value": 13.63,
-  "what": "width of the flat face with the two screws, from the raised belt strip to the first step, halfway between the screws",
+  "what": "width of the X end face with the two screws (the face toward the bed), front to back, from the front edge of the X end to the raised part behind the face (2026-11-16: read again with the CAD)",
   "date": "2026-11-15"
  },
  "4": {
   "value": 50.18,
-  "what": "re-measured: left to right, from the center of the X end front screws to the inner face of the FRONT right upright (first try 50.96)",
+  "what": "front to back, from the screws to the back face of the front right upright; the screws are behind the upright (2026-11-16: read again with the CAD, which gives 50.0)",
   "date": "2026-11-15"
  },
  "5": {
   "value": 16.87,
-  "what": "front to back, from the X end face with the two screws to the front face of the front right upright (the screw face is behind it)",
+  "what": "left to right, from the X end face with the two screws to the inner face of the front right upright (2026-11-16: read again with the CAD, which gives 14.5)",
   "date": "2026-11-15"
  },
  "6": {
@@ -51,12 +51,12 @@
  },
  "10": {
   "value": 9.0,
-  "what": "head fully right: clearance from the lower X end screw to the tool head motor in front of it",
+  "what": "head fully right: from the lower X end screw head to the tool head motor left of it",
   "date": "2026-11-15"
  },
  "10b": {
   "value": 25.0,
-  "what": "head fully right: clearance in front of the upper screw, 25 mm or more (almost clear)",
+  "what": "head fully right: from the upper X end screw head to the tool head, 25 mm or more (almost clear)",
   "date": "2026-11-15"
  }
 }

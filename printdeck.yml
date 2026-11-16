@@ -237,8 +237,8 @@ parts:
   - name: Gantry camera fit tests (TAZ)
     group: Gantry camera arm (TAZ)
     description: >-
-      Two quick fit tests: the top 8 mm of the upper arm (it checks the beam to the upright and the
-      pocket for the clamp plate) and the top 10 mm of the camera bracket (it checks the gap around
+      Two quick fit tests: the top 8 mm of the upper arm (it sits on the clamp plate and checks that
+      the beam reaches the back of the upright) and the top 10 mm of the camera bracket (it checks the gap around
       the front of the upright). Print them first. The arm slice prints on its top face, the bracket
       slice on its bottom face, with no supports.
     files: [lulzbot/gantrycam/arm/stl/fit_arm_slice.stl, lulzbot/gantrycam/arm/stl/fit_bracket_slice.stl]
@@ -250,10 +250,10 @@ parts:
   - name: Gantry camera clamp plate (TAZ)
     group: Gantry camera arm (TAZ)
     description: >-
-      The plate sits in the pocket of the right X end face, under its two M3 screws. The lower screw
-      gets 3 mm longer and its head sinks into the plate; the upper screw gets 9 mm longer and goes
-      through the arm too. It prints flat on its back face with no supports, and it is also a fit
-      test for the screw spacing.
+      The plate sits on the left face of the right X end (the face toward the bed), under its two M3
+      screws. The lower screw gets 3 mm longer and its head sinks into the plate; the upper screw gets
+      9 mm longer and goes through the arm too. It prints flat on its right face with no supports, and
+      it is also a fit test for the screw spacing.
     files: [lulzbot/gantrycam/arm/stl/clamp_plate.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
@@ -263,9 +263,9 @@ parts:
   - name: Gantry camera upper arm (TAZ)
     group: Gantry camera arm (TAZ)
     description: >-
-      A beam above the tool head motor from the clamp plate to the upright, and a drop down beside
-      the inner face of the upright. Two M3 nuts go in the pockets at the back of the drop. It prints
-      upside down on its top face, with a brim and no supports.
+      A beam above the tool head motor from the clamp plate forward to the back of the upright, and a
+      drop down beside the inner face of the upright. Two M3 nuts go in the slots on the left side of
+      the drop. It prints upside down on its top face, with a brim and no supports.
     files: [lulzbot/gantrycam/arm/stl/upper_arm.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
