@@ -33,6 +33,9 @@ import (
 //   - printer.cfg at /system/printer.cfg, with the login or an API key
 //   - the state of the simulated printer at /sim, for the 3D window of the desktop app (with an
 //     API key)
+//
+// The API answers CORS requests of the web pages in WEB_ORIGINS (the zslice web app): see
+// remote.CORS.
 func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App, up *updater) *remote.Server {
 	if cfg.RemoteAddr == "" {
 		return nil
@@ -67,7 +70,8 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 			registerPrinterCfg(mux, k.ConfigPath, filepath.Join(cfg.StateDir, "printer.cfg.bak"), k, allow)
 		}
 	}
-	srv := &http.Server{Addr: cfg.RemoteAddr, Handler: remote.SecurityHeaders(mux), ReadHeaderTimeout: 10 * time.Second}
+	// The zslice web app can call the API from the browser (WEB_ORIGINS).
+	srv := &http.Server{Addr: cfg.RemoteAddr, Handler: remote.CORS(remote.SecurityHeaders(mux), cfg.WebOrigins), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		log.Printf("web server on %s", cfg.RemoteAddr)
 		if err := srv.ListenAndServe(); err != nil {
