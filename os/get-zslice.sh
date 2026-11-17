@@ -37,4 +37,11 @@ case "$url" in
 esac
 printf 'header = "Authorization: Bearer %s"\n' "$token" |
   curl -fsSL --proto '=https' --max-redirs 3 -K - -o "$file.part" "$url"
+want="$(awk -v f="zslice-$v.tgz" '$1 == "sha256" && $3 == f {print $2}' "$OS/package/printdeck-zslice/printdeck-zslice.hash")"
+got="$(sha256sum "$file.part" | cut -d' ' -f1)"
+if [ -z "$want" ] || [ "$got" != "$want" ]; then
+  rm -f "$file.part"
+  echo "The zslice package has the sha256 $got. The hash file has \"$want\"." >&2
+  exit 1
+fi
 mv "$file.part" "$file"
