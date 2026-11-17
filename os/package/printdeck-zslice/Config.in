@@ -1,0 +1,6 @@
+config BR2_PACKAGE_PRINTDECK_ZSLICE
+	bool "printdeck-zslice"
+	help
+	  The zslice web app. The deck serves it at /slicer/: a
+	  browser on the LAN slices with it, and sends the G-code
+	  to the deck.

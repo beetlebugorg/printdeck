@@ -48,10 +48,12 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 		rs.Source = sourceURL(osVersion())
 		if api != nil {
 			api.Allow = rs.LoggedIn // the webcam in a browser with the login of the remote screen
+			api.Login = rs.LoggedIn // the uploads of the zslice app (/slicer/)
 		}
 		mux.Handle("/", rs.Handler())
 		registerSystemPage(mux, rs, pr, up, app.Metrics, cfg.KlippyLog, cfg.OctoPrintKey)
 		registerRollPages(mux, rs, pr, app)
+		registerSlicer(mux, rs, slicerDir)
 		// The 3D window of the desktop app shows the simulated printer of the deck, with an API key.
 		if k, ok := pr.(*printer.Klippy); ok && api != nil {
 			registerSim(mux, k, api.ValidKey)

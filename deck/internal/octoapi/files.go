@@ -238,3 +238,26 @@ func (s *Server) serveDownload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	io.Copy(w, f)
 }
+
+// upload lets an upload through with an API key, or from a page of the deck with the login of
+// the deck (the zslice app at /slicer/). The login cookie is SameSite=Strict, and the request must
+// also come from the same origin: another site cannot upload with the login of a browser.
+func (s *Server) upload(h http.HandlerFunc) http.HandlerFunc {
+	keyed := s.key(h)
+	return func(w http.ResponseWriter, r *http.Request) {
+		if requestKey(r) == "" && s.Login != nil && sameOrigin(r) && s.Login(r) {
+			h(w, r)
+			return
+		}
+		keyed(w, r)
+	}
+}
+
+// sameOrigin is true when the browser says that the request comes from a page of this server.
+func sameOrigin(r *http.Request) bool {
+	if site := r.Header.Get("Sec-Fetch-Site"); site != "" && site != "same-origin" {
+		return false
+	}
+	o := r.Header.Get("Origin")
+	return o != "" && (o == "http://"+r.Host || o == "https://"+r.Host)
+}
