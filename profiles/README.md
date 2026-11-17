@@ -27,6 +27,9 @@ The folder has:
 - `quality_changes/`: the profiles.
 - `materials/`: the rolls.
 - `cura.json`: the stack of each profile, the materials, and the version of Cura.
+- `zslice/`: the same profiles for zslice, for a part with `slicer: zslice` in printdeck.yml. The
+  command `zslice import cura profiles/taz-workhorse-se -o profiles/taz-workhorse-se/zslice`
+  makes them from the Cura stack. Make them again after a change to the stack.
 
 The folder has no machine instance file of Cura: that file has the API key of the deck. It has
 no user layer of Cura either: the settings of one part go in its `printdeck.yml` (`settings:`).
