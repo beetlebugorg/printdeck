@@ -251,6 +251,9 @@ type printdeckFields struct {
 	// Allow lets a request to the webcam through with no API key, or is nil: the login of the
 	// remote screen, or the token of the desktop app.
 	Allow func(r *http.Request) bool
+	// Login tells if a request comes from a browser with the login of the deck, or is nil. It lets
+	// an upload from a page of the deck through with no API key (upload in files.go).
+	Login func(r *http.Request) bool
 	// StartPrint starts a print of a file in place of Printer.PrintFile, or nil. The deck first
 	// checks that the material of the file is in the printer, and asks on the touch screen.
 	StartPrint func(path string)

@@ -89,6 +89,7 @@ fi
 # Buildroot copies a local source one time, and does not see later changes. Remove the copy of
 # deck/ (it also keeps the files that deck/ no longer has), copy it again and build the Printdeck
 # program, then make the image. The Go build cache keeps this fast.
+PRINTDECK_OS_CACHE="$CACHE" "$OS/get-zslice.sh"
 run printdeck-deck-dirclean
 run printdeck-deck
 run

@@ -102,7 +102,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/connection", s.key(s.serveConnect))
 	mux.HandleFunc("GET /api/files", s.key(s.serveFiles))
 	mux.HandleFunc("GET /api/files/local", s.key(s.serveFiles))
-	mux.HandleFunc("POST /api/files/local", s.key(s.serveUpload))
+	mux.HandleFunc("POST /api/files/local", s.upload(s.serveUpload))
 	mux.HandleFunc("GET /api/files/local/{path...}", s.key(s.serveFile))
 	mux.HandleFunc("POST /api/files/local/{path...}", s.key(s.serveFileCommand))
 	mux.HandleFunc("DELETE /api/files/local/{path...}", s.key(s.serveDelete))

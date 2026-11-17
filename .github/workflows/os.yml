@@ -27,6 +27,7 @@ on:
 
 permissions:
   contents: write
+  packages: read # the zslice package (os/get-zslice.sh)
 
 concurrency:
   group: os-${{ github.ref }}
@@ -56,6 +57,13 @@ jobs:
           path: ~/.cache/printdeck-os/dl
           key: buildroot-dl-${{ hashFiles('os/configs/*', 'os/package/**', 'os/build.sh') }}
           restore-keys: buildroot-dl-
+
+      # The job token stays in this step. The build runs the build scripts of many packages, and
+      # gets no token.
+      - name: Get the zslice package
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+        run: os/get-zslice.sh
 
       - name: Build
         env:
