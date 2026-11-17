@@ -954,7 +954,7 @@ func klippyState(s klippy.Status, down string) State {
 		st.ProbeMapTemp = num(pm["base_temp"])
 		if last, ok := pm["last"].(map[string]any); ok {
 			st.ProbeLast = ProbeResult{Method: str(last["method"]), Used: str(last["used"]), Points: int(num(last["points"])),
-				Error: num(last["error"]), Seconds: num(last["seconds"])}
+				Error: num(last["error"]), Seconds: num(last["seconds"]), Reason: str(last["reason"])}
 		}
 	}
 	if sd := s["printdeck_sdcard"]; sd != nil {

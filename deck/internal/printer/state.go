@@ -339,4 +339,7 @@ type ProbeResult struct {
 	Method, Used   string
 	Points         int
 	Error, Seconds float64
+	// Reason is why the saved map was not used, after "map": for example "off by 0.072 mm",
+	// "missing" or "at 40 °C, bed 60 °C". "" when the map was used.
+	Reason string
 }

@@ -968,6 +968,10 @@ func probeMethodLine(st printer.State) string {
 				return fmt.Sprintf("%s · map at %.0f °C · last: %d points, %.0f s, %.3f mm", m.name, st.ProbeMapTemp,
 					l.Points, l.Seconds, l.Error)
 			}
+			if l.Reason != "" {
+				// The row has room for about 36 characters. The console has the full message.
+				return fmt.Sprintf("Last: %s · map %s", l.Used, l.Reason)
+			}
 			return fmt.Sprintf("%s · last: %s, %.0f s", m.name, l.Used, l.Seconds)
 		}
 		return m.name + " · " + m.line

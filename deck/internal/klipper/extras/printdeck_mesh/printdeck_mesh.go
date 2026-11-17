@@ -210,11 +210,11 @@ func (p *PrintdeckMesh) cmdMesh(gcmd *gcode.Command) {
 		panic(gcmd.Error("METHOD must be one of %s", strings.Join(Methods, ", ")))
 	}
 	start := p.printer.Reactor().Monotonic()
-	used, points, worst := m, 0, math.NaN()
+	used, points, worst, reason := m, 0, math.NaN(), ""
 	switch m {
 	case "map":
 		var ok bool
-		if points, worst, ok = p.fromMap(gcmd); !ok {
+		if points, worst, reason, ok = p.fromMap(gcmd); !ok {
 			used = p.fallback(gcmd)
 		}
 	case "adaptive":
@@ -225,7 +225,7 @@ func (p *PrintdeckMesh) cmdMesh(gcmd *gcode.Command) {
 	if p.extendEdges {
 		p.extend(gcmd)
 	}
-	p.last = map[string]any{"method": m, "used": used, "points": points, "error": worst,
+	p.last = map[string]any{"method": m, "used": used, "points": points, "error": worst, "reason": reason,
 		"seconds": math.Round((p.printer.Reactor().Monotonic()-start)*10) / 10}
 }
 
@@ -291,27 +291,28 @@ func num(v any) float64 {
 }
 
 // fromMap makes the mesh of the saved map and a few probe points. ok is false when there is no
-// saved map, or when the bed does not fit the map within the tolerance.
-func (p *PrintdeckMesh) fromMap(gcmd *gcode.Command) (points int, worst float64, ok bool) {
+// saved map, or when the bed does not fit the map within the tolerance. reason is then a short
+// text of the cause after "map", for the screen of the deck: "off by 0.072 mm".
+func (p *PrintdeckMesh) fromMap(gcmd *gcode.Command) (points int, worst float64, reason string, ok bool) {
 	b := p.st.Base
 	if b == nil {
 		gcmd.RespondInfo("printdeck_mesh: no saved map. Probe the full bed on the Bed mesh page of the deck.", true)
-		return 0, math.NaN(), false
+		return 0, math.NaN(), "missing", false
 	}
 	if t := p.bedTemp(); b.BedTemp == 0 || math.Abs(t-b.BedTemp) > p.maxTempDiff {
 		gcmd.RespondInfo(fmt.Sprintf("printdeck_mesh: the saved map is of a bed at %.0f °C, and the bed is at %.0f °C. "+
 			"Probe the full bed at the print temperature on the Bed mesh page of the deck.", b.BedTemp, t), true)
-		return 0, math.NaN(), false
+		return 0, math.NaN(), fmt.Sprintf("at %.0f °C, bed %.0f °C", b.BedTemp, t), false
 	}
 	base, err := bed_mesh.NewMesh(b.Params, b.Probed, "printdeck-base")
 	if err != nil {
 		gcmd.RespondInfo("printdeck_mesh: the saved map is bad: "+err.Error(), true)
-		return 0, math.NaN(), false
+		return 0, math.NaN(), "bad", false
 	}
 	pr, isProbe := p.printer.TryLookupObject("probe").(probe.Probe)
 	bm, isMesh := p.printer.TryLookupObject("bed_mesh").(*bed_mesh.BedMesh)
 	if !isProbe || !isMesh {
-		return 0, math.NaN(), false
+		return 0, math.NaN(), "not usable: no probe", false
 	}
 	x0, y0, x1, y1 := base.Area()
 	full := Area{x0, y0, x1, y1}
@@ -346,7 +347,7 @@ func (p *PrintdeckMesh) fromMap(gcmd *gcode.Command) (points int, worst float64,
 	if !ok {
 		gcmd.RespondInfo(fmt.Sprintf("printdeck_mesh: the bed differs from the saved map by %.3f mm after %d points. "+
 			"Probe the full bed again on the Bed mesh page.", worst, len(pts)), true)
-		return len(pts), worst, false
+		return len(pts), worst, fmt.Sprintf("off by %.3f mm", worst), false
 	}
 	m, err := shifted(b, fit)
 	if err != nil {
@@ -355,7 +356,7 @@ func (p *PrintdeckMesh) fromMap(gcmd *gcode.Command) (points int, worst float64,
 	bm.SetMesh(m)
 	gcmd.RespondInfo(fmt.Sprintf("printdeck_mesh: mesh from the saved map and %d points, largest error %.3f mm, "+
 		"tilt %.3f mm per 100 mm in X, %.3f in Y", len(pts), worst, fit.B*100, fit.C*100), true)
-	return len(pts), worst, true
+	return len(pts), worst, "", true
 }
 
 // shifted returns the mesh of the saved map plus the plane.

@@ -49,3 +49,21 @@ func TestProbeMethodLine(t *testing.T) {
 		t.Errorf("line %q", l)
 	}
 }
+
+// When the saved map is not used, the row of Settings shows why.
+func TestProbeMethodReason(t *testing.T) {
+	st := idle
+	st.ProbeMethod = "map"
+	st.ProbeMapPoints = 49
+	st.ProbeMapTemp = 60
+	st.ProbeLast = printer.ProbeResult{Method: "map", Used: "grid", Points: 8, Error: 0.072, Seconds: 53,
+		Reason: "off by 0.072 mm"}
+	a, _, _ := newPrintApp(st)
+	a.pages = []page{pageMachine, pageSettings}
+	f := simFrame(t, a, "settings-probe-reason")
+	for _, s := range []string{"Last: grid · map off by 0.072 mm"} {
+		if !strings.Contains(f, s) {
+			t.Errorf("no %q in Settings:\n%s", s, f)
+		}
+	}
+}
