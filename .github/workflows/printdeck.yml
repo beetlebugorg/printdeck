@@ -30,6 +30,7 @@ on:
 permissions:
   contents: read
   id-token: write   # the OIDC token for Printdeck
+  packages: read    # the zslice package, for a part with "slicer: zslice"
 
 jobs:
   plan:
