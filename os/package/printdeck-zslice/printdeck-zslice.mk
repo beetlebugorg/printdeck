@@ -8,7 +8,7 @@
 # needs a token for each download, so Buildroot does not download it: os/build.sh gets the package
 # into the download folder, with a token that stays out of the build container. The hash file
 # checks the package. A new version needs a new hash.
-PRINTDECK_ZSLICE_VERSION = 0.3.0-beta
+PRINTDECK_ZSLICE_VERSION = 0.4.0-beta
 PRINTDECK_ZSLICE_SOURCE = zslice-$(PRINTDECK_ZSLICE_VERSION).tgz
 PRINTDECK_ZSLICE_SITE = https://npm.pkg.github.com/download/@beetlebugorg/zslice/$(PRINTDECK_ZSLICE_VERSION)
 PRINTDECK_ZSLICE_LICENSE = AGPL-3.0-or-later
