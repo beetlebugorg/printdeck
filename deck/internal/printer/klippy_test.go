@@ -77,6 +77,7 @@ type fakeKlippy struct {
 	mu      sync.Mutex
 	scripts []string
 	methods []string
+	hold    chan struct{} // when not nil, each gcode/script answers after it closes
 }
 
 func (f *fakeKlippy) serve(t *testing.T) string {
@@ -117,7 +118,11 @@ func (f *fakeKlippy) conn(nc net.Conn) {
 		if req.Method == "gcode/script" {
 			f.scripts = append(f.scripts, req.Params["script"].(string))
 		}
+		hold := f.hold
 		f.mu.Unlock()
+		if req.Method == "gcode/script" && hold != nil {
+			<-hold
+		}
 		var result any = map[string]any{}
 		switch req.Method {
 		case "info":
@@ -371,4 +376,51 @@ func TestSaveZOffset(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("no save after the print")
+}
+
+// A stop of the printer during an action (the Stop key of its screen) ends the action at once. Its
+// command answers seconds later, and that answer changes nothing.
+func TestActionEndsAtShutdown(t *testing.T) {
+	f := &fakeKlippy{}
+	k := NewKlippy(f.serve(t), emptyStore{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ready := make(chan struct{}, 1)
+	go k.Run(ctx, func() {
+		if k.State().Connected {
+			select {
+			case ready <- struct{}{}:
+			default:
+			}
+		}
+	})
+	<-ready
+	hold := make(chan struct{})
+	f.mu.Lock()
+	f.hold = hold
+	f.mu.Unlock()
+	done := make(chan error, 1)
+	go func() { done <- k.RunAction("Bed mesh", "BED_MESH_CALIBRATE") }()
+	for i := 0; k.State().Action == "" && i < 200; i++ {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if k.State().Action != "Bed mesh" {
+		t.Fatal("the action does not run")
+	}
+
+	k.mu.Lock()
+	k.status = klippy.Status{"webhooks": {"state": "shutdown", "state_message": "Shutdown due to webhooks request\nOnce the underlying issue is corrected"}}
+	k.mu.Unlock()
+	k.refresh(func() {})
+	st := k.State()
+	if st.Action != "" || st.LastAction.Name != "Bed mesh" || st.LastAction.Err != "Shutdown due to webhooks request" {
+		t.Errorf("after the shutdown: action %q, last %+v", st.Action, st.LastAction)
+	}
+	end := st.LastAction.End
+
+	close(hold)
+	<-done
+	if st := k.State(); st.Action != "" || st.LastAction.End != end {
+		t.Errorf("the late answer changed the state: action %q, last %+v", st.Action, st.LastAction)
+	}
 }

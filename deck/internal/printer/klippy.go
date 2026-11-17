@@ -78,6 +78,7 @@ type Klippy struct {
 	// The maintenance action that runs now, and the last one that ended (RunAction).
 	action      string
 	actionStart time.Time
+	actionID    int // counts the actions, so that a late end of an ended action changes nothing
 	// projectPath is the file of the print now after projectOfFile looked at it.
 	projectPath string
 	lastAction  ActionResult
@@ -171,6 +172,19 @@ func (k *Klippy) State() State {
 	return st
 }
 
+// endAction ends the action that runs, with the error msg, when Klipper stops (a shutdown, an
+// error, or a lost connection). The command of the action can return many seconds later, for
+// example a probe that finishes its move. Until then the screen of the action stays over the error
+// screen, and its Stop key only gives the same screen again. k.mu is locked.
+func (k *Klippy) endAction(msg string) {
+	if k.action == "" {
+		return
+	}
+	k.lastAction = ActionResult{Name: k.action, End: time.Now(), Err: msg}
+	k.action = ""
+	k.actionID++
+}
+
 // ErrActionRunning is the error of RunAction while another action runs.
 var ErrActionRunning = errors.New("Another action runs. Wait until it ends.")
 
@@ -182,6 +196,8 @@ func (k *Klippy) RunAction(name string, lines ...string) error {
 		k.mu.Unlock()
 		return ErrActionRunning
 	}
+	k.actionID++
+	id := k.actionID
 	k.action, k.actionStart = name, time.Now()
 	for _, l := range lines {
 		if strings.Contains(strings.ToUpper(l), "BED_TILT_CALIBRATE") {
@@ -195,11 +211,13 @@ func (k *Klippy) RunAction(name string, lines ...string) error {
 	}
 	err := k.script(lines...)
 	k.mu.Lock()
-	k.lastAction = ActionResult{Name: name, End: time.Now()}
-	if err != nil {
-		k.lastAction.Err = err.Error()
+	if k.actionID == id && k.action != "" {
+		k.lastAction = ActionResult{Name: name, End: time.Now()}
+		if err != nil {
+			k.lastAction.Err = err.Error()
+		}
+		k.action = ""
 	}
-	k.action = ""
 	k.mu.Unlock()
 	if notify != nil {
 		notify()
@@ -701,6 +719,13 @@ func (k *Klippy) refresh(notify func()) {
 			st.ErrDetail = k.errDetail
 		}
 		st.Starting = (k.startup || k.err == "Klipper is not running") && time.Since(k.since) < startGrace
+	}
+	if !st.Reachable && k.action != "" {
+		msg := st.Err
+		if msg == "" {
+			msg = "The printer stopped."
+		}
+		k.endAction(msg)
 	}
 	mesh, hasMesh := meshFromStatus(k.status["bed_mesh"])
 	restart := lostBoard(st.ErrDetail) && time.Since(k.autoRestart) > autoRestartWait
