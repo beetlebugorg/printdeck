@@ -34,10 +34,13 @@ type Config struct {
 	NightFrom, NightTo int // hours of the night theme in auto mode
 	PreheatBed         int
 	RemoteAddr         string // address of the remote screen, for example ":80"; empty turns it off
-	KlippySocket       string // the API socket of the Klipper host
-	GcodeDir           string // the folder of Klipper's [virtual_sdcard]
-	KlipperConfig      string // printer.cfg of the Klipper host
-	KlippyLog          string // the log of the Klipper host, for the system page
+	// The web pages that can call the API for slicers from the browser (CORS), separated by
+	// spaces: the zslice web app. Each call still needs the API key. "none" turns it off.
+	WebOrigins    string
+	KlippySocket  string // the API socket of the Klipper host
+	GcodeDir      string // the folder of Klipper's [virtual_sdcard]
+	KlipperConfig string // printer.cfg of the Klipper host
+	KlippyLog     string // the log of the Klipper host, for the system page
 }
 
 func Load() Config {
@@ -53,6 +56,7 @@ func Load() Config {
 		TouchOffsetY:  num("TOUCH_OFFSET_Y", 0),
 		StateDir:      str("STATE_DIRECTORY", "/var/lib/printdeck"),
 		RemoteAddr:    str("REMOTE_ADDR", ""),
+		WebOrigins:    str("WEB_ORIGINS", "https://zslice.beetlebug.org"),
 		KlippySocket:  str("KLIPPY_SOCKET", "/run/klipper/klippy.sock"),
 		GcodeDir:      str("GCODE_DIR", "/var/lib/klipper/gcodes"),
 		KlipperConfig: str("KLIPPER_CONFIG", "/var/lib/klipper/config/printer.cfg"),
