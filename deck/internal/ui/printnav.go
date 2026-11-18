@@ -751,8 +751,7 @@ func rowText(c *gfx.Canvas, r image.Rectangle, title, sub string, titleCol, subC
 	}
 	if r.Dy() >= 58 {
 		// The text under the title in more lines when it is too long for one line and the row is
-		// high enough (rowTextH).
-		c.Text(image.Rect(r.Min.X+18, r.Min.Y+8, r.Max.X-50, r.Min.Y+40), title, gfx.Face(true, 20), titleCol, gfx.Left)
+		// high enough (rowTextH). The lines are in the middle of the height of the row.
 		f := gfx.Face(false, 16)
 		lines := []string{sub}
 		if w := r.Dx() - 68; gfx.Width(f, sub) > w {
@@ -760,8 +759,11 @@ func rowText(c *gfx.Canvas, r image.Rectangle, title, sub string, titleCol, subC
 				lines = l
 			}
 		}
+		// A low row (minRowH) moves the text up by 4 pixels, so the last line keeps a margin.
+		top := r.Min.Y + max(-4, (r.Dy()-normalRowH(len(lines)))/2)
+		c.Text(image.Rect(r.Min.X+18, top+8, r.Max.X-50, top+40), title, gfx.Face(true, 20), titleCol, gfx.Left)
 		for i, l := range lines {
-			ly := r.Min.Y + 38 + i*normalSubH
+			ly := top + 38 + i*normalSubH
 			c.Text(image.Rect(r.Min.X+18, ly, r.Max.X-50, ly+normalSubH), l, f, subCol, gfx.Left)
 		}
 		return

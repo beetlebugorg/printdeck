@@ -736,7 +736,7 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 		if a.camPTZ {
 			rowsH += ptzRowsHeight(ptz, gap)
 		}
-		h = min(h, max(body.Dy()/3, body.Dy()-infoH-2*gap-rowsH))
+		h = min(h, max(body.Dy()/4, body.Dy()-infoH-2*gap-rowsH))
 		r := kit.Rows(body, gap, kit.Px(h), kit.Px(infoH), kit.Fr(1))
 		view, info = r[0], r[1]
 		rowsR := r[2]
