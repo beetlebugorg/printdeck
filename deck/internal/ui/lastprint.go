@@ -16,6 +16,9 @@ type ModelViewer interface {
 	// layers of the file is the whole file), w x h pixels, in the colour hex ("#rrggbb", or "" for
 	// a colour for each feature). It returns the layers of the file.
 	Frame(path string, layer, w, h int, hex string) (img image.Image, layers int, ok bool)
+	// Live draws the file path of a print that runs: at the file position pos, or up to the
+	// layer (from 1) when layer is above 0. It keeps the camera of the view.
+	Live(path string, pos int64, layer, w, h int, hex string) (img image.Image, ok bool)
 	// Orbit turns the view with one finger: phase is kit.PadDown, PadMove or PadUp, and x, y the
 	// place of the finger in the view.
 	Orbit(phase int, x, y float32)
