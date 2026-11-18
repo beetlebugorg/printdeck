@@ -399,8 +399,10 @@ func (a *App) confirmResinPrint(path, name string) {
 	}}
 }
 
-// ConfirmFilePrint starts a print that a slicer sent. When the material of the file is not known to
-// be in the printer, the touch screen asks first. It is safe to call from any goroutine.
+// ConfirmFilePrint asks on the touch screen to start a print that a slicer sent. A print never
+// starts from the network alone: a person at the deck presses Print, so the bed is clear. When the
+// material of the file is not known to be in the printer, the question is about the roll. It is
+// safe to call from any goroutine.
 func (a *App) ConfirmFilePrint(path string) {
 	a.post(func() {
 		// With files in the queue, the deck asks: this file now, after the queue, or the queue.
@@ -408,15 +410,27 @@ func (a *App) ConfirmFilePrint(path string) {
 			a.askSentFile(path)
 			return
 		}
+		name := a.Printer.FileMeta(path).Name(path)
 		start := func() { a.Printer.PrintFile(path) }
-		box := a.filamentChoices(path, a.Printer.FileMeta(path).Name(path), start)
+		box := a.filamentChoices(path, name, start)
 		if box == nil {
-			start()
-			return
+			box = a.sentFileBox(path, name, start)
 		}
 		// A print from a slicer: the question is on each screen of the deck.
 		a.hub.ask(box)
 	})
+}
+
+// sentFileBox asks to start a file that a slicer sent, when its material is in the printer: Print
+// (the bed is clear), or add it to the queue for later.
+func (a *App) sentFileBox(path, name string, start func()) *confirmBox {
+	choices := []menuItem{{"Print", "The bed is clear: start the print now", dim, start}}
+	if a.Queue != nil {
+		choices = append(choices, menuItem{"Add it to the queue", "Print it later", dim, func() {
+			a.Queue.Add(a.queueItem(path, "slicer"))
+		}})
+	}
+	return &confirmBox{question: "Print " + gfx.Fit(gfx.Face(true, 26), name, 340) + "?", choices: choices}
 }
 
 // materialCheck compares the material of a file with the material in the printer: the roll, or the

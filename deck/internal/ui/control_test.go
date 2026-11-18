@@ -720,13 +720,22 @@ func TestMaterialCheck(t *testing.T) {
 	if q, _, _, _ := a.materialCheck("x.gcode"); q != "" {
 		t.Errorf("the same material: %q", q)
 	}
-	// A print from a slicer starts at once when the material is in the printer.
+	// A print from a slicer never starts from the network alone, also with the material in the
+	// printer: the deck asks, and a press of Print starts it.
 	a.ConfirmFilePrint("x.gcode")
 	for len(a.posted) > 0 {
 		(<-a.posted)()
 	}
-	if c := pr.Calls(); a.confirm != nil || len(c) != 1 || c[0] != "print x.gcode" {
-		t.Errorf("confirm %v, calls %v", a.confirm, pr.Calls())
+	q := a.hub.question()
+	if c := pr.Calls(); q == nil || len(c) != 0 {
+		t.Fatalf("question %v, calls %v", q, c)
+	}
+	if len(q.choices) == 0 || q.choices[0].title != "Print" {
+		t.Fatalf("choices %+v", q.choices)
+	}
+	q.choices[0].tap()
+	if c := pr.Calls(); len(c) != 1 || c[0] != "print x.gcode" || a.hub.question() != nil {
+		t.Errorf("after Print: calls %v, question %v", c, a.hub.question())
 	}
 }
 
