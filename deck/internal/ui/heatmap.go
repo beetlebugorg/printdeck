@@ -142,7 +142,7 @@ func (a *App) drawHeatMap(c *gfx.Canvas, st printer.State) {
 	}
 	a.region("Range", tileR)
 	pic := a.meshPicture(mapR, mach, d)
-	label(c, foot, fmt.Sprintf("%.0f° less %.0f° · %d × %d points · height × %.0f", hot.BedTemp, cold.BedTemp, nx, ny, pic.exag), gfx.Center)
+	hintText(c, foot, fmt.Sprintf("%.0f° less %.0f° · %d × %d points · height × %.0f", hot.BedTemp, cold.BedTemp, nx, ny, pic.exag), gfx.Center)
 	window(c, mapR)
 	a.region("Map", mapR)
 	if pic.img != nil {

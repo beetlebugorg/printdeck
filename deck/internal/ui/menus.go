@@ -1081,7 +1081,7 @@ func (a *App) drawStats(c *gfx.Canvas) {
 		c.Fill(image.Rect(x, in.Min.Y, x+w, in.Max.Y), part.col)
 		x += w
 	}
-	label(c, r[1], fmt.Sprintf("%d done · %d cancelled · %d failed", s.Completed, s.Cancelled, s.Failed), gfx.Center)
+	hintText(c, r[1], fmt.Sprintf("%d done · %d cancelled · %d failed", s.Completed, s.Cancelled, s.Failed), gfx.Center)
 
 	box := kit.Inset(r[2], 0, 6, 0, 0)
 	plate(c, box)
@@ -1142,7 +1142,7 @@ func (a *App) drawStats(c *gfx.Canvas) {
 		grams := fmt.Sprintf("grams for %.2f mm %s", a.Printer.Machine().Diameter(), cmp.Or(a.Material, "PLA"))
 		if gfx.FinePrint() {
 			l := kit.Rows(kit.Inset(r[3], 0, 4, 0, 0), 0, kit.Fr(1), kit.Fr(1))
-			label(c, l[0], since, gfx.Center)
+			hintText(c, l[0], since, gfx.Center)
 			label(c, l[1], grams, gfx.Center)
 		} else {
 			label(c, kit.Inset(r[3], 0, 4, 0, 0), since+" · "+grams, gfx.Center)

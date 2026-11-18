@@ -51,7 +51,7 @@ func (a *App) drawFiles(c *gfx.Canvas) {
 	files := a.sortedFiles()
 	count, area := r[0], r[1]
 	countR, countText := kit.Rows(count, 0, kit.Px(24))[0], fmt.Sprintf("Newest first · %d %s", len(files), plural(len(files), "file", "files"))
-	label(c, countR, countText, gfx.Left)
+	hintText(c, countR, countText, gfx.Left)
 	a.textRegion("Count", countR, gfx.Face(true, 14), strings.ToUpper(countText))
 	if len(files) == 0 {
 		if a.resin() {

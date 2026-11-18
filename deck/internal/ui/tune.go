@@ -77,7 +77,7 @@ func (a *App) drawTune(c *gfx.Canvas) {
 	row("Speed", fmt.Sprintf("%d%%", speed), func() { setSpeed(speed - 10) }, func() { setSpeed(speed + 10) }, nil)
 	row("Flow", fmt.Sprintf("%d%%", flow), func() { setFlow(flow - 2) }, func() { setFlow(flow + 2) }, nil)
 	row("Z offset", fmt.Sprintf("%+.3f mm", st.ZOffset), func() { z(-0.025) }, func() { z(0.025) }, func() { a.saveZOffset(st) })
-	label(c, zHint, "Z offset −: nozzle closer to the bed", gfx.Left)
+	hintText(c, zHint, "Z offset −: nozzle closer to the bed", gfx.Left)
 
 	// Fan
 	a.region("Fan", fanRow)
@@ -105,9 +105,9 @@ func (a *App) drawTune(c *gfx.Canvas) {
 
 	switch {
 	case f.wide:
-		label(c, tHint, "Tap a temperature on the display", gfx.Left)
+		hintText(c, tHint, "Tap a temperature on the display", gfx.Left)
 	default:
-		label(c, tHint, "Tap a temperature to change it", gfx.Left)
+		hintText(c, tHint, "Tap a temperature to change it", gfx.Left)
 		a.temps(c, temps, st.Tool, st.ToolTarget, st.Bed, st.BedTarget, st.Connected)
 	}
 }

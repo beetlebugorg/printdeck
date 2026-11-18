@@ -34,13 +34,13 @@ func TestHeatMapPage(t *testing.T) {
 	pr.HeatMaps_ = heatMaps()
 	a.pages = []page{pageHeatMap}
 	f := simFrame(t, a, "heat-change")
-	for _, s := range []string{"60° LESS 23°", "40°", "RANGE MM", "+0.040"} {
+	for _, s := range []string{"60° less 23°", "40°", "RANGE MM", "+0.040"} {
 		if !strings.Contains(f, s) {
 			t.Errorf("no %q on the page", s)
 		}
 	}
 	tapLabel(t, a, cv, "40°")
-	if f := simFrame(t, a, "heat-change-40"); !strings.Contains(f, "40° LESS 23°") {
+	if f := simFrame(t, a, "heat-change-40"); !strings.Contains(f, "40° less 23°") {
 		t.Error("the 40° key does not show the map at 40°")
 	}
 	tapLabel(t, a, cv, "Test")

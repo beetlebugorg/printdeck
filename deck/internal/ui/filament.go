@@ -51,7 +51,7 @@ func (a *App) drawFilament(c *gfx.Canvas, st printer.State) {
 	}
 	c.Text(win, loaded, gfx.Face(true, 20), lcdInk, gfx.Center)
 	if !hint.Empty() {
-		label(c, hint, "Tap the material that is in the printer", gfx.Left)
+		hintText(c, hint, "Tap the material that is in the printer", gfx.Left)
 	}
 	// During a print, the page keeps its keys in their places, and they wait for its end.
 	fkey := a.button
@@ -174,7 +174,7 @@ func (a *App) drawFilamentPrinting(c *gfx.Canvas, st printer.State) {
 		if hint := "Add the roll in Rolls to follow its filament"; gfx.FinePrint() {
 			textLines(c, image.Rect(in.Min.X, in.Max.Y-52, in.Max.X, in.Max.Y), strings.ToUpper(hint), gfx.Face(true, 14), dim, 26)
 		} else {
-			label(c, image.Rect(in.Min.X, in.Max.Y-24, in.Max.X, in.Max.Y), hint, gfx.Left)
+			hintText(c, image.Rect(in.Min.X, in.Max.Y-24, in.Max.X, in.Max.Y), hint, gfx.Left)
 		}
 	} else {
 		left := max(0, sp.Left()-a.grams(st.FilamentUsed, ""))

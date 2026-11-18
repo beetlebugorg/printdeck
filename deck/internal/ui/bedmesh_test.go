@@ -46,7 +46,7 @@ func TestBedMeshPage(t *testing.T) {
 			name += "-wide"
 		}
 		f := simFrame(t, a, name)
-		for _, s := range []string{"RANGE", "FRONT", "7 × 7 POINTS", "HEIGHT × "} {
+		for _, s := range []string{"RANGE", "FRONT", "7 × 7 points", "height × "} {
 			if !strings.Contains(f, s) {
 				t.Errorf("%s: no %q on the page", name, s)
 			}
