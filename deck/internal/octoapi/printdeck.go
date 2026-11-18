@@ -10,6 +10,7 @@ import (
 	"printdeck/internal/klipper/toolhead"
 	"printdeck/internal/printer"
 	"printdeck/internal/queue"
+	"printdeck/internal/signing"
 )
 
 // The API of the Printdeck plugin for Cura, at the path of an OctoPrint plugin. It tells which
@@ -104,6 +105,9 @@ type printdeckJSON struct {
 	// Limits are the motion limits of the printer, for a slicer that plans the time of the moves
 	// as the printer does. Null before the deck has read them.
 	Limits *limitsJSON `json:"limits"`
+	// SignedOnly is true when the deck accepts only G-code files with a good signature of a trusted
+	// slicer.
+	SignedOnly bool `json:"signed_only"`
 }
 
 // limitsJSON is the [printer] section of printer.cfg: velocities in mm/s, accelerations in
@@ -136,6 +140,9 @@ func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.Material != nil {
 		out.Material = s.Material()
+	}
+	if s.Signing != nil {
+		out.SignedOnly = s.Signing.SignedOnly()
 	}
 	if s.Diameter != nil {
 		out.Diameter = s.Diameter()
@@ -276,6 +283,12 @@ type printdeckFields struct {
 	Limits func() (toolhead.Limits, bool)
 	// Model draws the model of the print for an app (printer.View.ModelPicture), or nil.
 	Model func(st printer.State, w, h int, mono bool) image.Image
+	// Signing keeps "Signed prints only" and the trusted keys of the slicers, or is nil. With the
+	// setting on, the API queues and starts only G-code files with a good signature of a trusted
+	// key, and refuses G-code commands (signed.go).
+	Signing *signing.Store
+	// Rejected shows the reason for a rejected file on the touch screen, or is nil.
+	Rejected func(name, reason string)
 }
 
 // startPrint starts a print of a file, with StartPrint when the Server has it.

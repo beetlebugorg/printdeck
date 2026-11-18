@@ -61,6 +61,7 @@ const (
 	pageOption      // one setting: a toggle, or a list of choices (a.option, option.go)
 	pageHeatMap     // the change of the bed from the coldest map to a hot map (heatmap.go)
 	pageBedCool     // the cool of the bed before the end of a print (bedcool.go)
+	pageSigning     // "Signed prints only" and the trusted slicers (signing.go)
 )
 
 // open shows a page over the current one.

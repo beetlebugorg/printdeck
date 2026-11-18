@@ -104,6 +104,13 @@ func (s *Store) Stat(path string) (fs.FileInfo, error) {
 // All file operations go through an os.Root, so a symlink in the folder can not point a write outside it.
 // A Cura G-code file gets the object data of Klipper's [exclude_object] (gcode.ReadObjects).
 func (s *Store) Save(path string, r io.Reader) (string, error) {
+	return s.SaveChecked(path, r, nil)
+}
+
+// SaveChecked is Save with a check of the file before it goes in the store. check gets the path in
+// the file system of the temporary file, before any change to it. An error of check stops the save,
+// and a file of the same name stays as it was. check can be nil.
+func (s *Store) SaveChecked(path string, r io.Reader, check func(tmpPath string) error) (string, error) {
 	p, err := clean(path)
 	if err != nil {
 		return "", err
@@ -132,6 +139,11 @@ func (s *Store) Save(path string, r io.Reader) (string, error) {
 	}
 	if err := tmp.Close(); err != nil {
 		return "", err
+	}
+	if check != nil {
+		if err := check(filepath.Join(s.Dir, tmpName)); err != nil {
+			return "", err
+		}
 	}
 	if isGcode(p) {
 		done, err := addObjects(root, tmpName, p)

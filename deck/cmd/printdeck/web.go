@@ -120,6 +120,7 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 		return nil
 	}
 	api.StartPrint = app.ConfirmFilePrint
+	api.Signing, api.Rejected = app.Signing, app.ShowRejected
 	api.Queue = app.Queue
 	api.PrinterID = func() string {
 		if pl, ok := app.Cloud.(*projectLink); ok {
@@ -152,6 +153,7 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 func newResinAPI(cfg config.Config, c *printer.ChiTu, app *ui.App, mux *http.ServeMux) *octoapi.Server {
 	api := octoapi.New(resinAPIPrinter{c}, &gcodestore.Store{Dir: cfg.GcodeDir}, cfg.OctoPrintKey, filepath.Join(cfg.StateDir, "apikeys.json"))
 	api.Resin = true
+	api.Signing = app.Signing // the pairing of an app adds its key
 	api.Queue = app.Queue
 	api.PrinterID = func() string {
 		if pl, ok := app.Cloud.(*projectLink); ok {

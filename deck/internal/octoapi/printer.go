@@ -165,7 +165,14 @@ func (s *Server) serveCommand(w http.ResponseWriter, r *http.Request) {
 		Command  string   `json:"command"`
 		Commands []string `json:"commands"`
 	}
-	if !decode(w, r, &req) || !s.operational(w) {
+	if !decode(w, r, &req) {
+		return
+	}
+	if s.signedOnly() {
+		apiError(w, http.StatusForbidden, "Signed prints only is on: the deck accepts no G-code commands from apps")
+		return
+	}
+	if !s.operational(w) {
 		return
 	}
 	lines := req.Commands
