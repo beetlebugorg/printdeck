@@ -415,6 +415,7 @@ func (a *App) modelView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 				a.Viewer.Orbit(int(ph), float32(p.X-in.Min.X), float32(p.Y-in.Min.Y))
 				a.Redraw()
 			}})
+			a.pinchArea = in
 			return
 		}
 	}

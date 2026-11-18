@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"image"
 
+	"printdeck/internal/touch"
+
 	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
 	"printdeck/kit"
@@ -22,6 +24,9 @@ type ModelViewer interface {
 	// Orbit turns the view with one finger: phase is kit.PadDown, PadMove or PadUp, and x, y the
 	// place of the finger in the view.
 	Orbit(phase int, x, y float32)
+	// Finger gives the view another finger of a multi-touch panel (id above 1), with the same
+	// phases: two fingers pinch to zoom and move to pan.
+	Finger(id int64, phase int, x, y float32)
 	// Zoom zooms in (step > 0) or out.
 	Zoom(step int)
 	// Reset goes back to the start view.
@@ -105,6 +110,7 @@ func (a *App) turnView(c *gfx.Canvas, r image.Rectangle, path, spoolID string, v
 		a.Viewer.Orbit(int(ph), float32(p.X-inner.Min.X), float32(p.Y-inner.Min.Y))
 		a.Redraw()
 	}})
+	a.pinchArea = inner
 	// The zoom keys and Reset at the left, and the scrubber of the layers at the right.
 	k := kit.Cols(ctl, 8, kit.Px(ctlH), kit.Px(ctlH), kit.Px(ctlH*16/10), kit.Fr(1))
 	a.namedButton(c, k[0], "−", "Zoom out", raised, text, func() { a.Viewer.Zoom(-1); a.Redraw() })
@@ -138,4 +144,32 @@ func (a *App) turnView(c *gfx.Canvas, r image.Rectangle, path, spoolID string, v
 	a.addHit(kit.Hit{R: bar, Drag: set, End: set})
 	a.region("Layers", bar)
 	return true
+}
+
+// otherFinger gives a second finger of a multi-touch panel to the 3D view under it: two fingers
+// pinch to zoom and pan. A finger that comes down out of the view is ignored until it lifts.
+func (a *App) otherFinger(ev touch.Event, p image.Point) {
+	if a.Viewer == nil {
+		return
+	}
+	if a.pinch == nil {
+		a.pinch = map[int]bool{}
+	}
+	switch ev.Kind {
+	case touch.Down:
+		if !p.In(a.pinchArea) {
+			return
+		}
+		a.pinch[ev.Finger] = true
+	default:
+		if !a.pinch[ev.Finger] {
+			return
+		}
+		if ev.Kind == touch.Up {
+			delete(a.pinch, ev.Finger)
+		}
+	}
+	phase := map[touch.Kind]int{touch.Down: int(kit.PadDown), touch.Move: int(kit.PadMove), touch.Up: int(kit.PadUp)}[ev.Kind]
+	r := a.pinchArea
+	a.Viewer.Finger(int64(ev.Finger)+1, phase, float32(p.X-r.Min.X), float32(p.Y-r.Min.Y))
 }
