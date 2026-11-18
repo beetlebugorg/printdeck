@@ -87,14 +87,16 @@ func (a *App) printerKey(c *gfx.Canvas, r image.Rectangle, label string, fill, f
 	a.lockedKey(c, r, label, fill)
 }
 
-// lockedKey draws a key that waits for the end of the print: dim, with a lock at the right of its
-// label. A tap says to wait. The menu of the printer display does not have it.
+// lockedKey draws a key that waits for the end of the print: dim, with a lock in the place of the
+// LED at the top left, so that the label keeps its size. A tap says to wait. The menu of the
+// printer display does not have it.
 func (a *App) lockedKey(c *gfx.Canvas, r image.Rectangle, label string, fill color.RGBA) {
 	pressed := a.isPressed(r)
-	ink := dim
-	keyBeside(c, r, label, fill, ink, pressed, 26)
-	y := r.Min.Y + r.Dy()/2
-	drawLock(c, r.Max.X-19, y, dim)
+	if fill == keyOn || fill == keyOff {
+		fill = raised // the lock takes the place of the LED
+	}
+	key(c, r, label, fill, dim, pressed)
+	drawLock(c, r.Min.X+18, r.Min.Y+17, dim)
 	tap := func() { a.Toast(waitText) }
 	a.addHit(kit.Hit{R: r, Tap: tap})
 	a.region(label, r)
