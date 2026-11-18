@@ -724,7 +724,7 @@ func (a *App) temps(c *gfx.Canvas, area image.Rectangle, tool, toolT, bed, bedT 
 			setR = valR
 			setR.Min.X = setR.Max.X - gfx.Width(gfx.Face(true, 13), set)
 			valR.Max.X = setR.Min.X - 8
-			c.Text(setR, set, gfx.Face(true, 13), orange, gfx.Right)
+			c.Text(setR, set, gfx.Face(true, 13), accentText, gfx.Right)
 		}
 		size := 30
 		for size > 18 && gfx.Width(gfx.Face(true, size), val) > valR.Dx() {
@@ -734,13 +734,13 @@ func (a *App) temps(c *gfx.Canvas, area image.Rectangle, tool, toolT, bed, bedT 
 		if ok && target > 0 && setR.Empty() {
 			set := fmt.Sprintf("SET %.0f°", target)
 			if r.Dx() < 180 { // a narrow card: under the value
-				c.Text(image.Rect(r.Min.X+tx, r.Max.Y-24, r.Max.X-10, r.Max.Y-6), set, gfx.Face(true, 13), orange, gfx.Left)
+				c.Text(image.Rect(r.Min.X+tx, r.Max.Y-24, r.Max.X-10, r.Max.Y-6), set, gfx.Face(true, 13), accentText, gfx.Left)
 			} else {
 				// The target goes at the right of the label. Large text leaves room for the number only.
 				if gfx.Width(gfx.Face(true, 13), set) > r.Max.X-10-x0 {
 					set = fmt.Sprintf("%.0f°", target)
 				}
-				c.Text(image.Rect(x0, r.Min.Y+6, r.Max.X-10, r.Min.Y+28), set, gfx.Face(true, 13), orange, gfx.Right)
+				c.Text(image.Rect(x0, r.Min.Y+6, r.Max.X-10, r.Min.Y+28), set, gfx.Face(true, 13), accentText, gfx.Right)
 			}
 		}
 	}

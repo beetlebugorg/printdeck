@@ -151,7 +151,7 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	if f.wide {
 		keys, rest = f.side, f.main
 	} else {
-		s := kit.NewStack(kit.Inset(f.main, 40, 2, 40, 0), 12)
+		s := kit.NewStack(kit.Inset(f.main, margin, 0, margin, 0), 12)
 		keys, rest = s.Next(96+12+68+12+homeRowH), s.Rest()
 	}
 
@@ -163,7 +163,10 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	if !f.wide {
 		rest = kit.Inset(rest, 0, 0, 0, 16)
 	}
-	r := kit.Rows(rest, 12, kit.Px(lastPrintH()), kit.Fr(1))
+	// The pages are one row of keys at the bottom, or two rows for four pages. The last print gets
+	// the space over them.
+	pagesH := 96
+	r := kit.Rows(rest, 12, kit.Fr(1), kit.Px(pagesH))
 	a.drawLastPrint(c, st, r[0])
 	a.region("Pages", r[1])
 	type homePage struct {
@@ -179,7 +182,11 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	if a.Camera != nil {
 		pages = append(pages, homePage{"Camera", pageCamera})
 	}
-	for i, cell := range kit.Grid(r[1], 2, 2, 12) {
+	cells := kit.Grid(r[1], len(pages), 1, 12)
+	if len(pages) > 3 {
+		cells = kit.Grid(r[1], 2, 2, 8)
+	}
+	for i, cell := range cells {
 		if i >= len(pages) {
 			break
 		}
@@ -327,19 +334,43 @@ func (a *App) drawLastPrint(c *gfx.Canvas, st printer.State, last image.Rectangl
 		c.Text(last, "No print yet", gfx.Face(false, 18), dim, gfx.Center)
 		return
 	}
-	textR := last.Max.X - 150
-	reprint := image.Rect(last.Max.X-140, last.Min.Y+20, last.Max.X-14, last.Max.Y-16)
+	summary := l.Summary(func(mm float64) float64 { return a.grams(mm, "") })
 	if gfx.FinePrint() {
-		textR = last.Max.X - 14
-		reprint = image.Rect(last.Min.X+14, last.Min.Y+92, last.Max.X-14, last.Max.Y-14)
+		// The large text: Reprint under the text, so that the text has the width of r.
+		textR := last.Max.X - 14
+		y := last.Min.Y + 11
+		a.recordThumb(c, image.Rect(last.Min.X+11, y, last.Min.X+11+thumbSmall, y+thumbSmall), l, a.fileIndex())
+		x := last.Min.X + 92
+		label(c, image.Rect(x, last.Min.Y+8, textR, last.Min.Y+28), "Last print", gfx.Left)
+		c.Text(image.Rect(x, last.Min.Y+28, textR, last.Min.Y+58), l.Name(), gfx.Face(true, 20), text, gfx.Left)
+		c.Text(image.Rect(x, last.Min.Y+56, textR, last.Min.Y+82), summary, gfx.Face(false, 16), dim, gfx.Left)
+		path := l.Path
+		reprint := image.Rect(last.Min.X+14, last.Min.Y+92, last.Max.X-14, last.Max.Y-14)
+		a.printerKey(c, reprint, "Reprint", raised, text, func() { a.confirmPrint(path) })
+		return
 	}
-	// The thumbnail at the left, and the label, the file and the summary at its right.
-	y := last.Min.Y + 11
-	a.recordThumb(c, image.Rect(last.Min.X+11, y, last.Min.X+11+thumbSmall, y+thumbSmall), l, a.fileIndex())
-	x := last.Min.X + 92
-	label(c, image.Rect(x, last.Min.Y+8, textR, last.Min.Y+28), "Last print", gfx.Left)
-	c.Text(image.Rect(x, last.Min.Y+28, textR, last.Min.Y+58), l.Name(), gfx.Face(true, 20), text, gfx.Left)
-	c.Text(image.Rect(x, last.Min.Y+56, textR, last.Min.Y+82), l.Summary(func(mm float64) float64 { return a.grams(mm, "") }), gfx.Face(false, 16), dim, gfx.Left)
+	// The thumbnail and the text at the top, and Reprint at the full width at the bottom. In a low
+	// card, Reprint is at the right of the text.
+	in := last.Inset(14)
+	var reprint, top image.Rectangle
+	if in.Dy() >= 64+12+thumbSmall {
+		reprint = image.Rect(in.Min.X, in.Max.Y-64, in.Max.X, in.Max.Y)
+		top = image.Rect(in.Min.X, in.Min.Y, in.Max.X, reprint.Min.Y-12)
+	} else {
+		reprint = image.Rect(in.Max.X-140, in.Min.Y, in.Max.X, in.Max.Y)
+		top = image.Rect(in.Min.X, in.Min.Y, reprint.Min.X-12, in.Max.Y)
+	}
+	side := max(thumbSmall, min(top.Dy(), 120))
+	ty := top.Min.Y + (top.Dy()-side)/2
+	a.recordThumb(c, image.Rect(top.Min.X, ty, top.Min.X+side, ty+side), l, a.fileIndex())
+	x, textR := top.Min.X+side+16, top.Max.X
+	const blockH = 20 + 32 + 26 // the label, the name, the summary
+	y := top.Min.Y + (top.Dy()-blockH)/2
+	label(c, image.Rect(x, y, textR, y+20), "Last print", gfx.Left)
+	nf := gfx.Face(true, 24)
+	c.Text(image.Rect(x, y+20, textR, y+52), gfx.Fit(nf, l.Name(), textR-x), nf, text, gfx.Left)
+	sf := gfx.Face(false, 18)
+	c.Text(image.Rect(x, y+52, textR, y+78), gfx.Fit(sf, summary, textR-x), sf, dim, gfx.Left)
 	path := l.Path
 	a.printerKey(c, reprint, "Reprint", raised, text, func() {
 		a.confirmPrint(path)
@@ -697,6 +728,7 @@ func hexColor(s string) ([3]int, bool) {
 // rowText draws the title and the text of a menu row: in two lines, or in one line when the row is
 // low (many rows on a wide screen), with the text at the right of the title.
 func rowText(c *gfx.Canvas, r image.Rectangle, title, sub string, titleCol, subCol color.RGBA) {
+	titleCol, subCol = textInk(titleCol), textInk(subCol)
 	title = strings.ToUpper(title)
 	if gfx.FinePrint() && r.Dy() >= largeRowH(1) {
 		// The large text: the text under the title goes in two lines when it is too long for one

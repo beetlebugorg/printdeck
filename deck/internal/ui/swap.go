@@ -209,7 +209,7 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 		r := txt.Next(22)
 		label(c, r, fmt.Sprintf("Step %d of %d", n, total), gfx.Left)
 		t := txt.Next(38)
-		c.Text(t, title, gfx.Face(true, 24), orange, gfx.Left)
+		c.Text(t, title, gfx.Face(true, 24), accentText, gfx.Left)
 		a.textRegion("Step", image.Rect(r.Min.X, r.Min.Y, r.Max.X, t.Max.Y), gfx.Face(true, 24), title)
 		txt.Skip(12)
 		a.lcdNote(printer.LCDRow{Left: fmt.Sprintf("%d/%d %s", n, total, title)})
