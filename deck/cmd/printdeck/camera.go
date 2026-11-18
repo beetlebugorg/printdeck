@@ -36,6 +36,7 @@ func startCamera(ctx context.Context, stateDir string, app *ui.App, pr printerBa
 		s = camera.ParseSettings(b)
 	}
 	hub := camera.NewHub(s)
+	sysCameras = append(sysCameras, hub)
 	if keep != nil {
 		hub.KeepDevices(keep)
 	}

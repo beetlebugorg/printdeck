@@ -90,6 +90,7 @@ func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend
 	mux.HandleFunc("GET /system/gpu", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
 		writeInstallJSON(w, gpuCheck(gpuGcodeDir))
 	}))
+	mux.HandleFunc("GET /system/jpeg", rs.Auth(serveJPEGBench))
 	mux.HandleFunc("GET /system/metrics", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
 		writeMetricsJSON(w, r, metrics)
 	}))
