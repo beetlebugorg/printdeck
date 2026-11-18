@@ -318,7 +318,15 @@ func (d *decoder) fastScan(comps []uint8, td, ta []uint8, mxx, myy int) error {
 	if d.threads > 0 {
 		threads = min(d.threads, maxThreads)
 	}
-	if d.ri == 0 && threads > 1 && len(clean) >= parallelMin {
+	if d.sparse != nil {
+		return d.parallelScan(clean, units, mxx, myy, threads)
+	}
+	if d.ri == 0 {
+		// The sparse scan: the compact words cost less than the rows of dense coefficients,
+		// most of all for a camera frame with many blocks of one color.
+		if len(clean) < parallelMin {
+			threads = 1
+		}
 		return d.parallelScan(clean, units, mxx, myy, threads)
 	}
 

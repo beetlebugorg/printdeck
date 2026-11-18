@@ -115,6 +115,8 @@ type decoder struct {
 	mx0, my0, mx1, my1 int
 	// threads is the most threads of the scan, or 0 for GOMAXPROCS (DecodeThreads).
 	threads int
+	// sparse asks the scan for its coefficients and no pixels (DecodeSparse), and gets them.
+	sparse *Sparse
 
 	r    io.Reader
 	bits bits
@@ -665,6 +667,17 @@ func (d *decoder) decode(r io.Reader, configOnly bool) (image.Image, error) {
 			return nil, err
 		}
 	}
+	if d.sparse != nil {
+		if d.sparse.regions == nil {
+			return nil, errNoSparse
+		}
+		return nil, nil
+	}
+	return d.finish()
+}
+
+// finish returns the picture of the decoder after the scans.
+func (d *decoder) finish() (image.Image, error) {
 	if d.img1 != nil {
 		return d.img1, nil
 	}
