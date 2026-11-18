@@ -389,11 +389,14 @@ func (a *App) drawManualProbe(c *gfx.Canvas, st printer.State) {
 		r := kit.Rows(right, 10, kit.Fr(1), kit.Px(24), kit.Px(90))
 		steps, hint, end = r[0], r[1], r[2]
 	} else {
-		lcdR = printLCD
-		r := kit.Rows(kit.Inset(scr.Bounds(), margin, 124, margin, 16), 16, kit.Px(160), kit.Fr(1), kit.Px(24), kit.Px(90))
+		lcdR = image.Rect(margin, lcdTop, W-margin, lcdTop+92)
+		r := kit.Rows(kit.Inset(scr.Bounds(), margin, lcdR.Max.Y+16, margin, 16), 16, kit.Px(160), kit.Fr(1), kit.Px(24), kit.Px(90))
 		box, steps, hint, end = r[0], r[1], r[2], r[3]
 	}
-	charLCD(c, lcdR, lcd2("Paper test", "", "Nozzle at Z", fmt.Sprintf("%.3f", st.ManualZ)), 20)
+	// The height of the nozzle, the one number of the test, large in the window of the display.
+	window(c, lcdR)
+	c.Text(image.Rect(lcdR.Min.X+16, lcdR.Min.Y+8, lcdR.Max.X-16, lcdR.Min.Y+28), "PAPER TEST · NOZZLE AT Z", gfx.Face(true, 14), lcdDim, gfx.Left)
+	c.Text(image.Rect(lcdR.Min.X+16, lcdR.Min.Y+28, lcdR.Max.X-16, lcdR.Max.Y-6), fmt.Sprintf("%.3f mm", st.ManualZ), gfx.Face(true, 48), lcdInk, gfx.Left)
 	a.region("Height", lcdR)
 	a.region("Steps", steps)
 	plate(c, box)
@@ -410,7 +413,7 @@ func (a *App) drawManualProbe(c *gfx.Canvas, st printer.State) {
 		v := []float64{-1, -0.1, -0.025, 0.025, 0.1, 1}[i]
 		a.button(c, r, fmt.Sprintf("%+g", v), raised, text, func() { a.do(func() error { return pr.Gcode(fmt.Sprintf("TESTZ Z=%g", v)) }) })
 	}
-	label(c, hint, "− lowers the nozzle, + raises it (mm)", gfx.Center)
+	c.Text(hint, "− lowers the nozzle, + raises it (mm)", gfx.Face(false, 16), dim, gfx.Center)
 	k := kit.Cols(end, 12, kit.Fr(1), kit.Fr(1))
 	a.button(c, k[0], "Accept", orange, onAcc, func() {
 		a.do(func() error {
