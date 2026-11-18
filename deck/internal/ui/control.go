@@ -216,7 +216,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		z := kit.Cols(k[2], 8, kit.Fr(1), kit.Fr(1))
 		zDown, zUp = z[0], z[1]
 	} else {
-		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 0), 12, kit.Px(54), kit.Px(58), kit.Fr(1), kit.Px(60), kit.Px(70), kit.Px(24))
+		r := kit.Rows(f.body(), 12, kit.Px(54), kit.Px(58), kit.Fr(1), kit.Px(60), kit.Px(70), kit.Px(24))
 		pos, home, steps, parks, hint = r[0], r[1], r[3], r[4], r[5]
 		cols := kit.Cols(r[2], 16, kit.Fr(3), kit.Fr(1))
 		cross = cols[0]
@@ -278,7 +278,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 	}
 
 	// Home
-	h := labelCols(home, 8, "Home all", "X", "Y", "Z") // "Home all" needs the room
+	h := kit.Cols(home, 8, kit.Fr(2.2), kit.Fr(1), kit.Fr(1), kit.Fr(1)) // "Home all" needs the room; X, Y and Z are equal
 	notPaused(h[0], "Home all", orange, onAcc, func() error { return pr.Home() })
 	for i, ax := range []string{"X", "Y", "Z"} {
 		axis := strings.ToLower(ax)
@@ -364,7 +364,7 @@ func (a *App) drawArrows(c *gfx.Canvas, cross, zUp, zDown image.Rectangle, movin
 		a.region(k.name, k.r)
 		a.addHit(kit.Hit{R: k.r, Pad: a.jogPad(k.d, k.feed)})
 	}
-	label(c, g[4], fmt.Sprint(s)+" mm", gfx.Center)
+	c.Text(g[4], fmt.Sprint(s)+" mm", gfx.Face(true, 18), dim, gfx.Center) // the step of the pad
 }
 
 // ParkGcode moves the head to the back left, 10 mm up, out of the way of the part.
