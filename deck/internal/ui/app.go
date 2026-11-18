@@ -205,6 +205,11 @@ type App struct {
 	// Printers adds, changes and removes the printers of the deck (Settings, Printers), or is
 	// nil.
 	Printers PrinterAdmin
+	// Viewer draws the last print of the home screen as a 3D view that the finger turns, or is
+	// nil: the home screen then shows the picture of the print.
+	Viewer      ModelViewer
+	homeLayer   int    // the layer of the scrubber of the last print, 0 for the whole print
+	homeLayerOf string // the file of the last print of homeLayer
 	// OnCameraPrinter makes the camera cam a camera of the printer to (an ID of the Fleet), on a
 	// deck with many printers, or is nil. The change starts to work after a restart of the deck.
 	OnCameraPrinter         func(cam, to string) error
@@ -442,6 +447,7 @@ func (a *App) Session(width, height int) *App {
 		s.Fleet = sessionFleet{a.Fleet, s} // a remote screen never switches the touch screen
 	}
 	s.Printers, s.OnCameraPrinter = a.Printers, a.OnCameraPrinter
+	s.Viewer = a.Viewer
 	s.PreheatTool, s.PreheatBed, s.UnloadMM, s.LoadMM, s.JogInvertY = a.PreheatTool, a.PreheatBed, a.UnloadMM, a.LoadMM, a.JogInvertY
 	s.Theme, s.NightFrom, s.NightTo, s.OnTheme = a.Theme, a.NightFrom, a.NightTo, a.OnTheme
 	s.Clock24, s.OnClock = a.Clock24, a.OnClock
