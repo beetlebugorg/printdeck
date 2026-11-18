@@ -53,6 +53,25 @@ func TestCORS(t *testing.T) {
 		}
 	}
 
+	// A post from a page of another origin: 403, before the API. The listed origin, the deck's own
+	// pages, and a slicer with no Origin header get through.
+	for _, c := range []struct {
+		method, path, origin string
+		want                 int
+	}{
+		{"POST", "/plugin/appkeys/request", "https://evil.example", http.StatusForbidden},
+		{"DELETE", "/api/files/local/a.gcode", "http://192.168.1.9", http.StatusForbidden},
+		{"POST", "/plugin/appkeys/request", "https://zslice.beetlebug.org", http.StatusOK},
+		{"POST", "/api/files/local", "http://example.com", http.StatusOK}, // the Host of httptest
+		{"POST", "/plugin/appkeys/request", "", http.StatusOK},
+		{"GET", "/api/version", "https://evil.example", http.StatusOK},
+		{"POST", "/login", "https://evil.example", http.StatusOK}, // not the API: the login checks it
+	} {
+		if w := do(c.method, c.path, c.origin, nil); w.Code != c.want {
+			t.Errorf("%s %s from %q: %d, want %d", c.method, c.path, c.origin, w.Code, c.want)
+		}
+	}
+
 	// "none" turns it off.
 	off := CORS(inner, "none")
 	r := httptest.NewRequest("GET", "/api/version", nil)
@@ -61,5 +80,12 @@ func TestCORS(t *testing.T) {
 	off.ServeHTTP(w, r)
 	if w.Header().Get("Access-Control-Allow-Origin") != "" {
 		t.Fatal("none: CORS headers")
+	}
+	r = httptest.NewRequest("POST", "/plugin/appkeys/request", nil)
+	r.Header.Set("Origin", "https://evil.example")
+	w = httptest.NewRecorder()
+	off.ServeHTTP(w, r)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("none: a post from another origin: %d", w.Code)
 	}
 }
