@@ -857,6 +857,9 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 	if nm, ok := a.Setup.(Namer); ok {
 		items = append(items, menuItem{"Name", nameLine(nm.Name()), dim, func() { a.editName(nm) }})
 	}
+	if a.Printers != nil {
+		items = append(items, menuItem{"Printers", printersLine(a.Printers.List()), dim, func() { a.open(pagePrinters) }})
+	}
 	a.menuRows(c, f.body(), f.wide, 60, 5, items)
 }
 

@@ -202,6 +202,9 @@ type App struct {
 	// one printer.
 	Fleet     Fleet
 	fleetList bool // the list of the printers is open
+	// Printers adds, changes and removes the printers of the deck (Settings, Printers), or is
+	// nil.
+	Printers PrinterAdmin
 	// OnOpenPrinter opens the remote screen of the printer id, on a remote screen with many
 	// printers, or is nil.
 	OnOpenPrinter           func(id string)
@@ -511,29 +514,32 @@ func runFrames(ctx context.Context, events <-chan touch.Event, present func(*gfx
 		if switched != nil {
 			dir = switched()
 		}
-		move := transitionNone
-		if a.Animate && !a.Record && a.Scale[0] == 0 && last != nil && last.Bounds() == cv.Bounds() {
-			move = transitionFor(lastApp == a, lastKey, key, dir)
-		}
 		a.Draw(cv)
 		t1 := time.Now()
+		out := cv // the frame as it goes to the screen
 		if a.Scale[0] > 0 && !a.Record {
 			w, h := s.W*a.Scale[0]/a.Scale[1], s.H*a.Scale[0]/a.Scale[1]
 			if big == nil || big.Bounds().Dx() != w || big.Bounds().Dy() != h {
 				big = gfx.New(w, h)
 			}
 			rec.DrawScaled(big, a.Scale[0], a.Scale[1])
-			present(big)
-		} else if move != transitionNone {
-			animate(present, last, cv, move)
-		} else {
-			present(cv)
+			out = big
 		}
-		if a.Animate && !a.Record && a.Scale[0] == 0 {
-			if last == nil || last.Bounds() != cv.Bounds() {
-				last = gfx.New(s.W, s.H)
+		move := transitionNone
+		anim := a.Animate && !a.Record
+		if anim && last != nil && last.Bounds() == out.Bounds() {
+			move = transitionFor(lastApp == a, lastKey, key, dir)
+		}
+		if move != transitionNone {
+			animate(present, last, out, move)
+		} else {
+			present(out)
+		}
+		if anim {
+			if last == nil || last.Bounds() != out.Bounds() {
+				last = gfx.New(out.Bounds().Dx(), out.Bounds().Dy())
 			}
-			copy(last.Pix, cv.Pix)
+			copy(last.Pix, out.Pix)
 		}
 		lastKey, lastApp = key, a
 		// A slow frame shows as a pause on the screen. Log it, to find where the time goes.

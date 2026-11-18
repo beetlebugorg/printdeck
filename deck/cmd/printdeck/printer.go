@@ -21,9 +21,10 @@ type printerBackend interface {
 // The backend of a ChiTu resin printer has each method of a backend.
 var _ printerBackend = (*printer.ChiTu)(nil)
 
-// newPrinter returns the backend of printer.json in the state folder: a ChiTu resin printer on the
+// newPrinter returns the backend of the printer id of the deck ("" for the first printer), from
+// printer.json in its state folder: a ChiTu resin printer on the
 // network, or the Klipper backend, which follows the Klipper host on its API socket.
-func newPrinter(cfg config.Config) printerBackend {
+func newPrinter(cfg config.Config, id string) printerBackend {
 	hist := &printer.History{Path: filepath.Join(cfg.StateDir, "history.json")}
 	s, err := printer.LoadSetting(cfg.StateDir)
 	if err != nil {
@@ -42,7 +43,9 @@ func newPrinter(cfg config.Config) printerBackend {
 	k.Spools = &printer.Spools{Path: filepath.Join(cfg.StateDir, "spools.json")}
 	k.View.Rolls = k.Spools
 	k.Mesh = printer.NewMeshStore(filepath.Join(cfg.StateDir, "bed-mesh.json"))
-	k.RestartService = func() error { return system.AskHelper(system.HelperRequest{Action: "restart-klipper"}) }
-	k.StopService = func() error { return system.AskHelper(system.HelperRequest{Action: "stop-klipper"}) }
+	// The Klipper host of the printer: klipper.service for the first printer, klipper@<id> for
+	// another printer of the deck.
+	k.RestartService = func() error { return system.AskHelper(system.HelperRequest{Action: "restart-klipper", Printer: id}) }
+	k.StopService = func() error { return system.AskHelper(system.HelperRequest{Action: "stop-klipper", Printer: id}) }
 	return k
 }

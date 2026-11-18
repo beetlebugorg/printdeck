@@ -160,6 +160,9 @@ func (a *App) drawPrint(c *gfx.Canvas) {
 	case pagePhones:
 		a.drawPhones(c)
 		return
+	case pagePrinters:
+		a.drawPrinters(c)
+		return
 	case pageSigning:
 		a.drawSigning(c)
 		return

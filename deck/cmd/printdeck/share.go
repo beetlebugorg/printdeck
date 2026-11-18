@@ -453,10 +453,9 @@ func (l *shareLink) runningShare(st printer.State) bool {
 	return true
 }
 
-// startShare sets the cloud link and the share link of the app, and returns the cloud link. The
-// identity of the deck is the file cloud.json of the state folder.
-func startShare(stateDir, configPath, gcodeDir string, app *ui.App, pr printerBackend) *cloud.Link {
-	link := newCloudLink(stateDir, app.Redraw)
+// startShare sets the cloud link and the share link of the app of a printer, with the cloud link
+// of the deck (newCloudLink). stateDir is the state folder of the printer.
+func startShare(link *cloud.Link, stateDir, configPath, gcodeDir string, app *ui.App, pr printerBackend) {
 	app.Cloud = link
 	l := newShareLink(app, link, pr, configPath)
 	{
@@ -507,7 +506,6 @@ func startShare(stateDir, configPath, gcodeDir string, app *ui.App, pr printerBa
 			}
 		}()
 	}
-	return link
 }
 
 // shareHandoffFile is the handoff file of the share link (handoff.go).
