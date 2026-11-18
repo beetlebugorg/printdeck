@@ -103,7 +103,7 @@ func (m *Manager) load() {
 		return
 	}
 	if b, err := os.ReadFile(m.certPath()); err == nil {
-		if c, leaf, err := m.check(b, ""); err == nil {
+		if c, leaf, err := m.check(b, "", m.key); err == nil {
 			m.cert, m.leaf = c, leaf
 			m.name = leaf.DNSNames[0]
 		} else {
@@ -218,9 +218,10 @@ func (m *Manager) Step(ctx context.Context) {
 	m.setProblem(nil)
 }
 
-// renew sends a CSR for the name, waits for the certificate, checks it, and saves it.
+// renew makes a new key, sends a CSR for the name, waits for the certificate, checks it, and
+// saves the key and the certificate. The old key and certificate stay in use until then.
 func (m *Manager) renew(ctx context.Context, id *cloud.Identity) error {
-	key, err := m.ensureKey()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return err
 	}
@@ -248,23 +249,32 @@ func (m *Manager) renew(ctx context.Context, id *cloud.Identity) error {
 	case out.Status != cloud.CertReady:
 		return errors.New("the service has no certificate yet")
 	}
-	c, leaf, err := m.check([]byte(out.Chain), name)
+	c, leaf, err := m.check([]byte(out.Chain), name, key)
 	if err != nil {
+		return err
+	}
+	// The key first: after a stop between the two writes, the saved certificate does not match
+	// the key, and the next start gets a new certificate.
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	if err != nil {
+		return err
+	}
+	if err := writeFile(m.keyPath(), pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}), 0o600); err != nil {
 		return err
 	}
 	if err := writeFile(m.certPath(), []byte(out.Chain), 0o644); err != nil {
 		return err
 	}
 	m.mu.Lock()
-	m.cert, m.leaf = c, leaf
+	m.key, m.cert, m.leaf = key, c, leaf
 	m.mu.Unlock()
 	log.Printf("tlscert: a new certificate for %s, to %s", name, leaf.NotAfter.Format(time.DateOnly))
 	return nil
 }
 
 // check parses the chain, and checks that its certificate is for the name (or any one name for
-// ""), has the key of the deck, and has a valid chain to the roots.
-func (m *Manager) check(chain []byte, name string) (*tls.Certificate, *x509.Certificate, error) {
+// ""), has the key, and has a valid chain to the roots.
+func (m *Manager) check(chain []byte, name string, key *ecdsa.PrivateKey) (*tls.Certificate, *x509.Certificate, error) {
 	var c tls.Certificate
 	for rest := chain; ; {
 		var blk *pem.Block
@@ -287,7 +297,7 @@ func (m *Manager) check(chain []byte, name string) (*tls.Certificate, *x509.Cert
 		return nil, nil, fmt.Errorf("the certificate is not for %s", name)
 	}
 	pub, ok := leaf.PublicKey.(*ecdsa.PublicKey)
-	if !ok || m.key == nil || !pub.Equal(&m.key.PublicKey) {
+	if !ok || key == nil || !pub.Equal(&key.PublicKey) {
 		return nil, nil, errors.New("the certificate does not have the key of the deck")
 	}
 	inter := x509.NewCertPool()
@@ -299,30 +309,8 @@ func (m *Manager) check(chain []byte, name string) (*tls.Certificate, *x509.Cert
 	if _, err := leaf.Verify(x509.VerifyOptions{DNSName: leaf.DNSNames[0], Roots: m.Roots, Intermediates: inter, CurrentTime: m.now()}); err != nil {
 		return nil, nil, err
 	}
-	c.PrivateKey, c.Leaf = m.key, leaf
+	c.PrivateKey, c.Leaf = key, leaf
 	return &c, leaf, nil
-}
-
-// ensureKey returns the key of the deck, and makes it at the first use.
-func (m *Manager) ensureKey() (*ecdsa.PrivateKey, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.key != nil {
-		return m.key, nil
-	}
-	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return nil, err
-	}
-	der, err := x509.MarshalECPrivateKey(k)
-	if err != nil {
-		return nil, err
-	}
-	if err := writeFile(m.keyPath(), pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: der}), 0o600); err != nil {
-		return nil, err
-	}
-	m.key = k
-	return k, nil
 }
 
 func (m *Manager) localIP() (string, error) {

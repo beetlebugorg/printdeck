@@ -270,6 +270,9 @@ type Deck struct {
 	IPv4       string    `json:"ipv4,omitempty"`
 	AddressSet time.Time `json:"address_set,omitzero"`
 	AddressAt  int64     `json:"address_at,omitempty"`
+
+	// etag is the ETag of the file at the read, for the writes with IfMatch (saveDeck).
+	etag string
 }
 
 func deckKey(id string) string { return "decks/" + id + ".json" }
@@ -285,7 +288,7 @@ func (s *Server) deck(ctx context.Context, r *http.Request, body []byte) (*Deck,
 	if !validID(sg.Deck) {
 		return nil, fail(http.StatusUnauthorized, "no such deck")
 	}
-	b, _, err := s.Store.Get(ctx, deckKey(sg.Deck))
+	b, etag, err := s.Store.Get(ctx, deckKey(sg.Deck))
 	if errors.Is(err, ErrNotFound) {
 		return nil, fail(http.StatusUnauthorized, "no such deck: connect the deck again")
 	}
@@ -303,6 +306,7 @@ func (s *Server) deck(ctx context.Context, r *http.Request, body []byte) (*Deck,
 	if !s.firstUse(sg.Deck+"/"+sg.Request, now) {
 		return nil, fail(http.StatusUnauthorized, "the request ID was used before")
 	}
+	d.etag = etag
 	return &d, nil
 }
 
