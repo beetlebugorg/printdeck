@@ -176,7 +176,8 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 					yes: "Restart", onYes: up.SwitchDeck}
 			})
 		case u.Newer && !u.HasStaged:
-			a.button(c, install, "Install "+u.Latest, orange, onAcc, func() {
+			// The version is in the text of the page: a key label is in capitals ("V0.4.0").
+			a.namedButton(c, install, "Install", "Install "+u.Latest, orange, onAcc, func() {
 				q := "Install " + u.Latest + "? The Printdeck restarts."
 				if st.Busy() {
 					q = "Install " + u.Latest + "? The print keeps running. The deck restarts after the print."
