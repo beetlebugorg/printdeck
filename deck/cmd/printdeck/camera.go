@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"log"
@@ -23,7 +24,9 @@ import (
 // the views are in the file camera-calibration.json; the deck writes it when the user calibrates a
 // camera or clears a calibration. Only Linux has the capture (V4L2), so on other systems the app
 // has no camera, except the test cameras (camera.TestCameraEnv).
-func startCamera(ctx context.Context, stateDir string, app *ui.App, pr printerBackend) {
+// On a deck with many printers, keep accepts the cameras of the printer (cameraPrinters), or is
+// nil for each camera.
+func startCamera(ctx context.Context, stateDir string, app *ui.App, pr printerBackend, keep func(camera.Device) bool) {
 	if !cameraOn(runtime.GOOS) {
 		return
 	}
@@ -33,6 +36,9 @@ func startCamera(ctx context.Context, stateDir string, app *ui.App, pr printerBa
 		s = camera.ParseSettings(b)
 	}
 	hub := camera.NewHub(s)
+	if keep != nil {
+		hub.KeepDevices(keep)
+	}
 	hub.OnSettings = func(s camera.Settings) {
 		if err := os.WriteFile(file, s.Bytes(), 0o644); err != nil {
 			log.Printf("camera: the settings were not saved: %v", err)
@@ -199,4 +205,49 @@ func placeBox(place func(x, y, z float64) (float64, float64, float64), b printer
 		}
 	}
 	return out
+}
+
+// cameraPrintersFile is the file of the deck that names the printer of each camera on a deck with
+// many printers: a map of the camera ID to the printer ID. A camera that is not in the file is a
+// camera of the first printer.
+func cameraPrintersFile(deckDir string) string { return filepath.Join(deckDir, "camera-printers.json") }
+
+// cameraPrinters reads cameraPrintersFile.
+func cameraPrinters(deckDir string) map[string]string {
+	m := map[string]string{}
+	if b, err := os.ReadFile(cameraPrintersFile(deckDir)); err == nil {
+		json.Unmarshal(b, &m)
+	}
+	return m
+}
+
+// setCameraPrinter makes the camera id a camera of the printer p ("" for the first printer).
+func setCameraPrinter(deckDir, id, p string) error {
+	m := cameraPrinters(deckDir)
+	if p == "" {
+		delete(m, id)
+	} else {
+		m[id] = p
+	}
+	b, _ := json.MarshalIndent(m, "", "  ")
+	tmp := cameraPrintersFile(deckDir) + ".tmp"
+	if err := os.WriteFile(tmp, append(b, '\n'), 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, cameraPrintersFile(deckDir))
+}
+
+// keepCameras returns the camera filter of the printer p of the deck: its cameras in m, and for
+// the first printer the cameras that m does not name.
+func keepCameras(m map[string]string, p string) func(camera.Device) bool {
+	return func(d camera.Device) bool {
+		a, ok := m[d.ID]
+		if !ok && d.Alias != "" {
+			a, ok = m[d.Alias]
+		}
+		if !ok {
+			return p == ""
+		}
+		return a == p
+	}
 }

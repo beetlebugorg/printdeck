@@ -92,7 +92,7 @@ func startTimelapse(ctx context.Context, stateDir, configPath string, app *ui.Ap
 		app.Redraw()
 	}
 	app.TimeLapse = r
-	sysTimelapse = r
+	keepTimelapse(app, r)
 	// The view needs queries of Klipper: the share asks each 5 s, and the view of a file is kept
 	// for a minute.
 	var viewMu sync.Mutex
@@ -306,7 +306,7 @@ func startResinTimelapse(ctx context.Context, stateDir string, app *ui.App, hub 
 	}
 	c.LapseFromZ = func() float64 { return float64(r.Settings().FromZ) }
 	app.TimeLapse = r
-	sysTimelapse = r
+	keepTimelapse(app, r)
 	go r.Run(ctx)
 }
 
@@ -400,4 +400,41 @@ func composeView(cal *camera.Calibration, bedY float64, l [4][4]float64, rot int
 	copy(q[4:8], b[:])
 	copy(q[8:12], c[:])
 	return q, aspect
+}
+
+// The time lapses of the printers of the deck. sysTimelapse is the time lapse of the first printer,
+// for the system page.
+var (
+	timelapsesMu sync.Mutex
+	timelapses   = map[*ui.App]*timelapse.Runner{}
+)
+
+// keepTimelapse keeps the time lapse r of the printer of app.
+func keepTimelapse(app *ui.App, r *timelapse.Runner) {
+	timelapsesMu.Lock()
+	defer timelapsesMu.Unlock()
+	timelapses[app] = r
+	if sysTimelapse == nil {
+		sysTimelapse = r
+	}
+}
+
+// timelapseOf returns the time lapse of the printer of app, or nil.
+func timelapseOf(app *ui.App) *timelapse.Runner {
+	timelapsesMu.Lock()
+	defer timelapsesMu.Unlock()
+	return timelapses[app]
+}
+
+// anyTimelapseSaving reports that a time lapse of a printer of the deck saves its video: an
+// update waits for it.
+func anyTimelapseSaving() bool {
+	timelapsesMu.Lock()
+	defer timelapsesMu.Unlock()
+	for _, r := range timelapses {
+		if r.Info().Saving {
+			return true
+		}
+	}
+	return false
 }

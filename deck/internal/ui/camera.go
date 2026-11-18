@@ -1039,6 +1039,11 @@ func (a *App) drawCameraEdit(c *gfx.Canvas) {
 		turn = menuItem{"Turn and calibrate", sub, dim, func() { a.openCamPicture(id) }}
 	}
 	groups = append(groups, menuGroup{items: []menuItem{turn}})
+	if a.Fleet != nil && a.OnCameraPrinter != nil {
+		// A deck with many printers: the printer that this camera watches.
+		self := a.Fleet.Self()
+		groups = append(groups, menuGroup{items: []menuItem{{"Printer", self.Label + " · " + self.Name, dim, func() { a.askCameraPrinter(id) }}}})
+	}
 	// A camera with a zoom control has the zoom to the part: in the right column of a wide page
 	// with the uses.
 	var follow []menuGroup

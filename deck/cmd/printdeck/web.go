@@ -141,8 +141,8 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 	if cam, ok := app.Camera.(octoapi.Camera); ok {
 		api.Camera = cam
 	}
-	if sysTimelapse != nil {
-		api.Timelapse = sysTimelapse
+	if r := timelapseOf(app); r != nil {
+		api.Timelapse = r
 	}
 	api.History = k.History
 	api.Projects = func() []string {
