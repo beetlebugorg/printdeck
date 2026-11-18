@@ -55,22 +55,43 @@ func (a *App) drawLastPrintView(c *gfx.Canvas, r image.Rectangle, l printer.Reco
 	}
 }
 
+// viewState is the scrubber of a model view: the layer that it shows (0 for the whole file), and
+// the file of that layer.
+type viewState struct {
+	layer int
+	of    string
+}
+
 // drawLastModel draws the model of l with the Viewer in r, with the scrubber and the zoom keys
 // under it. It reports false when the Viewer cannot draw the file.
 func (a *App) drawLastModel(c *gfx.Canvas, r image.Rectangle, l printer.Record) bool {
-	if a.homeLayerOf != l.Path {
-		a.homeLayerOf, a.homeLayer = l.Path, 0 // a new last print shows whole
+	return a.turnView(c, r, l.Path, l.SpoolID, &a.homeView)
+}
+
+// turnView draws the file path with the Viewer in r: the model that one finger turns, and under
+// it the zoom keys, Reset, and the scrubber of the layers, in the state vs. It reports false when
+// the Viewer cannot draw the file.
+func (a *App) turnView(c *gfx.Canvas, r image.Rectangle, path, spoolID string, vs *viewState) bool {
+	if a.Viewer == nil || path == "" {
+		return false
 	}
-	rows := kit.Rows(r, 10, kit.Fr(1), kit.Px(48))
+	if vs.of != path {
+		vs.of, vs.layer = path, 0 // another file shows whole
+	}
+	ctlH := 48
+	if gfx.FinePrint() {
+		ctlH = 56
+	}
+	rows := kit.Rows(r, 10, kit.Fr(1), kit.Px(ctlH))
 	model, ctl := rows[0], rows[1]
 	hex := ""
 	if rolls := a.Printer.SpoolStore(); rolls != nil {
-		if sp, ok := rolls.Get(l.SpoolID); ok {
+		if sp, ok := rolls.Get(spoolID); ok {
 			hex = sp.Color
 		}
 	}
 	inner := model.Inset(2)
-	img, layers, ok := a.Viewer.Frame(l.Path, a.homeLayer, inner.Dx(), inner.Dy(), hex)
+	img, layers, ok := a.Viewer.Frame(path, vs.layer, inner.Dx(), inner.Dy(), hex)
 	if !ok {
 		return false
 	}
@@ -82,20 +103,20 @@ func (a *App) drawLastModel(c *gfx.Canvas, r image.Rectangle, l printer.Record) 
 		a.Redraw()
 	}})
 	// The zoom keys and Reset at the left, and the scrubber of the layers at the right.
-	k := kit.Cols(ctl, 8, kit.Px(48), kit.Px(48), kit.Px(76), kit.Fr(1))
+	k := kit.Cols(ctl, 8, kit.Px(ctlH), kit.Px(ctlH), kit.Px(ctlH*16/10), kit.Fr(1))
 	a.namedButton(c, k[0], "−", "Zoom out", raised, text, func() { a.Viewer.Zoom(-1); a.Redraw() })
 	a.namedButton(c, k[1], "+", "Zoom in", raised, text, func() { a.Viewer.Zoom(1); a.Redraw() })
 	a.namedButton(c, k[2], "Reset", "Reset the view", raised, text, func() {
 		a.Viewer.Reset()
-		a.homeLayer = 0
+		vs.layer = 0
 		a.Redraw()
 	})
-	shown := a.homeLayer
+	shown := vs.layer
 	if shown <= 0 || shown > layers {
 		shown = layers
 	}
 	bar := k[3]
-	track := image.Rect(bar.Min.X+8, bar.Min.Y+bar.Dy()/2+6, bar.Max.X-8, bar.Min.Y+bar.Dy()/2+12)
+	track := image.Rect(bar.Min.X+8, bar.Max.Y-16, bar.Max.X-8, bar.Max.Y-10)
 	c.RoundRect(track, 3, edge)
 	if layers > 0 {
 		w := track.Dx() * shown / layers
@@ -104,10 +125,10 @@ func (a *App) drawLastModel(c *gfx.Canvas, r image.Rectangle, l printer.Record) 
 		c.RoundRect(knob, 5, text)
 	}
 	lf := gfx.Face(false, 15)
-	c.Text(image.Rect(bar.Min.X+8, bar.Min.Y, bar.Max.X-8, bar.Min.Y+20), fmt.Sprintf("Layer %d of %d", shown, layers), lf, dim, gfx.Left)
+	c.Text(image.Rect(bar.Min.X+8, bar.Min.Y, bar.Max.X-8, track.Min.Y-8), fmt.Sprintf("Layer %d of %d", shown, layers), lf, dim, gfx.Left)
 	set := func(f float64) {
 		if layers > 0 {
-			a.homeLayer = max(1, min(layers, int(f*float64(layers)+0.5)))
+			vs.layer = max(1, min(layers, int(f*float64(layers)+0.5)))
 			a.Redraw()
 		}
 	}

@@ -344,20 +344,6 @@ func (a *App) drawLastPrint(c *gfx.Canvas, st printer.State, last image.Rectangl
 		return
 	}
 	summary := l.Summary(func(mm float64) float64 { return a.grams(mm, "") })
-	if gfx.FinePrint() {
-		// The large text: Reprint under the text, so that the text has the width of r.
-		textR := last.Max.X - 14
-		y := last.Min.Y + 11
-		a.recordThumb(c, image.Rect(last.Min.X+11, y, last.Min.X+11+thumbSmall, y+thumbSmall), l, a.fileIndex())
-		x := last.Min.X + 92
-		label(c, image.Rect(x, last.Min.Y+8, textR, last.Min.Y+28), "Last print", gfx.Left)
-		c.Text(image.Rect(x, last.Min.Y+28, textR, last.Min.Y+58), l.Name(), gfx.Face(true, 20), text, gfx.Left)
-		c.Text(image.Rect(x, last.Min.Y+56, textR, last.Min.Y+82), summary, gfx.Face(false, 16), dim, gfx.Left)
-		path := l.Path
-		reprint := image.Rect(last.Min.X+14, last.Min.Y+92, last.Max.X-14, last.Max.Y-14)
-		a.printerKey(c, reprint, "Reprint", raised, text, func() { a.confirmPrint(path) })
-		return
-	}
 	a.drawLastPrintView(c, last, l, summary)
 }
 

@@ -44,7 +44,7 @@ func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 		if video {
 			sizes = []kit.Size{kit.Fr(1), kit.Px(tableH), kit.Px(lapseRowH), kit.Px(84)}
 		}
-		rr := kit.Rows(kit.Inset(pg.body(), 0, 12, 0, 8), 12, sizes...)
+		rr := kit.Rows(pg.body(), 12, sizes...)
 		pic, box, keys = rr[0], rr[1], rr[len(rr)-1]
 		if video {
 			lapse = rr[2]
@@ -81,7 +81,11 @@ func (a *App) drawRecord(c *gfx.Canvas, st printer.State) {
 			a.button(c, k[1], "Play", raised, text, func() { a.openPlayer(name, title) })
 		}
 	}
-	gone := a.recordModel(c, pic, r)
+	// The model turns under the finger with the Viewer (zslice and the GPU); else the picture.
+	gone := false
+	if !a.turnView(c, pic, r.Path, r.SpoolID, &a.recView) {
+		gone = a.recordModel(c, pic, r)
+	}
 	plate(c, box)
 	a.region("Details", box)
 	inner := kit.Inset(box, 18, 10, 18, 10)
