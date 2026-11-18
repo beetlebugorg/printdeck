@@ -258,7 +258,14 @@ func (a *App) lastPrintPanel(c *gfx.Canvas, st printer.State, area image.Rectang
 	hk := kit.Cols(head, 12, kit.Fr(1), kit.Px(140))
 	label(c, image.Rect(hk[0].Min.X, hk[0].Min.Y, hk[0].Max.X, hk[0].Min.Y+20), "Last print", gfx.Left)
 	c.Text(image.Rect(hk[0].Min.X, hk[0].Min.Y+20, hk[0].Max.X, hk[0].Max.Y), l.Name(), gfx.Face(true, 20), text, gfx.Left)
-	rows := a.recordRows(l)
+	// The rows that matter at a glance; the page of the print has all of them.
+	var rows [][2]string
+	for _, kv := range a.recordRows(l) {
+		switch kv[0] {
+		case "Result", "Print time", "Filament", "Cost":
+			rows = append(rows, kv)
+		}
+	}
 	side := min(body.Dy(), body.Dx()*2/5)
 	cols := kit.Cols(body, 16, kit.Px(side), kit.Fr(1))
 	pic := kit.Rows(cols[0], 0, kit.Px(side))[0]
@@ -271,7 +278,7 @@ func (a *App) lastPrintPanel(c *gfx.Canvas, st printer.State, area image.Rectang
 			a.Redraw()
 		}})
 	}
-	rowH := max(20, min(28, (body.Dy()-8)/max(1, len(rows))))
+	rowH := max(24, min(32, (body.Dy()-8)/max(1, len(rows))))
 	detailRows(c, image.Rect(cols[1].Min.X, cols[1].Min.Y+4, cols[1].Max.X, cols[1].Max.Y), rows, rowH)
 	a.reprintKey(c, hk[1], l, gone, raised, text)
 }
