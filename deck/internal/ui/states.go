@@ -509,9 +509,14 @@ func pausedInfoH(st printer.State, w int) int {
 // finishedView draws the finished print in box: the model as the print left it. The model view of
 // a running print (modelView) has no picture after the end of the print.
 func (a *App) finishedView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
+	r, ok := a.lastPrint(st)
+	// The 3D view of the finished print that the finger turns (zslice and the GPU), when the box
+	// has room for its keys; else the picture.
+	if ok && box.Dy() >= 200 && a.turnView(c, box, r.Path, r.SpoolID, &a.homeView) {
+		return
+	}
 	window(c, box)
 	a.region("Model", box)
-	r, ok := a.lastPrint(st)
 	if !ok {
 		return
 	}

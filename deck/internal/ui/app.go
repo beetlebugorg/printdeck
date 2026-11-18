@@ -210,6 +210,7 @@ type App struct {
 	Viewer   ModelViewer
 	homeView viewState // the scrubber of the last print of the home screen
 	recView  viewState // the scrubber of the page of a print
+	fileView viewState // the scrubber of the page of a file
 	// OnCameraPrinter makes the camera cam a camera of the printer to (an ID of the Fleet), on a
 	// deck with many printers, or is nil. The change starts to work after a restart of the deck.
 	OnCameraPrinter         func(cam, to string) error
