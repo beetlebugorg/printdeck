@@ -381,6 +381,24 @@ func (h *Hub) camsLocked() []*Cam {
 }
 
 // Devices returns the cameras that the deck finds, in the order of their IDs.
+// KeepDevices limits the hub to the devices that keep accepts. On a deck with many printers, each
+// printer has a hub with the cameras of that printer, so that two hubs never open one device.
+func (h *Hub) KeepDevices(keep func(Device) bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	scan := h.scan
+	h.scan = func() []Device {
+		var out []Device
+		for _, d := range scan() {
+			if keep(d) {
+				out = append(out, d)
+			}
+		}
+		return out
+	}
+	h.scanned = time.Time{}
+}
+
 func (h *Hub) Devices() []Device {
 	h.mu.Lock()
 	defer h.mu.Unlock()

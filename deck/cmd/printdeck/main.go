@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"printdeck/internal/chitu"
+	"printdeck/internal/camera"
 	"printdeck/internal/config"
 	"printdeck/internal/display"
 	"printdeck/internal/gfx"
@@ -235,7 +236,7 @@ func run(cfg config.Config) {
 		// The updater restarts into an update only when no printer of the deck prints.
 		up = newUpdater(cfg.StateDir, helperSystem{socket: cfg.KlippySocket}, deckState{pr, backends}, app.Redraw)
 		up.lastInput, up.exit, up.handoff = app.LastInput, stop, deckHandoff(app)
-		up.saving = func() bool { r := sysTimelapse; return r != nil && r.Info().Saving }
+		up.saving = anyTimelapseSaving
 		go up.run(ctx)
 		go up.watch(ctx)
 		for _, a := range apps {
@@ -264,6 +265,7 @@ func run(cfg config.Config) {
 	})
 	// "Signed prints only" and the trusted slicers (Settings > Signed prints), for the API.
 	sign := &signing.Store{Path: filepath.Join(cfg.StateDir, "signing.json")}
+	camMap := cameraPrinters(cfg.StateDir)
 	for i, a := range apps {
 		pr, pcfg := backends[i], cfgs[i]
 		a.Metrics = metrics
@@ -277,12 +279,26 @@ func run(cfg config.Config) {
 		}
 		startNotify(ctx, cfg.StateDir, pr, a, label)
 		if i == 0 {
-			// The ChiTu relay has one port, and the camera and the time lapse use the camera of
-			// the deck: the first printer has them.
+			// The ChiTu relay has one port: the first printer has it.
 			startChiTuRelay(ctx, pcfg.StateDir, pr, chitu.Port)
-			startCamera(ctx, pcfg.StateDir, a, pr)
-			startTimelapse(ctx, pcfg.StateDir, pcfg.KlipperConfig, a, pr)
 		}
+		// Each printer has a hub with its cameras (camera-printers.json), and its time lapse.
+		var keep func(camera.Device) bool
+		if len(printers) > 1 {
+			keep = keepCameras(camMap, printers[i].ID)
+			id := printers[i].ID
+			a.OnCameraPrinter = func(cam, to string) error {
+				if to == "first" {
+					to = ""
+				}
+				if to == id {
+					return nil
+				}
+				return setCameraPrinter(cfg.StateDir, cam, to)
+			}
+		}
+		startCamera(ctx, pcfg.StateDir, a, pr, keep)
+		startTimelapse(ctx, pcfg.StateDir, pcfg.KlipperConfig, a, pr)
 		startBedCool(ctx, pcfg.StateDir, a, pr)
 		name := ""
 		if len(printers) > 1 {

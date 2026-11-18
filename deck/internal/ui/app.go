@@ -204,7 +204,10 @@ type App struct {
 	fleetList bool // the list of the printers is open
 	// Printers adds, changes and removes the printers of the deck (Settings, Printers), or is
 	// nil.
-	Printers                PrinterAdmin
+	Printers PrinterAdmin
+	// OnCameraPrinter makes the camera cam a camera of the printer to (an ID of the Fleet), on a
+	// deck with many printers, or is nil. The change starts to work after a restart of the deck.
+	OnCameraPrinter         func(cam, to string) error
 	Setup                   SetupHost // nil when the system has no setup screen, as in Docker
 	PreheatTool, PreheatBed int
 
@@ -438,6 +441,7 @@ func (a *App) Session(width, height int) *App {
 	if a.Fleet != nil {
 		s.Fleet = sessionFleet{a.Fleet, s} // a remote screen never switches the touch screen
 	}
+	s.Printers, s.OnCameraPrinter = a.Printers, a.OnCameraPrinter
 	s.PreheatTool, s.PreheatBed, s.UnloadMM, s.LoadMM, s.JogInvertY = a.PreheatTool, a.PreheatBed, a.UnloadMM, a.LoadMM, a.JogInvertY
 	s.Theme, s.NightFrom, s.NightTo, s.OnTheme = a.Theme, a.NightFrom, a.NightTo, a.OnTheme
 	s.Clock24, s.OnClock = a.Clock24, a.OnClock

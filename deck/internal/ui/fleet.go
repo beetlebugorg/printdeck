@@ -371,3 +371,26 @@ type sessionFleet struct {
 }
 
 func (f sessionFleet) Switch(id string) {}
+
+// askCameraPrinter asks which printer the camera id watches.
+func (a *App) askCameraPrinter(id string) {
+	var choices []menuItem
+	for _, card := range a.Fleet.Cards() {
+		card := card
+		sub := ""
+		if card.Active {
+			sub = "Now"
+		}
+		choices = append(choices, menuItem{card.Label + " · " + card.Name, sub, card.Color, func() {
+			if card.Active {
+				return
+			}
+			if err := a.OnCameraPrinter(id, card.ID); err != nil {
+				a.Toast("The camera was not moved: " + err.Error())
+				return
+			}
+			a.confirm = &confirmBox{question: "The camera moves to " + card.Name + " after a restart of the deck.", yes: "OK", onYes: func() {}}
+		}})
+	}
+	a.confirm = &confirmBox{question: "Which printer does this camera watch?", choices: choices}
+}

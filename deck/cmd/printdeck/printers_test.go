@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"printdeck/internal/camera"
 	"printdeck/internal/config"
 	"printdeck/internal/printer"
 	"printdeck/internal/system"
@@ -96,5 +97,28 @@ func TestNewPrinterID(t *testing.T) {
 		if got := newPrinterID(name, ps); got != want {
 			t.Errorf("%q: %q, want %q", name, got, want)
 		}
+	}
+}
+
+// Each camera belongs to one printer: a camera that the file does not name is a camera of the
+// first printer. A move writes the file, and a move to the first printer removes the entry.
+func TestCameraPrinters(t *testing.T) {
+	dir := t.TempDir()
+	if err := setCameraPrinter(dir, "usb-cam-a", "mini2"); err != nil {
+		t.Fatal(err)
+	}
+	m := cameraPrinters(dir)
+	first, mini := keepCameras(m, ""), keepCameras(m, "mini2")
+	a := camera.Device{ID: "usb-cam-a"}
+	b := camera.Device{ID: "usb-cam-b"}
+	alias := camera.Device{ID: "pci-path-1", Alias: "usb-cam-a"}
+	if first(a) || !mini(a) || !first(b) || mini(b) || first(alias) || !mini(alias) {
+		t.Fatal("wrong printer of a camera")
+	}
+	if err := setCameraPrinter(dir, "usb-cam-a", ""); err != nil {
+		t.Fatal(err)
+	}
+	if len(cameraPrinters(dir)) != 0 {
+		t.Fatal("the entry stays after a move to the first printer")
 	}
 }

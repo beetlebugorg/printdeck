@@ -134,7 +134,7 @@ func desktopApp(args []string) {
 	go lcdLoop(ctx, pr, app)
 	startChiTuRelay(ctx, cfg.StateDir, pr, chitu.Port+1)
 	startNotify(ctx, cfg.StateDir, pr, app, "")
-	startCamera(ctx, cfg.StateDir, app, pr)
+	startCamera(ctx, cfg.StateDir, app, pr, nil)
 	startTimelapse(ctx, cfg.StateDir, cfg.KlipperConfig, app, pr)
 	startBedCool(ctx, cfg.StateDir, app, pr)
 	startShare(newCloudLink(cfg.StateDir, app.Redraw), cfg.StateDir, cfg.KlipperConfig, cfg.GcodeDir, app, pr, "")
