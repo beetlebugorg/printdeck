@@ -15,8 +15,9 @@ import (
 // samples when the picture becomes half as large or smaller. This is fast, and the mean keeps
 // the thin lines of a half size.
 
-// quality is the JPEG quality of the frames that the deck makes.
-const quality = 85
+// quality is the JPEG quality of the frames that the deck makes: the smaller frames, the crops and
+// the views. The frames of the time lapse are crops.
+const quality = 90
 
 // plane is one plane of a picture in memory: the sample (x, y) is at pix[off + y*stride + x*step].
 type plane struct {
@@ -237,6 +238,10 @@ func scaleYCbCr(p *image.YCbCr, w, h, rotate int) *image.YCbCr {
 
 // encodeJPEG encodes a picture as a JPEG.
 func encodeJPEG(p *image.YCbCr) ([]byte, error) {
+	switch p.SubsampleRatio {
+	case image.YCbCrSubsampleRatio420, image.YCbCrSubsampleRatio422, image.YCbCrSubsampleRatio444:
+		return jpegdec.Encode(p, quality)
+	}
 	var b bytes.Buffer
 	b.Grow(p.Rect.Dx() * p.Rect.Dy() / 8)
 	err := jpeg.Encode(&b, p, &jpeg.Options{Quality: quality})

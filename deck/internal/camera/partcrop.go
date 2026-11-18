@@ -80,21 +80,18 @@ func gridCrop(r [4]float64, sz image.Point, minW float64) (image.Rectangle, bool
 	return out, !out.Empty()
 }
 
-// CropTo returns the part r of the frame, scaled to w x h (even numbers). The frame decodes its
-// JPEG at 1/2, 1/4 or 1/8 of its size when that has the pixels of the output. The new frame
-// encodes its JPEG when it is asked for.
+// CropTo returns the part r of the frame, scaled to w x h (even numbers). The frame decodes the
+// part of its JPEG around r only (cropPicture). The new frame encodes its JPEG when it is asked
+// for.
 func (f *Frame) CropTo(r image.Rectangle, w, h int) *Frame {
 	r = r.Intersect(image.Rect(0, 0, f.w, f.h))
 	if r.Empty() || w < 2 || h < 2 {
 		return f
 	}
-	// The width of the picture that gives the crop w pixels or more.
-	pic := f.pictureFor((w*f.w + r.Dx() - 1) / r.Dx())
+	pic, c := f.cropPicture([4]float64{float64(r.Min.X), float64(r.Min.Y), float64(r.Max.X), float64(r.Max.Y)}, w)
 	if pic == nil {
 		return f
 	}
-	k := float64(pic.Rect.Dx()) / float64(f.w)
-	c := [4]float64{float64(r.Min.X) * k, float64(r.Min.Y) * k, float64(r.Max.X) * k, float64(r.Max.Y) * k}
 	out := picFrame(cropScale(pic, c, w&^1, h&^1))
 	out.Seq, out.Time, out.blank, out.cam = f.Seq, f.Time, f.blank, f.cam
 	return out
