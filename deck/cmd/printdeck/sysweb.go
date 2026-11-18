@@ -91,6 +91,12 @@ func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend
 		writeInstallJSON(w, gpuCheck(gpuGcodeDir))
 	}))
 	mux.HandleFunc("GET /system/jpeg", rs.Auth(serveJPEGBench))
+	// The heap profile of the deck program (go tool pprof), to find a part that keeps memory.
+	mux.HandleFunc("GET /system/heap", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Content-Disposition", `attachment; filename="printdeck-heap.pb.gz"`)
+		pprof.Lookup("heap").WriteTo(w, 0)
+	}))
 	mux.HandleFunc("GET /system/metrics", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
 		writeMetricsJSON(w, r, metrics)
 	}))
