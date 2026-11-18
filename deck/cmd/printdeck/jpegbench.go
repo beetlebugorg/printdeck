@@ -52,7 +52,26 @@ func serveJPEGBench(w http.ResponseWriter, r *http.Request) {
 	}
 	b := f.JPEG()
 	sz := f.Size()
+	// Each line goes out at once, and the measurement stops when the heap grows past heapStop.
+	flush := func() {
+		if fl, ok := w.(http.Flusher); ok {
+			fl.Flush()
+		}
+	}
+	const heapStop = 1 << 30
+	tooLarge := func() bool {
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		if m.HeapAlloc > heapStop {
+			fmt.Fprintf(w, "stop: the heap is %d MB\n", m.HeapAlloc>>20)
+			return true
+		}
+		fmt.Fprintf(w, "  (heap %d MB)\n", m.HeapAlloc>>20)
+		flush()
+		return false
+	}
 	fmt.Fprintf(w, "frame %dx%d, %d KB, %d cores\n", sz.X, sz.Y, len(b)/1024, runtime.NumCPU())
+	flush()
 	// time returns the median and the smallest time of n runs of fn, in ms.
 	timeOf := func(n int, fn func() error) (float64, float64, error) {
 		var ts []float64
@@ -85,6 +104,9 @@ func serveJPEGBench(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			fmt.Fprintf(w, "decode %-15s %d threads: median %6.1f ms, best %6.1f ms\n", c.name, th, med, low)
+			if tooLarge() {
+				return
+			}
 		}
 	}
 	// The Huffman decode once, then the pixels from its coefficients on the CPU and on the GPU.
@@ -101,12 +123,19 @@ func serveJPEGBench(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		fmt.Fprintf(w, "huffman only     %d threads: median %6.1f ms, best %6.1f ms\n", th, med, low)
+		if tooLarge() {
+			return
+		}
 	}
 	if s, err := jpegdec.DecodeSparse(b); err == nil {
 		med, low, _ := timeOf(7, func() error { _, err := s.Render(0, image.Rectangle{}); return err })
 		fmt.Fprintf(w, "pixels on CPU    whole:     median %6.1f ms, best %6.1f ms\n", med, low)
 		med, low, _ = timeOf(7, func() error { _, err := s.Render(1, image.Rectangle{}); return err })
 		fmt.Fprintf(w, "pixels on CPU    1/2:       median %6.1f ms, best %6.1f ms\n", med, low)
+		if tooLarge() {
+			s.Release()
+			return
+		}
 		if g, err := benchGPU(); err != nil {
 			fmt.Fprintf(w, "GPU: %v\n", err)
 		} else if in, err := s.GPUInput(); err != nil {
@@ -114,6 +143,10 @@ func serveJPEGBench(w http.ResponseWriter, r *http.Request) {
 		} else {
 			med, low, _ = timeOf(7, func() error { _, err := s.GPUInput(); return err })
 			fmt.Fprintf(w, "GPU input table  (CPU):     median %6.1f ms, best %6.1f ms\n", med, low)
+			if tooLarge() {
+				s.Release()
+				return
+			}
 			med, low, err := timeOf(7, func() error { _, err := g.Render(in); return err })
 			if err != nil {
 				fmt.Fprintf(w, "GPU render: %v\n", err)
