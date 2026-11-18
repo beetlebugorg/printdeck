@@ -15,6 +15,8 @@ void gj_free(gj_ctx *c);
 int gj_reserve(gj_ctx *c, size_t n_blocks, size_t n_words, size_t out_len);
 void gj_put_blocks(gj_ctx *c, const uint32_t *blocks, size_t n_blocks);
 void gj_put_words(gj_ctx *c, size_t at, const uint32_t *words, size_t n);
+// gj_put_quant copies the 4 quantization tables and the natural index of each zig-zag index
+// (5 x 64 values).
 void gj_put_quant(gj_ctx *c, const int32_t *quant);
 // gj_run runs the shader for n_blocks blocks and waits for the end.
 int gj_run(gj_ctx *c, uint32_t n_blocks, const uint32_t strides[3]);
