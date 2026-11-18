@@ -203,6 +203,11 @@ func (p *pthread) step(units []unit, record bool) error {
 	return nil
 }
 
+// syncWindow is the most block starts that a thread records. The sync is a few blocks after the
+// start of a chunk; a thread with no record that matches is no error (the thread before it
+// decodes its chunk).
+const syncWindow = 8192
+
 // wordsPool keeps the word buffers of the threads.
 var wordsPool = sync.Pool{New: func() any { return new([]uint32) }}
 
@@ -217,7 +222,11 @@ func (d *decoder) parallelScan(clean []byte, units []unit, mxx, myy, threads int
 		bufs[t] = wordsPool.Get().(*[]uint32)
 		th[t].words = (*bufs[t])[:0]
 	}
+	keep := false // the words go to a Sparse
 	defer func() {
+		if keep {
+			return
+		}
 		for t := range th {
 			*bufs[t] = th[t].words[:0]
 			wordsPool.Put(bufs[t])
@@ -238,7 +247,7 @@ func (d *decoder) parallelScan(clean []byte, units []unit, mxx, myy, threads int
 			}
 			p.br.reset(clean, start, len(clean))
 			for p.br.bitPos() < stop {
-				if err := p.step(units, t > 0); err != nil {
+				if err := p.step(units, t > 0 && len(p.starts) < syncWindow); err != nil {
 					if t == 0 {
 						p.err = err
 						return
@@ -323,59 +332,91 @@ func (d *decoder) parallelScan(clean []byte, units []unit, mxx, myy, threads int
 			dc[c] += p.dcSum[c] - p.firstDC[c]
 		}
 	}
+	if d.sparse != nil {
+		keep = true
+		s := d.sparse
+		s.d, s.units, s.mxx, s.myy, s.total, s.bufs = d, units, mxx, myy, total, bufs
+		for t := range th {
+			*bufs[t] = th[t].words
+		}
+		for _, p := range regions {
+			s.regions = append(s.regions, sparseRegion{words: p.words, first: p.first, end: p.end,
+				firstWord: p.firstWord, abs: p.abs, dc: p.dc})
+		}
+		return nil
+	}
 	for _, p := range regions {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			d.regionPixels(p, units, mxx, total)
+			d.regionPixels(&sparseRegion{words: p.words, first: p.first, end: p.end, firstWord: p.firstWord, abs: p.abs, dc: p.dc}, units, mxx, total)
 		}()
 	}
 	wg.Wait()
 	return nil
 }
 
-// regionPixels makes the pixels of the blocks of the region of the thread p.
-func (d *decoder) regionPixels(p *pthread, units []unit, mxx, total int) {
+// regionPixels makes the pixels of the blocks of the region p.
+func (d *decoder) regionPixels(p *sparseRegion, units []unit, mxx, total int) {
 	bs := 8 >> d.shift
 	var planes [maxComponents][]byte
 	var strides [maxComponents]int
 	for c := range d.nComp {
 		planes[c], strides[c] = d.plane(c)
 	}
+	// The block offsets of each unit in the region of the picture, at the MCU (mx0, my0).
+	nu := len(units)
+	var ux, uy [maxComponents * 4]int
+	for i, u := range units {
+		hi := d.comp[u.c].h
+		ux[i], uy[i] = int(u.j)%hi, int(u.j)/hi
+	}
 	dc := p.dc
 	var b block
 	w := p.firstWord
-	for i := p.first; i < p.end; i++ {
-		abs := p.abs + i - p.first
-		if abs >= total {
-			break
-		}
+	end := min(p.end, p.first+total-p.abs)
+	// The unit and the MCU of the first block; then the loop counts them up.
+	ui, mcu := p.abs%nu, p.abs/nu
+	mx, my := mcu%mxx, mcu/mxx
+	for i := p.first; i < end; i++ {
 		h := p.words[w]
 		n := int(h >> 16)
-		mcu, ui := abs/len(units), abs%len(units)
 		u := &units[ui]
 		c := u.c
 		dc[c] += int32(int16(h))
-		mx, my := mcu%mxx, mcu/mxx
-		if mx < d.mx0 || mx >= d.mx1 || my < d.my0 || my >= d.my1 {
-			w += 1 + n
-			continue
-		}
-		qt := u.qt
-		b[0] = dc[c] * qt[0]
-		last, rows := uint8(0), uint8(1)
-		for _, e := range p.words[w+1 : w+1+n] {
-			k := e >> 16 & 63
-			z := unzig[k]
-			b[z] = int32(int16(e)) * qt[k]
-			rows |= 1 << (z >> 3)
-			last = uint8(k)
+		if mx >= d.mx0 && mx < d.mx1 && my >= d.my0 && my < d.my1 {
+			hi, vi := d.comp[c].h, d.comp[c].v
+			bx, by := hi*(mx-d.mx0)+ux[ui], vi*(my-d.my0)+uy[ui]
+			stride := strides[c]
+			out := planes[c][bs*(by*stride+bx):]
+			qt := u.qt
+			if n == 0 {
+				// Only the DC coefficient: one value for the block.
+				if d.shift == 0 {
+					fillBlock(out, stride, dcPixel(dc[c]*qt[0]))
+				} else {
+					fillScaled(out, stride, d.shift, dc[c]*qt[0])
+				}
+			} else {
+				b[0] = dc[c] * qt[0]
+				last, rows := uint8(0), uint8(1)
+				for _, e := range p.words[w+1 : w+1+n] {
+					k := e >> 16 & 63
+					z := unzig[k]
+					b[z] = int32(int16(e)) * qt[k]
+					rows |= 1 << (z >> 3)
+					last = uint8(k)
+				}
+				d.putBlock(&b, last, rows, out, stride)
+			}
 		}
 		w += 1 + n
-		hi, vi := int(d.comp[c].h), int(d.comp[c].v)
-		j := int(u.j)
-		bx, by := hi*(mx-d.mx0)+j%hi, vi*(my-d.my0)+j/hi
-		stride := strides[c]
-		d.putBlock(&b, last, rows, planes[c][bs*(by*stride+bx):], stride)
+		if ui++; ui == nu {
+			ui = 0
+			if mx++; mx == mxx {
+				mx = 0
+				my++
+			}
+		}
 	}
 }

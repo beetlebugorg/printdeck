@@ -161,7 +161,12 @@ func (d *decoder) processSOS(n int) error {
 	h0, v0 := d.comp[0].h, d.comp[0].v // The h and v values from the Y components.
 	mxx := (d.width + 8*h0 - 1) / (8 * h0)
 	myy := (d.height + 8*v0 - 1) / (8 * v0)
-	if d.img1 == nil && d.img3 == nil {
+	if d.sparse != nil {
+		// DecodeSparse: the coefficients of a fast scan, and no pixels.
+		if !d.canFastScan(nComp) || d.ri > 0 {
+			return errNoSparse
+		}
+	} else if d.img1 == nil && d.img3 == nil {
 		d.makeImg(mxx, myy, d.canFastScan(nComp))
 	}
 	if d.progressive {
