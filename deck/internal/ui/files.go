@@ -321,7 +321,10 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 		r := kit.Rows(pg.body(), 12, kit.Fr(1), kit.Px(tableH), kit.Px(80))
 		pic, box, keys = r[0], r[1], r[2]
 	}
-	a.thumb(c, pic, f, m)
+	// The 3D view of the file that the finger turns (zslice and the GPU); else its picture.
+	if !a.turnView(c, pic, f.Path, "", &a.fileView) {
+		a.thumb(c, pic, f, m)
+	}
 	a.region("Picture", pic)
 	plate(c, box)
 	a.region("Slicer data", box)
