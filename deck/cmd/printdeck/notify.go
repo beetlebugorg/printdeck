@@ -54,11 +54,12 @@ func sendPhones(ctx context.Context, phones *notify.Phones, m notify.Message) {
 // startNotify sets up the push messages of a print (Settings > Notifications): the topic is kept
 // in the file notify of the state folder. It sends the messages of the events of each print, and a
 // test message to a new topic.
-func startNotify(ctx context.Context, stateDir string, pr printerBackend, app *ui.App) {
+// The topic and the phones are of the deck: deckDir is the state folder of the deck. On a deck
+// with many printers, label is the label of the printer, and each message starts with it.
+func startNotify(ctx context.Context, deckDir string, pr printerBackend, app *ui.App, label string) {
+	stateDir := deckDir
 	file := filepath.Join(stateDir, "notify")
-	var topic atomic.Value
-	b, _ := os.ReadFile(file)
-	topic.Store(strings.TrimSpace(string(b)))
+	topic := deckTopic(file)
 	app.NotifyTopic = topic.Load().(string)
 	app.OnNotify = func(t string) {
 		topic.Store(t)
@@ -91,6 +92,9 @@ func startNotify(ctx context.Context, stateDir string, pr printerBackend, app *u
 			msgs := w.Step(st, rollCheck(pr, st))
 			t := topic.Load().(string)
 			for _, m := range msgs {
+				if label != "" {
+					m.Title = label + " · " + m.Title
+				}
 				sendPhones(ctx, phones, m)
 				if t == "" {
 					continue
@@ -126,4 +130,20 @@ func rollCheck(pr printerBackend, st printer.State) notify.Roll {
 		return notify.Roll{}
 	}
 	return notify.Roll{Name: sp.Number() + " " + sp.Label(), Left: max(0, sp.Left()-used), Need: need, Known: true}
+}
+
+// notifyTopics keeps the topic of each topic file, so that the printers of a deck share one topic:
+// a change on one printer changes the messages of all of them.
+var notifyTopics sync.Map // file -> *atomic.Value
+
+// deckTopic returns the topic of the file, read once.
+func deckTopic(file string) *atomic.Value {
+	if v, ok := notifyTopics.Load(file); ok {
+		return v.(*atomic.Value)
+	}
+	v := &atomic.Value{}
+	b, _ := os.ReadFile(file)
+	v.Store(strings.TrimSpace(string(b)))
+	got, _ := notifyTopics.LoadOrStore(file, v)
+	return got.(*atomic.Value)
 }

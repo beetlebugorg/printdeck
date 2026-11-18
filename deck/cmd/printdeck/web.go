@@ -166,7 +166,7 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 	api.Estimate = k.EstimateFile
 	api.Limits = k.Limits
 	// The phones of the Printdeck app for push messages; a new phone gets a test message.
-	api.Phones = phonesIn(cfg.StateDir)
+	api.Phones = phonesIn(deckDir(cfg))
 	api.OnPaired = func(ph notify.Phone) {
 		go func() {
 			m := notify.Message{Title: "Printdeck", Body: "This phone gets the messages of your prints.", Tags: "printer"}
@@ -200,7 +200,7 @@ func newResinAPI(cfg config.Config, c *printer.ChiTu, app *ui.App, mux *http.Ser
 	}
 	api.History = c.History
 	api.Status = func() any { return app.StatusScreen() }
-	api.Phones = phonesIn(cfg.StateDir)
+	api.Phones = phonesIn(deckDir(cfg))
 	api.OnPaired = func(ph notify.Phone) {
 		go func() {
 			m := notify.Message{Title: "Printdeck", Body: "This phone gets the messages of your prints.", Tags: "printer"}
