@@ -259,8 +259,10 @@ func (a *App) systemKeys(c *gfx.Canvas, r image.Rectangle) {
 	}
 	// Side by side, or under each other in a narrow column.
 	cells := kit.Cols(r, 12, sizes...)
-	if r.Dx() < 320 {
-		cells = kit.Rows(image.Rect(r.Min.X, r.Max.Y-len(keys)*keyH-(len(keys)-1)*12, r.Max.X, r.Max.Y), 12, sizes...)
+	if r.Dx() < 320 && len(keys) > 0 {
+		// Under each other at the bottom of r, as high as the area allows, up to 64 px.
+		kh := max(keyH, min(64, (r.Dy()-(len(keys)-1)*12)/len(keys)))
+		cells = kit.Rows(image.Rect(r.Min.X, r.Max.Y-len(keys)*kh-(len(keys)-1)*12, r.Max.X, r.Max.Y), 12, sizes...)
 	}
 	for i, k := range cells {
 		keys[i](k)

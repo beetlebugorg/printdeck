@@ -344,7 +344,9 @@ func (a *App) drawKlipperError(c *gfx.Canvas, st printer.State) {
 		// The left column is narrow: the key of the simulated printers has its own row, and the
 		// system keys go under each other (systemKeys).
 		n := len(a.systemKeyList(c))
-		r := kit.Rows(textArea, 12, kit.Fr(1), kit.Px(72), kit.Px(max(0, n*keyH+(n-1)*12)), kit.Px(80))
+		// The keys of the left column have one height, at the bottom of the column.
+		const kh = 64
+		r := kit.Rows(textArea, 12, kit.Fr(1), kit.Px(kh), kit.Px(max(0, n*kh+(n-1)*12)), kit.Px(kh))
 		simKey, sys, keys = r[1], r[2], r[3]
 	} else {
 		r := kit.Rows(info, 0, kit.Px(440), kit.Fr(1), kit.Px(80), kit.Px(12), kit.Px(72), kit.Px(76))
