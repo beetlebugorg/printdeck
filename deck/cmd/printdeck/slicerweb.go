@@ -34,13 +34,14 @@ func registerSlicer(mux *http.ServeMux, rs *remote.Server, dir string) {
 		slicerHeaders(w)
 		files.ServeHTTP(w, r)
 	}))
-	// The app adds the deck as its printer. The empty url is the server of the page. The file
-	// has no API key: the upload uses the login.
+	// The app adds the deck as its printer. The empty url is the server of the page, and https
+	// the HTTPS address of the deck, or "" (https.go). The file has no API key: the upload uses
+	// the login.
 	mux.HandleFunc("GET /slicer/printer.json", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
 		slicerHeaders(w)
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
-		json.NewEncoder(w).Encode(map[string]string{"name": system.DeckName(), "kind": "printdeck", "url": ""})
+		json.NewEncoder(w).Encode(map[string]string{"name": system.DeckName(), "kind": "printdeck", "url": "", "https": httpsURL()})
 	}))
 }
 

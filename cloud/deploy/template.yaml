@@ -11,6 +11,10 @@ Parameters:
   HostedZoneId:
     Type: String
     Description: The Route 53 hosted zone of the domain (pwf deploy finds it).
+  AcmeDirectory:
+    Type: String
+    Default: https://acme-v02.api.letsencrypt.org/directory
+    Description: The ACME directory of the certificates of the decks (pwf deploy -acme-staging sets the staging directory of Let's Encrypt).
   CodeBucket:
     Type: String
     Description: The S3 bucket with the code of the function (pwf deploy sets it).
@@ -407,6 +411,19 @@ Resources:
               - Effect: Allow
                 Action: cloudfront:CreateInvalidation
                 Resource: !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/*"
+              # The A records of the HTTPS names of the decks (api/decktls.go): only the names
+              # under .d.<domain>, and only the type A.
+              - Effect: Allow
+                Action: route53:ChangeResourceRecordSets
+                Resource: !Sub "arn:${AWS::Partition}:route53:::hostedzone/${HostedZoneId}"
+                Condition:
+                  ForAllValues:StringLike:
+                    route53:ChangeResourceRecordSetsNormalizedRecordNames: !Sub "*.d.${Domain}"
+                  ForAllValues:StringEquals:
+                    route53:ChangeResourceRecordSetsRecordTypes: A
+              - Effect: Allow
+                Action: route53:ListResourceRecordSets
+                Resource: !Sub "arn:${AWS::Partition}:route53:::hostedzone/${HostedZoneId}"
               # The jobs after a request: the function starts itself with an event, and the
               # jobs function for the videos.
               - Effect: Allow
@@ -467,6 +484,7 @@ Resources:
           FILES_KEY_ID: !If [HasFilesKey, !Ref FilesKey, ""]
           GITHUB_APP_SECRET: !Ref GitHubAppSecretArn
           JOBS_FUNCTION: !Sub "${AWS::StackName}-jobs"
+          DECK_ZONE: !Ref HostedZoneId
 
   # A job that fails does not run again: the next change of the pull request writes the comment.
   JobConfig:
@@ -478,8 +496,10 @@ Resources:
       MaximumEventAgeInSeconds: 600
 
   # The jobs function makes the videos of the time lapses (api/lapse.go): the program of the API,
-  # with ffmpeg in its package. It has no URL, no secrets, and the data of the projects and the
-  # public pages only. 1769 MB is one full vCPU: a video of 2000 frames needs about 30 to 40 s,
+  # with ffmpeg in its package. It also gets the certificates of the decks from Let's Encrypt
+  # (api/acme.go), with the TXT records of the DNS-01 challenge. It has no URL and no secrets. It
+  # writes the data of the projects, the public pages, the certificates, and the key of the ACME
+  # account only. 1769 MB is one full vCPU: a video of 2000 frames needs about 30 to 40 s,
   # an estimate from a test on x86.
   JobsRole:
     Type: AWS::IAM::Role
@@ -505,9 +525,27 @@ Resources:
                 Resource:
                   - !Sub "${DataBucket.Arn}/x/*"
                   - !Sub "${DataBucket.Arn}/p/*"
+                  - !Sub "${DataBucket.Arn}/certs/*"
+                  - !Sub "${DataBucket.Arn}/keys/acme-account"
               - Effect: Allow
                 Action: s3:ListBucket
                 Resource: !GetAtt DataBucket.Arn
+              # The TXT records of the DNS-01 challenge: only _acme-challenge names under
+              # .d.<domain>, and only the type TXT.
+              - Effect: Allow
+                Action: route53:ChangeResourceRecordSets
+                Resource: !Sub "arn:${AWS::Partition}:route53:::hostedzone/${HostedZoneId}"
+                Condition:
+                  ForAllValues:StringLike:
+                    route53:ChangeResourceRecordSetsNormalizedRecordNames: !Sub "_acme-challenge.*.d.${Domain}"
+                  ForAllValues:StringEquals:
+                    route53:ChangeResourceRecordSetsRecordTypes: TXT
+              - Effect: Allow
+                Action: route53:ListResourceRecordSets
+                Resource: !Sub "arn:${AWS::Partition}:route53:::hostedzone/${HostedZoneId}"
+              - Effect: Allow
+                Action: route53:GetChange
+                Resource: !Sub "arn:${AWS::Partition}:route53:::change/*"
 
   JobsLogs:
     Type: AWS::Logs::LogGroup
@@ -524,7 +562,8 @@ Resources:
       Architectures: [arm64]
       Handler: bootstrap
       MemorySize: 1769
-      Timeout: 120
+      # A video needs up to 120 s, and a certificate up to 4 minutes (api.certJobTime).
+      Timeout: 300
       Role: !GetAtt JobsRole.Arn
       Code:
         S3Bucket: !Ref CodeBucket
@@ -533,6 +572,8 @@ Resources:
         Variables:
           BUCKET: !Ref DataBucket
           DOMAIN: !Ref Domain
+          DECK_ZONE: !Ref HostedZoneId
+          ACME_DIRECTORY: !Ref AcmeDirectory
 
   # A video job that fails does not run again: pwf lapse-backfill makes the videos that are
   # missing.
@@ -667,3 +708,9 @@ Outputs:
   DistributionId:
     Description: The CloudFront distribution, for pwf.
     Value: !Ref Distribution
+  Domain:
+    Description: The domain of the service, for pwf.
+    Value: !Ref Domain
+  DeckZone:
+    Description: The hosted zone of the HTTPS names of the decks, for pwf decks remove.
+    Value: !Ref HostedZoneId

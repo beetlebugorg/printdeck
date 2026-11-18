@@ -33,7 +33,7 @@ const (
 	maxLapseVideo = 256 << 20
 )
 
-// lapseJobTime is the most time of a lapse job. The template gives the jobs function 120 s, with
+// lapseJobTime is the most time of a lapse job. The template gives the jobs function 300 s, with
 // 1769 MB (one vCPU). A lapse of 2000 frames (MaxLapseFrames) needs about 30 to 40 s there. This
 // is an estimate from a test on x86.
 const lapseJobTime = 110 * time.Second

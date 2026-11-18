@@ -34,6 +34,9 @@ type Config struct {
 	NightFrom, NightTo int // hours of the night theme in auto mode
 	PreheatBed         int
 	RemoteAddr         string // address of the remote screen, for example ":80"; empty turns it off
+	// TLSAddr is the HTTPS address of the same server, for example ":443", with the certificate
+	// of the name that the cloud service gives the deck (tlscert). Empty turns it off.
+	TLSAddr string
 	// The web pages that can call the API for slicers from the browser (CORS), separated by
 	// spaces: the zslice web app. Each call still needs the API key. "none" turns it off.
 	WebOrigins    string
@@ -56,6 +59,7 @@ func Load() Config {
 		TouchOffsetY:  num("TOUCH_OFFSET_Y", 0),
 		StateDir:      str("STATE_DIRECTORY", "/var/lib/printdeck"),
 		RemoteAddr:    str("REMOTE_ADDR", ""),
+		TLSAddr:       str("TLS_ADDR", ""),
 		WebOrigins:    str("WEB_ORIGINS", "https://zslice.beetlebug.org"),
 		KlippySocket:  str("KLIPPY_SOCKET", "/run/klipper/klippy.sock"),
 		GcodeDir:      str("GCODE_DIR", "/var/lib/klipper/gcodes"),

@@ -489,6 +489,7 @@ type Job struct {
 	Plan    string `json:"plan,omitempty"`
 	PR      int    `json:"pr,omitempty"`
 	Print   string `json:"print,omitempty"`
+	Deck    string `json:"deck,omitempty"` // the deck of a "cert" job
 }
 
 // jobTime is the most time of a job in its own run of the function, and inlineJobTime the most
@@ -513,6 +514,16 @@ func (s *Server) later(ctx context.Context, job Job) bool {
 
 // RunJob runs a job that s.Later started.
 func (s *Server) RunJob(ctx context.Context, job Job) {
+	if job.Kind == "cert" {
+		if !validID(job.Deck) {
+			log.Printf("job: a bad job")
+			return
+		}
+		ctx, cancel := context.WithTimeout(ctx, certJobTime)
+		defer cancel()
+		s.IssueCert(ctx, job.Deck)
+		return
+	}
 	if job.Kind == "lapse" {
 		if !validID(job.Project) || !validID(job.Print) {
 			log.Printf("job: a bad job")

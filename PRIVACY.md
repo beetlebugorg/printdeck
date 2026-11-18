@@ -1,6 +1,6 @@
 # Privacy policy
 
-Last updated: November 1, 2026
+Last updated: November 17, 2026
 
 This policy tells you what data Printdeck keeps, where it keeps the data, and how long. It also
 tells you how to delete your data.
@@ -77,6 +77,13 @@ When the owner connects a deck, the service keeps:
 - **The owner**: a first name, and the passkeys of the owner. A passkey record has the public
   key, the type of the device (for example "iPhone") and the date.
 - **The decks**: the name of each deck, its public key, and the date it connected.
+- **The HTTPS names of the decks**: the service gives each deck a name with a random first part,
+  for example `k3x9q2m7wfa4c.d.printdeck.beetlebug.org`. The A record of the name in public DNS
+  is the LAN address of the deck, for example 192.168.1.20. The service accepts only private
+  addresses. Anyone who knows the name can read the address, but the address works only on your
+  network. Let's Encrypt gives the certificate of the name, and the name goes into the public
+  logs of the certificates (Certificate Transparency). The name has no name of a person, a
+  printer or a place. The private key of the certificate stays on the deck.
 - **The printers**: the name, the model and the type of each printer, and what it prints now.
 
 When the owner makes a share link of a print, the deck sends to the service, until the print
@@ -171,6 +178,8 @@ The pages of the cloud service ask search engines not to show them in search res
 - **Google and Cloudflare** get time and DNS requests from the deck when your network gives no
   servers.
 - **ntfy** gets the notifications of the deck, if the owner sets an ntfy topic.
+- **Let's Encrypt** gives the HTTPS certificates of the decks. It gets the HTTPS name of each
+  deck, and publishes it in the public logs of the certificates. It gets no address of a deck.
 
 ## How long we keep the data
 
@@ -188,6 +197,7 @@ The pages of the cloud service ask search engines not to show them in search res
 | Projects, prints, photos, plans and builds | Until the owner deletes them. |
 | A member | Until the owner removes the member, or the member deletes their account. |
 | A passkey | Until the owner removes it or its member, or the member deletes their account. |
+| The HTTPS name of a deck and its DNS record | Until the owner disconnects or removes the deck. The names in the public logs of the certificates stay there. |
 
 The service makes a backup of all its data each day, and keeps each backup 7 days. A deleted
 file also stays as an old version for 1 to 2 days. After a delete, a copy of your data can stay
@@ -219,7 +229,8 @@ The owner deletes data in the web app or on the deck:
 - Stop a share link on the deck. Stop deletes the share link and its files at once.
 - Remove a passkey. The service keeps the last passkey of the owner, because the service needs an
   owner.
-- Disconnect a deck in Settings, Cloud.
+- Disconnect a deck in Settings, Cloud. The service also deletes the DNS record of the HTTPS
+  name of the deck.
 
 A member deletes their account in the web app: sign in, then tap "Delete my account" on the page
 of the projects. The service deletes the passkeys and the photos of the member, and removes the

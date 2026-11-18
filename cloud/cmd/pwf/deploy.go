@@ -38,6 +38,9 @@ import (
 type deployOptions struct {
 	Stack, Domain, AlertEmail, Src string
 	Budget, Concurrency            int
+	// ACMEStaging gets the certificates of the decks from the staging directory of Let's
+	// Encrypt, for tests.
+	ACMEStaging bool
 }
 
 // runDeploy builds the function, uploads its zip, deploys the stack, and uploads the pages.
@@ -76,6 +79,7 @@ func runDeploy(ctx context.Context, cfg aws.Config, opt deployOptions) error {
 	params := map[string]string{
 		"Domain": opt.Domain, "HostedZoneId": zone, "CodeBucket": codeBucket, "CodeKey": codeKey, "JobsCodeKey": jobsKey,
 		"Concurrency": strconv.Itoa(opt.Concurrency), "AlertEmail": opt.AlertEmail, "BudgetUSD": strconv.Itoa(opt.Budget),
+		"AcmeDirectory": acmeDirectory(opt.ACMEStaging),
 	}
 	// The push relay: the secret and the bundle ID of the stack printdeck-relay, when it exists.
 	if arn, bundle, ok := relayStack(ctx, cfg); ok {
@@ -431,4 +435,12 @@ func filesKey(ctx context.Context, cfg aws.Config, stack string) (arn, pub strin
 		return "", "", err
 	}
 	return arn, string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der})), nil
+}
+
+// acmeDirectory returns the ACME directory of the certificates of the decks.
+func acmeDirectory(staging bool) string {
+	if staging {
+		return api.LetsEncryptStaging
+	}
+	return api.LetsEncrypt
 }
