@@ -126,6 +126,11 @@ type Frame struct {
 	order  []int           // the widths of smalls, the oldest first
 	err    error           // the decode error of the JPEG
 
+	// The Huffman decode of the JPEG, once for all the users of the frame: each user then makes
+	// the pixels of its scale and its part only (decode). nil when the JPEG has no such decode.
+	sparseOnce sync.Once
+	sparse     *jpegdec.Sparse
+
 	plans     map[string]*viewPlan // the plan of each view, or nil for no plan (views.go)
 	views     map[string]*Frame    // the pictures of the views by view and width
 	viewOrder []string             // the keys of views, the oldest first
@@ -177,7 +182,7 @@ func (f *Frame) picture() *image.YCbCr {
 	if f.pic != nil || f.err != nil {
 		return f.pic
 	}
-	img, err := jpegdec.DecodeScaled(bytes.NewReader(f.jpeg), 0)
+	img, err := f.decode(0, image.Rectangle{})
 	if err != nil {
 		f.err = err
 		return nil
@@ -211,9 +216,8 @@ func (f *Frame) pictureFor(w int) *image.YCbCr {
 		f.mu.Unlock()
 		return p
 	}
-	b := f.jpeg
 	f.mu.Unlock()
-	img, err := jpegdec.DecodeScaled(bytes.NewReader(b), shift)
+	img, err := f.decode(shift, image.Rectangle{})
 	if err != nil {
 		return f.picture()
 	}
@@ -258,7 +262,7 @@ func (f *Frame) cropPicture(c [4]float64, ow int) (*image.YCbCr, [4]float64) {
 	if r.Empty() {
 		return f.picture(), c
 	}
-	img, err := jpegdec.DecodeRegion(bytes.NewReader(b), shift, r)
+	img, err := f.decode(shift, r)
 	if err != nil {
 		return f.picture(), c
 	}
@@ -268,6 +272,25 @@ func (f *Frame) cropPicture(c [4]float64, ow int) (*image.YCbCr, [4]float64) {
 	}
 	kf := float64(k)
 	return p, [4]float64{c[0] / kf, c[1] / kf, c[2] / kf, c[3] / kf}
+}
+
+// decode returns the picture of the JPEG of the frame at 1/2^shift of its size, and the part r of
+// it (in the pixels of the frame), or the whole picture for an empty r. The first decode keeps the
+// result of the Huffman decode, so the next ones cost the pixels only. The caller does not hold
+// f.mu.
+func (f *Frame) decode(shift int, r image.Rectangle) (image.Image, error) {
+	f.sparseOnce.Do(func() {
+		if s, err := jpegdec.DecodeSparse(f.jpeg); err == nil {
+			f.sparse = s
+		}
+	})
+	if f.sparse != nil {
+		return f.sparse.Render(shift, r)
+	}
+	if r.Empty() {
+		return jpegdec.DecodeScaled(bytes.NewReader(f.jpeg), shift)
+	}
+	return jpegdec.DecodeRegion(bytes.NewReader(f.jpeg), shift, r)
 }
 
 // toYCbCrPicture returns a decoded JPEG as a YCbCr picture: a gray picture gets no color. It
