@@ -197,7 +197,14 @@ type Printer interface {
 }
 
 type App struct {
-	Printer                 Printer
+	Printer Printer
+	// Fleet links the App to the other printers of its deck (fleet.go), or is nil for a deck with
+	// one printer.
+	Fleet     Fleet
+	fleetList bool // the list of the printers is open
+	// OnOpenPrinter opens the remote screen of the printer id, on a remote screen with many
+	// printers, or is nil.
+	OnOpenPrinter           func(id string)
 	Setup                   SetupHost // nil when the system has no setup screen, as in Docker
 	PreheatTool, PreheatBed int
 
@@ -376,6 +383,9 @@ type App struct {
 
 	// Record makes Run draw each frame on a recording canvas (gfx.NewRecording), for a browser.
 	Record bool
+	// Animate slides or fades from one page to the next, and from one printer to the next, on
+	// the touch screen (animate.go).
+	Animate bool
 	// Height is the height of the tall screen, from BaseH to MaxH. 0 is BaseH.
 	Height int
 	// Scale draws each frame at Scale[0]/Scale[1] times the size of the UI, for a screen with more
@@ -425,6 +435,9 @@ func (a *App) Session(width, height int) *App {
 	s.Wide = width > height
 	s.Height = max(BaseH, min(MaxH, height))
 	s.Printer, s.Setup = a.Printer, a.Setup
+	if a.Fleet != nil {
+		s.Fleet = sessionFleet{a.Fleet, s} // a remote screen never switches the touch screen
+	}
 	s.PreheatTool, s.PreheatBed, s.UnloadMM, s.LoadMM, s.JogInvertY = a.PreheatTool, a.PreheatBed, a.UnloadMM, a.LoadMM, a.JogInvertY
 	s.Theme, s.NightFrom, s.NightTo, s.OnTheme = a.Theme, a.NightFrom, a.NightTo, a.OnTheme
 	s.Clock24, s.OnClock = a.Clock24, a.OnClock
@@ -470,38 +483,68 @@ func (a *App) LastInput() time.Time {
 func (a *App) Run(ctx context.Context, events <-chan touch.Event, present func(*gfx.Canvas)) {
 	a.hub.join(a)
 	defer a.hub.leave(a)
-	cv := gfx.New(a.Screen().W, a.Screen().H)
-	var big *gfx.Canvas // the frame at Scale
+	runFrames(ctx, events, present, func() *App { return a }, nil)
+}
+
+// runFrames draws the frames of the App that current returns, and gives it the input, until ctx
+// ends. After a change of the page, or of the printer (switched returns -1 or 1), a slide or a
+// fade goes from the last frame to the new one (animate.go).
+func runFrames(ctx context.Context, events <-chan touch.Event, present func(*gfx.Canvas), current func() *App, switched func() int) {
+	var cv, big, last *gfx.Canvas // the frame, the frame at Scale, and the frame before
+	var lastKey pageKey
+	var lastApp *App
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
 	for {
+		a := current()
+		s := a.Screen()
+		if cv == nil || cv.Bounds().Dx() != s.W || cv.Bounds().Dy() != s.H || a.Record {
+			cv = gfx.New(s.W, s.H)
+		}
 		t0 := time.Now()
 		var rec *gfx.Recording
 		if a.Record || a.Scale[0] > 0 {
-			cv, rec = gfx.NewRecording(a.Screen().W, a.Screen().H)
+			cv, rec = gfx.NewRecording(s.W, s.H)
+		}
+		key := a.pageKey()
+		dir := 0
+		if switched != nil {
+			dir = switched()
+		}
+		move := transitionNone
+		if a.Animate && !a.Record && a.Scale[0] == 0 && last != nil && last.Bounds() == cv.Bounds() {
+			move = transitionFor(lastApp == a, lastKey, key, dir)
 		}
 		a.Draw(cv)
 		t1 := time.Now()
 		if a.Scale[0] > 0 && !a.Record {
-			s := a.Screen()
 			w, h := s.W*a.Scale[0]/a.Scale[1], s.H*a.Scale[0]/a.Scale[1]
 			if big == nil || big.Bounds().Dx() != w || big.Bounds().Dy() != h {
 				big = gfx.New(w, h)
 			}
 			rec.DrawScaled(big, a.Scale[0], a.Scale[1])
 			present(big)
+		} else if move != transitionNone {
+			animate(present, last, cv, move)
 		} else {
 			present(cv)
 		}
+		if a.Animate && !a.Record && a.Scale[0] == 0 {
+			if last == nil || last.Bounds() != cv.Bounds() {
+				last = gfx.New(s.W, s.H)
+			}
+			copy(last.Pix, cv.Pix)
+		}
+		lastKey, lastApp = key, a
 		// A slow frame shows as a pause on the screen. Log it, to find where the time goes.
-		if d := time.Since(t0); d > 100*time.Millisecond {
+		if d := time.Since(t0); d > 100*time.Millisecond && move == transitionNone {
 			log.Printf("slow frame: draw %v, present %v", t1.Sub(t0).Round(time.Millisecond), time.Since(t1).Round(time.Millisecond))
 		}
 		select {
 		case <-ctx.Done():
 			return
 		case ev := <-events:
-			a.handle(ev)
+			current().handle(ev)
 		case f := <-a.posted:
 			f()
 		case <-a.wake:
@@ -511,7 +554,7 @@ func (a *App) Run(ctx context.Context, events <-chan touch.Event, present func(*
 		for more := true; more; {
 			select {
 			case ev := <-events:
-				a.handle(ev)
+				current().handle(ev)
 			case f := <-a.posted:
 				f()
 			default:
@@ -544,6 +587,7 @@ func (a *App) Draw(c *gfx.Canvas) {
 	// The touch screen is the screen that the display of the printer follows: its keys are the
 	// menu of the display.
 	a.showShared()
+	a.setFleetSelf()
 	drawing, a.focus, a.lcdTitle, a.lcdNotes = a, a.focus[:0], "", a.lcdNotes[:0]
 	a.names, a.bar = a.names[:0], false
 	defer func() { drawing, a.collect = nil, false }()
@@ -573,6 +617,7 @@ func (a *App) Draw(c *gfx.Canvas) {
 		a.drawSimBand(c, a.Printer.State())
 	}
 	a.collect = false
+	a.drawFleet(c)
 	a.drawToast(c)
 	if a.keypad != nil {
 		a.collect, a.focus = !a.Record, a.focus[:0]
@@ -635,7 +680,11 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 	if title == "" {
 		title = "CONFIRM"
 	}
-	panel(c, box, title)
+	panel(c, box, fleetTitle(title))
+	if fleetSelf != nil {
+		// The colour of the printer over the dialog: the question acts on this printer.
+		c.RoundRect(image.Rect(box.Min.X, box.Min.Y-fleetBarH-4, box.Max.X, box.Min.Y-4), 3, fleetSelf.Color)
+	}
 	q := image.Rect(box.Min.X+24, box.Min.Y+top, box.Max.X-24, box.Max.Y-20-keys-gap)
 	y := q.Min.Y + (q.Dy()-len(lines)*lineH)/2
 	for _, l := range lines {
@@ -670,7 +719,11 @@ func (a *App) drawConfirm(c *gfx.Canvas) {
 	if cf.yes == "" && cf.onYes == nil {
 		return
 	}
-	a.button(c, yesR, cf.yes, yes, ink, func() { a.confirm = nil; cf.onYes(); a.Redraw() })
+	yesLabel := cf.yes
+	if fleetSelf != nil && fleetSelf.Label != "" {
+		yesLabel += " on " + fleetSelf.Label // the key names the printer that it acts on
+	}
+	a.button(c, yesR, yesLabel, yes, ink, func() { a.confirm = nil; cf.onYes(); a.Redraw() })
 }
 
 // drawChoices draws a question with choices: the question, a menu row for each choice, and Back.

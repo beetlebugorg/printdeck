@@ -211,9 +211,9 @@ func fitTitle(s string, width int) string {
 func headingAt(c *gfx.Canvas, head image.Rectangle, title string) {
 	setHeading(title)
 	x, y := head.Min.X, head.Min.Y
-	c.Fill(image.Rect(x, y+13, x+10, y+33), orange)
+	c.Fill(image.Rect(x, y+13, x+10, y+33), accentMark())
 	// A long title gets a smaller font, down to 18 pixels, and then loses its end.
-	title, w := strings.ToUpper(title), head.Max.X-118-(x+20)
+	title, w := strings.ToUpper(fleetTitle(title)), head.Max.X-118-(x+20)
 	size, least := 24, 18
 	if gfx.FinePrint() {
 		least = 12 // Face makes it larger
