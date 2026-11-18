@@ -310,7 +310,7 @@ func (a *App) drawFleetBanner(c *gfx.Canvas) bool {
 // printer can show.
 func (a *App) fleetQuiet() bool {
 	return a.confirm == nil && a.keypad == nil && a.consoleKB == nil && a.picker == nil && a.colors == nil &&
-		a.form == nil && a.qrSheet == nil && !a.shareSheet && a.swap == nil && !a.tune && a.flash == nil &&
+		a.form == nil && a.textKB == nil && a.qrSheet == nil && !a.shareSheet && a.swap == nil && !a.tune && a.flash == nil &&
 		a.setup == nil && !a.fleetList
 }
 

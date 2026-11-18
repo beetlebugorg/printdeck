@@ -175,63 +175,43 @@ func run(cfg config.Config) {
 		cfg.Rotate = p.Rotation()
 	}
 
-	pr := newPrinter(cfg)
-	app := ui.New()
-	app.Printer = pr
-	// The UI is wide when the turned panel is wider than high (DISPLAY_ROTATE 0 or 180).
-	app.Wide = screen.Size().X > screen.Size().Y
-	// A tall screen with more pixels than the UI (the Touch Display 2, 720 x 1280): the UI keeps
-	// its width of 480 and gets the height of the shape of the screen, and each frame is drawn
-	// at the size of the screen.
-	if sz := screen.Size(); !app.Wide && sz.X > ui.BaseW {
-		app.Height = (sz.Y*ui.BaseW + sz.X - 1) / sz.X
-		app.Scale = [2]int{sz.X, ui.BaseW}
-	}
-	app.PreheatTool, app.PreheatBed = cfg.PreheatTool, cfg.PreheatBed
-	app.UnloadMM, app.LoadMM, app.JogInvertY = cfg.UnloadMM, cfg.LoadMM, cfg.JogInvertY
-	// The theme (day, night, auto) is kept in the state folder.
-	themeFile := filepath.Join(cfg.StateDir, "theme")
-	app.NightFrom, app.NightTo = cfg.NightFrom, cfg.NightTo
-	if b, err := os.ReadFile(themeFile); err == nil {
-		app.Theme = strings.TrimSpace(string(b))
-	}
-	app.OnTheme = func(t string) { os.WriteFile(themeFile, []byte(t+"\n"), 0o644) }
-	// The clock (12 or 24 hours) too.
-	clockFile := filepath.Join(cfg.StateDir, "clock")
-	if b, err := os.ReadFile(clockFile); err == nil {
-		app.Clock24 = strings.TrimSpace(string(b)) == "24"
-	}
-	app.OnClock = func(h24 bool) {
-		v := "12"
-		if h24 {
-			v = "24"
+	// The printers of the deck (printers.go): each one has its backend and its App. The first
+	// printer has the deck-wide parts: the setup, the updater, the web server.
+	printers := loadDeckPrinters(cfg.StateDir)
+	var apps []*ui.App
+	var backends []printerBackend
+	var cfgs []config.Config
+	for _, dp := range printers {
+		pcfg := dp.config(cfg)
+		if err := os.MkdirAll(pcfg.StateDir, 0o700); err != nil {
+			log.Printf("printer %s: %v", dp.Name, err)
 		}
-		os.WriteFile(clockFile, []byte(v+"\n"), 0o644)
-	}
-	// The text size too. The file is written only when the Settings page changes it.
-	textSizeFile := filepath.Join(cfg.StateDir, "text-size")
-	if b, err := os.ReadFile(textSizeFile); err == nil {
-		app.TextSize = strings.TrimSpace(string(b))
-	}
-	app.OnTextSize = func(s string) { os.WriteFile(textSizeFile, []byte(s+"\n"), 0o644) }
-	// The homing in a filament change too. It is on when the file is not there.
-	swapHomeFile := filepath.Join(cfg.StateDir, "swap-home")
-	if b, err := os.ReadFile(swapHomeFile); err == nil {
-		app.SwapHome = strings.TrimSpace(string(b)) != "off"
-	}
-	app.OnSwapHome = func(on bool) {
-		v := "off"
-		if on {
-			v = "on"
+		pr := newPrinter(pcfg, dp.ID)
+		a := ui.New()
+		a.Printer = pr
+		a.Animate = true
+		// The UI is wide when the turned panel is wider than high (DISPLAY_ROTATE 0 or 180).
+		a.Wide = screen.Size().X > screen.Size().Y
+		// A tall screen with more pixels than the UI (the Touch Display 2, 720 x 1280): the UI
+		// keeps its width of 480 and gets the height of the shape of the screen, and each frame
+		// is drawn at the size of the screen.
+		if sz := screen.Size(); !a.Wide && sz.X > ui.BaseW {
+			a.Height = (sz.Y*ui.BaseW + sz.X - 1) / sz.X
+			a.Scale = [2]int{sz.X, ui.BaseW}
 		}
-		os.WriteFile(swapHomeFile, []byte(v+"\n"), 0o644)
+		a.PreheatTool, a.PreheatBed = cfg.PreheatTool, cfg.PreheatBed
+		a.UnloadMM, a.LoadMM, a.JogInvertY = cfg.UnloadMM, cfg.LoadMM, cfg.JogInvertY
+		a.NightFrom, a.NightTo = cfg.NightFrom, cfg.NightTo
+		// The loaded material is kept in the state folder of the printer.
+		materialFile := filepath.Join(pcfg.StateDir, "material")
+		if b, err := os.ReadFile(materialFile); err == nil {
+			a.Material = strings.TrimSpace(string(b))
+		}
+		a.OnMaterial = func(m string) { os.WriteFile(materialFile, []byte(m+"\n"), 0o644) }
+		apps, backends, cfgs = append(apps, a), append(backends, pr), append(cfgs, pcfg)
 	}
-	// The loaded material is kept in the state folder too.
-	materialFile := filepath.Join(cfg.StateDir, "material")
-	if b, err := os.ReadFile(materialFile); err == nil {
-		app.Material = strings.TrimSpace(string(b))
-	}
-	app.OnMaterial = func(m string) { os.WriteFile(materialFile, []byte(m+"\n"), 0o644) }
+	app, pr := apps[0], backends[0]
+	deckPrefs(cfg.StateDir, apps)
 	events := make(chan touch.Event, 64)
 	// On the Printdeck OS image, the first start opens the setup screen, and the deck checks
 	// for updates.
@@ -240,41 +220,67 @@ func run(cfg config.Config) {
 	if host != nil {
 		// The Screen row of the Settings page: the deck saves the turn and ends; systemd starts it
 		// again in the new turn. Only the Printdeck OS restarts the deck.
-		app.Rotate = cfg.Rotate
-		app.OnRotate = func(r int) {
-			if err := os.WriteFile(rotateFile, []byte(fmt.Sprintf("%d\n", r)), 0o644); err != nil {
-				app.Toast("The turn was not saved: " + err.Error())
-				return
+		for _, a := range apps {
+			a := a
+			a.Rotate = cfg.Rotate
+			a.OnRotate = func(r int) {
+				if err := os.WriteFile(rotateFile, []byte(fmt.Sprintf("%d\n", r)), 0o644); err != nil {
+					a.Toast("The turn was not saved: " + err.Error())
+					return
+				}
+				stop()
 			}
-			stop()
 		}
-		up = newUpdater(cfg.StateDir, helperSystem{socket: cfg.KlippySocket}, pr, app.Redraw)
+		// The updater restarts into an update only when no printer of the deck prints.
+		up = newUpdater(cfg.StateDir, helperSystem{socket: cfg.KlippySocket}, deckState{pr, backends}, app.Redraw)
 		up.lastInput, up.exit, up.handoff = app.LastInput, stop, deckHandoff(app)
 		up.saving = func() bool { r := sysTimelapse; return r != nil && r.Info().Saving }
-		app.Updater = up
 		go up.run(ctx)
 		go up.watch(ctx)
-		app.Setup = host
+		for _, a := range apps {
+			a.Updater = up
+			a.Setup = host
+		}
 		host.restart = stop // systemd starts the deck again
+		// Settings, Printers: a change starts to work after a restart of the deck.
+		admin := &printerAdmin{base: cfg, running: printers, restart: stop, helper: system.AskHelper}
+		for _, a := range apps {
+			a.Printers = admin
+		}
 		if host.Needed() {
 			app.OpenSetup()
 		}
 	}
 
-	startQueue(ctx, cfg.StateDir, pr, app)
-
-	// The samples of the CPU, the memory and the disk writes, in memory only.
-	app.Metrics = hostmetrics.New()
-	go app.Metrics.Run(ctx)
-
-	go pr.Run(ctx, app.Redraw)
-	go lcdLoop(ctx, pr, app)
-	startChiTuRelay(ctx, cfg.StateDir, pr, chitu.Port)
-	startNotify(ctx, cfg.StateDir, pr, app)
-	startCamera(ctx, cfg.StateDir, app, pr)
-	startTimelapse(ctx, cfg.StateDir, cfg.KlipperConfig, app, pr)
-	startBedCool(ctx, cfg.StateDir, app, pr)
-	link := startShare(cfg.StateDir, cfg.KlipperConfig, cfg.GcodeDir, app, pr)
+	// The samples of the CPU, the memory and the disk writes, in memory only: one for the deck.
+	metrics := hostmetrics.New()
+	go metrics.Run(ctx)
+	// The cloud link of the deck, for each printer.
+	link := newCloudLink(cfg.StateDir, func() {
+		for _, a := range apps {
+			a.Redraw()
+		}
+	})
+	// "Signed prints only" and the trusted slicers (Settings > Signed prints), for the API.
+	sign := &signing.Store{Path: filepath.Join(cfg.StateDir, "signing.json")}
+	for i, a := range apps {
+		pr, pcfg := backends[i], cfgs[i]
+		a.Metrics = metrics
+		a.Signing = sign
+		startQueue(ctx, pcfg.StateDir, pr, a)
+		go pr.Run(ctx, a.Redraw)
+		go lcdLoop(ctx, pr, a)
+		startNotify(ctx, pcfg.StateDir, pr, a)
+		if i == 0 {
+			// The ChiTu relay has one port, and the camera and the time lapse use the camera of
+			// the deck: the first printer has them.
+			startChiTuRelay(ctx, pcfg.StateDir, pr, chitu.Port)
+			startCamera(ctx, pcfg.StateDir, a, pr)
+			startTimelapse(ctx, pcfg.StateDir, pcfg.KlipperConfig, a, pr)
+		}
+		startBedCool(ctx, pcfg.StateDir, a, pr)
+		startShare(link, pcfg.StateDir, pcfg.KlipperConfig, pcfg.GcodeDir, a, pr)
+	}
 	startTLSCert(ctx, cfg.StateDir, cfg.TLSAddr, link)
 
 	if p, ok := screen.(interface{ SetTouch(touch.Options) }); ok {
@@ -285,14 +291,79 @@ func run(cfg config.Config) {
 	}
 	go screen.Run(ctx, events)
 
-	// "Signed prints only" and the trusted slicers (Settings > Signed prints), for the API.
-	app.Signing = &signing.Store{Path: filepath.Join(cfg.StateDir, "signing.json")}
 	startWeb(cfg, host, pr, app, up)
 	// After a boot, a soft change from the start screen to the first screen.
 	if _, ok := screen.(display.None); !ok && uptime() < 90*time.Second {
 		fadeFromStart(screen, app, events)
 	}
-	app.Run(ctx, events, screen.Present)
+	if len(apps) == 1 {
+		app.Run(ctx, events, screen.Present)
+		return
+	}
+	// A deck with many printers: the touch screen shows one printer at a time.
+	ids := make([]ui.Identity, len(printers))
+	for i, dp := range printers {
+		ids[i] = dp.identity()
+		_, ids[i].Resin = backends[i].(*printer.ChiTu)
+	}
+	ui.NewSwitcher(apps, ids).Run(ctx, events, screen.Present)
+}
+
+// deckPrefs reads the settings of the screen of the deck (the theme, the clock, the text size,
+// the homing in a filament change) from its state folder, and gives them to each App. A change on
+// one App changes all of them.
+func deckPrefs(stateDir string, apps []*ui.App) {
+	read := func(name string) (string, bool) {
+		b, err := os.ReadFile(filepath.Join(stateDir, name))
+		return strings.TrimSpace(string(b)), err == nil
+	}
+	write := func(name, v string) { os.WriteFile(filepath.Join(stateDir, name), []byte(v+"\n"), 0o644) }
+	theme, _ := read("theme")
+	clock, _ := read("clock")
+	textSize, _ := read("text-size") // written only when the Settings page changes it
+	swapHome, hasSwap := read("swap-home")
+	for _, a := range apps {
+		if theme != "" {
+			a.Theme = theme
+		}
+		a.Clock24 = clock == "24"
+		a.TextSize = textSize
+		if hasSwap {
+			a.SwapHome = swapHome != "off" // on when the file is not there
+		}
+		a.OnTheme = func(t string) {
+			write("theme", t)
+			for _, b := range apps {
+				b.Theme = t
+			}
+		}
+		a.OnClock = func(h24 bool) {
+			v := "12"
+			if h24 {
+				v = "24"
+			}
+			write("clock", v)
+			for _, b := range apps {
+				b.Clock24 = h24
+			}
+		}
+		a.OnTextSize = func(s string) {
+			write("text-size", s)
+			for _, b := range apps {
+				b.TextSize = s
+			}
+		}
+		a.OnSwapHome = func(on bool) {
+			v := "off"
+			if on {
+				v = "on"
+			}
+			write("swap-home", v)
+			for _, b := range apps {
+				b.SwapHome = on
+			}
+		}
+	}
 }
 
 // preview writes the model view of the running print, to check the G-code and STL handling.
@@ -300,7 +371,7 @@ func preview(cfg config.Config, args []string) {
 	if len(args) < 1 {
 		log.Fatal("usage: printdeck preview FILE.png")
 	}
-	pr := newPrinter(cfg)
+	pr := newPrinter(cfg, "")
 	ctx, stop := context.WithCancel(context.Background())
 	defer stop()
 	go pr.Run(ctx, func() {})
@@ -324,7 +395,7 @@ func shot(cfg config.Config, args []string) {
 	}
 	ctx, stop := context.WithCancel(context.Background())
 	defer stop()
-	pr := newPrinter(cfg)
+	pr := newPrinter(cfg, "")
 	app := ui.New()
 	app.Printer = pr
 	app.NightFrom, app.NightTo = cfg.NightFrom, cfg.NightTo

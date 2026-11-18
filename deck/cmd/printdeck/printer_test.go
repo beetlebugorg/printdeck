@@ -12,14 +12,14 @@ import (
 func TestNewPrinterKind(t *testing.T) {
 	dir := t.TempDir()
 	cfg := config.Config{StateDir: dir, KlippySocket: dir + "/none.sock", GcodeDir: dir}
-	if _, ok := newPrinter(cfg).(*printer.Klippy); !ok {
+	if _, ok := newPrinter(cfg, "").(*printer.Klippy); !ok {
 		t.Error("no printer.json: not the Klipper backend")
 	}
 	if err := printer.SaveSetting(dir, printer.Setting{Kind: printer.KindChiTu, Addr: "192.168.76.58", Name: "Phenom"}); err != nil {
 		t.Fatal(err)
 	}
-	c, ok := newPrinter(cfg).(*printer.ChiTu)
+	c, ok := newPrinter(cfg, "").(*printer.ChiTu)
 	if !ok || c.Client.Addr != "192.168.76.58:3000" || c.Name != "Phenom" {
-		t.Errorf("a ChiTu printer: %T %+v", newPrinter(cfg), c)
+		t.Errorf("a ChiTu printer: %T %+v", newPrinter(cfg, ""), c)
 	}
 }

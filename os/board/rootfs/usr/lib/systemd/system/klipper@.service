@@ -1,0 +1,26 @@
+[Unit]
+Description=Klipper host of the printer %i (a deck with many printers)
+
+# The first printer of the deck uses klipper.service. Each other printer has its own host, with
+# its folder /var/lib/klipper/printers/%i (printer.cfg and gcodes), and its socket and log in
+# /run/klipper/%i. The helper starts it when the user adds the printer (Settings, Printers).
+
+[Service]
+User=printer
+Group=printer
+SupplementaryGroups=dialout tty
+StateDirectory=klipper/printers/%i klipper/printers/%i/gcodes
+StateDirectoryMode=0775
+RuntimeDirectory=klipper/%i
+RuntimeDirectoryMode=0750
+RuntimeDirectoryPreserve=yes
+UMask=0002
+# A new printer gets the placeholder printer.cfg, as the first printer: Klipper starts, and the
+# deck shows the printer setup.
+ExecStartPre=/bin/sh -c 'f=/var/lib/klipper/printers/%i/printer.cfg; [ -e "$f" ] || printf "%%s\\n" "# Put the printer configuration above this line." "[include /usr/share/printdeck/klipper/printdeck.cfg]" > "$f"'
+ExecStart=/usr/bin/printdeck klippy /var/lib/klipper/printers/%i/printer.cfg -l /run/klipper/%i/klippy.log -a /run/klipper/%i/klippy.sock
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

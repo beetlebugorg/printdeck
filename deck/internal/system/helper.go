@@ -12,6 +12,7 @@ import (
 	"os/user"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -43,6 +44,9 @@ type HelperRequest struct {
 	Country  string `json:"country,omitempty"`
 	Gcode    bool   `json:"gcode,omitempty"` // backup: with the G-code files
 	Name     string `json:"name,omitempty"`  // name: the new name of the deck
+	// Printer is the printer of restart-klipper, stop-klipper, add-printer and remove-printer:
+	// "" is the first printer of the deck (klipper.service), and another ID is klipper@<id>.
+	Printer string `json:"printer,omitempty"`
 }
 
 // helperResponse is the answer of the helper. Before the answer, an update sends lines with Step,
@@ -61,10 +65,16 @@ var helperActions = func(r HelperRequest, progress Progress) (after func(), err 
 		return nil, SetWifi(r.SSID, r.Password, r.Country)
 	case "name":
 		return nil, SetName(r.Name)
-	case "restart-klipper":
-		return nil, run("systemctl", "restart", "klipper.service")
-	case "stop-klipper":
-		return nil, run("systemctl", "stop", "klipper.service")
+	case "restart-klipper", "stop-klipper":
+		unit, err := KlipperUnit(r.Printer)
+		if err != nil {
+			return nil, err
+		}
+		return nil, run("systemctl", strings.TrimSuffix(r.Action, "-klipper"), unit)
+	case "add-printer":
+		return nil, addPrinter(r.Printer)
+	case "remove-printer":
+		return nil, removePrinter(r.Printer)
 	case "backup":
 		return nil, MakeBackup(r.Password, r.Gcode, progress)
 	case "restore":
