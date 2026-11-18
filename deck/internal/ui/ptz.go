@@ -224,35 +224,32 @@ func (a *App) ptzKeys(id string, p camera.PTZ) (zoom, move []ptzKey) {
 	return zoom, move
 }
 
-// drawPTZKeys draws the PTZ keys of the camera id in r, in one row: the zoom, the moves, Reset,
+// drawPTZKeys draws the PTZ keys of the camera id in r on a wide screen, in two rows of equal
+// keys, so that each key is large enough for a finger: the zoom and the moves, then Reset,
 // Measure and Done.
 func (a *App) drawPTZKeys(c *gfx.Canvas, r image.Rectangle, id string, p camera.PTZ) {
 	zoom, move := a.ptzKeys(id, p)
 	keys := append(zoom, move...)
-	var labels []string
-	for _, kk := range keys {
-		labels = append(labels, kk.label)
+	rows := kit.Rows(r, 8, kit.Fr(1), kit.Fr(1))
+	top := kit.Grid(rows[0], len(keys), 1, 8)
+	for i, kk := range keys {
+		a.namedButton(c, top[i], kk.label, kk.name, raised, text, kk.tap)
 	}
 	_, measure := a.Camera.(ptzMeasurer)
-	labels = append(labels, "Reset")
+	n := 2
 	if measure {
-		labels = append(labels, "Measure")
+		n = 3
 	}
-	k := labelCols(r, 8, append(labels, "Done")...)
-	for i, kk := range keys {
-		a.namedButton(c, k[i], kk.label, kk.name, raised, text, kk.tap)
-	}
-	i := len(keys)
-	a.button(c, k[i], "Reset", raised, text, func() { a.setPTZ(id, nil) })
+	bottom := kit.Grid(rows[1], n, 1, 8)
+	a.button(c, bottom[0], "Reset", raised, text, func() { a.setPTZ(id, nil) })
 	if measure {
-		i++
 		fill, ink := raised, text
 		if a.ptzRun != nil {
 			fill, ink = keyOn, keyOnInk
 		}
-		a.button(c, k[i], "Measure", fill, ink, func() { a.measurePTZ(id) })
+		a.button(c, bottom[1], "Measure", fill, ink, func() { a.measurePTZ(id) })
 	}
-	a.button(c, k[len(k)-1], "Done", raised, text, func() { a.camPTZ = false })
+	a.button(c, bottom[n-1], "Done", raised, text, func() { a.camPTZ = false })
 }
 
 // ptzRowH is the height of the rows of the PTZ keys on a tall screen: the zoom row and the row of

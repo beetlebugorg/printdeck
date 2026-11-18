@@ -576,8 +576,11 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 	body, keys := f.body(), image.Rectangle{}
 	if f.wide {
 		body, keys = f.split()
-	} else {
-		body = kit.Inset(body, 0, 10, 0, 0)
+		if a.camPTZ {
+			// The PTZ keys are two rows: the zoom and the moves, then Reset, Measure and Done.
+			keys.Min.Y -= 64
+			body.Max.Y -= 64
+		}
 	}
 	if len(tabs) > 1 {
 		h := 52
