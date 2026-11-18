@@ -204,10 +204,7 @@ type App struct {
 	fleetList bool // the list of the printers is open
 	// Printers adds, changes and removes the printers of the deck (Settings, Printers), or is
 	// nil.
-	Printers PrinterAdmin
-	// OnOpenPrinter opens the remote screen of the printer id, on a remote screen with many
-	// printers, or is nil.
-	OnOpenPrinter           func(id string)
+	Printers                PrinterAdmin
 	Setup                   SetupHost // nil when the system has no setup screen, as in Docker
 	PreheatTool, PreheatBed int
 

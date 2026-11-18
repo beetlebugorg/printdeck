@@ -36,12 +36,34 @@ import (
 //
 // The API answers CORS requests of the web pages in WEB_ORIGINS (the zslice web app): see
 // remote.CORS.
-func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App, up *updater) *remote.Server {
+// webPrinter is a printer of a deck with many printers that is not the first one, for the web
+// server: its settings, its backend and its App.
+type webPrinter struct {
+	id  string
+	cfg config.Config
+	pr  printerBackend
+	app *ui.App
+}
+
+func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App, up *updater, others []webPrinter) *remote.Server {
 	if cfg.RemoteAddr == "" {
 		return nil
 	}
 	mux := http.NewServeMux()
 	api := newAPI(cfg, pr, app, mux)
+	// The API of each other printer: under /printers/<id>/, with its own API keys. A request at
+	// /api with a key of another printer goes to that printer (keyRouter), so a slicer needs only
+	// the key of its printer.
+	var routes []keyRoute
+	var otherAPIs []*octoapi.Server
+	for _, o := range others {
+		pm := http.NewServeMux()
+		if oa := newAPI(o.cfg, o.pr, o.app, pm); oa != nil {
+			mux.Handle("/printers/"+o.id+"/", http.StripPrefix("/printers/"+o.id, pm))
+			routes = append(routes, keyRoute{valid: oa.ValidKey, h: pm})
+			otherAPIs = append(otherAPIs, oa)
+		}
+	}
 	var rs *remote.Server
 	if host != nil {
 		rs = newRemote(app, api, func() string {
@@ -52,6 +74,9 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 		if api != nil {
 			api.Allow = rs.LoggedIn // the webcam in a browser with the login of the remote screen
 			api.Login = rs.LoggedIn // the uploads of the zslice app (/slicer/)
+		}
+		for _, oa := range otherAPIs {
+			oa.Allow, oa.Login = rs.LoggedIn, rs.LoggedIn
 		}
 		mux.Handle("/", rs.Handler())
 		registerSystemPage(mux, rs, pr, up, app.Metrics, cfg.KlippyLog, cfg.OctoPrintKey)
@@ -78,7 +103,7 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 		}
 	}
 	// The zslice web app can call the API from the browser (WEB_ORIGINS).
-	h := remote.CORS(remote.SecurityHeaders(mux), cfg.WebOrigins)
+	h := remote.CORS(remote.SecurityHeaders(keyRouter(mux, routes)), cfg.WebOrigins)
 	srv := &http.Server{Addr: cfg.RemoteAddr, Handler: h, ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		log.Printf("web server on %s", cfg.RemoteAddr)
@@ -206,7 +231,14 @@ func newRemote(app *ui.App, api *octoapi.Server, password func() string, key fun
 // same as the last one is not sent.
 func uiSession(app *ui.App) func(ctx context.Context, size image.Point, frame func([]byte)) (image.Point, remote.Input) {
 	return func(ctx context.Context, size image.Point, frame func([]byte)) (image.Point, remote.Input) {
-		s := app.Session(size.X, size.Y)
+		// A deck with many printers: the address /?printer=<id> shows that printer.
+		a := app
+		if pick := deckApps; pick != nil {
+			if p := pick(remote.SessionPrinter(ctx)); p != nil {
+				a = p
+			}
+		}
+		s := a.Session(size.X, size.Y)
 		s.Record = true
 		events := make(chan touch.Event, 64)
 		var last []byte
@@ -269,4 +301,30 @@ func cloneRGBA(src *image.RGBA) *image.RGBA {
 	dst := image.NewRGBA(src.Rect)
 	copy(dst.Pix, src.Pix)
 	return dst
+}
+
+// keyRoute is the API of a printer that is not the first one: its key check and its handler.
+type keyRoute struct {
+	valid func(*http.Request) bool
+	h     http.Handler
+}
+
+// keyRouter sends a request of the API at the root (/api, /plugin, /downloads) with the API key
+// of another printer to the API of that printer. Each other request goes to h.
+func keyRouter(h http.Handler, routes []keyRoute) http.Handler {
+	if len(routes) == 0 {
+		return h
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		if strings.HasPrefix(p, "/api/") || strings.HasPrefix(p, "/plugin/") || strings.HasPrefix(p, "/downloads/") {
+			for _, rt := range routes {
+				if rt.valid(r) {
+					rt.h.ServeHTTP(w, r)
+					return
+				}
+			}
+		}
+		h.ServeHTTP(w, r)
+	})
 }

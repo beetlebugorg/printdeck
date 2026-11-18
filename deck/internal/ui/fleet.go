@@ -254,6 +254,10 @@ func (a *App) drawFleetCard(c *gfx.Canvas, r image.Rectangle, card FleetCard) {
 		c.Text(image.Rect(in.Min.X, line.Max.Y+4, in.Max.X, in.Max.Y), temps, gfx.Face(false, 15), dim, gfx.Left)
 	}
 	id := card.ID
+	if a.Record && !card.Active {
+		// A remote screen: the card opens the remote screen of that printer.
+		c.Link(r, "/?printer="+id)
+	}
 	tap := func() {
 		a.fleetList = false
 		if !card.Active {
@@ -298,6 +302,9 @@ func (a *App) drawFleetBanner(c *gfx.Canvas) bool {
 	key := n.Key
 	id := n.ID
 	a.button(c, keys[0], "Later", raised, text, func() { a.Fleet.Dismiss(key); a.Redraw() })
+	if a.Record {
+		c.Link(keys[1], "/?printer="+id)
+	}
 	a.button(c, keys[1], "Show "+who.Label, orange, onAcc, func() {
 		a.Fleet.Dismiss(key)
 		a.Fleet.Switch(id)
@@ -355,18 +362,12 @@ func (a *App) jogging() bool {
 	return a.jog.held || a.jog.running
 }
 
-// sessionFleet is the Fleet of a remote screen: it shows the printers like the touch screen, but
-// a switch there does not change the printer of the touch screen. The remote screen of another
-// printer is its own address (?printer=<id>), which OnOpenPrinter opens.
+// sessionFleet is the Fleet of a remote screen: it shows the printers as the touch screen does,
+// but a switch there does not change the printer of the touch screen. On a remote screen each card
+// of the list is a link to the remote screen of its printer (/?printer=<id>).
 type sessionFleet struct {
 	Fleet
 	a *App
 }
 
-func (f sessionFleet) Switch(id string) {
-	if f.a.OnOpenPrinter != nil {
-		f.a.OnOpenPrinter(id)
-		return
-	}
-	f.a.Toast("Open this printer on the deck")
-}
+func (f sessionFleet) Switch(id string) {}

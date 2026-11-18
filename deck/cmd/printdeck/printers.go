@@ -90,6 +90,9 @@ func (p deckPrinter) config(base config.Config) config.Config {
 	c.GcodeDir = filepath.Join(kd, "gcodes")
 	c.KlippySocket = filepath.Join("/run/klipper", p.ID, "klippy.sock")
 	c.KlippyLog = filepath.Join("/run/klipper", p.ID, "klippy.log")
+	// The main slicer key of the deck is the key of the first printer. Another printer has only
+	// the keys of its pairings, so each key belongs to one printer.
+	c.OctoPrintKey = ""
 	return c
 }
 
@@ -101,6 +104,10 @@ func (p deckPrinter) identity() ui.Identity {
 	}
 	return ui.Identity{ID: id, Name: p.Name, Label: p.Label, Color: ui.PrinterColors[p.Color%len(ui.PrinterColors)]}
 }
+
+// deckApps returns the App of the printer with the ID of its identity, or nil, for the remote
+// screens of a deck with many printers. It is nil for a deck with one printer.
+var deckApps func(id string) *ui.App
 
 // deckState is the state of the printers of the deck for the updater: the state of a printer that
 // prints, or else of the first printer. The deck restarts into an update only when no printer
@@ -259,3 +266,13 @@ func (pa *printerAdmin) Changed() bool {
 }
 
 func (pa *printerAdmin) Restart() { pa.restart() }
+
+// deckIdentities returns how the screens show each printer of the deck.
+func deckIdentities(ps []deckPrinter, backends []printerBackend) []ui.Identity {
+	ids := make([]ui.Identity, len(ps))
+	for i, p := range ps {
+		ids[i] = p.identity()
+		_, ids[i].Resin = backends[i].(*printer.ChiTu)
+	}
+	return ids
+}

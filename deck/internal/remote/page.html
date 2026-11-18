@@ -125,12 +125,14 @@ function placeLinks() {
   linkBox.replaceChildren(...list.map((op) => {
     const a = document.createElement("a");
     a.href = op[5];
-    a.target = "_blank";
-    a.rel = "noopener";
     a.textContent = op[5];
-    a.title = "Copy the link";
     Object.assign(a.style, { left: r.left + op[1] * scale + "px", top: r.top + op[2] * scale + "px",
       width: (op[3] - op[1]) * scale + "px", height: (op[4] - op[2]) * scale + "px" });
+    // A printer of the deck (/?printer=<id>) opens in this tab. Another link copies its address.
+    if (/^\/\?printer=[a-z0-9-]+$/.test(op[5])) return a;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.title = "Copy the link";
     a.addEventListener("click", (e) => { if (copyText(op[5])) { e.preventDefault(); showStatus("Link copied"); setTimeout(() => showStatus(""), 2000); } });
     return a;
   }));
@@ -241,7 +243,9 @@ function paint() {
 // The frames.
 function listen() {
   const [w, h] = wantedSize();
-  const events = new EventSource("/ui/events?w=" + w + "&h=" + h);
+  // A deck with many printers: /?printer=<id> shows that printer.
+  const printer = new URLSearchParams(location.search).get("printer") || "";
+  const events = new EventSource("/ui/events?w=" + w + "&h=" + h + "&printer=" + encodeURIComponent(printer));
   source = events;
   events.addEventListener("session", (e) => {
     const [id, sw, sh] = e.data.split(" ").map((v, i) => (i ? Number(v) : v));

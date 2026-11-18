@@ -86,7 +86,7 @@ func (s *Server) serveEvents(w http.ResponseWriter, r *http.Request) {
 	rand.Read(raw)
 	id := hex.EncodeToString(raw)
 	box := &frameBox{ready: make(chan struct{}, 1)}
-	ctx, cancel := context.WithCancel(r.Context())
+	ctx, cancel := context.WithCancel(context.WithValue(r.Context(), printerKey{}, r.URL.Query().Get("printer")))
 	defer cancel()
 	ss := &session{}
 	if !s.addSession(id, ss) {
@@ -227,4 +227,13 @@ func (s *Server) serveFont(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "font/ttf")
 	w.Header().Set("Cache-Control", "public, max-age=604800")
 	w.Write(b)
+}
+
+type printerKey struct{}
+
+// SessionPrinter returns the printer that a remote screen shows (the address /?printer=<id> of
+// the page), from the context of NewSession, or "".
+func SessionPrinter(ctx context.Context) string {
+	id, _ := ctx.Value(printerKey{}).(string)
+	return id
 }
