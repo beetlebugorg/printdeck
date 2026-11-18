@@ -19,7 +19,7 @@ EnvironmentFile=-/var/lib/printdeck/settings.env
 # system page of the web server (systemd-journal).
 User=deck
 Group=deck
-SupplementaryGroups=video input tty printer dialout systemd-journal
+SupplementaryGroups=video render input tty printer dialout systemd-journal
 # Port 80 for the remote screen and the slicers, and the graphics mode of tty1. The bounding set
 # stays full: sudo runs printdeck-wifi and printdeck-user as root, and needs CAP_SETUID and
 # CAP_SETGID for that.
