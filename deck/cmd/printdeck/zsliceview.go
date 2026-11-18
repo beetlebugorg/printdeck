@@ -3,7 +3,6 @@
 package main
 
 import (
-	"sync"
 	"fmt"
 	"image"
 	"io"
@@ -13,6 +12,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -154,7 +154,49 @@ type zsliceViewer struct {
 	file   zsFile
 	loaded string
 	layers int
+	// The last frame and what it shows: the home screen draws again for each change of a
+	// temperature or of the clock, and the same view needs no new frame. A touch makes the frames
+	// new until moving ends after it (fresh).
+	last   *image.RGBA
+	key    string
+	colors string // the colors of the view now
+	fresh  time.Time
 }
+
+// viewerSettle is the time after a touch of the view while the frames stay new: the view can go
+// on moving after the finger lifts.
+const viewerSettle = 1500 * time.Millisecond
+
+// cached returns the last frame when it shows key, and else draws a frame with draw. The caller
+// is on the GPU thread.
+func (z *zsliceViewer) cached(key string, draw func() *image.RGBA) *image.RGBA {
+	if z.last != nil && z.key == key && time.Now().After(z.fresh) {
+		return z.last
+	}
+	img := draw()
+	z.last, z.key = img, key
+	if img == nil {
+		z.key = ""
+	}
+	return img
+}
+
+// setColors gives the view the colors of hex ("#rrggbb", or the colors of the features), when
+// they change: a change recolors each bead.
+func (z *zsliceViewer) setColors(hex string) {
+	if hex == z.colors {
+		return
+	}
+	if rgb, ok := hexRGB(hex); ok {
+		z.v.Colors(false, rgb)
+	} else {
+		z.v.Colors(true, 0)
+	}
+	z.colors = hex
+}
+
+// touched makes the next frames new.
+func (z *zsliceViewer) touched() { z.fresh = time.Now().Add(viewerSettle) }
 
 // startZsliceViewer returns the viewer of the files of the printer with the G-code folder dir, or
 // nil with no zslice or no Vulkan.
@@ -179,6 +221,8 @@ func (z *zsliceViewer) load(path string) bool {
 		}
 		in, _ := z.file.g.Info()
 		z.loaded, z.layers = full, in.Layers
+		// A new file has the colors of the load, and no frame.
+		z.colors, z.last, z.key = "-", nil, ""
 	}
 	return true
 }
@@ -193,16 +237,16 @@ func (z *zsliceViewer) Frame(path string, layer, w, h int, hex string) (image.Im
 		if vw, vh := z.v.Size(); vw != w || vh != h {
 			z.v.Resize(w, h)
 		}
-		if rgb, ok := hexRGB(hex); ok {
-			z.v.Colors(false, rgb)
-		} else {
-			z.v.Colors(true, 0)
-		}
+		z.setColors(hex)
 		if layer <= 0 || layer > z.layers {
 			layer = z.layers
 		}
-		z.v.SetLayer(layer - 1)
-		img, layers = drawView(z.v), z.layers
+		key := fmt.Sprintf("frame %s %d %dx%d %s", z.loaded, layer, w, h, hex)
+		img = z.cached(key, func() *image.RGBA {
+			z.v.SetLayer(layer - 1)
+			return drawView(z.v)
+		})
+		layers = z.layers
 	})
 	return img, layers, img != nil
 }
@@ -216,29 +260,28 @@ func (z *zsliceViewer) Live(path string, pos int64, layer, w, h int, hex string)
 		if vw, vh := z.v.Size(); vw != w || vh != h {
 			z.v.Resize(w, h)
 		}
-		if rgb, ok := hexRGB(hex); ok {
-			z.v.Colors(false, rgb)
-		} else {
-			z.v.Colors(true, 0)
-		}
-		if layer > 0 {
-			z.v.SetLayer(min(layer, z.layers) - 1)
-		} else {
-			z.v.SetPosition(uint64(max(0, pos)))
-		}
-		img = drawView(z.v)
+		z.setColors(hex)
+		key := fmt.Sprintf("live %s %d %d %dx%d %s", z.loaded, pos, layer, w, h, hex)
+		img = z.cached(key, func() *image.RGBA {
+			if layer > 0 {
+				z.v.SetLayer(min(layer, z.layers) - 1)
+			} else {
+				z.v.SetPosition(uint64(max(0, pos)))
+			}
+			return drawView(z.v)
+		})
 	})
 	return img, img != nil
 }
 
 func (z *zsliceViewer) Orbit(phase int, x, y float32) {
 	action := map[int]int{0: zsview.TouchDown, 1: zsview.TouchMove, 2: zsview.TouchUp}[phase]
-	onGPU(func() { z.v.Touch(1, action, x, y) })
+	onGPU(func() { z.v.Touch(1, action, x, y); z.touched() })
 }
 
 func (z *zsliceViewer) Finger(id int64, phase int, x, y float32) {
 	action := map[int]int{0: zsview.TouchDown, 1: zsview.TouchMove, 2: zsview.TouchUp}[phase]
-	onGPU(func() { z.v.Touch(id, action, x, y) })
+	onGPU(func() { z.v.Touch(id, action, x, y); z.touched() })
 }
 
 // Zoom zooms in (step > 0) or out with a pinch of two fingers in the middle of the view.
@@ -256,10 +299,11 @@ func (z *zsliceViewer) Zoom(step int) {
 		z.v.Touch(102, zsview.TouchMove, cx+d1, cy)
 		z.v.Touch(101, zsview.TouchUp, cx-d1, cy)
 		z.v.Touch(102, zsview.TouchUp, cx+d1, cy)
+		z.touched()
 	})
 }
 
-func (z *zsliceViewer) Reset() { onGPU(func() { z.v.Reset() }) }
+func (z *zsliceViewer) Reset() { onGPU(func() { z.v.Reset(); z.touched() }) }
 
 // hexRGB reads "#rrggbb".
 func hexRGB(hex string) (uint32, bool) {
