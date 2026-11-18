@@ -192,6 +192,12 @@ func run(cfg config.Config) {
 		a := ui.New()
 		a.Printer = pr
 		a.Animate = true
+		if _, ok := pr.(*printer.Klippy); ok {
+			// The last print of the home screen as a 3D view that the finger turns (zslice).
+			if v := startZsliceViewer(pcfg.GcodeDir); v != nil {
+				a.Viewer = v
+			}
+		}
 		// The UI is wide when the turned panel is wider than high (DISPLAY_ROTATE 0 or 180).
 		a.Wide = screen.Size().X > screen.Size().Y
 		// A tall screen with more pixels than the UI (the Touch Display 2, 720 x 1280): the UI

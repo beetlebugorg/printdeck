@@ -7,8 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"printdeck/internal/gfx"
 	"printdeck/internal/printer"
+	"printdeck/internal/ui"
 )
 
 // The zslice renderer draws the print of a G-code file at a position and up to a layer, at the
@@ -54,4 +57,40 @@ func TestGPUCheck(t *testing.T) {
 		t.Fatalf("%v", out)
 	}
 	t.Logf("%v", out)
+}
+
+// The home screen shows the last print as a 3D view that the finger turns, with the scrubber.
+func TestHomeViewer(t *testing.T) {
+	path := os.Getenv("ZSVIEW_GCODE")
+	if path == "" {
+		t.Skip("no ZSVIEW_GCODE")
+	}
+	v := startZsliceViewer(filepath.Dir(path))
+	if v == nil {
+		t.Skip("no Vulkan")
+	}
+	a := ui.New()
+	a.Viewer = v
+	rec := printer.Record{Path: filepath.Base(path), File: "benchy.gcode", Result: "complete", Duration: 102 * time.Minute, End: time.Now()}
+	a.Printer = &ui.DemoPrinter{View: -1, State_: printer.State{Reachable: true, Connected: true, Text: "Ready"}, History_: []printer.Record{rec}}
+	shot := func(name string) {
+		c := gfx.New(a.Screen().W, a.Screen().H)
+		a.Draw(c)
+		if dir := os.Getenv("ZSVIEW_SHOTS"); dir != "" {
+			f, _ := os.Create(filepath.Join(dir, name+".png"))
+			png.Encode(f, c.RGBA)
+			f.Close()
+		}
+	}
+	shot("home-viewer")
+	r, ok := a.KeyRect("Model")
+	if !ok {
+		t.Fatal("no model on the home screen")
+	}
+	v.Orbit(0, 100, 100)
+	v.Orbit(1, 180, 120)
+	v.Orbit(2, 180, 120)
+	v.Zoom(1)
+	shot("home-viewer-turned")
+	_ = r
 }

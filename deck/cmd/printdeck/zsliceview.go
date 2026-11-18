@@ -3,6 +3,7 @@
 package main
 
 import (
+	"sync"
 	"fmt"
 	"image"
 	"io"
@@ -16,107 +17,220 @@ import (
 	"time"
 
 	"printdeck/internal/printer"
+	"printdeck/internal/ui"
 	"printdeck/internal/zsview"
 )
 
-// zsliceRenderer draws the picture of a print with the print view of zslice and the GPU
-// (printer.LiveRenderer): the real beads of the G-code, on the dark window of the display, in
-// the colour of the roll. One goroutine owns the Vulkan view, with its thread locked.
-type zsliceRenderer struct {
-	dir string // the G-code folder of the printer
-	req chan zsliceReq
+// The GPU work of the deck runs on one goroutine with its thread locked: the Vulkan driver can keep
+// state on the thread. Each job runs there, one at a time.
+var (
+	zsJobs     chan func()
+	zsJobsOnce sync.Once
+)
+
+// onGPU runs f on the GPU thread, and waits for it, at most 5 s. It reports false when f did not
+// run.
+func onGPU(f func()) bool {
+	zsJobsOnce.Do(func() {
+		zsJobs = make(chan func())
+		go func() {
+			runtime.LockOSThread()
+			for job := range zsJobs {
+				job()
+			}
+		}()
+	})
+	done := make(chan struct{})
+	select {
+	case zsJobs <- func() { f(); close(done) }:
+	case <-time.After(5 * time.Second):
+		return false
+	}
+	<-done
+	return true
 }
 
-type zsliceReq struct {
-	path  string
-	pos   int64
-	layer int
-	hex   string
-	out   chan image.Image
+// zsFile is a G-code file of a view, read once.
+type zsFile struct {
+	path string
+	g    *zsview.Gcode
+}
+
+// open reads the file at path when it is not the file of f. It reports false when the file does
+// not read.
+func (f *zsFile) open(path string) bool {
+	if f.path == path && f.g != nil {
+		return true
+	}
+	if f.g != nil {
+		f.g.Close()
+	}
+	f.path, f.g = "", nil
+	g, err := zsview.OpenGcode(path)
+	if err != nil {
+		log.Printf("zslice view: %s: %v", path, err)
+		return false
+	}
+	f.path, f.g = path, g
+	return true
+}
+
+// zsliceRenderer draws the picture of a print with the print view of zslice and the GPU
+// (printer.LiveRenderer): the real beads of the G-code, on the dark window of the display, in
+// the colour of the roll.
+type zsliceRenderer struct {
+	dir    string // the G-code folder of the printer
+	v      *zsview.View
+	file   zsFile
+	loaded string
+	hex    string
 }
 
 // startZsliceView returns the zslice renderer of the printer with the G-code folder dir, or nil
 // when the deck has no zslice or no Vulkan: the deck then draws its own picture.
 func startZsliceView(dir string) printer.LiveRenderer {
-	z := &zsliceRenderer{dir: dir, req: make(chan zsliceReq)}
-	ok := make(chan bool)
-	go z.run(ok)
-	if !<-ok {
+	z := &zsliceRenderer{dir: dir, hex: "-"}
+	var err error
+	if !onGPU(func() { z.v, err = zsview.NewView(printer.PreviewW, printer.PreviewH, false) }) || err != nil {
+		log.Printf("zslice view: %v: the deck draws its own picture", err)
 		return nil
 	}
+	onGPU(func() { z.v.SetDark(true) })
 	return z
 }
 
 func (z *zsliceRenderer) Draw(path string, pos int64, layer int, hex string) (image.Image, bool) {
-	out := make(chan image.Image, 1)
-	select {
-	case z.req <- zsliceReq{path: path, pos: pos, layer: layer, hex: hex, out: out}:
-	case <-time.After(2 * time.Second):
-		return nil, false
-	}
-	img := <-out
+	var img *image.RGBA
+	onGPU(func() {
+		full := filepath.Join(z.dir, path)
+		if !z.file.open(full) {
+			return
+		}
+		if z.loaded != full {
+			if err := z.v.Load(z.file.g, 0, 0); err != nil {
+				log.Printf("zslice view: %s: %v", path, err)
+				return
+			}
+			z.loaded, z.hex = full, "-"
+		}
+		if hex != z.hex {
+			if rgb, ok := hexRGB(hex); ok {
+				z.v.Colors(false, rgb)
+			} else {
+				z.v.Colors(true, 0) // no roll colour: a colour for each feature
+			}
+			z.hex = hex
+		}
+		if layer > 0 {
+			z.v.SetLayer(layer - 1)
+		} else {
+			z.v.SetPosition(uint64(max(0, pos)))
+		}
+		img = drawView(z.v)
+	})
 	return img, img != nil
 }
 
-func (z *zsliceRenderer) run(started chan<- bool) {
-	runtime.LockOSThread() // the Vulkan driver can keep state on the thread
-	w, h := printer.PreviewW, printer.PreviewH
-	v, err := zsview.NewView(w, h, false)
+// drawView draws a frame of v, and returns its pixels, or nil.
+func drawView(v *zsview.View) *image.RGBA {
+	w, h := v.Size()
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	err := v.Draw()
+	if err == nil {
+		err = v.Read(img.Pix, img.Stride)
+	}
 	if err != nil {
-		log.Printf("zslice view: %v: the deck draws its own picture", err)
-		started <- false
-		return
+		log.Printf("zslice view: draw: %v", err)
+		return nil
 	}
-	v.SetDark(true)
-	started <- true
-	var g *zsview.Gcode
-	cur, curHex := "", "-"
-	for r := range z.req {
-		if r.path != cur {
-			if g != nil {
-				g.Close()
-				g = nil
-			}
-			cur = ""
-			ng, err := zsview.OpenGcode(filepath.Join(z.dir, r.path))
-			if err == nil {
-				err = v.Load(ng, 0, 0)
-			}
-			if err != nil {
-				log.Printf("zslice view: %s: %v", r.path, err)
-				if ng != nil {
-					ng.Close()
-				}
-				r.out <- nil
-				continue
-			}
-			g, cur, curHex = ng, r.path, "-"
-		}
-		if r.hex != curHex {
-			if rgb, ok := hexRGB(r.hex); ok {
-				v.Colors(false, rgb)
-			} else {
-				v.Colors(true, 0) // no roll colour: a colour for each feature
-			}
-			curHex = r.hex
-		}
-		if r.layer > 0 {
-			v.SetLayer(r.layer - 1)
-		} else {
-			v.SetPosition(uint64(max(0, r.pos)))
-		}
-		img := image.NewRGBA(image.Rect(0, 0, w, h))
-		if err := v.Draw(); err == nil {
-			err = v.Read(img.Pix, img.Stride)
-		}
-		if err != nil {
-			log.Printf("zslice view: draw: %v", err)
-			r.out <- nil
-			continue
-		}
-		r.out <- img
-	}
+	return img
 }
+
+// zsliceViewer is the 3D view of a finished print that the finger turns (ui.ModelViewer): the
+// last print of the home screen.
+type zsliceViewer struct {
+	dir    string
+	v      *zsview.View
+	file   zsFile
+	loaded string
+	layers int
+}
+
+// startZsliceViewer returns the viewer of the files of the printer with the G-code folder dir, or
+// nil with no zslice or no Vulkan.
+func startZsliceViewer(dir string) ui.ModelViewer {
+	z := &zsliceViewer{dir: dir}
+	var err error
+	if !onGPU(func() { z.v, err = zsview.NewView(320, 240, false) }) || err != nil {
+		return nil
+	}
+	onGPU(func() { z.v.SetDark(true); z.v.Colors(true, 0) })
+	return z
+}
+
+func (z *zsliceViewer) load(path string) bool {
+	full := filepath.Join(z.dir, path)
+	if !z.file.open(full) {
+		return false
+	}
+	if z.loaded != full {
+		if err := z.v.Load(z.file.g, 0, 0); err != nil {
+			return false
+		}
+		in, _ := z.file.g.Info()
+		z.loaded, z.layers = full, in.Layers
+	}
+	return true
+}
+
+func (z *zsliceViewer) Frame(path string, layer, w, h int, hex string) (image.Image, int, bool) {
+	var img *image.RGBA
+	layers := 0
+	onGPU(func() {
+		if !z.load(path) {
+			return
+		}
+		if vw, vh := z.v.Size(); vw != w || vh != h {
+			z.v.Resize(w, h)
+		}
+		if rgb, ok := hexRGB(hex); ok {
+			z.v.Colors(false, rgb)
+		} else {
+			z.v.Colors(true, 0)
+		}
+		if layer <= 0 || layer > z.layers {
+			layer = z.layers
+		}
+		z.v.SetLayer(layer - 1)
+		img, layers = drawView(z.v), z.layers
+	})
+	return img, layers, img != nil
+}
+
+func (z *zsliceViewer) Orbit(phase int, x, y float32) {
+	action := map[int]int{0: zsview.TouchDown, 1: zsview.TouchMove, 2: zsview.TouchUp}[phase]
+	onGPU(func() { z.v.Touch(1, action, x, y) })
+}
+
+// Zoom zooms in (step > 0) or out with a pinch of two fingers in the middle of the view.
+func (z *zsliceViewer) Zoom(step int) {
+	onGPU(func() {
+		w, h := z.v.Size()
+		cx, cy := float32(w)/2, float32(h)/2
+		d0, d1 := float32(40), float32(40*1.25)
+		if step < 0 {
+			d0, d1 = d1, d0
+		}
+		z.v.Touch(101, zsview.TouchDown, cx-d0, cy)
+		z.v.Touch(102, zsview.TouchDown, cx+d0, cy)
+		z.v.Touch(101, zsview.TouchMove, cx-d1, cy)
+		z.v.Touch(102, zsview.TouchMove, cx+d1, cy)
+		z.v.Touch(101, zsview.TouchUp, cx-d1, cy)
+		z.v.Touch(102, zsview.TouchUp, cx+d1, cy)
+	})
+}
+
+func (z *zsliceViewer) Reset() { onGPU(func() { z.v.Reset() }) }
 
 // hexRGB reads "#rrggbb".
 func hexRGB(hex string) (uint32, bool) {
@@ -139,10 +253,8 @@ func gpuCheck(dir string) map[string]any {
 	}
 	out["file"] = filepath.Base(path)
 	done := make(chan struct{})
-	go func() {
+	go onGPU(func() {
 		defer close(done)
-		runtime.LockOSThread()
-		defer runtime.UnlockOSThread()
 		t0 := time.Now()
 		g, err := zsview.OpenGcode(path)
 		if err != nil {
@@ -188,7 +300,7 @@ func gpuCheck(dir string) map[string]any {
 		}
 		out["frame_us"] = frames
 		out["ok"] = true
-	}()
+	})
 	select {
 	case <-done:
 	case <-time.After(60 * time.Second):

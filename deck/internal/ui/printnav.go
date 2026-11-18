@@ -356,32 +356,7 @@ func (a *App) drawLastPrint(c *gfx.Canvas, st printer.State, last image.Rectangl
 		a.printerKey(c, reprint, "Reprint", raised, text, func() { a.confirmPrint(path) })
 		return
 	}
-	// The thumbnail and the text at the top, and Reprint at the full width at the bottom. In a low
-	// card, Reprint is at the right of the text.
-	in := last.Inset(14)
-	var reprint, top image.Rectangle
-	if in.Dy() >= 64+12+thumbSmall {
-		reprint = image.Rect(in.Min.X, in.Max.Y-64, in.Max.X, in.Max.Y)
-		top = image.Rect(in.Min.X, in.Min.Y, in.Max.X, reprint.Min.Y-12)
-	} else {
-		reprint = image.Rect(in.Max.X-140, in.Min.Y, in.Max.X, in.Max.Y)
-		top = image.Rect(in.Min.X, in.Min.Y, reprint.Min.X-12, in.Max.Y)
-	}
-	side := max(thumbSmall, min(top.Dy(), 120))
-	ty := top.Min.Y + (top.Dy()-side)/2
-	a.recordThumb(c, image.Rect(top.Min.X, ty, top.Min.X+side, ty+side), l, a.fileIndex())
-	x, textR := top.Min.X+side+16, top.Max.X
-	const blockH = 20 + 32 + 26 // the label, the name, the summary
-	y := top.Min.Y + (top.Dy()-blockH)/2
-	label(c, image.Rect(x, y, textR, y+20), "Last print", gfx.Left)
-	nf := gfx.Face(true, 24)
-	c.Text(image.Rect(x, y+20, textR, y+52), gfx.Fit(nf, l.Name(), textR-x), nf, text, gfx.Left)
-	sf := gfx.Face(false, 18)
-	c.Text(image.Rect(x, y+52, textR, y+78), gfx.Fit(sf, summary, textR-x), sf, dim, gfx.Left)
-	path := l.Path
-	a.printerKey(c, reprint, "Reprint", raised, text, func() {
-		a.confirmPrint(path)
-	})
+	a.drawLastPrintView(c, last, l, summary)
 }
 
 // confirmPrint asks before it starts a file. The question checks the material of the file
