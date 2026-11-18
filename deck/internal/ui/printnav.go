@@ -152,10 +152,15 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 		keys, rest = f.side, f.main
 	} else {
 		s := kit.NewStack(kit.Inset(f.main, margin, 0, margin, 0), 12)
-		keys, rest = s.Next(96+12+68+12+homeRowH), s.Rest()
+		keys, rest = s.Next(72+12+60+12+homeRowH), s.Rest()
 	}
 
-	k := kit.Rows(keys, 12, kit.Px(96), kit.Px(68), kit.Px(homeRowH))
+	// Lower keys on a tall screen than before: the last print, a 3D view, gets the room.
+	printH, heatH := 72, 60
+	if f.wide {
+		printH, heatH = 96, 68
+	}
+	k := kit.Rows(keys, 12, kit.Px(printH), kit.Px(heatH), kit.Px(homeRowH))
 	a.homeKeys(c, st, k[0], k[1])
 	a.homeRow(c, st, k[2])
 
@@ -163,9 +168,9 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	if !f.wide {
 		rest = kit.Inset(rest, 0, 0, 0, 16)
 	}
-	// The pages are one row of keys at the bottom, or two rows for four pages. The last print gets
-	// the space over them.
-	pagesH := 96
+	// The pages are one row of keys at the bottom, also with four pages. The last print gets the
+	// space over them.
+	pagesH := 72
 	r := kit.Rows(rest, 12, kit.Fr(1), kit.Px(pagesH))
 	a.drawLastPrint(c, st, r[0])
 	a.region("Pages", r[1])
@@ -182,10 +187,7 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	if a.Camera != nil {
 		pages = append(pages, homePage{"Camera", pageCamera})
 	}
-	cells := kit.Grid(r[1], len(pages), 1, 12)
-	if len(pages) > 3 {
-		cells = kit.Grid(r[1], 2, 2, 8)
-	}
+	cells := kit.Grid(r[1], len(pages), 1, 8)
 	for i, cell := range cells {
 		if i >= len(pages) {
 			break
