@@ -85,12 +85,15 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 	if f.wide {
 		// The versions, the notes, the progress and the keys; Install at the right of the row of
 		// actions.
+		// Check now, Beta updates and Install in the one row of actions: the notes get the room
+		// of a second row of keys.
 		content, acts := f.split()
-		r := kit.Rows(content, 12, kit.Px(100), kit.Fr(1), kit.Px(26), kit.Px(56))
-		info, notes, bar, keys = r[0], r[1], r[2], r[3]
-		install = kit.Cols(acts, 12, kit.Fr(1), kit.Fr(1))[1]
+		r := kit.Rows(content, 12, kit.Px(100), kit.Fr(1), kit.Px(26))
+		info, notes, bar = r[0], r[1], r[2]
+		k := kit.Cols(acts, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
+		keys, install = k[0].Union(k[1]), k[2]
 	} else {
-		r := kit.Rows(kit.Inset(f.body(), 0, 10, 0, 8), 16, kit.Px(128), kit.Fr(1), kit.Px(30), kit.Px(80), kit.Px(76))
+		r := kit.Rows(f.body(), 16, kit.Px(128), kit.Fr(1), kit.Px(30), kit.Px(80), kit.Px(76))
 		info, notes, bar, install, keys = r[0], r[1], r[2], r[3], r[4]
 	}
 	window(c, info)
@@ -247,7 +250,7 @@ func (a *App) drawNotes(c *gfx.Canvas, r image.Rectangle, md string) {
 				cy := row.Min.Y + rowH/2
 				c.RoundRect(image.Rect(row.Min.X+6, cy-3, row.Min.X+12, cy+3), 3, orange)
 			}
-			c.Text(image.Rect(row.Min.X+ln.indent, row.Min.Y, row.Max.X-14, row.Max.Y), ln.text, gfx.Face(ln.bold, ln.size), ln.col, gfx.Left)
+			c.Text(image.Rect(row.Min.X+ln.indent, row.Min.Y, row.Max.X-14, row.Max.Y), ln.text, gfx.Face(ln.bold, ln.size), textInk(ln.col), gfx.Left)
 		}
 	})
 	a.addHit(l.Hit(func(int) {}))
