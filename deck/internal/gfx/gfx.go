@@ -282,6 +282,13 @@ func fineSize(px int) int {
 	return max(px, finePrint.min+(px-lo)*(top-finePrint.min)/(top-lo))
 }
 
+// FaceSize returns the pixel height of Face(bold, px): px, or larger with the large text.
+func FaceSize(px int) int {
+	fontMu.Lock()
+	defer fontMu.Unlock()
+	return fineSize(px)
+}
+
 // Face returns a cached monospace face with the given pixel height. SetFinePrint can make the
 // face larger.
 func Face(bold bool, px int) font.Face {
