@@ -202,22 +202,32 @@ parts:
     settings: *pod
 
   # The BLTouch mount of the TAZ: lulzbot/bltouch/mount (make.sh writes the STL file). It is solid,
-  # so it does not creep under the motor screws. PETG is better next to the warm motor, but the
-  # profiles have no PETG material yet: PLA is good for the fit test.
+  # so it does not creep under the motor screws. It prints in black PETG (roll-8), because PETG
+  # stays stiff next to the warm motor. The PETG values are the values of cura/make_profiles.py of
+  # the mount. They are starting values and are not tested on this printer:
+  # - 240 C nozzle and 75 C bed, also on the first layer. Roll-8 has the 85 C bed of the generic
+  #   PETG of Cura. The machine definition sets the first layer nozzle to 215 C.
+  # - The fan at 50 %. The profile sets the regular fan speed to 100 %, so the part sets the
+  #   regular and the maximum fan speed too.
+  # - Retraction at 15 mm/s. The profile has 35 mm/s.
+  # The walls, the infill, the seam and the layer time stay as they were.
   - name: BLTouch mount (TAZ)
     group: BLTouch mount (TAZ)
     description: >-
       The mount holds the BLTouch beside the front of the extruder motor of the SE tool head. It goes
       under the heads of the two front motor screws, which get 4 mm longer. The BLTouch hangs under its
       shelf on two M3 x 10 screws, with M3 nuts in the pockets on top. The pin is 65.3 mm right of the
-      nozzle and 22.8 mm in front of it, so it reaches the full bed. It prints on its back face with
-      no supports.
+      nozzle and 22.8 mm in front of it, so it reaches the full bed. It prints in PETG on its back
+      face with no supports. PLA gets soft next to the warm motor.
     files: [lulzbot/bltouch/mount/stl/bltouch_mount.stl]
     printer: taz
     profile: taz-workhorse-se/pla-0.20-standard
-    material: roll-4
+    material: roll-8
     settings: {support_enable: false, z_seam_type: sharpest_corner, z_seam_corner: z_seam_corner_inner,
-               wall_thickness: 2.0, infill_sparse_density: 100, cool_min_layer_time: 12}
+               wall_thickness: 2.0, infill_sparse_density: 100, cool_min_layer_time: 12,
+               material_print_temperature: 240, material_print_temperature_layer_0: 240,
+               material_bed_temperature: 75, material_bed_temperature_layer_0: 75,
+               cool_fan_speed: 50, cool_fan_speed_min: 50, cool_fan_speed_max: 50, retraction_speed: 15}
 
 # The PDFs of the project. The project page shows each one with a picture of its first page.
 docs:

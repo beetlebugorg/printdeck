@@ -53,6 +53,14 @@
    "color": "Orange",
    "color_code": "#ff7a1a",
    "roll": "2"
+  },
+  "roll-8": {
+   "file": "materials/printdeck_black_8.xml.fdm_material",
+   "brand": "Printdeck",
+   "material": "PETG",
+   "color": "Black #8",
+   "color_code": "#1a1a1a",
+   "roll": "8"
   }
  }
 }
