@@ -54,47 +54,7 @@ func (a *App) pageScroll() *int {
 // menuRowsWait is menuRows. When wait is true, the rows with an action wait for the end of the
 // print (lockedRow).
 func (a *App) menuRowsWait(c *gfx.Canvas, area image.Rectangle, wide bool, rowH, gap int, items []menuItem, wait bool) {
-	if !gfx.FinePrint() {
-		a.menuRowsFit(c, area, items, wait)
-		return
-	}
-	limit := rowH
-	if !wide {
-		limit = rowH * 16 / 10
-	}
-	rowH = min(limit, (area.Dy()+gap)/max(1, len(items))-gap)
-	least := minRowH
-	if gfx.FinePrint() {
-		// The large text: a row is high enough for the title and the lines under it.
-		for _, it := range items {
-			least = max(least, largeRowH(len(subLines(it.sub, area.Dx()-largeRowInset))))
-		}
-	}
-	if rowH < least {
-		// Too many rows for the area: rows of a size to touch, in a list that scrolls.
-		l := kit.List{Area: area, N: len(items), RowH: least + gap, Gap: gap, Scroll: a.pageScroll()}
-		a.list(c, l, func(i int) string { return items[i].title }, func(c *gfx.Canvas, i int, r image.Rectangle) {
-			it := items[i]
-			a.drawMenuRow(c, r, it.title, it.sub, it.col, it.tap != nil, wait && it.tap != nil)
-		}, func(i int) {
-			switch it := items[i]; {
-			case it.tap == nil:
-			case wait:
-				a.Toast(waitText)
-			default:
-				it.tap()
-			}
-		})
-		return
-	}
-	s := kit.NewStack(area, gap)
-	for _, it := range items {
-		if wait && it.tap != nil {
-			a.lockedRow(c, s.Next(rowH), it.title, it.sub)
-			continue
-		}
-		a.menuRow(c, s.Next(rowH), it.title, it.sub, it.col, it.tap)
-	}
+	a.menuRowsFit(c, area, items, wait)
 }
 
 // menuGroup is a group of rows of a menu page, under a heading. A group with no heading has no
@@ -617,14 +577,18 @@ func (a *App) statusKey(c *gfx.Canvas, r image.Rectangle, title, sub string, sub
 	a.drawAck(c, r)
 	pressed := a.isPressed(r)
 	key(c, r, "", raised, text, pressed)
-	in := kit.Inset(r, 16, 8, 16, 8)
+	// 10 px between the text and the inner edge of the key, also in a low key.
+	in := kit.Inset(r, 16, 12, 16, 12)
 	if pressed {
 		in = in.Add(image.Pt(0, 1))
 	}
 	w := in.Dx()
 	size, subSize := 18, 15
-	if r.Dy() >= 90 {
+	switch {
+	case r.Dy() >= 90:
 		size, subSize = 20, 16
+	case r.Dy() < 70:
+		size, subSize = 16, 14 // a low key: smaller text, so the two lines fit
 	}
 	upper := strings.ToUpper(title)
 	one := size
@@ -651,12 +615,15 @@ func (a *App) statusKey(c *gfx.Canvas, r image.Rectangle, title, sub string, sub
 	lh := tf.Metrics().Height.Ceil()
 	th := len(names)*lh + 6
 	lines := wrapText(sf, sub, w)
-	n := min(2, max(1, (in.Dy()-th)/sh)) // the lines that fit, at most 2
-	if len(lines) > n {
+	n := min(2, max(0, (in.Dy()-th)/sh)) // the lines that fit, at most 2; none in a key too low
+	if n == 0 {
+		lines = nil
+	} else if len(lines) > n {
 		lines = append(lines[:n-1], strings.Join(lines[n-1:], " "))
 	}
+	n = len(lines)
 	// The block of n lines in the middle of the key, so the names of a row line up.
-	y := in.Min.Y + (in.Dy()-th-n*sh)/2
+	y := in.Min.Y + max(0, (in.Dy()-th-n*sh)/2)
 	for i, name := range names {
 		ny := y + 3 + i*lh
 		c.Text(image.Rect(in.Min.X, ny, in.Max.X, ny+lh), gfx.Fit(tf, name, w), tf, text, gfx.Left)
@@ -1175,8 +1142,12 @@ const rowGap = 10
 func (a *App) menuRowsFit(c *gfx.Canvas, area image.Rectangle, items []menuItem, wait bool) {
 	heights := make([]int, len(items))
 	total, most := -rowGap, 0
+	lo, hi, least := normalRowH(1), normalRowH(2), minRowH
+	if gfx.FinePrint() {
+		lo, hi, least = largeRowH(1), largeRowH(2), largeRowH(1)
+	}
 	for i, it := range items {
-		heights[i] = min(normalRowH(2), max(normalRowH(1), rowTextH(area.Dx(), it.sub)))
+		heights[i] = min(hi, max(lo, rowTextH(area.Dx(), it.sub)))
 		total += heights[i] + rowGap
 		most = max(most, heights[i])
 	}
@@ -1185,10 +1156,10 @@ func (a *App) menuRowsFit(c *gfx.Canvas, area image.Rectangle, items []menuItem,
 		// A full page: smaller gaps and rows of the least height before the list scrolls.
 		gap, total, most = 5, -5, 0
 		for i := range heights {
-			heights[i] = minRowH
-			total += minRowH + gap
+			heights[i] = least
+			total += least + gap
 		}
-		most = minRowH
+		most = least
 	}
 	draw := func(c *gfx.Canvas, r image.Rectangle, it menuItem) {
 		if wait && it.tap != nil {

@@ -207,9 +207,9 @@ type App struct {
 	Printers PrinterAdmin
 	// Viewer draws the last print of the home screen as a 3D view that the finger turns, or is
 	// nil: the home screen then shows the picture of the print.
-	Viewer      ModelViewer
-	homeLayer   int    // the layer of the scrubber of the last print, 0 for the whole print
-	homeLayerOf string // the file of the last print of homeLayer
+	Viewer   ModelViewer
+	homeView viewState // the scrubber of the last print of the home screen
+	recView  viewState // the scrubber of the page of a print
 	// OnCameraPrinter makes the camera cam a camera of the printer to (an ID of the Fleet), on a
 	// deck with many printers, or is nil. The change starts to work after a restart of the deck.
 	OnCameraPrinter         func(cam, to string) error
