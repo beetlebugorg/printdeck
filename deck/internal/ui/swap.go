@@ -271,7 +271,12 @@ func (a *App) drawSwap(c *gfx.Canvas) {
 			} else {
 				para("The nozzle heats for the material of the roll.")
 			}
-			k := keys(size{240, 3}, size{80, 1})
+			// The list starts 12 px under the text and ends over the keys: it gets the space.
+			keyH := 100
+			if f.wide {
+				keyH = max(minRowH, 60)
+			}
+			k := kit.Rows(kit.Inset(txt.Rest(), 0, 12, 0, 8), 12, kit.Fr(1), kit.Px(keyH))
 			a.region("Rolls", k[0])
 			if len(list) == 0 {
 				noItems(c, k[0], "", "No rolls yet")

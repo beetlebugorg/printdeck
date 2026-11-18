@@ -186,8 +186,9 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 			c.RoundRect(image.Rect(bar.Min.X, bar.Min.Y, bar.Min.X+int(float64(bar.Dx())*min(1, f)), bar.Max.Y), 2, orange)
 		}
 	}
-	// The model under the steps: on a tall screen at the end, on a wide screen when it has the room.
-	if model := image.Rect(area.Min.X, box.Max.Y+16, area.Max.X, area.Max.Y); end || wide && model.Dy() >= 120 {
+	// The model under the steps, when it has the room: the space under the steps is otherwise
+	// empty during the start of a print.
+	if model := image.Rect(area.Min.X, box.Max.Y+12, area.Max.X, area.Max.Y); model.Dy() >= 120 {
 		a.modelView(c, model, st)
 	}
 	if wide {
@@ -221,18 +222,22 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 		a.button(c, k[1], "Menu", raised, text, func() { a.leavePrint(st) })
 		return
 	}
-	// Help, Share, Menu and Cancel print. Menu leaves the start of the print; the print goes on.
-	sizes := []kit.Size{kit.Px(130), kit.Fr(1)}
+	// Help, Share, Menu and Cancel print, in keys of the same width. Menu leaves the start of the
+	// print; the print goes on.
+	n := 2
 	if a.Setup != nil {
-		sizes = []kit.Size{kit.Px(110), kit.Px(110), kit.Fr(1)}
+		n++
+	}
+	if a.canShare() {
+		n++
+	}
+	sizes := make([]kit.Size, n)
+	for i := range sizes {
+		sizes[i] = kit.Fr(1)
 	}
 	cancelLabel := "Cancel print"
-	if a.canShare() {
-		sizes = append([]kit.Size{kit.Px(110)}, sizes...)
-		if a.Setup != nil {
-			// Four keys of the same width: the short label of Cancel fits.
-			sizes, cancelLabel = []kit.Size{kit.Fr(1), kit.Fr(1), kit.Fr(1), kit.Fr(1)}, "Cancel"
-		}
+	if n > 2 {
+		cancelLabel = "Cancel" // the short label fits a key of a third
 	}
 	k := keysIn(sizes...)
 	if a.canShare() {
@@ -244,7 +249,7 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 		k = k[1:]
 	}
 	a.button(c, k[0], "Menu", raised, text, func() { a.leavePrint(st) })
-	a.button(c, k[1], cancelLabel, raised, red, a.askCancel)
+	a.namedButton(c, k[1], cancelLabel, "Cancel print", raised, red, a.askCancel)
 }
 
 // zSteps are the steps of the Z offset on the first layer screen, in mm.

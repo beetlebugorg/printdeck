@@ -30,7 +30,7 @@ func (a *App) drawTune(c *gfx.Canvas) {
 		rows, zHint = r[0], r[1]
 	} else {
 		r := kit.Rows(kit.Inset(f.body(), 0, -4, 0, 8), 12, kit.Px(26), kit.Fr(1), kit.Px(20), kit.Px(56), kit.Px(20), kit.Px(100))
-		file, rows, zHint, fanRow, tHint, temps = r[0], r[1], r[2], r[3], r[4], kit.Inset(r[5], 16, -4, 16, 4)
+		file, rows, zHint, fanRow, tHint, temps = r[0], r[1], r[2], r[3], r[4], kit.Inset(r[5], 0, -4, 0, 4) // the cards at the margins of the page
 	}
 	c.Text(file, st.Name(), gfx.Face(false, 17), dim, gfx.Left)
 
@@ -61,7 +61,7 @@ func (a *App) drawTune(c *gfx.Canvas) {
 		window(c, ro)
 		// The value keeps 8 pixels from the sides of the window: a long value gets a smaller font.
 		in := kit.Inset(ro, 8, 0, 8, 0)
-		c.Text(in, value, shrinkFace(true, 22, 14, value, in.Dx()), lcdInk, gfx.Center)
+		c.Text(in, value, shrinkFace(true, 32, 16, value, in.Dx()), lcdInk, gfx.Center)
 		a.button(c, k[2], "+", raised, text, plus)
 	}
 	setSpeed := func(v int) {
