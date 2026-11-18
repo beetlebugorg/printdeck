@@ -91,3 +91,8 @@ BR2_PACKAGE_HOST_DOSFSTOOLS=y
 BR2_PACKAGE_HOST_E2FSPROGS=y
 BR2_PACKAGE_HOST_GENIMAGE=y
 BR2_PACKAGE_HOST_MTOOLS=y
+# The GPU of the Pi 5 for the 3D view of the deck (the zslice viewer): Mesa with the Vulkan driver
+# of the VideoCore VII (v3dv), and the Vulkan loader.
+BR2_PACKAGE_MESA3D=y
+BR2_PACKAGE_MESA3D_VULKAN_DRIVER_BROADCOM=y
+BR2_PACKAGE_VULKAN_LOADER=y

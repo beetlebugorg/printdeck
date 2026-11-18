@@ -36,8 +36,8 @@ import (
 	"syscall"
 	"time"
 
-	"printdeck/internal/chitu"
 	"printdeck/internal/camera"
+	"printdeck/internal/chitu"
 	"printdeck/internal/config"
 	"printdeck/internal/display"
 	"printdeck/internal/gfx"

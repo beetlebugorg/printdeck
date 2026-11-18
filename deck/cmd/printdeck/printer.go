@@ -42,6 +42,10 @@ func newPrinter(cfg config.Config, id string) printerBackend {
 	hist.Stamp = k.View.Stamp
 	k.Spools = &printer.Spools{Path: filepath.Join(cfg.StateDir, "spools.json")}
 	k.View.Rolls = k.Spools
+	// The picture of a print from the print view of zslice and the GPU, when the deck has them.
+	if live := startZsliceView(cfg.GcodeDir); live != nil {
+		k.View.Live = live
+	}
 	k.Mesh = printer.NewMeshStore(filepath.Join(cfg.StateDir, "bed-mesh.json"))
 	// The Klipper host of the printer: klipper.service for the first printer, klipper@<id> for
 	// another printer of the deck.

@@ -44,6 +44,9 @@ type View struct {
 	// to the time lapse: the share page and the prints of a project. It is false with no
 	// calibration. Nil, or false, is gcode.DefaultView.
 	CameraView func() (gcode.View, bool)
+	// Live draws the picture of the print with another renderer (the print view of zslice), or is
+	// nil. When it draws, its picture replaces the picture of this package.
+	Live LiveRenderer
 
 	mu        sync.Mutex
 	file      string // fileKey of the loaded G-code
@@ -82,8 +85,9 @@ type View struct {
 	boxAll         Box          // the extents of all the extruding moves of boxGC
 	boxFirst       Box          // the extents of the moves of its first layer
 	boxOK, firstOK bool
-	boxBody        Box  // the extents of the moves from the second layer on (PartBox)
-	bodyOK         bool // boxBody has a move
+	boxBody        Box    // the extents of the moves from the second layer on (PartBox)
+	bodyOK         bool   // boxBody has a move
+	livePath       string // the file of the print, for Live
 }
 
 // Box is a box of the moves of a print, in mm, in the coordinates of the G-code.
@@ -302,7 +306,10 @@ func (v *View) renderView() {
 		}
 		v.mu.Unlock()
 
-		img := drawAt(gc, mesh, gc.LayerEnd(layer), gc.LayerStart(layer), v.palette(gc, hex))
+		img := v.livePicture(0, layer, hex)
+		if img == nil {
+			img = drawAt(gc, mesh, gc.LayerEnd(layer), gc.LayerStart(layer), v.palette(gc, hex))
+		}
 
 		v.mu.Lock()
 		if v.view == layer { // still the one that is wanted
@@ -334,6 +341,7 @@ func (v *View) Update(st State) {
 		v.img, v.imgPos, v.view, v.viewImg = nil, 0, -1, nil
 		return
 	}
+	v.livePath = st.FilePath
 	if v.file != fileKey(st) {
 		v.img, v.imgPos, v.view, v.viewImg = nil, 0, -1, nil // not the picture of another file while this one loads
 		if !v.loading && st.FileSize <= maxModelSize {
@@ -489,7 +497,10 @@ func (v *View) palette(gc *gcode.Model, start string) []color.RGBA {
 }
 
 func (v *View) render(gc *gcode.Model, mesh *stl.Mesh, pos int64, start string) {
-	img := drawAt(gc, mesh, pos, gc.LayerStart(gc.LayerAt(pos)), v.palette(gc, start))
+	img := v.livePicture(pos, 0, start)
+	if img == nil {
+		img = drawAt(gc, mesh, pos, gc.LayerStart(gc.LayerAt(pos)), v.palette(gc, start))
+	}
 	v.mu.Lock()
 	v.img, v.imgPos, v.rendering = img, pos, false
 	v.mu.Unlock()
@@ -743,4 +754,26 @@ func (v *View) ModelPicture(st State, w, h int, mono bool) image.Image {
 		}
 	}
 	return out
+}
+
+// LiveRenderer draws the picture of a print, PreviewW x PreviewH, with another renderer: the file
+// at path (in the file store), at the file position pos, or up to the layer (from 1) when layer is
+// above 0, in the colour hex ("#rrggbb", or "" for the default). ok is false when it cannot draw:
+// the View then draws its own picture.
+type LiveRenderer interface {
+	Draw(path string, pos int64, layer int, hex string) (img image.Image, ok bool)
+}
+
+// livePicture is the picture of Live, or nil.
+func (v *View) livePicture(pos int64, layer int, hex string) image.Image {
+	v.mu.Lock()
+	live, path := v.Live, v.livePath
+	v.mu.Unlock()
+	if live == nil || path == "" {
+		return nil
+	}
+	if img, ok := live.Draw(path, pos, layer, hex); ok {
+		return img
+	}
+	return nil
 }
