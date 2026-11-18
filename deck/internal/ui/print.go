@@ -397,6 +397,27 @@ func (a *App) modelView(c *gfx.Canvas, box image.Rectangle, st printer.State) {
 	if st.Layers > 0 {
 		pic.Max.Y -= 40 // the layer slider
 	}
+	// The 3D view of zslice and the GPU: it follows the print, or the layer of the slider, and one
+	// finger turns it.
+	if a.Viewer != nil && st.FilePath != "" {
+		layer := a.Printer.ViewLayer()
+		if v, ok := a.dragLayer(st); ok {
+			layer = v
+		}
+		hex := ""
+		if sp, ok := a.rollIn(); ok {
+			hex = sp.Color
+		}
+		in := pic.Inset(3)
+		if img, ok := a.Viewer.Live(st.FilePath, st.FilePos, layer, in.Dx(), in.Dy(), hex); ok {
+			c.Image(in, img)
+			a.addHit(kit.Hit{R: in, Pad: func(p image.Point, ph kit.Phase) {
+				a.Viewer.Orbit(int(ph), float32(p.X-in.Min.X), float32(p.Y-in.Min.Y))
+				a.Redraw()
+			}})
+			return
+		}
+	}
 	if img := a.Printer.Preview(); img != nil {
 		picture(c, pic, img)
 	} else {

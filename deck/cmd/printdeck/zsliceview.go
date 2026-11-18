@@ -207,6 +207,30 @@ func (z *zsliceViewer) Frame(path string, layer, w, h int, hex string) (image.Im
 	return img, layers, img != nil
 }
 
+func (z *zsliceViewer) Live(path string, pos int64, layer, w, h int, hex string) (image.Image, bool) {
+	var img *image.RGBA
+	onGPU(func() {
+		if !z.load(path) {
+			return
+		}
+		if vw, vh := z.v.Size(); vw != w || vh != h {
+			z.v.Resize(w, h)
+		}
+		if rgb, ok := hexRGB(hex); ok {
+			z.v.Colors(false, rgb)
+		} else {
+			z.v.Colors(true, 0)
+		}
+		if layer > 0 {
+			z.v.SetLayer(min(layer, z.layers) - 1)
+		} else {
+			z.v.SetPosition(uint64(max(0, pos)))
+		}
+		img = drawView(z.v)
+	})
+	return img, img != nil
+}
+
 func (z *zsliceViewer) Orbit(phase int, x, y float32) {
 	action := map[int]int{0: zsview.TouchDown, 1: zsview.TouchMove, 2: zsview.TouchUp}[phase]
 	onGPU(func() { z.v.Touch(1, action, x, y) })
