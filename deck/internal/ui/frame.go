@@ -179,7 +179,7 @@ func (f frame) body() image.Rectangle {
 	if f.wide {
 		return f.main
 	}
-	return kit.Inset(f.main, margin, 0, margin, 8)
+	return kit.Inset(f.main, margin, 12, margin, 16) // 12 under Back, and 16 over the bottom edge
 }
 
 // aside is the free space of the left column of a wide page, inside the margins. It is empty on a
