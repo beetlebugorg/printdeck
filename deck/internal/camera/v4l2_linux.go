@@ -390,7 +390,7 @@ func pickFormat(fd int) (string, bool) {
 // that sends JPEG frames sends them at that size. The deck converts the pictures of a camera
 // that sends raw pictures to JPEG at rawMax at most, rawFPS times a second.
 var (
-	want       = image.Pt(1280, 720)
+	want       = image.Pt(1920, 1080)
 	rawMax     = image.Pt(960, 540)
 	jpegFPS    = 15
 	rawFPS     = 10

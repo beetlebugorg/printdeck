@@ -16,7 +16,7 @@ import (
 // the thin lines of a half size.
 
 // quality is the JPEG quality of the frames that the deck makes.
-const quality = 70
+const quality = 85
 
 // plane is one plane of a picture in memory: the sample (x, y) is at pix[off + y*stride + x*step].
 type plane struct {

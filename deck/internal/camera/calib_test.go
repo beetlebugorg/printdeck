@@ -182,10 +182,10 @@ func TestCalibrationTurnAndSize(t *testing.T) {
 			t.Errorf("calibration at 90, turn %d: %.2f,%.2f, want %.2f,%.2f", rot, gu, gv, wu, wv)
 		}
 	}
-	if !c.ValidFor(Device{ID: "test"}, Format{InW: 960, InH: 540}) || !c.ValidFor(Device{ID: "test"}, Format{}) {
+	if !c.ValidFor(Device{ID: "test"}, Format{InW: 960, InH: 540}) || !c.ValidFor(Device{ID: "test"}, Format{}) || !c.ValidFor(Device{ID: "test"}, Format{InW: 1920, InH: 1080}) {
 		t.Error("not valid for its camera")
 	}
-	if c.ValidFor(Device{ID: "other"}, Format{InW: 960, InH: 540}) || c.ValidFor(Device{ID: "test"}, Format{InW: 1280, InH: 720}) {
+	if c.ValidFor(Device{ID: "other"}, Format{InW: 960, InH: 540}) || c.ValidFor(Device{ID: "test"}, Format{InW: 640, InH: 480}) {
 		t.Error("valid for another camera or size")
 	}
 	back, err := ParseCalibration(c.Bytes())

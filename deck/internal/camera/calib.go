@@ -129,12 +129,22 @@ func (c *Calibration) Bytes() []byte {
 }
 
 // ValidFor reports that the calibration is for the camera d with the format f. A format with no
-// size (the camera does not run now) matches any size.
+// size (the camera does not run now) matches any size. The matrix is in normalized coordinates,
+// so another size with the same shape matches too: a camera gives the same field of view at
+// 1280×720 and at 1920×1080. A size with another shape, such as 4:3, can show another part of
+// the sensor.
 func (c *Calibration) ValidFor(d Device, f Format) bool {
 	if c == nil || c.Device != d.ID {
 		return false
 	}
-	return f.InW == 0 || (f.InW == c.InW && f.InH == c.InH)
+	if f.InW == 0 || (f.InW == c.InW && f.InH == c.InH) {
+		return true
+	}
+	if f.InH <= 0 || c.InH <= 0 {
+		return false
+	}
+	a, b := float64(f.InW)/float64(f.InH), float64(c.InW)/float64(c.InH)
+	return math.Abs(a-b) < 0.01*b
 }
 
 // KindName is the kind of the calibration: KindNozzle for a calibration of an older deck.

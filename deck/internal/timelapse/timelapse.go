@@ -87,9 +87,9 @@ func (s Settings) Bytes() []byte {
 // frame and adds a frame at every second layer from then on: the video has the whole print.
 const (
 	MaxFrames = 600
-	MaxBytes  = 96 << 20
+	MaxBytes  = 160 << 20
 	// MaxWidth is the largest width of a frame. A larger picture is made smaller.
-	MaxWidth = 1280
+	MaxWidth = 1920
 )
 
 // Recorder keeps the frames of the time lapse of one print in memory.
