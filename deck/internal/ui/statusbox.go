@@ -150,7 +150,7 @@ func readout(c *gfx.Canvas, r image.Rectangle, name, value, target string, power
 	}
 	c.Text(image.Rect(in.Min.X, in.Min.Y, in.Max.X, in.Min.Y+nameH), name, gfx.Face(true, 13), lcdDim, gfx.Left)
 	vr := image.Rect(in.Min.X, in.Min.Y+nameH, in.Max.X, in.Max.Y)
-	tf := gfx.Face(false, 15)
+	tf := gfx.Face(true, 15)
 	tw := 0
 	if target != "" {
 		tw = gfx.Width(tf, target) + 4

@@ -46,8 +46,8 @@ var (
 	// Day: a light grey chassis, like a Braun or Teenage Engineering device.
 	dayPalette = palette{
 		bg: rgb(0xd3d0c8), surface: rgb(0xe6e3dc), raised: rgb(0xf3f1ec), edge: rgb(0xa9a59c), shine: rgb(0xfbfaf7),
-		text: rgb(0x171717), dim: rgb(0x4a4742), orange: rgb(0xff5a1f), red: rgb(0xd12b1d), onAcc: rgb(0x121212), accentText: rgb(0xb83c0c),
-		lcd: rgb(0x1b1c1a), lcdInk: rgb(0xff7a30), lcdDim: rgb(0xc27a48), ledOff: rgb(0x8f8a80), ledGlow: rgb(0xffc8a8),
+		text: rgb(0x171717), dim: rgb(0x35332f), orange: rgb(0xff5a1f), red: rgb(0xd12b1d), onAcc: rgb(0x121212), accentText: rgb(0xb83c0c),
+		lcd: rgb(0x1b1c1a), lcdInk: rgb(0xff7a30), lcdDim: rgb(0xe0965f), ledOff: rgb(0x8f8a80), ledGlow: rgb(0xffc8a8),
 		keyOn: rgb(0x171717), keyOnInk: rgb(0xf3f1ec), redCap: rgb(0xc0291b), onRed: rgb(0xfbfaf7), lcdCell: rgb(0x2a211a),
 		glcd: rgb(0x1f4bd1), glcdCell: rgb(0x2a58e0), glcdInk: rgb(0xf2f6ff),
 	}
@@ -55,8 +55,8 @@ var (
 	// (contrast_test.go); mid-grey on dark grey washes out when the panel is seen from the side.
 	nightPalette = palette{
 		bg: rgb(0x121211), surface: rgb(0x1c1c1a), raised: rgb(0x292825), edge: rgb(0x060606), shine: rgb(0x34332f),
-		text: rgb(0xeee9df), dim: rgb(0xc2bcb0), orange: rgb(0xff7a3a), red: rgb(0xff7a6a), onAcc: rgb(0x0e0e0d), accentText: rgb(0xff7a3a),
-		lcd: rgb(0x080808), lcdInk: rgb(0xff8c4a), lcdDim: rgb(0xd98a55), ledOff: rgb(0x3a3834), ledGlow: rgb(0x4a2412),
+		text: rgb(0xeee9df), dim: rgb(0xd6d0c4), orange: rgb(0xff7a3a), red: rgb(0xff7a6a), onAcc: rgb(0x0e0e0d), accentText: rgb(0xff7a3a),
+		lcd: rgb(0x080808), lcdInk: rgb(0xff8c4a), lcdDim: rgb(0xe8a070), ledOff: rgb(0x3a3834), ledGlow: rgb(0x4a2412),
 		keyOn: rgb(0x080808), keyOnInk: rgb(0xff8c4a), redCap: rgb(0x9c2216), onRed: rgb(0xf3efe8), lcdCell: rgb(0x1a120c),
 		glcd: rgb(0x0f2766), glcdCell: rgb(0x143079), glcdInk: rgb(0xd6e2ff),
 	}
@@ -243,33 +243,56 @@ const keyLabelPad = 8
 // line down to 13 pixels; then two lines, when the key is high enough; then the size that fits
 // the key, also under the floor of the large text.
 func keyLabel(c *gfx.Canvas, area image.Rectangle, label string, size int, ink color.RGBA) {
+	// The size of the label with the large text, and the smallest size before a label goes to
+	// two lines: 2/3 of it, and not below keyLabelMin.
+	top := gfx.FaceSize(size)
+	floor := min(top, max(keyLabelMin, top*2/3))
 	pad := max(2, min(keyLabelPad, area.Dx()/12)) // less on a small key, such as a step of a move
-	in := kit.Inset(area, pad, 0, pad, 0)
-	fits := func(s string, f font.Face) bool { return gfx.Width(f, s) <= in.Dx() }
-	for px := size; px >= 13; px-- {
-		if f := gfx.Face(true, px); fits(label, f) {
-			c.Text(in, label, f, ink, gfx.Center)
-			return
+	oneLine := func(in image.Rectangle, lo int) bool {
+		for px := top; px >= lo; px-- {
+			if f := gfx.ExactFace(true, px); gfx.Width(f, label) <= in.Dx() {
+				c.Text(in, label, f, ink, gfx.Center)
+				return true
+			}
 		}
+		return false
 	}
-	if i := splitAt(label); i > 0 {
-		for px := size; px >= 11; px-- {
-			f := gfx.Face(true, px)
+	twoLines := func(in image.Rectangle, lo int) bool {
+		i := splitAt(label)
+		if i <= 0 {
+			return false
+		}
+		for px := top; px >= lo; px-- {
+			f := gfx.ExactFace(true, px)
 			lineH := f.Metrics().Height.Ceil()
-			if area.Dy() >= 2*lineH+2 && fits(label[:i], f) && fits(label[i+1:], f) {
+			if area.Dy() >= 2*lineH+2 && gfx.Width(f, label[:i]) <= in.Dx() && gfx.Width(f, label[i+1:]) <= in.Dx() {
 				y := area.Min.Y + area.Dy()/2 - lineH
 				c.Text(image.Rect(in.Min.X, y, in.Max.X, y+lineH), label[:i], f, ink, gfx.Center)
 				c.Text(image.Rect(in.Min.X, y+lineH, in.Max.X, y+2*lineH), label[i+1:], f, ink, gfx.Center)
-				return
+				return true
 			}
 		}
+		return false
 	}
-	px := 13
-	for px > 8 && !fits(label, gfx.ExactFace(true, px)) {
-		px--
+	in := kit.Inset(area, pad, 0, pad, 0)
+	// A little smaller on one line; then two lines at a larger size before one smaller line.
+	if oneLine(in, max(floor, top*5/6)) || twoLines(in, floor) || oneLine(in, floor) {
+		return
 	}
-	c.Text(in, label, gfx.ExactFace(true, px), ink, gfx.Center)
+	// The whole width of the key, then smaller text, to keyLabelLast at the least.
+	wide := kit.Inset(area, 2, 0, 2, 0)
+	if oneLine(wide, floor) || twoLines(wide, floor) || oneLine(wide, keyLabelLast) || twoLines(wide, keyLabelLast) {
+		return
+	}
+	c.Text(wide, label, gfx.ExactFace(true, keyLabelLast), ink, gfx.Center)
 }
+
+// The sizes of a key label: below keyLabelMin, a label goes to two lines or uses the whole width
+// of its key first; keyLabelLast is the smallest size.
+const (
+	keyLabelMin  = 15
+	keyLabelLast = 12
+)
 
 // splitAt returns the index of the space that splits s into two lines of about the same length,
 // or -1 when s has no space.
