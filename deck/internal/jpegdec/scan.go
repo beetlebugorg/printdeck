@@ -9,18 +9,30 @@ import (
 )
 
 // makeImg allocates and initializes the destination image.
-func (d *decoder) makeImg(mxx, myy int) {
+func (d *decoder) makeImg(mxx, myy int, fast bool) {
 	// bs is the size of a block in pixels, and w x h the size of the picture.
 	bs := 8 >> d.shift
 	w, h := (d.width+(1<<d.shift)-1)>>d.shift, (d.height+(1<<d.shift)-1)>>d.shift
+	// The MCUs of the region. Only the fast scan decodes a region: the other scans make the
+	// whole picture.
+	d.mx0, d.my0, d.mx1, d.my1 = 0, 0, mxx, myy
+	if fast && !d.region.Empty() {
+		mw, mh := 8*d.comp[0].h, 8*d.comp[0].v
+		r := d.region.Intersect(image.Rect(0, 0, d.width, d.height))
+		if !r.Empty() {
+			d.mx0, d.my0 = r.Min.X/mw, r.Min.Y/mh
+			d.mx1, d.my1 = (r.Max.X+mw-1)/mw, (r.Max.Y+mh-1)/mh
+		}
+	}
+	h0, v0 := d.comp[0].h, d.comp[0].v
+	all := image.Rect(bs*h0*d.mx0, bs*v0*d.my0, bs*h0*d.mx1, bs*v0*d.my1)
+	vis := all.Intersect(image.Rect(0, 0, w, h))
 	if d.nComp == 1 {
-		m := image.NewGray(image.Rect(0, 0, bs*mxx, bs*myy))
-		d.img1 = m.SubImage(image.Rect(0, 0, w, h)).(*image.Gray)
+		m := image.NewGray(all)
+		d.img1 = m.SubImage(vis).(*image.Gray)
 		return
 	}
 
-	h0 := d.comp[0].h
-	v0 := d.comp[0].v
 	hRatio := h0 / d.comp[1].h
 	vRatio := v0 / d.comp[1].v
 	var subsampleRatio image.YCbCrSubsampleRatio
@@ -40,8 +52,8 @@ func (d *decoder) makeImg(mxx, myy int) {
 	default:
 		panic("unreachable")
 	}
-	m := image.NewYCbCr(image.Rect(0, 0, bs*h0*mxx, bs*v0*myy), subsampleRatio)
-	d.img3 = m.SubImage(image.Rect(0, 0, w, h)).(*image.YCbCr)
+	m := image.NewYCbCr(all, subsampleRatio)
+	d.img3 = m.SubImage(vis).(*image.YCbCr)
 
 	if d.nComp == 4 {
 		h3, v3 := d.comp[3].h, d.comp[3].v
@@ -150,7 +162,7 @@ func (d *decoder) processSOS(n int) error {
 	mxx := (d.width + 8*h0 - 1) / (8 * h0)
 	myy := (d.height + 8*v0 - 1) / (8 * v0)
 	if d.img1 == nil && d.img3 == nil {
-		d.makeImg(mxx, myy)
+		d.makeImg(mxx, myy, d.canFastScan(nComp))
 	}
 	if d.progressive {
 		for i := 0; i < nComp; i++ {
@@ -159,6 +171,14 @@ func (d *decoder) processSOS(n int) error {
 				d.progCoeffs[compIndex] = make([]block, mxx*myy*d.comp[compIndex].h*d.comp[compIndex].v)
 			}
 		}
+	}
+
+	if d.canFastScan(nComp) {
+		comps, td, ta := make([]uint8, nComp), make([]uint8, nComp), make([]uint8, nComp)
+		for i := range nComp {
+			comps[i], td[i], ta[i] = scan[i].compIndex, scan[i].td, scan[i].ta
+		}
+		return d.fastScan(comps, td, ta, mxx, myy)
 	}
 
 	d.bits = bits{}

@@ -108,6 +108,13 @@ type bits struct {
 type decoder struct {
 	// shift is the scale of the picture: each block of 8 x 8 becomes 8>>shift x 8>>shift pixels.
 	shift uint
+	// region is the part of the picture to decode, in the pixels of the whole size, or empty for
+	// the whole picture (DecodeRegion). mx0, my0, mx1 and my1 are the MCUs of the region: the
+	// fast scan makes the pixels of these MCUs only.
+	region             image.Rectangle
+	mx0, my0, mx1, my1 int
+	// threads is the most threads of the scan, or 0 for GOMAXPROCS (DecodeThreads).
+	threads int
 
 	r    io.Reader
 	bits bits
@@ -780,4 +787,41 @@ func (d *decoder) convertToRGB() (image.Image, error) {
 func DecodeScaled(r io.Reader, shift int) (image.Image, error) {
 	d := decoder{shift: uint(max(0, min(3, shift)))}
 	return d.decode(r, false)
+}
+
+// DecodeRegion is DecodeScaled for the part rect of the picture (in the pixels of the whole
+// size). The picture that it returns has the bounds of rect at 1/2^shift of its size, in the
+// coordinates of the whole picture at that size. A baseline picture costs the Huffman decode of
+// the whole picture, and the inverse DCT of the blocks of rect only.
+func DecodeRegion(r io.Reader, shift int, rect image.Rectangle) (image.Image, error) {
+	if rect.Empty() {
+		return nil, FormatError("empty region")
+	}
+	return DecodeThreads(r, shift, rect, 0)
+}
+
+// DecodeThreads is DecodeRegion with at most threads threads (0 for GOMAXPROCS), and the whole
+// picture for an empty rect: for a measurement of the speed of the decode.
+func DecodeThreads(r io.Reader, shift int, rect image.Rectangle, threads int) (image.Image, error) {
+	d := decoder{shift: uint(max(0, min(3, shift))), region: rect, threads: threads}
+	img, err := d.decode(r, false)
+	if err != nil {
+		return nil, err
+	}
+	if rect.Empty() {
+		return img, nil
+	}
+	k := 1 << d.shift
+	sr := image.Rect(rect.Min.X/k, rect.Min.Y/k, (rect.Max.X+k-1)/k, (rect.Max.Y+k-1)/k).Intersect(img.Bounds())
+	switch m := img.(type) {
+	case *image.YCbCr:
+		return m.SubImage(sr), nil
+	case *image.Gray:
+		return m.SubImage(sr), nil
+	case *image.RGBA:
+		return m.SubImage(sr), nil
+	case *image.CMYK:
+		return m.SubImage(sr), nil
+	}
+	return img, nil
 }
