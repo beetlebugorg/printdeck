@@ -409,15 +409,15 @@ const nowLineH = 24
 
 // printInfoH is the height of the plate of printInfo for st.
 func (a *App) printInfoH(st printer.State) int {
-	h := 12 + 30 + 12
+	h := 14 + 32 + 14
 	if gfx.FinePrint() && st.HasNow && a.Printer.ViewLayer() < 0 {
 		h += nowLineH + 8 // the line of the move
 	}
 	if _, ok := a.rollIn(); ok {
-		h += 32
+		h += 10 + 26
 	}
 	if len(a.Printer.LayerTimes()) > 0 {
-		h += 54
+		h += 10 + 58
 	}
 	return h
 }
@@ -428,20 +428,20 @@ func (a *App) printInfoH(st printer.State) int {
 func (a *App) printInfo(c *gfx.Canvas, r image.Rectangle, st printer.State) {
 	plate(c, r)
 	a.layers.sample(st, a.Now())
-	s := kit.NewStack(kit.Inset(r, 16, 12, 16, 12), 8)
-	top := s.Next(30)
+	s := kit.NewStack(kit.Inset(r, 16, 14, 16, 14), 10)
+	top := s.Next(32)
 	pr := a.Printer
 	view := pr.ViewLayer()
 	if st.Layers > 0 {
 		shown, col := st.Layer, text
 		if v, ok := a.dragLayer(st); ok {
-			shown, col = v, orange
+			shown, col = v, accentText
 		} else if view >= 0 {
-			shown, col = view, orange
+			shown, col = view, accentText
 		}
-		t := fmt.Sprintf("LAYER %d OF %d", shown, st.Layers)
-		c.Text(image.Rect(top.Min.X, top.Min.Y, top.Max.X-120, top.Max.Y), t, gfx.Face(true, 16), col, gfx.Left)
-		a.textRegion("Layer", top, gfx.Face(true, 16), t)
+		t := fmt.Sprintf("Layer %d of %d", shown, st.Layers)
+		c.Text(image.Rect(top.Min.X, top.Min.Y, top.Max.X-120, top.Max.Y), t, gfx.Face(true, 22), col, gfx.Left)
+		a.textRegion("Layer", top, gfx.Face(true, 22), t)
 	}
 	switch {
 	case view >= 0:
@@ -454,19 +454,19 @@ func (a *App) printInfo(c *gfx.Canvas, r image.Rectangle, st printer.State) {
 		if st.HasLive {
 			speed = st.LiveSpeed
 		}
-		now := fmt.Sprintf("%s · %.0f MM/S", strings.ToUpper(st.NowKind), speed)
+		now := fmt.Sprintf("%s · %.0f mm/s", sentence(st.NowKind), speed)
 		if gfx.FinePrint() {
 			// The large text: the move has a line of its own, under the layer.
-			c.Text(s.Next(nowLineH), now, gfx.Face(true, 14), dim, gfx.Left)
+			c.Text(s.Next(nowLineH), now, gfx.Face(false, 16), dim, gfx.Left)
 		} else {
-			c.Text(image.Rect(top.Min.X+180, top.Min.Y, top.Max.X, top.Max.Y), now, gfx.Face(true, 14), dim, gfx.Right)
+			c.Text(image.Rect(top.Min.X+190, top.Min.Y, top.Max.X, top.Max.Y), now, gfx.Face(false, 16), dim, gfx.Right)
 		}
 	}
 	if _, ok := a.rollIn(); ok {
-		a.rollGauge(c, s.Next(24), st)
+		a.rollGauge(c, s.Next(26), st)
 	}
 	if times := pr.LayerTimes(); len(times) > 0 {
-		a.layerChart(c, s.Next(46), st, times)
+		a.layerChart(c, s.Next(58), st, times)
 	}
 }
 
@@ -529,9 +529,9 @@ func (a *App) layerChart(c *gfx.Canvas, r image.Rectangle, st printer.State, pla
 		}
 		count = n
 	}
-	avg := "AVG " + mmss(sum/float64(count)) + " A LAYER"
+	avg := "Avg " + mmss(sum/float64(count)) + " a layer"
 	// The numbers at the right: wider for the large text.
-	nums := image.Rect(r.Max.X-max(150, gfx.Width(gfx.Face(true, 12), avg)), r.Min.Y, r.Max.X, r.Max.Y)
+	nums := image.Rect(r.Max.X-max(160, gfx.Width(gfx.Face(false, 15), avg)), r.Min.Y, r.Max.X, r.Max.Y)
 	now, of := "–", ""
 	if cur >= 1 && cur <= n {
 		of = " / " + mmss(plan[cur-1])
@@ -539,8 +539,8 @@ func (a *App) layerChart(c *gfx.Canvas, r image.Rectangle, st printer.State, pla
 			now = mmss(a.Now().Sub(a.layers.start).Seconds())
 		}
 	}
-	c.Text(image.Rect(nums.Min.X, r.Min.Y, nums.Max.X, r.Min.Y+24), now+of, gfx.Face(true, 17), text, gfx.Right)
-	c.Text(image.Rect(nums.Min.X, r.Min.Y+24, nums.Max.X, r.Max.Y), avg, gfx.Face(true, 12), dim, gfx.Right)
+	c.Text(image.Rect(nums.Min.X, r.Min.Y, nums.Max.X, r.Min.Y+32), now+of, gfx.Face(true, 24), text, gfx.Right)
+	c.Text(image.Rect(nums.Min.X, r.Min.Y+32, nums.Max.X, r.Max.Y), avg, gfx.Face(false, 15), dim, gfx.Right)
 
 	chart := image.Rect(r.Min.X, r.Min.Y+2, nums.Min.X-16, r.Max.Y-2)
 	// One bar for each layer when they fit, else for each group of layers.
@@ -627,10 +627,10 @@ func (a *App) rollGauge(c *gfx.Canvas, r image.Rectangle, st printer.State) bool
 	}
 	bar := image.Rect(dot.Max.X+10, r.Min.Y+7, dot.Max.X+10+64, r.Max.Y-7)
 	segments(c, bar, min(1, left/full))
-	face := gfx.Face(true, 13)
+	face := gfx.Face(false, 17)
 	t := image.Rect(bar.Max.X+12, r.Min.Y, r.Max.X, r.Max.Y)
-	line := strings.ToUpper(sp.Number() + " " + sp.Label() + " · " + printer.Weight(left))
-	c.Text(t, line, face, dim, gfx.Left)
+	line := sp.Number() + " " + sp.Label() + " · " + printer.Weight(left)
+	c.Text(t, gfx.Fit(face, line, t.Dx()), face, text, gfx.Left)
 	a.region("Roll", r)
 	return true
 }
@@ -784,3 +784,13 @@ func (a *App) drawScrubber(c *gfx.Canvas, box image.Rectangle, st printer.State)
 
 // dragLayer is the layer under the finger on the layer slider.
 func (a *App) dragLayer(printer.State) (int, bool) { return a.scrubLayer, a.scrubLayer >= 0 }
+
+// sentence is s with a capital first letter and the rest in lower case: "OUTER WALL" or "outer
+// wall" is "Outer wall".
+func sentence(s string) string {
+	s = strings.ToLower(s)
+	for i, r := range s {
+		return strings.ToUpper(string(r)) + s[i+len(string(r)):]
+	}
+	return s
+}
