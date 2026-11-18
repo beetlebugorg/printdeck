@@ -1268,6 +1268,10 @@ func manual(args []string) {
 		log.Fatal("usage: printdeck manual DIR [wide|cura|large]")
 	}
 	dir := args[0]
+	// PRINTDECK_CUTS=1 lists each text that a screen cuts with "…": a key label must fit.
+	if os.Getenv("PRINTDECK_CUTS") != "" {
+		gfx.OnCut = func(s string, width int) { fmt.Fprintf(os.Stderr, "cut %s: %q in %d px\n", cutFig, s, width) }
+	}
 	mode := ""
 	if len(args) > 1 {
 		mode = args[1]
@@ -1311,6 +1315,7 @@ func manual(args []string) {
 		}
 		var figs []figure
 		for _, f := range sec.Figures {
+			cutFig = f.Name
 			if f.Layout == "" || f.Layout == map[bool]string{true: "wide", false: "tall"}[wide] {
 				figs = append(figs, f)
 			}
@@ -1408,3 +1413,6 @@ func writePNG(path string, img image.Image) {
 	defer f.Close()
 	png.Encode(f, img)
 }
+
+// cutFig is the figure that the manual draws now, for PRINTDECK_CUTS.
+var cutFig string

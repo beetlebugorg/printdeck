@@ -22,12 +22,12 @@ var (
 	orange, green, red, onAcc        color.RGBA // safety orange (the one accent), red text, ink on orange
 	// accentText is orange as text on the chassis: the safety orange has too little contrast on
 	// the light chassis (2.0 to 2.4:1), so the day palette has a darker orange (about 4.9:1).
-	accentText color.RGBA
-	redCap, onRed                    color.RGBA // the cap of a key that stops, and its lettering
-	lcd, lcdInk, lcdDim, lcdCell     color.RGBA // display window, its amber digits, and an unlit character cell
-	ledOff, ledGlow                  color.RGBA
-	keyOn, keyOnInk                  color.RGBA // the cap of a key that is on, like the active mode key
-	keyOff                           color.RGBA // the cap of a key with an on/off state that is off
+	accentText                   color.RGBA
+	redCap, onRed                color.RGBA // the cap of a key that stops, and its lettering
+	lcd, lcdInk, lcdDim, lcdCell color.RGBA // display window, its amber digits, and an unlit character cell
+	ledOff, ledGlow              color.RGBA
+	keyOn, keyOnInk              color.RGBA // the cap of a key that is on, like the active mode key
+	keyOff                       color.RGBA // the cap of a key with an on/off state that is off
 	// The character display, in the colors of the graphic LCD of a LulzBot: a blue backlight with
 	// white pixels.
 	glcd, glcdCell, glcdInk color.RGBA
@@ -239,32 +239,36 @@ func labelCols(r image.Rectangle, gap int, labels ...string) []image.Rectangle {
 // keyLabelPad is the most room between the label of a key and its printed frame, on each side.
 const keyLabelPad = 8
 
-// keyLabel draws the label of a key in area, at size pixels or smaller. A label that is too long
-// gets a smaller font, down to 13 pixels. When that makes the font much smaller and the key is high
-// enough, the label goes in two lines at a larger font.
+// keyLabel draws the label of a key in area, at size pixels or smaller. A label is never cut: one
+// line down to 13 pixels; then two lines, when the key is high enough; then the size that fits
+// the key, also under the floor of the large text.
 func keyLabel(c *gfx.Canvas, area image.Rectangle, label string, size int, ink color.RGBA) {
 	pad := max(2, min(keyLabelPad, area.Dx()/12)) // less on a small key, such as a step of a move
 	in := kit.Inset(area, pad, 0, pad, 0)
-	fits := func(s string, px int) bool { return gfx.Width(gfx.Face(true, px), s) <= in.Dx() }
-	one := size
-	for one > 13 && !fits(label, one) {
-		one--
-	}
-	if i := splitAt(label); i > 0 && (one < size-2 || !fits(label, one)) {
-		two := size
-		for two > 13 && !(fits(label[:i], two) && fits(label[i+1:], two)) {
-			two--
-		}
-		face := gfx.Face(true, two)
-		lineH := face.Metrics().Height.Ceil()
-		if two > one && area.Dy() >= 2*lineH+4 {
-			y := area.Min.Y + area.Dy()/2 - lineH
-			c.Text(image.Rect(in.Min.X, y, in.Max.X, y+lineH), label[:i], face, ink, gfx.Center)
-			c.Text(image.Rect(in.Min.X, y+lineH, in.Max.X, y+2*lineH), label[i+1:], face, ink, gfx.Center)
+	fits := func(s string, f font.Face) bool { return gfx.Width(f, s) <= in.Dx() }
+	for px := size; px >= 13; px-- {
+		if f := gfx.Face(true, px); fits(label, f) {
+			c.Text(in, label, f, ink, gfx.Center)
 			return
 		}
 	}
-	c.Text(in, label, gfx.Face(true, one), ink, gfx.Center)
+	if i := splitAt(label); i > 0 {
+		for px := size; px >= 11; px-- {
+			f := gfx.Face(true, px)
+			lineH := f.Metrics().Height.Ceil()
+			if area.Dy() >= 2*lineH+2 && fits(label[:i], f) && fits(label[i+1:], f) {
+				y := area.Min.Y + area.Dy()/2 - lineH
+				c.Text(image.Rect(in.Min.X, y, in.Max.X, y+lineH), label[:i], f, ink, gfx.Center)
+				c.Text(image.Rect(in.Min.X, y+lineH, in.Max.X, y+2*lineH), label[i+1:], f, ink, gfx.Center)
+				return
+			}
+		}
+	}
+	px := 13
+	for px > 8 && !fits(label, gfx.ExactFace(true, px)) {
+		px--
+	}
+	c.Text(in, label, gfx.ExactFace(true, px), ink, gfx.Center)
 }
 
 // splitAt returns the index of the space that splits s into two lines of about the same length,
@@ -328,7 +332,7 @@ func faderCapWith(c *gfx.Canvas, x, y int, vertical bool, cap color.RGBA) {
 // case at 16 pixels: a sentence in small capitals is the hardest text to read on the screen.
 func hintText(c *gfx.Canvas, r image.Rectangle, s string, a gfx.Align) {
 	f := gfx.Face(false, 16)
-	c.Text(r, gfx.Fit(f, s, r.Dx()), f, dim, a)
+	c.Text(r, s, f, dim, a) // Text makes it smaller until it fits
 }
 
 func label(c *gfx.Canvas, r image.Rectangle, s string, a gfx.Align) {

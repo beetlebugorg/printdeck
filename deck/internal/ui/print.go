@@ -651,7 +651,7 @@ func (a *App) rollGauge(c *gfx.Canvas, r image.Rectangle, st printer.State) bool
 	face := gfx.Face(false, 17)
 	t := image.Rect(bar.Max.X+12, r.Min.Y, r.Max.X, r.Max.Y)
 	line := sp.Number() + " " + sp.Label() + " · " + printer.Weight(left)
-	c.Text(t, gfx.Fit(face, line, t.Dx()), face, text, gfx.Left)
+	c.Text(t, line, face, text, gfx.Left)
 	a.region("Roll", r)
 	return true
 }

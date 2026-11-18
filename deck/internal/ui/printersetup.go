@@ -211,7 +211,7 @@ func (a *App) drawConfigs(c *gfx.Canvas) {
 	}
 	choose := func(i int) {
 		e := list[i]
-		a.confirm = &confirmBox{question: "Use the config of the " + gfx.Fit(gfx.Face(true, 28), e.Name(), 300) + "?", yes: "Use", onYes: func() {
+		a.confirm = &confirmBox{question: "Use the config of the " + e.Name() + "?", yes: "Use", onYes: func() {
 			a.Toast("Writing printer.cfg…")
 			a.do(func() error {
 				if err := pr.UseConfig(e.File, b.Device); err != nil {

@@ -403,9 +403,8 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	f := a.navPage(c, "Machine")
 	mach := pr.Machine()
-	b := backRect(f.head)
 	if !a.resin() {
-		a.printerKey(c, b.Sub(image.Pt(b.Dx()+12, 0)), "Restart…", raised, text, a.askRestart)
+		a.printerKey(c, headKeyRect(f.head, "Restart…"), "Restart…", raised, text, a.askRestart)
 	}
 
 	var info, grid image.Rectangle
@@ -476,6 +475,12 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 	if a.Metrics != nil {
 		keys = append(keys, menuItem{"System monitor", monitorLine, dim, func() { a.open(pageMonitor) }})
 	}
+	// The large text on a tall screen: one row for each page, at the full width, so each text has
+	// one size and is whole. The list scrolls.
+	if gfx.FinePrint() && !f.wide {
+		a.menuRows(c, grid, false, 0, 0, keys)
+		return
+	}
 	// Two columns. The keys share the height of the grid, up to a height that keeps the two lines
 	// of a key together.
 	const gap = 10
@@ -536,7 +541,7 @@ func (a *App) machineInfo(c *gfx.Canvas, r image.Rectangle, st printer.State, ma
 		if s == "" {
 			s = "—"
 		}
-		c.Text(l[i], gfx.Fit(line.face, s, in.Dx()), line.face, line.ink, gfx.Left)
+		c.Text(l[i], s, line.face, line.ink, gfx.Left)
 	}
 }
 
@@ -615,22 +620,35 @@ func (a *App) statusKey(c *gfx.Canvas, r image.Rectangle, title, sub string, sub
 	lh := tf.Metrics().Height.Ceil()
 	th := len(names)*lh + 6
 	lines := wrapText(sf, sub, w)
+	// A text of more than two lines gets a smaller font, until it is two lines.
+	for s := subSize - 1; len(lines) > 2 && s >= 11; s-- {
+		sf = gfx.Face(false, s)
+		lines = wrapText(sf, sub, w)
+	}
 	n := min(2, max(0, (in.Dy()-th)/sh)) // the lines that fit, at most 2; none in a key too low
 	if n == 0 {
 		lines = nil
 	} else if len(lines) > n {
-		lines = append(lines[:n-1], strings.Join(lines[n-1:], " "))
+		// One line of room: the whole text in a font that fits the line, or no text. A tile never
+		// cuts its text.
+		lines = nil
+		for px := subSize - 1; px >= 10; px-- {
+			if f := gfx.ExactFace(false, px); gfx.Width(f, sub) <= w {
+				sf, lines = f, []string{sub}
+				break
+			}
+		}
 	}
 	n = len(lines)
 	// The block of n lines in the middle of the key, so the names of a row line up.
 	y := in.Min.Y + max(0, (in.Dy()-th-n*sh)/2)
 	for i, name := range names {
 		ny := y + 3 + i*lh
-		c.Text(image.Rect(in.Min.X, ny, in.Max.X, ny+lh), gfx.Fit(tf, name, w), tf, text, gfx.Left)
+		c.Text(image.Rect(in.Min.X, ny, in.Max.X, ny+lh), name, tf, text, gfx.Left)
 	}
 	for i, l := range lines {
 		ly := y + th + i*sh
-		c.Text(image.Rect(in.Min.X, ly, in.Max.X, ly+sh), gfx.Fit(sf, l, w), sf, subCol, gfx.Left)
+		c.Text(image.Rect(in.Min.X, ly, in.Max.X, ly+sh), l, sf, subCol, gfx.Left)
 	}
 	acked := func() {
 		a.ackR, a.ackAt = r, a.Now()
@@ -701,7 +719,7 @@ func (a *App) drawMacros(c *gfx.Canvas, st printer.State) {
 			return
 		}
 		m := macros[i]
-		a.confirm = &confirmBox{question: "Run " + gfx.Fit(gfx.Face(true, 28), m, 300) + "?", yes: "Run", onYes: func() {
+		a.confirm = &confirmBox{question: "Run " + m + "?", yes: "Run", onYes: func() {
 			a.runAction(m, m)
 		}}
 	}
@@ -866,7 +884,7 @@ func (a *App) drawPhones(c *gfx.Canvas) {
 			sub += " · from Xcode"
 		}
 		items = append(items, menuItem{ph.Name, sub, dim, func() {
-			a.confirm = &confirmBox{question: "Remove " + gfx.Fit(gfx.Face(true, 28), ph.Name, 300) + "?", yes: "Remove", danger: true,
+			a.confirm = &confirmBox{question: "Remove " + ph.Name + "?", yes: "Remove", danger: true,
 				onYes: func() { a.Phones.Remove(ph.ID) }}
 		}})
 	}
@@ -1152,7 +1170,8 @@ func (a *App) menuRowsFit(c *gfx.Canvas, area image.Rectangle, items []menuItem,
 		most = max(most, heights[i])
 	}
 	gap := rowGap
-	if total > area.Dy() && len(items) > 1 {
+	if total > area.Dy() && len(items) > 1 && !gfx.FinePrint() {
+		// The large text keeps the rows of its lines, and the list scrolls.
 		// A full page: smaller gaps and rows of the least height before the list scrolls.
 		gap, total, most = 5, -5, 0
 		for i := range heights {

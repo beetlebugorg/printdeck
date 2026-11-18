@@ -290,6 +290,14 @@ func Face(bold bool, px int) font.Face {
 	return face(bold, fineSize(px))
 }
 
+// ExactFace returns a cached face of exactly px, with no change for the large text: for a label
+// that must fit its key.
+func ExactFace(bold bool, px int) font.Face {
+	fontMu.Lock()
+	defer fontMu.Unlock()
+	return face(bold, px)
+}
+
 // face returns a cached face of exactly px. The caller holds fontMu.
 func face(bold bool, px int) font.Face {
 	if regF == nil {
@@ -347,10 +355,10 @@ func (f fallbackFace) Metrics() font.Metrics { return f.primary.Metrics() }
 
 func Width(face font.Face, s string) int { return font.MeasureString(face, s).Ceil() }
 
-// Shrink returns the largest size of face, down to three quarters of its size, in which s fits in
-// width. A face that SetFinePrint made larger goes down to six sevenths of its size only, so that
-// the small text stays large. It returns face when s fits, or when no size fits, or for a face
-// that Face did not make.
+// Shrink returns the largest size of face, down to three fifths of its size (and 9 pixels), in
+// which s fits in width: a smaller text is better than a cut one. The large text of SetFinePrint
+// goes down the same way. It returns the smallest size when no size fits, and face when s fits or
+// for a face that Face did not make.
 func Shrink(f0 font.Face, s string, width int) font.Face {
 	if Width(f0, s) <= width {
 		return f0
@@ -362,19 +370,18 @@ func Shrink(f0 font.Face, s string, width int) font.Face {
 		return f0
 	}
 	px, bold := info[0], info[1] == 1
-	floor := max(10, px*3/4)
-	fontMu.Lock()
-	if finePrint.min > 12 && px >= finePrint.min && px < finePrint.top {
-		floor = px * 6 / 7
-	}
-	fontMu.Unlock()
+	floor := max(9, px*3/5)
+	var f font.Face
 	for size := px - 1; size >= floor; size-- {
 		fontMu.Lock()
-		f := face(bold, size)
+		f = face(bold, size)
 		fontMu.Unlock()
 		if Width(f, s) <= width {
 			return f
 		}
+	}
+	if f != nil {
+		return f
 	}
 	return f0
 }
@@ -384,12 +391,19 @@ func Fit(face font.Face, s string, width int) string {
 	if Width(face, s) <= width {
 		return s
 	}
+	if OnCut != nil {
+		OnCut(s, width)
+	}
 	rs := []rune(s)
 	for len(rs) > 0 && Width(face, string(rs)+"…") > width {
 		rs = rs[:len(rs)-1]
 	}
 	return string(rs) + "…"
 }
+
+// OnCut is called with each text that Fit cuts, and the width it had, or is nil: the check of the
+// screens for cut labels (printdeck manual).
+var OnCut func(s string, width int)
 
 // textAt draws s with its baseline at y, from x, for the replay of a recording.
 func (c *Canvas) textAt(x, y int, s string, face font.Face, col color.Color) {
