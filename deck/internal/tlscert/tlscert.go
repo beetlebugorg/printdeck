@@ -34,8 +34,10 @@ const (
 	// addressAgain is the time after which the deck sends the same address again: the service
 	// then knows that the deck is on.
 	addressAgain = 6 * time.Hour
-	// checkEvery is the time between two checks of the address and the certificate.
-	checkEvery = 5 * time.Minute
+	// checkEvery is the time between two checks of the address and the certificate, and
+	// noNetworkEvery the time after a check with no network, for example at the start.
+	checkEvery     = 5 * time.Minute
+	noNetworkEvery = 30 * time.Second
 	// pollFor is the most time of the checks of a pending certificate.
 	pollFor = 6 * time.Minute
 	// retryAfter is the time after a failure before the next request of a certificate.
@@ -156,23 +158,28 @@ func (m *Manager) setProblem(err error) {
 	log.Printf("tlscert: %v", err)
 }
 
-// Run checks the address and the certificate at the start, and then every 5 minutes.
+// Run checks the address and the certificate at the start, and then every 5 minutes. With no
+// network, it checks again after 30 s.
 func (m *Manager) Run(ctx context.Context) {
 	for {
-		m.Step(ctx)
+		wait := checkEvery
+		if !m.Step(ctx) {
+			wait = noNetworkEvery
+		}
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(checkEvery):
+		case <-time.After(wait):
 		}
 	}
 }
 
 // Step sends the address when it changed, and gets a new certificate when the deck needs one.
-func (m *Manager) Step(ctx context.Context) {
+// It returns false when the deck has no network.
+func (m *Manager) Step(ctx context.Context) bool {
 	id := m.Link.Identity()
 	if id == nil {
-		return
+		return true
 	}
 	m.mu.Lock()
 	m.load()
@@ -180,7 +187,7 @@ func (m *Manager) Step(ctx context.Context) {
 	ip, err := m.localIP()
 	if err != nil {
 		m.setProblem(err)
-		return
+		return false
 	}
 	now := m.now()
 	m.mu.Lock()
@@ -190,7 +197,7 @@ func (m *Manager) Step(ctx context.Context) {
 		out, err := m.Client.SetAddress(ctx, id, ip)
 		if err != nil {
 			m.setProblem(fmt.Errorf("the address: %w", err))
-			return
+			return true
 		}
 		m.mu.Lock()
 		m.sentIP, m.sentAt = ip, now
@@ -203,19 +210,20 @@ func (m *Manager) Step(ctx context.Context) {
 	m.mu.Unlock()
 	if !need {
 		m.setProblem(nil)
-		return
+		return true
 	}
 	if wait {
-		return
+		return true
 	}
 	if err := m.renew(ctx, id); err != nil {
 		m.mu.Lock()
 		m.failAt = now
 		m.mu.Unlock()
 		m.setProblem(fmt.Errorf("the certificate: %w", err))
-		return
+		return true
 	}
 	m.setProblem(nil)
+	return true
 }
 
 // renew makes a new key, sends a CSR for the name, waits for the certificate, checks it, and
