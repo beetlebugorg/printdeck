@@ -43,7 +43,7 @@ func (a *App) drawSigning(c *gfx.Canvas) {
 			a.Redraw()
 		}}},
 		checks: []bool{on},
-		note:   "With it on, a file with no good signature of a trusted slicer does not go in the queue, and the deck refuses G-code commands from apps.",
+		note:   "With it on, a file with no good signature of a trusted slicer does not go in the queue, and apps can send no G-code commands and no printer.cfg.",
 	}
 	groups := []menuGroup{toggle}
 	if len(keys) > 0 {

@@ -65,7 +65,14 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 		if k, ok := pr.(*printer.Klippy); ok && k.ConfigPath != "" {
 			allow := rs.LoggedIn
 			if api != nil {
-				allow = func(r *http.Request) bool { return rs.LoggedIn(r) || api.ValidKey(r) }
+				// With "Signed prints only" on, an API key reads printer.cfg, and only the login
+				// writes it: a change of printer.cfg changes the limits of each print.
+				allow = func(r *http.Request) bool {
+					if rs.LoggedIn(r) {
+						return true
+					}
+					return api.ValidKey(r) && (r.Method == http.MethodGet || app.Signing == nil || !app.Signing.SignedOnly())
+				}
 			}
 			registerPrinterCfg(mux, k.ConfigPath, filepath.Join(cfg.StateDir, "printer.cfg.bak"), k, allow)
 		}
