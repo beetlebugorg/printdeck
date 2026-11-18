@@ -16,9 +16,23 @@
   html, body { margin: 0; height: 100%; background: #121211; overflow: hidden; overscroll-behavior: none;
     -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none;
     -webkit-touch-callout: none; touch-action: none; }
+  /* The bar under the screen (BAR_H high) keeps the camera one tap away on each page. */
   body { display: flex; align-items: center; justify-content: center;
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) calc(env(safe-area-inset-bottom) + 52px) env(safe-area-inset-left);
     box-sizing: border-box; }
+  #bar { position: fixed; left: 0; right: 0; bottom: env(safe-area-inset-bottom); height: 52px;
+    display: flex; align-items: center; justify-content: center; }
+  .pd-btn { font: 600 17px PD, ui-monospace, Menlo, monospace; letter-spacing: .04em; color: #ff8c4a;
+    background: #292825; border: 1px solid #3a3834; border-radius: 6px; padding: 9px 22px; cursor: pointer;
+    touch-action: manipulation; }
+  .pd-btn:active { background: #34332f; }
+  #cam { position: fixed; inset: 0; background: #080808; display: none; z-index: 10; touch-action: none; }
+  #cam.show { display: block; }
+  #cam img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  #cam .pd-btn { position: absolute; right: calc(12px + env(safe-area-inset-right));
+    top: calc(12px + env(safe-area-inset-top)); }
+  #cam-msg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #e8a070;
+    font: 600 17px PD, ui-monospace, Menlo, monospace; }
   canvas { display: block; touch-action: none; }
   #status { position: fixed; left: 50%; top: calc(12px + env(safe-area-inset-top)); transform: translateX(-50%);
     font: 13px ui-monospace, Menlo, monospace; color: #ff8c4a; background: #080808; padding: 6px 12px;
@@ -35,6 +49,9 @@
 <canvas id="ui" aria-label="Printdeck"></canvas>
 <div id="status" class="show">Connecting…</div>
 <div id="links"></div>
+<div id="bar"><button class="pd-btn" id="cam-open" type="button">CAMERA</button></div>
+<div id="cam" role="dialog" aria-label="Camera"><img id="cam-img" alt="The camera of the printer"><div id="cam-msg"></div>
+  <button class="pd-btn" id="cam-close" type="button">CLOSE</button></div>
 <script>
 "use strict";
 // The deck draws its UI for this browser and sends the drawing commands of each frame (see
@@ -302,6 +319,10 @@ canvas.addEventListener("pointercancel", up);
 // Escape goes back. Keys with Ctrl, Alt or Meta stay with the browser.
 const keyNames = { Enter: "Enter", Escape: "Escape", Backspace: "Backspace" };
 addEventListener("keydown", (e) => {
+  if (camOpen()) {
+    if (e.key === "Escape") closeCamera();
+    return;
+  }
   if (!session || e.ctrlKey || e.altKey || e.metaKey) return;
   let body = null;
   if (keyNames[e.key]) body = { name: keyNames[e.key] };
@@ -325,6 +346,37 @@ async function sendKey() {
 }
 addEventListener("contextmenu", (e) => { if (!(e.target instanceof Element && e.target.closest("a"))) e.preventDefault(); });
 document.addEventListener("gesturestart", (e) => e.preventDefault());
+
+// The camera: the live picture of the camera of this printer (/?printer=<id>), over the
+// screen, at the pixel width of the window. Close stops the stream.
+const cam = document.getElementById("cam"), camImg = document.getElementById("cam-img");
+const camMsg = document.getElementById("cam-msg");
+function camOpen() { return cam.classList.contains("show"); }
+function openCamera() {
+  const printer = new URLSearchParams(location.search).get("printer") || "";
+  const base = /^[a-z0-9]+$/.test(printer) && printer !== "first" ? "/printers/" + printer : "";
+  const w = Math.min(3840, Math.round(innerWidth * (devicePixelRatio || 1)));
+  camMsg.textContent = "Starting the camera";
+  camImg.onload = () => { camMsg.textContent = ""; };
+  camImg.onerror = () => { camMsg.textContent = "No camera"; };
+  camImg.src = base + "/webcam/stream?w=" + w;
+  cam.classList.add("show");
+  // Some browsers send no load event for a stream: the first frame gives the picture a width.
+  const seen = () => {
+    if (!camOpen()) return;
+    if (camImg.naturalWidth > 0) camMsg.textContent = "";
+    else setTimeout(seen, 200);
+  };
+  seen();
+}
+function closeCamera() {
+  cam.classList.remove("show");
+  camImg.onerror = null;
+  camImg.removeAttribute("src"); // the browser closes the stream
+  camImg.src = "data:,";
+}
+document.getElementById("cam-open").addEventListener("click", openCamera);
+document.getElementById("cam-close").addEventListener("click", closeCamera);
 
 // Load the fonts of the deck before the first frame, so the letters are the same.
 Promise.all([
