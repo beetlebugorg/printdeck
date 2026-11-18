@@ -58,6 +58,8 @@ type systemView struct {
 	APIKey          string // the key of the OctoPrint-compatible API, for slicers
 	Source          string // the source code of this version
 	Slicer          bool   // the image has the zslice app (/slicer/)
+	HTTPS           string // the HTTPS address of the deck, or ""
+	HTTPSProblem    string // why the deck has no HTTPS address, or ""
 	Services        []struct{ Name, State string }
 	Journal, Klippy string
 	Title, Message  string // a message at the top: UPDATE, BACKUP or RESTORE
@@ -209,7 +211,10 @@ func renderSystem(w http.ResponseWriter, klippyLog, apiKey, msg string, failed b
 
 func renderMessage(w http.ResponseWriter, klippyLog, apiKey, title, msg string, failed bool) {
 	v := systemView{Version: osVersion(), Variant: osRelease("PRINTDECK_VARIANT"), APIKey: apiKey, Title: title, Message: msg,
-		Failed: failed, Source: sourceURL(osVersion()), Slicer: dirExists(slicerDir)}
+		Failed: failed, Source: sourceURL(osVersion()), Slicer: dirExists(slicerDir), HTTPS: httpsURL()}
+	if deckTLS != nil && v.HTTPS == "" {
+		v.HTTPSProblem = deckTLS.Problem()
+	}
 	if up := sysUpdater; up != nil {
 		u := up.Status()
 		v.System, v.Staged, v.HasStaged, v.CanSwitch, v.SwitchNote = u.System, u.Staged, u.HasStaged, u.CanSwitch, u.SwitchNote

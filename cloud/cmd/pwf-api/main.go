@@ -34,6 +34,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	awslambda "github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
+	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 
@@ -130,18 +131,25 @@ func main() {
 		}
 		s.Relay = relay.NewRelay(sec, os.Getenv("TOPIC"))
 	}
+	// The HTTPS names of the decks (api/decktls.go): the API sets their A records, and the
+	// jobs function gets their certificates.
+	if zone := os.Getenv("DECK_ZONE"); zone != "" {
+		dns := &api.Route53DNS{Client: route53.NewFromConfig(cfg), Zone: zone}
+		s.DNS = dns
+		s.Issuer = &api.ACMEIssuer{Directory: os.Getenv("ACME_DIRECTORY"), Store: s.Store, DNS: dns}
+	}
 	// The jobs function: pwf deploy puts ffmpeg next to bootstrap in its package only.
 	if bin := filepath.Join(os.Getenv("LAMBDA_TASK_ROOT"), "ffmpeg"); fileExists(bin) {
 		s.Lapse = api.FFmpeg(bin)
 	}
-	// The jobs after a request of the API run in an event invoke: the videos in the jobs
-	// function, and the other jobs in another run of this function.
+	// The jobs after a request of the API run in an event invoke: the videos and the
+	// certificates in the jobs function, and the other jobs in another run of this function.
 	if name := os.Getenv("AWS_LAMBDA_FUNCTION_NAME"); name != "" && s.Lapse == nil {
 		lc := awslambda.NewFromConfig(cfg)
 		jobs := os.Getenv("JOBS_FUNCTION")
 		s.Later = func(ctx context.Context, job api.Job) error {
 			fn := name
-			if job.Kind == "lapse" {
+			if job.Kind == "lapse" || job.Kind == "cert" {
 				if jobs == "" {
 					return errors.New("no jobs function")
 				}

@@ -26,6 +26,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"printdeck/cloud/api"
@@ -48,6 +49,7 @@ func main() {
 		fs.IntVar(&opt.Budget, "budget", 5, "the budget of the account in a month, in US dollars")
 		fs.IntVar(&opt.Concurrency, "concurrency", 0, "the most instances of the function, or 0 for no limit")
 		fs.StringVar(&opt.Src, "src", "", "the folder of the cloud module (default: found from the current folder)")
+		fs.BoolVar(&opt.ACMEStaging, "acme-staging", false, "get the certificates of the decks from the staging directory of Let's Encrypt (no browser trusts them)")
 	}
 	var appID, appKey *string
 	if cmd == "github-app" {
@@ -157,7 +159,16 @@ func decks(ctx context.Context, cfg aws.Config, stack string, args []string) err
 		}
 		for _, d := range list {
 			if d.ID == args[1] {
-				if err := api.RemoveDeck(ctx, st, d.ID); err != nil {
+				// The HTTPS name of the deck: a stack from before the names has no DeckZone.
+				out, err := stackOutputs(ctx, cfg, stack)
+				if err != nil {
+					return err
+				}
+				var dns api.DNS
+				if out["DeckZone"] != "" {
+					dns = &api.Route53DNS{Client: route53.NewFromConfig(cfg), Zone: out["DeckZone"]}
+				}
+				if err := api.RemoveDeck(ctx, st, dns, out["Domain"], d); err != nil {
 					return err
 				}
 				fmt.Printf("Removed %s (%s).\n", d.Name, d.ID)

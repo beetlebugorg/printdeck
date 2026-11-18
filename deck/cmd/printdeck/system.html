@@ -53,6 +53,9 @@
       <tr><td>Memory in use</td><td>{{.Memory}}</td></tr>
       {{if .Metrics}}<tr><td>Last minute</td><td>{{.Metrics}} · <a href="/system/metrics?range=1h">JSON</a></td></tr>{{end}}
       {{if .APIKey}}<tr><td>Slicer API key</td><td>{{.APIKey}}</td></tr>{{end}}
+      {{if .HTTPS}}<tr><td>HTTPS address</td><td><input id="httpsAddr" readonly size="44" value="{{.HTTPS}}">
+        <button type="button" id="httpsCopy" style="margin-top: 0; padding: 4px 10px">Copy</button></td></tr>
+      {{else if .HTTPSProblem}}<tr><td>HTTPS address</td><td class="bad">none: {{.HTTPSProblem}}</td></tr>{{end}}
       {{range .Services}}<tr><td>{{.Name}}</td><td class="{{if ne .State "active"}}bad{{end}}">{{.State}}</td></tr>{{end}}
     </table>
   </section>
@@ -125,6 +128,21 @@
   <section><h2>KLIPPER LOG</h2><pre>{{.Klippy}}</pre></section>
 </main>
 <script>
+// Copy of the HTTPS address. The page is on HTTP, where the browser has no clipboard API: the
+// copy selects the field and uses execCommand.
+(function () {
+  const field = document.getElementById("httpsAddr"), btn = document.getElementById("httpsCopy");
+  if (!field || !btn) return;
+  btn.addEventListener("click", function () {
+    field.select();
+    const done = function () { btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy"; }, 1500); };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(field.value).then(done);
+    } else if (document.execCommand("copy")) {
+      done();
+    }
+  });
+})();
 // The editor of printer.cfg: it loads the file, and Save sends it with PUT.
 (function () {
   const box = document.getElementById("cfg"), text = document.getElementById("cfgText"),

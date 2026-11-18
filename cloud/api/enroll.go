@@ -147,7 +147,11 @@ func Decks(ctx context.Context, st Store) ([]Deck, error) {
 	return out, nil
 }
 
-// RemoveDeck removes the deck id, for pwf.
-func RemoveDeck(ctx context.Context, st Store, id string) error {
-	return st.Delete(ctx, deckKey(id))
+// RemoveDeck removes the deck d, for pwf: its file, and its HTTPS name and certificate. dns
+// is nil for a service with no HTTPS names.
+func RemoveDeck(ctx context.Context, st Store, dns DNS, domain string, d Deck) error {
+	if err := forgetDeckName(ctx, st, dns, domain, &d); err != nil {
+		return err
+	}
+	return st.Delete(ctx, deckKey(d.ID))
 }

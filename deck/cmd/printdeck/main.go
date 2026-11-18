@@ -273,7 +273,8 @@ func run(cfg config.Config) {
 	startCamera(ctx, cfg.StateDir, app, pr)
 	startTimelapse(ctx, cfg.StateDir, cfg.KlipperConfig, app, pr)
 	startBedCool(ctx, cfg.StateDir, app, pr)
-	startShare(cfg.StateDir, cfg.KlipperConfig, cfg.GcodeDir, app, pr)
+	link := startShare(cfg.StateDir, cfg.KlipperConfig, cfg.GcodeDir, app, pr)
+	startTLSCert(ctx, cfg.StateDir, cfg.TLSAddr, link)
 
 	if p, ok := screen.(interface{ SetTouch(touch.Options) }); ok {
 		p.SetTouch(touch.Options{InvertX: cfg.TouchInvertX, InvertY: cfg.TouchInvertY, Swap: cfg.TouchSwapXY,

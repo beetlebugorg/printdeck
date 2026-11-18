@@ -71,13 +71,18 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 		}
 	}
 	// The zslice web app can call the API from the browser (WEB_ORIGINS).
-	srv := &http.Server{Addr: cfg.RemoteAddr, Handler: remote.CORS(remote.SecurityHeaders(mux), cfg.WebOrigins), ReadHeaderTimeout: 10 * time.Second}
+	h := remote.CORS(remote.SecurityHeaders(mux), cfg.WebOrigins)
+	srv := &http.Server{Addr: cfg.RemoteAddr, Handler: h, ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		log.Printf("web server on %s", cfg.RemoteAddr)
 		if err := srv.ListenAndServe(); err != nil {
 			log.Printf("web server is off: %v", err)
 		}
 	}()
+	// The same server on HTTPS, with the certificate of the deck's name (https.go).
+	if cfg.TLSAddr != "" {
+		serveHTTPS(cfg.TLSAddr, h)
+	}
 	return rs
 }
 

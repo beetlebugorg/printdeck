@@ -67,7 +67,7 @@ func TestSlicerPage(t *testing.T) {
 	r = get("/slicer/printer.json", cookie)
 	var p map[string]string
 	json.NewDecoder(r.Body).Decode(&p)
-	if p["kind"] != "printdeck" || p["url"] != "" || p["name"] == "" || len(p) != 3 {
+	if p["kind"] != "printdeck" || p["url"] != "" || p["name"] == "" || p["https"] != "" || len(p) != 4 {
 		t.Errorf("printer.json: %v", p)
 	}
 	if r := get("/slicer/printer.json", ""); r.StatusCode != http.StatusUnauthorized {

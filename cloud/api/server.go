@@ -58,6 +58,10 @@ type Server struct {
 	// Lapse encodes the time lapse frames of a print to a video (lapse.go), or is nil: the
 	// prints then keep their frames.
 	Lapse LapseEncoder
+	// DNS changes the records of the HTTPS names of the decks, and Issuer gets their
+	// certificates (decktls.go). With either nil, the decks get no HTTPS names.
+	DNS    DNS
+	Issuer Issuer
 	// Now is the clock, or nil for time.Now.
 	Now func() time.Time
 
@@ -221,8 +225,26 @@ func (s *Server) route(ctx context.Context, r *http.Request, body []byte) (any, 
 		case http.MethodGet:
 			return cloud.DeckInfo{Deck: d.ID, Name: d.Name, Enrolled: d.Enrolled}, nil
 		case http.MethodDelete:
+			if err := forgetDeckName(ctx, s.Store, s.DNS, s.Domain, d); err != nil {
+				return nil, err
+			}
 			return nil, s.Store.Delete(ctx, deckKey(d.ID))
 		}
+	case p == "/api/v1/decks/self/address" && r.Method == http.MethodPost:
+		d, err := s.deck(ctx, r, body)
+		if err != nil {
+			return nil, err
+		}
+		return s.setAddress(ctx, r, d, body)
+	case p == "/api/v1/decks/self/cert" && (r.Method == http.MethodPost || r.Method == http.MethodGet):
+		d, err := s.deck(ctx, r, body)
+		if err != nil {
+			return nil, err
+		}
+		if r.Method == http.MethodGet {
+			return s.getCert(ctx, d)
+		}
+		return s.requestCert(ctx, d, body)
 	}
 	return nil, fail(http.StatusMethodNotAllowed, "no such request")
 }
@@ -240,6 +262,14 @@ type Deck struct {
 	Name      string    `json:"name"`
 	PublicKey []byte    `json:"public_key"`
 	Enrolled  time.Time `json:"enrolled"`
+	// Host is the random first label of the HTTPS name of the deck, <host>.d.<domain>
+	// (decktls.go), or "" before the first request of the name.
+	Host string `json:"host,omitempty"`
+	// IPv4 is the address in the A record of the name, AddressSet the time of its last change,
+	// and AddressAt the time of the signature of the last address request (Unix seconds).
+	IPv4       string    `json:"ipv4,omitempty"`
+	AddressSet time.Time `json:"address_set,omitzero"`
+	AddressAt  int64     `json:"address_at,omitempty"`
 }
 
 func deckKey(id string) string { return "decks/" + id + ".json" }
