@@ -177,6 +177,7 @@ func run(cfg config.Config) {
 
 	// The printers of the deck (printers.go): each one has its backend and its App. The first
 	// printer has the deck-wide parts: the setup, the updater, the web server.
+	deckStateDir = cfg.StateDir
 	printers := loadDeckPrinters(cfg.StateDir)
 	var apps []*ui.App
 	var backends []printerBackend
@@ -270,7 +271,11 @@ func run(cfg config.Config) {
 		startQueue(ctx, pcfg.StateDir, pr, a)
 		go pr.Run(ctx, a.Redraw)
 		go lcdLoop(ctx, pr, a)
-		startNotify(ctx, pcfg.StateDir, pr, a)
+		label := ""
+		if len(printers) > 1 {
+			label = printers[i].Label
+		}
+		startNotify(ctx, cfg.StateDir, pr, a, label)
 		if i == 0 {
 			// The ChiTu relay has one port, and the camera and the time lapse use the camera of
 			// the deck: the first printer has them.
@@ -279,7 +284,11 @@ func run(cfg config.Config) {
 			startTimelapse(ctx, pcfg.StateDir, pcfg.KlipperConfig, a, pr)
 		}
 		startBedCool(ctx, pcfg.StateDir, a, pr)
-		startShare(link, pcfg.StateDir, pcfg.KlipperConfig, pcfg.GcodeDir, a, pr)
+		name := ""
+		if len(printers) > 1 {
+			name = printers[i].Name
+		}
+		startShare(link, pcfg.StateDir, pcfg.KlipperConfig, pcfg.GcodeDir, a, pr, name)
 	}
 	startTLSCert(ctx, cfg.StateDir, cfg.TLSAddr, link)
 	if len(apps) > 1 {

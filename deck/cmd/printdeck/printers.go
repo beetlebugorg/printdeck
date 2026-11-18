@@ -276,3 +276,15 @@ func deckIdentities(ps []deckPrinter, backends []printerBackend) []ui.Identity {
 	}
 	return ids
 }
+
+// deckStateDir is the state folder of the deck, for the parts of the deck (the paired phones) in
+// the code of a printer, or "" before run sets it.
+var deckStateDir string
+
+// deckDir returns the state folder of the deck, or the state folder of cfg when there is none.
+func deckDir(cfg config.Config) string {
+	if deckStateDir != "" {
+		return deckStateDir
+	}
+	return cfg.StateDir
+}
