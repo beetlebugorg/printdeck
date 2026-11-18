@@ -87,9 +87,12 @@ done
 
 # The libraries. Start with the ELF files that remain, and the libraries that programs load at
 # runtime: libkmod (systemd, .note.dlopen), the NSS modules of /etc/nsswitch.conf, libgcc_s
-# (glibc, for thread cancellation), and the legacy module of OpenSSL (wpa_supplicant, old WPA).
+# (glibc, for thread cancellation), the legacy module of OpenSSL (wpa_supplicant, old WPA), and
+# Vulkan for the print view of zslice: the loader (libvulkan) and the driver of the Pi 5 GPU, which
+# the loader opens from its ICD file.
 need=" libkmod.so.2 libgcc_s.so.1 libnss_files.so.2 libnss_dns.so.2 libnss_systemd.so.2
-  libnss_resolve.so.2 libnss_myhostname.so.2 ld-linux-aarch64.so.1 "
+  libnss_resolve.so.2 libnss_myhostname.so.2 ld-linux-aarch64.so.1 libvulkan.so.1
+  libvulkan_broadcom.so "
 todo=$(find "$T"/usr/bin "$T"/usr/sbin "$T"/usr/lib/systemd "$T"/usr/lib/udev "$T"/usr/lib/ossl-modules \
   -type f 2> /dev/null)
 for so in $need; do
