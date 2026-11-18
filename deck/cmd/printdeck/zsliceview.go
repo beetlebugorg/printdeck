@@ -3,8 +3,10 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"log"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -122,4 +124,81 @@ func hexRGB(hex string) (uint32, bool) {
 	}
 	v, err := strconv.ParseUint(s, 16, 32)
 	return uint32(v), err == nil
+}
+
+// gpuCheck draws a frame of the newest G-code file in dir with the print view of zslice, and
+// returns what happened: for the system page, to check the GPU of a deck with no print.
+func gpuCheck(dir string) map[string]any {
+	out := map[string]any{"zslice": true}
+	path := newestGcode(dir)
+	if path == "" {
+		out["error"] = "no G-code file on the deck"
+		return out
+	}
+	out["file"] = filepath.Base(path)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		t0 := time.Now()
+		g, err := zsview.OpenGcode(path)
+		if err != nil {
+			out["error"] = err.Error()
+			return
+		}
+		defer g.Close()
+		out["read_ms"] = time.Since(t0).Milliseconds()
+		in, _ := g.Info()
+		out["layers"], out["beads"] = in.Layers, in.Beads
+		t1 := time.Now()
+		v, err := zsview.NewView(printer.PreviewW, printer.PreviewH, false)
+		if err != nil {
+			out["error"] = err.Error()
+			return
+		}
+		defer v.Close()
+		out["view_ms"] = time.Since(t1).Milliseconds()
+		if err := v.Load(g, 0, 0); err != nil {
+			out["error"] = err.Error()
+			return
+		}
+		buf := make([]byte, printer.PreviewW*printer.PreviewH*4)
+		var frames []int64
+		for i, f := range []float64{0.5, 0.51, 0.52} {
+			v.SetPosition(uint64(float64(in.Size) * f))
+			t := time.Now()
+			if err := v.Draw(); err == nil {
+				err = v.Read(buf, printer.PreviewW*4)
+			}
+			if err != nil {
+				out["error"] = fmt.Sprintf("frame %d: %v", i, err)
+				return
+			}
+			frames = append(frames, time.Since(t).Microseconds())
+		}
+		out["frame_us"] = frames
+		out["ok"] = true
+	}()
+	select {
+	case <-done:
+	case <-time.After(60 * time.Second):
+		out["error"] = "no answer in 60 s"
+	}
+	return out
+}
+
+// newestGcode returns the newest .gcode file in dir, or "".
+func newestGcode(dir string) string {
+	entries, _ := os.ReadDir(dir)
+	best, bestT := "", time.Time{}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(strings.ToLower(e.Name()), ".gcode") {
+			continue
+		}
+		if fi, err := e.Info(); err == nil && fi.ModTime().After(bestT) {
+			best, bestT = filepath.Join(dir, e.Name()), fi.ModTime()
+		}
+	}
+	return best
 }

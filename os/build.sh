@@ -90,6 +90,17 @@ fi
 # deck/ (it also keeps the files that deck/ no longer has), copy it again and build the Printdeck
 # program, then make the image. The Go build cache keeps this fast.
 PRINTDECK_OS_CACHE="$CACHE" "$OS/get-zslice.sh"
+# The print view of zslice for the 3D view of the deck: PRINTDECK_ZSLICE_LIB is a folder with
+# lib/libzslice.a and include/ for aarch64-linux-gnu. The deck links it (cgo, the tag zslice).
+# With no library in the cache, the deck draws its own picture of a print.
+rm -rf "$CACHE/zslice-lib"
+if [ -n "${PRINTDECK_ZSLICE_LIB:-}" ]; then
+  [ -f "$PRINTDECK_ZSLICE_LIB/lib/libzslice.a" ] && [ -f "$PRINTDECK_ZSLICE_LIB/include/zslice-app.h" ] \
+    || { echo "PRINTDECK_ZSLICE_LIB has no lib/libzslice.a and include/zslice-app.h" >&2; exit 1; }
+  mkdir -p "$CACHE/zslice-lib/lib"
+  cp "$PRINTDECK_ZSLICE_LIB/lib/libzslice.a" "$CACHE/zslice-lib/lib/"
+  cp -r "$PRINTDECK_ZSLICE_LIB/include" "$CACHE/zslice-lib/"
+fi
 run printdeck-deck-dirclean
 run printdeck-deck
 run

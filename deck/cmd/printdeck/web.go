@@ -50,6 +50,7 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 		return nil
 	}
 	mux := http.NewServeMux()
+	gpuGcodeDir = cfg.GcodeDir
 	api := newAPI(cfg, pr, app, mux)
 	// The API of each other printer: under /printers/<id>/, with its own API keys. A request at
 	// /api with a key of another printer goes to that printer (keyRouter), so a slicer needs only

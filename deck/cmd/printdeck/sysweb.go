@@ -72,6 +72,9 @@ type systemView struct {
 // sysMetrics are the samples of the host for the system page, or nil.
 var sysMetrics *hostmetrics.Recorder
 
+// gpuGcodeDir is the G-code folder of the first printer, for the check of the GPU.
+var gpuGcodeDir string
+
 // sysTimelapse is the time lapse for the system page, or nil.
 var sysTimelapse *timelapse.Runner
 
@@ -83,6 +86,10 @@ var (
 
 func registerSystemPage(mux *http.ServeMux, rs *remote.Server, pr printerBackend, up *updater, metrics *hostmetrics.Recorder, klippyLog, apiKey string) {
 	sysMetrics, sysUpdater, sysPrinter = metrics, up, pr
+	// The check of the 3D view with the GPU (zslice), on the newest G-code file of the printer.
+	mux.HandleFunc("GET /system/gpu", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
+		writeInstallJSON(w, gpuCheck(gpuGcodeDir))
+	}))
 	mux.HandleFunc("GET /system/metrics", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
 		writeMetricsJSON(w, r, metrics)
 	}))
