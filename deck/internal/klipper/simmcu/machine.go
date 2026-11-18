@@ -52,7 +52,16 @@ func (c *cube) inside(p [3]float64, g float64) bool {
 	return p[0] >= c.left-g && p[0] <= c.right+g && p[1] >= c.front-g && p[1] <= c.back+g && p[2] <= c.top+g
 }
 
-var cubeSlack, cubeDrop, cubeShift float64
+var cubeSlack, cubeDrop, cubeShift, probeRise float64
+
+// SetProbeRise puts the probe pin of the next Configure rise mm higher than the z_offset of the
+// config, as a probe on a new mount: it triggers when the nozzle is z_offset - rise over the
+// surface. For tests.
+func SetProbeRise(rise float64) {
+	machineMu.Lock()
+	probeRise = rise
+	machineMu.Unlock()
+}
 
 // SetCubeSlack gives the cube of the next Configure a backlash: after a touch, the contact stays
 // closed until the nozzle backs away by slack mm. The steps of the board have no play, so this is
@@ -197,6 +206,9 @@ func Configure(get func(section, option string) (string, bool)) {
 	if p, ok := get("probe", "pin"); ok {
 		m.probe, _ = pin(p)
 		m.contact, _ = f("probe", "z_offset")
+		machineMu.Lock()
+		m.contact -= probeRise
+		machineMu.Unlock()
 		m.probeX, _ = f("probe", "x_offset")
 		m.probeY, _ = f("probe", "y_offset")
 	}

@@ -32,6 +32,10 @@
 // depth, the TAZ Workhorse cube of LulzBot: 10 by 4 mm). The descent of the probe stops 0.5 mm
 // over the top: a pin that misses the cube gives an error, and the nozzle stays over the bed.
 //
+// CUBE_PROBE_OFFSET MOUNT=1 is for a probe on a new mount, with a z_offset that can be far off:
+// the nozzle touch starts from top (no probe of the top first), the pin can go down to 1 mm under
+// the top (and 0.5 mm over the bed), and the result has no check against z_offset.
+//
 // CUBE_SAVE_PROBE_OFFSET puts the last z_offset of CUBE_PROBE_OFFSET in the probe section for
 // SAVE_CONFIG, as PROBE_CALIBRATE does.
 //
@@ -352,12 +356,24 @@ func (c *Cube) cmdProbeOffset(gcmd *gcode.Command) {
 	if !ok {
 		panic(gcode.Errorf("printer.cfg has no probe"))
 	}
+	// MOUNT=1: the probe is on a new mount, and its height is not known. The pin does not find
+	// the top first, because that uses z_offset: the nozzle touch starts from top of
+	// [printdeck_cube]. The descent of the pin can go down to topFloor under the top, and minFloorZ
+	// over the bed: a pin that misses the cube then reaches the floor before the bed.
+	mount := gcmd.GetInt("MOUNT", gcode.Default(0), gcode.Min(0), gcode.Max(1)) == 1
 	c.start("CUBE_PROBE_OFFSET")
 	off := pr.Offsets(nil)
 	midX := (c.left + c.right) / 2
-	topZ, _ := c.touchTop(midX, c.back-2, c.findTop(gcmd))
+	var topZ, floor float64
+	if mount {
+		topZ, _ = c.touchTop(midX, c.back-2, c.top)
+		floor = math.Max(topZ-topFloor, minFloorZ)
+	} else {
+		topZ, _ = c.touchTop(midX, c.back-2, c.findTop(gcmd))
+		floor = topZ + 0.5
+	}
 	var zs []float64
-	for _, z := range c.probeTop(gcmd, pr, topZ, topZ+0.5, samples) {
+	for _, z := range c.probeTop(gcmd, pr, topZ, floor, samples) {
 		zs = append(zs, z+off[2])
 	}
 	th := toolhead.Of(c.printer)
@@ -367,7 +383,16 @@ func (c *Cube) cmdProbeOffset(gcmd *gcode.Command) {
 	sort.Float64s(sorted)
 	pz := sorted[len(sorted)/2]
 	zoff := pz - topZ
-	if math.Abs(zoff-off[2]) > 0.8 {
+	if mount {
+		if zoff <= 0.1 {
+			panic(gcode.Errorf("The probe gave z_offset %.3f: the pin is not under the nozzle, or it missed the top "+
+				"of the cube. Check x_offset and y_offset of the probe.", zoff))
+		}
+		if zoff < 2 {
+			gcmd.RespondInfo(fmt.Sprintf("The pin is only %.2f mm under the nozzle. A BLTouch needs 2 to 4 mm: "+
+				"a lower mount keeps the nozzle away from the bed when the pin probes.", zoff), true)
+		}
+	} else if math.Abs(zoff-off[2]) > 0.8 {
 		panic(gcode.Errorf("The probe gave z_offset %.3f, and printer.cfg has %.3f. The pin can be off the top "+
 			"of the cube: check x_offset and y_offset of the probe.", zoff, off[2]))
 	}

@@ -97,6 +97,7 @@ type probeCal struct {
 	closed  time.Time // when the last paper screen closed
 	fresh   bool      // a new z_offset was saved in this calibration
 	asked   bool      // the result of a cube step is on the screen
+	mount   bool      // the cube step is for a probe on a new mount (CUBE_PROBE_OFFSET MOUNT=1)
 }
 
 // calSteps returns the steps of a calibration: "all", "zoffset", "twist" or "map".
@@ -113,7 +114,7 @@ func calSteps(kind string, mach printer.Machine) []calStep {
 		return append(twist, calCool)
 	case "map":
 		return []calStep{calHeat, calMap, calCool}
-	case "cube":
+	case "cube", "cubemount":
 		return append(wipe(mach), calHeat, calCube, calSave, calCool)
 	case "backlash":
 		return append(wipe(mach), calCubeBacklash, calCool)
@@ -136,7 +137,7 @@ func wipe(mach printer.Machine) []calStep {
 // startProbeCal starts a calibration, after the question.
 func (a *App) startProbeCal(kind, name string) {
 	mach := a.Printer.Machine()
-	a.probeCal = &probeCal{name: name, steps: calSteps(kind, mach)}
+	a.probeCal = &probeCal{name: name, steps: calSteps(kind, mach), mount: kind == "cubemount"}
 	a.calMsg, a.calEnded = "", nil
 	a.Redraw()
 }
@@ -220,7 +221,11 @@ func (a *App) calStart(fl *probeCal, st printer.State) {
 			fmt.Sprintf("TEMPERATURE_WAIT SENSOR=extruder MAXIMUM=%d", calToolTemp+5), "M107")
 		a.runAction(action, lines...)
 	case calCube:
-		a.runAction(action, "CUBE_PROBE_OFFSET")
+		if fl.mount {
+			a.runAction(action, "CUBE_PROBE_OFFSET MOUNT=1")
+		} else {
+			a.runAction(action, "CUBE_PROBE_OFFSET")
+		}
 	case calCubeBacklash:
 		if st.Homed != "xyz" {
 			a.runAction(action, "G28", "CUBE_MEASURE")
@@ -463,6 +468,9 @@ func (a *App) drawProbeCal(c *gfx.Canvas, st printer.State) {
 				}},
 				{"Paper test", "Heat, then a paper test at the middle of the bed · about 5 minutes", dim, func() {
 					a.startProbeCal("zoffset", "Z offset")
+				}},
+				{"On the cube, new probe mount", "The probe is higher or lower than before: the pin can go further down", dim, func() {
+					a.startProbeCal("cubemount", "Z offset")
 				}},
 			}}
 		}})
