@@ -414,6 +414,16 @@ func (a *App) drawPaused(c *gfx.Canvas, st printer.State) {
 		infoH = 112 // the message of the file, in two lines, and the height check
 	}
 	if W > H {
+		if st.PausePrompt != "" && !gfx.FinePrint() {
+			// The card has the height of its text: the lines of the message, and the line under
+			// it. The model gets the rest.
+			_, right := wideZones(wideScale)
+			n := min(2, len(wrapText(gfx.Face(true, 17), st.PausePrompt, right.Dx()-36)))
+			infoH = 12 + n*28
+			if pausePromptSub(st) != "" {
+				infoH += 26
+			}
+		}
 		view, keys := a.statePage(c, st, "Paused", 2*actH+12)
 		v := kit.Rows(view, 12, kit.Px(infoH), kit.Fr(1))
 		info = v[0]
