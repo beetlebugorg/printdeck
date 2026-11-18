@@ -24,6 +24,7 @@ import (
 	"printdeck/internal/notify"
 	"printdeck/internal/printer"
 	"printdeck/internal/queue"
+	"printdeck/internal/signing"
 	"printdeck/internal/touch"
 )
 
@@ -283,6 +284,9 @@ type App struct {
 	OnNotify    func(topic string)
 	// Phones are the paired phones of the Printdeck app, or nil (Settings > Phones).
 	Phones *notify.Phones
+	// Signing keeps "Signed prints only" and the trusted slicers, or is nil (Settings > Signed
+	// prints, signing.go).
+	Signing *signing.Store
 	// Cloud is the link of the deck to its cloud service, or nil (Settings > Cloud).
 	Cloud CloudLink
 	// Share is the share link of the print, or nil.
@@ -432,6 +436,7 @@ func (a *App) Session(width, height int) *App {
 	s.BedCool = a.BedCool
 	s.Cloud = a.Cloud
 	s.Share = a.Share
+	s.Signing = a.Signing
 	s.hub = a.hub
 	return s
 }

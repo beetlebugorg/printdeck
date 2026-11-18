@@ -97,7 +97,12 @@ func (s *Server) serveUpload(w http.ResponseWriter, r *http.Request) {
 		switch part.FormName() {
 		case "file":
 			name = path.Base(part.FileName())
-			saved, err = s.Store.Save(path.Join(folder, name), part)
+			saved, err = s.Store.SaveChecked(path.Join(folder, name), part, s.uploadCheck(name))
+			var rej rejection
+			if errors.As(err, &rej) {
+				s.reject(w, name, string(rej))
+				return
+			}
 			if errors.Is(err, gcodestore.ErrBadName) {
 				apiError(w, http.StatusUnsupportedMediaType, "Not a G-code or STL file")
 				return
@@ -193,6 +198,10 @@ func (s *Server) serveFileCommand(w http.ResponseWriter, r *http.Request) {
 	if req.Print {
 		if s.Resin {
 			apiError(w, http.StatusConflict, "Start a resin print on the touch screen of the deck")
+			return
+		}
+		if reason := s.signatureCheck(strings.TrimPrefix(p, "/")); reason != "" {
+			s.reject(w, p, reason)
 			return
 		}
 		if !s.operational(w) {

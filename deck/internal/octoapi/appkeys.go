@@ -4,12 +4,15 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"printdeck/internal/signing"
 )
 
 // The App Keys flow of OctoPrint (https://docs.octoprint.org/en/master/bundledplugins/appkeys.html):
@@ -19,6 +22,10 @@ import (
 //  2. The touch screen asks "Allow Cura to use the Printdeck?".
 //  3. The app polls /plugin/appkeys/request/<token>: 202 while the user decides, 200 with the key
 //     after "Allow", and 404 after "Deny" or when the request is too old.
+//
+// The request can also have "public_key": the public key of the app for signed prints
+// ("ed25519 <base64>", package signing). The question then names its key id, and "Allow" also
+// adds the key to the trusted keys of the deck.
 
 // requestTimeout is how long a request waits for the user.
 const requestTimeout = 2 * time.Minute
@@ -28,11 +35,13 @@ type keyRequest struct {
 	created time.Time
 	decided bool
 	key     string // the new key after "Allow"; "" after "Deny"
+	trusted string // the key id of the public key that "Allow" added, or ""
 }
 
 func (s *Server) requestKey(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		App string `json:"app"`
+		App       string `json:"app"`
+		PublicKey string `json:"public_key"`
 	}
 	if !decode(w, r, &req) {
 		return
@@ -46,6 +55,17 @@ func (s *Server) requestKey(w http.ResponseWriter, r *http.Request) {
 		apiError(w, http.StatusNotFound, "App keys are off")
 		return
 	}
+	question := "Allow " + app + " to use the Printdeck?"
+	var keyID string
+	if req.PublicKey != "" && s.Signing != nil {
+		pub, err := signing.ParsePublic(req.PublicKey)
+		if err != nil {
+			apiError(w, http.StatusBadRequest, "The public key does not read")
+			return
+		}
+		keyID = signing.KeyID(pub)
+		question = "Allow " + app + " to use the Printdeck, and trust its prints (key " + keyID + ")?"
+	}
 	token := randomHex(16)
 	kr := &keyRequest{app: app, created: time.Now()}
 	s.mu.Lock()
@@ -53,13 +73,21 @@ func (s *Server) requestKey(w http.ResponseWriter, r *http.Request) {
 	s.requests[token] = kr
 	s.mu.Unlock()
 
-	s.Ask("Allow "+app+" to use the Printdeck?", "Allow", "Deny", func(yes bool) {
+	s.Ask(question, "Allow", "Deny", func(yes bool) {
 		key := ""
 		if yes {
 			key = s.keys.add(app)
+			if keyID != "" {
+				if _, err := s.Signing.Add(app, req.PublicKey, time.Now()); err != nil {
+					log.Printf("appkeys: the key of %s: %v", app, err)
+				}
+			}
 		}
 		s.mu.Lock()
 		kr.decided, kr.key = true, key
+		if key != "" {
+			kr.trusted = keyID
+		}
 		s.mu.Unlock()
 	})
 	w.Header().Set("Location", baseURL(r)+"/plugin/appkeys/request/"+token)
@@ -73,9 +101,9 @@ func (s *Server) pollKey(w http.ResponseWriter, r *http.Request) {
 	s.dropOldRequests()
 	kr := s.requests[r.PathValue("token")]
 	var decided bool
-	var key string
+	var key, trusted string
 	if kr != nil {
-		decided, key = kr.decided, kr.key
+		decided, key, trusted = kr.decided, kr.key, kr.trusted
 		if decided {
 			delete(s.requests, r.PathValue("token")) // the key is given once
 		}
@@ -87,7 +115,12 @@ func (s *Server) pollKey(w http.ResponseWriter, r *http.Request) {
 	case !decided:
 		w.WriteHeader(http.StatusAccepted)
 	default:
-		writeJSON(w, http.StatusOK, map[string]string{"api_key": key})
+		// trusted_key is the key id of the public key of the app that the deck now trusts.
+		out := map[string]string{"api_key": key}
+		if trusted != "" {
+			out["trusted_key"] = trusted
+		}
+		writeJSON(w, http.StatusOK, out)
 	}
 }
 

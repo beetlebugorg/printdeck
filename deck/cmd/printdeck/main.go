@@ -44,6 +44,7 @@ import (
 	"printdeck/internal/hostmetrics"
 	"printdeck/internal/klipper/cli"
 	"printdeck/internal/printer"
+	"printdeck/internal/signing"
 	"printdeck/internal/system"
 	"printdeck/internal/touch"
 	"printdeck/internal/ui"
@@ -284,6 +285,8 @@ func run(cfg config.Config) {
 	}
 	go screen.Run(ctx, events)
 
+	// "Signed prints only" and the trusted slicers (Settings > Signed prints), for the API.
+	app.Signing = &signing.Store{Path: filepath.Join(cfg.StateDir, "signing.json")}
 	startWeb(cfg, host, pr, app, up)
 	// After a boot, a soft change from the start screen to the first screen.
 	if _, ok := screen.(display.None); !ok && uptime() < 90*time.Second {
