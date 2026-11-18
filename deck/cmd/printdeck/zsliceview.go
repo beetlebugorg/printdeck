@@ -5,12 +5,14 @@ package main
 import (
 	"fmt"
 	"image"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"printdeck/internal/printer"
@@ -152,7 +154,11 @@ func gpuCheck(dir string) map[string]any {
 		in, _ := g.Info()
 		out["layers"], out["beads"] = in.Layers, in.Beads
 		t1 := time.Now()
-		v, err := zsview.NewView(printer.PreviewW, printer.PreviewH, false)
+		var v *zsview.View
+		msgs := captureOutput(func() { v, err = zsview.NewView(printer.PreviewW, printer.PreviewH, false) })
+		if msgs != "" {
+			out["messages"] = msgs // what zslice and the Vulkan driver wrote
+		}
 		if err != nil {
 			out["error"] = err.Error()
 			return
@@ -201,4 +207,34 @@ func newestGcode(dir string) string {
 		}
 	}
 	return best
+}
+
+// captureOutput runs f, and returns what the process wrote to its standard output and its
+// standard error during f (at most 16 KB): the messages of zslice and of the Vulkan driver.
+func captureOutput(f func()) string {
+	r, w, err := os.Pipe()
+	if err != nil {
+		f()
+		return ""
+	}
+	out1, _ := syscall.Dup(1)
+	out2, _ := syscall.Dup(2)
+	syscall.Dup3(int(w.Fd()), 1, 0)
+	syscall.Dup3(int(w.Fd()), 2, 0)
+	got := make(chan string, 1)
+	go func() {
+		b, _ := io.ReadAll(io.LimitReader(r, 16<<10))
+		io.Copy(io.Discard, r)
+		got <- string(b)
+	}()
+	f()
+	syscall.Dup3(out1, 1, 0)
+	syscall.Dup3(out2, 2, 0)
+	syscall.Close(out1)
+	syscall.Close(out2)
+	w.Close()
+	s := <-got
+	r.Close()
+	os.Stderr.WriteString(s) // the journal keeps the messages too
+	return s
 }
