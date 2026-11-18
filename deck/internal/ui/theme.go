@@ -20,6 +20,9 @@ var (
 	bg, surface, raised, edge, shine color.RGBA // chassis, module plate, key cap, seams, top highlight
 	text, dim                        color.RGBA // ink, secondary ink
 	orange, green, red, onAcc        color.RGBA // safety orange (the one accent), red text, ink on orange
+	// accentText is orange as text on the chassis: the safety orange has too little contrast on
+	// the light chassis (2.0 to 2.4:1), so the day palette has a darker orange (about 4.9:1).
+	accentText color.RGBA
 	redCap, onRed                    color.RGBA // the cap of a key that stops, and its lettering
 	lcd, lcdInk, lcdDim, lcdCell     color.RGBA // display window, its amber digits, and an unlit character cell
 	ledOff, ledGlow                  color.RGBA
@@ -32,6 +35,7 @@ var (
 
 type palette struct {
 	bg, surface, raised, edge, shine, text, dim, orange, red, onAcc, lcd, lcdInk, lcdDim, ledOff, ledGlow, keyOn, keyOnInk color.RGBA
+	accentText                                                                                                             color.RGBA
 	redCap, onRed, lcdCell                                                                                                 color.RGBA
 	glcd, glcdCell, glcdInk                                                                                                color.RGBA
 }
@@ -42,7 +46,7 @@ var (
 	// Day: a light grey chassis, like a Braun or Teenage Engineering device.
 	dayPalette = palette{
 		bg: rgb(0xd3d0c8), surface: rgb(0xe6e3dc), raised: rgb(0xf3f1ec), edge: rgb(0xa9a59c), shine: rgb(0xfbfaf7),
-		text: rgb(0x171717), dim: rgb(0x4a4742), orange: rgb(0xff5a1f), red: rgb(0xd12b1d), onAcc: rgb(0x121212),
+		text: rgb(0x171717), dim: rgb(0x4a4742), orange: rgb(0xff5a1f), red: rgb(0xd12b1d), onAcc: rgb(0x121212), accentText: rgb(0xb83c0c),
 		lcd: rgb(0x1b1c1a), lcdInk: rgb(0xff7a30), lcdDim: rgb(0xc27a48), ledOff: rgb(0x8f8a80), ledGlow: rgb(0xffc8a8),
 		keyOn: rgb(0x171717), keyOnInk: rgb(0xf3f1ec), redCap: rgb(0xc0291b), onRed: rgb(0xfbfaf7), lcdCell: rgb(0x2a211a),
 		glcd: rgb(0x1f4bd1), glcdCell: rgb(0x2a58e0), glcdInk: rgb(0xf2f6ff),
@@ -51,7 +55,7 @@ var (
 	// (contrast_test.go); mid-grey on dark grey washes out when the panel is seen from the side.
 	nightPalette = palette{
 		bg: rgb(0x121211), surface: rgb(0x1c1c1a), raised: rgb(0x292825), edge: rgb(0x060606), shine: rgb(0x34332f),
-		text: rgb(0xeee9df), dim: rgb(0xc2bcb0), orange: rgb(0xff7a3a), red: rgb(0xff7a6a), onAcc: rgb(0x0e0e0d),
+		text: rgb(0xeee9df), dim: rgb(0xc2bcb0), orange: rgb(0xff7a3a), red: rgb(0xff7a6a), onAcc: rgb(0x0e0e0d), accentText: rgb(0xff7a3a),
 		lcd: rgb(0x080808), lcdInk: rgb(0xff8c4a), lcdDim: rgb(0xd98a55), ledOff: rgb(0x3a3834), ledGlow: rgb(0x4a2412),
 		keyOn: rgb(0x080808), keyOnInk: rgb(0xff8c4a), redCap: rgb(0x9c2216), onRed: rgb(0xf3efe8), lcdCell: rgb(0x1a120c),
 		glcd: rgb(0x0f2766), glcdCell: rgb(0x143079), glcdInk: rgb(0xd6e2ff),
@@ -71,6 +75,7 @@ func setNight(on bool) {
 	bg, surface, raised, edge, shine = p.bg, p.surface, p.raised, p.edge, p.shine
 	text, dim = p.text, p.dim
 	orange, green, red, onAcc = p.orange, p.orange, p.red, p.onAcc
+	accentText = p.accentText
 	lcd, lcdInk, lcdDim, lcdCell = p.lcd, p.lcdInk, p.lcdDim, p.lcdCell
 	ledOff, ledGlow = p.ledOff, p.ledGlow
 	keyOn, keyOnInk = p.keyOn, p.keyOnInk
@@ -401,4 +406,12 @@ func charLCD(c *gfx.Canvas, r image.Rectangle, lines []string, cols int) {
 	b := img.Bounds()
 	x, y := r.Min.X+(r.Dx()-b.Dx())/2, r.Min.Y+(r.Dy()-b.Dy())/2
 	c.PixelImage(image.Rect(x, y, x+b.Dx(), y+b.Dy()), img)
+}
+
+// textInk is the colour of text in c on the chassis: accentText in place of orange.
+func textInk(c color.RGBA) color.RGBA {
+	if c == orange {
+		return accentText
+	}
+	return c
 }

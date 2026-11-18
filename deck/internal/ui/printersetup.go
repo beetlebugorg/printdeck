@@ -47,7 +47,7 @@ func (a *App) drawPrinterSetup(c *gfx.Canvas, st printer.State) {
 		c.Text(right.Next(40), "Looking for the printer board…", gfx.Face(true, 22), dim, gfx.Left)
 		right.Skip(20)
 	case len(boards) == 0:
-		c.Text(right.Next(40), "No printer board found", gfx.Face(true, 22), orange, gfx.Left)
+		c.Text(right.Next(40), "No printer board found", gfx.Face(true, 22), accentText, gfx.Left)
 		right.Skip(20)
 	}
 	if !probing {

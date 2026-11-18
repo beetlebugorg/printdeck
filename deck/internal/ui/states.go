@@ -175,9 +175,9 @@ func (a *App) drawSteps(c *gfx.Canvas, st printer.State, end bool) {
 		}
 		c.Text(nameR, s.name, gfx.Face(true, 19), col, gfx.Left)
 		if under(s, box) {
-			c.Text(infoR, info, infoF, orange, gfx.Left)
+			c.Text(infoR, info, infoF, accentText, gfx.Left)
 		} else {
-			c.Text(infoR, info, infoF, orange, gfx.Right)
+			c.Text(infoR, info, infoF, accentText, gfx.Right)
 		}
 		if f > 0 {
 			// A thin bar under the name, with a gap: the segments of a meter crowd the line.
@@ -279,7 +279,8 @@ func (a *App) drawFirstLayer(c *gfx.Canvas, st printer.State) {
 	window(c, win)
 	a.region("Z offset", win)
 	a.region("− and +", z[0].Union(z[2]))
-	label(c, image.Rect(win.Min.X+10, win.Min.Y+4, win.Max.X, win.Min.Y+22), "Z offset", gfx.Left)
+	// The label on the dark window is in lcdDim: dim has too little contrast there.
+	c.Text(image.Rect(win.Min.X+10, win.Min.Y+4, win.Max.X, win.Min.Y+22), "Z OFFSET", gfx.Face(true, 14), lcdDim, gfx.Left)
 	c.Text(image.Rect(win.Min.X, win.Min.Y+14, win.Max.X, win.Max.Y), fmt.Sprintf("%+.3f", st.ZOffset), gfx.Face(true, 30), lcdInk, gfx.Center)
 	a.button(c, z[2], "+", raised, text, func() { a.do(func() error { return pr.BabyStep(step) }) })
 	a.button(c, z[3], "Save", raised, text, func() { a.saveZOffset(st) })

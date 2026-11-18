@@ -66,12 +66,11 @@ func (a *App) displayIn(left image.Rectangle, scale int) (lcd, under image.Recta
 	return lcd, image.Rect(left.Min.X, lcd.Max.Y+8+gridM, left.Max.X, left.Max.Y)
 }
 
-// lcdRect is the status panel in a pane of a tall screen: at the top, in the middle, as wide as
-// the printer display at lcdScale.
+// lcdRect is the status panel in a pane of a tall screen: at the top, with its bezel of 8 pixels
+// in the margins of the page, so the panel lines up with the keys and cards of every page.
 func (a *App) lcdRect(pane image.Rectangle) image.Rectangle {
-	w, h := 128*lcdScale, panelH()
-	x := pane.Min.X + (pane.Dx()-w)/2
-	return image.Rect(x, pane.Min.Y+lcdTop, x+w, pane.Min.Y+lcdTop+h)
+	x0, x1 := pane.Min.X+margin+8, pane.Max.X-margin-8
+	return image.Rect(x0, pane.Min.Y+lcdTop, x1, pane.Min.Y+lcdTop+panelH())
 }
 
 // divider draws the seam between the two columns of a wide screen: a groove in the middle of the
@@ -108,7 +107,8 @@ func (a *App) stateFrame() frame {
 		lcd, under := a.displayIn(left, wideScale)
 		return frame{wide: true, lcd: lcd, side: under, main: right}
 	}
-	top, main := scr.Split(lcdTop + panelH() + 12)
+	// 12 pixels between the bezel of the panel and the content, as between the other parts.
+	top, main := scr.Split(lcdTop + panelH() + 8 + 12)
 	return frame{lcd: a.lcdRect(top), main: main}
 }
 

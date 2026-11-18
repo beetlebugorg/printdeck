@@ -606,6 +606,7 @@ func wifiLine(s wifi.Status) string {
 // subCol. A tap opens the page. A name that is too long gets a smaller font. A line that is too
 // long goes in more lines when the key is high enough, and else loses its end.
 func (a *App) statusKey(c *gfx.Canvas, r image.Rectangle, title, sub string, subCol color.RGBA, tap func()) {
+	subCol = textInk(subCol)
 	a.drawAck(c, r)
 	pressed := a.isPressed(r)
 	key(c, r, "", raised, text, pressed)
