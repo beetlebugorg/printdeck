@@ -63,7 +63,8 @@ func TestSharpness(t *testing.T) {
 	}
 }
 
-// A JPEG frame decodes at a smaller size when the box keeps focusDetail pixels of width.
+// A JPEG frame decodes the box only, at a smaller size when the box keeps focusDetail pixels of
+// width, and keeps no picture.
 func TestFrameSharpness(t *testing.T) {
 	for _, tc := range []struct {
 		r     image.Rectangle
@@ -80,13 +81,20 @@ func TestFrameSharpness(t *testing.T) {
 		if s := f.sharpness(tc.r); s <= 0 {
 			t.Fatalf("%v: sharpness %.1f", tc.r, s)
 		}
-		for i, p := range f.scaled {
-			if (p != nil) != (i+1 == tc.shift) {
-				t.Errorf("%v: decode at 1/%d: %v", tc.r, 2<<i, p != nil)
-			}
+		c := [4]float64{float64(tc.r.Min.X), float64(tc.r.Min.Y), float64(tc.r.Max.X), float64(tc.r.Max.Y)}
+		pic, pc := f.cropPicture(c, focusDetail)
+		if k := c[2] - c[0]; pc[2]-pc[0] != k/float64(int(1)<<tc.shift) {
+			t.Errorf("%v: crop %v, want the decode at 1/%d", tc.r, pc, 1<<tc.shift)
 		}
-		if (f.pic != nil) != (tc.shift == 0) {
-			t.Errorf("%v: whole decode %v", tc.r, f.pic != nil)
+		// The picture covers the box (with a margin) and is smaller than the frame.
+		if want := image.Rect(int(pc[0]), int(pc[1]), int(pc[2]), int(pc[3])); !want.In(pic.Rect) {
+			t.Errorf("%v: picture %v does not cover %v", tc.r, pic.Rect, want)
+		}
+		if tc.r.Dx() < 1280 && pic.Rect.Dx() >= 1280>>tc.shift {
+			t.Errorf("%v: the decode of the whole width %v", tc.r, pic.Rect)
+		}
+		if f.pic != nil || f.scaled != [3]*image.YCbCr{} {
+			t.Errorf("%v: the frame keeps a picture", tc.r)
 		}
 	}
 }

@@ -30,7 +30,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/jpeg"
+	"math"
 	"sync"
 	"time"
 
@@ -177,7 +177,7 @@ func (f *Frame) picture() *image.YCbCr {
 	if f.pic != nil || f.err != nil {
 		return f.pic
 	}
-	img, err := jpeg.Decode(bytes.NewReader(f.jpeg))
+	img, err := jpegdec.DecodeScaled(bytes.NewReader(f.jpeg), 0)
 	if err != nil {
 		f.err = err
 		return nil
@@ -228,6 +228,46 @@ func (f *Frame) pictureFor(w int) *image.YCbCr {
 	}
 	f.scaled[shift-1] = p
 	return p
+}
+
+// cropPicture returns a picture for the crop c (x0, y0, x1, y1 in the pixels of the frame) at the
+// width ow, and the crop in the pixels of that picture. A frame with its picture gives the
+// picture. Else the frame decodes the part of its JPEG around the crop only (jpegdec.DecodeRegion),
+// at 1/2, 1/4 or 1/8 of the size when that keeps ow pixels or more across the crop: the Huffman
+// decode of the whole JPEG, and the inverse DCT of the blocks of the crop. A 4K frame then costs
+// little for a small crop. The picture is not kept: a caller keeps what it makes of it.
+func (f *Frame) cropPicture(c [4]float64, ow int) (*image.YCbCr, [4]float64) {
+	f.mu.Lock()
+	pic, b := f.pic, f.jpeg
+	f.mu.Unlock()
+	if pic != nil || b == nil {
+		return f.picture(), c
+	}
+	shift := 0
+	for s := 3; s >= 1; s-- {
+		if (c[2]-c[0])/float64(int(1)<<s) >= float64(ow) {
+			shift = s
+			break
+		}
+	}
+	k := 1 << shift
+	// A margin of two samples at the scale for the bilinear mix.
+	m := 2 * k
+	r := image.Rect(int(math.Floor(c[0]))-m, int(math.Floor(c[1]))-m, int(math.Ceil(c[2]))+m, int(math.Ceil(c[3]))+m).
+		Intersect(image.Rect(0, 0, f.w, f.h))
+	if r.Empty() {
+		return f.picture(), c
+	}
+	img, err := jpegdec.DecodeRegion(bytes.NewReader(b), shift, r)
+	if err != nil {
+		return f.picture(), c
+	}
+	p := toYCbCrPicture(img)
+	if p == nil {
+		return f.picture(), c
+	}
+	kf := float64(k)
+	return p, [4]float64{c[0] / kf, c[1] / kf, c[2] / kf, c[3] / kf}
 }
 
 // toYCbCrPicture returns a decoded JPEG as a YCbCr picture: a gray picture gets no color. It

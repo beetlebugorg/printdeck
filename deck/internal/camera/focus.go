@@ -108,20 +108,19 @@ func sharpness(p *image.YCbCr, r image.Rectangle) float64 {
 }
 
 // sharpness returns the sharpness of the frame in the rectangle r of its pixels. The frame decodes
-// its JPEG at 1/2, 1/4 or 1/8 of its size when r keeps focusDetail pixels of width.
+// the part r of its JPEG only, at 1/2, 1/4 or 1/8 of its size when r keeps focusDetail pixels of
+// width (cropPicture).
 func (f *Frame) sharpness(r image.Rectangle) float64 {
 	r = r.Intersect(image.Rect(0, 0, f.w, f.h))
 	if r.Empty() {
 		return 0
 	}
-	pic := f.pictureFor((focusDetail*f.w + r.Dx() - 1) / r.Dx())
+	pic, c := f.cropPicture([4]float64{float64(r.Min.X), float64(r.Min.Y), float64(r.Max.X), float64(r.Max.Y)}, focusDetail)
 	if pic == nil {
 		return 0
 	}
-	k := float64(pic.Rect.Dx()) / float64(f.w)
-	pr := image.Rect(int(float64(r.Min.X)*k), int(float64(r.Min.Y)*k),
-		int(math.Ceil(float64(r.Max.X)*k)), int(math.Ceil(float64(r.Max.Y)*k)))
-	return sharpness(pic, pr.Add(pic.Rect.Min))
+	pr := image.Rect(int(c[0]), int(c[1]), int(math.Ceil(c[2])), int(math.Ceil(c[3]))).Intersect(pic.Rect)
+	return sharpness(pic, pr)
 }
 
 // focusTry is a lens position of a search and its sharpness.

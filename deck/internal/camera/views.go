@@ -527,11 +527,11 @@ func (c *Cam) View(f *Frame, view string, w int) (*Frame, string) {
 	if ok {
 		return v, view
 	}
-	pic := f.picture()
+	pic, crop := f.cropPicture(p.crop, ow)
 	if pic == nil {
 		return full()
 	}
-	v = picFrame(renderView(pic, *p, ow, oh))
+	v = picFrame(renderViewAt(pic, crop, *p, ow, oh))
 	v.Seq, v.Time, v.blank, v.cam = f.Seq, f.Time, f.blank, f.cam
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -555,12 +555,12 @@ func (c *Cam) View(f *Frame, view string, w int) (*Frame, string) {
 // frame. The deck UI shows a crop to place a tap on the picture more exactly.
 func (f *Frame) Crop(cx, cy, cw float64, w int) (*Frame, [4]float64) {
 	c := fitCrop(cx, cy, cw, 0, f.Size())
-	pic := f.picture()
+	ow, oh := viewSize(f.Size(), w)
+	pic, pc := f.cropPicture(c, ow)
 	if pic == nil {
 		return f, c
 	}
-	ow, oh := viewSize(f.Size(), w)
-	v := picFrame(cropScale(pic, c, ow, oh))
+	v := picFrame(cropScale(pic, pc, ow, oh))
 	v.Seq, v.Time, v.cam = f.Seq, f.Time, f.cam
 	return v, c
 }

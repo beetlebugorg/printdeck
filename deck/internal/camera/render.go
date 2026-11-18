@@ -18,7 +18,13 @@ const (
 // renderView makes the picture of the plan from the picture of the frame, at ow x oh (even
 // numbers).
 func renderView(pic *image.YCbCr, plan viewPlan, ow, oh int) *image.YCbCr {
-	out := cropScale(pic, plan.crop, ow, oh)
+	return renderViewAt(pic, plan.crop, plan, ow, oh)
+}
+
+// renderViewAt is renderView with the crop of the plan at crop in the pixels of pic: pic can be a
+// part of the frame at a smaller scale (Frame.cropPicture).
+func renderViewAt(pic *image.YCbCr, crop [4]float64, plan viewPlan, ow, oh int) *image.YCbCr {
+	out := cropScale(pic, crop, ow, oh)
 	if plan.mask != nil {
 		c := plan.crop
 		sx, sy := float64(ow)/(c[2]-c[0]), float64(oh)/(c[3]-c[1])
@@ -31,7 +37,8 @@ func renderView(pic *image.YCbCr, plan viewPlan, ow, oh int) *image.YCbCr {
 	return out
 }
 
-// cropScale scales the crop c (x0, y0, x1, y1 in pixels) of the picture to a picture of ow x oh.
+// cropScale scales the crop c (x0, y0, x1, y1 in the pixels of the picture, in the coordinates of
+// p.Rect) of the picture to a picture of ow x oh.
 // A crop that is twice the size of the picture or more gets the mean of the samples, and a
 // smaller crop gets the bilinear mix of the 4 nearest samples.
 func cropScale(p *image.YCbCr, c [4]float64, ow, oh int) *image.YCbCr {
@@ -41,6 +48,9 @@ func cropScale(p *image.YCbCr, c [4]float64, ow, oh int) *image.YCbCr {
 	}
 	out := image.NewYCbCr(image.Rect(0, 0, ow, oh), image.YCbCrSubsampleRatio420)
 	y, cb, cr := ycbcrPlanes(p)
+	// The planes start at p.Rect.Min.
+	mx, my := float64(p.Rect.Min.X), float64(p.Rect.Min.Y)
+	c = [4]float64{c[0] - mx, c[1] - my, c[2] - mx, c[3] - my}
 	bilinear(out.Y, out.YStride, ow, oh, y, c)
 	fx, fy := float64(cb.w)/float64(y.w), float64(cb.h)/float64(y.h)
 	cc := [4]float64{c[0] * fx, c[1] * fy, c[2] * fx, c[3] * fy}
