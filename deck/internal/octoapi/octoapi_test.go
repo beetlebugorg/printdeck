@@ -198,7 +198,7 @@ func TestAppKeysAllow(t *testing.T) {
 	s, ts, _ := newTest(t)
 	asked := make(chan func(bool), 1)
 	s.Ask = func(q, yes, no string, answer func(bool)) {
-		if q != "Allow Cura to use the Printdeck?" {
+		if q != "Allow Cura (127.0.0.1) to use the Printdeck?" {
 			t.Errorf("question %q", q)
 		}
 		asked <- answer

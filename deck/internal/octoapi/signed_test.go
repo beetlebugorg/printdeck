@@ -152,7 +152,7 @@ func TestAppKeysTrustThePublicKey(t *testing.T) {
 	id := signing.KeyID(sigKey(3).Public().(ed25519.PublicKey))
 	asked := make(chan func(bool), 1)
 	s.Ask = func(q, yes, no string, answer func(bool)) {
-		if q != "Allow zslice to use the Printdeck, and trust its prints (key "+id+")?" {
+		if q != "Allow zslice (127.0.0.1) to use the Printdeck, and trust its prints (key "+id+")?" {
 			t.Errorf("question %q", q)
 		}
 		asked <- answer

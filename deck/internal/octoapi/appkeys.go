@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -55,7 +56,13 @@ func (s *Server) requestKey(w http.ResponseWriter, r *http.Request) {
 		apiError(w, http.StatusNotFound, "App keys are off")
 		return
 	}
-	question := "Allow " + app + " to use the Printdeck?"
+	// The address of the app is in the question, so the user can tell a request from another
+	// computer.
+	who := app
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		who = app + " (" + host + ")"
+	}
+	question := "Allow " + who + " to use the Printdeck?"
 	var keyID string
 	if req.PublicKey != "" && s.Signing != nil {
 		pub, err := signing.ParsePublic(req.PublicKey)
@@ -64,7 +71,7 @@ func (s *Server) requestKey(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		keyID = signing.KeyID(pub)
-		question = "Allow " + app + " to use the Printdeck, and trust its prints (key " + keyID + ")?"
+		question = "Allow " + who + " to use the Printdeck, and trust its prints (key " + keyID + ")?"
 	}
 	token := randomHex(16)
 	kr := &keyRequest{app: app, created: time.Now()}

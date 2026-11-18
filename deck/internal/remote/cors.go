@@ -18,7 +18,12 @@ import (
 // remote screen does not go with a call. Each call still needs the API key, and a print still starts
 // only with a press on the touch screen.
 //
-// origins: the origins, separated by spaces or commas; "none" or empty turns it off.
+// A call that changes something (not GET, HEAD or OPTIONS) to the API from a page of another
+// origin gets 403. A browser sends such a form post or text/plain post with no preflight, so
+// with no check a hostile page on the LAN could start a pairing on the touch screen. The slicers
+// send no Origin header, and the pages of the deck have its own origin.
+//
+// origins: the origins, separated by spaces or commas; "none" or empty allows no other origin.
 func CORS(h http.Handler, origins string) http.Handler {
 	allowed := map[string]bool{}
 	for _, o := range strings.FieldsFunc(origins, func(r rune) bool { return r == ',' || r == ' ' }) {
@@ -27,12 +32,24 @@ func CORS(h http.Handler, origins string) http.Handler {
 			allowed[o] = true
 		}
 	}
-	if len(allowed) == 0 {
-		return h
-	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		if origin == "" || !allowed[origin] || !apiPath(r.URL.Path) {
+		if origin == "" || !apiPath(r.URL.Path) {
+			h.ServeHTTP(w, r)
+			return
+		}
+		if !allowed[origin] {
+			same := origin == "http://"+r.Host || origin == "https://"+r.Host
+			switch r.Method {
+			case http.MethodGet, http.MethodHead, http.MethodOptions:
+			default:
+				if !same {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusForbidden)
+					w.Write([]byte(`{"error": "Calls from this web page are not allowed"}`))
+					return
+				}
+			}
 			h.ServeHTTP(w, r)
 			return
 		}
