@@ -155,7 +155,10 @@ func gpuCheck(dir string) map[string]any {
 		out["layers"], out["beads"] = in.Layers, in.Beads
 		t1 := time.Now()
 		var v *zsview.View
+		// The messages of the Vulkan loader too: the drivers that it finds, and why one fails.
+		os.Setenv("VK_LOADER_DEBUG", "error,warn,driver")
 		msgs := captureOutput(func() { v, err = zsview.NewView(printer.PreviewW, printer.PreviewH, false) })
+		os.Unsetenv("VK_LOADER_DEBUG")
 		if msgs != "" {
 			out["messages"] = msgs // what zslice and the Vulkan driver wrote
 		}
