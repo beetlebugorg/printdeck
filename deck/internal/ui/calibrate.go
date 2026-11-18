@@ -632,7 +632,7 @@ func (a *App) drawCalibrate(c *gfx.Canvas) {
 		if fl.frame != nil && fl.frame.Size().X > 0 {
 			h = body.Dx() * fl.frame.Size().Y / fl.frame.Size().X
 		}
-		r := kit.Rows(kit.Inset(body, 0, 10, 0, 0), 12, kit.Px(h), kit.Px(110), kit.Fr(1))
+		r := kit.Rows(body, 12, kit.Px(h), kit.Px(110), kit.Fr(1))
 		pic, info, keys = r[0], r[1], r[2]
 	}
 	plan := fl.kind == camera.KindTowers && len(fl.marks) > 0 && (fl.phase == calibTap || fl.phase == calibMoving)
@@ -733,6 +733,10 @@ func (a *App) drawCalibrate(c *gfx.Canvas) {
 		return
 	}
 	row := image.Rect(keys.Min.X, keys.Min.Y, keys.Max.X, keys.Min.Y+72)
+	if W < H {
+		// Tall: the keys at the bottom of the page, as on the other pages.
+		row = image.Rect(keys.Min.X, keys.Max.Y-80, keys.Max.X, keys.Max.Y)
+	}
 	sizes := make([]kit.Size, len(ks))
 	for i := range sizes {
 		sizes[i] = kit.Fr(1)

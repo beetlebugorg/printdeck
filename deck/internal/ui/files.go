@@ -189,6 +189,10 @@ func (a *App) thumb(c *gfx.Canvas, r image.Rectangle, f printer.File, m gcodemet
 	}
 	in := r.Inset(3)
 	if c.Recording() != nil || in.Dx() > thumbSmall {
+		// A wide window shows the picture in a square in its middle, so that the model is whole.
+		if b := img.Bounds(); in.Dx() > in.Dy()*5/4 && b.Dx() <= b.Dy()*5/4 {
+			in = kit.Center(in, in.Dy(), in.Dy())
+		}
 		c.Cover(in, img)
 		return
 	}
@@ -298,7 +302,9 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 	if m.Slicer != "" {
 		rows = append(rows, [2]string{"Slicer", m.Slicer})
 	}
-	rows = append(rows, [2]string{"Uploaded", fileDate(f.Date, a.Now(), a.Clock24)})
+	if up := fileDate(f.Date, a.Now(), a.Clock24); up != "" {
+		rows = append(rows, [2]string{"Uploaded", up})
+	}
 	// Tall: the picture, the slicer data, and the keys. Wide: the picture and the slicer data at the
 	// right, the keys in the left column.
 	tableH := len(rows)*30 + 20
@@ -311,9 +317,9 @@ func (a *App) drawFile(c *gfx.Canvas, st printer.State) {
 		cols := kit.Cols(content, 16, kit.Px(side), kit.Fr(1))
 		pic, box, keys = kit.Rows(cols[0], 0, kit.Px(side))[0], kit.Rows(cols[1], 0, kit.Px(min(tableH, content.Dy())))[0], acts
 	} else {
-		r := kit.Rows(kit.Inset(pg.body(), 0, 12, 0, 8), 12, kit.Fr(1), kit.Px(tableH), kit.Px(84))
-		side := min(r[0].Dx(), r[0].Dy())
-		pic, box, keys = kit.Center(r[0], side, side), r[1], r[2]
+		// The picture has the width of the page, as the table and the keys under it.
+		r := kit.Rows(pg.body(), 12, kit.Fr(1), kit.Px(tableH), kit.Px(80))
+		pic, box, keys = r[0], r[1], r[2]
 	}
 	a.thumb(c, pic, f, m)
 	a.region("Picture", pic)
