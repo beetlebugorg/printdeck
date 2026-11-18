@@ -213,3 +213,23 @@ func TestProbeOffset(t *testing.T) {
 		t.Errorf("pending items %v", items)
 	}
 }
+
+// A probe on a new mount: the pin is 2.2 mm higher than z_offset of printer.cfg says (0.86 in the
+// simulator). CUBE_PROBE_OFFSET gives an error, and MOUNT=1 finds the z_offset of the pin.
+func TestProbeOffsetMount(t *testing.T) {
+	if testing.Short() {
+		t.Skip("the simulator runs in real time")
+	}
+	simmcu.SetProbeRise(2.2)
+	defer simmcu.SetProbeRise(0)
+	c := start(t, cubeSection+"\n[probe]\nz_offset: 3.06\n")
+	if msg := c.script(homeHere + "\nCUBE_PROBE_OFFSET"); msg == "" {
+		t.Fatalf("no error with a z_offset 2.2 mm off: %v", c.cube())
+	}
+	if msg := c.script("CUBE_PROBE_OFFSET MOUNT=1"); msg != "" {
+		t.Fatal(msg)
+	}
+	if v, _ := c.cube()["probe_z_offset"].(float64); math.Abs(v-0.86) > 0.015 {
+		t.Errorf("probe_z_offset %.3f, want 0.86", v)
+	}
+}
