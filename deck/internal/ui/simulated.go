@@ -43,7 +43,7 @@ func (a *App) drawSimulator(c *gfx.Canvas, st printer.State) {
 		items[0].tap = use("", "Go back to the real printer?", "Go back", "Restoring printer.cfg…")
 	}
 	for _, m := range printer.SimModels() {
-		sub, col, tap := m.Note, dim, use(m.ID, "Simulate the "+gfx.Fit(gfx.Face(true, 28), m.Name, 300)+"?", "Simulate", "Starting the simulated printer…")
+		sub, col, tap := m.Note, dim, use(m.ID, "Simulate the "+m.Name+"?", "Simulate", "Starting the simulated printer…")
 		if m.Name == st.Simulated {
 			sub, col, tap = "In use · "+m.Note, orange, nil
 		}
@@ -73,7 +73,7 @@ func (a *App) drawSimBand(c *gfx.Canvas, st printer.State) {
 	if W > H {
 		label += " · no real print"
 	}
-	label = gfx.Fit(face, strings.ToUpper(label), W-16)
+	label = strings.ToUpper(label)
 	c.Text(r, label, face, onAcc, gfx.Center)
 	a.region("Simulated", r)
 }

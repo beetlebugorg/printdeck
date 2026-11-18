@@ -240,12 +240,19 @@ func (a *App) headKey(c *gfx.Canvas, head image.Rectangle, label string, tap fun
 // headKeyOn is headKey with its LED: lit (on) on the page that the key opened, where it stays in
 // its place.
 func (a *App) headKeyOn(c *gfx.Canvas, head image.Rectangle, label string, on bool, tap func()) {
-	b := backRect(head)
 	fill, ink := keyOff, text
 	if on {
 		fill, ink = keyOn, keyOnInk
 	}
-	a.button(c, b.Sub(image.Pt(b.Dx()+12, 0)), label, fill, ink, tap)
+	a.button(c, headKeyRect(head, label), label, fill, ink, tap)
+}
+
+// headKeyRect is the place of a key in the head of a page, at the left of Back: as wide as its
+// label needs, so that the label is whole, also with the large text.
+func headKeyRect(head image.Rectangle, label string) image.Rectangle {
+	b := backRect(head)
+	w := max(b.Dx(), gfx.Width(gfx.Face(true, 22), strings.ToUpper(label))+2*(keyLabelPad+12))
+	return image.Rect(b.Min.X-12-w, b.Min.Y, b.Min.X-12, b.Max.Y)
 }
 
 // systemKeys draws Wi-Fi and help, and Software update, side by side in r. They are the way out of

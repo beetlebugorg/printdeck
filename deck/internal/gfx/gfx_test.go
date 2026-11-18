@@ -11,19 +11,19 @@ func TestFinePrint(t *testing.T) {
 			t.Errorf("size %d: got %d, want %d", px, got, want)
 		}
 	}
-	// A larger face shrinks to six sevenths of its size, and no further.
+	// A larger face shrinks to three fifths of its size: a smaller text is better than a cut one.
 	s := "0123456789"
 	if got := faceInfo[Shrink(Face(false, 12), s, Width(face(false, 19), s))][0]; got != 19 {
 		t.Errorf("shrink: got size %d, want 19", got)
 	}
-	if got := faceInfo[Shrink(Face(false, 12), s, Width(face(false, 10), s))][0]; got != 21 {
-		t.Errorf("shrink below the floor: got size %d, want 21", got)
+	if got := faceInfo[Shrink(Face(false, 12), s, Width(face(false, 10), s))][0]; got != 12 {
+		t.Errorf("shrink to the floor: got size %d, want 12 (three fifths of 21)", got)
 	}
 	SetFinePrint(0, 0)
 	if got := size(12); got != 12 {
 		t.Errorf("off: got size %d, want 12", got)
 	}
-	// The normal size shrinks to three quarters.
+	// The normal size shrinks too.
 	if got := faceInfo[Shrink(Face(false, 16), s, Width(face(false, 12), s))][0]; got != 12 {
 		t.Errorf("normal shrink: got size %d, want 12", got)
 	}

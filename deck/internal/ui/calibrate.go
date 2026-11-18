@@ -652,7 +652,7 @@ func (a *App) drawCalibrate(c *gfx.Canvas) {
 	for i, l := range a.calibLines(fl) {
 		l = strings.ToUpper(l)
 		if i == 0 {
-			all = append(all, gfx.Fit(face, l, in.Dx()))
+			all = append(all, l)
 			continue
 		}
 		all = append(all, wrapText(face, l, calibWrap(in.Dx()))...)
