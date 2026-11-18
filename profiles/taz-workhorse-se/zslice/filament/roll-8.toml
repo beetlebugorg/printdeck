@@ -1,0 +1,24 @@
+# Imported from Cura 5.13.0: material roll-8 (materials/printdeck_black_8.xml.fdm_material).
+name = "Printdeck PETG Black #8"
+color = "#1a1a1a"
+diameter = 2.85
+density = 1.27
+nozzle_temp = 240
+bed_temp = 85
+standby_temp = 140
+
+# Cura material settings that are not imported:
+#   anti ooze retract position = 0
+#   anti ooze retract speed = 5
+#   break preparation position = 0
+#   break preparation speed = 2
+#   break preparation temperature = 245
+#   break position = -50
+#   break speed = 50
+#   break temperature = 215
+#   flush purge length = 60
+#   maximum park duration = 7200
+#   no load move factor = 0.93
+#   build volume temperature = 37
+#   adhesion tendency = 0
+#   surface energy = 70

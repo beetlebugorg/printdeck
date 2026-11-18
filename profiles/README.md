@@ -16,8 +16,8 @@ The LulzBot TAZ Workhorse with the SE tool head (0.5 mm nozzle, 2.85 mm filament
 | `pla-0.20-standard` | 0.20 mm | 50 mm/s, 3 walls, gyroid 20 % |
 | `pla-0.30-fast` | 0.30 mm | |
 
-The materials are the Printdeck rolls in Cura (`roll-1` to `roll-4`), with the calibration of
-each roll: the temperatures, `xy_offset`, `hole_xy_offset`, and the shrinkage.
+The materials are the Printdeck rolls in Cura (`roll-1` to `roll-4`, and `roll-8`), with the
+calibration of each roll: the temperatures, `xy_offset`, `hole_xy_offset`, and the shrinkage.
 
 The folder has:
 
