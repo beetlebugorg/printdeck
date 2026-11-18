@@ -12,7 +12,9 @@ layout(std430, binding = 0) readonly buffer Blocks { uvec4 blocks[]; };
 // The AC coefficients: the zig-zag index in bits 16 to 21, and the quantized value in the low 16
 // bits (signed).
 layout(std430, binding = 1) readonly buffer Words { uint words[]; };
-// The quantization tables, in zig-zag order.
+// The quantization tables, in zig-zag order (4 x 64 values), then the natural index of each
+// zig-zag index (64 values). A table in the buffer, and no constant array: a constant array with
+// an index that the shader computes makes a very large program on some GPUs (V3D).
 layout(std430, binding = 2) readonly buffer Quant { int quant[]; };
 // The pixels: the planes of the picture, 4 pixels in each word.
 layout(std430, binding = 3) writeonly buffer Out { uint outw[]; };
@@ -22,15 +24,6 @@ layout(push_constant) uniform Push {
     uint strides[3]; // the strides of the planes in bytes, by component
 };
 
-const int unzig[64] = int[64](
-    0, 1, 8, 16, 9, 2, 3, 10,
-    17, 24, 32, 25, 18, 11, 4, 5,
-    12, 19, 26, 33, 40, 48, 41, 34,
-    27, 20, 13, 6, 7, 14, 21, 28,
-    35, 42, 49, 56, 57, 50, 43, 36,
-    29, 22, 15, 23, 30, 37, 44, 51,
-    58, 59, 52, 45, 38, 31, 39, 46,
-    53, 60, 61, 54, 47, 55, 62, 63);
 
 shared int sb[8][64];
 
@@ -65,7 +58,7 @@ void main() {
             uint e = words[blk.x + j];
             int k = int((e >> 16) & 63u);
             int v = int(e << 16) >> 16;
-            sb[lb][unzig[k]] = v * quant[q * 64u + uint(k)];
+            sb[lb][quant[256 + k]] = v * quant[q * 64u + uint(k)];
         }
     }
     barrier();
@@ -102,7 +95,7 @@ void main() {
     barrier();
 
     // The column pass (idctCols), then the level shift and the clip.
-    int p[8];
+    int p0, p1, p2, p3, p4, p5, p6, p7;
     {
         uint i = t;
         int x0 = sb[lb][0u * 8u + i], x7 = sb[lb][1u * 8u + i], x2 = sb[lb][2u * 8u + i], x5 = sb[lb][3u * 8u + i];
@@ -126,13 +119,18 @@ void main() {
         a = x1 + x6; b = x1 - x6; x1 = a; x6 = b;
         a = x2 + x5; b = x2 - x5; x2 = a; x5 = b;
         a = x3 + x4; b = x3 - x4; x3 = a; x4 = b;
-        p[0] = x0 >> 18; p[1] = x1 >> 18; p[2] = x2 >> 18; p[3] = x3 >> 18;
-        p[4] = x4 >> 18; p[5] = x5 >> 18; p[6] = x6 >> 18; p[7] = x7 >> 18;
+        p0 = x0 >> 18; p1 = x1 >> 18; p2 = x2 >> 18; p3 = x3 >> 18;
+        p4 = x4 >> 18; p5 = x5 >> 18; p6 = x6 >> 18; p7 = x7 >> 18;
     }
     barrier();
-    for (int k = 0; k < 8; k++) {
-        sb[lb][k * 8 + int(t)] = clamp(p[k] + 128, 0, 255);
-    }
+    sb[lb][0u * 8u + t] = clamp(p0 + 128, 0, 255);
+    sb[lb][1u * 8u + t] = clamp(p1 + 128, 0, 255);
+    sb[lb][2u * 8u + t] = clamp(p2 + 128, 0, 255);
+    sb[lb][3u * 8u + t] = clamp(p3 + 128, 0, 255);
+    sb[lb][4u * 8u + t] = clamp(p4 + 128, 0, 255);
+    sb[lb][5u * 8u + t] = clamp(p5 + 128, 0, 255);
+    sb[lb][6u * 8u + t] = clamp(p6 + 128, 0, 255);
+    sb[lb][7u * 8u + t] = clamp(p7 + 128, 0, 255);
     barrier();
     if (valid) {
         uint o = t * 8u;

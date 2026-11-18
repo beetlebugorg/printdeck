@@ -135,3 +135,11 @@ func (in *GPUInput) RenderCPU() []byte {
 	}
 	return out
 }
+
+// Unzig is the natural index of each zig-zag index, for a GPU.
+var Unzig = func() (u [blockSize]int32) {
+	for i, v := range unzig {
+		u[i] = int32(v)
+	}
+	return u
+}()

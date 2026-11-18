@@ -232,7 +232,7 @@ int gj_init(const uint32_t *spv, size_t spv_len, gj_ctx **out, char *name, size_
     vkAllocateCommandBuffers(c->dev, &cba, &c->cmd);
     VkFenceCreateInfo fci = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
     vkCreateFence(c->dev, &fci, NULL, &c->fence);
-    int rc = grow(c, 2, 4 * 64 * sizeof(int32_t));
+    int rc = grow(c, 2, 5 * 64 * sizeof(int32_t));
     if (rc) {
         gj_free(c);
         return rc;
@@ -281,7 +281,7 @@ void gj_put_words(gj_ctx *c, size_t at, const uint32_t *words, size_t n) {
 }
 
 void gj_put_quant(gj_ctx *c, const int32_t *quant) {
-    memcpy(c->bufs[2].map, quant, 4 * 64 * sizeof(int32_t));
+    memcpy(c->bufs[2].map, quant, 5 * 64 * sizeof(int32_t));
 }
 
 int gj_run(gj_ctx *c, uint32_t n_blocks, const uint32_t strides[3]) {

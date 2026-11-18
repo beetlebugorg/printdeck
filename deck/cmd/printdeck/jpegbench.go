@@ -24,7 +24,8 @@ var sysCameras []*camera.Hub
 
 // serveJPEGBench measures the decode and the encode of the JPEG code of the deck on a frame of
 // the main camera (GET /system/jpeg, text): the decode at each scale and with 1, 2 and 4
-// threads, the decode of a crop, and the encode of the frame at 1920 pixels. It uses all the
+// threads, the decode of a crop, and the encode of the frame at 1920 pixels. With ?gpu=1 it
+// also measures the GPU: the first use compiles the shader in the driver. It uses all the
 // cores for about a second, so it does not run while a printer prints.
 func serveJPEGBench(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -136,7 +137,9 @@ func serveJPEGBench(w http.ResponseWriter, r *http.Request) {
 			s.Release()
 			return
 		}
-		if g, err := benchGPU(); err != nil {
+		if r.URL.Query().Get("gpu") != "1" {
+			fmt.Fprintf(w, "GPU: add ?gpu=1 to measure it\n")
+		} else if g, err := benchGPU(); err != nil {
 			fmt.Fprintf(w, "GPU: %v\n", err)
 		} else if in, err := s.GPUInput(); err != nil {
 			fmt.Fprintf(w, "GPU input: %v\n", err)

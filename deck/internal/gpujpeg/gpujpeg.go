@@ -87,7 +87,10 @@ func (g *GPU) Render(in *jpegdec.GPUInput) (image.Image, error) {
 		}
 		at += len(w)
 	}
-	C.gj_put_quant(g.c, (*C.int32_t)(unsafe.Pointer(&in.Quant[0][0])))
+	var quant [5][64]int32
+	copy(quant[:4], in.Quant[:])
+	quant[4] = jpegdec.Unzig
+	C.gj_put_quant(g.c, (*C.int32_t)(unsafe.Pointer(&quant[0][0])))
 	strides := [3]C.uint32_t{C.uint32_t(in.Strides[0]), C.uint32_t(in.Strides[1]), C.uint32_t(in.Strides[2])}
 	if rc := C.gj_run(g.c, C.uint32_t(nb), &strides[0]); rc != 0 {
 		return nil, fmt.Errorf("gpujpeg: run (error %d)", int(rc))
