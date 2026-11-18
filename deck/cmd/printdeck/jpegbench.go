@@ -8,11 +8,16 @@ import (
 	"net/http"
 	"runtime"
 	"sort"
+	"sync"
 	"time"
 
 	"printdeck/internal/camera"
+	"printdeck/internal/gpujpeg"
 	"printdeck/internal/jpegdec"
 )
+
+// benchGPU is the GPU of the measurement, opened at the first measurement.
+var benchGPU = sync.OnceValues(gpujpeg.Open)
 
 // sysCameras are the camera hubs of the printers, for the measurement of the JPEG decode.
 var sysCameras []*camera.Hub
@@ -82,6 +87,45 @@ func serveJPEGBench(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "decode %-15s %d threads: median %6.1f ms, best %6.1f ms\n", c.name, th, med, low)
 		}
 	}
+	// The Huffman decode once, then the pixels from its coefficients on the CPU and on the GPU.
+	for _, th := range []int{1, 4} {
+		med, low, err := timeOf(7, func() error {
+			s, err := jpegdec.DecodeSparseThreads(b, th)
+			if err == nil {
+				s.Release()
+			}
+			return err
+		})
+		if err != nil {
+			fmt.Fprintf(w, "sparse: %v\n", err)
+			break
+		}
+		fmt.Fprintf(w, "huffman only     %d threads: median %6.1f ms, best %6.1f ms\n", th, med, low)
+	}
+	if s, err := jpegdec.DecodeSparse(b); err == nil {
+		med, low, _ := timeOf(7, func() error { _, err := s.Render(0, image.Rectangle{}); return err })
+		fmt.Fprintf(w, "pixels on CPU    whole:     median %6.1f ms, best %6.1f ms\n", med, low)
+		med, low, _ = timeOf(7, func() error { _, err := s.Render(1, image.Rectangle{}); return err })
+		fmt.Fprintf(w, "pixels on CPU    1/2:       median %6.1f ms, best %6.1f ms\n", med, low)
+		if g, err := benchGPU(); err != nil {
+			fmt.Fprintf(w, "GPU: %v\n", err)
+		} else if in, err := s.GPUInput(); err != nil {
+			fmt.Fprintf(w, "GPU input: %v\n", err)
+		} else {
+			med, low, _ = timeOf(7, func() error { _, err := s.GPUInput(); return err })
+			fmt.Fprintf(w, "GPU input table  (CPU):     median %6.1f ms, best %6.1f ms\n", med, low)
+			med, low, err := timeOf(7, func() error { _, err := g.Render(in); return err })
+			if err != nil {
+				fmt.Fprintf(w, "GPU render: %v\n", err)
+			} else {
+				fmt.Fprintf(w, "pixels on GPU    whole:     median %6.1f ms, best %6.1f ms (%s)\n", med, low, g.Name)
+				got, _ := g.Render(in)
+				want, _ := s.Render(0, image.Rectangle{})
+				fmt.Fprintf(w, "GPU pixels same as CPU: %v\n", samePictures(got, want))
+			}
+		}
+		s.Release()
+	}
 	small := f.Small(1920)
 	if p, ok := small.Picture().(*image.YCbCr); ok {
 		for _, th := range []int{1, 2, 4} {
@@ -92,4 +136,20 @@ func serveJPEGBench(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "encode %dx%d q90  %d threads: median %6.1f ms, best %6.1f ms\n", p.Rect.Dx(), p.Rect.Dy(), th, med, low)
 		}
 	}
+}
+
+// samePictures reports that two pictures have the same pixels.
+func samePictures(a, b image.Image) bool {
+	if a == nil || b == nil || a.Bounds() != b.Bounds() {
+		return false
+	}
+	r := a.Bounds()
+	for y := r.Min.Y; y < r.Max.Y; y++ {
+		for x := r.Min.X; x < r.Max.X; x++ {
+			if a.At(x, y) != b.At(x, y) {
+				return false
+			}
+		}
+	}
+	return true
 }

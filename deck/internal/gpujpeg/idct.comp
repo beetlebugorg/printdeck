@@ -1,0 +1,145 @@
+#version 450
+// The inverse DCT of the blocks of a JPEG on the GPU (package gpujpeg). The arithmetic is the
+// integer inverse DCT of jpegdec (idctRows and idctCols of dct.go, from image/jpeg), so the
+// pixels are the same as the pixels of the CPU. Each workgroup makes 8 blocks, with 8
+// invocations for each block: one row, then one column, then one row of pixels.
+layout(local_size_x = 64) in;
+
+// The blocks: 4 words each. x: the index of the first AC word. y: the count of AC words in the low
+// 16 bits, the component in bits 16 to 17, and the quantization table in bits 18 to 19. z: the DC coefficient, dequantized. w: the byte offset of
+// the first pixel of the block in out.
+layout(std430, binding = 0) readonly buffer Blocks { uvec4 blocks[]; };
+// The AC coefficients: the zig-zag index in bits 16 to 21, and the quantized value in the low 16
+// bits (signed).
+layout(std430, binding = 1) readonly buffer Words { uint words[]; };
+// The quantization tables, in zig-zag order.
+layout(std430, binding = 2) readonly buffer Quant { int quant[]; };
+// The pixels: the planes of the picture, 4 pixels in each word.
+layout(std430, binding = 3) writeonly buffer Out { uint outw[]; };
+
+layout(push_constant) uniform Push {
+    uint nBlocks;
+    uint strides[3]; // the strides of the planes in bytes, by component
+};
+
+const int unzig[64] = int[64](
+    0, 1, 8, 16, 9, 2, 3, 10,
+    17, 24, 32, 25, 18, 11, 4, 5,
+    12, 19, 26, 33, 40, 48, 41, 34,
+    27, 20, 13, 6, 7, 14, 21, 28,
+    35, 42, 49, 56, 57, 50, 43, 36,
+    29, 22, 15, 23, 30, 37, 44, 51,
+    58, 59, 52, 45, 38, 31, 39, 46,
+    53, 60, 61, 54, 47, 55, 62, 63);
+
+shared int sb[8][64];
+
+// dctBox of dct.go.
+void box(inout int x0, inout int x1, int kcos, int ksin) {
+    int ksum = kcos * (x0 + x1);
+    int y0 = ksum + (ksin - kcos) * x1;
+    int y1 = ksum - (kcos + ksin) * x0;
+    x0 = y0;
+    x1 = y1;
+}
+
+void main() {
+    uint lb = gl_LocalInvocationID.x >> 3; // the block in the workgroup
+    uint t = gl_LocalInvocationID.x & 7u;  // the row, then the column
+    uint bi = gl_WorkGroupID.x * 8u + lb;
+    bool valid = bi < nBlocks;
+
+    for (int x = 0; x < 8; x++) {
+        sb[lb][t * 8u + x] = 0;
+    }
+    barrier();
+    uvec4 blk = valid ? blocks[bi] : uvec4(0);
+    uint c = (blk.y >> 16) & 3u;
+    uint q = (blk.y >> 18) & 3u;
+    if (valid) {
+        if (t == 0u) {
+            sb[lb][0] = int(blk.z);
+        }
+        uint n = blk.y & 0xffffu;
+        for (uint j = t; j < n; j += 8u) {
+            uint e = words[blk.x + j];
+            int k = int((e >> 16) & 63u);
+            int v = int(e << 16) >> 16;
+            sb[lb][unzig[k]] = v * quant[q * 64u + uint(k)];
+        }
+    }
+    barrier();
+
+    // The row pass (idctRows).
+    {
+        uint o = t * 8u;
+        int x0 = sb[lb][o + 0u], x7 = sb[lb][o + 1u], x2 = sb[lb][o + 2u], x5 = sb[lb][o + 3u];
+        int x1 = sb[lb][o + 4u], x6 = sb[lb][o + 5u], x3 = sb[lb][o + 6u], x4 = sb[lb][o + 7u];
+        x0 <<= 17;
+        x1 <<= 17;
+        int a = x0 + x1, b = x0 - x1; x0 = a; x1 = b;
+        box(x2, x3, 70936, -171254);
+        a = x1 + x2; b = x1 - x2; x1 = a; x2 = b;
+        a = x0 + x3; b = x0 - x3; x0 = a; x3 = b;
+        x4 <<= 7;
+        x7 <<= 7;
+        a = x7 + x4; b = x7 - x4; x7 = a; x4 = b;
+        x6 = x6 * 181;
+        x5 = x5 * 181;
+        a = x7 + x5; b = x7 - x5; x7 = a; x5 = b;
+        a = x4 + x6; b = x4 - x6; x4 = a; x6 = b;
+        x4 >>= 2; x7 >>= 2;
+        box(x4, x7, 3406, -2276);
+        x5 >>= 2; x6 >>= 2;
+        box(x5, x6, 4017, -799);
+        a = x0 + x7; b = x0 - x7; x0 = a; x7 = b;
+        a = x1 + x6; b = x1 - x6; x1 = a; x6 = b;
+        a = x2 + x5; b = x2 - x5; x2 = a; x5 = b;
+        a = x3 + x4; b = x3 - x4; x3 = a; x4 = b;
+        sb[lb][o + 0u] = x0; sb[lb][o + 1u] = x1; sb[lb][o + 2u] = x2; sb[lb][o + 3u] = x3;
+        sb[lb][o + 4u] = x4; sb[lb][o + 5u] = x5; sb[lb][o + 6u] = x6; sb[lb][o + 7u] = x7;
+    }
+    barrier();
+
+    // The column pass (idctCols), then the level shift and the clip.
+    int p[8];
+    {
+        uint i = t;
+        int x0 = sb[lb][0u * 8u + i], x7 = sb[lb][1u * 8u + i], x2 = sb[lb][2u * 8u + i], x5 = sb[lb][3u * 8u + i];
+        int x1 = sb[lb][4u * 8u + i], x6 = sb[lb][5u * 8u + i], x3 = sb[lb][6u * 8u + i], x4 = sb[lb][7u * 8u + i];
+        x0 += 1 << 19;
+        int a = (x0 + x1) >> 2, b = (x0 - x1) >> 2; x0 = a; x1 = b;
+        x2 >>= 13; x3 >>= 13;
+        box(x2, x3, 1108, -2676);
+        a = x1 + x2; b = x1 - x2; x1 = a; x2 = b;
+        a = x0 + x3; b = x0 - x3; x0 = a; x3 = b;
+        a = x7 + x4; b = x7 - x4; x7 = a; x4 = b;
+        x5 = (x5 >> 13) * 11585;
+        x6 = (x6 >> 13) * 11585;
+        a = x7 + x5; b = x7 - x5; x7 = a; x5 = b;
+        a = x4 + x6; b = x4 - x6; x4 = a; x6 = b;
+        x4 >>= 14; x7 >>= 14;
+        box(x4, x7, 3406, -2276);
+        x5 >>= 14; x6 >>= 14;
+        box(x5, x6, 4017, -799);
+        a = x0 + x7; b = x0 - x7; x0 = a; x7 = b;
+        a = x1 + x6; b = x1 - x6; x1 = a; x6 = b;
+        a = x2 + x5; b = x2 - x5; x2 = a; x5 = b;
+        a = x3 + x4; b = x3 - x4; x3 = a; x4 = b;
+        p[0] = x0 >> 18; p[1] = x1 >> 18; p[2] = x2 >> 18; p[3] = x3 >> 18;
+        p[4] = x4 >> 18; p[5] = x5 >> 18; p[6] = x6 >> 18; p[7] = x7 >> 18;
+    }
+    barrier();
+    for (int k = 0; k < 8; k++) {
+        sb[lb][k * 8 + int(t)] = clamp(p[k] + 128, 0, 255);
+    }
+    barrier();
+    if (valid) {
+        uint o = t * 8u;
+        uint w0 = uint(sb[lb][o + 0u]) | uint(sb[lb][o + 1u]) << 8 | uint(sb[lb][o + 2u]) << 16 | uint(sb[lb][o + 3u]) << 24;
+        uint w1 = uint(sb[lb][o + 4u]) | uint(sb[lb][o + 5u]) << 8 | uint(sb[lb][o + 6u]) << 16 | uint(sb[lb][o + 7u]) << 24;
+        uint at = (blk.w + t * strides[c]) >> 2;
+        outw[at] = w0;
+        outw[at + 1u] = w1;
+    }
+}
