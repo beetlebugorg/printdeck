@@ -15,7 +15,7 @@ import (
 // printers that run.
 func TestPrinterAdmin(t *testing.T) {
 	dir := t.TempDir()
-	base := config.Config{StateDir: dir, KlippySocket: "/run/klipper/klippy.sock", KlipperConfig: "/var/lib/klipper/config/printer.cfg"}
+	base := config.Config{StateDir: dir, KlippySocket: "/run/klipper/klippy.sock", KlipperConfig: "/var/lib/klipper/config/printer.cfg", OctoPrintKey: "MAINKEY"}
 	running := loadDeckPrinters(dir)
 	if len(running) != 1 || running[0].ID != "" || running[0].config(base) != base {
 		t.Fatalf("one printer: %+v", running)
@@ -58,7 +58,8 @@ func TestPrinterAdmin(t *testing.T) {
 	ps := loadDeckPrinters(dir)
 	c := ps[1].config(base)
 	if c.StateDir != filepath.Join(dir, "printers", "mini2") || c.KlippySocket != "/run/klipper/mini2/klippy.sock" ||
-		c.KlipperConfig != "/var/lib/klipper/printers/mini2/printer.cfg" || c.GcodeDir != "/var/lib/klipper/printers/mini2/gcodes" {
+		c.KlipperConfig != "/var/lib/klipper/printers/mini2/printer.cfg" || c.GcodeDir != "/var/lib/klipper/printers/mini2/gcodes" ||
+		c.OctoPrintKey != "" {
 		t.Fatalf("config: %+v", c)
 	}
 	if s, err := printer.LoadSetting(ps[2].config(base).StateDir); err != nil || s.Kind != printer.KindChiTu {

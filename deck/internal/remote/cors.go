@@ -72,5 +72,11 @@ func CORS(h http.Handler, origins string) http.Handler {
 
 // apiPath tells if a path is a part of the OctoPrint-compatible API.
 func apiPath(p string) bool {
+	// The API of another printer of the deck is under /printers/<id>/ (a deck with many printers).
+	if rest, ok := strings.CutPrefix(p, "/printers/"); ok {
+		if _, sub, ok := strings.Cut(rest, "/"); ok {
+			p = "/" + sub
+		}
+	}
 	return strings.HasPrefix(p, "/api/") || strings.HasPrefix(p, "/plugin/") || strings.HasPrefix(p, "/downloads/")
 }

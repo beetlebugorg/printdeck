@@ -282,6 +282,18 @@ func run(cfg config.Config) {
 		startShare(link, pcfg.StateDir, pcfg.KlipperConfig, pcfg.GcodeDir, a, pr)
 	}
 	startTLSCert(ctx, cfg.StateDir, cfg.TLSAddr, link)
+	if len(apps) > 1 {
+		ids := deckIdentities(printers, backends)
+		deckPrinterList = func() []ui.Identity { return ids }
+		deckApps = func(id string) *ui.App {
+			for i, x := range ids {
+				if x.ID == id {
+					return apps[i]
+				}
+			}
+			return nil
+		}
+	}
 
 	if p, ok := screen.(interface{ SetTouch(touch.Options) }); ok {
 		p.SetTouch(touch.Options{InvertX: cfg.TouchInvertX, InvertY: cfg.TouchInvertY, Swap: cfg.TouchSwapXY,
@@ -291,7 +303,11 @@ func run(cfg config.Config) {
 	}
 	go screen.Run(ctx, events)
 
-	startWeb(cfg, host, pr, app, up)
+	var others []webPrinter
+	for i := 1; i < len(apps); i++ {
+		others = append(others, webPrinter{id: printers[i].ID, cfg: cfgs[i], pr: backends[i], app: apps[i]})
+	}
+	startWeb(cfg, host, pr, app, up, others)
 	// After a boot, a soft change from the start screen to the first screen.
 	if _, ok := screen.(display.None); !ok && uptime() < 90*time.Second {
 		fadeFromStart(screen, app, events)
@@ -301,12 +317,7 @@ func run(cfg config.Config) {
 		return
 	}
 	// A deck with many printers: the touch screen shows one printer at a time.
-	ids := make([]ui.Identity, len(printers))
-	for i, dp := range printers {
-		ids[i] = dp.identity()
-		_, ids[i].Resin = backends[i].(*printer.ChiTu)
-	}
-	ui.NewSwitcher(apps, ids).Run(ctx, events, screen.Present)
+	ui.NewSwitcher(apps, deckIdentities(printers, backends)).Run(ctx, events, screen.Present)
 }
 
 // deckPrefs reads the settings of the screen of the deck (the theme, the clock, the text size,

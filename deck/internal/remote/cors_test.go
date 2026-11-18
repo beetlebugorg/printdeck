@@ -89,3 +89,13 @@ func TestCORS(t *testing.T) {
 		t.Fatalf("none: a post from another origin: %d", w.Code)
 	}
 }
+
+// The API of another printer of the deck (/printers/<id>/api/...) gets the CORS answers too.
+func TestCORSPrinterPaths(t *testing.T) {
+	for p, want := range map[string]bool{"/printers/mini2/api/files/local": true, "/printers/mini2/plugin/appkeys/probe": true,
+		"/printers/mini2/system": false, "/printers/": false, "/printers/x": false, "/api/job": true} {
+		if got := apiPath(p); got != want {
+			t.Errorf("%s: %v, want %v", p, got, want)
+		}
+	}
+}
