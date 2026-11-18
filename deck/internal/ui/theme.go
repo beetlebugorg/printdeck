@@ -324,6 +324,13 @@ func faderCapWith(c *gfx.Canvas, x, y int, vertical bool, cap color.RGBA) {
 }
 
 // label draws a small uppercase label, as printed on a panel.
+// hintText draws a sentence under or over the keys: a hint, a count, or a step. It is in sentence
+// case at 16 pixels: a sentence in small capitals is the hardest text to read on the screen.
+func hintText(c *gfx.Canvas, r image.Rectangle, s string, a gfx.Align) {
+	f := gfx.Face(false, 16)
+	c.Text(r, gfx.Fit(f, s, r.Dx()), f, dim, a)
+}
+
 func label(c *gfx.Canvas, r image.Rectangle, s string, a gfx.Align) {
 	c.Text(r, strings.ToUpper(s), gfx.Face(true, 14), dim, a)
 }

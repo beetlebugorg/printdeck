@@ -379,7 +379,7 @@ func (a *App) drawBedMesh(c *gfx.Canvas, st printer.State) {
 	}
 	a.region("Range", tileR)
 	pic := a.meshPicture(mapR, mach, m)
-	label(c, foot, fmt.Sprintf("%d × %d points · height × %.0f · %s", nx, ny, pic.exag, fileDate(m.Time.Local(), a.Now(), a.Clock24)), gfx.Center)
+	hintText(c, foot, fmt.Sprintf("%d × %d points · height × %.0f · %s", nx, ny, pic.exag, fileDate(m.Time.Local(), a.Now(), a.Clock24)), gfx.Center)
 	window(c, mapR)
 	a.region("Map", mapR)
 	if pic.img != nil {

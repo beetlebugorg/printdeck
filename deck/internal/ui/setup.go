@@ -254,7 +254,7 @@ func (a *App) drawSetupWifi(c *gfx.Canvas, box image.Rectangle) {
 	if s.status.Connected() {
 		head = "On " + s.status.SSID + " at " + s.status.IP + "."
 	}
-	label(c, image.Rect(24, 74, W-24, 100), gfx.Fit(gfx.Face(false, 16), head, W-48), gfx.Left)
+	hintText(c, image.Rect(24, 74, W-24, 100), gfx.Fit(gfx.Face(false, 16), head, W-48), gfx.Left)
 
 	// The list of networks. It scrolls when it is longer than the window.
 	list := image.Rect(24, 112, W-24, box.Max.Y-140)

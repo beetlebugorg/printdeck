@@ -327,7 +327,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 	case st.Busy():
 		msg = "Moving is off while a print runs."
 	}
-	label(c, hint, msg, gfx.Center)
+	hintText(c, hint, msg, gfx.Center)
 }
 
 // drawArrows draws the arrow keys of X and Y in a cross in the square in the middle of cross,

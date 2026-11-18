@@ -62,7 +62,7 @@ func (a *App) afterWifi() int {
 // drawSetupPrinter asks for the kind of the printer.
 func (a *App) drawSetupPrinter(c *gfx.Canvas, box image.Rectangle) {
 	s := a.setup
-	label(c, image.Rect(24, 74, W-24, 100), "Which printer does this deck drive?", gfx.Left)
+	hintText(c, image.Rect(24, 74, W-24, 100), "Which printer does this deck drive?", gfx.Left)
 	rows := kit.Rows(image.Rect(24, 112, W-24, box.Max.Y-140), 16, kit.Fr(1), kit.Fr(1))
 	choice := func(r image.Rectangle, title, line, kind string) {
 		a.namedKey(c, r, title, func() {
@@ -150,7 +150,7 @@ func (a *App) drawSetupFind(c *gfx.Canvas, box image.Rectangle) {
 	if s.printer.finding {
 		head = "Searching the network for resin printers…"
 	}
-	label(c, image.Rect(24, 74, W-24, 100), head, gfx.Left)
+	hintText(c, image.Rect(24, 74, W-24, 100), head, gfx.Left)
 	list := image.Rect(24, 112, W-24, box.Max.Y-140)
 	window(c, list)
 	a.region("Printers", list)
@@ -195,7 +195,7 @@ func (a *App) drawSetupFind(c *gfx.Canvas, box image.Rectangle) {
 func (a *App) drawSetupBoard(c *gfx.Canvas, box image.Rectangle) {
 	s := a.setup
 	p := &s.printer
-	label(c, image.Rect(24, 74, W-24, 100), "The printer answered.", gfx.Left)
+	hintText(c, image.Rect(24, 74, W-24, 100), "The printer answered.", gfx.Left)
 	state := "No print"
 	if p.status.Printing() {
 		state = fmt.Sprintf("Printing · %.0f%% of the file · Z %.2f mm", p.status.Progress()*100, p.status.Z)
