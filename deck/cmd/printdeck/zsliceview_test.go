@@ -42,3 +42,16 @@ func TestZsliceRenderer(t *testing.T) {
 		t.Fatal("a picture of a missing file")
 	}
 }
+
+// The GPU check of the system page draws frames of the newest G-code file.
+func TestGPUCheck(t *testing.T) {
+	path := os.Getenv("ZSVIEW_GCODE")
+	if path == "" {
+		t.Skip("no ZSVIEW_GCODE")
+	}
+	out := gpuCheck(filepath.Dir(path))
+	if out["ok"] != true {
+		t.Fatalf("%v", out)
+	}
+	t.Logf("%v", out)
+}
