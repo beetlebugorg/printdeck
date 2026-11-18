@@ -207,10 +207,12 @@ type App struct {
 	Printers PrinterAdmin
 	// Viewer draws the last print of the home screen as a 3D view that the finger turns, or is
 	// nil: the home screen then shows the picture of the print.
-	Viewer   ModelViewer
-	homeView viewState // the scrubber of the last print of the home screen
-	recView  viewState // the scrubber of the page of a print
-	fileView viewState // the scrubber of the page of a file
+	Viewer    ModelViewer
+	homeView  viewState       // the scrubber of the last print of the home screen
+	recView   viewState       // the scrubber of the page of a print
+	fileView  viewState       // the scrubber of the page of a file
+	pinchArea image.Rectangle // the 3D view of the last frame, for a second finger
+	pinch     map[int]bool    // the other fingers on the 3D view
 	// OnCameraPrinter makes the camera cam a camera of the printer to (an ID of the Fleet), on a
 	// deck with many printers, or is nil. The change starts to work after a restart of the deck.
 	OnCameraPrinter         func(cam, to string) error
@@ -587,6 +589,11 @@ func (a *App) handle(ev touch.Event) {
 	a.touchAt = a.Now()
 	a.hub.input.Store(time.Now().UnixNano())
 	p := image.Pt(int(ev.X*float64(W)+0.5), int(ev.Y*float64(H)+0.5))
+	if ev.Finger > 0 {
+		a.otherFinger(ev, p) // a second finger of a pinch (lastprint.go)
+		a.Redraw()
+		return
+	}
 	kind := map[touch.Kind]kit.Kind{touch.Down: kit.Down, touch.Move: kit.Move, touch.Up: kit.Up}[ev.Kind]
 	a.in.Handle(kit.Event{Kind: kind, P: p, At: a.Now()})
 	a.Redraw()
@@ -602,6 +609,7 @@ func (a *App) Draw(c *gfx.Canvas) {
 	// menu of the display.
 	a.showShared()
 	a.setFleetSelf()
+	a.pinchArea = image.Rectangle{} // a 3D view of this frame sets it
 	drawing, a.focus, a.lcdTitle, a.lcdNotes = a, a.focus[:0], "", a.lcdNotes[:0]
 	a.names, a.bar = a.names[:0], false
 	defer func() { drawing, a.collect = nil, false }()

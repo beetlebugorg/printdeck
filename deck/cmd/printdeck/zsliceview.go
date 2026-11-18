@@ -236,6 +236,11 @@ func (z *zsliceViewer) Orbit(phase int, x, y float32) {
 	onGPU(func() { z.v.Touch(1, action, x, y) })
 }
 
+func (z *zsliceViewer) Finger(id int64, phase int, x, y float32) {
+	action := map[int]int{0: zsview.TouchDown, 1: zsview.TouchMove, 2: zsview.TouchUp}[phase]
+	onGPU(func() { z.v.Touch(id, action, x, y) })
+}
+
 // Zoom zooms in (step > 0) or out with a pinch of two fingers in the middle of the view.
 func (z *zsliceViewer) Zoom(step int) {
 	onGPU(func() {

@@ -106,3 +106,53 @@ func TestBusyUIGetsTheNewestMove(t *testing.T) {
 		t.Fatalf("last event %v, want Up", e.Kind)
 	}
 }
+
+// A pinch on a multi-touch panel: the first finger is the touch as before, and the second finger
+// is Down, Move and Up events with Finger 2.
+func TestPinch(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	raw := make(chan rawEvent, 100)
+	out := make(chan Event, 100)
+	go process(ctx, raw, Options{}, [4]int32{0, 1000, 0, 1000}, out)
+	send := func(es ...rawEvent) {
+		for _, e := range es {
+			raw <- e
+		}
+	}
+	// The first finger, in slot 0, with the single-touch events too.
+	send(abs(absMTSlot, 0), abs(absMTTracking, 7), abs(absMTX, 400), abs(absMTY, 500), abs(absX, 400), abs(absY, 500), key(1), syn())
+	// The second finger, in slot 1.
+	send(abs(absMTSlot, 1), abs(absMTTracking, 8), abs(absMTX, 600), abs(absMTY, 500), syn())
+	// Both fingers move apart.
+	send(abs(absMTSlot, 0), abs(absMTX, 300), abs(absX, 300), abs(absMTSlot, 1), abs(absMTX, 700), syn())
+	// The second finger lifts, then the first.
+	send(abs(absMTSlot, 1), abs(absMTTracking, -1), syn())
+	send(abs(absMTSlot, 0), abs(absMTTracking, -1), key(0), syn())
+	time.Sleep(200 * time.Millisecond)
+	var got []Event
+	for len(out) > 0 {
+		got = append(got, <-out)
+	}
+	var first, second []Kind
+	for _, e := range got {
+		if e.Finger == 0 {
+			first = append(first, e.Kind)
+		} else if e.Finger == 2 {
+			second = append(second, e.Kind)
+		} else {
+			t.Errorf("finger %d", e.Finger)
+		}
+	}
+	if len(first) < 2 || first[0] != Down || first[len(first)-1] != Up {
+		t.Errorf("first finger: %v", first)
+	}
+	if len(second) != 3 || second[0] != Down || second[1] != Move || second[2] != Up {
+		t.Errorf("second finger: %v (all %+v)", second, got)
+	}
+	for _, e := range got {
+		if e.Finger == 2 && e.Kind == Move && math.Abs(e.X-0.7) > 0.01 {
+			t.Errorf("second finger at %.2f, want 0.7", e.X)
+		}
+	}
+}
