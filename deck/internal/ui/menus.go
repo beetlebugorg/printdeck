@@ -846,7 +846,7 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 		items = append(items, menuItem{"Phones", phonesLine(len(a.Phones.List())), dim, func() { a.open(pagePhones) }})
 	}
 	if a.Signing != nil && !a.resin() {
-		items = append(items, menuItem{"Signed prints", signingLine(a.Signing.SignedOnly(), len(a.Signing.Keys())), dim, func() { a.open(pageSigning) }})
+		items = append(items, menuItem{"Prints from apps", signingLine(a.Signing.RemoteStart(), a.Signing.SignedOnly(), len(a.Signing.Keys())), dim, func() { a.open(pageSigning) }})
 	}
 	if a.OnNotify != nil {
 		items = append(items, menuItem{"Notifications", notifyLine(a.NotifyTopic), dim, a.editNotify})

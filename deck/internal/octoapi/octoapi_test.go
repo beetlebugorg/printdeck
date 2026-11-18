@@ -17,6 +17,7 @@ import (
 	"printdeck/internal/gcodestore"
 	"printdeck/internal/printer"
 	"printdeck/internal/queue"
+	"printdeck/internal/signing"
 )
 
 const mainKey = "main-key"
@@ -324,5 +325,27 @@ func TestQueueRoutes(t *testing.T) {
 	}
 	if len(p.printed) != 0 {
 		t.Errorf("printed %v", p.printed)
+	}
+}
+
+// With "Start prints from the slicer" off, an upload with print asks on the deck: effectivePrint is
+// false, and the plugin reply says remote_start false.
+func TestUploadWithoutRemoteStart(t *testing.T) {
+	s, ts, _ := newTest(t)
+	s.Signing = &signing.Store{Path: filepath.Join(t.TempDir(), "signing.json")}
+	_, pl := do(t, "GET", ts.URL+"/api/plugin/printdeck", mainKey, nil, "")
+	if pl["remote_start"] != true {
+		t.Fatalf("remote_start by default: %v", pl["remote_start"])
+	}
+	if err := s.Signing.SetRemoteStart(false); err != nil {
+		t.Fatal(err)
+	}
+	r, m := upload(t, ts.URL, mainKey, "benchy.gcode", "G28\n", map[string]string{"print": "true", "path": ""})
+	if r.StatusCode != http.StatusCreated || m["effectivePrint"] != false {
+		t.Fatalf("upload %d %v", r.StatusCode, m)
+	}
+	_, pl = do(t, "GET", ts.URL+"/api/plugin/printdeck", mainKey, nil, "")
+	if pl["remote_start"] != false {
+		t.Errorf("remote_start: %v", pl["remote_start"])
 	}
 }

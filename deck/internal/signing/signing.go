@@ -202,11 +202,15 @@ type Store struct {
 	mu         sync.Mutex
 	loaded     bool
 	signedOnly bool
+	askToStart bool
 	keys       []Key
 }
 
 type storeFile struct {
-	SignedOnly bool  `json:"signed_only"`
+	SignedOnly bool `json:"signed_only"`
+	// AskToStart is the opposite of "Start prints from the slicer", so a file with no such field
+	// starts prints from the slicer (the default).
+	AskToStart bool  `json:"ask_to_start,omitempty"`
 	Keys       []Key `json:"keys"`
 }
 
@@ -222,7 +226,7 @@ func (s *Store) load() {
 	}
 	var f storeFile
 	if json.Unmarshal(b, &f) == nil {
-		s.signedOnly, s.keys = f.SignedOnly, f.Keys
+		s.signedOnly, s.askToStart, s.keys = f.SignedOnly, f.AskToStart, f.Keys
 	}
 }
 
@@ -231,7 +235,7 @@ func (s *Store) save() error {
 	if s.Path == "" {
 		return nil
 	}
-	b, err := json.MarshalIndent(storeFile{SignedOnly: s.signedOnly, Keys: s.keys}, "", "  ")
+	b, err := json.MarshalIndent(storeFile{SignedOnly: s.signedOnly, AskToStart: s.askToStart, Keys: s.keys}, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -259,6 +263,24 @@ func (s *Store) SetSignedOnly(on bool) error {
 	defer s.mu.Unlock()
 	s.load()
 	s.signedOnly = on
+	return s.save()
+}
+
+// RemoteStart tells if a Print in a slicer starts the print at once ("Start prints from the
+// slicer", on by default). Off, the deck asks on its screen before each print from an app.
+func (s *Store) RemoteStart() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.load()
+	return !s.askToStart
+}
+
+// SetRemoteStart turns "Start prints from the slicer" on or off.
+func (s *Store) SetRemoteStart(on bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.load()
+	s.askToStart = !on
 	return s.save()
 }
 

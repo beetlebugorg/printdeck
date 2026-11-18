@@ -399,10 +399,11 @@ func (a *App) confirmResinPrint(path, name string) {
 	}}
 }
 
-// ConfirmFilePrint asks on the touch screen to start a print that a slicer sent. A print never
-// starts from the network alone: a person at the deck presses Print, so the bed is clear. When the
-// material of the file is not known to be in the printer, the question is about the roll. It is
-// safe to call from any goroutine.
+// ConfirmFilePrint starts a print that a slicer sent. With "Start prints from the slicer" on (the
+// default, for a person next to the printer), it starts at once when the material is in the
+// printer; the slicer asks if the bed is clear before it sends. With it off (a farm), the deck asks
+// on its screen, and a person at the deck presses Print. When the material of the file is not known
+// to be in the printer, the deck asks about the roll. It is safe to call from any goroutine.
 func (a *App) ConfirmFilePrint(path string) {
 	a.post(func() {
 		// With files in the queue, the deck asks: this file now, after the queue, or the queue.
@@ -414,6 +415,10 @@ func (a *App) ConfirmFilePrint(path string) {
 		start := func() { a.Printer.PrintFile(path) }
 		box := a.filamentChoices(path, name, start)
 		if box == nil {
+			if a.Signing == nil || a.Signing.RemoteStart() {
+				start()
+				return
+			}
 			box = a.sentFileBox(path, name, start)
 		}
 		// A print from a slicer: the question is on each screen of the deck.

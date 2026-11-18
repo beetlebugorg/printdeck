@@ -9,16 +9,23 @@ import (
 	"printdeck/internal/signing"
 )
 
-// Settings > Signed prints: the toggle needs a trusted slicer, and a tap on a slicer asks to
-// remove it.
+// Settings > Prints from apps: "Start prints from the slicer" is on by default and turns off, the
+// toggle "Signed prints only" needs a trusted slicer, and a tap on a slicer asks to remove it.
 func TestSignedPrintsPage(t *testing.T) {
 	a, _, _ := newPrintApp(idle)
 	cv := gfx.New(a.Screen().W, a.Screen().H)
 	a.Signing = &signing.Store{Path: filepath.Join(t.TempDir(), "signing.json")}
 	a.open(pageSettings)
-	tapLabel(t, a, cv, "Signed prints")
+	tapLabel(t, a, cv, "Prints from apps")
 	if a.topPage() != pageSigning {
 		t.Fatalf("page %v", a.topPage())
+	}
+	if !a.Signing.RemoteStart() {
+		t.Fatal("Start prints from the slicer is off by default")
+	}
+	tapLabel(t, a, cv, "Start prints from the slicer")
+	if a.Signing.RemoteStart() {
+		t.Fatal("Start prints from the slicer did not turn off")
 	}
 	// With no trusted slicer, the toggle explains and stays off.
 	tapLabel(t, a, cv, "Signed prints only")
@@ -42,7 +49,7 @@ func TestSignedPrintsPage(t *testing.T) {
 	if len(a.Signing.Keys()) != 0 {
 		t.Error("the key is still trusted")
 	}
-	if got := signingLine(true, 2); got != "Only signed prints · 2 trusted slicers" {
+	if got := signingLine(false, true, 2); got != "The deck asks before each print · only signed prints · 2 trusted slicers" {
 		t.Errorf("line %q", got)
 	}
 }

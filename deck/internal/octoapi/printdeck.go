@@ -108,6 +108,9 @@ type printdeckJSON struct {
 	// SignedOnly is true when the deck accepts only G-code files with a good signature of a trusted
 	// slicer.
 	SignedOnly bool `json:"signed_only"`
+	// RemoteStart is "Start prints from the slicer": true, an upload with print starts the print at
+	// once (when the roll matches); false, the deck asks, and a person at the deck presses Print.
+	RemoteStart bool `json:"remote_start"`
 }
 
 // limitsJSON is the [printer] section of printer.cfg: velocities in mm/s, accelerations in
@@ -141,6 +144,7 @@ func (s *Server) servePrintdeck(w http.ResponseWriter, r *http.Request) {
 	if s.Material != nil {
 		out.Material = s.Material()
 	}
+	out.RemoteStart = s.remoteStart()
 	if s.Signing != nil {
 		out.SignedOnly = s.Signing.SignedOnly()
 	}
@@ -289,6 +293,12 @@ type printdeckFields struct {
 	Signing *signing.Store
 	// Rejected shows the reason for a rejected file on the touch screen, or is nil.
 	Rejected func(name, reason string)
+}
+
+// remoteStart tells if a print from an app starts at once ("Start prints from the slicer", on when
+// the deck has no setting).
+func (s *Server) remoteStart() bool {
+	return s.Signing == nil || s.Signing.RemoteStart()
 }
 
 // startPrint starts a print of a file, with StartPrint when the Server has it.

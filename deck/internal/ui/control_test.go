@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"math"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	"printdeck/internal/gfx"
 	"printdeck/internal/hostmetrics"
 	"printdeck/internal/printer"
+	"printdeck/internal/signing"
 	"printdeck/internal/touch"
 )
 
@@ -47,6 +49,13 @@ func (r *recPrinter) SpeedFactor(p int) error { return r.rec(fmt.Sprint("speed "
 func (r *recPrinter) PrintFile(path string)   { r.rec("print " + path) }
 func (r *recPrinter) PrintCalibTowers(tool, bed int, material string) error {
 	return r.rec(fmt.Sprintf("towers %d %d %s", tool, bed, material))
+}
+
+// ClearCalls forgets the commands so far.
+func (r *recPrinter) ClearCalls() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.calls = nil
 }
 
 func (r *recPrinter) Calls() []string {
@@ -720,8 +729,21 @@ func TestMaterialCheck(t *testing.T) {
 	if q, _, _, _ := a.materialCheck("x.gcode"); q != "" {
 		t.Errorf("the same material: %q", q)
 	}
-	// A print from a slicer never starts from the network alone, also with the material in the
-	// printer: the deck asks, and a press of Print starts it.
+	// With "Start prints from the slicer" on (the default), a print from a slicer starts at once
+	// when the material is in the printer.
+	a.ConfirmFilePrint("x.gcode")
+	for len(a.posted) > 0 {
+		(<-a.posted)()
+	}
+	if c := pr.Calls(); a.hub.question() != nil || len(c) != 1 || c[0] != "print x.gcode" {
+		t.Fatalf("remote start: question %v, calls %v", a.hub.question(), c)
+	}
+	pr.ClearCalls()
+	// With it off (a farm), the deck asks, and a press of Print starts it.
+	a.Signing = &signing.Store{Path: filepath.Join(t.TempDir(), "signing.json")}
+	if err := a.Signing.SetRemoteStart(false); err != nil {
+		t.Fatal(err)
+	}
 	a.ConfirmFilePrint("x.gcode")
 	for len(a.posted) > 0 {
 		(<-a.posted)()

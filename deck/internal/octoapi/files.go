@@ -140,7 +140,9 @@ func (s *Server) serveUpload(w http.ResponseWriter, r *http.Request) {
 			return
 		default:
 			s.startPrint(saved)
-			effectivePrint = true
+			// With "Start prints from the slicer" off, the deck asks first: the print waits
+			// for a press of Print on the deck.
+			effectivePrint = s.remoteStart()
 		}
 	}
 	ref := baseURL(r) + "/api/files/local/" + escapePath(saved)
