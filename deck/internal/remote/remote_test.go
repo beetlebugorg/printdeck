@@ -243,3 +243,51 @@ func TestLocalPath(t *testing.T) {
 		}
 	}
 }
+
+// A request with the login cookie that changes something must come from a page of the deck. On
+// the HTTPS name of the deck, another name of the same registered domain is the same site, so
+// SameSite=Strict sends the cookie with its forms.
+func TestLoginNeedsSameOrigin(t *testing.T) {
+	_, ts, c, _ := newTest(t)
+	login(t, c, ts.URL, "stamp-ocean-cider-brick")
+	host := strings.TrimPrefix(ts.URL, "http://")
+	touch := func(h map[string]string) int {
+		req, _ := http.NewRequest("POST", ts.URL+"/ui/touch?s=x", strings.NewReader(`{"kind":"down","x":0.5,"y":0.5}`))
+		for k, v := range h {
+			req.Header.Set(k, v)
+		}
+		r, err := c.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r.Body.Close()
+		return r.StatusCode
+	}
+	for _, h := range []map[string]string{
+		{"Origin": "https://zslice.beetlebug.org", "Sec-Fetch-Site": "same-site"},
+		{"Origin": "https://zslice.beetlebug.org"},
+		{"Sec-Fetch-Site": "cross-site"},
+		{"Origin": "null"},
+		{"Origin": "http://" + host + ".evil.example"},
+	} {
+		if got := touch(h); got != http.StatusForbidden {
+			t.Errorf("%v: %d, want 403", h, got)
+		}
+	}
+	for _, h := range []map[string]string{
+		{"Origin": "http://" + host, "Sec-Fetch-Site": "same-origin"},
+		{"Origin": "https://" + host},
+		{},
+	} {
+		if got := touch(h); got == http.StatusForbidden || got == http.StatusUnauthorized {
+			t.Errorf("%v: %d, want through", h, got)
+		}
+	}
+	// A login form from another site fails.
+	req, _ := http.NewRequest("POST", ts.URL+"/login", strings.NewReader("password=stamp-ocean-cider-brick"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Origin", "https://zslice.beetlebug.org")
+	if r, err := http.DefaultClient.Do(req); err != nil || r.StatusCode != http.StatusForbidden {
+		t.Errorf("a login from another site: %v %v", r.StatusCode, err)
+	}
+}

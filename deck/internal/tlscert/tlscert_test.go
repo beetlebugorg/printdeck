@@ -181,6 +181,7 @@ func TestRenewAndAddress(t *testing.T) {
 	if f.requests != 1 || m.URL() == "" {
 		t.Fatalf("first: %d %q %s", f.requests, m.URL(), m.Problem())
 	}
+	first := m.key.PublicKey
 	f.days = 90
 	m.mu.Lock()
 	m.failAt = time.Time{}
@@ -188,6 +189,9 @@ func TestRenewAndAddress(t *testing.T) {
 	m.Step(context.Background())
 	if f.requests != 2 || m.leaf.NotAfter.Sub(time.Now()) < 80*24*time.Hour {
 		t.Fatalf("renew: %d requests, to %v", f.requests, m.leaf.NotAfter)
+	}
+	if first.Equal(&m.key.PublicKey) {
+		t.Fatal("the renewal kept the key")
 	}
 	m.LocalIP = func() (string, error) { return "10.0.0.9", nil }
 	m.Step(context.Background())

@@ -22,13 +22,32 @@ var wrongDelay = time.Second
 // web server.
 func (s *Server) Auth(h http.HandlerFunc) http.HandlerFunc { return s.auth(h) }
 
-// LoggedIn reports that a request comes from a browser with a login of the remote screen.
+// LoggedIn reports that a request comes from a browser with a login of the remote screen. A
+// request that changes something must also come from a page of this server (SameOrigin).
 func (s *Server) LoggedIn(r *http.Request) bool {
 	if s.NoLogin {
 		return true
 	}
 	c, err := r.Cookie(cookieName)
-	return err == nil && s.validSession(c.Value)
+	return err == nil && s.validSession(c.Value) && (safeMethod(r.Method) || SameOrigin(r))
+}
+
+// safeMethod reports that a request of the method makes no change.
+func safeMethod(m string) bool {
+	return m == http.MethodGet || m == http.MethodHead || m == http.MethodOptions
+}
+
+// SameOrigin reports that a request comes from a page of this server, or from a program that is
+// not a browser. The login cookie is SameSite=Strict, but on the HTTPS name of the deck
+// (<host>.d.<domain>) the site is the whole registered domain: a page on another name of that
+// domain can send a form with the cookie. A browser sends Origin with each such request, and
+// Sec-Fetch-Site too. The Origin must be the host of the request, on HTTP or HTTPS.
+func SameOrigin(r *http.Request) bool {
+	if site := r.Header.Get("Sec-Fetch-Site"); site != "" && site != "same-origin" && site != "none" {
+		return false
+	}
+	o := r.Header.Get("Origin")
+	return o == "" || o == "http://"+r.Host || o == "https://"+r.Host
 }
 
 // auth lets a request through only with a valid session. Without one, the screen page goes to the
@@ -40,6 +59,10 @@ func (s *Server) auth(h http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		if c, err := r.Cookie(cookieName); err == nil && s.validSession(c.Value) {
+			if !safeMethod(r.Method) && !SameOrigin(r) {
+				http.Error(w, "the request comes from another site", http.StatusForbidden)
+				return
+			}
 			h(w, r)
 			return
 		}
@@ -77,6 +100,10 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	want := ""
 	if s.Password != nil {
 		want = s.Password()
+	}
+	if !SameOrigin(r) {
+		http.Error(w, "the request comes from another site", http.StatusForbidden)
+		return
 	}
 	got := strings.TrimSpace(r.FormValue("password"))
 	if want == "" || subtle.ConstantTimeCompare([]byte(got), []byte(want)) != 1 {
@@ -127,6 +154,10 @@ func isLocalRedirect(next string) bool {
 
 // logout ends the session.
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
+	if !SameOrigin(r) {
+		http.Error(w, "the request comes from another site", http.StatusForbidden)
+		return
+	}
 	if c, err := r.Cookie(cookieName); err == nil {
 		s.mu.Lock()
 		delete(s.sessions, c.Value)

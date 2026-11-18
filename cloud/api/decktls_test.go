@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"math/big"
@@ -229,7 +230,7 @@ func TestDeckCert(t *testing.T) {
 
 // A failed job: the deck gets the error, and the same CSR starts no new job for 10 minutes.
 func TestDeckCertFails(t *testing.T) {
-	_, _, _, iss, id := tlsServer(t)
+	_, s, _, iss, id := tlsServer(t)
 	ctx := context.Background()
 	var c cloud.Client
 	addr, _ := c.SetAddress(ctx, id, "10.1.2.3")
@@ -241,6 +242,25 @@ func TestDeckCertFails(t *testing.T) {
 	}
 	if out, err := c.RequestCert(ctx, id, csr); err != nil || out.Status != cloud.CertFailed || iss.count() != 1 {
 		t.Fatalf("retry: %+v %v %d", out, err, iss.count())
+	}
+	// A new key starts no new job either.
+	if out, err := c.RequestCert(ctx, id, testCSR(t, addr.Name)); err != nil || out.Status != cloud.CertFailed || iss.count() != 1 {
+		t.Fatalf("new key: %+v %v %d", out, err, iss.count())
+	}
+	// Each 10 minutes one more job, up to 6 in 7 days, with any key.
+	now := time.Now()
+	for i := 2; i <= 7; i++ {
+		now = now.Add(11 * time.Minute)
+		at := now
+		s.Now = func() time.Time { return at }
+		ci := cloud.Client{Now: func() time.Time { return at }}
+		_, err := ci.RequestCert(ctx, id, testCSR(t, addr.Name))
+		if i <= 6 && (err != nil || iss.count() != i) {
+			t.Fatalf("order %d: %v, %d jobs", i, err, iss.count())
+		}
+		if i == 7 && (status(err) != 429 || iss.count() != 6) {
+			t.Fatalf("order 7: %v, %d jobs", err, iss.count())
+		}
 	}
 }
 
@@ -274,5 +294,29 @@ func TestDeckAddressOff(t *testing.T) {
 	}
 	if _, err := c.SetAddress(context.Background(), id, "10.1.2.3"); status(err) != http.StatusServiceUnavailable {
 		t.Fatalf("off: %v", err)
+	}
+}
+
+// A deck that the owner removes during a request does not come back with the write of the
+// request.
+func TestSaveDeckAfterRemove(t *testing.T) {
+	st, s, _, _, id := tlsServer(t)
+	ctx := context.Background()
+	b, etag, err := st.Get(ctx, deckKey(id.Deck))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var d Deck
+	json.Unmarshal(b, &d)
+	d.etag = etag
+	if err := st.Delete(ctx, deckKey(id.Deck)); err != nil {
+		t.Fatal(err)
+	}
+	var e *Error
+	if err := s.saveDeck(ctx, &d); !errors.As(err, &e) || e.Status != http.StatusConflict {
+		t.Fatalf("save after remove: %v", err)
+	}
+	if _, _, err := st.Get(ctx, deckKey(id.Deck)); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("the deck came back: %v", err)
 	}
 }

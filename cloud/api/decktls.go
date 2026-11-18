@@ -53,11 +53,14 @@ const (
 	// renewBefore is the time before the end of a certificate when the deck gets a new one. A
 	// request for a certificate with more time left gets the certificate that the service has.
 	renewBefore = 30 * 24 * time.Hour
-	// maxCerts is the most certificates of one deck in certWindow, under the limits of Let's
-	// Encrypt (50 for each registered domain in a week, 5 for the same name in a week).
+	// maxCerts is the most certificates of one deck in certWindow, and maxOrders the most ACME
+	// orders, under the limits of Let's Encrypt (50 certificates for each registered domain in a
+	// week, 5 for the same name, 300 new orders in 3 hours for the account).
 	maxCerts   = 3
+	maxOrders  = 6
 	certWindow = 7 * 24 * time.Hour
-	// certRetry is the time after a request or a failure before a new request starts a new job.
+	// certRetry is the time after a request or a failure before a new request of the deck starts
+	// a new job, with any key.
 	certRetry = 10 * time.Minute
 	// certJobTime is the most time of a certificate job in the jobs function.
 	certJobTime = 4 * time.Minute
@@ -75,6 +78,18 @@ type certRecord struct {
 	NotAfter  time.Time   `json:"not_after,omitzero"`
 	Error     string      `json:"error,omitempty"`
 	Issued    []time.Time `json:"issued,omitempty"` // the times of the certificates in certWindow
+	Orders    []time.Time `json:"orders,omitempty"` // the times of the jobs in certWindow
+}
+
+// within returns the times of ts in the last certWindow before now.
+func within(ts []time.Time, now time.Time) []time.Time {
+	var out []time.Time
+	for _, t := range ts {
+		if now.Sub(t) < certWindow {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 func certKey(deck string) string { return "certs/" + deck + ".json" }
@@ -93,9 +108,20 @@ func (s *Server) deckName(ctx context.Context, d *Deck) (string, error) {
 	return d.Host + ".d." + s.Domain, nil
 }
 
+// saveDeck writes the deck file only when it has not changed since the read. A deck that the
+// owner removed during the request does not come back, and two first requests do not make two
+// hosts.
 func (s *Server) saveDeck(ctx context.Context, d *Deck) error {
 	data, _ := json.Marshal(d)
-	_, err := s.Store.Put(ctx, deckKey(d.ID), data, PutOptions{ContentType: "application/json"})
+	opt := PutOptions{ContentType: "application/json", IfMatch: d.etag}
+	if d.etag == "" {
+		return fail(http.StatusConflict, "the deck changed: try again")
+	}
+	etag, err := s.Store.Put(ctx, deckKey(d.ID), data, opt)
+	if errors.Is(err, ErrConflict) {
+		return fail(http.StatusConflict, "the deck changed: try again")
+	}
+	d.etag = etag
 	return err
 }
 
@@ -130,18 +156,29 @@ func (s *Server) setAddress(ctx context.Context, r *http.Request, d *Deck, body 
 		return nil, err
 	}
 	now := s.now()
-	if ip != d.IPv4 {
-		if now.Sub(d.AddressSet) < addressGap {
-			return nil, fail(http.StatusTooManyRequests, "the address changed less than 30 s ago: try again later")
-		}
-		if err := s.DNS.Set(ctx, name, "A", []string{ip}, deckRecordTTL, false); err != nil {
-			return nil, err
-		}
+	changed := ip != d.IPv4
+	if changed && now.Sub(d.AddressSet) < addressGap {
+		return nil, fail(http.StatusTooManyRequests, "the address changed less than 30 s ago: try again later")
+	}
+	// The file first, with IfMatch: a deck that the owner removed during the request gets no
+	// record in DNS.
+	old := d.IPv4
+	if changed {
 		d.IPv4, d.AddressSet = ip, now.UTC()
 	}
 	d.AddressAt = sg.Time.Unix()
 	if err := s.saveDeck(ctx, d); err != nil {
 		return nil, err
+	}
+	if changed {
+		if err := s.DNS.Set(ctx, name, "A", []string{ip}, deckRecordTTL, false); err != nil {
+			// The next request tries the record again.
+			d.IPv4 = old
+			if serr := s.saveDeck(ctx, d); serr != nil {
+				log.Printf("address %s: %v", d.ID, serr)
+			}
+			return nil, err
+		}
 	}
 	return cloud.AddressReply{Name: name}, nil
 }
@@ -239,19 +276,18 @@ func (s *Server) requestCert(ctx context.Context, d *Deck, body []byte) (any, er
 	switch {
 	case rec.Status == cloud.CertReady && rec.Name == name && rec.ChainKey == key && rec.NotAfter.Sub(now) > renewBefore:
 		return rec.reply(), nil // the certificate that the service has
-	case rec.Status != cloud.CertReady && rec.Name == name && rec.Key == key && now.Sub(rec.Requested) < certRetry:
-		return rec.reply(), nil // the job runs, or failed a short time ago
+	case rec.Status != cloud.CertReady && !rec.Requested.IsZero() && now.Sub(rec.Requested) < certRetry:
+		// The job runs, or failed a short time ago. A new key does not start a new job.
+		return rec.reply(), nil
 	}
-	var recent []time.Time
-	for _, t := range rec.Issued {
-		if now.Sub(t) < certWindow {
-			recent = append(recent, t)
-		}
-	}
-	if len(recent) >= maxCerts {
+	rec.Issued, rec.Orders = within(rec.Issued, now), within(rec.Orders, now)
+	if len(rec.Issued) >= maxCerts {
 		return nil, fail(http.StatusTooManyRequests, "the deck got 3 certificates in 7 days: try again later")
 	}
-	rec.Issued = recent
+	if len(rec.Orders) >= maxOrders {
+		return nil, fail(http.StatusTooManyRequests, "the deck asked for 6 certificates in 7 days: try again later")
+	}
+	rec.Orders = append(rec.Orders, now.UTC())
 	rec.Status, rec.Name, rec.CSR, rec.Key, rec.Requested, rec.Error = cloud.CertPending, name, der, key, now.UTC(), ""
 	if err := s.saveCert(ctx, d.ID, rec, etag); err != nil {
 		return nil, err
