@@ -47,6 +47,7 @@ func TestBambuFiles(t *testing.T) {
 	b := NewBambu("192.168.1.50", "S", "C", "", "X2D", nil)
 	b.Spools = &Spools{Path: filepath.Join(dir, "spools.json")}
 	b.TrayPath = filepath.Join(dir, "ams-trays.json")
+	t.Cleanup(b.trayWG.Wait)
 	files := filepath.Join(dir, "files")
 	os.Mkdir(files, 0o755)
 	b.Store = dirStore(files)

@@ -386,7 +386,11 @@ func (b *Bambu) watchTrays(r bambu.Report) {
 		return
 	}
 	sort.Ints(came)
-	go b.spoolsChanged(gone, came, first)
+	b.trayWG.Add(1)
+	go func() {
+		defer b.trayWG.Done()
+		b.spoolsChanged(gone, came, first)
+	}()
 }
 
 // spoolsChanged handles the spools that went out of the trays gone and into the trays came. On

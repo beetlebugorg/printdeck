@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -65,9 +66,20 @@ func TestBambuPrint(t *testing.T) {
 
 func TestBambuHMS(t *testing.T) {
 	b := NewBambu("192.168.1.50", "S", "C", "", "X2D", nil)
+	// A code with no text in the lists: the part of the printer, and the code in the detail.
 	b.update(bambu.Report{State: "IDLE", HMS: []bambu.HMS{{Attr: 0x05000600, Code: 0x00020070}}}, time.Now())
-	if m := b.State().Message; m != "Printer message 0500-0600-0002-0070" {
-		t.Errorf("%q", m)
+	st := b.State()
+	if st.Message != "Mainboard message" || st.ErrDetail != "Mainboard message (0500-0600-0002-0070)" {
+		t.Errorf("%q %q", st.Message, st.ErrDetail)
+	}
+	// A code of the list of the program, and a second message.
+	b.update(bambu.Report{State: "IDLE", HMS: []bambu.HMS{{Attr: 0x03009300, Code: 0x00010008}, {Attr: 0x05000600, Code: 0x00020070}}}, time.Now())
+	st = b.State()
+	if !strings.HasPrefix(st.Message, "Chamber temperature is abnormal") || !strings.HasSuffix(st.Message, " · 1 more") {
+		t.Errorf("%q", st.Message)
+	}
+	if got := b.HMSMessages(); len(got) != 2 || !strings.HasSuffix(got[0], "(0300-9300-0001-0008)") {
+		t.Errorf("%q", got)
 	}
 }
 
@@ -92,6 +104,7 @@ func TestBambuAMS(t *testing.T) {
 	b := NewBambu("192.168.1.50", "S", "C", "", "X2D", nil)
 	b.Spools = &Spools{Path: filepath.Join(dir, "spools.json")}
 	b.TrayPath = filepath.Join(dir, "ams-trays.json")
+	t.Cleanup(b.trayWG.Wait)
 	b.update(amsReport("IDLE", "255"), time.Now())
 	st := b.State()
 	if !st.HasChamber || st.Chamber != 30 {
@@ -115,6 +128,7 @@ func TestBambuAMS(t *testing.T) {
 	// The link stays after a restart of the deck.
 	b2 := NewBambu("192.168.1.50", "S", "C", "", "X2D", nil)
 	b2.Spools, b2.TrayPath = b.Spools, b.TrayPath
+	t.Cleanup(b2.trayWG.Wait)
 	b2.update(amsReport("IDLE", "255"), time.Now())
 	if b2.AMS().Trays[1].Roll != sp.ID {
 		t.Errorf("link after restart %+v", b2.AMS().Trays[1])
@@ -131,6 +145,7 @@ func TestBambuCountUse(t *testing.T) {
 	b := NewBambu("192.168.1.50", "S", "C", "", "X2D", nil)
 	b.Spools = &Spools{Path: filepath.Join(dir, "spools.json")}
 	b.TrayPath = filepath.Join(dir, "ams-trays.json")
+	t.Cleanup(b.trayWG.Wait)
 	b.update(amsReport("IDLE", "255"), time.Now())
 	gray, _ := b.AddTrayRoll(0, 1000, "")
 	old := fetch3MF
@@ -180,6 +195,7 @@ func TestBambuSpoolChanges(t *testing.T) {
 	b := NewBambu("192.168.1.50", "S", "C", "", "X2D", nil)
 	b.Spools = &Spools{Path: filepath.Join(dir, "spools.json")}
 	b.TrayPath = filepath.Join(dir, "ams-trays.json")
+	t.Cleanup(b.trayWG.Wait)
 	// The first report of a new deck: the trays with a spool and no tag ask, the tagged tray gets
 	// a roll from its tag.
 	r := amsReport("IDLE", "255")
@@ -205,6 +221,7 @@ func TestBambuSpoolChanges(t *testing.T) {
 	// The next start of the deck asks no question: the deck has its tray file.
 	b2 := NewBambu("192.168.1.50", "S", "C", "", "X2D", nil)
 	b2.Spools, b2.TrayPath = b.Spools, b.TrayPath
+	t.Cleanup(b2.trayWG.Wait)
 	b2.update(r, time.Now())
 	time.Sleep(50 * time.Millisecond)
 	if q, ok := b2.TrayQuestion(); ok {
