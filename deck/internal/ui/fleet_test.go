@@ -269,18 +269,18 @@ type loadedPrinter struct {
 
 func (p loadedPrinter) Loaded() []printer.Loaded { return p.items }
 
-// Four trays with the part left do not fit with their material: the row shows the part left
-// only, and each square stays in the panel.
+// Four rolls with their material fit in the panel, in the middle of the line, and each roll
+// stays in the line.
 func TestLoadedFits(t *testing.T) {
 	a := New()
 	full := printer.Loaded{Material: "PLA", Color: "#888888", Fraction: 1}
 	a.Printer = loadedPrinter{&DemoPrinter{View: -1, State_: printer.State{Reachable: true, Connected: true, Text: "Ready"}},
 		[]printer.Loaded{full, full, full, full}}
 	c, rec := gfx.NewRecording(a.Screen().W, a.Screen().H)
-	r := image.Rect(16, 100, 448, 120)
-	w := a.drawLoaded(c, r, r.Dx()) // a long text: the squares get 2/3 of the line
+	r := image.Rect(16, 100, 448, 124)
+	w := a.drawLoaded(c, r)
 	f := string(rec.JSON())
-	if w > r.Dx()*2/3 || strings.Contains(f, "PLA 100%") || strings.Count(f, "100%") != 4 {
+	if w > r.Dx() || strings.Count(f, "PLA 100%") != 4 {
 		t.Errorf("width %d, frame %s", w, f)
 	}
 	shot(t, a, "loaded")
