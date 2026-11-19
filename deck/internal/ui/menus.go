@@ -403,7 +403,9 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 	pr := a.Printer
 	f := a.navPage(c, "Machine")
 	mach := pr.Machine()
-	if !a.resin() {
+	// Restart… restarts Klipper or the board: a resin printer and a printer with its own controls
+	// have neither.
+	if !a.resin() && !mach.OwnControls {
 		a.printerKey(c, headKeyRect(f.head, "Restart…"), "Restart…", raised, text, a.askRestart)
 	}
 
@@ -444,8 +446,9 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 	if a.Queue != nil {
 		keys = append(keys, menuItem{"Queue", a.queueSummary(), dim, func() { a.open(pageQueue) }})
 	}
-	if !a.resin() {
-		// A resin printer has no maintenance of a FDM printer, no macros and no G-code console.
+	if !a.resin() && !mach.OwnControls {
+		// A resin printer has no maintenance of a FDM printer, no macros and no G-code console. A
+		// printer with its own controls (a Bambu Lab printer) has them on its own screen.
 		keys = append(keys,
 			menuItem{"Maintenance", maint, maintCol, func() { a.open(pageMaintenance) }},
 		)
@@ -808,7 +811,7 @@ func (a *App) drawSettings(c *gfx.Canvas) {
 		{"Theme", themeLine(a.Theme, a.NightFrom, a.NightTo), dim, a.openTheme},
 		{"Clock", clockLine(a.Clock24), dim, a.openClock},
 	}
-	if !a.resin() {
+	if !a.resin() && !a.ownControls() {
 		items = append(items, menuItem{"Home in a filament change", swapHomeLine(a.SwapHome), dim, a.openSwapHome})
 	}
 	if m, ok := a.maxModer(); ok && a.Printer.State().Reachable {

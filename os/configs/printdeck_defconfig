@@ -99,3 +99,19 @@ BR2_PACKAGE_VULKAN_LOADER=y
 # libjpeg-turbo: the JPEG code of the deck is measured against it (/system/jpeg).
 BR2_PACKAGE_JPEG=y
 BR2_PACKAGE_JPEG_TURBO=y
+# libavcodec with only the H.264 decoder: the deck decodes the camera of a Bambu Lab printer
+# (deck/internal/h264). No programs, no other codecs, no formats, no filters, LGPL.
+BR2_PACKAGE_FFMPEG=y
+# BR2_PACKAGE_FFMPEG_FFMPEG is not set
+# BR2_PACKAGE_FFMPEG_SWSCALE is not set
+BR2_PACKAGE_FFMPEG_ENCODERS=""
+BR2_PACKAGE_FFMPEG_DECODERS="h264"
+BR2_PACKAGE_FFMPEG_MUXERS=""
+BR2_PACKAGE_FFMPEG_DEMUXERS=""
+BR2_PACKAGE_FFMPEG_PARSERS="h264"
+BR2_PACKAGE_FFMPEG_BSFS=""
+BR2_PACKAGE_FFMPEG_PROTOCOLS=""
+BR2_PACKAGE_FFMPEG_FILTERS=""
+# BR2_PACKAGE_FFMPEG_INDEVS is not set
+# BR2_PACKAGE_FFMPEG_OUTDEVS is not set
+BR2_PACKAGE_FFMPEG_EXTRACONF="--disable-avformat --disable-avdevice --disable-avfilter --disable-swresample --disable-network --disable-doc"

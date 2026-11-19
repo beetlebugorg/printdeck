@@ -33,12 +33,18 @@ var navKeys = []navKey{{"Main", 0}, {"Files", pageFiles}, {"Filament", pageFilam
 // plate.
 var resinNavKeys = []navKey{{"Main", 0}, {"Files", pageFiles}, {"Build plate", pageMove}, {"Machine", pageMachine}}
 
-// keys is the key panel of the app: navKeys (resinNavKeys for a resin printer), and Camera on a
-// deck with a camera.
+// ownNavKeys are the keys of a printer with its own controls (a Bambu Lab printer).
+var ownNavKeys = []navKey{{"Main", 0}, {"Files", pageFiles}, {"Machine", pageMachine}}
+
+// keys is the key panel of the app: navKeys (resinNavKeys for a resin printer, ownNavKeys for a
+// printer with its own controls), and Camera on a deck with a camera.
 func (a *App) keys() []navKey {
 	keys := navKeys
-	if a.resin() {
+	switch {
+	case a.resin():
 		keys = resinNavKeys
+	case a.ownControls():
+		keys = ownNavKeys
 	}
 	if a.Camera == nil {
 		return keys

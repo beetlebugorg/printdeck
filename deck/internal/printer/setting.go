@@ -9,11 +9,12 @@ import (
 	"path/filepath"
 )
 
-// The kinds of printer that a deck drives: a printer of the Klipper host on USB, or a ChiTu resin
-// printer on the network (package chitu).
+// The kinds of printer that a deck drives: a printer of the Klipper host on USB, a ChiTu resin
+// printer on the network (package chitu), or a Bambu Lab printer on the network (package bambu).
 const (
 	KindKlipper = "klipper"
 	KindChiTu   = "chitu"
+	KindBambu   = "bambu"
 )
 
 // The processes of a printer.
@@ -31,6 +32,11 @@ type Setting struct {
 	Addr string `json:"addr,omitempty"`
 	MAC  string `json:"mac,omitempty"`
 	Name string `json:"name,omitempty"`
+	// For a Bambu printer: the serial number, the access code of the LAN login, and the SHA-256
+	// of the certificate of the printer ("" until the first connection). Addr is its address.
+	Serial string `json:"serial,omitempty"`
+	Code   string `json:"code,omitempty"`
+	Pin    string `json:"pin,omitempty"`
 }
 
 // SettingFile is the name of the file of the setting in the state folder.
@@ -55,17 +61,22 @@ func LoadSetting(dir string) (Setting, error) {
 		if s.Addr == "" {
 			return Setting{Kind: KindKlipper}, fmt.Errorf("%s: a ChiTu printer with no address", SettingFile)
 		}
+	case KindBambu:
+		if s.Addr == "" || s.Serial == "" || s.Code == "" {
+			return Setting{Kind: KindKlipper}, fmt.Errorf("%s: a Bambu printer needs the address, the serial number and the access code", SettingFile)
+		}
 	default:
 		return Setting{Kind: KindKlipper}, fmt.Errorf("%s: no such kind of printer: %q", SettingFile, s.Kind)
 	}
 	return s, nil
 }
 
-// SaveSetting writes printer.json of the state folder dir.
+// SaveSetting writes printer.json of the state folder dir. Only the owner can read the file: it
+// can have the access code of a printer.
 func SaveSetting(dir string, s Setting) error {
 	b, _ := json.MarshalIndent(s, "", " ")
 	tmp := filepath.Join(dir, SettingFile+".new")
-	if err := os.WriteFile(tmp, append(b, '\n'), 0o644); err != nil {
+	if err := os.WriteFile(tmp, append(b, '\n'), 0o600); err != nil {
 		return err
 	}
 	return os.Rename(tmp, filepath.Join(dir, SettingFile))

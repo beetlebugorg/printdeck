@@ -144,8 +144,13 @@ func (pa *printerAdmin) List() []ui.PrinterEntry {
 	var out []ui.PrinterEntry
 	for _, p := range loadDeckPrinters(pa.base.StateDir) {
 		e := ui.PrinterEntry{ID: p.ID, Name: p.Name, Label: p.Label, Color: p.Color, Kind: "Klipper"}
-		if s, err := printer.LoadSetting(p.config(pa.base).StateDir); err == nil && s.Kind == printer.KindChiTu {
-			e.Kind, e.Addr = "Resin", s.Addr
+		if s, err := printer.LoadSetting(p.config(pa.base).StateDir); err == nil {
+			switch s.Kind {
+			case printer.KindChiTu:
+				e.Kind, e.Addr = "Resin", s.Addr
+			case printer.KindBambu:
+				e.Kind, e.Addr = "Bambu Lab", s.Addr
+			}
 		}
 		out = append(out, e)
 	}
@@ -217,6 +222,15 @@ func (pa *printerAdmin) AddResin(name, addr string) error {
 	})
 }
 
+// AddBambu adds a Bambu Lab printer at the address, with its serial number and its access code.
+// The deck learns the certificate of the printer at the first connection.
+func (pa *printerAdmin) AddBambu(name, addr, serial, code string) error {
+	return pa.add(name, func(p deckPrinter) error {
+		return printer.SaveSetting(p.config(pa.base).StateDir, printer.Setting{Kind: printer.KindBambu,
+			Addr: addr, Serial: serial, Code: code, Name: name})
+	})
+}
+
 func (pa *printerAdmin) Update(e ui.PrinterEntry) error {
 	ps := loadDeckPrinters(pa.base.StateDir)
 	for i := range ps {
@@ -242,7 +256,8 @@ func (pa *printerAdmin) Remove(id string) error {
 		if p.ID != id {
 			continue
 		}
-		if s, err := printer.LoadSetting(p.config(pa.base).StateDir); err != nil || s.Kind != printer.KindChiTu {
+		// A printer on the network has no Klipper host.
+		if s, err := printer.LoadSetting(p.config(pa.base).StateDir); err != nil || s.Kind == printer.KindKlipper {
 			if err := pa.helper(system.HelperRequest{Action: "remove-printer", Printer: id}); err != nil {
 				return err
 			}

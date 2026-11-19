@@ -67,6 +67,15 @@ func startCamera(ctx context.Context, stateDir string, app *ui.App, pr printerBa
 	if k, ok := pr.(*printer.Klippy); ok {
 		hub.SetScene(&printScene{k: k})
 	}
+	// A Bambu Lab printer has its own camera on the network, and no USB camera of the deck.
+	if b, ok := pr.(*printer.Bambu); ok {
+		shown, login := b.Camera()
+		name := b.Name
+		if name == "" {
+			name = "Bambu Lab"
+		}
+		hub.UseStream(camera.Device{ID: "bambu-" + b.Client.Serial, Path: shown, Name: name + " camera"}, login, b.Client.Check)
+	}
 	go hub.Run(ctx)
 	app.Camera = hub
 }

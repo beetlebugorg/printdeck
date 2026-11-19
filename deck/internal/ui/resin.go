@@ -18,6 +18,12 @@ func (a *App) resin() bool {
 	return a.Printer != nil && a.Printer.Machine().Process == printer.ProcessResin
 }
 
+// ownControls reports that the printer keeps its heaters, moves and filament under its own
+// screen (a Bambu Lab printer): the deck shows its state, and no keys for them.
+func (a *App) ownControls() bool {
+	return a.Printer != nil && a.Printer.Machine().OwnControls
+}
+
 // resinReadouts draws the readouts of the status panel of a resin printer in the three cells: the
 // height of the plate, the time of the print, and the time left.
 func resinReadouts(c *gfx.Canvas, cells []image.Rectangle, st printer.State) {

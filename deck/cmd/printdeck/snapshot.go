@@ -26,7 +26,18 @@ import (
 //
 //	printdeck snapshot URL PASSWORD OUT.png [w=WIDTH] [h=HEIGHT] [tap=X,Y ...] [wait=MS]
 //
+// A PASSWORD of the form key:TOKEN sends the token of the desktop app (printdeck app) instead.
+//
 // X and Y are in the units of the UI: 480 wide, or 800 x 480 with w=800 h=480 (the wide screen).
+// keyTransport sends the API key key with each request.
+type keyTransport string
+
+func (k keyTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	r = r.Clone(r.Context())
+	r.Header.Set("X-Api-Key", string(k))
+	return http.DefaultTransport.RoundTrip(r)
+}
+
 func snapshot(args []string) {
 	if len(args) < 3 {
 		log.Fatal("usage: printdeck snapshot URL PASSWORD OUT.png [w=WIDTH] [h=HEIGHT] [tap=X,Y ...] [wait=MS]")
@@ -53,7 +64,11 @@ func snapshot(args []string) {
 	}
 	jar, _ := cookiejar.New(nil)
 	client := &http.Client{Jar: jar, Timeout: 30 * time.Second}
-	if r, err := client.PostForm(base+"/login", url.Values{"password": {password}}); err != nil {
+	stream := &http.Client{Jar: jar}
+	if key, ok := strings.CutPrefix(password, "key:"); ok {
+		// The desktop app has no password: its window sends the token of its first line.
+		client.Transport, stream.Transport = keyTransport(key), keyTransport(key)
+	} else if r, err := client.PostForm(base+"/login", url.Values{"password": {password}}); err != nil {
 		log.Fatal(err)
 	} else {
 		r.Body.Close()
@@ -62,7 +77,6 @@ func snapshot(args []string) {
 		}
 	}
 
-	stream := &http.Client{Jar: jar}
 	resp, err := stream.Get(fmt.Sprintf("%s/ui/events?w=%d&h=%d", base, width, height))
 	if err != nil {
 		log.Fatal(err)
