@@ -432,7 +432,7 @@ func (a *App) sentFileBox(path, name string, start func()) *confirmBox {
 			a.Queue.Add(a.queueItem(path, "slicer"))
 		}})
 	}
-	return &confirmBox{question: "Print " + gfx.Fit(gfx.Face(true, 26), name, 340) + "?", choices: choices}
+	return &confirmBox{question: "Print " + gfx.Fit(gfx.Face(true, 26), name, 340) + "?", choices: choices, camera: true}
 }
 
 // materialCheck compares the material of a file with the material in the printer: the roll, or the

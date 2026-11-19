@@ -427,6 +427,9 @@ type confirmBox struct {
 	// allPrinters is a question for each printer of the deck: the key does not name the printer
 	// of the screen.
 	allPrinters bool
+	// camera shows the live picture of the main camera of the printer over the choices: a print
+	// starts only on a clear bed, and the deck can stand away from the printer.
+	camera bool
 }
 
 // infoBox is a box with a text and one Close key, for example the results of a test.
@@ -773,10 +776,37 @@ func (a *App) drawChoices(c *gfx.Canvas, cf *confirmBox) {
 		heights[i] = max(rowH, rowTextH(inW, ch.sub))
 		h += heights[i] + gap
 	}
+	// The picture of the camera, 16:9, when the box has room for it.
+	var cam *camera.Frame
+	camH := 0
+	if cf.camera && a.Camera != nil {
+		if src, ok := a.Camera.Source(""); ok {
+			if cam = a.camFrame(src, src.Status(), cameraEvery); cam != nil {
+				camH = min(inW*9/16, contentY1-20-h-gap)
+				if camH < 120 {
+					cam, camH = nil, 0
+				} else {
+					h += camH + gap
+				}
+			}
+		}
+	}
 	box := kit.Center(image.Rect(0, 0, W, contentY1), boxW, min(h, contentY1-20))
-	panel(c, box, "CHOOSE")
+	panel(c, box, fleetTitle("CHOOSE"))
+	if fleetSelf != nil {
+		// The colour of the printer over the dialog: the question acts on this printer.
+		c.RoundRect(image.Rect(box.Min.X, box.Min.Y-fleetBarH-4, box.Max.X, box.Min.Y-4), 3, fleetSelf.Color)
+	}
 	in := kit.Inset(box, 20, panelLabelH()+16, 20, 20)
 	s := kit.NewStack(in, gap)
+	if cam != nil {
+		r := s.Next(camH)
+		c.Fill(r, lcd)
+		v := cam.ForWidth(r.Dx())
+		sz := v.Size()
+		k := min(float64(r.Dx())/float64(sz.X), float64(r.Dy())/float64(sz.Y))
+		c.Cover(kit.Center(r, int(float64(sz.X)*k), int(float64(sz.Y)*k)), v)
+	}
 	qr := s.Next(len(qLines)*lineH + 14 - gap)
 	for i, l := range qLines {
 		c.Text(image.Rect(qr.Min.X, qr.Min.Y+i*lineH, qr.Max.X, qr.Min.Y+(i+1)*lineH), l, face, text, gfx.Center)
