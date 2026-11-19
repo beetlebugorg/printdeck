@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"slices"
 	"sort"
 	"strconv"
 	"time"
@@ -32,8 +33,10 @@ type AMSTray struct {
 	Color    string // "#rrggbb", or "" with no color
 	// Remain is the percent left that the printer knows (a spool with an RFID tag), or -1.
 	Remain int
-	Active bool   // the tray feeds the nozzle now
-	Roll   string // the ID of the roll of the deck in the tray, or ""
+	Active bool    // the tray feeds the nozzle now
+	Roll   string  // the ID of the roll of the deck in the tray, or ""
+	Tag    string  // the RFID tag of a spool of Bambu Lab, or ""
+	Weight float64 // the grams of a full spool, from its RFID tag, or 0
 }
 
 // AMSUnit is one AMS.
@@ -69,7 +72,8 @@ func (b *Bambu) AMS() AMS {
 			ti, _ := strconv.Atoi(t.ID)
 			slot := ui*4 + ti
 			tr := AMSTray{Slot: slot, Unit: ui, Index: ti, Loaded: r.TrayLoaded(slot), Material: t.Type,
-				Brand: t.Brand, Color: t.ColorHex(), Remain: -1, Active: slot == active, Roll: links[slot]}
+				Brand: t.Brand, Color: t.ColorHex(), Remain: -1, Active: slot == active, Roll: links[slot],
+				Tag: t.Tag(), Weight: float64(t.Weight)}
 			if t.Known() {
 				tr.Remain = t.Remain.Int()
 			}
@@ -102,10 +106,19 @@ func (b *Bambu) Loaded() []Loaded {
 	return out
 }
 
-// trayLinks returns the roll of each tray, from TrayPath.
+// trayLinks returns a copy of the roll of each tray, from TrayPath.
 func (b *Bambu) trayLinks() map[int]string {
 	b.trayMu.Lock()
 	defer b.trayMu.Unlock()
+	out := map[int]string{}
+	for k, v := range b.linksLocked() {
+		out[k] = v
+	}
+	return out
+}
+
+// linksLocked returns the roll of each tray, and reads TrayPath once. The caller holds trayMu.
+func (b *Bambu) linksLocked() map[int]string {
 	if b.trays != nil {
 		return b.trays
 	}
@@ -128,9 +141,9 @@ func (b *Bambu) trayLinks() map[int]string {
 // LinkTray puts the roll of the deck with the ID in the tray slot. "" takes the roll out. A roll
 // is in one tray at most.
 func (b *Bambu) LinkTray(slot int, roll string) error {
-	links := b.trayLinks()
 	b.trayMu.Lock()
 	defer b.trayMu.Unlock()
+	links := b.linksLocked()
 	for s, id := range links {
 		if id == roll && roll != "" {
 			delete(links, s)
@@ -141,11 +154,24 @@ func (b *Bambu) LinkTray(slot int, roll string) error {
 	} else {
 		links[slot] = roll
 	}
+	return b.saveLinksLocked()
+}
+
+// saveLinks writes the roll of each tray to TrayPath.
+func (b *Bambu) saveLinks() error {
+	b.trayMu.Lock()
+	defer b.trayMu.Unlock()
+	b.linksLocked()
+	return b.saveLinksLocked()
+}
+
+// saveLinksLocked writes the roll of each tray. The caller holds trayMu.
+func (b *Bambu) saveLinksLocked() error {
 	if b.TrayPath == "" {
 		return nil
 	}
 	m := map[string]string{}
-	for k, v := range links {
+	for k, v := range b.trays {
 		m[strconv.Itoa(k)] = v
 	}
 	data, _ := json.Marshal(m)
@@ -288,4 +314,178 @@ func (b *Bambu) countUse(p bambuPrint, complete bool) map[string]float64 {
 	}
 	log.Printf("bambu: filament of %s: %v (mapping %v, trays %v)", p.file, used, p.mapping, p.used)
 	return used
+}
+
+// The change of a spool: the AMS reports a spool in a tray, or no spool. The deck follows each
+// change by itself:
+//
+//   - a spool goes out: the roll of the tray goes out of the tray;
+//   - a spool with an RFID tag of Bambu Lab goes in: the roll with that tag goes in the tray, or a
+//     new roll with the weight that the printer gives;
+//   - another spool goes in: the screens ask which roll it is (TrayQuestion, AnswerTray).
+//
+// On the first report of a deck with no ams-trays.json, each tray with a spool and no roll asks.
+
+// traySpool is what the deck compares between two reports for a tray.
+type traySpool struct {
+	loaded bool
+	tag    string
+}
+
+// watchTrays compares the trays of r with the last report, and handles each change in a
+// goroutine. The caller holds mu.
+func (b *Bambu) watchTrays(r bambu.Report) {
+	now := map[int]traySpool{}
+	for _, u := range r.AMS.Units {
+		ui, _ := strconv.Atoi(u.ID)
+		for _, t := range u.Trays {
+			ti, _ := strconv.Atoi(t.ID)
+			slot := ui*4 + ti
+			now[slot] = traySpool{loaded: r.TrayLoaded(slot), tag: t.Tag()}
+		}
+	}
+	prev, first := b.trayPrev, b.trayPrev == nil
+	b.trayPrev = now
+	if len(now) == 0 {
+		return
+	}
+	var gone, came []int
+	for slot, t := range now {
+		p, ok := prev[slot]
+		switch {
+		case first:
+			if t.loaded {
+				came = append(came, slot)
+			}
+		case !ok:
+		case p.loaded && !t.loaded:
+			gone = append(gone, slot)
+		case t.loaded && (!p.loaded || p.tag != t.tag):
+			came = append(came, slot)
+		}
+	}
+	if len(gone) == 0 && len(came) == 0 {
+		return
+	}
+	sort.Ints(came)
+	go b.spoolsChanged(gone, came, first)
+}
+
+// spoolsChanged handles the spools that went out of the trays gone and into the trays came. On
+// the first report (first), only a deck with no tray file asks, and only for a tray with no roll.
+func (b *Bambu) spoolsChanged(gone, came []int, first bool) {
+	if first {
+		if _, err := os.Stat(b.TrayPath); b.TrayPath == "" || err == nil {
+			// The deck knows the trays from before: a tag can still find its roll.
+			var tagged []int
+			for _, slot := range came {
+				if t, ok := b.tray(slot); ok && t.Tag != "" && t.Roll == "" {
+					tagged = append(tagged, slot)
+				}
+			}
+			came = tagged
+		}
+	}
+	for _, slot := range gone {
+		if b.trayLinks()[slot] != "" {
+			b.LinkTray(slot, "")
+			log.Printf("bambu: the spool of tray %d went out", slot+1)
+		}
+	}
+	ask := false
+	for _, slot := range came {
+		t, ok := b.tray(slot)
+		if !ok || b.Spools == nil {
+			continue
+		}
+		if t.Tag != "" {
+			b.tagRoll(t)
+			continue
+		}
+		if first && t.Roll != "" {
+			continue
+		}
+		// A new spool with no tag: its old roll goes out, and the screens ask.
+		if t.Roll != "" {
+			b.LinkTray(slot, "")
+		}
+		b.trayMu.Lock()
+		if !slices.Contains(b.pending, slot) {
+			b.pending = append(b.pending, slot)
+		}
+		b.trayMu.Unlock()
+		ask = true
+	}
+	if b.TrayPath != "" && first {
+		if _, err := os.Stat(b.TrayPath); err != nil {
+			b.saveLinks() // the next start does not ask again
+		}
+	}
+	if ask && b.OnTrayQuestion != nil {
+		b.OnTrayQuestion()
+	}
+}
+
+// tray returns the tray slot of the last report.
+func (b *Bambu) tray(slot int) (AMSTray, bool) {
+	for _, t := range b.AMS().Trays {
+		if t.Slot == slot {
+			return t, true
+		}
+	}
+	return AMSTray{}, false
+}
+
+// tagRoll puts the roll with the RFID tag of the spool of t in the tray, or a new roll with the
+// weight and the percent left that the printer gives.
+func (b *Bambu) tagRoll(t AMSTray) {
+	if sp, ok := b.Spools.ByTag(t.Tag); ok {
+		if t.Remain >= 0 {
+			b.Spools.SetLeft(sp.ID, sp.Capacity()*float64(t.Remain)/100)
+		}
+		b.LinkTray(t.Slot, sp.ID)
+		log.Printf("bambu: tray %d has roll #%s again (RFID)", t.Slot+1, sp.ID)
+		return
+	}
+	full := t.Weight
+	if full <= 0 {
+		full = DefaultSize
+	}
+	left := full
+	if t.Remain >= 0 {
+		left = full * float64(t.Remain) / 100
+	}
+	sp, err := b.AddTrayRoll(t.Slot, full, "")
+	if err != nil {
+		log.Printf("bambu: tray %d: %v", t.Slot+1, err)
+		return
+	}
+	b.Spools.SetTag(sp.ID, t.Tag)
+	b.Spools.SetLeft(sp.ID, left)
+	log.Printf("bambu: tray %d has a new roll #%s (RFID, %.0f g)", t.Slot+1, sp.ID, left)
+}
+
+// TrayQuestion returns the first tray with a new spool that the screens ask about. ok is false
+// when no tray waits for an answer.
+func (b *Bambu) TrayQuestion() (AMSTray, bool) {
+	for {
+		b.trayMu.Lock()
+		if len(b.pending) == 0 {
+			b.trayMu.Unlock()
+			return AMSTray{}, false
+		}
+		slot := b.pending[0]
+		b.trayMu.Unlock()
+		if t, ok := b.tray(slot); ok && t.Loaded && t.Roll == "" {
+			return t, true
+		}
+		b.AnswerTray(slot) // the spool went out, or the tray has a roll now
+	}
+}
+
+// AnswerTray takes the tray slot out of the questions.
+func (b *Bambu) AnswerTray(slot int) {
+	b.trayMu.Lock()
+	defer b.trayMu.Unlock()
+	b.pending = slices.DeleteFunc(b.pending, func(s int) bool { return s == slot })
 }

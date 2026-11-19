@@ -101,6 +101,15 @@ type Tray struct {
 	Brand  string `json:"tray_sub_brands"`
 	Remain Num    `json:"remain"`  // the percent left of a spool with an RFID tag of Bambu Lab, or -1
 	TagUID string `json:"tag_uid"` // the RFID tag, all zeros with no tag
+	Weight Num    `json:"tray_weight"` // the grams of a full spool, from the RFID tag, or 0
+}
+
+// Tag returns the RFID tag of the spool, or "" with no tag.
+func (t Tray) Tag() string {
+	if strings.Trim(t.TagUID, "0") == "" {
+		return ""
+	}
+	return t.TagUID
 }
 
 // ColorHex returns the color of the tray as "#rrggbb", or "" with no color.
@@ -114,7 +123,7 @@ func (t Tray) ColorHex() string {
 
 // Known reports that the printer knows the filament left on the spool (Remain).
 func (t Tray) Known() bool {
-	return t.Remain >= 0 && strings.Trim(t.TagUID, "0") != ""
+	return t.Remain >= 0 && t.Tag() != ""
 }
 
 // TrayLoaded reports that the AMS has a spool in the tray slot (Unit*4+Index).

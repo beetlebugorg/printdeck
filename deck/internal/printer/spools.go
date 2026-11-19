@@ -29,6 +29,8 @@ type Spool struct {
 	// material, for example "generic_pla". Color is its color, for example "#ff7a1a", or "".
 	CuraMaterial string `json:"cura_material,omitempty"`
 	Color        string `json:"color,omitempty"`
+	// Tag is the RFID tag of a spool of Bambu Lab, or "": the AMS finds the roll again by its tag.
+	Tag string `json:"tag,omitempty"`
 }
 
 // SlicerMaterial is a material of the slicer (a material of Cura, not a profile of print
@@ -334,6 +336,41 @@ func (s *Spools) Use(grams func(density float64) float64) (Spool, float64, bool)
 	sp.Used += g
 	s.save()
 	return *sp, sp.Cost(g), true
+}
+
+// SetTag sets the RFID tag of a roll.
+func (s *Spools) SetTag(id, tag string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.load()
+	if i := s.find(id); i >= 0 && s.data.Spools[i].Tag != tag {
+		s.data.Spools[i].Tag = tag
+		s.save()
+	}
+}
+
+// ByTag returns the roll with the RFID tag.
+func (s *Spools) ByTag(tag string) (Spool, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.load()
+	for _, sp := range s.data.Spools {
+		if tag != "" && sp.Tag == tag {
+			return sp, true
+		}
+	}
+	return Spool{}, false
+}
+
+// SetLeft sets the filament left on a roll in grams, as a scale does (Weigh).
+func (s *Spools) SetLeft(id string, grams float64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.load()
+	if i := s.find(id); i >= 0 {
+		s.data.Spools[i].Net, s.data.Spools[i].Used = max(0, grams), 0
+		s.save()
+	}
 }
 
 // UseOn subtracts grams of filament from the roll with the ID: the roll in a tray of an AMS. It

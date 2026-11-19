@@ -638,6 +638,7 @@ func (a *App) Draw(c *gfx.Canvas) {
 	a.collect = !a.Record
 	if a.Printer != nil {
 		a.checkSDCopy(a.Printer.State())
+		a.askTrays()
 	}
 	a.drawPrint(c)
 	if a.Printer != nil {

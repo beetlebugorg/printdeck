@@ -174,3 +174,85 @@ func nonEmpty(s, alt string) string {
 	}
 	return s
 }
+
+// trayAsker is a printer that asks which roll a new spool of a tray is (printer.Bambu).
+type trayAsker interface {
+	TrayQuestion() (printer.AMSTray, bool)
+	AnswerTray(slot int)
+}
+
+// askTrays asks on each screen which roll the new spool of a tray is, when a tray waits for an
+// answer and no screen shows a question. Draw calls it.
+func (a *App) askTrays() {
+	q, ok := a.Printer.(trayAsker)
+	ams, ok2 := a.amsOf()
+	if !ok || !ok2 || !a.fleetQuiet() || a.hub.question() != nil {
+		return
+	}
+	t, ok := q.TrayQuestion()
+	if !ok {
+		return
+	}
+	units := len(ams.AMS().Units)
+	name := trayName(t, units)
+	slot := t.Slot
+	answer := func(f func()) func() {
+		return func() {
+			q.AnswerTray(slot)
+			if f != nil {
+				f()
+			}
+			a.hub.redraw()
+		}
+	}
+	add := func(grams float64) {
+		if _, err := ams.AddTrayRoll(slot, grams, ""); err != nil {
+			a.Toast("The roll was not added: " + err.Error())
+		}
+	}
+	what := nonEmpty(strings.TrimSpace(t.Brand+" "+t.Material), "filament")
+	choices := []menuItem{
+		{"New 1 kg roll", "A full roll of " + what + colorSuffix(t.Color), dim, answer(func() { add(1000) })},
+		{"New roll of another size", "Type the grams of filament on the spool", dim, answer(func() {
+			a.editNumber("Filament on the spool", 1000, 9999, " g", func(v int) { add(float64(v)) })
+		})},
+	}
+	// The rolls of the deck that are in no tray, with the material of the spool first.
+	if s := a.Printer.SpoolStore(); s != nil {
+		inTray := map[string]bool{}
+		for _, tr := range ams.AMS().Trays {
+			inTray[tr.Roll] = true
+		}
+		var same, other []printer.Spool
+		for _, sp := range s.List() {
+			switch {
+			case inTray[sp.ID] || sp.Left() <= 0:
+			case strings.EqualFold(sp.Material, t.Material):
+				same = append(same, sp)
+			default:
+				other = append(other, sp)
+			}
+		}
+		for i, sp := range append(same, other...) {
+			if i == 3 {
+				break
+			}
+			sp := sp
+			choices = append(choices, menuItem{sp.Number() + " " + sp.Label(), rollLine(sp), dim, answer(func() {
+				if err := ams.LinkTray(slot, sp.ID); err != nil {
+					a.Toast("The change was not saved: " + err.Error())
+				}
+			})})
+		}
+	}
+	choices = append(choices, menuItem{"Do not count it", "The deck counts no filament of " + name, dim, answer(nil)})
+	a.hub.ask(&confirmBox{question: "New spool in " + name, choices: choices, onNo: answer(nil)})
+}
+
+// colorSuffix is ", gray" for a tray with a color, or "".
+func colorSuffix(hex string) string {
+	if hex == "" {
+		return ""
+	}
+	return ", " + strings.ToLower(colorName(hex))
+}

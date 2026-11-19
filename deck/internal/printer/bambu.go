@@ -34,6 +34,9 @@ type Bambu struct {
 	// ("" keeps them in memory).
 	Spools   *Spools
 	TrayPath string
+	// OnTrayQuestion runs when a tray has a new spool with no RFID tag: the screens ask which roll
+	// it is (TrayQuestion). It can be nil.
+	OnTrayQuestion func()
 
 	mu          sync.Mutex
 	st          State
@@ -47,8 +50,10 @@ type Bambu struct {
 	camera      string // the RTSPS address of the camera
 	cur         bambuPrint
 
-	trayMu sync.Mutex
-	trays  map[int]string // the roll of each tray, by slot (trayLinks)
+	trayMu   sync.Mutex
+	trays    map[int]string    // the roll of each tray, by slot (trayLinks)
+	pending  []int             // the trays with a new spool that the screens ask about
+	trayPrev map[int]traySpool // the spools of the last report, under mu
 }
 
 // bambuRetry is the wait before a new connection after a lost link.
@@ -119,6 +124,7 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 	was := b.last
 	b.last, b.has = r, true
 	b.camera = b.Client.CameraURL(r)
+	b.watchTrays(r)
 	st := &b.st
 	st.Reachable, st.Connected, st.Err, st.Starting = true, true, "", false
 	st.Tool, st.ToolTarget = float64(r.Nozzle), float64(r.NozzleTarget)
