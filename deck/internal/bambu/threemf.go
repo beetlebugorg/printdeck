@@ -2,6 +2,7 @@ package bambu
 
 import (
 	"archive/zip"
+	"bytes"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -148,9 +149,21 @@ func PlatePicture(r io.ReaderAt, size int64, index int) image.Image {
 		return nil
 	}
 	defer f.Close()
-	img, err := png.Decode(io.LimitReader(f, 8<<20))
+	// The size first: a small PNG can hold a huge picture.
+	data, err := io.ReadAll(io.LimitReader(f, 8<<20))
+	if err != nil {
+		return nil
+	}
+	cfg, err := png.DecodeConfig(bytes.NewReader(data))
+	if err != nil || cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width > maxPicture || cfg.Height > maxPicture {
+		return nil
+	}
+	img, err := png.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil
 	}
 	return img
 }
+
+// maxPicture is the largest width and height of the picture of a plate. Bambu Studio writes 512.
+const maxPicture = 2048

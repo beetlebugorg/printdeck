@@ -2,6 +2,7 @@ package rtsp
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"testing"
 )
@@ -73,5 +74,12 @@ func TestDigest(t *testing.T) {
 	want := md5hex(ha1 + ":dcd98b7102dd2f0e8b11d0f600bfb0c093:" + md5hex("DESCRIBE:rtsp://h/1"))
 	if !bytes.Contains([]byte(got), []byte(`response="`+want+`"`)) || !bytes.Contains([]byte(got), []byte(`uri="rtsp://h/1"`)) {
 		t.Errorf("%s", got)
+	}
+}
+
+// An RTSPS camera with no check of its certificate does not connect.
+func TestDialNeedsCheck(t *testing.T) {
+	if _, err := Dial(context.Background(), "rtsps://bblp:x@127.0.0.1:1/streaming/live/1", nil); err != ErrNoCheck {
+		t.Errorf("%v", err)
 	}
 }

@@ -16,6 +16,7 @@ func TestBambuControls(t *testing.T) {
 	defer f.Close()
 	f.Send(map[string]any{"gcode_state": "IDLE"})
 	b := NewBambu(f.Addr(), f.Serial, f.Code, "", "X2D", nil)
+	b.Client.Roots = f.Roots
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	go b.Run(ctx, nil)

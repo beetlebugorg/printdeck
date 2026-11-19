@@ -26,8 +26,8 @@ type Bambu struct {
 	Client *bambu.Client
 	Hist   *History
 	Name   string // the name of the printer, for the screens
-	// SavePin keeps the certificate of the printer after the first connection (Setting.Pin).
-	// It can be nil.
+	// SavePin keeps the SHA-256 of the last certificate of the printer (Setting.Pin). It can be
+	// nil.
 	SavePin func(pin string)
 	// Spools are the rolls of the printer, or nil. TrayPath keeps the roll of each tray of the AMS
 	// ("" keeps them in memory).
@@ -50,6 +50,7 @@ type Bambu struct {
 	nextProject string
 	camera      string // the RTSPS address of the camera
 	cur         bambuPrint
+	savedPin    string        // the pin of printer.json
 	homed       string        // the axes that the deck homed, or "xyz" during a print
 	console     []ConsoleLine // the lines of the Console page
 
@@ -74,7 +75,7 @@ const bambuCancelled = 0x0300400C
 // NewBambu returns the backend of the printer at addr with the serial number and the access code.
 // pin is the SHA-256 of the certificate of the printer, or "" to learn it.
 func NewBambu(addr, serial, code, pin, name string, hist *History) *Bambu {
-	return &Bambu{Client: &bambu.Client{Addr: addr, Serial: serial, Code: code, Pin: pin}, Hist: hist, Name: name,
+	return &Bambu{Client: &bambu.Client{Addr: addr, Serial: serial, Code: code, Pin: pin}, Hist: hist, Name: name, savedPin: pin,
 		st: State{Text: "Connecting", Activity: "Connecting to the printer"}}
 }
 
@@ -113,8 +114,8 @@ func (b *Bambu) offline(err error) {
 	switch {
 	case errors.Is(err, bambu.ErrRefused):
 		st.Err = "The printer refused the access code"
-	case errors.Is(err, bambu.ErrPin):
-		st.Err = "The certificate of the printer changed. Add the printer again if you replaced it."
+	case errors.Is(err, bambu.ErrCert):
+		st.Err = "The printer at " + b.Client.Addr + " is not the Bambu Lab printer with this serial number"
 	default:
 		st.Err = "No answer from the printer at " + b.Client.Addr
 	}
@@ -125,11 +126,11 @@ func (b *Bambu) offline(err error) {
 func (b *Bambu) update(r bambu.Report, now time.Time) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if !b.has && b.SavePin != nil && !b.Client.HasPin() {
-		if pin := b.Client.Seen(); pin != "" {
-			b.Client.SetPin(pin)
-			go b.SavePin(pin)
-		}
+	// The last certificate of the printer, for printer.json: Check takes a new certificate of the
+	// same printer, for example after a firmware update.
+	if pin := b.Client.Seen(); pin != "" && pin != b.savedPin && b.SavePin != nil {
+		b.savedPin = pin
+		go b.SavePin(pin)
 	}
 	was := b.last
 	b.last, b.has = r, true

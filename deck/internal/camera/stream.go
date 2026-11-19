@@ -21,7 +21,7 @@ const streamFPS = 15
 
 // UseStream makes the camera at the RTSP address url the only camera of the hub, as the device d.
 // d.Path is the address for the screens, with no login; url has the login. check checks the TLS
-// certificate of the camera, or is nil to accept any certificate.
+// certificate of an RTSPS camera (rtsp.Dial).
 func (h *Hub) UseStream(d Device, url string, check func(*tls.ConnectionState) error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()

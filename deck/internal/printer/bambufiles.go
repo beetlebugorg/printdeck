@@ -1,11 +1,11 @@
 package printer
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"image"
+	"io"
 	"log"
 	"math"
 	"os"
@@ -46,18 +46,15 @@ func (b *Bambu) threeMF(p string) (bambuFile, error) {
 		return f, f.err
 	}
 	b.filesMu.Unlock()
-	full, err := b.Store.FullPath(p)
+	ra, size, closeFile, err := b.openFile(p)
 	if err != nil {
 		return bambuFile{}, err
 	}
-	data, err := os.ReadFile(full)
-	if err != nil {
-		return bambuFile{}, err
-	}
+	defer closeFile()
 	f := bambuFile{mod: fi.ModTime()}
-	f.plates, f.err = bambu.Plates(bytes.NewReader(data), int64(len(data)))
+	f.plates, f.err = bambu.Plates(ra, size)
 	if f.err == nil {
-		f.pic = bambu.PlatePicture(bytes.NewReader(data), int64(len(data)), f.plates[0].Index)
+		f.pic = bambu.PlatePicture(ra, size, f.plates[0].Index)
 	}
 	b.filesMu.Lock()
 	if b.files3MF == nil {
@@ -66,6 +63,27 @@ func (b *Bambu) threeMF(p string) (bambuFile, error) {
 	b.files3MF[p] = f
 	b.filesMu.Unlock()
 	return f, f.err
+}
+
+// openFile opens the 3MF p of the store for the zip reader: the store opens it in its folder
+// (os.OpenInRoot), so p cannot leave the folder. The reader reads the parts of the zip that it
+// needs, not the whole file.
+func (b *Bambu) openFile(p string) (io.ReaderAt, int64, func(), error) {
+	rc, err := b.Store.Open(p)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	f, ok := rc.(*os.File)
+	if !ok {
+		rc.Close()
+		return nil, 0, nil, errors.New("the store gives no file")
+	}
+	fi, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, 0, nil, err
+	}
+	return f, fi.Size(), func() { f.Close() }, nil
 }
 
 // Files returns the 3MF files of the store, newest first.
@@ -203,9 +221,8 @@ func colorDistance(a, b string) float64 {
 
 // bambuSent is the last file that the deck sent and started.
 type bambuSent struct {
-	path  string // the path in the store
-	name  string // the name on the card
-	local string // the full path of the copy in the store, for the filament count
+	path string // the path in the store: the filament count reads it there
+	name string // the name on the card
 }
 
 // PrintFile sends the 3MF path of the store to the card of the printer and starts its first plate
@@ -242,16 +259,19 @@ func (b *Bambu) sendAndStart(p string) error {
 		}
 		trays[m.Filament.ID-1] = m.Slot
 	}
-	full, err := b.Store.FullPath(p)
+	rc, err := b.Store.Open(p)
 	if err != nil {
 		return err
 	}
-	fh, err := os.Open(full)
+	defer rc.Close()
+	fh, ok := rc.(*os.File)
+	if !ok {
+		return errors.New("the store gives no file")
+	}
+	fi, err := fh.Stat()
 	if err != nil {
 		return err
 	}
-	defer fh.Close()
-	fi, _ := fh.Stat()
 	name := path.Base(p)
 	b.mu.Lock()
 	b.st.Upload = Upload{Name: name, Size: fi.Size(), Started: time.Now()}
@@ -280,7 +300,7 @@ func (b *Bambu) sendAndStart(p string) error {
 	}
 	b.mu.Lock()
 	b.st.Upload.Done, b.st.Upload.Result, b.st.Upload.Ended = fi.Size(), "sent", time.Now()
-	b.sent = bambuSent{path: p, name: name, local: full}
+	b.sent = bambuSent{path: p, name: name}
 	title := strings.TrimSuffix(strings.TrimSuffix(name, ".3mf"), ".gcode")
 	b.mu.Unlock()
 	log.Printf("bambu: start %s plate %d, trays %v", name, pl.Index, trays)

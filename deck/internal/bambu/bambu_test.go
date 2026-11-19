@@ -82,7 +82,7 @@ func TestClientFake(t *testing.T) {
 	}
 	defer f.Close()
 	f.Send(loadX2D(t))
-	c := &Client{Addr: f.Addr(), Serial: f.Serial, Code: f.Code}
+	c := &Client{Addr: f.Addr(), Serial: f.Serial, Code: f.Code, Roots: f.Roots}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	reports := make(chan Report, 16)
@@ -135,12 +135,17 @@ func TestClientLogin(t *testing.T) {
 	defer f.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	c := &Client{Addr: f.Addr(), Serial: f.Serial, Code: "wrong"}
+	c := &Client{Addr: f.Addr(), Serial: f.Serial, Code: "wrong", Roots: f.Roots}
 	if err := c.Run(ctx, nil); !errors.Is(err, ErrRefused) {
 		t.Errorf("wrong code: %v", err)
 	}
-	c = &Client{Addr: f.Addr(), Serial: f.Serial, Code: f.Code, Pin: "00"}
-	if err := c.Run(ctx, nil); !errors.Is(err, ErrPin) {
-		t.Errorf("wrong pin: %v", err)
+	// Another device: a certificate of another serial, or of a CA that is not of Bambu Lab.
+	c = &Client{Addr: f.Addr(), Serial: "00OTHER00000000", Code: f.Code, Roots: f.Roots}
+	if err := c.Run(ctx, nil); !errors.Is(err, ErrCert) {
+		t.Errorf("another serial: %v", err)
+	}
+	c = &Client{Addr: f.Addr(), Serial: f.Serial, Code: f.Code}
+	if err := c.Run(ctx, nil); !errors.Is(err, ErrCert) {
+		t.Errorf("not a CA of Bambu Lab: %v", err)
 	}
 }

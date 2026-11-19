@@ -43,13 +43,20 @@ type Conn struct {
 	sent    bool   // the parameters went out before the first access unit
 }
 
-// Dial connects to the camera at rawURL ("rtsps://user:pass@host:322/streaming/live/1"). TLS
-// checks the certificate with check, or accepts any certificate when check is nil: a camera on
-// the network has a self-signed certificate.
+// ErrNoCheck is an RTSPS address with no check of the certificate of the camera.
+var ErrNoCheck = errors.New("rtsp: an RTSPS camera needs a check of its certificate")
+
+// Dial connects to the camera at rawURL ("rtsps://user:pass@host:322/streaming/live/1"). For
+// RTSPS, check checks the certificate of the camera: the certificate of a camera on the network
+// has no host name that Go can check (for a Bambu Lab printer, bambu.Client.Check). An RTSPS
+// address with no check is an error.
 func Dial(ctx context.Context, rawURL string, check func(*tls.ConnectionState) error) (*Conn, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, err
+	}
+	if u.Scheme == "rtsps" && check == nil {
+		return nil, ErrNoCheck
 	}
 	host := u.Host
 	if u.Port() == "" {
@@ -61,9 +68,10 @@ func Dial(ctx context.Context, rawURL string, check func(*tls.ConnectionState) e
 	d := &net.Dialer{Timeout: 10 * time.Second}
 	var nc net.Conn
 	if u.Scheme == "rtsps" {
-		cfg := &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS12}
-		if check != nil {
-			cfg.VerifyConnection = func(cs tls.ConnectionState) error { return check(&cs) }
+		cfg := &tls.Config{
+			InsecureSkipVerify: true, // check in VerifyConnection checks the certificate
+			MinVersion:         tls.VersionTLS12,
+			VerifyConnection:   func(cs tls.ConnectionState) error { return check(&cs) },
 		}
 		nc, err = (&tls.Dialer{NetDialer: d, Config: cfg}).DialContext(ctx, "tcp", host)
 	} else {
@@ -208,6 +216,9 @@ func authParams(s string) map[string]string {
 	return out
 }
 
+// md5hex is the MD5 of s in hex. HTTP digest login (RFC 2617), and so RTSP digest login, is MD5:
+// the camera of a Bambu Lab printer (live555) asks for it. The digest only proves the password
+// inside the TLS connection; it keeps no password.
 func md5hex(s string) string {
 	sum := md5.Sum([]byte(s))
 	return hex.EncodeToString(sum[:])

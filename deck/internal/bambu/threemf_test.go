@@ -75,7 +75,7 @@ func TestStartPrint(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer f.Close()
-	c := &Client{Addr: f.Addr(), Serial: f.Serial, Code: f.Code}
+	c := &Client{Addr: f.Addr(), Serial: f.Serial, Code: f.Code, Roots: f.Roots}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	go c.Run(ctx, nil)
@@ -108,5 +108,17 @@ func TestStartPrint(t *testing.T) {
 	}
 	if third := m2[2].(map[string]any); third["ams_id"] != 1.0 || third["slot_id"] != 1.0 {
 		t.Errorf("mapping2 %v", m2)
+	}
+}
+
+// A plate picture larger than maxPicture is not decoded: a small PNG can hold a huge picture.
+func TestPlatePictureTooLarge(t *testing.T) {
+	var b bytes.Buffer
+	z := zip.NewWriter(&b)
+	w, _ := z.Create("Metadata/plate_1.png")
+	png.Encode(w, image.NewGray(image.Rect(0, 0, maxPicture+1, 1)))
+	z.Close()
+	if img := PlatePicture(bytes.NewReader(b.Bytes()), int64(b.Len()), 1); img != nil {
+		t.Errorf("a picture of %v", img.Bounds())
 	}
 }
