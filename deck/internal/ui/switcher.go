@@ -18,6 +18,9 @@ import (
 type Switcher struct {
 	apps []*App
 	ids  []Identity
+	// OnSwitch gets the ID of the printer that comes on the screen after a switch, so the deck
+	// shows it again after a restart. It can be nil.
+	OnSwitch func(id string)
 
 	mu     sync.Mutex
 	active int
@@ -53,6 +56,18 @@ func (s *Switcher) Active() *App {
 // Apps returns the App of each printer.
 func (s *Switcher) Apps() []*App { return s.apps }
 
+// Restore shows the printer id on the screen at the start, with no slide and no OnSwitch. An id
+// that the deck does not have keeps the first printer.
+func (s *Switcher) Restore(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, x := range s.ids {
+		if x.ID == id {
+			s.active = i
+		}
+	}
+}
+
 // Show shows the printer id on the screen.
 func (s *Switcher) Show(id string) {
 	for i, x := range s.ids {
@@ -77,6 +92,9 @@ func (s *Switcher) switchTo(i int) {
 	// The messages of the printer that comes on the screen are seen.
 	for _, n := range s.notesOf(i) {
 		s.dismiss(n.Key)
+	}
+	if s.OnSwitch != nil {
+		s.OnSwitch(s.ids[i].ID)
 	}
 	s.apps[i].Redraw()
 }
@@ -121,7 +139,22 @@ func (s *Switcher) notesOf(i int) []FleetNote {
 	case !st.Busy() && st.Finished == "error":
 		out = append(out, FleetNote{ID: id, Key: fmt.Sprintf("%s:failed:%s:%d", id, st.FinishedPath, st.FinishedTime), Text: "Print failed · " + st.FinishedName()})
 	}
+	// A question of the printer (a print from a slicer, a new spool, an app) waits on its own
+	// screen: the other printers show it as a banner, and Show goes to it.
+	if q := s.apps[i].hub.question(); q != nil {
+		text := q.question
+		if text == "" {
+			text = q.title
+		}
+		out = append([]FleetNote{{ID: id, Key: fmt.Sprintf("%s:ask:%p", id, q), Text: "Asks · " + text}}, out...)
+	}
 	return out
+}
+
+// Ask asks on the screen of the printer that the touch screen shows now: a question of the whole
+// deck, such as the Allow of an app.
+func (s *Switcher) Ask(question, yes, no string, answer func(bool)) {
+	s.Active().Ask(question, yes, no, answer)
 }
 
 // Run draws the App on the screen and gives it the input, until ctx ends. A switch slides the

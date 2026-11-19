@@ -40,10 +40,11 @@ func (k keyTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 
 func snapshot(args []string) {
 	if len(args) < 3 {
-		log.Fatal("usage: printdeck snapshot URL PASSWORD OUT.png [w=WIDTH] [h=HEIGHT] [tap=X,Y ...] [wait=MS]")
+		log.Fatal("usage: printdeck snapshot URL PASSWORD OUT.png [w=WIDTH] [h=HEIGHT] [printer=ID] [tap=X,Y ...] [wait=MS]")
 	}
 	base, password, out := strings.TrimSuffix(args[0], "/"), args[1], args[2]
 	width, height, wait := ui.BaseW, ui.BaseH, 1500*time.Millisecond
+	printerID := "" // a printer of a deck with many printers (printer=<id>)
 	var taps []image.Point
 	for _, a := range args[3:] {
 		k, v, _ := strings.Cut(a, "=")
@@ -52,6 +53,8 @@ func snapshot(args []string) {
 			width, _ = strconv.Atoi(v)
 		case "h":
 			height, _ = strconv.Atoi(v)
+		case "printer":
+			printerID = v
 		case "wait":
 			ms, _ := strconv.Atoi(v)
 			wait = time.Duration(ms) * time.Millisecond
@@ -77,7 +80,7 @@ func snapshot(args []string) {
 		}
 	}
 
-	resp, err := stream.Get(fmt.Sprintf("%s/ui/events?w=%d&h=%d", base, width, height))
+	resp, err := stream.Get(fmt.Sprintf("%s/ui/events?w=%d&h=%d&printer=%s", base, width, height, url.QueryEscape(printerID)))
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -12,7 +12,7 @@
 //	printdeck password  print a new random password of four words
 //	printdeck board     find the printer board, and print its MCU and firmware version
 //	printdeck manual DIR  write the manual (DIR/index.html and its pictures)
-//	printdeck snapshot URL PASSWORD OUT.png [h=H] [tap=X,Y ...]  a frame of the UI of a Printdeck, as a PNG
+//	printdeck snapshot URL PASSWORD OUT.png [h=H] [printer=ID] [tap=X,Y ...]  a frame of the UI of a Printdeck, as a PNG
 //	printdeck helper    the system helper: the actions of the deck that need root (started by systemd)
 //	printdeck klipper-probe DEVICE [BAUD]  connect to a Klipper board and print what it reports
 //	printdeck klippy [options] CONFIG  run the Klipper host (the Go port of klippy.py)
@@ -347,8 +347,21 @@ func run(cfg config.Config) {
 		app.Run(ctx, events, screen.Present)
 		return
 	}
-	// A deck with many printers: the touch screen shows one printer at a time.
-	ui.NewSwitcher(apps, deckIdentities(printers, backends)).Run(ctx, events, screen.Present)
+	// A deck with many printers: the touch screen shows one printer at a time, and after a restart
+	// the printer that it showed last.
+	sw := ui.NewSwitcher(apps, deckIdentities(printers, backends))
+	activeFile := filepath.Join(cfg.StateDir, "active-printer")
+	if b, err := os.ReadFile(activeFile); err == nil {
+		sw.Restore(strings.TrimSpace(string(b)))
+	}
+	ask := sw.Ask
+	deckAsk.Store(&ask)
+	sw.OnSwitch = func(id string) {
+		if err := os.WriteFile(activeFile, []byte(id+"\n"), 0o644); err != nil {
+			log.Printf("printers: the printer on the screen was not saved: %v", err)
+		}
+	}
+	sw.Run(ctx, events, screen.Present)
 }
 
 // deckPrefs reads the settings of the screen of the deck (the theme, the clock, the text size,
