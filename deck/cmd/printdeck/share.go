@@ -454,14 +454,15 @@ func (l *shareLink) runningShare(st printer.State) bool {
 }
 
 // startShare sets the cloud link and the share link of the app of a printer, with the cloud link
-// of the deck (newCloudLink). stateDir is the state folder of the printer, and name its name at
-// the service on a deck with many printers, or "".
-func startShare(link *cloud.Link, stateDir, configPath, gcodeDir string, app *ui.App, pr printerBackend, name string) {
+// of the deck (newCloudLink). stateDir is the state folder of the printer, name its name at the
+// service on a deck with many printers, or "", and key its key at the service: "" for the first
+// printer, else its ID.
+func startShare(link *cloud.Link, stateDir, configPath, gcodeDir string, app *ui.App, pr printerBackend, name, key string) {
 	app.Cloud = link
 	l := newShareLink(app, link, pr, configPath)
 	{
 		// The projects, for each kind of printer.
-		pl := &projectLink{Link: link, k: pr, stateDir: stateDir, shareOf: l.shareOf}
+		pl := &projectLink{Link: link, k: pr, stateDir: stateDir, shareOf: l.shareOf, key: key}
 		switch b := pr.(type) {
 		case *printer.Klippy:
 			pl.model = printer.ConfigModel(configPath)
