@@ -190,3 +190,15 @@ func TestTransitionFor(t *testing.T) {
 		}
 	}
 }
+
+// Stop all stops the printer that prints and heats, and not the idle printers: a stop of an idle
+// printer only makes it need a firmware restart.
+func TestStopAll(t *testing.T) {
+	sw, prs := fleetDeck(t)
+	if err := sw.Apps()[1].Fleet.StopAll(); err != nil {
+		t.Fatal(err)
+	}
+	if prs[0].Stops != 1 || prs[1].Stops != 0 || prs[2].Stops != 0 {
+		t.Errorf("stops %d %d %d, want 1 0 0", prs[0].Stops, prs[1].Stops, prs[2].Stops)
+	}
+}

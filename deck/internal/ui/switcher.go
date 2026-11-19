@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -175,3 +176,16 @@ func (v *fleetView) Notes() []FleetNote {
 func (v *fleetView) Dismiss(key string) { v.s.dismiss(key) }
 
 func (v *fleetView) Switch(id string) { v.s.Show(id) }
+
+// StopAll stops each printer of the deck that prints, is paused or heats.
+func (v *fleetView) StopAll() error {
+	var errs []error
+	for _, a := range v.s.apps {
+		if pr := a.Printer; pr != nil && stoppable(pr.State()) {
+			if err := pr.EmergencyStop(); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+	return errors.Join(errs...)
+}
