@@ -24,7 +24,26 @@ const slicerCSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; wor
 // deck. The app slices in the browser, and sends the G-code to the deck (POST /api/files/local,
 // with the login). A print starts only after a press on the touch screen. An image with no zslice
 // app has no /slicer/ page.
-func registerSlicer(mux *http.ServeMux, rs *remote.Server, dir string) {
+func registerSlicer(mux *http.ServeMux, rs *remote.Server, dir string, deckKey func(*http.Request) bool) {
+	// The app adds the deck as its printer. The empty url is the server of the page, and https
+	// the HTTPS address of the deck, or "" (https.go). A deck with many printers also lists each
+	// printer in printers: its url is "" for the first printer and /printers/<id> for another. The
+	// file needs the login, or a deck key (an App Keys key of the whole deck): a slicer app reads
+	// it after the Allow on the deck.
+	printerFile := func(w http.ResponseWriter, r *http.Request) {
+		slicerHeaders(w)
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		json.NewEncoder(w).Encode(slicerPrinterFile())
+	}
+	authed := rs.Auth(printerFile)
+	mux.HandleFunc("GET /slicer/printer.json", func(w http.ResponseWriter, r *http.Request) {
+		if deckKey != nil && deckKey(r) {
+			printerFile(w, r)
+			return
+		}
+		authed(w, r)
+	})
 	if !dirExists(dir) {
 		return
 	}
@@ -35,16 +54,6 @@ func registerSlicer(mux *http.ServeMux, rs *remote.Server, dir string) {
 	mux.HandleFunc("GET /slicer/", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
 		slicerHeaders(w)
 		files.ServeHTTP(w, r)
-	}))
-	// The app adds the deck as its printer. The empty url is the server of the page, and https
-	// the HTTPS address of the deck, or "" (https.go). A deck with many printers also lists each
-	// printer in printers: its url is "" for the first printer and /printers/<id> for another. The
-	// file has no API key: the upload uses the login.
-	mux.HandleFunc("GET /slicer/printer.json", rs.Auth(func(w http.ResponseWriter, r *http.Request) {
-		slicerHeaders(w)
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Cache-Control", "no-store")
-		json.NewEncoder(w).Encode(slicerPrinterFile())
 	}))
 }
 

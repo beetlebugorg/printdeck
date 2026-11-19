@@ -21,7 +21,7 @@ func TestSlicerPage(t *testing.T) {
 	rs.Password = func() string { return "pw" }
 	mux := http.NewServeMux()
 	mux.Handle("/", rs.Handler())
-	registerSlicer(mux, rs, dir)
+	registerSlicer(mux, rs, dir, nil)
 	ts := httptest.NewServer(remote.SecurityHeaders(mux))
 	defer ts.Close()
 	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
@@ -81,7 +81,7 @@ func TestSlicerPage(t *testing.T) {
 // An image with no zslice app has no /slicer/ page.
 func TestSlicerPageNotInImage(t *testing.T) {
 	mux := http.NewServeMux()
-	registerSlicer(mux, remote.New(), filepath.Join(t.TempDir(), "none"))
+	registerSlicer(mux, remote.New(), filepath.Join(t.TempDir(), "none"), nil)
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 	r, _ := http.Get(ts.URL + "/slicer/")

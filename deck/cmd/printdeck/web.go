@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"image"
 	"log"
 	"net/http"
@@ -52,18 +53,31 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 	mux := http.NewServeMux()
 	gpuGcodeDir = cfg.GcodeDir
 	api := newAPI(cfg, pr, app, mux)
-	// The API of each other printer: under /printers/<id>/, with its own API keys. A request at
-	// /api with a key of another printer goes to that printer (keyRouter), so a slicer needs only
-	// the key of its printer.
+	// The deck keys: an App Keys request at the root gives a key of each printer of the deck.
+	deckKeys := octoapi.NewDeckKeys(filepath.Join(deckDir(cfg), "deck-apikeys.json"))
+	if api != nil {
+		api.DeckKeys, api.DeckWide = deckKeys, true
+	}
+	// The API of each other printer: under /printers/<id>/, with its own API keys and the deck
+	// keys. A request at /api with a key of another printer goes to that printer (keyRouter), so
+	// a slicer needs only the key of its printer. A deck key stays at the root.
 	var routes []keyRoute
 	var otherAPIs []*octoapi.Server
+	keyList := []printerKeys{{id: "", name: printerName(app), api: api}}
 	for _, o := range others {
 		pm := http.NewServeMux()
 		if oa := newAPI(o.cfg, o.pr, o.app, pm); oa != nil {
+			oa.DeckKeys = deckKeys
 			mux.Handle("/printers/"+o.id+"/", http.StripPrefix("/printers/"+o.id, pm))
-			routes = append(routes, keyRoute{valid: oa.ValidKey, h: pm})
+			routes = append(routes, keyRoute{valid: oa.OwnKey, h: pm})
 			otherAPIs = append(otherAPIs, oa)
+			keyList = append(keyList, printerKeys{id: o.id, name: printerName(o.app), api: oa})
 		}
+	}
+	ka := &keyAdmin{deck: deckKeys, printers: keyList}
+	app.Keys = ka
+	for _, o := range others {
+		o.app.Keys = ka
 	}
 	var rs *remote.Server
 	if host != nil {
@@ -82,7 +96,7 @@ func startWeb(cfg config.Config, host *setupHost, pr printerBackend, app *ui.App
 		mux.Handle("/", rs.Handler())
 		registerSystemPage(mux, rs, pr, up, app.Metrics, cfg.KlippyLog, cfg.OctoPrintKey)
 		registerRollPages(mux, rs, pr, app)
-		registerSlicer(mux, rs, slicerDir)
+		registerSlicer(mux, rs, slicerDir, deckKeys.ValidRequest)
 		// The 3D window of the desktop app shows the simulated printer of the deck, with an API key.
 		if k, ok := pr.(*printer.Klippy); ok && api != nil {
 			registerSim(mux, k, api.ValidKey)
@@ -377,4 +391,60 @@ func keyRouter(h http.Handler, routes []keyRoute) http.Handler {
 		}
 		h.ServeHTTP(w, r)
 	})
+}
+
+// printerKeys are the API keys of one printer of the deck, for the list of the keys.
+type printerKeys struct {
+	id, name string
+	api      *octoapi.Server // nil for a printer with no API
+}
+
+// printerName is the name of the printer of app, or "".
+func printerName(app *ui.App) string {
+	if app.Fleet != nil {
+		return app.Fleet.Self().Name
+	}
+	return ""
+}
+
+// keyAdmin lists and removes the app keys of the deck for Settings, App keys (ui.KeyAdmin).
+type keyAdmin struct {
+	deck     *octoapi.DeckKeys
+	printers []printerKeys
+}
+
+func (k *keyAdmin) Keys() []ui.AppKey {
+	var out []ui.AppKey
+	for _, e := range k.deck.List() {
+		out = append(out, ui.AppKey{ID: "*:" + e.ID, App: e.App, Scope: "All printers"})
+	}
+	for _, p := range k.printers {
+		if p.api == nil {
+			continue
+		}
+		scope := p.name
+		if scope == "" {
+			scope = "This printer"
+		}
+		for _, e := range p.api.Keys() {
+			out = append(out, ui.AppKey{ID: p.id + ":" + e.ID, App: e.App, Scope: scope})
+		}
+	}
+	return out
+}
+
+func (k *keyAdmin) RemoveKey(id string) error {
+	where, key, _ := strings.Cut(id, ":")
+	if where == "*" { // a deck key: no printer ID has a "*"
+		if k.deck.Remove(key) {
+			return nil
+		}
+		return errors.New("no such key")
+	}
+	for _, p := range k.printers {
+		if p.id == where && p.api != nil && p.api.RemoveKey(key) {
+			return nil
+		}
+	}
+	return errors.New("no such key")
 }

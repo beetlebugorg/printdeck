@@ -67,6 +67,10 @@ type Server struct {
 	timelapseFields
 
 	keys *keyStore
+	// DeckKeys are the keys of each printer of the deck, or nil. DeckWide makes the App Keys
+	// request of this server give a deck key: the server at the root of the deck.
+	DeckKeys *DeckKeys
+	DeckWide bool
 
 	mu       sync.Mutex
 	requests map[string]*keyRequest // App Keys requests by token
@@ -129,8 +133,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 // as the apikey parameter.
 func (s *Server) key(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		k := requestKey(r)
-		if k == "" || !s.keys.valid(k) {
+		if !s.validKey(requestKey(r)) {
 			apiError(w, http.StatusForbidden, "Invalid API key")
 			return
 		}
@@ -140,9 +143,16 @@ func (s *Server) key(h http.HandlerFunc) http.HandlerFunc {
 
 // ValidKey tells if a request has a valid API key. The remote screen uses it, so that a slicer
 // plugin can show the deck UI with its API key.
-func (s *Server) ValidKey(r *http.Request) bool {
-	k := requestKey(r)
-	return k != "" && s.keys.valid(k)
+func (s *Server) ValidKey(r *http.Request) bool { return s.validKey(requestKey(r)) }
+
+// OwnKey tells if a request has a key of this printer: its own keys and the main key. A deck key
+// is no own key. The router of the deck sends a request at the root with the key of another
+// printer to that printer (cmd/printdeck keyRouter); a deck key stays at the root.
+func (s *Server) OwnKey(r *http.Request) bool { return s.keys.valid(requestKey(r)) }
+
+// validKey reports a key of this printer, or a deck key.
+func (s *Server) validKey(k string) bool {
+	return k != "" && (s.keys.valid(k) || (s.DeckKeys != nil && s.DeckKeys.ks.valid(k)))
 }
 
 // requestKey is the API key of a request, or "".

@@ -63,6 +63,7 @@ const (
 	pageBedCool     // the cool of the bed before the end of a print (bedcool.go)
 	pageSigning     // "Signed prints only" and the trusted slicers (signing.go)
 	pagePrinters    // the printers of the deck (printerspage.go)
+	pageAppKeys     // the app keys of the deck (appkeys.go)
 )
 
 // open shows a page over the current one.
