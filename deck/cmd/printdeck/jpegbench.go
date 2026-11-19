@@ -14,6 +14,7 @@ import (
 	"printdeck/internal/camera"
 	"printdeck/internal/gpujpeg"
 	"printdeck/internal/jpegdec"
+	"printdeck/internal/turbojpeg"
 )
 
 // benchGPU is the GPU of the measurement, opened at the first measurement.
@@ -24,7 +25,8 @@ var sysCameras []*camera.Hub
 
 // serveJPEGBench measures the decode and the encode of the JPEG code of the deck on a frame of
 // the main camera (GET /system/jpeg, text): the decode at each scale and with 1, 2 and 4
-// threads, the decode of a crop, and the encode of the frame at 1920 pixels. With ?gpu=1 it
+// threads, the decode of a crop, the encode of the frame at half size, and the same with
+// libjpeg-turbo when the deck has it. With ?gpu=1 it
 // also measures the GPU: the first use compiles the shader in the driver. It uses all the
 // cores for about a second, so it does not run while a printer prints.
 func serveJPEGBench(w http.ResponseWriter, r *http.Request) {
@@ -110,6 +112,24 @@ func serveJPEGBench(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	// libjpeg-turbo on the same frame: one thread, with the SIMD code of the CPU.
+	if turbojpeg.Available {
+		for shift := range 4 {
+			med, low, err := timeOf(7, func() error { _, err := turbojpeg.Decode(b, shift); return err })
+			if err != nil {
+				fmt.Fprintf(w, "libjpeg-turbo decode: %v\n", err)
+				break
+			}
+			fmt.Fprintf(w, "libjpeg-turbo decode 1/%d:     median %6.1f ms, best %6.1f ms\n", 1<<shift, med, low)
+		}
+		if p, err := turbojpeg.Decode(b, 1); err == nil {
+			med, low, _ := timeOf(7, func() error { _, err := turbojpeg.Encode(p, 90); return err })
+			fmt.Fprintf(w, "libjpeg-turbo encode %dx%d q90: median %6.1f ms, best %6.1f ms\n", p.Rect.Dx(), p.Rect.Dy(), med, low)
+		}
+		if tooLarge() {
+			return
+		}
+	}
 	// The Huffman decode once, then the pixels from its coefficients on the CPU and on the GPU.
 	for _, th := range []int{1, 4} {
 		med, low, err := timeOf(7, func() error {
@@ -162,8 +182,9 @@ func serveJPEGBench(w http.ResponseWriter, r *http.Request) {
 		}
 		s.Release()
 	}
-	small := f.Small(1920)
-	if p, ok := small.Picture().(*image.YCbCr); ok {
+	// The encode of the frame at half size (4:2:2), the picture of the libjpeg-turbo encode too.
+	half, _ := jpegdec.DecodeScaled(bytes.NewReader(b), 1)
+	if p, ok := half.(*image.YCbCr); ok {
 		for _, th := range []int{1, 2, 4} {
 			med, low, _ := timeOf(7, func() error {
 				_, err := jpegdec.EncodeThreads(p, 90, th)
