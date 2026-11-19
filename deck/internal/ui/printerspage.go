@@ -10,7 +10,8 @@ import (
 
 // Settings, Printers: the printers of the deck (specs/many-printers-on-one-deck.md). A tap on a
 // printer changes its name, its label or its colour, or removes it. Add a printer adds a Klipper
-// printer on USB, with its own Klipper host, or a resin printer on the network. A change starts
+// printer on USB, with its own Klipper host, a resin printer on the network, or a Bambu Lab printer
+// on the network. A change starts
 // to work after a restart of the deck.
 
 // PrinterEntry is a printer in Settings, Printers.
@@ -19,8 +20,8 @@ type PrinterEntry struct {
 	Name  string
 	Label string
 	Color int    // an index of PrinterColors
-	Kind  string // "Klipper" or "Resin"
-	Addr  string // the IP address of a resin printer
+	Kind  string // "Klipper", "Resin" or "Bambu Lab"
+	Addr  string // the IP address of a printer on the network
 }
 
 // PrinterAdmin changes the printers of the deck.
@@ -28,6 +29,8 @@ type PrinterAdmin interface {
 	List() []PrinterEntry
 	AddKlipper(name string) error
 	AddResin(name, addr string) error
+	// AddBambu adds a Bambu Lab printer at addr, with its serial number and its access code.
+	AddBambu(name, addr, serial, code string) error
 	Update(p PrinterEntry) error
 	Remove(id string) error
 	// Changed reports that the list differs from the printers that the deck runs now.
@@ -74,7 +77,7 @@ func (a *App) drawPrinters(c *gfx.Canvas) {
 		items = append(items, menuItem{p.Name, sub, dim, func() { a.askPrinter(p, len(list)) }})
 	}
 	if len(list) < MaxPrinters {
-		items = append(items, menuItem{"Add a printer", "A Klipper printer on USB, or a resin printer on the network", dim, a.askAddPrinter})
+		items = append(items, menuItem{"Add a printer", "A Klipper printer on USB, or a printer on the network", dim, a.askAddPrinter})
 	}
 	a.menuRows(c, f.body(), f.wide, 60, 5, items)
 }
@@ -124,8 +127,8 @@ func (a *App) askPrinterColor(p PrinterEntry) {
 	a.confirm = &confirmBox{question: "Colour of " + p.Name, choices: choices}
 }
 
-// askAddPrinter asks the kind of the new printer, then its name, and the address of a resin
-// printer.
+// askAddPrinter asks the kind of the new printer, then its name, and the address of a printer on
+// the network. A Bambu Lab printer also needs its serial number and its access code.
 func (a *App) askAddPrinter() {
 	a.confirm = &confirmBox{question: "Add a printer", choices: []menuItem{
 		{"Klipper printer on USB", "Its own Klipper host. Then set up its board.", dim, func() {
@@ -144,7 +147,29 @@ func (a *App) askAddPrinter() {
 				})
 			})
 		}},
+		{"Bambu Lab printer on the network", "For example the X2D. Its screen shows the address and the access code.", dim, a.askAddBambu},
 	}}
+}
+
+// askAddBambu asks the name, the IP address, the serial number and the access code of a Bambu Lab
+// printer. The printer shows the address and the access code in its network settings, and the
+// serial number in its device settings.
+func (a *App) askAddBambu() {
+	a.editPrinterText("Name of the new printer", "", 32, func(name string) {
+		a.editPrinterText("IP address of "+name, "", 15, func(addr string) {
+			if net.ParseIP(addr).To4() == nil {
+				a.Toast("Type an IPv4 address, for example 192.168.1.40")
+				return
+			}
+			a.editPrinterText("Serial number of "+name, "", 20, func(serial string) {
+				serial = strings.ToUpper(strings.ReplaceAll(serial, " ", ""))
+				a.editPrinterText("Access code of "+name, "", 16, func(code string) {
+					a.printerChange(func() error { return a.Printers.AddBambu(name, addr, serial, code) })
+				})
+				a.textKB.shift = false // the access code is case-sensitive
+			})
+		})
+	})
 }
 
 // editPrinterText opens the keyboard for a text of a printer.

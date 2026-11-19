@@ -152,7 +152,11 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 		keys, rest = f.side, f.main
 	} else {
 		s := kit.NewStack(kit.Inset(f.main, margin, 0, margin, 0), 12)
-		keys, rest = s.Next(72+12+60+12+homeRowH), s.Rest()
+		keysH := 72 + 12 + 60 + 12 + homeRowH
+		if a.ownControls() {
+			keysH = 72 // the main key only
+		}
+		keys, rest = s.Next(keysH), s.Rest()
 	}
 
 	// Lower keys on a tall screen than before: the last print, a 3D view, gets the room.
@@ -160,9 +164,14 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	if f.wide {
 		printH, heatH = 96, 68
 	}
-	k := kit.Rows(keys, 12, kit.Px(printH), kit.Px(heatH), kit.Px(homeRowH))
-	a.homeKeys(c, st, k[0], k[1])
-	a.homeRow(c, st, k[2])
+	if a.ownControls() {
+		// The printer heats and moves from its own screen: the main key only.
+		a.mainKey(c, st, kit.Rows(keys, 12, kit.Px(printH), kit.Fr(1))[0])
+	} else {
+		k := kit.Rows(keys, 12, kit.Px(printH), kit.Px(heatH), kit.Px(homeRowH))
+		a.homeKeys(c, st, k[0], k[1])
+		a.homeRow(c, st, k[2])
+	}
 
 	// The last print, and the pages in the space under it, down to the bottom.
 	if !f.wide {
@@ -181,8 +190,11 @@ func (a *App) drawHome(c *gfx.Canvas, st printer.State) {
 	// The pages stay in their places during a print. Toolhead waits for its end; the others open,
 	// and their keys that change the printer wait. A deck with a camera has Camera in the last place.
 	pages := []homePage{{"Filament", pageFilament}, {"Toolhead", pageMove}, {"Machine", pageMachine}}
-	if a.resin() {
+	switch {
+	case a.resin():
 		pages = []homePage{{"Build plate", pageMove}, {"Machine", pageMachine}}
+	case a.ownControls():
+		pages = []homePage{{"Machine", pageMachine}}
 	}
 	if a.Camera != nil {
 		pages = append(pages, homePage{"Camera", pageCamera})
@@ -211,6 +223,12 @@ func (a *App) drawHomeWide(c *gfx.Canvas, st printer.State) {
 	// Print a file, and the last print as on its page of the history. Preheat and Cool down are in
 	// Filament.
 	// Print a file is lower than on a tall screen, so the table of the last print keeps its rows.
+	if a.ownControls() {
+		r := kit.Rows(f.main, 12, kit.Px(72), kit.Fr(1))
+		a.mainKey(c, st, r[0])
+		a.lastPrintPanel(c, st, r[1])
+		return
+	}
 	r := kit.Rows(f.main, 12, kit.Px(72), kit.Px(homeRowH), kit.Fr(1))
 	a.mainKey(c, st, r[0])
 	a.homeRow(c, st, r[1])

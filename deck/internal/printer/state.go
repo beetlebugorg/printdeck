@@ -191,6 +191,9 @@ func (s State) FinishedName() string {
 type Machine struct {
 	// Process is ProcessResin for a resin printer. "" and ProcessFDM are a FDM printer.
 	Process string
+	// OwnControls reports a printer that keeps its heaters, its moves and its filament under its
+	// own firmware and screen (a Bambu Lab printer): the deck shows no keys for them.
+	OwnControls bool
 	// Board is the main board of a printer with no Klipper and its firmware, for example
 	// "CBD V1.4.1", or "".
 	Board          string
