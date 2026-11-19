@@ -42,7 +42,7 @@ type Hub struct {
 
 	stepSave *time.Timer // the save after a change of a focus or a PTZ position (saveSoon), or nil
 
-	// ptzs are the PTZ controls of the cameras with a zoom control, by ID. They stay after the
+	// ptzs are the PTZ controls of the cameras that ran, by ID (DeckPTZ). They stay after the
 	// capture stops. follow are the positions of Follow, by ID: they replace the position of the
 	// settings and are not saved.
 	ptzs   map[string]PTZ
@@ -139,7 +139,7 @@ type Status struct {
 	// Focus is the focus control of a camera that is on, or nil for a camera with no focus
 	// control.
 	Focus *Focus
-	// PTZ is the PTZ control of a camera that is on, or nil for a camera with no zoom control.
+	// PTZ is the PTZ control of a camera that runs (DeckPTZ), or nil.
 	PTZ *PTZ
 	// Searching reports that a focus search on the part runs (Hub.FocusOnPart, Hub.FocusPrint).
 	Searching bool
