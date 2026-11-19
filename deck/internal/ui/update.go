@@ -90,7 +90,8 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 		content, acts := f.split()
 		r := kit.Rows(content, 12, kit.Px(100), kit.Fr(1), kit.Px(26))
 		info, notes, bar = r[0], r[1], r[2]
-		k := kit.Cols(acts, 12, kit.Fr(1), kit.Fr(1), kit.Fr(1))
+		// Beta updates has the longest label: a wider key keeps the size of the row larger.
+		k := kit.Cols(acts, 12, kit.Fr(2), kit.Fr(3), kit.Fr(2))
 		keys, install = k[0].Union(k[1]), k[2]
 	} else {
 		r := kit.Rows(f.body(), 16, kit.Px(128), kit.Fr(1), kit.Px(30), kit.Px(80), kit.Px(76))
@@ -184,6 +185,9 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 		// One label size for the keys of a row: Check now and Beta updates, and on the wide page
 		// also the Install key.
 		k := kit.Cols(keys, 12, kit.Fr(1), kit.Fr(1))
+		if f.wide {
+			k = kit.Cols(keys, 12, kit.Fr(2), kit.Fr(3))
+		}
 		row, labels := k, []string{"Check now", beta}
 		if f.wide && installLabel != "" {
 			row, labels = append(row, install), append(labels, installLabel)
