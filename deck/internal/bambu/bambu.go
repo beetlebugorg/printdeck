@@ -20,10 +20,12 @@ import (
 	_ "embed"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"log"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -56,6 +58,7 @@ type Client struct {
 	mu     sync.Mutex
 	conn   *mqttConn
 	seen   string
+	inter  []*x509.Certificate // the intermediate certificates of the last full chain of the printer
 	seq    int
 	merged map[string]any
 	model  string // the product name of the printer from get_version, for example "Bambu Lab X2D"
@@ -128,6 +131,13 @@ func (c *Client) tlsConfig() *tls.Config {
 //go:embed bbl-ca.pem
 var bblCA []byte
 
+// bblDeviceCA has the BBL Device CA certificates that the deck knows. The camera of a printer
+// sends only the certificate of the printer, with no BBL Device CA: the check then uses these,
+// and the BBL Device CA that the other connections to the printer sent.
+//
+//go:embed bbl-device-ca.pem
+var bblDeviceCA []byte
+
 var bblRoots = func() *x509.CertPool {
 	p := x509.NewCertPool()
 	if !p.AppendCertsFromPEM(bblCA) {
@@ -139,15 +149,38 @@ var bblRoots = func() *x509.CertPool {
 // ErrCert is a printer certificate that is not a certificate of Bambu Lab for the serial number.
 var ErrCert = errors.New("the certificate of the printer is not from Bambu Lab for this serial number")
 
+// bblIntermediates are the certificates of bblDeviceCA.
+var bblIntermediates = func() []*x509.Certificate {
+	var out []*x509.Certificate
+	rest := bblDeviceCA
+	for {
+		var b *pem.Block
+		if b, rest = pem.Decode(rest); b == nil {
+			break
+		}
+		c, err := x509.ParseCertificate(b.Bytes)
+		if err != nil {
+			panic("bambu: bbl-device-ca.pem: " + err.Error())
+		}
+		out = append(out, c)
+	}
+	return out
+}()
+
 // verifyPrinter checks the certificates that the printer sent: a chain to the roots of Bambu Lab,
-// and the serial number as the CN of the certificate of the printer.
-func verifyPrinter(certs []*x509.Certificate, serial string, roots *x509.CertPool) error {
+// and the serial number as the CN of the certificate of the printer. known are more
+// intermediate certificates for a chain with none. An intermediate certificate only helps to
+// find a chain: the chain must still end at a root.
+func verifyPrinter(certs []*x509.Certificate, serial string, roots *x509.CertPool, known ...*x509.Certificate) error {
 	if len(certs) == 0 {
 		return errors.New("the printer sent no certificate")
 	}
 	leaf := certs[0]
 	inter := x509.NewCertPool()
 	for _, ic := range certs[1:] {
+		inter.AddCert(ic)
+	}
+	for _, ic := range known {
 		inter.AddCert(ic)
 	}
 	if _, err := leaf.Verify(x509.VerifyOptions{Roots: roots, Intermediates: inter,
@@ -161,21 +194,28 @@ func verifyPrinter(certs []*x509.Certificate, serial string, roots *x509.CertPoo
 }
 
 // Check checks the certificates of a connection to the printer: MQTT, the files and the camera.
-// The chain goes to the roots of Bambu Lab, and the certificate names the serial number of the
+// The chain goes to the roots of Bambu Lab, also for the camera, which sends no intermediate
+// certificate, and the certificate names the serial number of the
 // printer (verifyPrinter). Seen then gives its SHA-256. A certificate other than Pin is a new
 // certificate of the same printer, for example after a firmware update: Check takes it as the
 // new Pin, and logs the change.
 func (c *Client) Check(cs *tls.ConnectionState) error {
-	roots := c.Roots
+	roots, known := c.Roots, []*x509.Certificate(nil)
 	if roots == nil {
-		roots = bblRoots
+		roots, known = bblRoots, bblIntermediates
 	}
-	if err := verifyPrinter(cs.PeerCertificates, c.Serial, roots); err != nil {
+	c.mu.Lock()
+	known = append(slices.Clip(known), c.inter...)
+	c.mu.Unlock()
+	if err := verifyPrinter(cs.PeerCertificates, c.Serial, roots, known...); err != nil {
 		return err
 	}
 	fp := Fingerprint(cs.PeerCertificates[0])
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if len(cs.PeerCertificates) > 1 {
+		c.inter = slices.Clone(cs.PeerCertificates[1:])
+	}
 	c.seen = fp
 	if c.Pin != "" && !strings.EqualFold(fp, c.Pin) {
 		log.Printf("bambu: %s has a new certificate %s (it was %s)", c.Serial, fp, c.Pin)
