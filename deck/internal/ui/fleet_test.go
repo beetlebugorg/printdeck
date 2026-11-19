@@ -278,7 +278,7 @@ func TestLoadedFits(t *testing.T) {
 		[]printer.Loaded{full, full, full, full}}
 	c, rec := gfx.NewRecording(a.Screen().W, a.Screen().H)
 	r := image.Rect(16, 100, 448, 120)
-	w := a.drawLoaded(c, r)
+	w := a.drawLoaded(c, r, r.Dx()) // a long text: the squares get 2/3 of the line
 	f := string(rec.JSON())
 	if w > r.Dx()*2/3 || strings.Contains(f, "PLA 100%") || strings.Count(f, "100%") != 4 {
 		t.Errorf("width %d, frame %s", w, f)

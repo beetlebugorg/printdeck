@@ -31,6 +31,9 @@ func (a *App) amsOf() (amsPrinter, bool) {
 // trayName is the name of a tray for the screens: "Tray 2", or "AMS 2 · Tray 1" with more than one
 // AMS.
 func trayName(t printer.AMSTray, units int) string {
+	if t.External {
+		return "External spool"
+	}
 	if units > 1 {
 		return fmt.Sprintf("AMS %d · Tray %d", t.Unit+1, t.Index+1)
 	}
@@ -61,6 +64,7 @@ func (a *App) drawAMS(c *gfx.Canvas, ams amsPrinter) {
 		return
 	}
 	units := len(st.Units)
+	two := a.Printer.State().HasTool2
 	r := kit.Rows(area, 10, kit.Px(28), kit.Fr(1))
 	var lines []string
 	for _, u := range st.Units {
@@ -75,7 +79,14 @@ func (a *App) drawAMS(c *gfx.Canvas, ams amsPrinter) {
 		color := t.Color
 		if t.Loaded {
 			title += " · " + t.Material
-			if t.Active {
+			// A printer with two nozzles: the nozzle that the spool is in, as the status panel names
+			// it, and a mark under the swatch for the spool that feeds now.
+			switch {
+			case two && t.Feeds == 0:
+				title += " · nozzle"
+			case two && t.Feeds == 1:
+				title += " · aux"
+			case t.Active:
 				title += " · feeding"
 			}
 			sub = "No roll of the deck · tap to add one"
@@ -98,6 +109,9 @@ func (a *App) drawAMS(c *gfx.Canvas, ams amsPrinter) {
 			c.RoundRect(swatch, 3, col)
 		} else {
 			c.RoundRect(swatch, 3, keyOff)
+		}
+		if two && t.Active {
+			c.Fill(image.Rect(swatch.Min.X, swatch.Max.Y+3, swatch.Max.X, swatch.Max.Y+6), orange)
 		}
 		a.menuRow(c, image.Rect(sw.Max.X+10, rr.Min.Y, rr.Max.X, rr.Max.Y), title, sub, dim, nil)
 	}, func(i int) { a.askTray(ams, st.Trays[i], units) })
@@ -347,5 +361,29 @@ func (a *App) askPrinterControls(bc bambuControls) {
 	}
 	choices = append(choices, fan("Part fan", printer.FanPart, part), fan("Aux fan", printer.FanAux, aux),
 		fan("Chamber fan", printer.FanChamber, cham))
+	if ts, ok := bc.(tool2Setter); ok {
+		if st := a.Printer.State(); st.HasTool2 {
+			choices = append(choices, menuItem{"Aux nozzle", fmt.Sprintf("%.0f° · tap to set", st.Tool2), dim, func() {
+				a.editTemp("Aux nozzle temperature", int(st.Tool2Target), 300, toolPresets, ts.SetTool2Temp)
+			}})
+			now := "The nozzle"
+			if st.ToolNow == 1 {
+				now = "The aux nozzle"
+			}
+			choices = append(choices, menuItem{"Nozzle in use", now, dim, func() {
+				if st.Busy() {
+					a.Toast("The printer changes the nozzle by itself during a print")
+					return
+				}
+				pick := func(n int) func() {
+					return func() { run(func() error { return ts.SelectTool(n) }) }
+				}
+				a.confirm = &confirmBox{question: "Which nozzle prints? The toolhead moves to change it.", choices: []menuItem{
+					{"The nozzle", "With the AMS", dim, pick(0)},
+					{"The aux nozzle", "With the external spool", dim, pick(1)},
+				}}
+			}})
+		}
+	}
 	a.confirm = &confirmBox{question: "Printer controls", choices: choices}
 }

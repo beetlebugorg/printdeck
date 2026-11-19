@@ -15,6 +15,7 @@ type Report struct {
 	Layer     Num    `json:"layer_num"`
 	Layers    Num    `json:"total_layer_num"`
 	Stage     Num    `json:"stg_cur"` // what the printer does now (StageText)
+	Stages    []Num  `json:"stg"`     // the steps of the start of the print, in order (StepName)
 	Subtask   string `json:"subtask_name"`
 	File      string `json:"gcode_file"`
 	TaskID    string `json:"task_id"`
@@ -63,7 +64,12 @@ type Device struct {
 		Info []struct {
 			ID   int `json:"id"`
 			Temp Num `json:"temp"` // the temperature now in the low 16 bits, the target in the high 16 bits
+			// Feed is the spool that feeds the extruder now: the AMS in the high byte and the
+			// tray in the low byte, 0xFF00 or 0xFE00 an external spool, 0xFFFF none.
+			Feed Num `json:"snow"`
 		} `json:"info"`
+		// State has the number of extruders in bits 0 to 3, and the extruder in use in bits 4
+		// to 7.
 		State Num `json:"state"`
 	} `json:"extruder"`
 	Nozzle struct {
@@ -134,8 +140,17 @@ func (r Report) TrayLoaded(slot int) bool {
 	return err == nil && slot >= 0 && slot < 64 && bits>>uint(slot)&1 == 1
 }
 
-// ActiveSlot returns the tray that feeds now (Unit*4+Index), or -1.
+// ActiveSlot returns the tray that feeds now (Unit*4+Index, or an external spool), or -1. On a
+// printer with two extruders it is the spool of the extruder in use.
 func (r Report) ActiveSlot() int {
+	if id := r.ActiveExtruder(); id >= 0 {
+		for _, e := range r.Extruders() {
+			if e.ID == id {
+				return e.Feed
+			}
+		}
+		return -1
+	}
 	n, err := strconv.Atoi(r.AMS.Now)
 	if err != nil || n >= 254 {
 		return -1
@@ -202,6 +217,72 @@ func (r Report) Nozzles() (temp, target []float64, ok bool) {
 		target = append(target, float64(v>>16&0xffff))
 	}
 	return temp, target, len(temp) > 0
+}
+
+// Extruder is one extruder of an H2D or an X2D.
+type Extruder struct {
+	ID           int
+	Temp, Target float64
+	// Feed is the spool that feeds the extruder: a tray of an AMS (Unit*4+Index), an external
+	// spool (ExternalMain or ExternalDeputy), or -1.
+	Feed int
+}
+
+// The IDs of the external spools (vir_slot) in the reports.
+const (
+	ExternalMain   = 255
+	ExternalDeputy = 254
+)
+
+// feedSlot returns the tray of the code v of "snow": Unit*4+Index for a tray of an AMS, 255 or
+// 254 for an external spool, or -1 for none.
+func feedSlot(v int64) int {
+	unit, tray := int(v>>8&0xff), int(v&0xff)
+	switch {
+	case v == 0xffff || v < 0:
+		return -1
+	case unit == ExternalMain || unit == ExternalDeputy:
+		return unit
+	case unit >= 0x80 || tray > 3:
+		return -1 // an AMS HT, or a code that the deck does not know
+	}
+	return unit*4 + tray
+}
+
+// Extruders returns the extruders of an H2D or an X2D, in the order of their IDs, or none.
+func (r Report) Extruders() []Extruder {
+	var out []Extruder
+	for _, e := range r.Device.Extruder.Info {
+		v := int64(e.Temp)
+		out = append(out, Extruder{ID: e.ID, Temp: float64(v & 0xffff), Target: float64(v >> 16 & 0xffff),
+			Feed: feedSlot(int64(e.Feed))})
+	}
+	return out
+}
+
+// ActiveExtruder returns the ID of the extruder in use, or -1 for a printer with one extruder.
+func (r Report) ActiveExtruder() int {
+	if len(r.Device.Extruder.Info) < 2 {
+		return -1
+	}
+	v := r.Device.Extruder.State.Int()
+	n, id := v&0xf, v>>4&0xf
+	if id >= n {
+		return -1
+	}
+	return id
+}
+
+// ExternalTrays returns the external spools (vir_slot) with their IDs (ExternalMain,
+// ExternalDeputy). A tray with no material has no spool, or no spool that the user set.
+func (r Report) ExternalTrays() map[int]Tray {
+	out := map[int]Tray{}
+	for _, t := range r.External {
+		if id, err := strconv.Atoi(t.ID); err == nil {
+			out[id] = t
+		}
+	}
+	return out
 }
 
 // ChamberTemp returns the temperature of the chamber in °C: device.ctc on an H2D or an X2D, else
@@ -323,6 +404,47 @@ var stageText = map[int]string{
 	33: "Paused: a cutter fault",
 	34: "Paused: a first layer fault",
 	35: "Paused: the nozzle is clogged",
+}
+
+// stepNames are the steps of the start of a print, as the list of the steps names them, with the
+// kind of the step for the screens (printer.PrepStep). A step that is not in the list has no name.
+var stepNames = map[int][2]string{
+	1:  {"Level the bed", "probe"},
+	2:  {"Heat the bed", "heat-bed"},
+	3:  {"Sweep the XY mechanism", ""},
+	4:  {"Change the filament", ""},
+	7:  {"Heat the nozzle", "heat-nozzle"},
+	8:  {"Calibrate the extrusion", ""},
+	9:  {"Scan the bed surface", "probe"},
+	10: {"Inspect the first layer", ""},
+	11: {"Identify the build plate", ""},
+	12: {"Calibrate the micro lidar", ""},
+	13: {"Home the toolhead", "home"},
+	14: {"Clean the nozzle tip", "wipe"},
+	15: {"Check the extruder temperature", ""},
+	18: {"Calibrate the micro lidar", ""},
+	19: {"Calibrate the extrusion flow", ""},
+	22: {"Unload the filament", ""},
+	24: {"Load the filament", ""},
+	25: {"Calibrate the motor noise", ""},
+	29: {"Cool the chamber", "cool"},
+}
+
+// StepName returns the name and the kind of the step n of the start of a print. ok is false
+// for a step that the deck does not know.
+func StepName(n int) (name, kind string, ok bool) {
+	s, ok := stepNames[n]
+	return s[0], s[1], ok
+}
+
+// Preparing reports that the printer runs a step of the start of a print: the print has no
+// layer yet, and stg_cur is a step other than the print.
+func (r Report) Preparing() bool {
+	if r.State == "PREPARE" || r.State == "SLICING" {
+		return true
+	}
+	n := r.Stage.Int()
+	return r.State == "RUNNING" && r.Layer.Int() == 0 && n > 0 && n < 255 && !r.Paused()
 }
 
 // StageText returns what the printer does now, or "" when stg_cur has no text.

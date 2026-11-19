@@ -27,8 +27,47 @@ func (b *Bambu) gcode(lines ...string) error {
 // Gcode runs G-code lines on the printer.
 func (b *Bambu) Gcode(lines ...string) error { return b.gcode(lines...) }
 
-// SetToolTemp sets the temperature of the nozzle that is in use.
-func (b *Bambu) SetToolTemp(t int) error { return b.gcode(fmt.Sprintf("M104 S%d", max(0, t))) }
+// The extruders of a printer with two (an X2D): extruder 1 is the main nozzle, with the AMS, and
+// extruder 0 the aux nozzle, with the external spool through a Bowden tube. The reports of the
+// X2D of the user showed this on 2026-11-19. State has the main nozzle as Tool and the aux nozzle
+// as Tool2.
+const (
+	mainExtruder = 1
+	auxExtruder  = 0
+)
+
+// dual reports that the printer has two extruders.
+func (b *Bambu) dual() bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.st.HasTool2
+}
+
+// setNozzle sets the target of the extruder id of a printer with two extruders.
+func (b *Bambu) setNozzle(id, t int) error {
+	return b.command(fmt.Sprintf("Extruder %d to %d°", id, t), func() error { return b.Client.SetNozzleTemp(id, max(0, t)) })
+}
+
+// SetToolTemp sets the temperature of the nozzle, or of the main nozzle of a printer with two.
+func (b *Bambu) SetToolTemp(t int) error {
+	if b.dual() {
+		return b.setNozzle(mainExtruder, t)
+	}
+	return b.gcode(fmt.Sprintf("M104 S%d", max(0, t)))
+}
+
+// SetTool2Temp sets the temperature of the aux nozzle of a printer with two nozzles.
+func (b *Bambu) SetTool2Temp(t int) error { return b.setNozzle(auxExtruder, t) }
+
+// SelectTool makes the nozzle n the nozzle in use: 0 the main nozzle, 1 the aux nozzle. The
+// printer moves the toolhead to change it.
+func (b *Bambu) SelectTool(n int) error {
+	id := mainExtruder
+	if n == 1 {
+		id = auxExtruder
+	}
+	return b.command("The change of the nozzle", func() error { return b.Client.SelectExtruder(id) })
+}
 
 // SetBedTemp sets the temperature of the bed.
 func (b *Bambu) SetBedTemp(t int) error { return b.gcode(fmt.Sprintf("M140 S%d", max(0, t))) }
@@ -36,9 +75,16 @@ func (b *Bambu) SetBedTemp(t int) error { return b.gcode(fmt.Sprintf("M140 S%d",
 // SetChamberTemp sets the temperature of the chamber heat (M141 of an H2D or an X2D).
 func (b *Bambu) SetChamberTemp(t int) error { return b.gcode(fmt.Sprintf("M141 S%d", max(0, t))) }
 
-// Heat sets the nozzle and the bed; 0 turns a heater off.
+// Heat sets the nozzle (the main nozzle of a printer with two) and the bed; 0 turns a heater off.
 func (b *Bambu) Heat(tool, bed int) {
-	go b.gcode(fmt.Sprintf("M104 S%d", max(0, tool)), fmt.Sprintf("M140 S%d", max(0, bed)))
+	go func() {
+		if b.dual() {
+			b.setNozzle(mainExtruder, tool)
+			b.gcode(fmt.Sprintf("M140 S%d", max(0, bed)))
+			return
+		}
+		b.gcode(fmt.Sprintf("M104 S%d", max(0, tool)), fmt.Sprintf("M140 S%d", max(0, bed)))
+	}()
 }
 
 // The fans of M106: the part fan, the aux fan and the chamber fan.

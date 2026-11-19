@@ -397,6 +397,18 @@ func (c *Client) Gcode(lines ...string) error {
 	return c.send("print", "gcode_line", map[string]any{"param": strings.Join(lines, "\n") + "\n"})
 }
 
+// SetNozzleTemp sets the target of the extruder id of a printer with two extruders, in °C
+// (set_nozzle_temp, as Bambu Studio sends it).
+func (c *Client) SetNozzleTemp(id, temp int) error {
+	return c.send("print", "set_nozzle_temp", map[string]any{"extruder_index": id, "target_temp": max(0, temp)})
+}
+
+// SelectExtruder makes the extruder id the extruder in use, on a printer with two extruders
+// (select_extruder). The printer moves the toolhead to change it.
+func (c *Client) SelectExtruder(id int) error {
+	return c.send("print", "select_extruder", map[string]any{"extruder_index": id})
+}
+
 // The speed levels of print_speed.
 const (
 	SpeedSilent    = 1

@@ -151,6 +151,20 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 	st := &b.st
 	st.Reachable, st.Connected, st.Err, st.Starting = true, true, "", false
 	st.Tool, st.ToolTarget = float64(r.Nozzle), float64(r.NozzleTarget)
+	st.HasTool2, st.Tool2, st.Tool2Target, st.ToolNow = false, 0, 0, 0
+	if ex := r.Extruders(); len(ex) >= 2 {
+		st.HasTool2 = true
+		for _, e := range ex {
+			if e.ID == mainExtruder {
+				st.Tool, st.ToolTarget = e.Temp, e.Target
+			} else {
+				st.Tool2, st.Tool2Target = e.Temp, e.Target
+			}
+		}
+		if id := r.ActiveExtruder(); id >= 0 && id != mainExtruder {
+			st.ToolNow = 1
+		}
+	}
 	st.Bed, st.BedTarget = float64(r.Bed), float64(r.BedTarget)
 	st.Fan, st.HasFan = r.FanPercent(), true
 	st.HasChamber = r.HasChamber()
@@ -180,7 +194,8 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 		}
 		b.track(r)
 		st.Printing, st.Paused = true, r.Paused()
-		st.Preparing = r.State == "PREPARE" || r.State == "SLICING"
+		st.Preparing = r.Preparing()
+		st.Prep, st.PrepN = bambuPrep(r)
 		st.FilePath, st.File, st.Title = b.path, b.name, b.name
 		st.Completion = float64(r.Percent)
 		st.TimeLeft, st.HasTimeLeft = r.TimeLeft(), r.Remaining > 0
@@ -194,6 +209,14 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 		st.Activity = r.StageText()
 		if st.Activity == "" {
 			st.Activity = st.Text
+		}
+		if st.Preparing && st.Activity == st.Text {
+			st.Activity = "Preparing"
+		}
+		// A step of the printer during the print, for example a change of the filament: the
+		// panel shows it, after the messages of the printer.
+		if n := r.Stage.Int(); !st.Preparing && n > 0 && st.Message == "" && r.StageText() != "" {
+			st.Message = r.StageText()
 		}
 		st.Finished = ""
 		return
@@ -372,13 +395,47 @@ func (b *Bambu) NextProject() string {
 // SpoolStore returns the rolls of the printer, or nil.
 func (b *Bambu) SpoolStore() *Spools { return b.Spools }
 
+// bambuPrep returns the steps of the start of the print of r (stg), with the step now (stg_cur),
+// for the screens: at most len(State.Prep) steps, with the step now in them. A step that the deck
+// does not know is out of the list.
+func bambuPrep(r bambu.Report) (out [8]PrepStep, n int) {
+	if !r.Preparing() {
+		return out, 0
+	}
+	cur := r.Stage.Int()
+	var steps []PrepStep
+	now := -1
+	for _, v := range r.Stages {
+		id := v.Int()
+		name, kind, ok := bambu.StepName(id)
+		if !ok {
+			continue
+		}
+		if id == cur {
+			now = len(steps)
+		}
+		steps = append(steps, PrepStep{Kind: kind, Name: name})
+	}
+	if now < 0 {
+		return out, 0 // the step now is not in the list: no list of steps
+	}
+	for i := range steps {
+		steps[i].Done, steps[i].Now = i < now, i == now
+	}
+	// A window of the steps with the step now in it, and one done step before it.
+	start := max(0, min(now-1, len(steps)-len(out)))
+	steps = steps[start:]
+	n = copy(out[:], steps)
+	return out, n
+}
+
 // Pause, Resume and Cancel send the commands of the printer. An error shows in the panel.
 func (b *Bambu) Pause()  { b.command("Pause", b.Client.Pause) }
 func (b *Bambu) Resume() { b.command("Resume", b.Client.Resume) }
 func (b *Bambu) Cancel() { b.command("Stop", b.Client.Stop) }
 
 // command runs the command f, logs it, and shows an error in the panel.
-func (b *Bambu) command(name string, f func() error) {
+func (b *Bambu) command(name string, f func() error) error {
 	err := f()
 	log.Printf("bambu: %s: %v", name, err)
 	if err != nil {
@@ -386,6 +443,7 @@ func (b *Bambu) command(name string, f func() error) {
 		b.st.Message = name + " did not go to the printer: " + err.Error()
 		b.mu.Unlock()
 	}
+	return err
 }
 
 // The files, the pictures and the layers: the deck reads no file of the printer yet.

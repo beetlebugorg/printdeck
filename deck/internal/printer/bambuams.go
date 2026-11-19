@@ -38,6 +38,12 @@ type AMSTray struct {
 	Roll   string  // the ID of the roll of the deck in the tray, or ""
 	Tag    string  // the RFID tag of a spool of Bambu Lab, or ""
 	Weight float64 // the grams of a full spool, from its RFID tag, or 0
+	// External is true for the external spool (out of the AMS): Slot is then 255 or 254, the ID
+	// in the reports, and Unit is -1.
+	External bool
+	// Feeds is the nozzle that the spool is in now: 0 the nozzle (the main nozzle of a printer
+	// with two), 1 the aux nozzle, or -1.
+	Feeds int
 }
 
 // AMSUnit is one AMS.
@@ -65,6 +71,22 @@ func (b *Bambu) AMS() AMS {
 	}
 	links := b.trayLinks()
 	active := r.ActiveSlot()
+	feeds := map[int]int{} // the nozzle of each tray in a nozzle
+	ex := r.Extruders()
+	for _, e := range ex {
+		if e.Feed >= 0 {
+			feeds[e.Feed] = 0
+			if e.ID != mainExtruder {
+				feeds[e.Feed] = 1
+			}
+		}
+	}
+	feed := func(slot int) int {
+		if n, ok := feeds[slot]; ok {
+			return n
+		}
+		return -1
+	}
 	for _, u := range r.AMS.Units {
 		ui, _ := strconv.Atoi(u.ID)
 		out.Units = append(out.Units, AMSUnit{Index: ui, Temp: float64(u.Temp),
@@ -74,12 +96,27 @@ func (b *Bambu) AMS() AMS {
 			slot := ui*4 + ti
 			tr := AMSTray{Slot: slot, Unit: ui, Index: ti, Loaded: r.TrayLoaded(slot), Material: t.Type,
 				Brand: t.Brand, Color: t.ColorHex(), Remain: -1, Active: slot == active, Roll: links[slot],
-				Tag: t.Tag(), Weight: float64(t.Weight)}
+				Tag: t.Tag(), Weight: float64(t.Weight), Feeds: feed(slot)}
 			if t.Known() {
 				tr.Remain = t.Remain.Int()
 			}
 			out.Trays = append(out.Trays, tr)
 		}
+	}
+	// The external spools: each one that the printer knows a material for or that feeds a nozzle,
+	// and on a printer with two nozzles the external spool of the aux nozzle.
+	for id, t := range r.ExternalTrays() {
+		_, fed := feeds[id]
+		if t.Type == "" && !fed && !(len(ex) >= 2 && id == bambu.ExternalMain) {
+			continue
+		}
+		tr := AMSTray{Slot: id, Unit: -1, Index: 0, Loaded: t.Type != "", Material: t.Type, Brand: t.Brand,
+			Color: t.ColorHex(), Remain: -1, Active: id == active, Roll: links[id], Tag: t.Tag(),
+			Weight: float64(t.Weight), External: true, Feeds: feed(id)}
+		if t.Known() {
+			tr.Remain = t.Remain.Int()
+		}
+		out.Trays = append(out.Trays, tr)
 	}
 	sort.Slice(out.Trays, func(i, j int) bool { return out.Trays[i].Slot < out.Trays[j].Slot })
 	return out
@@ -90,7 +127,8 @@ func (b *Bambu) AMS() AMS {
 func (b *Bambu) Loaded() []Loaded {
 	var out []Loaded
 	for _, t := range b.AMS().Trays {
-		l := Loaded{Color: t.Color, Material: t.Material, Fraction: -1, Active: t.Active, Empty: !t.Loaded}
+		l := Loaded{Color: t.Color, Material: t.Material, Fraction: -1, Active: t.Active, Empty: !t.Loaded,
+			External: t.External}
 		if t.Roll != "" && b.Spools != nil {
 			if sp, ok := b.Spools.Get(t.Roll); ok {
 				l.Fraction = sp.Fraction()
@@ -361,6 +399,10 @@ func (b *Bambu) watchTrays(r bambu.Report) {
 			slot := ui*4 + ti
 			now[slot] = traySpool{loaded: r.TrayLoaded(slot), tag: t.Tag()}
 		}
+	}
+	// An external spool has no sensor: it is loaded when the printer has a material for it.
+	for id, t := range r.ExternalTrays() {
+		now[id] = traySpool{loaded: t.Type != "", tag: t.Tag()}
 	}
 	prev, first := b.trayPrev, b.trayPrev == nil
 	b.trayPrev = now

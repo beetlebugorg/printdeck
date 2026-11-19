@@ -33,13 +33,25 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 	if gfx.FinePrint() {
 		rows = kit.Rows(r, 0, kit.Px(60), kit.Px(6), kit.Px(28), kit.Px(26), kit.Px(26), kit.Px(6), kit.Fr(1))
 	}
-	// A printer with a chamber has a fourth readout, between the bed and the fan.
+	// A printer with a chamber has a readout between the bed and the fan. A printer with two
+	// nozzles has the aux nozzle after the nozzle: the bed and the others move to the right.
 	chamber := st.HasChamber && !a.resin()
+	two := st.HasTool2 && !a.resin()
 	cols := []kit.Size{kit.Fr(1), kit.Fr(1), kit.Fr(1)}
 	if chamber {
 		cols = append(cols, kit.Fr(1))
 	}
-	cells := kit.Cols(rows[0], 8, cols...)
+	gap := 8
+	if two {
+		cols = append(cols, kit.Fr(1))
+		gap = 6
+	}
+	cells := kit.Cols(rows[0], gap, cols...)
+	var aux image.Rectangle
+	if two {
+		aux = cells[1]
+		cells = append(cells[:1:1], cells[2:]...)
+	}
 	fanCell := cells[len(cells)-1]
 	fan := "off"
 	if st.Fan > 0 {
@@ -49,6 +61,15 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 		resinReadouts(c, cells, st)
 	} else if st.Reachable {
 		readout(c, cells[0], "NOZZLE", fmt.Sprintf("%.0f°", st.Tool), targetText(st.ToolTarget), st.ToolPower, st.ToolTarget > 0)
+		if two {
+			readout(c, aux, "AUX", fmt.Sprintf("%.0f°", st.Tool2), targetText(st.Tool2Target), 0, false)
+			// The nozzle in use has a mark at its top right.
+			in := cells[0]
+			if st.ToolNow == 1 {
+				in = aux
+			}
+			c.RoundRect(image.Rect(in.Max.X-13, in.Min.Y+7, in.Max.X-6, in.Min.Y+14), 3, orange)
+		}
 		readout(c, cells[1], "BED", fmt.Sprintf("%.0f°", st.Bed), targetText(st.BedTarget), st.BedPower, st.BedTarget > 0)
 		if chamber {
 			target := ""
@@ -65,6 +86,9 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 		}
 		for i, l := range labels {
 			readout(c, cells[i], l, "--", "", 0, false)
+		}
+		if two {
+			readout(c, aux, "AUX", "--", "", 0, false)
 		}
 	}
 	p := a.panelLines(st)
@@ -112,7 +136,7 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 		a.addFocus(label, hit, a.pickNextProject)
 	} else {
 		dr := line(rows[4])
-		if w := a.drawLoaded(c, dr); w > 0 {
+		if w := a.drawLoaded(c, dr, gfx.Width(small, p.detail)); w > 0 {
 			dr.Max.X -= w + 12
 		}
 		c.Text(dr, gfx.Fit(small, p.detail, dr.Dx()), small, lcdDim, gfx.Left)
@@ -138,6 +162,9 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 		a.region("Chamber", cells[2])
 	}
 	a.region("Fan", fanCell)
+	if two {
+		a.region("Aux", aux)
+	}
 	if !st.Reachable {
 		return
 	}
@@ -159,6 +186,21 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 		}
 		a.addHit(kit.Hit{R: cells[2], Tap: tap})
 	}
+	if ts, ok := pr.(tool2Setter); ok && two {
+		tap := func() {
+			a.editTemp("Aux nozzle temperature", int(st.Tool2Target), 300, toolPresets, ts.SetTool2Temp)
+		}
+		if a.bar {
+			tap = func() { a.Toast(waitText) }
+		}
+		a.addHit(kit.Hit{R: aux, Tap: tap})
+	}
+}
+
+// tool2Setter is a printer with a second nozzle: the aux nozzle of an X2D (printer.Bambu).
+type tool2Setter interface {
+	SetTool2Temp(t int) error
+	SelectTool(n int) error
 }
 
 // hmsReporter is a printer with messages of its own health system (printer.Bambu).
@@ -177,8 +219,9 @@ type loader interface{ Loaded() []printer.Loaded }
 
 // drawLoaded draws what the printer has loaded at the right of r: a small square in the color of
 // each spool, and its material and the part left. A line under a square marks the spool that
-// feeds now. It returns the width that it used, or 0 when the printer gives no spools.
-func (a *App) drawLoaded(c *gfx.Canvas, r image.Rectangle) int {
+// feeds now. textW is the width of the text at the left of the line. It returns the width that
+// it used, or 0 when the printer gives no spools.
+func (a *App) drawLoaded(c *gfx.Canvas, r image.Rectangle, textW int) int {
 	l, ok := a.Printer.(loader)
 	if !ok {
 		return 0
@@ -189,7 +232,8 @@ func (a *App) drawLoaded(c *gfx.Canvas, r image.Rectangle) int {
 	}
 	face := gfx.Face(true, 13)
 	sq := min(14, r.Dy()-4)
-	avail := r.Dx() * 2 / 3
+	// The squares take the space that the text of the line leaves, and at least 2/3 of the line.
+	avail := max(r.Dx()*2/3, r.Dx()-textW-12)
 	// The texts: the material and the part left; the part left only; or no text, the first form
 	// that fits.
 	label := func(it printer.Loaded, form int) string {
@@ -210,12 +254,20 @@ func (a *App) drawLoaded(c *gfx.Canvas, r image.Rectangle) int {
 		}
 		return strings.TrimSpace(it.Material + " " + pct)
 	}
+	// gap is the space before the item i: wider, with a line, before the first external spool.
+	gap := func(i int) int {
+		switch {
+		case i == 0:
+			return 0
+		case items[i].External && !items[i-1].External:
+			return 17
+		}
+		return 8
+	}
 	width := func(form int) int {
 		w := 0
 		for i, it := range items {
-			if i > 0 {
-				w += 8
-			}
+			w += gap(i)
 			w += sq
 			if t := label(it, form); t != "" {
 				w += 3 + gfx.Width(face, t)
@@ -230,7 +282,13 @@ func (a *App) drawLoaded(c *gfx.Canvas, r image.Rectangle) int {
 	w := min(width(form), r.Dx())
 	x := r.Max.X - w
 	y := r.Min.Y + (r.Dy()-sq)/2
-	for _, it := range items {
+	for i, it := range items {
+		if g := gap(i); g > 8 {
+			c.Fill(image.Rect(x+g/2-1, y-1, x+g/2, y+sq+1), lcdDim)
+			x += g
+		} else {
+			x += g
+		}
 		if x+sq > r.Max.X {
 			break
 		}
@@ -254,7 +312,6 @@ func (a *App) drawLoaded(c *gfx.Canvas, r image.Rectangle) int {
 			c.Text(image.Rect(x+3, r.Min.Y, min(r.Max.X, x+3+tw), r.Max.Y), t, face, lcdDim, gfx.Left)
 			x += 3 + tw
 		}
-		x += 8
 	}
 	return w
 }
