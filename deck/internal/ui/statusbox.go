@@ -80,19 +80,6 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 	}
 	small := gfx.Face(false, 15)
 	l2 := line(rows[3])
-	if a.Fleet != nil {
-		// The printer chip is at the right of the first line, and the time goes to the second.
-		cw := chipWidth(a.Fleet.Self().Label)
-		chip := image.Rect(l1.Max.X-cw, l1.Min.Y+l1.Dy()/2-17, l1.Max.X, l1.Min.Y+l1.Dy()/2+17)
-		a.drawChip(c, chip)
-		l1.Max.X = chip.Min.X - 12
-		if p.side != "" && p.side != clockText(a.Now(), a.Clock24) {
-			sw := gfx.Width(small, p.side)
-			c.Text(l2, p.side, small, lcdInk, gfx.Right)
-			l2.Max.X -= sw + 12
-		}
-		p.side = ""
-	}
 	sw := gfx.Width(side, p.side)
 	c.Text(l1, gfx.Fit(head, p.head, l1.Dx()-sw-12), head, lcdInk, gfx.Left)
 	c.Text(l1, p.side, side, lcdInk, gfx.Right)

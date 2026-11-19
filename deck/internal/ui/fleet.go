@@ -116,33 +116,6 @@ func drawFleetBar(c *gfx.Canvas) {
 	}
 }
 
-// chipWidth is the width of the printer chip with the label.
-func chipWidth(label string) int {
-	return 12 + 12 + 8 + gfx.Width(gfx.Face(true, 16), label) + 8 + 12 + 12
-}
-
-// drawChip draws the printer chip in r: the colour, the label and a down arrow. A tap opens the
-// list of the printers.
-func (a *App) drawChip(c *gfx.Canvas, r image.Rectangle) {
-	id := a.Fleet.Self()
-	pressed := a.isPressed(r)
-	fill := id.Color
-	if pressed {
-		fill = color.RGBA{fill.R / 4 * 3, fill.G / 4 * 3, fill.B / 4 * 3, 255}
-	}
-	c.RoundRect(r, r.Dy()/2, fill)
-	ink := inkOn(fill)
-	x := r.Min.X + 12
-	c.Text(image.Rect(x, r.Min.Y, r.Max.X-28, r.Max.Y), id.Label, gfx.Face(true, 16), ink, gfx.Left)
-	// The down arrow.
-	ax, ay := r.Max.X-20, r.Min.Y+r.Dy()/2-2
-	c.Polygon([]image.Point{{ax - 6, ay - 3}, {ax + 6, ay - 3}, {ax, ay + 4}}, ink)
-	open := func() { a.fleetList = true; a.Redraw() }
-	a.addHit(kit.Hit{R: r.Inset(-6), Tap: open})
-	a.addFocus("Printers", r, open)
-	a.region("Printer", r)
-}
-
 // fleetLine is the state of a printer in one line, for the list and the banners.
 func fleetLine(st printer.State) string {
 	switch {
@@ -368,8 +341,9 @@ func (a *App) drawFleet(c *gfx.Canvas) {
 }
 
 // fleetStatusH is the height of the status bar of a deck with many printers: the band at the top
-// of each page, over the frame of the page.
-const fleetStatusH = 22
+// of each page, over the frame of the page. It is as tall as a finger, because a tap on it
+// switches the printer.
+const fleetStatusH = 56
 
 // shortState is the state of a printer in a word or two, for the status bar.
 func shortState(st printer.State) string {
@@ -381,43 +355,94 @@ func shortState(st printer.State) string {
 	case st.Paused:
 		return fmt.Sprintf("Paused %.0f%%", st.Completion)
 	case st.Printing:
-		return fmt.Sprintf("%.0f%%", st.Completion)
+		s := fmt.Sprintf("%.0f%%", st.Completion)
+		if st.HasTimeLeft {
+			s += " · " + shortDuration(st.TimeLeft)
+		}
+		return s
 	case st.Finished == "complete":
 		return "Done"
 	}
 	return "Ready"
 }
 
-// drawFleetStatus draws the status bar at the top of each page, as on a phone: a dot in the colour
-// of each printer, its label and its state. The printer of this screen has its label in full ink
-// and a line in its colour under the bar. A tap on the bar opens the list of the printers, on
-// each page.
+// drawFleetStatus draws the status bar at the top of each page: a tab for each printer, with its
+// label and its state. The tab of the printer of this screen is in the colour of the printer. A
+// tap on another tab shows that printer. A tap on the tab of this screen opens the list of the
+// printers, with Stop all.
 func (a *App) drawFleetStatus(c *gfx.Canvas) {
 	bar := image.Rect(0, 0, W, fleetStatusH)
 	c.Fill(bar, lcd)
 	self := a.Fleet.Self()
 	c.Fill(image.Rect(0, fleetStatusH-3, W, fleetStatusH), self.Color)
-	face := gfx.Face(true, 14)
-	text := image.Rect(0, 0, W, fleetStatusH-3)
-	x := 12
-	for _, card := range a.Fleet.Cards() {
-		label := card.Label + " " + shortState(card.State)
-		w := 9 + 6 + gfx.Width(face, label)
-		if x+w > W-12 {
-			break
-		}
-		cy := text.Dy() / 2
-		c.RoundRect(image.Rect(x, cy-4, x+9, cy+5), 4, card.Color)
-		ink := lcdDim
-		if card.Active {
-			ink = lcdInk
-		}
-		c.Text(image.Rect(x+15, text.Min.Y, x+w+4, text.Max.Y), label, face, ink, gfx.Left)
-		x += w + 18
+	cards := a.Fleet.Cards()
+	if len(cards) == 0 {
+		return
 	}
-	open := func() { a.fleetList = true; a.Redraw() }
-	a.addHit(kit.Hit{R: image.Rect(0, 0, W, fleetStatusH+4), Tap: open})
+	row := image.Rect(6, 5, W-6, fleetStatusH-7)
+	cols := make([]kit.Size, len(cards))
+	for i := range cols {
+		cols[i] = kit.Fr(1)
+	}
+	tabs := kit.Cols(row, 6, cols...)
+	for i, card := range cards {
+		a.drawFleetTab(c, tabs[i], card)
+	}
 	a.region("Status bar", bar)
+}
+
+// drawFleetTab draws the tab of a printer in the status bar, in r.
+func (a *App) drawFleetTab(c *gfx.Canvas, r image.Rectangle, card FleetCard) {
+	pressed := a.isPressed(r)
+	fill, ink, sub := lcdCell, lcdInk, lcdDim
+	if card.Active {
+		fill = card.Color
+		ink = inkOn(fill)
+		sub = ink
+	}
+	if pressed {
+		fill = color.RGBA{fill.R / 4 * 3, fill.G / 4 * 3, fill.B / 4 * 3, 255}
+	}
+	c.RoundRect(r, 8, fill)
+	in := kit.Inset(r, 10, 3, 8, 3)
+	if !card.Active {
+		// The colour of the printer, at the left of the tab.
+		dot := image.Rect(in.Min.X, in.Min.Y+in.Dy()/2-6, in.Min.X+12, in.Min.Y+in.Dy()/2+6)
+		c.RoundRect(dot, 6, card.Color)
+		in.Min.X += 18
+	}
+	lf, sf := gfx.Face(true, 18), gfx.Face(false, 14)
+	state := shortState(card.State)
+	if card.Note != "" {
+		// The note in a word or two, in full ink: "Asks", "Print done", "Error".
+		state, _, _ = strings.Cut(card.Note, " · ")
+		if !card.Active {
+			sub = lcdInk
+		}
+	}
+	half := in.Min.Y + in.Dy()/2 + 1
+	c.Text(image.Rect(in.Min.X, in.Min.Y, in.Max.X, half), gfx.Fit(lf, card.Label, in.Dx()), lf, ink, gfx.Left)
+	c.Text(image.Rect(in.Min.X, half, in.Max.X, in.Max.Y), gfx.Fit(sf, state, in.Dx()), sf, sub, gfx.Left)
+	id := card.ID
+	tap := func() {
+		if card.Active {
+			a.fleetList = true
+		} else {
+			a.Fleet.Switch(id)
+		}
+		a.Redraw()
+	}
+	if a.Record && !card.Active {
+		// A remote screen: the tab opens the remote screen of that printer.
+		c.Link(r, "/?printer="+id)
+	}
+	a.addHit(kit.Hit{R: r.Inset(-3), Tap: tap})
+	name := card.Name
+	if card.Active {
+		name = "Printers"
+	}
+	a.addFocus(name, r, tap)
+	a.region(name, r)
 }
 
 // labelFrom suggests the short label of a printer from its name: the first word, at most 4
