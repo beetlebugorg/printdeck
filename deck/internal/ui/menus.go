@@ -464,6 +464,11 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 			menuItem{"Macros", macrosLine(len(mach.Macros)), dim, func() { a.open(pageMacros) }},
 			menuItem{"Console", "G-code", dim, func() { a.open(pageConsole) }})
 	}
+	if bc, ok := a.Printer.(bambuControls); ok {
+		keys = append(keys,
+			menuItem{"Printer controls", "Speed, lights and fans", dim, func() { a.askPrinterControls(bc) }},
+			menuItem{"Console", "G-code", dim, func() { a.open(pageConsole) }})
+	}
 	if a.Updater != nil {
 		line, warn := updateLine(update, st.Busy())
 		col := dim

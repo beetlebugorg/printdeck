@@ -330,6 +330,43 @@ func (c *Client) Resume() error { return c.send("print", "resume", map[string]an
 // Stop stops the print.
 func (c *Client) Stop() error { return c.send("print", "stop", map[string]any{"param": ""}) }
 
+// Gcode runs G-code lines on the printer (gcode_line). The printer needs Developer Mode for it.
+func (c *Client) Gcode(lines ...string) error {
+	return c.send("print", "gcode_line", map[string]any{"param": strings.Join(lines, "\n") + "\n"})
+}
+
+// The speed levels of print_speed.
+const (
+	SpeedSilent    = 1
+	SpeedStandard  = 2
+	SpeedSport     = 3
+	SpeedLudicrous = 4
+)
+
+// SetSpeed sets the speed level of the print (SpeedSilent to SpeedLudicrous).
+func (c *Client) SetSpeed(level int) error {
+	if level < SpeedSilent || level > SpeedLudicrous {
+		return fmt.Errorf("no speed level %d", level)
+	}
+	return c.send("print", "print_speed", map[string]any{"param": strconv.Itoa(level)})
+}
+
+// The lights of ledctrl.
+const (
+	ChamberLight = "chamber_light"
+	WorkLight    = "work_light"
+)
+
+// SetLight turns the light node on or off.
+func (c *Client) SetLight(node string, on bool) error {
+	mode := "off"
+	if on {
+		mode = "on"
+	}
+	return c.send("system", "ledctrl", map[string]any{"led_node": node, "led_mode": mode,
+		"led_on_time": 500, "led_off_time": 500, "loop_times": 0, "interval_time": 0})
+}
+
 // Start is a print of a 3MF on the card of the printer.
 type Start struct {
 	File  string // the name of the 3MF at the top of the card

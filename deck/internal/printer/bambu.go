@@ -50,6 +50,8 @@ type Bambu struct {
 	nextProject string
 	camera      string // the RTSPS address of the camera
 	cur         bambuPrint
+	homed       string        // the axes that the deck homed, or "xyz" during a print
+	console     []ConsoleLine // the lines of the Console page
 
 	sent   bambuSent // the last file that the deck started, under mu
 	notify func()    // the notify of Run, for the progress of an upload
@@ -142,6 +144,14 @@ func (b *Bambu) update(r bambu.Report, now time.Time) {
 	st.Chamber, st.ChamberTarget = r.ChamberHeat()
 	st.SpeedPct = r.SpeedPct.Int()
 	st.Message = hmsText(r.HMS)
+	st.NoPosition = true
+	if v, ok := b.volume(); ok {
+		st.Axis = [2][3]float64{{0, 0, 0}, v}
+	}
+	if r.Busy() {
+		b.homed = "xyz" // a print homes each axis at its start
+	}
+	st.Homed = b.homed
 
 	if r.Busy() {
 		// A new print: no print before, or another task.
@@ -343,8 +353,6 @@ func (b *Bambu) LayerTimes() []float64                        { return nil }
 func (b *Bambu) SetViewLayer(int)                             {}
 func (b *Bambu) ViewLayer() int                               { return -1 }
 func (b *Bambu) Connect()                                     {}
-func (b *Bambu) Console() []ConsoleLine                       { return nil }
-func (b *Bambu) SendConsole(string)                           {}
 func (b *Bambu) RecordPicture(Record) (image.Image, bool)     { return nil, false }
 func (b *Bambu) Boards() ([]board.Info, bool)                 { return nil, false }
 func (b *Bambu) ProbeBoards()                                 {}
@@ -357,20 +365,9 @@ func (b *Bambu) RunAction(string, ...string) error            { return ErrNotSup
 func (b *Bambu) PrintPATower(int, int, string) error          { return ErrNotSupported }
 func (b *Bambu) PrintCalibTowers(int, int, string) error      { return ErrNotSupported }
 func (b *Bambu) SetPressureAdvance(float64) error             { return ErrNotSupported }
-func (b *Bambu) Heat(int, int)                                {}
-func (b *Bambu) SetToolTemp(int) error                        { return ErrNotSupported }
-func (b *Bambu) SetBedTemp(int) error                         { return ErrNotSupported }
-func (b *Bambu) Extrude(float64, int) error                   { return ErrNotSupported }
-func (b *Bambu) Fan(int) error                                { return ErrNotSupported }
-func (b *Bambu) SpeedFactor(int) error                        { return ErrNotSupported }
 func (b *Bambu) FlowFactor(int) error                         { return ErrNotSupported }
 func (b *Bambu) BabyStep(float64) error                       { return ErrNotSupported }
 func (b *Bambu) SaveZOffset() (bool, error)                   { return false, ErrNotSupported }
-func (b *Bambu) Gcode(...string) error                        { return ErrNotTested }
-func (b *Bambu) Home(...string) error                         { return ErrNotTested }
-func (b *Bambu) Jog(float64, float64, float64, int) error     { return ErrNotTested }
-func (b *Bambu) MotorsOff() error                             { return ErrNotTested }
-func (b *Bambu) EmergencyStop() error                         { return ErrNotTested }
 
 // The calibrations of the deck run on a Klipper printer only.
 

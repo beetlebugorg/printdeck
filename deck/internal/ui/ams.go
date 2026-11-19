@@ -286,3 +286,66 @@ func (a *App) trayChoices(tm trayMatcher, path, name string, start func()) *conf
 	choices := []menuItem{{"Print", "The bed is clear · " + strings.Join(parts, ", "), dim, start}}
 	return &confirmBox{question: "Print " + gfx.Fit(gfx.Face(true, 26), name, 340) + "?", choices: choices, camera: true}
 }
+
+// bambuControls are the controls of a Bambu Lab printer that a Klipper printer does not have
+// (printer.Bambu).
+type bambuControls interface {
+	SpeedLevels() (names []string, now int)
+	SetSpeedLevel(level int) error
+	Lights() (chamber, work, hasChamber, hasWork bool)
+	SetLight(work, on bool) error
+	Fans() (part, aux, chamber float64)
+	SetFan(fan, percent int) error
+}
+
+// askPrinterControls asks which control of the printer to change: the speed level, a light, or a
+// fan.
+func (a *App) askPrinterControls(bc bambuControls) {
+	names, now := bc.SpeedLevels()
+	speed := "Not known"
+	if now >= 1 && now <= len(names) {
+		speed = names[now-1]
+	}
+	chamber, work, hasChamber, hasWork := bc.Lights()
+	part, aux, cham := bc.Fans()
+	run := func(f func() error) {
+		go func() {
+			err := f()
+			a.post(func() {
+				if err != nil {
+					a.Toast("The printer did not get it: " + err.Error())
+				}
+			})
+		}()
+	}
+	choices := []menuItem{{"Speed", speed, dim, func() {
+		var levels []menuItem
+		for i, n := range names {
+			level := i + 1
+			sub := ""
+			if level == now {
+				sub = "Now"
+			}
+			levels = append(levels, menuItem{n, sub, dim, func() { run(func() error { return bc.SetSpeedLevel(level) }) }})
+		}
+		a.confirm = &confirmBox{question: "Speed of the print", choices: levels}
+	}}}
+	if hasChamber {
+		choices = append(choices, menuItem{"Chamber light", onOff(chamber), dim, func() {
+			run(func() error { return bc.SetLight(false, !chamber) })
+		}})
+	}
+	if hasWork {
+		choices = append(choices, menuItem{"Work light", onOff(work), dim, func() {
+			run(func() error { return bc.SetLight(true, !work) })
+		}})
+	}
+	fan := func(title string, id int, v float64) menuItem {
+		return menuItem{title, fmt.Sprintf("%.0f%%", v), dim, func() {
+			a.editNumber(title, int(v+0.5), 100, " %", func(p int) { run(func() error { return bc.SetFan(id, p) }) })
+		}}
+	}
+	choices = append(choices, fan("Part fan", printer.FanPart, part), fan("Aux fan", printer.FanAux, aux),
+		fan("Chamber fan", printer.FanChamber, cham))
+	a.confirm = &confirmBox{question: "Printer controls", choices: choices}
+}

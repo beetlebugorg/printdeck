@@ -28,6 +28,8 @@ type Report struct {
 	BedTarget    Num    `json:"bed_target_temper"`
 	Chamber      Num    `json:"chamber_temper"`
 	Fan          Num    `json:"cooling_fan_speed"` // 0 to 15
+	AuxFan       Num    `json:"big_fan1_speed"`    // 0 to 15
+	ChamberFan   Num    `json:"big_fan2_speed"`    // 0 to 15
 	SpeedLevel   Num    `json:"spd_lvl"`           // 1 silent, 2 standard, 3 sport, 4 ludicrous
 	SpeedPct     Num    `json:"spd_mag"`
 	NozzleDiam   string `json:"nozzle_diameter"`
@@ -233,6 +235,26 @@ func (r Report) FanPercent() float64 {
 // TimeLeft returns the time left of the print.
 func (r Report) TimeLeft() time.Duration {
 	return time.Duration(r.Remaining) * time.Minute
+}
+
+// Light reports that the light node is on.
+func (r Report) Light(node string) bool {
+	for _, l := range r.Lights {
+		if l.Node == node {
+			return l.Mode == "on"
+		}
+	}
+	return false
+}
+
+// HasLight reports that the printer has the light node.
+func (r Report) HasLight(node string) bool {
+	for _, l := range r.Lights {
+		if l.Node == node {
+			return true
+		}
+	}
+	return false
 }
 
 // Busy reports that a print runs or is paused.

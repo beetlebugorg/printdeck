@@ -239,7 +239,12 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		r := axes[i]
 		homedAx := strings.Contains(st.Homed, strings.ToLower(ax.n))
 		led(c, r.Min.X+8, r.Min.Y+r.Dy()/2, homedAx)
-		c.Text(kit.Inset(r, 22, 0, 0, 0), ax.n+" "+fmt.Sprintf(ax.f, ax.v), gfx.Face(true, 22), lcdInk, gfx.Left)
+		value := fmt.Sprintf(ax.f, ax.v)
+		if st.NoPosition {
+			value = "--" // the printer does not report the position
+		}
+		c.Text(kit.Inset(r, 22, 0, 0, 0), ax.n+" "+value, gfx.Face(true, 22), lcdInk, gfx.Left)
+		known := st.Axis[1][i] > 0 // the deck knows the travel of the axis
 		// A tap on the axis opens a keypad for a new position of that axis.
 		if !moving {
 			continue
@@ -251,6 +256,8 @@ func (a *App) drawMove(c *gfx.Canvas) {
 				a.Toast("Not during a pause")
 			case !homedAx:
 				a.Toast("Home " + ax.n + " first")
+			case !known:
+				a.Toast("The deck does not know the size of this printer")
 			default:
 				a.editPosition("Move "+ax.n+" to", ax.v, st.Axis[0][i], st.Axis[1][i], func(v float64) error {
 					return pr.Gcode(MoveGcode(i, v)...)
@@ -316,6 +323,10 @@ func (a *App) drawMove(c *gfx.Canvas) {
 	park := func(r image.Rectangle, name string, g func() []string) {
 		if !homed {
 			btn(r, name, raised, text, func() error { return fmt.Errorf("Home X and Y first") })
+			return
+		}
+		if st.Axis[1][0] <= 0 || st.Axis[1][1] <= 0 {
+			btn(r, name, raised, text, func() error { return fmt.Errorf("The deck does not know the size of this printer") })
 			return
 		}
 		btn(r, name, raised, text, func() error { return pr.Gcode(g()...) })

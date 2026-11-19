@@ -142,8 +142,7 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 		a.region("Chamber", cells[2])
 	}
 	a.region("Fan", fanCell)
-	// A printer with its own controls sets its temperatures on its own screen.
-	if !st.Reachable || a.ownControls() {
+	if !st.Reachable {
 		return
 	}
 	pr := a.Printer
@@ -155,7 +154,23 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 	}
 	a.addHit(kit.Hit{R: cells[0], Tap: nozzle})
 	a.addHit(kit.Hit{R: cells[1], Tap: bed})
+	if cs, ok := pr.(chamberSetter); ok && chamber {
+		tap := func() {
+			a.editTemp("Chamber temperature", int(st.ChamberTarget), 65, chamberPresets, cs.SetChamberTemp)
+		}
+		if a.bar {
+			tap = func() { a.Toast(waitText) }
+		}
+		a.addHit(kit.Hit{R: cells[2], Tap: tap})
+	}
 }
+
+// chamberSetter is a printer with a chamber heat (printer.Bambu).
+type chamberSetter interface{ SetChamberTemp(t int) error }
+
+// chamberPresets are the temperatures of the chamber keypad: off, and a warm chamber for PETG, ABS
+// and ASA, and PC.
+var chamberPresets = []keypadPreset{{"Off", 0}, {"PETG", 35}, {"ABS", 50}, {"PC", 60}}
 
 // loader is a printer that tells what it has loaded: the roll of a Klipper printer, or the trays of
 // an AMS (printer.Klippy, printer.Bambu).
