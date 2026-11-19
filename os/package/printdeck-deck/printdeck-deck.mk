@@ -16,13 +16,13 @@ PRINTDECK_DECK_DEPENDENCIES = host-go
 # With the library of zslice in the cache (os/build.sh, PRINTDECK_ZSLICE_LIB), the deck links
 # the print view of zslice with cgo, for the 3D view of a print with the GPU. Else it is a static
 # Go program, and draws its own picture. The cgo build also has the JPEG code of the GPU
-# (internal/gpujpeg, tag vulkan).
+# (internal/gpujpeg, tag vulkan), and libjpeg-turbo for a comparison (internal/turbojpeg).
 PRINTDECK_DECK_ZSLICE = /cache/zslice-lib
 ifneq ($(wildcard $(PRINTDECK_DECK_ZSLICE)/lib/libzslice.a),)
 PRINTDECK_DECK_CGO = CGO_ENABLED=1 CC="$(TARGET_CC)" \
 	CGO_CFLAGS="-I$(PRINTDECK_DECK_ZSLICE)/include" CGO_LDFLAGS="-L$(PRINTDECK_DECK_ZSLICE)/lib"
-PRINTDECK_DECK_TAGS = -tags zslice,vulkan
-PRINTDECK_DECK_DEPENDENCIES += vulkan-headers vulkan-loader
+PRINTDECK_DECK_TAGS = -tags zslice,vulkan,turbojpeg
+PRINTDECK_DECK_DEPENDENCIES += vulkan-headers vulkan-loader jpeg-turbo
 else
 PRINTDECK_DECK_CGO = CGO_ENABLED=0
 PRINTDECK_DECK_TAGS =
