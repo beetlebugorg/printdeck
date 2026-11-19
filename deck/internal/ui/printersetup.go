@@ -6,6 +6,7 @@ import (
 	"printdeck/kit"
 	"sort"
 	"strings"
+	"unicode"
 
 	"golang.org/x/image/font"
 
@@ -410,16 +411,27 @@ func (a *App) drawKlipperError(c *gfx.Canvas, st printer.State) {
 	}
 }
 
+// nbsp is the no-break space: wrapText does not break a line at it.
+const nbsp = '\u00a0'
+
+// together joins the words of s with no-break spaces, so that a value and its unit ("4 h 42 min")
+// stay on one line.
+func together(s string) string {
+	return strings.ReplaceAll(s, " ", string(nbsp))
+}
+
 // wrapText breaks a text into lines that fit a width. An empty line starts a new paragraph, with
-// an empty line before it. The other line breaks of the text become spaces.
+// an empty line before it. The other line breaks of the text become spaces. A no-break space
+// keeps its words on one line.
 func wrapText(face font.Face, s string, width int) []string {
+	breaks := func(r rune) bool { return r != nbsp && unicode.IsSpace(r) }
 	var out []string
 	for i, para := range strings.Split(strings.ReplaceAll(s, "\r", ""), "\n\n") {
 		if i > 0 {
 			out = append(out, "")
 		}
 		line := ""
-		for _, w := range strings.Fields(para) {
+		for _, w := range strings.FieldsFunc(para, breaks) {
 			if line != "" && gfx.Width(face, line+" "+w) > width {
 				out = append(out, line)
 				line = ""

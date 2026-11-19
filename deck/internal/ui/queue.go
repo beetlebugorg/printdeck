@@ -95,9 +95,9 @@ func (a *App) queueSummary() string {
 	if len(list) == 0 {
 		return "Empty"
 	}
-	s := fmt.Sprintf("%d %s", len(list), plural(len(list), "file", "files"))
+	s := together(fmt.Sprintf("%d %s", len(list), plural(len(list), "file", "files")))
 	if sec := a.Queue.Seconds(); sec > 0 {
-		s += " · " + queueTime(sec)
+		s += " · " + together(queueTime(sec))
 	}
 	return s
 }

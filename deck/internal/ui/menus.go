@@ -434,7 +434,7 @@ func (a *App) drawMachine(c *gfx.Canvas, st printer.State) {
 	}
 	printsLine := "No prints yet"
 	if prints > 0 {
-		printsLine = fmt.Sprintf("%d %s · %s", prints, plural(prints, "print", "prints"), a.weight(filament))
+		printsLine = fmt.Sprintf("%d %s · %s", prints, plural(prints, "print", "prints"), together(a.weight(filament)))
 	}
 	maint, maintCol := maintenanceLine(mach, st)
 	keys := []menuItem{
