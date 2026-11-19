@@ -78,8 +78,10 @@ type State struct {
 	ToolPower, BedPower float64
 
 	// The position of the head (X, Y and Z with HasZ), and the homed axes, for example "xyz".
-	X, Y  float64
-	Homed string
+	// NoPosition is true for a printer that does not report the position (a Bambu Lab printer).
+	X, Y       float64
+	Homed      string
+	NoPosition bool
 	// Axis is the travel of X, Y and Z: Axis[0] the minimum, Axis[1] the maximum.
 	Axis [2][3]float64
 	// The time since the start of the print, and the filament used in mm.
