@@ -633,6 +633,37 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 	}
 	var view, info image.Rectangle
 	title, line := cameraState(st)
+	// The keys of the wide page. With a PTZ key, Camera settings has a shorter label.
+	labels := []string{"Turn", "View", "Calibrate"}
+	if calibrated {
+		labels = append(labels, "Clear")
+	}
+	if st.Focus != nil {
+		labels = append(labels, "Focus")
+	}
+	if hasPTZ {
+		labels = append(labels, "PTZ", "Settings")
+	} else {
+		labels = append(labels, "Camera settings")
+	}
+	var keyRows [][]image.Rectangle
+	if f.wide && !a.camFocus && !a.camPTZ {
+		// Keys of equal width, with one label size in a row. When the labels do not fit one row
+		// at the size of a key label, the keys are two rows, as the PTZ keys.
+		one := equalCols(keys, 8, len(labels))
+		if rowLabel(one, labels).px >= gfx.FaceSize(20)*5/6 {
+			keyRows = [][]image.Rectangle{one}
+		} else {
+			keys.Min.Y -= 64
+			body.Max.Y -= 64
+			r := kit.Rows(keys, 8, kit.Fr(1), kit.Fr(1))
+			n := (len(labels) + 1) / 2
+			keyRows = [][]image.Rectangle{
+				equalCols(r[0], 8, n),
+				equalCols(r[1], 8, len(labels)-n),
+			}
+		}
+	}
 	if f.wide {
 		r := kit.Rows(body, 8, kit.Fr(1), kit.Px(52))
 		view, info = r[0], r[1]
@@ -648,43 +679,41 @@ func (a *App) drawCamera(c *gfx.Canvas) {
 			a.drawPTZKeys(c, keys, id, ptz)
 			first, second = title+" · "+a.ptzLine(id, ptz), a.ptzState(id, false)
 		default:
-			// Each key is as wide as its label needs, and the keys share the rest of the row. With
-			// a PTZ key, Camera settings has a shorter label.
-			labels := []string{"Turn", "View", "Calibrate"}
-			if calibrated {
-				labels = append(labels, "Clear")
+			// The keys in the order of labels, each row with its label size.
+			var k []image.Rectangle
+			pxs := []rowSize{}
+			at := 0
+			for _, row := range keyRows {
+				px := rowLabel(row, labels[at:at+len(row)])
+				for range row {
+					pxs = append(pxs, px)
+				}
+				k = append(k, row...)
+				at += len(row)
 			}
-			if st.Focus != nil {
-				labels = append(labels, "Focus")
-			}
-			if hasPTZ {
-				labels = append(labels, "PTZ", "Settings")
-			} else {
-				labels = append(labels, "Camera settings")
-			}
-			k := labelCols(keys, 8, labels...)
 			fill, ink := keyOff, text
 			if in.Rotate != 0 {
 				fill, ink = keyOn, keyOnInk
 			}
-			a.button(c, k[0], "Turn", fill, ink, a.openTurn)
-			a.button(c, k[1], "View", raised, text, a.openView)
-			a.button(c, k[2], "Calibrate", raised, text, a.askCalibrate)
+			a.buttonAt(c, k[0], "Turn", fill, ink, pxs[0], a.openTurn)
+			a.buttonAt(c, k[1], "View", raised, text, pxs[1], a.openView)
+			a.buttonAt(c, k[2], "Calibrate", raised, text, pxs[2], a.askCalibrate)
 			if calibrated {
-				a.button(c, k[3], "Clear", raised, text, a.askClearCalibration)
+				a.buttonAt(c, k[3], "Clear", raised, text, pxs[3], a.askClearCalibration)
 			}
 			n := len(k) - 1
 			if hasPTZ {
 				n--
-				a.button(c, k[n], "PTZ", raised, text, openPTZ)
+				a.buttonAt(c, k[n], "PTZ", raised, text, pxs[n], openPTZ)
 			}
 			if st.Focus != nil {
-				a.button(c, k[n-1], "Focus", raised, text, openFocus)
+				a.buttonAt(c, k[n-1], "Focus", raised, text, pxs[n-1], openFocus)
 			}
+			last := len(k) - 1
 			if hasPTZ {
-				a.namedButton(c, k[len(k)-1], "Settings", "Camera settings", raised, text, edit)
+				a.namedButtonAt(c, k[last], "Settings", "Camera settings", raised, text, pxs[last], edit)
 			} else {
-				a.button(c, k[len(k)-1], "Camera settings", raised, text, edit)
+				a.buttonAt(c, k[last], "Camera settings", raised, text, pxs[last], edit)
 			}
 		}
 		window(c, info)

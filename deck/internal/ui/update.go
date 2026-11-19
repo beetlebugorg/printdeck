@@ -168,19 +168,44 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 
 	if u.Busy == "" {
 		name := stagedName(u)
+		installLabel := ""
 		switch {
 		case u.HasStaged && !st.Busy():
-			a.button(c, install, "Restart now", orange, onAcc, func() {
+			installLabel = "Restart now"
+		case u.HasStaged && u.System == "" && u.CanSwitch:
+			installLabel = "Restart the screen now"
+		case u.Newer && !u.HasStaged:
+			installLabel = "Install"
+		}
+		beta := "Beta updates: off"
+		if u.Beta {
+			beta = "Beta updates: on"
+		}
+		// One label size for the keys of a row: Check now and Beta updates, and on the wide page
+		// also the Install key.
+		k := kit.Cols(keys, 12, kit.Fr(1), kit.Fr(1))
+		row, labels := k, []string{"Check now", beta}
+		if f.wide && installLabel != "" {
+			row, labels = append(row, install), append(labels, installLabel)
+		}
+		px := rowLabel(row, labels)
+		installPx := rowSize{}
+		if f.wide {
+			installPx = px
+		}
+		switch installLabel {
+		case "Restart now":
+			a.buttonAt(c, install, installLabel, orange, onAcc, installPx, func() {
 				a.confirm = &confirmBox{question: "Restart into " + name + " now?", yes: "Restart", onYes: up.RestartNow}
 			})
-		case u.HasStaged && u.System == "" && u.CanSwitch:
-			a.button(c, install, "Restart the screen now", orange, onAcc, func() {
+		case "Restart the screen now":
+			a.buttonAt(c, install, installLabel, orange, onAcc, installPx, func() {
 				a.confirm = &confirmBox{question: "Restart the screen? It is dark for a few seconds. The print keeps running.",
 					yes: "Restart", onYes: up.SwitchDeck}
 			})
-		case u.Newer && !u.HasStaged:
+		case "Install":
 			// The version is in the text of the page: a key label is in capitals ("V0.4.0").
-			a.namedButton(c, install, "Install", "Install "+u.Latest, orange, onAcc, func() {
+			a.namedButtonAt(c, install, "Install", "Install "+u.Latest, orange, onAcc, installPx, func() {
 				q := "Install " + u.Latest + "? The Printdeck restarts."
 				if st.Busy() {
 					q = "Install " + u.Latest + "? The print keeps running. The deck restarts after the print."
@@ -188,13 +213,8 @@ func (a *App) drawUpdate(c *gfx.Canvas, st printer.State) {
 				a.confirm = &confirmBox{question: q, yes: "Install", onYes: up.Install}
 			})
 		}
-		k := kit.Cols(keys, 12, kit.Fr(1), kit.Fr(1))
-		a.button(c, k[0], "Check now", raised, text, up.Check)
-		beta := "Beta updates: off"
-		if u.Beta {
-			beta = "Beta updates: on"
-		}
-		a.button(c, k[1], beta, raised, text, func() { up.SetChannel(!u.Beta) })
+		a.buttonAt(c, k[0], "Check now", raised, text, px, up.Check)
+		a.buttonAt(c, k[1], beta, raised, text, px, func() { up.SetChannel(!u.Beta) })
 	}
 }
 

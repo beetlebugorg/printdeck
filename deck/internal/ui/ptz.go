@@ -190,8 +190,13 @@ func (a *App) measurePTZ(id string) {
 // namedButton draws a key with the label on the screen and another name for the knob menu, the
 // tests and the manual.
 func (a *App) namedButton(c *gfx.Canvas, r image.Rectangle, label, name string, fill, fg color.RGBA, tap func()) {
+	a.namedButtonAt(c, r, label, name, fill, fg, rowSize{}, tap)
+}
+
+// namedButtonAt is namedButton with the label size of a row, as keyAt.
+func (a *App) namedButtonAt(c *gfx.Canvas, r image.Rectangle, label, name string, fill, fg color.RGBA, size rowSize, tap func()) {
 	a.drawAck(c, r)
-	key(c, r, label, fill, fg, a.isPressed(r))
+	keyAt(c, r, label, fill, fg, a.isPressed(r), 0, size)
 	acked := func() {
 		a.ackR, a.ackAt = r, a.Now()
 		tap()
