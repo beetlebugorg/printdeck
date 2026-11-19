@@ -15,6 +15,7 @@
 package signing
 
 import (
+	"archive/zip"
 	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
@@ -26,6 +27,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -173,8 +175,13 @@ func Check(f io.ReaderAt, size int64, trusted []ed25519.PublicKey) (Verdict, err
 	return v, nil
 }
 
-// CheckFile checks the signature of the file at path.
+// CheckFile checks the signature of the file at path. A sliced 3MF (a zip: the upload of a slicer
+// has no extension yet) has its G-code in Metadata/plate_<n>.gcode: each plate needs a good
+// signature (Check3MF).
 func CheckFile(path string, trusted []ed25519.PublicKey) (Verdict, error) {
+	if isZip(path) {
+		return Check3MF(path, trusted)
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return Verdict{}, err
@@ -185,6 +192,83 @@ func CheckFile(path string, trusted []ed25519.PublicKey) (Verdict, error) {
 		return Verdict{}, err
 	}
 	return Check(f, fi.Size(), trusted)
+}
+
+// isZip reports that the file at path starts as a zip file ("PK\x03\x04"). A G-code file starts
+// with text.
+func isZip(path string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	var b [4]byte
+	n, _ := io.ReadFull(f, b[:])
+	return n == 4 && string(b[:]) == "PK\x03\x04"
+}
+
+// max3MFPlate is the largest G-code of a plate that Check3MF reads.
+const max3MFPlate = 2 << 30
+
+// Check3MF checks the G-code of each plate of the sliced 3MF at path (Metadata/plate_<n>.gcode),
+// with the signature line at its end as in a G-code file. The verdict is the verdict of the first
+// plate that is not OK, or OK when each plate is OK. A 3MF with no plate G-code is Unsigned.
+func Check3MF(path string, trusted []ed25519.PublicKey) (Verdict, error) {
+	zr, err := zip.OpenReader(path)
+	if err != nil {
+		return Verdict{}, err
+	}
+	defer zr.Close()
+	var last Verdict
+	plates := 0
+	for _, f := range zr.File {
+		if !platePath.MatchString(f.Name) {
+			continue
+		}
+		plates++
+		if f.UncompressedSize64 > max3MFPlate {
+			return Verdict{Result: Bad}, nil
+		}
+		v, err := checkEntry(f, trusted)
+		if err != nil {
+			return Verdict{}, err
+		}
+		if v.Result != OK {
+			return v, nil
+		}
+		last = v
+	}
+	if plates == 0 {
+		return Verdict{Result: Unsigned}, nil
+	}
+	return last, nil
+}
+
+// platePath is the G-code of a plate in a sliced 3MF.
+var platePath = regexp.MustCompile(`^Metadata/plate_[0-9]+\.gcode$`)
+
+// checkEntry checks the signature of a zip entry. Check reads the end of the file and then all of
+// it, so the entry goes to a temporary file first.
+func checkEntry(f *zip.File, trusted []ed25519.PublicKey) (Verdict, error) {
+	rc, err := f.Open()
+	if err != nil {
+		return Verdict{}, err
+	}
+	defer rc.Close()
+	tmp, err := os.CreateTemp("", "printdeck-plate-*.gcode")
+	if err != nil {
+		return Verdict{}, err
+	}
+	defer os.Remove(tmp.Name())
+	defer tmp.Close()
+	n, err := io.Copy(tmp, io.LimitReader(rc, max3MFPlate+1))
+	if err != nil {
+		return Verdict{}, err
+	}
+	if n > max3MFPlate {
+		return Verdict{Result: Bad}, nil
+	}
+	return Check(tmp, n, trusted)
 }
 
 // Key is a trusted public key.

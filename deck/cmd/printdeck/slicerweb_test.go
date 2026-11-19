@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"printdeck/internal/printer"
+	"printdeck/internal/ui"
 	"strings"
 	"testing"
 
@@ -87,5 +89,46 @@ func TestSlicerPageNotInImage(t *testing.T) {
 	r, _ := http.Get(ts.URL + "/slicer/")
 	if r.StatusCode != http.StatusNotFound {
 		t.Errorf("%d", r.StatusCode)
+	}
+}
+
+// /slicer/printer.json gives the file format and the model of each printer, so a slicer sends a
+// sliced 3MF to a Bambu printer and G-code to a Klipper printer.
+func TestPrinterFileFormat(t *testing.T) {
+	defer func(l func() []ui.Identity, f func(string) (string, string)) { deckPrinterList, printerFormat = l, f }(deckPrinterList, printerFormat)
+	deckPrinterList = func() []ui.Identity {
+		return []ui.Identity{{ID: "first", Name: "TAZ Workhorse", Label: "TAZ"}, {ID: "x2d", Name: "X2D", Label: "X2D"}}
+	}
+	printerFormat = func(id string) (string, string) {
+		if id == "x2d" {
+			return "gcode.3mf", "Bambu Lab X2D"
+		}
+		return "gcode", ""
+	}
+	b, _ := json.Marshal(slicerPrinterFile())
+	var got struct {
+		Files    string `json:"files"`
+		Printers []struct {
+			ID, URL, Files, Model string
+		} `json:"printers"`
+	}
+	json.Unmarshal(b, &got)
+	if got.Files != "gcode" || len(got.Printers) != 2 {
+		t.Fatalf("%s", b)
+	}
+	if p := got.Printers[1]; p.URL != "/printers/x2d" || p.Files != "gcode.3mf" || p.Model != "Bambu Lab X2D" {
+		t.Errorf("%+v", p)
+	}
+	if p := got.Printers[0]; p.Files != "gcode" || p.Model != "" {
+		t.Errorf("%+v", p)
+	}
+}
+
+func TestBackendFormat(t *testing.T) {
+	if f, _ := backendFormat(printer.NewBambu("127.0.0.1", "S", "C", "", "X2D", nil)); f != "gcode.3mf" {
+		t.Errorf("bambu %q", f)
+	}
+	if f, _ := backendFormat(printer.NewChiTu("127.0.0.1", "Phenom", nil)); f != "ctb" {
+		t.Errorf("chitu %q", f)
 	}
 }
