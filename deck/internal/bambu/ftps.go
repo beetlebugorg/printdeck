@@ -175,3 +175,56 @@ func (c *Client) List(ctx context.Context, dir string) ([]string, error) {
 	}
 	return out, nil
 }
+
+// Upload writes r to the file name at the top of the card of the printer. progress gets the bytes
+// sent so far, or is nil.
+func (c *Client) Upload(ctx context.Context, name string, r io.Reader, progress func(n int64)) error {
+	f, err := c.dialFTP(ctx)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	dc, err := f.data(ctx)
+	if err != nil {
+		return err
+	}
+	defer dc.Close()
+	id, err := f.tp.Cmd("STOR /%s", name)
+	if err != nil {
+		return err
+	}
+	f.tp.StartResponse(id)
+	code, msg, err := f.tp.ReadResponse(1)
+	f.tp.EndResponse(id)
+	if err != nil {
+		return fmt.Errorf("ftps: STOR %s: %d %s", name, code, msg)
+	}
+	dc.SetDeadline(time.Now().Add(30 * time.Minute))
+	w := io.Writer(dc)
+	if progress != nil {
+		w = &countWriter{w: dc, f: progress}
+	}
+	if _, err := io.Copy(w, r); err != nil {
+		return err
+	}
+	if err := dc.Close(); err != nil {
+		return err
+	}
+	f.c.SetDeadline(time.Now().Add(2 * time.Minute))
+	_, _, err = f.tp.ReadResponse(226)
+	return err
+}
+
+// countWriter reports the bytes written to f.
+type countWriter struct {
+	w io.Writer
+	n int64
+	f func(int64)
+}
+
+func (c *countWriter) Write(p []byte) (int, error) {
+	n, err := c.w.Write(p)
+	c.n += int64(n)
+	c.f(c.n)
+	return n, err
+}

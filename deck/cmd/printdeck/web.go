@@ -131,6 +131,9 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 	if c, ok := pr.(*printer.ChiTu); ok {
 		return newResinAPI(cfg, c, app, mux)
 	}
+	if b, ok := pr.(*printer.Bambu); ok {
+		return newBambuAPI(cfg, b, app, mux)
+	}
 	k, ok := pr.(*printer.Klippy)
 	if !ok {
 		return nil
@@ -173,6 +176,46 @@ func newAPI(cfg config.Config, pr printerBackend, app *ui.App, mux *http.ServeMu
 	api.Estimate = k.EstimateFile
 	api.Limits = k.Limits
 	// The phones of the Printdeck app for push messages; a new phone gets a test message.
+	api.Phones = phonesIn(deckDir(cfg))
+	api.OnPaired = func(ph notify.Phone) {
+		go func() {
+			m := notify.Message{Title: "Printdeck", Body: "This phone gets the messages of your prints.", Tags: "printer"}
+			if err := notify.SendPhone(context.Background(), ph, m, time.Now()); err != nil {
+				log.Printf("notify: phone %s: the test message: %v", ph.ID, err)
+			}
+		}()
+	}
+	api.Register(mux)
+	return api
+}
+
+// newBambuAPI registers the API for slicers and apps on the deck of a Bambu Lab printer: the upload
+// of sliced 3MF files to the store of the deck, the start of a print with the question of the deck,
+// the status, the controls, the camera and the push messages.
+func newBambuAPI(cfg config.Config, b *printer.Bambu, app *ui.App, mux *http.ServeMux) *octoapi.Server {
+	store, ok := b.Store.(*gcodestore.Store)
+	if !ok {
+		store = &gcodestore.Store{Dir: cfg.GcodeDir, ThreeMF: true}
+	}
+	api := octoapi.New(b, store, cfg.OctoPrintKey, filepath.Join(cfg.StateDir, "apikeys.json"))
+	api.Version, api.Ask = osVersion(), app.Ask
+	api.Spools = b.Spools
+	api.Signing, api.Rejected = app.Signing, app.ShowRejected
+	api.Queue = app.Queue
+	api.PrinterID = func() string {
+		if pl, ok := app.Cloud.(*projectLink); ok {
+			return pl.printerID()
+		}
+		return ""
+	}
+	api.Frame = cameraFrame(app)
+	if cam, ok := app.Camera.(octoapi.Camera); ok {
+		api.Camera = cam
+	}
+	api.History = b.History
+	api.StartPrint = app.ConfirmFilePrint
+	api.Enqueue = func(path string) error { return app.Enqueue(path, "slicer") }
+	api.Status = func() any { return app.StatusScreen() }
 	api.Phones = phonesIn(deckDir(cfg))
 	api.OnPaired = func(ph notify.Phone) {
 		go func() {

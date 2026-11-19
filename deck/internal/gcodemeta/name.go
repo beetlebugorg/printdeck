@@ -36,7 +36,7 @@ var notMachine = map[string]bool{
 
 // CleanName makes a name for the screens from a G-code file name:
 //
-//   - It removes the folder and the extension .gcode, .gco or .g.
+//   - It removes the folder and the extension .gcode, .gco or .g, and .3mf or .gcode.3mf.
 //   - It removes the machine prefix of Cura ("TAZWH_hex_planter" is "hex_planter").
 //   - It removes a version or a copy number at the end ("_v3", "-v2", " (1)").
 //   - It changes "_" and "-" between words to spaces. A "-" between two digits stays.
@@ -49,9 +49,12 @@ func CleanName(file string) string {
 		return file
 	}
 	stem := base
-	switch strings.ToLower(path.Ext(base)) {
+	if strings.EqualFold(path.Ext(stem), ".3mf") {
+		stem = strings.TrimSuffix(stem, path.Ext(stem)) // a sliced 3MF: "cube.gcode.3mf"
+	}
+	switch strings.ToLower(path.Ext(stem)) {
 	case ".gcode", ".gco", ".g":
-		stem = strings.TrimSuffix(base, path.Ext(base))
+		stem = strings.TrimSuffix(stem, path.Ext(stem))
 	}
 	s := stem
 	if p := machinePrefix.FindStringSubmatch(s); p != nil && !notMachine[p[1]] && strings.ContainsFunc(p[1], unicode.IsLetter) &&

@@ -330,6 +330,56 @@ func (c *Client) Resume() error { return c.send("print", "resume", map[string]an
 // Stop stops the print.
 func (c *Client) Stop() error { return c.send("print", "stop", map[string]any{"param": ""}) }
 
+// Start is a print of a 3MF on the card of the printer.
+type Start struct {
+	File  string // the name of the 3MF at the top of the card
+	Name  string // the name of the print for the screen of the printer
+	Plate string // the G-code of the plate in the 3MF (Plate.GcodePath)
+	// Trays is the tray (Unit*4+Index) of each filament of the slicer, by filament number less 1,
+	// or -1 for a filament that the plate does not use. An empty Trays prints from the external
+	// spool.
+	Trays     []int
+	Timelapse bool
+	// The checks of the printer before the print.
+	BedLevel, FlowCali, VibrationCali, LayerInspect bool
+}
+
+// StartPrint starts the print s. The printer needs the 3MF on its card first (Upload). The
+// fields are those of Bambu Studio for a print over LAN; ams_mapping2 is the form of the H2D and
+// the X2D, which have more than one nozzle.
+func (c *Client) StartPrint(s Start) error {
+	mapping := make([]int, len(s.Trays))
+	mapping2 := make([]map[string]int, len(s.Trays))
+	for i, t := range s.Trays {
+		mapping[i] = t
+		if t < 0 {
+			mapping2[i] = map[string]int{"ams_id": 255, "slot_id": 255}
+		} else {
+			mapping2[i] = map[string]int{"ams_id": t / 4, "slot_id": t % 4}
+		}
+	}
+	return c.send("print", "project_file", map[string]any{
+		"param":          s.Plate,
+		"project_id":     "0",
+		"profile_id":     "0",
+		"task_id":        "0",
+		"subtask_id":     "0",
+		"subtask_name":   s.Name,
+		"file":           s.File,
+		"url":            "ftp:///" + s.File,
+		"md5":            "",
+		"bed_type":       "auto",
+		"timelapse":      s.Timelapse,
+		"bed_levelling":  s.BedLevel,
+		"flow_cali":      s.FlowCali,
+		"vibration_cali": s.VibrationCali,
+		"layer_inspect":  s.LayerInspect,
+		"use_ams":        len(s.Trays) > 0,
+		"ams_mapping":    mapping,
+		"ams_mapping2":   mapping2,
+	})
+}
+
 // CameraURL returns the RTSPS address of the camera: the address in the report, or the usual
 // address of an X1, an H2D or an X2D.
 func (c *Client) CameraURL(r Report) string {

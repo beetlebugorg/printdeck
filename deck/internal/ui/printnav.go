@@ -435,6 +435,11 @@ func (a *App) ConfirmFilePrint(path string) {
 		box := a.filamentChoices(path, name, start)
 		if box == nil {
 			box = a.sentFileBox(path, name, start)
+		} else if _, ok := a.Printer.(trayMatcher); ok && len(box.choices) > 0 && a.Queue != nil {
+			// The question of a printer with an AMS: a file from a slicer can also wait in the queue.
+			box.choices = append(box.choices, menuItem{"Add it to the queue", "Print it later", dim, func() {
+				a.Queue.Add(a.queueItem(path, "slicer"))
+			}})
 		}
 		// A print from a slicer: the question is on each screen of the deck.
 		a.hub.ask(box)
@@ -500,6 +505,9 @@ func (a *App) materialCheck(path string) (question, yes string, danger bool, set
 // offers to change the roll first (changeRollFor): the swap loads the roll, and then asks to start
 // the file. start starts the print. Each start of a print asks with it.
 func (a *App) filamentChoices(path, name string, start func()) *confirmBox {
+	if tm, ok := a.Printer.(trayMatcher); ok {
+		return a.trayChoices(tm, path, name, start)
+	}
 	q, _, danger, set := a.materialCheck(path)
 	if q == "" {
 		return nil

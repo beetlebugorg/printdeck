@@ -273,7 +273,17 @@ func (b *Bambu) countUse(p bambuPrint, complete bool) map[string]float64 {
 	if b.Spools == nil || p.file == "" {
 		return nil
 	}
-	data, err := fetch3MF(b.Client, p.file)
+	b.mu.Lock()
+	sent := b.sent
+	b.mu.Unlock()
+	var data []byte
+	var err error
+	if sent.local != "" && path.Base(p.file) == sent.name {
+		data, err = os.ReadFile(sent.local) // the deck sent this file: its copy in the store
+	}
+	if data == nil {
+		data, err = fetch3MF(b.Client, p.file)
+	}
 	if err != nil {
 		log.Printf("bambu: no filament count: the 3MF %s: %v", p.file, err)
 		return nil
