@@ -5,6 +5,7 @@ import (
 	"image"
 	"math"
 	"printdeck/kit"
+	"strings"
 
 	"printdeck/internal/gfx"
 )
@@ -26,42 +27,42 @@ func (a *App) drawTune(c *gfx.Canvas) {
 		// The left column is narrow: the name of the fan goes above its keys.
 		l := kit.Rows(f.aside(), 10, kit.Px(22), kit.Px(16), kit.Px(52), kit.Px(40))
 		file, fanName, fanRow, tHint = l[0], l[1], l[2], l[3]
-		r := kit.Rows(f.body(), 8, kit.Fr(1), kit.Px(20))
+		r := kit.Rows(f.body(), 8, kit.Fr(1), kit.Px(keyMin))
 		rows, zHint = r[0], r[1]
 	} else {
-		r := kit.Rows(kit.Inset(f.body(), 0, -4, 0, 8), 12, kit.Px(26), kit.Fr(1), kit.Px(20), kit.Px(56), kit.Px(20), kit.Px(100))
+		// The hint of the Z offset at the left of Save: three lines of the large text.
+		zHintH := keyMin
+		if gfx.FinePrint() {
+			zHintH = 3 * gfx.Face(false, 16).Metrics().Height.Ceil()
+		}
+		r := kit.Rows(kit.Inset(f.body(), 0, -4, 0, 8), 12, kit.Px(26), kit.Fr(1), kit.Px(zHintH), kit.Px(56), kit.Px(20), kit.Px(100))
 		file, rows, zHint, fanRow, tHint, temps = r[0], r[1], r[2], r[3], r[4], kit.Inset(r[5], 0, -4, 0, 4) // the cards at the margins of the page
 	}
 	c.Text(file, st.Name(), gfx.Face(false, 17), dim, gfx.Left)
 
-	labelW, keyW := 136, 80 // narrower in the right column of a wide screen
+	keyW := 80 // narrower in the right column of a wide screen
 	switch {
 	case f.wide:
-		labelW, keyW = 88, 64
+		keyW = 64
 	case gfx.FinePrint():
-		labelW, keyW = 120, 72 // a wider value for the large text
+		keyW = 72
 	}
 	rowH := min(110, (rows.Dy()+12)/3-12)
 	s := kit.NewStack(rows, 12)
-	// row draws a row with −, the value and +. With save, a Save key goes under the name.
-	row := func(name, value string, minus, plus, save func()) {
+	// row draws a row with −, the value and +. The name is at the top of the window of the value.
+	row := func(name, value string, minus, plus func()) {
 		rr := s.Next(rowH)
 		a.region(name, rr)
-		r := kit.Cols(rr, 0, kit.Px(labelW), kit.Fr(1))
-		if save != nil {
-			l := kit.Rows(r[0], 4, kit.Fr(1), kit.Px(min(48, rowH/2)))
-			label(c, l[0], name, gfx.Left)
-			a.button(c, kit.Inset(l[1], 0, 0, 12, 0), "Save", raised, text, save)
-		} else {
-			label(c, r[0], name, gfx.Left)
-		}
-		k := kit.Cols(r[1], 8, kit.Px(keyW), kit.Fr(1), kit.Px(keyW))
+		k := kit.Cols(rr, 8, kit.Px(keyW), kit.Fr(1), kit.Px(keyW))
 		a.button(c, k[0], "−", raised, text, minus)
-		ro := kit.Inset(k[1], 0, 8, 0, 8)
-		window(c, ro)
+		window(c, k[1])
+		nf := gfx.Face(true, 15)
+		nh := nf.Metrics().Height.Ceil()
+		in := kit.Inset(k[1], 12, 6, 12, 6)
+		c.Text(image.Rect(in.Min.X, in.Min.Y, in.Max.X, in.Min.Y+nh), strings.ToUpper(name), nf, lcdDim, gfx.Left)
 		// The value keeps 8 pixels from the sides of the window: a long value gets a smaller font.
-		in := kit.Inset(ro, 8, 0, 8, 0)
-		c.Text(in, value, shrinkFace(true, 32, 16, value, in.Dx()), lcdInk, gfx.Center)
+		v := kit.Inset(in, 0, nh, 0, 0)
+		c.Text(v, value, shrinkFace(true, 32, 16, value, v.Dx()), lcdInk, gfx.Center)
 		a.button(c, k[2], "+", raised, text, plus)
 	}
 	setSpeed := func(v int) {
@@ -74,10 +75,23 @@ func (a *App) drawTune(c *gfx.Canvas) {
 	}
 	z := func(d float64) { a.do(func() error { return pr.BabyStep(d) }) }
 	speed, flow := st.SpeedPct, st.FlowPct
-	row("Speed", fmt.Sprintf("%d%%", speed), func() { setSpeed(speed - 10) }, func() { setSpeed(speed + 10) }, nil)
-	row("Flow", fmt.Sprintf("%d%%", flow), func() { setFlow(flow - 2) }, func() { setFlow(flow + 2) }, nil)
-	row("Z offset", fmt.Sprintf("%+.3f mm", st.ZOffset), func() { z(-0.025) }, func() { z(0.025) }, func() { a.saveZOffset(st) })
-	hintText(c, zHint, "Z offset −: nozzle closer to the bed", gfx.Left)
+	row("Speed", fmt.Sprintf("%d%%", speed), func() { setSpeed(speed - 10) }, func() { setSpeed(speed + 10) })
+	row("Flow", fmt.Sprintf("%d%%", flow), func() { setFlow(flow - 2) }, func() { setFlow(flow + 2) })
+	row("Z offset", fmt.Sprintf("%+.3f mm", st.ZOffset), func() { z(-0.025) }, func() { z(0.025) })
+	// The hint of the Z offset, and Save for the Z offset at its right.
+	zr := kit.Cols(zHint, 12, kit.Fr(1), kit.Px(120))
+	// The hint goes to more lines before it gets smaller.
+	hf := gfx.Face(false, 16)
+	hl := wrapText(hf, "Z offset −: nozzle closer to the bed", zr[0].Dx())
+	lh := hf.Metrics().Height.Ceil()
+	if len(hl)*lh > zr[0].Dy() {
+		hl = []string{"Z offset −: nozzle closer to the bed"}
+	}
+	y := zr[0].Min.Y + (zr[0].Dy()-len(hl)*lh)/2
+	for i, l := range hl {
+		hintText(c, image.Rect(zr[0].Min.X, y+i*lh, zr[0].Max.X, y+(i+1)*lh), l, gfx.Left)
+	}
+	a.button(c, zr[1], "Save", raised, text, func() { a.saveZOffset(st) })
 
 	// Fan
 	a.region("Fan", fanRow)
