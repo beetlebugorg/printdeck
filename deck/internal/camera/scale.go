@@ -149,7 +149,7 @@ func turnPlane(dst []byte, dstStride, dw, dh int, src plane, rotate int) {
 
 // decodeTurned decodes the JPEG b of jw x jh, and returns its picture at ow x oh turned clockwise
 // by rotate degrees, or nil for a broken JPEG. ow x oh is the size after the turn. The decode is
-// at 1/2, 1/4 or 1/8 of the size (jpegdec) when that size is not smaller than the output: the
+// at 1/2, 1/4 or 1/8 of the size (libjpeg-turbo or jpegdec) when that size is not smaller than the output: the
 // reduced decode costs less than the whole decode, and leaves less to scale and turn.
 func decodeTurned(b []byte, jw, jh, ow, oh, rotate int) *image.YCbCr {
 	uw, uh := TurnedSize(ow, oh, rotate) // the size before the turn
@@ -160,7 +160,7 @@ func decodeTurned(b []byte, jw, jh, ow, oh, rotate int) *image.YCbCr {
 			break
 		}
 	}
-	img, err := jpegdec.DecodeScaled(bytes.NewReader(b), shift)
+	img, err := decodeJPEG(b, shift)
 	if err != nil {
 		return nil
 	}
