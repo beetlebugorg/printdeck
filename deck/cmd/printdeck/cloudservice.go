@@ -22,7 +22,9 @@ import (
 // serviceEvery is the time between two reads of the projects of the service.
 const serviceEvery = 10 * time.Minute
 
-// printerKey is the key of the printer of this deck at the service (cloud.PrinterRequest).
+// printerKey is the key of the first printer of the deck at the service (cloud.PrinterRequest).
+// The service keeps one printer for each deck and key, so each other printer of a deck with many
+// printers has its ID as its key (projectLink.key).
 const printerKey = "main"
 
 // serviceFile is cloud-service.json.
@@ -99,6 +101,15 @@ func (p *projectLink) printerName() string {
 	return hostName()
 }
 
+// serviceKey is the key of the printer at the service: printerKey for the first printer of the
+// deck, and the ID of the printer for the others.
+func (p *projectLink) serviceKey() string {
+	if p.key != "" {
+		return p.key
+	}
+	return printerKey
+}
+
 // refreshService registers the printer of the deck (each time: the name can change) and reads the
 // projects of the service. It keeps the answers in cloud-service.json.
 func (p *projectLink) refreshService(ctx context.Context) error {
@@ -110,7 +121,7 @@ func (p *projectLink) refreshService(ctx context.Context) error {
 	if p.k != nil && p.k.Machine().Process == printer.ProcessResin {
 		process = printer.ProcessResin
 	}
-	pr, err := p.Client.RegisterPrinter(ctx, id, cloud.PrinterRequest{Key: printerKey, Name: p.printerName(), Process: process, Model: p.model})
+	pr, err := p.Client.RegisterPrinter(ctx, id, cloud.PrinterRequest{Key: p.serviceKey(), Name: p.printerName(), Process: process, Model: p.model})
 	if err != nil {
 		return err
 	}

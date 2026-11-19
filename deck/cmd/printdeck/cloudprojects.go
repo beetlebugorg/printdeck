@@ -33,6 +33,8 @@ type projectLink struct {
 	model    string // the brand and the model of the printer, for the prints
 	// name is the name of the printer at the service, or "" for the model (printerName).
 	name string
+	// key is the key of the printer at the service, or "" for the first printer (serviceKey).
+	key string
 	// shareOf returns the ID of the share link of the print r, or "", or nil for none.
 	shareOf func(r printer.Record) string
 

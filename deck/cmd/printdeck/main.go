@@ -310,7 +310,7 @@ func run(cfg config.Config) {
 		if len(printers) > 1 {
 			name = printers[i].Name
 		}
-		startShare(link, pcfg.StateDir, pcfg.KlipperConfig, pcfg.GcodeDir, a, pr, name)
+		startShare(link, pcfg.StateDir, pcfg.KlipperConfig, pcfg.GcodeDir, a, pr, name, printers[i].ID)
 	}
 	startTLSCert(ctx, cfg.StateDir, cfg.TLSAddr, link)
 	if len(apps) > 1 {

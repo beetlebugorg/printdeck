@@ -128,7 +128,16 @@ func TestServiceRegistersResinPrinter(t *testing.T) {
 	if err := p.refreshService(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if reg.Name != "Phenom" || reg.Process != "resin" || p.printerID() != "printer2" {
+	if reg.Name != "Phenom" || reg.Process != "resin" || reg.Key != printerKey || p.printerID() != "printer2" {
 		t.Errorf("the registration %+v, printer %q", reg, p.printerID())
+	}
+	// A second printer of the deck registers with its own key: the service keeps one printer for
+	// each deck and key.
+	p.key = "phenom"
+	if err := p.refreshService(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if reg.Key != "phenom" {
+		t.Errorf("the key of a second printer: %q", reg.Key)
 	}
 }
