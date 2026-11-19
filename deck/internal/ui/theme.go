@@ -154,18 +154,18 @@ func led(c *gfx.Canvas, x, y int, on bool) {
 // open page, the material in the printer), dark for cap keyOff. A key that only acts has no LED.
 // A pressed key gets darker.
 func key(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pressed bool) {
-	keyAt(c, r, label, cap, ink, pressed, 0, 0)
+	keyAt(c, r, label, cap, ink, pressed, 0, rowSize{})
 }
 
 // keyBeside is key with room at the right of the label: right pixels of the cap stay free, for a
 // sign such as the lock of printerKey.
 func keyBeside(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pressed bool, right int) {
-	keyAt(c, r, label, cap, ink, pressed, right, 0)
+	keyAt(c, r, label, cap, ink, pressed, right, rowSize{})
 }
 
-// keyAt is keyBeside with a label of at most px pixels (0 for no limit). The keys of one row use
-// the same px from rowLabelPx, so that their labels have one size.
-func keyAt(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pressed bool, right, px int) {
+// keyAt is keyBeside with the label size of a row. The keys of one row use the same size from
+// rowLabel, so that their labels have one size.
+func keyAt(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, pressed bool, right int, size rowSize) {
 	on, hasLED := cap == keyOn, cap == keyOn || cap == keyOff
 	if hasLED {
 		cap = raised
@@ -205,7 +205,7 @@ func keyAt(c *gfx.Canvas, r image.Rectangle, label string, cap, ink color.RGBA, 
 		area = area.Add(image.Pt(0, 1))
 	}
 	area.Max.X -= right
-	f := fitKeyLabel(area, strings.ToUpper(label), keyLabelSize(area), px)
+	f := fitKeyLabel(area, strings.ToUpper(label), keyLabelSize(area), size)
 	f.draw(c, area, ink)
 }
 
@@ -225,18 +225,33 @@ func keyLabelSize(area image.Rectangle) int {
 	return 20
 }
 
-// rowLabelPx is the label size for one row of keys: the largest size at which each label fits its
-// key rs[i]. Give it to keyAt or buttonAt for each key of the row.
-func rowLabelPx(rs []image.Rectangle, labels []string) int {
-	px := 0
-	for i, r := range rs {
-		area := r.Inset(keyFrame(r))
-		f := fitKeyLabel(area, strings.ToUpper(labels[i]), keyLabelSize(area), 0)
-		if px == 0 || f.px < px {
-			px = f.px
+// rowSize is the label size of one row of keys. px is the most pixels of a label, 0 for no limit.
+// With twoLines, a label goes to two lines before it gets smaller. The zero value is the size of a
+// key on its own.
+type rowSize struct {
+	px       int
+	twoLines bool
+}
+
+// rowLabel is the label size for one row of keys: the largest size at which each label fits its
+// key rs[i]. Labels on two lines are used when they give a larger size. Give the size to keyAt or
+// buttonAt for each key of the row.
+func rowLabel(rs []image.Rectangle, labels []string) rowSize {
+	best := rowSize{}
+	for _, two := range []bool{false, true} {
+		size := rowSize{0, two}
+		for i, r := range rs {
+			area := r.Inset(keyFrame(r))
+			f := fitKeyLabel(area, strings.ToUpper(labels[i]), keyLabelSize(area), rowSize{0, two})
+			if size.px == 0 || f.px < size.px {
+				size.px = f.px
+			}
+		}
+		if size.px > best.px {
+			best = size
 		}
 	}
-	return px
+	return best
 }
 
 // labelFit is the place of the label of a key: one or two lines of px pixels in the room in.
@@ -261,15 +276,15 @@ func (f labelFit) draw(c *gfx.Canvas, area image.Rectangle, ink color.RGBA) {
 }
 
 // fitKeyLabel finds the place of the label of a key in area, at size pixels or smaller, and at most
-// px pixels when px is more than 0. A label is never cut: one line down to 13 pixels; then two
+// row.px pixels when row.px is more than 0. A label is never cut: one line down to 13 pixels; then two
 // lines, when the key is high enough; then the size that fits the key, also under the floor of
 // the large text.
-func fitKeyLabel(area image.Rectangle, label string, size, px int) labelFit {
+func fitKeyLabel(area image.Rectangle, label string, size int, row rowSize) labelFit {
 	// The size of the label with the large text, and the smallest size before a label goes to
 	// two lines: 2/3 of it, and not below keyLabelMin.
 	top := gfx.FaceSize(size)
-	if px > 0 {
-		top = min(top, px)
+	if row.px > 0 {
+		top = min(top, row.px)
 	}
 	floor := min(top, max(keyLabelMin, top*2/3))
 	pad := max(2, min(keyLabelPad, area.Dx()/12)) // less on a small key, such as a step of a move
@@ -299,14 +314,19 @@ func fitKeyLabel(area image.Rectangle, label string, size, px int) labelFit {
 	wide := kit.Inset(area, 2, 0, 2, 0)
 	// A little smaller on one line; then two lines at a larger size before one smaller line.
 	// Then the whole width of the key, then smaller text, to keyLabelLast at the least.
-	for _, try := range []struct {
+	type step struct {
 		lines func(image.Rectangle, int) (labelFit, bool)
 		in    image.Rectangle
 		lo    int
-	}{
-		{oneLine, in, max(floor, top*5/6)}, {twoLines, in, floor}, {oneLine, in, floor},
+	}
+	first := []step{{oneLine, in, max(floor, top*5/6)}, {twoLines, in, floor}}
+	if row.twoLines {
+		first = []step{{oneLine, in, top}, {twoLines, in, max(floor, top*5/6)}, {oneLine, in, max(floor, top*5/6)}, {twoLines, in, floor}}
+	}
+	for _, try := range append(first, []step{
+		{oneLine, in, floor},
 		{oneLine, wide, floor}, {twoLines, wide, floor}, {oneLine, wide, keyLabelLast}, {twoLines, wide, keyLabelLast},
-	} {
+	}...) {
 		if f, ok := try.lines(try.in, try.lo); ok {
 			return f
 		}
@@ -320,6 +340,15 @@ func shrinkFace(bold bool, size, least int, s string, width int) font.Face {
 		size--
 	}
 	return gfx.Face(bold, size)
+}
+
+// equalCols splits r into n columns of the same width, with gap between them.
+func equalCols(r image.Rectangle, gap, n int) []image.Rectangle {
+	sizes := make([]kit.Size, n)
+	for i := range sizes {
+		sizes[i] = kit.Fr(1)
+	}
+	return kit.Cols(r, gap, sizes...)
 }
 
 // labelCols splits r into a column for each label, with gap between them: each column as wide as

@@ -259,7 +259,7 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		}})
 	}
 
-	px := 0 // the label size of the keys of a row, 0 for each its own size
+	px := rowSize{} // the label size of the keys of a row; the zero value for each its own size
 	btn := func(r image.Rectangle, label string, fill, fg color.RGBA, f func() error) {
 		if !moving {
 			keyAt(c, r, label, surface, dim, false, 0, px)
@@ -287,13 +287,13 @@ func (a *App) drawMove(c *gfx.Canvas) {
 		h = kit.Cols(home, 8, kit.Fr(2.2), kit.Fr(1), kit.Fr(1), kit.Fr(1))
 	}
 	labels := []string{"Home all", "X", "Y", "Z"}
-	px = rowLabelPx(h, labels)
+	px = rowLabel(h, labels)
 	notPaused(h[0], labels[0], orange, onAcc, func() error { return pr.Home() })
 	for i, ax := range labels[1:] {
 		axis := strings.ToLower(ax)
 		notPaused(h[i+1], ax, raised, text, func() error { return pr.Home(axis) })
 	}
-	px = 0
+	px = rowSize{}
 
 	// The arrow keys: X and Y in a cross, Z in a column, all with the step of the step row.
 	a.drawArrows(c, cross, zUp, zDown, moving)
