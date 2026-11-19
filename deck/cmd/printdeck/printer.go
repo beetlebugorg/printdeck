@@ -40,6 +40,8 @@ func newPrinter(cfg config.Config, id string) printerBackend {
 	}
 	if s.Kind == printer.KindBambu {
 		b := printer.NewBambu(s.Addr, s.Serial, s.Code, s.Pin, s.Name, hist)
+		b.Spools = &printer.Spools{Path: filepath.Join(cfg.StateDir, "spools.json")}
+		b.TrayPath = filepath.Join(cfg.StateDir, "ams-trays.json")
 		b.SavePin = func(pin string) {
 			s.Pin = pin
 			if err := printer.SaveSetting(cfg.StateDir, s); err != nil {

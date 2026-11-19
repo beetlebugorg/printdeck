@@ -448,6 +448,18 @@ func (k *Klippy) Rates() Rates {
 // SpoolStore returns the rolls of filament, or nil.
 func (k *Klippy) SpoolStore() *Spools { return k.Spools }
 
+// Loaded returns the roll in the printer for the status panel, or nil with no roll.
+func (k *Klippy) Loaded() []Loaded {
+	if k.Spools == nil {
+		return nil
+	}
+	sp, ok := k.Spools.In()
+	if !ok {
+		return nil
+	}
+	return []Loaded{{Color: sp.Color, Material: sp.Material, Fraction: sp.Fraction(), Active: true}}
+}
+
 // useSpool subtracts the filament of the print with the history key from the roll in the
 // printer, and records the roll and the cost.
 func (k *Klippy) useSpool(key string, mm float64) {

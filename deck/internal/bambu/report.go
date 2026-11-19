@@ -38,9 +38,18 @@ type Report struct {
 	IPCam  IPCam  `json:"ipcam"`
 	AMS    struct {
 		Units []AMSUnit `json:"ams"`
-		Now   string    `json:"tray_now"` // the tray that feeds now, "255" for none
+		Now   string    `json:"tray_now"` // the tray that feeds now (Unit*4+Index), "255" for none
+		// Exist has a bit for each tray with a spool, in hex: bit Unit*4+Index.
+		Exist string `json:"tray_exist_bits"`
 	} `json:"ams"`
-	Lights []struct {
+	// External are the spool holders out of the AMS (vir_slot): 254 and 255 on an X2D.
+	External []Tray `json:"vir_slot"`
+	// Mapping is the tray of each filament of the print now. Its code is not checked on a print
+	// yet (AMSMapping).
+	Mapping  []int64 `json:"mapping"`
+	PlateIdx Num     `json:"plate_idx"`
+	SDCard   bool    `json:"sdcard"`
+	Lights   []struct {
 		Node string `json:"node"`
 		Mode string `json:"mode"`
 	} `json:"lights_report"`
@@ -77,17 +86,67 @@ type IPCam struct {
 
 // AMSUnit is one AMS.
 type AMSUnit struct {
-	ID       string `json:"id"`
-	Humidity string `json:"humidity"`
-	Temp     string `json:"temp"`
-	Trays    []Tray `json:"tray"`
+	ID          string `json:"id"`
+	Humidity    Num    `json:"humidity"`     // a level of 1 (dry) to 5 (wet)
+	HumidityPct Num    `json:"humidity_raw"` // the relative humidity in percent
+	Temp        Num    `json:"temp"`         // °C
+	Trays       []Tray `json:"tray"`
 }
 
 // Tray is one slot of an AMS.
 type Tray struct {
-	ID    string `json:"id"`
-	Type  string `json:"tray_type"`  // "PLA"
-	Color string `json:"tray_color"` // "898989FF"
+	ID     string `json:"id"`
+	Type   string `json:"tray_type"`  // "PLA"
+	Color  string `json:"tray_color"` // "898989FF"; "00000000" is no color
+	Brand  string `json:"tray_sub_brands"`
+	Remain Num    `json:"remain"`  // the percent left of a spool with an RFID tag of Bambu Lab, or -1
+	TagUID string `json:"tag_uid"` // the RFID tag, all zeros with no tag
+}
+
+// ColorHex returns the color of the tray as "#rrggbb", or "" with no color.
+func (t Tray) ColorHex() string {
+	c := strings.ToLower(t.Color)
+	if len(c) < 6 || c == "00000000" {
+		return ""
+	}
+	return "#" + c[:6]
+}
+
+// Known reports that the printer knows the filament left on the spool (Remain).
+func (t Tray) Known() bool {
+	return t.Remain >= 0 && strings.Trim(t.TagUID, "0") != ""
+}
+
+// TrayLoaded reports that the AMS has a spool in the tray slot (Unit*4+Index).
+func (r Report) TrayLoaded(slot int) bool {
+	bits, err := strconv.ParseUint(r.AMS.Exist, 16, 64)
+	return err == nil && slot >= 0 && slot < 64 && bits>>uint(slot)&1 == 1
+}
+
+// ActiveSlot returns the tray that feeds now (Unit*4+Index), or -1.
+func (r Report) ActiveSlot() int {
+	n, err := strconv.Atoi(r.AMS.Now)
+	if err != nil || n >= 254 {
+		return -1
+	}
+	return n
+}
+
+// AMSMapping returns the tray (Unit*4+Index) of each filament of the print, from Mapping, or
+// -1 for a filament with no tray. The code of a value is the AMS in the high byte and the tray
+// in the low byte; 0xFE00 and higher is no tray. This code is a guess from the reports of an idle
+// X2D: the first print checks it.
+func (r Report) AMSMapping() []int {
+	out := make([]int, len(r.Mapping))
+	for i, v := range r.Mapping {
+		unit, tray := int(v>>8), int(v&0xff)
+		if unit >= 0xfe || tray > 3 {
+			out[i] = -1
+			continue
+		}
+		out[i] = unit*4 + tray
+	}
+	return out
 }
 
 // HMS is one fault of the health system of the printer.
@@ -137,10 +196,24 @@ func (r Report) Nozzles() (temp, target []float64, ok bool) {
 // ChamberTemp returns the temperature of the chamber in °C: device.ctc on an H2D or an X2D, else
 // chamber_temper.
 func (r Report) ChamberTemp() float64 {
-	if t := r.Device.CTC.Info.Temp; t != 0 {
-		return float64(t)
+	t, _ := r.ChamberHeat()
+	return t
+}
+
+// ChamberHeat returns the temperature of the chamber and its target in °C. device.ctc of an H2D
+// or an X2D has the temperature in the low 16 bits and the target in the high 16 bits, as the
+// extruders (the target is not checked with a heated chamber yet). Other printers send
+// chamber_temper, and no target.
+func (r Report) ChamberHeat() (temp, target float64) {
+	if v := int64(r.Device.CTC.Info.Temp); v != 0 {
+		return float64(v & 0xffff), float64(v >> 16 & 0xffff)
 	}
-	return float64(r.Chamber)
+	return float64(r.Chamber), 0
+}
+
+// HasChamber reports that the printer sends a chamber temperature.
+func (r Report) HasChamber() bool {
+	return r.Device.CTC.Info.Temp != 0 || r.Chamber != 0
 }
 
 // FanPercent returns the part fan in percent.

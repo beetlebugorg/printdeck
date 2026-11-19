@@ -33,7 +33,14 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 	if gfx.FinePrint() {
 		rows = kit.Rows(r, 0, kit.Px(60), kit.Px(6), kit.Px(28), kit.Px(26), kit.Px(26), kit.Px(6), kit.Fr(1))
 	}
-	cells := kit.Cols(rows[0], 8, kit.Fr(1), kit.Fr(1), kit.Fr(1))
+	// A printer with a chamber has a fourth readout, between the bed and the fan.
+	chamber := st.HasChamber && !a.resin()
+	cols := []kit.Size{kit.Fr(1), kit.Fr(1), kit.Fr(1)}
+	if chamber {
+		cols = append(cols, kit.Fr(1))
+	}
+	cells := kit.Cols(rows[0], 8, cols...)
+	fanCell := cells[len(cells)-1]
 	fan := "off"
 	if st.Fan > 0 {
 		fan = fmt.Sprintf("%.0f%%", st.Fan)
@@ -43,9 +50,20 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 	} else if st.Reachable {
 		readout(c, cells[0], "NOZZLE", fmt.Sprintf("%.0f°", st.Tool), targetText(st.ToolTarget), st.ToolPower, st.ToolTarget > 0)
 		readout(c, cells[1], "BED", fmt.Sprintf("%.0f°", st.Bed), targetText(st.BedTarget), st.BedPower, st.BedTarget > 0)
-		readout(c, cells[2], "FAN", fan, "", 0, false)
+		if chamber {
+			target := ""
+			if st.ChamberTarget > 0 {
+				target = targetText(st.ChamberTarget)
+			}
+			readout(c, cells[2], "CHAMBER", fmt.Sprintf("%.0f°", st.Chamber), target, 0, false)
+		}
+		readout(c, fanCell, "FAN", fan, "", 0, false)
 	} else {
-		for i, l := range []string{"NOZZLE", "BED", "FAN"} {
+		labels := []string{"NOZZLE", "BED", "FAN"}
+		if chamber {
+			labels = []string{"NOZZLE", "BED", "CHAMBER", "FAN"}
+		}
+		for i, l := range labels {
 			readout(c, cells[i], l, "--", "", 0, false)
 		}
 	}
@@ -97,7 +115,11 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 		a.addHit(kit.Hit{R: hit, Tap: a.pickNextProject})
 		a.addFocus(label, hit, a.pickNextProject)
 	} else {
-		c.Text(line(rows[4]), gfx.Fit(small, p.detail, line(rows[4]).Dx()), small, lcdDim, gfx.Left)
+		dr := line(rows[4])
+		if w := a.drawLoaded(c, dr); w > 0 {
+			dr.Max.X -= w + 12
+		}
+		c.Text(dr, gfx.Fit(small, p.detail, dr.Dx()), small, lcdDim, gfx.Left)
 	}
 	if p.bar {
 		bar := line(rows[6])
@@ -116,8 +138,12 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 	}
 	a.region("Nozzle", cells[0])
 	a.region("Bed", cells[1])
-	a.region("Fan", cells[2])
-	if !st.Reachable {
+	if chamber {
+		a.region("Chamber", cells[2])
+	}
+	a.region("Fan", fanCell)
+	// A printer with its own controls sets its temperatures on its own screen.
+	if !st.Reachable || a.ownControls() {
 		return
 	}
 	pr := a.Printer
@@ -129,6 +155,69 @@ func (a *App) drawStatusBox(c *gfx.Canvas, st printer.State, r image.Rectangle) 
 	}
 	a.addHit(kit.Hit{R: cells[0], Tap: nozzle})
 	a.addHit(kit.Hit{R: cells[1], Tap: bed})
+}
+
+// loader is a printer that tells what it has loaded: the roll of a Klipper printer, or the trays of
+// an AMS (printer.Klippy, printer.Bambu).
+type loader interface{ Loaded() []printer.Loaded }
+
+// drawLoaded draws what the printer has loaded at the right of r: a small square in the color of
+// each spool, and its material and the part left. A line under a square marks the spool that
+// feeds now. It returns the width that it used, or 0 when the printer gives no spools.
+func (a *App) drawLoaded(c *gfx.Canvas, r image.Rectangle) int {
+	l, ok := a.Printer.(loader)
+	if !ok {
+		return 0
+	}
+	items := l.Loaded()
+	if len(items) == 0 {
+		return 0
+	}
+	face := gfx.Face(true, 13)
+	sq := min(14, r.Dy()-4)
+	texts := make([]string, len(items))
+	w := 0
+	for i, it := range items {
+		t := it.Material
+		if it.Empty {
+			t = "Empty"
+		}
+		if it.Fraction >= 0 && !it.Empty {
+			t += fmt.Sprintf(" %.0f%%", it.Fraction*100)
+		}
+		texts[i] = t
+		if i > 0 {
+			w += 8
+		}
+		w += sq + 3 + gfx.Width(face, t)
+	}
+	w = min(w, r.Dx()*2/3)
+	x := r.Max.X - w
+	y := r.Min.Y + (r.Dy()-sq)/2
+	for i, it := range items {
+		box := image.Rect(x, y, x+sq, y+sq)
+		col, known := printer.ParseHex(it.Color)
+		switch {
+		case it.Empty:
+			c.RoundRect(box, 2, lcdCell)
+		case known:
+			c.RoundRect(box.Inset(-1), 3, lcdDim)
+			c.RoundRect(box, 2, col)
+		default:
+			c.RoundRect(box, 2, lcdDim)
+		}
+		if it.Active {
+			c.Fill(image.Rect(box.Min.X, box.Max.Y+1, box.Max.X, box.Max.Y+3), orange)
+		}
+		tw := gfx.Width(face, texts[i])
+		tr := image.Rect(box.Max.X+3, r.Min.Y, min(r.Max.X, box.Max.X+3+tw), r.Max.Y)
+		c.Text(tr, texts[i], face, lcdDim, gfx.Left)
+		x = tr.Max.X + 8
+		if x >= r.Max.X {
+			break
+		}
+	}
+	return w
 }
 
 // targetText is the target of a heater in a readout: "→210", or "off".
