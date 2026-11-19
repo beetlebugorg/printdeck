@@ -257,6 +257,8 @@ func stagedNote(u UpdateStatus, st printer.State) string {
 // bar at the right shows the part of the notes that shows.
 func (a *App) drawNotes(c *gfx.Canvas, r image.Rectangle, md string) {
 	const rowH = 26
+	// The list shows whole lines only: its height is a multiple of rowH.
+	r.Max.Y = r.Min.Y + max(1, r.Dy()/rowH)*rowH
 	lines := markdownLines(md, r.Dx()-14)
 	l := kit.List{Area: r, N: len(lines), RowH: rowH, Scroll: &a.notesScroll}
 	l.Clamp()
